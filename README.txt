@@ -32,3 +32,8 @@ Mobile on same Wi-Fi
 - Start with `npm run dev` (binds to `0.0.0.0`).
 - Find your computer's LAN IP (example `192.168.1.25`).
 - On phone browser open `http://192.168.1.25:8000`.
+
+Merge/CI quick check
+- Run `npm test` before pushing/PR.
+- This validates JS parse and verifies every sprite path in CSS points to an existing file.
+
