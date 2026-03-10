@@ -3555,23 +3555,28 @@ function refreshBattleUI() {
   const _effAcc=Math.min(100,p.acc+(G.battleHymnActive?G.battleHymnACC:0));
   const _effDodge=getEffectiveDodge(G.player);
   const _effMDodge=getEffectiveMdodge(G.player);
+  const _effSpd=(p.spd||0) + ((G.playerStatus?.slow?.spdPenalty)?-(G.playerStatus.slow.spdPenalty||0):0);
+  const _effMatk=(p.matk||8);
+  const _effMdef=(p.mdef||8);
   const _trendTag = (diff) => diff>0 ? '<small class="stat-trend up">↑</small>' : (diff<0 ? '<small class="stat-trend down">↓</small>' : '');
-  const _atkDiff = G.warcryActive ? 1 : (G.playerStatus.weaken ? -1 : 0);
-  const _atkColor=G.warcryActive?'#6ab89a':G.playerStatus.weaken?'var(--red-light)':'var(--silver)';
+  const _atkDiff = G.warcryActive ? Math.max(1,Math.floor((p.atk||0)*(G.warcryATK||0)/100)) : (G.playerStatus.weaken ? -1 : 0);
+  const _atkColor=_atkDiff>0?'#6ab89a':_atkDiff<0?'var(--red-light)':'var(--silver)';
   const _effAtk=G.warcryActive?Math.floor(p.atk*(1+G.warcryATK/100)):p.atk;
   const _critChance = Math.min(100,(p.critChance||5)+(G.playerStatus.burning>0?20:0));
   const _critMult = p.goldCritMult||1.8;
+  const _statNote=(label,diff,srcUp='',srcDown='')=>`${label} ${diff>=0?'+':''}${diff}. ${diff>0?srcUp:(diff<0?srcDown:'No active modifier.')}`;
+  const _atkNote=(G.warcryActive?`Warcry +${G.warcryATK}% ATK.`:'') + (G.playerStatus.weaken?' Weaken reducing output.':'');
   document.getElementById('player-stats-mini').innerHTML =
-    `<div class="stat-mini stat-atk">ATK <span style="color:${_atkColor}">${_effAtk}${_trendTag(_atkDiff)}</span></div>
-     <div class="stat-mini stat-def">DEF <span style="color:${_effDef>p.def?'#6ab89a':'var(--silver)'}">${_effDef}${_trendTag(_effDef-p.def)}</span></div>
-     <div class="stat-mini stat-spd">SPD <span>${p.spd}</span></div>
-     <div class="stat-mini stat-dodge" title="Physical Dodge">Dodge <span style="color:${_effDodge>p.dodge?'#6ab89a':_effDodge<p.dodge?'var(--red-light)':'var(--silver)'}">${_effDodge}%${_trendTag(_effDodge-p.dodge)}</span></div>
+    `<div class="stat-mini stat-atk" title="${_statNote('ATK',_effAtk-(p.atk||0),_atkNote,'Debuffs reducing ATK effect.')}">ATK <span style="color:${_atkColor}">${_effAtk}${_trendTag(_effAtk-(p.atk||0))}</span></div>
+     <div class="stat-mini stat-def" title="${_statNote('DEF',_effDef-(p.def||0),'Battle Hymn increased DEF.','Debuffs reducing DEF.')}">DEF <span style="color:${_effDef>p.def?'#6ab89a':_effDef<p.def?'var(--red-light)':'var(--silver)'}">${_effDef}${_trendTag(_effDef-p.def)}</span></div>
+     <div class="stat-mini stat-spd" title="${_statNote('SPD',_effSpd-(p.spd||0),'Buff increased SPD.','Slow/clip effects reduced SPD.')}">SPD <span style="color:${_effSpd>p.spd?'#6ab89a':_effSpd<p.spd?'var(--red-light)':'var(--silver)'}">${_effSpd}${_trendTag(_effSpd-p.spd)}</span></div>
+     <div class="stat-mini stat-dodge" title="Physical Dodge. ${_statNote('Dodge',_effDodge-(p.dodge||0),'Evasion buffs active.','Debuffs reduced dodge.')}">Dodge <span style="color:${_effDodge>p.dodge?'#6ab89a':_effDodge<p.dodge?'var(--red-light)':'var(--silver)'}">${_effDodge}%${_trendTag(_effDodge-p.dodge)}</span></div>
      <div class="stat-mini stat-magic" title="Magic Dodge — deflects enemy spells">✦Dodge <span style="color:${_effMDodge>getBaseMdodge(G.player)?'#6ab89a':'#6ae8e8'}">${_effMDodge}%${_trendTag(_effMDodge-getBaseMdodge(G.player))}</span></div>
-     <div class="stat-mini stat-acc">ACC <span style="color:${_effAcc>p.acc?'#6ab89a':_effAcc<p.acc?'var(--red-light)':'var(--silver)'}">${_effAcc}%${_trendTag(_effAcc-p.acc)}</span></div>
+     <div class="stat-mini stat-acc" title="${_statNote('ACC',_effAcc-(p.acc||0),'Battle Hymn increased ACC.','Blind/ruffle reduced ACC.')}">ACC <span style="color:${_effAcc>p.acc?'#6ab89a':_effAcc<p.acc?'var(--red-light)':'var(--silver)'}">${_effAcc}%${_trendTag(_effAcc-p.acc)}</span></div>
      <div class="stat-mini stat-crit" title="Crit Chance">🎯CC <span style="color:${_critChance>5?'#6ab89a':'var(--silver)'}">${_critChance}%${_trendTag(_critChance-5)}</span></div>
      <div class="stat-mini stat-crit" title="Crit Damage">💥CD <span style="color:${_critMult>1.5?'#e8c96a':'var(--silver)'}">${_critMult.toFixed(1)}×</span></div>
-     <div class="stat-mini" title="Magic Attack — improves spell/ailment potency" style="color:#6ae8e8">✦ATK <span>${p.matk||8}</span></div>
-     <div class="stat-mini" title="Magic Defence — resists enemy spells and ailments" style="color:#6ae8e8">✦DEF <span>${p.mdef||8}</span></div>`;
+     <div class="stat-mini" title="Magic Attack — improves spell/ailment potency">✦ATK <span>${_effMatk}${_trendTag(_effMatk-(p.matk||8))}</span></div>
+     <div class="stat-mini" title="Magic Defence — resists enemy spells and ailments">✦DEF <span>${_effMdef}${_trendTag(_effMdef-(p.mdef||8))}</span></div>`;
 
   // Enemy stats display
   const ep2=G.enemy.stats;
@@ -3709,7 +3714,7 @@ function renderStatuses(id, statuses) {
     else if (k==='mud') { b.className='status-badge delayed'; b.textContent=`🟤 Slowed(${v.turns}t)`; }
     else if (k==='slow') { b.className='status-badge slow'; b.textContent=`🐌 Slow(${v.turns}t,-${v.spdPenalty} SPD,-${v.dodgePenalty}% DODGE)`; }
     else if (k==='feared') { b.className='status-badge feared'; b.textContent=`😨 Feared(${v}t)`; }
-    else if (k==='lullabied') { b.className='status-badge lullabied'; b.textContent=`💤 Lulled(${v}t)`; }
+    else if (k==='lullabied') { b.className='status-badge lullabied'; b.textContent=`💤 Lulled(${v}t)`; tooltipSummary='Debuff: chance to skip actions while lulled.'; }
     else if (k==='evading') { b.className='status-badge evading'; b.textContent=`💨 Evade(${v}t)`; }
     else if (k==='defending') { b.className='status-badge defending'; b.textContent=`🛡 Block(${v}t)`; }
     else if (k==='dustDevil') { b.className='status-badge feared'; b.textContent=`🌪 Blinded(${v.turns}t,-${v.accDrop||15}%ACC)`; }
@@ -3723,11 +3728,14 @@ function renderStatuses(id, statuses) {
     else if (k==='enemyBlind') { b.className='status-badge feared'; b.textContent=`👁 Blind(${v}t)`; }
     else if (k==='sittingDuck') { b.className='status-badge feared'; b.textContent=`🦆 Duck!(Dodge=0%)`; }
     else if (k==='wingClip') { b.className='status-badge feared'; b.textContent=`✂ Clipped(${v.turns}t,-${v.spdRedux}SPD)`; }
-    else if (k==='sonicSkip') { b.className='status-badge paralyzed'; b.textContent=`🔊 Dirge(${v.turns}t,${v.chance}%skip)`; }
+    else if (k==='sonicSkip') { b.className='status-badge paralyzed'; b.textContent=`🔊 Dirge(${v.turns}t,${v.chance}%skip)`; tooltipSummary='Debuff: chance to skip actions from sonic disorientation.'; }
     else { return; }
     b.title=b.textContent.replace(/\s+/g,' ').trim();
     b.dataset.statusId = k;
     b.dataset.statusDetail = detailText(k, v, tooltipSummary);
+    b.addEventListener('mouseenter',e=>showTooltip(e,`${b.title}\n${b.dataset.statusDetail||''}`,e.clientX+12,e.clientY+12));
+    b.addEventListener('mousemove',e=>moveTooltip(e.clientX+12,e.clientY+12));
+    b.addEventListener('mouseleave',hideTooltip);
     el.appendChild(b);
   });
 }
@@ -6470,6 +6478,12 @@ function startPlayerTurn(player){
   renderEnergyOrbs();
   renderActions();
   lockActionUI(false);
+  if(G.autoQueuedAbilityId==='breakClamp'){
+    const autoAb=(G.player.abilities||[]).find(a=>a.id==='breakClamp');
+    if(autoAb && canUseAbility(G.player,autoAb)){
+      setTimeout(()=>enqueueAction(()=>playerAction(autoAb,true)), 80);
+    }
+  }
 }
 function startEnemyTurn(enemy){
   enemy.energy = enemy.energyMax||3;
@@ -7613,8 +7627,18 @@ function postCombat() {
     while (G.player.exp >= expForLevel(G.player.birdLevel + 1)) {
       G.player.exp -= expForLevel(G.player.birdLevel + 1);
       G.player.birdLevel++;
+      const _preStats={...G.player.stats};
       checkGrowthStage(G.player);
       applyClassGrowthOnLevelUp();
+      const _postStats={...G.player.stats};
+      G._lastLevelUpStatGains={
+        hp:(_postStats.maxHp||0)-(_preStats.maxHp||0),
+        atk:(_postStats.atk||0)-(_preStats.atk||0),
+        def:(_postStats.def||0)-(_preStats.def||0),
+        spd:(_postStats.spd||0)-(_preStats.spd||0),
+        matk:(_postStats.matk||0)-(_preStats.matk||0),
+        mdef:(_postStats.mdef||0)-(_preStats.mdef||0)
+      };
 
       // Level-up heal depends on bird size
       const sizeHeal = { tiny: 0.60, small: 0.50, medium: 0.35, large: 0.25, xl: 0.15 };
@@ -7975,7 +7999,9 @@ function ensureMainAttackAndLoadoutRules(){
 function showLevelUpScreen() {
   showScreen('screen-levelup');
   _luSelectedSkillId=null;
-  document.getElementById('lu-sub').textContent=`Lv.${G.player.birdLevel} reached! Choose a skill to improve:`;
+  const g=G._lastLevelUpStatGains||{};
+  const gainTxt=[['HP',g.hp],['ATK',g.atk],['DEF',g.def],['SPD',g.spd],['MATK',g.matk],['MDEF',g.mdef]].filter(x=>x[1]>0).map(x=>`${x[0]} +${x[1]}`).join(' · ');
+  document.getElementById('lu-sub').textContent=`Lv.${G.player.birdLevel} reached! Stat gains: ${gainTxt||'minor growth'} — choose a skill to improve:`;
 
   document.getElementById('lu-skills-panel').classList.add('active');
 
@@ -8845,7 +8871,7 @@ function enterStorkShopScreen(){
   showScreen('screen-stork-shop');
   const buyBtn=document.getElementById('shop-buy-btn'); if(buyBtn) buyBtn.disabled=true;
   const log=document.getElementById('shop-purchase-log');
-  if(log) log.textContent=(G._shopMode==='grey'?'Stork Market: 2 ability offers, 3 cards, 1 utility.':'Boss Market: 2 high-tier abilities, 4 elite cards, 2 utilities.');
+  if(log) log.textContent=(G._shopMode==='grey'?'Stork Market: 1 ability offer, 2 cards, 1 utility.':'Boss Market: 1 high-tier ability, 3 elite cards, 1 utility.');
   renderShopItems();
 }
 
@@ -8929,25 +8955,22 @@ function generateShopItems() {
   const used=new Set();
   const mode=G._shopMode||'boss';
   if(mode==='grey'){
-    // Regular shop: 2 ability items, 3 upgrade cards, 1 utility
+    // Regular shop: 1 ability item, 2 upgrade cards, 1 utility
     _shopItems.push(makeAbilityOffer(false));
-    _shopItems.push(makeAbilityOffer(false));
-    for(let i=0;i<3;i++){
+    for(let i=0;i<2;i++){
       const tier=rollShopTier({grey:50,green:28,blue:16,purple:5,gold:1});
       const pick=pickUniqueRewardByTier(tier,used)||pickUniqueRewardByTier('green',used)||pickUniqueRewardByTier('grey',used);
       if(pick) _shopItems.push(pick);
     }
     _shopItems.push(makeUtilityOffer('regular'));
   } else {
-    // Boss shop: 2 high-quality ability items, 4 high-tier cards, 2 utility
+    // Boss shop: 1 high-quality ability item, 3 high-tier cards, 1 utility
     _shopItems.push(makeAbilityOffer(true));
-    _shopItems.push(makeAbilityOffer(true));
-    for(let i=0;i<4;i++){
+    for(let i=0;i<3;i++){
       const tier=rollShopTier({blue:50,purple:38,gold:12});
       const pick=pickUniqueRewardByTier(tier,used)||pickUniqueRewardByTier('purple',used)||pickUniqueRewardByTier('blue',used);
       if(pick) _shopItems.push(pick);
     }
-    _shopItems.push(makeUtilityOffer('boss'));
     _shopItems.push(makeUtilityOffer('boss'));
   }
   renderShopItems();
@@ -9237,8 +9260,8 @@ function shopRefresh() {
     return false;
   }
   if((G._freeShopRefresh||0)>0){G._freeShopRefresh--; }
-  else if(G.shinyObjects>=5){G.shinyObjects-=5;}
-  else { logMsg('Need 5 shiny objects to refresh!','miss'); return false; }
+  else if(G.shinyObjects>=3){G.shinyObjects-=3;}
+  else { logMsg('Need 3 shiny objects to refresh!','miss'); return false; }
   const log=document.getElementById('shop-purchase-log');
   if(log) log.textContent='🔄 Shop refreshed!';
   generateShopItems();

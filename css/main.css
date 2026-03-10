@@ -1361,3 +1361,5 @@ img{image-rendering:pixelated;image-rendering:crisp-edges;}
 /* Shop/Grove top alignment */
 #screen-stork-shop,#screen-grove{padding-top:0 !important;}
 .stork-shop-inner,.grove-inner{margin-top:0 !important;}
+
+.levelup-choice-title{padding:8px 0;font-family:'Cinzel',serif;font-size:.95rem;letter-spacing:.08em;color:var(--gold-light);text-transform:uppercase;}
