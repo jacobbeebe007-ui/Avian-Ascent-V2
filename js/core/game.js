@@ -796,9 +796,30 @@ const BIRDS = {
     stats:{hp:38,maxHp:38,atk:6,def:4,spd:6,dodge:20,acc:82,critChance:6,mdef:10,matk:14},
     statBars:{HP:38/50,ATK:6/15,SPD:6/10,Dodge:.4,ACC:.82}, color:'#c8902a',
     startAbilities:['dart','lullaby','shriekwave'],
-    passive:{id:'perfectMimic',name:'Perfect Mimic',desc:'Once per battle, can copy the last ability the enemy used as a bonus attack.',
-      onBattleStart(p){p._mimicAbility=null;p._mimicUsed=false;},
-      onEnemyAbility(p,abilityId){if(!p._mimicUsed)p._mimicAbility=abilityId;}},
+    passive:{id:'lyreLyre',name:'Lyre Lyre',desc:'Reduces a randomly selected enemy stat at battle start and grants that amount to Lyrebird as a buff.',
+      onBattleStart(p){
+        const enemy=G?.enemy?.stats;
+        if(!enemy) return;
+        const picks=[
+          {key:'atk',label:'ATK',min:1,delta:2},
+          {key:'def',label:'DEF',min:0,delta:2},
+          {key:'spd',label:'SPD',min:1,delta:2},
+          {key:'acc',label:'ACC',min:40,delta:6},
+          {key:'dodge',label:'Dodge',min:0,delta:6},
+          {key:'matk',label:'MATK',min:0,delta:2},
+          {key:'mdef',label:'MDEF',min:0,delta:2},
+        ].filter(x=>Number.isFinite(enemy[x.key]));
+        if(!picks.length) return;
+        const pick=picks[Math.floor(Math.random()*picks.length)];
+        const cur=Number(enemy[pick.key]||0);
+        const reduction=Math.max(0,Math.min(pick.delta, cur-pick.min));
+        if(reduction<=0) return;
+        enemy[pick.key]=cur-reduction;
+        p.stats[pick.key]=Number(p.stats[pick.key]||0)+reduction;
+        spawnFloat('enemy',`🎼 ${pick.label}-${reduction}`,'fn-status');
+        spawnFloat('player',`🎵 ${pick.label}+${reduction}`,'fn-status');
+        logMsg(`🎵 Lyre Lyre steals ${pick.label} ${reduction} at battle start!`,'system');
+      }},
   },
   raven:{
     name:'Raven', portraitKey:'raven', tagline:'Chaos given feathers. Roll the bones.',
@@ -1068,6 +1089,31 @@ const BIRDS = {
 };
 
 BIRDS.blackbird.extraAbilities = (BIRDS.blackbird.extraAbilities||[]).filter(x=>x!=='mimic');
+
+
+function runPassiveIntegrityAudit(){
+  const IMM_MAP=[
+    {needle:/immune\s+to\s+poison|poison\s+immune/i, key:'immunePoison'},
+    {needle:/immune\s+to\s+fear|fear\s+immune/i, key:'immuneFear'},
+    {needle:/immune\s+to\s+stun|stun\s+immune/i, key:'immuneStun'},
+    {needle:/immune\s+to\s+paraly/i, key:'immuneParalyze'},
+    {needle:/immune\s+to\s+weaken|weaken\s+immune/i, key:'immuneWeaken'},
+    {needle:/immune\s+to\s+confus/i, key:'immuneConfused'},
+    {needle:/immune\s+to\s+slow|slow\s+immune/i, key:'immuneSlow'},
+  ];
+  Object.entries(BIRDS||{}).forEach(([id,b])=>{
+    const p=b?.passive;
+    if(!p||!p.desc) return;
+    IMM_MAP.forEach(m=>{
+      if(m.needle.test(p.desc) && !p[m.key]){
+        p[m.key]=true;
+        try{ console.warn(`[passive-audit] ${id}.${p.id||'passive'} missing ${m.key}; auto-enabled to match description.`); }catch(_){ }
+      }
+    });
+  });
+}
+
+runPassiveIntegrityAudit();
 if(!BIRDS.blackbird.extraAbilities.includes('bleakBeak')) BIRDS.blackbird.extraAbilities.push('bleakBeak');
 
 // ============================================================
@@ -3052,6 +3098,22 @@ document.addEventListener('click', (e)=>{
   if(menu.classList.contains('open') && !menu.contains(e.target) && !btn.contains(e.target)) menu.classList.remove('open');
 });
 
+
+function buildBirdExpandedContent(key, bird){
+  const cls = bird.class||'knight';
+  const sizeClass = getUISizeClass(bird, 'panel');
+  const tags = (bird.startAbilities||[]).map(id=>`<span class="ascent-ab-tag">${ABILITY_TEMPLATES[id]?ABILITY_TEMPLATES[id].name:id}</span>`).join('');
+  return `
+    <div class="bird-card-expanded">
+      <div class="ascent-panel-tagline">${bird.tagline||''}</div>
+      <div class="ascent-panel-class"><span class="class-badge class-${cls}">${cls.toUpperCase()}</span> · ${SIZE_LABELS[bird.size||'medium']||bird.size}</div>
+      ${bird.passive?`<div class="ascent-panel-passive"><strong>★ ${bird.passive.name}:</strong> ${bird.passive.desc}</div>`:''}
+      <div class="ascent-abilities">${tags}</div>
+      <div style="text-align:left;font-size:.72rem;color:var(--text);background:rgba(0,0,0,.25);border:1px solid rgba(201,168,76,.2);border-radius:8px;padding:8px;margin:8px 0;"><strong>Full Stats:</strong> HP ${bird.stats.hp} · ATK ${bird.stats.atk} · DEF ${bird.stats.def} · SPD ${bird.stats.spd} · ACC ${bird.stats.acc}% · Dodge ${bird.stats.dodge}% · MATK ${bird.stats.matk||0} · MDEF ${bird.stats.mdef||0} · Crit ${bird.stats.critChance||0}%</div>
+      <button class="cta" onclick="event.stopPropagation();startGame()">🪽 Take Flight as ${bird.name}</button>
+    </div>`;
+}
+
 function buildBirdCard(key, bird, locked, globalMax) {
   const card = document.createElement('div');
   card.className = 'bird-card' + (locked ? ' bird-locked' : '') + (G.selected===key?' selected':'');
@@ -3090,6 +3152,7 @@ function buildBirdCard(key, bird, locked, globalMax) {
       <div class="bird-nm" style="color:#555;font-size:.8rem;">${bird.name}</div>
       <div class="lock-overlay"><span class="lock-icon" style="font-size:1rem;">🔒</span><div class="lock-label" style="font-size:.6rem;color:#555;line-height:1.3;">${unlockLabel}</div></div>`;
   } else {
+    const expanded = (G.selected===key) ? buildBirdExpandedContent(key,bird) : '';
     card.innerHTML = `
       <div class="bird-card-head">
         <span class="class-badge class-${cls}">${(cls).toUpperCase()}</span>
@@ -3097,7 +3160,8 @@ function buildBirdCard(key, bird, locked, globalMax) {
       </div>
       <div style="display:flex;justify-content:center;margin:2px auto 6px;">${renderBirdIconHTML(key,sizeClass,false)}</div>
       <div class="bird-nm">${bird.name}</div>
-      <div class="stat-bars">${bars}</div>`;
+      <div class="stat-bars">${bars}</div>
+      ${expanded}`;
   }
   return card;
 }
@@ -3106,13 +3170,8 @@ function selectBird(key, el) {
   G.selected = key;
   document.querySelectorAll('.bird-card').forEach(c=>c.classList.remove('selected'));
   if(el) el.classList.add('selected');
-  updateAscentPanel(key);
-
-  // Inline preview: bring the details panel into view on mobile
-  const ap=document.getElementById('ascent-panel');
-  if(ap && window.matchMedia && window.matchMedia('(max-width: 820px)').matches){
-    ap.scrollIntoView({behavior:'smooth', block:'start'});
-  }
+  // Re-render cards so the selected card expands inline (no side panel/auto-scroll).
+  initSelectionSafe();
 }
 
 
@@ -3136,6 +3195,8 @@ function normalizeSpriteBirdKey(raw){
   const k = String(raw||'').toLowerCase().replace(/[^a-z]/g,'');
   if(k === 'peregrinefalcon') return 'peregrine';
   if(k === 'snowyowl' || k === 'snowy') return 'snowyowl';
+  if(k === 'secretary') return 'secretarybird';
+  if(k === 'harpyeagle') return 'harpy';
   return k;
 }
 function neutralBirdFallbackHTML(sizeClass){
@@ -3143,7 +3204,7 @@ function neutralBirdFallbackHTML(sizeClass){
 }
 function renderBirdIconHTML(birdKey, sizeClass, locked){
   const k = normalizeSpriteBirdKey(birdKey);
-  const spriteBirds = /^(sparrow|goose|blackbird|crow|macaw|robin|hummingbird|shoebill|secretarybird|magpie|kookaburra|kiwi|penguin|flamingo|seagull|swan|emu|bowerbird|raven|lyrebird|peregrine|snowyowl|toucan|dukeblakiston)$/;
+  const spriteBirds = /^(sparrow|goose|blackbird|crow|macaw|robin|hummingbird|shoebill|secretarybird|secretary|magpie|kookaburra|kiwi|penguin|flamingo|seagull|swan|emu|bowerbird|raven|lyrebird|peregrine|snowyowl|toucan|dukeblakiston|albatross|harpy|harpyeagle|baldeagle|blackcockatoo|ostrich|cassowary)$/;
   if(spriteBirds.test(k)){
     return `<div class="sprite4 ${sizeClass||''} sprite-${k} frame-0 ${locked?'locked':''}"></div>`;
   }
@@ -3425,8 +3486,13 @@ function showScreen(id) {
   document.getElementById(id).classList.add('active');
   if(id==='screen-stork-shop' || id==='screen-grove'){
     const el=document.getElementById(id);
-    if(el) el.scrollIntoView({behavior:'smooth', block:'start'});
-    try{ window.scrollTo({top:0, behavior:'smooth'}); }catch(_){ window.scrollTo(0,0); }
+    if(el){
+      el.scrollTop=0;
+      el.scrollIntoView({behavior:'auto', block:'start'});
+    }
+    document.documentElement.scrollTop=0;
+    document.body.scrollTop=0;
+    try{ window.scrollTo({top:0, behavior:'auto'}); }catch(_){ window.scrollTo(0,0); }
   }
   const evt={id};
   AvianEvents.emit('screen:change', evt);
@@ -3489,23 +3555,28 @@ function refreshBattleUI() {
   const _effAcc=Math.min(100,p.acc+(G.battleHymnActive?G.battleHymnACC:0));
   const _effDodge=getEffectiveDodge(G.player);
   const _effMDodge=getEffectiveMdodge(G.player);
+  const _effSpd=(p.spd||0) + ((G.playerStatus?.slow?.spdPenalty)?-(G.playerStatus.slow.spdPenalty||0):0);
+  const _effMatk=(p.matk||8);
+  const _effMdef=(p.mdef||8);
   const _trendTag = (diff) => diff>0 ? '<small class="stat-trend up">↑</small>' : (diff<0 ? '<small class="stat-trend down">↓</small>' : '');
-  const _atkDiff = G.warcryActive ? 1 : (G.playerStatus.weaken ? -1 : 0);
-  const _atkColor=G.warcryActive?'#6ab89a':G.playerStatus.weaken?'var(--red-light)':'var(--silver)';
+  const _atkDiff = G.warcryActive ? Math.max(1,Math.floor((p.atk||0)*(G.warcryATK||0)/100)) : (G.playerStatus.weaken ? -1 : 0);
+  const _atkColor=_atkDiff>0?'#6ab89a':_atkDiff<0?'var(--red-light)':'var(--silver)';
   const _effAtk=G.warcryActive?Math.floor(p.atk*(1+G.warcryATK/100)):p.atk;
   const _critChance = Math.min(100,(p.critChance||5)+(G.playerStatus.burning>0?20:0));
   const _critMult = p.goldCritMult||1.8;
+  const _statNote=(label,diff,srcUp='',srcDown='')=>`${label} ${diff>=0?'+':''}${diff}. ${diff>0?srcUp:(diff<0?srcDown:'No active modifier.')}`;
+  const _atkNote=(G.warcryActive?`Warcry +${G.warcryATK}% ATK.`:'') + (G.playerStatus.weaken?' Weaken reducing output.':'');
   document.getElementById('player-stats-mini').innerHTML =
-    `<div class="stat-mini stat-atk">ATK <span style="color:${_atkColor}">${_effAtk}${_trendTag(_atkDiff)}</span></div>
-     <div class="stat-mini stat-def">DEF <span style="color:${_effDef>p.def?'#6ab89a':'var(--silver)'}">${_effDef}${_trendTag(_effDef-p.def)}</span></div>
-     <div class="stat-mini stat-spd">SPD <span>${p.spd}</span></div>
-     <div class="stat-mini stat-dodge" title="Physical Dodge">Dodge <span style="color:${_effDodge>p.dodge?'#6ab89a':_effDodge<p.dodge?'var(--red-light)':'var(--silver)'}">${_effDodge}%${_trendTag(_effDodge-p.dodge)}</span></div>
+    `<div class="stat-mini stat-atk" title="${_statNote('ATK',_effAtk-(p.atk||0),_atkNote,'Debuffs reducing ATK effect.')}">ATK <span style="color:${_atkColor}">${_effAtk}${_trendTag(_effAtk-(p.atk||0))}</span></div>
+     <div class="stat-mini stat-def" title="${_statNote('DEF',_effDef-(p.def||0),'Battle Hymn increased DEF.','Debuffs reducing DEF.')}">DEF <span style="color:${_effDef>p.def?'#6ab89a':_effDef<p.def?'var(--red-light)':'var(--silver)'}">${_effDef}${_trendTag(_effDef-p.def)}</span></div>
+     <div class="stat-mini stat-spd" title="${_statNote('SPD',_effSpd-(p.spd||0),'Buff increased SPD.','Slow/clip effects reduced SPD.')}">SPD <span style="color:${_effSpd>p.spd?'#6ab89a':_effSpd<p.spd?'var(--red-light)':'var(--silver)'}">${_effSpd}${_trendTag(_effSpd-p.spd)}</span></div>
+     <div class="stat-mini stat-dodge" title="Physical Dodge. ${_statNote('Dodge',_effDodge-(p.dodge||0),'Evasion buffs active.','Debuffs reduced dodge.')}">Dodge <span style="color:${_effDodge>p.dodge?'#6ab89a':_effDodge<p.dodge?'var(--red-light)':'var(--silver)'}">${_effDodge}%${_trendTag(_effDodge-p.dodge)}</span></div>
      <div class="stat-mini stat-magic" title="Magic Dodge — deflects enemy spells">✦Dodge <span style="color:${_effMDodge>getBaseMdodge(G.player)?'#6ab89a':'#6ae8e8'}">${_effMDodge}%${_trendTag(_effMDodge-getBaseMdodge(G.player))}</span></div>
-     <div class="stat-mini stat-acc">ACC <span style="color:${_effAcc>p.acc?'#6ab89a':_effAcc<p.acc?'var(--red-light)':'var(--silver)'}">${_effAcc}%${_trendTag(_effAcc-p.acc)}</span></div>
+     <div class="stat-mini stat-acc" title="${_statNote('ACC',_effAcc-(p.acc||0),'Battle Hymn increased ACC.','Blind/ruffle reduced ACC.')}">ACC <span style="color:${_effAcc>p.acc?'#6ab89a':_effAcc<p.acc?'var(--red-light)':'var(--silver)'}">${_effAcc}%${_trendTag(_effAcc-p.acc)}</span></div>
      <div class="stat-mini stat-crit" title="Crit Chance">🎯CC <span style="color:${_critChance>5?'#6ab89a':'var(--silver)'}">${_critChance}%${_trendTag(_critChance-5)}</span></div>
      <div class="stat-mini stat-crit" title="Crit Damage">💥CD <span style="color:${_critMult>1.5?'#e8c96a':'var(--silver)'}">${_critMult.toFixed(1)}×</span></div>
-     <div class="stat-mini" title="Magic Attack — improves spell/ailment potency" style="color:#6ae8e8">✦ATK <span>${p.matk||8}</span></div>
-     <div class="stat-mini" title="Magic Defence — resists enemy spells and ailments" style="color:#6ae8e8">✦DEF <span>${p.mdef||8}</span></div>`;
+     <div class="stat-mini" title="Magic Attack — improves spell/ailment potency">✦ATK <span>${_effMatk}${_trendTag(_effMatk-(p.matk||8))}</span></div>
+     <div class="stat-mini" title="Magic Defence — resists enemy spells and ailments">✦DEF <span>${_effMdef}${_trendTag(_effMdef-(p.mdef||8))}</span></div>`;
 
   // Enemy stats display
   const ep2=G.enemy.stats;
@@ -3643,7 +3714,7 @@ function renderStatuses(id, statuses) {
     else if (k==='mud') { b.className='status-badge delayed'; b.textContent=`🟤 Slowed(${v.turns}t)`; }
     else if (k==='slow') { b.className='status-badge slow'; b.textContent=`🐌 Slow(${v.turns}t,-${v.spdPenalty} SPD,-${v.dodgePenalty}% DODGE)`; }
     else if (k==='feared') { b.className='status-badge feared'; b.textContent=`😨 Feared(${v}t)`; }
-    else if (k==='lullabied') { b.className='status-badge lullabied'; b.textContent=`💤 Lulled(${v}t)`; }
+    else if (k==='lullabied') { b.className='status-badge lullabied'; b.textContent=`💤 Lulled(${v}t)`; tooltipSummary='Debuff: chance to skip actions while lulled.'; }
     else if (k==='evading') { b.className='status-badge evading'; b.textContent=`💨 Evade(${v}t)`; }
     else if (k==='defending') { b.className='status-badge defending'; b.textContent=`🛡 Block(${v}t)`; }
     else if (k==='dustDevil') { b.className='status-badge feared'; b.textContent=`🌪 Blinded(${v.turns}t,-${v.accDrop||15}%ACC)`; }
@@ -3657,11 +3728,14 @@ function renderStatuses(id, statuses) {
     else if (k==='enemyBlind') { b.className='status-badge feared'; b.textContent=`👁 Blind(${v}t)`; }
     else if (k==='sittingDuck') { b.className='status-badge feared'; b.textContent=`🦆 Duck!(Dodge=0%)`; }
     else if (k==='wingClip') { b.className='status-badge feared'; b.textContent=`✂ Clipped(${v.turns}t,-${v.spdRedux}SPD)`; }
-    else if (k==='sonicSkip') { b.className='status-badge paralyzed'; b.textContent=`🔊 Dirge(${v.turns}t,${v.chance}%skip)`; }
+    else if (k==='sonicSkip') { b.className='status-badge paralyzed'; b.textContent=`🔊 Dirge(${v.turns}t,${v.chance}%skip)`; tooltipSummary='Debuff: chance to skip actions from sonic disorientation.'; }
     else { return; }
     b.title=b.textContent.replace(/\s+/g,' ').trim();
     b.dataset.statusId = k;
     b.dataset.statusDetail = detailText(k, v, tooltipSummary);
+    b.addEventListener('mouseenter',e=>showTooltip(e,`${b.title}\n${b.dataset.statusDetail||''}`,e.clientX+12,e.clientY+12));
+    b.addEventListener('mousemove',e=>moveTooltip(e.clientX+12,e.clientY+12));
+    b.addEventListener('mouseleave',hideTooltip);
     el.appendChild(b);
   });
 }
@@ -4039,6 +4113,7 @@ function renderActions() {
     if(_prevType!==null&&_prevType!==ab.btnType) btn.classList.add('type-sep');
     _prevType=ab.btnType;
     btn.setAttribute('data-ab-idx',idx);
+    btn.setAttribute('data-ab-id',ab.id||'');
     const energyCost=syncAbilityEnergyCost(ab);
     let btnCostText=`${energyCost} EN`;
     let cdisabled=false;
@@ -4080,10 +4155,11 @@ function renderActions() {
       ${ab.level>1?`<span class="ab-lv-badge">Lv${ab.level}</span>`:''}
       ${ailDots?`<div class="ailment-icons">${ailDots}</div>`:''}
       <span class="kb-hint">[${idx+1}]</span>`;
-    btn.onclick=()=>enqueueAction(()=>playerAction(ab,true));
+    const currentAb = ()=> (G?.player?.abilities||[]).find(x=>x.id===ab.id) || ab;
+    btn.onclick=()=>enqueueAction(()=>playerAction(currentAb(),true));
     // Tooltip - desktop hover + mobile tap toggle
     // Desktop: hover tooltips
-    btn.addEventListener('mouseenter',e=>{if(!window._isTouchDevice)showActionTooltip(e,ab);});
+    btn.addEventListener('mouseenter',e=>{if(!window._isTouchDevice)showActionTooltip(e,currentAb());});
     btn.addEventListener('mousemove',e=>{if(!window._isTouchDevice)moveTooltip(e);});
     btn.addEventListener('mouseleave',()=>{if(!window._isTouchDevice)hideTooltip();});
     // Mobile: long-press (500ms) shows tooltip; normal tap fires the action
@@ -4094,8 +4170,9 @@ function renderActions() {
       _longPressTimer=setTimeout(()=>{
         _longPressTimer=null;
         const touch=e.touches[0];
-        showActionTooltip({clientX:touch.clientX,clientY:touch.clientY},ab);
-        document.getElementById('action-tooltip')._currentAbId=ab.id;
+        const cur=currentAb();
+        showActionTooltip({clientX:touch.clientX,clientY:touch.clientY},cur);
+        document.getElementById('action-tooltip')._currentAbId=cur.id;
       },500);
     },{passive:true});
     btn.addEventListener('touchend',()=>{
@@ -4139,8 +4216,9 @@ function showActionTooltip(e,ab) {
   const tt=document.getElementById('action-tooltip');
   const tmpl=ABILITY_TEMPLATES[ab.id];
   if (!tmpl) return;
-  const lv=Math.min(ab.level,tmpl.levels.length);
-  const lvData=tmpl.levels[lv-1];
+  const levels = Array.isArray(tmpl.levels) ? tmpl.levels : [];
+  const lv=Math.max(1, Math.min(ab.level||1, levels.length||1));
+  const lvData=levels[lv-1] || {desc: (ab.desc||tmpl.desc||'')};
   const miss=tmpl.baseMissChance!==undefined?Math.max(0,tmpl.baseMissChance-5*(lv-1)):null;
   const hit=miss!==null?100-miss:null;
   const hitClass=hit===null?'':(hit>=80?'tt-hit-great':hit>=55?'tt-hit-good':'tt-hit-bad');
@@ -6400,6 +6478,12 @@ function startPlayerTurn(player){
   renderEnergyOrbs();
   renderActions();
   lockActionUI(false);
+  if(G.autoQueuedAbilityId==='breakClamp'){
+    const autoAb=(G.player.abilities||[]).find(a=>a.id==='breakClamp');
+    if(autoAb && canUseAbility(G.player,autoAb)){
+      setTimeout(()=>enqueueAction(()=>playerAction(autoAb,true)), 80);
+    }
+  }
 }
 function startEnemyTurn(enemy){
   enemy.energy = enemy.energyMax||3;
@@ -7543,8 +7627,18 @@ function postCombat() {
     while (G.player.exp >= expForLevel(G.player.birdLevel + 1)) {
       G.player.exp -= expForLevel(G.player.birdLevel + 1);
       G.player.birdLevel++;
+      const _preStats={...G.player.stats};
       checkGrowthStage(G.player);
       applyClassGrowthOnLevelUp();
+      const _postStats={...G.player.stats};
+      G._lastLevelUpStatGains={
+        hp:(_postStats.maxHp||0)-(_preStats.maxHp||0),
+        atk:(_postStats.atk||0)-(_preStats.atk||0),
+        def:(_postStats.def||0)-(_preStats.def||0),
+        spd:(_postStats.spd||0)-(_preStats.spd||0),
+        matk:(_postStats.matk||0)-(_preStats.matk||0),
+        mdef:(_postStats.mdef||0)-(_preStats.mdef||0)
+      };
 
       // Level-up heal depends on bird size
       const sizeHeal = { tiny: 0.60, small: 0.50, medium: 0.35, large: 0.25, xl: 0.15 };
@@ -7867,12 +7961,22 @@ function ensureMainAttackAndLoadoutRules(){
 
   let mainAb=null;
   if(isMagic){
-    mainAb=G.player.abilities.find(a=>a.id==='mainAttack');
-    if(!mainAb){
-      mainAb={id:'mainAttack',name:'Peck',level:1,type:'physical',btnType:'physical'};
-      G.player.abilities.unshift(mainAb);
+    const isBlackbird = (G.player?.birdKey==='blackbird');
+    if(isBlackbird){
+      mainAb=G.player.abilities.find(a=>a.id==='blackPeck') || null;
+      G.player.abilities=G.player.abilities.filter(a=>a.id!=='mainAttack');
+      if(!mainAb){
+        mainAb={...(ABILITY_TEMPLATES.blackPeck||{}), id:'blackPeck', level:1};
+        G.player.abilities.unshift(mainAb);
+      }
+    }else{
+      mainAb=G.player.abilities.find(a=>a.id==='mainAttack');
+      if(!mainAb){
+        mainAb={id:'mainAttack',name:'Peck',level:1,type:'physical',btnType:'physical'};
+        G.player.abilities.unshift(mainAb);
+      }
+      mainAb.name='Peck';
     }
-    mainAb.name='Peck';
   } else {
     const preferred=bd.mainAttackId||(bd.startAbilities&&bd.startAbilities[0]);
     mainAb=G.player.abilities.find(a=>a.id===preferred)||G.player.abilities[0]||null;
@@ -7895,7 +7999,9 @@ function ensureMainAttackAndLoadoutRules(){
 function showLevelUpScreen() {
   showScreen('screen-levelup');
   _luSelectedSkillId=null;
-  document.getElementById('lu-sub').textContent=`Lv.${G.player.birdLevel} reached! Choose a skill to improve:`;
+  const g=G._lastLevelUpStatGains||{};
+  const gainTxt=[['HP',g.hp],['ATK',g.atk],['DEF',g.def],['SPD',g.spd],['MATK',g.matk],['MDEF',g.mdef]].filter(x=>x[1]>0).map(x=>`${x[0]} +${x[1]}`).join(' · ');
+  document.getElementById('lu-sub').textContent=`Lv.${G.player.birdLevel} reached! Stat gains: ${gainTxt||'minor growth'} — choose a skill to improve:`;
 
   document.getElementById('lu-skills-panel').classList.add('active');
 
@@ -8516,8 +8622,9 @@ document.addEventListener('keydown', e => {
   if(screen.id==='screen-battle') {
     if(!G.animLock && G.turn==='player' && G.player) {
       const idx=parseInt(e.key)-1;
-      if(idx>=0&&idx<=8&&G.player.abilities[idx]) {
-        const btn=document.querySelector(`[data-ab-idx="${idx}"]`);
+      if(idx>=0&&idx<=8){
+        const btns=[...document.querySelectorAll('#actions-grid .action-btn[data-ab-idx]')].filter(b=>!b.classList.contains('endturn-mini'));
+        const btn=btns[idx]||null;
         if(btn&&!btn.disabled) { btn.click(); return; }
       }
     }
@@ -8764,7 +8871,7 @@ function enterStorkShopScreen(){
   showScreen('screen-stork-shop');
   const buyBtn=document.getElementById('shop-buy-btn'); if(buyBtn) buyBtn.disabled=true;
   const log=document.getElementById('shop-purchase-log');
-  if(log) log.textContent=(G._shopMode==='grey'?'Stork Market: 2 ability offers, 3 cards, 1 utility.':'Boss Market: 2 high-tier abilities, 4 elite cards, 2 utilities.');
+  if(log) log.textContent=(G._shopMode==='grey'?'Stork Market: 1 ability offer, 2 cards, 1 utility.':'Boss Market: 1 high-tier ability, 3 elite cards, 1 utility.');
   renderShopItems();
 }
 
@@ -8848,25 +8955,22 @@ function generateShopItems() {
   const used=new Set();
   const mode=G._shopMode||'boss';
   if(mode==='grey'){
-    // Regular shop: 2 ability items, 3 upgrade cards, 1 utility
+    // Regular shop: 1 ability item, 2 upgrade cards, 1 utility
     _shopItems.push(makeAbilityOffer(false));
-    _shopItems.push(makeAbilityOffer(false));
-    for(let i=0;i<3;i++){
+    for(let i=0;i<2;i++){
       const tier=rollShopTier({grey:50,green:28,blue:16,purple:5,gold:1});
       const pick=pickUniqueRewardByTier(tier,used)||pickUniqueRewardByTier('green',used)||pickUniqueRewardByTier('grey',used);
       if(pick) _shopItems.push(pick);
     }
     _shopItems.push(makeUtilityOffer('regular'));
   } else {
-    // Boss shop: 2 high-quality ability items, 4 high-tier cards, 2 utility
+    // Boss shop: 1 high-quality ability item, 3 high-tier cards, 1 utility
     _shopItems.push(makeAbilityOffer(true));
-    _shopItems.push(makeAbilityOffer(true));
-    for(let i=0;i<4;i++){
+    for(let i=0;i<3;i++){
       const tier=rollShopTier({blue:50,purple:38,gold:12});
       const pick=pickUniqueRewardByTier(tier,used)||pickUniqueRewardByTier('purple',used)||pickUniqueRewardByTier('blue',used);
       if(pick) _shopItems.push(pick);
     }
-    _shopItems.push(makeUtilityOffer('boss'));
     _shopItems.push(makeUtilityOffer('boss'));
   }
   renderShopItems();
@@ -9156,8 +9260,8 @@ function shopRefresh() {
     return false;
   }
   if((G._freeShopRefresh||0)>0){G._freeShopRefresh--; }
-  else if(G.shinyObjects>=5){G.shinyObjects-=5;}
-  else { logMsg('Need 5 shiny objects to refresh!','miss'); return false; }
+  else if(G.shinyObjects>=3){G.shinyObjects-=3;}
+  else { logMsg('Need 3 shiny objects to refresh!','miss'); return false; }
   const log=document.getElementById('shop-purchase-log');
   if(log) log.textContent='🔄 Shop refreshed!';
   generateShopItems();
@@ -9287,7 +9391,7 @@ applyAccessibilitySettings();
      3 power/buff
    ============================================================ */
 (function(){
-  const SPRITE_KEYS = new Set(['sparrow','goose','blackbird','crow','macaw','hummingbird','shoebill','secretarybird','magpie','kookaburra','kiwi','penguin','robin','flamingo','seagull','emu','dukeblakiston']);
+  const SPRITE_KEYS = new Set(['sparrow','goose','blackbird','crow','macaw','hummingbird','shoebill','secretarybird','secretary','magpie','kookaburra','kiwi','penguin','robin','flamingo','seagull','emu','dukeblakiston','albatross','harpy','harpyeagle','baldeagle','blackcockatoo','ostrich','cassowary']);
   const CASTERS = new Set(['mage','bard','summoner']);
 
   function normKey(k){ return String(k||'').toLowerCase().replace(/[^a-z]/g,''); } // secretaryBird -> secretarybird
@@ -9423,7 +9527,7 @@ applyAccessibilitySettings();
    - Forces all UI locations using PORTRAITS[...] to show sprites
    ============================================================ */
 (function(){
-  const SPRITE_KEYS = ['sparrow','goose','blackbird','crow','macaw','hummingbird','shoebill','secretarybird','magpie','kookaburra','flamingo','seagull','dukeblakiston'];
+  const SPRITE_KEYS = ['sparrow','goose','blackbird','crow','macaw','hummingbird','shoebill','secretarybird','secretary','magpie','kookaburra','flamingo','seagull','dukeblakiston','albatross','harpy','harpyeagle','baldeagle','blackcockatoo','ostrich','cassowary'];
   function mk(k, small=true){
     const cls = small ? 'sprite4 small' : 'sprite4';
     return `<div class="${cls} sprite-${k} frame-0"></div>`;
@@ -9580,7 +9684,7 @@ SPRITE_KEYS_ALL.add('magpie');
    - Adds small idle flutter + clearer attack/run/crouch cues
    ============================================================ */
 (function(){
-  const SPRITE_KEYS = new Set(['sparrow','goose','blackbird','crow','macaw','robin','hummingbird','shoebill','secretarybird','magpie','kookaburra','flamingo','seagull','emu','penguin','dukeblakiston']);
+  const SPRITE_KEYS = new Set(['sparrow','goose','blackbird','crow','macaw','robin','hummingbird','shoebill','secretarybird','secretary','magpie','kookaburra','flamingo','seagull','emu','penguin','dukeblakiston','albatross','harpy','harpyeagle','baldeagle','blackcockatoo','ostrich','cassowary']);
   const CASTERS = new Set(['mage','bard']);
 
   function normKey(k){ return String(k||'').toLowerCase().replace(/[^a-z]/g,''); }
@@ -9924,6 +10028,8 @@ SPRITE_KEYS_ALL.add('magpie');
     const isBoss = !!entity?.isBoss;
     if(isBoss && context==='battle') return 'boss';
     if(key === 'penguin') return 'xl';
+    if(key === 'robin') return 'small';
+    if(key === 'seagull') return 'medium';
     if(sz.includes('tiny')) return 'tiny';
     if(sz.includes('small')) return 'small';
     if(sz.includes('xlarge') || sz.includes('xl')) return 'xl';
@@ -9940,16 +10046,24 @@ SPRITE_KEYS_ALL.add('magpie');
 (function(){
   const spriteBirds = new Set([
     'sparrow','goose','blackbird','crow','macaw','robin','hummingbird','shoebill',
-    'secretarybird','magpie','kookaburra','kiwi','penguin','flamingo','seagull',
-    'swan','emu','bowerbird','raven','lyrebird','peregrine','snowyowl','toucan','dukeblakiston'
+    'secretarybird','secretary','magpie','kookaburra','kiwi','penguin','flamingo','seagull',
+    'swan','emu','bowerbird','raven','lyrebird','peregrine','snowyowl','toucan','dukeblakiston',
+    'albatross','harpy','harpyeagle','baldeagle','blackcockatoo','ostrich','cassowary'
   ]);
-  const norm = s => String(s || '').toLowerCase().replace(/[^a-z]/g,'');
+  const norm = s => {
+    const k = String(s || '').toLowerCase().replace(/[^a-z]/g,'');
+    if(k === 'secretary') return 'secretarybird';
+    if(k === 'harpyeagle') return 'harpy';
+    return k;
+  };
 
   globalThis.getUISizeClass = function(entity, context='general'){
     const key = norm(entity?.portraitKey || entity?.birdKey || entity?.id || '');
     const sz = String(entity?.size || entity?.birdSize || '').toLowerCase();
     if(entity?.isBoss && context === 'battle') return 'boss';
     if(key === 'penguin') return 'xl';
+    if(key === 'robin') return 'small';
+    if(key === 'seagull') return 'medium';
     if(sz.includes('tiny')) return 'tiny';
     if(sz.includes('small')) return 'small';
     if(sz.includes('xlarge') || sz.includes('xl')) return 'xl';
@@ -9963,6 +10077,8 @@ SPRITE_KEYS_ALL.add('magpie');
     const entity = (sizeOrEntity && typeof sizeOrEntity === 'object') ? sizeOrEntity : { size: String(sizeOrEntity || 'medium') };
     let sizeClass = (typeof sizeOrEntity === 'string') ? sizeOrEntity : globalThis.getUISizeClass(entity, 'general');
     if(key === 'penguin') sizeClass = 'small';
+    if(key === 'robin') sizeClass = 'small';
+    if(key === 'seagull') sizeClass = 'medium';
     if(spriteBirds.has(key)){
       return '<div class="sprite4 ' + sizeClass + ' sprite-' + key + ' frame-0 ' + (locked ? 'locked' : '') + '"></div>';
     }
