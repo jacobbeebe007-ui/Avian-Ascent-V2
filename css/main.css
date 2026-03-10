@@ -127,7 +127,7 @@ header p{color:var(--text-dim);font-style:italic;font-size:1rem;margin-top:4px;}
 
 /* BEGIN ASCENT PANEL */
 .ascent-panel{background:rgba(24,18,6,.97);border:1px solid rgba(201,168,76,.5);border-radius:14px;padding:20px;text-align:center;box-shadow:0 0 30px rgba(201,168,76,.12);}
-.ascent-panel-portrait{width:80px;height:80px;margin:0 auto 10px;}
+.ascent-panel-portrait{width:132px;height:132px;margin:0 auto 10px;display:flex;align-items:center;justify-content:center;}
 .ascent-panel-name{font-family:'Cinzel',serif;font-size:1.1rem;color:var(--gold-light);margin-bottom:2px;}
 .ascent-panel-tagline{font-size:.75rem;color:#bfa870;font-style:italic;margin-bottom:10px;}
 .ascent-panel-class{margin-bottom:10px;}
@@ -741,32 +741,34 @@ header p{color:var(--text-dim);font-style:italic;font-size:1rem;margin-top:4px;}
 .sprite-crow{background-image:url("../assets/sprites/crow.png");}
 .sprite-macaw{background-image:url("../assets/sprites/macaw.png");}
 .sprite-hummingbird{background-image:url("../assets/sprites/hummingbird.png");}
-.sprite-shoebill{background-image:url("../assets/sprites/shoebill.png");}
-.sprite-secretarybird{background-image:url("../assets/sprites/secretarybird.png");}
-.sprite-robin{background-image:url("../assets/sprites/robin.png");}
+.sprite-shoebill{background-image:url("../assets/sprites/Shoebill Stork.png");}
+.sprite-secretarybird{background-image:url("../assets/sprites/Secretary Bird.png");}
+.sprite-secretary{background-image:url("../assets/sprites/Secretary Bird.png");}
+.sprite-robin{background-image:url("../assets/sprites/Robin.png");}
 .sprite-kiwi{background-image:url("../assets/sprites/kiwi.png");}
 .sprite-magpie{background-image:url("../assets/sprites/magpie.png");}
 .sprite-kookaburra{background-image:url("../assets/sprites/kookaburra.png");}
-.sprite-penguin{background-image:url("../assets/sprites/penguin.png");}
-.sprite-emperorpenguin{background-image:url("../assets/sprites/penguin.png");}
-.sprite-flamingo{background-image:url("../assets/sprites/flamingo.png");}
-.sprite-seagull{background-image:url("../assets/sprites/seagull.png");}
+.sprite-penguin{background-image:url("../assets/sprites/Emperor Penguin.png");}
+.sprite-emperorpenguin{background-image:url("../assets/sprites/Emperor Penguin.png");}
+.sprite-flamingo{background-image:url("../assets/sprites/Flamingo.png");}
+.sprite-seagull{background-image:url("../assets/sprites/Seagull.png");}
 .sprite-swan{background-image:url("../assets/sprites/swan.png");}
 .sprite-emu{background-image:url("../assets/sprites/emu.png");}
-.sprite-ostrich{background-image:url("../assets/sprites/emu.png");}
-.sprite-cassowary{background-image:url("../assets/sprites/emu.png");}
-.sprite-albatross{background-image:url("../assets/sprites/albatross.png");}
+.sprite-ostrich{background-image:url("../assets/sprites/Ostrich.png");}
+.sprite-cassowary{background-image:url("../assets/sprites/Cassowary.png");}
+.sprite-albatross{background-image:url("../assets/sprites/Albatross.png");}
 .sprite-raven{background-image:url("../assets/sprites/raven.png");}
 .sprite-lyrebird{background-image:url("../assets/sprites/lyrebird.png");}
 .sprite-bowerbird{background-image:url("../assets/sprites/bowerbird.png");}
 .sprite-peregrine{background-image:url("../assets/sprites/peregrine.png");}
 .sprite-snowyowl{background-image:url("../assets/sprites/snowyowl.png");}
 .sprite-toucan{background-image:url("../assets/sprites/toucan.png");}
-.sprite-shoebillstork{background-image:url("../assets/sprites/shoebill.png");}
-.sprite-baldeagle{background-image:url("../assets/sprites/peregrine.png");}
-.sprite-harpy{background-image:url("../assets/sprites/peregrine.png");}
-.sprite-blackcockatoo{background-image:url("../assets/sprites/blackbird.png");}
-.sprite-dukeblakiston{background-image:url("../assets/sprites/dukeblakiston.png");}
+.sprite-shoebillstork{background-image:url("../assets/sprites/Shoebill Stork.png");}
+.sprite-baldeagle{background-image:url("../assets/sprites/Bald Eagle.png");}
+.sprite-harpy{background-image:url("../assets/sprites/Harpy Eagle.png");}
+.sprite-harpyeagle{background-image:url("../assets/sprites/Harpy Eagle.png");}
+.sprite-blackcockatoo{background-image:url("../assets/sprites/Black Cockatoo.png");}
+.sprite-dukeblakiston{background-image:url("../assets/sprites/Duke Blakiston.png");}
 
 /* Character Select portrait slot */
 .bird-portrait .sprite4.small{ margin:0 auto; display:block; }
@@ -825,8 +827,8 @@ img{image-rendering:pixelated;image-rendering:crisp-edges;}
 .sprite4.xl{width:110px;height:110px;border-radius:18px;}
 
 /* Flamingo + Seagull sprite sheets */
-.sprite-flamingo{ background-image:url("../assets/sprites/flamingo.png"); }
-.sprite-seagull{ background-image:url("../assets/sprites/seagull.png"); }
+.sprite-flamingo{ background-image:url("../assets/sprites/Flamingo.png"); }
+.sprite-seagull{ background-image:url("../assets/sprites/Seagull.png"); }
 
 
 /* ===== New bird sprite sheets ===== */
@@ -835,14 +837,14 @@ img{image-rendering:pixelated;image-rendering:crisp-edges;}
 
 
 
-.sprite-robin{background-image:url("../assets/sprites/robin.png");}
-.sprite-robin{background-image:url("../assets/sprites/robin.png");}
+.sprite-robin{background-image:url("../assets/sprites/Robin.png");}
+.sprite-robin{background-image:url("../assets/sprites/Robin.png");}
 
-.sprite-flamingo{background-image:url("../assets/sprites/flamingo.png");}
-.sprite-flamingo{background-image:url("../assets/sprites/flamingo.png");}
+.sprite-flamingo{background-image:url("../assets/sprites/Flamingo.png");}
+.sprite-flamingo{background-image:url("../assets/sprites/Flamingo.png");}
 
-.sprite-seagull{background-image:url("../assets/sprites/seagull.png");}
-.sprite-seagull{background-image:url("../assets/sprites/seagull.png");}
+.sprite-seagull{background-image:url("../assets/sprites/Seagull.png");}
+.sprite-seagull{background-image:url("../assets/sprites/Seagull.png");}
 
 /* ===== Portrait sizing / pixel art standardization ===== */
 .sprite4.medium{width:92px;height:92px;border-radius:16px;}
@@ -1039,8 +1041,8 @@ img{image-rendering:pixelated;image-rendering:crisp-edges;}
 
 /* ===== FINAL SMALL PENGUIN SPRITE ===== */
 .sprite-penguin{
-  background-image:url("../assets/sprites/penguin.png") !important;
-  background-image:url("../assets/sprites/penguin.png") !important;
+  background-image:url("../assets/sprites/Emperor Penguin.png") !important;
+  background-image:url("../assets/sprites/Emperor Penguin.png") !important;
   background-repeat:no-repeat !important;
   background-size:200% 200% !important;
   image-rendering:pixelated !important;
@@ -1269,7 +1271,7 @@ img{image-rendering:pixelated;image-rendering:crisp-edges;}
   justify-content:center;
 }
 
-.bird-portrait{min-height:96px !important; overflow:visible !important;}
+.bird-portrait{min-height:120px !important; overflow:visible !important;}
 .ascent-panel-portrait,.ascent-face{min-height:112px !important; overflow:visible !important;}
 .avatar-wrap{height:148px !important; min-width:160px !important; overflow:visible !important;}
 #player-avatar-wrap,#enemy-avatar-wrap,#player-avatar,#enemy-avatar{overflow:visible !important;}
@@ -1306,3 +1308,56 @@ img{image-rendering:pixelated;image-rendering:crisp-edges;}
 /* Energy colors */
 .energy-orb{background:#3aa0ff;} /* normal EN blue */
 .energy-orb.bonus{background:#36c36c;} /* bonus EN green */
+
+
+/* Final select-panel sprite sizing fixes */
+.bird-portrait .sprite4.large,
+.bird-portrait .sprite4.xl,
+.bird-portrait .sprite4.xlarge{
+  width:112px !important;
+  height:112px !important;
+}
+.ascent-panel-portrait .sprite4.large,
+.ascent-panel-portrait .sprite4.xl,
+.ascent-panel-portrait .sprite4.xlarge{
+  width:132px !important;
+  height:132px !important;
+}
+
+/* Species tuning requested */
+.sprite4.sprite-robin{
+  width:64px !important;
+  height:64px !important;
+}
+.sprite4.sprite-seagull.medium{
+  width:84px !important;
+  height:84px !important;
+}
+
+
+/* Inline expanded selector cards (replaces right-side select panel) */
+.sel-layout{grid-template-columns:1fr !important;}
+.sel-right{display:none !important;}
+#ascent-panel{display:none !important;}
+.bird-card{position:relative;}
+.bird-card-expanded{
+  margin-top:10px;
+  border-top:1px solid rgba(201,168,76,.25);
+  padding-top:10px;
+  text-align:center;
+}
+.bird-card-expanded .cta{width:100%;max-width:360px;margin:10px auto 0;display:block;}
+
+/* Mobile landscape support */
+@media (max-width: 960px) and (orientation: landscape){
+  .battle-layout{grid-template-rows:auto auto 1fr auto;gap:8px;}
+  .avatars{gap:10px;}
+  .avatar-wrap{height:auto !important;min-height:112px;}
+  #actions-grid{max-height:38vh;overflow:auto;padding-right:4px;}
+  .screen{padding:8px;}
+}
+
+
+/* Shop/Grove top alignment */
+#screen-stork-shop,#screen-grove{padding-top:0 !important;}
+.stork-shop-inner,.grove-inner{margin-top:0 !important;}
