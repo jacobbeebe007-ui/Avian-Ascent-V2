@@ -82,11 +82,7 @@
 <div class="sel-left">
 <!-- VIEW TOGGLE -->
 <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;">
-<div class="view-toggle" id="view-toggle">
-<button class="view-toggle-btn" onclick="setSelView('all',this)">All</button>
-<button class="view-toggle-btn active" onclick="setSelView('size',this)">By Size</button>
-
-</div>
+<div class="view-toggle" id="view-toggle"></div>
 <span id="bird-count-label" style="font-size:.7rem;color:var(--text-dim);font-style:italic;"></span>
 </div>
 
@@ -156,7 +152,10 @@
 <div class="hp-bar-bg"><div class="hp-bar-fill" id="player-hp-bar"></div></div>
 </div>
 <div class="status-effects" id="player-status"></div>
+<details class="combat-stats-dropdown" id="player-stats-drop" open>
+<summary>Player Stats</summary>
 <div class="stats-mini" id="player-stats-mini"></div>
+</details>
 </div>
 <div class="vs-separator">VS</div>
 <div class="combatant-panel enemy" id="enemy-panel">
@@ -171,7 +170,10 @@
 </div>
 <div class="phase-banner" id="boss-phase-banner"></div>
 <div class="status-effects" id="enemy-status"></div>
+<details class="combat-stats-dropdown" id="enemy-stats-drop" open>
+<summary>Enemy Stats</summary>
 <div class="enemy-stats-mini" id="enemy-stats-mini"></div>
+</details>
 <div class="enemy-abilities-list" id="enemy-abilities-list"></div>
 <div class="enemy-intent enemy-plan" id="enemy-intent-panel">🤔 Thinking...</div>
 </div>
@@ -311,6 +313,16 @@
 <label style="display:flex;justify-content:space-between;align-items:center;gap:12px;">High Contrast UI
 <input id="setting-high-contrast" onchange="updateAccessibilitySettings()" type="checkbox"/>
 </label>
+<label style="display:flex;justify-content:space-between;align-items:center;gap:12px;">Battle UI Layout
+<select id="setting-ui-mode" onchange="updateAccessibilitySettings()">
+<option value="desktop">Desktop (Default)</option>
+<option value="mobile">Mobile (Compact)</option>
+</select>
+</label>
+</div>
+<div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:14px;">
+<button class="menu-btn" onclick="exportCombatTelemetry()">📊 Export Combat Telemetry</button>
+<button class="menu-btn" onclick="if(window.showErrorHUD) window.showErrorHUD();">🖥 Open Console</button>
 </div>
 <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:14px;">
 <button class="menu-btn" onclick="exportCombatTelemetry()">📊 Export Combat Telemetry</button>

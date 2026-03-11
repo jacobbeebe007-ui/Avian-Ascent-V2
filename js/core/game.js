@@ -2883,9 +2883,7 @@ function setGameMode(mode,btn){
   G._gameMode=(mode==='endless')?'endless':'story';
   const endless=(G._gameMode==='endless');
   const main=document.getElementById('endless-check');
-  const alt=document.getElementById('endless-check-alt');
   if(main) main.checked=endless;
-  if(alt) alt.checked=endless;
   if(btn){
     const wrap=btn.closest('.mode-toggle');
     wrap?.querySelectorAll('.mode-toggle-btn').forEach(b=>b.classList.remove('active'));
@@ -2894,24 +2892,10 @@ function setGameMode(mode,btn){
   buildGameModeToggle();
 }
 
-function buildClassFilterMenu(){
-  const tabs=document.getElementById('class-filter-tabs');
-  if(!tabs) return;
-  const opts=[['all','All'], ...CLASS_ORDER.map(c=>[c, idToClassLabel(c)])];
-  tabs.innerHTML = opts.map(([id,label])=>`<button class="class-filter-tab ${G_classFilter===id?'active':''}" onclick="selectClassFilter('${id}')">${label}</button>`).join('');
-}
 function idToClassLabel(id){
   if(id==='all') return 'All';
   return (CLASS_LABELS[id]||id).replace(/^.*\s/,'');
 }
-function selectClassFilter(id){
-  G_classFilter=id||'all';
-  buildClassFilterMenu();
-  buildBirdGrid(G_selView);
-  renderHighscoreBoard();
-}
-
-
 function wireRefGuideClicks(){
   const header = document.querySelector('.ref-guide-header');
   if(!header || header.dataset.wired==='1') return;
@@ -3290,18 +3274,11 @@ function updateAscentPanel(key) {
     <div style="text-align:left;font-size:.7rem;color:var(--text-dim);margin:6px 0 10px;"><strong style="color:var(--gold-light)">Starting Attacks:</strong><br>${(bird.startAbilities||[]).map(id=>{const t=ABILITY_TEMPLATES[id];const lv=(t&&t.levels&&t.levels[0])?t.levels[0].desc:'';return `• <span style='color:var(--text)'>${t?t.name:id}</span> — ${lv}`;}).join('<br>')}</div>
     <button class="cta" onclick="startGame()">🪽 Take Flight as ${bird.name}</button>
     <div style="margin-top:8px;">
-      <label style="font-size:.72rem;color:var(--text-dim);cursor:pointer;"><input type="checkbox" id="endless-check-alt" onchange="syncEndlessCheck(this)"> ♾ Endless Mode</label>
     </div>`;
   panel.classList.remove('is-empty');
   panel.classList.add('is-filled');
-  const mainCheck = document.getElementById('endless-check');
-  const altCheck = document.getElementById('endless-check-alt');
-  if(mainCheck && altCheck) altCheck.checked = mainCheck.checked;
 }
 
-function syncEndlessCheck(cb) {
-  setGameMode(cb.checked?'endless':'story');
-}
 
 
 function beginRun(){ return startGame(); }
@@ -3783,7 +3760,7 @@ function renderStatuses(id, statuses) {
     else if (k==='battleHymn') { b.className='status-badge evading'; b.textContent=`🎼 Hymn(${v.turns}t)`; }
     else if (k==='stunned') { b.className='status-badge stunned'; b.textContent=`😵 Stunned(${v}t)`; }
     else if (k==='mud') { b.className='status-badge delayed'; b.textContent=`🟤 Slowed(${v.turns}t)`; }
-    else if (k==='slow') { b.className='status-badge slow'; b.textContent=`🐌 Slow(${v.turns}t,-${v.spdPenalty} SPD,-${v.dodgePenalty}% DODGE)`; }
+    else if (k==='slow') { const t=(typeof v==='number'?v:(v.turns||0)); const sp=(typeof v==='number'?2:(v.spdPenalty??0)); const dg=(typeof v==='number'?8:(v.dodgePenalty??0)); b.className='status-badge slow'; b.textContent=`🐌 Slow(${t}t,-${sp} SPD,-${dg}% DODGE)`; }
     else if (k==='feared') { b.className='status-badge feared'; b.textContent=`😨 Feared(${v}t)`; }
     else if (k==='lullabied') { b.className='status-badge lullabied'; b.textContent=`💤 Lulled(${v}t)`; tooltipSummary='Debuff: chance to skip actions while lulled.'; }
     else if (k==='evading') { b.className='status-badge evading'; b.textContent=`💨 Evade(${v}t)`; }
@@ -4910,6 +4887,18 @@ function applyEnemySlow(spdPenalty,dodgePenalty,turns){
     G.enemyStatus.slow.turns=Math.max(G.enemyStatus.slow.turns,turns);
     G.enemyStatus.slow.spdPenalty=Math.max(G.enemyStatus.slow.spdPenalty,spdPenalty);
     G.enemyStatus.slow.dodgePenalty=Math.max(G.enemyStatus.slow.dodgePenalty,dodgePenalty);
+  }
+}
+function applyPlayerSlow(spdPenalty,dodgePenalty,turns){
+  if(!G.playerStatus.slow || typeof G.playerStatus.slow!=='object'){
+    const spdDrop=Math.min(spdPenalty,Math.max(0,(G.player.stats.spd||1)-1));
+    G.player.stats.spd=Math.max(1,(G.player.stats.spd||1)-spdDrop);
+    G.player.stats.dodge=Math.max(0,(G.player.stats.dodge||0)-dodgePenalty);
+    G.playerStatus.slow={turns,spdPenalty:spdDrop,dodgePenalty};
+  }else{
+    G.playerStatus.slow.turns=Math.max(G.playerStatus.slow.turns||0,turns);
+    G.playerStatus.slow.spdPenalty=Math.max(G.playerStatus.slow.spdPenalty||0,spdPenalty);
+    G.playerStatus.slow.dodgePenalty=Math.max(G.playerStatus.slow.dodgePenalty||0,dodgePenalty);
   }
 }
 
@@ -7293,7 +7282,7 @@ function dukeNightfall(){
 }
 function dukeRiverGrip(){
   setStatusMax(G.playerStatus,'rooted',2);
-  setStatusMax(G.playerStatus,'slow',2);
+  applyPlayerSlow(2,8,2);
   spawnFloat('player','🌊 River Grip!','fn-status');
   logMsg('🌊 River Grip binds your wings.','boss');
 }
@@ -7340,63 +7329,6 @@ function dukeTurnAI(){
   logMsg('🦉 Talons in the dark.','boss');
 }
 
-
-function isBossEnrageAllowed(){ return !!(G.endlessMode && (G.stage||0) > 20); }
-function dukeNightfall(){
-  const d=G.enemy.duke; d.phase=2; d.nightfallTurns=2;
-  setStatusMax(G.enemyStatus,'nightfall',2);
-  setStatusMax(G.playerStatus,'blind',Math.max(G.playerStatus.blind||0,1));
-  addStatus(G.enemyStatus,'defending',10,999);
-  logMsg('🦉 Nightfall descends. The marsh swallows light.','boss');
-}
-function dukeRiverGrip(){
-  setStatusMax(G.playerStatus,'rooted',2);
-  setStatusMax(G.playerStatus,'slow',2);
-  spawnFloat('player','🌊 River Grip!','fn-status');
-  logMsg('🌊 River Grip binds your wings.','boss');
-}
-function dukeTrackDecree(abilityId){
-  const d=G.enemy?.duke; if(!d) return;
-  if(d.decreeKey===abilityId) d.decreeStacks=clamp((d.decreeStacks||0)+1,0,6);
-  else { d.decreeKey=abilityId; d.decreeStacks=0; }
-}
-function dukeApplyDecreePunish(){
-  const d=G.enemy.duke; const st=d.decreeStacks||0; if(st<=0) return;
-  addStatus(G.playerStatus,'weaken',1+Math.floor(st/2),6);
-  addStatus(G.playerStatus,'vulnerable',1,6);
-  spawnFloat('player',`📜 Decree(${st})`,'fn-status');
-  logMsg(`📜 Court Decree punishes repetition (${st}).`,'boss');
-}
-function dukeOwlsVerdict(){
-  const p=G.player.stats; const missing=1-(p.hp/p.maxHp); const mult=1.15+missing*0.95;
-  const r=dealDamage('player',edmg(1.35*mult));
-  spawnFloat('player',`🦉-${r.dmgDealt}`,'fn-dmg');
-  logMsg('🦉 Owl’s Verdict!','boss');
-}
-function dukeSummonCourt(){
-  addStatus(G.enemyStatus,'defending',18,999);
-  addStatus(G.enemyStatus,'wardens',2,4);
-  spawnFloat('enemy','🛡️ Court Guards!','fn-status');
-  logMsg('🛡️ The Court gathers—wardens at his wings.','boss');
-}
-function dukeTurnAI(){
-  const e=G.enemy; const d=e.duke;
-  const enraged=isBossEnrageAllowed() && e.stats.hp<=Math.floor(e.stats.maxHp*0.35);
-  if(enraged) setStatusMax(G.enemyStatus,'enraged',2);
-  d.riverCd=Math.max(0,(d.riverCd||0)-1);
-  d.summonCd=Math.max(0,(d.summonCd||0)-1);
-  d.verdictCd=Math.max(0,(d.verdictCd||0)-1);
-  if(d.phase>=3) dukeApplyDecreePunish();
-  if(d.phase===1 && e.stats.hp<=Math.floor(e.stats.maxHp*0.75)){ dukeNightfall(); return; }
-  if(d.phase===2){ d.nightfallTurns--; if(d.nightfallTurns<=0){ d.phase=3; logMsg('📜 The Court speaks in decree.','boss'); } }
-  if(d.summonCd===0){ d.summonCd=4; dukeSummonCourt(); return; }
-  if(d.riverCd===0){ d.riverCd=3; dukeRiverGrip(); return; }
-  const p=G.player.stats;
-  if(d.verdictCd===0 && (p.hp<=Math.floor(p.maxHp*0.35) || (G.enemyStatus.enraged||0)>0)){ d.verdictCd=3; dukeOwlsVerdict(); return; }
-  const r=dealDamage('player',edmg(1.0));
-  spawnFloat('player',`-${r.dmgDealt}`,'fn-dmg');
-  logMsg('🦉 Talons in the dark.','boss');
-}
 
 async function enemyTurn() {
   const e=G.enemy; G.animLock=true; G.turn='enemy'; G.turnPhase=TURN.ENEMY; G.phase='ENEMY';
@@ -9520,8 +9452,8 @@ function checkDevCode(val) {
 const ACCESS_KEY='avian_accessibility_v1';
 function getAccessibilitySettings(){
   try{
-    return JSON.parse(localStorage.getItem(ACCESS_KEY)||'{"fontSize":100,"colorBlind":"off","reduceMotion":false,"highContrast":false}');
-  }catch(_){ return {fontSize:100,colorBlind:'off',reduceMotion:false,highContrast:false}; }
+    return JSON.parse(localStorage.getItem(ACCESS_KEY)||'{"fontSize":100,"colorBlind":"off","reduceMotion":false,"highContrast":false,"uiMode":"desktop"}');
+  }catch(_){ return {fontSize:100,colorBlind:'off',reduceMotion:false,highContrast:false,uiMode:'desktop'}; }
 }
 function applyAccessibilitySettings(s){
   const cfg=s||getAccessibilitySettings();
@@ -9532,6 +9464,10 @@ function applyAccessibilitySettings(s){
   if(cfg.colorBlind==='protanopia') document.body.classList.add('cb-protanopia');
   if(cfg.colorBlind==='deuteranopia') document.body.classList.add('cb-deuteranopia');
   if(cfg.colorBlind==='tritanopia') document.body.classList.add('cb-tritanopia');
+  const uiMode=(cfg.uiMode==='mobile')?'mobile':'desktop';
+  document.body.classList.toggle('ui-mobile-mode', uiMode==='mobile');
+  document.body.classList.toggle('ui-desktop-mode', uiMode==='desktop');
+  document.querySelectorAll('.combat-stats-dropdown').forEach(drop=>{ drop.open = (uiMode==='desktop'); });
 }
 function openSettingsModal(){
   const cfg=getAccessibilitySettings();
@@ -9539,10 +9475,12 @@ function openSettingsModal(){
   const cb=document.getElementById('setting-color-blind');
   const rm=document.getElementById('setting-reduce-motion');
   const hc=document.getElementById('setting-high-contrast');
+  const ui=document.getElementById('setting-ui-mode');
   if(font) font.value=String(cfg.fontSize||100);
   if(cb) cb.value=cfg.colorBlind||'off';
   if(rm) rm.checked=!!cfg.reduceMotion;
   if(hc) hc.checked=!!cfg.highContrast;
+  if(ui) ui.value=(cfg.uiMode==='mobile')?'mobile':'desktop';
   const m=document.getElementById('settings-modal'); if(m) m.classList.add('open');
 }
 function closeSettingsModal(){
@@ -9554,6 +9492,7 @@ function updateAccessibilitySettings(){
     colorBlind:String(document.getElementById('setting-color-blind')?.value||'off'),
     reduceMotion:!!document.getElementById('setting-reduce-motion')?.checked,
     highContrast:!!document.getElementById('setting-high-contrast')?.checked,
+    uiMode:String(document.getElementById('setting-ui-mode')?.value||'desktop'),
   };
   localStorage.setItem(ACCESS_KEY, JSON.stringify(cfg));
   applyAccessibilitySettings(cfg);
