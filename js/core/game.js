@@ -2332,7 +2332,42 @@ function removeMimicEverywhere(){
   if(typeof BIRDS!=='undefined') Object.values(BIRDS).forEach(b=>{ if(Array.isArray(b.extraAbilities)) b.extraAbilities=b.extraAbilities.filter(id=>id!=='mimic'); });
 }
 
-const MAGIC_CLASSES = new Set(['mage','bard','summoner']);
+const CLASS_TAG_ALIASES = {
+  assassin:['assassin','trickster'],
+  trickster:['trickster','assassin'],
+  knight:['knight','tank','bruiser'],
+  tank:['tank','knight','bruiser'],
+  bruiser:['bruiser','tank','knight'],
+  mage:['mage','summoner','caster'],
+  summoner:['summoner','mage','caster'],
+  caster:['caster','mage','summoner'],
+  bard:['bard','support'],
+  support:['support','bard'],
+  ranger:['ranger'],
+};
+
+function normalizeClassTag(raw){
+  const cls=String(raw||'').toLowerCase().trim();
+  if(!cls) return 'assassin';
+  if(cls==='tank' || cls==='knight') return 'bruiser';
+  if(cls==='mage' || cls==='summoner') return 'caster';
+  if(cls==='bard') return 'support';
+  if(cls==='assassin') return 'trickster';
+  return cls;
+}
+function getClassAliases(raw){
+  const cls=String(raw||'').toLowerCase().trim();
+  if(CLASS_TAG_ALIASES[cls]) return CLASS_TAG_ALIASES[cls];
+  const n=normalizeClassTag(cls);
+  return CLASS_TAG_ALIASES[n] || [n];
+}
+function classMatches(raw, expected){
+  const left=new Set(getClassAliases(raw));
+  const right=getClassAliases(expected);
+  return right.some(v=>left.has(v));
+}
+
+const MAGIC_CLASSES = new Set(['mage','bard','summoner','caster','support','trickster']);
 // removeMimicEverywhere(); // moved to after G init
 const ABILITY_MAIN_ATTACK = {
   id:'mainAttack',
@@ -2386,11 +2421,11 @@ const STAGE_CLEAR_UNLOCKS = {
 };
 
 const SPECIAL_UNLOCKS = [
-  { id:'unlock_penguin', test:()=> G.endlessMode && (G.endlessBattle||0) >= 30 && (BIRDS[G.player?.birdKey]?.class==='tank'), bird:'penguin', label:'Emperor Penguin' },
-  { id:'unlock_emu', test:()=> G.endlessMode && (G.endlessBattle||0) >= 40 && (BIRDS[G.player?.birdKey]?.class==='tank'), bird:'emu', label:'Emu' },
-  { id:'unlock_swan', test:()=> G.endlessMode && (G.endlessBattle||0) >= 30 && (BIRDS[G.player?.birdKey]?.class==='bard'), bird:'swan', label:'Swan' },
-  { id:'unlock_flamingo', test:()=> G.endlessMode && (G.endlessBattle||0) >= 30 && (BIRDS[G.player?.birdKey]?.class==='ranger'), bird:'flamingo', label:'Flamingo' },
-  { id:'unlock_seagull', test:()=> G.endlessMode && (G.player?.birdLevel||1) >= 21 && (BIRDS[G.player?.birdKey]?.class==='mage'), bird:'seagull', label:'Seagull' },
+  { id:'unlock_penguin', test:()=> G.endlessMode && (G.endlessBattle||0) >= 30 && classMatches(BIRDS[G.player?.birdKey]?.class,'tank'), bird:'penguin', label:'Emperor Penguin' },
+  { id:'unlock_emu', test:()=> G.endlessMode && (G.endlessBattle||0) >= 40 && classMatches(BIRDS[G.player?.birdKey]?.class,'tank'), bird:'emu', label:'Emu' },
+  { id:'unlock_swan', test:()=> G.endlessMode && (G.endlessBattle||0) >= 30 && classMatches(BIRDS[G.player?.birdKey]?.class,'bard'), bird:'swan', label:'Swan' },
+  { id:'unlock_flamingo', test:()=> G.endlessMode && (G.endlessBattle||0) >= 30 && classMatches(BIRDS[G.player?.birdKey]?.class,'ranger'), bird:'flamingo', label:'Flamingo' },
+  { id:'unlock_seagull', test:()=> G.endlessMode && (G.player?.birdLevel||1) >= 21 && classMatches(BIRDS[G.player?.birdKey]?.class,'mage'), bird:'seagull', label:'Seagull' },
   { id:'unlock_albatross', test:()=> G.endlessMode && (G.endlessBattle||0) >= 50, bird:'albatross', label:'Albatross' },
 ];
 
@@ -2596,7 +2631,34 @@ let G = {
   actionQueue:[],
   actionBusy:false,
   speed:1,
+  ui:{
+    gameMode:'story',
+    battleLayout:'desktop',
+    selectionView:'size',
+    expandedBird:null,
+    combatDropdownOpen:{player:true,enemy:true},
+  },
 };
+
+const DEFAULT_UI_STATE = Object.freeze({
+  gameMode:'story',
+  battleLayout:'desktop',
+  selectionView:'size',
+  expandedBird:null,
+  combatDropdownOpen:{player:true,enemy:true},
+});
+
+function ensureUIState(){
+  if(!G.ui || typeof G.ui!=='object') G.ui={};
+  G.ui.gameMode = (G.ui.gameMode==='endless') ? 'endless' : 'story';
+  G.ui.battleLayout = (G.ui.battleLayout==='mobile') ? 'mobile' : 'desktop';
+  G.ui.selectionView = String(G.ui.selectionView || DEFAULT_UI_STATE.selectionView);
+  G.ui.expandedBird = G.ui.expandedBird ? String(G.ui.expandedBird) : null;
+  if(!G.ui.combatDropdownOpen || typeof G.ui.combatDropdownOpen!=='object') G.ui.combatDropdownOpen={};
+  G.ui.combatDropdownOpen.player = !!G.ui.combatDropdownOpen.player;
+  G.ui.combatDropdownOpen.enemy = !!G.ui.combatDropdownOpen.enemy;
+  return G.ui;
+}
 
 const TELEMETRY_KEY='avianAscent_telemetry_v1';
 function loadTelemetry(){
@@ -2868,6 +2930,7 @@ function saveRun() {
       collectedRewards: G.collectedRewards||[],
       runUpgradesPurchased: [...(G.runUpgradesPurchased||new Set())],
       codex: JSON.parse(JSON.stringify(G.codex||{abilities:{},enemies:{},birds:{},artifacts:{},statuses:{}})),
+      ui: JSON.parse(JSON.stringify(ensureUIState())),
       inBattle: onBattleScreen && !!G.enemy && !G.battleOver,
       battle: (onBattleScreen && G.enemy && !G.battleOver) ? {
         enemy: JSON.parse(JSON.stringify(G.enemy)),
@@ -2897,7 +2960,11 @@ function deleteSave() {
 function continueRun() {
   const save=loadSaveData();
   if(!save) return;
+  G.ui = {...DEFAULT_UI_STATE, ...(save.ui||{})};
+  ensureUIState();
   G.endlessMode=save.endlessMode||false;
+  if(!save.ui) G.ui.gameMode = G.endlessMode ? 'endless' : 'story';
+  applyUIStateToDOM();
   G.endlessBattle=save.endlessBattle||0;
   G.bossKills=save.bossKills||0;
   G.stage=save.stage||1;
@@ -2941,8 +3008,14 @@ function continueRun() {
   loadStage();
 }
 function goMainMenu() {
+  clearTimeout(G._victoryReturnTimer);
   if(G.player) saveRun();
   showScreen('screen-select');initSelectionSafe();
+}
+
+function returnToMenuFromVictory(){
+  clearTimeout(G._victoryReturnTimer);
+  goMainMenu();
 }
 
 // ============================================================
@@ -2969,14 +3042,28 @@ function showNextStagePreview() {
 // ============================================================
 const SIZE_ORDER = ['tiny','small','medium','large','xl'];
 const SIZE_LABELS = {tiny:'Tiny',small:'Small',medium:'Medium',large:'Large',xl:'X-Large'};
-const CLASS_ORDER = ['assassin','knight','mage','bard','tank','ranger','summoner'];
-const CLASS_LABELS = {assassin:'⚔️ Assassin',knight:'🛡️ Knight',mage:'✨ Mage',bard:'🎵 Bard',tank:'🪨 Tank',ranger:'🏹 Ranger',summoner:'🌊 Summoner'};
-const CLASS_FLAVOR = {assassin:'Burst dmg, crit fishing, evasive.',knight:'Balanced physical, DEF/ACC.',mage:'Pure songs/spells, debuff control.',bard:'Song mix + physical hybrid.',tank:'Sustain bricks, high HP.',ranger:'Projectile pressure, pierce and slows.',summoner:'Mob caller, flock tactics.'};
-let G_selView = 'size';
-let G_classFilter = 'all';
+const CLASS_ORDER = ['trickster','ranger','bruiser','caster','support'];
+const CLASS_LABELS = {trickster:'🗡️ Trickster',ranger:'🏹 Ranger',bruiser:'🛡️ Bruiser',caster:'✨ Caster',support:'🎵 Support'};
+const CLASS_FLAVOR = {trickster:'Burst damage, crit pressure, evasive tempo.',ranger:'Projectile pressure, pierce and slows.',bruiser:'Frontline durability with reliable physical pressure.',caster:'Spells/songs with control, ailments, and scaling.',support:'Team utility, sustain, and battlefield tempo buffs.'};
+
+function getBirdClassTag(bird){
+  return normalizeClassTag(bird?.class||'');
+}
+function getBirdClassStyleTag(bird){
+  const cls=String(bird?.class||'').toLowerCase();
+  if(cls==='trickster' || cls==='assassin') return 'assassin';
+  if(cls==='ranger') return 'ranger';
+  if(cls==='bruiser' || cls==='knight' || cls==='tank') return 'knight';
+  if(cls==='caster' || cls==='mage' || cls==='summoner') return 'mage';
+  if(cls==='support' || cls==='bard') return 'bard';
+  return 'knight';
+}
 let shopPurchaseMade = false;
 
 function initSelection() {
+  const ui=ensureUIState();
+  if(!ui.expandedBird && G.selected) ui.expandedBird=G.selected;
+  applyUIStateToDOM();
   // Check for saved run
   const save=loadSaveData();
   if(save&&save.player){
@@ -2995,34 +3082,30 @@ function initSelection() {
   // Build bird grid
   buildSelectionViewButtons();
   buildGameModeToggle();
-  buildBirdGrid(G_selView);
+  buildBirdGrid();
   renderHighscoreBoard();
 }
 
 function buildSelectionViewButtons(){
   const host=document.getElementById('view-toggle');
   if(!host) return;
+  const ui=ensureUIState();
   const btns=[['all','All'],['size','By Size'],...CLASS_ORDER.map(c=>[`class:${c}`,idToClassLabel(c)])];
-  host.innerHTML=btns.map(([id,label])=>`<button class="view-toggle-btn ${G_selView===id?'active':''}" onclick="setSelView('${id}',this)">${label}</button>`).join('');
+  host.innerHTML=btns.map(([id,label])=>`<button class="view-toggle-btn ${ui.selectionView===id?'active':''}" onclick="setSelView('${id}',this)">${label}</button>`).join('');
 }
 
 function buildGameModeToggle(){
   const host=document.getElementById('game-mode-toggle');
   if(!host) return;
-  const isEndless=!!(G._gameMode==='endless' || document.getElementById('endless-check')?.checked);
+  const ui=ensureUIState();
+  const isEndless=(ui.gameMode==='endless');
   host.innerHTML=`<div class="mode-toggle"><button class="mode-toggle-btn ${!isEndless?'active':''}" onclick="setGameMode('story',this)">📖 Story Mode</button><button class="mode-toggle-btn ${isEndless?'active':''}" onclick="setGameMode('endless',this)">♾ Endless Mode</button></div>`;
 }
 
 function setGameMode(mode,btn){
-  G._gameMode=(mode==='endless')?'endless':'story';
-  const endless=(G._gameMode==='endless');
-  const main=document.getElementById('endless-check');
-  if(main) main.checked=endless;
-  if(btn){
-    const wrap=btn.closest('.mode-toggle');
-    wrap?.querySelectorAll('.mode-toggle-btn').forEach(b=>b.classList.remove('active'));
-    btn.classList.add('active');
-  }
+  const ui=ensureUIState();
+  ui.gameMode=(mode==='endless')?'endless':'story';
+  applyUIStateToDOM();
   buildGameModeToggle();
 }
 
@@ -3075,6 +3158,7 @@ function renderStarterFallbackGrid(reason=''){
 
   if(BIRDS?.sparrow){
     G.selected='sparrow';
+    ensureUIState().expandedBird='sparrow';
     updateAscentPanel('sparrow');
   }
   console.warn('Selection recovery fallback used.', reason);
@@ -3129,20 +3213,18 @@ function selectDifficulty(id) {
 }
 
 function setSelView(view, btn) {
-  if(String(view).startsWith('class:')){
-    G_classFilter=String(view).split(':')[1]||'all';
-    G_selView=view;
-    buildBirdGrid('all');
-  }else{
-    G_selView = view;
-    if(view!=='all') G_classFilter='all';
-    buildBirdGrid(view);
-  }
-  document.querySelectorAll('.view-toggle-btn').forEach(b=>b.classList.remove('active'));
-  btn?.classList.add('active');
+  const ui=ensureUIState();
+  ui.selectionView = String(view||'size');
+  buildSelectionViewButtons();
+  buildBirdGrid();
 }
 
-function buildBirdGrid(view='size') {
+function buildBirdGrid() {
+  const ui=ensureUIState();
+  const selectedView=ui.selectionView;
+  const view = String(selectedView).startsWith('class:') ? 'all' : selectedView;
+  const classFilter = String(selectedView).startsWith('class:') ? (String(selectedView).split(':')[1]||'all') : 'all';
+
   const grid = document.getElementById('bird-grid');
   if(!grid) return;
   grid.innerHTML = '';
@@ -3150,7 +3232,7 @@ function buildBirdGrid(view='size') {
   let safeBirdEntries = Object.entries(BIRDS).filter(([,b])=>{
     return !!(b && b.stats && Number.isFinite(b.stats.hp) && Number.isFinite(b.stats.atk) && Number.isFinite(b.stats.def));
   });
-  if(G_classFilter!=='all') safeBirdEntries = safeBirdEntries.filter(([,b])=>String(b.class||'').toLowerCase()===G_classFilter);
+  if(classFilter!=='all') safeBirdEntries = safeBirdEntries.filter(([,b])=>getBirdClassTag(b)===classFilter);
   const fallbackStarters = ['sparrow','goose','blackbird','crow','macaw','robin'];
 
   // Compute global max stats for bars
@@ -3175,7 +3257,7 @@ function buildBirdGrid(view='size') {
   orderedKeys.forEach(k => groups[k]=[]);
 
   safeBirdEntries.forEach(([key, bird]) => {
-    const groupKey = view==='size' ? (bird.size||'medium') : (bird.class||'knight');
+    const groupKey = view==='size' ? (bird.size||'medium') : getBirdClassTag(bird);
     if(!groups[groupKey]) groups[groupKey]=[];
     groups[groupKey].push([key, bird]);
   });
@@ -3231,7 +3313,7 @@ function buildBirdGrid(view='size') {
   });
 
   const label = document.getElementById('bird-count-label');
-  if(label) label.textContent = `${totalUnlocked}/${totalBirds} available${G_classFilter!=='all' ? ` · ${idToClassLabel(G_classFilter)}`:''}`;
+  if(label) label.textContent = `${totalUnlocked}/${totalBirds} available${classFilter!=='all' ? ` · ${idToClassLabel(classFilter)}`:''}`;
 
   // Hard fallback: never allow an empty/brick select screen.
   if(totalBirds===0){
@@ -3260,13 +3342,14 @@ document.addEventListener('click', (e)=>{
 
 
 function buildBirdExpandedContent(key, bird){
-  const cls = bird.class||'knight';
+  const cls = getBirdClassTag(bird);
+  const clsStyle = getBirdClassStyleTag(bird);
   const sizeClass = getUISizeClass(bird, 'panel');
   const tags = (bird.startAbilities||[]).map(id=>`<span class="ascent-ab-tag">${ABILITY_TEMPLATES[id]?ABILITY_TEMPLATES[id].name:id}</span>`).join('');
   return `
     <div class="bird-card-expanded">
       <div class="ascent-panel-tagline">${bird.tagline||''}</div>
-      <div class="ascent-panel-class"><span class="class-badge class-${cls}">${cls.toUpperCase()}</span> · ${SIZE_LABELS[bird.size||'medium']||bird.size}</div>
+      <div class="ascent-panel-class"><span class="class-badge class-${clsStyle}">${idToClassLabel(cls).toUpperCase()}</span> · ${SIZE_LABELS[bird.size||'medium']||bird.size}</div>
       ${bird.passive?`<div class="ascent-panel-passive"><strong>★ ${bird.passive.name}:</strong> ${bird.passive.desc}</div>`:''}
       <div class="ascent-abilities">${tags}</div>
       <div style="text-align:left;font-size:.72rem;color:var(--text);background:rgba(0,0,0,.25);border:1px solid rgba(201,168,76,.2);border-radius:8px;padding:8px;margin:8px 0;"><strong>Full Stats:</strong> HP ${bird.stats.hp} · ATK ${bird.stats.atk} · DEF ${bird.stats.def} · SPD ${bird.stats.spd} · ACC ${bird.stats.acc}% · Dodge ${bird.stats.dodge}% · MATK ${bird.stats.matk||0} · MDEF ${bird.stats.mdef||0} · Crit ${bird.stats.critChance||0}%</div>
@@ -3276,10 +3359,12 @@ function buildBirdExpandedContent(key, bird){
 
 function buildBirdCard(key, bird, locked, globalMax) {
   const card = document.createElement('div');
-  card.className = 'bird-card' + (locked ? ' bird-locked' : '') + (G.selected===key?' selected':'');
+  const ui=ensureUIState();
+  card.className = 'bird-card' + (locked ? ' bird-locked' : '') + (ui.expandedBird===key?' selected':'');
   if (!locked) card.onclick = () => selectBird(key, card);
 
-  const cls = bird.class||'knight';
+  const cls = getBirdClassTag(bird);
+  const clsStyle = getBirdClassStyleTag(bird);
   const sizeClass = getUISizeClass(bird, 'select');
 
   const keyStats = [
@@ -3305,17 +3390,17 @@ function buildBirdCard(key, bird, locked, globalMax) {
   if(locked) {
     card.innerHTML = `
       <div class="bird-card-head">
-        <span class="class-badge class-${cls}">${(cls).toUpperCase()}</span>
+        <span class="class-badge class-${clsStyle}">${idToClassLabel(cls).toUpperCase()}</span>
         <span class="bird-size-chip">${SIZE_LABELS[bird.size||'medium']||bird.size}</span>
       </div>
       <div style="display:flex;justify-content:center;margin:2px auto 6px;">${renderBirdIconHTML(key,sizeClass,true)}</div>
       <div class="bird-nm" style="color:#555;font-size:.8rem;">${bird.name}</div>
       <div class="lock-overlay"><span class="lock-icon" style="font-size:1rem;">🔒</span><div class="lock-label" style="font-size:.6rem;color:#555;line-height:1.3;">${unlockLabel}</div></div>`;
   } else {
-    const expanded = (G.selected===key) ? buildBirdExpandedContent(key,bird) : '';
+    const expanded = (ui.expandedBird===key) ? buildBirdExpandedContent(key,bird) : '';
     card.innerHTML = `
       <div class="bird-card-head">
-        <span class="class-badge class-${cls}">${(cls).toUpperCase()}</span>
+        <span class="class-badge class-${clsStyle}">${idToClassLabel(cls).toUpperCase()}</span>
         <span class="bird-size-chip">${SIZE_LABELS[bird.size||'medium']||bird.size}</span>
       </div>
       <div style="display:flex;justify-content:center;margin:2px auto 6px;">${renderBirdIconHTML(key,sizeClass,false)}</div>
@@ -3327,9 +3412,9 @@ function buildBirdCard(key, bird, locked, globalMax) {
 }
 
 function selectBird(key, el) {
+  const ui=ensureUIState();
   G.selected = key;
-  document.querySelectorAll('.bird-card').forEach(c=>c.classList.remove('selected'));
-  if(el) el.classList.add('selected');
+  ui.expandedBird = key;
   // Re-render cards so the selected card expands inline (no side panel/auto-scroll).
   initSelectionSafe();
 }
@@ -3393,7 +3478,8 @@ function updateAscentPanel(key) {
     return;
   }
 
-  const cls = bird.class||'knight';
+  const cls = getBirdClassTag(bird);
+  const clsStyle = getBirdClassStyleTag(bird);
   const sizeClass = getUISizeClass(bird, 'panel');
   const tags = (bird.startAbilities||[]).map(id=>`<span class="ascent-ab-tag">${ABILITY_TEMPLATES[id]?ABILITY_TEMPLATES[id].name:id}</span>`).join('');
 
@@ -3401,7 +3487,7 @@ function updateAscentPanel(key) {
     <div class="ascent-panel-portrait">${renderBirdIconHTML(key, sizeClass, false)}</div>
     <div class="ascent-panel-name">${bird.name}</div>
     <div class="ascent-panel-tagline">${bird.tagline}</div>
-    <div class="ascent-panel-class"><span class="class-badge class-${cls}">${cls.toUpperCase()}</span> · ${SIZE_LABELS[bird.size||'medium']||bird.size}</div>
+    <div class="ascent-panel-class"><span class="class-badge class-${clsStyle}">${idToClassLabel(cls).toUpperCase()}</span> · ${SIZE_LABELS[bird.size||'medium']||bird.size}</div>
     ${bird.passive?`<div class="ascent-panel-passive"><strong>★ ${bird.passive.name}:</strong> ${bird.passive.desc}</div>`:''}
     <div class="ascent-abilities">${tags}</div>
     <div style="text-align:left;font-size:.72rem;color:var(--text);background:rgba(0,0,0,.25);border:1px solid rgba(201,168,76,.2);border-radius:8px;padding:8px;margin:8px 0;"><strong>Full Stats:</strong> HP ${bird.stats.hp} · ATK ${bird.stats.atk} · DEF ${bird.stats.def} · SPD ${bird.stats.spd} · ACC ${bird.stats.acc}% · Dodge ${bird.stats.dodge}% · MATK ${bird.stats.matk||0} · MDEF ${bird.stats.mdef||0} · Crit ${bird.stats.critChance||0}%</div>
@@ -3421,7 +3507,7 @@ function beginRun(){ return startGame(); }
 // ============================================================
 function startGame() {
   if(!G.selected) return;
-  G.endlessMode = (G._gameMode==='endless') || !!document.getElementById('endless-check')?.checked;
+  G.endlessMode = (ensureUIState().gameMode==='endless');
   G.difficulty = G._selectedDifficulty || 'juvenile';
   const bd = BIRDS[G.selected];
   G.collectedRewards=[];
@@ -3805,6 +3891,8 @@ Estimated damage: ${eab.dmg||(`${low}-${high}`)}`;
   document.getElementById('enemy-shield-overlay').className='shield-overlay'+(G.enemyStatus.defending>0?' active':'');
 
   renderEnemyPlan();
+  wireCombatDropdownStateSync();
+  applyUIStateToDOM();
   renderActions();
 }
 
@@ -5345,7 +5433,7 @@ function getPlayerMissChance(ab) {
   const tookiePenalty = G.tookieActive && G.playerStatus.tookie ? G.playerStatus.tookie.missPen : 0;
   const bClass=(BIRDS[G.player.birdKey]&&BIRDS[G.player.birdKey].class)||'';
   const bSize=(G.player&&G.player.size)||'medium';
-  const classAdj=(tmpl.type==='physical'&&bClass==='assassin')?-2:(tmpl.type==='ranged'&&bClass==='ranger')?-2:(tmpl.type==='spell'&&MAGIC_CLASSES.has(bClass))?-1:0;
+  const classAdj=(tmpl.type==='physical'&&classMatches(bClass,'assassin'))?-2:(tmpl.type==='ranged'&&classMatches(bClass,'ranger'))?-2:(tmpl.type==='spell'&&MAGIC_CLASSES.has(String(bClass||'').toLowerCase()))?-1:0;
   const sizeAdj=(tmpl.type==='physical'&&bSize==='xl')?2:(tmpl.type==='physical'&&bSize==='tiny')?-1:0;
   const missReduce=((G.player&&G.player.missReduce)||0)*100;
   let extra=0;
@@ -5563,7 +5651,7 @@ function tickStatuses(who) {
 const ACTIONS = {
   async mainAttack(ab) {
     const birdClass=(BIRDS[G.player.birdKey]&&BIRDS[G.player.birdKey].class)||'';
-    const isMagicUser=MAGIC_CLASSES.has(birdClass);
+    const isMagicUser=MAGIC_CLASSES.has(String(birdClass||'').toLowerCase());
     const missC=isMagicUser?20:Math.max(3,10-(G.player.birdLevel-1));
     if(chance(missC)){
       await doMiss('player');
@@ -8399,20 +8487,16 @@ function applyMainAttackAutoLevel(){
 function getBirdExclusiveLearnPool(birdKey){
   const bd=BIRDS[birdKey];
   if(!bd) return LEARNABLE_ABILITIES;
-  const birdClass=bd.class||'';
   const uniqueFromStarts=(bd.startAbilities||[]).filter(id=>id!=='mainAttack'&&id!=='skipTurn'&&id!=='sittingDuck');
-  let classSpecific=[];
-  if(birdClass==='ranger') classSpecific=[...ABILITY_POOL_RANGED];
-  else if(MAGIC_CLASSES.has(birdClass)) classSpecific=[...ABILITY_POOL_MAGIC];
-  else classSpecific=[...ABILITY_POOL_PHYSICAL];
-  return [...new Set([...uniqueFromStarts,...classSpecific,...ABILITY_POOL_UTILITY])];
+  // Class-specific learn gating removed: all birds can roll from the unified learn pool.
+  return [...new Set([...uniqueFromStarts,...ABILITY_POOL_PHYSICAL,...ABILITY_POOL_RANGED,...ABILITY_POOL_MAGIC,...ABILITY_POOL_UTILITY])];
 }
 
 function ensureMainAttackAndLoadoutRules(){
   if(!G.player) return;
   const bd=BIRDS[G.player.birdKey]||{};
   const birdClass=bd.class||'';
-  const isMagic=MAGIC_CLASSES.has(birdClass);
+  const isMagic=MAGIC_CLASSES.has(String(birdClass||'').toLowerCase());
   if(!Array.isArray(G.player.abilities)) G.player.abilities=[];
   G.player.abilities=G.player.abilities.filter(ab=>ab&&ab.id&&ab.id!=='skipTurn'&&ab.id!=='sittingDuck');
   if(!isMagic){
@@ -8617,8 +8701,15 @@ function afterLevelUp() {
 
 function advanceStage() {
   G.stage++;
+  const ui=ensureUIState();
+  const runIsEndless = (ui.gameMode==='endless') && !!G.endlessMode;
   if(isEndlessRunActive()) applyEndlessProgressionMilestones();
-  if(G.stage>ENEMIES.length&&!G.endlessMode){deleteSave();showVictory();return;}
+  if(G.stage>ENEMIES.length && !runIsEndless){
+    G.endlessMode=false;
+    deleteSave();
+    showVictory();
+    return;
+  }
   // Stage 40 = endless battle 20 — grant unlock
   if(G.endlessMode&&G.endlessBattle>=20&&!isUnlocked('stage40')){
     grantUnlock('stage40');
@@ -8934,20 +9025,28 @@ function showVictory(){
   const runUnlocks=document.getElementById('run-unlocks');
   if(runUnlocks){
     runUnlocks.innerHTML=`<div style="margin:10px 0 6px;font-size:.82rem;color:var(--gold-light)">🏆 Achievement: Court Cleared</div>
-    <div style="font-size:.76rem;color:var(--text-dim);line-height:1.5">${G.player.name} · HP ${G.player.stats.hp}/${G.player.stats.maxHp} · ATK ${G.player.stats.atk} · DEF ${G.player.stats.def} · SPD ${G.player.stats.spd}<br/>Abilities: ${abilityList||'—'}<br/>Unlocked roster: ${unlockedNow.join(', ')||'None yet'}</div>`;
+    <div style="font-size:.76rem;color:var(--text-dim);line-height:1.5">${G.player.name} · HP ${G.player.stats.hp}/${G.player.stats.maxHp} · ATK ${G.player.stats.atk} · DEF ${G.player.stats.def} · SPD ${G.player.stats.spd}<br/>Abilities: ${abilityList||'—'}<br/>Unlocked roster (${unlockedNow.length}/${unlockIds.length}): ${unlockedNow.join(', ')||'None yet'}</div>`;
   }
   showRunStats();
-  if(G.endlessMode){
+  const victoryMenuBtn=document.getElementById('victory-return-menu-btn');
+  if(victoryMenuBtn) victoryMenuBtn.style.display='inline-block';
+  const ui=ensureUIState();
+  const isEndlessRun = (ui.gameMode==='endless') && !!G.endlessMode;
+  if(isEndlessRun){
     G.endlessBattle=0;
     logMsg('🌟 Stage 20 complete! Endless mode continues — bosses await!','boss');
     advanceStage();
     return;
   }
   renderUnlockPopupsOnGameover();
-  const endEvt={won:true, bird:G.player?.birdKey||'unknown', stageReached:G.stage||20, deathCause:'victory', endless:!!G.endlessMode};
+  const endEvt={won:true, bird:G.player?.birdKey||'unknown', stageReached:G.stage||20, deathCause:'victory', endless:false};
   AvianEvents.emit('run:end', endEvt);
   runModuleHook('onRunEnd', endEvt);
   showScreen('screen-gameover');
+  clearTimeout(G._victoryReturnTimer);
+  G._victoryReturnTimer=setTimeout(()=>{
+    try{ showScreen('screen-select'); initSelectionSafe(); }catch(_){ }
+  }, 5200);
 }
 function showDefeat(){
   G.phase='REWARD';
@@ -8965,6 +9064,8 @@ function showDefeat(){
   document.getElementById('gameover-title').textContent='💀 Fallen';
   const stageLabel=G.endlessMode&&G.stage>ENEMIES.length?`Endless Battle ${G.endlessBattle}`:`Stage ${G.stage}`;
   document.getElementById('gameover-msg').textContent=`${G.player.name} fell at ${stageLabel}. Lv.${G.player.birdLevel}. Rise again.`;
+  const victoryMenuBtn=document.getElementById('victory-return-menu-btn');
+  if(victoryMenuBtn) victoryMenuBtn.style.display='none';
   const endEvt={won:false, bird:G.player?.birdKey||'unknown', stageReached:G.stage||1, deathCause:G._lastDeathCause||'hp_zero', endless:!!G.endlessMode};
   AvianEvents.emit('run:end', endEvt);
   runModuleHook('onRunEnd', endEvt);
@@ -9282,12 +9383,26 @@ function buildRefGuide() {
     return card(e.name, `HP ${e.stats?.maxHp||e.hp||0} · ATK ${e.stats?.atk||e.atk||0} · AI: ${ai}`,u,ai);
   }).join('');
 
+  const statusDetailMap={
+    poison:'Tick: 1 damage per stack (3 turns). Max stacks: 5 → max single tick 5 damage.',
+    bleed:'Tick: floor(stacks × 1.5) damage (3 turns). Max stacks: 5 → max single tick 7 damage.',
+    burning:'Tick: 4% of target max HP (minimum 1) for 3 turns. Not stack-based.',
+    delayed:'Resonance/Delayed detonates once for stored flat damage, then clears.',
+    weaken:'Reduces outgoing attack effectiveness while active (typically 3 turns).',
+    paralyzed:'Hard crowd-control chance/lockout while active (typically up to 3 turns).',
+    feared:'Prevents/restricts specific actions while active; often applied as turn counters.',
+    confused:'May cause skipped actions each turn based on confusion skip chance.',
+    slow:'Reduces speed and can reduce dodge while active.',
+    mud:'Mud/soak style debuff that impairs action reliability briefly.',
+    chilled:'Cold debuff that applies slow-like penalties for short duration.',
+  };
   const statusIds=[...new Set([...Object.keys(AILMENTS||{}), ...Object.keys(G.codex?.statuses||{})])];
   const statuses=statusIds.filter(id=>isMatch(id)).map(id=>{
     const u=!!G.codex?.statuses?.[id]?.seen;
     if(!u&&!showLocked) return '';
-    const d=(AILMENTS[id]?.desc)||'Status effect.';
-    return card(id[0].toUpperCase()+id.slice(1),d,u,'status');
+    const base=(AILMENTS[id]?.desc)||'Status effect.';
+    const detail=statusDetailMap[id]||'See combat log for exact per-skill values and duration interactions.';
+    return card(id[0].toUpperCase()+id.slice(1),`${base}<br><br><strong style="color:var(--gold-light)">Tick & Scaling:</strong> ${detail}`,u,'status');
   }).join('');
 
   const tierOrder=['grey','green','blue','purple','gold'];
@@ -9307,6 +9422,18 @@ function buildRefGuide() {
   const arts=artsByTier || (showLocked?card('???','Find rewards in runs to fill this section.',false,'locked'):'' );
 
   const mechanics=`<div class="ref-skills-grid">
+    ${card('Damage Formula — Physical / Ranged',
+      'Base hit starts from attacker ATK and ability multipliers. The result is reduced by target DEF after pierce/ignore effects, then clamped to minimum damage. Crit applies after base damage and scales by crit multiplier.',
+      true,'damage')}
+    ${card('Damage Formula — Spell / Magic',
+      'Spell damage starts from attacker MATK and spell multipliers. The result is mitigated by target MDEF (and magic mitigation effects), then clamped to minimum damage. Magic dodge/avoidance checks still occur before damage lands.',
+      true,'damage')}
+    ${card('Mitigation & Avoidance',
+      'Mitigation layers include DEF/MDEF, guarding/defend states, passive reductions, and temporary shields. Avoidance layers include miss chance, ACC vs Dodge/MDodge interactions, and hard-control prevention effects.',
+      true,'mitigation')}
+    ${card('DoT Tick Reference',
+      'Poison: 1×stacks per tick (max 5). Bleed: floor(1.5×stacks) per tick (max 7 at 5 stacks). Burning: 4% max HP per tick (min 1). Delayed: stored flat detonation once.',
+      true,'ailments')}
     ${card('Energy & Cooldowns','Main attacks are free unless spells. Abilities spend energy and may go on cooldown.',true,'core')}
     ${card('Enemy AI Types','Aggressive, Defensive, Trickster, Predator, and Boss AI patterns influence action choice.',true,'ai')}
     ${card('Ability Rarity','Ability offers are weighted by rarity: common, rare, epic, legendary.',true,'rarity')}
@@ -9479,14 +9606,8 @@ const SHOP_BANNED_IDS = new Set(['skipTurn','sittingDuck','endTurn','mimic']);
 function canOfferAbilityInShop(p, tmpl){
   if(!tmpl || !tmpl.id) return false;
   if(SHOP_BANNED_IDS.has(tmpl.id)) return false;
-  const cls=((p.class||BIRDS[p.birdKey]?.class||'').toLowerCase());
-  if(Array.isArray(tmpl.allowedClasses) && tmpl.allowedClasses.length) return tmpl.allowedClasses.includes(cls);
-  if(tmpl.isNeutral) return true;
-  const bt=tmpl.btnType||tmpl.type;
-  if(bt==='ranged') return cls==='ranger';
-  if(bt==='spell') return MAGIC_CLASSES.has(cls);
-  if(bt==='physical') return !MAGIC_CLASSES.has(cls);
-  return bt==='utility';
+  // Class-specific offer gating removed to keep old/new class systems from interfering.
+  return true;
 }
 
 const SHOP_STATE = {
@@ -9874,6 +9995,33 @@ function getAccessibilitySettings(){
     return JSON.parse(localStorage.getItem(ACCESS_KEY)||'{"fontSize":100,"colorBlind":"off","reduceMotion":false,"highContrast":false,"uiMode":"desktop"}');
   }catch(_){ return {fontSize:100,colorBlind:'off',reduceMotion:false,highContrast:false,uiMode:'desktop'}; }
 }
+function applyUIStateToDOM(){
+  const ui=ensureUIState();
+  const main=document.getElementById('endless-check');
+  if(main) main.checked=(ui.gameMode==='endless');
+  document.body.classList.toggle('ui-mobile-mode', ui.battleLayout==='mobile');
+  document.body.classList.toggle('ui-desktop-mode', ui.battleLayout==='desktop');
+  const playerDrop=document.getElementById('player-stats-drop');
+  const enemyDrop=document.getElementById('enemy-stats-drop');
+  if(playerDrop) playerDrop.open=!!ui.combatDropdownOpen.player;
+  if(enemyDrop) enemyDrop.open=!!ui.combatDropdownOpen.enemy;
+}
+function syncCombatDropdownUIState(){
+  const ui=ensureUIState();
+  const playerDrop=document.getElementById('player-stats-drop');
+  const enemyDrop=document.getElementById('enemy-stats-drop');
+  if(playerDrop) ui.combatDropdownOpen.player=!!playerDrop.open;
+  if(enemyDrop) ui.combatDropdownOpen.enemy=!!enemyDrop.open;
+}
+
+function wireCombatDropdownStateSync(){
+  ['player-stats-drop','enemy-stats-drop'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(!el || el.dataset.uiStateWired==='1') return;
+    el.dataset.uiStateWired='1';
+    el.addEventListener('toggle', ()=>syncCombatDropdownUIState());
+  });
+}
 function applyAccessibilitySettings(s){
   const cfg=s||getAccessibilitySettings();
   document.documentElement.style.fontSize=`${Math.max(85,Math.min(140,Number(cfg.fontSize)||100))}%`;
@@ -9883,10 +10031,8 @@ function applyAccessibilitySettings(s){
   if(cfg.colorBlind==='protanopia') document.body.classList.add('cb-protanopia');
   if(cfg.colorBlind==='deuteranopia') document.body.classList.add('cb-deuteranopia');
   if(cfg.colorBlind==='tritanopia') document.body.classList.add('cb-tritanopia');
-  const uiMode=(cfg.uiMode==='mobile')?'mobile':'desktop';
-  document.body.classList.toggle('ui-mobile-mode', uiMode==='mobile');
-  document.body.classList.toggle('ui-desktop-mode', uiMode==='desktop');
-  document.querySelectorAll('.combat-stats-dropdown').forEach(drop=>{ drop.open = (uiMode==='desktop'); });
+  ensureUIState().battleLayout=(cfg.uiMode==='mobile')?'mobile':'desktop';
+  applyUIStateToDOM();
 }
 function openSettingsModal(){
   const cfg=getAccessibilitySettings();
@@ -9899,7 +10045,7 @@ function openSettingsModal(){
   if(cb) cb.value=cfg.colorBlind||'off';
   if(rm) rm.checked=!!cfg.reduceMotion;
   if(hc) hc.checked=!!cfg.highContrast;
-  if(ui) ui.value=(cfg.uiMode==='mobile')?'mobile':'desktop';
+  if(ui) ui.value=ensureUIState().battleLayout;
   const m=document.getElementById('settings-modal'); if(m) m.classList.add('open');
 }
 function closeSettingsModal(){
@@ -9911,7 +10057,7 @@ function updateAccessibilitySettings(){
     colorBlind:String(document.getElementById('setting-color-blind')?.value||'off'),
     reduceMotion:!!document.getElementById('setting-reduce-motion')?.checked,
     highContrast:!!document.getElementById('setting-high-contrast')?.checked,
-    uiMode:String(document.getElementById('setting-ui-mode')?.value||'desktop'),
+    uiMode:String(document.getElementById('setting-ui-mode')?.value||ensureUIState().battleLayout),
   };
   localStorage.setItem(ACCESS_KEY, JSON.stringify(cfg));
   applyAccessibilitySettings(cfg);
@@ -9919,6 +10065,8 @@ function updateAccessibilitySettings(){
 
 installErrorHUD();
 applyAccessibilitySettings();
+wireCombatDropdownStateSync();
+applyUIStateToDOM();
 
 
 /* ============================================================
