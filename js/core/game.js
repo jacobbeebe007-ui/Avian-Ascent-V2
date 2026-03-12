@@ -677,7 +677,7 @@ const BIRDS = {
     size:'tiny', class:'assassin',
     stats:{hp:28,maxHp:28,atk:5,def:2,spd:9,dodge:35,acc:85,mdef:6,matk:6,critChance:10},
     statBars:{HP:28/50,ATK:5/15,SPD:9/10,Dodge:.7,ACC:.85}, color:'#6a8ae8',
-    startAbilities:['rapidPeck','dart','evade'],
+    startAbilities:['rapidPeck','talonStrike','battleChirp','windSlash'],
     passive:{id:'windDancer',name:'Wind Dancer',desc:'Every dodge grants +1% permanent dodge (max +15%).',
       onDodge(p){if(!p._windDancerBonus)p._windDancerBonus=0;if(p._windDancerBonus<15){p._windDancerBonus++;p.stats.dodge=Math.min(p.stats.dodge+1,100);}}},
   },
@@ -774,7 +774,7 @@ const BIRDS = {
     size:'medium', class:'knight',
     stats:{hp:35,maxHp:35,atk:6,def:4,spd:5,dodge:15,acc:90,mdef:10,matk:6},
     statBars:{HP:35/50,ATK:6/15,SPD:5/10,Dodge:.3,ACC:.9}, color:'#c0c8d8',
-    startAbilities:['crowStrike','beakSlam','talonRake','crowDefend'],
+    startAbilities:['rapidPeck','murderMurmuration','dreadCall','battleFocus'],
     passive:{id:'ironWill',name:'Iron Will',desc:'Each successful block = +1 DEF permanently (max +8). Immune to Weaken.',
       immuneWeaken:true,
       onBlock(p){if(!p._ironWillBonus)p._ironWillBonus=0;if(p._ironWillBonus<8){p._ironWillBonus++;p.stats.def++;}}},
@@ -859,7 +859,7 @@ const BIRDS = {
     unlockHint:'Defeat Stage 10 with Robin.',
     stats:{hp:42,maxHp:42,atk:7,def:4,spd:8,dodge:32,acc:84,mdef:9,matk:12,critChance:8},
     color:'#2a2a2a',
-    startAbilities:['mobSwarm','dart','shriekwave'],
+    startAbilities:['rapidPeck','stealShine','featherFlick','dart'],
     passive:{id:'murderCall',name:'Murder Call',desc:'Mob attacks gain +10% hit vs low-HP foes. Each kill raises summon cap (max +3).',
       onBattleStart(p){p._murderBonusCap=0;}},
   },
@@ -895,7 +895,7 @@ const BIRDS = {
     unlockHint:'Enter: "Ahh Ahh Eee Eee Tookie Tookie"',
     stats:{hp:45,maxHp:45,atk:7,def:5,spd:4,dodge:12,acc:75,mdef:8,matk:10},
     statBars:{HP:45/50,ATK:7/15,SPD:4/10,Dodge:.24,ACC:.75}, color:'#60c840',
-    startAbilities:['serratedBill','tookieTookie','owlPsyche'],
+    startAbilities:['rapidPeck','fruitBomb','taunt','preen'],
     passive:{id:'fruitful',name:'Fruitful',desc:'Whenever you heal, gain +1% ACC (max +12%).',
       onHeal(p,amt){if(!p._fruitfulBonus)p._fruitfulBonus=0;if(p._fruitfulBonus<12){const gain=Math.max(1,Math.floor(amt/8));const actual=Math.min(gain,12-p._fruitfulBonus);p._fruitfulBonus+=actual;p.stats.acc=Math.min(p.stats.acc+actual,100);}}},
   },
@@ -919,7 +919,7 @@ const BIRDS = {
     unlockHint:'Reach Endless Stage 30 with any Ranger.',
     stats:{hp:48,maxHp:48,atk:8,def:4,spd:6,dodge:18,acc:80,mdef:12,matk:8},
     color:'#e8609a',
-    startAbilities:['mudLash','hum','sitAndWait'],
+    startAbilities:['rapidPeck','mudLash','preen','graceStep'],
     passive:{id:'stanceBalance',name:'Balance Master',
       desc:'Alternate attack and utility abilities each turn to gain +20% ATK (2t) or +20% dodge (2t).',
       onBattleStart(p){p._lastAbType=null;},
@@ -945,7 +945,7 @@ const BIRDS = {
     unlockHint:'Defeat Stage 10 with Crow.',
     stats:{hp:48,maxHp:48,atk:9,def:6,spd:5,dodge:10,acc:80,critChance:8,mdef:10,matk:6},
     statBars:{HP:48/50,ATK:9/15,SPD:5/10,Dodge:.2,ACC:.8}, color:'#e0a060',
-    startAbilities:['serpentCrusher','crowDefend','parry'],
+    startAbilities:['rapidPeck','stickLance','battleRhythm','guard'],
     passive:{id:'serpentStomp',name:'Serpent Stomp',desc:'Every physical attack has a 20% chance to Paralyze the enemy. Immune to Poison.',
       immunePoison:true,
       onPhysicalHit(p,G){if(chance(20)&&!G.enemyStatus.paralyzed){G.enemyStatus.paralyzed=1;spawnFloat('enemy','⚡ Para!','fn-status');}}},
@@ -969,7 +969,7 @@ const BIRDS = {
     unlockHint:'Reach level 21 in Endless mode with any Mage.',
     stats:{hp:36,maxHp:36,atk:6,def:3,spd:8,dodge:24,acc:84,mdef:9,matk:14,critChance:8},
     color:'#b0c8d8',
-    startAbilities:['mobSwarm','shriekwave','preen'],
+    startAbilities:['rapidPeck','diveSnatch','windSlash','mobSwarm'],
     passive:{id:'scavengeFlock',name:'Scavenge Flock',desc:'Summoned mobs steal 5% enemy ATK as SPD bonus (stacks). Immune to Fear.',
       immuneFear:true,
       onBattleStart(p){p._scavengeStacks=0;}},
@@ -981,7 +981,7 @@ const BIRDS = {
     size:'xl', class:'tank',
     stats:{hp:55,maxHp:55,atk:9,def:7,spd:2,dodge:5,acc:70,mdef:12,matk:4},
     statBars:{HP:55/50,ATK:9/15,SPD:2/10,Dodge:.1,ACC:.7}, color:'#e8c96a',
-    startAbilities:['gooseHonk','intimidate','roost'],
+    startAbilities:['rapidPeck','honkTerror','guard','heavyTalon'],
     passive:{id:'bruisedHide',name:'Bruised Hide',desc:'Every 20 HP taken = +1 ATK until battle ends. Takes 20% reduced physical damage.',
       physicalResist:0.20,
       onDamage(p,dmg){if(!p._bruiseAcc)p._bruiseAcc=0;p._bruiseAcc+=dmg;while(p._bruiseAcc>=20){p._bruiseAcc-=20;G.player.stats.atk++;spawnFloat('player','💢+ATK','fn-status');}}},
@@ -993,7 +993,7 @@ const BIRDS = {
     unlockHint:'Defeat Stage 10 with Goose.',
     stats:{hp:70,maxHp:70,atk:10,def:10,spd:2,dodge:5,acc:72,critChance:5,mdef:16,matk:6},
     statBars:{HP:70/50,ATK:10/15,SPD:2/10,Dodge:.1,ACC:.72}, color:'#5a7090',
-    startAbilities:['shoebillClamp','roost','intimidate'],
+    startAbilities:['rapidPeck','shoebillClamp','sitAndWait','fishSnatcher'],
     passive:{id:'prehistoricStare',name:'Prehistoric Stare',desc:'Enemies have 15% chance to skip attack from dread (30% when feared). Immune to Fear & Stun.',
       immuneFear:true, immuneStun:true,
       onEnemyAttackCheck(p,G){const fearBonus=G.enemyStatus.feared>0?15:0;return chance(15+fearBonus);}},
@@ -1018,7 +1018,7 @@ const BIRDS = {
     unlockHint:'Defeat Stage 20 on Normal mode to unlock.',
     stats:{hp:60,maxHp:60,atk:11,def:7,spd:4,dodge:10,acc:78,mdef:10,matk:6},
     color:'#e8e4d8',
-    startAbilities:['fishSnatcher','beakSlam','crowDefend'],
+    startAbilities:['rapidPeck','skyStrike','focusSight','windSlash'],
     passive:{id:'lastStand',name:'Last Stand',
       desc:'First time per battle you would die, survive at 1 HP and gain +5 ATK for 3 turns. Immune to Paralysis.',
       immuneParalyze:true,
@@ -1032,7 +1032,7 @@ const BIRDS = {
     unlockHint:'Reach Endless Stage 30 with any Tank.',
     stats:{hp:65,maxHp:65,atk:9,def:9,spd:3,dodge:12,acc:75,mdef:14,matk:5},
     color:'#3a5878',
-    startAbilities:['penguinHonk','roost','intimidate'],
+    startAbilities:['rapidPeck','iceGuard','bodySlam','rallyCall'],
     passive:{id:'blubberCoat',name:'Blubber Coat',desc:'Reduces all magic damage by 25–40% (scales with missing HP). Waddle applies Lullaby (15% skip/turn) on attack.',
       get _baseMagicReduce(){return 0.25;},
       onMagicHit(p,dmg){const hpPct=p.stats.hp/p.stats.maxHp;return Math.floor(dmg*(1-(0.25+(1-hpPct)*0.15)));},
@@ -1045,7 +1045,7 @@ const BIRDS = {
     unlockHint:'Defeat Stage 20 with Shoebill.',
     stats:{hp:72,maxHp:72,atk:12,def:8,spd:1,dodge:5,acc:70,mdef:10,matk:4},
     color:'#b89060',
-    startAbilities:['headWhip','intimidate','roost'],
+    startAbilities:['kick','trample','guard','threatDisplay'],
     passive:{id:'rageCharge',name:'Rage Charge',desc:'Heavy attacks charge over 2–3 turns (+50% dmg/turn). Misses reset charge. Immune to Slow.',
       immuneSlow:true,
       onBattleStart(p){p._rageCharge=0;}},
@@ -1058,7 +1058,7 @@ const BIRDS = {
     unlockHint:'Defeat Stage 20 on Normal mode to unlock.',
     stats:{hp:74,maxHp:74,atk:13,def:9,spd:3,dodge:8,acc:74,mdef:11,matk:4},
     color:'#3b4a56',
-    startAbilities:['headWhip','beakSlam','intimidate'],
+    startAbilities:['raptorKick','raptorKickFrenzy','intimidatingStare','guard'],
     passive:{id:'jungleBulwark',name:'Jungle Bulwark',desc:'Takes 10% reduced physical damage. First heavy hit each battle applies Fear 2t.',
       physicalResist:0.10,
       onBattleStart(p){p._cassFearUsed=false;},
@@ -1071,7 +1071,7 @@ const BIRDS = {
     unlockHint:'Reach Endless Stage 40 with any Tank.',
     stats:{hp:80,maxHp:80,atk:14,def:10,spd:2,dodge:20,acc:72,mdef:10,matk:4},
     color:'#7a6040',
-    startAbilities:['headWhip','intimidate','roost'],
+    startAbilities:['kick','savageKick','threatDisplay','dustKick'],
     passive:{id:'rumbleStrike',name:'Rumble Strike',desc:'+20% max HP. Counter-attacks on block for 30% ATK. Immune to Stun.',
       immuneStun:true,
       onBattleStart(p){if(!p._emuHPBoosted){p._emuHPBoosted=true;p.stats.maxHp=Math.floor(p.stats.maxHp*1.20);p.stats.hp=p.stats.maxHp;}},
@@ -1245,29 +1245,242 @@ function rollRarity(){
 }
 
 const UPGRADE_CARDS_REWORK = [
-  {id:'g_quill1',tier:'grey',icon:'🪶',name:'Quill Stitch',desc:'+6 Max HP. First hit each battle -10%.',tags:['sustain'],apply:p=>{p.stats.maxHp+=6;p.firstHitReduce=Math.max(p.firstHitReduce||0,0.10);}},
-  {id:'g_talon1',tier:'grey',icon:'🗡️',name:'Talon Hone',desc:'+1 ATK. +3 damage vs Bleeding.',tags:['offense'],apply:p=>{p.stats.atk+=1;p.vsBleedBonus=(p.vsBleedBonus||0)+3;}},
-  {id:'g_shell1',tier:'grey',icon:'🛡️',name:'Down Padding',desc:'+1 DEF.',tags:['defense'],apply:p=>{p.stats.def+=1;}},
-  {id:'g_focus1',tier:'grey',icon:'🎯',name:'Steady Eye',desc:'+4% hit chance on your next attack each turn.',tags:['utility'],apply:p=>{p.nextAttackAccBonus=4;}},
-  {id:'gr_hp',tier:'green',icon:'❤️',name:'Stronger Heart',desc:'+12 Max HP. Heal +6 after battle.',tags:['sustain'],apply:p=>{p.stats.maxHp+=12;p.postBattleFlatHeal=(p.postBattleFlatHeal||0)+6;}},
-  {id:'gr_pierce',tier:'green',icon:'🪓',name:'Split-Feather',desc:'+2 ATK. Attacks pierce +10% DEF.',tags:['offense'],apply:p=>{p.stats.atk+=2;p.pierceBonus=(p.pierceBonus||0)+0.10;}},
-  {id:'gr_spell',tier:'green',icon:'🔮',name:'Runic Throat',desc:'+2 MATK. Every 3 spells: apply Poison(1).',tags:['offense'],apply:p=>{p.stats.matk=(p.stats.matk||0)+2;p.spellProcPoison=3;}},
-  {id:'gr_speed',tier:'green',icon:'💨',name:'Wind-Set',desc:'+1 SPD. First attack each battle +30%.',tags:['utility'],apply:p=>{p.stats.spd=(p.stats.spd||0)+1;p.firstAttackBonusPct=Math.max(p.firstAttackBonusPct||0,0.30);}},
-  {id:'b_guard',tier:'blue',icon:'🧱',name:'Quill Armor',desc:'+3 DEF.',tags:['defense'],apply:p=>{p.stats.def+=3;}},
-  {id:'b_bleed',tier:'blue',icon:'🩸',name:'Ripper Beak',desc:'+3 ATK. Crits apply Bleed(1).',stackable:false,tags:['offense'],apply:p=>{p.stats.atk+=3;p.critBleed=(p.critBleed||0)+1;}},
-  {id:'b_energy',tier:'blue',icon:'🔋',name:'Hot Blood',desc:'Start battle with +1 energy (non-stacking).',stackable:false,tags:['utility'],apply:p=>{p.startEnergyBonus=Math.max(p.startEnergyBonus||0,1);}},
-  {id:'b_hex',tier:'blue',icon:'🕯️',name:'Dread Choir',desc:'+2 MATK. First spell each battle inflicts Fear(1).',tags:['offense'],apply:p=>{p.stats.matk=(p.stats.matk||0)+2;p.openingFearOnSpell=1;}},
-  {id:'p_echo',tier:'purple',icon:'🎶',name:'Echo Feather',desc:'First skill each battle repeats at 50%.',stackable:false,tags:['utility'],apply:p=>{p.echoFirstSkill=0.5;}},
-  {id:'p_blood',tier:'purple',icon:'🩸',name:'Blood Quill',desc:'Below 50% HP: your first attack each turn +25%.',tags:['offense'],apply:p=>{p.lowHpFirstAtkBonus=0.25;}},
-  {id:'p_pierce',tier:'purple',icon:'🦅',name:'Raptor Doctrine',desc:'Attacks pierce +25% DEF. (One-time)',stackable:false,tags:['offense'],apply:p=>{p.pierceBonus=Math.max(p.pierceBonus||0,0.25);}},
-  {id:'z_crown',tier:'gold',icon:'👑',name:'Court-Sunder',desc:'Once per battle: your next attack ignores all DEF.',stackable:false,tags:['offense'],apply:p=>{p.onceIgnoreDef=true;}},
+  {id:'g_feather_guard',tier:'grey',icon:'🛡️',name:'Feather Guard',desc:'+1 DEF',tags:['defense'],apply:p=>{p.stats.def+=1;}},
+  {id:'g_keen_beak',tier:'grey',icon:'🗡️',name:'Keen Beak',desc:'+1 ATK',tags:['offense'],apply:p=>{p.stats.atk+=1;}},
+  {id:'g_spell_feather',tier:'grey',icon:'✨',name:'Spell Feather',desc:'+1 MATK',tags:['offense'],apply:p=>{p.stats.matk=(p.stats.matk||0)+1;}},
+  {id:'g_warding_down',tier:'grey',icon:'🔷',name:'Warding Down',desc:'+1 MDEF',tags:['defense'],apply:p=>{p.stats.mdef=(p.stats.mdef||0)+1;}},
+  {id:'g_fleet_step',tier:'grey',icon:'💨',name:'Fleet Step',desc:'+1 SPD',tags:['utility'],apply:p=>{p.stats.spd=(p.stats.spd||0)+1;}},
+  {id:'g_focused_eye',tier:'grey',icon:'🎯',name:'Focused Eye',desc:'+5% Hit Chance',tags:['utility'],apply:p=>{p.firstAttackAccBonus=(p.firstAttackAccBonus||0)+5;}},
+  {id:'g_quick_blood',tier:'grey',icon:'💥',name:'Quick Blood',desc:'Crit chance +4%',tags:['offense'],apply:p=>{p.stats.critChance=(p.stats.critChance||5)+4;}},
+  {id:'g_light_frame',tier:'grey',icon:'🪽',name:'Light Frame',desc:'Dodge +4%',tags:['defense'],apply:p=>{p.stats.dodge=Math.min(95,(p.stats.dodge||0)+4);}},
+  {id:'g_feather_lining',tier:'grey',icon:'❤️',name:'Feather Lining',desc:'+5 Max HP',tags:['sustain'],apply:p=>{p.stats.maxHp+=5;p.stats.hp=Math.min(p.stats.hp+5,p.stats.maxHp);}},
+  {id:'g_talon_precision',tier:'grey',icon:'👁️',name:'Talon Precision',desc:'First attack each battle +8% hit chance',tags:['utility'],apply:p=>{p.firstAttackAccBonus=(p.firstAttackAccBonus||0)+8;}},
+
+  {id:'gr_serrated_talon',tier:'green',icon:'🩸',name:'Serrated Talon',desc:'Attacks apply Bleed(1) on hit (10% chance)',tags:['offense'],apply:p=>{p.bleedOnHitChance=(p.bleedOnHitChance||0)+10;}},
+  {id:'gr_venom_beak',tier:'green',icon:'☣️',name:'Venom Beak',desc:'Attacks apply Poison(1) on hit (10% chance)',tags:['offense'],apply:p=>{p.poisonOnHitChance=(p.poisonOnHitChance||0)+10;}},
+  {id:'gr_blood_memory',tier:'green',icon:'🗡️',name:'Blood Memory',desc:'Deal +2 damage to Bleeding enemies',tags:['offense'],apply:p=>{p.vsBleedFlatBonus=(p.vsBleedFlatBonus||0)+2;}},
+  {id:'gr_toxic_study',tier:'green',icon:'🧪',name:'Toxic Study',desc:'Poison deals +1 damage',tags:['offense'],apply:p=>{p.poisonFlatBonus=(p.poisonFlatBonus||0)+1;}},
+  {id:'gr_calm_focus',tier:'green',icon:'🎯',name:'Calm Focus',desc:'First attack each battle +20% accuracy',tags:['utility'],apply:p=>{p.firstAttackAccBonus=(p.firstAttackAccBonus||0)+20;}},
+  {id:'gr_war_rhythm',tier:'green',icon:'🔋',name:'War Rhythm',desc:'First attack each battle costs 0 Energy',tags:['utility'],stackable:false,apply:p=>{p.firstAttackFree=true;}},
+  {id:'gr_hard_plumage',tier:'green',icon:'🪨',name:'Hard Plumage',desc:'First hit each battle deals -15% damage',tags:['defense'],stackable:false,apply:p=>{p.firstHitReduce=Math.max(p.firstHitReduce||0,0.15);}},
+  {id:'gr_battle_instinct',tier:'green',icon:'⚡',name:'Battle Instinct',desc:'Gain +1 SPD when below 50% HP',tags:['utility'],stackable:false,apply:p=>{p.lowHpSpdBonus=1;}},
+  {id:'gr_rune_focus',tier:'green',icon:'🔮',name:'Rune Focus',desc:'First spell each battle +30% damage',tags:['offense'],stackable:false,apply:p=>{p.firstSpellBattleBonusPct=Math.max(p.firstSpellBattleBonusPct||0,0.30);}},
+  {id:'gr_iron_molt',tier:'green',icon:'🛡️',name:'Iron Molt',desc:'Gain +1 DEF when below 50% HP',tags:['defense'],stackable:false,apply:p=>{p.lowHpDefBonus=1;}},
+
+  {id:'b_deep_cut',tier:'blue',icon:'🩸',name:'Deep Cut',desc:'Bleed stacks applied by you increase by +1',tags:['offense'],apply:p=>{p.bleedBonusStacks=(p.bleedBonusStacks||0)+1;}},
+  {id:'b_venom_reservoir',tier:'blue',icon:'☣️',name:'Venom Reservoir',desc:'Poison lasts 1 extra turn',tags:['offense'],apply:p=>{p.poisonExtraTurns=(p.poisonExtraTurns||0)+1;}},
+  {id:'b_predator_sight',tier:'blue',icon:'👁️',name:'Predator Sight',desc:'+10% Crit Chance',tags:['offense'],apply:p=>{p.stats.critChance=(p.stats.critChance||5)+10;}},
+  {id:'b_execution_beak',tier:'blue',icon:'💢',name:'Execution Beak',desc:'Crit damage +30%',tags:['offense'],apply:p=>{p.critDamageBonusPct=(p.critDamageBonusPct||0)+0.30;}},
+  {id:'b_spell_echo',tier:'blue',icon:'🎶',name:'Spell Echo',desc:'Every 4th spell deals +40% damage',tags:['offense'],stackable:false,apply:p=>{p.everyFourthSpellBonusPct=0.40;}},
+  {id:'b_quick_recovery',tier:'blue',icon:'🩹',name:'Quick Recovery',desc:'Heal 3 HP after battle',tags:['sustain'],apply:p=>{p.postBattleFlatHeal=(p.postBattleFlatHeal||0)+3;}},
+  {id:'b_storm_pulse',tier:'blue',icon:'🌩️',name:'Storm Pulse',desc:'First attack each battle always hits',tags:['utility'],stackable:false,apply:p=>{p.firstAttackAlwaysHit=true;}},
+  {id:'b_iron_feather_mantle',tier:'blue',icon:'🧱',name:'Iron Feather Mantle',desc:'+2 DEF',tags:['defense'],apply:p=>{p.stats.def+=2;}},
+  {id:'b_arcane_plumage',tier:'blue',icon:'🔷',name:'Arcane Plumage',desc:'+2 MDEF',tags:['defense'],apply:p=>{p.stats.mdef=(p.stats.mdef||0)+2;}},
+  {id:'b_hawk_instinct',tier:'blue',icon:'💨',name:'Hawk Instinct',desc:'+2 SPD',tags:['utility'],apply:p=>{p.stats.spd=(p.stats.spd||0)+2;}},
+
+  {id:'p_blood_frenzy',tier:'purple',icon:'🩸',name:'Blood Frenzy',desc:'Deal +25% damage to Bleeding enemies',tags:['offense'],stackable:false,apply:p=>{p.vsBleedPctBonus=Math.max(p.vsBleedPctBonus||0,0.25);}},
+  {id:'p_venom_scholar',tier:'purple',icon:'☣️',name:'Venom Scholar',desc:'Poison damage increases by +50%',tags:['offense'],stackable:false,apply:p=>{p.poisonTickMult=Math.max(p.poisonTickMult||1,1.5);}},
+  {id:'p_duelist_discipline',tier:'purple',icon:'🎯',name:'Duelist Discipline',desc:'First attack each battle crit chance +30%',tags:['offense'],apply:p=>{p.firstAttackCritBonus=(p.firstAttackCritBonus||0)+30;}},
+  {id:'p_battle_meditation',tier:'purple',icon:'🧘',name:'Battle Meditation',desc:'Your first spell each battle costs 0 Energy',tags:['utility'],stackable:false,apply:p=>{p.firstSpellFree=true;}},
+  {id:'p_survivors_molt',tier:'purple',icon:'🪶',name:"Survivor's Molt",desc:'When first reduced below 30% HP heal 8',tags:['sustain'],stackable:false,apply:p=>{p.survivorMoltHeal=Math.max(p.survivorMoltHeal||0,8);}},
+  {id:'p_precision_talon',tier:'purple',icon:'🏹',name:'Precision Talon',desc:'+15% Hit Chance',tags:['utility'],apply:p=>{p.firstAttackAccBonus=(p.firstAttackAccBonus||0)+15;}},
+  {id:'p_relentless_strike',tier:'purple',icon:'⚔️',name:'Relentless Strike',desc:'Your first attack each turn deals +10% damage',tags:['offense'],stackable:false,apply:p=>{p.firstAttackEachTurnBonusPct=Math.max(p.firstAttackEachTurnBonusPct||0,0.10);}},
+
+  {id:'z_sky_predator',tier:'gold',icon:'👑',name:'Sky Predator',desc:'Your first attack each battle always crits',tags:['offense'],stackable:false,apply:p=>{p.firstAttackAlwaysCrit=true;}},
+  {id:'z_blackstone_trophy',tier:'gold',icon:'🗿',name:'Blackstone Trophy',desc:'Enemies start battle with Fear(1)',tags:['utility'],stackable:false,apply:p=>{p.openingEnemyFear=(p.openingEnemyFear||0)+1;}},
+  {id:'z_molting_ritual',tier:'gold',icon:'🔥',name:'Molting Ritual',desc:'After each battle gain +1 ATK but lose 3 Max HP',tags:['risk'],stackable:false,apply:p=>{p.moltingRitual=true;}},
 ];
 
 function getUpgradePool(){ return UPGRADE_CARDS_REWORK.slice(); }
+
+function createReward(def={}){
+  const uiText = def.uiText || {};
+  const source = Array.isArray(def.source)
+    ? def.source
+    : (def.source ? [def.source] : ['battle']);
+  const reward = {
+    ...def,
+    id: String(def.id||''),
+    kind: def.kind || def.type || 'upgrade',
+    tier: def.tier || 'grey',
+    source,
+    uiText: {
+      icon: uiText.icon ?? def.icon ?? '🎁',
+      name: uiText.name ?? def.name ?? def.id ?? 'Reward',
+      desc: uiText.desc ?? def.desc ?? ''
+    },
+    apply: typeof def.apply==='function' ? def.apply : ()=>{}
+  };
+  reward.icon = reward.uiText.icon;
+  reward.name = reward.uiText.name;
+  reward.desc = reward.uiText.desc;
+  return reward;
+}
+
+const REWARD_FILTERS = {
+  story: rw => !rw.source.includes('endless'),
+  endless: rw => rw.source.includes('endless'),
+  shop: rw => rw.source.includes('shop'),
+  battle: rw => rw.source.includes('battle'),
+  tier: tier => rw => rw.tier===tier,
+  notUsed: used => rw => !used.has(rw.id),
+  notRunLocked: () => rw => !(rw.oncePerRun && G.runUpgradesPurchased?.has(rw.id))
+};
+
+function rollRewardPool(pool,{count=1,predicates=[],usedIds=null}={}){
+  const used = usedIds || new Set();
+  const filt = pool.filter(rw=>predicates.every(fn=>fn(rw)));
+  const bag = filt.slice();
+  const picks=[];
+  while(picks.length<count && bag.length){
+    const idx=Math.floor(Math.random()*bag.length);
+    const rw=bag.splice(idx,1)[0];
+    if(used.has(rw.id)) continue;
+    used.add(rw.id);
+    picks.push(rw);
+  }
+  return picks;
+}
+
+function applyRewardEffect(reward, player, context={}){
+  if(!reward || !player) return false;
+  if(!(G.runUpgradesPurchased instanceof Set)) G.runUpgradesPurchased = new Set();
+  const alreadyApplied = G.runUpgradesPurchased.has(reward.id);
+  const preventDuplicates = context.preventDuplicates ?? true;
+  if(preventDuplicates && alreadyApplied && (reward.oncePerRun || reward.stackable===false)) return false;
+
+  reward.apply(player, context);
+
+  if(reward.kind==='relic' || reward.kind==='augment' || reward.kind==='mutation'){
+    if(!player.endlessRewards) player.endlessRewards=[];
+    if(!player.endlessRewards.some(x=>x.id===reward.id)){
+      player.endlessRewards.push({id:reward.id,type:reward.kind,name:reward.name});
+    }
+  }
+  if(reward.oncePerRun || reward.stackable===false) G.runUpgradesPurchased.add(reward.id);
+  return true;
+}
+
+
+const ENDLESS_SKILL_AUGMENTS = [
+  {id:'aug_razor_edge',name:'Razor Edge',tier:'blue',type:'augment',desc:'Endless only — Attack skills deal +20% damage to Bleeding enemies.',apply:p=>{p.augAttackVsBleedPct=(p.augAttackVsBleedPct||0)+0.20;}},
+  {id:'aug_pinpoint_strike',name:'Pinpoint Strike',tier:'green',type:'augment',desc:'Endless only — Attack skills gain +12% hit chance.',apply:p=>{p.augAttackAcc=(p.augAttackAcc||0)+12;}},
+  {id:'aug_blood_trigger',name:'Blood Trigger',tier:'green',type:'augment',desc:'Endless only — Attack-skill crits apply Bleed(1).',apply:p=>{p.augCritBleed=(p.augCritBleed||0)+1;}},
+  {id:'aug_piercing_talon',name:'Piercing Talon',tier:'blue',type:'augment',desc:'Endless only — Attack skills ignore 15% DEF.',apply:p=>{p.augAttackPiercePct=(p.augAttackPiercePct||0)+0.15;}},
+  {id:'aug_ambush_claw',name:'Ambush Claw',tier:'blue',type:'augment',desc:'Endless only — First attack skill each battle deals +35% damage.',apply:p=>{p.augFirstAttackBattlePct=(p.augFirstAttackBattlePct||0)+0.35;}},
+  {id:'aug_execution_line',name:'Execution Line',tier:'blue',type:'augment',desc:'Endless only — Attack skills deal +25% damage to enemies below 50% HP.',apply:p=>{p.augAttackExecutePct=(p.augAttackExecutePct||0)+0.25;}},
+  {id:'aug_hunters_mark',name:"Hunter's Mark",tier:'green',type:'augment',desc:'Endless only — Attack skills that hit grant next attack +10% damage this battle.',apply:p=>{p.augHuntersMarkPct=(p.augHuntersMarkPct||0)+0.10;}},
+  {id:'aug_serrated_finish',name:'Serrated Finish',tier:'green',type:'augment',desc:'Endless only — Attack skills have 20% chance to apply Bleed(1).',apply:p=>{p.augAttackBleedChance=(p.augAttackBleedChance||0)+20;}},
+  {id:'aug_fatal_rhythm',name:'Fatal Rhythm',tier:'purple',type:'augment',desc:'Endless only — Every third attack skill use deals +40% damage.',apply:p=>{p.augThirdAttackPct=0.40;}},
+  {id:'aug_sky_lunge',name:'Sky Lunge',tier:'green',type:'augment',desc:'Endless only — Attack skills gain +10% crit chance.',apply:p=>{p.augAttackCrit=(p.augAttackCrit||0)+10;}},
+  {id:'aug_runic_burst',name:'Runic Burst',tier:'blue',type:'augment',desc:'Endless only — Spell skills deal +18% damage.',apply:p=>{p.augSpellDmgPct=(p.augSpellDmgPct||0)+0.18;}},
+  {id:'aug_venom_verse',name:'Venom Verse',tier:'green',type:'augment',desc:'Endless only — Spell skills apply Poison(1) on hit.',apply:p=>{p.augSpellPoison=true;}},
+  {id:'aug_dread_verse',name:'Dread Verse',tier:'blue',type:'augment',desc:'Endless only — First spell each battle applies Fear(1).',apply:p=>{p.augFirstSpellFear=true;}},
+  {id:'aug_arcane_accuracy',name:'Arcane Accuracy',tier:'green',type:'augment',desc:'Endless only — Spell skills gain +14% hit chance.',apply:p=>{p.augSpellAcc=(p.augSpellAcc||0)+14;}},
+  {id:'aug_mana_rend',name:'Mana Rend',tier:'blue',type:'augment',desc:'Endless only — Spell skills ignore 15% MDEF.',apply:p=>{p.augSpellPiercePct=(p.augSpellPiercePct||0)+0.15;}},
+  {id:'aug_echo_rune',name:'Echo Rune',tier:'purple',type:'augment',desc:'Endless only — Every fourth spell repeats at 40% power.',apply:p=>{p.augFourthSpellEcho=0.40;}},
+  {id:'aug_withering_chant',name:'Withering Chant',tier:'blue',type:'augment',desc:'Endless only — Spells deal +25% damage to Poisoned enemies.',apply:p=>{p.augSpellVsPoisonPct=(p.augSpellVsPoisonPct||0)+0.25;}},
+  {id:'aug_soul_pressure',name:'Soul Pressure',tier:'blue',type:'augment',desc:'Endless only — Spells deal +20% damage to Feared enemies.',apply:p=>{p.augSpellVsFearPct=(p.augSpellVsFearPct||0)+0.20;}},
+  {id:'aug_arc_surge',name:'Arc Surge',tier:'green',type:'augment',desc:'Endless only — First spell each battle costs 1 less Energy.',apply:p=>{p.augFirstSpellCostDown=1;}},
+  {id:'aug_hex_bloom',name:'Hex Bloom',tier:'green',type:'augment',desc:'Endless only — Spell crits apply Poison(1).',apply:p=>{p.augSpellCritPoison=true;}},
+  {id:'aug_guard_timing',name:'Guard Timing',tier:'green',type:'augment',desc:'Endless only — Defensive skills grant +1 DEF this turn.',apply:p=>{p.augDefSkillDef=(p.augDefSkillDef||0)+1;}},
+  {id:'aug_spell_shell',name:'Spell Shell',tier:'green',type:'augment',desc:'Endless only — Defensive skills grant +1 MDEF this turn.',apply:p=>{p.augDefSkillMdef=(p.augDefSkillMdef||0)+1;}},
+  {id:'aug_recovery_feather',name:'Recovery Feather',tier:'green',type:'augment',desc:'Endless only — Using a defensive skill heals 3 HP.',apply:p=>{p.augDefSkillHeal=(p.augDefSkillHeal||0)+3;}},
+  {id:'aug_evasive_drift',name:'Evasive Drift',tier:'green',type:'augment',desc:'Endless only — Defensive skills grant +6% Dodge this turn.',apply:p=>{p.augDefSkillDodge=(p.augDefSkillDodge||0)+6;}},
+  {id:'aug_clear_mind',name:'Clear Mind',tier:'green',type:'augment',desc:'Endless only — Defensive skills remove Fear from you.',apply:p=>{p.augDefSkillClearFear=true;}},
+  {id:'aug_rebound_plumage',name:'Rebound Plumage',tier:'blue',type:'augment',desc:'Endless only — After defensive skill, next attack +15% damage.',apply:p=>{p.augPostDefAtkPct=(p.augPostDefAtkPct||0)+0.15;}},
+  {id:'aug_patient_hunter',name:'Patient Hunter',tier:'blue',type:'augment',desc:'Endless only — After defensive skill, next attack +10% hit chance.',apply:p=>{p.augPostDefAcc=(p.augPostDefAcc||0)+10;}},
+  {id:'aug_iron_resolve',name:'Iron Resolve',tier:'purple',type:'augment',desc:'Endless only — First defensive skill each battle grants -20% damage taken for 1 turn.',apply:p=>{p.augIronResolve=true;}},
+  {id:'aug_feather_reserve',name:'Feather Reserve',tier:'blue',type:'augment',desc:'Endless only — Defensive skill has 25% chance to refund 1 Energy.',apply:p=>{p.augDefSkillRefund=25;}},
+  {id:'aug_counter_instinct',name:'Counter Instinct',tier:'purple',type:'augment',desc:'Endless only — After defensive skill, if enemy attacks next turn they gain Bleed(1).',apply:p=>{p.augCounterInstinct=true;}},
+];
+
+const ENDLESS_RELICS = [
+  {id:'rel_endless_talon',name:'Endless Talon',tier:'grey',type:'relic',desc:'Endless only — Every 5 endless battles, gain +1 ATK.',apply:p=>{p.relEndlessTalon=true;}},
+  {id:'rel_endless_plumage',name:'Endless Plumage',tier:'grey',type:'relic',desc:'Endless only — Every 5 endless battles, gain +1 DEF.',apply:p=>{p.relEndlessPlumage=true;}},
+  {id:'rel_endless_verse',name:'Endless Verse',tier:'grey',type:'relic',desc:'Endless only — Every 5 endless battles, gain +1 MATK.',apply:p=>{p.relEndlessVerse=true;}},
+  {id:'rel_endless_ward',name:'Endless Ward',tier:'grey',type:'relic',desc:'Endless only — Every 5 endless battles, gain +1 MDEF.',apply:p=>{p.relEndlessWard=true;}},
+  {id:'rel_long_hunt',name:'Long Hunt',tier:'green',type:'relic',desc:'Endless only — Every 6 endless battles, gain +1 SPD.',apply:p=>{p.relLongHunt=true;}},
+  {id:'rel_predatory_memory',name:'Predatory Memory',tier:'green',type:'relic',desc:'Endless only — Start boss battles with +1 Energy.',apply:p=>{p.relPredatoryMemory=true;}},
+  {id:'rel_battle_carcass',name:'Battle Carcass',tier:'green',type:'relic',desc:'Endless only — Heal 4 HP after each boss battle.',apply:p=>{p.relBattleCarcass=true;}},
+  {id:'rel_tension_coil',name:'Tension Coil',tier:'green',type:'relic',desc:'Endless only — If battle starts below 50% HP, gain +15% damage.',apply:p=>{p.relTensionCoil=true;}},
+  {id:'rel_carrion_ledger',name:'Carrion Ledger',tier:'blue',type:'relic',desc:'Endless only — Bleeding enemies take +1 attack damage.',apply:p=>{p.relCarrionLedger=true;}},
+  {id:'rel_venom_ledger',name:'Venom Ledger',tier:'blue',type:'relic',desc:'Endless only — Poison you apply deals +1 extra damage.',apply:p=>{p.relVenomLedger=true;}},
+  {id:'rel_terror_ledger',name:'Terror Ledger',tier:'blue',type:'relic',desc:'Endless only — Feared enemies deal -10% damage.',apply:p=>{p.relTerrorLedger=true;}},
+  {id:'rel_duel_record',name:'Duel Record',tier:'blue',type:'relic',desc:'Endless only — Every 3 endless wins, gain +1% crit chance.',apply:p=>{p.relDuelRecord=true;}},
+  {id:'rel_wind_ledger',name:'Wind Ledger',tier:'blue',type:'relic',desc:'Endless only — Every 4 battles, first attack +10% dmg (stacks to +50% until boss).',apply:p=>{p.relWindLedger=true;}},
+  {id:'rel_hawk_ledger',name:'Hawk Ledger',tier:'blue',type:'relic',desc:'Endless only — Gain +8% hit chance at endless milestone thresholds.',apply:p=>{p.relHawkLedger=true;}},
+  {id:'rel_iron_ledger',name:'Iron Ledger',tier:'blue',type:'relic',desc:'Endless only — First hit taken each battle deals -12% damage.',apply:p=>{p.relIronLedger=true;}},
+  {id:'rel_predators_archive',name:"Predator's Archive",tier:'purple',type:'relic',desc:'Endless only — After every boss kill, gain +1 ATK and +1 MATK.',apply:p=>{p.relPredatorsArchive=true;}},
+  {id:'rel_molting_doctrine',name:'Molting Doctrine',tier:'purple',type:'relic',desc:'Endless only — Every 8 endless battles, gain +5 Max HP.',apply:p=>{p.relMoltingDoctrine=true;}},
+  {id:'rel_feathered_clock',name:'Feathered Clock',tier:'purple',type:'relic',desc:'Endless only — Every third battle, start with +1 Energy.',apply:p=>{p.relFeatheredClock=true;}},
+  {id:'rel_endless_thesis',name:'Endless Thesis',tier:'purple',type:'relic',desc:'Endless only — Endless reward choices guarantee one Blue+ option.',apply:p=>{p.relEndlessThesis=true;}},
+  {id:'rel_crown_long_hunt',name:'Crown of the Long Hunt',tier:'gold',type:'relic',desc:'Endless only — After each boss kill, gain a random crown stat boon.',apply:p=>{p.relCrownLongHunt=true;}},
+];
+
+const ENDLESS_MUTATIONS = [
+  {id:'mut_blood_moon',name:'Blood Moon',tier:'purple',type:'mutation',desc:'Endless only — Bleed you apply deals double damage, but enemies gain +10% ATK.',apply:p=>{p.mutBloodMoon=true;}},
+  {id:'mut_venom_season',name:'Venom Season',tier:'purple',type:'mutation',desc:'Endless only — Poison lasts +1 turn, but Max HP -10%.',apply:p=>{p.mutVenomSeason=true;p.stats.maxHp=Math.max(1,Math.floor(p.stats.maxHp*0.9));p.stats.hp=Math.min(p.stats.hp,p.stats.maxHp);}},
+  {id:'mut_gale_tempo',name:'Gale Tempo',tier:'purple',type:'mutation',desc:'Endless only — SPD bonuses doubled, Dodge bonuses halved.',apply:p=>{p.mutGaleTempo=true;}},
+  {id:'mut_arc_overload',name:'Arc Overload',tier:'purple',type:'mutation',desc:'Endless only — Spells deal +30% damage, but cost +1 Energy.',apply:p=>{p.mutArcOverload=true;}},
+  {id:'mut_hunters_cruelty',name:"Hunter's Cruelty",tier:'purple',type:'mutation',desc:'Endless only — +20% execute damage (<50% HP), but post-battle healing halved.',apply:p=>{p.mutHuntersCruelty=true;}},
+  {id:'mut_iron_sky',name:'Iron Sky',tier:'purple',type:'mutation',desc:'Endless only — +2 DEF and +2 MDEF, but -2 SPD.',apply:p=>{p.mutIronSky=true;p.stats.def+=2;p.stats.mdef=(p.stats.mdef||0)+2;p.stats.spd=Math.max(1,(p.stats.spd||1)-2);}},
+  {id:'mut_sudden_flight',name:'Sudden Flight',tier:'purple',type:'mutation',desc:'Endless only — First action each battle +25% effectiveness.',apply:p=>{p.mutSuddenFlight=true;}},
+  {id:'mut_dark_chorus',name:'Dark Chorus',tier:'purple',type:'mutation',desc:'Endless only — Fear lasts +1 turn, but Crit Chance -8%.',apply:p=>{p.mutDarkChorus=true;p.stats.critChance=Math.max(0,(p.stats.critChance||0)-8);}},
+  {id:'mut_razor_instinct',name:'Razor Instinct',tier:'purple',type:'mutation',desc:'Endless only — Crit damage +40%, but non-crits deal -10%.',apply:p=>{p.mutRazorInstinct=true;}},
+  {id:'mut_long_war',name:'Long War',tier:'gold',type:'mutation',desc:'Endless only — Every 5 endless battles gain +1 random stat, but shop costs +15%.',apply:p=>{p.mutLongWar=true;}},
+];
+
+function isEndlessRunActive(){ return !!(G.endlessMode && (G.stage||0)>20); }
+function getEndlessRewardPool(kind){
+  const base = kind==='augment' ? ENDLESS_SKILL_AUGMENTS : (kind==='mutation' ? ENDLESS_MUTATIONS : ENDLESS_RELICS);
+  return base.map(entry=>createReward({
+    ...entry,
+    kind: entry.type || kind || 'relic',
+    source:['battle','endless'],
+    endlessOnly:true,
+    oncePerRun:true,
+    uiText:{
+      icon:entry.type==='mutation'?'🧬':entry.type==='augment'?'🪶':'🗿',
+      name:entry.name,
+      desc:entry.desc,
+    }
+  }));
+}
+function hasEndlessReward(id){
+  return !!G.runUpgradesPurchased?.has(id);
+}
+function rollEndlessReward(kind='relic'){
+  if(!isEndlessRunActive()) return null;
+  const pool=getEndlessRewardPool(kind);
+  const [pick]=rollRewardPool(pool,{count:1,predicates:[REWARD_FILTERS.endless,REWARD_FILTERS.notRunLocked()]});
+  return pick||null;
+}
+function applyEndlessProgressionMilestones(){
+  if(!isEndlessRunActive()) return;
+  const eb=G.endlessBattle||0;
+  const p=G.player;
+  if(!p) return;
+  // periodic relic gains
+  if(p.relEndlessTalon && eb%5===0) p.stats.atk+=1;
+  if(p.relEndlessPlumage && eb%5===0) p.stats.def+=1;
+  if(p.relEndlessVerse && eb%5===0) p.stats.matk=(p.stats.matk||0)+1;
+  if(p.relEndlessWard && eb%5===0) p.stats.mdef=(p.stats.mdef||0)+1;
+  if(p.relLongHunt && eb%6===0) p.stats.spd=(p.stats.spd||0)+1;
+  if(p.relDuelRecord && eb%3===0) p.stats.critChance=(p.stats.critChance||0)+1;
+  if(p.relMoltingDoctrine && eb%8===0){ p.stats.maxHp+=5; p.stats.hp=Math.min(p.stats.maxHp,p.stats.hp+5); }
+  if(p.relWindLedger && eb%4===0) p.relWindLedgerStacks=Math.min(5,(p.relWindLedgerStacks||0)+1);
+  if(p.mutLongWar && eb%5===0){
+    const stats=['atk','def','matk','mdef','spd'];
+    const key=stats[Math.floor(Math.random()*stats.length)];
+    p.stats[key]=(p.stats[key]||0)+1;
+  }
+}
+
 function rollUpgradeCard(){
   const tier=rollRarity();
-  const pool=getUpgradePool().filter(c=>c.tier===tier);
-  return pool.length?pool[Math.floor(Math.random()*pool.length)]:null;
+  const [pick]=rollRewardPool(CORE_UPGRADE_REWARDS,{count:1,predicates:[REWARD_FILTERS.tier(tier)]});
+  return pick||null;
 }
 
 const REWARD_TIERS = {
@@ -1330,6 +1543,7 @@ const ALL_REWARDS = [
   {id:'l_trueSight', tier:'gold', icon:'👁️', name:'True Sight', desc:'All skills: -12% miss chance (min 0%)', tags:['utility','accuracy'], apply:p=>{ p.missReduce=(p.missReduce||0)+0.12; }},
   {id:'l_roostFeast', tier:'gold', icon:'🔥', name:'Eternal Roost', desc:'Full heal + +12% Max HP extra heal after every battle', tags:['sustain','scaling'], apply:p=>{ p.stats.hp=p.stats.maxHp; p.postBattleHealBonusPct=(p.postBattleHealBonusPct||0)+0.12; }},
 ];
+const CORE_UPGRADE_REWARDS = ALL_REWARDS.map(rw=>createReward({...rw,kind:'upgrade',source:['battle','shop'],oncePerRun:rw.stackable===false}));
 
 // ============================================================
 //  LEARNABLE ABILITIES — universal abilities gained at level-up
@@ -2340,38 +2554,17 @@ const MAX_ENERGY_GAIN_PER_TURN=2;
 // ============================================================
 //  ENERGY (RECOMMENDED) — StS full refill (size + class)
 // ============================================================
-const ENERGY_BY_SIZE = { tiny:5, small:4, medium:3, large:2, xl:2 };
-const ENERGY_DELTA_BY_CLASS = {
-  assassin:1, bard:1, tank:-1,
-  ranger:1, knight:0, mage:0, summoner:0, rogue:1, bruiser:0,
-};
+const ENERGY_BY_SIZE = { tiny:5, small:5, medium:4, large:2, xl:2 };
+const ENERGY_STACK_CAP_BY_SIZE = { tiny:3, small:3, medium:3, large:3, xl:3 };
 const MIN_MAX_ENERGY = 2;
-const MAX_MAX_ENERGY_NORMAL = 5;
-const MAX_MAX_ENERGY_HARD = 6;
-
-function getClassEnergyGrowthBonus(player){
-  const bd=BIRDS[player?.birdKey]||{};
-  const cls=String(player?.class||bd.class||'knight').toLowerCase();
-  const lv=player?.birdLevel||1;
-
-  // Harder rhythm differences by class as runs go longer
-  if((cls==='assassin' || cls==='ranger' || cls==='rogue') && lv>=10) return 1;
-  if((cls==='bard' || cls==='mage') && lv>=12) return 1;
-  if(cls==='summoner' && lv>=14) return 1;
-  if((cls==='tank' || cls==='knight' || cls==='bruiser') && lv>=16) return 1;
-  return 0;
-}
 
 function computePlayerMaxEnergy(){
   const bd=BIRDS[G.player?.birdKey]||{};
   const size=(G.player?.size||bd.size||'medium').toLowerCase();
-  const cls=(bd.class||'knight').toLowerCase();
-  const base=ENERGY_BY_SIZE[size] ?? 4;
-  const delta=ENERGY_DELTA_BY_CLASS[cls] ?? 0;
-  const growth=getClassEnergyGrowthBonus(G.player);
-  const bonus=G.player?.energyBonus || 0;
-  const cap=(bonus>0)?MAX_MAX_ENERGY_HARD:MAX_MAX_ENERGY_NORMAL;
-  return Math.max(MIN_MAX_ENERGY, Math.min(cap, base+delta+growth+bonus));
+  const base=ENERGY_BY_SIZE[size] ?? 3;
+  const sizeStackCap=ENERGY_STACK_CAP_BY_SIZE[size] ?? 3;
+  const bonus=Math.max(0, Math.min(sizeStackCap, G.player?.energyBonus||0));
+  return Math.max(MIN_MAX_ENERGY, base+bonus);
 }
 
 // ============================================================
@@ -2409,6 +2602,25 @@ function runModuleHook(hook, payload){
   }
 }
 globalThis.registerGameModule = registerGameModule;
+
+let _warnedMissingAbilityPassiveUpgradePack = false;
+function initDataPacks(){
+  const pack = globalThis.ABILITY_PASSIVE_UPGRADE_PACK;
+  if(pack && typeof pack === 'object'){
+    G.dataPacks = G.dataPacks || {};
+    G.dataPacks.abilityPassiveUpgrade = Object.freeze({
+      STATUS_GLOSSARY: pack.STATUS_GLOSSARY || Object.freeze({}),
+      ABILITY_DEFS: pack.ABILITY_DEFS || Object.freeze({}),
+    });
+    return;
+  }
+  G.dataPacks = G.dataPacks || {};
+  G.dataPacks.abilityPassiveUpgrade = null;
+  if(!_warnedMissingAbilityPassiveUpgradePack){
+    _warnedMissingAbilityPassiveUpgradePack = true;
+    console.warn('[DataPack] ABILITY_PASSIVE_UPGRADE_PACK missing; metadata overlays disabled.');
+  }
+}
 
 let G = {
   player: null, enemy: null, stage: 1, turn: 'player', turnPhase:TURN.PLAYER,
@@ -2463,7 +2675,34 @@ let G = {
   actionQueue:[],
   actionBusy:false,
   speed:1,
+  ui:{
+    gameMode:'story',
+    battleLayout:'desktop',
+    selectionView:'size',
+    expandedBird:null,
+    combatDropdownOpen:{player:true,enemy:true},
+  },
 };
+
+const DEFAULT_UI_STATE = Object.freeze({
+  gameMode:'story',
+  battleLayout:'desktop',
+  selectionView:'size',
+  expandedBird:null,
+  combatDropdownOpen:{player:true,enemy:true},
+});
+
+function ensureUIState(){
+  if(!G.ui || typeof G.ui!=='object') G.ui={};
+  G.ui.gameMode = (G.ui.gameMode==='endless') ? 'endless' : 'story';
+  G.ui.battleLayout = (G.ui.battleLayout==='mobile') ? 'mobile' : 'desktop';
+  G.ui.selectionView = String(G.ui.selectionView || DEFAULT_UI_STATE.selectionView);
+  G.ui.expandedBird = G.ui.expandedBird ? String(G.ui.expandedBird) : null;
+  if(!G.ui.combatDropdownOpen || typeof G.ui.combatDropdownOpen!=='object') G.ui.combatDropdownOpen={};
+  G.ui.combatDropdownOpen.player = !!G.ui.combatDropdownOpen.player;
+  G.ui.combatDropdownOpen.enemy = !!G.ui.combatDropdownOpen.enemy;
+  return G.ui;
+}
 
 const TELEMETRY_KEY='avianAscent_telemetry_v1';
 function loadTelemetry(){
@@ -2735,6 +2974,7 @@ function saveRun() {
       collectedRewards: G.collectedRewards||[],
       runUpgradesPurchased: [...(G.runUpgradesPurchased||new Set())],
       codex: JSON.parse(JSON.stringify(G.codex||{abilities:{},enemies:{},birds:{},artifacts:{},statuses:{}})),
+      ui: JSON.parse(JSON.stringify(ensureUIState())),
       inBattle: onBattleScreen && !!G.enemy && !G.battleOver,
       battle: (onBattleScreen && G.enemy && !G.battleOver) ? {
         enemy: JSON.parse(JSON.stringify(G.enemy)),
@@ -2764,12 +3004,17 @@ function deleteSave() {
 function continueRun() {
   const save=loadSaveData();
   if(!save) return;
+  G.ui = {...DEFAULT_UI_STATE, ...(save.ui||{})};
+  ensureUIState();
   G.endlessMode=save.endlessMode||false;
+  if(!save.ui) G.ui.gameMode = G.endlessMode ? 'endless' : 'story';
+  applyUIStateToDOM();
   G.endlessBattle=save.endlessBattle||0;
   G.bossKills=save.bossKills||0;
   G.stage=save.stage||1;
   G.collectedRewards=save.collectedRewards||[];
   G.player=save.player;
+  if(!Array.isArray(G.player.endlessRewards)) G.player.endlessRewards=[];
   G.runUpgradesPurchased=new Set(save.runUpgradesPurchased||[]);
   G.codex=save.codex||{abilities:{},enemies:{},birds:{},artifacts:{},statuses:{}};
   // Re-attach passive reference (fns can't be serialized)
@@ -2838,11 +3083,12 @@ const SIZE_LABELS = {tiny:'Tiny',small:'Small',medium:'Medium',large:'Large',xl:
 const CLASS_ORDER = ['assassin','knight','mage','bard','tank','ranger','summoner'];
 const CLASS_LABELS = {assassin:'⚔️ Assassin',knight:'🛡️ Knight',mage:'✨ Mage',bard:'🎵 Bard',tank:'🪨 Tank',ranger:'🏹 Ranger',summoner:'🌊 Summoner'};
 const CLASS_FLAVOR = {assassin:'Burst dmg, crit fishing, evasive.',knight:'Balanced physical, DEF/ACC.',mage:'Pure songs/spells, debuff control.',bard:'Song mix + physical hybrid.',tank:'Sustain bricks, high HP.',ranger:'Projectile pressure, pierce and slows.',summoner:'Mob caller, flock tactics.'};
-let G_selView = 'size';
-let G_classFilter = 'all';
 let shopPurchaseMade = false;
 
 function initSelection() {
+  const ui=ensureUIState();
+  if(!ui.expandedBird && G.selected) ui.expandedBird=G.selected;
+  applyUIStateToDOM();
   // Check for saved run
   const save=loadSaveData();
   if(save&&save.player){
@@ -2861,21 +3107,23 @@ function initSelection() {
   // Build bird grid
   buildSelectionViewButtons();
   buildGameModeToggle();
-  buildBirdGrid(G_selView);
+  buildBirdGrid();
   renderHighscoreBoard();
 }
 
 function buildSelectionViewButtons(){
   const host=document.getElementById('view-toggle');
   if(!host) return;
+  const ui=ensureUIState();
   const btns=[['all','All'],['size','By Size'],...CLASS_ORDER.map(c=>[`class:${c}`,idToClassLabel(c)])];
-  host.innerHTML=btns.map(([id,label])=>`<button class="view-toggle-btn ${G_selView===id?'active':''}" onclick="setSelView('${id}',this)">${label}</button>`).join('');
+  host.innerHTML=btns.map(([id,label])=>`<button class="view-toggle-btn ${ui.selectionView===id?'active':''}" onclick="setSelView('${id}',this)">${label}</button>`).join('');
 }
 
 function buildGameModeToggle(){
   const host=document.getElementById('game-mode-toggle');
   if(!host) return;
-  const isEndless=!!(G._gameMode==='endless' || document.getElementById('endless-check')?.checked);
+  const ui=ensureUIState();
+  const isEndless=(ui.gameMode==='endless');
   host.innerHTML=`<div class="mode-toggle"><button class="mode-toggle-btn ${!isEndless?'active':''}" onclick="setGameMode('story',this)">📖 Story Mode</button><button class="mode-toggle-btn ${isEndless?'active':''}" onclick="setGameMode('endless',this)">♾ Endless Mode</button></div>`;
 }
 
@@ -2941,6 +3189,7 @@ function renderStarterFallbackGrid(reason=''){
 
   if(BIRDS?.sparrow){
     G.selected='sparrow';
+    ensureUIState().expandedBird='sparrow';
     updateAscentPanel('sparrow');
   }
   console.warn('Selection recovery fallback used.', reason);
@@ -2995,20 +3244,18 @@ function selectDifficulty(id) {
 }
 
 function setSelView(view, btn) {
-  if(String(view).startsWith('class:')){
-    G_classFilter=String(view).split(':')[1]||'all';
-    G_selView=view;
-    buildBirdGrid('all');
-  }else{
-    G_selView = view;
-    if(view!=='all') G_classFilter='all';
-    buildBirdGrid(view);
-  }
-  document.querySelectorAll('.view-toggle-btn').forEach(b=>b.classList.remove('active'));
-  btn?.classList.add('active');
+  const ui=ensureUIState();
+  ui.selectionView = String(view||'size');
+  buildSelectionViewButtons();
+  buildBirdGrid();
 }
 
-function buildBirdGrid(view='size') {
+function buildBirdGrid() {
+  const ui=ensureUIState();
+  const selectedView=ui.selectionView;
+  const view = String(selectedView).startsWith('class:') ? 'all' : selectedView;
+  const classFilter = String(selectedView).startsWith('class:') ? (String(selectedView).split(':')[1]||'all') : 'all';
+
   const grid = document.getElementById('bird-grid');
   if(!grid) return;
   grid.innerHTML = '';
@@ -3016,7 +3263,7 @@ function buildBirdGrid(view='size') {
   let safeBirdEntries = Object.entries(BIRDS).filter(([,b])=>{
     return !!(b && b.stats && Number.isFinite(b.stats.hp) && Number.isFinite(b.stats.atk) && Number.isFinite(b.stats.def));
   });
-  if(G_classFilter!=='all') safeBirdEntries = safeBirdEntries.filter(([,b])=>String(b.class||'').toLowerCase()===G_classFilter);
+  if(classFilter!=='all') safeBirdEntries = safeBirdEntries.filter(([,b])=>String(b.class||'').toLowerCase()===classFilter);
   const fallbackStarters = ['sparrow','goose','blackbird','crow','macaw','robin'];
 
   // Compute global max stats for bars
@@ -3097,7 +3344,7 @@ function buildBirdGrid(view='size') {
   });
 
   const label = document.getElementById('bird-count-label');
-  if(label) label.textContent = `${totalUnlocked}/${totalBirds} available${G_classFilter!=='all' ? ` · ${idToClassLabel(G_classFilter)}`:''}`;
+  if(label) label.textContent = `${totalUnlocked}/${totalBirds} available${classFilter!=='all' ? ` · ${idToClassLabel(classFilter)}`:''}`;
 
   // Hard fallback: never allow an empty/brick select screen.
   if(totalBirds===0){
@@ -3142,7 +3389,8 @@ function buildBirdExpandedContent(key, bird){
 
 function buildBirdCard(key, bird, locked, globalMax) {
   const card = document.createElement('div');
-  card.className = 'bird-card' + (locked ? ' bird-locked' : '') + (G.selected===key?' selected':'');
+  const ui=ensureUIState();
+  card.className = 'bird-card' + (locked ? ' bird-locked' : '') + (ui.expandedBird===key?' selected':'');
   if (!locked) card.onclick = () => selectBird(key, card);
 
   const cls = bird.class||'knight';
@@ -3178,7 +3426,7 @@ function buildBirdCard(key, bird, locked, globalMax) {
       <div class="bird-nm" style="color:#555;font-size:.8rem;">${bird.name}</div>
       <div class="lock-overlay"><span class="lock-icon" style="font-size:1rem;">🔒</span><div class="lock-label" style="font-size:.6rem;color:#555;line-height:1.3;">${unlockLabel}</div></div>`;
   } else {
-    const expanded = (G.selected===key) ? buildBirdExpandedContent(key,bird) : '';
+    const expanded = (ui.expandedBird===key) ? buildBirdExpandedContent(key,bird) : '';
     card.innerHTML = `
       <div class="bird-card-head">
         <span class="class-badge class-${cls}">${(cls).toUpperCase()}</span>
@@ -3193,9 +3441,9 @@ function buildBirdCard(key, bird, locked, globalMax) {
 }
 
 function selectBird(key, el) {
+  const ui=ensureUIState();
   G.selected = key;
-  document.querySelectorAll('.bird-card').forEach(c=>c.classList.remove('selected'));
-  if(el) el.classList.add('selected');
+  ui.expandedBird = key;
   // Re-render cards so the selected card expands inline (no side panel/auto-scroll).
   initSelectionSafe();
 }
@@ -3287,7 +3535,7 @@ function beginRun(){ return startGame(); }
 // ============================================================
 function startGame() {
   if(!G.selected) return;
-  G.endlessMode = (G._gameMode==='endless') || !!document.getElementById('endless-check')?.checked;
+  G.endlessMode = (ensureUIState().gameMode==='endless');
   G.difficulty = G._selectedDifficulty || 'juvenile';
   const bd = BIRDS[G.selected];
   G.collectedRewards=[];
@@ -3305,6 +3553,7 @@ function startGame() {
     goldCritMult: 1.5,
     immuneParalyze: bd.passive?.immuneParalyze||false,
     poisonCap: 5,
+    endlessRewards: [],
     critChance: bd.stats.critChance||5,
     passive: bd.passive||null,
     cardDodge: 0,
@@ -3379,8 +3628,15 @@ function resetForNewBattle(){
   G._goldReplaceMode=false;
   G.turnCount=0;
   G._incomingAttackKind=null;
+  G._firstAttackUsed=false;
+  G._firstSpellUsed=false;
+  G._spellCastCount=0;
   if(G.player){
     G.player._mimicStored=null;
+    G.player._firstHitReducedUsed=false;
+    G.player._lowHpSpdApplied=false;
+    G.player._lowHpDefApplied=false;
+    G.player._survivorMoltUsed=false;
     G.player._mimicUsed=false;
     G.player._mimicAbility=null;
   }
@@ -3447,6 +3703,7 @@ function loadStage() {
   }
   const scaled=enemyScaleFactor(ed, G.stage, diffMult, G.bossKills||0);
   ed.hp=scaled.hp; ed.maxHp=scaled.maxHp;
+  if(G.player?.mutBloodMoon){ ed.atk=Math.floor(ed.atk*1.10); ed.matk=Math.floor((ed.matk||ed.atk)*1.10); }
   ed.atk=scaled.atk; ed.def=scaled.def; ed.spd=scaled.spd;
   ed.acc=scaled.acc; ed.dodge=scaled.dodge; ed.mdodge=scaled.mdodge;
   ed.mdef=scaled.mdef; ed.matk=scaled.matk;
@@ -3476,6 +3733,12 @@ function loadStage() {
   // Kookaburra ambush
   const bd2=BIRDS[G.player.birdKey||'sparrow'];
   if(bd2&&bd2.passive&&bd2.passive.onBattleStart) bd2.passive.onBattleStart(G.player);
+  if((G.player?.openingEnemyFear||0)>0){
+    G.enemyStatus.feared=Math.max(G.enemyStatus.feared||0, G.player.openingEnemyFear);
+  }
+  if(G.player?.relTensionCoil && G.player.stats.hp<=Math.floor((G.player.stats.maxHp||1)*0.5)){
+    G.playerStatus.tensionCoil={turns:1,pct:0.15};
+  }
   updateComboMeter();
   // Speed determines first turn
   const pSpd=G.player.stats.spd, eSpd=G.enemy.stats.spd;
@@ -3656,6 +3919,8 @@ Estimated damage: ${eab.dmg||(`${low}-${high}`)}`;
   document.getElementById('enemy-shield-overlay').className='shield-overlay'+(G.enemyStatus.defending>0?' active':'');
 
   renderEnemyPlan();
+  wireCombatDropdownStateSync();
+  applyUIStateToDOM();
   renderActions();
 }
 
@@ -4135,6 +4400,25 @@ function installErrorHUD(){
 }
 
 
+
+const ABILITY_DISPLAY_TAGS = {
+  rapidPeck:['BASIC'], blackPeck:['BASIC'], gooseHonk:['BASIC'], headWhip:['BASIC'], kick:['BASIC'], raptorKick:['BASIC'],
+  talonStrike:['HEAVY'], heavyTalon:['HEAVY'], bodySlam:['HEAVY'], trample:['HEAVY'], skyStrike:['HEAVY','SIGNATURE'],
+  windSlash:['SPELL'], shriekwave:['SPELL','CONTROL'], owlPsyche:['SPELL','CONTROL','SIGNATURE'], mudLash:['SPELL','CONTROL','SIGNATURE'],
+  murderMurmuration:['MULTI','SIGNATURE'], stickLance:['HEAVY','SIGNATURE'], shoebillClamp:['HEAVY','CONTROL','SIGNATURE'],
+  fishSnatcher:['UTILITY','HEAL','SIGNATURE'], fruitBomb:['SPELL','SIGNATURE'],
+  roost:['HEAL'], preen:['UTILITY','HEAL'], crowDefend:['GUARD'], guard:['GUARD'], evade:['UTILITY'],
+  intimidate:['CONTROL'], threatDisplay:['CONTROL'], dreadCall:['SPELL','CONTROL'],
+  victoryChant:['UTILITY'], battleChirp:['UTILITY'], battleFocus:['UTILITY'],
+  diveSnatch:['UTILITY','SIGNATURE'], stealShine:['UTILITY','SIGNATURE'], featherFlick:['UTILITY'], graceStep:['UTILITY'],
+  savageKick:['HEAVY','SIGNATURE'], raptorKickFrenzy:['HEAVY','MULTI','SIGNATURE'], honkTerror:['CONTROL','SIGNATURE'],
+  rallyCall:['UTILITY'], focusSight:['UTILITY'], battleRhythm:['UTILITY'],
+};
+function getAbilityDisplayTags(ab){
+  const id=ab?.id||'';
+  return ABILITY_DISPLAY_TAGS[id] || [String((ab?.type||ab?.btnType||'utility')).toUpperCase()];
+}
+
 function renderActions() {
   const grid=document.getElementById('actions-grid'); grid.innerHTML='';
   renderEnergyOrbs();
@@ -4208,7 +4492,7 @@ function renderActions() {
     }
     btn.innerHTML=`
       <span class="btn-name">${ab.name}</span>
-      <span class="btn-type">${ab.type}</span>
+      <span class="btn-type">${getAbilityDisplayTags(ab).map(t=>`[${t}]`).join('')}</span>
       <span class="btn-cost">${btnCostText}</span>
       ${modTxt}
       ${ab.level>1?`<span class="ab-lv-badge">Lv${ab.level}</span>`:''}
@@ -4786,8 +5070,11 @@ function enemyScaleFactor(base, stage, diffMult, bossKills){
   const isBoss=(s%10===0);
   const bossIndex=Math.floor((s-1)/10);
 
-  // Smoother early curve, better late readability
-  const growth=Math.pow(1.038,s-1);
+  // Smoother early curve + dedicated endless curve (endless systems are NOT used in story mode)
+  const endlessDepth=Math.max(0,s-20);
+  const growthBase=Math.pow(1.038,s-1);
+  const endlessCurve=endlessDepth<=0?1:(endlessDepth<=20?Math.pow(1.030,endlessDepth):Math.pow(1.030,20)*Math.pow(1.022,endlessDepth-20));
+  const growth=growthBase*endlessCurve;
   const hpStageMult=Math.pow(growth,1.12);
   const atkStageMult=Math.pow(growth,0.88);
   const defStageMult=Math.pow(growth,0.82);
@@ -4904,8 +5191,47 @@ function applyPlayerSlow(spdPenalty,dodgePenalty,turns){
 
 function dealDamage(target,amount,isCrit=false,isMagic=false,srcAbility=null) {
   let dmg=Math.max(1,amount);
-  const critMult=G.player.goldCritMult||1.5;
+  const critMult=(G.player.goldCritMult||1.5) + (isCrit?(G.player?.critDamageBonusPct||0):0);
   if (isCrit) dmg=Math.floor(dmg*critMult);
+  if(target==='enemy'){
+    const ab=G._activePlayerAbility||null;
+    const kind=String(ab?.btnType||ab?.type||ABILITY_TEMPLATES?.[ab?.id]?.btnType||ABILITY_TEMPLATES?.[ab?.id]?.type||'').toLowerCase();
+    const isAttack=(kind==='physical'||kind==='ranged');
+    const isSpell=(kind==='spell');
+    if(G.enemyStatus?.bleed?.stacks>0){
+      dmg += (G.player?.vsBleedFlatBonus||0);
+      if((G.player?.vsBleedPctBonus||0)>0) dmg=Math.floor(dmg*(1+G.player.vsBleedPctBonus));
+    }
+    if(isSpell && !G._firstSpellUsed && (G.player?.firstSpellBattleBonusPct||0)>0){
+      dmg=Math.floor(dmg*(1+G.player.firstSpellBattleBonusPct));
+    }
+    if(isSpell && (G.player?.everyFourthSpellBonusPct||0)>0 && (((G._spellCastCount||0)+1)%4===0)){
+      dmg=Math.floor(dmg*(1+G.player.everyFourthSpellBonusPct));
+    }
+    if(isSpell && (G.player?.augFourthSpellEcho||0)>0 && (((G._spellCastCount||0)+1)%4===0)){
+      dmg=Math.floor(dmg*(1+G.player.augFourthSpellEcho));
+    }
+    if(isSpell && (G.player?.augSpellDmgPct||0)>0) dmg=Math.floor(dmg*(1+G.player.augSpellDmgPct));
+    if(isSpell && G.enemyStatus?.poison?.stacks>0 && (G.player?.augSpellVsPoisonPct||0)>0) dmg=Math.floor(dmg*(1+G.player.augSpellVsPoisonPct));
+    if(isSpell && (G.enemyStatus?.feared||0)>0 && (G.player?.augSpellVsFearPct||0)>0) dmg=Math.floor(dmg*(1+G.player.augSpellVsFearPct));
+    if(isAttack && (G.player?.augAttackVsBleedPct||0)>0 && G.enemyStatus?.bleed?.stacks>0) dmg=Math.floor(dmg*(1+G.player.augAttackVsBleedPct));
+    if(isAttack && (G.player?.augFirstAttackBattlePct||0)>0 && !G._firstAttackUsed) dmg=Math.floor(dmg*(1+G.player.augFirstAttackBattlePct));
+    if(isAttack && (G.player?.augAttackExecutePct||0)>0 && G.enemy.stats.hp<=Math.floor((G.enemy.stats.maxHp||1)*0.5)) dmg=Math.floor(dmg*(1+G.player.augAttackExecutePct));
+    if(isAttack && (G.player?.augThirdAttackPct||0)>0){
+      G.player._augAtkCounter=(G.player._augAtkCounter||0)+1;
+      if((G.player._augAtkCounter%3)===0) dmg=Math.floor(dmg*(1+G.player.augThirdAttackPct));
+    }
+    if(G.playerStatus?.huntersMarkBonusPct){ dmg=Math.floor(dmg*(1+G.playerStatus.huntersMarkBonusPct)); delete G.playerStatus.huntersMarkBonusPct; }
+    if(G.playerStatus?.postDefAtkPct){ dmg=Math.floor(dmg*(1+G.playerStatus.postDefAtkPct)); delete G.playerStatus.postDefAtkPct; }
+    if(G.playerStatus?.tensionCoil?.turns>0){ dmg=Math.floor(dmg*(1+G.playerStatus.tensionCoil.pct)); }
+    if(G.player?.mutSuddenFlight && !G.player._mutSuddenFlightUsed){ dmg=Math.floor(dmg*1.25); G.player._mutSuddenFlightUsed=true; }
+    if(G.player?.mutHuntersCruelty && G.enemy.stats.hp<=Math.floor((G.enemy.stats.maxHp||1)*0.5)) dmg=Math.floor(dmg*1.20);
+    if(G.player?.mutRazorInstinct && !isCrit) dmg=Math.floor(dmg*0.90);
+    if(isAttack && !G.playerTurnFlags?.firstAttackResolved && (G.player?.firstAttackEachTurnBonusPct||0)>0){
+      dmg=Math.floor(dmg*(1+G.player.firstAttackEachTurnBonusPct));
+      if(G.playerTurnFlags) G.playerTurnFlags.firstAttackResolved=true;
+    }
+  }
   let wasBlocked=false;
   const def=target==='enemy'?G.enemyStatus.defending:G.playerStatus.defending;
   const defAb=G.player.abilities.find(a=>a.id==='crowDefend');
@@ -4924,6 +5250,8 @@ function dealDamage(target,amount,isCrit=false,isMagic=false,srcAbility=null) {
   } else { G._currentPiercePct=0; }
   if (target==='player') {
     if(!isMagic) dmg=Math.max(1,Math.floor(dmg*calcDefenseMultiplier(G.player.stats.def||0)));
+    if((G.enemyStatus?.feared||0)>0 && G.player?.relTerrorLedger) dmg=Math.max(1,Math.floor(dmg*0.90));
+    if(G.playerStatus?.ironResolve && G.playerStatus.ironResolve.turns>0) dmg=Math.max(1,Math.floor(dmg*0.80));
     else dmg=Math.max(1,Math.floor(dmg*calcDefenseMultiplier(G.player.stats.mdef||0)));
     const _bd=BIRDS[G.player.birdKey];
     const _p=_bd&&_bd.passive;
@@ -4962,7 +5290,26 @@ function dealDamage(target,amount,isCrit=false,isMagic=false,srcAbility=null) {
       if(G.playerStatus.parry<=0){delete G.playerStatus.parry;delete G.playerStatus.parryLevel;delete G.playerStatus.parryMult;delete G.playerStatus.parryTakenMult;}
       renderStatuses('player-status',G.playerStatus);
     }
+    const _firstHitRed=Math.max((G.player?.firstHitReduce||0),(G.player?.relIronLedger?0.12:0));
+    if(_firstHitRed>0 && !G.player._firstHitReducedUsed){
+      dmg=Math.max(1,Math.floor(dmg*(1-_firstHitRed)));
+      G.player._firstHitReducedUsed=true;
+    }
     G.player.stats.hp-=dmg;
+    if((G.player?.lowHpSpdBonus||0)>0 && !G.player._lowHpSpdApplied && G.player.stats.hp<=Math.floor((G.player.stats.maxHp||1)*0.5)){
+      G.player.stats.spd=(G.player.stats.spd||0)+G.player.lowHpSpdBonus;
+      G.player._lowHpSpdApplied=true;
+    }
+    if((G.player?.lowHpDefBonus||0)>0 && !G.player._lowHpDefApplied && G.player.stats.hp<=Math.floor((G.player.stats.maxHp||1)*0.5)){
+      G.player.stats.def=(G.player.stats.def||0)+G.player.lowHpDefBonus;
+      G.player._lowHpDefApplied=true;
+    }
+    if((G.player?.survivorMoltHeal||0)>0 && !G.player._survivorMoltUsed && G.player.stats.hp>0 && G.player.stats.hp<=Math.floor((G.player.stats.maxHp||1)*0.3)){
+      const heal=G.player.survivorMoltHeal;
+      G.player.stats.hp=Math.min((G.player.stats.maxHp||1),G.player.stats.hp+heal);
+      G.player._survivorMoltUsed=true;
+      spawnFloat('player',`+${heal}`,'fn-heal');
+    }
     if(G.playerStatus.countering&&dmg>0){
       const c=G.playerStatus.countering;
       const back=Math.max(1,Math.floor(dmg*(c.mult||1.2)));
@@ -5010,6 +5357,20 @@ function dealDamage(target,amount,isCrit=false,isMagic=false,srcAbility=null) {
     }
     if(G.comboReady&&!isCrit){isCrit=true;dmg=Math.max(1,Math.floor(dmg*(G.player.goldCritMult||1.5)));consumeCombo();logMsg('🔥 Combo Crit!','crit');}
     G.enemy.stats.hp-=dmg;
+    const _atkKind=String(srcAbility?.btnType||srcAbility?.type||G._activePlayerAbility?.btnType||G._activePlayerAbility?.type||'').toLowerCase();
+    if((_atkKind==='physical'||_atkKind==='ranged') && dmg>0){
+      if((G.player?.bleedOnHitChance||0)>0 && chance(Math.min(95,G.player.bleedOnHitChance))) applyAilment('enemy','bleed',1);
+      if((G.player?.poisonOnHitChance||0)>0 && chance(Math.min(95,G.player.poisonOnHitChance))) applyAilment('enemy','poison',1);
+      if((G.player?.augAttackBleedChance||0)>0 && chance(Math.min(95,G.player.augAttackBleedChance))) applyAilment('enemy','bleed',1);
+      if((G.player?.augCritBleed||0)>0 && isCrit) applyAilment('enemy','bleed',G.player.augCritBleed);
+      if((G.player?.relCarrionLedger||false) && (G.enemyStatus?.bleed?.stacks||0)>0) G.enemy.stats.hp=Math.max(0,G.enemy.stats.hp-1);
+      if((G.player?.augHuntersMarkPct||0)>0) G.playerStatus.huntersMarkBonusPct=G.player.augHuntersMarkPct;
+    }
+    if(_atkKind==='spell' && dmg>0){
+      if(G.player?.augSpellPoison) applyAilment('enemy','poison',1);
+      if(G.player?.augSpellCritPoison && isCrit) applyAilment('enemy','poison',1);
+      if(G.player?.augFirstSpellFear && !G._firstSpellUsed) applyAilment('enemy','feared',1);
+    }
     if(G.enemy?.id==='duke_blakiston' && (G.enemyStatus.wardens||0)>0){
       G.enemyStatus.wardens-=1;
       const rr=Math.max(1,Math.floor((G.enemy.stats.atk||8)*0.15));
@@ -5103,7 +5464,15 @@ function getPlayerMissChance(ab) {
   const classAdj=(tmpl.type==='physical'&&bClass==='assassin')?-2:(tmpl.type==='ranged'&&bClass==='ranger')?-2:(tmpl.type==='spell'&&MAGIC_CLASSES.has(bClass))?-1:0;
   const sizeAdj=(tmpl.type==='physical'&&bSize==='xl')?2:(tmpl.type==='physical'&&bSize==='tiny')?-1:0;
   const missReduce=((G.player&&G.player.missReduce)||0)*100;
-  return Math.max(floor, reduced - accBonus + tookiePenalty - (G.playerStatus.accDebuff||0) + classAdj + sizeAdj - missReduce);
+  let extra=0;
+  const kind=String(tmpl.btnType||tmpl.type||'').toLowerCase();
+  const isAttack=(kind==='physical'||kind==='ranged');
+  const isSpell=(kind==='spell');
+  if(isAttack) extra+=(G.player?.augAttackAcc||0);
+  if(isSpell) extra+=(G.player?.augSpellAcc||0);
+  if((G.player?.augPostDefAcc||0)>0 && G.playerStatus?.postDefAccNext){ extra += G.player.augPostDefAcc; delete G.playerStatus.postDefAccNext; }
+  if(G.player?.relHawkLedger && isEndlessRunActive()){ const eb=G.endlessBattle||0; if(eb>=10) extra+=8; if(eb>=20) extra+=8; if(eb>=30) extra+=8; }
+  return Math.max(floor, reduced - accBonus + tookiePenalty - (G.playerStatus.accDebuff||0) + classAdj + sizeAdj - missReduce - extra);
 }
 
 function getPlayerAccuracy() {
@@ -5118,7 +5487,12 @@ function getPlayerAccuracy() {
 // Check if player attack misses given ability miss chance + accuracy system
 // Returns true if miss
 function playerAttackMisses(ab) {
-  const moveMiss = getPlayerMissChance(ab);
+  const t=ABILITY_TEMPLATES?.[ab?.id]||ABILITY_TEMPLATES_EXTRA?.[ab?.id]||ab||{};
+  const kind=String(t.btnType||t.type||ab?.btnType||ab?.type||'').toLowerCase();
+  const isAttack=(kind==='physical'||kind==='ranged');
+  if(isAttack && !G._firstAttackUsed && G.player?.firstAttackAlwaysHit) return false;
+  let moveMiss = getPlayerMissChance(ab);
+  if(isAttack && !G._firstAttackUsed) moveMiss=Math.max(0,moveMiss-(G.player?.firstAttackAccBonus||0));
   return chance(moveMiss);
 }
 
@@ -5183,8 +5557,11 @@ function applyAilment(target,ailId,stacks=1) {
     if (!status[key]) status[key]={stacks:0,turns:3};
     const cap = G.player ? (G.player.poisonCap||5) : 5;
     const biomeBonus=(target==='player' && (G.biomeMod?.enemyPoisonPlus||0)>0)?G.biomeMod.enemyPoisonPlus:0;
-    status[key].stacks=Math.min((status[key].stacks||0)+stacks+biomeBonus, cap);
-    status[key].turns=3;
+    const fromPlayer=(target==='enemy');
+    const extraStacks=(fromPlayer&&key==='bleed')?(G.player?.bleedBonusStacks||0):0;
+    status[key].stacks=Math.min((status[key].stacks||0)+stacks+extraStacks+biomeBonus, cap);
+    const extraTurns=(fromPlayer&&key==='poison')?(G.player?.poisonExtraTurns||0):0;
+    status[key].turns=3+extraTurns;
   } else if (ailId==='weaken') {
     status.weaken=3;
   } else if (ailId==='paralyzed') {
@@ -5192,7 +5569,8 @@ function applyAilment(target,ailId,stacks=1) {
   } else if (ailId==='burning') {
     status.burning=3;
   } else if (ailId==='feared') {
-    status.feared=(status.feared||0)+stacks;
+    const extra=((target==='enemy')&&G.player?.mutDarkChorus)?1:0;
+    status.feared=(status.feared||0)+stacks+extra;
   } else if (ailId==='delayed') {
     // set by caller with specific dmg
   }
@@ -5202,7 +5580,15 @@ function applyAilment(target,ailId,stacks=1) {
 function getPlayerCritChance(ab) {
   let base = G.player.stats.critChance || 5;
   if (G.playerStatus.burning&&G.playerStatus.burning>0) base+=20;
-  return base;
+  const t=ABILITY_TEMPLATES?.[ab?.id]||ABILITY_TEMPLATES_EXTRA?.[ab?.id]||ab||{};
+  const kind=String(t.btnType||t.type||ab?.btnType||ab?.type||'').toLowerCase();
+  const isAttack=(kind==='physical'||kind==='ranged');
+  if(isAttack && !G._firstAttackUsed){
+    if(G.player?.firstAttackAlwaysCrit) return 100;
+    base += (G.player?.firstAttackCritBonus||0);
+  }
+  if(isAttack) base += (G.player?.augAttackCrit||0);
+  return Math.min(100,base);
 }
 
 function getPlayerHitBonus(ab) {
@@ -5217,7 +5603,8 @@ async function tickDoTs(who) {
   // Poison
   if (status.poison&&status.poison.stacks>0&&status.poison.turns>0) {
     const tickMult = who==='player' ? (G.player?.poisonTickMult||1) : 1;
-    const dmg=Math.max(1, Math.floor(status.poison.stacks * tickMult));
+    const flatBonus = who==='player' ? ((G.player?.poisonFlatBonus||0)+(G.player?.relVenomLedger?1:0)) : 0;
+    const dmg=Math.max(1, Math.floor(status.poison.stacks * tickMult)+flatBonus);
     stats.hp-=dmg;
     spawnFloat(who,`☣ -${dmg}`,'fn-poison');
     setHpBar(who,stats.hp,stats.maxHp);
@@ -5229,7 +5616,8 @@ async function tickDoTs(who) {
     await delay(500);
   }
   if (status.bleed&&status.bleed.stacks>0&&status.bleed.turns>0) {
-    const dmg=Math.max(1,Math.floor(status.bleed.stacks*1.5));
+    let dmg=Math.max(1,Math.floor(status.bleed.stacks*1.5));
+    if(who==='player' && G.player?.mutBloodMoon) dmg*=2;
     stats.hp-=dmg;
     spawnFloat(who,`🩸 -${dmg}`,'fn-dmg');
     setHpBar(who,stats.hp,stats.maxHp);
@@ -5812,6 +6200,20 @@ const ACTIONS = {
     let dmg=Math.max(1,baseDmg);
     const critMult=G.player.goldCritMult||1.5;
     G.enemy.stats.hp-=dmg;
+    const _atkKind=String(srcAbility?.btnType||srcAbility?.type||G._activePlayerAbility?.btnType||G._activePlayerAbility?.type||'').toLowerCase();
+    if((_atkKind==='physical'||_atkKind==='ranged') && dmg>0){
+      if((G.player?.bleedOnHitChance||0)>0 && chance(Math.min(95,G.player.bleedOnHitChance))) applyAilment('enemy','bleed',1);
+      if((G.player?.poisonOnHitChance||0)>0 && chance(Math.min(95,G.player.poisonOnHitChance))) applyAilment('enemy','poison',1);
+      if((G.player?.augAttackBleedChance||0)>0 && chance(Math.min(95,G.player.augAttackBleedChance))) applyAilment('enemy','bleed',1);
+      if((G.player?.augCritBleed||0)>0 && isCrit) applyAilment('enemy','bleed',G.player.augCritBleed);
+      if((G.player?.relCarrionLedger||false) && (G.enemyStatus?.bleed?.stacks||0)>0) G.enemy.stats.hp=Math.max(0,G.enemy.stats.hp-1);
+      if((G.player?.augHuntersMarkPct||0)>0) G.playerStatus.huntersMarkBonusPct=G.player.augHuntersMarkPct;
+    }
+    if(_atkKind==='spell' && dmg>0){
+      if(G.player?.augSpellPoison) applyAilment('enemy','poison',1);
+      if(G.player?.augSpellCritPoison && isCrit) applyAilment('enemy','poison',1);
+      if(G.player?.augFirstSpellFear && !G._firstSpellUsed) applyAilment('enemy','feared',1);
+    }
     await doAttack('player','enemy',{dmgDealt:dmg,wasDodged:false,wasBlocked:false,isCrit:false});
     setHpBar('enemy',G.enemy.stats.hp,G.enemy.stats.maxHp);
     if(G.battleOver)return;
@@ -6470,6 +6872,50 @@ const ACTIONS = {
   },
 };
 
+
+function registerAbilityAlias(newId, sourceId, name, override={}){
+  const src=ABILITY_TEMPLATES[sourceId];
+  if(!src) return;
+  ABILITY_TEMPLATES[newId]={...src,id:newId,name,...override};
+  if(!ACTIONS[newId]){
+    ACTIONS[newId]=async function(ab){
+      const prox={...ab,id:sourceId,name};
+      const out=await ACTIONS[sourceId](prox);
+      if(newId==='fruitBomb') applyAilment('enemy','poison',1);
+      if(newId==='savageKick') applyAilment('enemy','bleed',1);
+      if(newId==='threatDisplay') G.enemyStatus.weaken=Math.max(G.enemyStatus.weaken||0,1);
+      return out;
+    };
+  }
+}
+registerAbilityAlias('talonStrike','beakSlam','Talon Strike');
+registerAbilityAlias('windSlash','shriekwave','Wind Slash');
+registerAbilityAlias('battleChirp','warcry','Battle Chirp');
+registerAbilityAlias('battleFocus','chargeUp','Battle Focus');
+registerAbilityAlias('stealShine','fishSnatcher','Steal Shine');
+registerAbilityAlias('featherFlick','evade','Feather Flick');
+registerAbilityAlias('graceStep','evade','Grace Step');
+registerAbilityAlias('guard','crowDefend','Guard');
+registerAbilityAlias('honkTerror','gooseHonk','Honk Terror');
+registerAbilityAlias('heavyTalon','beakSlam','Heavy Talon');
+registerAbilityAlias('iceGuard','crowDefend','Ice Guard');
+registerAbilityAlias('bodySlam','beakSlam','Body Slam');
+registerAbilityAlias('rallyCall','victoryChant','Rally Call');
+registerAbilityAlias('kick','headWhip','Kick');
+registerAbilityAlias('trample','serpentCrusher','Trample');
+registerAbilityAlias('threatDisplay','intimidate','Threat Display');
+registerAbilityAlias('dustKick','mudshot','Dust Kick');
+registerAbilityAlias('raptorKick','headWhip','Raptor Kick');
+registerAbilityAlias('raptorKickFrenzy','talonRake','Raptor Kick Frenzy');
+registerAbilityAlias('intimidatingStare','intimidate','Intimidating Stare');
+registerAbilityAlias('focusSight','evade','Focus Sight');
+registerAbilityAlias('battleRhythm','chargeUp','Battle Rhythm');
+registerAbilityAlias('fruitBomb','owlPsyche','Fruit Bomb');
+registerAbilityAlias('diveSnatch','fishSnatcher','Dive Snatch');
+registerAbilityAlias('savageKick','beakSlam','Savage Kick');
+registerAbilityAlias('skyStrike','deathDive','Sky Strike');
+registerAbilityAlias('dreadCall','dirge','Dread Call');
+
 async function playerAction(ab,fromQueue=false) {
   const now=(typeof performance!=='undefined'&&performance.now)?performance.now():Date.now();
   if(now<(G._actionTapLockUntil||0)) return;
@@ -6523,6 +6969,20 @@ async function playerAction(ab,fromQueue=false) {
   }
   if(getAbilityCooldown(ab.id)>0){logMsg(`${ab.name} on cooldown! (${getAbilityCooldown(ab.id)}t)`,'miss');return;}
   if(!canUseAbility(G.player,ab)){logMsg(`Not enough energy for ${ab.name}!`,'miss');return;}
+  const _abk=String(ab?.btnType||ab?.type||ABILITY_TEMPLATES?.[ab?.id]?.btnType||ABILITY_TEMPLATES?.[ab?.id]?.type||'').toLowerCase();
+  const _defSkill=(_abk==='utility' || ab?.id==='crowDefend');
+  if(_defSkill){
+    if((G.player?.augDefSkillDef||0)>0) G.player.stats.def=(G.player.stats.def||0)+G.player.augDefSkillDef;
+    if((G.player?.augDefSkillMdef||0)>0) G.player.stats.mdef=(G.player.stats.mdef||0)+G.player.augDefSkillMdef;
+    if((G.player?.augDefSkillHeal||0)>0) G.player.stats.hp=Math.min(G.player.stats.maxHp,G.player.stats.hp+G.player.augDefSkillHeal);
+    if((G.player?.augDefSkillDodge||0)>0) G.playerStatus.humDodge={bonus:Math.max(G.playerStatus.humDodge?.bonus||0,G.player.augDefSkillDodge),turns:1};
+    if(G.player?.augDefSkillClearFear) delete G.playerStatus.feared;
+    if((G.player?.augPostDefAtkPct||0)>0) G.playerStatus.postDefAtkPct=G.player.augPostDefAtkPct;
+    if((G.player?.augPostDefAcc||0)>0) G.playerStatus.postDefAccNext=true;
+    if(G.player?.augIronResolve && !G.player._augIronResolveUsed){ G.playerStatus.ironResolve={turns:1}; G.player._augIronResolveUsed=true; }
+    if(G.player?.augDefSkillRefund && chance(G.player.augDefSkillRefund)) gainEnergy(G.player,1);
+    if(G.player?.augCounterInstinct) G.playerStatus.counterInstinct=2;
+  }
   spendEnergy(G.player,ab);
   codexMark('abilities',ab.id,'used');
   if(G.enemy?.id==='duke_blakiston') dukeTrackDecree(ab.id);
@@ -6543,6 +7003,9 @@ async function playerAction(ab,fromQueue=false) {
   if(flybyWasCharged) G.player.stats.atk*=2;
   await ACTIONS[ab.id](ab);
   if(chargedDouble && !G.battleOver && G.enemy.stats.hp>0){await ACTIONS[ab.id](ab);}
+  const _abKind=String(ab?.btnType||ab?.type||ABILITY_TEMPLATES?.[ab?.id]?.btnType||ABILITY_TEMPLATES?.[ab?.id]?.type||'').toLowerCase();
+  if(_abKind==='physical'||_abKind==='ranged') G._firstAttackUsed=true;
+  if(_abKind==='spell'){ G._firstSpellUsed=true; G._spellCastCount=(G._spellCastCount||0)+1; }
   G._lastPlayerAbility = ab.id;
   setAbilityCooldown(ab);
   if(ab.btnType==='spell' || ab.type==='spell'){
@@ -6569,8 +7032,11 @@ function startPlayerTurn(player){
   if(typeof BS!=='undefined' && BS.turns===0 && (player.firstTurnEnergy||0)>0){
     player.energy += player.firstTurnEnergy;
   }
+  if(isEndlessRunActive() && G.enemy?.isBoss && player.relPredatoryMemory) player.energy += 1;
+  if(isEndlessRunActive() && player.relFeatheredClock && ((G.endlessBattle||0)%3===0)) player.energy += 1;
   G.playerActionsThisTurn=0;
-  G.playerTurnFlags={energyGainedThisTurn:0,onHitTriggered:false};
+  G.playerTurnFlags={energyGainedThisTurn:0,onHitTriggered:false,firstAttackResolved:false};
+  if(player.mutSuddenFlight) player._mutSuddenFlightUsed=false;
   G.turn='player';
   G.turnPhase=TURN.PLAYER;
   G.phase='PLAYER';
@@ -6620,6 +7086,14 @@ function getAbilityEnergyCost(ab, player){
   }
 
   if(isMainAttackAbility(ab) && !isSpellAbilityId(ab.id)) cost = 1;
+
+  const tType=(t?.btnType||t?.type||ab.btnType||ab.type||'').toLowerCase();
+  const isAttack=(tType==='physical'||tType==='ranged');
+  const isSpell=(tType==='spell');
+  if(isAttack && !G._firstAttackUsed && p?.firstAttackFree) cost=0;
+  if(isSpell && !G._firstSpellUsed && p?.firstSpellFree) cost=0;
+  if(isSpell && !G._firstSpellUsed && (p?.augFirstSpellCostDown||0)>0) cost=Math.max(0,cost-p.augFirstSpellCostDown);
+  if(isSpell && p?.mutArcOverload) cost+=1;
 
   if(cost===1 && isMultiHitAbility(ab)) cost += 1;
 
@@ -7375,6 +7849,11 @@ async function enemyTurn() {
   if(confObj&&confObj.turns>0&&chance(clampSkipChance(confObj.skipChance||20))){playAvatarAnim('enemy','do-miss-l',580);spawnFloat('enemy','Confused!','fn-miss');await delay(580);logMsg(`${e.name} confused — fumbles!`,'enemy-action');G.animLock=false;afterEnemyTurn();return;}
   if(G.enemyStatus.paralyzed>0&&chance(AILMENTS.paralyzed.skipChance||20)){spawnFloat('enemy','⚡ Para!','fn-status');await delay(400);logMsg(`${e.name} paralyzed — cannot act!`,'enemy-action');G.animLock=false;afterEnemyTurn();return;}
 
+  if(G.playerStatus.counterInstinct&&G.playerStatus.counterInstinct>0){
+    applyAilment('enemy','bleed',1);
+    G.playerStatus.counterInstinct--;
+    if(G.playerStatus.counterInstinct<=0) delete G.playerStatus.counterInstinct;
+  }
   const rawPlan=(G.enemyNextAction&&G.enemyNextAction.actions&&G.enemyNextAction.actions.length)?G.enemyNextAction.actions:planEnemyTurn(e,G.player).actions;
   const plan=rawPlan.slice(0,MAX_ENEMY_ACTIONS_PER_TURN);
   G.enemyLastPlan=plan;
@@ -7628,9 +8107,17 @@ function postCombat() {
     SFX.exp();
 
     // Post-battle heal
-    const postHeal = Math.max(1, Math.floor(G.player.stats.maxHp * 0.10));
+    const postHealMult=G.player?.mutHuntersCruelty?0.5:1;
+    const postHeal = Math.max(1, Math.floor(G.player.stats.maxHp * 0.10 * postHealMult));
     G.player.stats.hp = Math.min(G.player.stats.hp + postHeal, G.player.stats.maxHp);
     spawnFloat('player', `+${postHeal} 🩹`, 'fn-heal');
+
+    // Flat post-battle heal (if present)
+    const flatHeal = (G.player.postBattleFlatHeal || 0);
+    if(flatHeal>0){
+      G.player.stats.hp = Math.min(G.player.stats.maxHp, G.player.stats.hp + flatHeal);
+      spawnFloat('player', `+${flatHeal} 🩹`, 'fn-heal');
+    }
 
     // Bonus heal (if present)
     const bonusPct = (G.player.postBattleHealBonusPct || 0);
@@ -7638,6 +8125,25 @@ function postCombat() {
       const extra = Math.max(1, Math.floor(G.player.stats.maxHp * bonusPct));
       G.player.stats.hp = Math.min(G.player.stats.hp + extra, G.player.stats.maxHp);
       spawnFloat('player', `+${extra} 🩹`, 'fn-heal');
+    }
+
+
+    if(isEndlessRunActive() && G.enemy?.isBoss){
+      if(G.player?.relBattleCarcass){
+        G.player.stats.hp=Math.min(G.player.stats.maxHp, G.player.stats.hp+4);
+        spawnFloat('player','+4 🩹','fn-heal');
+      }
+      if(G.player?.relPredatorsArchive){
+        G.player.stats.atk+=1;
+        G.player.stats.matk=(G.player.stats.matk||0)+1;
+      }
+      if(G.player?.relCrownLongHunt){
+        const picks=['atk','matk','def','mdef','maxHp'];
+        const k=picks[Math.floor(Math.random()*picks.length)];
+        if(k==='maxHp'){ G.player.stats.maxHp+=5; G.player.stats.hp=Math.min(G.player.stats.maxHp,G.player.stats.hp+5); }
+        else G.player.stats[k]=(G.player.stats[k]||0)+1;
+        logMsg(`👑 Crown of the Long Hunt grants +1 ${k.toUpperCase()==='MAXHP'?'MAX HP':k.toUpperCase()}.`,'system');
+      }
     }
 
     // Shiny reward
@@ -7656,6 +8162,12 @@ function postCombat() {
     const perfectBonus = (bs.dmgTaken <= 0) ? 2 : 0;
     const fastWinBonus = (bs.turns <= 3) ? 1 : 0;
 
+    if(G.player?.moltingRitual){
+      G.player.stats.atk += 1;
+      G.player.stats.maxHp = Math.max(1, (G.player.stats.maxHp||1) - 3);
+      G.player.stats.hp = Math.min(G.player.stats.hp, G.player.stats.maxHp);
+      logMsg('🔥 Molting Ritual: +1 ATK, -3 Max HP.', 'system');
+    }
     const shinyGain = sizeShiny + bossShiny + stageBonusShiny + perfectBonus + fastWinBonus;
     G.shinyObjects += shinyGain;
 
@@ -7784,7 +8296,8 @@ function confirmReward() {
     return;
   }
 
-  G._pendingReward.apply(G.player);
+  if(!applyRewardEffect(G._pendingReward,G.player,{preventDuplicates:true,source:'battle'})) return;
+  if(G._pendingReward.endlessOnly){ logMsg('♾ Endless-only reward acquired (not available in Story Mode).','system'); }
   const rewardEvt={tier:G._pendingReward.tier, id:G._pendingReward.id||G._pendingReward.name};
   AvianEvents.emit('reward:confirmed', rewardEvt);
   runModuleHook('onRewardConfirmed', rewardEvt);
@@ -7866,15 +8379,20 @@ function showGoldReplaceUI(newReward){
 }
 
 function generateNormalRewards() {
-  const out=[];
   const used=new Set();
-  let guard=0;
-  while(out.length<3 && guard<30){
-    guard++;
-    const rw=rollUpgradeCard();
-    if(!rw || used.has(rw.id)) continue;
-    used.add(rw.id);
-    out.push(rw);
+  const storyOrEndless = isEndlessRunActive() ? REWARD_FILTERS.battle : rw => (REWARD_FILTERS.battle(rw) && REWARD_FILTERS.story(rw));
+  const out=rollRewardPool(CORE_UPGRADE_REWARDS,{count:3,usedIds:used,predicates:[storyOrEndless,REWARD_FILTERS.notRunLocked()]});
+  if(isEndlessRunActive()){
+    const eb=G.endlessBattle||0;
+    const milestone=eb>0 && (eb%5===0);
+    if(milestone){
+      const kind=(eb%10===0)?'mutation':(eb%3===0?'augment':'relic');
+      const er=rollEndlessReward(kind);
+      if(er) out[0]=er;
+    } else if(G.player?.relEndlessThesis){
+      const er=rollEndlessReward('relic');
+      if(er) out[0]=er;
+    }
   }
   return out;
 }
@@ -7887,10 +8405,9 @@ function generateBossRewards() {
   const endlessBattle=G.endlessBattle||0;
   
   function pickTier(tier){
-    const pool=getUpgradePool().filter(r=>r.tier===tier&&!used.has(r.id)&&!(r.stackable===false && G.runUpgradesPurchased?.has(r.id)));
-    if(!pool.length) return null;
-    const rw=pool[Math.floor(Math.random()*pool.length)];
-    used.add(rw.id); return rw;
+    const [rw]=rollRewardPool(CORE_UPGRADE_REWARDS,{count:1,usedIds:used,predicates:[REWARD_FILTERS.tier(tier),REWARD_FILTERS.battle,REWARD_FILTERS.notRunLocked()]});
+    if(!rw) return null;
+    return rw;
   }
   function pick(forced,optional){
     const r=pickTier(forced)||pickTier('purple')||pickTier('blue');
@@ -7911,6 +8428,13 @@ function generateBossRewards() {
     pick('purple', 0.12);
   }
   
+  if(isEndlessRunActive()){
+    const eb=G.endlessBattle||0;
+    const kind=(eb%10===0)?'mutation':(eb%2===0?'augment':'relic');
+    const er=rollEndlessReward(kind);
+    if(er) out.unshift(er);
+  }
+
   // Fill remaining 3 slots
   while(out.length<3){
     let tier;
@@ -8201,6 +8725,7 @@ function afterLevelUp() {
 
 function advanceStage() {
   G.stage++;
+  if(isEndlessRunActive()) applyEndlessProgressionMilestones();
   if(G.stage>ENEMIES.length&&!G.endlessMode){deleteSave();showVictory();return;}
   // Stage 40 = endless battle 20 — grant unlock
   if(G.endlessMode&&G.endlessBattle>=20&&!isUnlocked('stage40')){
@@ -8424,10 +8949,8 @@ function showGroveNestRewards(){
   const used = new Set();
   const picks=[];
   const pick=(tier)=>{
-    const avail=getUpgradePool().filter(r=>r.tier===tier&&!used.has(r.id));
-    if(!avail.length) return null;
-    const r=avail[Math.floor(Math.random()*avail.length)];
-    used.add(r.id); return r;
+    const [r]=rollRewardPool(CORE_UPGRADE_REWARDS,{count:1,usedIds:used,predicates:[REWARD_FILTERS.tier(tier),REWARD_FILTERS.battle]});
+    return r||null;
   };
   const rollNestTier=()=>{
     if(chance(5)) return 'gold';
@@ -8464,7 +8987,7 @@ function groveFinish(){
   // If a nest reward was selected, apply it
   if(G._groveNestReward){
     const rw=G._groveNestReward;
-    rw.apply(G.player);
+    if(!applyRewardEffect(rw,G.player,{preventDuplicates:true,source:'grove'})) return;
     if(!G.collectedRewards)G.collectedRewards=[];
     G.collectedRewards.push({icon:rw.icon,tier:rw.tier,name:rw.name,desc:rw.desc});
     codexMark('artifacts', rw.id||rw.name, 'seen');
@@ -8846,15 +9369,24 @@ function buildRefGuide() {
     return card(b.name, `${b.tagline||''} · Class: ${(b.class||'').toUpperCase()}`,u,b.class||'bird');
   }).join('');
 
-  const abilities=Object.entries(ABILITY_TEMPLATES||{}).filter(([id,t])=>isMatch(t.name)||isMatch(t.shortDesc)||isMatch(t.desc)).map(([id,t])=>{
+  const packAbilityDefs = G.dataPacks?.abilityPassiveUpgrade?.ABILITY_DEFS || {};
+  const abilities=Object.entries(ABILITY_TEMPLATES||{}).filter(([id,t])=>{
+    const metaDef = packAbilityDefs[id] || {};
+    return isMatch(t.name)||isMatch(t.shortDesc)||isMatch(t.desc)||isMatch(metaDef.role)||isMatch(metaDef.notes);
+  }).map(([id,t])=>{
     const c=G.codex?.abilities?.[id]||{seen:false,used:false};
     const u=!!c.seen;
     if(!u&&!showLocked) return '';
+    const packDef = packAbilityDefs[id] || null;
     const meta=`${t.rarity||'common'} · ${t.codexType||'attack'}`;
     const base=(t.shortDesc||t.desc||'No description yet.');
+    const roleLine=packDef?.role?`<br><strong style="color:var(--gold-light)">Role:</strong> ${packDef.role}`:'';
+    const notesLine=packDef?.notes?`<br><strong style="color:var(--gold-light)">Pack Notes:</strong> ${packDef.notes}`:'';
+    const tagsLine=(Array.isArray(packDef?.tags)&&packDef.tags.length)?`<br><strong style="color:var(--gold-light)">Tags:</strong> ${packDef.tags.join(', ')}`:'';
     const path=formatAbilityLevelPathway(t);
-    const desc=path?`${base}<br><br><strong style="color:var(--gold-light)">Level Path:</strong><br>${path.replace(/\n/g,'<br>')}`:base;
-    return card(t.name, desc,u,meta);
+    const levelPathLine=path?`<br><br><strong style="color:var(--gold-light)">Level Path:</strong><br>${path.replace(/\n/g,'<br>')}`:'';
+    const desc=`${base}${roleLine}${notesLine}${tagsLine}${levelPathLine}`;
+    return card(packDef?.name||t.name, desc,u,meta);
   }).join('');
 
   const enemies=(ENEMIES||[]).filter(e=>isMatch(e.name)).map(e=>{
@@ -8865,11 +9397,12 @@ function buildRefGuide() {
     return card(e.name, `HP ${e.stats?.maxHp||e.hp||0} · ATK ${e.stats?.atk||e.atk||0} · AI: ${ai}`,u,ai);
   }).join('');
 
-  const statusIds=[...new Set([...Object.keys(AILMENTS||{}), ...Object.keys(G.codex?.statuses||{})])];
+  const packStatusGlossary = G.dataPacks?.abilityPassiveUpgrade?.STATUS_GLOSSARY || {};
+  const statusIds=[...new Set([...Object.keys(AILMENTS||{}), ...Object.keys(packStatusGlossary), ...Object.keys(G.codex?.statuses||{})])];
   const statuses=statusIds.filter(id=>isMatch(id)).map(id=>{
     const u=!!G.codex?.statuses?.[id]?.seen;
     if(!u&&!showLocked) return '';
-    const d=(AILMENTS[id]?.desc)||'Status effect.';
+    const d=(packStatusGlossary[id]||AILMENTS[id]?.desc)||'Status effect.';
     return card(id[0].toUpperCase()+id.slice(1),d,u,'status');
   }).join('');
 
@@ -8961,12 +9494,18 @@ function rollShopTier(weights){
   const vals=tiers.map(t=>weights[t]);
   return rollWeighted(tiers,vals);
 }
-function pickUniqueRewardByTier(tier,used){
-  const pool=getUpgradePool().filter(r=>r.tier===tier&&!used.has(r.id)&&!(r.stackable===false && G.runUpgradesPurchased?.has(r.id)));
-  if(!pool.length) return null;
-  const pick=pool[Math.floor(Math.random()*pool.length)];
-  used.add(pick.id);
-  return pick;
+function pickUniqueRewardByTier(tier,used,extraPredicates=[]){
+  const [pick]=rollRewardPool(CORE_UPGRADE_REWARDS,{
+    count:1,
+    usedIds:used,
+    predicates:[
+      REWARD_FILTERS.tier(tier),
+      REWARD_FILTERS.shop,
+      REWARD_FILTERS.notRunLocked(),
+      ...extraPredicates
+    ]
+  });
+  return pick||null;
 }
 function makeUtilityOffer(kind='regular'){
   const utilsRegular=[
@@ -8985,7 +9524,7 @@ function makeUtilityOffer(kind='regular'){
   ];
   const arr=kind==='boss'?utilsBoss:utilsRegular;
   const pick=arr[Math.floor(Math.random()*arr.length)];
-  return {...pick};
+  return createReward({...pick,kind:'utility',source:['shop'],oncePerRun:pick.stackable===false});
 }
 const ABILITY_RARITY_WEIGHTS = { common:70, rare:22, epic:7, legendary:1 };
 function rollByRarity(list){
@@ -8999,7 +9538,6 @@ function rollByRarity(list){
 
 function makeAbilityOffer(highQuality=false){
   const bd=BIRDS[G.player.birdKey]||{};
-  const birdClass=bd.class||'';
   const existing=new Set((G.player.abilities||[]).map(a=>a.id));
   const classPool=(bd.exclusiveLearnPool&&bd.exclusiveLearnPool.length?bd.exclusiveLearnPool:Object.keys(ABILITY_TEMPLATES_LEARNABLE));
   const candidates=classPool.filter(id=>{
@@ -9012,8 +9550,10 @@ function makeAbilityOffer(highQuality=false){
     const tmpl=rollByRarity(picks)||ABILITY_TEMPLATES[unknown[Math.floor(Math.random()*unknown.length)]];
     const id=tmpl.id;
     const tier=highQuality?'blue':'green';
-    return {
+    return createReward({
       id:`shop_ab_learn_${id}`,
+      kind:'ability',
+      source:['shop'],
       tier,
       icon:highQuality?'📘':'📗',
       name:`Learn: ${tmpl.name}`,
@@ -9022,14 +9562,14 @@ function makeAbilityOffer(highQuality=false){
         // NOTE: shopBuySelected() will handle replacement UI if you're at the non-main cap.
         p.abilities.push({...tmpl,level:1,ailmentIds:[]});
       }
-    };
+    });
   }
   const upgradable=(G.player.abilities||[]).filter(a=>!isMainAttackAbility(a)&&(a.level||1)<4);
   if(upgradable.length){
     const pick=upgradable[Math.floor(Math.random()*upgradable.length)];
-    return {id:`shop_ab_upgrade_${pick.id}`,tier:highQuality?'purple':'blue',icon:'🪶',name:`Train: ${pick.name}`,desc:`Upgrade ${pick.name} by +1 level (max 4).`,apply:p=>{const a=p.abilities.find(x=>x.id===pick.id);if(a)a.level=Math.min(4,(a.level||1)+1);}};
+    return createReward({id:`shop_ab_upgrade_${pick.id}`,kind:'ability',source:['shop'],tier:highQuality?'purple':'blue',icon:'🪶',name:`Train: ${pick.name}`,desc:`Upgrade ${pick.name} by +1 level (max 4).`,apply:p=>{const a=p.abilities.find(x=>x.id===pick.id);if(a)a.level=Math.min(4,(a.level||1)+1);}});
   }
-  return {id:'shop_ab_focus',tier:'green',icon:'🧠',name:'Combat Drill',desc:'ATK +2, MATK +2, ACC +3',apply:p=>{p.stats.atk+=2;p.stats.matk=(p.stats.matk||0)+2;p.stats.acc=(p.stats.acc||80)+3;}};
+  return createReward({id:'shop_ab_focus',kind:'ability',source:['shop'],tier:'green',icon:'🧠',name:'Combat Drill',desc:'ATK +2, MATK +2, ACC +3',apply:p=>{p.stats.atk+=2;p.stats.matk=(p.stats.matk||0)+2;p.stats.acc=(p.stats.acc||80)+3;}});
 }
 function generateShopItems() {
   _shopItems=[];
@@ -9146,7 +9686,8 @@ function renderShopItems() {
   const refreshBtn=document.getElementById('shop-refresh-btn'); if(refreshBtn) refreshBtn.disabled=!!SHOP_STATE.purchaseMadeThisVisit;
 
   _shopItems.forEach((item,idx)=>{
-    const baseCost=SHOP_COSTS[item.tier]||1;
+    let baseCost=SHOP_COSTS[item.tier]||1;
+    if(G.player?.mutLongWar) baseCost=Math.ceil(baseCost*1.15);
     const cost=Math.max(0,baseCost-Math.max(0,G._nextShopDiscount||0));
     const canAfford=G.shinyObjects>=cost;
     const canSelect=canAfford && !SHOP_STATE.purchaseMadeThisVisit;
@@ -9257,7 +9798,8 @@ async function shopBuySelected() {
   if(selected===null||selected>=_shopItems.length) return false;
   const item=_shopItems[selected];
 
-  const baseCost=SHOP_COSTS[item.tier]||1;
+  let baseCost=SHOP_COSTS[item.tier]||1;
+  if(G.player?.mutLongWar) baseCost=Math.ceil(baseCost*1.15);
   const discount=Math.max(0,G._nextShopDiscount||0);
   const cost=Math.max(0,baseCost-discount);
   if(G.shinyObjects<cost){ logMsg('Not enough shiny objects!','miss'); return false; }
@@ -9288,7 +9830,6 @@ async function shopBuySelected() {
           const log=document.getElementById('shop-purchase-log');
           if(log) log.textContent=`✓ Bought: ${item.icon} ${item.name} · One item per visit`;
 
-          if(item.stackable===false){ if(!(G.runUpgradesPurchased instanceof Set)) G.runUpgradesPurchased=new Set(); G.runUpgradesPurchased.add(item.id); }
           _shopItems.splice(selected,1);
           refreshPlayerAbilityAilments();
           enforceAbilityCosts(G.player);
@@ -9317,7 +9858,7 @@ async function shopBuySelected() {
       }
     }
   } else {
-    item.apply(G.player);
+    applyRewardEffect(item,G.player,{preventDuplicates:true,source:'shop'});
   }
   refreshPlayerAbilityAilments();
   enforceAbilityCosts(G.player);
@@ -9329,7 +9870,6 @@ async function shopBuySelected() {
   const log=document.getElementById('shop-purchase-log');
   if(log) log.textContent=`✓ Bought: ${item.icon} ${item.name} · One item per visit`;
 
-  if(item.stackable===false){ if(!(G.runUpgradesPurchased instanceof Set)) G.runUpgradesPurchased=new Set(); G.runUpgradesPurchased.add(item.id); }
   _shopItems.splice(selected,1);
   shopLockVisitState();
   saveRun();
@@ -9452,8 +9992,35 @@ function checkDevCode(val) {
 const ACCESS_KEY='avian_accessibility_v1';
 function getAccessibilitySettings(){
   try{
-    return JSON.parse(localStorage.getItem(ACCESS_KEY)||'{"fontSize":100,"colorBlind":"off","reduceMotion":false,"highContrast":false}');
-  }catch(_){ return {fontSize:100,colorBlind:'off',reduceMotion:false,highContrast:false}; }
+    return JSON.parse(localStorage.getItem(ACCESS_KEY)||'{"fontSize":100,"colorBlind":"off","reduceMotion":false,"highContrast":false,"uiMode":"desktop"}');
+  }catch(_){ return {fontSize:100,colorBlind:'off',reduceMotion:false,highContrast:false,uiMode:'desktop'}; }
+}
+function applyUIStateToDOM(){
+  const ui=ensureUIState();
+  const main=document.getElementById('endless-check');
+  if(main) main.checked=(ui.gameMode==='endless');
+  document.body.classList.toggle('ui-mobile-mode', ui.battleLayout==='mobile');
+  document.body.classList.toggle('ui-desktop-mode', ui.battleLayout==='desktop');
+  const playerDrop=document.getElementById('player-stats-drop');
+  const enemyDrop=document.getElementById('enemy-stats-drop');
+  if(playerDrop) playerDrop.open=!!ui.combatDropdownOpen.player;
+  if(enemyDrop) enemyDrop.open=!!ui.combatDropdownOpen.enemy;
+}
+function syncCombatDropdownUIState(){
+  const ui=ensureUIState();
+  const playerDrop=document.getElementById('player-stats-drop');
+  const enemyDrop=document.getElementById('enemy-stats-drop');
+  if(playerDrop) ui.combatDropdownOpen.player=!!playerDrop.open;
+  if(enemyDrop) ui.combatDropdownOpen.enemy=!!enemyDrop.open;
+}
+
+function wireCombatDropdownStateSync(){
+  ['player-stats-drop','enemy-stats-drop'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(!el || el.dataset.uiStateWired==='1') return;
+    el.dataset.uiStateWired='1';
+    el.addEventListener('toggle', ()=>syncCombatDropdownUIState());
+  });
 }
 function applyAccessibilitySettings(s){
   const cfg=s||getAccessibilitySettings();
@@ -9464,6 +10031,8 @@ function applyAccessibilitySettings(s){
   if(cfg.colorBlind==='protanopia') document.body.classList.add('cb-protanopia');
   if(cfg.colorBlind==='deuteranopia') document.body.classList.add('cb-deuteranopia');
   if(cfg.colorBlind==='tritanopia') document.body.classList.add('cb-tritanopia');
+  ensureUIState().battleLayout=(cfg.uiMode==='mobile')?'mobile':'desktop';
+  applyUIStateToDOM();
 }
 function openSettingsModal(){
   const cfg=getAccessibilitySettings();
@@ -9471,10 +10040,12 @@ function openSettingsModal(){
   const cb=document.getElementById('setting-color-blind');
   const rm=document.getElementById('setting-reduce-motion');
   const hc=document.getElementById('setting-high-contrast');
+  const ui=document.getElementById('setting-ui-mode');
   if(font) font.value=String(cfg.fontSize||100);
   if(cb) cb.value=cfg.colorBlind||'off';
   if(rm) rm.checked=!!cfg.reduceMotion;
   if(hc) hc.checked=!!cfg.highContrast;
+  if(ui) ui.value=ensureUIState().battleLayout;
   const m=document.getElementById('settings-modal'); if(m) m.classList.add('open');
 }
 function closeSettingsModal(){
@@ -9486,6 +10057,7 @@ function updateAccessibilitySettings(){
     colorBlind:String(document.getElementById('setting-color-blind')?.value||'off'),
     reduceMotion:!!document.getElementById('setting-reduce-motion')?.checked,
     highContrast:!!document.getElementById('setting-high-contrast')?.checked,
+    uiMode:String(document.getElementById('setting-ui-mode')?.value||ensureUIState().battleLayout),
   };
   localStorage.setItem(ACCESS_KEY, JSON.stringify(cfg));
   applyAccessibilitySettings(cfg);
@@ -9493,6 +10065,8 @@ function updateAccessibilitySettings(){
 
 installErrorHUD();
 applyAccessibilitySettings();
+wireCombatDropdownStateSync();
+applyUIStateToDOM();
 
 
 /* ============================================================
