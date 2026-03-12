@@ -1649,9 +1649,10 @@ function applyEndlessProgressionMilestones(){
 }
 
 function rollUpgradeCard(){
-  const tier=rollRarity();
-  const [pick]=rollRewardPool(CORE_UPGRADE_REWARDS,{count:1,predicates:[REWARD_FILTERS.tier(tier)]});
-  return pick||null;
+  // Stage victory rewards: exclude Legendary (gold) tier.
+  const tier=rollWeighted(['grey','green','blue','purple'],[42,34,16,8]);
+  const pool=getUpgradePool().filter(c=>c.tier===tier);
+  return pool.length?pool[Math.floor(Math.random()*pool.length)]:null;
 }
 
 const REWARD_TIERS = {
@@ -8468,15 +8469,15 @@ function planEnemyTurn(e,p){
   const mode=getEnemyMode(e,p);
   const pool=buildEnemyActionPool(e,mode);
   const actions=[];
-  let energy=e.energyMax||3;
+  let energy=Math.max(0,e.energy||e.energyMax||3);
   let projected=0;
   let hardCCUsedLast=(G.enemyLastPlan||[]).some(a=>a.type==='ability'&&a.abilityId==='eStun');
-  let nonDmgEvery2=0;
   const diff=G.difficulty||'juvenile';
   const murderMode=diff==='murder';
   const hardMode=diff==='predator';
+  let lastKey='';
+  let lastDidDamage=true;
 
-  // Turn-1 debuff opener guaranteed on Murder, preferred on Hard
   const hardCCBlocked=!!G.enemyUsedHardCCLastTurn;
   if((G.enemyTurnCount||0)<=1){
     const openers=(e.abilities||[]).filter(id=>['eWeaken','eBlind','eFear'].includes(id));
@@ -8486,56 +8487,67 @@ function planEnemyTurn(e,p){
       if(oc<=energy && (murderMode || (hardMode&&chance(70)))){
         actions.push({...opener,energyCost:oc});
         energy-=oc;
+        lastKey=`ability:${opener.abilityId}`;
+        lastDidDamage=projectedEnemyActionDamage(opener,e)>0;
       }
     }
   }
 
-  // Smarter heal gate: only if meaningful missing HP
   const hpMissingPct=1-((e.stats.hp||1)/Math.max(1,e.stats.maxHp||1));
+  let localPool=pool.slice();
   if(hpMissingPct<=0.12){
-    for(let i=pool.length-1;i>=0;i--){ if(pool[i].type==='ability'&&pool[i].abilityId==='eHeal') pool.splice(i,1); }
+    localPool=localPool.filter(a=>!(a.type==='ability'&&a.abilityId==='eHeal'));
   }
-  while(energy>0&&pool.length){
-    let pick=pool[Math.floor(Math.random()*pool.length)];
+
+  while(energy>0 && localPool.length && actions.length<MAX_ENEMY_ACTIONS_PER_TURN){
+    let affordable=localPool.filter(a=>getEnemyActionEnergyCost(a)<=energy);
+    if(!affordable.length) break;
+
+    // Pressure rule: after non-damaging action, strongly prefer damaging actions.
+    if(!lastDidDamage){
+      const dmgFirst=affordable.filter(a=>projectedEnemyActionDamage(a,e)>0);
+      if(dmgFirst.length) affordable=dmgFirst;
+    }
+
+    // Anti-spam: avoid repeating same move if alternatives exist.
+    const alternatives=affordable.filter(a=>`${a.type}:${a.abilityId||a.label||a.type}`!==lastKey);
+    if(alternatives.length) affordable=alternatives;
+
+    // Cost-efficient preference: matching exact remaining EN is favored.
+    const exactCost=affordable.filter(a=>getEnemyActionEnergyCost(a)===energy);
+    if(exactCost.length && chance(70)) affordable=exactCost;
+
+    let pick=affordable[Math.floor(Math.random()*affordable.length)];
+
     if((hardMode||murderMode) && chance(murderMode?65:45)){
-      const weighted=pool.slice().sort((a,b)=>projectedEnemyActionDamage(b,e)-projectedEnemyActionDamage(a,e));
+      const weighted=affordable.slice().sort((a,b)=>projectedEnemyActionDamage(b,e)-projectedEnemyActionDamage(a,e));
       pick=weighted[0]||pick;
     }
-    const c=getEnemyActionEnergyCost(pick);
-    if(c>energy){
-      const affordable=pool.filter(a=>getEnemyActionEnergyCost(a)<=energy);
-      if(!affordable.length) break;
-      pick=affordable[Math.floor(Math.random()*affordable.length)];
-    }
+
     if((hardCCUsedLast||hardCCBlocked)&&pick.type==='ability'&&pick.abilityId==='eStun'){
-      const noCC=pool.filter(a=>!(a.type==='ability'&&a.abilityId==='eStun')&&getEnemyActionEnergyCost(a)<=energy);
+      const noCC=affordable.filter(a=>!(a.type==='ability'&&a.abilityId==='eStun'));
       if(noCC.length) pick=noCC[Math.floor(Math.random()*noCC.length)];
     }
+
     const dmg=projectedEnemyActionDamage(pick,e);
     const capPct=e.isBoss?0.60:0.45;
     if(projected+dmg > (p.stats.maxHp||1)*capPct){
-      const lighter=pool.filter(a=>projectedEnemyActionDamage(a,e)<=Math.max(1,(p.stats.maxHp||1)*capPct-projected)&&getEnemyActionEnergyCost(a)<=energy);
+      const lighter=affordable.filter(a=>projectedEnemyActionDamage(a,e)<=Math.max(1,(p.stats.maxHp||1)*capPct-projected));
       if(lighter.length) pick=lighter[Math.floor(Math.random()*lighter.length)];
     }
-    actions.push({...pick,energyCost:getEnemyActionEnergyCost(pick)});
-    energy-=getEnemyActionEnergyCost(pick);
+
+    const cost=getEnemyActionEnergyCost(pick);
+    if(cost>energy) break;
+    actions.push({...pick,energyCost:cost});
+    energy=Math.max(0,energy-cost);
     projected+=projectedEnemyActionDamage(pick,e);
     if(pick.type==='ability'&&pick.abilityId==='eStun') hardCCUsedLast=true;
-    if(['defend'].includes(pick.type) || (pick.type==='ability'&&['eWeaken','eFear','eBlind','eRage','eHeal','eShield'].includes(pick.abilityId))) nonDmgEvery2=0;
-    else nonDmgEvery2++;
-    if(nonDmgEvery2>=2){
-      const support=pool.filter(a=>(a.type==='defend'||(a.type==='ability'&&['eWeaken','eFear','eBlind','eShield','eHeal'].includes(a.abilityId)))&&getEnemyActionEnergyCost(a)<=energy);
-      if(support.length&&energy>0){
-        const sup=support[Math.floor(Math.random()*support.length)];
-        actions.push({...sup,energyCost:getEnemyActionEnergyCost(sup)});
-        energy-=getEnemyActionEnergyCost(sup);
-      }
-      break;
-    }
-    if(actions.length>=4) break;
+    lastKey=`${pick.type}:${pick.abilityId||pick.label||pick.type}`;
+    lastDidDamage=projectedEnemyActionDamage(pick,e)>0;
   }
   return {mode,actions};
 }
+
 
 const ENEMY_AI = {
   aggressive(enemy){
@@ -8591,20 +8603,12 @@ function bossScriptPick(enemy){ return enemyUse(enemy,'heavy')||enemyUse(enemy,'
 function planEnemyAction() {
   const e=G.enemy;
   const aiType=(e.aiType||mapAiStyleToType(e.aiStyle)||'aggressive').toLowerCase();
-  const fn=ENEMY_AI[aiType]||ENEMY_AI.aggressive;
-  let actions=[];
-  const first=fn(e);
-  if(first) actions.push(first);
-  const second=(Math.random()<0.55)?fn(e):null;
-  if(second) actions.push(second);
-  if(!actions.length){
-    const plan=planEnemyTurn(e,G.player);
-    actions=plan.actions;
-  }
+  const plan=planEnemyTurn(e,G.player);
+  const actions=(plan?.actions||[]).slice(0,MAX_ENEMY_ACTIONS_PER_TURN);
   G.enemyPlannedActions=actions;
   const preview=actions.slice(0,2).map(a=>`${a.icon||'•'} ${a.type==='ability'?(ENEMY_ABILITY_POOL[a.abilityId]?.name||a.abilityId):a.label}`).join(' → ');
   const more=actions.length>2?' +':'';
-  return {label:`${preview}${more}`,type:'plan',actions,mode:aiType};
+  return {label:`${preview||'• Wait'}${more}`,type:'plan',actions,mode:aiType};
 }
 
 
@@ -8648,21 +8652,279 @@ function dukeSummonCourt(){
 }
 function dukeTurnAI(){
   const e=G.enemy; const d=e.duke;
+  if(!d) return {didAct:false,didDamage:false,reason:'no_duke_state'};
   const enraged=isBossEnrageAllowed() && e.stats.hp<=Math.floor(e.stats.maxHp*0.35);
   if(enraged) setStatusMax(G.enemyStatus,'enraged',2);
   d.riverCd=Math.max(0,(d.riverCd||0)-1);
   d.summonCd=Math.max(0,(d.summonCd||0)-1);
   d.verdictCd=Math.max(0,(d.verdictCd||0)-1);
   if(d.phase>=3) dukeApplyDecreePunish();
-  if(d.phase===1 && e.stats.hp<=Math.floor(e.stats.maxHp*0.75)){ dukeNightfall(); return; }
-  if(d.phase===2){ d.nightfallTurns--; if(d.nightfallTurns<=0){ d.phase=3; logMsg('📜 The Court speaks in decree.','boss'); } }
-  if(d.summonCd===0){ d.summonCd=4; dukeSummonCourt(); return; }
-  if(d.riverCd===0){ d.riverCd=3; dukeRiverGrip(); return; }
+
+  const can=(c)=>Math.max(0,e.energy||0)>=c;
+  const spend=(c)=>{e.energy=Math.max(0,(e.energy||0)-c); return c;};
+
   const p=G.player.stats;
-  if(d.verdictCd===0 && (p.hp<=Math.floor(p.maxHp*0.35) || (G.enemyStatus.enraged||0)>0)){ d.verdictCd=3; dukeOwlsVerdict(); return; }
-  const r=dealDamage('player',edmg(1.0));
-  spawnFloat('player',`-${r.dmgDealt}`,'fn-dmg');
+  const nonDamageLast=(d.lastDidDamage===false);
+  const last=d.lastAction||'';
+
+  const tryAct=(key, cost, fn, didDamage=false)=>{
+    if(!can(cost)) return null;
+    spend(cost);
+    fn();
+    d.lastAction=key;
+    d.lastDidDamage=!!didDamage;
+    return {didAct:true,didDamage:!!didDamage,actionKey:key,cost};
+  };
+
+  if(d.phase===1 && e.stats.hp<=Math.floor(e.stats.maxHp*0.75) && last!=='nightfall'){
+    const r=tryAct('nightfall',2,()=>dukeNightfall(),false); if(r) return r;
+  }
+  if(d.phase===2){
+    d.nightfallTurns--;
+    if(d.nightfallTurns<=0){ d.phase=3; logMsg('📜 The Court speaks in decree.','boss'); }
+  }
+
+  if(d.summonCd===0 && last!=='summon' && !nonDamageLast){
+    const r=tryAct('summon',1,()=>{ d.summonCd=4; dukeSummonCourt(); },false); if(r) return r;
+  }
+  if(d.riverCd===0 && last!=='river' && !nonDamageLast){
+    const r=tryAct('river',1,()=>{ d.riverCd=3; dukeRiverGrip(); },false); if(r) return r;
+  }
+  if(d.verdictCd===0 && (p.hp<=Math.floor(p.maxHp*0.35) || (G.enemyStatus.enraged||0)>0)){
+    const r=tryAct('verdict',2,()=>{ d.verdictCd=3; dukeOwlsVerdict(); },true); if(r) return r;
+  }
+
+  if(!can(1)) return {didAct:false,didDamage:false,reason:'no_energy'};
+  spend(1);
+  const rr=dealDamage('player',edmg(1.0));
+  spawnFloat('player',`-${rr.dmgDealt}`,'fn-dmg');
   logMsg('🦉 Talons in the dark.','boss');
+  d.lastAction='talons';
+  d.lastDidDamage=!!((rr?.dmgDealt||0)>0 && !rr?.wasDodged);
+  return {didAct:true,didDamage:d.lastDidDamage,actionKey:'talons',cost:1};
+}
+
+function lieutenantBaseMult(e){
+  const lt=e?.lieutenant||{};
+  let mult=1;
+  if(e?.id==='lt_seraph') mult += (lt.velocityStacks||0)*0.10;
+  if(e?.id==='lt_ashwing' && (G.player?.stats?.hp||0)<=Math.floor((G.player?.stats?.maxHp||1)*0.5)) mult*=1.25;
+  if(e?.id==='lt_skarn' && lt.deathCircle) mult*=(1 + (lt.deathCircleStacks||0)*0.08);
+  if(e?.id==='lt_khar' && lt.lastHitConnected) mult*=1.40;
+  return mult;
+}
+function lieutenantStrike(mult=1,label='hits!'){
+  const r=dealDamage('player',edmg(mult));
+  spawnFloat('player',`-${r.dmgDealt}`,'fn-dmg');
+  logMsg(`👑 ${G.enemy.name} ${label}`,'boss');
+  return r;
+}
+function lieutenantApplyKharChain(r){
+  const lt=G.enemy.lieutenant||{};
+  lt.lastHitConnected=!!(r && !r.wasDodged && (r.dmgDealt||0)>0);
+  G.enemy.lieutenant=lt;
+}
+function lieutenantApplyDodgeBuff(e,lt,amt,turns,label){
+  if((lt.dodgeBuffTurns||0)>0 && lt.dodgeBuffAmt){
+    e.stats.dodge=Math.max(0,(e.stats.dodge||0)-lt.dodgeBuffAmt);
+  }
+  lt.dodgeBuffTurns=turns;
+  lt.dodgeBuffAmt=amt;
+  e.stats.dodge=Math.min(95,(e.stats.dodge||0)+amt);
+  logMsg(label,'boss');
+}
+function lieutenantActionDamageMult(def,e,baseMult){
+  const atk=e.stats.atk||1;
+  const matk=e.stats.matk||atk;
+  const stat=((def.matkScale||0)>0)?matk:atk;
+  const base=(def.baseDamage||0) + stat*((def.atkScale||0)+(def.matkScale||0));
+  const denom=Math.max(1,atk+8);
+  return clamp((base/denom)*baseMult,0.45,2.6);
+}
+function performLieutenantAbility(abilityId,opts={}){
+  const e=G.enemy; const lt=e.lieutenant||(e.lieutenant={});
+  const def=LIEUTENANT_ABILITY_DEFS[abilityId];
+  if(!def) return {didDamage:false,type:'utility',didAct:false};
+  const cost=Math.max(0,def.enCost||1);
+  if((e.energy||0)<cost) return {didDamage:false,type:def.type||'utility',didAct:false,insufficientEnergy:true};
+  e.energy=Math.max(0,(e.energy||0)-cost);
+  const pHpPct=(G.player.stats.hp||1)/Math.max(1,G.player.stats.maxHp||1);
+  if(Number.isFinite(def.accuracy) && Math.random()>def.accuracy){
+    logMsg(`👑 ${e.name}'s ${def.name} missed!`,'miss');
+    lt.lastMoveType=def.type||'utility';
+    lt.lastMoveDidDamage=false;
+    return {didDamage:false,type:def.type||'utility'};
+  }
+
+  const baseMult=lieutenantBaseMult(e) * (opts.damageMult||1);
+  let didDamage=false;
+  const doHit=(mult,label)=>{
+    const r=lieutenantStrike(mult,label||`uses ${def.name}!`);
+    if(e.id==='lt_khar') lieutenantApplyKharChain(r);
+    if((r?.dmgDealt||0)>0 && !r?.wasDodged) didDamage=true;
+    return r;
+  };
+
+  if(def.type==='utility' && def.dodgeBuff){
+    lieutenantApplyDodgeBuff(e,lt,def.dodgeBuff,def.dodgeTurns||1,`💨 ${def.name}: ${e.name} gains +${def.dodgeBuff}% dodge.`);
+  }else if(def.type==='buff' && abilityId==='lt_patrol_command'){
+    lt.patrolBuffTurns=Math.max(lt.patrolBuffTurns||0,def.buffTurns||2);
+    e.stats.def=(e.stats.def||0)+(def.defBuff||0);
+    e.stats.spd=(e.stats.spd||0)+(def.spdBuff||0);
+    logMsg(`📯 Patrol Command hardens the line (+${def.defBuff||0} DEF, +${def.spdBuff||0} SPD).`,'boss');
+  }else if(def.type==='buff' && abilityId==='lt_future_sight'){
+    lt.futureSight=1;
+    lt.futureSpellMult=def.nextSpellMult||1.3;
+    logMsg('🔮 Future Sight: the next spell is empowered.','boss');
+  }else if(def.type==='buff' && abilityId==='lt_death_circle'){
+    lt.deathCircle=true;
+    lt.deathCircleStacks=0;
+    logMsg('☠ Death Circle begins to spiral.','boss');
+  }else if(abilityId==='lt_predator_mark'){
+    lt.markTurns=def.markTurns||1;
+    lt.markMult=def.markMult||1.2;
+    logMsg('🎯 Predator Mark! Seraph lines up a kill angle.','boss');
+  }else if(abilityId==='lt_shatter_grip'){
+    doHit(lieutenantActionDamageMult(def,e,baseMult),'slams with Shatter Grip!');
+    setStatusMax(G.playerStatus,'rooted',def.statusTurns||1);
+    logMsg('⛓ You are rooted in place!','boss');
+  }else if(abilityId==='lt_dread_stare'){
+    setStatusMax(G.playerStatus,'feared',def.statusTurns||1);
+    logMsg('😨 Dread Stare inflicts fear.','boss');
+  }else if(abilityId==='lt_execution_clamp'){
+    let ex=1;
+    if(pHpPct<=(def.lowHpThreshold||0.4)) ex*=(1+(def.bonusLowHp||0));
+    doHit(lieutenantActionDamageMult(def,e,baseMult*ex),'uses Execution Clamp!');
+  }else if(abilityId==='lt_crush_serpent'){
+    doHit(lieutenantActionDamageMult(def,e,baseMult),'lashes out with Crush Serpent!');
+    if(chance((def.stunChance||0)*100)){ G.playerStatus.stunned=(G.playerStatus.stunned||0)+1; logMsg('🦵 Crush Serpent stuns you!','boss'); }
+    else{ applyPlayerSlow(def.slowTurns||2,def.slowAmt||6,def.slowTurns||2); logMsg('🦵 Crush Serpent slows your movement.','boss'); }
+  }else if(abilityId==='lt_ground_sweep'){
+    const r=doHit(lieutenantActionDamageMult(def,e,baseMult),'sweeps the ground with crushing force!');
+    if((r?.dmgDealt||0)>0 && chance((def.stunChance||0)*100)){ G.playerStatus.stunned=(G.playerStatus.stunned||0)+1; logMsg('🌀 Ground Sweep staggers you!','boss'); }
+  }else if(abilityId==='lt_mist_curse'){
+    G.playerStatus.blind=Math.max(G.playerStatus.blind||0,def.statusTurns||1);
+    G.playerStatus.accDebuff=(G.playerStatus.accDebuff||0)+15;
+    logMsg('🌫 Mist Curse blinds your aim.','boss');
+  }else if(abilityId==='lt_tidal_strike'){
+    const fs=(lt.futureSight>0)?(lt.futureSpellMult||1.3):1;
+    lt.futureSight=0;
+    doHit(lieutenantActionDamageMult(def,e,baseMult*fs),'casts Tidal Strike!');
+  }else if(abilityId==='lt_rotting_curse'){
+    applyAilment('player','poison',def.statusStacks||2);
+    logMsg('☣ Rotting Curse infects you with poison.','boss');
+  }else if(abilityId==='lt_bone_harvest'){
+    const r=doHit(lieutenantActionDamageMult(def,e,baseMult),'reaps with Bone Harvest!');
+    const heal=Math.max(1,Math.floor((r?.dmgDealt||0)*(def.healFromDamage||0.5)));
+    e.stats.hp=Math.min(e.stats.maxHp,e.stats.hp+heal); setHpBar('enemy',e.stats.hp,e.stats.maxHp); spawnFloat('enemy',`+${heal}`,'fn-heal');
+  }else if(abilityId==='lt_ash_cloud'){
+    G.playerStatus.accDebuff=(G.playerStatus.accDebuff||0)+(def.accDebuff||15);
+    logMsg('🌫 Ash Cloud shrouds the battlefield.','boss');
+  }else {
+    const hits=Math.max(1,def.hits||1);
+    const critMult=1+(def.critBonus||0);
+    for(let i=0;i<hits;i++) doHit(lieutenantActionDamageMult(def,e,baseMult*critMult),`uses ${def.name}!`);
+  }
+
+  lt.lastMoveType=def.type||'utility';
+  lt.lastMoveDidDamage=didDamage;
+  return {didDamage,type:def.type||'utility',didAct:true,cost};
+}
+function lieutenantTurnAI(){
+  const e=G.enemy; const lt=e.lieutenant||(e.lieutenant={});
+  lt.turn=(lt.turn||0)+1;
+
+  if(lt.dodgeBuffTurns>0){
+    lt.dodgeBuffTurns--;
+    if(lt.dodgeBuffTurns<=0 && lt.dodgeBuffAmt){ e.stats.dodge=Math.max(0,(e.stats.dodge||0)-lt.dodgeBuffAmt); lt.dodgeBuffAmt=0; }
+  }
+  if((lt.patrolBuffTurns||0)>0){
+    lt.patrolBuffTurns--;
+    if(lt.patrolBuffTurns<=0){ e.stats.def=Math.max(0,(e.stats.def||0)-2); e.stats.spd=Math.max(1,(e.stats.spd||0)-1); }
+  }
+
+  if(e.id==='lt_seraph') lt.velocityStacks=Math.min(8,(lt.velocityStacks||0)+1);
+  if(e.id==='lt_marshal' && lt.turn%2===0){
+    lt.ironPatrolStacks=Math.min(6,(lt.ironPatrolStacks||0)+1);
+    e.stats.def=(e.stats.def||0)+1;
+    logMsg('🛡 Iron Patrol reinforces Marshal Stride (+1 DEF).','boss');
+  }
+  if(e.id==='lt_skarn' && lt.turn%3===0){
+    const h=Math.floor((e.stats.maxHp||1)*0.12);
+    e.stats.hp=Math.min(e.stats.maxHp,e.stats.hp+h);
+    setHpBar('enemy',e.stats.hp,e.stats.maxHp);
+    spawnFloat('enemy',`+${h}`,'fn-heal');
+    logMsg('☠ Feast on the Fallen restores Skarn.','boss');
+  }
+  if(e.id==='lt_skarn' && lt.deathCircle) lt.deathCircleStacks=Math.min(8,(lt.deathCircleStacks||0)+1);
+
+  const pHpPct=(G.player.stats.hp||1)/Math.max(1,G.player.stats.maxHp||1);
+  const eHpPct=(e.stats.hp||1)/Math.max(1,e.stats.maxHp||1);
+  const forceDamage = (lt.lastMoveDidDamage===false);
+  const avoidSecondUtility = (lt.lastMoveType==='utility' || lt.lastMoveType==='buff' || lt.lastMoveType==='control');
+
+  let chosen='';
+
+  if(e.aiProfile==='executioner'){
+    if(pHpPct<=0.40) chosen='lt_execution_clamp';
+    else if(!forceDamage && Math.random()<0.30) chosen='lt_shatter_grip';
+    else if(!forceDamage && Math.random()<0.22) chosen='lt_dread_stare';
+    else chosen='lt_bonecrusher';
+  }else if(e.aiProfile==='duelist'){
+    if(lt.markTurns>0) chosen='lt_skyfall_strike';
+    else if(!forceDamage && eHpPct<0.55 && (lt.dodgeBuffTurns||0)<=0 && Math.random()<0.28) chosen='lt_wind_feint';
+    else if(!forceDamage && Math.random()<0.34) chosen='lt_predator_mark';
+    else chosen=(Math.random()<0.55)?'lt_razor_dive':'lt_skyfall_strike';
+  }else if(e.aiProfile==='warden'){
+    if((lt.turn<=2 || (lt.patrolBuffTurns||0)<=0) && !forceDamage && Math.random()<0.45) chosen='lt_patrol_command';
+    else if(!forceDamage && Math.random()<0.30) chosen='lt_crush_serpent';
+    else chosen=(Math.random()<0.45)?'lt_ground_sweep':'lt_iron_kick';
+  }else if(e.aiProfile==='seer'){
+    if(lt.futureSight>0) chosen='lt_tidal_strike';
+    else if(!forceDamage && Math.random()<0.32) chosen='lt_mist_curse';
+    else if(!forceDamage && Math.random()<0.28) chosen='lt_future_sight';
+    else if(!forceDamage && eHpPct<0.5 && (lt.dodgeBuffTurns||0)<=0 && Math.random()<0.24) chosen='lt_ghost_step';
+    else chosen='lt_tidal_strike';
+  }else if(e.aiProfile==='reaper'){
+    if(!(lt.openedWithCurse)) { lt.openedWithCurse=true; chosen='lt_rotting_curse'; }
+    else if(!lt.deathCircle && !forceDamage && Math.random()<0.28) chosen='lt_death_circle';
+    else if(!forceDamage && eHpPct<0.75 && Math.random()<0.34) chosen='lt_bone_harvest';
+    else chosen=(Math.random()<0.4)?'lt_rotting_curse':'lt_carrion_peck';
+  }else if(e.aiProfile==='scavenger'){
+    if(!(lt.openedWithAsh)) { lt.openedWithAsh=true; chosen='lt_ash_cloud'; }
+    else if(!forceDamage && eHpPct<0.55 && (lt.dodgeBuffTurns||0)<=0 && Math.random()<0.24) chosen='lt_smoke_spiral';
+    else if(pHpPct<=0.50) chosen=(Math.random()<0.65)?'lt_burning_dive':'lt_carrion_rush';
+    else if(!forceDamage && Math.random()<0.28) chosen='lt_ash_cloud';
+    else chosen=(Math.random()<0.5)?'lt_carrion_rush':'lt_burning_dive';
+  }
+
+  if(avoidSecondUtility && ['lt_wind_feint','lt_predator_mark','lt_patrol_command','lt_future_sight','lt_ghost_step','lt_death_circle','lt_ash_cloud','lt_smoke_spiral','lt_mist_curse','lt_rotting_curse','lt_dread_stare','lt_shatter_grip'].includes(chosen)){
+    const fallback={
+      lt_khar:'lt_bonecrusher', lt_seraph:'lt_skyfall_strike', lt_marshal:'lt_iron_kick',
+      lt_koro:'lt_tidal_strike', lt_skarn:'lt_carrion_peck', lt_ashwing:'lt_burning_dive'
+    };
+    chosen=fallback[e.id]||chosen;
+  }
+  if(forceDamage && ['lt_wind_feint','lt_predator_mark','lt_patrol_command','lt_future_sight','lt_ghost_step','lt_death_circle','lt_ash_cloud','lt_smoke_spiral','lt_mist_curse','lt_rotting_curse','lt_dread_stare','lt_shatter_grip'].includes(chosen)){
+    const damageFallback={
+      lt_khar:'lt_execution_clamp', lt_seraph:'lt_skyfall_strike', lt_marshal:'lt_ground_sweep',
+      lt_koro:'lt_tidal_strike', lt_skarn:'lt_bone_harvest', lt_ashwing:'lt_burning_dive'
+    };
+    chosen=damageFallback[e.id]||chosen;
+  }
+  if(!chosen) chosen='lt_bonecrusher';
+  const affordable=(e.abilities||[]).map(a=>a.id).filter(id=>(LIEUTENANT_ABILITY_DEFS[id]?.enCost||1)<=Math.max(0,e.energy||0));
+  if(!affordable.length) return {didAct:false,didDamage:false,reason:'no_energy'};
+  if(!affordable.includes(chosen)){
+    const dmgPref=affordable.filter(id=>!['utility','buff','control'].includes(String(LIEUTENANT_ABILITY_DEFS[id]?.type||'')));
+    chosen=(dmgPref[0]||affordable[0]);
+  }
+  const res=performLieutenantAbility(chosen);
+  if(res?.didAct){
+    e.lieutenant=e.lieutenant||{};
+    e.lieutenant.lastAbilityId=chosen;
+  }
+  return res;
 }
 
 function lieutenantBaseMult(e){
@@ -8880,8 +9142,23 @@ async function enemyTurn() {
   lockActionUI(true);
   G.enemyTurnCount=(G.enemyTurnCount||0)+1;
   startEnemyTurn(e);
-  if(G.enemy?.aiType==='boss_duke'){
-    dukeTurnAI();
+  if(G.enemy?.aiType==='boss_duke' || /^boss_lt_/.test(String(G.enemy?.aiType||''))){
+    let actionsTaken=0;
+    let lastDidDamage=true;
+    const maxActions=Math.min(MAX_ENEMY_ACTIONS_PER_TURN,5);
+    while((G.enemy.energy||0)>0 && actionsTaken<maxActions){
+      let step;
+      if(G.enemy?.aiType==='boss_duke') step=dukeTurnAI();
+      else step=lieutenantTurnAI();
+      if(!step || !step.didAct) break;
+      actionsTaken++;
+      lastDidDamage=!!step.didDamage;
+      if(G.player.stats.hp<=0||G.enemy.stats.hp<=0){if(checkDeath())return;}
+      if((G.enemy.energy||0)<=0) break;
+      if(!lastDidDamage){
+        // pressure follow-up: if prior move dealt no damage, attempt another pass quickly
+      }
+    }
     G.animLock=false;
     if(G.player.stats.hp<=0||G.enemy.stats.hp<=0){if(checkDeath())return;}
     afterEnemyTurn();
@@ -9490,20 +9767,15 @@ function generateBossRewards() {
   function pick(forced,optional){
     const r=pickTier(forced)||pickTier('purple')||pickTier('blue');
     if(r) out.push(r);
-    if(optional&&out.length<3&&chance(optional*100)){const r2=pickTier('gold');if(r2)out.push(r2);}
+    // Stage rewards no longer grant gold-tier cards directly.
   }
   
-  // Stage 40 endless boss: 3 gold
-  if(endlessBattle>0&&endlessBattle%20===0){
-    for(let i=0;i<3;i++){const r=pickTier('gold');if(r)out.push(r);}
+  // Boss stage rewards are capped at purple tier (no direct gold cards).
+  if(stage%10===0){
+    pick('purple', 0);
   }
-  // Stage 10/20 main bosses: 1 purple guaranteed + 25% gold
-  else if(stage%10===0){
-    pick('purple', 0.20);
-  }
-  // Default boss: purple + possible gold
   else {
-    pick('purple', 0.12);
+    pick('purple', 0);
   }
   
   if(isEndlessRunActive()){
@@ -9516,9 +9788,9 @@ function generateBossRewards() {
   // Fill remaining 3 slots
   while(out.length<3){
     let tier;
-    if(stage>=35||endlessBattle>30){tier=rollWeighted(['blue','purple','gold'],[47,48,5]);}
-    else if(stage>=20||endlessBattle>10){tier=rollWeighted(['blue','purple','gold'],[47,48,5]);}
-    else{tier=rollTier(true);}
+    if(stage>=35||endlessBattle>30){tier=rollWeighted(['blue','purple'],[50,50]);}
+    else if(stage>=20||endlessBattle>10){tier=rollWeighted(['blue','purple'],[50,50]);}
+    else{tier=rollWeighted(['grey','green','blue','purple'],[1,3,46,50]);}
     const r=pickTier(tier);
     if(r) out.push(r);
     else {const fallback=pickTier('blue')||pickTier('purple');if(fallback)out.push(fallback);else break;}
