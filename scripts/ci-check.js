@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 const fs = require('fs');
 const path = require('path');
+const { execFileSync } = require('child_process');
 
 function fail(msg){
   console.error(msg);
@@ -8,10 +9,14 @@ function fail(msg){
 }
 
 function parseJs(file){
-  const src = fs.readFileSync(file, 'utf8');
-  try { new Function(src); }
-  catch (e) { fail(`JS parse failed: ${file}\n${e.message}`); }
+  try {
+    execFileSync(process.execPath, ['--check', file], { stdio: 'pipe' });
+  } catch (e) {
+    const stderr = String(e?.stderr || e?.stdout || e?.message || '').trim();
+    fail(`JS parse failed: ${file}${stderr ? `\n${stderr}` : ''}`);
+  }
 }
+
 
 function checkSpriteRefs(cssFile){
   const css = fs.readFileSync(cssFile, 'utf8');
