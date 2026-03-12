@@ -3128,9 +3128,15 @@ function buildGameModeToggle(){
 }
 
 function setGameMode(mode,btn){
-  const ui=ensureUIState();
-  ui.gameMode=(mode==='endless')?'endless':'story';
-  applyUIStateToDOM();
+  G._gameMode=(mode==='endless')?'endless':'story';
+  const endless=(G._gameMode==='endless');
+  const main=document.getElementById('endless-check');
+  if(main) main.checked=endless;
+  if(btn){
+    const wrap=btn.closest('.mode-toggle');
+    wrap?.querySelectorAll('.mode-toggle-btn').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+  }
   buildGameModeToggle();
 }
 
