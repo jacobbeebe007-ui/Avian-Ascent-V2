@@ -1,7 +1,6 @@
 #!/usr/bin/env node
 const fs = require('fs');
 const path = require('path');
-const { execFileSync } = require('child_process');
 
 const STRICT_PARITY = process.env.CI_STRICT_PARITY === '1' || process.env.ABILITY_PARITY_STRICT === '1';
 const IS_DEV_MODE = process.env.NODE_ENV !== 'production';
@@ -12,14 +11,10 @@ function fail(msg){
 }
 
 function parseJs(file){
-  try {
-    execFileSync(process.execPath, ['--check', file], { stdio: 'pipe' });
-  } catch (e) {
-    const stderr = String(e?.stderr || e?.stdout || e?.message || '').trim();
-    fail(`JS parse failed: ${file}${stderr ? `\n${stderr}` : ''}`);
-  }
+  const src = fs.readFileSync(file, 'utf8');
+  try { new Function(src); }
+  catch (e) { fail(`JS parse failed: ${file}\n${e.message}`); }
 }
-
 
 function checkSpriteRefs(cssFile){
   const css = fs.readFileSync(cssFile, 'utf8');
