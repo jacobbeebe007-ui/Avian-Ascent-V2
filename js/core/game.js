@@ -1122,6 +1122,23 @@ runPassiveIntegrityAudit();
 // ============================================================
 //  ENEMIES — 20 stages (boss every 10)
 // ============================================================
+function inferAIPersonalityFromStyle(style='tactical', name=''){
+  const n=String(name||'').toLowerCase();
+  if(/duke blakiston/.test(n)) return 'tyrant';
+  if(/seraph/.test(n)) return 'duelist';
+  if(/khar/.test(n)) return 'executioner';
+  if(/marshal stride/.test(n)) return 'defender';
+  if(/mistmother koro/.test(n)) return 'seer';
+  if(/gravecaller skarn/.test(n)) return 'reaper';
+  if(/ashwing pyre/.test(n)) return 'scavenger';
+  const s=String(style||'').toLowerCase();
+  if(['berserker','aggressive'].includes(s)) return 'aggressive';
+  if(['cautious','defensive'].includes(s)) return 'defender';
+  if(['trickster'].includes(s)) return 'control';
+  if(['predator'].includes(s)) return 'executioner';
+  return 'tactical';
+}
+
 function makeEnemy(name, emoji, hp, atk, def, spd, style, isBoss=false, bossTitle='', opts={}) {
   const acc = opts.acc||72;
   const dodge = opts.dodge||5;
@@ -1130,13 +1147,13 @@ function makeEnemy(name, emoji, hp, atk, def, spd, style, isBoss=false, bossTitl
   const mdef = opts.mdef||8;
   const matk = opts.matk||6;
   const portraitKey = opts.portraitKey||null;
-  return {name, emoji, portraitKey, hp, maxHp:hp, atk, def, spd, acc, dodge, size, aiStyle:style, isBoss, bossTitle, abilities,
+  return {name, emoji, portraitKey, hp, maxHp:hp, atk, def, spd, acc, dodge, size, aiStyle:style, aiPersonality:(opts.aiPersonality||inferAIPersonalityFromStyle(style,name)), isBoss, bossTitle, abilities,
     stats:{hp,maxHp:hp,atk,def,spd,acc,dodge,mdef,matk}};
 }
 
 function makeDukeBlakiston(){
   return {
-    id:'duke_blakiston', name:'Duke Blakiston', portraitKey:'duke_blakiston', isBoss:true, size:'xl', aiType:'boss_duke',
+    id:'duke_blakiston', name:'Duke Blakiston', portraitKey:'duke_blakiston', isBoss:true, size:'xl', aiType:'boss_duke', aiPersonality:'tyrant',
     stats:{maxHp:360,hp:360,atk:16,matk:16,def:9,mdef:9,spd:7,acc:85,dodge:8},
     duke:{phase:1,nightfallTurns:0,decreeKey:null,decreeStacks:0,riverCd:0,summonCd:0,verdictCd:0}
   };
@@ -3695,7 +3712,7 @@ function loadStage() {
         if(pool.length>0){
           const src=pool[Math.floor(Math.random()*pool.length)];
           ed={name:src.name,emoji:src.emoji,birdKey:src.birdKey,portraitKey:src.birdKey,hp:src.hp,maxHp:src.hp,atk:src.atk,def:src.def,spd:src.spd,
-            acc:src.acc,dodge:src.dodge,size:src.size,aiStyle:src.aiStyle,isBoss:false,bossTitle:'',
+            acc:src.acc,dodge:src.dodge,size:src.size,aiStyle:src.aiStyle,aiPersonality:(src.aiPersonality||inferAIPersonalityFromStyle(src.aiStyle,src.name)),isBoss:false,bossTitle:'',
             abilities:src.abilities,stats:{hp:src.hp,maxHp:src.hp,atk:src.atk,def:src.def,spd:src.spd,
             acc:src.acc,dodge:src.dodge,mdef:8,matk:6}};
         }
@@ -3728,6 +3745,7 @@ function loadStage() {
   AvianEvents.emit('stage:loaded', stageEvt);
   runModuleHook('onStageLoaded', stageEvt);
   if(!G.enemy.aiType) G.enemy.aiType=mapAiStyleToType(G.enemy.aiStyle);
+  if(!G.enemy.aiPersonality) G.enemy.aiPersonality=inferAIPersonalityFromStyle(G.enemy.aiStyle,G.enemy.name);
   codexMark('enemies', G.enemy.id||G.enemy.name, 'seen');
   enforceAbilityCosts(G.player);
   applyBiomeModifiers();
@@ -7685,36 +7703,74 @@ function getEnemyActionEnergyCost(action){
   }
   return 1;
 }
+
+const AI_PERSONALITY_PROFILES = {
+  aggressive:{damageBias:1.35,heavyBias:1.25,controlBias:0.85,buffBias:0.60,guardBias:0.55,healBias:0.50,finisherBias:1.20,repeatBias:0.85},
+  tactical:{damageBias:1.10,heavyBias:1.00,controlBias:1.10,buffBias:1.00,guardBias:0.90,healBias:0.80,finisherBias:1.05,repeatBias:0.80},
+  opportunistic:{damageBias:1.15,heavyBias:1.10,controlBias:0.95,buffBias:0.70,guardBias:0.70,healBias:0.65,finisherBias:1.50,repeatBias:0.80},
+  control:{damageBias:0.95,heavyBias:0.85,controlBias:1.40,buffBias:1.00,guardBias:0.85,healBias:0.75,finisherBias:1.00,repeatBias:0.75},
+  defender:{damageBias:0.95,heavyBias:0.90,controlBias:1.00,buffBias:0.95,guardBias:1.35,healBias:1.15,finisherBias:0.95,repeatBias:0.80},
+  duelist:{damageBias:1.25,heavyBias:1.20,controlBias:0.95,buffBias:0.70,guardBias:0.60,healBias:0.50,finisherBias:1.30,repeatBias:0.90},
+  executioner:{damageBias:1.25,heavyBias:1.30,controlBias:1.05,buffBias:0.55,guardBias:0.50,healBias:0.45,finisherBias:1.65,repeatBias:0.95},
+  seer:{damageBias:0.95,heavyBias:0.80,controlBias:1.45,buffBias:1.25,guardBias:0.85,healBias:0.70,finisherBias:0.95,repeatBias:0.70},
+  reaper:{damageBias:1.05,heavyBias:0.95,controlBias:1.20,buffBias:1.10,guardBias:0.75,healBias:1.25,finisherBias:1.15,repeatBias:0.80},
+  scavenger:{damageBias:1.10,heavyBias:1.10,controlBias:1.00,buffBias:0.75,guardBias:0.65,healBias:0.60,finisherBias:1.45,repeatBias:0.80},
+  tyrant:{damageBias:1.20,heavyBias:1.15,controlBias:1.20,buffBias:0.90,guardBias:0.75,healBias:0.65,finisherBias:1.40,repeatBias:0.85},
+};
+
+function getAIPersonalityProfile(enemy){
+  const id=(enemy?.aiPersonality||'tactical').toLowerCase();
+  return AI_PERSONALITY_PROFILES[id]||AI_PERSONALITY_PROFILES.tactical;
+}
+function getEnemyAIMemory(enemy){
+  if(!enemy.aiMemory){
+    enemy.aiMemory={lastAbilityId:null,lastActionCategory:null,lastTurnHadDamage:true,utilityStreak:0,turnsSinceHit:0,openingSetupUsed:false};
+  }
+  return enemy.aiMemory;
+}
 function getEnemyMode(e,p){
   const hpPct=(e.stats.hp||1)/Math.max(1,e.stats.maxHp||1);
   const pHpPct=(p.stats.hp||1)/Math.max(1,p.stats.maxHp||1);
-  const canDebuff=(e.abilities||[]).some(id=>['eWeaken','eFear','eBlind','ePoison','eVenom'].includes(id));
+  const canDebuff=(e.abilities||[]).some(id=>['eWeaken','eFear','eBlind','ePoison','eVenom','eStun'].includes(id));
   if(hpPct<0.30) return 'RECOVER';
-  if(pHpPct<0.35) return 'EXECUTE';
+  if(pHpPct<0.40) return 'EXECUTE';
   if(canDebuff) return 'SETUP';
   return 'PRESSURE';
+}
+function classifyEnemyActionCategory(action){
+  if(!action) return 'utility';
+  if(action.type==='strike') return 'damage';
+  if(action.type==='heavy') return 'heavy';
+  if(action.type==='defend') return 'guard';
+  if(action.type!=='ability') return 'utility';
+  const id=String(action.abilityId||'');
+  if(['eHeal'].includes(id)) return 'heal';
+  if(['eShield'].includes(id)) return 'guard';
+  if(['eRage'].includes(id)) return 'buff';
+  if(['eWeaken','eFear','eBlind','ePoison','eVenom','eStun','eBurn'].includes(id)) return 'control';
+  return 'damage';
 }
 function buildEnemyActionPool(e,mode){
   const abs=e.abilities||[];
   const pool=[];
-  const add=(a,w)=>{for(let i=0;i<w;i++) pool.push(a);};
+  const push=(a,w=1,meta={})=>{for(let i=0;i<w;i++) pool.push({...a,...meta});};
   if(mode==='RECOVER'){
-    if(abs.includes('eHeal')) add({type:'ability',abilityId:'eHeal',icon:'🌿',label:'Heal'},5);
-    if(abs.includes('eShield')) add({type:'ability',abilityId:'eShield',icon:'🛡',label:'Shield'},4);
-    add({type:'defend',icon:'🛡',label:'Defend'},3);
-    add({type:'strike',icon:'⚔',label:'Attack'},2);
+    if(abs.includes('eHeal')) push({type:'ability',abilityId:'eHeal',icon:'🌿',label:'Heal'},4,{isUtility:true});
+    if(abs.includes('eShield')) push({type:'ability',abilityId:'eShield',icon:'🛡',label:'Shield'},3,{isUtility:true});
+    push({type:'defend',icon:'🛡',label:'Defend'},2,{isUtility:true});
+    push({type:'strike',icon:'⚔',label:'Attack'},2);
   }else if(mode==='EXECUTE'){
-    add({type:'heavy',icon:'💢',label:'Heavy Strike'},5);
-    add({type:'strike',icon:'⚔',label:'Attack'},3);
-    for(const id of abs){ if(['eRage','eStun','ePoison','eBurn'].includes(id)) add({type:'ability',abilityId:id,icon:'✦',label:ENEMY_ABILITY_POOL[id]?.name||id},2); }
+    push({type:'heavy',icon:'💢',label:'Heavy Strike',tags:['HEAVY','FINISH']},5);
+    push({type:'strike',icon:'⚔',label:'Attack'},3);
+    for(const id of abs){ if(['eRage','eStun','ePoison','eBurn','eFear'].includes(id)) push({type:'ability',abilityId:id,icon:'✦',label:ENEMY_ABILITY_POOL[id]?.name||id},2,{isUtility:['eRage'].includes(id)}); }
   }else if(mode==='SETUP'){
-    for(const id of abs){ if(['eWeaken','eFear','eBlind','ePoison','eVenom'].includes(id)) add({type:'ability',abilityId:id,icon:'🌀',label:ENEMY_ABILITY_POOL[id]?.name||id},4); }
-    add({type:'strike',icon:'⚔',label:'Attack'},3);
-    add({type:'defend',icon:'🛡',label:'Defend'},1);
+    for(const id of abs){ if(['eWeaken','eFear','eBlind','ePoison','eVenom'].includes(id)) push({type:'ability',abilityId:id,icon:'🌀',label:ENEMY_ABILITY_POOL[id]?.name||id},4,{isUtility:true}); }
+    push({type:'strike',icon:'⚔',label:'Attack'},3);
+    push({type:'defend',icon:'🛡',label:'Defend'},1,{isUtility:true});
   }else{
-    add({type:'strike',icon:'⚔',label:'Attack'},5);
-    add({type:'heavy',icon:'💢',label:'Heavy Strike'},2);
-    for(const id of abs){ if(['eWeaken','eFear','eBlind','eRage'].includes(id)) add({type:'ability',abilityId:id,icon:'✦',label:ENEMY_ABILITY_POOL[id]?.name||id},2); }
+    push({type:'strike',icon:'⚔',label:'Attack'},5);
+    push({type:'heavy',icon:'💢',label:'Heavy Strike',tags:['HEAVY']},2);
+    for(const id of abs){ if(['eWeaken','eFear','eBlind','eRage'].includes(id)) push({type:'ability',abilityId:id,icon:'✦',label:ENEMY_ABILITY_POOL[id]?.name||id},2,{isUtility:['eRage'].includes(id)}); }
   }
   return pool;
 }
@@ -7722,109 +7778,98 @@ function projectedEnemyActionDamage(a,e){
   if(!a) return 0;
   if(a.type==='strike') return Math.floor((e.stats.atk||8)*1.0);
   if(a.type==='heavy') return Math.floor((e.stats.atk||8)*1.6);
-  if(a.type==='ability'){
-    if(a.abilityId==='eStun') return Math.floor((e.stats.atk||8)*1.1);
-    return 0;
-  }
+  if(a.type==='ability') return ['eStun'].includes(a.abilityId)?Math.floor((e.stats.atk||8)*1.1):0;
   return 0;
+}
+function getEnemyOpeningBias(enemy,turnNumber){
+  const p=(enemy.aiPersonality||'tactical').toLowerCase();
+  if(turnNumber>1) return {};
+  if(['aggressive','duelist','executioner'].includes(p)) return {damage:1.25,heavy:1.20,control:0.9};
+  if(['control','seer'].includes(p)) return {control:1.35,buff:1.2,damage:0.9};
+  if(['defender'].includes(p)) return {guard:1.25,heal:1.15,damage:0.9};
+  if(['scavenger','opportunistic'].includes(p)) return {control:1.2,damage:1.05};
+  if(['tyrant'].includes(p)) return {control:1.25,damage:1.1};
+  return {};
+}
+function getEnemyActionComboBonus(enemy,action,cat){
+  const m=getEnemyAIMemory(enemy);
+  const p=(enemy.aiPersonality||'tactical').toLowerCase();
+  const prev=String(m.lastAbilityId||'');
+  if(!prev) return 1;
+  if(['duelist','executioner'].includes(p) && ['eWeaken','eFear','eBlind'].includes(prev) && (cat==='heavy'||cat==='damage')) return 1.30;
+  if(['seer','control'].includes(p) && prev==='eBlind' && cat==='damage') return 1.25;
+  if(['reaper','scavenger'].includes(p) && ['ePoison','eVenom'].includes(prev) && (cat==='damage'||cat==='heavy')) return 1.25;
+  if(p==='tyrant' && ['eShield','eRage','eWeaken','eFear'].includes(prev) && (cat==='heavy'||cat==='damage')) return 1.35;
+  return 1;
 }
 function planEnemyTurn(e,p){
   const mode=getEnemyMode(e,p);
   const pool=buildEnemyActionPool(e,mode);
   const actions=[];
+  const mem=getEnemyAIMemory(e);
+  const profile=getAIPersonalityProfile(e);
   let energy=e.energyMax||3;
-  let projected=0;
-  let hardCCUsedLast=(G.enemyLastPlan||[]).some(a=>a.type==='ability'&&a.abilityId==='eStun');
-  let nonDmgEvery2=0;
-  const diff=G.difficulty||'juvenile';
-  const murderMode=diff==='murder';
-  const hardMode=diff==='predator';
-
-  // Turn-1 debuff opener guaranteed on Murder, preferred on Hard
-  const hardCCBlocked=!!G.enemyUsedHardCCLastTurn;
-  if((G.enemyTurnCount||0)<=1){
-    const openers=(e.abilities||[]).filter(id=>['eWeaken','eBlind','eFear'].includes(id));
-    if(openers.length){
-      const opener={type:'ability',abilityId:openers[0],icon:'🌀',label:ENEMY_ABILITY_POOL[openers[0]]?.name||openers[0]};
-      const oc=getEnemyActionEnergyCost(opener);
-      if(oc<=energy && (murderMode || (hardMode&&chance(70)))){
-        actions.push({...opener,energyCost:oc});
-        energy-=oc;
+  let actionsTaken=0;
+  const maxActions=Math.min(MAX_ENEMY_ACTIONS_PER_TURN,6);
+  let turnHadDamage=false;
+  while(energy>0 && actionsTaken<maxActions){
+    const affordable=pool.filter(a=>getEnemyActionEnergyCost(a)<=energy);
+    if(!affordable.length) break;
+    let best=null; let bestScore=-1;
+    for(const cand of affordable){
+      const cat=classifyEnemyActionCategory(cand);
+      let w=10;
+      if(cat==='damage') w*=profile.damageBias;
+      if(cat==='heavy') w*=profile.heavyBias;
+      if(cat==='control') w*=profile.controlBias;
+      if(cat==='buff') w*=profile.buffBias;
+      if(cat==='guard') w*=profile.guardBias;
+      if(cat==='heal') w*=profile.healBias;
+      const pHp=(p.stats.hp||1)/Math.max(1,p.stats.maxHp||1);
+      const eHp=(e.stats.hp||1)/Math.max(1,e.stats.maxHp||1);
+      if(pHp<=0.5 && (cat==='heavy'||cat==='damage')) w*=profile.finisherBias;
+      if(mem.lastAbilityId && (cand.abilityId||cand.type)===mem.lastAbilityId) w*=profile.repeatBias;
+      if(!mem.lastTurnHadDamage && (cat==='damage'||cat==='heavy')) w*=1.45;
+      if(mem.utilityStreak>=1 && (cat==='damage'||cat==='heavy')) w*=1.25;
+      const opening=getEnemyOpeningBias(e,G.enemyTurnCount||1);
+      if(opening[cat]) w*=opening[cat];
+      if(['aggressive','duelist','executioner'].includes((e.aiPersonality||'')) && pHp<0.5 && (cat==='guard'||cat==='heal') && eHp>0.25) w*=0.7;
+      if(['control','seer'].includes((e.aiPersonality||''))){
+        const hasDebuffs=!!(G.playerStatus.weaken||G.playerStatus.feared||G.playerStatus.confused||G.playerStatus.paralyzed||G.playerStatus.poison||G.playerStatus.bleed||G.playerStatus.accDebuff);
+        if(!hasDebuffs && cat==='control' && !mem.openingSetupUsed) w*=1.3;
+        if(mem.openingSetupUsed && cat==='control') w*=0.75;
+        if(hasDebuffs && (cat==='damage'||cat==='heavy')) w*=1.15;
       }
+      if((e.aiPersonality||'')==='defender' && eHp<0.5 && (cat==='guard'||cat==='heal')) w*=1.2;
+      if((e.aiPersonality||'')==='reaper' && eHp<0.7 && cat==='heal') w*=1.3;
+      if((e.aiPersonality||'')==='reaper' && (G.playerStatus.poison?.stacks||0)>0 && (cat==='damage'||cat==='heavy')) w*=1.2;
+      if(['scavenger','opportunistic'].includes((e.aiPersonality||'')) && pHp<0.5 && (cat==='heavy'||cat==='damage')) w*=1.25;
+      if((e.aiPersonality||'')==='tyrant' && mem.utilityStreak>=1 && (cat==='damage'||cat==='heavy')) w*=1.4;
+      if(getEnemyActionComboBonus(e,cand,cat)>1) w*=getEnemyActionComboBonus(e,cand,cat);
+      const cost=getEnemyActionEnergyCost(cand);
+      if(cost===energy) w*=1.1;
+      if(w>bestScore){bestScore=w;best={...cand,energyCost:cost,category:cat};}
+    }
+    if(!best) break;
+    actions.push(best);
+    energy-=best.energyCost;
+    actionsTaken++;
+    const didDmg=projectedEnemyActionDamage(best,e)>0;
+    turnHadDamage = turnHadDamage || didDmg;
+    mem.lastAbilityId=best.abilityId||best.type;
+    mem.lastActionCategory=best.category;
+    if((G.enemyTurnCount||1)<=1 && (best.category==='control'||best.category==='buff'||best.category==='guard')) mem.openingSetupUsed=true;
+    mem.utilityStreak=(best.category==='guard'||best.category==='heal'||best.category==='buff'||best.category==='control')?(mem.utilityStreak+1):0;
+    if(globalThis.__AI_DEBUG){
+      console.debug('[AI]', e.name, 'persona=', e.aiPersonality, 'pick=', mem.lastAbilityId, 'cat=', best.category, 'EN->', energy);
     }
   }
-
-  // Smarter heal gate: only if meaningful missing HP
-  const hpMissingPct=1-((e.stats.hp||1)/Math.max(1,e.stats.maxHp||1));
-  if(hpMissingPct<=0.12){
-    for(let i=pool.length-1;i>=0;i--){ if(pool[i].type==='ability'&&pool[i].abilityId==='eHeal') pool.splice(i,1); }
-  }
-  while(energy>0&&pool.length){
-    let pick=pool[Math.floor(Math.random()*pool.length)];
-    if((hardMode||murderMode) && chance(murderMode?65:45)){
-      const weighted=pool.slice().sort((a,b)=>projectedEnemyActionDamage(b,e)-projectedEnemyActionDamage(a,e));
-      pick=weighted[0]||pick;
-    }
-    const c=getEnemyActionEnergyCost(pick);
-    if(c>energy){
-      const affordable=pool.filter(a=>getEnemyActionEnergyCost(a)<=energy);
-      if(!affordable.length) break;
-      pick=affordable[Math.floor(Math.random()*affordable.length)];
-    }
-    if((hardCCUsedLast||hardCCBlocked)&&pick.type==='ability'&&pick.abilityId==='eStun'){
-      const noCC=pool.filter(a=>!(a.type==='ability'&&a.abilityId==='eStun')&&getEnemyActionEnergyCost(a)<=energy);
-      if(noCC.length) pick=noCC[Math.floor(Math.random()*noCC.length)];
-    }
-    const dmg=projectedEnemyActionDamage(pick,e);
-    const capPct=e.isBoss?0.60:0.45;
-    if(projected+dmg > (p.stats.maxHp||1)*capPct){
-      const lighter=pool.filter(a=>projectedEnemyActionDamage(a,e)<=Math.max(1,(p.stats.maxHp||1)*capPct-projected)&&getEnemyActionEnergyCost(a)<=energy);
-      if(lighter.length) pick=lighter[Math.floor(Math.random()*lighter.length)];
-    }
-    actions.push({...pick,energyCost:getEnemyActionEnergyCost(pick)});
-    energy-=getEnemyActionEnergyCost(pick);
-    projected+=projectedEnemyActionDamage(pick,e);
-    if(pick.type==='ability'&&pick.abilityId==='eStun') hardCCUsedLast=true;
-    if(['defend'].includes(pick.type) || (pick.type==='ability'&&['eWeaken','eFear','eBlind','eRage','eHeal','eShield'].includes(pick.abilityId))) nonDmgEvery2=0;
-    else nonDmgEvery2++;
-    if(nonDmgEvery2>=2){
-      const support=pool.filter(a=>(a.type==='defend'||(a.type==='ability'&&['eWeaken','eFear','eBlind','eShield','eHeal'].includes(a.abilityId)))&&getEnemyActionEnergyCost(a)<=energy);
-      if(support.length&&energy>0){
-        const sup=support[Math.floor(Math.random()*support.length)];
-        actions.push({...sup,energyCost:getEnemyActionEnergyCost(sup)});
-        energy-=getEnemyActionEnergyCost(sup);
-      }
-      break;
-    }
-    if(actions.length>=4) break;
+  if(!turnHadDamage){
+    const fallback=pool.find(a=>['strike','heavy'].includes(a.type)&&getEnemyActionEnergyCost(a)<= (e.energyMax||3));
+    if(fallback && actions.length<maxActions) actions.push({...fallback,energyCost:getEnemyActionEnergyCost(fallback),category:classifyEnemyActionCategory(fallback)});
   }
   return {mode,actions};
 }
-
-const ENEMY_AI = {
-  aggressive(enemy){
-    if(enemyCanUse(enemy,'heavy')) return enemyUse(enemy,'heavy');
-    return enemyUse(enemy,'strike');
-  },
-  defensive(enemy){
-    if(enemyHpPct(enemy)<=0.55 && enemyCanUse(enemy,'defend')) return enemyUse(enemy,'defend');
-    if(enemyCanUse(enemy,'debuff') && Math.random()<0.25) return enemyUse(enemy,'debuff');
-    return enemyUse(enemy,'strike');
-  },
-  trickster(enemy){
-    if(enemyCanUse(enemy,'debuff')) return enemyUse(enemy,'debuff');
-    if(enemyCanUse(enemy,'strike') && Math.random()<0.65) return enemyUse(enemy,'strike');
-    return enemyUse(enemy,'defend');
-  },
-  predator(enemy){
-    if(playerHpPct()<=0.45 && enemyCanUse(enemy,'heavy')) return enemyUse(enemy,'heavy');
-    if(enemyCanUse(enemy,'heavy') && Math.random()<0.35) return enemyUse(enemy,'heavy');
-    return enemyUse(enemy,'strike');
-  },
-  boss(enemy){
-    return enemyUse(enemy,'heavy')||enemyUse(enemy,'strike');
-  }
-};
 
 function enemyHpPct(e){ return (e?.stats?.hp||1)/Math.max(1,(e?.stats?.maxHp||1)); }
 function playerHpPct(){ return (G.player?.stats?.hp||1)/Math.max(1,(G.player?.stats?.maxHp||1)); }
@@ -7836,39 +7881,15 @@ function mapAiStyleToType(style){
   if(['predator'].includes(s)) return 'predator';
   return 'aggressive';
 }
-function enemyActionFromPool(e,key){
-  const mode=getEnemyMode(e,G.player);
-  const pool=buildEnemyActionPool(e,mode);
-  const pickers={
-    strike:()=>pool.find(a=>a.type==='strike'),
-    heavy:()=>pool.find(a=>a.type==='heavy')||pool.find(a=>a.type==='ability'&&['eStun','eRage'].includes(a.abilityId)),
-    defend:()=>pool.find(a=>a.type==='defend')||pool.find(a=>a.type==='ability'&&['eShield','eHeal'].includes(a.abilityId)),
-    debuff:()=>pool.find(a=>a.type==='ability'&&['eWeaken','eFear','eBlind'].includes(a.abilityId)),
-  };
-  const a=(pickers[key]&&pickers[key]())||pool[0];
-  return a?{...a,energyCost:getEnemyActionEnergyCost(a)}:null;
-}
-function enemyCanUse(enemy,key){ return !!enemyActionFromPool(enemy,key); }
-function enemyUse(enemy,key){ return enemyActionFromPool(enemy,key); }
-function bossScriptPick(enemy){ return enemyUse(enemy,'heavy')||enemyUse(enemy,'strike'); }
-
 function planEnemyAction() {
   const e=G.enemy;
-  const aiType=(e.aiType||mapAiStyleToType(e.aiStyle)||'aggressive').toLowerCase();
-  const fn=ENEMY_AI[aiType]||ENEMY_AI.aggressive;
-  let actions=[];
-  const first=fn(e);
-  if(first) actions.push(first);
-  const second=(Math.random()<0.55)?fn(e):null;
-  if(second) actions.push(second);
-  if(!actions.length){
-    const plan=planEnemyTurn(e,G.player);
-    actions=plan.actions;
-  }
+  const plan=planEnemyTurn(e,G.player);
+  const actions=(plan.actions||[]).slice(0,MAX_ENEMY_ACTIONS_PER_TURN);
   G.enemyPlannedActions=actions;
+  const persona=(e.aiPersonality||'tactical');
   const preview=actions.slice(0,2).map(a=>`${a.icon||'•'} ${a.type==='ability'?(ENEMY_ABILITY_POOL[a.abilityId]?.name||a.abilityId):a.label}`).join(' → ');
   const more=actions.length>2?' +':'';
-  return {label:`${preview}${more}`,type:'plan',actions,mode:aiType};
+  return {label:`[${persona}] ${preview}${more}`,type:'plan',actions,mode:plan.mode,personality:persona};
 }
 
 
@@ -7912,19 +7933,21 @@ function dukeSummonCourt(){
 }
 function dukeTurnAI(){
   const e=G.enemy; const d=e.duke;
+  const mem=getEnemyAIMemory(e);
   const enraged=isBossEnrageAllowed() && e.stats.hp<=Math.floor(e.stats.maxHp*0.35);
   if(enraged) setStatusMax(G.enemyStatus,'enraged',2);
   d.riverCd=Math.max(0,(d.riverCd||0)-1);
   d.summonCd=Math.max(0,(d.summonCd||0)-1);
   d.verdictCd=Math.max(0,(d.verdictCd||0)-1);
   if(d.phase>=3) dukeApplyDecreePunish();
-  if(d.phase===1 && e.stats.hp<=Math.floor(e.stats.maxHp*0.75)){ dukeNightfall(); return; }
+  if(d.phase===1 && e.stats.hp<=Math.floor(e.stats.maxHp*0.75)){ mem.utilityStreak=(mem.utilityStreak||0)+1; mem.lastTurnHadDamage=false; mem.lastAbilityId='dukeNightfall'; mem.lastActionCategory='control'; dukeNightfall(); return; }
   if(d.phase===2){ d.nightfallTurns--; if(d.nightfallTurns<=0){ d.phase=3; logMsg('📜 The Court speaks in decree.','boss'); } }
-  if(d.summonCd===0){ d.summonCd=4; dukeSummonCourt(); return; }
-  if(d.riverCd===0){ d.riverCd=3; dukeRiverGrip(); return; }
+  if(d.summonCd===0){ d.summonCd=4; mem.utilityStreak=(mem.utilityStreak||0)+1; mem.lastTurnHadDamage=false; mem.lastAbilityId='dukeSummonCourt'; mem.lastActionCategory='guard'; dukeSummonCourt(); return; }
+  if(d.riverCd===0){ d.riverCd=3; mem.utilityStreak=(mem.utilityStreak||0)+1; mem.lastTurnHadDamage=false; mem.lastAbilityId='dukeRiverGrip'; mem.lastActionCategory='control'; dukeRiverGrip(); return; }
   const p=G.player.stats;
-  if(d.verdictCd===0 && (p.hp<=Math.floor(p.maxHp*0.35) || (G.enemyStatus.enraged||0)>0)){ d.verdictCd=3; dukeOwlsVerdict(); return; }
+  if(d.verdictCd===0 && (p.hp<=Math.floor(p.maxHp*0.5) || (G.enemyStatus.enraged||0)>0)){ d.verdictCd=3; mem.utilityStreak=0; mem.lastAbilityId='dukeOwlsVerdict'; mem.lastActionCategory='heavy'; mem.lastTurnHadDamage=true; dukeOwlsVerdict(); return; }
   const r=dealDamage('player',edmg(1.0));
+  mem.utilityStreak=0; mem.lastAbilityId='dukeTalons'; mem.lastActionCategory='damage'; mem.lastTurnHadDamage=(r.dmgDealt||0)>0;
   spawnFloat('player',`-${r.dmgDealt}`,'fn-dmg');
   logMsg('🦉 Talons in the dark.','boss');
 }
@@ -7995,6 +8018,8 @@ async function enemyTurn() {
 
   G.enemyActionsThisTurn=0;
   let usedHardCCThisTurn=false;
+  const aiMem=getEnemyAIMemory(e);
+  let turnHadDamage=false;
   for(const action of plan){
     if(G.enemyActionsThisTurn>=MAX_ENEMY_ACTIONS_PER_TURN) break;
     const cost=getEnemyActionEnergyCost(action);
@@ -8024,6 +8049,7 @@ async function enemyTurn() {
         setHpBar('player',G.player.stats.hp,G.player.stats.maxHp);
         if(r.wasDodged)logMsg(`${e.name} attacks — dodged!`,'enemy-action');
         else logMsg(`${e.name} attacks for ${r.dmgDealt}!`,'enemy-action');
+        if((r.dmgDealt||0)>0) turnHadDamage=true;
       }
     } else if(action.type==='heavy'){
       G._incomingAttackKind='physical';
@@ -8035,6 +8061,7 @@ async function enemyTurn() {
         setHpBar('player',G.player.stats.hp,G.player.stats.maxHp);
         if(r.wasDodged)logMsg(`Heavy — dodged!`,'enemy-action');
         else logMsg(`💢 ${e.name} heavy hits for ${r.dmgDealt}!`,'enemy-action');
+        if((r.dmgDealt||0)>0) turnHadDamage=true;
       }
     } else if(action.type==='defend'){
       if(G.enemyStatus.feared>0){logMsg(`${e.name} too afraid to defend!`,'enemy-action');}
@@ -8056,15 +8083,20 @@ async function enemyTurn() {
         }
         await doSpell('enemy',`✦ ${eab.name}!`);
         eab.fn(G.enemy,G.player,G);
+        if(projectedEnemyActionDamage(action,e)>0) turnHadDamage=true;
         const _macBd=BIRDS[G.player.birdKey];
         if(_macBd&&_macBd.passive&&_macBd.passive.onEnemyAbility) _macBd.passive.onEnemyAbility(G.player,action.abilityId);
         renderStatuses('player-status',G.playerStatus); renderStatuses('enemy-status',G.enemyStatus);
       }
     }
 
+    aiMem.lastAbilityId=action.abilityId||action.type;
+    aiMem.lastActionCategory=classifyEnemyActionCategory(action);
     if(G.player.stats.hp<=0||G.enemy.stats.hp<=0){break;}
   }
 
+  aiMem.lastTurnHadDamage=turnHadDamage;
+  aiMem.turnsSinceHit=turnHadDamage?0:((aiMem.turnsSinceHit||0)+1);
   G.enemyUsedHardCCLastTurn=usedHardCCThisTurn;
   G.animLock=false;
   if(G.player.stats.hp<=0||G.enemy.stats.hp<=0){if(checkDeath())return;}
@@ -10836,51 +10868,7 @@ SPRITE_KEYS_ALL.add('magpie');
     };
   }
 
-  function personalityForEnemy(e){
-    if(!e || isBossEnemy(e)) return null;
-    const key = normKey(e.birdKey || e.id || e.name);
-    const hpPct = (e?.stats?.hp || 1) / Math.max(1, (e?.stats?.maxHp || 1));
-    const playerHpPct = ((globalThis.G?.player?.stats?.hp || 1) / Math.max(1, (globalThis.G?.player?.stats?.maxHp || 1)));
-
-    if(hpPct <= 0.32 && !PREDATORS.has(key)) return 'defensive';
-    if(playerHpPct <= 0.35 && (PREDATORS.has(key) || AGGRESSORS.has(key))) return 'predator';
-    if(TRICKSTERS.has(key)) return 'trickster';
-    if(DEFENSIVE.has(key)) return 'defensive';
-    if(PREDATORS.has(key)) return 'predator';
-    if(AGGRESSORS.has(key)) return 'aggressive';
-    if(/pigeon|dove/.test(key)) return 'defensive';
-    if(/raven|crow|magpie/.test(key)) return 'trickster';
-    if(/hawk|falcon|eagle|owl/.test(key)) return 'predator';
-    return null;
-  }
-
-  const oldPlanEnemyAction = globalThis.planEnemyAction;
-  if(typeof oldPlanEnemyAction === 'function'){
-    globalThis.planEnemyAction = function(){
-      const e = globalThis.G?.enemy;
-      if(!e || isBossEnemy(e)) return oldPlanEnemyAction.apply(this, arguments);
-      const originalAiType = e.aiType;
-      const originalAiStyle = e.aiStyle;
-      const p = personalityForEnemy(e);
-      if(p){
-        e.aiPersonality = p;
-        e.aiType = p;
-      }
-      const result = oldPlanEnemyAction.apply(this, arguments);
-      if(result && p){
-        result.personality = p;
-        if(typeof result.label === 'string' && !result.label.includes('[')){
-          const tag = p.charAt(0).toUpperCase() + p.slice(1);
-          result.label = `[${tag}] ` + result.label;
-        }
-      }
-      e.aiType = originalAiType;
-      e.aiStyle = originalAiStyle;
-      return result;
-    };
-  }
-
-  globalThis.__birdSpritePolish = { refreshAmbient, playAttackMotion, playHitMotion, personalityForEnemy };
+  globalThis.__birdSpritePolish = { refreshAmbient, playAttackMotion, playHitMotion };
 })();
 
 
