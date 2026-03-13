@@ -1245,50 +1245,70 @@ function rollRarity(){
 }
 
 const UPGRADE_CARDS_REWORK = [
-  {id:'g_feather_guard',tier:'grey',icon:'🛡️',name:'Feather Guard',desc:'+1 DEF',tags:['defense'],apply:p=>{p.stats.def+=1;}},
-  {id:'g_keen_beak',tier:'grey',icon:'🗡️',name:'Keen Beak',desc:'+1 ATK',tags:['offense'],apply:p=>{p.stats.atk+=1;}},
-  {id:'g_spell_feather',tier:'grey',icon:'✨',name:'Spell Feather',desc:'+1 MATK',tags:['offense'],apply:p=>{p.stats.matk=(p.stats.matk||0)+1;}},
-  {id:'g_warding_down',tier:'grey',icon:'🔷',name:'Warding Down',desc:'+1 MDEF',tags:['defense'],apply:p=>{p.stats.mdef=(p.stats.mdef||0)+1;}},
-  {id:'g_fleet_step',tier:'grey',icon:'💨',name:'Fleet Step',desc:'+1 SPD',tags:['utility'],apply:p=>{p.stats.spd=(p.stats.spd||0)+1;}},
-  {id:'g_focused_eye',tier:'grey',icon:'🎯',name:'Focused Eye',desc:'+5% Hit Chance',tags:['utility'],apply:p=>{p.firstAttackAccBonus=(p.firstAttackAccBonus||0)+5;}},
-  {id:'g_quick_blood',tier:'grey',icon:'💥',name:'Quick Blood',desc:'Crit chance +4%',tags:['offense'],apply:p=>{p.stats.critChance=(p.stats.critChance||5)+4;}},
-  {id:'g_light_frame',tier:'grey',icon:'🪽',name:'Light Frame',desc:'Dodge +4%',tags:['defense'],apply:p=>{p.stats.dodge=Math.min(95,(p.stats.dodge||0)+4);}},
-  {id:'g_feather_lining',tier:'grey',icon:'❤️',name:'Feather Lining',desc:'+5 Max HP',tags:['sustain'],apply:p=>{p.stats.maxHp+=5;p.stats.hp=Math.min(p.stats.hp+5,p.stats.maxHp);}},
-  {id:'g_talon_precision',tier:'grey',icon:'👁️',name:'Talon Precision',desc:'First attack each battle +8% hit chance',tags:['utility'],apply:p=>{p.firstAttackAccBonus=(p.firstAttackAccBonus||0)+8;}},
+  // Grey (15)
+  {id:'g_feather_lining',tier:'grey',icon:'❤️',name:'Feather Lining',desc:'+4 Max HP',tags:['stat','hp'],apply:p=>{p.stats.maxHp+=4;p.stats.hp=Math.min(p.stats.hp,p.stats.maxHp);}},
+  {id:'g_keen_beak',tier:'grey',icon:'🗡️',name:'Keen Beak',desc:'+1 ATK',tags:['stat','atk'],apply:p=>{p.stats.atk+=1;}},
+  {id:'g_spell_feather',tier:'grey',icon:'✨',name:'Spell Feather',desc:'+1 MATK',tags:['stat','matk'],apply:p=>{p.stats.matk=(p.stats.matk||0)+1;}},
+  {id:'g_feather_guard',tier:'grey',icon:'🛡️',name:'Feather Guard',desc:'+1 DEF',tags:['stat','def'],apply:p=>{p.stats.def+=1;}},
+  {id:'g_warding_down',tier:'grey',icon:'🔷',name:'Warding Down',desc:'+1 MDEF',tags:['stat','mdef'],apply:p=>{p.stats.mdef=(p.stats.mdef||0)+1;}},
+  {id:'g_fleet_step',tier:'grey',icon:'💨',name:'Fleet Step',desc:'+1 SPD',tags:['stat','spd'],apply:p=>{p.stats.spd=(p.stats.spd||0)+1;}},
+  {id:'g_quick_blood',tier:'grey',icon:'💥',name:'Quick Blood',desc:'Crit chance +3%',tags:['stat','crit'],apply:p=>{p.stats.critChance=(p.stats.critChance||5)+3;}},
+  {id:'g_light_frame',tier:'grey',icon:'🪽',name:'Light Frame',desc:'Dodge +4%',tags:['defense','dodge'],apply:p=>{p.stats.dodge=Math.min(95,(p.stats.dodge||0)+4);}},
+  {id:'g_focused_eye',tier:'grey',icon:'🎯',name:'Focused Eye',desc:'+5% hit chance',tags:['stat','accuracy'],apply:p=>{p.firstAttackAccBonus=(p.firstAttackAccBonus||0)+5;}},
+  {id:'g_first_bite',tier:'grey',icon:'🦴',name:'First Bite',desc:'First attack each battle +10% damage',tags:['opening','offense'],stackable:false,apply:p=>{p.firstAttackEachBattleBonusPct=Math.max(p.firstAttackEachBattleBonusPct||0,0.10);}},
+  {id:'g_guard_posture',tier:'grey',icon:'🛡',name:'Guard Posture',desc:'First hit each battle deals -10% damage',tags:['defense'],stackable:false,apply:p=>{p.firstHitReduce=Math.max(p.firstHitReduce||0,0.10);}},
+  {id:'g_energy_fletch',tier:'grey',icon:'🔋',name:'Energy Fletch',desc:'Max Energy +1',tags:['energy'],apply:p=>{p.energyBonus=(p.energyBonus||0)+1;p.energyMax=(p.energyMax||0)+1;}},
+  {id:'g_crit_medicine',tier:'grey',icon:'💉',name:'Critical Medicine',desc:'Heal 3 HP on crit',tags:['combat-trigger','sustain'],apply:p=>{p.healOnCrit=(p.healOnCrit||0)+3;}},
+  {id:'g_dodge_medicine',tier:'grey',icon:'🪶',name:'Evasive Medicine',desc:'Heal 4 HP on dodge',tags:['combat-trigger','sustain'],apply:p=>{p.healOnDodge=(p.healOnDodge||0)+4;}},
+  {id:'g_finish_medicine',tier:'grey',icon:'🦅',name:'Hunter Medicine',desc:'Heal 5 HP on kill',tags:['combat-trigger','sustain'],apply:p=>{p.healOnKill=(p.healOnKill||0)+5;}},
 
-  {id:'gr_serrated_talon',tier:'green',icon:'🩸',name:'Serrated Talon',desc:'Attacks apply Bleed(1) on hit (10% chance)',tags:['offense'],apply:p=>{p.bleedOnHitChance=(p.bleedOnHitChance||0)+10;}},
-  {id:'gr_venom_beak',tier:'green',icon:'☣️',name:'Venom Beak',desc:'Attacks apply Poison(1) on hit (10% chance)',tags:['offense'],apply:p=>{p.poisonOnHitChance=(p.poisonOnHitChance||0)+10;}},
-  {id:'gr_blood_memory',tier:'green',icon:'🗡️',name:'Blood Memory',desc:'Deal +2 damage to Bleeding enemies',tags:['offense'],apply:p=>{p.vsBleedFlatBonus=(p.vsBleedFlatBonus||0)+2;}},
-  {id:'gr_toxic_study',tier:'green',icon:'🧪',name:'Toxic Study',desc:'Poison deals +1 damage',tags:['offense'],apply:p=>{p.poisonFlatBonus=(p.poisonFlatBonus||0)+1;}},
-  {id:'gr_calm_focus',tier:'green',icon:'🎯',name:'Calm Focus',desc:'First attack each battle +20% accuracy',tags:['utility'],apply:p=>{p.firstAttackAccBonus=(p.firstAttackAccBonus||0)+20;}},
-  {id:'gr_war_rhythm',tier:'green',icon:'🔋',name:'War Rhythm',desc:'First attack each battle costs 0 Energy',tags:['utility'],stackable:false,apply:p=>{p.firstAttackFree=true;}},
-  {id:'gr_hard_plumage',tier:'green',icon:'🪨',name:'Hard Plumage',desc:'First hit each battle deals -15% damage',tags:['defense'],stackable:false,apply:p=>{p.firstHitReduce=Math.max(p.firstHitReduce||0,0.15);}},
-  {id:'gr_battle_instinct',tier:'green',icon:'⚡',name:'Battle Instinct',desc:'Gain +1 SPD when below 50% HP',tags:['utility'],stackable:false,apply:p=>{p.lowHpSpdBonus=1;}},
-  {id:'gr_rune_focus',tier:'green',icon:'🔮',name:'Rune Focus',desc:'First spell each battle +30% damage',tags:['offense'],stackable:false,apply:p=>{p.firstSpellBattleBonusPct=Math.max(p.firstSpellBattleBonusPct||0,0.30);}},
-  {id:'gr_iron_molt',tier:'green',icon:'🛡️',name:'Iron Molt',desc:'Gain +1 DEF when below 50% HP',tags:['defense'],stackable:false,apply:p=>{p.lowHpDefBonus=1;}},
+  // Green (15)
+  {id:'gr_sturdy_heart',tier:'green',icon:'💚',name:'Sturdy Heart',desc:'+8 Max HP',tags:['stat','hp'],apply:p=>{p.stats.maxHp+=8;p.stats.hp=Math.min(p.stats.hp,p.stats.maxHp);}},
+  {id:'gr_razor_talons',tier:'green',icon:'🗡️',name:'Razor Talons',desc:'+2 ATK',tags:['stat','atk'],apply:p=>{p.stats.atk+=2;}},
+  {id:'gr_arcane_plume',tier:'green',icon:'🔮',name:'Arcane Plume',desc:'+2 MATK',tags:['stat','matk'],apply:p=>{p.stats.matk=(p.stats.matk||0)+2;}},
+  {id:'gr_iron_molt',tier:'green',icon:'🧱',name:'Iron Molt',desc:'+2 DEF',tags:['stat','def'],apply:p=>{p.stats.def+=2;}},
+  {id:'gr_rune_guard',tier:'green',icon:'🌀',name:'Rune Guard',desc:'+2 MDEF',tags:['stat','mdef'],apply:p=>{p.stats.mdef=(p.stats.mdef||0)+2;}},
+  {id:'gr_tailwind',tier:'green',icon:'🌬️',name:'Tailwind',desc:'+2 SPD',tags:['stat','spd'],apply:p=>{p.stats.spd=(p.stats.spd||0)+2;}},
+  {id:'gr_calm_focus',tier:'green',icon:'🎯',name:'Calm Focus',desc:'+10% hit chance',tags:['stat','accuracy'],apply:p=>{p.firstAttackAccBonus=(p.firstAttackAccBonus||0)+10;}},
+  {id:'gr_blood_trigger',tier:'green',icon:'🩸',name:'Blood Trigger',desc:'Crits apply Bleed(1)',tags:['status-synergy','bleed'],apply:p=>{p.critBleed=(p.critBleed||0)+1;}},
+  {id:'gr_venom_beak',tier:'green',icon:'☣️',name:'Venom Beak',desc:'Attacks apply Poison(1) on hit (12% chance)',tags:['status-synergy','poison'],apply:p=>{p.poisonOnHitChance=(p.poisonOnHitChance||0)+12;}},
+  {id:'gr_serrated_talon',tier:'green',icon:'🪓',name:'Serrated Talon',desc:'Attacks apply Bleed(1) on hit (12% chance)',tags:['status-synergy','bleed'],apply:p=>{p.bleedOnHitChance=(p.bleedOnHitChance||0)+12;}},
+  {id:'gr_toxic_study',tier:'green',icon:'🧪',name:'Toxic Study',desc:'Poison deals +1 damage',tags:['status-synergy','poison'],apply:p=>{p.poisonFlatBonus=(p.poisonFlatBonus||0)+1;}},
+  {id:'gr_blood_memory',tier:'green',icon:'🦷',name:'Blood Memory',desc:'+2 damage vs Bleeding enemies',tags:['status-synergy','bleed'],apply:p=>{p.vsBleedFlatBonus=(p.vsBleedFlatBonus||0)+2;}},
+  {id:'gr_war_rhythm',tier:'green',icon:'⚡',name:'War Rhythm',desc:'First attack each battle costs 0 EN',tags:['energy','opening'],stackable:false,apply:p=>{p.firstAttackFree=true;}},
+  {id:'gr_spell_rhythm',tier:'green',icon:'🎵',name:'Spell Rhythm',desc:'First spell each battle costs 0 EN',tags:['energy','opening'],stackable:false,apply:p=>{p.firstSpellFree=true;}},
+  {id:'gr_hard_plumage',tier:'green',icon:'🛡️',name:'Hard Plumage',desc:'First hit each battle deals -15% damage',tags:['defense'],stackable:false,apply:p=>{p.firstHitReduce=Math.max(p.firstHitReduce||0,0.15);}},
 
-  {id:'b_deep_cut',tier:'blue',icon:'🩸',name:'Deep Cut',desc:'Bleed stacks applied by you increase by +1',tags:['offense'],apply:p=>{p.bleedBonusStacks=(p.bleedBonusStacks||0)+1;}},
-  {id:'b_venom_reservoir',tier:'blue',icon:'☣️',name:'Venom Reservoir',desc:'Poison lasts 1 extra turn',tags:['offense'],apply:p=>{p.poisonExtraTurns=(p.poisonExtraTurns||0)+1;}},
-  {id:'b_predator_sight',tier:'blue',icon:'👁️',name:'Predator Sight',desc:'+10% Crit Chance',tags:['offense'],apply:p=>{p.stats.critChance=(p.stats.critChance||5)+10;}},
-  {id:'b_execution_beak',tier:'blue',icon:'💢',name:'Execution Beak',desc:'Crit damage +30%',tags:['offense'],apply:p=>{p.critDamageBonusPct=(p.critDamageBonusPct||0)+0.30;}},
-  {id:'b_spell_echo',tier:'blue',icon:'🎶',name:'Spell Echo',desc:'Every 4th spell deals +40% damage',tags:['offense'],stackable:false,apply:p=>{p.everyFourthSpellBonusPct=0.40;}},
-  {id:'b_quick_recovery',tier:'blue',icon:'🩹',name:'Quick Recovery',desc:'Heal 3 HP after battle',tags:['sustain'],apply:p=>{p.postBattleFlatHeal=(p.postBattleFlatHeal||0)+3;}},
-  {id:'b_storm_pulse',tier:'blue',icon:'🌩️',name:'Storm Pulse',desc:'First attack each battle always hits',tags:['utility'],stackable:false,apply:p=>{p.firstAttackAlwaysHit=true;}},
-  {id:'b_iron_feather_mantle',tier:'blue',icon:'🧱',name:'Iron Feather Mantle',desc:'+2 DEF',tags:['defense'],apply:p=>{p.stats.def+=2;}},
-  {id:'b_arcane_plumage',tier:'blue',icon:'🔷',name:'Arcane Plumage',desc:'+2 MDEF',tags:['defense'],apply:p=>{p.stats.mdef=(p.stats.mdef||0)+2;}},
-  {id:'b_hawk_instinct',tier:'blue',icon:'💨',name:'Hawk Instinct',desc:'+2 SPD',tags:['utility'],apply:p=>{p.stats.spd=(p.stats.spd||0)+2;}},
+  // Blue (12)
+  {id:'b_vital_gale',tier:'blue',icon:'💙',name:'Vital Gale',desc:'+12 Max HP',tags:['stat','hp'],apply:p=>{p.stats.maxHp+=12;p.stats.hp=Math.min(p.stats.hp,p.stats.maxHp);}},
+  {id:'b_predator_sight',tier:'blue',icon:'👁️',name:'Predator Sight',desc:'+8% Crit Chance',tags:['stat','crit'],apply:p=>{p.stats.critChance=(p.stats.critChance||5)+8;}},
+  {id:'b_execution_beak',tier:'blue',icon:'💢',name:'Execution Beak',desc:'Crit damage +25%',tags:['stat','crit'],apply:p=>{p.critDamageBonusPct=(p.critDamageBonusPct||0)+0.25;}},
+  {id:'b_iron_feather_mantle',tier:'blue',icon:'🧱',name:'Iron Feather Mantle',desc:'+3 DEF',tags:['stat','def'],apply:p=>{p.stats.def+=3;}},
+  {id:'b_arcane_mantle',tier:'blue',icon:'🔷',name:'Arcane Mantle',desc:'+3 MDEF',tags:['stat','mdef'],apply:p=>{p.stats.mdef=(p.stats.mdef||0)+3;}},
+  {id:'b_hawk_instinct',tier:'blue',icon:'💨',name:'Hawk Instinct',desc:'+3 SPD',tags:['stat','spd'],apply:p=>{p.stats.spd=(p.stats.spd||0)+3;}},
+  {id:'b_storm_pulse',tier:'blue',icon:'🌩️',name:'Storm Pulse',desc:'First attack each battle always hits',tags:['opening'],stackable:false,apply:p=>{p.firstAttackAlwaysHit=true;}},
+  {id:'b_spell_echo',tier:'blue',icon:'🎶',name:'Spell Echo',desc:'Every 4th spell deals +30% damage',tags:['status-synergy','magic'],stackable:false,apply:p=>{p.everyFourthSpellBonusPct=0.30;}},
+  {id:'b_deep_cut',tier:'blue',icon:'🩸',name:'Deep Cut',desc:'Bleed applied by you gains +1 stack',tags:['status-synergy','bleed'],apply:p=>{p.bleedBonusStacks=(p.bleedBonusStacks||0)+1;}},
+  {id:'b_venom_reservoir',tier:'blue',icon:'☣️',name:'Venom Reservoir',desc:'Poison lasts +1 turn',tags:['status-synergy','poison'],apply:p=>{p.poisonExtraTurns=(p.poisonExtraTurns||0)+1;}},
+  {id:'b_opening_drive',tier:'blue',icon:'🚩',name:'Opening Drive',desc:'First attack each battle +20% damage',tags:['opening','offense'],stackable:false,apply:p=>{p.firstAttackEachBattleBonusPct=Math.max(p.firstAttackEachBattleBonusPct||0,0.20);}},
+  {id:'b_energy_reserve',tier:'blue',icon:'🔋',name:'Energy Reserve',desc:'Max Energy +1',tags:['energy'],apply:p=>{p.energyBonus=(p.energyBonus||0)+1;p.energyMax=(p.energyMax||0)+1;}},
 
-  {id:'p_blood_frenzy',tier:'purple',icon:'🩸',name:'Blood Frenzy',desc:'Deal +25% damage to Bleeding enemies',tags:['offense'],stackable:false,apply:p=>{p.vsBleedPctBonus=Math.max(p.vsBleedPctBonus||0,0.25);}},
-  {id:'p_venom_scholar',tier:'purple',icon:'☣️',name:'Venom Scholar',desc:'Poison damage increases by +50%',tags:['offense'],stackable:false,apply:p=>{p.poisonTickMult=Math.max(p.poisonTickMult||1,1.5);}},
-  {id:'p_duelist_discipline',tier:'purple',icon:'🎯',name:'Duelist Discipline',desc:'First attack each battle crit chance +30%',tags:['offense'],apply:p=>{p.firstAttackCritBonus=(p.firstAttackCritBonus||0)+30;}},
-  {id:'p_battle_meditation',tier:'purple',icon:'🧘',name:'Battle Meditation',desc:'Your first spell each battle costs 0 Energy',tags:['utility'],stackable:false,apply:p=>{p.firstSpellFree=true;}},
-  {id:'p_survivors_molt',tier:'purple',icon:'🪶',name:"Survivor's Molt",desc:'When first reduced below 30% HP heal 8',tags:['sustain'],stackable:false,apply:p=>{p.survivorMoltHeal=Math.max(p.survivorMoltHeal||0,8);}},
-  {id:'p_precision_talon',tier:'purple',icon:'🏹',name:'Precision Talon',desc:'+15% Hit Chance',tags:['utility'],apply:p=>{p.firstAttackAccBonus=(p.firstAttackAccBonus||0)+15;}},
-  {id:'p_relentless_strike',tier:'purple',icon:'⚔️',name:'Relentless Strike',desc:'Your first attack each turn deals +10% damage',tags:['offense'],stackable:false,apply:p=>{p.firstAttackEachTurnBonusPct=Math.max(p.firstAttackEachTurnBonusPct||0,0.10);}},
+  // Purple (8)
+  {id:'p_iron_heart',tier:'purple',icon:'💜',name:'Iron Heart',desc:'+16 Max HP',tags:['stat','hp'],apply:p=>{p.stats.maxHp+=16;p.stats.hp=Math.min(p.stats.hp,p.stats.maxHp);}},
+  {id:'p_blood_frenzy',tier:'purple',icon:'🩸',name:'Blood Frenzy',desc:'+20% damage vs Bleeding enemies',tags:['status-synergy','bleed'],stackable:false,apply:p=>{p.vsBleedPctBonus=Math.max(p.vsBleedPctBonus||0,0.20);}},
+  {id:'p_venom_scholar',tier:'purple',icon:'☣️',name:'Venom Scholar',desc:'Poison damage +40%',tags:['status-synergy','poison'],stackable:false,apply:p=>{p.poisonTickMult=Math.max(p.poisonTickMult||1,1.4);}},
+  {id:'p_duelist_discipline',tier:'purple',icon:'🎯',name:'Duelist Discipline',desc:'First attack each battle crit chance +25%',tags:['opening','offense'],apply:p=>{p.firstAttackCritBonus=(p.firstAttackCritBonus||0)+25;}},
+  {id:'p_battle_meditation',tier:'purple',icon:'🧘',name:'Battle Meditation',desc:'First spell each battle costs 0 EN',tags:['energy'],stackable:false,apply:p=>{p.firstSpellFree=true;}},
+  {id:'p_survivors_molt',tier:'purple',icon:'🪶',name:"Survivor's Molt",desc:'Once per battle below 30% HP, heal 8',tags:['combat-trigger','defense'],stackable:false,apply:p=>{p.survivorMoltHeal=Math.max(p.survivorMoltHeal||0,8);}},
+  {id:'p_precision_talon',tier:'purple',icon:'🏹',name:'Precision Talon',desc:'+15% hit chance',tags:['stat','accuracy'],apply:p=>{p.firstAttackAccBonus=(p.firstAttackAccBonus||0)+15;}},
+  {id:'p_relentless_strike',tier:'purple',icon:'⚔️',name:'Relentless Strike',desc:'First attack each turn deals +10% damage',tags:['opening','offense'],stackable:false,apply:p=>{p.firstAttackEachTurnBonusPct=Math.max(p.firstAttackEachTurnBonusPct||0,0.10);}},
 
-  {id:'z_sky_predator',tier:'gold',icon:'👑',name:'Sky Predator',desc:'Your first attack each battle always crits',tags:['offense'],stackable:false,apply:p=>{p.firstAttackAlwaysCrit=true;}},
-  {id:'z_blackstone_trophy',tier:'gold',icon:'🗿',name:'Blackstone Trophy',desc:'Enemies start battle with Fear(1)',tags:['utility'],stackable:false,apply:p=>{p.openingEnemyFear=(p.openingEnemyFear||0)+1;}},
-  {id:'z_molting_ritual',tier:'gold',icon:'🔥',name:'Molting Ritual',desc:'After each battle gain +1 ATK but lose 3 Max HP',tags:['risk'],stackable:false,apply:p=>{p.moltingRitual=true;}},
+  // Gold (5)
+  {id:'z_king_bloodline',tier:'gold',icon:'👑',name:'King Bloodline',desc:'+20 Max HP',tags:['stat','hp'],stackable:false,apply:p=>{p.stats.maxHp+=20;p.stats.hp=Math.min(p.stats.hp,p.stats.maxHp);}},
+  {id:'z_sky_predator',tier:'gold',icon:'🦅',name:'Sky Predator',desc:'First attack each battle always crits',tags:['unique','offense'],stackable:false,apply:p=>{p.firstAttackAlwaysCrit=true;}},
+  {id:'z_blackstone_trophy',tier:'gold',icon:'🗿',name:'Blackstone Trophy',desc:'Enemies start battle with Fear(1)',tags:['unique','control'],stackable:false,apply:p=>{p.openingEnemyFear=(p.openingEnemyFear||0)+1;}},
+  {id:'z_tempo_crown',tier:'gold',icon:'⏱️',name:'Tempo Crown',desc:'First attack each turn +20% damage',tags:['unique','opening'],stackable:false,apply:p=>{p.firstAttackEachTurnBonusPct=Math.max(p.firstAttackEachTurnBonusPct||0,0.20);}},
+  {id:'z_void_rune',tier:'gold',icon:'🌑',name:'Void Rune',desc:'Spells gain +15% damage',tags:['unique','magic'],stackable:false,apply:p=>{p.augSpellDmgPct=Math.max(p.augSpellDmgPct||0,0.15);}},
 ];
 
 function getUpgradePool(){ return UPGRADE_CARDS_REWORK.slice(); }
@@ -5282,6 +5302,9 @@ function dealDamage(target,amount,isCrit=false,isMagic=false,srcAbility=null) {
       dmg=Math.floor(dmg*(1+G.player.firstAttackEachTurnBonusPct));
       if(G.playerTurnFlags) G.playerTurnFlags.firstAttackResolved=true;
     }
+    if(isAttack && !G._firstAttackUsed && (G.player?.firstAttackEachBattleBonusPct||0)>0){
+      dmg=Math.floor(dmg*(1+G.player.firstAttackEachBattleBonusPct));
+    }
   }
   let wasBlocked=false;
   const def=target==='enemy'?G.enemyStatus.defending:G.playerStatus.defending;
@@ -5322,6 +5345,11 @@ function dealDamage(target,amount,isCrit=false,isMagic=false,srcAbility=null) {
     const hitChance=calcHitChance(effectiveAcc,playerDodge,0.72);
     if (Math.random()>=hitChance){
       const _pbd=BIRDS[G.player.birdKey]; if(_pbd&&_pbd.passive&&_pbd.passive.onDodge)_pbd.passive.onDodge(G.player);
+      if((G.player?.healOnDodge||0)>0){
+        const heal=Math.max(0,G.player.healOnDodge||0);
+        G.player.stats.hp=Math.min(G.player.stats.maxHp,G.player.stats.hp+heal);
+        spawnFloat('player',`+${heal}`,'fn-heal');
+      }
       if(G.player?.perkSlipstream){
         G.playerStatus.perkSlipstream=1;
       }
@@ -5413,6 +5441,11 @@ function dealDamage(target,amount,isCrit=false,isMagic=false,srcAbility=null) {
     G.enemy.stats.hp-=dmg;
     const _atkKind=String(srcAbility?.btnType||srcAbility?.type||G._activePlayerAbility?.btnType||G._activePlayerAbility?.type||'').toLowerCase();
     if((_atkKind==='physical'||_atkKind==='ranged') && dmg>0){
+      if(isCrit && (G.player?.healOnCrit||0)>0){
+        const heal=Math.max(0,G.player.healOnCrit||0);
+        G.player.stats.hp=Math.min(G.player.stats.maxHp,G.player.stats.hp+heal);
+        spawnFloat('player',`+${heal}`,'fn-heal');
+      }
       if((G.player?.bleedOnHitChance||0)>0 && chance(Math.min(95,G.player.bleedOnHitChance))) applyAilment('enemy','bleed',1);
       if((G.player?.poisonOnHitChance||0)>0 && chance(Math.min(95,G.player.poisonOnHitChance))) applyAilment('enemy','poison',1);
       if((G.player?.augAttackBleedChance||0)>0 && chance(Math.min(95,G.player.augAttackBleedChance))) applyAilment('enemy','bleed',1);
@@ -5436,6 +5469,11 @@ function dealDamage(target,amount,isCrit=false,isMagic=false,srcAbility=null) {
     if(G.enemy.stats.hp<=0){
       G.enemy.stats.hp=0;
       setHpBar('enemy',0,G.enemy.stats.maxHp);
+      if((G.player?.healOnKill||0)>0){
+        const heal=Math.max(0,G.player.healOnKill||0);
+        G.player.stats.hp=Math.min(G.player.stats.maxHp,G.player.stats.hp+heal);
+        spawnFloat('player',`+${heal}`,'fn-heal');
+      }
 
       // Prevent any further action; death flow handles transitions
       G.animLock=false;
