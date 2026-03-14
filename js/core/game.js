@@ -8133,37 +8133,74 @@ function getBossIntentCycle(e){
   if(id==='dukeblakiston') return ['control','buff','pressure','attack'];
   return ['buff','control','attack','pressure'];
 }
+function getEnemyArchetype(e){
+  const cls=String(e?.enemyClass||'').toLowerCase();
+  const persona=String(e?.aiPersonality||'').toLowerCase();
+  if(['striker','assassin','ranger'].includes(cls)) return 'striker';
+  if(['predator'].includes(cls) || ['executioner','reaper'].includes(persona)) return 'predator';
+  if(['bruiser'].includes(cls) || ['duelist'].includes(persona)) return 'bruiser';
+  if(['tank','knight'].includes(cls) || ['defender'].includes(persona)) return 'tank';
+  if(['trickster'].includes(cls) || ['control','seer','scavenger','opportunistic'].includes(persona)) return 'trickster';
+  if(['support','singer','bard','summoner'].includes(cls)) return 'singer';
+  return 'striker';
+}
+const ARCHETYPE_INTENT_WEIGHTS = Object.freeze({
+  striker:{attack:60,pressure:25,buff:10,control:5,finish:0},
+  predator:{attack:35,pressure:30,control:15,buff:20,finish:0},
+  bruiser:{attack:40,buff:30,pressure:20,control:10,finish:0},
+  tank:{buff:40,attack:30,pressure:20,control:10,finish:0},
+  trickster:{pressure:40,control:30,attack:20,buff:10,finish:0},
+  singer:{control:40,attack:30,buff:20,pressure:10,finish:0},
+});
+function getArchetypePriorityOrder(archetype){
+  if(archetype==='predator') return ['control','heavy','damage','buff','guard','heal'];
+  if(archetype==='bruiser') return ['buff','heavy','damage','guard','control','heal'];
+  if(archetype==='tank') return ['buff','guard','damage','control','heavy','heal'];
+  if(archetype==='trickster') return ['control','damage','heavy','buff','guard','heal'];
+  if(archetype==='singer') return ['control','buff','damage','heavy','guard','heal'];
+  return ['damage','heavy','control','buff','guard','heal'];
+}
+function getArchetypeCategoryBonus(archetype,cat){
+  const order=getArchetypePriorityOrder(archetype);
+  const idx=order.indexOf(cat);
+  if(idx<0) return 1;
+  const bonus=[1.35,1.22,1.10,1.0,0.9,0.82][idx] || 0.82;
+  return bonus;
+}
 function selectEnemyIntent(e,p,pool,totalEnergy,mode){
   const stage=(G.stage||1);
+  const archetype=getEnemyArchetype(e);
   const canFinish=(stage>5) && canEnemyProjectLethal(e,p,pool,totalEnergy);
   if(e?.isBoss){
-    if(canFinish) return {intent:'finish', canFinish:true};
+    if(canFinish) return {intent:'finish', canFinish:true, archetype};
     const cycle=getBossIntentCycle(e);
     const idx=Math.max(0,((G.enemyTurnCount||1)-1)%cycle.length);
-    return {intent:cycle[idx]||'attack', canFinish:false};
+    return {intent:cycle[idx]||'attack', canFinish:false, archetype};
   }
-  if(canFinish) return {intent:'finish', canFinish:true};
+  if(canFinish) return {intent:'finish', canFinish:true, archetype};
+
+  const base=ARCHETYPE_INTENT_WEIGHTS[archetype]||ARCHETYPE_INTENT_WEIGHTS.striker;
+  const weights={...base};
   const pHp=(p.stats.hp||1)/Math.max(1,p.stats.maxHp||1);
   const eHp=(e.stats.hp||1)/Math.max(1,e.stats.maxHp||1);
-  const weights={attack:30,pressure:24,control:20,buff:16,finish:0};
-  if(mode==='SETUP') weights.control+=12;
-  if(mode==='RECOVER') weights.buff+=14;
-  if(pHp<0.55) weights.attack+=10;
-  if(eHp<0.45) weights.buff+=8;
+  if(mode==='SETUP') weights.control=(weights.control||0)+8;
+  if(mode==='RECOVER') weights.buff=(weights.buff||0)+10;
+  if(archetype==='predator' && pHp<0.5) weights.attack=(weights.attack||0)+12;
+  if(eHp<0.45) weights.buff=(weights.buff||0)+6;
   const hasControl=(pool||[]).some(a=>classifyEnemyActionCategory(a)==='control');
   const hasBuff=(pool||[]).some(a=>['buff','guard','heal'].includes(classifyEnemyActionCategory(a)));
   if(!hasControl) weights.control=0;
   if(!hasBuff) weights.buff=0;
   if(stage<=5) weights.finish=0;
   const entries=Object.entries(weights).filter(([,w])=>w>0);
-  if(!entries.length) return {intent:'attack', canFinish:false};
+  if(!entries.length) return {intent:'attack', canFinish:false, archetype};
   const total=entries.reduce((n,[,w])=>n+w,0);
   let rollVal=Math.random()*total;
   for(const [intent,w] of entries){
     rollVal-=w;
-    if(rollVal<=0) return {intent, canFinish:false};
+    if(rollVal<=0) return {intent, canFinish:false, archetype};
   }
-  return {intent:entries[entries.length-1][0], canFinish:false};
+  return {intent:entries[entries.length-1][0], canFinish:false, archetype};
 }
 function filterEnemyActionsByIntent(intent,pool){
   const all=(pool||[]);
@@ -8181,10 +8218,11 @@ function getEnemyEnergySpendCap(e,p,pool,totalEnergy,intent,canFinish){
   const stage=(G.stage||1);
   if(intent==='finish' && canFinish && stage>5) return energy;
   const minSpend=Math.max(1,Math.ceil(energy*0.6));
-  const maxSpend=Math.max(minSpend,Math.ceil(energy*0.8));
+  let maxSpend=Math.max(minSpend,Math.floor(energy*0.75));
+  const hardCaps={2:2,3:2,4:3,5:3};
+  if(hardCaps[energy]) maxSpend=Math.min(maxSpend,hardCaps[energy]);
+  if(maxSpend<minSpend) maxSpend=minSpend;
   let spendCap=roll(minSpend,maxSpend);
-  if(energy===3) spendCap=Math.min(spendCap,2);
-  if(energy===5) spendCap=Math.min(spendCap,3);
   return Math.max(1,Math.min(energy,spendCap));
 }
 function getEnemyOpeningBias(enemy,turnNumber){
@@ -8217,6 +8255,7 @@ function planEnemyTurn(e,p){
   let energy=e.energyMax||3;
   const intentPick=selectEnemyIntent(e,p,pool,energy,mode);
   const intent=intentPick.intent||'attack';
+  const archetype=intentPick.archetype||getEnemyArchetype(e);
   const intentPool=filterEnemyActionsByIntent(intent,pool);
   const energySpendCap=getEnemyEnergySpendCap(e,p,pool,energy,intent,!!intentPick.canFinish);
   let spentEnergy=0;
@@ -8263,6 +8302,7 @@ function planEnemyTurn(e,p){
       if(cat==='buff') w*=profile.buffBias;
       if(cat==='guard') w*=profile.guardBias;
       if(cat==='heal') w*=profile.healBias;
+      w*=getArchetypeCategoryBonus(archetype,cat);
       if(intent==='attack' && (cat==='damage'||cat==='heavy')) w*=1.35;
       if(intent==='control' && cat==='control') w*=1.40;
       if(intent==='buff' && (cat==='buff'||cat==='guard'||cat==='heal')) w*=1.45;
@@ -8305,14 +8345,14 @@ function planEnemyTurn(e,p){
     if((G.enemyTurnCount||1)<=1 && (best.category==='control'||best.category==='buff'||best.category==='guard')) mem.openingSetupUsed=true;
     mem.utilityStreak=(best.category==='guard'||best.category==='heal'||best.category==='buff'||best.category==='control')?(mem.utilityStreak+1):0;
     if(globalThis.__AI_DEBUG){
-      console.debug('[AI]', e.name, 'intent=', intent, 'persona=', e.aiPersonality, 'pick=', mem.lastAbilityId, 'cat=', best.category, 'EN->', energy, 'cap=', energySpendCap);
+      console.debug('[AI]', e.name, 'arch=', archetype, 'intent=', intent, 'persona=', e.aiPersonality, 'pick=', mem.lastAbilityId, 'cat=', best.category, 'EN->', energy, 'cap=', energySpendCap);
     }
   }
   if(!turnHadDamage){
     const fallback=pool.find(a=>['strike','heavy'].includes(a.type)&&getEnemyActionEnergyCost(a)<= (e.energyMax||3));
     if(fallback && actions.length<maxActions) actions.push({...fallback,energyCost:getEnemyActionEnergyCost(fallback),category:classifyEnemyActionCategory(fallback)});
   }
-  return {mode,intent,actions,energySpendCap};
+  return {mode,intent,archetype,actions,energySpendCap};
 }
 
 function enemyHpPct(e){ return (e?.stats?.hp||1)/Math.max(1,(e?.stats?.maxHp||1)); }
@@ -8333,7 +8373,7 @@ function planEnemyAction() {
   const persona=(e.aiPersonality||'tactical');
   const preview=actions.slice(0,2).map(a=>`${a.icon||'•'} ${a.type==='ability'?(ENEMY_ABILITY_POOL[a.abilityId]?.name||a.abilityId):a.label}`).join(' → ');
   const more=actions.length>2?' +':'';
-  return {label:`[${persona}|${String(plan.intent||'attack').toUpperCase()}] ${preview}${more}`,type:'plan',actions,mode:plan.mode,intent:plan.intent||'attack',energySpendCap:plan.energySpendCap||0,personality:persona};
+  return {label:`[${persona}|${String(plan.archetype||'striker').toUpperCase()}|${String(plan.intent||'attack').toUpperCase()}] ${preview}${more}`,type:'plan',actions,mode:plan.mode,archetype:plan.archetype||'striker',intent:plan.intent||'attack',energySpendCap:plan.energySpendCap||0,personality:persona};
 }
 
 
