@@ -1209,11 +1209,14 @@ const ENEMY_ABILITY_POOL = {
 
 const ENEMIES = [
   // Tier 1 — Stages 1-4 (weak)
-  makeEnemy('Sparrow Fledgling','',18,3,1,7,'aggressive',false,'',{acc:65,dodge:20,size:'tiny',abilities:['eVenom'],portraitKey:'sparrow'}),
+  makeEnemy('Young Sparrow','',18,3,1,7,'aggressive',false,'',{acc:65,dodge:20,size:'tiny',abilities:['eVenom'],portraitKey:'sparrow'}),
   makeEnemy('Dove','🕊️',24,5,2,5,'cautious',false,'',{acc:68,dodge:10,size:'small',abilities:['eWeaken'],portraitKey:'swan'}),
   makeEnemy('Magpie','‍⬛',32,7,3,6,'aggressive',false,'',{acc:72,dodge:15,size:'small',abilities:['eVenom','eWeaken'],portraitKey:'magpie'}),
-  makeEnemy('Starling Swarm','',28,6,1,8,'berserker',false,'',{acc:70,dodge:25,size:'tiny',abilities:['eBlind'],portraitKey:'blackbird'}),
+  makeEnemy('Starling','',28,6,1,8,'berserker',false,'',{acc:70,dodge:25,size:'tiny',abilities:['eBlind'],portraitKey:'blackbird'}),
   makeEnemy('Finch','',20,4,1,8,'aggressive',false,'',{acc:66,dodge:30,size:'tiny',abilities:['eBlind'],portraitKey:'sparrow'}),
+  makeEnemy('Robin','',24,5,2,8,'aggressive',false,'',{acc:74,dodge:22,size:'small',abilities:['eBlind'],portraitKey:'robin'}),
+  makeEnemy('Blackbird','',26,5,2,7,'cautious',false,'',{acc:72,dodge:18,size:'small',abilities:['eFear'],portraitKey:'blackbird'}),
+  makeEnemy('Wood Pigeon','🕊️',30,6,3,5,'cautious',false,'',{acc:70,dodge:12,size:'medium',abilities:['eWeaken'],portraitKey:'dove'}),
   // Tier 1 Boss
   makeEnemy('Storm Falcon','🦅',55,12,6,7,'berserker',true,'⚡ Stage Boss',{acc:80,dodge:18,size:'large',abilities:['eStun','eWeaken','eRage'],portraitKey:'peregrine'}),
   // Tier 2 — Stages 5-9
@@ -1433,12 +1436,12 @@ function isEndlessRunActive(){ return !!(G.endlessMode && (G.stage||0)>20); }
 const PASSIVE_EVOLUTION_MILESTONES = Object.freeze({ evo1:10, evo2:25 });
 const PASSIVE_EVOLUTION_TEMPLATE = Object.freeze({
   stage1: {
-    offensive:{ name:'Swift Instinct', effect:'+15% passive evolution damage' },
-    utility:{ name:'Relentless Instinct', effect:'+1 SPD and 8% damage reduction' },
+    offensive:{ name:'Swift Instinct', effect:'Offense Path: Your passive gains +15% damage output.' },
+    utility:{ name:'Relentless Instinct', effect:'Utility Path: +1 SPD and 8% damage reduction from passive evolution.' },
   },
   stage2: {
-    offensive:{ name:'Predator Instinct', effect:'+25% passive evolution damage, +10% crit, +12% pierce' },
-    utility:{ name:'Storm Instinct', effect:'+2 SPD, 15% damage reduction, +10% control chance' },
+    offensive:{ name:'Predator Instinct', effect:'Offense Path: +25% damage, +10% crit chance, +12% pierce from passive evolution.' },
+    utility:{ name:'Storm Instinct', effect:'Utility Path: +2 SPD total, 15% damage reduction, +10% control chance from passive evolution.' },
   }
 });
 const PASSIVE_EVOLUTION_DEFS = Object.freeze({
@@ -3781,6 +3784,22 @@ function resetForNewBattle(){
   }
 }
 
+const EARLY_STAGE_ALLOWED_ENEMIES = new Set(['finch','robin','dove','blackbird','youngsparrow','starling','woodpigeon']);
+const EARLY_STAGE_BANNED_ENEMIES = new Set(['magpie','crow','peregrinefalcon','peregrine','harpyeagle','harpy','cassowary','lyrebird']);
+function normalizeEnemyNameKey(name){
+  return String(name||'').toLowerCase().replace(/[^a-z]/g,'');
+}
+function pickEarlyStageEnemyTemplate(stage){
+  const pool=ENEMIES.filter(e=>!e.isBoss).filter(e=>{
+    const k=normalizeEnemyNameKey(e.name);
+    if(EARLY_STAGE_BANNED_ENEMIES.has(k)) return false;
+    return EARLY_STAGE_ALLOWED_ENEMIES.has(k);
+  });
+  if(!pool.length) return null;
+  const idx=Math.floor(Math.random()*pool.length);
+  return JSON.parse(JSON.stringify(pool[idx]));
+}
+
 function loadStage() {
   G.autoQueuedAbilityId=null;
   G._breakClampStreak=0;
@@ -3817,8 +3836,11 @@ function loadStage() {
       const bossIdx = Math.floor(stage/10)-1;
       ed = JSON.parse(JSON.stringify(bosses[Math.min(bossIdx, bosses.length-2)]));
     } else {
+      if(stage<=5){
+        ed = pickEarlyStageEnemyTemplate(stage);
+      }
       // 30% chance to use a bird-character enemy (if stage >= 5)
-      if(stage>=5 && Math.random()<0.30){
+      if(!ed && stage>=6 && Math.random()<0.30){
         const pool=BIRD_ENEMIES.filter(e=>e.tier.includes(tier));
         if(pool.length>0){
           const src=pool[Math.floor(Math.random()*pool.length)];
@@ -3830,7 +3852,11 @@ function loadStage() {
       }
       // Fallback / normal enemy
       if(!ed){
-        const pool=ENEMIES.filter(e=>!e.isBoss);
+        const pool=ENEMIES.filter(e=>!e.isBoss).filter(e=>{
+          if(stage>5) return true;
+          const k=normalizeEnemyNameKey(e.name);
+          return !EARLY_STAGE_BANNED_ENEMIES.has(k);
+        });
         const tierBands=[[0,4],[4,9],[9,14],[14,19]];
         const [tlo,thi]=tierBands[Math.min(tier-1,3)];
         const sliced=pool.slice(tlo,Math.min(thi,pool.length));
@@ -4978,7 +5004,7 @@ function maybeOfferPassiveEvolutionChoice(){
   overlay.style.cssText='position:fixed;inset:0;z-index:10000;background:rgba(0,0,0,.72);display:flex;align-items:center;justify-content:center;';
   overlay.innerHTML=`<div style="width:min(760px,94vw);background:rgba(16,12,8,.98);border:1px solid var(--gold);border-radius:14px;padding:16px;">
     <div style="font-family:Cinzel,serif;color:var(--gold);font-size:1.1rem;margin-bottom:6px;">PASSIVE EVOLUTION</div>
-    <div style="color:var(--text-dim);margin-bottom:14px;">Choose how your passive evolves · <strong style="color:var(--gold-light)">${def.base}</strong> · Evolution ${tierToOffer}</div>
+    <div style="color:var(--text-dim);margin-bottom:14px;">Choose how your passive evolves · <strong style="color:var(--gold-light)">${def.base}</strong> · Evolution ${tierToOffer}<br><span style="font-size:.78rem;color:var(--text-dim)">Each option permanently upgrades this passive for the rest of the run.</span></div>
     <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;">
       <button data-path="${pathA}" style="text-align:left;background:rgba(28,22,12,.96);border:1px solid rgba(201,168,76,.35);color:var(--text);border-radius:10px;padding:12px;cursor:pointer;">
         <div style="font-family:Cinzel,serif;color:var(--gold-light)">Option A · ${optA?.name||'Offensive Path'}</div>
@@ -8078,6 +8104,49 @@ function projectedEnemyActionDamage(a,e){
   if(a.type==='ability') return ['eStun'].includes(a.abilityId)?Math.floor(6+((e.stats.atk||8)*0.95)):0;
   return 0;
 }
+function getEnemyEnergySpendCap(e,p,pool,totalEnergy){
+  const energy=Math.max(0,totalEnergy||0);
+  if(energy<=0) return 0;
+  const dmgActions=[];
+  const seen=new Set();
+  for(const a of pool||[]){
+    const cost=getEnemyActionEnergyCost(a);
+    const dmg=projectedEnemyActionDamage(a,e);
+    if(cost<=0||dmg<=0||cost>energy) continue;
+    const sig=`${a.type}:${a.abilityId||''}:${cost}:${dmg}`;
+    if(seen.has(sig)) continue;
+    seen.add(sig);
+    dmgActions.push({cost,dmg});
+  }
+  const targetHp=Math.max(1,Math.floor(p?.stats?.hp||1));
+  let canFinish=false;
+  if(dmgActions.length){
+    const dp=Array(energy+1).fill(0);
+    for(let en=1;en<=energy;en++){
+      for(const a of dmgActions){
+        if(a.cost<=en) dp[en]=Math.max(dp[en], dp[en-a.cost]+a.dmg);
+      }
+    }
+    canFinish = dp[energy] >= targetHp;
+  }
+  if(canFinish) return energy; // Rule 1: finisher can spend all
+
+  // Rule 2: standard behavior 60–80% EN
+  const minSpend=Math.max(1,Math.ceil(energy*0.6));
+  const maxSpend=Math.max(minSpend,Math.ceil(energy*0.8));
+  let spendCap=roll(minSpend,maxSpend);
+  // Rule examples
+  if(energy===3) spendCap=Math.min(spendCap,2);
+  if(energy===5) spendCap=Math.min(spendCap,3);
+
+  // Rule 4: tactical setup sometimes spends only 1 EN
+  const hasSetup=(pool||[]).some(a=>{
+    if(a.type!=='ability') return false;
+    return ['eWeaken','eFear','eBlind','ePoison','eVenom','eRage','eShield'].includes(a.abilityId);
+  });
+  if(hasSetup && chance(45)) spendCap=Math.min(spendCap,1);
+  return Math.max(1,Math.min(energy,spendCap));
+}
 function getEnemyOpeningBias(enemy,turnNumber){
   const p=(enemy.aiPersonality||'tactical').toLowerCase();
   if(turnNumber>1) return {};
@@ -8106,10 +8175,13 @@ function planEnemyTurn(e,p){
   const mem=getEnemyAIMemory(e);
   const profile=getAIPersonalityProfile(e);
   let energy=e.energyMax||3;
+  const energySpendCap=getEnemyEnergySpendCap(e,p,pool,energy);
+  let spentEnergy=0;
   let actionsTaken=0;
-  const maxActions=Math.min(MAX_ENEMY_ACTIONS_PER_TURN,6);
+  const earlyTurnLimit=((G.stage||1)<=5)?2:MAX_ENEMY_ACTIONS_PER_TURN;
+  const maxActions=Math.min(earlyTurnLimit,6);
   let turnHadDamage=false;
-  while(energy>0 && actionsTaken<maxActions){
+  while(energy>0 && actionsTaken<maxActions && spentEnergy<energySpendCap){
     const affordable=pool.filter(a=>getEnemyActionEnergyCost(a)<=energy);
     if(!affordable.length) break;
     let best=null; let bestScore=-1;
@@ -8148,8 +8220,10 @@ function planEnemyTurn(e,p){
       if(w>bestScore){bestScore=w;best={...cand,energyCost:cost,category:cat};}
     }
     if(!best) break;
+    if((spentEnergy + best.energyCost) > energySpendCap) break;
     actions.push(best);
     energy-=best.energyCost;
+    spentEnergy+=best.energyCost;
     actionsTaken++;
     const didDmg=projectedEnemyActionDamage(best,e)>0;
     turnHadDamage = turnHadDamage || didDmg;
@@ -8573,7 +8647,7 @@ function postCombat() {
 
     // Post-battle heal
     const postHealMult=G.player?.mutHuntersCruelty?0.5:1;
-    const postHeal = Math.max(1, Math.floor(G.player.stats.maxHp * 0.10 * postHealMult));
+    const postHeal = Math.max(1, Math.floor(G.player.stats.maxHp * 0.20 * postHealMult));
     G.player.stats.hp = Math.min(G.player.stats.hp + postHeal, G.player.stats.maxHp);
     spawnFloat('player', `+${postHeal} 🩹`, 'fn-heal');
 
@@ -8761,7 +8835,7 @@ function confirmReward() {
     return;
   }
 
-  G._pendingReward.apply(G.player);
+  applyUpgradeWithMaxHpHealing(G.player, ()=>G._pendingReward.apply(G.player), G._pendingReward.name||'Upgrade');
   if(G._pendingReward.endlessOnly){ logMsg('♾ Endless-only reward acquired (not available in Story Mode).','system'); }
   const rewardEvt={tier:G._pendingReward.tier, id:G._pendingReward.id||G._pendingReward.name};
   AvianEvents.emit('reward:confirmed', rewardEvt);
@@ -8813,6 +8887,23 @@ function confirmReward() {
   else advanceStage();
 
   failsafeAdvance('confirmReward after shop/advance');
+}
+
+function applyUpgradeWithMaxHpHealing(player, applyFn, sourceLabel='Upgrade'){
+  if(!player || typeof applyFn!=='function') return;
+  const beforeMax=Math.max(1, Number(player.stats?.maxHp||1));
+  const beforeHp=Math.max(0, Number(player.stats?.hp||0));
+  applyFn();
+  const afterMax=Math.max(1, Number(player.stats?.maxHp||beforeMax));
+  const gained=Math.max(0, afterMax-beforeMax);
+  if(gained<=0) return;
+  const minExpectedHeal=Math.floor(gained*0.5);
+  const actualHeal=Math.max(0, Number(player.stats?.hp||0)-beforeHp);
+  const missing=Math.max(0, minExpectedHeal-actualHeal);
+  if(missing>0){
+    player.stats.hp=Math.min(afterMax,(player.stats.hp||0)+missing);
+    spawnFloat('player',`+${missing} 🩹`,'fn-heal');
+  }
 }
 
 function showGoldReplaceUI(newReward){
@@ -10029,6 +10120,12 @@ function showUnlockToast(msg) {
 let _shopItems=[];
 let _shopSelectedIdx=null;
 
+const SHOP_HEALING_ITEMS = Object.freeze([
+  {id:'shop_heal_fresh_pond',tier:'grey',icon:'💧',name:'Fresh Pond',desc:'Heal 15% Max HP',costOverride:8,healPct:0.15,isHealingShopItem:true},
+  {id:'shop_heal_bird_bath',tier:'green',icon:'🛁',name:'Bird Bath',desc:'Heal 30% Max HP',costOverride:14,healPct:0.30,isHealingShopItem:true},
+  {id:'shop_heal_honey_feeder',tier:'blue',icon:'🍯',name:'Honey Feeder',desc:'Heal 50% Max HP',costOverride:20,healPct:0.50,isHealingShopItem:true},
+]);
+
 function showStorkShop(mode='boss') {
   G._shopMode=mode;
   generateShopItems();
@@ -10143,6 +10240,15 @@ function generateShopItems() {
     }
     _shopItems.push(makeUtilityOffer('boss'));
   }
+  const healChoices=SHOP_HEALING_ITEMS.filter(it=>!SHOP_STATE.healingPurchasesThisVisit?.has(it.id));
+  if(healChoices.length){
+    const pick=healChoices[Math.floor(Math.random()*healChoices.length)];
+    _shopItems.push({...pick, apply(p){
+      const heal=Math.max(1,Math.floor((p.stats.maxHp||1)*(pick.healPct||0)));
+      p.stats.hp=Math.min((p.stats.maxHp||1),(p.stats.hp||0)+heal);
+      spawnFloat('player',`+${heal} 🩹`,'fn-heal');
+    }});
+  }
   renderShopItems();
 }
 const SHOP_COSTS={grey:24,green:36,blue:58,purple:78,gold:105};
@@ -10163,12 +10269,14 @@ function canOfferAbilityInShop(p, tmpl){
 
 const SHOP_STATE = {
   purchaseMadeThisVisit:false,
-  selectedIndex:null
+  selectedIndex:null,
+  healingPurchasesThisVisit:new Set(),
 };
 
 function shopResetVisitState(){
   SHOP_STATE.purchaseMadeThisVisit = false;
   SHOP_STATE.selectedIndex = null;
+  SHOP_STATE.healingPurchasesThisVisit = new Set();
   _shopSelectedIdx = null;
   G._shopRefreshCount = 0;
 }
@@ -10248,11 +10356,13 @@ function renderShopItems() {
     if(G.player?.mutLongWar) baseCost=Math.ceil(baseCost*1.15);
     const cost=Math.max(0,baseCost-Math.max(0,G._nextShopDiscount||0));
     const canAfford=G.shinyObjects>=cost;
-    const canSelect=canAfford && !SHOP_STATE.purchaseMadeThisVisit;
+    const isHealingItem=!!item.isHealingShopItem;
+    const alreadyBoughtHeal=!!(isHealingItem && SHOP_STATE.healingPurchasesThisVisit?.has(item.id));
+    const canSelect=canAfford && !alreadyBoughtHeal && (!SHOP_STATE.purchaseMadeThisVisit || isHealingItem);
     const tooltip=buildShopItemTooltip(item);
 
     const div=document.createElement('div');
-    div.className=`shop-item tier-${item.tier} ${canAfford?'':'cant-afford'} ${SHOP_STATE.purchaseMadeThisVisit?'shop-locked-visit':''}`;
+    div.className=`shop-item tier-${item.tier} ${canAfford?'':'cant-afford'} ${(SHOP_STATE.purchaseMadeThisVisit&&!isHealingItem)?'shop-locked-visit':''} ${alreadyBoughtHeal?'shop-locked-visit':''}`;
     div.innerHTML=`
       <div class="shop-item-cost">${cost}🌟</div>
       <div class="reward-tier-label">${REWARD_TIERS[item.tier].label}</div>
@@ -10346,15 +10456,22 @@ function openShopSwapModal(newTmpl, onPick, onCancel){
 }
 
 async function shopBuySelected() {
-  if(SHOP_STATE.purchaseMadeThisVisit){
-    const log=document.getElementById('shop-purchase-log');
-    if(log) log.textContent='🪶 You may only buy one item per shop visit.';
-    logMsg('🪶 You may only buy one item per shop visit.','system');
-    return false;
-  }
   const selected=(SHOP_STATE.selectedIndex!==null?SHOP_STATE.selectedIndex:_shopSelectedIdx);
   if(selected===null||selected>=_shopItems.length) return false;
   const item=_shopItems[selected];
+  const isHealingItem=!!item.isHealingShopItem;
+
+  if(SHOP_STATE.purchaseMadeThisVisit && !isHealingItem){
+    const log=document.getElementById('shop-purchase-log');
+    if(log) log.textContent='🪶 You may only buy one non-healing item per shop visit.';
+    logMsg('🪶 You may only buy one non-healing item per shop visit.','system');
+    return false;
+  }
+  if(isHealingItem && SHOP_STATE.healingPurchasesThisVisit?.has(item.id)){
+    const log=document.getElementById('shop-purchase-log');
+    if(log) log.textContent='🪶 You already bought this healing item this visit.';
+    return false;
+  }
 
   let baseCost=(typeof item.costOverride==='number')?item.costOverride:(SHOP_COSTS[item.tier]||1);
   if(G.player?.mutLongWar) baseCost=Math.ceil(baseCost*1.15);
@@ -10417,7 +10534,7 @@ async function shopBuySelected() {
       }
     }
   } else {
-    item.apply(G.player);
+    applyUpgradeWithMaxHpHealing(G.player, ()=>item.apply(G.player), item.name||'Shop Item');
   }
   refreshPlayerAbilityAilments();
   enforceAbilityCosts(G.player);
@@ -10427,11 +10544,17 @@ async function shopBuySelected() {
   codexMark('artifacts', item.id||item.name, 'seen');
   logMsg(`🌟 Purchased: ${item.name}!`,'exp-gain');
   const log=document.getElementById('shop-purchase-log');
-  if(log) log.textContent=`✓ Bought: ${item.icon} ${item.name} · One item per visit`;
+  if(log) log.textContent=`✓ Bought: ${item.icon} ${item.name}${isHealingItem?' · Healing purchase':' · One item per visit'}`;
 
   if(item.stackable===false){ if(!(G.runUpgradesPurchased instanceof Set)) G.runUpgradesPurchased=new Set(); G.runUpgradesPurchased.add(item.id); }
   _shopItems.splice(selected,1);
-  shopLockVisitState();
+  if(isHealingItem){
+    SHOP_STATE.healingPurchasesThisVisit.add(item.id);
+    SHOP_STATE.selectedIndex=null;
+    _shopSelectedIdx=null;
+  }else{
+    shopLockVisitState();
+  }
   saveRun();
   renderShopItems();
   return true;
