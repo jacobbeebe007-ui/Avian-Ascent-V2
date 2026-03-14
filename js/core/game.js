@@ -3201,13 +3201,14 @@ function showNextStagePreview() {
 // ============================================================
 const SIZE_ORDER = ['tiny','small','medium','large','xl'];
 const SIZE_LABELS = {tiny:'Tiny',small:'Small',medium:'Medium',large:'Large',xl:'X-Large'};
-const CLASS_ORDER = ['assassin','knight','mage','bard','tank','ranger','summoner'];
-const CLASS_LABELS = {assassin:'⚔️ Assassin',knight:'🛡️ Knight',mage:'✨ Mage',bard:'🎵 Bard',tank:'🪨 Tank',ranger:'🏹 Ranger',summoner:'🌊 Summoner'};
-const CLASS_FLAVOR = {assassin:'Burst dmg, crit fishing, evasive.',knight:'Balanced physical, DEF/ACC.',mage:'Pure songs/spells, debuff control.',bard:'Song mix + physical hybrid.',tank:'Sustain bricks, high HP.',ranger:'Projectile pressure, pierce and slows.',summoner:'Mob caller, flock tactics.'};
+const ROLE_ORDER = ['striker','bruiser','tank','trickster','predator','support'];
+const ROLE_LABELS = {striker:'⚔️ Striker',bruiser:'🛡️ Bruiser',tank:'🪨 Tank',trickster:'🎭 Trickster',predator:'🦅 Predator',support:'✨ Support'};
+const ROLE_FLAVOR = {striker:'Burst damage, crit fishing, evasive pressure.',bruiser:'Balanced physical pressure with DEF/ACC stability.',tank:'Sustain bricks with high HP and mitigation.',trickster:'Tempo, control, and utility-driven setups.',predator:'Execution pressure, pierce and finishing power.',support:'Songs/spells, buffs, and control synergy.'};
 let shopPurchaseMade = false;
 
 function initSelection() {
   const ui=ensureUIState();
+  migrateLegacySelectionView(ui);
   if(!ui.expandedBird && G.selected) ui.expandedBird=G.selected;
   applyUIStateToDOM();
   // Check for saved run
@@ -3236,7 +3237,7 @@ function buildSelectionViewButtons(){
   const host=document.getElementById('view-toggle');
   if(!host) return;
   const ui=ensureUIState();
-  const btns=[['all','All'],['size','By Size'],...CLASS_ORDER.map(c=>[`class:${c}`,idToClassLabel(c)])];
+  const btns=[['all','All'],['size','By Size'],...ROLE_ORDER.map(c=>[`role:${c}`,idToClassLabel(c)])];
   host.innerHTML=btns.map(([id,label])=>`<button class="view-toggle-btn ${ui.selectionView===id?'active':''}" onclick="setSelView('${id}',this)">${label}</button>`).join('');
 }
 
@@ -3255,9 +3256,22 @@ function setGameMode(mode,btn){
   buildGameModeToggle();
 }
 
+function classToRoleId(cls){
+  return CLASS_ROLE_BY_CLASS[String(cls||'').toLowerCase()]||'support';
+}
+function migrateLegacySelectionView(ui=ensureUIState()){
+  const raw=String(ui?.selectionView||'all');
+  if(raw.startsWith('role:')) return;
+  if(raw.startsWith('class:')){
+    const legacy=raw.split(':')[1]||'all';
+    ui.selectionView = legacy==='all' ? 'all' : `role:${classToRoleId(legacy)}`;
+    return;
+  }
+  if(raw==='class') ui.selectionView='all';
+}
 function idToClassLabel(id){
   if(id==='all') return 'All';
-  return (CLASS_LABELS[id]||id).replace(/^.*\s/,'');
+  return (ROLE_LABELS[id]||id).replace(/^.*\s/,'');
 }
 function wireRefGuideClicks(){
   const header = document.querySelector('.ref-guide-header');
@@ -3361,15 +3375,17 @@ function selectDifficulty(id) {
 function setSelView(view, btn) {
   const ui=ensureUIState();
   ui.selectionView = String(view||'size');
+  migrateLegacySelectionView(ui);
   buildSelectionViewButtons();
   buildBirdGrid();
 }
 
 function buildBirdGrid() {
   const ui=ensureUIState();
+  migrateLegacySelectionView(ui);
   const selectedView=ui.selectionView;
-  const view = String(selectedView).startsWith('class:') ? 'all' : selectedView;
-  const classFilter = String(selectedView).startsWith('class:') ? (String(selectedView).split(':')[1]||'all') : 'all';
+  const view = String(selectedView).startsWith('role:') ? 'all' : selectedView;
+  const classFilter = String(selectedView).startsWith('role:') ? (String(selectedView).split(':')[1]||'all') : 'all';
 
   const grid = document.getElementById('bird-grid');
   if(!grid) return;
@@ -3378,7 +3394,7 @@ function buildBirdGrid() {
   let safeBirdEntries = Object.entries(BIRDS).filter(([,b])=>{
     return !!(b && b.stats && Number.isFinite(b.stats.hp) && Number.isFinite(b.stats.atk) && Number.isFinite(b.stats.def));
   });
-  if(classFilter!=='all') safeBirdEntries = safeBirdEntries.filter(([,b])=>String(b.class||'').toLowerCase()===classFilter);
+  if(classFilter!=='all') safeBirdEntries = safeBirdEntries.filter(([,b])=>classToRoleId(b.class)===classFilter);
   const fallbackStarters = ['sparrow','goose','blackbird','crow','macaw','robin'];
 
   // Compute global max stats for bars
@@ -3397,13 +3413,13 @@ function buildBirdGrid() {
   });
 
   const groups = {};
-  const orderedKeys = view==='size' ? SIZE_ORDER : CLASS_ORDER;
-  const groupLabels = view==='size' ? SIZE_LABELS : CLASS_LABELS;
+  const orderedKeys = view==='size' ? SIZE_ORDER : ROLE_ORDER;
+  const groupLabels = view==='size' ? SIZE_LABELS : ROLE_LABELS;
 
   orderedKeys.forEach(k => groups[k]=[]);
 
   safeBirdEntries.forEach(([key, bird]) => {
-    const groupKey = view==='size' ? (bird.size||'medium') : (bird.class||'knight');
+    const groupKey = view==='size' ? (bird.size||'medium') : classToRoleId(bird.class);
     if(!groups[groupKey]) groups[groupKey]=[];
     groups[groupKey].push([key, bird]);
   });
@@ -3437,8 +3453,8 @@ function buildBirdGrid() {
     const header = document.createElement('div');
     header.className = 'size-header';
     header.innerHTML = `<div class="size-header-line"></div><div class="size-header-title">${groupLabels[groupKey]||groupKey}</div>`;
-    if(view==='class' && CLASS_FLAVOR[groupKey]) {
-      header.innerHTML += `<div style="font-size:.62rem;color:var(--text-dim);font-style:italic;flex-shrink:0;">${CLASS_FLAVOR[groupKey]}</div>`;
+    if(view==='role' && ROLE_FLAVOR[groupKey]) {
+      header.innerHTML += `<div style="font-size:.62rem;color:var(--text-dim);font-style:italic;flex-shrink:0;">${ROLE_FLAVOR[groupKey]}</div>`;
     }
     header.innerHTML += `<div class="size-header-line"></div>`;
     section.appendChild(header);
@@ -3488,13 +3504,13 @@ document.addEventListener('click', (e)=>{
 
 
 function buildBirdExpandedContent(key, bird){
-  const cls = bird.class||'knight';
+  const cls = classToRoleId(bird.class);
   const sizeClass = getUISizeClass(bird, 'panel');
   const tags = (bird.startAbilities||[]).map(id=>`<span class="ascent-ab-tag">${ABILITY_TEMPLATES[id]?ABILITY_TEMPLATES[id].name:id}</span>`).join('');
   return `
     <div class="bird-card-expanded">
       <div class="ascent-panel-tagline">${bird.tagline||''}</div>
-      <div class="ascent-panel-class"><span class="class-badge class-${cls}">${cls.toUpperCase()}</span> · ${SIZE_LABELS[bird.size||'medium']||bird.size}</div>
+      <div class="ascent-panel-class"><span class="class-badge class-${cls}">${idToClassLabel(cls).toUpperCase()}</span> · ${SIZE_LABELS[bird.size||'medium']||bird.size}</div>
       ${bird.passive?`<div class="ascent-panel-passive"><strong>★ ${bird.passive.name}:</strong> ${bird.passive.desc}</div>`:''}
       <div class="ascent-abilities">${tags}</div>
       <div style="text-align:left;font-size:.72rem;color:var(--text);background:rgba(0,0,0,.25);border:1px solid rgba(201,168,76,.2);border-radius:8px;padding:8px;margin:8px 0;"><strong>Full Stats:</strong> HP ${bird.stats.hp} · ATK ${bird.stats.atk} · DEF ${bird.stats.def} · SPD ${bird.stats.spd} · ACC ${bird.stats.acc}% · Dodge ${bird.stats.dodge}% · MATK ${bird.stats.matk||0} · MDEF ${bird.stats.mdef||0} · Crit ${bird.stats.critChance||0}%</div>
@@ -3508,7 +3524,7 @@ function buildBirdCard(key, bird, locked, globalMax) {
   card.className = 'bird-card' + (locked ? ' bird-locked' : '') + (ui.expandedBird===key?' selected':'');
   if (!locked) card.onclick = () => selectBird(key, card);
 
-  const cls = bird.class||'knight';
+  const cls = classToRoleId(bird.class);
   const sizeClass = getUISizeClass(bird, 'select');
 
   const keyStats = [
@@ -3534,7 +3550,7 @@ function buildBirdCard(key, bird, locked, globalMax) {
   if(locked) {
     card.innerHTML = `
       <div class="bird-card-head">
-        <span class="class-badge class-${cls}">${(cls).toUpperCase()}</span>
+        <span class="class-badge class-${cls}">${idToClassLabel(cls).toUpperCase()}</span>
         <span class="bird-size-chip">${SIZE_LABELS[bird.size||'medium']||bird.size}</span>
       </div>
       <div style="display:flex;justify-content:center;margin:2px auto 6px;">${renderBirdIconHTML(key,sizeClass,true)}</div>
@@ -3544,7 +3560,7 @@ function buildBirdCard(key, bird, locked, globalMax) {
     const expanded = (ui.expandedBird===key) ? buildBirdExpandedContent(key,bird) : '';
     card.innerHTML = `
       <div class="bird-card-head">
-        <span class="class-badge class-${cls}">${(cls).toUpperCase()}</span>
+        <span class="class-badge class-${cls}">${idToClassLabel(cls).toUpperCase()}</span>
         <span class="bird-size-chip">${SIZE_LABELS[bird.size||'medium']||bird.size}</span>
       </div>
       <div style="display:flex;justify-content:center;margin:2px auto 6px;">${renderBirdIconHTML(key,sizeClass,false)}</div>
@@ -3622,7 +3638,7 @@ function updateAscentPanel(key) {
     return;
   }
 
-  const cls = bird.class||'knight';
+  const cls = classToRoleId(bird.class);
   const sizeClass = getUISizeClass(bird, 'panel');
   const tags = (bird.startAbilities||[]).map(id=>`<span class="ascent-ab-tag">${ABILITY_TEMPLATES[id]?ABILITY_TEMPLATES[id].name:id}</span>`).join('');
 
@@ -3630,7 +3646,7 @@ function updateAscentPanel(key) {
     <div class="ascent-panel-portrait">${renderBirdIconHTML(key, sizeClass, false)}</div>
     <div class="ascent-panel-name">${bird.name}</div>
     <div class="ascent-panel-tagline">${bird.tagline}</div>
-    <div class="ascent-panel-class"><span class="class-badge class-${cls}">${cls.toUpperCase()}</span> · ${SIZE_LABELS[bird.size||'medium']||bird.size}</div>
+    <div class="ascent-panel-class"><span class="class-badge class-${cls}">${idToClassLabel(cls).toUpperCase()}</span> · ${SIZE_LABELS[bird.size||'medium']||bird.size}</div>
     ${bird.passive?`<div class="ascent-panel-passive"><strong>★ ${bird.passive.name}:</strong> ${bird.passive.desc}</div>`:''}
     <div class="ascent-abilities">${tags}</div>
     <div style="text-align:left;font-size:.72rem;color:var(--text);background:rgba(0,0,0,.25);border:1px solid rgba(201,168,76,.2);border-radius:8px;padding:8px;margin:8px 0;"><strong>Full Stats:</strong> HP ${bird.stats.hp} · ATK ${bird.stats.atk} · DEF ${bird.stats.def} · SPD ${bird.stats.spd} · ACC ${bird.stats.acc}% · Dodge ${bird.stats.dodge}% · MATK ${bird.stats.matk||0} · MDEF ${bird.stats.mdef||0} · Crit ${bird.stats.critChance||0}%</div>
@@ -9826,21 +9842,21 @@ function renderRunHistory() {
 let _refActiveTab = 0;
 
 const ABILITIES_REFERENCE = {
-  peck:{desc:'An average physical attack using a Beak.',effect:'Steady physical damage.'},
-  blackPeck:{desc:'A dark strike from the shadows.',effect:'Medium damage + chance to frighten.'},
-  honkAttack:{desc:'A loud defensive call.',effect:'Minor damage and may weaken enemies.'},
-  roost:{desc:'The bird rests on its perch.',effect:'Restore HP. Cooldown 2 turns.'},
-  stormCall:{desc:'Calls lightning from storm clouds.',effect:'Heavy magic damage.'},
-  dirgeOfDread:{desc:'A haunting melody.',effect:'Applies Fear and Weaken.'},
-  pinionVolley:{desc:'Rapid feather strikes.',effect:'Two hits that pierce armor.'},
-  bleakBeak:{desc:'A grim magical peck.',effect:'Light damage but always available.'},
+  rapidPeck:{desc:'Striker basic opener.',effect:'Multi-hit physical pressure with combo potential.'},
+  dart:{desc:'Reliable basic strike.',effect:'Stable damage with light utility pressure.'},
+  honkAttack:{desc:'Bruiser/Tank basic control strike.',effect:'Physical damage with fear or control pressure.'},
+  roost:{desc:'Recovery utility.',effect:'Restores HP and supports sustained fights.'},
+  stormCall:{desc:'High-impact spell cast.',effect:'Heavy magic damage with setup payoff.'},
+  dirgeOfDread:{desc:'Control song pattern.',effect:'Fear and weaken pressure over short windows.'},
+  pinionVolley:{desc:'Predator multi-hit tool.',effect:'Repeated hits with armor-piercing pressure.'},
+  bleakBeak:{desc:'Support spell/basic hybrid.',effect:'Reliable low-cost spell chip and setup.'},
 };
 
 const ENEMY_BIRD_DATA = [
-  {name:'Crow', hp:45, atk:8, def:5, type:'Aggressive'},
-  {name:'Hawk', hp:55, atk:10, def:6, type:'Predator'},
-  {name:'Emu', hp:120, atk:12, def:10, type:'Elite'},
-  {name:'Blakiston Owl', hp:300, atk:18, def:15, type:'Boss'},
+  {name:'Crow', hp:45, atk:8, def:5, type:'striker'},
+  {name:'Hawk', hp:55, atk:10, def:6, type:'predator'},
+  {name:'Emu', hp:120, atk:12, def:10, type:'bruiser'},
+  {name:'Blakiston Owl', hp:300, atk:18, def:15, type:'boss'},
 ];
 
 function toggleRefGuide() {
@@ -9902,7 +9918,9 @@ function buildRefGuide() {
   const birds=Object.entries(BIRDS||{}).filter(([id,b])=>isMatch(b.name)).map(([id,b])=>{
     const u=!!G.codex?.birds?.[id]?.seen;
     if(!u&&!showLocked) return '';
-    return card(b.name, `${b.tagline||''} · Class: ${(b.class||'').toUpperCase()}`,u,b.class||'bird');
+    const roleId=classToRoleId(b.class);
+    const roleLabel=idToClassLabel(roleId).toUpperCase();
+    return card(b.name, `${b.tagline||''} · Role: ${roleLabel}`,u,roleId||'bird');
   }).join('');
 
   const packAbilityDefs = G.dataPacks?.abilityPassiveUpgrade?.ABILITY_DEFS || {};
@@ -9959,10 +9977,11 @@ function buildRefGuide() {
   const arts=artsByTier || (showLocked?card('???','Find rewards in runs to fill this section.',false,'locked'):'' );
 
   const mechanics=`<div class="ref-skills-grid">
-    ${card('Energy & Cooldowns','Main attacks are free unless spells. Abilities spend energy and may go on cooldown.',true,'core')}
-    ${card('Enemy AI Types','Aggressive, Defensive, Trickster, Predator, and Boss AI patterns influence action choice.',true,'ai')}
-    ${card('Ability Rarity','Ability offers are weighted by rarity: common, rare, epic, legendary.',true,'rarity')}
-    ${card('Codex Unlocks','Entries unlock when seen/used during runs. Toggle locked entries and use search.',true,'codex')}
+    ${card('Energy & Cooldowns','Main attacks are free unless spells. Abilities spend energy and many skills have cooldowns.',true,'core')}
+    ${card('Role Taxonomy','Birds are grouped by roles: Striker, Bruiser, Tank, Trickster, Predator, Support.',true,'roles')}
+    ${card('Passive Evolution (Endless)','In Endless mode, passives evolve at milestones with offensive vs utility choices.',true,'endless')}
+    ${card('Enemy AI Profiles','Enemy personalities (aggressive, tactical, control, defender, etc.) bias action planning.',true,'ai')}
+    ${card('Codex Unlocks','Entries unlock when seen/used during runs. Use search and Show Locked to browse all.',true,'codex')}
   </div>`;
 
   panels.innerHTML=`
