@@ -74,7 +74,7 @@ header p{color:var(--text-dim);font-style:italic;font-size:1rem;margin-top:4px;}
 .sel-right{position:sticky;top:10px;}
 
 /* VIEW TOGGLE */
-.view-toggle{display:flex;gap:0;justify-content:flex-start;margin-bottom:12px;border-radius:8px;overflow-x:auto;overflow-y:hidden;border:1px solid rgba(80,70,50,.4);width:min(100%,1100px);margin:0 auto 14px;scrollbar-width:thin;}
+.view-toggle{display:flex;gap:0;justify-content:flex-start;border-radius:8px;overflow-x:auto;overflow-y:hidden;border:1px solid rgba(80,70,50,.4);width:100%;scrollbar-width:thin;}
 .view-toggle-btn{padding:6px 18px;background:rgba(20,15,5,.7);color:var(--text-dim);font-size:.75rem;font-family:'Cinzel',serif;letter-spacing:.05em;cursor:pointer;border:none;transition:all .2s;flex:0 0 auto;white-space:nowrap;}
 .view-toggle-btn.active{background:rgba(80,60,18,.95);color:var(--gold);}
 .class-filter-tabs{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;}
@@ -1433,9 +1433,12 @@ img{image-rendering:pixelated;image-rendering:crisp-edges;}
 .sel-left{display:block !important;position:sticky;top:10px;grid-column:1;align-self:start;}
 .sel-right{grid-column:2;min-width:0;}
 #ascent-panel{display:block !important;}
-.sel-roster-controls{display:flex;align-items:center;gap:12px;margin-bottom:12px;flex-wrap:wrap;}
+.sel-roster-controls{display:flex;flex-direction:column;align-items:stretch;gap:10px;margin-bottom:12px;}
+.sel-filter-stack{display:grid;gap:8px;}
+.filter-row .view-toggle-btn{flex:1 1 auto;text-align:center;}
+.sel-right{display:flex;flex-direction:column;min-height:760px;}
 
-#bird-grid{max-height:72vh;overflow:auto;padding-right:6px;}
+#bird-grid{flex:1;max-height:80vh;min-height:640px;overflow:auto;padding-right:6px;}
 .size-birds-row{display:grid;grid-template-columns:repeat(auto-fill,minmax(168px,1fr));gap:10px;}
 .bird-card{background:linear-gradient(180deg,rgba(23,27,36,.95),rgba(16,20,28,.95));border:1px solid rgba(160,180,210,.22);}
 .bird-card:hover{border-color:rgba(232,201,106,.65);box-shadow:0 6px 20px rgba(0,0,0,.35),0 0 0 1px rgba(232,201,106,.25) inset;}
@@ -1468,7 +1471,7 @@ img{image-rendering:pixelated;image-rendering:crisp-edges;}
 @media (max-width: 1020px){
   .sel-layout{grid-template-columns:1fr !important;}
   .sel-right,.sel-left{grid-column:auto;position:static;}
-  #bird-grid{max-height:none;}
+  #bird-grid{max-height:none;min-height:0;}
   .showcase-top{grid-template-columns:1fr;justify-items:center;text-align:center;}
   .showcase-meta{justify-content:center;}
   .showcase-stats-grid{grid-template-columns:repeat(2,minmax(0,1fr));}

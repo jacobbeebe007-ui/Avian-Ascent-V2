@@ -3231,6 +3231,7 @@ let shopPurchaseMade = false;
 function initSelection() {
   const ui=ensureUIState();
   ui.selectionView='all';
+  if(!ui.lockFilter) ui.lockFilter='all';
   migrateLegacySelectionView(ui);
   if(!ui.expandedBird && G.selected) ui.expandedBird=G.selected;
   applyUIStateToDOM();
@@ -3251,6 +3252,7 @@ function initSelection() {
 
   // Build bird grid
   buildSelectionViewButtons();
+  buildLockFilterButtons();
   buildGameModeToggle();
   buildBirdGrid();
   renderHighscoreBoard();
@@ -3260,8 +3262,41 @@ function buildSelectionViewButtons(){
   const host=document.getElementById('view-toggle');
   if(!host) return;
   const ui=ensureUIState();
-  const btns=[['all','All'],['size','By Size'],...ROLE_ORDER.map(c=>[`role:${c}`,idToClassLabel(c)])];
+  const btns=ROLE_ORDER.map(c=>[`role:${c}`,idToClassLabel(c)]);
   host.innerHTML=btns.map(([id,label])=>`<button class="view-toggle-btn ${ui.selectionView===id?'active':''}" onclick="setSelView('${id}',this)">${label}</button>`).join('');
+}
+
+function buildLockFilterButtons(){
+  const host=document.getElementById('lock-toggle');
+  if(!host) return;
+  const ui=ensureUIState();
+  if(!ui.lockFilter) ui.lockFilter='all';
+  const isAllBirds = ui.selectionView==='all' && ui.lockFilter==='all';
+  const isBySize = ui.selectionView==='size' && ui.lockFilter==='all';
+  const buttons = [
+    `<button class="view-toggle-btn ${isAllBirds?'active':''}" onclick="setRosterMode('all')">All Birds</button>`,
+    `<button class="view-toggle-btn ${isBySize?'active':''}" onclick="setRosterMode('size')">By Size</button>`,
+    `<button class="view-toggle-btn ${ui.lockFilter==='unlocked'?'active':''}" onclick="setLockFilter('unlocked',this)">Unlocked</button>`,
+    `<button class="view-toggle-btn ${ui.lockFilter==='locked'?'active':''}" onclick="setLockFilter('locked',this)">Locked</button>`,
+  ];
+  host.innerHTML=buttons.join('');
+}
+
+function setRosterMode(mode){
+  const ui=ensureUIState();
+  ui.lockFilter='all';
+  ui.selectionView = (mode==='size') ? 'size' : 'all';
+  buildSelectionViewButtons();
+  buildLockFilterButtons();
+  buildBirdGrid();
+}
+
+function setLockFilter(mode,btn){
+  const ui=ensureUIState();
+  ui.lockFilter = ['all','unlocked','locked'].includes(mode) ? mode : 'all';
+  if(ui.selectionView==='size' || ui.selectionView==='all') ui.selectionView='all';
+  buildLockFilterButtons();
+  buildBirdGrid();
 }
 
 function buildGameModeToggle(){
@@ -3358,6 +3393,7 @@ function initSelectionSafe(){
       const ui=ensureUIState();
       ui.selectionView='all';
       buildSelectionViewButtons();
+      buildLockFilterButtons();
       buildBirdGrid();
     }
     const postRepairCards=document.querySelectorAll('.bird-card').length;
@@ -3407,6 +3443,7 @@ function setSelView(view, btn) {
   ui.selectionView = String(view||'all');
   migrateLegacySelectionView(ui);
   buildSelectionViewButtons();
+  buildLockFilterButtons();
   buildBirdGrid();
 }
 
@@ -3417,6 +3454,7 @@ function buildBirdGrid() {
   const selectedView=ui.selectionView;
   const view = String(selectedView).startsWith('role:') ? 'all' : (selectedView==='size' ? 'size' : 'all');
   const classFilter = String(selectedView).startsWith('role:') ? (String(selectedView).split(':')[1]||'all') : 'all';
+  const lockFilter = ['all','unlocked','locked'].includes(ui.lockFilter) ? ui.lockFilter : 'all';
 
   const grid = document.getElementById('bird-grid');
   if(!grid) return;
@@ -3426,12 +3464,20 @@ function buildBirdGrid() {
     return !!(b && b.stats && Number.isFinite(b.stats.hp) && Number.isFinite(b.stats.atk) && Number.isFinite(b.stats.def));
   });
   if(classFilter!=='all') safeBirdEntries = safeBirdEntries.filter(([key,b])=>classToRoleId(b.class,key)===classFilter);
+  if(lockFilter!=='all') safeBirdEntries = safeBirdEntries.filter(([,bird])=>{
+    const locked = bird.unlockRequires && !isUnlocked(bird.unlockRequires);
+    return lockFilter==='locked' ? !!locked : !locked;
+  });
 
   // Hard recovery: if strict stat validation gets stripped by legacy patch code,
   // render from the full roster model instead of collapsing to Sparrow-only.
   if(safeBirdEntries.length<=1){
     safeBirdEntries = Object.entries(BIRDS).filter(([,b])=>!!(b && typeof b==='object' && b.name));
     if(classFilter!=='all') safeBirdEntries = safeBirdEntries.filter(([key,b])=>classToRoleId(b.class,key)===classFilter);
+    if(lockFilter!=='all') safeBirdEntries = safeBirdEntries.filter(([,bird])=>{
+      const locked = bird.unlockRequires && !isUnlocked(bird.unlockRequires);
+      return lockFilter==='locked' ? !!locked : !locked;
+    });
   }
   const fallbackStarters = ['sparrow','goose','blackbird','crow','macaw','robin'];
 
@@ -3498,7 +3544,13 @@ function buildBirdGrid() {
   });
 
   const label = document.getElementById('bird-count-label');
-  if(label) label.textContent = `${totalUnlocked}/${totalBirds} available${classFilter!=='all' ? ` · ${idToClassLabel(classFilter)}`:''}`;
+  if(label){
+    const lockTag = lockFilter==='all' ? '' : (lockFilter==='locked' ? ' · Locked' : ' · Unlocked');
+    label.textContent = `${totalUnlocked}/${totalBirds} available${classFilter!=='all' ? ` · ${idToClassLabel(classFilter)}`:''}${lockTag}`;
+  }
+
+  const focusKey=ui.expandedBird||G.selected||safeBirdEntries?.[0]?.[0]||'';
+  if(focusKey) updateAscentPanel(focusKey);
 
   const focusKey=ui.expandedBird||G.selected||safeBirdEntries?.[0]?.[0]||'';
   if(focusKey) updateAscentPanel(focusKey);
