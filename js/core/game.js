@@ -3230,7 +3230,7 @@ let shopPurchaseMade = false;
 
 function initSelection() {
   const ui=ensureUIState();
-  if(!ui.selectionView) ui.selectionView='all';
+  ui.selectionView='all';
   migrateLegacySelectionView(ui);
   if(!ui.expandedBird && G.selected) ui.expandedBird=G.selected;
   applyUIStateToDOM();
@@ -3354,7 +3354,14 @@ function initSelectionSafe(){
 
     // If init did not throw but produced no cards (mobile/content:// edge), recover anyway.
     const cards=document.querySelectorAll('.bird-card').length;
-    if(cards===0){
+    if(cards<=1){
+      const ui=ensureUIState();
+      ui.selectionView='all';
+      buildSelectionViewButtons();
+      buildBirdGrid();
+    }
+    const postRepairCards=document.querySelectorAll('.bird-card').length;
+    if(postRepairCards===0){
       renderStarterFallbackGrid('initSelectionSafe empty grid');
       failsafeAdvance('initSelectionSafe empty grid');
     }
@@ -3678,7 +3685,7 @@ function updateAscentPanel(key) {
         </div>
       </div>
       <div class="showcase-section"><div class="showcase-title">🧭 Playstyle</div><div class="showcase-summary">${roleSummary}</div></div>
-      <button class="cta showcase-cta" onclick="startGame()">🪽 Select ${bird.name}</button>
+      <button class="cta showcase-cta" onclick="startSelectedBird('${key}')">🪽 Select ${bird.name}</button>
       </div>
     </div>`;
   panel.classList.remove('is-empty');
@@ -3686,6 +3693,12 @@ function updateAscentPanel(key) {
 }
 
 
+
+
+function startSelectedBird(key){
+  if(key && BIRDS[key]) G.selected = key;
+  return startGame();
+}
 
 function beginRun(){ return startGame(); }
 // ============================================================
