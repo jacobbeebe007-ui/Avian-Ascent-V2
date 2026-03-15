@@ -1218,7 +1218,7 @@ const ENEMIES = [
   makeEnemy('Blackbird','',26,5,2,7,'cautious',false,'',{acc:72,dodge:18,size:'small',abilities:['eFear'],portraitKey:'blackbird'}),
   makeEnemy('Wood Pigeon','🕊️',30,6,3,5,'cautious',false,'',{acc:70,dodge:12,size:'medium',abilities:['eWeaken'],portraitKey:'dove'}),
   // Tier 1 Boss
-  makeEnemy('Storm Falcon','🦅',55,12,6,7,'berserker',true,'⚡ Stage Boss',{acc:80,dodge:18,size:'large',abilities:['eStun','eWeaken','eRage'],portraitKey:'peregrine'}),
+  makeEnemy('Storm Falcon','🦅',55,12,6,7,'berserker',true,'⚡ Stage Boss',{acc:76,dodge:18,size:'large',abilities:['eStun','eWeaken','eRage'],portraitKey:'peregrine'}),
   // Tier 2 — Stages 5-9
   makeEnemy('Barn Owl','🦉',38,9,4,5,'cautious',false,'',{acc:75,dodge:12,size:'medium',abilities:['eFear','eHeal'],portraitKey:'snowyOwl'}),
   makeEnemy('Kite','🦅',44,11,4,6,'aggressive',false,'',{acc:77,dodge:20,size:'medium',abilities:['eBurn','eVenom'],portraitKey:'peregrine'}),
@@ -4657,7 +4657,7 @@ function renderActions() {
       btnCostText=G.crowDefendCooldown>0?`Cooldown:${G.crowDefendCooldown}t`:'Ready';
       cdisabled=G.crowDefendCooldown>0;
     }
-    if (ab.id==='swoop') {
+    if (ab.id==='swoop' || ab.id==='sonicDash') {
       btnCostText=G.swoopCooldown>0?`Cooldown:${G.swoopCooldown}t`:'Ready';
       cdisabled=G.swoopCooldown>0;
     }
@@ -7508,6 +7508,7 @@ async function playerAction(ab,fromQueue=false) {
     logMsg(`🪵 Stick dropped — Stick Lance reset.`,'miss');
   }
   if(getAbilityCooldown(ab.id)>0){logMsg(`${ab.name} on cooldown! (${getAbilityCooldown(ab.id)}t)`,'miss');return;}
+  if((ab.id==='swoop' || ab.id==='sonicDash') && (G.swoopCooldown||0)>0){logMsg(`${ab.name} on cooldown! (${G.swoopCooldown}t)`,'miss');return;}
   if(!canUseAbility(G.player,ab)){logMsg(`Not enough energy for ${ab.name}!`,'miss');return;}
   const _abk=String(ab?.btnType||ab?.type||ABILITY_TEMPLATES?.[ab?.id]?.btnType||ABILITY_TEMPLATES?.[ab?.id]?.type||'').toLowerCase();
   const _defSkill=(_abk==='utility' || ab?.id==='crowDefend');
