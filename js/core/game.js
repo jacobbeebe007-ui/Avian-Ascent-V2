@@ -3327,6 +3327,16 @@ function renderPassiveBadge() {
 // ============================================================
 //  NEST / INVENTORY
 // ============================================================
+function formatAbilityLevelPathway(tmpl){
+  if(!tmpl || !Array.isArray(tmpl.levels) || !tmpl.levels.length) return '';
+  return tmpl.levels
+    .map((entry, idx)=>{
+      const desc=String(entry?.desc || '').trim();
+      return desc ? `Lv.${idx+1} · ${desc}` : '';
+    })
+    .filter(Boolean)
+    .join('\n');
+}
 function openNest() {
   const modal=document.getElementById('nest-modal');
   const content=document.getElementById('nest-content');
