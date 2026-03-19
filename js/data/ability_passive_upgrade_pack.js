@@ -54,7 +54,7 @@
       id: 'dirge',
       name: 'Dirge',
       tags: [ABILITY_TAGS.SPELL, ABILITY_TAGS.CONTROL],
-      role: 'singer control song',
+      role: 'support control song',
       notes: 'Confusion and paralysis pressure over multiple turns.'
     },
     lullaby: {
