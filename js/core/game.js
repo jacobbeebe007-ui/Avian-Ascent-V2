@@ -677,7 +677,7 @@ const BIRDS = {
     size:'tiny', class:'striker',
     stats:{hp:28,maxHp:28,atk:5,def:2,spd:9,dodge:35,acc:85,mdef:6,matk:6,critChance:10},
     statBars:{HP:28/50,ATK:5/15,SPD:9/10,Dodge:.7,ACC:.85}, color:'#6a8ae8',
-    startAbilities:['rapidPeck','dart','windFeint','predatorMark'],
+    startAbilities:['rapidPeck','dart','windFeint','markPrey'],
     passive:{id:'windDancer',name:'Wind Dancer',desc:'Every dodge grants +1% permanent dodge (max +15%).',
       onDodge(p){if(!p._windDancerBonus)p._windDancerBonus=0;if(p._windDancerBonus<15){p._windDancerBonus++;p.stats.dodge=Math.min(p.stats.dodge+1,100);}}},
   },
@@ -2537,6 +2537,105 @@ Object.assign(ABILITY_TEMPLATES, ABILITY_TEMPLATES_MAGIC);
 // Merge learnable templates into main lookup
 Object.assign(ABILITY_TEMPLATES, ABILITY_TEMPLATES_LEARNABLE);
 
+function makeAbilityLevelData(entries=[]){
+  const items = Array.isArray(entries) ? entries.slice(0,4) : [];
+  if(!items.length) items.push({desc:'No effect.'});
+  while(items.length<4){
+    items.push({...items[items.length-1]});
+  }
+  return items.slice(0,4).map((entry, idx)=>({lv:idx+1, ...entry, lv:idx+1}));
+}
+
+function makeEvolutionAbilityTemplate(id, name, desc, options={}){
+  const energy = Number.isFinite(options.energy) ? options.energy : 1;
+  const type = options.type || 'physical';
+  const btnType = options.btnType || type;
+  return {
+    id,
+    name,
+    desc,
+    type,
+    btnType,
+    energyCost: energy,
+    energyByLevel: [energy, energy, energy, energy],
+    cooldownByLevel: Array.isArray(options.cooldownByLevel) ? options.cooldownByLevel.slice(0,4) : [0,0,0,0],
+    fixedMainAttackCost: !!options.fixedMainAttackCost,
+    role: Array.isArray(options.role) ? options.role.slice() : [],
+    levels: makeAbilityLevelData(options.levels || [{desc}]),
+  };
+}
+
+Object.assign(ABILITY_TEMPLATES.rapidPeck||{}, {
+  desc:'Rapid-line burst. Three precise pecks with piercing tempo.',
+  energyCost:2,
+  energyByLevel:[2,2,2,2],
+  fixedMainAttackCost:true,
+  role:['multiHit'],
+  levels:makeAbilityLevelData([
+    {desc:'3 hits at 45% dmg each. Pierce 10% DEF.'},
+    {desc:'3 hits at 52% dmg each. Pierce 12% DEF.'},
+    {desc:'3 hits at 58% dmg each. Pierce 14% DEF.'},
+    {desc:'4 hits at 58% dmg each. Pierce 16% DEF.'},
+  ]),
+});
+Object.assign(ABILITY_TEMPLATES.dart||{}, {
+  desc:'Sparrow filler strike. Precise pressure that supports family evolution.',
+  energyCost:1,
+  energyByLevel:[1,1,1,1],
+  levels:makeAbilityLevelData([
+    {desc:'110% dmg, 10% miss.'},
+    {desc:'120% dmg, 8% miss.'},
+    {desc:'130% dmg, 6% miss.'},
+    {desc:'140% dmg, 5% miss.'},
+  ]),
+});
+
+const SPARROW_EVOLUTION_TEMPLATES = {
+  markPrey: makeEvolutionAbilityTemplate('markPrey','Mark Prey','Sparrow setup opener that prepares a focused follow-up.', {
+    type:'utility', btnType:'utility', energy:1,
+    levels:[
+      {desc:'Mark the enemy. Your next attack deals +18% damage.'},
+      {desc:'Mark the enemy. Your next attack deals +22% damage.'},
+      {desc:'Mark the enemy. Your next attack deals +26% damage.'},
+      {desc:'Mark the enemy. Your next attack deals +30% damage.'},
+    ],
+  }),
+  bodkinStrike: makeEvolutionAbilityTemplate('bodkinStrike','Bodkin Strike','Rapid-line pierce evolution. Heavy puncture flurry.', {type:'physical', btnType:'physical', energy:2, fixedMainAttackCost:true, role:['multiHit'], levels:[{desc:'3 hits at 52% dmg each. Pierce 18% DEF.'},{desc:'3 hits at 58% dmg each. Pierce 20% DEF.'},{desc:'4 hits at 58% dmg each. Pierce 22% DEF.'},{desc:'4 hits at 64% dmg each. Pierce 24% DEF.'}] }),
+  bodkinBarrage: makeEvolutionAbilityTemplate('bodkinBarrage','Bodkin Barrage','Rapid-line final pierce evolution. Relentless armor-punching barrage.', {type:'physical', btnType:'physical', energy:2, fixedMainAttackCost:true, role:['multiHit'], levels:[{desc:'4 hits at 60% dmg each. Pierce 24% DEF.'},{desc:'4 hits at 66% dmg each. Pierce 26% DEF.'},{desc:'5 hits at 66% dmg each. Pierce 28% DEF.'},{desc:'5 hits at 72% dmg each. Pierce 30% DEF.'}] }),
+  rapidFlap: makeEvolutionAbilityTemplate('rapidFlap','Rapid Flap','Rapid-line confuse branch. Disorienting wing-burst.', {type:'physical', btnType:'physical', energy:2, fixedMainAttackCost:true, role:['multiHit'], levels:[{desc:'3 hits at 42% dmg each. Confuse 15%.'},{desc:'3 hits at 48% dmg each. Confuse 18%.'},{desc:'4 hits at 48% dmg each. Confuse 20%.'},{desc:'4 hits at 54% dmg each. Confuse 24%.'}] }),
+  disruptiveRush: makeEvolutionAbilityTemplate('disruptiveRush','Disruptive Rush','Rapid-line confuse evolution. Shakes enemy tempo.', {type:'physical', btnType:'physical', energy:2, fixedMainAttackCost:true, role:['multiHit'], levels:[{desc:'3 hits at 50% dmg each. Confuse 22%.'},{desc:'3 hits at 56% dmg each. Confuse 25%.'},{desc:'4 hits at 56% dmg each. Confuse 28%.'},{desc:'4 hits at 62% dmg each. Confuse 32%.'}] }),
+  chaosTempest: makeEvolutionAbilityTemplate('chaosTempest','Chaos Tempest','Rapid-line final confuse evolution. Burst with heavy confusion pressure.', {type:'physical', btnType:'physical', energy:2, fixedMainAttackCost:true, role:['multiHit'], levels:[{desc:'4 hits at 58% dmg each. Confuse 30%.'},{desc:'4 hits at 64% dmg each. Confuse 34%.'},{desc:'5 hits at 64% dmg each. Confuse 36%.'},{desc:'5 hits at 70% dmg each. Confuse 40%.'}] }),
+  rapidTalon: makeEvolutionAbilityTemplate('rapidTalon','Rapid Talon','Rapid-line poison branch. Quick venom cuts.', {type:'physical', btnType:'physical', energy:2, fixedMainAttackCost:true, role:['multiHit'], levels:[{desc:'3 hits at 42% dmg each. Poison 15%.'},{desc:'3 hits at 48% dmg each. Poison 18%.'},{desc:'4 hits at 48% dmg each. Poison 22%.'},{desc:'4 hits at 54% dmg each. Poison 24%.'}] }),
+  venomFlurry: makeEvolutionAbilityTemplate('venomFlurry','Venom Flurry','Rapid-line poison evolution. Venom stacks in rapid bursts.', {type:'physical', btnType:'physical', energy:2, fixedMainAttackCost:true, role:['multiHit'], levels:[{desc:'3 hits at 50% dmg each. Poison 24%.'},{desc:'3 hits at 56% dmg each. Poison 28%.'},{desc:'4 hits at 56% dmg each. Poison 30%.'},{desc:'4 hits at 62% dmg each. Poison 34%.'}] }),
+  venomStorm: makeEvolutionAbilityTemplate('venomStorm','Venom Storm','Rapid-line final poison evolution. Saturates targets with toxins.', {type:'physical', btnType:'physical', energy:2, fixedMainAttackCost:true, role:['multiHit'], levels:[{desc:'4 hits at 56% dmg each. Poison 34%.'},{desc:'4 hits at 62% dmg each. Poison 38%.'},{desc:'5 hits at 62% dmg each. Poison 40%.'},{desc:'5 hits at 68% dmg each. Poison 45%.'}] }),
+  searingDart: makeEvolutionAbilityTemplate('searingDart','Searing Dart','Dart-line burn branch. A fast ember shot.', {type:'physical', btnType:'physical', energy:1, levels:[{desc:'105% dmg, 8% miss. Burn 30%.'},{desc:'115% dmg, 7% miss. Burn 35%.'},{desc:'125% dmg, 6% miss. Burn 40%.'},{desc:'135% dmg, 5% miss. Burn 45%.'}] }),
+  searingArrow: makeEvolutionAbilityTemplate('searingArrow','Searing Arrow','Dart-line burn evolution. Sharper burn pressure.', {type:'physical', btnType:'physical', energy:1, levels:[{desc:'118% dmg, 7% miss. Burn 40%.'},{desc:'128% dmg, 6% miss. Burn 45%.'},{desc:'138% dmg, 5% miss. Burn 50%.'},{desc:'148% dmg, 4% miss. Burn 55%.'}] }),
+  searingJavelin: makeEvolutionAbilityTemplate('searingJavelin','Searing Javelin','Dart-line final burn evolution. Precision burn finisher.', {type:'physical', btnType:'physical', energy:1, levels:[{desc:'132% dmg, 6% miss. Burn 50%.'},{desc:'142% dmg, 5% miss. Burn 55%.'},{desc:'152% dmg, 4% miss. Burn 60%.'},{desc:'162% dmg, 3% miss. Burn 65%.'}] }),
+  broadDart: makeEvolutionAbilityTemplate('broadDart','Broad Dart','Dart-line bleed branch. Wide cut for lingering damage.', {type:'physical', btnType:'physical', energy:1, levels:[{desc:'102% dmg, 9% miss. Bleed 30%.'},{desc:'112% dmg, 8% miss. Bleed 35%.'},{desc:'122% dmg, 7% miss. Bleed 40%.'},{desc:'132% dmg, 6% miss. Bleed 45%.'}] }),
+  broadArrow: makeEvolutionAbilityTemplate('broadArrow','Broad Arrow','Dart-line bleed evolution. Deeper slicing pressure.', {type:'physical', btnType:'physical', energy:1, levels:[{desc:'116% dmg, 8% miss. Bleed 40%.'},{desc:'126% dmg, 7% miss. Bleed 45%.'},{desc:'136% dmg, 6% miss. Bleed 50%.'},{desc:'146% dmg, 5% miss. Bleed 55%.'}] }),
+  broadJavelin: makeEvolutionAbilityTemplate('broadJavelin','Broad Javelin','Dart-line final bleed evolution. Precise bleeding finisher.', {type:'physical', btnType:'physical', energy:1, levels:[{desc:'130% dmg, 7% miss. Bleed 50%.'},{desc:'140% dmg, 6% miss. Bleed 55%.'},{desc:'150% dmg, 5% miss. Bleed 60%.'},{desc:'160% dmg, 4% miss. Bleed 65%.'}] }),
+  bodkinDart: makeEvolutionAbilityTemplate('bodkinDart','Bodkin Dart','Dart-line pierce branch. Needle-thin precision shot.', {type:'physical', btnType:'physical', energy:1, levels:[{desc:'106% dmg, 8% miss. Pierce 18% DEF.'},{desc:'116% dmg, 7% miss. Pierce 20% DEF.'},{desc:'126% dmg, 6% miss. Pierce 22% DEF.'},{desc:'136% dmg, 5% miss. Pierce 24% DEF.'}] }),
+  bodkinArrow: makeEvolutionAbilityTemplate('bodkinArrow','Bodkin Arrow','Dart-line pierce evolution. Deeper armor puncture.', {type:'physical', btnType:'physical', energy:1, levels:[{desc:'120% dmg, 7% miss. Pierce 24% DEF.'},{desc:'130% dmg, 6% miss. Pierce 26% DEF.'},{desc:'140% dmg, 5% miss. Pierce 28% DEF.'},{desc:'150% dmg, 4% miss. Pierce 30% DEF.'}] }),
+  bodkinJavelin: makeEvolutionAbilityTemplate('bodkinJavelin','Bodkin Javelin','Dart-line final pierce evolution. Armor-breaking precision finish.', {type:'physical', btnType:'physical', energy:1, levels:[{desc:'134% dmg, 6% miss. Pierce 30% DEF.'},{desc:'144% dmg, 5% miss. Pierce 32% DEF.'},{desc:'154% dmg, 4% miss. Pierce 34% DEF.'},{desc:'164% dmg, 3% miss. Pierce 36% DEF.'}] }),
+  windSlip: makeEvolutionAbilityTemplate('windSlip','Wind Slip','Wind-line dodge branch. Slip free of danger.', {type:'utility', btnType:'utility', energy:1, levels:[{desc:'Gain +25% dodge for 2 turns.'},{desc:'Gain +30% dodge for 2 turns.'},{desc:'Gain +35% dodge for 2 turns.'},{desc:'Gain +40% dodge for 3 turns.'}] }),
+  slipVeil: makeEvolutionAbilityTemplate('slipVeil','Slip Veil','Wind-line dodge evolution. Veil yourself in evasive currents.', {type:'utility', btnType:'utility', energy:1, levels:[{desc:'Gain +35% dodge for 2 turns and cleanse Weaken.'},{desc:'Gain +40% dodge for 2 turns and cleanse Weaken.'},{desc:'Gain +45% dodge for 2 turns and cleanse Weaken.'},{desc:'Gain +50% dodge for 3 turns and cleanse Weaken.'}] }),
+  phantomGale: makeEvolutionAbilityTemplate('phantomGale','Phantom Gale','Wind-line final dodge evolution. Become almost untouchable.', {type:'utility', btnType:'utility', energy:1, levels:[{desc:'Gain +45% dodge for 3 turns. Cleanse Weaken/Fear.'},{desc:'Gain +50% dodge for 3 turns. Cleanse Weaken/Fear.'},{desc:'Gain +55% dodge for 3 turns. Cleanse Weaken/Fear.'},{desc:'Gain +60% dodge for 3 turns. Cleanse Weaken/Fear.'}] }),
+  tailwindFeint: makeEvolutionAbilityTemplate('tailwindFeint','Tailwind Feint','Wind-line speed branch. Quickens your tempo.', {type:'utility', btnType:'utility', energy:1, levels:[{desc:'Gain +2 SPD for 2 turns.'},{desc:'Gain +3 SPD for 2 turns.'},{desc:'Gain +4 SPD for 2 turns.'},{desc:'Gain +5 SPD for 2 turns.'}] }),
+  tailwindGust: makeEvolutionAbilityTemplate('tailwindGust','Tailwind Gust','Wind-line speed evolution. Stronger haste current.', {type:'utility', btnType:'utility', energy:1, levels:[{desc:'Gain +4 SPD for 2 turns and +10% dodge.'},{desc:'Gain +5 SPD for 2 turns and +10% dodge.'},{desc:'Gain +6 SPD for 2 turns and +10% dodge.'},{desc:'Gain +7 SPD for 2 turns and +15% dodge.'}] }),
+  hyperCurrent: makeEvolutionAbilityTemplate('hyperCurrent','Hyper Current','Wind-line final speed evolution. Hypercharge your tempo.', {type:'utility', btnType:'utility', energy:1, levels:[{desc:'Gain +6 SPD for 3 turns and +15% dodge.'},{desc:'Gain +7 SPD for 3 turns and +15% dodge.'},{desc:'Gain +8 SPD for 3 turns and +20% dodge.'},{desc:'Gain +9 SPD for 3 turns and +20% dodge.'}] }),
+  featherDrift: makeEvolutionAbilityTemplate('featherDrift','Feather Drift','Wind-line disruption branch. Sand the enemy\'s aim.', {type:'utility', btnType:'utility', energy:1, levels:[{desc:'Enemy ACC -15% for 2 turns.'},{desc:'Enemy ACC -18% for 2 turns.'},{desc:'Enemy ACC -20% for 2 turns.'},{desc:'Enemy ACC -22% for 2 turns.'}] }),
+  blindingVeil: makeEvolutionAbilityTemplate('blindingVeil','Blinding Veil','Wind-line disruption evolution. Fog their vision.', {type:'utility', btnType:'utility', energy:1, levels:[{desc:'Enemy ACC -22% for 2 turns and Slow 2 turns.'},{desc:'Enemy ACC -25% for 2 turns and Slow 2 turns.'},{desc:'Enemy ACC -28% for 2 turns and Slow 2 turns.'},{desc:'Enemy ACC -30% for 2 turns and Slow 2 turns.'}] }),
+  stormShroud: makeEvolutionAbilityTemplate('stormShroud','Storm Shroud','Wind-line final disruption evolution. Smother enemy accuracy.', {type:'utility', btnType:'utility', energy:1, levels:[{desc:'Enemy ACC -30% for 3 turns and Slow 2 turns.'},{desc:'Enemy ACC -33% for 3 turns and Slow 2 turns.'},{desc:'Enemy ACC -36% for 3 turns and Slow 3 turns.'},{desc:'Enemy ACC -40% for 3 turns and Slow 3 turns.'}] }),
+  brandPrey: makeEvolutionAbilityTemplate('brandPrey','Brand Prey','Mark-line damage amp evolution. Sharper focus mark.', {type:'utility', btnType:'utility', energy:1, levels:[{desc:'Mark the enemy. Your next attack deals +26% damage.'},{desc:'Mark the enemy. Your next attack deals +30% damage.'},{desc:'Mark the enemy. Your next attack deals +34% damage.'},{desc:'Mark the enemy. Your next attack deals +38% damage.'}] }),
+  huntersMark: makeEvolutionAbilityTemplate('huntersMark','Hunter\'s Mark','Mark-line final damage amp evolution. Potent target amplification.', {type:'utility', btnType:'utility', energy:1, levels:[{desc:'Mark the enemy. Your next attack deals +34% damage.'},{desc:'Mark the enemy. Your next attack deals +38% damage.'},{desc:'Mark the enemy. Your next attack deals +42% damage.'},{desc:'Mark the enemy. Your next attack deals +46% damage.'}] }),
+  exposeWeakness: makeEvolutionAbilityTemplate('exposeWeakness','Expose Weakness','Mark-line defense break branch. Open weak points.', {type:'utility', btnType:'utility', energy:1, levels:[{desc:'Expose the enemy. They take +12% damage for 2 turns.'},{desc:'Expose the enemy. They take +14% damage for 2 turns.'},{desc:'Expose the enemy. They take +16% damage for 2 turns.'},{desc:'Expose the enemy. They take +18% damage for 2 turns.'}] }),
+  exposeGuard: makeEvolutionAbilityTemplate('exposeGuard','Expose Guard','Mark-line defense break evolution. Crack defenses further.', {type:'utility', btnType:'utility', energy:1, levels:[{desc:'Expose the enemy. They take +18% damage for 2 turns.'},{desc:'Expose the enemy. They take +20% damage for 2 turns.'},{desc:'Expose the enemy. They take +22% damage for 2 turns.'},{desc:'Expose the enemy. They take +24% damage for 2 turns.'}] }),
+  quarryBreak: makeEvolutionAbilityTemplate('quarryBreak','Quarry Break','Mark-line final defense break evolution. Full opening for burst.', {type:'utility', btnType:'utility', energy:1, levels:[{desc:'Expose the enemy. They take +24% damage for 3 turns.'},{desc:'Expose the enemy. They take +26% damage for 3 turns.'},{desc:'Expose the enemy. They take +28% damage for 3 turns.'},{desc:'Expose the enemy. They take +30% damage for 3 turns.'}] }),
+  predatorBrand: makeEvolutionAbilityTemplate('predatorBrand','Predator Brand','Mark-line execute evolution. Prepares lethal follow-ups.', {type:'utility', btnType:'utility', energy:1, levels:[{desc:'Mark prey. Next attack gains +22% damage, +16% more below 50% HP.'},{desc:'Mark prey. Next attack gains +26% damage, +18% more below 50% HP.'},{desc:'Mark prey. Next attack gains +30% damage, +20% more below 50% HP.'},{desc:'Mark prey. Next attack gains +34% damage, +22% more below 50% HP.'}] }),
+  finalHunt: makeEvolutionAbilityTemplate('finalHunt','Final Hunt','Mark-line final execute evolution. Deadliest low-HP setup.', {type:'utility', btnType:'utility', energy:1, levels:[{desc:'Mark prey. Next attack gains +28% damage, +24% more below 50% HP.'},{desc:'Mark prey. Next attack gains +32% damage, +26% more below 50% HP.'},{desc:'Mark prey. Next attack gains +36% damage, +28% more below 50% HP.'},{desc:'Mark prey. Next attack gains +40% damage, +30% more below 50% HP.'}] }),
+};
+Object.assign(ABILITY_TEMPLATES, SPARROW_EVOLUTION_TEMPLATES);
+
 function enforceAbilityBalanceSpec(){
   const HARD_CC=new Set(['paralyzed','stunned','confused']);
   const MAJOR_AIL=new Set(['paralyzed','confused','burning','poison','weaken','delayed','feared','slow','mud']);
@@ -3331,29 +3430,273 @@ function codexMark(type, id, field='seen'){
   }
 }
 
+const SKILL_EVOLUTION_LEVEL_INTERVAL = 3;
+const FAMILY_EVOLUTION_STATE_VERSION = 2;
+const SPARROW_SKILL_SLOT_LAYOUT = Object.freeze([
+  {slotIndex:0, familyId:'rapid', abilityId:'rapidPeck'},
+  {slotIndex:1, familyId:'dart', abilityId:'dart'},
+  {slotIndex:2, familyId:'wind', abilityId:'windFeint'},
+  {slotIndex:3, familyId:'mark', abilityId:'markPrey'},
+]);
+const SPARROW_SKILL_FAMILIES = Object.freeze({
+  rapid:{
+    familyId:'rapid', displayName:'Rapid Line', baseAbilityId:'rapidPeck', role:'core burst', maxTier:3,
+    masteries:[
+      {id:'power', name:'Rending Tempo', desc:'+10% Rapid-line damage.'},
+      {id:'precision', name:'Needle Rhythm', desc:'Rapid-line attacks gain +5 pierce and -3% miss.'},
+      {id:'control', name:'Cruel Tempo', desc:'Rapid-line rider chances gain +10%.'},
+    ],
+    paths:{
+      pierce:{pathId:'pierce', displayName:'Pierce', abilities:{1:'rapidPeck',2:'bodkinStrike',3:'bodkinBarrage'}},
+      confuse:{pathId:'confuse', displayName:'Confuse', abilities:{1:'rapidFlap',2:'disruptiveRush',3:'chaosTempest'}},
+      poison:{pathId:'poison', displayName:'Poison', abilities:{1:'rapidTalon',2:'venomFlurry',3:'venomStorm'}},
+    },
+  },
+  dart:{
+    familyId:'dart', displayName:'Dart Line', baseAbilityId:'dart', role:'filler precision attack', maxTier:3,
+    masteries:[
+      {id:'power', name:'Sureflight', desc:'+8% Dart-line damage.'},
+      {id:'precision', name:'Needle Eye', desc:'Dart-line attacks gain -4% miss chance.'},
+      {id:'control', name:'Lingering Barbs', desc:'Dart-line rider chances gain +12%.'},
+    ],
+    paths:{
+      burn:{pathId:'burn', displayName:'Burn', abilities:{1:'searingDart',2:'searingArrow',3:'searingJavelin'}},
+      bleed:{pathId:'bleed', displayName:'Bleed', abilities:{1:'broadDart',2:'broadArrow',3:'broadJavelin'}},
+      pierce:{pathId:'pierce', displayName:'Pierce', abilities:{1:'bodkinDart',2:'bodkinArrow',3:'bodkinJavelin'}},
+    },
+  },
+  wind:{
+    familyId:'wind', displayName:'Wind Line', baseAbilityId:'windFeint', role:'utility / tempo / defense', maxTier:3,
+    masteries:[
+      {id:'power', name:'Slipstream Veil', desc:'Wind-line dodge and speed bonuses gain +5.'},
+      {id:'precision', name:'Cold Draft', desc:'Wind-line enemy ACC reduction gains +5%.'},
+      {id:'control', name:'Calm Eye', desc:'Wind-line effects last 1 extra turn.'},
+    ],
+    paths:{
+      dodge:{pathId:'dodge', displayName:'Dodge', abilities:{1:'windSlip',2:'slipVeil',3:'phantomGale'}},
+      speed:{pathId:'speed', displayName:'Speed', abilities:{1:'tailwindFeint',2:'tailwindGust',3:'hyperCurrent'}},
+      acc_debuff:{pathId:'acc_debuff', displayName:'Accuracy Down', abilities:{1:'featherDrift',2:'blindingVeil',3:'stormShroud'}},
+    },
+  },
+  mark:{
+    familyId:'mark', displayName:'Mark Line', baseAbilityId:'markPrey', role:'setup / prey targeting', maxTier:3,
+    masteries:[
+      {id:'power', name:'Focused Quarry', desc:'Mark-line damage bonuses gain +8%.'},
+      {id:'precision', name:'Cracked Guard', desc:'Mark-line defense-break exposure gains +6%.'},
+      {id:'control', name:'Cull Instinct', desc:'Mark-line execute bonuses gain +10% below 50% HP.'},
+    ],
+    paths:{
+      damage_amp:{pathId:'damage_amp', displayName:'Damage Amp', abilities:{1:'markPrey',2:'brandPrey',3:'huntersMark'}},
+      def_break:{pathId:'def_break', displayName:'Defense Break', abilities:{1:'exposeWeakness',2:'exposeGuard',3:'quarryBreak'}},
+      execute:{pathId:'execute', displayName:'Execute', abilities:{1:'predatorMark',2:'predatorBrand',3:'finalHunt'}},
+    },
+  },
+});
+const SPARROW_SKILL_ABILITY_LOOKUP = (()=>{
+  const out = Object.create(null);
+  for(const slot of SPARROW_SKILL_SLOT_LAYOUT){
+    out[slot.abilityId] = {familyId:slot.familyId, pathId:null, tier:0, abilityId:slot.abilityId};
+  }
+  for(const family of Object.values(SPARROW_SKILL_FAMILIES)){
+    for(const path of Object.values(family.paths||{})){
+      for(const [tierKey, abilityId] of Object.entries(path.abilities||{})){
+        out[abilityId] = {familyId:family.familyId, pathId:path.pathId, tier:Number(tierKey)||0, abilityId};
+      }
+    }
+  }
+  return Object.freeze(out);
+})();
+
+function isSkillEvolutionLevel(level){
+  return Number.isFinite(level) && level>0 && level % SKILL_EVOLUTION_LEVEL_INTERVAL === 0;
+}
+function getBirdSkillFamilyCatalog(birdKey){
+  return String(birdKey||'')==='sparrow' ? SPARROW_SKILL_FAMILIES : null;
+}
+function usesFamilySkillEvolution(player){
+  return !!getBirdSkillFamilyCatalog(player?.birdKey);
+}
+function createSkillSlotState(slotIndex, familyId, pathId, tier, abilityId, masteryCount=0, masteries=[]){
+  return {
+    slotIndex:Number.isFinite(slotIndex)?slotIndex:0,
+    familyId:familyId||null,
+    pathId:pathId||null,
+    tier:Math.max(0, Number(tier)||0),
+    abilityId:String(abilityId||''),
+    masteryCount:Math.max(0, Number(masteryCount)||0),
+    masteries:Array.isArray(masteries)?masteries.filter(Boolean).map(String):[],
+  };
+}
+function getBaseSkillSlotsForBird(birdKey){
+  if(String(birdKey||'')!=='sparrow') return [];
+  return SPARROW_SKILL_SLOT_LAYOUT.map(slot=>createSkillSlotState(slot.slotIndex, slot.familyId, null, 0, slot.abilityId, 0, []));
+}
+function getSparrowAbilityStateFromId(abilityId){
+  return SPARROW_SKILL_ABILITY_LOOKUP[String(abilityId||'')] || null;
+}
+function getSkillSlotFamilyDef(slotOrFamilyId, birdKey='sparrow'){
+  const catalog = getBirdSkillFamilyCatalog(birdKey);
+  if(!catalog) return null;
+  const familyId = typeof slotOrFamilyId==='string' ? slotOrFamilyId : slotOrFamilyId?.familyId;
+  return catalog[familyId] || null;
+}
+function getSkillSlotPathDef(slot, birdKey='sparrow'){
+  const family = getSkillSlotFamilyDef(slot, birdKey);
+  if(!family || !slot?.pathId) return null;
+  return family.paths?.[slot.pathId] || null;
+}
+function getSkillSlotDisplayLabel(slot){
+  if(!slot) return 'Unknown Slot';
+  const tmpl = ABILITY_TEMPLATES?.[slot.abilityId] || {};
+  const family = getSkillSlotFamilyDef(slot, G.player?.birdKey || 'sparrow');
+  return tmpl.name || family?.displayName || slot.familyId || `Slot ${slot.slotIndex+1}`;
+}
+function normalizeSkillSlotState(slot, fallback, birdKey='sparrow'){
+  const base = fallback || createSkillSlotState(0, null, null, 0, '', 0, []);
+  let next = createSkillSlotState(slot?.slotIndex ?? base.slotIndex, slot?.familyId ?? base.familyId, slot?.pathId ?? base.pathId, slot?.tier ?? base.tier, slot?.abilityId ?? base.abilityId, slot?.masteryCount ?? base.masteryCount, slot?.masteries ?? base.masteries);
+  if(String(birdKey||'')==='sparrow' && next.abilityId){
+    const info = getSparrowAbilityStateFromId(next.abilityId);
+    if(info && info.familyId===next.familyId){
+      next.pathId = next.pathId || info.pathId || null;
+      next.tier = Math.max(next.tier||0, info.tier||0);
+    }
+  }
+  if(!next.abilityId) next.abilityId = base.abilityId;
+  return next;
+}
+function getSkillSlots(player){
+  return Array.isArray(player?.familyEvolutionState?.skillSlots) ? player.familyEvolutionState.skillSlots : [];
+}
+function getSkillSlotByIndex(player, slotIndex){
+  return getSkillSlots(player).find(slot=>slot.slotIndex===slotIndex) || null;
+}
+function getAbilitySkillSlot(player, ability){
+  if(!ability) return null;
+  if(Number.isFinite(ability.slotIndex)) return getSkillSlotByIndex(player, ability.slotIndex);
+  const slots = getSkillSlots(player);
+  return slots.find(slot=>slot.abilityId===ability.id) || null;
+}
+function countSkillSlotMastery(slot, masteryId){
+  return (slot?.masteries||[]).filter(id=>id===masteryId).length;
+}
+function getSkillEvolutionPathOptions(slot, birdKey='sparrow'){
+  const family = getSkillSlotFamilyDef(slot, birdKey);
+  if(!family) return [];
+  return Object.values(family.paths||{}).map(path=>({
+    familyId:family.familyId,
+    pathId:path.pathId,
+    displayName:path.displayName,
+    abilityId:path.abilities?.[1] || family.baseAbilityId,
+    abilityTemplate:ABILITY_TEMPLATES?.[path.abilities?.[1] || family.baseAbilityId] || null,
+  }));
+}
+function slotNeedsPathChoice(slot){
+  return !!(slot && slot.familyId && !slot.pathId);
+}
+function slotCanTierUp(slot, birdKey='sparrow'){
+  const family = getSkillSlotFamilyDef(slot, birdKey);
+  return !!(slot && family && slot.pathId && (slot.tier||0) < (family.maxTier||3));
+}
+function isSkillSlotMaxTier(slot, birdKey='sparrow'){
+  const family = getSkillSlotFamilyDef(slot, birdKey);
+  return !!(slot && family && slot.pathId && (slot.tier||0) >= (family.maxTier||3));
+}
+function resolveSkillSlotEvolutionAction(slot, player=G.player){
+  if(!slot || !usesFamilySkillEvolution(player)) return 'none';
+  if(slotNeedsPathChoice(slot)) return 'choose_path';
+  if(slotCanTierUp(slot, player?.birdKey)) return 'tier_up';
+  if(isSkillSlotMaxTier(slot, player?.birdKey) && !!G.endlessMode) return 'mastery';
+  return 'none';
+}
+function applySkillPathSelection(slot, pathId, player=G.player){
+  if(!slot || !player) return null;
+  const path = getSkillSlotFamilyDef(slot, player.birdKey)?.paths?.[pathId];
+  if(!path) return null;
+  slot.pathId = pathId;
+  slot.tier = 1;
+  slot.abilityId = path.abilities?.[1] || slot.abilityId;
+  return slot;
+}
+function autoUpgradeSkillSlotTier(slot, player=G.player){
+  if(!slot || !slotCanTierUp(slot, player?.birdKey)) return null;
+  const nextTier = (slot.tier||0) + 1;
+  const path = getSkillSlotPathDef(slot, player?.birdKey);
+  if(!path?.abilities?.[nextTier]) return null;
+  slot.tier = nextTier;
+  slot.abilityId = path.abilities[nextTier];
+  return slot;
+}
+function getSkillSlotMasteryOptions(slot, player=G.player){
+  const family = getSkillSlotFamilyDef(slot, player?.birdKey);
+  return Array.isArray(family?.masteries) ? family.masteries : [];
+}
+function applySkillSlotMastery(slot, masteryId, player=G.player){
+  if(!slot) return null;
+  const pick = getSkillSlotMasteryOptions(slot, player).find(entry=>entry.id===masteryId);
+  if(!pick) return null;
+  if(!Array.isArray(slot.masteries)) slot.masteries = [];
+  slot.masteries.push(masteryId);
+  slot.masteryCount = (slot.masteries||[]).length;
+  return pick;
+}
+function ensureAbilityObjectFromTemplate(id, existing=null, slotIndex=null){
+  const tmpl = ABILITY_TEMPLATES?.[id] || {};
+  const level = Math.max(1, Number(existing?.level || 1));
+  const out = {...tmpl, ...(existing||{}), id, name:tmpl.name||existing?.name||id, level};
+  if(Number.isFinite(slotIndex)) out.slotIndex = slotIndex;
+  out.energyCost = getAbilityEnergyCost(out, G.player);
+  out.ailmentIds = deriveAbilityAilments(out, tmpl);
+  return out;
+}
+function syncPlayerAbilitiesFromSkillSlots(player){
+  if(!player || !usesFamilySkillEvolution(player)) return;
+  const slots = getSkillSlots(player).slice().sort((a,b)=>a.slotIndex-b.slotIndex);
+  if(!slots.length) return;
+  const bySlot = new Map((player.abilities||[]).map(ab=>[Number.isFinite(ab?.slotIndex)?ab.slotIndex:-1, ab]));
+  const byId = new Map((player.abilities||[]).map(ab=>[ab?.id, ab]));
+  player.abilities = slots.map(slot=>{
+    const prior = bySlot.get(slot.slotIndex) || byId.get(slot.abilityId) || null;
+    const ab = ensureAbilityObjectFromTemplate(slot.abilityId, prior, slot.slotIndex);
+    if(slot.familyId==='rapid') ab.fixedMainAttackCost = true;
+    return ab;
+  });
+}
+
 // ============================================================
 //  SAVE / LOAD SYSTEM (localStorage)
 // ============================================================
 const SAVE_KEY='avianAscent_save_v1';
 function ensureFamilyEvolutionState(player){
   if(!player || typeof player!=='object') return null;
+  const birdKey = String(player.birdKey || '');
+  const catalog = getBirdSkillFamilyCatalog(birdKey);
+  const baseSlots = getBaseSkillSlotsForBird(birdKey);
   if(!player.familyEvolutionState || typeof player.familyEvolutionState!=='object'){
-    player.familyEvolutionState = {
-      version: 1,
-      birdKey: String(player.birdKey || ''),
-      rootTemplate: String(player.birdKey || ''),
-      unlockedNodes: [],
-      selectedPath: [],
-      loadoutSources: [],
-    };
+    player.familyEvolutionState = {};
   }
   const state = player.familyEvolutionState;
-  state.version = Number.isFinite(state.version) ? state.version : 1;
-  state.birdKey = String(state.birdKey || player.birdKey || '');
-  state.rootTemplate = String(state.rootTemplate || player.birdKey || state.birdKey || '');
-  if(!Array.isArray(state.unlockedNodes)) state.unlockedNodes = [];
-  if(!Array.isArray(state.selectedPath)) state.selectedPath = [];
-  if(!Array.isArray(state.loadoutSources)) state.loadoutSources = [];
+  state.version = FAMILY_EVOLUTION_STATE_VERSION;
+  state.birdKey = birdKey;
+  state.rootTemplate = String(state.rootTemplate || birdKey);
+  if(catalog){
+    const rawSlots = Array.isArray(state.skillSlots) && state.skillSlots.length
+      ? state.skillSlots
+      : baseSlots.map((slot, idx)=>{
+          const currentId = player.abilities?.[idx]?.id;
+          const info = getSparrowAbilityStateFromId(currentId);
+          if(info && info.familyId===slot.familyId){
+            return createSkillSlotState(slot.slotIndex, info.familyId, info.pathId, info.tier, info.abilityId, 0, []);
+          }
+          return slot;
+        });
+    state.skillSlots = baseSlots.map((baseSlot, idx)=>normalizeSkillSlotState(rawSlots[idx], baseSlot, birdKey));
+    syncPlayerAbilitiesFromSkillSlots(player);
+  }else{
+    const mirrored = Array.isArray(player.abilities)
+      ? player.abilities.slice(0,4).map((ab, idx)=>createSkillSlotState(idx, null, null, 0, ab?.id || '', 0, []))
+      : [];
+    state.skillSlots = mirrored;
+  }
   return state;
 }
 function saveRun() {
@@ -3385,6 +3728,7 @@ function saveRun() {
     // Strip un-serializable passive fns from player
     delete save.player.passive;
     ensureFamilyEvolutionState(save.player);
+    syncPlayerAbilitiesFromSkillSlots(save.player);
     localStorage.setItem(SAVE_KEY, JSON.stringify(save));
   } catch(e){ console.warn('Save failed',e); }
 }
@@ -3412,6 +3756,7 @@ function continueRun() {
   G.player=save.player;
   G.player.class = resolveFinalClass(G.player?.class, G.player?.birdKey);
   ensureFamilyEvolutionState(G.player);
+  syncPlayerAbilitiesFromSkillSlots(G.player);
   G.classPerks = JSON.parse(JSON.stringify(save.classPerks||save.classPerksByBird||{}));
   G.runClassPerks = JSON.parse(JSON.stringify(save.runClassPerks||[]));
   migrateLegacyClassPerkState(G, G.player);
@@ -3422,6 +3767,8 @@ function continueRun() {
   if(!Array.isArray(G.player.endlessRewards)) G.player.endlessRewards=[];
   ensurePassiveEvolutionState(G.player);
   G.runUpgradesPurchased=new Set(save.runUpgradesPurchased||[]);
+  G._pendingLevelUpChoices=0;
+  G._pendingSkillEvolutionChoices=0;
   G.codex=save.codex||{abilities:{},enemies:{},birds:{},artifacts:{},statuses:{}};
   // Re-attach passive reference (fns can't be serialized)
   const bd=BIRDS[G.player.birdKey];
@@ -4101,6 +4448,7 @@ function startGame() {
     passiveEvolution:{tier:0,choices:{},pathHistory:[]},
   };
   ensureFamilyEvolutionState(G.player);
+  syncPlayerAbilitiesFromSkillSlots(G.player);
   G.player.class = bd.class;
   G.player.size = bd.size||'medium';
   G.player.energyMax = computePlayerMaxEnergy();
@@ -4119,6 +4467,8 @@ function startGame() {
   G._breakClampStreak=0;
   G.bossKills = 0;
   G.abilityCooldowns={};
+  G._pendingLevelUpChoices=0;
+  G._pendingSkillEvolutionChoices=0;
   G.runCrits = 0; G.runBuffs = 0; G.runDebuffs = 0;
   G.runUpgradesPurchased = new Set();
   G.codex = {abilities:{},enemies:{},birds:{},artifacts:{},statuses:{}};
@@ -4620,6 +4970,7 @@ function renderStatuses(id, statuses) {
     else if (k==='defending') { b.className='status-badge defending'; b.textContent=`🛡 Guard(${v}t)`; tooltipSummary='Damage reduction while guarding.'; }
     else if (k==='dustDevil') { b.className='status-badge feared'; b.textContent=`🌪 Blinded(${v.turns}t,-${v.accDrop||15}%ACC)`; }
     else if (k==='featherRuffle') { b.className='status-badge weaken'; b.textContent=`🪶 Ruffled(${v.turns}t,-${v.atkReduction}%ATK${v.accDrop>0?',-'+v.accDrop+'%ACC':''})`; }
+    else if (k==='exposedGuard') { b.className='status-badge weaken'; b.textContent=`🎯 Exposed(${v.turns}t,+${Math.round((v.pct||0)*100)}% dmg)`; }
     else if (k==='hum') { b.className='status-badge evading'; b.textContent=`🎵 Hum(${v}t)`; }
     else if (k==='rockDrop') { b.className='status-badge delayed'; b.textContent=`🪨 Rock Ready`; }
     else if (k==='flyby') { b.className='status-badge evading'; b.textContent=`💨 Momentum!`; }
@@ -6007,6 +6358,7 @@ function dealDamage(target,amount,isCrit=false,isMagic=false,srcAbility=null) {
       if((G.player._augAtkCounter%3)===0) dmg=Math.floor(dmg*(1+G.player.augThirdAttackPct));
     }
     if(G.playerStatus?.huntersMarkBonusPct){ dmg=Math.floor(dmg*(1+G.playerStatus.huntersMarkBonusPct)); delete G.playerStatus.huntersMarkBonusPct; }
+    if(target==='enemy' && G.enemyStatus?.exposedGuard?.pct){ dmg=Math.floor(dmg*(1+G.enemyStatus.exposedGuard.pct)); }
     if(G.playerStatus?.postDefAtkPct){ dmg=Math.floor(dmg*(1+G.playerStatus.postDefAtkPct)); delete G.playerStatus.postDefAtkPct; }
     if(G.playerStatus?.tensionCoil?.turns>0){ dmg=Math.floor(dmg*(1+G.playerStatus.tensionCoil.pct)); }
     if(G.player?.mutSuddenFlight && !G.player._mutSuddenFlightUsed){ dmg=Math.floor(dmg*1.25); G.player._mutSuddenFlightUsed=true; }
@@ -7712,6 +8064,187 @@ const ACTIONS = {
 };
 
 
+function getSlotMasteryProfile(slot){
+  return {
+    power:countSkillSlotMastery(slot,'power'),
+    precision:countSkillSlotMastery(slot,'precision'),
+    control:countSkillSlotMastery(slot,'control'),
+  };
+}
+function getSparrowRapidMasteryBonuses(slot){
+  const m = getSlotMasteryProfile(slot);
+  return {damage:0.10*m.power, pierce:5*m.precision, miss:3*m.precision, rider:10*m.control};
+}
+function getSparrowDartMasteryBonuses(slot){
+  const m = getSlotMasteryProfile(slot);
+  return {damage:0.08*m.power, miss:4*m.precision, rider:12*m.control};
+}
+function getSparrowWindMasteryBonuses(slot){
+  const m = getSlotMasteryProfile(slot);
+  return {potency:5*m.power, acc:5*m.precision, turns:m.control};
+}
+function getSparrowMarkMasteryBonuses(slot){
+  const m = getSlotMasteryProfile(slot);
+  return {amp:0.08*m.power, expose:0.06*m.precision, execute:0.10*m.control};
+}
+async function executeSparrowRapidFamilyAction(ab, config){
+  const lv=Math.max(1,Math.min(4,ab.level||1));
+  const slot=getAbilitySkillSlot(G.player, ab);
+  const mastery=getSparrowRapidMasteryBonuses(slot);
+  const hitBonus=getPlayerHitBonus(ab);
+  const hits=config.hits[lv-1];
+  let landed=0,total=0;
+  for(let i=0;i<hits;i++){
+    const miss=Math.max(0,(config.miss?.[lv-1]||8)-hitBonus-mastery.miss);
+    if(chance(miss)){ await doMiss('player'); continue; }
+    if((config.pierce?.[lv-1]||0)>0) G._currentPiercePct=(config.pierce[lv-1]||0)+mastery.pierce;
+    const r=dealDamage('enemy',pdmg((config.mult[lv-1]||1)*(1+mastery.damage),ab),chance(getPlayerCritChance(ab)));
+    await doAttack('player','enemy',r);
+    setHpBar('enemy',G.enemy.stats.hp,G.enemy.stats.maxHp);
+    landed++; total+=r.dmgDealt;
+    if(config.rider==='confused' && chance((config.riderChance[lv-1]||0)+mastery.rider)){
+      G.enemyStatus.confused={turns:config.turns?.[lv-1]||2,skipChance:(config.skipChance?.[lv-1]||25)};
+      renderStatuses('enemy-status',G.enemyStatus);
+      spawnFloat('enemy','🌀 Confuse!','fn-status');
+    }
+    if(config.rider==='poison' && chance((config.riderChance[lv-1]||0)+mastery.rider)){
+      applyAilment('enemy','poison',config.stacks?.[lv-1]||1);
+      renderStatuses('enemy-status',G.enemyStatus);
+      spawnFloat('enemy','☣ Poison!','fn-poison');
+    }
+    if(G.battleOver) break;
+  }
+  logMsg(`${config.log} ${landed}/${hits} hits, ${total} dmg.`, 'player-action');
+}
+async function executeSparrowDartFamilyAction(ab, config){
+  const lv=Math.max(1,Math.min(4,ab.level||1));
+  const slot=getAbilitySkillSlot(G.player, ab);
+  const mastery=getSparrowDartMasteryBonuses(slot);
+  const hitBonus=getPlayerHitBonus(ab);
+  const miss=Math.max(0,(config.miss?.[lv-1]||8)-hitBonus-mastery.miss);
+  if(chance(miss)){ await doMiss('player'); logMsg(`${config.name} missed!`,'miss'); return; }
+  if((config.pierce?.[lv-1]||0)>0) G._currentPiercePct=(config.pierce[lv-1]||0);
+  const r=dealDamage('enemy',pdmg((config.mult[lv-1]||1)*(1+mastery.damage),ab),chance(getPlayerCritChance(ab)));
+  await doAttack('player','enemy',r);
+  setHpBar('enemy',G.enemy.stats.hp,G.enemy.stats.maxHp);
+  if(config.rider==='burning' && chance((config.riderChance[lv-1]||0)+mastery.rider)){ G.enemyStatus.burning=config.turns?.[lv-1]||3; spawnFloat('enemy','🔥 Burn!','fn-burn'); }
+  if(config.rider==='bleed' && chance((config.riderChance[lv-1]||0)+mastery.rider)){ applyAilment('enemy','bleed',config.stacks?.[lv-1]||1); spawnFloat('enemy','🩸 Bleed!','fn-poison'); }
+  if(config.rider==='poison' && chance((config.riderChance[lv-1]||0)+mastery.rider)){ applyAilment('enemy','poison',config.stacks?.[lv-1]||1); spawnFloat('enemy','☣ Poison!','fn-poison'); }
+  renderStatuses('enemy-status',G.enemyStatus);
+  logMsg(`${config.log} ${r.dmgDealt} dmg!`, 'player-action');
+}
+async function executeSparrowWindDodgeAction(ab, config){
+  const lv=Math.max(1,Math.min(4,ab.level||1));
+  const slot=getAbilitySkillSlot(G.player, ab);
+  const mastery=getSparrowWindMasteryBonuses(slot);
+  const turns=(config.turns?.[lv-1]||2)+mastery.turns;
+  const bonus=(config.bonus?.[lv-1]||25)+mastery.potency;
+  G.playerStatus.humDodge={bonus,turns};
+  if(config.cleanse){ config.cleanse.forEach(id=>delete G.playerStatus[id]); }
+  await doSpell('player',`💨 +${bonus}% Dodge`);
+  renderStatuses('player-status',G.playerStatus);
+  logMsg(`${config.log} +${bonus}% dodge for ${turns}t.`, 'player-action');
+}
+async function executeSparrowWindSpeedAction(ab, config){
+  const lv=Math.max(1,Math.min(4,ab.level||1));
+  const slot=getAbilitySkillSlot(G.player, ab);
+  const mastery=getSparrowWindMasteryBonuses(slot);
+  const turns=(config.turns?.[lv-1]||2)+mastery.turns;
+  const spd=(config.spd?.[lv-1]||2)+mastery.potency;
+  if(G.playerStatus.wingStormSPD){
+    G.player.stats.spd=Math.max(1,(G.player.stats.spd||1)-(G.playerStatus.wingStormSPD.spd||0));
+  }
+  G.player.stats.spd=(G.player.stats.spd||0)+spd;
+  G.playerStatus.wingStormSPD={turns,spd};
+  const dodgeBonus=config.dodge?.[lv-1]||0;
+  if(dodgeBonus>0) G.playerStatus.humDodge={bonus:dodgeBonus+mastery.potency,turns};
+  await doSpell('player',`🌬 +${spd} SPD`);
+  renderStatuses('player-status',G.playerStatus);
+  logMsg(`${config.log} +${spd} SPD for ${turns}t.`, 'player-action');
+}
+async function executeSparrowWindShroudAction(ab, config){
+  const lv=Math.max(1,Math.min(4,ab.level||1));
+  const slot=getAbilitySkillSlot(G.player, ab);
+  const mastery=getSparrowWindMasteryBonuses(slot);
+  const turns=(config.turns?.[lv-1]||2)+mastery.turns;
+  const accDrop=(config.acc?.[lv-1]||15)+mastery.acc;
+  G.enemyStatus.dustDevil={turns,accDrop};
+  G.enemyStatus.accDebuff=(G.enemyStatus.accDebuff||0)+accDrop;
+  if(config.slow){ applyEnemySlow(config.slow.spd+mastery.turns, config.slow.dodge, turns); }
+  await doSpell('enemy',`🌫 -${accDrop}% ACC`);
+  renderStatuses('enemy-status',G.enemyStatus);
+  logMsg(`${config.log} enemy ACC -${accDrop}% for ${turns}t.`, 'player-action');
+}
+async function executeSparrowMarkAmpAction(ab, config){
+  const lv=Math.max(1,Math.min(4,ab.level||1));
+  const slot=getAbilitySkillSlot(G.player, ab);
+  const mastery=getSparrowMarkMasteryBonuses(slot);
+  G.playerStatus.huntersMarkBonusPct=(config.amp?.[lv-1]||0)+mastery.amp;
+  await doSpell('enemy','🎯 Marked!');
+  logMsg(`${config.log} next attack +${Math.round((G.playerStatus.huntersMarkBonusPct||0)*100)}% damage.`, 'player-action');
+}
+async function executeSparrowMarkExposeAction(ab, config){
+  const lv=Math.max(1,Math.min(4,ab.level||1));
+  const slot=getAbilitySkillSlot(G.player, ab);
+  const mastery=getSparrowMarkMasteryBonuses(slot);
+  G.enemyStatus.exposedGuard={turns:config.turns?.[lv-1]||2, pct:(config.expose?.[lv-1]||0)+mastery.expose};
+  G.enemyStatus.defending=0;
+  await doSpell('enemy','🎯 Exposed!');
+  renderStatuses('enemy-status',G.enemyStatus);
+  logMsg(`${config.log} enemy takes +${Math.round(G.enemyStatus.exposedGuard.pct*100)}% damage.`, 'player-action');
+}
+async function executeSparrowMarkExecuteAction(ab, config){
+  const lv=Math.max(1,Math.min(4,ab.level||1));
+  const slot=getAbilitySkillSlot(G.player, ab);
+  const mastery=getSparrowMarkMasteryBonuses(slot);
+  const lowHp = G.enemy.stats.hp <= Math.floor((G.enemy.stats.maxHp||1)*0.5);
+  const bonus=(config.base?.[lv-1]||0)+mastery.amp+(lowHp?((config.execute?.[lv-1]||0)+mastery.execute):0);
+  G.playerStatus.huntersMarkBonusPct=bonus;
+  await doSpell('enemy', lowHp ? '☠ Execute Window!' : '🎯 Prey Marked!');
+  logMsg(`${config.log} next attack +${Math.round(bonus*100)}% damage${lowHp?' against a weakened foe':''}.`, 'player-action');
+}
+const SPARROW_SKILL_ACTION_OVERRIDES = {
+  rapidPeck: ab=>executeSparrowRapidFamilyAction(ab,{name:'Rapid Peck',log:'⚡ Rapid Peck!',hits:[3,3,3,4],miss:[8,7,6,5],mult:[0.45,0.52,0.58,0.58],pierce:[10,12,14,16]}),
+  bodkinStrike: ab=>executeSparrowRapidFamilyAction(ab,{name:'Bodkin Strike',log:'🪶 Bodkin Strike!',hits:[3,3,4,4],miss:[7,6,5,4],mult:[0.52,0.58,0.58,0.64],pierce:[18,20,22,24]}),
+  bodkinBarrage: ab=>executeSparrowRapidFamilyAction(ab,{name:'Bodkin Barrage',log:'🪶 Bodkin Barrage!',hits:[4,4,5,5],miss:[6,5,4,3],mult:[0.60,0.66,0.66,0.72],pierce:[24,26,28,30]}),
+  rapidFlap: ab=>executeSparrowRapidFamilyAction(ab,{name:'Rapid Flap',log:'🌀 Rapid Flap!',hits:[3,3,4,4],miss:[8,7,6,5],mult:[0.42,0.48,0.48,0.54],rider:'confused',riderChance:[15,18,20,24],turns:[2,2,2,3],skipChance:[25,28,32,36]}),
+  disruptiveRush: ab=>executeSparrowRapidFamilyAction(ab,{name:'Disruptive Rush',log:'🌀 Disruptive Rush!',hits:[3,3,4,4],miss:[7,6,5,4],mult:[0.50,0.56,0.56,0.62],rider:'confused',riderChance:[22,25,28,32],turns:[2,2,3,3],skipChance:[28,32,36,40]}),
+  chaosTempest: ab=>executeSparrowRapidFamilyAction(ab,{name:'Chaos Tempest',log:'🌀 Chaos Tempest!',hits:[4,4,5,5],miss:[6,5,4,3],mult:[0.58,0.64,0.64,0.70],rider:'confused',riderChance:[30,34,36,40],turns:[3,3,3,4],skipChance:[32,36,40,45]}),
+  rapidTalon: ab=>executeSparrowRapidFamilyAction(ab,{name:'Rapid Talon',log:'☣ Rapid Talon!',hits:[3,3,4,4],miss:[8,7,6,5],mult:[0.42,0.48,0.48,0.54],rider:'poison',riderChance:[15,18,22,24],stacks:[1,1,1,2]}),
+  venomFlurry: ab=>executeSparrowRapidFamilyAction(ab,{name:'Venom Flurry',log:'☣ Venom Flurry!',hits:[3,3,4,4],miss:[7,6,5,4],mult:[0.50,0.56,0.56,0.62],rider:'poison',riderChance:[24,28,30,34],stacks:[1,1,2,2]}),
+  venomStorm: ab=>executeSparrowRapidFamilyAction(ab,{name:'Venom Storm',log:'☣ Venom Storm!',hits:[4,4,5,5],miss:[6,5,4,3],mult:[0.56,0.62,0.62,0.68],rider:'poison',riderChance:[34,38,40,45],stacks:[1,2,2,3]}),
+  dart: ab=>executeSparrowDartFamilyAction(ab,{name:'Dart',log:'💨 Dart!',miss:[10,8,6,5],mult:[1.10,1.20,1.30,1.40]}),
+  searingDart: ab=>executeSparrowDartFamilyAction(ab,{name:'Searing Dart',log:'🔥 Searing Dart!',miss:[8,7,6,5],mult:[1.05,1.15,1.25,1.35],rider:'burning',riderChance:[30,35,40,45],turns:[3,3,3,4]}),
+  searingArrow: ab=>executeSparrowDartFamilyAction(ab,{name:'Searing Arrow',log:'🔥 Searing Arrow!',miss:[7,6,5,4],mult:[1.18,1.28,1.38,1.48],rider:'burning',riderChance:[40,45,50,55],turns:[3,3,4,4]}),
+  searingJavelin: ab=>executeSparrowDartFamilyAction(ab,{name:'Searing Javelin',log:'🔥 Searing Javelin!',miss:[6,5,4,3],mult:[1.32,1.42,1.52,1.62],rider:'burning',riderChance:[50,55,60,65],turns:[3,4,4,4]}),
+  broadDart: ab=>executeSparrowDartFamilyAction(ab,{name:'Broad Dart',log:'🩸 Broad Dart!',miss:[9,8,7,6],mult:[1.02,1.12,1.22,1.32],rider:'bleed',riderChance:[30,35,40,45],stacks:[1,1,1,2]}),
+  broadArrow: ab=>executeSparrowDartFamilyAction(ab,{name:'Broad Arrow',log:'🩸 Broad Arrow!',miss:[8,7,6,5],mult:[1.16,1.26,1.36,1.46],rider:'bleed',riderChance:[40,45,50,55],stacks:[1,1,2,2]}),
+  broadJavelin: ab=>executeSparrowDartFamilyAction(ab,{name:'Broad Javelin',log:'🩸 Broad Javelin!',miss:[7,6,5,4],mult:[1.30,1.40,1.50,1.60],rider:'bleed',riderChance:[50,55,60,65],stacks:[1,2,2,3]}),
+  bodkinDart: ab=>executeSparrowDartFamilyAction(ab,{name:'Bodkin Dart',log:'🪶 Bodkin Dart!',miss:[8,7,6,5],mult:[1.06,1.16,1.26,1.36],pierce:[18,20,22,24]}),
+  bodkinArrow: ab=>executeSparrowDartFamilyAction(ab,{name:'Bodkin Arrow',log:'🪶 Bodkin Arrow!',miss:[7,6,5,4],mult:[1.20,1.30,1.40,1.50],pierce:[24,26,28,30]}),
+  bodkinJavelin: ab=>executeSparrowDartFamilyAction(ab,{name:'Bodkin Javelin',log:'🪶 Bodkin Javelin!',miss:[6,5,4,3],mult:[1.34,1.44,1.54,1.64],pierce:[30,32,34,36]}),
+  windFeint: ab=>executeSparrowWindDodgeAction(ab,{log:'💨 Wind Feint!',bonus:[20,25,30,35],turns:[2,2,2,3]}),
+  windSlip: ab=>executeSparrowWindDodgeAction(ab,{log:'💨 Wind Slip!',bonus:[25,30,35,40],turns:[2,2,2,3]}),
+  slipVeil: ab=>executeSparrowWindDodgeAction(ab,{log:'🌫 Slip Veil!',bonus:[35,40,45,50],turns:[2,2,2,3],cleanse:['weaken']}),
+  phantomGale: ab=>executeSparrowWindDodgeAction(ab,{log:'🌪 Phantom Gale!',bonus:[45,50,55,60],turns:[3,3,3,3],cleanse:['weaken','feared']}),
+  tailwindFeint: ab=>executeSparrowWindSpeedAction(ab,{log:'🌬 Tailwind Feint!',spd:[2,3,4,5],turns:[2,2,2,2],dodge:[0,0,0,0]}),
+  tailwindGust: ab=>executeSparrowWindSpeedAction(ab,{log:'🌬 Tailwind Gust!',spd:[4,5,6,7],turns:[2,2,2,2],dodge:[10,10,10,15]}),
+  hyperCurrent: ab=>executeSparrowWindSpeedAction(ab,{log:'⚡ Hyper Current!',spd:[6,7,8,9],turns:[3,3,3,3],dodge:[15,15,20,20]}),
+  featherDrift: ab=>executeSparrowWindShroudAction(ab,{log:'🪶 Feather Drift!',acc:[15,18,20,22],turns:[2,2,2,2]}),
+  blindingVeil: ab=>executeSparrowWindShroudAction(ab,{log:'🌫 Blinding Veil!',acc:[22,25,28,30],turns:[2,2,2,2],slow:{spd:2,dodge:10}}),
+  stormShroud: ab=>executeSparrowWindShroudAction(ab,{log:'🌪 Storm Shroud!',acc:[30,33,36,40],turns:[3,3,3,3],slow:{spd:3,dodge:12}}),
+  markPrey: ab=>executeSparrowMarkAmpAction(ab,{log:'🎯 Mark Prey!',amp:[0.18,0.22,0.26,0.30]}),
+  brandPrey: ab=>executeSparrowMarkAmpAction(ab,{log:'🎯 Brand Prey!',amp:[0.26,0.30,0.34,0.38]}),
+  huntersMark: ab=>executeSparrowMarkAmpAction(ab,{log:'🎯 Hunter\'s Mark!',amp:[0.34,0.38,0.42,0.46]}),
+  exposeWeakness: ab=>executeSparrowMarkExposeAction(ab,{log:'🎯 Expose Weakness!',expose:[0.12,0.14,0.16,0.18],turns:[2,2,2,2]}),
+  exposeGuard: ab=>executeSparrowMarkExposeAction(ab,{log:'🎯 Expose Guard!',expose:[0.18,0.20,0.22,0.24],turns:[2,2,2,2]}),
+  quarryBreak: ab=>executeSparrowMarkExposeAction(ab,{log:'🎯 Quarry Break!',expose:[0.24,0.26,0.28,0.30],turns:[3,3,3,3]}),
+  predatorMark: ab=>executeSparrowMarkExecuteAction(ab,{log:'☠ Predator Mark!',base:[0.16,0.20,0.24,0.28],execute:[0.12,0.14,0.16,0.18]}),
+  predatorBrand: ab=>executeSparrowMarkExecuteAction(ab,{log:'☠ Predator Brand!',base:[0.22,0.26,0.30,0.34],execute:[0.16,0.18,0.20,0.22]}),
+  finalHunt: ab=>executeSparrowMarkExecuteAction(ab,{log:'☠ Final Hunt!',base:[0.28,0.32,0.36,0.40],execute:[0.24,0.26,0.28,0.30]}),
+};
+Object.entries(SPARROW_SKILL_ACTION_OVERRIDES).forEach(([id, fn])=>{ ACTIONS[id] = fn; });
+
 function registerAbilityAlias(newId, sourceId, name, override={}){
   const src=ABILITY_TEMPLATES[sourceId];
   if(!src) return;
@@ -7833,6 +8366,9 @@ registerAbilityAlias('stormSong','sonicDirge','Storm Song',{type:'spell',btnType
 registerAbilityAlias('nightfallCall','dukeDecree','Nightfall Call',{type:'spell',btnType:'spell'});
 registerAbilityAlias('courtSummon','dukeWardens','Court Summon',{type:'utility',btnType:'utility'});
 registerAbilityAlias('verdict','dukeRiverGrip','Verdict',{type:'spell',btnType:'spell'});
+
+Object.assign(ABILITY_TEMPLATES.windFeint||{}, makeEvolutionAbilityTemplate('windFeint','Wind Feint','Sparrow base wind skill. A tempo-first evasive feint.', {type:'utility', btnType:'utility', energy:1, levels:[{desc:'Gain +20% dodge for 2 turns.'},{desc:'Gain +25% dodge for 2 turns.'},{desc:'Gain +30% dodge for 2 turns.'},{desc:'Gain +35% dodge for 3 turns.'}]}));
+Object.assign(ABILITY_TEMPLATES.predatorMark||{}, makeEvolutionAbilityTemplate('predatorMark','Predator Mark','Mark-line execute branch. Hunt the weakened target.', {type:'utility', btnType:'utility', energy:1, levels:[{desc:'Mark prey. Next attack gains +16% damage, +12% more below 50% HP.'},{desc:'Mark prey. Next attack gains +20% damage, +14% more below 50% HP.'},{desc:'Mark prey. Next attack gains +24% damage, +16% more below 50% HP.'},{desc:'Mark prey. Next attack gains +28% damage, +18% more below 50% HP.'}]}));
 
 const RELIABLE_ONE_EN_ATTACK_BY_CLASS = Object.freeze({
   striker:'rapidPeck',
@@ -8080,7 +8616,7 @@ function getAbilityEnergyCost(ab, player){
     cost = t.energyByLevel[idx] ?? 0;
   }
 
-  if(isMainAttackAbility(ab) && !isSpellAbilityId(ab.id)) cost = 1;
+  if(isMainAttackAbility(ab) && !isSpellAbilityId(ab.id) && !(ab.fixedMainAttackCost || t?.fixedMainAttackCost)) cost = 1;
 
   const tType=(t?.btnType||t?.type||ab.btnType||ab.type||'').toLowerCase();
   const isAttack=(tType==='physical'||tType==='ranged');
@@ -9150,6 +9686,10 @@ function afterEnemyTurn() {
     G.enemyStatus.waddleLullaby.turns--;
     if(G.enemyStatus.waddleLullaby.turns<=0)delete G.enemyStatus.waddleLullaby;
   }
+  if(G.enemyStatus.exposedGuard){
+    G.enemyStatus.exposedGuard.turns--;
+    if(G.enemyStatus.exposedGuard.turns<=0) delete G.enemyStatus.exposedGuard;
+  }
   // Cooldowns
   if(G.swoopCooldown>0)G.swoopCooldown--;
   if(G.intimidateCooldown>0)G.intimidateCooldown--;
@@ -9387,6 +9927,9 @@ function postCombat() {
 
       leveled = true;
       levelUpsGained++;
+      if(isSkillEvolutionLevel(G.player.birdLevel)){
+        G._pendingSkillEvolutionChoices = (G._pendingSkillEvolutionChoices||0) + 1;
+      }
       logMsg(`🌟 LEVEL UP! Now Lv.${G.player.birdLevel}! Healed ${lvHeal} HP.`, 'exp-gain');
       SFX.levelUp();
     }
@@ -9845,8 +10388,193 @@ function ensureMainAttackAndLoadoutRules(){
   enforceAbilityCosts(G.player);
 }
 
-function showLevelUpScreen() {
+function setLevelUpPanelTitle(text){
+  const title = document.querySelector('.levelup-choice-title');
+  if(title) title.textContent = text;
+}
+function configureLevelUpConfirm(label, handler, visible=false){
+  const btn = document.getElementById('lu-skill-confirm');
+  if(!btn) return;
+  btn.textContent = label;
+  btn.onclick = handler;
+  btn.className = visible ? 'confirm-btn visible' : 'confirm-btn';
+}
+function configureLevelUpSecondary(label='', handler=null, visible=false){
+  const btn = document.getElementById('lu-skip-btn');
+  if(!btn) return;
+  btn.textContent = label || '⟩ Continue';
+  btn.onclick = handler || afterLevelUp;
+  btn.style.display = visible ? '' : 'none';
+}
+function resetLevelUpFlowState(){
+  delete G._skillEvolutionFlow;
+  delete G._selectedSkillEvolutionCardId;
+}
+function updateSkillEvolutionSelection(card, selectedId){
+  document.querySelectorAll('#lu-skill-grid .skill-upgrade-card').forEach(x=>x.classList.remove('selected'));
+  if(card) card.classList.add('selected');
+  G._selectedSkillEvolutionCardId = selectedId;
+}
+function getSkillEvolutionSelection(){
+  return G._selectedSkillEvolutionCardId || null;
+}
+function renderSkillEvolutionSlotSelection(){
   showScreen('screen-levelup');
+  resetLevelUpFlowState();
+  G._skillEvolutionFlow = {step:'slot'};
+  const grid=document.getElementById('lu-skill-grid');
+  const preview=document.getElementById('lu-stat-preview');
+  if(preview) preview.innerHTML='';
+  setLevelUpPanelTitle('🧬 Choose a Skill to Evolve');
+  document.getElementById('lu-sub').textContent=`Lv.${G.player.birdLevel} milestone reached — choose 1 equipped Sparrow skill to evolve (${Math.max(1,G._pendingSkillEvolutionChoices||1)} remaining).`;
+  configureLevelUpConfirm('✓ Inspect Evolution', confirmSkillEvolutionChoice, false);
+  configureLevelUpSecondary('', null, false);
+  grid.innerHTML='';
+  getSkillSlots(G.player).slice().sort((a,b)=>a.slotIndex-b.slotIndex).forEach(slot=>{
+    const tmpl = ABILITY_TEMPLATES?.[slot.abilityId] || {};
+    const family = getSkillSlotFamilyDef(slot, G.player?.birdKey);
+    const action = resolveSkillSlotEvolutionAction(slot, G.player);
+    const card=document.createElement('div');
+    card.className='skill-upgrade-card';
+    card.innerHTML=`<div class="su-name">${tmpl.name || slot.abilityId}</div><div class="su-lv">${family?.displayName||slot.familyId||'Family'} · Tier ${slot.tier||0}${slot.pathId?` · ${slot.pathId.replace(/_/g,' ')}`:''}</div><div class="su-effect">${(tmpl.levels?.[0]?.desc||tmpl.desc||'No description')}<br><span style="color:var(--gold-light)">${action==='choose_path'?'Choose a branch path.':action==='tier_up'?'Preview the next tier in this path.':action==='mastery'?'Choose an Endless mastery.':'No further evolution available in Story mode.'}</span></div>`;
+    if(action==='none'){
+      card.style.opacity='.55';
+      card.style.cursor='default';
+    }else{
+      card.onclick=()=>{ updateSkillEvolutionSelection(card, String(slot.slotIndex)); configureLevelUpConfirm('✓ Inspect Evolution', confirmSkillEvolutionChoice, true); };
+    }
+    grid.appendChild(card);
+  });
+}
+function renderSkillEvolutionPathSelection(slot){
+  const grid=document.getElementById('lu-skill-grid');
+  const preview=document.getElementById('lu-stat-preview');
+  if(preview) preview.innerHTML='';
+  const family = getSkillSlotFamilyDef(slot, G.player?.birdKey);
+  const currentTmpl = ABILITY_TEMPLATES?.[slot.abilityId] || {};
+  G._skillEvolutionFlow = {step:'path', slotIndex:slot.slotIndex};
+  setLevelUpPanelTitle(`🧬 ${family?.displayName||'Skill Evolution'}`);
+  document.getElementById('lu-sub').textContent=`Choose the first branch for ${currentTmpl.name || family?.displayName || 'this skill'}.`;
+  configureLevelUpConfirm('✓ Evolve Skill', confirmSkillEvolutionChoice, false);
+  configureLevelUpSecondary('⟨ Back', renderSkillEvolutionSlotSelection, true);
+  grid.innerHTML='';
+  getSkillEvolutionPathOptions(slot, G.player?.birdKey).forEach(option=>{
+    const tmpl = option.abilityTemplate || {};
+    const card=document.createElement('div');
+    card.className='skill-upgrade-card';
+    card.innerHTML=`<div class="su-name">${option.displayName}</div><div class="su-lv">Tier 1 · ${tmpl.name || option.abilityId}</div><div class="su-effect">${tmpl.levels?.[0]?.desc || tmpl.desc || 'No description available.'}</div>`;
+    card.onclick=()=>{ updateSkillEvolutionSelection(card, option.pathId); configureLevelUpConfirm('✓ Evolve Skill', confirmSkillEvolutionChoice, true); };
+    grid.appendChild(card);
+  });
+}
+function renderSkillEvolutionTierPreview(slot){
+  const grid=document.getElementById('lu-skill-grid');
+  const preview=document.getElementById('lu-stat-preview');
+  if(preview) preview.innerHTML='';
+  const nextTier = (slot.tier||0)+1;
+  const path = getSkillSlotPathDef(slot, G.player?.birdKey);
+  const nextId = path?.abilities?.[nextTier];
+  const currentTmpl = ABILITY_TEMPLATES?.[slot.abilityId] || {};
+  const nextTmpl = ABILITY_TEMPLATES?.[nextId] || {};
+  G._skillEvolutionFlow = {step:'tier', slotIndex:slot.slotIndex};
+  setLevelUpPanelTitle('🧬 Preview Tier Upgrade');
+  document.getElementById('lu-sub').textContent=`${currentTmpl.name || slot.abilityId} will evolve into ${nextTmpl.name || nextId}.`;
+  configureLevelUpConfirm('✓ Apply Tier Upgrade', confirmSkillEvolutionChoice, true);
+  configureLevelUpSecondary('⟨ Back', renderSkillEvolutionSlotSelection, true);
+  grid.innerHTML=`<div class="skill-upgrade-card selected"><div class="su-name">${currentTmpl.name || slot.abilityId} → ${nextTmpl.name || nextId}</div><div class="su-lv">Tier ${slot.tier||0} → Tier ${nextTier}</div><div class="su-effect">${nextTmpl.levels?.[0]?.desc || nextTmpl.desc || 'No description available.'}</div></div>`;
+}
+function renderSkillEvolutionMasterySelection(slot){
+  const grid=document.getElementById('lu-skill-grid');
+  const preview=document.getElementById('lu-stat-preview');
+  if(preview) preview.innerHTML='';
+  const tmpl = ABILITY_TEMPLATES?.[slot.abilityId] || {};
+  G._skillEvolutionFlow = {step:'mastery', slotIndex:slot.slotIndex};
+  setLevelUpPanelTitle('♾ Choose a Mastery');
+  document.getElementById('lu-sub').textContent=`${tmpl.name || slot.abilityId} is fully evolved. Choose an Endless mastery.`;
+  configureLevelUpConfirm('✓ Claim Mastery', confirmSkillEvolutionChoice, false);
+  configureLevelUpSecondary('⟨ Back', renderSkillEvolutionSlotSelection, true);
+  grid.innerHTML='';
+  getSkillSlotMasteryOptions(slot, G.player).forEach(option=>{
+    const card=document.createElement('div');
+    card.className='skill-upgrade-card';
+    card.innerHTML=`<div class="su-name">${option.name}</div><div class="su-lv">Mastery ${slot.masteryCount+1}</div><div class="su-effect">${option.desc}</div>`;
+    card.onclick=()=>{ updateSkillEvolutionSelection(card, option.id); configureLevelUpConfirm('✓ Claim Mastery', confirmSkillEvolutionChoice, true); };
+    grid.appendChild(card);
+  });
+}
+function beginSkillEvolutionFlow(){
+  if(!(G._pendingSkillEvolutionChoices>0) || !usesFamilySkillEvolution(G.player)) return false;
+  const actionable = getSkillSlots(G.player).some(slot=>resolveSkillSlotEvolutionAction(slot, G.player)!=='none');
+  if(!actionable){
+    G._pendingSkillEvolutionChoices = 0;
+    logMsg('🧬 Sparrow skill milestones reached, but every slot is fully evolved for this mode.', 'system');
+    return false;
+  }
+  renderSkillEvolutionSlotSelection();
+  return true;
+}
+function finalizeSkillEvolutionChoice(message){
+  syncPlayerAbilitiesFromSkillSlots(G.player);
+  ensureMainAttackAndLoadoutRules();
+  refreshPlayerAbilityAilments();
+  (G.player.abilities||[]).forEach(a=>codexMark('abilities', a.id, 'seen'));
+  saveRun();
+  if(message) logMsg(message, 'exp-gain');
+  G._pendingSkillEvolutionChoices = Math.max(0, (G._pendingSkillEvolutionChoices||1)-1);
+  if((G._pendingSkillEvolutionChoices||0)>0){
+    renderSkillEvolutionSlotSelection();
+    return;
+  }
+  showLevelUpScreen();
+  // showLevelUpScreen will continue to afterLevelUp when no stat choices remain
+  if(!(G._pendingLevelUpChoices>0)){
+    afterLevelUp();
+  }
+}
+function confirmSkillEvolutionChoice(){
+  const flow = G._skillEvolutionFlow || {step:'slot'};
+  if(flow.step==='slot'){
+    const slotIndex = Number(getSkillEvolutionSelection());
+    const slot = getSkillSlotByIndex(G.player, slotIndex);
+    if(!slot){ logMsg('Choose a skill slot first.','miss'); return; }
+    const action = resolveSkillSlotEvolutionAction(slot, G.player);
+    if(action==='choose_path') return renderSkillEvolutionPathSelection(slot);
+    if(action==='tier_up') return renderSkillEvolutionTierPreview(slot);
+    if(action==='mastery') return renderSkillEvolutionMasterySelection(slot);
+    logMsg('That slot has no evolution available right now.','miss');
+    return;
+  }
+  const slot = getSkillSlotByIndex(G.player, flow.slotIndex);
+  if(!slot){ logMsg('That skill slot could not be found.','miss'); return; }
+  if(flow.step==='path'){
+    const pathId = getSkillEvolutionSelection();
+    if(!pathId){ logMsg('Choose a path first.','miss'); return; }
+    const before = ABILITY_TEMPLATES?.[slot.abilityId]?.name || slot.abilityId;
+    applySkillPathSelection(slot, pathId, G.player);
+    const after = ABILITY_TEMPLATES?.[slot.abilityId]?.name || slot.abilityId;
+    finalizeSkillEvolutionChoice(`🧬 ${before} committed to the ${pathId.replace(/_/g,' ')} path → ${after}.`);
+    return;
+  }
+  if(flow.step==='tier'){
+    const before = ABILITY_TEMPLATES?.[slot.abilityId]?.name || slot.abilityId;
+    autoUpgradeSkillSlotTier(slot, G.player);
+    const after = ABILITY_TEMPLATES?.[slot.abilityId]?.name || slot.abilityId;
+    finalizeSkillEvolutionChoice(`🧬 ${before} evolved into ${after}!`);
+    return;
+  }
+  if(flow.step==='mastery'){
+    const masteryId = getSkillEvolutionSelection();
+    if(!masteryId){ logMsg('Choose a mastery first.','miss'); return; }
+    const pick = applySkillSlotMastery(slot, masteryId, G.player);
+    if(!pick){ logMsg('That mastery is unavailable.','miss'); return; }
+    finalizeSkillEvolutionChoice(`♾ ${getSkillSlotDisplayLabel(slot)} gained mastery: ${pick.name}.`);
+  }
+}
+
+function showLevelUpScreen() {
+  if(!(G._pendingLevelUpChoices>0)) return;
+  showScreen('screen-levelup');
+  resetLevelUpFlowState();
   _luSelectedStatChoiceId=null;
   const remaining=Math.max(1,G._pendingLevelUpChoices||1);
   document.getElementById('lu-sub').textContent=`Lv.${G.player.birdLevel} reached! Choose 1 stat upgrade (${remaining} remaining):`;
@@ -9861,10 +10589,9 @@ function showLevelUpScreen() {
   }
 
   document.getElementById('lu-skills-panel').classList.add('active');
-
-  document.getElementById('lu-skill-confirm').className='confirm-btn';
-  document.getElementById('lu-skip-btn').className='confirm-btn';
-
+  setLevelUpPanelTitle('📈 Choose a Stat Upgrade');
+  configureLevelUpConfirm('✓ Confirm Stat Upgrade', confirmSkillUpgrade, false);
+  configureLevelUpSecondary('', null, false);
   buildStatChoiceGrid();
 }
 
@@ -9890,7 +10617,7 @@ function buildStatChoiceGrid() {
       document.querySelectorAll('#lu-skill-grid .skill-upgrade-card').forEach(x=>x.classList.remove('selected'));
       c.classList.add('selected');
       _luSelectedStatChoiceId=opt.choiceId;
-      document.getElementById('lu-skill-confirm').className='confirm-btn visible';
+      configureLevelUpConfirm('✓ Confirm Stat Upgrade', confirmSkillUpgrade, true);
     };
     grid.appendChild(c);
   });
@@ -9984,10 +10711,12 @@ async function confirmSkillUpgrade() {
     showLevelUpScreen();
     return;
   }
+  if(beginSkillEvolutionFlow()) return;
   afterLevelUp();
 }
 
 function afterLevelUp() {
+  if(beginSkillEvolutionFlow()) return;
   // After level-up: go to Stork shop if it was a boss, otherwise advance
   if(G._pendingStorkShop){ const m=G._pendingShopMode||'boss'; G._pendingStorkShop=false; G._pendingShopMode=null; showStorkShop(m); }
   else advanceStage();
