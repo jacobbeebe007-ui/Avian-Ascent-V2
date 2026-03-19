@@ -123,6 +123,10 @@
 
   applyAbilityPatches(globalThis.ABILITY_TEMPLATES);
   applyAbilityPatches(globalThis.ABILITY_TEMPLATES_EXTRA);
+  if(typeof globalThis.sanitizeAbilityClassRouting === 'function'){
+    globalThis.sanitizeAbilityClassRouting(globalThis.ABILITY_TEMPLATES);
+    globalThis.sanitizeAbilityClassRouting(globalThis.ABILITY_TEMPLATES_EXTRA);
+  }
 
   const _origGetAbilityEnergyCost = globalThis.getAbilityEnergyCost;
   if(typeof _origGetAbilityEnergyCost === 'function'){
@@ -244,12 +248,14 @@
     }
   };
 
-  // Stork Shop learn pools for unused abilities
+  // Stork Shop learn pools keyed to the final six-class model.
   globalThis.ABILITY_LEARN_POOLS = {
-    singer:["evade", "crowDefend", "roost", "preen", "hum", "counter", "chargeUp", "fruitSweetener", "molt", "reveille", "battleHymn", "skyHymn", "victoryChant", "taunt"],
-    bruiser:["bulwarkRoar", "shieldWing", "guardianCry", "ironHonk", "cannonball", "retribution", "curvedTalons", "eyeGouge"],
-    singerCaster:["dirge", "lullaby", "sonicDirge", "shriekwave", "astralRefrain", "marshHex", "nightChill", "stormCall", "plagueBlast", "toxicSpit", "shadowFeint", "shadowJab", "shadowPounce", "spellLance", "dirgeOfDread", "murderMurmuration"],
-    trickster:["swoop", "diveBomb", "flyby", "pinionVolley", "bowedWing", "wingClip", "dustDevil", "thornBarrage", "tailPull"]
+    striker:["swoop", "diveBomb", "flyby", "pinionVolley", "flurry", "deathDive"],
+    bruiser:["bulwarkRoar", "curvedTalons", "cannonball", "retribution", "eyeGouge", "ironHonk"],
+    tank:["shieldWing", "guardianCry", "taunt", "battleHymn", "counter", "crowDefend"],
+    trickster:["bowedWing", "wingClip", "dustDevil", "thornBarrage", "tailPull", "shadowFeint", "shadowPounce"],
+    predator:["silentPierce", "predatorMark", "huntersCry", "shadowJab", "spellLance", "dirgeOfDread"],
+    singer:["roost", "preen", "hum", "chargeUp", "fruitSweetener", "molt", "reveille", "skyHymn", "victoryChant", "dirge", "lullaby", "sonicDirge", "shriekwave", "astralRefrain", "marshHex", "nightChill", "stormCall", "plagueBlast", "toxicSpit", "murderMurmuration"]
   };
 })();
 

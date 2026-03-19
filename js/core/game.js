@@ -156,7 +156,7 @@ const ABILITY_TEMPLATES = {
 
   dart:{
     id:'dart', name:'Dart', type:'physical', btnType:'physical',
-    desc:'Fast reliable strike. Assassin basic with light Weaken pressure.', ailments:[],
+    desc:'Fast reliable strike. Striker basic with light Weaken pressure.', ailments:[],
     baseMissChance:12, baseDmgMult:1.0,
     energyByLevel:[1,1,1,1],
     energyCost:1,
@@ -432,7 +432,7 @@ const ABILITY_TEMPLATES = {
     id:'shadowJab', name:'Shadow Jab', type:'physical', btnType:'physical',
     isNeutral:false, allowedClasses:['singer'],
     energyByLevel:[1,1,1,1], energyCost:1, cooldownByLevel:[0,0,0,0],
-    desc:'Mage basic strike. Slightly low damage with light Fear pressure.', ailments:[],
+    desc:'Singer basic strike. Slightly low damage with light Fear pressure.', ailments:[],
     levels:[
       {lv:1, desc:'80% damage + 15% Fear', newAilment:'feared', ailChance:15},
       {lv:2, desc:'90% damage + 20% Fear', ailChance:20},
@@ -446,7 +446,7 @@ const ABILITY_TEMPLATES = {
     isNeutral:false, allowedClasses:['trickster','striker'],
     energyByLevel:[1,1,1,1], cooldownByLevel:[1,1,1,1],
     piercePctByLevel:[0.25,0.30,0.35,0.40],
-    desc:'Ranger payoff basic-skill hybrid. Two reliable piercing hits.',
+    desc:'Striker payoff basic-skill hybrid. Two reliable piercing hits.',
     levels:[
       {lv:1, desc:'2×52% hits, pierce 25% DEF'},
       {lv:2, desc:'2×60% hits, pierce 30% DEF'},
@@ -498,7 +498,7 @@ const ABILITY_TEMPLATES = {
     id:'skyHymn', name:'Sky Hymn', type:'spell', btnType:'spell',
     isNeutral:false, allowedClasses:['singer'],
     energyByLevel:[1,1,2,2], cooldownByLevel:[2,2,2,3],
-    desc:'Support song with small healing and momentum. Reliable, not explosive.', ailments:[],
+    desc:'Singer song with small healing and momentum. Reliable, not explosive.', ailments:[],
     levels:[
       {lv:1, desc:'Small heal + momentum'},
       {lv:2, desc:'Moderate heal + momentum'},
@@ -511,7 +511,7 @@ const ABILITY_TEMPLATES = {
     id:'marshHex', name:'Marsh Hex', type:'spell', btnType:'spell',
     isNeutral:false, allowedClasses:['singer'],
     energyByLevel:[2,2,3,3], cooldownByLevel:[2,2,3,3],
-    desc:'Mage payoff spell. Strong debuffing burst, not instant-delete damage.', ailments:[],
+    desc:'Singer payoff spell. Strong debuffing burst, not instant-delete damage.', ailments:[],
     levels:[
       {lv:1, desc:'118% MATK + Weaken/Fear'},
       {lv:2, desc:'132% MATK + stronger debuffs'},
@@ -537,7 +537,7 @@ const ABILITY_TEMPLATES = {
     id:'nightChill', name:'Night Chill', type:'spell', btnType:'spell',
     isNeutral:false, allowedClasses:['singer'],
     energyByLevel:[1,1,2,2], cooldownByLevel:[2,2,2,2],
-    desc:'Mage setup spell. Moderate damage with reliable Slow/Chilled pressure.', ailments:[],
+    desc:'Singer setup spell. Moderate damage with reliable Slow/Chilled pressure.', ailments:[],
     levels:[
       {lv:1, desc:'90% MATK + Slow'},
       {lv:2, desc:'102% MATK + stronger Slow'},
@@ -745,7 +745,7 @@ const BIRDS = {
   },
   kiwi:{
     name:'Kiwi', portraitKey:'kiwi', tagline:'Nocturnal probe. Beak pierces armor like butter.',
-    size:'small', class:'trickster',
+    size:'small', class:'predator',
     unlockRequires:'unlock_kiwi',
     unlockHint:'Defeat Stage 20 with Magpie.',
     stats:{hp:34,maxHp:34,atk:8,def:3,spd:8,dodge:48,acc:88,critChance:12,mdef:5,matk:7},
@@ -769,7 +769,7 @@ const BIRDS = {
   // ── MEDIUM ──────────────────────────────────────────────────
   crow:{
     name:'Crow', portraitKey:'crow', tagline:'Tactical. Precise. Unforgiving.',
-    size:'medium', class:'bruiser',
+    size:'medium', class:'trickster',
     stats:{hp:35,maxHp:35,atk:6,def:4,spd:5,dodge:15,acc:90,mdef:10,matk:6},
     statBars:{HP:35/50,ATK:6/15,SPD:5/10,Dodge:.3,ACC:.9}, color:'#c0c8d8',
     startAbilities:['mockingPeck','stickLance','guard','battleFocus'],
@@ -902,7 +902,7 @@ const BIRDS = {
     name:'Swan', portraitKey:'swan', tagline:'Elegance in life. Devastation in death.',
     size:'large', class:'tank',
     unlockRequires:'unlock_swan',
-    unlockHint:'Reach Endless Stage 30 with any Bard.',
+    unlockHint:'Reach Endless Stage 30 with any Singer.',
     stats:{hp:44,maxHp:44,atk:8,def:5,spd:6,dodge:20,acc:84,mdef:10,matk:12},
     color:'#f0f4fc',
     startAbilities:['bracePeck','wingShield','royalGuard','calmingSong'],
@@ -915,7 +915,7 @@ const BIRDS = {
     name:'Flamingo', portraitKey:'flamingo', tagline:'Balance is power. Grace is terror.',
     size:'large', class:'singer',
     unlockRequires:'unlock_flamingo',
-    unlockHint:'Reach Endless Stage 30 with any Ranger.',
+    unlockHint:'Reach Endless Stage 30 with any Striker.',
     stats:{hp:48,maxHp:48,atk:8,def:4,spd:6,dodge:18,acc:80,mdef:12,matk:8},
     color:'#e8609a',
     startAbilities:['mudshot','marshCall','bogWhisper','rotChorus'],
@@ -1007,7 +1007,7 @@ const BIRDS = {
     statBars:{HP:58/50,ATK:13/15,SPD:4/10,Dodge:.16,ACC:.78}, color:'#c84030',
     startAbilities:['fleshTear','raptorDive','predatorMark','executionTalon'],
     abilityPool:['physical'],
-    passive:{id:'warlordsPath',name:'Talon Tyrant',desc:'+18% damage vs enemies below 40% HP. Every boss kill permanently raises ATK by 3. Takes 15% reduced magic damage.',
+    passive:{id:'warlordsPath',name:'Talon Apex',desc:'+18% damage vs enemies below 40% HP. Every boss kill permanently raises ATK by 3. Takes 15% reduced magic damage.',
       magicResist:0.15,
       onBossKill(p){p.stats.atk+=3;spawnFloat('player','⚔+3 ATK','fn-crit');}},
   },
@@ -1573,6 +1573,45 @@ const CLASS_ROLE_BY_CLASS = {
   singer:'singer',
 };
 
+const FINAL_BIRD_CLASS_BY_KEY = Object.freeze({
+  sparrow:'striker', hummingbird:'striker', robin:'striker', peregrine:'striker',
+  cassowary:'bruiser', emu:'bruiser', ostrich:'bruiser', secretary:'bruiser', secretarybird:'bruiser',
+  goose:'tank', swan:'tank', penguin:'tank', emperorpenguin:'tank', shoebill:'tank', shoebillstork:'tank',
+  magpie:'trickster', lyrebird:'trickster', seagull:'trickster', kookaburra:'trickster', bowerbird:'trickster', crow:'trickster',
+  snowyowl:'predator', harpy:'predator', harpyeagle:'predator', baldeagle:'predator', dukeblakiston:'predator', duke_blakiston:'predator', kiwi:'predator',
+  blackbird:'singer', phainopepla:'singer', macaw:'singer', flamingo:'singer', toucan:'singer', raven:'singer', blackcockatoo:'singer', albatross:'singer', dove:'singer',
+});
+
+function normalizeBirdClassKey(birdKey=''){
+  return String(birdKey||'').toLowerCase().replace(/[^a-z_]/g,'');
+}
+
+function getFinalBirdClass(birdKey='', fallback=''){
+  const normalizedKey = normalizeBirdClassKey(birdKey);
+  if(normalizedKey && FINAL_BIRD_CLASS_BY_KEY[normalizedKey]) return FINAL_BIRD_CLASS_BY_KEY[normalizedKey];
+  const rawFallback = String(fallback||'').toLowerCase();
+  return CLASS_ROLE_BY_CLASS[rawFallback] || '';
+}
+
+function normalizeAllowedClassList(list=[]){
+  if(!Array.isArray(list)) return [];
+  const out=[];
+  list.forEach(cls=>{
+    const normalized = resolveFinalClass(cls);
+    if(normalized && !out.includes(normalized)) out.push(normalized);
+  });
+  return out;
+}
+
+function sanitizeAbilityClassRouting(store){
+  if(!store || typeof store!=='object') return;
+  Object.values(store).forEach(tmpl=>{
+    if(Array.isArray(tmpl?.allowedClasses)){
+      tmpl.allowedClasses = normalizeAllowedClassList(tmpl.allowedClasses);
+    }
+  });
+}
+
 
 const LEGACY_CLASS_FALLBACK = {
   support:'singer',
@@ -1591,10 +1630,14 @@ const LEGACY_CLASS_FALLBACK = {
 function resolveFinalClass(rawClass='', birdKey=''){
   const cls=String(rawClass||'').toLowerCase();
   const key=String(birdKey||'');
-  const birdClass=BIRDS?.[key]?.class;
-  if(birdClass && CLASS_ROLE_BY_CLASS[birdClass]) return birdClass;
+  const mappedBirdClass=getFinalBirdClass(key, BIRDS?.[key]?.class || cls);
+  if(mappedBirdClass) return mappedBirdClass;
   return CLASS_ROLE_BY_CLASS[cls] || LEGACY_CLASS_FALLBACK[cls] || 'singer';
 }
+
+Object.entries(BIRDS).forEach(([birdKey, bird])=>{
+  if(bird) bird.class = getFinalBirdClass(birdKey, bird.class) || 'singer';
+});
 
 
 const CLASS_PERK_DEFS = {
@@ -1690,7 +1733,7 @@ const ABILITY_TEMPLATES_LEARNABLE = {
 
   spellLance:{
     id:'spellLance', name:'Spell Lance', type:'spell', btnType:'spell',
-    desc:'Focused magical thrust. Mage/Bard specialty.',
+    desc:'Focused magical thrust. Singer specialty.',
     cooldownByLevel:[2,2,2,1],
     levels:[
       {lv:1, desc:'125% M.ATK, 10% miss, Weaken 20%.' , newAilment:'weaken', ailChance:20},
@@ -1701,7 +1744,7 @@ const ABILITY_TEMPLATES_LEARNABLE = {
   },
   guardianCry:{
     id:'guardianCry', name:'Guardian Cry', type:'utility', btnType:'utility',
-    desc:'Knight/Tank ward: DEF up and cleanse one debuff.',
+    desc:'Bruiser/Tank ward: DEF up and cleanse one debuff.',
     cooldownByLevel:[3,3,2,2],
     levels:[
       {lv:1, desc:'DEF +4 for 2t, cleanse 1 debuff'},
@@ -1712,7 +1755,7 @@ const ABILITY_TEMPLATES_LEARNABLE = {
   },
   shadowFeint:{
     id:'shadowFeint', name:'Shadow Feint', type:'physical', btnType:'physical',
-    desc:'Assassin/Ranger feint strike with confuse pressure.',
+    desc:'Predator/Trickster feint strike with confuse pressure.',
     baseMissChance:12, baseDmgMult:1.05,
     levels:[
       {lv:1, desc:'105% dmg, 12% miss, Confuse 20%', newAilment:'confused', ailChance:20},
@@ -1830,7 +1873,7 @@ const ABILITY_TEMPLATES_LEARNABLE = {
     id:'wingStorm', name:'Wing Storm', type:'spell', btnType:'spell',
     isNeutral:false, allowedClasses:['trickster'],
     energyByLevel:[2,2,2,3], cooldownByLevel:[3,3,4,4],
-    desc:'Summoner gale magic. Control-oriented spell with modest damage and SPD gain.',
+    desc:'Trickster gale magic. Control-oriented spell with modest damage and SPD gain.',
     levels:[
       {lv:1, desc:'85% M.ATK. 15% Stun. Gain +2 SPD for 2t.'},
       {lv:2, desc:'95% M.ATK. 20% Stun. Gain +3 SPD for 2t.'},
@@ -2180,7 +2223,7 @@ const ABILITY_TEMPLATES_EXTRA = {
   },
   shadowPounce:{
     id:'shadowPounce', name:'Shadow Pounce', type:'physical', btnType:'physical',
-    desc:'Assassin leap strike with crit scaling and finisher bonus.',
+    desc:'Predator leap strike with crit scaling and finisher bonus.',
     baseMissChance:10, baseDmgMult:1.15,
     levels:[
       {lv:1, desc:'115% dmg, 10% miss. +20% crit chance this hit.'},
@@ -2201,7 +2244,7 @@ const ABILITY_TEMPLATES_EXTRA = {
   },
   astralRefrain:{
     id:'astralRefrain', name:'Astral Refrain', type:'spell', btnType:'spell',
-    desc:'Mage/Bard pulse that damages and destabilizes enemy focus.',
+    desc:'Singer pulse that damages and destabilizes enemy focus.',
     cooldownByLevel:[3,3,2,2],
     levels:[
       {lv:1, desc:'95% M.ATK dmg + ACC −10% for 2t.'},
@@ -2214,7 +2257,7 @@ const ABILITY_TEMPLATES_EXTRA = {
     id:'murderMurmuration', name:'Murder Murmuration', type:'spell', btnType:'spell',
     isNeutral:false, allowedClasses:['trickster'],
     energyByLevel:[2,2,3,3], cooldownByLevel:[5,5,4,4],
-    desc:'Summoner flock surge. Multi-hit control spell, lower damage than direct nukes.',
+    desc:'Trickster flock surge. Multi-hit control spell, lower damage than direct nukes.',
     levels:[
       {lv:1, desc:'3 hits ×35% M.ATK. 10% Confuse chance.'},
       {lv:2, desc:'4 hits ×38% M.ATK. 15% Confuse chance + Fear 1t.'},
@@ -3175,6 +3218,8 @@ function continueRun() {
   const bsave=save.battle;
   if(save.inBattle&&bsave&&bsave.enemy){
     G.enemy=bsave.enemy;
+    G.enemy.class = resolveFinalClass(G.enemy?.class || G.enemy?.enemyClass, G.enemy?.birdKey || G.enemy?.portraitKey || G.enemy?.id || '');
+    G.enemy.enemyClass = resolveFinalClass(G.enemy?.enemyClass || G.enemy?.class, G.enemy?.birdKey || G.enemy?.portraitKey || G.enemy?.id || '');
     G.enemyNextAction=bsave.enemyNextAction||planEnemyAction();
     G.playerStatus=bsave.playerStatus||{};
     G.enemyStatus=bsave.enemyStatus||{};
@@ -5015,10 +5060,10 @@ function getClassCooldownAdjustment(ab, player){
   const kind=String(t.type||t.btnType||ab.type||ab.btnType||'').toLowerCase();
 
   // Class rhythm:
-  // Mage/Bard: smoother spell cycles later
-  // Summoner: summon/flood spells stay longer cooldown
-  // Tank/Knight: defensive/utility tools smooth out later
-  // Assassin/Ranger: attack buttons mostly keep their pace
+  // Singer/Trickster: smoother spell cycles later
+  // Trickster swarm patterns: summon/flood spells stay longer cooldown
+  // Tank/Bruiser: defensive/utility tools smooth out later
+  // Predator/Striker: attack buttons mostly keep their pace
   if(kind==='spell'){
     if((cls==='singer' || cls==='trickster') && lv>=8) return -1;
     if(cls==='trickster' && /murmuration|swarm|summon|flock|wing\s*storm|wingStorm|mobSwarm/i.test(t.id||t.name||'')) return 1;
@@ -5213,10 +5258,10 @@ function maybeOfferPassiveEvolutionChoice(){
   return true;
 }
 
-function applyRangerPassiveOnTurnStart(){
+function applyOpeningStrikePassiveOnTurnStart(){
   const cls=(G.player?.class||BIRDS[G.player?.birdKey]?.class||'').toLowerCase();
   if(!['striker','trickster'].includes(cls)) return;
-  G.playerStatus.rangerFirstAttack=1;
+  G.playerStatus.openingStrikePierce=1;
 }
 
 function getCrowDefendCooldown(ab) {
@@ -5845,9 +5890,9 @@ function dealDamage(target,amount,isCrit=false,isMagic=false,srcAbility=null) {
     if(!isMagic){
       const a=srcAbility||G._activePlayerAbility||null;
       let pierce=getPlayerPiercePctForAbility(a);
-      if(G.playerStatus.rangerFirstAttack){
+      if(G.playerStatus.openingStrikePierce){
         pierce=Math.max(pierce,0.45);
-        delete G.playerStatus.rangerFirstAttack;
+        delete G.playerStatus.openingStrikePierce;
       }
       const enemyDef=(G.enemy.stats.def||0);
       const effDef=Math.floor(enemyDef*(1-pierce));
@@ -7737,7 +7782,7 @@ function startPlayerTurn(player){
   G.turnPhase=TURN.PLAYER;
   G.phase='PLAYER';
   G.animLock=false;
-  applyRangerPassiveOnTurnStart();
+  applyOpeningStrikePassiveOnTurnStart();
   renderEnergyOrbs();
   renderActions();
   lockActionUI(false);

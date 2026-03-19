@@ -1098,7 +1098,7 @@ cooldown('chargeUp',3);
      Lv4 = capstone rider, not runaway numbers
   */
 
-  /* ASSASSIN */
+  /* STRIKER */
   setLevels('rapidPeck',
     'Multi-hit striker basic. High-roll pressure with smoother scaling.',
     [
@@ -1139,7 +1139,7 @@ cooldown('chargeUp',3);
     ]
   );
 
-  /* KNIGHT / TANK */
+  /* BRUISER / TANK */
   setLevels('crowStrike',
     'Standard physical strike with steady scaling.',
     [
@@ -1210,7 +1210,7 @@ cooldown('chargeUp',3);
     ]
   );
 
-  /* MAGE / BARD / SUMMONER */
+  /* SINGER / TRICKSTER */
   setLevels('dirge',
     'Song control spell. Strong confusion with cleaner scaling.',
     [
@@ -1282,7 +1282,7 @@ cooldown('chargeUp',3);
   );
 
   setLevels('wingStorm',
-    'Storm of wings. Summoner burst with smoother end scaling.',
+    'Storm of wings. Trickster burst with smoother end scaling.',
     [
       {lv:1, desc:'2 hits, 60% mAtt each. 12% spell miss.'},
       {lv:2, desc:'2 hits, 67% mAtt each. 10% spell miss — Slow 12%'},
