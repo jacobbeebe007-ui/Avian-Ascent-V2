@@ -59,82 +59,6 @@
     };
   }
 
-  // ---------- Rich descriptions in Stork Shop ----------
-  function resolveShopAbility(item){
-    if(!item || !item.id) return null;
-    let id = null;
-    if(item.id.startsWith('shop_ab_learn_')) id = item.id.replace('shop_ab_learn_','');
-    else if(item.id.startsWith('shop_ab_upgrade_')) id = item.id.replace('shop_ab_upgrade_','');
-    if(!id) return null;
-    return (globalThis.ABILITY_TEMPLATES && ABILITY_TEMPLATES[id]) ||
-           (globalThis.ABILITY_TEMPLATES_EXTRA && ABILITY_TEMPLATES_EXTRA[id]) ||
-           null;
-  }
-
-  function abilityLongDesc(tmpl, level){
-    if(!tmpl) return '';
-    const lv = Math.max(1, Math.min(level || 1, Array.isArray(tmpl.levels) ? tmpl.levels.length : 1));
-    const row = Array.isArray(tmpl.levels) ? tmpl.levels[lv-1] : null;
-    const cost = (typeof tmpl.energyCost === 'number')
-      ? tmpl.energyCost
-      : (Array.isArray(tmpl.energyByLevel) ? (tmpl.energyByLevel[lv-1] ?? tmpl.energyByLevel[0] ?? 1) : 1);
-    const cd = Array.isArray(tmpl.cooldownByLevel) ? (tmpl.cooldownByLevel[lv-1] ?? tmpl.cooldownByLevel[0] ?? 0) : 0;
-    const baseDesc = tmpl.desc || 'No description.';
-    const lvDesc = row && row.desc ? row.desc : '';
-    return `${baseDesc} ${lvDesc ? '• ' + lvDesc : ''} • EN ${cost}${cd>0 ? ' • CD ' + cd : ''}`;
-  }
-
-  function wireShopDescriptions(){
-    try{
-      const grid = document.getElementById('shop-items-grid');
-      if(!grid || !globalThis._shopItems) return;
-      const cards = [...grid.querySelectorAll('.shop-item')];
-      cards.forEach((card, idx)=>{
-        const item = _shopItems[idx];
-        const tmpl = resolveShopAbility(item);
-        if(!tmpl) return;
-        const descNode = card.querySelector('.reward-desc');
-        const rich = abilityLongDesc(tmpl, 1);
-        if(descNode) descNode.textContent = rich;
-        card.setAttribute('title', rich);
-      });
-    }catch(err){ console.error('wireShopDescriptions failed:', err); }
-  }
-
-  const oldRenderShopItems = globalThis.renderShopItems;
-  if(typeof oldRenderShopItems === 'function'){
-    globalThis.renderShopItems = function(){
-      const out = oldRenderShopItems.apply(this, arguments);
-      wireShopDescriptions();
-      return out;
-    };
-  }
-
-  const oldOpenShopSwapModal = globalThis.openShopSwapModal;
-  if(typeof oldOpenShopSwapModal === 'function'){
-    globalThis.openShopSwapModal = function(newTmpl, onPick, onCancel){
-      const out = oldOpenShopSwapModal.apply(this, arguments);
-      try{
-        const list = document.getElementById('shop-swap-list');
-        if(!list) return out;
-        const btns = [...list.querySelectorAll('button')];
-        const pool = (globalThis.G?.player?.abilities || []).filter(a => !(typeof globalThis.isMainAttackAbility === 'function' && isMainAttackAbility(a)));
-        btns.forEach((btn, idx)=>{
-          const ab = pool[idx];
-          if(!ab) return;
-          const tmpl = (globalThis.ABILITY_TEMPLATES && ABILITY_TEMPLATES[ab.id]) ||
-                       (globalThis.ABILITY_TEMPLATES_EXTRA && ABILITY_TEMPLATES_EXTRA[ab.id]) ||
-                       ab;
-          const rich = abilityLongDesc(tmpl, ab.level || 1);
-          btn.setAttribute('title', rich);
-          const detail = btn.querySelector('div div:last-child');
-          if(detail) detail.textContent = rich;
-        });
-      }catch(err){ console.error('shop swap details failed:', err); }
-      return out;
-    };
-  }
-
   // ---------- Unlock popup rendering + selection refresh ----------
   const oldRenderUnlockPopupsOnGameover = globalThis.renderUnlockPopupsOnGameover;
   if(typeof oldRenderUnlockPopupsOnGameover === 'function'){
@@ -179,9 +103,6 @@
     };
   }
 
-  document.addEventListener('DOMContentLoaded', ()=>{
-    try{ wireShopDescriptions(); }catch(err){ console.error(err); }
-  });
 })();
 
 
@@ -260,4 +181,3 @@
   }
   document.addEventListener('DOMContentLoaded', bindShopButtons);
 })();
-

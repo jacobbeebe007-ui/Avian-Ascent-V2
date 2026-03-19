@@ -248,15 +248,6 @@
     }
   };
 
-  // Stork Shop learn pools keyed to the final six-class model.
-  globalThis.ABILITY_LEARN_POOLS = {
-    striker:["swoop", "diveBomb", "flyby", "pinionVolley", "flurry", "deathDive"],
-    bruiser:["bulwarkRoar", "curvedTalons", "cannonball", "retribution", "eyeGouge", "ironHonk"],
-    tank:["shieldWing", "guardianCry", "taunt", "battleHymn", "counter", "crowDefend"],
-    trickster:["bowedWing", "wingClip", "dustDevil", "thornBarrage", "tailPull", "shadowFeint", "shadowPounce"],
-    predator:["silentPierce", "predatorMark", "huntersCry", "shadowJab", "spellLance", "dirgeOfDread"],
-    singer:["roost", "preen", "hum", "chargeUp", "fruitSweetener", "molt", "reveille", "skyHymn", "victoryChant", "dirge", "lullaby", "sonicDirge", "shriekwave", "astralRefrain", "marshHex", "nightChill", "stormCall", "plagueBlast", "toxicSpit", "murderMurmuration"]
-  };
 })();
 
 
@@ -542,108 +533,6 @@
     };
   }
 
-  function resolveAbilityTemplateFromShopItem(item){
-    if(!item || !item.id) return null;
-    let id = null;
-    if(item.id.startsWith('shop_ab_learn_')) id = item.id.replace('shop_ab_learn_','');
-    else if(item.id.startsWith('shop_ab_upgrade_')) id = item.id.replace('shop_ab_upgrade_','');
-    if(!id) return null;
-    return (globalThis.ABILITY_TEMPLATES && ABILITY_TEMPLATES[id]) ||
-           (globalThis.ABILITY_TEMPLATES_EXTRA && ABILITY_TEMPLATES_EXTRA[id]) ||
-           null;
-  }
-
-  function abilityTooltipHTML(tmpl, level){
-    if(!tmpl) return '';
-    const lv = Math.max(1, Math.min(level || 1, Array.isArray(tmpl.levels) ? tmpl.levels.length : 1));
-    const row = Array.isArray(tmpl.levels) ? tmpl.levels[lv-1] : null;
-    const cost = (typeof tmpl.energyCost === 'number')
-      ? tmpl.energyCost
-      : (Array.isArray(tmpl.energyByLevel) ? (tmpl.energyByLevel[lv-1] ?? tmpl.energyByLevel[0] ?? 1) : 1);
-    const cd = Array.isArray(tmpl.cooldownByLevel) ? (tmpl.cooldownByLevel[lv-1] ?? tmpl.cooldownByLevel[0] ?? 0) : 0;
-    const tags = [];
-    if(tmpl.type) tags.push(String(tmpl.type));
-    if(tmpl.btnType && tmpl.btnType !== tmpl.type) tags.push(String(tmpl.btnType));
-    const typeLine = tags.length ? tags.join(' · ') : 'ability';
-    const baseDesc = tmpl.desc || 'No description.';
-    const lvDesc = row && row.desc ? row.desc : '';
-    return `
-      <div class="tt-name">${tmpl.name}</div>
-      <div class="tt-type">${typeLine} · Lv${lv}</div>
-      <div class="tt-row"><span class="tt-lbl">Energy</span><span class="tt-val">${cost}</span></div>
-      <div class="tt-row"><span class="tt-lbl">Cooldown</span><span class="tt-val">${cd>0 ? cd+' turn'+(cd>1?'s':'') : 'None'}</span></div>
-      <div class="tt-desc" style="margin-top:6px">${baseDesc}</div>
-      ${lvDesc ? `<div class="tt-desc" style="margin-top:6px;color:var(--text)">${lvDesc}</div>` : ''}
-    `;
-  }
-
-  function showRichTooltip(ev, html){
-    const tt=document.getElementById('action-tooltip');
-    if(!tt) return;
-    tt.innerHTML = html;
-    tt.style.display='block';
-    if(window._isTouchDevice){
-      tt.style.left='50%'; tt.style.top='50%';
-      tt.style.transform='translate(-50%,-50%)';
-      tt.style.position='fixed';
-    } else {
-      tt.style.transform='';
-      moveTooltip(ev);
-    }
-  }
-
-  const _oldRenderShopItems = globalThis.renderShopItems;
-  if(typeof _oldRenderShopItems === 'function'){
-    globalThis.renderShopItems = function(){
-      const out = _oldRenderShopItems.apply(this, arguments);
-      try{
-        const grid=document.getElementById('shop-items-grid');
-        if(!grid) return out;
-        const cards=[...grid.querySelectorAll('.shop-item')];
-        cards.forEach((card, idx)=>{
-          const item = (globalThis._shopItems||[])[idx];
-          const tmpl = resolveAbilityTemplateFromShopItem(item);
-          if(!tmpl) return;
-          const html = abilityTooltipHTML(tmpl, 1);
-          card.addEventListener('mouseenter', e=>{ if(!window._isTouchDevice) showRichTooltip(e, html); });
-          card.addEventListener('mousemove', e=>{ if(!window._isTouchDevice) moveTooltip(e); });
-          card.addEventListener('mouseleave', ()=>{ if(!window._isTouchDevice) hideTooltip(); });
-          card.addEventListener('click', e=>{
-            if(window._isTouchDevice) showRichTooltip(e, html);
-          });
-        });
-      }catch(err){ console.error(err); }
-      return out;
-    };
-  }
-
-  const _oldOpenShopSwapModal = globalThis.openShopSwapModal;
-  if(typeof _oldOpenShopSwapModal === 'function'){
-    globalThis.openShopSwapModal = function(newTmpl, onPick, onCancel){
-      const out = _oldOpenShopSwapModal.apply(this, arguments);
-      try{
-        const list=document.getElementById('shop-swap-list');
-        if(!list) return out;
-        const btns=[...list.querySelectorAll('button')];
-        const pool=(G?.player?.abilities||[]).filter(a=>!isMainAttackAbility(a));
-        btns.forEach((btn, idx)=>{
-          const ab=pool[idx];
-          if(!ab) return;
-          const tmpl=(globalThis.ABILITY_TEMPLATES && ABILITY_TEMPLATES[ab.id]) ||
-                     (globalThis.ABILITY_TEMPLATES_EXTRA && ABILITY_TEMPLATES_EXTRA[ab.id]) ||
-                     ab;
-          const html = abilityTooltipHTML(tmpl, ab.level||1);
-          btn.addEventListener('mouseenter', e=>{ if(!window._isTouchDevice) showRichTooltip(e, html); });
-          btn.addEventListener('mousemove', e=>{ if(!window._isTouchDevice) moveTooltip(e); });
-          btn.addEventListener('mouseleave', ()=>{ if(!window._isTouchDevice) hideTooltip(); });
-          btn.addEventListener('click', e=>{
-            if(window._isTouchDevice) showRichTooltip(e, html);
-          });
-        });
-      }catch(err){ console.error(err); }
-      return out;
-    };
-  }
 })();
 
 
@@ -846,4 +735,3 @@
     };
   }
 })();
-

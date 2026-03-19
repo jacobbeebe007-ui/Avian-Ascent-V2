@@ -330,15 +330,11 @@
           if(firstHealingIdx!==-1){
             labels.push({idx:firstHealingIdx, text:'HEALING'});
           }
-          const firstAbilityIdx=items.findIndex(item=>String(item?.id||'').startsWith('shop_ab_'));
-          if(firstAbilityIdx!==-1){
-            labels.push({idx:firstAbilityIdx, text:'ABILITIES'});
-          }
           const firstUtilityIdx=items.findIndex(item=>String(item?.id||'').startsWith('shop_util_'));
           if(firstUtilityIdx!==-1){
             labels.push({idx:firstUtilityIdx, text:'UTILITY'});
           }
-          const firstRewardIdx=items.findIndex(item=>!item?.isHealingShopItem && !String(item?.id||'').startsWith('shop_ab_') && !String(item?.id||'').startsWith('shop_util_'));
+          const firstRewardIdx=items.findIndex(item=>!item?.isHealingShopItem && !String(item?.id||'').startsWith('shop_util_'));
           if(firstRewardIdx!==-1){
             labels.push({idx:firstRewardIdx, text:'UPGRADES'});
           }
@@ -354,27 +350,6 @@
         cards.forEach((card, idx)=>{
           const item = (globalThis._shopItems||[])[idx];
           if(item?.id?.startsWith('art_')) card.classList.add('artifact-card');
-        });
-      }catch(err){ console.error(err); }
-      return out;
-    };
-  }
-
-  // Better shop swap preview
-  const _oldOpenShopSwapModalPolish = globalThis.openShopSwapModal;
-  if(typeof _oldOpenShopSwapModalPolish === 'function'){
-    globalThis.openShopSwapModal = function(newTmpl, onPick, onCancel){
-      const out = _oldOpenShopSwapModalPolish.apply(this, arguments);
-      try{
-        const sub=document.getElementById('shop-swap-sub');
-        const list=document.getElementById('shop-swap-list');
-        if(!sub || !list) return out;
-        [...list.querySelectorAll('button')].forEach((btn, idx)=>{
-          btn.addEventListener('mouseenter', ()=>{
-            const pool=(G?.player?.abilities||[]).filter(a=>!isMainAttackAbility(a));
-            const ab=pool[idx];
-            if(ab) sub.innerHTML = `Replace <strong style="color:var(--text)">${ab.name}</strong> with <strong style="color:var(--gold)">${newTmpl.name}</strong>.`;
-          });
         });
       }catch(err){ console.error(err); }
       return out;
