@@ -90,7 +90,7 @@
   const UPGRADE_LINES = Object.freeze({
     striker: ['rapidPeck', 'dart', 'evade'],
     trickster: ['dirge', 'lullaby', 'evade'],
-    vanguard: ['dart', 'evade']
+    bruiser: ['dart', 'evade']
   });
 
   const PACK_NOTES = Object.freeze({
