@@ -3572,9 +3572,6 @@ function buildBirdGrid() {
   const focusKey=ui.expandedBird||G.selected||safeBirdEntries?.[0]?.[0]||'';
   if(focusKey) updateAscentPanel(focusKey);
 
-  const focusKey=ui.expandedBird||G.selected||safeBirdEntries?.[0]?.[0]||'';
-  if(focusKey) updateAscentPanel(focusKey);
-
   // Hard fallback: never allow an empty/brick select screen.
   if(totalBirds===0){
     console.error('Character select fallback: no valid bird entries detected.');
@@ -3719,64 +3716,19 @@ function updateAscentPanel(key) {
 
   const cls = classToRoleId(bird.class);
   const sizeClass = getUISizeClass(bird, 'panel');
-  const classLabel=idToClassLabel(cls);
-  const sizeLabel=SIZE_LABELS[bird.size||'medium']||bird.size;
-  const startEn=(ENERGY_BY_SIZE[(bird.size||'medium').toLowerCase()] ?? 3);
-  const maxEn=startEn;
-  const cc=bird.stats.critChance||5;
-  const cd=1.5;
-  const roleSummary={
-    striker:'Fast combo attacker',
-    bruiser:'Heavy bruiser with hit pressure',
-    tank:'Defensive frontliner',
-    trickster:'Debuff-focused trickster',
-    predator:'Execute-focused predator',
-    singer:'Song-based controller',
-  }[cls]||'Adaptive fighter';
-
-  const startAbilityDetails=(bird.startAbilities||[]).map((id,idx)=>{
-    const t=ABILITY_TEMPLATES[id]||{};
-    const en=Array.isArray(t.energyByLevel)?(t.energyByLevel[0]??t.energyCost??0):(t.energyCost??0);
-    const type=String(t.btnType||t.type||'utility').toUpperCase();
-    const tagOrder=['BASIC','SIGNATURE','UTILITY','CLASS'];
-    const slotTag=tagOrder[idx]||'CLASS';
-    const short=((t.levels&&t.levels[0]&&t.levels[0].desc)||t.desc||'No description').trim();
-    return `<div class="ascent-ability-row"><div class="ascent-ability-top"><span class="ascent-ability-name">${t.name||id}</span><span class="ascent-ability-en">${en} EN</span></div><div class="ascent-ability-tags">${slotTag} · ${type}</div><div class="ascent-ability-desc">${short}</div></div>`;
-  }).join('');
+  const tags = (bird.startAbilities||[]).map(id=>`<span class="ascent-ab-tag">${ABILITY_TEMPLATES[id]?ABILITY_TEMPLATES[id].name:id}</span>`).join('');
 
   panel.innerHTML = `
-    <div class="showcase-top">
-      <div class="ascent-panel-portrait">${renderBirdIconHTML(key, sizeClass, false)}</div>
-      <div class="showcase-head">
-        <div class="ascent-panel-name">${bird.name}</div>
-        <div class="ascent-panel-tagline">${bird.tagline||''}</div>
-        <div class="showcase-meta">
-          <span class="class-badge class-${cls}">${classLabel.toUpperCase()}</span>
-          <span class="bird-size-chip">${sizeLabel}</span>
-          <span class="bird-size-chip">EN ${startEn}/${maxEn}</span>
-        </div>
-      </div>
-    </div>
-    <div class="showcase-bottom">
-      <div class="showcase-section"><div class="showcase-title">★ Passive</div><div class="ascent-panel-passive"><strong>${bird.passive?.name||'—'}:</strong> ${bird.passive?.desc||'No passive listed.'}</div></div>
-      <div class="showcase-section"><div class="showcase-title">🪶 Starting Abilities</div><div class="ascent-ability-list">${startAbilityDetails}</div></div>
-      <div class="showcase-section"><div class="showcase-title">📊 Full Stats</div>
-        <div class="showcase-stats-grid">
-          <div><span>HP</span><strong>${bird.stats.hp}</strong></div>
-          <div><span>ATK</span><strong>${bird.stats.atk}</strong></div>
-          <div><span>MATK</span><strong>${bird.stats.matk||0}</strong></div>
-          <div><span>DEF</span><strong>${bird.stats.def}</strong></div>
-          <div><span>MDEF</span><strong>${bird.stats.mdef||0}</strong></div>
-          <div><span>SPD</span><strong>${bird.stats.spd}</strong></div>
-          <div><span>ACC</span><strong>${bird.stats.acc}%</strong></div>
-          <div><span>CC</span><strong>${cc}%</strong></div>
-          <div><span>CD</span><strong>${cd.toFixed(1)}×</strong></div>
-          <div><span>Starting EN</span><strong>${startEn}</strong></div>
-          <div><span>Max EN</span><strong>${maxEn}</strong></div>
-        </div>
-      </div>
-      <div class="showcase-section"><div class="showcase-title">🧭 Playstyle</div><div class="showcase-summary">${roleSummary}</div></div>
-      <button class="cta showcase-cta" onclick="startGame()">🪽 Select ${bird.name}</button>
+    <div class="ascent-panel-portrait">${renderBirdIconHTML(key, sizeClass, false)}</div>
+    <div class="ascent-panel-name">${bird.name}</div>
+    <div class="ascent-panel-tagline">${bird.tagline}</div>
+    <div class="ascent-panel-class"><span class="class-badge class-${cls}">${idToClassLabel(cls).toUpperCase()}</span> · ${SIZE_LABELS[bird.size||'medium']||bird.size}</div>
+    ${bird.passive?`<div class="ascent-panel-passive"><strong>★ ${bird.passive.name}:</strong> ${bird.passive.desc}</div>`:''}
+    <div class="ascent-abilities">${tags}</div>
+    <div style="text-align:left;font-size:.72rem;color:var(--text);background:rgba(0,0,0,.25);border:1px solid rgba(201,168,76,.2);border-radius:8px;padding:8px;margin:8px 0;"><strong>Full Stats:</strong> HP ${bird.stats.hp} · ATK ${bird.stats.atk} · DEF ${bird.stats.def} · SPD ${bird.stats.spd} · ACC ${bird.stats.acc}% · Dodge ${bird.stats.dodge}% · MATK ${bird.stats.matk||0} · MDEF ${bird.stats.mdef||0} · Crit ${bird.stats.critChance||0}%</div>
+    <div style="text-align:left;font-size:.7rem;color:var(--text-dim);margin:6px 0 10px;"><strong style="color:var(--gold-light)">Starting Attacks:</strong><br>${(bird.startAbilities||[]).map(id=>{const t=ABILITY_TEMPLATES[id];const lv=(t&&t.levels&&t.levels[0])?t.levels[0].desc:'';return `• <span style='color:var(--text)'>${t?t.name:id}</span> — ${lv}`;}).join('<br>')}</div>
+    <button class="cta" onclick="startGame()">🪽 Take Flight as ${bird.name}</button>
+    <div style="margin-top:8px;">
     </div>`;
   panel.classList.remove('is-empty');
   panel.classList.add('is-filled');
