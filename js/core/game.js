@@ -1009,7 +1009,8 @@ const BIRDS = {
     size:'xl', class:'tank',
     stats:{hp:55,maxHp:55,atk:9,def:7,spd:2,dodge:5,acc:70,mdef:12,matk:4},
     statBars:{HP:55/50,ATK:9/15,SPD:2/10,Dodge:.1,ACC:.7}, color:'#e8c96a',
-    startAbilities:['gooseHonk','headWhip','guard','fearHonk'],
+    startAbilities:['peck','territorial_honk','guard','talon_slam'],
+    mainAttackId:'peck',
     passive:{id:'bruisedHide',name:'Bruised Hide',desc:'Every 20 HP taken = +1 ATK until battle ends. Takes 20% reduced physical damage.',
       physicalResist:0.20,
       onDamage(p,dmg){if(!p._bruiseAcc)p._bruiseAcc=0;p._bruiseAcc+=dmg;while(p._bruiseAcc>=20){p._bruiseAcc-=20;G.player.stats.atk++;spawnFloat('player','💢+ATK','fn-status');}}},
@@ -3493,7 +3494,7 @@ function codexMark(type, id, field='seen'){
 }
 
 const SKILL_EVOLUTION_LEVEL_INTERVAL = 3;
-const FAMILY_EVOLUTION_STATE_VERSION = 4;
+const FAMILY_EVOLUTION_STATE_VERSION = 6;
 const SPARROW_SKILL_SLOT_LAYOUT = Object.freeze([
   {slotIndex:0, familyId:'rapid', abilityId:'multiPeck'},
   {slotIndex:1, familyId:'dart', abilityId:'dart'},
@@ -3554,6 +3555,57 @@ const SPARROW_SKILL_FAMILIES = Object.freeze({
     },
   },
 });
+const GOOSE_SKILL_FAMILIES = Object.freeze({
+  peck:{
+    familyId:'peck', displayName:'Peck Line', baseAbilityId:'peck', slotRole:'filler_attack', maxTier:3,
+    paths:{
+      bleed:{pathId:'bleed', displayName:'Bleed', abilities:{1:'raking_peck', 2:'tearing_bite', 3:'savage_maul'}},
+      weaken:{pathId:'weaken', displayName:'Weaken', abilities:{1:'numbing_peck', 2:'crippling_bite', 3:'submission_maul'}},
+      pierce:{pathId:'pierce', displayName:'Pierce', abilities:{1:'needle_peck', 2:'bodkin_bite', 3:'armor_maul'}},
+    },
+  },
+  honk:{
+    familyId:'honk', displayName:'Honk Line', baseAbilityId:'territorial_honk', slotRole:'signature_control', maxTier:3,
+    tierNames:{1:'Honk', 2:'Blast', 3:'Terror'},
+    paths:{
+      fear:{pathId:'fear', displayName:'Fear', abilities:{1:'dread_honk', 2:'terror_blast', 3:'panic_terror'}},
+      paralysis:{pathId:'paralysis', displayName:'Paralysis', abilities:{1:'shock_honk', 2:'stunning_blast', 3:'lockdown_terror'}},
+      weaken:{pathId:'weaken', displayName:'Weaken', abilities:{1:'crushing_honk', 2:'oppression_blast', 3:'tyrant_terror'}},
+    },
+  },
+  guard:{
+    familyId:'guard', displayName:'Guard Line', baseAbilityId:'guard', slotRole:'defense', maxTier:3,
+    tierNames:{1:'Guard', 2:'Brace', 3:'Fortress'},
+    paths:{
+      block:{pathId:'block', displayName:'Block', abilities:{1:'iron_guard', 2:'bulwark_brace', 3:'fortress_stance'}},
+      retaliate:{pathId:'retaliate', displayName:'Retaliate', abilities:{1:'spite_guard', 2:'punish_brace', 3:'retribution_fortress'}},
+      recover:{pathId:'recover', displayName:'Recover', abilities:{1:'steady_guard', 2:'restoring_brace', 3:'enduring_fortress'}},
+    },
+  },
+  heavy:{
+    familyId:'heavy', displayName:'Heavy Line', baseAbilityId:'talon_slam', slotRole:'heavy_payoff', maxTier:3,
+    tierNames:{1:'Talon', 2:'Slam', 3:'Crush'},
+    paths:{
+      trample:{pathId:'trample', displayName:'Trample', abilities:{1:'heavy_talon', 2:'trample_slam', 3:'crushing_stampede'}},
+      buffet:{pathId:'buffet', displayName:'Buffet', abilities:{1:'wing_buffet', 2:'bone_buffet', 3:'gale_crush'}},
+      execute:{pathId:'execute', displayName:'Execute', abilities:{1:'rending_talon', 2:'finisher_slam', 3:'execution_crush'}},
+    },
+  },
+});
+const GOOSE_SKILL_SLOT_LAYOUT = Object.freeze([
+  {slotIndex:0, familyId:'peck', abilityId:'peck'},
+  {slotIndex:1, familyId:'honk', abilityId:'territorial_honk'},
+  {slotIndex:2, familyId:'guard', abilityId:'guard'},
+  {slotIndex:3, familyId:'heavy', abilityId:'talon_slam'},
+]);
+const gooseStartingSkillSlots = GOOSE_SKILL_SLOT_LAYOUT.map(slot=>Object.freeze({
+  slotIndex:slot.slotIndex,
+  familyId:slot.familyId,
+  pathId:null,
+  tier:0,
+  abilityId:slot.abilityId,
+  masteryCount:0,
+}));
 const BLACKBIRD_SKILL_FAMILIES = Object.freeze({
   song:{
     familyId:'song', displayName:'Song Line', baseAbilityId:'dark_song', slotRole:'core_magic_burst', maxTier:3,
@@ -3628,6 +3680,18 @@ const FAMILY_EVOLUTION_BIRD_DATA = Object.freeze({
     legacyBaseAbilityIds:Object.freeze({
       rapid:{legacy:['rapidPeck'], current:'multiPeck'},
       mark:{legacy:['markPrey'], current:'trackPrey'},
+    }),
+  },
+  goose:{
+    birdKey:'goose',
+    slotLayout:GOOSE_SKILL_SLOT_LAYOUT,
+    families:GOOSE_SKILL_FAMILIES,
+    abilityLookup:buildFamilySkillAbilityLookup(GOOSE_SKILL_SLOT_LAYOUT, GOOSE_SKILL_FAMILIES),
+    legacyBaseAbilityIds:Object.freeze({
+      peck:{legacy:['headWhip'], current:'peck'},
+      honk:{legacy:['gooseHonk', 'fearHonk', 'honk_terror'], current:'territorial_honk'},
+      guard:{legacy:['guard'], current:'guard'},
+      heavy:{legacy:['heavyTalon', 'heavy_talon'], current:'talon_slam'},
     }),
   },
   blackbird:{
@@ -8437,6 +8501,84 @@ registerAbilityAlias('graceStep','evade','Grace Step');
 registerAbilityAlias('guard','crowDefend','Guard');
 registerAbilityAlias('honkTerror','gooseHonk','Honk Terror');
 registerAbilityAlias('heavyTalon','beakSlam','Heavy Talon');
+registerAbilityAlias('peck','headWhip','Peck',{isBasic:true,desc:'Goose base peck. A neutral filler strike before branching.'});
+registerAbilityAlias('territorial_honk','honkAttack','Territorial Honk',{type:'physical',btnType:'physical',desc:'Goose base honk. A territorial pressure blast before branching.'});
+registerAbilityAlias('talon_slam','beakSlam','Talon Slam',{type:'physical',btnType:'physical',desc:'Goose base heavy strike. A grounded slam before specializing.'});
+registerAbilityAlias('tearing_bite','serratedSlash','Tearing Bite',{type:'physical',btnType:'physical'});
+registerAbilityAlias('savage_maul','serpentCrusher','Savage Maul',{type:'physical',btnType:'physical'});
+registerAbilityAlias('numbing_peck','intimidate','Numbing Peck',{type:'utility',btnType:'utility'});
+registerAbilityAlias('crippling_bite','wingClip','Crippling Bite',{type:'spell',btnType:'spell'});
+registerAbilityAlias('submission_maul','serpentCrusher','Submission Maul',{type:'physical',btnType:'physical'});
+registerAbilityAlias('bodkin_bite','silentPierce','Bodkin Bite',{type:'physical',btnType:'physical'});
+registerAbilityAlias('armor_maul','beakSlam','Armor Maul',{type:'physical',btnType:'physical'});
+registerAbilityAlias('honk_terror','honkTerror','Honk Terror',{type:'utility',btnType:'utility'});
+registerAbilityAlias('dread_honk','fearHonk','Dread Honk',{type:'utility',btnType:'utility'});
+registerAbilityAlias('terror_blast','gooseHonk','Terror Blast',{type:'physical',btnType:'physical'});
+registerAbilityAlias('panic_terror','honkTerror','Panic Terror',{type:'utility',btnType:'utility'});
+registerAbilityAlias('shock_honk','gooseHonk','Shock Honk',{type:'physical',btnType:'physical'});
+registerAbilityAlias('stunning_blast','thunderScreech','Stunning Blast',{type:'spell',btnType:'spell'});
+registerAbilityAlias('lockdown_terror','thunderScreech','Lockdown Terror',{type:'spell',btnType:'spell'});
+registerAbilityAlias('crushing_honk','gooseHonk','Crushing Honk',{type:'physical',btnType:'physical'});
+registerAbilityAlias('oppression_blast','intimidate','Oppression Blast',{type:'utility',btnType:'utility'});
+registerAbilityAlias('tyrant_terror','fearHonk','Tyrant Terror',{type:'utility',btnType:'utility'});
+registerAbilityAlias('iron_guard','guard','Iron Guard',{type:'utility',btnType:'utility'});
+registerAbilityAlias('bulwark_brace','guard','Bulwark Brace',{type:'utility',btnType:'utility'});
+registerAbilityAlias('fortress_stance','sitAndWait','Fortress Stance',{type:'utility',btnType:'utility'});
+registerAbilityAlias('spite_guard','counter','Spite Guard',{type:'utility',btnType:'utility'});
+registerAbilityAlias('punish_brace','parry','Punish Brace',{type:'utility',btnType:'utility'});
+registerAbilityAlias('retribution_fortress','retribution','Retribution Fortress',{type:'physical',btnType:'physical'});
+registerAbilityAlias('steady_guard','preen','Steady Guard',{type:'utility',btnType:'utility'});
+registerAbilityAlias('restoring_brace','roost','Restoring Brace',{type:'utility',btnType:'utility'});
+registerAbilityAlias('enduring_fortress','roost','Enduring Fortress',{type:'utility',btnType:'utility'});
+registerAbilityAlias('heavy_talon','heavyTalon','Heavy Talon',{type:'physical',btnType:'physical'});
+registerAbilityAlias('trample_slam','trample','Trample Slam',{type:'physical',btnType:'physical'});
+registerAbilityAlias('crushing_stampede','serpentCrusher','Crushing Stampede',{type:'physical',btnType:'physical'});
+registerAbilityAlias('wing_buffet','bodySlam','Wing Buffet',{type:'physical',btnType:'physical'});
+registerAbilityAlias('bone_buffet','cannonball','Bone Buffet',{type:'physical',btnType:'physical'});
+registerAbilityAlias('gale_crush','beakSlam','Gale Crush',{type:'physical',btnType:'physical'});
+registerAbilityAlias('rending_talon','beakSlam','Rending Talon',{type:'physical',btnType:'physical'});
+registerAbilityAlias('finisher_slam','beakSlam','Finisher Slam',{type:'physical',btnType:'physical'});
+registerAbilityAlias('execution_crush','deathDive','Execution Crush',{type:'physical',btnType:'physical'});
+Object.assign(ABILITY_TEMPLATES.peck||{}, makeEvolutionAbilityTemplate('peck','Peck','Goose base peck. Cheap harassment before specializing.', {type:'physical', btnType:'physical', energy:1, levels:[{desc:'100% dmg, 10% miss.'},{desc:'108% dmg, 9% miss.'},{desc:'116% dmg, 8% miss.'},{desc:'124% dmg, 7% miss.'}]}));
+Object.assign(ABILITY_TEMPLATES.territorial_honk||{}, makeEvolutionAbilityTemplate('territorial_honk','Territorial Honk','Goose base honk. Loud territorial pressure before branching.', {type:'physical', btnType:'physical', energy:2, levels:[{desc:'115% dmg, 25% miss. Loud pressure without a rider.'},{desc:'125% dmg, 23% miss. Loud pressure without a rider.'},{desc:'135% dmg, 21% miss. Loud pressure without a rider.'},{desc:'145% dmg, 19% miss. Loud pressure without a rider.'}]}));
+Object.assign(ABILITY_TEMPLATES.talon_slam||{}, makeEvolutionAbilityTemplate('talon_slam','Talon Slam','Goose base heavy hit. Grounded body-pressure before branching.', {type:'physical', btnType:'physical', energy:2, levels:[{desc:'140% dmg, 22% miss.'},{desc:'150% dmg, 20% miss.'},{desc:'160% dmg, 18% miss.'},{desc:'170% dmg, 16% miss.'}]}));
+Object.assign(ABILITY_TEMPLATES.raking_peck||{}, makeEvolutionAbilityTemplate('raking_peck','Raking Peck','Peck-line bleed branch. Ugly close-range wound pressure.', {type:'physical', btnType:'physical', energy:1, levels:[{desc:'100% dmg. Bleed 10%.'},{desc:'108% dmg. Bleed 12%.'},{desc:'116% dmg. Bleed 14%.'},{desc:'124% dmg. Bleed 16%.'}]}));
+Object.assign(ABILITY_TEMPLATES.tearing_bite||{}, makeEvolutionAbilityTemplate('tearing_bite','Tearing Bite','Peck-line bleed evolution. Better against bleeding prey.', {type:'physical', btnType:'physical', energy:1, levels:[{desc:'112% dmg. Bleed 15%. Bonus vs bleeding.'},{desc:'120% dmg. Bleed 17%. Bonus vs bleeding.'},{desc:'128% dmg. Bleed 19%. Bonus vs bleeding.'},{desc:'136% dmg. Bleed 21%. Bonus vs bleeding.'}]}));
+Object.assign(ABILITY_TEMPLATES.savage_maul||{}, makeEvolutionAbilityTemplate('savage_maul','Savage Maul','Peck-line finisher. Brutal payoff against wounded prey.', {type:'physical', btnType:'physical', energy:1, levels:[{desc:'124% dmg. Bleed 20%. Stronger vs wounded.'},{desc:'132% dmg. Bleed 22%. Stronger vs wounded.'},{desc:'140% dmg. Bleed 24%. Stronger vs wounded.'},{desc:'148% dmg. Bleed 26%. Stronger vs wounded.'}]}));
+Object.assign(ABILITY_TEMPLATES.numbing_peck||{}, makeEvolutionAbilityTemplate('numbing_peck','Numbing Peck','Peck-line weaken branch. Peck to soften enemy offense.', {type:'utility', btnType:'utility', energy:1, levels:[{desc:'Weaken 10% for 2 turns.'},{desc:'Weaken 12% for 2 turns.'},{desc:'Weaken 14% for 2 turns.'},{desc:'Weaken 16% for 2 turns.'}]}));
+Object.assign(ABILITY_TEMPLATES.crippling_bite||{}, makeEvolutionAbilityTemplate('crippling_bite','Crippling Bite','Peck-line weaken evolution. Heavier anti-offense pressure.', {type:'utility', btnType:'utility', energy:1, levels:[{desc:'Weaken 15% for 2 turns.'},{desc:'Weaken 17% for 2 turns.'},{desc:'Weaken 19% for 2 turns.'},{desc:'Weaken 21% for 2 turns.'}]}));
+Object.assign(ABILITY_TEMPLATES.submission_maul||{}, makeEvolutionAbilityTemplate('submission_maul','Submission Maul','Peck-line bully finisher. Strong anti-offense payoff.', {type:'physical', btnType:'physical', energy:1, levels:[{desc:'126% dmg. Weaken 20%.'},{desc:'134% dmg. Weaken 22%.'},{desc:'142% dmg. Weaken 24%.'},{desc:'150% dmg. Weaken 26%.'}]}));
+Object.assign(ABILITY_TEMPLATES.needle_peck||{}, makeEvolutionAbilityTemplate('needle_peck','Needle Peck','Peck-line pierce branch. Sharp anti-armor harassment.', {type:'physical', btnType:'physical', energy:1, levels:[{desc:'102% dmg. Pierce 10% DEF.'},{desc:'110% dmg. Pierce 14% DEF.'},{desc:'118% dmg. Pierce 18% DEF.'},{desc:'126% dmg. Pierce 20% DEF.'}]}));
+Object.assign(ABILITY_TEMPLATES.bodkin_bite||{}, makeEvolutionAbilityTemplate('bodkin_bite','Bodkin Bite','Peck-line pierce evolution. Better against defense.', {type:'physical', btnType:'physical', energy:1, levels:[{desc:'114% dmg. Pierce 20% DEF.'},{desc:'122% dmg. Pierce 24% DEF.'},{desc:'130% dmg. Pierce 28% DEF.'},{desc:'138% dmg. Pierce 30% DEF.'}]}));
+Object.assign(ABILITY_TEMPLATES.armor_maul||{}, makeEvolutionAbilityTemplate('armor_maul','Armor Maul','Peck-line anti-armor finisher. Punishes guard.', {type:'physical', btnType:'physical', energy:1, levels:[{desc:'126% dmg. Pierce 30% DEF. Bonus vs guard.'},{desc:'134% dmg. Pierce 32% DEF. Bonus vs guard.'},{desc:'142% dmg. Pierce 34% DEF. Bonus vs guard.'},{desc:'150% dmg. Pierce 36% DEF. Bonus vs guard.'}]}));
+Object.assign(ABILITY_TEMPLATES.honk_terror||{}, makeEvolutionAbilityTemplate('honk_terror','Honk Terror','Honk-line neutral pressure shout kept for legacy compatibility.', {type:'physical', btnType:'physical', energy:2, levels:[{desc:'120% dmg, 24% miss.'},{desc:'130% dmg, 22% miss.'},{desc:'140% dmg, 20% miss.'},{desc:'150% dmg, 18% miss.'}]}));
+Object.assign(ABILITY_TEMPLATES.dread_honk||{}, makeEvolutionAbilityTemplate('dread_honk','Dread Honk','Honk-line fear branch. Signature goose terror.', {type:'utility', btnType:'utility', energy:2, levels:[{desc:'Fear 20%.'},{desc:'Fear 22%.'},{desc:'Fear 25%.'},{desc:'Fear 28%.'}]}));
+Object.assign(ABILITY_TEMPLATES.terror_blast||{}, makeEvolutionAbilityTemplate('terror_blast','Terror Blast','Honk-line fear evolution. Feared enemies lose accuracy.', {type:'physical', btnType:'physical', energy:2, levels:[{desc:'120% dmg. Fear 25%. Feared enemies lose ACC.'},{desc:'128% dmg. Fear 27%. Feared enemies lose ACC.'},{desc:'136% dmg. Fear 30%. Feared enemies lose ACC.'},{desc:'144% dmg. Fear 32%. Feared enemies lose ACC.'}]}));
+Object.assign(ABILITY_TEMPLATES.panic_terror||{}, makeEvolutionAbilityTemplate('panic_terror','Panic Terror','Honk-line fear finisher. Strong payoff vs feared foes.', {type:'utility', btnType:'utility', energy:2, levels:[{desc:'Fear 30%. Bonus vs feared.'},{desc:'Fear 32%. Bonus vs feared.'},{desc:'Fear 34%. Bonus vs feared.'},{desc:'Fear 36%. Bonus vs feared.'}]}));
+Object.assign(ABILITY_TEMPLATES.shock_honk||{}, makeEvolutionAbilityTemplate('shock_honk','Shock Honk','Honk-line paralysis branch. Disrupt enemy actions.', {type:'physical', btnType:'physical', energy:2, levels:[{desc:'115% dmg. Paralysis 15%.'},{desc:'123% dmg. Paralysis 17%.'},{desc:'131% dmg. Paralysis 20%.'},{desc:'139% dmg. Paralysis 22%.'}]}));
+Object.assign(ABILITY_TEMPLATES.stunning_blast||{}, makeEvolutionAbilityTemplate('stunning_blast','Stunning Blast','Honk-line paralysis evolution. Heavier lockdown pressure.', {type:'spell', btnType:'spell', energy:2, levels:[{desc:'Paralysis 20%.'},{desc:'Paralysis 22%.'},{desc:'Paralysis 24%.'},{desc:'Paralysis 26%.'}]}));
+Object.assign(ABILITY_TEMPLATES.lockdown_terror||{}, makeEvolutionAbilityTemplate('lockdown_terror','Lockdown Terror','Honk-line paralysis finisher. Strong control payoff.', {type:'spell', btnType:'spell', energy:2, levels:[{desc:'Paralysis 25%. Stronger control payoff.'},{desc:'Paralysis 27%. Stronger control payoff.'},{desc:'Paralysis 29%. Stronger control payoff.'},{desc:'Paralysis 31%. Stronger control payoff.'}]}));
+Object.assign(ABILITY_TEMPLATES.crushing_honk||{}, makeEvolutionAbilityTemplate('crushing_honk','Crushing Honk','Honk-line weaken branch. Oppressive stat pressure.', {type:'physical', btnType:'physical', energy:2, levels:[{desc:'115% dmg. Weaken 15%.'},{desc:'123% dmg. Weaken 17%.'},{desc:'131% dmg. Weaken 20%.'},{desc:'139% dmg. Weaken 22%.'}]}));
+Object.assign(ABILITY_TEMPLATES.oppression_blast||{}, makeEvolutionAbilityTemplate('oppression_blast','Oppression Blast','Honk-line weaken evolution. Suppresses enemy output.', {type:'utility', btnType:'utility', energy:2, levels:[{desc:'Weaken 20%.'},{desc:'Weaken 22%.'},{desc:'Weaken 24%.'},{desc:'Weaken 26%.'}]}));
+Object.assign(ABILITY_TEMPLATES.tyrant_terror||{}, makeEvolutionAbilityTemplate('tyrant_terror','Tyrant Terror','Honk-line oppressive finisher. Better vs weakened foes.', {type:'utility', btnType:'utility', energy:2, levels:[{desc:'Weaken 25%. Bonus vs weakened.'},{desc:'Weaken 27%. Bonus vs weakened.'},{desc:'Weaken 29%. Bonus vs weakened.'},{desc:'Weaken 31%. Bonus vs weakened.'}]}));
+Object.assign(ABILITY_TEMPLATES.iron_guard||{}, makeEvolutionAbilityTemplate('iron_guard','Iron Guard','Guard-line block branch. Escalating mitigation.', {type:'utility', btnType:'utility', energy:1, levels:[{desc:'Strong block stance.'},{desc:'Stronger block stance.'},{desc:'Heavier block stance.'},{desc:'Elite block stance.'}]}));
+Object.assign(ABILITY_TEMPLATES.bulwark_brace||{}, makeEvolutionAbilityTemplate('bulwark_brace','Bulwark Brace','Guard-line block evolution. Harder to move.', {type:'utility', btnType:'utility', energy:1, levels:[{desc:'Brace with durable mitigation.'},{desc:'Brace with stronger mitigation.'},{desc:'Brace with powerful mitigation.'},{desc:'Brace with fortress mitigation.'}]}));
+Object.assign(ABILITY_TEMPLATES.fortress_stance||{}, makeEvolutionAbilityTemplate('fortress_stance','Fortress Stance','Guard-line pure tank finisher.', {type:'utility', btnType:'utility', energy:1, levels:[{desc:'Maximum mitigation posture.'},{desc:'Maximum mitigation posture.'},{desc:'Maximum mitigation posture.'},{desc:'Maximum mitigation posture.'}]}));
+Object.assign(ABILITY_TEMPLATES.spite_guard||{}, makeEvolutionAbilityTemplate('spite_guard','Spite Guard','Guard-line retaliation branch. Punish attackers.', {type:'utility', btnType:'utility', energy:1, levels:[{desc:'Retaliation stance.'},{desc:'Stronger retaliation stance.'},{desc:'Heavy retaliation stance.'},{desc:'Brutal retaliation stance.'}]}));
+Object.assign(ABILITY_TEMPLATES.punish_brace||{}, makeEvolutionAbilityTemplate('punish_brace','Punish Brace','Guard-line retaliation evolution. More punishment.', {type:'utility', btnType:'utility', energy:1, levels:[{desc:'Brace and punish attackers.'},{desc:'Brace and punish attackers harder.'},{desc:'Brace and punish attackers heavily.'},{desc:'Brace and punish attackers brutally.'}]}));
+Object.assign(ABILITY_TEMPLATES.retribution_fortress||{}, makeEvolutionAbilityTemplate('retribution_fortress','Retribution Fortress','Guard-line retaliation finisher.', {type:'physical', btnType:'physical', energy:1, levels:[{desc:'Retaliatory fortress strike.'},{desc:'Retaliatory fortress strike.'},{desc:'Retaliatory fortress strike.'},{desc:'Retaliatory fortress strike.'}]}));
+Object.assign(ABILITY_TEMPLATES.steady_guard||{}, makeEvolutionAbilityTemplate('steady_guard','Steady Guard','Guard-line recover branch. Sustain while holding ground.', {type:'utility', btnType:'utility', energy:1, levels:[{desc:'Recover while guarding.'},{desc:'Recover more while guarding.'},{desc:'Recover strongly while guarding.'},{desc:'Recover heavily while guarding.'}]}));
+Object.assign(ABILITY_TEMPLATES.restoring_brace||{}, makeEvolutionAbilityTemplate('restoring_brace','Restoring Brace','Guard-line recovery evolution. Better sustain.', {type:'utility', btnType:'utility', energy:1, levels:[{desc:'Brace and restore HP.'},{desc:'Brace and restore more HP.'},{desc:'Brace and restore strong HP.'},{desc:'Brace and restore major HP.'}]}));
+Object.assign(ABILITY_TEMPLATES.enduring_fortress||{}, makeEvolutionAbilityTemplate('enduring_fortress','Enduring Fortress','Guard-line sustain finisher. Endure and outlast.', {type:'utility', btnType:'utility', energy:1, levels:[{desc:'Major sustain fortress.'},{desc:'Major sustain fortress.'},{desc:'Major sustain fortress.'},{desc:'Major sustain fortress.'}]}));
+Object.assign(ABILITY_TEMPLATES.heavy_talon||{}, makeEvolutionAbilityTemplate('heavy_talon','Heavy Talon','Heavy-line trample branch. Raw force.', {type:'physical', btnType:'physical', energy:2, levels:[{desc:'150% dmg, 22% miss.'},{desc:'160% dmg, 20% miss.'},{desc:'170% dmg, 18% miss.'},{desc:'180% dmg, 16% miss.'}]}));
+Object.assign(ABILITY_TEMPLATES.trample_slam||{}, makeEvolutionAbilityTemplate('trample_slam','Trample Slam','Heavy-line trample evolution. Bigger body-pressure.', {type:'physical', btnType:'physical', energy:2, levels:[{desc:'165% dmg, 20% miss.'},{desc:'175% dmg, 18% miss.'},{desc:'185% dmg, 16% miss.'},{desc:'195% dmg, 14% miss.'}]}));
+Object.assign(ABILITY_TEMPLATES.crushing_stampede||{}, makeEvolutionAbilityTemplate('crushing_stampede','Crushing Stampede','Heavy-line raw-force finisher.', {type:'physical', btnType:'physical', energy:2, levels:[{desc:'180% dmg, 18% miss.'},{desc:'190% dmg, 16% miss.'},{desc:'200% dmg, 14% miss.'},{desc:'210% dmg, 12% miss.'}]}));
+Object.assign(ABILITY_TEMPLATES.wing_buffet||{}, makeEvolutionAbilityTemplate('wing_buffet','Wing Buffet','Heavy-line buffet branch. Shove and disrupt.', {type:'physical', btnType:'physical', energy:2, levels:[{desc:'145% dmg, 20% miss. Disrupt enemy footing.'},{desc:'155% dmg, 18% miss. Disrupt enemy footing.'},{desc:'165% dmg, 16% miss. Disrupt enemy footing.'},{desc:'175% dmg, 14% miss. Disrupt enemy footing.'}]}));
+Object.assign(ABILITY_TEMPLATES.bone_buffet||{}, makeEvolutionAbilityTemplate('bone_buffet','Bone Buffet','Heavy-line buffet evolution. Harsher body pressure.', {type:'physical', btnType:'physical', energy:2, levels:[{desc:'160% dmg, 20% miss.'},{desc:'170% dmg, 18% miss.'},{desc:'180% dmg, 16% miss.'},{desc:'190% dmg, 14% miss.'}]}));
+Object.assign(ABILITY_TEMPLATES.gale_crush||{}, makeEvolutionAbilityTemplate('gale_crush','Gale Crush','Heavy-line buffet finisher. Violent grounded shove.', {type:'physical', btnType:'physical', energy:2, levels:[{desc:'175% dmg, 18% miss.'},{desc:'185% dmg, 16% miss.'},{desc:'195% dmg, 14% miss.'},{desc:'205% dmg, 12% miss.'}]}));
+Object.assign(ABILITY_TEMPLATES.rending_talon||{}, makeEvolutionAbilityTemplate('rending_talon','Rending Talon','Heavy-line execute branch. Better against low HP.', {type:'physical', btnType:'physical', energy:2, levels:[{desc:'150% dmg. Bonus vs low HP.'},{desc:'160% dmg. Bonus vs low HP.'},{desc:'170% dmg. Bonus vs low HP.'},{desc:'180% dmg. Bonus vs low HP.'}]}));
+Object.assign(ABILITY_TEMPLATES.finisher_slam||{}, makeEvolutionAbilityTemplate('finisher_slam','Finisher Slam','Heavy-line execute evolution. Higher finishing payoff.', {type:'physical', btnType:'physical', energy:2, levels:[{desc:'165% dmg. Bigger bonus vs low HP.'},{desc:'175% dmg. Bigger bonus vs low HP.'},{desc:'185% dmg. Bigger bonus vs low HP.'},{desc:'195% dmg. Bigger bonus vs low HP.'}]}));
+Object.assign(ABILITY_TEMPLATES.execution_crush||{}, makeEvolutionAbilityTemplate('execution_crush','Execution Crush','Heavy-line execute finisher. Brutal endgame hit.', {type:'physical', btnType:'physical', energy:2, levels:[{desc:'180% dmg. Strong execute threshold.'},{desc:'190% dmg. Strong execute threshold.'},{desc:'200% dmg. Strong execute threshold.'},{desc:'210% dmg. Strong execute threshold.'}]}));
 registerAbilityAlias('iceGuard','crowDefend','Ice Guard');
 registerAbilityAlias('bodySlam','beakSlam','Body Slam');
 registerAbilityAlias('rallyCall','victoryChant','Rally Call',{type:'utility',btnType:'utility'});

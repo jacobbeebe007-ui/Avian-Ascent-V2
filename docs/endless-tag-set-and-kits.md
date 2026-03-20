@@ -60,7 +60,7 @@ Design implication:
 - Magpie: Peck, Steal Shine, Feather Flick, Dart
 - Seagull: Peck, Dive Snatch, Wind Slash, Mob Swarm
 - Flamingo: Peck, Mud Lash, Preen, Grace Step
-- Goose: Peck, Honk Terror, Guard, Heavy Talon
+- Goose: Peck, Territorial Honk, Guard, Talon Slam
 - Emperor Penguin: Peck, Ice Guard, Body Slam, Rally Call
 - Ostrich: Kick, Trample, Guard, Threat Display
 - Emu: Kick, Savage Kick, Threat Display, Dust Kick
