@@ -1295,11 +1295,6 @@ img{image-rendering:pixelated;image-rendering:crisp-edges;}
 .ascent-panel-portrait .bird-fallback-svg{width:94px;height:94px}
 #player-avatar .bird-fallback-svg,#enemy-avatar .bird-fallback-svg{width:98px;height:98px}
 
-#shop-ability-tooltip{
-  position:fixed; z-index:99999; max-width:300px; padding:10px 12px; border-radius:10px;
-  background:rgba(12,16,24,.96); border:1px solid rgba(201,168,76,.45); color:var(--text,#d8dde8);
-  font-size:.8rem; line-height:1.45; box-shadow:0 10px 24px rgba(0,0,0,.45); pointer-events:none; display:none;
-}
 .shop-item{
   transition:transform .18s ease, box-shadow .18s ease, filter .18s ease, opacity .18s ease, border-color .18s ease !important;
 }

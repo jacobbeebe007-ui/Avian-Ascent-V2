@@ -169,66 +169,6 @@
     };
   }
 
-  // 3x3 Stork Shop
-  globalThis.generateShopItems = function(){
-    _shopItems = [];
-    const used = new Set();
-
-    // Top row: 3 abilities
-    for(let i=0;i<3;i++){
-      const offer = typeof makeAbilityOffer === 'function' ? makeAbilityOffer(true) : null;
-      if(offer) _shopItems.push(offer);
-    }
-
-    // Middle row: 3 grey/green upgrades
-    for(let i=0;i<3;i++){
-      const pick = (typeof pickUniqueRewardByTier === 'function' ? pickUniqueRewardByTier('grey', used) : null)
-        || (typeof pickUniqueRewardByTier === 'function' ? pickUniqueRewardByTier('green', used) : null)
-        || (typeof pickUniqueRewardByTier === 'function' ? pickUniqueRewardByTier('blue', used) : null);
-      if(pick && !pick._removed) _shopItems.push(pick);
-    }
-
-    // Bottom row: 3 blue/purple, small gold chance
-    for(let i=0;i<3;i++){
-      const tier = typeof rollShopTier === 'function' ? rollShopTier({blue:58,purple:34,gold:8}) : 'blue';
-      const pick = (typeof pickUniqueRewardByTier === 'function' ? pickUniqueRewardByTier(tier, used) : null)
-        || (typeof pickUniqueRewardByTier === 'function' ? pickUniqueRewardByTier('purple', used) : null)
-        || (typeof pickUniqueRewardByTier === 'function' ? pickUniqueRewardByTier('blue', used) : null);
-      if(pick && !pick._removed) _shopItems.push(pick);
-    }
-
-    // Remove items banned by audit and rerender
-    _shopItems = _shopItems.filter(item => item && !item._removed && !(isEnergyItem(item) && G._runShopFlags && G._runShopFlags[item.id]));
-    if(typeof renderShopItems === 'function') renderShopItems();
-  };
-
-  // Add row labels for 3x3 layout
-  const _oldRenderShopItems = globalThis.renderShopItems;
-  if(typeof _oldRenderShopItems === 'function'){
-    globalThis.renderShopItems = function(){
-      const out = _oldRenderShopItems.apply(this, arguments);
-      try{
-        const grid = document.getElementById('shop-items-grid');
-        if(!grid) return out;
-        const cards = [...grid.querySelectorAll('.shop-item')];
-        grid.querySelectorAll('.shop-row-label').forEach(x=>x.remove());
-        const labels = [
-          {idx:0, text:'ABILITIES'},
-          {idx:3, text:'UPGRADES'},
-          {idx:6, text:'RARE'}
-        ];
-        labels.reverse().forEach(l=>{
-          if(cards[l.idx]){
-            const div = document.createElement('div');
-            div.className = 'shop-row-label';
-            div.textContent = l.text;
-            grid.insertBefore(div, cards[l.idx]);
-          }
-        });
-      }catch(err){ console.error(err); }
-      return out;
-    };
-  }
 })();
 
 
@@ -275,5 +215,4 @@
     };
   }
 })();
-
 
