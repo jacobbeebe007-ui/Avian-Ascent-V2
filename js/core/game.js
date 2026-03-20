@@ -886,8 +886,7 @@ const BIRDS = {
     stats:{hp:40,maxHp:40,atk:7,def:4,spd:9,dodge:34,acc:88,mdef:8,matk:9,critChance:10},
     color:'#2a2a2a',
     startAbilities:['swoop','steal_shine','feather_flick','dart'],
-    passive:{id:'shinyCollector',name:'Shiny Collector',desc:'+3 shiny after each victory. Once each turn, exploiting a buffed or compromised enemy restores 1 EN.',
-      onBattleStart(p){p._magpieOpeningReady=true;}},
+    passive:{id:'shinyCollector',name:'Shiny Collector',desc:'+3 shiny after each victory. Once each turn, exploiting a buffed or compromised enemy restores 1 EN.'},
   },
 
 
@@ -3867,6 +3866,8 @@ const FAMILY_EVOLUTION_BIRD_DATA = Object.freeze({
     families:MAGPIE_SKILL_FAMILIES,
     abilityLookup:buildFamilySkillAbilityLookup(MAGPIE_SKILL_SLOT_LAYOUT, MAGPIE_SKILL_FAMILIES),
     legacyBaseAbilityIds:Object.freeze({
+      // These legacy ids are retained only to migrate old Magpie save slots into the
+      // new family-slot layout. They should not be granted or surfaced as live Magpie skills.
       swoop:{legacy:['featherFlick', 'swoopCut', 'swoop'], current:'swoop'},
       steal:{legacy:['glintJab', 'stealTempo', 'stealShine'], current:'steal_shine'},
       flick:{legacy:['mockingSong', 'featherFlick'], current:'feather_flick'},
@@ -5748,7 +5749,7 @@ const ABILITY_DISPLAY_TAGS = {
   roost:['HEAL'], preen:['UTILITY','HEAL'], crowDefend:['GUARD'], guard:['GUARD'], evade:['UTILITY'],
   intimidate:['CONTROL'], threatDisplay:['CONTROL'], dreadCall:['UTILITY','CONTROL'],
   victoryChant:['UTILITY'], battleChirp:['UTILITY'], battleFocus:['UTILITY'],
-  diveSnatch:['UTILITY','SIGNATURE'], stealShine:['UTILITY','SIGNATURE'], featherFlick:['UTILITY'], graceStep:['UTILITY'],
+  diveSnatch:['UTILITY','SIGNATURE'], steal_shine:['UTILITY','SIGNATURE'], feather_flick:['UTILITY'], featherFlick:['UTILITY'], graceStep:['UTILITY'],
   savageKick:['HEAVY','SIGNATURE'], raptorKickFrenzy:['HEAVY','MULTI','SIGNATURE'], honkTerror:['CONTROL','SIGNATURE'],
   rallyCall:['UTILITY'], focusSight:['UTILITY'], battleRhythm:['UTILITY'],
 };
@@ -8662,10 +8663,9 @@ registerAbilityAlias('talonStrike','beakSlam','Talon Strike');
 registerAbilityAlias('windSlash','shriekwave','Wind Slash');
 registerAbilityAlias('battleChirp','warcry','Battle Chirp');
 registerAbilityAlias('battleFocus','chargeUp','Battle Focus');
-registerAbilityAlias('stealShine','fishSnatcher','Steal Shine');
 registerAbilityAlias('featherFlick','evade','Feather Flick');
-registerAbilityAlias('steal_shine','stealShine','Steal Shine',{type:'utility',btnType:'utility',desc:'Magpie base theft skill. Swipe a shiny opening before branching.'});
-registerAbilityAlias('feather_flick','featherFlick','Feather Flick',{type:'utility',btnType:'utility',desc:'Magpie base harassment skill. Toss a feather to open space before branching.'});
+registerAbilityAlias('steal_shine','fishSnatcher','Steal Shine',{type:'utility',btnType:'utility',desc:'Magpie base theft skill. Swipe a shiny opening before branching.'});
+registerAbilityAlias('feather_flick','evade','Feather Flick',{type:'utility',btnType:'utility',desc:'Magpie base harassment skill. Toss a feather to open space before branching.'});
 registerAbilityAlias('graceStep','evade','Grace Step');
 registerAbilityAlias('guard','crowDefend','Guard');
 registerAbilityAlias('honkTerror','gooseHonk','Honk Terror');
@@ -8824,7 +8824,6 @@ registerAbilityAlias('skyStrike','deathDive','Sky Strike');
 registerAbilityAlias('dreadCall','dirge','Dread Call',{type:'utility',btnType:'utility',desc:'Dire call that pressures enemy focus and tempo.'});
 // Basic-move family aliases to keep starter identities distinct.
 registerAbilityAlias('swoopCut','dart','Swoop Cut',{isBasic:true,desc:'Striker basic. Quick cut with clean tempo pressure.'});
-registerAbilityAlias('glintJab','dart','Glint Jab',{isBasic:true,desc:'Trickster basic. Fast jab with slight setup pressure.'});
 registerAbilityAlias('mockingPeck','dart','Mocking Peck',{isBasic:true,desc:'Trickster basic. Reliable peck that taunts tempo.'});
 registerAbilityAlias('fruitSpit','mudshot','Fruit Spit',{isBasic:true,desc:'Singer/trickster basic. Light magic shot with soft control.',energyByLevel:[1,1,1,1],energyCost:1});
 registerAbilityAlias('bracePeck','gooseHonk','Brace Peck',{isBasic:true,desc:'Tank basic. Heavy peck that steadies the line.'});
@@ -8837,8 +8836,6 @@ registerAbilityAlias('sonicDash','swoop','Sonic Dash',{isBasic:true});
 registerAbilityAlias('blinkFlutter','evade','Blink Flutter',{type:'utility',btnType:'utility'});
 registerAbilityAlias('comboStrike','talonRake','Combo Strike',{type:'physical',btnType:'physical'});
 registerAbilityAlias('skyfallStrike','deathDive','Skyfall Strike',{type:'physical',btnType:'physical'});
-registerAbilityAlias('mockingSong','dirge','Mocking Song',{type:'utility',btnType:'utility'});
-registerAbilityAlias('stealTempo','stealShine','Steal Tempo',{type:'utility',btnType:'utility'});
 registerAbilityAlias('raking_swoop','swoop','Raking Swoop',{type:'physical',btnType:'physical'});
 registerAbilityAlias('tearing_dive','diveBomb','Tearing Dive',{type:'physical',btnType:'physical'});
 registerAbilityAlias('sneak_swoop','swoop','Sneak Swoop',{type:'physical',btnType:'physical'});
@@ -8955,7 +8952,7 @@ registerAbilityAlias('ominous_call','fearChorus','Ominous Call',{type:'utility',
 registerAbilityAlias('panic_cry','dirgeOfDread','Panic Cry',{type:'utility',btnType:'utility'});
 registerAbilityAlias('doom_chorus','nightfallSong','Doom Chorus',{type:'utility',btnType:'utility'});
 registerAbilityAlias('distracting_call','blindScreech','Distracting Call',{type:'utility',btnType:'utility'});
-registerAbilityAlias('mocking_cry','mockingSong','Mocking Cry',{type:'utility',btnType:'utility'});
+registerAbilityAlias('mocking_cry','dirge','Mocking Cry',{type:'utility',btnType:'utility'});
 registerAbilityAlias('ruin_chorus','eclipse_shroud','Ruin Chorus',{type:'utility',btnType:'utility'});
 registerAbilityAlias('hunting_call','predatorMark','Hunting Call',{type:'utility',btnType:'utility'});
 registerAbilityAlias('pack_cry','predatorBrand','Pack Cry',{type:'utility',btnType:'utility'});
