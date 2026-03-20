@@ -140,6 +140,20 @@ const AILMENTS = {
 // ailments = list of ailment ids the ability can apply (for display)
 const ABILITY_TEMPLATES = {
   // ---- SPARROW ----
+  multiPeck:{
+    id:'multiPeck', name:'Multi Peck', isBasic:true, type:'physical', btnType:'physical',
+    desc:'Neutral sparrow flurry. Repeated pecks before you commit to a branch.',
+    baseMissChance:9, baseDmgMult:0.42, pierceDef:0,
+    energyByLevel:[1,1,1,1],
+    energyCost:1,
+    levels:[
+      {lv:1, desc:'3 hits, 9% miss each. 42% dmg per hit'},
+      {lv:2, desc:'3 hits, 8% miss each. 46% dmg per hit'},
+      {lv:3, desc:'4 hits, 8% miss each. 46% dmg per hit'},
+      {lv:4, desc:'4 hits, 7% miss each. 50% dmg per hit'},
+    ]
+  },
+
   rapidPeck:{
     id:'rapidPeck', name:'Rapid Peck', isBasic:true, type:'physical', btnType:'physical',
     desc:'Fast striker flurry. 3 reliable pecks with tempo pressure.',
@@ -165,6 +179,19 @@ const ABILITY_TEMPLATES = {
       {lv:2, desc:'115% dmg, 10% miss — Weaken 15%', newAilment:'weaken', ailChance:15},
       {lv:3, desc:'130% dmg, 8% miss — Weaken 20%', ailChance:20},
       {lv:4, desc:'145% dmg, 6% miss — Weaken 25%', ailChance:25},
+    ]
+  },
+
+  trackPrey:{
+    id:'trackPrey', name:'Track Prey', type:'utility', btnType:'utility',
+    desc:'Neutral sparrow setup. Study the target before specializing the hunt.', ailments:[],
+    energyByLevel:[1,1,1,1],
+    energyCost:1,
+    levels:[
+      {lv:1, desc:'Study the target. Your next attack deals +12% damage'},
+      {lv:2, desc:'Study the target. Your next attack deals +15% damage'},
+      {lv:3, desc:'Study the target. Your next attack deals +18% damage'},
+      {lv:4, desc:'Study the target. Your next attack deals +21% damage'},
     ]
   },
 
@@ -677,7 +704,7 @@ const BIRDS = {
     size:'tiny', class:'striker',
     stats:{hp:28,maxHp:28,atk:5,def:2,spd:9,dodge:35,acc:85,mdef:6,matk:6,critChance:10},
     statBars:{HP:28/50,ATK:5/15,SPD:9/10,Dodge:.7,ACC:.85}, color:'#6a8ae8',
-    startAbilities:['rapidPeck','dart','windFeint','predatorMark'],
+    startAbilities:['multiPeck','dart','windFeint','trackPrey'],
     passive:{id:'windDancer',name:'Wind Dancer',desc:'Every dodge grants +1% permanent dodge (max +15%).',
       onDodge(p){if(!p._windDancerBonus)p._windDancerBonus=0;if(p._windDancerBonus<15){p._windDancerBonus++;p.stats.dodge=Math.min(p.stats.dodge+1,100);}}},
   },
@@ -702,7 +729,8 @@ const BIRDS = {
     size:'small', class:'singer',
     stats:{hp:38,maxHp:38,atk:6,def:3,spd:7,dodge:25,acc:80,mdef:8,matk:14},
     statBars:{HP:38/50,ATK:6/15,SPD:7/10,Dodge:.5,ACC:.8}, color:'#9a6ae8',
-    startAbilities:['blackPeck','stormChorus','battleChorus','thunderScreech'],
+    startAbilities:['dark_song','shadow_peck','gloom_wing','grim_sign'],
+    mainAttackId:'shadow_peck',
     passive:{id:'songResilient',name:'Song Resilient',desc:'Every successful spell cast, restore 2 HP.',
       onSpell(p){p.stats.hp=Math.min(p.stats.hp+2,p.stats.maxHp);}},
   },
@@ -768,14 +796,13 @@ const BIRDS = {
 
   // ── MEDIUM ──────────────────────────────────────────────────
   crow:{
-    name:'Crow', portraitKey:'crow', tagline:'Tactical. Precise. Unforgiving.',
+    name:'Crow', portraitKey:'crow', tagline:'Clever. Coordinated. Unsettling.',
     size:'medium', class:'trickster',
-    stats:{hp:35,maxHp:35,atk:6,def:4,spd:5,dodge:15,acc:90,mdef:10,matk:6},
-    statBars:{HP:35/50,ATK:6/15,SPD:5/10,Dodge:.3,ACC:.9}, color:'#c0c8d8',
-    startAbilities:['mockingPeck','stickLance','guard','battleFocus'],
-    passive:{id:'ironWill',name:'Iron Will',desc:'Each successful block = +1 DEF permanently (max +8). Immune to Weaken.',
-      immuneWeaken:true,
-      onBlock(p){if(!p._ironWillBonus)p._ironWillBonus=0;if(p._ironWillBonus<8){p._ironWillBonus++;p.stats.def++;}}},
+    stats:{hp:38,maxHp:38,atk:7,def:4,spd:6,dodge:16,acc:92,mdef:10,matk:7},
+    statBars:{HP:38/50,ATK:7/15,SPD:6/10,Dodge:.32,ACC:.92}, color:'#c0c8d8',
+    startAbilities:['peck','murder_murmuration','dread_call','battle_focus'],
+    passive:{id:'opportunistInstinct',name:'Opportunist Instinct',desc:'Once each turn, damaging a Feared, Weakened, or Exposed enemy restores 1 EN.',
+      onBattleStart(p){p._crowOpportunistReady=true;}},
   },
   kookaburra:{
     name:'Kookaburra', portraitKey:'kookaburra', tagline:'Patient hunter. Strikes when they least expect.',
@@ -981,7 +1008,8 @@ const BIRDS = {
     size:'xl', class:'tank',
     stats:{hp:55,maxHp:55,atk:9,def:7,spd:2,dodge:5,acc:70,mdef:12,matk:4},
     statBars:{HP:55/50,ATK:9/15,SPD:2/10,Dodge:.1,ACC:.7}, color:'#e8c96a',
-    startAbilities:['gooseHonk','headWhip','guard','fearHonk'],
+    startAbilities:['peck','territorial_honk','guard','talon_slam'],
+    mainAttackId:'peck',
     passive:{id:'bruisedHide',name:'Bruised Hide',desc:'Every 20 HP taken = +1 ATK until battle ends. Takes 20% reduced physical damage.',
       physicalResist:0.20,
       onDamage(p,dmg){if(!p._bruiseAcc)p._bruiseAcc=0;p._bruiseAcc+=dmg;while(p._bruiseAcc>=20){p._bruiseAcc-=20;G.player.stats.atk++;spawnFloat('player','💢+ATK','fn-status');}}},
@@ -2537,6 +2565,129 @@ Object.assign(ABILITY_TEMPLATES, ABILITY_TEMPLATES_MAGIC);
 // Merge learnable templates into main lookup
 Object.assign(ABILITY_TEMPLATES, ABILITY_TEMPLATES_LEARNABLE);
 
+function makeAbilityLevelData(entries=[]){
+  const items = Array.isArray(entries) ? entries.slice(0,4) : [];
+  if(!items.length) items.push({desc:'No effect.'});
+  while(items.length<4){
+    items.push({...items[items.length-1]});
+  }
+  return items.slice(0,4).map((entry, idx)=>({lv:idx+1, ...entry, lv:idx+1}));
+}
+
+function makeEvolutionAbilityTemplate(id, name, desc, options={}){
+  const energy = Number.isFinite(options.energy) ? options.energy : 1;
+  const type = options.type || 'physical';
+  const btnType = options.btnType || type;
+  return {
+    id,
+    name,
+    desc,
+    type,
+    btnType,
+    energyCost: energy,
+    energyByLevel: [energy, energy, energy, energy],
+    cooldownByLevel: Array.isArray(options.cooldownByLevel) ? options.cooldownByLevel.slice(0,4) : [0,0,0,0],
+    fixedMainAttackCost: !!options.fixedMainAttackCost,
+    role: Array.isArray(options.role) ? options.role.slice() : [],
+    levels: makeAbilityLevelData(options.levels || [{desc}]),
+  };
+}
+
+Object.assign(ABILITY_TEMPLATES.multiPeck||{}, {
+  desc:'Rapid-line base skill. Neutral multi-hit pecks before branching.',
+  energyCost:1,
+  energyByLevel:[1,1,1,1],
+  fixedMainAttackCost:true,
+  role:['multiHit'],
+  levels:makeAbilityLevelData([
+    {desc:'3 hits at 42% dmg each.'},
+    {desc:'3 hits at 46% dmg each.'},
+    {desc:'4 hits at 46% dmg each.'},
+    {desc:'4 hits at 50% dmg each.'},
+  ]),
+});
+Object.assign(ABILITY_TEMPLATES.rapidPeck||{}, {
+  desc:'Rapid-line burst. Three precise pecks with piercing tempo.',
+  energyCost:2,
+  energyByLevel:[2,2,2,2],
+  fixedMainAttackCost:true,
+  role:['multiHit'],
+  levels:makeAbilityLevelData([
+    {desc:'3 hits at 45% dmg each. Pierce 10% DEF.'},
+    {desc:'3 hits at 52% dmg each. Pierce 12% DEF.'},
+    {desc:'3 hits at 58% dmg each. Pierce 14% DEF.'},
+    {desc:'4 hits at 58% dmg each. Pierce 16% DEF.'},
+  ]),
+});
+Object.assign(ABILITY_TEMPLATES.trackPrey||{}, {
+  desc:'Mark-line base skill. Neutral prey-tracking setup before branching.',
+  energyCost:1,
+  energyByLevel:[1,1,1,1],
+  levels:makeAbilityLevelData([
+    {desc:'Study the target. Your next attack deals +12% damage.'},
+    {desc:'Study the target. Your next attack deals +15% damage.'},
+    {desc:'Study the target. Your next attack deals +18% damage.'},
+    {desc:'Study the target. Your next attack deals +21% damage.'},
+  ]),
+});
+Object.assign(ABILITY_TEMPLATES.dart||{}, {
+  desc:'Sparrow filler strike. Precise pressure that supports family evolution.',
+  energyCost:1,
+  energyByLevel:[1,1,1,1],
+  levels:makeAbilityLevelData([
+    {desc:'110% dmg, 10% miss.'},
+    {desc:'120% dmg, 8% miss.'},
+    {desc:'130% dmg, 6% miss.'},
+    {desc:'140% dmg, 5% miss.'},
+  ]),
+});
+
+const SPARROW_EVOLUTION_TEMPLATES = {
+  markPrey: makeEvolutionAbilityTemplate('markPrey','Mark Prey','Sparrow setup opener that prepares a focused follow-up.', {
+    type:'utility', btnType:'utility', energy:1,
+    levels:[
+      {desc:'Mark the enemy. Your next attack deals +18% damage.'},
+      {desc:'Mark the enemy. Your next attack deals +22% damage.'},
+      {desc:'Mark the enemy. Your next attack deals +26% damage.'},
+      {desc:'Mark the enemy. Your next attack deals +30% damage.'},
+    ],
+  }),
+  bodkinStrike: makeEvolutionAbilityTemplate('bodkinStrike','Bodkin Strike','Rapid-line pierce evolution. Heavy puncture flurry.', {type:'physical', btnType:'physical', energy:2, fixedMainAttackCost:true, role:['multiHit'], levels:[{desc:'3 hits at 52% dmg each. Pierce 18% DEF.'},{desc:'3 hits at 58% dmg each. Pierce 20% DEF.'},{desc:'4 hits at 58% dmg each. Pierce 22% DEF.'},{desc:'4 hits at 64% dmg each. Pierce 24% DEF.'}] }),
+  bodkinBarrage: makeEvolutionAbilityTemplate('bodkinBarrage','Bodkin Barrage','Rapid-line final pierce evolution. Relentless armor-punching barrage.', {type:'physical', btnType:'physical', energy:2, fixedMainAttackCost:true, role:['multiHit'], levels:[{desc:'4 hits at 60% dmg each. Pierce 24% DEF.'},{desc:'4 hits at 66% dmg each. Pierce 26% DEF.'},{desc:'5 hits at 66% dmg each. Pierce 28% DEF.'},{desc:'5 hits at 72% dmg each. Pierce 30% DEF.'}] }),
+  rapidFlap: makeEvolutionAbilityTemplate('rapidFlap','Rapid Flap','Rapid-line confuse branch. Disorienting wing-burst.', {type:'physical', btnType:'physical', energy:2, fixedMainAttackCost:true, role:['multiHit'], levels:[{desc:'3 hits at 42% dmg each. Confuse 15%.'},{desc:'3 hits at 48% dmg each. Confuse 18%.'},{desc:'4 hits at 48% dmg each. Confuse 20%.'},{desc:'4 hits at 54% dmg each. Confuse 24%.'}] }),
+  disruptiveRush: makeEvolutionAbilityTemplate('disruptiveRush','Disruptive Rush','Rapid-line confuse evolution. Shakes enemy tempo.', {type:'physical', btnType:'physical', energy:2, fixedMainAttackCost:true, role:['multiHit'], levels:[{desc:'3 hits at 50% dmg each. Confuse 22%.'},{desc:'3 hits at 56% dmg each. Confuse 25%.'},{desc:'4 hits at 56% dmg each. Confuse 28%.'},{desc:'4 hits at 62% dmg each. Confuse 32%.'}] }),
+  chaosTempest: makeEvolutionAbilityTemplate('chaosTempest','Chaos Tempest','Rapid-line final confuse evolution. Burst with heavy confusion pressure.', {type:'physical', btnType:'physical', energy:2, fixedMainAttackCost:true, role:['multiHit'], levels:[{desc:'4 hits at 58% dmg each. Confuse 30%.'},{desc:'4 hits at 64% dmg each. Confuse 34%.'},{desc:'5 hits at 64% dmg each. Confuse 36%.'},{desc:'5 hits at 70% dmg each. Confuse 40%.'}] }),
+  rapidTalon: makeEvolutionAbilityTemplate('rapidTalon','Rapid Talon','Rapid-line poison branch. Quick venom cuts.', {type:'physical', btnType:'physical', energy:2, fixedMainAttackCost:true, role:['multiHit'], levels:[{desc:'3 hits at 42% dmg each. Poison 15%.'},{desc:'3 hits at 48% dmg each. Poison 18%.'},{desc:'4 hits at 48% dmg each. Poison 22%.'},{desc:'4 hits at 54% dmg each. Poison 24%.'}] }),
+  venomFlurry: makeEvolutionAbilityTemplate('venomFlurry','Venom Flurry','Rapid-line poison evolution. Venom stacks in rapid bursts.', {type:'physical', btnType:'physical', energy:2, fixedMainAttackCost:true, role:['multiHit'], levels:[{desc:'3 hits at 50% dmg each. Poison 24%.'},{desc:'3 hits at 56% dmg each. Poison 28%.'},{desc:'4 hits at 56% dmg each. Poison 30%.'},{desc:'4 hits at 62% dmg each. Poison 34%.'}] }),
+  venomStorm: makeEvolutionAbilityTemplate('venomStorm','Venom Storm','Rapid-line final poison evolution. Saturates targets with toxins.', {type:'physical', btnType:'physical', energy:2, fixedMainAttackCost:true, role:['multiHit'], levels:[{desc:'4 hits at 56% dmg each. Poison 34%.'},{desc:'4 hits at 62% dmg each. Poison 38%.'},{desc:'5 hits at 62% dmg each. Poison 40%.'},{desc:'5 hits at 68% dmg each. Poison 45%.'}] }),
+  searingDart: makeEvolutionAbilityTemplate('searingDart','Searing Dart','Dart-line burn branch. A fast ember shot.', {type:'physical', btnType:'physical', energy:1, levels:[{desc:'105% dmg, 8% miss. Burn 30%.'},{desc:'115% dmg, 7% miss. Burn 35%.'},{desc:'125% dmg, 6% miss. Burn 40%.'},{desc:'135% dmg, 5% miss. Burn 45%.'}] }),
+  searingArrow: makeEvolutionAbilityTemplate('searingArrow','Searing Arrow','Dart-line burn evolution. Sharper burn pressure.', {type:'physical', btnType:'physical', energy:1, levels:[{desc:'118% dmg, 7% miss. Burn 40%.'},{desc:'128% dmg, 6% miss. Burn 45%.'},{desc:'138% dmg, 5% miss. Burn 50%.'},{desc:'148% dmg, 4% miss. Burn 55%.'}] }),
+  searingJavelin: makeEvolutionAbilityTemplate('searingJavelin','Searing Javelin','Dart-line final burn evolution. Precision burn finisher.', {type:'physical', btnType:'physical', energy:1, levels:[{desc:'132% dmg, 6% miss. Burn 50%.'},{desc:'142% dmg, 5% miss. Burn 55%.'},{desc:'152% dmg, 4% miss. Burn 60%.'},{desc:'162% dmg, 3% miss. Burn 65%.'}] }),
+  broadDart: makeEvolutionAbilityTemplate('broadDart','Broad Dart','Dart-line bleed branch. Wide cut for lingering damage.', {type:'physical', btnType:'physical', energy:1, levels:[{desc:'102% dmg, 9% miss. Bleed 30%.'},{desc:'112% dmg, 8% miss. Bleed 35%.'},{desc:'122% dmg, 7% miss. Bleed 40%.'},{desc:'132% dmg, 6% miss. Bleed 45%.'}] }),
+  broadArrow: makeEvolutionAbilityTemplate('broadArrow','Broad Arrow','Dart-line bleed evolution. Deeper slicing pressure.', {type:'physical', btnType:'physical', energy:1, levels:[{desc:'116% dmg, 8% miss. Bleed 40%.'},{desc:'126% dmg, 7% miss. Bleed 45%.'},{desc:'136% dmg, 6% miss. Bleed 50%.'},{desc:'146% dmg, 5% miss. Bleed 55%.'}] }),
+  broadJavelin: makeEvolutionAbilityTemplate('broadJavelin','Broad Javelin','Dart-line final bleed evolution. Precise bleeding finisher.', {type:'physical', btnType:'physical', energy:1, levels:[{desc:'130% dmg, 7% miss. Bleed 50%.'},{desc:'140% dmg, 6% miss. Bleed 55%.'},{desc:'150% dmg, 5% miss. Bleed 60%.'},{desc:'160% dmg, 4% miss. Bleed 65%.'}] }),
+  bodkinDart: makeEvolutionAbilityTemplate('bodkinDart','Bodkin Dart','Dart-line pierce branch. Needle-thin precision shot.', {type:'physical', btnType:'physical', energy:1, levels:[{desc:'106% dmg, 8% miss. Pierce 18% DEF.'},{desc:'116% dmg, 7% miss. Pierce 20% DEF.'},{desc:'126% dmg, 6% miss. Pierce 22% DEF.'},{desc:'136% dmg, 5% miss. Pierce 24% DEF.'}] }),
+  bodkinArrow: makeEvolutionAbilityTemplate('bodkinArrow','Bodkin Arrow','Dart-line pierce evolution. Deeper armor puncture.', {type:'physical', btnType:'physical', energy:1, levels:[{desc:'120% dmg, 7% miss. Pierce 24% DEF.'},{desc:'130% dmg, 6% miss. Pierce 26% DEF.'},{desc:'140% dmg, 5% miss. Pierce 28% DEF.'},{desc:'150% dmg, 4% miss. Pierce 30% DEF.'}] }),
+  bodkinJavelin: makeEvolutionAbilityTemplate('bodkinJavelin','Bodkin Javelin','Dart-line final pierce evolution. Armor-breaking precision finish.', {type:'physical', btnType:'physical', energy:1, levels:[{desc:'134% dmg, 6% miss. Pierce 30% DEF.'},{desc:'144% dmg, 5% miss. Pierce 32% DEF.'},{desc:'154% dmg, 4% miss. Pierce 34% DEF.'},{desc:'164% dmg, 3% miss. Pierce 36% DEF.'}] }),
+  windSlip: makeEvolutionAbilityTemplate('windSlip','Wind Slip','Wind-line dodge branch. Slip free of danger.', {type:'utility', btnType:'utility', energy:1, levels:[{desc:'Gain +25% dodge for 2 turns.'},{desc:'Gain +30% dodge for 2 turns.'},{desc:'Gain +35% dodge for 2 turns.'},{desc:'Gain +40% dodge for 3 turns.'}] }),
+  slipVeil: makeEvolutionAbilityTemplate('slipVeil','Slip Veil','Wind-line dodge evolution. Veil yourself in evasive currents.', {type:'utility', btnType:'utility', energy:1, levels:[{desc:'Gain +35% dodge for 2 turns and cleanse Weaken.'},{desc:'Gain +40% dodge for 2 turns and cleanse Weaken.'},{desc:'Gain +45% dodge for 2 turns and cleanse Weaken.'},{desc:'Gain +50% dodge for 3 turns and cleanse Weaken.'}] }),
+  phantomGale: makeEvolutionAbilityTemplate('phantomGale','Phantom Gale','Wind-line final dodge evolution. Become almost untouchable.', {type:'utility', btnType:'utility', energy:1, levels:[{desc:'Gain +45% dodge for 3 turns. Cleanse Weaken/Fear.'},{desc:'Gain +50% dodge for 3 turns. Cleanse Weaken/Fear.'},{desc:'Gain +55% dodge for 3 turns. Cleanse Weaken/Fear.'},{desc:'Gain +60% dodge for 3 turns. Cleanse Weaken/Fear.'}] }),
+  tailwindFeint: makeEvolutionAbilityTemplate('tailwindFeint','Tailwind Feint','Wind-line speed branch. Quickens your tempo.', {type:'utility', btnType:'utility', energy:1, levels:[{desc:'Gain +2 SPD for 2 turns.'},{desc:'Gain +3 SPD for 2 turns.'},{desc:'Gain +4 SPD for 2 turns.'},{desc:'Gain +5 SPD for 2 turns.'}] }),
+  tailwindGust: makeEvolutionAbilityTemplate('tailwindGust','Tailwind Gust','Wind-line speed evolution. Stronger haste current.', {type:'utility', btnType:'utility', energy:1, levels:[{desc:'Gain +4 SPD for 2 turns and +10% dodge.'},{desc:'Gain +5 SPD for 2 turns and +10% dodge.'},{desc:'Gain +6 SPD for 2 turns and +10% dodge.'},{desc:'Gain +7 SPD for 2 turns and +15% dodge.'}] }),
+  hyperCurrent: makeEvolutionAbilityTemplate('hyperCurrent','Hyper Current','Wind-line final speed evolution. Hypercharge your tempo.', {type:'utility', btnType:'utility', energy:1, levels:[{desc:'Gain +6 SPD for 3 turns and +15% dodge.'},{desc:'Gain +7 SPD for 3 turns and +15% dodge.'},{desc:'Gain +8 SPD for 3 turns and +20% dodge.'},{desc:'Gain +9 SPD for 3 turns and +20% dodge.'}] }),
+  featherDrift: makeEvolutionAbilityTemplate('featherDrift','Feather Drift','Wind-line disruption branch. Sand the enemy\'s aim.', {type:'utility', btnType:'utility', energy:1, levels:[{desc:'Enemy ACC -15% for 2 turns.'},{desc:'Enemy ACC -18% for 2 turns.'},{desc:'Enemy ACC -20% for 2 turns.'},{desc:'Enemy ACC -22% for 2 turns.'}] }),
+  blindingVeil: makeEvolutionAbilityTemplate('blindingVeil','Blinding Veil','Wind-line disruption evolution. Fog their vision.', {type:'utility', btnType:'utility', energy:1, levels:[{desc:'Enemy ACC -22% for 2 turns and Slow 2 turns.'},{desc:'Enemy ACC -25% for 2 turns and Slow 2 turns.'},{desc:'Enemy ACC -28% for 2 turns and Slow 2 turns.'},{desc:'Enemy ACC -30% for 2 turns and Slow 2 turns.'}] }),
+  stormShroud: makeEvolutionAbilityTemplate('stormShroud','Storm Shroud','Wind-line final disruption evolution. Smother enemy accuracy.', {type:'utility', btnType:'utility', energy:1, levels:[{desc:'Enemy ACC -30% for 3 turns and Slow 2 turns.'},{desc:'Enemy ACC -33% for 3 turns and Slow 2 turns.'},{desc:'Enemy ACC -36% for 3 turns and Slow 3 turns.'},{desc:'Enemy ACC -40% for 3 turns and Slow 3 turns.'}] }),
+  brandPrey: makeEvolutionAbilityTemplate('brandPrey','Brand Prey','Mark-line damage amp evolution. Sharper focus mark.', {type:'utility', btnType:'utility', energy:1, levels:[{desc:'Mark the enemy. Your next attack deals +26% damage.'},{desc:'Mark the enemy. Your next attack deals +30% damage.'},{desc:'Mark the enemy. Your next attack deals +34% damage.'},{desc:'Mark the enemy. Your next attack deals +38% damage.'}] }),
+  huntersMark: makeEvolutionAbilityTemplate('huntersMark','Hunter\'s Mark','Mark-line final damage amp evolution. Potent target amplification.', {type:'utility', btnType:'utility', energy:1, levels:[{desc:'Mark the enemy. Your next attack deals +34% damage.'},{desc:'Mark the enemy. Your next attack deals +38% damage.'},{desc:'Mark the enemy. Your next attack deals +42% damage.'},{desc:'Mark the enemy. Your next attack deals +46% damage.'}] }),
+  exposeWeakness: makeEvolutionAbilityTemplate('exposeWeakness','Expose Weakness','Mark-line defense break branch. Open weak points.', {type:'utility', btnType:'utility', energy:1, levels:[{desc:'Expose the enemy. They take +12% damage for 2 turns.'},{desc:'Expose the enemy. They take +14% damage for 2 turns.'},{desc:'Expose the enemy. They take +16% damage for 2 turns.'},{desc:'Expose the enemy. They take +18% damage for 2 turns.'}] }),
+  exposeGuard: makeEvolutionAbilityTemplate('exposeGuard','Expose Guard','Mark-line defense break evolution. Crack defenses further.', {type:'utility', btnType:'utility', energy:1, levels:[{desc:'Expose the enemy. They take +18% damage for 2 turns.'},{desc:'Expose the enemy. They take +20% damage for 2 turns.'},{desc:'Expose the enemy. They take +22% damage for 2 turns.'},{desc:'Expose the enemy. They take +24% damage for 2 turns.'}] }),
+  quarryBreak: makeEvolutionAbilityTemplate('quarryBreak','Quarry Break','Mark-line final defense break evolution. Full opening for burst.', {type:'utility', btnType:'utility', energy:1, levels:[{desc:'Expose the enemy. They take +24% damage for 3 turns.'},{desc:'Expose the enemy. They take +26% damage for 3 turns.'},{desc:'Expose the enemy. They take +28% damage for 3 turns.'},{desc:'Expose the enemy. They take +30% damage for 3 turns.'}] }),
+  predatorBrand: makeEvolutionAbilityTemplate('predatorBrand','Predator Brand','Mark-line execute evolution. Prepares lethal follow-ups.', {type:'utility', btnType:'utility', energy:1, levels:[{desc:'Mark prey. Next attack gains +22% damage, +16% more below 50% HP.'},{desc:'Mark prey. Next attack gains +26% damage, +18% more below 50% HP.'},{desc:'Mark prey. Next attack gains +30% damage, +20% more below 50% HP.'},{desc:'Mark prey. Next attack gains +34% damage, +22% more below 50% HP.'}] }),
+  finalHunt: makeEvolutionAbilityTemplate('finalHunt','Final Hunt','Mark-line final execute evolution. Deadliest low-HP setup.', {type:'utility', btnType:'utility', energy:1, levels:[{desc:'Mark prey. Next attack gains +28% damage, +24% more below 50% HP.'},{desc:'Mark prey. Next attack gains +32% damage, +26% more below 50% HP.'},{desc:'Mark prey. Next attack gains +36% damage, +28% more below 50% HP.'},{desc:'Mark prey. Next attack gains +40% damage, +30% more below 50% HP.'}] }),
+};
+Object.assign(ABILITY_TEMPLATES, SPARROW_EVOLUTION_TEMPLATES);
+
 function enforceAbilityBalanceSpec(){
   const HARD_CC=new Set(['paralyzed','stunned','confused']);
   const MAJOR_AIL=new Set(['paralyzed','confused','burning','poison','weaken','delayed','feared','slow','mud']);
@@ -2729,26 +2880,12 @@ const ABILITY_POOL_MAGIC = [
 const ABILITY_POOL_UTILITY = Object.values(ABILITY_TEMPLATES)
   .filter(t=>t&&(t.btnType||t.type)==='utility')
   .map(t=>t.id);
-// Default: all pools
-const LEARNABLE_ABILITIES = [
-  ...ABILITY_POOL_PHYSICAL, ...ABILITY_POOL_RANGED, ...ABILITY_POOL_BUFF, ...ABILITY_POOL_DEBUFF, ...ABILITY_POOL_MAGIC
-];
-LEARNABLE_ABILITIES.push(
-  'bleakBeak','shadowJab',
-  'pinionVolley','talonRake',
-  'shieldWing','ironHonk',
-  'dirgeOfDread','skyHymn',
-  'marshHex','stormCall','nightChill'
-);
 
 
 function removeMimicEverywhere(){
   const GG = globalThis.G;
   if(typeof ABILITY_TEMPLATES!=='undefined') delete ABILITY_TEMPLATES.mimic;
   if('ACTIONS' in globalThis && globalThis.ACTIONS) delete globalThis.ACTIONS.mimic;
-  if(typeof LEARNABLE_ABILITIES!=='undefined'&&Array.isArray(LEARNABLE_ABILITIES)){
-    for(let i=LEARNABLE_ABILITIES.length-1;i>=0;i--){ if(LEARNABLE_ABILITIES[i]==='mimic') LEARNABLE_ABILITIES.splice(i,1); }
-  }
   if(GG?.player?.abilities) GG.player.abilities=GG.player.abilities.filter(a=>a.id!=='mimic');
   if(typeof BIRDS!=='undefined') Object.values(BIRDS).forEach(b=>{ if(Array.isArray(b.extraAbilities)) b.extraAbilities=b.extraAbilities.filter(id=>id!=='mimic'); });
 }
@@ -2758,9 +2895,6 @@ function removeMimicEverywhere(){
   const GG = globalThis.G;
   if(typeof ABILITY_TEMPLATES!=='undefined') delete ABILITY_TEMPLATES.mimic;
   if('ACTIONS' in globalThis && globalThis.ACTIONS) delete globalThis.ACTIONS.mimic;
-  if(typeof LEARNABLE_ABILITIES!=='undefined'&&Array.isArray(LEARNABLE_ABILITIES)){
-    for(let i=LEARNABLE_ABILITIES.length-1;i>=0;i--){ if(LEARNABLE_ABILITIES[i]==='mimic') LEARNABLE_ABILITIES.splice(i,1); }
-  }
   if(GG?.player?.abilities) GG.player.abilities=GG.player.abilities.filter(a=>a.id!=='mimic');
   if(typeof BIRDS!=='undefined') Object.values(BIRDS).forEach(b=>{ if(Array.isArray(b.extraAbilities)) b.extraAbilities=b.extraAbilities.filter(id=>id!=='mimic'); });
 }
@@ -3245,6 +3379,16 @@ function renderPassiveBadge() {
 // ============================================================
 //  NEST / INVENTORY
 // ============================================================
+function formatAbilityLevelPathway(tmpl){
+  if(!tmpl || !Array.isArray(tmpl.levels) || !tmpl.levels.length) return '';
+  return tmpl.levels
+    .map((entry, idx)=>{
+      const desc=String(entry?.desc || '').trim();
+      return desc ? `Lv.${idx+1} · ${desc}` : '';
+    })
+    .filter(Boolean)
+    .join('\n');
+}
 function openNest() {
   const modal=document.getElementById('nest-modal');
   const content=document.getElementById('nest-content');
@@ -3348,10 +3492,514 @@ function codexMark(type, id, field='seen'){
   }
 }
 
+const SKILL_EVOLUTION_LEVEL_INTERVAL = 3;
+const FAMILY_EVOLUTION_STATE_VERSION = 6;
+const SPARROW_SKILL_SLOT_LAYOUT = Object.freeze([
+  {slotIndex:0, familyId:'rapid', abilityId:'multiPeck'},
+  {slotIndex:1, familyId:'dart', abilityId:'dart'},
+  {slotIndex:2, familyId:'wind', abilityId:'windFeint'},
+  {slotIndex:3, familyId:'mark', abilityId:'trackPrey'},
+]);
+const SPARROW_SKILL_FAMILIES = Object.freeze({
+  rapid:{
+    familyId:'rapid', displayName:'Rapid Line', baseAbilityId:'multiPeck', role:'core burst', maxTier:3,
+    masteries:[
+      {id:'power', name:'Rending Tempo', desc:'+10% Rapid-line damage.'},
+      {id:'precision', name:'Needle Rhythm', desc:'Rapid-line attacks gain +5 pierce and -3% miss.'},
+      {id:'control', name:'Cruel Tempo', desc:'Rapid-line rider chances gain +10%.'},
+    ],
+    paths:{
+      pierce:{pathId:'pierce', displayName:'Pierce', abilities:{1:'rapidPeck',2:'bodkinStrike',3:'bodkinBarrage'}},
+      confuse:{pathId:'confuse', displayName:'Confuse', abilities:{1:'rapidFlap',2:'disruptiveRush',3:'chaosTempest'}},
+      poison:{pathId:'poison', displayName:'Poison', abilities:{1:'rapidTalon',2:'venomFlurry',3:'venomStorm'}},
+    },
+  },
+  dart:{
+    familyId:'dart', displayName:'Dart Line', baseAbilityId:'dart', role:'filler precision attack', maxTier:3,
+    masteries:[
+      {id:'power', name:'Sureflight', desc:'+8% Dart-line damage.'},
+      {id:'precision', name:'Needle Eye', desc:'Dart-line attacks gain -4% miss chance.'},
+      {id:'control', name:'Lingering Barbs', desc:'Dart-line rider chances gain +12%.'},
+    ],
+    paths:{
+      burn:{pathId:'burn', displayName:'Burn', abilities:{1:'searingDart',2:'searingArrow',3:'searingJavelin'}},
+      bleed:{pathId:'bleed', displayName:'Bleed', abilities:{1:'broadDart',2:'broadArrow',3:'broadJavelin'}},
+      pierce:{pathId:'pierce', displayName:'Pierce', abilities:{1:'bodkinDart',2:'bodkinArrow',3:'bodkinJavelin'}},
+    },
+  },
+  wind:{
+    familyId:'wind', displayName:'Wind Line', baseAbilityId:'windFeint', role:'utility / tempo / defense', maxTier:3,
+    masteries:[
+      {id:'power', name:'Slipstream Veil', desc:'Wind-line dodge and speed bonuses gain +5.'},
+      {id:'precision', name:'Cold Draft', desc:'Wind-line enemy ACC reduction gains +5%.'},
+      {id:'control', name:'Calm Eye', desc:'Wind-line effects last 1 extra turn.'},
+    ],
+    paths:{
+      dodge:{pathId:'dodge', displayName:'Dodge', abilities:{1:'windSlip',2:'slipVeil',3:'phantomGale'}},
+      speed:{pathId:'speed', displayName:'Speed', abilities:{1:'tailwindFeint',2:'tailwindGust',3:'hyperCurrent'}},
+      acc_debuff:{pathId:'acc_debuff', displayName:'Accuracy Down', abilities:{1:'featherDrift',2:'blindingVeil',3:'stormShroud'}},
+    },
+  },
+  mark:{
+    familyId:'mark', displayName:'Mark Line', baseAbilityId:'trackPrey', role:'setup / prey targeting', maxTier:3,
+    masteries:[
+      {id:'power', name:'Focused Quarry', desc:'Mark-line damage bonuses gain +8%.'},
+      {id:'precision', name:'Cracked Guard', desc:'Mark-line defense-break exposure gains +6%.'},
+      {id:'control', name:'Cull Instinct', desc:'Mark-line execute bonuses gain +10% below 50% HP.'},
+    ],
+    paths:{
+      damage_amp:{pathId:'damage_amp', displayName:'Damage Amp', abilities:{1:'markPrey',2:'brandPrey',3:'huntersMark'}},
+      def_break:{pathId:'def_break', displayName:'Defense Break', abilities:{1:'exposeWeakness',2:'exposeGuard',3:'quarryBreak'}},
+      execute:{pathId:'execute', displayName:'Execute', abilities:{1:'predatorMark',2:'predatorBrand',3:'finalHunt'}},
+    },
+  },
+});
+const GOOSE_SKILL_FAMILIES = Object.freeze({
+  peck:{
+    familyId:'peck', displayName:'Peck Line', baseAbilityId:'peck', slotRole:'filler_attack', maxTier:3,
+    paths:{
+      bleed:{pathId:'bleed', displayName:'Bleed', abilities:{1:'raking_peck', 2:'tearing_bite', 3:'savage_maul'}},
+      weaken:{pathId:'weaken', displayName:'Weaken', abilities:{1:'numbing_peck', 2:'crippling_bite', 3:'submission_maul'}},
+      pierce:{pathId:'pierce', displayName:'Pierce', abilities:{1:'needle_peck', 2:'bodkin_bite', 3:'armor_maul'}},
+    },
+  },
+  honk:{
+    familyId:'honk', displayName:'Honk Line', baseAbilityId:'territorial_honk', slotRole:'signature_control', maxTier:3,
+    tierNames:{1:'Honk', 2:'Blast', 3:'Terror'},
+    paths:{
+      fear:{pathId:'fear', displayName:'Fear', abilities:{1:'dread_honk', 2:'terror_blast', 3:'panic_terror'}},
+      paralysis:{pathId:'paralysis', displayName:'Paralysis', abilities:{1:'shock_honk', 2:'stunning_blast', 3:'lockdown_terror'}},
+      weaken:{pathId:'weaken', displayName:'Weaken', abilities:{1:'crushing_honk', 2:'oppression_blast', 3:'tyrant_terror'}},
+    },
+  },
+  guard:{
+    familyId:'guard', displayName:'Guard Line', baseAbilityId:'guard', slotRole:'defense', maxTier:3,
+    tierNames:{1:'Guard', 2:'Brace', 3:'Fortress'},
+    paths:{
+      block:{pathId:'block', displayName:'Block', abilities:{1:'iron_guard', 2:'bulwark_brace', 3:'fortress_stance'}},
+      retaliate:{pathId:'retaliate', displayName:'Retaliate', abilities:{1:'spite_guard', 2:'punish_brace', 3:'retribution_fortress'}},
+      recover:{pathId:'recover', displayName:'Recover', abilities:{1:'steady_guard', 2:'restoring_brace', 3:'enduring_fortress'}},
+    },
+  },
+  heavy:{
+    familyId:'heavy', displayName:'Heavy Line', baseAbilityId:'talon_slam', slotRole:'heavy_payoff', maxTier:3,
+    tierNames:{1:'Talon', 2:'Slam', 3:'Crush'},
+    paths:{
+      trample:{pathId:'trample', displayName:'Trample', abilities:{1:'heavy_talon', 2:'trample_slam', 3:'crushing_stampede'}},
+      buffet:{pathId:'buffet', displayName:'Buffet', abilities:{1:'wing_buffet', 2:'bone_buffet', 3:'gale_crush'}},
+      execute:{pathId:'execute', displayName:'Execute', abilities:{1:'rending_talon', 2:'finisher_slam', 3:'execution_crush'}},
+    },
+  },
+});
+const GOOSE_SKILL_SLOT_LAYOUT = Object.freeze([
+  {slotIndex:0, familyId:'peck', abilityId:'peck'},
+  {slotIndex:1, familyId:'honk', abilityId:'territorial_honk'},
+  {slotIndex:2, familyId:'guard', abilityId:'guard'},
+  {slotIndex:3, familyId:'heavy', abilityId:'talon_slam'},
+]);
+const gooseStartingSkillSlots = GOOSE_SKILL_SLOT_LAYOUT.map(slot=>Object.freeze({
+  slotIndex:slot.slotIndex,
+  familyId:slot.familyId,
+  pathId:null,
+  tier:0,
+  abilityId:slot.abilityId,
+  masteryCount:0,
+}));
+const BLACKBIRD_SKILL_FAMILIES = Object.freeze({
+  song:{
+    familyId:'song', displayName:'Song Line', baseAbilityId:'dark_song', slotRole:'core_magic_burst', maxTier:3,
+    tierNames:{1:'Song', 2:'Verse', 3:'Anthem'},
+    paths:{
+      fear:{pathId:'fear', displayName:'Fear', abilities:{1:'dread_song', 2:'panic_verse', 3:'night_anthem'}},
+      venomous:{pathId:'venomous', displayName:'Venomous', abilities:{1:'venomous_song', 2:'venomous_verse', 3:'venomous_anthem'}},
+      hex:{pathId:'hex', displayName:'Hex', abilities:{1:'hex_song', 2:'hex_verse', 3:'doom_anthem'}},
+    },
+  },
+  peck:{
+    familyId:'peck', displayName:'Shadow Peck Line', baseAbilityId:'shadow_peck', slotRole:'filler_attack', maxTier:3,
+    paths:{
+      bleed:{pathId:'bleed', displayName:'Bleed', abilities:{1:'raking_peck', 2:'rend_strike', 3:'carrion_barrage'}, damageTypeProgression:{1:'physical', 2:'physical', 3:'physical'}},
+      siphon:{pathId:'siphon', displayName:'Siphon', abilities:{1:'siphon_peck', 2:'umbral_strike', 3:'soul_barrage'}, damageTypeProgression:{1:'hybrid', 2:'magic', 3:'magic'}},
+      pierce:{pathId:'pierce', displayName:'Pierce', abilities:{1:'needle_peck', 2:'bodkin_strike', 3:'splinter_barrage'}, damageTypeProgression:{1:'physical', 2:'physical', 3:'physical'}},
+    },
+  },
+  gloom:{
+    familyId:'gloom', displayName:'Gloom Line', baseAbilityId:'gloom_wing', slotRole:'utility', maxTier:3,
+    paths:{
+      dodge:{pathId:'dodge', displayName:'Dodge', abilities:{1:'shade_wing', 2:'veil_wing', 3:'ghost_wing'}},
+      acc_break:{pathId:'acc_break', displayName:'Accuracy Break', abilities:{1:'murk_wing', 2:'blind_veil', 3:'eclipse_shroud'}},
+      slow:{pathId:'slow', displayName:'Slow', abilities:{1:'heavy_wing', 2:'drag_veil', 3:'dusk_field'}},
+    },
+  },
+  sign:{
+    familyId:'sign', displayName:'Sign Line', baseAbilityId:'grim_sign', slotRole:'setup', maxTier:3,
+    tierNames:{1:'Sign', 2:'Seal', 3:'Doom'},
+    paths:{
+      damage_amp:{pathId:'damage_amp', displayName:'Damage Amp', abilities:{1:'grim_mark', 2:'grave_seal', 3:'harbinger_doom'}},
+      def_break:{pathId:'def_break', displayName:'Defense Break', abilities:{1:'crack_guard', 2:'break_seal', 3:'ruin_doom'}},
+      execute:{pathId:'execute', displayName:'Execute', abilities:{1:'death_sign', 2:'death_seal', 3:'final_omen'}},
+    },
+  },
+});
+const BLACKBIRD_SKILL_SLOT_LAYOUT = Object.freeze([
+  {slotIndex:0, familyId:'song', abilityId:'dark_song'},
+  {slotIndex:1, familyId:'peck', abilityId:'shadow_peck'},
+  {slotIndex:2, familyId:'gloom', abilityId:'gloom_wing'},
+  {slotIndex:3, familyId:'sign', abilityId:'grim_sign'},
+]);
+const blackbirdStartingSkillSlots = BLACKBIRD_SKILL_SLOT_LAYOUT.map(slot=>Object.freeze({
+  slotIndex:slot.slotIndex,
+  familyId:slot.familyId,
+  pathId:null,
+  tier:0,
+  abilityId:slot.abilityId,
+  masteryCount:0,
+}));
+const CROW_SKILL_FAMILIES = Object.freeze({
+  peck:{
+    familyId:'peck', displayName:'Peck Line', baseAbilityId:'peck', slotRole:'filler_attack', maxTier:3,
+    tierNames:{1:'Peck', 2:'Jab', 3:'Flurry'},
+    masteries:[
+      {id:'power', name:'Carrion Instinct', desc:'+10% Peck-line damage.'},
+      {id:'precision', name:'Eye For Weakness', desc:'Peck-line attacks gain -4% miss chance and +6% crit vs compromised targets.'},
+      {id:'control', name:'Harrier Pressure', desc:'Peck-line rider chances gain +10% and exposed bonuses improve slightly.'},
+    ],
+    paths:{
+      bleed:{pathId:'bleed', displayName:'Bleed', abilities:{1:'raking_peck', 2:'tearing_jab', 3:'carrion_flurry'}, damageTypeProgression:{1:'physical', 2:'physical', 3:'physical'}},
+      hex:{pathId:'hex', displayName:'Hex', abilities:{1:'hex_peck', 2:'umbral_jab', 3:'hex_flurry'}, damageTypeProgression:{1:'hybrid', 2:'magic', 3:'magic'}},
+      precision:{pathId:'precision', displayName:'Precision', abilities:{1:'keen_peck', 2:'target_jab', 3:'execution_flurry'}, damageTypeProgression:{1:'hybrid', 2:'hybrid', 3:'hybrid'}},
+    },
+  },
+  murder:{
+    familyId:'murder', displayName:'Murmuration Line', baseAbilityId:'murder_murmuration', slotRole:'signature_control', maxTier:3,
+    tierNames:{1:'Murmuration', 2:'Swarm', 3:'Murder'},
+    masteries:[
+      {id:'power', name:'Mob Instinct', desc:'+10% Murmuration-line damage.'},
+      {id:'precision', name:'Coordinated Angles', desc:'Murmuration-line attacks gain +8% hit chance and +8% exposed payoff.'},
+      {id:'control', name:'Unsettling Wingbeat', desc:'Murmuration-line Fear/Expose chances gain +10%.'},
+    ],
+    paths:{
+      talon:{pathId:'talon', displayName:'Talon', abilities:{1:'harrier_murmuration', 2:'talon_swarm', 3:'blackwing_murder'}, damageTypeProgression:{1:'physical', 2:'physical', 3:'physical'}},
+      dread:{pathId:'dread', displayName:'Dread', abilities:{1:'dread_murmuration', 2:'panic_swarm', 3:'murder_of_terror'}, damageTypeProgression:{1:'magic', 2:'magic', 3:'magic'}},
+      hunting:{pathId:'hunting', displayName:'Hunting', abilities:{1:'hunting_murmuration', 2:'marking_swarm', 3:'execution_murder'}, damageTypeProgression:{1:'hybrid', 2:'hybrid', 3:'hybrid'}},
+    },
+  },
+  call:{
+    familyId:'call', displayName:'Dread Call Line', baseAbilityId:'dread_call', slotRole:'utility_control', maxTier:3,
+    tierNames:{1:'Call', 2:'Cry', 3:'Chorus'},
+    masteries:[
+      {id:'power', name:'Ringing Malice', desc:'Call-line setup grants +6% more damage or stronger payoff values.'},
+      {id:'precision', name:'Needling Chorus', desc:'Call-line debuffs last 1 extra turn when possible.'},
+      {id:'control', name:'Shaken Nerves', desc:'Call-line Fear and ACC-break values gain +10%.'},
+    ],
+    paths:{
+      fear:{pathId:'fear', displayName:'Fear', abilities:{1:'ominous_call', 2:'panic_cry', 3:'doom_chorus'}},
+      acc_break:{pathId:'acc_break', displayName:'Accuracy Break', abilities:{1:'distracting_call', 2:'mocking_cry', 3:'ruin_chorus'}},
+      hunt:{pathId:'hunt', displayName:'Hunt', abilities:{1:'hunting_call', 2:'pack_cry', 3:'kill_chorus'}},
+    },
+  },
+  focus:{
+    familyId:'focus', displayName:'Battle Focus Line', baseAbilityId:'battle_focus', slotRole:'setup', maxTier:3,
+    tierNames:{1:'Focus', 2:'Plan', 3:'Hunt'},
+    masteries:[
+      {id:'power', name:'Cold Calculation', desc:'Focus-line damage amp or expose values gain +6%.'},
+      {id:'precision', name:'Studied Opening', desc:'Focus-line setups also grant +4% crit on the next attack.'},
+      {id:'control', name:'Tempo Theft', desc:'Tempo-line skills restore 1 extra EN once per use.'},
+    ],
+    paths:{
+      damage_amp:{pathId:'damage_amp', displayName:'Damage Amp', abilities:{1:'keen_focus', 2:'hunt_plan', 3:'killer_hunt'}},
+      def_break:{pathId:'def_break', displayName:'Defense Break', abilities:{1:'weakpoint_focus', 2:'break_plan', 3:'ruin_hunt'}},
+      tempo:{pathId:'tempo', displayName:'Tempo', abilities:{1:'opening_focus', 2:'tempo_plan', 3:'perfect_hunt'}},
+    },
+  },
+});
+const CROW_SKILL_SLOT_LAYOUT = Object.freeze([
+  {slotIndex:0, familyId:'peck', abilityId:'peck'},
+  {slotIndex:1, familyId:'murder', abilityId:'murder_murmuration'},
+  {slotIndex:2, familyId:'call', abilityId:'dread_call'},
+  {slotIndex:3, familyId:'focus', abilityId:'battle_focus'},
+]);
+const crowStartingSkillSlots = CROW_SKILL_SLOT_LAYOUT.map(slot=>Object.freeze({
+  slotIndex:slot.slotIndex,
+  familyId:slot.familyId,
+  pathId:null,
+  tier:0,
+  abilityId:slot.abilityId,
+  masteryCount:0,
+}));
+
+function buildFamilySkillAbilityLookup(slotLayout, families){
+  const out = Object.create(null);
+  for(const slot of slotLayout){
+    out[slot.abilityId] = {familyId:slot.familyId, pathId:null, tier:0, abilityId:slot.abilityId};
+  }
+  for(const family of Object.values(families||{})){
+    for(const path of Object.values(family.paths||{})){
+      for(const [tierKey, abilityId] of Object.entries(path.abilities||{})){
+        out[abilityId] = {familyId:family.familyId, pathId:path.pathId, tier:Number(tierKey)||0, abilityId};
+      }
+    }
+  }
+  return Object.freeze(out);
+}
+const FAMILY_EVOLUTION_BIRD_DATA = Object.freeze({
+  sparrow:{
+    birdKey:'sparrow',
+    slotLayout:SPARROW_SKILL_SLOT_LAYOUT,
+    families:SPARROW_SKILL_FAMILIES,
+    abilityLookup:buildFamilySkillAbilityLookup(SPARROW_SKILL_SLOT_LAYOUT, SPARROW_SKILL_FAMILIES),
+    legacyBaseAbilityIds:Object.freeze({
+      rapid:{legacy:['rapidPeck'], current:'multiPeck'},
+      mark:{legacy:['markPrey'], current:'trackPrey'},
+    }),
+  },
+  goose:{
+    birdKey:'goose',
+    slotLayout:GOOSE_SKILL_SLOT_LAYOUT,
+    families:GOOSE_SKILL_FAMILIES,
+    abilityLookup:buildFamilySkillAbilityLookup(GOOSE_SKILL_SLOT_LAYOUT, GOOSE_SKILL_FAMILIES),
+    legacyBaseAbilityIds:Object.freeze({
+      peck:{legacy:['headWhip'], current:'peck'},
+      honk:{legacy:['gooseHonk', 'fearHonk', 'honk_terror'], current:'territorial_honk'},
+      guard:{legacy:['guard'], current:'guard'},
+      heavy:{legacy:['heavyTalon', 'heavy_talon'], current:'talon_slam'},
+    }),
+  },
+  blackbird:{
+    birdKey:'blackbird',
+    slotLayout:BLACKBIRD_SKILL_SLOT_LAYOUT,
+    families:BLACKBIRD_SKILL_FAMILIES,
+    abilityLookup:buildFamilySkillAbilityLookup(BLACKBIRD_SKILL_SLOT_LAYOUT, BLACKBIRD_SKILL_FAMILIES),
+    legacyBaseAbilityIds:Object.freeze({
+      song:{legacy:['stormChorus'], current:'dark_song'},
+      peck:{legacy:['blackPeck'], current:'shadow_peck'},
+      gloom:{legacy:['battleChorus'], current:'gloom_wing'},
+      sign:{legacy:['thunderScreech'], current:'grim_sign'},
+    }),
+  },
+  crow:{
+    birdKey:'crow',
+    slotLayout:CROW_SKILL_SLOT_LAYOUT,
+    families:CROW_SKILL_FAMILIES,
+    abilityLookup:buildFamilySkillAbilityLookup(CROW_SKILL_SLOT_LAYOUT, CROW_SKILL_FAMILIES),
+    legacyBaseAbilityIds:Object.freeze({
+      peck:{legacy:['crowStrike', 'mockingPeck', 'peck'], current:'peck'},
+      murder:{legacy:['stickLance', 'murderMurmuration'], current:'murder_murmuration'},
+      call:{legacy:['guard', 'dreadCall'], current:'dread_call'},
+      focus:{legacy:['battleFocus'], current:'battle_focus'},
+    }),
+  },
+});
+
+function isSkillEvolutionLevel(level){
+  return Number.isFinite(level) && level>0 && level % SKILL_EVOLUTION_LEVEL_INTERVAL === 0;
+}
+function getBirdFamilyEvolutionData(birdKey){
+  return FAMILY_EVOLUTION_BIRD_DATA[String(birdKey||'')] || null;
+}
+function getBirdSkillFamilyCatalog(birdKey){
+  return getBirdFamilyEvolutionData(birdKey)?.families || null;
+}
+function usesFamilySkillEvolution(player){
+  return !!getBirdSkillFamilyCatalog(player?.birdKey);
+}
+function createSkillSlotState(slotIndex, familyId, pathId, tier, abilityId, masteryCount=0, masteries=[]){
+  return {
+    slotIndex:Number.isFinite(slotIndex)?slotIndex:0,
+    familyId:familyId||null,
+    pathId:pathId||null,
+    tier:Math.max(0, Number(tier)||0),
+    abilityId:String(abilityId||''),
+    masteryCount:Math.max(0, Number(masteryCount)||0),
+    masteries:Array.isArray(masteries)?masteries.filter(Boolean).map(String):[],
+  };
+}
+function getBaseSkillSlotsForBird(birdKey){
+  const data = getBirdFamilyEvolutionData(birdKey);
+  if(!data) return [];
+  return data.slotLayout.map(slot=>createSkillSlotState(slot.slotIndex, slot.familyId, null, 0, slot.abilityId, 0, []));
+}
+function migrateLegacyFamilyBaseAbilityId(abilityId, birdKey, familyId, pathId=null, tier=0){
+  const id = String(abilityId||'');
+  if(pathId || Number(tier||0)>0) return id;
+  const familyMigration = getBirdFamilyEvolutionData(birdKey)?.legacyBaseAbilityIds?.[familyId];
+  return familyMigration && familyMigration.legacy.includes(id) ? familyMigration.current : id;
+}
+function getFamilyEvolutionAbilityStateFromId(birdKey, abilityId){
+  return getBirdFamilyEvolutionData(birdKey)?.abilityLookup?.[String(abilityId||'')] || null;
+}
+function getSkillSlotFamilyDef(slotOrFamilyId, birdKey='sparrow'){
+  const catalog = getBirdSkillFamilyCatalog(birdKey);
+  if(!catalog) return null;
+  const familyId = typeof slotOrFamilyId==='string' ? slotOrFamilyId : slotOrFamilyId?.familyId;
+  return catalog[familyId] || null;
+}
+function getSkillSlotPathDef(slot, birdKey='sparrow'){
+  const family = getSkillSlotFamilyDef(slot, birdKey);
+  if(!family || !slot?.pathId) return null;
+  return family.paths?.[slot.pathId] || null;
+}
+function getSkillSlotDisplayLabel(slot){
+  if(!slot) return 'Unknown Slot';
+  const tmpl = ABILITY_TEMPLATES?.[slot.abilityId] || {};
+  const family = getSkillSlotFamilyDef(slot, G.player?.birdKey || 'sparrow');
+  return tmpl.name || family?.displayName || slot.familyId || `Slot ${slot.slotIndex+1}`;
+}
+function normalizeSkillSlotState(slot, fallback, birdKey='sparrow'){
+  const base = fallback || createSkillSlotState(0, null, null, 0, '', 0, []);
+  let next = createSkillSlotState(slot?.slotIndex ?? base.slotIndex, slot?.familyId ?? base.familyId, slot?.pathId ?? base.pathId, slot?.tier ?? base.tier, slot?.abilityId ?? base.abilityId, slot?.masteryCount ?? base.masteryCount, slot?.masteries ?? base.masteries);
+  if(usesFamilySkillEvolution({birdKey}) && next.abilityId){
+    next.abilityId = migrateLegacyFamilyBaseAbilityId(next.abilityId, birdKey, next.familyId, next.pathId, next.tier);
+    const info = getFamilyEvolutionAbilityStateFromId(birdKey, next.abilityId);
+    if(info && info.familyId===next.familyId){
+      next.pathId = next.pathId || info.pathId || null;
+      next.tier = Math.max(next.tier||0, info.tier||0);
+    }
+  }
+  if(!next.abilityId) next.abilityId = base.abilityId;
+  return next;
+}
+function getSkillSlots(player){
+  return Array.isArray(player?.familyEvolutionState?.skillSlots) ? player.familyEvolutionState.skillSlots : [];
+}
+function getSkillSlotByIndex(player, slotIndex){
+  return getSkillSlots(player).find(slot=>slot.slotIndex===slotIndex) || null;
+}
+function getAbilitySkillSlot(player, ability){
+  if(!ability) return null;
+  if(Number.isFinite(ability.slotIndex)) return getSkillSlotByIndex(player, ability.slotIndex);
+  const slots = getSkillSlots(player);
+  return slots.find(slot=>slot.abilityId===ability.id) || null;
+}
+function countSkillSlotMastery(slot, masteryId){
+  return (slot?.masteries||[]).filter(id=>id===masteryId).length;
+}
+function getSkillEvolutionPathOptions(slot, birdKey='sparrow'){
+  const family = getSkillSlotFamilyDef(slot, birdKey);
+  if(!family) return [];
+  const seenAbilityIds = new Set();
+  return Object.values(family.paths||{}).flatMap(path=>{
+    const tierOneAbilityId = path.abilities?.[1];
+    if(!tierOneAbilityId || seenAbilityIds.has(tierOneAbilityId)) return [];
+    seenAbilityIds.add(tierOneAbilityId);
+    return [{
+      familyId:family.familyId,
+      pathId:path.pathId,
+      displayName:path.displayName,
+      abilityId:tierOneAbilityId,
+      abilityTemplate:ABILITY_TEMPLATES?.[tierOneAbilityId] || null,
+    }];
+  });
+}
+function slotNeedsPathChoice(slot){
+  return !!(slot && slot.familyId && !slot.pathId);
+}
+function slotCanTierUp(slot, birdKey='sparrow'){
+  const family = getSkillSlotFamilyDef(slot, birdKey);
+  return !!(slot && family && slot.pathId && (slot.tier||0) < (family.maxTier||3));
+}
+function isSkillSlotMaxTier(slot, birdKey='sparrow'){
+  const family = getSkillSlotFamilyDef(slot, birdKey);
+  return !!(slot && family && slot.pathId && (slot.tier||0) >= (family.maxTier||3));
+}
+function resolveSkillSlotEvolutionAction(slot, player=G.player){
+  if(!slot || !usesFamilySkillEvolution(player)) return 'none';
+  if(slotNeedsPathChoice(slot)) return 'choose_path';
+  if(slotCanTierUp(slot, player?.birdKey)) return 'tier_up';
+  if(isSkillSlotMaxTier(slot, player?.birdKey) && !!G.endlessMode) return 'mastery';
+  return 'none';
+}
+function applySkillPathSelection(slot, pathId, player=G.player){
+  if(!slot || !player) return null;
+  const path = getSkillSlotFamilyDef(slot, player.birdKey)?.paths?.[pathId];
+  if(!path) return null;
+  slot.pathId = pathId;
+  slot.tier = 1;
+  slot.abilityId = path.abilities?.[1] || slot.abilityId;
+  return slot;
+}
+function autoUpgradeSkillSlotTier(slot, player=G.player){
+  if(!slot || !slotCanTierUp(slot, player?.birdKey)) return null;
+  const nextTier = (slot.tier||0) + 1;
+  const path = getSkillSlotPathDef(slot, player?.birdKey);
+  if(!path?.abilities?.[nextTier]) return null;
+  slot.tier = nextTier;
+  slot.abilityId = path.abilities[nextTier];
+  return slot;
+}
+function getSkillSlotMasteryOptions(slot, player=G.player){
+  const family = getSkillSlotFamilyDef(slot, player?.birdKey);
+  return Array.isArray(family?.masteries) ? family.masteries : [];
+}
+function applySkillSlotMastery(slot, masteryId, player=G.player){
+  if(!slot) return null;
+  const pick = getSkillSlotMasteryOptions(slot, player).find(entry=>entry.id===masteryId);
+  if(!pick) return null;
+  if(!Array.isArray(slot.masteries)) slot.masteries = [];
+  slot.masteries.push(masteryId);
+  slot.masteryCount = (slot.masteries||[]).length;
+  return pick;
+}
+function ensureAbilityObjectFromTemplate(id, existing=null, slotIndex=null){
+  const tmpl = ABILITY_TEMPLATES?.[id] || {};
+  const level = Math.max(1, Number(existing?.level || 1));
+  const out = {...tmpl, ...(existing||{}), id, name:tmpl.name||existing?.name||id, level};
+  if(Number.isFinite(slotIndex)) out.slotIndex = slotIndex;
+  out.energyCost = getAbilityEnergyCost(out, G.player);
+  out.ailmentIds = deriveAbilityAilments(out, tmpl);
+  return out;
+}
+function syncPlayerAbilitiesFromSkillSlots(player){
+  if(!player || !usesFamilySkillEvolution(player)) return;
+  const slots = getSkillSlots(player).slice().sort((a,b)=>a.slotIndex-b.slotIndex);
+  if(!slots.length) return;
+  const bySlot = new Map((player.abilities||[]).map(ab=>[Number.isFinite(ab?.slotIndex)?ab.slotIndex:-1, ab]));
+  const byId = new Map((player.abilities||[]).map(ab=>[ab?.id, ab]));
+  player.abilities = slots.map(slot=>{
+    const prior = bySlot.get(slot.slotIndex) || byId.get(slot.abilityId) || null;
+    const ab = ensureAbilityObjectFromTemplate(slot.abilityId, prior, slot.slotIndex);
+    if(slot.familyId==='rapid') ab.fixedMainAttackCost = true;
+    return ab;
+  });
+}
+
 // ============================================================
 //  SAVE / LOAD SYSTEM (localStorage)
 // ============================================================
 const SAVE_KEY='avianAscent_save_v1';
+function ensureFamilyEvolutionState(player){
+  if(!player || typeof player!=='object') return null;
+  const birdKey = String(player.birdKey || '');
+  const catalog = getBirdSkillFamilyCatalog(birdKey);
+  const baseSlots = getBaseSkillSlotsForBird(birdKey);
+  if(!player.familyEvolutionState || typeof player.familyEvolutionState!=='object'){
+    player.familyEvolutionState = {};
+  }
+  const state = player.familyEvolutionState;
+  state.version = FAMILY_EVOLUTION_STATE_VERSION;
+  state.birdKey = birdKey;
+  state.rootTemplate = String(state.rootTemplate || birdKey);
+  if(catalog){
+    const rawSlots = Array.isArray(state.skillSlots) && state.skillSlots.length
+      ? state.skillSlots
+      : baseSlots.map((slot, idx)=>{
+          const currentId = migrateLegacyFamilyBaseAbilityId(player.abilities?.[idx]?.id, birdKey, slot.familyId, null, 0);
+          const info = getFamilyEvolutionAbilityStateFromId(birdKey, currentId);
+          if(info && info.familyId===slot.familyId){
+            return createSkillSlotState(slot.slotIndex, info.familyId, info.pathId, info.tier, info.abilityId, 0, []);
+          }
+          return slot;
+        });
+    state.skillSlots = baseSlots.map((baseSlot, idx)=>normalizeSkillSlotState(rawSlots[idx], baseSlot, birdKey));
+    syncPlayerAbilitiesFromSkillSlots(player);
+  }else{
+    const mirrored = Array.isArray(player.abilities)
+      ? player.abilities.slice(0,4).map((ab, idx)=>createSkillSlotState(idx, null, null, 0, ab?.id || '', 0, []))
+      : [];
+    state.skillSlots = mirrored;
+  }
+  return state;
+}
 function saveRun() {
   if(!G.player) return;
   try {
@@ -3380,6 +4028,8 @@ function saveRun() {
     };
     // Strip un-serializable passive fns from player
     delete save.player.passive;
+    ensureFamilyEvolutionState(save.player);
+    syncPlayerAbilitiesFromSkillSlots(save.player);
     localStorage.setItem(SAVE_KEY, JSON.stringify(save));
   } catch(e){ console.warn('Save failed',e); }
 }
@@ -3406,6 +4056,8 @@ function continueRun() {
   G.collectedRewards=save.collectedRewards||[];
   G.player=save.player;
   G.player.class = resolveFinalClass(G.player?.class, G.player?.birdKey);
+  ensureFamilyEvolutionState(G.player);
+  syncPlayerAbilitiesFromSkillSlots(G.player);
   G.classPerks = JSON.parse(JSON.stringify(save.classPerks||save.classPerksByBird||{}));
   G.runClassPerks = JSON.parse(JSON.stringify(save.runClassPerks||[]));
   migrateLegacyClassPerkState(G, G.player);
@@ -3416,6 +4068,8 @@ function continueRun() {
   if(!Array.isArray(G.player.endlessRewards)) G.player.endlessRewards=[];
   ensurePassiveEvolutionState(G.player);
   G.runUpgradesPurchased=new Set(save.runUpgradesPurchased||[]);
+  G._pendingLevelUpChoices=0;
+  G._pendingSkillEvolutionChoices=0;
   G.codex=save.codex||{abilities:{},enemies:{},birds:{},artifacts:{},statuses:{}};
   // Re-attach passive reference (fns can't be serialized)
   const bd=BIRDS[G.player.birdKey];
@@ -4082,6 +4736,7 @@ function startGame() {
     })),
     exp: 0, birdLevel: 1,
     goldCritMult: 1.5,
+    mainAttackId: bd.mainAttackId||null,
     immuneParalyze: bd.passive?.immuneParalyze||false,
     poisonCap: 5,
     endlessRewards: [],
@@ -4094,6 +4749,8 @@ function startGame() {
     energyRegen: 0,
     passiveEvolution:{tier:0,choices:{},pathHistory:[]},
   };
+  ensureFamilyEvolutionState(G.player);
+  syncPlayerAbilitiesFromSkillSlots(G.player);
   G.player.class = bd.class;
   G.player.size = bd.size||'medium';
   G.player.energyMax = computePlayerMaxEnergy();
@@ -4112,6 +4769,8 @@ function startGame() {
   G._breakClampStreak=0;
   G.bossKills = 0;
   G.abilityCooldowns={};
+  G._pendingLevelUpChoices=0;
+  G._pendingSkillEvolutionChoices=0;
   G.runCrits = 0; G.runBuffs = 0; G.runDebuffs = 0;
   G.runUpgradesPurchased = new Set();
   G.codex = {abilities:{},enemies:{},birds:{},artifacts:{},statuses:{}};
@@ -4613,6 +5272,7 @@ function renderStatuses(id, statuses) {
     else if (k==='defending') { b.className='status-badge defending'; b.textContent=`🛡 Guard(${v}t)`; tooltipSummary='Damage reduction while guarding.'; }
     else if (k==='dustDevil') { b.className='status-badge feared'; b.textContent=`🌪 Blinded(${v.turns}t,-${v.accDrop||15}%ACC)`; }
     else if (k==='featherRuffle') { b.className='status-badge weaken'; b.textContent=`🪶 Ruffled(${v.turns}t,-${v.atkReduction}%ATK${v.accDrop>0?',-'+v.accDrop+'%ACC':''})`; }
+    else if (k==='exposedGuard') { b.className='status-badge weaken'; b.textContent=`🎯 Exposed(${v.turns}t,+${Math.round((v.pct||0)*100)}% dmg)`; }
     else if (k==='hum') { b.className='status-badge evading'; b.textContent=`🎵 Hum(${v}t)`; }
     else if (k==='rockDrop') { b.className='status-badge delayed'; b.textContent=`🪨 Rock Ready`; }
     else if (k==='flyby') { b.className='status-badge evading'; b.textContent=`💨 Momentum!`; }
@@ -6000,6 +6660,7 @@ function dealDamage(target,amount,isCrit=false,isMagic=false,srcAbility=null) {
       if((G.player._augAtkCounter%3)===0) dmg=Math.floor(dmg*(1+G.player.augThirdAttackPct));
     }
     if(G.playerStatus?.huntersMarkBonusPct){ dmg=Math.floor(dmg*(1+G.playerStatus.huntersMarkBonusPct)); delete G.playerStatus.huntersMarkBonusPct; }
+    if(target==='enemy' && G.enemyStatus?.exposedGuard?.pct){ dmg=Math.floor(dmg*(1+G.enemyStatus.exposedGuard.pct)); }
     if(G.playerStatus?.postDefAtkPct){ dmg=Math.floor(dmg*(1+G.playerStatus.postDefAtkPct)); delete G.playerStatus.postDefAtkPct; }
     if(G.playerStatus?.tensionCoil?.turns>0){ dmg=Math.floor(dmg*(1+G.playerStatus.tensionCoil.pct)); }
     if(G.player?.mutSuddenFlight && !G.player._mutSuddenFlightUsed){ dmg=Math.floor(dmg*1.25); G.player._mutSuddenFlightUsed=true; }
@@ -7705,6 +8366,189 @@ const ACTIONS = {
 };
 
 
+function getSlotMasteryProfile(slot){
+  return {
+    power:countSkillSlotMastery(slot,'power'),
+    precision:countSkillSlotMastery(slot,'precision'),
+    control:countSkillSlotMastery(slot,'control'),
+  };
+}
+function getSparrowRapidMasteryBonuses(slot){
+  const m = getSlotMasteryProfile(slot);
+  return {damage:0.10*m.power, pierce:5*m.precision, miss:3*m.precision, rider:10*m.control};
+}
+function getSparrowDartMasteryBonuses(slot){
+  const m = getSlotMasteryProfile(slot);
+  return {damage:0.08*m.power, miss:4*m.precision, rider:12*m.control};
+}
+function getSparrowWindMasteryBonuses(slot){
+  const m = getSlotMasteryProfile(slot);
+  return {potency:5*m.power, acc:5*m.precision, turns:m.control};
+}
+function getSparrowMarkMasteryBonuses(slot){
+  const m = getSlotMasteryProfile(slot);
+  return {amp:0.08*m.power, expose:0.06*m.precision, execute:0.10*m.control};
+}
+async function executeSparrowRapidFamilyAction(ab, config){
+  const lv=Math.max(1,Math.min(4,ab.level||1));
+  const slot=getAbilitySkillSlot(G.player, ab);
+  const mastery=getSparrowRapidMasteryBonuses(slot);
+  const hitBonus=getPlayerHitBonus(ab);
+  const hits=config.hits[lv-1];
+  let landed=0,total=0;
+  for(let i=0;i<hits;i++){
+    const miss=Math.max(0,(config.miss?.[lv-1]||8)-hitBonus-mastery.miss);
+    if(chance(miss)){ await doMiss('player'); continue; }
+    if((config.pierce?.[lv-1]||0)>0) G._currentPiercePct=(config.pierce[lv-1]||0)+mastery.pierce;
+    const r=dealDamage('enemy',pdmg((config.mult[lv-1]||1)*(1+mastery.damage),ab),chance(getPlayerCritChance(ab)));
+    await doAttack('player','enemy',r);
+    setHpBar('enemy',G.enemy.stats.hp,G.enemy.stats.maxHp);
+    landed++; total+=r.dmgDealt;
+    if(config.rider==='confused' && chance((config.riderChance[lv-1]||0)+mastery.rider)){
+      G.enemyStatus.confused={turns:config.turns?.[lv-1]||2,skipChance:(config.skipChance?.[lv-1]||25)};
+      renderStatuses('enemy-status',G.enemyStatus);
+      spawnFloat('enemy','🌀 Confuse!','fn-status');
+    }
+    if(config.rider==='poison' && chance((config.riderChance[lv-1]||0)+mastery.rider)){
+      applyAilment('enemy','poison',config.stacks?.[lv-1]||1);
+      renderStatuses('enemy-status',G.enemyStatus);
+      spawnFloat('enemy','☣ Poison!','fn-poison');
+    }
+    if(G.battleOver) break;
+  }
+  logMsg(`${config.log} ${landed}/${hits} hits, ${total} dmg.`, 'player-action');
+}
+async function executeSparrowDartFamilyAction(ab, config){
+  const lv=Math.max(1,Math.min(4,ab.level||1));
+  const slot=getAbilitySkillSlot(G.player, ab);
+  const mastery=getSparrowDartMasteryBonuses(slot);
+  const hitBonus=getPlayerHitBonus(ab);
+  const miss=Math.max(0,(config.miss?.[lv-1]||8)-hitBonus-mastery.miss);
+  if(chance(miss)){ await doMiss('player'); logMsg(`${config.name} missed!`,'miss'); return; }
+  if((config.pierce?.[lv-1]||0)>0) G._currentPiercePct=(config.pierce[lv-1]||0);
+  const r=dealDamage('enemy',pdmg((config.mult[lv-1]||1)*(1+mastery.damage),ab),chance(getPlayerCritChance(ab)));
+  await doAttack('player','enemy',r);
+  setHpBar('enemy',G.enemy.stats.hp,G.enemy.stats.maxHp);
+  if(config.rider==='burning' && chance((config.riderChance[lv-1]||0)+mastery.rider)){ G.enemyStatus.burning=config.turns?.[lv-1]||3; spawnFloat('enemy','🔥 Burn!','fn-burn'); }
+  if(config.rider==='bleed' && chance((config.riderChance[lv-1]||0)+mastery.rider)){ applyAilment('enemy','bleed',config.stacks?.[lv-1]||1); spawnFloat('enemy','🩸 Bleed!','fn-poison'); }
+  if(config.rider==='poison' && chance((config.riderChance[lv-1]||0)+mastery.rider)){ applyAilment('enemy','poison',config.stacks?.[lv-1]||1); spawnFloat('enemy','☣ Poison!','fn-poison'); }
+  renderStatuses('enemy-status',G.enemyStatus);
+  logMsg(`${config.log} ${r.dmgDealt} dmg!`, 'player-action');
+}
+async function executeSparrowWindDodgeAction(ab, config){
+  const lv=Math.max(1,Math.min(4,ab.level||1));
+  const slot=getAbilitySkillSlot(G.player, ab);
+  const mastery=getSparrowWindMasteryBonuses(slot);
+  const turns=(config.turns?.[lv-1]||2)+mastery.turns;
+  const bonus=(config.bonus?.[lv-1]||25)+mastery.potency;
+  G.playerStatus.humDodge={bonus,turns};
+  if(config.cleanse){ config.cleanse.forEach(id=>delete G.playerStatus[id]); }
+  await doSpell('player',`💨 +${bonus}% Dodge`);
+  renderStatuses('player-status',G.playerStatus);
+  logMsg(`${config.log} +${bonus}% dodge for ${turns}t.`, 'player-action');
+}
+async function executeSparrowWindSpeedAction(ab, config){
+  const lv=Math.max(1,Math.min(4,ab.level||1));
+  const slot=getAbilitySkillSlot(G.player, ab);
+  const mastery=getSparrowWindMasteryBonuses(slot);
+  const turns=(config.turns?.[lv-1]||2)+mastery.turns;
+  const spd=(config.spd?.[lv-1]||2)+mastery.potency;
+  if(G.playerStatus.wingStormSPD){
+    G.player.stats.spd=Math.max(1,(G.player.stats.spd||1)-(G.playerStatus.wingStormSPD.spd||0));
+  }
+  G.player.stats.spd=(G.player.stats.spd||0)+spd;
+  G.playerStatus.wingStormSPD={turns,spd};
+  const dodgeBonus=config.dodge?.[lv-1]||0;
+  if(dodgeBonus>0) G.playerStatus.humDodge={bonus:dodgeBonus+mastery.potency,turns};
+  await doSpell('player',`🌬 +${spd} SPD`);
+  renderStatuses('player-status',G.playerStatus);
+  logMsg(`${config.log} +${spd} SPD for ${turns}t.`, 'player-action');
+}
+async function executeSparrowWindShroudAction(ab, config){
+  const lv=Math.max(1,Math.min(4,ab.level||1));
+  const slot=getAbilitySkillSlot(G.player, ab);
+  const mastery=getSparrowWindMasteryBonuses(slot);
+  const turns=(config.turns?.[lv-1]||2)+mastery.turns;
+  const accDrop=(config.acc?.[lv-1]||15)+mastery.acc;
+  G.enemyStatus.dustDevil={turns,accDrop};
+  G.enemyStatus.accDebuff=(G.enemyStatus.accDebuff||0)+accDrop;
+  if(config.slow){ applyEnemySlow(config.slow.spd+mastery.turns, config.slow.dodge, turns); }
+  await doSpell('enemy',`🌫 -${accDrop}% ACC`);
+  renderStatuses('enemy-status',G.enemyStatus);
+  logMsg(`${config.log} enemy ACC -${accDrop}% for ${turns}t.`, 'player-action');
+}
+async function executeSparrowMarkAmpAction(ab, config){
+  const lv=Math.max(1,Math.min(4,ab.level||1));
+  const slot=getAbilitySkillSlot(G.player, ab);
+  const mastery=getSparrowMarkMasteryBonuses(slot);
+  G.playerStatus.huntersMarkBonusPct=(config.amp?.[lv-1]||0)+mastery.amp;
+  await doSpell('enemy','🎯 Marked!');
+  logMsg(`${config.log} next attack +${Math.round((G.playerStatus.huntersMarkBonusPct||0)*100)}% damage.`, 'player-action');
+}
+async function executeSparrowMarkExposeAction(ab, config){
+  const lv=Math.max(1,Math.min(4,ab.level||1));
+  const slot=getAbilitySkillSlot(G.player, ab);
+  const mastery=getSparrowMarkMasteryBonuses(slot);
+  G.enemyStatus.exposedGuard={turns:config.turns?.[lv-1]||2, pct:(config.expose?.[lv-1]||0)+mastery.expose};
+  G.enemyStatus.defending=0;
+  await doSpell('enemy','🎯 Exposed!');
+  renderStatuses('enemy-status',G.enemyStatus);
+  logMsg(`${config.log} enemy takes +${Math.round(G.enemyStatus.exposedGuard.pct*100)}% damage.`, 'player-action');
+}
+async function executeSparrowMarkExecuteAction(ab, config){
+  const lv=Math.max(1,Math.min(4,ab.level||1));
+  const slot=getAbilitySkillSlot(G.player, ab);
+  const mastery=getSparrowMarkMasteryBonuses(slot);
+  const lowHp = G.enemy.stats.hp <= Math.floor((G.enemy.stats.maxHp||1)*0.5);
+  const bonus=(config.base?.[lv-1]||0)+mastery.amp+(lowHp?((config.execute?.[lv-1]||0)+mastery.execute):0);
+  G.playerStatus.huntersMarkBonusPct=bonus;
+  await doSpell('enemy', lowHp ? '☠ Execute Window!' : '🎯 Prey Marked!');
+  logMsg(`${config.log} next attack +${Math.round(bonus*100)}% damage${lowHp?' against a weakened foe':''}.`, 'player-action');
+}
+const SPARROW_SKILL_ACTION_OVERRIDES = {
+  multiPeck: ab=>executeSparrowRapidFamilyAction(ab,{name:'Multi Peck',log:'⚡ Multi Peck!',hits:[3,3,4,4],miss:[9,8,8,7],mult:[0.42,0.46,0.46,0.50],pierce:[0,0,0,0]}),
+  rapidPeck: ab=>executeSparrowRapidFamilyAction(ab,{name:'Rapid Peck',log:'⚡ Rapid Peck!',hits:[3,3,3,4],miss:[8,7,6,5],mult:[0.45,0.52,0.58,0.58],pierce:[10,12,14,16]}),
+  bodkinStrike: ab=>executeSparrowRapidFamilyAction(ab,{name:'Bodkin Strike',log:'🪶 Bodkin Strike!',hits:[3,3,4,4],miss:[7,6,5,4],mult:[0.52,0.58,0.58,0.64],pierce:[18,20,22,24]}),
+  bodkinBarrage: ab=>executeSparrowRapidFamilyAction(ab,{name:'Bodkin Barrage',log:'🪶 Bodkin Barrage!',hits:[4,4,5,5],miss:[6,5,4,3],mult:[0.60,0.66,0.66,0.72],pierce:[24,26,28,30]}),
+  rapidFlap: ab=>executeSparrowRapidFamilyAction(ab,{name:'Rapid Flap',log:'🌀 Rapid Flap!',hits:[3,3,4,4],miss:[8,7,6,5],mult:[0.42,0.48,0.48,0.54],rider:'confused',riderChance:[15,18,20,24],turns:[2,2,2,3],skipChance:[25,28,32,36]}),
+  disruptiveRush: ab=>executeSparrowRapidFamilyAction(ab,{name:'Disruptive Rush',log:'🌀 Disruptive Rush!',hits:[3,3,4,4],miss:[7,6,5,4],mult:[0.50,0.56,0.56,0.62],rider:'confused',riderChance:[22,25,28,32],turns:[2,2,3,3],skipChance:[28,32,36,40]}),
+  chaosTempest: ab=>executeSparrowRapidFamilyAction(ab,{name:'Chaos Tempest',log:'🌀 Chaos Tempest!',hits:[4,4,5,5],miss:[6,5,4,3],mult:[0.58,0.64,0.64,0.70],rider:'confused',riderChance:[30,34,36,40],turns:[3,3,3,4],skipChance:[32,36,40,45]}),
+  rapidTalon: ab=>executeSparrowRapidFamilyAction(ab,{name:'Rapid Talon',log:'☣ Rapid Talon!',hits:[3,3,4,4],miss:[8,7,6,5],mult:[0.42,0.48,0.48,0.54],rider:'poison',riderChance:[15,18,22,24],stacks:[1,1,1,2]}),
+  venomFlurry: ab=>executeSparrowRapidFamilyAction(ab,{name:'Venom Flurry',log:'☣ Venom Flurry!',hits:[3,3,4,4],miss:[7,6,5,4],mult:[0.50,0.56,0.56,0.62],rider:'poison',riderChance:[24,28,30,34],stacks:[1,1,2,2]}),
+  venomStorm: ab=>executeSparrowRapidFamilyAction(ab,{name:'Venom Storm',log:'☣ Venom Storm!',hits:[4,4,5,5],miss:[6,5,4,3],mult:[0.56,0.62,0.62,0.68],rider:'poison',riderChance:[34,38,40,45],stacks:[1,2,2,3]}),
+  dart: ab=>executeSparrowDartFamilyAction(ab,{name:'Dart',log:'💨 Dart!',miss:[10,8,6,5],mult:[1.10,1.20,1.30,1.40]}),
+  searingDart: ab=>executeSparrowDartFamilyAction(ab,{name:'Searing Dart',log:'🔥 Searing Dart!',miss:[8,7,6,5],mult:[1.05,1.15,1.25,1.35],rider:'burning',riderChance:[30,35,40,45],turns:[3,3,3,4]}),
+  searingArrow: ab=>executeSparrowDartFamilyAction(ab,{name:'Searing Arrow',log:'🔥 Searing Arrow!',miss:[7,6,5,4],mult:[1.18,1.28,1.38,1.48],rider:'burning',riderChance:[40,45,50,55],turns:[3,3,4,4]}),
+  searingJavelin: ab=>executeSparrowDartFamilyAction(ab,{name:'Searing Javelin',log:'🔥 Searing Javelin!',miss:[6,5,4,3],mult:[1.32,1.42,1.52,1.62],rider:'burning',riderChance:[50,55,60,65],turns:[3,4,4,4]}),
+  broadDart: ab=>executeSparrowDartFamilyAction(ab,{name:'Broad Dart',log:'🩸 Broad Dart!',miss:[9,8,7,6],mult:[1.02,1.12,1.22,1.32],rider:'bleed',riderChance:[30,35,40,45],stacks:[1,1,1,2]}),
+  broadArrow: ab=>executeSparrowDartFamilyAction(ab,{name:'Broad Arrow',log:'🩸 Broad Arrow!',miss:[8,7,6,5],mult:[1.16,1.26,1.36,1.46],rider:'bleed',riderChance:[40,45,50,55],stacks:[1,1,2,2]}),
+  broadJavelin: ab=>executeSparrowDartFamilyAction(ab,{name:'Broad Javelin',log:'🩸 Broad Javelin!',miss:[7,6,5,4],mult:[1.30,1.40,1.50,1.60],rider:'bleed',riderChance:[50,55,60,65],stacks:[1,2,2,3]}),
+  bodkinDart: ab=>executeSparrowDartFamilyAction(ab,{name:'Bodkin Dart',log:'🪶 Bodkin Dart!',miss:[8,7,6,5],mult:[1.06,1.16,1.26,1.36],pierce:[18,20,22,24]}),
+  bodkinArrow: ab=>executeSparrowDartFamilyAction(ab,{name:'Bodkin Arrow',log:'🪶 Bodkin Arrow!',miss:[7,6,5,4],mult:[1.20,1.30,1.40,1.50],pierce:[24,26,28,30]}),
+  bodkinJavelin: ab=>executeSparrowDartFamilyAction(ab,{name:'Bodkin Javelin',log:'🪶 Bodkin Javelin!',miss:[6,5,4,3],mult:[1.34,1.44,1.54,1.64],pierce:[30,32,34,36]}),
+  windFeint: ab=>executeSparrowWindDodgeAction(ab,{log:'💨 Wind Feint!',bonus:[20,25,30,35],turns:[2,2,2,3]}),
+  windSlip: ab=>executeSparrowWindDodgeAction(ab,{log:'💨 Wind Slip!',bonus:[25,30,35,40],turns:[2,2,2,3]}),
+  slipVeil: ab=>executeSparrowWindDodgeAction(ab,{log:'🌫 Slip Veil!',bonus:[35,40,45,50],turns:[2,2,2,3],cleanse:['weaken']}),
+  phantomGale: ab=>executeSparrowWindDodgeAction(ab,{log:'🌪 Phantom Gale!',bonus:[45,50,55,60],turns:[3,3,3,3],cleanse:['weaken','feared']}),
+  tailwindFeint: ab=>executeSparrowWindSpeedAction(ab,{log:'🌬 Tailwind Feint!',spd:[2,3,4,5],turns:[2,2,2,2],dodge:[0,0,0,0]}),
+  tailwindGust: ab=>executeSparrowWindSpeedAction(ab,{log:'🌬 Tailwind Gust!',spd:[4,5,6,7],turns:[2,2,2,2],dodge:[10,10,10,15]}),
+  hyperCurrent: ab=>executeSparrowWindSpeedAction(ab,{log:'⚡ Hyper Current!',spd:[6,7,8,9],turns:[3,3,3,3],dodge:[15,15,20,20]}),
+  featherDrift: ab=>executeSparrowWindShroudAction(ab,{log:'🪶 Feather Drift!',acc:[15,18,20,22],turns:[2,2,2,2]}),
+  blindingVeil: ab=>executeSparrowWindShroudAction(ab,{log:'🌫 Blinding Veil!',acc:[22,25,28,30],turns:[2,2,2,2],slow:{spd:2,dodge:10}}),
+  stormShroud: ab=>executeSparrowWindShroudAction(ab,{log:'🌪 Storm Shroud!',acc:[30,33,36,40],turns:[3,3,3,3],slow:{spd:3,dodge:12}}),
+  trackPrey: ab=>executeSparrowMarkAmpAction(ab,{log:'🪶 Track Prey!',amp:[0.12,0.15,0.18,0.21]}),
+  markPrey: ab=>executeSparrowMarkAmpAction(ab,{log:'🎯 Mark Prey!',amp:[0.18,0.22,0.26,0.30]}),
+  brandPrey: ab=>executeSparrowMarkAmpAction(ab,{log:'🎯 Brand Prey!',amp:[0.26,0.30,0.34,0.38]}),
+  huntersMark: ab=>executeSparrowMarkAmpAction(ab,{log:'🎯 Hunter\'s Mark!',amp:[0.34,0.38,0.42,0.46]}),
+  exposeWeakness: ab=>executeSparrowMarkExposeAction(ab,{log:'🎯 Expose Weakness!',expose:[0.12,0.14,0.16,0.18],turns:[2,2,2,2]}),
+  exposeGuard: ab=>executeSparrowMarkExposeAction(ab,{log:'🎯 Expose Guard!',expose:[0.18,0.20,0.22,0.24],turns:[2,2,2,2]}),
+  quarryBreak: ab=>executeSparrowMarkExposeAction(ab,{log:'🎯 Quarry Break!',expose:[0.24,0.26,0.28,0.30],turns:[3,3,3,3]}),
+  predatorMark: ab=>executeSparrowMarkExecuteAction(ab,{log:'☠ Predator Mark!',base:[0.16,0.20,0.24,0.28],execute:[0.12,0.14,0.16,0.18]}),
+  predatorBrand: ab=>executeSparrowMarkExecuteAction(ab,{log:'☠ Predator Brand!',base:[0.22,0.26,0.30,0.34],execute:[0.16,0.18,0.20,0.22]}),
+  finalHunt: ab=>executeSparrowMarkExecuteAction(ab,{log:'☠ Final Hunt!',base:[0.28,0.32,0.36,0.40],execute:[0.24,0.26,0.28,0.30]}),
+};
+Object.entries(SPARROW_SKILL_ACTION_OVERRIDES).forEach(([id, fn])=>{ ACTIONS[id] = fn; });
+
 function registerAbilityAlias(newId, sourceId, name, override={}){
   const src=ABILITY_TEMPLATES[sourceId];
   if(!src) return;
@@ -7740,6 +8584,141 @@ registerAbilityAlias('graceStep','evade','Grace Step');
 registerAbilityAlias('guard','crowDefend','Guard');
 registerAbilityAlias('honkTerror','gooseHonk','Honk Terror');
 registerAbilityAlias('heavyTalon','beakSlam','Heavy Talon');
+registerAbilityAlias('peck','headWhip','Peck',{isBasic:true,desc:'Neutral base peck. Cheap harassment before specializing.'});
+registerAbilityAlias('territorial_honk','honkAttack','Territorial Honk',{type:'physical',btnType:'physical',desc:'Goose base honk. A territorial pressure blast before branching.'});
+registerAbilityAlias('talon_slam','beakSlam','Talon Slam',{type:'physical',btnType:'physical',desc:'Goose base heavy strike. A grounded slam before specializing.'});
+registerAbilityAlias('tearing_bite','serratedSlash','Tearing Bite',{type:'physical',btnType:'physical'});
+registerAbilityAlias('savage_maul','serpentCrusher','Savage Maul',{type:'physical',btnType:'physical'});
+registerAbilityAlias('numbing_peck','intimidate','Numbing Peck',{type:'utility',btnType:'utility'});
+registerAbilityAlias('crippling_bite','wingClip','Crippling Bite',{type:'spell',btnType:'spell'});
+registerAbilityAlias('submission_maul','serpentCrusher','Submission Maul',{type:'physical',btnType:'physical'});
+registerAbilityAlias('bodkin_bite','silentPierce','Bodkin Bite',{type:'physical',btnType:'physical'});
+registerAbilityAlias('armor_maul','beakSlam','Armor Maul',{type:'physical',btnType:'physical'});
+registerAbilityAlias('honk_terror','honkTerror','Honk Terror',{type:'utility',btnType:'utility'});
+registerAbilityAlias('dread_honk','fearHonk','Dread Honk',{type:'utility',btnType:'utility'});
+registerAbilityAlias('terror_blast','gooseHonk','Terror Blast',{type:'physical',btnType:'physical'});
+registerAbilityAlias('panic_terror','honkTerror','Panic Terror',{type:'utility',btnType:'utility'});
+registerAbilityAlias('shock_honk','gooseHonk','Shock Honk',{type:'physical',btnType:'physical'});
+registerAbilityAlias('stunning_blast','thunderScreech','Stunning Blast',{type:'spell',btnType:'spell'});
+registerAbilityAlias('lockdown_terror','thunderScreech','Lockdown Terror',{type:'spell',btnType:'spell'});
+registerAbilityAlias('crushing_honk','gooseHonk','Crushing Honk',{type:'physical',btnType:'physical'});
+registerAbilityAlias('oppression_blast','intimidate','Oppression Blast',{type:'utility',btnType:'utility'});
+registerAbilityAlias('tyrant_terror','fearHonk','Tyrant Terror',{type:'utility',btnType:'utility'});
+registerAbilityAlias('iron_guard','guard','Iron Guard',{type:'utility',btnType:'utility'});
+registerAbilityAlias('bulwark_brace','guard','Bulwark Brace',{type:'utility',btnType:'utility'});
+registerAbilityAlias('fortress_stance','sitAndWait','Fortress Stance',{type:'utility',btnType:'utility'});
+registerAbilityAlias('spite_guard','counter','Spite Guard',{type:'utility',btnType:'utility'});
+registerAbilityAlias('punish_brace','parry','Punish Brace',{type:'utility',btnType:'utility'});
+registerAbilityAlias('retribution_fortress','retribution','Retribution Fortress',{type:'physical',btnType:'physical'});
+registerAbilityAlias('steady_guard','preen','Steady Guard',{type:'utility',btnType:'utility'});
+registerAbilityAlias('restoring_brace','roost','Restoring Brace',{type:'utility',btnType:'utility'});
+registerAbilityAlias('enduring_fortress','roost','Enduring Fortress',{type:'utility',btnType:'utility'});
+registerAbilityAlias('heavy_talon','heavyTalon','Heavy Talon',{type:'physical',btnType:'physical'});
+registerAbilityAlias('trample_slam','trample','Trample Slam',{type:'physical',btnType:'physical'});
+registerAbilityAlias('crushing_stampede','serpentCrusher','Crushing Stampede',{type:'physical',btnType:'physical'});
+registerAbilityAlias('wing_buffet','bodySlam','Wing Buffet',{type:'physical',btnType:'physical'});
+registerAbilityAlias('bone_buffet','cannonball','Bone Buffet',{type:'physical',btnType:'physical'});
+registerAbilityAlias('gale_crush','beakSlam','Gale Crush',{type:'physical',btnType:'physical'});
+registerAbilityAlias('rending_talon','beakSlam','Rending Talon',{type:'physical',btnType:'physical'});
+registerAbilityAlias('finisher_slam','beakSlam','Finisher Slam',{type:'physical',btnType:'physical'});
+registerAbilityAlias('execution_crush','deathDive','Execution Crush',{type:'physical',btnType:'physical'});
+Object.assign(ABILITY_TEMPLATES.peck||{}, makeEvolutionAbilityTemplate('peck','Peck','Neutral base peck. Cheap harassment before specializing.', {type:'physical', btnType:'physical', energy:1, levels:[{desc:'100% dmg, 10% miss.'},{desc:'108% dmg, 9% miss.'},{desc:'116% dmg, 8% miss.'},{desc:'124% dmg, 7% miss.'}]}));
+Object.assign(ABILITY_TEMPLATES.territorial_honk||{}, makeEvolutionAbilityTemplate('territorial_honk','Territorial Honk','Goose base honk. Loud territorial pressure before branching.', {type:'physical', btnType:'physical', energy:2, levels:[{desc:'115% dmg, 25% miss. Loud pressure without a rider.'},{desc:'125% dmg, 23% miss. Loud pressure without a rider.'},{desc:'135% dmg, 21% miss. Loud pressure without a rider.'},{desc:'145% dmg, 19% miss. Loud pressure without a rider.'}]}));
+Object.assign(ABILITY_TEMPLATES.talon_slam||{}, makeEvolutionAbilityTemplate('talon_slam','Talon Slam','Goose base heavy hit. Grounded body-pressure before branching.', {type:'physical', btnType:'physical', energy:2, levels:[{desc:'140% dmg, 22% miss.'},{desc:'150% dmg, 20% miss.'},{desc:'160% dmg, 18% miss.'},{desc:'170% dmg, 16% miss.'}]}));
+Object.assign(ABILITY_TEMPLATES.raking_peck||{}, makeEvolutionAbilityTemplate('raking_peck','Raking Peck','Peck-line bleed branch. Ugly close-range wound pressure.', {type:'physical', btnType:'physical', energy:1, levels:[{desc:'100% dmg. Bleed 10%.'},{desc:'108% dmg. Bleed 12%.'},{desc:'116% dmg. Bleed 14%.'},{desc:'124% dmg. Bleed 16%.'}]}));
+Object.assign(ABILITY_TEMPLATES.tearing_bite||{}, makeEvolutionAbilityTemplate('tearing_bite','Tearing Bite','Peck-line bleed evolution. Better against bleeding prey.', {type:'physical', btnType:'physical', energy:1, levels:[{desc:'112% dmg. Bleed 15%. Bonus vs bleeding.'},{desc:'120% dmg. Bleed 17%. Bonus vs bleeding.'},{desc:'128% dmg. Bleed 19%. Bonus vs bleeding.'},{desc:'136% dmg. Bleed 21%. Bonus vs bleeding.'}]}));
+Object.assign(ABILITY_TEMPLATES.savage_maul||{}, makeEvolutionAbilityTemplate('savage_maul','Savage Maul','Peck-line finisher. Brutal payoff against wounded prey.', {type:'physical', btnType:'physical', energy:1, levels:[{desc:'124% dmg. Bleed 20%. Stronger vs wounded.'},{desc:'132% dmg. Bleed 22%. Stronger vs wounded.'},{desc:'140% dmg. Bleed 24%. Stronger vs wounded.'},{desc:'148% dmg. Bleed 26%. Stronger vs wounded.'}]}));
+Object.assign(ABILITY_TEMPLATES.numbing_peck||{}, makeEvolutionAbilityTemplate('numbing_peck','Numbing Peck','Peck-line weaken branch. Peck to soften enemy offense.', {type:'utility', btnType:'utility', energy:1, levels:[{desc:'Weaken 10% for 2 turns.'},{desc:'Weaken 12% for 2 turns.'},{desc:'Weaken 14% for 2 turns.'},{desc:'Weaken 16% for 2 turns.'}]}));
+Object.assign(ABILITY_TEMPLATES.crippling_bite||{}, makeEvolutionAbilityTemplate('crippling_bite','Crippling Bite','Peck-line weaken evolution. Heavier anti-offense pressure.', {type:'utility', btnType:'utility', energy:1, levels:[{desc:'Weaken 15% for 2 turns.'},{desc:'Weaken 17% for 2 turns.'},{desc:'Weaken 19% for 2 turns.'},{desc:'Weaken 21% for 2 turns.'}]}));
+Object.assign(ABILITY_TEMPLATES.submission_maul||{}, makeEvolutionAbilityTemplate('submission_maul','Submission Maul','Peck-line bully finisher. Strong anti-offense payoff.', {type:'physical', btnType:'physical', energy:1, levels:[{desc:'126% dmg. Weaken 20%.'},{desc:'134% dmg. Weaken 22%.'},{desc:'142% dmg. Weaken 24%.'},{desc:'150% dmg. Weaken 26%.'}]}));
+Object.assign(ABILITY_TEMPLATES.needle_peck||{}, makeEvolutionAbilityTemplate('needle_peck','Needle Peck','Peck-line pierce branch. Sharp anti-armor harassment.', {type:'physical', btnType:'physical', energy:1, levels:[{desc:'102% dmg. Pierce 10% DEF.'},{desc:'110% dmg. Pierce 14% DEF.'},{desc:'118% dmg. Pierce 18% DEF.'},{desc:'126% dmg. Pierce 20% DEF.'}]}));
+Object.assign(ABILITY_TEMPLATES.bodkin_bite||{}, makeEvolutionAbilityTemplate('bodkin_bite','Bodkin Bite','Peck-line pierce evolution. Better against defense.', {type:'physical', btnType:'physical', energy:1, levels:[{desc:'114% dmg. Pierce 20% DEF.'},{desc:'122% dmg. Pierce 24% DEF.'},{desc:'130% dmg. Pierce 28% DEF.'},{desc:'138% dmg. Pierce 30% DEF.'}]}));
+Object.assign(ABILITY_TEMPLATES.armor_maul||{}, makeEvolutionAbilityTemplate('armor_maul','Armor Maul','Peck-line anti-armor finisher. Punishes guard.', {type:'physical', btnType:'physical', energy:1, levels:[{desc:'126% dmg. Pierce 30% DEF. Bonus vs guard.'},{desc:'134% dmg. Pierce 32% DEF. Bonus vs guard.'},{desc:'142% dmg. Pierce 34% DEF. Bonus vs guard.'},{desc:'150% dmg. Pierce 36% DEF. Bonus vs guard.'}]}));
+Object.assign(ABILITY_TEMPLATES.honk_terror||{}, makeEvolutionAbilityTemplate('honk_terror','Honk Terror','Honk-line neutral pressure shout kept for legacy compatibility.', {type:'physical', btnType:'physical', energy:2, levels:[{desc:'120% dmg, 24% miss.'},{desc:'130% dmg, 22% miss.'},{desc:'140% dmg, 20% miss.'},{desc:'150% dmg, 18% miss.'}]}));
+Object.assign(ABILITY_TEMPLATES.dread_honk||{}, makeEvolutionAbilityTemplate('dread_honk','Dread Honk','Honk-line fear branch. Signature goose terror.', {type:'utility', btnType:'utility', energy:2, levels:[{desc:'Fear 20%.'},{desc:'Fear 22%.'},{desc:'Fear 25%.'},{desc:'Fear 28%.'}]}));
+Object.assign(ABILITY_TEMPLATES.terror_blast||{}, makeEvolutionAbilityTemplate('terror_blast','Terror Blast','Honk-line fear evolution. Feared enemies lose accuracy.', {type:'physical', btnType:'physical', energy:2, levels:[{desc:'120% dmg. Fear 25%. Feared enemies lose ACC.'},{desc:'128% dmg. Fear 27%. Feared enemies lose ACC.'},{desc:'136% dmg. Fear 30%. Feared enemies lose ACC.'},{desc:'144% dmg. Fear 32%. Feared enemies lose ACC.'}]}));
+Object.assign(ABILITY_TEMPLATES.panic_terror||{}, makeEvolutionAbilityTemplate('panic_terror','Panic Terror','Honk-line fear finisher. Strong payoff vs feared foes.', {type:'utility', btnType:'utility', energy:2, levels:[{desc:'Fear 30%. Bonus vs feared.'},{desc:'Fear 32%. Bonus vs feared.'},{desc:'Fear 34%. Bonus vs feared.'},{desc:'Fear 36%. Bonus vs feared.'}]}));
+Object.assign(ABILITY_TEMPLATES.shock_honk||{}, makeEvolutionAbilityTemplate('shock_honk','Shock Honk','Honk-line paralysis branch. Disrupt enemy actions.', {type:'physical', btnType:'physical', energy:2, levels:[{desc:'115% dmg. Paralysis 15%.'},{desc:'123% dmg. Paralysis 17%.'},{desc:'131% dmg. Paralysis 20%.'},{desc:'139% dmg. Paralysis 22%.'}]}));
+Object.assign(ABILITY_TEMPLATES.stunning_blast||{}, makeEvolutionAbilityTemplate('stunning_blast','Stunning Blast','Honk-line paralysis evolution. Heavier lockdown pressure.', {type:'spell', btnType:'spell', energy:2, levels:[{desc:'Paralysis 20%.'},{desc:'Paralysis 22%.'},{desc:'Paralysis 24%.'},{desc:'Paralysis 26%.'}]}));
+Object.assign(ABILITY_TEMPLATES.lockdown_terror||{}, makeEvolutionAbilityTemplate('lockdown_terror','Lockdown Terror','Honk-line paralysis finisher. Strong control payoff.', {type:'spell', btnType:'spell', energy:2, levels:[{desc:'Paralysis 25%. Stronger control payoff.'},{desc:'Paralysis 27%. Stronger control payoff.'},{desc:'Paralysis 29%. Stronger control payoff.'},{desc:'Paralysis 31%. Stronger control payoff.'}]}));
+Object.assign(ABILITY_TEMPLATES.crushing_honk||{}, makeEvolutionAbilityTemplate('crushing_honk','Crushing Honk','Honk-line weaken branch. Oppressive stat pressure.', {type:'physical', btnType:'physical', energy:2, levels:[{desc:'115% dmg. Weaken 15%.'},{desc:'123% dmg. Weaken 17%.'},{desc:'131% dmg. Weaken 20%.'},{desc:'139% dmg. Weaken 22%.'}]}));
+Object.assign(ABILITY_TEMPLATES.oppression_blast||{}, makeEvolutionAbilityTemplate('oppression_blast','Oppression Blast','Honk-line weaken evolution. Suppresses enemy output.', {type:'utility', btnType:'utility', energy:2, levels:[{desc:'Weaken 20%.'},{desc:'Weaken 22%.'},{desc:'Weaken 24%.'},{desc:'Weaken 26%.'}]}));
+Object.assign(ABILITY_TEMPLATES.tyrant_terror||{}, makeEvolutionAbilityTemplate('tyrant_terror','Tyrant Terror','Honk-line oppressive finisher. Better vs weakened foes.', {type:'utility', btnType:'utility', energy:2, levels:[{desc:'Weaken 25%. Bonus vs weakened.'},{desc:'Weaken 27%. Bonus vs weakened.'},{desc:'Weaken 29%. Bonus vs weakened.'},{desc:'Weaken 31%. Bonus vs weakened.'}]}));
+Object.assign(ABILITY_TEMPLATES.iron_guard||{}, makeEvolutionAbilityTemplate('iron_guard','Iron Guard','Guard-line block branch. Escalating mitigation.', {type:'utility', btnType:'utility', energy:1, levels:[{desc:'Strong block stance.'},{desc:'Stronger block stance.'},{desc:'Heavier block stance.'},{desc:'Elite block stance.'}]}));
+Object.assign(ABILITY_TEMPLATES.bulwark_brace||{}, makeEvolutionAbilityTemplate('bulwark_brace','Bulwark Brace','Guard-line block evolution. Harder to move.', {type:'utility', btnType:'utility', energy:1, levels:[{desc:'Brace with durable mitigation.'},{desc:'Brace with stronger mitigation.'},{desc:'Brace with powerful mitigation.'},{desc:'Brace with fortress mitigation.'}]}));
+Object.assign(ABILITY_TEMPLATES.fortress_stance||{}, makeEvolutionAbilityTemplate('fortress_stance','Fortress Stance','Guard-line pure tank finisher.', {type:'utility', btnType:'utility', energy:1, levels:[{desc:'Maximum mitigation posture.'},{desc:'Maximum mitigation posture.'},{desc:'Maximum mitigation posture.'},{desc:'Maximum mitigation posture.'}]}));
+Object.assign(ABILITY_TEMPLATES.spite_guard||{}, makeEvolutionAbilityTemplate('spite_guard','Spite Guard','Guard-line retaliation branch. Punish attackers.', {type:'utility', btnType:'utility', energy:1, levels:[{desc:'Retaliation stance.'},{desc:'Stronger retaliation stance.'},{desc:'Heavy retaliation stance.'},{desc:'Brutal retaliation stance.'}]}));
+Object.assign(ABILITY_TEMPLATES.punish_brace||{}, makeEvolutionAbilityTemplate('punish_brace','Punish Brace','Guard-line retaliation evolution. More punishment.', {type:'utility', btnType:'utility', energy:1, levels:[{desc:'Brace and punish attackers.'},{desc:'Brace and punish attackers harder.'},{desc:'Brace and punish attackers heavily.'},{desc:'Brace and punish attackers brutally.'}]}));
+Object.assign(ABILITY_TEMPLATES.retribution_fortress||{}, makeEvolutionAbilityTemplate('retribution_fortress','Retribution Fortress','Guard-line retaliation finisher.', {type:'physical', btnType:'physical', energy:1, levels:[{desc:'Retaliatory fortress strike.'},{desc:'Retaliatory fortress strike.'},{desc:'Retaliatory fortress strike.'},{desc:'Retaliatory fortress strike.'}]}));
+Object.assign(ABILITY_TEMPLATES.steady_guard||{}, makeEvolutionAbilityTemplate('steady_guard','Steady Guard','Guard-line recover branch. Sustain while holding ground.', {type:'utility', btnType:'utility', energy:1, levels:[{desc:'Recover while guarding.'},{desc:'Recover more while guarding.'},{desc:'Recover strongly while guarding.'},{desc:'Recover heavily while guarding.'}]}));
+Object.assign(ABILITY_TEMPLATES.restoring_brace||{}, makeEvolutionAbilityTemplate('restoring_brace','Restoring Brace','Guard-line recovery evolution. Better sustain.', {type:'utility', btnType:'utility', energy:1, levels:[{desc:'Brace and restore HP.'},{desc:'Brace and restore more HP.'},{desc:'Brace and restore strong HP.'},{desc:'Brace and restore major HP.'}]}));
+Object.assign(ABILITY_TEMPLATES.enduring_fortress||{}, makeEvolutionAbilityTemplate('enduring_fortress','Enduring Fortress','Guard-line sustain finisher. Endure and outlast.', {type:'utility', btnType:'utility', energy:1, levels:[{desc:'Major sustain fortress.'},{desc:'Major sustain fortress.'},{desc:'Major sustain fortress.'},{desc:'Major sustain fortress.'}]}));
+Object.assign(ABILITY_TEMPLATES.heavy_talon||{}, makeEvolutionAbilityTemplate('heavy_talon','Heavy Talon','Heavy-line trample branch. Raw force.', {type:'physical', btnType:'physical', energy:2, levels:[{desc:'150% dmg, 22% miss.'},{desc:'160% dmg, 20% miss.'},{desc:'170% dmg, 18% miss.'},{desc:'180% dmg, 16% miss.'}]}));
+Object.assign(ABILITY_TEMPLATES.trample_slam||{}, makeEvolutionAbilityTemplate('trample_slam','Trample Slam','Heavy-line trample evolution. Bigger body-pressure.', {type:'physical', btnType:'physical', energy:2, levels:[{desc:'165% dmg, 20% miss.'},{desc:'175% dmg, 18% miss.'},{desc:'185% dmg, 16% miss.'},{desc:'195% dmg, 14% miss.'}]}));
+Object.assign(ABILITY_TEMPLATES.crushing_stampede||{}, makeEvolutionAbilityTemplate('crushing_stampede','Crushing Stampede','Heavy-line raw-force finisher.', {type:'physical', btnType:'physical', energy:2, levels:[{desc:'180% dmg, 18% miss.'},{desc:'190% dmg, 16% miss.'},{desc:'200% dmg, 14% miss.'},{desc:'210% dmg, 12% miss.'}]}));
+Object.assign(ABILITY_TEMPLATES.wing_buffet||{}, makeEvolutionAbilityTemplate('wing_buffet','Wing Buffet','Heavy-line buffet branch. Shove and disrupt.', {type:'physical', btnType:'physical', energy:2, levels:[{desc:'145% dmg, 20% miss. Disrupt enemy footing.'},{desc:'155% dmg, 18% miss. Disrupt enemy footing.'},{desc:'165% dmg, 16% miss. Disrupt enemy footing.'},{desc:'175% dmg, 14% miss. Disrupt enemy footing.'}]}));
+Object.assign(ABILITY_TEMPLATES.bone_buffet||{}, makeEvolutionAbilityTemplate('bone_buffet','Bone Buffet','Heavy-line buffet evolution. Harsher body pressure.', {type:'physical', btnType:'physical', energy:2, levels:[{desc:'160% dmg, 20% miss.'},{desc:'170% dmg, 18% miss.'},{desc:'180% dmg, 16% miss.'},{desc:'190% dmg, 14% miss.'}]}));
+Object.assign(ABILITY_TEMPLATES.gale_crush||{}, makeEvolutionAbilityTemplate('gale_crush','Gale Crush','Heavy-line buffet finisher. Violent grounded shove.', {type:'physical', btnType:'physical', energy:2, levels:[{desc:'175% dmg, 18% miss.'},{desc:'185% dmg, 16% miss.'},{desc:'195% dmg, 14% miss.'},{desc:'205% dmg, 12% miss.'}]}));
+Object.assign(ABILITY_TEMPLATES.rending_talon||{}, makeEvolutionAbilityTemplate('rending_talon','Rending Talon','Heavy-line execute branch. Better against low HP.', {type:'physical', btnType:'physical', energy:2, levels:[{desc:'150% dmg. Bonus vs low HP.'},{desc:'160% dmg. Bonus vs low HP.'},{desc:'170% dmg. Bonus vs low HP.'},{desc:'180% dmg. Bonus vs low HP.'}]}));
+Object.assign(ABILITY_TEMPLATES.finisher_slam||{}, makeEvolutionAbilityTemplate('finisher_slam','Finisher Slam','Heavy-line execute evolution. Higher finishing payoff.', {type:'physical', btnType:'physical', energy:2, levels:[{desc:'165% dmg. Bigger bonus vs low HP.'},{desc:'175% dmg. Bigger bonus vs low HP.'},{desc:'185% dmg. Bigger bonus vs low HP.'},{desc:'195% dmg. Bigger bonus vs low HP.'}]}));
+Object.assign(ABILITY_TEMPLATES.execution_crush||{}, makeEvolutionAbilityTemplate('execution_crush','Execution Crush','Heavy-line execute finisher. Brutal endgame hit.', {type:'physical', btnType:'physical', energy:2, levels:[{desc:'180% dmg. Strong execute threshold.'},{desc:'190% dmg. Strong execute threshold.'},{desc:'200% dmg. Strong execute threshold.'},{desc:'210% dmg. Strong execute threshold.'}]}));
+function executeGooseStrikeAction(ab, config={}){
+  const lv=Math.max(1, Math.min(4, ab?.level||1));
+  const miss=Math.max(0, (config.miss?.[lv-1] ?? 0) - getPlayerHitBonus(ab));
+  if(chance(miss)){
+    return doMiss('player').then(()=>logMsg(`${config.name||ab?.name||ab?.id} missed!`,'miss'));
+  }
+  let mult=(config.mult?.[lv-1] ?? 1);
+  if(config.bonusVs==='bleed' && (G.enemyStatus.bleed?.stacks||0)>0) mult += (config.bonus?.[lv-1] ?? 0);
+  if(config.bonusVs==='feared' && (G.enemyStatus.feared||0)>0) mult += (config.bonus?.[lv-1] ?? 0);
+  if(config.bonusVs==='weakened' && (G.enemyStatus.weaken||0)>0) mult += (config.bonus?.[lv-1] ?? 0);
+  if(config.bonusVs==='guard' && ((G.enemyStatus.defending||0)>0 || (G.enemyStatus.exposedGuard?.pct||0)>0)) mult += (config.bonus?.[lv-1] ?? 0);
+  if(config.bonusVs==='low_hp' && G.enemy.stats.hp <= Math.floor((G.enemy.stats.maxHp||1) * (config.lowHpThreshold || 0.5))) mult += (config.bonus?.[lv-1] ?? 0);
+  const prox={...ab, pierceDef:config.pierce?.[lv-1] ?? ab?.pierceDef ?? 0};
+  const isCrit=chance(getPlayerCritChance(ab));
+  const r=dealDamage('enemy',pdmg(mult, prox),isCrit);
+  return doAttack('player','enemy',r).then(async ()=>{
+    setHpBar('enemy',G.enemy.stats.hp,G.enemy.stats.maxHp);
+    if(config.bleedChance?.[lv-1] && chance(config.bleedChance[lv-1])){ applyAilment('enemy','bleed',1); spawnFloat('enemy','🩸 Bleed!','fn-poison'); }
+    if(config.weakenChance?.[lv-1] && chance(config.weakenChance[lv-1])){ applyAilment('enemy','weaken',1); spawnFloat('enemy','🐔 Weaken!','fn-status'); }
+    if(config.fearChance?.[lv-1] && chance(config.fearChance[lv-1])){ applyAilment('enemy','feared',1); spawnFloat('enemy','😨 Fear!','fn-status'); }
+    if(config.paraChance?.[lv-1] && chance(config.paraChance[lv-1])){ applyAilment('enemy','paralyzed',1); spawnFloat('enemy','⚡ Para!','fn-status'); }
+    logMsg(`${config.log||config.name||ab?.name||ab?.id}! ${r.dmgDealt} dmg.`, 'player-action');
+  });
+}
+const GOOSE_SKILL_ACTION_OVERRIDES = {
+  peck: ab=>executeGooseStrikeAction(ab,{name:'Peck', log:'🪿 Peck', miss:[10,9,8,7], mult:[1.00,1.08,1.16,1.24]}),
+  raking_peck: ab=>executeGooseStrikeAction(ab,{name:'Raking Peck', log:'🩸 Raking Peck', miss:[10,9,8,7], mult:[1.00,1.08,1.16,1.24], bleedChance:[10,12,14,16]}),
+  tearing_bite: ab=>executeGooseStrikeAction(ab,{name:'Tearing Bite', log:'🩸 Tearing Bite', miss:[9,8,7,6], mult:[1.12,1.20,1.28,1.36], bleedChance:[15,17,19,21], bonusVs:'bleed', bonus:[0.10,0.12,0.14,0.16]}),
+  savage_maul: ab=>executeGooseStrikeAction(ab,{name:'Savage Maul', log:'🩸 Savage Maul', miss:[8,7,6,5], mult:[1.24,1.32,1.40,1.48], bleedChance:[20,22,24,26], bonusVs:'bleed', bonus:[0.14,0.16,0.18,0.20]}),
+  numbing_peck: ab=>executeGooseStrikeAction(ab,{name:'Numbing Peck', log:'🐔 Numbing Peck', miss:[10,9,8,7], mult:[0.92,0.98,1.04,1.10], weakenChance:[10,12,14,16]}),
+  crippling_bite: ab=>executeGooseStrikeAction(ab,{name:'Crippling Bite', log:'🐔 Crippling Bite', miss:[9,8,7,6], mult:[1.00,1.06,1.12,1.18], weakenChance:[15,17,19,21]}),
+  submission_maul: ab=>executeGooseStrikeAction(ab,{name:'Submission Maul', log:'🐔 Submission Maul', miss:[8,7,6,5], mult:[1.10,1.18,1.26,1.34], weakenChance:[20,22,24,26], bonusVs:'weakened', bonus:[0.08,0.10,0.12,0.14]}),
+  needle_peck: ab=>executeGooseStrikeAction(ab,{name:'Needle Peck', log:'🪶 Needle Peck', miss:[10,9,8,7], mult:[1.02,1.10,1.18,1.26], pierce:[10,14,18,20]}),
+  bodkin_bite: ab=>executeGooseStrikeAction(ab,{name:'Bodkin Bite', log:'🪶 Bodkin Bite', miss:[9,8,7,6], mult:[1.14,1.22,1.30,1.38], pierce:[20,24,28,30]}),
+  armor_maul: ab=>executeGooseStrikeAction(ab,{name:'Armor Maul', log:'🪶 Armor Maul', miss:[8,7,6,5], mult:[1.26,1.34,1.42,1.50], pierce:[30,32,34,36], bonusVs:'guard', bonus:[0.10,0.12,0.14,0.16]}),
+  territorial_honk: ab=>executeGooseStrikeAction(ab,{name:'Territorial Honk', log:'📣 Territorial Honk', miss:[25,23,21,19], mult:[1.15,1.25,1.35,1.45]}),
+  dread_honk: ab=>executeGooseStrikeAction(ab,{name:'Dread Honk', log:'😨 Dread Honk', miss:[24,22,20,18], mult:[1.05,1.12,1.19,1.26], fearChance:[20,22,25,28]}),
+  terror_blast: ab=>executeGooseStrikeAction(ab,{name:'Terror Blast', log:'😨 Terror Blast', miss:[24,22,20,18], mult:[1.20,1.28,1.36,1.44], fearChance:[25,27,30,32], bonusVs:'feared', bonus:[0.08,0.10,0.12,0.14]}),
+  panic_terror: ab=>executeGooseStrikeAction(ab,{name:'Panic Terror', log:'😨 Panic Terror', miss:[23,21,19,17], mult:[1.24,1.32,1.40,1.48], fearChance:[30,32,34,36], bonusVs:'feared', bonus:[0.12,0.14,0.16,0.18]}),
+  shock_honk: ab=>executeGooseStrikeAction(ab,{name:'Shock Honk', log:'⚡ Shock Honk', miss:[24,22,20,18], mult:[1.15,1.23,1.31,1.39], paraChance:[15,17,20,22]}),
+  stunning_blast: ab=>executeGooseStrikeAction(ab,{name:'Stunning Blast', log:'⚡ Stunning Blast', miss:[23,21,19,17], mult:[1.18,1.26,1.34,1.42], paraChance:[20,22,24,26]}),
+  lockdown_terror: ab=>executeGooseStrikeAction(ab,{name:'Lockdown Terror', log:'⚡ Lockdown Terror', miss:[22,20,18,16], mult:[1.22,1.30,1.38,1.46], paraChance:[25,27,29,31]}),
+  crushing_honk: ab=>executeGooseStrikeAction(ab,{name:'Crushing Honk', log:'🐔 Crushing Honk', miss:[24,22,20,18], mult:[1.15,1.23,1.31,1.39], weakenChance:[15,17,20,22]}),
+  oppression_blast: ab=>executeGooseStrikeAction(ab,{name:'Oppression Blast', log:'🐔 Oppression Blast', miss:[23,21,19,17], mult:[1.18,1.26,1.34,1.42], weakenChance:[20,22,24,26]}),
+  tyrant_terror: ab=>executeGooseStrikeAction(ab,{name:'Tyrant Terror', log:'🐔 Tyrant Terror', miss:[22,20,18,16], mult:[1.22,1.30,1.38,1.46], weakenChance:[25,27,29,31], bonusVs:'weakened', bonus:[0.10,0.12,0.14,0.16]}),
+  talon_slam: ab=>executeGooseStrikeAction(ab,{name:'Talon Slam', log:'💥 Talon Slam', miss:[22,20,18,16], mult:[1.40,1.50,1.60,1.70]}),
+  heavy_talon: ab=>executeGooseStrikeAction(ab,{name:'Heavy Talon', log:'💥 Heavy Talon', miss:[22,20,18,16], mult:[1.50,1.60,1.70,1.80]}),
+  trample_slam: ab=>executeGooseStrikeAction(ab,{name:'Trample Slam', log:'💥 Trample Slam', miss:[20,18,16,14], mult:[1.65,1.75,1.85,1.95]}),
+  crushing_stampede: ab=>executeGooseStrikeAction(ab,{name:'Crushing Stampede', log:'💥 Crushing Stampede', miss:[18,16,14,12], mult:[1.80,1.90,2.00,2.10]}),
+  wing_buffet: ab=>executeGooseStrikeAction(ab,{name:'Wing Buffet', log:'🪽 Wing Buffet', miss:[20,18,16,14], mult:[1.45,1.55,1.65,1.75], weakenChance:[10,12,14,16]}),
+  bone_buffet: ab=>executeGooseStrikeAction(ab,{name:'Bone Buffet', log:'🪽 Bone Buffet', miss:[20,18,16,14], mult:[1.60,1.70,1.80,1.90], weakenChance:[12,14,16,18]}),
+  gale_crush: ab=>executeGooseStrikeAction(ab,{name:'Gale Crush', log:'🪽 Gale Crush', miss:[18,16,14,12], mult:[1.75,1.85,1.95,2.05], weakenChance:[14,16,18,20]}),
+  rending_talon: ab=>executeGooseStrikeAction(ab,{name:'Rending Talon', log:'☠ Rending Talon', miss:[20,18,16,14], mult:[1.50,1.60,1.70,1.80], bonusVs:'low_hp', bonus:[0.15,0.18,0.21,0.24], lowHpThreshold:0.5}),
+  finisher_slam: ab=>executeGooseStrikeAction(ab,{name:'Finisher Slam', log:'☠ Finisher Slam', miss:[18,16,14,12], mult:[1.65,1.75,1.85,1.95], bonusVs:'low_hp', bonus:[0.20,0.23,0.26,0.29], lowHpThreshold:0.5}),
+  execution_crush: ab=>executeGooseStrikeAction(ab,{name:'Execution Crush', log:'☠ Execution Crush', miss:[16,14,12,10], mult:[1.80,1.90,2.00,2.10], bonusVs:'low_hp', bonus:[0.25,0.28,0.31,0.34], lowHpThreshold:0.55}),
+};
+Object.entries(GOOSE_SKILL_ACTION_OVERRIDES).forEach(([id, fn])=>{ ACTIONS[id]=fn; });
 registerAbilityAlias('iceGuard','crowDefend','Ice Guard');
 registerAbilityAlias('bodySlam','beakSlam','Body Slam');
 registerAbilityAlias('rallyCall','victoryChant','Rally Call',{type:'utility',btnType:'utility'});
@@ -7791,6 +8770,84 @@ registerAbilityAlias('piercingScreech','sonicDirge','Piercing Screech',{type:'sp
 registerAbilityAlias('stormChorus','owlPsyche','Storm Chorus',{type:'spell',btnType:'spell'});
 registerAbilityAlias('battleChorus','victoryChant','Battle Chorus',{type:'utility',btnType:'utility'});
 registerAbilityAlias('thunderScreech','sonicDirge','Thunder Screech',{type:'spell',btnType:'spell'});
+registerAbilityAlias('dark_song','stormChorus','Dark Song',{type:'spell',btnType:'spell',desc:'Blackbird base song. A neutral dark refrain before branching.'});
+registerAbilityAlias('dread_song','fearChorus','Dread Song',{type:'spell',btnType:'spell'});
+registerAbilityAlias('panic_verse','thunderScreech','Panic Verse',{type:'spell',btnType:'spell'});
+registerAbilityAlias('night_anthem','murderMurmuration','Night Anthem',{type:'spell',btnType:'spell'});
+registerAbilityAlias('venomous_song','rotChorus','Venomous Song',{type:'spell',btnType:'spell'});
+registerAbilityAlias('venomous_verse','plagueBlast','Venomous Verse',{type:'spell',btnType:'spell'});
+registerAbilityAlias('venomous_anthem','astralRefrain','Venomous Anthem',{type:'spell',btnType:'spell'});
+registerAbilityAlias('hex_song','dreadCall','Hex Song',{type:'utility',btnType:'utility'});
+registerAbilityAlias('hex_verse','astralRefrain','Hex Verse',{type:'spell',btnType:'spell'});
+registerAbilityAlias('doom_anthem','murderMurmuration','Doom Anthem',{type:'spell',btnType:'spell'});
+registerAbilityAlias('shadow_peck','blackPeck','Shadow Peck',{isBasic:true,type:'physical',btnType:'physical',desc:'Blackbird base peck. A neutral shadow strike before branching.'});
+registerAbilityAlias('raking_peck','talonRake','Raking Peck',{type:'physical',btnType:'physical'});
+registerAbilityAlias('rend_strike','serratedSlash','Rend Strike',{type:'physical',btnType:'physical'});
+registerAbilityAlias('carrion_barrage','murderMurmuration','Carrion Barrage',{type:'spell',btnType:'spell'});
+registerAbilityAlias('siphon_peck','toxicSpit','Siphon Peck',{type:'physical',btnType:'physical'});
+registerAbilityAlias('umbral_strike','astralRefrain','Umbral Strike',{type:'spell',btnType:'spell'});
+registerAbilityAlias('soul_barrage','murderMurmuration','Soul Barrage',{type:'spell',btnType:'spell'});
+registerAbilityAlias('needle_peck','silentPierce','Needle Peck',{type:'physical',btnType:'physical'});
+registerAbilityAlias('bodkin_strike','silentPierce','Bodkin Strike',{type:'physical',btnType:'physical'});
+registerAbilityAlias('splinter_barrage','murderMurmuration','Splinter Barrage',{type:'spell',btnType:'spell'});
+registerAbilityAlias('gloom_wing','battleChorus','Gloom Wing',{type:'utility',btnType:'utility',desc:'Blackbird base utility. A neutral wing shroud before branching.'});
+registerAbilityAlias('shade_wing','hum','Shade Wing',{type:'utility',btnType:'utility'});
+registerAbilityAlias('veil_wing','windChorus','Veil Wing',{type:'utility',btnType:'utility'});
+registerAbilityAlias('ghost_wing','phantomGale','Ghost Wing',{type:'utility',btnType:'utility'});
+registerAbilityAlias('murk_wing','eyeGouge','Murk Wing',{type:'physical',btnType:'physical'});
+registerAbilityAlias('blind_veil','featherRuffle','Blind Veil',{type:'utility',btnType:'utility'});
+registerAbilityAlias('eclipse_shroud','stormShroud','Eclipse Shroud',{type:'utility',btnType:'utility'});
+registerAbilityAlias('heavy_wing','wingClip','Heavy Wing',{type:'spell',btnType:'spell'});
+registerAbilityAlias('drag_veil','wingClip','Drag Veil',{type:'spell',btnType:'spell'});
+registerAbilityAlias('dusk_field','nightfallSong','Dusk Field',{type:'utility',btnType:'utility'});
+registerAbilityAlias('grim_sign','dreadCall','Grim Sign',{type:'utility',btnType:'utility',desc:'Blackbird base setup. Mark your quarry before choosing a doom path.'});
+registerAbilityAlias('grim_mark','markPrey','Grim Mark',{type:'utility',btnType:'utility'});
+registerAbilityAlias('grave_seal','brandPrey','Grave Seal',{type:'utility',btnType:'utility'});
+registerAbilityAlias('harbinger_doom','huntersMark','Harbinger Doom',{type:'utility',btnType:'utility'});
+registerAbilityAlias('crack_guard','exposeWeakness','Crack Guard',{type:'utility',btnType:'utility'});
+registerAbilityAlias('break_seal','exposeGuard','Break Seal',{type:'utility',btnType:'utility'});
+registerAbilityAlias('ruin_doom','quarryBreak','Ruin Doom',{type:'utility',btnType:'utility'});
+registerAbilityAlias('death_sign','predatorMark','Death Sign',{type:'utility',btnType:'utility'});
+registerAbilityAlias('death_seal','predatorBrand','Death Seal',{type:'utility',btnType:'utility'});
+registerAbilityAlias('final_omen','finalHunt','Final Omen',{type:'utility',btnType:'utility'});
+registerAbilityAlias('murder_murmuration','murderMurmuration','Murder Murmuration',{type:'physical',btnType:'physical',desc:'Crow base signature. Coordinated harassment before specializing.'});
+registerAbilityAlias('dread_call','dreadCall','Dread Call',{type:'utility',btnType:'utility',desc:'Crow base utility. A neutral unsettling call before branching.'});
+registerAbilityAlias('battle_focus','battleFocus','Battle Focus',{type:'utility',btnType:'utility',desc:'Crow base setup. Study the target before committing to a path.'});
+registerAbilityAlias('tearing_jab','serratedSlash','Tearing Jab',{type:'physical',btnType:'physical'});
+registerAbilityAlias('carrion_flurry','murderMurmuration','Carrion Flurry',{type:'physical',btnType:'physical'});
+registerAbilityAlias('hex_peck','siphon_peck','Hex Peck',{type:'physical',btnType:'physical'});
+registerAbilityAlias('umbral_jab','umbral_strike','Umbral Jab',{type:'spell',btnType:'spell'});
+registerAbilityAlias('hex_flurry','soul_barrage','Hex Flurry',{type:'spell',btnType:'spell'});
+registerAbilityAlias('keen_peck','needle_peck','Keen Peck',{type:'physical',btnType:'physical'});
+registerAbilityAlias('target_jab','bodkin_strike','Target Jab',{type:'physical',btnType:'physical'});
+registerAbilityAlias('execution_flurry','splinter_barrage','Execution Flurry',{type:'physical',btnType:'physical'});
+registerAbilityAlias('harrier_murmuration','mobSwarm','Harrier Murmuration',{type:'physical',btnType:'physical'});
+registerAbilityAlias('talon_swarm','talonRake','Talon Swarm',{type:'physical',btnType:'physical'});
+registerAbilityAlias('blackwing_murder','murderMurmuration','Blackwing Murder',{type:'physical',btnType:'physical'});
+registerAbilityAlias('dread_murmuration','murderMurmuration','Dread Murmuration',{type:'spell',btnType:'spell'});
+registerAbilityAlias('panic_swarm','dirgeOfDread','Panic Swarm',{type:'spell',btnType:'spell'});
+registerAbilityAlias('murder_of_terror','night_anthem','Murder of Terror',{type:'spell',btnType:'spell'});
+registerAbilityAlias('hunting_murmuration','mobSwarm','Hunting Murmuration',{type:'physical',btnType:'physical'});
+registerAbilityAlias('marking_swarm','markPrey','Marking Swarm',{type:'physical',btnType:'physical'});
+registerAbilityAlias('execution_murder','finalHunt','Execution Murder',{type:'physical',btnType:'physical'});
+registerAbilityAlias('ominous_call','fearChorus','Ominous Call',{type:'utility',btnType:'utility'});
+registerAbilityAlias('panic_cry','dirgeOfDread','Panic Cry',{type:'utility',btnType:'utility'});
+registerAbilityAlias('doom_chorus','nightfallSong','Doom Chorus',{type:'utility',btnType:'utility'});
+registerAbilityAlias('distracting_call','blindScreech','Distracting Call',{type:'utility',btnType:'utility'});
+registerAbilityAlias('mocking_cry','mockingSong','Mocking Cry',{type:'utility',btnType:'utility'});
+registerAbilityAlias('ruin_chorus','eclipse_shroud','Ruin Chorus',{type:'utility',btnType:'utility'});
+registerAbilityAlias('hunting_call','predatorMark','Hunting Call',{type:'utility',btnType:'utility'});
+registerAbilityAlias('pack_cry','predatorBrand','Pack Cry',{type:'utility',btnType:'utility'});
+registerAbilityAlias('kill_chorus','finalHunt','Kill Chorus',{type:'utility',btnType:'utility'});
+registerAbilityAlias('keen_focus','markPrey','Keen Focus',{type:'utility',btnType:'utility'});
+registerAbilityAlias('hunt_plan','brandPrey','Hunt Plan',{type:'utility',btnType:'utility'});
+registerAbilityAlias('killer_hunt','huntersMark','Killer Hunt',{type:'utility',btnType:'utility'});
+registerAbilityAlias('weakpoint_focus','exposeWeakness','Weakpoint Focus',{type:'utility',btnType:'utility'});
+registerAbilityAlias('break_plan','exposeGuard','Break Plan',{type:'utility',btnType:'utility'});
+registerAbilityAlias('ruin_hunt','quarryBreak','Ruin Hunt',{type:'utility',btnType:'utility'});
+registerAbilityAlias('opening_focus','battleFocus','Opening Focus',{type:'utility',btnType:'utility'});
+registerAbilityAlias('tempo_plan','battleFocus','Tempo Plan',{type:'utility',btnType:'utility'});
+registerAbilityAlias('perfect_hunt','battleFocus','Perfect Hunt',{type:'utility',btnType:'utility'});
 registerAbilityAlias('nightTalon','deathDive','Night Talon',{isBasic:true,type:'physical',btnType:'physical',energyCost:3,energyByLevel:[3,3,3,3]});
 registerAbilityAlias('huntersCry','victoryChant',"Hunter's Cry",{type:'utility',btnType:'utility'});
 registerAbilityAlias('fleshTear','fleshRipper','Flesh Tear',{isBasic:true,type:'physical',btnType:'physical'});
@@ -7826,6 +8883,403 @@ registerAbilityAlias('stormSong','sonicDirge','Storm Song',{type:'spell',btnType
 registerAbilityAlias('nightfallCall','dukeDecree','Nightfall Call',{type:'spell',btnType:'spell'});
 registerAbilityAlias('courtSummon','dukeWardens','Court Summon',{type:'utility',btnType:'utility'});
 registerAbilityAlias('verdict','dukeRiverGrip','Verdict',{type:'spell',btnType:'spell'});
+
+Object.assign(ABILITY_TEMPLATES.windFeint||{}, makeEvolutionAbilityTemplate('windFeint','Wind Feint','Sparrow base wind skill. A tempo-first evasive feint.', {type:'utility', btnType:'utility', energy:1, levels:[{desc:'Gain +20% dodge for 2 turns.'},{desc:'Gain +25% dodge for 2 turns.'},{desc:'Gain +30% dodge for 2 turns.'},{desc:'Gain +35% dodge for 3 turns.'}]}));
+Object.assign(ABILITY_TEMPLATES.predatorMark||{}, makeEvolutionAbilityTemplate('predatorMark','Predator Mark','Mark-line execute branch. Hunt the weakened target.', {type:'utility', btnType:'utility', energy:1, levels:[{desc:'Mark prey. Next attack gains +16% damage, +12% more below 50% HP.'},{desc:'Mark prey. Next attack gains +20% damage, +14% more below 50% HP.'},{desc:'Mark prey. Next attack gains +24% damage, +16% more below 50% HP.'},{desc:'Mark prey. Next attack gains +28% damage, +18% more below 50% HP.'}]}));
+Object.assign(ABILITY_TEMPLATES.murder_murmuration||{}, makeEvolutionAbilityTemplate('murder_murmuration','Murder Murmuration','Crow base signature. A coordinated mobbing strike before branching.', {type:'physical', btnType:'physical', energy:2, levels:[{desc:'2 hits at 58% dmg each. No rider.'},{desc:'2 hits at 64% dmg each. No rider.'},{desc:'3 hits at 60% dmg each. No rider.'},{desc:'3 hits at 66% dmg each. No rider.'}]}));
+Object.assign(ABILITY_TEMPLATES.dread_call||{}, makeEvolutionAbilityTemplate('dread_call','Dread Call','Crow base utility. Disrupt the enemy before committing to a branch.', {type:'utility', btnType:'utility', energy:1, levels:[{desc:'Enemy ACC -10% for 2 turns.'},{desc:'Enemy ACC -12% for 2 turns.'},{desc:'Enemy ACC -14% for 2 turns.'},{desc:'Enemy ACC -16% for 2 turns.'}]}));
+Object.assign(ABILITY_TEMPLATES.battle_focus||{}, makeEvolutionAbilityTemplate('battle_focus','Battle Focus','Crow base setup. Study the target for a sharper next attack.', {type:'utility', btnType:'utility', energy:1, levels:[{desc:'Next attack +12% damage.'},{desc:'Next attack +15% damage.'},{desc:'Next attack +18% damage.'},{desc:'Next attack +21% damage.'}]}));
+Object.assign(ABILITY_TEMPLATES.tearing_jab||{}, makeEvolutionAbilityTemplate('tearing_jab','Tearing Jab','Crow bleed evolution. Deeper opportunistic cuts.', {type:'physical', btnType:'physical', energy:1, levels:[{desc:'112% dmg. Bleed 16%. Bonus vs bleeding.'},{desc:'120% dmg. Bleed 18%. Bonus vs bleeding.'},{desc:'128% dmg. Bleed 20%. Bonus vs bleeding.'},{desc:'136% dmg. Bleed 22%. Bonus vs bleeding.'}]}));
+Object.assign(ABILITY_TEMPLATES.carrion_flurry||{}, makeEvolutionAbilityTemplate('carrion_flurry','Carrion Flurry','Crow bleed finisher. A carrion-feast burst against wounded targets.', {type:'physical', btnType:'physical', energy:1, levels:[{desc:'2 hits at 68% dmg. Bleed 22%.'},{desc:'2 hits at 74% dmg. Bleed 24%.'},{desc:'3 hits at 66% dmg. Bleed 26%.'},{desc:'3 hits at 72% dmg. Bleed 28%.'}]}));
+Object.assign(ABILITY_TEMPLATES.hex_peck||{}, makeEvolutionAbilityTemplate('hex_peck','Hex Peck','Crow hex branch. Eerie pressure with hybrid scaling.', {type:'physical', btnType:'physical', energy:1, levels:[{desc:'Hybrid strike. Fear 10%.'},{desc:'Hybrid strike. Fear 12%.'},{desc:'Hybrid strike. Fear 14%.'},{desc:'Hybrid strike. Fear 16%.'}]}));
+Object.assign(ABILITY_TEMPLATES.umbral_jab||{}, makeEvolutionAbilityTemplate('umbral_jab','Umbral Jab','Crow hex evolution. Lean harder into magic opportunism.', {type:'spell', btnType:'spell', energy:1, levels:[{desc:'Spell dmg. Fear 16%. Bonus vs exposed.'},{desc:'Spell dmg. Fear 18%. Bonus vs exposed.'},{desc:'Spell dmg. Fear 20%. Bonus vs exposed.'},{desc:'Spell dmg. Fear 22%. Bonus vs exposed.'}]}));
+Object.assign(ABILITY_TEMPLATES.hex_flurry||{}, makeEvolutionAbilityTemplate('hex_flurry','Hex Flurry','Crow hex finisher. A spiteful magical burst.', {type:'spell', btnType:'spell', energy:1, levels:[{desc:'2 spell hits. Fear 22%.'},{desc:'2 spell hits. Fear 24%.'},{desc:'3 spell hits. Fear 26%.'},{desc:'3 spell hits. Fear 28%.'}]}));
+Object.assign(ABILITY_TEMPLATES.keen_peck||{}, makeEvolutionAbilityTemplate('keen_peck','Keen Peck','Crow precision branch. Exploit weak points with hybrid timing.', {type:'physical', btnType:'physical', energy:1, levels:[{desc:'Hybrid strike. Pierce 10% DEF. Bonus vs exposed.'},{desc:'Hybrid strike. Pierce 12% DEF. Bonus vs exposed.'},{desc:'Hybrid strike. Pierce 14% DEF. Bonus vs exposed.'},{desc:'Hybrid strike. Pierce 16% DEF. Bonus vs exposed.'}]}));
+Object.assign(ABILITY_TEMPLATES.target_jab||{}, makeEvolutionAbilityTemplate('target_jab','Target Jab','Crow precision evolution. Delivers sharper execution angles.', {type:'physical', btnType:'physical', energy:1, levels:[{desc:'Hybrid strike. Pierce 16% DEF. Bonus vs exposed or feared.'},{desc:'Hybrid strike. Pierce 18% DEF. Bonus vs exposed or feared.'},{desc:'Hybrid strike. Pierce 20% DEF. Bonus vs exposed or feared.'},{desc:'Hybrid strike. Pierce 22% DEF. Bonus vs exposed or feared.'}]}));
+Object.assign(ABILITY_TEMPLATES.execution_flurry||{}, makeEvolutionAbilityTemplate('execution_flurry','Execution Flurry','Crow precision finisher. Multi-hit execution on compromised prey.', {type:'physical', btnType:'physical', energy:1, levels:[{desc:'2 hybrid hits. Big bonus vs exposed or low HP.'},{desc:'2 hybrid hits. Bigger bonus vs exposed or low HP.'},{desc:'3 hybrid hits. Bigger bonus vs exposed or low HP.'},{desc:'3 hybrid hits. Massive bonus vs exposed or low HP.'}]}));
+Object.assign(ABILITY_TEMPLATES.harrier_murmuration||{}, makeEvolutionAbilityTemplate('harrier_murmuration','Harrier Murmuration','Murmuration talon branch. Coordinated physical harassment.', {type:'physical', btnType:'physical', energy:2, levels:[{desc:'3 hits at 46% dmg each. Bleed 12%.'},{desc:'3 hits at 50% dmg each. Bleed 14%.'},{desc:'4 hits at 48% dmg each. Bleed 16%.'},{desc:'4 hits at 52% dmg each. Bleed 18%.'}]}));
+Object.assign(ABILITY_TEMPLATES.talon_swarm||{}, makeEvolutionAbilityTemplate('talon_swarm','Talon Swarm','Murmuration talon evolution. Harder physical mobbing.', {type:'physical', btnType:'physical', energy:2, levels:[{desc:'3 hits at 56% dmg each. Bleed 18%.'},{desc:'3 hits at 60% dmg each. Bleed 20%.'},{desc:'4 hits at 58% dmg each. Bleed 22%.'},{desc:'4 hits at 62% dmg each. Bleed 24%.'}]}));
+Object.assign(ABILITY_TEMPLATES.blackwing_murder||{}, makeEvolutionAbilityTemplate('blackwing_murder','Blackwing Murder','Murmuration talon finisher. A brutal coordinated takedown.', {type:'physical', btnType:'physical', energy:2, levels:[{desc:'4 hits at 60% dmg each. Bleed 24%.'},{desc:'4 hits at 64% dmg each. Bleed 26%.'},{desc:'5 hits at 62% dmg each. Bleed 28%.'},{desc:'5 hits at 66% dmg each. Bleed 30%.'}]}));
+Object.assign(ABILITY_TEMPLATES.dread_murmuration||{}, makeEvolutionAbilityTemplate('dread_murmuration','Dread Murmuration','Murmuration dread branch. Unsettling magical mobbing.', {type:'spell', btnType:'spell', energy:2, levels:[{desc:'3 spell hits. Fear 16%.'},{desc:'3 spell hits. Fear 18%.'},{desc:'4 spell hits. Fear 20%.'},{desc:'4 spell hits. Fear 22%.'}]}));
+Object.assign(ABILITY_TEMPLATES.panic_swarm||{}, makeEvolutionAbilityTemplate('panic_swarm','Panic Swarm','Murmuration dread evolution. Swarm pressure that rattles nerves.', {type:'spell', btnType:'spell', energy:2, levels:[{desc:'3 spell hits. Fear 22%. ACC down.'},{desc:'3 spell hits. Fear 24%. ACC down.'},{desc:'4 spell hits. Fear 26%. ACC down.'},{desc:'4 spell hits. Fear 28%. ACC down.'}]}));
+Object.assign(ABILITY_TEMPLATES.murder_of_terror||{}, makeEvolutionAbilityTemplate('murder_of_terror','Murder of Terror','Murmuration dread finisher. A nightmare flock.', {type:'spell', btnType:'spell', energy:2, levels:[{desc:'4 spell hits. Fear 28% and stronger vs feared.'},{desc:'4 spell hits. Fear 30% and stronger vs feared.'},{desc:'5 spell hits. Fear 32% and stronger vs feared.'},{desc:'5 spell hits. Fear 34% and stronger vs feared.'}]}));
+Object.assign(ABILITY_TEMPLATES.hunting_murmuration||{}, makeEvolutionAbilityTemplate('hunting_murmuration','Hunting Murmuration','Murmuration hunting branch. Marks openings for follow-up kills.', {type:'physical', btnType:'physical', energy:2, levels:[{desc:'3 hybrid hits. Expose 10%.'},{desc:'3 hybrid hits. Expose 12%.'},{desc:'4 hybrid hits. Expose 14%.'},{desc:'4 hybrid hits. Expose 16%.'}]}));
+Object.assign(ABILITY_TEMPLATES.marking_swarm||{}, makeEvolutionAbilityTemplate('marking_swarm','Marking Swarm','Murmuration hunting evolution. Builds a kill window.', {type:'physical', btnType:'physical', energy:2, levels:[{desc:'3 hybrid hits. Expose 16%. Bonus next attack.'},{desc:'3 hybrid hits. Expose 18%. Bonus next attack.'},{desc:'4 hybrid hits. Expose 20%. Bonus next attack.'},{desc:'4 hybrid hits. Expose 22%. Bonus next attack.'}]}));
+Object.assign(ABILITY_TEMPLATES.execution_murder||{}, makeEvolutionAbilityTemplate('execution_murder','Execution Murder','Murmuration hunting finisher. Maximum coordinated punishment.', {type:'physical', btnType:'physical', energy:2, levels:[{desc:'4 hybrid hits. Big bonus vs exposed or low HP.'},{desc:'4 hybrid hits. Bigger bonus vs exposed or low HP.'},{desc:'5 hybrid hits. Bigger bonus vs exposed or low HP.'},{desc:'5 hybrid hits. Massive bonus vs exposed or low HP.'}]}));
+Object.assign(ABILITY_TEMPLATES.ominous_call||{}, makeEvolutionAbilityTemplate('ominous_call','Ominous Call','Call fear branch. An unsettling warning cry.', {type:'utility', btnType:'utility', energy:1, levels:[{desc:'Fear 1 turn. Enemy ACC -10% for 2 turns.'},{desc:'Fear 1 turn. Enemy ACC -12% for 2 turns.'},{desc:'Fear 2 turns. Enemy ACC -14% for 2 turns.'},{desc:'Fear 2 turns. Enemy ACC -16% for 3 turns.'}]}));
+Object.assign(ABILITY_TEMPLATES.panic_cry||{}, makeEvolutionAbilityTemplate('panic_cry','Panic Cry','Call fear evolution. Escalates battlefield panic.', {type:'utility', btnType:'utility', energy:1, levels:[{desc:'Fear 1 turn. Enemy ACC -14% for 2 turns.'},{desc:'Fear 2 turns. Enemy ACC -16% for 2 turns.'},{desc:'Fear 2 turns. Enemy ACC -18% for 3 turns.'},{desc:'Fear 2 turns. Enemy ACC -20% for 3 turns.'}]}));
+Object.assign(ABILITY_TEMPLATES.doom_chorus||{}, makeEvolutionAbilityTemplate('doom_chorus','Doom Chorus','Call fear finisher. Overwhelms the enemy with dread.', {type:'utility', btnType:'utility', energy:1, levels:[{desc:'Fear 2 turns. Enemy ACC -18% for 3 turns.'},{desc:'Fear 2 turns. Enemy ACC -20% for 3 turns.'},{desc:'Fear 3 turns. Enemy ACC -22% for 3 turns.'},{desc:'Fear 3 turns. Enemy ACC -24% for 4 turns.'}]}));
+Object.assign(ABILITY_TEMPLATES.distracting_call||{}, makeEvolutionAbilityTemplate('distracting_call','Distracting Call','Call disruption branch. Rattle enemy accuracy and focus.', {type:'utility', btnType:'utility', energy:1, levels:[{desc:'Enemy ACC -16% for 2 turns.'},{desc:'Enemy ACC -18% for 2 turns.'},{desc:'Enemy ACC -20% for 2 turns.'},{desc:'Enemy ACC -22% for 3 turns.'}]}));
+Object.assign(ABILITY_TEMPLATES.mocking_cry||{}, makeEvolutionAbilityTemplate('mocking_cry','Mocking Cry','Call disruption evolution. Harsher battlefield heckling.', {type:'utility', btnType:'utility', energy:1, levels:[{desc:'Enemy ACC -22% for 2 turns and Weaken 1 turn.'},{desc:'Enemy ACC -24% for 2 turns and Weaken 1 turn.'},{desc:'Enemy ACC -26% for 3 turns and Weaken 2 turns.'},{desc:'Enemy ACC -28% for 3 turns and Weaken 2 turns.'}]}));
+Object.assign(ABILITY_TEMPLATES.ruin_chorus||{}, makeEvolutionAbilityTemplate('ruin_chorus','Ruin Chorus','Call disruption finisher. Collapse enemy reliability.', {type:'utility', btnType:'utility', energy:1, levels:[{desc:'Enemy ACC -28% for 3 turns and Expose 10%.'},{desc:'Enemy ACC -30% for 3 turns and Expose 12%.'},{desc:'Enemy ACC -32% for 3 turns and Expose 14%.'},{desc:'Enemy ACC -34% for 4 turns and Expose 16%.'}]}));
+Object.assign(ABILITY_TEMPLATES.hunting_call||{}, makeEvolutionAbilityTemplate('hunting_call','Hunting Call','Call hunt branch. Set up the target for punishment.', {type:'utility', btnType:'utility', energy:1, levels:[{desc:'Next attack +14% damage and Expose 10% for 2 turns.'},{desc:'Next attack +16% damage and Expose 12% for 2 turns.'},{desc:'Next attack +18% damage and Expose 14% for 2 turns.'},{desc:'Next attack +20% damage and Expose 16% for 2 turns.'}]}));
+Object.assign(ABILITY_TEMPLATES.pack_cry||{}, makeEvolutionAbilityTemplate('pack_cry','Pack Cry','Call hunt evolution. Sharper coordinated follow-up.', {type:'utility', btnType:'utility', energy:1, levels:[{desc:'Next attack +20% damage and Expose 16% for 2 turns.'},{desc:'Next attack +24% damage and Expose 18% for 2 turns.'},{desc:'Next attack +28% damage and Expose 20% for 3 turns.'},{desc:'Next attack +32% damage and Expose 22% for 3 turns.'}]}));
+Object.assign(ABILITY_TEMPLATES.kill_chorus||{}, makeEvolutionAbilityTemplate('kill_chorus','Kill Chorus','Call hunt finisher. Prepare an execution window.', {type:'utility', btnType:'utility', energy:1, levels:[{desc:'Next attack +24% damage, Expose 18%, extra below 50% HP.'},{desc:'Next attack +28% damage, Expose 20%, extra below 50% HP.'},{desc:'Next attack +32% damage, Expose 22%, extra below 50% HP.'},{desc:'Next attack +36% damage, Expose 24%, extra below 55% HP.'}]}));
+Object.assign(ABILITY_TEMPLATES.keen_focus||{}, makeEvolutionAbilityTemplate('keen_focus','Keen Focus','Focus damage branch. Study the opening and strike harder.', {type:'utility', btnType:'utility', energy:1, levels:[{desc:'Next attack +18% damage.'},{desc:'Next attack +22% damage.'},{desc:'Next attack +26% damage.'},{desc:'Next attack +30% damage.'}]}));
+Object.assign(ABILITY_TEMPLATES.hunt_plan||{}, makeEvolutionAbilityTemplate('hunt_plan','Hunt Plan','Focus damage evolution. Sharper tactical payoff.', {type:'utility', btnType:'utility', energy:1, levels:[{desc:'Next attack +26% damage.'},{desc:'Next attack +30% damage.'},{desc:'Next attack +34% damage.'},{desc:'Next attack +38% damage.'}]}));
+Object.assign(ABILITY_TEMPLATES.killer_hunt||{}, makeEvolutionAbilityTemplate('killer_hunt','Killer Hunt','Focus damage finisher. Maximum prepared burst.', {type:'utility', btnType:'utility', energy:1, levels:[{desc:'Next attack +34% damage.'},{desc:'Next attack +38% damage.'},{desc:'Next attack +42% damage.'},{desc:'Next attack +46% damage.'}]}));
+Object.assign(ABILITY_TEMPLATES.weakpoint_focus||{}, makeEvolutionAbilityTemplate('weakpoint_focus','Weakpoint Focus','Focus defense-break branch. Open a precise weak point.', {type:'utility', btnType:'utility', energy:1, levels:[{desc:'Expose enemy for +12% damage over 2 turns.'},{desc:'Expose enemy for +14% damage over 2 turns.'},{desc:'Expose enemy for +16% damage over 2 turns.'},{desc:'Expose enemy for +18% damage over 2 turns.'}]}));
+Object.assign(ABILITY_TEMPLATES.break_plan||{}, makeEvolutionAbilityTemplate('break_plan','Break Plan','Focus defense-break evolution. Crack defenses further.', {type:'utility', btnType:'utility', energy:1, levels:[{desc:'Expose enemy for +18% damage over 2 turns.'},{desc:'Expose enemy for +20% damage over 2 turns.'},{desc:'Expose enemy for +22% damage over 2 turns.'},{desc:'Expose enemy for +24% damage over 3 turns.'}]}));
+Object.assign(ABILITY_TEMPLATES.ruin_hunt||{}, makeEvolutionAbilityTemplate('ruin_hunt','Ruin Hunt','Focus defense-break finisher. Engineer a full collapse.', {type:'utility', btnType:'utility', energy:1, levels:[{desc:'Expose enemy for +24% damage over 3 turns.'},{desc:'Expose enemy for +26% damage over 3 turns.'},{desc:'Expose enemy for +28% damage over 3 turns.'},{desc:'Expose enemy for +30% damage over 3 turns.'}]}));
+Object.assign(ABILITY_TEMPLATES.opening_focus||{}, makeEvolutionAbilityTemplate('opening_focus','Opening Focus','Focus tempo branch. Prepare a quick opportunistic turn.', {type:'utility', btnType:'utility', energy:1, levels:[{desc:'Gain 1 EN and next attack +10% damage/+6 hit.'},{desc:'Gain 1 EN and next attack +12% damage/+8 hit.'},{desc:'Gain 1 EN and next attack +14% damage/+10 hit.'},{desc:'Gain 1 EN and next attack +16% damage/+12 hit.'}]}));
+Object.assign(ABILITY_TEMPLATES.tempo_plan||{}, makeEvolutionAbilityTemplate('tempo_plan','Tempo Plan','Focus tempo evolution. Better sequencing and acceleration.', {type:'utility', btnType:'utility', energy:1, levels:[{desc:'Gain 1 EN and next attack +16% damage/+10 hit.'},{desc:'Gain 1 EN and next attack +18% damage/+12 hit.'},{desc:'Gain 1 EN and next attack +20% damage/+14 hit.'},{desc:'Gain 2 EN and next attack +22% damage/+16 hit.'}]}));
+Object.assign(ABILITY_TEMPLATES.perfect_hunt||{}, makeEvolutionAbilityTemplate('perfect_hunt','Perfect Hunt','Focus tempo finisher. Engineer the ideal attack turn.', {type:'utility', btnType:'utility', energy:1, levels:[{desc:'Gain 2 EN and next attack +22% damage/+14 hit.'},{desc:'Gain 2 EN and next attack +24% damage/+16 hit.'},{desc:'Gain 2 EN and next attack +26% damage/+18 hit.'},{desc:'Gain 2 EN and next attack +30% damage/+20 hit.'}]}));
+
+function getCrowCompromisedTargetBonus(){
+  return !!((G.enemyStatus?.feared||0)>0 || (G.enemyStatus?.weaken||0)>0 || (G.enemyStatus?.exposedGuard?.pct||0)>0);
+}
+function triggerCrowOpportunistIfNeeded(){
+  if(G.player?.birdKey!=='crow' || !getCrowCompromisedTargetBonus()) return 0;
+  if(!G.playerTurnFlags || G.playerTurnFlags.crowOpportunistTriggered) return 0;
+  G.playerTurnFlags.crowOpportunistTriggered = true;
+  const gained=gainEnergy(G.player,1);
+  if(gained>0){
+    spawnFloat('player',`+${gained} EN`,'fn-energy');
+    logMsg('🪶 Opportunist Instinct restores 1 EN.','system');
+  }
+  return gained;
+}
+function getCrowMasteryCounts(ab){
+  const slot=getAbilitySkillSlot(G.player, ab);
+  return {
+    power:countSkillSlotMastery(slot, 'power'),
+    precision:countSkillSlotMastery(slot, 'precision'),
+    control:countSkillSlotMastery(slot, 'control'),
+  };
+}
+function getCrowTempoState(){
+  return G.playerStatus?.crowTempo || {damagePct:0, hitBonus:0, critBonus:0, turns:0};
+}
+function consumeCrowTempoSetup(){
+  const tempo=getCrowTempoState();
+  if((tempo.turns||0)<=0) return {damagePct:0, hitBonus:0, critBonus:0};
+  delete G.playerStatus.crowTempo;
+  return {
+    damagePct:tempo.damagePct||0,
+    hitBonus:tempo.hitBonus||0,
+    critBonus:tempo.critBonus||0,
+  };
+}
+async function executeCrowStrikeAction(ab, config={}){
+  const lv=Math.max(1, Math.min(4, Number(ab?.level)||1));
+  const mastery=getCrowMasteryCounts(ab);
+  const tempo=consumeCrowTempoSetup();
+  const miss=Math.max(0, (config.miss?.[lv-1] ?? 0) - getPlayerHitBonus(ab) - (tempo.hitBonus||0) - mastery.precision*2);
+  if(chance(miss)){
+    await doMiss('player');
+    logMsg(`${config.name||ab?.name||ab?.id} missed!`,'miss');
+    return;
+  }
+  let mult=(config.mult?.[lv-1] ?? 1) + (tempo.damagePct||0) + mastery.power*0.05;
+  if(config.bonusVs?.includes('bleed') && (G.enemyStatus?.bleed?.stacks||0)>0) mult += (config.bonus?.[lv-1] ?? 0) + mastery.control*0.01;
+  if(config.bonusVs?.includes('feared') && (G.enemyStatus?.feared||0)>0) mult += (config.bonus?.[lv-1] ?? 0) + mastery.control*0.01;
+  if(config.bonusVs?.includes('weakened') && (G.enemyStatus?.weaken||0)>0) mult += (config.bonus?.[lv-1] ?? 0) + mastery.control*0.01;
+  if(config.bonusVs?.includes('exposed') && (G.enemyStatus?.exposedGuard?.pct||0)>0) mult += (config.bonus?.[lv-1] ?? 0) + mastery.control*0.02;
+  if(config.bonusVs?.includes('low_hp') && G.enemy.stats.hp <= Math.floor((G.enemy.stats.maxHp||1) * (config.lowHpThreshold || 0.5))) mult += (config.bonus?.[lv-1] ?? 0) + mastery.control*0.01;
+  let total=0;
+  const hits=config.hits?.[lv-1] || 1;
+  const critBonus=(config.critVsCompromised && getCrowCompromisedTargetBonus()) ? config.critVsCompromised[lv-1] : 0;
+  for(let i=0;i<hits;i++){
+    const prox={...ab, pierceDef:(config.pierce?.[lv-1] ?? 0) + mastery.precision*4};
+    const isCrit=chance(Math.min(95, getPlayerCritChance(ab) + (tempo.critBonus||0) + critBonus + (getCrowCompromisedTargetBonus()?mastery.precision*3:0)));
+    let amount;
+    if(config.damageKind==='magic'){
+      amount=matk(mult);
+    }else if(config.damageKind==='hybrid'){
+      amount=Math.max(1, Math.floor((pdmg(mult, prox) + matk(Math.max(0.75, mult*0.9))) / 2));
+    }else{
+      amount=pdmg(mult, prox);
+    }
+    const r=dealDamage('enemy', amount, isCrit, config.damageKind==='magic', prox);
+    total+=r.dmgDealt;
+    await doAttack('player','enemy',r);
+    setHpBar('enemy',G.enemy.stats.hp,G.enemy.stats.maxHp);
+    if(G.battleOver) return;
+  }
+  if(config.bleedChance?.[lv-1] && chance(config.bleedChance[lv-1] + mastery.control*5)){ applyAilment('enemy','bleed',1); spawnFloat('enemy','🩸 Bleed!','fn-poison'); }
+  if(config.fearChance?.[lv-1] && chance(config.fearChance[lv-1] + mastery.control*5)){ applyAilment('enemy','feared',1); spawnFloat('enemy','😨 Fear!','fn-status'); }
+  if(config.weakenChance?.[lv-1] && chance(config.weakenChance[lv-1] + mastery.control*5)){ applyAilment('enemy','weaken',1); spawnFloat('enemy','🐔 Weaken!','fn-status'); }
+  if(config.expose?.[lv-1]){
+    G.enemyStatus.exposedGuard={turns:config.exposeTurns?.[lv-1]||2, pct:(config.expose[lv-1]||0)+mastery.control*0.01};
+    spawnFloat('enemy','🎯 Exposed!','fn-status');
+  }
+  if(config.markBonus?.[lv-1]){
+    G.playerStatus.huntersMarkBonusPct=(config.markBonus[lv-1]||0)+mastery.power*0.03;
+  }
+  renderStatuses('enemy-status',G.enemyStatus);
+  triggerCrowOpportunistIfNeeded();
+  logMsg(`${config.log||config.name||ab?.name||ab?.id}! ${total} dmg.`, 'player-action');
+}
+async function executeCrowCallAction(ab, config={}){
+  const lv=Math.max(1, Math.min(4, Number(ab?.level)||1));
+  const mastery=getCrowMasteryCounts(ab);
+  const fearTurns=(config.fearTurns?.[lv-1]||0) + (mastery.precision>0 && config.fearTurns?.[lv-1] ? 1 : 0);
+  const accDown=(config.accDown?.[lv-1]||0) + mastery.control*2;
+  const turns=(config.turns?.[lv-1]||2) + (mastery.precision>0 ? 1 : 0);
+  if(fearTurns>0) G.enemyStatus.feared=Math.max(G.enemyStatus.feared||0, fearTurns);
+  if(accDown>0) G.enemyStatus.accDebuff=(G.enemyStatus.accDebuff||0)+accDown;
+  if(config.weakenTurns?.[lv-1]) G.enemyStatus.weaken=Math.max(G.enemyStatus.weaken||0, config.weakenTurns[lv-1]);
+  if(config.expose?.[lv-1]) G.enemyStatus.exposedGuard={turns, pct:(config.expose[lv-1]||0)+mastery.control*0.01};
+  if(config.markBonus?.[lv-1]){
+    const base=(config.markBonus[lv-1]||0)+mastery.power*0.02;
+    const execute=((config.executeBonus?.[lv-1]||0) + mastery.power*0.01);
+    const lowHp=G.enemy.stats.hp <= Math.floor((G.enemy.stats.maxHp||1) * (config.lowHpThreshold || 0.5));
+    G.playerStatus.huntersMarkBonusPct=base+(lowHp?execute:0);
+  }
+  await doSpell('enemy', config.fx||'🪶');
+  renderStatuses('enemy-status',G.enemyStatus);
+  logMsg(`${config.log||config.name||ab?.name||ab?.id}! ${fearTurns>0?'Fear and ':''}${accDown>0?`ACC -${accDown}% for ${turns}t.`:'Target disrupted.'}`, 'player-action');
+}
+async function executeCrowFocusAction(ab, config={}){
+  const lv=Math.max(1, Math.min(4, Number(ab?.level)||1));
+  const mastery=getCrowMasteryCounts(ab);
+  if(config.markBonus?.[lv-1]){
+    G.playerStatus.huntersMarkBonusPct=(config.markBonus[lv-1]||0)+mastery.power*0.02+(mastery.precision>0?0.04:0);
+  }
+  if(config.expose?.[lv-1]){
+    G.enemyStatus.exposedGuard={turns:config.turns?.[lv-1]||2, pct:(config.expose[lv-1]||0)+mastery.power*0.01};
+  }
+  const gain=(config.energyGain?.[lv-1]||0)+mastery.control;
+  if(gain>0){
+    const gained=gainEnergy(G.player,gain);
+    if(gained>0) spawnFloat('player',`+${gained} EN`,'fn-energy');
+  }
+  if(config.tempoDamage?.[lv-1] || config.tempoHit?.[lv-1] || mastery.precision>0){
+    G.playerStatus.crowTempo={
+      turns:2,
+      damagePct:(config.tempoDamage?.[lv-1]||0)+mastery.power*0.02,
+      hitBonus:(config.tempoHit?.[lv-1]||0)+mastery.precision*2,
+      critBonus:(config.tempoCrit?.[lv-1]||0)+(mastery.precision>0?4:0),
+    };
+  }
+  await doSpell('player', config.fx||'🧠');
+  renderStatuses('player-status',G.playerStatus);
+  renderStatuses('enemy-status',G.enemyStatus);
+  logMsg(`${config.log||config.name||ab?.name||ab?.id}! Tactical setup ready.`, 'player-action');
+}
+const CROW_SKILL_ACTION_OVERRIDES = {
+  peck: ab=>(G.player?.birdKey==='crow'
+    ? executeCrowStrikeAction(ab,{name:'Peck',log:'🪶 Peck',miss:[8,7,6,5],mult:[0.98,1.06,1.14,1.22]})
+    : executeGooseStrikeAction(ab,{name:'Peck', log:'🪿 Peck', miss:[10,9,8,7], mult:[1.00,1.08,1.16,1.24]})),
+  murder_murmuration: ab=>executeCrowStrikeAction(ab,{name:'Murder Murmuration',log:'‍⬛ Murder Murmuration',damageKind:'physical',hits:[2,2,3,3],miss:[14,12,11,10],mult:[0.58,0.64,0.60,0.66]}),
+  dread_call: ab=>executeCrowCallAction(ab,{name:'Dread Call',log:'📣 Dread Call',fx:'📣',accDown:[10,12,14,16],turns:[2,2,2,2]}),
+  battle_focus: ab=>executeCrowFocusAction(ab,{name:'Battle Focus',log:'🧠 Battle Focus',fx:'🧠',markBonus:[0.12,0.15,0.18,0.21]}),
+  tearing_jab: ab=>executeCrowStrikeAction(ab,{name:'Tearing Jab',log:'🩸 Tearing Jab',damageKind:'physical',miss:[8,7,6,5],mult:[1.12,1.20,1.28,1.36],bleedChance:[16,18,20,22],bonusVs:['bleed'],bonus:[0.08,0.10,0.12,0.14]}),
+  carrion_flurry: ab=>executeCrowStrikeAction(ab,{name:'Carrion Flurry',log:'🩸 Carrion Flurry',damageKind:'physical',hits:[2,2,3,3],miss:[9,8,7,6],mult:[0.68,0.74,0.66,0.72],bleedChance:[22,24,26,28],bonusVs:['bleed','low_hp'],bonus:[0.08,0.10,0.12,0.14],lowHpThreshold:0.5}),
+  hex_peck: ab=>executeCrowStrikeAction(ab,{name:'Hex Peck',log:'🖤 Hex Peck',damageKind:'hybrid',miss:[9,8,7,6],mult:[1.00,1.08,1.16,1.24],fearChance:[10,12,14,16]}),
+  umbral_jab: ab=>executeCrowStrikeAction(ab,{name:'Umbral Jab',log:'🌘 Umbral Jab',damageKind:'magic',miss:[10,9,8,7],mult:[1.08,1.18,1.28,1.38],fearChance:[16,18,20,22],bonusVs:['exposed'],bonus:[0.08,0.10,0.12,0.14]}),
+  hex_flurry: ab=>executeCrowStrikeAction(ab,{name:'Hex Flurry',log:'🌘 Hex Flurry',damageKind:'magic',hits:[2,2,3,3],miss:[12,11,10,9],mult:[0.72,0.78,0.74,0.80],fearChance:[22,24,26,28],bonusVs:['feared'],bonus:[0.10,0.12,0.14,0.16]}),
+  keen_peck: ab=>executeCrowStrikeAction(ab,{name:'Keen Peck',log:'🎯 Keen Peck',damageKind:'hybrid',miss:[7,6,5,4],mult:[1.02,1.10,1.18,1.26],pierce:[10,12,14,16],bonusVs:['exposed'],bonus:[0.08,0.10,0.12,0.14],critVsCompromised:[6,8,10,12]}),
+  target_jab: ab=>executeCrowStrikeAction(ab,{name:'Target Jab',log:'🎯 Target Jab',damageKind:'hybrid',miss:[6,5,4,3],mult:[1.14,1.22,1.30,1.38],pierce:[16,18,20,22],bonusVs:['exposed','feared'],bonus:[0.10,0.12,0.14,0.16],critVsCompromised:[8,10,12,14]}),
+  execution_flurry: ab=>executeCrowStrikeAction(ab,{name:'Execution Flurry',log:'☠ Execution Flurry',damageKind:'hybrid',hits:[2,2,3,3],miss:[7,6,5,4],mult:[0.74,0.80,0.78,0.84],bonusVs:['exposed','low_hp'],bonus:[0.14,0.16,0.18,0.20],lowHpThreshold:0.5,critVsCompromised:[10,12,14,16]}),
+  harrier_murmuration: ab=>executeCrowStrikeAction(ab,{name:'Harrier Murmuration',log:'‍⬛ Harrier Murmuration',damageKind:'physical',hits:[3,3,4,4],miss:[14,13,12,11],mult:[0.46,0.50,0.48,0.52],bleedChance:[12,14,16,18]}),
+  talon_swarm: ab=>executeCrowStrikeAction(ab,{name:'Talon Swarm',log:'‍⬛ Talon Swarm',damageKind:'physical',hits:[3,3,4,4],miss:[13,12,11,10],mult:[0.56,0.60,0.58,0.62],bleedChance:[18,20,22,24]}),
+  blackwing_murder: ab=>executeCrowStrikeAction(ab,{name:'Blackwing Murder',log:'‍⬛ Blackwing Murder',damageKind:'physical',hits:[4,4,5,5],miss:[12,11,10,9],mult:[0.60,0.64,0.62,0.66],bleedChance:[24,26,28,30],bonusVs:['low_hp'],bonus:[0.10,0.12,0.14,0.16],lowHpThreshold:0.5}),
+  dread_murmuration: ab=>executeCrowStrikeAction(ab,{name:'Dread Murmuration',log:'😨 Dread Murmuration',damageKind:'magic',hits:[3,3,4,4],miss:[15,14,13,12],mult:[0.46,0.50,0.48,0.52],fearChance:[16,18,20,22]}),
+  panic_swarm: ab=>executeCrowStrikeAction(ab,{name:'Panic Swarm',log:'😨 Panic Swarm',damageKind:'magic',hits:[3,3,4,4],miss:[14,13,12,11],mult:[0.56,0.60,0.58,0.62],fearChance:[22,24,26,28],bonusVs:['feared'],bonus:[0.08,0.10,0.12,0.14]}),
+  murder_of_terror: ab=>executeCrowStrikeAction(ab,{name:'Murder of Terror',log:'😨 Murder of Terror',damageKind:'magic',hits:[4,4,5,5],miss:[13,12,11,10],mult:[0.62,0.66,0.64,0.68],fearChance:[28,30,32,34],bonusVs:['feared'],bonus:[0.12,0.14,0.16,0.18]}),
+  hunting_murmuration: ab=>executeCrowStrikeAction(ab,{name:'Hunting Murmuration',log:'🎯 Hunting Murmuration',damageKind:'hybrid',hits:[3,3,4,4],miss:[13,12,11,10],mult:[0.48,0.52,0.50,0.54],expose:[0.10,0.12,0.14,0.16],exposeTurns:[2,2,2,2]}),
+  marking_swarm: ab=>executeCrowStrikeAction(ab,{name:'Marking Swarm',log:'🎯 Marking Swarm',damageKind:'hybrid',hits:[3,3,4,4],miss:[12,11,10,9],mult:[0.56,0.60,0.58,0.62],expose:[0.16,0.18,0.20,0.22],exposeTurns:[2,2,3,3],markBonus:[0.10,0.12,0.14,0.16]}),
+  execution_murder: ab=>executeCrowStrikeAction(ab,{name:'Execution Murder',log:'☠ Execution Murder',damageKind:'hybrid',hits:[4,4,5,5],miss:[11,10,9,8],mult:[0.62,0.66,0.64,0.68],bonusVs:['exposed','low_hp'],bonus:[0.14,0.16,0.18,0.20],lowHpThreshold:0.55}),
+  ominous_call: ab=>executeCrowCallAction(ab,{name:'Ominous Call',log:'😨 Ominous Call',fx:'😨',fearTurns:[1,1,2,2],accDown:[10,12,14,16],turns:[2,2,2,3]}),
+  panic_cry: ab=>executeCrowCallAction(ab,{name:'Panic Cry',log:'😨 Panic Cry',fx:'😨',fearTurns:[1,2,2,2],accDown:[14,16,18,20],turns:[2,2,3,3]}),
+  doom_chorus: ab=>executeCrowCallAction(ab,{name:'Doom Chorus',log:'💀 Doom Chorus',fx:'💀',fearTurns:[2,2,3,3],accDown:[18,20,22,24],turns:[3,3,3,4]}),
+  distracting_call: ab=>executeCrowCallAction(ab,{name:'Distracting Call',log:'🪶 Distracting Call',fx:'🪶',accDown:[16,18,20,22],turns:[2,2,2,3]}),
+  mocking_cry: ab=>executeCrowCallAction(ab,{name:'Mocking Cry',log:'🪶 Mocking Cry',fx:'🪶',accDown:[22,24,26,28],turns:[2,2,3,3],weakenTurns:[1,1,2,2]}),
+  ruin_chorus: ab=>executeCrowCallAction(ab,{name:'Ruin Chorus',log:'🎯 Ruin Chorus',fx:'🎯',accDown:[28,30,32,34],turns:[3,3,3,4],expose:[0.10,0.12,0.14,0.16]}),
+  hunting_call: ab=>executeCrowCallAction(ab,{name:'Hunting Call',log:'🎯 Hunting Call',fx:'🎯',markBonus:[0.14,0.16,0.18,0.20],expose:[0.10,0.12,0.14,0.16],turns:[2,2,2,2]}),
+  pack_cry: ab=>executeCrowCallAction(ab,{name:'Pack Cry',log:'🎯 Pack Cry',fx:'🎯',markBonus:[0.20,0.24,0.28,0.32],expose:[0.16,0.18,0.20,0.22],turns:[2,2,3,3]}),
+  kill_chorus: ab=>executeCrowCallAction(ab,{name:'Kill Chorus',log:'☠ Kill Chorus',fx:'☠',markBonus:[0.24,0.28,0.32,0.36],executeBonus:[0.12,0.14,0.16,0.18],lowHpThreshold:0.55,expose:[0.18,0.20,0.22,0.24],turns:[2,2,3,3]}),
+  keen_focus: ab=>executeCrowFocusAction(ab,{name:'Keen Focus',log:'🧠 Keen Focus',fx:'🧠',markBonus:[0.18,0.22,0.26,0.30]}),
+  hunt_plan: ab=>executeCrowFocusAction(ab,{name:'Hunt Plan',log:'🧠 Hunt Plan',fx:'🧠',markBonus:[0.26,0.30,0.34,0.38]}),
+  killer_hunt: ab=>executeCrowFocusAction(ab,{name:'Killer Hunt',log:'☠ Killer Hunt',fx:'☠',markBonus:[0.34,0.38,0.42,0.46]}),
+  weakpoint_focus: ab=>executeCrowFocusAction(ab,{name:'Weakpoint Focus',log:'🎯 Weakpoint Focus',fx:'🎯',expose:[0.12,0.14,0.16,0.18],turns:[2,2,2,2]}),
+  break_plan: ab=>executeCrowFocusAction(ab,{name:'Break Plan',log:'🎯 Break Plan',fx:'🎯',expose:[0.18,0.20,0.22,0.24],turns:[2,2,2,3]}),
+  ruin_hunt: ab=>executeCrowFocusAction(ab,{name:'Ruin Hunt',log:'🎯 Ruin Hunt',fx:'🎯',expose:[0.24,0.26,0.28,0.30],turns:[3,3,3,3]}),
+  opening_focus: ab=>executeCrowFocusAction(ab,{name:'Opening Focus',log:'⏱ Opening Focus',fx:'⏱️',energyGain:[1,1,1,1],tempoDamage:[0.10,0.12,0.14,0.16],tempoHit:[6,8,10,12],tempoCrit:[4,6,8,10]}),
+  tempo_plan: ab=>executeCrowFocusAction(ab,{name:'Tempo Plan',log:'⏱ Tempo Plan',fx:'⏱️',energyGain:[1,1,1,2],tempoDamage:[0.16,0.18,0.20,0.22],tempoHit:[10,12,14,16],tempoCrit:[8,10,12,14]}),
+  perfect_hunt: ab=>executeCrowFocusAction(ab,{name:'Perfect Hunt',log:'⏱ Perfect Hunt',fx:'⏱️',energyGain:[2,2,2,2],tempoDamage:[0.22,0.24,0.26,0.30],tempoHit:[14,16,18,20],tempoCrit:[10,12,14,16]}),
+};
+Object.entries(CROW_SKILL_ACTION_OVERRIDES).forEach(([id, fn])=>{ ACTIONS[id]=fn; });
+
+const GOOSE_TWO_EN_TREE_IDS = Object.freeze([
+  'gooseHonk','honkAttack','territorial_honk','dread_honk','terror_blast','panic_terror','shock_honk','stunning_blast','lockdown_terror','crushing_honk','oppression_blast','tyrant_terror','honk_terror',
+  'talon_slam','heavy_talon','trample_slam','crushing_stampede','wing_buffet','bone_buffet','gale_crush','rending_talon','finisher_slam','execution_crush','heavyTalon','fearHonk',
+]);
+for(const id of GOOSE_TWO_EN_TREE_IDS){
+  const tmpl=ABILITY_TEMPLATES?.[id];
+  if(!tmpl) continue;
+  tmpl.energyCost=2;
+  tmpl.energyByLevel=[2,2,2,2];
+}
+
+const BLACKBIRD_EVOLUTION_TEMPLATE_DEFS = [
+  ['dark_song','Dark Song','Blackbird base song. A neutral dark refrain before branching.',{type:'spell',btnType:'spell',energy:2,levels:[{desc:'100% spell dmg, 14% miss.'},{desc:'110% spell dmg, 12% miss.'},{desc:'120% spell dmg, 10% miss.'},{desc:'130% spell dmg, 8% miss.'}]}],
+  ['dread_song','Dread Song','Song-line fear branch. A chilling refrain that rattles the target.',{type:'spell',btnType:'spell',energy:2,levels:[{desc:'108% spell dmg, Fear 20%.'},{desc:'118% spell dmg, Fear 24%.'},{desc:'128% spell dmg, Fear 28%.'},{desc:'138% spell dmg, Fear 32%.'}]}],
+  ['panic_verse','Panic Verse','Song-line fear evolution. Pressure rises against frightened prey.',{type:'spell',btnType:'spell',energy:2,levels:[{desc:'122% spell dmg, Fear 24%. Bonus vs feared.'},{desc:'132% spell dmg, Fear 28%. Bonus vs feared.'},{desc:'142% spell dmg, Fear 32%. Bonus vs feared.'},{desc:'152% spell dmg, Fear 36%. Bonus vs feared.'}]}],
+  ['night_anthem','Night Anthem','Song-line fear finisher. A night chorus that overwhelms the enemy.',{type:'spell',btnType:'spell',energy:2,levels:[{desc:'3 spell hits, Fear 26%.'},{desc:'3 spell hits, Fear 30%.'},{desc:'4 spell hits, Fear 34%.'},{desc:'4 spell hits, Fear 38%.'}]}],
+  ['venomous_song','Venomous Song','Song-line venom branch. Coat the target in toxic resonance.',{type:'spell',btnType:'spell',energy:2,levels:[{desc:'102% spell dmg, Poison 22%.'},{desc:'112% spell dmg, Poison 26%.'},{desc:'122% spell dmg, Poison 30%.'},{desc:'132% spell dmg, Poison 34%.'}]}],
+  ['venomous_verse','Venomous Verse','Song-line venom evolution. Heavier toxin pressure.',{type:'spell',btnType:'spell',energy:2,levels:[{desc:'116% spell dmg, Poison 30%.'},{desc:'126% spell dmg, Poison 34%.'},{desc:'136% spell dmg, Poison 38%.'},{desc:'146% spell dmg, Poison 42%.'}]}],
+  ['venomous_anthem','Venomous Anthem','Song-line venom finisher. Saturates the target with dark venom.',{type:'spell',btnType:'spell',energy:2,levels:[{desc:'128% spell dmg, Poison 38%, bonus vs poisoned.'},{desc:'138% spell dmg, Poison 42%, bonus vs poisoned.'},{desc:'148% spell dmg, Poison 46%, bonus vs poisoned.'},{desc:'158% spell dmg, Poison 50%, bonus vs poisoned.'}]}],
+  ['hex_song','Hex Song','Song-line hex branch. Dark resonance that clouds aim and weakens resolve.',{type:'spell',btnType:'spell',energy:2,levels:[{desc:'100% spell dmg, ACC -10%, Weaken 10%.'},{desc:'110% spell dmg, ACC -12%, Weaken 12%.'},{desc:'120% spell dmg, ACC -14%, Weaken 14%.'},{desc:'130% spell dmg, ACC -16%, Weaken 16%.'}]}],
+  ['hex_verse','Hex Verse','Song-line hex evolution. Stronger curse pressure.',{type:'spell',btnType:'spell',energy:2,levels:[{desc:'114% spell dmg, ACC -14%, Weaken 14%.'},{desc:'124% spell dmg, ACC -16%, Weaken 16%.'},{desc:'134% spell dmg, ACC -18%, Weaken 18%.'},{desc:'144% spell dmg, ACC -20%, Weaken 20%.'}]}],
+  ['doom_anthem','Doom Anthem','Song-line hex finisher. A crushing doom-laden refrain.',{type:'spell',btnType:'spell',energy:2,levels:[{desc:'126% spell dmg, ACC -18%, Weaken 18%.'},{desc:'136% spell dmg, ACC -20%, Weaken 20%.'},{desc:'146% spell dmg, ACC -22%, Weaken 22%.'},{desc:'156% spell dmg, ACC -24%, Weaken 24%.'}]}],
+  ['shadow_peck','Shadow Peck','Blackbird base peck. A neutral shadow strike before branching.',{type:'physical',btnType:'physical',energy:1,levels:[{desc:'98% dmg, 10% miss.'},{desc:'106% dmg, 9% miss.'},{desc:'114% dmg, 8% miss.'},{desc:'122% dmg, 7% miss.'}]}],
+  ['rend_strike','Rend Strike','Shadow-peck bleed evolution. Tear open a darker wound.',{type:'physical',btnType:'physical',energy:1,levels:[{desc:'112% dmg, Bleed 18%.'},{desc:'120% dmg, Bleed 20%.'},{desc:'128% dmg, Bleed 22%.'},{desc:'136% dmg, Bleed 24%.'}]}],
+  ['carrion_barrage','Carrion Barrage','Shadow-peck bleed finisher. Burst the target apart with carrion pressure.',{type:'spell',btnType:'spell',energy:1,levels:[{desc:'2 hybrid hits, Bleed 22%.'},{desc:'2 hybrid hits, Bleed 24%.'},{desc:'3 hybrid hits, Bleed 26%.'},{desc:'3 hybrid hits, Bleed 28%.'}]}],
+  ['siphon_peck','Siphon Peck','Shadow-peck siphon branch. Drain life with shadow beaks.',{type:'physical',btnType:'physical',energy:1,levels:[{desc:'Hybrid strike, heal 6% of dmg.'},{desc:'Hybrid strike, heal 8% of dmg.'},{desc:'Hybrid strike, heal 10% of dmg.'},{desc:'Hybrid strike, heal 12% of dmg.'}]}],
+  ['umbral_strike','Umbral Strike','Shadow-peck siphon evolution. Darker life-drain with more magic weight.',{type:'spell',btnType:'spell',energy:1,levels:[{desc:'Spell dmg, heal 10% of dmg.'},{desc:'Spell dmg, heal 12% of dmg.'},{desc:'Spell dmg, heal 14% of dmg.'},{desc:'Spell dmg, heal 16% of dmg.'}]}],
+  ['soul_barrage','Soul Barrage','Shadow-peck siphon finisher. Tear fragments of soul away.',{type:'spell',btnType:'spell',energy:1,levels:[{desc:'2 spell hits, heal from each hit.'},{desc:'2 spell hits, heal from each hit.'},{desc:'3 spell hits, heal from each hit.'},{desc:'3 spell hits, heal from each hit.'}]}],
+  ['bodkin_strike','Bodkin Strike','Shadow-peck pierce evolution. Sharper armor-punching precision.',{type:'physical',btnType:'physical',energy:1,levels:[{desc:'116% dmg, Pierce 20% DEF.'},{desc:'124% dmg, Pierce 24% DEF.'},{desc:'132% dmg, Pierce 28% DEF.'},{desc:'140% dmg, Pierce 32% DEF.'}]}],
+  ['splinter_barrage','Splinter Barrage','Shadow-peck pierce finisher. Burst through armor with shadow shards.',{type:'spell',btnType:'spell',energy:1,levels:[{desc:'2 hybrid hits, Pierce 24% DEF.'},{desc:'2 hybrid hits, Pierce 28% DEF.'},{desc:'3 hybrid hits, Pierce 32% DEF.'},{desc:'3 hybrid hits, Pierce 36% DEF.'}]}],
+  ['gloom_wing','Gloom Wing','Blackbird base utility. A neutral wing shroud before branching.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Gain +20% dodge and enemy ACC -10% for 2 turns.'},{desc:'Gain +24% dodge and enemy ACC -12% for 2 turns.'},{desc:'Gain +28% dodge and enemy ACC -14% for 2 turns.'},{desc:'Gain +32% dodge and enemy ACC -16% for 2 turns.'}]}],
+  ['shade_wing','Shade Wing','Gloom dodge branch. Melt into shade.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Gain +30% dodge for 2 turns.'},{desc:'Gain +35% dodge for 2 turns.'},{desc:'Gain +40% dodge for 2 turns.'},{desc:'Gain +45% dodge for 3 turns.'}]}],
+  ['veil_wing','Veil Wing','Gloom dodge evolution. Thicker cover of shadow.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Gain +40% dodge for 2 turns and cleanse Weaken.'},{desc:'Gain +45% dodge for 2 turns and cleanse Weaken.'},{desc:'Gain +50% dodge for 2 turns and cleanse Weaken.'},{desc:'Gain +55% dodge for 3 turns and cleanse Weaken.'}]}],
+  ['ghost_wing','Ghost Wing','Gloom dodge finisher. Become nearly untouchable.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Gain +50% dodge for 3 turns and cleanse Fear/Weaken.'},{desc:'Gain +55% dodge for 3 turns and cleanse Fear/Weaken.'},{desc:'Gain +60% dodge for 3 turns and cleanse Fear/Weaken.'},{desc:'Gain +65% dodge for 3 turns and cleanse Fear/Weaken.'}]}],
+  ['murk_wing','Murk Wing','Gloom shroud branch. Smother enemy accuracy.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Enemy ACC -16% for 2 turns.'},{desc:'Enemy ACC -18% for 2 turns.'},{desc:'Enemy ACC -20% for 2 turns.'},{desc:'Enemy ACC -22% for 3 turns.'}]}],
+  ['blind_veil','Blind Veil','Gloom shroud evolution. Deeper obscuring veil.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Enemy ACC -24% for 2 turns.'},{desc:'Enemy ACC -27% for 2 turns.'},{desc:'Enemy ACC -30% for 2 turns.'},{desc:'Enemy ACC -33% for 3 turns.'}]}],
+  ['eclipse_shroud','Eclipse Shroud','Gloom shroud finisher. Eclipse enemy sight entirely.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Enemy ACC -32% for 3 turns.'},{desc:'Enemy ACC -35% for 3 turns.'},{desc:'Enemy ACC -38% for 3 turns.'},{desc:'Enemy ACC -42% for 3 turns.'}]}],
+  ['heavy_wing','Heavy Wing','Gloom slow branch. Drag enemy movement down.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Slow enemy for 2 turns.'},{desc:'Slow enemy for 2 turns.'},{desc:'Slow enemy for 3 turns.'},{desc:'Slow enemy for 3 turns.'}]}],
+  ['drag_veil','Drag Veil','Gloom slow evolution. A heavier pall of night.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Stronger Slow for 2 turns.'},{desc:'Stronger Slow for 2 turns.'},{desc:'Stronger Slow for 3 turns.'},{desc:'Stronger Slow for 3 turns.'}]}],
+  ['dusk_field','Dusk Field','Gloom slow finisher. Sink the battlefield into dusk.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Heavy Slow plus ACC down for 3 turns.'},{desc:'Heavy Slow plus ACC down for 3 turns.'},{desc:'Heavy Slow plus ACC down for 3 turns.'},{desc:'Heavy Slow plus ACC down for 4 turns.'}]}],
+  ['grim_sign','Grim Sign','Blackbird base setup. Mark your quarry before choosing a doom path.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Next attack +12% damage.'},{desc:'Next attack +15% damage.'},{desc:'Next attack +18% damage.'},{desc:'Next attack +21% damage.'}]}],
+];
+for(const [id,name,desc,options] of BLACKBIRD_EVOLUTION_TEMPLATE_DEFS){
+  Object.assign(ABILITY_TEMPLATES[id]||{}, makeEvolutionAbilityTemplate(id,name,desc,options));
+}
+
+function triggerBlackbirdSpellPassive(){
+  const bd=BIRDS[G.player?.birdKey];
+  if(bd?.passive?.onSpell){
+    bd.passive.onSpell(G.player);
+    setHpBar('player',G.player.stats.hp,G.player.stats.maxHp);
+    spawnFloat('player','+Song','fn-heal');
+  }
+}
+async function executeBlackbirdSpellAction(ab, config={}){
+  const lv=Math.max(1, Math.min(4, Number(ab?.level)||1));
+  const miss=Math.max(0, (config.miss?.[lv-1] ?? spellMissChance()) - getPlayerHitBonus(ab));
+  const hits=config.hits?.[lv-1] || 1;
+  let total=0;
+  for(let i=0;i<hits;i++){
+    if(chance(miss)){ await doMiss('player'); if(hits===1) logMsg(`${config.name||ab?.name||ab?.id} missed!`,'miss'); continue; }
+    const hybrid=config.damageKind==='hybrid';
+    const amount=hybrid
+      ? Math.max(1, Math.floor((pdmg(config.mult?.[lv-1] ?? 1, ab) + matk(Math.max(0.8,(config.mult?.[lv-1] ?? 1)*0.92))) / 2))
+      : matk(config.mult?.[lv-1] ?? 1);
+    const isCrit=chance(getPlayerCritChance(ab) + (config.bonusVs==='feared' && (G.enemyStatus?.feared||0)>0 ? 8 : 0));
+    const r=dealDamage('enemy', amount, isCrit, true, ab);
+    total+=r.dmgDealt;
+    await doAttack('player','enemy',r);
+    setHpBar('enemy',G.enemy.stats.hp,G.enemy.stats.maxHp);
+    if(G.battleOver) return;
+  }
+  if(config.fearChance?.[lv-1] && spellAilmentRoll(config.fearChance[lv-1], hits>1)){ applyAilment('enemy','feared',1); spawnFloat('enemy','😨 Fear!','fn-status'); }
+  if(config.poisonChance?.[lv-1] && spellAilmentRoll(config.poisonChance[lv-1], hits>1)){ applyAilment('enemy','poison',1); spawnFloat('enemy','☣ Poison!','fn-poison'); }
+  if(config.bleedChance?.[lv-1] && chance(config.bleedChance[lv-1])){ applyAilment('enemy','bleed',1); spawnFloat('enemy','🩸 Bleed!','fn-poison'); }
+  if(config.accDown?.[lv-1]) G.enemyStatus.accDebuff=(G.enemyStatus.accDebuff||0)+config.accDown[lv-1];
+  if(config.weakenChance?.[lv-1] && spellAilmentRoll(config.weakenChance[lv-1], false)){ applyAilment('enemy','weaken',1); spawnFloat('enemy','🐔 Weaken!','fn-status'); }
+  renderStatuses('enemy-status',G.enemyStatus);
+  await doSpell('enemy', config.fx||'🌑');
+  logMsg(`${config.log||config.name||ab?.name||ab?.id}! ${total} dmg.`, 'player-action');
+  triggerBlackbirdSpellPassive();
+}
+async function executeBlackbirdPeckAction(ab, config={}){
+  const lv=Math.max(1, Math.min(4, Number(ab?.level)||1));
+  const miss=Math.max(0, (config.miss?.[lv-1] ?? 0) - getPlayerHitBonus(ab));
+  const hits=config.hits?.[lv-1] || 1;
+  let total=0;
+  for(let i=0;i<hits;i++){
+    if(chance(miss)){ await doMiss('player'); if(hits===1) logMsg(`${config.name||ab?.name||ab?.id} missed!`,'miss'); continue; }
+    let amount;
+    if(config.damageKind==='magic'){
+      amount=matk(config.mult?.[lv-1] ?? 1);
+    }else if(config.damageKind==='hybrid'){
+      amount=Math.max(1, Math.floor((pdmg(config.mult?.[lv-1] ?? 1, ab) + matk(Math.max(0.8,(config.mult?.[lv-1] ?? 1)*0.9))) / 2));
+    }else{
+      const prox={...ab,pierceDef:config.pierce?.[lv-1] ?? 0};
+      amount=pdmg(config.mult?.[lv-1] ?? 1, prox);
+    }
+    const critBonus=(config.bonusVs==='feared' && (G.enemyStatus?.feared||0)>0)?10:0;
+    const r=dealDamage('enemy', amount, chance(getPlayerCritChance(ab)+critBonus), config.damageKind==='magic', ab);
+    total+=r.dmgDealt;
+    await doAttack('player','enemy',r);
+    setHpBar('enemy',G.enemy.stats.hp,G.enemy.stats.maxHp);
+    if(G.battleOver) return;
+  }
+  if(config.bleedChance?.[lv-1] && chance(config.bleedChance[lv-1])) applyAilment('enemy','bleed',1);
+  if(config.healPct?.[lv-1] && total>0){
+    const heal=Math.max(1,Math.floor(total*config.healPct[lv-1]));
+    G.player.stats.hp=Math.min(G.player.stats.maxHp,G.player.stats.hp+heal);
+    setHpBar('player',G.player.stats.hp,G.player.stats.maxHp);
+    spawnFloat('player',`+${heal}`,'fn-heal');
+  }
+  if(config.poisonChance?.[lv-1] && spellAilmentRoll(config.poisonChance[lv-1], hits>1)) applyAilment('enemy','poison',1);
+  logMsg(`${config.log||config.name||ab?.name||ab?.id}! ${total} dmg.`, 'player-action');
+  if(config.damageKind==='magic' || config.damageKind==='hybrid') triggerBlackbirdSpellPassive();
+}
+async function executeBlackbirdGloomAction(ab, config={}){
+  const lv=Math.max(1, Math.min(4, Number(ab?.level)||1));
+  if(config.dodge?.[lv-1]) G.playerStatus.humDodge={bonus:config.dodge[lv-1], turns:config.turns?.[lv-1]||2};
+  if(config.cleanse?.length) G.player.statusEffects=(G.player.statusEffects||[]).filter(()=>true);
+  if(config.accDown?.[lv-1]) G.enemyStatus.accDebuff=(G.enemyStatus.accDebuff||0)+config.accDown[lv-1];
+  if(config.slow?.[lv-1]) applyEnemySlow(config.slow[lv-1], config.slowDodge?.[lv-1]||10, config.turns?.[lv-1]||2);
+  await doSpell('player', config.fx||'🌫');
+  renderStatuses('player-status',G.playerStatus);
+  renderStatuses('enemy-status',G.enemyStatus);
+  logMsg(`${config.log||ab?.name||ab?.id}! Shadows shift the tempo.`, 'player-action');
+}
+const BLACKBIRD_SKILL_ACTION_OVERRIDES = {
+  dark_song: ab=>executeBlackbirdSpellAction(ab,{name:'Dark Song',log:'🎶 Dark Song',fx:'🎶',miss:[14,12,10,8],mult:[1.00,1.10,1.20,1.30]}),
+  dread_song: ab=>executeBlackbirdSpellAction(ab,{name:'Dread Song',log:'😨 Dread Song',fx:'😨',miss:[14,12,10,8],mult:[1.08,1.18,1.28,1.38],fearChance:[20,24,28,32]}),
+  panic_verse: ab=>executeBlackbirdSpellAction(ab,{name:'Panic Verse',log:'😨 Panic Verse',fx:'😨',miss:[13,11,9,7],mult:[1.22,1.32,1.42,1.52],fearChance:[24,28,32,36],bonusVs:'feared'}),
+  night_anthem: ab=>executeBlackbirdSpellAction(ab,{name:'Night Anthem',log:'🌑 Night Anthem',fx:'🌑',hits:[3,3,4,4],miss:[16,14,12,10],mult:[0.44,0.50,0.52,0.58],fearChance:[26,30,34,38]}),
+  venomous_song: ab=>executeBlackbirdSpellAction(ab,{name:'Venomous Song',log:'☣ Venomous Song',fx:'☣',miss:[14,12,10,8],mult:[1.02,1.12,1.22,1.32],poisonChance:[22,26,30,34]}),
+  venomous_verse: ab=>executeBlackbirdSpellAction(ab,{name:'Venomous Verse',log:'☣ Venomous Verse',fx:'☣',miss:[13,11,9,7],mult:[1.16,1.26,1.36,1.46],poisonChance:[30,34,38,42]}),
+  venomous_anthem: ab=>executeBlackbirdSpellAction(ab,{name:'Venomous Anthem',log:'☣ Venomous Anthem',fx:'☣',miss:[12,10,8,6],mult:[1.28,1.38,1.48,1.58],poisonChance:[38,42,46,50]}),
+  hex_song: ab=>executeBlackbirdSpellAction(ab,{name:'Hex Song',log:'🕯 Hex Song',fx:'🕯',miss:[14,12,10,8],mult:[1.00,1.10,1.20,1.30],accDown:[10,12,14,16],weakenChance:[10,12,14,16]}),
+  hex_verse: ab=>executeBlackbirdSpellAction(ab,{name:'Hex Verse',log:'🕯 Hex Verse',fx:'🕯',miss:[13,11,9,7],mult:[1.14,1.24,1.34,1.44],accDown:[14,16,18,20],weakenChance:[14,16,18,20]}),
+  doom_anthem: ab=>executeBlackbirdSpellAction(ab,{name:'Doom Anthem',log:'🕯 Doom Anthem',fx:'🕯',miss:[12,10,8,6],mult:[1.26,1.36,1.46,1.56],accDown:[18,20,22,24],weakenChance:[18,20,22,24]}),
+  shadow_peck: ab=>executeBlackbirdPeckAction(ab,{name:'Shadow Peck',log:'🖤 Shadow Peck',damageKind:'physical',miss:[10,9,8,7],mult:[0.98,1.06,1.14,1.22]}),
+  raking_peck: ab=>(G.player?.birdKey==='blackbird'
+    ? executeBlackbirdPeckAction(ab,{name:'Raking Peck',log:'🩸 Raking Peck',damageKind:'physical',miss:[10,9,8,7],mult:[1.00,1.08,1.16,1.24],bleedChance:[10,12,14,16]})
+    : ACTIONS.raking_peck?.__sharedOriginal ? ACTIONS.raking_peck.__sharedOriginal(ab) : executeGooseStrikeAction(ab,{name:'Raking Peck', log:'🩸 Raking Peck', miss:[10,9,8,7], mult:[1.00,1.08,1.16,1.24], bleedChance:[10,12,14,16]})),
+  rend_strike: ab=>executeBlackbirdPeckAction(ab,{name:'Rend Strike',log:'🩸 Rend Strike',damageKind:'physical',miss:[8,7,6,5],mult:[1.12,1.20,1.28,1.36],bleedChance:[18,20,22,24]}),
+  carrion_barrage: ab=>executeBlackbirdSpellAction(ab,{name:'Carrion Barrage',log:'🩸 Carrion Barrage',fx:'🩸',hits:[2,2,3,3],miss:[14,12,10,8],mult:[0.62,0.68,0.66,0.72],bleedChance:[22,24,26,28],damageKind:'hybrid'}),
+  siphon_peck: ab=>executeBlackbirdPeckAction(ab,{name:'Siphon Peck',log:'🖤 Siphon Peck',damageKind:'hybrid',miss:[10,9,8,7],mult:[1.00,1.08,1.16,1.24],healPct:[0.06,0.08,0.10,0.12]}),
+  umbral_strike: ab=>executeBlackbirdSpellAction(ab,{name:'Umbral Strike',log:'🖤 Umbral Strike',fx:'🖤',miss:[12,10,8,6],mult:[1.14,1.24,1.34,1.44]}),
+  soul_barrage: ab=>executeBlackbirdSpellAction(ab,{name:'Soul Barrage',log:'🖤 Soul Barrage',fx:'🖤',hits:[2,2,3,3],miss:[14,12,10,8],mult:[0.68,0.74,0.72,0.78]}),
+  needle_peck: ab=>(G.player?.birdKey==='blackbird'
+    ? executeBlackbirdPeckAction(ab,{name:'Needle Peck',log:'🪶 Needle Peck',damageKind:'physical',miss:[9,8,7,6],mult:[1.02,1.10,1.18,1.26],pierce:[10,14,18,20]})
+    : ACTIONS.needle_peck?.__sharedOriginal ? ACTIONS.needle_peck.__sharedOriginal(ab) : executeGooseStrikeAction(ab,{name:'Needle Peck', log:'🪶 Needle Peck', miss:[10,9,8,7], mult:[1.02,1.10,1.18,1.26], pierce:[10,14,18,20]})),
+  bodkin_strike: ab=>executeBlackbirdPeckAction(ab,{name:'Bodkin Strike',log:'🪶 Bodkin Strike',damageKind:'physical',miss:[8,7,6,5],mult:[1.16,1.24,1.32,1.40],pierce:[20,24,28,32]}),
+  splinter_barrage: ab=>executeBlackbirdSpellAction(ab,{name:'Splinter Barrage',log:'🪶 Splinter Barrage',fx:'🪶',hits:[2,2,3,3],miss:[12,10,8,6],mult:[0.70,0.76,0.74,0.80],damageKind:'hybrid'}),
+  gloom_wing: ab=>executeBlackbirdGloomAction(ab,{log:'🌫 Gloom Wing',fx:'🌫',dodge:[20,24,28,32],accDown:[10,12,14,16],turns:[2,2,2,2]}),
+  shade_wing: ab=>executeBlackbirdGloomAction(ab,{log:'🌫 Shade Wing',fx:'🌫',dodge:[30,35,40,45],turns:[2,2,2,3]}),
+  veil_wing: ab=>executeBlackbirdGloomAction(ab,{log:'🌫 Veil Wing',fx:'🌫',dodge:[40,45,50,55],turns:[2,2,2,3]}),
+  ghost_wing: ab=>executeBlackbirdGloomAction(ab,{log:'👻 Ghost Wing',fx:'👻',dodge:[50,55,60,65],turns:[3,3,3,3]}),
+  murk_wing: ab=>executeBlackbirdGloomAction(ab,{log:'🌑 Murk Wing',fx:'🌑',accDown:[16,18,20,22],turns:[2,2,2,3]}),
+  blind_veil: ab=>executeBlackbirdGloomAction(ab,{log:'🌑 Blind Veil',fx:'🌑',accDown:[24,27,30,33],turns:[2,2,2,3]}),
+  eclipse_shroud: ab=>executeBlackbirdGloomAction(ab,{log:'🌑 Eclipse Shroud',fx:'🌑',accDown:[32,35,38,42],turns:[3,3,3,3]}),
+  heavy_wing: ab=>executeBlackbirdGloomAction(ab,{log:'🌘 Heavy Wing',fx:'🌘',slow:[2,2,3,3],slowDodge:[10,12,14,16],turns:[2,2,3,3]}),
+  drag_veil: ab=>executeBlackbirdGloomAction(ab,{log:'🌘 Drag Veil',fx:'🌘',slow:[3,3,4,4],slowDodge:[12,14,16,18],turns:[2,2,3,3]}),
+  dusk_field: ab=>executeBlackbirdGloomAction(ab,{log:'🌘 Dusk Field',fx:'🌘',accDown:[10,12,14,16],slow:[4,4,5,5],slowDodge:[14,16,18,20],turns:[3,3,3,4]}),
+  grim_sign: ab=>executeSparrowMarkAmpAction(ab,{log:'☠ Grim Sign!',amp:[0.12,0.15,0.18,0.21]}),
+  grim_mark: ab=>executeSparrowMarkAmpAction(ab,{log:'☠ Grim Mark!',amp:[0.18,0.22,0.26,0.30]}),
+  grave_seal: ab=>executeSparrowMarkAmpAction(ab,{log:'☠ Grave Seal!',amp:[0.26,0.30,0.34,0.38]}),
+  harbinger_doom: ab=>executeSparrowMarkAmpAction(ab,{log:'☠ Harbinger Doom!',amp:[0.34,0.38,0.42,0.46]}),
+  crack_guard: ab=>executeSparrowMarkExposeAction(ab,{log:'☠ Crack Guard!',expose:[0.12,0.14,0.16,0.18],turns:[2,2,2,2]}),
+  break_seal: ab=>executeSparrowMarkExposeAction(ab,{log:'☠ Break Seal!',expose:[0.18,0.20,0.22,0.24],turns:[2,2,2,2]}),
+  ruin_doom: ab=>executeSparrowMarkExposeAction(ab,{log:'☠ Ruin Doom!',expose:[0.24,0.26,0.28,0.30],turns:[3,3,3,3]}),
+  death_sign: ab=>executeSparrowMarkExecuteAction(ab,{log:'☠ Death Sign!',base:[0.16,0.20,0.24,0.28],execute:[0.12,0.14,0.16,0.18]}),
+  death_seal: ab=>executeSparrowMarkExecuteAction(ab,{log:'☠ Death Seal!',base:[0.22,0.26,0.30,0.34],execute:[0.16,0.18,0.20,0.22]}),
+  final_omen: ab=>executeSparrowMarkExecuteAction(ab,{log:'☠ Final Omen!',base:[0.28,0.32,0.36,0.40],execute:[0.24,0.26,0.28,0.30]}),
+};
+const __sharedRakingPeckOriginal=ACTIONS.raking_peck;
+const __sharedNeedlePeckOriginal=ACTIONS.needle_peck;
+if(__sharedRakingPeckOriginal) BLACKBIRD_SKILL_ACTION_OVERRIDES.raking_peck.__sharedOriginal=__sharedRakingPeckOriginal;
+if(__sharedNeedlePeckOriginal) BLACKBIRD_SKILL_ACTION_OVERRIDES.needle_peck.__sharedOriginal=__sharedNeedlePeckOriginal;
+Object.entries(BLACKBIRD_SKILL_ACTION_OVERRIDES).forEach(([id, fn])=>{ ACTIONS[id]=fn; });
 
 const RELIABLE_ONE_EN_ATTACK_BY_CLASS = Object.freeze({
   striker:'rapidPeck',
@@ -8073,7 +9527,7 @@ function getAbilityEnergyCost(ab, player){
     cost = t.energyByLevel[idx] ?? 0;
   }
 
-  if(isMainAttackAbility(ab) && !isSpellAbilityId(ab.id)) cost = 1;
+  if(isMainAttackAbility(ab) && !isSpellAbilityId(ab.id) && !(ab.fixedMainAttackCost || t?.fixedMainAttackCost)) cost = 1;
 
   const tType=(t?.btnType||t?.type||ab.btnType||ab.type||'').toLowerCase();
   const isAttack=(tType==='physical'||tType==='ranged');
@@ -9143,6 +10597,10 @@ function afterEnemyTurn() {
     G.enemyStatus.waddleLullaby.turns--;
     if(G.enemyStatus.waddleLullaby.turns<=0)delete G.enemyStatus.waddleLullaby;
   }
+  if(G.enemyStatus.exposedGuard){
+    G.enemyStatus.exposedGuard.turns--;
+    if(G.enemyStatus.exposedGuard.turns<=0) delete G.enemyStatus.exposedGuard;
+  }
   // Cooldowns
   if(G.swoopCooldown>0)G.swoopCooldown--;
   if(G.intimidateCooldown>0)G.intimidateCooldown--;
@@ -9380,6 +10838,9 @@ function postCombat() {
 
       leveled = true;
       levelUpsGained++;
+      if(isSkillEvolutionLevel(G.player.birdLevel)){
+        G._pendingSkillEvolutionChoices = (G._pendingSkillEvolutionChoices||0) + 1;
+      }
       logMsg(`🌟 LEVEL UP! Now Lv.${G.player.birdLevel}! Healed ${lvHeal} HP.`, 'exp-gain');
       SFX.levelUp();
     }
@@ -9789,18 +11250,6 @@ function buildLevelUpStatChoices(){
   return picks.map((x,i)=>({...x,choiceId:`${x.id}_${i}_${Date.now()}`}));
 }
 
-function getBirdExclusiveLearnPool(birdKey){
-  const bd=BIRDS[birdKey];
-  if(!bd) return LEARNABLE_ABILITIES;
-  const birdClass=bd.class||'';
-  const uniqueFromStarts=(bd.startAbilities||[]).filter(id=>id!=='mainAttack'&&id!=='skipTurn'&&id!=='sittingDuck');
-  let classSpecific=[];
-  if(birdClass==='trickster') classSpecific=[...ABILITY_POOL_RANGED];
-  else if(MAGIC_CLASSES.has(birdClass)) classSpecific=[...ABILITY_POOL_MAGIC];
-  else classSpecific=[...ABILITY_POOL_PHYSICAL];
-  return [...new Set([...uniqueFromStarts,...classSpecific,...ABILITY_POOL_UTILITY])];
-}
-
 function ensureMainAttackAndLoadoutRules(){
   if(!G.player) return;
   const bd=BIRDS[G.player.birdKey]||{};
@@ -9818,13 +11267,15 @@ function ensureMainAttackAndLoadoutRules(){
   if(isMagic){
     const isBlackbird = (G.player?.birdKey==='blackbird');
     if(isBlackbird){
-      mainAb=G.player.abilities.find(a=>a.id==='blackPeck') || null;
+      G.player.mainAttackId='shadow_peck';
+      mainAb=G.player.abilities.find(a=>a.id==='shadow_peck') || null;
       G.player.abilities=G.player.abilities.filter(a=>a.id!=='mainAttack');
       if(!mainAb){
-        mainAb={...(ABILITY_TEMPLATES.blackPeck||{}), id:'blackPeck', level:1};
+        mainAb={...(ABILITY_TEMPLATES.shadow_peck||{}), id:'shadow_peck', level:1};
         G.player.abilities.unshift(mainAb);
       }
     }else{
+      if(bd.mainAttackId) G.player.mainAttackId=bd.mainAttackId;
       mainAb=G.player.abilities.find(a=>a.id==='mainAttack');
       if(!mainAb){
         mainAb={id:'mainAttack',name:'Peck',level:1,type:'physical',btnType:'physical'};
@@ -9845,14 +11296,198 @@ function ensureMainAttackAndLoadoutRules(){
     G.player.abilities=[...(mainAb?[mainAb]:[]),...kept];
   }
 
-  bd.exclusiveLearnPool=getBirdExclusiveLearnPool(G.player.birdKey);
   removeMimicEverywhere();
   normalizeAbilityCooldownsForPlayer(G.player);
   enforceAbilityCosts(G.player);
 }
 
-function showLevelUpScreen() {
+function setLevelUpPanelTitle(text){
+  const title = document.querySelector('.levelup-choice-title');
+  if(title) title.textContent = text;
+}
+function configureLevelUpConfirm(label, handler, visible=false){
+  const btn = document.getElementById('lu-skill-confirm');
+  if(!btn) return;
+  btn.textContent = label;
+  btn.onclick = handler;
+  btn.className = visible ? 'confirm-btn visible' : 'confirm-btn';
+}
+function configureLevelUpSecondary(label='', handler=null, visible=false){
+  const btn = document.getElementById('lu-skip-btn');
+  if(!btn) return;
+  btn.textContent = label || '⟩ Continue';
+  btn.onclick = handler || afterLevelUp;
+  btn.style.display = visible ? '' : 'none';
+}
+function resetLevelUpFlowState(){
+  delete G._skillEvolutionFlow;
+  delete G._selectedSkillEvolutionCardId;
+}
+function updateSkillEvolutionSelection(card, selectedId){
+  document.querySelectorAll('#lu-skill-grid .skill-upgrade-card').forEach(x=>x.classList.remove('selected'));
+  if(card) card.classList.add('selected');
+  G._selectedSkillEvolutionCardId = selectedId;
+}
+function getSkillEvolutionSelection(){
+  return G._selectedSkillEvolutionCardId || null;
+}
+function renderSkillEvolutionSlotSelection(){
   showScreen('screen-levelup');
+  resetLevelUpFlowState();
+  G._skillEvolutionFlow = {step:'slot'};
+  const grid=document.getElementById('lu-skill-grid');
+  const preview=document.getElementById('lu-stat-preview');
+  if(preview) preview.innerHTML='';
+  setLevelUpPanelTitle('🧬 Choose a Skill to Evolve');
+  document.getElementById('lu-sub').textContent=`Lv.${G.player.birdLevel} milestone reached — choose 1 equipped Sparrow skill to evolve (${Math.max(1,G._pendingSkillEvolutionChoices||1)} remaining).`;
+  configureLevelUpConfirm('✓ Inspect Evolution', confirmSkillEvolutionChoice, false);
+  configureLevelUpSecondary('', null, false);
+  grid.innerHTML='';
+  getSkillSlots(G.player).slice().sort((a,b)=>a.slotIndex-b.slotIndex).forEach(slot=>{
+    const tmpl = ABILITY_TEMPLATES?.[slot.abilityId] || {};
+    const family = getSkillSlotFamilyDef(slot, G.player?.birdKey);
+    const action = resolveSkillSlotEvolutionAction(slot, G.player);
+    const card=document.createElement('div');
+    card.className='skill-upgrade-card';
+    card.innerHTML=`<div class="su-name">${tmpl.name || slot.abilityId}</div><div class="su-lv">${family?.displayName||slot.familyId||'Family'} · Tier ${slot.tier||0}${slot.pathId?` · ${slot.pathId.replace(/_/g,' ')}`:''}</div><div class="su-effect">${(tmpl.levels?.[0]?.desc||tmpl.desc||'No description')}<br><span style="color:var(--gold-light)">${action==='choose_path'?'Choose a branch path.':action==='tier_up'?'Preview the next tier in this path.':action==='mastery'?'Choose an Endless mastery.':'No further evolution available in Story mode.'}</span></div>`;
+    if(action==='none'){
+      card.style.opacity='.55';
+      card.style.cursor='default';
+    }else{
+      card.onclick=()=>{ updateSkillEvolutionSelection(card, String(slot.slotIndex)); configureLevelUpConfirm('✓ Inspect Evolution', confirmSkillEvolutionChoice, true); };
+    }
+    grid.appendChild(card);
+  });
+}
+function renderSkillEvolutionPathSelection(slot){
+  const grid=document.getElementById('lu-skill-grid');
+  const preview=document.getElementById('lu-stat-preview');
+  if(preview) preview.innerHTML='';
+  const family = getSkillSlotFamilyDef(slot, G.player?.birdKey);
+  const currentTmpl = ABILITY_TEMPLATES?.[slot.abilityId] || {};
+  G._skillEvolutionFlow = {step:'path', slotIndex:slot.slotIndex};
+  setLevelUpPanelTitle(`🧬 ${family?.displayName||'Skill Evolution'}`);
+  document.getElementById('lu-sub').textContent=`Choose 1 of 3 tier-1 branches for ${currentTmpl.name || family?.displayName || 'this skill'}.`;
+  configureLevelUpConfirm('✓ Evolve Skill', confirmSkillEvolutionChoice, false);
+  configureLevelUpSecondary('⟨ Back', renderSkillEvolutionSlotSelection, true);
+  grid.innerHTML='';
+  getSkillEvolutionPathOptions(slot, G.player?.birdKey).forEach(option=>{
+    const tmpl = option.abilityTemplate || {};
+    const card=document.createElement('div');
+    card.className='skill-upgrade-card';
+    card.innerHTML=`<div class="su-name">${option.displayName}</div><div class="su-lv">Tier 1 · ${tmpl.name || option.abilityId}</div><div class="su-effect">${tmpl.levels?.[0]?.desc || tmpl.desc || 'No description available.'}</div>`;
+    card.onclick=()=>{ updateSkillEvolutionSelection(card, option.pathId); configureLevelUpConfirm('✓ Evolve Skill', confirmSkillEvolutionChoice, true); };
+    grid.appendChild(card);
+  });
+}
+function renderSkillEvolutionTierPreview(slot){
+  const grid=document.getElementById('lu-skill-grid');
+  const preview=document.getElementById('lu-stat-preview');
+  if(preview) preview.innerHTML='';
+  const nextTier = (slot.tier||0)+1;
+  const path = getSkillSlotPathDef(slot, G.player?.birdKey);
+  const nextId = path?.abilities?.[nextTier];
+  const currentTmpl = ABILITY_TEMPLATES?.[slot.abilityId] || {};
+  const nextTmpl = ABILITY_TEMPLATES?.[nextId] || {};
+  G._skillEvolutionFlow = {step:'tier', slotIndex:slot.slotIndex};
+  setLevelUpPanelTitle('🧬 Preview Tier Upgrade');
+  document.getElementById('lu-sub').textContent=`${currentTmpl.name || slot.abilityId} will evolve into ${nextTmpl.name || nextId}.`;
+  configureLevelUpConfirm('✓ Apply Tier Upgrade', confirmSkillEvolutionChoice, true);
+  configureLevelUpSecondary('⟨ Back', renderSkillEvolutionSlotSelection, true);
+  grid.innerHTML=`<div class="skill-upgrade-card selected"><div class="su-name">${currentTmpl.name || slot.abilityId} → ${nextTmpl.name || nextId}</div><div class="su-lv">Tier ${slot.tier||0} → Tier ${nextTier}</div><div class="su-effect">${nextTmpl.levels?.[0]?.desc || nextTmpl.desc || 'No description available.'}</div></div>`;
+}
+function renderSkillEvolutionMasterySelection(slot){
+  const grid=document.getElementById('lu-skill-grid');
+  const preview=document.getElementById('lu-stat-preview');
+  if(preview) preview.innerHTML='';
+  const tmpl = ABILITY_TEMPLATES?.[slot.abilityId] || {};
+  G._skillEvolutionFlow = {step:'mastery', slotIndex:slot.slotIndex};
+  setLevelUpPanelTitle('♾ Choose a Mastery');
+  document.getElementById('lu-sub').textContent=`${tmpl.name || slot.abilityId} is fully evolved. Choose an Endless mastery.`;
+  configureLevelUpConfirm('✓ Claim Mastery', confirmSkillEvolutionChoice, false);
+  configureLevelUpSecondary('⟨ Back', renderSkillEvolutionSlotSelection, true);
+  grid.innerHTML='';
+  getSkillSlotMasteryOptions(slot, G.player).forEach(option=>{
+    const card=document.createElement('div');
+    card.className='skill-upgrade-card';
+    card.innerHTML=`<div class="su-name">${option.name}</div><div class="su-lv">Mastery ${slot.masteryCount+1}</div><div class="su-effect">${option.desc}</div>`;
+    card.onclick=()=>{ updateSkillEvolutionSelection(card, option.id); configureLevelUpConfirm('✓ Claim Mastery', confirmSkillEvolutionChoice, true); };
+    grid.appendChild(card);
+  });
+}
+function beginSkillEvolutionFlow(){
+  if(!(G._pendingSkillEvolutionChoices>0) || !usesFamilySkillEvolution(G.player)) return false;
+  const actionable = getSkillSlots(G.player).some(slot=>resolveSkillSlotEvolutionAction(slot, G.player)!=='none');
+  if(!actionable){
+    G._pendingSkillEvolutionChoices = 0;
+    logMsg('🧬 Sparrow skill milestones reached, but every slot is fully evolved for this mode.', 'system');
+    return false;
+  }
+  renderSkillEvolutionSlotSelection();
+  return true;
+}
+function finalizeSkillEvolutionChoice(message){
+  syncPlayerAbilitiesFromSkillSlots(G.player);
+  ensureMainAttackAndLoadoutRules();
+  refreshPlayerAbilityAilments();
+  (G.player.abilities||[]).forEach(a=>codexMark('abilities', a.id, 'seen'));
+  saveRun();
+  if(message) logMsg(message, 'exp-gain');
+  G._pendingSkillEvolutionChoices = Math.max(0, (G._pendingSkillEvolutionChoices||1)-1);
+  if((G._pendingSkillEvolutionChoices||0)>0){
+    renderSkillEvolutionSlotSelection();
+    return;
+  }
+  showLevelUpScreen();
+  // showLevelUpScreen will continue to afterLevelUp when no stat choices remain
+  if(!(G._pendingLevelUpChoices>0)){
+    afterLevelUp();
+  }
+}
+function confirmSkillEvolutionChoice(){
+  const flow = G._skillEvolutionFlow || {step:'slot'};
+  if(flow.step==='slot'){
+    const slotIndex = Number(getSkillEvolutionSelection());
+    const slot = getSkillSlotByIndex(G.player, slotIndex);
+    if(!slot){ logMsg('Choose a skill slot first.','miss'); return; }
+    const action = resolveSkillSlotEvolutionAction(slot, G.player);
+    if(action==='choose_path') return renderSkillEvolutionPathSelection(slot);
+    if(action==='tier_up') return renderSkillEvolutionTierPreview(slot);
+    if(action==='mastery') return renderSkillEvolutionMasterySelection(slot);
+    logMsg('That slot has no evolution available right now.','miss');
+    return;
+  }
+  const slot = getSkillSlotByIndex(G.player, flow.slotIndex);
+  if(!slot){ logMsg('That skill slot could not be found.','miss'); return; }
+  if(flow.step==='path'){
+    const pathId = getSkillEvolutionSelection();
+    if(!pathId){ logMsg('Choose a path first.','miss'); return; }
+    const before = ABILITY_TEMPLATES?.[slot.abilityId]?.name || slot.abilityId;
+    applySkillPathSelection(slot, pathId, G.player);
+    const after = ABILITY_TEMPLATES?.[slot.abilityId]?.name || slot.abilityId;
+    finalizeSkillEvolutionChoice(`🧬 ${before} committed to the ${pathId.replace(/_/g,' ')} path → ${after}.`);
+    return;
+  }
+  if(flow.step==='tier'){
+    const before = ABILITY_TEMPLATES?.[slot.abilityId]?.name || slot.abilityId;
+    autoUpgradeSkillSlotTier(slot, G.player);
+    const after = ABILITY_TEMPLATES?.[slot.abilityId]?.name || slot.abilityId;
+    finalizeSkillEvolutionChoice(`🧬 ${before} evolved into ${after}!`);
+    return;
+  }
+  if(flow.step==='mastery'){
+    const masteryId = getSkillEvolutionSelection();
+    if(!masteryId){ logMsg('Choose a mastery first.','miss'); return; }
+    const pick = applySkillSlotMastery(slot, masteryId, G.player);
+    if(!pick){ logMsg('That mastery is unavailable.','miss'); return; }
+    finalizeSkillEvolutionChoice(`♾ ${getSkillSlotDisplayLabel(slot)} gained mastery: ${pick.name}.`);
+  }
+}
+
+function showLevelUpScreen() {
+  if(!(G._pendingLevelUpChoices>0)) return;
+  showScreen('screen-levelup');
+  resetLevelUpFlowState();
   _luSelectedStatChoiceId=null;
   const remaining=Math.max(1,G._pendingLevelUpChoices||1);
   document.getElementById('lu-sub').textContent=`Lv.${G.player.birdLevel} reached! Choose 1 stat upgrade (${remaining} remaining):`;
@@ -9867,10 +11502,9 @@ function showLevelUpScreen() {
   }
 
   document.getElementById('lu-skills-panel').classList.add('active');
-
-  document.getElementById('lu-skill-confirm').className='confirm-btn';
-  document.getElementById('lu-skip-btn').className='confirm-btn';
-
+  setLevelUpPanelTitle('📈 Choose a Stat Upgrade');
+  configureLevelUpConfirm('✓ Confirm Stat Upgrade', confirmSkillUpgrade, false);
+  configureLevelUpSecondary('', null, false);
   buildStatChoiceGrid();
 }
 
@@ -9896,7 +11530,7 @@ function buildStatChoiceGrid() {
       document.querySelectorAll('#lu-skill-grid .skill-upgrade-card').forEach(x=>x.classList.remove('selected'));
       c.classList.add('selected');
       _luSelectedStatChoiceId=opt.choiceId;
-      document.getElementById('lu-skill-confirm').className='confirm-btn visible';
+      configureLevelUpConfirm('✓ Confirm Stat Upgrade', confirmSkillUpgrade, true);
     };
     grid.appendChild(c);
   });
@@ -9990,10 +11624,12 @@ async function confirmSkillUpgrade() {
     showLevelUpScreen();
     return;
   }
+  if(beginSkillEvolutionFlow()) return;
   afterLevelUp();
 }
 
 function afterLevelUp() {
+  if(beginSkillEvolutionFlow()) return;
   // After level-up: go to Stork shop if it was a boss, otherwise advance
   if(G._pendingStorkShop){ const m=G._pendingShopMode||'boss'; G._pendingStorkShop=false; G._pendingShopMode=null; showStorkShop(m); }
   else advanceStage();
@@ -10584,7 +12220,8 @@ function renderRunHistory() {
 let _refActiveTab = 0;
 
 const ABILITIES_REFERENCE = {
-  rapidPeck:{desc:'Striker basic opener.',effect:'Multi-hit physical pressure with combo potential.'},
+  multiPeck:{desc:'Sparrow neutral opener.',effect:'Multi-hit physical setup before choosing a branch.'},
+  rapidPeck:{desc:'Striker basic opener.',effect:'Piercing multi-hit pressure after the Rapid branch choice.'},
   dart:{desc:'Reliable basic strike.',effect:'Stable damage with light utility pressure.'},
   honkAttack:{desc:'Bruiser/Tank basic control strike.',effect:'Physical damage with fear or control pressure.'},
   roost:{desc:'Recovery utility.',effect:'Restores HP and supports sustained fights.'},
@@ -10788,7 +12425,7 @@ function enterStorkShopScreen(){
   showScreen('screen-stork-shop');
   const buyBtn=document.getElementById('shop-buy-btn'); if(buyBtn) buyBtn.disabled=true;
   const log=document.getElementById('shop-purchase-log');
-  if(log) log.textContent=(G._shopMode==='grey'?'Stork Market: 1 ability offer, 2 cards, 1 utility.':'Boss Market: 1 high-tier ability, 3 elite cards, 1 utility.');
+  if(log) log.textContent=(G._shopMode==='grey'?'Stork Market: 3 healing supplies, 2 cards, 1 utility.':'Boss Market: 3 healing supplies, 3 elite cards, 1 utility.');
   renderShopItems();
 }
 
@@ -10823,50 +12460,6 @@ function makeUtilityOffer(kind='regular'){
   const pick=arr[Math.floor(Math.random()*arr.length)];
   return {...pick};
 }
-const ABILITY_RARITY_WEIGHTS = { common:70, rare:22, epic:7, legendary:1 };
-function rollByRarity(list){
-  const weighted=[];
-  for(const t of list){
-    const w=ABILITY_RARITY_WEIGHTS[t.rarity]??1;
-    for(let i=0;i<w;i++) weighted.push(t);
-  }
-  return weighted.length?weighted[Math.floor(Math.random()*weighted.length)]:null;
-}
-
-function makeAbilityOffer(highQuality=false){
-  const bd=BIRDS[G.player.birdKey]||{};
-  const birdClass=bd.class||'';
-  const existing=new Set((G.player.abilities||[]).map(a=>a.id));
-  const classPool=(bd.exclusiveLearnPool&&bd.exclusiveLearnPool.length?bd.exclusiveLearnPool:Object.keys(ABILITY_TEMPLATES_LEARNABLE));
-  const candidates=classPool.filter(id=>{
-    const t=ABILITY_TEMPLATES[id];
-    return canOfferAbilityInShop(G.player,t);
-  });
-  const unknown=candidates.filter(id=>!existing.has(id));
-  if(unknown.length){
-    const picks=unknown.map(id=>ABILITY_TEMPLATES[id]).filter(Boolean);
-    const tmpl=rollByRarity(picks)||ABILITY_TEMPLATES[unknown[Math.floor(Math.random()*unknown.length)]];
-    const id=tmpl.id;
-    const tier=highQuality?'blue':'green';
-    return {
-      id:`shop_ab_learn_${id}`,
-      tier,
-      icon:highQuality?'📘':'📗',
-      name:`Learn: ${tmpl.name}`,
-      desc:`Gain ${tmpl.name} at Lv.1${highQuality?' (premium offer)':''}.`,
-      apply:p=>{
-        // NOTE: shopBuySelected() will handle replacement UI if you're at the non-main cap.
-        p.abilities.push({...tmpl,level:1,ailmentIds:[]});
-      }
-    };
-  }
-  const upgradable=(G.player.abilities||[]).filter(a=>!isMainAttackAbility(a)&&(a.level||1)<4);
-  if(upgradable.length){
-    const pick=upgradable[Math.floor(Math.random()*upgradable.length)];
-    return {id:`shop_ab_upgrade_${pick.id}`,tier:highQuality?'purple':'blue',icon:'🪶',name:`Train: ${pick.name}`,desc:`Upgrade ${pick.name} by +1 level (max 4).`,apply:p=>{const a=p.abilities.find(x=>x.id===pick.id);if(a)a.level=Math.min(4,(a.level||1)+1);}};
-  }
-  return {id:'shop_ab_focus',tier:'green',icon:'🧠',name:'Combat Drill',desc:'ATK +2, MATK +2, ACC +3',apply:p=>{p.stats.atk+=2;p.stats.matk=(p.stats.matk||0)+2;p.stats.acc=(p.stats.acc||80)+3;}};
-}
 function generateShopItems() {
   _shopItems=[];
   const used=new Set();
@@ -10887,8 +12480,7 @@ function generateShopItems() {
   _shopItems.push(...healOffers);
 
   if(mode==='grey'){
-    // Regular shop: abilities/cards/utility after healing shelf
-    _shopItems.push(makeAbilityOffer(false));
+    // Regular shop: cards/utility after healing shelf
     for(let i=0;i<2;i++){
       const tier=goldCapReached?rollShopTier({grey:52,green:30,blue:16,purple:2}):rollShopTier({grey:50,green:28,blue:16,purple:5,gold:1});
       const pick=pickUniqueRewardByTier(tier,used)||pickUniqueRewardByTier('green',used)||pickUniqueRewardByTier('grey',used);
@@ -10896,8 +12488,7 @@ function generateShopItems() {
     }
     _shopItems.push(makeUtilityOffer('regular'));
   } else {
-    // Boss shop: abilities/cards/utility after healing shelf
-    _shopItems.push(makeAbilityOffer(true));
+    // Boss shop: cards/utility after healing shelf
     for(let i=0;i<3;i++){
       const tier=goldCapReached?rollShopTier({blue:56,purple:44}):rollShopTier({blue:50,purple:38,gold:12});
       const pick=pickUniqueRewardByTier(tier,used)||pickUniqueRewardByTier('purple',used)||pickUniqueRewardByTier('blue',used);
@@ -10908,20 +12499,6 @@ function generateShopItems() {
   renderShopItems();
 }
 const SHOP_COSTS={grey:24,green:36,blue:58,purple:78,gold:105};
-
-const SHOP_BANNED_IDS = new Set(['skipTurn','sittingDuck','endTurn','mimic']);
-function canOfferAbilityInShop(p, tmpl){
-  if(!tmpl || !tmpl.id) return false;
-  if(SHOP_BANNED_IDS.has(tmpl.id)) return false;
-  const cls=((p.class||BIRDS[p.birdKey]?.class||'').toLowerCase());
-  if(Array.isArray(tmpl.allowedClasses) && tmpl.allowedClasses.length) return tmpl.allowedClasses.includes(cls);
-  if(tmpl.isNeutral) return true;
-  const bt=tmpl.btnType||tmpl.type;
-  if(bt==='ranged') return ['striker','trickster'].includes(cls);
-  if(bt==='spell') return MAGIC_CLASSES.has(cls);
-  if(bt==='physical') return !MAGIC_CLASSES.has(cls);
-  return bt==='utility';
-}
 
 const SHOP_STATE = {
   purchaseMadeThisVisit:false,
@@ -10943,45 +12520,6 @@ function shopLockVisitState(){
 }
 function getShopRefreshCost(){
   return 10 + 6*Math.max(0,G._shopRefreshCount||0);
-}
-function shopTooltipNode(){
-  let tt=document.getElementById('shop-ability-tooltip');
-  if(!tt){
-    tt=document.createElement('div');
-    tt.id='shop-ability-tooltip';
-    document.body.appendChild(tt);
-  }
-  return tt;
-}
-function showShopTooltip(text, ev){
-  if(!text) return;
-  const tt=shopTooltipNode();
-  tt.textContent=text;
-  tt.style.display='block';
-  tt.style.left=(((ev&&ev.clientX)||0)+14)+'px';
-  tt.style.top=(((ev&&ev.clientY)||0)+14)+'px';
-}
-function hideShopTooltip(){
-  const tt=document.getElementById('shop-ability-tooltip');
-  if(tt) tt.style.display='none';
-}
-function resolveShopAbilityTemplate(item){
-  if(!item||!item.id) return null;
-  let learnId=null;
-  if(item.id.startsWith('shop_ab_learn_')) learnId=item.id.replace('shop_ab_learn_','');
-  else if(item.id.startsWith('shop_ab_upgrade_')) learnId=item.id.replace('shop_ab_upgrade_','');
-  if(!learnId) return null;
-  return (ABILITY_TEMPLATES && ABILITY_TEMPLATES[learnId]) || null;
-}
-
-function buildShopItemTooltip(item){
-  const tmpl=resolveShopAbilityTemplate(item);
-  if(!tmpl) return item?.desc || item?.description || '';
-  const lv1=(Array.isArray(tmpl.levels) && tmpl.levels[0]?.desc) ? tmpl.levels[0].desc : '';
-  const parts=[];
-  if(tmpl.desc) parts.push(`Base: ${tmpl.desc}`);
-  if(lv1) parts.push(`Effects: ${lv1}`);
-  return parts.join('\n');
 }
 
 function renderShopItems() {
@@ -11006,7 +12544,6 @@ function renderShopItems() {
     const isHealingItem=!!item.isHealingShopItem;
     const alreadyBoughtHeal=!!(isHealingItem && SHOP_STATE.healingPurchasesThisVisit?.has(item.id));
     const canSelect=canAfford && !alreadyBoughtHeal && (!SHOP_STATE.purchaseMadeThisVisit || isHealingItem);
-    const tooltip=buildShopItemTooltip(item);
 
     const div=document.createElement('div');
     div.className=`shop-item tier-${item.tier} ${canAfford?'':'cant-afford'} ${(SHOP_STATE.purchaseMadeThisVisit&&!isHealingItem)?'shop-locked-visit':''} ${alreadyBoughtHeal?'shop-locked-visit':''}`;
@@ -11015,14 +12552,10 @@ function renderShopItems() {
       <div class="reward-tier-label">${REWARD_TIERS[item.tier].label}</div>
       <span class="reward-icon">${item.icon}</span>
       <div class="reward-name">${item.name}</div>
-      <div class="reward-desc">${tooltip || item.desc}</div>`;
-    if(tooltip) div.title=tooltip;
+      <div class="reward-desc">${item.desc}</div>`;
+    if(item.desc) div.title=item.desc;
 
-    div.addEventListener('mouseenter', e=>showShopTooltip(tooltip, e));
-    div.addEventListener('mousemove', e=>showShopTooltip(tooltip, e));
-    div.addEventListener('mouseleave', hideShopTooltip);
-    div.addEventListener('click', e=>{
-      showShopTooltip(tooltip, e);
+    div.addEventListener('click', ()=>{
       if(!canSelect) return;
       document.querySelectorAll('.shop-item').forEach(x=>x.classList.remove('selected'));
       div.classList.add('selected');
@@ -11033,73 +12566,6 @@ function renderShopItems() {
 
     grid.appendChild(div);
   });
-}
-
-function nonMainAbilities(p){
-  return (p.abilities||[]).filter(a=>!isMainAttackAbility(a));
-}
-
-function ensureShopSwapModal(){
-  if(document.getElementById('shop-swap-modal')) return;
-
-  const modal=document.createElement('div');
-  modal.id='shop-swap-modal';
-  modal.style.cssText=`
-    display:none; position:fixed; inset:0; z-index:9999;
-    background:rgba(0,0,0,.65); align-items:center; justify-content:center;
-  `;
-  modal.innerHTML=`
-    <div style="width:min(520px,92vw); background:rgba(20,15,5,.97); border:1px solid var(--gold);
-                border-radius:12px; padding:16px; box-shadow:0 10px 40px rgba(0,0,0,.55);">
-      <div style="font-family:Cinzel,serif; color:var(--gold); letter-spacing:.08em; margin-bottom:8px;">
-        🪶 SKILL SLOTS FULL — Choose a skill to replace
-      </div>
-      <div id="shop-swap-sub" style="color:var(--text-dim); font-size:.82rem; margin-bottom:12px;"></div>
-      <div id="shop-swap-list" style="display:flex; flex-direction:column; gap:8px;"></div>
-      <button id="shop-swap-cancel"
-        style="margin-top:12px; background:rgba(40,35,25,.25); border:1px solid var(--border);
-               color:var(--text-dim); padding:7px 14px; border-radius:8px; cursor:pointer;">
-        ✕ Cancel
-      </button>
-    </div>
-  `;
-  document.body.appendChild(modal);
-}
-
-function openShopSwapModal(newTmpl, onPick, onCancel){
-  ensureShopSwapModal();
-  const modal=document.getElementById('shop-swap-modal');
-  const sub=document.getElementById('shop-swap-sub');
-  const list=document.getElementById('shop-swap-list');
-  const cancel=document.getElementById('shop-swap-cancel');
-
-  sub.innerHTML = `Replace one non-main skill with <strong style="color:var(--gold)">${newTmpl.name}</strong>.`;
-  list.innerHTML='';
-
-  const p=G.player;
-  const pool=nonMainAbilities(p);
-
-  pool.forEach(ab=>{
-    const btn=document.createElement('button');
-    btn.style.cssText=`
-      background:rgba(201,168,76,.08); border:1px solid rgba(201,168,76,.25);
-      border-radius:10px; padding:10px 12px; cursor:pointer; color:var(--text);
-      text-align:left; display:flex; gap:10px; align-items:flex-start;
-    `;
-    btn.innerHTML=`
-      <div style="font-size:1.05rem; line-height:1;">${ab.icon||'🪶'}</div>
-      <div>
-        <div style="font-weight:800;">${ab.name} <span style="color:var(--text-dim); font-weight:600;">(Lv.${ab.level||1})</span></div>
-        <div style="font-size:.78rem; color:var(--text-dim); line-height:1.25;">${ab.desc||''}</div>
-      </div>
-    `;
-    btn.onclick=()=>{ modal.style.display='none'; onPick(ab.id); };
-    list.appendChild(btn);
-  });
-
-  cancel.onclick=()=>{ modal.style.display='none'; if(onCancel) onCancel(); };
-
-  modal.style.display='flex';
 }
 
 async function shopBuySelected() {
@@ -11126,63 +12592,9 @@ async function shopBuySelected() {
   const cost=Math.max(0,baseCost-discount);
   if(G.shinyObjects<cost){ logMsg('Not enough shiny objects!','miss'); return false; }
 
-  // Special handling: learning a new ability when non-main slots are full
-  if(item.id && item.id.startsWith('shop_ab_learn_')){
-    const learnId=item.id.replace('shop_ab_learn_','');
-    const tmpl=ABILITY_TEMPLATES[learnId];
-    if(!tmpl){ logMsg('Skill template missing.','miss'); return false; }
-
-    const nm=nonMainAbilities(G.player);
-    if(nm.length>=4){
-      openShopSwapModal(
-        tmpl,
-        (replaceId)=>{
-          if(SHOP_STATE.purchaseMadeThisVisit) return;
-          G.shinyObjects-=cost;
-          if(discount>0) G._nextShopDiscount=0;
-
-          const idx=G.player.abilities.findIndex(a=>a.id===replaceId);
-          if(idx>=0) G.player.abilities.splice(idx,1,{...tmpl,level:1,ailmentIds:[]});
-          else G.player.abilities.push({...tmpl,level:1,ailmentIds:[]});
-
-          if(!G.collectedRewards) G.collectedRewards=[];
-          G.collectedRewards.push({icon:item.icon,tier:item.tier,name:item.name,desc:item.desc});
-
-          logMsg(`🌟 Purchased: ${item.name}!`,'exp-gain');
-          const log=document.getElementById('shop-purchase-log');
-          if(log) log.textContent=`✓ Bought: ${item.icon} ${item.name} · One item per visit`;
-
-          if(item.stackable===false){ if(!(G.runUpgradesPurchased instanceof Set)) G.runUpgradesPurchased=new Set(); G.runUpgradesPurchased.add(item.id); }
-          _shopItems.splice(selected,1);
-          refreshPlayerAbilityAilments();
-          enforceAbilityCosts(G.player);
-          shopLockVisitState();
-          saveRun();
-          renderShopItems();
-        },
-        ()=>{}
-      );
-      return true;
-    }
-  }
-
   G.shinyObjects-=cost;
   if(discount>0) G._nextShopDiscount=0;
-  if(item.id && item.id.startsWith('shop_ab_upgrade_')){
-    const abId=item.id.replace('shop_ab_upgrade_','');
-    const a=G.player.abilities.find(x=>x.id===abId);
-    if(a){
-      const prevLevel=a.level||1;
-      a.level=Math.min(4,(a.level||1)+1);
-      const tmpl=ABILITY_TEMPLATES[a.id];
-      if(tmpl && prevLevel<4 && a.level===4 && (tmpl.type==='physical'||tmpl.type==='ranged') && ailmentSlotsForLevel(tmpl,4)>ailmentSlotsForLevel(tmpl,3)){
-        const choice=await openAbilityModificationChoice(a, tmpl);
-        if(choice) a.modAilmentChoice=choice;
-      }
-    }
-  } else {
-    applyUpgradeWithMaxHpHealing(G.player, ()=>item.apply(G.player), item.name||'Shop Item');
-  }
+  applyUpgradeWithMaxHpHealing(G.player, ()=>item.apply(G.player), item.name||'Shop Item');
   refreshPlayerAbilityAilments();
   enforceAbilityCosts(G.player);
 
