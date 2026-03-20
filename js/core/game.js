@@ -729,7 +729,8 @@ const BIRDS = {
     size:'small', class:'singer',
     stats:{hp:38,maxHp:38,atk:6,def:3,spd:7,dodge:25,acc:80,mdef:8,matk:14},
     statBars:{HP:38/50,ATK:6/15,SPD:7/10,Dodge:.5,ACC:.8}, color:'#9a6ae8',
-    startAbilities:['blackPeck','stormChorus','battleChorus','thunderScreech'],
+    startAbilities:['dark_song','shadow_peck','gloom_wing','grim_sign'],
+    mainAttackId:'shadow_peck',
     passive:{id:'songResilient',name:'Song Resilient',desc:'Every successful spell cast, restore 2 HP.',
       onSpell(p){p.stats.hp=Math.min(p.stats.hp+2,p.stats.maxHp);}},
   },
@@ -3492,7 +3493,7 @@ function codexMark(type, id, field='seen'){
 }
 
 const SKILL_EVOLUTION_LEVEL_INTERVAL = 3;
-const FAMILY_EVOLUTION_STATE_VERSION = 3;
+const FAMILY_EVOLUTION_STATE_VERSION = 4;
 const SPARROW_SKILL_SLOT_LAYOUT = Object.freeze([
   {slotIndex:0, familyId:'rapid', abilityId:'multiPeck'},
   {slotIndex:1, familyId:'dart', abilityId:'dart'},
@@ -3553,12 +3554,63 @@ const SPARROW_SKILL_FAMILIES = Object.freeze({
     },
   },
 });
-const SPARROW_SKILL_ABILITY_LOOKUP = (()=>{
+const BLACKBIRD_SKILL_FAMILIES = Object.freeze({
+  song:{
+    familyId:'song', displayName:'Song Line', baseAbilityId:'dark_song', slotRole:'core_magic_burst', maxTier:3,
+    tierNames:{1:'Song', 2:'Verse', 3:'Anthem'},
+    paths:{
+      fear:{pathId:'fear', displayName:'Fear', abilities:{1:'dread_song', 2:'panic_verse', 3:'night_anthem'}},
+      venomous:{pathId:'venomous', displayName:'Venomous', abilities:{1:'venomous_song', 2:'venomous_verse', 3:'venomous_anthem'}},
+      hex:{pathId:'hex', displayName:'Hex', abilities:{1:'hex_song', 2:'hex_verse', 3:'doom_anthem'}},
+    },
+  },
+  peck:{
+    familyId:'peck', displayName:'Shadow Peck Line', baseAbilityId:'shadow_peck', slotRole:'filler_attack', maxTier:3,
+    paths:{
+      bleed:{pathId:'bleed', displayName:'Bleed', abilities:{1:'raking_peck', 2:'rend_strike', 3:'carrion_barrage'}, damageTypeProgression:{1:'physical', 2:'physical', 3:'physical'}},
+      siphon:{pathId:'siphon', displayName:'Siphon', abilities:{1:'siphon_peck', 2:'umbral_strike', 3:'soul_barrage'}, damageTypeProgression:{1:'hybrid', 2:'magic', 3:'magic'}},
+      pierce:{pathId:'pierce', displayName:'Pierce', abilities:{1:'needle_peck', 2:'bodkin_strike', 3:'splinter_barrage'}, damageTypeProgression:{1:'physical', 2:'physical', 3:'physical'}},
+    },
+  },
+  gloom:{
+    familyId:'gloom', displayName:'Gloom Line', baseAbilityId:'gloom_wing', slotRole:'utility', maxTier:3,
+    paths:{
+      dodge:{pathId:'dodge', displayName:'Dodge', abilities:{1:'shade_wing', 2:'veil_wing', 3:'ghost_wing'}},
+      acc_break:{pathId:'acc_break', displayName:'Accuracy Break', abilities:{1:'murk_wing', 2:'blind_veil', 3:'eclipse_shroud'}},
+      slow:{pathId:'slow', displayName:'Slow', abilities:{1:'heavy_wing', 2:'drag_veil', 3:'dusk_field'}},
+    },
+  },
+  sign:{
+    familyId:'sign', displayName:'Sign Line', baseAbilityId:'grim_sign', slotRole:'setup', maxTier:3,
+    tierNames:{1:'Sign', 2:'Seal', 3:'Doom'},
+    paths:{
+      damage_amp:{pathId:'damage_amp', displayName:'Damage Amp', abilities:{1:'grim_mark', 2:'grave_seal', 3:'harbinger_doom'}},
+      def_break:{pathId:'def_break', displayName:'Defense Break', abilities:{1:'crack_guard', 2:'break_seal', 3:'ruin_doom'}},
+      execute:{pathId:'execute', displayName:'Execute', abilities:{1:'death_sign', 2:'death_seal', 3:'final_omen'}},
+    },
+  },
+});
+const BLACKBIRD_SKILL_SLOT_LAYOUT = Object.freeze([
+  {slotIndex:0, familyId:'song', abilityId:'dark_song'},
+  {slotIndex:1, familyId:'peck', abilityId:'shadow_peck'},
+  {slotIndex:2, familyId:'gloom', abilityId:'gloom_wing'},
+  {slotIndex:3, familyId:'sign', abilityId:'grim_sign'},
+]);
+const blackbirdStartingSkillSlots = BLACKBIRD_SKILL_SLOT_LAYOUT.map(slot=>Object.freeze({
+  slotIndex:slot.slotIndex,
+  familyId:slot.familyId,
+  pathId:null,
+  tier:0,
+  abilityId:slot.abilityId,
+  masteryCount:0,
+}));
+
+function buildFamilySkillAbilityLookup(slotLayout, families){
   const out = Object.create(null);
-  for(const slot of SPARROW_SKILL_SLOT_LAYOUT){
+  for(const slot of slotLayout){
     out[slot.abilityId] = {familyId:slot.familyId, pathId:null, tier:0, abilityId:slot.abilityId};
   }
-  for(const family of Object.values(SPARROW_SKILL_FAMILIES)){
+  for(const family of Object.values(families||{})){
     for(const path of Object.values(family.paths||{})){
       for(const [tierKey, abilityId] of Object.entries(path.abilities||{})){
         out[abilityId] = {familyId:family.familyId, pathId:path.pathId, tier:Number(tierKey)||0, abilityId};
@@ -3566,13 +3618,40 @@ const SPARROW_SKILL_ABILITY_LOOKUP = (()=>{
     }
   }
   return Object.freeze(out);
-})();
+}
+const FAMILY_EVOLUTION_BIRD_DATA = Object.freeze({
+  sparrow:{
+    birdKey:'sparrow',
+    slotLayout:SPARROW_SKILL_SLOT_LAYOUT,
+    families:SPARROW_SKILL_FAMILIES,
+    abilityLookup:buildFamilySkillAbilityLookup(SPARROW_SKILL_SLOT_LAYOUT, SPARROW_SKILL_FAMILIES),
+    legacyBaseAbilityIds:Object.freeze({
+      rapid:{legacy:['rapidPeck'], current:'multiPeck'},
+      mark:{legacy:['markPrey'], current:'trackPrey'},
+    }),
+  },
+  blackbird:{
+    birdKey:'blackbird',
+    slotLayout:BLACKBIRD_SKILL_SLOT_LAYOUT,
+    families:BLACKBIRD_SKILL_FAMILIES,
+    abilityLookup:buildFamilySkillAbilityLookup(BLACKBIRD_SKILL_SLOT_LAYOUT, BLACKBIRD_SKILL_FAMILIES),
+    legacyBaseAbilityIds:Object.freeze({
+      song:{legacy:['stormChorus'], current:'dark_song'},
+      peck:{legacy:['blackPeck'], current:'shadow_peck'},
+      gloom:{legacy:['battleChorus'], current:'gloom_wing'},
+      sign:{legacy:['thunderScreech'], current:'grim_sign'},
+    }),
+  },
+});
 
 function isSkillEvolutionLevel(level){
   return Number.isFinite(level) && level>0 && level % SKILL_EVOLUTION_LEVEL_INTERVAL === 0;
 }
+function getBirdFamilyEvolutionData(birdKey){
+  return FAMILY_EVOLUTION_BIRD_DATA[String(birdKey||'')] || null;
+}
 function getBirdSkillFamilyCatalog(birdKey){
-  return String(birdKey||'')==='sparrow' ? SPARROW_SKILL_FAMILIES : null;
+  return getBirdFamilyEvolutionData(birdKey)?.families || null;
 }
 function usesFamilySkillEvolution(player){
   return !!getBirdSkillFamilyCatalog(player?.birdKey);
@@ -3589,21 +3668,18 @@ function createSkillSlotState(slotIndex, familyId, pathId, tier, abilityId, mast
   };
 }
 function getBaseSkillSlotsForBird(birdKey){
-  if(String(birdKey||'')!=='sparrow') return [];
-  return SPARROW_SKILL_SLOT_LAYOUT.map(slot=>createSkillSlotState(slot.slotIndex, slot.familyId, null, 0, slot.abilityId, 0, []));
+  const data = getBirdFamilyEvolutionData(birdKey);
+  if(!data) return [];
+  return data.slotLayout.map(slot=>createSkillSlotState(slot.slotIndex, slot.familyId, null, 0, slot.abilityId, 0, []));
 }
-const LEGACY_SPARROW_BASE_ABILITY_IDS = Object.freeze({
-  rapid:{legacy:'rapidPeck', current:'multiPeck'},
-  mark:{legacy:'markPrey', current:'trackPrey'},
-});
-function migrateLegacySparrowBaseAbilityId(abilityId, familyId, pathId=null, tier=0){
+function migrateLegacyFamilyBaseAbilityId(abilityId, birdKey, familyId, pathId=null, tier=0){
   const id = String(abilityId||'');
   if(pathId || Number(tier||0)>0) return id;
-  const familyMigration = LEGACY_SPARROW_BASE_ABILITY_IDS[familyId];
-  return familyMigration && id===familyMigration.legacy ? familyMigration.current : id;
+  const familyMigration = getBirdFamilyEvolutionData(birdKey)?.legacyBaseAbilityIds?.[familyId];
+  return familyMigration && familyMigration.legacy.includes(id) ? familyMigration.current : id;
 }
-function getSparrowAbilityStateFromId(abilityId){
-  return SPARROW_SKILL_ABILITY_LOOKUP[String(abilityId||'')] || null;
+function getFamilyEvolutionAbilityStateFromId(birdKey, abilityId){
+  return getBirdFamilyEvolutionData(birdKey)?.abilityLookup?.[String(abilityId||'')] || null;
 }
 function getSkillSlotFamilyDef(slotOrFamilyId, birdKey='sparrow'){
   const catalog = getBirdSkillFamilyCatalog(birdKey);
@@ -3625,9 +3701,9 @@ function getSkillSlotDisplayLabel(slot){
 function normalizeSkillSlotState(slot, fallback, birdKey='sparrow'){
   const base = fallback || createSkillSlotState(0, null, null, 0, '', 0, []);
   let next = createSkillSlotState(slot?.slotIndex ?? base.slotIndex, slot?.familyId ?? base.familyId, slot?.pathId ?? base.pathId, slot?.tier ?? base.tier, slot?.abilityId ?? base.abilityId, slot?.masteryCount ?? base.masteryCount, slot?.masteries ?? base.masteries);
-  if(String(birdKey||'')==='sparrow' && next.abilityId){
-    next.abilityId = migrateLegacySparrowBaseAbilityId(next.abilityId, next.familyId, next.pathId, next.tier);
-    const info = getSparrowAbilityStateFromId(next.abilityId);
+  if(usesFamilySkillEvolution({birdKey}) && next.abilityId){
+    next.abilityId = migrateLegacyFamilyBaseAbilityId(next.abilityId, birdKey, next.familyId, next.pathId, next.tier);
+    const info = getFamilyEvolutionAbilityStateFromId(birdKey, next.abilityId);
     if(info && info.familyId===next.familyId){
       next.pathId = next.pathId || info.pathId || null;
       next.tier = Math.max(next.tier||0, info.tier||0);
@@ -3760,8 +3836,8 @@ function ensureFamilyEvolutionState(player){
     const rawSlots = Array.isArray(state.skillSlots) && state.skillSlots.length
       ? state.skillSlots
       : baseSlots.map((slot, idx)=>{
-          const currentId = migrateLegacySparrowBaseAbilityId(player.abilities?.[idx]?.id, slot.familyId, null, 0);
-          const info = getSparrowAbilityStateFromId(currentId);
+          const currentId = migrateLegacyFamilyBaseAbilityId(player.abilities?.[idx]?.id, birdKey, slot.familyId, null, 0);
+          const info = getFamilyEvolutionAbilityStateFromId(birdKey, currentId);
           if(info && info.familyId===slot.familyId){
             return createSkillSlotState(slot.slotIndex, info.familyId, info.pathId, info.tier, info.abilityId, 0, []);
           }
@@ -4513,6 +4589,7 @@ function startGame() {
     })),
     exp: 0, birdLevel: 1,
     goldCritMult: 1.5,
+    mainAttackId: bd.mainAttackId||null,
     immuneParalyze: bd.passive?.immuneParalyze||false,
     poisonCap: 5,
     endlessRewards: [],
@@ -8411,6 +8488,46 @@ registerAbilityAlias('piercingScreech','sonicDirge','Piercing Screech',{type:'sp
 registerAbilityAlias('stormChorus','owlPsyche','Storm Chorus',{type:'spell',btnType:'spell'});
 registerAbilityAlias('battleChorus','victoryChant','Battle Chorus',{type:'utility',btnType:'utility'});
 registerAbilityAlias('thunderScreech','sonicDirge','Thunder Screech',{type:'spell',btnType:'spell'});
+registerAbilityAlias('dark_song','stormChorus','Dark Song',{type:'spell',btnType:'spell',desc:'Blackbird base song. A neutral dark refrain before branching.'});
+registerAbilityAlias('dread_song','fearChorus','Dread Song',{type:'spell',btnType:'spell'});
+registerAbilityAlias('panic_verse','thunderScreech','Panic Verse',{type:'spell',btnType:'spell'});
+registerAbilityAlias('night_anthem','murderMurmuration','Night Anthem',{type:'spell',btnType:'spell'});
+registerAbilityAlias('venomous_song','rotChorus','Venomous Song',{type:'spell',btnType:'spell'});
+registerAbilityAlias('venomous_verse','plagueBlast','Venomous Verse',{type:'spell',btnType:'spell'});
+registerAbilityAlias('venomous_anthem','astralRefrain','Venomous Anthem',{type:'spell',btnType:'spell'});
+registerAbilityAlias('hex_song','dreadCall','Hex Song',{type:'utility',btnType:'utility'});
+registerAbilityAlias('hex_verse','astralRefrain','Hex Verse',{type:'spell',btnType:'spell'});
+registerAbilityAlias('doom_anthem','murderMurmuration','Doom Anthem',{type:'spell',btnType:'spell'});
+registerAbilityAlias('shadow_peck','blackPeck','Shadow Peck',{isBasic:true,type:'physical',btnType:'physical',desc:'Blackbird base peck. A neutral shadow strike before branching.'});
+registerAbilityAlias('raking_peck','talonRake','Raking Peck',{type:'physical',btnType:'physical'});
+registerAbilityAlias('rend_strike','serratedSlash','Rend Strike',{type:'physical',btnType:'physical'});
+registerAbilityAlias('carrion_barrage','murderMurmuration','Carrion Barrage',{type:'spell',btnType:'spell'});
+registerAbilityAlias('siphon_peck','toxicSpit','Siphon Peck',{type:'physical',btnType:'physical'});
+registerAbilityAlias('umbral_strike','astralRefrain','Umbral Strike',{type:'spell',btnType:'spell'});
+registerAbilityAlias('soul_barrage','murderMurmuration','Soul Barrage',{type:'spell',btnType:'spell'});
+registerAbilityAlias('needle_peck','silentPierce','Needle Peck',{type:'physical',btnType:'physical'});
+registerAbilityAlias('bodkin_strike','silentPierce','Bodkin Strike',{type:'physical',btnType:'physical'});
+registerAbilityAlias('splinter_barrage','murderMurmuration','Splinter Barrage',{type:'spell',btnType:'spell'});
+registerAbilityAlias('gloom_wing','battleChorus','Gloom Wing',{type:'utility',btnType:'utility',desc:'Blackbird base utility. A neutral wing shroud before branching.'});
+registerAbilityAlias('shade_wing','hum','Shade Wing',{type:'utility',btnType:'utility'});
+registerAbilityAlias('veil_wing','windChorus','Veil Wing',{type:'utility',btnType:'utility'});
+registerAbilityAlias('ghost_wing','phantomGale','Ghost Wing',{type:'utility',btnType:'utility'});
+registerAbilityAlias('murk_wing','eyeGouge','Murk Wing',{type:'physical',btnType:'physical'});
+registerAbilityAlias('blind_veil','featherRuffle','Blind Veil',{type:'utility',btnType:'utility'});
+registerAbilityAlias('eclipse_shroud','stormShroud','Eclipse Shroud',{type:'utility',btnType:'utility'});
+registerAbilityAlias('heavy_wing','wingClip','Heavy Wing',{type:'spell',btnType:'spell'});
+registerAbilityAlias('drag_veil','wingClip','Drag Veil',{type:'spell',btnType:'spell'});
+registerAbilityAlias('dusk_field','nightfallSong','Dusk Field',{type:'utility',btnType:'utility'});
+registerAbilityAlias('grim_sign','dreadCall','Grim Sign',{type:'utility',btnType:'utility',desc:'Blackbird base setup. Mark your quarry before choosing a doom path.'});
+registerAbilityAlias('grim_mark','markPrey','Grim Mark',{type:'utility',btnType:'utility'});
+registerAbilityAlias('grave_seal','brandPrey','Grave Seal',{type:'utility',btnType:'utility'});
+registerAbilityAlias('harbinger_doom','huntersMark','Harbinger Doom',{type:'utility',btnType:'utility'});
+registerAbilityAlias('crack_guard','exposeWeakness','Crack Guard',{type:'utility',btnType:'utility'});
+registerAbilityAlias('break_seal','exposeGuard','Break Seal',{type:'utility',btnType:'utility'});
+registerAbilityAlias('ruin_doom','quarryBreak','Ruin Doom',{type:'utility',btnType:'utility'});
+registerAbilityAlias('death_sign','predatorMark','Death Sign',{type:'utility',btnType:'utility'});
+registerAbilityAlias('death_seal','predatorBrand','Death Seal',{type:'utility',btnType:'utility'});
+registerAbilityAlias('final_omen','finalHunt','Final Omen',{type:'utility',btnType:'utility'});
 registerAbilityAlias('nightTalon','deathDive','Night Talon',{isBasic:true,type:'physical',btnType:'physical',energyCost:3,energyByLevel:[3,3,3,3]});
 registerAbilityAlias('huntersCry','victoryChant',"Hunter's Cry",{type:'utility',btnType:'utility'});
 registerAbilityAlias('fleshTear','fleshRipper','Flesh Tear',{isBasic:true,type:'physical',btnType:'physical'});
@@ -10436,13 +10553,15 @@ function ensureMainAttackAndLoadoutRules(){
   if(isMagic){
     const isBlackbird = (G.player?.birdKey==='blackbird');
     if(isBlackbird){
-      mainAb=G.player.abilities.find(a=>a.id==='blackPeck') || null;
+      G.player.mainAttackId='shadow_peck';
+      mainAb=G.player.abilities.find(a=>a.id==='shadow_peck' || a.id==='blackPeck') || null;
       G.player.abilities=G.player.abilities.filter(a=>a.id!=='mainAttack');
       if(!mainAb){
-        mainAb={...(ABILITY_TEMPLATES.blackPeck||{}), id:'blackPeck', level:1};
+        mainAb={...(ABILITY_TEMPLATES.shadow_peck||ABILITY_TEMPLATES.blackPeck||{}), id:'shadow_peck', level:1};
         G.player.abilities.unshift(mainAb);
       }
     }else{
+      if(bd.mainAttackId) G.player.mainAttackId=bd.mainAttackId;
       mainAb=G.player.abilities.find(a=>a.id==='mainAttack');
       if(!mainAb){
         mainAb={id:'mainAttack',name:'Peck',level:1,type:'physical',btnType:'physical'};
