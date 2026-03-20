@@ -330,15 +330,11 @@
           if(firstHealingIdx!==-1){
             labels.push({idx:firstHealingIdx, text:'HEALING'});
           }
-          const firstAbilityIdx=items.findIndex(item=>String(item?.id||'').startsWith('shop_ab_'));
-          if(firstAbilityIdx!==-1){
-            labels.push({idx:firstAbilityIdx, text:'ABILITIES'});
-          }
           const firstUtilityIdx=items.findIndex(item=>String(item?.id||'').startsWith('shop_util_'));
           if(firstUtilityIdx!==-1){
             labels.push({idx:firstUtilityIdx, text:'UTILITY'});
           }
-          const firstRewardIdx=items.findIndex(item=>!item?.isHealingShopItem && !String(item?.id||'').startsWith('shop_ab_') && !String(item?.id||'').startsWith('shop_util_'));
+          const firstRewardIdx=items.findIndex(item=>!item?.isHealingShopItem && !String(item?.id||'').startsWith('shop_util_'));
           if(firstRewardIdx!==-1){
             labels.push({idx:firstRewardIdx, text:'UPGRADES'});
           }
@@ -354,27 +350,6 @@
         cards.forEach((card, idx)=>{
           const item = (globalThis._shopItems||[])[idx];
           if(item?.id?.startsWith('art_')) card.classList.add('artifact-card');
-        });
-      }catch(err){ console.error(err); }
-      return out;
-    };
-  }
-
-  // Better shop swap preview
-  const _oldOpenShopSwapModalPolish = globalThis.openShopSwapModal;
-  if(typeof _oldOpenShopSwapModalPolish === 'function'){
-    globalThis.openShopSwapModal = function(newTmpl, onPick, onCancel){
-      const out = _oldOpenShopSwapModalPolish.apply(this, arguments);
-      try{
-        const sub=document.getElementById('shop-swap-sub');
-        const list=document.getElementById('shop-swap-list');
-        if(!sub || !list) return out;
-        [...list.querySelectorAll('button')].forEach((btn, idx)=>{
-          btn.addEventListener('mouseenter', ()=>{
-            const pool=(G?.player?.abilities||[]).filter(a=>!isMainAttackAbility(a));
-            const ab=pool[idx];
-            if(ab) sub.innerHTML = `Replace <strong style="color:var(--text)">${ab.name}</strong> with <strong style="color:var(--gold)">${newTmpl.name}</strong>.`;
-          });
         });
       }catch(err){ console.error(err); }
       return out;
@@ -813,19 +788,7 @@ cooldown('chargeUp',3);
     };
   }
 
-  // 2) Remove Fear from Goose HONK.
-  if(globalThis.ABILITY_TEMPLATES?.gooseHonk){
-    const a = ABILITY_TEMPLATES.gooseHonk;
-    a.desc = 'Territorial blast. Tank basic with reliability and light weaken pressure.';
-    a.levels = [
-      {lv:1, desc:'110% dmg, 24% miss'},
-      {lv:2, desc:'125% dmg, 20% miss — Weaken 15%', newAilment:'weaken', ailChance:15},
-      {lv:3, desc:'140% dmg, 16% miss — Weaken 20%', newAilment:'weaken', ailChance:20},
-      {lv:4, desc:'155% dmg, 12% miss — Weaken 25% + 10% Paralysis', newAilment:'weaken', ailChance:25, newAilment2:'paralyzed', ailChance2:10},
-    ];
-  }
-
-  // 3) Full passive pass: no missing passives remained, so buff weaker ones.
+  // 2) Full passive pass: no missing passives remained, so buff weaker ones.
   if(globalThis.BIRDS){
     if(BIRDS.blackbird?.passive){
       BIRDS.blackbird.passive.name = 'Song Resilient';
@@ -1180,16 +1143,6 @@ cooldown('chargeUp',3);
       {lv:2, desc:'122% dmg, 21% miss — Paralysis 12%', newAilment:'paralyzed', ailChance:12},
       {lv:3, desc:'134% dmg, 17% miss — Paralysis 16%', ailChance:16},
       {lv:4, desc:'146% dmg, 13% miss — Paralysis 20% + Weaken 10%', ailChance:20, newAilment2:'weaken', ailChance2:10},
-    ]
-  );
-
-  setLevels('gooseHonk',
-    'Territorial blast. Tank basic with reliability and weaken pressure.',
-    [
-      {lv:1, desc:'110% dmg, 24% miss'},
-      {lv:2, desc:'122% dmg, 20% miss — Weaken 15%', newAilment:'weaken', ailChance:15},
-      {lv:3, desc:'134% dmg, 16% miss — Weaken 20%', ailChance:20},
-      {lv:4, desc:'146% dmg, 12% miss — Weaken 25% + 10% Paralysis', ailChance:25, newAilment2:'paralyzed', ailChance2:10},
     ]
   );
 
