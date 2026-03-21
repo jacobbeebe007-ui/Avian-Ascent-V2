@@ -50,6 +50,20 @@
 <div class="screen" id="screen-select">
 <div class="select-screen-bg" aria-hidden="true"></div>
 <div class="select-screen-scrim" aria-hidden="true"></div>
+<div class="splash-hotspot-layer" aria-hidden="false">
+<button type="button" class="splash-hotspot splash-hotspot--supplies" onclick="openSelectHubPanel('supplies')" aria-label="Supplies — codex and unlock code">
+<span class="splash-hotspot-title">Supplies</span>
+<span class="splash-hotspot-desc">Codex &amp; unlock</span>
+</button>
+<button type="button" class="splash-hotspot splash-hotspot--map" onclick="openSelectHubPanel('map')" aria-label="Mission map — difficulty and mode">
+<span class="splash-hotspot-title">Mission map</span>
+<span class="splash-hotspot-desc">Difficulty &amp; mode</span>
+</button>
+<button type="button" class="splash-hotspot splash-hotspot--door splash-hotspot--primary" onclick="openSelectHubPanel('door')" aria-label="Begin ascent — champion roster">
+<span class="splash-hotspot-title">Begin Ascent</span>
+<span class="splash-hotspot-desc">Choose your champion</span>
+</button>
+</div>
 <div class="select-screen-content">
 <div class="select-splash" aria-label="Camp navigation">
 <div class="splash-top">
@@ -59,24 +73,7 @@
 </div>
 <button type="button" class="menu-btn splash-settings-btn" onclick="openSettingsModal()">⚙ Settings</button>
 </div>
-<div class="splash-main">
-<button type="button" class="splash-hotspot splash-supplies" onclick="openSelectHubPanel('supplies')" aria-label="Open supplies — codex and unlock code">
-<span class="splash-hotspot-kicker">Bags &amp; bench</span>
-<h3 class="splash-hotspot-title">Supplies</h3>
-<p class="splash-hotspot-desc">Reference codex &amp; unlock code</p>
-</button>
-<button type="button" class="splash-hotspot splash-map" onclick="openSelectHubPanel('map')" aria-label="Open mission map — difficulty and mode">
-<span class="splash-hotspot-kicker">Planning table</span>
-<h3 class="splash-hotspot-title">Mission map</h3>
-<p class="splash-hotspot-desc">Difficulty &amp; Story / Endless</p>
-</button>
-<button type="button" class="splash-hotspot splash-door" onclick="openSelectHubPanel('door')" aria-label="Open the way out — champion roster">
-<span class="splash-hotspot-kicker">The threshold</span>
-<h3 class="splash-hotspot-title">The way out</h3>
-<p class="splash-hotspot-desc">Choose your champion &amp; continue a run</p>
-</button>
-</div>
-<p class="splash-roster-hint" id="splash-roster-hint">Tap a zone on the war room to open it.</p>
+<p class="splash-roster-hint" id="splash-roster-hint">Use the room — supplies by the bags, map on the table, ascent through the door.</p>
 </div>
 </div>
 <div class="select-hub-panels" id="select-hub-panels" aria-hidden="true">
@@ -114,10 +111,10 @@
 <div class="select-hub-panel select-hub-panel--door" id="select-hub-door" role="dialog" aria-modal="true" aria-labelledby="hub-door-title" aria-hidden="true">
 <div class="select-hub-panel-inner select-hub-panel-inner--wide">
 <header class="select-hub-panel-head">
-<h3 class="select-hub-panel-title" id="hub-door-title">The way out</h3>
+<h3 class="select-hub-panel-title" id="hub-door-title">Begin Ascent</h3>
 <button type="button" class="select-hub-return-btn" onclick="closeSelectHubPanel()">← Return to war room</button>
 </header>
-<p class="select-hub-lead">Pick who crosses first — or resume where you left off.</p>
+<p class="select-hub-lead">Pick your champion — or resume where you left off.</p>
 <div class="splash-continue-wrap select-hub-continue">
 <div class="sel-continue-row" id="continue-row" style="display:none">
 <button class="continue-run-btn" onclick="continueRun()">🪺 Continue last run</button>
