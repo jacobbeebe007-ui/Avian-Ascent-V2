@@ -58,13 +58,17 @@ header p{color:var(--text-dim);font-style:italic;font-size:1rem;margin-top:4px;}
   display:flex !important;
   align-items:center;
   justify-content:center;
+  /* Portrait title art (e.g. 1024×1536): avoid cover — it crops and looks “zoomed” on desktop and worse on mobile */
+  box-sizing:border-box;
+  padding:max(12px, env(safe-area-inset-top, 0px)) max(12px, env(safe-area-inset-right, 0px)) max(12px, env(safe-area-inset-bottom, 0px)) max(12px, env(safe-area-inset-left, 0px));
 }
 .start-screen-bg{
   position:absolute;
   inset:0;
   background-image:url("../assets/ui/start-screen.png"), linear-gradient(165deg,#1c2838 0%,#0d121a 42%,#06080e 100%);
   background-position:center center, center center;
-  background-size:cover, cover;
+  /* PNG: show entire image (letterboxing). Gradient: always fill behind it */
+  background-size:contain, cover;
   background-repeat:no-repeat, no-repeat;
   background-color:#0a0c12;
 }
@@ -72,17 +76,24 @@ header p{color:var(--text-dim);font-style:italic;font-size:1rem;margin-top:4px;}
   position:absolute;
   inset:0;
   pointer-events:none;
-  background:radial-gradient(ellipse at 50% 45%, transparent 0%, rgba(6,8,14,.35) 55%, rgba(4,5,10,.75) 100%);
+  background:radial-gradient(ellipse at 50% 45%, transparent 0%, rgba(6,8,14,.28) 55%, rgba(4,5,10,.65) 100%);
 }
 .start-screen-inner{
   position:relative;
   z-index:2;
   display:flex;
-  align-items:center;
+  align-items:flex-end;
   justify-content:center;
   width:100%;
-  min-height:min(72vh,640px);
-  padding:24px 16px;
+  flex:1 1 auto;
+  min-height:0;
+  padding:16px 16px max(20px, env(safe-area-inset-bottom, 0px));
+}
+@media (min-height:520px){
+  .start-screen-inner{
+    align-items:center;
+    padding-bottom:max(32px, env(safe-area-inset-bottom, 0px));
+  }
 }
 .take-flight-btn{
   font-family:'Cinzel',serif;
