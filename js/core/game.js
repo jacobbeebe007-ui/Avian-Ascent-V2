@@ -5261,17 +5261,56 @@ function loadStage() {
   }
 }
 
+function openSelectHubPanel(which){
+  const allowed = {supplies:1,map:1,door:1};
+  if(!allowed[which]) return;
+  const root = document.getElementById('select-hub-panels');
+  const screenEl = document.getElementById('screen-select');
+  if(!root || !screenEl) return;
+  ['supplies','map','door'].forEach(w=>{
+    const p = document.getElementById('select-hub-'+w);
+    if(!p) return;
+    const on = w===which;
+    p.classList.toggle('is-open', on);
+    p.setAttribute('aria-hidden', on ? 'false' : 'true');
+  });
+  root.classList.add('is-open');
+  root.setAttribute('aria-hidden','false');
+  screenEl.classList.add('select-hub-panel-active');
+  const panel = document.getElementById('select-hub-'+which);
+  if(panel) panel.scrollTop = 0;
+}
+function closeSelectHubPanel(){
+  const root = document.getElementById('select-hub-panels');
+  const screenEl = document.getElementById('screen-select');
+  if(root){
+    root.classList.remove('is-open');
+    root.setAttribute('aria-hidden','true');
+  }
+  screenEl?.classList.remove('select-hub-panel-active');
+  ['supplies','map','door'].forEach(w=>{
+    const p = document.getElementById('select-hub-'+w);
+    if(p){
+      p.classList.remove('is-open');
+      p.setAttribute('aria-hidden','true');
+    }
+  });
+}
+globalThis.openSelectHubPanel = openSelectHubPanel;
+globalThis.closeSelectHubPanel = closeSelectHubPanel;
+
 function takeFlightToSelect(){
   showScreen('screen-select');
   if(typeof initSelectionSafe==='function') initSelectionSafe();
 }
 globalThis.takeFlightToSelect = takeFlightToSelect;
 function scrollToSelectRoster(){
-  document.getElementById('select-roster-deck')?.scrollIntoView({behavior:'smooth',block:'start'});
+  openSelectHubPanel('door');
 }
 globalThis.scrollToSelectRoster = scrollToSelectRoster;
 
 function showScreen(id) {
+  closeSelectHubPanel();
   document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
   document.getElementById(id).classList.add('active');
   if(id==='screen-stork-shop' || id==='screen-grove'){
@@ -12769,10 +12808,20 @@ function updateStageProgress() {
 // ============================================================
 document.addEventListener('keydown', e => {
   // 1-4: ability shortcuts during player turn
-  if(e.target.tagName==='INPUT'||e.target.tagName==='TEXTAREA') return;
   if(e.key==='Escape' && document.getElementById('ref-guide-modal')?.classList.contains('open')){
     e.preventDefault();
     closeRefGuideModal();
+    return;
+  }
+  if(e.key==='Escape' && document.getElementById('settings-modal')?.classList.contains('open')){
+    e.preventDefault();
+    closeSettingsModal();
+    return;
+  }
+  if(e.target.tagName==='INPUT'||e.target.tagName==='TEXTAREA') return;
+  if(e.key==='Escape' && document.getElementById('select-hub-panels')?.classList.contains('is-open')){
+    e.preventDefault();
+    closeSelectHubPanel();
     return;
   }
   const screen=document.querySelector('.screen.active'); if(!screen) return;
@@ -12798,16 +12847,19 @@ document.addEventListener('keydown', e => {
     if(e.key.toLowerCase()==='m') toggleSound();
   }
   if(screen.id==='screen-select') {
-    if(e.key==='Enter') { if(G.selected) startGame(); }
-    const cards=[...document.querySelectorAll('.bird-card:not(.bird-locked)')];
-    if(cards.length && ['ArrowRight','ArrowLeft','ArrowDown','ArrowUp'].includes(e.key)){
-      e.preventDefault();
-      const selected = cards.findIndex(c=>c.classList.contains('selected'));
-      const cur = selected>=0 ? selected : 0;
-      const delta = (e.key==='ArrowRight'||e.key==='ArrowDown') ? 1 : -1;
-      const nxt = (cur + delta + cards.length) % cards.length;
-      cards[nxt].click();
-      cards[nxt].scrollIntoView({block:'nearest', inline:'nearest'});
+    const doorOpen = document.getElementById('select-hub-door')?.classList.contains('is-open');
+    if(doorOpen){
+      if(e.key==='Enter') { if(G.selected) startGame(); }
+      const cards=[...document.querySelectorAll('#bird-grid .bird-card:not(.bird-locked)')];
+      if(cards.length && ['ArrowRight','ArrowLeft','ArrowDown','ArrowUp'].includes(e.key)){
+        e.preventDefault();
+        const selected = cards.findIndex(c=>c.classList.contains('selected'));
+        const cur = selected>=0 ? selected : 0;
+        const delta = (e.key==='ArrowRight'||e.key==='ArrowDown') ? 1 : -1;
+        const nxt = (cur + delta + cards.length) % cards.length;
+        cards[nxt].click();
+        cards[nxt].scrollIntoView({block:'nearest', inline:'nearest'});
+      }
     }
   }
   if(screen.id==='screen-reward') {
@@ -13462,6 +13514,12 @@ function openSettingsModal(){
 function closeSettingsModal(){
   const m=document.getElementById('settings-modal'); if(m) m.classList.remove('open');
 }
+function returnToWarRoomFromSettings(){
+  closeSettingsModal();
+  showScreen('screen-select');
+  if(typeof initSelectionSafe==='function') initSelectionSafe();
+}
+globalThis.returnToWarRoomFromSettings = returnToWarRoomFromSettings;
 function updateAccessibilitySettings(){
   const cfg={
     fontSize:Number(document.getElementById('setting-font-size')?.value||100),
