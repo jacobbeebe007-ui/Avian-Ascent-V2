@@ -715,7 +715,8 @@ const BIRDS = {
     unlockHint:'Defeat Stage 10 with Sparrow.',
     stats:{hp:25,maxHp:25,atk:7,def:1,spd:12,dodge:55,acc:92,mdef:4,matk:10,critChance:18},
     color:'#40e8c0',
-    startAbilities:['rapidPeck','sonicDash','blinkFlutter','comboStrike'],
+    mainAttackId:'multiPeck',
+    startAbilities:['multiPeck','sonicDash','blinkFlutter','comboStrike'],
     passive:{id:'hoverBlitz',name:'Hover Blitz',desc:'+2 SPD per dodge (max +10, resets on hit). Crits heal 10% HP.',
       onBattleStart(p){p._hoverStacks=0;},
       onDodge(p){if(!p._hoverStacks)p._hoverStacks=0;if(p._hoverStacks<10){p._hoverStacks+=2;p.stats.spd=Math.min(p.stats.spd+2,20);}},
@@ -752,7 +753,8 @@ const BIRDS = {
     unlockHint:'Defeat Stage 20 with Hummingbird.',
     stats:{hp:32,maxHp:32,atk:8,def:3,spd:10,dodge:28,acc:88,critChance:10,mdef:8,matk:8},
     statBars:{HP:32/50,ATK:8/15,SPD:10/10,Dodge:.56,ACC:.88}, color:'#6a8ac8',
-    startAbilities:['swoopCut','skyfallStrike','windFeint','predatorMark'],
+    mainAttackId:'swoopCut',
+    startAbilities:['swoopCut','skyfallStrike','windFeint','trackPrey'],
     passive:{id:'terminalVelocity',name:'Terminal Velocity',desc:'First attack each battle deals +20% damage.',
       onBattleStart(p){p.firstAttackEachBattleBonusPct=0.20;}},
   },
@@ -763,7 +765,8 @@ const BIRDS = {
     unlockHint:'Defeat Stage 20 on Normal mode to unlock.',
     stats:{hp:28,maxHp:28,atk:12,def:2,spd:9,dodge:38,acc:92,critChance:15,mdef:3,matk:3},
     statBars:{HP:28/50,ATK:12/15,SPD:9/10,Dodge:.76,ACC:.92}, color:'#e8f0f8',
-    startAbilities:['silentPierce','nightTalon','predatorMark','huntersCry'],
+    mainAttackId:'silentPierce',
+    startAbilities:['silentPierce','nightTalon','trackPrey','huntersCry'],
     passive:{id:'shadowCloak',name:'Shadow Cloak',
       desc:'First attack each battle is unblockable + +35% crit chance (not guaranteed). Taking no damage a turn stacks +2% crit (max +12%, resets on hit).',
       onBattleStart(p){p._shadowCloakReady=true;p._owlCritStacks=0;},
@@ -778,7 +781,8 @@ const BIRDS = {
     unlockHint:'Defeat Stage 20 with Magpie.',
     stats:{hp:34,maxHp:34,atk:8,def:3,spd:8,dodge:48,acc:88,critChance:12,mdef:5,matk:7},
     color:'#a0784a',
-    startAbilities:['silentPierce','diveBomb','windFeint','predatorMark'],
+    mainAttackId:'silentPierce',
+    startAbilities:['silentPierce','diveBomb','windFeint','trackPrey'],
     passive:{id:'probeMaster',name:'Probe Master',desc:'Pierce attacks ignore 20-35% DEF (scaling per hit). +10% dmg vs high-HP foes (above 75% HP).',
       get _pierceBase(){return 30;}},
   },
@@ -895,7 +899,8 @@ const BIRDS = {
     size:'small', class:'striker',
     stats:{hp:34,maxHp:34,atk:7,def:3,spd:8,dodge:24,acc:88,mdef:8,matk:8,critChance:8},
     color:'#d86a4c',
-    startAbilities:['needleJab','swoopCut','focusChirp','predatorMark'],
+    mainAttackId:'needleJab',
+    startAbilities:['needleJab','swoopCut','focusChirp','trackPrey'],
     passive:{id:'hedgeHunter',name:'Hedge Hunter',desc:'Ranged hits grant +2% ACC for this battle (max +12%).',
       onBattleStart(p){p._robinAccStacks=0;},
       onPhysicalHit(p){if((p._robinAccStacks||0)<12){p._robinAccStacks=(p._robinAccStacks||0)+2;p.stats.acc=Math.min(100,(p.stats.acc||80)+2);}}},
@@ -3492,7 +3497,7 @@ function codexMark(type, id, field='seen'){
 }
 
 const SKILL_EVOLUTION_LEVEL_INTERVAL = 3;
-const FAMILY_EVOLUTION_STATE_VERSION = 6;
+const FAMILY_EVOLUTION_STATE_VERSION = 7;
 const SPARROW_SKILL_SLOT_LAYOUT = Object.freeze([
   {slotIndex:0, familyId:'rapid', abilityId:'multiPeck'},
   {slotIndex:1, familyId:'dart', abilityId:'dart'},
@@ -3799,6 +3804,112 @@ const magpieStartingSkillSlots = MAGPIE_SKILL_SLOT_LAYOUT.map(slot=>Object.freez
   masteryCount:0,
 }));
 
+function cloneBirdSkillFamily(src, overrides={}){
+  return Object.freeze({...src, ...overrides});
+}
+
+const HUMMINGBIRD_SKILL_SLOT_LAYOUT = Object.freeze([
+  {slotIndex:0, familyId:'rapid', abilityId:'multiPeck'},
+  {slotIndex:1, familyId:'dash', abilityId:'sonicDash'},
+  {slotIndex:2, familyId:'flutter', abilityId:'blinkFlutter'},
+  {slotIndex:3, familyId:'burst', abilityId:'comboStrike'},
+]);
+const HUMMINGBIRD_SKILL_FAMILIES = Object.freeze({
+  rapid:SPARROW_SKILL_FAMILIES.rapid,
+  dash:cloneBirdSkillFamily(MAGPIE_SKILL_FAMILIES.swoop, {
+    familyId:'dash', displayName:'Dash Line', baseAbilityId:'sonicDash', slotRole:'filler_attack',
+  }),
+  flutter:cloneBirdSkillFamily(SPARROW_SKILL_FAMILIES.wind, {
+    familyId:'flutter', displayName:'Flutter Line', baseAbilityId:'blinkFlutter', slotRole:'utility_tempo',
+  }),
+  burst:cloneBirdSkillFamily(CROW_SKILL_FAMILIES.peck, {
+    familyId:'burst', displayName:'Burst Line', baseAbilityId:'comboStrike', slotRole:'filler_attack',
+  }),
+});
+
+const ROBIN_SKILL_SLOT_LAYOUT = Object.freeze([
+  {slotIndex:0, familyId:'needle', abilityId:'needleJab'},
+  {slotIndex:1, familyId:'cut', abilityId:'swoopCut'},
+  {slotIndex:2, familyId:'chirp', abilityId:'focusChirp'},
+  {slotIndex:3, familyId:'stalk', abilityId:'trackPrey'},
+]);
+const ROBIN_SKILL_FAMILIES = Object.freeze({
+  needle:cloneBirdSkillFamily(SPARROW_SKILL_FAMILIES.dart, {
+    familyId:'needle', displayName:'Needle Line', baseAbilityId:'needleJab', slotRole:'precision_filler',
+  }),
+  cut:cloneBirdSkillFamily(MAGPIE_SKILL_FAMILIES.swoop, {
+    familyId:'cut', displayName:'Cut Line', baseAbilityId:'swoopCut', slotRole:'filler_attack',
+  }),
+  chirp:cloneBirdSkillFamily(CROW_SKILL_FAMILIES.focus, {
+    familyId:'chirp', displayName:'Focus Chirp Line', baseAbilityId:'focusChirp', slotRole:'setup',
+  }),
+  stalk:cloneBirdSkillFamily(SPARROW_SKILL_FAMILIES.mark, {
+    familyId:'stalk', displayName:'Stalk Line', baseAbilityId:'trackPrey', slotRole:'setup_prey',
+  }),
+});
+
+const PEREGRINE_SKILL_SLOT_LAYOUT = Object.freeze([
+  {slotIndex:0, familyId:'cut', abilityId:'swoopCut'},
+  {slotIndex:1, familyId:'dive', abilityId:'skyfallStrike'},
+  {slotIndex:2, familyId:'wind', abilityId:'windFeint'},
+  {slotIndex:3, familyId:'stalk', abilityId:'trackPrey'},
+]);
+const PEREGRINE_SKILL_FAMILIES = Object.freeze({
+  cut:cloneBirdSkillFamily(MAGPIE_SKILL_FAMILIES.swoop, {
+    familyId:'cut', displayName:'Swoop Line', baseAbilityId:'swoopCut', slotRole:'filler_attack',
+  }),
+  dive:cloneBirdSkillFamily(GOOSE_SKILL_FAMILIES.heavy, {
+    familyId:'dive', displayName:'Dive Line', baseAbilityId:'skyfallStrike', slotRole:'heavy_commitment',
+    tierNames:{1:'Dive', 2:'Plunge', 3:'Impact'},
+  }),
+  wind:SPARROW_SKILL_FAMILIES.wind,
+  stalk:cloneBirdSkillFamily(SPARROW_SKILL_FAMILIES.mark, {
+    familyId:'stalk', displayName:'Stalk Line', baseAbilityId:'trackPrey', slotRole:'setup_prey',
+  }),
+});
+
+const KIWI_SKILL_SLOT_LAYOUT = Object.freeze([
+  {slotIndex:0, familyId:'probe', abilityId:'silentPierce'},
+  {slotIndex:1, familyId:'plunge', abilityId:'diveBomb'},
+  {slotIndex:2, familyId:'veil', abilityId:'windFeint'},
+  {slotIndex:3, familyId:'stalk', abilityId:'trackPrey'},
+]);
+const KIWI_SKILL_FAMILIES = Object.freeze({
+  probe:cloneBirdSkillFamily(CROW_SKILL_FAMILIES.peck, {
+    familyId:'probe', displayName:'Probe Line', baseAbilityId:'silentPierce', slotRole:'filler_attack',
+  }),
+  plunge:cloneBirdSkillFamily(GOOSE_SKILL_FAMILIES.heavy, {
+    familyId:'plunge', displayName:'Plunge Line', baseAbilityId:'diveBomb', slotRole:'signature_strike',
+    tierNames:{1:'Plunge', 2:'Drive', 3:'Burrow'},
+  }),
+  veil:SPARROW_SKILL_FAMILIES.wind,
+  stalk:cloneBirdSkillFamily(SPARROW_SKILL_FAMILIES.mark, {
+    familyId:'stalk', displayName:'Stalk Line', baseAbilityId:'trackPrey', slotRole:'setup_prey',
+  }),
+});
+
+const SNOWY_OWL_SKILL_SLOT_LAYOUT = Object.freeze([
+  {slotIndex:0, familyId:'pierce', abilityId:'silentPierce'},
+  {slotIndex:1, familyId:'talon', abilityId:'nightTalon'},
+  {slotIndex:2, familyId:'stalk', abilityId:'trackPrey'},
+  {slotIndex:3, familyId:'hunt_call', abilityId:'huntersCry'},
+]);
+const SNOWY_OWL_SKILL_FAMILIES = Object.freeze({
+  pierce:cloneBirdSkillFamily(CROW_SKILL_FAMILIES.peck, {
+    familyId:'pierce', displayName:'Silent Pierce Line', baseAbilityId:'silentPierce', slotRole:'filler_attack',
+  }),
+  talon:cloneBirdSkillFamily(GOOSE_SKILL_FAMILIES.heavy, {
+    familyId:'talon', displayName:'Night Talon Line', baseAbilityId:'nightTalon', slotRole:'heavy_commitment',
+    tierNames:{1:'Talon', 2:'Rend', 3:'Execution'},
+  }),
+  stalk:cloneBirdSkillFamily(SPARROW_SKILL_FAMILIES.mark, {
+    familyId:'stalk', displayName:'Stalk Line', baseAbilityId:'trackPrey', slotRole:'setup_prey',
+  }),
+  hunt_call:cloneBirdSkillFamily(CROW_SKILL_FAMILIES.call, {
+    familyId:'hunt_call', displayName:"Hunter's Cry Line", baseAbilityId:'huntersCry', slotRole:'utility_control',
+  }),
+});
+
 function buildFamilySkillAbilityLookup(slotLayout, families){
   const out = Object.create(null);
   for(const slot of slotLayout){
@@ -3874,6 +3985,66 @@ const FAMILY_EVOLUTION_BIRD_DATA = Object.freeze({
       dart:{legacy:['stealTempo', 'glintJab', 'dart'], current:'dart'},
     }),
   },
+  hummingbird:{
+    birdKey:'hummingbird',
+    slotLayout:HUMMINGBIRD_SKILL_SLOT_LAYOUT,
+    families:HUMMINGBIRD_SKILL_FAMILIES,
+    abilityLookup:buildFamilySkillAbilityLookup(HUMMINGBIRD_SKILL_SLOT_LAYOUT, HUMMINGBIRD_SKILL_FAMILIES),
+    legacyBaseAbilityIds:Object.freeze({
+      rapid:{legacy:['rapidPeck'], current:'multiPeck'},
+      dash:{legacy:['swoop'], current:'sonicDash'},
+      flutter:{legacy:['evade'], current:'blinkFlutter'},
+      burst:{legacy:['talonRake'], current:'comboStrike'},
+    }),
+  },
+  robin:{
+    birdKey:'robin',
+    slotLayout:ROBIN_SKILL_SLOT_LAYOUT,
+    families:ROBIN_SKILL_FAMILIES,
+    abilityLookup:buildFamilySkillAbilityLookup(ROBIN_SKILL_SLOT_LAYOUT, ROBIN_SKILL_FAMILIES),
+    legacyBaseAbilityIds:Object.freeze({
+      needle:{legacy:['nectarJab'], current:'needleJab'},
+      cut:{legacy:['dart'], current:'swoopCut'},
+      chirp:{legacy:['battleChirp', 'warcry'], current:'focusChirp'},
+      stalk:{legacy:['predatorMark', 'featherRuffle', 'markPrey'], current:'trackPrey'},
+    }),
+  },
+  peregrine:{
+    birdKey:'peregrine',
+    slotLayout:PEREGRINE_SKILL_SLOT_LAYOUT,
+    families:PEREGRINE_SKILL_FAMILIES,
+    abilityLookup:buildFamilySkillAbilityLookup(PEREGRINE_SKILL_SLOT_LAYOUT, PEREGRINE_SKILL_FAMILIES),
+    legacyBaseAbilityIds:Object.freeze({
+      cut:{legacy:['dart', 'swoop'], current:'swoopCut'},
+      dive:{legacy:['deathDive', 'skyStrike'], current:'skyfallStrike'},
+      wind:{legacy:['evade'], current:'windFeint'},
+      stalk:{legacy:['predatorMark', 'featherRuffle', 'markPrey'], current:'trackPrey'},
+    }),
+  },
+  kiwi:{
+    birdKey:'kiwi',
+    slotLayout:KIWI_SKILL_SLOT_LAYOUT,
+    families:KIWI_SKILL_FAMILIES,
+    abilityLookup:buildFamilySkillAbilityLookup(KIWI_SKILL_SLOT_LAYOUT, KIWI_SKILL_FAMILIES),
+    legacyBaseAbilityIds:Object.freeze({
+      probe:{legacy:['peck', 'needle_peck'], current:'silentPierce'},
+      plunge:{legacy:['beakSlam', 'heavyTalon'], current:'diveBomb'},
+      veil:{legacy:['evade'], current:'windFeint'},
+      stalk:{legacy:['predatorMark', 'featherRuffle', 'markPrey'], current:'trackPrey'},
+    }),
+  },
+  snowyOwl:{
+    birdKey:'snowyOwl',
+    slotLayout:SNOWY_OWL_SKILL_SLOT_LAYOUT,
+    families:SNOWY_OWL_SKILL_FAMILIES,
+    abilityLookup:buildFamilySkillAbilityLookup(SNOWY_OWL_SKILL_SLOT_LAYOUT, SNOWY_OWL_SKILL_FAMILIES),
+    legacyBaseAbilityIds:Object.freeze({
+      pierce:{legacy:['peck', 'needle_peck'], current:'silentPierce'},
+      talon:{legacy:['deathDive', 'skyStrike'], current:'nightTalon'},
+      stalk:{legacy:['predatorMark', 'featherRuffle', 'markPrey'], current:'trackPrey'},
+      hunt_call:{legacy:['dread_call', 'dreadCall', 'victoryChant'], current:'huntersCry'},
+    }),
+  },
 });
 
 function isSkillEvolutionLevel(level){
@@ -3911,7 +4082,14 @@ function migrateLegacyFamilyBaseAbilityId(abilityId, birdKey, familyId, pathId=n
   return familyMigration && familyMigration.legacy.includes(id) ? familyMigration.current : id;
 }
 function getFamilyEvolutionAbilityStateFromId(birdKey, abilityId){
-  return getBirdFamilyEvolutionData(birdKey)?.abilityLookup?.[String(abilityId||'')] || null;
+  const lookup = getBirdFamilyEvolutionData(birdKey)?.abilityLookup;
+  if(!lookup) return null;
+  const raw = String(abilityId || '');
+  let state = lookup[raw] || null;
+  if(state) return state;
+  const canon = resolveAbilityAliasSourceId(raw);
+  if(canon && canon !== raw) state = lookup[canon] || null;
+  return state;
 }
 function getSkillSlotFamilyDef(slotOrFamilyId, birdKey='sparrow'){
   const catalog = getBirdSkillFamilyCatalog(birdKey);
@@ -8634,9 +8812,21 @@ const SPARROW_SKILL_ACTION_OVERRIDES = {
 };
 Object.entries(SPARROW_SKILL_ACTION_OVERRIDES).forEach(([id, fn])=>{ ACTIONS[id] = fn; });
 
+const ABILITY_ALIAS_TO_SOURCE_ID = Object.create(null);
+function resolveAbilityAliasSourceId(id){
+  let cur = String(id || '');
+  const seen = new Set();
+  while(ABILITY_ALIAS_TO_SOURCE_ID[cur] && !seen.has(cur)){
+    seen.add(cur);
+    cur = ABILITY_ALIAS_TO_SOURCE_ID[cur];
+  }
+  return cur;
+}
+
 function registerAbilityAlias(newId, sourceId, name, override={}){
   const src=ABILITY_TEMPLATES[sourceId];
   if(!src) return;
+  ABILITY_ALIAS_TO_SOURCE_ID[String(newId || '')] = String(sourceId || '');
   ABILITY_TEMPLATES[newId]={...src,id:newId,name,...override};
   if(!ACTIONS[newId]){
     ACTIONS[newId]=async function(ab){
@@ -11584,6 +11774,19 @@ function buildLevelUpStatChoices(){
 function ensureMainAttackAndLoadoutRules(){
   if(!G.player) return;
   const bd=BIRDS[G.player.birdKey]||{};
+  if(usesFamilySkillEvolution(G.player)){
+    if(!Array.isArray(G.player.abilities)) G.player.abilities=[];
+    G.player.abilities=G.player.abilities.filter(ab=>ab&&ab.id&&ab.id!=='skipTurn'&&ab.id!=='sittingDuck');
+    G.player.abilities=G.player.abilities.filter(ab=>ab.id!=='mainAttack');
+    const bases=getBaseSkillSlotsForBird(G.player.birdKey);
+    const preferred=bd.mainAttackId || bases[0]?.abilityId || G.player.abilities[0]?.id;
+    if(preferred) G.player.mainAttackId=preferred;
+    G.player.abilities.forEach(ab=>{ ab.isMainAttack=(ab.id===preferred); });
+    removeMimicEverywhere();
+    normalizeAbilityCooldownsForPlayer(G.player);
+    enforceAbilityCosts(G.player);
+    return;
+  }
   const birdClass=bd.class||'';
   const isMagic=MAGIC_CLASSES.has(birdClass);
   if(!Array.isArray(G.player.abilities)) G.player.abilities=[];
@@ -11666,11 +11869,12 @@ function renderSkillEvolutionSlotSelection(){
   showScreen('screen-levelup');
   resetLevelUpFlowState();
   G._skillEvolutionFlow = {step:'slot'};
+  const bd=BIRDS[G.player?.birdKey]||{};
   const grid=document.getElementById('lu-skill-grid');
   const preview=document.getElementById('lu-stat-preview');
   if(preview) preview.innerHTML='';
   setLevelUpPanelTitle('🧬 Choose a Skill to Evolve');
-  document.getElementById('lu-sub').textContent=`Lv.${G.player.birdLevel} milestone reached — choose 1 equipped Sparrow skill to evolve (${Math.max(1,G._pendingSkillEvolutionChoices||1)} remaining).`;
+  document.getElementById('lu-sub').textContent=`Lv.${G.player.birdLevel} milestone reached — choose 1 equipped skill to evolve (${Math.max(1,G._pendingSkillEvolutionChoices||1)} remaining) · ${bd.name || G.player.birdKey}.`;
   configureLevelUpConfirm('✓ Inspect Evolution', confirmSkillEvolutionChoice, false);
   configureLevelUpSecondary('', null, false);
   grid.innerHTML='';
@@ -11751,7 +11955,7 @@ function beginSkillEvolutionFlow(){
   const actionable = getSkillSlots(G.player).some(slot=>resolveSkillSlotEvolutionAction(slot, G.player)!=='none');
   if(!actionable){
     G._pendingSkillEvolutionChoices = 0;
-    logMsg('🧬 Sparrow skill milestones reached, but every slot is fully evolved for this mode.', 'system');
+    logMsg(`🧬 ${(BIRDS[G.player?.birdKey]?.name)||G.player?.birdKey||'Bird'} skill milestones reached, but every slot is fully evolved for this mode.`, 'system');
     return false;
   }
   renderSkillEvolutionSlotSelection();
