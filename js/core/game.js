@@ -5261,12 +5261,39 @@ function loadStage() {
   }
 }
 
+function setSuppliesSubView(which){
+  const ref = document.getElementById('supplies-view-reference');
+  const rec = document.getElementById('supplies-view-records');
+  const bRef = document.getElementById('supplies-nav-reference');
+  const bRec = document.getElementById('supplies-nav-records');
+  if(!ref || !rec) return;
+  const isRef = which === 'reference';
+  ref.classList.toggle('is-active', isRef);
+  rec.classList.toggle('is-active', !isRef);
+  if(bRef){
+    bRef.classList.toggle('is-active', isRef);
+    bRef.setAttribute('aria-selected', String(isRef));
+  }
+  if(bRec){
+    bRec.classList.toggle('is-active', !isRef);
+    bRec.setAttribute('aria-selected', String(!isRef));
+  }
+  if(!isRef){
+    try{
+      if(typeof renderRunHistory === 'function') renderRunHistory();
+      if(typeof renderHighscoreBoard === 'function') renderHighscoreBoard();
+    }catch(_){}
+  }
+}
+globalThis.setSuppliesSubView = setSuppliesSubView;
+
 function openSelectHubPanel(which){
   const allowed = {supplies:1,map:1,door:1};
   if(!allowed[which]) return;
   const root = document.getElementById('select-hub-panels');
   const screenEl = document.getElementById('screen-select');
   if(!root || !screenEl) return;
+  if(which === 'supplies') setSuppliesSubView('reference');
   ['supplies','map','door'].forEach(w=>{
     const p = document.getElementById('select-hub-'+w);
     if(!p) return;
@@ -12898,11 +12925,15 @@ function saveRunHistory(won) {
 function renderRunHistory() {
   try {
     const hist=JSON.parse(localStorage.getItem(RUN_HISTORY_KEY)||'[]');
-    if(!hist.length) return;
     const wrap=document.getElementById('run-history');
     const grid=document.getElementById('run-history-grid');
     if(!wrap||!grid) return;
     grid.innerHTML='';
+    if(!hist.length){
+      wrap.style.display='block';
+      grid.innerHTML='<div class="run-entry run-empty"><div class="run-result">No recent runs yet.</div><div class="run-result" style="color:var(--text-dim)">Finish or abandon a run to see entries here.</div></div>';
+      return;
+    }
     hist.forEach(r=>{
       const d=document.createElement('div');
       d.className=`run-entry ${r.won?'run-win':'run-lose'}`;

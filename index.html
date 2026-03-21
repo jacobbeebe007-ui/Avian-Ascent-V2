@@ -73,23 +73,40 @@
 </div>
 <button type="button" class="menu-btn splash-settings-btn" onclick="openSettingsModal()">⚙ Settings</button>
 </div>
-<p class="splash-roster-hint" id="splash-roster-hint">Use the room — supplies by the bags, map on the table, ascent through the door.</p>
+<p class="splash-roster-hint" id="splash-roster-hint">Supplies by the bags (codex, unlock, runs &amp; scores). Map on the table. Ascent through the door.</p>
 </div>
 </div>
 <div class="select-hub-panels" id="select-hub-panels" aria-hidden="true">
 <button type="button" class="select-hub-backdrop" onclick="closeSelectHubPanel()" aria-label="Close panel"></button>
-<div class="select-hub-panel" id="select-hub-supplies" role="dialog" aria-modal="true" aria-labelledby="hub-supplies-title" aria-hidden="true">
-<div class="select-hub-panel-inner">
+<div class="select-hub-panel select-hub-panel--supplies" id="select-hub-supplies" role="dialog" aria-modal="true" aria-labelledby="hub-supplies-title" aria-hidden="true">
+<div class="select-hub-panel-inner select-hub-panel-inner--supplies">
 <header class="select-hub-panel-head">
 <h3 class="select-hub-panel-title" id="hub-supplies-title">Supplies</h3>
 <button type="button" class="select-hub-return-btn" onclick="closeSelectHubPanel()">← Return to war room</button>
 </header>
+<div class="supplies-subnav" role="tablist" aria-label="Supplies sections">
+<button type="button" class="supplies-subnav-btn is-active" id="supplies-nav-reference" role="tab" aria-selected="true" aria-controls="supplies-view-reference" onclick="setSuppliesSubView('reference')">Reference &amp; unlock</button>
+<button type="button" class="supplies-subnav-btn" id="supplies-nav-records" role="tab" aria-selected="false" aria-controls="supplies-view-records" onclick="setSuppliesSubView('records')">Runs &amp; highscores</button>
+</div>
+<div class="supplies-subview is-active" id="supplies-view-reference" role="tabpanel" aria-labelledby="supplies-nav-reference">
 <p class="select-hub-lead">Codex and secret unlocks live with the baggage.</p>
 <button type="button" class="menu-btn splash-codex-btn ref-guide-open-btn" id="ref-guide-open-btn">📖 Reference — Codex</button>
 <div class="splash-unlock">
 <label class="splash-unlock-label" for="dev-code-input">Unlock code</label>
 <input autocomplete="off" class="splash-unlock-input" id="dev-code-input" maxlength="32" oninput="checkDevCode(this.value)" placeholder="Code…" spellcheck="false" type="password"/>
 <div class="splash-unlock-msg" id="dev-code-msg"></div>
+</div>
+</div>
+<div class="supplies-subview" id="supplies-view-records" role="tabpanel" aria-labelledby="supplies-nav-records">
+<p class="select-hub-lead supplies-records-lead">Recent runs and your best attempts — kept with the tally scrolls.</p>
+<div class="run-history sel-run-history supplies-records-block" id="run-history" style="display:none">
+<div class="run-history-title">— RECENT RUNS —</div>
+<div class="run-history-grid" id="run-history-grid"></div>
+</div>
+<div class="run-history sel-highscores supplies-records-block" id="highscore-board">
+<div class="run-history-title">— HIGHSCORES —</div>
+<div class="run-history-grid" id="highscore-grid"></div>
+</div>
 </div>
 </div>
 </div>
@@ -121,9 +138,11 @@
 <p class="sel-continue-info" id="continue-info"></p>
 </div>
 </div>
-<div class="select-roster-deck" id="select-roster-deck">
+<div class="select-roster-deck select-roster-deck--focus" id="select-roster-deck">
+<div class="roster-deck-head">
 <h2 class="roster-deck-title">Champion roster</h2>
 <p class="roster-deck-sub">Your fate is written in feathers.</p>
+</div>
 <div class="sel-layout">
 <div class="sel-showcase sel-left">
 <div class="ascent-panel is-empty" id="ascent-panel">
@@ -141,14 +160,6 @@
 <div id="bird-grid"></div>
 <div id="mobile-select-details-anchor"></div>
 </div>
-</div>
-<div class="run-history sel-run-history" id="run-history" style="display:none">
-<div class="run-history-title">— RECENT RUNS —</div>
-<div class="run-history-grid" id="run-history-grid"></div>
-</div>
-<div class="run-history sel-highscores" id="highscore-board">
-<div class="run-history-title">— HIGHSCORES —</div>
-<div class="run-history-grid" id="highscore-grid"></div>
 </div>
 </div>
 </div>
