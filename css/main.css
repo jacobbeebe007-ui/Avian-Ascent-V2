@@ -31,6 +31,64 @@ header{text-align:center;padding:24px 0 16px;border-bottom:1px solid rgba(201,16
 header h1{font-family:'Cinzel',serif;font-size:2.6rem;font-weight:900;letter-spacing:.1em;background:linear-gradient(135deg,var(--gold) 0%,var(--gold-light) 50%,var(--gold) 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
 header p{color:var(--text-dim);font-style:italic;font-size:1rem;margin-top:4px;}
 .screen{display:none;}.screen.active{display:block;}
+
+/* ---- Title / start (Duke Blakiston art) ---- */
+#app:has(#screen-start.active) > header{display:none !important;}
+.screen-start{
+  position:relative;
+  min-height:100vh;
+  min-height:100dvh;
+  overflow:hidden;
+}
+.screen-start.active{display:flex !important;align-items:center;justify-content:center;}
+.start-screen-bg{
+  position:absolute;
+  inset:0;
+  background:url("../assets/ui/start-screen.png") center center / cover no-repeat;
+  background-color:#0a0c12;
+}
+.start-screen-vignette{
+  position:absolute;
+  inset:0;
+  pointer-events:none;
+  background:radial-gradient(ellipse at 50% 45%, transparent 0%, rgba(6,8,14,.35) 55%, rgba(4,5,10,.75) 100%);
+}
+.start-screen-inner{
+  position:relative;
+  z-index:2;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  width:100%;
+  min-height:min(72vh,640px);
+  padding:24px 16px;
+}
+.take-flight-btn{
+  font-family:'Cinzel',serif;
+  font-weight:700;
+  font-size:clamp(0.95rem,2.8vw,1.4rem);
+  letter-spacing:.28em;
+  text-indent:.28em;
+  text-transform:uppercase;
+  padding:16px 40px;
+  border:2px solid rgba(201,168,76,.9);
+  border-radius:6px;
+  background:rgba(12,14,22,.58);
+  color:#e8d5a0;
+  cursor:pointer;
+  box-shadow:0 4px 28px rgba(0,0,0,.55), inset 0 1px 0 rgba(255,255,255,.06);
+  transition:transform .2s ease, border-color .2s ease, background .2s ease, color .2s ease;
+}
+.take-flight-btn:hover{
+  transform:translateY(-2px);
+  border-color:rgba(232,210,150,.95);
+  color:#fff4d2;
+  background:rgba(24,28,42,.72);
+}
+.take-flight-btn:focus-visible{
+  outline:2px solid var(--gold);
+  outline-offset:4px;
+}
 #screen-select{position:relative;overflow:hidden;background:radial-gradient(ellipse at top, rgba(36,48,76,.22), transparent 55%),linear-gradient(180deg,rgba(9,12,20,.95),rgba(10,8,4,.98));border:1px solid rgba(201,168,76,.12);border-radius:12px;padding:6px 8px 12px;}
 #screen-select > *{position:relative;z-index:1;}
 #screen-select{position:relative;overflow:hidden;background:radial-gradient(ellipse at top, rgba(36,48,76,.22), transparent 55%),linear-gradient(180deg,rgba(9,12,20,.95),rgba(10,8,4,.98));border:1px solid rgba(201,168,76,.12);border-radius:12px;padding:6px 8px 12px;}
@@ -455,6 +513,7 @@ body.ui-mobile-mode #screen-battle .btn-name{font-size:.8rem;}
 body.ui-mobile-mode #screen-battle .btn-type,
 body.ui-mobile-mode #screen-battle .btn-cost{font-size:.62rem;}
 body.ui-mobile-mode #screen-battle .energy-orb{width:10px;height:10px;}
+body.ui-mobile-mode #screen-battle .energy-free-chip{width:10px;height:10px;min-width:10px;min-height:10px;}
 body.ui-mobile-mode #screen-battle .energy-text{font-size:.62rem;}
 body.ui-mobile-mode #screen-battle .battle-log{height:88px;font-size:.72rem;padding:8px 9px;}
 body.ui-mobile-mode #screen-battle .battle-top{padding:7px 9px;}
@@ -1257,6 +1316,41 @@ img{image-rendering:pixelated;image-rendering:crisp-edges;}
   box-shadow:none !important;
 }
 
+/* First free attack / spell (0 EN) — purple square, combat row */
+.energy-free-sep{
+  width:1px;
+  align-self:stretch;
+  min-height:14px;
+  margin:0 2px 0 6px;
+  background:rgba(255,255,255,.12);
+}
+.energy-free-chip{
+  width:12px;
+  height:12px;
+  min-width:12px;
+  min-height:12px;
+  padding:0;
+  margin:0 2px;
+  border:1px solid rgba(160,110,240,.95);
+  border-radius:3px;
+  background:linear-gradient(145deg, rgba(120,70,200,.55), rgba(90,40,160,.75));
+  box-shadow:0 0 8px rgba(140,80,220,.4);
+  cursor:help;
+  flex-shrink:0;
+  vertical-align:middle;
+}
+.energy-free-chip.is-spent{
+  opacity:.35;
+  filter:grayscale(.35);
+  box-shadow:none;
+  border-color:rgba(120,120,140,.5);
+  background:rgba(50,45,65,.5);
+  cursor:default;
+}
+.energy-free-chip:focus-visible{
+  outline:2px solid var(--gold);
+  outline-offset:2px;
+}
 
 
 /* ===== 19_stability-cleanup-style.css ===== */

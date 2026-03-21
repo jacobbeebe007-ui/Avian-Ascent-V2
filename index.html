@@ -38,9 +38,17 @@
 <p>A Roguelike of Feathers &amp; Fortune</p>
 <div style="text-align:center;margin-top:8px;"><button class="menu-btn" onclick="openSettingsModal()">⚙ Settings</button></div>
 </header>
+<!-- START -->
+<div class="screen screen-start active" id="screen-start">
+<div class="start-screen-bg" aria-hidden="true"></div>
+<div class="start-screen-vignette" aria-hidden="true"></div>
+<div class="start-screen-inner">
+<button type="button" class="take-flight-btn" id="take-flight-btn" onclick="takeFlightToSelect()">Take Flight</button>
+</div>
+</div>
 <!-- SELECT -->
 <!-- SELECT -->
-<div class="screen active" id="screen-select">
+<div class="screen" id="screen-select">
 <div class="sky-parallax" aria-hidden="true">
 <span class="fly fly-1">🕊️</span>
 <span class="fly fly-2">🦜</span>

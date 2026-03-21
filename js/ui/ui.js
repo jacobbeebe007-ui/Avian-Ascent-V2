@@ -80,8 +80,6 @@
 
 /* ===== Upgrade audit fixes + 3x3 Stork Shop ===== */
 (function(){
-  const ENERGY_CAP = 7;
-
   function isEnergyItem(item){
     const t = (((item && item.name) || '') + ' ' + ((item && item.desc) || '') + ' ' + ((item && item.id) || '')).toLowerCase();
     return /energy|max energy|lung|lungs/.test(t);
@@ -100,9 +98,9 @@
       G._runShopFlags[item.id] = true;
       oldApply && oldApply(p);
       if(typeof computePlayerMaxEnergy === 'function'){
-        p.energyMax = Math.min(ENERGY_CAP, computePlayerMaxEnergy());
+        p.energyMax = computePlayerMaxEnergy();
       } else {
-        p.energyMax = Math.min(ENERGY_CAP, p.energyMax || 0);
+        p.energyMax = Math.max(1, p.energyMax || 0);
       }
       if(typeof p.energy !== 'number') p.energy = p.energyMax;
       p.energy = Math.min(p.energy, p.energyMax);

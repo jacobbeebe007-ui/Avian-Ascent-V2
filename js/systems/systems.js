@@ -511,15 +511,6 @@
 // ===== 20_script_20.js =====
 
 (function(){
-const ENERGY_CAP = 7;
-
-const oldCompute = globalThis.computePlayerMaxEnergy;
-if(typeof oldCompute === 'function'){
- globalThis.computePlayerMaxEnergy = function(){
-  return Math.min(ENERGY_CAP, oldCompute.apply(this,arguments));
- }
-}
-
 function cooldown(id,cd){
  if(!globalThis.ABILITY_TEMPLATES) return;
  const a=ABILITY_TEMPLATES[id];

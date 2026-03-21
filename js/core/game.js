@@ -2064,6 +2064,7 @@ const ABILITY_TEMPLATES_LEARNABLE = {
   },
   mudshot:{
     id:'mudshot', name:'Mud Shot', type:'ranged', btnType:'ranged',
+    desc:'Fling mud for SPD shred, Chicken Pox chance, and heavier debuffs as it ranks up.',
     baseMissChance:20,
     levels:[
       {desc:'Fling mud at the enemy. 20% miss. Applies Mud: SPD −2 for 2t. Chance to cause Chicken Pox.',newAilment:'weaken'},
@@ -2492,7 +2493,7 @@ const ABILITY_TEMPLATES_EXTRA = {
   murderMurmuration:{
     id:'murderMurmuration', name:'Murder Murmuration', type:'spell', btnType:'spell',
     isNeutral:false, allowedClasses:['trickster'],
-    energyByLevel:[2,2,3,3], cooldownByLevel:[5,5,4,4],
+    energyByLevel:[2,2,2,2], cooldownByLevel:[5,5,4,4],
     desc:'Trickster flock surge. Multi-hit control spell, lower damage than direct nukes.',
     levels:[
       {lv:1, desc:'3 hits ×35% M.ATK. 10% Confuse chance.'},
@@ -5278,6 +5279,12 @@ function loadStage() {
   }
 }
 
+function takeFlightToSelect(){
+  showScreen('screen-select');
+  if(typeof initSelectionSafe==='function') initSelectionSafe();
+}
+globalThis.takeFlightToSelect = takeFlightToSelect;
+
 function showScreen(id) {
   document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
   document.getElementById(id).classList.add('active');
@@ -5601,20 +5608,69 @@ function renderEnergyOrbs(){
   const bonus = Math.max(0, G.player.energyBonus||0);
   const base = Math.max(0, total - bonus);
   const gainedNow = Math.max(0, G.player._newBonusEnergyFlash||0);
+  const p = G.player;
 
   el.classList.add('energy-summary');
-  el.title = `Energy: ${cur}/${total}\nBase: ${base}\nBonus: +${bonus}`;
+  el.title = `Energy ${cur}/${total} — ${base} base max + ${bonus} bonus max (from upgrades). Blue orbs: base pool. Green: bonus pool.`;
 
   for(let i=0;i<total;i++){
     const orb=document.createElement('span');
     const isBonus = i>=base;
     const bonusIdx = isBonus ? (i-base) : -1;
     const isSpent = i>=cur;
+    const slotLabel = isBonus
+      ? `Bonus max energy (upgrade) — slot ${bonusIdx+1} of ${bonus}. ${isSpent ? 'Empty this turn.' : 'Available.'}`
+      : `Base max energy — slot ${i+1} of ${base}. ${isSpent ? 'Empty this turn.' : 'Available.'}`;
     orb.className='energy-orb'
       +(isBonus?' bonus':'')
       +((isBonus && bonusIdx >= Math.max(0, bonus-gainedNow))?' new-bonus':'')
       +(isSpent?' spent':'');
+    orb.setAttribute('role','img');
+    orb.tabIndex = 0;
+    orb.title = slotLabel;
+    orb.addEventListener('click', function(ev){
+      ev.preventDefault();
+      if(typeof logMsg === 'function') logMsg(slotLabel, 'system');
+    });
     el.appendChild(orb);
+  }
+
+  const showFreeRow = (G.phase==='PLAYER' || G.phase==='ENEMY');
+  if(showFreeRow && (p.firstAttackFree || p.firstSpellFree)){
+    const sep = document.createElement('span');
+    sep.className = 'energy-free-sep';
+    sep.setAttribute('aria-hidden','true');
+    el.appendChild(sep);
+    if(p.firstAttackFree){
+      const atkFree = !G._firstAttackUsed;
+      const chip = document.createElement('button');
+      chip.type = 'button';
+      chip.className = 'energy-free-chip'+(atkFree?' is-ready':' is-spent');
+      chip.title = atkFree
+        ? 'First Attack Free — Your first Attack or Ranged ability this battle costs 0 EN (upgrade: e.g. War Rhythm).'
+        : 'First Attack Free — Already used this battle.';
+      chip.setAttribute('aria-label', chip.title);
+      chip.addEventListener('click', (ev)=>{
+        ev.preventDefault();
+        if(typeof logMsg === 'function') logMsg(chip.title, 'system');
+      });
+      el.appendChild(chip);
+    }
+    if(p.firstSpellFree){
+      const spFree = !G._firstSpellUsed;
+      const chip = document.createElement('button');
+      chip.type = 'button';
+      chip.className = 'energy-free-chip'+(spFree?' is-ready':' is-spent');
+      chip.title = spFree
+        ? 'First Spell Free — Your first Spell this battle costs 0 EN (upgrade: e.g. Spell Rhythm, Battle Meditation).'
+        : 'First Spell Free — Already used this battle.';
+      chip.setAttribute('aria-label', chip.title);
+      chip.addEventListener('click', (ev)=>{
+        ev.preventDefault();
+        if(typeof logMsg === 'function') logMsg(chip.title, 'system');
+      });
+      el.appendChild(chip);
+    }
   }
 
   if(gainedNow>0){
@@ -8959,7 +9015,7 @@ registerAbilityAlias('rending_talon','beakSlam','Rending Talon',{type:'physical'
 registerAbilityAlias('finisher_slam','beakSlam','Finisher Slam',{type:'physical',btnType:'physical'});
 registerAbilityAlias('execution_crush','deathDive','Execution Crush',{type:'physical',btnType:'physical'});
 Object.assign(ABILITY_TEMPLATES.peck||{}, makeEvolutionAbilityTemplate('peck','Peck','Neutral base peck. Cheap harassment before specializing.', {type:'physical', btnType:'physical', energy:1, levels:[{desc:'100% dmg, 10% miss.'},{desc:'108% dmg, 9% miss.'},{desc:'116% dmg, 8% miss.'},{desc:'124% dmg, 7% miss.'}]}));
-Object.assign(ABILITY_TEMPLATES.territorial_honk||{}, makeEvolutionAbilityTemplate('territorial_honk','Territorial Honk','Goose base honk. Loud territorial pressure before branching.', {type:'physical', btnType:'physical', energy:2, levels:[{desc:'115% dmg, 25% miss. Loud pressure without a rider.'},{desc:'125% dmg, 23% miss. Loud pressure without a rider.'},{desc:'135% dmg, 21% miss. Loud pressure without a rider.'},{desc:'145% dmg, 19% miss. Loud pressure without a rider.'}]}));
+Object.assign(ABILITY_TEMPLATES.territorial_honk||{}, makeEvolutionAbilityTemplate('territorial_honk','Territorial Honk','Goose base honk. Loud territorial pressure before branching.', {type:'physical', btnType:'physical', energy:2, levels:[{desc:'Lv.1 — 115% strike force, 25% miss. Raw honk pressure.'},{desc:'Lv.2 — 125% force, 23% miss. Deeper boom, truer aim.'},{desc:'Lv.3 — 135% force, 21% miss. Echoing claim on the field.'},{desc:'Lv.4 — 145% force, 19% miss. Apex territorial blast.'}]}));
 Object.assign(ABILITY_TEMPLATES.talon_slam||{}, makeEvolutionAbilityTemplate('talon_slam','Talon Slam','Goose base heavy hit. Grounded body-pressure before branching.', {type:'physical', btnType:'physical', energy:2, levels:[{desc:'140% dmg, 22% miss.'},{desc:'150% dmg, 20% miss.'},{desc:'160% dmg, 18% miss.'},{desc:'170% dmg, 16% miss.'}]}));
 Object.assign(ABILITY_TEMPLATES.raking_peck||{}, makeEvolutionAbilityTemplate('raking_peck','Raking Peck','Peck-line bleed branch. Ugly close-range wound pressure.', {type:'physical', btnType:'physical', energy:1, levels:[{desc:'100% dmg. Bleed 10%.'},{desc:'108% dmg. Bleed 12%.'},{desc:'116% dmg. Bleed 14%.'},{desc:'124% dmg. Bleed 16%.'}]}));
 Object.assign(ABILITY_TEMPLATES.tearing_bite||{}, makeEvolutionAbilityTemplate('tearing_bite','Tearing Bite','Peck-line bleed evolution. Better against bleeding prey.', {type:'physical', btnType:'physical', energy:1, levels:[{desc:'112% dmg. Bleed 15%. Bonus vs bleeding.'},{desc:'120% dmg. Bleed 17%. Bonus vs bleeding.'},{desc:'128% dmg. Bleed 19%. Bonus vs bleeding.'},{desc:'136% dmg. Bleed 21%. Bonus vs bleeding.'}]}));
@@ -8976,19 +9032,19 @@ Object.assign(ABILITY_TEMPLATES.terror_blast||{}, makeEvolutionAbilityTemplate('
 Object.assign(ABILITY_TEMPLATES.panic_terror||{}, makeEvolutionAbilityTemplate('panic_terror','Panic Terror','Honk-line fear finisher. Strong payoff vs feared foes.', {type:'utility', btnType:'utility', energy:2, levels:[{desc:'Fear 30%. Bonus vs feared.'},{desc:'Fear 32%. Bonus vs feared.'},{desc:'Fear 34%. Bonus vs feared.'},{desc:'Fear 36%. Bonus vs feared.'}]}));
 Object.assign(ABILITY_TEMPLATES.shock_honk||{}, makeEvolutionAbilityTemplate('shock_honk','Shock Honk','Honk-line paralysis branch. Disrupt enemy actions.', {type:'physical', btnType:'physical', energy:2, levels:[{desc:'115% dmg. Paralysis 15%.'},{desc:'123% dmg. Paralysis 17%.'},{desc:'131% dmg. Paralysis 20%.'},{desc:'139% dmg. Paralysis 22%.'}]}));
 Object.assign(ABILITY_TEMPLATES.stunning_blast||{}, makeEvolutionAbilityTemplate('stunning_blast','Stunning Blast','Honk-line paralysis evolution. Heavier lockdown pressure.', {type:'spell', btnType:'spell', energy:2, levels:[{desc:'Paralysis 20%.'},{desc:'Paralysis 22%.'},{desc:'Paralysis 24%.'},{desc:'Paralysis 26%.'}]}));
-Object.assign(ABILITY_TEMPLATES.lockdown_terror||{}, makeEvolutionAbilityTemplate('lockdown_terror','Lockdown Terror','Honk-line paralysis finisher. Strong control payoff.', {type:'spell', btnType:'spell', energy:2, levels:[{desc:'Paralysis 25%. Stronger control payoff.'},{desc:'Paralysis 27%. Stronger control payoff.'},{desc:'Paralysis 29%. Stronger control payoff.'},{desc:'Paralysis 31%. Stronger control payoff.'}]}));
+Object.assign(ABILITY_TEMPLATES.lockdown_terror||{}, makeEvolutionAbilityTemplate('lockdown_terror','Lockdown Terror','Honk-line paralysis finisher. Strong control payoff.', {type:'spell', btnType:'spell', energy:2, levels:[{desc:'Lv.1 — 25% Paralysis; locks tempo hard.'},{desc:'Lv.2 — 27% Paralysis; longer lockdown window.'},{desc:'Lv.3 — 29% Paralysis; enemy actions stutter more often.'},{desc:'Lv.4 — 31% Paralysis; near-total rhythm break.'}]}));
 Object.assign(ABILITY_TEMPLATES.crushing_honk||{}, makeEvolutionAbilityTemplate('crushing_honk','Crushing Honk','Honk-line weaken branch. Oppressive stat pressure.', {type:'physical', btnType:'physical', energy:2, levels:[{desc:'115% dmg. Weaken 15%.'},{desc:'123% dmg. Weaken 17%.'},{desc:'131% dmg. Weaken 20%.'},{desc:'139% dmg. Weaken 22%.'}]}));
 Object.assign(ABILITY_TEMPLATES.oppression_blast||{}, makeEvolutionAbilityTemplate('oppression_blast','Oppression Blast','Honk-line weaken evolution. Suppresses enemy output.', {type:'utility', btnType:'utility', energy:2, levels:[{desc:'Weaken 20%.'},{desc:'Weaken 22%.'},{desc:'Weaken 24%.'},{desc:'Weaken 26%.'}]}));
 Object.assign(ABILITY_TEMPLATES.tyrant_terror||{}, makeEvolutionAbilityTemplate('tyrant_terror','Tyrant Terror','Honk-line oppressive finisher. Better vs weakened foes.', {type:'utility', btnType:'utility', energy:2, levels:[{desc:'Weaken 25%. Bonus vs weakened.'},{desc:'Weaken 27%. Bonus vs weakened.'},{desc:'Weaken 29%. Bonus vs weakened.'},{desc:'Weaken 31%. Bonus vs weakened.'}]}));
 Object.assign(ABILITY_TEMPLATES.iron_guard||{}, makeEvolutionAbilityTemplate('iron_guard','Iron Guard','Guard-line block branch. Escalating mitigation.', {type:'utility', btnType:'utility', energy:1, levels:[{desc:'Strong block stance.'},{desc:'Stronger block stance.'},{desc:'Heavier block stance.'},{desc:'Elite block stance.'}]}));
 Object.assign(ABILITY_TEMPLATES.bulwark_brace||{}, makeEvolutionAbilityTemplate('bulwark_brace','Bulwark Brace','Guard-line block evolution. Harder to move.', {type:'utility', btnType:'utility', energy:1, levels:[{desc:'Brace with durable mitigation.'},{desc:'Brace with stronger mitigation.'},{desc:'Brace with powerful mitigation.'},{desc:'Brace with fortress mitigation.'}]}));
-Object.assign(ABILITY_TEMPLATES.fortress_stance||{}, makeEvolutionAbilityTemplate('fortress_stance','Fortress Stance','Guard-line pure tank finisher.', {type:'utility', btnType:'utility', energy:1, levels:[{desc:'Maximum mitigation posture.'},{desc:'Maximum mitigation posture.'},{desc:'Maximum mitigation posture.'},{desc:'Maximum mitigation posture.'}]}));
+Object.assign(ABILITY_TEMPLATES.fortress_stance||{}, makeEvolutionAbilityTemplate('fortress_stance','Fortress Stance','Guard-line pure tank finisher.', {type:'utility', btnType:'utility', energy:1, levels:[{desc:'Lv.1 — Warden shell: peak damage shaving for the turn.'},{desc:'Lv.2 — Deeper shell: fewer cracks under burst hits.'},{desc:'Lv.3 — Iron shell: blunt the heaviest swings.'},{desc:'Lv.4 — Immovable court: legendary stand; you ARE the wall.'}]}));
 Object.assign(ABILITY_TEMPLATES.spite_guard||{}, makeEvolutionAbilityTemplate('spite_guard','Spite Guard','Guard-line retaliation branch. Punish attackers.', {type:'utility', btnType:'utility', energy:1, levels:[{desc:'Retaliation stance.'},{desc:'Stronger retaliation stance.'},{desc:'Heavy retaliation stance.'},{desc:'Brutal retaliation stance.'}]}));
 Object.assign(ABILITY_TEMPLATES.punish_brace||{}, makeEvolutionAbilityTemplate('punish_brace','Punish Brace','Guard-line retaliation evolution. More punishment.', {type:'utility', btnType:'utility', energy:1, levels:[{desc:'Brace and punish attackers.'},{desc:'Brace and punish attackers harder.'},{desc:'Brace and punish attackers heavily.'},{desc:'Brace and punish attackers brutally.'}]}));
-Object.assign(ABILITY_TEMPLATES.retribution_fortress||{}, makeEvolutionAbilityTemplate('retribution_fortress','Retribution Fortress','Guard-line retaliation finisher.', {type:'physical', btnType:'physical', energy:1, levels:[{desc:'Retaliatory fortress strike.'},{desc:'Retaliatory fortress strike.'},{desc:'Retaliatory fortress strike.'},{desc:'Retaliatory fortress strike.'}]}));
+Object.assign(ABILITY_TEMPLATES.retribution_fortress||{}, makeEvolutionAbilityTemplate('retribution_fortress','Retribution Fortress','Guard-line retaliation finisher.', {type:'physical', btnType:'physical', energy:1, levels:[{desc:'Lv.1 — Answering strike after a brace; hurts those who overcommit.'},{desc:'Lv.2 — Heavier counter-slam; punishes greedy attacks.'},{desc:'Lv.3 — Crushing reprisal; stagger and pain in one beat.'},{desc:'Lv.4 — Fortress verdict: apex retaliatory blow.'}]}));
 Object.assign(ABILITY_TEMPLATES.steady_guard||{}, makeEvolutionAbilityTemplate('steady_guard','Steady Guard','Guard-line recover branch. Sustain while holding ground.', {type:'utility', btnType:'utility', energy:1, levels:[{desc:'Recover while guarding.'},{desc:'Recover more while guarding.'},{desc:'Recover strongly while guarding.'},{desc:'Recover heavily while guarding.'}]}));
 Object.assign(ABILITY_TEMPLATES.restoring_brace||{}, makeEvolutionAbilityTemplate('restoring_brace','Restoring Brace','Guard-line recovery evolution. Better sustain.', {type:'utility', btnType:'utility', energy:1, levels:[{desc:'Brace and restore HP.'},{desc:'Brace and restore more HP.'},{desc:'Brace and restore strong HP.'},{desc:'Brace and restore major HP.'}]}));
-Object.assign(ABILITY_TEMPLATES.enduring_fortress||{}, makeEvolutionAbilityTemplate('enduring_fortress','Enduring Fortress','Guard-line sustain finisher. Endure and outlast.', {type:'utility', btnType:'utility', energy:1, levels:[{desc:'Major sustain fortress.'},{desc:'Major sustain fortress.'},{desc:'Major sustain fortress.'},{desc:'Major sustain fortress.'}]}));
+Object.assign(ABILITY_TEMPLATES.enduring_fortress||{}, makeEvolutionAbilityTemplate('enduring_fortress','Enduring Fortress','Guard-line sustain finisher. Endure and outlast.', {type:'utility', btnType:'utility', energy:1, levels:[{desc:'Lv.1 — Fortify and mend; guard turns into recovery.'},{desc:'Lv.2 — Stronger mend under shell; outlast their burst.'},{desc:'Lv.3 — Deep recovery pulse; rise from the guard intact.'},{desc:'Lv.4 — Eternal roost: maximum sustain from the stance.'}]}));
 Object.assign(ABILITY_TEMPLATES.heavy_talon||{}, makeEvolutionAbilityTemplate('heavy_talon','Heavy Talon','Heavy-line trample branch. Raw force.', {type:'physical', btnType:'physical', energy:2, levels:[{desc:'150% dmg, 22% miss.'},{desc:'160% dmg, 20% miss.'},{desc:'170% dmg, 18% miss.'},{desc:'180% dmg, 16% miss.'}]}));
 Object.assign(ABILITY_TEMPLATES.trample_slam||{}, makeEvolutionAbilityTemplate('trample_slam','Trample Slam','Heavy-line trample evolution. Bigger body-pressure.', {type:'physical', btnType:'physical', energy:2, levels:[{desc:'165% dmg, 20% miss.'},{desc:'175% dmg, 18% miss.'},{desc:'185% dmg, 16% miss.'},{desc:'195% dmg, 14% miss.'}]}));
 Object.assign(ABILITY_TEMPLATES.crushing_stampede||{}, makeEvolutionAbilityTemplate('crushing_stampede','Crushing Stampede','Heavy-line raw-force finisher.', {type:'physical', btnType:'physical', energy:2, levels:[{desc:'180% dmg, 18% miss.'},{desc:'190% dmg, 16% miss.'},{desc:'200% dmg, 14% miss.'},{desc:'210% dmg, 12% miss.'}]}));
@@ -9254,17 +9310,17 @@ registerAbilityAlias('verdict','dukeRiverGrip','Verdict',{type:'spell',btnType:'
 
 Object.assign(ABILITY_TEMPLATES.windFeint||{}, makeEvolutionAbilityTemplate('windFeint','Wind Feint','Sparrow base wind skill. A tempo-first evasive feint.', {type:'utility', btnType:'utility', energy:1, levels:[{desc:'Gain +20% dodge for 2 turns.'},{desc:'Gain +25% dodge for 2 turns.'},{desc:'Gain +30% dodge for 2 turns.'},{desc:'Gain +35% dodge for 3 turns.'}]}));
 Object.assign(ABILITY_TEMPLATES.predatorMark||{}, makeEvolutionAbilityTemplate('predatorMark','Predator Mark','Mark-line execute branch. Hunt the weakened target.', {type:'utility', btnType:'utility', energy:1, levels:[{desc:'Mark prey. Next attack gains +16% damage, +12% more below 50% HP.'},{desc:'Mark prey. Next attack gains +20% damage, +14% more below 50% HP.'},{desc:'Mark prey. Next attack gains +24% damage, +16% more below 50% HP.'},{desc:'Mark prey. Next attack gains +28% damage, +18% more below 50% HP.'}]}));
-Object.assign(ABILITY_TEMPLATES.murder_murmuration||{}, makeEvolutionAbilityTemplate('murder_murmuration','Murder Murmuration','Crow base signature. A coordinated mobbing strike before branching.', {type:'physical', btnType:'physical', energy:2, levels:[{desc:'2 hits at 58% dmg each. No rider.'},{desc:'2 hits at 64% dmg each. No rider.'},{desc:'3 hits at 60% dmg each. No rider.'},{desc:'3 hits at 66% dmg each. No rider.'}]}));
+Object.assign(ABILITY_TEMPLATES.murder_murmuration||{}, makeEvolutionAbilityTemplate('murder_murmuration','Murder Murmuration','Crow base signature. A coordinated mobbing strike before branching.', {type:'physical', btnType:'physical', energy:2, fixedMainAttackCost:true, role:['multiHit'], levels:[{desc:'Lv.1 — Twin flock strikes (~58% each); open the murder.'},{desc:'Lv.2 — Twin strikes sharpen (~64% each); tighter execution.'},{desc:'Lv.3 — Three beaks (~60% each); wider mobbing circle.'},{desc:'Lv.4 — Three strikes peak (~66% each); perfected flock tempo.'}]}));
 Object.assign(ABILITY_TEMPLATES.dread_call||{}, makeEvolutionAbilityTemplate('dread_call','Dread Call','Crow base utility. Disrupt the enemy before committing to a branch.', {type:'utility', btnType:'utility', energy:1, levels:[{desc:'Enemy ACC -10% for 2 turns.'},{desc:'Enemy ACC -12% for 2 turns.'},{desc:'Enemy ACC -14% for 2 turns.'},{desc:'Enemy ACC -16% for 2 turns.'}]}));
 Object.assign(ABILITY_TEMPLATES.battle_focus||{}, makeEvolutionAbilityTemplate('battle_focus','Battle Focus','Crow base setup. Study the target for a sharper next attack.', {type:'utility', btnType:'utility', energy:1, levels:[{desc:'Next attack +12% damage.'},{desc:'Next attack +15% damage.'},{desc:'Next attack +18% damage.'},{desc:'Next attack +21% damage.'}]}));
 Object.assign(ABILITY_TEMPLATES.tearing_jab||{}, makeEvolutionAbilityTemplate('tearing_jab','Tearing Jab','Crow bleed evolution. Deeper opportunistic cuts.', {type:'physical', btnType:'physical', energy:1, levels:[{desc:'112% dmg. Bleed 16%. Bonus vs bleeding.'},{desc:'120% dmg. Bleed 18%. Bonus vs bleeding.'},{desc:'128% dmg. Bleed 20%. Bonus vs bleeding.'},{desc:'136% dmg. Bleed 22%. Bonus vs bleeding.'}]}));
 Object.assign(ABILITY_TEMPLATES.carrion_flurry||{}, makeEvolutionAbilityTemplate('carrion_flurry','Carrion Flurry','Crow bleed finisher. A carrion-feast burst against wounded targets.', {type:'physical', btnType:'physical', energy:1, levels:[{desc:'2 hits at 68% dmg. Bleed 22%.'},{desc:'2 hits at 74% dmg. Bleed 24%.'},{desc:'3 hits at 66% dmg. Bleed 26%.'},{desc:'3 hits at 72% dmg. Bleed 28%.'}]}));
-Object.assign(ABILITY_TEMPLATES.hex_peck||{}, makeEvolutionAbilityTemplate('hex_peck','Hex Peck','Crow hex branch. Eerie pressure with hybrid scaling.', {type:'physical', btnType:'physical', energy:1, levels:[{desc:'Hybrid strike. Fear 10%.'},{desc:'Hybrid strike. Fear 12%.'},{desc:'Hybrid strike. Fear 14%.'},{desc:'Hybrid strike. Fear 16%.'}]}));
-Object.assign(ABILITY_TEMPLATES.umbral_jab||{}, makeEvolutionAbilityTemplate('umbral_jab','Umbral Jab','Crow hex evolution. Lean harder into magic opportunism.', {type:'spell', btnType:'spell', energy:1, levels:[{desc:'Spell dmg. Fear 16%. Bonus vs exposed.'},{desc:'Spell dmg. Fear 18%. Bonus vs exposed.'},{desc:'Spell dmg. Fear 20%. Bonus vs exposed.'},{desc:'Spell dmg. Fear 22%. Bonus vs exposed.'}]}));
-Object.assign(ABILITY_TEMPLATES.hex_flurry||{}, makeEvolutionAbilityTemplate('hex_flurry','Hex Flurry','Crow hex finisher. A spiteful magical burst.', {type:'spell', btnType:'spell', energy:1, levels:[{desc:'2 spell hits. Fear 22%.'},{desc:'2 spell hits. Fear 24%.'},{desc:'3 spell hits. Fear 26%.'},{desc:'3 spell hits. Fear 28%.'}]}));
-Object.assign(ABILITY_TEMPLATES.keen_peck||{}, makeEvolutionAbilityTemplate('keen_peck','Keen Peck','Crow precision branch. Exploit weak points with hybrid timing.', {type:'physical', btnType:'physical', energy:1, levels:[{desc:'Hybrid strike. Pierce 10% DEF. Bonus vs exposed.'},{desc:'Hybrid strike. Pierce 12% DEF. Bonus vs exposed.'},{desc:'Hybrid strike. Pierce 14% DEF. Bonus vs exposed.'},{desc:'Hybrid strike. Pierce 16% DEF. Bonus vs exposed.'}]}));
-Object.assign(ABILITY_TEMPLATES.target_jab||{}, makeEvolutionAbilityTemplate('target_jab','Target Jab','Crow precision evolution. Delivers sharper execution angles.', {type:'physical', btnType:'physical', energy:1, levels:[{desc:'Hybrid strike. Pierce 16% DEF. Bonus vs exposed or feared.'},{desc:'Hybrid strike. Pierce 18% DEF. Bonus vs exposed or feared.'},{desc:'Hybrid strike. Pierce 20% DEF. Bonus vs exposed or feared.'},{desc:'Hybrid strike. Pierce 22% DEF. Bonus vs exposed or feared.'}]}));
-Object.assign(ABILITY_TEMPLATES.execution_flurry||{}, makeEvolutionAbilityTemplate('execution_flurry','Execution Flurry','Crow precision finisher. Multi-hit execution on compromised prey.', {type:'physical', btnType:'physical', energy:1, levels:[{desc:'2 hybrid hits. Big bonus vs exposed or low HP.'},{desc:'2 hybrid hits. Bigger bonus vs exposed or low HP.'},{desc:'3 hybrid hits. Bigger bonus vs exposed or low HP.'},{desc:'3 hybrid hits. Massive bonus vs exposed or low HP.'}]}));
+Object.assign(ABILITY_TEMPLATES.hex_peck||{}, makeEvolutionAbilityTemplate('hex_peck','Hex Peck','Crow hex branch. Eerie pressure with hybrid scaling.', {type:'physical', btnType:'physical', energy:1, levels:[{desc:'Lv.1 — Hybrid hex cut ~100% power, 9% miss; 10% Fear.'},{desc:'Lv.2 — ~108% power, 8% miss; 12% Fear gnaws deeper.'},{desc:'Lv.3 — ~116% power, 7% miss; 14% Fear takes hold.'},{desc:'Lv.4 — ~124% power, 6% miss; 16% Fear — the omen lands.'}]}));
+Object.assign(ABILITY_TEMPLATES.umbral_jab||{}, makeEvolutionAbilityTemplate('umbral_jab','Umbral Jab','Crow hex evolution. Lean harder into magic opportunism.', {type:'spell', btnType:'spell', energy:1, levels:[{desc:'Lv.1 — Umbral spell ~108% MATK, 10% miss; 16% Fear; extra vs exposed.'},{desc:'Lv.2 — ~118% MATK, 9% miss; 18% Fear; heavier exposed bite.'},{desc:'Lv.3 — ~128% MATK, 8% miss; 20% Fear.'},{desc:'Lv.4 — ~138% MATK, 7% miss; 22% Fear — shadow verdict.'}]}));
+Object.assign(ABILITY_TEMPLATES.hex_flurry||{}, makeEvolutionAbilityTemplate('hex_flurry','Hex Flurry','Crow hex finisher. A spiteful magical burst.', {type:'spell', btnType:'spell', energy:1, levels:[{desc:'Lv.1 — 2× umbral flurries (~72% each), 12% miss; 22% Fear each wave.'},{desc:'Lv.2 — 2× ~78% flurries, 11% miss; 24% Fear.'},{desc:'Lv.3 — 3× ~74% flurries, 10% miss; 26% Fear.'},{desc:'Lv.4 — 3× ~80% flurries, 9% miss; 28% Fear; feast on the afraid.'}]}));
+Object.assign(ABILITY_TEMPLATES.keen_peck||{}, makeEvolutionAbilityTemplate('keen_peck','Keen Peck','Crow precision branch. Exploit weak points with hybrid timing.', {type:'physical', btnType:'physical', energy:1, levels:[{desc:'Lv.1 — Keen hybrid ~102% power, 7% miss; pierce 10% DEF; bonus vs exposed; +6% crit vs compromised.'},{desc:'Lv.2 — ~110% power, 6% miss; pierce 12%; +8% crit vs compromised.'},{desc:'Lv.3 — ~118% power, 5% miss; pierce 14%; +10% crit vs compromised.'},{desc:'Lv.4 — ~126% power, 4% miss; pierce 16%; +12% crit vs compromised.'}]}));
+Object.assign(ABILITY_TEMPLATES.target_jab||{}, makeEvolutionAbilityTemplate('target_jab','Target Jab','Crow precision evolution. Delivers sharper execution angles.', {type:'physical', btnType:'physical', energy:1, levels:[{desc:'Lv.1 — Marked hybrid ~114% power, 6% miss; pierce 16% DEF; bonus vs exposed/feared; +8% crit vs compromised.'},{desc:'Lv.2 — ~122% power, 5% miss; pierce 18%; +10% crit.'},{desc:'Lv.3 — ~130% power, 4% miss; pierce 20%; +12% crit.'},{desc:'Lv.4 — ~138% power, 3% miss; pierce 22%; +14% crit — no escape.'}]}));
+Object.assign(ABILITY_TEMPLATES.execution_flurry||{}, makeEvolutionAbilityTemplate('execution_flurry','Execution Flurry','Crow precision finisher. Multi-hit execution on compromised prey.', {type:'physical', btnType:'physical', energy:1, levels:[{desc:'Lv.1 — 2× hybrid cuts (~74% each), 7% miss; big bonus vs exposed or <50% HP; +10% crit vs compromised.'},{desc:'Lv.2 — 2× ~80% cuts, 6% miss; bigger execution bonus; +12% crit.'},{desc:'Lv.3 — 3× ~78% cuts, 5% miss; larger exposed/low-HP payoff; +14% crit.'},{desc:'Lv.4 — 3× ~84% cuts, 4% miss; massive finisher bonus; +16% crit.'}]}));
 Object.assign(ABILITY_TEMPLATES.harrier_murmuration||{}, makeEvolutionAbilityTemplate('harrier_murmuration','Harrier Murmuration','Murmuration talon branch. Coordinated physical harassment.', {type:'physical', btnType:'physical', energy:2, levels:[{desc:'3 hits at 46% dmg each. Bleed 12%.'},{desc:'3 hits at 50% dmg each. Bleed 14%.'},{desc:'4 hits at 48% dmg each. Bleed 16%.'},{desc:'4 hits at 52% dmg each. Bleed 18%.'}]}));
 Object.assign(ABILITY_TEMPLATES.talon_swarm||{}, makeEvolutionAbilityTemplate('talon_swarm','Talon Swarm','Murmuration talon evolution. Harder physical mobbing.', {type:'physical', btnType:'physical', energy:2, levels:[{desc:'3 hits at 56% dmg each. Bleed 18%.'},{desc:'3 hits at 60% dmg each. Bleed 20%.'},{desc:'4 hits at 58% dmg each. Bleed 22%.'},{desc:'4 hits at 62% dmg each. Bleed 24%.'}]}));
 Object.assign(ABILITY_TEMPLATES.blackwing_murder||{}, makeEvolutionAbilityTemplate('blackwing_murder','Blackwing Murder','Murmuration talon finisher. A brutal coordinated takedown.', {type:'physical', btnType:'physical', energy:2, levels:[{desc:'4 hits at 60% dmg each. Bleed 24%.'},{desc:'4 hits at 64% dmg each. Bleed 26%.'},{desc:'5 hits at 62% dmg each. Bleed 28%.'},{desc:'5 hits at 66% dmg each. Bleed 30%.'}]}));
@@ -12726,6 +12782,13 @@ document.addEventListener('keydown', e => {
   // 1-4: ability shortcuts during player turn
   if(e.target.tagName==='INPUT'||e.target.tagName==='TEXTAREA') return;
   const screen=document.querySelector('.screen.active'); if(!screen) return;
+  if(screen.id==='screen-start'){
+    if(e.key==='Enter' || e.key===' '){
+      e.preventDefault();
+      takeFlightToSelect();
+    }
+    return;
+  }
   if(screen.id==='screen-battle') {
     if(!G.animLock && G.turn==='player' && G.player) {
       const idx=parseInt(e.key)-1;
