@@ -72,19 +72,6 @@
 <button type="button" class="menu-btn ref-guide-open-btn" id="ref-guide-open-btn">Game reference — codex</button>
 </div>
 </div>
-<div class="ref-guide-modal" id="ref-guide-modal" aria-hidden="true">
-<div class="ref-guide-modal-backdrop" onclick="closeRefGuideModal()"></div>
-<div class="ref-guide-modal-panel" role="dialog" aria-modal="true" aria-labelledby="ref-guide-modal-title">
-<div class="ref-guide-modal-head">
-<h3 id="ref-guide-modal-title">Game reference</h3>
-<button type="button" class="ref-guide-modal-close" onclick="closeRefGuideModal()" aria-label="Close codex">×</button>
-</div>
-<div class="ref-guide-modal-scroll">
-<div class="ref-tabs" id="ref-tabs"></div>
-<div id="ref-panels"></div>
-</div>
-</div>
-</div>
 <div class="sel-continue-row" id="continue-row" style="display:none">
 <button class="continue-run-btn" onclick="continueRun()">🪺 Continue Last Run</button>
 <p class="sel-continue-info" id="continue-info"></p>
@@ -264,6 +251,20 @@
 </div>
 </div>
 <button class="start-btn" onclick="goMainMenu()" style="margin-top:12px;background:linear-gradient(135deg,#2a3040,#3a4050,#2a3040);color:var(--text-dim);font-size:.9rem;">🏠 Main Menu</button>
+</div>
+</div>
+<!-- GAME REFERENCE CODEX (outside #screen-select: avoids overflow/stacking clipping) -->
+<div class="ref-guide-modal" id="ref-guide-modal" aria-hidden="true">
+<div class="ref-guide-modal-backdrop" onclick="closeRefGuideModal()"></div>
+<div class="ref-guide-modal-panel" role="dialog" aria-modal="true" aria-labelledby="ref-guide-modal-title">
+<div class="ref-guide-modal-head">
+<h3 id="ref-guide-modal-title">Game reference</h3>
+<button type="button" class="ref-guide-modal-close" onclick="closeRefGuideModal()" aria-label="Close codex">×</button>
+</div>
+<div class="ref-guide-modal-scroll">
+<div class="ref-tabs" id="ref-tabs"></div>
+<div id="ref-panels"></div>
+</div>
 </div>
 </div>
 <!-- NEST MODAL -->

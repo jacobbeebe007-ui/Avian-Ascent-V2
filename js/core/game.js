@@ -5998,7 +5998,7 @@ const ABILITY_DISPLAY_TAGS = {
   fishSnatcher:['UTILITY','HEAL','SIGNATURE'], fruitBomb:['SPELL','SIGNATURE'],
   roost:['HEAL'], preen:['UTILITY','HEAL'], crowDefend:['GUARD'], guard:['GUARD'], evade:['UTILITY'],
   intimidate:['CONTROL'], threatDisplay:['CONTROL'], dreadCall:['UTILITY','CONTROL'],
-  victoryChant:['UTILITY'], battleChirp:['UTILITY'], battleFocus:['UTILITY'],
+  victoryChant:['UTILITY'], battleChirp:['UTILITY'], battleFocus:['UTILITY'], focusChirp:['UTILITY'],
   diveSnatch:['UTILITY','SIGNATURE'], steal_shine:['UTILITY','SIGNATURE'], feather_flick:['UTILITY'], featherFlick:['UTILITY'], graceStep:['UTILITY'],
   savageKick:['HEAVY','SIGNATURE'], raptorKickFrenzy:['HEAVY','MULTI','SIGNATURE'], honkTerror:['CONTROL','SIGNATURE'],
   rallyCall:['UTILITY'], focusSight:['UTILITY'], battleRhythm:['UTILITY'],
@@ -9231,6 +9231,7 @@ registerAbilityAlias('final_omen','finalHunt','Final Omen',{type:'utility',btnTy
 registerAbilityAlias('murder_murmuration','murderMurmuration','Murder Murmuration',{type:'physical',btnType:'physical',desc:'Crow base signature. Coordinated harassment before specializing.'});
 registerAbilityAlias('dread_call','dreadCall','Dread Call',{type:'utility',btnType:'utility',desc:'Crow base utility. A neutral unsettling call before branching.'});
 registerAbilityAlias('battle_focus','battleFocus','Battle Focus',{type:'utility',btnType:'utility',desc:'Crow base setup. Study the target before committing to a path.'});
+registerAbilityAlias('focusChirp','battleFocus','Focus Chirp',{type:'utility',btnType:'utility',desc:'Robin setup. A sharp chirp that steadies your aim for the next strike.'});
 registerAbilityAlias('tearing_jab','serratedSlash','Tearing Jab',{type:'physical',btnType:'physical'});
 registerAbilityAlias('carrion_flurry','murderMurmuration','Carrion Flurry',{type:'physical',btnType:'physical'});
 registerAbilityAlias('hex_peck','siphon_peck','Hex Peck',{type:'physical',btnType:'physical'});
@@ -9307,6 +9308,7 @@ Object.assign(ABILITY_TEMPLATES.predatorMark||{}, makeEvolutionAbilityTemplate('
 Object.assign(ABILITY_TEMPLATES.murder_murmuration||{}, makeEvolutionAbilityTemplate('murder_murmuration','Murder Murmuration','Crow base signature. A coordinated mobbing strike before branching.', {type:'physical', btnType:'physical', energy:2, fixedMainAttackCost:true, role:['multiHit'], levels:[{desc:'Lv.1 — Twin flock strikes (~58% each); open the murder.'},{desc:'Lv.2 — Twin strikes sharpen (~64% each); tighter execution.'},{desc:'Lv.3 — Three beaks (~60% each); wider mobbing circle.'},{desc:'Lv.4 — Three strikes peak (~66% each); perfected flock tempo.'}]}));
 Object.assign(ABILITY_TEMPLATES.dread_call||{}, makeEvolutionAbilityTemplate('dread_call','Dread Call','Crow base utility. Disrupt the enemy before committing to a branch.', {type:'utility', btnType:'utility', energy:1, levels:[{desc:'Enemy ACC -10% for 2 turns.'},{desc:'Enemy ACC -12% for 2 turns.'},{desc:'Enemy ACC -14% for 2 turns.'},{desc:'Enemy ACC -16% for 2 turns.'}]}));
 Object.assign(ABILITY_TEMPLATES.battle_focus||{}, makeEvolutionAbilityTemplate('battle_focus','Battle Focus','Crow base setup. Study the target for a sharper next attack.', {type:'utility', btnType:'utility', energy:1, levels:[{desc:'Next attack +12% damage.'},{desc:'Next attack +15% damage.'},{desc:'Next attack +18% damage.'},{desc:'Next attack +21% damage.'}]}));
+Object.assign(ABILITY_TEMPLATES.focusChirp||{}, makeEvolutionAbilityTemplate('focusChirp','Focus Chirp','Robin chirp-line opener. Lines up the next hit with extra bite.', {type:'utility', btnType:'utility', energy:1, levels:[{desc:'Next attack +12% damage.'},{desc:'Next attack +15% damage.'},{desc:'Next attack +18% damage.'},{desc:'Next attack +21% damage.'}]}));
 Object.assign(ABILITY_TEMPLATES.tearing_jab||{}, makeEvolutionAbilityTemplate('tearing_jab','Tearing Jab','Crow bleed evolution. Deeper opportunistic cuts.', {type:'physical', btnType:'physical', energy:1, levels:[{desc:'112% dmg. Bleed 16%. Bonus vs bleeding.'},{desc:'120% dmg. Bleed 18%. Bonus vs bleeding.'},{desc:'128% dmg. Bleed 20%. Bonus vs bleeding.'},{desc:'136% dmg. Bleed 22%. Bonus vs bleeding.'}]}));
 Object.assign(ABILITY_TEMPLATES.carrion_flurry||{}, makeEvolutionAbilityTemplate('carrion_flurry','Carrion Flurry','Crow bleed finisher. A carrion-feast burst against wounded targets.', {type:'physical', btnType:'physical', energy:1, levels:[{desc:'2 hits at 68% dmg. Bleed 22%.'},{desc:'2 hits at 74% dmg. Bleed 24%.'},{desc:'3 hits at 66% dmg. Bleed 26%.'},{desc:'3 hits at 72% dmg. Bleed 28%.'}]}));
 Object.assign(ABILITY_TEMPLATES.hex_peck||{}, makeEvolutionAbilityTemplate('hex_peck','Hex Peck','Crow hex branch. Eerie pressure with hybrid scaling.', {type:'physical', btnType:'physical', energy:1, levels:[{desc:'Lv.1 — Hybrid hex cut ~100% power, 9% miss; 10% Fear.'},{desc:'Lv.2 — ~108% power, 8% miss; 12% Fear gnaws deeper.'},{desc:'Lv.3 — ~116% power, 7% miss; 14% Fear takes hold.'},{desc:'Lv.4 — ~124% power, 6% miss; 16% Fear — the omen lands.'}]}));
@@ -9482,6 +9484,7 @@ const CROW_SKILL_ACTION_OVERRIDES = {
   murder_murmuration: ab=>executeCrowStrikeAction(ab,{name:'Murder Murmuration',log:'‍⬛ Murder Murmuration',damageKind:'physical',hits:[2,2,3,3],miss:[14,12,11,10],mult:[0.58,0.64,0.60,0.66]}),
   dread_call: ab=>executeCrowCallAction(ab,{name:'Dread Call',log:'📣 Dread Call',fx:'📣',accDown:[10,12,14,16],turns:[2,2,2,2]}),
   battle_focus: ab=>executeCrowFocusAction(ab,{name:'Battle Focus',log:'🧠 Battle Focus',fx:'🧠',markBonus:[0.12,0.15,0.18,0.21]}),
+  focusChirp: ab=>executeCrowFocusAction(ab,{name:'Focus Chirp',log:'🐦 Focus Chirp',fx:'🐦',markBonus:[0.12,0.15,0.18,0.21]}),
   tearing_jab: ab=>executeCrowStrikeAction(ab,{name:'Tearing Jab',log:'🩸 Tearing Jab',damageKind:'physical',miss:[8,7,6,5],mult:[1.12,1.20,1.28,1.36],bleedChance:[16,18,20,22],bonusVs:['bleed'],bonus:[0.08,0.10,0.12,0.14]}),
   carrion_flurry: ab=>executeCrowStrikeAction(ab,{name:'Carrion Flurry',log:'🩸 Carrion Flurry',damageKind:'physical',hits:[2,2,3,3],miss:[9,8,7,6],mult:[0.68,0.74,0.66,0.72],bleedChance:[22,24,26,28],bonusVs:['bleed','low_hp'],bonus:[0.08,0.10,0.12,0.14],lowHpThreshold:0.5}),
   hex_peck: ab=>executeCrowStrikeAction(ab,{name:'Hex Peck',log:'🖤 Hex Peck',damageKind:'hybrid',miss:[9,8,7,6],mult:[1.00,1.08,1.16,1.24],fearChance:[10,12,14,16]}),
