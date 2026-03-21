@@ -704,6 +704,7 @@ const BIRDS = {
     size:'tiny', class:'striker',
     stats:{hp:28,maxHp:28,atk:5,def:2,spd:9,dodge:35,acc:85,mdef:6,matk:6,critChance:10},
     statBars:{HP:28/50,ATK:5/15,SPD:9/10,Dodge:.7,ACC:.85}, color:'#6a8ae8',
+    mainAttackId:'multiPeck',
     startAbilities:['multiPeck','dart','windFeint','trackPrey'],
     passive:{id:'windDancer',name:'Wind Dancer',desc:'Every dodge grants +1% permanent dodge (max +15%).',
       onDodge(p){if(!p._windDancerBonus)p._windDancerBonus=0;if(p._windDancerBonus<15){p._windDancerBonus++;p.stats.dodge=Math.min(p.stats.dodge+1,100);}}},
@@ -804,6 +805,7 @@ const BIRDS = {
     size:'medium', class:'trickster',
     stats:{hp:38,maxHp:38,atk:7,def:4,spd:6,dodge:16,acc:92,mdef:10,matk:7},
     statBars:{HP:38/50,ATK:7/15,SPD:6/10,Dodge:.32,ACC:.92}, color:'#c0c8d8',
+    mainAttackId:'peck',
     startAbilities:['peck','murder_murmuration','dread_call','battle_focus'],
     passive:{id:'opportunistInstinct',name:'Opportunist Instinct',desc:'Once each turn, damaging a Feared, Weakened, or Exposed enemy restores 1 EN.',
       onBattleStart(p){p._crowOpportunistReady=true;}},
@@ -889,6 +891,7 @@ const BIRDS = {
     unlockHint:'Defeat Stage 10 with Robin.',
     stats:{hp:40,maxHp:40,atk:7,def:4,spd:9,dodge:34,acc:88,mdef:8,matk:9,critChance:10},
     color:'#2a2a2a',
+    mainAttackId:'swoop',
     startAbilities:['swoop','steal_shine','feather_flick','dart'],
     passive:{id:'shinyCollector',name:'Shiny Collector',desc:'+3 shiny after each victory. Once each turn, exploiting a buffed or compromised enemy restores 1 EN.'},
   },
@@ -1242,7 +1245,7 @@ const ENEMY_ABILITY_POOL = {
 const ENEMIES = [
   // Tier 1 — Stages 1-4 (weak)
   makeEnemy('Young Sparrow','',18,3,1,7,'aggressive',false,'',{acc:65,dodge:20,size:'tiny',abilities:['eVenom'],portraitKey:'sparrow'}),
-  makeEnemy('Dove','🕊️',24,5,2,5,'cautious',false,'',{acc:68,dodge:10,size:'small',abilities:['eWeaken'],portraitKey:'swan'}),
+  makeEnemy('Dove','🕊️',24,5,2,5,'cautious',false,'',{acc:68,dodge:10,size:'small',abilities:['eWeaken'],portraitKey:'dove'}),
   makeEnemy('Magpie','‍⬛',32,7,3,6,'aggressive',false,'',{acc:72,dodge:15,size:'small',abilities:['eVenom','eWeaken'],portraitKey:'magpie'}),
   makeEnemy('Starling','',28,6,1,8,'berserker',false,'',{acc:70,dodge:25,size:'tiny',abilities:['eBlind'],portraitKey:'blackbird'}),
   makeEnemy('Finch','',20,4,1,8,'aggressive',false,'',{acc:66,dodge:30,size:'tiny',abilities:['eBlind'],portraitKey:'sparrow'}),
@@ -2936,10 +2939,10 @@ const UNLOCK_KEY = 'avianAscent_unlocks_v1';
 // ============================================================
 // `mult` scales enemy HP + ATK/MATK only (see buildScaledEnemy). It is the main difficulty knob vs the player.
 const DIFFICULTIES = {
-  fletchling:{ id:'fletchling', label:'Fletchling', emoji:'🥚', mult:0.80, color:'#6ab89a', desc:'Enemy HP & attack ×0.8. Forgiving pacing.' },
-  juvenile:  { id:'juvenile',   label:'Juvenile',   emoji:'🕊️', mult:1.00, color:'#e8c96a', desc:'Enemy HP & attack ×1.0 — baseline tuning.' },
-  predator:  { id:'predator',   label:'Predator',   emoji:'🦅', mult:1.20, color:'#e87070', desc:'Enemy HP & attack ×1.2 — sharper fights.' },
-  murder:    { id:'murder',     label:'Murder',     emoji:'‍⬛', mult:1.40, color:'#c040e0', desc:'Enemy HP & attack ×1.4 — brutal pressure.', unlockRequires:'predatorWin' },
+  fletchling:{ id:'fletchling', label:'Fletchling', emoji:'🥚', mult:0.80, color:'#6ab89a', desc:'Gentler fights — good for learning.', scalingTip:'Enemy max HP and attack damage: ×0.8 (easier than Normal).' },
+  juvenile:  { id:'juvenile',   label:'Juvenile',   emoji:'🕊️', mult:1.00, color:'#e8c96a', desc:'Standard challenge — recommended default.', scalingTip:'Enemy max HP and attack damage: ×1.0 (baseline).' },
+  predator:  { id:'predator',   label:'Predator',   emoji:'🦅', mult:1.20, color:'#e87070', desc:'Harder enemies and sharper pressure.', scalingTip:'Enemy max HP and attack damage: ×1.2.' },
+  murder:    { id:'murder',     label:'Murder',     emoji:'‍⬛', mult:1.40, color:'#c040e0', desc:'Very hard — for experts.', unlockRequires:'predatorWin', scalingTip:'Enemy max HP and attack damage: ×1.4.' },
 };
 function getUnlocks() {
   try { return JSON.parse(localStorage.getItem(UNLOCK_KEY)||'{}'); } catch(e){ return {}; }
@@ -3505,7 +3508,7 @@ function codexMark(type, id, field='seen'){
   if(!G.codex[type]) G.codex[type]={};
   if(!G.codex[type][id]) G.codex[type][id]={seen:false,used:false};
   G.codex[type][id][field]=true;
-  if(document.getElementById('ref-guide-body')?.classList.contains('open')){
+  if(document.getElementById('ref-guide-modal')?.classList.contains('open')){
     try{ buildRefGuide(); }catch(_){ }
   }
 }
@@ -4523,24 +4526,14 @@ function idToClassLabel(id){
   return (ROLE_LABELS[id]||id).replace(/^.*\s/,'');
 }
 function wireRefGuideClicks(){
-  const header = document.querySelector('.ref-guide-header');
-  if(!header || header.dataset.wired==='1') return;
-  // Prevent inline onclick + listener double toggles.
-  header.onclick = null;
-  header.dataset.wired='1';
-  header.addEventListener('click', ()=>{
+  const btn = document.getElementById('ref-guide-open-btn');
+  if(!btn || btn.dataset.wired==='1') return;
+  btn.dataset.wired='1';
+  btn.addEventListener('click', ()=>{
     try{
-      if(typeof toggleRefGuide === 'function') toggleRefGuide();
-      else {
-        const body=document.getElementById('ref-guide-body');
-        const chev=document.getElementById('ref-chevron');
-        if(body){
-          const open=body.classList.toggle('open');
-          if(chev) chev.classList.toggle('open', open);
-        }
-      }
+      if(typeof openRefGuideModal === 'function') openRefGuideModal();
     }catch(e){
-      console.error('Ref guide toggle failed:', e);
+      console.error('Ref guide open failed:', e);
       failsafeAdvance('ref-guide click');
     }
   }, {passive:true});
@@ -4613,6 +4606,7 @@ function buildDifficultyPicker() {
     btn.innerHTML = `<span>${d.emoji}</span><span>${d.label}</span>` + (locked?` <span style="font-size:.65rem;opacity:.7">🔒</span>`:'');
     if(locked) { btn.title = 'Complete Hard mode to unlock'; }
     else {
+      btn.title = d.scalingTip || '';
       btn.onclick = () => selectDifficulty(d.id);
     }
     container.appendChild(btn);
@@ -12781,6 +12775,11 @@ function updateStageProgress() {
 document.addEventListener('keydown', e => {
   // 1-4: ability shortcuts during player turn
   if(e.target.tagName==='INPUT'||e.target.tagName==='TEXTAREA') return;
+  if(e.key==='Escape' && document.getElementById('ref-guide-modal')?.classList.contains('open')){
+    e.preventDefault();
+    closeRefGuideModal();
+    return;
+  }
   const screen=document.querySelector('.screen.active'); if(!screen) return;
   if(screen.id==='screen-start'){
     if(e.key==='Enter' || e.key===' '){
@@ -12896,13 +12895,26 @@ const ENEMY_BIRD_DATA = [
   {name:'Blakiston Owl', hp:300, atk:18, def:15, type:'boss'},
 ];
 
+function openRefGuideModal() {
+  const m = document.getElementById('ref-guide-modal');
+  if (!m) return;
+  m.classList.add('open');
+  m.setAttribute('aria-hidden', 'false');
+  try { buildRefGuide(); } catch (_) {}
+  document.body.style.overflow = 'hidden';
+}
+function closeRefGuideModal() {
+  const m = document.getElementById('ref-guide-modal');
+  if (!m) return;
+  m.classList.remove('open');
+  m.setAttribute('aria-hidden', 'true');
+  document.body.style.overflow = '';
+}
 function toggleRefGuide() {
-  const body = document.getElementById('ref-guide-body');
-  const chevron = document.getElementById('ref-chevron');
-  if (!body) return;
-  const open = body.classList.toggle('open');
-  chevron.classList.toggle('open', open);
-  if (open) buildRefGuide();
+  const m = document.getElementById('ref-guide-modal');
+  if (!m) return;
+  if (m.classList.contains('open')) closeRefGuideModal();
+  else openRefGuideModal();
 }
 
 function selectRefTab(idx) {
