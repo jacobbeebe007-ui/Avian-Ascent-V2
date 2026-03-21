@@ -46,36 +46,56 @@
 <button type="button" class="take-flight-btn" id="take-flight-btn" onclick="takeFlightToSelect()">Take Flight</button>
 </div>
 </div>
-<!-- SELECT -->
+<!-- SELECT: war-room navigation splash + roster deck -->
 <div class="screen" id="screen-select">
 <div class="select-screen-bg" aria-hidden="true"></div>
 <div class="select-screen-scrim" aria-hidden="true"></div>
 <div class="select-screen-content">
-<header class="sel-hero">
-<h2>Choose Your Champion</h2>
-<p class="sel-tagline">Your fate is written in feathers.</p>
-</header>
-<section class="sel-setup-panel" aria-label="Difficulty">
+<div class="select-splash" aria-label="Camp navigation">
+<div class="splash-top">
+<div class="splash-brand">
+<h2 class="splash-title">Avian Ascent</h2>
+<p class="splash-sub">Roguelike of feathers &amp; fortune — plan your run from the war room.</p>
+</div>
+<button type="button" class="menu-btn splash-settings-btn" onclick="openSettingsModal()">⚙ Settings</button>
+</div>
+<div class="splash-main">
+<aside class="splash-zone splash-supplies" aria-label="Supplies">
+<h3 class="splash-zone-title">Supplies</h3>
+<button type="button" class="menu-btn splash-codex-btn ref-guide-open-btn" id="ref-guide-open-btn">📖 Reference — Codex</button>
+<div class="splash-unlock">
+<label class="splash-unlock-label" for="dev-code-input">Unlock code</label>
+<input autocomplete="off" class="splash-unlock-input" id="dev-code-input" maxlength="32" oninput="checkDevCode(this.value)" placeholder="Code…" spellcheck="false" type="password"/>
+<div class="splash-unlock-msg" id="dev-code-msg"></div>
+</div>
+</aside>
+<div class="splash-zone splash-map" aria-label="Mission map">
+<h3 class="splash-zone-title">Mission map</h3>
+<p class="splash-zone-hint">Difficulty &amp; run mode</p>
 <div class="diff-picker" id="diff-picker"></div>
 <p class="diff-desc" id="diff-desc">Choose your difficulty to begin.</p>
-</section>
-<div class="sel-secondary-tools">
-<div class="sel-dev-wrap">
-<input autocomplete="off" class="sel-dev-input" id="dev-code-input" maxlength="32" oninput="checkDevCode(this.value)" placeholder="Enter code…" spellcheck="false" type="password"/>
-<div class="sel-dev-msg" id="dev-code-msg"></div>
-</div>
-<div class="endless-row sel-mode-row">
+<div class="endless-row splash-mode-row">
 <div id="game-mode-toggle"></div>
 <input id="endless-check" type="checkbox" style="display:none"/>
 </div>
-<div class="sel-codex-row">
-<button type="button" class="menu-btn ref-guide-open-btn" id="ref-guide-open-btn">Game reference — codex</button>
 </div>
-</div>
+<div class="splash-zone splash-door" aria-label="Departure">
+<h3 class="splash-zone-title">The way out</h3>
+<p class="splash-zone-hint">Open country beyond the door — pick who crosses first.</p>
+<button type="button" class="splash-door-btn" id="splash-door-btn" onclick="scrollToSelectRoster()">Choose your champion →</button>
+<div class="splash-continue-wrap">
 <div class="sel-continue-row" id="continue-row" style="display:none">
-<button class="continue-run-btn" onclick="continueRun()">🪺 Continue Last Run</button>
+<button class="continue-run-btn" onclick="continueRun()">🪺 Continue last run</button>
 <p class="sel-continue-info" id="continue-info"></p>
 </div>
+</div>
+</div>
+</div>
+<p class="splash-roster-hint" id="splash-roster-hint">Roster &amp; records below — scroll or use the door button.</p>
+</div>
+<div class="select-roster-deck" id="select-roster-deck">
+<h2 class="roster-deck-title">Champion roster</h2>
+<p class="roster-deck-sub">Your fate is written in feathers.</p>
 <div class="sel-layout">
 <div class="sel-showcase sel-left">
 <div class="ascent-panel is-empty" id="ascent-panel">
@@ -101,6 +121,7 @@
 <div class="run-history sel-highscores" id="highscore-board">
 <div class="run-history-title">— HIGHSCORES —</div>
 <div class="run-history-grid" id="highscore-grid"></div>
+</div>
 </div>
 </div>
 </div>

@@ -1393,18 +1393,6 @@ const UPGRADE_CARDS_REWORK = [
   {id:'z_blackstone_trophy',tier:'gold',icon:'🗿',name:'Blackstone Trophy',desc:'Enemies start battle with Fear(1)',tags:['unique','control'],stackable:false,apply:p=>{p.openingEnemyFear=(p.openingEnemyFear||0)+1;}},
   {id:'z_tempo_crown',tier:'gold',icon:'⏱️',name:'Tempo Crown',desc:'First attack each turn +20% damage',tags:['unique','opening'],stackable:false,apply:p=>{p.firstAttackEachTurnBonusPct=Math.max(p.firstAttackEachTurnBonusPct||0,0.20);}},
   {id:'z_void_rune',tier:'gold',icon:'🌑',name:'Void Rune',desc:'Spells gain +15% damage',tags:['unique','magic'],stackable:false,apply:p=>{p.augSpellDmgPct=Math.max(p.augSpellDmgPct||0,0.15);}},
-
-  // Former content.js pool injects — kept here so getUpgradePool has a single canonical list
-  {id:'g_guardedCore',tier:'grey',icon:'🪵',name:'Guarded Core',desc:'DEF +1 and MDEF +1',tags:['defense','hybrid'],apply:p=>{p.stats.def+=1;p.stats.mdef=(p.stats.mdef||0)+1;}},
-  {id:'g_surge_cell',tier:'grey',icon:'⚡',name:'Surge Cell',desc:'Restore 1 Energy now',tags:['utility','energy'],apply:p=>{p.energy=Math.min((p.energyMax||1),(p.energy||0)+1);}},
-  {id:'u_battleReadiness',tier:'green',icon:'🧭',name:'Battle Readiness',desc:'+1 Energy on your first turn each battle and ACC +2',tags:['utility','energy','accuracy'],apply:p=>{p.firstTurnEnergy=(p.firstTurnEnergy||0)+1;p.stats.acc=(p.stats.acc||80)+2;}},
-  {id:'u_steadyPulse',tier:'green',icon:'💠',name:'Steady Pulse',desc:'MATK +1 and MDEF +1',tags:['offense','defense','magic'],apply:p=>{p.stats.matk=(p.stats.matk||0)+1;p.stats.mdef=(p.stats.mdef||0)+1;}},
-  {id:'r_secondWind',tier:'blue',icon:'🌀',name:'Second Wind',desc:'Heal 20% HP and gain +1 Max Energy',tags:['sustain','energy'],apply:p=>{p.stats.hp=Math.min(p.stats.maxHp,p.stats.hp+Math.max(1,Math.floor(p.stats.maxHp*0.20)));p.energyBonus=(p.energyBonus||0)+1;}},
-  {id:'r_spellguard',tier:'blue',icon:'🔹',name:'Spellguard Plumage',desc:'MDEF +2 and MDodge +6%',tags:['defense','magic'],apply:p=>{p.stats.mdef=(p.stats.mdef||0)+2;p.stats.mdodge=Math.min((p.stats.mdodge||0)+6,100);}},
-  {id:'e_apexFocus',tier:'purple',icon:'🜂',name:'Apex Focus',desc:'ATK +3, MATK +3, ACC +4',tags:['offense','hybrid'],apply:p=>{p.stats.atk+=3;p.stats.matk=(p.stats.matk||0)+3;p.stats.acc=(p.stats.acc||80)+4;}},
-  {id:'e_veteranPlumage',tier:'purple',icon:'🪶',name:'Veteran Plumage',desc:'DEF +2, MDEF +2, Dodge +6%',tags:['defense','hybrid'],apply:p=>{p.stats.def+=2;p.stats.mdef=(p.stats.mdef||0)+2;p.stats.dodge=Math.min((p.stats.dodge||0)+6,100);}},
-  {id:'l_skyBattery',tier:'gold',icon:'🌟',name:'Sky Battery',desc:'Max Energy +2 and gain 1 Energy at the start of every battle',tags:['utility','energy'],stackable:false,apply:p=>{p.energyBonus=(p.energyBonus||0)+2;p.firstTurnEnergy=(p.firstTurnEnergy||0)+1;}},
-  {id:'l_dualNature',tier:'gold',icon:'☯️',name:'Dual Nature',desc:'ATK +4, MATK +4, DEF +2, MDEF +2',tags:['offense','defense','hybrid'],stackable:false,apply:p=>{p.stats.atk+=4;p.stats.matk=(p.stats.matk||0)+4;p.stats.def+=2;p.stats.mdef=(p.stats.mdef||0)+2;}},
 ];
 
 function getUpgradePool(){ return UPGRADE_CARDS_REWORK.slice(); }
@@ -5278,6 +5266,10 @@ function takeFlightToSelect(){
   if(typeof initSelectionSafe==='function') initSelectionSafe();
 }
 globalThis.takeFlightToSelect = takeFlightToSelect;
+function scrollToSelectRoster(){
+  document.getElementById('select-roster-deck')?.scrollIntoView({behavior:'smooth',block:'start'});
+}
+globalThis.scrollToSelectRoster = scrollToSelectRoster;
 
 function showScreen(id) {
   document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
