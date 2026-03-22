@@ -781,12 +781,12 @@ cooldown('chargeUp',3);
     }
 
     if(BIRDS.macaw?.passive){
-      BIRDS.macaw.passive.desc = 'After an enemy uses an ability, gain +5% Dodge for 1 turn (max 20%) and restore 1 HP.';
-      BIRDS.macaw.passive.onBattleStart = function(p){ p._macawEchoDodge = 0; };
-      BIRDS.macaw.passive.onEnemyAbility = function(p){
+      BIRDS.macaw.passive.desc = 'After an enemy uses an ability, gain +5% Dodge for 1 turn (max 20%). Your next Mimic-line spell reads that rhythm for extra payoff.';
+      BIRDS.macaw.passive.onBattleStart = function(p){ p._macawEchoDodge = 0; p._macawCopycatPulse = false; };
+      BIRDS.macaw.passive.onEnemyAbility = function(p, abilityId){
         p._macawEchoDodge = Math.min(20, (p._macawEchoDodge||0) + 5);
         G.playerStatus.humDodge = {bonus:p._macawEchoDodge, turns:1};
-        p.stats.hp = Math.min(p.stats.maxHp, p.stats.hp + 1);
+        p._macawCopycatPulse = true;
       };
     }
   }
