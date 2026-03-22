@@ -132,23 +132,24 @@
 <button type="button" class="select-hub-return-btn" onclick="closeSelectHubPanel()">← Return to war room</button>
 </header>
 <p class="select-hub-lead">Pick your champion — or resume where you left off.</p>
-<div class="splash-continue-wrap select-hub-continue">
-<div class="sel-continue-row" id="continue-row" style="display:none">
-<button class="continue-run-btn" onclick="continueRun()">🪺 Continue last run</button>
-<p class="sel-continue-info" id="continue-info"></p>
-</div>
-</div>
 <div class="select-roster-deck select-roster-deck--focus" id="select-roster-deck">
 <div class="roster-deck-head">
 <h2 class="roster-deck-title">Champion roster</h2>
 <p class="roster-deck-sub">Your fate is written in feathers.</p>
 </div>
-<div class="sel-layout">
-<div class="sel-showcase sel-left">
+<div class="sel-preview-strip" id="sel-preview-strip">
 <div class="ascent-panel is-empty" id="ascent-panel">
 <div class="ascent-empty">← Select a bird to begin your ascent</div>
 </div>
 </div>
+<div class="sel-actions-bar select-hub-continue" id="sel-actions-bar" role="group" aria-label="Run actions">
+<div class="sel-continue-run-wrap" id="continue-row" style="display:none">
+<button type="button" class="continue-run-btn" onclick="continueRun()">🪺 Continue last run</button>
+<p class="sel-continue-info" id="continue-info"></p>
+</div>
+<button type="button" class="take-flight-select-btn" id="take-flight-select-btn" disabled onclick="startGame()" aria-disabled="true">Take Flight</button>
+</div>
+<div class="sel-layout sel-layout--roster-only">
 <div class="sel-roster sel-right">
 <div class="sel-roster-controls">
 <div class="sel-filter-stack">
@@ -157,8 +158,10 @@
 </div>
 <span class="sel-bird-count" id="bird-count-label"></span>
 </div>
+<div class="bird-grid-scroller" id="bird-grid-scroller">
 <div id="bird-grid"></div>
-<div id="mobile-select-details-anchor"></div>
+</div>
+<div id="mobile-select-details-anchor" aria-hidden="true"></div>
 </div>
 </div>
 </div>
