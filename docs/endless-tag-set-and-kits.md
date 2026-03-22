@@ -57,6 +57,8 @@ Design implication:
 
 - Sparrow: Peck, Talon Strike, Battle Chirp, Wind Slash
 - Crow: Peck, Murder Murmuration, Dread Call, Battle Focus
+- Macaw: Echo Note, Mimic Song, Feather Taunt, Chorus Mark
+- Hummingbird: Needle Jab, Dash, Blink Flutter, Combo Strike
 - Magpie: Swoop, Steal Shine, Feather Flick, Dart
 - Seagull: Peck, Dive Snatch, Wind Slash, Mob Swarm
 - Flamingo: Peck, Mud Lash, Preen, Grace Step
