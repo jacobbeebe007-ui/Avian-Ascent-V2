@@ -749,30 +749,30 @@ const BIRDS = {
       onEnemyAbility(p,abilityId){p._macawEchoDodge=Math.min(20,(p._macawEchoDodge||0)+5);G.playerStatus.humDodge={bonus:p._macawEchoDodge,turns:1};p._macawCopycatPulse=true;}},
   },
   peregrine:{
-    name:'Peregrine Falcon', portraitKey:'peregrine', tagline:'200mph. No remorse.',
+    name:'Peregrine Falcon', portraitKey:'peregrine', tagline:'Lock. Stoop. No survivors.',
     size:'small', class:'striker',
     unlockRequires:'unlock_peregrine',
     unlockHint:'Defeat Stage 20 with Hummingbird.',
-    stats:{hp:32,maxHp:32,atk:8,def:3,spd:10,dodge:28,acc:88,critChance:10,mdef:8,matk:8},
+    stats:{hp:32,maxHp:32,atk:8,def:3,spd:10,dodge:28,acc:88,critChance:12,mdef:8,matk:8},
     statBars:{HP:32/50,ATK:8/15,SPD:10/10,Dodge:.56,ACC:.88}, color:'#6a8ac8',
-    mainAttackId:'swoopCut',
-    startAbilities:['swoopCut','skyfallStrike','windFeint','trackPrey'],
-    passive:{id:'terminalVelocity',name:'Terminal Velocity',desc:'First attack each battle deals +20% damage.',
-      onBattleStart(p){p.firstAttackEachBattleBonusPct=0.20;}},
+    mainAttackId:'talon_jab',
+    startAbilities:['talon_jab','dive','keen_eye','aerial_pace'],
+    passive:{id:'stoopHunter',name:'Stoop Hunter',desc:'Your first Dive-line strike each battle deals +15% damage and carries extra Pierce pressure.',
+      onBattleStart(p){p._peregrineFirstStoop=true;}},
   },
   snowyOwl:{
-    name:'Snowy Owl', portraitKey:'snowyOwl', tagline:'Silent. Strike once. Gone.',
+    name:'Snowy Owl', portraitKey:'snowyOwl', tagline:'The snow listens. Then it falls.',
     size:'small', class:'predator',
     unlockRequires:'juvenileWin',
     unlockHint:'Defeat Stage 20 on Normal mode to unlock.',
     stats:{hp:28,maxHp:28,atk:12,def:2,spd:9,dodge:38,acc:92,critChance:15,mdef:3,matk:3},
     statBars:{HP:28/50,ATK:12/15,SPD:9/10,Dodge:.76,ACC:.92}, color:'#e8f0f8',
-    mainAttackId:'silentPierce',
-    startAbilities:['silentPierce','nightTalon','trackPrey','huntersCry'],
-    passive:{id:'shadowCloak',name:'Shadow Cloak',
-      desc:'First attack each battle is unblockable + +35% crit chance (not guaranteed). Taking no damage a turn stacks +2% crit (max +12%, resets on hit).',
-      onBattleStart(p){p._shadowCloakReady=true;p._owlCritStacks=0;},
-      onTurnEnd(p){if(!p._owlHitThisTurn&&(p._owlCritStacks||0)<12){p._owlCritStacks=(p._owlCritStacks||0)+2;p.stats.critChance=(BIRDS.snowyOwl.stats.critChance||15)+p._owlCritStacks;}p._owlHitThisTurn=false;},
+    mainAttackId:'talon_snap',
+    startAbilities:['talon_snap','silent_dive','owl_eye','frost_glide'],
+    passive:{id:'moonlitPatience',name:'Moonlit Patience',
+      desc:'End a turn without taking damage: +2% crit (max +10%, resets when hit). First Silent Dive each battle deals +10% damage, +8% more if the prey is slowed, weakened, or heavily off-balance.',
+      onBattleStart(p){p._owlCritStacks=0;p._owlHitThisTurn=false;p._snowyFirstSilentDive=true;p.stats.critChance=BIRDS.snowyOwl.stats.critChance||15;},
+      onTurnEnd(p){if(!p._owlHitThisTurn&&(p._owlCritStacks||0)<10){p._owlCritStacks=(p._owlCritStacks||0)+2;p.stats.critChance=(BIRDS.snowyOwl.stats.critChance||15)+p._owlCritStacks;}p._owlHitThisTurn=false;},
       onDamage(p){p._owlHitThisTurn=true;p._owlCritStacks=0;p.stats.critChance=BIRDS.snowyOwl.stats.critChance||15;},
     },
   },
@@ -3151,7 +3151,7 @@ let G = {
   endlessMode:false, endlessBattle:0,
   bossKills:0,
   // per-battle ability state
-  swoopCooldown:0, hummingbirdDashCooldown:0, intimidateCooldown:0, fruitCooldown:0,
+  swoopCooldown:0, hummingbirdDashCooldown:0, peregrineDiveCooldown:0, snowyOwlDiveCooldown:0, intimidateCooldown:0, fruitCooldown:0,
   stickLanceStage:0, flybyCharged:false, flybyUsed:false,
   rockDropPending:false, humTurns:0, humMissBonus:0,
   chargeUpActive:false,
@@ -3505,7 +3505,7 @@ function codexMark(type, id, field='seen'){
 }
 
 const SKILL_EVOLUTION_LEVEL_INTERVAL = 3;
-const FAMILY_EVOLUTION_STATE_VERSION = 9;
+const FAMILY_EVOLUTION_STATE_VERSION = 11;
 const SPARROW_SKILL_SLOT_LAYOUT = Object.freeze([
   {slotIndex:0, familyId:'rapid', abilityId:'multiPeck'},
   {slotIndex:1, familyId:'dart', abilityId:'dart'},
@@ -3903,23 +3903,68 @@ const ROBIN_SKILL_FAMILIES = Object.freeze({
 });
 
 const PEREGRINE_SKILL_SLOT_LAYOUT = Object.freeze([
-  {slotIndex:0, familyId:'cut', abilityId:'swoopCut'},
-  {slotIndex:1, familyId:'dive', abilityId:'skyfallStrike'},
-  {slotIndex:2, familyId:'wind', abilityId:'windFeint'},
-  {slotIndex:3, familyId:'stalk', abilityId:'trackPrey'},
+  {slotIndex:0, familyId:'talon', abilityId:'talon_jab'},
+  {slotIndex:1, familyId:'dive', abilityId:'dive'},
+  {slotIndex:2, familyId:'eye', abilityId:'keen_eye'},
+  {slotIndex:3, familyId:'pace', abilityId:'aerial_pace'},
 ]);
 const PEREGRINE_SKILL_FAMILIES = Object.freeze({
-  cut:cloneBirdSkillFamily(MAGPIE_SKILL_FAMILIES.swoop, {
-    familyId:'cut', displayName:'Swoop Line', baseAbilityId:'swoopCut', slotRole:'filler_attack',
-  }),
-  dive:cloneBirdSkillFamily(GOOSE_SKILL_FAMILIES.heavy, {
-    familyId:'dive', displayName:'Dive Line', baseAbilityId:'skyfallStrike', slotRole:'heavy_commitment',
-    tierNames:{1:'Dive', 2:'Plunge', 3:'Impact'},
-  }),
-  wind:SPARROW_SKILL_FAMILIES.wind,
-  stalk:cloneBirdSkillFamily(SPARROW_SKILL_FAMILIES.mark, {
-    familyId:'stalk', displayName:'Stalk Line', baseAbilityId:'trackPrey', slotRole:'setup_prey',
-  }),
+  talon:{
+    familyId:'talon', displayName:'Talon Line', baseAbilityId:'talon_jab', slotRole:'filler_attack', maxTier:3,
+    tierNames:{1:'Jab',2:'Rake',3:'Rend'},
+    masteries:[
+      {id:'power', name:'Killing Talons', desc:'+8% Talon-line damage.'},
+      {id:'precision', name:'Surgical Claws', desc:'Talon-line Pierce and accuracy pressure improve.'},
+      {id:'control', name:'Predator Pressure', desc:'Talon-line Bleed and finisher riders improve.'},
+    ],
+    paths:{
+      pierce:{pathId:'pierce', displayName:'Pierce', abilities:{1:'talon_jab',2:'talon_rake',3:'talon_rend'}},
+      bleed:{pathId:'bleed', displayName:'Bleed', abilities:{1:'slice_jab',2:'slice_rake',3:'slice_rend'}},
+      execute:{pathId:'execute', displayName:'Execute', abilities:{1:'hunters_jab',2:'hunters_rake',3:'hunters_rend'}},
+    },
+  },
+  dive:{
+    familyId:'dive', displayName:'Dive Line', baseAbilityId:'dive', slotRole:'signature_burst', maxTier:3,
+    tierNames:{1:'Dive',2:'Drop',3:'Impact'},
+    masteries:[
+      {id:'power', name:'Gravity Well', desc:'+7% Dive-line damage; return-pass delayed chip +6.'},
+      {id:'precision', name:'Aimpoint', desc:'Crit-route dives hit harder on weak targets.'},
+      {id:'control', name:'Terminal Voltage', desc:'Shock dives gain +8% Paralysis odds.'},
+    ],
+    paths:{
+      crit:{pathId:'crit', displayName:'Crit', abilities:{1:'falcon_dive',2:'killing_drop',3:'impact_strike'}},
+      shock:{pathId:'shock', displayName:'Shock', abilities:{1:'thunder_dive',2:'shock_drop',3:'storm_impact'}},
+      return:{pathId:'return', displayName:'Return', abilities:{1:'passing_dive',2:'return_drop',3:'double_impact'}},
+    },
+  },
+  eye:{
+    familyId:'eye', displayName:'Keen Eye Line', baseAbilityId:'keen_eye', slotRole:'hunter_setup', maxTier:3,
+    tierNames:{1:'Eye',2:'Sight',3:'Lock'},
+    masteries:[
+      {id:'power', name:'Amp Focus', desc:'Amp-path next-hit bonuses +5%.'},
+      {id:'precision', name:'Armor Reader', desc:'Break-path DEF shred +1.'},
+      {id:'control', name:'Death Gaze', desc:'Crit-lock bonus crit chance +3.'},
+    ],
+    paths:{
+      amp:{pathId:'amp', displayName:'Amp', abilities:{1:'keen_eye',2:'hunters_sight',3:'fatal_lock'}},
+      break:{pathId:'break', displayName:'Break', abilities:{1:'expose_flight',2:'weakpoint_sight',3:'ruin_lock'}},
+      crit:{pathId:'crit', displayName:'Crit', abilities:{1:'predatory_eye',2:'killer_sight',3:'death_lock'}},
+    },
+  },
+  pace:{
+    familyId:'pace', displayName:'Aerial Pace Line', baseAbilityId:'aerial_pace', slotRole:'momentum_utility', maxTier:3,
+    tierNames:{1:'Pace',2:'Glide',3:'Stoop'},
+    masteries:[
+      {id:'power', name:'Thermal Lift', desc:'Speed-path SPD bonuses +1.'},
+      {id:'precision', name:'Slipstream', desc:'Dodge-path dodge bonuses +4%.'},
+      {id:'control', name:'Killing Line', desc:'Momentum-path next-dive bonus +3% mult.'},
+    ],
+    paths:{
+      speed:{pathId:'speed', displayName:'Speed', abilities:{1:'rapid_pace',2:'glide_burst',3:'stoop_tempo'}},
+      dodge:{pathId:'dodge', displayName:'Dodge', abilities:{1:'slip_pace',2:'ghost_glide',3:'phantom_stoop'}},
+      momentum:{pathId:'momentum', displayName:'Momentum', abilities:{1:'hunting_pace',2:'falling_glide',3:'kill_stoop'}},
+    },
+  },
 });
 
 const KIWI_SKILL_SLOT_LAYOUT = Object.freeze([
@@ -3943,25 +3988,68 @@ const KIWI_SKILL_FAMILIES = Object.freeze({
 });
 
 const SNOWY_OWL_SKILL_SLOT_LAYOUT = Object.freeze([
-  {slotIndex:0, familyId:'pierce', abilityId:'silentPierce'},
-  {slotIndex:1, familyId:'talon', abilityId:'nightTalon'},
-  {slotIndex:2, familyId:'stalk', abilityId:'trackPrey'},
-  {slotIndex:3, familyId:'hunt_call', abilityId:'huntersCry'},
+  {slotIndex:0, familyId:'talon', abilityId:'talon_snap'},
+  {slotIndex:1, familyId:'dive', abilityId:'silent_dive'},
+  {slotIndex:2, familyId:'eye', abilityId:'owl_eye'},
+  {slotIndex:3, familyId:'glide', abilityId:'frost_glide'},
 ]);
 const SNOWY_OWL_SKILL_FAMILIES = Object.freeze({
-  pierce:cloneBirdSkillFamily(CROW_SKILL_FAMILIES.peck, {
-    familyId:'pierce', displayName:'Silent Pierce Line', baseAbilityId:'silentPierce', slotRole:'filler_attack',
-  }),
-  talon:cloneBirdSkillFamily(GOOSE_SKILL_FAMILIES.heavy, {
-    familyId:'talon', displayName:'Night Talon Line', baseAbilityId:'nightTalon', slotRole:'heavy_commitment',
-    tierNames:{1:'Talon', 2:'Rend', 3:'Execution'},
-  }),
-  stalk:cloneBirdSkillFamily(SPARROW_SKILL_FAMILIES.mark, {
-    familyId:'stalk', displayName:'Stalk Line', baseAbilityId:'trackPrey', slotRole:'setup_prey',
-  }),
-  hunt_call:cloneBirdSkillFamily(CROW_SKILL_FAMILIES.call, {
-    familyId:'hunt_call', displayName:"Hunter's Cry Line", baseAbilityId:'huntersCry', slotRole:'utility_control',
-  }),
+  talon:{
+    familyId:'talon', displayName:'Talon Line', baseAbilityId:'talon_snap', slotRole:'filler_attack', maxTier:3,
+    tierNames:{1:'Snap',2:'Clutch',3:'Rend'},
+    masteries:[
+      {id:'power', name:'Ice Talons', desc:'+8% Talon-line damage.'},
+      {id:'precision', name:'Quiet Strike', desc:'Talon-line Pierce and hit consistency improve.'},
+      {id:'control', name:'Winter Grip', desc:'Frostbite-path slow and Weaken riders improve.'},
+    ],
+    paths:{
+      pierce:{pathId:'pierce', displayName:'Pierce', abilities:{1:'talon_snap',2:'talon_clutch',3:'talon_rend'}},
+      bleed:{pathId:'bleed', displayName:'Bleed', abilities:{1:'razor_snap',2:'razor_clutch',3:'razor_rend'}},
+      freezebite:{pathId:'freezebite', displayName:'Frostbite', abilities:{1:'frost_snap',2:'frost_clutch',3:'frost_rend'}},
+    },
+  },
+  dive:{
+    familyId:'dive', displayName:'Silent Dive Line', baseAbilityId:'silent_dive', slotRole:'signature_burst', maxTier:3,
+    tierNames:{1:'Dive',2:'Drop',3:'Impact'},
+    masteries:[
+      {id:'power', name:'Plunge Weight', desc:'+7% Dive-line damage; return-pass delayed +6.'},
+      {id:'precision', name:'Ghost Line', desc:'Crit-route ambush +4 effective crit pressure.'},
+      {id:'control', name:'Whiteout', desc:'Slow-route dives apply heavier chill.'},
+    ],
+    paths:{
+      crit:{pathId:'crit', displayName:'Crit', abilities:{1:'ghost_dive',2:'kill_drop',3:'silent_impact'}},
+      slow:{pathId:'slow', displayName:'Slow', abilities:{1:'frost_dive',2:'winter_drop',3:'whiteout_impact'}},
+      return:{pathId:'return', displayName:'Return', abilities:{1:'owl_passing_dive',2:'owl_return_drop',3:'owl_double_impact'}},
+    },
+  },
+  eye:{
+    familyId:'eye', displayName:'Owl Eye Line', baseAbilityId:'owl_eye', slotRole:'hunter_setup', maxTier:3,
+    tierNames:{1:'Eye',2:'Sight',3:'Lock'},
+    masteries:[
+      {id:'power', name:'Patient Aim', desc:'Amp-path next-hit bonuses +4%.'},
+      {id:'precision', name:'Tear Hide', desc:'Break-path armor stress +1 DEF.'},
+      {id:'control', name:'Frozen Gaze', desc:'Crit-focus path +3 crit chance.'},
+    ],
+    paths:{
+      amp:{pathId:'amp', displayName:'Amp', abilities:{1:'owl_eye',2:'owl_hunters_sight',3:'moon_lock'}},
+      break:{pathId:'break', displayName:'Break', abilities:{1:'expose_prey',2:'owl_weakpoint_sight',3:'owl_ruin_lock'}},
+      crit:{pathId:'crit', displayName:'Crit', abilities:{1:'cold_eye',2:'owl_killer_sight',3:'owl_death_lock'}},
+    },
+  },
+  glide:{
+    familyId:'glide', displayName:'Frost Glide Line', baseAbilityId:'frost_glide', slotRole:'control_utility', maxTier:3,
+    tierNames:{1:'Glide',2:'Drift',3:'Silence'},
+    masteries:[
+      {id:'power', name:'Downwind', desc:'Slow-path chill +1 SPD penalty when possible.'},
+      {id:'precision', name:'Snow Veil', desc:'Dodge-path dodge bonuses +4%.'},
+      {id:'control', name:'Ambush Ritual', desc:'Ambush-path next-hit bonus +3%.'},
+    ],
+    paths:{
+      dodge:{pathId:'dodge', displayName:'Dodge', abilities:{1:'silent_glide',2:'ghost_drift',3:'snow_silence'}},
+      slow:{pathId:'slow', displayName:'Slow', abilities:{1:'frost_glide',2:'winter_drift',3:'white_silence'}},
+      ambush:{pathId:'ambush', displayName:'Ambush', abilities:{1:'hunting_glide',2:'shadow_drift',3:'night_silence'}},
+    },
+  },
 });
 
 const MACAW_SKILL_SLOT_LAYOUT = Object.freeze([
@@ -4137,10 +4225,10 @@ const FAMILY_EVOLUTION_BIRD_DATA = Object.freeze({
     families:PEREGRINE_SKILL_FAMILIES,
     abilityLookup:buildFamilySkillAbilityLookup(PEREGRINE_SKILL_SLOT_LAYOUT, PEREGRINE_SKILL_FAMILIES),
     legacyBaseAbilityIds:Object.freeze({
-      cut:{legacy:['dart', 'swoop'], current:'swoopCut'},
-      dive:{legacy:['deathDive', 'skyStrike'], current:'skyfallStrike'},
-      wind:{legacy:['evade'], current:'windFeint'},
-      stalk:{legacy:['predatorMark', 'featherRuffle', 'markPrey'], current:'trackPrey'},
+      talon:{legacy:['swoopCut','dart','swoop'], current:'talon_jab'},
+      dive:{legacy:['skyfallStrike','deathDive','skyStrike'], current:'dive'},
+      eye:{legacy:['windFeint','evade','trackPrey','huntersMark'], current:'keen_eye'},
+      pace:{legacy:['windFeint','trackPrey','predatorMark','featherRuffle','markPrey'], current:'aerial_pace'},
     }),
   },
   kiwi:{
@@ -4161,10 +4249,10 @@ const FAMILY_EVOLUTION_BIRD_DATA = Object.freeze({
     families:SNOWY_OWL_SKILL_FAMILIES,
     abilityLookup:buildFamilySkillAbilityLookup(SNOWY_OWL_SKILL_SLOT_LAYOUT, SNOWY_OWL_SKILL_FAMILIES),
     legacyBaseAbilityIds:Object.freeze({
-      pierce:{legacy:['peck', 'needle_peck'], current:'silentPierce'},
-      talon:{legacy:['deathDive', 'skyStrike'], current:'nightTalon'},
-      stalk:{legacy:['predatorMark', 'featherRuffle', 'markPrey'], current:'trackPrey'},
-      hunt_call:{legacy:['dread_call', 'dreadCall', 'victoryChant'], current:'huntersCry'},
+      talon:{legacy:['silentPierce','peck','needle_peck','mockingPeck','crowStrike'], current:'talon_snap'},
+      dive:{legacy:['nightTalon','deathDive','skyStrike','heavyTalon','diveBomb','skyfallStrike'], current:'silent_dive'},
+      eye:{legacy:['trackPrey','predatorMark','featherRuffle','markPrey','huntersMark'], current:'owl_eye'},
+      glide:{legacy:['windFeint','evade','huntersCry','dread_call','dreadCall','victoryChant'], current:'frost_glide'},
     }),
   },
   macaw:{
@@ -4244,6 +4332,11 @@ function getSkillSlotDisplayLabel(slot){
 }
 function normalizeSkillSlotState(slot, fallback, birdKey='sparrow'){
   const base = fallback || createSkillSlotState(0, null, null, 0, '', 0, []);
+  const catalog = getBirdSkillFamilyCatalog(birdKey);
+  const rawFam = slot?.familyId ?? base.familyId;
+  if(catalog && rawFam && !catalog[rawFam]){
+    return createSkillSlotState(base.slotIndex, base.familyId, null, 0, base.abilityId, 0, []);
+  }
   let next = createSkillSlotState(slot?.slotIndex ?? base.slotIndex, slot?.familyId ?? base.familyId, slot?.pathId ?? base.pathId, slot?.tier ?? base.tier, slot?.abilityId ?? base.abilityId, slot?.masteryCount ?? base.masteryCount, slot?.masteries ?? base.masteries);
   if(usesFamilySkillEvolution({birdKey}) && next.abilityId){
     next.abilityId = migrateLegacyFamilyBaseAbilityId(next.abilityId, birdKey, next.familyId, next.pathId, next.tier);
@@ -4251,6 +4344,12 @@ function normalizeSkillSlotState(slot, fallback, birdKey='sparrow'){
     if(info && info.familyId===next.familyId){
       next.pathId = next.pathId || info.pathId || null;
       next.tier = Math.max(next.tier||0, info.tier||0);
+    }else if(catalog && catalog[next.familyId]){
+      next.pathId = null;
+      next.tier = 0;
+      next.abilityId = base.abilityId;
+      next.masteries = [];
+      next.masteryCount = 0;
     }
   }
   if(!next.abilityId) next.abilityId = base.abilityId;
@@ -4358,6 +4457,8 @@ function syncPlayerAbilitiesFromSkillSlots(player){
     if(slot.familyId==='rapid') ab.fixedMainAttackCost = true;
     if(player.birdKey==='macaw' && slot.abilityId==='echo_note') ab.fixedMainAttackCost = true;
     if(player.birdKey==='hummingbird' && slot.abilityId==='needle_jab') ab.fixedMainAttackCost = true;
+    if(player.birdKey==='peregrine' && slot.abilityId==='talon_jab') ab.fixedMainAttackCost = true;
+    if(player.birdKey==='snowyOwl' && slot.abilityId==='talon_snap') ab.fixedMainAttackCost = true;
     return ab;
   });
 }
@@ -5187,7 +5288,7 @@ function resetForNewBattle(){
   G.playerStatus={};
   G.enemyStatus={};
   G.crowDefendCooldown=0; G.blackbirdAttackCount=0;
-  G.swoopCooldown=0; G.hummingbirdDashCooldown=0; G.intimidateCooldown=0; G.fruitCooldown=0;
+  G.swoopCooldown=0; G.hummingbirdDashCooldown=0; G.peregrineDiveCooldown=0; G.snowyOwlDiveCooldown=0; G.intimidateCooldown=0; G.fruitCooldown=0;
   G.stickLanceStage=0; G.flybyCharged=false; G.flybyUsed=false;
   G.rockDropPending=false; G.humTurns=0; G.humMissBonus=0;
   G.chargeUpActive=false; G.warcryActive=false; G.warcryATK=0;
@@ -5749,6 +5850,11 @@ function renderStatuses(id, statuses) {
     else if (k==='sittingDuck') { b.className='status-badge feared'; b.textContent=`🦆 Duck!(Dodge=0%)`; }
     else if (k==='wingClip') { b.className='status-badge feared'; b.textContent=`✂ Clipped(${v.turns}t,-${v.spdRedux}SPD)`; }
     else if (k==='sonicSkip') { b.className='status-badge paralyzed'; b.textContent=`🔊 Dirge(${v.turns}t,${v.chance}%skip)`; tooltipSummary='Debuff: chance to skip actions from sonic disorientation.'; }
+    else if (k==='peregrineCritLens') { b.className='status-badge crit'; b.textContent=`🦅 Aim+${v.bonus||0}%Crit(${v.turns}t)`; }
+    else if (k==='peregrineDiveAmp') { b.className='status-badge buffed'; b.textContent=`🦅 Stoop+${Math.round((v.mult||0)*100)}%(${v.turns}t)`; }
+    else if (k==='peregrineDefBreak') { b.className='status-badge weaken'; b.textContent=`🛡 Broken(${v.turns}t,−${v.defLost||0}DEF)`; }
+    else if (k==='owlCritFocus') { b.className='status-badge crit'; b.textContent=`🦉 Moon+${v.bonus||0}%Crit(${v.turns}t)`; }
+    else if (k==='owlArmorStress') { b.className='status-badge weaken'; b.textContent=`🦉 Stressed(${v.turns}t,−${v.defLost||0}DEF)`; }
     else { return; }
     b.title=b.textContent.replace(/\s+/g,' ').trim();
     b.dataset.statusId = k;
@@ -6221,6 +6327,14 @@ function renderActions() {
     if (G.player?.birdKey==='hummingbird' && HUMMINGBIRD_DASH_ABILITY_IDS.has(ab.id)) {
       btnCostText=G.hummingbirdDashCooldown>0?`Cooldown:${G.hummingbirdDashCooldown}t`:'Ready';
       cdisabled=G.hummingbirdDashCooldown>0;
+    }
+    if (G.player?.birdKey==='peregrine' && PEREGRINE_DIVE_ABILITY_IDS.has(ab.id)) {
+      btnCostText=G.peregrineDiveCooldown>0?`Cooldown:${G.peregrineDiveCooldown}t`:'Ready';
+      cdisabled=G.peregrineDiveCooldown>0;
+    }
+    if (G.player?.birdKey==='snowyOwl' && SNOWY_OWL_DIVE_ABILITY_IDS.has(ab.id)) {
+      btnCostText=G.snowyOwlDiveCooldown>0?`Cooldown:${G.snowyOwlDiveCooldown}t`:'Ready';
+      cdisabled=G.snowyOwlDiveCooldown>0;
     }
     if (ab.id==='intimidate') {
       btnCostText=G.intimidateCooldown>0?`Cooldown:${G.intimidateCooldown}t`:'Ready';
@@ -7462,6 +7576,8 @@ function countEnemyCombatDebuffCategories(){
   if((s.accDebuff||0)>0) n++;
   if(s.slow) n++;
   if((s.exposedGuard?.pct||0)>0) n++;
+  if((s.peregrineDefBreak?.defLost||0)>0) n++;
+  if((s.owlArmorStress?.defLost||0)>0) n++;
   return n;
 }
 function selfDodgeBuffActive(){
@@ -7718,6 +7834,10 @@ function getPlayerCritChance(ab) {
     base += (G.player?.firstAttackCritBonus||0);
   }
   if(isAttack) base += (G.player?.augAttackCrit||0);
+  const pfLens=G.playerStatus?.peregrineCritLens;
+  if(isAttack && pfLens && (pfLens.turns||0)>0) base += (pfLens.bonus||0);
+  const owlLens=G.playerStatus?.owlCritFocus;
+  if(isAttack && owlLens && (owlLens.turns||0)>0) base += (owlLens.bonus||0);
   return Math.min(100,base);
 }
 
@@ -9025,7 +9145,7 @@ async function executeSparrowRapidFamilyAction(ab, config){
     const miss=Math.max(0,(config.miss?.[lv-1]||8)-hitBonus-mastery.miss);
     if(chance(miss)){ await doMiss('player'); continue; }
     if((config.pierce?.[lv-1]||0)>0) G._currentPiercePct=(config.pierce[lv-1]||0)+mastery.pierce;
-    const r=dealDamage('enemy',pdmg((config.mult[lv-1]||1)*(1+mastery.damage),ab),chance(getPlayerCritChance(ab)));
+    const r=dealDamage('enemy',pdmgWithAlternateScaling((config.mult[lv-1]||1)*(1+mastery.damage),ab),chance(getPlayerCritChance(ab)));
     await doAttack('player','enemy',r);
     setHpBar('enemy',G.enemy.stats.hp,G.enemy.stats.maxHp);
     landed++; total+=r.dmgDealt;
@@ -9051,7 +9171,7 @@ async function executeSparrowDartFamilyAction(ab, config){
   const miss=Math.max(0,(config.miss?.[lv-1]||8)-hitBonus-mastery.miss);
   if(chance(miss)){ await doMiss('player'); logMsg(`${config.name} missed!`,'miss'); return; }
   if((config.pierce?.[lv-1]||0)>0) G._currentPiercePct=(config.pierce[lv-1]||0);
-  const r=dealDamage('enemy',pdmg((config.mult[lv-1]||1)*(1+mastery.damage),ab),chance(getPlayerCritChance(ab)));
+  const r=dealDamage('enemy',pdmgWithAlternateScaling((config.mult[lv-1]||1)*(1+mastery.damage),ab),chance(getPlayerCritChance(ab)));
   await doAttack('player','enemy',r);
   setHpBar('enemy',G.enemy.stats.hp,G.enemy.stats.maxHp);
   if(config.rider==='burning' && chance((config.riderChance[lv-1]||0)+mastery.rider)){ G.enemyStatus.burning=config.turns?.[lv-1]||3; spawnFloat('enemy','🔥 Burn!','fn-burn'); }
@@ -9657,7 +9777,7 @@ async function executeCrowStrikeAction(ab, config={}){
     }else if(config.damageKind==='hybrid'){
       amount=Math.max(1, Math.floor((pdmg(mult, prox) + matk(Math.max(0.75, mult*0.9))) / 2));
     }else{
-      amount=pdmg(mult, prox);
+      amount=pdmgWithAlternateScaling(mult, prox);
     }
     const r=dealDamage('enemy', amount, isCrit, config.damageKind==='magic', prox);
     total+=r.dmgDealt;
@@ -9903,6 +10023,91 @@ const HUMMINGBIRD_EVOLUTION_TEMPLATE_DEFS = [
   ['repeat_finale','Repeat Finale','Combo-line trigger finisher.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Large amp + heavy afterimage.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Repeat killing beat.'}]}],
 ];
 for(const [id,name,desc,options] of HUMMINGBIRD_EVOLUTION_TEMPLATE_DEFS){
+  Object.assign(ABILITY_TEMPLATES[id]||{}, makeEvolutionAbilityTemplate(id,name,desc,options));
+}
+const PEREGRINE_EVOLUTION_TEMPLATE_DEFS = [
+  ['talon_jab','Talon Jab','Talon-line neutral. A sharp controlled strike before you specialize.',{type:'physical',btnType:'physical',energy:1,fixedMainAttackCost:true,levels:[{desc:'~100% dmg, Pierce 10%.'},{desc:'Stronger jab.'},{desc:'Stronger jab.'},{desc:'Peak precision jab.'}]}],
+  ['talon_rake','Talon Rake','Talon-line pierce evolution. Rake through guard.',{type:'physical',btnType:'physical',energy:1,fixedMainAttackCost:true,levels:[{desc:'Pierce 20%.'},{desc:'Stronger rake.'},{desc:'Stronger rake.'},{desc:'Maximum pierce rake.'}]}],
+  ['talon_rend','Talon Rend','Talon-line pierce finisher. Armor-breaking rend.',{type:'physical',btnType:'physical',energy:1,fixedMainAttackCost:true,levels:[{desc:'Pierce 30% + bonus vs heavy armor.'},{desc:'Heavier rend.'},{desc:'Heavier rend.'},{desc:'Capstone rend.'}]}],
+  ['slice_jab','Razor Jab','Talon-line bleed branch. Open a bleeding line.',{type:'physical',btnType:'physical',energy:1,fixedMainAttackCost:true,levels:[{desc:'Bleed 10%.'},{desc:'Stronger cut.'},{desc:'Stronger cut.'},{desc:'Peak razor jab.'}]}],
+  ['slice_rake','Razor Rake','Talon-line bleed evolution. Deeper wounds.',{type:'physical',btnType:'physical',energy:1,fixedMainAttackCost:true,levels:[{desc:'Bleed 15%.'},{desc:'Stronger rake.'},{desc:'Stronger rake.'},{desc:'Cruel rake.'}]}],
+  ['slice_rend','Razor Rend','Talon-line bleed finisher. Finish wounded prey.',{type:'physical',btnType:'physical',energy:1,fixedMainAttackCost:true,levels:[{desc:'Bleed 20% + wounded payoff.'},{desc:'Heavier rend.'},{desc:'Heavier rend.'},{desc:'Butcher rend.'}]}],
+  ['hunters_jab','Hunter\'s Jab','Talon-line execute branch. Strike the vulnerable line.',{type:'physical',btnType:'physical',energy:1,fixedMainAttackCost:true,levels:[{desc:'Bonus vs low HP / exposed / bleeding prey.'},{desc:'Stronger finisher bias.'},{desc:'Stronger finisher bias.'},{desc:'Peak hunter jab.'}]}],
+  ['hunters_rake','Hunter\'s Rake','Talon-line execute evolution. Widen the kill window.',{type:'physical',btnType:'physical',energy:1,fixedMainAttackCost:true,levels:[{desc:'Stronger execute payoff.'},{desc:'Heavier rake.'},{desc:'Heavier rake.'},{desc:'Relentless rake.'}]}],
+  ['hunters_rend','Hunter\'s Rend','Talon-line execute finisher. Terminal prey work.',{type:'physical',btnType:'physical',energy:1,fixedMainAttackCost:true,levels:[{desc:'Best vulnerable-prey execution.'},{desc:'Heavier rend.'},{desc:'Heavier rend.'},{desc:'Apex rend.'}]}],
+  ['dive','Dive','Dive-line neutral. A stooping pass-through burst that defines the falcon.',{type:'physical',btnType:'physical',energy:2,levels:[{desc:'2 EN. Can’t be dodged. Strong stoop.'},{desc:'Stronger stoop.'},{desc:'Shorter downtime.'},{desc:'Peak stoop; often no CD.'}], damageScaling:{ baseScaler:'ATT', secondaryScaler:'SPD', secondaryScaleValue:0.22, scalingNote:'SPD secondary; +10% while dodge up; +5%/debuff (max 3).', conditionalBonuses:_hbDashCond }}],
+  ['falcon_dive','Falcon Dive','Dive-line crit branch. Crit-weighted stoop.',{type:'physical',btnType:'physical',energy:2,levels:[{desc:'2 EN. Crit-biased dive.'},{desc:'Stronger crit dive.'},{desc:'Stronger.'},{desc:'Maximum crit stoop.'}], damageScaling:{ baseScaler:'ATT', secondaryScaler:'SPD', secondaryScaleValue:0.26, scalingNote:'SPD secondary; +10% dodge up; +5%/debuff (max 3).', conditionalBonuses:_hbDashCond }}],
+  ['killing_drop','Killing Drop','Dive-line crit evolution. Heavier killing angle.',{type:'physical',btnType:'physical',energy:2,levels:[{desc:'2 EN. Harder crit drop.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Strongest crit drop.'}], damageScaling:{ baseScaler:'ATT', secondaryScaler:'SPD', secondaryScaleValue:0.30, scalingNote:'SPD secondary; +10% dodge up; +6%/debuff (max 3).', conditionalBonuses:[{type:'while_self_buff_active',buff:'dodge_up',damageBonus:0.10},{type:'per_target_debuff',damageBonusPerStack:0.06,maxStacks:3}] }}],
+  ['impact_strike','Impact Strike','Dive-line crit finisher. Terminal velocity impact.',{type:'physical',btnType:'physical',energy:2,levels:[{desc:'2 EN. Maximum crit/kill route.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Capstone impact.'}], damageScaling:{ baseScaler:'ATT', secondaryScaler:'SPD', secondaryScaleValue:0.34, scalingNote:'SPD secondary; +12% dodge up; +6%/debuff (max 3).', conditionalBonuses:[{type:'while_self_buff_active',buff:'dodge_up',damageBonus:0.12},{type:'per_target_debuff',damageBonusPerStack:0.06,maxStacks:3}] }}],
+  ['thunder_dive','Thunder Dive','Dive-line shock branch. Stun the air out of them.',{type:'physical',btnType:'physical',energy:2,levels:[{desc:'2 EN. Hybrid burst + Paralysis.'},{desc:'Stronger shock.'},{desc:'Stronger shock.'},{desc:'Strongest thunder stoop.'}], damageScaling:{ baseScaler:'ATT', secondaryScaler:'SPD', secondaryScaleValue:0.16, scalingNote:'Hybrid half; +8% dodge up.', conditionalBonuses:[{type:'while_self_buff_active',buff:'dodge_up',damageBonus:0.08}] }}],
+  ['shock_drop','Shock Drop','Dive-line shock evolution. Heavier paralysis route.',{type:'physical',btnType:'physical',energy:2,levels:[{desc:'2 EN. More Paralysis pressure.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Violent drop.'}], damageScaling:{ baseScaler:'ATT', secondaryScaler:'SPD', secondaryScaleValue:0.20, scalingNote:'Hybrid half; +8% dodge up; +4%/debuff (max 2).', conditionalBonuses:[{type:'while_self_buff_active',buff:'dodge_up',damageBonus:0.08},{type:'per_target_debuff',damageBonusPerStack:0.04,maxStacks:2}] }}],
+  ['storm_impact','Storm Impact','Dive-line shock finisher. Multi-hit storm stoop.',{type:'physical',btnType:'physical',energy:2,levels:[{desc:'2 EN. Big hybrid burst + Paralysis.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Maximum storm impact.'}], damageScaling:{ baseScaler:'ATT', secondaryScaler:'SPD', secondaryScaleValue:0.24, scalingNote:'Hybrid half; +10% dodge up; +5%/debuff (max 3).', conditionalBonuses:[{type:'while_self_buff_active',buff:'dodge_up',damageBonus:0.10},{type:'per_target_debuff',damageBonusPerStack:0.05,maxStacks:3}] }}],
+  ['passing_dive','Passing Dive','Dive-line return branch. Hit now; return strike next turn.',{type:'physical',btnType:'physical',energy:2,levels:[{desc:'2 EN. Immediate stoop + delayed return chip.'},{desc:'Bigger return.'},{desc:'Bigger return.'},{desc:'Largest return line.'}], damageScaling:{ baseScaler:'ATT', secondaryScaler:'SPD', secondaryScaleValue:0.24, scalingNote:'SPD secondary; delayed return scales with SPD/debuffs.', conditionalBonuses:_hbDashCond }}],
+  ['return_drop','Return Drop','Dive-line return evolution. Harder pass + fatter return.',{type:'physical',btnType:'physical',energy:2,levels:[{desc:'2 EN. Stronger delayed follow-up.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Peak return drop.'}], damageScaling:{ baseScaler:'ATT', secondaryScaler:'SPD', secondaryScaleValue:0.28, scalingNote:'SPD secondary; +10% dodge up; +6%/debuff (max 3).', conditionalBonuses:[{type:'while_self_buff_active',buff:'dodge_up',damageBonus:0.10},{type:'per_target_debuff',damageBonusPerStack:0.06,maxStacks:3}] }}],
+  ['double_impact','Double Impact','Dive-line return finisher. Maximum return-pass kill pressure.',{type:'physical',btnType:'physical',energy:2,levels:[{desc:'2 EN. Strongest delayed return route.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Capstone double impact.'}], damageScaling:{ baseScaler:'ATT', secondaryScaler:'SPD', secondaryScaleValue:0.32, scalingNote:'SPD secondary; +12% dodge up; +6%/debuff (max 3).', conditionalBonuses:[{type:'while_self_buff_active',buff:'dodge_up',damageBonus:0.12},{type:'per_target_debuff',damageBonusPerStack:0.06,maxStacks:3}] }}],
+  ['keen_eye','Keen Eye','Keen Eye-line neutral. Lock the line; amplify the next hit.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Next attack +15% damage.'},{desc:'+18%.'},{desc:'+21%.'},{desc:'+24%.'}]}],
+  ['hunters_sight','Hunter\'s Sight','Keen Eye-line amp evolution. Bigger burst window.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Next attack +22% damage.'},{desc:'+26%.'},{desc:'+30%.'},{desc:'+34%.'}]}],
+  ['fatal_lock','Fatal Lock','Keen Eye-line amp finisher. Maximum next-hit burst.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Next attack +30% damage.'},{desc:'+34%.'},{desc:'+38%.'},{desc:'+42%.'}]}],
+  ['expose_flight','Expose Flight','Keen Eye-line break branch. Stress their armor.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Temporary DEF shred.'},{desc:'Stronger shred.'},{desc:'Stronger shred.'},{desc:'Heavy shred.'}]}],
+  ['weakpoint_sight','Weakpoint Sight','Keen Eye-line break evolution. Find the crack.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Larger DEF shred.'},{desc:'Larger shred.'},{desc:'Larger shred.'},{desc:'Peak weakpoint.'}]}],
+  ['ruin_lock','Ruin Lock','Keen Eye-line break finisher. Ruin their guard.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Massive DEF shred window.'},{desc:'Heavier.'},{desc:'Heavier.'},{desc:'Total ruin.'}]}],
+  ['predatory_eye','Predatory Eye','Keen Eye-line crit branch. Crit focus for the kill window.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'+10% crit chance on attacks briefly.'},{desc:'+14%.'},{desc:'+18%.'},{desc:'+22%.'}]}],
+  ['killer_sight','Killer Sight','Keen Eye-line crit evolution. Sharper sight.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'+14% crit chance briefly.'},{desc:'+18%.'},{desc:'+22%.'},{desc:'+26%.'}]}],
+  ['death_lock','Death Lock','Keen Eye-line crit finisher. Death sentence focus.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'+18% crit chance briefly.'},{desc:'+22%.'},{desc:'+26%.'},{desc:'+30%.'}]}],
+  ['aerial_pace','Aerial Pace','Pace-line neutral. Soar into better tempo.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Small SPD + light dodge.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Strongest baseline pace.'}]}],
+  ['rapid_pace','Rapid Pace','Pace-line speed branch. Velocity for the stoop.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'SPD surge.'},{desc:'Bigger surge.'},{desc:'Bigger surge.'},{desc:'Maximum surge.'}]}],
+  ['glide_burst','Glide Burst','Pace-line speed evolution. Thermal push.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Large SPD spike.'},{desc:'Larger spike.'},{desc:'Larger spike.'},{desc:'Huge spike.'}]}],
+  ['stoop_tempo','Stoop Tempo','Pace-line speed finisher. Perfect dive tempo.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'SPD + enemy ACC pressure.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Maximum tempo.'}]}],
+  ['slip_pace','Slip Pace','Pace-line dodge branch. Slip the line.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Dodge window.'},{desc:'Stronger slip.'},{desc:'Stronger slip.'},{desc:'Peak slip.'}]}],
+  ['ghost_glide','Ghost Glide','Pace-line dodge evolution. Harder to track.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Heavy dodge.'},{desc:'Heavier.'},{desc:'Heavier.'},{desc:'Ghost glide.'}]}],
+  ['phantom_stoop','Phantom Stoop','Pace-line dodge finisher. Vanish into the stoop.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Huge dodge + slow pressure.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Phantom line.'}]}],
+  ['hunting_pace','Hunting Pace','Pace-line momentum branch. Set up the next dive.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Next Dive-line hit deals bonus damage.'},{desc:'Stronger dive amp.'},{desc:'Stronger dive amp.'},{desc:'Strongest dive amp.'}]}],
+  ['falling_glide','Falling Glide','Pace-line momentum evolution. Falling into impact.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Larger next-dive multiplier.'},{desc:'Larger.'},{desc:'Larger.'},{desc:'Peak glide.'}]}],
+  ['kill_stoop','Kill Stoop','Pace-line momentum finisher. Kill-line commitment.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Maximum next-dive multiplier.'},{desc:'Heavier.'},{desc:'Heavier.'},{desc:'Capstone kill stoop.'}]}],
+];
+for(const [id,name,desc,options] of PEREGRINE_EVOLUTION_TEMPLATE_DEFS){
+  Object.assign(ABILITY_TEMPLATES[id]||{}, makeEvolutionAbilityTemplate(id,name,desc,options));
+}
+const SNOWY_OWL_EVOLUTION_TEMPLATE_DEFS = [
+  ['talon_snap','Talon Snap','Talon-line neutral. A quiet precision snap before you specialize.',{type:'physical',btnType:'physical',energy:1,fixedMainAttackCost:true,levels:[{desc:'~100% dmg, Pierce 10%.'},{desc:'Stronger snap.'},{desc:'Stronger snap.'},{desc:'Peak snap.'}]}],
+  ['talon_clutch','Talon Clutch','Talon-line pierce evolution. Clutch through guard.',{type:'physical',btnType:'physical',energy:1,fixedMainAttackCost:true,levels:[{desc:'Pierce 20%.'},{desc:'Stronger clutch.'},{desc:'Stronger clutch.'},{desc:'Maximum clutch.'}]}],
+  ['talon_rend','Talon Rend','Talon-line pierce finisher. Armor-breaking rend.',{type:'physical',btnType:'physical',energy:1,fixedMainAttackCost:true,levels:[{desc:'Pierce 30% + bonus vs heavy armor.'},{desc:'Heavier rend.'},{desc:'Heavier rend.'},{desc:'Capstone rend.'}]}],
+  ['razor_snap','Razor Snap','Talon-line bleed branch. Open the wound line.',{type:'physical',btnType:'physical',energy:1,fixedMainAttackCost:true,levels:[{desc:'Bleed 10%.'},{desc:'Stronger cut.'},{desc:'Stronger cut.'},{desc:'Peak razor snap.'}]}],
+  ['razor_clutch','Razor Clutch','Talon-line bleed evolution. Deeper talon tears.',{type:'physical',btnType:'physical',energy:1,fixedMainAttackCost:true,levels:[{desc:'Bleed 15%.'},{desc:'Stronger clutch.'},{desc:'Stronger clutch.'},{desc:'Cruel clutch.'}]}],
+  ['razor_rend','Razor Rend','Talon-line bleed finisher. Finish cold prey.',{type:'physical',btnType:'physical',energy:1,fixedMainAttackCost:true,levels:[{desc:'Bleed 20% + wounded payoff.'},{desc:'Heavier rend.'},{desc:'Heavier rend.'},{desc:'Butcher rend.'}]}],
+  ['frost_snap','Frost Snap','Talon-line frostbite branch. Chill their footing.',{type:'physical',btnType:'physical',energy:1,fixedMainAttackCost:true,levels:[{desc:'Hit + slow/chill pressure.'},{desc:'Stronger chill.'},{desc:'Stronger chill.'},{desc:'Peak frost snap.'}]}],
+  ['frost_clutch','Frost Clutch','Talon-line frostbite evolution. Heavier winter grip.',{type:'physical',btnType:'physical',energy:1,fixedMainAttackCost:true,levels:[{desc:'Stronger slow + Weaken odds.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Relentless chill.'}]}],
+  ['frost_rend','Frost Rend','Talon-line frostbite finisher. Shatter a slowed target.',{type:'physical',btnType:'physical',energy:1,fixedMainAttackCost:true,levels:[{desc:'Big control + bonus vs slowed prey.'},{desc:'Heavier.'},{desc:'Heavier.'},{desc:'White talon rend.'}]}],
+  ['silent_dive','Silent Dive','Dive-line neutral. A silent ambush burst that defines the owl.',{type:'physical',btnType:'physical',energy:2,levels:[{desc:'2 EN. Can’t be dodged. Ambush stoop.'},{desc:'Stronger dive.'},{desc:'Shorter downtime.'},{desc:'Peak silence; often no CD.'}], damageScaling:{ baseScaler:'ATT', secondaryScaler:'SPD', secondaryScaleValue:0.20, scalingNote:'SPD secondary; +10% while dodge up; +5%/debuff (max 3).', conditionalBonuses:_hbDashCond }}],
+  ['ghost_dive','Ghost Dive','Dive-line crit branch. Crit-weighted ghost stoop.',{type:'physical',btnType:'physical',energy:2,levels:[{desc:'2 EN. Crit-biased ambush.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Maximum ghost dive.'}], damageScaling:{ baseScaler:'ATT', secondaryScaler:'SPD', secondaryScaleValue:0.24, scalingNote:'SPD secondary; +10% dodge up; +5%/debuff (max 3).', conditionalBonuses:_hbDashCond }}],
+  ['kill_drop','Kill Drop','Dive-line crit evolution. Heavier killing drop.',{type:'physical',btnType:'physical',energy:2,levels:[{desc:'2 EN. Harder crit drop.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Strongest kill drop.'}], damageScaling:{ baseScaler:'ATT', secondaryScaler:'SPD', secondaryScaleValue:0.28, scalingNote:'SPD secondary; +10% dodge up; +6%/debuff (max 3).', conditionalBonuses:[{type:'while_self_buff_active',buff:'dodge_up',damageBonus:0.10},{type:'per_target_debuff',damageBonusPerStack:0.06,maxStacks:3}] }}],
+  ['silent_impact','Silent Impact','Dive-line crit finisher. Terminal silent impact.',{type:'physical',btnType:'physical',energy:2,levels:[{desc:'2 EN. Maximum ambush crit route.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Capstone impact.'}], damageScaling:{ baseScaler:'ATT', secondaryScaler:'SPD', secondaryScaleValue:0.32, scalingNote:'SPD secondary; +12% dodge up; +6%/debuff (max 3).', conditionalBonuses:[{type:'while_self_buff_active',buff:'dodge_up',damageBonus:0.12},{type:'per_target_debuff',damageBonusPerStack:0.06,maxStacks:3}] }}],
+  ['frost_dive','Frost Dive','Dive-line slow branch. Chill crash.',{type:'physical',btnType:'physical',energy:2,levels:[{desc:'2 EN. Burst + heavy slow.'},{desc:'Stronger chill.'},{desc:'Stronger chill.'},{desc:'Strongest frost dive.'}], damageScaling:{ baseScaler:'ATT', secondaryScaler:'SPD', secondaryScaleValue:0.18, scalingNote:'SPD secondary; slow route favors controlled prey.', conditionalBonuses:[{type:'while_self_buff_active',buff:'dodge_up',damageBonus:0.08}] }}],
+  ['winter_drop','Winter Drop','Dive-line slow evolution. Winter hammer fall.',{type:'physical',btnType:'physical',energy:2,levels:[{desc:'2 EN. Bigger slow/control.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Violent winter drop.'}], damageScaling:{ baseScaler:'ATT', secondaryScaler:'SPD', secondaryScaleValue:0.22, scalingNote:'SPD secondary; +8% dodge up; +4%/debuff (max 2).', conditionalBonuses:[{type:'while_self_buff_active',buff:'dodge_up',damageBonus:0.08},{type:'per_target_debuff',damageBonusPerStack:0.04,maxStacks:2}] }}],
+  ['whiteout_impact','Whiteout Impact','Dive-line slow finisher. Whiteout control burst.',{type:'physical',btnType:'physical',energy:2,levels:[{desc:'2 EN. Major burst; bonus vs slowed prey.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Maximum whiteout.'}], damageScaling:{ baseScaler:'ATT', secondaryScaler:'SPD', secondaryScaleValue:0.26, scalingNote:'SPD secondary; +10% dodge up; +5%/debuff (max 3).', conditionalBonuses:[{type:'while_self_buff_active',buff:'dodge_up',damageBonus:0.10},{type:'per_target_debuff',damageBonusPerStack:0.05,maxStacks:3}] }}],
+  ['owl_passing_dive','Passing Dive','Dive-line return branch. Strike through; cold echo next turn.',{type:'physical',btnType:'physical',energy:2,levels:[{desc:'2 EN. Hit + delayed return chip.'},{desc:'Bigger echo.'},{desc:'Bigger echo.'},{desc:'Largest echo.'}], damageScaling:{ baseScaler:'ATT', secondaryScaler:'SPD', secondaryScaleValue:0.24, scalingNote:'SPD secondary; delayed return scales with SPD/debuffs.', conditionalBonuses:_hbDashCond }}],
+  ['owl_return_drop','Return Drop','Dive-line return evolution. Harder pass + fatter echo.',{type:'physical',btnType:'physical',energy:2,levels:[{desc:'2 EN. Stronger delayed follow-up.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Peak return drop.'}], damageScaling:{ baseScaler:'ATT', secondaryScaler:'SPD', secondaryScaleValue:0.28, scalingNote:'SPD secondary; +10% dodge up; +6%/debuff (max 3).', conditionalBonuses:[{type:'while_self_buff_active',buff:'dodge_up',damageBonus:0.10},{type:'per_target_debuff',damageBonusPerStack:0.06,maxStacks:3}] }}],
+  ['owl_double_impact','Double Impact','Dive-line return finisher. Maximum return-pass kill pressure.',{type:'physical',btnType:'physical',energy:2,levels:[{desc:'2 EN. Strongest delayed return route.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Capstone double impact.'}], damageScaling:{ baseScaler:'ATT', secondaryScaler:'SPD', secondaryScaleValue:0.32, scalingNote:'SPD secondary; +12% dodge up; +6%/debuff (max 3).', conditionalBonuses:[{type:'while_self_buff_active',buff:'dodge_up',damageBonus:0.12},{type:'per_target_debuff',damageBonusPerStack:0.06,maxStacks:3}] }}],
+  ['owl_eye','Owl Eye','Owl Eye-line neutral. Patient lock for the killing beat.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Next attack +14% damage.'},{desc:'+17%.'},{desc:'+20%.'},{desc:'+23%.'}]}],
+  ['owl_hunters_sight','Hunter\'s Sight','Owl Eye-line amp evolution. Widen the burst window.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Next attack +20% damage.'},{desc:'+24%.'},{desc:'+28%.'},{desc:'+32%.'}]}],
+  ['moon_lock','Moon Lock','Owl Eye-line amp finisher. Moonlit execution setup.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Next attack +28% damage.'},{desc:'+32%.'},{desc:'+36%.'},{desc:'+40%.'}]}],
+  ['expose_prey','Expose Prey','Owl Eye-line break branch. Stress their armor.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Temporary DEF shred.'},{desc:'Stronger shred.'},{desc:'Stronger shred.'},{desc:'Heavy shred.'}]}],
+  ['owl_weakpoint_sight','Weakpoint Sight','Owl Eye-line break evolution. Pry the opening wider.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Larger DEF shred.'},{desc:'Larger shred.'},{desc:'Larger shred.'},{desc:'Peak weakpoint.'}]}],
+  ['owl_ruin_lock','Ruin Lock','Owl Eye-line break finisher. Ruin their guard.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Massive DEF shred window.'},{desc:'Heavier.'},{desc:'Heavier.'},{desc:'Total ruin.'}]}],
+  ['cold_eye','Cold Eye','Owl Eye-line crit branch. Frost-sharp focus.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'+8% crit chance on attacks briefly.'},{desc:'+12%.'},{desc:'+16%.'},{desc:'+20%.'}]}],
+  ['owl_killer_sight','Killer Sight','Owl Eye-line crit evolution. Harder stare.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'+12% crit briefly.'},{desc:'+16%.'},{desc:'+20%.'},{desc:'+24%.'}]}],
+  ['owl_death_lock','Death Lock','Owl Eye-line crit finisher. Death-quiet focus.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'+16% crit briefly.'},{desc:'+20%.'},{desc:'+24%.'},{desc:'+28%.'}]}],
+  ['frost_glide','Frost Glide','Glide-line neutral. Calm winter positioning.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Light dodge + small chill on prey.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Strongest baseline glide.'}]}],
+  ['silent_glide','Silent Glide','Glide-line dodge branch. Silent slip.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Dodge window.'},{desc:'Stronger slip.'},{desc:'Stronger slip.'},{desc:'Peak silent glide.'}]}],
+  ['ghost_drift','Ghost Drift','Glide-line dodge evolution. Harder to track.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Heavy dodge.'},{desc:'Heavier.'},{desc:'Heavier.'},{desc:'Ghost drift.'}]}],
+  ['snow_silence','Snow Silence','Glide-line dodge finisher. Vanish into snowfall.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Huge dodge + ACC pressure.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Total snow silence.'}]}],
+  ['winter_drift','Winter Drift','Glide-line slow evolution. Widen the chill field.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Stronger slow + Weaken odds.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Bitter drift.'}]}],
+  ['white_silence','White Silence','Glide-line slow finisher. Whiteout calm.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Massive slow + Weaken pressure.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Endless white.'}]}],
+  ['hunting_glide','Hunting Glide','Glide-line ambush branch. Set the silent strike.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Next attack +10% damage.'},{desc:'+13%.'},{desc:'+16%.'},{desc:'+19%.'}]}],
+  ['shadow_drift','Shadow Drift','Glide-line ambush evolution. Deeper commitment.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Next attack +16% damage.'},{desc:'+20%.'},{desc:'+24%.'},{desc:'+28%.'}]}],
+  ['night_silence','Night Silence','Glide-line ambush finisher. Perfect night setup.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Next attack +24% damage.'},{desc:'+28%.'},{desc:'+32%.'},{desc:'+36%.'}]}],
+];
+for(const [id,name,desc,options] of SNOWY_OWL_EVOLUTION_TEMPLATE_DEFS){
   Object.assign(ABILITY_TEMPLATES[id]||{}, makeEvolutionAbilityTemplate(id,name,desc,options));
 }
 registerAbilityAlias('sonicDash','sonic_dash','Sonic Dash',{isBasic:true,type:'physical',btnType:'physical'});
@@ -10436,6 +10641,509 @@ const HUMMINGBIRD_SKILL_ACTION_OVERRIDES = {
 };
 Object.entries(HUMMINGBIRD_SKILL_ACTION_OVERRIDES).forEach(([id, fn])=>{ ACTIONS[id]=fn; });
 
+const PEREGRINE_DIVE_ABILITY_IDS = new Set([
+  'dive','falcon_dive','killing_drop','impact_strike','thunder_dive','shock_drop','storm_impact','passing_dive','return_drop','double_impact',
+]);
+function getPeregrineMasteryBonuses(ab){
+  const slot=getAbilitySkillSlot(G.player,ab);
+  const m=getSlotMasteryProfile(slot);
+  return {
+    power:m.power,precision:m.precision,control:m.control,
+    dmg:0.075*m.power,missCut:2*m.precision,pierce:3*m.precision,rider:5*m.control,
+    crit:2*m.power+2*m.control,delayed:3*m.power+4*m.control,
+    amp:0.04*m.power+0.01*m.control,defBreak:m.precision,diveMult:0.012*m.control,
+    dodge:4*m.power+2*m.control,spd:2*m.precision+m.power,shock:8*m.control,
+  };
+}
+function peregrinePreyVulnerable(){
+  const maxHp=Math.max(1,G.enemy.stats.maxHp||1);
+  return G.enemy.stats.hp<=Math.floor(maxHp*0.48)
+    || (G.enemyStatus.bleed?.stacks||0)>0
+    || (G.enemyStatus.exposedGuard?.pct||0)>0
+    || (G.enemyStatus.accDebuff||0)>=10
+    || (G.enemyStatus.paralyzed||0)>0;
+}
+function peregrineApplyDelayed(flat, ab, synergy={}){
+  const mb=getPeregrineMasteryBonuses(ab);
+  let amt=Math.max(1,Math.floor(flat+mb.delayed));
+  const spdPer=Number(synergy.spdPer)||0;
+  if(spdPer>0) amt+=Math.floor(Math.max(0,(G.player.stats.spd||0)-7)*spdPer);
+  const debPer=Number(synergy.debuffPer)||0;
+  if(debPer>0){
+    const debCap=Number.isFinite(synergy.debuffCap)?synergy.debuffCap:18;
+    amt+=Math.min(debCap, Math.floor(countEnemyCombatDebuffCategories()*debPer));
+  }
+  const mergeCap=Math.max(30,Math.floor((G.player.stats.atk||8)*3.5));
+  const merged=Math.min(mergeCap,(G.enemyStatus.delayed?.dmg||0)+amt);
+  G.enemyStatus.delayed={dmg:merged};
+  logMsg(`🦅 Return strike (${merged} next turn).`,'system');
+}
+function peregrineDiveCooldownForLevel(lv){
+  if(lv>=4) return 0;
+  if(lv>=3) return 1;
+  return 2;
+}
+function peregrineApplyDefBreak(flatDown, turns){
+  const t=Math.max(1,Math.floor(turns||2));
+  const want=Math.max(0,Math.floor(flatDown||0));
+  const prev=G.enemyStatus.peregrineDefBreak;
+  if(prev && (prev.defLost||0)>0) G.enemy.stats.def=(G.enemy.stats.def||0)+prev.defLost;
+  const cur=G.enemy.stats.def||0;
+  const applied=Math.min(want,cur);
+  if(applied<=0){
+    logMsg(`🛡 No armor left to stress.`,'system');
+    return;
+  }
+  G.enemy.stats.def=Math.max(0,cur-applied);
+  G.enemyStatus.peregrineDefBreak={defLost:applied, turns:t};
+  renderStatuses('enemy-status',G.enemyStatus);
+  logMsg(`🛡 Armor stress: −${applied} DEF (${t}t).`,'system');
+}
+async function executePeregrineTalonStrike(ab, cfg){
+  const lv=Math.max(1,Math.min(4,ab.level||1));
+  const mb=getPeregrineMasteryBonuses(ab);
+  const miss=Math.max(0,(cfg.miss?.[lv-1]??9)-getPlayerHitBonus(ab)-mb.missCut);
+  if(chance(miss)){await doMiss('player');logMsg(`${cfg.log||ab.name} missed!`,'miss');return;}
+  let mult=(cfg.mult?.[lv-1]??1)+mb.dmg;
+  const pierce=(cfg.pierce?.[lv-1]??0)+mb.pierce;
+  if(cfg.bonusVsArmor?.[lv-1] && (G.enemy.stats.def||0)>=5) mult+=cfg.bonusVsArmor[lv-1];
+  if(cfg.bonusVsWounded?.[lv-1] && peregrinePreyVulnerable()) mult+=cfg.bonusVsWounded[lv-1];
+  if(cfg.executeBonus?.[lv-1] && peregrinePreyVulnerable()) mult+=cfg.executeBonus[lv-1];
+  const prox={...ab,pierceDef:pierce};
+  const critExtra=(cfg.extraCritVsPrey?.[lv-1]&&peregrinePreyVulnerable())?cfg.extraCritVsPrey[lv-1]:0;
+  const r=dealDamage('enemy',pdmg(mult,prox),chance(getPlayerCritChance(ab)+mb.crit+critExtra),false,prox);
+  await doAttack('player','enemy',r);
+  setHpBar('enemy',G.enemy.stats.hp,G.enemy.stats.maxHp);
+  if(cfg.bleedChance?.[lv-1] && chance(cfg.bleedChance[lv-1]+mb.rider)){
+    applyAilment('enemy','bleed',1); spawnFloat('enemy','🩸 Bleed!','fn-poison');
+  }
+  renderStatuses('enemy-status',G.enemyStatus);
+  logMsg(`${cfg.log||ab.name}! ${r.dmgDealt} dmg.`,'player-action');
+}
+async function executePeregrineDiveStrike(ab, cfg){
+  if((G.peregrineDiveCooldown||0)>0){logMsg(`Dive on cooldown! (${G.peregrineDiveCooldown}t)`,'miss');return;}
+  const lv=Math.max(1,Math.min(4,ab.level||1));
+  const mb=getPeregrineMasteryBonuses(ab);
+  const oldDodge=G.enemy.stats.dodge;
+  G.enemy.stats.dodge=0;
+  let mult=(cfg.mult?.[lv-1]||1)+mb.dmg;
+  const diveAmp=G.playerStatus.peregrineDiveAmp;
+  if(diveAmp && (diveAmp.turns||0)>0){
+    mult+=((diveAmp.mult||0)+mb.diveMult);
+    delete G.playerStatus.peregrineDiveAmp;
+  }
+  const firstStoop=!!G.player._peregrineFirstStoop;
+  if(firstStoop) mult*=1.15;
+  const critBoost=(cfg.critBonus?.[lv-1]||0)+mb.crit;
+  const weakCrit=(G.enemy.stats.hp<=Math.floor((G.enemy.stats.maxHp||1)*0.42))?(4+lv*2):0;
+  const hybridHit=!!cfg.hybrid?.[lv-1];
+  const pierceExtra=(firstStoop?14:0)+Math.floor(mb.pierce);
+  const pierceAb={...ab,pierceDef:(cfg.pierce?.[lv-1]||0)+pierceExtra};
+  if(firstStoop) delete G.player._peregrineFirstStoop;
+  const calcDmg=(m)=>{
+    if(hybridHit) return Math.max(1,Math.floor((pdmgWithAlternateScaling(m,pierceAb)+matk(Math.max(0.55,m*0.52)))/2));
+    return pdmgWithAlternateScaling(m,pierceAb);
+  };
+  const isCrit=chance(getPlayerCritChance(ab)+critBoost+weakCrit);
+  const dmg=calcDmg(mult);
+  const r=dealDamage('enemy',dmg,isCrit);
+  r.wasDodged=false;
+  await doAttack('player','enemy',r);
+  let lastTotal=r.dmgDealt;
+  const extraHits=(cfg.hits?.[lv-1]||1)-1;
+  const followMult=cfg.followMult?.[lv-1]??mult*0.52;
+  for(let i=0;i<extraHits;i++){
+    if(G.battleOver) break;
+    const isCrit2=chance(getPlayerCritChance(ab)+critBoost*0.75+weakCrit);
+    const d2=calcDmg(followMult+mb.dmg*0.35);
+    const r2=dealDamage('enemy',d2,isCrit2);
+    r2.wasDodged=false;
+    await doAttack('player','enemy',r2);
+    lastTotal+=r2.dmgDealt;
+    setHpBar('enemy',G.enemy.stats.hp,G.enemy.stats.maxHp);
+  }
+  G.enemy.stats.dodge=oldDodge;
+  setHpBar('enemy',G.enemy.stats.hp,G.enemy.stats.maxHp);
+  const paraRoll=(cfg.paraChance?.[lv-1]||0)+mb.rider+mb.shock;
+  if(cfg.paraChance?.[lv-1] && chance(paraRoll)){
+    G.enemyStatus.paralyzed=(G.enemyStatus.paralyzed||0)+(cfg.paraTurns?.[lv-1]||2);
+    spawnFloat('enemy','⚡ Para!','fn-status');
+  }
+  if(cfg.delayed?.[lv-1]) peregrineApplyDelayed(cfg.delayed[lv-1],ab,cfg.delayedSynergy||{});
+  renderStatuses('enemy-status',G.enemyStatus);
+  G.peregrineDiveCooldown=peregrineDiveCooldownForLevel(lv);
+  logMsg(`${cfg.log||'Dive'}! ${lastTotal} dmg.${G.peregrineDiveCooldown>0?` CD ${G.peregrineDiveCooldown}t`:''}`,'player-action');
+}
+async function executePeregrinePaceUtility(ab, cfg){
+  const lv=Math.max(1,Math.min(4,ab.level||1));
+  const mb=getPeregrineMasteryBonuses(ab);
+  const turns=(cfg.turns?.[lv-1]||2)+(mb.control>0?1:0);
+  if(cfg.diveAmpMult?.[lv-1]){
+    G.playerStatus.peregrineDiveAmp={mult:cfg.diveAmpMult[lv-1]+mb.diveMult, turns:cfg.diveAmpTurns?.[lv-1]||2};
+  }
+  if(cfg.spd?.[lv-1]) G.player.stats.spd=Math.min(20,(G.player.stats.spd||1)+cfg.spd[lv-1]+mb.spd);
+  if(cfg.dodge?.[lv-1]) G.playerStatus.humDodge={bonus:cfg.dodge[lv-1]+mb.dodge, turns};
+  if(cfg.accDown?.[lv-1]) G.enemyStatus.accDebuff=(G.enemyStatus.accDebuff||0)+cfg.accDown[lv-1]+Math.floor(mb.precision);
+  if(cfg.slow?.[lv-1]) applyEnemySlow(cfg.slow[lv-1], cfg.slowDodge?.[lv-1]||10, turns);
+  await doSpell('player',cfg.fx||'🦅');
+  renderStatuses('player-status',G.playerStatus);
+  renderStatuses('enemy-status',G.enemyStatus);
+  logMsg(`${cfg.log||'Pace'}! Line shifts.`,'player-action');
+}
+async function executePeregrineEyeLine(ab){
+  const lv=Math.max(1,Math.min(4,ab.level||1));
+  const mb=getPeregrineMasteryBonuses(ab);
+  const id=ab.id;
+  await doSpell('enemy', id.includes('predatory')||id.includes('killer')||id.includes('death')?'🎯':'👁');
+  if(id==='keen_eye'){
+    G.playerStatus.huntersMarkBonusPct=[0.15,0.18,0.21,0.24][lv-1]+mb.amp;
+  }else if(id==='hunters_sight'){
+    G.playerStatus.huntersMarkBonusPct=[0.22,0.26,0.30,0.34][lv-1]+mb.amp;
+  }else if(id==='fatal_lock'){
+    G.playerStatus.huntersMarkBonusPct=[0.30,0.34,0.38,0.42][lv-1]+mb.amp;
+  }else if(id==='expose_flight'){
+    peregrineApplyDefBreak([1,2,2,3][lv-1]+mb.defBreak,[2,2,3,3][lv-1]);
+  }else if(id==='weakpoint_sight'){
+    peregrineApplyDefBreak([2,3,4,5][lv-1]+mb.defBreak,[2,3,3,4][lv-1]);
+  }else if(id==='ruin_lock'){
+    peregrineApplyDefBreak([3,4,5,6][lv-1]+mb.defBreak,[3,3,4,4][lv-1]);
+  }else if(id==='predatory_eye'){
+    G.playerStatus.peregrineCritLens={bonus:[10,14,18,22][lv-1]+mb.control*3, turns:[2,2,3,3][lv-1]};
+  }else if(id==='killer_sight'){
+    G.playerStatus.peregrineCritLens={bonus:[14,18,22,26][lv-1]+mb.control*3, turns:[2,3,3,3][lv-1]};
+  }else if(id==='death_lock'){
+    G.playerStatus.peregrineCritLens={bonus:[18,22,26,30][lv-1]+mb.control*3, turns:[3,3,3,4][lv-1]};
+  }
+  renderStatuses('player-status',G.playerStatus);
+  renderStatuses('enemy-status',G.enemyStatus);
+  if(G.playerStatus.huntersMarkBonusPct) logMsg(`👁 Lock! Next attack +${Math.round(G.playerStatus.huntersMarkBonusPct*100)}% damage.`,'player-action');
+  else if(G.playerStatus.peregrineCritLens) logMsg(`🎯 Sight! +${G.playerStatus.peregrineCritLens.bonus}% crit on attacks (${G.playerStatus.peregrineCritLens.turns}t).`,'player-action');
+  else if(!(id==='expose_flight'||id==='weakpoint_sight'||id==='ruin_lock')) logMsg(`👁 Prey readied.`,'player-action');
+}
+const PEREGRINE_SKILL_ACTION_OVERRIDES = {
+  talon_jab: ab=>executePeregrineTalonStrike(ab,{log:'🪶 Talon Jab',miss:[9,8,7,6],mult:[0.98,1.04,1.08,1.12],pierce:[10,12,14,16]}),
+  talon_rake: ab=>executePeregrineTalonStrike(ab,{log:'🪶 Talon Rake',miss:[8,7,6,5],mult:[1.06,1.12,1.16,1.20],pierce:[18,22,26,30]}),
+  talon_rend: ab=>executePeregrineTalonStrike(ab,{log:'🪶 Talon Rend',miss:[7,6,5,4],mult:[1.14,1.20,1.26,1.32],pierce:[28,32,36,42],bonusVsArmor:[0.06,0.08,0.10,0.12]}),
+  slice_jab: ab=>executePeregrineTalonStrike(ab,{log:'🩸 Razor Jab',miss:[9,8,7,6],mult:[0.96,1.02,1.06,1.10],pierce:[6,8,10,12],bleedChance:[10,12,14,16]}),
+  slice_rake: ab=>executePeregrineTalonStrike(ab,{log:'🩸 Razor Rake',miss:[8,7,6,5],mult:[1.04,1.10,1.14,1.18],pierce:[8,10,12,14],bleedChance:[14,16,18,20]}),
+  slice_rend: ab=>executePeregrineTalonStrike(ab,{log:'🩸 Razor Rend',miss:[7,6,5,4],mult:[1.12,1.18,1.22,1.26],pierce:[10,12,14,16],bleedChance:[18,20,22,24],bonusVsWounded:[0.08,0.10,0.11,0.12]}),
+  hunters_jab: ab=>executePeregrineTalonStrike(ab,{log:'☠ Hunter\'s Jab',miss:[8,7,6,5],mult:[1.02,1.08,1.12,1.16],pierce:[8,10,12,14],executeBonus:[0.10,0.12,0.14,0.16],extraCritVsPrey:[6,8,10,12]}),
+  hunters_rake: ab=>executePeregrineTalonStrike(ab,{log:'☠ Hunter\'s Rake',miss:[7,6,5,4],mult:[1.12,1.18,1.22,1.28],pierce:[10,12,14,16],executeBonus:[0.14,0.16,0.18,0.20],extraCritVsPrey:[8,10,12,14]}),
+  hunters_rend: ab=>executePeregrineTalonStrike(ab,{log:'☠ Hunter\'s Rend',miss:[6,5,4,3],mult:[1.22,1.28,1.34,1.40],pierce:[12,14,16,18],executeBonus:[0.18,0.20,0.24,0.28],extraCritVsPrey:[10,12,14,16]}),
+  dive: ab=>executePeregrineDiveStrike(ab,{log:'🦅 Dive',mult:[1.05,1.12,1.20,1.30]}),
+  falcon_dive: ab=>executePeregrineDiveStrike(ab,{log:'🦅 Falcon Dive',mult:[1.10,1.18,1.26,1.34],critBonus:[8,10,12,14]}),
+  killing_drop: ab=>executePeregrineDiveStrike(ab,{log:'🦅 Killing Drop',mult:[1.16,1.24,1.32,1.40],critBonus:[12,14,16,18]}),
+  impact_strike: ab=>executePeregrineDiveStrike(ab,{log:'🦅 Impact Strike',mult:[1.22,1.30,1.38,1.46],critBonus:[14,16,18,22]}),
+  thunder_dive: ab=>executePeregrineDiveStrike(ab,{log:'⚡ Thunder Dive',mult:[0.98,1.06,1.14,1.22],hybrid:[1,1,1,1],paraChance:[12,14,16,18],paraTurns:[2,2,2,3]}),
+  shock_drop: ab=>executePeregrineDiveStrike(ab,{log:'⚡ Shock Drop',mult:[1.08,1.16,1.24,1.32],hybrid:[1,1,1,1],paraChance:[18,20,22,25],paraTurns:[2,3,3,3]}),
+  storm_impact: ab=>executePeregrineDiveStrike(ab,{log:'⚡ Storm Impact',mult:[1.14,1.22,1.30,1.38],hybrid:[1,1,1,1],hits:[2,2,2,3],followMult:[0.62,0.66,0.70,0.62],paraChance:[22,24,26,28],paraTurns:[2,2,3,3]}),
+  passing_dive: ab=>executePeregrineDiveStrike(ab,{log:'✨ Passing Dive',mult:[1.00,1.08,1.14,1.22],delayed:[12,16,20,24],delayedSynergy:{ spdPer:0.44, debuffPer:2, debuffCap:12 }}),
+  return_drop: ab=>executePeregrineDiveStrike(ab,{log:'✨ Return Drop',mult:[1.08,1.14,1.20,1.28],delayed:[18,22,28,34],delayedSynergy:{ spdPer:0.52, debuffPer:3, debuffCap:16 }}),
+  double_impact: ab=>executePeregrineDiveStrike(ab,{log:'✨ Double Impact',mult:[1.14,1.20,1.26,1.34],delayed:[24,30,36,44],delayedSynergy:{ spdPer:0.60, debuffPer:4, debuffCap:22 }}),
+  keen_eye: ab=>executePeregrineEyeLine(ab),
+  hunters_sight: ab=>executePeregrineEyeLine(ab),
+  fatal_lock: ab=>executePeregrineEyeLine(ab),
+  expose_flight: ab=>executePeregrineEyeLine(ab),
+  weakpoint_sight: ab=>executePeregrineEyeLine(ab),
+  ruin_lock: ab=>executePeregrineEyeLine(ab),
+  predatory_eye: ab=>executePeregrineEyeLine(ab),
+  killer_sight: ab=>executePeregrineEyeLine(ab),
+  death_lock: ab=>executePeregrineEyeLine(ab),
+  aerial_pace: ab=>executePeregrinePaceUtility(ab,{log:'🌬 Aerial Pace',fx:'🌬',spd:[1,1,2,2],dodge:[12,14,16,18],turns:[2,2,2,2]}),
+  rapid_pace: ab=>executePeregrinePaceUtility(ab,{log:'🌬 Rapid Pace',fx:'🌬',spd:[2,3,4,5],turns:[2,2,2,3]}),
+  glide_burst: ab=>executePeregrinePaceUtility(ab,{log:'🌬 Glide Burst',fx:'🌬',spd:[4,5,6,7],dodge:[8,10,12,14],turns:[2,2,3,3]}),
+  stoop_tempo: ab=>executePeregrinePaceUtility(ab,{log:'🌬 Stoop Tempo',fx:'🌬',spd:[3,4,5,6],accDown:[8,10,12,14],turns:[2,2,2,3]}),
+  slip_pace: ab=>executePeregrinePaceUtility(ab,{log:'💨 Slip Pace',fx:'💨',dodge:[30,34,38,42],turns:[2,2,3,3]}),
+  ghost_glide: ab=>executePeregrinePaceUtility(ab,{log:'💨 Ghost Glide',fx:'💨',dodge:[40,44,48,52],turns:[2,3,3,3]}),
+  phantom_stoop: ab=>executePeregrinePaceUtility(ab,{log:'💨 Phantom Stoop',fx:'💨',dodge:[50,54,58,62],slow:[2,2,3,3],slowDodge:[10,10,12,12],turns:[3,3,3,3]}),
+  hunting_pace: ab=>executePeregrinePaceUtility(ab,{log:'🦅 Hunting Pace',fx:'🦅',diveAmpMult:[0.10,0.12,0.14,0.16],diveAmpTurns:[2,2,2,3]}),
+  falling_glide: ab=>executePeregrinePaceUtility(ab,{log:'🦅 Falling Glide',fx:'🦅',diveAmpMult:[0.14,0.16,0.18,0.20],diveAmpTurns:[2,2,3,3]}),
+  kill_stoop: ab=>executePeregrinePaceUtility(ab,{log:'🦅 Kill Stoop',fx:'🦅',diveAmpMult:[0.18,0.22,0.26,0.30],diveAmpTurns:[3,3,3,3]}),
+};
+Object.entries(PEREGRINE_SKILL_ACTION_OVERRIDES).forEach(([id, fn])=>{ ACTIONS[id]=fn; });
+
+const SNOWY_OWL_DIVE_ABILITY_IDS = new Set([
+  'silent_dive','ghost_dive','kill_drop','silent_impact','frost_dive','winter_drop','whiteout_impact','owl_passing_dive','owl_return_drop','owl_double_impact',
+]);
+function getSnowyOwlMasteryBonuses(ab){
+  const slot=getAbilitySkillSlot(G.player,ab);
+  const m=getSlotMasteryProfile(slot);
+  return {
+    power:m.power,precision:m.precision,control:m.control,
+    dmg:0.075*m.power,missCut:2*m.precision,pierce:3*m.precision,rider:5*m.control,
+    crit:2*m.power+2*m.control,delayed:3*m.power+4*m.control,
+    amp:0.04*m.power+0.01*m.control,defBreak:m.precision,chill:2*m.control,
+    dodge:4*m.power+2*m.control,spd:2*m.precision+m.power,slow:1*m.control,
+  };
+}
+function snowyOwlEnemySlowed(){
+  const s=G.enemyStatus||{};
+  if(s.mud&&s.mud.turns>0) return true;
+  if(typeof s.slow==='number' && s.slow>0) return true;
+  if(s.slow && typeof s.slow==='object' && (s.slow.turns||0)>0) return true;
+  return false;
+}
+function snowyOwlEnemyIsControlled(){
+  const s=G.enemyStatus||{};
+  if((s.weaken||0)>0) return true;
+  if(snowyOwlEnemySlowed()) return true;
+  if((s.accDebuff||0)>=10) return true;
+  if((s.exposedGuard?.pct||0)>0) return true;
+  return false;
+}
+function snowyOwlPreyVulnerable(){
+  const maxHp=Math.max(1,G.enemy.stats.maxHp||1);
+  return G.enemy.stats.hp<=Math.floor(maxHp*0.48)
+    || (G.enemyStatus.bleed?.stacks||0)>0
+    || (G.enemyStatus.exposedGuard?.pct||0)>0
+    || snowyOwlEnemySlowed()
+    || (G.enemyStatus.weaken||0)>0
+    || (G.enemyStatus.accDebuff||0)>=10;
+}
+function snowyOwlApplyDelayed(flat, ab, synergy={}){
+  const mb=getSnowyOwlMasteryBonuses(ab);
+  let amt=Math.max(1,Math.floor(flat+mb.delayed));
+  const spdPer=Number(synergy.spdPer)||0;
+  if(spdPer>0) amt+=Math.floor(Math.max(0,(G.player.stats.spd||0)-7)*spdPer);
+  const debPer=Number(synergy.debuffPer)||0;
+  if(debPer>0){
+    const debCap=Number.isFinite(synergy.debuffCap)?synergy.debuffCap:18;
+    amt+=Math.min(debCap, Math.floor(countEnemyCombatDebuffCategories()*debPer));
+  }
+  const mergeCap=Math.max(30,Math.floor((G.player.stats.atk||12)*3.5));
+  const merged=Math.min(mergeCap,(G.enemyStatus.delayed?.dmg||0)+amt);
+  G.enemyStatus.delayed={dmg:merged};
+  logMsg(`❄️ Cold echo (${merged} next turn).`,'system');
+}
+function snowyOwlDiveCooldownForLevel(lv){
+  if(lv>=4) return 0;
+  if(lv>=3) return 1;
+  return 2;
+}
+function snowyOwlApplyArmorStress(flatDown, turns){
+  const t=Math.max(1,Math.floor(turns||2));
+  const want=Math.max(0,Math.floor(flatDown||0));
+  const prev=G.enemyStatus.owlArmorStress;
+  if(prev && (prev.defLost||0)>0) G.enemy.stats.def=(G.enemy.stats.def||0)+prev.defLost;
+  const cur=G.enemy.stats.def||0;
+  const applied=Math.min(want,cur);
+  if(applied<=0){
+    logMsg(`🛡 No armor left to stress.`,'system');
+    return;
+  }
+  G.enemy.stats.def=Math.max(0,cur-applied);
+  G.enemyStatus.owlArmorStress={defLost:applied, turns:t};
+  renderStatuses('enemy-status',G.enemyStatus);
+  logMsg(`🦉 Armor stress: −${applied} DEF (${t}t).`,'system');
+}
+async function executeSnowyOwlTalonStrike(ab, cfg){
+  const lv=Math.max(1,Math.min(4,ab.level||1));
+  const mb=getSnowyOwlMasteryBonuses(ab);
+  const miss=Math.max(0,(cfg.miss?.[lv-1]??9)-getPlayerHitBonus(ab)-mb.missCut);
+  if(chance(miss)){await doMiss('player');logMsg(`${cfg.log||ab.name} missed!`,'miss');return;}
+  let mult=(cfg.mult?.[lv-1]??1)+mb.dmg;
+  const pierce=(cfg.pierce?.[lv-1]??0)+mb.pierce;
+  if(cfg.bonusVsArmor?.[lv-1] && (G.enemy.stats.def||0)>=5) mult+=cfg.bonusVsArmor[lv-1];
+  if(cfg.bonusVsWounded?.[lv-1] && snowyOwlPreyVulnerable()) mult+=cfg.bonusVsWounded[lv-1];
+  if(cfg.bonusVsSlowed?.[lv-1] && snowyOwlEnemySlowed()) mult+=cfg.bonusVsSlowed[lv-1];
+  const prox={...ab,pierceDef:pierce};
+  const critExtra=(cfg.extraCritVsPrey?.[lv-1]&&snowyOwlPreyVulnerable())?cfg.extraCritVsPrey[lv-1]:0;
+  const useHybrid=!!cfg.hybrid?.[lv-1];
+  let raw;
+  if(useHybrid) raw=Math.max(1,Math.floor((pdmg(mult,prox)+matk(Math.max(0.55,mult*0.5)))/2));
+  else raw=pdmg(mult,prox);
+  const r=dealDamage('enemy',raw,chance(getPlayerCritChance(ab)+mb.crit+critExtra),false,prox);
+  await doAttack('player','enemy',r);
+  setHpBar('enemy',G.enemy.stats.hp,G.enemy.stats.maxHp);
+  if(cfg.frostSlowSpd?.[lv-1]) applyEnemySlow(cfg.frostSlowSpd[lv-1],(cfg.frostSlowDodge?.[lv-1]||6)+mb.chill,(cfg.frostSlowTurns?.[lv-1]||2)+(mb.slow>0?1:0));
+  if(cfg.weakenChance?.[lv-1] && chance(cfg.weakenChance[lv-1]+mb.rider)){ applyAilment('enemy','weaken',1); spawnFloat('enemy','🐔 Chill!','fn-status'); }
+  if(cfg.bleedChance?.[lv-1] && chance(cfg.bleedChance[lv-1]+mb.rider)){
+    applyAilment('enemy','bleed',1); spawnFloat('enemy','🩸 Bleed!','fn-poison');
+  }
+  renderStatuses('enemy-status',G.enemyStatus);
+  logMsg(`${cfg.log||ab.name}! ${r.dmgDealt} dmg.`,'player-action');
+}
+async function executeSnowyOwlDiveStrike(ab, cfg){
+  if((G.snowyOwlDiveCooldown||0)>0){logMsg(`Silent Dive on cooldown! (${G.snowyOwlDiveCooldown}t)`,'miss');return;}
+  const lv=Math.max(1,Math.min(4,ab.level||1));
+  const mb=getSnowyOwlMasteryBonuses(ab);
+  const oldDodge=G.enemy.stats.dodge;
+  G.enemy.stats.dodge=0;
+  let mult=(cfg.mult?.[lv-1]||1)+mb.dmg;
+  if(G.player._snowyFirstSilentDive){
+    mult*=1.10;
+    if(snowyOwlEnemyIsControlled()) mult*=1.08;
+    delete G.player._snowyFirstSilentDive;
+  }
+  if(cfg.bonusVsSlowed?.[lv-1] && snowyOwlEnemySlowed()) mult+=cfg.bonusVsSlowed[lv-1];
+  const critBoost=(cfg.critBonus?.[lv-1]||0)+mb.crit;
+  const weakCrit=(G.enemy.stats.hp<=Math.floor((G.enemy.stats.maxHp||1)*0.40))?(4+lv*2):0;
+  const hybridHit=!!cfg.hybrid?.[lv-1];
+  const pierceAb={...ab,pierceDef:(cfg.pierce?.[lv-1]||0)+Math.floor(mb.pierce)};
+  const calcDmg=(m)=>{
+    if(hybridHit) return Math.max(1,Math.floor((pdmgWithAlternateScaling(m,pierceAb)+matk(Math.max(0.55,m*0.52)))/2));
+    return pdmgWithAlternateScaling(m,pierceAb);
+  };
+  const isCrit=chance(getPlayerCritChance(ab)+critBoost+weakCrit);
+  const dmg=calcDmg(mult);
+  const r=dealDamage('enemy',dmg,isCrit);
+  r.wasDodged=false;
+  await doAttack('player','enemy',r);
+  let lastTotal=r.dmgDealt;
+  const extraHits=(cfg.hits?.[lv-1]||1)-1;
+  const followMult=cfg.followMult?.[lv-1]??mult*0.52;
+  for(let i=0;i<extraHits;i++){
+    if(G.battleOver) break;
+    const isCrit2=chance(getPlayerCritChance(ab)+critBoost*0.75+weakCrit);
+    const d2=calcDmg(followMult+mb.dmg*0.35);
+    const r2=dealDamage('enemy',d2,isCrit2);
+    r2.wasDodged=false;
+    await doAttack('player','enemy',r2);
+    lastTotal+=r2.dmgDealt;
+    setHpBar('enemy',G.enemy.stats.hp,G.enemy.stats.maxHp);
+  }
+  G.enemy.stats.dodge=oldDodge;
+  setHpBar('enemy',G.enemy.stats.hp,G.enemy.stats.maxHp);
+  if(cfg.postSlowSpd?.[lv-1]){
+    applyEnemySlow(cfg.postSlowSpd[lv-1]+mb.chill,(cfg.postSlowDodge?.[lv-1]||8)+mb.chill,(cfg.postSlowTurns?.[lv-1]||2)+(mb.slow>0?1:0));
+    spawnFloat('enemy','❄ Slow!','fn-status');
+  }
+  if(cfg.postWeakenChance?.[lv-1] && chance(cfg.postWeakenChance[lv-1]+mb.rider)){
+    applyAilment('enemy','weaken',1); spawnFloat('enemy','🐔 Frostbite!','fn-status');
+  }
+  if(cfg.delayed?.[lv-1]) snowyOwlApplyDelayed(cfg.delayed[lv-1],ab,cfg.delayedSynergy||{});
+  renderStatuses('enemy-status',G.enemyStatus);
+  G.snowyOwlDiveCooldown=snowyOwlDiveCooldownForLevel(lv);
+  logMsg(`${cfg.log||'Silent Dive'}! ${lastTotal} dmg.${G.snowyOwlDiveCooldown>0?` CD ${G.snowyOwlDiveCooldown}t`:''}`,'player-action');
+}
+async function executeSnowyOwlEyeLine(ab){
+  const lv=Math.max(1,Math.min(4,ab.level||1));
+  const mb=getSnowyOwlMasteryBonuses(ab);
+  const id=ab.id;
+  await doSpell('enemy', id.includes('cold')||id.includes('killer')||id.includes('death')?'🎯':'🦉');
+  if(id==='owl_eye'){
+    G.playerStatus.huntersMarkBonusPct=[0.14,0.17,0.20,0.23][lv-1]+mb.amp;
+  }else if(id==='owl_hunters_sight'){
+    G.playerStatus.huntersMarkBonusPct=[0.20,0.24,0.28,0.32][lv-1]+mb.amp;
+  }else if(id==='moon_lock'){
+    G.playerStatus.huntersMarkBonusPct=[0.28,0.32,0.36,0.40][lv-1]+mb.amp;
+  }else if(id==='expose_prey'){
+    snowyOwlApplyArmorStress([1,2,2,3][lv-1]+mb.defBreak,[2,2,3,3][lv-1]);
+  }else if(id==='owl_weakpoint_sight'){
+    snowyOwlApplyArmorStress([2,3,4,5][lv-1]+mb.defBreak,[2,3,3,4][lv-1]);
+  }else if(id==='owl_ruin_lock'){
+    snowyOwlApplyArmorStress([3,4,5,6][lv-1]+mb.defBreak,[3,3,4,4][lv-1]);
+  }else if(id==='cold_eye'){
+    G.playerStatus.owlCritFocus={bonus:[8,12,16,20][lv-1]+mb.control*3, turns:[2,2,3,3][lv-1]};
+  }else if(id==='owl_killer_sight'){
+    G.playerStatus.owlCritFocus={bonus:[12,16,20,24][lv-1]+mb.control*3, turns:[2,3,3,3][lv-1]};
+  }else if(id==='owl_death_lock'){
+    G.playerStatus.owlCritFocus={bonus:[16,20,24,28][lv-1]+mb.control*3, turns:[3,3,3,4][lv-1]};
+  }
+  renderStatuses('player-status',G.playerStatus);
+  renderStatuses('enemy-status',G.enemyStatus);
+  if(G.playerStatus.huntersMarkBonusPct) logMsg(`🦉 Lock! Next attack +${Math.round(G.playerStatus.huntersMarkBonusPct*100)}% damage.`,'player-action');
+  else if(G.playerStatus.owlCritFocus) logMsg(`🎯 Cold sight! +${G.playerStatus.owlCritFocus.bonus}% crit (${G.playerStatus.owlCritFocus.turns}t).`,'player-action');
+  else if(!(id==='expose_prey'||id==='owl_weakpoint_sight'||id==='owl_ruin_lock')) logMsg(`🦉 Prey readied.`,'player-action');
+}
+async function executeSnowyOwlGlide(ab){
+  const lv=Math.max(1,Math.min(4,ab.level||1));
+  const mb=getSnowyOwlMasteryBonuses(ab);
+  const slot=getAbilitySkillSlot(G.player,ab);
+  const path=slot?.pathId;
+  const id=ab.id;
+  let turns=(2+(mb.control>0?1:0));
+  if(id==='frost_glide' && !path){
+    G.playerStatus.humDodge={bonus:[10,12,14,16][lv-1]+mb.dodge, turns};
+    applyEnemySlow(1,5+mb.chill,2+(mb.slow>0?1:0));
+    await doSpell('player','❄');
+  }else if(id==='frost_glide' && path==='slow'){
+    applyEnemySlow(2+mb.slow,8+mb.chill,2+(mb.slow>0?1:0));
+    if(chance([14,18,22,26][lv-1]+mb.rider)) { applyAilment('enemy','weaken',1); spawnFloat('enemy','🐔 Frost!','fn-status'); }
+    await doSpell('enemy','❄');
+  }else if(id==='silent_glide'){
+    G.playerStatus.humDodge={bonus:[28,32,36,40][lv-1]+mb.dodge, turns:[2,2,3,3][lv-1]};
+    await doSpell('player','🦉');
+  }else if(id==='ghost_drift'){
+    G.playerStatus.humDodge={bonus:[38,42,46,50][lv-1]+mb.dodge, turns:[2,3,3,3][lv-1]};
+    await doSpell('player','🦉');
+  }else if(id==='snow_silence'){
+    turns=3;
+    G.playerStatus.humDodge={bonus:[48,52,56,60][lv-1]+mb.dodge, turns};
+    G.enemyStatus.accDebuff=(G.enemyStatus.accDebuff||0)+[10,12,14,16][lv-1]+Math.floor(mb.precision);
+    await doSpell('player','❄');
+  }else if(id==='winter_drift'){
+    applyEnemySlow(3+mb.slow,10+mb.chill,3);
+    if(chance([20,24,28,32][lv-1]+mb.rider)) applyAilment('enemy','weaken',1);
+    await doSpell('enemy','❄');
+  }else if(id==='white_silence'){
+    applyEnemySlow(4+mb.slow,12+mb.chill,3+(mb.slow>0?1:0));
+    if(chance([28,32,36,40][lv-1]+mb.rider)) applyAilment('enemy','weaken',1);
+    G.enemyStatus.accDebuff=(G.enemyStatus.accDebuff||0)+[6,8,10,12][lv-1];
+    await doSpell('enemy','❄');
+  }else if(id==='hunting_glide'){
+    G.playerStatus.huntersMarkBonusPct=[0.10,0.13,0.16,0.19][lv-1]+mb.amp;
+    await doSpell('player','🦉');
+  }else if(id==='shadow_drift'){
+    G.playerStatus.huntersMarkBonusPct=[0.16,0.20,0.24,0.28][lv-1]+mb.amp;
+    applyEnemySlow(1,4,2);
+    await doSpell('player','🦉');
+  }else if(id==='night_silence'){
+    G.playerStatus.huntersMarkBonusPct=[0.24,0.28,0.32,0.36][lv-1]+mb.amp;
+    G.playerStatus.humDodge={bonus:[14,16,18,20][lv-1]+mb.dodge, turns:2};
+    await doSpell('player','🌙');
+  }else{
+    await doSpell('player','🦉');
+  }
+  renderStatuses('player-status',G.playerStatus);
+  renderStatuses('enemy-status',G.enemyStatus);
+  if(G.playerStatus.huntersMarkBonusPct) logMsg(`🦉 Glide! Next attack +${Math.round(G.playerStatus.huntersMarkBonusPct*100)}%.`,'player-action');
+  else if(id==='frost_glide' && !path) logMsg(`🦉 Frost glide — quiet dodge, prey slows.`,'player-action');
+  else if(id==='silent_glide'||id==='ghost_drift'||id==='snow_silence') logMsg(`🦉 Silent glide.`,'player-action');
+  else if(id==='frost_glide'||id==='winter_drift'||id==='white_silence') logMsg(`🦉 Winter pressure.`,'player-action');
+  else logMsg(`🦉 Glide.`,'player-action');
+}
+const SNOWY_OWL_SKILL_ACTION_OVERRIDES = {
+  talon_snap: ab=>executeSnowyOwlTalonStrike(ab,{log:'🦉 Talon Snap',miss:[9,8,7,6],mult:[0.98,1.04,1.08,1.12],pierce:[10,12,14,16]}),
+  talon_clutch: ab=>executeSnowyOwlTalonStrike(ab,{log:'🦉 Talon Clutch',miss:[8,7,6,5],mult:[1.06,1.12,1.16,1.20],pierce:[18,22,26,30]}),
+  talon_rend: ab=>executeSnowyOwlTalonStrike(ab,{log:'🦉 Talon Rend',miss:[7,6,5,4],mult:[1.14,1.20,1.26,1.32],pierce:[28,32,36,42],bonusVsArmor:[0.06,0.08,0.10,0.12]}),
+  razor_snap: ab=>executeSnowyOwlTalonStrike(ab,{log:'🩸 Razor Snap',miss:[9,8,7,6],mult:[0.96,1.02,1.06,1.10],pierce:[6,8,10,12],bleedChance:[10,12,14,16]}),
+  razor_clutch: ab=>executeSnowyOwlTalonStrike(ab,{log:'🩸 Razor Clutch',miss:[8,7,6,5],mult:[1.04,1.10,1.14,1.18],pierce:[8,10,12,14],bleedChance:[14,16,18,20]}),
+  razor_rend: ab=>executeSnowyOwlTalonStrike(ab,{log:'🩸 Razor Rend',miss:[7,6,5,4],mult:[1.12,1.18,1.22,1.26],pierce:[10,12,14,16],bleedChance:[18,20,22,24],bonusVsWounded:[0.08,0.10,0.11,0.12]}),
+  frost_snap: ab=>executeSnowyOwlTalonStrike(ab,{log:'❄ Frost Snap',miss:[8,7,6,5],mult:[0.94,1.00,1.04,1.08],pierce:[8,10,12,14],hybrid:[1,1,1,1],frostSlowSpd:[1,1,2,2],frostSlowDodge:[6,7,8,9],frostSlowTurns:[2,2,2,3],weakenChance:[12,14,16,18]}),
+  frost_clutch: ab=>executeSnowyOwlTalonStrike(ab,{log:'❄ Frost Clutch',miss:[7,6,5,4],mult:[1.02,1.08,1.12,1.16],pierce:[10,12,14,16],hybrid:[1,1,1,1],frostSlowSpd:[2,2,3,3],frostSlowDodge:[8,9,10,11],frostSlowTurns:[2,3,3,3],weakenChance:[18,20,22,25]}),
+  frost_rend: ab=>executeSnowyOwlTalonStrike(ab,{log:'❄ Frost Rend',miss:[6,5,4,3],mult:[1.10,1.16,1.20,1.24],pierce:[12,14,16,18],hybrid:[1,1,1,1],frostSlowSpd:[2,3,3,4],frostSlowDodge:[9,10,11,12],frostSlowTurns:[3,3,3,4],weakenChance:[22,25,28,32],bonusVsSlowed:[0.08,0.10,0.12,0.14]}),
+  silent_dive: ab=>executeSnowyOwlDiveStrike(ab,{log:'🦉 Silent Dive',mult:[1.05,1.12,1.20,1.30]}),
+  ghost_dive: ab=>executeSnowyOwlDiveStrike(ab,{log:'🦉 Ghost Dive',mult:[1.10,1.18,1.26,1.34],critBonus:[8,10,12,14]}),
+  kill_drop: ab=>executeSnowyOwlDiveStrike(ab,{log:'🦉 Kill Drop',mult:[1.16,1.24,1.32,1.40],critBonus:[12,14,16,18]}),
+  silent_impact: ab=>executeSnowyOwlDiveStrike(ab,{log:'🦉 Silent Impact',mult:[1.22,1.30,1.38,1.46],critBonus:[14,16,18,22]}),
+  frost_dive: ab=>executeSnowyOwlDiveStrike(ab,{log:'❄ Frost Dive',mult:[1.02,1.10,1.18,1.26],postSlowSpd:[2,2,3,3],postSlowDodge:[8,9,10,11],postSlowTurns:[2,2,3,3],postWeakenChance:[14,16,18,22]}),
+  winter_drop: ab=>executeSnowyOwlDiveStrike(ab,{log:'❄ Winter Drop',mult:[1.10,1.18,1.26,1.34],postSlowSpd:[3,3,4,4],postSlowDodge:[10,11,12,13],postSlowTurns:[2,3,3,3],postWeakenChance:[20,22,25,28]}),
+  whiteout_impact: ab=>executeSnowyOwlDiveStrike(ab,{log:'❄ Whiteout Impact',mult:[1.14,1.22,1.30,1.38],hits:[2,2,2,3],followMult:[0.60,0.64,0.68,0.60],postSlowSpd:[3,4,4,5],postSlowDodge:[11,12,13,14],postSlowTurns:[3,3,3,4],postWeakenChance:[25,28,32,36],bonusVsSlowed:[0.08,0.10,0.12,0.14]}),
+  owl_passing_dive: ab=>executeSnowyOwlDiveStrike(ab,{log:'✨ Passing Dive',mult:[1.00,1.08,1.14,1.22],delayed:[12,16,20,24],delayedSynergy:{ spdPer:0.44, debuffPer:2, debuffCap:12 }}),
+  owl_return_drop: ab=>executeSnowyOwlDiveStrike(ab,{log:'✨ Return Drop',mult:[1.08,1.14,1.20,1.28],delayed:[18,24,30,36],delayedSynergy:{ spdPer:0.52, debuffPer:3, debuffCap:16 }}),
+  owl_double_impact: ab=>executeSnowyOwlDiveStrike(ab,{log:'✨ Double Impact',mult:[1.14,1.20,1.26,1.34],delayed:[24,30,38,46],delayedSynergy:{ spdPer:0.60, debuffPer:4, debuffCap:22 }}),
+  owl_eye: ab=>executeSnowyOwlEyeLine(ab),
+  owl_hunters_sight: ab=>executeSnowyOwlEyeLine(ab),
+  moon_lock: ab=>executeSnowyOwlEyeLine(ab),
+  expose_prey: ab=>executeSnowyOwlEyeLine(ab),
+  owl_weakpoint_sight: ab=>executeSnowyOwlEyeLine(ab),
+  owl_ruin_lock: ab=>executeSnowyOwlEyeLine(ab),
+  cold_eye: ab=>executeSnowyOwlEyeLine(ab),
+  owl_killer_sight: ab=>executeSnowyOwlEyeLine(ab),
+  owl_death_lock: ab=>executeSnowyOwlEyeLine(ab),
+  frost_glide: ab=>executeSnowyOwlGlide(ab),
+  silent_glide: ab=>executeSnowyOwlGlide(ab),
+  ghost_drift: ab=>executeSnowyOwlGlide(ab),
+  snow_silence: ab=>executeSnowyOwlGlide(ab),
+  winter_drift: ab=>executeSnowyOwlGlide(ab),
+  white_silence: ab=>executeSnowyOwlGlide(ab),
+  hunting_glide: ab=>executeSnowyOwlGlide(ab),
+  shadow_drift: ab=>executeSnowyOwlGlide(ab),
+  night_silence: ab=>executeSnowyOwlGlide(ab),
+};
+Object.entries(SNOWY_OWL_SKILL_ACTION_OVERRIDES).forEach(([id, fn])=>{ ACTIONS[id]=fn; });
+
 const MAGPIE_TEMPLATE_DEFS = [
   ['steal_shine','Steal Shine','Magpie base theft skill. Swipe a shiny opening before branching.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Next attack +12% damage.'},{desc:'Next attack +15% damage.'},{desc:'Next attack +18% damage.'},{desc:'Next attack +21% damage.'}]}],
   ['feather_flick','Feather Flick','Magpie base harassment skill. Toss a feather to open space before branching.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Enemy ACC -10% for 2 turns.'},{desc:'Enemy ACC -12% for 2 turns.'},{desc:'Enemy ACC -14% for 2 turns.'},{desc:'Enemy ACC -16% for 2 turns.'}]}],
@@ -10552,7 +11260,7 @@ async function executeMagpieStrikeAction(ab, config={}){
     if(config.bonusVs==='taunted' && (G.enemyStatus?.taunted||0)>0) mult += (config.bonus?.[lv-1] ?? 0) + mastery.opening;
     if(config.bonusVs==='wounded' && ((G.enemyStatus?.bleed?.stacks||0)>0 || G.enemy.stats.hp <= Math.floor((G.enemy.stats.maxHp||1)*0.6))) mult += (config.bonus?.[lv-1] ?? 0) + mastery.opening;
     if(config.bonusVs==='buffed' && getMagpieStealableEnemyBuffKeys().length>0) mult += (config.bonus?.[lv-1] ?? 0) + mastery.opening;
-    const r=dealDamage('enemy',pdmg(mult,prox),chance(getPlayerCritChance(ab)+((G.enemyStatus?.exposedGuard?.pct||0)>0?8:0)),false,prox);
+    const r=dealDamage('enemy',pdmgWithAlternateScaling(mult,prox),chance(getPlayerCritChance(ab)+((G.enemyStatus?.exposedGuard?.pct||0)>0?8:0)),false,prox);
     if(config.ignoreDodge) G.enemy.stats.dodge=oldDodge;
     total+=r.dmgDealt;
     await doAttack('player','enemy',r);
@@ -10749,6 +11457,8 @@ async function playerAction(ab,fromQueue=false) {
   if(getAbilityCooldown(ab.id)>0){logMsg(`${ab.name} on cooldown! (${getAbilityCooldown(ab.id)}t)`,'miss');return;}
   if((ab.id==='swoop' || (ab.id==='sonicDash' && G.player?.birdKey!=='hummingbird')) && (G.swoopCooldown||0)>0){logMsg(`${ab.name} on cooldown! (${G.swoopCooldown}t)`,'miss');return;}
   if(HUMMINGBIRD_DASH_ABILITY_IDS.has(ab.id) && (G.hummingbirdDashCooldown||0)>0){logMsg(`${ab.name} on cooldown! (${G.hummingbirdDashCooldown}t)`,'miss');return;}
+  if(PEREGRINE_DIVE_ABILITY_IDS.has(ab.id) && (G.peregrineDiveCooldown||0)>0){logMsg(`${ab.name} on cooldown! (${G.peregrineDiveCooldown}t)`,'miss');return;}
+  if(SNOWY_OWL_DIVE_ABILITY_IDS.has(ab.id) && (G.snowyOwlDiveCooldown||0)>0){logMsg(`${ab.name} on cooldown! (${G.snowyOwlDiveCooldown}t)`,'miss');return;}
   if(!canUseAbility(G.player,ab)){logMsg(`Not enough energy for ${ab.name}!`,'miss');return;}
   const _abk=String(ab?.btnType||ab?.type||ABILITY_TEMPLATES?.[ab?.id]?.btnType||ABILITY_TEMPLATES?.[ab?.id]?.type||'').toLowerCase();
   const _defSkill=(_abk==='utility' || ab?.id==='crowDefend');
@@ -11289,6 +11999,18 @@ function endPlayerTurn(force=false) {
   } else if(G.playerStatus.humDodge) {
     G.playerStatus.humDodge.turns--;
     if(G.playerStatus.humDodge.turns<=0) delete G.playerStatus.humDodge;
+  }
+  if(G.playerStatus.peregrineCritLens){
+    G.playerStatus.peregrineCritLens.turns--;
+    if(G.playerStatus.peregrineCritLens.turns<=0) delete G.playerStatus.peregrineCritLens;
+  }
+  if(G.playerStatus.owlCritFocus){
+    G.playerStatus.owlCritFocus.turns--;
+    if(G.playerStatus.owlCritFocus.turns<=0) delete G.playerStatus.owlCritFocus;
+  }
+  if(G.playerStatus.peregrineDiveAmp){
+    G.playerStatus.peregrineDiveAmp.turns--;
+    if(G.playerStatus.peregrineDiveAmp.turns<=0) delete G.playerStatus.peregrineDiveAmp;
   }
   // Tick warcry
   if(G.playerStatus.warcry){
@@ -11970,9 +12692,27 @@ function afterEnemyTurn() {
     G.enemyStatus.exposedGuard.turns--;
     if(G.enemyStatus.exposedGuard.turns<=0) delete G.enemyStatus.exposedGuard;
   }
+  if(G.enemyStatus.peregrineDefBreak){
+    G.enemyStatus.peregrineDefBreak.turns--;
+    if(G.enemyStatus.peregrineDefBreak.turns<=0){
+      const lost=G.enemyStatus.peregrineDefBreak.defLost||0;
+      if(lost) G.enemy.stats.def=(G.enemy.stats.def||0)+lost;
+      delete G.enemyStatus.peregrineDefBreak;
+    }
+  }
+  if(G.enemyStatus.owlArmorStress){
+    G.enemyStatus.owlArmorStress.turns--;
+    if(G.enemyStatus.owlArmorStress.turns<=0){
+      const lost=G.enemyStatus.owlArmorStress.defLost||0;
+      if(lost) G.enemy.stats.def=(G.enemy.stats.def||0)+lost;
+      delete G.enemyStatus.owlArmorStress;
+    }
+  }
   // Cooldowns
   if(G.swoopCooldown>0)G.swoopCooldown--;
   if(G.hummingbirdDashCooldown>0)G.hummingbirdDashCooldown--;
+  if(G.peregrineDiveCooldown>0)G.peregrineDiveCooldown--;
+  if(G.snowyOwlDiveCooldown>0)G.snowyOwlDiveCooldown--;
   if(G.intimidateCooldown>0)G.intimidateCooldown--;
   if(G.crowDefendCooldown>0)G.crowDefendCooldown--;
   if(G.abilityCooldowns){Object.keys(G.abilityCooldowns).forEach(k=>{G.abilityCooldowns[k]=Math.max(0,(G.abilityCooldowns[k]||0)-1); if(G.abilityCooldowns[k]===0) delete G.abilityCooldowns[k];});}
