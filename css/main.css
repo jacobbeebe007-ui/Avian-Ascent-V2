@@ -379,7 +379,7 @@ header p{color:var(--text-dim);font-style:italic;font-size:1rem;margin-top:4px;}
   overflow-x:hidden;
   -webkit-overflow-scrolling:touch;
 }
-.select-hub-panel-inner--wide{max-width:min(1240px, 98vw);}
+.select-hub-panel-inner--wide{max-width:min(1420px, 99vw);}
 .select-hub-panel-inner--supplies{
   max-width:min(640px, 94vw);
 }
@@ -441,7 +441,7 @@ header p{color:var(--text-dim);font-style:italic;font-size:1rem;margin-top:4px;}
 }
 .select-hub-panel--door .select-hub-panel-inner.select-hub-panel-inner--wide{
   width:100%;
-  max-width:min(1240px, calc(100vw - 16px));
+  max-width:min(1420px, calc(100vw - 12px));
   max-height:none;
   min-height:0;
   height:auto;
@@ -486,39 +486,36 @@ header p{color:var(--text-dim);font-style:italic;font-size:1rem;margin-top:4px;}
   gap:12px;
   border-top:1px solid rgba(201,168,76,.15);
 }
-/* Mobile / narrow: roster first so birds get space; preview + CTA below */
+/* Mobile / narrow: big grid first; toolbar hint; CTA last */
 @media (max-width:900px){
   .select-roster-deck.select-roster-deck--focus .roster-deck-head{order:1;}
   .select-roster-deck.select-roster-deck--focus .sel-layout--roster-only{order:2;}
-  .select-roster-deck.select-roster-deck--focus .sel-preview-strip{order:3;}
+  .select-roster-deck.select-roster-deck--focus .sel-champion-toolbar{order:3;}
   .select-roster-deck.select-roster-deck--focus .sel-actions-bar{order:4;}
 }
-/* Preview + stats strip */
-.select-hub-panel--door .sel-preview-strip{
+/* Roster toolbar (summary + reopen profile) — details live in modal */
+.select-hub-panel--door .sel-champion-toolbar{
   flex-shrink:0;
-  margin-bottom:0;
-  min-height:0;
-}
-.select-hub-panel--door .ascent-panel{
-  max-height:min(36dvh, 300px);
-  min-height:0;
-  overflow-x:auto;
-  overflow-y:hidden;
-  padding:12px 14px;
-  border-radius:14px;
-  border:1px solid rgba(201,168,76,.28);
-  background:rgba(6,8,12,.45);
-  scrollbar-color: rgba(200,180,140,.12) transparent;
-  scrollbar-width:thin;
-}
-.select-hub-panel--door .ascent-panel::-webkit-scrollbar{height:6px;}
-.select-hub-panel--door .ascent-panel::-webkit-scrollbar-track{background:transparent;}
-.select-hub-panel--door .ascent-panel::-webkit-scrollbar-thumb{background:transparent;border-radius:3px;}
-.select-hub-panel--door .ascent-panel:hover::-webkit-scrollbar-thumb{background:rgba(140,120,90,.2);}
-.select-hub-panel--door .ascent-panel.is-empty{
-  overflow:hidden;
-  max-height:none;
+  display:flex;
+  flex-wrap:wrap;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px 14px;
   padding:10px 12px;
+  border-radius:12px;
+  border:1px solid rgba(201,168,76,.22);
+  background:rgba(6,8,12,.38);
+}
+.select-hub-panel--door .sel-champion-toolbar__hint{
+  margin:0;
+  flex:1 1 220px;
+  font-size:clamp(.78rem, 2.1vw, .88rem);
+  line-height:1.45;
+  color:rgba(210,204,192,.9);
+}
+.select-hub-panel--door .sel-champion-toolbar__details{
+  flex-shrink:0;
+  font-size:.78rem;
 }
 /* Continue + Take Flight */
 .sel-actions-bar{
@@ -712,10 +709,10 @@ header p{color:var(--text-dim);font-style:italic;font-size:1rem;margin-top:4px;}
   display:flex !important;
   flex-direction:column !important;
   flex:1 1 auto;
-  min-height:min(52dvh, 420px);
+  min-height:min(58dvh, 640px);
   max-height:none;
   overflow:visible !important;
-  padding:12px 12px 14px !important;
+  padding:14px 14px 16px !important;
   gap:12px !important;
   grid-template-columns:unset !important;
   grid-template-rows:unset !important;
@@ -741,14 +738,14 @@ header p{color:var(--text-dim);font-style:italic;font-size:1rem;margin-top:4px;}
 }
 .select-hub-panel--door .bird-grid-scroller{
   flex:1 1 auto;
-  min-height:min(280px, 48dvh);
-  max-height:min(58dvh, 560px);
+  min-height:min(320px, 50dvh);
+  max-height:min(calc(100dvh - 240px), 820px);
   overflow:auto;
   overflow-x:hidden;
   border-radius:14px;
   border:1px solid rgba(120,100,70,.28);
   background:rgba(4,6,10,.35);
-  padding:10px 12px;
+  padding:12px 14px;
   -webkit-overflow-scrolling:touch;
   overscroll-behavior:contain;
   touch-action:pan-y;
@@ -775,15 +772,16 @@ header p{color:var(--text-dim);font-style:italic;font-size:1rem;margin-top:4px;}
 }
 @media (min-width:901px){
   .select-hub-panel--door .sel-layout--roster-only{
-    min-height:min(320px, 38dvh);
+    min-height:min(52dvh, 720px);
   }
   .select-hub-panel--door .bird-grid-scroller{
-    max-height:min(52dvh, 520px);
+    max-height:min(calc(100dvh - 200px), 880px);
+    min-height:min(48dvh, 560px);
   }
 }
 .select-hub-panel--door .size-birds-row{
-  grid-template-columns:repeat(auto-fill, minmax(152px, 1fr));
-  gap:10px;
+  grid-template-columns:repeat(auto-fill, minmax(118px, 1fr));
+  gap:12px;
 }
 .select-hub-panel--door .roster-deck-head{
   display:flex;
@@ -815,7 +813,6 @@ header p{color:var(--text-dim);font-style:italic;font-size:1rem;margin-top:4px;}
     flex:none;
     width:100%;
   }
-  .select-hub-panel--door .ascent-panel{max-height:min(32dvh, 260px);}
 }
 /* Phone / small screens: vertical grid of cards (no nested horizontal strip), full-width CTA */
 @media (max-width: 600px){
@@ -833,13 +830,13 @@ header p{color:var(--text-dim);font-style:italic;font-size:1rem;margin-top:4px;}
     margin-left:auto;
   }
   .select-hub-panel--door .sel-layout--roster-only{
-    min-height:min(48dvh, 380px);
+    min-height:min(52dvh, 520px);
     padding:10px !important;
   }
   .select-hub-panel--door .bird-grid-scroller{
-    min-height:min(260px, 44dvh);
-    max-height:min(52dvh, 480px);
-    padding:8px 10px;
+    min-height:min(280px, 46dvh);
+    max-height:min(calc(100dvh - 260px), 720px);
+    padding:10px 12px;
   }
   .select-hub-panel--door #bird-grid .size-birds-row{
     display:grid;
@@ -2567,4 +2564,127 @@ img{image-rendering:pixelated;image-rendering:crisp-edges;}
     padding:10px 9px;
     touch-action:manipulation;
   }
+}
+
+/* ---- Champion profile modal (full stats/skills — roster grid uses most of the screen) ---- */
+body.roster-champion-modal-active{
+  overflow:hidden;
+}
+.roster-champion-modal{
+  position:fixed;
+  inset:0;
+  z-index:200;
+  display:none;
+  align-items:center;
+  justify-content:center;
+  padding:max(12px, env(safe-area-inset-top, 0px)) max(12px, env(safe-area-inset-right, 0px)) max(12px, env(safe-area-inset-bottom, 0px)) max(12px, env(safe-area-inset-left, 0px));
+  box-sizing:border-box;
+}
+.roster-champion-modal.is-open{
+  display:flex;
+}
+.roster-champion-modal__backdrop{
+  position:absolute;
+  inset:0;
+  margin:0;
+  padding:0;
+  border:none;
+  border-radius:0;
+  background:rgba(4,3,2,.74);
+  backdrop-filter:blur(8px);
+  -webkit-backdrop-filter:blur(8px);
+  cursor:pointer;
+}
+.roster-champion-modal__sheet{
+  position:relative;
+  z-index:1;
+  width:min(920px, 100%);
+  max-height:min(90dvh, 920px);
+  display:flex;
+  flex-direction:column;
+  border-radius:16px;
+  border:1px solid rgba(232,201,106,.48);
+  background:linear-gradient(180deg,rgba(18,16,12,.97),rgba(10,12,18,.99));
+  box-shadow:0 24px 64px rgba(0,0,0,.58), 0 0 0 1px rgba(232,201,106,.14) inset;
+  overflow:hidden;
+}
+.roster-champion-modal__head{
+  flex-shrink:0;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  padding:12px 16px;
+  border-bottom:1px solid rgba(201,168,76,.22);
+}
+.roster-champion-modal__title{
+  margin:0;
+  font-family:'Cinzel',serif;
+  font-size:clamp(1rem, 2.6vw, 1.25rem);
+  color:var(--gold-light);
+  letter-spacing:.06em;
+}
+.roster-champion-modal__close{
+  font-size:1.45rem;
+  line-height:1;
+  width:42px;
+  height:42px;
+  padding:0;
+  border-radius:10px;
+  border:1px solid rgba(120,100,70,.45);
+  background:rgba(20,22,30,.8);
+  color:rgba(230,224,210,.95);
+  cursor:pointer;
+  flex-shrink:0;
+}
+.roster-champion-modal__close:hover{
+  border-color:rgba(232,201,106,.55);
+  color:#fffaf0;
+}
+.roster-champion-modal__body{
+  flex:1 1 auto;
+  min-height:0;
+  overflow:auto;
+  -webkit-overflow-scrolling:touch;
+  padding:12px 14px 18px;
+}
+#roster-champion-modal .ascent-panel.ascent-panel--modal,
+#roster-champion-modal #ascent-panel{
+  max-height:none !important;
+  min-height:0;
+  overflow:visible !important;
+  margin:0;
+  text-align:left;
+  opacity:1 !important;
+}
+#roster-champion-modal .ascent-strip-hscroll--modal{
+  flex-direction:column;
+  flex-wrap:nowrap;
+  overflow-x:visible;
+  overflow-y:visible;
+  gap:14px;
+  max-width:100%;
+}
+#roster-champion-modal .ascent-hblock{
+  min-width:0 !important;
+  max-width:100% !important;
+  width:100%;
+  flex:0 0 auto !important;
+}
+#roster-champion-modal .ascent-abilities-row--modal{
+  flex-wrap:wrap;
+  overflow-x:visible;
+  max-width:100%;
+}
+#roster-champion-modal .ascent-ability-card{
+  width:min(220px, 100%);
+  flex:1 1 168px;
+}
+#roster-champion-modal .ascent-strip--modal .ascent-strip-portrait-wrap{
+  width:auto;
+  max-width:100%;
+}
+#roster-champion-modal .ascent-panel-portrait{
+  width:min(180px, 40vw);
+  height:min(180px, 40vw);
 }
