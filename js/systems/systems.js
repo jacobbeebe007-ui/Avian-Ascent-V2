@@ -1026,6 +1026,25 @@ cooldown('chargeUp',3);
     ]
   );
 
+  (function syncKiwiSlotBasesFromMechanicalSources(){
+    const Tg = globalThis.ABILITY_TEMPLATES || {};
+    function copyLevelsAndDesc(fromId, toId){
+      const from = Tg[fromId];
+      const to = Tg[toId];
+      if(!from || !to || !Array.isArray(from.levels)) return;
+      to.levels = from.levels.map((e) => ({ ...e }));
+      if(from.desc) to.desc = from.desc;
+    }
+    copyLevelsAndDesc('probeStrike', 'beak_jab');
+    copyLevelsAndDesc('diveBomb', 'night_probe');
+    copyLevelsAndDesc('trackPrey', 'scent_hunt');
+    copyLevelsAndDesc('windFeint', 'scrape');
+    if(Tg.beak_jab){
+      Tg.beak_jab.energyCost = 1;
+      Tg.beak_jab.energyByLevel = [1, 1, 1, 1];
+    }
+  })();
+
   /* BRUISER / TANK */
   setLevels('crowStrike',
     'Standard physical strike with steady scaling.',

@@ -618,7 +618,7 @@ const ABILITY_TEMPLATES = {
       {lv:4, desc:'145% dmg, 11% miss. +25% per hit + Weaken 25%.', ailChance:25},
     ]
   },
-  // ---- SNOWY OWL ----
+  // ---- SHARED / ALIAS TARGET (e.g. bodkin_bite) — not Kiwi slot-state; Kiwi uses beak_jab → probeStrike ----
   silentPierce:{
     id:'silentPierce', name:'Silent Pierce', type:'physical', btnType:'physical',
     desc:'Stealthy beak thrust — high accuracy, chance to Fear. Ignores enemy DEF.',
@@ -678,7 +678,7 @@ const ABILITY_TEMPLATES = {
     ]
   },
 
-  // ---- KIWI ----
+  // ---- KIWI (mechanical base for live `beak_jab` alias) ----
   probeStrike:{
     id:'probeStrike', name:'Probe Strike', isBasic:true, type:'physical', btnType:'physical',
     desc:'Precision pierce basic. Reliable anti-armor option for beak strikers.',
@@ -783,8 +783,8 @@ const BIRDS = {
     unlockHint:'Defeat Stage 20 with Magpie.',
     stats:{hp:34,maxHp:34,atk:8,def:3,spd:8,dodge:48,acc:88,critChance:12,mdef:5,matk:7},
     color:'#a0784a',
-    mainAttackId:'silentPierce',
-    startAbilities:['silentPierce','diveBomb','windFeint','trackPrey'],
+    mainAttackId:'beak_jab',
+    startAbilities:['beak_jab','night_probe','scent_hunt','scrape'],
     passive:{id:'probeMaster',name:'Probe Master',desc:'Pierce attacks ignore 20-35% DEF (scaling per hit). +10% dmg vs high-HP foes (above 75% HP).',
       get _pierceBase(){return 30;}},
   },
@@ -3505,7 +3505,7 @@ function codexMark(type, id, field='seen'){
 }
 
 const SKILL_EVOLUTION_LEVEL_INTERVAL = 3;
-const FAMILY_EVOLUTION_STATE_VERSION = 11;
+const FAMILY_EVOLUTION_STATE_VERSION = 12;
 const SPARROW_SKILL_SLOT_LAYOUT = Object.freeze([
   {slotIndex:0, familyId:'rapid', abilityId:'multiPeck'},
   {slotIndex:1, familyId:'dart', abilityId:'dart'},
@@ -3968,23 +3968,68 @@ const PEREGRINE_SKILL_FAMILIES = Object.freeze({
 });
 
 const KIWI_SKILL_SLOT_LAYOUT = Object.freeze([
-  {slotIndex:0, familyId:'probe', abilityId:'silentPierce'},
-  {slotIndex:1, familyId:'plunge', abilityId:'diveBomb'},
-  {slotIndex:2, familyId:'veil', abilityId:'windFeint'},
-  {slotIndex:3, familyId:'stalk', abilityId:'trackPrey'},
+  {slotIndex:0, familyId:'beak', abilityId:'beak_jab'},
+  {slotIndex:1, familyId:'probe', abilityId:'night_probe'},
+  {slotIndex:2, familyId:'scent', abilityId:'scent_hunt'},
+  {slotIndex:3, familyId:'scrape', abilityId:'scrape'},
 ]);
 const KIWI_SKILL_FAMILIES = Object.freeze({
-  probe:cloneBirdSkillFamily(CROW_SKILL_FAMILIES.peck, {
-    familyId:'probe', displayName:'Probe Line', baseAbilityId:'silentPierce', slotRole:'filler_attack',
-  }),
-  plunge:cloneBirdSkillFamily(GOOSE_SKILL_FAMILIES.heavy, {
-    familyId:'plunge', displayName:'Plunge Line', baseAbilityId:'diveBomb', slotRole:'signature_strike',
-    tierNames:{1:'Plunge', 2:'Drive', 3:'Burrow'},
-  }),
-  veil:SPARROW_SKILL_FAMILIES.wind,
-  stalk:cloneBirdSkillFamily(SPARROW_SKILL_FAMILIES.mark, {
-    familyId:'stalk', displayName:'Stalk Line', baseAbilityId:'trackPrey', slotRole:'setup_prey',
-  }),
+  beak:{
+    familyId:'beak', displayName:'Beak Line', baseAbilityId:'beak_jab', slotRole:'filler_attack', maxTier:3,
+    tierNames:{1:'Jab',2:'Drive',3:'Flurry'},
+    masteries:[
+      {id:'power', name:'Burrow Pressure', desc:'+8% Beak-line damage.'},
+      {id:'precision', name:'Bill Geometry', desc:'Beak-line attacks gain −3% miss and +4 pierce.'},
+      {id:'control', name:'Carrion Habit', desc:'Beak-line Bleed/Hex riders gain +8%.'},
+    ],
+    paths:{
+      bleed:{pathId:'bleed', displayName:'Bleed', abilities:{1:'kiwi_beak_bleed_1',2:'kiwi_beak_bleed_2',3:'kiwi_beak_bleed_3'}, damageTypeProgression:{1:'physical',2:'physical',3:'physical'}},
+      hex:{pathId:'hex', displayName:'Hex', abilities:{1:'kiwi_beak_hex_1',2:'kiwi_beak_hex_2',3:'kiwi_beak_hex_3'}, damageTypeProgression:{1:'hybrid',2:'magic',3:'magic'}},
+      precision:{pathId:'precision', displayName:'Precision', abilities:{1:'kiwi_beak_prec_1',2:'kiwi_beak_prec_2',3:'kiwi_beak_prec_3'}, damageTypeProgression:{1:'hybrid',2:'hybrid',3:'hybrid'}},
+    },
+  },
+  probe:{
+    familyId:'probe', displayName:'Night Probe Line', baseAbilityId:'night_probe', slotRole:'signature_strike', maxTier:3,
+    tierNames:{1:'Probe',2:'Plunge',3:'Burrow'},
+    masteries:[
+      {id:'power', name:'Night Weight', desc:'+7% Probe-line damage.'},
+      {id:'precision', name:'Echo Strike', desc:'Probe-line miss −2%.'},
+      {id:'control', name:'Ground Shock', desc:'Probe-line Burn riders +8%.'},
+    ],
+    paths:{
+      trample:{pathId:'trample', displayName:'Trample', abilities:{1:'kiwi_probe_trample_1',2:'kiwi_probe_trample_2',3:'kiwi_probe_trample_3'}},
+      buffet:{pathId:'buffet', displayName:'Buffet', abilities:{1:'kiwi_probe_buffet_1',2:'kiwi_probe_buffet_2',3:'kiwi_probe_buffet_3'}},
+      execute:{pathId:'execute', displayName:'Execute', abilities:{1:'kiwi_probe_exec_1',2:'kiwi_probe_exec_2',3:'kiwi_probe_exec_3'}},
+    },
+  },
+  scent:{
+    familyId:'scent', displayName:'Scent Hunt Line', baseAbilityId:'scent_hunt', slotRole:'hunter_setup', maxTier:3,
+    tierNames:{1:'Scent',2:'Trail',3:'Quarry'},
+    masteries:[
+      {id:'power', name:'Blood Memory', desc:'Scent-line amp bonuses +4%.'},
+      {id:'precision', name:'Soft Tissue', desc:'Scent-line expose values +2%.'},
+      {id:'control', name:'Final Nest', desc:'Scent-line execute bonuses +6% below half HP.'},
+    ],
+    paths:{
+      damage_amp:{pathId:'damage_amp', displayName:'Damage Amp', abilities:{1:'kiwi_scent_amp_1',2:'kiwi_scent_amp_2',3:'kiwi_scent_amp_3'}},
+      def_break:{pathId:'def_break', displayName:'Defense Break', abilities:{1:'kiwi_scent_def_1',2:'kiwi_scent_def_2',3:'kiwi_scent_def_3'}},
+      execute:{pathId:'execute', displayName:'Execute', abilities:{1:'kiwi_scent_exec_1',2:'kiwi_scent_exec_2',3:'kiwi_scent_exec_3'}},
+    },
+  },
+  scrape:{
+    familyId:'scrape', displayName:'Scrape Line', baseAbilityId:'scrape', slotRole:'ground_control', maxTier:3,
+    tierNames:{1:'Scrape',2:'Rake',3:'Dust'},
+    masteries:[
+      {id:'power', name:'Loose Earth', desc:'Scrape-line dodge/SPD buffs +3 when possible.'},
+      {id:'precision', name:'Blind Soil', desc:'Scrape-line enemy ACC penalties +4%.'},
+      {id:'control', name:'Burrow Tempo', desc:'Scrape-line slow riders +1 SPD down when possible.'},
+    ],
+    paths:{
+      dodge:{pathId:'dodge', displayName:'Dodge', abilities:{1:'kiwi_scrape_dodge_1',2:'kiwi_scrape_dodge_2',3:'kiwi_scrape_dodge_3'}},
+      speed:{pathId:'speed', displayName:'Speed', abilities:{1:'kiwi_scrape_spd_1',2:'kiwi_scrape_spd_2',3:'kiwi_scrape_spd_3'}},
+      acc_debuff:{pathId:'acc_debuff', displayName:'Accuracy Down', abilities:{1:'kiwi_scrape_acc_1',2:'kiwi_scrape_acc_2',3:'kiwi_scrape_acc_3'}},
+    },
+  },
 });
 
 const SNOWY_OWL_SKILL_SLOT_LAYOUT = Object.freeze([
@@ -4237,10 +4282,10 @@ const FAMILY_EVOLUTION_BIRD_DATA = Object.freeze({
     families:KIWI_SKILL_FAMILIES,
     abilityLookup:buildFamilySkillAbilityLookup(KIWI_SKILL_SLOT_LAYOUT, KIWI_SKILL_FAMILIES),
     legacyBaseAbilityIds:Object.freeze({
-      probe:{legacy:['peck', 'needle_peck'], current:'silentPierce'},
-      plunge:{legacy:['beakSlam', 'heavyTalon'], current:'diveBomb'},
-      veil:{legacy:['evade'], current:'windFeint'},
-      stalk:{legacy:['predatorMark', 'featherRuffle', 'markPrey'], current:'trackPrey'},
+      beak:{legacy:['silentPierce','peck','needle_peck','probeStrike'], current:'beak_jab'},
+      probe:{legacy:['diveBomb','beakSlam','heavyTalon','heavy_talon'], current:'night_probe'},
+      scent:{legacy:['trackPrey','predatorMark','featherRuffle','markPrey','huntersMark'], current:'scent_hunt'},
+      scrape:{legacy:['windFeint','evade'], current:'scrape'},
     }),
   },
   snowyOwl:{
@@ -4291,6 +4336,38 @@ function createSkillSlotState(slotIndex, familyId, pathId, tier, abilityId, mast
     masteryCount:Math.max(0, Number(masteryCount)||0),
     masteries:Array.isArray(masteries)?masteries.filter(Boolean).map(String):[],
   };
+}
+function migrateKiwiLegacyFamilySkillSlots(slots){
+  if(!Array.isArray(slots)) return slots;
+  const idxRules=[
+    {from:'probe',to:'beak',newBase:'beak_jab',legacyBases:['silentPierce','peck','needle_peck','probeStrike']},
+    {from:'plunge',to:'probe',newBase:'night_probe',legacyBases:['diveBomb','beakSlam','heavyTalon','heavy_talon']},
+    {from:'veil',to:'scrape',newBase:'scrape',legacyBases:['windFeint','evade']},
+    {from:'stalk',to:'scent',newBase:'scent_hunt',legacyBases:['trackPrey','predatorMark','featherRuffle','markPrey','huntersMark']},
+  ];
+  return slots.map((slot,i)=>{
+    if(!slot||typeof slot!=='object') return slot;
+    const rule=idxRules[i];
+    if(!rule||slot.familyId!==rule.from) return slot;
+    const legacySet=new Set(rule.legacyBases);
+    const tier=Number(slot.tier)||0;
+    const branched=!!slot.pathId&&tier>0;
+    const out={...slot,familyId:rule.to};
+    if(branched){
+      out.pathId=null;
+      out.tier=0;
+      out.abilityId=rule.newBase;
+      out.masteries=[];
+      out.masteryCount=0;
+      return out;
+    }
+    if(legacySet.has(String(slot.abilityId||''))){
+      out.abilityId=rule.newBase;
+      out.pathId=null;
+      out.tier=0;
+    }
+    return out;
+  });
 }
 function getBaseSkillSlotsForBird(birdKey){
   const data = getBirdFamilyEvolutionData(birdKey);
@@ -4459,6 +4536,7 @@ function syncPlayerAbilitiesFromSkillSlots(player){
     if(player.birdKey==='hummingbird' && slot.abilityId==='needle_jab') ab.fixedMainAttackCost = true;
     if(player.birdKey==='peregrine' && slot.abilityId==='talon_jab') ab.fixedMainAttackCost = true;
     if(player.birdKey==='snowyOwl' && slot.abilityId==='talon_snap') ab.fixedMainAttackCost = true;
+    if(player.birdKey==='kiwi' && slot.abilityId==='beak_jab') ab.fixedMainAttackCost = true;
     return ab;
   });
 }
@@ -4480,7 +4558,7 @@ function ensureFamilyEvolutionState(player){
   state.birdKey = birdKey;
   state.rootTemplate = String(state.rootTemplate || birdKey);
   if(catalog){
-    const rawSlots = Array.isArray(state.skillSlots) && state.skillSlots.length
+    let rawSlots = Array.isArray(state.skillSlots) && state.skillSlots.length
       ? state.skillSlots
       : baseSlots.map((slot, idx)=>{
           const currentId = migrateLegacyFamilyBaseAbilityId(player.abilities?.[idx]?.id, birdKey, slot.familyId, null, 0);
@@ -4490,6 +4568,7 @@ function ensureFamilyEvolutionState(player){
           }
           return slot;
         });
+    if(birdKey==='kiwi') rawSlots = migrateKiwiLegacyFamilySkillSlots(rawSlots);
     state.skillSlots = baseSlots.map((baseSlot, idx)=>normalizeSkillSlotState(rawSlots[idx], baseSlot, birdKey));
     syncPlayerAbilitiesFromSkillSlots(player);
   }else{
@@ -9902,9 +9981,49 @@ const CROW_SKILL_ACTION_OVERRIDES = {
 };
 Object.entries(CROW_SKILL_ACTION_OVERRIDES).forEach(([id, fn])=>{ ACTIONS[id]=fn; });
 
+(function registerKiwiV2SkillAliases(){
+  registerAbilityAlias('beak_jab','probeStrike','Beak Jab',{
+    desc:'Grounded precision jab. Anti-armor filler before specializing beak branches.',
+    energyCost:1,
+    energyByLevel:[1,1,1,1],
+  });
+  registerAbilityAlias('night_probe','diveBomb','Night Probe',{desc:'SPD-weighted burrow strike. Signature grounded plunge before specializing.'});
+  registerAbilityAlias('scent_hunt','trackPrey','Scent Hunt',{desc:'Read the trail — your next attack hits harder.'});
+  registerAbilityAlias('scrape','windFeint','Scrape',{desc:'Kick litter and vanish — short dodge window.'});
+  const kiwiBeak = [
+    ['kiwi_beak_bleed_1','raking_peck','Raking Beak'],['kiwi_beak_bleed_2','tearing_jab','Tearing Beak'],['kiwi_beak_bleed_3','carrion_flurry','Carrion Rake'],
+    ['kiwi_beak_hex_1','hex_peck','Hex Jab'],['kiwi_beak_hex_2','umbral_jab','Umbral Probe'],['kiwi_beak_hex_3','hex_flurry','Hex Flurry'],
+    ['kiwi_beak_prec_1','keen_peck','Keen Jab'],['kiwi_beak_prec_2','target_jab','Target Probe'],['kiwi_beak_prec_3','execution_flurry','Burrow Flurry'],
+  ];
+  kiwiBeak.forEach(([nid,sid,name])=>registerAbilityAlias(nid,sid,name));
+  const kiwiProbe = [
+    ['kiwi_probe_trample_1','heavy_talon','Heavy Probe'],['kiwi_probe_trample_2','trample_slam','Trample Probe'],['kiwi_probe_trample_3','crushing_stampede','Stampede Probe'],
+    ['kiwi_probe_buffet_1','wing_buffet','Wing Scrape'],['kiwi_probe_buffet_2','bone_buffet','Bone Buffet'],['kiwi_probe_buffet_3','gale_crush','Gale Crush'],
+    ['kiwi_probe_exec_1','rending_talon','Rending Probe'],['kiwi_probe_exec_2','finisher_slam','Finisher Slam'],['kiwi_probe_exec_3','execution_crush','Execution Crush'],
+  ];
+  kiwiProbe.forEach(([nid,sid,name])=>registerAbilityAlias(nid,sid,name));
+  const kiwiScent = [
+    ['kiwi_scent_amp_1','markPrey','Marked Trail'],['kiwi_scent_amp_2','brandPrey','Branded Trail'],['kiwi_scent_amp_3','huntersMark','Quarry Mark'],
+    ['kiwi_scent_def_1','exposeWeakness','Soft Tissue'],['kiwi_scent_def_2','exposeGuard','Broken Guard'],['kiwi_scent_def_3','quarryBreak','Quarry Break'],
+    ['kiwi_scent_exec_1','predatorMark','Predator Scent'],['kiwi_scent_exec_2','predatorBrand','Deep Scent'],['kiwi_scent_exec_3','finalHunt','Final Burrow'],
+  ];
+  kiwiScent.forEach(([nid,sid,name])=>registerAbilityAlias(nid,sid,name));
+  const kiwiScrape = [
+    ['kiwi_scrape_dodge_1','windSlip','Dust Slip'],['kiwi_scrape_dodge_2','slipVeil','Loam Veil'],['kiwi_scrape_dodge_3','phantomGale','Phantom Dust'],
+    ['kiwi_scrape_spd_1','tailwindFeint','Tunnel Rush'],['kiwi_scrape_spd_2','tailwindGust','Burrow Gust'],['kiwi_scrape_spd_3','hyperCurrent','Hyper Burrow'],
+    ['kiwi_scrape_acc_1','featherDrift','Grit Drift'],['kiwi_scrape_acc_2','blindingVeil','Blinding Grit'],['kiwi_scrape_acc_3','stormShroud','Dust Storm'],
+  ];
+  kiwiScrape.forEach(([nid,sid,name])=>registerAbilityAlias(nid,sid,name));
+})();
+
 const GOOSE_TWO_EN_TREE_IDS = Object.freeze([
   'gooseHonk','honkAttack','territorial_honk','dread_honk','terror_blast','panic_terror','shock_honk','stunning_blast','lockdown_terror','crushing_honk','oppression_blast','tyrant_terror','honk_terror',
   'talon_slam','heavy_talon','trample_slam','crushing_stampede','wing_buffet','bone_buffet','gale_crush','rending_talon','finisher_slam','execution_crush','heavyTalon','fearHonk',
+  // Kiwi slot-state aliases are registered before this pass; shallow copies need the same 2 EN as the goose heavy tree sources.
+  'night_probe',
+  'kiwi_probe_trample_1','kiwi_probe_trample_2','kiwi_probe_trample_3',
+  'kiwi_probe_buffet_1','kiwi_probe_buffet_2','kiwi_probe_buffet_3',
+  'kiwi_probe_exec_1','kiwi_probe_exec_2','kiwi_probe_exec_3',
 ]);
 for(const id of GOOSE_TWO_EN_TREE_IDS){
   const tmpl=ABILITY_TEMPLATES?.[id];
@@ -11371,7 +11490,7 @@ const RELIABLE_ONE_EN_ATTACK_BY_CLASS = Object.freeze({
   striker:'rapidPeck',
   bruiser:'bracePeck',
   tank:'bracePeck',
-  trickster:'silentPierce',
+  trickster:'mockingPeck',
   predator:'blackPeck',
   singer:'mockingPeck',
 });

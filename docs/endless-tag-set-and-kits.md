@@ -73,6 +73,7 @@ Design implication:
 - Secretary Bird: Peck, Stick Lance, Battle Rhythm, Guard
 - Toucan: Peck, Fruit Bomb, Taunt, Preen
 - Shoebill: Peck, Shoebill Clamp, Sit and Wait, Fish Snatcher
+- Kiwi: Beak Jab, Night Probe, Scent Hunt, Scrape
 
 ---
 
