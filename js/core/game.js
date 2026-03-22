@@ -4864,7 +4864,7 @@ function renderStarterFallbackGrid(reason=''){
   if(BIRDS?.sparrow){
     G.selected='sparrow';
     ensureUIState().expandedBird='sparrow';
-    updateAscentPanel('sparrow',{openProfileModal:false});
+    updateAscentPanel('sparrow');
   }
   console.warn('Selection recovery fallback used.', reason);
 }
@@ -5038,7 +5038,7 @@ function buildBirdGrid() {
   }
 
   const focusKey=ui.expandedBird||G.selected;
-  if(focusKey && BIRDS[focusKey]) updateAscentPanel(focusKey,{openProfileModal:false});
+  if(focusKey && BIRDS[focusKey]) updateAscentPanel(focusKey);
   else updateAscentPanel('');
 
   // Hard fallback: never allow an empty/brick select screen.
@@ -5181,163 +5181,128 @@ function rosterAbilityBlurb(t){
   const raw=(t.levels&&t.levels[0]&&t.levels[0].desc!=null)?t.levels[0].desc:(t.desc!=null?t.desc:'No description');
   return escapeHtmlRoster(String(raw).trim());
 }
-function syncRosterChampionToolbar(key){
-  const hint=document.getElementById('sel-champion-summary');
-  const btn=document.getElementById('roster-open-details-btn');
-  const bird=key&&BIRDS[key];
-  if(hint){
-    hint.textContent=bird
-      ? `Selected: ${bird.name} — open profile for stats & skills, or Take Flight.`
-      : 'Choose a fighter from the grid — tap one for a full profile.';
-  }
-  if(btn){
-    if(bird){
-      btn.hidden=false;
-      btn.disabled=false;
-    }else{
-      btn.hidden=true;
-      btn.disabled=true;
-    }
-  }
-}
-function openRosterChampionModal(){
-  const modal=document.getElementById('roster-champion-modal');
-  if(!modal) return;
-  if(!G.selected||!BIRDS[G.selected]) return;
-  modal.classList.add('is-open');
-  modal.setAttribute('aria-hidden','false');
-  document.body.classList.add('roster-champion-modal-active');
-}
-function closeRosterChampionModal(){
-  const modal=document.getElementById('roster-champion-modal');
-  if(!modal) return;
-  modal.classList.remove('is-open');
-  modal.setAttribute('aria-hidden','true');
-  document.body.classList.remove('roster-champion-modal-active');
-}
+// Stubs kept so any call sites or wrapper hooks don't throw
+function openRosterChampionModal(){}
+function closeRosterChampionModal(){}
 globalThis.openRosterChampionModal=openRosterChampionModal;
 globalThis.closeRosterChampionModal=closeRosterChampionModal;
 
-function updateAscentPanel(key, opts={}) {
-  const openProfileModal = opts.openProfileModal !== false;
+function _setSfselEmptyState(show){
+  const el=document.getElementById('sfsel-detail-empty');
+  if(!el) return;
+  el.classList.toggle('sfsel__detail-empty--hidden', !show);
+}
+
+function updateAscentPanel(key) {
   const panel = document.getElementById('ascent-panel');
-  const mobileDetailsAnchor=document.getElementById('mobile-select-details-anchor');
-  if(mobileDetailsAnchor) mobileDetailsAnchor.innerHTML='';
   if(!panel){
     syncSelectTakeFlightButton();
-    syncRosterChampionToolbar('');
     return;
   }
   const bird = BIRDS[key];
   if(!bird){
     G.selected=null;
-    try{
-      const u=ensureUIState();
-      u.expandedBird=null;
-    }catch(_){}
+    try{ const u=ensureUIState(); u.expandedBird=null; }catch(_){}
     panel.classList.add('is-empty');
     panel.classList.remove('is-filled');
     panel.innerHTML='<div class="ascent-empty">Select a fighter from the roster.</div>';
-    syncRosterChampionToolbar('');
-    closeRosterChampionModal();
+    _setSfselEmptyState(true);
     syncSelectTakeFlightButton();
     return;
   }
 
   try{
-  if(!bird.stats||typeof bird.stats!=='object'){
-    throw new Error('Bird stats missing for '+key);
-  }
+    if(!bird.stats||typeof bird.stats!=='object'){
+      throw new Error('Bird stats missing for '+key);
+    }
 
-  G.selected = key;
+    G.selected = key;
 
-  const cls = classToRoleId(bird.class);
-  const sizeClass = getUISizeClass(bird, 'panel');
-  const classLabel=idToClassLabel(cls);
-  const sizeLabel=SIZE_LABELS[bird.size||'medium']||bird.size;
-  const startEn=(ENERGY_BY_SIZE[(bird.size||'medium').toLowerCase()] ?? 3);
-  const maxEn=startEn+3;
-  const cc=bird.stats.critChance||5;
-  const cd=1.5;
-  const roleSummary={
-    striker:'Fast combo attacker',
-    bruiser:'Heavy bruiser with hit pressure',
-    tank:'Defensive frontliner',
-    trickster:'Debuff-focused trickster',
-    predator:'Execute-focused predator',
-    singer:'Song-based controller',
-  }[cls]||'Adaptive fighter';
+    const cls = classToRoleId(bird.class);
+    const sizeClass = getUISizeClass(bird, 'panel');
+    const classLabel=idToClassLabel(cls);
+    const sizeLabel=SIZE_LABELS[bird.size||'medium']||bird.size;
+    const startEn=(ENERGY_BY_SIZE[(bird.size||'medium').toLowerCase()] ?? 3);
+    const maxEn=startEn+3;
+    const cc=bird.stats.critChance||5;
+    const cd=1.5;
+    const roleSummary={
+      striker:'Fast combo attacker',
+      bruiser:'Heavy bruiser with hit pressure',
+      tank:'Defensive frontliner',
+      trickster:'Debuff-focused trickster',
+      predator:'Execute-focused predator',
+      singer:'Song-based controller',
+    }[cls]||'Adaptive fighter';
 
-  const startAbilityDetails=(bird.startAbilities||[]).map((id,idx)=>{
-    const t=ABILITY_TEMPLATES[id]||{};
-    const en=Array.isArray(t.energyByLevel)?(t.energyByLevel[0]??t.energyCost??0):(t.energyCost??0);
-    const type=String(t.btnType||t.type||'utility').toUpperCase();
-    const tagOrder=['BASIC','SIGNATURE','UTILITY','CLASS'];
-    const slotTag=tagOrder[idx]||'CLASS';
-    const short=rosterAbilityBlurb(t);
-    const nm=escapeHtmlRoster(t.name||id);
-    return `<div class="ascent-ability-card"><div class="ascent-ability-top"><span class="ascent-ability-name">${nm}</span><span class="ascent-ability-en">${en} EN</span></div><div class="ascent-ability-tags">${slotTag} · ${type}</div><div class="ascent-ability-desc">${short}</div></div>`;
-  }).join('');
+    const startAbilityDetails=(bird.startAbilities||[]).map((id,idx)=>{
+      const t=ABILITY_TEMPLATES[id]||{};
+      const en=Array.isArray(t.energyByLevel)?(t.energyByLevel[0]??t.energyCost??0):(t.energyCost??0);
+      const type=String(t.btnType||t.type||'utility').toUpperCase();
+      const tagOrder=['BASIC','SIGNATURE','UTILITY','CLASS'];
+      const slotTag=tagOrder[idx]||'CLASS';
+      const short=rosterAbilityBlurb(t);
+      const nm=escapeHtmlRoster(t.name||id);
+      return `<div class="ascent-ability-card"><div class="ascent-ability-top"><span class="ascent-ability-name">${nm}</span><span class="ascent-ability-en">${en} EN</span></div><div class="ascent-ability-tags">${slotTag} · ${type}</div><div class="ascent-ability-desc">${short}</div></div>`;
+    }).join('');
 
-  const statsStrip=`
-    <div class="ascent-stats-strip">
-      <span class="ascent-stat-chip"><abbr title="Hit Points">HP</abbr> <strong>${bird.stats.hp}</strong></span>
-      <span class="ascent-stat-chip"><abbr title="Attack">ATK</abbr> <strong>${bird.stats.atk}</strong></span>
-      <span class="ascent-stat-chip"><abbr title="Defense">DEF</abbr> <strong>${bird.stats.def}</strong></span>
-      <span class="ascent-stat-chip"><abbr title="Speed">SPD</abbr> <strong>${bird.stats.spd}</strong></span>
-      <span class="ascent-stat-chip"><abbr title="Accuracy">ACC</abbr> <strong>${bird.stats.acc}%</strong></span>
-      <span class="ascent-stat-chip">MATK <strong>${bird.stats.matk||0}</strong></span>
-      <span class="ascent-stat-chip">MDEF <strong>${bird.stats.mdef||0}</strong></span>
-      <span class="ascent-stat-chip">CC <strong>${cc}%</strong></span>
-      <span class="ascent-stat-chip">CD <strong>${cd.toFixed(1)}×</strong></span>
-      <span class="ascent-stat-chip">EN <strong>${startEn}/${maxEn}</strong></span>
-    </div>`;
+    const statsStrip=`
+      <div class="ascent-stats-strip">
+        <span class="ascent-stat-chip"><abbr title="Hit Points">HP</abbr> <strong>${bird.stats.hp}</strong></span>
+        <span class="ascent-stat-chip"><abbr title="Attack">ATK</abbr> <strong>${bird.stats.atk}</strong></span>
+        <span class="ascent-stat-chip"><abbr title="Defense">DEF</abbr> <strong>${bird.stats.def}</strong></span>
+        <span class="ascent-stat-chip"><abbr title="Speed">SPD</abbr> <strong>${bird.stats.spd}</strong></span>
+        <span class="ascent-stat-chip"><abbr title="Accuracy">ACC</abbr> <strong>${bird.stats.acc}%</strong></span>
+        <span class="ascent-stat-chip">MATK <strong>${bird.stats.matk||0}</strong></span>
+        <span class="ascent-stat-chip">MDEF <strong>${bird.stats.mdef||0}</strong></span>
+        <span class="ascent-stat-chip">CC <strong>${cc}%</strong></span>
+        <span class="ascent-stat-chip">CD <strong>${cd.toFixed(1)}×</strong></span>
+        <span class="ascent-stat-chip">EN <strong>${startEn}/${maxEn}</strong></span>
+      </div>`;
 
-  const passiveName=escapeHtmlRoster(bird.passive?.name||'—');
-  const passiveDesc=escapeHtmlRoster(bird.passive?.desc||'No passive listed.');
+    const passiveName=escapeHtmlRoster(bird.passive?.name||'—');
+    const passiveDesc=escapeHtmlRoster(bird.passive?.desc||'No passive listed.');
 
-  panel.innerHTML = `
-    <div class="ascent-strip ascent-strip--filled ascent-strip--modal">
-      <div class="ascent-strip-portrait-wrap" aria-hidden="true"><div class="ascent-panel-portrait">${renderBirdIconHTML(key, sizeClass, false)}</div></div>
-      <div class="ascent-strip-body">
-        <div class="ascent-strip-title-row">
-          <span class="ascent-panel-name">${escapeHtmlRoster(bird.name)}</span>
-          <span class="class-badge class-${cls}">${escapeHtmlRoster(classLabel.toUpperCase())}</span>
-          <span class="bird-size-chip">${escapeHtmlRoster(sizeLabel)}</span>
-          <span class="ascent-strip-tagline">${escapeHtmlRoster(bird.tagline||'')}</span>
+    panel.innerHTML = `
+      <div class="ascent-strip ascent-strip--filled">
+        <div class="ascent-strip-portrait-wrap" aria-hidden="true"><div class="ascent-panel-portrait">${renderBirdIconHTML(key, sizeClass, false)}</div></div>
+        <div class="ascent-strip-body">
+          <div class="ascent-strip-title-row">
+            <span class="ascent-panel-name">${escapeHtmlRoster(bird.name)}</span>
+            <span class="class-badge class-${cls}">${escapeHtmlRoster(classLabel.toUpperCase())}</span>
+            <span class="bird-size-chip">${escapeHtmlRoster(sizeLabel)}</span>
+            <span class="ascent-strip-tagline">${escapeHtmlRoster(bird.tagline||'')}</span>
+          </div>
+          <div class="ascent-strip-hscroll" tabindex="0" role="region" aria-label="Stats, passive, and abilities">
+            <div class="ascent-hblock ascent-hblock-stats">
+              <div class="ascent-hblock-label">Stats</div>
+              ${statsStrip}
+            </div>
+            <div class="ascent-hblock ascent-hblock-passive">
+              <div class="ascent-hblock-label">Passive</div>
+              <div class="ascent-panel-passive ascent-panel-passive--inline"><strong>${passiveName}:</strong> ${passiveDesc}</div>
+            </div>
+            <div class="ascent-hblock ascent-hblock-abilities">
+              <div class="ascent-hblock-label">Starting skills</div>
+              <div class="ascent-abilities-row">${startAbilityDetails}</div>
+            </div>
+            <div class="ascent-hblock ascent-hblock-playstyle">
+              <div class="ascent-hblock-label">Playstyle</div>
+              <div class="showcase-summary">${escapeHtmlRoster(roleSummary)}</div>
+            </div>
+          </div>
         </div>
-        <div class="ascent-strip-hscroll ascent-strip-hscroll--main ascent-strip-hscroll--modal" tabindex="0" role="region" aria-label="Stats, passive, and abilities">
-          <div class="ascent-hblock ascent-hblock-stats">
-            <div class="ascent-hblock-label">Stats</div>
-            ${statsStrip}
-          </div>
-          <div class="ascent-hblock ascent-hblock-passive">
-            <div class="ascent-hblock-label">Passive</div>
-            <div class="ascent-panel-passive ascent-panel-passive--inline"><strong>${passiveName}:</strong> ${passiveDesc}</div>
-          </div>
-          <div class="ascent-hblock ascent-hblock-abilities">
-            <div class="ascent-hblock-label">Starting skills</div>
-            <div class="ascent-abilities-row ascent-abilities-row--modal">${startAbilityDetails}</div>
-          </div>
-          <div class="ascent-hblock ascent-hblock-playstyle">
-            <div class="ascent-hblock-label">Playstyle</div>
-            <div class="showcase-summary">${escapeHtmlRoster(roleSummary)}</div>
-          </div>
-        </div>
-      </div>
-    </div>`;
-  panel.classList.remove('is-empty');
-  panel.classList.add('is-filled');
-  syncRosterChampionToolbar(key);
-  if(openProfileModal) openRosterChampionModal();
+      </div>`;
+    panel.classList.remove('is-empty');
+    panel.classList.add('is-filled');
+    _setSfselEmptyState(false);
   }catch(err){
     console.error('updateAscentPanel failed:',key,err);
     panel.classList.add('is-empty');
     panel.classList.remove('is-filled');
-    panel.innerHTML='<div class="ascent-empty">Could not load fighter profile. Try another bird or refresh.</div>';
+    panel.innerHTML='<div class="ascent-empty">Could not load fighter profile.</div>';
     G.selected=null;
-    syncRosterChampionToolbar('');
-    closeRosterChampionModal();
+    _setSfselEmptyState(true);
   }
   syncSelectTakeFlightButton();
 }
@@ -14463,11 +14428,6 @@ document.addEventListener('keydown', e => {
     return;
   }
   if(e.target.tagName==='INPUT'||e.target.tagName==='TEXTAREA') return;
-  if(e.key==='Escape' && document.getElementById('roster-champion-modal')?.classList.contains('is-open')){
-    e.preventDefault();
-    closeRosterChampionModal();
-    return;
-  }
   if(e.key==='Escape' && document.getElementById('select-hub-panels')?.classList.contains('is-open')){
     e.preventDefault();
     closeSelectHubPanel();
@@ -15420,8 +15380,9 @@ applyUIStateToDOM();
   // Hook updateAscentPanel to render sprite portrait in inline preview
   const oldUpdate=globalThis.updateAscentPanel;
   if(typeof oldUpdate==='function'){
-    globalThis.updateAscentPanel=function(key){
+    globalThis.updateAscentPanel=function(){
       oldUpdate.apply(this,arguments);
+      const key=arguments[0];
       try{
         const k=normKey(key);
         const bird = globalThis.BIRDS?.[key] || globalThis.BIRDS?.[k];
@@ -15888,8 +15849,9 @@ SPRITE_KEYS_ALL.add('magpie');
 
   const oldUpdateAscentPanel = globalThis.updateAscentPanel;
   if(typeof oldUpdateAscentPanel === 'function'){
-    globalThis.updateAscentPanel = function(key){
+    globalThis.updateAscentPanel = function(){
       oldUpdateAscentPanel.apply(this, arguments);
+      const key = arguments[0];
       try{
         const bird = globalThis.BIRDS?.[key];
         const panelPortrait = document.querySelector('.ascent-panel-portrait');
