@@ -15755,6 +15755,72 @@ SPRITE_KEYS_ALL.add('magpie');
   globalThis.__birdSpritePolish = { refreshAmbient, playAttackMotion, playHitMotion };
 })();
 
+// Dev-only: validate BIRDS ability ids vs ABILITY_TEMPLATES (+ family base slots, upgrade id uniqueness).
+// Enable auto-run: set globalThis.__CONTENT_VALIDATE__ = true before game.js loads, or open with ?contentValidate=1
+// Manual: validateDevContentIntegrity() in the console (returns { ok, issues }).
+(function(){
+  function shouldRunDevContentValidation(){
+    if(globalThis.__CONTENT_VALIDATE__===true) return true;
+    try{
+      if(typeof location!=='undefined' && location.search && /[?&]contentValidate=1(?:&|$)/.test(location.search)) return true;
+      const h = typeof location!=='undefined' ? String(location.hostname||'') : '';
+      if(h==='localhost' || h==='127.0.0.1') return true;
+    }catch(_){}
+    return false;
+  }
+  function abilityTemplateLooksValid(id){
+    const t = ABILITY_TEMPLATES && ABILITY_TEMPLATES[id];
+    return !!(t && typeof t==='object' && (t.name || t.id || t.type || (Array.isArray(t.levels)&&t.levels.length)));
+  }
+  function validateDevContentIntegrity(){
+    const issues = [];
+    const add = msg => issues.push(msg);
+    try{
+      const birds = BIRDS || {};
+      for(const bk of Object.keys(birds)){
+        const bd = birds[bk];
+        if(!bd || typeof bd!=='object') continue;
+        const need = new Set();
+        (bd.startAbilities||[]).forEach(x=>{ if(x) need.add(String(x)); });
+        (bd.extraAbilities||[]).forEach(x=>{ if(x) need.add(String(x)); });
+        if(bd.mainAttackId) need.add(String(bd.mainAttackId));
+        for(const aid of need){
+          if(!abilityTemplateLooksValid(aid)) add(`BIRDS[${bk}] references missing/empty ABILITY_TEMPLATES["${aid}"]`);
+        }
+        const fed = typeof getBirdFamilyEvolutionData==='function' ? getBirdFamilyEvolutionData(bk) : null;
+        if(fed && Array.isArray(fed.slotLayout)){
+          fed.slotLayout.forEach((slot, i)=>{
+            const sid = slot && slot.abilityId;
+            if(sid && !abilityTemplateLooksValid(String(sid))){
+              add(`BIRDS[${bk}] family slotLayout[${i}] missing ABILITY_TEMPLATES["${sid}"]`);
+            }
+          });
+        }
+      }
+      if(Array.isArray(UPGRADE_CARDS_REWORK)){
+        const seen = new Set();
+        UPGRADE_CARDS_REWORK.forEach(u=>{
+          if(!u || !u.id) return;
+          if(seen.has(u.id)) add(`UPGRADE_CARDS_REWORK duplicate id: ${u.id}`);
+          seen.add(u.id);
+        });
+      }
+    }catch(e){
+      add(`validateDevContentIntegrity internal error: ${e && e.message ? e.message : e}`);
+    }
+    if(issues.length){
+      console.warn(`[ContentValidate] ${issues.length} issue(s):`);
+      issues.forEach(m=>console.warn('  -', m));
+    }else if(shouldRunDevContentValidation()){
+      console.info('[ContentValidate] OK — bird abilities, family slots, and upgrade ids look consistent.');
+    }
+    return { ok: issues.length===0, issues };
+  }
+  globalThis.validateDevContentIntegrity = validateDevContentIntegrity;
+  if(shouldRunDevContentValidation()){
+    try{ validateDevContentIntegrity(); }catch(e){ console.warn('[ContentValidate] failed:', e); }
+  }
+})();
 
 // ===== 07_script_07.js =====
 
