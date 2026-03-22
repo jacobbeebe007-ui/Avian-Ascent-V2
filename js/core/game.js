@@ -4747,37 +4747,53 @@ function initSelection() {
   buildDifficultyPicker();
 
   // Build bird grid
-  buildSelectionViewButtons();
-  buildLockFilterButtons();
+  buildRosterFilterSelect();
   buildGameModeToggle();
   buildBirdGrid();
   renderHighscoreBoard();
   syncSelectTakeFlightButton();
 }
 
-function buildSelectionViewButtons(){
-  const host=document.getElementById('view-toggle');
-  if(!host) return;
-  const ui=ensureUIState();
-  const btns=ROLE_ORDER.map(c=>[`role:${c}`,idToClassLabel(c)]);
-  host.innerHTML=btns.map(([id,label])=>`<button class="view-toggle-btn ${ui.selectionView===id?'active':''}" onclick="setSelView('${id}',this)">${label}</button>`).join('');
-}
-
-function buildLockFilterButtons(){
-  const host=document.getElementById('lock-toggle');
-  if(!host) return;
+function buildRosterFilterSelect(){
+  const sel=document.getElementById('roster-filter-select');
+  if(!sel) return;
   const ui=ensureUIState();
   if(!ui.lockFilter) ui.lockFilter='all';
-  const isAllBirds = ui.selectionView==='all' && ui.lockFilter==='all';
-  const isBySize = ui.selectionView==='size' && ui.lockFilter==='all';
-  const buttons = [
-    `<button class="view-toggle-btn ${isAllBirds?'active':''}" onclick="setRosterMode('all')">All Birds</button>`,
-    `<button class="view-toggle-btn ${isBySize?'active':''}" onclick="setRosterMode('size')">By Size</button>`,
-    `<button class="view-toggle-btn ${ui.lockFilter==='unlocked'?'active':''}" onclick="setLockFilter('unlocked',this)">Unlocked</button>`,
-    `<button class="view-toggle-btn ${ui.lockFilter==='locked'?'active':''}" onclick="setLockFilter('locked',this)">Locked</button>`,
-  ];
-  host.innerHTML=buttons.join('');
+  const roleOptions=ROLE_ORDER.map(c=>`<option value="role:${c}">${idToClassLabel(c)}</option>`).join('');
+  sel.innerHTML=`
+    <option value="all">All Birds</option>
+    <option value="size">By Size</option>
+    <option value="unlocked">Unlocked</option>
+    <option value="locked">Locked</option>
+    ${roleOptions}
+  `;
+  syncRosterFilterSelect();
 }
+function syncRosterFilterSelect(){
+  const sel=document.getElementById('roster-filter-select');
+  if(!sel) return;
+  const ui=ensureUIState();
+  let v='all';
+  if(ui.lockFilter==='unlocked') v='unlocked';
+  else if(ui.lockFilter==='locked') v='locked';
+  else if(ui.selectionView==='size') v='size';
+  else if(ui.selectionView && ui.selectionView!=='all') v=ui.selectionView;
+  sel.value=v;
+}
+function onRosterFilterChange(value){
+  const ui=ensureUIState();
+  if(value==='all'){ ui.selectionView='all'; ui.lockFilter='all'; }
+  else if(value==='size'){ ui.selectionView='size'; ui.lockFilter='all'; }
+  else if(value==='unlocked'){ ui.selectionView='all'; ui.lockFilter='unlocked'; }
+  else if(value==='locked'){ ui.selectionView='all'; ui.lockFilter='locked'; }
+  else if(value.startsWith('role:')){ ui.selectionView=value; ui.lockFilter='all'; }
+  buildBirdGrid();
+  syncRosterFilterSelect();
+}
+globalThis.onRosterFilterChange=onRosterFilterChange;
+// Stubs so legacy callers don't throw
+function buildSelectionViewButtons(){ buildRosterFilterSelect(); }
+function buildLockFilterButtons(){ syncRosterFilterSelect(); }
 
 function setRosterMode(mode){
   const ui=ensureUIState();
@@ -10099,7 +10115,7 @@ const BLACKBIRD_EVOLUTION_TEMPLATE_DEFS = [
   ['grim_sign','Grim Sign','Blackbird base setup. Mark your quarry before choosing a doom path.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Next attack +12% damage.'},{desc:'Next attack +15% damage.'},{desc:'Next attack +18% damage.'},{desc:'Next attack +21% damage.'}]}],
 ];
 for(const [id,name,desc,options] of BLACKBIRD_EVOLUTION_TEMPLATE_DEFS){
-  Object.assign(ABILITY_TEMPLATES[id]||{}, makeEvolutionAbilityTemplate(id,name,desc,options));
+  ABILITY_TEMPLATES[id] = Object.assign(ABILITY_TEMPLATES[id]||{}, makeEvolutionAbilityTemplate(id,name,desc,options));
 }
 
 const MACAW_EVOLUTION_TEMPLATE_DEFS = [
@@ -10143,7 +10159,7 @@ const MACAW_EVOLUTION_TEMPLATE_DEFS = [
   ['fading_finale','Fading Finale','Chorus-line weaken finisher.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Heavy Weaken + big ACC crash.'},{desc:'Heavier.'},{desc:'Heavier.'},{desc:'Heaviest anti-offense mark.'}]}],
 ];
 for(const [id,name,desc,options] of MACAW_EVOLUTION_TEMPLATE_DEFS){
-  Object.assign(ABILITY_TEMPLATES[id]||{}, makeEvolutionAbilityTemplate(id,name,desc,options));
+  ABILITY_TEMPLATES[id] = Object.assign(ABILITY_TEMPLATES[id]||{}, makeEvolutionAbilityTemplate(id,name,desc,options));
 }
 
 const _hbDashCond=[{type:'while_self_buff_active',buff:'dodge_up',damageBonus:0.10},{type:'per_target_debuff',damageBonusPerStack:0.05,maxStacks:3}];
@@ -10187,7 +10203,7 @@ const HUMMINGBIRD_EVOLUTION_TEMPLATE_DEFS = [
   ['repeat_finale','Repeat Finale','Combo-line trigger finisher.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Large amp + heavy afterimage.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Repeat killing beat.'}]}],
 ];
 for(const [id,name,desc,options] of HUMMINGBIRD_EVOLUTION_TEMPLATE_DEFS){
-  Object.assign(ABILITY_TEMPLATES[id]||{}, makeEvolutionAbilityTemplate(id,name,desc,options));
+  ABILITY_TEMPLATES[id] = Object.assign(ABILITY_TEMPLATES[id]||{}, makeEvolutionAbilityTemplate(id,name,desc,options));
 }
 const PEREGRINE_EVOLUTION_TEMPLATE_DEFS = [
   ['talon_jab','Talon Jab','Talon-line neutral. A sharp controlled strike before you specialize.',{type:'physical',btnType:'physical',energy:1,fixedMainAttackCost:true,levels:[{desc:'~100% dmg, Pierce 10%.'},{desc:'Stronger jab.'},{desc:'Stronger jab.'},{desc:'Peak precision jab.'}]}],
@@ -10230,7 +10246,7 @@ const PEREGRINE_EVOLUTION_TEMPLATE_DEFS = [
   ['kill_stoop','Kill Stoop','Pace-line momentum finisher. Kill-line commitment.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Maximum next-dive multiplier.'},{desc:'Heavier.'},{desc:'Heavier.'},{desc:'Capstone kill stoop.'}]}],
 ];
 for(const [id,name,desc,options] of PEREGRINE_EVOLUTION_TEMPLATE_DEFS){
-  Object.assign(ABILITY_TEMPLATES[id]||{}, makeEvolutionAbilityTemplate(id,name,desc,options));
+  ABILITY_TEMPLATES[id] = Object.assign(ABILITY_TEMPLATES[id]||{}, makeEvolutionAbilityTemplate(id,name,desc,options));
 }
 const SNOWY_OWL_EVOLUTION_TEMPLATE_DEFS = [
   ['talon_snap','Talon Snap','Talon-line neutral. A quiet precision snap before you specialize.',{type:'physical',btnType:'physical',energy:1,fixedMainAttackCost:true,levels:[{desc:'~100% dmg, Pierce 10%.'},{desc:'Stronger snap.'},{desc:'Stronger snap.'},{desc:'Peak snap.'}]}],
@@ -10272,7 +10288,7 @@ const SNOWY_OWL_EVOLUTION_TEMPLATE_DEFS = [
   ['night_silence','Night Silence','Glide-line ambush finisher. Perfect night setup.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Next attack +24% damage.'},{desc:'+28%.'},{desc:'+32%.'},{desc:'+36%.'}]}],
 ];
 for(const [id,name,desc,options] of SNOWY_OWL_EVOLUTION_TEMPLATE_DEFS){
-  Object.assign(ABILITY_TEMPLATES[id]||{}, makeEvolutionAbilityTemplate(id,name,desc,options));
+  ABILITY_TEMPLATES[id] = Object.assign(ABILITY_TEMPLATES[id]||{}, makeEvolutionAbilityTemplate(id,name,desc,options));
 }
 registerAbilityAlias('sonicDash','sonic_dash','Sonic Dash',{isBasic:true,type:'physical',btnType:'physical'});
 registerAbilityAlias('blinkFlutter','blink_flutter','Blink Flutter',{type:'utility',btnType:'utility'});
@@ -11342,7 +11358,7 @@ const MAGPIE_TEMPLATE_DEFS = [
   ['phantom_javelin','Phantom Javelin','Dart-line trickshot finisher. A deceptive finishing throw.',{type:'physical',btnType:'physical',energy:1,levels:[{desc:'134% dmg, bonus vs ACC-debuffed or exposed.'},{desc:'144% dmg, bonus vs ACC-debuffed or exposed.'},{desc:'154% dmg, bonus vs ACC-debuffed or exposed.'},{desc:'164% dmg, bonus vs ACC-debuffed or exposed.'}]}],
 ];
 for(const [id,name,desc,options] of MAGPIE_TEMPLATE_DEFS){
-  Object.assign(ABILITY_TEMPLATES[id]||{}, makeEvolutionAbilityTemplate(id,name,desc,options));
+  ABILITY_TEMPLATES[id] = Object.assign(ABILITY_TEMPLATES[id]||{}, makeEvolutionAbilityTemplate(id,name,desc,options));
 }
 
 function getMagpieMasteryBonuses(ab){
