@@ -131,8 +131,12 @@
   <header class="sfsel__topbar">
     <h2 class="sfsel__title" id="hub-door-title">Choose Your Fighter</h2>
     <div class="sfsel__filters">
-      <div class="view-toggle filter-row" id="view-toggle"></div>
-      <div class="view-toggle filter-row" id="lock-toggle"></div>
+      <div class="sfsel__filter-wrap">
+        <label class="sfsel__filter-label" for="roster-filter-select">Filter:</label>
+        <select class="sfsel__filter-select" id="roster-filter-select" onchange="onRosterFilterChange(this.value)"></select>
+      </div>
+      <div id="view-toggle" hidden></div>
+      <div id="lock-toggle" hidden></div>
       <span class="sel-bird-count" id="bird-count-label"></span>
     </div>
     <button type="button" class="sfsel__return-btn" onclick="closeSelectHubPanel()">← War Room</button>

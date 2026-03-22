@@ -238,29 +238,32 @@ header p{color:var(--text-dim);font-style:italic;font-size:1rem;margin-top:4px;}
   transition:transform .2s ease,border-color .2s ease,background .2s ease,box-shadow .2s ease;
 }
 .splash-hotspot--supplies{
-  /* Burlap sacks / crates, lower-left */
-  left:clamp(5%, 3vw, 12%);
-  bottom:clamp(11%, 7vh, 22%);
+  /* Burlap sacks / crates — lower-left */
+  left:clamp(4%, 5vw, 14%);
+  bottom:clamp(12%, 10vh, 24%);
   transform:none;
   align-items:flex-start;
   text-align:left;
-  max-width:min(190px, 46vw);
+  max-width:min(190px, 40vw);
 }
 .splash-hotspot--map{
-  /* Parchment on the round table — bottom-center */
-  left:50%;
-  bottom:clamp(13%, 9vh, 24%);
-  transform:translateX(-50%);
-  max-width:min(220px, 88vw);
+  /* Mission table — lower-right (symmetric to supplies) */
+  right:clamp(4%, 5vw, 14%);
+  left:auto;
+  bottom:clamp(12%, 10vh, 24%);
+  transform:none;
+  align-items:flex-end;
+  text-align:right;
+  max-width:min(200px, 40vw);
 }
 .splash-hotspot--door{
-  /* Open double doorway, center of frame */
+  /* Open doorway — upper-center */
   left:50%;
-  top:clamp(30%, 24vh, 44%);
+  top:clamp(26%, 20vh, 40%);
   right:auto;
   bottom:auto;
   transform:translate(-50%,-50%);
-  max-width:min(240px, 82vw);
+  max-width:min(260px, 80vw);
 }
 .splash-hotspot--primary{
   border-width:2px;
@@ -276,7 +279,7 @@ header p{color:var(--text-dim);font-style:italic;font-size:1rem;margin-top:4px;}
   box-shadow:0 10px 32px rgba(0,0,0,.35);
 }
 .splash-hotspot--map:hover{
-  transform:translateX(-50%) translateY(-2px);
+  transform:translateY(-2px);
 }
 .splash-hotspot--door:hover{
   transform:translate(-50%,calc(-50% - 2px));
@@ -308,17 +311,19 @@ header p{color:var(--text-dim);font-style:italic;font-size:1rem;margin-top:4px;}
   .splash-hotspot--supplies{
     left:2%;
     bottom:clamp(10%, 7vh, 20%);
-    max-width:44vw;
+    max-width:42vw;
     padding:8px 10px;
   }
   .splash-hotspot--map{
-    bottom:clamp(10%, 6vh, 18%);
-    max-width:78vw;
+    right:2%;
+    bottom:clamp(10%, 7vh, 20%);
+    max-width:42vw;
+    padding:8px 10px;
   }
   .splash-hotspot--door{
     left:50%;
-    top:clamp(28%, 22vh, 40%);
-    max-width:min(220px, 86vw);
+    top:clamp(24%, 18vh, 36%);
+    max-width:min(200px, 76vw);
   }
 }
 .select-hub-panels{
@@ -656,6 +661,64 @@ header p{color:var(--text-dim);font-style:italic;font-size:1rem;margin-top:4px;}
   cursor:pointer;
   touch-action:manipulation;
   -webkit-tap-highlight-color:rgba(232,201,106,.12);
+}
+/* Compact bird cards for the SF/SSB grid */
+.sfsel__roster .bird-card{
+  padding:10px 8px;
+}
+.sfsel__roster .bird-nm{
+  font-size:.72rem !important;
+  margin-bottom:2px;
+}
+.sfsel__roster .bird-tagline-mini{
+  font-size:.56rem !important;
+  min-height:2em;
+  line-height:1.2;
+}
+.sfsel__roster .class-badge{
+  font-size:.54rem;
+  padding:1px 5px;
+}
+.sfsel__roster .bird-size-chip{
+  font-size:.5rem;
+  padding:1px 5px;
+}
+.sfsel__roster .bird-card-head{
+  margin-bottom:4px;
+  gap:4px;
+}
+/* Filter dropdown in the topbar */
+.sfsel__filter-wrap{
+  display:flex;
+  align-items:center;
+  gap:6px;
+}
+.sfsel__filter-label{
+  font-size:.72rem;
+  color:rgba(210,204,192,.8);
+  white-space:nowrap;
+  flex-shrink:0;
+}
+.sfsel__filter-select{
+  font:inherit;
+  font-size:.72rem;
+  padding:5px 26px 5px 8px;
+  border-radius:8px;
+  border:1px solid rgba(120,100,70,.5);
+  background:rgba(12,14,20,.8);
+  color:rgba(230,224,210,.9);
+  cursor:pointer;
+  appearance:none;
+  -webkit-appearance:none;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='rgba(200,180,140,0.6)'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;
+  background-position:right 8px center;
+  min-width:110px;
+}
+.sfsel__filter-select:focus{
+  outline:2px solid rgba(232,201,106,.5);
+  outline-offset:2px;
+  border-color:rgba(232,201,106,.45);
 }
 /* ── Mobile (≤700px): stack grid on top, detail below ── */
 @media (max-width:700px){
