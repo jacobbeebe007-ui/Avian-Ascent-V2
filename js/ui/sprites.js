@@ -295,14 +295,14 @@
     if(nm === 'peregrine falcon' || nm === 'peregrine' || pk === 'peregrinefalcon' || pk === 'peregrine' || bk === 'peregrinefalcon' || bk === 'peregrine' || id === 'peregrinefalcon' || id === 'peregrine'){
       e.sprite = 'peregrine';
       e.portraitKey = 'peregrine';
+      // Must match BIRDS / family-evolution keys (same string as roster id).
       e.birdKey = 'peregrine';
-      e.id = 'peregrine';
     }
     if(nm === 'snowy owl' || nm === 'snowyowl' || pk === 'snowy owl' || pk === 'snowyowl' || bk === 'snowy owl' || bk === 'snowyowl' || id === 'snowy owl' || id === 'snowyowl'){
       e.sprite = 'snowyowl';
       e.portraitKey = 'snowyowl';
-      e.birdKey = 'snowyowl';
-      e.id = 'snowyowl';
+      // Canonical roster key is camelCase `snowyOwl`. Lowercase breaks BIRDS[G.player.birdKey] after refreshBattleUI/fixAllBirdData.
+      e.birdKey = 'snowyOwl';
     }
   }
 

@@ -5634,12 +5634,9 @@ globalThis.closeSelectHubPanel = closeSelectHubPanel;
 function takeFlightToSelect(){
   showScreen('screen-select');
   if(typeof initSelectionSafe==='function') initSelectionSafe();
-  // Open champion roster immediately so "Take Flight" reliably reaches selection (mobile users often missed the war-room door).
+  // Stay on the war-room splash; player opens "Begin Ascent" to reach the roster (avoids skipping the barn menu).
   requestAnimationFrame(()=>{
-    try{
-      if(typeof openSelectHubPanel==='function') openSelectHubPanel('door');
-      syncSelectTakeFlightButton();
-    }catch(_){}
+    try{ syncSelectTakeFlightButton(); }catch(_){}
   });
 }
 globalThis.takeFlightToSelect = takeFlightToSelect;
