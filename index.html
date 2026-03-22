@@ -137,17 +137,9 @@
 <h2 class="roster-deck-title">Champion roster</h2>
 <p class="roster-deck-sub">Your fate is written in feathers.</p>
 </div>
-<div class="sel-preview-strip" id="sel-preview-strip">
-<div class="ascent-panel is-empty" id="ascent-panel">
-<div class="ascent-empty">← Select a bird to begin your ascent</div>
-</div>
-</div>
-<div class="sel-actions-bar select-hub-continue" id="sel-actions-bar" role="group" aria-label="Run actions">
-<div class="sel-continue-run-wrap" id="continue-row" style="display:none">
-<button type="button" class="continue-run-btn" onclick="continueRun()">🪺 Continue last run</button>
-<p class="sel-continue-info" id="continue-info"></p>
-</div>
-<button type="button" class="take-flight-select-btn" id="take-flight-select-btn" disabled onclick="startGame()" aria-disabled="true">Take Flight</button>
+<div class="sel-champion-toolbar" id="sel-champion-toolbar">
+<p class="sel-champion-toolbar__hint" id="sel-champion-summary" aria-live="polite">Choose a fighter from the grid — tap one for a full profile.</p>
+<button type="button" class="menu-btn sel-champion-toolbar__details" id="roster-open-details-btn" onclick="openRosterChampionModal()" disabled hidden>View fighter profile</button>
 </div>
 <div class="sel-layout sel-layout--roster-only">
 <div class="sel-roster sel-right">
@@ -164,7 +156,28 @@
 <div id="mobile-select-details-anchor" aria-hidden="true"></div>
 </div>
 </div>
+<div class="sel-actions-bar select-hub-continue" id="sel-actions-bar" role="group" aria-label="Run actions">
+<div class="sel-continue-run-wrap" id="continue-row" style="display:none">
+<button type="button" class="continue-run-btn" onclick="continueRun()">🪺 Continue last run</button>
+<p class="sel-continue-info" id="continue-info"></p>
 </div>
+<button type="button" class="take-flight-select-btn" id="take-flight-select-btn" disabled onclick="startGame()" aria-disabled="true">Take Flight</button>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div id="roster-champion-modal" class="roster-champion-modal" aria-hidden="true">
+<button type="button" class="roster-champion-modal__backdrop" onclick="closeRosterChampionModal()" aria-label="Close fighter profile" tabindex="-1"></button>
+<div class="roster-champion-modal__sheet" role="dialog" aria-modal="true" aria-labelledby="roster-champion-modal-title">
+<header class="roster-champion-modal__head">
+<h2 class="roster-champion-modal__title" id="roster-champion-modal-title">Fighter profile</h2>
+<button type="button" class="roster-champion-modal__close" onclick="closeRosterChampionModal()" aria-label="Close">×</button>
+</header>
+<div class="roster-champion-modal__body">
+<div class="ascent-panel ascent-panel--modal is-empty" id="ascent-panel">
+<div class="ascent-empty">Select a fighter from the roster.</div>
 </div>
 </div>
 </div>

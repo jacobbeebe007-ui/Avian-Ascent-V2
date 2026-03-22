@@ -308,13 +308,14 @@
 
   function fixAllBirdData(){
     try{
-      if(globalThis.BIRDS && typeof globalThis.BIRDS === 'object') Object.values(globalThis.BIRDS).forEach(normalizeBirdEntity);
+      const safeNorm=(e)=>{ try{ normalizeBirdEntity(e); }catch(err){ console.warn('normalizeBirdEntity skipped', err); } };
+      if(globalThis.BIRDS && typeof globalThis.BIRDS === 'object') Object.values(globalThis.BIRDS).forEach(safeNorm);
       if(globalThis.ENEMIES && typeof globalThis.ENEMIES === 'object'){
-        if(Array.isArray(globalThis.ENEMIES)) globalThis.ENEMIES.forEach(normalizeBirdEntity);
-        else Object.values(globalThis.ENEMIES).forEach(normalizeBirdEntity);
+        if(Array.isArray(globalThis.ENEMIES)) globalThis.ENEMIES.forEach(safeNorm);
+        else Object.values(globalThis.ENEMIES).forEach(safeNorm);
       }
-      if(globalThis.G?.player) normalizeBirdEntity(globalThis.G.player);
-      if(globalThis.G?.enemy) normalizeBirdEntity(globalThis.G.enemy);
+      if(globalThis.G?.player) safeNorm(globalThis.G.player);
+      if(globalThis.G?.enemy) safeNorm(globalThis.G.enemy);
     }catch(err){ console.error(err); }
   }
 
