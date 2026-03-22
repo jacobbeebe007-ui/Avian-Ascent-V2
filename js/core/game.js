@@ -5028,6 +5028,9 @@ function selectBird(key, el) {
   document.querySelectorAll('#bird-grid .bird-card').forEach(n=>n.classList.remove('selected'));
   if(el && el.classList) el.classList.add('selected');
   updateAscentPanel(key);
+  if(el && typeof el.scrollIntoView==='function'){
+    try{ el.scrollIntoView({block:'nearest', behavior:'smooth', inline:'nearest'}); }catch(_){ try{ el.scrollIntoView(false); }catch(__){} }
+  }
 }
 
 
@@ -5552,6 +5555,13 @@ globalThis.closeSelectHubPanel = closeSelectHubPanel;
 function takeFlightToSelect(){
   showScreen('screen-select');
   if(typeof initSelectionSafe==='function') initSelectionSafe();
+  // Open champion roster immediately so "Take Flight" reliably reaches selection (mobile users often missed the war-room door).
+  requestAnimationFrame(()=>{
+    try{
+      if(typeof openSelectHubPanel==='function') openSelectHubPanel('door');
+      syncSelectTakeFlightButton();
+    }catch(_){}
+  });
 }
 globalThis.takeFlightToSelect = takeFlightToSelect;
 function scrollToSelectRoster(){
