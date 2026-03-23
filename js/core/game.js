@@ -4227,6 +4227,71 @@ const BLACK_COCKATOO_SKILL_FAMILIES = Object.freeze({
   },
 });
 
+const KOOKABURRA_SKILL_SLOT_LAYOUT = Object.freeze([
+  {slotIndex:0, familyId:'beak', abilityId:'beak_chop'},
+  {slotIndex:1, familyId:'laugh', abilityId:'laugh_call'},
+  {slotIndex:2, familyId:'watch', abilityId:'perch_watch'},
+  {slotIndex:3, familyId:'drop', abilityId:'drop_strike'},
+]);
+const KOOKABURRA_SKILL_FAMILIES = Object.freeze({
+  beak:{
+    familyId:'beak', displayName:'Beak Line', baseAbilityId:'beak_chop', slotRole:'filler_attack', maxTier:3,
+    tierNames:{1:'Chop',2:'Crack',3:'Break'},
+    masteries:[
+      {id:'power', name:'Kingfisher Bill', desc:'+8% Beak-line damage.'},
+      {id:'precision', name:'Fish Bone', desc:'Beak-line Pierce and bleed riders +4%.'},
+      {id:'control', name:'Grip Tempo', desc:'Beak-line Weaken odds +8%.'},
+    ],
+    paths:{
+      pierce:{pathId:'pierce', displayName:'Pierce', abilities:{1:'beak_chop',2:'bodkin_crack',3:'splinter_break'}},
+      bleed:{pathId:'bleed', displayName:'Bleed', abilities:{1:'razor_chop',2:'razor_crack',3:'razor_break'}},
+      weaken:{pathId:'weaken', displayName:'Weaken', abilities:{1:'dulling_chop',2:'numbing_crack',3:'weakening_break'}},
+    },
+  },
+  laugh:{
+    familyId:'laugh', displayName:'Laugh Line', baseAbilityId:'laugh_call', slotRole:'signature_sonic_attack', maxTier:3,
+    tierNames:{1:'Call',2:'Laugh',3:'Cackle'},
+    masteries:[
+      {id:'power', name:'Bush King', desc:'+7% Laugh-line damage; delayed echo +6.'},
+      {id:'precision', name:'Mocking Eye', desc:'Laugh-line Fear/Paralysis odds +8%.'},
+      {id:'control', name:'Ricochet', desc:'Laugh-line delayed echo +10.'},
+    ],
+    paths:{
+      fear:{pathId:'fear', displayName:'Fear', abilities:{1:'kooka_dread_call',2:'mocking_laugh',3:'terror_cackle'}},
+      paralysis:{pathId:'paralysis', displayName:'Paralysis', abilities:{1:'kooka_shock_call',2:'static_laugh',3:'lock_cackle'}},
+      delayed:{pathId:'delayed', displayName:'Delayed', abilities:{1:'kooka_echo_call',2:'echo_laugh',3:'returning_cackle'}},
+    },
+  },
+  watch:{
+    familyId:'watch', displayName:'Perch Watch Line', baseAbilityId:'perch_watch', slotRole:'hunter_setup', maxTier:3,
+    tierNames:{1:'Watch',2:'Sight',3:'Lock'},
+    masteries:[
+      {id:'power', name:'Roost Read', desc:'Amp-path next-hit +5%; echo +8.'},
+      {id:'precision', name:'Tear Line', desc:'Break-path DEF strip +1.'},
+      {id:'control', name:'Strike Window', desc:'Crit-path +3% effective crit.'},
+    ],
+    paths:{
+      amp:{pathId:'amp', displayName:'Amp', abilities:{1:'perch_watch',2:'kooka_hunters_sight',3:'perch_lock'}},
+      break:{pathId:'break', displayName:'Break', abilities:{1:'expose_perch',2:'kooka_weakpoint_sight',3:'kooka_ruin_lock'}},
+      crit:{pathId:'crit', displayName:'Crit', abilities:{1:'killer_watch',2:'killing_sight',3:'kooka_death_lock'}},
+    },
+  },
+  drop:{
+    familyId:'drop', displayName:'Drop Line', baseAbilityId:'drop_strike', slotRole:'opportunistic_payoff', maxTier:3,
+    tierNames:{1:'Strike',2:'Drop',3:'Smash'},
+    masteries:[
+      {id:'power', name:'Stoop Weight', desc:'Drop-line damage +7%; execute route +4%.'},
+      {id:'precision', name:'Killing Angle', desc:'Trigger-path delayed echo +8.'},
+      {id:'control', name:'Ground Game', desc:'Slow-route +1 turn when possible.'},
+    ],
+    paths:{
+      execute:{pathId:'execute', displayName:'Execute', abilities:{1:'drop_strike',2:'hunter_drop',3:'kill_smash'}},
+      trigger:{pathId:'trigger', displayName:'Trigger', abilities:{1:'kooka_trigger_strike',2:'echo_drop',3:'repeat_smash'}},
+      slow:{pathId:'slow', displayName:'Slow', abilities:{1:'clutch_strike',2:'drag_drop',3:'ground_smash'}},
+    },
+  },
+});
+
 function buildFamilySkillAbilityLookup(slotLayout, families){
   const out = Object.create(null);
   for(const slot of slotLayout){
@@ -4388,6 +4453,18 @@ const FAMILY_EVOLUTION_BIRD_DATA = Object.freeze({
       boom:{legacy:['stormChorus','thunderScreech','sonicDirge','birdBrain'], current:'boom_call'},
       wing:{legacy:['battleChorus','victoryChant'], current:'wing_beat'},
       resonance:{legacy:['battleChorus','thunderScreech'], current:'resonance_mark'},
+    }),
+  },
+  kookaburra:{
+    birdKey:'kookaburra',
+    slotLayout:KOOKABURRA_SKILL_SLOT_LAYOUT,
+    families:KOOKABURRA_SKILL_FAMILIES,
+    abilityLookup:buildFamilySkillAbilityLookup(KOOKABURRA_SKILL_SLOT_LAYOUT, KOOKABURRA_SKILL_FAMILIES),
+    legacyBaseAbilityIds:Object.freeze({
+      beak:{legacy:['mockingPeck','peck','mainAttack'], current:'beak_chop'},
+      laugh:{legacy:['laughingCall','echoLaugh','dizzyChorus'], current:'laugh_call'},
+      watch:{legacy:['dizzyChorus','battleChorus'], current:'perch_watch'},
+      drop:{legacy:['echoLaugh','diveBomb','heavyTalon','heavy_talon'], current:'drop_strike'},
     }),
   },
 });
