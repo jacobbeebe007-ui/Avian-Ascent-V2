@@ -71,12 +71,14 @@ html,body{width:100%;height:100%;overflow:hidden;background:#060d05;}
 #ov-name{font-family:'Cinzel Decorative',serif;font-size:14px;color:var(--gold-l);letter-spacing:2px;margin-top:3px;text-align:center;}
 #ov-loc{font-family:'EB Garamond',serif;font-size:12px;font-style:italic;color:var(--mist);}
 #ov-enemies{font-family:'EB Garamond',serif;font-size:12px;color:var(--parch);text-align:center;line-height:2.2;}
-.ov-dismiss{font-family:'Cinzel',serif;font-size:7px;color:rgba(200,160,32,.22);margin-top:12px;letter-spacing:3px;}
-#ov-confirm-btn{font-family:'Cinzel',serif;font-size:9px;letter-spacing:2px;padding:9px 28px;cursor:pointer;border:1px solid var(--gold-d);background:rgba(200,160,32,.08);color:var(--gold);transition:all .2s;margin-top:8px;}
-#ov-confirm-btn:hover{background:rgba(200,160,32,.2);border-color:var(--gold);color:var(--gold-l);}
-#ov-confirm-btn.shop{border-color:#988028;color:#f0c020;}
-#ov-confirm-btn.boss{border-color:#882020;color:#ff9090;}
-.node-done circle:first-of-type{opacity:.4!important;}.node-done text{opacity:.4!important;}
+.ov-dismiss{font-family:'Cinzel',serif;font-size:7px;color:rgba(200,160,32,.22);margin-top:4px;letter-spacing:3px;}
+#ov-confirm-btn{font-family:'Cinzel',serif;font-size:9px;letter-spacing:2px;padding:10px 30px;cursor:pointer;border:1px solid var(--gold-d);background:rgba(200,160,32,.08);color:var(--gold);transition:all .2s;margin-top:10px;display:none;}
+#ov-confirm-btn:hover{background:rgba(200,160,32,.22);border-color:var(--gold);color:var(--gold-l);}
+#ov-confirm-btn.is-shop{border-color:#988028;color:#f0c020;}#ov-confirm-btn.is-shop:hover{background:rgba(152,128,40,.2);}
+#ov-confirm-btn.is-boss{border-color:#882020;color:#ff9090;}#ov-confirm-btn.is-boss:hover{background:rgba(136,32,32,.2);}
+#ov-confirm-btn:disabled{opacity:.35;cursor:not-allowed;}
+.node-done>circle:first-of-type,.node-done>ellipse{opacity:.35!important;}
+.node-done .node-label-txt{fill:rgba(136,112,48,.3)!important;}
 #pick{display:none;position:fixed;inset:0;z-index:110;background:rgba(2,4,2,.98);flex-direction:column;align-items:center;padding:18px;gap:10px;overflow-y:auto;}
 #pick.on{display:flex;}
 #pick h2{font-family:'Cinzel Decorative',serif;font-size:12px;color:var(--gold-l);letter-spacing:3px;}
@@ -144,7 +146,7 @@ html,body{width:100%;height:100%;overflow:hidden;background:#060d05;}
       <div id="ov-name"></div><div id="ov-loc"></div>
       <div id="ov-enemies"></div>
       <button id="ov-confirm-btn">ENTER &#9654;</button>
-      <div class="ov-dismiss">ESC TO DISMISS</div>
+      <div class="ov-dismiss">ESC TO DISMISS · CLICK BACKDROP TO CLOSE</div>
     </div>
   </div>
   <div id="pick">
@@ -436,137 +438,178 @@ applyCamera(false);
 requestAnimationFrame(()=>requestAnimationFrame(()=>{pl.style.transition='left .5s cubic-bezier(.25,.46,.45,.94),top .5s cubic-bezier(.25,.46,.45,.94)';document.getElementById('root').focus();}));
 </script>
 <script>
-// ── Avian Ascent overworld integration ──────────────────────────────────────
+// ── Avian Ascent · Overworld Integration Bootstrap ───────────────────────────
 (function(){
-  const SAVE_KEY='avianAscent_save_v1';
-  const OW_KEY='avianAscent_overworld';
-  const NAV_KEY='avianAscent_nav';
+  const SAVE_KEY = 'avianAscent_save_v1';
+  const OW_KEY   = 'avianAscent_overworld';
+  const NAV_KEY  = 'avianAscent_nav';
 
-  // ── 1. Read save and determine active bird ──
-  let save=null;
-  try{save=JSON.parse(localStorage.getItem(SAVE_KEY)||'null');}catch(_){}
-  let owState=null;
-  try{owState=JSON.parse(localStorage.getItem(OW_KEY)||'null');}catch(_){}
+  // ── Read persisted state ──────────────────────────────────────────────────
+  let save = null;
+  try { save = JSON.parse(localStorage.getItem(SAVE_KEY) || 'null'); } catch(_) {}
+  let owState = null;
+  try { owState = JSON.parse(localStorage.getItem(OW_KEY) || 'null'); } catch(_) {}
 
-  const activeBirdKey=save?.player?.birdKey||owState?.birdKey||null;
-  const currentStage=save?.stage||1;
-  const shinies=save?.player?save.shinyObjects||0:null;
+  const activeBirdKey  = save?.player?.birdKey || owState?.birdKey || null;
+  const currentStage   = save?.stage || 1;           // next stage to fight (1-20)
+  const shinyObjects   = save ? (save.shinyObjects || 0) : null;
+  const hasActiveRun   = !!(save?.player);
 
-  // ── 2. Apply player's bird sprite ──
-  if(activeBirdKey){
-    const idx=BIRDS.findIndex(b=>b.k===activeBirdKey);
-    if(idx>=0){birdIdx=idx;applyBird();}
-    // Lock the header bird button so players can't swap mid-run
-    const hdrBtn=document.getElementById('hdr-bird-btn');
-    if(hdrBtn&&save?.player){hdrBtn.style.cursor='default';hdrBtn.title='Bird locked during run';}
-    // Override pick panel open to no-op if we have an active run
-    if(save?.player){
-      hdrBtn&&hdrBtn.removeEventListener('click',()=>{});
-      // Replace the pick panel trigger with a no-op
-      const newHdrBtn=hdrBtn?.cloneNode(true);
-      if(newHdrBtn&&hdrBtn){hdrBtn.parentNode.replaceChild(newHdrBtn,hdrBtn);}
+  // ── Apply the player's bird as the overworld sprite ──────────────────────
+  if (activeBirdKey) {
+    const idx = BIRDS.findIndex(b => b.k === activeBirdKey);
+    if (idx >= 0) { birdIdx = idx; applyBird(); }
+  }
+
+  // ── Lock the standalone bird-picker when a run is active ─────────────────
+  if (hasActiveRun) {
+    const hdrBtn = document.getElementById('hdr-bird-btn');
+    if (hdrBtn) {
+      const locked = hdrBtn.cloneNode(true);
+      locked.style.cursor = 'default';
+      locked.title = 'Bird locked during run';
+      // no click handler — no-op
+      hdrBtn.parentNode.replaceChild(locked, hdrBtn);
     }
   }
 
-  // ── 3. Show shinies in header ──
-  if(shinies!==null){
-    const hint=document.getElementById('hdr-hint');
-    if(hint){
-      const shinyEl=document.createElement('span');
-      shinyEl.id='hdr-shinies';
-      shinyEl.style.cssText='margin-left:16px;font-family:Cinzel,serif;font-size:9px;color:var(--gold);letter-spacing:1px;';
-      shinyEl.textContent='\u2728 '+shinies+' Shinies';
-      hint.parentNode.insertBefore(shinyEl,hint.nextSibling);
+  // ── Show shinies in header ────────────────────────────────────────────────
+  if (shinyObjects !== null) {
+    const hdr = document.getElementById('hdr');
+    if (hdr) {
+      const el = document.createElement('span');
+      el.style.cssText = 'font-family:Cinzel,serif;font-size:9px;color:#c8a020;letter-spacing:1px;padding:4px 8px;';
+      el.textContent = '\u2728 ' + shinyObjects + ' Shinies';
+      hdr.appendChild(el);
     }
   }
 
-  // ── 4. Restore node position (navigate to current stage node) ──
-  let startNode=0;
-  if(owState?.nodeId!=null){
-    startNode=owState.nodeId;
-  } else if(currentStage>1){
-    // Position at the node for the next stage to fight
-    const idx=NODES.findIndex(n=>n.stage===currentStage);
-    if(idx>=0)startNode=idx;
+  // ── Determine which node a stage maps to ─────────────────────────────────
+  function nodeForStage(stageNum) {
+    return NODES.find(n => n.stage === stageNum) || null;
   }
-  if(startNode!==0){
-    const pl=document.getElementById('player');
-    pl.style.transition='none';
-    setHL(0,false);
-    curPos=startNode;
-    const n=NODES[curPos];
-    pl.style.left=(n.x-26)+'px';
-    pl.style.top=(n.y-60)+'px';
-    setHL(curPos,true);
+
+  // Can the player actually enter this node right now?
+  function isActionable(n) {
+    if (!n || n.type === 'start') return false;
+    if (n.type === 'stage' || n.type === 'boss' || n.final) {
+      return n.stage === currentStage;
+    }
+    if (n.type === 'shop') {
+      // A shop sits between two stage nodes. It's open when the stage
+      // immediately before it has been beaten (currentStage equals the
+      // stage of the node right after the shop).
+      const prev = NODES[n.id - 1];
+      const next = NODES[n.id + 1];
+      if (prev && next) {
+        return currentStage >= (prev.stage || 0) + 1 &&
+               currentStage <= (next.stage || 99);
+      }
+    }
+    return false;
+  }
+
+  // ── Position player at the current-stage node ─────────────────────────────
+  let startNode = owState?.nodeId != null ? owState.nodeId : 0;
+  if (startNode === 0 && currentStage > 1) {
+    const target = nodeForStage(currentStage);
+    if (target) startNode = target.id;
+  }
+  if (startNode !== 0) {
+    const pl = document.getElementById('player');
+    pl.style.transition = 'none';
+    setHL(0, false);
+    curPos = startNode;
+    const n = NODES[curPos];
+    pl.style.left = (n.x - 26) + 'px';
+    pl.style.top  = (n.y - 60) + 'px';
+    setHL(curPos, true);
     updateCamera(false);
     updateInfo();
-    requestAnimationFrame(()=>requestAnimationFrame(()=>{
-      pl.style.transition='left .5s cubic-bezier(.25,.46,.45,.94),top .5s cubic-bezier(.25,.46,.45,.94)';
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      pl.style.transition = 'left .5s cubic-bezier(.25,.46,.45,.94),top .5s cubic-bezier(.25,.46,.45,.94)';
     }));
   }
 
-  // ── 5. Mark completed nodes (stage < currentStage) ──
-  if(currentStage>1){
-    NODES.forEach(n=>{
-      if(n.type==='stage'&&n.stage<currentStage&&n._g){
+  // ── Mark completed stage nodes with a ✓ checkmark ────────────────────────
+  if (currentStage > 1) {
+    NODES.forEach(n => {
+      if (n.type === 'stage' && n.stage < currentStage && n._g) {
         n._g.classList.add('node-done');
-        // Add a checkmark text element
-        const done=document.createElementNS('http://www.w3.org/2000/svg','text');
-        done.setAttribute('x',String(n.x));done.setAttribute('y',String(n.y-24));
-        done.setAttribute('text-anchor','middle');done.setAttribute('font-family','Cinzel,serif');
-        done.setAttribute('font-size','9');done.setAttribute('fill','rgba(200,160,32,.45)');
-        done.textContent='\u2713';
-        n._g.appendChild(done);
+        const tick = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        tick.setAttribute('x', String(n.x));
+        tick.setAttribute('y', String(n.y - 22));
+        tick.setAttribute('text-anchor', 'middle');
+        tick.setAttribute('font-family', 'Cinzel,serif');
+        tick.setAttribute('font-size', '10');
+        tick.setAttribute('fill', 'rgba(200,160,32,.5)');
+        tick.textContent = '\u2713';
+        n._g.appendChild(tick);
       }
     });
   }
 
-  // ── 6. Wire confirm button to navigate back to index.html ──
-  const confirmBtn=document.getElementById('ov-confirm-btn');
-  if(confirmBtn){
-    confirmBtn.addEventListener('click',function(e){
-      e.stopPropagation();
-      const n=NODES[curPos];
-      if(!n||n.type==='start')return;
+  // ── Wire the confirm button (navigation to index.html) ───────────────────
+  const confirmBtn = document.getElementById('ov-confirm-btn');
 
-      // Save overworld position so we return here after battle/shop
-      try{localStorage.setItem(OW_KEY,JSON.stringify({nodeId:curPos,birdKey:activeBirdKey}));}catch(_){}
+  if (confirmBtn) {
+    confirmBtn.addEventListener('click', function(e) {
+      e.stopPropagation(); // don't dismiss the overlay backdrop
+      const n = NODES[curPos];
+      if (!n || !isActionable(n)) return;
 
-      if(n.type==='shop'){
-        try{localStorage.setItem(NAV_KEY,JSON.stringify({action:'shop',nodeId:curPos}));}catch(_){}
+      // Persist the current overworld position for when we return
+      try {
+        localStorage.setItem(OW_KEY, JSON.stringify({nodeId: curPos, birdKey: activeBirdKey}));
+      } catch(_) {}
+
+      if (n.type === 'shop') {
+        try { localStorage.setItem(NAV_KEY, JSON.stringify({action:'shop', nodeId:curPos})); } catch(_) {}
       } else {
-        // stage or boss — update the stage in the save before navigating
-        if(save){
-          const freshSave=JSON.parse(localStorage.getItem(SAVE_KEY)||'null');
-          if(freshSave){freshSave.stage=n.stage;try{localStorage.setItem(SAVE_KEY,JSON.stringify(freshSave));}catch(_){}}
+        // Stage or boss — write the target stage number into the save so
+        // handleOverworldReturn() in game.js fights the right enemy.
+        if (save) {
+          const fresh = JSON.parse(localStorage.getItem(SAVE_KEY) || '{}');
+          fresh.stage = n.stage;
+          try { localStorage.setItem(SAVE_KEY, JSON.stringify(fresh)); } catch(_) {}
         }
-        try{localStorage.setItem(NAV_KEY,JSON.stringify({action:'battle',nodeId:curPos,stage:n.stage}));}catch(_){}
+        try {
+          localStorage.setItem(NAV_KEY, JSON.stringify({action:'battle', nodeId:curPos, stage:n.stage}));
+        } catch(_) {}
       }
-      window.location.href='index.html';
+
+      window.location.href = 'index.html';
     });
   }
 
-  // ── 7. Replace #enter-btn click handler so it also styles the confirm button ──
-  (function(){
-    const oldEnterBtn=document.getElementById('enter-btn');
-    if(!oldEnterBtn)return;
-    const newEnterBtn=oldEnterBtn.cloneNode(true);
-    oldEnterBtn.parentNode.replaceChild(newEnterBtn,oldEnterBtn);
-    newEnterBtn.addEventListener('click',function(){
-      openOv(); // original overlay open
-      // Style the confirm button for this node type
-      const n=NODES[curPos];
-      if(!confirmBtn||!n||n.type==='start'){if(confirmBtn)confirmBtn.style.display='none';return;}
-      confirmBtn.style.display='block';
-      confirmBtn.className='';
-      if(n.type==='shop'){confirmBtn.textContent='ENTER SHOP \u25B6';confirmBtn.classList.add('shop');}
-      else if(n.type==='boss'||n.final){confirmBtn.textContent='FACE BOSS \u25B6';confirmBtn.classList.add('boss');}
-      else{confirmBtn.textContent='ENTER STAGE \u25B6';}
+  // ── Replace #enter-btn handler: show overlay AND update confirm button ────
+  (function() {
+    const old = document.getElementById('enter-btn');
+    if (!old) return;
+    const fresh = old.cloneNode(true); // removes existing listener
+    old.parentNode.replaceChild(fresh, old);
+
+    fresh.addEventListener('click', function() {
+      openOv(); // existing overlay open
+      if (!confirmBtn) return;
+      const n = NODES[curPos];
+      const ok = isActionable(n);
+      confirmBtn.style.display = ok ? 'block' : 'none';
+      confirmBtn.disabled = !ok;
+      confirmBtn.className = '';
+      if (ok) {
+        if (n.type === 'shop')
+          { confirmBtn.textContent = 'ENTER SHOP \u25B6'; confirmBtn.classList.add('is-shop'); }
+        else if (n.type === 'boss' || n.final)
+          { confirmBtn.textContent = 'FACE BOSS \u25B6'; confirmBtn.classList.add('is-boss'); }
+        else
+          { confirmBtn.textContent = 'ENTER STAGE ' + n.stage + ' \u25B6'; }
+      }
     });
   })();
 
-  // ── 7. Keep overlay dismiss (click backdrop) but NOT trigger navigation ──
-  // The existing 'ov' click handler just removes 'on' — keep that, confirm btn stops propagation
+  // ── Keep ESC closing the overlay ──────────────────────────────────────────
+  // (already handled by the existing keyboard listener — no changes needed)
 
 })();
 </script>
