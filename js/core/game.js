@@ -15604,7 +15604,7 @@ function enterStorkShopScreen(){
   showScreen('screen-stork-shop');
   const buyBtn=document.getElementById('shop-buy-btn'); if(buyBtn) buyBtn.disabled=true;
   const log=document.getElementById('shop-purchase-log');
-  if(log) log.textContent=(G._shopMode==='grey'?'Stork Market: 3 healing supplies, 2 cards, 1 utility.':'Boss Market: 3 healing supplies, 3 elite cards, 1 utility.');
+  if(log) log.textContent=(G._shopMode==='grey'?'Stork Market: 3 healing items · 6 upgrades available.':'Boss Market: 3 healing items · 6 elite upgrades available.');
   renderShopItems();
 }
 
@@ -15710,7 +15710,7 @@ function renderShopItems() {
   const buyBtn=document.getElementById('shop-buy-btn'); if(buyBtn) buyBtn.disabled=true;
   const refreshBtn=document.getElementById('shop-refresh-btn');
   if(refreshBtn){
-    refreshBtn.disabled=!!SHOP_STATE.purchaseMadeThisVisit;
+    refreshBtn.disabled=false;
     const rCost=(G._freeShopRefresh||0)>0?0:getShopRefreshCost();
     refreshBtn.textContent=`🔄 Refresh (${rCost}🌟)`;
   }
@@ -15722,10 +15722,10 @@ function renderShopItems() {
     const canAfford=G.shinyObjects>=cost;
     const isHealingItem=!!item.isHealingShopItem;
     const alreadyBoughtHeal=!!(isHealingItem && SHOP_STATE.healingPurchasesThisVisit?.has(item.id));
-    const canSelect=canAfford && !alreadyBoughtHeal && (!SHOP_STATE.purchaseMadeThisVisit || isHealingItem);
+    const canSelect=canAfford && !alreadyBoughtHeal;
 
     const div=document.createElement('div');
-    div.className=`shop-item tier-${item.tier} ${canAfford?'':'cant-afford'} ${(SHOP_STATE.purchaseMadeThisVisit&&!isHealingItem)?'shop-locked-visit':''} ${alreadyBoughtHeal?'shop-locked-visit':''}`;
+    div.className=`shop-item tier-${item.tier} ${canAfford?'':'cant-afford'} ${alreadyBoughtHeal?'shop-locked-visit':''}`;
     div.innerHTML=`
       <div class="shop-item-cost">${cost}🌟</div>
       <div class="reward-tier-label">${REWARD_TIERS[item.tier].label}</div>
@@ -15753,12 +15753,6 @@ async function shopBuySelected() {
   const item=_shopItems[selected];
   const isHealingItem=!!item.isHealingShopItem;
 
-  if(SHOP_STATE.purchaseMadeThisVisit && !isHealingItem){
-    const log=document.getElementById('shop-purchase-log');
-    if(log) log.textContent='🪶 You may only buy one non-healing item per shop visit.';
-    logMsg('🪶 You may only buy one non-healing item per shop visit.','system');
-    return false;
-  }
   if(isHealingItem && SHOP_STATE.healingPurchasesThisVisit?.has(item.id)){
     const log=document.getElementById('shop-purchase-log');
     if(log) log.textContent='🪶 You already bought this healing item this visit.';
@@ -15782,28 +15776,18 @@ async function shopBuySelected() {
   codexMark('artifacts', item.id||item.name, 'seen');
   logMsg(`🌟 Purchased: ${item.name}!`,'exp-gain');
   const log=document.getElementById('shop-purchase-log');
-  if(log) log.textContent=`✓ Bought: ${item.icon} ${item.name}${isHealingItem?' · Healing purchase':' · One item per visit'}`;
+  if(log) log.textContent=`✓ Bought: ${item.icon} ${item.name}${isHealingItem?' · Healing':''}. Keep shopping or leave when done.`;
 
   if(item.stackable===false){ if(!(G.runUpgradesPurchased instanceof Set)) G.runUpgradesPurchased=new Set(); G.runUpgradesPurchased.add(item.id); }
   _shopItems.splice(selected,1);
-  if(isHealingItem){
-    SHOP_STATE.healingPurchasesThisVisit.add(item.id);
-    SHOP_STATE.selectedIndex=null;
-    _shopSelectedIdx=null;
-  }else{
-    shopLockVisitState();
-  }
+  if(isHealingItem) SHOP_STATE.healingPurchasesThisVisit.add(item.id);
+  SHOP_STATE.selectedIndex=null;
+  _shopSelectedIdx=null;
   saveRun();
   renderShopItems();
   return true;
 }
 function shopRefresh() {
-  if(SHOP_STATE.purchaseMadeThisVisit){
-    const log=document.getElementById('shop-purchase-log');
-    if(log) log.textContent='🪶 You may only buy one item per shop visit.';
-    logMsg('🪶 You may only buy one item per shop visit.','system');
-    return false;
-  }
   if((G._freeShopRefresh||0)>0){G._freeShopRefresh--; }
   else {
     const rc=getShopRefreshCost();
