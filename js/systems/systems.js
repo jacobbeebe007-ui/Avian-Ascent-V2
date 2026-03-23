@@ -1127,6 +1127,7 @@ cooldown('chargeUp',3);
     ]
   );
 
+  // Generic legacy / pool spells: birdBrain & sonicDirge (aliases, shops, old saves; not family-evolution birds’ live kits).
   setLevels('birdBrain',
     'Psychic overload. Direct magic hit with confusion pressure.',
     [

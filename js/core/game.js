@@ -4382,10 +4382,11 @@ const FAMILY_EVOLUTION_BIRD_DATA = Object.freeze({
     slotLayout:BLACK_COCKATOO_SKILL_SLOT_LAYOUT,
     families:BLACK_COCKATOO_SKILL_FAMILIES,
     abilityLookup:buildFamilySkillAbilityLookup(BLACK_COCKATOO_SKILL_SLOT_LAYOUT, BLACK_COCKATOO_SKILL_FAMILIES),
+    // Pre–family-evolution flat ids only (migrate tier-0 bases into slot-state skills).
     legacyBaseAbilityIds:Object.freeze({
-      beak:{legacy:['peck','piercingScreech'], current:'beak_crack'},
-      boom:{legacy:['stormChorus','thunderScreech','sonicDirge'], current:'boom_call'},
-      wing:{legacy:['battleChorus'], current:'wing_beat'},
+      beak:{legacy:['peck','piercingScreech','mainAttack'], current:'beak_crack'},
+      boom:{legacy:['stormChorus','thunderScreech','sonicDirge','birdBrain'], current:'boom_call'},
+      wing:{legacy:['battleChorus','victoryChant'], current:'wing_beat'},
       resonance:{legacy:['battleChorus','thunderScreech'], current:'resonance_mark'},
     }),
   },
@@ -12279,23 +12280,13 @@ Object.assign(ACTIONS, {
   async birdBrain(ab) {
     if(spellMisses()){await doMiss('player');logMsg(`Bird Brain missed! (MATK ${G.player.stats.matk||8} vs MDEF ${G.enemy.stats.mdef||8})`,'miss');return;}
     const lv=ab.level;
-    // Black Cockatoo Crest Scream: spells ignore 20% M.DEF
-    const _ccBd=BIRDS[G.player.birdKey];
-    const mdefIgnore=(_ccBd&&_ccBd.passive&&_ccBd.passive.id==='crestScream')?0.20:0;
-    const effectiveMDEF=(G.enemy.stats.mdef||8)*(1-mdefIgnore);
+    const effectiveMDEF=(G.enemy.stats.mdef||8);
     const matkBase=G.player.stats.matk||8;
     const baseDmg=Math.max(1,Math.floor([.62,.78,.95,1.12][lv-1]*matkBase/(effectiveMDEF||1)*7.2));
     const isCrit=chance(getPlayerCritChance(ab));
     const dmg=isCrit?Math.floor(baseDmg*(G.player.goldCritMult||1.5)):baseDmg;
     G.enemy.stats.hp-=dmg; setHpBar('enemy',G.enemy.stats.hp,G.enemy.stats.maxHp);
     spawnFloat('enemy',`🧠 -${dmg}${isCrit?' CRIT':''}!`,'fn-dmg');
-    // Crest Scream: crit spells apply Brain Fog
-    if(isCrit&&_ccBd&&_ccBd.passive&&_ccBd.passive.id==='crestScream'){
-      G.enemyStatus.accDebuff=(G.enemyStatus.accDebuff||0)+15;
-      G.enemy.stats.spd=Math.max(1,G.enemy.stats.spd-3);
-      spawnFloat('enemy','🧠 Brain Fog!','fn-status');
-      logMsg(`🖤 Brain Fog! Enemy −15% ACC, −3 SPD for 3t!`,'system');
-    }
     const skipC=[20,22,25,30][lv-1];
     const confT=[3,4,4,5][lv-1];
     if(spellAilmentRoll([45,50,55,60][lv-1],false)) G.enemyStatus.confused={turns:confT,skipChance:skipC};
@@ -16096,6 +16087,16 @@ SPRITE_KEYS_ALL.add('magpie');
               add(`BIRDS[${bk}] family slotLayout[${i}] missing ABILITY_TEMPLATES["${sid}"]`);
             }
           });
+          if(Array.isArray(bd.startAbilities)){
+            const slotBases = fed.slotLayout.map(s=>s&&s.abilityId).filter(Boolean);
+            if(slotBases.length && bd.startAbilities.length===slotBases.length){
+              const startSet = new Set((bd.startAbilities||[]).map(String));
+              const missing = slotBases.filter(id=>!startSet.has(String(id)));
+              if(missing.length) add(`BIRDS[${bk}] startAbilities must list the same family slot bases as slotLayout (missing: ${missing.join(', ')})`);
+            }else if(slotBases.length && bd.startAbilities.length && bd.startAbilities.length!==slotBases.length){
+              add(`BIRDS[${bk}] startAbilities length (${bd.startAbilities.length}) should match family slot count (${slotBases.length})`);
+            }
+          }
         }
       }
       if(Array.isArray(UPGRADE_CARDS_REWORK)){
