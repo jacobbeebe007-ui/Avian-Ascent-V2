@@ -15858,7 +15858,7 @@ function shopRefresh() {
   if((G._freeShopRefresh||0)>0){G._freeShopRefresh--; }
   else {
     const rc=getShopRefreshCost();
-    if(G.shinyObjects<rc){ logMsg(Need ${rc} shiny objects to refresh!,'miss'); return false; }
+    if(G.shinyObjects<rc){ logMsg(`Need ${rc} shiny objects to refresh!`,'miss'); return false; }
     G.shinyObjects-=rc;
   }
   G._shopRefreshCount=(G._shopRefreshCount||0)+1;
