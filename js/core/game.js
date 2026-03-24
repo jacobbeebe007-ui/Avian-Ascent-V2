@@ -4807,6 +4807,7 @@ function saveRun() {
   if(!G.player) return;
   try {
     const onBattleScreen=!!document.getElementById('screen-battle')?.classList.contains('active');
+    const overworldProgress = ensureOverworldProgress(G.stage);
     const save={
       player: JSON.parse(JSON.stringify(G.player)),
       stage: G.stage, bossKills: G.bossKills,
@@ -4816,6 +4817,7 @@ function saveRun() {
       runClassPerks: JSON.parse(JSON.stringify((G.runClassPerks||[]))),
       runUpgradesPurchased: [...(G.runUpgradesPurchased||new Set())],
       shopSnapshots: JSON.parse(JSON.stringify(G._shopSnapshots||{})),
+      overworldProgress: G.endlessMode ? null : JSON.parse(JSON.stringify(overworldProgress)),
       codex: JSON.parse(JSON.stringify(G.codex||{abilities:{},enemies:{},birds:{},artifacts:{},statuses:{}})),
       ui: JSON.parse(JSON.stringify(ensureUIState())),
       inBattle: onBattleScreen && !!G.enemy && !G.battleOver,
@@ -4857,6 +4859,8 @@ function continueRun() {
   G.endlessBattle=save.endlessBattle||0;
   G.bossKills=save.bossKills||0;
   G.stage=save.stage||1;
+  G._overworldProgress = normalizeOverworldProgress(save.overworldProgress||null, G.stage);
+  if(!G.endlessMode) G.stage = Math.max(1, (G._overworldProgress?.completedStage||0) + 1);
   G.collectedRewards=save.collectedRewards||[];
   G.player=save.player;
   G.player.class = resolveFinalClass(G.player?.class, G.player?.birdKey);
@@ -4925,6 +4929,64 @@ function goMainMenu() {
 const _OW_STATE_KEY = 'avianAscent_overworld';
 const _OW_NAV_KEY   = 'avianAscent_nav';
 
+function getEncounterStage() {
+  const pending = Number(G?._owPendingBattleStage);
+  if(Number.isFinite(pending) && pending > 0) return Math.floor(pending);
+  return Math.max(1, Math.floor(Number(G?.stage) || 1));
+}
+
+function normalizeOverworldProgress(progress=null, fallbackStage=1) {
+  const nextStage = Math.max(1, Math.floor(Number(fallbackStage) || 1));
+  const rawCompleted = Number(progress?.completedStage);
+  const completedStage = Math.min(20, Math.max(
+    Math.max(0, nextStage - 1),
+    Number.isFinite(rawCompleted) ? Math.floor(rawCompleted) : 0
+  ));
+  const rawNodeId = Number(progress?.currentNodeId);
+  const currentNodeId = Number.isFinite(rawNodeId) ? Math.max(0, Math.floor(rawNodeId)) : 0;
+  const lastSummary = (progress?.lastSummary && typeof progress.lastSummary === 'object')
+    ? JSON.parse(JSON.stringify(progress.lastSummary))
+    : null;
+  return {completedStage, currentNodeId, lastSummary};
+}
+
+function ensureOverworldProgress(fallbackStage=G.stage||1) {
+  G._overworldProgress = normalizeOverworldProgress(G._overworldProgress, fallbackStage);
+  return G._overworldProgress;
+}
+
+function setOverworldCurrentNode(nodeId) {
+  const rawNodeId = Number(nodeId);
+  if(!Number.isFinite(rawNodeId)) return;
+  const progress = ensureOverworldProgress();
+  progress.currentNodeId = Math.max(0, Math.floor(rawNodeId));
+}
+
+function finalizeOverworldStageClear(clearedStage, nodeId, summary={}) {
+  const stageNum = Math.max(1, Math.floor(Number(clearedStage) || 1));
+  const progress = ensureOverworldProgress(stageNum);
+  progress.completedStage = Math.max(progress.completedStage || 0, stageNum);
+  if(Number.isFinite(Number(nodeId))) progress.currentNodeId = Math.max(0, Math.floor(Number(nodeId)));
+  progress.lastSummary = {
+    stage: stageNum,
+    nodeId: Number.isFinite(Number(nodeId)) ? Math.max(0, Math.floor(Number(nodeId))) : progress.currentNodeId,
+    shinyGain: Math.max(0, Math.floor(Number(summary?.shinyGain) || 0)),
+    enemiesDefeated: Math.max(1, Math.floor(Number(summary?.enemiesDefeated) || 1)),
+    nextStage: Math.min(20, stageNum + 1),
+  };
+  G.stage = Math.max(1, progress.completedStage + 1);
+  return progress;
+}
+
+function clearOverworldPendingBattle() {
+  G._owPendingBattleStage = null;
+  G._owPendingNodeId = null;
+  G._owEnemyCount = 0;
+  G._owSequenceShiny = 0;
+  G._owEnemyIndex = 0;
+  G._owStageEnemies = null;
+}
+
 /** True whenever the current run was launched via the overworld map. */
 function _isOverworldRun() {
   try { return !!localStorage.getItem(_OW_STATE_KEY); } catch(_) { return false; }
@@ -4945,6 +5007,10 @@ function handleOverworldReturn() {
   if (!save?.player) return false;
 
   if (intent.action === 'battle') {
+    G._owPendingBattleStage = Math.max(1, Math.floor(Number(intent.stage) || save.stage || 1));
+    G._owPendingNodeId = Number.isFinite(Number(intent.nodeId)) ? Math.floor(Number(intent.nodeId)) : null;
+    G._owEnemyCount = Array.isArray(intent.enemies) && intent.enemies.length ? intent.enemies.length : 1;
+    G._owSequenceShiny = 0;
     // Store the two-enemy list from the overworld node so stages fight them in sequence
     if (Array.isArray(intent.enemies) && intent.enemies.length > 0) {
       G._owStageEnemies = intent.enemies.map(e => e.toLowerCase().replace(/\s+/g,''));
@@ -4955,6 +5021,7 @@ function handleOverworldReturn() {
   }
   if (intent.action === 'shop') {
     G._currentShopNodeId = intent.nodeId ?? null; // persist shop snapshot by node
+    setOverworldCurrentNode(intent.nodeId);
     G._pendingOverworldShop = true; // loadStage() will detect this and open shop instead
     continueRun();
     return true;
@@ -5668,6 +5735,8 @@ function startGame() {
   G.runClassPerks = [];
   G.classPerks = {};
   G._classPerkChoicesGranted = 0;
+  G._overworldProgress = normalizeOverworldProgress({completedStage:0,currentNodeId:0,lastSummary:null}, 1);
+  clearOverworldPendingBattle();
   saveRun();
   G.phase='PLAYER';
   const runStartEvt = {birdKey:G.player.birdKey, difficulty:G.difficulty, endless:!!G.endlessMode};
@@ -5765,6 +5834,10 @@ function loadStage() {
   G.autoQueuedAbilityId=null;
   G._breakClampStreak=0;
   G.abilityCooldowns=G.abilityCooldowns||{};
+  const encounterStage = getEncounterStage();
+  const stageSequenceLabel = (!G.endlessMode && (G._owEnemyCount||0) > 1)
+    ? ` · Battle ${Math.min((G._owEnemyIndex||0)+1, G._owEnemyCount)} of ${G._owEnemyCount}`
+    : '';
   let ed;
   // Overworld stage: use the specific enemy listed for this index
   if (!G.endlessMode && G._owStageEnemies?.length > 0) {
@@ -5780,12 +5853,12 @@ function loadStage() {
   }
   const diffMult = DIFFICULTIES[G.difficulty||'juvenile'].mult;
 
-  if (G.endlessMode && G.stage > 20) {
-    G.endlessBattle = Math.max(1,G.stage-20);
-    ed = makeEndlessEnemy(G.stage);
+  if (G.endlessMode && encounterStage > 20) {
+    G.endlessBattle = Math.max(1,encounterStage-20);
+    ed = makeEndlessEnemy(encounterStage);
   } else {
     // Determine tier from stage
-    const stage = G.stage;
+    const stage = encounterStage;
     let tier;
     if(stage<=4) tier=1;
     else if(stage<=9) tier=2;
@@ -5843,13 +5916,13 @@ function loadStage() {
 
   }
   const scaleOpts={
-    isEndless:(G.endlessMode && G.stage>20),
+    isEndless:(G.endlessMode && encounterStage>20),
     diffMult,
     playerBirdLevel:Math.max(1, Math.floor(G.player?.birdLevel||1)),
   };
   const scaled=ed.isBoss
-    ? buildScaledBoss(ed, G.stage, scaleOpts)
-    : buildScaledEnemy(ed, G.stage, scaleOpts);
+    ? buildScaledBoss(ed, encounterStage, scaleOpts)
+    : buildScaledEnemy(ed, encounterStage, scaleOpts);
   ed.hp=scaled.hp; ed.maxHp=scaled.maxHp;
   ed.atk=scaled.atk; ed.def=scaled.def; ed.spd=scaled.spd;
   ed.acc=scaled.acc; ed.dodge=scaled.dodge; ed.mdodge=scaled.mdodge;
@@ -5864,7 +5937,7 @@ function loadStage() {
   ed.energy=baseEnemyEnergy;
   ed.energyRegen=0;
   G.enemy = ed;
-  const stageEvt = {stage:G.stage, enemyId:G.enemy.id||G.enemy.name, isBoss:!!G.enemy.isBoss};
+  const stageEvt = {stage:encounterStage, enemyId:G.enemy.id||G.enemy.name, isBoss:!!G.enemy.isBoss};
   AvianEvents.emit('stage:loaded', stageEvt);
   runModuleHook('onStageLoaded', stageEvt);
   if(!G.enemy.aiType) G.enemy.aiType=mapAiStyleToType(G.enemy.aiStyle);
@@ -5905,13 +5978,13 @@ function loadStage() {
   updateStageProgress();
   refreshBattleUI();
   if (G.enemy.isBoss) {
-    const stageLabel = G.endlessMode && G.stage > ENEMIES.length
-      ? `Endless Battle ${G.endlessBattle}` : `Stage ${G.stage}`;
-    logMsg(`👑 ${G.enemy.bossTitle}: ${G.enemy.name} descends! [${stageLabel}]`,'boss');
+    const stageLabel = G.endlessMode && encounterStage > ENEMIES.length
+      ? `Endless Battle ${G.endlessBattle}` : `Stage ${encounterStage}`;
+    logMsg(`👑 ${G.enemy.bossTitle}: ${G.enemy.name} descends! [${stageLabel}${stageSequenceLabel}]`,'boss');
     logMsg(`Defeat them for a guaranteed Epic reward!`,'system');
     SFX.boss(); doScreenShake(true);
   } else {
-    logMsg(`⚔ Stage ${G.stage}: ${G.enemy.name} appears!`,'system');
+    logMsg(`⚔ Stage ${encounterStage}${stageSequenceLabel}: ${G.enemy.name} appears!`,'system');
   }
   if (G.turn==='enemy') {
     logMsg(`⚡ ${G.enemy.name} (SPD ${G.enemy.stats.spd}) is faster — they strike first!`,'miss');
@@ -6061,7 +6134,7 @@ function refreshBattleUI() {
     eclsEl.textContent = `${G.enemy.isBoss?'Boss · ':''}${ecls}`;
   }
 
-  document.getElementById('level-label').textContent = `STAGE ${G.stage}`;
+  document.getElementById('level-label').textContent = `STAGE ${getEncounterStage()}`;
   document.getElementById('turn-label').textContent = G.turn==='player'?`🟢 Your Turn · EN ${G.player.energy}/${G.player.energyMax}`:'🔴 Enemy Turn';
   document.getElementById('bird-lv-label').textContent = `Lv.${G.player.birdLevel}`;
   const shinyEl=document.getElementById('battle-shiny-count'); if(shinyEl) shinyEl.textContent=String(G.shinyObjects||0);
@@ -7147,8 +7220,11 @@ function continueStageTransitionAfterRewards(){
       return;
     }
     // All enemies defeated - clear queue and return to overworld
-    G._owStageEnemies = null;
-    G._owEnemyIndex = 0;
+    finalizeOverworldStageClear(G._owPendingBattleStage || G.stage, G._owPendingNodeId, {
+      shinyGain: G._owSequenceShiny || 0,
+      enemiesDefeated: G._owEnemyCount || G._owStageEnemies?.length || 1,
+    });
+    clearOverworldPendingBattle();
     saveRun();
     try { window.location.href = 'blackstone_overworld_new.html'; return; } catch(_) {}
   }
@@ -13936,7 +14012,7 @@ function postCombat() {
 
     // Shiny reward economy rebalance
     const isStoryMode=(G.ui?.gameMode||'story')==='story';
-    const stage=Math.max(1,G.stage||1);
+    const stage=Math.max(1,getEncounterStage());
     const endlessBattle=Math.max(0,G.endlessBattle||0);
     let shinyGain=0;
     if(G.enemy.isBoss){
@@ -13969,6 +14045,7 @@ function postCombat() {
     const magpieBonus = (G.player?.birdKey==='magpie') ? 3 : 0;
     shinyGain += perfectBonus + fastWinBonus + magpieBonus;
     G.shinyObjects += shinyGain;
+    if(_isOverworldRun()) G._owSequenceShiny = (G._owSequenceShiny||0) + shinyGain;
 
     const bonusParts = [];
     if (perfectBonus > 0) bonusParts.push('perfect +2');
@@ -15273,10 +15350,11 @@ function renderBattleSummary() {
 // ============================================================
 function updateStageProgress() {
   const wrap=document.getElementById('stage-progress-wrap'); if(!wrap) return;
-  if(G.endlessMode&&G.stage>20){wrap.style.display='none';return;}
+  const curStage=getEncounterStage();
+  if(G.endlessMode&&curStage>20){wrap.style.display='none';return;}
   wrap.style.display='flex';
   const total=20;
-  const cur=Math.min(G.stage,total);
+  const cur=Math.min(curStage,total);
   document.getElementById('stage-progress-fill').style.width=(cur/total*100)+'%';
   document.getElementById('stage-progress-txt').textContent=`${cur}/20`;
   // Mark boss stages
@@ -15899,6 +15977,8 @@ function shopRefresh() {
   return true;
 }
 function exitStorkShop() {
+  const returningShopNodeId = G._currentShopNodeId;
+  if (returningShopNodeId != null) setOverworldCurrentNode(returningShopNodeId);
   G._currentShopNodeId = null; // clear shop node context
   // Return to overworld after shopping (story/overworld mode only)
   if (_isOverworldRun()) {
