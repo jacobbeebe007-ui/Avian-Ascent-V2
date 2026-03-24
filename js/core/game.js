@@ -1,4 +1,4 @@
-// ===== 01_script_01.js =====
+﻿// ===== 01_script_01.js =====
 
 /* ===== Dove enemy + Stage 20 Blakiston boss ===== */
 (function(){
@@ -4815,6 +4815,7 @@ function saveRun() {
       classPerks: JSON.parse(JSON.stringify((G.classPerks||{}))),
       runClassPerks: JSON.parse(JSON.stringify((G.runClassPerks||[]))),
       runUpgradesPurchased: [...(G.runUpgradesPurchased||new Set())],
+      shopSnapshots: JSON.parse(JSON.stringify(G._shopSnapshots||{})),
       codex: JSON.parse(JSON.stringify(G.codex||{abilities:{},enemies:{},birds:{},artifacts:{},statuses:{}})),
       ui: JSON.parse(JSON.stringify(ensureUIState())),
       inBattle: onBattleScreen && !!G.enemy && !G.battleOver,
@@ -4871,6 +4872,7 @@ function continueRun() {
   if(!Array.isArray(G.player.endlessRewards)) G.player.endlessRewards=[];
   ensurePassiveEvolutionState(G.player);
   G.runUpgradesPurchased=new Set(save.runUpgradesPurchased||[]);
+  G._shopSnapshots=save.shopSnapshots||{};
   G._pendingLevelUpChoices=0;
   G._pendingSkillEvolutionChoices=0;
   G.codex=save.codex||{abilities:{},enemies:{},birds:{},artifacts:{},statuses:{}};
@@ -4947,6 +4949,7 @@ function handleOverworldReturn() {
     return true;
   }
   if (intent.action === 'shop') {
+    G._currentShopNodeId = intent.nodeId ?? null; // persist shop snapshot by node
     G._pendingOverworldShop = true; // loadStage() will detect this and open shop instead
     continueRun();
     return true;
@@ -15620,61 +15623,119 @@ function pickUniqueRewardByTier(tier,used){
   used.add(pick.id);
   return pick;
 }
+// ── Utility item pools (global so _findShopItemById can look them up) ──────
+const _SHOP_UTILS_REGULAR = [
+  {id:'shop_util_heal_missing20',tier:'green',icon:'🌿',name:'Field Rations',desc:'Restore 20% of missing HP',costOverride:22,apply:p=>{const miss=Math.max(0,p.stats.maxHp-p.stats.hp);const h=Math.max(1,Math.floor(miss*0.20));p.stats.hp=Math.min(p.stats.hp+h,p.stats.maxHp);}},
+  {id:'shop_util_cleanse_missing35',tier:'green',icon:'🌿',name:'Spring Cleanse',desc:'Cleanse active debuffs and restore 35% of missing HP',costOverride:36,apply:p=>{G.playerStatus={};const miss=Math.max(0,p.stats.maxHp-p.stats.hp);const h=Math.max(1,Math.floor(miss*0.35));p.stats.hp=Math.min(p.stats.hp+h,p.stats.maxHp);}},
+  {id:'shop_util_refresh',tier:'blue',icon:'🔄',name:'Coupon Wing',desc:'Next shop refresh is free',apply:p=>{G._freeShopRefresh=(G._freeShopRefresh||0)+1;}},
+  {id:'shop_util_energy',tier:'green',icon:'⚡',name:'Spark Draft',desc:'Gain +1 max energy this run (max +3)',apply:p=>{p.energyBonus=Math.min(3,(p.energyBonus||0)+1);p.energyMax=Math.max(1,(p.energyMax||3)+1);}},
+  {id:'shop_util_focus',tier:'green',icon:'🎯',name:'Hunter Focus',desc:'ACC +5 and Crit +3%',apply:p=>{p.stats.acc=Math.min(100,(p.stats.acc||80)+5);p.stats.critChance=(p.stats.critChance||5)+3;}},
+];
+const _SHOP_UTILS_BOSS = [
+  {id:'shop_util_heal_boss_missing35',tier:'blue',icon:'🌿',name:'Boss First Aid',desc:'Cleanse and restore 35% of missing HP',costOverride:36,apply:p=>{G.playerStatus={};const miss=Math.max(0,p.stats.maxHp-p.stats.hp);const h=Math.max(1,Math.floor(miss*0.35));p.stats.hp=Math.min(p.stats.hp+h,p.stats.maxHp);}},
+  {id:'shop_util_discount',tier:'purple',icon:'💎',name:'Royal Voucher',desc:'Your next purchase costs 2 less shiny',apply:p=>{G._nextShopDiscount=Math.max(G._nextShopDiscount||0,2);}},
+  {id:'shop_util_refresh2',tier:'blue',icon:'💎',name:'Double Refresh Pass',desc:'Gain 2 free shop refreshes',apply:p=>{G._freeShopRefresh=(G._freeShopRefresh||0)+2;}},
+  {id:'shop_util_bossward',tier:'purple',icon:'🛡️',name:'Boss Ward',desc:'MDEF +3 and cleanse one debuff now',apply:p=>{p.stats.mdef=(p.stats.mdef||0)+3;const bad=['weaken','paralyzed','slow','burning','poison','bleed','feared','lullabied'];const hit=bad.find(k=>G.playerStatus[k]);if(hit) delete G.playerStatus[hit];}},
+  {id:'shop_util_apex',tier:'purple',icon:'🦅',name:'Apex Talon Oil',desc:'ATK +3, MATK +3',apply:p=>{p.stats.atk+=3;p.stats.matk=(p.stats.matk||0)+3;}},
+];
+
 function makeUtilityOffer(kind='regular'){
-  const utilsRegular=[
-    {id:'shop_util_heal_missing20',tier:'green',icon:'🍖',name:'Field Rations',desc:'Restore 20% of missing HP',costOverride:22,apply:p=>{const miss=Math.max(0,p.stats.maxHp-p.stats.hp);const h=Math.max(1,Math.floor(miss*0.20));p.stats.hp=Math.min(p.stats.hp+h,p.stats.maxHp);}},
-    {id:'shop_util_cleanse_missing35',tier:'green',icon:'🧼',name:'Spring Cleanse',desc:'Cleanse active debuffs and restore 35% of missing HP',costOverride:36,apply:p=>{G.playerStatus={};const miss=Math.max(0,p.stats.maxHp-p.stats.hp);const h=Math.max(1,Math.floor(miss*0.35));p.stats.hp=Math.min(p.stats.hp+h,p.stats.maxHp);}},
-    {id:'shop_util_refresh',tier:'blue',icon:'🪙',name:'Coupon Wing',desc:'Next shop refresh is free',apply:p=>{G._freeShopRefresh=(G._freeShopRefresh||0)+1;}},
-    {id:'shop_util_energy',tier:'green',icon:'🔋',name:'Spark Draft',desc:'Gain +1 max energy this run (max +3)',apply:p=>{p.energyBonus=Math.min(3,(p.energyBonus||0)+1);p.energyMax=Math.max(1,(p.energyMax||3)+1);}},
-    {id:'shop_util_focus',tier:'green',icon:'🎯',name:'Hunter Focus',desc:'ACC +5 and Crit +3%',apply:p=>{p.stats.acc=Math.min(100,(p.stats.acc||80)+5);p.stats.critChance=(p.stats.critChance||5)+3;}},
-  ];
-  const utilsBoss=[
-    {id:'shop_util_heal_boss_missing35',tier:'blue',icon:'🩹',name:'Boss First Aid',desc:'Cleanse and restore 35% of missing HP',costOverride:36,apply:p=>{G.playerStatus={};const miss=Math.max(0,p.stats.maxHp-p.stats.hp);const h=Math.max(1,Math.floor(miss*0.35));p.stats.hp=Math.min(p.stats.hp+h,p.stats.maxHp);}},
-    {id:'shop_util_discount',tier:'purple',icon:'🛍️',name:'Royal Voucher',desc:'Your next purchase costs 2 less shiny',apply:p=>{G._nextShopDiscount=Math.max(G._nextShopDiscount||0,2);}},
-    {id:'shop_util_refresh2',tier:'blue',icon:'🎟️',name:'Double Refresh Pass',desc:'Gain 2 free shop refreshes',apply:p=>{G._freeShopRefresh=(G._freeShopRefresh||0)+2;}},
-    {id:'shop_util_bossward',tier:'purple',icon:'🛡️',name:'Boss Ward',desc:'MDEF +3 and cleanse one debuff now',apply:p=>{p.stats.mdef=(p.stats.mdef||0)+3;const bad=['weaken','paralyzed','slow','burning','poison','bleed','feared','lullabied'];const hit=bad.find(k=>G.playerStatus[k]);if(hit) delete G.playerStatus[hit];}},
-    {id:'shop_util_apex',tier:'purple',icon:'🦅',name:'Apex Talon Oil',desc:'ATK +3, MATK +3',apply:p=>{p.stats.atk+=3;p.stats.matk=(p.stats.matk||0)+3;}},
-  ];
-  const arr=kind==='boss'?utilsBoss:utilsRegular;
+  const arr=kind==='boss'?_SHOP_UTILS_BOSS:_SHOP_UTILS_REGULAR;
   const pick=arr[Math.floor(Math.random()*arr.length)];
   return {...pick};
 }
-function generateShopItems() {
-  _shopItems=[];
-  const used=new Set();
-  const mode=G._shopMode||'boss';
-  const goldCapReached = getGoldCardCount()>=getGoldCardLimit();
 
-  // Healing shelf always appears first in Stork shop.
-  const healOffers=SHOP_HEALING_ITEMS
-    .filter(it=>!SHOP_STATE.healingPurchasesThisVisit?.has(it.id))
-    .map(it=>({
+// Reconstruct a shop item (with its apply function) from a persisted ID.
+// Used when restoring saved shop snapshots for overworld nodes.
+function _findShopItemById(id) {
+  const healDef = SHOP_HEALING_ITEMS.find(x => x.id === id);
+  if (healDef) {
+    return {
+      ...healDef,
+      apply(p) {
+        const heal = Math.max(1, Math.floor((p.stats.maxHp||1)*(healDef.healPct||0)));
+        p.stats.hp = Math.min((p.stats.maxHp||1),(p.stats.hp||0)+heal);
+        spawnFloat('player',`+${heal} 🌿`,'fn-heal');
+      }
+    };
+  }
+  const upg = getUpgradePool().find(x => x.id === id);
+  if (upg) return upg;
+  const util = [..._SHOP_UTILS_REGULAR,..._SHOP_UTILS_BOSS].find(x => x.id === id);
+  if (util) return {...util};
+  return null;
+}
+function generateShopItems() {
+  const nodeId = G._currentShopNodeId ?? null;
+  const mode = G._shopMode || 'boss';
+
+  // ── Return-visit: restore snapshot (minus already-purchased items) ──────────
+  if (nodeId != null && G._shopSnapshots?.[nodeId]) {
+    const snap = G._shopSnapshots[nodeId];
+    const bought = new Set(snap.boughtIds || []);
+    _shopItems = (snap.itemIds || [])
+      .filter(id => !bought.has(id))
+      .map(id => _findShopItemById(id))
+      .filter(Boolean);
+    renderShopItems();
+    return;
+  }
+
+  // ── First visit: generate random items ──────────────────────────────────────
+  _shopItems = [];
+  const used = new Set();
+  const goldCapReached = getGoldCardCount() >= getGoldCardLimit();
+
+  // Healing shelf: 3 items always at top
+  const healOffers = SHOP_HEALING_ITEMS
+    .filter(it => !SHOP_STATE.healingPurchasesThisVisit?.has(it.id))
+    .map(it => ({
       ...it,
-      apply(p){
-        const heal=Math.max(1,Math.floor((p.stats.maxHp||1)*(it.healPct||0)));
-        p.stats.hp=Math.min((p.stats.maxHp||1),(p.stats.hp||0)+heal);
-        spawnFloat('player',`+${heal} 🩹`,'fn-heal');
+      apply(p) {
+        const heal = Math.max(1, Math.floor((p.stats.maxHp||1)*(it.healPct||0)));
+        p.stats.hp = Math.min((p.stats.maxHp||1),(p.stats.hp||0)+heal);
+        spawnFloat('player',`+${heal} 🌿`,'fn-heal');
       }
     }));
   _shopItems.push(...healOffers);
 
-  if(mode==='grey'){
-    // Regular shop: cards/utility after healing shelf
-    for(let i=0;i<2;i++){
-      const tier=goldCapReached?rollShopTier({grey:52,green:30,blue:16,purple:2}):rollShopTier({grey:50,green:28,blue:16,purple:5,gold:1});
-      const pick=pickUniqueRewardByTier(tier,used)||pickUniqueRewardByTier('green',used)||pickUniqueRewardByTier('grey',used);
-      if(pick) _shopItems.push(pick);
+  if (mode === 'grey') {
+    // Regular shop: 5 upgrade cards + 1 utility = 6 upgrade slots
+    for (let i = 0; i < 5; i++) {
+      const tier = goldCapReached
+        ? rollShopTier({grey:52,green:30,blue:16,purple:2})
+        : rollShopTier({grey:50,green:28,blue:16,purple:5,gold:1});
+      const pick = pickUniqueRewardByTier(tier,used)
+        || pickUniqueRewardByTier('green',used)
+        || pickUniqueRewardByTier('grey',used);
+      if (pick) _shopItems.push(pick);
     }
     _shopItems.push(makeUtilityOffer('regular'));
   } else {
-    // Boss shop: cards/utility after healing shelf
-    for(let i=0;i<3;i++){
-      const tier=goldCapReached?rollShopTier({blue:56,purple:44}):rollShopTier({blue:50,purple:38,gold:12});
-      const pick=pickUniqueRewardByTier(tier,used)||pickUniqueRewardByTier('purple',used)||pickUniqueRewardByTier('blue',used);
-      if(pick) _shopItems.push(pick);
+    // Boss shop: 5 elite cards + 1 utility = 6 upgrade slots
+    for (let i = 0; i < 5; i++) {
+      const tier = goldCapReached
+        ? rollShopTier({blue:56,purple:44})
+        : rollShopTier({blue:50,purple:38,gold:12});
+      const pick = pickUniqueRewardByTier(tier,used)
+        || pickUniqueRewardByTier('purple',used)
+        || pickUniqueRewardByTier('blue',used);
+      if (pick) _shopItems.push(pick);
     }
     _shopItems.push(makeUtilityOffer('boss'));
   }
+
+  // ── Save snapshot so the same items appear on return visits ─────────────────
+  if (nodeId != null) {
+    if (!G._shopSnapshots) G._shopSnapshots = {};
+    G._shopSnapshots[nodeId] = {
+      mode,
+      itemIds: _shopItems.map(it => it.id),
+      boughtIds: [],
+    };
+    saveRun();
+  }
+
   renderShopItems();
 }
 const SHOP_COSTS={grey:24,green:36,blue:58,purple:78,gold:105};
@@ -15779,6 +15840,12 @@ async function shopBuySelected() {
   if(log) log.textContent=`✓ Bought: ${item.icon} ${item.name}${isHealingItem?' · Healing':''}. Keep shopping or leave when done.`;
 
   if(item.stackable===false){ if(!(G.runUpgradesPurchased instanceof Set)) G.runUpgradesPurchased=new Set(); G.runUpgradesPurchased.add(item.id); }
+  // Record purchase in overworld shop snapshot
+  if ((G._currentShopNodeId ?? null) != null && G._shopSnapshots?.[G._currentShopNodeId]) {
+    if (!G._shopSnapshots[G._currentShopNodeId].boughtIds) G._shopSnapshots[G._currentShopNodeId].boughtIds = [];
+    if (item.id && !G._shopSnapshots[G._currentShopNodeId].boughtIds.includes(item.id))
+      G._shopSnapshots[G._currentShopNodeId].boughtIds.push(item.id);
+  }
   _shopItems.splice(selected,1);
   if(isHealingItem) SHOP_STATE.healingPurchasesThisVisit.add(item.id);
   SHOP_STATE.selectedIndex=null;
@@ -15791,16 +15858,20 @@ function shopRefresh() {
   if((G._freeShopRefresh||0)>0){G._freeShopRefresh--; }
   else {
     const rc=getShopRefreshCost();
-    if(G.shinyObjects<rc){ logMsg(`Need ${rc} shiny objects to refresh!`,'miss'); return false; }
+    if(G.shinyObjects<rc){ logMsg(Need ${rc} shiny objects to refresh!,'miss'); return false; }
     G.shinyObjects-=rc;
   }
   G._shopRefreshCount=(G._shopRefreshCount||0)+1;
+  // Clear snapshot so refreshed items become the new static inventory for this node
+  const _rNodeId = G._currentShopNodeId ?? null;
+  if (_rNodeId != null && G._shopSnapshots) delete G._shopSnapshots[_rNodeId];
   const log=document.getElementById('shop-purchase-log');
-  if(log) log.textContent='🔄 Shop refreshed!';
+  if(log) log.textContent='🔄 Shop refreshed — new items are now locked in for this visit!';
   generateShopItems();
   return true;
 }
 function exitStorkShop() {
+  G._currentShopNodeId = null; // clear shop node context
   // Return to overworld after shopping (story/overworld mode only)
   if (_isOverworldRun()) {
     saveRun();
