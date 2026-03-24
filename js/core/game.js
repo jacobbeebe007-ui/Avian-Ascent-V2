@@ -4831,6 +4831,7 @@ function saveRun() {
         phase: G.phase,
       } : null,
       savedAt: Date.now(),
+      shinyObjects: Math.max(0, Math.floor(Number(G.shinyObjects) || 0)),
     };
     // Strip un-serializable passive fns from player
     delete save.player.passive;
@@ -4880,6 +4881,7 @@ function continueRun() {
   G._pendingLevelUpChoices=0;
   G._pendingSkillEvolutionChoices=0;
   G.codex=save.codex||{abilities:{},enemies:{},birds:{},artifacts:{},statuses:{}};
+  G.shinyObjects = Math.max(0, Math.floor(Number(save.shinyObjects) || 0));
   // Re-attach passive reference (fns can't be serialized)
   const bd=BIRDS[G.player.birdKey];
   if(bd) G.player.passive=bd.passive||null;
@@ -5917,6 +5919,7 @@ function loadStage() {
   }
   const scaleOpts={
     isEndless:(G.endlessMode && encounterStage>20),
+    isStory:!G.endlessMode,
     diffMult,
     playerBirdLevel:Math.max(1, Math.floor(G.player?.birdLevel||1)),
   };
@@ -6100,6 +6103,7 @@ function getPanel(who)      { return document.getElementById(`${who}-panel`); }
 
 function refreshBattleUI() {
   const p = G.player.stats;
+  const storyMinimal = (G.ui?.gameMode||'story')==='story' && !G.endlessMode;
   document.getElementById('player-name').textContent = G.player.name;
   document.getElementById('player-avatar').innerHTML = renderEntityAvatarHTML(G.player, 'battle');
   setHpBar('player', p.hp, p.maxHp);
@@ -6110,29 +6114,39 @@ function refreshBattleUI() {
     pclsEl.textContent=`${pcls}`;
   }
 
-  document.getElementById('enemy-name').innerHTML = G.enemy.name + (G.enemy.isBoss?`<span class="boss-crown">👑</span>`:'');
   const ep = getPanel('enemy');
-  ep.className = 'combatant-panel enemy' + (G.enemy.isBoss?' boss-panel':'');
   const en = document.getElementById('enemy-name');
-  en.className = 'combatant-name' + (G.enemy.isBoss?' boss-name':'');
-  if(G.enemy.birdKey&&BIRDS[G.enemy.birdKey]){
-    const enemyBird = Object.assign({}, BIRDS[G.enemy.birdKey], G.enemy, { portraitKey: BIRDS[G.enemy.birdKey].portraitKey || G.enemy.portraitKey });
-    document.getElementById('enemy-avatar').innerHTML = renderEntityAvatarHTML(enemyBird, 'battle');
+  if(storyMinimal){
+    en.innerHTML = G.enemy.isBoss ? `Boss<span class="boss-crown">👑</span>` : 'Opponent';
+    ep.className = 'combatant-panel enemy' + (G.enemy.isBoss?' boss-panel':'');
+    en.className = 'combatant-name' + (G.enemy.isBoss?' boss-name':'');
+    document.getElementById('enemy-avatar').innerHTML = '';
     document.getElementById('enemy-avatar').style.fontSize='';
-  }else if(G.enemy.portraitKey){
-    document.getElementById('enemy-avatar').innerHTML = renderEntityAvatarHTML(G.enemy, 'battle');
-    document.getElementById('enemy-avatar').style.fontSize='';
-  }else{
-    document.getElementById('enemy-avatar').textContent = G.enemy.emoji;
-    document.getElementById('enemy-avatar').style.fontSize='3.8rem';
+    const eclsElSm=document.getElementById('enemy-class-label');
+    if(eclsElSm) eclsElSm.textContent='';
+  } else {
+    en.innerHTML = G.enemy.name + (G.enemy.isBoss?`<span class="boss-crown">👑</span>`:'');
+    ep.className = 'combatant-panel enemy' + (G.enemy.isBoss?' boss-panel':'');
+    en.className = 'combatant-name' + (G.enemy.isBoss?' boss-name':'');
+    if(G.enemy.birdKey&&BIRDS[G.enemy.birdKey]){
+      const enemyBird = Object.assign({}, BIRDS[G.enemy.birdKey], G.enemy, { portraitKey: BIRDS[G.enemy.birdKey].portraitKey || G.enemy.portraitKey });
+      document.getElementById('enemy-avatar').innerHTML = renderEntityAvatarHTML(enemyBird, 'battle');
+      document.getElementById('enemy-avatar').style.fontSize='';
+    }else if(G.enemy.portraitKey){
+      document.getElementById('enemy-avatar').innerHTML = renderEntityAvatarHTML(G.enemy, 'battle');
+      document.getElementById('enemy-avatar').style.fontSize='';
+    }else{
+      document.getElementById('enemy-avatar').textContent = G.enemy.emoji;
+      document.getElementById('enemy-avatar').style.fontSize='3.8rem';
+    }
+    const eclsEl=document.getElementById('enemy-class-label');
+    if(eclsEl){
+      const ecls=idToClassLabel(resolveFinalClass(G.enemy.class||inferEnemyClassFromStyle(G.enemy)||'predator',G.enemy.birdKey||''));
+      eclsEl.textContent = `${G.enemy.isBoss?'Boss · ':''}${ecls}`;
+    }
   }
   setHpBar('enemy', G.enemy.stats.hp, G.enemy.stats.maxHp);
   setEnergyBar('enemy', G.enemy.energy, G.enemy.energyMax||3);
-  const eclsEl=document.getElementById('enemy-class-label');
-  if(eclsEl){
-    const ecls=idToClassLabel(resolveFinalClass(G.enemy.class||inferEnemyClassFromStyle(G.enemy)||'predator',G.enemy.birdKey||''));
-    eclsEl.textContent = `${G.enemy.isBoss?'Boss · ':''}${ecls}`;
-  }
 
   document.getElementById('level-label').textContent = `STAGE ${getEncounterStage()}`;
   document.getElementById('turn-label').textContent = G.turn==='player'?`🟢 Your Turn · EN ${G.player.energy}/${G.player.energyMax}`:'🔴 Enemy Turn';
@@ -6186,37 +6200,44 @@ function refreshBattleUI() {
      ${statCell('stat-cc','CC',_critChance,{suffix:'%',title:'Crit Chance',trend:_trendTag(_critChance-5)})}
      ${statCell('stat-cd','CD',_critMult.toFixed(1),{suffix:'×',title:'Crit Damage'})}`;
 
-  // Enemy stats display (same layout/order as player)
-  const ep2=G.enemy.stats;
-  const eCritChance=Math.max(0,Math.min(100,Math.round((ep2.cc??((ep2.critChance||5)/100))*100)));
-  const eCritMult=(ep2.cd??ep2.critMult??1.5);
-  const enemyCell=(klass,label,val,{suffix='',title=''}={})=>
-    `<div class="est ${klass}" title="${title}"><span class="stat-k">${label}</span><span class="stat-v">${val}${suffix}</span></div>`;
-  document.getElementById('enemy-stats-mini').innerHTML =
-    `${enemyCell('stat-atk','ATK',ep2.atk,{title:'Physical attack'})}
-     ${enemyCell('stat-matk','MATK',ep2.matk||6,{title:'Magic attack'})}
-     ${enemyCell('stat-def','DEF',ep2.def,{title:'Physical defence'})}
-     ${enemyCell('stat-mdef','MDEF',ep2.mdef||8,{title:'Magic defence'})}
-     ${enemyCell('stat-dodge','Dodge',ep2.dodge||0,{suffix:'%',title:'Physical dodge'})}
-     ${enemyCell('stat-mdodge','M.Dodge',ep2.mdodge??ep2.dodge??0,{suffix:'%',title:'Magic dodge'})}
-     ${enemyCell('stat-acc','ACC',ep2.acc||70,{suffix:'%',title:'Accuracy'})}
-     ${enemyCell('stat-spd','SPD',ep2.spd||0,{title:'Speed'})}
-     ${enemyCell('stat-cc','CC',eCritChance,{suffix:'%',title:'Crit chance'})}
-     ${enemyCell('stat-cd','CD',Number(eCritMult).toFixed(1),{suffix:'×',title:'Crit damage'})}`;
-  // Enemy abilities
-  const eal=document.getElementById('enemy-abilities-list'); eal.innerHTML='';
-  (G.enemy.abilities||[]).forEach(abKey=>{
-    const eab=ENEMY_ABILITY_POOL[abKey];
-    if(eab){const t=document.createElement('span');t.className='enemy-ab-tag';t.textContent=eab.name;
-      const low=Math.max(1,Math.floor((G.enemy.stats.atk||8)*0.8));
-      const high=Math.max(low,Math.floor((G.enemy.stats.atk||8)*1.2));
-      t.title=`${eab.name} — ${eab.desc||'Enemy ability'}
+  // Enemy stats display (same layout/order as player); hidden in story mode for a cleaner encounter panel
+  const eal=document.getElementById('enemy-abilities-list');
+  if(storyMinimal){
+    document.getElementById('enemy-stats-mini').innerHTML='';
+    if(eal) eal.innerHTML='';
+  } else {
+    const ep2=G.enemy.stats;
+    const eCritChance=Math.max(0,Math.min(100,Math.round((ep2.cc??((ep2.critChance||5)/100))*100)));
+    const eCritMult=(ep2.cd??ep2.critMult??1.5);
+    const enemyCell=(klass,label,val,{suffix='',title=''}={})=>
+      `<div class="est ${klass}" title="${title}"><span class="stat-k">${label}</span><span class="stat-v">${val}${suffix}</span></div>`;
+    document.getElementById('enemy-stats-mini').innerHTML =
+      `${enemyCell('stat-atk','ATK',ep2.atk,{title:'Physical attack'})}
+       ${enemyCell('stat-matk','MATK',ep2.matk||6,{title:'Magic attack'})}
+       ${enemyCell('stat-def','DEF',ep2.def,{title:'Physical defence'})}
+       ${enemyCell('stat-mdef','MDEF',ep2.mdef||8,{title:'Magic defence'})}
+       ${enemyCell('stat-dodge','Dodge',ep2.dodge||0,{suffix:'%',title:'Physical dodge'})}
+       ${enemyCell('stat-mdodge','M.Dodge',ep2.mdodge??ep2.dodge??0,{suffix:'%',title:'Magic dodge'})}
+       ${enemyCell('stat-acc','ACC',ep2.acc||70,{suffix:'%',title:'Accuracy'})}
+       ${enemyCell('stat-spd','SPD',ep2.spd||0,{title:'Speed'})}
+       ${enemyCell('stat-cc','CC',eCritChance,{suffix:'%',title:'Crit chance'})}
+       ${enemyCell('stat-cd','CD',Number(eCritMult).toFixed(1),{suffix:'×',title:'Crit damage'})}`;
+    if(eal){
+      eal.innerHTML='';
+      (G.enemy.abilities||[]).forEach(abKey=>{
+        const eab=ENEMY_ABILITY_POOL[abKey];
+        if(eab){const t=document.createElement('span');t.className='enemy-ab-tag';t.textContent=eab.name;
+          const low=Math.max(1,Math.floor((G.enemy.stats.atk||8)*0.8));
+          const high=Math.max(low,Math.floor((G.enemy.stats.atk||8)*1.2));
+          t.title=`${eab.name} — ${eab.desc||'Enemy ability'}
 Estimated damage: ${eab.dmg||(`${low}-${high}`)}`;
-      t.addEventListener('mouseenter',e=>showTooltip(e,t.title,e.clientX+12,e.clientY+12));
-      t.addEventListener('mousemove',e=>moveTooltip(e.clientX+12,e.clientY+12));
-      t.addEventListener('mouseleave',hideTooltip);
-      eal.appendChild(t);}
-  });
+          t.addEventListener('mouseenter',e=>showTooltip(e,t.title,e.clientX+12,e.clientY+12));
+          t.addEventListener('mousemove',e=>moveTooltip(e.clientX+12,e.clientY+12));
+          t.addEventListener('mouseleave',hideTooltip);
+          eal.appendChild(t);}
+      });
+    }
+  }
 
   renderStatuses('player-status', G.playerStatus);
   renderStatuses('enemy-status', G.enemyStatus);
@@ -7203,7 +7224,8 @@ function continueStageTransitionAfterRewards(){
 
   const lastEnemyWasBoss = G.enemy && G.enemy.isBoss;
   const safeHP = G.player.stats.hp > G.player.stats.maxHp * 0.2;
-  if(!lastEnemyWasBoss && safeHP && Math.random() < 0.1){
+  const owChainPending = _isOverworldRun() && G._owStageEnemies && G._owEnemyIndex < (G._owStageEnemies.length - 1);
+  if(!lastEnemyWasBoss && safeHP && Math.random() < 0.1 && !owChainPending){
     setTimeout(()=>showGroveEvent(), 350);
     return;
   }
@@ -7653,6 +7675,16 @@ function computeEnemyEffectiveLevel(stage, playerBirdLevel, isEndless){
   return Math.max(1,L);
 }
 
+/** Story midgame rebalance: soften enemies on stages 6–19 (non-endless). Boss/lieutenant get a milder cut. */
+function getStoryEnemyPowerMultiplier(stage, tier, opts) {
+  if (!opts || !opts.isStory || opts.isEndless) return 1;
+  const s = Math.max(1, Math.floor(stage || 1));
+  if (s < 6 || s > 19) return 1;
+  const t = (s - 6) / 13;
+  if (tier === 'boss' || tier === 'lieutenant') return 0.93 - t * 0.07;
+  return 0.88 - t * 0.12;
+}
+
 function combatResolveEnemyTier(enemyBase, stage, opts, templateTier){
   if(templateTier==='boss') return 'boss';
   if(templateTier==='lieutenant') return 'lieutenant';
@@ -7724,6 +7756,11 @@ function buildScaledEnemy(enemyBase, stage, opts={}){
   atk*=diffMult;
   matk*=diffMult;
 
+  const storyMult = getStoryEnemyPowerMultiplier(s, tier, opts);
+  hp *= storyMult;
+  atk *= storyMult;
+  matk *= storyMult;
+
   const acc=Math.max(60,Math.min(96,Math.floor(accBase+Math.floor(gain/4)+(tier==='boss'?2:0))));
   const dodge=Math.max(0,Math.min(42,Math.floor(base.dodge+Math.floor(gain/6)+(tier==='boss'?2:0))));
   const mdodge=Math.max(0,Math.min(32,Math.floor(base.mdodge+Math.floor(gain/7)+(tier==='boss'?1:0))));
@@ -7747,6 +7784,7 @@ function enemyScaleFactor(base, stage, diffMult){
   const isEndless=(G.endlessMode && stage>20);
   const opts={
     isEndless,
+    isStory:!G.endlessMode,
     diffMult,
     playerBirdLevel:Math.max(1, Math.floor(G.player?.birdLevel||1)),
   };
