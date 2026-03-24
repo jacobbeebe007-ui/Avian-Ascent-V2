@@ -6189,43 +6189,38 @@ function refreshBattleUI() {
      ${statCell('stat-cc','CC',_critChance,{suffix:'%',title:'Crit Chance',trend:_trendTag(_critChance-5)})}
      ${statCell('stat-cd','CD',_critMult.toFixed(1),{suffix:'×',title:'Crit Damage'})}`;
 
-  // Enemy stats display (same layout/order as player); hidden in story mode for a cleaner encounter panel
+  // Enemy stats display
   const eal=document.getElementById('enemy-abilities-list');
-  if(storyMinimal){
-    document.getElementById('enemy-stats-mini').innerHTML='';
-    if(eal) eal.innerHTML='';
-  } else {
-    const ep2=G.enemy.stats;
-    const eCritChance=Math.max(0,Math.min(100,Math.round((ep2.cc??((ep2.critChance||5)/100))*100)));
-    const eCritMult=(ep2.cd??ep2.critMult??1.5);
-    const enemyCell=(klass,label,val,{suffix='',title=''}={})=>
-      `<div class="est ${klass}" title="${title}"><span class="stat-k">${label}</span><span class="stat-v">${val}${suffix}</span></div>`;
-    document.getElementById('enemy-stats-mini').innerHTML =
-      `${enemyCell('stat-atk','ATK',ep2.atk,{title:'Physical attack'})}
-       ${enemyCell('stat-matk','MATK',ep2.matk||6,{title:'Magic attack'})}
-       ${enemyCell('stat-def','DEF',ep2.def,{title:'Physical defence'})}
-       ${enemyCell('stat-mdef','MDEF',ep2.mdef||8,{title:'Magic defence'})}
-       ${enemyCell('stat-dodge','Dodge',ep2.dodge||0,{suffix:'%',title:'Physical dodge'})}
-       ${enemyCell('stat-mdodge','M.Dodge',ep2.mdodge??ep2.dodge??0,{suffix:'%',title:'Magic dodge'})}
-       ${enemyCell('stat-acc','ACC',ep2.acc||70,{suffix:'%',title:'Accuracy'})}
-       ${enemyCell('stat-spd','SPD',ep2.spd||0,{title:'Speed'})}
-       ${enemyCell('stat-cc','CC',eCritChance,{suffix:'%',title:'Crit chance'})}
-       ${enemyCell('stat-cd','CD',Number(eCritMult).toFixed(1),{suffix:'×',title:'Crit damage'})}`;
-    if(eal){
-      eal.innerHTML='';
-      (G.enemy.abilities||[]).forEach(abKey=>{
-        const eab=ENEMY_ABILITY_POOL[abKey];
-        if(eab){const t=document.createElement('span');t.className='enemy-ab-tag';t.textContent=eab.name;
-          const low=Math.max(1,Math.floor((G.enemy.stats.atk||8)*0.8));
-          const high=Math.max(low,Math.floor((G.enemy.stats.atk||8)*1.2));
-          t.title=`${eab.name} — ${eab.desc||'Enemy ability'}
+  const ep2=G.enemy.stats;
+  const eCritChance=Math.max(0,Math.min(100,Math.round((ep2.cc??((ep2.critChance||5)/100))*100)));
+  const eCritMult=(ep2.cd??ep2.critMult??1.5);
+  const enemyCell=(klass,label,val,{suffix='',title=''}={})=>
+    `<div class="est ${klass}" title="${title}"><span class="stat-k">${label}</span><span class="stat-v">${val}${suffix}</span></div>`;
+  document.getElementById('enemy-stats-mini').innerHTML =
+    `${enemyCell('stat-atk','ATK',ep2.atk,{title:'Physical attack'})}
+     ${enemyCell('stat-matk','MATK',ep2.matk||6,{title:'Magic attack'})}
+     ${enemyCell('stat-def','DEF',ep2.def,{title:'Physical defence'})}
+     ${enemyCell('stat-mdef','MDEF',ep2.mdef||8,{title:'Magic defence'})}
+     ${enemyCell('stat-dodge','Dodge',ep2.dodge||0,{suffix:'%',title:'Physical dodge'})}
+     ${enemyCell('stat-mdodge','M.Dodge',ep2.mdodge??ep2.dodge??0,{suffix:'%',title:'Magic dodge'})}
+     ${enemyCell('stat-acc','ACC',ep2.acc||70,{suffix:'%',title:'Accuracy'})}
+     ${enemyCell('stat-spd','SPD',ep2.spd||0,{title:'Speed'})}
+     ${enemyCell('stat-cc','CC',eCritChance,{suffix:'%',title:'Crit chance'})}
+     ${enemyCell('stat-cd','CD',Number(eCritMult).toFixed(1),{suffix:'×',title:'Crit damage'})}`;
+  if(eal){
+    eal.innerHTML='';
+    (G.enemy.abilities||[]).forEach(abKey=>{
+      const eab=ENEMY_ABILITY_POOL[abKey];
+      if(eab){const t=document.createElement('span');t.className='enemy-ab-tag';t.textContent=eab.name;
+        const low=Math.max(1,Math.floor((G.enemy.stats.atk||8)*0.8));
+        const high=Math.max(low,Math.floor((G.enemy.stats.atk||8)*1.2));
+        t.title=`${eab.name} — ${eab.desc||'Enemy ability'}
 Estimated damage: ${eab.dmg||(`${low}-${high}`)}`;
-          t.addEventListener('mouseenter',e=>showTooltip(e,t.title,e.clientX+12,e.clientY+12));
-          t.addEventListener('mousemove',e=>moveTooltip(e.clientX+12,e.clientY+12));
-          t.addEventListener('mouseleave',hideTooltip);
-          eal.appendChild(t);}
-      });
-    }
+        t.addEventListener('mouseenter',e=>showTooltip(e,t.title,e.clientX+12,e.clientY+12));
+        t.addEventListener('mousemove',e=>moveTooltip(e.clientX+12,e.clientY+12));
+        t.addEventListener('mouseleave',hideTooltip);
+        eal.appendChild(t);}
+    });
   }
 
   renderStatuses('player-status', G.playerStatus);
