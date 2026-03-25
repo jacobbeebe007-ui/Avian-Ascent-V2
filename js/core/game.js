@@ -14105,18 +14105,21 @@ function postCombat() {
 
     // Transition (always happens)
     G.phase='REWARD';
-    if (G.enemy.isBoss) {
+    if (G.enemy.isBoss && !_isOverworldRun()) {
+      // In normal (non-overworld) mode: boss kill → inline Stork Shop
       setTimeout(() => {
         if (leveled) {
           G._pendingStorkShop = true;
           G._pendingShopMode = 'boss';
           G.phase='LEVELUP';
-    showLevelUpScreen();
+          showLevelUpScreen();
         } else {
           showStorkShop('boss');
         }
       }, 250);
     } else {
+      // Overworld mode OR non-boss: go to reward screen; continueStageTransitionAfterRewards
+      // handles overworld finalization and return after the player picks a reward.
       setTimeout(() => {
         showRewardScreen(leveled);
       }, 250);
@@ -14238,7 +14241,8 @@ function confirmReward() {
 
   const lastEnemyWasBoss = !!(G.enemy && G.enemy.isBoss);
   G.phase='REWARD';
-  const shopDue = (lastEnemyWasBoss || isGreyShopStage(G.stage)) && !G._owStageEnemies;
+  // Overworld runs never show the inline Stork Shop — the overworld map has its own shop nodes
+  const shopDue = (lastEnemyWasBoss || isGreyShopStage(G.stage)) && !G._owStageEnemies && !_isOverworldRun();
   const shopMode = lastEnemyWasBoss ? 'boss' : 'grey';
 
   if(G._pendingLevelUp){
@@ -14897,9 +14901,13 @@ async function confirmSkillUpgrade() {
 
 function afterLevelUp() {
   if(beginSkillEvolutionFlow()) return;
-  // After level-up: go to Stork shop if it was a boss, otherwise advance
-  if(G._pendingStorkShop){ const m=G._pendingShopMode||'boss'; G._pendingStorkShop=false; G._pendingShopMode=null; showStorkShop(m); }
-  else advanceStage();
+  // After level-up: go to Stork shop if it was a boss (non-overworld only), otherwise advance
+  if(G._pendingStorkShop && !_isOverworldRun()){
+    const m=G._pendingShopMode||'boss'; G._pendingStorkShop=false; G._pendingShopMode=null; showStorkShop(m);
+  } else {
+    G._pendingStorkShop=false; G._pendingShopMode=null;
+    advanceStage();
+  }
 }
 
 function advanceStage() {
@@ -16001,9 +16009,17 @@ function shopRefresh() {
 function exitStorkShop() {
   const returningShopNodeId = G._currentShopNodeId;
   if (returningShopNodeId != null) setOverworldCurrentNode(returningShopNodeId);
-  G._currentShopNodeId = null; // clear shop node context
+  G._currentShopNodeId = null;
   // Return to overworld after shopping (story/overworld mode only)
   if (_isOverworldRun()) {
+    // Safety net: if stage was never finalized (e.g. boss shop shown mid-overworld), do it now
+    if (G._owPendingBattleStage != null) {
+      finalizeOverworldStageClear(G._owPendingBattleStage, G._owPendingNodeId, {
+        shinyGain: G._owSequenceShiny || 0,
+        enemiesDefeated: G._owEnemyCount || G._owStageEnemies?.length || 1,
+      });
+      clearOverworldPendingBattle();
+    }
     saveRun();
     try { window.location.href = 'blackstone_overworld_new.html'; return; } catch(_) {}
   }
