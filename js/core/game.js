@@ -1271,17 +1271,26 @@ const ENEMIES = [
   makeEnemy('Sky Sovereign','👑',200,35,18,6,'berserker',true,'👑 Final Boss',{acc:90,dodge:12,size:'xl',abilities:['eRage','eStun','ePoison','eFear','eShield','eBurn'],portraitKey:'baldEagle'}),
 ];
 
-// Birds that can appear as enemy combatants (adds variety)
+// Birds that can appear as enemy combatants (adds variety). Set enemyClass for singer/tank/trickster; matk/mdef/mdodge feed scaling.
 const BIRD_ENEMIES = [
-  {name:'Wild Sparrow',emoji:'',birdKey:'sparrow',tier:[1,2],hp:30,atk:6,def:2,spd:9,acc:82,dodge:32,size:'tiny',aiStyle:'berserker',abilities:['eBlind']},
-  {name:'Rogue Crow',emoji:'‍⬛',birdKey:'crow',tier:[2,3],hp:38,atk:8,def:5,spd:5,acc:88,dodge:14,size:'medium',aiStyle:'aggressive',abilities:['eWeaken','eStun']},
-  {name:'Savage Kookaburra',emoji:'',birdKey:'kookaburra',tier:[2,3],hp:48,atk:10,def:5,spd:7,acc:80,dodge:20,size:'medium',aiStyle:'aggressive',abilities:['eFear','eRage']},
-  {name:'Feral Toucan',emoji:'',birdKey:'toucan',tier:[3,4],hp:48,atk:9,def:6,spd:4,acc:74,dodge:10,size:'large',aiStyle:'cautious',abilities:['eBurn','ePoison']},
-  {name:'Outcast Goose',emoji:'',birdKey:'goose',tier:[3,4],hp:62,atk:11,def:8,spd:2,acc:70,dodge:5,size:'xl',aiStyle:'berserker',abilities:['eFear','eWeaken']},
-  {name:'Shadow Raven',emoji:'',birdKey:'raven',tier:[3,4],hp:40,atk:9,def:4,spd:7,acc:80,dodge:20,size:'medium',aiStyle:'aggressive',abilities:['eFear','eBlind','eWeaken']},
-  {name:'Apex Peregrine',emoji:'',birdKey:'peregrine',tier:[4],hp:36,atk:12,def:4,spd:11,acc:90,dodge:26,size:'small',aiStyle:'berserker',abilities:['eStun','eBlind']},
-  {name:'Storm Swan',emoji:'',birdKey:'swan',tier:[4],hp:50,atk:10,def:6,spd:6,acc:82,dodge:18,size:'large',aiStyle:'cautious',abilities:['eHeal','eWeaken']},
-  {name:'War Harpy',emoji:'',birdKey:'harpy',tier:[4],hp:65,atk:14,def:7,spd:5,acc:78,dodge:8,size:'xl',aiStyle:'berserker',abilities:['eRage','eBurn','eStun']},
+  {name:'Wild Sparrow',emoji:'',birdKey:'sparrow',tier:[1,2],hp:30,atk:6,def:2,matk:6,mdef:7,spd:9,acc:82,dodge:32,mdodge:28,enemyClass:'bruiser',size:'tiny',aiStyle:'berserker',abilities:['eBlind']},
+  {name:'Grove Cantor',emoji:'🎵',birdKey:'blackbird',tier:[1,2],hp:30,atk:5,def:3,matk:12,mdef:9,spd:7,acc:78,dodge:22,mdodge:18,enemyClass:'singer',size:'small',aiStyle:'cautious',abilities:['eWeaken','eFear']},
+  {name:'Glitter Thief',emoji:'✨',birdKey:'magpie',tier:[1,2],hp:34,atk:7,def:4,matk:9,mdef:8,spd:8,acc:86,dodge:28,mdodge:22,enemyClass:'trickster',size:'medium',aiStyle:'aggressive',abilities:['eBlind','eWeaken']},
+  {name:'Rogue Crow',emoji:'‍⬛',birdKey:'crow',tier:[2,3],hp:38,atk:8,def:5,matk:8,mdef:9,spd:5,acc:88,dodge:14,mdodge:12,enemyClass:'trickster',size:'medium',aiStyle:'aggressive',abilities:['eWeaken','eStun']},
+  {name:'Savage Kookaburra',emoji:'',birdKey:'kookaburra',tier:[2,3],hp:48,atk:10,def:5,matk:8,mdef:9,spd:7,acc:80,dodge:20,mdodge:16,enemyClass:'bruiser',size:'medium',aiStyle:'aggressive',abilities:['eFear','eRage']},
+  {name:'Marsh Chorus',emoji:'🦩',birdKey:'flamingo',tier:[2,3],hp:46,atk:7,def:5,matk:11,mdef:11,spd:5,acc:76,dodge:14,mdodge:12,enemyClass:'singer',size:'large',aiStyle:'cautious',abilities:['ePoison','eWeaken']},
+  {name:'Frost Chanter',emoji:'🦉',birdKey:'snowyOwl',tier:[2,3],hp:34,atk:6,def:5,matk:13,mdef:9,spd:8,acc:84,dodge:22,mdodge:18,enemyClass:'singer',size:'small',aiStyle:'cautious',abilities:['eFear','eBlind']},
+  {name:'Feral Toucan',emoji:'',birdKey:'toucan',tier:[3,4],hp:48,atk:9,def:7,matk:10,mdef:9,spd:4,acc:74,dodge:10,mdodge:10,enemyClass:'tank',size:'large',aiStyle:'cautious',abilities:['eBurn','ePoison']},
+  {name:'Outcast Goose',emoji:'',birdKey:'goose',tier:[3,4],hp:62,atk:11,def:8,matk:5,mdef:12,spd:2,acc:70,dodge:5,mdodge:8,enemyClass:'tank',size:'xl',aiStyle:'berserker',abilities:['eFear','eWeaken']},
+  {name:'Shadow Raven',emoji:'',birdKey:'raven',tier:[3,4],hp:40,atk:8,def:4,matk:12,mdef:8,spd:7,acc:80,dodge:20,mdodge:16,enemyClass:'singer',size:'medium',aiStyle:'aggressive',abilities:['eFear','eBlind','eWeaken']},
+  {name:'Macaw Hexer',emoji:'🦜',birdKey:'macaw',tier:[3,4],hp:38,atk:6,def:4,matk:14,mdef:9,spd:9,acc:82,dodge:26,mdodge:20,enemyClass:'singer',size:'small',aiStyle:'cautious',abilities:['eBurn','eWeaken']},
+  {name:'Lyre Mimic',emoji:'🪶',birdKey:'lyrebird',tier:[3,4],hp:40,atk:6,def:5,matk:15,mdef:10,spd:6,acc:82,dodge:20,mdodge:16,enemyClass:'singer',size:'medium',aiStyle:'cautious',abilities:['eFear','ePoison']},
+  {name:'Pit Sentinel',emoji:'🐧',birdKey:'penguin',tier:[3,4],hp:66,atk:8,def:10,matk:5,mdef:14,spd:3,acc:75,dodge:12,mdodge:12,enemyClass:'tank',size:'xl',aiStyle:'defensive',abilities:['eShield','eWeaken']},
+  {name:'Apex Peregrine',emoji:'',birdKey:'peregrine',tier:[4],hp:36,atk:12,def:4,matk:7,mdef:7,spd:11,acc:90,dodge:26,mdodge:20,enemyClass:'predator',size:'small',aiStyle:'berserker',abilities:['eStun','eBlind']},
+  {name:'Storm Swan',emoji:'',birdKey:'swan',tier:[4],hp:50,atk:10,def:6,matk:11,mdef:10,spd:6,acc:82,dodge:18,mdodge:14,enemyClass:'tank',size:'large',aiStyle:'cautious',abilities:['eHeal','eWeaken']},
+  {name:'Iron Stork',emoji:'',birdKey:'shoebill',tier:[4],hp:72,atk:9,def:12,matk:6,mdef:16,spd:2,acc:72,dodge:5,mdodge:8,enemyClass:'tank',size:'xl',aiStyle:'defensive',abilities:['eShield','eStun']},
+  {name:'Dust Bulwark',emoji:'',birdKey:'emu',tier:[4],hp:78,atk:11,def:11,matk:4,mdef:10,spd:2,acc:72,dodge:10,mdodge:10,enemyClass:'tank',size:'xl',aiStyle:'defensive',abilities:['eRage','eWeaken']},
+  {name:'War Harpy',emoji:'',birdKey:'harpy',tier:[4],hp:65,atk:14,def:7,matk:6,mdef:8,spd:5,acc:78,dodge:8,mdodge:8,enemyClass:'predator',size:'xl',aiStyle:'berserker',abilities:['eRage','eBurn','eStun']},
 ];
 
 // ===================== BIOMES =====================
@@ -1319,17 +1328,30 @@ function rollRarity(){
   return 'grey';
 }
 
+/** Run upgrade helpers — stat cards use % of current (min bump) except special effects */
+function _upgPctMaxHp(p, pct, minAdd){
+  const mh=Math.max(8,p.stats.maxHp||1);
+  const add=Math.max(minAdd||1, Math.floor(mh*pct));
+  p.stats.maxHp=mh+add;
+  p.stats.hp=Math.min((p.stats.hp||0)+add, p.stats.maxHp);
+}
+function _upgPctStat(p, key, pct, minAdd){
+  const base=Math.max(1, Number(p.stats[key]||0));
+  const add=Math.max(minAdd||1, Math.floor(base*pct));
+  p.stats[key]=base+add;
+}
+
 const UPGRADE_CARDS_REWORK = [
-  // Grey (15)
-  {id:'g_feather_lining',tier:'grey',icon:'❤️',name:'Feather Lining',desc:'+4 Max HP',tags:['stat','hp'],apply:p=>{p.stats.maxHp+=4;p.stats.hp=Math.min(p.stats.hp,p.stats.maxHp);}},
-  {id:'g_keen_beak',tier:'grey',icon:'🗡️',name:'Keen Beak',desc:'+1 ATK',tags:['stat','atk'],apply:p=>{p.stats.atk+=1;}},
-  {id:'g_spell_feather',tier:'grey',icon:'✨',name:'Spell Feather',desc:'+1 MATK',tags:['stat','matk'],apply:p=>{p.stats.matk=(p.stats.matk||0)+1;}},
-  {id:'g_feather_guard',tier:'grey',icon:'🛡️',name:'Feather Guard',desc:'+1 DEF',tags:['stat','def'],apply:p=>{p.stats.def+=1;}},
-  {id:'g_warding_down',tier:'grey',icon:'🔷',name:'Warding Down',desc:'+1 MDEF',tags:['stat','mdef'],apply:p=>{p.stats.mdef=(p.stats.mdef||0)+1;}},
-  {id:'g_fleet_step',tier:'grey',icon:'💨',name:'Fleet Step',desc:'+1 SPD',tags:['stat','spd'],apply:p=>{p.stats.spd=(p.stats.spd||0)+1;}},
-  {id:'g_quick_blood',tier:'grey',icon:'💥',name:'Quick Blood',desc:'Crit chance +3%',tags:['stat','crit'],apply:p=>{p.stats.critChance=(p.stats.critChance||5)+3;}},
-  {id:'g_light_frame',tier:'grey',icon:'🪽',name:'Light Frame',desc:'Dodge +4%',tags:['defense','dodge'],apply:p=>{p.stats.dodge=Math.min(95,(p.stats.dodge||0)+4);}},
-  {id:'g_focused_eye',tier:'grey',icon:'🎯',name:'Focused Eye',desc:'+5% hit chance',tags:['stat','accuracy'],apply:p=>{p.firstAttackAccBonus=(p.firstAttackAccBonus||0)+5;}},
+  // Grey (15) — %-based stat growth
+  {id:'g_feather_lining',tier:'grey',icon:'❤️',name:'Feather Lining',desc:'+4% Max HP (min +4)',tags:['stat','hp'],apply:p=>_upgPctMaxHp(p,0.04,4)},
+  {id:'g_keen_beak',tier:'grey',icon:'🗡️',name:'Keen Beak',desc:'+4% ATK (min +1)',tags:['stat','atk'],apply:p=>_upgPctStat(p,'atk',0.04,1)},
+  {id:'g_spell_feather',tier:'grey',icon:'✨',name:'Spell Feather',desc:'+4% MATK (min +1)',tags:['stat','matk'],apply:p=>_upgPctStat(p,'matk',0.04,1)},
+  {id:'g_feather_guard',tier:'grey',icon:'🛡️',name:'Feather Guard',desc:'+4% DEF (min +1)',tags:['stat','def'],apply:p=>_upgPctStat(p,'def',0.04,1)},
+  {id:'g_warding_down',tier:'grey',icon:'🔷',name:'Warding Down',desc:'+4% MDEF (min +1)',tags:['stat','mdef'],apply:p=>_upgPctStat(p,'mdef',0.04,1)},
+  {id:'g_fleet_step',tier:'grey',icon:'💨',name:'Fleet Step',desc:'+4% SPD (min +1)',tags:['stat','spd'],apply:p=>_upgPctStat(p,'spd',0.04,1)},
+  {id:'g_quick_blood',tier:'grey',icon:'💥',name:'Quick Blood',desc:'+3% crit chance (flat points)',tags:['stat','crit'],apply:p=>{p.stats.critChance=Math.min(95,(p.stats.critChance||5)+3);}},
+  {id:'g_light_frame',tier:'grey',icon:'🪽',name:'Light Frame',desc:'+4% Dodge',tags:['defense','dodge'],apply:p=>{p.stats.dodge=Math.min(95,(p.stats.dodge||0)+4);}},
+  {id:'g_focused_eye',tier:'grey',icon:'🎯',name:'Focused Eye',desc:'+5% hit chance (all attacks)',tags:['stat','accuracy'],apply:p=>{p.firstAttackAccBonus=(p.firstAttackAccBonus||0)+5;}},
   {id:'g_first_bite',tier:'grey',icon:'🦴',name:'First Bite',desc:'First attack each battle +10% damage',tags:['opening','offense'],stackable:false,apply:p=>{p.firstAttackEachBattleBonusPct=Math.max(p.firstAttackEachBattleBonusPct||0,0.10);}},
   {id:'g_guard_posture',tier:'grey',icon:'🛡',name:'Guard Posture',desc:'First enemy hit each battle reduced by -10% damage',tags:['defense'],stackable:false,apply:p=>{p.firstHitReduce=Math.max(p.firstHitReduce||0,0.10);}},
   {id:'g_crit_medicine',tier:'grey',icon:'💉',name:'Critical Medicine',desc:'Heal 3 HP on crit',tags:['combat-trigger','sustain'],apply:p=>{p.healOnCrit=(p.healOnCrit||0)+3;}},
@@ -1337,13 +1359,13 @@ const UPGRADE_CARDS_REWORK = [
   {id:'g_finish_medicine',tier:'grey',icon:'🦅',name:'Hunter Medicine',desc:'Heal 5 HP on kill',tags:['combat-trigger','sustain'],apply:p=>{p.healOnKill=(p.healOnKill||0)+5;}},
 
   // Green (15)
-  {id:'gr_sturdy_heart',tier:'green',icon:'💚',name:'Sturdy Heart',desc:'+8 Max HP',tags:['stat','hp'],apply:p=>{p.stats.maxHp+=8;p.stats.hp=Math.min(p.stats.hp,p.stats.maxHp);}},
-  {id:'gr_razor_talons',tier:'green',icon:'🗡️',name:'Razor Talons',desc:'+2 ATK',tags:['stat','atk'],apply:p=>{p.stats.atk+=2;}},
-  {id:'gr_arcane_plume',tier:'green',icon:'🔮',name:'Arcane Plume',desc:'+2 MATK',tags:['stat','matk'],apply:p=>{p.stats.matk=(p.stats.matk||0)+2;}},
-  {id:'gr_iron_molt',tier:'green',icon:'🧱',name:'Iron Molt',desc:'+2 DEF',tags:['stat','def'],apply:p=>{p.stats.def+=2;}},
-  {id:'gr_rune_guard',tier:'green',icon:'🌀',name:'Rune Guard',desc:'+2 MDEF',tags:['stat','mdef'],apply:p=>{p.stats.mdef=(p.stats.mdef||0)+2;}},
-  {id:'gr_tailwind',tier:'green',icon:'🌬️',name:'Tailwind',desc:'+2 SPD',tags:['stat','spd'],apply:p=>{p.stats.spd=(p.stats.spd||0)+2;}},
-  {id:'gr_calm_focus',tier:'green',icon:'🎯',name:'Calm Focus',desc:'+10% hit chance',tags:['stat','accuracy'],apply:p=>{p.firstAttackAccBonus=(p.firstAttackAccBonus||0)+10;}},
+  {id:'gr_sturdy_heart',tier:'green',icon:'💚',name:'Sturdy Heart',desc:'+7% Max HP (min +8)',tags:['stat','hp'],apply:p=>_upgPctMaxHp(p,0.07,8)},
+  {id:'gr_razor_talons',tier:'green',icon:'🗡️',name:'Razor Talons',desc:'+7% ATK (min +2)',tags:['stat','atk'],apply:p=>_upgPctStat(p,'atk',0.07,2)},
+  {id:'gr_arcane_plume',tier:'green',icon:'🔮',name:'Arcane Plume',desc:'+7% MATK (min +2)',tags:['stat','matk'],apply:p=>_upgPctStat(p,'matk',0.07,2)},
+  {id:'gr_iron_molt',tier:'green',icon:'🧱',name:'Iron Molt',desc:'+7% DEF (min +2)',tags:['stat','def'],apply:p=>_upgPctStat(p,'def',0.07,2)},
+  {id:'gr_rune_guard',tier:'green',icon:'🌀',name:'Rune Guard',desc:'+7% MDEF (min +2)',tags:['stat','mdef'],apply:p=>_upgPctStat(p,'mdef',0.07,2)},
+  {id:'gr_tailwind',tier:'green',icon:'🌬️',name:'Tailwind',desc:'+7% SPD (min +2)',tags:['stat','spd'],apply:p=>_upgPctStat(p,'spd',0.07,2)},
+  {id:'gr_calm_focus',tier:'green',icon:'🎯',name:'Calm Focus',desc:'+10% hit chance (all attacks)',tags:['stat','accuracy'],apply:p=>{p.firstAttackAccBonus=(p.firstAttackAccBonus||0)+10;}},
   {id:'gr_blood_trigger',tier:'green',icon:'🩸',name:'Blood Trigger',desc:'Crits apply Bleed(1)',tags:['status-synergy','bleed'],apply:p=>{p.critBleed=(p.critBleed||0)+1;}},
   {id:'gr_venom_beak',tier:'green',icon:'☣️',name:'Venom Beak',desc:'Attacks apply Poison(1) on hit (12% chance)',tags:['status-synergy','poison'],apply:p=>{p.poisonOnHitChance=(p.poisonOnHitChance||0)+12;}},
   {id:'gr_serrated_talon',tier:'green',icon:'🪓',name:'Serrated Talon',desc:'Attacks apply Bleed(1) on hit (12% chance)',tags:['status-synergy','bleed'],apply:p=>{p.bleedOnHitChance=(p.bleedOnHitChance||0)+12;}},
@@ -1354,30 +1376,29 @@ const UPGRADE_CARDS_REWORK = [
   {id:'gr_hard_plumage',tier:'green',icon:'🛡️',name:'Hard Plumage',desc:'First enemy hit each battle reduced by -15% damage',tags:['defense'],stackable:false,apply:p=>{p.firstHitReduce=Math.max(p.firstHitReduce||0,0.15);}},
 
   // Blue (12)
-  {id:'b_vital_gale',tier:'blue',icon:'💙',name:'Vital Gale',desc:'+12 Max HP',tags:['stat','hp'],apply:p=>{p.stats.maxHp+=12;p.stats.hp=Math.min(p.stats.hp,p.stats.maxHp);}},
-  {id:'b_predator_sight',tier:'blue',icon:'👁️',name:'Predator Sight',desc:'+8% Crit Chance',tags:['stat','crit'],apply:p=>{p.stats.critChance=(p.stats.critChance||5)+8;}},
+  {id:'b_vital_gale',tier:'blue',icon:'💙',name:'Vital Gale',desc:'+10% Max HP (min +10)',tags:['stat','hp'],apply:p=>_upgPctMaxHp(p,0.10,10)},
+  {id:'b_predator_sight',tier:'blue',icon:'👁️',name:'Predator Sight',desc:'+8% crit chance (flat points)',tags:['stat','crit'],apply:p=>{p.stats.critChance=(p.stats.critChance||5)+8;}},
   {id:'b_execution_beak',tier:'blue',icon:'💢',name:'Execution Beak',desc:'Crit damage +25%',tags:['stat','crit'],apply:p=>{p.critDamageBonusPct=(p.critDamageBonusPct||0)+0.25;}},
-  {id:'b_iron_feather_mantle',tier:'blue',icon:'🧱',name:'Iron Feather Mantle',desc:'+3 DEF',tags:['stat','def'],apply:p=>{p.stats.def+=3;}},
-  {id:'b_arcane_mantle',tier:'blue',icon:'🔷',name:'Arcane Mantle',desc:'+3 MDEF',tags:['stat','mdef'],apply:p=>{p.stats.mdef=(p.stats.mdef||0)+3;}},
-  {id:'b_hawk_instinct',tier:'blue',icon:'💨',name:'Hawk Instinct',desc:'+3 SPD',tags:['stat','spd'],apply:p=>{p.stats.spd=(p.stats.spd||0)+3;}},
+  {id:'b_iron_feather_mantle',tier:'blue',icon:'🧱',name:'Iron Feather Mantle',desc:'+10% DEF (min +3)',tags:['stat','def'],apply:p=>_upgPctStat(p,'def',0.10,3)},
+  {id:'b_arcane_mantle',tier:'blue',icon:'🔷',name:'Arcane Mantle',desc:'+10% MDEF (min +3)',tags:['stat','mdef'],apply:p=>_upgPctStat(p,'mdef',0.10,3)},
+  {id:'b_hawk_instinct',tier:'blue',icon:'💨',name:'Hawk Instinct',desc:'+10% SPD (min +3)',tags:['stat','spd'],apply:p=>_upgPctStat(p,'spd',0.10,3)},
   {id:'b_storm_pulse',tier:'blue',icon:'🌩️',name:'Storm Pulse',desc:'First attack each battle is guaranteed to hit',tags:['opening'],stackable:false,apply:p=>{p.firstAttackAlwaysHit=true;}},
   {id:'b_spell_echo',tier:'blue',icon:'🎶',name:'Spell Echo',desc:'Every 4th spell deals +30% damage',tags:['status-synergy','magic'],stackable:false,apply:p=>{p.everyFourthSpellBonusPct=0.30;}},
   {id:'b_deep_cut',tier:'blue',icon:'🩸',name:'Deep Cut',desc:'Bleed applied by you gains +1 stack',tags:['status-synergy','bleed'],apply:p=>{p.bleedBonusStacks=(p.bleedBonusStacks||0)+1;}},
   {id:'b_venom_reservoir',tier:'blue',icon:'☣️',name:'Venom Reservoir',desc:'Poison lasts +1 turn',tags:['status-synergy','poison'],apply:p=>{p.poisonExtraTurns=(p.poisonExtraTurns||0)+1;}},
   {id:'b_opening_drive',tier:'blue',icon:'🚩',name:'Opening Drive',desc:'First attack each battle +20% damage',tags:['opening','offense'],stackable:false,apply:p=>{p.firstAttackEachBattleBonusPct=Math.max(p.firstAttackEachBattleBonusPct||0,0.20);}},
 
-  // Purple (8)
-  {id:'p_iron_heart',tier:'purple',icon:'💜',name:'Iron Heart',desc:'+16 Max HP',tags:['stat','hp'],apply:p=>{p.stats.maxHp+=16;p.stats.hp=Math.min(p.stats.hp,p.stats.maxHp);}},
+  // Purple (8) — includes energy/opening (purple tier)
+  {id:'p_iron_heart',tier:'purple',icon:'💜',name:'Iron Heart',desc:'+12% Max HP (min +14)',tags:['stat','hp'],apply:p=>_upgPctMaxHp(p,0.12,14)},
   {id:'p_blood_frenzy',tier:'purple',icon:'🩸',name:'Blood Frenzy',desc:'+20% damage vs Bleeding enemies',tags:['status-synergy','bleed'],stackable:false,apply:p=>{p.vsBleedPctBonus=Math.max(p.vsBleedPctBonus||0,0.20);}},
   {id:'p_venom_scholar',tier:'purple',icon:'☣️',name:'Venom Scholar',desc:'Poison damage +40%',tags:['status-synergy','poison'],stackable:false,apply:p=>{p.poisonTickMult=Math.max(p.poisonTickMult||1,1.4);}},
   {id:'p_duelist_discipline',tier:'purple',icon:'🎯',name:'Duelist Discipline',desc:'First attack each battle crit chance +25%',tags:['opening','offense'],stackable:false,apply:p=>{p.firstAttackCritBonus=Math.max(p.firstAttackCritBonus||0,25);}},
-  {id:'p_battle_meditation',tier:'purple',icon:'🧘',name:'Battle Meditation',desc:'First spell each battle costs 0 EN',tags:['energy'],stackable:false,apply:p=>{p.firstSpellFree=true;}},
   {id:'p_survivors_molt',tier:'purple',icon:'🪶',name:"Survivor's Molt",desc:'Once per battle below 30% HP, heal 8',tags:['combat-trigger','defense'],stackable:false,apply:p=>{p.survivorMoltHeal=Math.max(p.survivorMoltHeal||0,8);}},
-  {id:'p_precision_talon',tier:'purple',icon:'🏹',name:'Precision Talon',desc:'+15% hit chance',tags:['stat','accuracy'],apply:p=>{p.firstAttackAccBonus=(p.firstAttackAccBonus||0)+15;}},
+  {id:'p_precision_talon',tier:'purple',icon:'🏹',name:'Precision Talon',desc:'+15% hit chance (all attacks)',tags:['stat','accuracy'],apply:p=>{p.firstAttackAccBonus=(p.firstAttackAccBonus||0)+15;}},
   {id:'p_relentless_strike',tier:'purple',icon:'⚔️',name:'Relentless Strike',desc:'First attack each turn deals +10% damage',tags:['opening','offense'],stackable:false,apply:p=>{p.firstAttackEachTurnBonusPct=Math.max(p.firstAttackEachTurnBonusPct||0,0.10);}},
 
   // Gold (5)
-  {id:'z_king_bloodline',tier:'gold',icon:'👑',name:'King Bloodline',desc:'+20 Max HP',tags:['stat','hp'],stackable:false,apply:p=>{p.stats.maxHp+=20;p.stats.hp=Math.min(p.stats.hp,p.stats.maxHp);}},
+  {id:'z_king_bloodline',tier:'gold',icon:'👑',name:'King Bloodline',desc:'+18% Max HP (min +22)',tags:['stat','hp'],stackable:false,apply:p=>_upgPctMaxHp(p,0.18,22)},
   {id:'z_sky_predator',tier:'gold',icon:'🦅',name:'Sky Predator',desc:'First attack each battle always crits',tags:['unique','offense'],stackable:false,apply:p=>{p.firstAttackAlwaysCrit=true;}},
   {id:'z_blackstone_trophy',tier:'gold',icon:'🗿',name:'Blackstone Trophy',desc:'Enemies start battle with Fear(1)',tags:['unique','control'],stackable:false,apply:p=>{p.openingEnemyFear=(p.openingEnemyFear||0)+1;}},
   {id:'z_tempo_crown',tier:'gold',icon:'⏱️',name:'Tempo Crown',desc:'First attack each turn +20% damage',tags:['unique','opening'],stackable:false,apply:p=>{p.firstAttackEachTurnBonusPct=Math.max(p.firstAttackEachTurnBonusPct||0,0.20);}},
@@ -5900,20 +5921,24 @@ function resetForNewBattle(){
   }
 }
 
-const EARLY_STAGE_ALLOWED_ENEMIES = new Set(['finch','robin','dove','blackbird','youngsparrow','woodpigeon']);
 const EARLY_STAGE_BANNED_ENEMIES = new Set(['magpie','crow','peregrinefalcon','peregrine','harpyeagle','harpy','cassowary','lyrebird']);
 function normalizeEnemyNameKey(name){
   return String(name||'').toLowerCase().replace(/[^a-z]/g,'');
 }
+/** Tier-1 non-boss slice of ENEMIES (indices 0–7); tier-2 non-boss 9–13. Bosses stay fixed elsewhere. */
 function pickEarlyStageEnemyTemplate(stage){
-  const pool=ENEMIES.filter(e=>!e.isBoss).filter(e=>{
-    const k=normalizeEnemyNameKey(e.name);
-    if(EARLY_STAGE_BANNED_ENEMIES.has(k)) return false;
-    return EARLY_STAGE_ALLOWED_ENEMIES.has(k);
+  const tier1NonBoss = ENEMIES.slice(0, 8);
+  let pool = tier1NonBoss;
+  if (stage >= 5) {
+    pool = [...tier1NonBoss, ...ENEMIES.slice(9, 14)];
+  }
+  pool = pool.filter(e => {
+    if (e.isBoss) return false;
+    const k = normalizeEnemyNameKey(e.name);
+    return !EARLY_STAGE_BANNED_ENEMIES.has(k);
   });
-  if(!pool.length) return null;
-  const idx=Math.floor(Math.random()*pool.length);
-  return JSON.parse(JSON.stringify(pool[idx]));
+  if (!pool.length) return null;
+  return JSON.parse(JSON.stringify(pool[Math.floor(Math.random() * pool.length)]));
 }
 
 function loadStage() {
@@ -5979,15 +6004,18 @@ function loadStage() {
       }
       // Bird-character enemies: mirror roster birds; tier/elite is decided in buildScaledEnemy (elite = endless only, stage>20).
       if(!ed && stage>=6){
-        const birdRollCap = stage<=9 ? 0.18 : 0.28;
+        const birdRollCap = stage<=9 ? 0.5 : 0.62;
         if(Math.random()<birdRollCap){
         const pool=BIRD_ENEMIES.filter(e=>e.tier.includes(tier));
         if(pool.length>0){
           const src=pool[Math.floor(Math.random()*pool.length)];
+          const mAtk=src.matk??6;
+          const mDef=src.mdef??8;
+          const mDodge=src.mdodge??Math.max(0,Math.floor((src.dodge??10)*0.88));
           ed={name:src.name,emoji:src.emoji,birdKey:src.birdKey,portraitKey:src.birdKey,hp:src.hp,maxHp:src.hp,atk:src.atk,def:src.def,spd:src.spd,
-            acc:src.acc,dodge:src.dodge,size:src.size,enemyClass:(src.enemyClass||inferEnemyClassFromStyle(src.aiStyle)),aiStyle:src.aiStyle,aiPersonality:(src.aiPersonality||inferAIPersonalityFromStyle(src.aiStyle,src.name)),isBoss:false,bossTitle:'',enemyTier:'normal',
+            acc:src.acc,dodge:src.dodge,matk:mAtk,mdef:mDef,mdodge:mDodge,size:src.size,enemyClass:(src.enemyClass||inferEnemyClassFromStyle(src.aiStyle)),aiStyle:src.aiStyle,aiPersonality:(src.aiPersonality||inferAIPersonalityFromStyle(src.aiStyle,src.name)),isBoss:false,bossTitle:'',enemyTier:'normal',
             abilities:src.abilities,stats:{hp:src.hp,maxHp:src.hp,atk:src.atk,def:src.def,spd:src.spd,
-            acc:src.acc,dodge:src.dodge,mdef:8,matk:6,cc:0.05,cd:1.5,critChance:5,critMult:1.5,en:(src.size==='xl'?5:src.size==='large'?4:src.size==='medium'?4:3)}};
+            acc:src.acc,dodge:src.dodge,mdodge:mDodge,mdef:mDef,matk:mAtk,cc:0.05,cd:1.5,critChance:5,critMult:1.5,en:(src.size==='xl'?5:src.size==='large'?4:src.size==='medium'?4:3)}};
         }
         }
       }
@@ -7737,9 +7765,9 @@ const ENEMY_PLAYER_LEVEL_TO_EFFECTIVE = 0.42;
 const ENEMY_ENDLESS_EXTRA_LEVEL_EVERY = 5;
 const ENEMY_ENDLESS_EXTRA_LEVEL_STEP = 2;
 const ENEMY_ELITE_SPAWN_CHANCE_DEEP = 0.17;
-const ENEMY_HP_PER_LEVEL_BY_SIZE = Object.freeze({tiny:2.4,small:3.1,medium:3.7,large:4.4,xl:5.2});
-const ENEMY_ATK_PER_LEVEL_BY_SIZE = Object.freeze({tiny:0.42,small:0.52,medium:0.60,large:0.68,xl:0.76});
-const ENEMY_MATK_PER_LEVEL_BY_SIZE = Object.freeze({tiny:0.48,small:0.58,medium:0.66,large:0.72,xl:0.78});
+const ENEMY_HP_PER_LEVEL_BY_SIZE = Object.freeze({tiny:2.55,small:3.3,medium:3.95,large:4.7,xl:5.55});
+const ENEMY_ATK_PER_LEVEL_BY_SIZE = Object.freeze({tiny:0.45,small:0.55,medium:0.64,large:0.72,xl:0.81});
+const ENEMY_MATK_PER_LEVEL_BY_SIZE = Object.freeze({tiny:0.51,small:0.62,medium:0.70,large:0.77,xl:0.83});
 
 function computeEnemyEffectiveLevel(stage, playerBirdLevel, isEndless){
   const s=Math.max(1,Math.floor(stage||1));
@@ -7751,14 +7779,14 @@ function computeEnemyEffectiveLevel(stage, playerBirdLevel, isEndless){
   return Math.max(1,L);
 }
 
-/** Story midgame rebalance: soften enemies on stages 6–19 (non-endless). Boss/lieutenant get a milder cut. */
+/** Story midgame rebalance: slight curve on stages 6–19 (non-endless). Boss/lieutenant get a milder cut. */
 function getStoryEnemyPowerMultiplier(stage, tier, opts) {
   if (!opts || !opts.isStory || opts.isEndless) return 1;
   const s = Math.max(1, Math.floor(stage || 1));
   if (s < 6 || s > 19) return 1;
   const t = (s - 6) / 13;
-  if (tier === 'boss' || tier === 'lieutenant') return 0.93 - t * 0.07;
-  return 0.88 - t * 0.12;
+  if (tier === 'boss' || tier === 'lieutenant') return 0.97 - t * 0.04;
+  return 0.94 - t * 0.06;
 }
 
 function combatResolveEnemyTier(enemyBase, stage, opts, templateTier){
@@ -14189,7 +14217,7 @@ function postCombat() {
       logMsg(`🌟 LEVEL UP! Now Lv.${G.player.birdLevel}! Healed ${lvHeal} HP.`, 'exp-gain');
       SFX.levelUp();
     }
-    G._pendingLevelUpChoices = (G._pendingLevelUpChoices||0) + levelUpsGained * 2;
+    G._pendingLevelUpChoices = (G._pendingLevelUpChoices||0) + levelUpsGained * 3;
 
     handleBossClearUnlocks();
     checkRunUnlocks();
@@ -14496,29 +14524,23 @@ function getGoldCardLimit(){
 // ============================================================
 let _luSelectedStatChoiceId=null;
 const LEVELUP_STAT_POOL = [
-  {id:'vit6', label:'+6 Vitality', stat:'maxHp', amount:6, apply(){ G.player.stats.maxHp=(G.player.stats.maxHp||1)+6; G.player.stats.hp=Math.min((G.player.stats.hp||1)+6,G.player.stats.maxHp||1); }},
-  {id:'atk2', label:'+2 ATK', stat:'atk', amount:2, apply(){ G.player.stats.atk=(G.player.stats.atk||0)+2; }},
-  {id:'matk2', label:'+2 MATK', stat:'matk', amount:2, apply(){ G.player.stats.matk=(G.player.stats.matk||0)+2; }},
-  {id:'def1', label:'+1 DEF', stat:'def', amount:1, apply(){ G.player.stats.def=(G.player.stats.def||0)+1; }},
-  {id:'mdef1', label:'+1 MDEF', stat:'mdef', amount:1, apply(){ G.player.stats.mdef=(G.player.stats.mdef||0)+1; }},
-  {id:'spd1', label:'+1 SPD', stat:'spd', amount:1, apply(){ G.player.stats.spd=(G.player.stats.spd||0)+1; }},
-  {id:'acc2', label:'+2 ACC', stat:'acc', amount:2, apply(){ G.player.stats.acc=(G.player.stats.acc||0)+2; }},
-  {id:'cc2', label:'+2% CC', stat:'critChance', amount:2, apply(){ G.player.stats.critChance=Math.min(95,(G.player.stats.critChance||5)+2); }},
-  {id:'cd01', label:'+0.1 CritDmg', stat:'goldCritMult', amount:0.1, apply(){ G.player.goldCritMult=Math.min(3.0,(G.player.goldCritMult||1.5)+0.1); }},
+  {id:'vit12', label:'+12 Vitality', stat:'maxHp', amount:12, apply(){ G.player.stats.maxHp=(G.player.stats.maxHp||1)+12; G.player.stats.hp=Math.min((G.player.stats.hp||1)+12,G.player.stats.maxHp||1); }},
+  {id:'atk4', label:'+4 ATK', stat:'atk', amount:4, apply(){ G.player.stats.atk=(G.player.stats.atk||0)+4; }},
+  {id:'matk4', label:'+4 MATK', stat:'matk', amount:4, apply(){ G.player.stats.matk=(G.player.stats.matk||0)+4; }},
+  {id:'def3', label:'+3 DEF', stat:'def', amount:3, apply(){ G.player.stats.def=(G.player.stats.def||0)+3; }},
+  {id:'mdef3', label:'+3 MDEF', stat:'mdef', amount:3, apply(){ G.player.stats.mdef=(G.player.stats.mdef||0)+3; }},
+  {id:'spd2', label:'+2 SPD', stat:'spd', amount:2, apply(){ G.player.stats.spd=(G.player.stats.spd||0)+2; }},
+  {id:'acc4', label:'+4 ACC', stat:'acc', amount:4, apply(){ G.player.stats.acc=(G.player.stats.acc||0)+4; }},
+  {id:'dod4', label:'+4% Dodge', stat:'dodge', amount:4, apply(){ G.player.stats.dodge=Math.min(95,(G.player.stats.dodge||0)+4); }},
+  {id:'mdod4', label:'+4% Spell Dodge', stat:'mdodge', amount:4, apply(){ const b=G.player.stats.mdodge??G.player.stats.dodge??20; G.player.stats.mdodge=Math.min(95,b+4); }},
+  {id:'cc3', label:'+3% Crit Chance', stat:'critChance', amount:3, apply(){ G.player.stats.critChance=Math.min(95,(G.player.stats.critChance||5)+3); }},
+  {id:'cd015', label:'+0.15 Crit Damage', stat:'goldCritMult', amount:0.15, apply(){ G.player.goldCritMult=Math.min(3.0,(G.player.goldCritMult||1.5)+0.15); }},
 ];
 const ENDLESS_RARE_LEVELUP_CHOICES = [
-  {id:'vit10', label:'+10 Vitality', stat:'maxHp', amount:10, apply(){ G.player.stats.maxHp=(G.player.stats.maxHp||1)+10; G.player.stats.hp=Math.min((G.player.stats.hp||1)+10,G.player.stats.maxHp||1); }},
-  {id:'atk3', label:'+3 ATK', stat:'atk', amount:3, apply(){ G.player.stats.atk=(G.player.stats.atk||0)+3; }},
-  {id:'spd2', label:'+2 SPD', stat:'spd', amount:2, apply(){ G.player.stats.spd=(G.player.stats.spd||0)+2; }},
+  {id:'vit18', label:'+18 Vitality', stat:'maxHp', amount:18, apply(){ G.player.stats.maxHp=(G.player.stats.maxHp||1)+18; G.player.stats.hp=Math.min((G.player.stats.hp||1)+18,G.player.stats.maxHp||1); }},
+  {id:'atk6', label:'+6 ATK', stat:'atk', amount:6, apply(){ G.player.stats.atk=(G.player.stats.atk||0)+6; }},
+  {id:'spd3', label:'+3 SPD', stat:'spd', amount:3, apply(){ G.player.stats.spd=(G.player.stats.spd||0)+3; }},
 ];
-const LEVELUP_ARCHETYPE_WEIGHT = {
-  striker:{atk:3.0,spd:2.8,matk:0.9,mdef:0.9,maxHp:0.9,def:1.0,acc:1.2,critChance:1.3,goldCritMult:1.1},
-  bruiser:{atk:3.0,spd:1.2,matk:0.9,mdef:1.0,maxHp:1.1,def:2.6,acc:1.0,critChance:1.1,goldCritMult:1.0},
-  tank:{atk:1.0,spd:0.8,matk:0.9,mdef:1.4,maxHp:3.0,def:3.0,acc:0.9,critChance:0.8,goldCritMult:0.9},
-  trickster:{atk:1.3,spd:3.0,matk:1.0,mdef:1.0,maxHp:0.9,def:1.0,acc:2.6,critChance:1.1,goldCritMult:1.0},
-  predator:{atk:2.8,spd:2.0,matk:0.9,mdef:0.9,maxHp:1.0,def:1.0,acc:1.4,critChance:2.8,goldCritMult:2.0},
-  singer:{atk:0.9,spd:1.1,matk:2.5,mdef:2.5,maxHp:1.1,def:1.0,acc:1.2,critChance:0.9,goldCritMult:0.9},
-};
 
 function isMainAttackAbility(ab){
   if(!ab) return false;
@@ -14561,42 +14583,20 @@ function applyMainAttackAutoLevel(){
   }
 }
 
-function getPlayerLevelArchetype(){
-  const cls=String(BIRDS[G.player?.birdKey]?.class||'bruiser').toLowerCase();
-  if(['striker'].includes(cls)) return 'striker';
-  if(['trickster'].includes(cls)) return 'trickster';
-  if(['tank'].includes(cls)) return 'tank';
-  if(['singer'].includes(cls)) return 'singer';
-  if(['predator'].includes(cls)) return 'predator';
-  if(['bruiser'].includes(cls)) return 'bruiser';
-  return 'singer';
-}
-
-function weightedPickUniqueOptions(pool,count,getWeight){
-  const source=[...pool];
-  const out=[];
-  while(source.length&&out.length<count){
-    const weights=source.map(x=>Math.max(0.01,Number(getWeight(x))||1));
-    const total=weights.reduce((a,b)=>a+b,0);
-    let r=Math.random()*total;
-    let idx=0;
-    for(let i=0;i<source.length;i++){ r-=weights[i]; if(r<=0){ idx=i; break; } }
-    out.push(source.splice(idx,1)[0]);
-  }
-  return out;
-}
-
 function buildLevelUpStatChoices(){
-  const arch=getPlayerLevelArchetype();
-  const bias=LEVELUP_ARCHETYPE_WEIGHT[arch]||LEVELUP_ARCHETYPE_WEIGHT.singer;
   const basePool=[...LEVELUP_STAT_POOL];
   if(isEndlessRunActive() && chance(18)){
     const rare=ENDLESS_RARE_LEVELUP_CHOICES[Math.floor(Math.random()*ENDLESS_RARE_LEVELUP_CHOICES.length)];
-    const replaceIdx=Math.floor(Math.random()*basePool.length);
-    basePool.splice(replaceIdx,1,rare);
+    basePool.push(rare);
   }
-  const picks=weightedPickUniqueOptions(basePool,3,(opt)=>bias[opt.stat]||1);
-  return picks.map((x,i)=>({...x,choiceId:`${x.id}_${i}_${Date.now()}`}));
+  return basePool.map((x,i)=>({...x,choiceId:`${x.id}_${i}_${Date.now()}`}));
+}
+
+function getLevelUpStatEffectDesc(opt){
+  if(opt.stat==='goldCritMult') return `Increase crit damage multiplier by ${opt.amount}.`;
+  if(opt.stat==='dodge'||opt.stat==='mdodge') return `Increase ${opt.stat==='dodge'?'physical':'spell'} dodge by ${opt.amount}%.`;
+  if(opt.stat==='critChance') return `Increase crit chance by ${opt.amount}%.`;
+  return `Improve ${String(opt.stat).toUpperCase()} by ${opt.amount}.`;
 }
 
 function ensureMainAttackAndLoadoutRules(){
@@ -14855,11 +14855,20 @@ function showLevelUpScreen() {
   const remaining=Math.max(1,G._pendingLevelUpChoices||1);
   document.getElementById('lu-sub').textContent=`Lv.${G.player.birdLevel} reached! Choose a stat upgrade — ${remaining} pick${remaining===1?'':'s'} remaining:`;
   const now=G.player.stats||{};
-  const pairs=[['HP','maxHp'],['ATK','atk'],['DEF','def'],['SPD','spd'],['MATK','matk'],['MDEF','mdef'],['ACC','acc']];
+  const pairs=[
+    ['HP','maxHp','stat'],['ATK','atk','stat'],['DEF','def','stat'],['SPD','spd','stat'],
+    ['MATK','matk','stat'],['MDEF','mdef','stat'],['ACC','acc','stat'],
+    ['Dodge','dodge','stat'],['Spell dodge','mdodge','stat'],
+    ['Crit%','critChance','stat'],['Crit ×','goldCritMult','critMult'],['Max EN','energyMax','en'],
+  ];
   const prevWrap=document.getElementById('lu-stat-preview');
   if(prevWrap){
-    prevWrap.innerHTML=pairs.map(([label,key])=>{
-      const val=now[key]??0;
+    prevWrap.innerHTML=pairs.map(([label,key,kind])=>{
+      let val;
+      if(kind==='critMult') val=(G.player.goldCritMult||1.5).toFixed(2);
+      else if(kind==='en') val=G.player.energyMax ?? computePlayerMaxEnergy();
+      else if(key==='mdodge') val=now.mdodge ?? now.dodge ?? 20;
+      else val=now[key]??0;
       return `<div class="lu-stat-row"><strong>${label}</strong><span><span class="v-new">${val}</span></span></div>`;
     }).join('');
   }
@@ -14888,7 +14897,7 @@ function buildStatChoiceGrid() {
     c.innerHTML=`
       <div class="su-name">${opt.label}</div>
       <div class="su-lv">Stat Choice</div>
-      <div class="su-effect">Improve ${String(opt.stat).toUpperCase()} by ${opt.amount}.</div>`;
+      <div class="su-effect">${getLevelUpStatEffectDesc(opt)}</div>`;
     c.onclick=()=>{
       document.querySelectorAll('#lu-skill-grid .skill-upgrade-card').forEach(x=>x.classList.remove('selected'));
       c.classList.add('selected');
@@ -14979,6 +14988,7 @@ async function confirmSkillUpgrade() {
     return;
   }
   pick.apply();
+  if(typeof refreshBattleUI==='function') refreshBattleUI();
   logMsg(`📈 ${pick.label} applied!`,'exp-gain');
   _luSelectedStatChoiceId=null;
   G._levelUpStatChoices=[];
