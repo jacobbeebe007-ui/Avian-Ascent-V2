@@ -4987,6 +4987,94 @@ function clearOverworldPendingBattle() {
   G._owSequenceShiny = 0;
   G._owEnemyIndex = 0;
   G._owStageEnemies = null;
+  G._battleTerrain = null;
+}
+
+/** PNG: assets/arenas/arena-{id}.png — see assets/arenas/README.md */
+const BATTLE_ARENA_BY_STAGE = {
+  1: 'barn', 2: 'river', 3: 'river', 4: 'open-glade', 5: 'ruins', 6: 'ruins',
+  7: 'forest', 8: 'trees', 9: 'bridge', 10: 'castle-gate',
+  11: 'forest', 12: 'open-glade', 13: 'trees', 14: 'castle-gate',
+  15: 'castle-interior', 16: 'castle-interior', 17: 'castle-interior', 18: 'castle-interior',
+  19: 'castle-gate', 20: 'castle-throne',
+};
+
+function terrainStringToArenaId(terrain) {
+  if (!terrain || typeof terrain !== 'string') return null;
+  const t = terrain.toLowerCase();
+  if (t.includes('throne') && t.includes('castle')) return 'castle-throne';
+  if (t.includes('inner court') || t.includes('high spire')) return 'castle-interior';
+  if (t.includes('rampart') || (t.includes('outer') && t.includes('court'))) return 'castle-interior';
+  if (t.includes('cathedral') || t.includes('castle road')) return 'castle-interior';
+  if (t.includes('fog pass') || t.includes('mountain pass')) return 'castle-gate';
+  if (t.includes('stone bridge') || t.includes('bridge crossing')) return 'bridge';
+  if (t.includes('bridge')) return 'bridge';
+  if (t.includes('river') || t.includes('rapids') || t.includes('ford')) return 'river';
+  if (t.includes('mill') || t.includes('ruin')) return 'ruins';
+  if (t.includes('barn') || t.includes('yard') || t.includes('farmstead')) return 'barn';
+  if (t.includes('house') || t.includes('homestead')) return 'house';
+  if (t.includes('keep')) return 'castle-gate';
+  if (t.includes('throne gate')) return 'castle-gate';
+  if (t.includes('glade')) return 'open-glade';
+  if (t.includes('crag') || (t.includes('ridge') && !t.includes('castle'))) return 'open-glade';
+  if (t.includes('ashwood') || t.includes('forest') || t.includes('glen')) return 'forest';
+  if (t.includes('mossy') || t.includes('hollow') || t.includes('track') || t.includes('trail')) return 'trees';
+  return null;
+}
+
+function resolveBattleArenaId(encounterStage, terrain) {
+  const fromTerrain = terrainStringToArenaId(terrain);
+  if (fromTerrain) return fromTerrain;
+  const st = Math.max(1, Math.min(20, Math.floor(Number(encounterStage)) || 1));
+  return BATTLE_ARENA_BY_STAGE[st] || 'forest';
+}
+
+function updateBattleArena() {
+  const layer = document.getElementById('battle-arena-layer');
+  const bd = document.getElementById('battle-arena-backdrop');
+  if (!layer || !bd) return;
+  const stage = getEncounterStage();
+  const terrain = G._battleTerrain || null;
+  const arenaId = resolveBattleArenaId(stage, terrain);
+  layer.dataset.arena = arenaId;
+  const path = `assets/arenas/arena-${arenaId}.png`;
+  const img = new Image();
+  img.onload = () => {
+    bd.style.backgroundImage = `url('${path}')`;
+    layer.classList.add('arena-has-art');
+  };
+  img.onerror = () => {
+    bd.style.backgroundImage = '';
+    layer.classList.remove('arena-has-art');
+  };
+  img.src = path;
+}
+globalThis.updateBattleArena = updateBattleArena;
+
+let _battleLogDrawerBound = false;
+function initBattleLogDrawer() {
+  if (_battleLogDrawerBound) return;
+  const btn = document.getElementById('battle-log-toggle');
+  const sec = document.getElementById('battle-log-section');
+  if (!btn || !sec) return;
+  _battleLogDrawerBound = true;
+  const mq = window.matchMedia('(max-width: 900px)');
+  const applyMq = () => {
+    if (mq.matches) {
+      sec.classList.add('collapsed');
+      btn.setAttribute('aria-expanded', 'false');
+    } else {
+      sec.classList.remove('collapsed');
+      btn.setAttribute('aria-expanded', 'true');
+    }
+  };
+  btn.addEventListener('click', () => {
+    if (!mq.matches) return;
+    sec.classList.toggle('collapsed');
+    btn.setAttribute('aria-expanded', sec.classList.contains('collapsed') ? 'false' : 'true');
+  });
+  mq.addEventListener('change', applyMq);
+  applyMq();
 }
 
 /** True whenever the current run was launched via the overworld map. */
@@ -5003,14 +5091,16 @@ function handleOverworldReturn() {
   let intent = null;
   try { intent = JSON.parse(localStorage.getItem(_OW_NAV_KEY) || 'null'); } catch(_) {}
   if (!intent?.action) return false;
-  try { localStorage.removeItem(_OW_NAV_KEY); } catch(_) {}
 
   const save = loadSaveData();
   if (!save?.player) return false;
 
+  try { localStorage.removeItem(_OW_NAV_KEY); } catch(_) {}
+
   if (intent.action === 'battle') {
     G._owPendingBattleStage = Math.max(1, Math.floor(Number(intent.stage) || save.stage || 1));
     G._owPendingNodeId = Number.isFinite(Number(intent.nodeId)) ? Math.floor(Number(intent.nodeId)) : null;
+    G._battleTerrain = (typeof intent.terrain === 'string' && intent.terrain.trim()) ? intent.terrain.trim() : null;
     G._owEnemyCount = Array.isArray(intent.enemies) && intent.enemies.length ? intent.enemies.length : 1;
     G._owSequenceShiny = 0;
     // Store the two-enemy list from the overworld node so stages fight them in sequence
@@ -5039,7 +5129,7 @@ function showNextStagePreview() {
   const el=document.getElementById('next-stage-preview');
   if(!el) return;
   const nextStage=G.stage+1;
-  if(nextStage>ENEMIES.length&&!G.endlessMode){el.style.display='none';return;}
+  if(!G.endlessMode && nextStage > 20){ el.style.display='none'; return; }
   let enemy;
   if(G.endlessMode&&nextStage>ENEMIES.length){
     el.innerHTML=`<div class="nsp-title">Next Up</div><div class="nsp-enemy">⚔</div><div class="nsp-name" style="color:var(--gold)">Endless Battle ${G.endlessBattle+1}</div><div class="nsp-stats">Scaled enemies await...</div>`;
@@ -5978,6 +6068,8 @@ function loadStage() {
   G.enemyNextAction = planEnemyAction();
   showScreen('screen-battle');
   document.getElementById('battle-log').innerHTML='';
+  updateBattleArena();
+  initBattleLogDrawer();
   updateStageProgress();
   refreshBattleUI();
   if (G.enemy.isBoss) {
@@ -14913,7 +15005,13 @@ function afterLevelUp() {
 function advanceStage() {
   G.stage++;
   if(isEndlessRunActive()) applyEndlessProgressionMilestones();
-  if(G.stage>ENEMIES.length&&!G.endlessMode){deleteSave();showVictory();return;}
+  // Story run ends after stage 20 (ENEMIES.length is template count, not stage cap — do not use it here)
+  if(!G.endlessMode && G.stage > 20){
+    try { localStorage.removeItem(_OW_STATE_KEY); localStorage.removeItem(_OW_NAV_KEY); } catch(_) {}
+    deleteSave();
+    showVictory();
+    return;
+  }
   // Stage 40 = endless battle 20 — grant unlock
   if(G.endlessMode&&G.endlessBattle>=20&&!isUnlocked('stage40')){
     grantUnlock('stage40');
@@ -15155,6 +15253,9 @@ function groveFinish(){
 function pickRandom(arr,n){return[...arr].sort(()=>Math.random()-.5).slice(0,n);}
 
 function showVictory(){
+  if(!G.endlessMode){
+    try { localStorage.removeItem(_OW_STATE_KEY); localStorage.removeItem(_OW_NAV_KEY); } catch(_) {}
+  }
   // HARD RESET COMBAT STATE
   G.animLock = false;
   G.turnPhase = null;
@@ -15272,7 +15373,7 @@ function startStoryCinematic(){
   if(!wrap||!textEl||!slower||!faster||!skip) return;
 
   const lines=[
-    'The marsh goes still. Feathers settle. The old court is silent.',
+    'Duke Blakiston falls. The iron gates of the court swing open — then still.',
     `${G.player?.name||'Your bird'} rises above the blackwater and broken reeds.`,
     'A new song carries across the canopy — the sky remembers your ascent.'
   ].join('\n\n');
