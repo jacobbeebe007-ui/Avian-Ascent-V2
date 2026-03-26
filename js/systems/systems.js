@@ -735,8 +735,9 @@ cooldown('chargeUp',3);
     }
 
     if(BIRDS.albatross?.passive){
-      BIRDS.albatross.passive.name = 'Ocean Wanderer';
-      BIRDS.albatross.passive.desc = '+1 SPD every 2 turns.';
+      // Keep in sync with js/core/game.js (tradeWinds + dealDamage vs slowed).
+      BIRDS.albatross.passive.name = 'Trade-Wind Patience';
+      BIRDS.albatross.passive.desc = 'Every 2 turns, +1 SPD (max 20). Physical attacks deal +6% vs slowed foes.';
       BIRDS.albatross.passive.onBattleStart = function(p){ p._oceanWandererTurns = 0; };
       BIRDS.albatross.passive.onTurnEnd = function(p){
         p._oceanWandererTurns = (p._oceanWandererTurns||0) + 1;
@@ -1023,22 +1024,12 @@ cooldown('chargeUp',3);
   );
 
   setLevels('serpentCrusher',
-    'Precise anti-poison finisher. Smooth bruiser scaling.',
+    'Stomp-line physical (Cassowary/Emu Trample family). Anti-poison finisher scaling.',
     [
       {lv:1, desc:'115% dmg, 12% miss. +30% dmg vs Poisoned. 15% Paralysis', newAilment:'paralyzed', ailChance:15},
       {lv:2, desc:'128% dmg, 10% miss. +30% dmg vs Poisoned. 18% Paralysis', ailChance:18},
       {lv:3, desc:'141% dmg, 8% miss. +30% dmg vs Poisoned. 22% Paralysis + Weaken 14%', newAilment2:'weaken', ailChance2:14},
       {lv:4, desc:'154% dmg, 6% miss. +30% dmg vs Poisoned. 26% Paralysis + Weaken 18%', ailChance:26, ailChance2:18},
-    ]
-  );
-
-  setLevels('shoebillClamp',
-    'Heavy clamp with reliable stun pressure.',
-    [
-      {lv:1, desc:'130% dmg, 8% miss. Ignores 10% Dodge. 25% Stun'},
-      {lv:2, desc:'142% dmg, 7% miss. Ignores 12% Dodge. 28% Stun + 1 Poison', newAilment:'poison', ailChance:100},
-      {lv:3, desc:'155% dmg, 6% miss. Ignores 14% Dodge. 32% Stun + 2 Poison'},
-      {lv:4, desc:'168% dmg, 5% miss. Ignores 16% Dodge. 36% Stun + 2 Poison + Weaken 12%', newAilment2:'weaken', ailChance2:12},
     ]
   );
 
@@ -1093,7 +1084,7 @@ cooldown('chargeUp',3);
     ]
   );
 
-  // Generic legacy / pool spells: birdBrain & sonicDirge (aliases, shops, old saves; not family-evolution birds’ live kits).
+  // Generic legacy / pool spells: birdBrain, sonicDirge, supersonic, wingStorm (shops, old saves, rotChorus→sonicDirge chain). Not Albatross live kit (Albatross uses alb_* + slot migration only).
   setLevels('birdBrain',
     'Psychic overload. Direct magic hit with confusion pressure.',
     [

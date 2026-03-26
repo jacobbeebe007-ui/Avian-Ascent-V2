@@ -278,19 +278,8 @@ const ABILITY_TEMPLATES = {
       {lv:4, desc:'Gain +5 DEF for 1 turn, guard stance active + stronger thorns. CD 2t'},
     ]
   },
-  // ---- SHOEBILL ----
-  shoebillClamp:{
-    id:'shoebillClamp', name:'Shoebill Clamp', type:'physical', btnType:'physical',
-    desc:'Massive beak snaps shut. 130% dmg, 25% stun. High accuracy.',
-    baseMissChance:8,
-    levels:[
-      {lv:1, desc:'130% dmg, 8% miss, ignores 10% enemy Dodge. 25% Stun.'},
-      {lv:2, desc:'145% dmg, 7% miss. 30% Stun + 1 Poison stack.', newAilment:'poison', ailChance:100},
-      {lv:3, desc:'160% dmg, 6% miss. 35% Stun + 2 Poison stacks.'},
-      {lv:4, desc:'180% dmg, 5% miss. 40% Stun + 3 Poison stacks + Weaken 20%', newAilment2:'weaken', ailChance2:20},
-    ]
-  },
-  // ---- SECRETARY ----
+  // Shoebill Stork live kit: sbl_beak_chop / sbl_skull_crack / sbl_still_stance / sbl_dread_mark (family evolution). Legacy id `shoebillClamp` removed — save migration only in legacyBaseAbilityIds + migrateShoebillLegacyFamilySkillSlots.
+  // ---- CASSOWARY / EMU (stomp line; Trample + aliases → Serpent Crusher) ----
   serpentCrusher:{
     id:'serpentCrusher', name:'Serpent Crusher', type:'physical', btnType:'physical',
     desc:'Precise beak strike. +30% dmg vs Poisoned enemies. 15% Paralyze.',
@@ -941,77 +930,66 @@ const BIRDS = {
       onBattleStart(){}},
   },
   flamingo:{
-    name:'Flamingo', portraitKey:'flamingo', tagline:'Balance is power. Grace is terror.',
-    size:'large', class:'singer',
+    name:'Flamingo', portraitKey:'flamingo', tagline:'Wading lines. Soft water, hard footing.',
+    size:'large', class:'striker',
     unlockRequires:'unlock_flamingo',
     unlockHint:'Reach Endless Stage 30 with any Striker.',
     stats:{hp:48,maxHp:48,atk:8,def:4,spd:6,dodge:18,acc:80,mdef:12,matk:8},
     color:'#e8609a',
-    startAbilities:['mudshot','marshCall','bogWhisper','rotChorus'],
-    passive:{id:'stanceBalance',name:'Balance Master',
-      desc:'Alternate attack and utility abilities each turn to gain +20% ATK (2t) or +20% dodge (2t).',
-      onBattleStart(p){p._lastAbType=null;},
-      onAbilityUse(p,ab){
-        const isAtk=ab.btnType==='physical';
-        const prev=p._lastAbType; p._lastAbType=ab.btnType;
-        if(!prev) return;
-        if(isAtk&&prev!=='physical'){
-          G.playerStatus.humDodge={bonus:20,turns:2};
-          spawnFloat('player','🦩 +20% Dodge!','fn-status');
-          logMsg('🦩 Balance Master: +20% Dodge for 2t!','system');
-        } else if(!isAtk&&prev==='physical'){
-          G.playerStatus.flamingoATK={bonus:20,turns:2};
-          spawnFloat('player','🦩 +20% ATK!','fn-status');
-          logMsg('🦩 Balance Master: +20% ATK for 2t!','system');
-        }
-      }},
+    startAbilities:['leg_jab','marsh_sweep','balance_pose','mire_mark'],
+    passive:{id:'marshPoise',name:'Marsh Poise',
+      desc:'Your attacks deal +6% damage vs slowed or weakened foes, +4% more vs enemies with heavy accuracy loss (10+). Delayed wake damage you trigger is +12% stronger.',
+      onBattleStart(){}},
   },
   secretary:{
-    name:'Secretary Bird', portraitKey:'secretary', tagline:'Serpent stomper. Justice on stilts.',
-    size:'large', class:'bruiser',
+    name:'Secretary Bird', portraitKey:'secretary', tagline:'Stalking justice. The kick decides.',
+    size:'large', class:'predator',
     unlockRequires:'unlock_secretary',
     unlockHint:'Defeat Stage 10 with Crow.',
     stats:{hp:48,maxHp:48,atk:9,def:6,spd:5,dodge:10,acc:80,critChance:8,mdef:10,matk:6},
     statBars:{HP:48/50,ATK:9/15,SPD:5/10,Dodge:.2,ACC:.8}, color:'#e0a060',
-    startAbilities:['headWhip','serratedSlash','guard','threatDisplay'],
-    passive:{id:'serpentStomp',name:'Serpent Stomp',desc:'Every physical attack has a 20% chance to Paralyze the enemy. Immune to Poison.',
+    startAbilities:['sec_leg_jab','sec_crushing_kick','hunter_stride','prey_mark'],
+    passive:{id:'stiltVerdict',name:'Stilt Verdict',
+      desc:'Physical attacks deal +6% vs paralyzed foes, +5% vs slowed foes, and +5% vs enemies below 45% HP. Immune to Poison.',
       immunePoison:true,
-      onPhysicalHit(p,G){if(chance(20)&&!G.enemyStatus.paralyzed){G.enemyStatus.paralyzed=1;spawnFloat('enemy','⚡ Para!','fn-status');}}},
+      onBattleStart(){}},
   },
   albatross:{
-    name:'Albatross', tagline:'Ocean courier. Wind-carved arcs and storm songs.',
-    size:'large', class:'singer',
+    name:'Albatross', portraitKey:'albatross', tagline:'Vast ocean soarer. Wide wing pressure, patient currents, returning wakes.',
+    size:'large', class:'striker',
     unlockRequires:'unlock_albatross',
     unlockHint:'Reach Endless Stage 50 with any bird.',
-    stats:{hp:54,maxHp:54,atk:8,def:6,spd:7,dodge:14,acc:82,mdef:11,matk:15,critChance:8},
+    stats:{hp:58,maxHp:58,atk:9,def:7,spd:6,dodge:12,acc:80,mdef:9,matk:7,critChance:6},
     color:'#9fb7c9',
-    startAbilities:['galeStrike','oceanCall','windChorus','stormSong'],
-    passive:{id:'tradeWinds',name:'Ocean Wanderer',desc:'+1 SPD every 2 turns.',
+    mainAttackId:'alb_wing_jab',
+    startAbilities:['alb_wing_jab','alb_ocean_sweep','alb_glide_line','alb_current_mark'],
+    passive:{id:'tradeWinds',name:'Trade-Wind Patience',desc:'Every 2 turns, +1 SPD (max 20). Physical attacks deal +6% vs slowed foes.',
       onBattleStart(p){p._oceanWandererTurns=0;},
       onTurnEnd(p){p._oceanWandererTurns=(p._oceanWandererTurns||0)+1;if((p._oceanWandererTurns%2)===0){p.stats.spd=Math.min(20,(p.stats.spd||1)+1);}}},
   },
 
   seagull:{
-    name:'Seagull', portraitKey:'seagull', tagline:'Screeching scavenger. Flock dive-bombs trash & foes.',
+    name:'Seagull', portraitKey:'seagull', tagline:'Coastal pest. Harrying swoops, noisy cries, scavenger’s payoff.',
     size:'medium', class:'trickster',
     unlockRequires:'unlock_seagull',
-    unlockHint:'Reach level 21 in Endless mode with any Singer.',
-    stats:{hp:36,maxHp:36,atk:6,def:3,spd:8,dodge:24,acc:84,mdef:9,matk:14,critChance:8},
+    unlockHint:'Reach level 21 in Endless mode with any Trickster.',
+    stats:{hp:36,maxHp:36,atk:7,def:3,spd:9,dodge:26,acc:86,mdef:8,matk:8,critChance:10},
     color:'#b0c8d8',
-    startAbilities:['featherFlick','diveSnatch','blindScreech','distractingChorus'],
-    passive:{id:'scavengeFlock',name:'Scavenger\'s Instinct',desc:'+20% damage vs enemies below 60% HP. Summoned mobs steal 5% enemy ATK as SPD bonus (stacks). Immune to Fear.',
+    mainAttackId:'sgl_snap_peck',
+    startAbilities:['sgl_snap_peck','sgl_swoop_pass','sgl_raucous_cry','sgl_scavenge_mark'],
+    passive:{id:'scavengeFlock',name:'Scavenger\'s Instinct',desc:'+20% damage vs enemies below 60% HP. Summoned mobs steal 5% enemy ATK as SPD (stacks). Immune to Fear.',
       immuneFear:true,
       onBattleStart(p){p._scavengeStacks=0;}},
   },
 
   // ── XL ──────────────────────────────────────────────────────
   goose:{
-    name:'Goose', portraitKey:'goose', tagline:'Terror incarnate. Honk.',
+    name:'Goose', portraitKey:'goose', tagline:'Territorial bruiser. Honk, check, refuse to yield.',
     size:'xl', class:'tank',
     stats:{hp:55,maxHp:55,atk:9,def:7,spd:2,dodge:5,acc:70,mdef:12,matk:4},
     statBars:{HP:55/50,ATK:9/15,SPD:2/10,Dodge:.1,ACC:.7}, color:'#e8c96a',
-    startAbilities:['peck','territorial_honk','guard','talon_slam'],
-    mainAttackId:'peck',
+    startAbilities:['gos_beak_snap','gos_body_check','gos_honk_blast','gos_brace_up'],
+    mainAttackId:'gos_beak_snap',
     passive:{id:'bruisedHide',name:'Bruised Hide',desc:'Every 20 HP taken = +1 ATK until battle ends. Takes 20% reduced physical damage.',
       physicalResist:0.20,
       onDamage(p,dmg){if(!p._bruiseAcc)p._bruiseAcc=0;p._bruiseAcc+=dmg;while(p._bruiseAcc>=20){p._bruiseAcc-=20;G.player.stats.atk++;spawnFloat('player','💢+ATK','fn-status');}}},
@@ -1023,7 +1001,8 @@ const BIRDS = {
     unlockHint:'Defeat Stage 10 with Goose.',
     stats:{hp:70,maxHp:70,atk:10,def:10,spd:2,dodge:5,acc:72,critChance:5,mdef:16,matk:6},
     statBars:{HP:70/50,ATK:10/15,SPD:2/10,Dodge:.1,ACC:.72}, color:'#5a7090',
-    startAbilities:['bracePeck','shoebillClamp','guard','huntersCry'],
+    startAbilities:['sbl_beak_chop','sbl_skull_crack','sbl_still_stance','sbl_dread_mark'],
+    mainAttackId:'sbl_beak_chop',
     passive:{id:'prehistoricStare',name:'Prehistoric Stare',desc:'Enemies have 15% chance to skip attack from dread (30% when feared). Immune to Fear & Stun.',
       immuneFear:true, immuneStun:true,
       onEnemyAttackCheck(p,G){const fearBonus=G.enemyStatus.feared>0?15:0;return chance(15+fearBonus);}},
@@ -1624,11 +1603,11 @@ const CLASS_ROLE_BY_CLASS = {
 
 const FINAL_BIRD_CLASS_BY_KEY = Object.freeze({
   sparrow:'striker', hummingbird:'striker', robin:'striker', peregrine:'striker',
-  cassowary:'bruiser', emu:'bruiser', ostrich:'bruiser', secretary:'bruiser', secretarybird:'bruiser', kookaburra:'bruiser',
+  cassowary:'bruiser', emu:'bruiser', ostrich:'bruiser', secretary:'predator', secretarybird:'predator', kookaburra:'bruiser',
   goose:'tank', swan:'striker', penguin:'tank', emperorpenguin:'tank', shoebill:'tank', shoebillstork:'tank',
   magpie:'trickster', seagull:'trickster', bowerbird:'trickster', crow:'trickster',
   snowyowl:'predator', harpy:'predator', harpyeagle:'predator', baldeagle:'predator', dukeblakiston:'predator', duke_blakiston:'predator', kiwi:'predator',
-  blackbird:'singer', phainopepla:'singer', macaw:'singer', lyrebird:'singer', flamingo:'singer', toucan:'striker', raven:'trickster', albatross:'singer', dove:'singer',
+  blackbird:'singer', phainopepla:'singer', macaw:'singer', lyrebird:'singer', flamingo:'striker', toucan:'striker', raven:'trickster', albatross:'striker', dove:'singer',
   blackcockatoo:'bruiser',
 });
 
@@ -2831,7 +2810,7 @@ const ENERGY_BY_LEVEL_PATCH={
   rapidPeck:[1,1,1,1], dart:[1,1,1,1], evade:[1,1,2,2], blackPeck:[1,1,1,1],
   dirge:[3,3,3,3], lullaby:[2,2,2,3], crowStrike:[1,1,1,1], talonRake:[1,1,1,2],
   beakSlam:[3,3,3,3], crowDefend:[1,1,2,2], mudLash:[1,1,1,2], serpentCrusher:[3,3,3,3],
-  shoebillClamp:[2,2,3,3], fleshRipper:[1,1,1,1], serratedSlash:[1,1,1,1], diveGouge:[3,3,3,3],
+  fleshRipper:[1,1,1,1], serratedSlash:[1,1,1,1], diveGouge:[3,3,3,3],
   fishSnatcher:[1,1,1,2], honkAttack:[3,3,3,3], gooseHonk:[3,3,3,3], penguinHonk:[3,3,3,3],
   headWhip:[2,2,2,3], intimidate:[1,1,2,2], probeStrike:[2,2,2,2], bashUp:[2,2,2,3],
   sitAndWait:[1,1,1,1], breakClamp:[2,2,3,3], serratedBill:[1,1,1,2], silentPierce:[2,2,2,3],
@@ -2982,7 +2961,7 @@ const SPECIAL_UNLOCKS = [
   { id:'unlock_penguin', test:()=> G.endlessMode && (G.endlessBattle||0) >= 30 && (BIRDS[G.player?.birdKey]?.class==='tank'), bird:'penguin', label:'Emperor Penguin' },
   { id:'unlock_emu', test:()=> G.endlessMode && (G.endlessBattle||0) >= 40 && (BIRDS[G.player?.birdKey]?.class==='tank'), bird:'emu', label:'Emu' },
   { id:'unlock_swan', test:()=> G.endlessMode && (G.endlessBattle||0) >= 30 && (BIRDS[G.player?.birdKey]?.class==='striker'), bird:'swan', label:'Swan' },
-  { id:'unlock_flamingo', test:()=> G.endlessMode && (G.endlessBattle||0) >= 30 && (BIRDS[G.player?.birdKey]?.class==='singer'), bird:'flamingo', label:'Flamingo' },
+  { id:'unlock_flamingo', test:()=> G.endlessMode && (G.endlessBattle||0) >= 30 && (BIRDS[G.player?.birdKey]?.class==='striker'), bird:'flamingo', label:'Flamingo' },
   { id:'unlock_seagull', test:()=> G.endlessMode && (G.player?.birdLevel||1) >= 21 && (BIRDS[G.player?.birdKey]?.class==='trickster'), bird:'seagull', label:'Seagull' },
   { id:'unlock_albatross', test:()=> G.endlessMode && (G.endlessBattle||0) >= 50, bird:'albatross', label:'Albatross' },
 ];
@@ -3581,47 +3560,68 @@ const SPARROW_SKILL_FAMILIES = Object.freeze({
   },
 });
 const GOOSE_SKILL_FAMILIES = Object.freeze({
-  peck:{
-    familyId:'peck', displayName:'Peck Line', baseAbilityId:'peck', slotRole:'filler_attack', maxTier:3,
+  beak:{
+    familyId:'beak', displayName:'Beak Line', baseAbilityId:'gos_beak_snap', slotRole:'filler_close_attack', maxTier:3,
+    tierNames:{1:'Snap', 2:'Bite', 3:'Tear'},
+    masteries:[
+      {id:'power', name:'Angry Pressure', desc:'Beak-line damage and pierce bite harder through armor.'},
+      {id:'precision', name:'Territorial Aim', desc:'Beak-line accuracy pressure; bleed and weaken riders improve.'},
+      {id:'control', name:'Nasty Hold', desc:'Beak-line debuff riders improve; read path bonus vs compromised rises.'},
+    ],
     paths:{
-      bleed:{pathId:'bleed', displayName:'Bleed', abilities:{1:'raking_peck', 2:'tearing_bite', 3:'savage_maul'}},
-      weaken:{pathId:'weaken', displayName:'Weaken', abilities:{1:'numbing_peck', 2:'crippling_bite', 3:'submission_maul'}},
-      pierce:{pathId:'pierce', displayName:'Pierce', abilities:{1:'needle_peck', 2:'bodkin_bite', 3:'armor_maul'}},
+      pierce:{pathId:'pierce', displayName:'Pierce', abilities:{1:'gos_beak_snap', 2:'gos_hook_bite', 3:'gos_hook_tear'}},
+      bleed:{pathId:'bleed', displayName:'Bleed', abilities:{1:'gos_raking_snap', 2:'gos_raking_bite', 3:'gos_salt_tear'}},
+      weaken:{pathId:'weaken', displayName:'Weaken', abilities:{1:'gos_dulling_snap', 2:'gos_grinding_bite', 3:'gos_fading_tear'}},
+    },
+  },
+  body:{
+    familyId:'body', displayName:'Body Line', baseAbilityId:'gos_body_check', slotRole:'signature_bruiser_attack', maxTier:3,
+    tierNames:{1:'Check', 2:'Slam', 3:'Crush'},
+    masteries:[
+      {id:'power', name:'Bulk Momentum', desc:'Body-line impact damage scales further; crit route hits harder.'},
+      {id:'precision', name:'Line Drive', desc:'Body-line pierce and guard-break stress improve.'},
+      {id:'control', name:'Crowd the Lane', desc:'Weaken-on-hit and anti-offense control riders improve.'},
+    ],
+    paths:{
+      crit:{pathId:'crit', displayName:'Crit', abilities:{1:'gos_body_check', 2:'gos_heavy_slam', 3:'gos_dominance_crush'}},
+      weaken:{pathId:'weaken', displayName:'Weaken', abilities:{1:'gos_pressing_check', 2:'gos_pressing_slam', 3:'gos_suffocating_crush'}},
+      break:{pathId:'break', displayName:'Break', abilities:{1:'gos_cracking_check', 2:'gos_break_slam', 3:'gos_collapse_crush'}},
     },
   },
   honk:{
-    familyId:'honk', displayName:'Honk Line', baseAbilityId:'territorial_honk', slotRole:'signature_control', maxTier:3,
-    tierNames:{1:'Honk', 2:'Blast', 3:'Terror'},
+    familyId:'honk', displayName:'Honk Line', baseAbilityId:'gos_honk_blast', slotRole:'disruption_control', maxTier:3,
+    tierNames:{1:'Honk', 2:'Blare', 3:'Uproar'},
+    masteries:[
+      {id:'power', name:'Loud Claim', desc:'Honk-line damage and fear pressure intensify.'},
+      {id:'precision', name:'Grating Tone', desc:'Honk-line accuracy breaks cut deeper; speed rally improves.'},
+      {id:'control', name:'Field Control', desc:'Honk-line fear and disruption riders improve.'},
+    ],
     paths:{
-      fear:{pathId:'fear', displayName:'Fear', abilities:{1:'dread_honk', 2:'terror_blast', 3:'panic_terror'}},
-      paralysis:{pathId:'paralysis', displayName:'Paralysis', abilities:{1:'shock_honk', 2:'stunning_blast', 3:'lockdown_terror'}},
-      weaken:{pathId:'weaken', displayName:'Weaken', abilities:{1:'crushing_honk', 2:'oppression_blast', 3:'tyrant_terror'}},
+      fear:{pathId:'fear', displayName:'Fear', abilities:{1:'gos_honk_blast', 2:'gos_dread_blare', 3:'gos_panic_uproar'}},
+      acc_break:{pathId:'acc_break', displayName:'Accuracy Break', abilities:{1:'gos_harsh_honk', 2:'gos_wavering_blare', 3:'gos_blinding_uproar'}},
+      speed:{pathId:'speed', displayName:'Speed', abilities:{1:'gos_keen_honk', 2:'gos_rally_blare', 3:'gos_charge_uproar'}},
     },
   },
-  guard:{
-    familyId:'guard', displayName:'Guard Line', baseAbilityId:'guard', slotRole:'defense', maxTier:3,
-    tierNames:{1:'Guard', 2:'Brace', 3:'Fortress'},
+  brace:{
+    familyId:'brace', displayName:'Brace Line', baseAbilityId:'gos_brace_up', slotRole:'guard_setup', maxTier:3,
+    tierNames:{1:'Brace', 2:'Hold', 3:'Stand'},
+    masteries:[
+      {id:'power', name:'Iron Posture', desc:'Brace-line guard duration and stubborn mitigation improve.'},
+      {id:'precision', name:'Measured Lean', desc:'Brace-line next-hit setup and read bonuses improve.'},
+      {id:'control', name:'No Ground Given', desc:'Brace-line payoff vs compromised targets improves.'},
+    ],
     paths:{
-      block:{pathId:'block', displayName:'Block', abilities:{1:'iron_guard', 2:'bulwark_brace', 3:'fortress_stance'}},
-      retaliate:{pathId:'retaliate', displayName:'Retaliate', abilities:{1:'spite_guard', 2:'punish_brace', 3:'retribution_fortress'}},
-      recover:{pathId:'recover', displayName:'Recover', abilities:{1:'steady_guard', 2:'restoring_brace', 3:'enduring_fortress'}},
-    },
-  },
-  heavy:{
-    familyId:'heavy', displayName:'Heavy Line', baseAbilityId:'talon_slam', slotRole:'heavy_payoff', maxTier:3,
-    tierNames:{1:'Talon', 2:'Slam', 3:'Crush'},
-    paths:{
-      trample:{pathId:'trample', displayName:'Trample', abilities:{1:'heavy_talon', 2:'trample_slam', 3:'crushing_stampede'}},
-      buffet:{pathId:'buffet', displayName:'Buffet', abilities:{1:'wing_buffet', 2:'bone_buffet', 3:'gale_crush'}},
-      execute:{pathId:'execute', displayName:'Execute', abilities:{1:'rending_talon', 2:'finisher_slam', 3:'execution_crush'}},
+      guard:{pathId:'guard', displayName:'Guard', abilities:{1:'gos_brace_up', 2:'gos_hold_line', 3:'gos_stand_fast'}},
+      amp:{pathId:'amp', displayName:'Amp', abilities:{1:'gos_brace_mark', 2:'gos_press_line', 3:'gos_final_stand'}},
+      read:{pathId:'read', displayName:'Read', abilities:{1:'gos_read_threat', 2:'gos_read_line', 3:'gos_read_stand'}},
     },
   },
 });
 const GOOSE_SKILL_SLOT_LAYOUT = Object.freeze([
-  {slotIndex:0, familyId:'peck', abilityId:'peck'},
-  {slotIndex:1, familyId:'honk', abilityId:'territorial_honk'},
-  {slotIndex:2, familyId:'guard', abilityId:'guard'},
-  {slotIndex:3, familyId:'heavy', abilityId:'talon_slam'},
+  {slotIndex:0, familyId:'beak', abilityId:'gos_beak_snap'},
+  {slotIndex:1, familyId:'body', abilityId:'gos_body_check'},
+  {slotIndex:2, familyId:'honk', abilityId:'gos_honk_blast'},
+  {slotIndex:3, familyId:'brace', abilityId:'gos_brace_up'},
 ]);
 const gooseStartingSkillSlots = GOOSE_SKILL_SLOT_LAYOUT.map(slot=>Object.freeze({
   slotIndex:slot.slotIndex,
@@ -3756,7 +3756,7 @@ const crowStartingSkillSlots = CROW_SKILL_SLOT_LAYOUT.map(slot=>Object.freeze({
 const MAGPIE_SKILL_FAMILIES = Object.freeze({
   swoop:{
     familyId:'swoop', displayName:'Swoop Line', baseAbilityId:'swoop', slotRole:'filler_attack', maxTier:3,
-    tierNames:{1:'Swoop', 2:'Dive', 3:'Flurry'},
+    tierNames:{1:'Swoop', 2:'Dive', 3:'Barrage'},
     masteries:[
       {id:'power', name:'Low Pass', desc:'+10% Swoop-line damage.'},
       {id:'precision', name:'Flash of White', desc:'Swoop-line attacks gain -4% miss and better payoff into openings.'},
@@ -3857,12 +3857,12 @@ const HUMMINGBIRD_SKILL_FAMILIES = Object.freeze({
     masteries:[
       {id:'power', name:'Velocity Carve', desc:'+10% Dash-line damage.'},
       {id:'precision', name:'Blur Sight', desc:'Dash-line crit routes gain +6% crit chance.'},
-      {id:'control', name:'Static Wing', desc:'Shock Paralysis and afterimage damage gain +10%.'},
+      {id:'control', name:'Static Wing', desc:'Shock Paralysis and rending bleed riders gain +10%.'},
     ],
     paths:{
       crit:{pathId:'crit', displayName:'Crit', abilities:{1:'sonic_dash',2:'critical_rush',3:'blurring_strike'}},
       shock:{pathId:'shock', displayName:'Shock', abilities:{1:'static_dash',2:'shock_rush',3:'storm_blur'}},
-      delayed:{pathId:'delayed', displayName:'Delayed', abilities:{1:'passing_dash',2:'afterimage_rush',3:'return_blur'}},
+      rend:{pathId:'rend', displayName:'Rend', abilities:{1:'hum_vein_dash',2:'hum_tear_rush',3:'hum_red_blur'}},
     },
   },
   flutter:{
@@ -3885,7 +3885,7 @@ const HUMMINGBIRD_SKILL_FAMILIES = Object.freeze({
     masteries:[
       {id:'power', name:'Killer Beat', desc:'Combo-line damage amp and trigger resonance gain +6% / +6 dmg.'},
       {id:'precision', name:'Opening Artist', desc:'Combo-line execute routes gain +8% below-half payoff.'},
-      {id:'control', name:'Echo Fighter', desc:'Trigger-path delayed follow-up +10 damage.'},
+      {id:'control', name:'Echo Fighter', desc:'Trigger-path afterbeat follow-up +10 damage.'},
     ],
     paths:{
       damage_amp:{pathId:'damage_amp', displayName:'Damage Amp', abilities:{1:'combo_strike',2:'chain_measure',3:'finale_strike'}},
@@ -3904,7 +3904,7 @@ const ROBIN_SKILL_SLOT_LAYOUT = Object.freeze([
 const ROBIN_SKILL_FAMILIES = Object.freeze({
   peck:{
     familyId:'peck', displayName:'Peck Line', baseAbilityId:'quick_peck', slotRole:'filler_attack', maxTier:3,
-    tierNames:{1:'Peck',2:'Jab',3:'Flurry'},
+    tierNames:{1:'Nip',2:'Tap',3:'Burst'},
     masteries:[
       {id:'power', name:'Field Tempo', desc:'+8% Peck-line damage.'},
       {id:'precision', name:'Clean Aim', desc:'Peck-line −3% miss; pierce route +4 pierce.'},
@@ -3920,9 +3920,9 @@ const ROBIN_SKILL_FAMILIES = Object.freeze({
     familyId:'dart', displayName:'Dart Line', baseAbilityId:'dart_rush', slotRole:'signature_burst', maxTier:3,
     tierNames:{1:'Rush',2:'Dash',3:'Strike'},
     masteries:[
-      {id:'power', name:'Burst Line', desc:'+7% Dart-line damage; return route delayed +6.'},
+      {id:'power', name:'Burst Line', desc:'+7% Dart-line damage; return route afterbeat +6.'},
       {id:'precision', name:'Sharp Turn', desc:'Crit route +5 effective crit; pierce on rush +3.'},
-      {id:'control', name:'Second Pass', desc:'Bleed burst +8% rider; double strike delayed +10.'},
+      {id:'control', name:'Second Pass', desc:'Bleed burst +8% rider; double-pass afterbeat +10.'},
     ],
     paths:{
       crit:{pathId:'crit', displayName:'Crit', abilities:{1:'dart_rush',2:'rob_swift_dash',3:'rob_flash_strike'}},
@@ -3950,7 +3950,7 @@ const ROBIN_SKILL_FAMILIES = Object.freeze({
     masteries:[
       {id:'power', name:'Lively Feet', desc:'Dodge-path +4% dodge window.'},
       {id:'precision', name:'Hedge Line', desc:'Amp-path next-hit +3%.'},
-      {id:'control', name:'Echo Step', desc:'Trigger-path delayed chip +8.'},
+      {id:'control', name:'Echo Step', desc:'Trigger-path afterbeat chip +8.'},
     ],
     paths:{
       dodge:{pathId:'dodge', displayName:'Dodge', abilities:{1:'light_step',2:'quick_hop',3:'spring_bound'}},
@@ -3995,14 +3995,14 @@ const BOWERBIRD_SKILL_FAMILIES = Object.freeze({
     familyId:'lure', displayName:'Lure Line', baseAbilityId:'lure_call', slotRole:'signature_bait_attack', maxTier:3,
     tierNames:{1:'Call',2:'Lure',3:'Snare'},
     masteries:[
-      {id:'power', name:'Bait Weight', desc:'+7% Lure-line damage; delayed route +6 flat trap.'},
+      {id:'power', name:'Bait Weight', desc:'+7% Lure-line damage; venom route +8% poison rider.'},
       {id:'precision', name:'Glimmer Focus', desc:'Confuse route +4% odds.'},
       {id:'control', name:'Dread Theater', desc:'Fear route +6% fear rider.'},
     ],
     paths:{
       fear:{pathId:'fear', displayName:'Fear', abilities:{1:'bow_dread_call',2:'bow_dread_lure',3:'bow_dread_snare'}},
       confuse:{pathId:'confuse', displayName:'Confuse', abilities:{1:'glimmer_call',2:'glimmer_lure',3:'glimmer_snare'}},
-      delayed:{pathId:'delayed', displayName:'Delayed', abilities:{1:'bow_echo_call',2:'bow_echo_lure',3:'bow_echo_snare'}},
+      toxic:{pathId:'toxic', displayName:'Venom', abilities:{1:'bow_rank_call',2:'bow_acrid_lure',3:'bow_viral_snare'}},
     },
   },
   build:{
@@ -4060,14 +4060,14 @@ const TOUCAN_SKILL_FAMILIES = Object.freeze({
     familyId:'slam', displayName:'Slam Line', baseAbilityId:'beak_slam', slotRole:'signature_heavy_attack', maxTier:3,
     tierNames:{1:'Slam',2:'Smash',3:'Crush'},
     masteries:[
-      {id:'power', name:'Heavy Chromatic', desc:'+7% Slam-line damage; delayed route +6 afterbill.'},
+      {id:'power', name:'Heavy Chromatic', desc:'+7% Slam-line damage; cull route +8% weaken rider.'},
       {id:'precision', name:'Aim Down the Bill', desc:'Crit route +4 effective crit; shock +6% para.'},
-      {id:'control', name:'Commitment', desc:'Shock route +8% paralysis; delayed stacks harder.'},
+      {id:'control', name:'Commitment', desc:'Shock route +8% paralysis; cull route +1 weaken stack bias.'},
     ],
     paths:{
       crit:{pathId:'crit', displayName:'Crit', abilities:{1:'beak_slam',2:'bright_smash',3:'prism_crush'}},
       shock:{pathId:'shock', displayName:'Shock', abilities:{1:'shock_slam',2:'static_smash',3:'lock_crush'}},
-      delayed:{pathId:'delayed', displayName:'Delayed', abilities:{1:'echo_slam',2:'return_smash',3:'double_crush'}},
+      cull:{pathId:'cull', displayName:'Cull', abilities:{1:'tou_press_slam',2:'tou_dent_smash',3:'tou_split_crush'}},
     },
   },
   toss:{
@@ -4161,6 +4161,331 @@ const SWAN_SKILL_FAMILIES = Object.freeze({
       amp:{pathId:'amp', displayName:'Amp', abilities:{1:'poise_mark',2:'poised_step',3:'final_poise'}},
       break:{pathId:'break', displayName:'Break', abilities:{1:'swan_crack_mark',2:'break_step',3:'ruin_poise'}},
       execute:{pathId:'execute', displayName:'Execute', abilities:{1:'swan_death_mark',2:'swan_death_step',3:'swan_finale_strike'}},
+    },
+  },
+});
+
+const FLAMINGO_SKILL_SLOT_LAYOUT = Object.freeze([
+  {slotIndex:0, familyId:'leg', abilityId:'leg_jab'},
+  {slotIndex:1, familyId:'sweep', abilityId:'marsh_sweep'},
+  {slotIndex:2, familyId:'pose', abilityId:'balance_pose'},
+  {slotIndex:3, familyId:'mire', abilityId:'mire_mark'},
+]);
+const FLAMINGO_SKILL_FAMILIES = Object.freeze({
+  leg:{
+    familyId:'leg', displayName:'Leg Line', baseAbilityId:'leg_jab', slotRole:'filler_reach_attack', maxTier:3,
+    tierNames:{1:'Jab',2:'Sweep',3:'Pierce'},
+    masteries:[
+      {id:'power', name:'Straight Piercing', desc:'Pierce route +5% vs high DEF; +4 pierce.'},
+      {id:'precision', name:'Pink Line', desc:'Leg-line −3% miss; bleed route +6% bleed rider.'},
+      {id:'control', name:'Marsh Reader', desc:'Expose route +5% compromised payoff.'},
+    ],
+    paths:{
+      pierce:{pathId:'pierce', displayName:'Pierce', abilities:{1:'leg_jab',2:'leg_sweep',3:'leg_pierce'}},
+      bleed:{pathId:'bleed', displayName:'Bleed', abilities:{1:'flm_razor_jab',2:'flm_razor_sweep',3:'flm_razor_pierce'}},
+      expose:{pathId:'expose', displayName:'Expose', abilities:{1:'flm_spot_jab',2:'flm_spot_sweep',3:'flm_open_pierce'}},
+    },
+  },
+  sweep:{
+    familyId:'sweep', displayName:'Marsh Sweep Line', baseAbilityId:'marsh_sweep', slotRole:'signature_control_attack', maxTier:3,
+    tierNames:{1:'Sweep',2:'Surge',3:'Crest'},
+    masteries:[
+      {id:'power', name:'Tidal Pull', desc:'Slow path +1 slow turn when Power+Control mastered; +5% sweep damage.'},
+      {id:'precision', name:'Measured Wake', desc:'Weaken path +8% rider; redwake path +6% bleed rider.'},
+      {id:'control', name:'Shallow Crown', desc:'Weaken path stacks harder; redwake bleed +4% rider when Control mastered.'},
+    ],
+    paths:{
+      slow:{pathId:'slow', displayName:'Slow', abilities:{1:'marsh_sweep',2:'wading_surge',3:'tidal_crest'}},
+      weaken:{pathId:'weaken', displayName:'Weaken', abilities:{1:'flm_pressing_sweep',2:'flm_pressing_surge',3:'flm_crushing_crest'}},
+      redwake:{pathId:'redwake', displayName:'Redwake', abilities:{1:'flm_reed_cut',2:'flm_bog_surge',3:'flm_crimson_crest'}},
+    },
+  },
+  pose:{
+    familyId:'pose', displayName:'Balance Pose Line', baseAbilityId:'balance_pose', slotRole:'stance_utility', maxTier:3,
+    tierNames:{1:'Pose',2:'Balance',3:'Stance'},
+    masteries:[
+      {id:'power', name:'White Stillness', desc:'Dodge path +4% dodge; guard path +4 guard pool.'},
+      {id:'precision', name:'Glass Water', desc:'ACC-break path +5% enemy ACC down.'},
+      {id:'control', name:'Patient Footing', desc:'Guard pool +2; dodge stance +1t when Control mastered.'},
+    ],
+    paths:{
+      dodge:{pathId:'dodge', displayName:'Dodge', abilities:{1:'balance_pose',2:'grace_balance',3:'white_stance'}},
+      guard:{pathId:'guard', displayName:'Guard', abilities:{1:'firm_pose',2:'stable_balance',3:'iron_stance'}},
+      acc_break:{pathId:'acc_break', displayName:'Accuracy Break', abilities:{1:'distracting_pose',2:'veil_balance',3:'mirage_stance'}},
+    },
+  },
+  mire:{
+    familyId:'mire', displayName:'Mire Line', baseAbilityId:'mire_mark', slotRole:'setup_payoff', maxTier:3,
+    tierNames:{1:'Mark',2:'Mire',3:'Sink'},
+    masteries:[
+      {id:'power', name:'Sinking Setup', desc:'Amp path next-hit +3%; break path +1 DEF stress.'},
+      {id:'precision', name:'Reed-Line Read', desc:'Read path +5% vs compromised targets.'},
+      {id:'control', name:'Sticky Marsh', desc:'Amp next-hit +2%; break lasts +1t when Control mastered.'},
+    ],
+    paths:{
+      amp:{pathId:'amp', displayName:'Amp', abilities:{1:'mire_mark',2:'deep_mire',3:'sinking_mark'}},
+      break:{pathId:'break', displayName:'Break', abilities:{1:'crack_mire',2:'split_mire',3:'ruin_sink'}},
+      read:{pathId:'read', displayName:'Read', abilities:{1:'read_mire',2:'read_marsh',3:'read_sink'}},
+    },
+  },
+});
+
+const SECRETARY_SKILL_SLOT_LAYOUT = Object.freeze([
+  {slotIndex:0, familyId:'leg', abilityId:'sec_leg_jab'},
+  {slotIndex:1, familyId:'kick', abilityId:'sec_crushing_kick'},
+  {slotIndex:2, familyId:'stride', abilityId:'hunter_stride'},
+  {slotIndex:3, familyId:'prey', abilityId:'prey_mark'},
+]);
+const SECRETARY_SKILL_FAMILIES = Object.freeze({
+  leg:{
+    familyId:'leg', displayName:'Leg Line', baseAbilityId:'sec_leg_jab', slotRole:'filler_reach_attack', maxTier:3,
+    tierNames:{1:'Jab',2:'Strike',3:'Pierce'},
+    masteries:[
+      {id:'power', name:'Stilt Pierce', desc:'Pierce route +5% vs high DEF; +4 pierce.'},
+      {id:'precision', name:'Measured Reach', desc:'Leg-line −3% miss; bleed route +6% bleed rider.'},
+      {id:'control', name:'Dulling Line', desc:'Weaken route +8% rider; compromised payoff +3%.'},
+    ],
+    paths:{
+      pierce:{pathId:'pierce', displayName:'Pierce', abilities:{1:'sec_leg_jab',2:'sec_leg_strike',3:'sec_leg_pierce'}},
+      bleed:{pathId:'bleed', displayName:'Bleed', abilities:{1:'sec_razor_jab',2:'sec_razor_strike',3:'sec_razor_pierce'}},
+      weaken:{pathId:'weaken', displayName:'Weaken', abilities:{1:'sec_dulling_jab',2:'sec_dulling_strike',3:'sec_dulling_pierce'}},
+    },
+  },
+  kick:{
+    familyId:'kick', displayName:'Kick Line', baseAbilityId:'sec_crushing_kick', slotRole:'signature_execution_attack', maxTier:3,
+    tierNames:{1:'Kick',2:'Stomp',3:'Crush'},
+    masteries:[
+      {id:'power', name:'Crushing Verdict', desc:'Crit route +6% kick damage; execute route +4% low-HP bite.'},
+      {id:'precision', name:'Stamp Focus', desc:'Shock route +6% para rider; crit route +4 effective crit.'},
+      {id:'control', name:'Grounded Lock', desc:'Shock route +8% para; crit capstone +5% pierce.'},
+    ],
+    paths:{
+      crit:{pathId:'crit', displayName:'Crit', abilities:{1:'sec_crushing_kick',2:'sec_hunter_stomp',3:'sec_execution_crush'}},
+      paralysis:{pathId:'paralysis', displayName:'Paralysis', abilities:{1:'sec_shock_kick',2:'sec_shock_stomp',3:'sec_lock_crush'}},
+      execute:{pathId:'execute', displayName:'Execute', abilities:{1:'sec_finisher_kick',2:'sec_finisher_stomp',3:'sec_final_crush'}},
+    },
+  },
+  stride:{
+    familyId:'stride', displayName:'Hunter Stride Line', baseAbilityId:'hunter_stride', slotRole:'positioning_setup', maxTier:3,
+    tierNames:{1:'Stride',2:'Pace',3:'Advance'},
+    masteries:[
+      {id:'power', name:'Long Step', desc:'Speed path +1 SPD when possible; stride tempo for the kick line.'},
+      {id:'precision', name:'Stalking Eye', desc:'Amp path +4% next-hit; dodge path +4% dodge.'},
+      {id:'control', name:'Killing Angle', desc:'Amp path +2% next-hit; enemy ACC pressure +3 when possible.'},
+    ],
+    paths:{
+      speed:{pathId:'speed', displayName:'Speed', abilities:{1:'hunter_stride',2:'long_pace',3:'predator_advance'}},
+      dodge:{pathId:'dodge', displayName:'Dodge', abilities:{1:'side_stride',2:'clean_pace',3:'ghost_advance'}},
+      amp:{pathId:'amp', displayName:'Amp', abilities:{1:'lining_stride',2:'measured_pace',3:'kill_advance'}},
+    },
+  },
+  prey:{
+    familyId:'prey', displayName:'Prey Line', baseAbilityId:'prey_mark', slotRole:'setup_payoff', maxTier:3,
+    tierNames:{1:'Mark',2:'Sight',3:'Collapse'},
+    masteries:[
+      {id:'power', name:'Collapse Setup', desc:'Amp path next-hit +3%; break path +1 DEF stress.'},
+      {id:'precision', name:'Weak Line', desc:'Read path +5% vs compromised.'},
+      {id:'control', name:'Pinned Quarry', desc:'Break lasts +1t when possible; read +2%.'},
+    ],
+    paths:{
+      amp:{pathId:'amp', displayName:'Amp', abilities:{1:'prey_mark',2:'hunter_sight',3:'prey_collapse'}},
+      break:{pathId:'break', displayName:'Break', abilities:{1:'open_mark',2:'weak_sight',3:'ruin_collapse'}},
+      read:{pathId:'read', displayName:'Read', abilities:{1:'read_prey',2:'read_sight',3:'read_collapse'}},
+    },
+  },
+});
+
+const ALBATROSS_SKILL_SLOT_LAYOUT = Object.freeze([
+  {slotIndex:0, familyId:'wing', abilityId:'alb_wing_jab'},
+  {slotIndex:1, familyId:'sweep', abilityId:'alb_ocean_sweep'},
+  {slotIndex:2, familyId:'glide', abilityId:'alb_glide_line'},
+  {slotIndex:3, familyId:'current', abilityId:'alb_current_mark'},
+]);
+const ALBATROSS_SKILL_FAMILIES = Object.freeze({
+  wing:{
+    familyId:'wing', displayName:'Wing Line', baseAbilityId:'alb_wing_jab', slotRole:'filler_reach_attack', maxTier:3,
+    tierNames:{1:'Jab',2:'Sweep',3:'Arc'},
+    masteries:[
+      {id:'power', name:'Long Reach', desc:'Pierce route +5% vs high DEF; +4 pierce.'},
+      {id:'precision', name:'Open Sky', desc:'Wing-line −3% miss; bleed route +6% bleed rider.'},
+      {id:'control', name:'Surface Reader', desc:'Expose route +5% compromised payoff.'},
+    ],
+    paths:{
+      pierce:{pathId:'pierce', displayName:'Pierce', abilities:{1:'alb_wing_jab',2:'alb_wing_sweep',3:'alb_wing_arc'}},
+      bleed:{pathId:'bleed', displayName:'Bleed', abilities:{1:'alb_razor_jab',2:'alb_razor_sweep',3:'alb_razor_arc'}},
+      expose:{pathId:'expose', displayName:'Expose', abilities:{1:'alb_spot_jab',2:'alb_spot_sweep',3:'alb_open_arc'}},
+    },
+  },
+  sweep:{
+    familyId:'sweep', displayName:'Ocean Sweep Line', baseAbilityId:'alb_ocean_sweep', slotRole:'signature_control_attack', maxTier:3,
+    tierNames:{1:'Sweep',2:'Current',3:'Tempest'},
+    masteries:[
+      {id:'power', name:'Vast Wake', desc:'+6% Sweep-line damage; slow path +4% vs already slowed.'},
+      {id:'precision', name:'Measured Tempest', desc:'Weaken route +6% rider; return wake +4 flat.'},
+      {id:'control', name:'Deep Current', desc:'Slow +1 turn when possible; return wake stacks harder.'},
+    ],
+    paths:{
+      slow:{pathId:'slow', displayName:'Slow', abilities:{1:'alb_ocean_sweep',2:'alb_pulling_current',3:'alb_tempest_wake'}},
+      weaken:{pathId:'weaken', displayName:'Weaken', abilities:{1:'alb_pressing_sweep',2:'alb_pressing_current',3:'alb_crushing_tempest'}},
+      return:{pathId:'return', displayName:'Return', abilities:{1:'alb_echo_sweep',2:'alb_return_current',3:'alb_returning_tempest'}},
+    },
+  },
+  glide:{
+    familyId:'glide', displayName:'Glide Line', baseAbilityId:'alb_glide_line', slotRole:'tempo_positioning', maxTier:3,
+    tierNames:{1:'Glide',2:'Drift',3:'Current'},
+    masteries:[
+      {id:'power', name:'Endless Line', desc:'Speed path +1 SPD when possible.'},
+      {id:'precision', name:'Shear Wind', desc:'Dodge path +4% dodge; guard path +3 guard value.'},
+      {id:'control', name:'Calm Air', desc:'Utility durations +1 turn when Control mastered.'},
+    ],
+    paths:{
+      speed:{pathId:'speed', displayName:'Speed', abilities:{1:'alb_glide_line',2:'alb_long_drift',3:'alb_endless_current'}},
+      dodge:{pathId:'dodge', displayName:'Dodge', abilities:{1:'alb_soft_glide',2:'alb_ghost_drift',3:'alb_white_current'}},
+      guard:{pathId:'guard', displayName:'Guard', abilities:{1:'alb_steady_glide',2:'alb_broad_drift',3:'alb_ocean_current'}},
+    },
+  },
+  current:{
+    familyId:'current', displayName:'Current Line', baseAbilityId:'alb_current_mark', slotRole:'setup_payoff', maxTier:3,
+    tierNames:{1:'Mark',2:'Pull',3:'Wake'},
+    masteries:[
+      {id:'power', name:'Tidal Setup', desc:'Amp path next-hit +3%; break path +1 DEF stress.'},
+      {id:'precision', name:'Rip Tide', desc:'Read path +5% vs compromised.'},
+      {id:'control', name:'Locked Flow', desc:'Break lasts +1t when possible; wake mark +2% next-hit.'},
+    ],
+    paths:{
+      amp:{pathId:'amp', displayName:'Amp', abilities:{1:'alb_current_mark',2:'alb_pull_mark',3:'alb_wake_mark'}},
+      break:{pathId:'break', displayName:'Break', abilities:{1:'alb_crack_current',2:'alb_split_current',3:'alb_ruin_wake'}},
+      read:{pathId:'read', displayName:'Read', abilities:{1:'alb_read_current',2:'alb_read_pull',3:'alb_read_wake'}},
+    },
+  },
+});
+
+const SEAGULL_SKILL_SLOT_LAYOUT = Object.freeze([
+  {slotIndex:0, familyId:'snap', abilityId:'sgl_snap_peck'},
+  {slotIndex:1, familyId:'swoop', abilityId:'sgl_swoop_pass'},
+  {slotIndex:2, familyId:'cry', abilityId:'sgl_raucous_cry'},
+  {slotIndex:3, familyId:'scavenge', abilityId:'sgl_scavenge_mark'},
+]);
+const SEAGULL_SKILL_FAMILIES = Object.freeze({
+  snap:{
+    familyId:'snap', displayName:'Snap Line', baseAbilityId:'sgl_snap_peck', slotRole:'filler_attack', maxTier:3,
+    tierNames:{1:'Snap',2:'Bite',3:'Rip'},
+    masteries:[
+      {id:'power', name:'Salt Jaw', desc:'Bleed route +6% bleed rider; pierce route +4 pierce.'},
+      {id:'precision', name:'Hook Eye', desc:'Snap-line −3% miss; expose route +5% compromised payoff.'},
+      {id:'control', name:'Beach Raider', desc:'Expose durations +1 turn when Control mastered.'},
+    ],
+    paths:{
+      bleed:{pathId:'bleed', displayName:'Bleed', abilities:{1:'sgl_snap_peck',2:'sgl_raking_bite',3:'sgl_salt_rip'}},
+      pierce:{pathId:'pierce', displayName:'Pierce', abilities:{1:'sgl_hook_peck',2:'sgl_hook_bite',3:'sgl_hook_rip'}},
+      expose:{pathId:'expose', displayName:'Expose', abilities:{1:'sgl_spot_peck',2:'sgl_scavenge_bite',3:'sgl_open_rip'}},
+    },
+  },
+  swoop:{
+    familyId:'swoop', displayName:'Swoop Line', baseAbilityId:'sgl_swoop_pass', slotRole:'signature_harrier_attack', maxTier:3,
+    tierNames:{1:'Pass',2:'Dive',3:'Break'},
+    masteries:[
+      {id:'power', name:'Break Surge', desc:'+6% Swoop damage; crit route +4% crit chance.'},
+      {id:'precision', name:'Skim Line', desc:'Blindside route +5% vs openings; slow route +4% vs slowed.'},
+      {id:'control', name:'Undertow Drag', desc:'Slow stacks harder; blindside +3% vs debuffed.'},
+    ],
+    paths:{
+      crit:{pathId:'crit', displayName:'Crit', abilities:{1:'sgl_swoop_pass',2:'sgl_skimming_dive',3:'sgl_breakwing'}},
+      blindside:{pathId:'blindside', displayName:'Blindside', abilities:{1:'sgl_mugging_pass',2:'sgl_snatch_dive',3:'sgl_plunder_break'}},
+      slow:{pathId:'slow', displayName:'Slow', abilities:{1:'sgl_drag_pass',2:'sgl_drag_dive',3:'sgl_undertow_break'}},
+    },
+  },
+  cry:{
+    familyId:'cry', displayName:'Cry Line', baseAbilityId:'sgl_raucous_cry', slotRole:'disruption_utility', maxTier:3,
+    tierNames:{1:'Cry',2:'Squall',3:'Uproar'},
+    masteries:[
+      {id:'power', name:'Gull Storm', desc:'ACC break route +3% enemy ACC crash.'},
+      {id:'precision', name:'Grinding Call', desc:'Weaken route +6% Weaken odds.'},
+      {id:'control', name:'Whitecap Tempo', desc:'Speed route +1 SPD when possible; cry effects +1 turn.'},
+    ],
+    paths:{
+      acc_break:{pathId:'acc_break', displayName:'ACC Break', abilities:{1:'sgl_raucous_cry',2:'sgl_wavering_squall',3:'sgl_blinding_uproar'}},
+      weaken:{pathId:'weaken', displayName:'Weaken', abilities:{1:'sgl_harsh_cry',2:'sgl_grinding_squall',3:'sgl_fading_uproar'}},
+      speed:{pathId:'speed', displayName:'Speed', abilities:{1:'sgl_keen_cry',2:'sgl_tailwind_squall',3:'sgl_whitecap_uproar'}},
+    },
+  },
+  scavenge:{
+    familyId:'scavenge', displayName:'Scavenge Line', baseAbilityId:'sgl_scavenge_mark', slotRole:'setup_payoff', maxTier:3,
+    tierNames:{1:'Mark',2:'Claim',3:'Haul'},
+    masteries:[
+      {id:'power', name:'Haul Setup', desc:'Amp path next-hit +3%; break path +1 DEF stress.'},
+      {id:'precision', name:'Scrap Reader', desc:'Read path +5% vs compromised.'},
+      {id:'control', name:'Tide Claim', desc:'Break lasts +1t when possible; mark +2% next-hit.'},
+    ],
+    paths:{
+      amp:{pathId:'amp', displayName:'Amp', abilities:{1:'sgl_scavenge_mark',2:'sgl_claim_sign',3:'sgl_haul_mark'}},
+      break:{pathId:'break', displayName:'Break', abilities:{1:'sgl_crack_mark',2:'sgl_strip_sign',3:'sgl_break_haul'}},
+      read:{pathId:'read', displayName:'Read', abilities:{1:'sgl_read_scrap',2:'sgl_read_claim',3:'sgl_read_haul'}},
+    },
+  },
+});
+
+const SHOEBILL_SKILL_SLOT_LAYOUT = Object.freeze([
+  {slotIndex:0, familyId:'beak', abilityId:'sbl_beak_chop'},
+  {slotIndex:1, familyId:'crack', abilityId:'sbl_skull_crack'},
+  {slotIndex:2, familyId:'stance', abilityId:'sbl_still_stance'},
+  {slotIndex:3, familyId:'dread', abilityId:'sbl_dread_mark'},
+]);
+const SHOEBILL_SKILL_FAMILIES = Object.freeze({
+  beak:{
+    familyId:'beak', displayName:'Beak Line', baseAbilityId:'sbl_beak_chop', slotRole:'filler_heavy_attack', maxTier:3,
+    tierNames:{1:'Chop',2:'Break',3:'Cleave'},
+    masteries:[
+      {id:'power', name:'Swamp Weight', desc:'Beak-line damage +4%; pierce route +3 pierce.'},
+      {id:'precision', name:'Hook Aim', desc:'Beak-line −3% miss; bleed route +5% bleed odds.'},
+      {id:'control', name:'Crushing Patience', desc:'Weaken-route riders +6%; wounded-target payoff +4%.'},
+    ],
+    paths:{
+      pierce:{pathId:'pierce', displayName:'Pierce', abilities:{1:'sbl_beak_chop',2:'sbl_split_break',3:'sbl_bone_cleave'}, damageTypeProgression:{1:'physical',2:'physical',3:'physical'}},
+      bleed:{pathId:'bleed', displayName:'Bleed', abilities:{1:'sbl_rending_chop',2:'sbl_rending_break',3:'sbl_deep_cleave'}, damageTypeProgression:{1:'physical',2:'physical',3:'physical'}},
+      weaken:{pathId:'weaken', displayName:'Weaken', abilities:{1:'sbl_dulling_chop',2:'sbl_sapping_break',3:'sbl_hollow_cleave'}, damageTypeProgression:{1:'physical',2:'physical',3:'physical'}},
+    },
+  },
+  crack:{
+    familyId:'crack', displayName:'Crack Line', baseAbilityId:'sbl_skull_crack', slotRole:'signature_execution_attack', maxTier:3,
+    tierNames:{1:'Crack',2:'Collapse',3:'Ruin'},
+    masteries:[
+      {id:'power', name:'Prehistoric Drive', desc:'Crack-line damage +5%; crit route +3% crit chance.'},
+      {id:'precision', name:'Skull Line', desc:'Fear-route fear odds +6%; execute route +4% vs low HP.'},
+      {id:'control', name:'Bog Executioner', desc:'DEF-break stress +1 when possible; fear lasts feel heavier.'},
+    ],
+    paths:{
+      crit:{pathId:'crit', displayName:'Crit', abilities:{1:'sbl_skull_crack',2:'sbl_grave_collapse',3:'sbl_skull_ruin'}},
+      fear:{pathId:'fear', displayName:'Fear', abilities:{1:'sbl_dread_crack',2:'sbl_hollow_collapse',3:'sbl_night_ruin'}},
+      execute:{pathId:'execute', displayName:'Execute', abilities:{1:'sbl_hunter_crack',2:'sbl_prey_collapse',3:'sbl_final_ruin'}},
+    },
+  },
+  stance:{
+    familyId:'stance', displayName:'Still Stance Line', baseAbilityId:'sbl_still_stance', slotRole:'guard_setup', maxTier:3,
+    tierNames:{1:'Stance',2:'Hold',3:'Silence'},
+    masteries:[
+      {id:'power', name:'Looming Bulk', desc:'Guard-route stacks +4; stillness feels heavier.'},
+      {id:'precision', name:'Measured Step', desc:'Dodge-route dodge +4%; amp-route next-hit +3%.'},
+      {id:'control', name:'Ambush Composure', desc:'Read-route compromised bonus +4%; mire slow +1 turn when possible.'},
+    ],
+    paths:{
+      guard:{pathId:'guard', displayName:'Guard', abilities:{1:'sbl_still_stance',2:'sbl_hold_ground',3:'sbl_dead_still'}},
+      dodge:{pathId:'dodge', displayName:'Dodge', abilities:{1:'sbl_slow_step',2:'sbl_mire_hold',3:'sbl_ghost_silence'}},
+      amp:{pathId:'amp', displayName:'Amp', abilities:{1:'sbl_lining_stance',2:'sbl_measured_hold',3:'sbl_killing_silence'}},
+    },
+  },
+  dread:{
+    familyId:'dread', displayName:'Dread Line', baseAbilityId:'sbl_dread_mark', slotRole:'setup_payoff', maxTier:3,
+    tierNames:{1:'Mark',2:'Sign',3:'Doom'},
+    masteries:[
+      {id:'power', name:'Written Collapse', desc:'Amp-path next-hit +4%; break-path exposed damage +3%.'},
+      {id:'precision', name:'Cold Stare', desc:'Read-path compromised bonus +5%; break DEF strip +1.'},
+      {id:'control', name:'Swamp Verdict', desc:'Fear pressure on marked hits +6% when possible.'},
+    ],
+    paths:{
+      amp:{pathId:'amp', displayName:'Amp', abilities:{1:'sbl_dread_mark',2:'sbl_grave_sign',3:'sbl_doom_mark'}},
+      break:{pathId:'break', displayName:'Break', abilities:{1:'sbl_crack_sign',2:'sbl_break_doom',3:'sbl_ruin_doom'}},
+      read:{pathId:'read', displayName:'Read', abilities:{1:'sbl_read_dread',2:'sbl_read_sign',3:'sbl_read_doom'}},
     },
   },
 });
@@ -4378,7 +4703,7 @@ const MACAW_SKILL_FAMILIES = Object.freeze({
     paths:{
       burn:{pathId:'burn', displayName:'Burn', abilities:{1:'ember_note',2:'ember_echo',3:'ember_refrain'}},
       confuse:{pathId:'confuse', displayName:'Confuse', abilities:{1:'warble_note',2:'dizzy_echo',3:'maddening_refrain'}},
-      delayed:{pathId:'delayed', displayName:'Delayed', abilities:{1:'echo_note',2:'delayed_echo',3:'returning_refrain'}},
+      delayed:{pathId:'delayed', displayName:'Resonance', abilities:{1:'echo_note',2:'delayed_echo',3:'returning_refrain'}},
     },
   },
   mimic:{
@@ -4413,13 +4738,13 @@ const MACAW_SKILL_FAMILIES = Object.freeze({
     familyId:'chorus', displayName:'Chorus Line', baseAbilityId:'chorus_mark', slotRole:'setup', maxTier:3,
     tierNames:{1:'Mark',2:'Measure',3:'Finale'},
     masteries:[
-      {id:'power', name:'Crescendo', desc:'Chorus-line damage amp and delayed resonance gain +6% / +8 dmg.'},
+      {id:'power', name:'Crescendo', desc:'Chorus-line damage amp and Afterbeat Resonance gain +6% / +8 flat.'},
       {id:'precision', name:'Downbeat', desc:'Chorus-line Weaken lasts 1 extra turn when possible.'},
-      {id:'control', name:'Grand Pause', desc:'Chorus-line delayed resonance +12 and setup ACC debuffs +5%.'},
+      {id:'control', name:'Grand Pause', desc:'Chorus-line Afterbeat Resonance +12 and setup ACC debuffs +5%.'},
     ],
     paths:{
       damage_amp:{pathId:'damage_amp', displayName:'Damage Amp', abilities:{1:'chorus_mark',2:'harmonic_measure',3:'finale_mark'}},
-      delayed:{pathId:'delayed', displayName:'Delayed', abilities:{1:'echo_mark',2:'resonant_measure',3:'delayed_finale'}},
+      delayed:{pathId:'delayed', displayName:'Afterbeat', abilities:{1:'echo_mark',2:'resonant_measure',3:'delayed_finale'}},
       weaken:{pathId:'weaken', displayName:'Weaken', abilities:{1:'cracking_mark',2:'softening_measure',3:'fading_finale'}},
     },
   },
@@ -4434,7 +4759,7 @@ const LYREBIRD_SKILL_SLOT_LAYOUT = Object.freeze([
 const LYREBIRD_SKILL_FAMILIES = Object.freeze({
   echo:{
     familyId:'echo', displayName:'Echo Line', baseAbilityId:'echo_note', slotRole:'filler_spell', maxTier:3,
-    tierNames:{1:'Note',2:'Echo',3:'Refrain'},
+    tierNames:{1:'Trill',2:'Layer',3:'Cadenza'},
     masteries:[
       {id:'power', name:'Silver Throat', desc:'+8% Echo-line spell damage.'},
       {id:'precision', name:'Stage Pitch', desc:'Echo-line −3% spell miss.'},
@@ -4443,12 +4768,12 @@ const LYREBIRD_SKILL_FAMILIES = Object.freeze({
     paths:{
       burn:{pathId:'burn', displayName:'Burn', abilities:{1:'ember_note',2:'ember_echo',3:'ember_refrain'}},
       confuse:{pathId:'confuse', displayName:'Confuse', abilities:{1:'warble_note',2:'dizzy_echo',3:'maddening_refrain'}},
-      delayed:{pathId:'delayed', displayName:'Delayed', abilities:{1:'echo_note',2:'delayed_echo',3:'returning_refrain'}},
+      delayed:{pathId:'delayed', displayName:'Resonance', abilities:{1:'echo_note',2:'delayed_echo',3:'returning_refrain'}},
     },
   },
   mimic:{
     familyId:'mimic', displayName:'Mimic Line', baseAbilityId:'mimic_chorus', slotRole:'signature_imitation_spell', maxTier:3,
-    tierNames:{1:'Chorus',2:'Verse',3:'Anthem'},
+    tierNames:{1:'Borrow',2:'Bridge',3:'Ovation'},
     masteries:[
       {id:'power', name:'Great Pretender', desc:'+9% Mimic-line damage.'},
       {id:'precision', name:'Borrowed Voice', desc:'Mimic-line Fear/Paralysis +8%.'},
@@ -4476,15 +4801,15 @@ const LYREBIRD_SKILL_FAMILIES = Object.freeze({
   },
   refrain:{
     familyId:'refrain', displayName:'Refrain Line', baseAbilityId:'refrain_mark', slotRole:'setup', maxTier:3,
-    tierNames:{1:'Mark',2:'Measure',3:'Finale'},
+    tierNames:{1:'Cue',2:'Cadence',3:'Curtain'},
     masteries:[
-      {id:'power', name:'Crescendo', desc:'Amp-path next-hit +4%; delayed +8.'},
+      {id:'power', name:'Crescendo', desc:'Amp-path next-hit +4%; Stage Return Resonance +8 flat.'},
       {id:'precision', name:'Downbeat', desc:'Read-path +4% vs compromised.'},
-      {id:'control', name:'Grand Pause', desc:'Delayed-path resonance +12.'},
+      {id:'control', name:'Grand Pause', desc:'Stage Return path Resonance +12.'},
     ],
     paths:{
       amp:{pathId:'amp', displayName:'Damage Amp', abilities:{1:'refrain_mark',2:'lyre_harmonic_measure',3:'lyre_finale_mark'}},
-      delayed:{pathId:'delayed', displayName:'Delayed', abilities:{1:'lyre_echo_mark',2:'lyre_resonant_measure',3:'lyre_delayed_finale'}},
+      delayed:{pathId:'delayed', displayName:'Stage Return', abilities:{1:'lyre_echo_mark',2:'lyre_resonant_measure',3:'lyre_delayed_finale'}},
       read:{pathId:'read', displayName:'Read', abilities:{1:'lyre_fault_mark',2:'lyre_weak_measure',3:'lyre_collapse_finale'}},
     },
   },
@@ -4515,14 +4840,14 @@ const BLACK_COCKATOO_SKILL_FAMILIES = Object.freeze({
     familyId:'boom', displayName:'Boom Line', baseAbilityId:'boom_call', slotRole:'signature_resonant_attack', maxTier:3,
     tierNames:{1:'Call',2:'Boom',3:'Shockwave'},
     masteries:[
-      {id:'power', name:'Thunderhead', desc:'+7% Boom-line damage; delayed sonic +6.'},
+      {id:'power', name:'Thunderhead', desc:'+7% Boom-line damage; Reverberation path +6 Resonance flat.'},
       {id:'precision', name:'Echo Find', desc:'Boom-line Fear/Paralysis odds +8%.'},
-      {id:'control', name:'Aftershock', desc:'Boom-line delayed resonance +10.'},
+      {id:'control', name:'Aftershock', desc:'Reverberation path Resonance +10.'},
     ],
     paths:{
       fear:{pathId:'fear', displayName:'Fear', abilities:{1:'cockatoo_dread_call',2:'terror_boom',3:'black_shockwave'}},
       paralysis:{pathId:'paralysis', displayName:'Paralysis', abilities:{1:'shock_call',2:'static_boom',3:'lockwave'}},
-      delayed:{pathId:'delayed', displayName:'Delayed', abilities:{1:'echo_call',2:'resonant_boom',3:'returning_shockwave'}},
+      delayed:{pathId:'delayed', displayName:'Reverberation', abilities:{1:'echo_call',2:'resonant_boom',3:'returning_shockwave'}},
     },
   },
   wing:{
@@ -4543,13 +4868,13 @@ const BLACK_COCKATOO_SKILL_FAMILIES = Object.freeze({
     familyId:'resonance', displayName:'Resonance Line', baseAbilityId:'resonance_mark', slotRole:'setup', maxTier:3,
     tierNames:{1:'Mark',2:'Pulse',3:'Collapse'},
     masteries:[
-      {id:'power', name:'Crest Harmonics', desc:'Amp-path next-hit +5%; delayed +8.'},
+      {id:'power', name:'Crest Harmonics', desc:'Amp-path next-hit +5%; Returning Pulse +8 Resonance flat.'},
       {id:'precision', name:'Fault Finder', desc:'Read-path bonus vs debuffed +4%.'},
-      {id:'control', name:'Collapse Art', desc:'Delayed-path resonance +12.'},
+      {id:'control', name:'Collapse Art', desc:'Returning Pulse path Resonance +12.'},
     ],
     paths:{
       amp:{pathId:'amp', displayName:'Amp', abilities:{1:'resonance_mark',2:'harmonic_pulse',3:'resonant_collapse'}},
-      delayed:{pathId:'delayed', displayName:'Delayed', abilities:{1:'cockatoo_echo_mark',2:'return_pulse',3:'delayed_collapse'}},
+      delayed:{pathId:'delayed', displayName:'Returning Pulse', abilities:{1:'cockatoo_echo_mark',2:'return_pulse',3:'delayed_collapse'}},
       read:{pathId:'read', displayName:'Read', abilities:{1:'fault_mark',2:'weak_pulse',3:'collapse_read'}},
     },
   },
@@ -4580,14 +4905,14 @@ const KOOKABURRA_SKILL_FAMILIES = Object.freeze({
     familyId:'laugh', displayName:'Laugh Line', baseAbilityId:'laugh_call', slotRole:'signature_sonic_attack', maxTier:3,
     tierNames:{1:'Call',2:'Laugh',3:'Cackle'},
     masteries:[
-      {id:'power', name:'Bush King', desc:'+7% Laugh-line damage; delayed echo +6.'},
+      {id:'power', name:'Bush King', desc:'+7% Laugh-line damage; Ricochet path +6 laugh-echo flat.'},
       {id:'precision', name:'Mocking Eye', desc:'Laugh-line Fear/Paralysis odds +8%.'},
-      {id:'control', name:'Ricochet', desc:'Laugh-line delayed echo +10.'},
+      {id:'control', name:'Ricochet', desc:'Ricochet path laugh echo +10.'},
     ],
     paths:{
       fear:{pathId:'fear', displayName:'Fear', abilities:{1:'kooka_dread_call',2:'mocking_laugh',3:'terror_cackle'}},
       paralysis:{pathId:'paralysis', displayName:'Paralysis', abilities:{1:'kooka_shock_call',2:'static_laugh',3:'lock_cackle'}},
-      delayed:{pathId:'delayed', displayName:'Delayed', abilities:{1:'kooka_echo_call',2:'echo_laugh',3:'returning_cackle'}},
+      delayed:{pathId:'delayed', displayName:'Ricochet', abilities:{1:'kooka_echo_call',2:'echo_laugh',3:'returning_cackle'}},
     },
   },
   watch:{
@@ -4609,7 +4934,7 @@ const KOOKABURRA_SKILL_FAMILIES = Object.freeze({
     tierNames:{1:'Strike',2:'Drop',3:'Smash'},
     masteries:[
       {id:'power', name:'Stoop Weight', desc:'Drop-line damage +7%; execute route +4%.'},
-      {id:'precision', name:'Killing Angle', desc:'Trigger-path delayed echo +8.'},
+      {id:'precision', name:'Killing Angle', desc:'Trigger-path laugh echo +8.'},
       {id:'control', name:'Ground Game', desc:'Slow-route +1 turn when possible.'},
     ],
     paths:{
@@ -4653,19 +4978,19 @@ const RAVEN_SKILL_FAMILIES = Object.freeze({
     familyId:'omen', displayName:'Omen Line', baseAbilityId:'omen_call', slotRole:'signature_doom_attack', maxTier:3,
     tierNames:{1:'Call',2:'Cry',3:'Omen'},
     masteries:[
-      {id:'power', name:'Prophet\'s Weight', desc:'+7% Omen-line sonic damage; delayed route +6 flat resonance.'},
+      {id:'power', name:'Prophet\'s Weight', desc:'+7% Omen-line sonic damage; Tolling path +6 flat Resonance.'},
       {id:'precision', name:'Cold Read', desc:'Omen-line Fear/Paralysis odds +8%.'},
-      {id:'control', name:'Inevitable Chorus', desc:'Omen-line ACC pressure +5%; returning omen delayed +10.'},
+      {id:'control', name:'Inevitable Chorus', desc:'Omen-line ACC pressure +5%; Tolling path Resonance +10.'},
     ],
     paths:{
       fear:{pathId:'fear', displayName:'Fear', abilities:{1:'rav_dread_call',2:'rav_panic_cry',3:'raven_omen'}},
       paralysis:{pathId:'paralysis', displayName:'Paralysis', abilities:{1:'rav_shock_omen',2:'rav_static_cry',3:'rav_lock_omen'}},
-      delayed:{pathId:'delayed', displayName:'Delayed', abilities:{1:'rav_echo_omen',2:'rav_doom_cry',3:'rav_returning_omen'}},
+      delayed:{pathId:'delayed', displayName:'Tolling', abilities:{1:'rav_echo_omen',2:'rav_doom_cry',3:'rav_returning_omen'}},
     },
   },
   watch:{
     familyId:'watch', displayName:'Dark Watch Line', baseAbilityId:'dark_watch', slotRole:'battlefield_setup', maxTier:3,
-    tierNames:{1:'Watch',2:'Sight',3:'Lock'},
+    tierNames:{1:'Veil',2:'Glint',3:'Pinion'},
     masteries:[
       {id:'power', name:'Grim Focus', desc:'Amp-path next-hit +4%; omen lock +3%.'},
       {id:'precision', name:'Fault Line', desc:'Break-path DEF strip +1; read-path +4% vs compromised.'},
@@ -4681,13 +5006,13 @@ const RAVEN_SKILL_FAMILIES = Object.freeze({
     familyId:'fate', displayName:'Fate Line', baseAbilityId:'fate_mark', slotRole:'setup_payoff', maxTier:3,
     tierNames:{1:'Mark',2:'Sign',3:'Doom'},
     masteries:[
-      {id:'power', name:'Written End', desc:'Amp-path next-hit +4%; delayed resonance +8.'},
+      {id:'power', name:'Written End', desc:'Amp-path next-hit +4%; Writ Loop Resonance +8 flat.'},
       {id:'precision', name:'Second Sight', desc:'Execute-path low-HP payoff +6%; read bonus +3%.'},
-      {id:'control', name:'Delay Inevitable', desc:'Delayed-path next-turn collapse +12.'},
+      {id:'control', name:'Eclipse Line', desc:'Writ Loop path next-turn collapse +12 Resonance.'},
     ],
     paths:{
       amp:{pathId:'amp', displayName:'Amp', abilities:{1:'fate_mark',2:'rav_grim_sign',3:'rav_final_doom'}},
-      delayed:{pathId:'delayed', displayName:'Delayed', abilities:{1:'rav_fate_echo_mark',2:'rav_return_sign',3:'rav_delayed_doom'}},
+      delayed:{pathId:'delayed', displayName:'Writ Loop', abilities:{1:'rav_fate_echo_mark',2:'rav_return_sign',3:'rav_delayed_doom'}},
       execute:{pathId:'execute', displayName:'Execute', abilities:{1:'rav_fate_death_mark',2:'rav_fate_death_sign',3:'rav_fate_final_mark'}},
     },
   },
@@ -4727,10 +5052,10 @@ const FAMILY_EVOLUTION_BIRD_DATA = Object.freeze({
     families:GOOSE_SKILL_FAMILIES,
     abilityLookup:buildFamilySkillAbilityLookup(GOOSE_SKILL_SLOT_LAYOUT, GOOSE_SKILL_FAMILIES),
     legacyBaseAbilityIds:Object.freeze({
-      peck:{legacy:['headWhip'], current:'peck'},
-      honk:{legacy:['gooseHonk', 'fearHonk', 'honk_terror'], current:'territorial_honk'},
-      guard:{legacy:['guard'], current:'guard'},
-      heavy:{legacy:['heavyTalon', 'heavy_talon'], current:'talon_slam'},
+      beak:{legacy:['peck','headWhip'], current:'gos_beak_snap'},
+      body:{legacy:['talon_slam','heavyTalon','heavy_talon','territorial_honk','gooseHonk','fearHonk'], current:'gos_body_check'},
+      honk:{legacy:['guard','iron_guard','bulwark_brace','fortress_stance'], current:'gos_honk_blast'},
+      brace:{legacy:['talon_slam','heavy_talon','trample_slam','crushing_stampede','wing_buffet','bone_buffet','gale_crush','rending_talon','finisher_slam','execution_crush','spite_guard','punish_brace','retribution_fortress','steady_guard','restoring_brace','enduring_fortress'], current:'gos_brace_up'},
     }),
   },
   blackbird:{
@@ -4931,13 +5256,75 @@ const FAMILY_EVOLUTION_BIRD_DATA = Object.freeze({
       poise:{legacy:['battleFocus','battle_focus','trackPrey','markPrey','guard'], current:'poise_mark'},
     }),
   },
+  flamingo:{
+    birdKey:'flamingo',
+    slotLayout:FLAMINGO_SKILL_SLOT_LAYOUT,
+    families:FLAMINGO_SKILL_FAMILIES,
+    abilityLookup:buildFamilySkillAbilityLookup(FLAMINGO_SKILL_SLOT_LAYOUT, FLAMINGO_SKILL_FAMILIES),
+    legacyBaseAbilityIds:Object.freeze({
+      leg:{legacy:['mudshot','peck','headWhip','needle_peck','probeStrike','decorate'], current:'leg_jab'},
+      sweep:{legacy:['marshCall','rotChorus','bodySlam','heavyTalon','heavy_talon','talon_slam','savageKick','wingShield','royalGuard','guard'], current:'marsh_sweep'},
+      pose:{legacy:['bogWhisper','hum','preen','windFeint','calmingSong','evade'], current:'balance_pose'},
+      mire:{legacy:['battleFocus','battle_focus','trackPrey','markPrey'], current:'mire_mark'},
+    }),
+  },
+  secretary:{
+    birdKey:'secretary',
+    slotLayout:SECRETARY_SKILL_SLOT_LAYOUT,
+    families:SECRETARY_SKILL_FAMILIES,
+    abilityLookup:buildFamilySkillAbilityLookup(SECRETARY_SKILL_SLOT_LAYOUT, SECRETARY_SKILL_FAMILIES),
+    legacyBaseAbilityIds:Object.freeze({
+      leg:{legacy:['headWhip','peck','probeStrike','needle_peck','bracePeck'], current:'sec_leg_jab'},
+      kick:{legacy:['serratedSlash','tearing_bite','rend_strike','tearing_jab','bodySlam','heavyTalon','heavy_talon','talon_slam','savageKick','beakSlam','serpentCrusher','trample','warCharge','warStomp','stampedeStrike'], current:'sec_crushing_kick'},
+      stride:{legacy:['guard','royalGuard','windFeint','hum','evade','calmingSong','sitAndWait','crowDefend'], current:'hunter_stride'},
+      prey:{legacy:['threatDisplay','battleFocus','battle_focus','trackPrey','markPrey','intimidate','taunt'], current:'prey_mark'},
+    }),
+  },
+  albatross:{
+    birdKey:'albatross',
+    slotLayout:ALBATROSS_SKILL_SLOT_LAYOUT,
+    families:ALBATROSS_SKILL_FAMILIES,
+    abilityLookup:buildFamilySkillAbilityLookup(ALBATROSS_SKILL_SLOT_LAYOUT, ALBATROSS_SKILL_FAMILIES),
+    legacyBaseAbilityIds:Object.freeze({
+      wing:{legacy:['galeStrike','supersonic'], current:'alb_wing_jab'},
+      sweep:{legacy:['oceanCall','wingStorm'], current:'alb_ocean_sweep'},
+      glide:{legacy:['windChorus','hum','veil_wing'], current:'alb_glide_line'},
+      current:{legacy:['stormSong','sonicDirge'], current:'alb_current_mark'},
+    }),
+  },
+  seagull:{
+    birdKey:'seagull',
+    slotLayout:SEAGULL_SKILL_SLOT_LAYOUT,
+    families:SEAGULL_SKILL_FAMILIES,
+    abilityLookup:buildFamilySkillAbilityLookup(SEAGULL_SKILL_SLOT_LAYOUT, SEAGULL_SKILL_FAMILIES),
+    legacyBaseAbilityIds:Object.freeze({
+      snap:{legacy:['featherFlick','peck','headWhip','rapidPeck','multiPeck'], current:'sgl_snap_peck'},
+      swoop:{legacy:['diveSnatch','swoop','dart','diveBomb','swoopCut'], current:'sgl_swoop_pass'},
+      cry:{legacy:['blindScreech','shriekwave','windSlash','distractingChorus','dizzyChorus','dirge','taunt'], current:'sgl_raucous_cry'},
+      scavenge:{legacy:['distractingChorus','trackPrey','markPrey','predatorMark','battleFocus','battle_focus'], current:'sgl_scavenge_mark'},
+    }),
+  },
+  shoebill:{
+    birdKey:'shoebill',
+    slotLayout:SHOEBILL_SKILL_SLOT_LAYOUT,
+    families:SHOEBILL_SKILL_FAMILIES,
+    abilityLookup:buildFamilySkillAbilityLookup(SHOEBILL_SKILL_SLOT_LAYOUT, SHOEBILL_SKILL_FAMILIES),
+    legacyBaseAbilityIds:Object.freeze({
+      beak:{legacy:['bracePeck','peck','headWhip','probeStrike','needle_peck','mockingPeck'], current:'sbl_beak_chop'},
+      crack:{legacy:['shoebillClamp','heavyTalon','heavy_talon','talon_slam','beakSlam','bodySlam'], current:'sbl_skull_crack'},
+      stance:{legacy:['guard','royalGuard','wingShield','iron_guard','bulwark_brace','crowDefend','iceGuard'], current:'sbl_still_stance'},
+      dread:{legacy:['huntersCry','victoryChant','dread_call','dreadCall','trackPrey','markPrey','predatorMark','battleFocus','battle_focus','featherRuffle'], current:'sbl_dread_mark'},
+    }),
+  },
 });
 
 function isSkillEvolutionLevel(level){
   return Number.isFinite(level) && level>0 && level % SKILL_EVOLUTION_LEVEL_INTERVAL === 0;
 }
 function getBirdFamilyEvolutionData(birdKey){
-  return FAMILY_EVOLUTION_BIRD_DATA[String(birdKey||'')] || null;
+  const k = String(birdKey||'');
+  if(k==='secretarybird') return FAMILY_EVOLUTION_BIRD_DATA.secretary || null;
+  return FAMILY_EVOLUTION_BIRD_DATA[k] || null;
 }
 function getBirdSkillFamilyCatalog(birdKey){
   return getBirdFamilyEvolutionData(birdKey)?.families || null;
@@ -5024,6 +5411,19 @@ function migrateRobinLegacyFamilySkillSlots(slots){
     return out;
   });
 }
+/** Maps legacy dash `delayed` path + old afterimage ids onto `rend` + hum_vein_dash line. */
+function migrateHummingbirdLegacyFamilySkillSlots(slots){
+  if(!Array.isArray(slots)) return slots;
+  const oldToNew={passing_dash:'hum_vein_dash',afterimage_rush:'hum_tear_rush',return_blur:'hum_red_blur'};
+  return slots.map(slot=>{
+    if(!slot||slot.familyId!=='dash') return slot;
+    const id=String(slot.abilityId||'');
+    if(slot.pathId==='delayed'||oldToNew[id]){
+      return {...slot,pathId:'rend',abilityId:oldToNew[id]||'hum_vein_dash'};
+    }
+    return slot;
+  });
+}
 /** Rewrites pre-overhaul Bowerbird flat saves into trinket/lure/build/display slot-state (live kit: trinket_toss, lure_call, bower_build, display_mark). */
 function migrateBowerbirdLegacyFamilySkillSlots(slots){
   if(!Array.isArray(slots)) return slots;
@@ -5046,6 +5446,13 @@ function migrateBowerbirdLegacyFamilySkillSlots(slots){
     }
     if(isLegacy || (wrongFam && !slot.pathId && LEGACY_BOWERBIRD_FLAT_SKILL_FOR_MIGRATION.has(id))){
       return {...slot,familyId:rule.fam,pathId:null,tier:0,abilityId:rule.base,masteries:[],masteryCount:0};
+    }
+    return slot;
+  }).map(slot=>{
+    if(!slot||slot.familyId!=='lure') return slot;
+    const echoMap={bow_echo_call:'bow_rank_call',bow_echo_lure:'bow_acrid_lure',bow_echo_snare:'bow_viral_snare'};
+    if(slot.pathId==='delayed'||echoMap[slot.abilityId]){
+      return {...slot,pathId:'toxic',abilityId:echoMap[String(slot.abilityId||'')]||'bow_rank_call'};
     }
     return slot;
   });
@@ -5081,6 +5488,13 @@ function migrateToucanLegacyFamilySkillSlots(slots){
       return {...slot,familyId:rule.fam,pathId:null,tier:0,abilityId:rule.base,masteries:[],masteryCount:0};
     }
     return slot;
+  }).map(slot=>{
+    if(!slot||slot.familyId!=='slam') return slot;
+    const slamMap={echo_slam:'tou_press_slam',return_smash:'tou_dent_smash',double_crush:'tou_split_crush'};
+    if(slot.pathId==='delayed'||slamMap[slot.abilityId]){
+      return {...slot,pathId:'cull',abilityId:slamMap[String(slot.abilityId||'')]||'tou_press_slam'};
+    }
+    return slot;
   });
 }
 /** Pre–family-evolution Swan flat kit (save migration only). Live: neck_jab, wing_sweep, grace_glide, poise_mark. */
@@ -5109,6 +5523,186 @@ function migrateSwanLegacyFamilySkillSlots(slots){
     }
     if(isLegacy || (wrongFam && !slot.pathId && LEGACY_SWAN_FLAT_SKILL_FOR_MIGRATION.has(id))){
       return {...slot,familyId:rule.fam,pathId:null,tier:0,abilityId:rule.base,masteries:[],masteryCount:0};
+    }
+    return slot;
+  });
+}
+/** Pre–family-evolution Flamingo flat kit (save migration only). Live: leg_jab, marsh_sweep, balance_pose, mire_mark. */
+const LEGACY_FLAMINGO_FLAT_SKILL_FOR_MIGRATION = Object.freeze(new Set([
+  'mudshot','marshCall','bogWhisper','rotChorus','peck','headWhip','windFeint','hum','preen','battleFocus','battle_focus',
+  'trackPrey','markPrey','probeStrike','needle_peck','decorate','bodySlam','heavyTalon','heavy_talon','talon_slam','savageKick',
+  'calmingSong','evade','wingShield','royalGuard','guard',
+]));
+function migrateFlamingoLegacyFamilySkillSlots(slots){
+  if(!Array.isArray(slots)) return slots;
+  const byIndex=[
+    {fam:'leg',base:'leg_jab',legacy:new Set(['mudshot','peck','headWhip','needle_peck','probeStrike','decorate'])},
+    {fam:'sweep',base:'marsh_sweep',legacy:new Set(['marshCall','rotChorus','bodySlam','heavyTalon','heavy_talon','talon_slam','savageKick','wingShield','royalGuard','guard'])},
+    {fam:'pose',base:'balance_pose',legacy:new Set(['bogWhisper','hum','preen','windFeint','calmingSong','evade','royalGuard','guard'])},
+    {fam:'mire',base:'mire_mark',legacy:new Set(['battleFocus','battle_focus','trackPrey','markPrey'])},
+  ];
+  return slots.map((slot,i)=>{
+    const rule=byIndex[i];
+    if(!slot||!rule) return slot;
+    const id=String(slot.abilityId||'');
+    const tier=Number(slot.tier)||0;
+    const branched=!!slot.pathId&&tier>0;
+    const wrongFam=slot.familyId!==rule.fam;
+    const isLegacy=id && rule.legacy.has(id);
+    if(branched && wrongFam){
+      return {...slot,familyId:rule.fam,pathId:null,tier:0,abilityId:rule.base,masteries:[],masteryCount:0};
+    }
+    if(isLegacy || (wrongFam && !slot.pathId && LEGACY_FLAMINGO_FLAT_SKILL_FOR_MIGRATION.has(id))){
+      return {...slot,familyId:rule.fam,pathId:null,tier:0,abilityId:rule.base,masteries:[],masteryCount:0};
+    }
+    return slot;
+  }).map(slot=>{
+    if(!slot||slot.familyId!=='sweep') return slot;
+    const wakeMap={flm_echo_sweep:'flm_reed_cut',flm_return_surge:'flm_bog_surge',flm_wake_crest:'flm_crimson_crest'};
+    if(slot.pathId==='delayed'||wakeMap[slot.abilityId]){
+      return {...slot,pathId:'redwake',abilityId:wakeMap[String(slot.abilityId||'')]||'flm_reed_cut'};
+    }
+    return slot;
+  });
+}
+/** Pre–family-evolution Secretary Bird flat kit (save migration only). Live: sec_leg_jab, sec_crushing_kick, hunter_stride, prey_mark. */
+const LEGACY_SECRETARY_FLAT_SKILL_FOR_MIGRATION = Object.freeze(new Set([
+  'headWhip','serratedSlash','guard','threatDisplay','peck','probeStrike','needle_peck','bracePeck','windFeint','hum','evade','calmingSong',
+  'battleFocus','battle_focus','trackPrey','markPrey','intimidate','taunt','bodySlam','heavyTalon','heavy_talon','talon_slam','savageKick',
+  'tearing_bite','rend_strike','tearing_jab','beakSlam','royalGuard','sitAndWait','crowDefend',
+  'serpentCrusher','trample','warCharge','warStomp','stampedeStrike',
+]));
+function migrateSecretaryLegacyFamilySkillSlots(slots){
+  if(!Array.isArray(slots)) return slots;
+  const byIndex=[
+    {fam:'leg',base:'sec_leg_jab',legacy:new Set(['headWhip','peck','probeStrike','needle_peck','bracePeck'])},
+    {fam:'kick',base:'sec_crushing_kick',legacy:new Set(['serratedSlash','tearing_bite','rend_strike','tearing_jab','bodySlam','heavyTalon','heavy_talon','talon_slam','savageKick','beakSlam','serpentCrusher','trample','warCharge','warStomp','stampedeStrike'])},
+    {fam:'stride',base:'hunter_stride',legacy:new Set(['guard','royalGuard','windFeint','hum','evade','calmingSong','sitAndWait','crowDefend'])},
+    {fam:'prey',base:'prey_mark',legacy:new Set(['threatDisplay','battleFocus','battle_focus','trackPrey','markPrey','intimidate','taunt'])},
+  ];
+  return slots.map((slot,i)=>{
+    const rule=byIndex[i];
+    if(!slot||!rule) return slot;
+    const id=String(slot.abilityId||'');
+    const tier=Number(slot.tier)||0;
+    const branched=!!slot.pathId&&tier>0;
+    const wrongFam=slot.familyId!==rule.fam;
+    const isLegacy=id && rule.legacy.has(id);
+    if(branched && wrongFam){
+      return {...slot,familyId:rule.fam,pathId:null,tier:0,abilityId:rule.base,masteries:[],masteryCount:0};
+    }
+    if(isLegacy || (wrongFam && !slot.pathId && LEGACY_SECRETARY_FLAT_SKILL_FOR_MIGRATION.has(id))){
+      return {...slot,familyId:rule.fam,pathId:null,tier:0,abilityId:rule.base,masteries:[],masteryCount:0};
+    }
+    return slot;
+  });
+}
+/**
+ * Maps pre–family-evolution Albatross flat kit onto alb_* slot bases.
+ * Legacy ids (migration only): galeStrike, supersonic, oceanCall, wingStorm, windChorus, hum, veil_wing, stormSong, sonicDirge.
+ */
+function migrateAlbatrossLegacyFamilySkillSlots(slots){
+  if(!Array.isArray(slots)) return slots;
+  const idxRules=[
+    {fam:'wing', newBase:'alb_wing_jab', legacyBases:['galeStrike','supersonic']},
+    {fam:'sweep', newBase:'alb_ocean_sweep', legacyBases:['oceanCall','wingStorm']},
+    {fam:'glide', newBase:'alb_glide_line', legacyBases:['windChorus','hum','veil_wing']},
+    {fam:'current', newBase:'alb_current_mark', legacyBases:['stormSong','sonicDirge']},
+  ];
+  return slots.map((slot,i)=>{
+    if(!slot||typeof slot!=='object') return slot;
+    const rule=idxRules[i];
+    if(!rule||slot.familyId!==rule.fam) return slot;
+    const tier=Number(slot.tier)||0;
+    const branched=!!slot.pathId&&tier>0;
+    if(branched){
+      return {...slot,pathId:null,tier:0,abilityId:rule.newBase,masteries:[],masteryCount:0};
+    }
+    const id=String(slot.abilityId||'');
+    if(rule.legacyBases.includes(id)){
+      return {...slot,pathId:null,tier:0,abilityId:rule.newBase,masteries:[],masteryCount:0};
+    }
+    return slot;
+  });
+}
+/**
+ * Pre–family-evolution Seagull flat kit → sgl_* bases.
+ * Legacy ids (migration only): featherFlick, diveSnatch, blindScreech, distractingChorus, shriekwave, …
+ * Not registered as registerAbilityAlias → sgl_* (those globals stay Magpie/Macaw/Shoebill chains).
+ */
+function migrateSeagullLegacyFamilySkillSlots(slots){
+  if(!Array.isArray(slots)) return slots;
+  const idxRules=[
+    {fam:'snap', newBase:'sgl_snap_peck', legacyBases:['featherFlick','peck','headWhip','rapidPeck','multiPeck']},
+    {fam:'swoop', newBase:'sgl_swoop_pass', legacyBases:['diveSnatch','swoop','dart','diveBomb','swoopCut']},
+    {fam:'cry', newBase:'sgl_raucous_cry', legacyBases:['blindScreech','shriekwave','windSlash','distractingChorus','dizzyChorus','dirge','taunt']},
+    {fam:'scavenge', newBase:'sgl_scavenge_mark', legacyBases:['distractingChorus','trackPrey','markPrey','predatorMark','battleFocus','battle_focus']},
+  ];
+  return slots.map((slot,i)=>{
+    if(!slot||typeof slot!=='object') return slot;
+    const rule=idxRules[i];
+    if(!rule||slot.familyId!==rule.fam) return slot;
+    const tier=Number(slot.tier)||0;
+    const branched=!!slot.pathId&&tier>0;
+    if(branched){
+      return {...slot,pathId:null,tier:0,abilityId:rule.newBase,masteries:[],masteryCount:0};
+    }
+    const id=String(slot.abilityId||'');
+    if(rule.legacyBases.includes(id)){
+      return {...slot,pathId:null,tier:0,abilityId:rule.newBase,masteries:[],masteryCount:0};
+    }
+    return slot;
+  });
+}
+/**
+ * Pre–family-evolution Shoebill flat kit → sbl_* bases.
+ * Migration-only strings (no live template/action): bracePeck, shoebillClamp, guard, huntersCry, victoryChant, etc.
+ */
+function migrateShoebillLegacyFamilySkillSlots(slots){
+  if(!Array.isArray(slots)) return slots;
+  const idxRules=[
+    {fam:'beak', newBase:'sbl_beak_chop', legacyBases:['bracePeck','peck','headWhip','probeStrike','needle_peck','mockingPeck']},
+    {fam:'crack', newBase:'sbl_skull_crack', legacyBases:['shoebillClamp','heavyTalon','heavy_talon','talon_slam','beakSlam','bodySlam']},
+    {fam:'stance', newBase:'sbl_still_stance', legacyBases:['guard','royalGuard','wingShield','iron_guard','bulwark_brace','crowDefend','iceGuard']},
+    {fam:'dread', newBase:'sbl_dread_mark', legacyBases:['huntersCry','victoryChant','dread_call','dreadCall','trackPrey','markPrey','predatorMark','battleFocus','battle_focus','featherRuffle']},
+  ];
+  return slots.map((slot,i)=>{
+    if(!slot||typeof slot!=='object') return slot;
+    const rule=idxRules[i];
+    if(!rule) return slot;
+    const tier=Number(slot.tier)||0;
+    const branched=!!slot.pathId&&tier>0;
+    if(branched && (slot.familyId===rule.fam || rule.legacyBases.includes(String(slot.abilityId||'')))){
+      return {...slot,familyId:rule.fam,pathId:null,tier:0,abilityId:rule.newBase,masteries:[],masteryCount:0};
+    }
+    if(slot.familyId!==rule.fam){
+      const id=String(slot.abilityId||'');
+      if(rule.legacyBases.includes(id)){
+        return {...slot,familyId:rule.fam,pathId:null,tier:0,abilityId:rule.newBase,masteries:[],masteryCount:0};
+      }
+      return slot;
+    }
+    const id=String(slot.abilityId||'');
+    if(rule.legacyBases.includes(id)){
+      return {...slot,pathId:null,tier:0,abilityId:rule.newBase,masteries:[],masteryCount:0};
+    }
+    return slot;
+  });
+}
+function migrateGooseLegacyFamilySkillSlots(slots){
+  if(!Array.isArray(slots)) return slots;
+  const layout=[
+    {familyId:'beak', abilityId:'gos_beak_snap', oldFamilies:new Set(['peck'])},
+    {familyId:'body', abilityId:'gos_body_check', oldFamilies:new Set(['honk','heavy'])},
+    {familyId:'honk', abilityId:'gos_honk_blast', oldFamilies:new Set(['guard'])},
+    {familyId:'brace', abilityId:'gos_brace_up', oldFamilies:new Set(['heavy'])},
+  ];
+  return slots.map((slot,i)=>{
+    if(!slot||typeof slot!=='object') return slot;
+    const L=layout[i];
+    if(!L) return slot;
+    if(L.oldFamilies.has(slot.familyId) || slot.familyId!==L.familyId){
+      return {...slot,familyId:L.familyId,pathId:null,tier:0,abilityId:L.abilityId,masteries:[],masteryCount:0};
     }
     return slot;
   });
@@ -5288,6 +5882,12 @@ function syncPlayerAbilitiesFromSkillSlots(player){
     if(player.birdKey==='bowerbird' && slot.abilityId==='trinket_toss') ab.fixedMainAttackCost = true;
     if(player.birdKey==='toucan' && slot.abilityId==='toucan_beak_jab') ab.fixedMainAttackCost = true;
     if(player.birdKey==='swan' && slot.abilityId==='neck_jab') ab.fixedMainAttackCost = true;
+    if(player.birdKey==='flamingo' && slot.abilityId==='leg_jab') ab.fixedMainAttackCost = true;
+    if((player.birdKey==='secretary' || player.birdKey==='secretarybird') && slot.abilityId==='sec_leg_jab') ab.fixedMainAttackCost = true;
+    if(player.birdKey==='albatross' && slot.abilityId==='alb_wing_jab') ab.fixedMainAttackCost = true;
+    if(player.birdKey==='seagull' && slot.abilityId==='sgl_snap_peck') ab.fixedMainAttackCost = true;
+    if(player.birdKey==='goose' && slot.abilityId==='gos_beak_snap') ab.fixedMainAttackCost = true;
+    if(player.birdKey==='shoebill' && slot.abilityId==='sbl_beak_chop') ab.fixedMainAttackCost = true;
     return ab;
   });
 }
@@ -5321,9 +5921,16 @@ function ensureFamilyEvolutionState(player){
         });
     if(birdKey==='kiwi') rawSlots = migrateKiwiLegacyFamilySkillSlots(rawSlots);
     if(birdKey==='robin') rawSlots = migrateRobinLegacyFamilySkillSlots(rawSlots);
+    if(birdKey==='hummingbird') rawSlots = migrateHummingbirdLegacyFamilySkillSlots(rawSlots);
     if(birdKey==='bowerbird') rawSlots = migrateBowerbirdLegacyFamilySkillSlots(rawSlots);
     if(birdKey==='toucan') rawSlots = migrateToucanLegacyFamilySkillSlots(rawSlots);
     if(birdKey==='swan') rawSlots = migrateSwanLegacyFamilySkillSlots(rawSlots);
+    if(birdKey==='flamingo') rawSlots = migrateFlamingoLegacyFamilySkillSlots(rawSlots);
+    if(birdKey==='albatross') rawSlots = migrateAlbatrossLegacyFamilySkillSlots(rawSlots);
+    if(birdKey==='seagull') rawSlots = migrateSeagullLegacyFamilySkillSlots(rawSlots);
+    if(birdKey==='shoebill') rawSlots = migrateShoebillLegacyFamilySkillSlots(rawSlots);
+    if(birdKey==='goose') rawSlots = migrateGooseLegacyFamilySkillSlots(rawSlots);
+    if(birdKey==='secretary' || birdKey==='secretarybird') rawSlots = migrateSecretaryLegacyFamilySkillSlots(rawSlots);
     state.skillSlots = baseSlots.map((baseSlot, idx)=>normalizeSkillSlotState(rawSlots[idx], baseSlot, birdKey));
     syncPlayerAbilitiesFromSkillSlots(player);
   }else{
@@ -7010,7 +7617,6 @@ function renderStatuses(id, statuses) {
     else if (k==='confused') { b.className='status-badge confused'; b.textContent=`🌀 Confused(${v.turns}t,${v.skipChance}%)`; }
     else if (k==='tookie') { b.className='status-badge stunned'; b.textContent=`🦜 Tookie(+${v.atkBonus}%atk,${v.turns}t)`; }
     else if (k==='humDodge') { b.className='status-badge evading'; b.textContent=`🎵 Hum+${v.bonus}%(${v.turns}t)`; }
-    else if (k==='flamingoATK') { b.className='status-badge buffed'; b.textContent=`🦩 +20%ATK(${v.turns}t)`; }
     else if (k==='lastStandBuff') { b.className='status-badge crit'; b.textContent=`🦅 LstStnd+${v.atkBonus}ATK(${v.turns}t)`; }
     // MDodge card bonus badge (only shown when non-zero)
     else if (k==='mdodgeCard' && v>0) { b.className='status-badge evading'; b.textContent=`✦${v}%MDdg`; }
@@ -7467,12 +8073,15 @@ const ABILITY_DISPLAY_TAGS = {
   rapidPeck:['BASIC'], blackPeck:['BASIC'], gooseHonk:['BASIC'], headWhip:['BASIC'], kick:['BASIC'], raptorKick:['BASIC'],
   talonStrike:['HEAVY'], heavyTalon:['HEAVY'], bodySlam:['HEAVY'], trample:['HEAVY'], skyStrike:['HEAVY','SIGNATURE'],
   windSlash:['SPELL'], shriekwave:['SPELL','CONTROL'], owlPsyche:['SPELL','CONTROL','SIGNATURE'], mudLash:['SPELL','CONTROL','SIGNATURE'],
-  murderMurmuration:['MULTI','SIGNATURE'], stickLance:['HEAVY','SIGNATURE'], shoebillClamp:['HEAVY','CONTROL','SIGNATURE'],
+  murderMurmuration:['MULTI','SIGNATURE'], stickLance:['HEAVY','SIGNATURE'],
   fishSnatcher:['UTILITY','HEAL','SIGNATURE'], fruitBomb:['SPELL','SIGNATURE'],
   roost:['HEAL'], preen:['UTILITY','HEAL'], crowDefend:['GUARD'], guard:['GUARD'], evade:['UTILITY'],
   intimidate:['CONTROL'], threatDisplay:['CONTROL'], dreadCall:['UTILITY','CONTROL'],
   victoryChant:['UTILITY'], battleChirp:['UTILITY'], battleFocus:['UTILITY'], focusChirp:['UTILITY'],
-  diveSnatch:['UTILITY','SIGNATURE'], steal_shine:['UTILITY','SIGNATURE'], feather_flick:['UTILITY'], featherFlick:['UTILITY'], graceStep:['UTILITY'],
+  steal_shine:['UTILITY','SIGNATURE'], feather_flick:['UTILITY'], featherFlick:['UTILITY'], graceStep:['UTILITY'],
+  sgl_snap_peck:['BASIC'], sgl_swoop_pass:['HEAVY','SIGNATURE'], sgl_raucous_cry:['UTILITY','CONTROL'], sgl_scavenge_mark:['UTILITY'],
+  gos_beak_snap:['BASIC'], gos_body_check:['HEAVY','SIGNATURE'], gos_honk_blast:['UTILITY','CONTROL'], gos_brace_up:['GUARD'],
+  sbl_beak_chop:['BASIC'], sbl_skull_crack:['HEAVY','SIGNATURE'], sbl_still_stance:['GUARD'], sbl_dread_mark:['UTILITY'],
   savageKick:['HEAVY','SIGNATURE'], raptorKickFrenzy:['HEAVY','MULTI','SIGNATURE'], honkTerror:['CONTROL','SIGNATURE'],
   rallyCall:['UTILITY'], focusSight:['UTILITY'], battleRhythm:['UTILITY'],
 };
@@ -8568,10 +9177,30 @@ function dealDamage(target,amount,isCrit=false,isMagic=false,srcAbility=null) {
       const poised=(es.exposedGuard?.pct||0)>0||(es.weaken||0)>0;
       if((isAttack||isSpell)&&(accLoss||poised)) dmg=Math.floor(dmg*1.06);
     }
+    if(G.player?.birdKey==='flamingo' && BIRDS.flamingo?.passive?.id==='marshPoise'){
+      const es=G.enemyStatus||{};
+      const slowOn=(es.slow&&((typeof es.slow==='object'&&(es.slow.turns||0)>0)||(typeof es.slow==='number'&&es.slow>0)));
+      const weak=(es.weaken||0)>0;
+      if((isAttack||isSpell)&&(slowOn||weak)) dmg=Math.floor(dmg*1.06);
+      if((isAttack||isSpell)&&(es.accDebuff||0)>=10) dmg=Math.floor(dmg*1.04);
+    }
+    if(G.player?.birdKey==='albatross' && BIRDS.albatross?.passive?.id==='tradeWinds'){
+      const es=G.enemyStatus||{};
+      const slowOn=(es.slow&&((typeof es.slow==='object'&&(es.slow.turns||0)>0)||(typeof es.slow==='number'&&es.slow>0)));
+      if(isAttack && slowOn) dmg=Math.floor(dmg*1.06);
+    }
+    if((G.player?.birdKey==='secretary'||G.player?.birdKey==='secretarybird') && BIRDS.secretary?.passive?.id==='stiltVerdict'){
+      const es=G.enemyStatus||{};
+      const slowOn=(es.slow&&((typeof es.slow==='object'&&(es.slow.turns||0)>0)||(typeof es.slow==='number'&&es.slow>0)));
+      const para=(es.paralyzed||0)>0;
+      if(isAttack && para) dmg=Math.floor(dmg*1.06);
+      if(isAttack && slowOn) dmg=Math.floor(dmg*1.05);
+      if(isAttack && (G.enemy.stats.hp||1)<=Math.floor((G.enemy.stats.maxHp||1)*0.45)) dmg=Math.floor(dmg*1.05);
+    }
     if(G.player?.birdKey==='blackCockatoo' && ((G.enemyStatus?.feared||0)>0 || (G.enemyStatus?.paralyzed||0)>0)) dmg=Math.floor(dmg*1.08);
     if(G.player?.birdKey==='kookaburra' && ((G.enemyStatus?.feared||0)>0 || (G.enemyStatus?.paralyzed||0)>0)) dmg=Math.floor(dmg*1.05);
     if(G.player?.birdKey==='harpy' && (G.enemy.stats.hp||1)<=Math.floor((G.enemy.stats.maxHp||1)*0.4)) dmg=Math.floor(dmg*1.18);
-    if(G.player?.birdKey==='seagull' && (G.enemy.stats.hp||1)<=Math.floor((G.enemy.stats.maxHp||1)*0.6)) dmg=Math.floor(dmg*1.20);
+    if(G.player?.birdKey==='seagull' && BIRDS.seagull?.passive?.id==='scavengeFlock' && (G.enemy.stats.hp||1)<=Math.floor((G.enemy.stats.maxHp||1)*0.6)) dmg=Math.floor(dmg*1.20);
     if(classPerkCtx.executionLine && (G.enemy.stats.hp||1)<=Math.floor((G.enemy.stats.maxHp||1)*0.4)) dmg=Math.floor(dmg*1.20);
     if(classPerkCtx.patientHunter && !G._perkFirstVsFullUsed && (G.enemy.stats.hp||0)>=(G.enemy.stats.maxHp||1)){
       dmg=Math.floor(dmg*1.15);
@@ -8800,8 +9429,6 @@ function pdmg(mult=1,ab=null) {
   if (G.warcryActive) b=Math.floor(b*(1+G.warcryATK/100));
   if (G.sitAndWaitActive) b=Math.floor(b*1.25);
   if (G.tookieActive && G.playerStatus.tookie) b=Math.floor(b*(1+G.playerStatus.tookie.atkBonus/100));
-  // Flamingo Balance Master ATK bonus
-  if (G.playerStatus.flamingoATK&&G.playerStatus.flamingoATK.turns>0) b=Math.floor(b*1.20);
   const __adm=(G.actionDamageHitsRemaining&&G.actionDamageHitsRemaining>0)?(G.actionDamageMult||1):1;
   let base=Math.floor(roll(Math.floor(b*.8),Math.floor(b*1.2))*mult*__adm);
   if((G.actionDamageHitsRemaining||0)>0){ G.actionDamageHitsRemaining=Math.max(0,G.actionDamageHitsRemaining-1); if(G.actionDamageHitsRemaining===0) G.actionDamageMult=1; }
@@ -9153,7 +9780,10 @@ async function tickDoTs(who) {
   }
   // Delayed (Resonance)
   if (status.delayed&&status.delayed.dmg>0) {
-    const dmg=status.delayed.dmg;
+    let dmg=status.delayed.dmg;
+    if(who==='enemy' && G.player?.birdKey==='flamingo' && BIRDS.flamingo?.passive?.id==='marshPoise'){
+      dmg=Math.max(1, Math.floor(dmg*1.12));
+    }
     stats.hp-=dmg;
     spawnFloat(who,`🎵 -${dmg}`,'fn-status');
     setHpBar(who,stats.hp,stats.maxHp);
@@ -9561,22 +10191,6 @@ const ACTIONS = {
     if(tryApplyAilment('enemy','confused',ab))spawnFloat('enemy','🌀 Confuse!','fn-status');
     if(lv>=3&&tryApplyAilment('enemy','weaken',ab))spawnFloat('enemy','🐔 Weaken!','fn-status');
     logMsg(`🗡 Shadow Feint deals ${r.dmgDealt}.`,'player-action');
-  },
-  async shoebillClamp(ab) {
-    const lv=ab.level;
-    const mC=[8,7,6,5][lv-1];
-    if(chance(Math.max(2,mC-getPlayerHitBonus(ab)))){await doMiss('player');logMsg(`Shoebill Clamp snapped air!`,'miss');return;}
-    G.enemyStatus.defending=0; // ignores some dodge
-    const r=dealDamage('enemy',pdmg(1.3+.15*(lv-1)));
-    await doAttack('player','enemy',r);
-    setHpBar('enemy',G.enemy.stats.hp,G.enemy.stats.maxHp);
-    if(G.battleOver)return;
-    const stunC=[25,30,35,40][lv-1];
-    if(rollStunChance(stunC)){G.enemyStatus.stunned=(G.enemyStatus.stunned||0)+1;spawnFloat('enemy','😵 Stunned!','fn-status');}
-    const stacks=lv>=4?3:lv>=3?2:lv>=2?1:0;
-    if(stacks>0)applyAilment('enemy','poison',stacks);
-    if(lv>=4&&tryApplyAilment('enemy','weaken',ab))spawnFloat('enemy','🐔 Weaken!','fn-status');
-    logMsg(`👄 Shoebill Clamp! ${r.dmgDealt} dmg${stacks>0?' +'+stacks+' Poison':''}!`,'player-action');
   },
   async serpentCrusher(ab) {
     const lv=ab.level;
@@ -10652,8 +11266,6 @@ registerAbilityAlias('rending_talon','beakSlam','Rending Talon',{type:'physical'
 registerAbilityAlias('finisher_slam','beakSlam','Finisher Slam',{type:'physical',btnType:'physical'});
 registerAbilityAlias('execution_crush','deathDive','Execution Crush',{type:'physical',btnType:'physical'});
 Object.assign(ABILITY_TEMPLATES.peck||{}, makeEvolutionAbilityTemplate('peck','Peck','Neutral base peck. Cheap harassment before specializing.', {type:'physical', btnType:'physical', energy:1, levels:[{desc:'100% dmg, 10% miss.'},{desc:'108% dmg, 9% miss.'},{desc:'116% dmg, 8% miss.'},{desc:'124% dmg, 7% miss.'}]}));
-Object.assign(ABILITY_TEMPLATES.territorial_honk||{}, makeEvolutionAbilityTemplate('territorial_honk','Territorial Honk','Goose base honk. Loud territorial pressure before branching.', {type:'physical', btnType:'physical', energy:2, levels:[{desc:'Lv.1 — 115% strike force, 25% miss. Raw honk pressure.'},{desc:'Lv.2 — 125% force, 23% miss. Deeper boom, truer aim.'},{desc:'Lv.3 — 135% force, 21% miss. Echoing claim on the field.'},{desc:'Lv.4 — 145% force, 19% miss. Apex territorial blast.'}]}));
-Object.assign(ABILITY_TEMPLATES.talon_slam||{}, makeEvolutionAbilityTemplate('talon_slam','Talon Slam','Goose base heavy hit. Grounded body-pressure before branching.', {type:'physical', btnType:'physical', energy:2, levels:[{desc:'140% dmg, 22% miss.'},{desc:'150% dmg, 20% miss.'},{desc:'160% dmg, 18% miss.'},{desc:'170% dmg, 16% miss.'}], damageScaling:{ baseScaler:'ATT', secondaryScaler:'DEF', secondaryScaleValue:0.26, scalingNote:'DEF adds slam weight.', conditionalBonuses:[{type:'while_guarding', damageBonus:0.06}] }}));
 Object.assign(ABILITY_TEMPLATES.raking_peck||{}, makeEvolutionAbilityTemplate('raking_peck','Raking Peck','Peck-line bleed branch. Ugly close-range wound pressure.', {type:'physical', btnType:'physical', energy:1, levels:[{desc:'100% dmg. Bleed 10%.'},{desc:'108% dmg. Bleed 12%.'},{desc:'116% dmg. Bleed 14%.'},{desc:'124% dmg. Bleed 16%.'}]}));
 Object.assign(ABILITY_TEMPLATES.tearing_bite||{}, makeEvolutionAbilityTemplate('tearing_bite','Tearing Bite','Peck-line bleed evolution. Better against bleeding prey.', {type:'physical', btnType:'physical', energy:1, levels:[{desc:'112% dmg. Bleed 15%. Bonus vs bleeding.'},{desc:'120% dmg. Bleed 17%. Bonus vs bleeding.'},{desc:'128% dmg. Bleed 19%. Bonus vs bleeding.'},{desc:'136% dmg. Bleed 21%. Bonus vs bleeding.'}]}));
 Object.assign(ABILITY_TEMPLATES.savage_maul||{}, makeEvolutionAbilityTemplate('savage_maul','Savage Maul','Peck-line finisher. Brutal payoff against wounded prey.', {type:'physical', btnType:'physical', energy:1, levels:[{desc:'124% dmg. Bleed 20%. Stronger vs wounded.'},{desc:'132% dmg. Bleed 22%. Stronger vs wounded.'},{desc:'140% dmg. Bleed 24%. Stronger vs wounded.'},{desc:'148% dmg. Bleed 26%. Stronger vs wounded.'}]}));
@@ -10663,57 +11275,166 @@ Object.assign(ABILITY_TEMPLATES.submission_maul||{}, makeEvolutionAbilityTemplat
 Object.assign(ABILITY_TEMPLATES.needle_peck||{}, makeEvolutionAbilityTemplate('needle_peck','Needle Peck','Peck-line pierce branch. Sharp anti-armor harassment.', {type:'physical', btnType:'physical', energy:1, levels:[{desc:'102% dmg. Pierce 10% DEF.'},{desc:'110% dmg. Pierce 14% DEF.'},{desc:'118% dmg. Pierce 18% DEF.'},{desc:'126% dmg. Pierce 20% DEF.'}]}));
 Object.assign(ABILITY_TEMPLATES.bodkin_bite||{}, makeEvolutionAbilityTemplate('bodkin_bite','Bodkin Bite','Peck-line pierce evolution. Better against defense.', {type:'physical', btnType:'physical', energy:1, levels:[{desc:'114% dmg. Pierce 20% DEF.'},{desc:'122% dmg. Pierce 24% DEF.'},{desc:'130% dmg. Pierce 28% DEF.'},{desc:'138% dmg. Pierce 30% DEF.'}]}));
 Object.assign(ABILITY_TEMPLATES.armor_maul||{}, makeEvolutionAbilityTemplate('armor_maul','Armor Maul','Peck-line anti-armor finisher. Punishes guard.', {type:'physical', btnType:'physical', energy:1, levels:[{desc:'126% dmg. Pierce 30% DEF. Bonus vs guard.'},{desc:'134% dmg. Pierce 32% DEF. Bonus vs guard.'},{desc:'142% dmg. Pierce 34% DEF. Bonus vs guard.'},{desc:'150% dmg. Pierce 36% DEF. Bonus vs guard.'}]}));
-Object.assign(ABILITY_TEMPLATES.honk_terror||{}, makeEvolutionAbilityTemplate('honk_terror','Honk Terror','Honk-line neutral pressure shout kept for legacy compatibility.', {type:'physical', btnType:'physical', energy:2, levels:[{desc:'120% dmg, 24% miss.'},{desc:'130% dmg, 22% miss.'},{desc:'140% dmg, 20% miss.'},{desc:'150% dmg, 18% miss.'}]}));
-Object.assign(ABILITY_TEMPLATES.dread_honk||{}, makeEvolutionAbilityTemplate('dread_honk','Dread Honk','Honk-line fear branch. Signature goose terror.', {type:'utility', btnType:'utility', energy:2, levels:[{desc:'Fear 20%.'},{desc:'Fear 22%.'},{desc:'Fear 25%.'},{desc:'Fear 28%.'}]}));
-Object.assign(ABILITY_TEMPLATES.terror_blast||{}, makeEvolutionAbilityTemplate('terror_blast','Terror Blast','Honk-line fear evolution. Feared enemies lose accuracy.', {type:'physical', btnType:'physical', energy:2, levels:[{desc:'120% dmg. Fear 25%. Feared enemies lose ACC.'},{desc:'128% dmg. Fear 27%. Feared enemies lose ACC.'},{desc:'136% dmg. Fear 30%. Feared enemies lose ACC.'},{desc:'144% dmg. Fear 32%. Feared enemies lose ACC.'}]}));
-Object.assign(ABILITY_TEMPLATES.panic_terror||{}, makeEvolutionAbilityTemplate('panic_terror','Panic Terror','Honk-line fear finisher. Strong payoff vs feared foes.', {type:'utility', btnType:'utility', energy:2, levels:[{desc:'Fear 30%. Bonus vs feared.'},{desc:'Fear 32%. Bonus vs feared.'},{desc:'Fear 34%. Bonus vs feared.'},{desc:'Fear 36%. Bonus vs feared.'}]}));
-Object.assign(ABILITY_TEMPLATES.shock_honk||{}, makeEvolutionAbilityTemplate('shock_honk','Shock Honk','Honk-line paralysis branch. Disrupt enemy actions.', {type:'physical', btnType:'physical', energy:2, levels:[{desc:'115% dmg. Paralysis 15%.'},{desc:'123% dmg. Paralysis 17%.'},{desc:'131% dmg. Paralysis 20%.'},{desc:'139% dmg. Paralysis 22%.'}]}));
-Object.assign(ABILITY_TEMPLATES.stunning_blast||{}, makeEvolutionAbilityTemplate('stunning_blast','Stunning Blast','Honk-line paralysis evolution. Heavier lockdown pressure.', {type:'spell', btnType:'spell', energy:2, levels:[{desc:'Paralysis 20%.'},{desc:'Paralysis 22%.'},{desc:'Paralysis 24%.'},{desc:'Paralysis 26%.'}]}));
-Object.assign(ABILITY_TEMPLATES.lockdown_terror||{}, makeEvolutionAbilityTemplate('lockdown_terror','Lockdown Terror','Honk-line paralysis finisher. Strong control payoff.', {type:'spell', btnType:'spell', energy:2, levels:[{desc:'Lv.1 — 25% Paralysis; locks tempo hard.'},{desc:'Lv.2 — 27% Paralysis; longer lockdown window.'},{desc:'Lv.3 — 29% Paralysis; enemy actions stutter more often.'},{desc:'Lv.4 — 31% Paralysis; near-total rhythm break.'}]}));
-Object.assign(ABILITY_TEMPLATES.crushing_honk||{}, makeEvolutionAbilityTemplate('crushing_honk','Crushing Honk','Honk-line weaken branch. Oppressive stat pressure.', {type:'physical', btnType:'physical', energy:2, levels:[{desc:'115% dmg. Weaken 15%.'},{desc:'123% dmg. Weaken 17%.'},{desc:'131% dmg. Weaken 20%.'},{desc:'139% dmg. Weaken 22%.'}]}));
-Object.assign(ABILITY_TEMPLATES.oppression_blast||{}, makeEvolutionAbilityTemplate('oppression_blast','Oppression Blast','Honk-line weaken evolution. Suppresses enemy output.', {type:'utility', btnType:'utility', energy:2, levels:[{desc:'Weaken 20%.'},{desc:'Weaken 22%.'},{desc:'Weaken 24%.'},{desc:'Weaken 26%.'}]}));
-Object.assign(ABILITY_TEMPLATES.tyrant_terror||{}, makeEvolutionAbilityTemplate('tyrant_terror','Tyrant Terror','Honk-line oppressive finisher. Better vs weakened foes.', {type:'utility', btnType:'utility', energy:2, levels:[{desc:'Weaken 25%. Bonus vs weakened.'},{desc:'Weaken 27%. Bonus vs weakened.'},{desc:'Weaken 29%. Bonus vs weakened.'},{desc:'Weaken 31%. Bonus vs weakened.'}]}));
-Object.assign(ABILITY_TEMPLATES.iron_guard||{}, makeEvolutionAbilityTemplate('iron_guard','Iron Guard','Guard-line block branch. Escalating mitigation.', {type:'utility', btnType:'utility', energy:1, levels:[{desc:'Strong block stance.'},{desc:'Stronger block stance.'},{desc:'Heavier block stance.'},{desc:'Elite block stance.'}]}));
-Object.assign(ABILITY_TEMPLATES.bulwark_brace||{}, makeEvolutionAbilityTemplate('bulwark_brace','Bulwark Brace','Guard-line block evolution. Harder to move.', {type:'utility', btnType:'utility', energy:1, levels:[{desc:'Brace with durable mitigation.'},{desc:'Brace with stronger mitigation.'},{desc:'Brace with powerful mitigation.'},{desc:'Brace with fortress mitigation.'}]}));
-Object.assign(ABILITY_TEMPLATES.fortress_stance||{}, makeEvolutionAbilityTemplate('fortress_stance','Fortress Stance','Guard-line pure tank finisher.', {type:'utility', btnType:'utility', energy:1, levels:[{desc:'Lv.1 — Warden shell: peak damage shaving for the turn.'},{desc:'Lv.2 — Deeper shell: fewer cracks under burst hits.'},{desc:'Lv.3 — Iron shell: blunt the heaviest swings.'},{desc:'Lv.4 — Immovable court: legendary stand; you ARE the wall.'}]}));
-Object.assign(ABILITY_TEMPLATES.spite_guard||{}, makeEvolutionAbilityTemplate('spite_guard','Spite Guard','Guard-line retaliation branch. Punish attackers.', {type:'utility', btnType:'utility', energy:1, levels:[{desc:'Retaliation stance.'},{desc:'Stronger retaliation stance.'},{desc:'Heavy retaliation stance.'},{desc:'Brutal retaliation stance.'}]}));
-Object.assign(ABILITY_TEMPLATES.punish_brace||{}, makeEvolutionAbilityTemplate('punish_brace','Punish Brace','Guard-line retaliation evolution. More punishment.', {type:'utility', btnType:'utility', energy:1, levels:[{desc:'Brace and punish attackers.'},{desc:'Brace and punish attackers harder.'},{desc:'Brace and punish attackers heavily.'},{desc:'Brace and punish attackers brutally.'}]}));
-Object.assign(ABILITY_TEMPLATES.retribution_fortress||{}, makeEvolutionAbilityTemplate('retribution_fortress','Retribution Fortress','Guard-line retaliation finisher.', {type:'physical', btnType:'physical', energy:1, levels:[{desc:'Lv.1 — Answering strike after a brace; hurts those who overcommit.'},{desc:'Lv.2 — Heavier counter-slam; punishes greedy attacks.'},{desc:'Lv.3 — Crushing reprisal; stagger and pain in one beat.'},{desc:'Lv.4 — Fortress verdict: apex retaliatory blow.'}]}));
-Object.assign(ABILITY_TEMPLATES.steady_guard||{}, makeEvolutionAbilityTemplate('steady_guard','Steady Guard','Guard-line recover branch. Sustain while holding ground.', {type:'utility', btnType:'utility', energy:1, levels:[{desc:'Recover while guarding.'},{desc:'Recover more while guarding.'},{desc:'Recover strongly while guarding.'},{desc:'Recover heavily while guarding.'}]}));
-Object.assign(ABILITY_TEMPLATES.restoring_brace||{}, makeEvolutionAbilityTemplate('restoring_brace','Restoring Brace','Guard-line recovery evolution. Better sustain.', {type:'utility', btnType:'utility', energy:1, levels:[{desc:'Brace and restore HP.'},{desc:'Brace and restore more HP.'},{desc:'Brace and restore strong HP.'},{desc:'Brace and restore major HP.'}]}));
-Object.assign(ABILITY_TEMPLATES.enduring_fortress||{}, makeEvolutionAbilityTemplate('enduring_fortress','Enduring Fortress','Guard-line sustain finisher. Endure and outlast.', {type:'utility', btnType:'utility', energy:1, levels:[{desc:'Lv.1 — Fortify and mend; guard turns into recovery.'},{desc:'Lv.2 — Stronger mend under shell; outlast their burst.'},{desc:'Lv.3 — Deep recovery pulse; rise from the guard intact.'},{desc:'Lv.4 — Eternal roost: maximum sustain from the stance.'}]}));
-Object.assign(ABILITY_TEMPLATES.heavy_talon||{}, makeEvolutionAbilityTemplate('heavy_talon','Heavy Talon','Heavy-line trample branch. Raw force.', {type:'physical', btnType:'physical', energy:2, levels:[{desc:'150% dmg, 22% miss.'},{desc:'160% dmg, 20% miss.'},{desc:'170% dmg, 18% miss.'},{desc:'180% dmg, 16% miss.'}], damageScaling:{ baseScaler:'ATT', secondaryScaler:'DEF', secondaryScaleValue:0.32, scalingNote:'DEF adds body-weight damage.', conditionalBonuses:[{type:'while_guarding', damageBonus:0.08}] }}));
-Object.assign(ABILITY_TEMPLATES.trample_slam||{}, makeEvolutionAbilityTemplate('trample_slam','Trample Slam','Heavy-line trample evolution. Bigger body-pressure.', {type:'physical', btnType:'physical', energy:2, levels:[{desc:'165% dmg, 20% miss.'},{desc:'175% dmg, 18% miss.'},{desc:'185% dmg, 16% miss.'},{desc:'195% dmg, 14% miss.'}], damageScaling:{ baseScaler:'ATT', secondaryScaler:'DEF', secondaryScaleValue:0.38, scalingNote:'DEF adds trample force.', conditionalBonuses:[{type:'while_guarding', damageBonus:0.10}] }}));
-Object.assign(ABILITY_TEMPLATES.crushing_stampede||{}, makeEvolutionAbilityTemplate('crushing_stampede','Crushing Stampede','Heavy-line raw-force finisher.', {type:'physical', btnType:'physical', energy:2, levels:[{desc:'180% dmg, 18% miss.'},{desc:'190% dmg, 16% miss.'},{desc:'200% dmg, 14% miss.'},{desc:'210% dmg, 12% miss.'}], damageScaling:{ baseScaler:'ATT', secondaryScaler:'DEF', secondaryScaleValue:0.45, scalingNote:'DEF adds stampede crush.', conditionalBonuses:[{type:'while_guarding', damageBonus:0.12}] }}));
-Object.assign(ABILITY_TEMPLATES.wing_buffet||{}, makeEvolutionAbilityTemplate('wing_buffet','Wing Buffet','Heavy-line buffet branch. Shove and disrupt.', {type:'physical', btnType:'physical', energy:2, levels:[{desc:'145% dmg, 20% miss. Disrupt enemy footing.'},{desc:'155% dmg, 18% miss. Disrupt enemy footing.'},{desc:'165% dmg, 16% miss. Disrupt enemy footing.'},{desc:'175% dmg, 14% miss. Disrupt enemy footing.'}], damageScaling:{ baseScaler:'ATT', secondaryScaler:'DEF', secondaryScaleValue:0.28, scalingNote:'DEF adds shove force.' }}));
-Object.assign(ABILITY_TEMPLATES.bone_buffet||{}, makeEvolutionAbilityTemplate('bone_buffet','Bone Buffet','Heavy-line buffet evolution. Harsher body pressure.', {type:'physical', btnType:'physical', energy:2, levels:[{desc:'160% dmg, 20% miss.'},{desc:'170% dmg, 18% miss.'},{desc:'180% dmg, 16% miss.'},{desc:'190% dmg, 14% miss.'}], damageScaling:{ baseScaler:'ATT', secondaryScaler:'DEF', secondaryScaleValue:0.34, scalingNote:'DEF adds buffet impact.' }}));
-Object.assign(ABILITY_TEMPLATES.gale_crush||{}, makeEvolutionAbilityTemplate('gale_crush','Gale Crush','Heavy-line buffet finisher. Violent grounded shove.', {type:'physical', btnType:'physical', energy:2, levels:[{desc:'175% dmg, 18% miss.'},{desc:'185% dmg, 16% miss.'},{desc:'195% dmg, 14% miss.'},{desc:'205% dmg, 12% miss.'}], damageScaling:{ baseScaler:'ATT', secondaryScaler:'DEF', secondaryScaleValue:0.40, scalingNote:'DEF adds crush force.', conditionalBonuses:[{type:'while_guarding', damageBonus:0.08}] }}));
-Object.assign(ABILITY_TEMPLATES.rending_talon||{}, makeEvolutionAbilityTemplate('rending_talon','Rending Talon','Heavy-line execute branch. Better against low HP.', {type:'physical', btnType:'physical', energy:2, levels:[{desc:'150% dmg. Bonus vs low HP.'},{desc:'160% dmg. Bonus vs low HP.'},{desc:'170% dmg. Bonus vs low HP.'},{desc:'180% dmg. Bonus vs low HP.'}]}));
-Object.assign(ABILITY_TEMPLATES.finisher_slam||{}, makeEvolutionAbilityTemplate('finisher_slam','Finisher Slam','Heavy-line execute evolution. Higher finishing payoff.', {type:'physical', btnType:'physical', energy:2, levels:[{desc:'165% dmg. Bigger bonus vs low HP.'},{desc:'175% dmg. Bigger bonus vs low HP.'},{desc:'185% dmg. Bigger bonus vs low HP.'},{desc:'195% dmg. Bigger bonus vs low HP.'}]}));
-Object.assign(ABILITY_TEMPLATES.execution_crush||{}, makeEvolutionAbilityTemplate('execution_crush','Execution Crush','Heavy-line execute finisher. Brutal endgame hit.', {type:'physical', btnType:'physical', energy:2, levels:[{desc:'180% dmg. Strong execute threshold.'},{desc:'190% dmg. Strong execute threshold.'},{desc:'200% dmg. Strong execute threshold.'},{desc:'210% dmg. Strong execute threshold.'}]}));
-function executeGooseStrikeAction(ab, config={}){
-  const lv=Math.max(1, Math.min(4, ab?.level||1));
-  const miss=Math.max(0, (config.miss?.[lv-1] ?? 0) - getPlayerHitBonus(ab));
-  if(chance(miss)){
-    return doMiss('player').then(()=>logMsg(`${config.name||ab?.name||ab?.id} missed!`,'miss'));
+// Shared legacy heavy-line templates (Kiwi probe aliases, cross-bird migrations). Live Goose body line uses gos_*.
+Object.assign(ABILITY_TEMPLATES.talon_slam||{}, makeEvolutionAbilityTemplate('talon_slam','Talon Slam','Legacy grounded slam template for migrations and probe trees.', {type:'physical', btnType:'physical', energy:2, levels:[{desc:'140% dmg, 22% miss.'},{desc:'150% dmg, 20% miss.'},{desc:'160% dmg, 18% miss.'},{desc:'170% dmg, 16% miss.'}], damageScaling:{ baseScaler:'ATT', secondaryScaler:'DEF', secondaryScaleValue:0.26, scalingNote:'DEF adds slam weight.', conditionalBonuses:[{type:'while_guarding', damageBonus:0.06}] }}));
+Object.assign(ABILITY_TEMPLATES.heavy_talon||{}, makeEvolutionAbilityTemplate('heavy_talon','Heavy Talon','Legacy trample-style heavy hit.', {type:'physical', btnType:'physical', energy:2, levels:[{desc:'150% dmg, 22% miss.'},{desc:'160% dmg, 20% miss.'},{desc:'170% dmg, 18% miss.'},{desc:'180% dmg, 16% miss.'}], damageScaling:{ baseScaler:'ATT', secondaryScaler:'DEF', secondaryScaleValue:0.32, scalingNote:'DEF adds body-weight damage.', conditionalBonuses:[{type:'while_guarding', damageBonus:0.08}] }}));
+Object.assign(ABILITY_TEMPLATES.trample_slam||{}, makeEvolutionAbilityTemplate('trample_slam','Trample Slam','Legacy trample evolution.', {type:'physical', btnType:'physical', energy:2, levels:[{desc:'165% dmg, 20% miss.'},{desc:'175% dmg, 18% miss.'},{desc:'185% dmg, 16% miss.'},{desc:'195% dmg, 14% miss.'}], damageScaling:{ baseScaler:'ATT', secondaryScaler:'DEF', secondaryScaleValue:0.38, scalingNote:'DEF adds trample force.', conditionalBonuses:[{type:'while_guarding', damageBonus:0.10}] }}));
+Object.assign(ABILITY_TEMPLATES.crushing_stampede||{}, makeEvolutionAbilityTemplate('crushing_stampede','Crushing Stampede','Legacy trample finisher.', {type:'physical', btnType:'physical', energy:2, levels:[{desc:'180% dmg, 18% miss.'},{desc:'190% dmg, 16% miss.'},{desc:'200% dmg, 14% miss.'},{desc:'210% dmg, 12% miss.'}], damageScaling:{ baseScaler:'ATT', secondaryScaler:'DEF', secondaryScaleValue:0.45, scalingNote:'DEF adds stampede crush.', conditionalBonuses:[{type:'while_guarding', damageBonus:0.12}] }}));
+Object.assign(ABILITY_TEMPLATES.wing_buffet||{}, makeEvolutionAbilityTemplate('wing_buffet','Wing Buffet','Legacy buffet branch.', {type:'physical', btnType:'physical', energy:2, levels:[{desc:'145% dmg, 20% miss.'},{desc:'155% dmg, 18% miss.'},{desc:'165% dmg, 16% miss.'},{desc:'175% dmg, 14% miss.'}], damageScaling:{ baseScaler:'ATT', secondaryScaler:'DEF', secondaryScaleValue:0.28, scalingNote:'DEF adds shove force.' }}));
+Object.assign(ABILITY_TEMPLATES.bone_buffet||{}, makeEvolutionAbilityTemplate('bone_buffet','Bone Buffet','Legacy buffet evolution.', {type:'physical', btnType:'physical', energy:2, levels:[{desc:'160% dmg, 20% miss.'},{desc:'170% dmg, 18% miss.'},{desc:'180% dmg, 16% miss.'},{desc:'190% dmg, 14% miss.'}], damageScaling:{ baseScaler:'ATT', secondaryScaler:'DEF', secondaryScaleValue:0.34, scalingNote:'DEF adds buffet impact.' }}));
+Object.assign(ABILITY_TEMPLATES.gale_crush||{}, makeEvolutionAbilityTemplate('gale_crush','Gale Crush','Legacy buffet finisher.', {type:'physical', btnType:'physical', energy:2, levels:[{desc:'175% dmg, 18% miss.'},{desc:'185% dmg, 16% miss.'},{desc:'195% dmg, 14% miss.'},{desc:'205% dmg, 12% miss.'}], damageScaling:{ baseScaler:'ATT', secondaryScaler:'DEF', secondaryScaleValue:0.40, scalingNote:'DEF adds crush force.', conditionalBonuses:[{type:'while_guarding', damageBonus:0.08}] }}));
+Object.assign(ABILITY_TEMPLATES.rending_talon||{}, makeEvolutionAbilityTemplate('rending_talon','Rending Talon','Legacy execute branch.', {type:'physical', btnType:'physical', energy:2, levels:[{desc:'150% dmg. Bonus vs low HP.'},{desc:'160% dmg. Bonus vs low HP.'},{desc:'170% dmg. Bonus vs low HP.'},{desc:'180% dmg. Bonus vs low HP.'}]}));
+Object.assign(ABILITY_TEMPLATES.finisher_slam||{}, makeEvolutionAbilityTemplate('finisher_slam','Finisher Slam','Legacy execute evolution.', {type:'physical', btnType:'physical', energy:2, levels:[{desc:'165% dmg. Bigger bonus vs low HP.'},{desc:'175% dmg. Bigger bonus vs low HP.'},{desc:'185% dmg. Bigger bonus vs low HP.'},{desc:'195% dmg. Bigger bonus vs low HP.'}]}));
+Object.assign(ABILITY_TEMPLATES.execution_crush||{}, makeEvolutionAbilityTemplate('execution_crush','Execution Crush','Legacy execute finisher.', {type:'physical', btnType:'physical', energy:2, levels:[{desc:'180% dmg. Strong execute threshold.'},{desc:'190% dmg. Strong execute threshold.'},{desc:'200% dmg. Strong execute threshold.'},{desc:'210% dmg. Strong execute threshold.'}]}));
+function gooseEnemyCompromised(){
+  const s=G.enemyStatus||{};
+  if((s.feared||0)>0||(s.weaken||0)>0||(s.paralyzed||0)>0) return true;
+  if((s.accDebuff||0)>0||s.confused) return true;
+  if(s.burning||(s.poison?.stacks||0)>0) return true;
+  if((s.exposedGuard?.pct||0)>0) return true;
+  return (s.bleed?.stacks||0)>0;
+}
+function getGooseMasteryBonuses(ab){
+  if(G.player?.birdKey!=='goose'){
+    return {dmg:0,pierce:0,bleedRider:0,weakenRider:0,missCut:0,critBonus:0,fearRider:0,accRider:0,spdRider:0,guardRider:0,markAmp:0,readRider:0,defBreakRider:0};
   }
-  let mult=(config.mult?.[lv-1] ?? 1);
+  const slot=getAbilitySkillSlot(G.player,ab);
+  const m=getSlotMasteryProfile(slot||{});
+  const fam=(slot&&slot.familyId)||'';
+  if(fam==='beak') return {dmg:0.035*m.power+0.018*m.precision,pierce:2*m.precision+m.power,bleedRider:4*m.control+2*m.precision,weakenRider:3*m.control+2*m.precision,missCut:m.precision,readRider:0.004*m.precision+0.003*m.control};
+  if(fam==='body') return {dmg:0.04*m.power+0.016*m.precision,critBonus:2*m.precision+2*m.power,weakenRider:4*m.control+2*m.precision,missCut:Math.floor(m.precision/2),defBreakRider:Math.floor(m.precision/3)+(m.power>0?1:0),pierce:Math.floor(1.2*m.precision)+m.power};
+  if(fam==='honk') return {fearRider:3*m.control+2*m.precision,accRider:2*m.precision+m.control,spdRider:Math.floor(0.8*m.power)+Math.floor(m.precision/2),dmg:0.02*m.power+0.012*m.precision,weakenRider:2*m.control+m.precision};
+  if(fam==='brace') return {guardRider:Math.floor(m.power/2)+Math.floor(m.control/2),markAmp:0.02*m.power+0.014*m.precision,readRider:0.008*m.precision+0.006*m.control};
+  return {dmg:0,pierce:0,bleedRider:0,weakenRider:0,missCut:0,critBonus:0,fearRider:0,accRider:0,spdRider:0,guardRider:0,markAmp:0,readRider:0,defBreakRider:0};
+}
+function getShoebillMasteryBonuses(ab){
+  if(G.player?.birdKey!=='shoebill'){
+    return {dmg:0,pierce:0,bleedRider:0,weakenRider:0,missCut:0,critBonus:0,fearRider:0,accRider:0,spdRider:0,guardRider:0,markAmp:0,readRider:0,defBreakRider:0,exposeStrip:0,lowHpRider:0,dodgeHumRider:0};
+  }
+  const slot=getAbilitySkillSlot(G.player,ab);
+  const m=getSlotMasteryProfile(slot||{});
+  const fam=(slot&&slot.familyId)||'';
+  if(fam==='beak') return {dmg:0.028*m.power+0.015*m.precision,pierce:2*m.precision+m.power,bleedRider:4*m.control+2*m.precision,weakenRider:3*m.control+2*m.precision,missCut:m.precision};
+  if(fam==='crack') return {dmg:0.032*m.power+0.016*m.precision,critBonus:2*m.precision+2*m.power,fearRider:3*m.control+2*m.precision,missCut:Math.floor(m.precision/2),defBreakRider:Math.floor(m.precision/3)+(m.control>0?1:0),pierce:Math.floor(1.1*m.precision)+m.power,lowHpRider:0.004*m.precision+0.004*m.control};
+  if(fam==='stance') return {guardRider:Math.floor(m.power/2)+Math.floor(m.control/2),markAmp:0.02*m.power+0.014*m.precision,readRider:0.008*m.precision+0.006*m.control,dodgeHumRider:Math.floor(1.2*m.precision)+m.control};
+  if(fam==='dread') return {markAmp:0.02*m.power+0.014*m.precision,readRider:0.01*m.precision+0.006*m.control,exposeStrip:0.006*m.power+0.005*m.precision,fearRider:2*m.control,defBreakRider:Math.floor(m.precision/2)+m.control};
+  return {dmg:0,pierce:0,bleedRider:0,weakenRider:0,missCut:0,critBonus:0,fearRider:0,accRider:0,spdRider:0,guardRider:0,markAmp:0,readRider:0,defBreakRider:0,exposeStrip:0,lowHpRider:0,dodgeHumRider:0};
+}
+function strikeFamilyMasteryBonuses(ab){
+  if(G.player?.birdKey==='goose') return getGooseMasteryBonuses(ab);
+  if(G.player?.birdKey==='shoebill') return getShoebillMasteryBonuses(ab);
+  return {};
+}
+function braceFamilyMasteryBonuses(ab){
+  if(G.player?.birdKey==='goose') return getGooseMasteryBonuses(ab);
+  if(G.player?.birdKey==='shoebill') return getShoebillMasteryBonuses(ab);
+  return {};
+}
+async function executeShoebillDreadExpose(ab, config){
+  const lv=Math.max(1,Math.min(4,ab.level||1));
+  const mb=getShoebillMasteryBonuses(ab);
+  const mProf=getSlotMasteryProfile(getAbilitySkillSlot(G.player,ab)||{});
+  const base=(config.expose?.[lv-1]||0)+(mb.exposeStrip||0);
+  const defStrip=(config.defStrip?.[lv-1]||0)+Math.floor((mProf.precision||0)/2)+(mb.defBreakRider||0);
+  G.enemyStatus.exposedGuard={turns:config.turns?.[lv-1]||2, pct:base};
+  G.enemyStatus.defending=0;
+  if(defStrip>0) peregrineApplyDefBreak(defStrip, config.defTurns?.[lv-1]||2);
+  await doSpell('enemy','🦤 Cracked!');
+  renderStatuses('enemy-status',G.enemyStatus);
+  logMsg(`${config.log} prey armor cracks (+${Math.round(G.enemyStatus.exposedGuard.pct*100)}% dmg taken).`,'player-action');
+}
+async function executeShoebillSwampStance(ab, cfg){
+  const lv=Math.max(1,Math.min(4,ab.level||1));
+  const mb=getShoebillMasteryBonuses(ab);
+  await doSpell('player',cfg.fx||'🦤');
+  const dodge=(cfg.humDodge?.[lv-1]||22)+Math.floor(mb.dodgeHumRider||0);
+  let turns=cfg.humTurns?.[lv-1]||2;
+  if(cfg.extraHumTurnIfControl&&getSlotMasteryProfile(getAbilitySkillSlot(G.player,ab)||{}).control>0 && lv>=3) turns+=1;
+  G.playerStatus.humDodge={bonus:dodge, turns};
+  if(cfg.slowSpd?.[lv-1]) applyEnemySlow(cfg.slowSpd[lv-1], cfg.slowDodge?.[lv-1]||8, cfg.slowTurns?.[lv-1]||2);
+  if(cfg.fearChance?.[lv-1] && chance(cfg.fearChance[lv-1]+(mb.fearRider||0))){ applyAilment('enemy','feared',1); spawnFloat('enemy','😨 Fear!','fn-status'); }
+  renderStatuses('player-status',G.playerStatus);
+  renderStatuses('enemy-status',G.enemyStatus);
+  logMsg(`${cfg.log}!`,'player-action');
+}
+async function executeGooseStrikeAction(ab, config={}){
+  const lv=Math.max(1, Math.min(4, ab?.level||1));
+  const mb=strikeFamilyMasteryBonuses(ab);
+  const miss=Math.max(0, (config.miss?.[lv-1] ?? 0) - getPlayerHitBonus(ab) - Math.floor(mb.missCut||0));
+  if(chance(miss)){ await doMiss('player'); logMsg(`${config.name||ab?.name||ab?.id} missed!`,'miss'); return; }
+  let mult=(config.mult?.[lv-1] ?? 1) + (mb.dmg||0);
   if(config.bonusVs==='bleed' && (G.enemyStatus.bleed?.stacks||0)>0) mult += (config.bonus?.[lv-1] ?? 0);
   if(config.bonusVs==='feared' && (G.enemyStatus.feared||0)>0) mult += (config.bonus?.[lv-1] ?? 0);
   if(config.bonusVs==='weakened' && (G.enemyStatus.weaken||0)>0) mult += (config.bonus?.[lv-1] ?? 0);
   if(config.bonusVs==='guard' && ((G.enemyStatus.defending||0)>0 || (G.enemyStatus.exposedGuard?.pct||0)>0)) mult += (config.bonus?.[lv-1] ?? 0);
-  if(config.bonusVs==='low_hp' && G.enemy.stats.hp <= Math.floor((G.enemy.stats.maxHp||1) * (config.lowHpThreshold || 0.5))) mult += (config.bonus?.[lv-1] ?? 0);
-  const prox={...ab, pierceDef:config.pierce?.[lv-1] ?? ab?.pierceDef ?? 0};
-  const isCrit=chance(getPlayerCritChance(ab));
-  const r=dealDamage('enemy',pdmgWithAlternateScaling(mult, prox),isCrit);
-  return doAttack('player','enemy',r).then(async ()=>{
-    setHpBar('enemy',G.enemy.stats.hp,G.enemy.stats.maxHp);
-    if(config.bleedChance?.[lv-1] && chance(config.bleedChance[lv-1])){ applyAilment('enemy','bleed',1); spawnFloat('enemy','🩸 Bleed!','fn-poison'); }
-    if(config.weakenChance?.[lv-1] && chance(config.weakenChance[lv-1])){ applyAilment('enemy','weaken',1); spawnFloat('enemy','🐔 Weaken!','fn-status'); }
-    if(config.fearChance?.[lv-1] && chance(config.fearChance[lv-1])){ applyAilment('enemy','feared',1); spawnFloat('enemy','😨 Fear!','fn-status'); }
-    if(config.paraChance?.[lv-1] && chance(config.paraChance[lv-1])){ applyAilment('enemy','paralyzed',1); spawnFloat('enemy','⚡ Para!','fn-status'); }
-    logMsg(`${config.log||config.name||ab?.name||ab?.id}! ${r.dmgDealt} dmg.`, 'player-action');
-  });
+  if(config.bonusVs==='low_hp' && G.enemy.stats.hp <= Math.floor((G.enemy.stats.maxHp||1) * (config.lowHpThreshold || 0.5))) mult += (config.bonus?.[lv-1] ?? 0) + (mb.lowHpRider||0);
+  if(config.bonusVs==='compromised' && gooseEnemyCompromised()) mult += (config.bonus?.[lv-1] ?? 0) + (mb.readRider||0);
+  const pierceBase=(config.pierce?.[lv-1] ?? 0) + (mb.pierce||0);
+  const prox={...ab, pierceDef:pierceBase};
+  const critExtra=(config.critBonus?.[lv-1]||0)+(mb.critBonus||0);
+  const isCrit=chance(Math.min(95,getPlayerCritChance(ab)+critExtra));
+  const dmgCore=config.useBodyScaling ? pdmgWithAlternateScaling(mult, ab) : pdmg(mult, prox);
+  const r=dealDamage('enemy',dmgCore,isCrit,false,config.useBodyScaling?ab:prox);
+  await doAttack('player','enemy',r);
+  setHpBar('enemy',G.enemy.stats.hp,G.enemy.stats.maxHp);
+  if(config.bleedChance?.[lv-1] && chance(config.bleedChance[lv-1]+(mb.bleedRider||0))){ applyAilment('enemy','bleed',1); spawnFloat('enemy','🩸 Bleed!','fn-poison'); }
+  if(config.weakenChance?.[lv-1] && chance(config.weakenChance[lv-1]+(mb.weakenRider||0))){ applyAilment('enemy','weaken',1); spawnFloat('enemy','🐔 Weaken!','fn-status'); }
+  if(config.fearChance?.[lv-1] && chance(config.fearChance[lv-1]+(mb.fearRider||0))){ applyAilment('enemy','feared',1); spawnFloat('enemy','😨 Fear!','fn-status'); }
+  if(config.paraChance?.[lv-1] && chance(config.paraChance[lv-1])){ applyAilment('enemy','paralyzed',1); spawnFloat('enemy','⚡ Para!','fn-status'); }
+  if(config.accDown?.[lv-1]) G.enemyStatus.accDebuff=(G.enemyStatus.accDebuff||0)+config.accDown[lv-1]+Math.floor(mb.accRider||0);
+  if(config.defBreak?.[lv-1]) peregrineApplyDefBreak(config.defBreak[lv-1]+(mb.defBreakRider||0), config.defBreakTurns?.[lv-1]||2);
+  if(config.applyExpose?.[lv-1]){
+    G.enemyStatus.exposedGuard={turns:config.exposeTurns?.[lv-1]||2,pct:config.applyExpose[lv-1]};
+    G.enemyStatus.defending=0;
+    spawnFloat('enemy','🎯 Exposed!','fn-status');
+  }
+  renderStatuses('enemy-status',G.enemyStatus);
+  logMsg(`${config.log||config.name||ab?.name||ab?.id}! ${r.dmgDealt} dmg.`, 'player-action');
+}
+async function executeGooseHonkPhysical(ab, cfg){
+  const lv=Math.max(1,Math.min(4,ab.level||1));
+  const mb=G.player?.birdKey==='goose'?getGooseMasteryBonuses(ab):{};
+  const miss=Math.max(0,(cfg.miss?.[lv-1]??22)-getPlayerHitBonus(ab));
+  if(chance(miss)){await doMiss('player');logMsg(`${cfg.log} missed!`,'miss');return;}
+  let mult=(cfg.mult?.[lv-1]??1)+(mb.dmg||0);
+  if(cfg.bonusVs==='feared' && (G.enemyStatus.feared||0)>0) mult += (cfg.bonus?.[lv-1]??0);
+  const prox={...ab,pierceDef:cfg.pierce?.[lv-1]??0};
+  const r=dealDamage('enemy',pdmg(mult,prox),chance(getPlayerCritChance(ab)),false,prox);
+  await doAttack('player','enemy',r);
+  setHpBar('enemy',G.enemy.stats.hp,G.enemy.stats.maxHp);
+  if(cfg.fearChance?.[lv-1] && chance(cfg.fearChance[lv-1]+(mb.fearRider||0))){ applyAilment('enemy','feared',1); spawnFloat('enemy','😨 Fear!','fn-status'); }
+  if(cfg.weakenChance?.[lv-1] && chance(cfg.weakenChance[lv-1]+(mb.weakenRider||0))){ applyAilment('enemy','weaken',1); spawnFloat('enemy','🐔 Weaken!','fn-status'); }
+  if(cfg.accDown?.[lv-1]) G.enemyStatus.accDebuff=(G.enemyStatus.accDebuff||0)+cfg.accDown[lv-1]+Math.floor(mb.accRider||0);
+  if(cfg.paraChance?.[lv-1] && chance(cfg.paraChance[lv-1])){ applyAilment('enemy','paralyzed',1); spawnFloat('enemy','⚡ Para!','fn-status'); }
+  renderStatuses('enemy-status',G.enemyStatus);
+  logMsg(`${cfg.log}! ${r.dmgDealt} dmg.`,'player-action');
+}
+async function executeGooseHonkUtility(ab, cfg){
+  const lv=Math.max(1,Math.min(4,ab.level||1));
+  const mb=G.player?.birdKey==='goose'?getGooseMasteryBonuses(ab):{};
+  await doSpell('player',cfg.fx||'📣');
+  if(cfg.spd?.[lv-1]) G.player.stats.spd=Math.min(20,(G.player.stats.spd||1)+cfg.spd[lv-1]+(mb.spdRider||0));
+  if(cfg.humDodge) G.playerStatus.humDodge={bonus:cfg.humDodge[lv-1], turns:cfg.humTurns?.[lv-1]||2};
+  if(cfg.accDown?.[lv-1]) G.enemyStatus.accDebuff=(G.enemyStatus.accDebuff||0)+cfg.accDown[lv-1]+Math.floor(mb.accRider||0);
+  if(cfg.fearChance?.[lv-1] && chance(cfg.fearChance[lv-1]+(mb.fearRider||0))){ applyAilment('enemy','feared',1); spawnFloat('enemy','😨 Fear!','fn-status'); }
+  renderStatuses('player-status',G.playerStatus);
+  renderStatuses('enemy-status',G.enemyStatus);
+  logMsg(`${cfg.log}!`,'player-action');
+}
+async function executeGooseBrace(ab, cfg){
+  const lv=Math.max(1,Math.min(4,ab.level||1));
+  const mb=braceFamilyMasteryBonuses(ab);
+  await doSpell('player',cfg.fx||'🪿');
+  if(cfg.guard) G.playerStatus.defending=(G.playerStatus.defending||0)+cfg.guard[lv-1]+Math.floor(mb.guardRider||0);
+  if(cfg.markAmp) G.playerStatus.huntersMarkBonusPct=(cfg.markAmp[lv-1]||0)+(mb.markAmp||0);
+  if(cfg.markAmpRead){
+    G.playerStatus.huntersMarkBonusPct=(cfg.markAmpRead.amp?.[lv-1]||0)+(mb.markAmp||0);
+    G.playerStatus.cockatooReadExtra=(cfg.markAmpRead.read?.[lv-1]||0)+(mb.readRider||0);
+  }
+  renderStatuses('player-status',G.playerStatus);
+  if(cfg.guard) logMsg(`${cfg.log}! Guard (${cfg.guard[lv-1]}t + bonus).`,'player-action');
+  else if(cfg.markAmp) logMsg(`${cfg.log}! Next hit +${Math.round((G.playerStatus.huntersMarkBonusPct||0)*100)}%.`,'player-action');
+  else logMsg(`${cfg.log}! Next +${Math.round((G.playerStatus.huntersMarkBonusPct||0)*100)}% and +${Math.round((G.playerStatus.cockatooReadExtra||0)*100)}% vs compromised.`,'player-action');
 }
 const GOOSE_SKILL_ACTION_OVERRIDES = {
   peck: ab=>executeGooseStrikeAction(ab,{name:'Peck', log:'🪿 Peck', miss:[10,9,8,7], mult:[1.00,1.08,1.16,1.24]}),
@@ -10726,28 +11447,93 @@ const GOOSE_SKILL_ACTION_OVERRIDES = {
   needle_peck: ab=>executeGooseStrikeAction(ab,{name:'Needle Peck', log:'🪶 Needle Peck', miss:[10,9,8,7], mult:[1.02,1.10,1.18,1.26], pierce:[10,14,18,20]}),
   bodkin_bite: ab=>executeGooseStrikeAction(ab,{name:'Bodkin Bite', log:'🪶 Bodkin Bite', miss:[9,8,7,6], mult:[1.14,1.22,1.30,1.38], pierce:[20,24,28,30]}),
   armor_maul: ab=>executeGooseStrikeAction(ab,{name:'Armor Maul', log:'🪶 Armor Maul', miss:[8,7,6,5], mult:[1.26,1.34,1.42,1.50], pierce:[30,32,34,36], bonusVs:'guard', bonus:[0.10,0.12,0.14,0.16]}),
-  territorial_honk: ab=>executeGooseStrikeAction(ab,{name:'Territorial Honk', log:'📣 Territorial Honk', miss:[25,23,21,19], mult:[1.15,1.25,1.35,1.45]}),
-  dread_honk: ab=>executeGooseStrikeAction(ab,{name:'Dread Honk', log:'😨 Dread Honk', miss:[24,22,20,18], mult:[1.05,1.12,1.19,1.26], fearChance:[20,22,25,28]}),
-  terror_blast: ab=>executeGooseStrikeAction(ab,{name:'Terror Blast', log:'😨 Terror Blast', miss:[24,22,20,18], mult:[1.20,1.28,1.36,1.44], fearChance:[25,27,30,32], bonusVs:'feared', bonus:[0.08,0.10,0.12,0.14]}),
-  panic_terror: ab=>executeGooseStrikeAction(ab,{name:'Panic Terror', log:'😨 Panic Terror', miss:[23,21,19,17], mult:[1.24,1.32,1.40,1.48], fearChance:[30,32,34,36], bonusVs:'feared', bonus:[0.12,0.14,0.16,0.18]}),
-  shock_honk: ab=>executeGooseStrikeAction(ab,{name:'Shock Honk', log:'⚡ Shock Honk', miss:[24,22,20,18], mult:[1.15,1.23,1.31,1.39], paraChance:[15,17,20,22]}),
-  stunning_blast: ab=>executeGooseStrikeAction(ab,{name:'Stunning Blast', log:'⚡ Stunning Blast', miss:[23,21,19,17], mult:[1.18,1.26,1.34,1.42], paraChance:[20,22,24,26]}),
-  lockdown_terror: ab=>executeGooseStrikeAction(ab,{name:'Lockdown Terror', log:'⚡ Lockdown Terror', miss:[22,20,18,16], mult:[1.22,1.30,1.38,1.46], paraChance:[25,27,29,31]}),
-  crushing_honk: ab=>executeGooseStrikeAction(ab,{name:'Crushing Honk', log:'🐔 Crushing Honk', miss:[24,22,20,18], mult:[1.15,1.23,1.31,1.39], weakenChance:[15,17,20,22]}),
-  oppression_blast: ab=>executeGooseStrikeAction(ab,{name:'Oppression Blast', log:'🐔 Oppression Blast', miss:[23,21,19,17], mult:[1.18,1.26,1.34,1.42], weakenChance:[20,22,24,26]}),
-  tyrant_terror: ab=>executeGooseStrikeAction(ab,{name:'Tyrant Terror', log:'🐔 Tyrant Terror', miss:[22,20,18,16], mult:[1.22,1.30,1.38,1.46], weakenChance:[25,27,29,31], bonusVs:'weakened', bonus:[0.10,0.12,0.14,0.16]}),
-  talon_slam: ab=>executeGooseStrikeAction(ab,{name:'Talon Slam', log:'💥 Talon Slam', miss:[22,20,18,16], mult:[1.40,1.50,1.60,1.70]}),
-  heavy_talon: ab=>executeGooseStrikeAction(ab,{name:'Heavy Talon', log:'💥 Heavy Talon', miss:[22,20,18,16], mult:[1.50,1.60,1.70,1.80]}),
-  trample_slam: ab=>executeGooseStrikeAction(ab,{name:'Trample Slam', log:'💥 Trample Slam', miss:[20,18,16,14], mult:[1.65,1.75,1.85,1.95]}),
-  crushing_stampede: ab=>executeGooseStrikeAction(ab,{name:'Crushing Stampede', log:'💥 Crushing Stampede', miss:[18,16,14,12], mult:[1.80,1.90,2.00,2.10]}),
-  wing_buffet: ab=>executeGooseStrikeAction(ab,{name:'Wing Buffet', log:'🪽 Wing Buffet', miss:[20,18,16,14], mult:[1.45,1.55,1.65,1.75], weakenChance:[10,12,14,16]}),
-  bone_buffet: ab=>executeGooseStrikeAction(ab,{name:'Bone Buffet', log:'🪽 Bone Buffet', miss:[20,18,16,14], mult:[1.60,1.70,1.80,1.90], weakenChance:[12,14,16,18]}),
-  gale_crush: ab=>executeGooseStrikeAction(ab,{name:'Gale Crush', log:'🪽 Gale Crush', miss:[18,16,14,12], mult:[1.75,1.85,1.95,2.05], weakenChance:[14,16,18,20]}),
-  rending_talon: ab=>executeGooseStrikeAction(ab,{name:'Rending Talon', log:'☠ Rending Talon', miss:[20,18,16,14], mult:[1.50,1.60,1.70,1.80], bonusVs:'low_hp', bonus:[0.15,0.18,0.21,0.24], lowHpThreshold:0.5}),
-  finisher_slam: ab=>executeGooseStrikeAction(ab,{name:'Finisher Slam', log:'☠ Finisher Slam', miss:[18,16,14,12], mult:[1.65,1.75,1.85,1.95], bonusVs:'low_hp', bonus:[0.20,0.23,0.26,0.29], lowHpThreshold:0.5}),
-  execution_crush: ab=>executeGooseStrikeAction(ab,{name:'Execution Crush', log:'☠ Execution Crush', miss:[16,14,12,10], mult:[1.80,1.90,2.00,2.10], bonusVs:'low_hp', bonus:[0.25,0.28,0.31,0.34], lowHpThreshold:0.55}),
+  gos_beak_snap: ab=>executeGooseStrikeAction(ab,{name:'Beak Snap', log:'🪿 Beak Snap', miss:[10,9,8,7], mult:[0.98,1.04,1.10,1.16]}),
+  gos_hook_bite: ab=>executeGooseStrikeAction(ab,{name:'Hook Bite', log:'🪝 Hook Bite', miss:[9,8,7,6], mult:[1.08,1.14,1.20,1.28], pierce:[12,16,20,24], bonusVs:'guard', bonus:[0.06,0.08,0.10,0.12]}),
+  gos_hook_tear: ab=>executeGooseStrikeAction(ab,{name:'Hook Tear', log:'🪝 Hook Tear', miss:[8,7,6,5], mult:[1.18,1.26,1.34,1.42], pierce:[22,26,30,34], bonusVs:'guard', bonus:[0.10,0.12,0.14,0.16]}),
+  gos_raking_snap: ab=>executeGooseStrikeAction(ab,{name:'Raking Snap', log:'🩸 Raking Snap', miss:[10,9,8,7], mult:[1.00,1.06,1.12,1.18], bleedChance:[12,14,16,18]}),
+  gos_raking_bite: ab=>executeGooseStrikeAction(ab,{name:'Raking Bite', log:'🩸 Raking Bite', miss:[9,8,7,6], mult:[1.10,1.16,1.22,1.30], bleedChance:[16,18,20,22], bonusVs:'bleed', bonus:[0.08,0.10,0.12,0.14]}),
+  gos_salt_tear: ab=>executeGooseStrikeAction(ab,{name:'Salt Tear', log:'🩸 Salt Tear', miss:[8,7,6,5], mult:[1.22,1.30,1.38,1.46], bleedChance:[20,22,24,26], bonusVs:'bleed', bonus:[0.12,0.14,0.16,0.18]}),
+  gos_dulling_snap: ab=>executeGooseStrikeAction(ab,{name:'Dulling Snap', log:'🐔 Dulling Snap', miss:[10,9,8,7], mult:[0.94,1.00,1.06,1.12], weakenChance:[12,14,16,18]}),
+  gos_grinding_bite: ab=>executeGooseStrikeAction(ab,{name:'Grinding Bite', log:'🐔 Grinding Bite', miss:[9,8,7,6], mult:[1.02,1.08,1.14,1.20], weakenChance:[18,20,22,24]}),
+  gos_fading_tear: ab=>executeGooseStrikeAction(ab,{name:'Fading Tear', log:'🐔 Fading Tear', miss:[8,7,6,5], mult:[1.12,1.20,1.28,1.36], weakenChance:[22,24,26,28], bonusVs:'weakened', bonus:[0.08,0.10,0.12,0.14]}),
+  gos_body_check: ab=>executeGooseStrikeAction(ab,{name:'Body Check', log:'💥 Body Check', miss:[22,20,18,16], mult:[1.38,1.46,1.54,1.62], useBodyScaling:true, critBonus:[4,6,8,10]}),
+  gos_heavy_slam: ab=>executeGooseStrikeAction(ab,{name:'Heavy Slam', log:'💥 Heavy Slam', miss:[20,18,16,14], mult:[1.52,1.62,1.72,1.82], useBodyScaling:true, critBonus:[8,10,12,14]}),
+  gos_dominance_crush: ab=>executeGooseStrikeAction(ab,{name:'Dominance Crush', log:'💥 Dominance Crush', miss:[18,16,14,12], mult:[1.68,1.78,1.88,1.98], useBodyScaling:true, critBonus:[12,14,16,20]}),
+  gos_pressing_check: ab=>executeGooseStrikeAction(ab,{name:'Pressing Check', log:'💥 Pressing Check', miss:[22,20,18,16], mult:[1.32,1.40,1.48,1.56], useBodyScaling:true, weakenChance:[14,16,18,20]}),
+  gos_pressing_slam: ab=>executeGooseStrikeAction(ab,{name:'Pressing Slam', log:'💥 Pressing Slam', miss:[20,18,16,14], mult:[1.44,1.52,1.60,1.68], useBodyScaling:true, weakenChance:[18,20,22,24]}),
+  gos_suffocating_crush: ab=>executeGooseStrikeAction(ab,{name:'Suffocating Crush', log:'💥 Suffocating Crush', miss:[18,16,14,12], mult:[1.56,1.66,1.76,1.86], useBodyScaling:true, weakenChance:[22,24,26,28], bonusVs:'weakened', bonus:[0.08,0.10,0.12,0.14]}),
+  gos_cracking_check: ab=>executeGooseStrikeAction(ab,{name:'Cracking Check', log:'💥 Cracking Check', miss:[22,20,18,16], mult:[1.34,1.42,1.50,1.58], useBodyScaling:true, pierce:[8,10,12,14], defBreak:[1,1,2,2]}),
+  gos_break_slam: ab=>executeGooseStrikeAction(ab,{name:'Break Slam', log:'💥 Break Slam', miss:[20,18,16,14], mult:[1.46,1.54,1.62,1.70], useBodyScaling:true, pierce:[12,14,16,18], defBreak:[2,2,2,3]}),
+  gos_collapse_crush: ab=>executeGooseStrikeAction(ab,{name:'Collapse Crush', log:'💥 Collapse Crush', miss:[18,16,14,12], mult:[1.58,1.68,1.78,1.88], useBodyScaling:true, pierce:[16,18,20,22], defBreak:[2,3,3,4], applyExpose:[0.08,0.09,0.10,0.11], exposeTurns:[2,2,3,3]}),
+  gos_honk_blast: ab=>executeGooseHonkPhysical(ab,{log:'📣 Honk Blast', miss:[22,20,18,16], mult:[0.92,0.98,1.04,1.10], accDown:[6,8,10,12], fearChance:[8,10,12,14]}),
+  gos_dread_blare: ab=>executeGooseHonkPhysical(ab,{log:'😨 Dread Blare', miss:[21,19,17,15], mult:[1.02,1.08,1.14,1.20], fearChance:[20,22,25,28], accDown:[4,5,6,8]}),
+  gos_panic_uproar: ab=>executeGooseHonkPhysical(ab,{log:'😨 Panic Uproar', miss:[20,18,16,14], mult:[1.12,1.20,1.28,1.36], fearChance:[26,28,30,32], bonusVs:'feared', bonus:[0.10,0.12,0.14,0.16]}),
+  gos_harsh_honk: ab=>executeGooseHonkPhysical(ab,{log:'📣 Harsh Honk', miss:[21,19,17,15], mult:[1.00,1.06,1.12,1.18], accDown:[10,12,14,16]}),
+  gos_wavering_blare: ab=>executeGooseHonkPhysical(ab,{log:'📣 Wavering Blare', miss:[20,18,16,14], mult:[1.04,1.10,1.16,1.22], accDown:[14,16,18,20], weakenChance:[12,14,16,18]}),
+  gos_blinding_uproar: ab=>executeGooseHonkPhysical(ab,{log:'📣 Blinding Uproar', miss:[19,17,15,13], mult:[1.10,1.16,1.22,1.28], accDown:[18,20,22,24], paraChance:[10,12,14,16]}),
+  gos_keen_honk: ab=>executeGooseHonkUtility(ab,{log:'📣 Keen Honk', fx:'📣', spd:[1,1,2,2]}),
+  gos_rally_blare: ab=>executeGooseHonkUtility(ab,{log:'📣 Rally Blare', fx:'📣', spd:[2,2,3,3], humDodge:[8,10,12,14], humTurns:[2,2,2,3]}),
+  gos_charge_uproar: ab=>executeGooseHonkUtility(ab,{log:'📣 Charge Uproar', fx:'📣', spd:[3,3,4,4], humDodge:[12,14,16,18], humTurns:[2,3,3,3]}),
+  gos_brace_up: ab=>executeGooseBrace(ab,{log:'🛡 Brace Up', fx:'🛡', guard:[10,12,14,16]}),
+  gos_hold_line: ab=>executeGooseBrace(ab,{log:'🛡 Hold the Line', fx:'🛡', guard:[16,18,20,22]}),
+  gos_stand_fast: ab=>executeGooseBrace(ab,{log:'🛡 Stand Fast', fx:'🛡', guard:[22,26,30,34]}),
+  gos_brace_mark: ab=>executeGooseBrace(ab,{log:'🎯 Brace Mark', fx:'🎯', markAmp:[0.12,0.14,0.16,0.18]}),
+  gos_press_line: ab=>executeGooseBrace(ab,{log:'🎯 Press the Line', fx:'🎯', markAmp:[0.18,0.20,0.22,0.24]}),
+  gos_final_stand: ab=>executeGooseBrace(ab,{log:'🎯 Final Stand', fx:'🎯', markAmp:[0.26,0.28,0.30,0.32]}),
+  gos_read_threat: ab=>executeGooseBrace(ab,{log:'👁 Read Threat', fx:'👁', markAmpRead:{amp:[0.10,0.12,0.14,0.16], read:[0.06,0.08,0.10,0.12]}}),
+  gos_read_line: ab=>executeGooseBrace(ab,{log:'👁 Read the Line', fx:'👁', markAmpRead:{amp:[0.14,0.16,0.18,0.20], read:[0.09,0.11,0.13,0.15]}}),
+  gos_read_stand: ab=>executeGooseBrace(ab,{log:'👁 Read Stand', fx:'👁', markAmpRead:{amp:[0.18,0.20,0.22,0.24], read:[0.12,0.14,0.16,0.18]}}),
+  talon_slam: ab=>executeGooseStrikeAction(ab,{name:'Talon Slam', log:'💥 Talon Slam', miss:[22,20,18,16], mult:[1.40,1.50,1.60,1.70], useBodyScaling:true}),
+  heavy_talon: ab=>executeGooseStrikeAction(ab,{name:'Heavy Talon', log:'💥 Heavy Talon', miss:[22,20,18,16], mult:[1.50,1.60,1.70,1.80], useBodyScaling:true}),
+  trample_slam: ab=>executeGooseStrikeAction(ab,{name:'Trample Slam', log:'💥 Trample Slam', miss:[20,18,16,14], mult:[1.65,1.75,1.85,1.95], useBodyScaling:true}),
+  crushing_stampede: ab=>executeGooseStrikeAction(ab,{name:'Crushing Stampede', log:'💥 Crushing Stampede', miss:[18,16,14,12], mult:[1.80,1.90,2.00,2.10], useBodyScaling:true}),
+  wing_buffet: ab=>executeGooseStrikeAction(ab,{name:'Wing Buffet', log:'🪽 Wing Buffet', miss:[20,18,16,14], mult:[1.45,1.55,1.65,1.75], useBodyScaling:true, weakenChance:[10,12,14,16]}),
+  bone_buffet: ab=>executeGooseStrikeAction(ab,{name:'Bone Buffet', log:'🪽 Bone Buffet', miss:[20,18,16,14], mult:[1.60,1.70,1.80,1.90], useBodyScaling:true, weakenChance:[12,14,16,18]}),
+  gale_crush: ab=>executeGooseStrikeAction(ab,{name:'Gale Crush', log:'🪽 Gale Crush', miss:[18,16,14,12], mult:[1.75,1.85,1.95,2.05], useBodyScaling:true, weakenChance:[14,16,18,20]}),
+  rending_talon: ab=>executeGooseStrikeAction(ab,{name:'Rending Talon', log:'☠ Rending Talon', miss:[20,18,16,14], mult:[1.50,1.60,1.70,1.80], useBodyScaling:true, bonusVs:'low_hp', bonus:[0.15,0.18,0.21,0.24], lowHpThreshold:0.5}),
+  finisher_slam: ab=>executeGooseStrikeAction(ab,{name:'Finisher Slam', log:'☠ Finisher Slam', miss:[18,16,14,12], mult:[1.65,1.75,1.85,1.95], useBodyScaling:true, bonusVs:'low_hp', bonus:[0.20,0.23,0.26,0.29], lowHpThreshold:0.5}),
+  execution_crush: ab=>executeGooseStrikeAction(ab,{name:'Execution Crush', log:'☠ Execution Crush', miss:[16,14,12,10], mult:[1.80,1.90,2.00,2.10], useBodyScaling:true, bonusVs:'low_hp', bonus:[0.25,0.28,0.31,0.34], lowHpThreshold:0.55}),
+};
+const SHOEBILL_SKILL_ACTION_OVERRIDES = {
+  sbl_beak_chop: ab=>executeGooseStrikeAction(ab,{name:'Beak Chop', log:'🦤 Beak Chop', miss:[11,10,9,8], mult:[0.98,1.04,1.10,1.16], pierce:[10,12,14,16]}),
+  sbl_split_break: ab=>executeGooseStrikeAction(ab,{name:'Split Break', log:'🦤 Split Break', miss:[10,9,8,7], mult:[1.08,1.14,1.20,1.28], pierce:[16,20,24,28], bonusVs:'guard', bonus:[0.06,0.08,0.10,0.12]}),
+  sbl_bone_cleave: ab=>executeGooseStrikeAction(ab,{name:'Bone Cleave', log:'🦤 Bone Cleave', miss:[9,8,7,6], mult:[1.20,1.28,1.36,1.44], pierce:[24,28,32,36], bonusVs:'guard', bonus:[0.10,0.12,0.14,0.16]}),
+  sbl_rending_chop: ab=>executeGooseStrikeAction(ab,{name:'Rending Chop', log:'🩸 Rending Chop', miss:[11,10,9,8], mult:[1.00,1.06,1.12,1.18], bleedChance:[12,14,16,18]}),
+  sbl_rending_break: ab=>executeGooseStrikeAction(ab,{name:'Rending Break', log:'🩸 Rending Break', miss:[10,9,8,7], mult:[1.10,1.16,1.22,1.30], bleedChance:[16,18,20,22], bonusVs:'bleed', bonus:[0.08,0.10,0.12,0.14]}),
+  sbl_deep_cleave: ab=>executeGooseStrikeAction(ab,{name:'Deep Cleave', log:'🩸 Deep Cleave', miss:[9,8,7,6], mult:[1.22,1.30,1.38,1.46], bleedChance:[20,22,24,26], bonusVs:'bleed', bonus:[0.12,0.14,0.16,0.18]}),
+  sbl_dulling_chop: ab=>executeGooseStrikeAction(ab,{name:'Dulling Chop', log:'🦤 Dulling Chop', miss:[11,10,9,8], mult:[0.94,1.00,1.06,1.12], weakenChance:[12,14,16,18]}),
+  sbl_sapping_break: ab=>executeGooseStrikeAction(ab,{name:'Sapping Break', log:'🦤 Sapping Break', miss:[10,9,8,7], mult:[1.02,1.08,1.14,1.20], weakenChance:[18,20,22,24]}),
+  sbl_hollow_cleave: ab=>executeGooseStrikeAction(ab,{name:'Hollow Cleave', log:'🦤 Hollow Cleave', miss:[9,8,7,6], mult:[1.12,1.20,1.28,1.36], weakenChance:[22,24,26,28], bonusVs:'weakened', bonus:[0.08,0.10,0.12,0.14]}),
+  sbl_skull_crack: ab=>executeGooseStrikeAction(ab,{name:'Skull Crack', log:'🦤 Skull Crack', miss:[22,20,18,16], mult:[1.40,1.48,1.56,1.64], useBodyScaling:true, critBonus:[5,7,9,11]}),
+  sbl_grave_collapse: ab=>executeGooseStrikeAction(ab,{name:'Grave Collapse', log:'🦤 Grave Collapse', miss:[20,18,16,14], mult:[1.54,1.64,1.74,1.84], useBodyScaling:true, critBonus:[9,11,13,15]}),
+  sbl_skull_ruin: ab=>executeGooseStrikeAction(ab,{name:'Skull Ruin', log:'🦤 Skull Ruin', miss:[18,16,14,12], mult:[1.68,1.78,1.88,1.98], useBodyScaling:true, critBonus:[13,15,17,20], pierce:[6,8,10,12]}),
+  sbl_dread_crack: ab=>executeGooseStrikeAction(ab,{name:'Dread Crack', log:'😨 Dread Crack', miss:[22,20,18,16], mult:[1.32,1.38,1.44,1.50], useBodyScaling:true, fearChance:[14,16,18,20], accDown:[5,6,7,8]}),
+  sbl_hollow_collapse: ab=>executeGooseStrikeAction(ab,{name:'Hollow Collapse', log:'😨 Hollow Collapse', miss:[20,18,16,14], mult:[1.42,1.50,1.58,1.66], useBodyScaling:true, fearChance:[22,24,26,28], accDown:[4,5,6,8]}),
+  sbl_night_ruin: ab=>executeGooseStrikeAction(ab,{name:'Night Ruin', log:'😨 Night Ruin', miss:[18,16,14,12], mult:[1.52,1.62,1.72,1.82], useBodyScaling:true, fearChance:[26,28,30,32], bonusVs:'feared', bonus:[0.10,0.12,0.14,0.16]}),
+  sbl_hunter_crack: ab=>executeGooseStrikeAction(ab,{name:'Hunter Crack', log:'☠ Hunter Crack', miss:[22,20,18,16], mult:[1.36,1.44,1.52,1.60], useBodyScaling:true, bonusVs:'low_hp', bonus:[0.12,0.14,0.16,0.18], lowHpThreshold:0.5}),
+  sbl_prey_collapse: ab=>executeGooseStrikeAction(ab,{name:'Prey Collapse', log:'☠ Prey Collapse', miss:[20,18,16,14], mult:[1.48,1.58,1.68,1.78], useBodyScaling:true, bonusVs:'low_hp', bonus:[0.18,0.20,0.22,0.24], lowHpThreshold:0.5}),
+  sbl_final_ruin: ab=>executeGooseStrikeAction(ab,{name:'Final Ruin', log:'☠ Final Ruin', miss:[18,16,14,12], mult:[1.60,1.72,1.84,1.96], useBodyScaling:true, bonusVs:'low_hp', bonus:[0.24,0.26,0.28,0.30], lowHpThreshold:0.45}),
+  sbl_still_stance: ab=>executeGooseBrace(ab,{log:'🦤 Still Stance', fx:'🦤', guard:[11,13,15,17]}),
+  sbl_hold_ground: ab=>executeGooseBrace(ab,{log:'🦤 Hold Ground', fx:'🦤', guard:[16,18,21,24]}),
+  sbl_dead_still: ab=>executeGooseBrace(ab,{log:'🦤 Dead Still', fx:'🦤', guard:[22,26,30,34]}),
+  sbl_slow_step: ab=>executeShoebillSwampStance(ab,{log:'🦤 Slow Step', fx:'🦤', humDodge:[22,26,30,34], humTurns:[2,2,3,3]}),
+  sbl_mire_hold: ab=>executeShoebillSwampStance(ab,{log:'🦤 Mire Hold', fx:'🦤', humDodge:[28,32,36,40], humTurns:[2,2,3,3], slowSpd:[2,2,3,3], slowDodge:[8,10,12,14], slowTurns:[2,2,3,3], extraHumTurnIfControl:true}),
+  sbl_ghost_silence: ab=>executeShoebillSwampStance(ab,{log:'🦤 Ghost Silence', fx:'🦤', humDodge:[36,40,44,48], humTurns:[3,3,3,3], slowSpd:[3,3,4,4], slowDodge:[10,12,14,16], slowTurns:[3,3,3,4], fearChance:[10,12,14,16]}),
+  sbl_lining_stance: ab=>executeGooseBrace(ab,{log:'🦤 Lining Stance', fx:'🦤', markAmp:[0.12,0.14,0.16,0.18]}),
+  sbl_measured_hold: ab=>executeGooseBrace(ab,{log:'🦤 Measured Hold', fx:'🦤', markAmp:[0.18,0.20,0.22,0.24]}),
+  sbl_killing_silence: ab=>executeGooseBrace(ab,{log:'🦤 Killing Silence', fx:'🦤', markAmp:[0.26,0.28,0.30,0.32]}),
+  sbl_dread_mark: ab=>executeGooseBrace(ab,{log:'🦤 Dread Mark', fx:'🦤', markAmp:[0.12,0.15,0.18,0.21]}),
+  sbl_grave_sign: ab=>executeGooseBrace(ab,{log:'🦤 Grave Sign', fx:'🦤', markAmp:[0.18,0.22,0.26,0.30]}),
+  sbl_doom_mark: ab=>executeGooseBrace(ab,{log:'🦤 Doom Mark', fx:'🦤', markAmp:[0.26,0.30,0.34,0.38]}),
+  sbl_crack_sign: ab=>executeShoebillDreadExpose(ab,{log:'🦤 Crack Sign', expose:[0.10,0.12,0.14,0.16], turns:[2,2,2,2], defStrip:[1,1,2,2], defTurns:[2,2,2,3]}),
+  sbl_break_doom: ab=>executeShoebillDreadExpose(ab,{log:'🦤 Break Doom', expose:[0.14,0.16,0.18,0.20], turns:[2,2,3,3], defStrip:[2,2,2,3], defTurns:[2,2,3,3]}),
+  sbl_ruin_doom: ab=>executeShoebillDreadExpose(ab,{log:'🦤 Ruin Doom', expose:[0.18,0.20,0.22,0.24], turns:[3,3,3,3], defStrip:[2,3,3,4], defTurns:[3,3,3,3]}),
+  sbl_read_dread: ab=>executeGooseBrace(ab,{log:'🦤 Read Dread', fx:'🦤', markAmpRead:{amp:[0.10,0.12,0.14,0.16], read:[0.06,0.08,0.10,0.12]}}),
+  sbl_read_sign: ab=>executeGooseBrace(ab,{log:'🦤 Read Sign', fx:'🦤', markAmpRead:{amp:[0.14,0.16,0.18,0.20], read:[0.09,0.11,0.13,0.15]}}),
+  sbl_read_doom: ab=>executeGooseBrace(ab,{log:'🦤 Read Doom', fx:'🦤', markAmpRead:{amp:[0.18,0.20,0.22,0.24], read:[0.12,0.14,0.16,0.18]}}),
 };
 Object.entries(GOOSE_SKILL_ACTION_OVERRIDES).forEach(([id, fn])=>{ ACTIONS[id]=fn; });
+Object.entries(SHOEBILL_SKILL_ACTION_OVERRIDES).forEach(([id, fn])=>{ ACTIONS[id]=fn; });
 registerAbilityAlias('iceGuard','crowDefend','Ice Guard');
 registerAbilityAlias('bodySlam','beakSlam','Body Slam');
 registerAbilityAlias('rallyCall','victoryChant','Rally Call',{type:'utility',btnType:'utility'});
@@ -10761,6 +11547,7 @@ registerAbilityAlias('intimidatingStare','intimidate','Intimidating Stare');
 registerAbilityAlias('focusSight','evade','Focus Sight');
 registerAbilityAlias('battleRhythm','chargeUp','Battle Rhythm');
 registerAbilityAlias('fruitBomb','owlPsyche','Fruit Bomb');
+// Legacy display ids (historically Seagull flat kit among others). Live Seagull uses sgl_* + slot migration — do not alias these to sgl_* (would hijack shared templates).
 registerAbilityAlias('diveSnatch','fishSnatcher','Dive Snatch');
 registerAbilityAlias('savageKick','beakSlam','Savage Kick');
 registerAbilityAlias('skyStrike','deathDive','Sky Strike');
@@ -10815,8 +11602,8 @@ registerAbilityAlias('phantom_javelin','dart','Phantom Javelin',{type:'physical'
 registerAbilityAlias('echoSong','shriekwave','Echo Song',{type:'spell',btnType:'spell'});
 registerAbilityAlias('mimicSong','birdBrain','Mimic Song',{type:'utility',btnType:'utility'});
 registerAbilityAlias('confuseChorus','dirge','Confuse Chorus',{type:'spell',btnType:'spell'});
-registerAbilityAlias('blindScreech','featherRuffle','Blind Screech',{type:'utility',btnType:'utility'});
-registerAbilityAlias('distractingChorus','taunt','Distracting Chorus',{type:'utility',btnType:'utility'});
+registerAbilityAlias('blindScreech','featherRuffle','Blind Screech',{type:'utility',btnType:'utility'}); // see diveSnatch note (Seagull cry legacy)
+registerAbilityAlias('distractingChorus','taunt','Distracting Chorus',{type:'utility',btnType:'utility'}); // Macaw/Bowerbird/Toucan migrations also reference this id
 registerAbilityAlias('marshCall','mudLash','Marsh Call',{type:'spell',btnType:'spell'});
 registerAbilityAlias('bogWhisper','preen','Bog Whisper',{type:'utility',btnType:'utility'});
 registerAbilityAlias('rotChorus','sonicDirge','Rot Chorus',{type:'spell',btnType:'spell'});
@@ -10848,7 +11635,7 @@ registerAbilityAlias('bodkin_strike','silentPierce','Bodkin Strike',{type:'physi
 registerAbilityAlias('splinter_barrage','murderMurmuration','Splinter Barrage',{type:'spell',btnType:'spell'});
 registerAbilityAlias('gloom_wing','battleChorus','Gloom Wing',{type:'utility',btnType:'utility',desc:'Blackbird base utility. A neutral wing shroud before branching.'});
 registerAbilityAlias('shade_wing','hum','Shade Wing',{type:'utility',btnType:'utility'});
-registerAbilityAlias('veil_wing','windChorus','Veil Wing',{type:'utility',btnType:'utility'});
+// veil_wing: Blackbird gloom evolution owns ABILITY_TEMPLATES + ACTIONS (no alias chain).
 registerAbilityAlias('ghost_wing','phantomGale','Ghost Wing',{type:'utility',btnType:'utility'});
 registerAbilityAlias('murk_wing','eyeGouge','Murk Wing',{type:'physical',btnType:'physical'});
 registerAbilityAlias('blind_veil','featherRuffle','Blind Veil',{type:'utility',btnType:'utility'});
@@ -10921,6 +11708,8 @@ registerAbilityAlias('stampedeStrike','trample','Stampede Strike',{type:'physica
 registerAbilityAlias('fearHonk','honkTerror','Fear Honk',{type:'utility',btnType:'utility',desc:'Debuff honk: applies Fear without direct damage.'});
 // Swan pre-overhaul flat-kit display ids (wingShield, royalGuard, calmingSong) removed from live aliases —
 // migrateSwanLegacyFamilySkillSlots + legacyBaseAbilityIds rewrite saves to wing_sweep / grace_glide / poise_mark / neck_jab.
+// migrateFlamingoLegacyFamilySkillSlots + legacyBaseAbilityIds rewrite saves to leg_jab / marsh_sweep / balance_pose / mire_mark.
+// migrateSecretaryLegacyFamilySkillSlots + legacyBaseAbilityIds rewrite saves to sec_leg_jab / sec_crushing_kick / hunter_stride / prey_mark (includes legacy stomp ids: serpentCrusher, trample, warCharge, …).
 registerAbilityAlias('snowWall','iceGuard','Snow Wall',{type:'utility',btnType:'utility'});
 registerAbilityAlias('tundraCall','rallyCall','Tundra Call',{type:'utility',btnType:'utility'});
 // Bowerbird flat-kit display ids (decorate / inspireSong / charmDisplay / focusCall) removed from aliases — family slot migration maps them to trinket_toss / lure_call / bower_build / display_mark.
@@ -10930,10 +11719,6 @@ registerAbilityAlias('dizzyChorus','dirge','Dizzy Chorus',{type:'utility',btnTyp
 registerAbilityAlias('echoLaugh','shriekwave','Echo Laugh',{type:'spell',btnType:'spell'});
 registerAbilityAlias('skyTalon','skyStrike','Sky Talon',{isBasic:true,type:'physical',btnType:'physical'});
 registerAbilityAlias('freedomCry','victoryChant','Freedom Cry',{type:'utility',btnType:'utility'});
-registerAbilityAlias('galeStrike','supersonic','Gale Strike',{isBasic:true,type:'physical',btnType:'physical'});
-registerAbilityAlias('oceanCall','wingStorm','Ocean Call',{type:'spell',btnType:'spell'});
-registerAbilityAlias('windChorus','hum','Wind Chorus',{type:'utility',btnType:'utility'});
-registerAbilityAlias('stormSong','sonicDirge','Storm Song',{type:'spell',btnType:'spell'});
 registerAbilityAlias('nightfallCall','dukeDecree','Nightfall Call',{type:'spell',btnType:'spell'});
 registerAbilityAlias('courtSummon','dukeWardens','Court Summon',{type:'utility',btnType:'utility'});
 registerAbilityAlias('verdict','dukeRiverGrip','Verdict',{type:'spell',btnType:'spell'});
@@ -11194,9 +11979,9 @@ Object.entries(CROW_SKILL_ACTION_OVERRIDES).forEach(([id, fn])=>{ ACTIONS[id]=fn
 })();
 
 const GOOSE_TWO_EN_TREE_IDS = Object.freeze([
-  'gooseHonk','honkAttack','territorial_honk','dread_honk','terror_blast','panic_terror','shock_honk','stunning_blast','lockdown_terror','crushing_honk','oppression_blast','tyrant_terror','honk_terror',
+  'gos_body_check','gos_heavy_slam','gos_dominance_crush','gos_pressing_check','gos_pressing_slam','gos_suffocating_crush','gos_cracking_check','gos_break_slam','gos_collapse_crush',
   'talon_slam','heavy_talon','trample_slam','crushing_stampede','wing_buffet','bone_buffet','gale_crush','rending_talon','finisher_slam','execution_crush','heavyTalon','fearHonk',
-  // Kiwi slot-state aliases are registered before this pass; shallow copies need the same 2 EN as the goose heavy tree sources.
+  // Kiwi slot-state aliases are registered before this pass; shallow copies need the same 2 EN as the heavy tree sources.
   'night_probe',
   'kiwi_probe_trample_1','kiwi_probe_trample_2','kiwi_probe_trample_3',
   'kiwi_probe_buffet_1','kiwi_probe_buffet_2','kiwi_probe_buffet_3',
@@ -11252,8 +12037,8 @@ const MACAW_EVOLUTION_TEMPLATE_DEFS = [
   ['warble_note','Warble Note','Echo-line confuse branch. A warbling note that scrambles rhythm.',{type:'spell',btnType:'spell',energy:1,levels:[{desc:'~76% MATK, Confuse 15%.'},{desc:'~82% MATK, Confuse 17%.'},{desc:'~88% MATK, Confuse 18%.'},{desc:'~94% MATK, Confuse 20%.'}]}],
   ['dizzy_echo','Dizzy Echo','Echo-line confuse evolution. Echoes stack disorientation.',{type:'spell',btnType:'spell',energy:1,levels:[{desc:'~84% MATK, Confuse 20%.'},{desc:'~90% MATK, Confuse 22%.'},{desc:'~96% MATK, Confuse 24%.'},{desc:'~102% MATK, Confuse 26%.'}]}],
   ['maddening_refrain','Maddening Refrain','Echo-line confuse finisher. A refrain that unravels focus.',{type:'spell',btnType:'spell',energy:1,levels:[{desc:'~92% MATK, Confuse 25%, bonus vs confused.'},{desc:'~98% MATK, Confuse 27%.'},{desc:'~104% MATK, Confuse 29%.'},{desc:'~110% MATK, Confuse 31%.'}]}],
-  ['delayed_echo','Delayed Echo','Echo-line delayed evolution. Part of the hit arrives next turn.',{type:'spell',btnType:'spell',energy:1,levels:[{desc:'~80% MATK + Resonance next turn.'},{desc:'~86% MATK + stronger Resonance.'},{desc:'~92% MATK + stronger Resonance.'},{desc:'~98% MATK + strongest Resonance.'}]}],
-  ['returning_refrain','Returning Refrain','Echo-line delayed finisher. The refrain returns harder vs debuffed prey.',{type:'spell',btnType:'spell',energy:1,levels:[{desc:'~88% MATK + big Resonance; bonus if debuffed.'},{desc:'~94% MATK + bigger Resonance.'},{desc:'~100% MATK + bigger Resonance.'},{desc:'~106% MATK + peak Resonance.'}]}],
+  ['delayed_echo','Afterbeat Chime','Echo-line Resonance evolution. Part of the note arrives on their turn.',{type:'spell',btnType:'spell',energy:1,levels:[{desc:'~80% MATK + Resonance next turn.'},{desc:'~86% MATK + stronger Resonance.'},{desc:'~92% MATK + stronger Resonance.'},{desc:'~98% MATK + strongest Resonance.'}]}],
+  ['returning_refrain','Returning Refrain','Echo-line Resonance finisher. The refrain returns harder vs debuffed prey.',{type:'spell',btnType:'spell',energy:1,levels:[{desc:'~88% MATK + big Resonance; bonus if debuffed.'},{desc:'~94% MATK + bigger Resonance.'},{desc:'~100% MATK + bigger Resonance.'},{desc:'~106% MATK + peak Resonance.'}]}],
   ['mimic_song','Mimic Song','Mimic-line neutral. Signature vocal mimicry that rattles tempo.',{type:'spell',btnType:'spell',energy:2,levels:[{desc:'~92% MATK, light control pressure.'},{desc:'~100% MATK.'},{desc:'~108% MATK.'},{desc:'~116% MATK.'}]}],
   ['dread_mimic','Dread Mimic','Mimic-line fear branch. Copy a predator’s warning cry.',{type:'spell',btnType:'spell',energy:2,levels:[{desc:'~96% MATK, Fear chance.'},{desc:'~104% MATK, stronger Fear.'},{desc:'~112% MATK.'},{desc:'~120% MATK.'}]}],
   ['panic_chorus','Panic Chorus','Mimic-line fear evolution. Chorus of false threats.',{type:'spell',btnType:'spell',energy:2,levels:[{desc:'~108% MATK, Fear + ACC down.'},{desc:'~116% MATK.'},{desc:'~124% MATK.'},{desc:'~132% MATK.'}]}],
@@ -11277,9 +12062,9 @@ const MACAW_EVOLUTION_TEMPLATE_DEFS = [
   ['chorus_mark','Chorus Mark','Chorus-line neutral setup. Mark the measure before the finale.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Next attack +12% damage.'},{desc:'+15%.'},{desc:'+18%.'},{desc:'+21%.'}]}],
   ['harmonic_measure','Harmonic Measure','Chorus-line damage-amp evolution.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Next attack +20% damage.'},{desc:'+24%.'},{desc:'+28%.'},{desc:'+32%.'}]}],
   ['finale_mark','Finale Mark','Chorus-line damage-amp finisher.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Next attack +30% damage.'},{desc:'+34%.'},{desc:'+38%.'},{desc:'+42%.'}]}],
-  ['echo_mark','Echo Mark','Chorus-line delayed branch. Mark now; resonance pays next beat.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Next attack +8% + Resonance next turn (extra vs debuffed).'},{desc:'+10% + bigger Resonance.'},{desc:'+12% + bigger Resonance.'},{desc:'+14% + biggest Resonance.'}]}],
-  ['resonant_measure','Resonant Measure','Chorus-line delayed evolution.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Next attack +12% + strong Resonance (more vs debuffed).'},{desc:'+14% + stronger.'},{desc:'+16% + stronger.'},{desc:'+18% + peak stack.'}]}],
-  ['delayed_finale','Delayed Finale','Chorus-line delayed finisher.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Next attack +16% + massive Resonance (max vs debuffed).'},{desc:'+18%.'},{desc:'+20%.'},{desc:'+22% + capstone Resonance.'}]}],
+  ['echo_mark','Chorus Toll Mark','Chorus-line Afterbeat branch. Mark now; Resonance pays next beat.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Next attack +8% + Resonance next turn (extra vs debuffed).'},{desc:'+10% + bigger Resonance.'},{desc:'+12% + bigger Resonance.'},{desc:'+14% + biggest Resonance.'}]}],
+  ['resonant_measure','Ringing Measure','Chorus-line Afterbeat evolution.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Next attack +12% + strong Resonance (more vs debuffed).'},{desc:'+14% + stronger.'},{desc:'+16% + stronger.'},{desc:'+18% + peak stack.'}]}],
+  ['delayed_finale','Capstone Toll','Chorus-line Afterbeat finisher.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Next attack +16% + massive Resonance (max vs debuffed).'},{desc:'+18%.'},{desc:'+20%.'},{desc:'+22% + capstone Resonance.'}]}],
   ['cracking_mark','Cracking Mark','Chorus-line weaken branch. Hairline cracks in enemy offense.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Weaken + ACC down.'},{desc:'Stronger Weaken.'},{desc:'Stronger Weaken.'},{desc:'Strongest Weaken.'}]}],
   ['softening_measure','Softening Measure','Chorus-line weaken evolution.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Longer Weaken + ACC down.'},{desc:'Longer Weaken.'},{desc:'Longer Weaken.'},{desc:'Longest Weaken.'}]}],
   ['fading_finale','Fading Finale','Chorus-line weaken finisher.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Heavy Weaken + big ACC crash.'},{desc:'Heavier.'},{desc:'Heavier.'},{desc:'Heaviest anti-offense mark.'}]}],
@@ -11312,9 +12097,9 @@ const LYREBIRD_EVOLUTION_TEMPLATE_DEFS = [
   ['lyre_stage_display','Stage Display','Display-line pressure finisher.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Taunt + big Weaken + ACC crash.'},{desc:'Bigger crash.'},{desc:'Bigger crash.'},{desc:'Maximum spectacle.'}]}],
   ['lyre_harmonic_measure','Harmonic Measure','Refrain-line damage-amp evolution.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Next attack +20% damage.'},{desc:'+24%.'},{desc:'+28%.'},{desc:'+32%.'}]}],
   ['lyre_finale_mark','Finale Mark','Refrain-line damage-amp finisher.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Next attack +30% damage.'},{desc:'+34%.'},{desc:'+38%.'},{desc:'+42%.'}]}],
-  ['lyre_echo_mark','Echo Mark','Refrain-line delayed branch. Mark now; resonance pays next beat.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Next attack +8% + Resonance next turn (extra vs debuffed).'},{desc:'+10% + bigger Resonance.'},{desc:'+12% + bigger Resonance.'},{desc:'+14% + biggest Resonance.'}]}],
-  ['lyre_resonant_measure','Resonant Measure','Refrain-line delayed evolution.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Next attack +12% + strong Resonance (more vs debuffed).'},{desc:'+14% + stronger.'},{desc:'+16% + stronger.'},{desc:'+18% + peak stack.'}]}],
-  ['lyre_delayed_finale','Delayed Finale','Refrain-line delayed finisher.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Next attack +16% + massive Resonance (max vs debuffed).'},{desc:'+18%.'},{desc:'+20%.'},{desc:'+22% + capstone Resonance.'}]}],
+  ['lyre_echo_mark','Stage Toll Mark','Refrain-line Stage Return branch. Mark now; Resonance pays next beat.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Next attack +8% + Resonance next turn (extra vs debuffed).'},{desc:'+10% + bigger Resonance.'},{desc:'+12% + bigger Resonance.'},{desc:'+14% + biggest Resonance.'}]}],
+  ['lyre_resonant_measure','Curtain Measure','Refrain-line Stage Return evolution.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Next attack +12% + strong Resonance (more vs debuffed).'},{desc:'+14% + stronger.'},{desc:'+16% + stronger.'},{desc:'+18% + peak stack.'}]}],
+  ['lyre_delayed_finale','Final Curtain Toll','Refrain-line Stage Return finisher.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Next attack +16% + massive Resonance (max vs debuffed).'},{desc:'+18%.'},{desc:'+20%.'},{desc:'+22% + capstone Resonance.'}]}],
   ['lyre_fault_mark','Fault Mark','Refrain-line read branch. Exploit a cracked rhythm.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Small next-hit amp + bonus vs compromised.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Strongest read.'}]}],
   ['lyre_weak_measure','Weak Measure','Refrain-line read evolution.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Bigger amp + bigger compromised bonus.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Peak measure.'}]}],
   ['lyre_collapse_finale','Collapse Finale','Refrain-line read finisher.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Huge setup + maximum read payoff.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Terminal finale.'}]}],
@@ -11340,9 +12125,9 @@ const BLACK_COCKATOO_EVOLUTION_TEMPLATE_DEFS = [
   ['shock_call','Shock Call','Boom-line paralysis branch. Static on the crest.',{type:'spell',btnType:'spell',energy:2,levels:[{desc:'~90% MATK, Paralysis chance.'},{desc:'~98% MATK.'},{desc:'~106% MATK.'},{desc:'~114% MATK.'}]}],
   ['static_boom','Static Boom','Boom-line paralysis evolution. Chattering interference.',{type:'spell',btnType:'spell',energy:2,levels:[{desc:'~102% MATK, stronger Paralysis.'},{desc:'~110% MATK.'},{desc:'~118% MATK.'},{desc:'~126% MATK.'}]}],
   ['lockwave','Lockwave','Boom-line paralysis finisher. Locks the air.',{type:'spell',btnType:'spell',energy:2,levels:[{desc:'~114% MATK, heavy Paralysis.'},{desc:'~122% MATK.'},{desc:'~130% MATK.'},{desc:'~138% MATK.'}]}],
-  ['echo_call','Echo Call','Boom-line delayed branch. Sound now, impact later.',{type:'spell',btnType:'spell',energy:2,levels:[{desc:'~86% MATK + delayed resonance.'},{desc:'~94% MATK + bigger delay.'},{desc:'~102% MATK.'},{desc:'~110% MATK.'}]}],
-  ['resonant_boom','Resonant Boom','Boom-line delayed evolution. Harmonic pile-up.',{type:'spell',btnType:'spell',energy:2,levels:[{desc:'~96% MATK + strong delayed.'},{desc:'~104% MATK.'},{desc:'~112% MATK.'},{desc:'~120% MATK.'}]}],
-  ['returning_shockwave','Returning Shockwave','Boom-line delayed finisher. The wave returns harder.',{type:'spell',btnType:'spell',energy:2,levels:[{desc:'~106% MATK + massive delayed; vs debuffed.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Peak shockwave.'}]}],
+  ['echo_call','Hall Call','Boom-line Reverberation branch. Sound now, impact on their turn.',{type:'spell',btnType:'spell',energy:2,levels:[{desc:'~86% MATK + Resonance stack.'},{desc:'~94% MATK + bigger Resonance.'},{desc:'~102% MATK.'},{desc:'~110% MATK.'}]}],
+  ['resonant_boom','Vault Boom','Boom-line Reverberation evolution. Harmonic pile-up.',{type:'spell',btnType:'spell',energy:2,levels:[{desc:'~96% MATK + strong Resonance.'},{desc:'~104% MATK.'},{desc:'~112% MATK.'},{desc:'~120% MATK.'}]}],
+  ['returning_shockwave','Returning Shockwave','Boom-line Reverberation finisher. The wave returns harder.',{type:'spell',btnType:'spell',energy:2,levels:[{desc:'~106% MATK + massive Resonance; vs debuffed.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Peak shockwave.'}]}],
   ['wing_beat','Wing Beat','Wing-line neutral. Heavy beat before you specialize.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Light ACC pressure + tempo.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Strongest baseline beat.'}]}],
   ['dust_beat','Dust Beat','Wing-line accuracy-break branch. Dust and grit in the eyes.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Enemy ACC -14% for 2t.'},{desc:'-16% ACC.'},{desc:'-18% ACC.'},{desc:'-20% ACC for 3t.'}]}],
   ['shudder_gust','Shudder Gust','Wing-line accuracy-break evolution.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Enemy ACC -22% for 2t.'},{desc:'-24% ACC.'},{desc:'-26% ACC.'},{desc:'-28% ACC for 3t.'}]}],
@@ -11356,9 +12141,9 @@ const BLACK_COCKATOO_EVOLUTION_TEMPLATE_DEFS = [
   ['resonance_mark','Resonance Mark','Resonance-line neutral setup. Mark the measure before the boom.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Next attack +12% damage.'},{desc:'+15%.'},{desc:'+18%.'},{desc:'+21%.'}]}],
   ['harmonic_pulse','Harmonic Pulse','Resonance-line amp evolution.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Next attack +20% damage.'},{desc:'+24%.'},{desc:'+28%.'},{desc:'+32%.'}]}],
   ['resonant_collapse','Resonant Collapse','Resonance-line amp finisher.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Next attack +30% damage.'},{desc:'+34%.'},{desc:'+38%.'},{desc:'+42%.'}]}],
-  ['cockatoo_echo_mark','Echo Mark','Resonance-line delayed branch. Mark now; collapse later.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Next attack +8% + delayed resonance.'},{desc:'+10% + bigger delay.'},{desc:'+12%.'},{desc:'+14%.'}]}],
-  ['return_pulse','Return Pulse','Resonance-line delayed evolution.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Next attack +12% + strong delayed.'},{desc:'+14%.'},{desc:'+16%.'},{desc:'+18%.'}]}],
-  ['delayed_collapse','Delayed Collapse','Resonance-line delayed finisher.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Next attack +16% + massive delayed.'},{desc:'+18%.'},{desc:'+20%.'},{desc:'+22%.'}]}],
+  ['cockatoo_echo_mark','Crest Toll Mark','Resonance-line Returning Pulse branch. Mark now; collapse on their turn.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Next attack +8% + Resonance stack.'},{desc:'+10% + bigger Resonance.'},{desc:'+12%.'},{desc:'+14%.'}]}],
+  ['return_pulse','Return Pulse','Resonance-line Returning Pulse evolution.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Next attack +12% + strong Resonance.'},{desc:'+14%.'},{desc:'+16%.'},{desc:'+18%.'}]}],
+  ['delayed_collapse','Collapse Toll','Resonance-line Returning Pulse finisher.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Next attack +16% + massive Resonance.'},{desc:'+18%.'},{desc:'+20%.'},{desc:'+22%.'}]}],
   ['fault_mark','Fault Mark','Resonance-line read branch. Exploit a fault line.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Bonus damage vs debuffed targets.'},{desc:'Stronger read.'},{desc:'Stronger.'},{desc:'Peak fault.'}]}],
   ['weak_pulse','Weak Pulse','Resonance-line read evolution.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Larger read bonus.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Hard read.'}]}],
   ['collapse_read','Collapse Read','Resonance-line read finisher.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Maximum compromised-target payoff.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Total collapse.'}]}],
@@ -11384,9 +12169,9 @@ const KOOKABURRA_EVOLUTION_TEMPLATE_DEFS = [
   ['kooka_shock_call','Shock Call','Laugh-line paralysis branch. Static on the wire.',{type:'spell',btnType:'spell',energy:2,levels:[{desc:'~88% MATK, Paralysis chance.'},{desc:'~96% MATK.'},{desc:'~104% MATK.'},{desc:'~112% MATK.'}]}],
   ['static_laugh','Static Laugh','Laugh-line paralysis evolution.',{type:'spell',btnType:'spell',energy:2,levels:[{desc:'~100% MATK, stronger Paralysis.'},{desc:'~108% MATK.'},{desc:'~116% MATK.'},{desc:'~124% MATK.'}]}],
   ['lock_cackle','Lock Cackle','Laugh-line paralysis finisher. Locks the prey.',{type:'spell',btnType:'spell',energy:2,levels:[{desc:'~112% MATK, heavy Paralysis.'},{desc:'~120% MATK.'},{desc:'~128% MATK.'},{desc:'~136% MATK.'}]}],
-  ['kooka_echo_call','Echo Call','Laugh-line delayed branch. Sound now, bite later.',{type:'spell',btnType:'spell',energy:2,levels:[{desc:'~84% MATK + delayed echo.'},{desc:'~92% MATK + bigger echo.'},{desc:'~100% MATK.'},{desc:'~108% MATK.'}]}],
-  ['echo_laugh','Echo Laugh','Laugh-line delayed evolution.',{type:'spell',btnType:'spell',energy:2,levels:[{desc:'~94% MATK + strong delayed echo.'},{desc:'~102% MATK.'},{desc:'~110% MATK.'},{desc:'~118% MATK.'}]}],
-  ['returning_cackle','Returning Cackle','Laugh-line delayed finisher. The laugh returns harder.',{type:'spell',btnType:'spell',energy:2,levels:[{desc:'~104% MATK + massive echo; vs debuffed.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Peak returning cackle.'}]}],
+  ['kooka_echo_call','Bush Echo','Laugh-line Ricochet branch. Sound now, bite on their turn.',{type:'spell',btnType:'spell',energy:2,levels:[{desc:'~84% MATK + laugh echo.'},{desc:'~92% MATK + bigger echo.'},{desc:'~100% MATK.'},{desc:'~108% MATK.'}]}],
+  ['echo_laugh','Layered Laugh','Laugh-line Ricochet evolution.',{type:'spell',btnType:'spell',energy:2,levels:[{desc:'~94% MATK + strong laugh echo.'},{desc:'~102% MATK.'},{desc:'~110% MATK.'},{desc:'~118% MATK.'}]}],
+  ['returning_cackle','Returning Cackle','Laugh-line Ricochet finisher. The laugh returns harder.',{type:'spell',btnType:'spell',energy:2,levels:[{desc:'~104% MATK + massive echo; vs debuffed.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Peak returning cackle.'}]}],
   ['perch_watch','Perch Watch','Watch-line neutral. Read the angle from the branch.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Next attack +12% damage.'},{desc:'+15%.'},{desc:'+18%.'},{desc:'+21%.'}]}],
   ['kooka_hunters_sight','Hunter\'s Sight','Watch-line amp evolution.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Next attack +18% damage.'},{desc:'+22%.'},{desc:'+26%.'},{desc:'+30%.'}]}],
   ['perch_lock','Perch Lock','Watch-line amp finisher.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Next attack +26% damage.'},{desc:'+30%.'},{desc:'+34%.'},{desc:'+38%.'}]}],
@@ -11399,7 +12184,7 @@ const KOOKABURRA_EVOLUTION_TEMPLATE_DEFS = [
   ['drop_strike','Drop Strike','Drop-line neutral. A sudden stoop before you specialize.',{type:'physical',btnType:'physical',energy:1,levels:[{desc:'~100% dmg; ignores dodge this hit.'},{desc:'Stronger drop.'},{desc:'Stronger drop.'},{desc:'Peak drop.'}]}],
   ['hunter_drop','Hunter Drop','Drop-line execute evolution.',{type:'physical',btnType:'physical',energy:1,levels:[{desc:'Bonus vs compromised / low HP prey.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Hard hunter drop.'}]}],
   ['kill_smash','Kill Smash','Drop-line execute finisher.',{type:'physical',btnType:'physical',energy:1,levels:[{desc:'Large execute payoff.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Capstone kill smash.'}]}],
-  ['kooka_trigger_strike','Trigger Strike','Drop-line trigger branch.',{type:'physical',btnType:'physical',energy:1,levels:[{desc:'Hit + delayed echo chip.'},{desc:'Bigger echo.'},{desc:'Bigger.'},{desc:'Echo trigger.'}]}],
+  ['kooka_trigger_strike','Trigger Strike','Drop-line trigger branch.',{type:'physical',btnType:'physical',energy:1,levels:[{desc:'Hit + laugh echo chip.'},{desc:'Bigger echo.'},{desc:'Bigger.'},{desc:'Echo trigger.'}]}],
   ['echo_drop','Echo Drop','Drop-line trigger evolution.',{type:'physical',btnType:'physical',energy:1,levels:[{desc:'Stronger hit + echo.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Heavy echo drop.'}]}],
   ['repeat_smash','Repeat Smash','Drop-line trigger finisher.',{type:'physical',btnType:'physical',energy:1,levels:[{desc:'Big hit + massive echo.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Repeat killing smash.'}]}],
   ['clutch_strike','Clutch Strike','Drop-line slow branch.',{type:'physical',btnType:'physical',energy:1,levels:[{desc:'Slow + small ACC down.'},{desc:'Stronger slow.'},{desc:'Stronger.'},{desc:'Heaviest clutch.'}]}],
@@ -11428,9 +12213,9 @@ const RAVEN_EVOLUTION_TEMPLATE_DEFS = [
   ['rav_shock_omen','Shock Call','Omen-line paralysis branch.',{type:'spell',btnType:'spell',energy:2,levels:[{desc:'~84% MATK, Paralysis chance.'},{desc:'~90% MATK.'},{desc:'~96% MATK.'},{desc:'~102% MATK.'}]}],
   ['rav_static_cry','Static Cry','Omen-line paralysis evolution.',{type:'spell',btnType:'spell',energy:2,levels:[{desc:'~94% MATK, stronger Paralysis.'},{desc:'~100% MATK.'},{desc:'~106% MATK.'},{desc:'~112% MATK.'}]}],
   ['rav_lock_omen','Lock Omen','Omen-line paralysis finisher.',{type:'spell',btnType:'spell',energy:2,levels:[{desc:'~104% MATK, heavy Paralysis.'},{desc:'~110% MATK.'},{desc:'~116% MATK.'},{desc:'~122% MATK.'}]}],
-  ['rav_echo_omen','Echo Call','Omen-line delayed branch. Croak now; toll later.',{type:'spell',btnType:'spell',energy:2,levels:[{desc:'~80% MATK + delayed resonance.'},{desc:'~86% MATK.'},{desc:'~92% MATK.'},{desc:'~98% MATK.'}]}],
-  ['rav_doom_cry','Doom Cry','Omen-line delayed evolution.',{type:'spell',btnType:'spell',energy:2,levels:[{desc:'~88% MATK + strong delay.'},{desc:'~94% MATK.'},{desc:'~100% MATK.'},{desc:'~106% MATK.'}]}],
-  ['rav_returning_omen','Returning Omen','Omen-line delayed finisher. The omen returns harder.',{type:'spell',btnType:'spell',energy:2,levels:[{desc:'~96% MATK + massive delay; vs debuffed.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Peak return.'}]}],
+  ['rav_echo_omen','First Toll','Omen-line Tolling branch. Croak now; toll on their turn.',{type:'spell',btnType:'spell',energy:2,levels:[{desc:'~80% MATK + Resonance stack.'},{desc:'~86% MATK.'},{desc:'~92% MATK.'},{desc:'~98% MATK.'}]}],
+  ['rav_doom_cry','Doom Cry','Omen-line Tolling evolution.',{type:'spell',btnType:'spell',energy:2,levels:[{desc:'~88% MATK + strong Resonance.'},{desc:'~94% MATK.'},{desc:'~100% MATK.'},{desc:'~106% MATK.'}]}],
+  ['rav_returning_omen','Returning Omen','Omen-line Tolling finisher. The omen returns harder.',{type:'spell',btnType:'spell',energy:2,levels:[{desc:'~96% MATK + massive Resonance; vs debuffed.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Peak return.'}]}],
   ['rav_grim_sight','Grim Sight','Watch-line amp evolution.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Next attack +18% damage.'},{desc:'+22%.'},{desc:'+26%.'},{desc:'+30%.'}]}],
   ['rav_omen_lock','Omen Lock','Watch-line amp finisher.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Next attack +26% damage.'},{desc:'+30%.'},{desc:'+34%.'},{desc:'+38%.'}]}],
   ['rav_expose_weakness','Expose Weakness','Watch-line break branch.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Small DEF break.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Heavy expose.'}]}],
@@ -11441,14 +12226,101 @@ const RAVEN_EVOLUTION_TEMPLATE_DEFS = [
   ['rav_read_doom','Read Doom','Watch-line debuff-read finisher.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Maximum compromised payoff.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Terminal read.'}]}],
   ['rav_grim_sign','Grim Sign','Fate-line amp evolution.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Next attack +20% damage.'},{desc:'+24%.'},{desc:'+28%.'},{desc:'+32%.'}]}],
   ['rav_final_doom','Final Doom','Fate-line amp finisher.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Next attack +30% damage.'},{desc:'+34%.'},{desc:'+38%.'},{desc:'+42%.'}]}],
-  ['rav_fate_echo_mark','Echo Mark','Fate-line delayed branch.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Next hit +8% + delayed resonance.'},{desc:'+10% + bigger delay.'},{desc:'+12%.'},{desc:'+14%.'}]}],
-  ['rav_return_sign','Return Sign','Fate-line delayed evolution.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Next hit +12% + strong delay.'},{desc:'+14%.'},{desc:'+16%.'},{desc:'+18%.'}]}],
-  ['rav_delayed_doom','Delayed Doom','Fate-line delayed finisher.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Next hit +16% + massive delay.'},{desc:'+18%.'},{desc:'+20%.'},{desc:'+22%.'}]}],
+  ['rav_fate_echo_mark','Writ Toll Mark','Fate-line Writ Loop branch.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Next hit +8% + Resonance stack.'},{desc:'+10% + bigger Resonance.'},{desc:'+12%.'},{desc:'+14%.'}]}],
+  ['rav_return_sign','Return Sign','Fate-line Writ Loop evolution.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Next hit +12% + strong Resonance.'},{desc:'+14%.'},{desc:'+16%.'},{desc:'+18%.'}]}],
+  ['rav_delayed_doom','Doom Writ','Fate-line Writ Loop finisher.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Next hit +16% + massive Resonance.'},{desc:'+18%.'},{desc:'+20%.'},{desc:'+22%.'}]}],
   ['rav_fate_death_mark','Death Mark','Fate-line execute branch.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Mark with execute window.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Peak death mark.'}]}],
   ['rav_fate_death_sign','Death Sign','Fate-line execute evolution.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Larger execute payoff.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Hard sign.'}]}],
   ['rav_fate_final_mark','Final Mark','Fate-line execute finisher.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Maximum finisher setup.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Capstone mark.'}]}],
 ];
 for(const [id,name,desc,options] of RAVEN_EVOLUTION_TEMPLATE_DEFS){
+  ABILITY_TEMPLATES[id] = Object.assign(ABILITY_TEMPLATES[id]||{}, makeEvolutionAbilityTemplate(id,name,desc,options));
+}
+
+const ALBATROSS_EVOLUTION_TEMPLATE_DEFS = [
+  ['alb_wing_jab','Wing Jab','Wing-line neutral. A wide reach strike before you specialize.',{type:'physical',btnType:'physical',energy:1,fixedMainAttackCost:true,levels:[{desc:'~92% ATK; light pierce.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Peak jab.'}]}],
+  ['alb_wing_sweep','Wing Sweep','Wing-line pierce evolution. Broad arc through guard.',{type:'physical',btnType:'physical',energy:1,fixedMainAttackCost:true,levels:[{desc:'Heavier pierce reach.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Wide sweep.'}]}],
+  ['alb_wing_arc','Wing Arc','Wing-line pierce finisher. Capstone anti-defense arc.',{type:'physical',btnType:'physical',energy:1,fixedMainAttackCost:true,levels:[{desc:'Max pierce vs heavy guard.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Horizon arc.'}]}],
+  ['alb_razor_jab','Razor Jab','Wing-line bleed branch.',{type:'physical',btnType:'physical',energy:1,fixedMainAttackCost:true,levels:[{desc:'Cut + Bleed chance.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Salt razor.'}]}],
+  ['alb_razor_sweep','Razor Sweep','Wing-line bleed evolution.',{type:'physical',btnType:'physical',energy:1,fixedMainAttackCost:true,levels:[{desc:'Wider wound arc.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Ocean razor.'}]}],
+  ['alb_razor_arc','Razor Arc','Wing-line bleed finisher.',{type:'physical',btnType:'physical',energy:1,fixedMainAttackCost:true,levels:[{desc:'Bleed capstone vs wounded prey.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Blood horizon.'}]}],
+  ['alb_spot_jab','Spot Jab','Wing-line expose branch.',{type:'physical',btnType:'physical',energy:1,fixedMainAttackCost:true,levels:[{desc:'Bonus vs compromised.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Spot line.'}]}],
+  ['alb_spot_sweep','Spot Sweep','Wing-line expose evolution.',{type:'physical',btnType:'physical',energy:1,fixedMainAttackCost:true,levels:[{desc:'Harder line on bad footing.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Wide spot.'}]}],
+  ['alb_open_arc','Open Arc','Wing-line expose finisher.',{type:'physical',btnType:'physical',energy:1,fixedMainAttackCost:true,levels:[{desc:'Expose + precision payoff.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Open sky.'}]}],
+  ['alb_ocean_sweep','Ocean Sweep','Sweep-line neutral. A vast wing wash that steals tempo.',{type:'physical',btnType:'physical',energy:2,levels:[{desc:'2 EN. Broad hit + Slow current.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Peak sweep.'}]}],
+  ['alb_pulling_current','Pulling Current','Sweep-line slow evolution.',{type:'physical',btnType:'physical',energy:2,levels:[{desc:'2 EN. Stronger pull + mire.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Dragging tide.'}]}],
+  ['alb_tempest_wake','Tempest Wake','Sweep-line slow finisher.',{type:'physical',btnType:'physical',energy:2,levels:[{desc:'2 EN. Max slow; bonus vs already slowed.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Tempest wash.'}]}],
+  ['alb_pressing_sweep','Pressing Sweep','Sweep-line weaken branch.',{type:'physical',btnType:'physical',energy:2,levels:[{desc:'2 EN. Sweep + Weaken odds.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Pressing wash.'}]}],
+  ['alb_pressing_current','Pressing Current','Sweep-line weaken evolution.',{type:'physical',btnType:'physical',energy:2,levels:[{desc:'2 EN. Heavier posture break.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Heavy current.'}]}],
+  ['alb_crushing_tempest','Crushing Tempest','Sweep-line weaken finisher.',{type:'physical',btnType:'physical',energy:2,levels:[{desc:'2 EN. Capstone Weaken tempest.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Crushing sea.'}]}],
+  ['alb_echo_sweep','Echo Sweep','Sweep-line return branch.',{type:'physical',btnType:'physical',energy:2,levels:[{desc:'2 EN. Hit + wake next turn.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Echo wash.'}]}],
+  ['alb_return_current','Return Current','Sweep-line return evolution.',{type:'physical',btnType:'physical',energy:2,levels:[{desc:'2 EN. Bigger returning wake.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Return tide.'}]}],
+  ['alb_returning_tempest','Returning Tempest','Sweep-line return finisher.',{type:'physical',btnType:'physical',energy:2,levels:[{desc:'2 EN. Peak delayed wake.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Inevitable tempest.'}]}],
+  ['alb_glide_line','Glide Line','Glide-line neutral. Ride the fight instead of chasing it.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'+SPD; light dodge window.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Steady glide.'}]}],
+  ['alb_long_drift','Long Drift','Glide-line speed evolution.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'More SPD + tempo.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Long line.'}]}],
+  ['alb_endless_current','Endless Current','Glide-line speed finisher.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Peak endurance tempo.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Endless sky.'}]}],
+  ['alb_soft_glide','Soft Glide','Glide-line dodge branch.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Dodge + enemy ACC slip.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Soft air.'}]}],
+  ['alb_ghost_drift','Ghost Drift','Glide-line dodge evolution.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Bigger dodge arc.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Ghost line.'}]}],
+  ['alb_white_current','White Current','Glide-line dodge finisher.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Maximum misty dodge.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Whiteout drift.'}]}],
+  ['alb_steady_glide','Steady Glide','Glide-line guard branch.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Guard stance + stability.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Steady wing.'}]}],
+  ['alb_broad_drift','Broad Drift','Glide-line guard evolution.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Heavier guard window.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Broad shear.'}]}],
+  ['alb_ocean_current','Ocean Current','Glide-line guard finisher.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Peak oceanic brace.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Deep current guard.'}]}],
+  ['alb_current_mark','Current Mark','Current-line neutral. Mark prey into a bad flow.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Next hit +12% damage.'},{desc:'+15%.'},{desc:'+18%.'},{desc:'+21%.'}]}],
+  ['alb_pull_mark','Pull Mark','Current-line amp evolution.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Next hit +18% damage.'},{desc:'+22%.'},{desc:'+26%.'},{desc:'+30%.'}]}],
+  ['alb_wake_mark','Wake Mark','Current-line amp finisher.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Next hit +26% damage.'},{desc:'+30%.'},{desc:'+34%.'},{desc:'+38%.'}]}],
+  ['alb_crack_current','Crack Current','Current-line DEF break branch.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Small DEF break.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Cracked flow.'}]}],
+  ['alb_split_current','Split Current','Current-line DEF break evolution.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Stronger DEF break.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Split tide.'}]}],
+  ['alb_ruin_wake','Ruin Wake','Current-line DEF break finisher.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Largest break window.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Ruinous wake.'}]}],
+  ['alb_read_current','Read Current','Current-line read branch.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Next hit amp + vs compromised.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Read surface.'}]}],
+  ['alb_read_pull','Read Pull','Current-line read evolution.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Bigger amp + read.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Rip read.'}]}],
+  ['alb_read_wake','Read Wake','Current-line read finisher.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Maximum compromised payoff.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Terminal wake.'}]}],
+];
+for(const [id,name,desc,options] of ALBATROSS_EVOLUTION_TEMPLATE_DEFS){
+  ABILITY_TEMPLATES[id] = Object.assign(ABILITY_TEMPLATES[id]||{}, makeEvolutionAbilityTemplate(id,name,desc,options));
+}
+// Albatross pre-overhaul flat ids (galeStrike, supersonic, oceanCall, wingStorm, windChorus, stormSong, sonicDirge, …)
+// are not registered as aliases — they would overwrite global pool abilities (supersonic/wingStorm/sonicDirge).
+// Saves are rewritten via legacyBaseAbilityIds + migrateAlbatrossLegacyFamilySkillSlots → alb_*.
+
+const SEAGULL_EVOLUTION_TEMPLATE_DEFS = [
+  ['sgl_snap_peck','Snap Peck','Snap-line neutral. A quick coastal jab before you specialize.',{type:'physical',btnType:'physical',energy:1,fixedMainAttackCost:true,levels:[{desc:'~92% ATK; light pierce.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Peak snap.'}]}],
+  ['sgl_raking_bite','Raking Bite','Snap-line bleed evolution. Tear a messy line.',{type:'physical',btnType:'physical',energy:1,fixedMainAttackCost:true,levels:[{desc:'Hit + Bleed chance.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Raking finish.'}]}],
+  ['sgl_salt_rip','Salt Rip','Snap-line bleed finisher. Salt in the wound.',{type:'physical',btnType:'physical',energy:1,fixedMainAttackCost:true,levels:[{desc:'Heavy bleed vs wounded prey.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Coastal rip.'}]}],
+  ['sgl_hook_peck','Hook Peck','Snap-line pierce branch. Pick through guard.',{type:'physical',btnType:'physical',energy:1,fixedMainAttackCost:true,levels:[{desc:'Pierce pressure.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Hook line.'}]}],
+  ['sgl_hook_bite','Hook Bite','Snap-line pierce evolution.',{type:'physical',btnType:'physical',energy:1,fixedMainAttackCost:true,levels:[{desc:'Deeper pierce.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Hook bite.'}]}],
+  ['sgl_hook_rip','Hook Rip','Snap-line pierce finisher.',{type:'physical',btnType:'physical',energy:1,fixedMainAttackCost:true,levels:[{desc:'Capstone anti-guard rip.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Gaff rip.'}]}],
+  ['sgl_spot_peck','Spot Peck','Snap-line expose branch. Tag the opening.',{type:'physical',btnType:'physical',energy:1,fixedMainAttackCost:true,levels:[{desc:'Bonus vs compromised.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Spot snap.'}]}],
+  ['sgl_scavenge_bite','Scavenge Bite','Snap-line expose evolution.',{type:'physical',btnType:'physical',energy:1,fixedMainAttackCost:true,levels:[{desc:'Harder line on bad footing.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Scavenge bite.'}]}],
+  ['sgl_open_rip','Open Rip','Snap-line expose finisher.',{type:'physical',btnType:'physical',energy:1,fixedMainAttackCost:true,levels:[{desc:'Expose + compromised payoff.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Open coast.'}]}],
+  ['sgl_swoop_pass','Swoop Pass','Swoop-line neutral. A loud fly-by with bite.',{type:'physical',btnType:'physical',energy:2,levels:[{desc:'2 EN. ~118% dmg; ignores dodge this hit.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Peak pass.'}]}],
+  ['sgl_skimming_dive','Skimming Dive','Swoop-line crit evolution.',{type:'physical',btnType:'physical',energy:2,levels:[{desc:'2 EN. Sharper skim + crit pressure.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Skim capstone.'}]}],
+  ['sgl_breakwing','Breakwing','Swoop-line crit finisher.',{type:'physical',btnType:'physical',energy:2,levels:[{desc:'2 EN. Heavy crit break.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Wing break.'}]}],
+  ['sgl_mugging_pass','Mugging Pass','Swoop-line blindside branch.',{type:'physical',btnType:'physical',energy:2,levels:[{desc:'2 EN. Extra vs debuffed openings.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Mugging pass.'}]}],
+  ['sgl_snatch_dive','Snatch Dive','Swoop-line blindside evolution.',{type:'physical',btnType:'physical',energy:2,levels:[{desc:'2 EN. Bigger snatch vs messy targets.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Snatch dive.'}]}],
+  ['sgl_plunder_break','Plunder Break','Swoop-line blindside finisher.',{type:'physical',btnType:'physical',energy:2,levels:[{desc:'2 EN. Peak opportunistic haul.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Plunder break.'}]}],
+  ['sgl_drag_pass','Drag Pass','Swoop-line slow branch.',{type:'physical',btnType:'physical',energy:2,levels:[{desc:'2 EN. Hit + coastal slow.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Dragging pass.'}]}],
+  ['sgl_drag_dive','Drag Dive','Swoop-line slow evolution.',{type:'physical',btnType:'physical',energy:2,levels:[{desc:'2 EN. Heavier undertow.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Drag dive.'}]}],
+  ['sgl_undertow_break','Undertow Break','Swoop-line slow finisher.',{type:'physical',btnType:'physical',energy:2,levels:[{desc:'2 EN. Max slow pressure.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Undertow.'}]}],
+  ['sgl_raucous_cry','Raucous Cry','Cry-line neutral. Coastal noise that spoils aim.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Enemy ACC down.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Raucous peak.'}]}],
+  ['sgl_wavering_squall','Wavering Squall','Cry-line ACC evolution.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Heavier ACC crash.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Squall wash.'}]}],
+  ['sgl_blinding_uproar','Blinding Uproar','Cry-line ACC finisher.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Maximum targeting ruin.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Blinding flock.'}]}],
+  ['sgl_harsh_cry','Harsh Cry','Cry-line weaken branch.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Weaken odds.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Harsh peak.'}]}],
+  ['sgl_grinding_squall','Grinding Squall','Cry-line weaken evolution.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Stronger Weaken pressure.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Grinding cry.'}]}],
+  ['sgl_fading_uproar','Fading Uproar','Cry-line weaken finisher.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Heavy posture break.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Fading uproar.'}]}],
+  ['sgl_keen_cry','Keen Cry','Cry-line speed branch.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'+SPD self tempo.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Keen peak.'}]}],
+  ['sgl_tailwind_squall','Tailwind Squall','Cry-line speed evolution.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Bigger SPD + light dodge.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Tailwind.'}]}],
+  ['sgl_whitecap_uproar','Whitecap Uproar','Cry-line speed finisher.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Peak coastal rush.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Whitecap.'}]}],
+  ['sgl_scavenge_mark','Scavenge Mark','Scavenge-line neutral. Mark scraps for the next hit.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Next hit +12% damage.'},{desc:'+15%.'},{desc:'+18%.'},{desc:'+21%.'}]}],
+  ['sgl_claim_sign','Claim Sign','Scavenge-line amp evolution.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Next hit +18% damage.'},{desc:'+22%.'},{desc:'+26%.'},{desc:'+30%.'}]}],
+  ['sgl_haul_mark','Haul Mark','Scavenge-line amp finisher.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Next hit +26% damage.'},{desc:'+30%.'},{desc:'+34%.'},{desc:'+38%.'}]}],
+  ['sgl_crack_mark','Crack Mark','Scavenge-line DEF break branch.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Small DEF break.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Cracked claim.'}]}],
+  ['sgl_strip_sign','Strip Sign','Scavenge-line DEF break evolution.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Stronger DEF break.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Stripped guard.'}]}],
+  ['sgl_break_haul','Break Haul','Scavenge-line DEF break finisher.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Largest break window.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Break haul.'}]}],
+  ['sgl_read_scrap','Read Scrap','Scavenge-line read branch.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Next hit amp + vs compromised.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Read scrap.'}]}],
+  ['sgl_read_claim','Read Claim','Scavenge-line read evolution.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Bigger amp + read.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Read claim.'}]}],
+  ['sgl_read_haul','Read Haul','Scavenge-line read finisher.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Maximum compromised payoff.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Read haul.'}]}],
+];
+for(const [id,name,desc,options] of SEAGULL_EVOLUTION_TEMPLATE_DEFS){
   ABILITY_TEMPLATES[id] = Object.assign(ABILITY_TEMPLATES[id]||{}, makeEvolutionAbilityTemplate(id,name,desc,options));
 }
 
@@ -11512,9 +12384,9 @@ const BOWERBIRD_EVOLUTION_TEMPLATE_DEFS = [
   ['glimmer_call','Glimmer Call','Lure-line confuse branch.',{type:'spell',btnType:'spell',energy:2,levels:[{desc:'Display shimmer + Confuse odds.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Glimmer call.'}]}],
   ['glimmer_lure','Glimmer Lure','Lure-line confuse evolution.',{type:'spell',btnType:'spell',energy:2,levels:[{desc:'Stronger confuse pressure.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Glimmer lure.'}]}],
   ['glimmer_snare','Glimmer Snare','Lure-line confuse finisher.',{type:'spell',btnType:'spell',energy:2,levels:[{desc:'2 hits; bonus vs confused prey.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Glimmer snare.'}]}],
-  ['bow_echo_call','Echo Call','Lure-line delayed branch. Bait now; bite next beat.',{type:'spell',btnType:'spell',energy:2,levels:[{desc:'~84% MATK + delayed trap dmg.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Echo call.'}]}],
-  ['bow_echo_lure','Echo Lure','Lure-line delayed evolution.',{type:'spell',btnType:'spell',energy:2,levels:[{desc:'Stronger hit + fatter delayed trap.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Echo lure.'}]}],
-  ['bow_echo_snare','Echo Snare','Lure-line delayed finisher.',{type:'spell',btnType:'spell',energy:2,levels:[{desc:'2 hits + stacked trap; vs debuffed.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Echo snare.'}]}],
+  ['bow_rank_call','Rank Call','Lure-line venom branch. Sour bait that sickens.',{type:'spell',btnType:'spell',energy:2,levels:[{desc:'~84% MATK + Poison chance.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Rank call.'}]}],
+  ['bow_acrid_lure','Acrid Lure','Lure-line venom evolution.',{type:'spell',btnType:'spell',energy:2,levels:[{desc:'Stronger hit + heavier Poison + ACC crash.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Acrid lure.'}]}],
+  ['bow_viral_snare','Viral Snare','Lure-line venom finisher.',{type:'spell',btnType:'spell',energy:2,levels:[{desc:'Twin hits + Poison; bonus vs debuffed.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Viral snare.'}]}],
   ['bower_build','Bower Build','Build-line neutral. Arrange the stage for the next strike.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Next hit damage amp.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Tidy bower.'}]}],
   ['fine_shape','Fine Shape','Build-line amp evolution.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Bigger next-hit window.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Fine shape.'}]}],
   ['grand_structure','Grand Structure','Build-line amp finisher.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Maximum next-hit payoff.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Grand structure.'}]}],
@@ -11554,9 +12426,9 @@ const TOUCAN_EVOLUTION_TEMPLATE_DEFS = [
   ['shock_slam','Shock Slam','Slam-line shock branch.',{type:'physical',btnType:'physical',energy:2,levels:[{desc:'2 EN. Slam + paralysis odds.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Shock slam.'}]}],
   ['static_smash','Static Smash','Slam-line shock evolution.',{type:'physical',btnType:'physical',energy:2,levels:[{desc:'2 EN. Heavier para route.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Static smash.'}]}],
   ['lock_crush','Lock Crush','Slam-line shock finisher.',{type:'physical',btnType:'physical',energy:2,levels:[{desc:'2 EN. Lockdown crush.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Lock crush.'}]}],
-  ['echo_slam','Echo Slam','Slam-line delayed branch.',{type:'physical',btnType:'physical',energy:2,levels:[{desc:'2 EN. Hit + afterbill next turn.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Echo slam.'}]}],
-  ['return_smash','Return Smash','Slam-line delayed evolution.',{type:'physical',btnType:'physical',energy:2,levels:[{desc:'2 EN. Bigger afterbill.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Return smash.'}]}],
-  ['double_crush','Double Crush','Slam-line delayed finisher.',{type:'physical',btnType:'physical',energy:2,levels:[{desc:'2 EN. Massive afterbill route.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Double crush.'}]}],
+  ['tou_press_slam','Press Slam','Slam-line cull branch. Crush posture with the bill.',{type:'physical',btnType:'physical',energy:2,levels:[{desc:'2 EN. Heavy hit + Weaken chance.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Press slam.'}]}],
+  ['tou_dent_smash','Dent Smash','Slam-line cull evolution.',{type:'physical',btnType:'physical',energy:2,levels:[{desc:'2 EN. Harder smash + stronger Weaken.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Dent smash.'}]}],
+  ['tou_split_crush','Split Crush','Slam-line cull finisher.',{type:'physical',btnType:'physical',energy:2,levels:[{desc:'2 EN. Peak bill crush + max Weaken pressure.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Split crush.'}]}],
   ['fruit_toss','Fruit Toss','Toss-line neutral. Splashing control shot.',{type:'spell',btnType:'spell',energy:1,levels:[{desc:'Light MATK chip + ACC pressure.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Peak toss.'}]}],
   ['sour_toss','Sour Toss','Toss-line weaken branch.',{type:'spell',btnType:'spell',energy:1,levels:[{desc:'Sour splash + weaken odds.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Sour toss.'}]}],
   ['sour_scatter','Sour Scatter','Toss-line weaken evolution.',{type:'spell',btnType:'spell',energy:1,levels:[{desc:'2 hits; heavier weaken.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Sour scatter.'}]}],
@@ -11623,6 +12495,185 @@ for(const [id,name,desc,options] of SWAN_EVOLUTION_TEMPLATE_DEFS){
   ABILITY_TEMPLATES[id] = Object.assign(ABILITY_TEMPLATES[id]||{}, makeEvolutionAbilityTemplate(id,name,desc,options));
 }
 
+const FLAMINGO_EVOLUTION_TEMPLATE_DEFS = [
+  ['leg_jab','Leg Jab','Leg-line neutral. Long reach before you specialize.',{type:'physical',btnType:'physical',energy:1,fixedMainAttackCost:true,levels:[{desc:'~88% ATK; light pierce.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Peak jab.'}]}],
+  ['leg_sweep','Leg Sweep','Leg-line pierce evolution.',{type:'physical',btnType:'physical',energy:1,levels:[{desc:'Stronger pierce through posture.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Line sweep.'}]}],
+  ['leg_pierce','Leg Pierce','Leg-line pierce finisher.',{type:'physical',btnType:'physical',energy:1,levels:[{desc:'Max pierce; bonus vs high DEF.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Stilt skewer.'}]}],
+  ['flm_razor_jab','Razor Jab','Leg-line bleed branch.',{type:'physical',btnType:'physical',energy:1,levels:[{desc:'Jab + bleed odds.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Razor jab.'}]}],
+  ['flm_razor_sweep','Razor Sweep','Leg-line bleed evolution.',{type:'physical',btnType:'physical',energy:1,levels:[{desc:'Wider wound arc.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Razor sweep.'}]}],
+  ['flm_razor_pierce','Razor Pierce','Leg-line bleed finisher.',{type:'physical',btnType:'physical',energy:1,levels:[{desc:'Bleed capstone pressure.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Crimson pierce.'}]}],
+  ['flm_spot_jab','Spot Jab','Leg-line expose branch.',{type:'physical',btnType:'physical',energy:1,levels:[{desc:'Bonus vs compromised prey.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Spot jab.'}]}],
+  ['flm_spot_sweep','Spot Sweep','Leg-line expose evolution.',{type:'physical',btnType:'physical',energy:1,levels:[{desc:'Harder line on bad footing.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Spot sweep.'}]}],
+  ['flm_open_pierce','Open Pierce','Leg-line expose finisher.',{type:'physical',btnType:'physical',energy:1,levels:[{desc:'Expose + precision payoff.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Open pierce.'}]}],
+  ['marsh_sweep','Marsh Sweep','Sweep-line neutral. Shallow-water control arc.',{type:'physical',btnType:'physical',energy:2,levels:[{desc:'2 EN. Strong sweep + sticky footing.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Peak sweep.'}]}],
+  ['wading_surge','Wading Surge','Sweep-line slow evolution.',{type:'physical',btnType:'physical',energy:2,levels:[{desc:'2 EN. Heavier tempo sink.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Wading surge.'}]}],
+  ['tidal_crest','Tidal Crest','Sweep-line slow finisher.',{type:'physical',btnType:'physical',energy:2,levels:[{desc:'2 EN. Maximum marsh tempo lock.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Tidal crest.'}]}],
+  ['flm_pressing_sweep','Pressing Sweep','Sweep-line weaken branch.',{type:'physical',btnType:'physical',energy:2,levels:[{desc:'2 EN. Sweep + weaken odds.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Pressing sweep.'}]}],
+  ['flm_pressing_surge','Pressing Surge','Sweep-line weaken evolution.',{type:'physical',btnType:'physical',energy:2,levels:[{desc:'2 EN. Heavier posture break.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Pressing surge.'}]}],
+  ['flm_crushing_crest','Crushing Crest','Sweep-line weaken finisher.',{type:'physical',btnType:'physical',energy:2,levels:[{desc:'2 EN. Capstone control sweep.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Crushing crest.'}]}],
+  ['flm_reed_cut','Reed Cut','Sweep-line redwake branch. Shallow-water cuts that bleed.',{type:'physical',btnType:'physical',energy:2,levels:[{desc:'2 EN. Wide sweep + Bleed chance.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Reed cut.'}]}],
+  ['flm_bog_surge','Bog Surge','Sweep-line redwake evolution.',{type:'physical',btnType:'physical',energy:2,levels:[{desc:'2 EN. Heavier surge + stronger Bleed.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Bog surge.'}]}],
+  ['flm_crimson_crest','Crimson Crest','Sweep-line redwake finisher.',{type:'physical',btnType:'physical',energy:2,levels:[{desc:'2 EN. Marsh finale + peak Bleed pressure.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Crimson crest.'}]}],
+  ['balance_pose','Balance Pose','Pose-line neutral. Hold the line; shimmer and survive.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Dodge + light enemy ACC pressure.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Balance pose.'}]}],
+  ['grace_balance','Grace Balance','Pose-line dodge evolution.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Heavy dodge window.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Grace balance.'}]}],
+  ['white_stance','White Stance','Pose-line dodge finisher.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Huge dodge + ACC veil.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'White stance.'}]}],
+  ['firm_pose','Firm Pose','Pose-line guard branch.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Block pool for patient stands.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Firm pose.'}]}],
+  ['stable_balance','Stable Balance','Pose-line guard evolution.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Larger block pool.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Stable balance.'}]}],
+  ['iron_stance','Iron Stance','Pose-line guard finisher.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Peak shallow-water brace.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Iron stance.'}]}],
+  ['distracting_pose','Distracting Pose','Pose-line ACC-break branch.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Enemy ACC down.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Distracting pose.'}]}],
+  ['veil_balance','Veil Balance','Pose-line ACC-break evolution.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Heavier ACC crash.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Veil balance.'}]}],
+  ['mirage_stance','Mirage Stance','Pose-line ACC-break finisher.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'ACC crash + brief blur dodge.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Mirage stance.'}]}],
+  ['mire_mark','Mire Mark','Mire-line neutral. Mark prey stuck in bad footing.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Next-hit damage amp.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Mire mark.'}]}],
+  ['deep_mire','Deep Mire','Mire-line amp evolution.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Bigger next-hit window.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Deep mire.'}]}],
+  ['sinking_mark','Sinking Mark','Mire-line amp finisher.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Maximum composed setup.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Sinking mark.'}]}],
+  ['crack_mire','Crack Mire','Mire-line DEF break branch.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Temporary DEF shred.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Crack mire.'}]}],
+  ['split_mire','Split Mire','Mire-line DEF break evolution.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Larger DEF break.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Split mire.'}]}],
+  ['ruin_sink','Ruin Sink','Mire-line DEF break finisher.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Ruinous guard collapse.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Ruin sink.'}]}],
+  ['read_mire','Read Mire','Mire-line read branch.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Amp + bonus vs compromised.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Read mire.'}]}],
+  ['read_marsh','Read Marsh','Mire-line read evolution.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Stronger read on debuffed prey.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Read marsh.'}]}],
+  ['read_sink','Read Sink','Mire-line read finisher.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Capstone read payoff.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Read sink.'}]}],
+];
+for(const [id,name,desc,options] of FLAMINGO_EVOLUTION_TEMPLATE_DEFS){
+  ABILITY_TEMPLATES[id] = Object.assign(ABILITY_TEMPLATES[id]||{}, makeEvolutionAbilityTemplate(id,name,desc,options));
+}
+
+const SECRETARY_EVOLUTION_TEMPLATE_DEFS = [
+  ['sec_leg_jab','Leg Jab','Leg-line neutral. Grounded reach before you specialize.',{type:'physical',btnType:'physical',energy:1,fixedMainAttackCost:true,levels:[{desc:'~90% ATK; light pierce.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Peak jab.'}]}],
+  ['sec_leg_strike','Leg Strike','Leg-line pierce evolution.',{type:'physical',btnType:'physical',energy:1,levels:[{desc:'Stronger pierce through guard.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Stalking strike.'}]}],
+  ['sec_leg_pierce','Leg Pierce','Leg-line pierce finisher.',{type:'physical',btnType:'physical',energy:1,levels:[{desc:'Max pierce; bonus vs high DEF.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Stilt skewer.'}]}],
+  ['sec_razor_jab','Razor Jab','Leg-line bleed branch.',{type:'physical',btnType:'physical',energy:1,levels:[{desc:'Jab + bleed odds.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Razor jab.'}]}],
+  ['sec_razor_strike','Razor Strike','Leg-line bleed evolution.',{type:'physical',btnType:'physical',energy:1,levels:[{desc:'Heavier wound line.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Razor strike.'}]}],
+  ['sec_razor_pierce','Razor Pierce','Leg-line bleed finisher.',{type:'physical',btnType:'physical',energy:1,levels:[{desc:'Bleed capstone pressure.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Crimson pierce.'}]}],
+  ['sec_dulling_jab','Dulling Jab','Leg-line weaken branch.',{type:'physical',btnType:'physical',energy:1,levels:[{desc:'Jab + weaken odds.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Dulling jab.'}]}],
+  ['sec_dulling_strike','Dulling Strike','Leg-line weaken evolution.',{type:'physical',btnType:'physical',energy:1,levels:[{desc:'Harder posture break.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Dulling strike.'}]}],
+  ['sec_dulling_pierce','Dulling Pierce','Leg-line weaken finisher.',{type:'physical',btnType:'physical',energy:1,levels:[{desc:'Weaken capstone.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Dulling pierce.'}]}],
+  ['sec_crushing_kick','Crushing Kick','Kick-line neutral. Committed stomp force.',{type:'physical',btnType:'physical',energy:2,levels:[{desc:'2 EN. Heavy kick; crit-leaning.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Peak kick.'}]}],
+  ['sec_hunter_stomp','Hunter Stomp','Kick-line crit evolution.',{type:'physical',btnType:'physical',energy:2,levels:[{desc:'2 EN. Harder stomp; crit bias.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Hunter stomp.'}]}],
+  ['sec_execution_crush','Execution Crush','Kick-line crit finisher.',{type:'physical',btnType:'physical',energy:2,levels:[{desc:'2 EN. Maximum crushing burst.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Execution crush.'}]}],
+  ['sec_shock_kick','Shock Kick','Kick-line paralysis branch.',{type:'physical',btnType:'physical',energy:2,levels:[{desc:'2 EN. Kick + paralysis odds.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Shock kick.'}]}],
+  ['sec_shock_stomp','Shock Stomp','Kick-line paralysis evolution.',{type:'physical',btnType:'physical',energy:2,levels:[{desc:'2 EN. Heavier shock stomp.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Shock stomp.'}]}],
+  ['sec_lock_crush','Lock Crush','Kick-line paralysis finisher.',{type:'physical',btnType:'physical',energy:2,levels:[{desc:'2 EN. Lockdown crush.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Lock crush.'}]}],
+  ['sec_finisher_kick','Finisher Kick','Kick-line execute branch.',{type:'physical',btnType:'physical',energy:2,levels:[{desc:'2 EN. Bonus vs wounded prey.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Finisher kick.'}]}],
+  ['sec_finisher_stomp','Finisher Stomp','Kick-line execute evolution.',{type:'physical',btnType:'physical',energy:2,levels:[{desc:'2 EN. Heavier execute stomp.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Finisher stomp.'}]}],
+  ['sec_final_crush','Final Crush','Kick-line execute finisher.',{type:'physical',btnType:'physical',energy:2,levels:[{desc:'2 EN. Terminal crush route.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Final crush.'}]}],
+  ['hunter_stride','Hunter Stride','Stride-line neutral. Measure the angle.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'SPD + light dodge.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Hunter stride.'}]}],
+  ['long_pace','Long Pace','Stride-line speed evolution.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Larger SPD spike.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Long pace.'}]}],
+  ['predator_advance','Predator Advance','Stride-line speed finisher.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'SPD + enemy ACC pressure.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Predator advance.'}]}],
+  ['side_stride','Side Stride','Stride-line dodge branch.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Dodge window.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Side stride.'}]}],
+  ['clean_pace','Clean Pace','Stride-line dodge evolution.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Heavy dodge.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Clean pace.'}]}],
+  ['ghost_advance','Ghost Advance','Stride-line dodge finisher.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Huge dodge + light ACC veil.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Ghost advance.'}]}],
+  ['lining_stride','Lining Stride','Stride-line amp branch.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Next-hit damage amp.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Lining stride.'}]}],
+  ['measured_pace','Measured Pace','Stride-line amp evolution.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Bigger next-hit window.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Measured pace.'}]}],
+  ['kill_advance','Kill Advance','Stride-line amp finisher.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Maximum kill setup.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Kill advance.'}]}],
+  ['prey_mark','Prey Mark','Prey-line neutral. Mark the collapse.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Next-hit damage amp.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Prey mark.'}]}],
+  ['hunter_sight','Hunter Sight','Prey-line amp evolution.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Bigger next-hit window.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Hunter sight.'}]}],
+  ['prey_collapse','Prey Collapse','Prey-line amp finisher.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Maximum marked payoff window.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Prey collapse.'}]}],
+  ['open_mark','Open Mark','Prey-line DEF break branch.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Temporary DEF shred.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Open mark.'}]}],
+  ['weak_sight','Weak Sight','Prey-line DEF break evolution.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Larger DEF break.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Weak sight.'}]}],
+  ['ruin_collapse','Ruin Collapse','Prey-line DEF break finisher.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Ruinous guard collapse.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Ruin collapse.'}]}],
+  ['read_prey','Read Prey','Prey-line read branch.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Amp + bonus vs compromised.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Read prey.'}]}],
+  ['read_sight','Read Sight','Prey-line read evolution.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Stronger read on debuffed prey.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Read sight.'}]}],
+  ['read_collapse','Read Collapse','Prey-line read finisher.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Capstone read payoff.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Read collapse.'}]}],
+];
+for(const [id,name,desc,options] of SECRETARY_EVOLUTION_TEMPLATE_DEFS){
+  ABILITY_TEMPLATES[id] = Object.assign(ABILITY_TEMPLATES[id]||{}, makeEvolutionAbilityTemplate(id,name,desc,options));
+}
+
+const _gosBody=(v,note)=>({ baseScaler:'ATT', secondaryScaler:'DEF', secondaryScaleValue:v, scalingNote:note||'DEF adds body weight.', conditionalBonuses:[{type:'while_guarding', damageBonus:0.07}] });
+const GOOSE_EVOLUTION_TEMPLATE_DEFS = [
+  ['gos_beak_snap','Beak Snap','Beak-line neutral. Angry close snap before you branch.',{type:'physical',btnType:'physical',energy:1,levels:[{desc:'1 EN. Territorial bite snap.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Peak snap.'}]}],
+  ['gos_hook_bite','Hook Bite','Beak-line pierce evolution. Hook through guard.',{type:'physical',btnType:'physical',energy:1,levels:[{desc:'Pierce + anti-guard bite.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Hook tear setup.'}]}],
+  ['gos_hook_tear','Hook Tear','Beak-line pierce finisher. Punish shell and stance.',{type:'physical',btnType:'physical',energy:1,levels:[{desc:'Heavy pierce vs armor.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Armor-hook maul.'}]}],
+  ['gos_raking_snap','Raking Snap','Beak-line bleed branch.',{type:'physical',btnType:'physical',energy:1,levels:[{desc:'Raking wound pressure.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Bloody snap.'}]}],
+  ['gos_raking_bite','Raking Bite','Beak-line bleed evolution.',{type:'physical',btnType:'physical',energy:1,levels:[{desc:'Deeper bleed groove.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Ugly rake.'}]}],
+  ['gos_salt_tear','Salt Tear','Beak-line bleed finisher. Extra hurt on bleeding prey.',{type:'physical',btnType:'physical',energy:1,levels:[{desc:'Bleed bully payoff.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Salt the wound.'}]}],
+  ['gos_dulling_snap','Dulling Snap','Beak-line weaken branch.',{type:'physical',btnType:'physical',energy:1,levels:[{desc:'Weaken on snap.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Dull their offense.'}]}],
+  ['gos_grinding_bite','Grinding Bite','Beak-line weaken evolution.',{type:'physical',btnType:'physical',energy:1,levels:[{desc:'Grind down ATK tempo.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Stubborn bite.'}]}],
+  ['gos_fading_tear','Fading Tear','Beak-line weaken finisher.',{type:'physical',btnType:'physical',energy:1,levels:[{desc:'Bonus vs weakened prey.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Submission tear.'}]}],
+  ['gos_body_check','Body Check','Body-line neutral. Signature shoulder check (2 EN).',{type:'physical',btnType:'physical',energy:2,levels:[{desc:'2 EN. Blunt territorial impact.'},{desc:'Stronger check.'},{desc:'Stronger.'},{desc:'Peak check.'}], damageScaling:_gosBody(0.26,'DEF adds check weight.')}],
+  ['gos_heavy_slam','Heavy Slam','Body-line crit evolution.',{type:'physical',btnType:'physical',energy:2,levels:[{desc:'2 EN. Heavier crit bias.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Slam apex.'}], damageScaling:_gosBody(0.30,'DEF adds slam force.')}],
+  ['gos_dominance_crush','Dominance Crush','Body-line crit finisher.',{type:'physical',btnType:'physical',energy:2,levels:[{desc:'2 EN. Brute dominance.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Territorial crush.'}], damageScaling:_gosBody(0.34,'DEF adds crush force.')}],
+  ['gos_pressing_check','Pressing Check','Body-line weaken branch.',{type:'physical',btnType:'physical',energy:2,levels:[{desc:'2 EN. Body check + weaken odds.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Crowd their swing.'}], damageScaling:_gosBody(0.26,'DEF adds press weight.')}],
+  ['gos_pressing_slam','Pressing Slam','Body-line weaken evolution.',{type:'physical',btnType:'physical',energy:2,levels:[{desc:'2 EN. Heavier anti-offense slam.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Suffocate tempo.'}], damageScaling:_gosBody(0.30,'DEF adds press force.')}],
+  ['gos_suffocating_crush','Suffocating Crush','Body-line weaken finisher.',{type:'physical',btnType:'physical',energy:2,levels:[{desc:'2 EN. Bonus vs weakened.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'No escape crush.'}], damageScaling:_gosBody(0.34,'DEF adds crushing press.')}],
+  ['gos_cracking_check','Cracking Check','Body-line break branch.',{type:'physical',btnType:'physical',energy:2,levels:[{desc:'2 EN. Pierce + armor stress.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Crack the shell.'}], damageScaling:_gosBody(0.28,'DEF adds break leverage.')}],
+  ['gos_break_slam','Break Slam','Body-line break evolution.',{type:'physical',btnType:'physical',energy:2,levels:[{desc:'2 EN. Harder DEF stress.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Shatter stance.'}], damageScaling:_gosBody(0.32,'DEF adds break force.')}],
+  ['gos_collapse_crush','Collapse Crush','Body-line break finisher.',{type:'physical',btnType:'physical',energy:2,levels:[{desc:'2 EN. Expose + collapse.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Total collapse.'}], damageScaling:_gosBody(0.36,'DEF adds collapse drive.')}],
+  ['gos_honk_blast','Honk Blast','Honk-line neutral. Loud disruption (1 EN).',{type:'physical',btnType:'physical',energy:1,levels:[{desc:'1 EN. Strike + ACC crash + light fear.'},{desc:'Stronger blare.'},{desc:'Stronger.'},{desc:'Peak honk.'}]}],
+  ['gos_dread_blare','Dread Blare','Honk-line fear evolution.',{type:'physical',btnType:'physical',energy:1,levels:[{desc:'Heavier fear + noise.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Dread field.'}]}],
+  ['gos_panic_uproar','Panic Uproar','Honk-line fear finisher.',{type:'physical',btnType:'physical',energy:1,levels:[{desc:'Bonus vs feared prey.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Total panic.'}]}],
+  ['gos_harsh_honk','Harsh Honk','Honk-line ACC-break branch.',{type:'physical',btnType:'physical',energy:1,levels:[{desc:'Harsh noise; big ACC hit.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Grating honk.'}]}],
+  ['gos_wavering_blare','Wavering Blare','Honk-line ACC-break evolution.',{type:'physical',btnType:'physical',energy:1,levels:[{desc:'ACC + weaken odds.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Unsteady aim.'}]}],
+  ['gos_blinding_uproar','Blinding Uproar','Honk-line ACC-break finisher.',{type:'physical',btnType:'physical',energy:1,levels:[{desc:'Massive ACC crash + stumble.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Blinding noise.'}]}],
+  ['gos_keen_honk','Keen Honk','Honk-line speed branch.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'SPD surge; stubborn advance.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Keen tempo.'}]}],
+  ['gos_rally_blare','Rally Blare','Honk-line speed evolution.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'SPD + dodge window.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Rallying blare.'}]}],
+  ['gos_charge_uproar','Charge Uproar','Honk-line speed finisher.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Big SPD + heavy dodge.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Charge uproar.'}]}],
+  ['gos_brace_up','Brace Up','Brace-line neutral. Stand your ground (1 EN).',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'1 EN. Long guard window.'},{desc:'Stronger brace.'},{desc:'Stronger.'},{desc:'Iron posture.'}]}],
+  ['gos_hold_line','Hold the Line','Brace-line guard evolution.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Heavier guard stack.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Unmovable.'}]}],
+  ['gos_stand_fast','Stand Fast','Brace-line guard finisher.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Maximum stubborn guard.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Last stand posture.'}]}],
+  ['gos_brace_mark','Brace Mark','Brace-line amp branch.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Next-hit damage amp.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Marked brace.'}]}],
+  ['gos_press_line','Press the Line','Brace-line amp evolution.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Bigger next-hit window.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Press mark.'}]}],
+  ['gos_final_stand','Final Stand','Brace-line amp finisher.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Maximum bully setup.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Final pressure mark.'}]}],
+  ['gos_read_threat','Read Threat','Brace-line read branch.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Amp + bonus vs compromised.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Threat read.'}]}],
+  ['gos_read_line','Read the Line','Brace-line read evolution.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Stronger read payoff.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Line read.'}]}],
+  ['gos_read_stand','Read Stand','Brace-line read finisher.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Capstone read vs debuffed prey.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Stand and punish.'}]}],
+];
+for(const [id,name,desc,options] of GOOSE_EVOLUTION_TEMPLATE_DEFS){
+  ABILITY_TEMPLATES[id] = Object.assign(ABILITY_TEMPLATES[id]||{}, makeEvolutionAbilityTemplate(id,name,desc,options));
+}
+
+const _sblCrack=(v,note)=>({ baseScaler:'ATT', secondaryScaler:'DEF', secondaryScaleValue:v, scalingNote:note||'DEF adds crushing beak weight.', conditionalBonuses:[{type:'while_guarding', damageBonus:0.08}] });
+const SHOEBILL_EVOLUTION_TEMPLATE_DEFS = [
+  ['sbl_beak_chop','Beak Chop','Beak-line neutral. Heavy swamp chop before you branch.',{type:'physical',btnType:'physical',energy:1,fixedMainAttackCost:true,levels:[{desc:'1 EN. Crushing beak chop.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Peak chop.'}]}],
+  ['sbl_split_break','Split Break','Beak-line pierce evolution. Split guard and shell.',{type:'physical',btnType:'physical',energy:1,levels:[{desc:'Pierce + anti-guard.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Split pressure.'}]}],
+  ['sbl_bone_cleave','Bone Cleave','Beak-line pierce finisher. Armor-breaking cleave.',{type:'physical',btnType:'physical',energy:1,levels:[{desc:'Heavy pierce payoff.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Bone line.'}]}],
+  ['sbl_rending_chop','Rending Chop','Beak-line bleed branch.',{type:'physical',btnType:'physical',energy:1,levels:[{desc:'Rending wound pressure.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Bloody chop.'}]}],
+  ['sbl_rending_break','Rending Break','Beak-line bleed evolution.',{type:'physical',btnType:'physical',energy:1,levels:[{desc:'Deeper bleed groove.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Ugly break.'}]}],
+  ['sbl_deep_cleave','Deep Cleave','Beak-line bleed finisher.',{type:'physical',btnType:'physical',energy:1,levels:[{desc:'Bleed bully payoff.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Deep swamp cleave.'}]}],
+  ['sbl_dulling_chop','Dulling Chop','Beak-line weaken branch.',{type:'physical',btnType:'physical',energy:1,levels:[{desc:'Weaken on chop.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Dull their swing.'}]}],
+  ['sbl_sapping_break','Sapping Break','Beak-line weaken evolution.',{type:'physical',btnType:'physical',energy:1,levels:[{desc:'Sap offense tempo.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Sapping break.'}]}],
+  ['sbl_hollow_cleave','Hollow Cleave','Beak-line weaken finisher.',{type:'physical',btnType:'physical',energy:1,levels:[{desc:'Bonus vs weakened prey.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Hollow finish.'}]}],
+  ['sbl_skull_crack','Skull Crack','Crack-line neutral. Signature skull strike (2 EN).',{type:'physical',btnType:'physical',energy:2,levels:[{desc:'2 EN. Crushing beak drop.'},{desc:'Stronger crack.'},{desc:'Stronger.'},{desc:'Peak crack.'}], damageScaling:_sblCrack(0.28,'DEF adds drop weight.')}],
+  ['sbl_grave_collapse','Grave Collapse','Crack-line crit evolution.',{type:'physical',btnType:'physical',energy:2,levels:[{desc:'2 EN. Heavier crit bias.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Grave collapse.'}], damageScaling:_sblCrack(0.32,'DEF adds collapse force.')}],
+  ['sbl_skull_ruin','Skull Ruin','Crack-line crit finisher.',{type:'physical',btnType:'physical',energy:2,levels:[{desc:'2 EN. Brutal skull ruin.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Total ruin.'}], damageScaling:_sblCrack(0.36,'DEF adds ruin drive.')}],
+  ['sbl_dread_crack','Dread Crack','Crack-line fear branch.',{type:'physical',btnType:'physical',energy:2,levels:[{desc:'2 EN. Fear + noise trauma.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Dread crack.'}], damageScaling:_sblCrack(0.26,'DEF adds intimidation weight.')}],
+  ['sbl_hollow_collapse','Hollow Collapse','Crack-line fear evolution.',{type:'physical',btnType:'physical',energy:2,levels:[{desc:'2 EN. Heavier fear collapse.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Hollow collapse.'}], damageScaling:_sblCrack(0.30,'DEF adds dread force.')}],
+  ['sbl_night_ruin','Night Ruin','Crack-line fear finisher.',{type:'physical',btnType:'physical',energy:2,levels:[{desc:'2 EN. Bonus vs feared prey.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Night ruin.'}], damageScaling:_sblCrack(0.34,'DEF adds night pressure.')}],
+  ['sbl_hunter_crack','Hunter Crack','Crack-line execute branch.',{type:'physical',btnType:'physical',energy:2,levels:[{desc:'2 EN. Finisher crack vs wounded prey.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Hunter crack.'}], damageScaling:_sblCrack(0.28,'DEF adds execution weight.')}],
+  ['sbl_prey_collapse','Prey Collapse','Crack-line execute evolution.',{type:'physical',btnType:'physical',energy:2,levels:[{desc:'2 EN. Wider kill window.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Prey collapse.'}], damageScaling:_sblCrack(0.32,'DEF adds prey drive.')}],
+  ['sbl_final_ruin','Final Ruin','Crack-line execute finisher.',{type:'physical',btnType:'physical',energy:2,levels:[{desc:'2 EN. Terminal swamp execution.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Final ruin.'}], damageScaling:_sblCrack(0.36,'DEF adds terminal crush.')}],
+  ['sbl_still_stance','Still Stance','Stance-line neutral. Loom without moving.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'1 EN. Guard stack; patient bulk.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Iron stillness.'}]}],
+  ['sbl_hold_ground','Hold Ground','Stance-line guard evolution.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Heavier guard.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Unmovable.'}]}],
+  ['sbl_dead_still','Dead Still','Stance-line guard finisher.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Maximum stubborn guard.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Dead still.'}]}],
+  ['sbl_slow_step','Slow Step','Stance-line dodge branch.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Careful dodge; minimal motion.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Slow step.'}]}],
+  ['sbl_mire_hold','Mire Hold','Stance-line dodge evolution.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Dodge + swamp slow on prey.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Mire hold.'}]}],
+  ['sbl_ghost_silence','Ghost Silence','Stance-line dodge finisher.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Huge dodge + mire + dread.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Ghost silence.'}]}],
+  ['sbl_lining_stance','Lining Stance','Stance-line amp branch.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Next-hit damage amp.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Lining stance.'}]}],
+  ['sbl_measured_hold','Measured Hold','Stance-line amp evolution.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Bigger next-hit window.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Measured hold.'}]}],
+  ['sbl_killing_silence','Killing Silence','Stance-line amp finisher.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Maximum kill setup.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Killing silence.'}]}],
+  ['sbl_dread_mark','Dread Mark','Dread-line neutral. Mark prey for collapse.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Next-hit damage amp.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Dread mark.'}]}],
+  ['sbl_grave_sign','Grave Sign','Dread-line amp evolution.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Bigger next-hit window.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Grave sign.'}]}],
+  ['sbl_doom_mark','Doom Mark','Dread-line amp finisher.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Maximum doom setup.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Doom mark.'}]}],
+  ['sbl_crack_sign','Crack Sign','Dread-line DEF break branch.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Expose + DEF stress.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Crack sign.'}]}],
+  ['sbl_break_doom','Break Doom','Dread-line DEF break evolution.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Larger break window.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Break doom.'}]}],
+  ['sbl_ruin_doom','Ruin Doom','Dread-line DEF break finisher.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Ruinous guard collapse.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Ruin doom.'}]}],
+  ['sbl_read_dread','Read Dread','Dread-line read branch.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Amp + bonus vs compromised.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Read dread.'}]}],
+  ['sbl_read_sign','Read Sign','Dread-line read evolution.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Stronger read on debuffed prey.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Read sign.'}]}],
+  ['sbl_read_doom','Read Doom','Dread-line read finisher.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Capstone read payoff.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Read doom.'}]}],
+];
+for(const [id,name,desc,options] of SHOEBILL_EVOLUTION_TEMPLATE_DEFS){
+  ABILITY_TEMPLATES[id] = Object.assign(ABILITY_TEMPLATES[id]||{}, makeEvolutionAbilityTemplate(id,name,desc,options));
+}
+const SHOEBILL_TWO_EN_TREE_IDS = Object.freeze([
+  'sbl_skull_crack','sbl_grave_collapse','sbl_skull_ruin','sbl_dread_crack','sbl_hollow_collapse','sbl_night_ruin','sbl_hunter_crack','sbl_prey_collapse','sbl_final_ruin',
+]);
+for(const id of SHOEBILL_TWO_EN_TREE_IDS){
+  const tmpl=ABILITY_TEMPLATES?.[id];
+  if(!tmpl) continue;
+  tmpl.energyCost=2;
+  tmpl.energyByLevel=[2,2,2,2];
+}
+
 const _hbDashCond=[{type:'while_self_buff_active',buff:'dodge_up',damageBonus:0.10},{type:'per_target_debuff',damageBonusPerStack:0.05,maxStacks:3}];
 const HUMMINGBIRD_EVOLUTION_TEMPLATE_DEFS = [
   ['needle_jab','Needle Jab','Needle-line neutral. Pinpoint jabs before you specialize.',{type:'physical',btnType:'physical',energy:1,fixedMainAttackCost:true,role:['multiHit'],levels:[{desc:'3 hits, pierce pressure.'},{desc:'3 hits.'},{desc:'4 hits.'},{desc:'4 hits.'}]}],
@@ -11641,9 +12692,9 @@ const HUMMINGBIRD_EVOLUTION_TEMPLATE_DEFS = [
   ['static_dash','Static Dash','Dash-line shock branch.',{type:'physical',btnType:'physical',energy:2,levels:[{desc:'2 EN. Hybrid sting + Paralysis chance.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Strongest static dash.'}], damageScaling:{ baseScaler:'ATT', secondaryScaler:'SPD', secondaryScaleValue:0.14, scalingNote:'Light SPD on physical half; +8% while dodge up.', conditionalBonuses:[{type:'while_self_buff_active',buff:'dodge_up',damageBonus:0.08}] }}],
   ['shock_rush','Shock Rush','Dash-line shock evolution.',{type:'physical',btnType:'physical',energy:2,levels:[{desc:'2 EN. Heavier Paralysis route.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Strongest shock rush.'}], damageScaling:{ baseScaler:'ATT', secondaryScaler:'SPD', secondaryScaleValue:0.18, scalingNote:'SPD on physical half; +8% while dodge up; +4%/debuff (max 2).', conditionalBonuses:[{type:'while_self_buff_active',buff:'dodge_up',damageBonus:0.08},{type:'per_target_debuff',damageBonusPerStack:0.04,maxStacks:2}] }}],
   ['storm_blur','Storm Blur','Dash-line shock finisher.',{type:'physical',btnType:'physical',energy:2,levels:[{desc:'2 EN. Big hybrid burst + Paralysis.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Maximum storm blur.'}], damageScaling:{ baseScaler:'ATT', secondaryScaler:'SPD', secondaryScaleValue:0.22, scalingNote:'SPD on physical half; +10% while dodge up; +5%/debuff (max 3).', conditionalBonuses:[{type:'while_self_buff_active',buff:'dodge_up',damageBonus:0.10},{type:'per_target_debuff',damageBonusPerStack:0.05,maxStacks:3}] }}],
-  ['passing_dash','Passing Dash','Dash-line delayed branch.',{type:'physical',btnType:'physical',energy:2,levels:[{desc:'2 EN. Hit + afterimage; afterimage grows with SPD & debuffs.'},{desc:'Bigger afterimage.'},{desc:'Bigger.'},{desc:'Largest afterimage.'}], damageScaling:{ baseScaler:'ATT', secondaryScaler:'SPD', secondaryScaleValue:0.22, scalingNote:'SPD secondary; +10% while dodge up; +5%/debuff (max 3).', conditionalBonuses:_hbDashCond }}],
-  ['afterimage_rush','Afterimage Rush','Dash-line delayed evolution.',{type:'physical',btnType:'physical',energy:2,levels:[{desc:'2 EN. Stronger hit + fatter afterimage (SPD/debuff).'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Peak afterimage rush.'}], damageScaling:{ baseScaler:'ATT', secondaryScaler:'SPD', secondaryScaleValue:0.26, scalingNote:'SPD secondary; +10% while dodge up; +6%/debuff (max 3).', conditionalBonuses:[{type:'while_self_buff_active',buff:'dodge_up',damageBonus:0.10},{type:'per_target_debuff',damageBonusPerStack:0.06,maxStacks:3}] }}],
-  ['return_blur','Return Blur','Dash-line delayed finisher.',{type:'physical',btnType:'physical',energy:2,levels:[{desc:'2 EN. Max afterimage route (SPD/debuff).'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Maximum return blur.'}], damageScaling:{ baseScaler:'ATT', secondaryScaler:'SPD', secondaryScaleValue:0.30, scalingNote:'SPD secondary; +12% while dodge up; +6%/debuff (max 3).', conditionalBonuses:[{type:'while_self_buff_active',buff:'dodge_up',damageBonus:0.12},{type:'per_target_debuff',damageBonusPerStack:0.06,maxStacks:3}] }}],
+  ['hum_vein_dash','Vein Dash','Dash-line rend branch. Open a bleeding line through the blur.',{type:'physical',btnType:'physical',energy:2,levels:[{desc:'2 EN. Pierce + Bleed chance.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Peak vein dash.'}], damageScaling:{ baseScaler:'ATT', secondaryScaler:'SPD', secondaryScaleValue:0.22, scalingNote:'SPD secondary; +10% while dodge up; +5%/debuff (max 3).', conditionalBonuses:_hbDashCond }}],
+  ['hum_tear_rush','Tear Rush','Dash-line rend evolution.',{type:'physical',btnType:'physical',energy:2,levels:[{desc:'2 EN. Heavier pierce + stronger Bleed.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Tear rush.'}], damageScaling:{ baseScaler:'ATT', secondaryScaler:'SPD', secondaryScaleValue:0.26, scalingNote:'SPD secondary; +10% while dodge up; +6%/debuff (max 3).', conditionalBonuses:[{type:'while_self_buff_active',buff:'dodge_up',damageBonus:0.10},{type:'per_target_debuff',damageBonusPerStack:0.06,maxStacks:3}] }}],
+  ['hum_red_blur','Red Blur','Dash-line rend finisher.',{type:'physical',btnType:'physical',energy:2,levels:[{desc:'2 EN. Twin cuts + max Bleed pressure.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Crimson blur.'}], damageScaling:{ baseScaler:'ATT', secondaryScaler:'SPD', secondaryScaleValue:0.30, scalingNote:'SPD secondary; +12% while dodge up; +6%/debuff (max 3).', conditionalBonuses:[{type:'while_self_buff_active',buff:'dodge_up',damageBonus:0.12},{type:'per_target_debuff',damageBonusPerStack:0.06,maxStacks:3}] }}],
   ['blink_flutter','Blink Flutter','Flutter-line neutral. Blink out of danger.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Dodge + tempo.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Strongest flutter.'}]}],
   ['evasive_blink','Evasive Blink','Flutter-line dodge evolution.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Heavy dodge window.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Mirage-tier slip.'}]}],
   ['mirage_flutter','Mirage Flutter','Flutter-line dodge finisher.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Huge dodge + cleanse pressure.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Impossible to pin.'}]}],
@@ -12059,7 +13110,7 @@ const MACAW_SKILL_ACTION_OVERRIDES = {
   warble_note: ab=>executeMacawSpell(ab,{name:'Warble Note',log:'🌀 Warble Note',fx:'🌀',miss:[13,11,9,7],mult:[0.76,0.82,0.88,0.94],confuseChance:[15,17,19,21],confuseTurns:[2,2,3,3],confuseSkip:[24,26,28,30]}),
   dizzy_echo: ab=>executeMacawSpell(ab,{name:'Dizzy Echo',log:'🌀 Dizzy Echo',fx:'🌀',miss:[12,10,8,6],mult:[0.84,0.90,0.96,1.02],confuseChance:[20,22,24,26],confuseTurns:[2,3,3,3],confuseSkip:[28,30,32,34]}),
   maddening_refrain: ab=>executeMacawSpell(ab,{name:'Maddening Refrain',log:'🌀 Maddening Refrain',fx:'🌀',miss:[11,9,7,5],mult:[0.92,0.98,1.04,1.10],confuseChance:[25,27,29,31],confuseTurns:[3,3,3,4],confuseSkip:[30,32,34,36],bonusVsConfused:[0.08,0.09,0.10,0.11]}),
-  delayed_echo: ab=>executeMacawSpell(ab,{name:'Delayed Echo',log:'🎵 Delayed Echo',fx:'🎵',miss:[12,10,8,6],mult:[0.80,0.86,0.92,0.98],delayedFlat:[14,18,22,26]}),
+  delayed_echo: ab=>executeMacawSpell(ab,{name:'Afterbeat Chime',log:'🎵 Afterbeat Chime',fx:'🎵',miss:[12,10,8,6],mult:[0.80,0.86,0.92,0.98],delayedFlat:[14,18,22,26]}),
   returning_refrain: ab=>executeMacawSpell(ab,{name:'Returning Refrain',log:'🎵 Returning Refrain',fx:'🎵',miss:[11,9,7,5],mult:[0.88,0.94,1.00,1.06],delayedFlat:[20,24,28,32],bonusVsDebuffed:[0.08,0.09,0.10,0.11]}),
   mimic_song: ab=>executeMacawSpell(ab,{name:'Mimic Song',log:'🦜 Mimic Song',fx:'🦜',miss:[12,10,8,6],mult:[0.92,1.00,1.08,1.16],confuseChance:[12,14,16,18],confuseTurns:[2,2,2,3],confuseSkip:[22,24,26,28],accDown:[6,8,8,10]}),
   dread_mimic: ab=>executeMacawSpell(ab,{name:'Dread Mimic',log:'😨 Dread Mimic',fx:'😨',miss:[12,10,8,6],mult:[0.96,1.04,1.12,1.20],fearChance:[18,20,22,24]}),
@@ -12084,9 +13135,9 @@ const MACAW_SKILL_ACTION_OVERRIDES = {
   chorus_mark: ab=>executeMacawChorusMark(ab),
   harmonic_measure: ab=>executeMacawMarkAmp(ab,{log:'🎯 Harmonic Measure!',fx:'🎯',amp:[0.20,0.24,0.28,0.32]}),
   finale_mark: ab=>executeMacawMarkAmp(ab,{log:'🎯 Finale Mark!',fx:'🎯',amp:[0.30,0.34,0.38,0.42]}),
-  echo_mark: ab=>executeMacawChorusDelayedSetup(ab,[0.08,0.10,0.12,0.14],[10,14,18,22],'🎵 Echo Mark!'),
-  resonant_measure: ab=>executeMacawChorusDelayedSetup(ab,[0.12,0.14,0.16,0.18],[16,20,24,28],'🎵 Resonant Measure!'),
-  delayed_finale: ab=>executeMacawChorusDelayedSetup(ab,[0.16,0.18,0.20,0.22],[22,26,30,36],'🎵 Delayed Finale!'),
+  echo_mark: ab=>executeMacawChorusDelayedSetup(ab,[0.08,0.10,0.12,0.14],[10,14,18,22],'🎵 Chorus Toll Mark!'),
+  resonant_measure: ab=>executeMacawChorusDelayedSetup(ab,[0.12,0.14,0.16,0.18],[16,20,24,28],'🎵 Ringing Measure!'),
+  delayed_finale: ab=>executeMacawChorusDelayedSetup(ab,[0.16,0.18,0.20,0.22],[22,26,30,36],'🎵 Capstone Toll!'),
   cracking_mark: ab=>executeMacawChorusWeaken(ab,[10,12,14,16],[2,2,2,3],'🎵 Cracking Mark!'),
   softening_measure: ab=>executeMacawChorusWeaken(ab,[14,16,18,20],[3,3,3,4],'🎵 Softening Measure!'),
   fading_finale: ab=>executeMacawChorusWeaken(ab,[18,20,22,24],[3,4,4,4],'🎵 Fading Finale!'),
@@ -12115,9 +13166,9 @@ const LYREBIRD_SKILL_ACTION_OVERRIDES = {
   lyre_stage_display: ab=>executeMacawTaunt(ab,{log:'😤 Stage Display',fx:'😤',accDown:[18,20,22,24],turns:[3,3,3,3],taunt:[1,1,1,1],weakenTurns:[2,3,3,3]}),
   lyre_harmonic_measure: ab=>executeMacawMarkAmp(ab,{log:'🎯 Harmonic Measure!',fx:'🎯',amp:[0.20,0.24,0.28,0.32]}),
   lyre_finale_mark: ab=>executeMacawMarkAmp(ab,{log:'🎯 Finale Mark!',fx:'🎯',amp:[0.30,0.34,0.38,0.42]}),
-  lyre_echo_mark: ab=>executeMacawChorusDelayedSetup(ab,[0.08,0.10,0.12,0.14],[10,14,18,22],'🎵 Echo Mark!'),
-  lyre_resonant_measure: ab=>executeMacawChorusDelayedSetup(ab,[0.12,0.14,0.16,0.18],[16,20,24,28],'🎵 Resonant Measure!'),
-  lyre_delayed_finale: ab=>executeMacawChorusDelayedSetup(ab,[0.16,0.18,0.20,0.22],[22,26,30,36],'🎵 Delayed Finale!'),
+  lyre_echo_mark: ab=>executeMacawChorusDelayedSetup(ab,[0.08,0.10,0.12,0.14],[10,14,18,22],'🎵 Stage Toll Mark!'),
+  lyre_resonant_measure: ab=>executeMacawChorusDelayedSetup(ab,[0.12,0.14,0.16,0.18],[16,20,24,28],'🎵 Curtain Measure!'),
+  lyre_delayed_finale: ab=>executeMacawChorusDelayedSetup(ab,[0.16,0.18,0.20,0.22],[22,26,30,36],'🎵 Final Curtain Toll!'),
   lyre_fault_mark: ab=>executeMacawChorusRead(ab,[0.02,0.03,0.04,0.05],[0.10,0.12,0.14,0.16],'🎵 Fault Mark!'),
   lyre_weak_measure: ab=>executeMacawChorusRead(ab,[0.04,0.05,0.06,0.07],[0.14,0.16,0.18,0.20],'🎵 Weak Measure!'),
   lyre_collapse_finale: ab=>executeMacawChorusRead(ab,[0.06,0.07,0.08,0.09],[0.18,0.20,0.24,0.28],'🎵 Collapse Finale!'),
@@ -12272,8 +13323,8 @@ const BLACK_COCKATOO_SKILL_ACTION_OVERRIDES = {
   shock_call: ab=>executeBlackCockatooSpell(ab,{name:'Shock Call',log:'⚡ Shock Call',fx:'⚡',miss:[13,11,9,7],mult:[0.90,0.98,1.06,1.14],paraChance:[16,18,20,22],paraTurns:[2,2,2,3]}),
   static_boom: ab=>executeBlackCockatooSpell(ab,{name:'Static Boom',log:'⚡ Static Boom',fx:'⚡',miss:[12,10,8,6],mult:[1.02,1.10,1.18,1.26],paraChance:[22,24,26,28],paraTurns:[2,3,3,3]}),
   lockwave: ab=>executeBlackCockatooSpell(ab,{name:'Lockwave',log:'⚡ Lockwave',fx:'⚡',miss:[11,9,7,5],mult:[1.14,1.22,1.30,1.38],paraChance:[28,30,32,34],paraTurns:[3,3,3,4]}),
-  echo_call: ab=>executeBlackCockatooSpell(ab,{name:'Echo Call',log:'🔊 Echo Call',fx:'🔊',miss:[13,11,9,7],mult:[0.86,0.94,1.02,1.10],delayedFlat:[12,16,20,24]}),
-  resonant_boom: ab=>executeBlackCockatooSpell(ab,{name:'Resonant Boom',log:'🔊 Resonant Boom',fx:'🔊',miss:[12,10,8,6],mult:[0.96,1.04,1.12,1.20],delayedFlat:[18,22,26,30]}),
+  echo_call: ab=>executeBlackCockatooSpell(ab,{name:'Hall Call',log:'🔊 Hall Call',fx:'🔊',miss:[13,11,9,7],mult:[0.86,0.94,1.02,1.10],delayedFlat:[12,16,20,24]}),
+  resonant_boom: ab=>executeBlackCockatooSpell(ab,{name:'Vault Boom',log:'🔊 Vault Boom',fx:'🔊',miss:[12,10,8,6],mult:[0.96,1.04,1.12,1.20],delayedFlat:[18,22,26,30]}),
   returning_shockwave: ab=>executeBlackCockatooSpell(ab,{name:'Returning Shockwave',log:'🔊 Returning Shockwave',fx:'🔊',miss:[11,9,7,5],mult:[1.06,1.14,1.22,1.30],delayedFlat:[22,26,30,36],bonusVsDebuffed:[0.08,0.09,0.10,0.11]}),
   wing_beat: ab=>executeBlackCockatooWing(ab,{log:'🪶 Wing Beat',fx:'🪶',accDown:[5,6,7,8]}),
   dust_beat: ab=>executeBlackCockatooWing(ab,{log:'🌫 Dust Beat',fx:'🌫',accDown:[14,16,18,20]}),
@@ -12288,9 +13339,9 @@ const BLACK_COCKATOO_SKILL_ACTION_OVERRIDES = {
   resonance_mark: ab=>executeBlackCockatooResonanceAmp(ab,[0.12,0.15,0.18,0.21],'🔊 Resonance Mark!','🎯'),
   harmonic_pulse: ab=>executeBlackCockatooResonanceAmp(ab,[0.20,0.24,0.28,0.32],'🔊 Harmonic Pulse!','🎯'),
   resonant_collapse: ab=>executeBlackCockatooResonanceAmp(ab,[0.30,0.34,0.38,0.42],'🔊 Resonant Collapse!','🎯'),
-  cockatoo_echo_mark: ab=>executeBlackCockatooResonanceDelayed(ab,[0.08,0.10,0.12,0.14],[10,14,18,22],{ perCategory:3, cap:14 },'🔊 Echo Mark!'),
+  cockatoo_echo_mark: ab=>executeBlackCockatooResonanceDelayed(ab,[0.08,0.10,0.12,0.14],[10,14,18,22],{ perCategory:3, cap:14 },'🔊 Crest Toll Mark!'),
   return_pulse: ab=>executeBlackCockatooResonanceDelayed(ab,[0.12,0.14,0.16,0.18],[16,20,24,28],{ perCategory:4, cap:18 },'🔊 Return Pulse!'),
-  delayed_collapse: ab=>executeBlackCockatooResonanceDelayed(ab,[0.16,0.18,0.20,0.22],[22,26,30,36],{ perCategory:5, cap:24 },'🔊 Delayed Collapse!'),
+  delayed_collapse: ab=>executeBlackCockatooResonanceDelayed(ab,[0.16,0.18,0.20,0.22],[22,26,30,36],{ perCategory:5, cap:24 },'🔊 Collapse Toll!'),
   fault_mark: ab=>executeBlackCockatooResonanceRead(ab,[0.02,0.03,0.04,0.05],[0.10,0.12,0.14,0.16],'🔍 Fault Mark!','🎯'),
   weak_pulse: ab=>executeBlackCockatooResonanceRead(ab,[0.04,0.05,0.06,0.07],[0.14,0.16,0.18,0.20],'🔍 Weak Pulse!','🎯'),
   collapse_read: ab=>executeBlackCockatooResonanceRead(ab,[0.06,0.07,0.08,0.09],[0.18,0.20,0.24,0.28],'🔍 Collapse Read!','🎯'),
@@ -12480,8 +13531,8 @@ const KOOKABURRA_SKILL_ACTION_OVERRIDES = {
   kooka_shock_call: ab=>executeKookaburraSpell(ab,{name:'Shock Call',log:'⚡ Shock Call',fx:'⚡',miss:[13,11,9,7],mult:[0.88,0.96,1.04,1.12],paraChance:[16,18,20,22],paraTurns:[2,2,2,3]}),
   static_laugh: ab=>executeKookaburraSpell(ab,{name:'Static Laugh',log:'⚡ Static Laugh',fx:'⚡',miss:[12,10,8,6],mult:[1.00,1.08,1.16,1.24],paraChance:[22,24,26,28],paraTurns:[2,3,3,3]}),
   lock_cackle: ab=>executeKookaburraSpell(ab,{name:'Lock Cackle',log:'⚡ Lock Cackle',fx:'⚡',miss:[11,9,7,5],mult:[1.12,1.20,1.28,1.36],paraChance:[28,30,32,34],paraTurns:[3,3,3,4]}),
-  kooka_echo_call: ab=>executeKookaburraSpell(ab,{name:'Echo Call',log:'😂 Echo Call',fx:'😂',miss:[13,11,9,7],mult:[0.84,0.92,1.00,1.08],delayedFlat:[12,16,20,24]}),
-  echo_laugh: ab=>executeKookaburraLaughDelayedSetup(ab,[0.08,0.10,0.12,0.14],[14,18,22,26],{ perCategory:3, cap:14 },'😂 Echo Laugh!'),
+  kooka_echo_call: ab=>executeKookaburraSpell(ab,{name:'Bush Echo',log:'😂 Bush Echo',fx:'😂',miss:[13,11,9,7],mult:[0.84,0.92,1.00,1.08],delayedFlat:[12,16,20,24]}),
+  echo_laugh: ab=>executeKookaburraLaughDelayedSetup(ab,[0.08,0.10,0.12,0.14],[14,18,22,26],{ perCategory:3, cap:14 },'😂 Layered Laugh!'),
   returning_cackle: ab=>executeKookaburraSpell(ab,{name:'Returning Cackle',log:'😂 Returning Cackle',fx:'😂',miss:[11,9,7,5],mult:[1.04,1.12,1.20,1.28],delayedFlat:[22,26,30,36],bonusVsDebuffed:[0.08,0.09,0.10,0.11]}),
   perch_watch: ab=>executeKookaburraWatch(ab),
   kooka_hunters_sight: ab=>executeKookaburraWatch(ab),
@@ -12665,9 +13716,9 @@ const RAVEN_SKILL_ACTION_OVERRIDES = {
   fate_mark: ab=>executeRavenWatchAmp(ab,[0.12,0.15,0.18,0.21],'🪶 Fate Mark!','🪶'),
   rav_grim_sign: ab=>executeRavenWatchAmp(ab,[0.18,0.22,0.26,0.30],'🪶 Grim Sign!','🪶'),
   rav_final_doom: ab=>executeRavenWatchAmp(ab,[0.26,0.30,0.34,0.38],'🪶 Final Doom!','🪶'),
-  rav_fate_echo_mark: ab=>executeRavenFateDelayed(ab,[0.08,0.10,0.12,0.14],[10,14,18,22],{ perCategory:3, cap:14 },'🪶 Echo Mark!'),
+  rav_fate_echo_mark: ab=>executeRavenFateDelayed(ab,[0.08,0.10,0.12,0.14],[10,14,18,22],{ perCategory:3, cap:14 },'🪶 Writ Toll Mark!'),
   rav_return_sign: ab=>executeRavenFateDelayed(ab,[0.12,0.14,0.16,0.18],[16,20,24,28],{ perCategory:4, cap:18 },'🪶 Return Sign!'),
-  rav_delayed_doom: ab=>executeRavenFateDelayed(ab,[0.16,0.18,0.20,0.22],[22,26,30,36],{ perCategory:5, cap:24 },'🪶 Delayed Doom!'),
+  rav_delayed_doom: ab=>executeRavenFateDelayed(ab,[0.16,0.18,0.20,0.22],[22,26,30,36],{ perCategory:5, cap:24 },'🪶 Doom Writ!'),
   rav_fate_death_mark: ab=>executeRavenFateExecute(ab,{log:'🪶 Death Mark!',base:[0.16,0.20,0.24,0.28],execute:[0.12,0.14,0.16,0.18]}),
   rav_fate_death_sign: ab=>executeRavenFateExecute(ab,{log:'🪶 Death Sign!',base:[0.22,0.26,0.30,0.34],execute:[0.16,0.18,0.20,0.22]}),
   rav_fate_final_mark: ab=>executeRavenFateExecute(ab,{log:'🪶 Final Mark!',base:[0.28,0.32,0.36,0.40],execute:[0.24,0.26,0.28,0.30]}),
@@ -12685,23 +13736,26 @@ const RAVEN_SKILL_ACTION_OVERRIDES = {
   rav_shock_omen: ab=>executeRavenOmenSpell(ab,{name:'Shock Call',log:'⚡ Shock Call',fx:'⚡',miss:[14,12,10,8],mult:[0.84,0.90,0.96,1.02],paraChance:[16,18,20,22],paraTurns:[2,2,2,3]}),
   rav_static_cry: ab=>executeRavenOmenSpell(ab,{name:'Static Cry',log:'⚡ Static Cry',fx:'⚡',miss:[13,11,9,7],mult:[0.94,1.00,1.06,1.12],paraChance:[22,24,26,28],paraTurns:[2,3,3,3]}),
   rav_lock_omen: ab=>executeRavenOmenSpell(ab,{name:'Lock Omen',log:'⚡ Lock Omen',fx:'⚡',miss:[12,10,8,6],mult:[1.04,1.10,1.16,1.22],paraChance:[28,30,32,34],paraTurns:[3,3,3,4]}),
-  rav_echo_omen: ab=>executeRavenOmenSpell(ab,{name:'Echo Call',log:'🪶 Echo Call',fx:'🪶',miss:[14,12,10,8],mult:[0.80,0.86,0.92,0.98],delayedFlat:[12,16,20,24]}),
+  rav_echo_omen: ab=>executeRavenOmenSpell(ab,{name:'First Toll',log:'🪶 First Toll',fx:'🪶',miss:[14,12,10,8],mult:[0.80,0.86,0.92,0.98],delayedFlat:[12,16,20,24]}),
   rav_doom_cry: ab=>executeRavenOmenSpell(ab,{name:'Doom Cry',log:'🪶 Doom Cry',fx:'🪶',miss:[13,11,9,7],mult:[0.88,0.94,1.00,1.06],delayedFlat:[18,22,26,30]}),
   rav_returning_omen: ab=>executeRavenOmenSpell(ab,{name:'Returning Omen',log:'🪶 Returning Omen',fx:'🪶',miss:[12,10,8,6],mult:[0.96,1.02,1.08,1.14],delayedFlat:[22,26,30,36],bonusVsDebuffed:[0.08,0.09,0.10,0.11]}),
 };
 Object.entries(RAVEN_SKILL_ACTION_OVERRIDES).forEach(([id, fn])=>{ ACTIONS[id]=fn; });
 
 const HUMMINGBIRD_DASH_ABILITY_IDS = new Set([
-  'dash','sonic_dash','sonicDash','critical_rush','blurring_strike','static_dash','shock_rush','storm_blur','passing_dash','afterimage_rush','return_blur',
+  'dash','sonic_dash','sonicDash','critical_rush','blurring_strike','static_dash','shock_rush','storm_blur','hum_vein_dash','hum_tear_rush','hum_red_blur',
 ]);
 function getHummingbirdMasteryBonuses(ab){
   const slot=getAbilitySkillSlot(G.player,ab);
   const m=getSlotMasteryProfile(slot);
+  const fam=String(slot?.familyId||'');
   return {
     power:m.power,precision:m.precision,control:m.control,
     dmg:0.07*m.power,missCut:3*m.precision,pierce:3*m.precision,rider:6*m.control,
     crit:3*m.power+2*m.control,dodge:5*m.power,spd:2*m.precision,accDown:3*m.power,
-    amp:0.04*m.power,delayed:4*m.power+4*m.control,
+    amp:0.04*m.power,
+    delayed: fam==='combo' ? 4*m.power+4*m.control : 0,
+    bleedRider: fam==='dash' ? 5*m.control+2*m.precision : 0,
   };
 }
 function hummingbirdNextHitAmpFromSpd(){
@@ -12794,6 +13848,10 @@ async function executeHummingbirdDashStrike(ab, cfg){
     G.enemyStatus.paralyzed=(G.enemyStatus.paralyzed||0)+(cfg.paraTurns?.[lv-1]||2);
     spawnFloat('enemy','⚡ Para!','fn-status');
   }
+  if(cfg.bleedChance?.[lv-1] && chance(cfg.bleedChance[lv-1]+mb.rider+(mb.bleedRider||0))){
+    applyAilment('enemy','bleed',1);
+    spawnFloat('enemy','🩸 Bleed!','fn-poison');
+  }
   if(cfg.delayed?.[lv-1]) hummingbirdApplyDelayed(cfg.delayed[lv-1],ab,cfg.delayedSynergy||{});
   renderStatuses('enemy-status',G.enemyStatus);
   G.hummingbirdDashCooldown=hummingbirdDashCooldownForLevel(lv);
@@ -12875,9 +13933,9 @@ const HUMMINGBIRD_SKILL_ACTION_OVERRIDES = {
   static_dash: ab=>executeHummingbirdDashStrike(ab,{log:'⚡ Static Dash',mult:[0.95,1.02,1.10,1.18],hybrid:[1,1,1,1],paraChance:[12,14,16,18],paraTurns:[2,2,2,3]}),
   shock_rush: ab=>executeHummingbirdDashStrike(ab,{log:'⚡ Shock Rush',mult:[1.06,1.14,1.22,1.30],hybrid:[1,1,1,1],paraChance:[18,20,22,25],paraTurns:[2,3,3,3]}),
   storm_blur: ab=>executeHummingbirdDashStrike(ab,{log:'⚡ Storm Blur',mult:[1.12,1.20,1.28,1.36],hybrid:[1,1,1,1],hits:[2,2,2,3],followMult:[0.62,0.66,0.70,0.62],paraChance:[22,24,26,28],paraTurns:[2,2,3,3]}),
-  passing_dash: ab=>executeHummingbirdDashStrike(ab,{log:'✨ Passing Dash',mult:[0.98,1.06,1.12,1.20],delayed:[10,14,18,22],delayedSynergy:{ spdPer:0.42, debuffPer:2, debuffCap:10 }}),
-  afterimage_rush: ab=>executeHummingbirdDashStrike(ab,{log:'✨ Afterimage Rush',mult:[1.06,1.12,1.18,1.26],delayed:[16,20,24,28],delayedSynergy:{ spdPer:0.52, debuffPer:3, debuffCap:14 }}),
-  return_blur: ab=>executeHummingbirdDashStrike(ab,{log:'✨ Return Blur',mult:[1.12,1.18,1.24,1.32],delayed:[22,28,32,38],delayedSynergy:{ spdPer:0.60, debuffPer:4, debuffCap:20 }}),
+  hum_vein_dash: ab=>executeHummingbirdDashStrike(ab,{log:'🩸 Vein Dash',mult:[0.98,1.04,1.10,1.16],pierce:[6,8,10,12],bleedChance:[14,16,18,20]}),
+  hum_tear_rush: ab=>executeHummingbirdDashStrike(ab,{log:'🩸 Tear Rush',mult:[1.06,1.12,1.18,1.24],pierce:[8,10,12,14],bleedChance:[18,20,22,26]}),
+  hum_red_blur: ab=>executeHummingbirdDashStrike(ab,{log:'🩸 Red Blur',mult:[1.12,1.18,1.24,1.30],pierce:[10,12,14,16],bleedChance:[22,26,30,34],hits:[2,2,2,2],followMult:[0.58,0.62,0.66,0.70]}),
   blink_flutter: ab=>executeHummingbirdBlinkFlutterDispatcher(ab),
   evasive_blink: ab=>executeHummingbirdFlutter(ab,{log:'💨 Evasive Blink',fx:'💨',dodge:[38,42,46,50],turns:[2,2,3,3]}),
   mirage_flutter: ab=>executeHummingbirdFlutter(ab,{log:'💨 Mirage Flutter',fx:'💨',dodge:[48,52,56,60],turns:[3,3,3,3]}),
@@ -13302,7 +14360,7 @@ const ROBIN_SKILL_ACTION_OVERRIDES = {
 Object.entries(ROBIN_SKILL_ACTION_OVERRIDES).forEach(([id, fn])=>{ ACTIONS[id]=fn; });
 
 const BOWERBIRD_LURE_ABILITY_IDS = new Set([
-  'lure_call','bow_dread_call','bow_dread_lure','bow_dread_snare','glimmer_call','glimmer_lure','glimmer_snare','bow_echo_call','bow_echo_lure','bow_echo_snare',
+  'lure_call','bow_dread_call','bow_dread_lure','bow_dread_snare','glimmer_call','glimmer_lure','glimmer_snare','bow_rank_call','bow_acrid_lure','bow_viral_snare',
 ]);
 function getBowerbirdMasteryBonuses(ab){
   const slot=getAbilitySkillSlot(G.player,ab);
@@ -13310,10 +14368,10 @@ function getBowerbirdMasteryBonuses(ab){
   const fam=slot?.familyId||'';
   const base={power:m.power,precision:m.precision,control:m.control};
   if(fam==='trinket') return {...base, dmg:0.07*m.power+0.02*m.precision, missCut:2*m.precision, pierce:3*m.precision+2*m.power, weakenRider:6*m.control, exposeBonus:0.01*m.control, rider:4*m.control};
-  if(fam==='lure') return {...base, spellMult:0.06*m.power+0.025*m.control, fearRider:6*m.control, confuseRider:4*m.precision, delayedFlat:6*m.power+10*m.control};
+  if(fam==='lure') return {...base, spellMult:0.06*m.power+0.025*m.control, fearRider:6*m.control, confuseRider:4*m.precision, poisonRider:6*m.power+10*m.control};
   if(fam==='build') return {...base, markAmp:0.04*m.power+0.03*m.precision, defBreakRider:Math.floor(m.precision/2), guardRider:2*m.control};
   if(fam==='display') return {...base, exposeRider:0.008*m.control+0.006*m.precision, readRider:0.015*m.precision+0.010*m.control, execRider:0.03*m.power+0.02*m.control, markAmp:0.03*m.power+0.02*m.precision, dmg:0.055*m.power+0.02*m.precision, pierce:2*m.precision};
-  return {...base, dmg:0, spellMult:0, pierce:0, missCut:0, weakenRider:0, exposeBonus:0, rider:0, fearRider:0, confuseRider:0, delayedFlat:0, markAmp:0, defBreakRider:0, guardRider:0, readRider:0, execRider:0};
+  return {...base, dmg:0, spellMult:0, pierce:0, missCut:0, weakenRider:0, exposeBonus:0, rider:0, fearRider:0, confuseRider:0, poisonRider:0, markAmp:0, defBreakRider:0, guardRider:0, readRider:0, execRider:0};
 }
 function bowerMatkLure(mult){
   const base=G.player.stats.matk||8;
@@ -13418,6 +14476,10 @@ async function executeBowerbirdLureSpell(ab, config={}){
     spawnFloat('enemy','🌀 Snared!','fn-status');
   }
   if(config.delayed?.[lv-1]) bowerApplyDelayed(config.delayed[lv-1], ab, config.delayedSynergy||{});
+  if(config.poisonChance?.[lv-1] && spellAilmentRoll(config.poisonChance[lv-1]+(mb.poisonRider||0), hits>1)){
+    applyAilment('enemy','poison',1);
+    spawnFloat('enemy','☣ Poison!','fn-poison');
+  }
   renderStatuses('enemy-status',G.enemyStatus);
   await doSpell('enemy', config.fx||'🪶');
   G.bowerbirdLureCooldown=bowerbirdLureCooldownForLevel(lv);
@@ -13504,9 +14566,9 @@ const BOWERBIRD_SKILL_ACTION_OVERRIDES = {
   glimmer_call: ab=>executeBowerbirdLureSpell(ab,{name:'Glimmer Call',log:'🌀 Glimmer Call',fx:'🌀',miss:[13,11,9,7],mult:[0.80,0.86,0.92,0.98],confuseChance:[22,25,28,32],confuseTurns:[2,2,3,3],confuseSkip:[24,26,28,30]}),
   glimmer_lure: ab=>executeBowerbirdLureSpell(ab,{name:'Glimmer Lure',log:'🌀 Glimmer Lure',fx:'🌀',miss:[12,10,8,6],mult:[0.88,0.94,1.00,1.06],confuseChance:[28,32,35,38],confuseTurns:[2,3,3,3],confuseSkip:[28,30,32,34]}),
   glimmer_snare: ab=>executeBowerbirdLureSpell(ab,{name:'Glimmer Snare',log:'🌀 Glimmer Snare',fx:'🌀',hits:[2,2,2,2],miss:[11,9,7,5],mult:[0.46,0.50,0.52,0.56],confuseFirst:[32,36,38,42],confuseTurns:[3,3,3,4],confuseSkip:[30,32,34,36],bonusVsConfused:[0.08,0.09,0.10,0.11]}),
-  bow_echo_call: ab=>executeBowerbirdLureSpell(ab,{name:'Echo Call',log:'✨ Echo Call',fx:'✨',miss:[13,11,9,7],mult:[0.84,0.90,0.96,1.02],delayed:[12,16,20,24],delayedSynergy:{spdPer:0.40,debuffPer:2,debuffCap:12}}),
-  bow_echo_lure: ab=>executeBowerbirdLureSpell(ab,{name:'Echo Lure',log:'✨ Echo Lure',fx:'✨',miss:[12,10,8,6],mult:[0.92,0.98,1.04,1.10],delayed:[18,22,26,30],delayedSynergy:{spdPer:0.48,debuffPer:3,debuffCap:16}}),
-  bow_echo_snare: ab=>executeBowerbirdLureSpell(ab,{name:'Echo Snare',log:'✨ Echo Snare',fx:'✨',hits:[2,2,2,2],miss:[11,9,7,5],mult:[0.50,0.54,0.56,0.60],delayed:[14,18,22,26],delayedSynergy:{spdPer:0.52,debuffPer:4,debuffCap:20},bonusVsDebuffed:[0.06,0.07,0.08,0.09]}),
+  bow_rank_call: ab=>executeBowerbirdLureSpell(ab,{name:'Rank Call',log:'☣ Rank Call',fx:'☣',miss:[13,11,9,7],mult:[0.84,0.90,0.96,1.02],poisonChance:[24,28,32,36]}),
+  bow_acrid_lure: ab=>executeBowerbirdLureSpell(ab,{name:'Acrid Lure',log:'☣ Acrid Lure',fx:'☣',miss:[12,10,8,6],mult:[0.92,0.98,1.04,1.10],poisonChance:[30,34,38,42],accDown:[6,8,10,12]}),
+  bow_viral_snare: ab=>executeBowerbirdLureSpell(ab,{name:'Viral Snare',log:'☣ Viral Snare',fx:'☣',hits:[2,2,2,2],miss:[11,9,7,5],mult:[0.50,0.54,0.56,0.60],poisonChance:[22,26,30,34],bonusVsDebuffed:[0.06,0.07,0.08,0.09]}),
   bower_build: ab=>executeBowerbirdBuildUtility(ab,{log:'🪶 Bower Build',fx:'🪶',amp:[0.14,0.17,0.20,0.23]}),
   fine_shape: ab=>executeBowerbirdBuildUtility(ab,{log:'🪶 Fine Shape',fx:'🪶',amp:[0.18,0.21,0.24,0.28]}),
   grand_structure: ab=>executeBowerbirdBuildUtility(ab,{log:'🪶 Grand Structure',fx:'🪶',amp:[0.24,0.28,0.32,0.36]}),
@@ -13534,10 +14596,10 @@ function getToucanMasteryBonuses(ab){
   const fam=slot?.familyId||'';
   const base={power:m.power,precision:m.precision,control:m.control};
   if(fam==='beak') return {...base, dmg:0.06*m.power+0.02*m.precision, pierce:3*m.precision+2*m.power, missCut:2*m.precision, bleedRider:5*m.control, compromised:0.012*m.control+0.01*m.precision, exposeBonus:0.006*m.control};
-  if(fam==='slam') return {...base, dmg:0.07*m.power, crit:3*m.precision+2*m.control, shock:5*m.control, delayedFlat:6*m.power+4*m.control};
+  if(fam==='slam') return {...base, dmg:0.07*m.power, crit:3*m.precision+2*m.control, shock:5*m.control, weakenSlam:6*m.power+5*m.control};
   if(fam==='toss') return {...base, spellMult:0.05*m.power+0.02*m.control, confuseRider:5*m.precision, weakenRider:5*m.control, accRider:2*m.control};
   if(fam==='mark') return {...base, markAmp:0.04*m.power+0.025*m.precision, defBreakRider:Math.floor(m.precision/2), readRider:0.012*m.precision+0.01*m.control, breakTurns:m.control>0?1:0};
-  return {...base,dmg:0,pierce:0,missCut:0,bleedRider:0,compromised:0,exposeBonus:0,crit:0,shock:0,delayedFlat:0,spellMult:0,confuseRider:0,weakenRider:0,accRider:0,markAmp:0,defBreakRider:0,readRider:0,breakTurns:0};
+  return {...base,dmg:0,pierce:0,missCut:0,bleedRider:0,compromised:0,exposeBonus:0,crit:0,shock:0,weakenSlam:0,spellMult:0,confuseRider:0,weakenRider:0,accRider:0,markAmp:0,defBreakRider:0,readRider:0,breakTurns:0};
 }
 function toucanTossMatk(mult){
   const base=G.player.stats.matk||9;
@@ -13602,6 +14664,10 @@ async function executeToucanSlam(ab, cfg){
   if(cfg.paraChance?.[lv-1] && chance(paraRoll)){
     G.enemyStatus.paralyzed=(G.enemyStatus.paralyzed||0)+(cfg.paraTurns?.[lv-1]||2);
     spawnFloat('enemy','⚡ Para!','fn-status');
+  }
+  if(cfg.weakenChance?.[lv-1] && chance(cfg.weakenChance[lv-1]+(mb.weakenSlam||0))){
+    applyAilment('enemy','weaken',1);
+    spawnFloat('enemy','🐔 Weaken!','fn-status');
   }
   if(cfg.delayed?.[lv-1]) toucanApplyDelayed(cfg.delayed[lv-1],ab,cfg.delayedSynergy||{});
   renderStatuses('enemy-status',G.enemyStatus);
@@ -13819,9 +14885,9 @@ const TOUCAN_SKILL_ACTION_OVERRIDES = {
   shock_slam: ab=>executeToucanSlam(ab,{log:'⚡ Shock Slam',miss:[12,11,10,9],mult:[1.26,1.34,1.42,1.50],pierce:[6,8,10,12],paraChance:[16,18,20,22],paraTurns:[2,2,2,3]}),
   static_smash: ab=>executeToucanSlam(ab,{log:'⚡ Static Smash',miss:[11,10,9,8],mult:[1.32,1.40,1.48,1.56],pierce:[8,10,12,14],paraChance:[22,24,26,28],paraTurns:[2,3,3,3]}),
   lock_crush: ab=>executeToucanSlam(ab,{log:'⚡ Lock Crush',miss:[10,9,8,7],mult:[1.38,1.46,1.54,1.62],pierce:[10,12,14,16],paraChance:[28,30,32,34],paraTurns:[3,3,3,4]}),
-  echo_slam: ab=>executeToucanSlam(ab,{log:'🦜 Echo Slam',miss:[12,11,10,9],mult:[1.18,1.24,1.30,1.36],pierce:[6,8,10,12],delayed:[14,18,22,26],delayedSynergy:{spdPer:0.40,debuffPer:2,debuffCap:12}}),
-  return_smash: ab=>executeToucanSlam(ab,{log:'🦜 Return Smash',miss:[11,10,9,8],mult:[1.22,1.28,1.34,1.40],pierce:[8,10,12,14],delayed:[20,26,32,38],delayedSynergy:{spdPer:0.48,debuffPer:3,debuffCap:16}}),
-  double_crush: ab=>executeToucanSlam(ab,{log:'🦜 Double Crush',miss:[10,9,8,7],mult:[1.26,1.32,1.38,1.44],pierce:[10,12,14,16],delayed:[28,34,40,48],delayedSynergy:{spdPer:0.55,debuffPer:4,debuffCap:22}}),
+  tou_press_slam: ab=>executeToucanSlam(ab,{log:'🦜 Press Slam',miss:[12,11,10,9],mult:[1.18,1.24,1.30,1.36],pierce:[6,8,10,12],weakenChance:[22,24,26,28]}),
+  tou_dent_smash: ab=>executeToucanSlam(ab,{log:'🦜 Dent Smash',miss:[11,10,9,8],mult:[1.22,1.28,1.34,1.40],pierce:[8,10,12,14],weakenChance:[28,30,32,36]}),
+  tou_split_crush: ab=>executeToucanSlam(ab,{log:'🦜 Split Crush',miss:[10,9,8,7],mult:[1.26,1.32,1.38,1.44],pierce:[10,12,14,16],weakenChance:[32,36,40,44]}),
   fruit_toss: ab=>executeToucanToss(ab,{log:'🦜 Fruit Toss',fx:'🍊',miss:[14,12,10,8],mult:[0.62,0.68,0.74,0.80],hits:[1,1,1,1],accDown:[6,8,10,12]}),
   sour_toss: ab=>executeToucanToss(ab,{log:'🍋 Sour Toss',fx:'🍋',miss:[13,11,9,7],mult:[0.58,0.64,0.70,0.76],hits:[1,1,1,1],accDown:[8,10,12,14],weakenChance:[22,26,30,34]}),
   sour_scatter: ab=>executeToucanToss(ab,{log:'🍋 Sour Scatter',fx:'🍋',miss:[12,10,8,6],mult:[0.42,0.46,0.50,0.54],hits:[2,2,2,2],accDown:[10,12,14,16],weakenChance:[18,22,26,30]}),
@@ -13883,6 +14949,754 @@ const SWAN_SKILL_ACTION_OVERRIDES = {
   swan_finale_strike: ab=>executeSwanExecuteStrike(ab,{log:'🦢 Finale Strike',miss:[6,5,4,3],mult:[1.14,1.20,1.26,1.32],pierce:[12,14,16,18],lowHpBonus:[0.20,0.24,0.28,0.32]}),
 };
 Object.entries(SWAN_SKILL_ACTION_OVERRIDES).forEach(([id, fn])=>{ ACTIONS[id]=fn; });
+
+function getFlamingoMasteryBonuses(ab){
+  const slot=getAbilitySkillSlot(G.player,ab);
+  const m=getSlotMasteryProfile(slot);
+  const fam=slot?.familyId||'';
+  const base={power:m.power,precision:m.precision,control:m.control};
+  if(fam==='leg') return {...base, dmg:0.052*m.power+0.02*m.precision, pierce:3*m.precision+2*m.power, missCut:2*m.precision, bleedRider:5*m.control+(m.precision>0?3:0), compromised:0.012*m.control+0.01*m.precision, exposeBonus:0.006*m.control, armorBonus:0.038*m.power};
+  if(fam==='sweep') return {...base, dmg:0.055*m.power+0.015*m.control, pierce:2*m.precision, crit:2*m.precision+m.control, weakenRider:5*m.control+2*m.precision, bleedSweep:5*m.power+4*m.control, slowExtraTurn:(m.power>0&&m.control>0)?1:0};
+  if(fam==='pose') return {...base, dodge:4*m.power+2*m.control, accDown:2*m.precision+m.control+(m.precision>0?3:0), guardRider:3*m.power+2*m.control+(m.power>0?4:0), poseTurns:(m.control>0)?1:0};
+  if(fam==='mire') return {...base, markAmp:0.032*m.power+0.02*m.precision, defBreakRider:Math.floor(m.precision/2)+(m.power>0?1:0), readRider:0.012*m.precision+0.01*m.control+(m.precision>0?0.04:0), breakTurns:m.control>0?1:0};
+  return {...base,dmg:0,pierce:0,missCut:0,bleedRider:0,compromised:0,exposeBonus:0,armorBonus:0,crit:0,weakenRider:0,bleedSweep:0,slowExtraTurn:0,dodge:0,accDown:0,guardRider:0,poseTurns:0,markAmp:0,defBreakRider:0,readRider:0,breakTurns:0};
+}
+function flamingoApplyDelayed(flat, ab, synergy={}){
+  const mb=getFlamingoMasteryBonuses(ab);
+  let amt=Math.max(1,Math.floor(flat+(mb.delayedFlat||0)));
+  const spdPer=Number(synergy.spdPer)||0;
+  if(spdPer>0) amt+=Math.floor(Math.max(0,(G.player.stats.spd||0)-5)*spdPer);
+  const debPer=Number(synergy.debuffPer)||0;
+  if(debPer>0){
+    const debCap=Number.isFinite(synergy.debuffCap)?synergy.debuffCap:18;
+    amt+=Math.min(debCap, Math.floor(countEnemyCombatDebuffCategories()*debPer));
+  }
+  const mergeCap=Math.max(32,Math.floor(((G.player.stats.atk||9)+(G.player.stats.matk||9))*2.25));
+  const merged=Math.min(mergeCap,(G.enemyStatus.delayed?.dmg||0)+amt);
+  G.enemyStatus.delayed={dmg:merged};
+  logMsg(`🦩 Shallow wake (${merged} next turn).`,'system');
+}
+async function executeFlamingoLegStrike(ab, cfg){
+  const lv=Math.max(1,Math.min(4,ab.level||1));
+  const mb=getFlamingoMasteryBonuses(ab);
+  const miss=Math.max(0,(cfg.miss?.[lv-1]??9)-getPlayerHitBonus(ab)-(mb.missCut||0));
+  if(chance(miss)){await doMiss('player');logMsg(`${cfg.log||ab.name} missed!`,'miss');return;}
+  let mult=(cfg.mult?.[lv-1]??1)+(mb.dmg||0);
+  const pierce=(cfg.pierce?.[lv-1]??0)+(mb.pierce||0);
+  if(cfg.bonusVsArmor?.[lv-1] && (G.enemy.stats.def||0)>=5) mult+=cfg.bonusVsArmor[lv-1]+(mb.armorBonus||0);
+  if(cfg.bonusVsCompromised?.[lv-1] && macawEnemyHasDebuff()) mult+=cfg.bonusVsCompromised[lv-1]+(mb.compromised||0);
+  const prox={...ab,pierceDef:pierce};
+  const r=dealDamage('enemy',pdmg(mult,prox),chance(getPlayerCritChance(ab)),false,prox);
+  await doAttack('player','enemy',r);
+  setHpBar('enemy',G.enemy.stats.hp,G.enemy.stats.maxHp);
+  if(cfg.bleedChance?.[lv-1] && chance(cfg.bleedChance[lv-1]+(mb.bleedRider||0))){
+    applyAilment('enemy','bleed',1); spawnFloat('enemy','🩸 Bleed!','fn-poison');
+  }
+  if(cfg.applyExpose?.[lv-1]){
+    const t=cfg.exposeTurns?.[lv-1]||2;
+    G.enemyStatus.exposedGuard={turns:t,pct:cfg.applyExpose[lv-1]+(mb.exposeBonus||0)};
+    G.enemyStatus.defending=0;
+    spawnFloat('enemy','🎯 Exposed!','fn-status');
+  }
+  renderStatuses('enemy-status',G.enemyStatus);
+  logMsg(`${cfg.log||ab.name}! ${r.dmgDealt} dmg.`,'player-action');
+}
+async function executeFlamingoSweep(ab, cfg){
+  const lv=Math.max(1,Math.min(4,ab.level||1));
+  const mb=getFlamingoMasteryBonuses(ab);
+  const miss=Math.max(0,(cfg.miss?.[lv-1]??11)-getPlayerHitBonus(ab)-Math.floor((mb.precision||0)));
+  if(chance(miss)){await doMiss('player');logMsg(`${cfg.log||ab.name} missed!`,'miss');return;}
+  let mult=(cfg.mult?.[lv-1]??1)+(mb.dmg||0);
+  const pierce=(cfg.pierce?.[lv-1]??0)+Math.floor((mb.pierce||0)/2);
+  const prox={...ab,pierceDef:pierce};
+  const critBoost=(cfg.critBonus?.[lv-1]||0)+(mb.crit||0);
+  const r=dealDamage('enemy',pdmg(mult,prox),chance(getPlayerCritChance(ab)+critBoost),false,prox);
+  await doAttack('player','enemy',r);
+  setHpBar('enemy',G.enemy.stats.hp,G.enemy.stats.maxHp);
+  if(cfg.weakenChance?.[lv-1] && chance(cfg.weakenChance[lv-1]+(mb.weakenRider||0))){
+    applyAilment('enemy','weaken',1); spawnFloat('enemy','🐔 Weaken!','fn-status');
+  }
+  if(cfg.slowSpd&&cfg.slowSpd[lv-1]!==undefined){
+    const t=(cfg.slowTurns?.[lv-1]||2)+(mb.slowExtraTurn||0);
+    applyEnemySlow(cfg.slowSpd[lv-1], cfg.slowDodge?.[lv-1]||10, t);
+    spawnFloat('enemy','🦩 Mired!','fn-status');
+  }
+  if(cfg.bleedChance?.[lv-1] && chance(cfg.bleedChance[lv-1]+(mb.bleedSweep||0))){
+    applyAilment('enemy','bleed',1);
+    spawnFloat('enemy','🩸 Bleed!','fn-poison');
+  }
+  if(cfg.delayed?.[lv-1]) flamingoApplyDelayed(cfg.delayed[lv-1],ab,cfg.delayedSynergy||{});
+  renderStatuses('enemy-status',G.enemyStatus);
+  logMsg(`${cfg.log||ab.name}! ${r.dmgDealt} dmg.`,'player-action');
+}
+async function executeFlamingoPose(ab){
+  const lv=Math.max(1,Math.min(4,ab.level||1));
+  const mb=getFlamingoMasteryBonuses(ab);
+  const id=ab.id;
+  const turnsBase=2+(mb.poseTurns||0);
+  await doSpell('player','🦩');
+  if(id==='balance_pose'){
+    G.playerStatus.humDodge={bonus:[12,14,16,18][lv-1]+mb.dodge, turns:turnsBase};
+    G.enemyStatus.accDebuff=(G.enemyStatus.accDebuff||0)+[6,8,10,12][lv-1]+mb.accDown;
+  }else if(id==='grace_balance'){
+    G.playerStatus.humDodge={bonus:[22,26,30,34][lv-1]+mb.dodge, turns:[2,2,3,3][lv-1]+(mb.poseTurns||0)};
+  }else if(id==='white_stance'){
+    G.playerStatus.humDodge={bonus:[34,38,42,46][lv-1]+mb.dodge, turns:3+(mb.poseTurns||0)};
+    G.enemyStatus.accDebuff=(G.enemyStatus.accDebuff||0)+[8,10,12,14][lv-1]+mb.accDown;
+  }else if(id==='firm_pose'){
+    G.playerStatus.defending=(G.playerStatus.defending||0)+[12,14,16,18][lv-1]+mb.guardRider;
+  }else if(id==='stable_balance'){
+    G.playerStatus.defending=(G.playerStatus.defending||0)+[18,22,26,30][lv-1]+mb.guardRider;
+  }else if(id==='iron_stance'){
+    G.playerStatus.defending=(G.playerStatus.defending||0)+[26,32,38,44][lv-1]+mb.guardRider;
+  }else if(id==='distracting_pose'){
+    G.enemyStatus.accDebuff=(G.enemyStatus.accDebuff||0)+[12,14,16,18][lv-1]+mb.accDown;
+  }else if(id==='veil_balance'){
+    G.enemyStatus.accDebuff=(G.enemyStatus.accDebuff||0)+[16,18,20,22][lv-1]+mb.accDown;
+  }else if(id==='mirage_stance'){
+    G.enemyStatus.accDebuff=(G.enemyStatus.accDebuff||0)+[20,22,24,26][lv-1]+mb.accDown;
+    G.playerStatus.humDodge={bonus:[10,12,14,16][lv-1]+mb.dodge, turns:2+(mb.poseTurns||0)};
+  }
+  renderStatuses('player-status',G.playerStatus);
+  renderStatuses('enemy-status',G.enemyStatus);
+  logMsg(`🦩 ${ab.name||'Pose'} — composed stance.`,'player-action');
+}
+async function executeFlamingoMire(ab){
+  const id=ab.id;
+  const lv=Math.max(1,Math.min(4,ab.level||1));
+  const mb=getFlamingoMasteryBonuses(ab);
+  if(id==='mire_mark'){
+    G.playerStatus.huntersMarkBonusPct=(0.12+(mb.markAmp||0));
+    await doSpell('enemy','🦩');
+    renderStatuses('player-status',G.playerStatus);
+    logMsg(`🦩 Mire Mark! Next hit +${Math.round((G.playerStatus.huntersMarkBonusPct||0)*100)}%.`,'player-action');
+    return;
+  }
+  if(id==='deep_mire'){
+    G.playerStatus.huntersMarkBonusPct=(0.17+(mb.markAmp||0));
+    await doSpell('enemy','🦩');
+    renderStatuses('player-status',G.playerStatus);
+    logMsg(`🦩 Deep Mire! Next hit +${Math.round((G.playerStatus.huntersMarkBonusPct||0)*100)}%.`,'player-action');
+    return;
+  }
+  if(id==='sinking_mark'){
+    G.playerStatus.huntersMarkBonusPct=(0.24+(mb.markAmp||0));
+    await doSpell('enemy','🦩');
+    renderStatuses('player-status',G.playerStatus);
+    logMsg(`🦩 Sinking Mark! Next hit +${Math.round((G.playerStatus.huntersMarkBonusPct||0)*100)}%.`,'player-action');
+    return;
+  }
+  if(id==='crack_mire'){
+    await doSpell('enemy','🦩');
+    peregrineApplyDefBreak(1+(mb.defBreakRider||0), 2+(mb.breakTurns||0));
+    logMsg(`🦩 Crack Mire! Guard stressed.`,'player-action');
+    return;
+  }
+  if(id==='split_mire'){
+    await doSpell('enemy','🦩');
+    peregrineApplyDefBreak(2+(mb.defBreakRider||0), 2+(mb.breakTurns||0));
+    logMsg(`🦩 Split Mire! Heavy armor stress.`,'player-action');
+    return;
+  }
+  if(id==='ruin_sink'){
+    await doSpell('enemy','🦩');
+    peregrineApplyDefBreak(3+(mb.defBreakRider||0), 3+(mb.breakTurns||0));
+    logMsg(`🦩 Ruin Sink! Ruinous break.`,'player-action');
+    return;
+  }
+  const ampArr=id==='read_mire'?[0.08,0.10,0.12,0.14]:id==='read_marsh'?[0.12,0.14,0.16,0.18]:[0.16,0.18,0.20,0.22];
+  const readArr=id==='read_mire'?[0.06,0.08,0.10,0.12]:id==='read_marsh'?[0.09,0.11,0.13,0.15]:[0.12,0.14,0.16,0.18];
+  G.playerStatus.huntersMarkBonusPct=(ampArr[lv-1]||0.1)+(mb.markAmp||0);
+  G.playerStatus.cockatooReadExtra=(readArr[lv-1]||0.08)+(mb.readRider||0);
+  await doSpell('enemy','🦩');
+  renderStatuses('player-status',G.playerStatus);
+  logMsg(`${id==='read_mire'?'🦩 Read Mire':id==='read_marsh'?'🦩 Read Marsh':'🦩 Read Sink'}! Next hit +${Math.round((G.playerStatus.huntersMarkBonusPct||0)*100)}% and +${Math.round((G.playerStatus.cockatooReadExtra||0)*100)}% vs compromised.`,'player-action');
+}
+
+const FLAMINGO_SKILL_ACTION_OVERRIDES = {
+  leg_jab: ab=>executeFlamingoLegStrike(ab,{log:'🦩 Leg Jab',miss:[9,8,7,6],mult:[0.88,0.92,0.96,1.00],pierce:[10,12,14,16]}),
+  leg_sweep: ab=>executeFlamingoLegStrike(ab,{log:'🦩 Leg Sweep',miss:[8,7,6,5],mult:[0.96,1.00,1.04,1.08],pierce:[16,20,24,28]}),
+  leg_pierce: ab=>executeFlamingoLegStrike(ab,{log:'🦩 Leg Pierce',miss:[7,6,5,4],mult:[1.04,1.08,1.12,1.16],pierce:[24,28,32,36],bonusVsArmor:[0.06,0.08,0.10,0.12]}),
+  flm_razor_jab: ab=>executeFlamingoLegStrike(ab,{log:'🩸 Razor Jab',miss:[9,8,7,6],mult:[0.86,0.90,0.94,0.98],pierce:[8,10,12,14],bleedChance:[14,16,18,20]}),
+  flm_razor_sweep: ab=>executeFlamingoLegStrike(ab,{log:'🩸 Razor Sweep',miss:[8,7,6,5],mult:[0.94,0.98,1.02,1.06],pierce:[10,12,14,16],bleedChance:[18,20,22,25]}),
+  flm_razor_pierce: ab=>executeFlamingoLegStrike(ab,{log:'🩸 Razor Pierce',miss:[7,6,5,4],mult:[1.02,1.06,1.10,1.14],pierce:[12,14,16,18],bleedChance:[22,25,28,32],bonusVsCompromised:[0.04,0.05,0.06,0.07]}),
+  flm_spot_jab: ab=>executeFlamingoLegStrike(ab,{log:'🎯 Spot Jab',miss:[9,8,7,6],mult:[0.86,0.90,0.94,0.98],pierce:[10,12,14,16],bonusVsCompromised:[0.05,0.06,0.07,0.08]}),
+  flm_spot_sweep: ab=>executeFlamingoLegStrike(ab,{log:'🎯 Spot Sweep',miss:[8,7,6,5],mult:[0.94,0.98,1.02,1.06],pierce:[12,14,16,18],bonusVsCompromised:[0.08,0.09,0.10,0.11]}),
+  flm_open_pierce: ab=>executeFlamingoLegStrike(ab,{log:'🎯 Open Pierce',miss:[7,6,5,4],mult:[1.00,1.04,1.08,1.12],pierce:[14,16,18,20],bonusVsCompromised:[0.10,0.12,0.14,0.16],applyExpose:[0.06,0.07,0.08,0.09],exposeTurns:[2,2,3,3]}),
+  marsh_sweep: ab=>executeFlamingoSweep(ab,{log:'🦩 Marsh Sweep',miss:[12,11,10,9],mult:[1.12,1.16,1.20,1.24],pierce:[6,8,10,12],slowSpd:[1,1,2,2],slowDodge:[8,9,10,11],slowTurns:[2,2,2,3]}),
+  wading_surge: ab=>executeFlamingoSweep(ab,{log:'🦩 Wading Surge',miss:[11,10,9,8],mult:[1.18,1.22,1.26,1.30],pierce:[8,10,12,14],slowSpd:[2,2,3,3],slowDodge:[10,10,12,12],slowTurns:[2,2,3,3]}),
+  tidal_crest: ab=>executeFlamingoSweep(ab,{log:'🦩 Tidal Crest',miss:[10,9,8,7],mult:[1.24,1.28,1.34,1.38],pierce:[10,12,14,16],slowSpd:[2,3,3,4],slowDodge:[12,12,14,14],slowTurns:[3,3,3,4]}),
+  flm_pressing_sweep: ab=>executeFlamingoSweep(ab,{log:'🦩 Pressing Sweep',miss:[12,11,10,9],mult:[1.18,1.22,1.26,1.30],pierce:[6,8,10,12],weakenChance:[22,24,26,28]}),
+  flm_pressing_surge: ab=>executeFlamingoSweep(ab,{log:'🦩 Pressing Surge',miss:[11,10,9,8],mult:[1.24,1.28,1.32,1.36],pierce:[8,10,12,14],weakenChance:[28,30,32,34]}),
+  flm_crushing_crest: ab=>executeFlamingoSweep(ab,{log:'🦩 Crushing Crest',miss:[10,9,8,7],mult:[1.30,1.34,1.38,1.42],pierce:[10,12,14,16],weakenChance:[32,34,36,40]}),
+  flm_reed_cut: ab=>executeFlamingoSweep(ab,{log:'🦩 Reed Cut',miss:[12,11,10,9],mult:[1.10,1.14,1.18,1.22],pierce:[6,8,10,12],bleedChance:[18,20,22,24]}),
+  flm_bog_surge: ab=>executeFlamingoSweep(ab,{log:'🦩 Bog Surge',miss:[11,10,9,8],mult:[1.14,1.18,1.22,1.26],pierce:[8,10,12,14],bleedChance:[22,25,28,32]}),
+  flm_crimson_crest: ab=>executeFlamingoSweep(ab,{log:'🦩 Crimson Crest',miss:[10,9,8,7],mult:[1.18,1.22,1.26,1.30],pierce:[10,12,14,16],bleedChance:[26,30,34,38]}),
+  balance_pose: ab=>executeFlamingoPose(ab),
+  grace_balance: ab=>executeFlamingoPose(ab),
+  white_stance: ab=>executeFlamingoPose(ab),
+  firm_pose: ab=>executeFlamingoPose(ab),
+  stable_balance: ab=>executeFlamingoPose(ab),
+  iron_stance: ab=>executeFlamingoPose(ab),
+  distracting_pose: ab=>executeFlamingoPose(ab),
+  veil_balance: ab=>executeFlamingoPose(ab),
+  mirage_stance: ab=>executeFlamingoPose(ab),
+  mire_mark: ab=>executeFlamingoMire(ab),
+  deep_mire: ab=>executeFlamingoMire(ab),
+  sinking_mark: ab=>executeFlamingoMire(ab),
+  crack_mire: ab=>executeFlamingoMire(ab),
+  split_mire: ab=>executeFlamingoMire(ab),
+  ruin_sink: ab=>executeFlamingoMire(ab),
+  read_mire: ab=>executeFlamingoMire(ab),
+  read_marsh: ab=>executeFlamingoMire(ab),
+  read_sink: ab=>executeFlamingoMire(ab),
+};
+Object.entries(FLAMINGO_SKILL_ACTION_OVERRIDES).forEach(([id, fn])=>{ ACTIONS[id]=fn; });
+
+function getSecretaryMasteryBonuses(ab){
+  const slot=getAbilitySkillSlot(G.player,ab);
+  const m=getSlotMasteryProfile(slot);
+  const fam=slot?.familyId||'';
+  const base={power:m.power,precision:m.precision,control:m.control};
+  if(fam==='leg') return {...base, dmg:0.054*m.power+0.02*m.precision, pierce:3*m.precision+2*m.power, missCut:2*m.precision, bleedRider:5*m.control+(m.precision>0?3:0), weakenRider:5*m.control+2*m.precision, armorBonus:0.04*m.power};
+  if(fam==='kick') return {...base, kickDmg:0.062*m.power+0.015*m.control, pierceKick:2*m.precision, crit:3*m.precision+2*m.control, paraRider:4*m.control+2*m.precision, execRider:0.025*m.power+0.02*m.control};
+  if(fam==='stride') return {...base, spd:1*m.power+Math.floor(m.precision/2), dodge:4*m.power+2*m.control, accDown:2*m.precision+m.control, markAmp:0.03*m.power+0.02*m.precision, strideTurns:(m.control>0?1:0)};
+  if(fam==='prey') return {...base, markAmp:0.034*m.power+0.02*m.precision, defBreakRider:Math.floor(m.precision/2)+(m.power>0?1:0), readRider:0.012*m.precision+0.01*m.control+(m.precision>0?0.03:0), breakTurns:m.control>0?1:0};
+  return {...base,dmg:0,pierce:0,missCut:0,bleedRider:0,weakenRider:0,armorBonus:0,kickDmg:0,pierceKick:0,crit:0,paraRider:0,execRider:0,spd:0,dodge:0,accDown:0,markAmp:0,strideTurns:0,defBreakRider:0,readRider:0,breakTurns:0};
+}
+async function executeSecretaryLegStrike(ab, cfg){
+  const lv=Math.max(1,Math.min(4,ab.level||1));
+  const mb=getSecretaryMasteryBonuses(ab);
+  const miss=Math.max(0,(cfg.miss?.[lv-1]??9)-getPlayerHitBonus(ab)-(mb.missCut||0));
+  if(chance(miss)){await doMiss('player');logMsg(`${cfg.log||ab.name} missed!`,'miss');return;}
+  let mult=(cfg.mult?.[lv-1]??1)+(mb.dmg||0);
+  const pierce=(cfg.pierce?.[lv-1]??0)+(mb.pierce||0);
+  if(cfg.bonusVsArmor?.[lv-1] && (G.enemy.stats.def||0)>=5) mult+=cfg.bonusVsArmor[lv-1]+(mb.armorBonus||0);
+  if(cfg.bonusVsCompromised?.[lv-1] && macawEnemyHasDebuff()) mult+=cfg.bonusVsCompromised[lv-1];
+  const prox={...ab,pierceDef:pierce};
+  const r=dealDamage('enemy',pdmg(mult,prox),chance(getPlayerCritChance(ab)),false,prox);
+  await doAttack('player','enemy',r);
+  setHpBar('enemy',G.enemy.stats.hp,G.enemy.stats.maxHp);
+  if(cfg.bleedChance?.[lv-1] && chance(cfg.bleedChance[lv-1]+(mb.bleedRider||0))){
+    applyAilment('enemy','bleed',1); spawnFloat('enemy','🩸 Bleed!','fn-poison');
+  }
+  if(cfg.weakenChance?.[lv-1] && chance(cfg.weakenChance[lv-1]+(mb.weakenRider||0))){
+    applyAilment('enemy','weaken',1); spawnFloat('enemy','🐔 Weaken!','fn-status');
+  }
+  renderStatuses('enemy-status',G.enemyStatus);
+  logMsg(`${cfg.log||ab.name}! ${r.dmgDealt} dmg.`,'player-action');
+}
+async function executeSecretaryKick(ab, cfg){
+  const lv=Math.max(1,Math.min(4,ab.level||1));
+  const mb=getSecretaryMasteryBonuses(ab);
+  const miss=Math.max(0,(cfg.miss?.[lv-1]??11)-getPlayerHitBonus(ab)-Math.floor((mb.precision||0)));
+  if(chance(miss)){await doMiss('player');logMsg(`${cfg.log||ab.name} missed!`,'miss');return;}
+  let mult=(cfg.mult?.[lv-1]??1)+(mb.kickDmg||0);
+  const pierce=(cfg.pierce?.[lv-1]??0)+Math.floor((mb.pierceKick||0)/2);
+  if(cfg.lowHpBonus?.[lv-1]){
+    const th=(cfg.lowHpThreshold?.[lv-1]??0.5);
+    if((G.enemy.stats.hp||1)<=Math.floor((G.enemy.stats.maxHp||1)*th)) mult+=cfg.lowHpBonus[lv-1]+(mb.execRider||0);
+  }
+  const prox={...ab,pierceDef:pierce};
+  const critBoost=(cfg.critBonus?.[lv-1]||0)+(mb.crit||0);
+  const r=dealDamage('enemy',pdmg(mult,prox),chance(getPlayerCritChance(ab)+critBoost),false,prox);
+  await doAttack('player','enemy',r);
+  setHpBar('enemy',G.enemy.stats.hp,G.enemy.stats.maxHp);
+  const paraRoll=(cfg.paraChance?.[lv-1]||0)+(mb.paraRider||0);
+  if(cfg.paraChance?.[lv-1] && chance(paraRoll)){
+    G.enemyStatus.paralyzed=(G.enemyStatus.paralyzed||0)+(cfg.paraTurns?.[lv-1]||2);
+    spawnFloat('enemy','⚡ Para!','fn-status');
+  }
+  renderStatuses('enemy-status',G.enemyStatus);
+  logMsg(`${cfg.log||ab.name}! ${r.dmgDealt} dmg.`,'player-action');
+}
+async function executeSecretaryStride(ab){
+  const lv=Math.max(1,Math.min(4,ab.level||1));
+  const mb=getSecretaryMasteryBonuses(ab);
+  const id=ab.id;
+  const turnExtra=(mb.strideTurns||0);
+  await doSpell('player','🪶');
+  if(id==='hunter_stride'){
+    G.player.stats.spd=Math.min(20,(G.player.stats.spd||1)+[1,1,2,2][lv-1]+mb.spd);
+    G.playerStatus.humDodge={bonus:[8,10,12,14][lv-1]+mb.dodge, turns:2+turnExtra};
+  }else if(id==='long_pace'){
+    G.player.stats.spd=Math.min(20,(G.player.stats.spd||1)+[2,2,3,3][lv-1]+mb.spd);
+    G.playerStatus.humDodge={bonus:[6,8,10,12][lv-1]+mb.dodge, turns:2+turnExtra};
+  }else if(id==='predator_advance'){
+    G.player.stats.spd=Math.min(20,(G.player.stats.spd||1)+[3,3,4,4][lv-1]+mb.spd);
+    G.enemyStatus.accDebuff=(G.enemyStatus.accDebuff||0)+[8,10,12,14][lv-1]+mb.accDown;
+  }else if(id==='side_stride'){
+    G.playerStatus.humDodge={bonus:[14,18,22,26][lv-1]+mb.dodge, turns:2+turnExtra};
+  }else if(id==='clean_pace'){
+    G.playerStatus.humDodge={bonus:[24,28,32,36][lv-1]+mb.dodge, turns:[2,2,3,3][lv-1]+turnExtra};
+  }else if(id==='ghost_advance'){
+    G.playerStatus.humDodge={bonus:[34,38,42,46][lv-1]+mb.dodge, turns:3+turnExtra};
+    G.enemyStatus.accDebuff=(G.enemyStatus.accDebuff||0)+[6,8,10,12][lv-1]+mb.accDown;
+  }else if(id==='lining_stride'){
+    G.playerStatus.huntersMarkBonusPct=(0.13+(mb.markAmp||0));
+  }else if(id==='measured_pace'){
+    G.playerStatus.huntersMarkBonusPct=(0.18+(mb.markAmp||0));
+  }else if(id==='kill_advance'){
+    G.playerStatus.huntersMarkBonusPct=(0.24+(mb.markAmp||0));
+  }
+  renderStatuses('player-status',G.playerStatus);
+  renderStatuses('enemy-status',G.enemyStatus);
+  if(G.playerStatus.huntersMarkBonusPct) logMsg(`🪶 ${ab.name||'Stride'}! Next hit +${Math.round((G.playerStatus.huntersMarkBonusPct||0)*100)}%.`,'player-action');
+  else logMsg(`🪶 ${ab.name||'Stride'} — stalking tempo.`,'player-action');
+}
+async function executeSecretaryPrey(ab){
+  const id=ab.id;
+  const lv=Math.max(1,Math.min(4,ab.level||1));
+  const mb=getSecretaryMasteryBonuses(ab);
+  if(id==='prey_mark'){
+    G.playerStatus.huntersMarkBonusPct=(0.12+(mb.markAmp||0));
+    await doSpell('enemy','🪶');
+    renderStatuses('player-status',G.playerStatus);
+    logMsg(`🪶 Prey Mark! Next hit +${Math.round((G.playerStatus.huntersMarkBonusPct||0)*100)}%.`,'player-action');
+    return;
+  }
+  if(id==='hunter_sight'){
+    G.playerStatus.huntersMarkBonusPct=(0.17+(mb.markAmp||0));
+    await doSpell('enemy','🪶');
+    renderStatuses('player-status',G.playerStatus);
+    logMsg(`🪶 Hunter Sight! Next hit +${Math.round((G.playerStatus.huntersMarkBonusPct||0)*100)}%.`,'player-action');
+    return;
+  }
+  if(id==='prey_collapse'){
+    G.playerStatus.huntersMarkBonusPct=(0.24+(mb.markAmp||0));
+    await doSpell('enemy','🪶');
+    renderStatuses('player-status',G.playerStatus);
+    logMsg(`🪶 Prey Collapse! Next hit +${Math.round((G.playerStatus.huntersMarkBonusPct||0)*100)}%.`,'player-action');
+    return;
+  }
+  if(id==='open_mark'){
+    await doSpell('enemy','🪶');
+    peregrineApplyDefBreak(1+(mb.defBreakRider||0), 2+(mb.breakTurns||0));
+    logMsg(`🪶 Open Mark! Guard stressed.`,'player-action');
+    return;
+  }
+  if(id==='weak_sight'){
+    await doSpell('enemy','🪶');
+    peregrineApplyDefBreak(2+(mb.defBreakRider||0), 2+(mb.breakTurns||0));
+    logMsg(`🪶 Weak Sight! Heavy armor stress.`,'player-action');
+    return;
+  }
+  if(id==='ruin_collapse'){
+    await doSpell('enemy','🪶');
+    peregrineApplyDefBreak(3+(mb.defBreakRider||0), 3+(mb.breakTurns||0));
+    logMsg(`🪶 Ruin Collapse! Ruinous break.`,'player-action');
+    return;
+  }
+  const ampArr=id==='read_prey'?[0.08,0.10,0.12,0.14]:id==='read_sight'?[0.12,0.14,0.16,0.18]:[0.16,0.18,0.20,0.22];
+  const readArr=id==='read_prey'?[0.06,0.08,0.10,0.12]:id==='read_sight'?[0.09,0.11,0.13,0.15]:[0.12,0.14,0.16,0.18];
+  G.playerStatus.huntersMarkBonusPct=(ampArr[lv-1]||0.1)+(mb.markAmp||0);
+  G.playerStatus.cockatooReadExtra=(readArr[lv-1]||0.08)+(mb.readRider||0);
+  await doSpell('enemy','🪶');
+  renderStatuses('player-status',G.playerStatus);
+  logMsg(`${id==='read_prey'?'🪶 Read Prey':id==='read_sight'?'🪶 Read Sight':'🪶 Read Collapse'}! Next hit +${Math.round((G.playerStatus.huntersMarkBonusPct||0)*100)}% and +${Math.round((G.playerStatus.cockatooReadExtra||0)*100)}% vs compromised.`,'player-action');
+}
+
+const SECRETARY_SKILL_ACTION_OVERRIDES = {
+  sec_leg_jab: ab=>executeSecretaryLegStrike(ab,{log:'🪶 Leg Jab',miss:[9,8,7,6],mult:[0.90,0.94,0.98,1.02],pierce:[10,12,14,16]}),
+  sec_leg_strike: ab=>executeSecretaryLegStrike(ab,{log:'🪶 Leg Strike',miss:[8,7,6,5],mult:[0.98,1.02,1.06,1.10],pierce:[16,20,24,28]}),
+  sec_leg_pierce: ab=>executeSecretaryLegStrike(ab,{log:'🪶 Leg Pierce',miss:[7,6,5,4],mult:[1.06,1.10,1.14,1.18],pierce:[22,26,30,34],bonusVsArmor:[0.06,0.08,0.10,0.12]}),
+  sec_razor_jab: ab=>executeSecretaryLegStrike(ab,{log:'🩸 Razor Jab',miss:[9,8,7,6],mult:[0.88,0.92,0.96,1.00],pierce:[8,10,12,14],bleedChance:[14,16,18,20]}),
+  sec_razor_strike: ab=>executeSecretaryLegStrike(ab,{log:'🩸 Razor Strike',miss:[8,7,6,5],mult:[0.96,1.00,1.04,1.08],pierce:[10,12,14,16],bleedChance:[18,20,22,25]}),
+  sec_razor_pierce: ab=>executeSecretaryLegStrike(ab,{log:'🩸 Razor Pierce',miss:[7,6,5,4],mult:[1.04,1.08,1.12,1.16],pierce:[12,14,16,18],bleedChance:[22,25,28,32],bonusVsCompromised:[0.04,0.05,0.06,0.07]}),
+  sec_dulling_jab: ab=>executeSecretaryLegStrike(ab,{log:'🪶 Dulling Jab',miss:[9,8,7,6],mult:[0.88,0.92,0.96,1.00],pierce:[8,10,12,14],weakenChance:[18,20,22,24]}),
+  sec_dulling_strike: ab=>executeSecretaryLegStrike(ab,{log:'🪶 Dulling Strike',miss:[8,7,6,5],mult:[0.96,1.00,1.04,1.08],pierce:[10,12,14,16],weakenChance:[24,26,28,30]}),
+  sec_dulling_pierce: ab=>executeSecretaryLegStrike(ab,{log:'🪶 Dulling Pierce',miss:[7,6,5,4],mult:[1.04,1.08,1.12,1.16],pierce:[12,14,16,18],weakenChance:[30,32,34,38]}),
+  sec_crushing_kick: ab=>executeSecretaryKick(ab,{log:'🪶 Crushing Kick',miss:[12,11,10,9],mult:[1.26,1.30,1.34,1.38],pierce:[6,8,10,12],critBonus:[6,8,10,12]}),
+  sec_hunter_stomp: ab=>executeSecretaryKick(ab,{log:'🪶 Hunter Stomp',miss:[11,10,9,8],mult:[1.32,1.36,1.40,1.44],pierce:[8,10,12,14],critBonus:[10,12,14,16]}),
+  sec_execution_crush: ab=>executeSecretaryKick(ab,{log:'🪶 Execution Crush',miss:[10,9,8,7],mult:[1.38,1.42,1.46,1.50],pierce:[10,12,14,16],critBonus:[14,16,18,22]}),
+  sec_shock_kick: ab=>executeSecretaryKick(ab,{log:'⚡ Shock Kick',miss:[12,11,10,9],mult:[1.20,1.24,1.28,1.32],pierce:[6,8,10,12],paraChance:[18,20,22,24],paraTurns:[2,2,2,3]}),
+  sec_shock_stomp: ab=>executeSecretaryKick(ab,{log:'⚡ Shock Stomp',miss:[11,10,9,8],mult:[1.26,1.30,1.34,1.38],pierce:[8,10,12,14],paraChance:[24,26,28,30],paraTurns:[2,2,3,3]}),
+  sec_lock_crush: ab=>executeSecretaryKick(ab,{log:'⚡ Lock Crush',miss:[10,9,8,7],mult:[1.32,1.36,1.40,1.44],pierce:[10,12,14,16],paraChance:[30,32,34,36],paraTurns:[3,3,3,4]}),
+  sec_finisher_kick: ab=>executeSecretaryKick(ab,{log:'🪶 Finisher Kick',miss:[12,11,10,9],mult:[1.22,1.26,1.30,1.34],pierce:[8,10,12,14],lowHpBonus:[0.10,0.12,0.14,0.16],lowHpThreshold:[0.5,0.5,0.5,0.5]}),
+  sec_finisher_stomp: ab=>executeSecretaryKick(ab,{log:'🪶 Finisher Stomp',miss:[11,10,9,8],mult:[1.28,1.32,1.36,1.40],pierce:[10,12,14,16],lowHpBonus:[0.12,0.14,0.16,0.18],lowHpThreshold:[0.5,0.5,0.45,0.45]}),
+  sec_final_crush: ab=>executeSecretaryKick(ab,{log:'🪶 Final Crush',miss:[10,9,8,7],mult:[1.34,1.38,1.42,1.46],pierce:[12,14,16,18],lowHpBonus:[0.14,0.16,0.18,0.22],lowHpThreshold:[0.45,0.45,0.4,0.4]}),
+  hunter_stride: ab=>executeSecretaryStride(ab),
+  long_pace: ab=>executeSecretaryStride(ab),
+  predator_advance: ab=>executeSecretaryStride(ab),
+  side_stride: ab=>executeSecretaryStride(ab),
+  clean_pace: ab=>executeSecretaryStride(ab),
+  ghost_advance: ab=>executeSecretaryStride(ab),
+  lining_stride: ab=>executeSecretaryStride(ab),
+  measured_pace: ab=>executeSecretaryStride(ab),
+  kill_advance: ab=>executeSecretaryStride(ab),
+  prey_mark: ab=>executeSecretaryPrey(ab),
+  hunter_sight: ab=>executeSecretaryPrey(ab),
+  prey_collapse: ab=>executeSecretaryPrey(ab),
+  open_mark: ab=>executeSecretaryPrey(ab),
+  weak_sight: ab=>executeSecretaryPrey(ab),
+  ruin_collapse: ab=>executeSecretaryPrey(ab),
+  read_prey: ab=>executeSecretaryPrey(ab),
+  read_sight: ab=>executeSecretaryPrey(ab),
+  read_collapse: ab=>executeSecretaryPrey(ab),
+};
+Object.entries(SECRETARY_SKILL_ACTION_OVERRIDES).forEach(([id, fn])=>{ ACTIONS[id]=fn; });
+
+function getAlbatrossMasteryBonuses(ab){
+  const slot=getAbilitySkillSlot(G.player,ab);
+  const m=getSlotMasteryProfile(slot);
+  const fam=slot?.familyId||'';
+  const base={power:m.power,precision:m.precision,control:m.control};
+  const glideExtra=(m.control>0)?1:0;
+  if(fam==='wing') return {...base, dmg:0.052*m.power+0.02*m.precision, pierce:3*m.precision+2*m.power, missCut:2*m.precision, bleedRider:6*m.control+2*m.precision, compromised:0.014*m.control+0.01*m.precision, exposeBonus:0.007*m.control, armorBonus:0.038*m.power};
+  if(fam==='sweep') return {...base, dmg:0.058*m.power+0.012*m.control, pierce:2*m.precision, weakenRider:5*m.control+2*m.precision, delayedFlat:6*m.power+5*m.control, slowBonus:0.02*m.power+0.015*m.control, slowTurn:((m.power>0&&m.control>0)?1:0)};
+  if(fam==='glide') return {...base, dodge:4*m.power+3*m.control, accDown:2*m.precision+m.control+(m.precision>0?2:0), spd:1*m.power+Math.floor(m.precision/2), guardRider:3*m.power+2*m.control, glideExtra};
+  if(fam==='current') return {...base, markAmp:0.034*m.power+0.022*m.precision, defBreakRider:Math.floor(m.precision/2)+(m.power>0?1:0), readRider:0.014*m.precision+0.01*m.control, breakTurns:m.control>0?1:0};
+  return {...base,dmg:0,pierce:0,missCut:0,bleedRider:0,compromised:0,exposeBonus:0,armorBonus:0,weakenRider:0,delayedFlat:0,slowBonus:0,slowTurn:0,dodge:0,accDown:0,spd:0,guardRider:0,glideExtra:0,markAmp:0,defBreakRider:0,readRider:0,breakTurns:0};
+}
+function albatrossEnemyWasSlow(){
+  const s=G.enemyStatus?.slow;
+  if(!s) return false;
+  if(typeof s==='object') return (s.turns||0)>0;
+  return Number(s)>0;
+}
+function albatrossApplyDelayed(flat, ab, synergy={}){
+  const mb=getAlbatrossMasteryBonuses(ab);
+  let amt=Math.max(1,Math.floor(flat+(mb.delayedFlat||0)));
+  const debPer=Number(synergy.debuffPer)||0;
+  if(debPer>0){
+    const debCap=Number.isFinite(synergy.debuffCap)?synergy.debuffCap:20;
+    amt+=Math.min(debCap, Math.floor(countEnemyCombatDebuffCategories()*debPer));
+  }
+  const mergeCap=Math.max(34,Math.floor(((G.player.stats.atk||9)+(G.player.stats.spd||6))*2.4));
+  const merged=Math.min(mergeCap,(G.enemyStatus.delayed?.dmg||0)+amt);
+  G.enemyStatus.delayed={dmg:merged};
+  logMsg(`🌊 Wake returns (${merged} on their turn).`,'system');
+}
+async function executeAlbatrossWingStrike(ab, cfg){
+  const lv=Math.max(1,Math.min(4,ab.level||1));
+  const mb=getAlbatrossMasteryBonuses(ab);
+  const miss=Math.max(0,(cfg.miss?.[lv-1]??9)-getPlayerHitBonus(ab)-(mb.missCut||0));
+  if(chance(miss)){await doMiss('player');logMsg(`${cfg.log||ab.name} missed!`,'miss');return;}
+  let mult=(cfg.mult?.[lv-1]??1)+(mb.dmg||0);
+  const pierce=(cfg.pierce?.[lv-1]??0)+(mb.pierce||0);
+  if(cfg.bonusVsArmor?.[lv-1] && (G.enemy.stats.def||0)>=5) mult+=cfg.bonusVsArmor[lv-1]+(mb.armorBonus||0);
+  if(cfg.bonusVsCompromised?.[lv-1] && macawEnemyHasDebuff()) mult+=cfg.bonusVsCompromised[lv-1]+(mb.compromised||0);
+  const prox={...ab,pierceDef:pierce};
+  const r=dealDamage('enemy',pdmg(mult,prox),chance(getPlayerCritChance(ab)),false,prox);
+  await doAttack('player','enemy',r);
+  setHpBar('enemy',G.enemy.stats.hp,G.enemy.stats.maxHp);
+  if(cfg.bleedChance?.[lv-1] && chance(cfg.bleedChance[lv-1]+(mb.bleedRider||0))){
+    applyAilment('enemy','bleed',1); spawnFloat('enemy','🩸 Bleed!','fn-poison');
+  }
+  if(cfg.applyExpose?.[lv-1]){
+    const t=cfg.exposeTurns?.[lv-1]||2;
+    G.enemyStatus.exposedGuard={turns:t,pct:cfg.applyExpose[lv-1]+(mb.exposeBonus||0)};
+    G.enemyStatus.defending=0;
+    spawnFloat('enemy','🎯 Exposed!','fn-status');
+  }
+  renderStatuses('enemy-status',G.enemyStatus);
+  logMsg(`${cfg.log||ab.name}! ${r.dmgDealt} dmg.`,'player-action');
+}
+async function executeAlbatrossSweep(ab, cfg){
+  const lv=Math.max(1,Math.min(4,ab.level||1));
+  const mb=getAlbatrossMasteryBonuses(ab);
+  const miss=Math.max(0,(cfg.miss?.[lv-1]??11)-getPlayerHitBonus(ab)-Math.floor((mb.precision||0)));
+  if(chance(miss)){await doMiss('player');logMsg(`${cfg.log||ab.name} missed!`,'miss');return;}
+  let mult=(cfg.mult?.[lv-1]??1)+(mb.dmg||0);
+  const pierce=(cfg.pierce?.[lv-1]??0)+Math.floor((mb.pierce||0)/2);
+  if(cfg.bonusVsSlowed?.[lv-1] && albatrossEnemyWasSlow()) mult+=cfg.bonusVsSlowed[lv-1]+(mb.slowBonus||0);
+  const prox={...ab,pierceDef:pierce};
+  const r=dealDamage('enemy',pdmg(mult,prox),chance(getPlayerCritChance(ab)),false,prox);
+  await doAttack('player','enemy',r);
+  setHpBar('enemy',G.enemy.stats.hp,G.enemy.stats.maxHp);
+  if(cfg.weakenChance?.[lv-1] && chance(cfg.weakenChance[lv-1]+(mb.weakenRider||0))){
+    applyAilment('enemy','weaken',1); spawnFloat('enemy','🐔 Weaken!','fn-status');
+  }
+  if(cfg.slow?.[lv-1]) applyEnemySlow(cfg.slow[lv-1], cfg.slowDodge?.[lv-1]||10, (cfg.slowTurns?.[lv-1]||2)+(mb.slowTurn||0));
+  if(cfg.delayed?.[lv-1]) albatrossApplyDelayed(cfg.delayed[lv-1],ab,cfg.delayedSynergy||{});
+  renderStatuses('enemy-status',G.enemyStatus);
+  logMsg(`${cfg.log||ab.name}! ${r.dmgDealt} dmg.`,'player-action');
+}
+async function executeAlbatrossGlide(ab){
+  const lv=Math.max(1,Math.min(4,ab.level||1));
+  const mb=getAlbatrossMasteryBonuses(ab);
+  const id=ab.id;
+  const turns=2+(mb.glideExtra||0);
+  await doSpell('player','🌊');
+  if(id==='alb_glide_line'){
+    G.player.stats.spd=Math.min(20,(G.player.stats.spd||1)+[1,1,2,2][lv-1]+mb.spd);
+    G.playerStatus.humDodge={bonus:[10,12,14,16][lv-1]+mb.dodge, turns};
+  }else if(id==='alb_long_drift'){
+    G.player.stats.spd=Math.min(20,(G.player.stats.spd||1)+[2,2,3,3][lv-1]+mb.spd);
+    G.playerStatus.humDodge={bonus:[8,10,12,14][lv-1]+mb.dodge, turns};
+  }else if(id==='alb_endless_current'){
+    G.player.stats.spd=Math.min(20,(G.player.stats.spd||1)+[3,3,4,4][lv-1]+mb.spd);
+    G.playerStatus.humDodge={bonus:[14,16,18,20][lv-1]+mb.dodge, turns:2+(mb.glideExtra||0)};
+  }else if(id==='alb_soft_glide'){
+    G.playerStatus.humDodge={bonus:[18,22,26,30][lv-1]+mb.dodge, turns};
+    G.enemyStatus.accDebuff=(G.enemyStatus.accDebuff||0)+[6,8,10,12][lv-1]+mb.accDown;
+  }else if(id==='alb_ghost_drift'){
+    G.playerStatus.humDodge={bonus:[28,32,36,40][lv-1]+mb.dodge, turns:[2,2,3,3][lv-1]+(mb.glideExtra||0)};
+  }else if(id==='alb_white_current'){
+    G.playerStatus.humDodge={bonus:[38,42,46,50][lv-1]+mb.dodge, turns:3+(mb.glideExtra||0)};
+    G.enemyStatus.accDebuff=(G.enemyStatus.accDebuff||0)+[8,10,12,14][lv-1]+mb.accDown;
+  }else if(id==='alb_steady_glide'){
+    G.playerStatus.defending=(G.playerStatus.defending||0)+[10,12,14,16][lv-1]+mb.guardRider;
+  }else if(id==='alb_broad_drift'){
+    G.playerStatus.defending=(G.playerStatus.defending||0)+[16,20,24,28][lv-1]+mb.guardRider;
+  }else if(id==='alb_ocean_current'){
+    G.playerStatus.defending=(G.playerStatus.defending||0)+[24,30,36,42][lv-1]+mb.guardRider;
+    G.enemyStatus.accDebuff=(G.enemyStatus.accDebuff||0)+[4,5,6,8][lv-1]+Math.floor((mb.accDown||0)/2);
+  }
+  renderStatuses('player-status',G.playerStatus);
+  renderStatuses('enemy-status',G.enemyStatus);
+  logMsg(`🌊 ${ab.name||'Glide'} — riding the wind.`,'player-action');
+}
+async function executeAlbatrossCurrent(ab){
+  const id=ab.id;
+  const lv=Math.max(1,Math.min(4,ab.level||1));
+  const mb=getAlbatrossMasteryBonuses(ab);
+  if(id==='alb_current_mark'){
+    G.playerStatus.huntersMarkBonusPct=(0.12+(mb.markAmp||0));
+    await doSpell('enemy','🌊');
+    renderStatuses('player-status',G.playerStatus);
+    logMsg(`🌊 Current Mark! Next hit +${Math.round((G.playerStatus.huntersMarkBonusPct||0)*100)}%.`,'player-action');
+    return;
+  }
+  if(id==='alb_pull_mark'){
+    G.playerStatus.huntersMarkBonusPct=(0.18+(mb.markAmp||0));
+    await doSpell('enemy','🌊');
+    renderStatuses('player-status',G.playerStatus);
+    logMsg(`🌊 Pull Mark! Next hit +${Math.round((G.playerStatus.huntersMarkBonusPct||0)*100)}%.`,'player-action');
+    return;
+  }
+  if(id==='alb_wake_mark'){
+    G.playerStatus.huntersMarkBonusPct=(0.26+(mb.markAmp||0));
+    await doSpell('enemy','🌊');
+    renderStatuses('player-status',G.playerStatus);
+    logMsg(`🌊 Wake Mark! Next hit +${Math.round((G.playerStatus.huntersMarkBonusPct||0)*100)}%.`,'player-action');
+    return;
+  }
+  if(id==='alb_crack_current'){ await doSpell('enemy','🛡'); peregrineApplyDefBreak(1+(mb.defBreakRider||0), 2+(mb.breakTurns||0)); logMsg(`🌊 Crack Current! Guard stressed.`,'player-action'); return; }
+  if(id==='alb_split_current'){ await doSpell('enemy','🛡'); peregrineApplyDefBreak(2+(mb.defBreakRider||0), 2+(mb.breakTurns||0)); logMsg(`🌊 Split Current! Heavy break.`,'player-action'); return; }
+  if(id==='alb_ruin_wake'){ await doSpell('enemy','🛡'); peregrineApplyDefBreak(3+(mb.defBreakRider||0), 3+(mb.breakTurns||0)); logMsg(`🌊 Ruin Wake! Ruinous tide.`,'player-action'); return; }
+  const ampArr=id==='alb_read_current'?[0.08,0.10,0.12,0.14]:id==='alb_read_pull'?[0.12,0.14,0.16,0.18]:[0.16,0.18,0.20,0.22];
+  const readArr=id==='alb_read_current'?[0.06,0.08,0.10,0.12]:id==='alb_read_pull'?[0.09,0.11,0.13,0.15]:[0.12,0.14,0.16,0.18];
+  G.playerStatus.huntersMarkBonusPct=(ampArr[lv-1]||0.1)+(mb.markAmp||0);
+  G.playerStatus.cockatooReadExtra=(readArr[lv-1]||0.08)+(mb.readRider||0);
+  await doSpell('enemy','🌊');
+  renderStatuses('player-status',G.playerStatus);
+  logMsg(`🌊 Read the wake! Next hit +${Math.round((G.playerStatus.huntersMarkBonusPct||0)*100)}% and +${Math.round((G.playerStatus.cockatooReadExtra||0)*100)}% vs compromised.`,'player-action');
+}
+const ALBATROSS_SKILL_ACTION_OVERRIDES = {
+  alb_wing_jab: ab=>executeAlbatrossWingStrike(ab,{log:'🌊 Wing Jab',miss:[9,8,7,6],mult:[0.90,0.94,0.98,1.02],pierce:[10,12,14,16]}),
+  alb_wing_sweep: ab=>executeAlbatrossWingStrike(ab,{log:'🌊 Wing Sweep',miss:[8,7,6,5],mult:[0.98,1.02,1.06,1.10],pierce:[16,20,24,28],bonusVsArmor:[0.04,0.05,0.06,0.07]}),
+  alb_wing_arc: ab=>executeAlbatrossWingStrike(ab,{log:'🌊 Wing Arc',miss:[7,6,5,4],mult:[1.06,1.10,1.14,1.18],pierce:[24,28,32,36],bonusVsArmor:[0.08,0.10,0.12,0.14]}),
+  alb_razor_jab: ab=>executeAlbatrossWingStrike(ab,{log:'🩸 Razor Jab',miss:[9,8,7,6],mult:[0.88,0.92,0.96,1.00],pierce:[8,10,12,14],bleedChance:[14,16,18,20]}),
+  alb_razor_sweep: ab=>executeAlbatrossWingStrike(ab,{log:'🩸 Razor Sweep',miss:[8,7,6,5],mult:[0.96,1.00,1.04,1.08],pierce:[10,12,14,16],bleedChance:[18,20,22,25]}),
+  alb_razor_arc: ab=>executeAlbatrossWingStrike(ab,{log:'🩸 Razor Arc',miss:[7,6,5,4],mult:[1.04,1.08,1.12,1.16],pierce:[12,14,16,18],bleedChance:[22,25,28,32],bonusVsCompromised:[0.04,0.05,0.06,0.07]}),
+  alb_spot_jab: ab=>executeAlbatrossWingStrike(ab,{log:'🎯 Spot Jab',miss:[9,8,7,6],mult:[0.88,0.92,0.96,1.00],pierce:[10,12,14,16],bonusVsCompromised:[0.05,0.06,0.07,0.08]}),
+  alb_spot_sweep: ab=>executeAlbatrossWingStrike(ab,{log:'🎯 Spot Sweep',miss:[8,7,6,5],mult:[0.96,1.00,1.04,1.08],pierce:[12,14,16,18],bonusVsCompromised:[0.08,0.09,0.10,0.11]}),
+  alb_open_arc: ab=>executeAlbatrossWingStrike(ab,{log:'🎯 Open Arc',miss:[7,6,5,4],mult:[1.02,1.06,1.10,1.14],pierce:[14,16,18,20],bonusVsCompromised:[0.10,0.12,0.14,0.16],applyExpose:[0.06,0.07,0.08,0.09],exposeTurns:[2,2,3,3]}),
+  alb_ocean_sweep: ab=>executeAlbatrossSweep(ab,{log:'🌊 Ocean Sweep',miss:[12,11,10,9],mult:[1.12,1.16,1.20,1.24],pierce:[6,8,10,12],slow:[1,1,2,2],slowDodge:[8,8,10,10],slowTurns:[2,2,2,3]}),
+  alb_pulling_current: ab=>executeAlbatrossSweep(ab,{log:'🌊 Pulling Current',miss:[11,10,9,8],mult:[1.16,1.20,1.24,1.28],pierce:[8,10,12,14],slow:[2,2,2,3],slowDodge:[10,10,12,12],slowTurns:[2,2,3,3]}),
+  alb_tempest_wake: ab=>executeAlbatrossSweep(ab,{log:'🌊 Tempest Wake',miss:[10,9,8,7],mult:[1.20,1.24,1.28,1.32],pierce:[10,12,14,16],slow:[2,3,3,4],slowDodge:[12,12,14,14],slowTurns:[2,3,3,3],bonusVsSlowed:[0.04,0.05,0.06,0.07]}),
+  alb_pressing_sweep: ab=>executeAlbatrossSweep(ab,{log:'🌊 Pressing Sweep',miss:[12,11,10,9],mult:[1.14,1.18,1.22,1.26],pierce:[6,8,10,12],weakenChance:[22,24,26,28]}),
+  alb_pressing_current: ab=>executeAlbatrossSweep(ab,{log:'🌊 Pressing Current',miss:[11,10,9,8],mult:[1.18,1.22,1.26,1.30],pierce:[8,10,12,14],weakenChance:[28,30,32,34]}),
+  alb_crushing_tempest: ab=>executeAlbatrossSweep(ab,{log:'🌊 Crushing Tempest',miss:[10,9,8,7],mult:[1.22,1.26,1.30,1.34],pierce:[10,12,14,16],weakenChance:[32,34,36,40]}),
+  alb_echo_sweep: ab=>executeAlbatrossSweep(ab,{log:'🌊 Echo Sweep',miss:[12,11,10,9],mult:[1.08,1.12,1.16,1.20],pierce:[6,8,10,12],delayed:[10,14,18,22],delayedSynergy:{debuffPer:2,debuffCap:14}}),
+  alb_return_current: ab=>executeAlbatrossSweep(ab,{log:'🌊 Return Current',miss:[11,10,9,8],mult:[1.12,1.16,1.20,1.24],pierce:[8,10,12,14],delayed:[16,20,24,30],delayedSynergy:{debuffPer:3,debuffCap:18}}),
+  alb_returning_tempest: ab=>executeAlbatrossSweep(ab,{log:'🌊 Returning Tempest',miss:[10,9,8,7],mult:[1.16,1.20,1.24,1.28],pierce:[10,12,14,16],delayed:[22,28,34,42],delayedSynergy:{debuffPer:4,debuffCap:24}}),
+  alb_glide_line: ab=>executeAlbatrossGlide(ab),
+  alb_long_drift: ab=>executeAlbatrossGlide(ab),
+  alb_endless_current: ab=>executeAlbatrossGlide(ab),
+  alb_soft_glide: ab=>executeAlbatrossGlide(ab),
+  alb_ghost_drift: ab=>executeAlbatrossGlide(ab),
+  alb_white_current: ab=>executeAlbatrossGlide(ab),
+  alb_steady_glide: ab=>executeAlbatrossGlide(ab),
+  alb_broad_drift: ab=>executeAlbatrossGlide(ab),
+  alb_ocean_current: ab=>executeAlbatrossGlide(ab),
+  alb_current_mark: ab=>executeAlbatrossCurrent(ab),
+  alb_pull_mark: ab=>executeAlbatrossCurrent(ab),
+  alb_wake_mark: ab=>executeAlbatrossCurrent(ab),
+  alb_crack_current: ab=>executeAlbatrossCurrent(ab),
+  alb_split_current: ab=>executeAlbatrossCurrent(ab),
+  alb_ruin_wake: ab=>executeAlbatrossCurrent(ab),
+  alb_read_current: ab=>executeAlbatrossCurrent(ab),
+  alb_read_pull: ab=>executeAlbatrossCurrent(ab),
+  alb_read_wake: ab=>executeAlbatrossCurrent(ab),
+};
+Object.entries(ALBATROSS_SKILL_ACTION_OVERRIDES).forEach(([id, fn])=>{ ACTIONS[id]=fn; });
+
+function getSeagullMasteryBonuses(ab){
+  const slot=getAbilitySkillSlot(G.player,ab);
+  const m=getSlotMasteryProfile(slot);
+  const fam=slot?.familyId||'';
+  const base={power:m.power,precision:m.precision,control:m.control};
+  const cryExtra=(m.control>0)?1:0;
+  if(fam==='snap') return {...base, dmg:0.048*m.power+0.018*m.precision, pierce:3*m.precision+2*m.power, missCut:2*m.precision, bleedRider:6*m.control+2*m.precision, compromised:0.012*m.control+0.009*m.precision, exposeBonus:0.006*m.control, exposeTurnExtra:(m.control>0?1:0)};
+  if(fam==='swoop') return {...base, dmg:0.052*m.power+0.015*m.precision, pierce:2*m.precision+m.power, missCut:m.precision, critBonus:3*m.precision+2*m.power, blindsideBonus:0.008*m.control+0.006*m.precision, slowBonus:0.012*m.power+0.01*m.control, slowTurn:(m.control>0?1:0)};
+  if(fam==='cry') return {...base, accDown:2*m.precision+2*m.control+m.power, weakenRider:5*m.control+2*m.precision, spd:m.power+Math.floor(m.precision/2), cryExtra};
+  if(fam==='scavenge') return {...base, markAmp:0.032*m.power+0.02*m.precision, defBreakRider:Math.floor(m.precision/2)+(m.power>0?1:0), readRider:0.012*m.precision+0.009*m.control, breakTurns:m.control>0?1:0};
+  return {...base,dmg:0,pierce:0,missCut:0,bleedRider:0,compromised:0,exposeBonus:0,exposeTurnExtra:0,critBonus:0,blindsideBonus:0,slowBonus:0,slowTurn:0,accDown:0,weakenRider:0,spd:0,cryExtra:0,markAmp:0,defBreakRider:0,readRider:0,breakTurns:0};
+}
+function seagullEnemyWasSlow(){
+  const s=G.enemyStatus?.slow;
+  if(!s) return false;
+  if(typeof s==='object') return (s.turns||0)>0;
+  return Number(s)>0;
+}
+async function executeSeagullSnap(ab, cfg){
+  const lv=Math.max(1,Math.min(4,ab.level||1));
+  const mb=getSeagullMasteryBonuses(ab);
+  const miss=Math.max(0,(cfg.miss?.[lv-1]??9)-getPlayerHitBonus(ab)-(mb.missCut||0));
+  if(chance(miss)){await doMiss('player');logMsg(`${cfg.log||ab.name} missed!`,'miss');return;}
+  let mult=(cfg.mult?.[lv-1]??1)+(mb.dmg||0);
+  const pierce=(cfg.pierce?.[lv-1]??0)+(mb.pierce||0);
+  if(cfg.bonusVsCompromised?.[lv-1] && macawEnemyHasDebuff()) mult+=cfg.bonusVsCompromised[lv-1]+(mb.compromised||0);
+  const prox={...ab,pierceDef:pierce};
+  const r=dealDamage('enemy',pdmg(mult,prox),chance(getPlayerCritChance(ab)),false,prox);
+  await doAttack('player','enemy',r);
+  setHpBar('enemy',G.enemy.stats.hp,G.enemy.stats.maxHp);
+  if(cfg.bleedChance?.[lv-1] && chance(cfg.bleedChance[lv-1]+(mb.bleedRider||0))){
+    applyAilment('enemy','bleed',1); spawnFloat('enemy','🩸 Bleed!','fn-poison');
+  }
+  if(cfg.applyExpose?.[lv-1]){
+    const t=(cfg.exposeTurns?.[lv-1]||2)+(mb.exposeTurnExtra||0);
+    G.enemyStatus.exposedGuard={turns:t,pct:cfg.applyExpose[lv-1]+(mb.exposeBonus||0)};
+    G.enemyStatus.defending=0;
+    spawnFloat('enemy','🎯 Exposed!','fn-status');
+  }
+  renderStatuses('enemy-status',G.enemyStatus);
+  logMsg(`${cfg.log||ab.name}! ${r.dmgDealt} dmg.`,'player-action');
+}
+async function executeSeagullSwoop(ab, cfg){
+  const lv=Math.max(1,Math.min(4,ab.level||1));
+  const mb=getSeagullMasteryBonuses(ab);
+  const miss=Math.max(0,(cfg.miss?.[lv-1]??9)-getPlayerHitBonus(ab)-Math.floor(mb.missCut||0));
+  if(chance(miss)){await doMiss('player');logMsg(`${cfg.log||ab.name} missed!`,'miss');return;}
+  let mult=(cfg.mult?.[lv-1]??1)+(mb.dmg||0);
+  const pierce=(cfg.pierce?.[lv-1]??0)+(mb.pierce||0);
+  if(cfg.blindsideBonus?.[lv-1] && macawEnemyHasDebuff()) mult+=cfg.blindsideBonus[lv-1]+(mb.blindsideBonus||0);
+  if(cfg.bonusVsSlowed?.[lv-1] && seagullEnemyWasSlow()) mult+=cfg.bonusVsSlowed[lv-1]+(mb.slowBonus||0);
+  const oldDodge=cfg.ignoreDodge?G.enemy.stats.dodge:null;
+  if(cfg.ignoreDodge) G.enemy.stats.dodge=0;
+  const prox={...ab,pierceDef:pierce};
+  const critExtra=(cfg.critBonus?.[lv-1]||0)+(mb.critBonus||0);
+  const r=dealDamage('enemy',pdmg(mult,prox),chance(Math.min(95,getPlayerCritChance(ab)+critExtra)),false,prox);
+  if(cfg.ignoreDodge) G.enemy.stats.dodge=oldDodge;
+  await doAttack('player','enemy',r);
+  setHpBar('enemy',G.enemy.stats.hp,G.enemy.stats.maxHp);
+  if(cfg.slow?.[lv-1]) applyEnemySlow(cfg.slow[lv-1], cfg.slowDodge?.[lv-1]||10, (cfg.slowTurns?.[lv-1]||2)+(mb.slowTurn||0));
+  renderStatuses('enemy-status',G.enemyStatus);
+  logMsg(`${cfg.log||ab.name}! ${r.dmgDealt} dmg.`,'player-action');
+}
+async function executeSeagullCry(ab){
+  const id=ab.id;
+  const lv=Math.max(1,Math.min(4,ab.level||1));
+  const mb=getSeagullMasteryBonuses(ab);
+  const turns=2+(mb.cryExtra||0);
+  await doSpell('enemy','🐦');
+  if(id==='sgl_raucous_cry'){
+    G.enemyStatus.accDebuff=(G.enemyStatus.accDebuff||0)+[8,10,12,14][lv-1]+mb.accDown;
+  }else if(id==='sgl_wavering_squall'){
+    G.enemyStatus.accDebuff=(G.enemyStatus.accDebuff||0)+[12,14,16,18][lv-1]+mb.accDown;
+  }else if(id==='sgl_blinding_uproar'){
+    G.enemyStatus.accDebuff=(G.enemyStatus.accDebuff||0)+[16,18,20,24][lv-1]+mb.accDown;
+    applyEnemySlow(1,6,2);
+  }else if(id==='sgl_harsh_cry'){
+    if(chance([28,32,36,40][lv-1]+(mb.weakenRider||0))){ applyAilment('enemy','weaken',1); spawnFloat('enemy','🐔 Weaken!','fn-status'); }
+  }else if(id==='sgl_grinding_squall'){
+    if(chance([38,42,46,50][lv-1]+(mb.weakenRider||0))){ applyAilment('enemy','weaken',1); spawnFloat('enemy','🐔 Weaken!','fn-status'); }
+    G.enemyStatus.accDebuff=(G.enemyStatus.accDebuff||0)+[4,5,6,8][lv-1]+Math.floor((mb.accDown||0)/2);
+  }else if(id==='sgl_fading_uproar'){
+    applyAilment('enemy','weaken',1);
+    if(chance([22,26,30,34][lv-1]+(mb.weakenRider||0))) applyAilment('enemy','weaken',1);
+    G.enemyStatus.accDebuff=(G.enemyStatus.accDebuff||0)+[6,8,10,12][lv-1]+Math.floor((mb.accDown||0)/2);
+    spawnFloat('enemy','🐔 Weaken!','fn-status');
+  }else if(id==='sgl_keen_cry'){
+    G.player.stats.spd=Math.min(20,(G.player.stats.spd||1)+[1,1,2,2][lv-1]+mb.spd);
+  }else if(id==='sgl_tailwind_squall'){
+    G.player.stats.spd=Math.min(20,(G.player.stats.spd||1)+[2,2,3,3][lv-1]+mb.spd);
+    G.playerStatus.humDodge={bonus:[8,10,12,14][lv-1], turns};
+  }else if(id==='sgl_whitecap_uproar'){
+    G.player.stats.spd=Math.min(20,(G.player.stats.spd||1)+[3,3,4,4][lv-1]+mb.spd);
+    G.playerStatus.humDodge={bonus:[12,14,16,18][lv-1], turns:2+(mb.cryExtra||0)};
+  }
+  renderStatuses('player-status',G.playerStatus);
+  renderStatuses('enemy-status',G.enemyStatus);
+  logMsg(`🐦 ${ab.name||'Cry'} — coastal uproar.`,'player-action');
+}
+async function executeSeagullScavenge(ab){
+  const id=ab.id;
+  const lv=Math.max(1,Math.min(4,ab.level||1));
+  const mb=getSeagullMasteryBonuses(ab);
+  if(id==='sgl_scavenge_mark'){
+    G.playerStatus.huntersMarkBonusPct=(0.12+(mb.markAmp||0));
+    await doSpell('enemy','🦴');
+    renderStatuses('player-status',G.playerStatus);
+    logMsg(`🦴 Scavenge Mark! Next hit +${Math.round((G.playerStatus.huntersMarkBonusPct||0)*100)}%.`,'player-action');
+    return;
+  }
+  if(id==='sgl_claim_sign'){
+    G.playerStatus.huntersMarkBonusPct=(0.18+(mb.markAmp||0));
+    await doSpell('enemy','🦴');
+    renderStatuses('player-status',G.playerStatus);
+    logMsg(`🦴 Claim Sign! Next hit +${Math.round((G.playerStatus.huntersMarkBonusPct||0)*100)}%.`,'player-action');
+    return;
+  }
+  if(id==='sgl_haul_mark'){
+    G.playerStatus.huntersMarkBonusPct=(0.26+(mb.markAmp||0));
+    await doSpell('enemy','🦴');
+    renderStatuses('player-status',G.playerStatus);
+    logMsg(`🦴 Haul Mark! Next hit +${Math.round((G.playerStatus.huntersMarkBonusPct||0)*100)}%.`,'player-action');
+    return;
+  }
+  if(id==='sgl_crack_mark'){ await doSpell('enemy','🛡'); peregrineApplyDefBreak(1+(mb.defBreakRider||0), 2+(mb.breakTurns||0)); logMsg(`🦴 Crack Mark! Guard stressed.`,'player-action'); return; }
+  if(id==='sgl_strip_sign'){ await doSpell('enemy','🛡'); peregrineApplyDefBreak(2+(mb.defBreakRider||0), 2+(mb.breakTurns||0)); logMsg(`🦴 Strip Sign! Heavy break.`,'player-action'); return; }
+  if(id==='sgl_break_haul'){ await doSpell('enemy','🛡'); peregrineApplyDefBreak(3+(mb.defBreakRider||0), 3+(mb.breakTurns||0)); logMsg(`🦴 Break Haul! Ruinous scrap.`,'player-action'); return; }
+  const ampArr=id==='sgl_read_scrap'?[0.08,0.10,0.12,0.14]:id==='sgl_read_claim'?[0.12,0.14,0.16,0.18]:[0.16,0.18,0.20,0.22];
+  const readArr=id==='sgl_read_scrap'?[0.06,0.08,0.10,0.12]:id==='sgl_read_claim'?[0.09,0.11,0.13,0.15]:[0.12,0.14,0.16,0.18];
+  G.playerStatus.huntersMarkBonusPct=(ampArr[lv-1]||0.1)+(mb.markAmp||0);
+  G.playerStatus.cockatooReadExtra=(readArr[lv-1]||0.08)+(mb.readRider||0);
+  await doSpell('enemy','🦴');
+  renderStatuses('player-status',G.playerStatus);
+  logMsg(`🦴 Read the scrap! Next hit +${Math.round((G.playerStatus.huntersMarkBonusPct||0)*100)}% and +${Math.round((G.playerStatus.cockatooReadExtra||0)*100)}% vs compromised.`,'player-action');
+}
+const SEAGULL_SKILL_ACTION_OVERRIDES = {
+  sgl_snap_peck: ab=>executeSeagullSnap(ab,{log:'🐦 Snap Peck',miss:[10,9,8,7],mult:[0.90,0.94,0.98,1.02],pierce:[8,10,12,14]}),
+  sgl_raking_bite: ab=>executeSeagullSnap(ab,{log:'🩸 Raking Bite',miss:[9,8,7,6],mult:[0.94,0.98,1.02,1.06],pierce:[8,10,12,14],bleedChance:[16,18,20,22]}),
+  sgl_salt_rip: ab=>executeSeagullSnap(ab,{log:'🩸 Salt Rip',miss:[8,7,6,5],mult:[1.02,1.06,1.10,1.14],pierce:[10,12,14,16],bleedChance:[22,25,28,32],bonusVsCompromised:[0.04,0.05,0.06,0.07]}),
+  sgl_hook_peck: ab=>executeSeagullSnap(ab,{log:'🪝 Hook Peck',miss:[9,8,7,6],mult:[0.88,0.92,0.96,1.00],pierce:[14,18,22,26]}),
+  sgl_hook_bite: ab=>executeSeagullSnap(ab,{log:'🪝 Hook Bite',miss:[8,7,6,5],mult:[0.96,1.00,1.04,1.08],pierce:[18,22,26,30]}),
+  sgl_hook_rip: ab=>executeSeagullSnap(ab,{log:'🪝 Hook Rip',miss:[7,6,5,4],mult:[1.04,1.08,1.12,1.16],pierce:[22,26,30,34],bonusVsCompromised:[0.03,0.04,0.05,0.06]}),
+  sgl_spot_peck: ab=>executeSeagullSnap(ab,{log:'🎯 Spot Peck',miss:[9,8,7,6],mult:[0.88,0.92,0.96,1.00],pierce:[10,12,14,16],bonusVsCompromised:[0.06,0.07,0.08,0.09]}),
+  sgl_scavenge_bite: ab=>executeSeagullSnap(ab,{log:'🎯 Scavenge Bite',miss:[8,7,6,5],mult:[0.94,0.98,1.02,1.06],pierce:[12,14,16,18],bonusVsCompromised:[0.09,0.10,0.11,0.12]}),
+  sgl_open_rip: ab=>executeSeagullSnap(ab,{log:'🎯 Open Rip',miss:[7,6,5,4],mult:[1.00,1.04,1.08,1.12],pierce:[14,16,18,20],bonusVsCompromised:[0.10,0.12,0.14,0.16],applyExpose:[0.06,0.07,0.08,0.09],exposeTurns:[2,2,3,3]}),
+  sgl_swoop_pass: ab=>executeSeagullSwoop(ab,{log:'🐦 Swoop Pass',ignoreDodge:true,miss:[10,9,8,7],mult:[1.14,1.18,1.22,1.26],pierce:[6,8,10,12],critBonus:[5,7,9,11]}),
+  sgl_skimming_dive: ab=>executeSeagullSwoop(ab,{log:'🐦 Skimming Dive',ignoreDodge:true,miss:[9,8,7,6],mult:[1.22,1.26,1.30,1.34],pierce:[8,10,12,14],critBonus:[10,12,14,18]}),
+  sgl_breakwing: ab=>executeSeagullSwoop(ab,{log:'🐦 Breakwing',ignoreDodge:true,miss:[8,7,6,5],mult:[1.32,1.36,1.40,1.46],pierce:[10,12,14,16],critBonus:[14,18,22,28]}),
+  sgl_mugging_pass: ab=>executeSeagullSwoop(ab,{log:'🕶 Mugging Pass',ignoreDodge:true,miss:[10,9,8,7],mult:[1.08,1.12,1.16,1.20],pierce:[6,8,10,12],blindsideBonus:[0.10,0.12,0.14,0.16]}),
+  sgl_snatch_dive: ab=>executeSeagullSwoop(ab,{log:'🕶 Snatch Dive',ignoreDodge:true,miss:[9,8,7,6],mult:[1.16,1.20,1.24,1.28],pierce:[8,10,12,14],blindsideBonus:[0.14,0.16,0.18,0.22]}),
+  sgl_plunder_break: ab=>executeSeagullSwoop(ab,{log:'🕶 Plunder Break',ignoreDodge:true,miss:[8,7,6,5],mult:[1.24,1.28,1.32,1.38],pierce:[10,12,14,16],blindsideBonus:[0.18,0.20,0.22,0.26]}),
+  sgl_drag_pass: ab=>executeSeagullSwoop(ab,{log:'🌊 Drag Pass',ignoreDodge:true,miss:[10,9,8,7],mult:[1.06,1.10,1.14,1.18],pierce:[6,8,10,12],slow:[1,1,2,2],slowDodge:[8,8,10,10],slowTurns:[2,2,2,3]}),
+  sgl_drag_dive: ab=>executeSeagullSwoop(ab,{log:'🌊 Drag Dive',ignoreDodge:true,miss:[9,8,7,6],mult:[1.10,1.14,1.18,1.22],pierce:[8,10,12,14],slow:[2,2,2,3],slowDodge:[10,10,12,12],slowTurns:[2,2,3,3]}),
+  sgl_undertow_break: ab=>executeSeagullSwoop(ab,{log:'🌊 Undertow Break',ignoreDodge:true,miss:[8,7,6,5],mult:[1.14,1.18,1.22,1.26],pierce:[10,12,14,16],slow:[2,2,3,3],slowDodge:[12,12,14,14],slowTurns:[2,3,3,3],bonusVsSlowed:[0.04,0.05,0.06,0.07]}),
+  sgl_raucous_cry: ab=>executeSeagullCry(ab),
+  sgl_wavering_squall: ab=>executeSeagullCry(ab),
+  sgl_blinding_uproar: ab=>executeSeagullCry(ab),
+  sgl_harsh_cry: ab=>executeSeagullCry(ab),
+  sgl_grinding_squall: ab=>executeSeagullCry(ab),
+  sgl_fading_uproar: ab=>executeSeagullCry(ab),
+  sgl_keen_cry: ab=>executeSeagullCry(ab),
+  sgl_tailwind_squall: ab=>executeSeagullCry(ab),
+  sgl_whitecap_uproar: ab=>executeSeagullCry(ab),
+  sgl_scavenge_mark: ab=>executeSeagullScavenge(ab),
+  sgl_claim_sign: ab=>executeSeagullScavenge(ab),
+  sgl_haul_mark: ab=>executeSeagullScavenge(ab),
+  sgl_crack_mark: ab=>executeSeagullScavenge(ab),
+  sgl_strip_sign: ab=>executeSeagullScavenge(ab),
+  sgl_break_haul: ab=>executeSeagullScavenge(ab),
+  sgl_read_scrap: ab=>executeSeagullScavenge(ab),
+  sgl_read_claim: ab=>executeSeagullScavenge(ab),
+  sgl_read_haul: ab=>executeSeagullScavenge(ab),
+};
+Object.entries(SEAGULL_SKILL_ACTION_OVERRIDES).forEach(([id, fn])=>{ ACTIONS[id]=fn; });
 
 const SNOWY_OWL_DIVE_ABILITY_IDS = new Set([
   'silent_dive','ghost_dive','kill_drop','silent_impact','frost_dive','winter_drop','whiteout_impact','owl_passing_dive','owl_return_drop','owl_double_impact',
@@ -15038,7 +16852,6 @@ function endPlayerTurn(force=false) {
   // Tick battleHymnDodge
   if(G.playerStatus.battleHymnDodge){G.playerStatus.battleHymnDodge.turns--;if(G.playerStatus.battleHymnDodge.turns<=0)delete G.playerStatus.battleHymnDodge;}
   // Tick Flamingo ATK bonus
-  if(G.playerStatus.flamingoATK){G.playerStatus.flamingoATK.turns--;if(G.playerStatus.flamingoATK.turns<=0)delete G.playerStatus.flamingoATK;}
   // Tick Last Stand ATK bonus
   if(G.playerStatus.lastStandBuff){
     G.playerStatus.lastStandBuff.turns--;
