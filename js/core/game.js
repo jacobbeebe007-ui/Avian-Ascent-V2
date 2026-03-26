@@ -16299,6 +16299,10 @@ async function playerAction(ab,fromQueue=false) {
   if(BOWERBIRD_LURE_ABILITY_IDS.has(ab.id) && (G.bowerbirdLureCooldown||0)>0){logMsg(`${ab.name} on cooldown! (${G.bowerbirdLureCooldown}t)`,'miss');return;}
   if(!canUseAbility(G.player,ab)){logMsg(`Not enough energy for ${ab.name}!`,'miss');return;}
   const _abk=String(ab?.btnType||ab?.type||ABILITY_TEMPLATES?.[ab?.id]?.btnType||ABILITY_TEMPLATES?.[ab?.id]?.type||'').toLowerCase();
+  if(_abk==='utility' && G.utilityUsedThisTurn?.[ab.id]){
+    logMsg(`${ab.name} already used this turn!`,'miss');
+    return;
+  }
   const _defSkill=(_abk==='utility' || ab?.id==='crowDefend');
   if(_defSkill){
     if((G.player?.augDefSkillDef||0)>0) G.player.stats.def=(G.player.stats.def||0)+G.player.augDefSkillDef;
@@ -16358,6 +16362,10 @@ async function playerAction(ab,fromQueue=false) {
   if(_abKind==='physical'||_abKind==='ranged') G._firstAttackUsed=true;
   if(_abKind==='spell'){ G._firstSpellUsed=true; G._spellCastCount=(G._spellCastCount||0)+1; }
   G._lastPlayerAbility = ab.id;
+  if(_abKind==='utility'){
+    G.utilityUsedThisTurn = G.utilityUsedThisTurn || {};
+    G.utilityUsedThisTurn[ab.id] = true;
+  }
   setAbilityCooldown(ab);
   if(ab.btnType==='spell' || ab.type==='spell'){
     reduceOtherSpellCooldownsOnCast(ab.id);
@@ -16387,6 +16395,7 @@ function startPlayerTurn(player){
   if(isEndlessRunActive() && player.relFeatheredClock && ((G.endlessBattle||0)%3===0)) player.energy += 1;
   G.playerActionsThisTurn=0;
   G.playerTurnFlags={energyGainedThisTurn:0,onHitTriggered:false,firstAttackResolved:false};
+  G.utilityUsedThisTurn={};
   if(G.playerStatus.perkSlipstream){
     G.player.stats.spd=(G.player.stats.spd||1)+1;
     G.playerStatus.perkSlipstream=0;
