@@ -734,40 +734,6 @@ cooldown('chargeUp',3);
       };
     }
 
-    if(BIRDS.robin?.passive){
-      BIRDS.robin.passive.desc = 'Ranged hits grant +3% ACC for this battle (max +15%) and every second stack grants +1% Crit (max +5%).';
-      BIRDS.robin.passive.onBattleStart = function(p){ p._robinAccStacks = 0; p._robinCritStacks = 0; };
-      BIRDS.robin.passive.onPhysicalHit = function(p){
-        if((p._robinAccStacks||0) < 15){
-          p._robinAccStacks = Math.min(15, (p._robinAccStacks||0) + 3);
-          p.stats.acc = Math.min(100, (p.stats.acc||80) + 3);
-          if(p._robinAccStacks % 6 === 0 && (p._robinCritStacks||0) < 5){
-            p._robinCritStacks = (p._robinCritStacks||0) + 1;
-            p.stats.critChance = (p.stats.critChance||5) + 1;
-          }
-        }
-      };
-    }
-
-    if(BIRDS.toucan?.passive){
-      BIRDS.toucan.passive.desc = 'Whenever you heal, gain ACC and +1 MATK (max +5 MATK, +12 ACC).';
-      BIRDS.toucan.passive.onBattleStart = function(p){ p._fruitfulBonus = 0; p._fruitfulMatk = 0; };
-      BIRDS.toucan.passive.onHeal = function(p, amt){
-        if(!p._fruitfulBonus) p._fruitfulBonus = 0;
-        if(!p._fruitfulMatk) p._fruitfulMatk = 0;
-        if(p._fruitfulBonus < 12){
-          const gain = Math.max(1, Math.floor((amt||0)/8));
-          const actual = Math.min(gain, 12 - p._fruitfulBonus);
-          p._fruitfulBonus += actual;
-          p.stats.acc = Math.min((p.stats.acc||75) + actual, 100);
-        }
-        if(p._fruitfulMatk < 5){
-          p._fruitfulMatk++;
-          p.stats.matk = (p.stats.matk||0) + 1;
-        }
-      };
-    }
-
     if(BIRDS.albatross?.passive){
       BIRDS.albatross.passive.name = 'Ocean Wanderer';
       BIRDS.albatross.passive.desc = '+1 SPD every 2 turns.';
@@ -818,7 +784,7 @@ cooldown('chargeUp',3);
 
   /* Tricksters focus: accuracy + poison/burn + steady pressure */
 
-  // Robin / trickster tools
+  // Generic striker / trickster basic (flat `dart`; family birds use bird-specific burst ids)
   setLevels('dart',
     'Fast reliable strike. Trickster/Striker basic with strong accuracy and steady pressure.',
     [
@@ -880,7 +846,7 @@ cooldown('chargeUp',3);
     ]
   );
 
-  // Bowerbird / trickster utility
+  // Secretary Bird — stick lance two-step (trickster)
   setLevels('stickLance',
     'Use twice in a row: first gather a stick, then strike for heavy ranged damage.',
     [

@@ -74,9 +74,13 @@ Design implication:
 - Cassowary: Raptor Kick, Raptor Kick Frenzy, Intimidating Stare, Guard
 - Bald Eagle: Peck, Sky Strike, Focus Sight, Wind Slash
 - Secretary Bird: Peck, Stick Lance, Battle Rhythm, Guard
-- Toucan: Peck, Fruit Bomb, Taunt, Preen
+- Toucan: Beak Jab, Beak Slam, Fruit Toss, Color Mark (family evolution; striker — long-beak reach, 2 EN slam line, fruit toss control, color setup; delayed afterbill on slam branch). Template id for the neutral jab is `toucan_beak_jab` (global `beak_jab` stays Kiwi/Raven → `probeStrike`). Legacy flat ids (`fruitSpit`, `sunCall`, `jungleChorus`, `echoScreech`) are not live `registerAbilityAlias` targets; save migration maps them into slot-state.
 - Shoebill: Peck, Shoebill Clamp, Sit and Wait, Fish Snatcher
 - Kiwi: Beak Jab, Night Probe, Scent Hunt, Scrape
+- Raven: Beak Jab, Omen Call, Dark Watch, Fate Mark (family evolution; trickster — omen magic + physical beak)
+- Robin: Quick Peck, Dart Rush, Bright Chirp, Hop Step (family evolution; striker — field tempo, expose/ACC-shaken payoff, hop/chirp setup, dart-line burst + optional delayed echo)
+- Bowerbird: Trinket Toss, Lure Call, Bower Build, Display Mark (family evolution; trickster — setup trinkets, 2 EN lure line with fear/confuse/delayed trap payoffs, build amp/break/guard, display expose/read/execute). Old flat-kit ids (`decorate`, `inspireSong`, `charmDisplay`, `focusCall`, etc.) are migration-only and are not live aliases.
+- Swan: Neck Jab, Wing Sweep, Grace Glide, Poise Mark (family evolution; striker — neck precision, 2 EN sweep burst, glide posture/ACC tempo, poise setup; delayed after-wing on sweep return path). Bleed branch uses ids `swan_razor_jab` / `swan_razor_lunge` / `swan_razor_pierce` (global `razor_jab` is Hummingbird). Glide dodge tier 2–3 use `swan_ghost_drift` / `swan_white_waltz` (global `ghost_drift` is Snowy Owl). Poise break/execute use `swan_crack_mark`, `swan_death_mark`, `swan_finale_strike`, etc. Pre-overhaul flat display ids (`wingShield`, `royalGuard`, `calmingSong`) are not live `registerAbilityAlias` targets; `bracePeck` remains the shared tank basic (e.g. Shoebill). Save migration maps old Swan slots (including resolved `guard` on sweep/glide) into slot-state.
 
 ---
 
@@ -85,14 +89,14 @@ Design implication:
 - Remove **Roost** from Goose and Ostrich (replace with Guard)
 - Remove **Intimidate** from Penguin/Cassowary/Emu (replace with Threat Display)
 - Remove **Shriekwave** from Magpie and Seagull
-- Remove **Owl's Psyche** from Toucan (replace with Fruit Bomb)
+- Toucan uses the family-evolution kit above (not Owl's Psyche / Fruit Bomb as the live starter).
 - Remove generic **Defend** from Bald Eagle and Secretary Bird (replace with aggressive utility)
 
 ---
 
 ## 5) New species-specific abilities to add next
 
-- Fruit Bomb (Toucan) `[SPELL][SIGNATURE]`
+- Fruit Bomb (Toucan) — optional legacy concept; live Toucan uses `fruit_toss` family line instead `[SPELL][SIGNATURE]`
 - Territorial Honk (Goose) `[CONTROL][SIGNATURE]`
 - Dive Snatch (Seagull) `[UTILITY][SIGNATURE]`
 - Savage Kick (Emu) `[HEAVY][SIGNATURE]`
