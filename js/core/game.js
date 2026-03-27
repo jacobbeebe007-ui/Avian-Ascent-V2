@@ -6335,7 +6335,7 @@ function buildOwEnemyDraftFromBirdKey(bk, encounterStage){
       ed = buildStoryEnemyFromBirdKey(bk, encounterStage);
     }
     if(!ed){
-      const bEnemy = BIRD_ENEMIES.find(e => e.birdKey === bk) || ENEMIES.find(e => (e.birdKey||e.portraitKey||'') === bk);
+      const bEnemy = BIRD_ENEMIES.find(e => e.birdKey === bk);
       if(bEnemy){
         ed = {name:bEnemy.name,emoji:bEnemy.emoji||'',birdKey:bk,portraitKey:bk,
           hp:bEnemy.hp,maxHp:bEnemy.hp,atk:bEnemy.atk,def:bEnemy.def,spd:bEnemy.spd,
@@ -6778,7 +6778,7 @@ function _isOverworldRun() {
   try { return !!localStorage.getItem(_OW_STATE_KEY); } catch(_) { return false; }
 }
 
-/** Map overworld node enemy labels to valid birdKey / template ids so loadStage can resolve BIRD_ENEMIES / ENEMIES. */
+/** Map overworld node enemy labels to valid birdKey / template ids so loadStage can resolve BIRD_ENEMIES. */
 function normalizeOwEnemyListForBattle(enemies){
   if(!Array.isArray(enemies)||!enemies.length) return [];
   const aliases={
@@ -6790,6 +6790,8 @@ function normalizeOwEnemyListForBattle(enemies){
     if(aliases[compact]) return aliases[compact];
     if(BIRD_ENEMIES.some(e=>e.birdKey===compact)) return compact;
     const nk=normalizeEnemyNameKey(raw);
+    const fromBird=BIRD_ENEMIES.find(e=>normalizeEnemyNameKey(e.name)===nk);
+    if(fromBird) return fromBird.birdKey;
     const fromEnemy=ENEMIES.find(e=>normalizeEnemyNameKey(e.name)===nk);
     if(fromEnemy){
       if(fromEnemy.birdKey) return fromEnemy.birdKey;
@@ -7097,10 +7099,14 @@ function showNextStagePreview() {
   const nextStage=G.stage+1;
   if(!G.endlessMode && nextStage > 20){ el.style.display='none'; return; }
   let enemy;
-  if(G.endlessMode&&nextStage>ENEMIES.length){
+  if(G.endlessMode&&nextStage>20){
     el.innerHTML=`<div class="nsp-title">Next Up</div><div class="nsp-enemy">⚔</div><div class="nsp-name" style="color:var(--gold)">Endless Battle ${G.endlessBattle+1}</div><div class="nsp-stats">Scaled enemies await...</div>`;
   } else {
-    enemy=ENEMIES[Math.min(nextStage-1,ENEMIES.length-1)];
+    const tier=storyTierFromStage(nextStage);
+    const isBoss=(nextStage%10===0);
+    const pool=pickBirdEnemyPoolForTier(isBoss?4:tier);
+    const src=pool[Math.floor((nextStage*17)%Math.max(1,pool.length))];
+    enemy=buildEdFromBirdEnemyTemplate(src,{isBoss,bossTitle:isBoss?bossTitleForStageMilestone(nextStage):''});
     const sizeLabel={tiny:'Tiny',small:'Small',medium:'Medium',large:'Large',xl:'Extra Large'}[enemy.size]||'?';
     const nspSprite=enemy.portraitKey?renderBirdIconHTML(enemy.portraitKey,'small',false):`<span class="nsp-emoji">${enemy.emoji||'⚔'}</span>`;
     el.innerHTML=`<div class="nsp-title">⟩ Next Stage ${nextStage}</div><div class="nsp-enemy">${nspSprite}</div><div class="nsp-name">${enemy.isBoss?`👑 ${enemy.bossTitle}: `:''} ${enemy.name}</div><div class="nsp-stats">HP ${enemy.hp} · ATK ${enemy.atk} · ${sizeLabel}${enemy.isBoss?' · <span class="rage-badge">BOSS</span>':''}</div>`;
@@ -7806,19 +7812,20 @@ function startGame() {
   loadStage();
 }
 
-// Build endless-mode enemy from base pool (scaling happens in loadStage via stage-depth curve)
+// Build endless-mode enemy from BIRD_ENEMIES (scaling happens in loadStage via stage-depth curve)
 function makeEndlessEnemy(stage) {
-  const isBoss = (stage % 10 === 0);
-  const pool = ENEMIES.filter(e=>!!e.isBoss===isBoss);
-  const src = (pool.length?pool:ENEMIES)[Math.floor(Math.random()*(pool.length?pool.length:ENEMIES.length))];
-  const clone = JSON.parse(JSON.stringify(src));
-  clone.isBoss = isBoss;
-  clone.enemyTier = isBoss ? (clone.enemyTier||'boss') : (clone.enemyTier||'normal');
-  if (isBoss) {
-    clone.bossTitle = stage > 20 ? '💀 Endless Titan' : (clone.bossTitle||'⚡ Stage Boss');
-    if(stage>20) clone.name = 'Corrupted ' + clone.name;
-  }
-  return clone;
+  const st=Math.max(1,Number(stage)||1);
+  const isBoss=(st%10===0);
+  const tier=storyTierFromStage(st);
+  const poolTier=isBoss?4:Math.min(tier,4);
+  const pool=pickBirdEnemyPoolForTier(poolTier);
+  const src=pool[Math.floor(Math.random()*pool.length)];
+  const bossTitle=isBoss
+    ? (st>20?'💀 Endless Titan':bossTitleForStageMilestone(st))
+    : '';
+  const ed=buildEdFromBirdEnemyTemplate(src,{isBoss,bossTitle});
+  if(isBoss&&st>20) ed.name='Corrupted '+ed.name;
+  return ed;
 }
 
 
@@ -7860,24 +7867,74 @@ function resetForNewBattle(){
   }
 }
 
-const EARLY_STAGE_BANNED_ENEMIES = new Set(['magpie','crow','peregrinefalcon','peregrine','harpyeagle','harpy','cassowary','lyrebird']);
 function normalizeEnemyNameKey(name){
   return String(name||'').toLowerCase().replace(/[^a-z]/g,'');
 }
-/** Tier-1 non-boss slice of ENEMIES (indices 0–7); tier-2 non-boss 9–13. Bosses stay fixed elsewhere. */
-function pickEarlyStageEnemyTemplate(stage){
-  const tier1NonBoss = ENEMIES.slice(0, 8);
-  let pool = tier1NonBoss;
-  if (stage >= 5) {
-    pool = [...tier1NonBoss, ...ENEMIES.slice(9, 14)];
-  }
-  pool = pool.filter(e => {
-    if (e.isBoss) return false;
-    const k = normalizeEnemyNameKey(e.name);
-    return !EARLY_STAGE_BANNED_ENEMIES.has(k);
-  });
-  if (!pool.length) return null;
-  return JSON.parse(JSON.stringify(pool[Math.floor(Math.random() * pool.length)]));
+
+/** Story / endless tier band 1–5 from stage depth (matches loadStage). */
+function storyTierFromStage(stage){
+  const s=Math.max(1,Number(stage)||1);
+  if(s<=4) return 1;
+  if(s<=9) return 2;
+  if(s<=14) return 3;
+  if(s<=19) return 4;
+  return 5;
+}
+
+function pickBirdEnemyPoolForTier(tier){
+  const band=Math.min(Math.max(Number(tier)||1,1),4);
+  let pool=BIRD_ENEMIES.filter(e=>Array.isArray(e.tier)&&e.tier.includes(band));
+  if(!pool.length) pool=BIRD_ENEMIES.slice();
+  return pool;
+}
+
+/** Build a combat draft from a BIRD_ENEMIES row (before mergeScaledStatsIntoEnemy). */
+function buildEdFromBirdEnemyTemplate(src, opts={}){
+  if(!src) return null;
+  const isBoss=!!opts.isBoss;
+  const mAtk=src.matk??6;
+  const mDef=src.mdef??8;
+  const mDodge=src.mdodge??Math.max(0,Math.floor((src.dodge??10)*0.88));
+  const baseEn=src.size==='xl'?5:src.size==='large'?4:src.size==='medium'?4:3;
+  const aiStyle=src.aiStyle||'aggressive';
+  return{
+    name:src.name,
+    emoji:src.emoji||'',
+    birdKey:src.birdKey,
+    portraitKey:src.birdKey,
+    hp:src.hp,maxHp:src.hp,
+    atk:src.atk,def:src.def,spd:src.spd,
+    acc:src.acc,dodge:src.dodge,
+    matk:mAtk,mdef:mDef,mdodge:mDodge,
+    size:src.size||'medium',
+    enemyClass:src.enemyClass||inferEnemyClassFromStyle(aiStyle),
+    aiStyle,
+    aiPersonality:src.aiPersonality||inferAIPersonalityFromStyle(aiStyle,src.name),
+    isBoss,
+    bossTitle:opts.bossTitle||'',
+    enemyTier:isBoss?'boss':'normal',
+    abilities:[...(src.abilities||[])],
+    stats:{
+      hp:src.hp,maxHp:src.hp,
+      atk:src.atk,def:src.def,spd:src.spd,
+      acc:src.acc,dodge:src.dodge,
+      mdodge:mDodge,mdef:mDef,matk:mAtk,
+      cc:0.05,cd:1.5,critChance:5,critMult:1.5,
+      en:baseEn,
+    },
+  };
+}
+
+function pickRandomBirdEnemyDraft(tier, opts={}){
+  const pool=pickBirdEnemyPoolForTier(tier);
+  const src=pool[Math.floor(Math.random()*pool.length)];
+  return buildEdFromBirdEnemyTemplate(src,opts);
+}
+
+function bossTitleForStageMilestone(stage){
+  const idx=Math.max(0,Math.floor(Number(stage)/10)-1);
+  const titles=['⚡ Stage Boss','🌩 Stage Boss','🌀 Stage Boss','👑 Stage Boss'];
+  return titles[Math.min(idx,titles.length-1)];
 }
 
 function loadStage() {
@@ -7928,51 +7985,15 @@ function loadStage() {
     const isBossStage = (stage%10===0);
     
     if(!ed && (tier===5 || stage===20)){
-      // Stage 20 special boss
-      if(stage===20){
-        ed = makeDukeBlakiston();
+      if(stage===20 && !G.endlessMode){
+        ed=makeDukeBlakiston();
       } else {
-        ed = JSON.parse(JSON.stringify(ENEMIES[ENEMIES.length-1]));
+        ed=pickRandomBirdEnemyDraft(4,{isBoss:true,bossTitle:stage===20?'🌩 Stage Boss':'👑 Final Guardian'});
       }
     } else if(!ed && isBossStage){
-      // Pick the boss from this tier
-      const bosses = ENEMIES.filter(e=>e.isBoss);
-      const bossIdx = Math.floor(stage/10)-1;
-      ed = JSON.parse(JSON.stringify(bosses[Math.min(bossIdx, bosses.length-2)]));
-    } else {
-      if(!ed && stage<=5){
-        ed = pickEarlyStageEnemyTemplate(stage);
-      }
-      // Bird-character enemies: mirror roster birds; tier/elite is decided in buildScaledEnemy (elite = endless only, stage>20).
-      if(!ed && stage>=6){
-        const birdRollCap = stage<=9 ? 0.5 : 0.62;
-        if(Math.random()<birdRollCap){
-        const pool=BIRD_ENEMIES.filter(e=>e.tier.includes(tier));
-        if(pool.length>0){
-          const src=pool[Math.floor(Math.random()*pool.length)];
-          const mAtk=src.matk??6;
-          const mDef=src.mdef??8;
-          const mDodge=src.mdodge??Math.max(0,Math.floor((src.dodge??10)*0.88));
-          ed={name:src.name,emoji:src.emoji,birdKey:src.birdKey,portraitKey:src.birdKey,hp:src.hp,maxHp:src.hp,atk:src.atk,def:src.def,spd:src.spd,
-            acc:src.acc,dodge:src.dodge,matk:mAtk,mdef:mDef,mdodge:mDodge,size:src.size,enemyClass:(src.enemyClass||inferEnemyClassFromStyle(src.aiStyle)),aiStyle:src.aiStyle,aiPersonality:(src.aiPersonality||inferAIPersonalityFromStyle(src.aiStyle,src.name)),isBoss:false,bossTitle:'',enemyTier:'normal',
-            abilities:src.abilities,stats:{hp:src.hp,maxHp:src.hp,atk:src.atk,def:src.def,spd:src.spd,
-            acc:src.acc,dodge:src.dodge,mdodge:mDodge,mdef:mDef,matk:mAtk,cc:0.05,cd:1.5,critChance:5,critMult:1.5,en:(src.size==='xl'?5:src.size==='large'?4:src.size==='medium'?4:3)}};
-        }
-        }
-      }
-      // Fallback / normal enemy
-      if(!ed){
-        const pool=ENEMIES.filter(e=>!e.isBoss).filter(e=>{
-          if(stage>5) return true;
-          const k=normalizeEnemyNameKey(e.name);
-          return !EARLY_STAGE_BANNED_ENEMIES.has(k);
-        });
-        const tierBands=[[0,4],[4,9],[9,14],[14,19]];
-        const [tlo,thi]=tierBands[Math.min(tier-1,3)];
-        const sliced=pool.slice(tlo,Math.min(thi,pool.length));
-        const src=sliced.length?sliced[Math.floor(Math.random()*sliced.length)]:pool[0];
-        ed=JSON.parse(JSON.stringify(src));
-      }
+      ed=pickRandomBirdEnemyDraft(4,{isBoss:true,bossTitle:bossTitleForStageMilestone(stage)});
+    } else if(!ed){
+      ed=pickRandomBirdEnemyDraft(tier,{isBoss:false});
     }
 
   }
@@ -8023,7 +8044,7 @@ function loadStage() {
   updateStageProgress();
   refreshBattleUI();
   if (G.enemy.isBoss) {
-    const stageLabel = G.endlessMode && encounterStage > ENEMIES.length
+    const stageLabel = G.endlessMode && encounterStage > 20
       ? `Endless Battle ${G.endlessBattle}` : `Stage ${encounterStage}`;
     logMsg(`👑 ${G.enemy.bossTitle}: ${G.enemy.name} descends! [${stageLabel}${stageSequenceLabel}]`,'boss');
     logMsg(`Defeat them for a guaranteed Epic reward!`,'system');
@@ -19781,7 +19802,7 @@ function showDefeat(){
   saveHighscoreEntry(false);
   document.getElementById('gameover-inner').className='gameover-inner lose';
   document.getElementById('gameover-title').textContent='💀 Fallen';
-  const stageLabel=G.endlessMode&&G.stage>ENEMIES.length?`Endless Battle ${G.endlessBattle}`:`Stage ${G.stage}`;
+  const stageLabel=G.endlessMode&&G.stage>20?`Endless Battle ${G.endlessBattle}`:`Stage ${G.stage}`;
   document.getElementById('gameover-msg').textContent=`${G.player.name} fell at ${stageLabel}. Lv.${G.player.birdLevel}. Rise again.`;
   const flyAgainBtn=document.getElementById('fly-again-btn');
   if(flyAgainBtn) flyAgainBtn.style.display='inline-block';
@@ -20203,12 +20224,12 @@ function buildRefGuide() {
     return card(packDef?.name||t.name, desc,u,meta);
   }).join('');
 
-  const enemies=(ENEMIES||[]).filter(e=>isMatch(e.name)).map(e=>{
-    const id=e.id||e.name;
+  const enemies=(BIRD_ENEMIES||[]).filter(e=>isMatch(e.name)).map(e=>{
+    const id=e.birdKey||e.name;
     const u=!!G.codex?.enemies?.[id]?.seen;
     if(!u&&!showLocked) return '';
-    const ai=(e.aiType||mapAiStyleToType(e.aiStyle)||'aggressive');
-    return card(e.name, `HP ${e.stats?.maxHp||e.hp||0} · ATK ${e.stats?.atk||e.atk||0} · AI: ${ai}`,u,ai);
+    const ai=mapAiStyleToType(e.aiStyle||'aggressive');
+    return card(e.name, `HP ${e.hp||0} · ATK ${e.atk||0} · AI: ${ai}`,u,ai);
   }).join('');
 
   const packStatusGlossary = G.dataPacks?.abilityPassiveUpgrade?.STATUS_GLOSSARY || {};
@@ -20620,7 +20641,7 @@ function unlockAllCodexEntries(){
 
   Object.keys(BIRDS||{}).forEach(id=>ensure('birds',id,false));
   Object.keys(ABILITY_TEMPLATES||{}).forEach(id=>ensure('abilities',id,true));
-  Object.values(ENEMIES||{}).forEach(e=>ensure('enemies',e?.id||e?.name,false));
+  (BIRD_ENEMIES||[]).forEach(e=>ensure('enemies',e?.birdKey||e?.name,false));
   Object.keys(AILMENTS||{}).forEach(id=>ensure('statuses',id,false));
 
   try{
