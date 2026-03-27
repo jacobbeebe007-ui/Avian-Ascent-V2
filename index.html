@@ -211,8 +211,13 @@
 <span id="stage-progress-txt" style="font-size:.72rem;color:var(--text-dim);white-space:nowrap">1/20</span>
 </div>
 <div class="encounter-preview-wrap" id="encounter-preview-wrap" style="display:none" aria-label="Encounter preview">
-<div class="encounter-preview-title">Threat / Level</div>
+<div class="encounter-preview-header">
+<span class="encounter-preview-title">Threat / Level</span>
+<button class="encounter-preview-toggle" id="encounter-preview-toggle" type="button" aria-expanded="true" aria-controls="encounter-preview-body" title="Toggle encounter preview"></button>
+</div>
+<div class="encounter-preview-body" id="encounter-preview-body">
 <div class="encounter-preview-inner"></div>
+</div>
 </div>
 <div class="exp-row tactical-exp-row">
 <span class="exp-label">EXP</span>
