@@ -6120,6 +6120,7 @@ function saveRun() {
         owStageEnemies: G._owStageEnemies.slice(),
         owEnemyIndex: G._owEnemyIndex || 0,
         owEnemyCount: G._owEnemyCount || 0,
+        owEncounterRollStage: Number.isFinite(Number(G._owEncounterRollStage)) ? Math.floor(G._owEncounterRollStage) : null,
         owEncounterDrafts: G._owEncounterDrafts ? JSON.parse(JSON.stringify(G._owEncounterDrafts)) : null,
         owEncounterDraftsSig: G._owEncounterDraftsSig || null,
         owPendingBattleStage: Number.isFinite(Number(G._owPendingBattleStage)) ? G._owPendingBattleStage : null,
@@ -6181,6 +6182,7 @@ function continueRun() {
     G._owStageEnemies = oc.owStageEnemies.slice();
     G._owEnemyIndex = Math.max(0, Math.floor(Number(oc.owEnemyIndex) || 0));
     G._owEnemyCount = Math.max(1, Math.floor(Number(oc.owEnemyCount) || G._owStageEnemies.length));
+    G._owEncounterRollStage = Number.isFinite(Number(oc.owEncounterRollStage)) ? Math.floor(Number(oc.owEncounterRollStage)) : null;
     G._owEncounterDrafts = (Array.isArray(oc.owEncounterDrafts) && oc.owEncounterDrafts.length) ? JSON.parse(JSON.stringify(oc.owEncounterDrafts)) : null;
     G._owEncounterDraftsSig = (G._owEncounterDrafts && oc.owEncounterDraftsSig) ? oc.owEncounterDraftsSig : null;
     G._owEncounterMaterialized = null;
@@ -6194,6 +6196,7 @@ function continueRun() {
     G._owEncounterDraftsSig = null;
     G._owEncounterMaterialized = null;
     G._owEncounterMaterializedSig = null;
+    G._owEncounterRollStage = null;
   }
   // Re-attach passive reference (fns can't be serialized)
   const bd=BIRDS[G.player.birdKey];
@@ -6210,6 +6213,7 @@ function continueRun() {
 
   const bsave=save.battle;
   if(save.inBattle&&bsave&&bsave.enemy){
+    G._continueRunOpenNestOnly=false;
     G.enemy=bsave.enemy;
     G.enemy.class = resolveFinalClass(G.enemy?.class || G.enemy?.enemyClass, G.enemy?.birdKey || G.enemy?.portraitKey || G.enemy?.id || '');
     G.enemy.enemyClass = resolveFinalClass(G.enemy?.enemyClass || G.enemy?.class, G.enemy?.birdKey || G.enemy?.portraitKey || G.enemy?.id || '');
@@ -6230,6 +6234,17 @@ function continueRun() {
   }
 
   G.phase='PLAYER';
+  if(G._continueRunOpenNestOnly){
+    G._continueRunOpenNestOnly=false;
+    showScreen('screen-select');
+    applyUIStateToDOM();
+    try{
+      initSelection();
+      wireRefGuideClicks();
+    }catch(_){}
+    requestAnimationFrame(()=>{ try{ openNest(); }catch(_){} });
+    return;
+  }
   loadStage();
 }
 function goMainMenu() {
@@ -6306,6 +6321,7 @@ function clearOverworldPendingBattle() {
   G._owEncounterMaterializedSig = null;
   G._battleTerrain = null;
   G._encounterPreviewCollapsed = null;
+  G._owEncounterRollStage = null;
 }
 
 /** Lock story/template rolls per stage slot (no numeric scaling). */
@@ -6806,9 +6822,12 @@ function normalizeOwEnemyListForBattle(enemies){
   });
 }
 
-const STORY_BOSS_STAGES = new Set([10,15,20]);
+/** Story fights that are a single boss (no two-bird queue): milestone boss at 10, Duke Blakiston at 20. */
+const STORY_BOSS_STAGES = new Set([10, 20]);
+const STORY_MILESTONE_BOSS_STAGE = 10;
+const STORY_DUKE_STAGE = 20;
 const STORY_STAGE_THREAT_BUDGETS = {
-  1:2,2:2,3:3,4:3,5:4,6:4,7:5,8:5,9:5,10:0,11:6,12:6,13:7,14:7,15:0,16:8,17:8,18:9,19:9,20:0,
+  1:2,2:2,3:3,4:3,5:4,6:4,7:5,8:5,9:5,10:0,11:6,12:6,13:7,14:7,15:7,16:8,17:8,18:9,19:9,20:0,
 };
 const STORY_THREAT_BY_BIRD = Object.freeze({
   sparrow:1, robin:1, blackbird:1, seagull:1, kiwi:1,
@@ -7020,6 +7039,12 @@ function generateStoryStageEnemyKeys(stage, playerBirdKey){
   for(let i=0;i<tries;i++){
     const first=pickRandom(pool);
     const firstThreat=getStoryThreatForBirdKey(first);
+    const exactPool=pool.filter(k=>{
+      const total=firstThreat+getStoryThreatForBirdKey(k);
+      return total===budget;
+    });
+    const fairExact=exactPool.filter(k=>!isStoryUnfairEnemyPair(first,k,stage));
+    if(fairExact.length) return [first, pickRandom(fairExact)];
     const secondPool=pool.filter(k=>{
       const total=firstThreat+getStoryThreatForBirdKey(k);
       return total<=budget;
@@ -7031,6 +7056,40 @@ function generateStoryStageEnemyKeys(stage, playerBirdKey){
   }
   const sorted=pool.slice().sort((a,b)=>getStoryThreatForBirdKey(a)-getStoryThreatForBirdKey(b));
   return [sorted[0], sorted[1] || sorted[0]];
+}
+
+/** Linear story (and shared save state): two bird enemies per non-boss stage, threat sum matches budget when possible. */
+function syncStoryEncounterBirdQueue(encounterStage){
+  if(G.endlessMode) return;
+  const st=Math.max(1,Math.floor(Number(encounterStage)||1));
+  if(STORY_BOSS_STAGES.has(st)){
+    if(_isOverworldRun() && Array.isArray(G._owStageEnemies) && G._owStageEnemies.length>0){
+      G._owEnemyCount=Math.max(G._owEnemyCount||0,G._owStageEnemies.length);
+      return;
+    }
+    G._owStageEnemies=null;
+    G._owEnemyIndex=0;
+    G._owEnemyCount=1;
+    G._owEncounterRollStage=null;
+    G._owEncounterDrafts=null;
+    G._owEncounterDraftsSig=null;
+    G._owEncounterMaterialized=null;
+    G._owEncounterMaterializedSig=null;
+    return;
+  }
+  if(_isOverworldRun() && Array.isArray(G._owStageEnemies) && G._owStageEnemies.length>0){
+    G._owEnemyCount=Math.max(G._owEnemyCount||0,G._owStageEnemies.length);
+    return;
+  }
+  const idx=G._owEnemyIndex||0;
+  const midChain=Number(G._owEncounterRollStage)===st && Array.isArray(G._owStageEnemies) && G._owStageEnemies.length>1 && idx>0 && idx<G._owStageEnemies.length;
+  const freshRolled=Number(G._owEncounterRollStage)===st && Array.isArray(G._owStageEnemies) && G._owStageEnemies.length>1 && idx===0;
+  if(midChain || freshRolled) return;
+  const rolled=generateStoryStageEnemyKeys(st,G.player?.birdKey);
+  G._owStageEnemies=normalizeOwEnemyListForBattle(rolled);
+  G._owEnemyIndex=0;
+  G._owEnemyCount=Math.max(2,G._owStageEnemies?.length||2);
+  G._owEncounterRollStage=st;
 }
 
 /**
@@ -7061,6 +7120,7 @@ function handleOverworldReturn() {
       G._owStageEnemies = normalizeOwEnemyListForBattle(rolled);
       G._owEnemyIndex   = 0;
       G._owEnemyCount = G._owStageEnemies.length || 2;
+      G._owEncounterRollStage = stageNum;
     } else if (Array.isArray(intent.enemies) && intent.enemies.length > 0) {
       G._owStageEnemies = normalizeOwEnemyListForBattle(intent.enemies);
       G._owEnemyIndex   = 0;
@@ -7086,6 +7146,20 @@ function handleOverworldReturn() {
     continueRun();
     return true;
   }
+  if (intent.action === 'nest') {
+    try { localStorage.removeItem(_OW_NAV_KEY); } catch(_) {}
+    const nestSave = loadSaveData();
+    if (!nestSave?.player) return false;
+    G._continueRunOpenNestOnly = true;
+    try {
+      continueRun();
+    } catch (err) {
+      console.error('Overworld nest: continueRun failed', err);
+      G._continueRunOpenNestOnly = false;
+      return false;
+    }
+    return true;
+  }
   return false;
 }
 globalThis.handleOverworldReturn = handleOverworldReturn;
@@ -7103,7 +7177,7 @@ function showNextStagePreview() {
     el.innerHTML=`<div class="nsp-title">Next Up</div><div class="nsp-enemy">⚔</div><div class="nsp-name" style="color:var(--gold)">Endless Battle ${G.endlessBattle+1}</div><div class="nsp-stats">Scaled enemies await...</div>`;
   } else {
     const tier=storyTierFromStage(nextStage);
-    const isBoss=(nextStage%10===0);
+    const isBoss=(nextStage===STORY_MILESTONE_BOSS_STAGE || nextStage===STORY_DUKE_STAGE);
     const pool=pickBirdEnemyPoolForTier(isBoss?4:tier);
     const src=pool[Math.floor((nextStage*17)%Math.max(1,pool.length))];
     enemy=buildEdFromBirdEnemyTemplate(src,{isBoss,bossTitle:isBoss?bossTitleForStageMilestone(nextStage):''});
@@ -7949,6 +8023,7 @@ function loadStage() {
   G._breakClampStreak=0;
   G.abilityCooldowns=G.abilityCooldowns||{};
   const encounterStage = getEncounterStage();
+  syncStoryEncounterBirdQueue(encounterStage);
   const stageSequenceLabel = (!G.endlessMode && (G._owEnemyCount||0) > 1)
     ? ` · Battle ${Math.min((G._owEnemyIndex||0)+1, G._owEnemyCount)} of ${G._owEnemyCount}`
     : '';
@@ -7982,16 +8057,15 @@ function loadStage() {
     else if(stage<=19) tier=4;
     else tier=5; // final boss
     
-    // Boss stages: 10, 20
-    const isBossStage = (stage%10===0);
+    const isMilestoneBirdBoss = (stage === STORY_MILESTONE_BOSS_STAGE);
     
-    if(!ed && (tier===5 || stage===20)){
-      if(stage===20 && !G.endlessMode){
+    if(!ed && (tier===5 || stage===STORY_DUKE_STAGE)){
+      if(stage===STORY_DUKE_STAGE && !G.endlessMode){
         ed=makeDukeBlakiston();
       } else {
-        ed=pickRandomBirdEnemyDraft(4,{isBoss:true,bossTitle:stage===20?'🌩 Stage Boss':'👑 Final Guardian'});
+        ed=pickRandomBirdEnemyDraft(4,{isBoss:true,bossTitle:stage===STORY_DUKE_STAGE?'🌩 Stage Boss':'👑 Final Guardian'});
       }
-    } else if(!ed && isBossStage){
+    } else if(!ed && isMilestoneBirdBoss){
       ed=pickRandomBirdEnemyDraft(4,{isBoss:true,bossTitle:bossTitleForStageMilestone(stage)});
     } else if(!ed){
       ed=pickRandomBirdEnemyDraft(tier,{isBoss:false});
@@ -9265,24 +9339,21 @@ function continueStageTransitionAfterRewards(){
 
   const lastEnemyWasBoss = G.enemy && G.enemy.isBoss;
   const safeHP = G.player.stats.hp > G.player.stats.maxHp * 0.2;
-  const owChainPending = _isOverworldRun() && G._owStageEnemies && G._owEnemyIndex < (G._owStageEnemies.length - 1);
-  if(!lastEnemyWasBoss && safeHP && Math.random() < 0.1 && !owChainPending){
+  const multiEnemyChainPending = G._owStageEnemies && G._owEnemyIndex < (G._owStageEnemies.length - 1);
+  if(!lastEnemyWasBoss && safeHP && Math.random() < 0.1 && !multiEnemyChainPending){
     setTimeout(()=>showGroveEvent(), 350);
     return;
   }
 
   G.phase='PLAYER';
-  // Return to the overworld after winning a battle (story mode only)
+  if (G._owStageEnemies && G._owEnemyIndex < (G._owStageEnemies.length - 1)) {
+    G._owEnemyIndex++;
+    G.stage--;
+    saveRun();
+    loadStage();
+    return;
+  }
   if (_isOverworldRun()) {
-    // If there are more enemies queued for this stage, fight the next one
-    if (G._owStageEnemies && G._owEnemyIndex < (G._owStageEnemies.length - 1)) {
-      G._owEnemyIndex++;
-      G.stage--; // undo the premature advance; this stage only fully completes after all enemies fall
-      saveRun();
-      loadStage();
-      return;
-    }
-    // All enemies defeated - clear queue and return to overworld
     finalizeOverworldStageClear(G._owPendingBattleStage || G.stage, G._owPendingNodeId, {
       shinyGain: G._owSequenceShiny || 0,
       enemiesDefeated: G._owEnemyCount || G._owStageEnemies?.length || 1,
@@ -9290,6 +9361,15 @@ function continueStageTransitionAfterRewards(){
     clearOverworldPendingBattle();
     saveRun();
     try { window.location.href = 'blackstone_overworld_new.html'; return; } catch(_) {}
+  } else if (G._owStageEnemies?.length) {
+    G._owStageEnemies = null;
+    G._owEnemyIndex = 0;
+    G._owEnemyCount = 1;
+    G._owEncounterRollStage = null;
+    G._owEncounterDrafts = null;
+    G._owEncounterDraftsSig = null;
+    G._owEncounterMaterialized = null;
+    G._owEncounterMaterializedSig = null;
   }
   loadStage();
 }
@@ -18601,8 +18681,9 @@ function checkDeath() {
 
 
 function isGreyShopStage(stage){
-  const isBoss = (stage % 10 === 0);
-  return (stage % 4 === 0) && !isBoss;
+  const s = Math.max(1, Math.floor(Number(stage) || 0));
+  const storyBoss = s === STORY_MILESTONE_BOSS_STAGE || s === STORY_DUKE_STAGE;
+  return (s % 4 === 0) && !storyBoss;
 }
 
 
@@ -18888,7 +18969,8 @@ function confirmReward() {
   const lastEnemyWasBoss = !!(G.enemy && G.enemy.isBoss);
   G.phase='REWARD';
   // Overworld runs never show the inline Stork Shop — the overworld map has its own shop nodes
-  const shopDue = (lastEnemyWasBoss || isGreyShopStage(G.stage)) && !G._owStageEnemies && !_isOverworldRun();
+  const multiEnemyChainPending = G._owStageEnemies && G._owEnemyIndex < (G._owStageEnemies.length - 1);
+  const shopDue = (lastEnemyWasBoss || isGreyShopStage(G.stage)) && !multiEnemyChainPending && !_isOverworldRun();
   const shopMode = lastEnemyWasBoss ? 'boss' : 'grey';
 
   if(G._pendingLevelUp){
@@ -19002,8 +19084,8 @@ function generateBossRewards() {
   if(endlessBattle>0&&endlessBattle%20===0){
     for(let i=0;i<3;i++){const r=pickTier('purple')||pickTier('blue');if(r)out.push(r);}
   }
-  // Stage 10/20 main bosses: 1 purple guaranteed
-  else if(stage%10===0){
+  // Stage 10 / 20 story bosses: 1 purple guaranteed
+  else if(stage===STORY_MILESTONE_BOSS_STAGE || stage===STORY_DUKE_STAGE){
     pick('purple');
   }
   // Default boss: purple baseline
@@ -19059,9 +19141,8 @@ const LEVELUP_STAT_POOL = [
   {id:'acc4', label:'+4 ACC', stat:'acc', amount:4, apply(){ G.player.stats.acc=(G.player.stats.acc||0)+4; }},
   {id:'dod4', label:'+4% Dodge', stat:'dodge', amount:4, apply(){ G.player.stats.dodge=Math.min(95,(G.player.stats.dodge||0)+4); }},
   {id:'mdod4', label:'+4% Spell Dodge', stat:'mdodge', amount:4, apply(){ const b=G.player.stats.mdodge??G.player.stats.dodge??20; G.player.stats.mdodge=Math.min(95,b+4); }},
-  {id:'cc3', label:'+3% Crit Chance', stat:'critChance', amount:3, apply(){ G.player.stats.critChance=Math.min(95,(G.player.stats.critChance||5)+3); }},
-  {id:'cd015', label:'+0.15 Crit Damage', stat:'goldCritMult', amount:0.15, apply(){ G.player.goldCritMult=Math.min(3.0,(G.player.goldCritMult||1.5)+0.15); }},
 ];
+const LEVELUP_FEATHER_POOL = LEVELUP_STAT_POOL;
 const ENDLESS_RARE_LEVELUP_CHOICES = [
   {id:'vit18', label:'+18 Vitality', stat:'maxHp', amount:18, apply(){ G.player.stats.maxHp=(G.player.stats.maxHp||1)+18; G.player.stats.hp=Math.min((G.player.stats.hp||1)+18,G.player.stats.maxHp||1); }},
   {id:'atk6', label:'+6 ATK', stat:'atk', amount:6, apply(){ G.player.stats.atk=(G.player.stats.atk||0)+6; }},
@@ -19109,13 +19190,81 @@ function applyMainAttackAutoLevel(){
   }
 }
 
-function buildLevelUpStatChoices(){
-  const basePool=[...LEVELUP_STAT_POOL];
+function rollLuFeatherPanelOptions(){
+  const pool=LEVELUP_FEATHER_POOL.map(x=>({...x}));
   if(isEndlessRunActive() && chance(18)){
     const rare=ENDLESS_RARE_LEVELUP_CHOICES[Math.floor(Math.random()*ENDLESS_RARE_LEVELUP_CHOICES.length)];
-    basePool.push(rare);
+    pool.push({...rare, id:`${rare.id}_rare`});
   }
-  return basePool.map((x,i)=>({...x,choiceId:`${x.id}_${i}_${Date.now()}`}));
+  return pool;
+}
+
+function luFeatherDraftTotal(){
+  const d=G._luFeatherDraft||{};
+  return Object.values(d).reduce((a,n)=>a+Math.max(0,Math.floor(Number(n)||0)),0);
+}
+function luFeathersUnallocated(){
+  return Math.max(0,(G._pendingLevelUpChoices||0)-luFeatherDraftTotal());
+}
+
+function refreshLuFeatherPanelUI(){
+  const rem=document.getElementById('lu-feather-remaining');
+  if(rem) rem.innerHTML=`Remaining Feathers: <strong>${luFeathersUnallocated()}</strong>`;
+  const opts=G._luFeatherPanelOptions;
+  if(Array.isArray(opts)){
+    for(const opt of opts){
+      const el=document.getElementById(`lu-fc-${opt.id}`);
+      if(el) el.textContent=String((G._luFeatherDraft||{})[opt.id]||0);
+      const n=Math.max(0,Math.floor(Number((G._luFeatherDraft||{})[opt.id])||0));
+      const minus=document.getElementById(`lu-fp-minus-${opt.id}`);
+      const plus=document.getElementById(`lu-fp-plus-${opt.id}`);
+      if(minus) minus.disabled=n<=0;
+      if(plus) plus.disabled=luFeathersUnallocated()<=0;
+    }
+  }
+  const btn=document.getElementById('lu-skill-confirm');
+  if(btn){
+    const ok=luFeathersUnallocated()===0 && luFeatherDraftTotal()>0;
+    btn.className=ok?'confirm-btn visible':'confirm-btn';
+    btn.disabled=!ok;
+  }
+}
+
+function buildFeatherStatPanel(){
+  const grid=document.getElementById('lu-skill-grid');
+  if(!grid) return;
+  grid.innerHTML='';
+  grid.classList.add('lu-feather-grid');
+  G._luFeatherPanelOptions=rollLuFeatherPanelOptions();
+  G._luFeatherDraft=G._luFeatherDraft||{};
+  for(const opt of G._luFeatherPanelOptions){
+    const row=document.createElement('div');
+    row.className='lu-feather-row';
+    row.innerHTML=`
+      <div class="lu-feather-info">
+        <span class="lu-feather-name">${opt.label}</span>
+        <span class="lu-feather-desc">${getLevelUpStatEffectDesc(opt)}</span>
+      </div>
+      <div class="lu-feather-stepper">
+        <button type="button" class="lu-feather-btn lu-feather-minus" id="lu-fp-minus-${opt.id}">−</button>
+        <span class="lu-feather-count" id="lu-fc-${opt.id}">0</span>
+        <button type="button" class="lu-feather-btn lu-feather-plus" id="lu-fp-plus-${opt.id}">+</button>
+      </div>`;
+    row.querySelector(`#lu-fp-minus-${opt.id}`).onclick=()=>{
+      const cur=Math.max(0,Math.floor(Number((G._luFeatherDraft||{})[opt.id])||0));
+      if(cur<=0) return;
+      G._luFeatherDraft[opt.id]=cur-1;
+      refreshLuFeatherPanelUI();
+    };
+    row.querySelector(`#lu-fp-plus-${opt.id}`).onclick=()=>{
+      if(luFeathersUnallocated()<=0) return;
+      const cur=Math.max(0,Math.floor(Number((G._luFeatherDraft||{})[opt.id])||0));
+      G._luFeatherDraft[opt.id]=cur+1;
+      refreshLuFeatherPanelUI();
+    };
+    grid.appendChild(row);
+  }
+  refreshLuFeatherPanelUI();
 }
 
 function getLevelUpStatEffectDesc(opt){
@@ -19226,12 +19375,15 @@ function renderSkillEvolutionSlotSelection(){
   const bd=BIRDS[G.player?.birdKey]||{};
   const grid=document.getElementById('lu-skill-grid');
   const preview=document.getElementById('lu-stat-preview');
+  const featherRem=document.getElementById('lu-feather-remaining');
+  if(featherRem) featherRem.innerHTML='';
   if(preview) preview.innerHTML='';
   setLevelUpPanelTitle('🧬 Choose a Skill to Evolve');
   document.getElementById('lu-sub').textContent=`Lv.${G.player.birdLevel} milestone reached — choose 1 equipped skill to evolve (${Math.max(1,G._pendingSkillEvolutionChoices||1)} remaining) · ${bd.name || G.player.birdKey}.`;
   configureLevelUpConfirm('✓ Inspect Evolution', confirmSkillEvolutionChoice, false);
   configureLevelUpSecondary('', null, false);
   grid.innerHTML='';
+  grid.classList.remove('lu-feather-grid');
   getSkillSlots(G.player).slice().sort((a,b)=>a.slotIndex-b.slotIndex).forEach(slot=>{
     const tmpl = ABILITY_TEMPLATES?.[slot.abilityId] || {};
     const family = getSkillSlotFamilyDef(slot, G.player?.birdKey);
@@ -19378,14 +19530,15 @@ function showLevelUpScreen() {
   showScreen('screen-levelup');
   resetLevelUpFlowState();
   _luSelectedStatChoiceId=null;
-  const remaining=Math.max(1,G._pendingLevelUpChoices||1);
-  document.getElementById('lu-sub').textContent=`Lv.${G.player.birdLevel} reached! Choose a stat upgrade — ${remaining} pick${remaining===1?'':'s'} remaining:`;
+  G._luFeatherDraft={};
+  delete G._luFeatherPanelOptions;
+  const feathers=Math.max(1,G._pendingLevelUpChoices||1);
+  document.getElementById('lu-sub').textContent=`Lv.${G.player.birdLevel} reached! You have ${feathers} Feather${feathers===1?'':'s'} — spend each one on the stats below, then confirm once.`;
   const now=G.player.stats||{};
   const pairs=[
     ['HP','maxHp','stat'],['ATK','atk','stat'],['DEF','def','stat'],['SPD','spd','stat'],
     ['MATK','matk','stat'],['MDEF','mdef','stat'],['ACC','acc','stat'],
-    ['Dodge','dodge','stat'],['Spell dodge','mdodge','stat'],
-    ['Crit%','critChance','stat'],['Crit ×','goldCritMult','critMult'],['Max EN','energyMax','en'],
+    ['Dodge','dodge','stat'],['Spell dodge','mdodge','stat'],['Max EN','energyMax','en'],
   ];
   const prevWrap=document.getElementById('lu-stat-preview');
   if(prevWrap){
@@ -19400,10 +19553,10 @@ function showLevelUpScreen() {
   }
 
   document.getElementById('lu-skills-panel').classList.add('active');
-  setLevelUpPanelTitle('📈 Choose a Stat Upgrade');
-  configureLevelUpConfirm('✓ Confirm Stat Upgrade', confirmSkillUpgrade, false);
+  setLevelUpPanelTitle('📈 Spend Feathers');
+  configureLevelUpConfirm('✓ Confirm upgrades', confirmSkillUpgrade, false);
   configureLevelUpSecondary('', null, false);
-  buildStatChoiceGrid();
+  buildFeatherStatPanel();
 }
 
 function showLUPanel(which) {
@@ -19411,30 +19564,6 @@ function showLUPanel(which) {
   _luSelectedStatChoiceId=null;
   document.getElementById('lu-skill-confirm').className='confirm-btn';
   document.getElementById('lu-skip-btn').className='confirm-btn';
-}
-
-function buildStatChoiceGrid() {
-  const grid=document.getElementById('lu-skill-grid'); grid.innerHTML='';
-  const options=buildLevelUpStatChoices();
-  G._levelUpStatChoices=options;
-  options.forEach(opt=>{
-    const c=document.createElement('div');
-    c.className='skill-upgrade-card';
-    c.innerHTML=`
-      <div class="su-name">${opt.label}</div>
-      <div class="su-lv">Stat Choice</div>
-      <div class="su-effect">${getLevelUpStatEffectDesc(opt)}</div>`;
-    c.onclick=()=>{
-      document.querySelectorAll('#lu-skill-grid .skill-upgrade-card').forEach(x=>x.classList.remove('selected'));
-      c.classList.add('selected');
-      _luSelectedStatChoiceId=opt.choiceId;
-      configureLevelUpConfirm('✓ Confirm Stat Upgrade', confirmSkillUpgrade, true);
-    };
-    grid.appendChild(c);
-  });
-  if(!grid.children.length){
-    grid.innerHTML='<div style="color:var(--text-dim);text-align:center;padding:20px;">No stat upgrades available.</div>';
-  }
 }
 
 function countLevelAilments(lv){
@@ -19506,25 +19635,37 @@ function refreshPlayerAbilityAilments(){
 }
 
 async function confirmSkillUpgrade() {
-  if(!_luSelectedStatChoiceId){logMsg('Select a stat upgrade first!','miss');return;}
-  const pick=(G._levelUpStatChoices||[]).find(x=>x.choiceId===_luSelectedStatChoiceId);
-  if(!pick){
-    logMsg('That stat upgrade is no longer available.','miss');
-    showLevelUpScreen();
+  const opts=G._luFeatherPanelOptions;
+  if(Array.isArray(opts) && opts.length){
+    if(luFeathersUnallocated()!==0){
+      logMsg('Assign every Feather before confirming.','miss');
+      return;
+    }
+    if(luFeatherDraftTotal()<=0){
+      logMsg('Spend your Feathers on at least one stat.','miss');
+      return;
+    }
+    const lines=[];
+    for(const opt of opts){
+      const n=Math.max(0,Math.floor(Number((G._luFeatherDraft||{})[opt.id])||0));
+      for(let i=0;i<n;i++) opt.apply();
+      if(n>0) lines.push(`${n}× ${opt.label}`);
+    }
+    if(typeof refreshBattleUI==='function') refreshBattleUI();
+    logMsg(`📈 ${lines.join(', ')}`,'exp-gain');
+    delete G._luFeatherDraft;
+    delete G._luFeatherPanelOptions;
+    G._pendingLevelUpChoices=0;
+    G._levelUpStatChoices=[];
+    _luSelectedStatChoiceId=null;
+    const grid=document.getElementById('lu-skill-grid');
+    if(grid){ grid.innerHTML=''; grid.classList.remove('lu-feather-grid'); }
+    saveRun();
+    if(beginSkillEvolutionFlow()) return;
+    afterLevelUp();
     return;
   }
-  pick.apply();
-  if(typeof refreshBattleUI==='function') refreshBattleUI();
-  logMsg(`📈 ${pick.label} applied!`,'exp-gain');
-  _luSelectedStatChoiceId=null;
-  G._levelUpStatChoices=[];
-  G._pendingLevelUpChoices=Math.max(0,(G._pendingLevelUpChoices||1)-1);
-  if((G._pendingLevelUpChoices||0)>0){
-    showLevelUpScreen();
-    return;
-  }
-  if(beginSkillEvolutionFlow()) return;
-  afterLevelUp();
+  logMsg('Open the level-up screen to spend Feathers.','miss');
 }
 
 function afterLevelUp() {
@@ -19561,8 +19702,8 @@ function advanceStage() {
 //  WHISPERING GROVE EVENT
 // ============================================================
 function isBossStage(stage){
-  // Bosses every 10 stages
-  return stage % 10 === 0;
+  const s=Math.max(1,Math.floor(Number(stage)||0));
+  return s===STORY_MILESTONE_BOSS_STAGE || s===STORY_DUKE_STAGE;
 }
 
 function showGroveEvent(){

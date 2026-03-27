@@ -859,7 +859,7 @@ document.getElementById('btn-next').addEventListener('click',()=>{
 });
 
 document.getElementById('hdr-nest-btn').addEventListener('click',()=>{
-  // Save overworld state and return to main menu; run state is preserved
+  // Persist map position, then open main game with a "nest" intent (restores run + nest modal)
   try{
     const owRaw=localStorage.getItem('avianAscent_overworld');
     if(owRaw){
@@ -867,6 +867,7 @@ document.getElementById('hdr-nest-btn').addEventListener('click',()=>{
       ow.nodeId=curPos;
       localStorage.setItem('avianAscent_overworld',JSON.stringify(ow));
     }
+    localStorage.setItem('avianAscent_nav', JSON.stringify({ action: 'nest' }));
   }catch(_){}
   window.location.href='index.html';
 });

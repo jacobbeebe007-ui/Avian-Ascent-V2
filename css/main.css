@@ -1685,6 +1685,18 @@ body.ui-mobile-mode #screen-battle .level-badge{font-size:.7rem;}
 .levelup-choice-btn:hover{transform:scale(1.04);}
 .levelup-panel{display:none;}
 .levelup-panel.active{display:block;}
+.lu-feather-remaining{font-family:'Cinzel',serif;font-size:.95rem;color:var(--gold-light);margin:0 0 14px;letter-spacing:.04em;}
+.lu-feather-remaining:empty{display:none;}
+#lu-skill-grid.lu-feather-grid{display:flex;flex-direction:column;gap:10px;max-width:640px;margin:0 auto;text-align:left;}
+.lu-feather-row{display:flex;align-items:center;justify-content:space-between;gap:12px;background:rgba(28,22,14,.72);border:1px solid rgba(201,168,76,.28);border-radius:10px;padding:10px 14px;}
+.lu-feather-info{display:flex;flex-direction:column;gap:4px;min-width:0;flex:1;}
+.lu-feather-name{font-family:'Cinzel',serif;font-size:.82rem;color:var(--gold);letter-spacing:.05em;}
+.lu-feather-desc{font-size:.74rem;color:var(--text-dim);line-height:1.35;}
+.lu-feather-stepper{display:flex;align-items:center;gap:8px;flex-shrink:0;}
+.lu-feather-count{min-width:1.5rem;text-align:center;font-family:'Cinzel',serif;font-size:1rem;color:var(--text-bright);}
+.lu-feather-btn{width:36px;height:36px;padding:0;border-radius:8px;border:1px solid rgba(201,168,76,.45);background:linear-gradient(145deg,rgba(55,48,32,.95),rgba(35,30,22,.98));color:var(--gold-light);font-size:1.25rem;line-height:1;cursor:pointer;font-weight:700;transition:transform .12s ease,border-color .12s,opacity .12s;}
+.lu-feather-btn:hover:not(:disabled){border-color:var(--gold);transform:scale(1.05);}
+.lu-feather-btn:disabled{opacity:.35;cursor:not-allowed;}
 .skill-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:14px;max-width:600px;margin:0 auto;}
 .new-card-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:14px;max-width:600px;margin:0 auto;}
 
