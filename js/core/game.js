@@ -3041,6 +3041,63 @@ function expForLevel(lv) {
   return Math.floor(80 * Math.pow(1.38, 14) * Math.pow(1.18, 10) * Math.pow(1.08, lv - 25));
 }
 
+/** Base EXP by enemy level (Lv 0–10); above 10 continues ~Lv9→Lv10 ratio. */
+const BASE_EXP_BY_ENEMY_LEVEL = [10,13,18,25,35,48,66,91,126,174,240];
+
+function baseExpForEnemyLevel(lv) {
+  const L = Math.max(0, Math.floor(Number(lv) || 0));
+  if (L <= 10) return BASE_EXP_BY_ENEMY_LEVEL[L];
+  let v = BASE_EXP_BY_ENEMY_LEVEL[10];
+  const ratio = 240 / 174;
+  for (let i = 11; i <= L; i++) v = Math.round(v * ratio);
+  return Math.max(240, v);
+}
+
+/** Threat tier EXP multipliers (STORY_THREAT_BY_BIRD / getStoryThreatForBirdKey). Bosses use boss formula instead. */
+function threatTierExpMultiplierForEnemy(enemy) {
+  if (!enemy || enemy.isBoss) return 1;
+  const key = enemy.birdKey || enemy.portraitKey || '';
+  const th = getStoryThreatForBirdKey(key);
+  if (th <= 1) return 0.80;
+  if (th === 2) return 1.00;
+  if (th === 3) return 1.30;
+  if (th >= 4) return 1.70;
+  return 1.00;
+}
+
+function relativeLevelExpMultiplier(enemyLv, playerLv) {
+  const e = Math.floor(Number(enemyLv) || 0);
+  const p = Math.max(1, Math.floor(Number(playerLv) || 1));
+  const d = e - p;
+  if (d <= -3) return 0.70;
+  if (d === -2) return 0.82;
+  if (d === -1) return 0.92;
+  if (d === 0) return 1.00;
+  if (d === 1) return 1.12;
+  if (d === 2) return 1.25;
+  return 1.40;
+}
+
+function computeNormalEnemyExpGain(enemy) {
+  if (!enemy) return 0;
+  const plv = Math.max(1, Math.floor(G.player?.birdLevel || 1));
+  const elv = getEnemyPreviewLevel(enemy);
+  const base = baseExpForEnemyLevel(elv);
+  const tMult = threatTierExpMultiplierForEnemy(enemy);
+  const rMult = relativeLevelExpMultiplier(elv, plv);
+  return Math.max(1, Math.round(base * tMult * rMult));
+}
+
+function computeBossExpGain(enemy) {
+  const plv = Math.max(1, Math.floor(G.player?.birdLevel || 1));
+  let exp = Math.round(expForLevel(plv + 1) * 0.65);
+  if (enemy) {
+    const elv = getEnemyPreviewLevel(enemy);
+    if (elv > plv) exp = Math.round(exp * (1 + 0.03 * Math.min(elv - plv, 5)));
+  }
+  return Math.max(1, exp);
+}
+
 // ============================================================
 //  TURN STATE / SAFETY LIMITS
 // ============================================================
@@ -18397,16 +18454,13 @@ function postCombat() {
 
     const bs = getBattleStatsSafe();
 
-    // EXP
+    // EXP — enemy level + threat tier + relative level (normal); boss = 65% level-up threshold (+ small bonus if boss above player level)
     let expGain;
     G.phase='REWARD';
     if (G.enemy.isBoss) {
-      expGain = Math.floor(expForLevel(G.player.birdLevel + 1) * 0.65);
+      expGain = computeBossExpGain(G.enemy);
     } else {
-      const stageScale = (G.stage <= 15)
-        ? Math.pow(1.18, G.stage - 1)
-        : Math.pow(1.18, 14) * Math.pow(1.06, G.stage - 15);
-      expGain = Math.floor(40 * stageScale);
+      expGain = computeNormalEnemyExpGain(G.enemy);
     }
 
     G.player.exp += expGain;
