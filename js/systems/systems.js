@@ -161,19 +161,7 @@
             G.enemy._traitTurns = 2;
             G.enemy.stats.dodge = Math.min(100, (G.enemy.stats.dodge||0) + 20);
           }
-          // elite chance for non-boss enemies
-          if(!G.enemy.isBoss && !G.enemy._eliteChecked){
-            G.enemy._eliteChecked = true;
-            if(Math.random() < 0.12){
-              G.enemy.isElite = true;
-              G.enemy.name = `Elite ${G.enemy.name}`;
-              G.enemy.stats.maxHp = Math.floor((G.enemy.stats.maxHp||1) * 1.5);
-              G.enemy.stats.hp = G.enemy.stats.maxHp;
-              G.enemy.stats.atk = Math.floor((G.enemy.stats.atk||1) * 1.2);
-              G.enemy.stats.def = Math.floor((G.enemy.stats.def||0) + 2);
-              logMsg(`⭐ ${G.enemy.name} appears!`, 'boss');
-            }
-          }
+          if(!G.enemy.isBoss && !G.enemy._eliteChecked) G.enemy._eliteChecked = true;
         }
       }catch(err){ console.error(err); }
       const out = _oldRefreshBattleUIPolish.apply(this, arguments);

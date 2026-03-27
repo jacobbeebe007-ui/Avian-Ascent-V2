@@ -6154,9 +6154,11 @@ function continueRun() {
   applyUIStateToDOM();
   G.endlessBattle=save.endlessBattle||0;
   G.bossKills=save.bossKills||0;
-  G.stage=save.stage||1;
+  G.stage=Math.max(1,Math.floor(Number(save.stage)||1));
   G._overworldProgress = normalizeOverworldProgress(save.overworldProgress||null, G.stage);
-  if(!G.endlessMode) G.stage = Math.max(1, (G._overworldProgress?.completedStage||0) + 1);
+  if(!G.endlessMode && _isOverworldRun()){
+    G.stage = Math.max(1, (G._overworldProgress?.completedStage||0) + 1);
+  }
   G.collectedRewards=save.collectedRewards||[];
   G.player=save.player;
   G.player.class = resolveFinalClass(G.player?.class, G.player?.birdKey);
@@ -6268,10 +6270,12 @@ function getEncounterStage() {
 function normalizeOverworldProgress(progress=null, fallbackStage=1) {
   const nextStage = Math.max(1, Math.floor(Number(fallbackStage) || 1));
   const rawCompleted = Number(progress?.completedStage);
-  const completedStage = Math.min(20, Math.max(
-    Math.max(0, nextStage - 1),
+  const ceiling = Math.max(0, nextStage - 1);
+  const merged = Math.min(20, Math.max(
+    ceiling,
     Number.isFinite(rawCompleted) ? Math.floor(rawCompleted) : 0
   ));
+  const completedStage = Math.min(merged, ceiling);
   const rawNodeId = Number(progress?.currentNodeId);
   const currentNodeId = Number.isFinite(rawNodeId) ? Math.max(0, Math.floor(rawNodeId)) : 0;
   const lastSummary = (progress?.lastSummary && typeof progress.lastSummary === 'object')
@@ -9777,11 +9781,10 @@ function resolveEnemyTier(enemyBase, forceTier=''){
 // - Size + enemyClass modifiers shape role (tank vs striker, etc.) — not stage power.
 // - Power growth is level-based: effectiveLevel = stage depth + player bird level contribution + endless bonus.
 // - Difficulty preset mult (DIFFICULTIES.*.mult) scales enemy HP + ATK/MATK only.
-// - Elite tier: endless mode AND stage > 20 only (never in story). Boss / lieutenant tiers unchanged.
+// - Elite random spawns disabled (combatResolveEnemyTier never promotes to elite).
 const ENEMY_PLAYER_LEVEL_TO_EFFECTIVE = 0.42;
 const ENEMY_ENDLESS_EXTRA_LEVEL_EVERY = 5;
 const ENEMY_ENDLESS_EXTRA_LEVEL_STEP = 2;
-const ENEMY_ELITE_SPAWN_CHANCE_DEEP = 0.17;
 const ENEMY_HP_PER_LEVEL_BY_SIZE = Object.freeze({tiny:2.55,small:3.3,medium:3.95,large:4.7,xl:5.55});
 const ENEMY_ATK_PER_LEVEL_BY_SIZE = Object.freeze({tiny:0.45,small:0.55,medium:0.64,large:0.72,xl:0.81});
 const ENEMY_MATK_PER_LEVEL_BY_SIZE = Object.freeze({tiny:0.51,small:0.62,medium:0.70,large:0.77,xl:0.83});
@@ -9810,14 +9813,7 @@ function combatResolveEnemyTier(enemyBase, stage, opts, templateTier){
   if(templateTier==='boss') return 'boss';
   if(templateTier==='lieutenant') return 'lieutenant';
   if(enemyBase?.isBoss) return 'boss';
-  const s=Math.max(1,Math.floor(stage||1));
-  const deepEndless=!!opts.isEndless && s>20;
-  if(templateTier==='elite'){
-    return deepEndless ? 'elite' : 'normal';
-  }
-  if(deepEndless && templateTier==='normal' && opts.allowDeepEliteRoll!==false){
-    if(Math.random()<ENEMY_ELITE_SPAWN_CHANCE_DEEP) return 'elite';
-  }
+  if(templateTier==='elite') return 'normal';
   return 'normal';
 }
 
