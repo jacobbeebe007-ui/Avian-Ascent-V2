@@ -6459,6 +6459,93 @@ function getEnemyPreviewThreatLine(enemy){
   return {short:'—', detail:'Threat: —'};
 }
 
+function buildEnemyInfoPopupAbilitiesHtml(enemy){
+  if(!enemy) return '<em>No special abilities</em>';
+  if(enemy.id==='duke_blakiston'){
+    const lines=[
+      ['River Grip','Physical pressure and control.'],
+      ['Royal Decree','Shifts the flow of battle.'],
+      ['Court Wardens','Summons aid.'],
+      ["Owl's Verdict",'Devastating finisher phases.'],
+    ];
+    return '<ul>'+lines.map(([n,d])=>`<li><strong>${escapeEncounterPreviewHtml(n)}</strong> — ${escapeEncounterPreviewHtml(d)}</li>`).join('')+'</ul>';
+  }
+  const parts=[];
+  if(Array.isArray(enemy.abilities) && enemy.abilities.length){
+    enemy.abilities.forEach(abKey=>{
+      if(typeof abKey!=='string') return;
+      const eab=ENEMY_ABILITY_POOL[abKey];
+      if(!eab) return;
+      const dmgNote=eab.dmg?` <em>(${escapeEncounterPreviewHtml(String(eab.dmg))})</em>`:'';
+      parts.push(`<li><strong>${escapeEncounterPreviewHtml(eab.name)}</strong> — ${escapeEncounterPreviewHtml(eab.desc||'')}${dmgNote}</li>`);
+    });
+  }
+  if(!parts.length && Array.isArray(enemy.storyAbilityKit) && enemy.storyAbilityKit.length){
+    enemy.storyAbilityKit.slice(0,8).forEach(id=>{
+      const t=ABILITY_TEMPLATES[id];
+      if(t) parts.push(`<li><strong>${escapeEncounterPreviewHtml(t.name||id)}</strong> — ${escapeEncounterPreviewHtml(String(t.levels?.[0]?.desc||t.desc||''))}</li>`);
+    });
+  }
+  return parts.length?`<ul>${parts.join('')}</ul>`:'<em>No special abilities</em>';
+}
+
+function closeEnemyInfoPopup(){
+  const popup=document.getElementById('enemy-info-popup');
+  if(popup){
+    popup.style.display='none';
+    popup.classList.remove('enemy-info-popup--open');
+  }
+}
+
+function openEnemyInfoPopup(){
+  if(!G.enemy) return;
+  const popup=document.getElementById('enemy-info-popup');
+  if(!popup) return;
+  wireEnemyInfoPopupOnce();
+  const spriteEl=document.getElementById('enemy-info-popup-sprite');
+  if(spriteEl){
+    let ent=G.enemy;
+    if(G.enemy.birdKey&&BIRDS[G.enemy.birdKey]){
+      ent=Object.assign({}, BIRDS[G.enemy.birdKey], G.enemy, { portraitKey: BIRDS[G.enemy.birdKey].portraitKey || G.enemy.portraitKey });
+    }
+    spriteEl.innerHTML=renderEntityAvatarHTML(ent,'battle');
+  }
+  const nm=escapeEncounterPreviewHtml(String(G.enemy.name||'Enemy'));
+  const hdr=document.getElementById('enemy-info-popup-header');
+  if(hdr) hdr.innerHTML=`<strong>${nm}</strong>${G.enemy.isBoss?' <span aria-hidden="true">👑</span>':''}`;
+  const lv=Number.isFinite(G.enemy.storyLevel)?G.enemy.storyLevel:(Number.isFinite(G.enemy.effectiveLevel)?G.enemy.effectiveLevel:getEnemyPreviewLevel(G.enemy));
+  const aiStyle=typeof G.enemy.aiStyle==='string'?G.enemy.aiStyle:'tactical';
+  const cls=idToClassLabel(resolveFinalClass(G.enemy.class||G.enemy.enemyClass||inferEnemyClassFromStyle(aiStyle), G.enemy.birdKey||''));
+  const szRaw=SIZE_LABELS[String(G.enemy.size||'medium').toLowerCase()]||String(G.enemy.size||'');
+  const sz=escapeEncounterPreviewHtml(szRaw);
+  const thr=getEnemyPreviewThreatLine(G.enemy);
+  const meta=document.getElementById('enemy-info-popup-meta');
+  if(meta) meta.innerHTML=`Class: ${escapeEncounterPreviewHtml(cls)} · Size: ${sz}<br/>LVL ${lv} · ${escapeEncounterPreviewHtml(thr.detail)}`;
+  const ab=document.getElementById('enemy-info-popup-abilities');
+  if(ab) ab.innerHTML=buildEnemyInfoPopupAbilitiesHtml(G.enemy);
+  popup.style.display='flex';
+  popup.classList.add('enemy-info-popup--open');
+}
+
+function wireEnemyInfoPopupOnce(){
+  if(G._enemyInfoPopupWired) return;
+  G._enemyInfoPopupWired=true;
+  const root=document.getElementById('enemy-info-popup');
+  if(!root) return;
+  root.querySelector('.enemy-info-popup-backdrop')?.addEventListener('click',closeEnemyInfoPopup);
+  root.querySelector('.enemy-info-popup-close')?.addEventListener('click',closeEnemyInfoPopup);
+  const wrap=document.getElementById('enemy-avatar-wrap');
+  if(!wrap) return;
+  wrap.style.cursor='pointer';
+  wrap.setAttribute('role','button');
+  wrap.setAttribute('tabindex','0');
+  wrap.setAttribute('aria-label','View enemy abilities');
+  wrap.addEventListener('click',e=>{ e.stopPropagation(); openEnemyInfoPopup(); });
+  wrap.addEventListener('keydown',e=>{
+    if(e.key==='Enter'||e.key===' '){ e.preventDefault(); openEnemyInfoPopup(); }
+  });
+}
+
 /** Source of truth for encounter preview + tooltips: materialized OW chain, else current G.enemy. */
 function getCurrentStageEncounterPreviewData(){
   const st=getEncounterStage();

@@ -1424,6 +1424,21 @@ header p{color:var(--text-dim);font-style:italic;font-size:1rem;margin-top:4px;}
 .stage-progress-fill{height:100%;border-radius:2px;background:linear-gradient(90deg,var(--gold),var(--gold-light));transition:width .6s ease;}
 .stage-progress-bosses{position:absolute;top:0;left:0;right:0;height:100%;pointer-events:none;}
 .boss-pip{position:absolute;top:-3px;width:10px;height:10px;background:var(--red);border:1px solid var(--red-light);border-radius:50%;transform:translateX(-50%);font-size:0;}
+/* Enemy info modal (click enemy portrait in combat) */
+.enemy-info-popup{display:none;position:absolute;inset:0;z-index:200;align-items:center;justify-content:center;padding:12px;box-sizing:border-box;}
+.enemy-info-popup.enemy-info-popup--open{display:flex;}
+.enemy-info-popup-backdrop{position:absolute;inset:0;background:rgba(0,0,0,.55);cursor:pointer;}
+.enemy-info-popup-panel{position:relative;z-index:1;max-width:360px;width:100%;padding:20px 22px 18px;border:1px solid rgba(200,160,32,.32);border-radius:10px;background:linear-gradient(145deg,#0a0e08,#141a12);box-shadow:0 12px 40px rgba(0,0,0,.45);font-family:'EB Garamond',Georgia,serif;color:#e8e0c0;}
+.enemy-info-popup-close{position:absolute;top:6px;right:10px;background:none;border:none;color:#c8a040;font-size:22px;line-height:1;cursor:pointer;padding:4px 8px;}
+.enemy-info-popup-close:hover{color:var(--gold-light);}
+.enemy-info-popup-sprite{display:flex;justify-content:center;margin-bottom:10px;}
+.enemy-info-popup-sprite .sprite4{width:80px;height:80px;}
+.enemy-info-popup-header{font-family:'Cinzel',serif;font-size:1rem;color:var(--gold);margin-bottom:6px;text-align:center;}
+.enemy-info-popup-meta{font-size:.88rem;color:var(--text-dim);line-height:1.45;margin-bottom:12px;text-align:center;}
+.enemy-info-popup-abilities-h{font-family:'Cinzel',serif;font-size:.58rem;letter-spacing:.12em;text-transform:uppercase;color:var(--gold);margin-bottom:6px;}
+.enemy-info-popup-abilities ul{list-style:none;padding:0;margin:0;}
+.enemy-info-popup-abilities li{margin:8px 0;font-size:.88rem;line-height:1.35;color:var(--silver);}
+.enemy-info-popup-abilities em{font-style:normal;opacity:.75;font-size:.82rem;}
 /* Encounter preview panel (standalone under stage graph) */
 .encounter-preview-wrap{margin-bottom:8px;padding:8px 10px 6px;background:linear-gradient(180deg,rgba(8,14,8,.92),rgba(5,10,5,.88));border:1px solid rgba(201,168,76,.35);border-radius:10px;max-width:100%;box-shadow:0 4px 16px rgba(0,0,0,.32),inset 0 1px 0 rgba(255,255,255,.04);}
 .encounter-preview-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:5px;}
