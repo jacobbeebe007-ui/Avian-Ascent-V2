@@ -1014,7 +1014,8 @@ const BIRDS = {
     unlockHint:'Defeat Stage 20 with Hummingbird.',
     stats:{hp:58,maxHp:58,atk:13,def:6,spd:4,dodge:8,acc:78,critChance:15,mdef:8,matk:6},
     statBars:{HP:58/50,ATK:13/15,SPD:4/10,Dodge:.16,ACC:.78}, color:'#c84030',
-    startAbilities:['fleshTear','raptorDive','predatorMark','executionTalon'],
+    startAbilities:['hrp_talon_clutch','hrp_canopy_crush','hrp_predator_grip','hrp_prey_lock'],
+    mainAttackId:'hrp_talon_clutch',
     abilityPool:['physical'],
     passive:{id:'warlordsPath',name:'Talon Apex',desc:'+18% damage vs enemies below 40% HP. Every boss kill permanently raises ATK by 3. Takes 15% reduced magic damage.',
       magicResist:0.15,
@@ -4490,6 +4491,71 @@ const SHOEBILL_SKILL_FAMILIES = Object.freeze({
   },
 });
 
+const HARPY_SKILL_SLOT_LAYOUT = Object.freeze([
+  {slotIndex:0, familyId:'talon', abilityId:'hrp_talon_clutch'},
+  {slotIndex:1, familyId:'crush', abilityId:'hrp_canopy_crush'},
+  {slotIndex:2, familyId:'grip', abilityId:'hrp_predator_grip'},
+  {slotIndex:3, familyId:'lock', abilityId:'hrp_prey_lock'},
+]);
+const HARPY_SKILL_FAMILIES = Object.freeze({
+  talon:{
+    familyId:'talon', displayName:'Talon Line', baseAbilityId:'hrp_talon_clutch', slotRole:'filler_talon_attack', maxTier:3,
+    tierNames:{1:'Clutch',2:'Rend',3:'Rip'},
+    masteries:[
+      {id:'power', name:'Crown Talons', desc:'Talon-line damage +4%; pierce route +3 pierce.'},
+      {id:'precision', name:'Canopy Aim', desc:'Talon-line −3% miss; bleed route +5% bleed odds.'},
+      {id:'control', name:'Crushing Grip', desc:'Weaken-route riders +6%; wounded-target payoff +4%.'},
+    ],
+    paths:{
+      pierce:{pathId:'pierce', displayName:'Pierce', abilities:{1:'hrp_talon_clutch',2:'hrp_split_rend',3:'hrp_bone_rip'}, damageTypeProgression:{1:'physical',2:'physical',3:'physical'}},
+      bleed:{pathId:'bleed', displayName:'Bleed', abilities:{1:'hrp_rending_clutch',2:'hrp_deep_rend',3:'hrp_blood_rip'}, damageTypeProgression:{1:'physical',2:'physical',3:'physical'}},
+      weaken:{pathId:'weaken', displayName:'Weaken', abilities:{1:'hrp_crushing_clutch',2:'hrp_sapping_rend',3:'hrp_hollow_rip'}, damageTypeProgression:{1:'physical',2:'physical',3:'physical'}},
+    },
+  },
+  crush:{
+    familyId:'crush', displayName:'Crush Line', baseAbilityId:'hrp_canopy_crush', slotRole:'signature_execution_attack', maxTier:3,
+    tierNames:{1:'Crush',2:'Break',3:'Dominion'},
+    masteries:[
+      {id:'power', name:'Apex Drop', desc:'Crush-line damage +5%; crit route +3 crit chance.'},
+      {id:'precision', name:'Pinning Force', desc:'Paralysis-route para odds +6%; execute route +4% vs low HP.'},
+      {id:'control', name:'Canopy Verdict', desc:'DEF-break stress +1 when possible; prey feels locked.'},
+    ],
+    paths:{
+      crit:{pathId:'crit', displayName:'Crit', abilities:{1:'hrp_canopy_crush',2:'hrp_predator_break',3:'hrp_crown_dominion'}},
+      paralysis:{pathId:'paralysis', displayName:'Paralysis', abilities:{1:'hrp_shock_crush',2:'hrp_snare_break',3:'hrp_lock_dominion'}},
+      execute:{pathId:'execute', displayName:'Execute', abilities:{1:'hrp_hunter_crush',2:'hrp_prey_break',3:'hrp_final_dominion'}},
+    },
+  },
+  grip:{
+    familyId:'grip', displayName:'Grip Line', baseAbilityId:'hrp_predator_grip', slotRole:'control_setup', maxTier:3,
+    tierNames:{1:'Grip',2:'Hold',3:'Seize'},
+    masteries:[
+      {id:'power', name:'Iron Talons', desc:'Guard-route stacks +4; grip feels heavier.'},
+      {id:'precision', name:'Lining Kill', desc:'Amp-route next-hit +3%; ACC-break route +2 ACC down.'},
+      {id:'control', name:'Canopy Lock', desc:'Read-style setups +4% compromised bonus when on amp path.'},
+    ],
+    paths:{
+      guard:{pathId:'guard', displayName:'Guard', abilities:{1:'hrp_predator_grip',2:'hrp_iron_hold',3:'hrp_death_seize'}},
+      amp:{pathId:'amp', displayName:'Amp', abilities:{1:'hrp_lining_grip',2:'hrp_measured_grip',3:'hrp_kill_seize'}},
+      acc_break:{pathId:'acc_break', displayName:'ACC Break', abilities:{1:'hrp_harsh_grip',2:'hrp_breaking_hold',3:'hrp_blinding_seize'}},
+    },
+  },
+  lock:{
+    familyId:'lock', displayName:'Prey Lock Line', baseAbilityId:'hrp_prey_lock', slotRole:'setup_payoff', maxTier:3,
+    tierNames:{1:'Lock',2:'Claim',3:'Dominion'},
+    masteries:[
+      {id:'power', name:'Claimed Quarry', desc:'Amp-path next-hit +4%; break-path expose +3%.'},
+      {id:'precision', name:'Reader of Fear', desc:'Read-path compromised bonus +5%; break DEF strip +1.'},
+      {id:'control', name:'No Escape', desc:'Marked prey: follow-up physical +6% when possible.'},
+    ],
+    paths:{
+      amp:{pathId:'amp', displayName:'Amp', abilities:{1:'hrp_prey_lock',2:'hrp_hunter_claim',3:'hrp_doom_dominion'}},
+      break:{pathId:'break', displayName:'Break', abilities:{1:'hrp_crack_lock',2:'hrp_break_claim',3:'hrp_ruin_dominion'}},
+      read:{pathId:'read', displayName:'Read', abilities:{1:'hrp_read_prey',2:'hrp_read_claim',3:'hrp_read_dominion'}},
+    },
+  },
+});
+
 const PEREGRINE_SKILL_SLOT_LAYOUT = Object.freeze([
   {slotIndex:0, familyId:'talon', abilityId:'talon_jab'},
   {slotIndex:1, familyId:'dive', abilityId:'dive'},
@@ -5316,6 +5382,18 @@ const FAMILY_EVOLUTION_BIRD_DATA = Object.freeze({
       dread:{legacy:['huntersCry','victoryChant','dread_call','dreadCall','trackPrey','markPrey','predatorMark','battleFocus','battle_focus','featherRuffle'], current:'sbl_dread_mark'},
     }),
   },
+  harpy:{
+    birdKey:'harpy',
+    slotLayout:HARPY_SKILL_SLOT_LAYOUT,
+    families:HARPY_SKILL_FAMILIES,
+    abilityLookup:buildFamilySkillAbilityLookup(HARPY_SKILL_SLOT_LAYOUT, HARPY_SKILL_FAMILIES),
+    legacyBaseAbilityIds:Object.freeze({
+      talon:{legacy:['fleshTear','fleshRipper','peck','headWhip','probeStrike','needle_peck','mockingPeck','bracePeck','crowStrike'], current:'hrp_talon_clutch'},
+      crush:{legacy:['raptorDive','deathDive','skyStrike','skyfallStrike','beakSlam','executionTalon','heavyTalon','heavy_talon','talon_slam','bodySlam','diveBomb'], current:'hrp_canopy_crush'},
+      grip:{legacy:['predatorMark','trackPrey','markPrey','huntersMark','guard','royalGuard','wingShield','huntersCry','victoryChant','battleFocus','battle_focus','featherRuffle','dread_call','dreadCall','evade','windFeint'], current:'hrp_predator_grip'},
+      lock:{legacy:['predatorBrand','finalHunt','executionTalon','beakSlam','deathDive','heavyTalon','heavy_talon','rending_talon','finisher_slam','execution_crush','predatorMark','trackPrey','markPrey'], current:'hrp_prey_lock'},
+    }),
+  },
 });
 
 function isSkillEvolutionLevel(level){
@@ -5324,6 +5402,7 @@ function isSkillEvolutionLevel(level){
 function getBirdFamilyEvolutionData(birdKey){
   const k = String(birdKey||'');
   if(k==='secretarybird') return FAMILY_EVOLUTION_BIRD_DATA.secretary || null;
+  if(k==='harpyeagle') return FAMILY_EVOLUTION_BIRD_DATA.harpy || null;
   return FAMILY_EVOLUTION_BIRD_DATA[k] || null;
 }
 function getBirdSkillFamilyCatalog(birdKey){
@@ -5689,6 +5768,38 @@ function migrateShoebillLegacyFamilySkillSlots(slots){
     return slot;
   });
 }
+/** Pre–family-evolution Harpy flat kit → hrp_* bases (fleshTear / raptorDive / predatorMark / executionTalon and resolved aliases). */
+function migrateHarpyLegacyFamilySkillSlots(slots){
+  if(!Array.isArray(slots)) return slots;
+  const idxRules=[
+    {fam:'talon', newBase:'hrp_talon_clutch', legacyBases:['fleshTear','fleshRipper','peck','headWhip','probeStrike','needle_peck','mockingPeck','bracePeck','crowStrike']},
+    {fam:'crush', newBase:'hrp_canopy_crush', legacyBases:['raptorDive','deathDive','skyStrike','skyfallStrike','beakSlam','executionTalon','heavyTalon','heavy_talon','talon_slam','bodySlam','diveBomb']},
+    {fam:'grip', newBase:'hrp_predator_grip', legacyBases:['predatorMark','trackPrey','markPrey','huntersMark','guard','royalGuard','wingShield','huntersCry','victoryChant','battleFocus','battle_focus','featherRuffle','dread_call','dreadCall','evade','windFeint']},
+    {fam:'lock', newBase:'hrp_prey_lock', legacyBases:['predatorBrand','finalHunt','executionTalon','beakSlam','deathDive','heavyTalon','heavy_talon','rending_talon','finisher_slam','execution_crush','predatorMark','trackPrey','markPrey']},
+  ];
+  return slots.map((slot,i)=>{
+    if(!slot||typeof slot!=='object') return slot;
+    const rule=idxRules[i];
+    if(!rule) return slot;
+    const tier=Number(slot.tier)||0;
+    const branched=!!slot.pathId&&tier>0;
+    if(branched && (slot.familyId===rule.fam || rule.legacyBases.includes(String(slot.abilityId||'')))){
+      return {...slot,familyId:rule.fam,pathId:null,tier:0,abilityId:rule.newBase,masteries:[],masteryCount:0};
+    }
+    if(slot.familyId!==rule.fam){
+      const id=String(slot.abilityId||'');
+      if(rule.legacyBases.includes(id)){
+        return {...slot,familyId:rule.fam,pathId:null,tier:0,abilityId:rule.newBase,masteries:[],masteryCount:0};
+      }
+      return slot;
+    }
+    const id=String(slot.abilityId||'');
+    if(rule.legacyBases.includes(id)){
+      return {...slot,pathId:null,tier:0,abilityId:rule.newBase,masteries:[],masteryCount:0};
+    }
+    return slot;
+  });
+}
 function migrateGooseLegacyFamilySkillSlots(slots){
   if(!Array.isArray(slots)) return slots;
   const layout=[
@@ -5888,6 +5999,7 @@ function syncPlayerAbilitiesFromSkillSlots(player){
     if(player.birdKey==='seagull' && slot.abilityId==='sgl_snap_peck') ab.fixedMainAttackCost = true;
     if(player.birdKey==='goose' && slot.abilityId==='gos_beak_snap') ab.fixedMainAttackCost = true;
     if(player.birdKey==='shoebill' && slot.abilityId==='sbl_beak_chop') ab.fixedMainAttackCost = true;
+    if((player.birdKey==='harpy' || player.birdKey==='harpyeagle') && slot.abilityId==='hrp_talon_clutch') ab.fixedMainAttackCost = true;
     return ab;
   });
 }
@@ -5929,6 +6041,7 @@ function ensureFamilyEvolutionState(player){
     if(birdKey==='albatross') rawSlots = migrateAlbatrossLegacyFamilySkillSlots(rawSlots);
     if(birdKey==='seagull') rawSlots = migrateSeagullLegacyFamilySkillSlots(rawSlots);
     if(birdKey==='shoebill') rawSlots = migrateShoebillLegacyFamilySkillSlots(rawSlots);
+    if(birdKey==='harpy' || birdKey==='harpyeagle') rawSlots = migrateHarpyLegacyFamilySkillSlots(rawSlots);
     if(birdKey==='goose') rawSlots = migrateGooseLegacyFamilySkillSlots(rawSlots);
     if(birdKey==='secretary' || birdKey==='secretarybird') rawSlots = migrateSecretaryLegacyFamilySkillSlots(rawSlots);
     state.skillSlots = baseSlots.map((baseSlot, idx)=>normalizeSkillSlotState(rawSlots[idx], baseSlot, birdKey));
@@ -8082,6 +8195,7 @@ const ABILITY_DISPLAY_TAGS = {
   sgl_snap_peck:['BASIC'], sgl_swoop_pass:['HEAVY','SIGNATURE'], sgl_raucous_cry:['UTILITY','CONTROL'], sgl_scavenge_mark:['UTILITY'],
   gos_beak_snap:['BASIC'], gos_body_check:['HEAVY','SIGNATURE'], gos_honk_blast:['UTILITY','CONTROL'], gos_brace_up:['GUARD'],
   sbl_beak_chop:['BASIC'], sbl_skull_crack:['HEAVY','SIGNATURE'], sbl_still_stance:['GUARD'], sbl_dread_mark:['UTILITY'],
+  hrp_talon_clutch:['BASIC'], hrp_canopy_crush:['HEAVY','SIGNATURE'], hrp_predator_grip:['GUARD'], hrp_prey_lock:['UTILITY'],
   savageKick:['HEAVY','SIGNATURE'], raptorKickFrenzy:['HEAVY','MULTI','SIGNATURE'], honkTerror:['CONTROL','SIGNATURE'],
   rallyCall:['UTILITY'], focusSight:['UTILITY'], battleRhythm:['UTILITY'],
 };
@@ -9199,7 +9313,7 @@ function dealDamage(target,amount,isCrit=false,isMagic=false,srcAbility=null) {
     }
     if(G.player?.birdKey==='blackCockatoo' && ((G.enemyStatus?.feared||0)>0 || (G.enemyStatus?.paralyzed||0)>0)) dmg=Math.floor(dmg*1.08);
     if(G.player?.birdKey==='kookaburra' && ((G.enemyStatus?.feared||0)>0 || (G.enemyStatus?.paralyzed||0)>0)) dmg=Math.floor(dmg*1.05);
-    if(G.player?.birdKey==='harpy' && (G.enemy.stats.hp||1)<=Math.floor((G.enemy.stats.maxHp||1)*0.4)) dmg=Math.floor(dmg*1.18);
+    if((G.player?.birdKey==='harpy' || G.player?.birdKey==='harpyeagle') && (G.enemy.stats.hp||1)<=Math.floor((G.enemy.stats.maxHp||1)*0.4)) dmg=Math.floor(dmg*1.18);
     if(G.player?.birdKey==='seagull' && BIRDS.seagull?.passive?.id==='scavengeFlock' && (G.enemy.stats.hp||1)<=Math.floor((G.enemy.stats.maxHp||1)*0.6)) dmg=Math.floor(dmg*1.20);
     if(classPerkCtx.executionLine && (G.enemy.stats.hp||1)<=Math.floor((G.enemy.stats.maxHp||1)*0.4)) dmg=Math.floor(dmg*1.20);
     if(classPerkCtx.patientHunter && !G._perkFirstVsFullUsed && (G.enemy.stats.hp||0)>=(G.enemy.stats.maxHp||1)){
@@ -11320,14 +11434,32 @@ function getShoebillMasteryBonuses(ab){
   if(fam==='dread') return {markAmp:0.02*m.power+0.014*m.precision,readRider:0.01*m.precision+0.006*m.control,exposeStrip:0.006*m.power+0.005*m.precision,fearRider:2*m.control,defBreakRider:Math.floor(m.precision/2)+m.control};
   return {dmg:0,pierce:0,bleedRider:0,weakenRider:0,missCut:0,critBonus:0,fearRider:0,accRider:0,spdRider:0,guardRider:0,markAmp:0,readRider:0,defBreakRider:0,exposeStrip:0,lowHpRider:0,dodgeHumRider:0};
 }
+function getHarpyMasteryBonuses(ab){
+  const hk=G.player?.birdKey;
+  if(hk!=='harpy' && hk!=='harpyeagle'){
+    return {dmg:0,pierce:0,bleedRider:0,weakenRider:0,missCut:0,critBonus:0,paraRider:0,accRider:0,guardRider:0,markAmp:0,readRider:0,defBreakRider:0,exposeStrip:0,lowHpRider:0};
+  }
+  const slot=getAbilitySkillSlot(G.player,ab);
+  const m=getSlotMasteryProfile(slot||{});
+  const fam=(slot&&slot.familyId)||'';
+  if(fam==='talon') return {dmg:0.03*m.power+0.016*m.precision,pierce:2*m.precision+m.power,bleedRider:4*m.control+2*m.precision,weakenRider:3*m.control+2*m.precision,missCut:m.precision};
+  if(fam==='crush') return {dmg:0.034*m.power+0.017*m.precision,critBonus:2*m.precision+2*m.power,paraRider:3*m.control+2*m.precision,missCut:Math.floor(m.precision/2),defBreakRider:Math.floor(m.precision/3)+(m.control>0?1:0),lowHpRider:0.004*m.precision+0.005*m.control};
+  if(fam==='grip') return {guardRider:Math.floor(m.power/2)+Math.floor(m.control/2),markAmp:0.02*m.power+0.014*m.precision,accRider:2*m.precision+m.control,readRider:0.006*m.precision+0.005*m.control};
+  if(fam==='lock') return {markAmp:0.022*m.power+0.015*m.precision,readRider:0.01*m.precision+0.006*m.control,exposeStrip:0.006*m.power+0.005*m.precision,defBreakRider:Math.floor(m.precision/2)+m.control};
+  return {dmg:0,pierce:0,bleedRider:0,weakenRider:0,missCut:0,critBonus:0,paraRider:0,accRider:0,guardRider:0,markAmp:0,readRider:0,defBreakRider:0,exposeStrip:0,lowHpRider:0};
+}
 function strikeFamilyMasteryBonuses(ab){
   if(G.player?.birdKey==='goose') return getGooseMasteryBonuses(ab);
   if(G.player?.birdKey==='shoebill') return getShoebillMasteryBonuses(ab);
+  const _hk=G.player?.birdKey;
+  if(_hk==='harpy' || _hk==='harpyeagle') return getHarpyMasteryBonuses(ab);
   return {};
 }
 function braceFamilyMasteryBonuses(ab){
   if(G.player?.birdKey==='goose') return getGooseMasteryBonuses(ab);
   if(G.player?.birdKey==='shoebill') return getShoebillMasteryBonuses(ab);
+  const _hk2=G.player?.birdKey;
+  if(_hk2==='harpy' || _hk2==='harpyeagle') return getHarpyMasteryBonuses(ab);
   return {};
 }
 async function executeShoebillDreadExpose(ab, config){
@@ -11342,6 +11474,30 @@ async function executeShoebillDreadExpose(ab, config){
   await doSpell('enemy','🦤 Cracked!');
   renderStatuses('enemy-status',G.enemyStatus);
   logMsg(`${config.log} prey armor cracks (+${Math.round(G.enemyStatus.exposedGuard.pct*100)}% dmg taken).`,'player-action');
+}
+async function executeHarpyLockExpose(ab, config){
+  const lv=Math.max(1,Math.min(4,ab.level||1));
+  const mb=getHarpyMasteryBonuses(ab);
+  const mProf=getSlotMasteryProfile(getAbilitySkillSlot(G.player,ab)||{});
+  const base=(config.expose?.[lv-1]||0)+(mb.exposeStrip||0);
+  const defStrip=(config.defStrip?.[lv-1]||0)+Math.floor((mProf.precision||0)/2)+(mb.defBreakRider||0);
+  G.enemyStatus.exposedGuard={turns:config.turns?.[lv-1]||2, pct:base};
+  G.enemyStatus.defending=0;
+  if(defStrip>0) peregrineApplyDefBreak(defStrip, config.defTurns?.[lv-1]||2);
+  await doSpell('enemy','🦅 Cracked!');
+  renderStatuses('enemy-status',G.enemyStatus);
+  logMsg(`${config.log} locks the kill angle (+${Math.round(G.enemyStatus.exposedGuard.pct*100)}% dmg taken).`,'player-action');
+}
+async function executeHarpyGripAccBrace(ab, cfg){
+  const lv=Math.max(1,Math.min(4,ab.level||1));
+  const mb=braceFamilyMasteryBonuses(ab);
+  await doSpell('player',cfg.fx||'🦅');
+  const down=(cfg.accDown?.[lv-1]||0)+Math.floor(mb.accRider||0);
+  G.enemyStatus.accDebuff=(G.enemyStatus.accDebuff||0)+down;
+  if(cfg.weakenChance?.[lv-1] && chance(cfg.weakenChance[lv-1])){ applyAilment('enemy','weaken',1); spawnFloat('enemy','🐔 Weaken!','fn-status'); }
+  if(cfg.paraChance?.[lv-1] && chance(cfg.paraChance[lv-1]+(mb.paraRider||0))){ applyAilment('enemy','paralyzed',1); spawnFloat('enemy','⚡ Para!','fn-status'); }
+  renderStatuses('enemy-status',G.enemyStatus);
+  logMsg(`${cfg.log}! Prey vision falters (−${down} ACC).`,'player-action');
 }
 async function executeShoebillSwampStance(ab, cfg){
   const lv=Math.max(1,Math.min(4,ab.level||1));
@@ -11380,7 +11536,7 @@ async function executeGooseStrikeAction(ab, config={}){
   if(config.bleedChance?.[lv-1] && chance(config.bleedChance[lv-1]+(mb.bleedRider||0))){ applyAilment('enemy','bleed',1); spawnFloat('enemy','🩸 Bleed!','fn-poison'); }
   if(config.weakenChance?.[lv-1] && chance(config.weakenChance[lv-1]+(mb.weakenRider||0))){ applyAilment('enemy','weaken',1); spawnFloat('enemy','🐔 Weaken!','fn-status'); }
   if(config.fearChance?.[lv-1] && chance(config.fearChance[lv-1]+(mb.fearRider||0))){ applyAilment('enemy','feared',1); spawnFloat('enemy','😨 Fear!','fn-status'); }
-  if(config.paraChance?.[lv-1] && chance(config.paraChance[lv-1])){ applyAilment('enemy','paralyzed',1); spawnFloat('enemy','⚡ Para!','fn-status'); }
+  if(config.paraChance?.[lv-1] && chance(config.paraChance[lv-1]+(mb.paraRider||0))){ applyAilment('enemy','paralyzed',1); spawnFloat('enemy','⚡ Para!','fn-status'); }
   if(config.accDown?.[lv-1]) G.enemyStatus.accDebuff=(G.enemyStatus.accDebuff||0)+config.accDown[lv-1]+Math.floor(mb.accRider||0);
   if(config.defBreak?.[lv-1]) peregrineApplyDefBreak(config.defBreak[lv-1]+(mb.defBreakRider||0), config.defBreakTurns?.[lv-1]||2);
   if(config.applyExpose?.[lv-1]){
@@ -11532,8 +11688,47 @@ const SHOEBILL_SKILL_ACTION_OVERRIDES = {
   sbl_read_sign: ab=>executeGooseBrace(ab,{log:'🦤 Read Sign', fx:'🦤', markAmpRead:{amp:[0.14,0.16,0.18,0.20], read:[0.09,0.11,0.13,0.15]}}),
   sbl_read_doom: ab=>executeGooseBrace(ab,{log:'🦤 Read Doom', fx:'🦤', markAmpRead:{amp:[0.18,0.20,0.22,0.24], read:[0.12,0.14,0.16,0.18]}}),
 };
+const HARPY_SKILL_ACTION_OVERRIDES = {
+  hrp_talon_clutch: ab=>executeGooseStrikeAction(ab,{name:'Talon Clutch', log:'🦅 Talon Clutch', miss:[12,11,10,9], mult:[1.02,1.08,1.14,1.20], pierce:[12,14,16,18]}),
+  hrp_split_rend: ab=>executeGooseStrikeAction(ab,{name:'Split Rend', log:'🦅 Split Rend', miss:[11,10,9,8], mult:[1.10,1.16,1.22,1.30], pierce:[18,22,26,30], bonusVs:'guard', bonus:[0.06,0.08,0.10,0.12]}),
+  hrp_bone_rip: ab=>executeGooseStrikeAction(ab,{name:'Bone Rip', log:'🦅 Bone Rip', miss:[10,9,8,7], mult:[1.22,1.30,1.38,1.46], pierce:[26,30,34,38], bonusVs:'guard', bonus:[0.10,0.12,0.14,0.16]}),
+  hrp_rending_clutch: ab=>executeGooseStrikeAction(ab,{name:'Rending Clutch', log:'🩸 Rending Clutch', miss:[12,11,10,9], mult:[1.04,1.10,1.16,1.22], bleedChance:[12,14,16,18]}),
+  hrp_deep_rend: ab=>executeGooseStrikeAction(ab,{name:'Deep Rend', log:'🩸 Deep Rend', miss:[11,10,9,8], mult:[1.14,1.20,1.26,1.34], bleedChance:[16,18,20,22], bonusVs:'bleed', bonus:[0.08,0.10,0.12,0.14]}),
+  hrp_blood_rip: ab=>executeGooseStrikeAction(ab,{name:'Blood Rip', log:'🩸 Blood Rip', miss:[10,9,8,7], mult:[1.26,1.34,1.42,1.50], bleedChance:[20,22,24,26], bonusVs:'bleed', bonus:[0.12,0.14,0.16,0.18]}),
+  hrp_crushing_clutch: ab=>executeGooseStrikeAction(ab,{name:'Crushing Clutch', log:'🦅 Crushing Clutch', miss:[12,11,10,9], mult:[0.96,1.02,1.08,1.14], weakenChance:[12,14,16,18]}),
+  hrp_sapping_rend: ab=>executeGooseStrikeAction(ab,{name:'Sapping Rend', log:'🦅 Sapping Rend', miss:[11,10,9,8], mult:[1.04,1.10,1.16,1.22], weakenChance:[18,20,22,24]}),
+  hrp_hollow_rip: ab=>executeGooseStrikeAction(ab,{name:'Hollow Rip', log:'🦅 Hollow Rip', miss:[10,9,8,7], mult:[1.14,1.22,1.30,1.38], weakenChance:[22,24,26,28], bonusVs:'weakened', bonus:[0.08,0.10,0.12,0.14]}),
+  hrp_canopy_crush: ab=>executeGooseStrikeAction(ab,{name:'Canopy Crush', log:'🦅 Canopy Crush', miss:[22,20,18,16], mult:[1.42,1.50,1.58,1.66], useBodyScaling:true, critBonus:[6,8,10,12]}),
+  hrp_predator_break: ab=>executeGooseStrikeAction(ab,{name:'Predator Break', log:'🦅 Predator Break', miss:[20,18,16,14], mult:[1.56,1.66,1.76,1.86], useBodyScaling:true, critBonus:[10,12,14,16]}),
+  hrp_crown_dominion: ab=>executeGooseStrikeAction(ab,{name:'Crown Dominion', log:'🦅 Crown Dominion', miss:[18,16,14,12], mult:[1.70,1.80,1.90,2.00], useBodyScaling:true, critBonus:[14,16,18,22], pierce:[6,8,10,12]}),
+  hrp_shock_crush: ab=>executeGooseStrikeAction(ab,{name:'Shock Crush', log:'⚡ Shock Crush', miss:[22,20,18,16], mult:[1.34,1.42,1.50,1.58], useBodyScaling:true, paraChance:[14,16,18,20]}),
+  hrp_snare_break: ab=>executeGooseStrikeAction(ab,{name:'Snare Break', log:'⚡ Snare Break', miss:[20,18,16,14], mult:[1.44,1.52,1.60,1.68], useBodyScaling:true, paraChance:[20,22,24,26], accDown:[4,5,6,8]}),
+  hrp_lock_dominion: ab=>executeGooseStrikeAction(ab,{name:'Lock Dominion', log:'⚡ Lock Dominion', miss:[18,16,14,12], mult:[1.54,1.64,1.74,1.84], useBodyScaling:true, paraChance:[24,26,28,30], bonusVs:'compromised', bonus:[0.08,0.10,0.12,0.14]}),
+  hrp_hunter_crush: ab=>executeGooseStrikeAction(ab,{name:'Hunter Crush', log:'☠ Hunter Crush', miss:[22,20,18,16], mult:[1.38,1.46,1.54,1.62], useBodyScaling:true, bonusVs:'low_hp', bonus:[0.14,0.16,0.18,0.20], lowHpThreshold:0.5}),
+  hrp_prey_break: ab=>executeGooseStrikeAction(ab,{name:'Prey Break', log:'☠ Prey Break', miss:[20,18,16,14], mult:[1.50,1.60,1.70,1.80], useBodyScaling:true, bonusVs:'low_hp', bonus:[0.20,0.22,0.24,0.26], lowHpThreshold:0.5}),
+  hrp_final_dominion: ab=>executeGooseStrikeAction(ab,{name:'Final Dominion', log:'☠ Final Dominion', miss:[18,16,14,12], mult:[1.62,1.74,1.86,1.98], useBodyScaling:true, bonusVs:'low_hp', bonus:[0.26,0.28,0.30,0.32], lowHpThreshold:0.45}),
+  hrp_predator_grip: ab=>executeGooseBrace(ab,{log:'🦅 Predator Grip', fx:'🦅', guard:[11,13,15,17]}),
+  hrp_iron_hold: ab=>executeGooseBrace(ab,{log:'🦅 Iron Hold', fx:'🦅', guard:[16,18,21,24]}),
+  hrp_death_seize: ab=>executeGooseBrace(ab,{log:'🦅 Death Seize', fx:'🦅', guard:[22,26,30,34]}),
+  hrp_lining_grip: ab=>executeGooseBrace(ab,{log:'🦅 Lining Grip', fx:'🦅', markAmp:[0.12,0.14,0.16,0.18]}),
+  hrp_measured_grip: ab=>executeGooseBrace(ab,{log:'🦅 Measured Hold', fx:'🦅', markAmp:[0.18,0.20,0.22,0.24]}),
+  hrp_kill_seize: ab=>executeGooseBrace(ab,{log:'🦅 Kill Seize', fx:'🦅', markAmp:[0.26,0.28,0.30,0.32]}),
+  hrp_harsh_grip: ab=>executeHarpyGripAccBrace(ab,{log:'🦅 Harsh Grip', fx:'🦅', accDown:[8,10,12,14]}),
+  hrp_breaking_hold: ab=>executeHarpyGripAccBrace(ab,{log:'🦅 Breaking Hold', fx:'🦅', accDown:[12,14,16,18], weakenChance:[10,12,14,16]}),
+  hrp_blinding_seize: ab=>executeHarpyGripAccBrace(ab,{log:'🦅 Blinding Seize', fx:'🦅', accDown:[16,18,20,22], paraChance:[10,12,14,16]}),
+  hrp_prey_lock: ab=>executeGooseBrace(ab,{log:'🦅 Prey Lock', fx:'🦅', markAmp:[0.12,0.15,0.18,0.21]}),
+  hrp_hunter_claim: ab=>executeGooseBrace(ab,{log:'🦅 Hunter Claim', fx:'🦅', markAmp:[0.18,0.22,0.26,0.30]}),
+  hrp_doom_dominion: ab=>executeGooseBrace(ab,{log:'🦅 Doom Dominion', fx:'🦅', markAmp:[0.26,0.30,0.34,0.38]}),
+  hrp_crack_lock: ab=>executeHarpyLockExpose(ab,{log:'🦅 Crack Lock', expose:[0.10,0.12,0.14,0.16], turns:[2,2,2,2], defStrip:[1,1,2,2], defTurns:[2,2,2,3]}),
+  hrp_break_claim: ab=>executeHarpyLockExpose(ab,{log:'🦅 Break Claim', expose:[0.14,0.16,0.18,0.20], turns:[2,2,3,3], defStrip:[2,2,2,3], defTurns:[2,2,3,3]}),
+  hrp_ruin_dominion: ab=>executeHarpyLockExpose(ab,{log:'🦅 Ruin Dominion', expose:[0.18,0.20,0.22,0.24], turns:[3,3,3,3], defStrip:[2,3,3,4], defTurns:[3,3,3,3]}),
+  hrp_read_prey: ab=>executeGooseBrace(ab,{log:'🦅 Read Prey', fx:'🦅', markAmpRead:{amp:[0.10,0.12,0.14,0.16], read:[0.06,0.08,0.10,0.12]}}),
+  hrp_read_claim: ab=>executeGooseBrace(ab,{log:'🦅 Read Claim', fx:'🦅', markAmpRead:{amp:[0.14,0.16,0.18,0.20], read:[0.09,0.11,0.13,0.15]}}),
+  hrp_read_dominion: ab=>executeGooseBrace(ab,{log:'🦅 Read Dominion', fx:'🦅', markAmpRead:{amp:[0.18,0.20,0.22,0.24], read:[0.12,0.14,0.16,0.18]}}),
+};
 Object.entries(GOOSE_SKILL_ACTION_OVERRIDES).forEach(([id, fn])=>{ ACTIONS[id]=fn; });
 Object.entries(SHOEBILL_SKILL_ACTION_OVERRIDES).forEach(([id, fn])=>{ ACTIONS[id]=fn; });
+Object.entries(HARPY_SKILL_ACTION_OVERRIDES).forEach(([id, fn])=>{ ACTIONS[id]=fn; });
 registerAbilityAlias('iceGuard','crowDefend','Ice Guard');
 registerAbilityAlias('bodySlam','beakSlam','Body Slam');
 registerAbilityAlias('rallyCall','victoryChant','Rally Call',{type:'utility',btnType:'utility'});
@@ -12668,6 +12863,58 @@ const SHOEBILL_TWO_EN_TREE_IDS = Object.freeze([
   'sbl_skull_crack','sbl_grave_collapse','sbl_skull_ruin','sbl_dread_crack','sbl_hollow_collapse','sbl_night_ruin','sbl_hunter_crack','sbl_prey_collapse','sbl_final_ruin',
 ]);
 for(const id of SHOEBILL_TWO_EN_TREE_IDS){
+  const tmpl=ABILITY_TEMPLATES?.[id];
+  if(!tmpl) continue;
+  tmpl.energyCost=2;
+  tmpl.energyByLevel=[2,2,2,2];
+}
+
+const _hrpCrush=(v,note)=>({ baseScaler:'ATT', secondaryScaler:'DEF', secondaryScaleValue:v, scalingNote:note||'DEF adds crushing canopy weight.', conditionalBonuses:[{type:'while_guarding',damageBonus:0.08}] });
+const HARPY_EVOLUTION_TEMPLATE_DEFS = [
+  ['hrp_talon_clutch','Talon Clutch','Talon-line neutral. Massive clutch before you branch.',{type:'physical',btnType:'physical',energy:1,fixedMainAttackCost:true,levels:[{desc:'1 EN. Heavy talon clutch.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Peak clutch.'}]}],
+  ['hrp_split_rend','Split Rend','Talon-line pierce evolution.',{type:'physical',btnType:'physical',energy:1,levels:[{desc:'Pierce + anti-guard.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Split rend.'}]}],
+  ['hrp_bone_rip','Bone Rip','Talon-line pierce finisher.',{type:'physical',btnType:'physical',energy:1,levels:[{desc:'Armor-breaking rip.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Bone rip.'}]}],
+  ['hrp_rending_clutch','Rending Clutch','Talon-line bleed branch.',{type:'physical',btnType:'physical',energy:1,levels:[{desc:'Open a bleeding clutch.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Rending clutch.'}]}],
+  ['hrp_deep_rend','Deep Rend','Talon-line bleed evolution.',{type:'physical',btnType:'physical',energy:1,levels:[{desc:'Deeper wounds.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Deep rend.'}]}],
+  ['hrp_blood_rip','Blood Rip','Talon-line bleed finisher.',{type:'physical',btnType:'physical',energy:1,levels:[{desc:'Bleed bully payoff.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Blood rip.'}]}],
+  ['hrp_crushing_clutch','Crushing Clutch','Talon-line weaken branch.',{type:'physical',btnType:'physical',energy:1,levels:[{desc:'Weaken on clutch.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Crushing clutch.'}]}],
+  ['hrp_sapping_rend','Sapping Rend','Talon-line weaken evolution.',{type:'physical',btnType:'physical',energy:1,levels:[{desc:'Sap their swing.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Sapping rend.'}]}],
+  ['hrp_hollow_rip','Hollow Rip','Talon-line weaken finisher.',{type:'physical',btnType:'physical',energy:1,levels:[{desc:'Bonus vs weakened prey.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Hollow rip.'}]}],
+  ['hrp_canopy_crush','Canopy Crush','Crush-line neutral. Signature canopy drop (2 EN).',{type:'physical',btnType:'physical',energy:2,levels:[{desc:'2 EN. Crushing apex strike.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Peak crush.'}], damageScaling:_hrpCrush(0.28,'DEF adds drop weight.')}],
+  ['hrp_predator_break','Predator Break','Crush-line crit evolution.',{type:'physical',btnType:'physical',energy:2,levels:[{desc:'2 EN. Heavier crit bias.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Predator break.'}], damageScaling:_hrpCrush(0.32,'DEF adds break force.')}],
+  ['hrp_crown_dominion','Crown Dominion','Crush-line crit finisher.',{type:'physical',btnType:'physical',energy:2,levels:[{desc:'2 EN. Crown-tier brutality.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Crown dominion.'}], damageScaling:_hrpCrush(0.36,'DEF adds dominion drive.')}],
+  ['hrp_shock_crush','Shock Crush','Crush-line paralysis branch.',{type:'physical',btnType:'physical',energy:2,levels:[{desc:'2 EN. Pinning shock crush.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Shock crush.'}], damageScaling:_hrpCrush(0.26,'DEF adds shock weight.')}],
+  ['hrp_snare_break','Snare Break','Crush-line paralysis evolution.',{type:'physical',btnType:'physical',energy:2,levels:[{desc:'2 EN. Snaring break.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Snare break.'}], damageScaling:_hrpCrush(0.30,'DEF adds snare force.')}],
+  ['hrp_lock_dominion','Lock Dominion','Crush-line paralysis finisher.',{type:'physical',btnType:'physical',energy:2,levels:[{desc:'2 EN. Prey cannot flee.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Lock dominion.'}], damageScaling:_hrpCrush(0.34,'DEF adds lock pressure.')}],
+  ['hrp_hunter_crush','Hunter Crush','Crush-line execute branch.',{type:'physical',btnType:'physical',energy:2,levels:[{desc:'2 EN. Finisher crush vs wounded prey.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Hunter crush.'}], damageScaling:_hrpCrush(0.28,'DEF adds execution weight.')}],
+  ['hrp_prey_break','Prey Break','Crush-line execute evolution.',{type:'physical',btnType:'physical',energy:2,levels:[{desc:'2 EN. Wider kill window.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Prey break.'}], damageScaling:_hrpCrush(0.32,'DEF adds prey drive.')}],
+  ['hrp_final_dominion','Final Dominion','Crush-line execute finisher.',{type:'physical',btnType:'physical',energy:2,levels:[{desc:'2 EN. Terminal canopy execution.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Final dominion.'}], damageScaling:_hrpCrush(0.36,'DEF adds terminal crush.')}],
+  ['hrp_predator_grip','Predator Grip','Grip-line neutral. Seize and brace.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'1 EN. Guard stack; predator bulk.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Iron grip.'}]}],
+  ['hrp_iron_hold','Iron Hold','Grip-line guard evolution.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Heavier guard.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Iron hold.'}]}],
+  ['hrp_death_seize','Death Seize','Grip-line guard finisher.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Maximum stubborn guard.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Death seize.'}]}],
+  ['hrp_lining_grip','Lining Grip','Grip-line amp branch.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Next-hit damage amp.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Lining grip.'}]}],
+  ['hrp_measured_grip','Measured Hold','Grip-line amp evolution.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Bigger next-hit window.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Measured hold.'}]}],
+  ['hrp_kill_seize','Kill Seize','Grip-line amp finisher.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Maximum kill setup.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Kill seize.'}]}],
+  ['hrp_harsh_grip','Harsh Grip','Grip-line ACC-break branch.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Blind their aim.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Harsh grip.'}]}],
+  ['hrp_breaking_hold','Breaking Hold','Grip-line ACC-break evolution.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'ACC crash + weaken pressure.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Breaking hold.'}]}],
+  ['hrp_blinding_seize','Blinding Seize','Grip-line ACC-break finisher.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Blinding seize + para chance.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Blinding seize.'}]}],
+  ['hrp_prey_lock','Prey Lock','Lock-line neutral. Mark the quarry.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Next-hit damage amp.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Prey lock.'}]}],
+  ['hrp_hunter_claim','Hunter Claim','Lock-line amp evolution.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Bigger next-hit window.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Hunter claim.'}]}],
+  ['hrp_doom_dominion','Doom Dominion','Lock-line amp finisher.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Maximum doom setup.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Doom dominion.'}]}],
+  ['hrp_crack_lock','Crack Lock','Lock-line DEF break branch.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Expose + DEF stress.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Crack lock.'}]}],
+  ['hrp_break_claim','Break Claim','Lock-line DEF break evolution.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Larger break window.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Break claim.'}]}],
+  ['hrp_ruin_dominion','Ruin Dominion','Lock-line DEF break finisher.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Ruinous guard collapse.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Ruin dominion.'}]}],
+  ['hrp_read_prey','Read Prey','Lock-line read branch.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Amp + bonus vs compromised.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Read prey.'}]}],
+  ['hrp_read_claim','Read Claim','Lock-line read evolution.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Stronger read on debuffed prey.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Read claim.'}]}],
+  ['hrp_read_dominion','Read Dominion','Lock-line read finisher.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Capstone read payoff.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Read dominion.'}]}],
+];
+for(const [id,name,desc,options] of HARPY_EVOLUTION_TEMPLATE_DEFS){
+  ABILITY_TEMPLATES[id] = Object.assign(ABILITY_TEMPLATES[id]||{}, makeEvolutionAbilityTemplate(id,name,desc,options));
+}
+const HARPY_TWO_EN_TREE_IDS = Object.freeze([
+  'hrp_canopy_crush','hrp_predator_break','hrp_crown_dominion','hrp_shock_crush','hrp_snare_break','hrp_lock_dominion','hrp_hunter_crush','hrp_prey_break','hrp_final_dominion',
+]);
+for(const id of HARPY_TWO_EN_TREE_IDS){
   const tmpl=ABILITY_TEMPLATES?.[id];
   if(!tmpl) continue;
   tmpl.energyCost=2;
@@ -20319,7 +20566,7 @@ SPRITE_KEYS_ALL.add('magpie');
   const TRICKSTERS = new Set(['crow','raven','magpie','seagull']);
   const DEFENSIVE = new Set(['goose','swan','pelican','duck']);
   const PREDATORS = new Set(['hawk','falcon','eagle','owl','redtailedhawk','barnowl']);
-  const AGGRESSORS = new Set(['emu','cassowary','shoebill','secretarybird','condor']);
+  const AGGRESSORS = new Set(['emu','cassowary','shoebill','secretarybird','harpy','harpyeagle','condor']);
   const BOSS_IDS = new Set(['dukeblakiston']);
 
   const style = document.createElement('style');

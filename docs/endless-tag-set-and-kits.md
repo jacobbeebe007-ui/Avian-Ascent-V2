@@ -42,6 +42,7 @@ Design implication:
 - Sit and Wait: `[UTILITY][CONTROL][SIGNATURE]`
 - Owl's Psyche: `[SPELL][CONTROL][SIGNATURE]`
 - Shoebill Stork: `sbl_still_stance` `[GUARD]`, `sbl_dread_mark` `[UTILITY]`, plus `[BASIC]` / `[HEAVY][SIGNATURE]` on `sbl_beak_chop` / `sbl_skull_crack`. Pre-overhaul **Shoebill Clamp** (`shoebillClamp`) was removed from live templates/actions; save migration still recognizes the id string when rewriting old slots.
+- Harpy Eagle: `hrp_predator_grip` `[GUARD]`, `hrp_prey_lock` `[UTILITY]`, plus `[BASIC]` on `hrp_talon_clutch` and `[HEAVY][SIGNATURE]` on `hrp_canopy_crush` (2 EN crush line). All live combat ids use the `hrp_` prefix (avoids Snowy Owl `talon_clutch` and shared legacy strings).
 - Fish Snatcher: `[UTILITY][HEAL][SIGNATURE]`
 - Roost: `[HEAL]`
 - Preen: `[UTILITY][HEAL]`
@@ -63,6 +64,7 @@ Design implication:
 - Kookaburra: Beak Chop, Laugh Call, Perch Watch, Drop Strike (family evolution; bruiser)
 - Hummingbird: Needle Jab, Dash, Blink Flutter, Combo Strike (family evolution; **dash** third branch is **rend** with bleed riders; combo path keeps afterbeat resonance)
 - Peregrine Falcon: Talon Jab, Dive, Keen Eye, Aerial Pace
+- Harpy Eagle: Talon Clutch (`hrp_talon_clutch`), Canopy Crush (`hrp_canopy_crush`), Predator Grip (`hrp_predator_grip`), Prey Lock (`hrp_prey_lock`) — family evolution (**predator / canopy execution bruiser** — 1 EN talon pierce/bleed/weaken, 2 EN crush crit/paralysis/execute, grip guard/amp/ACC break, lock amp/break/read). Old flat kit (`fleshTear`, `raptorDive`, `predatorMark`, `executionTalon` and resolved `fleshRipper`, `deathDive`, `beakSlam`) migrates via `legacyBaseAbilityIds` + `migrateHarpyLegacyFamilySkillSlots`. Shared `registerAbilityAlias` entries for those legacy display ids remain for other birds/codex.
 - Snowy Owl: Talon Snap, Silent Dive, Owl Eye, Frost Glide
 - Magpie: Swoop, Steal Shine, Feather Flick, Dart
 - Seagull: Snap Peck, Swoop Pass, Raucous Cry, Scavenge Mark (family evolution; trickster — canonical ids `sgl_snap_peck`, `sgl_swoop_pass`, `sgl_raucous_cry`, `sgl_scavenge_mark`; snap bleed/pierce/expose, 2 EN swoop crit/blindside/slow, cry ACC break/weaken/speed, scavenge amp/break/read). Passive **Scavenger's Instinct** (+20% vs &lt;60% HP; mob ATK→SPD steal; Fear immune). Pre-overhaul flat ids (`featherFlick`, `diveSnatch`, `blindScreech`, `distractingChorus`, …) are **not** live `registerAbilityAlias` → `sgl_*` targets (shared globals like `diveSnatch`→`fishSnatcher` remain for other legacy/codex paths); save/load rewrites Seagull slots to `sgl_*` via `legacyBaseAbilityIds` + `migrateSeagullLegacyFamilySkillSlots`. Unlock: any **Trickster** at Endless Lv.21.
