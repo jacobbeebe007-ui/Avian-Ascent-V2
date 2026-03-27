@@ -194,17 +194,129 @@ function extractTopLevelObjectKeys(objectLiteralSrc){
   return Array.from(new Set(keys));
 }
 
+function extractAbilityTemplateAssignKeys(gameSrc){
+  const s = new Set();
+  let m;
+  const r1 = /ABILITY_TEMPLATES\['([^']+)'\]\s*=/g;
+  while((m = r1.exec(gameSrc))) s.add(m[1]);
+  const r2 = /ABILITY_TEMPLATES\.([A-Za-z0-9_]+)\s*=/g;
+  while((m = r2.exec(gameSrc))) s.add(m[1]);
+  return s;
+}
+
 function getTemplateAbilityIds(){
   const gameSrc = fs.readFileSync(path.join('js','core','game.js'), 'utf8');
   const baseObj = extractObjectLiteralAfterMarker(gameSrc, 'const ABILITY_TEMPLATES =');
   const extraObj = extractObjectLiteralAfterMarker(gameSrc, 'const ABILITY_TEMPLATES_EXTRA =');
+  const learnObj = extractObjectLiteralAfterMarker(gameSrc, 'const ABILITY_TEMPLATES_LEARNABLE =');
+  const magicObj = extractObjectLiteralAfterMarker(gameSrc, 'const ABILITY_TEMPLATES_MAGIC =');
+  const sparrowEvo = extractObjectLiteralAfterMarker(gameSrc, 'const SPARROW_EVOLUTION_TEMPLATES =');
   if(!baseObj || !extraObj) return { ids: [], parseError: 'Could not parse ABILITY_TEMPLATES blocks from js/core/game.js' };
 
   const ids = new Set([
     ...extractTopLevelObjectKeys(baseObj),
-    ...extractTopLevelObjectKeys(extraObj)
+    ...extractTopLevelObjectKeys(extraObj),
+    ...(learnObj ? extractTopLevelObjectKeys(learnObj) : []),
+    ...(magicObj ? extractTopLevelObjectKeys(magicObj) : []),
+    ...(sparrowEvo ? extractTopLevelObjectKeys(sparrowEvo) : []),
+    ...extractAbilityTemplateAssignKeys(gameSrc)
   ]);
+  ids.delete('mimic');
   return { ids: Array.from(ids), parseError: null };
+}
+
+function extractActionsBlockKeys(gameSrc){
+  const start = gameSrc.indexOf('const ACTIONS = {');
+  const keys = new Set();
+  if(start !== -1){
+    const slice = extractObjectLiteralAfterMarker(gameSrc.slice(start), 'const ACTIONS =');
+    if(slice) extractTopLevelObjectKeys(slice).forEach(k => keys.add(k));
+  }
+  const re = /Object\.assign\(ACTIONS,\s*\{/g;
+  let m;
+  while((m = re.exec(gameSrc))){
+    const sub = extractObjectLiteralAfterMarker(gameSrc.slice(m.index), 'Object.assign(ACTIONS,');
+    if(sub) extractTopLevelObjectKeys(sub).forEach(k => keys.add(k));
+  }
+  return Array.from(keys);
+}
+
+function extractRegisterAliasIds(gameSrc){
+  const out = new Set();
+  const re = /registerAbilityAlias\(\s*'([^']+)'/g;
+  let m;
+  while((m = re.exec(gameSrc))) out.add(m[1]);
+  return Array.from(out);
+}
+
+function extractSkillOverrideKeys(gameSrc){
+  const out = new Set();
+  const re = /const ([A-Z0-9_]+_SKILL_ACTION_OVERRIDES) = \{/g;
+  let m;
+  while((m = re.exec(gameSrc))){
+    const marker = `const ${m[1]} =`;
+    const sub = extractObjectLiteralAfterMarker(gameSrc, marker);
+    if(sub) extractTopLevelObjectKeys(sub).forEach(k => out.add(k));
+  }
+  return Array.from(out);
+}
+
+function runAbilityInventoryAndWiringReport(){
+  const gamePath = path.join('js','core','game.js');
+  const gameSrc = fs.readFileSync(gamePath, 'utf8');
+  const { ids: templateIds, parseError } = getTemplateAbilityIds();
+  if(parseError){
+    fail(parseError);
+    return;
+  }
+  const templateSet = new Set(templateIds);
+  const actionKeys = extractActionsBlockKeys(gameSrc);
+  const aliasIds = extractRegisterAliasIds(gameSrc);
+  const overrideKeys = extractSkillOverrideKeys(gameSrc);
+  const actionSet = new Set(actionKeys);
+  overrideKeys.forEach(k => actionSet.add(k));
+
+  const actionsWithoutTemplate = actionKeys.filter(id => !templateSet.has(id)).sort();
+  const overridesWithoutTemplate = overrideKeys.filter(id => !templateSet.has(id)).sort();
+  const aliasMissingTarget = [];
+  const reAlias = /registerAbilityAlias\(\s*'([^']+)'\s*,\s*'([^']+)'/g;
+  let am;
+  while((am = reAlias.exec(gameSrc))){
+    const [, newId, srcId] = am;
+    if(!templateSet.has(srcId)) aliasMissingTarget.push(`${newId}→${srcId}`);
+  }
+
+  const cooldownShort = [];
+  for(const id of templateIds){
+    const markerRe = new RegExp(`\\b${id.replace(/[^a-zA-Z0-9_]/g,'')}\\s*:\\s*\\{`);
+    if(!markerRe.test(gameSrc)) continue;
+    const idx = gameSrc.search(markerRe);
+    if(idx === -1) continue;
+    const chunk = gameSrc.slice(idx, idx + 1200);
+    const mc = chunk.match(/cooldownByLevel\s*:\s*\[([^\]]*)\]/);
+    if(!mc) continue;
+    const parts = mc[1].split(',').map(s => s.trim()).filter(Boolean);
+    if(parts.length > 0 && parts.length !== 4) cooldownShort.push(`${id}(${parts.length})`);
+  }
+
+  const lines = [
+    `Ability wiring: ${templateIds.length} template ids (merged), ${actionKeys.length} base ACTIONS, ${overrideKeys.length} override keys, ${aliasIds.length} registerAbilityAlias new-ids.`,
+    `- ACTIONS missing template (${actionsWithoutTemplate.length}): ${actionsWithoutTemplate.join(', ') || 'none'}`,
+    `- Overrides missing template (${overridesWithoutTemplate.length}): ${overridesWithoutTemplate.join(', ') || 'none'}`,
+    `- Alias source missing template (${aliasMissingTarget.length}): ${aliasMissingTarget.slice(0, 12).join('; ') || 'none'}${aliasMissingTarget.length > 12 ? '…' : ''}`,
+    `- cooldownByLevel length ≠ 4 (${cooldownShort.length}): ${cooldownShort.slice(0, 20).join(', ') || 'none'}${cooldownShort.length > 20 ? '…' : ''}`
+  ];
+
+  const bad = actionsWithoutTemplate.length || overridesWithoutTemplate.length || aliasMissingTarget.length;
+  if(bad && STRICT_PARITY){
+    fail(lines.join('\n'));
+    return;
+  }
+  if(bad && IS_DEV_MODE){
+    console.warn(lines.join('\n'));
+  } else if(process.env.ABILITY_INVENTORY_LOG === '1'){
+    console.log(lines.join('\n'));
+  }
 }
 
 function runAbilityMetadataParityCheck(){
@@ -262,6 +374,7 @@ function runAbilityMetadataParityCheck(){
 });
 
 runAbilityMetadataParityCheck();
+runAbilityInventoryAndWiringReport();
 
 if(process.exitCode){
   process.exit(process.exitCode);
