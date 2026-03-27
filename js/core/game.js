@@ -132,7 +132,7 @@ const ABILITY_TEMPLATES = {
 
   rapidPeck:{
     id:'rapidPeck', name:'Rapid Peck', isBasic:true, type:'physical', btnType:'physical',
-    desc:'Fast striker flurry. 3 reliable pecks with tempo pressure.',
+    desc:'Fast striker flurry. Three reliable pecks with pierce pressure.',
     baseMissChance:8, baseDmgMult:0.55, pierceDef:0,
     energyByLevel:[1,1,1,1],
     energyCost:1,
@@ -786,7 +786,7 @@ const BIRDS = {
     statBars:{HP:46/50,ATK:9/15,SPD:7/10,Dodge:.44,ACC:.82}, color:'#c8a060',
     mainAttackId:'beak_chop',
     startAbilities:['beak_chop','laugh_call','perch_watch','drop_strike'],
-    passive:{id:'laughingPerch',name:'Laughing Perch',desc:'Laugh-line sonic spells ignore 8% M.DEF. +5% damage vs Feared or Paralyzed foes. First physical attack each battle always crits. Immune to Fear and Confused. Boss kill resets your opening strike tempo.',
+    passive:{id:'laughingPerch',name:'Laughing Perch',desc:'Laugh-line sonic spells ignore 8% M.DEF. +5% damage vs Feared or Paralyzed foes. First physical attack each battle always crits. Immune to Fear and Confused. Boss kill resets your opening-strike crit window.',
       immuneFear:true, immuneConfused:true,
       get _laughMdefPierce(){return 0.08;},
       onBattleStart(p){p.firstAttackAlwaysCrit=true;},
@@ -1361,7 +1361,7 @@ const UPGRADE_CARDS_REWORK = [
   {id:'z_king_bloodline',tier:'gold',icon:'👑',name:'King Bloodline',desc:'+18% Max HP (min +22)',tags:['stat','hp'],stackable:false,apply:p=>_upgPctMaxHp(p,0.18,22)},
   {id:'z_sky_predator',tier:'gold',icon:'🦅',name:'Sky Predator',desc:'First attack each battle always crits',tags:['unique','offense'],stackable:false,apply:p=>{p.firstAttackAlwaysCrit=true;}},
   {id:'z_blackstone_trophy',tier:'gold',icon:'🗿',name:'Blackstone Trophy',desc:'Enemies start battle with Fear(1)',tags:['unique','control'],stackable:false,apply:p=>{p.openingEnemyFear=(p.openingEnemyFear||0)+1;}},
-  {id:'z_tempo_crown',tier:'gold',icon:'⏱️',name:'Tempo Crown',desc:'First attack each turn +20% damage',tags:['unique','opening'],stackable:false,apply:p=>{p.firstAttackEachTurnBonusPct=Math.max(p.firstAttackEachTurnBonusPct||0,0.20);}},
+  {id:'z_tempo_crown',tier:'gold',icon:'⏱️',name:'Opening Crown',desc:'First physical hit each turn +20% damage',tags:['unique','opening'],stackable:false,apply:p=>{p.firstAttackEachTurnBonusPct=Math.max(p.firstAttackEachTurnBonusPct||0,0.20);}},
   {id:'z_void_rune',tier:'gold',icon:'🌑',name:'Void Rune',desc:'Spells gain +15% damage',tags:['unique','magic'],stackable:false,apply:p=>{p.augSpellDmgPct=Math.max(p.augSpellDmgPct||0,0.15);}},
 ];
 
@@ -1427,7 +1427,7 @@ const ENDLESS_RELICS = [
 const ENDLESS_MUTATIONS = [
   {id:'mut_blood_moon',name:'Blood Moon',tier:'purple',type:'mutation',desc:'Endless only — Bleed you apply deals double damage, but enemies gain +10% ATK.',apply:p=>{p.mutBloodMoon=true;}},
   {id:'mut_venom_season',name:'Venom Season',tier:'purple',type:'mutation',desc:'Endless only — Poison lasts +1 turn, but Max HP -10%.',apply:p=>{p.mutVenomSeason=true;p.stats.maxHp=Math.max(1,Math.floor(p.stats.maxHp*0.9));p.stats.hp=Math.min(p.stats.hp,p.stats.maxHp);}},
-  {id:'mut_gale_tempo',name:'Gale Tempo',tier:'purple',type:'mutation',desc:'Endless only — SPD bonuses doubled, Dodge bonuses halved.',apply:p=>{p.mutGaleTempo=true;}},
+  {id:'mut_gale_tempo',name:'Gale Exchange',tier:'purple',type:'mutation',desc:'Endless only — SPD bonuses doubled, Dodge bonuses halved.',apply:p=>{p.mutGaleTempo=true;}},
   {id:'mut_arc_overload',name:'Arc Overload',tier:'purple',type:'mutation',desc:'Endless only — Spells deal +30% damage, but cost +1 Energy.',apply:p=>{p.mutArcOverload=true;}},
   {id:'mut_hunters_cruelty',name:"Hunter's Cruelty",tier:'purple',type:'mutation',desc:'Endless only — +20% execute damage (<50% HP), but post-battle healing halved.',apply:p=>{p.mutHuntersCruelty=true;}},
   {id:'mut_iron_sky',name:'Iron Sky',tier:'purple',type:'mutation',desc:'Endless only — +2 DEF and +2 MDEF, but -2 SPD.',apply:p=>{p.mutIronSky=true;p.stats.def+=2;p.stats.mdef=(p.stats.mdef||0)+2;p.stats.spd=Math.max(1,(p.stats.spd||1)-2);}},
@@ -1648,7 +1648,7 @@ Object.entries(BIRDS).forEach(([birdKey, bird])=>{
 
 const CLASS_PERK_DEFS = {
   striker:[
-    {id:'piercingTempo',name:'Piercing Tempo',desc:'Attacks gain +10% penetration.',apply:p=>{p.perkPiercePct=(p.perkPiercePct||0)+0.10;}},
+    {id:'piercingTempo',name:'Piercing Cadence',desc:'Attacks gain +10% penetration.',apply:p=>{p.perkPiercePct=(p.perkPiercePct||0)+0.10;}},
     {id:'openingRush',name:'Opening Rush',desc:'First attack each battle deals +15% damage.',apply:p=>{p.perkOpeningRush=true;}},
     {id:'predatorRhythm',name:'Predator Rhythm',desc:'Second attack each turn gains +10% crit chance.',apply:p=>{p.perkSecondAttackCrit=true;}},
   ],
@@ -2588,7 +2588,7 @@ Object.assign(ABILITY_TEMPLATES.multiPeck||{}, {
   ]),
 });
 Object.assign(ABILITY_TEMPLATES.rapidPeck||{}, {
-  desc:'Rapid-line burst. Three precise pecks with piercing tempo.',
+  desc:'Rapid-line burst. Three precise pecks with pierce focus.',
   energyCost:2,
   energyByLevel:[2,2,2,2],
   fixedMainAttackCost:true,
@@ -2636,7 +2636,7 @@ const SPARROW_EVOLUTION_TEMPLATES = {
   bodkinStrike: makeEvolutionAbilityTemplate('bodkinStrike','Bodkin Strike','Rapid-line pierce evolution. Heavy puncture flurry.', {type:'physical', btnType:'physical', energy:2, fixedMainAttackCost:true, role:['multiHit'], levels:[{desc:'3 hits at 52% dmg each. Pierce 18% DEF.'},{desc:'3 hits at 58% dmg each. Pierce 20% DEF.'},{desc:'4 hits at 58% dmg each. Pierce 22% DEF.'},{desc:'4 hits at 64% dmg each. Pierce 24% DEF.'}] }),
   bodkinBarrage: makeEvolutionAbilityTemplate('bodkinBarrage','Bodkin Barrage','Rapid-line final pierce evolution. Relentless armor-punching barrage.', {type:'physical', btnType:'physical', energy:2, fixedMainAttackCost:true, role:['multiHit'], levels:[{desc:'4 hits at 60% dmg each. Pierce 24% DEF.'},{desc:'4 hits at 66% dmg each. Pierce 26% DEF.'},{desc:'5 hits at 66% dmg each. Pierce 28% DEF.'},{desc:'5 hits at 72% dmg each. Pierce 30% DEF.'}] }),
   rapidFlap: makeEvolutionAbilityTemplate('rapidFlap','Rapid Flap','Rapid-line confuse branch. Disorienting wing-burst.', {type:'physical', btnType:'physical', energy:2, fixedMainAttackCost:true, role:['multiHit'], levels:[{desc:'3 hits at 42% dmg each. Confuse 15%.'},{desc:'3 hits at 48% dmg each. Confuse 18%.'},{desc:'4 hits at 48% dmg each. Confuse 20%.'},{desc:'4 hits at 54% dmg each. Confuse 24%.'}] }),
-  disruptiveRush: makeEvolutionAbilityTemplate('disruptiveRush','Disruptive Rush','Rapid-line confuse evolution. Shakes enemy tempo.', {type:'physical', btnType:'physical', energy:2, fixedMainAttackCost:true, role:['multiHit'], levels:[{desc:'3 hits at 50% dmg each. Confuse 22%.'},{desc:'3 hits at 56% dmg each. Confuse 25%.'},{desc:'4 hits at 56% dmg each. Confuse 28%.'},{desc:'4 hits at 62% dmg each. Confuse 32%.'}] }),
+  disruptiveRush: makeEvolutionAbilityTemplate('disruptiveRush','Disruptive Rush','Rapid-line confuse evolution. Shakes enemy focus.', {type:'physical', btnType:'physical', energy:2, fixedMainAttackCost:true, role:['multiHit'], levels:[{desc:'3 hits at 50% dmg each. Confuse 22%.'},{desc:'3 hits at 56% dmg each. Confuse 25%.'},{desc:'4 hits at 56% dmg each. Confuse 28%.'},{desc:'4 hits at 62% dmg each. Confuse 32%.'}] }),
   chaosTempest: makeEvolutionAbilityTemplate('chaosTempest','Chaos Tempest','Rapid-line final confuse evolution. Burst with heavy confusion pressure.', {type:'physical', btnType:'physical', energy:2, fixedMainAttackCost:true, role:['multiHit'], levels:[{desc:'4 hits at 58% dmg each. Confuse 30%.'},{desc:'4 hits at 64% dmg each. Confuse 34%.'},{desc:'5 hits at 64% dmg each. Confuse 36%.'},{desc:'5 hits at 70% dmg each. Confuse 40%.'}] }),
   rapidTalon: makeEvolutionAbilityTemplate('rapidTalon','Rapid Talon','Rapid-line poison branch. Quick venom cuts.', {type:'physical', btnType:'physical', energy:2, fixedMainAttackCost:true, role:['multiHit'], levels:[{desc:'3 hits at 42% dmg each. Poison 15%.'},{desc:'3 hits at 48% dmg each. Poison 18%.'},{desc:'4 hits at 48% dmg each. Poison 22%.'},{desc:'4 hits at 54% dmg each. Poison 24%.'}] }),
   venomFlurry: makeEvolutionAbilityTemplate('venomFlurry','Venom Flurry','Rapid-line poison evolution. Venom stacks in rapid bursts.', {type:'physical', btnType:'physical', energy:2, fixedMainAttackCost:true, role:['multiHit'], levels:[{desc:'3 hits at 50% dmg each. Poison 24%.'},{desc:'3 hits at 56% dmg each. Poison 28%.'},{desc:'4 hits at 56% dmg each. Poison 30%.'},{desc:'4 hits at 62% dmg each. Poison 34%.'}] }),
@@ -2653,9 +2653,9 @@ const SPARROW_EVOLUTION_TEMPLATES = {
   windSlip: makeEvolutionAbilityTemplate('windSlip','Wind Slip','Wind-line dodge branch. Slip free of danger.', {type:'utility', btnType:'utility', energy:1, levels:[{desc:'Gain +25% dodge for 2 turns.'},{desc:'Gain +30% dodge for 2 turns.'},{desc:'Gain +35% dodge for 2 turns.'},{desc:'Gain +40% dodge for 3 turns.'}] }),
   slipVeil: makeEvolutionAbilityTemplate('slipVeil','Slip Veil','Wind-line dodge evolution. Veil yourself in evasive currents.', {type:'utility', btnType:'utility', energy:1, levels:[{desc:'Gain +35% dodge for 2 turns and cleanse Weaken.'},{desc:'Gain +40% dodge for 2 turns and cleanse Weaken.'},{desc:'Gain +45% dodge for 2 turns and cleanse Weaken.'},{desc:'Gain +50% dodge for 3 turns and cleanse Weaken.'}] }),
   phantomGale: makeEvolutionAbilityTemplate('phantomGale','Phantom Gale','Wind-line final dodge evolution. Become almost untouchable.', {type:'utility', btnType:'utility', energy:1, levels:[{desc:'Gain +45% dodge for 3 turns. Cleanse Weaken/Fear.'},{desc:'Gain +50% dodge for 3 turns. Cleanse Weaken/Fear.'},{desc:'Gain +55% dodge for 3 turns. Cleanse Weaken/Fear.'},{desc:'Gain +60% dodge for 3 turns. Cleanse Weaken/Fear.'}] }),
-  tailwindFeint: makeEvolutionAbilityTemplate('tailwindFeint','Tailwind Feint','Wind-line speed branch. Quickens your tempo.', {type:'utility', btnType:'utility', energy:1, levels:[{desc:'Gain +2 SPD for 2 turns.'},{desc:'Gain +3 SPD for 2 turns.'},{desc:'Gain +4 SPD for 2 turns.'},{desc:'Gain +5 SPD for 2 turns.'}] }),
+  tailwindFeint: makeEvolutionAbilityTemplate('tailwindFeint','Tailwind Feint','Wind-line speed branch. Quickens your SPD.', {type:'utility', btnType:'utility', energy:1, levels:[{desc:'Gain +2 SPD for 2 turns.'},{desc:'Gain +3 SPD for 2 turns.'},{desc:'Gain +4 SPD for 2 turns.'},{desc:'Gain +5 SPD for 2 turns.'}] }),
   tailwindGust: makeEvolutionAbilityTemplate('tailwindGust','Tailwind Gust','Wind-line speed evolution. Stronger haste current.', {type:'utility', btnType:'utility', energy:1, levels:[{desc:'Gain +4 SPD for 2 turns and +10% dodge.'},{desc:'Gain +5 SPD for 2 turns and +10% dodge.'},{desc:'Gain +6 SPD for 2 turns and +10% dodge.'},{desc:'Gain +7 SPD for 2 turns and +15% dodge.'}] }),
-  hyperCurrent: makeEvolutionAbilityTemplate('hyperCurrent','Hyper Current','Wind-line final speed evolution. Hypercharge your tempo.', {type:'utility', btnType:'utility', energy:1, levels:[{desc:'Gain +6 SPD for 3 turns and +15% dodge.'},{desc:'Gain +7 SPD for 3 turns and +15% dodge.'},{desc:'Gain +8 SPD for 3 turns and +20% dodge.'},{desc:'Gain +9 SPD for 3 turns and +20% dodge.'}] }),
+  hyperCurrent: makeEvolutionAbilityTemplate('hyperCurrent','Hyper Current','Wind-line final speed evolution. Hyper SPD spike.', {type:'utility', btnType:'utility', energy:1, levels:[{desc:'Gain +6 SPD for 3 turns and +15% dodge.'},{desc:'Gain +7 SPD for 3 turns and +15% dodge.'},{desc:'Gain +8 SPD for 3 turns and +20% dodge.'},{desc:'Gain +9 SPD for 3 turns and +20% dodge.'}] }),
   featherDrift: makeEvolutionAbilityTemplate('featherDrift','Feather Drift','Wind-line disruption branch. Sand the enemy\'s aim.', {type:'utility', btnType:'utility', energy:1, levels:[{desc:'Enemy ACC -15% for 2 turns.'},{desc:'Enemy ACC -18% for 2 turns.'},{desc:'Enemy ACC -20% for 2 turns.'},{desc:'Enemy ACC -22% for 2 turns.'}] }),
   blindingVeil: makeEvolutionAbilityTemplate('blindingVeil','Blinding Veil','Wind-line disruption evolution. Fog their vision.', {type:'utility', btnType:'utility', energy:1, levels:[{desc:'Enemy ACC -22% for 2 turns and Slow 2 turns.'},{desc:'Enemy ACC -25% for 2 turns and Slow 2 turns.'},{desc:'Enemy ACC -28% for 2 turns and Slow 2 turns.'},{desc:'Enemy ACC -30% for 2 turns and Slow 2 turns.'}] }),
   stormShroud: makeEvolutionAbilityTemplate('stormShroud','Storm Shroud','Wind-line final disruption evolution. Smother enemy accuracy.', {type:'utility', btnType:'utility', energy:1, levels:[{desc:'Enemy ACC -30% for 3 turns and Slow 2 turns.'},{desc:'Enemy ACC -33% for 3 turns and Slow 2 turns.'},{desc:'Enemy ACC -36% for 3 turns and Slow 3 turns.'},{desc:'Enemy ACC -40% for 3 turns and Slow 3 turns.'}] }),
@@ -3543,9 +3543,9 @@ const SPARROW_SKILL_FAMILIES = Object.freeze({
   rapid:{
     familyId:'rapid', displayName:'Rapid Line', baseAbilityId:'multiPeck', role:'core burst', maxTier:3,
     masteries:[
-      {id:'power', name:'Rending Tempo', desc:'+10% Rapid-line damage.'},
+      {id:'power', name:'Rending Flurry', desc:'+10% Rapid-line damage.'},
       {id:'precision', name:'Needle Rhythm', desc:'Rapid-line attacks gain +5 pierce and -3% miss.'},
-      {id:'control', name:'Cruel Tempo', desc:'Rapid-line rider chances gain +10%.'},
+      {id:'control', name:'Cruel Pressure', desc:'Rapid-line rider chances gain +10%.'},
     ],
     paths:{
       pierce:{pathId:'pierce', displayName:'Pierce', abilities:{1:'rapidPeck',2:'bodkinStrike',3:'bodkinBarrage'}},
@@ -3567,7 +3567,7 @@ const SPARROW_SKILL_FAMILIES = Object.freeze({
     },
   },
   wind:{
-    familyId:'wind', displayName:'Wind Line', baseAbilityId:'windFeint', role:'utility / tempo / defense', maxTier:3,
+    familyId:'wind', displayName:'Wind Line', baseAbilityId:'windFeint', role:'utility / SPD / defense', maxTier:3,
     masteries:[
       {id:'power', name:'Slipstream Veil', desc:'Wind-line dodge and speed bonuses gain +5.'},
       {id:'precision', name:'Cold Draft', desc:'Wind-line enemy ACC reduction gains +5%.'},
@@ -3764,12 +3764,12 @@ const CROW_SKILL_FAMILIES = Object.freeze({
     masteries:[
       {id:'power', name:'Cold Calculation', desc:'Focus-line damage amp or expose values gain +6%.'},
       {id:'precision', name:'Studied Opening', desc:'Focus-line setups also grant +4% crit on the next attack.'},
-      {id:'control', name:'Tempo Theft', desc:'Tempo-line skills restore 1 extra EN once per use.'},
+      {id:'control', name:'Snatch EN', desc:'Steal-line skills restore 1 extra EN once per use.'},
     ],
     paths:{
       damage_amp:{pathId:'damage_amp', displayName:'Damage Amp', abilities:{1:'keen_focus', 2:'hunt_plan', 3:'killer_hunt'}},
       def_break:{pathId:'def_break', displayName:'Defense Break', abilities:{1:'weakpoint_focus', 2:'break_plan', 3:'ruin_hunt'}},
-      tempo:{pathId:'tempo', displayName:'Tempo', abilities:{1:'opening_focus', 2:'tempo_plan', 3:'perfect_hunt'}},
+      tempo:{pathId:'tempo', displayName:'Next strike setup', abilities:{1:'opening_focus', 2:'tempo_plan', 3:'perfect_hunt'}},
     },
   },
 });
@@ -3812,7 +3812,7 @@ const MAGPIE_SKILL_FAMILIES = Object.freeze({
     ],
     paths:{
       buff:{pathId:'buff', displayName:'Buff', abilities:{1:'shine_snatch', 2:'bright_swipe', 3:'glitter_heist'}},
-      tempo:{pathId:'tempo', displayName:'Tempo', abilities:{1:'quick_snatch', 2:'tempo_swipe', 3:'momentum_heist'}},
+      tempo:{pathId:'tempo', displayName:'EN / next hit', abilities:{1:'quick_snatch', 2:'tempo_swipe', 3:'momentum_heist'}},
       weakpoint:{pathId:'weakpoint', displayName:'Weakpoint', abilities:{1:'weakpoint_snatch', 2:'crackswipe', 3:'ruin_heist'}},
     },
   },
@@ -3877,7 +3877,7 @@ const HUMMINGBIRD_SKILL_FAMILIES = Object.freeze({
     masteries:[
       {id:'power', name:'Glass Beak', desc:'+8% Needle-line damage.'},
       {id:'precision', name:'Thread the Needle', desc:'Needle-line attacks gain −3% miss and +4 pierce.'},
-      {id:'control', name:'Toxic Tempo', desc:'Needle-line Bleed/Poison riders gain +8%.'},
+      {id:'control', name:'Toxic Pressure', desc:'Needle-line Bleed/Poison riders gain +8%.'},
     ],
     paths:{
       pierce:{pathId:'pierce', displayName:'Pierce', abilities:{1:'needle_jab',2:'needle_sting',3:'needle_flurry'}},
@@ -3940,7 +3940,7 @@ const ROBIN_SKILL_FAMILIES = Object.freeze({
     familyId:'peck', displayName:'Peck Line', baseAbilityId:'quick_peck', slotRole:'filler_attack', maxTier:3,
     tierNames:{1:'Nip',2:'Tap',3:'Burst'},
     masteries:[
-      {id:'power', name:'Field Tempo', desc:'+8% Peck-line damage.'},
+      {id:'power', name:'Field Edge', desc:'+8% Peck-line damage.'},
       {id:'precision', name:'Clean Aim', desc:'Peck-line −3% miss; pierce route +4 pierce.'},
       {id:'control', name:'Redbreast Pressure', desc:'Bleed riders +8%; expose route +4% vs compromised.'},
     ],
@@ -4015,7 +4015,7 @@ const BOWERBIRD_SKILL_FAMILIES = Object.freeze({
     familyId:'trinket', displayName:'Trinket Line', baseAbilityId:'trinket_toss', slotRole:'filler_control', maxTier:3,
     tierNames:{1:'Toss',2:'Scatter',3:'Scatterstorm'},
     masteries:[
-      {id:'power', name:'Oddity Tempo', desc:'+8% Trinket-line damage.'},
+      {id:'power', name:'Oddity Edge', desc:'+8% Trinket-line damage.'},
       {id:'precision', name:'Blindside Eye', desc:'Blindside route +4% vs distracted.'},
       {id:'control', name:'Weaken Craft', desc:'Weaken route +6% rider; gleam expose +1%.'},
     ],
@@ -4303,7 +4303,7 @@ const SECRETARY_SKILL_FAMILIES = Object.freeze({
     familyId:'stride', displayName:'Hunter Stride Line', baseAbilityId:'hunter_stride', slotRole:'positioning_setup', maxTier:3,
     tierNames:{1:'Stride',2:'Pace',3:'Advance'},
     masteries:[
-      {id:'power', name:'Long Step', desc:'Speed path +1 SPD when possible; stride tempo for the kick line.'},
+      {id:'power', name:'Long Step', desc:'Speed path +1 SPD when possible; stride pacing for the kick line.'},
       {id:'precision', name:'Stalking Eye', desc:'Amp path +4% next-hit; dodge path +4% dodge.'},
       {id:'control', name:'Killing Angle', desc:'Amp path +2% next-hit; enemy ACC pressure +3 when possible.'},
     ],
@@ -4435,7 +4435,7 @@ const SEAGULL_SKILL_FAMILIES = Object.freeze({
     masteries:[
       {id:'power', name:'Gull Storm', desc:'ACC break route +3% enemy ACC crash.'},
       {id:'precision', name:'Grinding Call', desc:'Weaken route +6% Weaken odds.'},
-      {id:'control', name:'Whitecap Tempo', desc:'Speed route +1 SPD when possible; cry effects +1 turn.'},
+      {id:'control', name:'Whitecap Surge', desc:'Speed route +1 SPD when possible; cry effects +1 turn.'},
     ],
     paths:{
       acc_break:{pathId:'acc_break', displayName:'ACC Break', abilities:{1:'sgl_raucous_cry',2:'sgl_wavering_squall',3:'sgl_blinding_uproar'}},
@@ -4709,7 +4709,7 @@ const KIWI_SKILL_FAMILIES = Object.freeze({
     masteries:[
       {id:'power', name:'Loose Earth', desc:'Scrape-line dodge/SPD buffs +3 when possible.'},
       {id:'precision', name:'Blind Soil', desc:'Scrape-line enemy ACC penalties +4%.'},
-      {id:'control', name:'Burrow Tempo', desc:'Scrape-line slow riders +1 SPD down when possible.'},
+      {id:'control', name:'Burrow Drag', desc:'Scrape-line slow riders +1 SPD down when possible.'},
     ],
     paths:{
       dodge:{pathId:'dodge', displayName:'Dodge', abilities:{1:'kiwi_scrape_dodge_1',2:'kiwi_scrape_dodge_2',3:'kiwi_scrape_dodge_3'}},
@@ -4927,7 +4927,7 @@ const BLACK_COCKATOO_SKILL_FAMILIES = Object.freeze({
     masteries:[
       {id:'power', name:'Iron Bill', desc:'+8% Beak-line damage.'},
       {id:'precision', name:'Split Grain', desc:'Beak-line Pierce and guard-break riders +4%.'},
-      {id:'control', name:'Crack Tempo', desc:'Beak-line Weaken odds +8%.'},
+      {id:'control', name:'Crack Focus', desc:'Beak-line Weaken odds +8%.'},
     ],
     paths:{
       pierce:{pathId:'pierce', displayName:'Pierce', abilities:{1:'beak_crack',2:'bc_bodkin_bite',3:'splinter_crush'}},
@@ -4992,7 +4992,7 @@ const KOOKABURRA_SKILL_FAMILIES = Object.freeze({
     masteries:[
       {id:'power', name:'Kingfisher Bill', desc:'+8% Beak-line damage.'},
       {id:'precision', name:'Fish Bone', desc:'Beak-line Pierce and bleed riders +4%.'},
-      {id:'control', name:'Grip Tempo', desc:'Beak-line Weaken odds +8%.'},
+      {id:'control', name:'Grip Focus', desc:'Beak-line Weaken odds +8%.'},
     ],
     paths:{
       pierce:{pathId:'pierce', displayName:'Pierce', abilities:{1:'beak_chop',2:'bodkin_crack',3:'splinter_break'}},
@@ -7121,7 +7121,7 @@ const SIZE_ORDER = ['tiny','small','medium','large','xl'];
 const SIZE_LABELS = {tiny:'Tiny',small:'Small',medium:'Medium',large:'Large',xl:'X-Large'};
 const ROLE_ORDER = ['striker','bruiser','tank','trickster','predator','singer'];
 const ROLE_LABELS = {striker:'⚔️ Striker',bruiser:'🛡️ Bruiser',tank:'🪨 Tank',trickster:'🎭 Trickster',predator:'🦅 Predator',singer:'🎵 Singer'};
-const ROLE_FLAVOR = {striker:'Burst damage, crit fishing, evasive pressure.',bruiser:'Balanced physical pressure with DEF/ACC stability.',tank:'Sustain bricks with high HP and mitigation.',trickster:'Tempo, control, and utility-driven setups.',predator:'Execution pressure, pierce and finishing power.',singer:'Song-focused buffs, debuffs, healing, and vocal damage.'};
+const ROLE_FLAVOR = {striker:'Burst damage, crit fishing, evasive pressure.',bruiser:'Balanced physical pressure with DEF/ACC stability.',tank:'Sustain bricks with high HP and mitigation.',trickster:'Control, EN swings, and utility-driven setups.',predator:'Execution pressure, pierce and finishing power.',singer:'Song-focused buffs, debuffs, healing, and vocal damage.'};
 let shopPurchaseMade = false;
 
 function initSelection() {
@@ -7853,6 +7853,7 @@ function resetForNewBattle(){
   G._perkUtilityRefundUsed=false;
   G.turnCount=0;
   G._incomingAttackKind=null;
+  delete G._pendingStrikeActionMods;
   G._firstAttackUsed=false;
   G._firstSpellUsed=false;
   G._spellCastCount=0;
@@ -9054,6 +9055,17 @@ function showActionTooltip(e,ab) {
     html+=`<div class="tt-row"><span class="tt-lbl">Damage</span><span class="tt-val">${dmgLow!==null?`${dmgLow}–${dmgHigh}`:'Varies'}</span></div>`;
   }
   html+=`<div class="tt-row"><span class="tt-lbl">Effects</span><span class="tt-val">${effectList}</span></div>`;
+  const pb=G.playerStatus?.pendingStrikeBuff;
+  if(pb && ['physical','ranged','spell'].includes(btnType)){
+    const pct=Math.round((Number(pb.multAdd)||0)*100);
+    const hb=Number(pb.hitBonus)||0;
+    const cb=Number(pb.critBonus)||0;
+    const bits=[];
+    if(pct) bits.push(`+${pct}% ATK-scaling damage`);
+    if(hb) bits.push(`−${hb}% miss on that action`);
+    if(cb) bits.push(`+${cb}% crit on that action`);
+    if(bits.length) html+=`<div class="tt-row"><span class="tt-lbl">Queued</span><span class="tt-val" style="font-size:.88em">${bits.join(' · ')}</span></div>`;
+  }
   const scaleNote=tmpl.damageScaling?.scalingNote;
   html+=`<div class="tt-desc">${lvData.desc}${scaleNote?`<div class="tt-scaling" style="opacity:.92;margin-top:6px;font-size:.9em;border-top:1px solid rgba(255,255,255,.12);padding-top:6px">${scaleNote}</div>`:''}</div>`;
   if(window._isTouchDevice) html+=`<div style="text-align:right;margin-top:8px"><button onclick="hideTooltip()" style="background:rgba(201,168,76,.2);border:1px solid var(--gold);border-radius:4px;color:var(--gold);padding:2px 10px;cursor:pointer;font-size:.75rem;">✕ Close</button></div>`;
@@ -9866,6 +9878,56 @@ function applyEnemySlow(spdPenalty,dodgePenalty,turns){
     G.enemyStatus.slow.dodgePenalty=Math.max(G.enemyStatus.slow.dodgePenalty,dodgePenalty);
   }
 }
+/**
+ * Combat duration policy (skill audit):
+ * - Stat modifiers (player/enemy ATK, MATK, DEF, MDEF, ACC, dodge/mdodge, SPD, etc.): default **1 turn**
+ *   unless a skill is explicitly designed as sustained; same-ability refresh should replace, not stack.
+ * - Ailments (Fear, Poison, Burn, Confused, Paralyze, Weaken-as-ailment track, etc.): **not** capped at 1 turn;
+ *   durations may scale with skill level / template rules via applyAilment, tryApplyAilment, and bespoke handlers.
+ */
+/** Next offensive player action: mult add on physical (pdmg) and magic (matk), plus hit/crit helpers. Promoted in playerAction. */
+function applyPendingStrikeBuff(opts={}){
+  const multAdd=Number(opts.multAdd!=null?opts.multAdd:opts.damagePct)||0;
+  const matkMultAdd=opts.matkMultAdd!=null?Number(opts.matkMultAdd):multAdd;
+  const hitBonus=Math.max(0,Number(opts.hitBonus)||0);
+  const critBonus=Math.max(0,Number(opts.critBonus)||0);
+  const sourceAbilityId=String(opts.sourceAbilityId||opts.sourceId||'');
+  const next={multAdd,matkMultAdd,hitBonus,critBonus,sourceAbilityId};
+  const cur=G.playerStatus.pendingStrikeBuff;
+  if(cur && sourceAbilityId && cur.sourceAbilityId===sourceAbilityId){
+    G.playerStatus.pendingStrikeBuff=next;
+    return;
+  }
+  G.playerStatus.pendingStrikeBuff=next;
+}
+
+/** Timed **stat-style** player buff (dodge/ACC/SPD shards, etc.): default 1 turn. Not for DoT/control ailments—those use ailment paths. Same sourceAbilityId replaces on that key. */
+function applyPlayerTimedBuff(key, props, opts={}){
+  if(!key) return;
+  const turns=Math.max(1,Math.floor(opts.turns!=null?opts.turns:1));
+  const sourceAbilityId=String(opts.sourceAbilityId||opts.sourceId||'');
+  const next={...props, turns, sourceAbilityId};
+  const cur=G.playerStatus[key];
+  if(cur && typeof cur==='object' && sourceAbilityId && cur.sourceAbilityId===sourceAbilityId){
+    G.playerStatus[key]={...cur, ...next};
+    return;
+  }
+  G.playerStatus[key]=next;
+}
+
+function promotePendingStrikeBuffToActive(){
+  const p=G.playerStatus?.pendingStrikeBuff;
+  if(!p) return;
+  delete G.playerStatus.pendingStrikeBuff;
+  G._pendingStrikeActionMods={
+    multAdd:Number(p.multAdd)||0,
+    matkMultAdd:Number(p.matkMultAdd!=null?p.matkMultAdd:p.multAdd)||0,
+    hitBonus:Math.max(0,Number(p.hitBonus)||0),
+    critBonus:Math.max(0,Number(p.critBonus)||0),
+    sourceAbilityId:p.sourceAbilityId||'',
+  };
+}
+
 function applyPlayerSlow(spdPenalty,dodgePenalty,turns){
   if(!G.playerStatus.slow || typeof G.playerStatus.slow!=='object'){
     const spdDrop=Math.min(spdPenalty,Math.max(0,(G.player.stats.spd||1)-1));
@@ -10184,13 +10246,15 @@ function dealDamage(target,amount,isCrit=false,isMagic=false,srcAbility=null) {
   return {dmgDealt:dmg,wasDodged:false,wasBlocked,isCrit};
 }
 
-function pdmg(mult=1,ab=null) {
+function pdmg(mult=1,ab=null,opts={}) {
   let b=G.player.stats.atk;
   if (G.warcryActive) b=Math.floor(b*(1+G.warcryATK/100));
   if (G.sitAndWaitActive) b=Math.floor(b*1.25);
   if (G.tookieActive && G.playerStatus.tookie) b=Math.floor(b*(1+G.playerStatus.tookie.atkBonus/100));
   const __adm=(G.actionDamageHitsRemaining&&G.actionDamageHitsRemaining>0)?(G.actionDamageMult||1):1;
-  let base=Math.floor(roll(Math.floor(b*.8),Math.floor(b*1.2))*mult*__adm);
+  let strikeAdd=0;
+  if(!opts.skipPendingStrikeAdd && G._pendingStrikeActionMods) strikeAdd=Number(G._pendingStrikeActionMods.multAdd)||0;
+  let base=Math.floor(roll(Math.floor(b*.8),Math.floor(b*1.2))*(mult+strikeAdd)*__adm);
   if((G.actionDamageHitsRemaining||0)>0){ G.actionDamageHitsRemaining=Math.max(0,G.actionDamageHitsRemaining-1); if(G.actionDamageHitsRemaining===0) G.actionDamageMult=1; }
   if (G.playerStatus.weaken&&G.playerStatus.weaken>0) base=Math.floor(base*.75);
   // Pierce DEF: reduce enemy effective DEF before damage calc (store on G for dealDamage to read)
@@ -10359,7 +10423,7 @@ function getPlayerMissChance(ab) {
   }
   if((G.player?.augPostDefAcc||0)>0 && G.playerStatus?.postDefAccNext){ extra += G.player.augPostDefAcc; delete G.playerStatus.postDefAccNext; }
   if(G.player?.relHawkLedger && isEndlessRunActive()){ const eb=G.endlessBattle||0; if(eb>=10) extra+=8; if(eb>=20) extra+=8; if(eb>=30) extra+=8; }
-  return Math.max(floor, reduced - accBonus + tookiePenalty - (G.playerStatus.accDebuff||0) + classAdj + sizeAdj - missReduce - extra);
+  return Math.max(floor, reduced - accBonus + tookiePenalty - (G.playerStatus.accDebuff||0) + classAdj + sizeAdj - missReduce - extra - getPlayerHitBonus(ab));
 }
 
 function getPlayerAccuracy() {
@@ -10485,12 +10549,15 @@ function getPlayerCritChance(ab) {
   if(isAttack && kookLens && (kookLens.turns||0)>0) base += (kookLens.bonus||0);
   const owlLens=G.playerStatus?.owlCritFocus;
   if(isAttack && owlLens && (owlLens.turns||0)>0) base += (owlLens.bonus||0);
+  if((isAttack||kind==='spell') && G._pendingStrikeActionMods?.critBonus) base += G._pendingStrikeActionMods.critBonus;
   return Math.min(100,base);
 }
 
 function getPlayerHitBonus(ab) {
-  if (G.playerStatus.burning&&G.playerStatus.burning>0) return 20; // reduces miss chance
-  return 0;
+  let n=0;
+  if (G.playerStatus.burning&&G.playerStatus.burning>0) n+=20;
+  if (G._pendingStrikeActionMods?.hitBonus) n+=G._pendingStrikeActionMods.hitBonus;
+  return n;
 }
 
 // Tick DoT at start of a target's turn
@@ -12392,10 +12459,10 @@ registerAbilityAlias('fruitBomb','owlPsyche','Fruit Bomb');
 registerAbilityAlias('diveSnatch','fishSnatcher','Dive Snatch');
 registerAbilityAlias('savageKick','beakSlam','Savage Kick');
 registerAbilityAlias('skyStrike','deathDive','Sky Strike');
-registerAbilityAlias('dreadCall','dirge','Dread Call',{type:'utility',btnType:'utility',desc:'Dire call that pressures enemy focus and tempo.'});
+registerAbilityAlias('dreadCall','dirge','Dread Call',{type:'utility',btnType:'utility',desc:'Dire call that pressures enemy focus and rhythm.'});
 // Basic-move family aliases to keep starter identities distinct.
-registerAbilityAlias('swoopCut','dart','Swoop Cut',{isBasic:true,desc:'Striker basic. Quick cut with clean tempo pressure.'});
-registerAbilityAlias('mockingPeck','dart','Mocking Peck',{isBasic:true,desc:'Trickster basic. Reliable peck that taunts tempo.'});
+registerAbilityAlias('swoopCut','dart','Swoop Cut',{isBasic:true,desc:'Striker basic. Quick cut with clean hit pressure.'});
+registerAbilityAlias('mockingPeck','dart','Mocking Peck',{isBasic:true,desc:'Trickster basic. Reliable peck that taunts the line.'});
 // Toucan pre-overhaul flat-kit ids (fruitSpit, sunCall, jungleChorus, echoScreech) removed from live aliases —
 // migrateToucanLegacyFamilySkillSlots + legacyBaseAbilityIds rewrite saves to toucan_beak_jab / beak_slam / fruit_toss / color_mark.
 registerAbilityAlias('bracePeck','gooseHonk','Brace Peck',{isBasic:true,desc:'Tank basic. Heavy peck that steadies the line.'});
@@ -12417,7 +12484,7 @@ registerAbilityAlias('shine_snatch','steal_shine','Shine Snatch',{type:'utility'
 registerAbilityAlias('bright_swipe','steal_shine','Bright Swipe',{type:'utility',btnType:'utility'});
 registerAbilityAlias('glitter_heist','steal_shine','Glitter Heist',{type:'utility',btnType:'utility'});
 registerAbilityAlias('quick_snatch','steal_shine','Quick Snatch',{type:'utility',btnType:'utility'});
-registerAbilityAlias('tempo_swipe','steal_shine','Tempo Swipe',{type:'utility',btnType:'utility'});
+registerAbilityAlias('tempo_swipe','steal_shine','Momentum Swipe',{type:'utility',btnType:'utility'});
 registerAbilityAlias('momentum_heist','steal_shine','Momentum Heist',{type:'utility',btnType:'utility'});
 registerAbilityAlias('weakpoint_snatch','steal_shine','Weakpoint Snatch',{type:'utility',btnType:'utility'});
 registerAbilityAlias('crackswipe','steal_shine','Crack Swipe',{type:'utility',btnType:'utility'});
@@ -12531,7 +12598,7 @@ registerAbilityAlias('weakpoint_focus','exposeWeakness','Weakpoint Focus',{type:
 registerAbilityAlias('break_plan','exposeGuard','Break Plan',{type:'utility',btnType:'utility'});
 registerAbilityAlias('ruin_hunt','quarryBreak','Ruin Hunt',{type:'utility',btnType:'utility'});
 registerAbilityAlias('opening_focus','battleFocus','Opening Focus',{type:'utility',btnType:'utility'});
-registerAbilityAlias('tempo_plan','battleFocus','Tempo Plan',{type:'utility',btnType:'utility'});
+registerAbilityAlias('tempo_plan','battleFocus','Battle Plan',{type:'utility',btnType:'utility'});
 registerAbilityAlias('perfect_hunt','battleFocus','Perfect Hunt',{type:'utility',btnType:'utility'});
 registerAbilityAlias('nightTalon','deathDive','Night Talon',{isBasic:true,type:'physical',btnType:'physical',energyCost:3,energyByLevel:[3,3,3,3]});
 registerAbilityAlias('huntersCry','victoryChant',"Hunter's Cry",{type:'utility',btnType:'utility'});
@@ -12564,9 +12631,9 @@ registerAbilityAlias('nightfallCall','dukeDecree','Nightfall Call',{type:'spell'
 registerAbilityAlias('courtSummon','dukeWardens','Court Summon',{type:'utility',btnType:'utility'});
 registerAbilityAlias('verdict','dukeRiverGrip','Verdict',{type:'spell',btnType:'spell'});
 
-Object.assign(ABILITY_TEMPLATES.windFeint||{}, makeEvolutionAbilityTemplate('windFeint','Wind Feint','Sparrow base wind skill. A tempo-first evasive feint.', {type:'utility', btnType:'utility', energy:1, levels:[{desc:'Gain +20% dodge for 2 turns.'},{desc:'Gain +25% dodge for 2 turns.'},{desc:'Gain +30% dodge for 2 turns.'},{desc:'Gain +35% dodge for 3 turns.'}]}));
+Object.assign(ABILITY_TEMPLATES.windFeint||{}, makeEvolutionAbilityTemplate('windFeint','Wind Feint','Sparrow base wind skill. A dodge-first evasive feint.', {type:'utility', btnType:'utility', energy:1, levels:[{desc:'Gain +20% dodge for 2 turns.'},{desc:'Gain +25% dodge for 2 turns.'},{desc:'Gain +30% dodge for 2 turns.'},{desc:'Gain +35% dodge for 3 turns.'}]}));
 Object.assign(ABILITY_TEMPLATES.predatorMark||{}, makeEvolutionAbilityTemplate('predatorMark','Predator Mark','Mark-line execute branch. Hunt the weakened target.', {type:'utility', btnType:'utility', energy:1, levels:[{desc:'Mark prey. Next attack gains +16% damage, +12% more below 50% HP.'},{desc:'Mark prey. Next attack gains +20% damage, +14% more below 50% HP.'},{desc:'Mark prey. Next attack gains +24% damage, +16% more below 50% HP.'},{desc:'Mark prey. Next attack gains +28% damage, +18% more below 50% HP.'}]}));
-Object.assign(ABILITY_TEMPLATES.murder_murmuration||{}, makeEvolutionAbilityTemplate('murder_murmuration','Murder Murmuration','Crow base signature. A coordinated mobbing strike before branching.', {type:'physical', btnType:'physical', energy:2, fixedMainAttackCost:true, role:['multiHit'], levels:[{desc:'Lv.1 — Twin flock strikes (~58% each); open the murder.'},{desc:'Lv.2 — Twin strikes sharpen (~64% each); tighter execution.'},{desc:'Lv.3 — Three beaks (~60% each); wider mobbing circle.'},{desc:'Lv.4 — Three strikes peak (~66% each); perfected flock tempo.'}]}));
+Object.assign(ABILITY_TEMPLATES.murder_murmuration||{}, makeEvolutionAbilityTemplate('murder_murmuration','Murder Murmuration','Crow base signature. A coordinated mobbing strike before branching.', {type:'physical', btnType:'physical', energy:2, fixedMainAttackCost:true, role:['multiHit'], levels:[{desc:'Lv.1 — Twin flock strikes (~58% each); open the murder.'},{desc:'Lv.2 — Twin strikes sharpen (~64% each); tighter execution.'},{desc:'Lv.3 — Three beaks (~60% each); wider mobbing circle.'},{desc:'Lv.4 — Three strikes peak (~66% each); perfected flock rhythm.'}]}));
 Object.assign(ABILITY_TEMPLATES.dread_call||{}, makeEvolutionAbilityTemplate('dread_call','Dread Call','Crow base utility. Disrupt the enemy before committing to a branch.', {type:'utility', btnType:'utility', energy:1, levels:[{desc:'Enemy ACC -10% for 2 turns.'},{desc:'Enemy ACC -12% for 2 turns.'},{desc:'Enemy ACC -14% for 2 turns.'},{desc:'Enemy ACC -16% for 2 turns.'}]}));
 Object.assign(ABILITY_TEMPLATES.battle_focus||{}, makeEvolutionAbilityTemplate('battle_focus','Battle Focus','Crow base setup. Study the target for a sharper next attack.', {type:'utility', btnType:'utility', energy:1, levels:[{desc:'Next attack +12% damage.'},{desc:'Next attack +15% damage.'},{desc:'Next attack +18% damage.'},{desc:'Next attack +21% damage.'}]}));
 Object.assign(ABILITY_TEMPLATES.focusChirp||{}, makeEvolutionAbilityTemplate('focusChirp','Focus Chirp','Crow lineup utility. Lines up the next hit with extra bite.', {type:'utility', btnType:'utility', energy:1, levels:[{desc:'Next attack +12% damage.'},{desc:'Next attack +15% damage.'},{desc:'Next attack +18% damage.'},{desc:'Next attack +21% damage.'}]}));
@@ -12602,9 +12669,9 @@ Object.assign(ABILITY_TEMPLATES.killer_hunt||{}, makeEvolutionAbilityTemplate('k
 Object.assign(ABILITY_TEMPLATES.weakpoint_focus||{}, makeEvolutionAbilityTemplate('weakpoint_focus','Weakpoint Focus','Focus defense-break branch. Open a precise weak point.', {type:'utility', btnType:'utility', energy:1, levels:[{desc:'Expose enemy for +12% damage over 2 turns.'},{desc:'Expose enemy for +14% damage over 2 turns.'},{desc:'Expose enemy for +16% damage over 2 turns.'},{desc:'Expose enemy for +18% damage over 2 turns.'}]}));
 Object.assign(ABILITY_TEMPLATES.break_plan||{}, makeEvolutionAbilityTemplate('break_plan','Break Plan','Focus defense-break evolution. Crack defenses further.', {type:'utility', btnType:'utility', energy:1, levels:[{desc:'Expose enemy for +18% damage over 2 turns.'},{desc:'Expose enemy for +20% damage over 2 turns.'},{desc:'Expose enemy for +22% damage over 2 turns.'},{desc:'Expose enemy for +24% damage over 3 turns.'}]}));
 Object.assign(ABILITY_TEMPLATES.ruin_hunt||{}, makeEvolutionAbilityTemplate('ruin_hunt','Ruin Hunt','Focus defense-break finisher. Engineer a full collapse.', {type:'utility', btnType:'utility', energy:1, levels:[{desc:'Expose enemy for +24% damage over 3 turns.'},{desc:'Expose enemy for +26% damage over 3 turns.'},{desc:'Expose enemy for +28% damage over 3 turns.'},{desc:'Expose enemy for +30% damage over 3 turns.'}]}));
-Object.assign(ABILITY_TEMPLATES.opening_focus||{}, makeEvolutionAbilityTemplate('opening_focus','Opening Focus','Focus tempo branch. Prepare a quick opportunistic turn.', {type:'utility', btnType:'utility', energy:1, levels:[{desc:'Gain 1 EN and next attack +10% damage/+6 hit.'},{desc:'Gain 1 EN and next attack +12% damage/+8 hit.'},{desc:'Gain 1 EN and next attack +14% damage/+10 hit.'},{desc:'Gain 1 EN and next attack +16% damage/+12 hit.'}]}));
-Object.assign(ABILITY_TEMPLATES.tempo_plan||{}, makeEvolutionAbilityTemplate('tempo_plan','Tempo Plan','Focus tempo evolution. Better sequencing and acceleration.', {type:'utility', btnType:'utility', energy:1, levels:[{desc:'Gain 1 EN and next attack +16% damage/+10 hit.'},{desc:'Gain 1 EN and next attack +18% damage/+12 hit.'},{desc:'Gain 1 EN and next attack +20% damage/+14 hit.'},{desc:'Gain 2 EN and next attack +22% damage/+16 hit.'}]}));
-Object.assign(ABILITY_TEMPLATES.perfect_hunt||{}, makeEvolutionAbilityTemplate('perfect_hunt','Perfect Hunt','Focus tempo finisher. Engineer the ideal attack turn.', {type:'utility', btnType:'utility', energy:1, levels:[{desc:'Gain 2 EN and next attack +22% damage/+14 hit.'},{desc:'Gain 2 EN and next attack +24% damage/+16 hit.'},{desc:'Gain 2 EN and next attack +26% damage/+18 hit.'},{desc:'Gain 2 EN and next attack +30% damage/+20 hit.'}]}));
+Object.assign(ABILITY_TEMPLATES.opening_focus||{}, makeEvolutionAbilityTemplate('opening_focus','Opening Focus','Focus branch: bank EN, then your next offensive action hits harder and more accurately.', {type:'utility', btnType:'utility', energy:1, levels:[{desc:'Gain 1 EN and next attack +10% damage/+6 hit.'},{desc:'Gain 1 EN and next attack +12% damage/+8 hit.'},{desc:'Gain 1 EN and next attack +14% damage/+10 hit.'},{desc:'Gain 1 EN and next attack +16% damage/+12 hit.'}]}));
+Object.assign(ABILITY_TEMPLATES.tempo_plan||{}, makeEvolutionAbilityTemplate('tempo_plan','Battle Plan','Focus evolution: more EN and a stronger next-offense window.', {type:'utility', btnType:'utility', energy:1, levels:[{desc:'Gain 1 EN and next attack +16% damage/+10 hit.'},{desc:'Gain 1 EN and next attack +18% damage/+12 hit.'},{desc:'Gain 1 EN and next attack +20% damage/+14 hit.'},{desc:'Gain 2 EN and next attack +22% damage/+16 hit.'}]}));
+Object.assign(ABILITY_TEMPLATES.perfect_hunt||{}, makeEvolutionAbilityTemplate('perfect_hunt','Perfect Hunt','Focus finisher: peak EN refund and next-offense spike.', {type:'utility', btnType:'utility', energy:1, levels:[{desc:'Gain 2 EN and next attack +22% damage/+14 hit.'},{desc:'Gain 2 EN and next attack +24% damage/+16 hit.'},{desc:'Gain 2 EN and next attack +26% damage/+18 hit.'},{desc:'Gain 2 EN and next attack +30% damage/+20 hit.'}]}));
 
 function getCrowCompromisedTargetBonus(){
   return !!((G.enemyStatus?.feared||0)>0 || (G.enemyStatus?.weaken||0)>0 || (G.enemyStatus?.exposedGuard?.pct||0)>0);
@@ -12628,30 +12695,16 @@ function getCrowMasteryCounts(ab){
     control:countSkillSlotMastery(slot, 'control'),
   };
 }
-function getCrowTempoState(){
-  return G.playerStatus?.crowTempo || {damagePct:0, hitBonus:0, critBonus:0, turns:0};
-}
-function consumeCrowTempoSetup(){
-  const tempo=getCrowTempoState();
-  if((tempo.turns||0)<=0) return {damagePct:0, hitBonus:0, critBonus:0};
-  delete G.playerStatus.crowTempo;
-  return {
-    damagePct:tempo.damagePct||0,
-    hitBonus:tempo.hitBonus||0,
-    critBonus:tempo.critBonus||0,
-  };
-}
 async function executeCrowStrikeAction(ab, config={}){
   const lv=Math.max(1, Math.min(4, Number(ab?.level)||1));
   const mastery=getCrowMasteryCounts(ab);
-  const tempo=consumeCrowTempoSetup();
-  const miss=Math.max(0, (config.miss?.[lv-1] ?? 0) - getPlayerHitBonus(ab) - (tempo.hitBonus||0) - mastery.precision*2);
+  const miss=Math.max(0, (config.miss?.[lv-1] ?? 0) - getPlayerHitBonus(ab) - mastery.precision*2);
   if(chance(miss)){
     await doMiss('player');
     logMsg(`${config.name||ab?.name||ab?.id} missed!`,'miss');
     return;
   }
-  let mult=(config.mult?.[lv-1] ?? 1) + (tempo.damagePct||0) + mastery.power*0.05;
+  let mult=(config.mult?.[lv-1] ?? 1) + mastery.power*0.05;
   if(config.bonusVs?.includes('bleed') && (G.enemyStatus?.bleed?.stacks||0)>0) mult += (config.bonus?.[lv-1] ?? 0) + mastery.control*0.01;
   if(config.bonusVs?.includes('feared') && (G.enemyStatus?.feared||0)>0) mult += (config.bonus?.[lv-1] ?? 0) + mastery.control*0.01;
   if(config.bonusVs?.includes('weakened') && (G.enemyStatus?.weaken||0)>0) mult += (config.bonus?.[lv-1] ?? 0) + mastery.control*0.01;
@@ -12662,7 +12715,7 @@ async function executeCrowStrikeAction(ab, config={}){
   const critBonus=(config.critVsCompromised && getCrowCompromisedTargetBonus()) ? config.critVsCompromised[lv-1] : 0;
   for(let i=0;i<hits;i++){
     const prox={...ab, pierceDef:(config.pierce?.[lv-1] ?? 0) + mastery.precision*4};
-    const isCrit=chance(Math.min(95, getPlayerCritChance(ab) + (tempo.critBonus||0) + critBonus + (getCrowCompromisedTargetBonus()?mastery.precision*3:0)));
+    const isCrit=chance(Math.min(95, getPlayerCritChance(ab) + critBonus + (getCrowCompromisedTargetBonus()?mastery.precision*3:0)));
     let amount;
     if(config.damageKind==='magic'){
       amount=matk(mult);
@@ -12726,12 +12779,12 @@ async function executeCrowFocusAction(ab, config={}){
     if(gained>0) spawnFloat('player',`+${gained} EN`,'fn-energy');
   }
   if(config.tempoDamage?.[lv-1] || config.tempoHit?.[lv-1] || mastery.precision>0){
-    G.playerStatus.crowTempo={
-      turns:2,
+    applyPendingStrikeBuff({
       damagePct:(config.tempoDamage?.[lv-1]||0)+mastery.power*0.02,
       hitBonus:(config.tempoHit?.[lv-1]||0)+mastery.precision*2,
       critBonus:(config.tempoCrit?.[lv-1]||0)+(mastery.precision>0?4:0),
-    };
+      sourceAbilityId:ab?.id||'',
+    });
   }
   await doSpell('player', config.fx||'🧠');
   renderStatuses('player-status',G.playerStatus);
@@ -12779,7 +12832,7 @@ const CROW_SKILL_ACTION_OVERRIDES = {
   break_plan: ab=>executeCrowFocusAction(ab,{name:'Break Plan',log:'🎯 Break Plan',fx:'🎯',expose:[0.18,0.20,0.22,0.24],turns:[2,2,2,3]}),
   ruin_hunt: ab=>executeCrowFocusAction(ab,{name:'Ruin Hunt',log:'🎯 Ruin Hunt',fx:'🎯',expose:[0.24,0.26,0.28,0.30],turns:[3,3,3,3]}),
   opening_focus: ab=>executeCrowFocusAction(ab,{name:'Opening Focus',log:'⏱ Opening Focus',fx:'⏱️',energyGain:[1,1,1,1],tempoDamage:[0.10,0.12,0.14,0.16],tempoHit:[6,8,10,12],tempoCrit:[4,6,8,10]}),
-  tempo_plan: ab=>executeCrowFocusAction(ab,{name:'Tempo Plan',log:'⏱ Tempo Plan',fx:'⏱️',energyGain:[1,1,1,2],tempoDamage:[0.16,0.18,0.20,0.22],tempoHit:[10,12,14,16],tempoCrit:[8,10,12,14]}),
+  tempo_plan: ab=>executeCrowFocusAction(ab,{name:'Battle Plan',log:'⏱ Battle Plan',fx:'⏱️',energyGain:[1,1,1,2],tempoDamage:[0.16,0.18,0.20,0.22],tempoHit:[10,12,14,16],tempoCrit:[8,10,12,14]}),
   perfect_hunt: ab=>executeCrowFocusAction(ab,{name:'Perfect Hunt',log:'⏱ Perfect Hunt',fx:'⏱️',energyGain:[2,2,2,2],tempoDamage:[0.22,0.24,0.26,0.30],tempoHit:[14,16,18,20],tempoCrit:[10,12,14,16]}),
 };
 Object.entries(CROW_SKILL_ACTION_OVERRIDES).forEach(([id, fn])=>{ ACTIONS[id]=fn; });
@@ -13642,7 +13695,7 @@ const PEREGRINE_EVOLUTION_TEMPLATE_DEFS = [
   ['aerial_pace','Aerial Pace','Pace-line neutral. Soar into better tempo.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Small SPD + light dodge.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Strongest baseline pace.'}]}],
   ['rapid_pace','Rapid Pace','Pace-line speed branch. Velocity for the stoop.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'SPD surge.'},{desc:'Bigger surge.'},{desc:'Bigger surge.'},{desc:'Maximum surge.'}]}],
   ['glide_burst','Glide Burst','Pace-line speed evolution. Thermal push.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Large SPD spike.'},{desc:'Larger spike.'},{desc:'Larger spike.'},{desc:'Huge spike.'}]}],
-  ['stoop_tempo','Stoop Tempo','Pace-line speed finisher. Perfect dive tempo.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'SPD + enemy ACC pressure.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Maximum tempo.'}]}],
+  ['stoop_tempo','Stoop Drive','Pace-line speed finisher. Peak dive pacing.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'SPD + enemy ACC pressure.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Maximum pressure.'}]}],
   ['slip_pace','Slip Pace','Pace-line dodge branch. Slip the line.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Dodge window.'},{desc:'Stronger slip.'},{desc:'Stronger slip.'},{desc:'Peak slip.'}]}],
   ['ghost_glide','Ghost Glide','Pace-line dodge evolution. Harder to track.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Heavy dodge.'},{desc:'Heavier.'},{desc:'Heavier.'},{desc:'Ghost glide.'}]}],
   ['phantom_stoop','Phantom Stoop','Pace-line dodge finisher. Vanish into the stoop.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Huge dodge + slow pressure.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Phantom line.'}]}],
@@ -14762,7 +14815,7 @@ async function executeHummingbirdFlutter(ab, cfg){
   await doSpell('player',cfg.fx||'✨');
   renderStatuses('player-status',G.playerStatus);
   renderStatuses('enemy-status',G.enemyStatus);
-  logMsg(`${cfg.log||'Flutter'}! Tempo shifts.`,'player-action');
+  logMsg(`${cfg.log||'Flutter'}! Flow shifts.`,'player-action');
 }
 async function executeHummingbirdBlinkFlutterDispatcher(ab){
   const slot=getAbilitySkillSlot(G.player,ab);
@@ -15061,7 +15114,7 @@ const PEREGRINE_SKILL_ACTION_OVERRIDES = {
   aerial_pace: ab=>executePeregrinePaceUtility(ab,{log:'🌬 Aerial Pace',fx:'🌬',spd:[1,1,2,2],dodge:[12,14,16,18],turns:[2,2,2,2]}),
   rapid_pace: ab=>executePeregrinePaceUtility(ab,{log:'🌬 Rapid Pace',fx:'🌬',spd:[2,3,4,5],turns:[2,2,2,3]}),
   glide_burst: ab=>executePeregrinePaceUtility(ab,{log:'🌬 Glide Burst',fx:'🌬',spd:[4,5,6,7],dodge:[8,10,12,14],turns:[2,2,3,3]}),
-  stoop_tempo: ab=>executePeregrinePaceUtility(ab,{log:'🌬 Stoop Tempo',fx:'🌬',spd:[3,4,5,6],accDown:[8,10,12,14],turns:[2,2,2,3]}),
+  stoop_tempo: ab=>executePeregrinePaceUtility(ab,{log:'🌬 Stoop Drive',fx:'🌬',spd:[3,4,5,6],accDown:[8,10,12,14],turns:[2,2,2,3]}),
   slip_pace: ab=>executePeregrinePaceUtility(ab,{log:'💨 Slip Pace',fx:'💨',dodge:[30,34,38,42],turns:[2,2,3,3]}),
   ghost_glide: ab=>executePeregrinePaceUtility(ab,{log:'💨 Ghost Glide',fx:'💨',dodge:[40,44,48,52],turns:[2,3,3,3]}),
   phantom_stoop: ab=>executePeregrinePaceUtility(ab,{log:'💨 Phantom Stoop',fx:'💨',dodge:[50,54,58,62],slow:[2,2,3,3],slowDodge:[10,10,12,12],turns:[3,3,3,3]}),
@@ -16888,7 +16941,7 @@ const MAGPIE_TEMPLATE_DEFS = [
   ['bright_swipe','Bright Swipe','Steal-line buff evolution. Bigger stolen edge.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Next attack +26% damage.'},{desc:'Next attack +30% damage.'},{desc:'Next attack +34% damage.'},{desc:'Next attack +38% damage.'}]}],
   ['glitter_heist','Glitter Heist','Steal-line buff finisher. Maximum polished payoff.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Next attack +34% damage.'},{desc:'Next attack +38% damage.'},{desc:'Next attack +42% damage.'},{desc:'Next attack +46% damage.'}]}],
   ['quick_snatch','Quick Snatch','Steal-line tempo branch. Swipe momentum outright.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Gain 1 EN and next attack +8% damage.'},{desc:'Gain 1 EN and next attack +10% damage.'},{desc:'Gain 1 EN and next attack +12% damage.'},{desc:'Gain 1 EN and next attack +14% damage.'}]}],
-  ['tempo_swipe','Tempo Swipe','Steal-line tempo evolution. Better acceleration.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Gain 1 EN and next attack +14% damage.'},{desc:'Gain 1 EN and next attack +16% damage.'},{desc:'Gain 1 EN and next attack +18% damage.'},{desc:'Gain 2 EN and next attack +20% damage.'}]}],
+  ['tempo_swipe','Momentum Swipe','Steal-line evolution: EN plus a stronger next offensive action.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Gain 1 EN and next attack +14% damage.'},{desc:'Gain 1 EN and next attack +16% damage.'},{desc:'Gain 1 EN and next attack +18% damage.'},{desc:'Gain 2 EN and next attack +20% damage.'}]}],
   ['momentum_heist','Momentum Heist','Steal-line tempo finisher. Steal the whole turn.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Gain 2 EN and next attack +20% damage.'},{desc:'Gain 2 EN and next attack +22% damage.'},{desc:'Gain 2 EN and next attack +24% damage.'},{desc:'Gain 2 EN and next attack +28% damage.'}]}],
   ['weakpoint_snatch','Weakpoint Snatch','Steal-line weakpoint branch. Steal an opening.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Expose enemy +12% for 2 turns.'},{desc:'Expose enemy +14% for 2 turns.'},{desc:'Expose enemy +16% for 2 turns.'},{desc:'Expose enemy +18% for 2 turns.'}]}],
   ['crackswipe','Crack Swipe','Steal-line weakpoint evolution. Pry defenses apart.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Expose enemy +18% for 2 turns.'},{desc:'Expose enemy +20% for 2 turns.'},{desc:'Expose enemy +22% for 2 turns.'},{desc:'Expose enemy +24% for 3 turns.'}]}],
@@ -17058,7 +17111,7 @@ const MAGPIE_SKILL_ACTION_OVERRIDES = {
   bright_swipe: ab=>executeMagpieStealAction(ab,{log:'✨ Bright Swipe',amp:[0.26,0.30,0.34,0.38],stripBuffs:[1,1,1,2],stolenAmp:[0.06,0.07,0.08,0.10]}),
   glitter_heist: ab=>executeMagpieStealAction(ab,{log:'✨ Glitter Heist',amp:[0.34,0.38,0.42,0.46],stripBuffs:[1,1,2,2],stolenAmp:[0.08,0.09,0.10,0.12]}),
   quick_snatch: ab=>executeMagpieStealAction(ab,{log:'⏱ Quick Snatch',energy:[1,1,1,1],amp:[0.08,0.10,0.12,0.14]}),
-  tempo_swipe: ab=>executeMagpieStealAction(ab,{log:'⏱ Tempo Swipe',energy:[1,1,1,2],amp:[0.14,0.16,0.18,0.20]}),
+  tempo_swipe: ab=>executeMagpieStealAction(ab,{log:'⏱ Momentum Swipe',energy:[1,1,1,2],amp:[0.14,0.16,0.18,0.20]}),
   momentum_heist: ab=>executeMagpieStealAction(ab,{log:'⏱ Momentum Heist',energy:[2,2,2,2],amp:[0.20,0.22,0.24,0.28]}),
   weakpoint_snatch: ab=>executeMagpieStealAction(ab,{log:'🎯 Weakpoint Snatch',expose:[0.12,0.14,0.16,0.18],turns:[2,2,2,2]}),
   crackswipe: ab=>executeMagpieStealAction(ab,{log:'🎯 Crack Swipe',expose:[0.18,0.20,0.22,0.24],turns:[2,2,2,3]}),
@@ -17241,6 +17294,7 @@ async function playerAction(ab,fromQueue=false) {
   if(lyrebirdSongEcho){G.player._lyrebirdSongEchoUsed=true;logMsg('🎵 Perfect Mimicry triggers: Song repeats at 40% power!','system');}
   // Temporarily double ATK for flyby
   if(flybyWasCharged) G.player.stats.atk*=2;
+  if(['physical','ranged','spell'].includes(_abKindNow)) promotePendingStrikeBuffToActive();
   await ACTIONS[ab.id](ab);
   if(chargedDouble && !G.battleOver && G.enemy.stats.hp>0){await ACTIONS[ab.id](ab);}
   if(lyrebirdSongEcho && !G.battleOver && G.enemy.stats.hp>0){
@@ -17267,6 +17321,7 @@ async function playerAction(ab,fromQueue=false) {
   const _flBd=BIRDS[G.player.birdKey];
   if(_flBd&&_flBd.passive&&_flBd.passive.onAbilityUse) _flBd.passive.onAbilityUse(G.player,ab);
   if(flybyWasCharged) G.actionDamageMult=1;
+  delete G._pendingStrikeActionMods;
   G._activePlayerAbility=null;
   G.animLock=false;
   if(G.enemy.stats.hp<=0||G.player.stats.hp<=0){if(checkDeath())return;}
@@ -17410,7 +17465,8 @@ function spellMissChance() {
   const matk = G.player.stats.matk || 8;
   const mdef = G.enemy.stats.mdef || 8;
   const diff = matk - mdef;
-  return Math.max(3, Math.min(40, 18 - diff * 3));
+  const hb=G._pendingStrikeActionMods?.hitBonus||0;
+  return Math.max(3, Math.min(40, 18 - diff * 3) - hb);
 }
 
 function spellMisses() {
@@ -17437,8 +17493,9 @@ function matk(mult=1) {
   const base=G.player.stats.matk||8;
   const matkVsEnemy=base-(G.enemy.stats.mdef||8);
   const adjust=matkVsEnemy*0.015; // ±1.5% per point difference
+  const strikeAdd=(G._pendingStrikeActionMods?.matkMultAdd!=null?G._pendingStrikeActionMods.matkMultAdd:G._pendingStrikeActionMods?.multAdd)||0;
   // MDodge compensation: spells are slightly stronger to offset player magic evasion
-  return Math.max(1,Math.floor(pdmg(1)*(mult+adjust)*base/7.2));
+  return Math.max(1,Math.floor(pdmg(1,null,{skipPendingStrikeAdd:true})*(mult+adjust+strikeAdd)*base/7.2));
 }
 
 
