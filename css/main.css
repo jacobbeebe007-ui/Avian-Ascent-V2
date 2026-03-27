@@ -1269,7 +1269,6 @@ header p{color:var(--text-dim);font-style:italic;font-size:1rem;margin-top:4px;}
 .battle-layout{position:relative;z-index:1;display:grid;grid-template-rows:auto auto 1fr auto auto;gap:13px;}
 .battle-top{display:flex;justify-content:space-between;align-items:center;background:linear-gradient(180deg,rgba(3,6,3,.97),rgba(5,9,5,.95));border:1px solid rgba(200,160,32,.28);border-radius:10px;padding:10px 18px;gap:12px;flex-wrap:wrap;}
 .level-badge{font-family:'Cinzel',serif;color:var(--gold);font-size:.88rem;letter-spacing:.08em;}
-.turn-lbl{font-size:.84rem;color:var(--text-dim);}
 
 /* EXP BAR */
 .exp-row{display:flex;align-items:center;gap:10px;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:8px 16px;}
@@ -1621,7 +1620,6 @@ body.ui-mobile-mode #screen-battle .energy-text{font-size:.62rem;}
 body.ui-mobile-mode #screen-battle .battle-log{height:88px;font-size:.72rem;padding:8px 9px;}
 body.ui-mobile-mode #screen-battle .battle-log-toggle{font-size:.7rem;padding:6px 9px;}
 body.ui-mobile-mode #screen-battle .battle-top{padding:7px 9px;}
-body.ui-mobile-mode #screen-battle .turn-lbl,
 body.ui-mobile-mode #screen-battle .bird-lv,
 body.ui-mobile-mode #screen-battle .level-badge{font-size:.7rem;}
 

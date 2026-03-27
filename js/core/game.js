@@ -8180,7 +8180,6 @@ function refreshBattleUI() {
   }
 
   document.getElementById('level-label').textContent = `STAGE ${getEncounterStage()}`;
-  document.getElementById('turn-label').textContent = G.turn==='player'?`🟢 Your Turn · EN ${G.player.energy}/${G.player.energyMax}`:'🔴 Enemy Turn';
   document.getElementById('bird-lv-label').textContent = `Lv.${G.player.birdLevel}`;
   const shinyEl=document.getElementById('battle-shiny-count'); if(shinyEl) shinyEl.textContent=String(G.shinyObjects||0);
 
