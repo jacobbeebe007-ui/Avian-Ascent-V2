@@ -7016,18 +7016,28 @@ function buildStoryEnemyFromBirdKey(birdKey, stage){
     _storyDirectStats:true,
   };
 }
-function isStoryUnfairEnemyPair(a,b,stage){
-  const clsA=String(BIRDS?.[a]?.class||'');
-  const clsB=String(BIRDS?.[b]?.class||'');
-  const tA=getStoryThreatForBirdKey(a), tB=getStoryThreatForBirdKey(b);
-  if(stage<=9 && ['trickster','singer'].includes(clsA) && ['trickster','singer'].includes(clsB)) return true; // heavy control early
-  if(stage<=9 && ['bruiser','tank'].includes(clsA) && ['bruiser','tank'].includes(clsB)) return true;
-  if(stage<16 && clsA==='predator' && clsB==='predator' && Math.max(tA,tB)>=4) return true;
-  return false;
+/** Two distinct birds whose combined threat is ≤ budget; prefers lower sum. Randomized order. */
+function pickFallbackStoryEnemyPair(pool, budget){
+  if(pool.length<2) return [pool[0], pool[0]];
+  const keys=pool.slice().sort(()=>Math.random()-.5);
+  let best=null, bestSum=Infinity;
+  for(let i=0;i<keys.length;i++){
+    for(let j=i+1;j<keys.length;j++){
+      const a=keys[i], b=keys[j];
+      const sum=getStoryThreatForBirdKey(a)+getStoryThreatForBirdKey(b);
+      if(sum<=budget && sum<bestSum){ best=[a,b]; bestSum=sum; }
+    }
+  }
+  if(best) return best;
+  for(let i=0;i<keys.length;i++){
+    for(let j=i+1;j<keys.length;j++) return [keys[i],keys[j]];
+  }
+  return [keys[0], keys[1]];
 }
+
 function generateStoryStageEnemyKeys(stage, playerBirdKey){
   const [minThreat,maxThreat]=getStoryAllowedThreatMinMax(stage);
-  const all=Object.keys(BIRDS||{}).filter(k=>k!=='dukeBlakiston');
+  const all=Object.keys(BIRDS||{}).filter(k=>k!=='dukeBlakiston' && k!=='duke_blakiston');
   const pool=all.filter(k=>{
     const t=getStoryThreatForBirdKey(k);
     return t>=minThreat && t<=maxThreat;
@@ -7039,27 +7049,17 @@ function generateStoryStageEnemyKeys(stage, playerBirdKey){
     if(playerThreat===3 && stage>=3) budget+=1;
     if(playerThreat>=4 && stage>=2) budget+=1;
   }
-  const tries=220;
-  for(let i=0;i<tries;i++){
-    const first=pickRandom(pool);
+  const shuffled=pool.slice().sort(()=>Math.random()-.5);
+  for(let i=0;i<360;i++){
+    const first=pickRandom(shuffled);
     const firstThreat=getStoryThreatForBirdKey(first);
-    const exactPool=pool.filter(k=>{
-      const total=firstThreat+getStoryThreatForBirdKey(k);
-      return total===budget;
-    });
-    const fairExact=exactPool.filter(k=>!isStoryUnfairEnemyPair(first,k,stage));
-    if(fairExact.length) return [first, pickRandom(fairExact)];
-    const secondPool=pool.filter(k=>{
-      const total=firstThreat+getStoryThreatForBirdKey(k);
-      return total<=budget;
-    });
-    if(!secondPool.length) continue;
-    const second=pickRandom(secondPool);
-    if(isStoryUnfairEnemyPair(first,second,stage)) continue;
-    return [first,second];
+    const others=shuffled.filter(k=>k!==first);
+    const exactPool=others.filter(k=>firstThreat+getStoryThreatForBirdKey(k)===budget);
+    if(exactPool.length) return [first, pickRandom(exactPool)];
+    const underPool=others.filter(k=>firstThreat+getStoryThreatForBirdKey(k)<=budget);
+    if(underPool.length) return [first, pickRandom(underPool)];
   }
-  const sorted=pool.slice().sort((a,b)=>getStoryThreatForBirdKey(a)-getStoryThreatForBirdKey(b));
-  return [sorted[0], sorted[1] || sorted[0]];
+  return pickFallbackStoryEnemyPair(pool, budget);
 }
 
 /** Linear story (and shared save state): two bird enemies per non-boss stage, threat sum matches budget when possible. */
