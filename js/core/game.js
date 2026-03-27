@@ -6083,6 +6083,16 @@ function saveRun() {
       } : null,
       savedAt: Date.now(),
       shinyObjects: Math.max(0, Math.floor(Number(G.shinyObjects) || 0)),
+      owEncounterChain: (!G.endlessMode && Array.isArray(G._owStageEnemies) && G._owStageEnemies.length) ? {
+        owStageEnemies: G._owStageEnemies.slice(),
+        owEnemyIndex: G._owEnemyIndex || 0,
+        owEnemyCount: G._owEnemyCount || 0,
+        owEncounterDrafts: G._owEncounterDrafts ? JSON.parse(JSON.stringify(G._owEncounterDrafts)) : null,
+        owEncounterDraftsSig: G._owEncounterDraftsSig || null,
+        owPendingBattleStage: Number.isFinite(Number(G._owPendingBattleStage)) ? G._owPendingBattleStage : null,
+        owPendingNodeId: Number.isFinite(Number(G._owPendingNodeId)) ? G._owPendingNodeId : null,
+        battleTerrain: (typeof G._battleTerrain === 'string' && G._battleTerrain.trim()) ? G._battleTerrain.trim() : null,
+      } : null,
     };
     // Strip un-serializable passive fns from player
     delete save.player.passive;
@@ -6133,6 +6143,25 @@ function continueRun() {
   G._pendingSkillEvolutionChoices=0;
   G.codex=save.codex||{abilities:{},enemies:{},birds:{},artifacts:{},statuses:{}};
   G.shinyObjects = Math.max(0, Math.floor(Number(save.shinyObjects) || 0));
+  const oc = save.owEncounterChain;
+  if(!G.endlessMode && oc && Array.isArray(oc.owStageEnemies) && oc.owStageEnemies.length){
+    G._owStageEnemies = oc.owStageEnemies.slice();
+    G._owEnemyIndex = Math.max(0, Math.floor(Number(oc.owEnemyIndex) || 0));
+    G._owEnemyCount = Math.max(1, Math.floor(Number(oc.owEnemyCount) || G._owStageEnemies.length));
+    G._owEncounterDrafts = (Array.isArray(oc.owEncounterDrafts) && oc.owEncounterDrafts.length) ? JSON.parse(JSON.stringify(oc.owEncounterDrafts)) : null;
+    G._owEncounterDraftsSig = (G._owEncounterDrafts && oc.owEncounterDraftsSig) ? oc.owEncounterDraftsSig : null;
+    G._owEncounterMaterialized = null;
+    G._owEncounterMaterializedSig = null;
+    if(Number.isFinite(Number(oc.owPendingBattleStage))) G._owPendingBattleStage = Math.floor(Number(oc.owPendingBattleStage));
+    if(Number.isFinite(Number(oc.owPendingNodeId))) G._owPendingNodeId = Math.floor(Number(oc.owPendingNodeId));
+    if(typeof oc.battleTerrain === 'string' && oc.battleTerrain.trim()) G._battleTerrain = oc.battleTerrain.trim();
+  } else if(!save.inBattle && !oc){
+    G._owStageEnemies = null;
+    G._owEncounterDrafts = null;
+    G._owEncounterDraftsSig = null;
+    G._owEncounterMaterialized = null;
+    G._owEncounterMaterializedSig = null;
+  }
   // Re-attach passive reference (fns can't be serialized)
   const bd=BIRDS[G.player.birdKey];
   if(bd) G.player.passive=bd.passive||null;
@@ -6238,7 +6267,240 @@ function clearOverworldPendingBattle() {
   G._owSequenceShiny = 0;
   G._owEnemyIndex = 0;
   G._owStageEnemies = null;
+  G._owEncounterDrafts = null;
+  G._owEncounterDraftsSig = null;
+  G._owEncounterMaterialized = null;
+  G._owEncounterMaterializedSig = null;
   G._battleTerrain = null;
+}
+
+/** Lock story/template rolls per stage slot (no numeric scaling). */
+function ensureOwEncounterDrafts(encounterStage){
+  if(G.endlessMode || !G._owStageEnemies?.length){
+    G._owEncounterDrafts = null;
+    G._owEncounterDraftsSig = null;
+    return;
+  }
+  const sig = `${encounterStage}|${(G._owStageEnemies || []).join(',')}`;
+  if(G._owEncounterDraftsSig === sig && Array.isArray(G._owEncounterDrafts) && G._owEncounterDrafts.length === G._owStageEnemies.length) return;
+  G._owEncounterDraftsSig = sig;
+  G._owEncounterDrafts = G._owStageEnemies.map(bk=>{
+    const d = buildOwEnemyDraftFromBirdKey(bk, encounterStage);
+    return d ? JSON.parse(JSON.stringify(d)) : null;
+  });
+}
+
+/** One overworld slot: draft template before universal scaling (mirrors loadStage OW branch). */
+function buildOwEnemyDraftFromBirdKey(bk, encounterStage){
+  let ed = null;
+  const bkNorm = String(bk||'').toLowerCase();
+  if((bkNorm==='duke_blakiston'||bkNorm==='dukeblakiston') && encounterStage>=20){
+    ed = makeDukeBlakiston();
+  } else {
+    if(!STORY_BOSS_STAGES.has(encounterStage)){
+      ed = buildStoryEnemyFromBirdKey(bk, encounterStage);
+    }
+    if(!ed){
+      const bEnemy = BIRD_ENEMIES.find(e => e.birdKey === bk) || ENEMIES.find(e => (e.birdKey||e.portraitKey||'') === bk);
+      if(bEnemy){
+        ed = {name:bEnemy.name,emoji:bEnemy.emoji||'',birdKey:bk,portraitKey:bk,
+          hp:bEnemy.hp,maxHp:bEnemy.hp,atk:bEnemy.atk,def:bEnemy.def,spd:bEnemy.spd,
+          acc:bEnemy.acc,dodge:bEnemy.dodge,size:bEnemy.size||'medium',
+          enemyClass:bEnemy.enemyClass||inferEnemyClassFromStyle(bEnemy.aiStyle||'aggressive'),
+          aiStyle:bEnemy.aiStyle||'aggressive',abilities:bEnemy.abilities||[],tier:bEnemy.tier||[1]};
+      }
+    }
+  }
+  return ed;
+}
+
+/** Apply the same scaling merge loadStage uses; mutates ed in place. */
+function mergeScaledStatsIntoEnemy(ed, encounterStage){
+  if(!ed) return ed;
+  const diffMult = DIFFICULTIES[G.difficulty||'juvenile'].mult;
+  const scaleOpts={
+    isEndless:(G.endlessMode && encounterStage>20),
+    isStory:!G.endlessMode,
+    diffMult,
+    playerBirdLevel:Math.max(1, Math.floor(G.player?.birdLevel||1)),
+  };
+  const scaled=ed._storyDirectStats ? {
+    hp:ed.hp,maxHp:ed.maxHp,atk:ed.atk,def:ed.def,spd:ed.spd,acc:ed.acc,dodge:ed.dodge,mdodge:ed.mdodge,mdef:ed.mdef,matk:ed.matk,cc:ed.cc||0.05,cd:ed.cd||1.5,en:ed.energyMax||ed.stats?.en||3,enemyClass:ed.enemyClass,effectiveLevel:ed.storyLevel||0,
+  } : (ed.isBoss
+    ? buildScaledBoss(ed, encounterStage, scaleOpts)
+    : buildScaledEnemy(ed, encounterStage, scaleOpts));
+  ed.hp=scaled.hp; ed.maxHp=scaled.maxHp;
+  ed.atk=scaled.atk; ed.def=scaled.def; ed.spd=scaled.spd;
+  ed.acc=scaled.acc; ed.dodge=scaled.dodge; ed.mdodge=scaled.mdodge;
+  ed.cc=scaled.cc; ed.cd=scaled.cd;
+  ed.mdef=scaled.mdef; ed.matk=scaled.matk;
+  ed.enemyClass=scaled.enemyClass||ed.enemyClass||inferEnemyClassFromStyle(ed.aiStyle);
+  ed.combatTier = (scaled && 'tier' in scaled && scaled.tier!=null) ? scaled.tier : (ed.combatTier||ed.enemyTier||null);
+  if(Number.isFinite(scaled.effectiveLevel)) ed.effectiveLevel=scaled.effectiveLevel;
+  if(G.player?.mutBloodMoon){ ed.atk=Math.floor(ed.atk*1.10); ed.matk=Math.floor((ed.matk||ed.atk)*1.10); }
+  ed.stats = {hp:ed.hp, maxHp:ed.hp, atk:ed.atk, def:ed.def, spd:ed.spd, acc:ed.acc, dodge:ed.dodge, mdodge:ed.mdodge, mdef:ed.mdef, matk:ed.matk, cc:ed.cc, cd:ed.cd, critChance:Math.round((ed.cc||0.05)*100), critMult:ed.cd||1.5, en:(scaled.en||0)};
+  const baseEnemyEnergy = Math.max(1, scaled.en||ed.stats.en||3);
+  ed.energyMax=baseEnemyEnergy;
+  ed.energy=baseEnemyEnergy;
+  ed.energyRegen=0;
+  return ed;
+}
+
+/** Scale drafts for current level/difficulty; kits stay tied to encounter drafts. */
+function ensureOwEncounterMaterialized(encounterStage){
+  if(G.endlessMode || !G._owStageEnemies?.length) return;
+  ensureOwEncounterDrafts(encounterStage);
+  const plv = Math.max(1, Math.floor(G.player?.birdLevel || 1));
+  const diffMult = DIFFICULTIES[G.difficulty || 'juvenile'].mult;
+  const scaleSig = `${G._owEncounterDraftsSig || ''}|lv${plv}|d${diffMult}`;
+  if(G._owEncounterMaterializedSig === scaleSig && Array.isArray(G._owEncounterMaterialized) && G._owEncounterMaterialized.length === G._owStageEnemies.length && G._owEncounterMaterialized.every(x=>x && typeof x==='object')) return;
+  G._owEncounterMaterializedSig = scaleSig;
+  G._owEncounterMaterialized = (G._owEncounterDrafts || []).map(draft=>{
+    if(!draft) return null;
+    const ed = JSON.parse(JSON.stringify(draft));
+    mergeScaledStatsIntoEnemy(ed, encounterStage);
+    return ed;
+  });
+}
+
+function escapeEncounterPreviewHtml(s){
+  return String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+/** Four skill names: evolved story kit when present, else pool keys or synced ability objects. */
+function getEnemyPreviewSkillNames(enemy){
+  const names=[];
+  if(!enemy) return ['—','—','—','—'];
+  if(enemy.id==='duke_blakiston'){
+    return ["River Grip","Royal Decree","Court Wardens","Owl's Verdict"];
+  }
+  if(Array.isArray(enemy.storyAbilityKit) && enemy.storyAbilityKit.length){
+    enemy.storyAbilityKit.slice(0,4).forEach(id=>{
+      const t=ABILITY_TEMPLATES[id];
+      names.push(t?.name||String(id));
+    });
+  } else if(Array.isArray(enemy.abilities) && enemy.abilities.length){
+    enemy.abilities.slice(0,4).forEach(entry=>{
+      if(typeof entry==='string'){
+        const eab=ENEMY_ABILITY_POOL[entry];
+        const t=ABILITY_TEMPLATES[entry];
+        names.push(eab?.name||t?.name||String(entry));
+      } else if(entry && typeof entry==='object'){
+        const t=ABILITY_TEMPLATES[entry.id];
+        names.push(String(entry.name||t?.name||entry.id||'—'));
+      }
+    });
+  }
+  while(names.length<4) names.push('—');
+  return names.slice(0,4);
+}
+
+function getEnemyPreviewLevel(enemy){
+  if(!enemy) return 1;
+  if(Number.isFinite(enemy.storyLevel)) return enemy.storyLevel;
+  if(Number.isFinite(enemy.effectiveLevel)) return enemy.effectiveLevel;
+  const st=getEncounterStage();
+  return computeEnemyEffectiveLevel(st, Math.max(1, Math.floor(G.player?.birdLevel||1)), !!(G.endlessMode && st>20));
+}
+
+function getEnemyPreviewThreatLine(enemy){
+  if(!enemy) return {short:'—', detail:'Threat: —'};
+  if(Number.isFinite(enemy.storyThreat)){
+    const n=enemy.storyThreat;
+    return {short:`Threat ${n}`, detail:`Threat ${n}`};
+  }
+  const tier=enemy.combatTier || enemy.enemyTier;
+  if(tier){
+    const lab=String(tier).charAt(0).toUpperCase()+String(tier).slice(1);
+    return {short:lab, detail:`Tier: ${lab}`};
+  }
+  if(enemy.birdKey){
+    const t=getStoryThreatForBirdKey(enemy.birdKey);
+    return {short:`Threat ${t}`, detail:`Threat ${t}`};
+  }
+  return {short:'—', detail:'Threat: —'};
+}
+
+/** Source of truth for encounter preview + tooltips: materialized OW chain, else current G.enemy. */
+function getCurrentStageEncounterPreviewData(){
+  const st=getEncounterStage();
+  ensureOwEncounterMaterialized(st);
+  const idx=G._owEnemyIndex||0;
+  if(!G.endlessMode && G._owStageEnemies?.length && Array.isArray(G._owEncounterMaterialized)){
+    return G._owEncounterMaterialized.map((en,i)=>({
+      enemy:en,
+      slotIndex:i,
+      isCurrent:i===idx,
+    })).filter(x=>x.enemy);
+  }
+  if(G.enemy) return [{enemy:G.enemy, slotIndex:0, isCurrent:true}];
+  return [];
+}
+
+function buildEncounterPreviewTooltipHtml(enemy){
+  if(!enemy) return '';
+  const nm=escapeEncounterPreviewHtml(enemy.name||'Enemy');
+  const cls=idToClassLabel(resolveFinalClass(enemy.class||enemy.enemyClass||inferEnemyClassFromStyle(enemy.aiStyle), enemy.birdKey||''));
+  const sz=SIZE_LABELS[String(enemy.size||'medium').toLowerCase()]||escapeEncounterPreviewHtml(enemy.size||'');
+  const lv=getEnemyPreviewLevel(enemy);
+  const thr=getEnemyPreviewThreatLine(enemy);
+  const skills=getEnemyPreviewSkillNames(enemy).map(s=>`<li>${escapeEncounterPreviewHtml(s)}</li>`).join('');
+  const mini=enemy.portraitKey||enemy.birdKey||'';
+  const icon=(PORTRAITS[mini]||PORTRAITS[String(mini).toLowerCase()]||enemy.emoji||'🪶');
+  return `<div class="enc-preview-tt"><div class="enc-preview-tt-head">${icon} <strong>${nm}</strong></div>
+<div class="enc-preview-tt-meta">Class: ${escapeEncounterPreviewHtml(cls)}<br/>Size: ${escapeEncounterPreviewHtml(sz)}<br/>LVL ${lv}<br/>${escapeEncounterPreviewHtml(thr.detail)}</div>
+<div class="enc-preview-tt-skills"><div class="enc-preview-tt-skills-h">Skills</div><ul class="enc-preview-tt-ul">${skills}</ul></div></div>`;
+}
+
+function renderEncounterPreview(){
+  const wrap=document.getElementById('encounter-preview-wrap');
+  if(!wrap) return;
+  if(!document.getElementById('screen-battle')?.classList.contains('active')){
+    wrap.style.display='none';
+    return;
+  }
+  wrap.style.display='block';
+  const rows=getCurrentStageEncounterPreviewData();
+  const inner=wrap.querySelector('.encounter-preview-inner');
+  if(!inner) return;
+  if(!rows.length){
+    inner.innerHTML='<div class="enc-preview-empty">No encounter data</div>';
+    return;
+  }
+  inner.classList.toggle('encounter-preview--single', rows.length===1);
+  inner.innerHTML=rows.map(({enemy,isCurrent},i)=>{
+    const pk=enemy.portraitKey||enemy.birdKey||'';
+    const sprite=(PORTRAITS[pk]||PORTRAITS[String(pk).toLowerCase()]||`<span class="enc-preview-emoji">${enemy.emoji||'🪶'}</span>`);
+    const nm=escapeEncounterPreviewHtml(enemy.name||'—');
+    const lv=getEnemyPreviewLevel(enemy);
+    const thr=getEnemyPreviewThreatLine(enemy);
+    const tt=buildEncounterPreviewTooltipHtml(enemy);
+    const cur=isCurrent?' enc-preview-card--current':'';
+    return `<div class="enc-preview-card${cur}" data-enc-idx="${i}" tabindex="0" aria-label="${nm}, level ${lv}, ${thr.short}">
+<div class="enc-preview-sprite">${sprite}</div>
+<div class="enc-preview-text">
+<div class="enc-preview-name">${nm}${enemy.isBoss?' <span class="enc-preview-crown" aria-hidden="true">👑</span>':''}</div>
+<div class="enc-preview-sub">LVL ${lv} · ${escapeEncounterPreviewHtml(thr.short)}</div>
+</div>
+</div>`;
+  }).join('');
+  inner.querySelectorAll('.enc-preview-card').forEach(card=>{
+    const idx=Number(card.getAttribute('data-enc-idx'));
+    const row=rows[idx];
+    if(!row) return;
+    const html=buildEncounterPreviewTooltipHtml(row.enemy);
+    const show=e=>{
+      showTooltip(e, html, e.clientX+14, e.clientY+14);
+    };
+    card.addEventListener('mouseenter', show);
+    card.addEventListener('mousemove', e=>moveTooltip(e.clientX+14, e.clientY+14));
+    card.addEventListener('mouseleave', hideTooltip);
+    card.addEventListener('focus', ev=>{
+      const r = card.getBoundingClientRect();
+      showTooltip(ev, html, r.right + 12, r.top + 4);
+    });
+    card.addEventListener('blur', hideTooltip);
+  });
 }
 
 /** PNG: assets/arenas/arena-{id}.png — see assets/arenas/README.md */
@@ -7455,27 +7717,19 @@ function loadStage() {
   const stageSequenceLabel = (!G.endlessMode && (G._owEnemyCount||0) > 1)
     ? ` · Battle ${Math.min((G._owEnemyIndex||0)+1, G._owEnemyCount)} of ${G._owEnemyCount}`
     : '';
+  ensureOwEncounterMaterialized(encounterStage);
   let ed;
-  // Overworld stage: use the specific enemy listed for this index
+  let skipEnemyScalarMerge = false;
+  // Overworld stage: use pre-materialized snapshot so preview matches battle rolls
   if (!G.endlessMode && G._owStageEnemies?.length > 0) {
-    const bk = G._owStageEnemies[G._owEnemyIndex || 0];
-    const bkNorm = String(bk||'').toLowerCase();
-    if((bkNorm==='duke_blakiston'||bkNorm==='dukeblakiston') && encounterStage>=20){
-      ed = makeDukeBlakiston();
+    const idx = G._owEnemyIndex || 0;
+    const mat = G._owEncounterMaterialized?.[idx];
+    if(mat){
+      ed = JSON.parse(JSON.stringify(mat));
+      skipEnemyScalarMerge = true;
     } else {
-    if(!STORY_BOSS_STAGES.has(encounterStage)){
-      ed = buildStoryEnemyFromBirdKey(bk, encounterStage);
-    }
-    if(!ed){
-    const bEnemy = BIRD_ENEMIES.find(e => e.birdKey === bk) || ENEMIES.find(e => (e.birdKey||e.portraitKey||'') === bk);
-    if (bEnemy) {
-      ed = {name:bEnemy.name,emoji:bEnemy.emoji||'',birdKey:bk,portraitKey:bk,
-        hp:bEnemy.hp,maxHp:bEnemy.hp,atk:bEnemy.atk,def:bEnemy.def,spd:bEnemy.spd,
-        acc:bEnemy.acc,dodge:bEnemy.dodge,size:bEnemy.size||'medium',
-        enemyClass:bEnemy.enemyClass||inferEnemyClassFromStyle(bEnemy.aiStyle||'aggressive'),
-        aiStyle:bEnemy.aiStyle||'aggressive',abilities:bEnemy.abilities||[],tier:bEnemy.tier||[1]};
-    }
-    }
+      const bk = G._owStageEnemies[idx];
+      ed = buildOwEnemyDraftFromBirdKey(bk, encounterStage);
     }
   }
   const diffMult = DIFFICULTIES[G.difficulty||'juvenile'].mult;
@@ -7545,30 +7799,9 @@ function loadStage() {
     }
 
   }
-  const scaleOpts={
-    isEndless:(G.endlessMode && encounterStage>20),
-    isStory:!G.endlessMode,
-    diffMult,
-    playerBirdLevel:Math.max(1, Math.floor(G.player?.birdLevel||1)),
-  };
-  const scaled=ed._storyDirectStats ? {
-    hp:ed.hp,maxHp:ed.maxHp,atk:ed.atk,def:ed.def,spd:ed.spd,acc:ed.acc,dodge:ed.dodge,mdodge:ed.mdodge,mdef:ed.mdef,matk:ed.matk,cc:ed.cc||0.05,cd:ed.cd||1.5,en:ed.energyMax||ed.stats?.en||3,enemyClass:ed.enemyClass,effectiveLevel:ed.storyLevel||0,
-  } : (ed.isBoss
-    ? buildScaledBoss(ed, encounterStage, scaleOpts)
-    : buildScaledEnemy(ed, encounterStage, scaleOpts));
-  ed.hp=scaled.hp; ed.maxHp=scaled.maxHp;
-  ed.atk=scaled.atk; ed.def=scaled.def; ed.spd=scaled.spd;
-  ed.acc=scaled.acc; ed.dodge=scaled.dodge; ed.mdodge=scaled.mdodge;
-  ed.cc=scaled.cc; ed.cd=scaled.cd;
-  ed.mdef=scaled.mdef; ed.matk=scaled.matk;
-  ed.enemyClass=scaled.enemyClass||ed.enemyClass||inferEnemyClassFromStyle(ed.aiStyle);
-  if(Number.isFinite(scaled.effectiveLevel)) ed.effectiveLevel=scaled.effectiveLevel;
-  if(G.player?.mutBloodMoon){ ed.atk=Math.floor(ed.atk*1.10); ed.matk=Math.floor((ed.matk||ed.atk)*1.10); }
-  ed.stats = {hp:ed.hp, maxHp:ed.hp, atk:ed.atk, def:ed.def, spd:ed.spd, acc:ed.acc, dodge:ed.dodge, mdodge:ed.mdodge, mdef:ed.mdef, matk:ed.matk, cc:ed.cc, cd:ed.cd, critChance:Math.round((ed.cc||0.05)*100), critMult:ed.cd||1.5, en:(scaled.en||0)};
-  const baseEnemyEnergy = Math.max(1, scaled.en||ed.stats.en||3);
-  ed.energyMax=baseEnemyEnergy;
-  ed.energy=baseEnemyEnergy;
-  ed.energyRegen=0;
+  if(ed && !skipEnemyScalarMerge){
+    mergeScaledStatsIntoEnemy(ed, encounterStage);
+  }
   G.enemy = ed;
   const stageEvt = {stage:encounterStage, enemyId:G.enemy.id||G.enemy.name, isBoss:!!G.enemy.isBoss};
   AvianEvents.emit('stage:loaded', stageEvt);
@@ -7879,6 +8112,7 @@ Estimated damage: ${eab.dmg||(`${low}-${high}`)}`;
   wireCombatDropdownStateSync();
   applyUIStateToDOM();
   renderActions();
+  renderEncounterPreview();
 }
 
 function setHpBar(who,hp,max) {
@@ -19577,6 +19811,7 @@ function updateStageProgress() {
       bossEl.appendChild(pip);
     });
   }
+  if(typeof renderEncounterPreview==='function') renderEncounterPreview();
 }
 
 // ============================================================
