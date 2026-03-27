@@ -190,10 +190,15 @@
 <div class="level-badge" id="level-label">STAGE 1</div>
 <span class="bird-lv" id="bird-lv-label">Lv.1</span>
 <span class="passive-badge" id="passive-badge" title="Passive Trait"></span>
+<span class="turn-lbl" id="turn-label">Your Turn</span>
 </div>
 <div class="topbar-center">
-<div class="battle-caption" id="battle-caption"></div>
-<div class="turn-lbl" id="turn-label">Your Turn</div>
+<div class="battle-caption" id="battle-caption" aria-live="polite"></div>
+<div class="topbar-battle-btns">
+<button type="button" class="nest-btn" onclick="openNest()">🪺 Nest</button>
+<button type="button" class="menu-btn" onclick="openSettingsModal()">⚙ Settings</button>
+<button type="button" class="menu-btn battle-abandon-btn" onclick="openAbandonModal()">⟨ Abandon</button>
+</div>
 </div>
 <div class="topbar-right">
 <div class="shiny-topbar">✨ Shinies: <strong id="battle-shiny-count">0</strong></div>
@@ -251,8 +256,6 @@
 </div>
 </div>
 
-<div class="battle-vs-col" id="battle-vs-col"><div class="battle-vs-glyph">VS</div></div>
-
 <div class="combatant-panel enemy" id="enemy-panel">
 <div class="shield-overlay" id="enemy-shield-overlay"></div>
 <div class="combatant-name" id="enemy-name">—</div>
@@ -287,11 +290,6 @@
 <div class="battle-log-section" id="battle-log-section">
 <button type="button" class="battle-log-toggle" id="battle-log-toggle" aria-expanded="true" aria-controls="battle-log">Battle log</button>
 <div class="battle-log" id="battle-log" role="log" aria-live="polite"></div>
-</div>
-<div class="menu-row tactical-utility-row">
-<button class="nest-btn" onclick="openNest()">🪺 Nest</button>
-<button class="menu-btn" onclick="openSettingsModal()">⚙ Settings</button>
-<button class="menu-btn" onclick="openAbandonModal()" style="color:var(--red-light);border-color:rgba(201,76,76,.4)">⟨ Abandon</button>
 </div>
 </div>
 </div>
