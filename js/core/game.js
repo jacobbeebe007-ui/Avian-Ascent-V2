@@ -18682,6 +18682,14 @@ function isGreyShopStage(stage){
   return (s % 4 === 0) && !storyBoss;
 }
 
+function isShopDueAfterBattle({ stage, endlessMode, endlessBattle, lastEnemyWasBoss } = {}){
+  if(endlessMode){
+    const eb = Math.max(0, Math.floor(Number(endlessBattle) || 0));
+    return eb > 0 && eb % 5 === 0;
+  }
+  return !!lastEnemyWasBoss || isGreyShopStage(stage);
+}
+
 
 function getBattleStatsSafe(){
   // BS is used for reward bonuses; if it's missing, default safely
@@ -18828,7 +18836,7 @@ function postCombat() {
 
     // Transition (always happens)
     G.phase='REWARD';
-    if (G.enemy.isBoss && !_isOverworldRun()) {
+    if (G.enemy.isBoss && !_isOverworldRun() && !isEndlessRunActive()) {
       // In normal (non-overworld) mode: boss kill → inline Stork Shop
       setTimeout(() => {
         if (leveled) {
@@ -18966,8 +18974,13 @@ function confirmReward() {
   G.phase='REWARD';
   // Overworld runs never show the inline Stork Shop — the overworld map has its own shop nodes
   const multiEnemyChainPending = G._owStageEnemies && G._owEnemyIndex < (G._owStageEnemies.length - 1);
-  const shopDue = (lastEnemyWasBoss || isGreyShopStage(G.stage)) && !multiEnemyChainPending && !_isOverworldRun();
-  const shopMode = lastEnemyWasBoss ? 'boss' : 'grey';
+  const shopDue = isShopDueAfterBattle({
+    stage: G.stage,
+    endlessMode: !!G.endlessMode,
+    endlessBattle: G.endlessBattle,
+    lastEnemyWasBoss
+  }) && !multiEnemyChainPending && !_isOverworldRun();
+  const shopMode = (!G.endlessMode && lastEnemyWasBoss) ? 'boss' : 'grey';
 
   if(G._pendingLevelUp){
     if(shopDue){
