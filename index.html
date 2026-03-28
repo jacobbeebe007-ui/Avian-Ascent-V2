@@ -50,12 +50,14 @@
 <div class="screen screen-start active" id="screen-start">
 <div class="start-screen-bg" aria-hidden="true"></div>
 <div class="start-screen-vignette" aria-hidden="true"></div>
+<button type="button" class="theme-music-btn theme-music-btn--start" id="theme-music-btn-start" onclick="toggleThemeMusicMuted()" title="Menu music" aria-label="Toggle menu music">🔊</button>
 <div class="start-screen-inner">
 <button type="button" class="take-flight-btn" id="take-flight-btn" onclick="takeFlightToSelect()">Take Flight</button>
 </div>
 </div>
 <!-- SELECT: war-room navigation splash + roster deck -->
 <div class="screen" id="screen-select">
+<button type="button" class="theme-music-btn theme-music-btn--select" id="theme-music-btn-select" onclick="toggleThemeMusicMuted()" title="Menu music" aria-label="Toggle menu music">🔊</button>
 <div class="select-screen-bg" aria-hidden="true"></div>
 <div class="select-screen-scrim" aria-hidden="true"></div>
 <div class="splash-hotspot-layer" aria-hidden="false">
@@ -460,6 +462,12 @@
 <option value="mobile">Mobile (Compact)</option>
 </select>
 </label>
+<label style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;">Menu music volume
+<input id="setting-music-volume" type="range" min="0" max="100" step="5" value="50" style="flex:1;min-width:140px;max-width:220px;" oninput="updateMusicSettingsFromControls()"/>
+</label>
+<label style="display:flex;justify-content:space-between;align-items:center;gap:12px;">Mute menu music
+<input id="setting-music-muted" type="checkbox" onchange="updateMusicSettingsFromControls()"/>
+</label>
 </div>
 <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:14px;">
 <button class="menu-btn" onclick="exportCombatTelemetry()">📊 Export Combat Telemetry</button>
@@ -484,6 +492,9 @@
 </div>
 <!-- UNLOCK TOAST -->
 <div class="unlock-toast" id="unlock-toast"></div>
+<audio id="theme-bgm-audio" preload="auto" playsinline loop style="display:none;width:0;height:0;" crossorigin="anonymous">
+<source src="assets/audio/Blakiston_Theme.mp3" type="audio/mpeg"/>
+</audio>
 
 
 

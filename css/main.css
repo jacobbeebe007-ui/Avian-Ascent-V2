@@ -122,6 +122,42 @@ header p{color:var(--text-dim);font-style:italic;font-size:1rem;margin-top:4px;}
   outline:2px solid var(--gold);
   outline-offset:4px;
 }
+/* Menu theme (Blakiston_Theme.mp3) — start: bottom-right, war room: top-left */
+.theme-music-btn{
+  font-family:'Cinzel',serif;
+  font-size:1.35rem;
+  line-height:1;
+  padding:10px 12px;
+  border-radius:10px;
+  border:1px solid rgba(201,168,76,.45);
+  background:rgba(8,10,16,.72);
+  color:var(--text);
+  cursor:pointer;
+  box-shadow:0 2px 14px rgba(0,0,0,.4);
+  transition:transform .15s ease,border-color .15s ease,background .15s ease;
+  z-index:25;
+}
+.theme-music-btn:hover{
+  transform:scale(1.05);
+  border-color:rgba(232,201,106,.75);
+  background:rgba(20,24,36,.85);
+}
+.theme-music-btn:focus-visible{
+  outline:2px solid var(--gold);
+  outline-offset:3px;
+}
+.theme-music-btn--start{
+  position:absolute;
+  bottom:max(16px, env(safe-area-inset-bottom, 0px));
+  right:max(16px, env(safe-area-inset-right, 0px));
+}
+.theme-music-btn--select{
+  position:absolute;
+  top:max(12px, env(safe-area-inset-top, 0px));
+  left:max(12px, env(safe-area-inset-left, 0px));
+}
+/* Select screen: keep music control above hotspots */
+#screen-select .theme-music-btn--select{z-index:50;}
 /* Select screen shell + layered art (assets/ui/select-screen.png, landscape ~1536×1024) */
 #screen-select{
   position:relative;

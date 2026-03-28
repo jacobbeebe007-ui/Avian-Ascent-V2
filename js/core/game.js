@@ -7867,6 +7867,7 @@ function beginRun(){ return startGame(); }
 // ============================================================
 function startGame() {
   if(!G.selected) return;
+  beginThemeBgmFadeOutForRunStart();
   G.endlessMode = (ensureUIState().gameMode==='endless');
   if (G.endlessMode) {
     try {
@@ -8297,6 +8298,7 @@ function showScreen(id) {
   const evt={id};
   AvianEvents.emit('screen:change', evt);
   runModuleHook('onScreenChange', evt);
+  syncThemeBgmPlaybackForScreen(id);
 }
 
 // ============================================================
@@ -21128,6 +21130,140 @@ function checkDevCode(val) {
 }
 
 const ACCESS_KEY='avian_accessibility_v1';
+const MUSIC_SETTINGS_KEY='avian_music_v1';
+const THEME_BGM_DEFAULT_VOLUME_PCT=50;
+const THEME_BGM_RUN_START_FADE_MS=1400;
+let _themeBgmFadeRaf=null;
+let _themeBgmFadeActive=false;
+function cancelThemeBgmFade(){
+  if(_themeBgmFadeRaf!=null){
+    cancelAnimationFrame(_themeBgmFadeRaf);
+    _themeBgmFadeRaf=null;
+  }
+  _themeBgmFadeActive=false;
+  applyThemeMusicToAudioEl();
+}
+/** Smoothly lower menu theme volume when starting a new run (Take Flight); avoids an abrupt cut when battle screen mounts. */
+function beginThemeBgmFadeOutForRunStart(durationMs=THEME_BGM_RUN_START_FADE_MS){
+  cancelThemeBgmFade();
+  const el=getThemeBgmAudio();
+  if(!el||el.muted) return;
+  const fromVol=Number(el.volume)||0;
+  if(fromVol<=0.001||el.paused) return;
+  _themeBgmFadeActive=true;
+  const t0=performance.now();
+  const dur=Math.max(200,Number(durationMs)||THEME_BGM_RUN_START_FADE_MS);
+  function tick(now){
+    if(!_themeBgmFadeActive){ _themeBgmFadeRaf=null; return; }
+    const u=Math.min(1,(now-t0)/dur);
+    el.volume=Math.max(0,fromVol*(1-u));
+    if(u>=1){
+      el.pause();
+      _themeBgmFadeActive=false;
+      _themeBgmFadeRaf=null;
+      applyThemeMusicToAudioEl();
+      return;
+    }
+    _themeBgmFadeRaf=requestAnimationFrame(tick);
+  }
+  _themeBgmFadeRaf=requestAnimationFrame(tick);
+}
+function getMusicSettings(){
+  try{
+    const raw=JSON.parse(localStorage.getItem(MUSIC_SETTINGS_KEY)||'{}');
+    const vol=Number(raw.volume);
+    return{
+      muted:!!raw.muted,
+      volume:Number.isFinite(vol)?Math.max(0,Math.min(100,vol)):THEME_BGM_DEFAULT_VOLUME_PCT,
+    };
+  }catch(_){
+    return{muted:false,volume:THEME_BGM_DEFAULT_VOLUME_PCT};
+  }
+}
+function saveMusicSettings(s){
+  try{
+    localStorage.setItem(MUSIC_SETTINGS_KEY,JSON.stringify({
+      muted:!!s.muted,
+      volume:Math.max(0,Math.min(100,Number(s.volume)||THEME_BGM_DEFAULT_VOLUME_PCT)),
+    }));
+  }catch(_){}
+}
+function getThemeBgmAudio(){
+  return document.getElementById('theme-bgm-audio');
+}
+function applyThemeMusicToAudioEl(){
+  const el=getThemeBgmAudio();
+  if(!el) return;
+  const s=getMusicSettings();
+  el.volume=Math.max(0,Math.min(1,s.volume/100));
+  el.muted=!!s.muted;
+}
+function syncThemeMusicButtonLabels(){
+  const s=getMusicSettings();
+  const icon=s.muted?'🔇':'🔊';
+  const start=document.getElementById('theme-music-btn-start');
+  const sel=document.getElementById('theme-music-btn-select');
+  [start,sel].forEach(b=>{
+    if(!b) return;
+    b.textContent=icon;
+    b.setAttribute('aria-label',s.muted?'Unmute menu music':'Mute menu music');
+    b.title=s.muted?'Menu music (muted)':'Menu music';
+  });
+}
+function syncThemeBgmPlaybackForScreen(screenId){
+  const el=getThemeBgmAudio();
+  if(!el) return;
+  const onMenu=screenId==='screen-start'||screenId==='screen-select';
+  if(!onMenu){
+    if(_themeBgmFadeActive) return;
+    el.pause();
+    return;
+  }
+  cancelThemeBgmFade();
+  applyThemeMusicToAudioEl();
+  el.play().catch(()=>{});
+}
+function toggleThemeMusicMuted(){
+  const s=getMusicSettings();
+  s.muted=!s.muted;
+  saveMusicSettings(s);
+  applyThemeMusicToAudioEl();
+  syncThemeMusicButtonLabels();
+  const mm=document.getElementById('setting-music-muted');
+  if(mm) mm.checked=!!s.muted;
+  const active=document.querySelector('.screen.active');
+  if(active&&(active.id==='screen-start'||active.id==='screen-select')){
+    getThemeBgmAudio()?.play().catch(()=>{});
+  }
+}
+function updateMusicSettingsFromControls(){
+  const volEl=document.getElementById('setting-music-volume');
+  const muteEl=document.getElementById('setting-music-muted');
+  const s={
+    volume:Number(volEl?.value)||THEME_BGM_DEFAULT_VOLUME_PCT,
+    muted:!!muteEl?.checked,
+  };
+  saveMusicSettings(s);
+  applyThemeMusicToAudioEl();
+  syncThemeMusicButtonLabels();
+  const active=document.querySelector('.screen.active');
+  if(active&&(active.id==='screen-start'||active.id==='screen-select')){
+    getThemeBgmAudio()?.play().catch(()=>{});
+  }
+}
+function wireThemeBgmAutoplayUnlock(){
+  document.addEventListener('pointerdown',()=>{
+    const el=getThemeBgmAudio();
+    const scr=document.querySelector('.screen.active');
+    if(el&&scr&&(scr.id==='screen-start'||scr.id==='screen-select')){
+      applyThemeMusicToAudioEl();
+      el.play().catch(()=>{});
+    }
+  },{once:true,capture:true});
+}
+globalThis.toggleThemeMusicMuted=toggleThemeMusicMuted;
+globalThis.updateMusicSettingsFromControls=updateMusicSettingsFromControls;
+
 function getAccessibilitySettings(){
   try{
     return JSON.parse(localStorage.getItem(ACCESS_KEY)||'{"fontSize":100,"colorBlind":"off","reduceMotion":false,"highContrast":false,"uiMode":"desktop"}');
@@ -21184,6 +21320,11 @@ function openSettingsModal(){
   if(rm) rm.checked=!!cfg.reduceMotion;
   if(hc) hc.checked=!!cfg.highContrast;
   if(ui) ui.value=ensureUIState().battleLayout;
+  const ms=getMusicSettings();
+  const mv=document.getElementById('setting-music-volume');
+  const mm=document.getElementById('setting-music-muted');
+  if(mv) mv.value=String(ms.volume);
+  if(mm) mm.checked=!!ms.muted;
   const m=document.getElementById('settings-modal'); if(m) m.classList.add('open');
 }
 function closeSettingsModal(){
@@ -21211,6 +21352,10 @@ installErrorHUD();
 applyAccessibilitySettings();
 wireCombatDropdownStateSync();
 applyUIStateToDOM();
+applyThemeMusicToAudioEl();
+syncThemeMusicButtonLabels();
+syncThemeBgmPlaybackForScreen((document.querySelector('.screen.active')||{}).id||'screen-start');
+wireThemeBgmAutoplayUnlock();
 
 
 /* ============================================================
