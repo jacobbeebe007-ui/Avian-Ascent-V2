@@ -7893,7 +7893,9 @@ function startGame() {
 // Build endless-mode enemy from BIRD_ENEMIES (scaling happens in loadStage via stage-depth curve)
 function makeEndlessEnemy(stage) {
   const st=Math.max(1,Number(stage)||1);
-  const isBoss=(st%10===0);
+  const endlessBattle=getEndlessEffectiveBattleNumber(st);
+  // Endless boss cadence: every 10 endless battles (10, 20, 30...).
+  const isBoss=endlessBattle>0 ? (endlessBattle%ENDLESS_BOSS_CADENCE===0) : (st%10===0);
   const tier=storyTierFromStage(st);
   const poolTier=isBoss?4:Math.min(tier,4);
   const pool=pickBirdEnemyPoolForTier(poolTier);
@@ -8048,8 +8050,8 @@ function loadStage() {
   }
   const diffMult = DIFFICULTIES[G.difficulty||'juvenile'].mult;
 
-  if (G.endlessMode && encounterStage > 20) {
-    G.endlessBattle = Math.max(1,encounterStage-20);
+  if (G.endlessMode && encounterStage > ENDLESS_STORY_END_STAGE) {
+    G.endlessBattle = getEndlessEffectiveBattleNumber(encounterStage);
     ed = makeEndlessEnemy(encounterStage);
   } else {
     // Determine tier from stage
@@ -9783,18 +9785,33 @@ function resolveEnemyTier(enemyBase, forceTier=''){
 // - Difficulty preset mult (DIFFICULTIES.*.mult) scales enemy HP + ATK/MATK only.
 // - Elite random spawns disabled (combatResolveEnemyTier never promotes to elite).
 const ENEMY_PLAYER_LEVEL_TO_EFFECTIVE = 0.42;
+// Endless scaling design notes:
+// - Endless reuses the same stage-derived curve Story uses.
+// - After Story clears (Stage 20), endless adds an extra ramp every N battles.
+// - Effective level growth is intentionally unbounded (no level-10/story-end cap).
+const ENDLESS_STORY_END_STAGE = 20;
+const ENDLESS_BOSS_CADENCE = 10;
+const ENDLESS_SHOP_CADENCE = 5;
 const ENEMY_ENDLESS_EXTRA_LEVEL_EVERY = 5;
 const ENEMY_ENDLESS_EXTRA_LEVEL_STEP = 2;
 const ENEMY_HP_PER_LEVEL_BY_SIZE = Object.freeze({tiny:2.55,small:3.3,medium:3.95,large:4.7,xl:5.55});
 const ENEMY_ATK_PER_LEVEL_BY_SIZE = Object.freeze({tiny:0.45,small:0.55,medium:0.64,large:0.72,xl:0.81});
 const ENEMY_MATK_PER_LEVEL_BY_SIZE = Object.freeze({tiny:0.51,small:0.62,medium:0.70,large:0.77,xl:0.83});
 
+/** Pure helper: convert absolute stage to endless battle number (Stage 21 => Endless 1). */
+function getEndlessEffectiveBattleNumber(stage){
+  const s=Math.max(1,Math.floor(Number(stage)||1));
+  return Math.max(0,s-ENDLESS_STORY_END_STAGE);
+}
+
 function computeEnemyEffectiveLevel(stage, playerBirdLevel, isEndless){
   const s=Math.max(1,Math.floor(stage||1));
   const pl=Math.max(1,Math.floor(playerBirdLevel||1));
   let L=1+(s-1)+Math.floor((pl-1)*ENEMY_PLAYER_LEVEL_TO_EFFECTIVE);
-  if(isEndless && s>20){
-    L+=Math.floor((s-20)/ENEMY_ENDLESS_EXTRA_LEVEL_EVERY)*ENEMY_ENDLESS_EXTRA_LEVEL_STEP;
+  const endlessBattle=getEndlessEffectiveBattleNumber(s);
+  if(isEndless && endlessBattle>0){
+    // Keep endless growth uncapped after stage 20.
+    L+=Math.floor(endlessBattle/ENEMY_ENDLESS_EXTRA_LEVEL_EVERY)*ENEMY_ENDLESS_EXTRA_LEVEL_STEP;
   }
   return Math.max(1,L);
 }
@@ -18678,6 +18695,11 @@ function checkDeath() {
 
 function isGreyShopStage(stage){
   const s = Math.max(1, Math.floor(Number(stage) || 0));
+  const endlessBattle = getEndlessEffectiveBattleNumber(s);
+  if (G.endlessMode && endlessBattle > 0) {
+    // Endless shop cadence: every 5 endless battles.
+    return endlessBattle % ENDLESS_SHOP_CADENCE === 0;
+  }
   const storyBoss = s === STORY_MILESTONE_BOSS_STAGE || s === STORY_DUKE_STAGE;
   return (s % 4 === 0) && !storyBoss;
 }
