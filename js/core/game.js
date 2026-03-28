@@ -20319,7 +20319,8 @@ function getAudioCtx() {
 }
 function toggleSound() {
   _soundEnabled = !_soundEnabled;
-  document.getElementById('sound-toggle-btn').textContent = _soundEnabled ? '🔊' : '🔇';
+  const btn=document.getElementById('sound-toggle-btn');
+  if(btn) btn.textContent = _soundEnabled ? '🔊' : '🔇';
 }
 function playTone(freq, type='square', dur=0.12, vol=0.18, delay=0, freqEnd=null) {
   if (!_soundEnabled) return;
@@ -21191,6 +21192,22 @@ function saveMusicSettings(s){
 function getThemeBgmAudio(){
   return document.getElementById('theme-bgm-audio');
 }
+/** Call once so the browser fetches/decodes the MP3 (hidden via clip, not display:none). */
+function primeThemeBgmAudio(){
+  const el=getThemeBgmAudio();
+  if(!el||el.dataset.themePrimed==='1') return;
+  el.dataset.themePrimed='1';
+  try{ el.load(); }catch(_){}
+}
+function tryPlayThemeBgmForCurrentMenuScreen(){
+  const el=getThemeBgmAudio();
+  if(!el||getMusicSettings().muted) return;
+  const scr=document.querySelector('.screen.active');
+  if(!scr||(scr.id!=='screen-start'&&scr.id!=='screen-select')) return;
+  primeThemeBgmAudio();
+  applyThemeMusicToAudioEl();
+  el.play().catch(()=>{});
+}
 function applyThemeMusicToAudioEl(){
   const el=getThemeBgmAudio();
   if(!el) return;
@@ -21220,8 +21237,7 @@ function syncThemeBgmPlaybackForScreen(screenId){
     return;
   }
   cancelThemeBgmFade();
-  applyThemeMusicToAudioEl();
-  el.play().catch(()=>{});
+  tryPlayThemeBgmForCurrentMenuScreen();
 }
 function toggleThemeMusicMuted(){
   const s=getMusicSettings();
@@ -21233,7 +21249,7 @@ function toggleThemeMusicMuted(){
   if(mm) mm.checked=!!s.muted;
   const active=document.querySelector('.screen.active');
   if(active&&(active.id==='screen-start'||active.id==='screen-select')){
-    getThemeBgmAudio()?.play().catch(()=>{});
+    tryPlayThemeBgmForCurrentMenuScreen();
   }
 }
 function updateMusicSettingsFromControls(){
@@ -21248,18 +21264,23 @@ function updateMusicSettingsFromControls(){
   syncThemeMusicButtonLabels();
   const active=document.querySelector('.screen.active');
   if(active&&(active.id==='screen-start'||active.id==='screen-select')){
-    getThemeBgmAudio()?.play().catch(()=>{});
+    tryPlayThemeBgmForCurrentMenuScreen();
   }
 }
 function wireThemeBgmAutoplayUnlock(){
-  document.addEventListener('pointerdown',()=>{
-    const el=getThemeBgmAudio();
-    const scr=document.querySelector('.screen.active');
-    if(el&&scr&&(scr.id==='screen-start'||scr.id==='screen-select')){
-      applyThemeMusicToAudioEl();
-      el.play().catch(()=>{});
-    }
-  },{once:true,capture:true});
+  const detach=()=>{
+    document.removeEventListener('pointerdown',onUserAct,true);
+    document.removeEventListener('click',onUserAct,true);
+    document.removeEventListener('keydown',onUserAct,true);
+  };
+  const onUserAct=(e)=>{
+    if(e.type==='keydown'&&e.key!=='Enter'&&e.key!==' ') return;
+    detach();
+    tryPlayThemeBgmForCurrentMenuScreen();
+  };
+  document.addEventListener('pointerdown',onUserAct,{capture:true});
+  document.addEventListener('click',onUserAct,{capture:true});
+  document.addEventListener('keydown',onUserAct,{capture:true});
 }
 globalThis.toggleThemeMusicMuted=toggleThemeMusicMuted;
 globalThis.updateMusicSettingsFromControls=updateMusicSettingsFromControls;
