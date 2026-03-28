@@ -19407,7 +19407,7 @@ function configureLevelUpConfirm(label, handler, visible=false){
 function configureLevelUpSecondary(label='', handler=null, visible=false){
   const btn = document.getElementById('lu-skip-btn');
   if(!btn) return;
-  btn.textContent = label || '⟩ Continue';
+  btn.textContent = label || '⟩ Exit Level Up';
   btn.onclick = handler || afterLevelUp;
   btn.style.display = visible ? '' : 'none';
 }
@@ -19610,7 +19610,7 @@ function showLevelUpScreen() {
   document.getElementById('lu-skills-panel').classList.add('active');
   setLevelUpPanelTitle('📈 Spend Feathers');
   configureLevelUpConfirm('✓ Confirm upgrades', confirmSkillUpgrade, false);
-  configureLevelUpSecondary('', null, false);
+  configureLevelUpSecondary('⟩ Exit Level Up', onExitLevelUpRequested, true);
   buildFeatherStatPanel();
 }
 
@@ -19721,6 +19721,29 @@ async function confirmSkillUpgrade() {
     return;
   }
   logMsg('Open the level-up screen to spend Feathers.','miss');
+}
+
+function onExitLevelUpRequested(){
+  const pending = Math.max(0, Math.floor(Number(G._pendingLevelUpChoices)||0));
+  const allocated = luFeatherDraftTotal();
+  if(pending<=0){
+    logMsg('No unspent Feathers to defer.','system');
+    afterLevelUp();
+    return;
+  }
+  logMsg(`🪶 Deferred ${pending} Feather${pending===1?'':'s'} (allocated preview: ${allocated}). Spend them later from the level-up panel.`, 'system');
+  delete G._luFeatherDraft;
+  delete G._luFeatherPanelOptions;
+  _luSelectedStatChoiceId=null;
+  const grid=document.getElementById('lu-skill-grid');
+  if(grid){
+    grid.innerHTML='';
+    grid.classList.remove('lu-feather-grid');
+  }
+  const rem=document.getElementById('lu-feather-remaining');
+  if(rem) rem.innerHTML='';
+  saveRun();
+  afterLevelUp();
 }
 
 function afterLevelUp() {
