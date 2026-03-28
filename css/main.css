@@ -1560,6 +1560,8 @@ header p{color:var(--text-dim);font-style:italic;font-size:1rem;margin-top:4px;}
 .btn-name{font-weight:bold;font-size:.95rem;}
 .btn-type{font-size:.69rem;}
 .btn-cost{font-size:.72rem;color:var(--text-dim);}
+.btn-dmg-est{font-size:.68rem;color:var(--gold);opacity:.92;line-height:1.2;white-space:nowrap;}
+body.ui-mobile-mode #screen-battle .btn-dmg-est{font-size:.6rem;}
 .action-btn.physical .btn-type{color:var(--red-light);}
 .action-btn.spell .btn-type{color:var(--purple-light);}
 .action-btn.ranged .btn-type{color:var(--orange-light);}

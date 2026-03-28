@@ -1,6 +1,12 @@
 // ===== 17_script_17.js =====
 
-/* ===== Aviant polish systems patch ===== */
+/* ===== Aviant polish systems patch =====
+ * Script load order (index.html): game.js -> content.js -> systems.js -> shop.js ->
+ * fixes.js -> ui.js -> sprites.js. Later files wrap globals registered earlier.
+ * Consolidated here (vs content.js): dealDamage, edmg, afterEnemyTurn.
+ * getUpgradePool: ui.js wraps game.js (normalize upgrade apply + audit in one place).
+ * refreshBattleUI / renderEnemyPlan: stacked in sprites.js, ui.js, systems.js, content.js (Duke), game.js.
+ */
 (function(){
   const STATUS_INFO = {
     poison: 'Poison: deals damage each turn and stacks up to your poison cap.',
@@ -19,51 +25,6 @@
     lullabied: 'Lulled: reduced offense while drowsy.',
     delayed: 'Resonance: delayed damage will detonate soon.'
   };
-
-  function typeTags(tmpl){
-    if(!tmpl) return [];
-    const out = [];
-    if(tmpl.type) out.push(String(tmpl.type));
-    if(tmpl.btnType && tmpl.btnType !== tmpl.type) out.push(String(tmpl.btnType));
-    if(Array.isArray(tmpl.tags)) out.push(...tmpl.tags.map(String));
-    return [...new Set(out.filter(Boolean))];
-  }
-
-  function costForTemplate(tmpl, level){
-    if(!tmpl) return 1;
-    if(typeof tmpl.energyCost === 'number') return Math.max(1, tmpl.energyCost);
-    if(Array.isArray(tmpl.energyByLevel)){
-      const i = Math.max(0, Math.min((level||1)-1, tmpl.energyByLevel.length-1));
-      return Math.max(1, tmpl.energyByLevel[i] ?? 1);
-    }
-    return 1;
-  }
-
-  function cooldownForTemplate(tmpl, level){
-    if(!tmpl) return 0;
-    if(Array.isArray(tmpl.cooldownByLevel)){
-      const i = Math.max(0, Math.min((level||1)-1, tmpl.cooldownByLevel.length-1));
-      return tmpl.cooldownByLevel[i] ?? 0;
-    }
-    return 0;
-  }
-
-  function richAbilityTooltip(tmpl, level){
-    if(!tmpl) return '';
-    const lv = Math.max(1, level||1);
-    const row = Array.isArray(tmpl.levels) ? tmpl.levels[Math.min(lv-1, tmpl.levels.length-1)] : null;
-    const tags = typeTags(tmpl).join(' · ') || 'ability';
-    const cost = costForTemplate(tmpl, lv);
-    const cd = cooldownForTemplate(tmpl, lv);
-    return `
-      <div class="tt-name">${tmpl.name}</div>
-      <div class="tt-type">${tags} · Lv${lv}</div>
-      <div class="tt-row"><span class="tt-lbl">Energy</span><span class="tt-val">${cost}</span></div>
-      <div class="tt-row"><span class="tt-lbl">Cooldown</span><span class="tt-val">${cd>0?cd+' turns':'None'}</span></div>
-      <div class="tt-desc" style="margin-top:6px">${tmpl.desc||'No description.'}</div>
-      ${row?.desc ? `<div class="tt-desc" style="margin-top:6px;color:var(--text)">${row.desc}</div>` : ``}
-    `;
-  }
 
   function showRichTooltip(ev, html){
     const tt=document.getElementById('action-tooltip');
@@ -105,7 +66,7 @@
     ev.stopPropagation();
   });
 
-  // Action button cooldown indicators + tooltip enrichment
+  // Action button cooldown suffix on label only — skill tooltips come from game.js showActionTooltip / buildActionTooltipHTML (avoid competing rich HTML on hover).
   const _oldRenderActions = globalThis.renderActions;
   if(typeof _oldRenderActions === 'function'){
     globalThis.renderActions = function(){
@@ -114,25 +75,29 @@
         document.querySelectorAll('#actions-grid .action-btn').forEach((btn, idx)=>{
           const ab = G?.player?.abilities?.[idx];
           if(!ab) return;
-          const tmpl = (globalThis.ABILITY_TEMPLATES && ABILITY_TEMPLATES[ab.id]) || (globalThis.ABILITY_TEMPLATES_EXTRA && ABILITY_TEMPLATES_EXTRA[ab.id]) || ab;
           const cd = (typeof getAbilityCooldown === 'function') ? (getAbilityCooldown(ab.id)||0) : 0;
           const nm = btn.querySelector('.btn-name');
           if(nm && cd>0 && !/\(\d+\)$/.test(nm.textContent||'')) nm.textContent = `${nm.textContent} (${cd})`;
-          const html = richAbilityTooltip(tmpl, ab.level||1);
-          btn.onmouseenter = e => { if(!window._isTouchDevice) showRichTooltip(e, html); };
-          btn.onmousemove = e => { if(!window._isTouchDevice && typeof moveTooltip === 'function') moveTooltip(e); };
-          btn.onmouseleave = () => { if(!window._isTouchDevice && typeof hideTooltip === 'function') hideTooltip(); };
         });
       }catch(err){ console.error(err); }
       return out;
     };
   }
 
-  // Damage explanation tags: crit/magic/DoT helper floats.
-  const _oldDealDamagePolish = globalThis.dealDamage;
-  if(typeof _oldDealDamagePolish === 'function'){
+  // Player outgoing damage soft-cap (was content.js) + crit/magic floats.
+  const _innerDealDamage = globalThis.dealDamage;
+  if(typeof _innerDealDamage === 'function'){
     globalThis.dealDamage = function(target, amount, isCrit=false, isMagic=false, srcAbility=null){
-      const out = _oldDealDamagePolish.call(this, target, amount, isCrit, isMagic, srcAbility);
+      let adjAmount = amount;
+      try{
+        if(target === 'enemy' && globalThis.G?.player?.stats){
+          const stat = isMagic ? (G.player.stats.matk || 0) : (G.player.stats.atk || 0);
+          const threshold = isMagic ? 12 : 10;
+          const factor = 1 - Math.max(0, Math.min(0.18, (stat - threshold) * 0.015));
+          adjAmount = Math.max(1, Math.floor((amount||1) * factor));
+        }
+      }catch(_){}
+      const out = _innerDealDamage.call(this, target, adjAmount, isCrit, isMagic, srcAbility);
       try{
         if(isCrit) spawnFloat(target, '✦ Crit', 'damage-tag-float');
         if(isMagic) spawnFloat(target, '✦ Magic', 'damage-tag-float');
@@ -180,11 +145,14 @@
     };
   }
 
-  const _oldEdmgPolish = globalThis.edmg;
-  if(typeof _oldEdmgPolish === 'function'){
+  const _innerEdmg = globalThis.edmg;
+  if(typeof _innerEdmg === 'function'){
     globalThis.edmg = function(mult=1){
-      let out = _oldEdmgPolish.apply(this, arguments);
+      let out = _innerEdmg.apply(this, arguments);
       try{
+        if((G.enemyStatus?.rageBuff||0) > 0){
+          out = Math.max(1, Math.floor(out * 1.25));
+        }
         if(G?.enemy?._trait?.id === 'predator' && (G.playerStatus?.weaken||0) > 0){
           out = Math.floor(out * 1.25);
         }
@@ -197,11 +165,17 @@
     };
   }
 
-  const _oldAfterEnemyTurnPolish = globalThis.afterEnemyTurn;
-  if(typeof _oldAfterEnemyTurnPolish === 'function'){
+  const _innerAfterEnemyTurn = globalThis.afterEnemyTurn;
+  if(typeof _innerAfterEnemyTurn === 'function'){
     globalThis.afterEnemyTurn = async function(){
-      const out = await _oldAfterEnemyTurnPolish.apply(this, arguments);
+      const out = await _innerAfterEnemyTurn.apply(this, arguments);
       try{
+        if((G.enemyStatus.rageBuff||0) > 0) G.enemyStatus.rageBuff--;
+        if((G.enemyStatus.defending||0) > 0) G.enemyStatus.defending = Math.max(0, G.enemyStatus.defending - 1);
+        if((G.enemyStatus.feared||0) > 2) G.enemyStatus.feared = 2;
+        if((G.playerStatus.feared||0) > 2) G.playerStatus.feared = 2;
+        if((G.playerStatus.weaken||0) > 3) G.playerStatus.weaken = 3;
+        if(G.playerStatus.dustDevil?.turns > 2) G.playerStatus.dustDevil.turns = 2;
         if(G?.enemy?._trait?.id === 'nightHunter' && G.enemy._traitTurns > 0){
           G.enemy._traitTurns--;
           if(G.enemy._traitTurns === 0){
@@ -461,16 +435,8 @@
     return item;
   }
 
-  const _oldGetUpgradePoolFix = globalThis.getUpgradePool;
-  if(typeof _oldGetUpgradePoolFix === 'function'){
-    globalThis.getUpgradePool = function(){
-      const pool = _oldGetUpgradePoolFix.apply(this, arguments) || [];
-      for(const item of pool){
-        normalizeUpgradeItem(item);
-      }
-      return pool;
-    };
-  }
+  // Used by js/ui/ui.js getUpgradePool wrapper (single outer chain: audit + normalize).
+  globalThis._normalizeStorkUpgradeApply = normalizeUpgradeItem;
 
   // Also sanitize after level-up screens / reward flow so runaway values can't persist.
   const _oldShowLevelUpScreenFix = globalThis.showLevelUpScreen;
