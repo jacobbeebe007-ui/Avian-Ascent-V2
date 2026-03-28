@@ -6774,6 +6774,7 @@ function initBattleLogDrawer() {
 
 /** True whenever the current run was launched via the overworld map. */
 function _isOverworldRun() {
+  if(G.endlessMode) return false;
   try { return !!localStorage.getItem(_OW_STATE_KEY); } catch(_) { return false; }
 }
 
@@ -7088,6 +7089,13 @@ function handleOverworldReturn() {
 
   const save = loadSaveData();
   if (!save?.player) return false;
+  if (save?.endlessMode) {
+    try {
+      localStorage.removeItem(_OW_NAV_KEY);
+      localStorage.removeItem(_OW_STATE_KEY);
+    } catch(_) {}
+    return false;
+  }
 
   try { localStorage.removeItem(_OW_NAV_KEY); } catch(_) {}
 
@@ -7793,6 +7801,12 @@ function beginRun(){ return startGame(); }
 function startGame() {
   if(!G.selected) return;
   G.endlessMode = (ensureUIState().gameMode==='endless');
+  if (G.endlessMode) {
+    try {
+      localStorage.removeItem(_OW_STATE_KEY);
+      localStorage.removeItem(_OW_NAV_KEY);
+    } catch(_) {}
+  }
   G.difficulty = G._selectedDifficulty || 'juvenile';
   const bd = BIRDS[G.selected];
   G.collectedRewards=[];
@@ -9336,7 +9350,7 @@ function continueStageTransitionAfterRewards(){
     loadStage();
     return;
   }
-  if (_isOverworldRun()) {
+  if (!G.endlessMode && _isOverworldRun()) {
     finalizeOverworldStageClear(G._owPendingBattleStage || G.stage, G._owPendingNodeId, {
       shinyGain: G._owSequenceShiny || 0,
       enemiesDefeated: G._owEnemyCount || G._owStageEnemies?.length || 1,
@@ -20782,7 +20796,7 @@ function exitStorkShop() {
   if (returningShopNodeId != null) setOverworldCurrentNode(returningShopNodeId);
   G._currentShopNodeId = null;
   // Return to overworld after shopping (story/overworld mode only)
-  if (_isOverworldRun()) {
+  if (!G.endlessMode && _isOverworldRun()) {
     // Safety net: if stage was never finalized (e.g. boss shop shown mid-overworld), do it now
     if (G._owPendingBattleStage != null) {
       finalizeOverworldStageClear(G._owPendingBattleStage, G._owPendingNodeId, {
