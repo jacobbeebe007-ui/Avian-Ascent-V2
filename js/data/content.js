@@ -386,36 +386,7 @@
     }
   }
 
-  // Enemy damage: apply rage buff multiplier if active.
-  const _oldEdmg = globalThis.edmg;
-  if(typeof _oldEdmg === 'function'){
-    globalThis.edmg = function(mult=1){
-      let out = _oldEdmg.apply(this, arguments);
-      try{
-        if((G.enemyStatus?.rageBuff||0) > 0){
-          out = Math.max(1, Math.floor(out * 1.25));
-        }
-      }catch(_){}
-      return out;
-    };
-  }
-
-  // Tick enemy timed statuses cleanly after enemy turn.
-  const _oldAfterEnemyTurn = globalThis.afterEnemyTurn;
-  if(typeof _oldAfterEnemyTurn === 'function'){
-    globalThis.afterEnemyTurn = async function(){
-      const out = await _oldAfterEnemyTurn.apply(this, arguments);
-      try{
-        if((G.enemyStatus.rageBuff||0) > 0) G.enemyStatus.rageBuff--;
-        if((G.enemyStatus.defending||0) > 0) G.enemyStatus.defending = Math.max(0, G.enemyStatus.defending - 1);
-        if((G.enemyStatus.feared||0) > 2) G.enemyStatus.feared = 2;
-        if((G.playerStatus.feared||0) > 2) G.playerStatus.feared = 2;
-        if((G.playerStatus.weaken||0) > 3) G.playerStatus.weaken = 3;
-        if(G.playerStatus.dustDevil?.turns > 2) G.playerStatus.dustDevil.turns = 2;
-      }catch(_){}
-      return out;
-    };
-  }
+  // edmg / afterEnemyTurn: merged into js/systems/systems.js (Aviant polish patch).
 
   // Smarter enemy action choice: less control spam, no pointless heal/shield loops.
   const _oldEnemyActionFromPool = globalThis.enemyActionFromPool;
@@ -516,22 +487,7 @@
   }
   patchTankAttackStats();
 
-  // Modest high-stat compression for player outgoing damage vs enemies.
-  const _oldDealDamage = globalThis.dealDamage;
-  if(typeof _oldDealDamage === 'function'){
-    globalThis.dealDamage = function(target, amount, isCrit=false, isMagic=false, srcAbility=null){
-      let adjAmount = amount;
-      try{
-        if(target === 'enemy' && globalThis.G?.player?.stats){
-          const stat = isMagic ? (G.player.stats.matk || 0) : (G.player.stats.atk || 0);
-          const threshold = isMagic ? 12 : 10;
-          const factor = 1 - Math.max(0, Math.min(0.18, (stat - threshold) * 0.015));
-          adjAmount = Math.max(1, Math.floor((amount||1) * factor));
-        }
-      }catch(_){}
-      return _oldDealDamage.call(this, target, adjAmount, isCrit, isMagic, srcAbility);
-    };
-  }
+  // dealDamage soft-cap vs enemies: merged into js/systems/systems.js
 
 })();
 

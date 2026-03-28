@@ -1211,6 +1211,7 @@ const ENEMIES = [
 ];
 
 // Birds that can appear as enemy combatants (adds variety). Set enemyClass for singer/tank/trickster; matk/mdef/mdodge feed scaling.
+// Tier bands: keep aligned with js/world/ow_enemy_population.js OW_POOL_BY_BAND (overworld seeded packs).
 const BIRD_ENEMIES = [
   {name:'Wild Sparrow',emoji:'',birdKey:'sparrow',tier:[1,2],hp:30,atk:6,def:2,matk:6,mdef:7,spd:9,acc:82,dodge:32,mdodge:28,enemyClass:'bruiser',size:'tiny',aiStyle:'berserker',abilities:['eBlind']},
   {name:'Grove Cantor',emoji:'🎵',birdKey:'blackbird',tier:[1,2],hp:30,atk:5,def:3,matk:12,mdef:9,spd:7,acc:78,dodge:22,mdodge:18,enemyClass:'singer',size:'small',aiStyle:'cautious',abilities:['eWeaken','eFear']},
@@ -2996,12 +2997,16 @@ function expForLevel(lv) {
   return Math.floor(80 * Math.pow(1.38, 14) * Math.pow(1.18, 10) * Math.pow(1.08, lv - 25));
 }
 
-/** Base EXP by enemy level (Lv 0–10); above 10 uses soft additive/log growth. */
+// --- EXP balancing tunables (tune story + endless pacing here) ---
+/** Base EXP by enemy level (Lv 0–10); Lv 10+ uses BASE_EXP_POST10_* additive + log2 curve (no exponential chaining). */
 const BASE_EXP_BY_ENEMY_LEVEL = [10,13,18,25,35,48,66,91,126,174,240];
 const BASE_EXP_POST10_LINEAR_PER_LEVEL = 22;
 const BASE_EXP_POST10_LOG_SCALE = 12;
+/** Endless (stage 21+): normal kills cannot exceed this fraction of expForLevel(plv + 1). */
 const ENDLESS_EXP_NORMAL_CAP_PCT = 0.30;
+/** Endless (stage 21+): boss kills cannot exceed this fraction of expForLevel(plv + 1). */
 const ENDLESS_EXP_BOSS_CAP_PCT = 0.85;
+/** Normalized threat-tier spread (getStoryThreatForBirdKey → multiplier); narrower than ad-hoc per-tier values. */
 const THREAT_TIER_EXP_MULTIPLIERS = Object.freeze({
   LOW: 0.90,
   STANDARD: 1.00,
@@ -3075,13 +3080,13 @@ function computeBossExpGain(enemy) {
 }
 
 /*
-  EXP sanity notes (endless cap behavior, assuming plv≈stage anchor for quick balance checks):
-  - Stage 21 / plv 21: nextLvExp≈23,151 => normal cap≈6,945, boss cap≈19,678.
-  - Stage 30 / plv 30: nextLvExp≈60,361 => normal cap≈18,108, boss cap≈51,307.
-  - Stage 50 / plv 50: nextLvExp≈281,342 => normal cap≈84,403, boss cap≈239,141.
-  - Stage 80 / plv 80: nextLvExp≈2,831,050 => normal cap≈849,315, boss cap≈2,406,393.
-  - Stage 120 / plv 120: nextLvExp≈61,503,211 => normal cap≈18,450,963, boss cap≈52,277,729.
-  Low/mid/high player levels can be spot-checked by comparing raw base*tier*relative against caps above.
+  EXP sanity notes (endless caps use expForLevel(plv + 1); isEndlessRunActive() is stage>20).
+  Spot-check stages vs player level (plv≈anchor): compare base*tier*relative to caps.
+  - plv 21: nextLvExp≈23,151 => normal cap≈6,945, boss cap≈19,678.
+  - plv 30: nextLvExp≈60,361 => normal cap≈18,108, boss cap≈51,307.
+  - plv 50: nextLvExp≈281,342 => normal cap≈84,403, boss cap≈239,141.
+  - plv 80: nextLvExp≈2,831,050 => normal cap≈849,315, boss cap≈2,406,393 (Math.round).
+  - plv 120: nextLvExp≈61,503,211 => normal cap≈18,450,963, boss cap≈52,277,729.
 */
 
 // ============================================================
@@ -3221,6 +3226,8 @@ let G = {
   codex:{abilities:{},enemies:{},birds:{},artifacts:{},statuses:{}},
   // Economy
   shinyObjects:0,
+  /** Story overworld only; mirrored from save (see ow_enemy_population.js). */
+  overworldEnemySeedPack:null,
   _pendingStorkShop:false,
   _pendingShopMode:null,
   runClassPerks:[],
@@ -6097,15 +6104,32 @@ function ensureFamilyEvolutionState(player){
   }
   return state;
 }
+/** Must match js/world/ow_enemy_population.js pack count (10). */
+function _isValidOverworldEnemySeedPack(p){
+  return !!(p && p.v===1 && Number.isInteger(p.packIndex) && p.packIndex>=0 && p.packIndex<10);
+}
 function saveRun() {
   if(!G.player) return;
   try {
     const onBattleScreen=!!document.getElementById('screen-battle')?.classList.contains('active');
     const overworldProgress = ensureOverworldProgress(G.stage);
+    let overworldEnemySeedPack=null;
+    if(!G.endlessMode){
+      if(_isValidOverworldEnemySeedPack(G.overworldEnemySeedPack)){
+        overworldEnemySeedPack={v:1,packIndex:G.overworldEnemySeedPack.packIndex};
+      }else{
+        const prev=loadSaveData();
+        if(_isValidOverworldEnemySeedPack(prev?.overworldEnemySeedPack)){
+          overworldEnemySeedPack={v:1,packIndex:prev.overworldEnemySeedPack.packIndex};
+          G.overworldEnemySeedPack=overworldEnemySeedPack;
+        }
+      }
+    }
     const save={
       player: JSON.parse(JSON.stringify(G.player)),
       stage: G.stage, bossKills: G.bossKills,
       endlessMode: G.endlessMode, endlessBattle: G.endlessBattle,
+      overworldEnemySeedPack,
       collectedRewards: G.collectedRewards||[],
       classPerks: JSON.parse(JSON.stringify((G.classPerks||{}))),
       runClassPerks: JSON.parse(JSON.stringify((G.runClassPerks||[]))),
@@ -6189,6 +6213,10 @@ function continueRun() {
   G._pendingSkillEvolutionChoices=0;
   G.codex=save.codex||{abilities:{},enemies:{},birds:{},artifacts:{},statuses:{}};
   G.shinyObjects = Math.max(0, Math.floor(Number(save.shinyObjects) || 0));
+  G.overworldEnemySeedPack=null;
+  if(!G.endlessMode&&_isValidOverworldEnemySeedPack(save.overworldEnemySeedPack)){
+    G.overworldEnemySeedPack={v:1,packIndex:save.overworldEnemySeedPack.packIndex};
+  }
   const oc = save.owEncounterChain;
   if(!G.endlessMode && oc && Array.isArray(oc.owStageEnemies) && oc.owStageEnemies.length){
     G._owStageEnemies = oc.owStageEnemies.slice();
@@ -7136,13 +7164,21 @@ function handleOverworldReturn() {
     G._battleTerrain = (typeof intent.terrain === 'string' && intent.terrain.trim()) ? intent.terrain.trim() : null;
     G._owSequenceShiny = 0;
     const stageNum=G._owPendingBattleStage;
-    // Story mode direction: non-boss stages roll 2 random birds; boss stages stay fixed/curated.
+    // Story non-boss: prefer overworld nav enemies when present; else roll from generateStoryStageEnemyKeys. Bosses use nav list.
     if(!G.endlessMode && !STORY_BOSS_STAGES.has(stageNum)){
-      const rolled=generateStoryStageEnemyKeys(stageNum, save?.player?.birdKey);
-      G._owStageEnemies = normalizeOwEnemyListForBattle(rolled);
-      G._owEnemyIndex   = 0;
-      G._owEnemyCount = G._owStageEnemies.length || 2;
-      G._owEncounterRollStage = stageNum;
+      const navEnemies = Array.isArray(intent.enemies) ? intent.enemies.filter(Boolean) : [];
+      if (navEnemies.length > 0) {
+        G._owStageEnemies = normalizeOwEnemyListForBattle(navEnemies);
+        G._owEnemyIndex   = 0;
+        G._owEnemyCount = G._owStageEnemies.length || 2;
+        G._owEncounterRollStage = stageNum;
+      } else {
+        const rolled=generateStoryStageEnemyKeys(stageNum, save?.player?.birdKey);
+        G._owStageEnemies = normalizeOwEnemyListForBattle(rolled);
+        G._owEnemyIndex   = 0;
+        G._owEnemyCount = G._owStageEnemies.length || 2;
+        G._owEncounterRollStage = stageNum;
+      }
     } else if (Array.isArray(intent.enemies) && intent.enemies.length > 0) {
       G._owStageEnemies = normalizeOwEnemyListForBattle(intent.enemies);
       G._owEnemyIndex   = 0;
@@ -7746,7 +7782,7 @@ function updateAscentPanel(key) {
     }[cls]||'Adaptive fighter';
 
     const startAbilityDetails=(bird.startAbilities||[]).map((id,idx)=>{
-      const t=ABILITY_TEMPLATES[id]||{};
+      const t=getAbilityTemplateForUI(id)||{};
       const en=Array.isArray(t.energyByLevel)?(t.energyByLevel[0]??t.energyCost??0):(t.energyCost??0);
       const type=String(t.btnType||t.type||'utility').toUpperCase();
       const tagOrder=['BASIC','SIGNATURE','UTILITY','CLASS'];
@@ -7783,7 +7819,7 @@ function updateAscentPanel(key) {
             <span class="bird-size-chip">${escapeHtmlRoster(sizeLabel)}</span>
             <span class="ascent-strip-tagline">${escapeHtmlRoster(bird.tagline||'')}</span>
           </div>
-          <div class="ascent-strip-hscroll" tabindex="0" role="region" aria-label="Stats, passive, and abilities">
+          <div class="ascent-strip-hscroll" tabindex="0" role="region" aria-label="Stats, passive, and skills">
             <div class="ascent-hblock ascent-hblock-stats">
               <div class="ascent-hblock-label">Stats</div>
               ${statsStrip}
@@ -7986,6 +8022,7 @@ function storyTierFromStage(stage){
   return 5;
 }
 
+/** @see js/world/ow_enemy_population.js OW_POOL_BY_BAND — update both if BIRD_ENEMIES tiers change. */
 function pickBirdEnemyPoolForTier(tier){
   const band=Math.min(Math.max(Number(tier)||1,1),4);
   let pool=BIRD_ENEMIES.filter(e=>Array.isArray(e.tier)&&e.tier.includes(band));
@@ -9055,10 +9092,14 @@ function renderActions() {
       if(mods.length) modTxt=`<span class=\"btn-mod\" title=\"${mods.join(' | ')}\">${mods.join(' · ')}</span>`;
     }
     const shortDesc=(((ab.levels&&ab.levels[(ab.level||1)-1]?.desc)||ab.desc||'')+getAbilityDamageScalingHintForUI(ab)).replace(/<[^>]+>/g,'').slice(0,100);
+    const _tmplUI=getAbilityTemplateForUI(ab);
+    const _dmgEst=estimateSkillDamageRange(ab,_tmplUI,G.player);
+    const dmgChip=(_dmgEst.isDamaging&&_dmgEst.dmgLow!=null)?`<span class="btn-dmg-est" title="Estimated damage (ignores enemy defenses)">~${_dmgEst.dmgLow}–${_dmgEst.dmgHigh}</span>`:'';
     btn.innerHTML=`
       <span class="btn-name">${ab.name}</span>
       <span class="btn-type">${getAbilityDisplayTags(ab).map(t=>`[${t}]`).join('')}</span>
       <span class="btn-cost">${btnCostText}</span>
+      ${dmgChip}
       <span class="btn-desc">${shortDesc}</span>
       ${modTxt}
       ${ab.level>1?`<span class="ab-lv-badge">Lv${ab.level}</span>`:''}
@@ -9104,11 +9145,119 @@ function renderActions() {
   grid.appendChild(endWrap);
 }
 
-// ===== TOOLTIPS =====
-function showActionTooltip(e,ab) {
-  const tt=document.getElementById('action-tooltip');
-  const tmpl=ABILITY_TEMPLATES[ab.id];
-  if (!tmpl) return;
+// ===== TOOLTIPS / SKILL UI RESOLVER =====
+/** Resolve template metadata for UI (tooltips, roster, action cards). Matches merged ABILITY_TEMPLATES plus alias source; falls back to partial runtime ability objects. */
+function getAbilityTemplateForUI(abOrId){
+  const isObj=abOrId&&typeof abOrId==='object';
+  const id=isObj?String(abOrId.id||''):String(abOrId||'');
+  if(!id) return null;
+  const canon=(typeof resolveAbilityAliasSourceId==='function')?resolveAbilityAliasSourceId(id):id;
+  let t=ABILITY_TEMPLATES[canon]||ABILITY_TEMPLATES[id];
+  if(!t&&typeof ABILITY_TEMPLATES_EXTRA!=='undefined') t=ABILITY_TEMPLATES_EXTRA[id]||ABILITY_TEMPLATES_EXTRA[canon];
+  if(!t&&typeof ABILITY_TEMPLATES_MAGIC!=='undefined') t=ABILITY_TEMPLATES_MAGIC[id]||ABILITY_TEMPLATES_MAGIC[canon];
+  if(!t&&typeof ABILITY_TEMPLATES_LEARNABLE!=='undefined') t=ABILITY_TEMPLATES_LEARNABLE[id]||ABILITY_TEMPLATES_LEARNABLE[canon];
+  if(t) return t;
+  if(isObj&&(abOrId.name||abOrId.desc||Array.isArray(abOrId.levels))){
+    return {
+      id,
+      name:abOrId.name||id,
+      type:abOrId.type||abOrId.btnType||'utility',
+      btnType:abOrId.btnType||abOrId.type||'utility',
+      desc:abOrId.desc||'',
+      levels:Array.isArray(abOrId.levels)&&abOrId.levels.length?abOrId.levels:[{desc:abOrId.desc||''}],
+      baseMissChance:abOrId.baseMissChance,
+      baseDmgMult:abOrId.baseDmgMult,
+      cooldownByLevel:abOrId.cooldownByLevel,
+      energyByLevel:abOrId.energyByLevel,
+      energyCost:abOrId.energyCost,
+      damageScaling:abOrId.damageScaling,
+    };
+  }
+  return null;
+}
+
+function estimateMultiplierFromSkillDescription(txt=''){
+  const s=String(txt||'');
+  const multi=s.match(/(\d+)\s*[x×]\s*(\d+(?:\.\d+)?)\s*%/i);
+  if(multi){
+    const hits=Math.max(1,Number(multi[1])||1);
+    const pct=Math.max(0,Number(multi[2])||0);
+    return (hits*pct)/100;
+  }
+  const pct=s.match(/(\d+(?:\.\d+)?)\s*%/);
+  if(pct) return (Number(pct[1])||0)/100;
+  return null;
+}
+
+/** Rough ATK/MATK damage band for UI (not full dealDamage pipeline). */
+function estimateSkillDamageRange(ab,tmpl,player){
+  const p=player||G?.player;
+  const pAtk=p?(p.stats?.atk||0):0;
+  const pMatk=p?(p.stats?.matk||0):0;
+  if(!tmpl) return {isDamaging:false,dmgLow:null,dmgHigh:null,btnType:''};
+  const btnType=String(tmpl.btnType||tmpl.type||ab?.btnType||ab?.type||'').toLowerCase();
+  const isDamaging=['physical','ranged','spell'].includes(btnType);
+  const scaleStat=(btnType==='spell')?pMatk:pAtk;
+  const levels=Array.isArray(tmpl.levels)?tmpl.levels:[];
+  const lv=Math.max(1,Math.min(ab?.level||1,levels.length||1));
+  const lvData=levels[lv-1]||{desc:(ab?.desc||tmpl.desc||'')};
+  let dmgMult=(tmpl.baseDmgMult!==undefined)?(Number(tmpl.baseDmgMult)||0)+0.1*(lv-1):null;
+  if(!(dmgMult>0)){
+    dmgMult=estimateMultiplierFromSkillDescription(lvData?.desc||'')??estimateMultiplierFromSkillDescription(tmpl?.desc||'');
+  }
+  const dmgLow=(isDamaging&&dmgMult>0)?Math.max(1,Math.floor(scaleStat*0.8*dmgMult)):null;
+  const dmgHigh=(isDamaging&&dmgMult>0)?Math.max(dmgLow,Math.floor(scaleStat*1.2*dmgMult)):null;
+  return {isDamaging,dmgLow,dmgHigh,btnType,lv,lvData};
+}
+
+/** Curated "current → after" lines for major buff utilities (tooltip only). */
+const SKILL_STAT_PREVIEW={
+  windFeint(p,ab){
+    const lv=Math.max(1,Math.min(4,ab?.level||1));
+    const bonus=[20,25,30,35][lv-1]||20;
+    const turns=[2,2,2,3][lv-1]||2;
+    const cur=Math.round(Number(p?.stats?.dodge||0));
+    return [`Dodge: ${cur}% → ${cur+bonus}% (${turns}t)`];
+  },
+  evade(p,ab){ return SKILL_STAT_PREVIEW.windFeint(p,ab); },
+  tailwindFeint(p,ab){
+    const lv=Math.max(1,Math.min(4,ab?.level||1));
+    const spd=[2,3,4,5][lv-1]||2;
+    const cur=Math.round(Number(p?.stats?.spd||0));
+    return [`SPD: ${cur} → ${cur+spd} (2t)`];
+  },
+  crowDefend(p,ab){
+    const lv=Math.max(1,Math.min(4,ab?.level||1));
+    const defGain=[2,3,4,5][lv-1]||2;
+    const cur=Math.round(Number(p?.stats?.def||0));
+    return [`DEF: ${cur} → ${cur+defGain} (1t)`];
+  },
+  gloom_wing(p,ab){
+    const lv=Math.max(1,Math.min(4,ab?.level||1));
+    const dodge=[20,24,28,32][lv-1]||20;
+    const cur=Math.round(Number(p?.stats?.dodge||0));
+    return [`Dodge: ${cur}% → ${cur+dodge}% (2t)`];
+  },
+  battle_focus(p,ab){
+    const lv=Math.max(1,Math.min(4,ab?.level||1));
+    const pct=[12,15,18,21][lv-1]||12;
+    return [`Next hit: +${pct}% damage (until used)`];
+  },
+  battleFocus(p,ab){ return SKILL_STAT_PREVIEW.battle_focus(p,ab); },
+  focusChirp(p,ab){ return SKILL_STAT_PREVIEW.battle_focus(p,ab); },
+};
+
+function getSkillStatPreviewLines(ab,tmpl){
+  const id=ab?.id;
+  if(!id||!G?.player) return [];
+  const fn=SKILL_STAT_PREVIEW[id];
+  if(typeof fn!=='function') return [];
+  try{ return fn(G.player,ab,tmpl)||[]; }catch(_){ return []; }
+}
+
+function buildActionTooltipHTML(ab){
+  const tmpl=getAbilityTemplateForUI(ab);
+  if(!tmpl) return '';
   const levels = Array.isArray(tmpl.levels) ? tmpl.levels : [];
   const lv=Math.max(1, Math.min(ab.level||1, levels.length||1));
   const lvData=levels[lv-1] || {desc: (ab.desc||tmpl.desc||'')};
@@ -9117,38 +9266,7 @@ function showActionTooltip(e,ab) {
   const hitClass=hit===null?'':(hit>=80?'tt-hit-great':hit>=55?'tt-hit-good':'tt-hit-bad');
   const energy=getEnergyCost(ab);
   const cooldown=getTemplateCooldown(ab);
-
-  // Show actual damage range whenever this is a damaging action.
-  const pAtk=G.player?(G.player.stats.atk||0):0;
-  const pMatk=G.player?(G.player.stats.matk||0):0;
-  const btnType=String(tmpl.btnType||tmpl.type||'').toLowerCase();
-  const isDamaging=['physical','ranged','spell'].includes(btnType);
-  const scaleStat=(btnType==='spell')?pMatk:pAtk;
-
-  const estimateMultiplierFromText=(txt='')=>{
-    const s=String(txt||'');
-    // Prefer multi-hit patterns first, e.g. "2×52%" or "3x 40%"
-    const multi=s.match(/(\d+)\s*[x×]\s*(\d+(?:\.\d+)?)\s*%/i);
-    if(multi){
-      const hits=Math.max(1,Number(multi[1])||1);
-      const pct=Math.max(0,Number(multi[2])||0);
-      return (hits*pct)/100;
-    }
-    // Fallback: first percent value in text
-    const pct=s.match(/(\d+(?:\.\d+)?)\s*%/);
-    if(pct) return (Number(pct[1])||0)/100;
-    return null;
-  };
-
-  let dmgMult = (tmpl.baseDmgMult!==undefined)
-    ? (Number(tmpl.baseDmgMult)||0) + 0.1*(lv-1)
-    : null;
-  if(!(dmgMult>0)){
-    dmgMult = estimateMultiplierFromText(lvData?.desc||'') ?? estimateMultiplierFromText(tmpl?.desc||'');
-  }
-
-  const dmgLow=(isDamaging && dmgMult>0)?Math.max(1,Math.floor(scaleStat*0.8*dmgMult)):null;
-  const dmgHigh=(isDamaging && dmgMult>0)?Math.max(dmgLow,Math.floor(scaleStat*1.2*dmgMult)):null;
+  const {isDamaging,dmgLow,dmgHigh,btnType}=estimateSkillDamageRange(ab,tmpl,G.player);
   const effectList=(ab.ailmentIds||[]).length?ab.ailmentIds.map(a=>a.replace(/_/g,' ')).join(', '):'—';
 
   let html=`<div class="tt-name">${tmpl.name}</div><div class="tt-type">${tmpl.type} · Lv${ab.level}</div>`;
@@ -9156,9 +9274,13 @@ function showActionTooltip(e,ab) {
   html+=`<div class="tt-row"><span class="tt-lbl">Cooldown</span><span class="tt-val">${cooldown>0?cooldown+' turn'+(cooldown>1?'s':''):'None'}</span></div>`;
   if (hit!==null) html+=`<div class="tt-row"><span class="tt-lbl">Hit</span><span class="tt-val ${hitClass}">${hit}%</span></div>`;
   if (isDamaging) {
-    html+=`<div class="tt-row"><span class="tt-lbl">Damage</span><span class="tt-val">${dmgLow!==null?`${dmgLow}–${dmgHigh}`:'Varies'}</span></div>`;
+    html+=`<div class="tt-row"><span class="tt-lbl">Damage (est.)</span><span class="tt-val">${dmgLow!==null?`${dmgLow}–${dmgHigh}`:'Varies'}</span></div>`;
   }
   html+=`<div class="tt-row"><span class="tt-lbl">Effects</span><span class="tt-val">${effectList}</span></div>`;
+  const statLines=getSkillStatPreviewLines(ab,tmpl);
+  for(const line of statLines){
+    html+=`<div class="tt-row"><span class="tt-lbl">Stat preview</span><span class="tt-val" style="font-size:.88em">${line}</span></div>`;
+  }
   const pb=G.playerStatus?.pendingStrikeBuff;
   if(pb && ['physical','ranged','spell'].includes(btnType)){
     const pct=Math.round((Number(pb.multAdd)||0)*100);
@@ -9172,7 +9294,16 @@ function showActionTooltip(e,ab) {
   }
   const scaleNote=tmpl.damageScaling?.scalingNote;
   html+=`<div class="tt-desc">${lvData.desc}${scaleNote?`<div class="tt-scaling" style="opacity:.92;margin-top:6px;font-size:.9em;border-top:1px solid rgba(255,255,255,.12);padding-top:6px">${scaleNote}</div>`:''}</div>`;
+  html+=`<div class="tt-note" style="opacity:.75;margin-top:6px;font-size:.78em">Damage estimate ignores enemy DEF/M.DEF and fight modifiers.</div>`;
   if(window._isTouchDevice) html+=`<div style="text-align:right;margin-top:8px"><button onclick="hideTooltip()" style="background:rgba(201,168,76,.2);border:1px solid var(--gold);border-radius:4px;color:var(--gold);padding:2px 10px;cursor:pointer;font-size:.75rem;">✕ Close</button></div>`;
+  return html;
+}
+
+// ===== TOOLTIPS =====
+function showActionTooltip(e,ab) {
+  const tt=document.getElementById('action-tooltip');
+  const html=buildActionTooltipHTML(ab);
+  if (!html) return;
   tt.innerHTML=html;
   tt.style.display='block';
   positionTooltip(e);
@@ -9231,7 +9362,7 @@ function hideTooltip() {
 }
 
 function getAbDesc(ab) {
-  const tmpl=ABILITY_TEMPLATES[ab.id];
+  const tmpl=getAbilityTemplateForUI(ab);
   if (!tmpl||!tmpl.levels) return ab.desc||'';
   const lv=Math.min(ab.level,tmpl.levels.length);
   return tmpl.levels[lv-1].desc;
@@ -9246,7 +9377,7 @@ function getClassCooldownAdjustment(ab, player){
   const bd=BIRDS[player?.birdKey]||{};
   const cls=String(player?.class||bd.class||'bruiser').toLowerCase();
   const lv=player?.birdLevel||1;
-  const t=ABILITY_TEMPLATES[ab.id]||ab||{};
+  const t=getAbilityTemplateForUI(ab)||ab||{};
   const kind=String(t.type||t.btnType||ab.type||ab.btnType||'').toLowerCase();
 
   // Class rhythm:
@@ -9265,7 +9396,7 @@ function getClassCooldownAdjustment(ab, player){
 }
 
 function getTemplateCooldown(ab){
-  const t=ABILITY_TEMPLATES[ab.id];
+  const t=getAbilityTemplateForUI(ab);
   if(!t||!t.cooldownByLevel) return 0;
   const idx=Math.min((ab.level||1)-1,t.cooldownByLevel.length-1);
   let cd=Math.max(0,t.cooldownByLevel[idx]||0);
@@ -10001,6 +10132,9 @@ function applyEnemySlow(spdPenalty,dodgePenalty,turns){
  *   unless a skill is explicitly designed as sustained; same-ability refresh should replace, not stack.
  * - Ailments (Fear, Poison, Burn, Confused, Paralyze, Weaken-as-ailment track, etc.): **not** capped at 1 turn;
  *   durations may scale with skill level / template rules via applyAilment, tryApplyAilment, and bespoke handlers.
+ * - **Miss vs on-hit debuff:** for damaging attacks, extra ailments/riders should run only after a real hit (e.g. dealDamage
+ *   with dmg>0, or a hit branch after a per-swing miss roll). Pure control songs (e.g. dirge, lullaby) intentionally skip
+ *   accuracy rolls — do not fold them into generic “miss = no debuff” without a balance review.
  */
 /** Next offensive player action: mult add on physical (pdmg) and magic (matk), plus hit/crit helpers. Promoted in playerAction. */
 function applyPendingStrikeBuff(opts={}){
@@ -10376,7 +10510,7 @@ function pdmg(mult=1,ab=null,opts={}) {
   if (G.playerStatus.weaken&&G.playerStatus.weaken>0) base=Math.floor(base*.75);
   // Pierce DEF: reduce enemy effective DEF before damage calc (store on G for dealDamage to read)
   if(ab){
-    const tmpl=ABILITY_TEMPLATES[ab.id];
+    const tmpl=getAbilityTemplateForUI(ab);
     const lv=Math.min(ab.level,4);
     const piercePct=(tmpl?.pierceDef||0) + (lv>=2?5:0) + (lv>=3?5:0); // scales per level
     G._currentPiercePct = piercePct;
@@ -10453,7 +10587,7 @@ function pdmgWithAlternateScaling(mult=1, ab=null){
   return applyConditionalPhysicalDamageMultipliers(total, sc.conditionalBonuses);
 }
 function getAbilityDamageScalingHintForUI(ab){
-  const note=ABILITY_TEMPLATES[ab?.id]?.damageScaling?.scalingNote;
+  const note=getAbilityTemplateForUI(ab)?.damageScaling?.scalingNote;
   return note?` ${String(note)}`:'';
 }
 // Check and consume combo crit — call before dealDamage for physical attacks
@@ -10505,7 +10639,7 @@ function rollEnemyCritDamage(baseDamage){
 }
 
 function getPlayerMissChance(ab) {
-  const tmpl=ABILITY_TEMPLATES[ab.id];
+  const tmpl=getAbilityTemplateForUI(ab);
   if (!tmpl) return 15;
   const classPerkCtx=applyClassPerksToCombatContext(G.player?.birdKey,{});
   const lv=Math.min(ab.level,4);
@@ -10888,10 +11022,11 @@ const ACTIONS = {
     const r=dealDamage('enemy',pdmg(.9+.05*(lv-1)),isCrit);
     await doAttack('player','enemy',r);
     setHpBar('enemy',G.enemy.stats.hp,G.enemy.stats.maxHp);
-    if(tryApplyAilment('enemy','burning',ab)){spawnFloat('enemy','🔥 Burn!','fn-burn');logMsg(`Feather Disease ignites!`,'burn-tick');}
+    if((r.dmgDealt||0)>0&&tryApplyAilment('enemy','burning',ab)){spawnFloat('enemy','🔥 Burn!','fn-burn');logMsg(`Feather Disease ignites!`,'burn-tick');}
     if(isCrit)logMsg(`💥 CRIT Peck! ${r.dmgDealt}!`,'crit');
     else logMsg(`Peck: ${r.dmgDealt}.`,'player-action');
   },
+  // Dirge / lullaby: intentional control songs with no player miss roll (non-dodgeable debuff setup). Do not gate confuse/lull on accuracy without a design pass.
   async dirge(ab) {
     const lv=ab.level;
     const turns=1+lv; const skipC=Math.min(35,20+5*lv); // capped 20-35%
@@ -10926,8 +11061,10 @@ const ACTIONS = {
     const r=dealDamage('enemy',pdmg(1+.1*(lv-1)));
     await doAttack('player','enemy',r);
     setHpBar('enemy',G.enemy.stats.hp,G.enemy.stats.maxHp);
-    if(tryApplyAilment('enemy','poison',ab)){spawnFloat('enemy','☣ Poison!','fn-poison');logMsg(`Poison!`,'poison-tick');}
-    if(tryApplyAilment('enemy','weaken',ab)){spawnFloat('enemy','🐔 Weaken!','fn-status');}
+    if((r.dmgDealt||0)>0){
+      if(tryApplyAilment('enemy','poison',ab)){spawnFloat('enemy','☣ Poison!','fn-poison');logMsg(`Poison!`,'poison-tick');}
+      if(tryApplyAilment('enemy','weaken',ab)){spawnFloat('enemy','🐔 Weaken!','fn-status');}
+    }
     logMsg(`⚔ Strike: ${r.dmgDealt}.`,'player-action');
     if(G.crowDefendCooldown>0)G.crowDefendCooldown--;
   },
@@ -10939,9 +11076,11 @@ const ACTIONS = {
     await doAttack('player','enemy',r);
     setHpBar('enemy',G.enemy.stats.hp,G.enemy.stats.maxHp);
     logMsg(`💢 Beak Slam: ${r.dmgDealt}!`,'player-action');
-    const stunC=Math.min(50,25+10*(lv-1));
-    if(rollStunChance(stunC)){G.enemyStatus.stunned=(G.enemyStatus.stunned||0)+1;await doSpell('enemy','😵 Stunned!');renderStatuses('enemy-status',G.enemyStatus);logMsg(`Stunned!`,'system');}
-    if(tryApplyAilment('enemy','paralyzed',ab)){spawnFloat('enemy','⚡ Para!','fn-status');logMsg(`Avian Paralysis!`,'system');}
+    if((r.dmgDealt||0)>0){
+      const stunC=Math.min(50,25+10*(lv-1));
+      if(rollStunChance(stunC)){G.enemyStatus.stunned=(G.enemyStatus.stunned||0)+1;await doSpell('enemy','😵 Stunned!');renderStatuses('enemy-status',G.enemyStatus);logMsg(`Stunned!`,'system');}
+      if(tryApplyAilment('enemy','paralyzed',ab)){spawnFloat('enemy','⚡ Para!','fn-status');logMsg(`Avian Paralysis!`,'system');}
+    }
     if(G.crowDefendCooldown>0)G.crowDefendCooldown--;
   },
   async talonRake(ab) {
@@ -10982,7 +11121,7 @@ const ACTIONS = {
       await doMiss('player');
       logMsg(`HONK missed!`,'miss');
       if(isOstrich&&G.player._rageCharge>0){G.player._rageCharge=0;spawnFloat('player','💨 Charge Reset!','fn-miss');logMsg(`Ostrich Rage Charge reset on miss!`,'miss');}
-      return;
+      return false;
     }
     let rageMult=1.0;
     if(isOstrich){
@@ -10995,22 +11134,25 @@ const ACTIONS = {
     await doAttack('player','enemy',r);
     setHpBar('enemy',G.enemy.stats.hp,G.enemy.stats.maxHp);
     logMsg(`🔊 HONK! ${r.dmgDealt}${isOstrich&&G.player._rageCharge>1?` (Rage×${Math.min(G.player._rageCharge,3)})`:''}!`,'player-action');
-    if(tryApplyAilment('enemy','paralyzed',ab)){spawnFloat('enemy','⚡ Para!','fn-status');}
-    // Emperor Penguin Blubber Coat: Waddle applies Lullaby on attack
-    if(G.player.birdKey==='penguin'&&!G.enemyStatus.waddleLullaby){
-      G.enemyStatus.waddleLullaby={chance:15,turns:2};
-      spawnFloat('enemy','💤 Lullaby!','fn-status');
-      logMsg(`🐧 Waddle lulls the enemy! (15% skip/turn)`, 'system');
+    if((r.dmgDealt||0)>0){
+      if(tryApplyAilment('enemy','paralyzed',ab)){spawnFloat('enemy','⚡ Para!','fn-status');}
+      // Emperor Penguin Blubber Coat: Waddle applies Lullaby on attack
+      if(G.player.birdKey==='penguin'&&!G.enemyStatus.waddleLullaby){
+        G.enemyStatus.waddleLullaby={chance:15,turns:2};
+        spawnFloat('enemy','💤 Lullaby!','fn-status');
+        logMsg(`🐧 Waddle lulls the enemy! (15% skip/turn)`, 'system');
+      }
     }
-    if(G.battleOver)return;
+    if(G.battleOver)return true;
+    return true;
   },
   async gooseHonk(ab) {
-    await ACTIONS.honkAttack(ab);
-    if(tryApplyAilment('enemy','feared',ab)){spawnFloat('enemy','😨 Fear!','fn-status');}
+    const hit=await ACTIONS.honkAttack(ab);
+    if(hit&&tryApplyAilment('enemy','feared',ab)){spawnFloat('enemy','😨 Fear!','fn-status');}
   },
   async penguinHonk(ab) {
-    await ACTIONS.honkAttack(ab);
-    if(tryApplyAilment('enemy','slow',ab)){spawnFloat('enemy','🐌 Slow!','fn-status');}
+    const hit=await ACTIONS.honkAttack(ab);
+    if(hit&&tryApplyAilment('enemy','slow',ab)){spawnFloat('enemy','🐌 Slow!','fn-status');}
   },
   async headWhip(ab) {
     const lv=ab.level;
@@ -11032,7 +11174,7 @@ const ACTIONS = {
     const r=dealDamage('enemy',pdmg((1.45+.2*(lv-1))*rageMult,ab));
     await doAttack('player','enemy',r);
     setHpBar('enemy',G.enemy.stats.hp,G.enemy.stats.maxHp);
-    if(tryApplyAilment('enemy','weaken',ab)){spawnFloat('enemy','🐔 Weaken!','fn-status');}
+    if((r.dmgDealt||0)>0&&tryApplyAilment('enemy','weaken',ab)){spawnFloat('enemy','🐔 Weaken!','fn-status');}
     logMsg(`🦵 Head Whip: ${r.dmgDealt}${isMomentumBird&&G.player._rageCharge>1?` (Momentum×${Math.min(G.player._rageCharge,3)})`:''}.`,'player-action');
   },
 
@@ -11055,7 +11197,7 @@ const ACTIONS = {
     await doAttack('player','enemy',r);
     setHpBar('enemy',G.enemy.stats.hp,G.enemy.stats.maxHp);
     G._breakClampStreak=Math.min((G._breakClampStreak||0)+1,3);
-    if(lv>=3&&G._breakClampStreak>=3&&tryApplyAilment('enemy','weaken',ab))spawnFloat('enemy','🐔 Weaken!','fn-status');
+    if((r.dmgDealt||0)>0&&lv>=3&&G._breakClampStreak>=3&&tryApplyAilment('enemy','weaken',ab))spawnFloat('enemy','🐔 Weaken!','fn-status');
     if(!G.battleOver){G.autoQueuedAbilityId='breakClamp';}
     logMsg(`🦜 Beak Clamp hits for ${r.dmgDealt}${G.autoQueuedAbilityId?' — auto queued for next turn!':''}.`,'player-action');
   },
@@ -11921,8 +12063,10 @@ const ACTIONS = {
     const raw=Math.max(1,Math.floor(roll(Math.floor(spd*1.8),Math.floor(spd*2.6))*mult));
     const r=dealDamage('enemy',raw,chance(getPlayerCritChance(ab)));
     await doAttack('player','enemy',r); setHpBar('enemy',G.enemy.stats.hp,G.enemy.stats.maxHp);
-    if(tryApplyAilment('enemy','confused',ab))spawnFloat('enemy','❓ Confuse!','fn-status');
-    if(lv>=3&&tryApplyAilment('enemy','burning',ab))spawnFloat('enemy','🔥 Burn!','fn-burn');
+    if((r.dmgDealt||0)>0){
+      if(tryApplyAilment('enemy','confused',ab))spawnFloat('enemy','❓ Confuse!','fn-status');
+      if(lv>=3&&tryApplyAilment('enemy','burning',ab))spawnFloat('enemy','🔥 Burn!','fn-burn');
+    }
     logMsg(`🔊 Supersonic: ${r.dmgDealt} (SPD-scaled).`,'player-action');
   },
   async taunt(ab) {
@@ -11978,12 +12122,12 @@ async function executeSparrowRapidFamilyAction(ab, config){
     await doAttack('player','enemy',r);
     setHpBar('enemy',G.enemy.stats.hp,G.enemy.stats.maxHp);
     landed++; total+=r.dmgDealt;
-    if(config.rider==='confused' && chance((config.riderChance[lv-1]||0)+mastery.rider)){
+    if((r.dmgDealt||0)>0 && config.rider==='confused' && chance((config.riderChance[lv-1]||0)+mastery.rider)){
       G.enemyStatus.confused={turns:config.turns?.[lv-1]||2,skipChance:(config.skipChance?.[lv-1]||25)};
       renderStatuses('enemy-status',G.enemyStatus);
       spawnFloat('enemy','🌀 Confuse!','fn-status');
     }
-    if(config.rider==='poison' && chance((config.riderChance[lv-1]||0)+mastery.rider)){
+    if((r.dmgDealt||0)>0 && config.rider==='poison' && chance((config.riderChance[lv-1]||0)+mastery.rider)){
       applyAilment('enemy','poison',config.stacks?.[lv-1]||1);
       renderStatuses('enemy-status',G.enemyStatus);
       spawnFloat('enemy','☣ Poison!','fn-poison');
@@ -12003,9 +12147,11 @@ async function executeSparrowDartFamilyAction(ab, config){
   const r=dealDamage('enemy',pdmgWithAlternateScaling((config.mult[lv-1]||1)*(1+mastery.damage),ab),chance(getPlayerCritChance(ab)));
   await doAttack('player','enemy',r);
   setHpBar('enemy',G.enemy.stats.hp,G.enemy.stats.maxHp);
-  if(config.rider==='burning' && chance((config.riderChance[lv-1]||0)+mastery.rider)){ G.enemyStatus.burning=config.turns?.[lv-1]||3; spawnFloat('enemy','🔥 Burn!','fn-burn'); }
-  if(config.rider==='bleed' && chance((config.riderChance[lv-1]||0)+mastery.rider)){ applyAilment('enemy','bleed',config.stacks?.[lv-1]||1); spawnFloat('enemy','🩸 Bleed!','fn-poison'); }
-  if(config.rider==='poison' && chance((config.riderChance[lv-1]||0)+mastery.rider)){ applyAilment('enemy','poison',config.stacks?.[lv-1]||1); spawnFloat('enemy','☣ Poison!','fn-poison'); }
+  if((r.dmgDealt||0)>0){
+    if(config.rider==='burning' && chance((config.riderChance[lv-1]||0)+mastery.rider)){ G.enemyStatus.burning=config.turns?.[lv-1]||3; spawnFloat('enemy','🔥 Burn!','fn-burn'); }
+    if(config.rider==='bleed' && chance((config.riderChance[lv-1]||0)+mastery.rider)){ applyAilment('enemy','bleed',config.stacks?.[lv-1]||1); spawnFloat('enemy','🩸 Bleed!','fn-poison'); }
+    if(config.rider==='poison' && chance((config.riderChance[lv-1]||0)+mastery.rider)){ applyAilment('enemy','poison',config.stacks?.[lv-1]||1); spawnFloat('enemy','☣ Poison!','fn-poison'); }
+  }
   renderStatuses('enemy-status',G.enemyStatus);
   logMsg(`${config.log} ${r.dmgDealt} dmg!`, 'player-action');
 }
@@ -17496,7 +17642,7 @@ function isSpellAbilityId(id){
 
 function isMultiHitAbility(ab){
   if(!ab) return false;
-  const t = ABILITY_TEMPLATES?.[ab.id] || ABILITY_TEMPLATES_EXTRA?.[ab.id] || ab;
+  const t = getAbilityTemplateForUI(ab) || ab;
   const role = Array.isArray(t?.role) ? t.role : [];
   if(role.includes('multiHit')) return true;
   const type = t?.type || ab.type || '';
@@ -17508,7 +17654,7 @@ function isMultiHitAbility(ab){
 
 function getAbilityEnergyCost(ab, player){
   const p = player || G.player;
-  const t = ABILITY_TEMPLATES?.[ab.id] || ABILITY_TEMPLATES_EXTRA?.[ab.id];
+  const t = getAbilityTemplateForUI(ab);
 
   let cost = 0;
   if(typeof ab.energyCost === 'number') cost = ab.energyCost;

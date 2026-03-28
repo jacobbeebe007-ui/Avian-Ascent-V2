@@ -153,11 +153,16 @@
     SHOP_COSTS.gold = 14;
   }
 
-  // Audit current upgrade pool source every time it's requested.
+  // Audit current upgrade pool source every time it's requested (normalize apply: systems.js _normalizeStorkUpgradeApply).
   const _oldGetUpgradePool = globalThis.getUpgradePool;
   if(typeof _oldGetUpgradePool === 'function'){
     globalThis.getUpgradePool = function(){
       let pool = _oldGetUpgradePool.apply(this, arguments) || [];
+      if(typeof globalThis._normalizeStorkUpgradeApply === 'function'){
+        for(const item of pool){
+          globalThis._normalizeStorkUpgradeApply(item);
+        }
+      }
       pool = auditPool(pool);
 
       // Enforce energy uniqueness visibility per run

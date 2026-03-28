@@ -1,11 +1,7 @@
-// ===== 02_seagull-animation-script-patch.js =====
+// ===== 02–03 Seagull + all-birds sprite hooks (single patch chain) =====
 
-/* ===== Seagull animation hooks ===== */
 (function(){
-  function getSeagullEl(){
-    return document.querySelector('#enemy-avatar .sprite-seagull, #player-avatar .sprite-seagull, .sprite-seagull');
-  }
-
+  /* ----- Seagull (sprite-seagull) ----- */
   function clearSeagullAnim(el){
     if(!el) return;
     el.classList.remove(
@@ -30,61 +26,21 @@
     });
   }
 
-  const _oldRefreshBattleUI = globalThis.refreshBattleUI;
-  if(typeof _oldRefreshBattleUI === 'function'){
-    globalThis.refreshBattleUI = function(){
-      const out = _oldRefreshBattleUI.apply(this, arguments);
-      try{
-        setSeagullState('idle');
-      }catch(err){ console.error(err); }
-      return out;
-    };
+  function syncSeagullFromEnemyIntent(){
+    const enemyName = String(globalThis.G?.enemy?.name || '').toLowerCase();
+    if(!enemyName.includes('seagull')) return;
+    const label = String(globalThis.G?.enemyNextAction?.label || '').toLowerCase();
+    if(/call|shriek|summon|mob|flock/.test(label)){
+      setSeagullState('call');
+    }else if(/dash|dart|swoop|rush|strike|dive/.test(label)){
+      setSeagullState('dash');
+    }else if(/power|buff|stance|charge/.test(label)){
+      setSeagullState('power');
+    }else{
+      setSeagullState('idle');
+    }
   }
 
-  const _oldRenderEnemyPlan = globalThis.renderEnemyPlan;
-  if(typeof _oldRenderEnemyPlan === 'function'){
-    globalThis.renderEnemyPlan = function(){
-      const out = _oldRenderEnemyPlan.apply(this, arguments);
-      try{
-        const enemyName = String(globalThis.G?.enemy?.name || '').toLowerCase();
-        if(!enemyName.includes('seagull')) return out;
-
-        const label = String(globalThis.G?.enemyNextAction?.label || '').toLowerCase();
-        if(/call|shriek|summon|mob|flock/.test(label)){
-          setSeagullState('call');
-        }else if(/dash|dart|swoop|rush|strike|dive/.test(label)){
-          setSeagullState('dash');
-        }else if(/power|buff|stance|charge/.test(label)){
-          setSeagullState('power');
-        }else{
-          setSeagullState('idle');
-        }
-      }catch(err){ console.error(err); }
-      return out;
-    };
-  }
-
-  const _oldEnemyTurn = globalThis.enemyTurn;
-  if(typeof _oldEnemyTurn === 'function'){
-    globalThis.enemyTurn = async function(){
-      try{
-        const enemyName = String(globalThis.G?.enemy?.name || '').toLowerCase();
-        if(enemyName.includes('seagull')){
-          const label = String(globalThis.G?.enemyNextAction?.label || '').toLowerCase();
-          if(/call|shriek|summon|mob|flock/.test(label)){
-            setSeagullState('call');
-          }else if(/dash|dart|swoop|rush|strike|dive/.test(label)){
-            setSeagullState('dash');
-          }else{
-            setSeagullState('idle');
-          }
-        }
-      }catch(err){ console.error(err); }
-      return await _oldEnemyTurn.apply(this, arguments);
-    };
-  }
-
-  // Select-screen hover polish for seagull cards
   document.addEventListener('mouseover', function(ev){
     const card = ev.target && ev.target.closest ? ev.target.closest('.bird-card, .ascent-panel-portrait, .ascent-face') : null;
     if(!card) return;
@@ -103,15 +59,7 @@
     s.classList.add('frame-0','seagull-idle-anim');
   }, true);
 
-  // Initialize any visible seagulls into idle state
-  try{ setSeagullState('idle'); }catch(err){ console.error(err); }
-})();
-
-
-// ===== 03_all-birds-menu-animation-script-patch.js =====
-
-/* ===== All birds generic sprite animation hooks ===== */
-(function(){
+  /* ----- Generic sprite4 menu + battle ----- */
   function isSprite(el){
     return !!(el && el.classList && el.classList.contains('sprite4'));
   }
@@ -254,20 +202,24 @@
     }
   }
 
-  const _oldRenderEnemyPlanGeneric = globalThis.renderEnemyPlan;
-  if(typeof _oldRenderEnemyPlanGeneric === 'function'){
+  const _oldRenderEnemyPlan = globalThis.renderEnemyPlan;
+  if(typeof _oldRenderEnemyPlan === 'function'){
     globalThis.renderEnemyPlan = function(){
-      const out = _oldRenderEnemyPlanGeneric.apply(this, arguments);
-      try{ animateBattleSpriteFromIntent('enemy'); }catch(err){ console.error(err); }
+      const out = _oldRenderEnemyPlan.apply(this, arguments);
+      try{
+        syncSeagullFromEnemyIntent();
+        animateBattleSpriteFromIntent('enemy');
+      }catch(err){ console.error(err); }
       return out;
     };
   }
 
-  const _oldRefreshBattleUIGeneric = globalThis.refreshBattleUI;
-  if(typeof _oldRefreshBattleUIGeneric === 'function'){
+  const _oldRefreshBattleUI = globalThis.refreshBattleUI;
+  if(typeof _oldRefreshBattleUI === 'function'){
     globalThis.refreshBattleUI = function(){
-      const out = _oldRefreshBattleUIGeneric.apply(this, arguments);
+      const out = _oldRefreshBattleUI.apply(this, arguments);
       try{
+        setSeagullState('idle');
         animateBattleSpriteFromIntent('enemy');
         const p = battleSpriteFor('player');
         if(p){ clearMenuAnim(p); setFrame(p, 'frame-0'); p.classList.add('menu-idle-anim'); }
@@ -277,7 +229,27 @@
     };
   }
 
-  // Initial pass
+  const _oldEnemyTurn = globalThis.enemyTurn;
+  if(typeof _oldEnemyTurn === 'function'){
+    globalThis.enemyTurn = async function(){
+      try{
+        const enemyName = String(globalThis.G?.enemy?.name || '').toLowerCase();
+        if(enemyName.includes('seagull')){
+          const label = String(globalThis.G?.enemyNextAction?.label || '').toLowerCase();
+          if(/call|shriek|summon|mob|flock/.test(label)){
+            setSeagullState('call');
+          }else if(/dash|dart|swoop|rush|strike|dive/.test(label)){
+            setSeagullState('dash');
+          }else{
+            setSeagullState('idle');
+          }
+        }
+      }catch(err){ console.error(err); }
+      return await _oldEnemyTurn.apply(this, arguments);
+    };
+  }
+
+  try{ setSeagullState('idle'); }catch(err){ console.error(err); }
   try{ applyIdleToVisibleMenuSprites(); }catch(err){ console.error(err); }
 })();
 

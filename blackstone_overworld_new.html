@@ -884,6 +884,7 @@ applyCamera(false);
 window.addEventListener('resize',()=>applyCamera(false));
 requestAnimationFrame(()=>requestAnimationFrame(()=>{pl.style.transition='left .5s cubic-bezier(.25,.46,.45,.94),top .5s cubic-bezier(.25,.46,.45,.94)';document.getElementById('root').focus();}));
 </script>
+<script src="js/world/ow_enemy_population.js"></script>
 <script>
 // ── Avian Ascent · Overworld Integration Bootstrap ───────────────────────────
 (function(){
@@ -896,6 +897,28 @@ requestAnimationFrame(()=>requestAnimationFrame(()=>{pl.style.transition='left .
   try { save = JSON.parse(localStorage.getItem(SAVE_KEY) || 'null'); } catch(_) {}
   let owState = null;
   try { owState = JSON.parse(localStorage.getItem(OW_KEY) || 'null'); } catch(_) {}
+
+  // Per-run seeded stage enemies (story overworld): validate/create pack, patch NODES, persist.
+  if (typeof buildOwEnemyPopulation === 'function' && typeof applyOwPopulationToNodes === 'function' && typeof isValidOverworldEnemySeedPack === 'function' && typeof mulberry32 === 'function' && typeof OW_PACK_SEED_COUNT === 'number') {
+    if (save?.player && !save.endlessMode) {
+      let pack = save.overworldEnemySeedPack;
+      let dirty = false;
+      if (!isValidOverworldEnemySeedPack(pack)) {
+        const r = mulberry32(Date.now() >>> 0);
+        pack = { v: 1, packIndex: Math.floor(r() * OW_PACK_SEED_COUNT) };
+        save.overworldEnemySeedPack = pack;
+        dirty = true;
+      }
+      const pop = buildOwEnemyPopulation(pack.packIndex);
+      applyOwPopulationToNodes(NODES, pop);
+      if (dirty) {
+        try { localStorage.setItem(SAVE_KEY, JSON.stringify(save)); } catch (_) {}
+      }
+    } else if (save && !save.player && save.overworldEnemySeedPack != null) {
+      delete save.overworldEnemySeedPack;
+      try { localStorage.setItem(SAVE_KEY, JSON.stringify(save)); } catch (_) {}
+    }
+  }
 
   const savedProgress  = save?.overworldProgress || null;
   const savedNodeId = Number(savedProgress?.currentNodeId);
