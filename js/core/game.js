@@ -2996,16 +2996,26 @@ function expForLevel(lv) {
   return Math.floor(80 * Math.pow(1.38, 14) * Math.pow(1.18, 10) * Math.pow(1.08, lv - 25));
 }
 
-/** Base EXP by enemy level (Lv 0–10); above 10 continues ~Lv9→Lv10 ratio. */
+/** Base EXP by enemy level (Lv 0–10); above 10 uses soft additive/log growth. */
 const BASE_EXP_BY_ENEMY_LEVEL = [10,13,18,25,35,48,66,91,126,174,240];
+const BASE_EXP_POST10_LINEAR_PER_LEVEL = 22;
+const BASE_EXP_POST10_LOG_SCALE = 12;
+const ENDLESS_EXP_NORMAL_CAP_PCT = 0.30;
+const ENDLESS_EXP_BOSS_CAP_PCT = 0.85;
+const THREAT_TIER_EXP_MULTIPLIERS = Object.freeze({
+  LOW: 0.90,
+  STANDARD: 1.00,
+  HIGH: 1.15,
+  ELITE: 1.30,
+});
 
 function baseExpForEnemyLevel(lv) {
   const L = Math.max(0, Math.floor(Number(lv) || 0));
   if (L <= 10) return BASE_EXP_BY_ENEMY_LEVEL[L];
-  let v = BASE_EXP_BY_ENEMY_LEVEL[10];
-  const ratio = 240 / 174;
-  for (let i = 11; i <= L; i++) v = Math.round(v * ratio);
-  return Math.max(240, v);
+  const over = L - 10;
+  const linear = BASE_EXP_POST10_LINEAR_PER_LEVEL * over;
+  const softLog = BASE_EXP_POST10_LOG_SCALE * Math.log2(over + 1);
+  return Math.max(BASE_EXP_BY_ENEMY_LEVEL[10], Math.round(BASE_EXP_BY_ENEMY_LEVEL[10] + linear + softLog));
 }
 
 /** Threat tier EXP multipliers (STORY_THREAT_BY_BIRD / getStoryThreatForBirdKey). Bosses use boss formula instead. */
@@ -3013,11 +3023,11 @@ function threatTierExpMultiplierForEnemy(enemy) {
   if (!enemy || enemy.isBoss) return 1;
   const key = enemy.birdKey || enemy.portraitKey || '';
   const th = getStoryThreatForBirdKey(key);
-  if (th <= 1) return 0.80;
-  if (th === 2) return 1.00;
-  if (th === 3) return 1.30;
-  if (th >= 4) return 1.70;
-  return 1.00;
+  if (th <= 1) return THREAT_TIER_EXP_MULTIPLIERS.LOW;
+  if (th === 2) return THREAT_TIER_EXP_MULTIPLIERS.STANDARD;
+  if (th === 3) return THREAT_TIER_EXP_MULTIPLIERS.HIGH;
+  if (th >= 4) return THREAT_TIER_EXP_MULTIPLIERS.ELITE;
+  return THREAT_TIER_EXP_MULTIPLIERS.STANDARD;
 }
 
 function relativeLevelExpMultiplier(enemyLv, playerLv) {
@@ -3040,7 +3050,13 @@ function computeNormalEnemyExpGain(enemy) {
   const base = baseExpForEnemyLevel(elv);
   const tMult = threatTierExpMultiplierForEnemy(enemy);
   const rMult = relativeLevelExpMultiplier(elv, plv);
-  return Math.max(1, Math.round(base * tMult * rMult));
+  let exp = Math.max(1, Math.round(base * tMult * rMult));
+  if (isEndlessRunActive()) {
+    const nextLevelExp = expForLevel(plv + 1);
+    const normalCap = Math.max(1, Math.round(nextLevelExp * ENDLESS_EXP_NORMAL_CAP_PCT));
+    exp = Math.min(exp, normalCap);
+  }
+  return exp;
 }
 
 function computeBossExpGain(enemy) {
@@ -3050,8 +3066,23 @@ function computeBossExpGain(enemy) {
     const elv = getEnemyPreviewLevel(enemy);
     if (elv > plv) exp = Math.round(exp * (1 + 0.03 * Math.min(elv - plv, 5)));
   }
+  if (isEndlessRunActive()) {
+    const nextLevelExp = expForLevel(plv + 1);
+    const bossCap = Math.max(1, Math.round(nextLevelExp * ENDLESS_EXP_BOSS_CAP_PCT));
+    exp = Math.min(exp, bossCap);
+  }
   return Math.max(1, exp);
 }
+
+/*
+  EXP sanity notes (endless cap behavior, assuming plv≈stage anchor for quick balance checks):
+  - Stage 21 / plv 21: nextLvExp≈23,151 => normal cap≈6,945, boss cap≈19,678.
+  - Stage 30 / plv 30: nextLvExp≈60,361 => normal cap≈18,108, boss cap≈51,307.
+  - Stage 50 / plv 50: nextLvExp≈281,342 => normal cap≈84,403, boss cap≈239,141.
+  - Stage 80 / plv 80: nextLvExp≈2,831,050 => normal cap≈849,315, boss cap≈2,406,393.
+  - Stage 120 / plv 120: nextLvExp≈61,503,211 => normal cap≈18,450,963, boss cap≈52,277,729.
+  Low/mid/high player levels can be spot-checked by comparing raw base*tier*relative against caps above.
+*/
 
 // ============================================================
 //  TURN STATE / SAFETY LIMITS
