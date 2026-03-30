@@ -6459,6 +6459,26 @@ function escapeEncounterPreviewHtml(s){
   return String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
+/** Ability ids from enemy kit (string pool entries or synced skill objects). */
+function getEnemyKitAbilityIds(enemy){
+  if(!enemy) return [];
+  const abs=enemy.abilities||[];
+  const ids=[];
+  for(const x of abs){
+    if(typeof x==='string'&&x) ids.push(x);
+    else if(x&&typeof x==='object'&&x.id) ids.push(x.id);
+  }
+  return ids;
+}
+
+function getEnemyAbilityDisplayLabel(abilityId, enemy){
+  const eab=ENEMY_ABILITY_POOL[abilityId];
+  if(eab?.name) return eab.name;
+  const slot=(enemy?.abilities||[]).find(a=>a&&a.id===abilityId);
+  const tmpl=getAbilityTemplateForUI(slot||{id:abilityId});
+  return tmpl?.name||abilityId;
+}
+
 /** Enemy combat ability keys resolved to display names. Prefers ENEMY_ABILITY_POOL (actual combat moves). */
 function getEnemyPreviewSkillNames(enemy){
   if(!enemy) return ['—','—','—','—'];
@@ -6472,6 +6492,8 @@ function getEnemyPreviewSkillNames(enemy){
         const eab=ENEMY_ABILITY_POOL[entry];
         names.push(eab?.name||String(entry));
       } else if(entry && typeof entry==='object'){
+        const tmpl=getAbilityTemplateForUI(entry);
+        if(tmpl?.name){ names.push(tmpl.name); return; }
         const eab=ENEMY_ABILITY_POOL[entry.id];
         names.push(eab?.name||String(entry.name||entry.id||'—'));
       }
@@ -6529,7 +6551,17 @@ function buildEnemyInfoPopupAbilitiesHtml(enemy){
     return '<ul>'+lines.map(([n,d])=>`<li><strong>${escapeEncounterPreviewHtml(n)}</strong> — ${escapeEncounterPreviewHtml(d)}</li>`).join('')+'</ul>';
   }
   const parts=[];
-  if(Array.isArray(enemy.abilities) && enemy.abilities.length){
+  const hasObjAbs=Array.isArray(enemy.abilities)&&enemy.abilities.some(x=>x&&typeof x==='object'&&x.id);
+  if(hasObjAbs){
+    enemy.abilities.slice(0,4).forEach(entry=>{
+      if(!entry||typeof entry!=='object'||!entry.id) return;
+      const tmpl=getAbilityTemplateForUI(entry);
+      const lv=Math.max(1,Math.min(4,Number(entry.level)||1));
+      const lvData=tmpl?.levels?.[lv-1];
+      const desc=String(lvData?.desc||tmpl?.desc||'');
+      parts.push(`<li><strong>${escapeEncounterPreviewHtml(tmpl?.name||entry.id)}</strong> <small>Lv${lv}</small> — ${escapeEncounterPreviewHtml(desc)}</li>`);
+    });
+  }else if(Array.isArray(enemy.abilities) && enemy.abilities.length){
     enemy.abilities.forEach(abKey=>{
       if(typeof abKey!=='string') return;
       const eab=ENEMY_ABILITY_POOL[abKey];
@@ -6620,33 +6652,53 @@ function getCurrentStageEncounterPreviewData(){
   return [];
 }
 
-/** Rich HTML tooltip for a single enemy ability (ENEMY_ABILITY_POOL entry). */
-function buildEnemyAbilityTooltipHtml(abKey, enemyStats){
+/** Rich HTML tooltip for a single enemy ability (ENEMY_ABILITY_POOL or player-template kit id). */
+function buildEnemyAbilityTooltipHtml(abKey, enemyStats, enemyCtx=null){
   const eab=ENEMY_ABILITY_POOL[abKey];
-  if(!eab) return '';
-  const nm=escapeEncounterPreviewHtml(eab.name||abKey);
-  const desc=escapeEncounterPreviewHtml(eab.desc||'');
-  const dmgRaw=eab.dmg||'';
-  let category='Ability';
-  if(dmgRaw==='healing') category='Heal';
-  else if(dmgRaw==='buff') category='Buff';
-  else if(abKey==='eShield'||/defend|shield/i.test(desc)) category='Shield';
-  else if(dmgRaw==='0 direct') category='Debuff';
-  else category='Offensive';
-  let dmgLine='';
-  if(category==='Offensive' && enemyStats){
-    const atk=enemyStats.atk||8;
-    const low=Math.max(1,Math.floor(atk*0.8));
-    const high=Math.max(low,Math.floor(atk*1.2));
-    dmgLine=`<div class="tt-row"><span class="tt-lbl">Damage</span><span class="tt-val">${low}–${high}</span></div>`;
-  } else if(category==='Heal' && enemyStats){
-    const heal=Math.floor((enemyStats.maxHp||enemyStats.hp||40)*0.15);
-    dmgLine=`<div class="tt-row"><span class="tt-lbl">Heal</span><span class="tt-val">~${heal} HP</span></div>`;
-  } else if(category==='Buff'){
-    dmgLine=`<div class="tt-row"><span class="tt-lbl">Effect</span><span class="tt-val">Self-buff</span></div>`;
+  if(eab){
+    const nm=escapeEncounterPreviewHtml(eab.name||abKey);
+    const desc=escapeEncounterPreviewHtml(eab.desc||'');
+    const dmgRaw=eab.dmg||'';
+    let category='Ability';
+    if(dmgRaw==='healing') category='Heal';
+    else if(dmgRaw==='buff') category='Buff';
+    else if(abKey==='eShield'||/defend|shield/i.test(desc)) category='Shield';
+    else if(dmgRaw==='0 direct') category='Debuff';
+    else category='Offensive';
+    let dmgLine='';
+    if(category==='Offensive' && enemyStats){
+      const atk=enemyStats.atk||8;
+      const low=Math.max(1,Math.floor(atk*0.8));
+      const high=Math.max(low,Math.floor(atk*1.2));
+      dmgLine=`<div class="tt-row"><span class="tt-lbl">Damage</span><span class="tt-val">${low}–${high}</span></div>`;
+    } else if(category==='Heal' && enemyStats){
+      const heal=Math.floor((enemyStats.maxHp||enemyStats.hp||40)*0.15);
+      dmgLine=`<div class="tt-row"><span class="tt-lbl">Heal</span><span class="tt-val">~${heal} HP</span></div>`;
+    } else if(category==='Buff'){
+      dmgLine=`<div class="tt-row"><span class="tt-lbl">Effect</span><span class="tt-val">Self-buff</span></div>`;
+    }
+    const dodge=eab.dodgeable?'<div class="tt-row"><span class="tt-lbl">Dodge</span><span class="tt-val tt-hit-good">Can be dodged</span></div>':'';
+    return `<div class="tt-name">${nm}</div><div class="tt-type">${category}</div>${dmgLine}${dodge}<div class="tt-desc">${desc}</div>`;
   }
-  const dodge=eab.dodgeable?'<div class="tt-row"><span class="tt-lbl">Dodge</span><span class="tt-val tt-hit-good">Can be dodged</span></div>':'';
-  return `<div class="tt-name">${nm}</div><div class="tt-type">${category}</div>${dmgLine}${dodge}<div class="tt-desc">${desc}</div>`;
+  const en=enemyCtx||{};
+  const lv=Math.max(1,Math.min(4,Number(en.level)||Number(en.storyLevel)||1));
+  const ab={id:abKey,level:lv};
+  const tmpl=getAbilityTemplateForUI(ab);
+  if(!tmpl) return '';
+  const nm=escapeEncounterPreviewHtml(tmpl.name||abKey);
+  const typeLbl=escapeEncounterPreviewHtml(String(tmpl.type||tmpl.btnType||'Ability'));
+  const miss=tmpl.baseMissChance!==undefined?Math.max(0,tmpl.baseMissChance-5*(lv-1)):null;
+  const hit=miss!==null?100-miss:null;
+  const hitClass=hit===null?'':(hit>=80?'tt-hit-great':hit>=55?'tt-hit-good':'tt-hit-bad');
+  const fakeAttacker={stats:enemyStats||{}};
+  const {isDamaging,dmgLow,dmgHigh}=estimateSkillDamageRange(ab,tmpl,fakeAttacker,{isPlayerCombatPreview:false,applyMitigation:false});
+  let html=`<div class="tt-name">${nm}</div><div class="tt-type">${typeLbl} · Lv${lv}</div>`;
+  if(hit!==null) html+=`<div class="tt-row"><span class="tt-lbl">Hit</span><span class="tt-val ${hitClass}">${hit}%</span></div>`;
+  if(isDamaging&&dmgLow!=null) html+=`<div class="tt-row"><span class="tt-lbl">Damage (est.)</span><span class="tt-val">${dmgLow}–${dmgHigh}</span></div>`;
+  const lvData=Array.isArray(tmpl.levels)?tmpl.levels[lv-1]:null;
+  const desc=escapeEncounterPreviewHtml(String(lvData?.desc||tmpl.desc||''));
+  html+=`<div class="tt-desc">${desc}</div>`;
+  return html;
 }
 
 function buildEncounterPreviewTooltipHtml(enemy){
@@ -6661,11 +6713,23 @@ function buildEncounterPreviewTooltipHtml(enemy){
   const keys=getEnemyPreviewSkillKeys(enemy);
   const names=getEnemyPreviewSkillNames(enemy);
   const eStats=enemy.stats||{atk:enemy.atk||8,maxHp:enemy.maxHp||enemy.hp||40};
+  const previewLv=getEnemyPreviewLevel(enemy);
   const skillItems=names.map((n,i)=>{
     const key=keys[i]||'';
     const eab=ENEMY_ABILITY_POOL[key];
-    const desc=eab?escapeEncounterPreviewHtml(eab.desc):'';
-    const badge=eab?(eab.dodgeable?' <span style="color:var(--gold);font-size:.62rem">dodgeable</span>':''):'';
+    let desc='';
+    let badge='';
+    if(eab){
+      desc=escapeEncounterPreviewHtml(eab.desc||'');
+      badge=eab.dodgeable?' <span style="color:var(--gold);font-size:.62rem">dodgeable</span>':'';
+    }else if(key){
+      const tmpl=getAbilityTemplateForUI({id:key,level:Math.max(1,Math.min(4,previewLv))});
+      if(tmpl){
+        const lv=Math.max(1,Math.min(4,previewLv,tmpl.levels?.length||4));
+        const lvData=tmpl.levels?.[lv-1];
+        desc=escapeEncounterPreviewHtml(String(lvData?.desc||tmpl.desc||''));
+      }
+    }
     return `<li>${escapeEncounterPreviewHtml(n)}${badge}${desc?`<div style="font-size:.65rem;color:var(--text-dim);margin:1px 0 3px">${desc}</div>`:''}</li>`;
   }).join('');
   return `<div class="enc-preview-tt"><div class="enc-preview-tt-head">${icon} <strong>${nm}</strong></div>
@@ -6944,30 +7008,6 @@ function applyStoryEnemyGrowth(stats,key){
     case 'critChance': stats.critChance=Math.min(95,(stats.critChance||5)+1); break;
   }
 }
-function buildStoryEnemyAbilitiesByClass(birdKey){
-  const cls=String(BIRDS?.[birdKey]?.class||'striker').toLowerCase();
-  const byClass={
-    striker:['eBlind','eWeaken'],
-    predator:['eStun','eRage'],
-    bruiser:['eShield','eWeaken'],
-    tank:['eShield','eHeal'],
-    trickster:['eBlind','eFear'],
-    singer:['eFear','ePoison'],
-  };
-  const byBird={
-    penguin:['eShield','eHeal'],
-    snowyowl:['eFear','eBlind'],
-    macaw:['eWeaken','eBurn'],
-    goose:['eWeaken','eShield'],
-    raven:['eBlind','eFear'],
-    lyrebird:['eFear','ePoison'],
-    peregrine:['eStun','eBlind'],
-    cassowary:['eRage','eStun'],
-    emu:['eRage','eShield'],
-    duke_blakiston:['eFear','eShield'],
-  };
-  return (byBird[birdKey] || byClass[cls] || byClass.striker).slice();
-}
 function chooseStoryPathForSlot(slot, birdKey, cls){
   const options=getSkillEvolutionPathOptions(slot, birdKey) || [];
   if(!options.length) return null;
@@ -7046,7 +7086,7 @@ function buildStoryEnemyFromBirdKey(birdKey, stage){
     enemyClass:cls,
     aiStyle:(['predator','striker'].includes(cls)?'aggressive':(cls==='tank'?'defensive':(cls==='trickster'?'trickster':'cautious'))),
     aiPersonality:cls,
-    abilities:buildStoryEnemyAbilitiesByClass(birdKey),
+    abilities:JSON.parse(JSON.stringify(enemyStub.abilities||[])),
     storyAbilityKit:(enemyStub.abilities||[]).map(a=>a.id),
     stats:{...stats,en},
     hp:stats.hp,maxHp:stats.maxHp,atk:stats.atk,def:stats.def,spd:stats.spd,acc:stats.acc,dodge:stats.dodge,mdodge:stats.mdodge,mdef:stats.mdef,matk:stats.matk,
@@ -8439,16 +8479,27 @@ function refreshBattleUI() {
      ${enemyCell('stat-cd','CD',Number(eCritMult).toFixed(1),{suffix:'×',title:'Crit damage'})}`;
   if(eal){
     eal.innerHTML='';
-    (G.enemy.abilities||[]).forEach(abKey=>{
-      const eab=ENEMY_ABILITY_POOL[abKey];
-      if(eab){
+    (G.enemy.abilities||[]).forEach(entry=>{
+      if(typeof entry==='string'){
+        const eab=ENEMY_ABILITY_POOL[entry];
+        if(!eab) return;
         const t=document.createElement('span');t.className='enemy-ab-tag';t.textContent=eab.name;
-        const ttHtml=buildEnemyAbilityTooltipHtml(abKey, G.enemy.stats);
+        const ttHtml=buildEnemyAbilityTooltipHtml(entry, G.enemy.stats);
         t.addEventListener('mouseenter',e=>showTooltip(e,ttHtml,e.clientX+12,e.clientY+12));
         t.addEventListener('mousemove',e=>moveTooltip(e.clientX+12,e.clientY+12));
         t.addEventListener('mouseleave',hideTooltip);
         eal.appendChild(t);
+        return;
       }
+      if(!entry||typeof entry!=='object'||!entry.id) return;
+      const tmpl=getAbilityTemplateForUI(entry);
+      const t=document.createElement('span');t.className='enemy-ab-tag';t.textContent=tmpl?.name||entry.name||entry.id;
+      const ctx={level:entry.level,storyLevel:G.enemy.storyLevel};
+      const ttHtml=buildEnemyAbilityTooltipHtml(entry.id, G.enemy.stats, ctx);
+      t.addEventListener('mouseenter',e=>showTooltip(e,ttHtml,e.clientX+12,e.clientY+12));
+      t.addEventListener('mousemove',e=>moveTooltip(e.clientX+12,e.clientY+12));
+      t.addEventListener('mouseleave',hideTooltip);
+      eal.appendChild(t);
     });
   }
 
@@ -9215,11 +9266,31 @@ function estimateMultiplierFromSkillDescription(txt=''){
   return null;
 }
 
-/** Rough ATK/MATK damage band for UI (not full dealDamage pipeline). */
-function estimateSkillDamageRange(ab,tmpl,player){
-  const p=player||G?.player;
-  const pAtk=p?(p.stats?.atk||0):0;
-  const pMatk=p?(p.stats?.matk||0):0;
+function getEffectivePlayerAtkForDamagePreview(){
+  const p=G?.player;
+  if(!p) return 0;
+  let b=Number(p.stats?.atk||0);
+  if(G?.warcryActive) b=Math.floor(b*(1+(G.warcryATK||0)/100));
+  if(G?.sitAndWaitActive) b=Math.floor(b*1.25);
+  if(G?.tookieActive&&G?.playerStatus?.tookie) b=Math.floor(b*(1+(G.playerStatus.tookie.atkBonus||0)/100));
+  return b;
+}
+
+/**
+ * Rough damage band for UI. Player preview: matches pdmg() buffs, pending strike mult, weaken, enemy DEF/MDEF, and template pierce bonus.
+ * Pass attacker as {stats:{atk,matk}} for enemies; opts.isPlayerCombatPreview false skips player-only modifiers.
+ */
+function estimateSkillDamageRange(ab,tmpl,attacker,opts){
+  opts=opts||{};
+  const isPlayerCombat=opts.isPlayerCombatPreview!==undefined?opts.isPlayerCombatPreview:(attacker===G?.player);
+  const p=attacker||G?.player;
+  const stats=p&&(p.stats||p)||{};
+  let pAtk=Number(stats.atk||0);
+  let pMatk=Number(stats.matk||8);
+  if(isPlayerCombat&&G?.player){
+    pAtk=getEffectivePlayerAtkForDamagePreview();
+    pMatk=Number(G.player.stats?.matk||8);
+  }
   if(!tmpl) return {isDamaging:false,dmgLow:null,dmgHigh:null,btnType:''};
   const btnType=String(tmpl.btnType||tmpl.type||ab?.btnType||ab?.type||'').toLowerCase();
   const isDamaging=['physical','ranged','spell'].includes(btnType);
@@ -9231,8 +9302,62 @@ function estimateSkillDamageRange(ab,tmpl,player){
   if(!(dmgMult>0)){
     dmgMult=estimateMultiplierFromSkillDescription(lvData?.desc||'')??estimateMultiplierFromSkillDescription(tmpl?.desc||'');
   }
-  const dmgLow=(isDamaging&&dmgMult>0)?Math.max(1,Math.floor(scaleStat*0.8*dmgMult)):null;
-  const dmgHigh=(isDamaging&&dmgMult>0)?Math.max(dmgLow,Math.floor(scaleStat*1.2*dmgMult)):null;
+  if(!(dmgMult>0)) return {isDamaging,dmgLow:null,dmgHigh:null,btnType,lv,lvData};
+  if(isPlayerCombat&&G?._pendingStrikeActionMods){
+    const add=Number(G._pendingStrikeActionMods.multAdd)||0;
+    if(btnType==='spell'){
+      const mAdd=G._pendingStrikeActionMods.matkMultAdd!=null?Number(G._pendingStrikeActionMods.matkMultAdd):add;
+      dmgMult+=mAdd;
+    }else dmgMult+=add;
+  }
+  let dmgLow=null,dmgHigh=null;
+  if(isDamaging){
+    if(btnType==='spell'&&isPlayerCombat&&G?.player&&G?.enemy){
+      const base=G.player.stats.matk||8;
+      const mdef=G.enemy.stats?.mdef??8;
+      const adjust=(base-mdef)*0.015;
+      const bEff=getEffectivePlayerAtkForDamagePreview();
+      let pdLo=Math.floor(Math.floor(bEff*0.8));
+      let pdHi=Math.floor(Math.floor(bEff*1.2));
+      if((G?.playerStatus?.weaken||0)>0){ pdLo=Math.max(1,Math.floor(pdLo*0.75)); pdHi=Math.max(1,Math.floor(pdHi*0.75)); }
+      const mult=dmgMult+adjust;
+      const coreLo=Math.max(1,Math.floor(pdLo*mult*base/7.2));
+      const coreHi=Math.max(1,Math.floor(pdHi*mult*base/7.2));
+      dmgLow=Math.min(coreLo,coreHi);
+      dmgHigh=Math.max(coreLo,coreHi);
+    }else{
+      dmgLow=Math.max(1,Math.floor(scaleStat*0.8*dmgMult));
+      dmgHigh=Math.max(dmgLow,Math.floor(scaleStat*1.2*dmgMult));
+    }
+  }
+  if(isPlayerCombat&&['physical','ranged'].includes(btnType)&&(G?.playerStatus?.weaken||0)>0){
+    if(dmgLow!=null) dmgLow=Math.max(1,Math.floor(dmgLow*0.75));
+    if(dmgHigh!=null) dmgHigh=Math.max(1,Math.floor(dmgHigh*0.75));
+  }
+  const applyMit=opts.applyMitigation!==false;
+  if(applyMit&&isPlayerCombat&&G?.enemy&&isDamaging){
+    const en=G.enemy.stats||G.enemy;
+    if(btnType==='spell'){
+      const mul=calcDefenseMultiplier(Number(en.mdef??8));
+      if(dmgLow!=null) dmgLow=Math.max(1,Math.floor(dmgLow*mul));
+      if(dmgHigh!=null) dmgHigh=Math.max(1,Math.floor(dmgHigh*mul));
+    }else if(['physical','ranged'].includes(btnType)){
+      const pierce=getPlayerPiercePctForAbility(ab);
+      const enemyDef=Number(en.def||0);
+      const effDef=Math.floor(enemyDef*(1-pierce));
+      const mul=calcDefenseMultiplier(effDef);
+      if(dmgLow!=null) dmgLow=Math.max(1,Math.floor(dmgLow*mul));
+      if(dmgHigh!=null) dmgHigh=Math.max(1,Math.floor(dmgHigh*mul));
+      const tPierce=(tmpl.pierceDef||0)+(lv>=2?5:0)+(lv>=3?5:0);
+      const evoP=(typeof getPassiveEvolutionBonuses==='function')?(getPassiveEvolutionBonuses(G.player).piercePct||0):0;
+      const baseAtkPierce=Number(G.player.stats?.atk||0);
+      const pierceBonus=Math.floor(baseAtkPierce*(tPierce+evoP)/100);
+      if(pierceBonus>0){
+        if(dmgLow!=null) dmgLow+=pierceBonus;
+        if(dmgHigh!=null) dmgHigh+=pierceBonus;
+      }
+    }
+  }
   return {isDamaging,dmgLow,dmgHigh,btnType,lv,lvData};
 }
 
@@ -10647,7 +10772,7 @@ function edmg(mult=1) {
   const ruffleReduct=G.enemyStatus.featherRuffle&&G.enemyStatus.featherRuffle.turns>0
     ?(1-(G.enemyStatus.featherRuffle.atkReduction||0)/100):1;
   let out=Math.floor(roll(Math.floor(b*.8),Math.floor(b*1.2))*mult*lull*weak*ruffleReduct);
-  if((G.biomeMod?.lightningBonus||0)>0 && (G.enemy?.abilities||[]).includes('eStun')){
+  if((G.biomeMod?.lightningBonus||0)>0 && getEnemyKitAbilityIds(G.enemy).includes('eStun')){
     out=Math.floor(out*(1+G.biomeMod.lightningBonus));
   }
   if((G.biomeMod?.enemyCritPlus||0)>0 && chance(Math.floor(G.biomeMod.enemyCritPlus*100))){
@@ -18171,7 +18296,13 @@ function getEnemyActionEnergyCost(action){
   if(action.type==='ability'){
     const id=action.abilityId;
     const map={eHeal:3,eShield:2,eStun:3,eRage:2,eWeaken:2,eFear:2,eBurn:2,eBlind:1,ePoison:2,eVenom:2};
-    return map[id]||2;
+    if(map[id]!=null) return map[id];
+    const ab=(G.enemy?.abilities||[]).find(a=>a&&a.id===id)||{id,level:1};
+    const tmpl=getAbilityTemplateForUI(ab);
+    const byLv=Array.isArray(tmpl?.energyByLevel)?tmpl.energyByLevel[Math.min(Math.max(1,ab.level||1),4)-1]:null;
+    if(Number.isFinite(byLv)) return Math.max(1,Math.min(5,byLv));
+    if(Number.isFinite(tmpl?.energyCost)) return Math.max(1,Math.min(5,tmpl.energyCost));
+    return 2;
   }
   return 1;
 }
@@ -18200,13 +18331,44 @@ function getEnemyAIMemory(enemy){
   }
   return enemy.aiMemory;
 }
+/** Classify a kit ability id for enemy AI weights (templates + legacy ENEMY_ABILITY_POOL). */
+function classifyKitAbilityForEnemyAI(abilityId, enemy){
+  if(ENEMY_ABILITY_POOL[abilityId]){
+    const id=String(abilityId||'');
+    if(['eHeal'].includes(id)) return 'heal';
+    if(['eShield'].includes(id)) return 'guard';
+    if(['eRage'].includes(id)) return 'buff';
+    if(['eWeaken','eFear','eBlind','ePoison','eVenom','eStun','eBurn'].includes(id)) return 'control';
+    return 'damage';
+  }
+  const ab=(enemy?.abilities||[]).find(a=>a&&a.id===abilityId)||{id:abilityId,level:1};
+  const tmpl=getAbilityTemplateForUI(ab);
+  if(!tmpl) return 'utility';
+  const btn=String(tmpl.btnType||tmpl.type||'').toLowerCase();
+  const ailments=deriveAbilityAilments(ab, tmpl);
+  const ctrlAil=new Set(['feared','weaken','poison','paralyzed','confused','burning','bleed','slow']);
+  if(ailments.some(a=>ctrlAil.has(a))) return 'control';
+  if(btn==='physical'||btn==='ranged'||btn==='spell') return 'damage';
+  const tx=`${tmpl.name||''} ${tmpl.desc||''}`.toLowerCase();
+  if(/heal|restore hp|recover|mend|regenerat/i.test(tx)) return 'heal';
+  if(/shield|barrier|ward|bulwark|brace|fortif|iron guard/i.test(tx)) return 'guard';
+  if(/(^|[^a-z])rage([^a-z]|$)|fury|war\s*cry|warcry|haste|empower|battle cry/i.test(tx)) return 'buff';
+  return 'utility';
+}
+function enemyKitOffersSetupDebuffs(enemy){
+  const debuffPool=new Set(['eWeaken','eFear','eBlind','ePoison','eVenom','eStun']);
+  for(const id of getEnemyKitAbilityIds(enemy)){
+    if(debuffPool.has(id)) return true;
+    if(classifyKitAbilityForEnemyAI(id,enemy)==='control') return true;
+  }
+  return false;
+}
 function getEnemyMode(e,p){
   const hpPct=(e.stats.hp||1)/Math.max(1,e.stats.maxHp||1);
   const pHpPct=(p.stats.hp||1)/Math.max(1,p.stats.maxHp||1);
-  const canDebuff=(e.abilities||[]).some(id=>['eWeaken','eFear','eBlind','ePoison','eVenom','eStun'].includes(id));
   if(hpPct<0.30) return 'RECOVER';
   if(pHpPct<0.40) return 'EXECUTE';
-  if(canDebuff) return 'SETUP';
+  if(enemyKitOffersSetupDebuffs(e)) return 'SETUP';
   return 'PRESSURE';
 }
 function classifyEnemyActionCategory(action){
@@ -18220,29 +18382,63 @@ function classifyEnemyActionCategory(action){
   if(['eShield'].includes(id)) return 'guard';
   if(['eRage'].includes(id)) return 'buff';
   if(['eWeaken','eFear','eBlind','ePoison','eVenom','eStun','eBurn'].includes(id)) return 'control';
+  if(ENEMY_ABILITY_POOL[id]) return 'damage';
+  if(G?.enemy){
+    const k=classifyKitAbilityForEnemyAI(id,G.enemy);
+    if(k==='heal') return 'heal';
+    if(k==='guard') return 'guard';
+    if(k==='buff') return 'buff';
+    if(k==='control') return 'control';
+    if(k==='damage') return 'damage';
+    if(k==='utility') return 'control';
+  }
   return 'damage';
 }
 function buildEnemyActionPool(e,mode){
-  const abs=e.abilities||[];
+  const ids=getEnemyKitAbilityIds(e);
   const pool=[];
   const push=(a,w=1,meta={})=>{for(let i=0;i<w;i++) pool.push({...a,...meta});};
+  const healIds=[], guardIds=[], ctrlIds=[], buffIds=[], damIds=[], utilIds=[];
+  for(const id of ids){
+    const cat=classifyKitAbilityForEnemyAI(id,e);
+    if(cat==='heal') healIds.push(id);
+    else if(cat==='guard') guardIds.push(id);
+    else if(cat==='control') ctrlIds.push(id);
+    else if(cat==='buff') buffIds.push(id);
+    else if(cat==='damage') damIds.push(id);
+    else if(cat==='utility') utilIds.push(id);
+  }
   if(mode==='RECOVER'){
-    if(abs.includes('eHeal')) push({type:'ability',abilityId:'eHeal',icon:'🌿',label:'Heal'},4,{isUtility:true});
-    if(abs.includes('eShield')) push({type:'ability',abilityId:'eShield',icon:'🛡',label:'Shield'},3,{isUtility:true});
+    for(const id of healIds) push({type:'ability',abilityId:id,icon:'🌿',label:getEnemyAbilityDisplayLabel(id,e)},4,{isUtility:true});
+    for(const id of guardIds) push({type:'ability',abilityId:id,icon:'🛡',label:getEnemyAbilityDisplayLabel(id,e)},3,{isUtility:true});
     push({type:'defend',icon:'🛡',label:'Defend'},2,{isUtility:true});
     push({type:'strike',icon:'⚔',label:'Attack'},2);
   }else if(mode==='EXECUTE'){
     push({type:'heavy',icon:'💢',label:'Heavy Strike',tags:['HEAVY','FINISH']},5);
     push({type:'strike',icon:'⚔',label:'Attack'},3);
-    for(const id of abs){ if(['eRage','eStun','ePoison','eBurn','eFear'].includes(id)) push({type:'ability',abilityId:id,icon:'✦',label:ENEMY_ABILITY_POOL[id]?.name||id},2,{isUtility:['eRage'].includes(id)}); }
+    for(const id of ids){
+      const cat=classifyKitAbilityForEnemyAI(id,e);
+      const pseudo={type:'ability',abilityId:id};
+      const dmg=projectedEnemyActionDamage(pseudo,e);
+      if(cat==='buff' || ['eRage','eStun','ePoison','eBurn','eFear'].includes(id) || (cat==='control'&&dmg>0))
+        push({type:'ability',abilityId:id,icon:'✦',label:getEnemyAbilityDisplayLabel(id,e)},2,{isUtility:cat==='buff'||id==='eRage'});
+    }
+    for(const id of damIds) push({type:'ability',abilityId:id,icon:'✦',label:getEnemyAbilityDisplayLabel(id,e)},2,{isUtility:false});
   }else if(mode==='SETUP'){
-    for(const id of abs){ if(['eWeaken','eFear','eBlind','ePoison','eVenom'].includes(id)) push({type:'ability',abilityId:id,icon:'🌀',label:ENEMY_ABILITY_POOL[id]?.name||id},4,{isUtility:true}); }
+    for(const id of ctrlIds) push({type:'ability',abilityId:id,icon:'🌀',label:getEnemyAbilityDisplayLabel(id,e)},4,{isUtility:true});
+    for(const id of utilIds) push({type:'ability',abilityId:id,icon:'✨',label:getEnemyAbilityDisplayLabel(id,e)},2,{isUtility:true});
     push({type:'strike',icon:'⚔',label:'Attack'},3);
     push({type:'defend',icon:'🛡',label:'Defend'},1,{isUtility:true});
   }else{
     push({type:'strike',icon:'⚔',label:'Attack'},5);
     push({type:'heavy',icon:'💢',label:'Heavy Strike',tags:['HEAVY']},2);
-    for(const id of abs){ if(['eWeaken','eFear','eBlind','eRage'].includes(id)) push({type:'ability',abilityId:id,icon:'✦',label:ENEMY_ABILITY_POOL[id]?.name||id},2,{isUtility:['eRage'].includes(id)}); }
+    for(const id of utilIds) push({type:'ability',abilityId:id,icon:'✨',label:getEnemyAbilityDisplayLabel(id,e)},2,{isUtility:true});
+    for(const id of ids){
+      const cat=classifyKitAbilityForEnemyAI(id,e);
+      if(cat==='damage') push({type:'ability',abilityId:id,icon:'✦',label:getEnemyAbilityDisplayLabel(id,e)},2,{isUtility:false});
+      else if(cat==='buff' || ['eWeaken','eFear','eBlind','eRage'].includes(id))
+        push({type:'ability',abilityId:id,icon:'✦',label:getEnemyAbilityDisplayLabel(id,e)},2,{isUtility:cat==='buff'||id==='eRage'});
+    }
   }
   return pool;
 }
@@ -18250,7 +18446,22 @@ function projectedEnemyActionDamage(a,e){
   if(!a) return 0;
   if(a.type==='strike') return Math.floor((e.stats.atk||8)*1.0);
   if(a.type==='heavy') return Math.floor((e.stats.atk||8)*1.6);
-  if(a.type==='ability') return ['eStun'].includes(a.abilityId)?Math.floor(6+((e.stats.atk||8)*0.95)):0;
+  if(a.type==='ability'){
+    const id=a.abilityId;
+    if(id==='eStun') return Math.floor(6+((e.stats.atk||8)*0.95));
+    if(ENEMY_ABILITY_POOL[id]) return 0;
+    const ab=(e.abilities||[]).find(x=>x&&x.id===id)||{id,level:1};
+    const tmpl=getAbilityTemplateForUI(ab);
+    if(!tmpl) return 0;
+    const btn=String(tmpl.btnType||tmpl.type||'').toLowerCase();
+    if(btn==='physical'||btn==='ranged'||btn==='spell'){
+      let mult=(tmpl.baseDmgMult!=null)?(Number(tmpl.baseDmgMult)||0)+0.1*((ab.level||1)-1):0.9;
+      mult=Math.max(0.25,mult);
+      const stat=(btn==='spell')?(e.stats.matk||8):(e.stats.atk||8);
+      return Math.floor(stat*mult);
+    }
+    return 0;
+  }
   return 0;
 }
 function canEnemyProjectLethal(e,p,pool,totalEnergy){
@@ -18520,7 +18731,7 @@ function planEnemyAction() {
   const actions=(plan.actions||[]).slice(0,MAX_ENEMY_ACTIONS_PER_TURN);
   G.enemyPlannedActions=actions;
   const persona=(e.aiPersonality||'tactical');
-  const preview=actions.slice(0,2).map(a=>`${a.icon||'•'} ${a.type==='ability'?(ENEMY_ABILITY_POOL[a.abilityId]?.name||a.abilityId):a.label}`).join(' → ');
+  const preview=actions.slice(0,2).map(a=>`${a.icon||'•'} ${a.type==='ability'?getEnemyAbilityDisplayLabel(a.abilityId,G.enemy):a.label}`).join(' → ');
   const extraCount=Math.max(0,actions.length-2);
   const more=extraCount>0?` +${extraCount}`:'';
   const labelText=((preview||'…')+more).trim();
@@ -18589,6 +18800,104 @@ function dukeTurnAI(){
   logMsg('🦉 Talons in the dark.','boss');
 }
 
+function enemyKitAbilityIsHardCC(abilityId, enemy){
+  if(abilityId==='eStun') return true;
+  const ab=(enemy.abilities||[]).find(a=>a&&a.id===abilityId)||{id:abilityId,level:1};
+  const tmpl=getAbilityTemplateForUI(ab);
+  if(!tmpl) return false;
+  return deriveAbilityAilments(ab,tmpl).includes('paralyzed');
+}
+
+async function executeEnemyKitTemplateAbility(enemy, abilityId, totalEnemyMiss){
+  const ab=(enemy.abilities||[]).find(a=>a&&a.id===abilityId)||{id:abilityId,level:Math.max(1,Math.min(4,enemy.storyLevel||1))};
+  const tmpl=getAbilityTemplateForUI(ab);
+  if(!tmpl){
+    logMsg(`${enemy.name} hesitates.`,'miss');
+    return;
+  }
+  const btn=String(tmpl.btnType||tmpl.type||'').toLowerCase();
+  const name=tmpl.name||abilityId;
+  const cat=classifyKitAbilityForEnemyAI(abilityId,enemy);
+  if(cat==='heal'){
+    const heal=Math.max(1,Math.floor((enemy.stats.maxHp||40)*0.14));
+    enemy.stats.hp=Math.min(enemy.stats.maxHp||enemy.stats.hp,(enemy.stats.hp||0)+heal);
+    await doSpell('enemy',`🌿 ${name}!`);
+    setHpBar('enemy',enemy.stats.hp,enemy.stats.maxHp);
+    logMsg(`${enemy.name} recovers ${heal} HP.`,'enemy-action');
+    return;
+  }
+  if(cat==='guard'){
+    await doSpell('enemy',`🛡 ${name}!`);
+    G.enemyStatus.defending=(G.enemyStatus.defending||0)+1;
+    await doShield('enemy');
+    renderStatuses('enemy-status',G.enemyStatus);
+    logMsg(`${enemy.name} braces!`,'enemy-action');
+    return;
+  }
+  if(cat==='buff'){
+    await doSpell('enemy',`⚡ ${name}!`);
+    G.enemyStatus.atkBuff=(G.enemyStatus.atkBuff||0)+Math.floor((enemy.stats.atk||8)*0.22);
+    logMsg(`${enemy.name} surges — ATK up!`,'enemy-action');
+    renderStatuses('enemy-status',G.enemyStatus);
+    return;
+  }
+  if(btn==='physical'||btn==='ranged'){
+    G._incomingAttackKind=btn==='ranged'?'ranged':'physical';
+    G._incomingBypassesDeflect=false;
+    if(totalEnemyMiss>0&&chance(totalEnemyMiss)){
+      await doMiss('enemy');
+      logMsg(`${enemy.name} fumbles!`,'miss');
+      return;
+    }
+    let mult=(tmpl.baseDmgMult!=null)?(Number(tmpl.baseDmgMult)||0)+0.1*((ab.level||1)-1):null;
+    if(!(mult>0)) mult=0.88;
+    mult=Math.max(0.22,mult);
+    const atk=enemy.stats.atk||8;
+    const raw=Math.max(1,Math.floor(roll(Math.floor(atk*0.8),Math.floor(atk*1.2))*mult));
+    const rr=rollEnemyCritDamage(raw);
+    const r=dealDamage('player',rr.amount,rr.isCrit,false,ab);
+    await doAttack('enemy','player',r);
+    setHpBar('player',G.player.stats.hp,G.player.stats.maxHp);
+    if(r.wasDodged) logMsg(`${name} — dodged!`,'miss');
+    else logMsg(`${enemy.name} — ${name}${rr.isCrit?' CRIT':''} for ${r.dmgDealt}!`,'enemy-action');
+    return;
+  }
+  if(btn==='spell'){
+    G._incomingAttackKind='magic';
+    G._incomingBypassesDeflect=true;
+    const effMDodge=getEffectiveMdodge(G.player);
+    const mAccEff=Math.max(0,Math.min(95,(enemy.stats.acc||70)-(G.enemyStatus.accDebuff||0)));
+    const mHitPct=Math.max(5,Math.min(95,Math.floor((mAccEff-effMDodge+100)/2)));
+    if(!chance(mHitPct)){
+      spawnFloat('player','✦ MDodge!','fn-dodge'); playAvatarAnim('player','do-dodge-r',400); SFX.dodge(); await delay(420);
+      logMsg(`✨ ${G.player.name} deflects ${name}!`,'system');
+      return;
+    }
+    await doSpell('enemy',`✦ ${name}!`);
+    let mult=(tmpl.baseDmgMult!=null)?(Number(tmpl.baseDmgMult)||0)+0.1*((ab.level||1)-1):0.82;
+    mult=Math.max(0.22,mult);
+    const matkN=enemy.stats.matk||8;
+    const raw=Math.max(1,Math.floor(roll(Math.floor(matkN*0.75),Math.floor(matkN*1.15))*mult));
+    const rr=rollEnemyCritDamage(raw);
+    const r=dealDamage('player',rr.amount,rr.isCrit,true,ab);
+    await doAttack('enemy','player',r);
+    setHpBar('player',G.player.stats.hp,G.player.stats.maxHp);
+    if(r.wasDodged) logMsg(`${name} — dodged!`,'miss');
+    else logMsg(`${enemy.name} — ${name}${rr.isCrit?' CRIT':''} for ${r.dmgDealt}!`,'enemy-action');
+    return;
+  }
+  await doSpell('enemy',`✦ ${name}!`);
+  const ailments=deriveAbilityAilments(ab,tmpl);
+  let any=false;
+  for(const ail of ailments){
+    if(chance(Math.min(88,42+(ab.level||1)*9))){
+      applyAilment('player',ail,1);
+      any=true;
+    }
+  }
+  if(any) logMsg(`${enemy.name} — ${name}!`,'enemy-action');
+  else logMsg(`${enemy.name} uses ${name}.`,'enemy-action');
+}
 
 async function enemyTurn() {
   const e=G.enemy; G.animLock=true; G.turn='enemy'; G.turnPhase=TURN.ENEMY; G.phase='ENEMY';
@@ -18708,7 +19017,7 @@ async function enemyTurn() {
     } else if(action.type==='ability'){
       G._incomingAttackKind='magic';
       const eab=ENEMY_ABILITY_POOL[action.abilityId];
-      if(action.abilityId==='eStun') usedHardCCThisTurn=true;
+      if(enemyKitAbilityIsHardCC(action.abilityId,e)) usedHardCCThisTurn=true;
       if(eab){
         if(eab.dodgeable){
           const effMDodge = getEffectiveMdodge(G.player);
@@ -18725,6 +19034,12 @@ async function enemyTurn() {
         if(projectedEnemyActionDamage(action,e)>0) turnHadDamage=true;
         const _macBd=BIRDS[G.player.birdKey];
         if(_macBd&&_macBd.passive&&_macBd.passive.onEnemyAbility) _macBd.passive.onEnemyAbility(G.player,action.abilityId);
+        renderStatuses('player-status',G.playerStatus); renderStatuses('enemy-status',G.enemyStatus);
+      } else {
+        await executeEnemyKitTemplateAbility(e,action.abilityId,totalEnemyMiss);
+        if(projectedEnemyActionDamage(action,e)>0) turnHadDamage=true;
+        const _macBd2=BIRDS[G.player.birdKey];
+        if(_macBd2&&_macBd2.passive&&_macBd2.passive.onEnemyAbility) _macBd2.passive.onEnemyAbility(G.player,action.abilityId);
         renderStatuses('player-status',G.playerStatus); renderStatuses('enemy-status',G.enemyStatus);
       }
     }
