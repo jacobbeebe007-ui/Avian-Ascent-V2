@@ -57,7 +57,8 @@
   function getStoryStageBudget(stageNumber) {
     const s = Math.max(1, Math.floor(Number(stageNumber)) || 1);
     if (STORY_BOSS_STAGES.has(s)) return 0;
-    return STORY_STAGE_BUDGETS[s] ?? 5;
+    if (Object.prototype.hasOwnProperty.call(STORY_STAGE_BUDGETS, s)) return STORY_STAGE_BUDGETS[s];
+    return Math.max(2, s);
   }
 
   function isBossStage(stageNumber) {

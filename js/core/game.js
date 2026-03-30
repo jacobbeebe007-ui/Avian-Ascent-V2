@@ -1149,27 +1149,75 @@ function makeDukeBlakiston(){
   };
 }
 const ENEMY_ABILITY_POOL = {
-  // Enemy abilities are simplified versions
-  eVenom:   {name:'Venom Peck', desc:'Applies 2 Poison stacks (DoT).', dmg:'0 direct', dodgeable:true, fn(e,p,G){applyAilment('player','poison',2);logMsg(`☣ ${e.name} spreads Poison!`,'enemy-action');}},
-  eWeaken:  {name:'Screech', desc:'Applies Chicken Pox (reduced damage/dodge).', dmg:'0 direct', dodgeable:true, fn(e,p,G){
-    const _bd=BIRDS[G.player.birdKey];if(_bd&&_bd.passive&&_bd.passive.immuneWeaken){spawnFloat('player','🛡 Immune!','fn-status');return;}
-    G.playerStatus.weaken=Math.max(G.playerStatus.weaken||0,2+((G.biomeMod?.dread||0)>0?1:0));logMsg(`🐔 ${e.name} weakens you!`,'enemy-action');}},
-  eStun:    {name:'Body Slam', desc:'Physical slam that scales with ATK + chance to stun.', dmg:'Base + ATK scaling', fn(e,p,G){
-    const slam=calcEnemyAbilityDamage(e,{stat:'atk',base:6,scaling:0.95,variance:0.2});
-    const spike=rollEnemyCritDamage(slam);
-    const rr=dealDamage('player',spike.amount);
-    spawnFloat('player',`-${rr.dmgDealt}`,'fn-dmg');
-    const _bd=BIRDS[G.player.birdKey];if(_bd&&_bd.passive&&(_bd.passive.immuneStun||G.player.immuneParalyze)){spawnFloat('player','🛡 Immune!','fn-status');logMsg(`${e.name}'s stun bounced off!`,'miss');return;}
-    if(chance(25)){G.playerStatus.stunned=(G.playerStatus.stunned||0)+1;logMsg(`😵 ${e.name} stuns you!`,'enemy-action');}else{logMsg(`${e.name}'s stun missed.`,'miss');}}},
-  eFear:    {name:'Shriek', desc:'Applies Fear; lowers hit reliability.', dmg:'0 direct', dodgeable:true, fn(e,p,G){
-    const _bd=BIRDS[G.player.birdKey];if(_bd&&_bd.passive&&_bd.passive.immuneFear){spawnFloat('player','🛡 Fear Immune!','fn-status');return;}
-    G.playerStatus.feared=(G.playerStatus.feared||0)+2+((G.biomeMod?.dread||0)>0?1:0);logMsg(`😨 ${e.name} terrifies you!`,'enemy-action');}},
-  eBurn:    {name:'Fire Feathers', desc:'Applies Feather Disease for 3 turns.', dmg:'0 direct', dodgeable:true, fn(e,p,G){G.playerStatus.burning=3;logMsg(`🔥 ${e.name} ignites you!`,'burn-tick');}},
-  eHeal:    {name:'Preen', desc:'Heals about 15% of enemy max HP.', dmg:'healing', fn(e,p,G){const h=Math.floor(e.stats.maxHp*.15);e.stats.hp=Math.min(e.stats.hp+h,e.stats.maxHp);setHpBar('enemy',e.stats.hp,e.stats.maxHp);spawnFloat('enemy',`+${h}`,'fn-heal');logMsg(`🌿 ${e.name} preens for ${h} HP!`,'system');}},
-  eRage:    {name:'Fury', desc:'Raises enemy ATK by about 25%.', dmg:'buff', fn(e,p,G){G.enemyStatus.atkBuff=(G.enemyStatus.atkBuff||0)+Math.floor(e.stats.atk*.25);logMsg(`💢 ${e.name} rages! ATK boost!`,'enemy-action');}},
-  eBlind:   {name:'Wing Dust', desc:'Reduces your ACC by 15%.', dmg:'0 direct', dodgeable:true, fn(e,p,G){G.playerStatus.accDebuff=(G.playerStatus.accDebuff||0)+15;logMsg(`👁 ${e.name} blinds you! −15% ACC.`,'system');}},
-  ePoison:  {name:'Plague Bite', desc:'Applies strong Poison stacks.', dmg:'0 direct', dodgeable:true, fn(e,p,G){applyAilment('player','poison',3);logMsg(`☣ ${e.name} triple flu!`,'poison-tick');}},
-  eShield:  {name:'Iron Feathers', desc:'Defends for 2 turns.', dmg:'0 direct', fn(e,p,G){G.enemyStatus.defending=2;doShield('enemy');logMsg(`🛡 ${e.name} shields for 2t!`,'enemy-action');}},
+  eVenom:   {name:'Venom Peck', desc:'Deal light physical damage and apply 2 Poison stacks.', dmg:'~80% ATK + poison', dodgeable:true, fn(e,p,G){
+    const r=dealDamage('player',edmg(0.8));
+    spawnFloat('player',`-${r.dmgDealt}`,'fn-dmg');
+    applyAilment('player','poison',2);
+    logMsg(`☣ ${e.name} pecks with venom!`,'enemy-action');
+  }},
+  eWeaken:  {name:'Screech', desc:'Apply Weaken for 3 turns.', dmg:'0 direct', dodgeable:true, fn(e,p,G){
+    const _bd=BIRDS[G.player.birdKey];const ps=_bd&&_bd.passive;
+    if(ps&&ps.immuneWeaken){spawnFloat('player','🛡 Immune!','fn-status');return;}
+    G.playerStatus.weaken=Math.max(G.playerStatus.weaken||0,3);
+    logMsg(`🐔 ${e.name} weakens you!`,'enemy-action');
+  }},
+  eStun:    {name:'Body Slam', desc:'Deal 80% ATK and 25% chance to stun.', dmg:'~80% ATK + stun', fn(e,p,G){
+    const r=dealDamage('player',edmg(0.8));
+    spawnFloat('player',`-${r.dmgDealt}`,'fn-dmg');
+    if(chance(25))applyAilment('player','paralyzed',1);
+    logMsg(`💥 ${e.name} slams into you!`,'enemy-action');
+  }},
+  eFear:    {name:'Shriek', desc:'Apply Fear. 1 turn normally, 2 for bosses.', dmg:'0 direct', dodgeable:true, fn(e,p,G){
+    const turns=e.isBoss?2:1;
+    const _bd=BIRDS[G.player.birdKey];const ps=_bd&&_bd.passive;
+    if((ps&&ps.immuneFear)||G.player.stats?.immuneFear){spawnFloat('player','🛡 Fear Immune!','fn-status');return;}
+    G.playerStatus.feared=Math.min(2,Math.max(G.playerStatus.feared||0,turns));
+    logMsg(`😨 ${e.name} terrifies you!`,'enemy-action');
+  }},
+  eBurn:    {name:'Fire Feathers', desc:'Apply Burn for 3 turns.', dmg:'0 direct', dodgeable:true, fn(e,p,G){
+    applyAilment('player','burning',1);
+    const b=G.playerStatus.burning;
+    const prevTurns=b==null?0:(typeof b==='number'?b:(typeof b==='object'?Math.max(0,b.turns||0):0));
+    G.playerStatus.burning=Math.max(prevTurns,3);
+    logMsg(`🔥 ${e.name} scorches you!`,'enemy-action');
+  }},
+  eHeal:    {name:'Preen', desc:'Heal 15% max HP.', dmg:'healing', fn(e,p,G){
+    const heal=Math.max(1,Math.floor((e.stats.maxHp||1)*0.15));
+    e.stats.hp=Math.min(e.stats.maxHp,e.stats.hp+heal);
+    spawnFloat('enemy',`+${heal}`,'fn-heal');
+    setHpBar('enemy',e.stats.hp,e.stats.maxHp);
+    logMsg(`💚 ${e.name} recovers ${heal} HP!`,'enemy-action');
+  }},
+  eRage:    {name:'Fury', desc:'Gain +25% ATK for 3 turns.', dmg:'buff', fn(e,p,G){
+    if((G.enemyStatus.rageBuff||0)>0){
+      const r=dealDamage('player',edmg(1.0));
+      spawnFloat('player',`-${r.dmgDealt}`,'fn-dmg');
+      logMsg(`💢 ${e.name} lashes out instead of raging again!`,'enemy-action');
+      return;
+    }
+    G.enemyStatus.rageBuff=3;
+    logMsg(`💢 ${e.name} enters a fury for 3 turns!`,'enemy-action');
+  }},
+  eBlind:   {name:'Wing Dust', desc:'Apply Blind for 2 turns.', dmg:'0 direct', dodgeable:true, fn(e,p,G){
+    const cur=G.playerStatus.dustDevil||{turns:0,accDrop:0};
+    G.playerStatus.dustDevil={turns:Math.max(cur.turns||0,2),accDrop:Math.max(cur.accDrop||0,15)};
+    logMsg(`🌪 ${e.name} blinds you!`,'enemy-action');
+  }},
+  ePoison:  {name:'Plague Bite', desc:'Apply 3 Poison stacks.', dmg:'0 direct', dodgeable:true, fn(e,p,G){
+    applyAilment('player','poison',3);
+    logMsg(`☣ ${e.name} infects you with plague!`,'enemy-action');
+  }},
+  eShield:  {name:'Iron Feathers', desc:'Gain Block for 2 turns.', dmg:'0 direct', fn(e,p,G){
+    if((G.enemyStatus.defending||0)>0){
+      const r=dealDamage('player',edmg(0.9));
+      spawnFloat('player',`-${r.dmgDealt}`,'fn-dmg');
+      logMsg(`🛡 ${e.name} is already guarded and strikes instead!`,'enemy-action');
+      return;
+    }
+    G.enemyStatus.defending=2;
+    doShield('enemy');
+    logMsg(`🛡 ${e.name} hardens its feathers for 2 turns!`,'enemy-action');
+  }},
 };
 
 const ENEMIES = [
@@ -1211,26 +1259,27 @@ const ENEMIES = [
 ];
 
 // Birds that can appear as enemy combatants (adds variety). Set enemyClass for singer/tank/trickster; matk/mdef/mdodge feed scaling.
+// Combat kits come from family skill slots + ABILITY_TEMPLATES (buildEdFromBirdEnemyTemplate). Penguin/emu have no family catalog yet — legacy abilities only.
 // Tier bands: keep aligned with js/world/ow_enemy_population.js OW_POOL_BY_BAND (overworld seeded packs).
 const BIRD_ENEMIES = [
-  {name:'Wild Sparrow',emoji:'',birdKey:'sparrow',tier:[1,2],hp:30,atk:6,def:2,matk:6,mdef:7,spd:9,acc:82,dodge:32,mdodge:28,enemyClass:'bruiser',size:'tiny',aiStyle:'berserker',abilities:['eBlind']},
-  {name:'Grove Cantor',emoji:'🎵',birdKey:'blackbird',tier:[1,2],hp:30,atk:5,def:3,matk:12,mdef:9,spd:7,acc:78,dodge:22,mdodge:18,enemyClass:'singer',size:'small',aiStyle:'cautious',abilities:['eWeaken','eFear']},
-  {name:'Glitter Thief',emoji:'✨',birdKey:'magpie',tier:[1,2],hp:34,atk:7,def:4,matk:9,mdef:8,spd:8,acc:86,dodge:28,mdodge:22,enemyClass:'trickster',size:'medium',aiStyle:'aggressive',abilities:['eBlind','eWeaken']},
-  {name:'Rogue Crow',emoji:'‍⬛',birdKey:'crow',tier:[2,3],hp:38,atk:8,def:5,matk:8,mdef:9,spd:5,acc:88,dodge:14,mdodge:12,enemyClass:'trickster',size:'medium',aiStyle:'aggressive',abilities:['eWeaken','eStun']},
-  {name:'Savage Kookaburra',emoji:'',birdKey:'kookaburra',tier:[2,3],hp:48,atk:10,def:5,matk:8,mdef:9,spd:7,acc:80,dodge:20,mdodge:16,enemyClass:'bruiser',size:'medium',aiStyle:'aggressive',abilities:['eFear','eRage']},
-  {name:'Marsh Chorus',emoji:'🦩',birdKey:'flamingo',tier:[2,3],hp:46,atk:7,def:5,matk:11,mdef:11,spd:5,acc:76,dodge:14,mdodge:12,enemyClass:'singer',size:'large',aiStyle:'cautious',abilities:['ePoison','eWeaken']},
-  {name:'Frost Chanter',emoji:'🦉',birdKey:'snowyOwl',tier:[2,3],hp:34,atk:6,def:5,matk:13,mdef:9,spd:8,acc:84,dodge:22,mdodge:18,enemyClass:'singer',size:'small',aiStyle:'cautious',abilities:['eFear','eBlind']},
-  {name:'Feral Toucan',emoji:'',birdKey:'toucan',tier:[3,4],hp:48,atk:9,def:7,matk:10,mdef:9,spd:4,acc:74,dodge:10,mdodge:10,enemyClass:'tank',size:'large',aiStyle:'cautious',abilities:['eBurn','ePoison']},
-  {name:'Outcast Goose',emoji:'',birdKey:'goose',tier:[3,4],hp:62,atk:11,def:8,matk:5,mdef:12,spd:2,acc:70,dodge:5,mdodge:8,enemyClass:'tank',size:'xl',aiStyle:'berserker',abilities:['eFear','eWeaken']},
-  {name:'Shadow Raven',emoji:'',birdKey:'raven',tier:[3,4],hp:40,atk:8,def:4,matk:12,mdef:8,spd:7,acc:80,dodge:20,mdodge:16,enemyClass:'singer',size:'medium',aiStyle:'aggressive',abilities:['eFear','eBlind','eWeaken']},
-  {name:'Macaw Hexer',emoji:'🦜',birdKey:'macaw',tier:[3,4],hp:38,atk:6,def:4,matk:14,mdef:9,spd:9,acc:82,dodge:26,mdodge:20,enemyClass:'singer',size:'small',aiStyle:'cautious',abilities:['eBurn','eWeaken']},
-  {name:'Lyre Mimic',emoji:'🪶',birdKey:'lyrebird',tier:[3,4],hp:40,atk:6,def:5,matk:15,mdef:10,spd:6,acc:82,dodge:20,mdodge:16,enemyClass:'singer',size:'medium',aiStyle:'cautious',abilities:['eFear','ePoison']},
+  {name:'Wild Sparrow',emoji:'',birdKey:'sparrow',tier:[1,2],hp:30,atk:6,def:2,matk:6,mdef:7,spd:9,acc:82,dodge:32,mdodge:28,enemyClass:'bruiser',size:'tiny',aiStyle:'berserker'},
+  {name:'Grove Cantor',emoji:'🎵',birdKey:'blackbird',tier:[1,2],hp:30,atk:5,def:3,matk:12,mdef:9,spd:7,acc:78,dodge:22,mdodge:18,enemyClass:'singer',size:'small',aiStyle:'cautious'},
+  {name:'Glitter Thief',emoji:'✨',birdKey:'magpie',tier:[1,2],hp:34,atk:7,def:4,matk:9,mdef:8,spd:8,acc:86,dodge:28,mdodge:22,enemyClass:'trickster',size:'medium',aiStyle:'aggressive'},
+  {name:'Rogue Crow',emoji:'‍⬛',birdKey:'crow',tier:[2,3],hp:38,atk:8,def:5,matk:8,mdef:9,spd:5,acc:88,dodge:14,mdodge:12,enemyClass:'trickster',size:'medium',aiStyle:'aggressive'},
+  {name:'Savage Kookaburra',emoji:'',birdKey:'kookaburra',tier:[2,3],hp:48,atk:10,def:5,matk:8,mdef:9,spd:7,acc:80,dodge:20,mdodge:16,enemyClass:'bruiser',size:'medium',aiStyle:'aggressive'},
+  {name:'Marsh Chorus',emoji:'🦩',birdKey:'flamingo',tier:[2,3],hp:46,atk:7,def:5,matk:11,mdef:11,spd:5,acc:76,dodge:14,mdodge:12,enemyClass:'singer',size:'large',aiStyle:'cautious'},
+  {name:'Frost Chanter',emoji:'🦉',birdKey:'snowyOwl',tier:[2,3],hp:34,atk:6,def:5,matk:13,mdef:9,spd:8,acc:84,dodge:22,mdodge:18,enemyClass:'singer',size:'small',aiStyle:'cautious'},
+  {name:'Feral Toucan',emoji:'',birdKey:'toucan',tier:[3,4],hp:48,atk:9,def:7,matk:10,mdef:9,spd:4,acc:74,dodge:10,mdodge:10,enemyClass:'tank',size:'large',aiStyle:'cautious'},
+  {name:'Outcast Goose',emoji:'',birdKey:'goose',tier:[3,4],hp:62,atk:11,def:8,matk:5,mdef:12,spd:2,acc:70,dodge:5,mdodge:8,enemyClass:'tank',size:'xl',aiStyle:'berserker'},
+  {name:'Shadow Raven',emoji:'',birdKey:'raven',tier:[3,4],hp:40,atk:8,def:4,matk:12,mdef:8,spd:7,acc:80,dodge:20,mdodge:16,enemyClass:'singer',size:'medium',aiStyle:'aggressive'},
+  {name:'Macaw Hexer',emoji:'🦜',birdKey:'macaw',tier:[3,4],hp:38,atk:6,def:4,matk:14,mdef:9,spd:9,acc:82,dodge:26,mdodge:20,enemyClass:'singer',size:'small',aiStyle:'cautious'},
+  {name:'Lyre Mimic',emoji:'🪶',birdKey:'lyrebird',tier:[3,4],hp:40,atk:6,def:5,matk:15,mdef:10,spd:6,acc:82,dodge:20,mdodge:16,enemyClass:'singer',size:'medium',aiStyle:'cautious'},
   {name:'Pit Sentinel',emoji:'🐧',birdKey:'penguin',tier:[3,4],hp:66,atk:8,def:10,matk:5,mdef:14,spd:3,acc:75,dodge:12,mdodge:12,enemyClass:'tank',size:'xl',aiStyle:'defensive',abilities:['eShield','eWeaken']},
-  {name:'Apex Peregrine',emoji:'',birdKey:'peregrine',tier:[4],hp:36,atk:12,def:4,matk:7,mdef:7,spd:11,acc:90,dodge:26,mdodge:20,enemyClass:'predator',size:'small',aiStyle:'berserker',abilities:['eStun','eBlind']},
-  {name:'Storm Swan',emoji:'',birdKey:'swan',tier:[4],hp:50,atk:10,def:6,matk:11,mdef:10,spd:6,acc:82,dodge:18,mdodge:14,enemyClass:'tank',size:'large',aiStyle:'cautious',abilities:['eHeal','eWeaken']},
-  {name:'Iron Stork',emoji:'',birdKey:'shoebill',tier:[4],hp:72,atk:9,def:12,matk:6,mdef:16,spd:2,acc:72,dodge:5,mdodge:8,enemyClass:'tank',size:'xl',aiStyle:'defensive',abilities:['eShield','eStun']},
+  {name:'Apex Peregrine',emoji:'',birdKey:'peregrine',tier:[4],hp:36,atk:12,def:4,matk:7,mdef:7,spd:11,acc:90,dodge:26,mdodge:20,enemyClass:'predator',size:'small',aiStyle:'berserker'},
+  {name:'Storm Swan',emoji:'',birdKey:'swan',tier:[4],hp:50,atk:10,def:6,matk:11,mdef:10,spd:6,acc:82,dodge:18,mdodge:14,enemyClass:'tank',size:'large',aiStyle:'cautious'},
+  {name:'Iron Stork',emoji:'',birdKey:'shoebill',tier:[4],hp:72,atk:9,def:12,matk:6,mdef:16,spd:2,acc:72,dodge:5,mdodge:8,enemyClass:'tank',size:'xl',aiStyle:'defensive'},
   {name:'Dust Bulwark',emoji:'',birdKey:'emu',tier:[4],hp:78,atk:11,def:11,matk:4,mdef:10,spd:2,acc:72,dodge:10,mdodge:10,enemyClass:'tank',size:'xl',aiStyle:'defensive',abilities:['eRage','eWeaken']},
-  {name:'War Harpy',emoji:'',birdKey:'harpy',tier:[4],hp:65,atk:14,def:7,matk:6,mdef:8,spd:5,acc:78,dodge:8,mdodge:8,enemyClass:'predator',size:'xl',aiStyle:'berserker',abilities:['eRage','eBurn','eStun']},
+  {name:'War Harpy',emoji:'',birdKey:'harpy',tier:[4],hp:65,atk:14,def:7,matk:6,mdef:8,spd:5,acc:78,dodge:8,mdodge:8,enemyClass:'predator',size:'xl',aiStyle:'berserker'},
 ];
 
 // ===================== BIOMES =====================
@@ -3023,7 +3072,7 @@ function baseExpForEnemyLevel(lv) {
   return Math.max(BASE_EXP_BY_ENEMY_LEVEL[10], Math.round(BASE_EXP_BY_ENEMY_LEVEL[10] + linear + softLog));
 }
 
-/** Threat tier EXP multipliers (STORY_THREAT_BY_BIRD / getStoryThreatForBirdKey). Bosses use boss formula instead. */
+/** Threat tier EXP multipliers (story registry + getStoryThreatForBirdKey class fallback). Bosses use boss formula instead. */
 function threatTierExpMultiplierForEnemy(enemy) {
   if (!enemy || enemy.isBoss) return 1;
   const key = enemy.birdKey || enemy.portraitKey || '';
@@ -6394,13 +6443,7 @@ function buildOwEnemyDraftFromBirdKey(bk, encounterStage){
     }
     if(!ed){
       const bEnemy = BIRD_ENEMIES.find(e => e.birdKey === bk);
-      if(bEnemy){
-        ed = {name:bEnemy.name,emoji:bEnemy.emoji||'',birdKey:bk,portraitKey:bk,
-          hp:bEnemy.hp,maxHp:bEnemy.hp,atk:bEnemy.atk,def:bEnemy.def,spd:bEnemy.spd,
-          acc:bEnemy.acc,dodge:bEnemy.dodge,size:bEnemy.size||'medium',
-          enemyClass:bEnemy.enemyClass||inferEnemyClassFromStyle(bEnemy.aiStyle||'aggressive'),
-          aiStyle:bEnemy.aiStyle||'aggressive',abilities:bEnemy.abilities||[],tier:bEnemy.tier||[1]};
-      }
+      if(bEnemy) ed = buildEdFromBirdEnemyTemplate(bEnemy);
     }
   }
   return ed;
@@ -6479,7 +6522,7 @@ function getEnemyAbilityDisplayLabel(abilityId, enemy){
   return tmpl?.name||abilityId;
 }
 
-/** Enemy combat ability keys resolved to display names. Prefers ENEMY_ABILITY_POOL (actual combat moves). */
+/** Enemy combat ability keys resolved to display names (kit ids + ABILITY_TEMPLATES + ENEMY_ABILITY_POOL). */
 function getEnemyPreviewSkillNames(enemy){
   if(!enemy) return ['—','—','—','—'];
   if(enemy.id==='duke_blakiston'){
@@ -6489,8 +6532,7 @@ function getEnemyPreviewSkillNames(enemy){
   if(Array.isArray(enemy.abilities) && enemy.abilities.length){
     enemy.abilities.slice(0,4).forEach(entry=>{
       if(typeof entry==='string'){
-        const eab=ENEMY_ABILITY_POOL[entry];
-        names.push(eab?.name||String(entry));
+        names.push(getEnemyAbilityDisplayLabel(entry,enemy));
       } else if(entry && typeof entry==='object'){
         const tmpl=getAbilityTemplateForUI(entry);
         if(tmpl?.name){ names.push(tmpl.name); return; }
@@ -6570,10 +6612,18 @@ function buildEnemyInfoPopupAbilitiesHtml(enemy){
       parts.push(`<li><strong>${escapeEncounterPreviewHtml(eab.name)}</strong> — ${escapeEncounterPreviewHtml(eab.desc||'')}${dmgNote}</li>`);
     });
   }
-  if(!parts.length && Array.isArray(enemy.storyAbilityKit) && enemy.storyAbilityKit.length){
-    enemy.storyAbilityKit.slice(0,8).forEach(id=>{
+  if(!parts.length){
+    getEnemyKitAbilityIds(enemy).slice(0,8).forEach(id=>{
       const t=ABILITY_TEMPLATES[id];
-      if(t) parts.push(`<li><strong>${escapeEncounterPreviewHtml(t.name||id)}</strong> — ${escapeEncounterPreviewHtml(String(t.levels?.[0]?.desc||t.desc||''))}</li>`);
+      if(t){
+        parts.push(`<li><strong>${escapeEncounterPreviewHtml(t.name||id)}</strong> — ${escapeEncounterPreviewHtml(String(t.levels?.[0]?.desc||t.desc||''))}</li>`);
+        return;
+      }
+      const eab=ENEMY_ABILITY_POOL[id];
+      if(eab){
+        const dmgNote=eab.dmg?` <em>(${escapeEncounterPreviewHtml(String(eab.dmg))})</em>`:'';
+        parts.push(`<li><strong>${escapeEncounterPreviewHtml(eab.name)}</strong> — ${escapeEncounterPreviewHtml(eab.desc||'')}${dmgNote}</li>`);
+      }
     });
   }
   return parts.length?`<ul>${parts.join('')}</ul>`:'<em>No special abilities</em>';
@@ -6933,26 +6983,19 @@ function normalizeOwEnemyListForBattle(enemies){
 const STORY_BOSS_STAGES = new Set([10, 20]);
 const STORY_MILESTONE_BOSS_STAGE = 10;
 const STORY_DUKE_STAGE = 20;
-const STORY_STAGE_THREAT_BUDGETS = {
-  1:2,2:2,3:3,4:3,5:4,6:4,7:5,8:5,9:5,10:0,11:6,12:6,13:7,14:7,15:7,16:8,17:8,18:9,19:9,20:0,
-};
-const STORY_THREAT_BY_BIRD = Object.freeze({
-  sparrow:1, robin:1, blackbird:1, seagull:1, kiwi:1,
-  hummingbird:2, macaw:2, crow:2, magpie:2, goose:2, penguin:2, emperorpenguin:2,
-  peregrine:3, snowyowl:3, kookaburra:3, lyrebird:3, raven:3, bowerbird:3, toucan:3, swan:3, flamingo:3, albatross:3,
-  blackcockatoo:4, secretary:4, secretarybird:4, shoebill:4, harpy:4, harpyeagle:4, baldeagle:4, ostrich:4, cassowary:4, emu:4,
-  duke_blakiston:6,
-});
-
 function normalizeBirdKeyForThreat(key){
   const compact=String(key||'').toLowerCase().replace(/[^a-z0-9_]/g,'');
   const aliases={peregrinefalcon:'peregrine',snowyowl:'snowyowl',secretarybird:'secretarybird',emperorpenguin:'emperorpenguin'};
   return aliases[compact] || compact;
 }
 function getStoryThreatForBirdKey(key){
+  if(typeof getStoryRegistryThreatForBirdKey==='function'){
+    const reg=getStoryRegistryThreatForBirdKey(key);
+    if(Number.isFinite(reg)) return reg;
+  }
   const norm=normalizeBirdKeyForThreat(key);
-  if(Number.isFinite(STORY_THREAT_BY_BIRD[norm])) return STORY_THREAT_BY_BIRD[norm];
-  const birdClass=String(BIRDS?.[norm]?.class||'').toLowerCase();
+  const birdDef=BIRDS?.[key]||BIRDS?.[norm];
+  const birdClass=String(birdDef?.class||'').toLowerCase();
   if(['tank','bruiser'].includes(birdClass)) return 4;
   if(['predator'].includes(birdClass)) return 4;
   if(['trickster','singer'].includes(birdClass)) return 3;
@@ -6976,6 +7019,41 @@ function getStoryEvolvedSlotCount(level){
   if(level<=5) return 1;
   if(level<=8) return 2;
   return 3;
+}
+/** Tier band (max of template tier ranges) → evolved slot count + tier-up passes for OW/endless bird enemies. */
+function getOwEnemySkillDepthFromTierBand(band){
+  const b=Math.min(4,Math.max(1,Math.floor(Number(band))||1));
+  const levelHint=[3,5,7,10][b-1]||4;
+  const evolvedSlots=Math.min(getStoryEvolvedSlotCount(levelHint),4);
+  const thresholds=[3,6,9,12];
+  const upgrades=thresholds.filter(t=>levelHint>=t).length;
+  return{evolvedSlots,upgrades};
+}
+/**
+ * Fill enemy.abilities from family skill slots + ABILITY_TEMPLATES (same master list as playable birds).
+ * Mutates enemy.familyEvolutionState.skillSlots; returns true when a catalog exists for birdKey.
+ */
+function materializeEnemyFamilySkillSlots(enemy, birdKey, enemyClass, evolvedSlotCount, upgradeCount){
+  if(!enemy||!birdKey||!usesFamilySkillEvolution({birdKey})) return false;
+  const baseSlots=getBaseSkillSlotsForBird(birdKey);
+  if(!baseSlots.length) return false;
+  if(!enemy.familyEvolutionState||typeof enemy.familyEvolutionState!=='object') enemy.familyEvolutionState={};
+  const slots=baseSlots.map(b=>normalizeSkillSlotState(JSON.parse(JSON.stringify(b)),b,birdKey));
+  enemy.familyEvolutionState.skillSlots=slots;
+  const cls=String(enemyClass||enemy.enemyClass||BIRDS?.[birdKey]?.class||'striker').toLowerCase();
+  const nEv=Math.min(Math.max(0,Math.floor(Number(evolvedSlotCount)||0)),slots.length);
+  const ups=Math.min(3,Math.max(0,Math.floor(Number(upgradeCount)||0)));
+  for(let i=0;i<nEv;i++){
+    const slot=slots[i];
+    if(!slot) continue;
+    if(!slot.pathId){
+      const pid=chooseStoryPathForSlot(slot,birdKey,cls);
+      if(pid) applySkillPathSelection(slot,pid,enemy);
+    }
+    for(let n=0;n<ups;n++) autoUpgradeSkillSlotTier(slot,enemy);
+  }
+  syncPlayerAbilitiesFromSkillSlots(enemy);
+  return true;
 }
 function rollInt(min,max){ return Math.floor(Math.random()*(max-min+1))+min; }
 function pickRandom(arr){ return arr[Math.floor(Math.random()*arr.length)]; }
@@ -7053,12 +7131,15 @@ function buildStoryEnemyFromBirdKey(birdKey, stage){
   const cls=String(bd.class||'striker').toLowerCase();
   const weights=classGrowthWeightsForStory(cls);
   for(let i=0;i<level;i++) applyStoryEnemyGrowth(stats, weightedPick(weights));
-  const enemyStub={birdKey, skillSlots:JSON.parse(JSON.stringify(getBaseSkillSlotsForBird(birdKey)||[])), abilities:[]};
-  const evolvedSlots=Math.min(getStoryEvolvedSlotCount(level), enemyStub.skillSlots.length);
+  const enemyStub={birdKey, abilities:[], familyEvolutionState:{}};
+  const baseSlots=getBaseSkillSlotsForBird(birdKey);
+  const slots=baseSlots.map(b=>normalizeSkillSlotState(JSON.parse(JSON.stringify(b)),b,birdKey));
+  enemyStub.familyEvolutionState.skillSlots=slots;
+  const evolvedSlots=Math.min(getStoryEvolvedSlotCount(level), slots.length);
   const thresholds=[3,6,9,12];
   const upgrades=thresholds.filter(t=>level>=t).length;
   for(let i=0;i<evolvedSlots;i++){
-    const slot=enemyStub.skillSlots[i];
+    const slot=slots[i];
     if(!slot) continue;
     if(!slot.pathId){
       const pid=chooseStoryPathForSlot(slot,birdKey,cls);
@@ -7073,8 +7154,7 @@ function buildStoryEnemyFromBirdKey(birdKey, stage){
   stats.hp=stats.maxHp;
   stats.atk=Math.max(1,Math.floor(stats.atk*diffMult));
   stats.matk=Math.max(1,Math.floor(stats.matk*diffMult));
-  const _regThreat=typeof getStoryRegistryThreatForBirdKey==='function'?getStoryRegistryThreatForBirdKey(birdKey):null;
-  const threat=Number.isFinite(_regThreat)?_regThreat:getStoryThreatForBirdKey(birdKey);
+  const threat=getStoryThreatForBirdKey(birdKey);
   const size=bd.size||'medium';
   const en=(size==='xl'?5:size==='large'?4:size==='medium'?4:3);
   return {
@@ -7087,7 +7167,6 @@ function buildStoryEnemyFromBirdKey(birdKey, stage){
     aiStyle:(['predator','striker'].includes(cls)?'aggressive':(cls==='tank'?'defensive':(cls==='trickster'?'trickster':'cautious'))),
     aiPersonality:cls,
     abilities:JSON.parse(JSON.stringify(enemyStub.abilities||[])),
-    storyAbilityKit:(enemyStub.abilities||[]).map(a=>a.id),
     stats:{...stats,en},
     hp:stats.hp,maxHp:stats.maxHp,atk:stats.atk,def:stats.def,spd:stats.spd,acc:stats.acc,dodge:stats.dodge,mdodge:stats.mdodge,mdef:stats.mdef,matk:stats.matk,
     cc:Math.max(0.05,Math.min(0.95,(stats.critChance||5)/100)), cd:stats.critMult||1.5,
@@ -7129,12 +7208,8 @@ function generateStoryStageEnemyKeys(stage, playerBirdKey){
     return t>=minThreat && t<=maxThreat;
   });
   if(pool.length<2) return ['sparrow','robin'];
-  let budget=STORY_STAGE_THREAT_BUDGETS[stage]||Math.max(2,stage);
-  const playerThreat=getStoryThreatForBirdKey(playerBirdKey||'');
-  if(!STORY_BOSS_STAGES.has(stage)){
-    if(playerThreat===3 && stage>=3) budget+=1;
-    if(playerThreat>=4 && stage>=2) budget+=1;
-  }
+  let budget=(typeof getStoryStageBudget==='function'?getStoryStageBudget(stage):Math.max(2,stage))+
+    (typeof getPlayerThreatBudgetAdjustment==='function'?getPlayerThreatBudgetAdjustment(stage,playerBirdKey||''):0);
   const shuffled=pool.slice().sort(()=>Math.random()-.5);
   for(let i=0;i<360;i++){
     const first=pickRandom(shuffled);
@@ -8120,7 +8195,7 @@ function buildEdFromBirdEnemyTemplate(src, opts={}){
     isBoss,
     bossTitle:opts.bossTitle||'',
     enemyTier:isBoss?'boss':'normal',
-    abilities:[...(src.abilities||[])],
+    abilities:[],
     stats:{
       hp:src.hp,maxHp:src.hp,
       atk:src.atk,def:src.def,spd:src.spd,
@@ -8130,6 +8205,13 @@ function buildEdFromBirdEnemyTemplate(src, opts={}){
       en:baseEn,
     },
   };
+  const tierArr=Array.isArray(src.tier)?src.tier:[1];
+  const band=Math.max(1,...tierArr.map(t=>Number(t)||1));
+  const depth=getOwEnemySkillDepthFromTierBand(band);
+  if(!materializeEnemyFamilySkillSlots(ed,ed.birdKey,ed.enemyClass,depth.evolvedSlots,depth.upgrades)){
+    ed.abilities=[...(src.abilities||[])];
+  }
+  return ed;
 }
 
 function pickRandomBirdEnemyDraft(tier, opts={}){
@@ -18420,7 +18502,8 @@ function buildEnemyActionPool(e,mode){
       const cat=classifyKitAbilityForEnemyAI(id,e);
       const pseudo={type:'ability',abilityId:id};
       const dmg=projectedEnemyActionDamage(pseudo,e);
-      if(cat==='buff' || ['eRage','eStun','ePoison','eBurn','eFear'].includes(id) || (cat==='control'&&dmg>0))
+      const executeBias=cat==='buff'||(cat==='control'&&(dmg>0||['ePoison','eBurn','eFear'].includes(id)));
+      if(executeBias)
         push({type:'ability',abilityId:id,icon:'✦',label:getEnemyAbilityDisplayLabel(id,e)},2,{isUtility:cat==='buff'||id==='eRage'});
     }
     for(const id of damIds) push({type:'ability',abilityId:id,icon:'✦',label:getEnemyAbilityDisplayLabel(id,e)},2,{isUtility:false});
@@ -18436,7 +18519,7 @@ function buildEnemyActionPool(e,mode){
     for(const id of ids){
       const cat=classifyKitAbilityForEnemyAI(id,e);
       if(cat==='damage') push({type:'ability',abilityId:id,icon:'✦',label:getEnemyAbilityDisplayLabel(id,e)},2,{isUtility:false});
-      else if(cat==='buff' || ['eWeaken','eFear','eBlind','eRage'].includes(id))
+      else if(cat==='buff'||(cat==='control'&&['eWeaken','eFear','eBlind'].includes(id)))
         push({type:'ability',abilityId:id,icon:'✦',label:getEnemyAbilityDisplayLabel(id,e)},2,{isUtility:cat==='buff'||id==='eRage'});
     }
   }
