@@ -8345,6 +8345,7 @@ function loadStage() {
     logMsg(`⚡ ${G.enemy.name} (SPD ${G.enemy.stats.spd}) is faster — they strike first!`,'miss');
     setTimeout(enemyTurn, 800);
   }
+  tryStartDukeBattleBgmIfNeeded();
 }
 
 function setSuppliesSubView(which){
@@ -21614,6 +21615,33 @@ function saveMusicSettings(s){
 function getThemeBgmAudio(){
   return document.getElementById('theme-bgm-audio');
 }
+function getDukeBattleBgmAudio(){
+  return document.getElementById('duke-battle-bgm-audio');
+}
+function stopDukeBattleBgm(){
+  const el=getDukeBattleBgmAudio();
+  if(!el) return;
+  try{ el.pause(); el.currentTime=0; }catch(_){}
+}
+function isDukeStoryBossFight(){
+  if(G.endlessMode) return false;
+  const st=getEncounterStage();
+  if(st!==STORY_DUKE_STAGE) return false;
+  const id=String(G.enemy?.id||'').toLowerCase();
+  if(id==='duke_blakiston') return true;
+  if(String(G.enemy?.aiType||'')==='boss_duke') return true;
+  return false;
+}
+function tryStartDukeBattleBgmIfNeeded(){
+  if(!isDukeStoryBossFight()){
+    stopDukeBattleBgm();
+    return;
+  }
+  const el=getDukeBattleBgmAudio();
+  if(!el||getMusicSettings().muted) return;
+  applyDukeBattleBgmToAudioEl();
+  try{ el.currentTime=0; el.play(); }catch(_){}
+}
 /** Call once so the browser fetches/decodes the MP3 (hidden via clip, not display:none). */
 function primeThemeBgmAudio(){
   const el=getThemeBgmAudio();
@@ -21630,12 +21658,20 @@ function tryPlayThemeBgmForCurrentMenuScreen(){
   applyThemeMusicToAudioEl();
   el.play().catch(()=>{});
 }
+function applyDukeBattleBgmToAudioEl(){
+  const el=getDukeBattleBgmAudio();
+  if(!el) return;
+  const s=getMusicSettings();
+  el.volume=Math.max(0,Math.min(1,s.volume/100));
+  el.muted=!!s.muted;
+}
 function applyThemeMusicToAudioEl(){
   const el=getThemeBgmAudio();
   if(!el) return;
   const s=getMusicSettings();
   el.volume=Math.max(0,Math.min(1,s.volume/100));
   el.muted=!!s.muted;
+  applyDukeBattleBgmToAudioEl();
 }
 function syncThemeMusicButtonLabels(){
   const s=getMusicSettings();
@@ -21650,6 +21686,7 @@ function syncThemeMusicButtonLabels(){
   });
 }
 function syncThemeBgmPlaybackForScreen(screenId){
+  if(screenId!=='screen-battle') stopDukeBattleBgm();
   const el=getThemeBgmAudio();
   if(!el) return;
   const onMenu=screenId==='screen-start'||screenId==='screen-select';
