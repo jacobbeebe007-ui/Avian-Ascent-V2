@@ -1442,6 +1442,133 @@ const UPGRADE_CARDS_REWORK = [
 
 function getUpgradePool(){ return UPGRADE_CARDS_REWORK.slice(); }
 
+// ---- Stat ledger: bird baseline vs level-up feathers vs card upgrades (Nest + combat tooltips) ----
+const STAT_LEDGER_TRACKED_KEYS = ['maxHp','atk','def','spd','acc','dodge','mdodge','matk','mdef','critChance'];
+const STAT_LEDGER_LABELS = {maxHp:'HP (max)',atk:'ATT',def:'DEF',spd:'SPD',acc:'ACC',dodge:'DODGE',mdodge:'M.DODGE',matk:'MATK',mdef:'MDEF',critChance:'CRIT %'};
+function cloneStatLedgerSlice(stats){
+  const s = stats || {};
+  const out = {};
+  for(const k of STAT_LEDGER_TRACKED_KEYS){
+    const n = Number(s[k]);
+    out[k] = Number.isFinite(n) ? n : 0;
+  }
+  return out;
+}
+function ensureStatLedger(player){
+  if(!player) return null;
+  if(!player._statLedger || typeof player._statLedger !== 'object'){
+    player._statLedger = {
+      birdBaseline:{},
+      fromLevel:{},
+      fromUpgrades:{},
+      mechanicalLines:[],
+      legacyCombinedStats:false,
+    };
+  }
+  const L = player._statLedger;
+  if(!L.fromLevel || typeof L.fromLevel !== 'object') L.fromLevel = {};
+  if(!L.fromUpgrades || typeof L.fromUpgrades !== 'object') L.fromUpgrades = {};
+  if(!Array.isArray(L.mechanicalLines)) L.mechanicalLines = [];
+  return L;
+}
+function initStatLedgerForNewRun(player){
+  const L = ensureStatLedger(player);
+  if(!L || !player?.stats) return;
+  L.birdBaseline = cloneStatLedgerSlice(player.stats);
+  L.fromLevel = {};
+  L.fromUpgrades = {};
+  L.mechanicalLines = [];
+  L.legacyCombinedStats = false;
+}
+function ensureStatLedgerAfterLoad(player){
+  if(!player?.stats) return;
+  const L = ensureStatLedger(player);
+  if(L.birdBaseline && typeof L.birdBaseline === 'object' && Object.keys(L.birdBaseline).length > 0){
+    if(L.legacyCombinedStats === undefined) L.legacyCombinedStats = false;
+    return;
+  }
+  const bd = BIRDS[player.birdKey] || {};
+  const base = cloneStatLedgerSlice(bd.stats);
+  base.mdodge = Number.isFinite(Number(base.mdodge)) ? base.mdodge : base.dodge;
+  L.birdBaseline = base;
+  const hasSplits = Object.keys(L.fromLevel).length > 0 || Object.keys(L.fromUpgrades).length > 0;
+  if(!hasSplits){
+    L.legacyCombinedStats = true;
+    L.fromLevel = {};
+    L.fromUpgrades = {};
+    if(!Array.isArray(L.mechanicalLines)) L.mechanicalLines = [];
+    const cur = cloneStatLedgerSlice(player.stats);
+    for(const k of STAT_LEDGER_TRACKED_KEYS){
+      const d = (Number(cur[k])||0) - (Number(base[k])||0);
+      if(Math.abs(d) > 0.0001) L.fromUpgrades[k] = d;
+    }
+  }
+}
+function mergeStatDeltaIntoBucket(bucket, beforeStats, afterStats){
+  const before = cloneStatLedgerSlice(beforeStats);
+  const after = cloneStatLedgerSlice(afterStats);
+  for(const k of STAT_LEDGER_TRACKED_KEYS){
+    const d = (Number(after[k])||0) - (Number(before[k])||0);
+    if(Math.abs(d) > 0.0001) bucket[k] = (bucket[k]||0) + d;
+  }
+}
+function recordUpgradeApplyInLedger(player, beforeStats, afterStats, meta){
+  const L = ensureStatLedger(player);
+  if(!L) return;
+  mergeStatDeltaIntoBucket(L.fromUpgrades, beforeStats, afterStats);
+  let hasStatDelta = false;
+  const b = cloneStatLedgerSlice(beforeStats);
+  const a = cloneStatLedgerSlice(afterStats);
+  for(const k of STAT_LEDGER_TRACKED_KEYS){
+    if(Math.abs((Number(a[k])||0)-(Number(b[k])||0)) > 0.0001){ hasStatDelta = true; break; }
+  }
+  if(!hasStatDelta && meta && meta.desc){
+    const line = String(meta.desc).trim();
+    if(line) L.mechanicalLines.push(line);
+  }
+}
+function formatLedgerDelta(n){
+  const x = Number(n)||0;
+  if(Math.abs(x - Math.round(x)) < 0.01) return String(Math.round(x));
+  return x.toFixed(1);
+}
+function buildStatBreakdownTitle(statKey, rawVal, player){
+  const L = player?._statLedger;
+  if(!L || !L.birdBaseline || !Object.keys(L.birdBaseline).length) return '';
+  const b = Number(L.birdBaseline[statKey]||0);
+  const lv = Number(L.fromLevel?.[statKey]||0);
+  const u = Number(L.fromUpgrades?.[statKey]||0);
+  const cur = Number(rawVal)||0;
+  const rem = cur - b - lv - u;
+  let t = `${(STAT_LEDGER_LABELS[statKey]||statKey).toUpperCase()}: ${cur} — base ${b} + level ${formatLedgerDelta(lv)} + upgrades ${formatLedgerDelta(u)}`;
+  if(Math.abs(rem) > 0.05) t += ` + other ${rem >= 0 ? '+' : ''}${formatLedgerDelta(rem)}`;
+  if(L.legacyCombinedStats) t += ' (Run started before stat tracking: feather vs upgrade split is approximate.)';
+  return t;
+}
+function getDerivedMechanicalBonusLines(player){
+  if(!player) return [];
+  const lines = [];
+  const p = player;
+  const pct = v=>Math.round((Number(v)||0)*100);
+  if((p.firstAttackEachBattleBonusPct||0)>0) lines.push(`+${pct(p.firstAttackEachBattleBonusPct)}% first attack damage (battle)`);
+  if((p.firstAttackEachTurnBonusPct||0)>0) lines.push(`+${pct(p.firstAttackEachTurnBonusPct)}% first physical hit per turn`);
+  if((p.poisonExtraTurns||0)>0) lines.push(`+${p.poisonExtraTurns} poison duration (turns)`);
+  if((p.poisonTickMult||1)>1.0001) lines.push(`+${pct((p.poisonTickMult||1)-1)}% poison tick damage`);
+  if((p.poisonFlatBonus||0)>0) lines.push(`+${p.poisonFlatBonus} poison tick damage (flat)`);
+  if((p.critDamageBonusPct||0)>0) lines.push(`+${pct(p.critDamageBonusPct)} added to crit multiplier on crits`);
+  if((p.firstAttackAccBonus||0)>0) lines.push(`+${p.firstAttackAccBonus}% hit chance (all attacks)`);
+  if((p.augSpellAcc||0)>0) lines.push(`+${p.augSpellAcc}% spell hit chance (Endless augment)`);
+  if((p.augAttackAcc||0)>0) lines.push(`+${p.augAttackAcc}% attack-skill hit chance (Endless augment)`);
+  if(p.firstAttackFree) lines.push('First attack each battle costs 0 EN');
+  if(p.firstSpellFree) lines.push('First spell each battle costs 0 EN');
+  if((p.augFirstSpellCostDown||0)>0) lines.push(`First spell each battle costs ${p.augFirstSpellCostDown} less EN`);
+  if((p.augSpellDmgPct||0)>0) lines.push(`+${pct(p.augSpellDmgPct)}% spell damage`);
+  if((p.firstHitReduce||0)>0) lines.push(`First hit each battle: −${pct(p.firstHitReduce)}% damage taken`);
+  if((p.vsBleedPctBonus||0)>0) lines.push(`+${pct(p.vsBleedPctBonus)}% damage vs bleeding`);
+  if((p.openingEnemyFear||0)>0) lines.push(`Enemies start with Fear(${p.openingEnemyFear})`);
+  return lines;
+}
+
 
 const ENDLESS_SKILL_AUGMENTS = [
   {id:'aug_razor_edge',name:'Razor Edge',tier:'blue',type:'augment',desc:'Endless only — Attack skills deal +20% damage to Bleeding enemies.',apply:p=>{p.augAttackVsBleedPct=(p.augAttackVsBleedPct||0)+0.20;}},
@@ -3574,7 +3701,9 @@ function openNest() {
   const _nestDodge=getEffectiveDodge(p);
   const _nestMDodge=getEffectiveMdodge(p);
   const _nestCrit=Math.min(100,(s.critChance||5)+(G.playerStatus.burning>0?20:0)+(p._velocityStacks||0));
-  const _nestCritMult=p.goldCritMult||1.8;
+  const _nestCritMultBase=p.goldCritMult||1.8;
+  const _nestCritBonusPct=p.critDamageBonusPct||0;
+  const _nestCritMultDisp=_nestCritBonusPct>0?`${_nestCritMultBase.toFixed(1)}× <span class="nest-crit-bonus" title="Added to multiplier on critical hits">(+${_nestCritBonusPct.toFixed(2)})</span>`:`${_nestCritMultBase.toFixed(1)}×`;
   function _nestStat(val,base,suffix=''){const d=val-base;const col=d>0?'#6ab89a':d<0?'#e87070':'var(--gold)';const arr=d>0?' ↑':d<0?' ↓':'';return `<span style="color:${col}">${val}${suffix}${arr}</span>`;}
   html+=`<div class="nest-section"><div class="nest-section-title">📊 Stats ${G.turn?'(In Battle)':''}</div>
   <div class="nest-stats-grid">
@@ -3586,7 +3715,7 @@ function openNest() {
     <div class="nest-stat-card" title="Magic Dodge — chance to deflect enemy spells/status"><div class="nest-stat-val" style="color:#6ae8e8">${_nestMDodge}%${p.cardMdodge>0?` <span style='font-size:.7em;color:#4ab8c0'>(+${p.cardMdodge||0}card)</span>`:''}</div><div class="nest-stat-lbl" style="color:#4ab8c0">✦ MDODGE</div></div>
     <div class="nest-stat-card"><div class="nest-stat-val">${_nestStat(_nestAcc,s.acc,'%')}</div><div class="nest-stat-lbl">ACC</div></div>
     <div class="nest-stat-card"><div class="nest-stat-val" style="color:${_nestCrit>5?'#e8c96a':'var(--gold)'}">${_nestCrit}%</div><div class="nest-stat-lbl">🎯 Crit %</div></div>
-    <div class="nest-stat-card"><div class="nest-stat-val" style="color:${_nestCritMult>1.5?'#e8c96a':'var(--gold)'}">${_nestCritMult.toFixed(1)}×</div><div class="nest-stat-lbl">💥 Crit Dmg</div></div>
+    <div class="nest-stat-card"><div class="nest-stat-val" style="color:${_nestCritMultBase>1.5||_nestCritBonusPct>0?'#e8c96a':'var(--gold)'}">${_nestCritMultDisp}</div><div class="nest-stat-lbl">💥 Crit Dmg</div></div>
     <div class="nest-stat-card" title="Magic Attack — improves spell and ailment potency"><div class="nest-stat-val" style="color:#6ae8e8">${s.matk||8}</div><div class="nest-stat-lbl" style="color:#4ab8c0">✦ M.ATK</div></div>
     <div class="nest-stat-card" title="Magic Defence — resists enemy spells and ailments"><div class="nest-stat-val" style="color:#6ae8e8">${s.mdef||8}</div><div class="nest-stat-lbl" style="color:#4ab8c0">✦ M.DEF</div></div>
   </div></div>`;
@@ -3606,12 +3735,40 @@ function openNest() {
     </div>`;
   });
   html+=`</div></div>`;
+  // Run bonuses (feathers / card stats / mechanics) — above collected card list
+  const Ldg=p._statLedger;
+  const upgMap=Ldg?.fromUpgrades||{};
+  const lvlMap=Ldg?.fromLevel||{};
+  const nestUpgRows=[];
+  const nestLvlRows=[];
+  for(const k of STAT_LEDGER_TRACKED_KEYS){
+    const uv=Number(upgMap[k]||0);
+    if(Math.abs(uv)>0.0001) nestUpgRows.push(`<div class="nest-ledger-row"><span class="nest-ledger-k">${STAT_LEDGER_LABELS[k]||k}</span><span class="nest-ledger-v">+${formatLedgerDelta(uv)}</span></div>`);
+  }
+  for(const k of STAT_LEDGER_TRACKED_KEYS){
+    const lv=Number(lvlMap[k]||0);
+    if(Math.abs(lv)>0.0001) nestLvlRows.push(`<div class="nest-ledger-row"><span class="nest-ledger-k">${STAT_LEDGER_LABELS[k]||k}</span><span class="nest-ledger-v">+${formatLedgerDelta(lv)}</span></div>`);
+  }
+  const mechFromCards=(Ldg?.mechanicalLines||[]).map(l=>escapeHtmlRoster(l));
+  const mechDerived=getDerivedMechanicalBonusLines(p).map(l=>escapeHtmlRoster(l));
+  const mechSeen=new Set();
+  const mechCombined=[];
+  for(const line of [...mechFromCards,...mechDerived]){ if(line && !mechSeen.has(line)){ mechSeen.add(line); mechCombined.push(line); } }
+  const mechHtml=mechCombined.length?`<div class="nest-ledger-mech-block">${mechCombined.map(l=>`<div class="nest-ledger-mech">${l}</div>`).join('')}</div>`:'';
+  const ledgerNote=Ldg?.legacyCombinedStats?`<p class="nest-ledger-note">Runs started before this update: feather vs upgrade split is approximate; totals still match your real stats above.</p>`:'';
+  if(nestUpgRows.length||nestLvlRows.length||mechHtml||ledgerNote){
+    html+=`<div class="nest-section nest-ledger-section"><div class="nest-section-title">✨ Run bonuses (from Feathers &amp; cards)</div>${ledgerNote}`;
+    if(nestLvlRows.length) html+=`<div class="nest-ledger-subtitle">Level-up (Feathers)</div><div class="nest-ledger-grid">${nestLvlRows.join('')}</div>`;
+    if(nestUpgRows.length) html+=`<div class="nest-ledger-subtitle">Card / shop / reward stats</div><div class="nest-ledger-grid">${nestUpgRows.join('')}</div>`;
+    if(mechHtml) html+=`<div class="nest-ledger-subtitle">Card &amp; passive combat modifiers</div>${mechHtml}`;
+    html+=`</div>`;
+  }
   // Collected rewards
   if(G.collectedRewards&&G.collectedRewards.length>0){
     // Group duplicates
     const rewardMap=new Map();
     G.collectedRewards.forEach(r=>{
-      const key=r.name;
+      const key=r.id||r.name;
       if(rewardMap.has(key)){rewardMap.get(key).count++;}
       else{rewardMap.set(key,{...r,count:1});}
     });
@@ -6346,6 +6503,7 @@ function continueRun() {
   if(G.player.stats.mdodge===undefined) G.player.stats.mdodge = G.player.stats.dodge||20;
   if(G.player.cardDodge===undefined) G.player.cardDodge=0;
   if(G.player.cardMdodge===undefined) G.player.cardMdodge=G.player.cardDodge||0; // retroactively mirror
+  ensureStatLedgerAfterLoad(G.player);
 
   const bsave=save.battle;
   if(save.inBattle&&bsave&&bsave.enemy){
@@ -8199,6 +8357,7 @@ function startGame() {
   removeMimicEverywhere();
   normalizeAbilityCooldownsForPlayer(G.player);
   enforceAbilityCosts(G.player);
+  initStatLedgerForNewRun(G.player);
   G.stage = 1;
   G.endlessBattle = 0;
   G.autoQueuedAbilityId=null;
@@ -8646,15 +8805,6 @@ function refreshBattleUI() {
 
   // Stats
   // Compute effective stats with buffs for display
-  const _baseBird=BIRDS[G.player.birdKey];
-  const _baseSt=_baseBird?_baseBird.stats:{};
-  function _statSpan(label,val,baseVal,suffix=''){
-    const diff=val-(baseVal||val);
-    let color='var(--silver)',arrow='';
-    if(diff>0){color='#6ab89a';arrow=' ↑';}
-    else if(diff<0){color='var(--red-light)';arrow=' ↓';}
-    return `<div class="stat-mini">${label} <span style="color:${color}">${val}${suffix}${arrow}</span></div>`;
-  }
   const _effDef=p.def+(G.battleHymnActive?G.battleHymnDEF:0);
   const _effAcc=Math.min(100,p.acc+(G.battleHymnActive?G.battleHymnACC:0));
   const _effDodge=getEffectiveDodge(G.player);
@@ -8662,28 +8812,33 @@ function refreshBattleUI() {
   const _effSpd=(p.spd||0) + ((G.playerStatus?.slow?.spdPenalty)?-(G.playerStatus.slow.spdPenalty||0):0);
   const _effMatk=(p.matk||8);
   const _effMdef=(p.mdef||8);
+  const escAttr=(s)=>String(s??'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
   const _trendTag = (diff) => diff>0 ? '<small class="stat-trend up">▲</small>' : (diff<0 ? '<small class="stat-trend down">▼</small>' : '');
   const _atkDiff = G.warcryActive ? Math.max(1,Math.floor((p.atk||0)*(G.warcryATK||0)/100)) : (G.playerStatus.weaken ? -1 : 0);
-  const _atkColor=_atkDiff>0?'#6ab89a':_atkDiff<0?'var(--red-light)':'var(--silver)';
   const _effAtk=G.warcryActive?Math.floor(p.atk*(1+G.warcryATK/100)):p.atk;
   const _critChance = Math.min(100,(p.critChance||5)+(G.playerStatus.burning>0?20:0));
-  const _critMult = p.goldCritMult||1.8;
+  const _critBase=G.player.goldCritMult||1.5;
+  const _critBonusPct=G.player.critDamageBonusPct||0;
+  const _critMultDisplay=_critBonusPct>0?`${_critBase.toFixed(1)}×<small class="stat-cd-bonus">+${_critBonusPct.toFixed(2)}</small>`:`${_critBase.toFixed(1)}×`;
+  const _ccBaseStore=(p.critChance||5);
   const _statNote=(label,diff,srcUp='',srcDown='')=>`${label} ${diff>=0?'+':''}${diff}. ${diff>0?srcUp:(diff<0?srcDown:'No active modifier.')}`;
   const _atkNote=(G.warcryActive?`Warcry +${G.warcryATK}% ATK.`:'') + (G.playerStatus.weaken?' Weaken reducing output.':'');
+  const _accCardBonus=(G.player.firstAttackAccBonus||0)>0?` Shop/card hit bonus +${G.player.firstAttackAccBonus}% (applies to all attacks).`:'';
   const statCell=(klass,label,val,{suffix='',title='',trend=''}={})=>
-    `<div class="stat-mini ${klass}" title="${title}"><span class="stat-k">${label}</span><span class="stat-v">${val}${suffix}${trend}</span></div>`;
+    `<div class="stat-mini ${klass}" title="${escAttr(title)}"><span class="stat-k">${label}</span><span class="stat-v">${val}${suffix}${trend}</span></div>`;
+  const _bt=(key,raw,extra='')=>{ const b=buildStatBreakdownTitle(key,raw,G.player); return [b,extra].filter(Boolean).join(' | '); };
 
   document.getElementById('player-stats-mini').innerHTML =
-    `${statCell('stat-atk','ATK',_effAtk,{title:_statNote('ATK',_effAtk-(p.atk||0),_atkNote,'Debuffs reducing ATK effect.'),trend:_trendTag(_effAtk-(p.atk||0))})}
-     ${statCell('stat-matk','MATK',_effMatk,{title:'Magic Attack — improves spell/ailment potency',trend:_trendTag(_effMatk-(p.matk||8))})}
-     ${statCell('stat-def','DEF',_effDef,{title:_statNote('DEF',_effDef-(p.def||0),'Battle Hymn increased DEF.','Debuffs reducing DEF.'),trend:_trendTag(_effDef-p.def)})}
-     ${statCell('stat-mdef','MDEF',_effMdef,{title:'Magic Defence — resists enemy spells and ailments',trend:_trendTag(_effMdef-(p.mdef||8))})}
-     ${statCell('stat-dodge','Dodge',_effDodge,{suffix:'%',title:`Physical Dodge. ${_statNote('Dodge',_effDodge-(p.dodge||0),'Evasion buffs active.','Debuffs reduced dodge.')}`,trend:_trendTag(_effDodge-p.dodge)})}
-     ${statCell('stat-mdodge','M.Dodge',_effMDodge,{suffix:'%',title:'Magic Dodge — deflects enemy spells',trend:_trendTag(_effMDodge-getBaseMdodge(G.player))})}
-     ${statCell('stat-acc','ACC',_effAcc,{suffix:'%',title:_statNote('ACC',_effAcc-(p.acc||0),'Battle Hymn increased ACC.','Blind/ruffle reduced ACC.'),trend:_trendTag(_effAcc-p.acc)})}
-     ${statCell('stat-spd','SPD',_effSpd,{title:_statNote('SPD',_effSpd-(p.spd||0),'Buff increased SPD.','Slow/clip effects reduced SPD.'),trend:_trendTag(_effSpd-p.spd)})}
-     ${statCell('stat-cc','CC',_critChance,{suffix:'%',title:'Crit Chance',trend:_trendTag(_critChance-5)})}
-     ${statCell('stat-cd','CD',_critMult.toFixed(1),{suffix:'×',title:'Crit Damage'})}`;
+    `${statCell('stat-atk','ATK',_effAtk,{title:_bt('atk',p.atk,_statNote('Battle ATK',_effAtk-(p.atk||0),_atkNote,'Debuffs reducing ATK effect.')),trend:_trendTag(_effAtk-(p.atk||0))})}
+     ${statCell('stat-matk','MATK',_effMatk,{title:_bt('matk',p.matk||8,'Magic Attack — improves spell/ailment potency'),trend:_trendTag(_effMatk-(p.matk||8))})}
+     ${statCell('stat-def','DEF',_effDef,{title:_bt('def',p.def,_statNote('Battle DEF',_effDef-(p.def||0),'Battle Hymn increased DEF.','Debuffs reducing DEF.')),trend:_trendTag(_effDef-p.def)})}
+     ${statCell('stat-mdef','MDEF',_effMdef,{title:_bt('mdef',p.mdef||8,'Magic Defence — resists enemy spells and ailments'),trend:_trendTag(_effMdef-(p.mdef||8))})}
+     ${statCell('stat-dodge','Dodge',_effDodge,{suffix:'%',title:_bt('dodge',p.dodge,`Physical dodge. ${_statNote('Display',_effDodge-(p.dodge||0),'Evasion buffs active.','Debuffs reduced dodge.')}`),trend:_trendTag(_effDodge-p.dodge)})}
+     ${statCell('stat-mdodge','M.Dodge',_effMDodge,{suffix:'%',title:_bt('mdodge',p.mdodge??p.dodge??0,`Effective display ${_effMDodge}% (includes card bonuses).`),trend:_trendTag(_effMDodge-getBaseMdodge(G.player))})}
+     ${statCell('stat-acc','ACC',_effAcc,{suffix:'%',title:_bt('acc',p.acc,_statNote('Battle ACC',_effAcc-(p.acc||0),'Battle Hymn increased ACC.','Blind/ruffle reduced ACC.')+_accCardBonus),trend:_trendTag(_effAcc-p.acc)})}
+     ${statCell('stat-spd','SPD',_effSpd,{title:_bt('spd',p.spd,_statNote('Battle SPD',_effSpd-(p.spd||0),'Buff increased SPD.','Slow/clip effects reduced SPD.')),trend:_trendTag(_effSpd-p.spd)})}
+     ${statCell('stat-cc','CC',_critChance,{suffix:'%',title:_bt('critChance',_ccBaseStore,`Shown value includes battle modifiers (e.g. burn). ${_statNote('vs stored CC',_critChance-_ccBaseStore,'Temporary buffs.','')}`),trend:_trendTag(_critChance-_ccBaseStore)})}
+     ${statCell('stat-cd','CD',_critMultDisplay,{suffix:'',title:`Base crit multiplier ${_critBase.toFixed(2)}×. On critical hits, +${_critBonusPct.toFixed(2)} is added to the multiplier (e.g. Execution Beak). Shown value is base; small +number is the crit-only add.`})}`;
 
   // Enemy stats display
   const eal=document.getElementById('enemy-abilities-list');
@@ -19698,7 +19853,7 @@ function confirmReward() {
     return;
   }
 
-  applyUpgradeWithMaxHpHealing(G.player, ()=>G._pendingReward.apply(G.player), G._pendingReward.name||'Upgrade');
+  applyUpgradeWithMaxHpHealing(G.player, ()=>G._pendingReward.apply(G.player), G._pendingReward.name||'Upgrade', {id:G._pendingReward.id, desc:G._pendingReward.desc});
   if(G._pendingReward.endlessOnly){ logMsg('♾ Endless-only reward acquired (not available in Story Mode).','system'); }
   const rewardEvt={tier:G._pendingReward.tier, id:G._pendingReward.id||G._pendingReward.name};
   AvianEvents.emit('reward:confirmed', rewardEvt);
@@ -19708,6 +19863,7 @@ function confirmReward() {
 
   if(!G.collectedRewards) G.collectedRewards=[];
   G.collectedRewards.push({
+    id:G._pendingReward.id||G._pendingReward.name,
     icon:G._pendingReward.icon,
     tier:G._pendingReward.tier,
     name:G._pendingReward.name,
@@ -19759,11 +19915,13 @@ function confirmReward() {
   failsafeAdvance('confirmReward after shop/advance');
 }
 
-function applyUpgradeWithMaxHpHealing(player, applyFn, sourceLabel='Upgrade'){
+function applyUpgradeWithMaxHpHealing(player, applyFn, sourceLabel='Upgrade', meta=null){
   if(!player || typeof applyFn!=='function') return;
+  const beforeStatsSnap = player.stats ? {...player.stats} : {};
   const beforeMax=Math.max(1, Number(player.stats?.maxHp||1));
   const beforeHp=Math.max(0, Number(player.stats?.hp||0));
   applyFn();
+  if(player.stats) recordUpgradeApplyInLedger(player, beforeStatsSnap, player.stats, meta);
   const afterMax=Math.max(1, Number(player.stats?.maxHp||beforeMax));
   const gained=Math.max(0, afterMax-beforeMax);
   if(gained<=0) return;
@@ -20417,7 +20575,12 @@ async function confirmSkillUpgrade() {
     const lines=[];
     for(const opt of opts){
       const n=Math.max(0,Math.floor(Number((G._luFeatherDraft||{})[opt.id])||0));
-      for(let i=0;i<n;i++) opt.apply();
+      for(let i=0;i<n;i++){
+        const beforeFeather = G.player.stats ? {...G.player.stats} : {};
+        opt.apply();
+        const Lf = ensureStatLedger(G.player);
+        if(Lf && G.player.stats) mergeStatDeltaIntoBucket(Lf.fromLevel, beforeFeather, G.player.stats);
+      }
       if(n>0) lines.push(`${n}× ${opt.label}`);
     }
     if(typeof refreshBattleUI==='function') refreshBattleUI();
@@ -20704,9 +20867,9 @@ function groveFinish(){
   // If a nest reward was selected, apply it
   if(G._groveNestReward){
     const rw=G._groveNestReward;
-    applyUpgradeWithMaxHpHealing(G.player, ()=>rw.apply(G.player), rw.name||'Grove Nest Reward');
+    applyUpgradeWithMaxHpHealing(G.player, ()=>rw.apply(G.player), rw.name||'Grove Nest Reward', {id:rw.id, desc:rw.desc});
     if(!G.collectedRewards)G.collectedRewards=[];
-    G.collectedRewards.push({icon:rw.icon,tier:rw.tier,name:rw.name,desc:rw.desc});
+    G.collectedRewards.push({id:rw.id||rw.name,icon:rw.icon,tier:rw.tier,name:rw.name,desc:rw.desc});
     codexMark('artifacts', rw.id||rw.name, 'seen');
     logMsg(`🪹 Grove Nest: ${rw.name} claimed!`,'exp-gain');
     G._groveNestReward=null;
@@ -21540,12 +21703,12 @@ async function shopBuySelected() {
 
   G.shinyObjects-=cost;
   if(discount>0) G._nextShopDiscount=0;
-  applyUpgradeWithMaxHpHealing(G.player, ()=>item.apply(G.player), item.name||'Shop Item');
+  applyUpgradeWithMaxHpHealing(G.player, ()=>item.apply(G.player), item.name||'Shop Item', {id:item.id, desc:item.desc});
   refreshPlayerAbilityAilments();
   enforceAbilityCosts(G.player);
 
   if(!G.collectedRewards) G.collectedRewards=[];
-  G.collectedRewards.push({icon:item.icon,tier:item.tier,name:item.name,desc:item.desc});
+  G.collectedRewards.push({id:item.id||item.name,icon:item.icon,tier:item.tier,name:item.name,desc:item.desc});
   codexMark('artifacts', item.id||item.name, 'seen');
   logMsg(`🌟 Purchased: ${item.name}!`,'exp-gain');
   const log=document.getElementById('shop-purchase-log');
@@ -21564,6 +21727,9 @@ async function shopBuySelected() {
   _shopSelectedIdx=null;
   saveRun();
   renderShopItems();
+  if(document.getElementById('screen-battle')?.classList.contains('active') && typeof refreshBattleUI==='function'){
+    try{ refreshBattleUI(); }catch(_){}
+  }
   return true;
 }
 function shopRefresh() {

@@ -1416,6 +1416,7 @@ header p{color:var(--text-dim);font-style:italic;font-size:1rem;margin-top:4px;}
 .stat-spd .stat-k,.stat-spd .stat-v{color:#8ee889;}
 .stat-cc .stat-k,.stat-cc .stat-v{color:#ffb880;}
 .stat-cd .stat-k,.stat-cd .stat-v{color:#ffe08a;}
+.stat-cd-bonus{font-size:.62em;color:var(--gold-light);margin-left:3px;font-family:system-ui,sans-serif;vertical-align:super;font-weight:700;}
 .enemy-abilities-list{display:flex;flex-wrap:wrap;gap:3px;margin-top:4px;}
 .enemy-ab-tag{background:rgba(201,76,76,.1);border:1px solid rgba(201,76,76,.3);border-radius:3px;padding:1px 6px;font-size:.69rem;color:var(--red-light);}
 .enemy-intent{background:linear-gradient(180deg,rgba(201,76,76,.12),rgba(255,255,255,.04));border:1px solid rgba(201,76,76,.28);border-radius:8px;padding:7px 9px;font-size:.78rem;color:var(--text);margin-top:7px;text-align:left;}
@@ -1840,6 +1841,18 @@ body.ui-mobile-mode #screen-battle .level-badge{font-size:.7rem;}
 .nest-reward-desc{color:var(--text-dim);font-size:.78rem;}
 .nest-passive{background:rgba(201,168,76,.08);border:1px solid rgba(201,168,76,.3);border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:.82rem;}
 .nest-passive-title{font-family:"Cinzel",serif;color:var(--gold);font-size:.78rem;letter-spacing:.1em;margin-bottom:4px;}
+.nest-ledger-section{background:rgba(201,168,76,.06);border:1px solid rgba(201,168,76,.22);border-radius:12px;padding:12px 14px;}
+.nest-ledger-note{font-size:.72rem;color:var(--text-dim);line-height:1.45;margin:0 0 10px;}
+.nest-ledger-subtitle{font-family:"Cinzel",serif;font-size:.68rem;letter-spacing:.08em;color:var(--gold-light);margin:10px 0 6px;text-transform:uppercase;}
+.nest-ledger-subtitle:first-of-type{margin-top:0;}
+.nest-ledger-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px 12px;}
+.nest-ledger-row{display:flex;justify-content:space-between;align-items:baseline;gap:10px;font-size:.8rem;padding:4px 8px;background:var(--surface2);border-radius:6px;border:1px solid var(--border);}
+.nest-ledger-k{color:var(--text-dim);font-weight:600;}
+.nest-ledger-v{color:#6ab89a;font-family:"Cinzel",serif;font-weight:700;}
+.nest-ledger-mech-block{display:flex;flex-direction:column;gap:4px;}
+.nest-ledger-mech{font-size:.78rem;color:var(--silver);padding:4px 0;border-bottom:1px solid rgba(255,255,255,.06);}
+.nest-ledger-mech:last-child{border-bottom:none;}
+.nest-crit-bonus{font-size:.75em;color:var(--gold-light);font-weight:600;}
 
 /* ===== COMBO METER ===== */
 #combo-meter{display:flex;align-items:center;gap:8px;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:6px 14px;}
