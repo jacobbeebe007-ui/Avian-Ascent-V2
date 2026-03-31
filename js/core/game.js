@@ -1355,7 +1355,7 @@ function applyBiomeModifiers(){
 // ============================================================
 //  REWARD POOLS — tiered
 // ============================================================
-const REWARD_WEIGHTS = { grey:50, green:30, blue:16, purple:4, gold:0 };
+const REWARD_WEIGHTS = { grey:50, green:28, blue:14, purple:6, gold:2 };
 function rollRarity(){
   const total=Object.values(REWARD_WEIGHTS).reduce((a,b)=>a+b,0);
   let r=Math.random()*total;
@@ -1363,82 +1363,142 @@ function rollRarity(){
   return 'grey';
 }
 
-/** Run upgrade helpers — stat cards use % of current (min bump) except special effects */
-function _upgPctMaxHp(p, pct, minAdd){
-  const mh=Math.max(8,p.stats.maxHp||1);
-  const add=Math.max(minAdd||1, Math.floor(mh*pct));
-  p.stats.maxHp=mh+add;
-  p.stats.hp=Math.min((p.stats.hp||0)+add, p.stats.maxHp);
+/** Run upgrade helpers — flat stat cards (UPGRADE_CARDS_REWORK) */
+function _upgFlatStat(p, stat, amount){
+  if(!p.stats) p.stats = {};
+  p.stats[stat] = (p.stats[stat] || 0) + amount;
 }
-function _upgPctStat(p, key, pct, minAdd){
-  const base=Math.max(1, Number(p.stats[key]||0));
-  const add=Math.max(minAdd||1, Math.floor(base*pct));
-  p.stats[key]=base+add;
+function _upgFlatMaxHp(p, amount){
+  if(!p.stats) p.stats = {};
+  const mh = Math.max(1, Number(p.stats.maxHp)||1);
+  p.stats.maxHp = mh + amount;
+  p.stats.hp = Math.min((p.stats.hp||0) + amount, p.stats.maxHp);
+}
+function _upgGoldenFeather(p){
+  const sz = String((p.size || BIRDS[p.birdKey]?.size || 'medium')).toLowerCase();
+  const cap = ENERGY_STACK_CAP_BY_SIZE[sz] ?? 3;
+  p.energyBonus = Math.min(cap, (p.energyBonus||0) + 1);
+  p.energyMax = computePlayerMaxEnergy();
+  p.energy = Math.min((p.energy||0) + 1, p.energyMax);
 }
 
 const UPGRADE_CARDS_REWORK = [
-  // Grey (15) — %-based stat growth
-  {id:'g_feather_lining',tier:'grey',icon:'❤️',name:'Feather Lining',desc:'+4% Max HP (min +4)',tags:['stat','hp'],apply:p=>_upgPctMaxHp(p,0.04,4)},
-  {id:'g_keen_beak',tier:'grey',icon:'🗡️',name:'Keen Beak',desc:'+4% ATK (min +1)',tags:['stat','atk'],apply:p=>_upgPctStat(p,'atk',0.04,1)},
-  {id:'g_spell_feather',tier:'grey',icon:'✨',name:'Spell Feather',desc:'+4% MATK (min +1)',tags:['stat','matk'],apply:p=>_upgPctStat(p,'matk',0.04,1)},
-  {id:'g_feather_guard',tier:'grey',icon:'🛡️',name:'Feather Guard',desc:'+4% DEF (min +1)',tags:['stat','def'],apply:p=>_upgPctStat(p,'def',0.04,1)},
-  {id:'g_warding_down',tier:'grey',icon:'🔷',name:'Warding Down',desc:'+4% MDEF (min +1)',tags:['stat','mdef'],apply:p=>_upgPctStat(p,'mdef',0.04,1)},
-  {id:'g_fleet_step',tier:'grey',icon:'💨',name:'Fleet Step',desc:'+4% SPD (min +1)',tags:['stat','spd'],apply:p=>_upgPctStat(p,'spd',0.04,1)},
-  {id:'g_quick_blood',tier:'grey',icon:'💥',name:'Quick Blood',desc:'+3% crit chance (flat points)',tags:['stat','crit'],apply:p=>{p.stats.critChance=Math.min(95,(p.stats.critChance||5)+3);}},
-  {id:'g_light_frame',tier:'grey',icon:'🪽',name:'Light Frame',desc:'+4% Dodge',tags:['defense','dodge'],apply:p=>{p.stats.dodge=Math.min(95,(p.stats.dodge||0)+4);}},
-  {id:'g_focused_eye',tier:'grey',icon:'🎯',name:'Focused Eye',desc:'+5% hit chance (all attacks)',tags:['stat','accuracy'],apply:p=>{p.firstAttackAccBonus=(p.firstAttackAccBonus||0)+5;}},
-  {id:'g_first_bite',tier:'grey',icon:'🦴',name:'First Bite',desc:'First attack each battle +10% damage',tags:['opening','offense'],stackable:false,apply:p=>{p.firstAttackEachBattleBonusPct=Math.max(p.firstAttackEachBattleBonusPct||0,0.10);}},
-  {id:'g_guard_posture',tier:'grey',icon:'🛡',name:'Guard Posture',desc:'First enemy hit each battle reduced by -10% damage',tags:['defense'],stackable:false,apply:p=>{p.firstHitReduce=Math.max(p.firstHitReduce||0,0.10);}},
-  {id:'g_crit_medicine',tier:'grey',icon:'💉',name:'Critical Medicine',desc:'Heal 3 HP on crit',tags:['combat-trigger','sustain'],apply:p=>{p.healOnCrit=(p.healOnCrit||0)+3;}},
-  {id:'g_dodge_medicine',tier:'grey',icon:'🪶',name:'Evasive Medicine',desc:'Heal 4 HP on dodge',tags:['combat-trigger','sustain'],apply:p=>{p.healOnDodge=(p.healOnDodge||0)+4;}},
-  {id:'g_finish_medicine',tier:'grey',icon:'🦅',name:'Hunter Medicine',desc:'Heal 5 HP on kill',tags:['combat-trigger','sustain'],apply:p=>{p.healOnKill=(p.healOnKill||0)+5;}},
-
-  // Green (15)
-  {id:'gr_sturdy_heart',tier:'green',icon:'💚',name:'Sturdy Heart',desc:'+7% Max HP (min +8)',tags:['stat','hp'],apply:p=>_upgPctMaxHp(p,0.07,8)},
-  {id:'gr_razor_talons',tier:'green',icon:'🗡️',name:'Razor Talons',desc:'+7% ATK (min +2)',tags:['stat','atk'],apply:p=>_upgPctStat(p,'atk',0.07,2)},
-  {id:'gr_arcane_plume',tier:'green',icon:'🔮',name:'Arcane Plume',desc:'+7% MATK (min +2)',tags:['stat','matk'],apply:p=>_upgPctStat(p,'matk',0.07,2)},
-  {id:'gr_iron_molt',tier:'green',icon:'🧱',name:'Iron Molt',desc:'+7% DEF (min +2)',tags:['stat','def'],apply:p=>_upgPctStat(p,'def',0.07,2)},
-  {id:'gr_rune_guard',tier:'green',icon:'🌀',name:'Rune Guard',desc:'+7% MDEF (min +2)',tags:['stat','mdef'],apply:p=>_upgPctStat(p,'mdef',0.07,2)},
-  {id:'gr_tailwind',tier:'green',icon:'🌬️',name:'Tailwind',desc:'+7% SPD (min +2)',tags:['stat','spd'],apply:p=>_upgPctStat(p,'spd',0.07,2)},
-  {id:'gr_calm_focus',tier:'green',icon:'🎯',name:'Calm Focus',desc:'+10% hit chance (all attacks)',tags:['stat','accuracy'],apply:p=>{p.firstAttackAccBonus=(p.firstAttackAccBonus||0)+10;}},
-  {id:'gr_blood_trigger',tier:'green',icon:'🩸',name:'Blood Trigger',desc:'Crits apply Bleed(1)',tags:['status-synergy','bleed'],apply:p=>{p.critBleed=(p.critBleed||0)+1;}},
-  {id:'gr_venom_beak',tier:'green',icon:'☣️',name:'Venom Beak',desc:'Attacks apply Poison(1) on hit (12% chance)',tags:['status-synergy','poison'],apply:p=>{p.poisonOnHitChance=(p.poisonOnHitChance||0)+12;}},
-  {id:'gr_serrated_talon',tier:'green',icon:'🪓',name:'Serrated Talon',desc:'Attacks apply Bleed(1) on hit (12% chance)',tags:['status-synergy','bleed'],apply:p=>{p.bleedOnHitChance=(p.bleedOnHitChance||0)+12;}},
-  {id:'gr_toxic_study',tier:'green',icon:'🧪',name:'Toxic Study',desc:'Poison deals +1 damage',tags:['status-synergy','poison'],apply:p=>{p.poisonFlatBonus=(p.poisonFlatBonus||0)+1;}},
-  {id:'gr_blood_memory',tier:'green',icon:'🦷',name:'Blood Memory',desc:'+2 damage vs Bleeding enemies',tags:['status-synergy','bleed'],apply:p=>{p.vsBleedFlatBonus=(p.vsBleedFlatBonus||0)+2;}},
-  {id:'gr_war_rhythm',tier:'purple',icon:'⚡',name:'War Rhythm',desc:'First attack each battle costs 0 EN',tags:['energy','opening'],stackable:false,apply:p=>{p.firstAttackFree=true;}},
-  {id:'gr_spell_rhythm',tier:'purple',icon:'🎵',name:'Spell Rhythm',desc:'First spell each battle costs 0 EN',tags:['energy','opening'],stackable:false,apply:p=>{p.firstSpellFree=true;}},
-  {id:'gr_hard_plumage',tier:'green',icon:'🛡️',name:'Hard Plumage',desc:'First enemy hit each battle reduced by -15% damage',tags:['defense'],stackable:false,apply:p=>{p.firstHitReduce=Math.max(p.firstHitReduce||0,0.15);}},
-
-  // Blue (12)
-  {id:'b_vital_gale',tier:'blue',icon:'💙',name:'Vital Gale',desc:'+10% Max HP (min +10)',tags:['stat','hp'],apply:p=>_upgPctMaxHp(p,0.10,10)},
-  {id:'b_predator_sight',tier:'blue',icon:'👁️',name:'Predator Sight',desc:'+8% crit chance (flat points)',tags:['stat','crit'],apply:p=>{p.stats.critChance=(p.stats.critChance||5)+8;}},
-  {id:'b_execution_beak',tier:'blue',icon:'💢',name:'Execution Beak',desc:'Crit damage +25%',tags:['stat','crit'],apply:p=>{p.critDamageBonusPct=(p.critDamageBonusPct||0)+0.25;}},
-  {id:'b_iron_feather_mantle',tier:'blue',icon:'🧱',name:'Iron Feather Mantle',desc:'+10% DEF (min +3)',tags:['stat','def'],apply:p=>_upgPctStat(p,'def',0.10,3)},
-  {id:'b_arcane_mantle',tier:'blue',icon:'🔷',name:'Arcane Mantle',desc:'+10% MDEF (min +3)',tags:['stat','mdef'],apply:p=>_upgPctStat(p,'mdef',0.10,3)},
-  {id:'b_hawk_instinct',tier:'blue',icon:'💨',name:'Hawk Instinct',desc:'+10% SPD (min +3)',tags:['stat','spd'],apply:p=>_upgPctStat(p,'spd',0.10,3)},
+  // GREY
+  {id:'g_feather_lining',tier:'grey',icon:'❤️',name:'Feather Lining',desc:'+8 Max HP',tags:['stat','hp'],apply:p=>_upgFlatMaxHp(p,8)},
+  {id:'g_keen_beak',tier:'grey',icon:'🗡️',name:'Keen Beak',desc:'+1 ATK',tags:['stat','atk'],apply:p=>_upgFlatStat(p,'atk',1)},
+  {id:'g_spell_feather',tier:'grey',icon:'✨',name:'Spell Feather',desc:'+1 MATK',tags:['stat','matk'],apply:p=>_upgFlatStat(p,'matk',1)},
+  {id:'g_feather_guard',tier:'grey',icon:'🛡️',name:'Feather Guard',desc:'+1 DEF',tags:['stat','def'],apply:p=>_upgFlatStat(p,'def',1)},
+  {id:'g_warding_down',tier:'grey',icon:'🔷',name:'Warding Down',desc:'+1 MDEF',tags:['stat','mdef'],apply:p=>_upgFlatStat(p,'mdef',1)},
+  {id:'g_fleet_step',tier:'grey',icon:'💨',name:'Fleet Step',desc:'+1 SPD',tags:['stat','spd'],apply:p=>_upgFlatStat(p,'spd',1)},
+  {id:'g_quick_blood',tier:'grey',icon:'💥',name:'Quick Blood',desc:'+3% crit chance',tags:['stat','crit'],apply:p=>{p.stats.critChance=Math.min(95,(p.stats.critChance||5)+3);}},
+  {id:'g_sharpened_finish',tier:'grey',icon:'🩸',name:'Sharpened Finish',desc:'+5% crit damage',tags:['stat','crit'],apply:p=>{p.critDamageBonusPct=(p.critDamageBonusPct||0)+0.05;}},
+  {id:'g_focused_eye',tier:'grey',icon:'🎯',name:'Focused Eye',desc:'+4% hit chance',tags:['stat','accuracy'],apply:p=>{p.hitChanceBonus=(p.hitChanceBonus||0)+4;}},
+  {id:'g_light_frame',tier:'grey',icon:'🪽',name:'Light Frame',desc:'+3% Dodge',tags:['defense','dodge'],apply:p=>{p.stats.dodge=Math.min(95,(p.stats.dodge||0)+3);}},
+  {id:'g_first_bite',tier:'grey',icon:'🦴',name:'First Bite',desc:'First attack each battle +5% damage',tags:['opening','offense'],stackable:false,apply:p=>{p.firstAttackEachBattleBonusPct=Math.max(p.firstAttackEachBattleBonusPct||0,0.05);}},
+  {id:'g_guard_posture',tier:'grey',icon:'🛡',name:'Guard Posture',desc:'First hit taken each battle reduced by -10% damage',tags:['defense'],stackable:false,apply:p=>{p.firstHitReduce=Math.max(p.firstHitReduce||0,0.10);}},
+  {id:'g_crit_medicine',tier:'grey',icon:'💉',name:'Critical Medicine',desc:'Heal 2 HP on crit',tags:['combat-trigger','sustain'],apply:p=>{p.healOnCrit=(p.healOnCrit||0)+2;}},
+  {id:'g_dodge_medicine',tier:'grey',icon:'🪶',name:'Evasive Medicine',desc:'Heal 2 HP on dodge',tags:['combat-trigger','sustain'],apply:p=>{p.healOnDodge=(p.healOnDodge||0)+2;}},
+  {id:'g_finish_medicine',tier:'grey',icon:'🦅',name:'Hunter Medicine',desc:'Heal 4 HP on kill',tags:['combat-trigger','sustain'],apply:p=>{p.healOnKill=(p.healOnKill||0)+4;}},
+  {id:'g_irritating_peck',tier:'grey',icon:'🩸',name:'Irritating Peck',desc:'Attacks apply Bleed(1) on hit (6% chance)',tags:['status-synergy','bleed'],apply:p=>{p.bleedOnHitChance=(p.bleedOnHitChance||0)+6;}},
+  {id:'g_spoiled_thorn',tier:'grey',icon:'☣️',name:'Spoiled Thorn',desc:'Attacks apply Poison(1) on hit (6% chance)',tags:['status-synergy','poison'],apply:p=>{p.poisonOnHitChance=(p.poisonOnHitChance||0)+6;}},
+  {id:'g_cold_feather',tier:'grey',icon:'❄️',name:'Cold Feather',desc:'Spells apply Chill(1) on hit (6% chance)',tags:['status-synergy','chill'],apply:p=>{p.chillOnSpellChance=(p.chillOnSpellChance||0)+6;}},
+  {id:'g_pain_scent',tier:'grey',icon:'🐾',name:'Pain Scent',desc:'+5% damage vs enemies with any ailment',tags:['status-synergy','ailment'],stackable:false,apply:p=>{p.vsAfflictedPctBonus=Math.max(p.vsAfflictedPctBonus||0,0.05);}},
+  // GREEN
+  {id:'gr_sturdy_heart',tier:'green',icon:'💚',name:'Sturdy Heart',desc:'+14 Max HP',tags:['stat','hp'],apply:p=>_upgFlatMaxHp(p,14)},
+  {id:'gr_razor_talons',tier:'green',icon:'🗡️',name:'Razor Talons',desc:'+2 ATK',tags:['stat','atk'],apply:p=>_upgFlatStat(p,'atk',2)},
+  {id:'gr_arcane_plume',tier:'green',icon:'🔮',name:'Arcane Plume',desc:'+2 MATK',tags:['stat','matk'],apply:p=>_upgFlatStat(p,'matk',2)},
+  {id:'gr_iron_molt',tier:'green',icon:'🧱',name:'Iron Molt',desc:'+2 DEF',tags:['stat','def'],apply:p=>_upgFlatStat(p,'def',2)},
+  {id:'gr_rune_guard',tier:'green',icon:'🌀',name:'Rune Guard',desc:'+2 MDEF',tags:['stat','mdef'],apply:p=>_upgFlatStat(p,'mdef',2)},
+  {id:'gr_tailwind',tier:'green',icon:'🌬️',name:'Tailwind',desc:'+2 SPD',tags:['stat','spd'],apply:p=>_upgFlatStat(p,'spd',2)},
+  {id:'gr_predators_eye',tier:'green',icon:'👁️',name:"Predator's Eye",desc:'+5% crit chance',tags:['stat','crit'],apply:p=>{p.stats.critChance=Math.min(95,(p.stats.critChance||5)+5);}},
+  {id:'gr_execution_habit',tier:'green',icon:'💢',name:'Execution Habit',desc:'+10% crit damage',tags:['stat','crit'],apply:p=>{p.critDamageBonusPct=(p.critDamageBonusPct||0)+0.10;}},
+  {id:'gr_calm_focus',tier:'green',icon:'🎯',name:'Calm Focus',desc:'+6% hit chance',tags:['stat','accuracy'],apply:p=>{p.hitChanceBonus=(p.hitChanceBonus||0)+6;}},
+  {id:'gr_hard_plumage',tier:'green',icon:'🛡️',name:'Hard Plumage',desc:'First hit taken each battle reduced by -15% damage',tags:['defense'],stackable:false,apply:p=>{p.firstHitReduce=Math.max(p.firstHitReduce||0,0.15);}},
+  {id:'gr_field_dressing',tier:'green',icon:'🌿',name:'Field Dressing',desc:'Heal 5 HP on kill',tags:['combat-trigger','sustain'],apply:p=>{p.healOnKill=(p.healOnKill||0)+5;}},
+  {id:'gr_slipstream_tonic',tier:'green',icon:'💧',name:'Slipstream Tonic',desc:'Heal 3 HP on dodge',tags:['combat-trigger','sustain'],apply:p=>{p.healOnDodge=(p.healOnDodge||0)+3;}},
+  {id:'gr_venom_beak',tier:'green',icon:'☣️',name:'Venom Beak',desc:'Attacks apply Poison(1) on hit (8% chance)',tags:['status-synergy','poison'],apply:p=>{p.poisonOnHitChance=(p.poisonOnHitChance||0)+8;}},
+  {id:'gr_serrated_talon',tier:'green',icon:'🩸',name:'Serrated Talon',desc:'Attacks apply Bleed(1) on hit (8% chance)',tags:['status-synergy','bleed'],apply:p=>{p.bleedOnHitChance=(p.bleedOnHitChance||0)+8;}},
+  {id:'gr_winter_tongue',tier:'green',icon:'❄️',name:'Winter Tongue',desc:'Spells apply Chill(1) on hit (8% chance)',tags:['status-synergy','chill'],apply:p=>{p.chillOnSpellChance=(p.chillOnSpellChance||0)+8;}},
+  {id:'gr_blood_memory',tier:'green',icon:'🦷',name:'Blood Memory',desc:'+10% damage vs Bleeding enemies',tags:['status-synergy','bleed'],stackable:false,apply:p=>{p.vsBleedPctBonus=Math.max(p.vsBleedPctBonus||0,0.10);}},
+  {id:'gr_toxic_study',tier:'green',icon:'🧪',name:'Toxic Study',desc:'+10% damage vs Poisoned enemies',tags:['status-synergy','poison'],stackable:false,apply:p=>{p.vsPoisonPctBonus=Math.max(p.vsPoisonPctBonus||0,0.10);}},
+  {id:'gr_hunter_of_the_sick',tier:'green',icon:'🪶',name:'Hunter of the Sick',desc:'+10% damage vs enemies with any ailment',tags:['status-synergy','ailment'],stackable:false,apply:p=>{p.vsAfflictedPctBonus=Math.max(p.vsAfflictedPctBonus||0,0.10);}},
+  // BLUE
+  {id:'b_vital_gale',tier:'blue',icon:'💙',name:'Vital Gale',desc:'+20 Max HP',tags:['stat','hp'],apply:p=>_upgFlatMaxHp(p,20)},
+  {id:'b_predator_sight',tier:'blue',icon:'👁️',name:'Predator Sight',desc:'+7% crit chance',tags:['stat','crit'],apply:p=>{p.stats.critChance=Math.min(95,(p.stats.critChance||5)+7);}},
+  {id:'b_execution_beak',tier:'blue',icon:'💢',name:'Execution Beak',desc:'Crit damage +15%',tags:['stat','crit'],apply:p=>{p.critDamageBonusPct=(p.critDamageBonusPct||0)+0.15;}},
+  {id:'b_iron_feather_mantle',tier:'blue',icon:'🧱',name:'Iron Feather Mantle',desc:'+3 DEF',tags:['stat','def'],apply:p=>_upgFlatStat(p,'def',3)},
+  {id:'b_arcane_mantle',tier:'blue',icon:'🔷',name:'Arcane Mantle',desc:'+3 MDEF',tags:['stat','mdef'],apply:p=>_upgFlatStat(p,'mdef',3)},
+  {id:'b_hawk_instinct',tier:'blue',icon:'💨',name:'Hawk Instinct',desc:'+3 SPD',tags:['stat','spd'],apply:p=>_upgFlatStat(p,'spd',3)},
   {id:'b_storm_pulse',tier:'blue',icon:'🌩️',name:'Storm Pulse',desc:'First attack each battle is guaranteed to hit',tags:['opening'],stackable:false,apply:p=>{p.firstAttackAlwaysHit=true;}},
-  {id:'b_spell_echo',tier:'blue',icon:'🎶',name:'Spell Echo',desc:'Every 4th spell deals +30% damage',tags:['status-synergy','magic'],stackable:false,apply:p=>{p.everyFourthSpellBonusPct=0.30;}},
-  {id:'b_deep_cut',tier:'blue',icon:'🩸',name:'Deep Cut',desc:'Bleed applied by you gains +1 stack',tags:['status-synergy','bleed'],apply:p=>{p.bleedBonusStacks=(p.bleedBonusStacks||0)+1;}},
-  {id:'b_venom_reservoir',tier:'blue',icon:'☣️',name:'Venom Reservoir',desc:'Poison lasts +1 turn',tags:['status-synergy','poison'],apply:p=>{p.poisonExtraTurns=(p.poisonExtraTurns||0)+1;}},
-  {id:'b_opening_drive',tier:'blue',icon:'🚩',name:'Opening Drive',desc:'First attack each battle +20% damage',tags:['opening','offense'],stackable:false,apply:p=>{p.firstAttackEachBattleBonusPct=Math.max(p.firstAttackEachBattleBonusPct||0,0.20);}},
-
-  // Purple (8) — includes energy/opening (purple tier)
-  {id:'p_iron_heart',tier:'purple',icon:'💜',name:'Iron Heart',desc:'+12% Max HP (min +14)',tags:['stat','hp'],apply:p=>_upgPctMaxHp(p,0.12,14)},
+  {id:'b_skirmishers_form',tier:'blue',icon:'⚔️',name:"Skirmisher's Form",desc:'+2 ATK, +2 SPD',tags:['hybrid','atk','spd'],apply:p=>{_upgFlatStat(p,'atk',2);_upgFlatStat(p,'spd',2);}},
+  {id:'b_runic_guard',tier:'blue',icon:'🔮',name:'Runic Guard',desc:'+2 MATK, +2 MDEF',tags:['hybrid','matk','mdef'],apply:p=>{_upgFlatStat(p,'matk',2);_upgFlatStat(p,'mdef',2);}},
+  {id:'b_iron_gale',tier:'blue',icon:'🌪️',name:'Iron Gale',desc:'+2 DEF, +2 SPD',tags:['hybrid','def','spd'],apply:p=>{_upgFlatStat(p,'def',2);_upgFlatStat(p,'spd',2);}},
+  {id:'b_predators_mind',tier:'blue',icon:'🧠',name:"Predator's Mind",desc:'+5% hit chance, +5% crit damage',tags:['hybrid','accuracy','crit'],apply:p=>{p.hitChanceBonus=(p.hitChanceBonus||0)+5;p.critDamageBonusPct=(p.critDamageBonusPct||0)+0.05;}},
+  {id:'b_deep_cut',tier:'blue',icon:'🩸',name:'Deep Cut',desc:'Bleed applied by you gains +1 stack',tags:['status-synergy','bleed'],stackable:false,apply:p=>{p.bleedBonusStacks=Math.max(p.bleedBonusStacks||0,1);}},
+  {id:'b_venom_reservoir',tier:'blue',icon:'☣️',name:'Venom Reservoir',desc:'Poison lasts +1 turn',tags:['status-synergy','poison'],stackable:false,apply:p=>{p.poisonExtraTurns=Math.max(p.poisonExtraTurns||0,1);}},
+  {id:'b_frozen_nerve',tier:'blue',icon:'❄️',name:'Frozen Nerve',desc:'Chill lasts +1 turn',tags:['status-synergy','chill'],stackable:false,apply:p=>{p.chillExtraTurns=Math.max(p.chillExtraTurns||0,1);}},
+  {id:'b_blood_tracker',tier:'blue',icon:'🦴',name:'Blood Tracker',desc:'+15% damage vs Bleeding enemies',tags:['status-synergy','bleed'],stackable:false,apply:p=>{p.vsBleedPctBonus=Math.max(p.vsBleedPctBonus||0,0.15);}},
+  {id:'b_plague_tracker',tier:'blue',icon:'☠️',name:'Plague Tracker',desc:'+15% damage vs Poisoned enemies',tags:['status-synergy','poison'],stackable:false,apply:p=>{p.vsPoisonPctBonus=Math.max(p.vsPoisonPctBonus||0,0.15);}},
+  {id:'b_shatter_instinct',tier:'blue',icon:'🧊',name:'Shatter Instinct',desc:'+15% damage vs Chilled enemies',tags:['status-synergy','chill'],stackable:false,apply:p=>{p.vsChillPctBonus=Math.max(p.vsChillPctBonus||0,0.15);}},
+  {id:'b_stacked_misery',tier:'blue',icon:'🕸️',name:'Stacked Misery',desc:'+5% damage per ailment on target (max +15%)',tags:['status-synergy','ailment'],stackable:false,apply:p=>{p.damagePerAilmentPct=Math.max(p.damagePerAilmentPct||0,0.05);p.damagePerAilmentPctCap=Math.max(p.damagePerAilmentPctCap||0,0.15);}},
+  {id:'b_opening_drive',tier:'blue',icon:'🚩',name:'Opening Drive',desc:'First attack each battle +15% damage',tags:['opening','offense'],stackable:false,apply:p=>{p.firstAttackEachBattleBonusPct=Math.max(p.firstAttackEachBattleBonusPct||0,0.15);}},
+  // PURPLE
+  {id:'p_iron_heart',tier:'purple',icon:'💜',name:'Iron Heart',desc:'+28 Max HP',tags:['stat','hp'],apply:p=>_upgFlatMaxHp(p,28)},
+  {id:'p_war_talons',tier:'purple',icon:'⚔️',name:'War Talons',desc:'+4 ATK',tags:['stat','atk'],apply:p=>_upgFlatStat(p,'atk',4)},
+  {id:'p_void_plumage',tier:'purple',icon:'🪄',name:'Void Plumage',desc:'+4 MATK',tags:['stat','matk'],apply:p=>_upgFlatStat(p,'matk',4)},
+  {id:'p_stone_coat',tier:'purple',icon:'🪨',name:'Stone Coat',desc:'+4 DEF',tags:['stat','def'],apply:p=>_upgFlatStat(p,'def',4)},
+  {id:'p_runed_hide',tier:'purple',icon:'🔯',name:'Runed Hide',desc:'+4 MDEF',tags:['stat','mdef'],apply:p=>_upgFlatStat(p,'mdef',4)},
+  {id:'p_gale_body',tier:'purple',icon:'🌬️',name:'Gale Body',desc:'+4 SPD',tags:['stat','spd'],apply:p=>_upgFlatStat(p,'spd',4)},
+  {id:'p_duelist_discipline',tier:'purple',icon:'🎯',name:'Duelist Discipline',desc:'+9% crit chance',tags:['stat','crit'],apply:p=>{p.stats.critChance=Math.min(95,(p.stats.critChance||5)+9);}},
+  {id:'p_rending_instinct',tier:'purple',icon:'💥',name:'Rending Instinct',desc:'Crit damage +20%',tags:['stat','crit'],apply:p=>{p.critDamageBonusPct=(p.critDamageBonusPct||0)+0.20;}},
+  {id:'p_bloodwind_technique',tier:'purple',icon:'🩸',name:'Bloodwind Technique',desc:'+2 ATK, +2 SPD, +5% crit damage',tags:['hybrid','atk','spd','crit'],apply:p=>{_upgFlatStat(p,'atk',2);_upgFlatStat(p,'spd',2);p.critDamageBonusPct=(p.critDamageBonusPct||0)+0.05;}},
+  {id:'p_hexbound_plumage',tier:'purple',icon:'☣️',name:'Hexbound Plumage',desc:'+2 MATK, +2 MDEF, +5% damage vs Poisoned enemies',tags:['hybrid','matk','mdef','poison'],stackable:false,apply:p=>{_upgFlatStat(p,'matk',2);_upgFlatStat(p,'mdef',2);p.vsPoisonPctBonus=Math.max(p.vsPoisonPctBonus||0,0.05);}},
+  {id:'p_duelists_frame',tier:'purple',icon:'🪶',name:"Duelist's Frame",desc:'+5% crit chance, +5% crit damage, +5% dodge',tags:['hybrid','crit','dodge'],apply:p=>{p.stats.critChance=Math.min(95,(p.stats.critChance||5)+5);p.critDamageBonusPct=(p.critDamageBonusPct||0)+0.05;p.stats.dodge=Math.min(95,(p.stats.dodge||0)+5);}},
   {id:'p_blood_frenzy',tier:'purple',icon:'🩸',name:'Blood Frenzy',desc:'+20% damage vs Bleeding enemies',tags:['status-synergy','bleed'],stackable:false,apply:p=>{p.vsBleedPctBonus=Math.max(p.vsBleedPctBonus||0,0.20);}},
-  {id:'p_venom_scholar',tier:'purple',icon:'☣️',name:'Venom Scholar',desc:'Poison damage +40%',tags:['status-synergy','poison'],stackable:false,apply:p=>{p.poisonTickMult=Math.max(p.poisonTickMult||1,1.4);}},
-  {id:'p_duelist_discipline',tier:'purple',icon:'🎯',name:'Duelist Discipline',desc:'First attack each battle crit chance +25%',tags:['opening','offense'],stackable:false,apply:p=>{p.firstAttackCritBonus=Math.max(p.firstAttackCritBonus||0,25);}},
+  {id:'p_venom_scholar',tier:'purple',icon:'☣️',name:'Venom Scholar',desc:'Poison damage +20%',tags:['status-synergy','poison'],stackable:false,apply:p=>{p.poisonTickMult=Math.max(p.poisonTickMult||1,1.20);}},
+  {id:'p_carrion_feast',tier:'purple',icon:'🍖',name:'Carrion Feast',desc:'+20% damage vs enemies with 2 or more ailments',tags:['status-synergy','ailment'],stackable:false,apply:p=>{p.vsMultiAfflictedPctBonus=Math.max(p.vsMultiAfflictedPctBonus||0,0.20);p.vsMultiAfflictedMinAilments=Math.max(p.vsMultiAfflictedMinAilments||0,2);}},
+  {id:'p_execution_window',tier:'purple',icon:'🪓',name:'Execution Window',desc:'Crits vs afflicted enemies deal +20% crit damage',tags:['status-synergy','crit','ailment'],stackable:false,apply:p=>{p.critVsAfflictedBonusPct=Math.max(p.critVsAfflictedBonusPct||0,0.20);}},
+  {id:'p_rot_and_ruin',tier:'purple',icon:'🦠',name:'Rot and Ruin',desc:'+7% damage per ailment on target (max +20%)',tags:['status-synergy','ailment'],stackable:false,apply:p=>{p.damagePerAilmentPct=Math.max(p.damagePerAilmentPct||0,0.07);p.damagePerAilmentPctCap=Math.max(p.damagePerAilmentPctCap||0,0.20);}},
   {id:'p_survivors_molt',tier:'purple',icon:'🪶',name:"Survivor's Molt",desc:'Once per battle below 30% HP, heal 8',tags:['combat-trigger','defense'],stackable:false,apply:p=>{p.survivorMoltHeal=Math.max(p.survivorMoltHeal||0,8);}},
-  {id:'p_precision_talon',tier:'purple',icon:'🏹',name:'Precision Talon',desc:'+15% hit chance (all attacks)',tags:['stat','accuracy'],apply:p=>{p.firstAttackAccBonus=(p.firstAttackAccBonus||0)+15;}},
+  {id:'p_precision_talon',tier:'purple',icon:'🏹',name:'Precision Talon',desc:'+10% hit chance',tags:['stat','accuracy'],apply:p=>{p.hitChanceBonus=(p.hitChanceBonus||0)+10;}},
   {id:'p_relentless_strike',tier:'purple',icon:'⚔️',name:'Relentless Strike',desc:'First attack each turn deals +10% damage',tags:['opening','offense'],stackable:false,apply:p=>{p.firstAttackEachTurnBonusPct=Math.max(p.firstAttackEachTurnBonusPct||0,0.10);}},
-
-  // Gold (5)
-  {id:'z_king_bloodline',tier:'gold',icon:'👑',name:'King Bloodline',desc:'+18% Max HP (min +22)',tags:['stat','hp'],stackable:false,apply:p=>_upgPctMaxHp(p,0.18,22)},
+  // GOLD
+  {id:'z_king_bloodline',tier:'gold',icon:'👑',name:'King Bloodline',desc:'+36 Max HP',tags:['stat','hp'],stackable:false,apply:p=>_upgFlatMaxHp(p,36)},
+  {id:'z_sky_hunter',tier:'gold',icon:'🦅',name:'Sky Hunter',desc:'+5 ATK',tags:['stat','atk'],stackable:false,apply:p=>_upgFlatStat(p,'atk',5)},
+  {id:'z_void_hunter',tier:'gold',icon:'🌑',name:'Void Hunter',desc:'+5 MATK',tags:['stat','matk'],stackable:false,apply:p=>_upgFlatStat(p,'matk',5)},
+  {id:'z_crown_of_the_four_winds',tier:'gold',icon:'👑',name:'Crown of the Four Winds',desc:'+2 ATK, +2 SPD, +5% crit chance, +5% dodge',tags:['hybrid','atk','spd','crit','dodge'],stackable:false,apply:p=>{_upgFlatStat(p,'atk',2);_upgFlatStat(p,'spd',2);p.stats.critChance=Math.min(95,(p.stats.critChance||5)+5);p.stats.dodge=Math.min(95,(p.stats.dodge||0)+5);}},
+  {id:'z_blackstone_sigil',tier:'gold',icon:'🗿',name:'Blackstone Sigil',desc:'+2 MATK, +2 MDEF, +5% hit chance, +5% crit damage',tags:['hybrid','matk','mdef','accuracy','crit'],stackable:false,apply:p=>{_upgFlatStat(p,'matk',2);_upgFlatStat(p,'mdef',2);p.hitChanceBonus=(p.hitChanceBonus||0)+5;p.critDamageBonusPct=(p.critDamageBonusPct||0)+0.05;}},
+  {id:'z_golden_feather',tier:'gold',icon:'🪶',name:'Golden Feather',desc:'+1 Max EN (max 3 copies per run)',tags:['unique','energy'],stackable:true,maxStacks:3,runSpawnCap:3,apply:p=>_upgGoldenFeather(p)},
   {id:'z_sky_predator',tier:'gold',icon:'🦅',name:'Sky Predator',desc:'First attack each battle always crits',tags:['unique','offense'],stackable:false,apply:p=>{p.firstAttackAlwaysCrit=true;}},
-  {id:'z_blackstone_trophy',tier:'gold',icon:'🗿',name:'Blackstone Trophy',desc:'Enemies start battle with Fear(1)',tags:['unique','control'],stackable:false,apply:p=>{p.openingEnemyFear=(p.openingEnemyFear||0)+1;}},
-  {id:'z_tempo_crown',tier:'gold',icon:'⏱️',name:'Opening Crown',desc:'First physical hit each turn +20% damage',tags:['unique','opening'],stackable:false,apply:p=>{p.firstAttackEachTurnBonusPct=Math.max(p.firstAttackEachTurnBonusPct||0,0.20);}},
-  {id:'z_void_rune',tier:'gold',icon:'🌑',name:'Void Rune',desc:'Spells gain +15% damage',tags:['unique','magic'],stackable:false,apply:p=>{p.augSpellDmgPct=Math.max(p.augSpellDmgPct||0,0.15);}},
+  {id:'z_blackstone_trophy',tier:'gold',icon:'🏆',name:'Blackstone Trophy',desc:'Enemies start battle with Fear(1)',tags:['unique','control'],stackable:false,apply:p=>{p.openingEnemyFear=Math.max(p.openingEnemyFear||0,1);}},
+  {id:'z_tempo_crown',tier:'gold',icon:'⏱️',name:'Tempo Crown',desc:'First physical hit each turn +20% damage',tags:['unique','opening'],stackable:false,apply:p=>{p.firstAttackEachTurnBonusPct=Math.max(p.firstAttackEachTurnBonusPct||0,0.20);}},
+  {id:'z_void_rune',tier:'gold',icon:'✨',name:'Void Rune',desc:'Spells gain +25% damage',tags:['unique','magic'],stackable:false,apply:p=>{p.augSpellDmgPct=Math.max(p.augSpellDmgPct||0,0.25);}},
+  {id:'z_predators_crest',tier:'gold',icon:'🦴',name:"Predator's Crest",desc:'Attacks gain +25% damage',tags:['unique','physical'],stackable:false,apply:p=>{p.augAttackDmgPct=Math.max(p.augAttackDmgPct||0,0.25);}},
+  {id:'z_lord_of_plagues',tier:'gold',icon:'☣️',name:'Lord of Plagues',desc:'+25% damage vs afflicted enemies',tags:['unique','ailment'],stackable:false,apply:p=>{p.vsAfflictedPctBonus=Math.max(p.vsAfflictedPctBonus||0,0.25);}},
+  {id:'z_tyrants_wound',tier:'gold',icon:'🩸',name:"Tyrant's Wound",desc:'Enemies suffering Bleed take +25% damage from you',tags:['unique','bleed'],stackable:false,apply:p=>{p.vsBleedPctBonus=Math.max(p.vsBleedPctBonus||0,0.25);}},
+  {id:'z_winter_crown',tier:'gold',icon:'❄️',name:'Winter Crown',desc:'Chilled enemies take +25% spell damage from you',tags:['unique','chill','magic'],stackable:false,apply:p=>{p.vsChillSpellPctBonus=Math.max(p.vsChillSpellPctBonus||0,0.25);}},
+  {id:'z_fourfold_suffering',tier:'gold',icon:'☠️',name:'Fourfold Suffering',desc:'+8% damage per ailment on target (max +25%)',tags:['unique','ailment','scaling'],stackable:false,apply:p=>{p.damagePerAilmentPct=Math.max(p.damagePerAilmentPct||0,0.08);p.damagePerAilmentPctCap=Math.max(p.damagePerAilmentPctCap||0,0.25);}},
 ];
+
+function countUpgradeAcquisitionsThisRun(upgradeId){
+  return (G.collectedRewards||[]).filter(r=>r.id===upgradeId).length;
+}
+function isUpgradeBlockedByRunAcquisitionCap(card){
+  if(!card) return false;
+  const lims=[];
+  if(Number.isFinite(card.maxStacks)&&card.maxStacks>0) lims.push(card.maxStacks);
+  if(Number.isFinite(card.runSpawnCap)&&card.runSpawnCap>0) lims.push(card.runSpawnCap);
+  if(!lims.length) return false;
+  const lim=Math.min(...lims);
+  return countUpgradeAcquisitionsThisRun(card.id)>=lim;
+}
+function upgradeEligibleForRewardPick(card, usedIds){
+  if(!card) return false;
+  if(usedIds&&usedIds.has(card.id)) return false;
+  if(card.stackable===false && G.runUpgradesPurchased?.has(card.id)) return false;
+  if(isUpgradeBlockedByRunAcquisitionCap(card)) return false;
+  return true;
+}
 
 function getUpgradePool(){ return UPGRADE_CARDS_REWORK.slice(); }
 
@@ -1556,7 +1616,18 @@ function getDerivedMechanicalBonusLines(player){
   if((p.poisonTickMult||1)>1.0001) lines.push(`+${pct((p.poisonTickMult||1)-1)}% poison tick damage`);
   if((p.poisonFlatBonus||0)>0) lines.push(`+${p.poisonFlatBonus} poison tick damage (flat)`);
   if((p.critDamageBonusPct||0)>0) lines.push(`+${pct(p.critDamageBonusPct)} added to crit multiplier on crits`);
-  if((p.firstAttackAccBonus||0)>0) lines.push(`+${p.firstAttackAccBonus}% hit chance (all attacks)`);
+  if((p.firstAttackAccBonus||0)>0) lines.push(`+${p.firstAttackAccBonus}% hit chance (first attack only)`);
+  if((p.hitChanceBonus||0)>0) lines.push(`+${p.hitChanceBonus}% hit chance (skills)`);
+  if((p.chillOnSpellChance||0)>0) lines.push(`${p.chillOnSpellChance}% chill on spell hit`);
+  if((p.chillExtraTurns||0)>0) lines.push(`+${p.chillExtraTurns} chill duration`);
+  if((p.vsPoisonPctBonus||0)>0) lines.push(`+${pct(p.vsPoisonPctBonus)}% damage vs poisoned`);
+  if((p.vsChillPctBonus||0)>0) lines.push(`+${pct(p.vsChillPctBonus)}% damage vs chilled`);
+  if((p.vsChillSpellPctBonus||0)>0) lines.push(`+${pct(p.vsChillSpellPctBonus)}% spell damage vs chilled`);
+  if((p.vsAfflictedPctBonus||0)>0) lines.push(`+${pct(p.vsAfflictedPctBonus)}% damage vs afflicted`);
+  if((p.vsMultiAfflictedPctBonus||0)>0) lines.push(`+${pct(p.vsMultiAfflictedPctBonus)}% vs ${Math.max(2,Number(p.vsMultiAfflictedMinAilments)||2)}+ ailments`);
+  if((p.critVsAfflictedBonusPct||0)>0) lines.push(`+${pct(p.critVsAfflictedBonusPct)} crit damage vs afflicted`);
+  if((p.damagePerAilmentPct||0)>0 && (p.damagePerAilmentPctCap||0)>0) lines.push(`+${pct(p.damagePerAilmentPct)}%/ailment (cap +${pct(p.damagePerAilmentPctCap)})`);
+  if((p.augAttackDmgPct||0)>0) lines.push(`+${pct(p.augAttackDmgPct)}% attack-skill damage`);
   if((p.augSpellAcc||0)>0) lines.push(`+${p.augSpellAcc}% spell hit chance (Endless augment)`);
   if((p.augAttackAcc||0)>0) lines.push(`+${p.augAttackAcc}% attack-skill hit chance (Endless augment)`);
   if(p.firstAttackFree) lines.push('First attack each battle costs 0 EN');
@@ -1759,7 +1830,7 @@ function applyEndlessProgressionMilestones(){
 
 function rollUpgradeCard(){
   const tier=rollRarity();
-  const pool=getUpgradePool().filter(c=>c.tier===tier);
+  const pool=getUpgradePool().filter(c=>c.tier===tier&&upgradeEligibleForRewardPick(c,null));
   return pool.length?pool[Math.floor(Math.random()*pool.length)]:null;
 }
 
@@ -2873,7 +2944,7 @@ Object.assign(ABILITY_TEMPLATES, SPARROW_EVOLUTION_TEMPLATES);
 
 function enforceAbilityBalanceSpec(){
   const HARD_CC=new Set(['paralyzed','stunned','confused']);
-  const MAJOR_AIL=new Set(['paralyzed','confused','burning','poison','weaken','delayed','feared','slow','mud']);
+  const MAJOR_AIL=new Set(['paralyzed','confused','burning','poison','weaken','delayed','feared','slow','mud','chilled']);
   for(const tmpl of Object.values(ABILITY_TEMPLATES)){
     if(!tmpl||!Array.isArray(tmpl.levels)) continue;
     if(!tmpl.balanceSpec){
@@ -8774,6 +8845,7 @@ function buildEnemyCombatStatHint(){
   if(s.slow) parts.push('Slow');
   if((s.poison?.stacks||0)>0) parts.push(`Poison ×${s.poison.stacks}`);
   if((s.bleed?.stacks||0)>0) parts.push(`Bleed ×${s.bleed.stacks}`);
+  if((s.chilled?.stacks||0)>0) parts.push(`Chill ×${s.chilled.stacks}`);
   if(s.peregrineDefBreak?.defLost) parts.push('DEF break');
   if((s.exposedGuard?.pct||0)>0) parts.push('Guard exposed');
   return parts.join(' · ');
@@ -9043,6 +9115,7 @@ function renderStatuses(id, statuses) {
     else if (k==='stunned') { b.className='status-badge stunned'; b.textContent=`😵 Stunned(${v}t)`; }
     else if (k==='mud') { b.className='status-badge delayed'; b.textContent=`🟤 Slowed(${v.turns}t)`; }
     else if (k==='slow') { const t=(typeof v==='number'?v:(v.turns||0)); const sp=(typeof v==='number'?2:(v.spdPenalty??0)); const dg=(typeof v==='number'?8:(v.dodgePenalty??0)); b.className='status-badge slow'; b.textContent=`🐌 Slow(${t}t,-${sp} SPD,-${dg}% DODGE)`; }
+    else if (k==='chilled') { const st=v.stacks||0; const t=v.turns||0; b.className='status-badge slow'; b.textContent=`❄ Chill×${st}(${t}t)`; tooltipSummary='Chilled — SPD reduced while active.'; }
     else if (k==='feared') { b.className='status-badge feared'; b.textContent=`😨 Feared(${v}t)`; }
     else if (k==='lullabied') { b.className='status-badge lullabied'; b.textContent=`💤 Lulled(${v}t)`; tooltipSummary='Debuff: chance to skip actions while lulled.'; }
     else if (k==='evading') { b.className='status-badge evading'; b.textContent=`💨 Evade(${v}t)`; }
@@ -11181,7 +11254,9 @@ function dealDamage(target,amount,isCrit=false,isMagic=false,srcAbility=null) {
   const activeAb=srcAbility||G._activePlayerAbility||null;
   const activeType=String(activeAb?.btnType||activeAb?.type||ABILITY_TEMPLATES?.[activeAb?.id]?.btnType||ABILITY_TEMPLATES?.[activeAb?.id]?.type||'').toLowerCase();
   if(target==='enemy' && !isMagic && !isCrit && classPerkCtx.predatorRhythm && (G.playerActionsThisTurn||0)===2 && chance(10)) isCrit=true;
-  const critMult=(G.player.goldCritMult||1.5) + (isCrit?(G.player?.critDamageBonusPct||0):0);
+  let critDmgAdd=isCrit?(G.player?.critDamageBonusPct||0):0;
+  if(isCrit && target==='enemy' && (G.player?.critVsAfflictedBonusPct||0)>0 && enemyHasAfflictionForCardBonuses()) critDmgAdd+=G.player.critVsAfflictedBonusPct;
+  const critMult=(G.player.goldCritMult||1.5) + critDmgAdd;
   if (isCrit) dmg=Math.floor(dmg*critMult);
   if(target==='enemy'){
     const ab=G._activePlayerAbility||null;
@@ -11192,6 +11267,25 @@ function dealDamage(target,amount,isCrit=false,isMagic=false,srcAbility=null) {
       dmg += (G.player?.vsBleedFlatBonus||0);
       if((G.player?.vsBleedPctBonus||0)>0) dmg=Math.floor(dmg*(1+G.player.vsBleedPctBonus));
     }
+    const esAff=G.enemyStatus||{};
+    const hasPoison=(esAff.poison?.stacks||0)>0;
+    const hasChill=(esAff.chilled?.stacks||0)>0;
+    const ailCount=countAilmentCategoriesOnEnemy();
+    if(hasPoison && (G.player?.vsPoisonPctBonus||0)>0) dmg=Math.floor(dmg*(1+G.player.vsPoisonPctBonus));
+    if(hasChill && (G.player?.vsChillPctBonus||0)>0) dmg=Math.floor(dmg*(1+G.player.vsChillPctBonus));
+    if(isSpell && hasChill && (G.player?.vsChillSpellPctBonus||0)>0) dmg=Math.floor(dmg*(1+G.player.vsChillSpellPctBonus));
+    if(enemyHasAfflictionForCardBonuses() && (G.player?.vsAfflictedPctBonus||0)>0) dmg=Math.floor(dmg*(1+G.player.vsAfflictedPctBonus));
+    if((G.player?.vsMultiAfflictedPctBonus||0)>0){
+      const need=Math.max(2,Number(G.player?.vsMultiAfflictedMinAilments)||2);
+      if(ailCount>=need) dmg=Math.floor(dmg*(1+G.player.vsMultiAfflictedPctBonus));
+    }
+    const dpp=G.player?.damagePerAilmentPct||0;
+    const dpcap=G.player?.damagePerAilmentPctCap||0;
+    if(dpp>0 && dpcap>0 && ailCount>0){
+      const add=Math.min(dpcap,dpp*ailCount);
+      dmg=Math.floor(dmg*(1+add));
+    }
+    if(isAttack && (G.player?.augAttackDmgPct||0)>0) dmg=Math.floor(dmg*(1+G.player.augAttackDmgPct));
     if(isSpell && !G._firstSpellUsed && (G.player?.firstSpellBattleBonusPct||0)>0){
       dmg=Math.floor(dmg*(1+G.player.firstSpellBattleBonusPct));
     }
@@ -11445,6 +11539,7 @@ function dealDamage(target,amount,isCrit=false,isMagic=false,srcAbility=null) {
       if(G.player?.augSpellPoison) applyAilment('enemy','poison',1);
       if(G.player?.augSpellCritPoison && isCrit) applyAilment('enemy','poison',1);
       if(G.player?.augFirstSpellFear && !G._firstSpellUsed) applyAilment('enemy','feared',1);
+      if((G.player?.chillOnSpellChance||0)>0 && chance(Math.min(95,G.player.chillOnSpellChance))) applyAilment('enemy','chilled',1);
     }
     if(G.enemy?.id==='duke_blakiston' && (G.enemyStatus.wardens||0)>0){
       G.enemyStatus.wardens-=1;
@@ -11517,10 +11612,31 @@ function countEnemyCombatDebuffCategories(){
   if((s.bleed?.stacks||0)>0) n++;
   if((s.accDebuff||0)>0) n++;
   if(s.slow) n++;
+  if((s.chilled?.stacks||0)>0) n++;
   if((s.exposedGuard?.pct||0)>0) n++;
   if((s.peregrineDefBreak?.defLost||0)>0) n++;
   if((s.owlArmorStress?.defLost||0)>0) n++;
   return n;
+}
+/** Categories counted for upgrade cards (ailment scaling / vs afflicted). */
+function countAilmentCategoriesOnEnemy(){
+  const s=G.enemyStatus||{};
+  let n=0;
+  if((s.poison?.stacks||0)>0) n++;
+  if((s.bleed?.stacks||0)>0) n++;
+  if((s.feared||0)>0) n++;
+  if((s.weaken||0)>0) n++;
+  if((s.paralyzed||0)>0) n++;
+  if(s.confused && ((typeof s.confused==='object'&&(s.confused.turns||0)>0))) n++;
+  if(s.burning && ((typeof s.burning==='number'&&s.burning>0)||(typeof s.burning==='object'&&(s.burning.turns||0)>0))) n++;
+  if((s.chilled?.stacks||0)>0) n++;
+  if(s.slow && ((typeof s.slow==='object'&&(s.slow.turns||0)>0)||(typeof s.slow==='number'&&s.slow>0))) n++;
+  if((s.accDebuff||0)>0) n++;
+  if((s.exposedGuard?.pct||0)>0) n++;
+  return n;
+}
+function enemyHasAfflictionForCardBonuses(){
+  return countAilmentCategoriesOnEnemy()>0;
 }
 function selfDodgeBuffActive(){
   const h=G.playerStatus?.humDodge;
@@ -11651,11 +11767,12 @@ function getPlayerMissChance(ab) {
   if((G.playerStatus?.perkUtilityAcc||0)>0){ extra+=8; delete G.playerStatus.perkUtilityAcc; }
   if(classPerkCtx.falseOpening){
     const es=G.enemyStatus||{};
-    const debuffed=!!(es.poison||es.bleed||es.burning||es.weaken||es.feared||es.confused||es.paralyzed||es.slow||es.accDebuff>0);
+    const debuffed=!!(es.poison||es.bleed||es.burning||es.weaken||es.feared||es.confused||es.paralyzed||es.slow||es.chilled||es.accDebuff>0);
     if(debuffed) extra += 6;
   }
   if((G.player?.augPostDefAcc||0)>0 && G.playerStatus?.postDefAccNext){ extra += G.player.augPostDefAcc; delete G.playerStatus.postDefAccNext; }
   if(G.player?.relHawkLedger && isEndlessRunActive()){ const eb=G.endlessBattle||0; if(eb>=10) extra+=8; if(eb>=20) extra+=8; if(eb>=30) extra+=8; }
+  extra += (G.player?.hitChanceBonus||0);
   return Math.max(floor, reduced - accBonus + tookiePenalty - (G.playerStatus.accDebuff||0) + classAdj + sizeAdj - missReduce - extra - getPlayerHitBonus(ab));
 }
 
@@ -11755,6 +11872,27 @@ function applyAilment(target,ailId,stacks=1) {
     status.paralyzed=3;
   } else if (ailId==='burning') {
     status.burning=3;
+  } else if (ailId==='chilled') {
+    if(target!=='enemy') return false;
+    const baseTurns=2;
+    const extraTurns=(G.player?.chillExtraTurns||0);
+    if(!status.chilled) status.chilled={stacks:0,turns:0,spdLost:0};
+    const cap=5;
+    const addStacks=Math.max(1,Math.floor(Number(stacks)||1));
+    const prev=status.chilled.stacks||0;
+    const next=Math.min(cap,prev+addStacks);
+    const delta=next-prev;
+    status.chilled.stacks=next;
+    status.chilled.turns=Math.max(status.chilled.turns||0,baseTurns+extraTurns);
+    if(delta>0 && G.enemy?.stats){
+      let cur=Math.max(1,Number(G.enemy.stats.spd)||1);
+      let spdDrop=0;
+      for(let i=0;i<delta;i++){ if(cur<=1) break; cur-=1; spdDrop++; }
+      if(spdDrop>0){
+        G.enemy.stats.spd=cur;
+        status.chilled.spdLost=(status.chilled.spdLost||0)+spdDrop;
+      }
+    }
   } else if (ailId==='feared') {
     const extra=((target==='enemy')&&G.player?.mutDarkChorus)?1:0;
     status.feared=(status.feared||0)+stacks+extra;
@@ -19799,6 +19937,15 @@ async function enemyTurn() {
       logMsg(`${G.enemy.name} shook off Slow.`,'system');
     }
   }
+  if(G.enemyStatus.chilled && (G.enemyStatus.chilled.turns||0)>0){
+    G.enemyStatus.chilled.turns--;
+    if(G.enemyStatus.chilled.turns<=0){
+      const lost=G.enemyStatus.chilled.spdLost||0;
+      if(lost>0) G.enemy.stats.spd=Math.max(1,(G.enemy.stats.spd||1)+lost);
+      delete G.enemyStatus.chilled;
+      logMsg(`${G.enemy.name} shook off Chill.`,'system');
+    }
+  }
   await tickDoTs('player');
   if(G.player.stats.hp<=0){const ended=checkDeath();G.animLock=false;if(ended)return;afterEnemyTurn();return;}
 
@@ -20355,6 +20502,10 @@ function confirmReward() {
     name:G._pendingReward.name,
     desc:G._pendingReward.desc
   });
+  if(G._pendingReward.stackable===false){
+    if(!(G.runUpgradesPurchased instanceof Set)) G.runUpgradesPurchased=new Set();
+    G.runUpgradesPurchased.add(G._pendingReward.id);
+  }
 
   G._pendingReward=null;
   G._goldReplaceMode=false;
@@ -20483,7 +20634,7 @@ function generateBossRewards() {
   const endlessBattle=G.endlessBattle||0;
   
   function pickTier(tier){
-    const pool=getUpgradePool().filter(r=>r.tier===tier&&!used.has(r.id)&&!(r.stackable===false && G.runUpgradesPurchased?.has(r.id)));
+    const pool=getUpgradePool().filter(r=>r.tier===tier&&upgradeEligibleForRewardPick(r,used));
     if(!pool.length) return null;
     const rw=pool[Math.floor(Math.random()*pool.length)];
     used.add(rw.id); return rw;
@@ -21307,7 +21458,7 @@ function showGroveNestRewards(){
   const used = new Set();
   const picks=[];
   const pick=(tier)=>{
-    const avail=getUpgradePool().filter(r=>r.tier===tier&&!used.has(r.id));
+    const avail=getUpgradePool().filter(r=>r.tier===tier&&upgradeEligibleForRewardPick(r,used));
     if(!avail.length) return null;
     const r=avail[Math.floor(Math.random()*avail.length)];
     used.add(r.id); return r;
@@ -21977,7 +22128,7 @@ function rollShopTier(weights){
   return rollWeighted(tiers,vals);
 }
 function pickUniqueRewardByTier(tier,used){
-  const pool=getUpgradePool().filter(r=>r.tier===tier&&!used.has(r.id)&&!(r.stackable===false && G.runUpgradesPurchased?.has(r.id)));
+  const pool=getUpgradePool().filter(r=>r.tier===tier&&upgradeEligibleForRewardPick(r,used));
   if(!pool.length) return null;
   const pick=pool[Math.floor(Math.random()*pool.length)];
   used.add(pick.id);

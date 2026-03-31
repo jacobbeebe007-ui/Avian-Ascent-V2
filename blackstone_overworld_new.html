@@ -44,11 +44,15 @@ html,body{width:100%;height:100%;overflow:hidden;background:#060d05;}
 .zbtn{width:30px;height:30px;cursor:pointer;background:rgba(2,4,2,.92);border:1px solid rgba(200,160,32,.28);color:var(--gold);font-size:16px;display:flex;align-items:center;justify-content:center;font-family:'Cinzel',serif;transition:all .15s;}
 .zbtn:hover{background:rgba(200,160,32,.14);border-color:var(--gold);}
 #zlabel{font-family:'Cinzel',serif;font-size:8px;color:var(--gold-d);letter-spacing:1px;padding:2px 6px;background:rgba(2,4,2,.88);border:1px solid rgba(200,160,32,.16);min-width:36px;text-align:center;}
-#panel{flex-shrink:0;height:154px;z-index:10;position:relative;background:linear-gradient(180deg,#040804,#080d06);border-top:1px solid var(--gold-d);display:flex;align-items:stretch;overflow:hidden;}
-#panel-footer-mid{flex:0 0 auto;display:flex;flex-direction:row;align-items:center;justify-content:center;gap:14px;padding:10px 16px;border-left:1px solid rgba(200,160,32,.1);border-right:1px solid rgba(200,160,32,.1);background:linear-gradient(180deg,rgba(6,10,6,.5),rgba(4,8,4,.35));min-width:0;}
-#panel-footer-mid #hdr-bird-btn{padding:5px 10px;}
-#panel-footer-mid #hdr-nest-btn{padding:6px 14px;font-size:8px;}
-#panel-footer-mid #hdr-shiny-count{padding:6px 12px;font-size:9px;}
+#panel{flex-shrink:0;min-height:154px;z-index:10;position:relative;background:linear-gradient(180deg,#040804,#080d06);border-top:1px solid var(--gold-d);display:flex;flex-direction:column;align-items:stretch;overflow:hidden;}
+#panel-top{display:flex;align-items:stretch;flex:1;min-height:0;}
+#panel-actions{flex-shrink:0;display:flex;flex-direction:row;align-items:center;justify-content:center;flex-wrap:wrap;gap:12px 18px;padding:14px 20px 16px;border-top:1px solid rgba(200,160,32,.16);background:linear-gradient(180deg,rgba(8,12,8,.92),rgba(4,8,4,.88));}
+#panel-actions .nbtn{width:auto;min-width:120px;padding:14px 28px;font-size:13px;letter-spacing:3px;border-radius:10px;font-weight:600;}
+#panel-actions #hdr-nest-btn{padding:14px 32px;font-size:12px;letter-spacing:3px;border-radius:10px;font-weight:600;}
+#panel-actions #hdr-bird-btn{padding:8px 14px;}
+#panel-actions #hdr-bird-btn span{font-size:10px;}
+#panel-actions #hdr-bird-img{width:36px;height:36px;}
+#panel-actions #hdr-shiny-count{padding:10px 16px;font-size:11px;}
 #panel::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,var(--gold),var(--gold-l),var(--gold),transparent);}
 #p-portrait{flex-shrink:0;width:138px;background:linear-gradient(135deg,#030603,#0a1207);border-right:1px solid rgba(200,160,32,.14);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;padding:10px;position:relative;}
 #p-portrait::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse at 50% 30%,rgba(200,160,32,.05) 0%,transparent 70%);}
@@ -65,8 +69,7 @@ html,body{width:100%;height:100%;overflow:hidden;background:#060d05;}
 #i-enemies .el{font-family:'Cinzel',serif;font-size:7px;color:var(--gold-d);letter-spacing:2px;}
 .ec{font-family:'EB Garamond',serif;font-size:11px;background:rgba(200,160,32,.07);border:1px solid rgba(200,160,32,.18);color:var(--parch);padding:1px 7px;}
 .ec.boss{background:rgba(139,26,26,.14);border-color:rgba(200,80,80,.28);color:#ff9090;}
-#p-nav{flex-shrink:0;width:168px;display:flex;flex-direction:column;align-items:stretch;justify-content:center;gap:10px;padding:12px 14px;border-left:1px solid rgba(200,160,32,.1);}
-.nbtn{font-family:'Cinzel',serif;font-size:11px;letter-spacing:2px;background:rgba(200,160,32,.06);border:1px solid rgba(200,160,32,.22);color:var(--gold);padding:12px 14px;cursor:pointer;width:100%;text-align:center;transition:all .2s;border-radius:8px;}
+.nbtn{font-family:'Cinzel',serif;font-size:11px;letter-spacing:2px;background:rgba(200,160,32,.06);border:1px solid rgba(200,160,32,.22);color:var(--gold);padding:12px 14px;cursor:pointer;text-align:center;transition:all .2s;border-radius:8px;}
 .nbtn:hover:not(:disabled){background:rgba(200,160,32,.15);border-color:var(--gold);}
 .nbtn:disabled{opacity:.16;cursor:default;}
 #ov{display:none;position:fixed;inset:0;z-index:100;background:rgba(2,4,2,.97);flex-direction:column;align-items:center;justify-content:center;gap:13px;cursor:pointer;}
@@ -139,35 +142,21 @@ html,body{width:100%;height:100%;overflow:hidden;background:#060d05;}
   #hdr h1{font-size:10px;letter-spacing:1px;}
   .orn{margin:0 4px;font-size:12px;}
   #hdr-hint{display:none;}
-  #panel-footer-mid{flex-wrap:wrap;gap:8px;padding:8px 10px;border-left:none;border-right:none;border-top:1px solid rgba(200,160,32,.14);order:3;width:100%;justify-content:center;}
-  #panel-footer-mid #hdr-bird-btn{padding:4px 8px;}
-  #panel-footer-mid #hdr-bird-btn span{font-size:8px;}
-  #panel-footer-mid #hdr-bird-img{width:22px;height:22px;}
-  #panel-footer-mid #hdr-nest-btn{font-size:7px;padding:4px 8px;letter-spacing:1px;}
-  #panel-footer-mid #hdr-shiny-count{font-size:8px;padding:4px 6px;}
+  #panel-actions{gap:10px;padding:10px 12px;}
+  #panel-actions .nbtn{min-width:100px;padding:12px 16px;font-size:11px;}
+  #panel-actions #hdr-nest-btn{padding:12px 20px;font-size:10px;}
+  #panel-actions #hdr-bird-img{width:28px;height:28px;}
   /* Map viewport fills remaining space above bottom nav */
   #vp{flex:1;min-height:0;}
   /* Panel becomes a slim row + full-width nav bar below it */
-  #panel{height:auto;flex-wrap:wrap;}
+  #panel{height:auto;}
+  #panel-top{flex-wrap:wrap;}
   #p-portrait{width:72px;padding:6px;}
   #p-frame{width:54px;height:54px;}
   #p-name{font-size:6px;}
-  #p-info{padding:8px 10px;}
+  #p-info{padding:8px 10px;flex:1;min-width:0;}
   #i-name{font-size:12px;}
-  #p-nav{
-    width:100%;
-    flex-direction:row;
-    justify-content:stretch;
-    align-items:stretch;
-    min-height:56px;
-    gap:10px;
-    padding:8px 12px;
-    border-left:none;
-    border-top:1px solid rgba(200,160,32,.18);
-    background:rgba(4,8,4,.96);
-    order:4;
-  }
-  .nbtn{flex:1;padding:12px 8px;font-size:10px;}
+  .nbtn{min-width:0;}
   /* Minimap: smaller + shifted */
   #mm-wrap{top:6px;right:6px;}
   /* Zoom controls: smaller */
@@ -203,28 +192,28 @@ html,body{width:100%;height:100%;overflow:hidden;background:#060d05;}
     </div>
   </div>
   <div id="panel">
-    <div id="p-portrait">
-      <div id="p-frame"><div id="p-img" style="width:100%;height:100%;"></div></div>
-      <div id="p-name">SPARROW</div>
+    <div id="panel-top">
+      <div id="p-portrait">
+        <div id="p-frame"><div id="p-img" style="width:100%;height:100%;"></div></div>
+        <div id="p-name">SPARROW</div>
+      </div>
+      <div id="p-info">
+        <div id="i-label">LOCATION</div>
+        <div id="i-name"></div>
+        <div id="i-terrain"></div>
+        <div id="i-status"></div>
+        <div id="i-rewards"></div>
+        <div id="i-enemies"></div>
+      </div>
     </div>
-    <div id="p-info">
-      <div id="i-label">LOCATION</div>
-      <div id="i-name"></div>
-      <div id="i-terrain"></div>
-      <div id="i-status"></div>
-      <div id="i-rewards"></div>
-      <div id="i-enemies"></div>
-    </div>
-    <div id="panel-footer-mid">
+    <div id="panel-actions">
       <div id="hdr-bird-btn">
         <div id="hdr-bird-img" style="width:32px;height:32px;flex-shrink:0;border-radius:50%;overflow:hidden;"></div>
         <span id="hdr-bird-name">SPARROW</span>
       </div>
-      <button type="button" id="hdr-nest-btn">&#x1F3E0; NEST</button>
       <span id="hdr-shiny-count">&#11088; 0</span>
-    </div>
-    <div id="p-nav">
       <button type="button" class="nbtn" id="btn-prev">&#9664; PREV</button>
+      <button type="button" id="hdr-nest-btn">&#x1F3E0; NEST</button>
       <button type="button" class="nbtn" id="btn-next">NEXT &#9654;</button>
     </div>
   </div>
@@ -748,7 +737,7 @@ function updateInfo(){
   if(n.type==='shop'){const s=document.createElement('span');s.style.cssText='font-family:EB Garamond,serif;font-style:italic;font-size:12px;color:var(--gold-d)';s.textContent='Trade your Shinies for power.';ie.appendChild(s);}
   const pframe=document.getElementById('p-frame');pframe.innerHTML='<div id="p-img" style="width:100%;height:100%;"></div>';const pimg=document.getElementById('p-img');
   if(n.type==='shop'){_owSprite('p-img','');pimg.style.borderRadius='0';document.getElementById('p-frame').innerHTML='<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-family:Georgia,serif;font-size:32px;color:#c89010;">$</div>';document.getElementById('p-name').textContent='EMPORIUM';}
-  else{_owSprite('p-img',SPRITES[BIRDS[birdIdx].k]||'');pimg.style.borderRadius='0';document.getElementById('p-name').textContent=BIRDS[birdIdx].n.toUpperCase();}
+  else{syncPanelPortraitForPlayer();}
   document.getElementById('btn-prev').disabled=curPos<=0;
   const nextNd=NODES[curPos+1];
   document.getElementById('btn-next').disabled=curPos>=UNLOCKED||!nextNd||!isNodeUnlocked(nextNd)||nodeBlocksAdvance(NODES[curPos]);
@@ -805,7 +794,15 @@ document.getElementById('ov').addEventListener('click',function(e){
 const pg=document.getElementById('pick-grid');
 BIRDS.forEach((b,i)=>{const c=document.createElement('div');c.className='bc'+(i===0?' sel':'');const pf=document.createElement('div');pf.className='cp';const ps=document.createElement('div');ps.className='pick-sprite';ps.setAttribute('aria-hidden','true');ps.style.backgroundImage=SPRITES[b.k]?'url('+JSON.stringify(SPRITES[b.k])+')':'';pf.appendChild(ps);const lb=document.createElement('span');lb.textContent=b.n;c.appendChild(pf);c.appendChild(lb);c.addEventListener('click',()=>{pg.querySelectorAll('.bc').forEach(x=>x.classList.remove('sel'));c.classList.add('sel');birdIdx=i;applyBird();});pg.appendChild(c);});
 function _owSprite(id,src){const el=document.getElementById(id);if(!el)return;el.style.backgroundImage=src?'url('+JSON.stringify(src)+')':'';}
-function applyBird(){const b=BIRDS[birdIdx];const src=SPRITES[b.k]||'';_owSprite('player-img',src);_owSprite('hdr-bird-img',src);document.getElementById('hdr-bird-name').textContent=b.n.toUpperCase();}
+function syncPanelPortraitForPlayer(){
+  const n=NODES[curPos];if(!n||n.type==='shop')return;
+  const pf=document.getElementById('p-frame');if(!pf)return;
+  if(!pf.querySelector('#p-img')){pf.innerHTML='<div id="p-img" style="width:100%;height:100%;"></div>';}
+  const b=BIRDS[birdIdx],pimg=document.getElementById('p-img');
+  if(pimg&&b){_owSprite('p-img',SPRITES[b.k]||'');pimg.style.borderRadius='0';}
+  const pn=document.getElementById('p-name');if(pn&&b)pn.textContent=b.n.toUpperCase();
+}
+function applyBird(){const b=BIRDS[birdIdx];if(!b)return;const src=SPRITES[b.k]||'';_owSprite('player-img',src);_owSprite('hdr-bird-img',src);document.getElementById('hdr-bird-name').textContent=b.n.toUpperCase();syncPanelPortraitForPlayer();}
 document.getElementById('hdr-bird-btn').addEventListener('click',()=>document.getElementById('pick').classList.add('on'));
 document.getElementById('pick-ok').addEventListener('click',()=>{document.getElementById('pick').classList.remove('on');document.getElementById('root').focus();});
 
@@ -858,8 +855,8 @@ document.getElementById('btn-next').addEventListener('click',()=>{
   if(isMoving||curPos>=UNLOCKED) return;
   const next=NODES[curPos+1];
   if(!next||!isNodeUnlocked(next)){
-    const mid=document.getElementById('panel-footer-mid');
-    if(mid){mid.style.boxShadow='inset 0 0 0 2px rgba(200,160,64,.35)';setTimeout(()=>{mid.style.boxShadow='';},650);}
+    const act=document.getElementById('panel-actions');
+    if(act){act.style.boxShadow='inset 0 0 0 2px rgba(200,160,64,.35)';setTimeout(()=>{act.style.boxShadow='';},650);}
     return;
   }
   if(nodeBlocksAdvance(NODES[curPos])){
@@ -961,6 +958,18 @@ requestAnimationFrame(()=>requestAnimationFrame(()=>{pl.style.transition='left .
       _owSprite('player-img', src);
       _owSprite('hdr-bird-img', src);
       document.getElementById('hdr-bird-name').textContent = label.toUpperCase();
+      const n0 = NODES[curPos];
+      if (n0 && n0.type !== 'shop') {
+        const pf = document.getElementById('p-frame');
+        if (pf) {
+          pf.innerHTML = '<div id="p-img" style="width:100%;height:100%;"></div>';
+          _owSprite('p-img', src);
+          const pi = document.getElementById('p-img');
+          if (pi) pi.style.borderRadius = '0';
+        }
+        const pnm = document.getElementById('p-name');
+        if (pnm) pnm.textContent = label.toUpperCase();
+      }
     }
   }
 
