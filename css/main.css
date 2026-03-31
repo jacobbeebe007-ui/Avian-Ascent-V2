@@ -1400,6 +1400,8 @@ header p{color:var(--text-dim);font-style:italic;font-size:1rem;margin-top:4px;}
 .status-badge.mud{background:rgba(139,90,43,.2);border-color:#8b5a2b;color:#c8a060;}
 .status-badge.slow{background:rgba(120,170,220,.18);border-color:#78aee8;color:#9fd0ff;}
 .stats-mini,.enemy-stats-mini{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:4px;font-size:.76rem;margin-top:7px;padding-top:6px;border-top:1px solid rgba(201,168,76,.16);}
+.stat-status-hint{grid-column:1/-1;font-size:.64rem;color:#a8b8cc;line-height:1.35;padding:5px 2px 1px;margin-top:3px;border-top:1px solid rgba(120,140,170,.22);opacity:.95;}
+.stat-status-hint.est-hint{color:#d4b8b0;border-top-color:rgba(200,120,100,.22);}
 .stat-mini,.est{color:var(--text-dim);display:flex;justify-content:space-between;align-items:center;padding:3px 6px;border:1px solid rgba(201,168,76,.16);border-radius:7px;background:rgba(7,10,16,.52);min-height:24px;}
 .stat-k{font-weight:700;letter-spacing:.02em;opacity:.92;}
 .stat-v{font-family:'Cinzel',serif;font-weight:700;color:var(--silver);}
@@ -1615,6 +1617,7 @@ header p{color:var(--text-dim);font-style:italic;font-size:1rem;margin-top:4px;}
 .btn-type{font-size:.69rem;}
 .btn-cost{font-size:.72rem;color:var(--text-dim);}
 .btn-dmg-est{font-size:.68rem;color:var(--gold);opacity:.92;line-height:1.2;white-space:nowrap;}
+.btn-stat-preview{display:block;font-size:.6rem;color:#92a8bc;line-height:1.25;margin-top:3px;opacity:.94;}
 body.ui-mobile-mode #screen-battle .btn-dmg-est{font-size:.6rem;}
 .action-btn.physical .btn-type{color:var(--red-light);}
 .action-btn.spell .btn-type{color:var(--purple-light);}
@@ -2773,6 +2776,7 @@ img{image-rendering:pixelated;image-rendering:crisp-edges;}
 .btn-type{font-size:.62rem;opacity:.95;}
 .btn-cost{font-size:.72rem;}
 .btn-desc{font-size:.63rem;color:#b8c7d8;line-height:1.2;display:block;min-height:28px;}
+#screen-battle .btn-stat-preview{font-size:.57rem;margin-top:2px;}
 
 .battle-support-area{display:grid;grid-template-columns:1fr;gap:10px;align-items:start;}
 .battle-log-section{display:flex;flex-direction:column;gap:6px;min-width:0;}
