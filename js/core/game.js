@@ -1139,14 +1139,60 @@ function makeEnemy(name, emoji, hp, atk, def, spd, style, isBoss=false, bossTitl
     stats:{hp,maxHp:hp,atk,def,spd,acc,dodge,mdef,matk,en:baseEn,cc,cd,critChance:Math.round(cc*100),critMult:cd}};
 }
 
-function makeDukeBlakiston(){
+/** Stage-20 story boss: Lv.12, stats from playable Duke + player-mirrored feathers + boss tuning. */
+function buildDukeStoryBossEnemy(){
+  const bd=BIRDS.dukeBlakiston;
+  const dukeLv=12;
+  const featherTotal=3*dukeLv;
+  const bs=bd&&bd.stats?bd.stats:{hp:68,maxHp:68,atk:11,def:9,spd:6,dodge:12,acc:84,mdef:14,matk:14,critChance:8};
+  const stats={
+    hp:Math.max(1,Math.floor(bs.hp??bs.maxHp??68)),
+    maxHp:Math.max(1,Math.floor(bs.maxHp??bs.hp??68)),
+    atk:Math.max(1,Math.floor(bs.atk||11)),
+    def:Math.max(0,Math.floor(bs.def||9)),
+    matk:Math.max(1,Math.floor(bs.matk||14)),
+    mdef:Math.max(0,Math.floor(bs.mdef||14)),
+    spd:Math.max(1,Math.floor(bs.spd||6)),
+    acc:Math.max(60,Math.floor(bs.acc||84)),
+    dodge:Math.max(0,Math.floor(bs.dodge||12)),
+    mdodge:Math.max(0,Math.floor(bs.mdodge??bs.dodge??12)),
+    critChance:Math.max(0,Math.floor(bs.critChance||8)),
+    critMult:Math.max(1.1,Number(bs.critMult||1.65)),
+  };
+  stats.hp=stats.maxHp;
+  const cls='predator';
+  for(let i=0;i<featherTotal;i++) applyEnemyFeatherFromPlayerMirror(stats,cls);
+  stats.maxHp=Math.max(280,Math.round(stats.maxHp*2.35));
+  stats.hp=stats.maxHp;
+  stats.atk=Math.round(stats.atk*1.22);
+  stats.matk=Math.round(stats.matk*1.22);
+  stats.def=Math.round(stats.def*1.12);
+  stats.mdef=Math.round(stats.mdef*1.12);
+  const cc=Math.max(0.05,Math.min(0.95,(stats.critChance||5)/100));
+  const cd=stats.critMult||1.65;
+  const dukeAbilities=['dukeRiverGrip','dukeDecree','dukeWardens','dukeOwlsVerdict'].map(id=>({id,level:4}));
   return {
-    id:'duke_blakiston', name:'Duke Blakiston', portraitKey:'duke_blakiston', isBoss:true, size:'xl', aiType:'boss_duke', aiPersonality:'predator',
+    id:'duke_blakiston', name:'Duke Blakiston', portraitKey:'duke_blakiston', birdKey:'dukeBlakiston',
+    isBoss:true, size:'xl', aiType:'boss_duke', aiPersonality:'predator',
     enemyClass:'predator',
     enemyTier:'boss',
-    stats:{maxHp:360,hp:360,atk:16,matk:16,def:9,mdef:9,spd:7,acc:85,dodge:8,en:6,cc:0.12,cd:1.7,critChance:12,critMult:1.7},
-    duke:{phase:1,nightfallTurns:0,decreeKey:null,decreeStacks:0,riverCd:0,summonCd:0,verdictCd:0}
+    bossTitle:'🌩 Stage Boss',
+    storyLevel:dukeLv,
+    storyThreat:6,
+    abilities:dukeAbilities,
+    stats:{
+      hp:stats.hp,maxHp:stats.maxHp,atk:stats.atk,def:stats.def,spd:stats.spd,acc:stats.acc,dodge:stats.dodge,
+      mdodge:stats.mdodge,mdef:stats.mdef,matk:stats.matk,en:6,cc,cd,critChance:stats.critChance,critMult:cd,
+    },
+    hp:stats.hp,maxHp:stats.maxHp,atk:stats.atk,def:stats.def,spd:stats.spd,acc:stats.acc,dodge:stats.dodge,
+    mdodge:stats.mdodge,mdef:stats.mdef,matk:stats.matk,cc,cd,
+    energyMax:6,energy:6,energyRegen:0,
+    _storyDirectStats:true,
+    duke:{phase:1,nightfallTurns:0,decreeKey:null,decreeStacks:0,riverCd:0,summonCd:0,verdictCd:0},
   };
+}
+function makeDukeBlakiston(){
+  return buildDukeStoryBossEnemy();
 }
 const ENEMY_ABILITY_POOL = {
   eVenom:   {name:'Venom Peck', desc:'Deal light physical damage and apply 2 Poison stacks.', dmg:'~80% ATK + poison', dodgeable:true, fn(e,p,G){
@@ -7018,7 +7064,8 @@ function getStoryEvolvedSlotCount(level){
   if(level<=2) return 0;
   if(level<=5) return 1;
   if(level<=8) return 2;
-  return 3;
+  if(level<=11) return 3;
+  return 4;
 }
 /** Tier band (max of template tier ranges) → evolved slot count + tier-up passes for OW/endless bird enemies. */
 function getOwEnemySkillDepthFromTierBand(band){
@@ -7073,6 +7120,33 @@ function classGrowthWeightsForStory(cls){
   if(c==='trickster') return [{k:'spd',w:4},{k:'acc',w:4},{k:'dodge',w:3},{k:'matk',w:2},{k:'atk',w:2},{k:'maxHp',w:1}];
   return [{k:'matk',w:4},{k:'mdef',w:3},{k:'maxHp',w:3},{k:'spd',w:2},{k:'acc',w:2},{k:'atk',w:1}]; // singer
 }
+/** Story OW enemy level scales 1→12 across stages 1→20 (mirrors expected player progression depth). */
+function getStoryEnemyLevelForStage(stage){
+  const s=Math.max(1,Math.min(20,Math.floor(Number(stage)||1)));
+  return Math.max(1,Math.min(12,Math.round(1+(s-1)*11/19)));
+}
+/** One feather = same stat increments as player LEVELUP_STAT_POOL choices (class-weighted pick). */
+function applyEnemyFeatherFromPlayerMirror(stats,cls){
+  const key=weightedPick(classGrowthWeightsForStory(cls));
+  switch(key){
+    case 'maxHp':
+      stats.maxHp=(stats.maxHp||1)+12;
+      stats.hp=stats.maxHp;
+      break;
+    case 'atk': stats.atk=(stats.atk||0)+4; break;
+    case 'matk': stats.matk=(stats.matk||8)+4; break;
+    case 'def': stats.def=(stats.def||0)+3; break;
+    case 'mdef': stats.mdef=(stats.mdef||8)+3; break;
+    case 'spd': stats.spd=(stats.spd||1)+2; break;
+    case 'acc': stats.acc=Math.min(100,(stats.acc||75)+4); break;
+    case 'dodge':
+      stats.dodge=Math.min(95,(stats.dodge||0)+4);
+      stats.mdodge=Math.min(95,(stats.mdodge??stats.dodge??0)+2);
+      break;
+    case 'critChance': stats.critChance=Math.min(95,(stats.critChance||5)+1); break;
+    default: stats.atk=(stats.atk||0)+2; break;
+  }
+}
 function applyStoryEnemyGrowth(stats,key){
   switch(key){
     case 'maxHp': stats.maxHp+=6; stats.hp=stats.maxHp; break;
@@ -7126,11 +7200,10 @@ function buildStoryEnemyFromBirdKey(birdKey, stage){
     critChance:Math.max(0,Math.floor(bd.stats?.critChance||5)),
     critMult:Math.max(1.1,Number(bd.stats?.critMult||1.5)),
   };
-  const [lmin,lmax]=getStoryEnemyLevelBand(stage);
-  const level=rollInt(lmin,lmax);
+  const level=getStoryEnemyLevelForStage(stage);
   const cls=String(bd.class||'striker').toLowerCase();
-  const weights=classGrowthWeightsForStory(cls);
-  for(let i=0;i<level;i++) applyStoryEnemyGrowth(stats, weightedPick(weights));
+  const featherTotal=3*level;
+  for(let i=0;i<featherTotal;i++) applyEnemyFeatherFromPlayerMirror(stats,cls);
   const enemyStub={birdKey, abilities:[], familyEvolutionState:{}};
   const baseSlots=getBaseSkillSlotsForBird(birdKey);
   const slots=baseSlots.map(b=>normalizeSkillSlotState(JSON.parse(JSON.stringify(b)),b,birdKey));
