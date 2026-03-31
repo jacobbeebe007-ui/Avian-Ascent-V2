@@ -8753,6 +8753,31 @@ function showScreen(id) {
 // ============================================================
 //  UI
 // ============================================================
+function buildPlayerCombatStatHint(){
+  const s=G.playerStatus||{};
+  const parts=[];
+  if((s.weaken||0)>0) parts.push(`Weaken ${s.weaken}t (−25% dmg)`);
+  if((s.feared||0)>0) parts.push(`Fear ${s.feared}t`);
+  if(s.humDodge?.bonus) parts.push(`Dodge buff +${s.humDodge.bonus}% (${s.humDodge.turns||0}t)`);
+  if(s.peregrineCritLens?.bonus) parts.push(`Crit lens +${s.peregrineCritLens.bonus}% (${s.peregrineCritLens.turns||0}t)`);
+  if(Number(s.huntersMarkBonusPct)>0) parts.push(`Next hit +${Math.round(s.huntersMarkBonusPct*100)}% dmg`);
+  if((s.accDebuff||0)>0) parts.push(`Your ACC −${s.accDebuff}%`);
+  if(s.burning) parts.push('Burning (shown CC includes +20%)');
+  return parts.join(' · ');
+}
+function buildEnemyCombatStatHint(){
+  const s=G.enemyStatus||{};
+  const parts=[];
+  if((s.accDebuff||0)>0) parts.push(`ACC −${s.accDebuff}%`);
+  if((s.weaken||0)>0) parts.push(`Weaken ${s.weaken}t`);
+  if((s.feared||0)>0) parts.push(`Feared ${s.feared}t`);
+  if(s.slow) parts.push('Slow');
+  if((s.poison?.stacks||0)>0) parts.push(`Poison ×${s.poison.stacks}`);
+  if((s.bleed?.stacks||0)>0) parts.push(`Bleed ×${s.bleed.stacks}`);
+  if(s.peregrineDefBreak?.defLost) parts.push('DEF break');
+  if((s.exposedGuard?.pct||0)>0) parts.push('Guard exposed');
+  return parts.join(' · ');
+}
 function getAvatar(who)     { return document.getElementById(`${who}-avatar`); }
 function getAvatarWrap(who) { return document.getElementById(`${who}-avatar-wrap`); }
 function getPanel(who)      { return document.getElementById(`${who}-panel`); }
@@ -8827,6 +8852,8 @@ function refreshBattleUI() {
   const statCell=(klass,label,val,{suffix='',title='',trend=''}={})=>
     `<div class="stat-mini ${klass}" title="${escAttr(title)}"><span class="stat-k">${label}</span><span class="stat-v">${val}${suffix}${trend}</span></div>`;
   const _bt=(key,raw,extra='')=>{ const b=buildStatBreakdownTitle(key,raw,G.player); return [b,extra].filter(Boolean).join(' | '); };
+  const _pCombatHint=buildPlayerCombatStatHint();
+  const _pHintRow=_pCombatHint?`<div class="stat-status-hint" style="grid-column:1/-1">${escAttr(_pCombatHint)}</div>`:'';
 
   document.getElementById('player-stats-mini').innerHTML =
     `${statCell('stat-atk','ATK',_effAtk,{title:_bt('atk',p.atk,_statNote('Battle ATK',_effAtk-(p.atk||0),_atkNote,'Debuffs reducing ATK effect.')),trend:_trendTag(_effAtk-(p.atk||0))})}
@@ -8838,7 +8865,8 @@ function refreshBattleUI() {
      ${statCell('stat-acc','ACC',_effAcc,{suffix:'%',title:_bt('acc',p.acc,_statNote('Battle ACC',_effAcc-(p.acc||0),'Battle Hymn increased ACC.','Blind/ruffle reduced ACC.')+_accCardBonus),trend:_trendTag(_effAcc-p.acc)})}
      ${statCell('stat-spd','SPD',_effSpd,{title:_bt('spd',p.spd,_statNote('Battle SPD',_effSpd-(p.spd||0),'Buff increased SPD.','Slow/clip effects reduced SPD.')),trend:_trendTag(_effSpd-p.spd)})}
      ${statCell('stat-cc','CC',_critChance,{suffix:'%',title:_bt('critChance',_ccBaseStore,`Shown value includes battle modifiers (e.g. burn). ${_statNote('vs stored CC',_critChance-_ccBaseStore,'Temporary buffs.','')}`),trend:_trendTag(_critChance-_ccBaseStore)})}
-     ${statCell('stat-cd','CD',_critMultDisplay,{suffix:'',title:`Base crit multiplier ${_critBase.toFixed(2)}×. On critical hits, +${_critBonusPct.toFixed(2)} is added to the multiplier (e.g. Execution Beak). Shown value is base; small +number is the crit-only add.`})}`;
+     ${statCell('stat-cd','CD',_critMultDisplay,{suffix:'',title:`Base crit multiplier ${_critBase.toFixed(2)}×. On critical hits, +${_critBonusPct.toFixed(2)} is added to the multiplier (e.g. Execution Beak). Shown value is base; small +number is the crit-only add.`})}
+     ${_pHintRow}`;
 
   // Enemy stats display
   const eal=document.getElementById('enemy-abilities-list');
@@ -8846,7 +8874,9 @@ function refreshBattleUI() {
   const eCritChance=Math.max(0,Math.min(100,Math.round((ep2.cc??((ep2.critChance||5)/100))*100)));
   const eCritMult=(ep2.cd??ep2.critMult??1.5);
   const enemyCell=(klass,label,val,{suffix='',title=''}={})=>
-    `<div class="est ${klass}" title="${title}"><span class="stat-k">${label}</span><span class="stat-v">${val}${suffix}</span></div>`;
+    `<div class="est ${klass}" title="${escAttr(title)}"><span class="stat-k">${label}</span><span class="stat-v">${val}${suffix}</span></div>`;
+  const _eCombatHint=buildEnemyCombatStatHint();
+  const _eHintRow=_eCombatHint?`<div class="stat-status-hint est-hint" style="grid-column:1/-1">${escAttr(_eCombatHint)}</div>`:'';
   document.getElementById('enemy-stats-mini').innerHTML =
     `${enemyCell('stat-atk','ATK',ep2.atk,{title:'Physical attack'})}
      ${enemyCell('stat-matk','MATK',ep2.matk||6,{title:'Magic attack'})}
@@ -8857,7 +8887,8 @@ function refreshBattleUI() {
      ${enemyCell('stat-acc','ACC',ep2.acc||70,{suffix:'%',title:'Accuracy'})}
      ${enemyCell('stat-spd','SPD',ep2.spd||0,{title:'Speed'})}
      ${enemyCell('stat-cc','CC',eCritChance,{suffix:'%',title:'Crit chance'})}
-     ${enemyCell('stat-cd','CD',Number(eCritMult).toFixed(1),{suffix:'×',title:'Crit damage'})}`;
+     ${enemyCell('stat-cd','CD',Number(eCritMult).toFixed(1),{suffix:'×',title:'Crit damage'})}
+     ${_eHintRow}`;
   if(eal){
     eal.innerHTML='';
     (G.enemy.abilities||[]).forEach(entry=>{
@@ -9469,6 +9500,7 @@ function getAbilityDisplayTags(ab){
 function renderActions() {
   const grid=document.getElementById('actions-grid'); grid.innerHTML='';
   renderEnergyOrbs();
+  if(G.player?.abilities?.length) enforceAbilityCosts(G.player);
   const locked=!canPlayerAct();
   let allAbilities=[...G.player.abilities];
   const order={physical:0,ranged:1,spell:2,utility:3};
@@ -9552,13 +9584,17 @@ function renderActions() {
     const shortDesc=(((ab.levels&&ab.levels[(ab.level||1)-1]?.desc)||ab.desc||'')+getAbilityDamageScalingHintForUI(ab)).replace(/<[^>]+>/g,'').slice(0,100);
     const _tmplUI=getAbilityTemplateForUI(ab);
     const _dmgEst=estimateSkillDamageRange(ab,_tmplUI,G.player);
-    const dmgChip=(_dmgEst.isDamaging&&_dmgEst.dmgLow!=null)?`<span class="btn-dmg-est" title="Estimated damage (ignores enemy defenses)">~${_dmgEst.dmgLow}–${_dmgEst.dmgHigh}</span>`:'';
+    const dmgChip=(_dmgEst.isDamaging&&_dmgEst.dmgLow!=null)?`<span class="btn-dmg-est" title="Estimated damage after enemy DEF/M.DEF (approx.; your buffs included)">~${_dmgEst.dmgLow}–${_dmgEst.dmgHigh}</span>`:'';
+    const _escMini=s=>String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    const _statPrev=getSkillStatPreviewLines(ab,_tmplUI);
+    const statPrevChip=_statPrev.length?`<span class="btn-stat-preview">${_statPrev.map(l=>_escMini(l)).join(' · ')}</span>`:'';
     btn.innerHTML=`
       <span class="btn-name">${ab.name}</span>
       <span class="btn-type">${getAbilityDisplayTags(ab).map(t=>`[${t}]`).join('')}</span>
       <span class="btn-cost">${btnCostText}</span>
       ${dmgChip}
       <span class="btn-desc">${shortDesc}</span>
+      ${statPrevChip}
       ${modTxt}
       ${ab.level>1?`<span class="ab-lv-badge">Lv${ab.level}</span>`:''}
       ${ailDots?`<div class="ailment-icons">${ailDots}</div>`:''}
@@ -9636,14 +9672,26 @@ function getAbilityTemplateForUI(abOrId){
 
 function estimateMultiplierFromSkillDescription(txt=''){
   const s=String(txt||'');
+  const matk=s.match(/(\d+(?:\.\d+)?)\s*%\s*M\.?\s*ATK/i);
+  if(matk) return (Number(matk[1])||0)/100;
+  const dmgPer=s.match(/(\d+(?:\.\d+)?)\s*%\s*dmg(?:\s*per\s*hit)?/i);
+  if(dmgPer) return (Number(dmgPer[1])||0)/100;
   const multi=s.match(/(\d+)\s*[x×]\s*(\d+(?:\.\d+)?)\s*%/i);
   if(multi){
     const hits=Math.max(1,Number(multi[1])||1);
     const pct=Math.max(0,Number(multi[2])||0);
     return (hits*pct)/100;
   }
-  const pct=s.match(/(\d+(?:\.\d+)?)\s*%/);
-  if(pct) return (Number(pct[1])||0)/100;
+  const all=s.matchAll(/(\d+(?:\.\d+)?)\s*%/g);
+  let bestV=0;
+  for(const m of all){
+    const v=Number(m[1])||0;
+    const pos=m.index??0;
+    const slice=s.slice(Math.max(0,pos-12),pos+18);
+    if(/miss|skip|fumble|chance to|ailment|poison|burn|bleed|para|confuse|fear|weak/i.test(slice)&&v<=35) continue;
+    if(v>bestV) bestV=v;
+  }
+  if(bestV>0) return bestV/100;
   return null;
 }
 
@@ -9655,6 +9703,33 @@ function getEffectivePlayerAtkForDamagePreview(){
   if(G?.sitAndWaitActive) b=Math.floor(b*1.25);
   if(G?.tookieActive&&G?.playerStatus?.tookie) b=Math.floor(b*(1+(G.playerStatus.tookie.atkBonus||0)/100));
   return b;
+}
+
+/** `${birdKey}::${abilityId}` → mult[] parsed from that bird's SKILL_ACTION_OVERRIDES (avoids shared id clashes e.g. dart). */
+const STRIKE_PREVIEW_MULT_SCOPED=Object.create(null);
+function registerStrikePreviewForBird(birdKey, overrideMap){
+  if(!birdKey||!overrideMap||typeof overrideMap!=='object') return;
+  const prefix=`${birdKey}::`;
+  for(const id of Object.keys(overrideMap)){
+    const fn=overrideMap[id];
+    if(typeof fn!=='function') continue;
+    const src=Function.prototype.toString.call(fn);
+    const m=src.match(/\bmult\s*:\s*(\[[0-9.,\s]+\])/);
+    if(!m) continue;
+    let arr;
+    try{ arr=JSON.parse(m[1]); }catch(_){ continue; }
+    if(!Array.isArray(arr)||!arr.length) continue;
+    STRIKE_PREVIEW_MULT_SCOPED[prefix+id]=arr;
+  }
+}
+function getStrikePreviewMultiplierForAbility(abilityId, lv, attacker){
+  const bk=(attacker&&attacker.birdKey)||G?.player?.birdKey||'';
+  if(!bk||!abilityId) return null;
+  const table=STRIKE_PREVIEW_MULT_SCOPED[`${bk}::${abilityId}`];
+  if(!table||!table.length) return null;
+  const i=Math.max(0,Math.min(Math.max(1,Number(lv)||1)-1,table.length-1));
+  const v=table[i];
+  return Number.isFinite(Number(v))?Number(v):null;
 }
 
 /**
@@ -9684,6 +9759,8 @@ function estimateSkillDamageRange(ab,tmpl,attacker,opts){
     dmgMult=estimateMultiplierFromSkillDescription(lvData?.desc||'')??estimateMultiplierFromSkillDescription(tmpl?.desc||'');
   }
   if(!(dmgMult>0)) return {isDamaging,dmgLow:null,dmgHigh:null,btnType,lv,lvData};
+  const strikePrev=getStrikePreviewMultiplierForAbility(ab?.id,lv,p);
+  if(strikePrev!=null) dmgMult=strikePrev;
   if(isPlayerCombat&&G?._pendingStrikeActionMods){
     const add=Number(G._pendingStrikeActionMods.multAdd)||0;
     if(btnType==='spell'){
@@ -9694,18 +9771,33 @@ function estimateSkillDamageRange(ab,tmpl,attacker,opts){
   let dmgLow=null,dmgHigh=null;
   if(isDamaging){
     if(btnType==='spell'&&isPlayerCombat&&G?.player&&G?.enemy){
-      const base=G.player.stats.matk||8;
-      const mdef=G.enemy.stats?.mdef??8;
-      const adjust=(base-mdef)*0.015;
-      const bEff=getEffectivePlayerAtkForDamagePreview();
-      let pdLo=Math.floor(Math.floor(bEff*0.8));
-      let pdHi=Math.floor(Math.floor(bEff*1.2));
-      if((G?.playerStatus?.weaken||0)>0){ pdLo=Math.max(1,Math.floor(pdLo*0.75)); pdHi=Math.max(1,Math.floor(pdHi*0.75)); }
+      const matk=Number(G.player.stats?.matk||8);
+      const mdef=Number(G.enemy.stats?.mdef??8);
+      const adjust=(matk-mdef)*0.015;
+      let mLo=Math.max(1,Math.floor(matk*0.8));
+      let mHi=Math.max(1,Math.floor(matk*1.2));
+      if((G?.playerStatus?.weaken||0)>0){ mLo=Math.max(1,Math.floor(mLo*0.75)); mHi=Math.max(1,Math.floor(mHi*0.75)); }
       const mult=dmgMult+adjust;
-      const coreLo=Math.max(1,Math.floor(pdLo*mult*base/7.2));
-      const coreHi=Math.max(1,Math.floor(pdHi*mult*base/7.2));
-      dmgLow=Math.min(coreLo,coreHi);
-      dmgHigh=Math.max(coreLo,coreHi);
+      dmgLow=Math.max(1,Math.floor(mLo*mult));
+      dmgHigh=Math.max(dmgLow,Math.floor(mHi*mult));
+    }else if(isPlayerCombat&&['physical','ranged'].includes(btnType)&&tmpl.damageScaling&&G?.player){
+      const sc=tmpl.damageScaling;
+      let baseLo=Math.max(1,Math.floor(scaleStat*0.8*dmgMult));
+      let baseHi=Math.max(1,Math.floor(scaleStat*1.2*dmgMult));
+      let secLo=0, secHi=0;
+      if(sc.secondaryScaler&&Number(sc.secondaryScaleValue)>0){
+        const pstats=G.player.stats||{};
+        const scn=String(sc.secondaryScaler).toUpperCase();
+        let statv=0;
+        if(scn==='SPD') statv=Number(pstats.spd||0);
+        else if(scn==='DEF') statv=Number(pstats.def||0);
+        else if(scn==='MATK'||scn==='MATT') statv=Number(pstats.matk||0);
+        const core=Math.max(0,statv-4)*Number(sc.secondaryScaleValue)*dmgMult;
+        secLo=Math.max(0,Math.floor(core*0.82));
+        secHi=Math.max(0,Math.floor(core*1.18));
+      }
+      dmgLow=applyConditionalPhysicalDamageMultipliers(baseLo+secLo, sc.conditionalBonuses);
+      dmgHigh=applyConditionalPhysicalDamageMultipliers(baseHi+secHi, sc.conditionalBonuses);
     }else{
       dmgLow=Math.max(1,Math.floor(scaleStat*0.8*dmgMult));
       dmgHigh=Math.max(dmgLow,Math.floor(scaleStat*1.2*dmgMult));
@@ -9740,6 +9832,42 @@ function estimateSkillDamageRange(ab,tmpl,attacker,opts){
     }
   }
   return {isDamaging,dmgLow,dmgHigh,btnType,lv,lvData};
+}
+
+function snowyOwlEyeStatPreviewLines(ab){
+  const lv=Math.max(1,Math.min(4,ab?.level||1));
+  const i=lv-1;
+  const id=ab?.id||'';
+  if(id==='owl_eye') return [`Next attack +${Math.round(([0.14,0.17,0.20,0.23][i]||0.14)*100)}% damage`];
+  if(id==='owl_hunters_sight') return [`Next attack +${Math.round(([0.20,0.24,0.28,0.32][i]||0.20)*100)}% damage`];
+  if(id==='moon_lock') return [`Next attack +${Math.round(([0.28,0.32,0.36,0.40][i]||0.28)*100)}% damage`];
+  if(id==='expose_prey') return [`Enemy −${[1,2,2,3][i]||1} DEF (${[2,2,3,3][i]||2}t)`];
+  if(id==='owl_weakpoint_sight') return [`Enemy −${[2,3,4,5][i]||2} DEF (${[2,3,3,4][i]||2}t)`];
+  if(id==='owl_ruin_lock') return [`Enemy −${[3,4,5,6][i]||3} DEF (${[3,3,4,4][i]||3}t)`];
+  if(id==='cold_eye') return [`Your attacks +${[8,12,16,20][i]||8}% crit (${[2,2,3,3][i]||2}t)`];
+  if(id==='owl_killer_sight') return [`Your attacks +${[12,16,20,24][i]||12}% crit (${[2,3,3,3][i]||2}t)`];
+  if(id==='owl_death_lock') return [`Your attacks +${[16,20,24,28][i]||16}% crit (${[3,3,3,4][i]||3}t)`];
+  return [];
+}
+function snowyOwlGlideStatPreviewLines(ab){
+  const lv=Math.max(1,Math.min(4,ab?.level||1));
+  const i=lv-1;
+  const id=ab?.id||'';
+  if(id==='frost_glide'){
+    return [
+      `Hum dodge +${[10,12,14,16][i]}% (2–3t; branch may trade for slow/weaken)`,
+      `Baseline: enemy SPD −1, dodge −${5+(i>=2?1:0)} (2t)`,
+    ];
+  }
+  if(id==='silent_glide') return [`Hum dodge +${[28,32,36,40][i]}% (${[2,2,3,3][i]}t)`];
+  if(id==='ghost_drift') return [`Hum dodge +${[38,42,46,50][i]}% (${[2,3,3,3][i]}t)`];
+  if(id==='snow_silence') return [`Hum dodge +${[48,52,56,60][i]}% (3t) · Enemy ACC −${[10,12,14,16][i]}%`];
+  if(id==='winter_drift') return [`Enemy slow SPD −${3}, dodge −10 (3t) · Weaken ${[20,24,28,32][i]}%`];
+  if(id==='white_silence') return [`Heavy slow + Weaken ${[28,32,36,40][i]}% · Enemy ACC −${[6,8,10,12][i]}%`];
+  if(id==='hunting_glide') return [`Next attack +${Math.round(([0.10,0.13,0.16,0.19][i]||0.10)*100)}% damage`];
+  if(id==='shadow_drift') return [`Next attack +${Math.round(([0.16,0.20,0.24,0.28][i]||0.16)*100)}% · light slow`];
+  if(id==='night_silence') return [`Next attack +${Math.round(([0.24,0.28,0.32,0.36][i]||0.24)*100)}% · Hum dodge +${[14,16,18,20][i]}% (2t)`];
+  return [];
 }
 
 /** Curated "current → after" lines for major buff utilities (tooltip only). */
@@ -9777,14 +9905,215 @@ const SKILL_STAT_PREVIEW={
   },
   battleFocus(p,ab){ return SKILL_STAT_PREVIEW.battle_focus(p,ab); },
   focusChirp(p,ab){ return SKILL_STAT_PREVIEW.battle_focus(p,ab); },
+  keen_eye(p,ab){
+    const lv=Math.max(1,Math.min(4,ab?.level||1));
+    const pct=Math.round(([0.15,0.18,0.21,0.24][lv-1]||0.15)*100);
+    return [`Next attack +${pct}% damage`];
+  },
+  hunters_sight(p,ab){
+    const lv=Math.max(1,Math.min(4,ab?.level||1));
+    const pct=Math.round(([0.22,0.26,0.30,0.34][lv-1]||0.22)*100);
+    return [`Next attack +${pct}% damage`];
+  },
+  fatal_lock(p,ab){
+    const lv=Math.max(1,Math.min(4,ab?.level||1));
+    const pct=Math.round(([0.30,0.34,0.38,0.42][lv-1]||0.30)*100);
+    return [`Next attack +${pct}% damage`];
+  },
+  expose_flight(p,ab){
+    const lv=Math.max(1,Math.min(4,ab?.level||1));
+    const lost=[1,2,2,3][lv-1]||1; const turns=[2,2,3,3][lv-1]||2;
+    return [`Enemy −${lost} DEF (${turns}t)`];
+  },
+  weakpoint_sight(p,ab){
+    const lv=Math.max(1,Math.min(4,ab?.level||1));
+    const lost=[2,3,4,5][lv-1]||2; const turns=[2,3,3,4][lv-1]||2;
+    return [`Enemy −${lost} DEF (${turns}t)`];
+  },
+  ruin_lock(p,ab){
+    const lv=Math.max(1,Math.min(4,ab?.level||1));
+    const lost=[3,4,5,6][lv-1]||3; const turns=[3,3,4,4][lv-1]||3;
+    return [`Enemy −${lost} DEF (${turns}t)`];
+  },
+  predatory_eye(p,ab){
+    const lv=Math.max(1,Math.min(4,ab?.level||1));
+    const cr=[10,14,18,22][lv-1]||10; const t=[2,2,3,3][lv-1]||2;
+    return [`Your attacks +${cr}% crit (${t}t)`];
+  },
+  killer_sight(p,ab){
+    const lv=Math.max(1,Math.min(4,ab?.level||1));
+    const cr=[14,18,22,26][lv-1]||14; const t=[2,3,3,3][lv-1]||2;
+    return [`Your attacks +${cr}% crit (${t}t)`];
+  },
+  death_lock(p,ab){
+    const lv=Math.max(1,Math.min(4,ab?.level||1));
+    const cr=[18,22,26,30][lv-1]||18; const t=[3,3,3,4][lv-1]||3;
+    return [`Your attacks +${cr}% crit (${t}t)`];
+  },
+  aerial_pace(p,ab){
+    const lv=Math.max(1,Math.min(4,ab?.level||1));
+    const spd=[1,1,2,2][lv-1]||1; const dg=[12,14,16,18][lv-1]||12; const t=[2,2,2,2][lv-1]||2;
+    const cs=Math.round(Number(p?.stats?.spd||0)); const cd=Math.round(Number(p?.stats?.dodge||0));
+    return [`SPD ${cs}→${cs+spd} · Dodge ${cd}%→${cd+dg}% (${t}t)`];
+  },
+  rapid_pace(p,ab){
+    const lv=Math.max(1,Math.min(4,ab?.level||1));
+    const spd=[2,3,4,5][lv-1]||2; const t=[2,2,2,3][lv-1]||2;
+    const cs=Math.round(Number(p?.stats?.spd||0));
+    return [`SPD ${cs}→${cs+spd} (${t}t)`];
+  },
+  glide_burst(p,ab){
+    const lv=Math.max(1,Math.min(4,ab?.level||1));
+    const spd=[4,5,6,7][lv-1]||4; const dg=[8,10,12,14][lv-1]||8; const t=[2,2,3,3][lv-1]||2;
+    const cs=Math.round(Number(p?.stats?.spd||0)); const cd=Math.round(Number(p?.stats?.dodge||0));
+    return [`SPD ${cs}→${cs+spd} · Dodge ${cd}%→${cd+dg}% (${t}t)`];
+  },
+  stoop_tempo(p,ab){
+    const lv=Math.max(1,Math.min(4,ab?.level||1));
+    const spd=[3,4,5,6][lv-1]||3; const ad=[8,10,12,14][lv-1]||8; const t=[2,2,2,3][lv-1]||2;
+    const cs=Math.round(Number(p?.stats?.spd||0));
+    return [`SPD ${cs}→${cs+spd} · Enemy ACC −${ad}% (${t}t)`];
+  },
+  slip_pace(p,ab){
+    const lv=Math.max(1,Math.min(4,ab?.level||1));
+    const dg=[30,34,38,42][lv-1]||30; const t=[2,2,3,3][lv-1]||2;
+    const cd=Math.round(Number(p?.stats?.dodge||0));
+    return [`Dodge ${cd}%→${cd+dg}% (${t}t)`];
+  },
+  ghost_glide(p,ab){
+    const lv=Math.max(1,Math.min(4,ab?.level||1));
+    const dg=[40,44,48,52][lv-1]||40; const t=[2,3,3,3][lv-1]||2;
+    const cd=Math.round(Number(p?.stats?.dodge||0));
+    return [`Dodge ${cd}%→${cd+dg}% (${t}t)`];
+  },
+  phantom_stoop(p,ab){
+    const lv=Math.max(1,Math.min(4,ab?.level||1));
+    const dg=[50,54,58,62][lv-1]||50; const t=[3,3,3,3][lv-1]||3;
+    const cd=Math.round(Number(p?.stats?.dodge||0));
+    return [`Dodge ${cd}%→${cd+dg}% + slow (${t}t)`];
+  },
+  hunting_pace(p,ab){
+    const lv=Math.max(1,Math.min(4,ab?.level||1));
+    const pct=Math.round(([0.10,0.12,0.14,0.16][lv-1]||0.10)*100);
+    const t=[2,2,2,3][lv-1]||2;
+    return [`Next Dive-line hit +${pct}% dmg (${t}t)`];
+  },
+  falling_glide(p,ab){
+    const lv=Math.max(1,Math.min(4,ab?.level||1));
+    const pct=Math.round(([0.14,0.16,0.18,0.20][lv-1]||0.14)*100);
+    const t=[2,2,3,3][lv-1]||2;
+    return [`Next Dive-line hit +${pct}% dmg (${t}t)`];
+  },
+  kill_stoop(p,ab){
+    const lv=Math.max(1,Math.min(4,ab?.level||1));
+    const pct=Math.round(([0.18,0.22,0.26,0.30][lv-1]||0.18)*100);
+    const t=[3,3,3,3][lv-1]||3;
+    return [`Next Dive-line hit +${pct}% dmg (${t}t)`];
+  },
+  owl_eye(p,ab){ return snowyOwlEyeStatPreviewLines(ab); },
+  owl_hunters_sight(p,ab){ return snowyOwlEyeStatPreviewLines(ab); },
+  moon_lock(p,ab){ return snowyOwlEyeStatPreviewLines(ab); },
+  expose_prey(p,ab){ return snowyOwlEyeStatPreviewLines(ab); },
+  owl_weakpoint_sight(p,ab){ return snowyOwlEyeStatPreviewLines(ab); },
+  owl_ruin_lock(p,ab){ return snowyOwlEyeStatPreviewLines(ab); },
+  cold_eye(p,ab){ return snowyOwlEyeStatPreviewLines(ab); },
+  owl_killer_sight(p,ab){ return snowyOwlEyeStatPreviewLines(ab); },
+  owl_death_lock(p,ab){ return snowyOwlEyeStatPreviewLines(ab); },
+  frost_glide(p,ab){ return snowyOwlGlideStatPreviewLines(ab); },
+  silent_glide(p,ab){ return snowyOwlGlideStatPreviewLines(ab); },
+  ghost_drift(p,ab){ return snowyOwlGlideStatPreviewLines(ab); },
+  snow_silence(p,ab){ return snowyOwlGlideStatPreviewLines(ab); },
+  winter_drift(p,ab){ return snowyOwlGlideStatPreviewLines(ab); },
+  white_silence(p,ab){ return snowyOwlGlideStatPreviewLines(ab); },
+  hunting_glide(p,ab){ return snowyOwlGlideStatPreviewLines(ab); },
+  shadow_drift(p,ab){ return snowyOwlGlideStatPreviewLines(ab); },
+  night_silence(p,ab){ return snowyOwlGlideStatPreviewLines(ab); },
 };
+
+function _previewPickArrayFromSource(src, key){
+  if(!src||!key) return null;
+  const re=new RegExp('\\b'+key+'\\s*:\\s*(\\[[0-9.,\\s]+\\])');
+  const m=String(src).match(re);
+  if(!m) return null;
+  try{
+    const a=JSON.parse(m[1]);
+    return Array.isArray(a)?a:null;
+  }catch(_){ return null; }
+}
+/** Numeric utility lines from SKILL_ACTION_OVERRIDES config literals (any bird). */
+function buildGenericUtilityStatPreviewFromAction(ab,tmpl){
+  const lines=[];
+  if(!G?.player) return lines;
+  const btn=String(tmpl?.btnType||tmpl?.type||ab?.btnType||'').toLowerCase();
+  if(btn!=='utility') return lines;
+  const id=ab?.id;
+  if(!id) return lines;
+  const canon=(typeof resolveAbilityAliasSourceId==='function')?resolveAbilityAliasSourceId(id):id;
+  const actFn=ACTIONS[canon]||ACTIONS[id];
+  if(typeof actFn!=='function') return lines;
+  const src=Function.prototype.toString.call(actFn);
+  const lv=Math.max(1,Math.min(4,ab?.level||1));
+  const i=lv-1;
+  const pick=(key)=>_previewPickArrayFromSource(src,key);
+  const turns=pick('turns');
+  const humTurns=pick('humTurns');
+  const tTurn=turns&&turns[i]!=null?turns[i]:(humTurns&&humTurns[i]!=null?humTurns[i]:null);
+  const fmtT=tTurn!=null?` (${tTurn}t)`:'';
+
+  const bonus=pick('bonus');
+  if(bonus&&bonus[i]!=null){
+    const cur=Math.round(Number(G.player.stats?.dodge||0));
+    lines.push(`Dodge: ${cur}% → ${cur+bonus[i]}%${fmtT}`);
+  }
+  const spd=pick('spd');
+  const dodge=pick('dodge');
+  if(spd&&spd[i]!=null){
+    const cs=Math.round(Number(G.player.stats?.spd||0));
+    if(dodge&&dodge[i]!=null&&dodge[i]>0){
+      const cd=Math.round(Number(G.player.stats?.dodge||0));
+      lines.push(`SPD ${cs}→${cs+spd[i]} · Dodge ${cd}%→${cd+dodge[i]}%${fmtT}`);
+    }else lines.push(`SPD: ${cs} → ${cs+spd[i]}${fmtT}`);
+  }else if(dodge&&dodge[i]!=null&&dodge[i]>0){
+    const cd=Math.round(Number(G.player.stats?.dodge||0));
+    lines.push(`Dodge ${cd}%→${cd+dodge[i]}%${fmtT}`);
+  }
+
+  const amp=pick('amp');
+  if(amp&&amp[i]!=null) lines.push(`Next hit +${Math.round(amp[i]*100)}% damage${fmtT}`);
+  const markAmp=pick('markAmp');
+  if(markAmp&&markAmp[i]!=null) lines.push(`Next hit +${Math.round(markAmp[i]*100)}% damage${fmtT}`);
+  const accDown=pick('accDown');
+  if(accDown&&accDown[i]!=null) lines.push(`Enemy ACC −${accDown[i]}%${fmtT}`);
+  const guard=pick('guard');
+  if(guard&&guard[i]!=null) lines.push(`Defend +${guard[i]} (guard stacks)${fmtT}`);
+  const humDodge=pick('humDodge');
+  if(humDodge&&humDodge[i]!=null){
+    const ht=humTurns&&humTurns[i]!=null?humTurns[i]:tTurn;
+    lines.push(`Hum dodge +${humDodge[i]}%${ht!=null?` (${ht}t)`:''}`);
+  }
+  const expose=pick('expose');
+  if(expose&&expose[i]!=null) lines.push(`Enemy +${Math.round(expose[i]*100)}% damage taken${fmtT}`);
+  const defStrip=pick('defStrip');
+  if(defStrip&&defStrip[i]!=null) lines.push(`Enemy −${defStrip[i]} DEF${fmtT}`);
+  const energy=pick('energy');
+  if(energy&&energy[i]!=null) lines.push(`On hit: +${energy[i]} EN`);
+  const stripBuffs=pick('stripBuffs');
+  if(stripBuffs&&stripBuffs[i]!=null&&stripBuffs[i]>0) lines.push(`Steal up to ${stripBuffs[i]} enemy buff(s)`);
+
+  return lines.slice(0,5);
+}
 
 function getSkillStatPreviewLines(ab,tmpl){
   const id=ab?.id;
   if(!id||!G?.player) return [];
   const fn=SKILL_STAT_PREVIEW[id];
-  if(typeof fn!=='function') return [];
-  try{ return fn(G.player,ab,tmpl)||[]; }catch(_){ return []; }
+  if(typeof fn==='function'){
+    try{
+      const r=fn(G.player,ab,tmpl)||[];
+      if(r.length) return r;
+    }catch(_){}
+  }
+  return buildGenericUtilityStatPreviewFromAction(ab,tmpl);
 }
 
 function buildActionTooltipHTML(ab){
@@ -9826,7 +10155,7 @@ function buildActionTooltipHTML(ab){
   }
   const scaleNote=tmpl.damageScaling?.scalingNote;
   html+=`<div class="tt-desc">${lvData.desc}${scaleNote?`<div class="tt-scaling" style="opacity:.92;margin-top:6px;font-size:.9em;border-top:1px solid rgba(255,255,255,.12);padding-top:6px">${scaleNote}</div>`:''}</div>`;
-  html+=`<div class="tt-note" style="opacity:.75;margin-top:6px;font-size:.78em">Damage estimate ignores enemy DEF/M.DEF and fight modifiers.</div>`;
+  html+=`<div class="tt-note" style="opacity:.75;margin-top:6px;font-size:.78em">Damage estimate uses your current stats, skill tier mults, DEF/M.DEF mitigation, and common buffs — combat rolls can vary.</div>`;
   if(window._isTouchDevice) html+=`<div style="text-align:right;margin-top:8px"><button onclick="hideTooltip()" style="background:rgba(201,168,76,.2);border:1px solid var(--gold);border-radius:4px;color:var(--gold);padding:2px 10px;cursor:pointer;font-size:.75rem;">✕ Close</button></div>`;
   return html;
 }
@@ -17934,6 +18263,34 @@ const MAGPIE_SKILL_ACTION_OVERRIDES = {
 };
 Object.entries(MAGPIE_SKILL_ACTION_OVERRIDES).forEach(([id, fn])=>{ ACTIONS[id]=fn; });
 
+(function initStrikePreviewFromBirdOverrides(){
+  [
+    ['sparrow',SPARROW_SKILL_ACTION_OVERRIDES],
+    ['goose',GOOSE_SKILL_ACTION_OVERRIDES],
+    ['shoebill',SHOEBILL_SKILL_ACTION_OVERRIDES],
+    ['harpy',HARPY_SKILL_ACTION_OVERRIDES],
+    ['crow',CROW_SKILL_ACTION_OVERRIDES],
+    ['blackbird',BLACKBIRD_SKILL_ACTION_OVERRIDES],
+    ['macaw',MACAW_SKILL_ACTION_OVERRIDES],
+    ['lyrebird',LYREBIRD_SKILL_ACTION_OVERRIDES],
+    ['blackCockatoo',BLACK_COCKATOO_SKILL_ACTION_OVERRIDES],
+    ['kookaburra',KOOKABURRA_SKILL_ACTION_OVERRIDES],
+    ['raven',RAVEN_SKILL_ACTION_OVERRIDES],
+    ['hummingbird',HUMMINGBIRD_SKILL_ACTION_OVERRIDES],
+    ['peregrine',PEREGRINE_SKILL_ACTION_OVERRIDES],
+    ['robin',ROBIN_SKILL_ACTION_OVERRIDES],
+    ['bowerbird',BOWERBIRD_SKILL_ACTION_OVERRIDES],
+    ['toucan',TOUCAN_SKILL_ACTION_OVERRIDES],
+    ['swan',SWAN_SKILL_ACTION_OVERRIDES],
+    ['flamingo',FLAMINGO_SKILL_ACTION_OVERRIDES],
+    ['secretary',SECRETARY_SKILL_ACTION_OVERRIDES],
+    ['albatross',ALBATROSS_SKILL_ACTION_OVERRIDES],
+    ['seagull',SEAGULL_SKILL_ACTION_OVERRIDES],
+    ['snowyOwl',SNOWY_OWL_SKILL_ACTION_OVERRIDES],
+    ['magpie',MAGPIE_SKILL_ACTION_OVERRIDES],
+  ].forEach(([bk,map])=>registerStrikePreviewForBird(bk,map));
+})();
+
 const RELIABLE_ONE_EN_ATTACK_BY_CLASS = Object.freeze({
   striker:'rapidPeck',
   bruiser:'bracePeck',
@@ -18189,11 +18546,14 @@ function getAbilityEnergyCost(ab, player){
   const t = getAbilityTemplateForUI(ab);
 
   let cost = 0;
-  if(typeof ab.energyCost === 'number') cost = ab.energyCost;
-  else if(typeof t?.energyCost === 'number') cost = t.energyCost;
-  else if(Array.isArray(t?.energyByLevel)){
+  // Always derive from template + level first — stale ab.energyCost caused wrong EN on cards / spend.
+  if(Array.isArray(t?.energyByLevel) && t.energyByLevel.length){
     const idx = Math.min((ab.level||1)-1, t.energyByLevel.length-1);
-    cost = t.energyByLevel[idx] ?? 0;
+    cost = Number(t.energyByLevel[idx]) ?? 0;
+  }else if(typeof t?.energyCost === 'number'){
+    cost = t.energyCost;
+  }else if(typeof ab.energyCost === 'number'){
+    cost = ab.energyCost;
   }
 
   if(isMainAttackAbility(ab) && !isSpellAbilityId(ab.id) && !(ab.fixedMainAttackCost || t?.fixedMainAttackCost)) cost = 1;
@@ -18201,12 +18561,17 @@ function getAbilityEnergyCost(ab, player){
   const tType=(t?.btnType||t?.type||ab.btnType||ab.type||'').toLowerCase();
   const isAttack=(tType==='physical'||tType==='ranged');
   const isSpell=(tType==='spell');
+  // Family skill tree: tiering up slotted skills should not raise EN (spells, utilities, and secondary attacks use tier-1 cost).
+  if(p && usesFamilySkillEvolution(p) && !isMainAttackAbility(ab) && Array.isArray(t?.energyByLevel) && t.energyByLevel.length){
+    cost = Math.max(0, Math.floor(Number(t.energyByLevel[0])||0));
+  }
+
   if(isAttack && !G._firstAttackUsed && p?.firstAttackFree) cost=0;
   if(isSpell && !G._firstSpellUsed && p?.firstSpellFree) cost=0;
   if(isSpell && !G._firstSpellUsed && (p?.augFirstSpellCostDown||0)>0) cost=Math.max(0,cost-p.augFirstSpellCostDown);
   if(isSpell && p?.mutArcOverload) cost+=1;
 
-  if(cost===1 && isMultiHitAbility(ab)) cost += 1;
+  if(cost===1 && isMultiHitAbility(ab) && !isMainAttackAbility(ab)) cost += 1;
 
   const maxE = p?.energyMax ?? 99;
   cost = Math.min(cost, maxE);
