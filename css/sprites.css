@@ -64,6 +64,18 @@
 .sprite-seagull.frame-2 { background-position: 0% 100%; }   /* dash */
 .sprite-seagull.frame-3 { background-position: 100% 100%; } /* power */
 
+/* Seagull art reads oversized in the default "medium" box — keep gameplay size Medium, tighten portrait footprint vs Large birds */
+#bird-grid .sprite4.medium.sprite-seagull,
+.bird-card .sprite4.medium.sprite-seagull{
+  width: 76px !important;
+  height: 76px !important;
+}
+.ascent-panel-portrait .sprite4.medium.sprite-seagull,
+.ascent-face .sprite4.medium.sprite-seagull{
+  width: 88px !important;
+  height: 88px !important;
+}
+
 
 /* ===== 06_seagull-animation-patch.css ===== */
 

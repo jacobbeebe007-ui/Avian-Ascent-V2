@@ -6290,6 +6290,7 @@ function continueRun() {
   }
   G.collectedRewards=save.collectedRewards||[];
   G.player=save.player;
+  if(G.player?.birdKey && BIRDS[G.player.birdKey]?.size) G.player.size=BIRDS[G.player.birdKey].size;
   G.player.class = resolveFinalClass(G.player?.class, G.player?.birdKey);
   ensureFamilyEvolutionState(G.player);
   syncPlayerAbilitiesFromSkillSlots(G.player);
@@ -7885,13 +7886,31 @@ function __hasSpriteKey(k){
   // sprite keys are represented by CSS class .sprite-<key>
   return !!(document.querySelector && document.querySelector('.sprite-'+k)) || (globalThis.SPRITE_KEYS_ALL && SPRITE_KEYS_ALL.has && SPRITE_KEYS_ALL.has(k));
 }
+/** Effective roster size for UI (fixes older saves missing player.size; aliases emperorpenguin → penguin). */
+function rosterSizeForEntity(entity){
+  let sz=String(entity?.size||entity?.birdSize||'').trim().toLowerCase();
+  if(sz) return sz;
+  const flat=String(entity?.birdKey||entity?.portraitKey||entity?.id||'').toLowerCase().replace(/[^a-z]/g,'');
+  if(!flat) return '';
+  const toCanon={emperorpenguin:'penguin',secretarybird:'secretary',harpyeagle:'harpy',baldeagle:'baldEagle',blackcockatoo:'blackCockatoo',dukeblakiston:'dukeBlakiston'};
+  const canon=toCanon[flat]||flat;
+  if(BIRDS[canon]?.size) return String(BIRDS[canon].size).toLowerCase();
+  const hit=Object.keys(BIRDS).find(k=>String(k).toLowerCase().replace(/[^a-z]/g,'')===flat);
+  return hit&&BIRDS[hit]?.size?String(BIRDS[hit].size).toLowerCase():'';
+}
 function getUISizeClass(entity, context='general'){
-  const sz = String(entity?.size || entity?.birdSize || '').toLowerCase();
-  const isBoss = !!entity?.isBoss;
-  if(isBoss && context==='battle') return 'boss';
-  if(sz.includes('tiny') || sz.includes('small')) return 'small';
+  const key=__normSpriteKey(entity?.portraitKey||entity?.birdKey||entity?.id||'');
+  const sz=rosterSizeForEntity(entity);
+  const isBoss=!!entity?.isBoss;
+  if(isBoss&&context==='battle') return 'boss';
+  if(key==='penguin') return 'xl';
+  if(key==='seagull') return 'medium';
+  if(key==='robin') return 'small';
+  if(sz.includes('tiny')) return 'tiny';
+  if(sz.includes('small')) return 'small';
+  if(sz==='xl'||sz.includes('xlarge')) return 'xl';
+  if(sz.includes('large')) return 'large';
   if(sz.includes('medium')) return 'medium';
-  if(sz.includes('xlarge') || sz.includes('xl') || sz.includes('large')) return 'medium';
   return 'medium';
 }
 function normalizeSpriteBirdKey(raw){
@@ -7939,6 +7958,56 @@ function rosterAbilityBlurb(t){
   const raw=(t.levels&&t.levels[0]&&t.levels[0].desc!=null)?t.levels[0].desc:(t.desc!=null?t.desc:'No description');
   return escapeHtmlRoster(String(raw).trim());
 }
+/** Same skill slot → ability pipeline as a new run (family evolution + ABILITY_TEMPLATES), for roster UI only. */
+function buildRosterPreviewStubForBirdKey(birdKey){
+  const bd=BIRDS[birdKey];
+  if(!bd) return null;
+  return{
+    birdKey,
+    name: bd.name,
+    portraitKey: bd.portraitKey||birdKey,
+    size: bd.size||'medium',
+    class: bd.class,
+    stats: {...bd.stats},
+    abilities: (bd.startAbilities||[]).map(id=>({id, level:1})),
+    energyBonus: 0,
+    firstAttackFree: false,
+    firstSpellFree: false,
+    augFirstSpellCostDown: 0,
+    mutArcOverload: false,
+    familyEvolutionState: null,
+  };
+}
+function rosterPreviewSlotTag(birdKey, stub, ab, idx){
+  if(!stub||!usesFamilySkillEvolution(stub)) return ['CORE','LINE 2','LINE 3','LINE 4'][idx]||'SKILL';
+  const slots=getSkillSlots(stub).slice().sort((a,b)=>(a.slotIndex||0)-(b.slotIndex||0));
+  const slot=slots.find(s=>Number.isFinite(ab?.slotIndex)&&s.slotIndex===ab.slotIndex)||slots[idx];
+  const fam=slot?getSkillSlotFamilyDef(slot, birdKey):null;
+  if(fam?.displayName) return String(fam.displayName).toUpperCase();
+  return ['CORE','LINE 2','LINE 3','LINE 4'][idx]||'SKILL';
+}
+function materializeRosterPreviewKit(birdKey){
+  const out={abilities:[], energyMax:0, stats:null, slotTags:[]};
+  const stub=buildRosterPreviewStubForBirdKey(birdKey);
+  if(!stub) return out;
+  const prev=G.player;
+  try{
+    G.player=stub;
+    stub.energyMax=computePlayerMaxEnergy();
+    ensureFamilyEvolutionState(stub);
+    if(!usesFamilySkillEvolution(stub)){
+      const bd=BIRDS[birdKey];
+      stub.abilities=(bd.startAbilities||[]).map((id, idx)=>ensureAbilityObjectFromTemplate(id, {id, level:1}, idx));
+    }
+    out.abilities=Array.isArray(stub.abilities)?stub.abilities.slice():[];
+    out.energyMax=Math.max(0, Number(stub.energyMax)||computePlayerMaxEnergy());
+    out.stats=stub.stats?{...stub.stats}:{};
+    out.slotTags=out.abilities.map((ab, i)=>rosterPreviewSlotTag(birdKey, stub, ab, i));
+  }finally{
+    G.player=prev;
+  }
+  return out;
+}
 // Stubs kept so any call sites or wrapper hooks don't throw
 function openRosterChampionModal(){}
 function closeRosterChampionModal(){}
@@ -7980,10 +8049,11 @@ function updateAscentPanel(key) {
     const sizeClass = getUISizeClass(bird, 'panel');
     const classLabel=idToClassLabel(cls);
     const sizeLabel=SIZE_LABELS[bird.size||'medium']||bird.size;
-    const startEn=(ENERGY_BY_SIZE[(bird.size||'medium').toLowerCase()] ?? 3);
-    const maxEn=startEn+3;
-    const cc=bird.stats.critChance||5;
-    const cd=1.5;
+    const kit=materializeRosterPreviewKit(key);
+    const dispStats=kit.stats&&Object.keys(kit.stats).length?kit.stats:bird.stats;
+    const maxEn=kit.energyMax>0?kit.energyMax:((ENERGY_BY_SIZE[(bird.size||'medium').toLowerCase()] ?? 3));
+    const cc=dispStats.critChance||5;
+    const cd=Number.isFinite(dispStats.critMult)?Number(dispStats.critMult):1.5;
     const roleSummary={
       striker:'Fast combo attacker',
       bruiser:'Heavy bruiser with hit pressure',
@@ -7993,29 +8063,29 @@ function updateAscentPanel(key) {
       singer:'Song-based controller',
     }[cls]||'Adaptive fighter';
 
-    const startAbilityDetails=(bird.startAbilities||[]).map((id,idx)=>{
-      const t=getAbilityTemplateForUI(id)||{};
-      const en=Array.isArray(t.energyByLevel)?(t.energyByLevel[0]??t.energyCost??0):(t.energyCost??0);
-      const type=String(t.btnType||t.type||'utility').toUpperCase();
-      const tagOrder=['BASIC','SIGNATURE','UTILITY','CLASS'];
-      const slotTag=tagOrder[idx]||'CLASS';
+    const startAbilityDetails=(kit.abilities.length?kit.abilities:(bird.startAbilities||[]).map(id=>({id,level:1}))).map((ab,idx)=>{
+      const id=typeof ab==='string'?ab:(ab&&ab.id);
+      const t=getAbilityTemplateForUI(ab)||getAbilityTemplateForUI({id,level:1})||{};
+      const en=Number.isFinite(ab?.energyCost)?ab.energyCost:(Array.isArray(t.energyByLevel)?(t.energyByLevel[0]??t.energyCost??0):(t.energyCost??0));
+      const type=String(t.btnType||t.type||ab?.btnType||ab?.type||'utility').toUpperCase();
+      const slotTag=escapeHtmlRoster((kit.slotTags&&kit.slotTags[idx])||(['CORE','LINE 2','LINE 3','LINE 4'][idx]||'SKILL'));
       const short=rosterAbilityBlurb(t);
-      const nm=escapeHtmlRoster(t.name||id);
+      const nm=escapeHtmlRoster(t.name||ab?.name||id);
       return `<div class="ascent-ability-card"><div class="ascent-ability-top"><span class="ascent-ability-name">${nm}</span><span class="ascent-ability-en">${en} EN</span></div><div class="ascent-ability-tags">${slotTag} · ${type}</div><div class="ascent-ability-desc">${short}</div></div>`;
     }).join('');
 
     const statsStrip=`
       <div class="ascent-stats-strip">
-        <span class="ascent-stat-chip"><abbr title="Hit Points">HP</abbr> <strong>${bird.stats.hp}</strong></span>
-        <span class="ascent-stat-chip"><abbr title="Attack">ATK</abbr> <strong>${bird.stats.atk}</strong></span>
-        <span class="ascent-stat-chip"><abbr title="Defense">DEF</abbr> <strong>${bird.stats.def}</strong></span>
-        <span class="ascent-stat-chip"><abbr title="Speed">SPD</abbr> <strong>${bird.stats.spd}</strong></span>
-        <span class="ascent-stat-chip"><abbr title="Accuracy">ACC</abbr> <strong>${bird.stats.acc}%</strong></span>
-        <span class="ascent-stat-chip">MATK <strong>${bird.stats.matk||0}</strong></span>
-        <span class="ascent-stat-chip">MDEF <strong>${bird.stats.mdef||0}</strong></span>
+        <span class="ascent-stat-chip"><abbr title="Hit Points">HP</abbr> <strong>${dispStats.hp}</strong></span>
+        <span class="ascent-stat-chip"><abbr title="Attack">ATK</abbr> <strong>${dispStats.atk}</strong></span>
+        <span class="ascent-stat-chip"><abbr title="Defense">DEF</abbr> <strong>${dispStats.def}</strong></span>
+        <span class="ascent-stat-chip"><abbr title="Speed">SPD</abbr> <strong>${dispStats.spd}</strong></span>
+        <span class="ascent-stat-chip"><abbr title="Accuracy">ACC</abbr> <strong>${dispStats.acc}%</strong></span>
+        <span class="ascent-stat-chip">MATK <strong>${dispStats.matk||0}</strong></span>
+        <span class="ascent-stat-chip">MDEF <strong>${dispStats.mdef||0}</strong></span>
         <span class="ascent-stat-chip">CC <strong>${cc}%</strong></span>
         <span class="ascent-stat-chip">CD <strong>${cd.toFixed(1)}×</strong></span>
-        <span class="ascent-stat-chip">EN <strong>${startEn}/${maxEn}</strong></span>
+        <span class="ascent-stat-chip">EN <strong>${maxEn}</strong></span>
       </div>`;
 
     const passiveName=escapeHtmlRoster(bird.passive?.name||'—');
@@ -22588,14 +22658,15 @@ SPRITE_KEYS_ALL.add('magpie');
 (function(){
   globalThis.getUISizeClass = function(entity, context='general'){
     const key = String(entity?.portraitKey || entity?.birdKey || entity?.id || '').toLowerCase().replace(/[^a-z]/g,'');
-    const sz = String(entity?.size || entity?.birdSize || '').toLowerCase();
+    const sz = typeof rosterSizeForEntity==='function'?rosterSizeForEntity(entity):String(entity?.size||entity?.birdSize||'').toLowerCase();
     const isBoss = !!entity?.isBoss;
     if(isBoss && context==='battle') return 'boss';
     if(key === 'penguin') return 'xl';
     if(key === 'seagull') return 'medium';
+    if(key === 'robin') return 'small';
     if(sz.includes('tiny')) return 'tiny';
     if(sz.includes('small')) return 'small';
-    if(sz.includes('xlarge') || sz.includes('xl')) return 'xl';
+    if(sz==='xl'||sz.includes('xlarge')) return 'xl';
     if(sz.includes('large')) return 'large';
     if(sz.includes('medium')) return 'medium';
     return 'medium';
@@ -22622,13 +22693,14 @@ SPRITE_KEYS_ALL.add('magpie');
 
   globalThis.getUISizeClass = function(entity, context='general'){
     const key = norm(entity?.portraitKey || entity?.birdKey || entity?.id || '');
-    const sz = String(entity?.size || entity?.birdSize || '').toLowerCase();
+    const sz = typeof rosterSizeForEntity==='function'?rosterSizeForEntity(entity):String(entity?.size||entity?.birdSize||'').toLowerCase();
     if(entity?.isBoss && context === 'battle') return 'boss';
     if(key === 'penguin') return 'xl';
     if(key === 'seagull') return 'medium';
+    if(key === 'robin') return 'small';
     if(sz.includes('tiny')) return 'tiny';
     if(sz.includes('small')) return 'small';
-    if(sz.includes('xlarge') || sz.includes('xl')) return 'xl';
+    if(sz==='xl'||sz.includes('xlarge')) return 'xl';
     if(sz.includes('large')) return 'large';
     if(sz.includes('medium')) return 'medium';
     return 'medium';
@@ -22638,8 +22710,9 @@ SPRITE_KEYS_ALL.add('magpie');
     const key = norm(birdKey);
     const entity = (sizeOrEntity && typeof sizeOrEntity === 'object') ? sizeOrEntity : { size: String(sizeOrEntity || 'medium') };
     let sizeClass = (typeof sizeOrEntity === 'string') ? sizeOrEntity : globalThis.getUISizeClass(entity, 'general');
-    if(key === 'penguin') sizeClass = 'small';
+    if(key === 'penguin') sizeClass = 'xl';
     if(key === 'seagull') sizeClass = 'medium';
+    if(key === 'robin') sizeClass = 'small';
     if(spriteBirds.has(key)){
       return '<div class="sprite4 ' + sizeClass + ' sprite-' + key + ' frame-0 ' + (locked ? 'locked' : '') + '"></div>';
     }
@@ -22648,7 +22721,7 @@ SPRITE_KEYS_ALL.add('magpie');
   };
 
   if(globalThis.PORTRAITS){
-    PORTRAITS.penguin = '<div class="sprite4 small sprite-penguin frame-0"></div>';
+    PORTRAITS.penguin = '<div class="sprite4 xl sprite-penguin frame-0"></div>';
     PORTRAITS.duke_blakiston = '<div class="sprite4 boss sprite-dukeblakiston frame-0"></div>';
   }
 
