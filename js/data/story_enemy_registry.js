@@ -38,14 +38,6 @@
     dukeBlakiston: { birdKey: 'dukeBlakiston', threatTier: 5, threatValue: 6, enemyEligible: false, bossOnly: true, minStage: 20, maxStage: 20 },
   };
 
-  const STORY_BIRD_CLASS = {
-    sparrow: 'striker', robin: 'striker', blackbird: 'singer', seagull: 'trickster', kiwi: 'predator',
-    hummingbird: 'striker', macaw: 'singer', crow: 'trickster', magpie: 'trickster', goose: 'tank', penguin: 'tank',
-    peregrine: 'striker', snowyOwl: 'predator', kookaburra: 'bruiser', lyrebird: 'singer', raven: 'trickster',
-    bowerbird: 'trickster', toucan: 'striker', swan: 'striker', flamingo: 'striker', albatross: 'striker',
-    blackCockatoo: 'bruiser', secretary: 'predator', shoebill: 'tank', harpy: 'predator', baldEagle: 'predator',
-    ostrich: 'bruiser', cassowary: 'bruiser', emu: 'bruiser', dukeBlakiston: 'predator',
-  };
 
   const STORY_STAGE_BUDGETS = {
     1: 2, 2: 2, 3: 3, 4: 3, 5: 4, 6: 4, 7: 5, 8: 5, 9: 5,
@@ -162,8 +154,7 @@
     const bird = getBirdDef(key);
     const fromRoster = bird?.class || bird?.birdClass;
     if (fromRoster) return String(fromRoster).toLowerCase();
-    const bk = STORY_ENEMY_REGISTRY[key]?.birdKey || key;
-    return STORY_BIRD_CLASS[bk] || null;
+    return null;
   }
 
   function isBadEarlyPair(stageNumber, keyA, keyB) {

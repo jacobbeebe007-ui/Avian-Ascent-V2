@@ -1063,6 +1063,73 @@ const BIRDS = {
   },
 };
 
+const MASTER_BIRD_REGISTRY = Object.freeze({
+  sparrow:{name:'Sparrow',class:'striker',size:'tiny',tagline:'Swift as wind, strikes like needles.',mainAttackId:'multiPeck',stats:{hp:28,atk:5,def:2,spd:9,dodge:35,acc:85,mdef:6,matk:6},startAbilities:['multiPeck','dart','windFeint','trackPrey']},
+  hummingbird:{name:'Hummingbird',class:'striker',size:'tiny',tagline:'Blurred wings, needle beak. Zap & zip.',mainAttackId:'needle_jab',stats:{hp:25,atk:7,def:1,spd:12,dodge:55,acc:92,mdef:4,matk:10},startAbilities:['needle_jab','dash','blink_flutter','combo_strike']},
+  blackbird:{name:'Blackbird',class:'singer',size:'small',tagline:'Songs that shatter minds. Eyes like embers.',mainAttackId:'shadow_peck',stats:{hp:38,atk:6,def:3,spd:7,dodge:25,acc:80,mdef:8,matk:14},startAbilities:['dark_song','shadow_peck','gloom_wing','grim_sign']},
+  macaw:{name:'Macaw',class:'singer',size:'small',tagline:'Every word is a weapon.',mainAttackId:'echo_note',stats:{hp:34,atk:6,def:3,spd:9,dodge:28,acc:88,mdef:8,matk:14},startAbilities:['echo_note','mimic_song','feather_taunt','chorus_mark']},
+  peregrine:{name:'Peregrine Falcon',class:'striker',size:'small',tagline:'Lock. Stoop. No survivors.',mainAttackId:'talon_jab',stats:{hp:32,atk:8,def:3,spd:10,dodge:28,acc:88,mdef:8,matk:8},startAbilities:['talon_jab','dive','keen_eye','aerial_pace']},
+  snowyOwl:{name:'Snowy Owl',class:'predator',size:'small',tagline:'The snow listens. Then it falls.',mainAttackId:'talon_snap',stats:{hp:28,atk:12,def:2,spd:9,dodge:38,acc:92,mdef:3,matk:3},startAbilities:['talon_snap','silent_dive','owl_eye','frost_glide']},
+  kiwi:{name:'Kiwi',class:'predator',size:'small',tagline:'Nocturnal probe. Beak pierces armor like butter.',mainAttackId:'beak_jab',stats:{hp:34,atk:8,def:3,spd:8,dodge:48,acc:88,mdef:5,matk:7},startAbilities:['beak_jab','night_probe','scent_hunt','scrape']},
+  blackCockatoo:{name:'Black Cockatoo',class:'singer',size:'medium',tagline:'Booming crest. Resonant voice and crushing notes.',mainAttackId:'beak_crack',stats:{hp:44,atk:9,def:5,spd:5,dodge:14,acc:80,mdef:9,matk:12},startAbilities:['beak_crack','boom_call','wing_beat','resonance_mark']},
+  crow:{name:'Crow',class:'trickster',size:'medium',tagline:'Clever. Coordinated. Unsettling.',mainAttackId:'peck',stats:{hp:38,atk:7,def:4,spd:6,dodge:16,acc:92,mdef:10,matk:7},startAbilities:['peck','murder_murmuration','dread_call','battle_focus']},
+  kookaburra:{name:'Kookaburra',class:'trickster',size:'medium',tagline:'Bush trickster. Laughing pressure, feints, and sudden drops.',mainAttackId:'beak_chop',stats:{hp:46,atk:9,def:5,spd:7,dodge:22,acc:82,mdef:10,matk:8},startAbilities:['beak_chop','laugh_call','perch_watch','drop_strike']},
+  lyrebird:{name:'Lyrebird',class:'singer',size:'medium',tagline:'The great deceiver. Master of all songs.',mainAttackId:'echo_note',stats:{hp:38,atk:6,def:4,spd:6,dodge:20,acc:82,mdef:10,matk:14},startAbilities:['echo_note','mimic_chorus','display_step','refrain_mark']},
+  raven:{name:'Raven',class:'trickster',size:'medium',tagline:'The field remembers. You only hurry the ending.',mainAttackId:'beak_jab',stats:{hp:38,atk:8,def:3,spd:7,dodge:22,acc:82,mdef:8,matk:14},startAbilities:['beak_jab','omen_call','dark_watch','fate_mark']},
+  magpie:{name:'Magpie',class:'trickster',size:'medium',tagline:'Flashy thief. Swoops in, steals the moment, and slips away.',mainAttackId:'swoop',stats:{hp:40,atk:7,def:4,spd:9,dodge:34,acc:88,mdef:8,matk:9},startAbilities:['swoop','steal_shine','feather_flick','dart']},
+  robin:{name:'Robin',class:'singer',size:'small',tagline:'Bright hedge-songster. Quick notes, light strikes, and uplifting refrains.',mainAttackId:'quick_peck',stats:{hp:34,atk:7,def:3,spd:8,dodge:24,acc:88,mdef:8,matk:8},startAbilities:['quick_peck','dart_rush','bright_chirp','hop_step']},
+  bowerbird:{name:'Bowerbird',class:'trickster',size:'medium',tagline:'Stage-maker. Builds the bower, lures the eye, and cashes the display.',mainAttackId:'trinket_toss',stats:{hp:40,atk:8,def:4,spd:7,dodge:22,acc:86,mdef:9,matk:9},startAbilities:['trinket_toss','lure_call','bower_build','display_mark']},
+  toucan:{name:'Toucan',class:'striker',size:'large',tagline:'Oversized bill, vivid pressure, odd reach.',mainAttackId:'toucan_beak_jab',stats:{hp:46,atk:8,def:5,spd:5,dodge:14,acc:82,mdef:9,matk:9},startAbilities:['toucan_beak_jab','beak_slam','fruit_toss','color_mark']},
+  swan:{name:'Swan',class:'tank',size:'large',tagline:'Regal bulwark. Grace, weight, and unbroken composure.',mainAttackId:'neck_jab',stats:{hp:44,atk:9,def:5,spd:6,dodge:22,acc:86,mdef:10,matk:9},startAbilities:['neck_jab','wing_sweep','grace_glide','poise_mark']},
+  flamingo:{name:'Flamingo',class:'striker',size:'large',tagline:'Wading lines. Soft water, hard footing.',mainAttackId:'leg_jab',stats:{hp:48,atk:8,def:4,spd:6,dodge:18,acc:80,mdef:12,matk:8},startAbilities:['leg_jab','marsh_sweep','balance_pose','mire_mark']},
+  secretary:{name:'Secretary Bird',class:'predator',size:'large',tagline:'Stalking justice. The kick decides.',mainAttackId:'sec_leg_jab',stats:{hp:48,atk:9,def:6,spd:5,dodge:10,acc:80,mdef:10,matk:6},startAbilities:['sec_leg_jab','sec_crushing_kick','hunter_stride','prey_mark']},
+  albatross:{name:'Albatross',class:'bruiser',size:'large',tagline:'Vast ocean bruiser. Wide-wing blows and crushing returning sweeps.',mainAttackId:'alb_wing_jab',stats:{hp:58,atk:9,def:7,spd:6,dodge:12,acc:80,mdef:9,matk:7},startAbilities:['alb_wing_jab','alb_ocean_sweep','alb_glide_line','alb_current_mark']},
+  seagull:{name:'Seagull',class:'trickster',size:'medium',tagline:'Coastal pest. Harrying swoops, noisy cries, scavenger’s payoff.',mainAttackId:'sgl_snap_peck',stats:{hp:36,atk:7,def:3,spd:9,dodge:26,acc:86,mdef:8,matk:8},startAbilities:['sgl_snap_peck','sgl_swoop_pass','sgl_raucous_cry','sgl_scavenge_mark']},
+  goose:{name:'Goose',class:'tank',size:'xl',tagline:'Territorial bruiser. Honk, check, refuse to yield.',mainAttackId:'gos_beak_snap',stats:{hp:55,atk:9,def:7,spd:2,dodge:5,acc:70,mdef:12,matk:4},startAbilities:['gos_beak_snap','gos_body_check','gos_honk_blast','gos_brace_up']},
+  shoebill:{name:'Shoebill Stork',class:'tank',size:'xl',tagline:'Ancient. Patient. Inevitable.',mainAttackId:'sbl_beak_chop',stats:{hp:70,atk:10,def:10,spd:2,dodge:5,acc:72,mdef:16,matk:6},startAbilities:['sbl_beak_chop','sbl_skull_crack','sbl_still_stance','sbl_dread_mark']},
+  harpy:{name:'Harpy Eagle',class:'predator',size:'xl',tagline:'Warlord of the canopy. No mercy.',mainAttackId:'hrp_talon_clutch',stats:{hp:58,atk:13,def:6,spd:4,dodge:8,acc:78,mdef:8,matk:6},startAbilities:['hrp_talon_clutch','hrp_canopy_crush','hrp_predator_grip','hrp_prey_lock']},
+  baldEagle:{name:'Bald Eagle',class:'predator',size:'xl',tagline:'Unbreakable. Undying. Undefeated.',mainAttackId:'skyTalon',stats:{hp:60,atk:11,def:7,spd:4,dodge:10,acc:78,mdef:10,matk:6},startAbilities:['skyTalon','guard','predatorMark','freedomCry']},
+  penguin:{name:'Emperor Penguin',class:'tank',size:'xl',tagline:'Ice-clad waddler. Magic slides off its blubber.',mainAttackId:'icebreakerHonk',stats:{hp:65,atk:9,def:9,spd:3,dodge:12,acc:75,mdef:14,matk:5},startAbilities:['icebreakerHonk','snowWall','guard','tundraCall']},
+  ostrich:{name:'Ostrich',class:'bruiser',size:'xl',tagline:'Flightless thunder. Charges build to earth-shaking fury.',mainAttackId:'powerKick',stats:{hp:72,atk:12,def:8,spd:1,dodge:5,acc:70,mdef:10,matk:4},startAbilities:['powerKick','stampedeStrike','sandKick','momentumCharge']},
+  cassowary:{name:'Cassowary',class:'bruiser',size:'xl',tagline:'Jungle juggernaut. Bone-crushing kicks and armored hide.',mainAttackId:'raptorKick',stats:{hp:74,atk:13,def:9,spd:3,dodge:8,acc:74,mdef:11,matk:4},startAbilities:['raptorKick','warStomp','momentumCharge','crushingTalon']},
+  emu:{name:'Emu',class:'bruiser',size:'xl',tagline:'Flightless brute. Kicks and stomps with terrifying force.',mainAttackId:'headWhip',stats:{hp:80,atk:14,def:10,spd:2,dodge:20,acc:72,mdef:10,matk:4},startAbilities:['headWhip','warCharge','sandKick','momentumStrike']},
+  dukeBlakiston:{name:'Duke Blakiston',class:'predator',size:'xl',tagline:'Lord of the court. Boss-tier ruler with unique command, control, and execution skills.',mainAttackId:'nightTalon',stats:{hp:68,atk:11,def:9,spd:6,dodge:12,acc:84,mdef:14,matk:14},startAbilities:['nightTalon','nightfallCall','courtSummon','verdict']},
+  wren:{name:'Wren',class:'striker',size:'tiny',tagline:'Tiny hedge striker. Fast feet, sharp pecks, no wasted motion.',mainAttackId:'wren_bramble_peck',stats:{hp:26,atk:6,def:2,spd:10,dodge:34,acc:88,mdef:7,matk:7},startAbilities:['wren_bramble_peck','wren_thornflight','wren_hedge_feint','wren_briar_step']},
+  fairywren:{name:'Superb Fairywren',class:'singer',size:'tiny',tagline:'Brilliant songster. Small frame, bright notes, quick support.',mainAttackId:'fwren_azure_trill',stats:{hp:27,atk:5,def:2,spd:10,dodge:32,acc:88,mdef:8,matk:12},startAbilities:['fwren_azure_trill','fwren_sunthread_call','fwren_glimmer_peck','fwren_blue_refrain']},
+  firecrest:{name:'Firecrest',class:'striker',size:'tiny',tagline:'Flash of flame. Tiny striker built around speed and burning finishers.',mainAttackId:'firecrest_ember_beak',stats:{hp:25,atk:6,def:2,spd:11,dodge:36,acc:90,mdef:6,matk:8},startAbilities:['firecrest_ember_beak','firecrest_flare_dart','firecrest_ashstep','firecrest_kindle_mark']},
+  wagtail:{name:'Willie Wagtail',class:'trickster',size:'small',tagline:'Tail-flicking nuisance. Sharp feints, mocking calls, constant motion.',mainAttackId:'wagtail_snap',stats:{hp:34,atk:7,def:3,spd:10,dodge:30,acc:90,mdef:8,matk:9},startAbilities:['wagtail_snap','wagtail_flicker_strike','wagtail_jeering_call','wagtail_shadow_flick']},
+  galah:{name:'Galah',class:'trickster',size:'small',tagline:'Loud pink menace. Flashy disruption, misdirection, and staged payoffs.',mainAttackId:'galah_pink_jab',stats:{hp:36,atk:7,def:4,spd:8,dodge:26,acc:86,mdef:9,matk:10},startAbilities:['galah_pink_jab','galah_showstopper','galah_shrill_burst','galah_spotlight_mark']},
+  bluejay:{name:'Blue Jay',class:'bruiser',size:'small',tagline:'Territorial brawler. Harsh hits, loud pressure, and aggressive momentum.',mainAttackId:'bluejay_crest_jab',stats:{hp:40,atk:8,def:4,spd:8,dodge:22,acc:84,mdef:8,matk:8},startAbilities:['bluejay_crest_jab','bluejay_jaybreaker','bluejay_crest_guard','bluejay_raucous_cry']},
+  cardinal:{name:'Cardinal',class:'singer',size:'small',tagline:'Crimson songbird. Strong clear notes and rallying support.',mainAttackId:'cardinal_crimson_note',stats:{hp:35,atk:6,def:3,spd:8,dodge:24,acc:86,mdef:9,matk:13},startAbilities:['cardinal_crimson_note','cardinal_scarlet_hymn','cardinal_crest_jab','cardinal_red_refrain']},
+  bushturkey:{name:'Bush Turkey',class:'bruiser',size:'medium',tagline:'Scrappy ground bruiser. Dirty hits, stubborn guard, and pressure.',mainAttackId:'bturkey_scrap_peck',stats:{hp:48,atk:9,def:5,spd:5,dodge:14,acc:80,mdef:9,matk:7},startAbilities:['bturkey_scrap_peck','bturkey_brush_crash','bturkey_bush_guard','bturkey_rattle_call']},
+  vulture:{name:'Vulture',class:'bruiser',size:'medium',tagline:'Grim scavenger bruiser. Heavy blows and lingering pressure.',mainAttackId:'vulture_grave_jab',stats:{hp:46,atk:9,def:5,spd:6,dodge:16,acc:80,mdef:10,matk:8},startAbilities:['vulture_grave_jab','vulture_corpse_crush','vulture_bone_ward','vulture_grave_dirge']},
+  barnowl:{name:'Barn Owl',class:'predator',size:'medium',tagline:'Silent dusk hunter. Clean set-up, precise dive, punishing finish.',mainAttackId:'barnowl_talon',stats:{hp:38,atk:10,def:4,spd:8,dodge:24,acc:88,mdef:8,matk:7},startAbilities:['barnowl_talon','barnowl_shadow_dive','barnowl_death_glare','barnowl_silent_glide']},
+  bustard:{name:'Bustard',class:'bruiser',size:'large',tagline:'Heavy plains bruiser. Wide body, crushing steps, relentless force.',mainAttackId:'bustard_heavy_jab',stats:{hp:56,atk:10,def:6,spd:4,dodge:12,acc:78,mdef:10,matk:6},startAbilities:['bustard_heavy_jab','bustard_dust_trample','bustard_plainshield','bustard_steppe_call']},
+  goldeneagle:{name:'Golden Eagle',class:'predator',size:'large',tagline:'Imperial hunter. High kill pressure and ruthless finishers.',mainAttackId:'golden_sun_talon',stats:{hp:52,atk:12,def:6,spd:6,dodge:14,acc:82,mdef:9,matk:7},startAbilities:['golden_sun_talon','golden_sovereign_dive','golden_sky_verdict','golden_hunters_majesty']},
+  pelican:{name:'Australian Pelican',class:'tank',size:'xl',tagline:'Massive bill, massive body. Absorbs hits and refuses to yield.',mainAttackId:'pelican_hookbill_snap',stats:{hp:72,atk:9,def:10,spd:2,dodge:6,acc:72,mdef:14,matk:5},startAbilities:['pelican_hookbill_snap','pelican_pouch_crush','pelican_broadside_guard','pelican_stillwater_recovery']},
+  marabou:{name:'Marabou Stork',class:'predator',size:'xl',tagline:'Corpse-field predator. Grim pressure and towering execution.',mainAttackId:'marabou_rotbeak_jab',stats:{hp:62,atk:12,def:7,spd:4,dodge:10,acc:78,mdef:10,matk:6},startAbilities:['marabou_rotbeak_jab','marabou_ghoul_lunge','marabou_bone_sentence','marabou_grave_hunt']},
+});
+
+function applyMasterBirdRegistry(birds, master){
+  Object.entries(master).forEach(([key, src])=>{
+    const current = birds[key] || { color:'#8899aa', portraitKey:key, passive:{id:`${key}Instinct`, name:'Bird Instinct', desc:'No passive effect yet.'} };
+    const stats = Object.assign({}, current.stats||{}, src.stats||{});
+    if(typeof src.stats?.hp==='number') stats.maxHp = src.stats.hp;
+    birds[key] = Object.assign({}, current, {
+      name: src.name,
+      class: src.class,
+      size: src.size,
+      tagline: src.tagline,
+      mainAttackId: src.mainAttackId,
+      stats,
+      startAbilities: Array.isArray(src.startAbilities) ? src.startAbilities.slice() : (current.startAbilities||[]),
+    });
+  });
+}
+
+applyMasterBirdRegistry(BIRDS, MASTER_BIRD_REGISTRY);
+
+
 BIRDS.blackbird.extraAbilities = (BIRDS.blackbird.extraAbilities||[]).filter(x=>x!=='mimic');
 
 
@@ -1851,15 +1918,28 @@ const CLASS_ROLE_BY_CLASS = {
   singer:'singer',
 };
 
-const FINAL_BIRD_CLASS_BY_KEY = Object.freeze({
-  sparrow:'striker', hummingbird:'striker', robin:'striker', peregrine:'striker',
-  cassowary:'bruiser', emu:'bruiser', ostrich:'bruiser', secretary:'predator', secretarybird:'predator', kookaburra:'bruiser',
-  goose:'tank', swan:'striker', penguin:'tank', emperorpenguin:'tank', shoebill:'tank', shoebillstork:'tank',
-  magpie:'trickster', seagull:'trickster', bowerbird:'trickster', crow:'trickster',
-  snowyowl:'predator', harpy:'predator', harpyeagle:'predator', baldeagle:'predator', dukeblakiston:'predator', duke_blakiston:'predator', kiwi:'predator',
-  blackbird:'singer', phainopepla:'singer', macaw:'singer', lyrebird:'singer', flamingo:'striker', toucan:'striker', raven:'trickster', albatross:'striker', dove:'singer',
-  blackcockatoo:'bruiser',
-});
+const FINAL_BIRD_CLASS_BY_KEY = (()=>{
+  const byKey={};
+  Object.entries(MASTER_BIRD_REGISTRY||{}).forEach(([key,data])=>{
+    byKey[normalizeBirdClassKey(key)] = String(data?.class||'').toLowerCase();
+  });
+  const aliases={
+    secretarybird:'secretary',
+    emperorpenguin:'penguin',
+    shoebillstork:'shoebill',
+    harpyeagle:'harpy',
+    baldeagle:'baldEagle',
+    dukeblakiston:'dukeBlakiston',
+    duke_blakiston:'dukeBlakiston',
+    blackcockatoo:'blackCockatoo',
+    snowyowl:'snowyOwl',
+  };
+  Object.entries(aliases).forEach(([alias,target])=>{
+    const cls = byKey[normalizeBirdClassKey(target)] || byKey[normalizeBirdClassKey(alias)];
+    if(cls) byKey[normalizeBirdClassKey(alias)] = cls;
+  });
+  return Object.freeze(byKey);
+})();
 
 function normalizeBirdClassKey(birdKey=''){
   return String(birdKey||'').toLowerCase().replace(/[^a-z_]/g,'');
