@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 /**
- * Consolidated player-facing skill id list: template tables + ACTIONS + overrides + aliases.
- * Run: node scripts/skills-master.js [--csv]
- * JSON to stdout; with --csv, prints a second block "---CSV---" then CSV rows.
+ * Emits a sorted ability id inventory (templates + ACTIONS + overrides + aliases).
+ * Run: node scripts/ability-inventory.js
+ * Requires the same extract helpers as ci-check (duplicated here to stay standalone).
  */
 const fs = require('fs');
 const path = require('path');
@@ -12,35 +12,66 @@ function extractObjectLiteralAfterMarker(src, marker){
   if(markerIdx === -1) return null;
   const openIdx = src.indexOf('{', markerIdx);
   if(openIdx === -1) return null;
+
   let depth = 0;
   let inString = false;
   let stringQuote = '';
   let escaped = false;
   let inLineComment = false;
   let inBlockComment = false;
+
   for(let i = openIdx; i < src.length; i++){
     const ch = src[i];
     const next = src[i + 1];
-    if(inLineComment){ if(ch === '\n') inLineComment = false; continue; }
+
+    if(inLineComment){
+      if(ch === '\n') inLineComment = false;
+      continue;
+    }
+
     if(inBlockComment){
-      if(ch === '*' && next === '/'){ inBlockComment = false; i++; }
+      if(ch === '*' && next === '/'){
+        inBlockComment = false;
+        i++;
+      }
       continue;
     }
+
     if(inString){
-      if(escaped) escaped = false;
-      else if(ch === '\\') escaped = true;
-      else if(ch === stringQuote){ inString = false; stringQuote = ''; }
+      if(escaped){
+        escaped = false;
+      }else if(ch === '\\'){
+        escaped = true;
+      }else if(ch === stringQuote){
+        inString = false;
+        stringQuote = '';
+      }
       continue;
     }
-    if(ch === '/' && next === '/'){ inLineComment = true; i++; continue; }
-    if(ch === '/' && next === '*'){ inBlockComment = true; i++; continue; }
-    if(ch === '"' || ch === '\'' || ch === '`'){ inString = true; stringQuote = ch; continue; }
+
+    if(ch === '/' && next === '/'){
+      inLineComment = true;
+      i++;
+      continue;
+    }
+    if(ch === '/' && next === '*'){
+      inBlockComment = true;
+      i++;
+      continue;
+    }
+    if(ch === '"' || ch === '\'' || ch === '`'){
+      inString = true;
+      stringQuote = ch;
+      continue;
+    }
+
     if(ch === '{') depth++;
     if(ch === '}'){
       depth--;
       if(depth === 0) return src.slice(openIdx, i + 1);
     }
   }
+
   return null;
 }
 
@@ -53,26 +84,61 @@ function extractTopLevelObjectKeys(objectLiteralSrc){
   let escaped = false;
   let inLineComment = false;
   let inBlockComment = false;
+
   for(let i = 0; i < objectLiteralSrc.length; i++){
     const ch = objectLiteralSrc[i];
     const next = objectLiteralSrc[i + 1];
-    if(inLineComment){ if(ch === '\n') inLineComment = false; continue; }
+
+    if(inLineComment){
+      if(ch === '\n') inLineComment = false;
+      continue;
+    }
     if(inBlockComment){
-      if(ch === '*' && next === '/'){ inBlockComment = false; i++; }
+      if(ch === '*' && next === '/'){
+        inBlockComment = false;
+        i++;
+      }
       continue;
     }
     if(inString){
-      if(escaped) escaped = false;
-      else if(ch === '\\') escaped = true;
-      else if(ch === stringQuote){ inString = false; stringQuote = ''; }
+      if(escaped){
+        escaped = false;
+      }else if(ch === '\\'){
+        escaped = true;
+      }else if(ch === stringQuote){
+        inString = false;
+        stringQuote = '';
+      }
       continue;
     }
-    if(ch === '/' && next === '/'){ inLineComment = true; i++; continue; }
-    if(ch === '/' && next === '*'){ inBlockComment = true; i++; continue; }
-    if(ch === '"' || ch === '\'' || ch === '`'){ inString = true; stringQuote = ch; continue; }
-    if(ch === '{'){ depth++; continue; }
-    if(ch === '}'){ depth--; continue; }
+
+    if(ch === '/' && next === '/'){
+      inLineComment = true;
+      i++;
+      continue;
+    }
+    if(ch === '/' && next === '*'){
+      inBlockComment = true;
+      i++;
+      continue;
+    }
+    if(ch === '"' || ch === '\'' || ch === '`'){
+      inString = true;
+      stringQuote = ch;
+      continue;
+    }
+
+    if(ch === '{'){
+      depth++;
+      continue;
+    }
+    if(ch === '}'){
+      depth--;
+      continue;
+    }
+
     if(depth !== 1) continue;
+
     if(/[A-Za-z_$]/.test(ch)){
       let j = i + 1;
       while(j < objectLiteralSrc.length && /[A-Za-z0-9_$]/.test(objectLiteralSrc[j])) j++;
@@ -81,8 +147,10 @@ function extractTopLevelObjectKeys(objectLiteralSrc){
       while(k < objectLiteralSrc.length && /\s/.test(objectLiteralSrc[k])) k++;
       if(objectLiteralSrc[k] === ':') keys.push(ident);
       i = j - 1;
+      continue;
     }
   }
+
   return Array.from(new Set(keys));
 }
 
@@ -132,15 +200,7 @@ function extractAbilityTemplateAssignKeys(gameSrc){
   return s;
 }
 
-function addSources(map, ids, label){
-  for(const id of ids){
-    if(!map[id]) map[id] = [];
-    if(!map[id].includes(label)) map[id].push(label);
-  }
-}
-
 function main(){
-  const wantCsv = process.argv.includes('--csv');
   const gamePath = path.join(__dirname, '..', 'js', 'core', 'game.js');
   const gameSrc = fs.readFileSync(gamePath, 'utf8');
   const baseObj = extractObjectLiteralAfterMarker(gameSrc, 'const ABILITY_TEMPLATES =');
@@ -149,67 +209,55 @@ function main(){
   const magicObj = extractObjectLiteralAfterMarker(gameSrc, 'const ABILITY_TEMPLATES_MAGIC =');
   const sparrowEvo = extractObjectLiteralAfterMarker(gameSrc, 'const SPARROW_EVOLUTION_TEMPLATES =');
 
-  const sourceById = {};
-  addSources(sourceById, extractTopLevelObjectKeys(baseObj), 'ABILITY_TEMPLATES');
-  addSources(sourceById, extractTopLevelObjectKeys(extraObj), 'ABILITY_TEMPLATES_EXTRA');
-  if(learnObj) addSources(sourceById, extractTopLevelObjectKeys(learnObj), 'ABILITY_TEMPLATES_LEARNABLE');
-  if(magicObj) addSources(sourceById, extractTopLevelObjectKeys(magicObj), 'ABILITY_TEMPLATES_MAGIC');
-  if(sparrowEvo) addSources(sourceById, extractTopLevelObjectKeys(sparrowEvo), 'SPARROW_EVOLUTION_TEMPLATES');
-  addSources(sourceById, extractAbilityTemplateAssignKeys(gameSrc), 'ABILITY_TEMPLATES_ASSIGN');
-
-  const actionKeys = new Set(extractActionsBlockKeys(gameSrc));
-  const overrideKeys = new Set(extractSkillOverrideKeys(gameSrc));
-  const aliasIds = new Set(extractRegisterAliasIds(gameSrc));
-
-  delete sourceById.mimic;
-
-  const allIds = new Set([
-    ...Object.keys(sourceById),
-    ...actionKeys,
-    ...overrideKeys,
-    ...aliasIds,
+  const templateIds = new Set([
+    ...extractTopLevelObjectKeys(baseObj),
+    ...extractTopLevelObjectKeys(extraObj),
+    ...(learnObj ? extractTopLevelObjectKeys(learnObj) : []),
+    ...(magicObj ? extractTopLevelObjectKeys(magicObj) : []),
+    ...(sparrowEvo ? extractTopLevelObjectKeys(sparrowEvo) : []),
+    ...extractAbilityTemplateAssignKeys(gameSrc)
   ]);
-  allIds.delete('mimic');
+  templateIds.delete('mimic');
 
-  const sorted = Array.from(allIds).sort();
-  const skills = sorted.map(id => ({
-    id,
-    templateSources: sourceById[id] || [],
-    inActions: actionKeys.has(id) || overrideKeys.has(id),
-    registeredAliasNewId: aliasIds.has(id),
-    notes: '',
-    owner: '',
-  }));
+  const actionKeys = extractActionsBlockKeys(gameSrc);
+  const overrideKeys = extractSkillOverrideKeys(gameSrc);
+  const aliasNewIds = extractRegisterAliasIds(gameSrc);
+
+  const all = new Set([...templateIds, ...actionKeys, ...overrideKeys, ...aliasNewIds]);
+  const sorted = Array.from(all).sort();
+
+  let packAbilityIds = new Set();
+  try {
+    const pack = require(path.join(__dirname, '..', 'js', 'data', 'ability_passive_upgrade_pack.js'));
+    Object.keys(pack.ABILITY_DEFS || {}).forEach(k => packAbilityIds.add(k));
+  } catch(_e){
+    packAbilityIds = new Set();
+  }
 
   const report = {
     generated: new Date().toISOString(),
-    description: 'Union of skill/template ids for tooling; merge order at runtime is game.js Object.assign into ABILITY_TEMPLATES.',
     counts: {
-      withTemplateLiteral: Object.keys(sourceById).length,
-      actionsUnion: actionKeys.size,
-      skillOverrides: overrideKeys.size,
-      registerAliasNewIds: aliasIds.size,
-      totalSkills: skills.length,
+      templatesMerged: templateIds.size,
+      actionsBaseAndAssign: actionKeys.length,
+      skillOverrides: overrideKeys.length,
+      aliasNewIds: aliasNewIds.length,
+      union: sorted.length,
+      packAbilityDefs: packAbilityIds.size
     },
-    skills,
+    idsSorted: sorted,
+    checklistSchema: {
+      id: 'string',
+      templateDesc: 'ABILITY_TEMPLATES[id].desc',
+      energyByLevel: 'vs getEnergyCost at lv1-4',
+      cooldownByLevel: 'vs getTemplateCooldown',
+      actionsHandler: 'ACTIONS[id] or override',
+      primaryStatusKeys: 'G.playerStatus / G.enemyStatus fields touched',
+      damageEntry: 'dealDamage / pdmg / matk / custom',
+      durationPolicy: 'stat modifiers (ATK/DEF/ACC/dodge/SPD/etc.) default 1t; ailments (Fear/Poison/Burn/Confused/…) may be longer and level-scaled'
+    }
   };
 
   process.stdout.write(JSON.stringify(report, null, 2) + '\n');
-  if(wantCsv){
-    process.stdout.write('\n---CSV---\n');
-    const esc = (s) => `"${String(s).replace(/"/g, '""')}"`;
-    process.stdout.write(['id', 'templateSources', 'inActions', 'registeredAliasNewId', 'notes', 'owner'].join(',') + '\n');
-    for(const row of skills){
-      process.stdout.write([
-        esc(row.id),
-        esc(row.templateSources.join('|')),
-        row.inActions ? '1' : '0',
-        row.registeredAliasNewId ? '1' : '0',
-        esc(row.notes),
-        esc(row.owner),
-      ].join(',') + '\n');
-    }
-  }
 }
 
 main();

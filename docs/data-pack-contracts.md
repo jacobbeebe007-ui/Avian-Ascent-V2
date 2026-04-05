@@ -4,8 +4,8 @@
 
 `scripts/ci-check.js` enforces a parity contract between:
 
-- runtime skill templates: merged keys from `js/data/skills.js` (`SKILL_TEMPLATES`) plus learnable/extra/magic tables in `js/core/game.js`, and
-- metadata entries: `Object.keys(SKILL_PASSIVE_UPGRADE_PACK.SKILL_DEFS)` (from `js/data/skill_passive_upgrade_pack.js`).
+- runtime ability templates: `Object.keys(ABILITY_TEMPLATES + ABILITY_TEMPLATES_EXTRA)` (sourced from `js/core/game.js`), and
+- metadata entries: `Object.keys(ABILITY_PASSIVE_UPGRADE_PACK.ABILITY_DEFS)` (from `js/data/ability_passive_upgrade_pack.js`).
 
 The report is categorized into:
 
