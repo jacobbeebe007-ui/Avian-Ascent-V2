@@ -4,8 +4,8 @@
 (function(){
   function resetAllBattleCooldowns(){
     try{
-      if(!G?.player?.abilities) return;
-      for(const ab of G.player.abilities){
+      if(!G?.player?.skills) return;
+      for(const ab of G.player.skills){
         if(!ab) continue;
         // clear common cooldown fields used by the game
         if('cooldown' in ab) ab.cooldown = 0;

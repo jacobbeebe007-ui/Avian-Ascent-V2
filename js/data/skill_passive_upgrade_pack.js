@@ -1,11 +1,11 @@
 /*
- * Ability / Passive / Upgrade Pack
- * --------------------------------
+ * Skill / Passive / Upgrade Pack
+ * ------------------------------
  * Data-only definitions designed to be consumed by runtime wiring.
  * This file intentionally does not mutate global combat state.
  */
 (function(){
-  const ABILITY_TAGS = Object.freeze({
+  const SKILL_TAGS = Object.freeze({
     BASIC: 'basic',
     PHYSICAL: 'physical',
     SPELL: 'spell',
@@ -28,39 +28,39 @@
     confused: 'Action disruption and skip chance.'
   });
 
-  const ABILITY_DEFS = Object.freeze({
+  const SKILL_DEFS = Object.freeze({
     rapidPeck: {
       id: 'rapidPeck',
       name: 'Rapid Peck',
-      tags: [ABILITY_TAGS.BASIC, ABILITY_TAGS.PHYSICAL, ABILITY_TAGS.OFFENSIVE],
+      tags: [SKILL_TAGS.BASIC, SKILL_TAGS.PHYSICAL, SKILL_TAGS.OFFENSIVE],
       role: 'striker opener',
       notes: 'Multi-hit basic with high upside and chain-stop risk.'
     },
     dart: {
       id: 'dart',
       name: 'Dart',
-      tags: [ABILITY_TAGS.BASIC, ABILITY_TAGS.PHYSICAL],
+      tags: [SKILL_TAGS.BASIC, SKILL_TAGS.PHYSICAL],
       role: 'predator strike',
       notes: 'Stable attack profile with light weaken pressure.'
     },
     evade: {
       id: 'evade',
       name: 'Evade',
-      tags: [ABILITY_TAGS.UTILITY, ABILITY_TAGS.DEFENSIVE],
+      tags: [SKILL_TAGS.UTILITY, SKILL_TAGS.DEFENSIVE],
       role: 'survivability',
       notes: 'Temporary dodge buff and anti-control scaling.'
     },
     dirge: {
       id: 'dirge',
       name: 'Dirge',
-      tags: [ABILITY_TAGS.SPELL, ABILITY_TAGS.CONTROL],
+      tags: [SKILL_TAGS.SPELL, SKILL_TAGS.CONTROL],
       role: 'singer control song',
       notes: 'Confusion and paralysis pressure over multiple turns.'
     },
     lullaby: {
       id: 'lullaby',
       name: 'Lullaby',
-      tags: [ABILITY_TAGS.SPELL, ABILITY_TAGS.CONTROL],
+      tags: [SKILL_TAGS.SPELL, SKILL_TAGS.CONTROL],
       role: 'trickster debuff song',
       notes: 'ATK suppression with delayed resonance payload.'
     }
@@ -105,9 +105,9 @@
   });
 
   const PACK = Object.freeze({
-    ABILITY_TAGS,
+    SKILL_TAGS,
     STATUS_GLOSSARY,
-    ABILITY_DEFS,
+    SKILL_DEFS,
     PASSIVE_IMPL,
     UPGRADE_LINES,
     PACK_NOTES
@@ -117,5 +117,5 @@
     module.exports = PACK;
   }
 
-  globalThis.ABILITY_PASSIVE_UPGRADE_PACK = PACK;
+  globalThis.SKILL_PASSIVE_UPGRADE_PACK = PACK;
 })();

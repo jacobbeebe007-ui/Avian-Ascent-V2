@@ -1328,21 +1328,6 @@ const BIRD_ENEMIES = [
   {name:'War Harpy',emoji:'',birdKey:'harpy',tier:[4],hp:65,atk:14,def:7,matk:6,mdef:8,spd:5,acc:78,dodge:8,mdodge:8,enemyClass:'predator',size:'xl',aiStyle:'berserker'},
 ];
 
-// ===================== BIOMES =====================
-const BIOMES = [
-  { id:'wetlands', name:'Black Marsh Wetlands', stageMin:1, stageMax:10, mod:{ enemyPoisonPlus:1 } },
-  { id:'cliffs', name:'Razor Cliffline', stageMin:11, stageMax:20, mod:{ enemyCritPlus:0.05 } },
-  { id:'stormcoast', name:'Storm Coast', stageMin:21, stageMax:30, mod:{ lightningBonus:0.15 } },
-  { id:'court', name:"Blakiston's Court", stageMin:31, stageMax:9999, mod:{ dread:1 } },
-];
-
-function getBiomeForStage(stage){
-  for(const b of BIOMES){
-    if(stage>=b.stageMin && stage<=b.stageMax) return b;
-  }
-  return BIOMES[BIOMES.length-1];
-}
-
 function applyBiomeModifiers(){
   const b=getBiomeForStage(G.stage);
   if(!b) return;
@@ -2197,974 +2182,6 @@ const ALL_REWARDS = [
   {id:'l_roostFeast', tier:'gold', icon:'🔥', name:'Eternal Roost', desc:'Full heal + +12% Max HP extra heal after every battle', tags:['sustain','scaling'], apply:p=>{ p.stats.hp=p.stats.maxHp; p.postBattleHealBonusPct=(p.postBattleHealBonusPct||0)+0.12; }},
 ];
 
-// ============================================================
-//  LEARNABLE ABILITIES — universal abilities gained at level-up
-// ============================================================
-const ABILITY_TEMPLATES_LEARNABLE = {
-
-  spellLance:{
-    id:'spellLance', name:'Spell Lance', type:'spell', btnType:'spell',
-    desc:'Focused magical thrust. Singer specialty.',
-    cooldownByLevel:[2,2,2,1],
-    levels:[
-      {lv:1, desc:'125% M.ATK, 10% miss, Weaken 20%.' , newAilment:'weaken', ailChance:20},
-      {lv:2, desc:'140% M.ATK, 10% miss, Weaken 25%.' , ailChance:25},
-      {lv:3, desc:'160% M.ATK, 10% miss, Weaken 30% + Fear 20%.', newAilment2:'feared', ailChance2:20},
-      {lv:4, desc:'180% M.ATK, 10% miss, Weaken 35% + Fear 25%.', ailChance:35, ailChance2:25},
-    ]
-  },
-  guardianCry:{
-    id:'guardianCry', name:'Guardian Cry', type:'utility', btnType:'utility',
-    desc:'Bruiser/Tank ward: DEF up and cleanse one debuff.',
-    cooldownByLevel:[3,3,2,2],
-    levels:[
-      {lv:1, desc:'DEF +4 for 2t, cleanse 1 debuff'},
-      {lv:2, desc:'DEF +6 for 2t, cleanse 1 debuff, +10% dodge'},
-      {lv:3, desc:'DEF +8 for 3t, cleanse 2 debuffs'},
-      {lv:4, desc:'DEF +10 for 3t, full cleanse, fear immune 2t'},
-    ]
-  },
-  shadowFeint:{
-    id:'shadowFeint', name:'Shadow Feint', type:'physical', btnType:'physical',
-    desc:'Predator/Trickster feint strike with confuse pressure.',
-    baseMissChance:12, baseDmgMult:1.05,
-    levels:[
-      {lv:1, desc:'105% dmg, 12% miss, Confuse 20%', newAilment:'confused', ailChance:20},
-      {lv:2, desc:'120% dmg, 12% miss, Confuse 25%', ailChance:25},
-      {lv:3, desc:'135% dmg, 12% miss, Confuse 30% + Weaken 20%', newAilment2:'weaken', ailChance2:20},
-      {lv:4, desc:'150% dmg, 12% miss, Confuse 35% + Weaken 25%', ailChance:35, ailChance2:25},
-    ]
-  },
-
-  swoop:{
-    id:'swoop', name:'Swoop', type:'physical', btnType:'physical',
-    desc:'Rush strike — never misses. 2-turn cooldown.',
-    baseMissChance:0, baseDmgMult:1.0,
-    levels:[
-      {lv:1, desc:'100% dmg, never misses, bypasses dodge — CD 2t'},
-      {lv:2, desc:'115% dmg, 20% stun — CD 2t'},
-      {lv:3, desc:'130% dmg, 30% stun — CD 1t'},
-      {lv:4, desc:'150% dmg, 35% stun + Weaken — no CD', newAilment:'weaken', ailChance:35},
-    ]
-  },
-  diveBomb:{
-    id:'diveBomb', name:'Dive Bomb', type:'physical', btnType:'physical',
-    desc:'Speed-fueled dive — damage scales with YOUR speed. Miss scales with enemy size.',
-    levels:[
-      {lv:1, desc:'SPD-scaled dmg. Boss: 20% miss, Large: 30%, Med: 40%, Small: 50%'},
-      {lv:2, desc:'+15% base dmg, miss −5%, Burn 20%', newAilment:'burning', ailChance:20},
-      {lv:3, desc:'+30% base dmg, miss −10%, Burn 30%', ailChance:30},
-      {lv:4, desc:'+50% base dmg, miss −15%, Burn 40%', ailChance:40},
-    ]
-  },
-  flyby:{
-    id:'flyby', name:'Flyby', type:'utility', btnType:'utility',
-    desc:'Build momentum — your NEXT attack this battle deals 2× damage. One use.',
-    levels:[
-      {lv:1, desc:'Next attack ×2 damage. Cannot be upgraded further.'},
-      {lv:2, desc:'Next attack ×2 damage. Cannot be upgraded further.'},
-      {lv:3, desc:'Next attack ×2 damage. Cannot be upgraded further.'},
-      {lv:4, desc:'Next attack ×2 damage. Cannot be upgraded further.'},
-    ]
-  },
-  dustDevil:{
-    id:'dustDevil', name:'Dust Devil', type:'utility', btnType:'utility',
-    desc:'Kick up a blinding dust storm — reduces enemy accuracy for several turns.',
-    levels:[
-      {lv:1, desc:'Blind enemy: −15% ACC for 3t'},
-      {lv:2, desc:'Blind enemy: −20% ACC for 4t'},
-      {lv:3, desc:'Blind enemy: −25% ACC for 5t'},
-      {lv:4, desc:'Blind enemy: −30% ACC for 5t + Confuse 20% fumble for 2t'},
-    ]
-  },
-  rockDrop:{
-    id:'rockDrop', name:'Rock Drop', type:'ranged', btnType:'ranged',
-    desc:'Drop a rock on YOUR next turn — size-based damage, ignores shields.',
-    levels:[
-      {lv:1, desc:'XL: 3.0× ATK · Large: 2.3× · Medium: 1.8× · Small: 1.4× · Tiny: 1.1×. Ignores block. 1-turn delay.'},
-      {lv:2, desc:'+20% dmg, 10% Poison', newAilment:'poison', ailChance:10},
-      {lv:3, desc:'+40% dmg, 20% stun, 20% Poison', ailChance:20},
-      {lv:4, desc:'+60% dmg, 30% stun, 30% Poison', ailChance:30},
-    ]
-  },
-  hum:{
-    id:'hum', name:'Hum', type:'utility', btnType:'utility',
-    desc:'Channel hummingbird energy — evasion boost. Single buff: max 5t at lv4.',
-    levels:[
-      {lv:1, desc:'+15% dodge, −5% miss for 3 turns'},
-      {lv:2, desc:'+20% dodge, −8% miss for 4 turns'},
-      {lv:3, desc:'+25% dodge, −10% miss for 5 turns, cleanses 1 status'},
-      {lv:4, desc:'+30% dodge, −12% miss for 5 turns, immune to fear'},
-    ]
-  },
-  mudshot:{
-    id:'mudshot', name:'Mud Shot', type:'ranged', btnType:'ranged',
-    desc:'Fling mud for SPD shred, Chicken Pox chance, and heavier debuffs as it ranks up.',
-    baseMissChance:20,
-    levels:[
-      {desc:'Fling mud at the enemy. 20% miss. Applies Mud: SPD −2 for 2t. Chance to cause Chicken Pox.',newAilment:'weaken'},
-      {desc:'Stickier mud. 15% miss. SPD −3 for 3t. 30% Chicken Pox chance.',newAilment:'weaken'},
-      {desc:'Heavy clay. 10% miss. SPD −4 for 3t. 40% Chicken Pox. Small Avian Poison chance.',newAilment:'weaken',newAilment2:'poison'},
-      {desc:'Volcanic mud. 5% miss. SPD −5 for 4t. Guaranteed Chicken Pox. 30% Poison. 25% Paralysis.',newAilment:'weaken',newAilment2:'poison'},
-    ],
-  },
-  bowedWing:{
-    id:'bowedWing', name:'Bowed Wing', type:'ranged', btnType:'ranged',
-    desc:'Shoot a stick with a bowed wing. Reliable trickster poke with slow pressure.',
-    baseMissChance:14, baseDmgMult:0.95,
-    levels:[
-      {lv:1, desc:'95% dmg, 14% miss. Slow 15% for 2t.', newAilment:'slow', ailChance:100},
-      {lv:2, desc:'110% dmg, 11% miss. Slow 20% for 3t.'},
-      {lv:3, desc:'125% dmg, 9% miss. Slow 20% + Weaken 15%.', newAilment2:'weaken', ailChance2:15},
-      {lv:4, desc:'140% dmg, 7% miss. Slow 25% + Weaken 20%.'},
-    ]
-  },
-  curvedTalons:{
-    id:'curvedTalons', name:'Curved Talons', type:'physical', btnType:'physical',
-    desc:'High piercing slash for anti-tank duels.',
-    baseMissChance:16, baseDmgMult:1.2, pierceDef:45,
-    levels:[
-      {lv:1, desc:'120% dmg, 16% miss. Pierce 45% DEF.'},
-      {lv:2, desc:'132% dmg, 13% miss. Pierce 50% DEF.'},
-      {lv:3, desc:'145% dmg, 11% miss. Pierce 55% DEF + Weaken 15%.', newAilment:'weaken', ailChance:15},
-      {lv:4, desc:'160% dmg, 9% miss. Pierce 60% DEF + Bleed 20%.', newAilment2:'poison', ailChance2:20},
-    ]
-  },
-  curvedBeak:{
-    id:'curvedBeak', name:'Curved Beak', type:'physical', btnType:'physical',
-    desc:'Hooked beak carve that inflicts bleed-like damage over time.',
-    baseMissChance:12, baseDmgMult:1.05,
-    levels:[
-      {lv:1, desc:'105% dmg, 12% miss. Bleed 15%.', newAilment:'poison', ailChance:15},
-      {lv:2, desc:'118% dmg, 10% miss. Bleed 20%.'},
-      {lv:3, desc:'132% dmg, 8% miss. Bleed 25% + Fear 10%.', newAilment2:'feared', ailChance2:10},
-      {lv:4, desc:'145% dmg, 6% miss. Bleed 30% + Fear 15%.'},
-    ]
-  },
-  wingStorm:{
-    id:'wingStorm', name:'Wing Storm', type:'spell', btnType:'spell',
-    isNeutral:false, allowedClasses:['trickster'],
-    energyByLevel:[2,2,2,3], cooldownByLevel:[3,3,4,4],
-    desc:'Trickster gale magic. Control-oriented spell with modest damage and SPD gain.',
-    levels:[
-      {lv:1, desc:'85% M.ATK. 15% Stun. Gain +2 SPD for 2t.'},
-      {lv:2, desc:'95% M.ATK. 20% Stun. Gain +3 SPD for 2t.'},
-      {lv:3, desc:'110% M.ATK. 20% Stun. Gain +4 SPD for 2t + Slow 10%.', newAilment:'slow', ailChance:100},
-      {lv:4, desc:'125% M.ATK. 25% Stun. Gain +5 SPD for 2t + Slow 15%.'},
-    ]
-  },
-
-  wormRiot:{
-    id:'wormRiot', name:'Worm Riot', type:'utility', btnType:'utility',
-    desc:'Bait frenzy: enemy recovers HP but becomes exposed (Dodge/MDodge to 0).',
-    cooldownByLevel:[4,4,3,3],
-    levels:[
-      {lv:1, desc:'Enemy heals 30%, but enemy Dodge/MDodge = 0% for 2t.'},
-      {lv:2, desc:'Enemy heals 27%, Dodge/MDodge = 0% for 2t.'},
-      {lv:3, desc:'Enemy heals 24%, Dodge/MDodge = 0% for 2t.'},
-      {lv:4, desc:'Enemy heals 21%, Dodge/MDodge = 0% for 2t + Weaken 20%.', newAilment:'weaken', ailChance:20},
-    ]
-  },
-  supersonic:{
-    id:'supersonic', name:'Supersonic', type:'physical', btnType:'physical',
-    desc:'Damage scales with SPD instead of ATK/MATK.',
-    baseMissChance:12,
-    levels:[
-      {lv:1, desc:'SPD-scaled strike: ~90% speed ratio, 12% miss. 10% Confuse.', newAilment:'confused', ailChance:10},
-      {lv:2, desc:'SPD-scaled strike: ~105% ratio, 10% miss. Confuse 15%.'},
-      {lv:3, desc:'SPD-scaled strike: ~120% ratio, 8% miss. Confuse 20% + Burn 10%.', newAilment2:'burning', ailChance2:10},
-      {lv:4, desc:'SPD-scaled strike: ~140% ratio, 6% miss. Confuse 25% + Burn 15%.'},
-    ]
-  },
-  stickLance:{
-    id:'stickLance', name:'Stick Lance', type:'ranged', btnType:'ranged',
-    desc:'Two-turn combo: forage then strike. Must use TWICE in a row!',
-    levels:[
-      {lv:1, desc:'Turn 1: 70% find stick. Turn 2: 250% dmg, 50% crit, bypasses block — 50% miss'},
-      {lv:2, desc:'Turn 1: 80% find. Turn 2: 270% dmg — 40% miss'},
-      {lv:3, desc:'Turn 1: 90% find. Turn 2: 290% dmg — 30% miss + Paralysis 20%', newAilment:'paralyzed', ailChance:20},
-      {lv:4, desc:'Turn 1: 95% find. Turn 2: 320% dmg — 20% miss + Paralysis 35%', ailChance:35},
-    ]
-  },
-};
-
-// UNIVERSAL: Sitting Duck
-const ABILITY_SKIP_TURN = {
-  id:'skipTurn', name:'Skip Turn', type:'utility', btnType:'utility', energyCost:0,
-  desc:'Do absolutely nothing and preserve your dodge.',
-  levels:[
-    {lv:1, desc:'Skip your turn and preserve Dodge/MDodge.'},
-    {lv:2, desc:'Skip your turn and preserve Dodge/MDodge.'},
-    {lv:3, desc:'Skip your turn and preserve Dodge/MDodge.'},
-    {lv:4, desc:'Skip your turn and preserve Dodge/MDodge.'},
-  ]
-};
-const ABILITY_SITTING_DUCK = {
-  id:'sittingDuck', name:'Sitting Duck', type:'utility', btnType:'utility',
-  desc:'Do absolutely nothing. Drops ADodge and MDodge to 0% until your next turn.',
-  levels:[
-    {lv:1, desc:'Waste your turn. ADodge/MDodge drop to 0% this round.'},
-    {lv:2, desc:'Waste your turn. ADodge/MDodge drop to 0% this round.'},
-    {lv:3, desc:'Waste your turn. ADodge/MDodge drop to 0% this round.'},
-    {lv:4, desc:'Waste your turn. ADodge/MDodge drop to 0% this round.'},
-  ]
-};
-ABILITY_TEMPLATES['skipTurn'] = ABILITY_SKIP_TURN;
-ABILITY_TEMPLATES['sittingDuck'] = ABILITY_SITTING_DUCK;
-
-// 20 NEW LEARNABLE ABILITIES
-const ABILITY_TEMPLATES_EXTRA = {
-  // ---- STAT DEBUFFS ----
-  featherRuffle:{
-    id:'featherRuffle', name:'Feather Ruffle', type:'utility', btnType:'utility',
-    desc:'Reduce enemy ATK. Lv1: 1 debuff (5t). Lv2+: adds ACC debuff (2 debuffs, max 3t).',
-    levels:[
-      {lv:1, desc:'Enemy ATK −15% for 5t'},
-      {lv:2, desc:'Enemy ATK −20%, ACC −10% for 3t'},
-      {lv:3, desc:'Enemy ATK −25%, ACC −15% for 3t'},
-      {lv:4, desc:'Enemy ATK −30%, ACC −20% for 3t'},
-    ]
-  },
-  wingClip:{
-    id:'wingClip', name:'Wing Clip', type:'spell', btnType:'spell',
-    desc:'Clip wings — SPD debuff for 5t (1 debuff). Lv2+ adds Dodge debuff (2 debuffs, max 3t).',
-    levels:[
-      {lv:1, desc:'Enemy SPD −2 for 5t'},
-      {lv:2, desc:'Enemy SPD −3, Dodge −10% for 3t'},
-      {lv:3, desc:'Enemy SPD −4, Dodge −15% for 3t'},
-      {lv:4, desc:'Enemy SPD −5, Dodge −20% for 3t, Weaken 15%', newAilment:'weaken', ailChance:15},
-    ]
-  },
-  eyeGouge:{
-    id:'eyeGouge', name:'Eye Gouge', type:'physical', btnType:'physical',
-    desc:'Peck at the eyes — reduce enemy ACC for 3 turns.',
-    baseMissChance:15,
-    levels:[
-      {lv:1, desc:'50% dmg, 15% miss — enemy ACC −20% for 3t'},
-      {lv:2, desc:'70% dmg, 12% miss — enemy ACC −28% for 3t'},
-      {lv:3, desc:'90% dmg, 8% miss — enemy ACC −36% for 4t, Blind 2t'},
-      {lv:4, desc:'110% dmg, 5% miss — enemy ACC −45% for 4t, Blind 3t'},
-    ]
-  },
-  tailPull:{
-    id:'tailPull', name:'Tail Pull', type:'utility', btnType:'utility',
-    desc:'Remove 1 positive buff from enemy. Upgrades dispel more.',
-    levels:[
-      {lv:1, desc:'Remove 1 positive status/buff from enemy'},
-      {lv:2, desc:'Remove 2 buffs, Weaken 30%', newAilment:'weaken', ailChance:30},
-      {lv:3, desc:'Remove all ATK buffs + 2 other buffs, Weaken 40%', ailChance:40},
-      {lv:4, desc:'Strip all enemy buffs, apply Weaken + Poison', ailChance:50},
-    ]
-  },
-  molt:{
-    id:'molt', name:'Molt', type:'utility', btnType:'utility',
-    desc:'Shed feathers — cleanse 1 negative status, reduce enemy DEF.',
-    levels:[
-      {lv:1, desc:'Cleanse 1 negative status. Enemy DEF −2 for 3t'},
-      {lv:2, desc:'Cleanse 2 statuses. Enemy DEF −3, also −10% ACC'},
-      {lv:3, desc:'Cleanse all negative. Enemy DEF −4, ATK −15%'},
-      {lv:4, desc:'Full cleanse + +10% dodge 3t. Enemy DEF −5, ATK −20%, ACC −15%'},
-    ]
-  },
-  // ---- AILMENT FOCUSED ----
-  plagueBlast:{
-    id:'plagueBlast', name:'Plague Blast', type:'spell', btnType:'spell',
-    desc:'Instantly infect with multiple Avian Poison stacks.',
-    levels:[
-      {lv:1, desc:'Apply 3 Poison stacks immediately'},
-      {lv:2, desc:'Apply 4 Poison stacks + 1 extra per existing stack (max +3 bonus)'},
-      {lv:3, desc:'Apply 5 Poison stacks, raises cap by 1'},
-      {lv:4, desc:'Apply 6 Poison stacks, raises cap by 2, stack ticks deal +50% this turn'},
-    ]
-  },
-  incendiaryFeathers:{
-    id:'incendiaryFeathers', name:'Incendiary Feathers', type:'spell', btnType:'spell',
-    desc:'Fling burning feathers — apply Burn + immediate fire damage.',
-    levels:[
-      {lv:1, desc:'Apply Burn 3t + 8 fire dmg now'},
-      {lv:2, desc:'Apply Burn 3t + 12 fire dmg + Poison 1 stack', newAilment:'poison', ailChance:100},
-      {lv:3, desc:'Apply Burn 4t + 18 fire dmg + Poison 2 stacks'},
-      {lv:4, desc:'Apply Burn 4t + 25 fire dmg + Poison 3 stacks + Weaken 2t', newAilment2:'weaken', ailChance2:100},
-    ]
-  },
-  toxicSpit:{
-    id:'toxicSpit', name:'Toxic Spit', type:'physical', btnType:'physical',
-    desc:'Venomous lunge — heavy poison application + bonus dmg per stack.',
-    baseMissChance:20,
-    levels:[
-      {lv:1, desc:'60% dmg, 20% miss + apply 2 Poison stacks + 1 dmg per existing stack'},
-      {lv:2, desc:'75% dmg, 15% miss + apply 3 Poison stacks + 1.5× per existing stack'},
-      {lv:3, desc:'90% dmg, 10% miss + apply 4 Poison stacks + 2× per existing stack'},
-      {lv:4, desc:'110% dmg, 6% miss + apply 5 Poison stacks + 3× per existing stack'},
-    ]
-  },
-  // ---- PHYSICAL ATTACKS ----
-  cannonball:{
-    id:'cannonball', name:'Cannonball', type:'physical', btnType:'physical',
-    desc:'Massive slam — 180% dmg, 35% miss. Player takes 8% recoil dmg.',
-    baseMissChance:35, baseDmgMult:1.8,
-    levels:[
-      {lv:1, desc:'180% dmg, 35% miss — take 8% recoil'},
-      {lv:2, desc:'200% dmg, 28% miss — take 5% recoil, Weaken 25%', newAilment:'weaken', ailChance:25},
-      {lv:3, desc:'220% dmg, 22% miss — take 3% recoil, Weaken 35%', ailChance:35},
-      {lv:4, desc:'250% dmg, 15% miss — no recoil, Weaken 45%, 20% stun'},
-    ]
-  },
-  flurry:{
-    id:'flurry', name:'Flurry', type:'physical', btnType:'physical',
-    desc:'4-6 rapid strikes at 40% damage each, 25% miss per hit.',
-    baseMissChance:25, baseDmgMult:0.4,
-    levels:[
-      {lv:1, desc:'4-6 hits, 40% dmg ea, 25% miss ea'},
-      {lv:2, desc:'4-6 hits, 50% dmg ea, 20% miss — Poison 15%', newAilment:'poison', ailChance:15},
-      {lv:3, desc:'5-7 hits, 55% dmg ea, 16% miss — Poison 25%', ailChance:25},
-      {lv:4, desc:'5-7 hits, 65% dmg ea, 10% miss — Poison 35%, Burn 20%', ailChance:35, newAilment2:'burning', ailChance2:20},
-    ]
-  },
-  retribution:{
-    id:'retribution', name:'Retribution', type:'physical', btnType:'physical',
-    desc:'130% dmg — GUARANTEED crit if enemy has any negative status.',
-    baseMissChance:12,
-    levels:[
-      {lv:1, desc:'130% dmg, 12% miss — guaranteed crit if enemy has a negative status'},
-      {lv:2, desc:'145% dmg, 9% miss — crit dmg ×2.2'},
-      {lv:3, desc:'160% dmg, 6% miss — crit dmg ×2.4, Burn 20%', newAilment:'burning', ailChance:20},
-      {lv:4, desc:'180% dmg, 3% miss — crit dmg ×2.8, Burn 35%', ailChance:35},
-    ]
-  },
-  deathDive:{
-    id:'deathDive', name:'Death Dive', type:'physical', btnType:'physical',
-    desc:'200% dmg all-in plunge — 40% miss, 30% stun.',
-    baseMissChance:40, baseDmgMult:2.0,
-    levels:[
-      {lv:1, desc:'200% dmg, 40% miss, 30% stun'},
-      {lv:2, desc:'220% dmg, 33% miss, 35% stun — Paralysis 15%', newAilment:'paralyzed', ailChance:15},
-      {lv:3, desc:'245% dmg, 26% miss, 40% stun, Paralysis 25%', ailChance:25},
-      {lv:4, desc:'280% dmg, 18% miss, 50% stun, Paralysis 35%, Burn 20%', ailChance:35, newAilment2:'burning', ailChance2:20},
-    ]
-  },
-  chargeUp:{
-    cooldownByLevel:[3,3,2,2],
-    id:'chargeUp', name:'Charge Up', type:'utility', btnType:'utility',
-    desc:'Skip this turn to charge — next attack hits TWICE.',
-    levels:[
-      {lv:1, desc:'Next physical attack hits twice at full damage'},
-      {lv:2, desc:'Next attack hits twice + 15% crit bonus'},
-      {lv:3, desc:'Next attack hits twice + 25% crit + +10% ACC bonus'},
-      {lv:4, desc:'Next attack hits twice + 35% crit + +20% ACC, second hit also ignores block'},
-    ]
-  },
-  counter:{
-    id:'counter', name:'Counter', type:'utility', btnType:'utility',
-    desc:'Brace for 2 turns, then return double accumulated damage on turn 3.',
-    cooldownByLevel:[6,6,5,5],
-    levels:[
-      {lv:1, desc:'No action for 2 turns, then deal 200% of stored damage on turn 3. CD 6t'},
-      {lv:2, desc:'Return 220% stored damage. CD 6t'},
-      {lv:3, desc:'Return 240% stored damage. CD 5t'},
-      {lv:4, desc:'Return 260% stored damage and gain +10% dodge for 1t. CD 5t'},
-    ]
-  },
-  parry:{
-    id:'parry', name:'Parry', type:'utility', btnType:'utility',
-    desc:'Brace for the next attack window; reflects only physical/ranged damage. 3-turn cooldown.',
-    cooldownByLevel:[3,3,3,3],
-    levels:[
-      {lv:1, desc:'For 2 turns, vs physical/ranged only: take 50% damage, reflect 2x pre-parry damage. CD 3t'},
-      {lv:2, desc:'For 2 turns: take 25% damage, reflect 2x pre-parry damage. CD 3t'},
-      {lv:3, desc:'For 2 turns: take 0 damage, reflect 2x pre-parry damage. CD 3t'},
-      {lv:4, desc:'For 2 turns: take 0 damage, reflect 3x pre-parry damage. CD 3t'},
-    ]
-  },
-  dukeRiverGrip:{
-    id:'dukeRiverGrip', name:'River Grip', type:'spell', btnType:'spell',
-    desc:'Summon freezing current to damage and slow the enemy.',
-    levels:[
-      {lv:1, desc:'90% MATK damage. Slow 2 turns.'},
-      {lv:2, desc:'110% MATK damage. Slow 2 turns, stronger penalties.'},
-      {lv:3, desc:'125% MATK damage. Slow 3 turns.'},
-      {lv:4, desc:'145% MATK damage. Slow 3 turns + Weaken 1 turn.'},
-    ]
-  },
-  dukeDecree:{
-    id:'dukeDecree', name:'Royal Decree', type:'spell', btnType:'spell',
-    desc:'Apply pressure with royal decree and resonance.',
-    levels:[
-      {lv:1, desc:'Inflict Weaken 1 turn + Resonance 8 damage.'},
-      {lv:2, desc:'Inflict Weaken 2 turns + Resonance 11 damage.'},
-      {lv:3, desc:'Inflict Weaken 2 turns + Resonance 14 damage + Fear 1 turn.'},
-      {lv:4, desc:'Inflict Weaken 3 turns + Resonance 18 damage + Fear 1 turn.'},
-    ]
-  },
-  dukeWardens:{
-    id:'dukeWardens', name:'Court Wardens', type:'utility', btnType:'utility',
-    desc:'Raise owl wardens to harden your defenses and composure.',
-    levels:[
-      {lv:1, desc:'Gain Defending(1) and +2 DEF this turn.'},
-      {lv:2, desc:'Gain Defending(1) and +3 DEF this turn.'},
-      {lv:3, desc:'Gain Defending(1) and +4 DEF this turn. Cleanse 1 debuff.'},
-      {lv:4, desc:'Gain Defending(2) and +5 DEF this turn. Cleanse 1 debuff.'},
-    ]
-  },
-  // ---- SONGS ----
-  warcry:{
-    id:'warcry', name:'Warcry', type:'spell', btnType:'spell',
-    desc:'Song: Raise ATK +15%, SPD +2 for 3 turns. Two buffs — max 3t at lv4.',
-    levels:[
-      {lv:1, desc:'ATK +15%, SPD +2 for 3t'},
-      {lv:2, desc:'ATK +20%, SPD +3 for 3t'},
-      {lv:3, desc:'ATK +25%, SPD +4 for 3t'},
-      {lv:4, desc:'ATK +30%, SPD +5 for 3t, fear immune'},
-    ]
-  },
-  battleHymn:{
-    id:'battleHymn', name:'Battle Hymn', type:'spell', btnType:'spell',
-    desc:'Song: DEF +2 for 5t (single buff). Lv2+ adds Dodge (2 buffs, max 3t).',
-    levels:[
-      {lv:1, desc:'DEF +2 for 5t'},
-      {lv:2, desc:'DEF +4, Dodge +10% for 3t'},
-      {lv:3, desc:'DEF +5, Dodge +15% for 3t'},
-      {lv:4, desc:'DEF +7, Dodge +20% for 3t'},
-    ]
-  },
-  reveille:{
-    id:'reveille', name:'Reveille', type:'spell', btnType:'spell',
-    desc:'Song: Regenerate 15% HP over 3 turns.',
-    levels:[
-      {lv:1, desc:'Regen 15% HP over 3 turns (5% per turn)'},
-      {lv:2, desc:'Regen 21% HP over 3 turns + cleanse 1 status'},
-      {lv:3, desc:'Regen 30% HP over 4 turns + cleanse 2 statuses'},
-      {lv:4, desc:'Regen 40% HP over 4 turns + full cleanse + ATK +10%'},
-    ]
-  },
-  victoryChant:{
-    id:'victoryChant', name:'Victory Chant', type:'spell', btnType:'spell',
-    desc:'Song: Restore 20% HP and reduce all cooldowns by 1.',
-    levels:[
-      {lv:1, desc:'Heal 20% HP + reduce all CDs by 1'},
-      {lv:2, desc:'Heal 28% HP + reduce CDs by 1 + ATK +15% for 2t'},
-      {lv:3, desc:'Heal 35% HP + reduce CDs by 2 + ATK +20% for 3t'},
-      {lv:4, desc:'Heal 45% HP + clear all CDs + ATK +30% for 3t + cleanse 1 status'},
-    ]
-  },
-  // ---- UTILITY ----
-  preen:{
-    id:'preen', name:'Preen', type:'utility', btnType:'utility',
-    desc:'Remove negative statuses from self.',
-    levels:[
-      {lv:1, desc:'Remove 2 negative statuses. +5% dodge 2t'},
-      {lv:2, desc:'Remove 3 negative statuses. +10% dodge 2t'},
-      {lv:3, desc:'Remove all negative statuses. +15% dodge 3t'},
-      {lv:4, desc:'Full cleanse. +20% dodge 3t. +10% ACC 3t. Cannot be interrupted'},
-    ]
-  },
-
-  cactiSpine:{
-    id:'cactiSpine', name:'Cacti Spine', type:'ranged', btnType:'ranged',
-    desc:'Spine volley — ranged pierce that injects poison.',
-    baseMissChance:12, baseDmgMult:0.8,
-    levels:[
-      {lv:1, desc:'80% dmg, 12% miss. 30% poison chance.', newAilment:'poison', ailChance:30},
-      {lv:2, desc:'90% dmg, 10% miss. 40% poison, +10% ACC shred.', ailChance:40},
-      {lv:3, desc:'100% dmg, 8% miss. 50% poison, +15% ACC shred.', ailChance:50},
-      {lv:4, desc:'115% dmg, 6% miss. 60% poison, +20% ACC shred + Slow.', ailChance:60},
-    ]
-  },
-  aerialPoop:{
-    id:'aerialPoop', name:'Aerial Poop', type:'ranged', btnType:'ranged',
-    desc:'Bombing run — 2 hits that debuff enemy accuracy.',
-    baseMissChance:14, baseDmgMult:0.7,
-    levels:[
-      {lv:1, desc:'2 hits ×70% dmg. 14% miss each. ACC -10% for 2t.'},
-      {lv:2, desc:'2 hits ×75% dmg. 12% miss. ACC -12% for 2t + Weaken 15%.', newAilment:'weaken', ailChance:15},
-      {lv:3, desc:'2 hits ×80% dmg. 10% miss. ACC -15% for 3t + Weaken 20%.', ailChance:20},
-      {lv:4, desc:'2 hits ×85% dmg. 8% miss. ACC -20% for 3t + Slow.', ailChance:25},
-    ]
-  },
-
-  thornBarrage:{
-    id:'thornBarrage', name:'Thorn Barrage', type:'ranged', btnType:'ranged',
-    desc:'Rapid thorn volleys that pierce and stack Slow pressure.',
-    baseMissChance:14, baseDmgMult:0.75,
-    levels:[
-      {lv:1, desc:'2 hits ×75% dmg, 14% miss each. Applies Slow (−2 SPD, −10% Dodge, 2t).'},
-      {lv:2, desc:'2 hits ×82% dmg, 12% miss. Slow (−2 SPD, −12% Dodge, 2t).'},
-      {lv:3, desc:'3 hits ×80% dmg, 10% miss. Slow (−3 SPD, −15% Dodge, 3t).'},
-      {lv:4, desc:'3 hits ×88% dmg, 8% miss. Slow (−3 SPD, −20% Dodge, 3t) + poison 20%.', newAilment:'poison', ailChance:20},
-    ]
-  },
-  shadowPounce:{
-    id:'shadowPounce', name:'Shadow Pounce', type:'physical', btnType:'physical',
-    desc:'Predator leap strike with crit scaling and finisher bonus.',
-    baseMissChance:10, baseDmgMult:1.15,
-    levels:[
-      {lv:1, desc:'115% dmg, 10% miss. +20% crit chance this hit.'},
-      {lv:2, desc:'130% dmg, 9% miss. +25% crit chance and +10% vs <50% HP.'},
-      {lv:3, desc:'145% dmg, 8% miss. +30% crit chance and +20% vs <50% HP.'},
-      {lv:4, desc:'165% dmg, 7% miss. +35% crit chance and +30% vs <40% HP + fear 20%.', newAilment:'feared', ailChance:20},
-    ]
-  },
-  bulwarkRoar:{
-    id:'bulwarkRoar', name:'Bulwark Roar', type:'utility', btnType:'utility',
-    desc:'Tank roar that hardens defenses while rattling enemy offense.',
-    levels:[
-      {lv:1, desc:'+6 DEF for 2t; enemy ATK −10% for 2t.'},
-      {lv:2, desc:'+8 DEF for 2t; enemy ATK −15% for 2t; gain 10% dodge.'},
-      {lv:3, desc:'+10 DEF for 3t; enemy ATK −20% for 3t.'},
-      {lv:4, desc:'+12 DEF for 3t; enemy ATK −25% for 3t; fear immunity 2t.'},
-    ]
-  },
-  astralRefrain:{
-    id:'astralRefrain', name:'Astral Refrain', type:'spell', btnType:'spell',
-    desc:'Singer pulse that damages and destabilizes enemy focus.',
-    cooldownByLevel:[3,3,2,2],
-    levels:[
-      {lv:1, desc:'95% M.ATK dmg + ACC −10% for 2t.'},
-      {lv:2, desc:'110% M.ATK dmg + ACC −12% for 2t + Weaken 15%.', newAilment:'weaken', ailChance:15},
-      {lv:3, desc:'130% M.ATK dmg + ACC −15% for 3t + Confuse 20%.', newAilment2:'confused', ailChance2:20},
-      {lv:4, desc:'150% M.ATK dmg + ACC −20% for 3t + Confuse 25% + Fear 20%.', ailChance2:25, newAilment3:'feared', ailChance3:20},
-    ]
-  },
-  murderMurmuration:{
-    id:'murderMurmuration', name:'Murder Murmuration', type:'spell', btnType:'spell',
-    isNeutral:false, allowedClasses:['trickster'],
-    energyByLevel:[2,2,2,2], cooldownByLevel:[5,5,4,4],
-    desc:'Trickster flock surge. Multi-hit control spell, lower damage than direct nukes.',
-    levels:[
-      {lv:1, desc:'3 hits ×35% M.ATK. 10% Confuse chance.'},
-      {lv:2, desc:'4 hits ×38% M.ATK. 15% Confuse chance + Fear 1t.'},
-      {lv:3, desc:'4 hits ×42% M.ATK. 20% Confuse chance + Fear 1t.'},
-      {lv:4, desc:'5 hits ×44% M.ATK. 25% Confuse chance + Fear 2t + ATK −10% 2t.'},
-    ]
-  },
-
-  taunt:{
-    id:'taunt', name:'Taunt', type:'utility', btnType:'utility',
-    desc:'Force enemy to attack you next turn at −25% ACC.',
-    levels:[
-      {lv:1, desc:'Enemy must attack next turn at −25% ACC'},
-      {lv:2, desc:'Enemy attacks at −35% ACC, player gets +15% dodge that turn'},
-      {lv:3, desc:'Enemy attacks at −45% ACC, player +20% dodge, enemy attack misses → player gains ATK +20% for 1t'},
-      {lv:4, desc:'Enemy −55% ACC, player +25% dodge, perfect dodge chains for 50% stun on enemy'},
-    ]
-  },
-};
-Object.assign(ABILITY_TEMPLATES, ABILITY_TEMPLATES_EXTRA);
-
-// ============================================================
-//  MAGIC ABILITIES (from CSV) — for songbird/corvid builds
-// ============================================================
-const ABILITY_TEMPLATES_MAGIC = {
-  birdBrain:{
-    cooldownByLevel:[3,4,3,4],
-    id:'birdBrain', name:'Bird Brain', type:'spell', btnType:'spell',
-    desc:'Psychic overload — 80% M.ATK psychic damage + Confuse.',
-    levels:[
-      {lv:1, desc:'80% M.ATK dmg + Confuse 3t (15% fumble)'},
-      {lv:2, desc:'100% M.ATK dmg + Confuse 4t (20% fumble)'},
-      {lv:3, desc:'120% M.ATK dmg + Confuse (20%), Brain Fog: SPD/ACC −10% for 2t'},
-      {lv:4, desc:'145% M.ATK dmg + Confuse (25%), Brain Fog: SPD/ACC −15% for 3t'},
-    ]
-  },
-  sonicDirge:{
-    cooldownByLevel:[3,4,5,6],
-    id:'sonicDirge', name:'Sonic Dirge', type:'spell', btnType:'spell',
-    desc:'Piercing wail — 90% M.ATK sonic damage. Chance to skip enemy turn.',
-    levels:[
-      {lv:1, desc:'90% M.ATK dmg + 15% chance to skip enemy next turn (3t)'},
-      {lv:2, desc:'110% M.ATK + DoT 10% over 2t. 20% skip (4t)'},
-      {lv:3, desc:'130% M.ATK, ignores 30% M.DEF. 20% skip (4t)'},
-      {lv:4, desc:'155% M.ATK, ignores 30% M.DEF, chain heals you for 20% max HP. 25% skip (5t)'},
-    ]
-  },
-  owlPsyche:{
-    cooldownByLevel:[4,5,6,7],
-    id:'owlPsyche', name:"Owl's Psyche", type:'spell', btnType:'spell',
-    desc:'Hypnotic hoot — 70% M.ATK + Paralyze. Lv3+ adds Fear.',
-    levels:[
-      {lv:1, desc:'70% M.ATK dmg + Paralyze 15% skip 3t'},
-      {lv:2, desc:'90% M.ATK + Paralyze 20% skip 4t'},
-      {lv:3, desc:'110% M.ATK + Paralyze (20%) + Fear (10% miss) both 2t'},
-      {lv:4, desc:'130% M.ATK + Paralyze (25%) + Fear (15% miss) both 3t. Permanent M.DEF pierce.'},
-    ]
-  },
-  shriekwave:{
-    id:'shriekwave', name:'Shriekwave', type:'spell', btnType:'spell',
-    desc:'Explosive song blast — 100% M.ATK + Burn DoT.',
-    levels:[
-      {lv:1, desc:'100% M.ATK + Burn 3t (15% DoT)'},
-      {lv:2, desc:'120% M.ATK + Burn 4t (20%)'},
-      {lv:3, desc:'140% M.ATK + Burn 4t (20%). Guaranteed crit vs Burned foes.'},
-      {lv:4, desc:'165% M.ATK + Burn 5t (25%). Crit vs Burned. +Poison 15%.'},
-    ]
-  },
-  mobSwarm:{
-    id:'mobSwarm', name:'Mob Swarm', type:'spell', btnType:'spell',
-    isNeutral:false, allowedClasses:['trickster'],
-    energyByLevel:[2,3,3,3], cooldownByLevel:[5,5,4,4],
-    desc:'Call a chaotic flock to harass the enemy. Persistent pressure, not burst abuse.',
-    levels:[
-      {lv:1, desc:'Flock: 3 hits at 32% M.ATK each. 10% Confuse 2t.'},
-      {lv:2, desc:'4 hits at 36% M.ATK. Confuse 15% 3t.'},
-      {lv:3, desc:'4 hits at 40% M.ATK + Fear 10% miss 2t.'},
-      {lv:4, desc:'5 hits at 42% M.ATK. Fear 15% 2t + Confuse 20% 2t.'},
-    ]
-  },
-
-};
-Object.assign(ABILITY_TEMPLATES, ABILITY_TEMPLATES_MAGIC);
-
-// Merge learnable templates into main lookup
-Object.assign(ABILITY_TEMPLATES, ABILITY_TEMPLATES_LEARNABLE);
-
-function makeAbilityLevelData(entries=[]){
-  const items = Array.isArray(entries) ? entries.slice(0,4) : [];
-  if(!items.length) items.push({desc:'No effect.'});
-  while(items.length<4){
-    items.push({...items[items.length-1]});
-  }
-  return items.slice(0,4).map((entry, idx)=>({lv:idx+1, ...entry, lv:idx+1}));
-}
-
-function makeEvolutionAbilityTemplate(id, name, desc, options={}){
-  const energy = Number.isFinite(options.energy) ? options.energy : 1;
-  const type = options.type || 'physical';
-  const btnType = options.btnType || type;
-  const tpl = {
-    id,
-    name,
-    desc,
-    type,
-    btnType,
-    energyCost: energy,
-    energyByLevel: [energy, energy, energy, energy],
-    cooldownByLevel: Array.isArray(options.cooldownByLevel) ? options.cooldownByLevel.slice(0,4) : [0,0,0,0],
-    fixedMainAttackCost: !!options.fixedMainAttackCost,
-    role: Array.isArray(options.role) ? options.role.slice() : [],
-    levels: makeAbilityLevelData(options.levels || [{desc}]),
-  };
-  if(options.damageScaling && typeof options.damageScaling==='object') tpl.damageScaling = options.damageScaling;
-  return tpl;
-}
-
-Object.assign(ABILITY_TEMPLATES.multiPeck||{}, {
-  desc:'Rapid-line base skill. Neutral multi-hit pecks before branching.',
-  energyCost:1,
-  energyByLevel:[1,1,1,1],
-  fixedMainAttackCost:true,
-  role:['multiHit'],
-  levels:makeAbilityLevelData([
-    {desc:'3 hits at 42% dmg each.'},
-    {desc:'3 hits at 46% dmg each.'},
-    {desc:'4 hits at 46% dmg each.'},
-    {desc:'4 hits at 50% dmg each.'},
-  ]),
-});
-Object.assign(ABILITY_TEMPLATES.rapidPeck||{}, {
-  desc:'Rapid-line burst. Three precise pecks with pierce focus.',
-  energyCost:2,
-  energyByLevel:[2,2,2,2],
-  fixedMainAttackCost:true,
-  role:['multiHit'],
-  levels:makeAbilityLevelData([
-    {desc:'3 hits at 45% dmg each. Pierce 10% DEF.'},
-    {desc:'3 hits at 52% dmg each. Pierce 12% DEF.'},
-    {desc:'3 hits at 58% dmg each. Pierce 14% DEF.'},
-    {desc:'4 hits at 58% dmg each. Pierce 16% DEF.'},
-  ]),
-});
-Object.assign(ABILITY_TEMPLATES.trackPrey||{}, {
-  desc:'Mark-line base skill. Neutral prey-tracking setup before branching.',
-  energyCost:1,
-  energyByLevel:[1,1,1,1],
-  levels:makeAbilityLevelData([
-    {desc:'Study the target. Your next attack deals +12% damage.'},
-    {desc:'Study the target. Your next attack deals +15% damage.'},
-    {desc:'Study the target. Your next attack deals +18% damage.'},
-    {desc:'Study the target. Your next attack deals +21% damage.'},
-  ]),
-});
-Object.assign(ABILITY_TEMPLATES.dart||{}, {
-  desc:'Sparrow filler strike. Precise pressure that supports family evolution.',
-  energyCost:1,
-  energyByLevel:[1,1,1,1],
-  levels:makeAbilityLevelData([
-    {desc:'110% dmg, 10% miss.'},
-    {desc:'120% dmg, 8% miss.'},
-    {desc:'130% dmg, 6% miss.'},
-    {desc:'140% dmg, 5% miss.'},
-  ]),
-});
-
-const SPARROW_EVOLUTION_TEMPLATES = {
-  markPrey: makeEvolutionAbilityTemplate('markPrey','Mark Prey','Sparrow setup opener that prepares a focused follow-up.', {
-    type:'utility', btnType:'utility', energy:1,
-    levels:[
-      {desc:'Mark the enemy. Your next attack deals +18% damage.'},
-      {desc:'Mark the enemy. Your next attack deals +22% damage.'},
-      {desc:'Mark the enemy. Your next attack deals +26% damage.'},
-      {desc:'Mark the enemy. Your next attack deals +30% damage.'},
-    ],
-  }),
-  bodkinStrike: makeEvolutionAbilityTemplate('bodkinStrike','Bodkin Strike','Rapid-line pierce evolution. Heavy puncture flurry.', {type:'physical', btnType:'physical', energy:2, fixedMainAttackCost:true, role:['multiHit'], levels:[{desc:'3 hits at 52% dmg each. Pierce 18% DEF.'},{desc:'3 hits at 58% dmg each. Pierce 20% DEF.'},{desc:'4 hits at 58% dmg each. Pierce 22% DEF.'},{desc:'4 hits at 64% dmg each. Pierce 24% DEF.'}] }),
-  bodkinBarrage: makeEvolutionAbilityTemplate('bodkinBarrage','Bodkin Barrage','Rapid-line final pierce evolution. Relentless armor-punching barrage.', {type:'physical', btnType:'physical', energy:2, fixedMainAttackCost:true, role:['multiHit'], levels:[{desc:'4 hits at 60% dmg each. Pierce 24% DEF.'},{desc:'4 hits at 66% dmg each. Pierce 26% DEF.'},{desc:'5 hits at 66% dmg each. Pierce 28% DEF.'},{desc:'5 hits at 72% dmg each. Pierce 30% DEF.'}] }),
-  rapidFlap: makeEvolutionAbilityTemplate('rapidFlap','Rapid Flap','Rapid-line confuse branch. Disorienting wing-burst.', {type:'physical', btnType:'physical', energy:2, fixedMainAttackCost:true, role:['multiHit'], levels:[{desc:'3 hits at 42% dmg each. Confuse 15%.'},{desc:'3 hits at 48% dmg each. Confuse 18%.'},{desc:'4 hits at 48% dmg each. Confuse 20%.'},{desc:'4 hits at 54% dmg each. Confuse 24%.'}] }),
-  disruptiveRush: makeEvolutionAbilityTemplate('disruptiveRush','Disruptive Rush','Rapid-line confuse evolution. Shakes enemy focus.', {type:'physical', btnType:'physical', energy:2, fixedMainAttackCost:true, role:['multiHit'], levels:[{desc:'3 hits at 50% dmg each. Confuse 22%.'},{desc:'3 hits at 56% dmg each. Confuse 25%.'},{desc:'4 hits at 56% dmg each. Confuse 28%.'},{desc:'4 hits at 62% dmg each. Confuse 32%.'}] }),
-  chaosTempest: makeEvolutionAbilityTemplate('chaosTempest','Chaos Tempest','Rapid-line final confuse evolution. Burst with heavy confusion pressure.', {type:'physical', btnType:'physical', energy:2, fixedMainAttackCost:true, role:['multiHit'], levels:[{desc:'4 hits at 58% dmg each. Confuse 30%.'},{desc:'4 hits at 64% dmg each. Confuse 34%.'},{desc:'5 hits at 64% dmg each. Confuse 36%.'},{desc:'5 hits at 70% dmg each. Confuse 40%.'}] }),
-  rapidTalon: makeEvolutionAbilityTemplate('rapidTalon','Rapid Talon','Rapid-line poison branch. Quick venom cuts.', {type:'physical', btnType:'physical', energy:2, fixedMainAttackCost:true, role:['multiHit'], levels:[{desc:'3 hits at 42% dmg each. Poison 15%.'},{desc:'3 hits at 48% dmg each. Poison 18%.'},{desc:'4 hits at 48% dmg each. Poison 22%.'},{desc:'4 hits at 54% dmg each. Poison 24%.'}] }),
-  venomFlurry: makeEvolutionAbilityTemplate('venomFlurry','Venom Flurry','Rapid-line poison evolution. Venom stacks in rapid bursts.', {type:'physical', btnType:'physical', energy:2, fixedMainAttackCost:true, role:['multiHit'], levels:[{desc:'3 hits at 50% dmg each. Poison 24%.'},{desc:'3 hits at 56% dmg each. Poison 28%.'},{desc:'4 hits at 56% dmg each. Poison 30%.'},{desc:'4 hits at 62% dmg each. Poison 34%.'}] }),
-  venomStorm: makeEvolutionAbilityTemplate('venomStorm','Venom Storm','Rapid-line final poison evolution. Saturates targets with toxins.', {type:'physical', btnType:'physical', energy:2, fixedMainAttackCost:true, role:['multiHit'], levels:[{desc:'4 hits at 56% dmg each. Poison 34%.'},{desc:'4 hits at 62% dmg each. Poison 38%.'},{desc:'5 hits at 62% dmg each. Poison 40%.'},{desc:'5 hits at 68% dmg each. Poison 45%.'}] }),
-  searingDart: makeEvolutionAbilityTemplate('searingDart','Searing Dart','Dart-line burn branch. A fast ember shot.', {type:'physical', btnType:'physical', energy:1, levels:[{desc:'105% dmg, 8% miss. Burn 30%.'},{desc:'115% dmg, 7% miss. Burn 35%.'},{desc:'125% dmg, 6% miss. Burn 40%.'},{desc:'135% dmg, 5% miss. Burn 45%.'}] }),
-  searingArrow: makeEvolutionAbilityTemplate('searingArrow','Searing Arrow','Dart-line burn evolution. Sharper burn pressure.', {type:'physical', btnType:'physical', energy:1, levels:[{desc:'118% dmg, 7% miss. Burn 40%.'},{desc:'128% dmg, 6% miss. Burn 45%.'},{desc:'138% dmg, 5% miss. Burn 50%.'},{desc:'148% dmg, 4% miss. Burn 55%.'}] }),
-  searingJavelin: makeEvolutionAbilityTemplate('searingJavelin','Searing Javelin','Dart-line final burn evolution. Precision burn finisher.', {type:'physical', btnType:'physical', energy:1, levels:[{desc:'132% dmg, 6% miss. Burn 50%.'},{desc:'142% dmg, 5% miss. Burn 55%.'},{desc:'152% dmg, 4% miss. Burn 60%.'},{desc:'162% dmg, 3% miss. Burn 65%.'}] }),
-  broadDart: makeEvolutionAbilityTemplate('broadDart','Broad Dart','Dart-line bleed branch. Wide cut for lingering damage.', {type:'physical', btnType:'physical', energy:1, levels:[{desc:'102% dmg, 9% miss. Bleed 30%.'},{desc:'112% dmg, 8% miss. Bleed 35%.'},{desc:'122% dmg, 7% miss. Bleed 40%.'},{desc:'132% dmg, 6% miss. Bleed 45%.'}] }),
-  broadArrow: makeEvolutionAbilityTemplate('broadArrow','Broad Arrow','Dart-line bleed evolution. Deeper slicing pressure.', {type:'physical', btnType:'physical', energy:1, levels:[{desc:'116% dmg, 8% miss. Bleed 40%.'},{desc:'126% dmg, 7% miss. Bleed 45%.'},{desc:'136% dmg, 6% miss. Bleed 50%.'},{desc:'146% dmg, 5% miss. Bleed 55%.'}] }),
-  broadJavelin: makeEvolutionAbilityTemplate('broadJavelin','Broad Javelin','Dart-line final bleed evolution. Precise bleeding finisher.', {type:'physical', btnType:'physical', energy:1, levels:[{desc:'130% dmg, 7% miss. Bleed 50%.'},{desc:'140% dmg, 6% miss. Bleed 55%.'},{desc:'150% dmg, 5% miss. Bleed 60%.'},{desc:'160% dmg, 4% miss. Bleed 65%.'}] }),
-  bodkinDart: makeEvolutionAbilityTemplate('bodkinDart','Bodkin Dart','Dart-line pierce branch. Needle-thin precision shot.', {type:'physical', btnType:'physical', energy:1, levels:[{desc:'106% dmg, 8% miss. Pierce 18% DEF.'},{desc:'116% dmg, 7% miss. Pierce 20% DEF.'},{desc:'126% dmg, 6% miss. Pierce 22% DEF.'},{desc:'136% dmg, 5% miss. Pierce 24% DEF.'}] }),
-  bodkinArrow: makeEvolutionAbilityTemplate('bodkinArrow','Bodkin Arrow','Dart-line pierce evolution. Deeper armor puncture.', {type:'physical', btnType:'physical', energy:1, levels:[{desc:'120% dmg, 7% miss. Pierce 24% DEF.'},{desc:'130% dmg, 6% miss. Pierce 26% DEF.'},{desc:'140% dmg, 5% miss. Pierce 28% DEF.'},{desc:'150% dmg, 4% miss. Pierce 30% DEF.'}] }),
-  bodkinJavelin: makeEvolutionAbilityTemplate('bodkinJavelin','Bodkin Javelin','Dart-line final pierce evolution. Armor-breaking precision finish.', {type:'physical', btnType:'physical', energy:1, levels:[{desc:'134% dmg, 6% miss. Pierce 30% DEF.'},{desc:'144% dmg, 5% miss. Pierce 32% DEF.'},{desc:'154% dmg, 4% miss. Pierce 34% DEF.'},{desc:'164% dmg, 3% miss. Pierce 36% DEF.'}] }),
-  windSlip: makeEvolutionAbilityTemplate('windSlip','Wind Slip','Wind-line dodge branch. Slip free of danger.', {type:'utility', btnType:'utility', energy:1, levels:[{desc:'Gain +25% dodge for 2 turns.'},{desc:'Gain +30% dodge for 2 turns.'},{desc:'Gain +35% dodge for 2 turns.'},{desc:'Gain +40% dodge for 3 turns.'}] }),
-  slipVeil: makeEvolutionAbilityTemplate('slipVeil','Slip Veil','Wind-line dodge evolution. Veil yourself in evasive currents.', {type:'utility', btnType:'utility', energy:1, levels:[{desc:'Gain +35% dodge for 2 turns and cleanse Weaken.'},{desc:'Gain +40% dodge for 2 turns and cleanse Weaken.'},{desc:'Gain +45% dodge for 2 turns and cleanse Weaken.'},{desc:'Gain +50% dodge for 3 turns and cleanse Weaken.'}] }),
-  phantomGale: makeEvolutionAbilityTemplate('phantomGale','Phantom Gale','Wind-line final dodge evolution. Become almost untouchable.', {type:'utility', btnType:'utility', energy:1, levels:[{desc:'Gain +45% dodge for 3 turns. Cleanse Weaken/Fear.'},{desc:'Gain +50% dodge for 3 turns. Cleanse Weaken/Fear.'},{desc:'Gain +55% dodge for 3 turns. Cleanse Weaken/Fear.'},{desc:'Gain +60% dodge for 3 turns. Cleanse Weaken/Fear.'}] }),
-  tailwindFeint: makeEvolutionAbilityTemplate('tailwindFeint','Tailwind Feint','Wind-line speed branch. Quickens your SPD.', {type:'utility', btnType:'utility', energy:1, levels:[{desc:'Gain +2 SPD for 2 turns.'},{desc:'Gain +3 SPD for 2 turns.'},{desc:'Gain +4 SPD for 2 turns.'},{desc:'Gain +5 SPD for 2 turns.'}] }),
-  tailwindGust: makeEvolutionAbilityTemplate('tailwindGust','Tailwind Gust','Wind-line speed evolution. Stronger haste current.', {type:'utility', btnType:'utility', energy:1, levels:[{desc:'Gain +4 SPD for 2 turns and +10% dodge.'},{desc:'Gain +5 SPD for 2 turns and +10% dodge.'},{desc:'Gain +6 SPD for 2 turns and +10% dodge.'},{desc:'Gain +7 SPD for 2 turns and +15% dodge.'}] }),
-  hyperCurrent: makeEvolutionAbilityTemplate('hyperCurrent','Hyper Current','Wind-line final speed evolution. Hyper SPD spike.', {type:'utility', btnType:'utility', energy:1, levels:[{desc:'Gain +6 SPD for 3 turns and +15% dodge.'},{desc:'Gain +7 SPD for 3 turns and +15% dodge.'},{desc:'Gain +8 SPD for 3 turns and +20% dodge.'},{desc:'Gain +9 SPD for 3 turns and +20% dodge.'}] }),
-  featherDrift: makeEvolutionAbilityTemplate('featherDrift','Feather Drift','Wind-line disruption branch. Sand the enemy\'s aim.', {type:'utility', btnType:'utility', energy:1, levels:[{desc:'Enemy ACC -15% for 2 turns.'},{desc:'Enemy ACC -18% for 2 turns.'},{desc:'Enemy ACC -20% for 2 turns.'},{desc:'Enemy ACC -22% for 2 turns.'}] }),
-  blindingVeil: makeEvolutionAbilityTemplate('blindingVeil','Blinding Veil','Wind-line disruption evolution. Fog their vision.', {type:'utility', btnType:'utility', energy:1, levels:[{desc:'Enemy ACC -22% for 2 turns and Slow 2 turns.'},{desc:'Enemy ACC -25% for 2 turns and Slow 2 turns.'},{desc:'Enemy ACC -28% for 2 turns and Slow 2 turns.'},{desc:'Enemy ACC -30% for 2 turns and Slow 2 turns.'}] }),
-  stormShroud: makeEvolutionAbilityTemplate('stormShroud','Storm Shroud','Wind-line final disruption evolution. Smother enemy accuracy.', {type:'utility', btnType:'utility', energy:1, levels:[{desc:'Enemy ACC -30% for 3 turns and Slow 2 turns.'},{desc:'Enemy ACC -33% for 3 turns and Slow 2 turns.'},{desc:'Enemy ACC -36% for 3 turns and Slow 3 turns.'},{desc:'Enemy ACC -40% for 3 turns and Slow 3 turns.'}] }),
-  brandPrey: makeEvolutionAbilityTemplate('brandPrey','Brand Prey','Mark-line damage amp evolution. Sharper focus mark.', {type:'utility', btnType:'utility', energy:1, levels:[{desc:'Mark the enemy. Your next attack deals +26% damage.'},{desc:'Mark the enemy. Your next attack deals +30% damage.'},{desc:'Mark the enemy. Your next attack deals +34% damage.'},{desc:'Mark the enemy. Your next attack deals +38% damage.'}] }),
-  huntersMark: makeEvolutionAbilityTemplate('huntersMark','Hunter\'s Mark','Mark-line final damage amp evolution. Potent target amplification.', {type:'utility', btnType:'utility', energy:1, levels:[{desc:'Mark the enemy. Your next attack deals +34% damage.'},{desc:'Mark the enemy. Your next attack deals +38% damage.'},{desc:'Mark the enemy. Your next attack deals +42% damage.'},{desc:'Mark the enemy. Your next attack deals +46% damage.'}] }),
-  exposeWeakness: makeEvolutionAbilityTemplate('exposeWeakness','Expose Weakness','Mark-line defense break branch. Open weak points.', {type:'utility', btnType:'utility', energy:1, levels:[{desc:'Expose the enemy. They take +12% damage for 2 turns.'},{desc:'Expose the enemy. They take +14% damage for 2 turns.'},{desc:'Expose the enemy. They take +16% damage for 2 turns.'},{desc:'Expose the enemy. They take +18% damage for 2 turns.'}] }),
-  exposeGuard: makeEvolutionAbilityTemplate('exposeGuard','Expose Guard','Mark-line defense break evolution. Crack defenses further.', {type:'utility', btnType:'utility', energy:1, levels:[{desc:'Expose the enemy. They take +18% damage for 2 turns.'},{desc:'Expose the enemy. They take +20% damage for 2 turns.'},{desc:'Expose the enemy. They take +22% damage for 2 turns.'},{desc:'Expose the enemy. They take +24% damage for 2 turns.'}] }),
-  quarryBreak: makeEvolutionAbilityTemplate('quarryBreak','Quarry Break','Mark-line final defense break evolution. Full opening for burst.', {type:'utility', btnType:'utility', energy:1, levels:[{desc:'Expose the enemy. They take +24% damage for 3 turns.'},{desc:'Expose the enemy. They take +26% damage for 3 turns.'},{desc:'Expose the enemy. They take +28% damage for 3 turns.'},{desc:'Expose the enemy. They take +30% damage for 3 turns.'}] }),
-  predatorBrand: makeEvolutionAbilityTemplate('predatorBrand','Predator Brand','Mark-line execute evolution. Prepares lethal follow-ups.', {type:'utility', btnType:'utility', energy:1, levels:[{desc:'Mark prey. Next attack gains +22% damage, +16% more below 50% HP.'},{desc:'Mark prey. Next attack gains +26% damage, +18% more below 50% HP.'},{desc:'Mark prey. Next attack gains +30% damage, +20% more below 50% HP.'},{desc:'Mark prey. Next attack gains +34% damage, +22% more below 50% HP.'}] }),
-  finalHunt: makeEvolutionAbilityTemplate('finalHunt','Final Hunt','Mark-line final execute evolution. Deadliest low-HP setup.', {type:'utility', btnType:'utility', energy:1, levels:[{desc:'Mark prey. Next attack gains +28% damage, +24% more below 50% HP.'},{desc:'Mark prey. Next attack gains +32% damage, +26% more below 50% HP.'},{desc:'Mark prey. Next attack gains +36% damage, +28% more below 50% HP.'},{desc:'Mark prey. Next attack gains +40% damage, +30% more below 50% HP.'}] }),
-};
-Object.assign(ABILITY_TEMPLATES, SPARROW_EVOLUTION_TEMPLATES);
-
-function enforceAbilityBalanceSpec(){
-  const HARD_CC=new Set(['paralyzed','stunned','confused']);
-  const MAJOR_AIL=new Set(['paralyzed','confused','burning','poison','weaken','delayed','feared','slow','mud','chilled']);
-  for(const tmpl of Object.values(ABILITY_TEMPLATES)){
-    if(!tmpl||!Array.isArray(tmpl.levels)) continue;
-    if(!tmpl.balanceSpec){
-      tmpl.balanceSpec={primary:tmpl.type||'utility',secondary:[],ailment:null,subaction:null};
-    }
-    const baseAilCount=Math.max(0,[tmpl.levels[0]?.newAilment,tmpl.levels[0]?.newAilment2,tmpl.levels[0]?.newAilment3].filter(Boolean).length);
-    tmpl.levels.forEach((lv,idx)=>{
-      if(!lv||typeof lv!=='object') return;
-      delete lv.raisePoisonCap; // remove infinite cap growth loops
-      const ails=[lv.newAilment,lv.newAilment2,lv.newAilment3].filter(Boolean);
-      const maxAllowed=baseAilCount + (idx>=3?1:0);
-      let kept=[];
-      let hardUsed=false;
-      for(const a of ails){
-        if(kept.length>=maxAllowed) break;
-        if(HARD_CC.has(a)){
-          if(hardUsed) continue;
-          hardUsed=true;
-        }
-        if(MAJOR_AIL.has(a)||kept.length===0) kept.push(a);
-      }
-      lv.newAilment=kept[0];
-      lv.newAilment2=kept[1];
-      delete lv.newAilment3;
-      if(lv.newAilment==='paralyzed') lv.ailChance=Math.min(35, Math.max(0, lv.ailChance||0));
-      if(lv.newAilment2==='paralyzed') lv.ailChance2=Math.min(35, Math.max(0, lv.ailChance2||0));
-    });
-  }
-}
-enforceAbilityBalanceSpec();
-
-const DEFAULT_ABILITY_FIELDS = {
-  energyCost: 1,
-  skillType: 'attack',
-  role: [],
-};
-
-function normalizeAbilityEnergy(ability){
-  if(!ability||typeof ability!=='object') return ability;
-  if(ability.energyCost==null){
-    ability.energyCost = Number.isFinite(ability.cost) ? ability.cost : DEFAULT_ABILITY_FIELDS.energyCost;
-  }
-  if(!ability.skillType){
-    ability.skillType = DEFAULT_ABILITY_FIELDS.skillType;
-  }
-  if(!Array.isArray(ability.role)){
-    ability.role = Array.isArray(DEFAULT_ABILITY_FIELDS.role) ? [...DEFAULT_ABILITY_FIELDS.role] : [];
-  }
-  if('cost' in ability) delete ability.cost;
-  return ability;
-}
-
-function normalizeAllAbilityEnergy(){
-  for(const tmpl of Object.values(ABILITY_TEMPLATES)) normalizeAbilityEnergy(tmpl);
-}
-
-
-const ABILITY_ENERGY_PATCH = {
-  mainAttack:{energyCost:1,skillType:'attack',role:['basic']},
-  swoop:{energyCost:2,skillType:'attack',role:['burst']},
-  diveBomb:{energyCost:2,skillType:'attack',role:['burst']},
-  cannonball:{energyCost:2,skillType:'attack',role:['burst']},
-  flurry:{energyCost:2,skillType:'attack',role:['multiHit']},
-  retribution:{energyCost:2,skillType:'attack',role:['counter']},
-  deathDive:{energyCost:3,skillType:'attack',role:['finisher']},
-  eyeGouge:{energyCost:1,skillType:'attack',role:['debuff']},
-  supersonic:{energyCost:2,skillType:'attack',role:['speed']},
-  curvedTalons:{energyCost:2,skillType:'attack',role:['pierce']},
-  curvedBeak:{energyCost:2,skillType:'attack',role:['pierce']},
-  toxicSpit:{energyCost:1,skillType:'attack',role:['poison']},
-  plagueBlast:{energyCost:2,skillType:'attack',role:['dot']},
-  incendiaryFeathers:{energyCost:2,skillType:'attack',role:['burn']},
-  counter:{energyCost:1,skillType:'utility',role:['reactive']},
-  parry:{energyCost:1,skillType:'utility',role:['defense']},
-  chargeUp:{energyCost:1,skillType:'utility',role:['setup']},
-  rockDrop:{energyCost:2,skillType:'attack',role:['setupBurst']},
-  stickLance:{energyCost:1,skillType:'attack',role:['poke']},
-  mudshot:{energyCost:1,skillType:'attack',role:['slow']},
-  cactiSpine:{energyCost:1,skillType:'attack',role:['chip']},
-  aerialPoop:{energyCost:1,skillType:'attack',role:['debuff']},
-  thornBarrage:{energyCost:2,skillType:'attack',role:['multiHit']},
-  bowedWing:{energyCost:1,skillType:'attack',role:['poke']},
-  hum:{energyCost:1,skillType:'buff',role:[]},
-  flyby:{energyCost:2,skillType:'buff',role:['setup']},
-  guardianCry:{energyCost:2,skillType:'utility',role:['defense']},
-  bulwarkRoar:{energyCost:2,skillType:'utility',role:['tank']},
-  warcry:{energyCost:1,skillType:'buff',role:[]},
-  battleHymn:{energyCost:2,skillType:'buff',role:[]},
-  reveille:{energyCost:2,skillType:'utility',role:['cleanse']},
-  victoryChant:{energyCost:2,skillType:'buff',role:[]},
-  preen:{energyCost:2,skillType:'utility',role:['heal']},
-  molt:{energyCost:2,skillType:'utility',role:['cleanse']},
-  featherRuffle:{energyCost:1,skillType:'debuff',role:[]},
-  wingClip:{energyCost:1,skillType:'debuff',role:[]},
-  tailPull:{energyCost:1,skillType:'debuff',role:[]},
-  taunt:{energyCost:1,skillType:'utility',role:['control']},
-  dustDevil:{energyCost:2,skillType:'debuff',role:[]},
-  spellLance:{energyCost:2,skillType:'spell',role:[]},
-  shriekwave:{energyCost:2,skillType:'spell',role:[]},
-  birdBrain:{energyCost:2,skillType:'spell',role:['control']},
-  sonicDirge:{energyCost:3,skillType:'spell',role:['hardControl']},
-  owlPsyche:{energyCost:3,skillType:'spell',role:['hardControl']},
-  mobSwarm:{energyCost:3,skillType:'spell',role:['multiHit']},
-  wingStorm:{energyCost:3,skillType:'spell',role:[]},
-  murderMurmuration:{energyCost:3,skillType:'spell',role:[]},
-  astralRefrain:{energyCost:2,skillType:'spell',role:['utility']},
-};
-Object.entries(ABILITY_ENERGY_PATCH).forEach(([id, patch])=>{
-  if(ABILITY_TEMPLATES[id]) Object.assign(ABILITY_TEMPLATES[id], patch);
-});
-
-const ENERGY_BY_LEVEL_PATCH={
-  rapidPeck:[1,1,1,1], dart:[1,1,1,1], evade:[1,1,2,2], blackPeck:[1,1,1,1],
-  dirge:[3,3,3,3], lullaby:[2,2,2,3], crowStrike:[1,1,1,1], talonRake:[1,1,1,2],
-  beakSlam:[3,3,3,3], crowDefend:[1,1,2,2], mudLash:[1,1,1,2], serpentCrusher:[3,3,3,3],
-  fleshRipper:[1,1,1,1], serratedSlash:[1,1,1,1], diveGouge:[3,3,3,3],
-  fishSnatcher:[1,1,1,2], honkAttack:[3,3,3,3], gooseHonk:[3,3,3,3], penguinHonk:[3,3,3,3],
-  headWhip:[2,2,2,3], intimidate:[1,1,2,2], probeStrike:[2,2,2,2], bashUp:[2,2,2,3],
-  sitAndWait:[1,1,1,1], breakClamp:[2,2,3,3], serratedBill:[1,1,1,2], silentPierce:[2,2,2,3],
-theJoker:[2,2,3,3], tookieTookie:[2,2,2,3], fruitSweetener:[1,1,2,2],
-  nectarJab:[2,3,3,3], swoop:[1,1,1,1], diveBomb:[2,2,3,3], shadowFeint:[1,1,1,2],
-  flyby:[1,1,2,2], dustDevil:[1,1,2,2], rockDrop:[2,2,3,3], mudshot:[2,2,3,3], hum:[1,1,2,2],
-  bowedWing:[1,1,2,2], spellLance:[2,2,2,3], guardianCry:[2,2,2,2], wormRiot:[1,1,2,2],
-  curvedTalons:[3,3,3,3], curvedBeak:[2,2,3,3], wingStorm:[2,2,2,3], supersonic:[2,2,3,3],
-  stickLance:[1,1,2,2]
-};
-Object.entries(ENERGY_BY_LEVEL_PATCH).forEach(([id,arr])=>{
-  if(ABILITY_TEMPLATES[id]) ABILITY_TEMPLATES[id].energyByLevel=[...arr];
-  if(typeof ABILITY_TEMPLATES_EXTRA!=='undefined'&&ABILITY_TEMPLATES_EXTRA[id]) ABILITY_TEMPLATES_EXTRA[id].energyByLevel=[...arr];
-});
-
-normalizeAllAbilityEnergy();
-
-const ABILITY_TYPES = new Set(['attack','spell','song','utility']);
-const ABILITY_RARITIES = new Set(['common','rare','epic','legendary']);
-
-function normalizeAbilityTemplates(){
-  for(const [id,t] of Object.entries(ABILITY_TEMPLATES||{})){
-    if(!t) continue;
-    const rawType=String(t.type||t.btnType||'').toLowerCase();
-    const mapped=(rawType==='physical'||rawType==='ranged')?'attack':rawType;
-    const fallback=(String(t.btnType||'').toLowerCase()==='spell')?'spell':(String(t.btnType||'').toLowerCase()==='utility'?'utility':'attack');
-    t.codexType = ABILITY_TYPES.has(mapped) ? mapped : fallback;
-
-    if(!t.rarity) t.rarity='common';
-    t.rarity=String(t.rarity).toLowerCase();
-    if(!ABILITY_RARITIES.has(t.rarity)) t.rarity='common';
-
-    if(!Array.isArray(t.tags)) t.tags=[];
-    if(t.codexType==='spell' && !t.tags.includes('magic')) t.tags.push('magic');
-    if(t.codexType==='song' && !t.tags.includes('singer')) t.tags.push('singer');
-    if(!t.shortDesc) t.shortDesc=t.desc||'No description yet.';
-  }
-}
-normalizeAbilityTemplates();
-
-Object.values(ABILITY_TEMPLATES).forEach(t=>{
-  if(!t) return;
-  if(!t.description) t.description=t.desc||`${t.name} ability.`;
-  if(!t.effect) t.effect=(t.levels&&t.levels[0]&&t.levels[0].desc)?t.levels[0].desc:'Use this ability to gain an advantage.';
-});
-
-// Ensure every ability has a baseline miss rate for accuracy rebuild tuning.
-Object.values(ABILITY_TEMPLATES).forEach(t=>{ if(t.baseMissChance===undefined) t.baseMissChance=15; });
-
-// Ability pools by category for class filtering
-const ABILITY_POOL_PHYSICAL = [
-  'swoop','diveBomb',
-  'eyeGouge','cannonball','flurry','retribution','deathDive','chargeUp','counter','parry','shadowFeint','shadowPounce',
-  'plagueBlast','incendiaryFeathers','toxicSpit','curvedTalons','curvedBeak','supersonic',
-];
-const ABILITY_POOL_RANGED = [
-  'rockDrop','stickLance','mudshot','cactiSpine','aerialPoop','thornBarrage','bowedWing',
-];
-
-const ABILITY_POOL_BUFF = [
-  'hum','flyby','guardianCry','bulwarkRoar',
-  'warcry','battleHymn','reveille','victoryChant',
-  'preen','molt',
-];
-const ABILITY_POOL_DEBUFF = [
-  'featherRuffle','wingClip','tailPull','taunt',
-];
-const ABILITY_POOL_MAGIC = [
-  'birdBrain','sonicDirge','owlPsyche','shriekwave','mobSwarm','spellLance','astralRefrain','murderMurmuration','wingStorm',
-];
-const ABILITY_POOL_UTILITY = Object.values(ABILITY_TEMPLATES)
-  .filter(t=>t&&(t.btnType||t.type)==='utility')
-  .map(t=>t.id);
-
-
-function removeMimicEverywhere(){
-  const GG = globalThis.G;
-  if(typeof ABILITY_TEMPLATES!=='undefined') delete ABILITY_TEMPLATES.mimic;
-  if('ACTIONS' in globalThis && globalThis.ACTIONS) delete globalThis.ACTIONS.mimic;
-  if(GG?.player?.abilities) GG.player.abilities=GG.player.abilities.filter(a=>a.id!=='mimic');
-  if(typeof BIRDS!=='undefined') Object.values(BIRDS).forEach(b=>{ if(Array.isArray(b.extraAbilities)) b.extraAbilities=b.extraAbilities.filter(id=>id!=='mimic'); });
-}
-
-
-function removeMimicEverywhere(){
-  const GG = globalThis.G;
-  if(typeof ABILITY_TEMPLATES!=='undefined') delete ABILITY_TEMPLATES.mimic;
-  if('ACTIONS' in globalThis && globalThis.ACTIONS) delete globalThis.ACTIONS.mimic;
-  if(GG?.player?.abilities) GG.player.abilities=GG.player.abilities.filter(a=>a.id!=='mimic');
-  if(typeof BIRDS!=='undefined') Object.values(BIRDS).forEach(b=>{ if(Array.isArray(b.extraAbilities)) b.extraAbilities=b.extraAbilities.filter(id=>id!=='mimic'); });
-}
-
-const MAGIC_CLASSES = new Set(['singer','trickster']);
-// removeMimicEverywhere(); // moved to after G init
-const ABILITY_MAIN_ATTACK = {
-  id:'mainAttack',
-  name:'Main Attack',
-  type:'physical',
-  btnType:'physical',
-  desc:'Reliable strike. For magic birds this is Peck (always 20% miss). Peck: An average physical attack using a Beak.',
-  levels:[{lv:1,desc:'100% ATK damage. Magic birds use Peck (20% fixed miss chance).'}],
-};
-ABILITY_TEMPLATES.mainAttack = ABILITY_MAIN_ATTACK;
-
 // Unlock system
 const UNLOCK_KEY = 'avianAscent_unlocks_v1';
 
@@ -3382,28 +2399,7 @@ function computeBossExpGain(enemy) {
   - plv 120: nextLvExp≈61,503,211 => normal cap≈18,450,963, boss cap≈52,277,729.
 */
 
-// ============================================================
-//  TURN STATE / SAFETY LIMITS
-// ============================================================
-const TURN={PLAYER:'PLAYER',ENEMY:'ENEMY',RESOLVING:'RESOLVING'};
 
-// ===== Growth Stage Constants =====
-const GROWTH = {
-  FLETCHLING:'fletchling',
-  JUVENILE:'juvenile',
-  ADULT:'adult',
-  APEX:'apex',
-};
-
-function getGrowthStageForLevel(lv){
-  if(lv>=21) return GROWTH.APEX;
-  if(lv>=15) return GROWTH.ADULT;
-  if(lv>=7) return GROWTH.JUVENILE;
-  return GROWTH.FLETCHLING;
-}
-const MAX_PLAYER_ACTIONS_PER_TURN=6;
-const MAX_ENEMY_ACTIONS_PER_TURN=3;
-const MAX_ENERGY_GAIN_PER_TURN=2;
 
 // ============================================================
 //  ENERGY (RECOMMENDED) — StS full refill (size + class)
@@ -3457,22 +2453,22 @@ function runModuleHook(hook, payload){
 }
 globalThis.registerGameModule = registerGameModule;
 
-let _warnedMissingAbilityPassiveUpgradePack = false;
+let _warnedMissingSkillPassiveUpgradePack = false;
 function initDataPacks(){
-  const pack = globalThis.ABILITY_PASSIVE_UPGRADE_PACK;
+  const pack = globalThis.SKILL_PASSIVE_UPGRADE_PACK;
   if(pack && typeof pack === 'object'){
     G.dataPacks = G.dataPacks || {};
-    G.dataPacks.abilityPassiveUpgrade = Object.freeze({
+    G.dataPacks.skillPassiveUpgrade = Object.freeze({
       STATUS_GLOSSARY: pack.STATUS_GLOSSARY || Object.freeze({}),
-      ABILITY_DEFS: pack.ABILITY_DEFS || Object.freeze({}),
+      SKILL_DEFS: pack.SKILL_DEFS || Object.freeze({}),
     });
     return;
   }
   G.dataPacks = G.dataPacks || {};
-  G.dataPacks.abilityPassiveUpgrade = null;
-  if(!_warnedMissingAbilityPassiveUpgradePack){
-    _warnedMissingAbilityPassiveUpgradePack = true;
-    console.warn('[DataPack] ABILITY_PASSIVE_UPGRADE_PACK missing; metadata overlays disabled.');
+  G.dataPacks.skillPassiveUpgrade = null;
+  if(!_warnedMissingSkillPassiveUpgradePack){
+    _warnedMissingSkillPassiveUpgradePack = true;
+    console.warn('[DataPack] SKILL_PASSIVE_UPGRADE_PACK missing; metadata overlays disabled.');
   }
 }
 
@@ -3610,7 +2606,7 @@ function getRunSnapshot(){
     stageNumber:Number(G.stage||1),
     endless:!!G.endlessMode,
     stats:{...(p.stats||{})},
-    abilities:(p.abilities||[]).map(a=>{
+    skills:(p.skills||[]).map(a=>{
       const t=ABILITY_TEMPLATES[a.id];
       return `${t?.name||a.id} Lv${a.level||1}`;
     }),
@@ -3642,7 +2638,7 @@ function renderHighscoreBoard(){
       <div class="run-stage">#${i+1} · ${r.stage}${r.won?' · 👑 Win':''}</div>
       <div class="run-bird">${r.birdName||r.birdKey}</div>
       <div class="run-meta">HP ${r.stats?.hp||0}/${r.stats?.maxHp||0} · ATK ${r.stats?.atk||0} · DEF ${r.stats?.def||0} · SPD ${r.stats?.spd||0}</div>
-      <div class="run-meta">${(r.abilities||[]).slice(0,3).join(' · ')}</div>
+      <div class="run-meta">${((r.skills||r.abilities)||[]).slice(0,3).join(' · ')}</div>
       <div class="run-meta">Upgrades: ${((r.upgrades||[]).slice(0,2).join(' · '))||'—'}</div>
     </div>`).join('');
 }
@@ -3790,9 +2786,10 @@ function openNest() {
     <div class="nest-stat-card" title="Magic Attack — improves spell and ailment potency"><div class="nest-stat-val" style="color:#6ae8e8">${s.matk||8}</div><div class="nest-stat-lbl" style="color:#4ab8c0">✦ M.ATK</div></div>
     <div class="nest-stat-card" title="Magic Defence — resists enemy spells and ailments"><div class="nest-stat-val" style="color:#6ae8e8">${s.mdef||8}</div><div class="nest-stat-lbl" style="color:#4ab8c0">✦ M.DEF</div></div>
   </div></div>`;
-  // Abilities
-  html+=`<div class="nest-section"><div class="nest-section-title">⚔ Abilities (${p.abilities.length})</div><div class="nest-abilities-grid">`;
-  p.abilities.forEach(ab=>{
+  // Skills
+  const nestSkills = p.skills || [];
+  html+=`<div class="nest-section"><div class="nest-section-title">⚔ Skills (${nestSkills.length})</div><div class="nest-abilities-grid">`;
+  nestSkills.forEach(ab=>{
     const tmpl=ABILITY_TEMPLATES[ab.id];
     const lv=Math.min(ab.level,4);
     const desc=tmpl?.levels?.[lv-1]?.desc || tmpl?.desc || ab?.desc || 'No description available.';
@@ -6344,13 +5341,15 @@ function ensureAbilityObjectFromTemplate(id, existing=null, slotIndex=null){
   out.ailmentIds = deriveAbilityAilments(out, tmpl);
   return out;
 }
-function syncPlayerAbilitiesFromSkillSlots(player){
+function syncPlayerAbilitiesFromSkillSlots(player, opts={}){
   if(!player || !usesFamilySkillEvolution(player)) return;
+  const flatKey = opts.flatKey || 'skills';
   const slots = getSkillSlots(player).slice().sort((a,b)=>a.slotIndex-b.slotIndex);
   if(!slots.length) return;
-  const bySlot = new Map((player.abilities||[]).map(ab=>[Number.isFinite(ab?.slotIndex)?ab.slotIndex:-1, ab]));
-  const byId = new Map((player.abilities||[]).map(ab=>[ab?.id, ab]));
-  player.abilities = slots.map(slot=>{
+  const prev = player[flatKey] || [];
+  const bySlot = new Map((prev).map(ab=>[Number.isFinite(ab?.slotIndex)?ab.slotIndex:-1, ab]));
+  const byId = new Map((prev).map(ab=>[ab?.id, ab]));
+  player[flatKey] = slots.map(slot=>{
     const prior = bySlot.get(slot.slotIndex) || byId.get(slot.abilityId) || null;
     const ab = ensureAbilityObjectFromTemplate(slot.abilityId, prior, slot.slotIndex);
     if(slot.familyId==='rapid') ab.fixedMainAttackCost = true;
@@ -6397,7 +5396,7 @@ function ensureFamilyEvolutionState(player){
     let rawSlots = Array.isArray(state.skillSlots) && state.skillSlots.length
       ? state.skillSlots
       : baseSlots.map((slot, idx)=>{
-          const currentId = migrateLegacyFamilyBaseAbilityId(player.abilities?.[idx]?.id, birdKey, slot.familyId, null, 0);
+          const currentId = migrateLegacyFamilyBaseAbilityId(player.skills?.[idx]?.id, birdKey, slot.familyId, null, 0);
           const info = getFamilyEvolutionAbilityStateFromId(birdKey, currentId);
           if(info && info.familyId===slot.familyId){
             return createSkillSlotState(slot.slotIndex, info.familyId, info.pathId, info.tier, info.abilityId, 0, []);
@@ -6420,8 +5419,8 @@ function ensureFamilyEvolutionState(player){
     state.skillSlots = baseSlots.map((baseSlot, idx)=>normalizeSkillSlotState(rawSlots[idx], baseSlot, birdKey));
     syncPlayerAbilitiesFromSkillSlots(player);
   }else{
-    const mirrored = Array.isArray(player.abilities)
-      ? player.abilities.slice(0,4).map((ab, idx)=>createSkillSlotState(idx, null, null, 0, ab?.id || '', 0, []))
+    const mirrored = Array.isArray(player.skills)
+      ? player.skills.slice(0,4).map((ab, idx)=>createSkillSlotState(idx, null, null, 0, ab?.id || '', 0, []))
       : [];
     state.skillSlots = mirrored;
   }
@@ -6518,6 +5517,10 @@ function continueRun() {
   }
   G.collectedRewards=save.collectedRewards||[];
   G.player=save.player;
+  if(G.player && Array.isArray(G.player.abilities) && !Array.isArray(G.player.skills)){
+    G.player.skills = G.player.abilities;
+    delete G.player.abilities;
+  }
   if(G.player?.birdKey && BIRDS[G.player.birdKey]?.size) G.player.size=BIRDS[G.player.birdKey].size;
   G.player.class = resolveFinalClass(G.player?.class, G.player?.birdKey);
   ensureFamilyEvolutionState(G.player);
@@ -7329,7 +6332,7 @@ function materializeEnemyFamilySkillSlots(enemy, birdKey, enemyClass, evolvedSlo
     }
     for(let n=0;n<ups;n++) autoUpgradeSkillSlotTier(slot,enemy);
   }
-  syncPlayerAbilitiesFromSkillSlots(enemy);
+  syncPlayerAbilitiesFromSkillSlots(enemy, { flatKey: 'abilities' });
   return true;
 }
 function rollInt(min,max){ return Math.floor(Math.random()*(max-min+1))+min; }
@@ -7451,7 +6454,7 @@ function buildStoryEnemyFromBirdKey(birdKey, stage){
     const ups=Math.min(3,upgrades);
     for(let n=0;n<ups;n++) autoUpgradeSkillSlotTier(slot,enemyStub);
   }
-  syncPlayerAbilitiesFromSkillSlots(enemyStub);
+  syncPlayerAbilitiesFromSkillSlots(enemyStub, { flatKey: 'abilities' });
   const diffMult = DIFFICULTIES[G.difficulty||'juvenile']?.mult || 1;
   stats.maxHp=Math.max(1,Math.floor(stats.maxHp*diffMult));
   stats.hp=stats.maxHp;
@@ -8393,7 +7396,7 @@ function startGame() {
     name: bd.name, portraitKey: bd.portraitKey, birdKey: G.selected,
     size: bd.size||'medium',
     stats: {...bd.stats},
-    abilities: [...bd.startAbilities,...(bd.extraAbilities||[])].map(id=>({
+    skills: [...bd.startAbilities,...(bd.extraAbilities||[])].map(id=>({
       ...ABILITY_TEMPLATES[id],
       level: 1,
       ailmentIds: [],
@@ -8423,7 +7426,7 @@ function startGame() {
   // MDodge base mirrors the bird's physical dodge stat
   G.player.stats.mdodge = G.player.stats.dodge;
   codexMark('birds', G.player.birdKey, 'seen');
-  (G.player.abilities||[]).forEach(a=>codexMark('abilities',a.id,'seen'));
+  (G.player.skills||[]).forEach(a=>codexMark('abilities',a.id,'seen'));
   ensureMainAttackAndLoadoutRules();
   removeMimicEverywhere();
   normalizeAbilityCooldownsForPlayer(G.player);
@@ -9573,16 +8576,16 @@ function getAbilityDisplayTags(ab){
 function renderActions() {
   const grid=document.getElementById('actions-grid'); grid.innerHTML='';
   renderEnergyOrbs();
-  if(G.player?.abilities?.length) enforceAbilityCosts(G.player);
+  if(G.player?.skills?.length) enforceAbilityCosts(G.player);
   const locked=!canPlayerAct();
-  let allAbilities=[...G.player.abilities];
+  let allAbilities=[...G.player.skills];
   const order={physical:0,ranged:1,spell:2,utility:3};
   allAbilities=allAbilities.sort((a,b)=>{
     return (order[a.btnType]??9)-(order[b.btnType]??9);
   });
   let autoQueued=G.autoQueuedAbilityId||null;
   if(autoQueued){
-    const aq=G.player.abilities.find(x=>x.id===autoQueued);
+    const aq=G.player.skills.find(x=>x.id===autoQueued);
     if(!aq||!canUseAbility(G.player,aq)){G.autoQueuedAbilityId=null;autoQueued=null;}
   }
   allAbilities.forEach((ab,idx)=>{
@@ -9681,7 +8684,7 @@ function renderActions() {
       ${ab.level>1?`<span class="ab-lv-badge">Lv${ab.level}</span>`:''}
       ${ailDots?`<div class="ailment-icons">${ailDots}</div>`:''}
       <span class="kb-hint">[${idx+1}]</span>`;
-    const currentAb = ()=> (G?.player?.abilities||[]).find(x=>x.id===ab.id) || ab;
+    const currentAb = ()=> (G?.player?.skills||[]).find(x=>x.id===ab.id) || ab;
     btn.onclick=()=>enqueueAction(()=>playerAction(currentAb(),true));
     // Tooltip - desktop hover + mobile tap toggle
     // Desktop: hover tooltips
@@ -10501,8 +9504,8 @@ function reduceOtherSpellCooldownsOnCast(usedAbId){
 
 // ------------------ COOLDOWN NORMALIZER ------------------
 function normalizeAbilityCooldownsForPlayer(p){
-  if(!p?.abilities) return;
-  p.abilities.forEach(ab=>{
+  if(!p?.skills) return;
+  p.skills.forEach(ab=>{
     if(!ab||!ab.id) return;
     if(ab.id==='skipTurn'||ab.id==='sittingDuck'||ab.id==='endTurn') return;
     const isMagic=(ab.type==='magic'||ab.btnType==='magic'||/spell|hex|curse|arcane|shadow|storm/i.test(ab.name||''));
@@ -11385,7 +10388,7 @@ function dealDamage(target,amount,isCrit=false,isMagic=false,srcAbility=null) {
   }
   let wasBlocked=false;
   const def=target==='enemy'?G.enemyStatus.defending:G.playerStatus.defending;
-  const defAb=G.player.abilities.find(a=>a.id==='crowDefend');
+  const defAb=G.player.skills.find(a=>a.id==='crowDefend');
   let blockPct=0.4;
   if (defAb) {
     if (defAb.level>=4) blockPct=0.25;
@@ -12785,7 +11788,7 @@ const ACTIONS = {
     await doSpell('player','🪵 Waiting...');
     renderStatuses('player-status',G.playerStatus);
     logMsg(`🪵 Sit & Wait! ATK+${atkPct}%, ACC+${accPct}%, Dodge+${dod}% for 3t.`,'player-action');
-    if(lv>=4){[...G.player.abilities].forEach(a=>{if(a.id==='bashUp'){}});G.swoopCooldown=Math.max(0,G.swoopCooldown-1);G.crowDefendCooldown=Math.max(0,G.crowDefendCooldown-1);}
+    if(lv>=4){[...G.player.skills].forEach(a=>{if(a.id==='bashUp'){}});G.swoopCooldown=Math.max(0,G.swoopCooldown-1);G.crowDefendCooldown=Math.max(0,G.crowDefendCooldown-1);}
   },
   async theJoker(ab) {
     const lv=ab.level;
@@ -18606,7 +17609,7 @@ async function playerAction(ab,fromQueue=false) {
   G.playerTurnFlags = G.playerTurnFlags || {};
   G.playerTurnFlags._spellTempoUsedThisAction = false;
   if(G.autoQueuedAbilityId){
-    const autoAb=G.player.abilities.find(x=>x.id===G.autoQueuedAbilityId);
+    const autoAb=G.player.skills.find(x=>x.id===G.autoQueuedAbilityId);
     if(autoAb){
       if(!canUseAbility(G.player,autoAb)){G.autoQueuedAbilityId=null;}
       else {ab=autoAb;logMsg(`🔁 Auto action: ${ab.name}!`,'system');}
@@ -18773,7 +17776,7 @@ function startPlayerTurn(player){
   renderActions();
   lockActionUI(false);
   if(G.autoQueuedAbilityId==='breakClamp'){
-    const autoAb=(G.player.abilities||[]).find(a=>a.id==='breakClamp');
+    const autoAb=(G.player.skills||[]).find(a=>a.id==='breakClamp');
     if(autoAb && canUseAbility(G.player,autoAb)){
       setTimeout(()=>enqueueAction(()=>playerAction(autoAb,true)), 80);
     }
@@ -18858,8 +17861,9 @@ function spendEnergy(player, ability){
 
 function enforceAbilityCosts(player){
   const p = player || G.player;
-  if(!p?.abilities) return;
-  for(const ab of p.abilities){
+  const list = p?.skills || p?.abilities;
+  if(!list) return;
+  for(const ab of list){
     const desired = getAbilityEnergyCost(ab, p);
     ab.energyCost = desired;
   }
@@ -20731,11 +19735,11 @@ function getMainAttackAutoLevel(birdLevel){
 }
 
 function applyMainAttackAutoLevel(){
-  if(!G.player||!Array.isArray(G.player.abilities)) return;
+  if(!G.player||!Array.isArray(G.player.skills)) return;
 
   const main=
-    G.player.abilities.find(a=>isMainAttackAbility(a))||
-    G.player.abilities.find(a=>a.id==='mainAttack');
+    G.player.skills.find(a=>isMainAttackAbility(a))||
+    G.player.skills.find(a=>a.id==='mainAttack');
 
   if(!main) return;
 
@@ -20842,13 +19846,13 @@ function ensureMainAttackAndLoadoutRules(){
   if(!G.player) return;
   const bd=BIRDS[G.player.birdKey]||{};
   if(usesFamilySkillEvolution(G.player)){
-    if(!Array.isArray(G.player.abilities)) G.player.abilities=[];
-    G.player.abilities=G.player.abilities.filter(ab=>ab&&ab.id&&ab.id!=='skipTurn'&&ab.id!=='sittingDuck');
-    G.player.abilities=G.player.abilities.filter(ab=>ab.id!=='mainAttack');
+    if(!Array.isArray(G.player.skills)) G.player.skills=[];
+    G.player.skills=G.player.skills.filter(ab=>ab&&ab.id&&ab.id!=='skipTurn'&&ab.id!=='sittingDuck');
+    G.player.skills=G.player.skills.filter(ab=>ab.id!=='mainAttack');
     const bases=getBaseSkillSlotsForBird(G.player.birdKey);
-    const preferred=bd.mainAttackId || bases[0]?.abilityId || G.player.abilities[0]?.id;
+    const preferred=bd.mainAttackId || bases[0]?.abilityId || G.player.skills[0]?.id;
     if(preferred) G.player.mainAttackId=preferred;
-    G.player.abilities.forEach(ab=>{ ab.isMainAttack=(ab.id===preferred); });
+    G.player.skills.forEach(ab=>{ ab.isMainAttack=(ab.id===preferred); });
     removeMimicEverywhere();
     normalizeAbilityCooldownsForPlayer(G.player);
     enforceAbilityCosts(G.player);
@@ -20856,45 +19860,45 @@ function ensureMainAttackAndLoadoutRules(){
   }
   const birdClass=bd.class||'';
   const isMagic=MAGIC_CLASSES.has(birdClass);
-  if(!Array.isArray(G.player.abilities)) G.player.abilities=[];
-  G.player.abilities=G.player.abilities.filter(ab=>ab&&ab.id&&ab.id!=='skipTurn'&&ab.id!=='sittingDuck');
+  if(!Array.isArray(G.player.skills)) G.player.skills=[];
+  G.player.skills=G.player.skills.filter(ab=>ab&&ab.id&&ab.id!=='skipTurn'&&ab.id!=='sittingDuck');
   if(!isMagic){
     // Migration cleanup: non-magic birds should not keep legacy generic Peck/mainAttack card.
-    G.player.abilities=G.player.abilities.filter(ab=>ab.id!=='mainAttack');
+    G.player.skills=G.player.skills.filter(ab=>ab.id!=='mainAttack');
   }
-  G.player.abilities.forEach(ab=>delete ab.isMainAttack);
+  G.player.skills.forEach(ab=>delete ab.isMainAttack);
 
   let mainAb=null;
   if(isMagic){
     const isBlackbird = (G.player?.birdKey==='blackbird');
     if(isBlackbird){
       G.player.mainAttackId='shadow_peck';
-      mainAb=G.player.abilities.find(a=>a.id==='shadow_peck') || null;
-      G.player.abilities=G.player.abilities.filter(a=>a.id!=='mainAttack');
+      mainAb=G.player.skills.find(a=>a.id==='shadow_peck') || null;
+      G.player.skills=G.player.skills.filter(a=>a.id!=='mainAttack');
       if(!mainAb){
         mainAb={...(ABILITY_TEMPLATES.shadow_peck||{}), id:'shadow_peck', level:1};
-        G.player.abilities.unshift(mainAb);
+        G.player.skills.unshift(mainAb);
       }
     }else{
       if(bd.mainAttackId) G.player.mainAttackId=bd.mainAttackId;
-      mainAb=G.player.abilities.find(a=>a.id==='mainAttack');
+      mainAb=G.player.skills.find(a=>a.id==='mainAttack');
       if(!mainAb){
         mainAb={id:'mainAttack',name:'Peck',level:1,type:'physical',btnType:'physical'};
-        G.player.abilities.unshift(mainAb);
+        G.player.skills.unshift(mainAb);
       }
       mainAb.name='Peck';
     }
   } else {
     const preferred=bd.mainAttackId||(bd.startAbilities&&bd.startAbilities[0]);
-    mainAb=G.player.abilities.find(a=>a.id===preferred)||G.player.abilities[0]||null;
+    mainAb=G.player.skills.find(a=>a.id===preferred)||G.player.skills[0]||null;
   }
   if(mainAb) mainAb.isMainAttack=true;
 
   const cap=4;
-  const nonMain=G.player.abilities.filter(a=>!isMainAttackAbility(a));
+  const nonMain=G.player.skills.filter(a=>!isMainAttackAbility(a));
   if(nonMain.length>cap){
     const kept=nonMain.slice(0,cap);
-    G.player.abilities=[...(mainAb?[mainAb]:[]),...kept];
+    G.player.skills=[...(mainAb?[mainAb]:[]),...kept];
   }
 
   removeMimicEverywhere();
@@ -21035,7 +20039,7 @@ function finalizeSkillEvolutionChoice(message){
   syncPlayerAbilitiesFromSkillSlots(G.player);
   ensureMainAttackAndLoadoutRules();
   refreshPlayerAbilityAilments();
-  (G.player.abilities||[]).forEach(a=>codexMark('abilities', a.id, 'seen'));
+  (G.player.skills||[]).forEach(a=>codexMark('abilities', a.id, 'seen'));
   saveRun();
   if(message) logMsg(message, 'exp-gain');
   G._pendingSkillEvolutionChoices = Math.max(0, (G._pendingSkillEvolutionChoices||1)-1);
@@ -21192,7 +20196,7 @@ function closeAbilityModModal(){
   }
 }
 function refreshPlayerAbilityAilments(){
-  (G.player?.abilities||[]).forEach(ab=>{
+  (G.player?.skills||[]).forEach(ab=>{
     const tmpl=ABILITY_TEMPLATES[ab.id];
     if(tmpl) ab.ailmentIds=deriveAbilityAilments(ab, tmpl);
   });
@@ -21553,7 +20557,7 @@ function showVictory(){
   const endMsg=G.endlessMode
     ?`${G.player.name} conquered Stage 20 and flies into endless glory! The battle continues...`
     :`${G.player.name} conquered all 20 stages and ascended to legend! 🔓 New birds unlocked!`;
-  const abilityList=(G.player.abilities||[]).map(a=>`${ABILITY_TEMPLATES[a.id]?.name||a.id} Lv${a.level||1}`).join(' · ');
+  const abilityList=(G.player.skills||[]).map(a=>`${ABILITY_TEMPLATES[a.id]?.name||a.id} Lv${a.level||1}`).join(' · ');
   document.getElementById('gameover-msg').textContent=endMsg;
   const flyAgainBtn=document.getElementById('fly-again-btn');
   if(flyAgainBtn) flyAgainBtn.style.display=(G.ui?.gameMode==='story')?'none':'inline-block';
@@ -21995,15 +20999,15 @@ function buildRefGuide() {
     return card(b.name, `${b.tagline||''} · Role: ${roleLabel}`,u,roleId||'bird');
   }).join('');
 
-  const packAbilityDefs = G.dataPacks?.abilityPassiveUpgrade?.ABILITY_DEFS || {};
+  const packSkillDefs = G.dataPacks?.skillPassiveUpgrade?.SKILL_DEFS || {};
   const abilities=Object.entries(ABILITY_TEMPLATES||{}).filter(([id,t])=>{
-    const metaDef = packAbilityDefs[id] || {};
+    const metaDef = packSkillDefs[id] || {};
     return isMatch(t.name)||isMatch(t.shortDesc)||isMatch(t.desc)||isMatch(metaDef.role)||isMatch(metaDef.notes);
   }).map(([id,t])=>{
     const c=G.codex?.abilities?.[id]||{seen:false,used:false};
     const u=!!c.seen;
     if(!u&&!showLocked) return '';
-    const packDef = packAbilityDefs[id] || null;
+    const packDef = packSkillDefs[id] || null;
     const meta=`${t.rarity||'common'} · ${t.codexType||'attack'}`;
     const base=(t.shortDesc||t.desc||'No description yet.');
     const roleLine=packDef?.role?`<br><strong style="color:var(--gold-light)">Role:</strong> ${packDef.role}`:'';
@@ -22023,7 +21027,7 @@ function buildRefGuide() {
     return card(e.name, `HP ${e.hp||0} · ATK ${e.atk||0} · AI: ${ai}`,u,ai);
   }).join('');
 
-  const packStatusGlossary = G.dataPacks?.abilityPassiveUpgrade?.STATUS_GLOSSARY || {};
+  const packStatusGlossary = G.dataPacks?.skillPassiveUpgrade?.STATUS_GLOSSARY || {};
   const statusIds=[...new Set([...Object.keys(AILMENTS||{}), ...Object.keys(packStatusGlossary), ...Object.keys(G.codex?.statuses||{})])];
   const statuses=statusIds.filter(id=>isMatch(id)).map(id=>{
     const u=!!G.codex?.statuses?.[id]?.seen;

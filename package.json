@@ -8,7 +8,7 @@
     "preview": "python3 -m http.server ${PORT:-8000} --bind 0.0.0.0",
     "test": "node scripts/ci-check.js",
     "ci": "npm run test",
-    "ability-inventory": "node scripts/ability-inventory.js",
+    "ability-inventory": "node scripts/skills-master.js",
     "skills-master": "node scripts/skills-master.js",
     "upgrade-inventory": "node scripts/upgrade-inventory.js"
   }

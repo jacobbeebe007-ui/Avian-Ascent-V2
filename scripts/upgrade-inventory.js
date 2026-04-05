@@ -10,7 +10,7 @@ const path = require('path');
 
 const ROOT = path.join(__dirname, '..');
 const GAME_JS = path.join(ROOT, 'js', 'core', 'game.js');
-const PASSIVE_PACK = path.join(ROOT, 'js', 'data', 'ability_passive_upgrade_pack.js');
+const PASSIVE_PACK = path.join(ROOT, 'js', 'data', 'skill_passive_upgrade_pack.js');
 
 function extractArrayBodyAfterMarker(src, marker) {
   const markerIdx = src.indexOf(marker);
@@ -371,7 +371,7 @@ function parsePassivePackUpgradeLines(packSrc) {
   const inner = m[1];
   const rows = [];
   const abilityNames = {};
-  const defBlock = packSrc.match(/const ABILITY_DEFS = Object\.freeze\(\{([\s\S]*?)\}\)/);
+  const defBlock = packSrc.match(/const SKILL_DEFS = Object\.freeze\(\{([\s\S]*?)\}\)/);
   if (defBlock) {
     const idRe = /(\w+)\s*:\s*\{[^}]*\bid:\s*'([^']+)'[^}]*\bname:\s*'([^']*)'/g;
     let dm;
@@ -397,7 +397,7 @@ function parsePassivePackUpgradeLines(packSrc) {
         type: role,
         tags: [role, aid],
         stackable: null,
-        sourceFile: 'js/data/ability_passive_upgrade_pack.js',
+        sourceFile: 'js/data/skill_passive_upgrade_pack.js',
         desc: truncate(`Upgrade line slot: ${aid} (${role})`, 200),
       });
     }

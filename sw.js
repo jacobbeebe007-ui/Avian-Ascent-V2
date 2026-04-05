@@ -1,5 +1,5 @@
 /* Avian Ascent — offline shell. Bump CACHE_VERSION when shipped assets change. */
-const CACHE_VERSION = 'avian-ascent-v1';
+const CACHE_VERSION = 'avian-ascent-v2';
 const PRECACHE = [
   './',
   './index.html',
@@ -7,7 +7,9 @@ const PRECACHE = [
   './css/sprites.css',
   './css/shop.css',
   './css/ui.css',
-  './js/data/ability_passive_upgrade_pack.js',
+  './js/data/skill_passive_upgrade_pack.js',
+  './js/data/skills.js',
+  './js/data/biomes.js',
   './js/core/game.js',
   './js/data/content.js',
   './js/systems/systems.js',
