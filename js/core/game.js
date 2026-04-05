@@ -1182,13 +1182,9 @@ function resolveFinalClass(rawClass='', birdKey=''){
   return CLASS_ROLE_BY_CLASS[cls] || LEGACY_CLASS_FALLBACK[cls] || 'singer';
 }
 
-if(typeof BIRDS !== 'undefined' && BIRDS && typeof BIRDS === 'object'){
-  Object.entries(BIRDS).forEach(([birdKey, bird])=>{
-    if(bird) bird.class = getFinalBirdClass(birdKey, bird.class) || 'singer';
-  });
-} else {
-  try { console.error('[boot] BIRDS missing — load js/data/birds.js before game.js (see index.html order).'); } catch(_){}
-}
+Object.entries(BIRDS).forEach(([birdKey, bird])=>{
+  if(bird) bird.class = getFinalBirdClass(birdKey, bird.class) || 'singer';
+});
 
 
 const CLASS_PERK_DEFS = {
@@ -5109,23 +5105,6 @@ function openSelectHubPanel(which){
   screenEl.classList.add('select-hub-panel-active');
   const panel = document.getElementById('select-hub-'+which);
   if(panel) panel.scrollTop = 0;
-  queueMicrotask(()=>{
-    try{
-      if(which==='door'){
-        const n=document.querySelectorAll('#bird-grid .bird-card').length;
-        if(n===0 && typeof buildBirdGrid==='function') buildBirdGrid();
-      } else if(which==='map'){
-        const dp=document.getElementById('diff-picker');
-        if(dp && !dp.querySelector('.diff-btn') && typeof buildDifficultyPicker==='function'){
-          buildDifficultyPicker();
-          if(typeof buildGameModeToggle==='function') buildGameModeToggle();
-        }
-      } else if(which==='supplies'){
-        const btn=document.getElementById('ref-guide-open-btn');
-        if(btn && btn.dataset.wired!=='1' && typeof wireRefGuideClicks==='function') wireRefGuideClicks();
-      }
-    }catch(err){ console.error('select hub panel refresh:', err); }
-  });
 }
 function closeSelectHubPanel(){
   try{ if(typeof closeRosterChampionModal==='function') closeRosterChampionModal(); }catch(_){}
@@ -18627,7 +18606,6 @@ function checkDevCode(val) {
     setTimeout(() => { if (msg) msg.textContent = ''; }, 1800);
   }
 }
-globalThis.checkDevCode = checkDevCode;
 
 const ACCESS_KEY='avian_accessibility_v1';
 const MUSIC_SETTINGS_KEY='avian_music_v1';

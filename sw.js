@@ -1,5 +1,5 @@
 /* Avian Ascent — offline shell. Bump CACHE_VERSION when shipped assets change. */
-const CACHE_VERSION = 'avian-ascent-v6';
+const CACHE_VERSION = 'avian-ascent-v5';
 const PRECACHE = [
   './',
   './index.html',
