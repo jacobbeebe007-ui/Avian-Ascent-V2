@@ -148,7 +148,7 @@ function runAbilityMetadataParityCheck(){
   }
 }
 
-['js/data/skills.js','js/data/biomes.js','js/data/skill_passive_upgrade_pack.js','js/data/birds.js','js/data/enemies.js','js/data/skill-families.js','js/data/rewards-upgrades.js','js/combat/damage-math.js','js/core/game.js','js/combat/ai-enemy.js','js/data/content.js','js/systems/systems.js','js/systems/shop.js'].forEach(f=>{
+['js/data/skills.js','js/data/biomes.js','js/data/skill_passive_upgrade_pack.js','js/data/birds.js','js/data/enemies.js','js/data/skill-families.js','js/data/rewards-upgrades.js','js/combat/damage-math.js','js/core/game.js','js/combat/enemy-damage.js','js/combat/status.js','js/combat/turn-loop.js','js/combat/ai-enemy.js','js/data/content.js','js/systems/systems.js','js/systems/shop.js'].forEach(f=>{
   if(fs.existsSync(f)) parseJs(f);
 });
 
