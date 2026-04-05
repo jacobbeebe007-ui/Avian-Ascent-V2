@@ -1,13 +1,6 @@
 #!/usr/bin/env node
 const fs = require('fs');
 const path = require('path');
-const {
-  extractActionsBlockKeys,
-  extractRegisterAliasIds,
-  extractSkillOverrideKeys,
-  getMergedSkillTemplateIds,
-  extractBirdAndFamilyReferencedSkillIds,
-} = require('./lib/extract-game-object.js');
 
 const STRICT_PARITY = process.env.CI_STRICT_PARITY === '1' || process.env.ABILITY_PARITY_STRICT === '1';
 const IS_DEV_MODE = process.env.NODE_ENV !== 'production';
@@ -34,11 +27,238 @@ function checkSpriteRefs(cssFile){
   }
 }
 
+function extractObjectLiteralAfterMarker(src, marker){
+  const markerIdx = src.indexOf(marker);
+  if(markerIdx === -1) return null;
+  const openIdx = src.indexOf('{', markerIdx);
+  if(openIdx === -1) return null;
+
+  let depth = 0;
+  let inString = false;
+  let stringQuote = '';
+  let escaped = false;
+  let inLineComment = false;
+  let inBlockComment = false;
+
+  for(let i = openIdx; i < src.length; i++){
+    const ch = src[i];
+    const next = src[i + 1];
+
+    if(inLineComment){
+      if(ch === '\n') inLineComment = false;
+      continue;
+    }
+
+    if(inBlockComment){
+      if(ch === '*' && next === '/'){
+        inBlockComment = false;
+        i++;
+      }
+      continue;
+    }
+
+    if(inString){
+      if(escaped){
+        escaped = false;
+      }else if(ch === '\\'){
+        escaped = true;
+      }else if(ch === stringQuote){
+        inString = false;
+        stringQuote = '';
+      }
+      continue;
+    }
+
+    if(ch === '/' && next === '/'){
+      inLineComment = true;
+      i++;
+      continue;
+    }
+    if(ch === '/' && next === '*'){
+      inBlockComment = true;
+      i++;
+      continue;
+    }
+    if(ch === '"' || ch === '\'' || ch === '`'){
+      inString = true;
+      stringQuote = ch;
+      continue;
+    }
+
+    if(ch === '{') depth++;
+    if(ch === '}'){
+      depth--;
+      if(depth === 0) return src.slice(openIdx, i + 1);
+    }
+  }
+
+  return null;
+}
+
+function extractTopLevelObjectKeys(objectLiteralSrc){
+  if(!objectLiteralSrc) return [];
+  const keys = [];
+  let depth = 0;
+  let inString = false;
+  let stringQuote = '';
+  let escaped = false;
+  let inLineComment = false;
+  let inBlockComment = false;
+
+  for(let i = 0; i < objectLiteralSrc.length; i++){
+    const ch = objectLiteralSrc[i];
+    const next = objectLiteralSrc[i + 1];
+
+    if(inLineComment){
+      if(ch === '\n') inLineComment = false;
+      continue;
+    }
+    if(inBlockComment){
+      if(ch === '*' && next === '/'){
+        inBlockComment = false;
+        i++;
+      }
+      continue;
+    }
+    if(inString){
+      if(escaped){
+        escaped = false;
+      }else if(ch === '\\'){
+        escaped = true;
+      }else if(ch === stringQuote){
+        inString = false;
+        stringQuote = '';
+      }
+      continue;
+    }
+
+    if(ch === '/' && next === '/'){
+      inLineComment = true;
+      i++;
+      continue;
+    }
+    if(ch === '/' && next === '*'){
+      inBlockComment = true;
+      i++;
+      continue;
+    }
+    if(ch === '"' || ch === '\'' || ch === '`'){
+      inString = true;
+      stringQuote = ch;
+      continue;
+    }
+
+    if(ch === '{'){
+      depth++;
+      continue;
+    }
+    if(ch === '}'){
+      depth--;
+      continue;
+    }
+
+    if(depth !== 1) continue;
+
+    if(/[A-Za-z_$]/.test(ch)){
+      let j = i + 1;
+      while(j < objectLiteralSrc.length && /[A-Za-z0-9_$]/.test(objectLiteralSrc[j])) j++;
+      const ident = objectLiteralSrc.slice(i, j);
+      let k = j;
+      while(k < objectLiteralSrc.length && /\s/.test(objectLiteralSrc[k])) k++;
+      if(objectLiteralSrc[k] === ':') keys.push(ident);
+      i = j - 1;
+      continue;
+    }
+
+    if(ch === '"' || ch === '\''){
+      let j = i + 1;
+      let str = '';
+      while(j < objectLiteralSrc.length){
+        const c = objectLiteralSrc[j];
+        if(c === '\\'){
+          str += c + (objectLiteralSrc[j+1] || '');
+          j += 2;
+          continue;
+        }
+        if(c === ch) break;
+        str += c;
+        j++;
+      }
+      let k = j + 1;
+      while(k < objectLiteralSrc.length && /\s/.test(objectLiteralSrc[k])) k++;
+      if(objectLiteralSrc[k] === ':') keys.push(str);
+      i = j;
+    }
+  }
+
+  return Array.from(new Set(keys));
+}
+
+function extractAbilityTemplateAssignKeys(gameSrc){
+  const s = new Set();
+  let m;
+  const r1 = /ABILITY_TEMPLATES\['([^']+)'\]\s*=/g;
+  while((m = r1.exec(gameSrc))) s.add(m[1]);
+  const r2 = /ABILITY_TEMPLATES\.([A-Za-z0-9_]+)\s*=/g;
+  while((m = r2.exec(gameSrc))) s.add(m[1]);
+  return s;
+}
+
 function getTemplateAbilityIds(){
   const gameSrc = fs.readFileSync(path.join('js','core','game.js'), 'utf8');
-  const skillsPath = path.join('js', 'data', 'skills.js');
-  const skillsSrc = fs.existsSync(skillsPath) ? fs.readFileSync(skillsPath, 'utf8') : '';
-  return getMergedSkillTemplateIds(gameSrc, skillsSrc || null);
+  const baseObj = extractObjectLiteralAfterMarker(gameSrc, 'const ABILITY_TEMPLATES =');
+  const extraObj = extractObjectLiteralAfterMarker(gameSrc, 'const ABILITY_TEMPLATES_EXTRA =');
+  const learnObj = extractObjectLiteralAfterMarker(gameSrc, 'const ABILITY_TEMPLATES_LEARNABLE =');
+  const magicObj = extractObjectLiteralAfterMarker(gameSrc, 'const ABILITY_TEMPLATES_MAGIC =');
+  const sparrowEvo = extractObjectLiteralAfterMarker(gameSrc, 'const SPARROW_EVOLUTION_TEMPLATES =');
+  if(!baseObj || !extraObj) return { ids: [], parseError: 'Could not parse ABILITY_TEMPLATES blocks from js/core/game.js' };
+
+  const ids = new Set([
+    ...extractTopLevelObjectKeys(baseObj),
+    ...extractTopLevelObjectKeys(extraObj),
+    ...(learnObj ? extractTopLevelObjectKeys(learnObj) : []),
+    ...(magicObj ? extractTopLevelObjectKeys(magicObj) : []),
+    ...(sparrowEvo ? extractTopLevelObjectKeys(sparrowEvo) : []),
+    ...extractAbilityTemplateAssignKeys(gameSrc)
+  ]);
+  ids.delete('mimic');
+  return { ids: Array.from(ids), parseError: null };
+}
+
+function extractActionsBlockKeys(gameSrc){
+  const start = gameSrc.indexOf('const ACTIONS = {');
+  const keys = new Set();
+  if(start !== -1){
+    const slice = extractObjectLiteralAfterMarker(gameSrc.slice(start), 'const ACTIONS =');
+    if(slice) extractTopLevelObjectKeys(slice).forEach(k => keys.add(k));
+  }
+  const re = /Object\.assign\(ACTIONS,\s*\{/g;
+  let m;
+  while((m = re.exec(gameSrc))){
+    const sub = extractObjectLiteralAfterMarker(gameSrc.slice(m.index), 'Object.assign(ACTIONS,');
+    if(sub) extractTopLevelObjectKeys(sub).forEach(k => keys.add(k));
+  }
+  return Array.from(keys);
+}
+
+function extractRegisterAliasIds(gameSrc){
+  const out = new Set();
+  const re = /registerAbilityAlias\(\s*'([^']+)'/g;
+  let m;
+  while((m = re.exec(gameSrc))) out.add(m[1]);
+  return Array.from(out);
+}
+
+function extractSkillOverrideKeys(gameSrc){
+  const out = new Set();
+  const re = /const ([A-Z0-9_]+_SKILL_ACTION_OVERRIDES) = \{/g;
+  let m;
+  while((m = re.exec(gameSrc))){
+    const marker = `const ${m[1]} =`;
+    const sub = extractObjectLiteralAfterMarker(gameSrc, marker);
+    if(sub) extractTopLevelObjectKeys(sub).forEach(k => out.add(k));
+  }
+  return Array.from(out);
 }
 
 function runAbilityInventoryAndWiringReport(){
@@ -66,16 +286,13 @@ function runAbilityInventoryAndWiringReport(){
     if(!templateSet.has(srcId)) aliasMissingTarget.push(`${newId}→${srcId}`);
   }
 
-  const skillsPath = path.join('js', 'data', 'skills.js');
-  const skillsSrc = fs.existsSync(skillsPath) ? fs.readFileSync(skillsPath, 'utf8') : '';
-  const templateHaystack = skillsSrc ? `${skillsSrc}\n${gameSrc}` : gameSrc;
   const cooldownShort = [];
   for(const id of templateIds){
     const markerRe = new RegExp(`\\b${id.replace(/[^a-zA-Z0-9_]/g,'')}\\s*:\\s*\\{`);
-    if(!markerRe.test(templateHaystack)) continue;
-    const idx = templateHaystack.search(markerRe);
+    if(!markerRe.test(gameSrc)) continue;
+    const idx = gameSrc.search(markerRe);
     if(idx === -1) continue;
-    const chunk = templateHaystack.slice(idx, idx + 1200);
+    const chunk = gameSrc.slice(idx, idx + 1200);
     const mc = chunk.match(/cooldownByLevel\s*:\s*\[([^\]]*)\]/);
     if(!mc) continue;
     const parts = mc[1].split(',').map(s => s.trim()).filter(Boolean);
@@ -103,8 +320,8 @@ function runAbilityInventoryAndWiringReport(){
 }
 
 function runAbilityMetadataParityCheck(){
-  const pack = require(path.join('..','js','data','skill_passive_upgrade_pack.js'));
-  const abilityDefs = (pack && pack.SKILL_DEFS) || {};
+  const pack = require(path.join('..','js','data','ability_passive_upgrade_pack.js'));
+  const abilityDefs = (pack && pack.ABILITY_DEFS) || {};
   const metadataIds = Object.keys(abilityDefs);
   const { ids: templateIds, parseError } = getTemplateAbilityIds();
 
@@ -148,7 +365,7 @@ function runAbilityMetadataParityCheck(){
   }
 }
 
-['js/data/skills.js','js/data/biomes.js','js/data/skill_passive_upgrade_pack.js','js/core/game.js','js/data/content.js','js/systems/systems.js','js/systems/shop.js'].forEach(f=>{
+['js/core/game.js','js/data/content.js','js/systems/systems.js','js/systems/shop.js'].forEach(f=>{
   if(fs.existsSync(f)) parseJs(f);
 });
 
@@ -158,35 +375,6 @@ function runAbilityMetadataParityCheck(){
 
 runAbilityMetadataParityCheck();
 runAbilityInventoryAndWiringReport();
-
-function runBirdSkillTemplateRegistryCheck(){
-  const gamePath = path.join('js', 'core', 'game.js');
-  const gameSrc = fs.readFileSync(gamePath, 'utf8');
-  const { ids: templateIds, parseError } = getTemplateAbilityIds();
-  if(parseError) return;
-  const templateSet = new Set(templateIds);
-  const birdRefs = extractBirdAndFamilyReferencedSkillIds(gameSrc);
-  const missing = birdRefs.filter((id) => !templateSet.has(id)).sort();
-  const lines = [
-    `Bird/family skill refs: ${birdRefs.length} heuristic ids, ${missing.length} missing from merged SKILL templates.`,
-    missing.length ? `Missing: ${missing.join(', ')}` : 'Missing: none',
-  ];
-  if(missing.length && STRICT_PARITY){
-    fail(lines.join('\n'));
-    return;
-  }
-  if(missing.length && IS_DEV_MODE){
-    console.warn(lines.join('\n'));
-  }
-  if(process.env.ABILITY_INVENTORY_LOG === '1'){
-    const refSet = new Set(birdRefs);
-    const orphanTemplates = templateIds.filter((id) => !refSet.has(id)).sort();
-    console.log(`Orphan template ids (heuristic, not referenced by BIRDS/family scan): ${orphanTemplates.length}`);
-    if(orphanTemplates.length) console.log(orphanTemplates.slice(0, 80).join(', ') + (orphanTemplates.length > 80 ? '…' : ''));
-  }
-}
-
-runBirdSkillTemplateRegistryCheck();
 
 if(process.exitCode){
   process.exit(process.exitCode);

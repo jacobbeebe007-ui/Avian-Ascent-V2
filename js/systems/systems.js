@@ -73,7 +73,7 @@
       const out = _oldRenderActions.apply(this, arguments);
       try{
         document.querySelectorAll('#actions-grid .action-btn').forEach((btn, idx)=>{
-          const ab = G?.player?.skills?.[idx];
+          const ab = G?.player?.abilities?.[idx];
           if(!ab) return;
           const cd = (typeof getAbilityCooldown === 'function') ? (getAbilityCooldown(ab.id)||0) : 0;
           const nm = btn.querySelector('.btn-name');
