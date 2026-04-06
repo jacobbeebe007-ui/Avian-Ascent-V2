@@ -742,7 +742,7 @@ const BIRDS = {
     stats:{hp:58,maxHp:58,atk:17,def:11,spd:23,dodge:19,acc:89,mdef:12,matk:16,critChance:8},
     color:'#c8a060',
     mainAttackId:'beak_chop',
-    startAbilities:['beak_chop','laugh_call','perch_watch','drop_strike'],
+    startAbilities:['beak_chop','drop_strike','laugh_call','perch_watch'],
     passive:{id:'passive_kookaburra_laughing_ambush',name:'Laughing Ambush',desc:'Attacks against Confused targets gain +10% Crit Chance.'},
   },
   lyrebird:{
@@ -775,7 +775,7 @@ const BIRDS = {
     stats:{hp:57,maxHp:57,atk:14,def:9,spd:26,dodge:21,acc:91,mdef:12,matk:16,critChance:10},
     color:'#2a2a2a',
     mainAttackId:'swoop',
-    startAbilities:['swoop','steal_shine','feather_flick','dart'],
+    startAbilities:['swoop','steal_shine','feather_flick','shine_step'],
     passive:{id:'passive_magpie_shiny_opportunist',name:'Shiny Opportunist',desc:'Once per turn, Magpie crits grant +4 SPD next turn.'},
   },
   robin:{
@@ -998,8 +998,8 @@ const BIRDS = {
     unlockHint:'Coming soon.',
     stats:{hp:47,maxHp:47,atk:11,def:8,spd:24,dodge:21,acc:92,mdef:11,matk:13,critChance:8},
     color:'#2a2a2a',
-    mainAttackId:'wagtail_snap',
-    startAbilities:['wagtail_snap','wagtail_flicker_strike','wagtail_jeering_call','wagtail_shadow_flick'],
+    mainAttackId:'wagtail_peck',
+    startAbilities:['wagtail_peck','wagtail_flick_strike','wagtail_mock_call','wagtail_tail_mark'],
     passive:{id:'passive_wagtail_mocking_step',name:'Mocking Step',desc:'Willie Wagtail gains +10% Accuracy against Confused targets.'},
   },
   galah:{
@@ -1009,8 +1009,8 @@ const BIRDS = {
     unlockHint:'Coming soon.',
     stats:{hp:48,maxHp:48,atk:13,def:9,spd:22,dodge:19,acc:90,mdef:10,matk:15,critChance:8},
     color:'#e8a0c8',
-    mainAttackId:'galah_pink_jab',
-    startAbilities:['galah_pink_jab','galah_showstopper','galah_shrill_burst','galah_spotlight_mark'],
+    mainAttackId:'galah_beak_tap',
+    startAbilities:['galah_beak_tap','galah_flash_strike','galah_screech','galah_show_mark'],
     passive:{id:'passive_galah_showmanship',name:'Showmanship',desc:'After using a song/call, Galah gains +5% Crit Damage for 1 turn.'},
   },
   bluejay:{
@@ -4222,7 +4222,7 @@ const MAGPIE_SKILL_FAMILIES = Object.freeze({
     },
   },
   dart:{
-    familyId:'dart', displayName:'Dart Line', baseAbilityId:'dart', slotRole:'precision_payoff', maxTier:3,
+    familyId:'dart', displayName:'Dart Line', baseAbilityId:'shine_step', slotRole:'precision_payoff', maxTier:3,
     tierNames:{1:'Dart', 2:'Arrow', 3:'Javelin'},
     masteries:[
       {id:'power', name:'Sharp Trinket', desc:'+10% Dart-line damage.'},
@@ -4240,7 +4240,7 @@ const MAGPIE_SKILL_SLOT_LAYOUT = Object.freeze([
   {slotIndex:0, familyId:'swoop', abilityId:'swoop'},
   {slotIndex:1, familyId:'steal', abilityId:'steal_shine'},
   {slotIndex:2, familyId:'flick', abilityId:'feather_flick'},
-  {slotIndex:3, familyId:'dart', abilityId:'dart'},
+  {slotIndex:3, familyId:'dart', abilityId:'shine_step'},
 ]);
 const magpieStartingSkillSlots = MAGPIE_SKILL_SLOT_LAYOUT.map(slot=>Object.freeze({
   slotIndex:slot.slotIndex,
@@ -5372,9 +5372,9 @@ const BLACK_COCKATOO_SKILL_FAMILIES = Object.freeze({
 
 const KOOKABURRA_SKILL_SLOT_LAYOUT = Object.freeze([
   {slotIndex:0, familyId:'beak', abilityId:'beak_chop'},
-  {slotIndex:1, familyId:'laugh', abilityId:'laugh_call'},
-  {slotIndex:2, familyId:'watch', abilityId:'perch_watch'},
-  {slotIndex:3, familyId:'drop', abilityId:'drop_strike'},
+  {slotIndex:1, familyId:'drop', abilityId:'drop_strike'},
+  {slotIndex:2, familyId:'laugh', abilityId:'laugh_call'},
+  {slotIndex:3, familyId:'watch', abilityId:'perch_watch'},
 ]);
 const KOOKABURRA_SKILL_FAMILIES = Object.freeze({
   beak:{
@@ -5583,7 +5583,7 @@ const FAMILY_EVOLUTION_BIRD_DATA = Object.freeze({
       swoop:{legacy:['featherFlick', 'swoopCut', 'swoop'], current:'swoop'},
       steal:{legacy:['glintJab', 'stealTempo', 'stealShine'], current:'steal_shine'},
       flick:{legacy:['mockingSong', 'featherFlick'], current:'feather_flick'},
-      dart:{legacy:['stealTempo', 'glintJab', 'dart'], current:'dart'},
+      dart:{legacy:['stealTempo', 'glintJab', 'dart'], current:'shine_step'},
     }),
   },
   hummingbird:{
@@ -11323,6 +11323,8 @@ function dealDamage(target,amount,isCrit=false,isMagic=false,srcAbility=null) {
       if((k==='physical'||k==='ranged') && !G._firstAttackUsed) critDmgAdd+=0.10;
     }
     if((G.playerStatus.galahCritDmg||0)>0) critDmgAdd+=Math.max(0,G.playerStatus.galahCritDmg)/100;
+    const _tcb=G.playerStatus.tricksterCritDmgBuff;
+    if(_tcb && (_tcb.turns||0)>0 && (_tcb.pct||0)>0) critDmgAdd+=Math.max(0,_tcb.pct)/100;
     const tmpl=ABILITY_TEMPLATES?.[activeAb?.id]||{};
     const en=Number(tmpl.energy ?? tmpl.energyCost ?? activeAb?.energy ?? 1);
     if(_pid==='passive_bustard_heavy_steps' && en>=2) critDmgAdd+=0.10;
@@ -12175,11 +12177,14 @@ const ACTIONS = {
       const slot=getAbilitySkillSlot(G.player,ab);
       const m=getSlotMasteryProfile(slot);
       const missC=Math.max(0,[10,9,8,7][lv-1]-getPlayerHitBonus(ab)-2*m.precision);
-      const dmgM=[0.96,1.02,1.08,1.14][lv-1]+0.07*m.power;
-      const pierce=6+2*(lv-1)+4*m.precision;
+      const dmgM=[0.80,0.84,0.88,0.92][lv-1]+0.07*m.power;
+      const pierce=15+4*m.precision;
       if(chance(missC)){await doMiss('player');logMsg(`Beak Jab missed!`,'miss');return;}
       const prox={...ab,pierceDef:pierce};
-      const r=dealDamage('enemy',pdmg(dmgM,prox),chance(getPlayerCritChance(ab)),false,prox);
+      const prevG=G.playerStatus.galahCritDmg||0;
+      G.playerStatus.galahCritDmg=prevG+12;
+      const r=dealDamage('enemy',Math.max(1,pdmg(dmgM,prox)+4),chance(getPlayerCritChance(ab)),false,prox);
+      G.playerStatus.galahCritDmg=prevG;
       await doAttack('player','enemy',r);
       setHpBar('enemy',G.enemy.stats.hp,G.enemy.stats.maxHp);
       if(r.isCrit)spawnFloat('enemy','💥 Crit!','fn-crit');
@@ -13630,7 +13635,7 @@ registerAbilityAlias('gale_crush','beakSlam','Gale Crush',{type:'physical',btnTy
 registerAbilityAlias('rending_talon','beakSlam','Rending Talon',{type:'physical',btnType:'physical'});
 registerAbilityAlias('finisher_slam','beakSlam','Finisher Slam',{type:'physical',btnType:'physical'});
 registerAbilityAlias('execution_crush','deathDive','Execution Crush',{type:'physical',btnType:'physical'});
-Object.assign(ABILITY_TEMPLATES.peck||{}, makeEvolutionAbilityTemplate('peck','Peck','Neutral base peck. Cheap harassment before specializing.', {type:'physical', btnType:'physical', energy:1, levels:[{desc:'100% dmg, 10% miss.'},{desc:'108% dmg, 9% miss.'},{desc:'116% dmg, 8% miss.'},{desc:'124% dmg, 7% miss.'}]}));
+Object.assign(ABILITY_TEMPLATES.peck||{}, makeEvolutionAbilityTemplate('peck','Peck','Neutral base peck. Cheap harassment before specializing.', {type:'physical', btnType:'physical', energy:1, levels:[{desc:'Crow: Base 4 + 75% ATK; 15% pierce; +12% crit. Others: classic peck scaling.'},{desc:'Sharper peck.'},{desc:'Sharper peck.'},{desc:'Peak peck.'}]}));
 Object.assign(ABILITY_TEMPLATES.raking_peck||{}, makeEvolutionAbilityTemplate('raking_peck','Raking Peck','Peck-line bleed branch. Ugly close-range wound pressure.', {type:'physical', btnType:'physical', energy:1, levels:[{desc:'100% dmg. Bleed 10%.'},{desc:'108% dmg. Bleed 12%.'},{desc:'116% dmg. Bleed 14%.'},{desc:'124% dmg. Bleed 16%.'}]}));
 Object.assign(ABILITY_TEMPLATES.tearing_bite||{}, makeEvolutionAbilityTemplate('tearing_bite','Tearing Bite','Peck-line bleed evolution. Better against bleeding prey.', {type:'physical', btnType:'physical', energy:1, levels:[{desc:'112% dmg. Bleed 15%. Bonus vs bleeding.'},{desc:'120% dmg. Bleed 17%. Bonus vs bleeding.'},{desc:'128% dmg. Bleed 19%. Bonus vs bleeding.'},{desc:'136% dmg. Bleed 21%. Bonus vs bleeding.'}]}));
 Object.assign(ABILITY_TEMPLATES.savage_maul||{}, makeEvolutionAbilityTemplate('savage_maul','Savage Maul','Peck-line finisher. Brutal payoff against wounded prey.', {type:'physical', btnType:'physical', energy:1, levels:[{desc:'124% dmg. Bleed 20%. Stronger vs wounded.'},{desc:'132% dmg. Bleed 22%. Stronger vs wounded.'},{desc:'140% dmg. Bleed 24%. Stronger vs wounded.'},{desc:'148% dmg. Bleed 26%. Stronger vs wounded.'}]}));
@@ -14171,9 +14176,9 @@ registerAbilityAlias('verdict','dukeRiverGrip','Verdict',{type:'spell',btnType:'
 
 Object.assign(ABILITY_TEMPLATES.windFeint||{}, makeEvolutionAbilityTemplate('windFeint','Feather Feint','Sparrow base evasive feint. Dodge and MDEF before branching.', {type:'utility', btnType:'utility', energy:2, cooldownByLevel:[1,1,1,1], levels:[{desc:'+12% dodge and +10 MDEF for 2 turns (refresh).'},{desc:'Stronger feint.'},{desc:'Stronger feint.'},{desc:'Peak feint.'}]}));
 Object.assign(ABILITY_TEMPLATES.predatorMark||{}, makeEvolutionAbilityTemplate('predatorMark','Predator Mark','Mark-line execute branch. Hunt the weakened target.', {type:'utility', btnType:'utility', energy:1, levels:[{desc:'Mark prey. Next attack gains +16% damage, +12% more below 50% HP.'},{desc:'Mark prey. Next attack gains +20% damage, +14% more below 50% HP.'},{desc:'Mark prey. Next attack gains +24% damage, +16% more below 50% HP.'},{desc:'Mark prey. Next attack gains +28% damage, +18% more below 50% HP.'}]}));
-Object.assign(ABILITY_TEMPLATES.murder_murmuration||{}, makeEvolutionAbilityTemplate('murder_murmuration','Murder Murmuration','Crow base signature. A coordinated mobbing strike before branching.', {type:'physical', btnType:'physical', energy:2, fixedMainAttackCost:true, role:['multiHit'], levels:[{desc:'Lv.1 — Twin flock strikes (~58% each); open the murder.'},{desc:'Lv.2 — Twin strikes sharpen (~64% each); tighter execution.'},{desc:'Lv.3 — Three beaks (~60% each); wider mobbing circle.'},{desc:'Lv.4 — Three strikes peak (~66% each); perfected flock rhythm.'}]}));
-Object.assign(ABILITY_TEMPLATES.dread_call||{}, makeEvolutionAbilityTemplate('dread_call','Dread Call','Crow base utility. Disrupt the enemy before committing to a branch.', {type:'utility', btnType:'utility', energy:1, levels:[{desc:'Enemy ACC -10% for 2 turns.'},{desc:'Enemy ACC -12% for 2 turns.'},{desc:'Enemy ACC -14% for 2 turns.'},{desc:'Enemy ACC -16% for 2 turns.'}]}));
-Object.assign(ABILITY_TEMPLATES.battle_focus||{}, makeEvolutionAbilityTemplate('battle_focus','Battle Focus','Crow base setup. Study the target for a sharper next attack.', {type:'utility', btnType:'utility', energy:1, levels:[{desc:'Next attack +12% damage.'},{desc:'Next attack +15% damage.'},{desc:'Next attack +18% damage.'},{desc:'Next attack +21% damage.'}]}));
+Object.assign(ABILITY_TEMPLATES.murder_murmuration||{}, makeEvolutionAbilityTemplate('murder_murmuration','Murder Murmuration','Crow base signature. Hybrid strike that banks delayed resonance (non-stacking).', {type:'physical', btnType:'physical', energy:2, cooldownByLevel:[1,1,1,1], fixedMainAttackCost:true, levels:[{desc:'2 EN, CD 1. Base 5 + 45% ATK + 45% MATK; 15% pierce; delayed next tick (replace).'}, {desc:'Stronger delayed bite.'},{desc:'Stronger delayed bite.'},{desc:'Peak murder line.'}]}));
+Object.assign(ABILITY_TEMPLATES.dread_call||{}, makeEvolutionAbilityTemplate('dread_call','Dread Call','Crow song call. MATK sonic hit plus fear and weaken pressure.', {type:'spell', btnType:'spell', energy:2, cooldownByLevel:[1,1,1,1], levels:[{desc:'2 EN, CD 1. Base 6 + 100% MATK call; Fear + Weaken 2t (refresh).'}, {desc:'Sharper dread.'},{desc:'Sharper dread.'},{desc:'Peak dread line.'}]}));
+Object.assign(ABILITY_TEMPLATES.battle_focus||{}, makeEvolutionAbilityTemplate('battle_focus','Battle Focus','Crow tempo setup. Sharpen accuracy and crit chance.', {type:'utility', btnType:'utility', energy:2, cooldownByLevel:[1,1,1,1], levels:[{desc:'2 EN, CD 1. +12% accuracy and +12% crit chance for 2t (refresh).'}, {desc:'Stronger focus.'},{desc:'Stronger focus.'},{desc:'Peak focus line.'}]}));
 Object.assign(ABILITY_TEMPLATES.focusChirp||{}, makeEvolutionAbilityTemplate('focusChirp','Focus Chirp','Crow lineup utility. Lines up the next hit with extra bite.', {type:'utility', btnType:'utility', energy:1, levels:[{desc:'Next attack +12% damage.'},{desc:'Next attack +15% damage.'},{desc:'Next attack +18% damage.'},{desc:'Next attack +21% damage.'}]}));
 Object.assign(ABILITY_TEMPLATES.tearing_jab||{}, makeEvolutionAbilityTemplate('tearing_jab','Tearing Jab','Crow bleed evolution. Deeper opportunistic cuts.', {type:'physical', btnType:'physical', energy:1, levels:[{desc:'112% dmg. Bleed 16%. Bonus vs bleeding.'},{desc:'120% dmg. Bleed 18%. Bonus vs bleeding.'},{desc:'128% dmg. Bleed 20%. Bonus vs bleeding.'},{desc:'136% dmg. Bleed 22%. Bonus vs bleeding.'}]}));
 Object.assign(ABILITY_TEMPLATES.carrion_flurry||{}, makeEvolutionAbilityTemplate('carrion_flurry','Carrion Flurry','Crow bleed finisher. A carrion-feast burst against wounded targets.', {type:'physical', btnType:'physical', energy:1, levels:[{desc:'2 hits at 68% dmg. Bleed 22%.'},{desc:'2 hits at 74% dmg. Bleed 24%.'},{desc:'3 hits at 66% dmg. Bleed 26%.'},{desc:'3 hits at 72% dmg. Bleed 28%.'}]}));
@@ -14251,22 +14256,35 @@ async function executeCrowStrikeAction(ab, config={}){
   let total=0;
   const hits=config.hits?.[lv-1] || 1;
   const critBonus=(config.critVsCompromised && getCrowCompromisedTargetBonus()) ? config.critVsCompromised[lv-1] : 0;
+  const critChanceFlat=config.critChanceFlat?.[lv-1]||0;
+  const flatAdd=Math.max(0,Math.floor(config.flatAdd?.[lv-1]||0));
+  const hy=config.hybridAdditive;
   for(let i=0;i<hits;i++){
     const prox={...ab, pierceDef:(config.pierce?.[lv-1] ?? 0) + mastery.precision*4};
-    const isCrit=chance(Math.min(95, getPlayerCritChance(ab) + critBonus + (getCrowCompromisedTargetBonus()?mastery.precision*3:0)));
+    const isCrit=chance(Math.min(95, getPlayerCritChance(ab) + critBonus + critChanceFlat + (getCrowCompromisedTargetBonus()?mastery.precision*3:0)));
     let amount;
-    if(config.damageKind==='magic'){
+    if(hy){
+      const hflat=typeof hy.flat==='number'?hy.flat:(hy.flat?.[lv-1]??0);
+      const atkM=(hy.atk?.[lv-1]??hy.atk??0)+(mastery.power*0.02);
+      const matkM=(hy.matk?.[lv-1]??hy.matk??0)+(mastery.control*0.02);
+      amount=Math.max(1, Math.floor(hflat+pdmg(atkM, prox)+matk(matkM)));
+    }else if(config.damageKind==='magic'){
       amount=matk(mult);
     }else if(config.damageKind==='hybrid'){
       amount=Math.max(1, Math.floor((pdmg(mult, prox) + matk(Math.max(0.75, mult*0.9))) / 2));
     }else{
-      amount=pdmgWithAlternateScaling(mult, prox);
+      amount=Math.max(1, Math.floor(pdmgWithAlternateScaling(mult, prox)+flatAdd));
     }
     const r=dealDamage('enemy', amount, isCrit, config.damageKind==='magic', prox);
     total+=r.dmgDealt;
     await doAttack('player','enemy',r);
     setHpBar('enemy',G.enemy.stats.hp,G.enemy.stats.maxHp);
     if(G.battleOver) return;
+  }
+  if(config.delayedReplaceFrac?.[lv-1]!=null && total>0){
+    const d=Math.max(1,Math.floor(total*config.delayedReplaceFrac[lv-1]));
+    G.enemyStatus.delayed={dmg:d};
+    spawnFloat('enemy','⏳ Delayed!','fn-status');
   }
   if(config.bleedChance?.[lv-1] && chance(config.bleedChance[lv-1] + mastery.control*5)){ applyAilment('enemy','bleed',1); spawnFloat('enemy','🩸 Bleed!','fn-poison'); }
   if(config.fearChance?.[lv-1] && chance(config.fearChance[lv-1] + mastery.control*5)){ applyAilment('enemy','feared',1); spawnFloat('enemy','😨 Fear!','fn-status'); }
@@ -14285,12 +14303,34 @@ async function executeCrowStrikeAction(ab, config={}){
 async function executeCrowCallAction(ab, config={}){
   const lv=Math.max(1, Math.min(4, Number(ab?.level)||1));
   const mastery=getCrowMasteryCounts(ab);
+  let spellDmg=0;
+  if(config.matkPortion?.[lv-1]!=null){
+    const missSpell=Math.max(0,(config.missSpell?.[lv-1]??spellMissChance())-getPlayerHitBonus(ab)-mastery.precision*2);
+    if(chance(missSpell)){
+      await doMiss('player');
+      logMsg(`${config.name||ab?.name||ab?.id} missed!`,'miss');
+    }else{
+      const flat=Math.max(0,Math.floor(config.matkFlat?.[lv-1]??0));
+      const amt=Math.max(1,flat+matk((config.matkPortion[lv-1]||1)+mastery.power*0.02));
+      const r=dealDamage('enemy',amt,chance(getPlayerCritChance(ab)),true,ab);
+      spellDmg=r.dmgDealt;
+      await doAttack('player','enemy',r);
+      setHpBar('enemy',G.enemy.stats.hp,G.enemy.stats.maxHp);
+    }
+  }
   const fearTurns=(config.fearTurns?.[lv-1]||0) + (mastery.precision>0 && config.fearTurns?.[lv-1] ? 1 : 0);
   const accDown=(config.accDown?.[lv-1]||0) + mastery.control*2;
   const turns=(config.turns?.[lv-1]||2) + (mastery.precision>0 ? 1 : 0);
-  if(fearTurns>0) G.enemyStatus.feared=Math.max(G.enemyStatus.feared||0, fearTurns);
-  if(accDown>0) G.enemyStatus.accDebuff=(G.enemyStatus.accDebuff||0)+accDown;
-  if(config.weakenTurns?.[lv-1]) G.enemyStatus.weaken=Math.max(G.enemyStatus.weaken||0, config.weakenTurns[lv-1]);
+  if(config.applyFearWeaken2){
+    G.enemyStatus.feared=Math.max(G.enemyStatus.feared||0,2);
+    G.enemyStatus.weaken=Math.max(G.enemyStatus.weaken||0,2);
+    spawnFloat('enemy','😨 Fear!','fn-status');
+    spawnFloat('enemy','🐔 Weaken!','fn-status');
+  }else{
+    if(fearTurns>0) G.enemyStatus.feared=Math.max(G.enemyStatus.feared||0, fearTurns);
+    if(accDown>0) G.enemyStatus.accDebuff=(G.enemyStatus.accDebuff||0)+accDown;
+    if(config.weakenTurns?.[lv-1]) G.enemyStatus.weaken=Math.max(G.enemyStatus.weaken||0, config.weakenTurns[lv-1]);
+  }
   if(config.expose?.[lv-1]) G.enemyStatus.exposedGuard={turns, pct:(config.expose[lv-1]||0)+mastery.control*0.01};
   if(config.markBonus?.[lv-1]){
     const base=(config.markBonus[lv-1]||0)+mastery.power*0.02;
@@ -14300,11 +14340,17 @@ async function executeCrowCallAction(ab, config={}){
   }
   await doSpell('enemy', config.fx||'🪶');
   renderStatuses('enemy-status',G.enemyStatus);
-  logMsg(`${config.log||config.name||ab?.name||ab?.id}! ${fearTurns>0?'Fear and ':''}${accDown>0?`ACC -${accDown}% for ${turns}t.`:'Target disrupted.'}`, 'player-action');
+  const tail=config.applyFearWeaken2?'Fear + Weaken (2t, refresh).':`${fearTurns>0?'Fear and ':''}${accDown>0?`ACC -${accDown}% for ${turns}t.`:'Target disrupted.'}`;
+  logMsg(`${config.log||config.name||ab?.name||ab?.id}!${spellDmg?` ${spellDmg} dmg.`:' '}${tail}`, 'player-action');
 }
 async function executeCrowFocusAction(ab, config={}){
   const lv=Math.max(1, Math.min(4, Number(ab?.level)||1));
   const mastery=getCrowMasteryCounts(ab);
+  if(config.tempoAccCritSetup){
+    const t=2+(mastery.precision>0?1:0);
+    G.playerStatus.trailSenseAcc={pct:12+Math.floor(mastery.precision),turns:t};
+    G.playerStatus.peregrineCritLens={bonus:12+Math.floor(mastery.control*2),turns:t};
+  }
   if(config.markBonus?.[lv-1]){
     G.playerStatus.huntersMarkBonusPct=(config.markBonus[lv-1]||0)+mastery.power*0.02+(mastery.precision>0?0.04:0);
   }
@@ -14331,11 +14377,11 @@ async function executeCrowFocusAction(ab, config={}){
 }
 const CROW_SKILL_ACTION_OVERRIDES = {
   peck: ab=>(G.player?.birdKey==='crow'
-    ? executeCrowStrikeAction(ab,{name:'Peck',log:'🪶 Peck',miss:[8,7,6,5],mult:[0.98,1.06,1.14,1.22]})
+    ? executeCrowStrikeAction(ab,{name:'Coordinated Peck',log:'🪶 Peck',miss:[12,11,10,9],mult:[0.75,0.78,0.81,0.84],flatAdd:[4,4,4,4],pierce:[15,15,15,15],critChanceFlat:[12,12,12,12]})
     : executeGooseStrikeAction(ab,{name:'Peck', log:'🪿 Peck', miss:[10,9,8,7], mult:[1.00,1.08,1.16,1.24]})),
-  murder_murmuration: ab=>executeCrowStrikeAction(ab,{name:'Murder Murmuration',log:'‍⬛ Murder Murmuration',damageKind:'physical',hits:[2,2,3,3],miss:[14,12,11,10],mult:[0.58,0.64,0.60,0.66]}),
-  dread_call: ab=>executeCrowCallAction(ab,{name:'Dread Call',log:'📣 Dread Call',fx:'📣',accDown:[10,12,14,16],turns:[2,2,2,2]}),
-  battle_focus: ab=>executeCrowFocusAction(ab,{name:'Battle Focus',log:'🧠 Battle Focus',fx:'🧠',markBonus:[0.12,0.15,0.18,0.21]}),
+  murder_murmuration: ab=>executeCrowStrikeAction(ab,{name:'Murder Murmuration',log:'⬛ Murder Murmuration',miss:[12,11,10,9],hybridAdditive:{flat:5,atk:[0.45,0.45,0.45,0.45],matk:[0.45,0.45,0.45,0.45]},pierce:[15,15,15,15],hits:[1,1,1,1],delayedReplaceFrac:[0.42,0.44,0.46,0.48]}),
+  dread_call: ab=>executeCrowCallAction(ab,{name:'Dread Call',log:'📣 Dread Call',fx:'📣',matkPortion:[1.0,1.0,1.0,1.0],matkFlat:[6,6,6,6],missSpell:[14,12,11,10],applyFearWeaken2:true}),
+  battle_focus: ab=>executeCrowFocusAction(ab,{name:'Battle Focus',log:'🧠 Battle Focus',fx:'🧠',tempoAccCritSetup:true}),
   focusChirp: ab=>executeCrowFocusAction(ab,{name:'Focus Chirp',log:'🐦 Focus Chirp',fx:'🐦',markBonus:[0.12,0.15,0.18,0.21]}),
   tearing_jab: ab=>executeCrowStrikeAction(ab,{name:'Tearing Jab',log:'🩸 Tearing Jab',damageKind:'physical',miss:[8,7,6,5],mult:[1.12,1.20,1.28,1.36],bleedChance:[16,18,20,22],bonusVs:['bleed'],bonus:[0.08,0.10,0.12,0.14]}),
   carrion_flurry: ab=>executeCrowStrikeAction(ab,{name:'Carrion Flurry',log:'🩸 Carrion Flurry',damageKind:'physical',hits:[2,2,3,3],miss:[9,8,7,6],mult:[0.68,0.74,0.66,0.72],bleedChance:[22,24,26,28],bonusVs:['bleed','low_hp'],bonus:[0.08,0.10,0.12,0.14],lowHpThreshold:0.5}),
@@ -14432,8 +14478,44 @@ Object.entries(CROW_SKILL_ACTION_OVERRIDES).forEach(([id, fn])=>{ ACTIONS[id]=fn
     }],
     ['firecrest_cinder_step','blink_flutter','Cinder Step',{desc:'Ashstep shimmer. Evasive heat utility.',name:'Cinder Step'}],
     ['firecrest_heat_mark','pulse_step','Kindle Mark',{desc:'Kindle Mark tempo. Sets up the next burn strike.',name:'Kindle Mark'}],
-    ['wagtail_snap','swoop','Wagtail Snap'],['wagtail_flicker_strike','steal_shine','Flicker Strike'],['wagtail_jeering_call','feather_flick','Jeering Call'],['wagtail_shadow_flick','dart','Shadow Flick'],
-    ['galah_pink_jab','echo_note','Pink Jab'],['galah_showstopper','mimic_song','Showstopper'],['galah_shrill_burst','feather_taunt','Shrill Burst'],['galah_spotlight_mark','chorus_mark','Spotlight Mark'],
+    ['wagtail_peck','headWhip','Wagtail Snap',{
+      desc:'Willie Wagtail fallback peck. Sharp nuisance pressure.',
+      levels:makeAbilityLevelData([{desc:'1 EN. Base 4 + 75% ATK; 15% pierce; +12% crit chance.'},{desc:'Sharper snap.'},{desc:'Sharper snap.'},{desc:'Peak snap line.'}]),
+    }],
+    ['wagtail_flick_strike','headWhip','Flicker Strike',{
+      type:'physical', btnType:'physical', energy:2, energyCost:2, energyByLevel:[2,2,2,2], cooldownByLevel:[1,1,1,1],
+      desc:'Mixed flick strike with confusion pressure.',
+      levels:makeAbilityLevelData([{desc:'2 EN, CD 1. Base 5 + 45% ATK + 45% MATK; 15% pierce; Confuse 1t (refresh).'}, {desc:'Sharper flick.'},{desc:'Sharper flick.'},{desc:'Peak flick line.'}]),
+    }],
+    ['wagtail_mock_call','feather_flick','Jeering Call',{
+      type:'spell', btnType:'spell', energy:2, energyCost:2, energyByLevel:[2,2,2,2], cooldownByLevel:[1,1,1,1],
+      desc:'Mocking disruption call built around confusion.',
+      levels:makeAbilityLevelData([{desc:'2 EN, CD 1. Base 6 + 100% MATK call; Confuse 2t (refresh).'}, {desc:'Harsher jeer.'},{desc:'Harsher jeer.'},{desc:'Peak jeer line.'}]),
+    }],
+    ['wagtail_tail_mark','dart','Shadow Flick',{
+      type:'utility', btnType:'utility', energy:2, energyCost:2, energyByLevel:[2,2,2,2], cooldownByLevel:[1,1,1,1],
+      desc:'Misdirection setup utility.',
+      levels:makeAbilityLevelData([{desc:'2 EN, CD 1. +12% accuracy for 2t; foe dodge −15% for 2t (refresh).'}, {desc:'Stronger mark.'},{desc:'Stronger mark.'},{desc:'Peak shadow line.'}]),
+    }],
+    ['galah_beak_tap','headWhip','Pink Jab',{
+      desc:'Flashy fallback tap.',
+      levels:makeAbilityLevelData([{desc:'1 EN. Base 4 + 75% ATK; 15% pierce; +12% crit damage.'},{desc:'Flashier tap.'},{desc:'Flashier tap.'},{desc:'Peak pink jab.'}]),
+    }],
+    ['galah_flash_strike','headWhip','Showstopper',{
+      type:'physical', btnType:'physical', energy:2, energyCost:2, energyByLevel:[2,2,2,2], cooldownByLevel:[1,1,1,1],
+      desc:'Mixed showy strike with weaken pressure.',
+      levels:makeAbilityLevelData([{desc:'2 EN, CD 1. Base 5 + 45% ATK + 45% MATK; 15% pierce; Weaken 1t (refresh).'}, {desc:'Bigger show.'},{desc:'Bigger show.'},{desc:'Peak showstopper.'}]),
+    }],
+    ['galah_screech','feather_flick','Shrill Burst',{
+      type:'spell', btnType:'spell', energy:2, energyCost:2, energyByLevel:[2,2,2,2], cooldownByLevel:[1,1,1,1],
+      desc:'Loud disruptive screech with weaken identity.',
+      levels:makeAbilityLevelData([{desc:'2 EN, CD 1. Base 6 + 100% MATK call; Weaken 2t (refresh).'}, {desc:'Louder burst.'},{desc:'Louder burst.'},{desc:'Peak shrill line.'}]),
+    }],
+    ['galah_show_mark','dart','Spotlight Mark',{
+      type:'utility', btnType:'utility', energy:2, energyCost:2, energyByLevel:[2,2,2,2], cooldownByLevel:[1,1,1,1],
+      desc:'Stage-setting setup utility.',
+      levels:makeAbilityLevelData([{desc:'2 EN, CD 1. +12% accuracy and +12% crit damage for 2t (refresh).'}, {desc:'Brighter spotlight.'},{desc:'Brighter spotlight.'},{desc:'Peak mark line.'}]),
+    }],
     ['bluejay_crest_jab','talon_jab','Crest Jab'],['bluejay_jaybreaker','dive','Jaybreaker'],['bluejay_crest_guard','keen_eye','Crest Guard'],['bluejay_raucous_cry','aerial_pace','Raucous Cry'],
     ['cardinal_crimson_note','quick_peck','Crimson Note'],['cardinal_scarlet_hymn','bright_chirp','Scarlet Hymn'],['cardinal_crest_jab','dart_rush','Crest Jab'],['cardinal_red_refrain','hop_step','Red Refrain'],
     ['bturkey_scrap_peck','raptorKick','Scrap Peck'],['bturkey_brush_crash','warStomp','Brush Crash'],['bturkey_bush_guard','momentumCharge','Bush Guard'],['bturkey_rattle_call','crushingTalon','Rattle Call'],
@@ -14455,6 +14537,14 @@ Object.entries(CROW_SKILL_ACTION_OVERRIDES).forEach(([id, fn])=>{ ACTIONS[id]=fn
   registerAbilityAlias('firecrest_flare_dart','firecrest_burn_dash','Flare Dart');
   registerAbilityAlias('firecrest_ashstep','firecrest_cinder_step','Ash Step');
   registerAbilityAlias('firecrest_kindle_mark','firecrest_heat_mark','Kindle Mark');
+  registerAbilityAlias('wagtail_snap','wagtail_peck','Wagtail Snap');
+  registerAbilityAlias('wagtail_flicker_strike','wagtail_flick_strike','Flicker Strike');
+  registerAbilityAlias('wagtail_jeering_call','wagtail_mock_call','Jeering Call');
+  registerAbilityAlias('wagtail_shadow_flick','wagtail_tail_mark','Shadow Flick');
+  registerAbilityAlias('galah_pink_jab','galah_beak_tap','Pink Jab');
+  registerAbilityAlias('galah_showstopper','galah_flash_strike','Showstopper');
+  registerAbilityAlias('galah_shrill_burst','galah_screech','Shrill Burst');
+  registerAbilityAlias('galah_spotlight_mark','galah_show_mark','Spotlight Mark');
 })();
 
 function getSkillFamilyIdForPlayerAbility(abilityId){
@@ -14533,7 +14623,7 @@ function wireAvianSheetPassiveHooks(){
     const k=String(ab?.btnType||ab?.type||ABILITY_TEMPLATES?.[ab?.id]?.btnType||'').toLowerCase();
     if(k!=='spell' && k!=='utility') return;
     const nm=String(ab?.name||ab?.id||'').toLowerCase();
-    if(k==='utility' && !/(call|song|cry|shriek|chorus|hymn|note|trill|mimic|burst|taunt)/.test(nm)) return;
+    if(k==='utility' && !/(call|song|cry|shriek|chorus|hymn|note|trill|mimic|burst|taunt|mark)/.test(nm)) return;
     G.playerStatus.galahCritDmg=5;
   }});
   setHooks('ostrich',{onAbilityUse(p,ab){
@@ -16026,7 +16116,7 @@ function kookaMatkLaugh(mult){
   const adjust=matkVsEnemy*0.015;
   return Math.max(1,Math.floor(pdmg(1)*(mult+adjust)*base/7.2));
 }
-function applyKookaDelayed(flat, mb, debuffSynergy=null){
+function applyKookaDelayed(flat, mb, debuffSynergy=null, replace=false){
   let amt=Math.max(1, Math.floor(flat + (mb?.delayedFlat||0)));
   if(debuffSynergy && (debuffSynergy.perCategory||0)>0){
     const n=countEnemyCombatDebuffCategories();
@@ -16034,9 +16124,13 @@ function applyKookaDelayed(flat, mb, debuffSynergy=null){
     amt+=Math.min(capAdd, Math.floor(n*debuffSynergy.perCategory));
   }
   const cap=Math.max(40, Math.floor(kookaMatkLaugh(2.5)));
-  const merged=Math.min(cap, (G.enemyStatus.delayed?.dmg||0)+amt);
-  G.enemyStatus.delayed={dmg:merged};
-  logMsg(`😂 Laugh echoes (${merged} on their turn).`,'system');
+  if(replace){
+    G.enemyStatus.delayed={dmg:Math.min(cap, amt)};
+  }else{
+    const merged=Math.min(cap, (G.enemyStatus.delayed?.dmg||0)+amt);
+    G.enemyStatus.delayed={dmg:merged};
+  }
+  logMsg(`😂 Laugh echoes (${G.enemyStatus.delayed.dmg} on their turn).`,'system');
 }
 async function executeKookaburraSpell(ab, config={}){
   const lv=Math.max(1, Math.min(4, Number(ab?.level)||1));
@@ -16049,7 +16143,8 @@ async function executeKookaburraSpell(ab, config={}){
   let total=0;
   for(let i=0;i<hits;i++){
     if(chance(miss)){ await doMiss('player'); if(hits===1) logMsg(`${config.name||ab?.id} missed!`,'miss'); continue; }
-    const amount=kookaMatkLaugh(mult);
+    const flatB=config.matkFlatBonus?.[lv-1]||0;
+    const amount=Math.max(1, flatB+kookaMatkLaugh(mult));
     const isCrit=chance(getPlayerCritChance(ab));
     const r=dealDamage('enemy', amount, isCrit, true, ab);
     total+=r.dmgDealt;
@@ -16068,6 +16163,12 @@ async function executeKookaburraSpell(ab, config={}){
   }
   if(config.accDown?.[lv-1]) G.enemyStatus.accDebuff=(G.enemyStatus.accDebuff||0)+config.accDown[lv-1]+Math.floor(rc/2);
   if(config.delayedFlat?.[lv-1]) applyKookaDelayed(config.delayedFlat[lv-1], mb, { perCategory:2, cap:12 });
+  if(config.confuseWeaken2){
+    G.enemyStatus.confused={turns:2,skipChance:26};
+    G.enemyStatus.weaken=Math.max(G.enemyStatus.weaken||0,2);
+    spawnFloat('enemy','🌀 Snared!','fn-status');
+    spawnFloat('enemy','🐔 Weaken!','fn-status');
+  }
   renderStatuses('enemy-status',G.enemyStatus);
   await doSpell('enemy', config.fx||'😂');
   logMsg(`${config.log||config.name||'😂 Laugh'}! ${total} sonic dmg.`, 'player-action');
@@ -16083,7 +16184,9 @@ async function executeKookaburraBeakStrike(ab, cfg){
   if(cfg.bonusVsWeakened?.[lv-1] && (G.enemyStatus.weaken||0)>0) mult+=cfg.bonusVsWeakened[lv-1];
   if(cfg.bonusVsWounded?.[lv-1] && peregrinePreyVulnerable()) mult+=cfg.bonusVsWounded[lv-1];
   const prox={...ab,pierceDef:pierce};
-  const r=dealDamage('enemy',pdmg(mult,prox),chance(getPlayerCritChance(ab)),false,prox);
+  const flatAdd=Math.max(0,Math.floor(cfg.flatAdd?.[lv-1]||0));
+  const critX=Math.max(0,Math.floor(cfg.critChanceFlat?.[lv-1]||0));
+  const r=dealDamage('enemy',Math.max(1,pdmg(mult,prox)+flatAdd),chance(Math.min(95,getPlayerCritChance(ab)+critX)),false,prox);
   await doAttack('player','enemy',r);
   setHpBar('enemy',G.enemy.stats.hp,G.enemy.stats.maxHp);
   if(cfg.weakenChance?.[lv-1] && spellAilmentRoll(cfg.weakenChance[lv-1]+(mb.weakenRider||0), false)){
@@ -16119,7 +16222,18 @@ async function executeKookaburraWatchCrit(ab, bonusArr, turnArr){
 }
 async function executeKookaburraWatch(ab){
   const id=ab.id;
-  if(id==='perch_watch') return executeKookaburraWatchAmp(ab,[0.12,0.15,0.18,0.21],'🪶 Perch Watch!','🪶');
+  if(id==='perch_watch'){
+    const lv=Math.max(1,Math.min(4,ab.level||1));
+    const mb=getKookaburraMasteryBonuses(ab);
+    const t=2+(mb.precision>0?1:0);
+    G.playerStatus.trailSenseAcc={pct:12+Math.floor(mb.precision),turns:t};
+    refreshEnemyStrikerDodgeMark(15,t);
+    await doSpell('enemy','🪶');
+    renderStatuses('player-status',G.playerStatus);
+    renderStatuses('enemy-status',G.enemyStatus);
+    logMsg(`🪶 Perch Watch! +${G.playerStatus.trailSenseAcc.pct}% accuracy (${t}t); foe dodge −15% (${t}t).`,'player-action');
+    return;
+  }
   if(id==='kooka_hunters_sight') return executeKookaburraWatchAmp(ab,[0.18,0.22,0.26,0.30],'🪶 Hunter\'s Sight!','🪶');
   if(id==='perch_lock') return executeKookaburraWatchAmp(ab,[0.26,0.30,0.34,0.38],'🪶 Perch Lock!','🪶');
   if(id==='expose_perch') return executeKookaburraWatchBreak(ab,[1,1,2,2],[2,2,2,3]);
@@ -16141,31 +16255,45 @@ async function executeKookaburraDrop(ab, cfg){
   const lv=Math.max(1,Math.min(4,ab.level||1));
   const mb=getKookaburraMasteryBonuses(ab);
   const oldDodge=G.enemy.stats.dodge;
-  G.enemy.stats.dodge=0;
+  const zeroOutDodge=cfg.zeroOutDodge!==false;
+  if(zeroOutDodge) G.enemy.stats.dodge=0;
   const miss=Math.max(0,(cfg.miss?.[lv-1]??8)-getPlayerHitBonus(ab)-(mb.precision||0)*2);
   if(chance(miss)){
-    G.enemy.stats.dodge=oldDodge;
+    if(zeroOutDodge) G.enemy.stats.dodge=oldDodge;
     await doMiss('player');
     logMsg(`${cfg.log||ab.name} missed!`,'miss');
     return;
   }
-  let mult=(cfg.mult?.[lv-1]??1)+(mb.dmg||0);
-  const pierce=(cfg.pierce?.[lv-1]??0)+(mb.pierceRider||0);
-  if(cfg.executeBonus?.[lv-1] && peregrinePreyVulnerable()) mult+=cfg.executeBonus[lv-1];
-  const prox={...ab,pierceDef:pierce};
-  const r=dealDamage('enemy',pdmg(mult,prox),chance(getPlayerCritChance(ab)+mb.crit),false,prox);
+  let r;
+  if(cfg.hybridFlat?.[lv-1]!=null){
+    const pierce=(cfg.pierce?.[lv-1]??15)+(mb.pierceRider||0);
+    const prox={...ab,pierceDef:pierce};
+    const amt=Math.max(1,Math.floor(cfg.hybridFlat[lv-1]+pdmg((cfg.hybridAtk?.[lv-1]??0.45)+(mb.dmg||0),prox)+matk((cfg.hybridMatk?.[lv-1]??0.45)+(mb.spellMult||0))));
+    r=dealDamage('enemy',amt,chance(getPlayerCritChance(ab)+(cfg.critChanceFlat?.[lv-1]||0)+mb.crit),false,prox);
+  }else{
+    let mult=(cfg.mult?.[lv-1]??1)+(mb.dmg||0);
+    const pierce=(cfg.pierce?.[lv-1]??0)+(mb.pierceRider||0);
+    if(cfg.executeBonus?.[lv-1] && peregrinePreyVulnerable()) mult+=cfg.executeBonus[lv-1];
+    const prox={...ab,pierceDef:pierce};
+    r=dealDamage('enemy',pdmg(mult,prox),chance(getPlayerCritChance(ab)+mb.crit),false,prox);
+  }
   await doAttack('player','enemy',r);
   setHpBar('enemy',G.enemy.stats.hp,G.enemy.stats.maxHp);
   if(cfg.weakenChance?.[lv-1] && chance(cfg.weakenChance[lv-1]+mb.control*3)) applyAilment('enemy','weaken',1);
-  if(cfg.delayed?.[lv-1]) applyKookaDelayed(cfg.delayed[lv-1], mb, cfg.delayedSynergy||{});
+  if(cfg.delayedReplaceFrac?.[lv-1]!=null && r.dmgDealt>0){
+    const d=Math.max(1,Math.floor(r.dmgDealt*cfg.delayedReplaceFrac[lv-1]));
+    const cap=Math.max(40, Math.floor(kookaMatkLaugh(2.5)));
+    G.enemyStatus.delayed={dmg:Math.min(cap,d)};
+    logMsg(`😂 Laugh echoes (${G.enemyStatus.delayed.dmg} on their turn).`,'system');
+  }else if(cfg.delayed?.[lv-1]) applyKookaDelayed(cfg.delayed[lv-1], mb, cfg.delayedSynergy||{});
   if(cfg.slow?.[lv-1]) applyEnemySlow(cfg.slow[lv-1], cfg.slowDodge?.[lv-1]||10, (cfg.slowTurns?.[lv-1]||2)+(mb.control>0?1:0));
   if(cfg.accDown?.[lv-1]) G.enemyStatus.accDebuff=(G.enemyStatus.accDebuff||0)+cfg.accDown[lv-1];
-  G.enemy.stats.dodge=oldDodge;
+  if(zeroOutDodge) G.enemy.stats.dodge=oldDodge;
   renderStatuses('enemy-status',G.enemyStatus);
   logMsg(`${cfg.log||ab.name}! ${r.dmgDealt} dmg.`,'player-action');
 }
 const KOOKABURRA_SKILL_ACTION_OVERRIDES = {
-  beak_chop: ab=>executeKookaburraBeakStrike(ab,{log:'🪶 Beak Chop',miss:[9,8,7,6],mult:[0.96,1.00,1.04,1.08],pierce:[10,12,14,16]}),
+  beak_chop: ab=>executeKookaburraBeakStrike(ab,{log:'🪶 Beak Chop',miss:[10,9,8,7],mult:[0.85,0.88,0.91,0.94],flatAdd:[5,5,5,5],pierce:[15,15,15,15],critChanceFlat:[12,12,12,12]}),
   bodkin_crack: ab=>executeKookaburraBeakStrike(ab,{log:'🪶 Bodkin Crack',miss:[8,7,6,5],mult:[1.04,1.08,1.12,1.16],pierce:[20,22,26,30]}),
   splinter_break: ab=>executeKookaburraBeakStrike(ab,{log:'🪶 Splinter Break',miss:[7,6,5,4],mult:[1.12,1.16,1.20,1.26],pierce:[28,32,36,42],bonusVsArmor:[0.06,0.08,0.10,0.12]}),
   razor_chop: ab=>executeKookaburraBeakStrike(ab,{log:'🩸 Razor Chop',miss:[9,8,7,6],mult:[0.96,1.00,1.04,1.08],pierce:[8,10,12,14],bleedChance:[10,12,14,16]}),
@@ -16174,7 +16302,7 @@ const KOOKABURRA_SKILL_ACTION_OVERRIDES = {
   dulling_chop: ab=>executeKookaburraBeakStrike(ab,{log:'🪶 Dulling Chop',miss:[9,8,7,6],mult:[0.94,0.98,1.02,1.06],pierce:[6,8,10,12],weakenChance:[10,12,14,16]}),
   numbing_crack: ab=>executeKookaburraBeakStrike(ab,{log:'🪶 Numbing Crack',miss:[8,7,6,5],mult:[1.02,1.06,1.10,1.14],pierce:[8,10,12,14],weakenChance:[15,17,19,22]}),
   weakening_break: ab=>executeKookaburraBeakStrike(ab,{log:'🪶 Weakening Break',miss:[7,6,5,4],mult:[1.08,1.12,1.16,1.20],pierce:[10,12,14,16],weakenChance:[20,22,25,28],bonusVsWeakened:[0.06,0.08,0.10,0.12]}),
-  laugh_call: ab=>executeKookaburraSpell(ab,{name:'Laugh Call',log:'😂 Laugh Call',fx:'😂',miss:[14,12,10,8],mult:[0.84,0.90,0.96,1.02]}),
+  laugh_call: ab=>executeKookaburraSpell(ab,{name:'Laugh Call',log:'😂 Laugh Call',fx:'😂',miss:[14,12,10,8],mult:[1.0,1.0,1.0,1.0],matkFlatBonus:[6,6,6,6],confuseWeaken2:true}),
   kooka_dread_call: ab=>executeKookaburraSpell(ab,{name:'Dread Call',log:'😨 Dread Call',fx:'😨',miss:[13,11,9,7],mult:[0.90,0.98,1.06,1.14],fearChance:[20,22,24,28]}),
   mocking_laugh: ab=>executeKookaburraSpell(ab,{name:'Mocking Laugh',log:'😨 Mocking Laugh',fx:'😨',miss:[12,10,8,6],mult:[1.02,1.10,1.18,1.26],fearChance:[26,28,30,32]}),
   terror_cackle: ab=>executeKookaburraSpell(ab,{name:'Terror Cackle',log:'😨 Terror Cackle',fx:'😨',hits:[2,2,3,3],miss:[11,10,9,8],mult:[0.52,0.56,0.50,0.54],fearChance:[28,30,32,34],bonusVsFeared:[0.10,0.11,0.12,0.13]}),
@@ -16193,7 +16321,7 @@ const KOOKABURRA_SKILL_ACTION_OVERRIDES = {
   killer_watch: ab=>executeKookaburraWatch(ab),
   killing_sight: ab=>executeKookaburraWatch(ab),
   kooka_death_lock: ab=>executeKookaburraWatch(ab),
-  drop_strike: ab=>executeKookaburraDrop(ab,{log:'🪶 Drop Strike',miss:[9,8,7,6],mult:[0.98,1.02,1.06,1.10],pierce:[8,10,12,14]}),
+  drop_strike: ab=>executeKookaburraDrop(ab,{log:'🪶 Drop Trick',miss:[12,11,10,9],zeroOutDodge:false,hybridFlat:[5,5,5,5],hybridAtk:[0.45,0.45,0.45,0.45],hybridMatk:[0.45,0.45,0.45,0.45],pierce:[15,15,15,15],delayedReplaceFrac:[0.42,0.44,0.46,0.48]}),
   hunter_drop: ab=>executeKookaburraDrop(ab,{log:'☠ Hunter Drop',miss:[8,7,6,5],mult:[1.06,1.10,1.14,1.18],pierce:[10,12,14,16],executeBonus:[0.08,0.10,0.12,0.14]}),
   kill_smash: ab=>executeKookaburraDrop(ab,{log:'☠ Kill Smash',miss:[7,6,5,4],mult:[1.14,1.18,1.22,1.28],pierce:[12,14,16,18],executeBonus:[0.14,0.16,0.18,0.22]}),
   kooka_trigger_strike: ab=>executeKookaburraDrop(ab,{log:'😂 Trigger Strike',miss:[8,7,6,5],mult:[0.98,1.02,1.06,1.10],pierce:[8,10,12,14],delayed:[10,14,18,22],delayedSynergy:{ perCategory:2, cap:12 }}),
@@ -16231,7 +16359,7 @@ function ravenMatkOmen(mult){
   const adjust=matkVsEnemy*0.015;
   return Math.max(1,Math.floor(pdmg(1)*(mult+adjust)*base/7.2));
 }
-function applyRavenDelayed(flat, mb, debuffSynergy=null){
+function applyRavenDelayed(flat, mb, debuffSynergy=null, replace=false){
   let amt=Math.max(1, Math.floor(flat + (mb?.delayedFlat||0)));
   if(debuffSynergy && (debuffSynergy.perCategory||0)>0){
     const n=countEnemyCombatDebuffCategories();
@@ -16239,9 +16367,13 @@ function applyRavenDelayed(flat, mb, debuffSynergy=null){
     amt+=Math.min(capAdd, Math.floor(n*debuffSynergy.perCategory));
   }
   const cap=Math.max(40, Math.floor(ravenMatkOmen(2.5)));
-  const merged=Math.min(cap, (G.enemyStatus.delayed?.dmg||0)+amt);
-  G.enemyStatus.delayed={dmg:merged};
-  logMsg(`🪶 Omen resonance (${merged} on their turn).`,'system');
+  if(replace){
+    G.enemyStatus.delayed={dmg:Math.min(cap, amt)};
+  }else{
+    const merged=Math.min(cap, (G.enemyStatus.delayed?.dmg||0)+amt);
+    G.enemyStatus.delayed={dmg:merged};
+  }
+  logMsg(`🪶 Omen resonance (${G.enemyStatus.delayed.dmg} on their turn).`,'system');
 }
 async function executeRavenOmenSpell(ab, config={}){
   const lv=Math.max(1, Math.min(4, Number(ab?.level)||1));
@@ -16276,6 +16408,64 @@ async function executeRavenOmenSpell(ab, config={}){
   renderStatuses('enemy-status',G.enemyStatus);
   await doSpell('enemy', config.fx||'🪶');
   logMsg(`${config.log||config.name||'🪶 Omen'}! ${total} omen dmg.`, 'player-action');
+}
+async function executeRavenOmenHybridStrike(ab, cfg){
+  const lv=Math.max(1,Math.min(4,ab.level||1));
+  const mb=getRavenMasteryBonuses(ab);
+  const miss=Math.max(0,(cfg.miss?.[lv-1]??12)-getPlayerHitBonus(ab)-(mb.precision||0)*2);
+  if(chance(miss)){await doMiss('player');logMsg(`${cfg.log||ab.name} missed!`,'miss');return;}
+  const pierce=(cfg.pierce?.[lv-1]??15)+(mb.pierceRider||0);
+  const prox={...ab,pierceDef:pierce};
+  const flat=cfg.hybridFlat?.[lv-1]??5;
+  const atkM=(cfg.hybridAtk?.[lv-1]??0.5)+(mb.dmg||0);
+  const matkM=(cfg.hybridMatk?.[lv-1]??0.4)+(mb.spellMult||0)*0.5;
+  const amt=Math.max(1,Math.floor(flat+pdmg(atkM,prox)+matk(matkM)));
+  const r=dealDamage('enemy',amt,chance(getPlayerCritChance(ab)),false,prox);
+  await doAttack('player','enemy',r);
+  setHpBar('enemy',G.enemy.stats.hp,G.enemy.stats.maxHp);
+  if(cfg.delayedFrac?.[lv-1]!=null && r.dmgDealt>0){
+    const d=Math.max(1,Math.floor(r.dmgDealt*cfg.delayedFrac[lv-1]));
+    const cap=Math.max(40, Math.floor(ravenMatkOmen(2.5)));
+    G.enemyStatus.delayed={dmg:Math.min(cap,d)};
+    logMsg(`🪶 Omen resonance (${G.enemyStatus.delayed.dmg} on their turn).`,'system');
+  }
+  renderStatuses('enemy-status',G.enemyStatus);
+  logMsg(`${cfg.log||ab.name}! ${r.dmgDealt} dmg.`,'player-action');
+}
+async function executeRavenDarkWatchCall(ab){
+  const lv=Math.max(1,Math.min(4,ab.level||1));
+  const mb=getRavenMasteryBonuses(ab);
+  const miss=Math.max(0,(spellMissChance())-getPlayerHitBonus(ab)-(mb.precision||0)*2);
+  let total=0;
+  if(!chance(miss)){
+    const mult=1.05+(mb.spellMult||0);
+    const amt=Math.max(1,6+ravenMatkOmen(mult));
+    const r=dealDamage('enemy',amt,chance(getPlayerCritChance(ab)),true,ab);
+    total=r.dmgDealt;
+    await doAttack('player','enemy',r);
+    setHpBar('enemy',G.enemy.stats.hp,G.enemy.stats.maxHp);
+  }else{
+    await doMiss('player');
+    logMsg(`Dark Watch missed!`,'miss');
+  }
+  G.enemyStatus.weaken=Math.max(G.enemyStatus.weaken||0,2);
+  G.enemyStatus.confused={turns:2,skipChance:26};
+  spawnFloat('enemy','🐔 Weaken!','fn-status');
+  spawnFloat('enemy','🌀 Snared!','fn-status');
+  await doSpell('enemy','🪶');
+  renderStatuses('enemy-status',G.enemyStatus);
+  logMsg(`🪶 Dark Watch! ${total} dmg — Weaken + Confuse (2t, refresh).`,'player-action');
+}
+async function executeRavenFateMarkSetup(ab){
+  const lv=Math.max(1,Math.min(4,ab.level||1));
+  const mb=getRavenMasteryBonuses(ab);
+  const t=2+(mb.precision>0?1:0);
+  G.playerStatus.trailSenseAcc={pct:12+Math.floor(mb.precision),turns:t};
+  refreshEnemyStrikerDodgeMark(15,t);
+  await doSpell('enemy','🪶');
+  renderStatuses('player-status',G.playerStatus);
+  renderStatuses('enemy-status',G.enemyStatus);
+  logMsg(`🪶 Fate Mark! +${G.playerStatus.trailSenseAcc.pct}% accuracy (${t}t); foe dodge −15% (${t}t).`,'player-action');
 }
 async function executeRavenBeakStrike(ab, cfg){
   const lv=Math.max(1,Math.min(4,ab.level||1));
@@ -16323,7 +16513,7 @@ async function executeRavenWatchRead(ab, ampArr, readArr, logPrefix){
 }
 async function executeRavenWatch(ab){
   const id=ab.id;
-  if(id==='dark_watch') return executeRavenWatchAmp(ab,[0.12,0.15,0.18,0.21],'🪶 Dark Watch!','🪶');
+  if(id==='dark_watch') return executeRavenDarkWatchCall(ab);
   if(id==='rav_grim_sight') return executeRavenWatchAmp(ab,[0.18,0.22,0.26,0.30],'🪶 Grim Sight!','🪶');
   if(id==='rav_omen_lock') return executeRavenWatchAmp(ab,[0.26,0.30,0.34,0.38],'🪶 Omen Lock!','🪶');
   if(id==='rav_expose_weakness') return executeRavenWatchBreak(ab,[1,1,2,2],[2,2,2,3]);
@@ -16353,7 +16543,7 @@ async function executeRavenFateExecute(ab, config){
   logMsg(`${config.log} next attack +${Math.round(bonus*100)}% damage${lowHp?' vs a weakened foe':''}.`,'player-action');
 }
 const RAVEN_SKILL_ACTION_OVERRIDES = {
-  omen_call: ab=>executeRavenOmenSpell(ab,{name:'Omen Call',log:'🪶 Omen Call',fx:'🪶',miss:[15,13,11,9],mult:[0.82,0.88,0.94,1.00]}),
+  omen_call: ab=>executeRavenOmenHybridStrike(ab,{log:'🪶 Omen Strike',miss:[12,11,10,9],hybridFlat:[5,5,5,5],hybridAtk:[0.5,0.5,0.5,0.5],hybridMatk:[0.4,0.4,0.4,0.4],pierce:[15,15,15,15],delayedFrac:[0.42,0.44,0.46,0.48]}),
   dark_watch: ab=>executeRavenWatch(ab),
   rav_grim_sight: ab=>executeRavenWatch(ab),
   rav_omen_lock: ab=>executeRavenWatch(ab),
@@ -16363,7 +16553,7 @@ const RAVEN_SKILL_ACTION_OVERRIDES = {
   rav_read_weakness: ab=>executeRavenWatch(ab),
   rav_read_sight: ab=>executeRavenWatch(ab),
   rav_read_doom: ab=>executeRavenWatch(ab),
-  fate_mark: ab=>executeRavenWatchAmp(ab,[0.12,0.15,0.18,0.21],'🪶 Fate Mark!','🪶'),
+  fate_mark: ab=>executeRavenFateMarkSetup(ab),
   rav_grim_sign: ab=>executeRavenWatchAmp(ab,[0.18,0.22,0.26,0.30],'🪶 Grim Sign!','🪶'),
   rav_final_doom: ab=>executeRavenWatchAmp(ab,[0.26,0.30,0.34,0.38],'🪶 Final Doom!','🪶'),
   rav_fate_echo_mark: ab=>executeRavenFateDelayed(ab,[0.08,0.10,0.12,0.14],[10,14,18,22],{ perCategory:3, cap:14 },'🪶 Writ Toll Mark!'),
@@ -17079,9 +17269,13 @@ function bowerApplyDelayed(flat, ab, synergy={}){
     amt+=Math.min(debCap, Math.floor(countEnemyCombatDebuffCategories()*debPer));
   }
   const mergeCap=Math.max(28,Math.floor((G.player.stats.matk||9)*3.2));
-  const merged=Math.min(mergeCap,(G.enemyStatus.delayed?.dmg||0)+amt);
-  G.enemyStatus.delayed={dmg:merged};
-  logMsg(`🪶 Bower trap (${merged} next turn).`,'system');
+  if(synergy.replace){
+    G.enemyStatus.delayed={dmg:Math.min(mergeCap, amt)};
+  }else{
+    const merged=Math.min(mergeCap,(G.enemyStatus.delayed?.dmg||0)+amt);
+    G.enemyStatus.delayed={dmg:merged};
+  }
+  logMsg(`🪶 Bower trap (${G.enemyStatus.delayed.dmg} next turn).`,'system');
 }
 function bowerbirdLureCooldownForLevel(lv){
   if(lv>=4) return 0;
@@ -17100,7 +17294,18 @@ async function executeBowerbirdTrinketStrike(ab, cfg){
     const pierce=(cfg.pierce?.[lv-1]??0)+mb.pierce;
     if(cfg.bonusVsCompromised?.[lv-1] && macawEnemyHasDebuff()) mult+=cfg.bonusVsCompromised[lv-1]+(mb.exposeBonus||0);
     const prox={...ab,pierceDef:pierce};
-    const r=dealDamage('enemy',pdmg(mult,prox),chance(getPlayerCritChance(ab)),false,prox);
+    const flat=Math.max(0,Math.floor(cfg.flatAdd?.[lv-1]||0));
+    const critFlat=Math.max(0,Math.floor(cfg.critChanceFlat?.[lv-1]||0));
+    const cdb=Math.max(0,Math.floor(cfg.critDmgBonus||0));
+    let r;
+    if(cdb>0){
+      const prev=G.playerStatus.galahCritDmg||0;
+      G.playerStatus.galahCritDmg=prev+cdb;
+      r=dealDamage('enemy',Math.max(1,pdmg(mult,prox)+flat),chance(Math.min(95,getPlayerCritChance(ab)+critFlat)),false,prox);
+      G.playerStatus.galahCritDmg=prev;
+    }else{
+      r=dealDamage('enemy',Math.max(1,pdmg(mult,prox)+flat),chance(Math.min(95,getPlayerCritChance(ab)+critFlat)),false,prox);
+    }
     await doAttack('player','enemy',r);
     total+=r.dmgDealt;
     setHpBar('enemy',G.enemy.stats.hp,G.enemy.stats.maxHp);
@@ -17173,6 +17378,29 @@ async function executeBowerbirdLureSpell(ab, config={}){
   G.bowerbirdLureCooldown=bowerbirdLureCooldownForLevel(lv);
   logMsg(`${config.log||config.name||'Lure'}! ${total} display dmg.${G.bowerbirdLureCooldown>0?` CD ${G.bowerbirdLureCooldown}t`:''}`, 'player-action');
 }
+async function executeBowerbirdLureHybridStrike(ab){
+  if((G.bowerbirdLureCooldown||0)>0){logMsg(`Lure on cooldown! (${G.bowerbirdLureCooldown}t)`,'miss');return;}
+  const lv=Math.max(1,Math.min(4,ab.level||1));
+  const mb=getBowerbirdMasteryBonuses(ab);
+  const miss=Math.max(0,(spellMissChance())-getPlayerHitBonus(ab)-(mb.precision||0)*2);
+  if(chance(miss)){await doMiss('player');logMsg(`Lure Strike missed!`,'miss');return;}
+  const prox={...ab,pierceDef:15+mb.pierce};
+  const amt=Math.max(1,Math.floor(5+pdmg(0.45+mb.dmg*0.4,prox)+bowerMatkLure(0.45+mb.spellMult)));
+  const r=dealDamage('enemy',amt,chance(getPlayerCritChance(ab)),false,prox);
+  await doAttack('player','enemy',r);
+  setHpBar('enemy',G.enemy.stats.hp,G.enemy.stats.maxHp);
+  if(r.dmgDealt>0){
+    const cap=Math.max(28,Math.floor((G.player.stats.matk||9)*3.2));
+    const d=Math.max(1,Math.floor(r.dmgDealt*0.42));
+    G.enemyStatus.delayed={dmg:Math.min(cap,d)};
+    spawnFloat('enemy','⏳ Delayed!','fn-status');
+    logMsg(`🪶 Bower trap (${G.enemyStatus.delayed.dmg} next turn).`,'system');
+  }
+  renderStatuses('enemy-status',G.enemyStatus);
+  await doSpell('enemy','🪶');
+  G.bowerbirdLureCooldown=1;
+  logMsg(`🪶 Lure Strike! ${r.dmgDealt} dmg.${G.bowerbirdLureCooldown>0?` CD ${G.bowerbirdLureCooldown}t`:''}`,'player-action');
+}
 async function executeBowerbirdBuildUtility(ab, cfg){
   const lv=Math.max(1,Math.min(4,ab.level||1));
   const mb=getBowerbirdMasteryBonuses(ab);
@@ -17186,6 +17414,11 @@ async function executeBowerbirdBuildUtility(ab, cfg){
   }else if(cfg.guard){
     G.playerStatus.defending=(G.playerStatus.defending||0)+cfg.guard[lv-1]+mb.guardRider;
     logMsg(`${cfg.log||'Shelter'}! Block stance up.`,'player-action');
+  }else if(cfg.confuseAccDebuff){
+    G.enemyStatus.confused={turns:2,skipChance:26};
+    G.enemyStatus.accDebuff=(G.enemyStatus.accDebuff||0)+12;
+    spawnFloat('enemy','🌀 Snared!','fn-status');
+    logMsg(`${cfg.log||'Bower Build'}! Confuse + −12% enemy ACC (2t, refresh).`,'player-action');
   }
   renderStatuses('player-status',G.playerStatus);
   renderStatuses('enemy-status',G.enemyStatus);
@@ -17238,7 +17471,7 @@ async function executeBowerbirdDisplayExecute(ab, cfg){
   logMsg(`${cfg.log||ab.name}! ${r.dmgDealt} dmg.`,'player-action');
 }
 const BOWERBIRD_SKILL_ACTION_OVERRIDES = {
-  trinket_toss: ab=>executeBowerbirdTrinketStrike(ab,{log:'🪶 Trinket Toss',hits:[1,1,1,1],miss:[9,8,7,6],mult:[0.90,0.94,0.98,1.02],pierce:[8,10,12,14]}),
+  trinket_toss: ab=>executeBowerbirdTrinketStrike(ab,{log:'🪶 Trinket Toss',hits:[1,1,1,1],miss:[12,11,10,9],mult:[0.75,0.78,0.81,0.84],flatAdd:[4,4,4,4],pierce:[15,15,15,15],critDmgBonus:12}),
   sharp_scatter: ab=>executeBowerbirdTrinketStrike(ab,{log:'🪶 Sharp Scatter',hits:[2,2,2,2],miss:[8,7,6,5],mult:[0.50,0.54,0.58,0.62],pierce:[10,12,14,16],bonusVsCompromised:[0.04,0.05,0.06,0.07]}),
   scatterstorm: ab=>executeBowerbirdTrinketStrike(ab,{log:'🪶 Scatterstorm',hits:[3,3,4,4],miss:[7,6,5,4],mult:[0.44,0.48,0.50,0.54],pierce:[12,14,16,18],bonusVsCompromised:[0.06,0.08,0.09,0.10]}),
   dulling_toss: ab=>executeBowerbirdTrinketStrike(ab,{log:'🪶 Dulling Toss',hits:[1,1,1,1],miss:[9,8,7,6],mult:[0.86,0.90,0.94,0.98],pierce:[6,8,10,12],weakenChance:[20,24,28,32]}),
@@ -17247,7 +17480,7 @@ const BOWERBIRD_SKILL_ACTION_OVERRIDES = {
   gleam_toss: ab=>executeBowerbirdTrinketStrike(ab,{log:'✨ Gleam Toss',hits:[1,1,1,1],miss:[8,7,6,5],mult:[0.88,0.92,0.96,1.00],pierce:[8,10,12,14],applyExpose:[0.07,0.08,0.09,0.10],exposeTurns:[2,2,2,3]}),
   gleam_scatter: ab=>executeBowerbirdTrinketStrike(ab,{log:'✨ Gleam Scatter',hits:[2,2,2,2],miss:[7,6,5,4],mult:[0.48,0.52,0.55,0.58],pierce:[10,12,14,16],exposeAfter:[0.10,0.12,0.14,0.16],exposeTurns:[2,2,3,3]}),
   gleam_storm: ab=>executeBowerbirdTrinketStrike(ab,{log:'✨ Gleam Storm',hits:[3,3,4,4],miss:[6,5,4,3],mult:[0.42,0.46,0.44,0.48],pierce:[12,14,16,18],exposeAfter:[0.12,0.14,0.16,0.18],exposeTurns:[2,3,3,3]}),
-  lure_call: ab=>executeBowerbirdLureSpell(ab,{name:'Lure Call',log:'🪶 Lure Call',fx:'🪶',miss:[14,12,10,8],mult:[0.78,0.84,0.90,0.96],accDown:[6,8,10,12],fearChance:[10,12,14,16]}),
+  lure_call: ab=>executeBowerbirdLureHybridStrike(ab),
   bow_dread_call: ab=>executeBowerbirdLureSpell(ab,{name:'Dread Call',log:'😨 Dread Call',fx:'😨',miss:[13,11,9,7],mult:[0.82,0.88,0.94,1.00],fearChance:[22,24,26,28]}),
   bow_dread_lure: ab=>executeBowerbirdLureSpell(ab,{name:'Dread Lure',log:'😨 Dread Lure',fx:'😨',miss:[12,10,8,6],mult:[0.90,0.98,1.04,1.10],fearChance:[28,30,32,34],accDown:[8,10,12,14]}),
   bow_dread_snare: ab=>executeBowerbirdLureSpell(ab,{name:'Dread Snare',log:'😨 Dread Snare',fx:'😨',hits:[2,2,2,2],miss:[11,9,7,5],mult:[0.48,0.52,0.54,0.58],fearFirst:[32,34,36,38],bonusVsFeared:[0.08,0.09,0.10,0.11]}),
@@ -17257,7 +17490,7 @@ const BOWERBIRD_SKILL_ACTION_OVERRIDES = {
   bow_rank_call: ab=>executeBowerbirdLureSpell(ab,{name:'Rank Call',log:'☣ Rank Call',fx:'☣',miss:[13,11,9,7],mult:[0.84,0.90,0.96,1.02],poisonChance:[24,28,32,36]}),
   bow_acrid_lure: ab=>executeBowerbirdLureSpell(ab,{name:'Acrid Lure',log:'☣ Acrid Lure',fx:'☣',miss:[12,10,8,6],mult:[0.92,0.98,1.04,1.10],poisonChance:[30,34,38,42],accDown:[6,8,10,12]}),
   bow_viral_snare: ab=>executeBowerbirdLureSpell(ab,{name:'Viral Snare',log:'☣ Viral Snare',fx:'☣',hits:[2,2,2,2],miss:[11,9,7,5],mult:[0.50,0.54,0.56,0.60],poisonChance:[22,26,30,34],bonusVsDebuffed:[0.06,0.07,0.08,0.09]}),
-  bower_build: ab=>executeBowerbirdBuildUtility(ab,{log:'🪶 Bower Build',fx:'🪶',amp:[0.14,0.17,0.20,0.23]}),
+  bower_build: ab=>executeBowerbirdBuildUtility(ab,{log:'🪶 Bower Build',fx:'🪶',confuseAccDebuff:true}),
   fine_shape: ab=>executeBowerbirdBuildUtility(ab,{log:'🪶 Fine Shape',fx:'🪶',amp:[0.18,0.21,0.24,0.28]}),
   grand_structure: ab=>executeBowerbirdBuildUtility(ab,{log:'🪶 Grand Structure',fx:'🪶',amp:[0.24,0.28,0.32,0.36]}),
   weak_build: ab=>executeBowerbirdBuildUtility(ab,{log:'🪶 Weak Build',fx:'🪶',defBreak:[1,1,2,2],defTurns:[2,2,2,3]}),
@@ -17266,7 +17499,16 @@ const BOWERBIRD_SKILL_ACTION_OVERRIDES = {
   safe_build: ab=>executeBowerbirdBuildUtility(ab,{log:'🛡 Safe Build',fx:'🛡',guard:[10,12,14,16]}),
   shelter_shape: ab=>executeBowerbirdBuildUtility(ab,{log:'🛡 Shelter Shape',fx:'🛡',guard:[14,18,22,26]}),
   secure_structure: ab=>executeBowerbirdBuildUtility(ab,{log:'🛡 Secure Structure',fx:'🛡',guard:[18,24,30,36]}),
-  display_mark: ab=>executeBowerbirdDisplayExpose(ab,{log:'✨ Display Mark',fx:'✨',exposePct:[0.07,0.08,0.09,0.10],exposeTurns:[2,2,2,3]}),
+  display_mark: async ab=>{
+    const lv=Math.max(1,Math.min(4,ab.level||1));
+    const mb=getBowerbirdMasteryBonuses(ab);
+    const t=2+(mb.precision>0?1:0);
+    G.playerStatus.trailSenseAcc={pct:12+Math.floor(mb.precision),turns:t};
+    G.playerStatus.tricksterCritDmgBuff={pct:12+Math.floor(mb.control),turns:t};
+    await doSpell('player','✨');
+    renderStatuses('player-status',G.playerStatus);
+    logMsg(`✨ Display Mark! +${G.playerStatus.trailSenseAcc.pct}% accuracy and +${G.playerStatus.tricksterCritDmgBuff.pct}% crit damage (${t}t, refresh).`,'player-action');
+  },
   open_display: ab=>executeBowerbirdDisplayExpose(ab,{log:'✨ Open Display',fx:'✨',exposePct:[0.10,0.12,0.14,0.16],exposeTurns:[2,2,3,3],matkMult:[0.32,0.36,0.40,0.44],miss:[12,11,10,9],bonusVsExposed:[0.04,0.05,0.06,0.07]}),
   grand_finale: ab=>executeBowerbirdDisplayExpose(ab,{log:'✨ Grand Finale',fx:'✨',exposePct:[0.14,0.16,0.18,0.22],exposeTurns:[3,3,3,4],matkMult:[0.48,0.52,0.56,0.62],miss:[11,10,9,8],bonusVsExposed:[0.06,0.07,0.08,0.09]}),
   read_display: ab=>executeBowerbirdDisplayRead(ab,[0.06,0.08,0.10,0.12],[0.08,0.10,0.12,0.14],'🎭 Read Display!','🎭'),
@@ -18297,7 +18539,9 @@ async function executeSeagullSnap(ab, cfg){
   const pierce=(cfg.pierce?.[lv-1]??0)+(mb.pierce||0);
   if(cfg.bonusVsCompromised?.[lv-1] && macawEnemyHasDebuff()) mult+=cfg.bonusVsCompromised[lv-1]+(mb.compromised||0);
   const prox={...ab,pierceDef:pierce};
-  const r=dealDamage('enemy',pdmg(mult,prox),chance(getPlayerCritChance(ab)),false,prox);
+  const flatAdd=Math.max(0,Math.floor(cfg.flatAdd?.[lv-1]||0));
+  const critX=Math.max(0,Math.floor(cfg.critChanceFlat?.[lv-1]||0));
+  const r=dealDamage('enemy',Math.max(1,pdmg(mult,prox)+flatAdd),chance(Math.min(95,getPlayerCritChance(ab)+critX)),false,prox);
   await doAttack('player','enemy',r);
   setHpBar('enemy',G.enemy.stats.hp,G.enemy.stats.maxHp);
   if(cfg.bleedChance?.[lv-1] && chance(cfg.bleedChance[lv-1]+(mb.bleedRider||0))){
@@ -18321,14 +18565,26 @@ async function executeSeagullSwoop(ab, cfg){
   const pierce=(cfg.pierce?.[lv-1]??0)+(mb.pierce||0);
   if(cfg.blindsideBonus?.[lv-1] && macawEnemyHasDebuff()) mult+=cfg.blindsideBonus[lv-1]+(mb.blindsideBonus||0);
   if(cfg.bonusVsSlowed?.[lv-1] && seagullEnemyWasSlow()) mult+=cfg.bonusVsSlowed[lv-1]+(mb.slowBonus||0);
-  const oldDodge=cfg.ignoreDodge?G.enemy.stats.dodge:null;
-  if(cfg.ignoreDodge) G.enemy.stats.dodge=0;
+  const useIgnore=cfg.ignoreDodge===true;
+  const oldDodge=useIgnore?G.enemy.stats.dodge:null;
+  if(useIgnore) G.enemy.stats.dodge=0;
   const prox={...ab,pierceDef:pierce};
   const critExtra=(cfg.critBonus?.[lv-1]||0)+(mb.critBonus||0);
-  const r=dealDamage('enemy',pdmg(mult,prox),chance(Math.min(95,getPlayerCritChance(ab)+critExtra)),false,prox);
-  if(cfg.ignoreDodge) G.enemy.stats.dodge=oldDodge;
+  let r;
+  if(cfg.hybridFlat?.[lv-1]!=null){
+    const amt=Math.max(1,Math.floor(cfg.hybridFlat[lv-1]+pdmg((cfg.hybridAtk?.[lv-1]??0.45)+mb.dmg,prox)+matk((cfg.hybridMatk?.[lv-1]??0.45))));
+    r=dealDamage('enemy',amt,chance(Math.min(95,getPlayerCritChance(ab)+critExtra)),false,prox);
+  }else{
+    r=dealDamage('enemy',pdmg(mult,prox),chance(Math.min(95,getPlayerCritChance(ab)+critExtra)),false,prox);
+  }
+  if(useIgnore) G.enemy.stats.dodge=oldDodge;
   await doAttack('player','enemy',r);
   setHpBar('enemy',G.enemy.stats.hp,G.enemy.stats.maxHp);
+  if(cfg.delayedReplaceFrac?.[lv-1]!=null && r.dmgDealt>0){
+    const d=Math.max(1,Math.floor(r.dmgDealt*cfg.delayedReplaceFrac[lv-1]));
+    G.enemyStatus.delayed={dmg:d};
+    spawnFloat('enemy','⏳ Delayed!','fn-status');
+  }
   if(cfg.slow?.[lv-1]) applyEnemySlow(cfg.slow[lv-1], cfg.slowDodge?.[lv-1]||10, (cfg.slowTurns?.[lv-1]||2)+(mb.slowTurn||0));
   renderStatuses('enemy-status',G.enemyStatus);
   logMsg(`${cfg.log||ab.name}! ${r.dmgDealt} dmg.`,'player-action');
@@ -18338,10 +18594,30 @@ async function executeSeagullCry(ab){
   const lv=Math.max(1,Math.min(4,ab.level||1));
   const mb=getSeagullMasteryBonuses(ab);
   const turns=2+(mb.cryExtra||0);
-  await doSpell('enemy','🐦');
   if(id==='sgl_raucous_cry'){
-    G.enemyStatus.accDebuff=(G.enemyStatus.accDebuff||0)+[8,10,12,14][lv-1]+mb.accDown;
-  }else if(id==='sgl_wavering_squall'){
+    const miss=Math.max(0,spellMissChance()-getPlayerHitBonus(ab));
+    let total=0;
+    if(!chance(miss)){
+      const amt=Math.max(1,6+matk(1));
+      const r=dealDamage('enemy',amt,chance(getPlayerCritChance(ab)),true,ab);
+      total=r.dmgDealt;
+      await doAttack('player','enemy',r);
+      setHpBar('enemy',G.enemy.stats.hp,G.enemy.stats.maxHp);
+    }else{
+      await doMiss('player');
+      logMsg(`Raucous Cry missed!`,'miss');
+    }
+    G.enemyStatus.confused={turns:2,skipChance:26};
+    G.enemyStatus.weaken=Math.max(G.enemyStatus.weaken||0,2);
+    spawnFloat('enemy','🌀 Snared!','fn-status');
+    spawnFloat('enemy','🐔 Weaken!','fn-status');
+    await doSpell('enemy','🐦');
+    renderStatuses('enemy-status',G.enemyStatus);
+    logMsg(`🐦 Raucous Cry! ${total} dmg — Confuse + Weaken (2t, refresh).`,'player-action');
+    return;
+  }
+  await doSpell('enemy','🐦');
+  if(id==='sgl_wavering_squall'){
     G.enemyStatus.accDebuff=(G.enemyStatus.accDebuff||0)+[12,14,16,18][lv-1]+mb.accDown;
   }else if(id==='sgl_blinding_uproar'){
     G.enemyStatus.accDebuff=(G.enemyStatus.accDebuff||0)+[16,18,20,24][lv-1]+mb.accDown;
@@ -18374,10 +18650,13 @@ async function executeSeagullScavenge(ab){
   const lv=Math.max(1,Math.min(4,ab.level||1));
   const mb=getSeagullMasteryBonuses(ab);
   if(id==='sgl_scavenge_mark'){
-    G.playerStatus.huntersMarkBonusPct=(0.12+(mb.markAmp||0));
+    const t=2+(mb.breakTurns||0);
+    refreshEnemyStrikerDodgeMark(15,t);
+    G.playerStatus.trailSenseAcc={pct:12+Math.floor((mb.readRider||0)*50),turns:t};
     await doSpell('enemy','🦴');
     renderStatuses('player-status',G.playerStatus);
-    logMsg(`🦴 Scavenge Mark! Next hit +${Math.round((G.playerStatus.huntersMarkBonusPct||0)*100)}%.`,'player-action');
+    renderStatuses('enemy-status',G.enemyStatus);
+    logMsg(`🦴 Scavenge Mark! Foe dodge −15% (${t}t); +${G.playerStatus.trailSenseAcc.pct}% accuracy (${t}t, refresh).`,'player-action');
     return;
   }
   if(id==='sgl_claim_sign'){
@@ -18406,7 +18685,7 @@ async function executeSeagullScavenge(ab){
   logMsg(`🦴 Read the scrap! Next hit +${Math.round((G.playerStatus.huntersMarkBonusPct||0)*100)}% and +${Math.round((G.playerStatus.cockatooReadExtra||0)*100)}% vs compromised.`,'player-action');
 }
 const SEAGULL_SKILL_ACTION_OVERRIDES = {
-  sgl_snap_peck: ab=>executeSeagullSnap(ab,{log:'🐦 Snap Peck',miss:[10,9,8,7],mult:[0.90,0.94,0.98,1.02],pierce:[8,10,12,14]}),
+  sgl_snap_peck: ab=>executeSeagullSnap(ab,{log:'🐦 Snap Peck',miss:[12,11,10,9],mult:[0.75,0.78,0.81,0.84],flatAdd:[4,4,4,4],pierce:[15,15,15,15],critChanceFlat:[12,12,12,12]}),
   sgl_raking_bite: ab=>executeSeagullSnap(ab,{log:'🩸 Raking Bite',miss:[9,8,7,6],mult:[0.94,0.98,1.02,1.06],pierce:[8,10,12,14],bleedChance:[16,18,20,22]}),
   sgl_salt_rip: ab=>executeSeagullSnap(ab,{log:'🩸 Salt Rip',miss:[8,7,6,5],mult:[1.02,1.06,1.10,1.14],pierce:[10,12,14,16],bleedChance:[22,25,28,32],bonusVsCompromised:[0.04,0.05,0.06,0.07]}),
   sgl_hook_peck: ab=>executeSeagullSnap(ab,{log:'🪝 Hook Peck',miss:[9,8,7,6],mult:[0.88,0.92,0.96,1.00],pierce:[14,18,22,26]}),
@@ -18415,7 +18694,7 @@ const SEAGULL_SKILL_ACTION_OVERRIDES = {
   sgl_spot_peck: ab=>executeSeagullSnap(ab,{log:'🎯 Spot Peck',miss:[9,8,7,6],mult:[0.88,0.92,0.96,1.00],pierce:[10,12,14,16],bonusVsCompromised:[0.06,0.07,0.08,0.09]}),
   sgl_scavenge_bite: ab=>executeSeagullSnap(ab,{log:'🎯 Scavenge Bite',miss:[8,7,6,5],mult:[0.94,0.98,1.02,1.06],pierce:[12,14,16,18],bonusVsCompromised:[0.09,0.10,0.11,0.12]}),
   sgl_open_rip: ab=>executeSeagullSnap(ab,{log:'🎯 Open Rip',miss:[7,6,5,4],mult:[1.00,1.04,1.08,1.12],pierce:[14,16,18,20],bonusVsCompromised:[0.10,0.12,0.14,0.16],applyExpose:[0.06,0.07,0.08,0.09],exposeTurns:[2,2,3,3]}),
-  sgl_swoop_pass: ab=>executeSeagullSwoop(ab,{log:'🐦 Swoop Pass',ignoreDodge:true,miss:[10,9,8,7],mult:[1.14,1.18,1.22,1.26],pierce:[6,8,10,12],critBonus:[5,7,9,11]}),
+  sgl_swoop_pass: ab=>executeSeagullSwoop(ab,{log:'🐦 Swoop Pass',ignoreDodge:false,miss:[12,11,10,9],hybridFlat:[5,5,5,5],hybridAtk:[0.45,0.45,0.45,0.45],hybridMatk:[0.45,0.45,0.45,0.45],pierce:[15,15,15,15],delayedReplaceFrac:[0.42,0.44,0.46,0.48]}),
   sgl_skimming_dive: ab=>executeSeagullSwoop(ab,{log:'🐦 Skimming Dive',ignoreDodge:true,miss:[9,8,7,6],mult:[1.22,1.26,1.30,1.34],pierce:[8,10,12,14],critBonus:[10,12,14,18]}),
   sgl_breakwing: ab=>executeSeagullSwoop(ab,{log:'🐦 Breakwing',ignoreDodge:true,miss:[8,7,6,5],mult:[1.32,1.36,1.40,1.46],pierce:[10,12,14,16],critBonus:[14,18,22,28]}),
   sgl_mugging_pass: ab=>executeSeagullSwoop(ab,{log:'🕶 Mugging Pass',ignoreDodge:true,miss:[10,9,8,7],mult:[1.08,1.12,1.16,1.20],pierce:[6,8,10,12],blindsideBonus:[0.10,0.12,0.14,0.16]}),
@@ -18728,8 +19007,8 @@ const SNOWY_OWL_SKILL_ACTION_OVERRIDES = {
 Object.entries(SNOWY_OWL_SKILL_ACTION_OVERRIDES).forEach(([id, fn])=>{ ACTIONS[id]=fn; });
 
 const MAGPIE_TEMPLATE_DEFS = [
-  ['steal_shine','Steal Shine','Magpie base theft skill. Swipe a shiny opening before branching.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Next attack +12% damage.'},{desc:'Next attack +15% damage.'},{desc:'Next attack +18% damage.'},{desc:'Next attack +21% damage.'}]}],
-  ['feather_flick','Feather Flick','Magpie base harassment skill. Toss a feather to open space before branching.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Enemy ACC -10% for 2 turns.'},{desc:'Enemy ACC -12% for 2 turns.'},{desc:'Enemy ACC -14% for 2 turns.'},{desc:'Enemy ACC -16% for 2 turns.'}]}],
+  ['steal_shine','Steal Shine','Magpie hybrid theft strike. Banks delayed resonance (non-stacking).',{type:'physical',btnType:'physical',energy:2,cooldownByLevel:[1,1,1,1],levels:[{desc:'2 EN, CD 1. Base 5 + 45% ATK + 45% MATK; 15% pierce; delayed next tick (replace).'}, {desc:'Stronger swipe.'},{desc:'Stronger swipe.'},{desc:'Peak steal line.'}]}],
+  ['feather_flick','Feather Flick','Magpie disruptive call. Light MATK flick that snares focus.',{type:'spell',btnType:'spell',energy:1,cooldownByLevel:[0,0,0,0],levels:[{desc:'1 EN. Base 4 + 80% MATK call; Confuse 1t (refresh).'}, {desc:'Sharper flick.'},{desc:'Sharper flick.'},{desc:'Peak flick line.'}]}],
   ['raking_swoop','Raking Swoop','Swoop-line bleed branch. Tear through on a low pass.',{type:'physical',btnType:'physical',energy:1,levels:[{desc:'110% dmg, never dodged, Bleed 16%.'},{desc:'120% dmg, never dodged, Bleed 18%.'},{desc:'130% dmg, never dodged, Bleed 20%.'},{desc:'140% dmg, never dodged, Bleed 22%.'}]}],
   ['tearing_dive','Tearing Dive','Swoop-line bleed evolution. Sharper follow-up dive.',{type:'physical',btnType:'physical',energy:1,levels:[{desc:'130% dmg, Bleed 20%.'},{desc:'140% dmg, Bleed 22%.'},{desc:'150% dmg, Bleed 24%.'},{desc:'160% dmg, Bleed 26%.'}]}],
   ['sneak_swoop','Sneak Swoop','Swoop-line blindside branch. Exploit distracted targets.',{type:'physical',btnType:'physical',energy:1,levels:[{desc:'108% dmg, bonus vs ACC-debuffed.'},{desc:'118% dmg, bonus vs ACC-debuffed.'},{desc:'128% dmg, bonus vs ACC-debuffed.'},{desc:'138% dmg, bonus vs ACC-debuffed.'}]}],
@@ -18759,6 +19038,7 @@ const MAGPIE_TEMPLATE_DEFS = [
   ['ricochet_dart','Ricochet Dart','Dart-line trickshot branch. A shot from a dirty angle.',{type:'physical',btnType:'physical',energy:1,levels:[{desc:'106% dmg, bonus vs ACC-debuffed.'},{desc:'116% dmg, bonus vs ACC-debuffed.'},{desc:'126% dmg, bonus vs ACC-debuffed.'},{desc:'136% dmg, bonus vs ACC-debuffed.'}]}],
   ['trick_arrow','Trick Arrow','Dart-line trickshot evolution. Stranger trajectory, cleaner hit.',{type:'physical',btnType:'physical',energy:1,levels:[{desc:'120% dmg, bonus vs ACC-debuffed.'},{desc:'130% dmg, bonus vs ACC-debuffed.'},{desc:'140% dmg, bonus vs ACC-debuffed.'},{desc:'150% dmg, bonus vs ACC-debuffed.'}]}],
   ['phantom_javelin','Phantom Javelin','Dart-line trickshot finisher. A deceptive finishing throw.',{type:'physical',btnType:'physical',energy:1,levels:[{desc:'134% dmg, bonus vs ACC-debuffed or exposed.'},{desc:'144% dmg, bonus vs ACC-debuffed or exposed.'},{desc:'154% dmg, bonus vs ACC-debuffed or exposed.'},{desc:'164% dmg, bonus vs ACC-debuffed or exposed.'}]}],
+  ['shine_step','Shine Step','Magpie slippery utility. Borrow tempo and dodge before dart-line payoffs.',{type:'utility',btnType:'utility',energy:2,cooldownByLevel:[1,1,1,1],levels:[{desc:'2 EN, CD 1. +12 SPD and +12% dodge for 2t (refresh).'}, {desc:'Stronger step.'},{desc:'Stronger step.'},{desc:'Peak shine line.'}]}],
 ];
 for(const [id,name,desc,options] of MAGPIE_TEMPLATE_DEFS){
   ABILITY_TEMPLATES[id] = Object.assign(ABILITY_TEMPLATES[id]||{}, makeEvolutionAbilityTemplate(id,name,desc,options));
@@ -18826,6 +19106,21 @@ function triggerMagpieOpeningPayoffIfNeeded(){
   }
   return gained;
 }
+async function executeMagpieShineStep(ab){
+  const lv=Math.max(1,Math.min(4,Number(ab?.level)||1));
+  const mastery=getMagpieMasteryBonuses(ab);
+  const turns=2+mastery.turns;
+  const spd=12+Math.floor(mastery.damage*15);
+  const dodgePct=12+Math.floor(mastery.dodge/5);
+  if(G.player._magpieSpdLoan){ G.player.stats.spd=Math.max(1,(G.player.stats.spd||1)-G.player._magpieSpdLoan); }
+  G.player.stats.spd=Math.min(20,(G.player.stats.spd||1)+spd);
+  G.player._magpieSpdLoan=spd;
+  G.playerStatus.humDodge={bonus:dodgePct,turns};
+  await doSpell('player','✨');
+  renderStatuses('player-status',G.playerStatus);
+  triggerMagpieOpeningPayoffIfNeeded();
+  logMsg(`✨ Shine Step! +${spd} SPD, +${dodgePct}% dodge (${turns}t, refresh).`,'player-action');
+}
 async function executeMagpieStrikeAction(ab, config={}){
   const lv=Math.max(1, Math.min(4, Number(ab?.level)||1));
   const mastery=getMagpieMasteryBonuses(ab);
@@ -18843,7 +19138,18 @@ async function executeMagpieStrikeAction(ab, config={}){
     if(config.bonusVs==='taunted' && (G.enemyStatus?.taunted||0)>0) mult += (config.bonus?.[lv-1] ?? 0) + mastery.opening;
     if(config.bonusVs==='wounded' && ((G.enemyStatus?.bleed?.stacks||0)>0 || G.enemy.stats.hp <= Math.floor((G.enemy.stats.maxHp||1)*0.6))) mult += (config.bonus?.[lv-1] ?? 0) + mastery.opening;
     if(config.bonusVs==='buffed' && getMagpieStealableEnemyBuffKeys().length>0) mult += (config.bonus?.[lv-1] ?? 0) + mastery.opening;
-    const r=dealDamage('enemy',pdmgWithAlternateScaling(mult,prox),chance(getPlayerCritChance(ab)+((G.enemyStatus?.exposedGuard?.pct||0)>0?8:0)),false,prox);
+    const flat=Math.max(0,Math.floor(config.flatAdd?.[lv-1]||0));
+    const critX=Math.max(0,Math.floor(config.critChanceFlat?.[lv-1]||0));
+    const cdb=Math.max(0,Math.floor(config.critDmgBonus||0));
+    let r;
+    if(cdb>0){
+      const prev=G.playerStatus.galahCritDmg||0;
+      G.playerStatus.galahCritDmg=prev+cdb;
+      r=dealDamage('enemy',Math.max(1,pdmgWithAlternateScaling(mult,prox)+flat),chance(Math.min(95,getPlayerCritChance(ab)+critX+((G.enemyStatus?.exposedGuard?.pct||0)>0?8:0))),false,prox);
+      G.playerStatus.galahCritDmg=prev;
+    }else{
+      r=dealDamage('enemy',Math.max(1,pdmgWithAlternateScaling(mult,prox)+flat),chance(Math.min(95,getPlayerCritChance(ab)+critX+((G.enemyStatus?.exposedGuard?.pct||0)>0?8:0))),false,prox);
+    }
     if(config.ignoreDodge) G.enemy.stats.dodge=oldDodge;
     total+=r.dmgDealt;
     await doAttack('player','enemy',r);
@@ -18878,6 +19184,27 @@ async function executeMagpieStealAction(ab, config={}){
 async function executeMagpieFlickAction(ab, config={}){
   const lv=Math.max(1, Math.min(4, Number(ab?.level)||1));
   const mastery=getMagpieMasteryBonuses(ab);
+  if(config.matkMult?.[lv-1]!=null){
+    const miss=Math.max(0,(config.missSpell?.[lv-1]??spellMissChance())-getPlayerHitBonus(ab)-mastery.miss);
+    if(!chance(miss)){
+      const flat=Math.max(0,Math.floor(config.matkFlat?.[lv-1]||0));
+      const amt=Math.max(1,flat+matk((config.matkMult[lv-1]||0.8)+mastery.opening));
+      const r=dealDamage('enemy',amt,chance(getPlayerCritChance(ab)),true,ab);
+      await doAttack('player','enemy',r);
+      setHpBar('enemy',G.enemy.stats.hp,G.enemy.stats.maxHp);
+    }else{
+      await doMiss('player');
+      logMsg(`${config.log||ab?.name||ab?.id} missed!`,'miss');
+    }
+  }
+  if(config.confuseTurnsRefresh){
+    G.enemyStatus.confused={turns:config.confuseTurnsRefresh,skipChance:config.confuseSkip||26};
+    spawnFloat('enemy','🌀 Snared!','fn-status');
+  }
+  if(config.weakenTurnsRefresh){
+    G.enemyStatus.weaken=Math.max(G.enemyStatus.weaken||0,config.weakenTurnsRefresh);
+    spawnFloat('enemy','🐔 Weaken!','fn-status');
+  }
   if(config.accDown?.[lv-1]) G.enemyStatus.accDebuff=(G.enemyStatus.accDebuff||0)+config.accDown[lv-1]+mastery.accDown;
   if(config.dodge?.[lv-1]) G.playerStatus.humDodge={bonus:(config.dodge[lv-1]||0)+mastery.dodge,turns:(config.turns?.[lv-1]||2)+mastery.turns};
   if(config.taunt?.[lv-1]){ G.tauntActive=true; G.enemyStatus.taunted=1; }
@@ -18897,7 +19224,7 @@ const __magpieSharedBodkinJavelinOriginal=ACTIONS.bodkin_javelin;
 const __magpieSharedCarrionFlurryOriginal=ACTIONS.carrion_flurry;
 const __magpieSharedSwoopOriginal=ACTIONS.swoop;
 const MAGPIE_SKILL_ACTION_OVERRIDES = {
-  swoop: ab=>(G.player?.birdKey==='magpie' ? executeMagpieStrikeAction(ab,{name:'Swoop',log:'🦅 Swoop',ignoreDodge:true,miss:[0,0,0,0],mult:[1.00,1.15,1.30,1.50]}) : __magpieSharedSwoopOriginal(ab)),
+  swoop: ab=>(G.player?.birdKey==='magpie' ? executeMagpieStrikeAction(ab,{name:'Swoop',log:'🦅 Swoop',miss:[12,11,10,9],mult:[0.75,0.78,0.81,0.84],flatAdd:[4,4,4,4],pierce:[15,15,15,15],critChanceFlat:[12,12,12,12]}) : __magpieSharedSwoopOriginal(ab)),
   raking_swoop: ab=>executeMagpieStrikeAction(ab,{name:'Raking Swoop',log:'🩸 Raking Swoop',ignoreDodge:true,miss:[0,0,0,0],mult:[1.10,1.20,1.30,1.40],bleedChance:[16,18,20,22]}),
   tearing_dive: ab=>executeMagpieStrikeAction(ab,{name:'Tearing Dive',log:'🩸 Tearing Dive',ignoreDodge:true,miss:[6,5,4,3],mult:[1.30,1.40,1.50,1.60],bleedChance:[20,22,24,26]}),
   carrion_flurry: ab=>(G.player?.birdKey==='magpie' ? executeMagpieStrikeAction(ab,{name:'Carrion Flurry',log:'🩸 Carrion Flurry',ignoreDodge:true,hits:[2,2,3,3],miss:[8,7,6,5],mult:[0.66,0.72,0.68,0.74],bleedChance:[22,24,26,28],bonusVs:'wounded',bonus:[0.08,0.10,0.12,0.14]}) : __magpieSharedCarrionFlurryOriginal(ab)),
@@ -18907,7 +19234,32 @@ const MAGPIE_SKILL_ACTION_OVERRIDES = {
   gleam_swoop: ab=>executeMagpieStrikeAction(ab,{name:'Gleam Swoop',log:'✨ Gleam Swoop',ignoreDodge:true,miss:[0,0,0,0],mult:[1.10,1.20,1.30,1.40],gainEnergy:[1,1,1,1]}),
   pilfer_dive: ab=>executeMagpieStrikeAction(ab,{name:'Pilfer Dive',log:'✨ Pilfer Dive',ignoreDodge:true,miss:[6,5,4,3],mult:[1.28,1.38,1.48,1.58],gainEnergy:[1,1,1,2],bonusVs:'buffed',bonus:[0.08,0.10,0.12,0.14],stripBuffs:[1,1,1,1]}),
   thief_flurry: ab=>executeMagpieStrikeAction(ab,{name:'Thief Flurry',log:'✨ Thief Flurry',hits:[2,2,3,3],miss:[8,7,6,5],mult:[0.64,0.70,0.66,0.72],gainEnergy:[1,1,2,2],bonusVs:'buffed',bonus:[0.10,0.12,0.14,0.16],stripBuffs:[1,1,1,2]}),
-  steal_shine: ab=>executeMagpieStealAction(ab,{log:'✨ Steal Shine',amp:[0.12,0.15,0.18,0.21],stripBuffs:[0,1,1,1],stolenAmp:[0,0.04,0.05,0.06]}),
+  steal_shine: async ab=>{
+    if(G.player?.birdKey!=='magpie'){
+      return executeMagpieStealAction(ab,{log:'✨ Steal Shine',amp:[0.12,0.15,0.18,0.21],stripBuffs:[0,1,1,1],stolenAmp:[0,0.04,0.05,0.06]});
+    }
+    const lv=Math.max(1,Math.min(4,Number(ab?.level)||1));
+    const mastery=getMagpieMasteryBonuses(ab);
+    const miss=Math.max(0,[12,11,10,9][lv-1]-getPlayerHitBonus(ab)-mastery.miss-((G.enemyStatus?.accDebuff||0)>0?4:0));
+    if(chance(miss)){await doMiss('player');logMsg(`Steal Shine missed!`,'miss');return;}
+    const prox={...ab,pierceDef:15+mastery.pierce};
+    const amt=Math.max(1,Math.floor(5+pdmgWithAlternateScaling(0.45+mastery.damage,prox)+matk(0.45+mastery.opening)));
+    const r=dealDamage('enemy',amt,chance(getPlayerCritChance(ab)),false,prox);
+    await doAttack('player','enemy',r);
+    setHpBar('enemy',G.enemy.stats.hp,G.enemy.stats.maxHp);
+    const cap=Math.max(32,Math.floor(((G.player.stats.atk||8)+(G.player.stats.matk||8))*2.2));
+    if(r.dmgDealt>0) G.enemyStatus.delayed={dmg:Math.min(cap,Math.max(1,Math.floor(r.dmgDealt*0.42)))};
+    if(r.dmgDealt>0) spawnFloat('enemy','⏳ Delayed!','fn-status');
+    const stripCount=(mastery.extraStrip||0);
+    if(stripCount>0){
+      const stripped=stripMagpieEnemyBuffs(stripCount);
+      if(stripped>0) spawnFloat('enemy',`💎 -${stripped} buff`,'fn-status');
+    }
+    await doSpell('player','✨');
+    renderStatuses('enemy-status',G.enemyStatus);
+    triggerMagpieOpeningPayoffIfNeeded();
+    logMsg(`✨ Steal Shine! ${r.dmgDealt} dmg.${r.dmgDealt>0?' Delayed resonance set.':''}`,'player-action');
+  },
   shine_snatch: ab=>executeMagpieStealAction(ab,{log:'✨ Shine Snatch',amp:[0.18,0.22,0.26,0.30],stripBuffs:[1,1,1,1],stolenAmp:[0.05,0.06,0.07,0.08]}),
   bright_swipe: ab=>executeMagpieStealAction(ab,{log:'✨ Bright Swipe',amp:[0.26,0.30,0.34,0.38],stripBuffs:[1,1,1,2],stolenAmp:[0.06,0.07,0.08,0.10]}),
   glitter_heist: ab=>executeMagpieStealAction(ab,{log:'✨ Glitter Heist',amp:[0.34,0.38,0.42,0.46],stripBuffs:[1,1,2,2],stolenAmp:[0.08,0.09,0.10,0.12]}),
@@ -18917,7 +19269,7 @@ const MAGPIE_SKILL_ACTION_OVERRIDES = {
   weakpoint_snatch: ab=>executeMagpieStealAction(ab,{log:'🎯 Weakpoint Snatch',expose:[0.12,0.14,0.16,0.18],turns:[2,2,2,2]}),
   crackswipe: ab=>executeMagpieStealAction(ab,{log:'🎯 Crack Swipe',expose:[0.18,0.20,0.22,0.24],turns:[2,2,2,3]}),
   ruin_heist: ab=>executeMagpieStealAction(ab,{log:'🎯 Ruin Heist',expose:[0.24,0.26,0.28,0.30],turns:[3,3,3,3]}),
-  feather_flick: ab=>executeMagpieFlickAction(ab,{log:'🪶 Feather Flick',accDown:[10,12,14,16],turns:[2,2,2,2]}),
+  feather_flick: ab=>executeMagpieFlickAction(ab,{log:'🪶 Feather Flick',matkMult:[0.8,0.8,0.8,0.8],matkFlat:[4,4,4,4],missSpell:[14,12,11,10],confuseTurnsRefresh:1}),
   dust_flick: ab=>executeMagpieFlickAction(ab,{log:'🪶 Dust Flick',accDown:[16,18,20,22],turns:[2,2,2,3]}),
   blinding_toss: ab=>executeMagpieFlickAction(ab,{log:'🪶 Blinding Toss',accDown:[24,27,30,33],turns:[2,2,2,3]}),
   feather_storm: ab=>executeMagpieFlickAction(ab,{log:'🪶 Feather Storm',accDown:[32,35,38,42],turns:[3,3,3,3]}),
@@ -18927,7 +19279,8 @@ const MAGPIE_SKILL_ACTION_OVERRIDES = {
   mock_flick: ab=>executeMagpieFlickAction(ab,{log:'😤 Mock Flick',accDown:[10,12,14,16],taunt:[1,1,1,1]}),
   jeer_toss: ab=>executeMagpieFlickAction(ab,{log:'😤 Jeer Toss',accDown:[16,18,20,22],taunt:[1,1,1,1]}),
   heckle_storm: ab=>executeMagpieFlickAction(ab,{log:'😤 Heckle Storm',accDown:[22,24,26,28],taunt:[1,1,1,1]}),
-  dart: ab=>(G.player?.birdKey==='magpie' ? executeMagpieStrikeAction(ab,{name:'Dart',log:'💨 Dart',miss:[10,8,6,5],mult:[1.08,1.18,1.28,1.38]}) : __magpieSharedDartOriginal(ab)),
+  dart: ab=>__magpieSharedDartOriginal(ab),
+  shine_step: ab=>executeMagpieShineStep(ab),
   broad_dart: ab=>(G.player?.birdKey==='magpie' ? executeMagpieStrikeAction(ab,{name:'Broad Dart',log:'🩸 Broad Dart',miss:[9,8,7,6],mult:[1.02,1.12,1.22,1.32],bleedChance:[30,35,40,45]}) : __magpieSharedBroadDartOriginal(ab)),
   broad_arrow: ab=>(G.player?.birdKey==='magpie' ? executeMagpieStrikeAction(ab,{name:'Broad Arrow',log:'🩸 Broad Arrow',miss:[8,7,6,5],mult:[1.16,1.26,1.36,1.46],bleedChance:[40,45,50,55]}) : __magpieSharedBroadArrowOriginal(ab)),
   broad_javelin: ab=>(G.player?.birdKey==='magpie' ? executeMagpieStrikeAction(ab,{name:'Broad Javelin',log:'🩸 Broad Javelin',miss:[7,6,5,4],mult:[1.30,1.40,1.50,1.60],bleedChance:[50,55,60,65]}) : __magpieSharedBroadJavelinOriginal(ab)),
@@ -18939,6 +19292,73 @@ const MAGPIE_SKILL_ACTION_OVERRIDES = {
   phantom_javelin: ab=>executeMagpieStrikeAction(ab,{name:'Phantom Javelin',log:'🎯 Phantom Javelin',miss:[6,5,4,3],mult:[1.34,1.44,1.54,1.64],bonusVs:'exposed',bonus:[0.12,0.14,0.16,0.18]}),
 };
 Object.entries(MAGPIE_SKILL_ACTION_OVERRIDES).forEach(([id, fn])=>{ ACTIONS[id]=fn; });
+
+async function executeWagtailFlickStrike(ab){
+  const lv=Math.max(1,Math.min(4,Number(ab?.level)||1));
+  const mastery=getMagpieMasteryBonuses(ab);
+  const miss=Math.max(0,[12,11,10,9][lv-1]-getPlayerHitBonus(ab)-mastery.miss-((G.enemyStatus?.accDebuff||0)>0?4:0));
+  if(chance(miss)){await doMiss('player');logMsg('Flicker Strike missed!','miss');return;}
+  const prox={...ab,pierceDef:15+mastery.pierce};
+  const amt=Math.max(1,Math.floor(5+pdmgWithAlternateScaling(0.45+mastery.damage,prox)+matk(0.45+mastery.opening)));
+  const r=dealDamage('enemy',amt,chance(getPlayerCritChance(ab)),false,prox);
+  await doAttack('player','enemy',r);
+  setHpBar('enemy',G.enemy.stats.hp,G.enemy.stats.maxHp);
+  G.enemyStatus.confused={turns:1,skipChance:26};
+  spawnFloat('enemy','🌀 Confused!','fn-status');
+  await doSpell('player','🪶');
+  renderStatuses('enemy-status',G.enemyStatus);
+  logMsg(`🪶 Flicker Strike! ${r.dmgDealt} dmg; foe confused (1t, refresh).`,'player-action');
+}
+async function executeWagtailTailMark(ab){
+  const mastery=getMagpieMasteryBonuses(ab);
+  const t=2+mastery.turns;
+  const acc=12+Math.floor(mastery.precision);
+  G.playerStatus.trailSenseAcc={pct:acc,turns:t};
+  refreshEnemyStrikerDodgeMark(15,t);
+  await doSpell('player','🪶');
+  renderStatuses('player-status',G.playerStatus);
+  renderStatuses('enemy-status',G.enemyStatus);
+  logMsg(`🪶 Shadow Flick! +${acc}% accuracy (${t}t); foe dodge −15% (${t}t, refresh).`,'player-action');
+}
+async function executeGalahFlashStrike(ab){
+  const lv=Math.max(1,Math.min(4,Number(ab?.level)||1));
+  const mastery=getMagpieMasteryBonuses(ab);
+  const miss=Math.max(0,[12,11,10,9][lv-1]-getPlayerHitBonus(ab)-mastery.miss-((G.enemyStatus?.accDebuff||0)>0?4:0));
+  if(chance(miss)){await doMiss('player');logMsg('Showstopper missed!','miss');return;}
+  const prox={...ab,pierceDef:15+mastery.pierce};
+  const amt=Math.max(1,Math.floor(5+pdmgWithAlternateScaling(0.45+mastery.damage,prox)+matk(0.45+mastery.opening)));
+  const r=dealDamage('enemy',amt,chance(getPlayerCritChance(ab)),false,prox);
+  await doAttack('player','enemy',r);
+  setHpBar('enemy',G.enemy.stats.hp,G.enemy.stats.maxHp);
+  G.enemyStatus.weaken=Math.max(G.enemyStatus.weaken||0,1);
+  spawnFloat('enemy','🐔 Weaken!','fn-status');
+  await doSpell('player','🦩');
+  renderStatuses('enemy-status',G.enemyStatus);
+  logMsg(`🦩 Showstopper! ${r.dmgDealt} dmg; foe weakened (1t, refresh).`,'player-action');
+}
+async function executeGalahShowMark(ab){
+  const mastery=getMagpieMasteryBonuses(ab);
+  const t=2+mastery.turns;
+  G.playerStatus.trailSenseAcc={pct:12+Math.floor(mastery.precision),turns:t};
+  G.playerStatus.tricksterCritDmgBuff={pct:12+Math.floor(mastery.control),turns:t};
+  await doSpell('player','✨');
+  renderStatuses('player-status',G.playerStatus);
+  logMsg(`✨ Spotlight Mark! +${G.playerStatus.trailSenseAcc.pct}% accuracy and +${G.playerStatus.tricksterCritDmgBuff.pct}% crit damage (${t}t, refresh).`,'player-action');
+}
+const WAGTAIL_SKILL_ACTION_OVERRIDES = {
+  wagtail_peck: ab=>executeMagpieStrikeAction(ab,{name:'Wagtail Snap',log:'⚡ Wagtail Snap',miss:[12,11,10,9],mult:[0.75,0.78,0.81,0.84],flatAdd:[4,4,4,4],pierce:[15,15,15,15],critChanceFlat:[12,12,12,12]}),
+  wagtail_flick_strike: executeWagtailFlickStrike,
+  wagtail_mock_call: ab=>executeMagpieFlickAction(ab,{log:'😠 Jeering Call',matkMult:[1,1,1,1],matkFlat:[6,6,6,6],missSpell:[14,12,11,10],confuseTurnsRefresh:2}),
+  wagtail_tail_mark: executeWagtailTailMark,
+};
+const GALAH_SKILL_ACTION_OVERRIDES = {
+  galah_beak_tap: ab=>executeMagpieStrikeAction(ab,{name:'Pink Jab',log:'🦩 Pink Jab',miss:[12,11,10,9],mult:[0.75,0.78,0.81,0.84],flatAdd:[4,4,4,4],pierce:[15,15,15,15],critDmgBonus:12}),
+  galah_flash_strike: executeGalahFlashStrike,
+  galah_screech: ab=>executeMagpieFlickAction(ab,{log:'📣 Shrill Burst',matkMult:[1,1,1,1],matkFlat:[6,6,6,6],missSpell:[14,12,11,10],weakenTurnsRefresh:2}),
+  galah_show_mark: executeGalahShowMark,
+};
+Object.entries(WAGTAIL_SKILL_ACTION_OVERRIDES).forEach(([id, fn])=>{ ACTIONS[id]=fn; });
+Object.entries(GALAH_SKILL_ACTION_OVERRIDES).forEach(([id, fn])=>{ ACTIONS[id]=fn; });
 
 (function initStrikePreviewFromBirdOverrides(){
   [
@@ -18965,6 +19385,8 @@ Object.entries(MAGPIE_SKILL_ACTION_OVERRIDES).forEach(([id, fn])=>{ ACTIONS[id]=
     ['seagull',SEAGULL_SKILL_ACTION_OVERRIDES],
     ['snowyOwl',SNOWY_OWL_SKILL_ACTION_OVERRIDES],
     ['magpie',MAGPIE_SKILL_ACTION_OVERRIDES],
+    ['wagtail',WAGTAIL_SKILL_ACTION_OVERRIDES],
+    ['galah',GALAH_SKILL_ACTION_OVERRIDES],
   ].forEach(([bk,map])=>registerStrikePreviewForBird(bk,map));
 })();
 
@@ -19668,6 +20090,10 @@ function endPlayerTurn(force=false) {
   if(G.playerStatus.peregrineCritLens){
     G.playerStatus.peregrineCritLens.turns--;
     if(G.playerStatus.peregrineCritLens.turns<=0) delete G.playerStatus.peregrineCritLens;
+  }
+  if(G.playerStatus.tricksterCritDmgBuff){
+    G.playerStatus.tricksterCritDmgBuff.turns--;
+    if(G.playerStatus.tricksterCritDmgBuff.turns<=0) delete G.playerStatus.tricksterCritDmgBuff;
   }
   if(G.playerStatus.kookaCritLens){
     G.playerStatus.kookaCritLens.turns--;
