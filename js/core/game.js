@@ -642,424 +642,474 @@ const ABILITY_TEMPLATES = {
 //  BIRD DEFINITIONS
 // ============================================================
 const BIRDS = {
-  // ── TINY ────────────────────────────────────────────────────
   sparrow:{
     name:'Sparrow', portraitKey:'sparrow', tagline:'Swift as wind, strikes like needles.',
     size:'tiny', class:'striker',
-    stats:{hp:28,maxHp:28,atk:5,def:2,spd:9,dodge:35,acc:85,mdef:6,matk:6,critChance:10},
-    statBars:{HP:28/50,ATK:5/15,SPD:9/10,Dodge:.7,ACC:.85}, color:'#6a8ae8',
+    stats:{hp:37,maxHp:37,atk:23,def:6,spd:24,dodge:18,acc:92,mdef:5,matk:2,critChance:10},
+    color:'#6a8ae8',
     mainAttackId:'multiPeck',
     startAbilities:['multiPeck','dart','windFeint','trackPrey'],
-    passive:{id:'windDancer',name:'Wind Dancer',desc:'Every dodge grants +1% permanent dodge (max +15%).',
-      onDodge(p){if(!p._windDancerBonus)p._windDancerBonus=0;if(p._windDancerBonus<15){p._windDancerBonus++;p.stats.dodge=Math.min(p.stats.dodge+1,100);}}},
+    passive:{id:'passive_sparrow_windskip',name:'Windskip',desc:"After using a utility, Sparrow's next attack gains +10% Crit Chance."},
   },
   hummingbird:{
     name:'Hummingbird', portraitKey:'hummingbird', tagline:'Blurred wings, needle beak. Zap & zip.',
     size:'tiny', class:'striker',
     unlockRequires:'unlock_hummingbird',
     unlockHint:'Defeat Stage 10 with Sparrow.',
-    stats:{hp:25,maxHp:25,atk:7,def:1,spd:12,dodge:55,acc:92,mdef:4,matk:10,critChance:18},
+    stats:{hp:36,maxHp:36,atk:21,def:4,spd:27,dodge:20,acc:94,mdef:4,matk:2,critChance:18},
     color:'#40e8c0',
     mainAttackId:'needle_jab',
     startAbilities:['needle_jab','dash','blink_flutter','combo_strike'],
-    passive:{id:'hoverBlitz',name:'Hover Blitz',desc:'+2 SPD per dodge (max +10, resets on hit). Crits heal 10% HP.',
-      onBattleStart(p){p._hoverStacks=0;},
-      onDodge(p){if(!p._hoverStacks)p._hoverStacks=0;if(p._hoverStacks<10){p._hoverStacks+=2;p.stats.spd=Math.min(p.stats.spd+2,20);}},
-      onDamage(p){if(p._hoverStacks>0){p.stats.spd=Math.max(p.stats.spd-p._hoverStacks,1);p._hoverStacks=0;}},
-      onCrit(p){p.stats.hp=Math.min(p.stats.hp+Math.floor(p.stats.maxHp*.1),p.stats.maxHp);}},
+    passive:{id:'passive_hummingbird_afterimage',name:'Afterimage',desc:'The first time Hummingbird uses a utility each battle, gain +6 SPD for 2 turns.'},
   },
-
-  // ── SMALL ───────────────────────────────────────────────────
   blackbird:{
-    name:'Blackbird', portraitKey:'phainopepla', tagline:'Songs that shatter minds. Eyes like embers.',
+    name:'Blackbird', portraitKey:'blackbird', tagline:'Songs that shatter minds. Eyes like embers.',
     size:'small', class:'singer',
-    stats:{hp:38,maxHp:38,atk:6,def:3,spd:7,dodge:25,acc:80,mdef:8,matk:14},
-    statBars:{HP:38/50,ATK:6/15,SPD:7/10,Dodge:.5,ACC:.8}, color:'#9a6ae8',
+    stats:{hp:49,maxHp:49,atk:3,def:11,spd:14,dodge:8,acc:92,mdef:21,matk:31,critChance:6},
+    color:'#9a6ae8',
     startAbilities:['dark_song','shadow_peck','gloom_wing','grim_sign'],
     mainAttackId:'shadow_peck',
-    passive:{id:'songResilient',name:'Song Resilient',desc:'Every successful spell cast, restore 2 HP.',
-      onSpell(p){p.stats.hp=Math.min(p.stats.hp+2,p.stats.maxHp);}},
+    passive:{id:'passive_blackbird_omen_chorus',name:'Omen Chorus',desc:'When Blackbird applies Delayed, gain +4 MATK for 1 turn.'},
   },
   macaw:{
     name:'Macaw', portraitKey:'macaw', tagline:'Every word is a weapon.',
     size:'small', class:'singer',
-    stats:{hp:34,maxHp:34,atk:6,def:3,spd:9,dodge:28,acc:88,mdef:8,matk:14,critChance:8},
+    stats:{hp:48,maxHp:48,atk:4,def:9,spd:17,dodge:9,acc:93,mdef:17,matk:32,critChance:8},
     color:'#1a6aba',
     mainAttackId:'echo_note',
     startAbilities:['echo_note','mimic_song','feather_taunt','chorus_mark'],
-    passive:{id:'parrot',name:'Parrot',
-      desc:'After an enemy uses an ability, gain +5% Dodge for 1 turn (max 20%). Your next Mimic-line spell reads that rhythm for extra payoff.',
-      onBattleStart(p){p._macawEchoDodge=0;p._macawCopycatPulse=false;},
-      onEnemyAbility(p,abilityId){p._macawEchoDodge=Math.min(20,(p._macawEchoDodge||0)+5);G.playerStatus.humDodge={bonus:p._macawEchoDodge,turns:1};p._macawCopycatPulse=true;}},
+    passive:{id:'passive_macaw_mimic_flair',name:'Mimic Flair',desc:'If Macaw uses a different skill family than last turn, gain +10% Accuracy this turn.'},
   },
   peregrine:{
     name:'Peregrine Falcon', portraitKey:'peregrine', tagline:'Lock. Stoop. No survivors.',
     size:'small', class:'striker',
     unlockRequires:'unlock_peregrine',
     unlockHint:'Defeat Stage 20 with Hummingbird.',
-    stats:{hp:32,maxHp:32,atk:8,def:3,spd:10,dodge:28,acc:88,critChance:12,mdef:8,matk:8},
-    statBars:{HP:32/50,ATK:8/15,SPD:10/10,Dodge:.56,ACC:.88}, color:'#6a8ac8',
+    stats:{hp:45,maxHp:45,atk:27,def:7,spd:29,dodge:17,acc:92,mdef:6,matk:2,critChance:12},
+    color:'#6a8ac8',
     mainAttackId:'talon_jab',
     startAbilities:['talon_jab','dive','keen_eye','aerial_pace'],
-    passive:{id:'stoopHunter',name:'Stoop Hunter',desc:'Your first Dive-line strike each battle deals +15% damage and carries extra Pierce pressure.',
-      onBattleStart(p){p._peregrineFirstStoop=true;}},
+    passive:{id:'passive_peregrine_kill_dive',name:'Kill Dive',desc:'Attacks against targets below 50% HP gain +10% Crit Chance.'},
   },
   snowyOwl:{
     name:'Snowy Owl', portraitKey:'snowyOwl', tagline:'The snow listens. Then it falls.',
     size:'small', class:'predator',
     unlockRequires:'juvenileWin',
     unlockHint:'Defeat Stage 20 on Normal mode to unlock.',
-    stats:{hp:28,maxHp:28,atk:12,def:2,spd:9,dodge:38,acc:92,critChance:15,mdef:3,matk:3},
-    statBars:{HP:28/50,ATK:12/15,SPD:9/10,Dodge:.76,ACC:.92}, color:'#e8f0f8',
+    stats:{hp:46,maxHp:46,atk:32,def:9,spd:21,dodge:10,acc:94,mdef:14,matk:2,critChance:15},
+    color:'#e8f0f8',
     mainAttackId:'talon_snap',
     startAbilities:['talon_snap','silent_dive','owl_eye','frost_glide'],
-    passive:{id:'moonlitPatience',name:'Moonlit Patience',
-      desc:'End a turn without taking damage: +2% crit (max +10%, resets when hit). First Silent Dive each battle deals +10% damage, +8% more if the prey is slowed, weakened, or heavily off-balance.',
-      onBattleStart(p){p._owlCritStacks=0;p._owlHitThisTurn=false;p._snowyFirstSilentDive=true;p.stats.critChance=BIRDS.snowyOwl.stats.critChance||15;},
-      onTurnEnd(p){if(!p._owlHitThisTurn&&(p._owlCritStacks||0)<10){p._owlCritStacks=(p._owlCritStacks||0)+2;p.stats.critChance=(BIRDS.snowyOwl.stats.critChance||15)+p._owlCritStacks;}p._owlHitThisTurn=false;},
-      onDamage(p){p._owlHitThisTurn=true;p._owlCritStacks=0;p.stats.critChance=BIRDS.snowyOwl.stats.critChance||15;},
-    },
+    passive:{id:'passive_snowyowl_whiteout_stalker',name:'Whiteout Stalker',desc:'Attacks against Chilled or Delayed targets gain +10% Crit Damage.'},
   },
   kiwi:{
     name:'Kiwi', portraitKey:'kiwi', tagline:'Nocturnal probe. Beak pierces armor like butter.',
     size:'small', class:'predator',
     unlockRequires:'unlock_kiwi',
     unlockHint:'Defeat Stage 20 with Magpie.',
-    stats:{hp:34,maxHp:34,atk:8,def:3,spd:8,dodge:48,acc:88,critChance:12,mdef:5,matk:7},
+    stats:{hp:49,maxHp:49,atk:30,def:11,spd:19,dodge:11,acc:93,mdef:15,matk:2,critChance:12},
     color:'#a0784a',
     mainAttackId:'beak_jab',
     startAbilities:['beak_jab','night_probe','scent_hunt','scrape'],
-    passive:{id:'probeMaster',name:'Probe Master',desc:'Pierce attacks ignore 20-35% DEF (scaling per hit). +10% dmg vs high-HP foes (above 75% HP).',
-      get _pierceBase(){return 30;}},
+    passive:{id:'passive_kiwi_burrow_sense',name:'Burrow Sense',desc:"Kiwi's first attack each battle gains +10% DEF ignore."},
   },
   blackCockatoo:{
-    name:'Black Cockatoo', portraitKey:'blackCockatoo', tagline:'Booming crest. Shock, resonance, and heavy wingbeats.',
-    size:'medium', class:'bruiser',
+    name:'Black Cockatoo', portraitKey:'blackCockatoo', tagline:'Booming crest. Resonant voice and crushing notes.',
+    size:'medium', class:'singer',
     unlockRequires:'juvenileWin',
     unlockHint:'Defeat Stage 20 on Normal mode to unlock.',
-    stats:{hp:44,maxHp:44,atk:9,def:5,spd:5,dodge:14,acc:80,critChance:8,mdef:9,matk:12},
+    stats:{hp:59,maxHp:59,atk:7,def:12,spd:15,dodge:9,acc:90,mdef:21,matk:34,critChance:8},
     color:'#2a1a3a',
     mainAttackId:'beak_crack',
     startAbilities:['beak_crack','boom_call','wing_beat','resonance_mark'],
-    passive:{id:'resonantMenace',name:'Resonant Menace',desc:'Boom-line sonic spells ignore 10% M.DEF. Your attacks deal +8% damage vs Feared or Paralyzed foes.',
-      get _boomMdefPierce(){return 0.10;}},
+    passive:{id:'passive_blackcockatoo_resonant_crest',name:'Resonant Crest',desc:'After using a song/call, gain +4 MATK for 1 turn.'},
   },
-
-  // ── MEDIUM ──────────────────────────────────────────────────
   crow:{
     name:'Crow', portraitKey:'crow', tagline:'Clever. Coordinated. Unsettling.',
     size:'medium', class:'trickster',
-    stats:{hp:38,maxHp:38,atk:7,def:4,spd:6,dodge:16,acc:92,mdef:10,matk:7},
-    statBars:{HP:38/50,ATK:7/15,SPD:6/10,Dodge:.32,ACC:.92}, color:'#c0c8d8',
+    stats:{hp:56,maxHp:56,atk:14,def:10,spd:25,dodge:20,acc:91,mdef:13,matk:16,critChance:8},
+    color:'#c0c8d8',
     mainAttackId:'peck',
     startAbilities:['peck','murder_murmuration','dread_call','battle_focus'],
-    passive:{id:'opportunistInstinct',name:'Opportunist Instinct',desc:'Once each turn, damaging a Feared, Weakened, or Exposed enemy restores 1 EN.',
-      onBattleStart(p){p._crowOpportunistReady=true;}},
+    passive:{id:'passive_crow_murder_mind',name:'Murder Mind',desc:"Crow's first debuff applied each battle lasts +1 turn."},
   },
   kookaburra:{
-    name:'Kookaburra', portraitKey:'kookaburra', tagline:'Bush king. Laughing pressure, perch reads, and sudden drops.',
-    size:'medium', class:'bruiser',
+    name:'Kookaburra', portraitKey:'kookaburra', tagline:'Bush trickster. Laughing pressure, feints, and sudden drops.',
+    size:'medium', class:'trickster',
     unlockRequires:'unlock_kookaburra',
     unlockHint:'Defeat Stage 10 with Macaw.',
-    stats:{hp:46,maxHp:46,atk:9,def:5,spd:7,dodge:22,acc:82,mdef:10,matk:8},
-    statBars:{HP:46/50,ATK:9/15,SPD:7/10,Dodge:.44,ACC:.82}, color:'#c8a060',
+    stats:{hp:58,maxHp:58,atk:17,def:11,spd:23,dodge:19,acc:89,mdef:12,matk:16,critChance:8},
+    color:'#c8a060',
     mainAttackId:'beak_chop',
     startAbilities:['beak_chop','laugh_call','perch_watch','drop_strike'],
-    passive:{id:'laughingPerch',name:'Laughing Perch',desc:'Laugh-line sonic spells ignore 8% M.DEF. +5% damage vs Feared or Paralyzed foes. First physical attack each battle always crits. Immune to Fear and Confused. Boss kill resets your opening-strike crit window.',
-      immuneFear:true, immuneConfused:true,
-      get _laughMdefPierce(){return 0.08;},
-      onBattleStart(p){p.firstAttackAlwaysCrit=true;},
-      onBossKill(p){p.firstAttackAlwaysCrit=true;spawnFloat('player','🪶 Perch Ready!','fn-status');}},
+    passive:{id:'passive_kookaburra_laughing_ambush',name:'Laughing Ambush',desc:'Attacks against Confused targets gain +10% Crit Chance.'},
   },
   lyrebird:{
     name:'Lyrebird', portraitKey:'lyrebird', tagline:'The great deceiver. Master of all songs.',
     size:'medium', class:'singer',
     unlockRequires:'unlock_lyrebird',
     unlockHint:'Defeat Stage 20 with Kookaburra.',
-    stats:{hp:38,maxHp:38,atk:6,def:4,spd:6,dodge:20,acc:82,critChance:6,mdef:10,matk:14},
-    statBars:{HP:38/50,ATK:6/15,SPD:6/10,Dodge:.4,ACC:.82}, color:'#c8902a',
+    stats:{hp:58,maxHp:58,atk:4,def:11,spd:18,dodge:11,acc:93,mdef:20,matk:34,critChance:6},
+    color:'#c8902a',
     mainAttackId:'echo_note',
     startAbilities:['echo_note','mimic_chorus','display_step','refrain_mark'],
-    passive:{id:'lyreStage',name:'Perfect Mimicry',desc:'First Song each battle repeats at 40% power. After an enemy uses an ability, gain +5% Dodge for 1 turn (max 20%). Your next Mimic-line spell reads that rhythm for extra payoff.',
-      onBattleStart(p){
-        p._lyrebirdSongEchoUsed=false;
-        p._macawEchoDodge=0;
-        p._macawCopycatPulse=false;
-      },
-      onEnemyAbility(p,abilityId){
-        p._macawEchoDodge=Math.min(20,(p._macawEchoDodge||0)+5);
-        G.playerStatus.humDodge={bonus:p._macawEchoDodge,turns:1};
-        p._macawCopycatPulse=true;
-      }},
+    passive:{id:'passive_lyrebird_perfect_imitation',name:'Perfect Imitation',desc:"Lyrebird's first song/call each battle gains +10% Accuracy."},
   },
   raven:{
     name:'Raven', portraitKey:'raven', tagline:'The field remembers. You only hurry the ending.',
     size:'medium', class:'trickster',
     unlockRequires:'juvenileWin',
     unlockHint:'Defeat Stage 20 on Normal mode to unlock.',
-    stats:{hp:38,maxHp:38,atk:8,def:3,spd:7,dodge:22,acc:82,mdef:8,matk:14},
+    stats:{hp:57,maxHp:57,atk:16,def:9,spd:23,dodge:19,acc:89,mdef:14,matk:17,critChance:8},
     color:'#6030d0',
     mainAttackId:'beak_jab',
     startAbilities:['beak_jab','omen_call','dark_watch','fate_mark'],
-    passive:{id:'omen',name:'Omen of Dread',
-      desc:'+12% damage vs Feared enemies. At battle start, a random blessing and a random curse ripple across the fight — neither side is spared the sign.',
-      onBattleStart(p){
-        const blessings=[
-          ()=>{p.stats.atk+=4;logMsg('☠ Omen Blessing: +4 ATK!','crit');},
-          ()=>{p.stats.dodge=Math.min(p.stats.dodge+15,70);logMsg('☠ Omen Blessing: +15% Dodge!','crit');},
-          ()=>{G.player.goldCritMult=Math.min(2.5,Math.max(G.player.goldCritMult||1.5,2.5));logMsg('☠ Omen Blessing: Crit →2.5×!','crit');},
-          ()=>{p.stats.hp=Math.min(p.stats.hp+Math.floor(p.stats.maxHp*.25),p.stats.maxHp);logMsg('☠ Omen Blessing: +25% HP!','exp-gain');},
-        ];
-        const curses=[
-          ()=>{G.enemyStatus.weaken=4;logMsg('☠ Omen Curse on enemy: Chicken Pox!','system');},
-          ()=>{G.enemyStatus.poison={stacks:3,turns:4};logMsg('☠ Omen Curse on enemy: Poison!','system');},
-          ()=>{G.enemyStatus.confused={turns:2,skipChance:40};logMsg('☠ Omen Curse on enemy: Confused!','system');},
-          ()=>{G.enemy.stats.atk=Math.max(1,Math.floor(G.enemy.stats.atk*.7));logMsg('☠ Omen Curse on enemy: ATK −30%!','system');},
-        ];
-        blessings[Math.floor(Math.random()*blessings.length)]();
-        curses[Math.floor(Math.random()*curses.length)]();
-      }},
+    passive:{id:'passive_raven_grim_opportunity',name:'Grim Opportunity',desc:'When Raven hits a debuffed target, gain +4 SPD this turn.'},
   },
   magpie:{
     name:'Magpie', portraitKey:'magpie', tagline:'Flashy thief. Swoops in, steals the moment, and slips away.',
     size:'medium', class:'trickster',
     unlockRequires:'unlock_magpie',
     unlockHint:'Defeat Stage 10 with Robin.',
-    stats:{hp:40,maxHp:40,atk:7,def:4,spd:9,dodge:34,acc:88,mdef:8,matk:9,critChance:10},
+    stats:{hp:57,maxHp:57,atk:14,def:9,spd:26,dodge:21,acc:91,mdef:12,matk:16,critChance:10},
     color:'#2a2a2a',
     mainAttackId:'swoop',
     startAbilities:['swoop','steal_shine','feather_flick','dart'],
-    passive:{id:'shinyCollector',name:'Shiny Collector',desc:'+3 shiny after each victory. Once each turn, exploiting a buffed or compromised enemy restores 1 EN.'},
+    passive:{id:'passive_magpie_shiny_opportunist',name:'Shiny Opportunist',desc:'Once per turn, Magpie crits grant +4 SPD next turn.'},
   },
-
-
   robin:{
-    name:'Robin', portraitKey:'robin', tagline:'Hedge-hop skirmisher. Quick pecks, bright chirps, and a darting finish.',
-    size:'small', class:'striker',
-    stats:{hp:34,maxHp:34,atk:7,def:3,spd:8,dodge:24,acc:88,mdef:8,matk:8,critChance:8},
+    name:'Robin', portraitKey:'robin', tagline:'Bright hedge-songster. Quick notes, light strikes, and uplifting refrains.',
+    size:'small', class:'singer',
+    stats:{hp:48,maxHp:48,atk:4,def:10,spd:17,dodge:10,acc:93,mdef:18,matk:29,critChance:8},
     color:'#d86a4c',
     mainAttackId:'quick_peck',
     startAbilities:['quick_peck','dart_rush','bright_chirp','hop_step'],
-    passive:{id:'hedgeHunter',name:'Hedge Hunter',desc:'Physical hits grant +2% ACC for this battle (max +12%). Bonus +4% damage vs exposed or accuracy-shaken foes.',
-      onBattleStart(p){p._robinAccStacks=0;},
-      onPhysicalHit(p){if((p._robinAccStacks||0)<12){p._robinAccStacks=(p._robinAccStacks||0)+2;p.stats.acc=Math.min(100,(p.stats.acc||88)+2);}}},
+    passive:{id:'passive_robin_dawn_chorus',name:'Dawn Chorus',desc:'After using a healing or buff utility, gain +4 MATK for 1 turn.'},
   },
   bowerbird:{
     name:'Bowerbird', portraitKey:'bowerbird', tagline:'Stage-maker. Builds the bower, lures the eye, and cashes the display.',
     size:'medium', class:'trickster',
     unlockRequires:'juvenileWin',
     unlockHint:'Defeat Stage 20 on Normal mode to unlock.',
-    stats:{hp:40,maxHp:40,atk:8,def:4,spd:7,dodge:22,acc:86,mdef:9,matk:9},
+    stats:{hp:57,maxHp:57,atk:13,def:10,spd:24,dodge:19,acc:90,mdef:13,matk:19,critChance:8},
     color:'#4a6a9a',
     mainAttackId:'trinket_toss',
     startAbilities:['trinket_toss','lure_call','bower_build','display_mark'],
-    passive:{id:'collectorInstinct',name:'Collector Instinct',desc:'Your attacks deal +5% damage vs foes who are feared, confused, weakened, or exposed.',
-      onBattleStart(){}},
+    passive:{id:'passive_bowerbird_display_instinct',name:'Display Instinct',desc:"Bowerbird's first utility each battle gains +10% Accuracy and +5% Crit Chance."},
   },
-
-  // ── LARGE ───────────────────────────────────────────────────
   toucan:{
     name:'Toucan', portraitKey:'toucan', tagline:'Oversized bill, vivid pressure, odd reach.',
     size:'large', class:'striker',
     unlockRequires:'unlock_toucan',
     unlockHint:'Enter: "Ahh Ahh Eee Eee Tookie Tookie"',
-    stats:{hp:46,maxHp:46,atk:8,def:5,spd:5,dodge:14,acc:82,mdef:9,matk:9,critChance:6},
-    statBars:{HP:46/50,ATK:8/15,SPD:5/10,Dodge:.28,ACC:.82}, color:'#60c840',
-    /* Neutral beak slot uses id toucan_beak_jab (display "Beak Jab"): global beak_jab is Kiwi/Raven → probeStrike. */
+    stats:{hp:67,maxHp:67,atk:32,def:11,spd:33,dodge:20,acc:87,mdef:10,matk:2,critChance:6},
+    color:'#60c840',
     mainAttackId:'toucan_beak_jab',
     startAbilities:['toucan_beak_jab','beak_slam','fruit_toss','color_mark'],
-    passive:{id:'vividReach',name:'Vivid Reach',desc:'Your attacks deal +6% damage vs enemies who are confused, weakened, slowed, or exposed.',
-      onBattleStart(){}},
+    passive:{id:'passive_toucan_prism_beak',name:'Prism Beak',desc:'Toucan deals +10% damage to Burning targets.'},
   },
   swan:{
-    name:'Swan', portraitKey:'swan', tagline:'Glides in silence. Strikes when the line is set.',
-    size:'large', class:'striker',
+    name:'Swan', portraitKey:'swan', tagline:'Regal bulwark. Grace, weight, and unbroken composure.',
+    size:'large', class:'tank',
     unlockRequires:'unlock_swan',
-    unlockHint:'Reach Endless Stage 30 with any Striker.',
-    stats:{hp:44,maxHp:44,atk:9,def:5,spd:6,dodge:22,acc:86,mdef:10,matk:9,critChance:5},
+    unlockHint:'Reach Endless Stage 30 with any Tank.',
+    stats:{hp:73,maxHp:73,atk:16,def:39,spd:5,dodge:5,acc:77,mdef:37,matk:6,critChance:5},
     color:'#f0f4fc',
     mainAttackId:'neck_jab',
     startAbilities:['neck_jab','wing_sweep','grace_glide','poise_mark'],
-    passive:{id:'lineOfGrace',name:'Line of Grace',
-      desc:'Your attacks deal +6% damage vs enemies who are exposed, weakened, or suffering significant accuracy loss.',
-      onBattleStart(){}},
+    passive:{id:'passive_swan_regal_bearing',name:'Regal Bearing',desc:'While above 70% HP, gain +4 DEF and +4 MDEF.'},
   },
   flamingo:{
     name:'Flamingo', portraitKey:'flamingo', tagline:'Wading lines. Soft water, hard footing.',
     size:'large', class:'striker',
     unlockRequires:'unlock_flamingo',
     unlockHint:'Reach Endless Stage 30 with any Striker.',
-    stats:{hp:48,maxHp:48,atk:8,def:4,spd:6,dodge:18,acc:80,mdef:12,matk:8},
+    stats:{hp:66,maxHp:66,atk:31,def:9,spd:33,dodge:25,acc:89,mdef:8,matk:2,critChance:6},
     color:'#e8609a',
+    mainAttackId:'leg_jab',
     startAbilities:['leg_jab','marsh_sweep','balance_pose','mire_mark'],
-    passive:{id:'marshPoise',name:'Marsh Poise',
-      desc:'Your attacks deal +6% damage vs slowed or weakened foes, +4% more vs enemies with heavy accuracy loss (10+). Delayed wake damage you trigger is +12% stronger.',
-      onBattleStart(){}},
+    passive:{id:'passive_flamingo_cold_wader',name:'Cold Wader',desc:'Each stack of Chilled on the target gives Flamingo +5% Crit Chance.'},
   },
   secretary:{
     name:'Secretary Bird', portraitKey:'secretary', tagline:'Stalking justice. The kick decides.',
     size:'large', class:'predator',
     unlockRequires:'unlock_secretary',
     unlockHint:'Defeat Stage 10 with Crow.',
-    stats:{hp:48,maxHp:48,atk:9,def:6,spd:5,dodge:10,acc:80,critChance:8,mdef:10,matk:6},
-    statBars:{HP:48/50,ATK:9/15,SPD:5/10,Dodge:.2,ACC:.8}, color:'#e0a060',
+    stats:{hp:67,maxHp:67,atk:41,def:12,spd:27,dodge:11,acc:91,mdef:15,matk:2,critChance:8},
+    color:'#e0a060',
+    mainAttackId:'sec_leg_jab',
     startAbilities:['sec_leg_jab','sec_crushing_kick','hunter_stride','prey_mark'],
-    passive:{id:'stiltVerdict',name:'Stilt Verdict',
-      desc:'Physical attacks deal +6% vs paralyzed foes, +5% vs slowed foes, and +5% vs enemies below 45% HP. Immune to Poison.',
-      immunePoison:true,
-      onBattleStart(){}},
+    passive:{id:'passive_secretary_long_leg_reach',name:'Long-Leg Reach',desc:"Secretary Bird's 1 EN attacks gain +10% DEF ignore."},
   },
   albatross:{
-    name:'Albatross', portraitKey:'albatross', tagline:'Vast ocean soarer. Wide wing pressure, patient currents, returning wakes.',
-    size:'large', class:'striker',
+    name:'Albatross', portraitKey:'albatross', tagline:'Vast ocean bruiser. Wide-wing blows and crushing returning sweeps.',
+    size:'large', class:'bruiser',
     unlockRequires:'unlock_albatross',
     unlockHint:'Reach Endless Stage 50 with any bird.',
-    stats:{hp:58,maxHp:58,atk:9,def:7,spd:6,dodge:12,acc:80,mdef:9,matk:7,critChance:6},
+    stats:{hp:72,maxHp:72,atk:37,def:26,spd:14,dodge:7,acc:79,mdef:21,matk:3,critChance:6},
     color:'#9fb7c9',
     mainAttackId:'alb_wing_jab',
     startAbilities:['alb_wing_jab','alb_ocean_sweep','alb_glide_line','alb_current_mark'],
-    passive:{id:'tradeWinds',name:'Trade-Wind Patience',desc:'Every 2 turns, +1 SPD (max 20). Physical attacks deal +6% vs slowed foes.',
-      onBattleStart(p){p._oceanWandererTurns=0;},
-      onTurnEnd(p){p._oceanWandererTurns=(p._oceanWandererTurns||0)+1;if((p._oceanWandererTurns%2)===0){p.stats.spd=Math.min(20,(p.stats.spd||1)+1);}}},
+    passive:{id:'passive_albatross_cold_current',name:'Cold Current',desc:'When Albatross applies Chilled, gain +4 SPD next turn.'},
   },
-
   seagull:{
     name:'Seagull', portraitKey:'seagull', tagline:'Coastal pest. Harrying swoops, noisy cries, scavenger’s payoff.',
     size:'medium', class:'trickster',
     unlockRequires:'unlock_seagull',
     unlockHint:'Reach level 21 in Endless mode with any Trickster.',
-    stats:{hp:36,maxHp:36,atk:7,def:3,spd:9,dodge:26,acc:86,mdef:8,matk:8,critChance:10},
+    stats:{hp:56,maxHp:56,atk:13,def:9,spd:26,dodge:21,acc:90,mdef:12,matk:17,critChance:10},
     color:'#b0c8d8',
     mainAttackId:'sgl_snap_peck',
     startAbilities:['sgl_snap_peck','sgl_swoop_pass','sgl_raucous_cry','sgl_scavenge_mark'],
-    passive:{id:'scavengeFlock',name:'Scavenger\'s Instinct',desc:'+20% damage vs enemies below 60% HP. Summoned mobs steal 5% enemy ATK as SPD (stacks). Immune to Fear.',
-      immuneFear:true,
-      onBattleStart(p){p._scavengeStacks=0;}},
+    passive:{id:'passive_seagull_scavengers_nerve',name:"Scavenger's Nerve",desc:"After using a utility, Seagull's next attack gains +10% Accuracy."},
   },
-
-  // ── XL ──────────────────────────────────────────────────────
   goose:{
     name:'Goose', portraitKey:'goose', tagline:'Territorial bruiser. Honk, check, refuse to yield.',
     size:'xl', class:'tank',
-    stats:{hp:55,maxHp:55,atk:9,def:7,spd:2,dodge:5,acc:70,mdef:12,matk:4},
-    statBars:{HP:55/50,ATK:9/15,SPD:2/10,Dodge:.1,ACC:.7}, color:'#e8c96a',
+    stats:{hp:88,maxHp:88,atk:20,def:43,spd:5,dodge:5,acc:73,mdef:39,matk:6,critChance:5},
+    color:'#e8c96a',
     startAbilities:['gos_beak_snap','gos_body_check','gos_honk_blast','gos_brace_up'],
     mainAttackId:'gos_beak_snap',
-    passive:{id:'bruisedHide',name:'Bruised Hide',desc:'Every 20 HP taken = +1 ATK until battle ends. Takes 20% reduced physical damage.',
-      physicalResist:0.20,
-      onDamage(p,dmg){if(!p._bruiseAcc)p._bruiseAcc=0;p._bruiseAcc+=dmg;while(p._bruiseAcc>=20){p._bruiseAcc-=20;G.player.stats.atk++;spawnFloat('player','💢+ATK','fn-status');}}},
+    passive:{id:'passive_goose_honking_wall',name:'Honking Wall',desc:'Start battle with +4 DEF for 1 turn.'},
   },
   shoebill:{
     name:'Shoebill Stork', portraitKey:'shoebill', tagline:'Ancient. Patient. Inevitable.',
     size:'xl', class:'tank',
     unlockRequires:'unlock_shoebill',
     unlockHint:'Defeat Stage 10 with Goose.',
-    stats:{hp:70,maxHp:70,atk:10,def:10,spd:2,dodge:5,acc:72,critChance:5,mdef:16,matk:6},
-    statBars:{HP:70/50,ATK:10/15,SPD:2/10,Dodge:.1,ACC:.72}, color:'#5a7090',
+    stats:{hp:90,maxHp:90,atk:21,def:43,spd:5,dodge:4,acc:74,mdef:40,matk:5,critChance:5},
+    color:'#5a7090',
     startAbilities:['sbl_beak_chop','sbl_skull_crack','sbl_still_stance','sbl_dread_mark'],
     mainAttackId:'sbl_beak_chop',
-    passive:{id:'prehistoricStare',name:'Prehistoric Stare',desc:'Enemies have 15% chance to skip attack from dread (30% when feared). Immune to Fear & Stun.',
-      immuneFear:true, immuneStun:true,
-      onEnemyAttackCheck(p,G){const fearBonus=G.enemyStatus.feared>0?15:0;return chance(15+fearBonus);}},
+    passive:{id:'passive_shoebill_silent_stance',name:'Silent Stance',desc:"If Shoebill did not use a utility last turn, its next attack gains +10% Crit Damage."},
   },
   harpy:{
     name:'Harpy Eagle', portraitKey:'harpy', tagline:'Warlord of the canopy. No mercy.',
     size:'xl', class:'predator',
     unlockRequires:'unlock_harpy',
     unlockHint:'Defeat Stage 20 with Hummingbird.',
-    stats:{hp:58,maxHp:58,atk:13,def:6,spd:4,dodge:8,acc:78,critChance:15,mdef:8,matk:6},
-    statBars:{HP:58/50,ATK:13/15,SPD:4/10,Dodge:.16,ACC:.78}, color:'#c84030',
+    stats:{hp:80,maxHp:80,atk:45,def:13,spd:29,dodge:12,acc:89,mdef:17,matk:2,critChance:15},
+    color:'#c84030',
     startAbilities:['hrp_talon_clutch','hrp_canopy_crush','hrp_predator_grip','hrp_prey_lock'],
     mainAttackId:'hrp_talon_clutch',
     abilityPool:['physical'],
-    passive:{id:'warlordsPath',name:'Talon Apex',desc:'+18% damage vs enemies below 40% HP. Every boss kill permanently raises ATK by 3. Takes 15% reduced magic damage.',
-      magicResist:0.15,
-      onBossKill(p){p.stats.atk+=3;spawnFloat('player','⚔+3 ATK','fn-crit');}},
+    passive:{id:'passive_harpy_apex_grip',name:'Apex Grip',desc:"Harpy Eagle's first attack each battle gains +10% Crit Chance and +10% Crit Damage."},
   },
   baldEagle:{
     name:'Bald Eagle', portraitKey:'baldEagle', tagline:'Unbreakable. Undying. Undefeated.',
     size:'xl', class:'predator',
     unlockRequires:'juvenileWin',
     unlockHint:'Defeat Stage 20 on Normal mode to unlock.',
-    stats:{hp:60,maxHp:60,atk:11,def:7,spd:4,dodge:10,acc:78,mdef:10,matk:6},
+    stats:{hp:81,maxHp:81,atk:43,def:14,spd:29,dodge:12,acc:88,mdef:18,matk:2,critChance:12},
     color:'#e8e4d8',
+    mainAttackId:'skyTalon',
     startAbilities:['skyTalon','guard','predatorMark','freedomCry'],
-    passive:{id:'lastStand',name:'Last Stand',
-      desc:'First time per battle you would die, survive at 1 HP and gain +5 ATK for 3 turns. Immune to Paralysis.',
-      immuneParalyze:true,
-      onBattleStart(p){p._lastStandUsed=false;},
-    },
+    passive:{id:'passive_baldeagle_sky_dominance',name:'Sky Dominance',desc:'Bald Eagle attacks against wounded targets gain +10% Accuracy.'},
   },
   penguin:{
     name:'Emperor Penguin', portraitKey:'penguin', tagline:'Ice-clad waddler. Magic slides off its blubber.',
     size:'xl', class:'tank',
     unlockRequires:'unlock_penguin',
     unlockHint:'Reach Endless Stage 30 with any Tank.',
-    stats:{hp:65,maxHp:65,atk:9,def:9,spd:3,dodge:12,acc:75,mdef:14,matk:5},
+    stats:{hp:89,maxHp:89,atk:18,def:42,spd:6,dodge:5,acc:74,mdef:42,matk:5,critChance:5},
     color:'#3a5878',
     startAbilities:['icebreakerHonk','snowWall','guard','tundraCall'],
-    passive:{id:'blubberCoat',name:'Blubber Coat',desc:'Reduces all magic damage by 25–40% (scales with missing HP). Waddle applies Lullaby (15% skip/turn) on attack.',
-      get _baseMagicReduce(){return 0.25;},
-      onMagicHit(p,dmg){const hpPct=p.stats.hp/p.stats.maxHp;return Math.floor(dmg*(1-(0.25+(1-hpPct)*0.15)));},
-    },
+    passive:{id:'passive_penguin_icebound_plating',name:'Icebound Plating',desc:'While above 50% HP, gain +4 MDEF.'},
   },
   ostrich:{
     name:'Ostrich', portraitKey:'ostrich', tagline:'Flightless thunder. Charges build to earth-shaking fury.',
     size:'xl', class:'bruiser',
     unlockRequires:'unlock_ostrich',
     unlockHint:'Defeat Stage 20 with Shoebill.',
-    stats:{hp:72,maxHp:72,atk:12,def:8,spd:1,dodge:5,acc:70,mdef:10,matk:4},
+    stats:{hp:86,maxHp:86,atk:40,def:27,spd:20,dodge:9,acc:76,mdef:19,matk:3,critChance:8},
     color:'#b89060',
     startAbilities:['powerKick','stampedeStrike','sandKick','momentumCharge'],
-    passive:{id:'rageCharge',name:'Desert Strider',desc:'Dodging grants +2 SPD for 2 turns. Heavy attacks charge over 2–3 turns (+50% dmg/turn). Misses reset charge. Immune to Slow.',
-      immuneSlow:true,
-      onBattleStart(p){p._rageCharge=0;},
-      onDodge(p){
-        if(p._desertStriderBonus){p.stats.spd=Math.max(1,(p.stats.spd||1)-p._desertStriderBonus);}
-        p._desertStriderBonus=2;
-        p.stats.spd=Math.min(20,(p.stats.spd||1)+2);
-        G.playerStatus.desertStrider={turns:2,spd:2};
-      }},
+    passive:{id:'passive_ostrich_desert_momentum',name:'Desert Momentum',desc:'After using a 2 EN attack, gain +4 SPD next turn.'},
   },
-
   cassowary:{
-    name:'Cassowary', tagline:'Jungle juggernaut. Bone-crushing kicks and armored hide.',
+    name:'Cassowary', portraitKey:'cassowary', tagline:'Jungle juggernaut. Bone-crushing kicks and armored hide.',
     size:'xl', class:'bruiser',
     unlockRequires:'juvenileWin',
     unlockHint:'Defeat Stage 20 on Normal mode to unlock.',
-    stats:{hp:74,maxHp:74,atk:13,def:9,spd:3,dodge:8,acc:74,mdef:11,matk:4},
+    stats:{hp:88,maxHp:88,atk:43,def:30,spd:14,dodge:7,acc:77,mdef:21,matk:3,critChance:8},
     color:'#3b4a56',
     startAbilities:['raptorKick','warStomp','momentumCharge','crushingTalon'],
-    passive:{id:'jungleBulwark',name:'Jungle Bulwark',desc:'Takes 10% reduced physical damage. First heavy hit each battle applies Fear 2t.',
-      physicalResist:0.10,
-      onBattleStart(p){p._cassFearUsed=false;},
-      onPhysicalHit(p,G){if(!p._cassFearUsed){p._cassFearUsed=true;G.enemyStatus.feared=Math.max(G.enemyStatus.feared||0,2);spawnFloat('enemy','💀 Fear!','fn-status');}}},
+    passive:{id:'passive_cassowary_terror_kick',name:'Terror Kick',desc:'Cassowary deals +10% Crit Damage to Weakened targets.'},
   },
   emu:{
     name:'Emu', portraitKey:'emu', tagline:'Flightless brute. Kicks and stomps with terrifying force.',
     size:'xl', class:'bruiser',
     unlockRequires:'unlock_emu',
     unlockHint:'Reach Endless Stage 40 with any Tank.',
-    stats:{hp:80,maxHp:80,atk:14,def:10,spd:2,dodge:20,acc:72,mdef:10,matk:4},
+    stats:{hp:86,maxHp:86,atk:40,def:28,spd:17,dodge:11,acc:77,mdef:20,matk:2,critChance:8},
     color:'#7a6040',
     startAbilities:['headWhip','warCharge','sandKick','momentumStrike'],
-    passive:{id:'rumbleStrike',name:'Rumble Strike',desc:'+20% max HP. Counter-attacks on block for 30% ATK. Immune to Stun.',
-      immuneStun:true,
-      onBattleStart(p){if(!p._emuHPBoosted){p._emuHPBoosted=true;p.stats.maxHp=Math.floor(p.stats.maxHp*1.20);p.stats.hp=p.stats.maxHp;}},
-      onBlock(p){const ctr=Math.floor(p.stats.atk*.3);G.enemy.stats.hp-=ctr;spawnFloat('enemy',`⚡-${ctr}`,'fn-dmg');}}
+    passive:{id:'passive_emu_dust_runner',name:'Dust Runner',desc:'The first SPD buff Emu gains each battle is increased by +2.'},
   },
   dukeBlakiston:{
-    name:'Duke Blakiston', portraitKey:'duke_blakiston', tagline:'Lord of the court. Commanding, relentless, imperial.',
+    name:'Duke Blakiston', portraitKey:'dukeBlakiston', tagline:'Lord of the court. Boss-tier ruler with unique command, control, and execution skills.',
     size:'xl', class:'predator',
     unlockRequires:'unlock_duke_blakiston',
     unlockHint:"Enter code 'Blakiston' on the selection screen.",
-    stats:{hp:68,maxHp:68,atk:11,def:9,spd:6,dodge:12,acc:84,mdef:14,matk:14,critChance:8},
+    stats:{hp:89,maxHp:89,atk:45,def:15,spd:32,dodge:13,acc:90,mdef:19,matk:2,critChance:8},
     color:'#6f88c2',
     startAbilities:['nightTalon','nightfallCall','courtSummon','verdict'],
-    passive:{id:'imperialEdict',name:'Imperial Edict',desc:'Casting a spell grants +1 MATK (max +4). Defending restores 2 HP.',
-      onBattleStart(p){p._dukeMatk=0;},
-      onSpell(p){if((p._dukeMatk||0)<4){p._dukeMatk=(p._dukeMatk||0)+1;p.stats.matk=(p.stats.matk||0)+1;}},
-      onBlock(p){p.stats.hp=Math.min(p.stats.maxHp,p.stats.hp+2);} }
+    mainAttackId:'nightTalon',
+    passive:{id:'passive_dukeblakiston_court_of_night',name:'Court of Night',desc:'When Duke Blakiston applies Fear or Weaken, gain +4 ATK and +4 MATK this turn.'},
+  },
+  wren:{
+    name:'Wren', portraitKey:'wren', tagline:'Tiny hedge striker. Fast feet, sharp pecks, no wasted motion.',
+    size:'tiny', class:'striker',
+    unlockRequires:'unlock_wren',
+    unlockHint:'Coming soon.',
+    stats:{hp:36,maxHp:36,atk:22,def:6,spd:24,dodge:19,acc:93,mdef:5,matk:2,critChance:10},
+    color:'#6a9a6a',
+    mainAttackId:'wren_bramble_peck',
+    startAbilities:['wren_bramble_peck','wren_thornflight','wren_hedge_feint','wren_briar_step'],
+    passive:{id:'passive_wren_hedge_skipper',name:'Hedge Skipper',desc:"After using a utility, Wren's next attack gains +10% Accuracy."},
+  },
+  fairywren:{
+    name:'Superb Fairywren', portraitKey:'fairywren', tagline:'Brilliant songster. Small frame, bright notes, quick support.',
+    size:'tiny', class:'singer',
+    unlockRequires:'unlock_fairywren',
+    unlockHint:'Coming soon.',
+    stats:{hp:38,maxHp:38,atk:2,def:8,spd:15,dodge:9,acc:95,mdef:16,matk:28,critChance:6},
+    color:'#4a7ae8',
+    mainAttackId:'fwren_azure_trill',
+    startAbilities:['fwren_azure_trill','fwren_sunthread_call','fwren_glimmer_peck','fwren_blue_refrain'],
+    passive:{id:'passive_fairywren_brilliant_plumage',name:'Brilliant Plumage',desc:"Superb Fairywren's first song each battle grants +4 MATK for 1 turn."},
+  },
+  firecrest:{
+    name:'Firecrest', portraitKey:'firecrest', tagline:'Flash of flame. Tiny striker built around speed and burning finishers.',
+    size:'tiny', class:'striker',
+    unlockRequires:'unlock_firecrest',
+    unlockHint:'Coming soon.',
+    stats:{hp:36,maxHp:36,atk:22,def:5,spd:27,dodge:17,acc:94,mdef:5,matk:2,critChance:12},
+    color:'#e85a2a',
+    mainAttackId:'firecrest_ember_beak',
+    startAbilities:['firecrest_ember_beak','firecrest_flare_dart','firecrest_ashstep','firecrest_kindle_mark'],
+    passive:{id:'passive_firecrest_emberwake',name:'Emberwake',desc:'Firecrest deals +10% damage to Burning targets.'},
+  },
+  wagtail:{
+    name:'Willie Wagtail', portraitKey:'wagtail', tagline:'Tail-flicking nuisance. Sharp feints, mocking calls, constant motion.',
+    size:'small', class:'trickster',
+    unlockRequires:'unlock_wagtail',
+    unlockHint:'Coming soon.',
+    stats:{hp:47,maxHp:47,atk:11,def:8,spd:24,dodge:21,acc:92,mdef:11,matk:13,critChance:8},
+    color:'#2a2a2a',
+    mainAttackId:'wagtail_snap',
+    startAbilities:['wagtail_snap','wagtail_flicker_strike','wagtail_jeering_call','wagtail_shadow_flick'],
+    passive:{id:'passive_wagtail_mocking_step',name:'Mocking Step',desc:'Willie Wagtail gains +10% Accuracy against Confused targets.'},
+  },
+  galah:{
+    name:'Galah', portraitKey:'galah', tagline:'Loud pink menace. Flashy disruption, misdirection, and staged payoffs.',
+    size:'small', class:'trickster',
+    unlockRequires:'unlock_galah',
+    unlockHint:'Coming soon.',
+    stats:{hp:48,maxHp:48,atk:13,def:9,spd:22,dodge:19,acc:90,mdef:10,matk:15,critChance:8},
+    color:'#e8a0c8',
+    mainAttackId:'galah_pink_jab',
+    startAbilities:['galah_pink_jab','galah_showstopper','galah_shrill_burst','galah_spotlight_mark'],
+    passive:{id:'passive_galah_showmanship',name:'Showmanship',desc:'After using a song/call, Galah gains +5% Crit Damage for 1 turn.'},
+  },
+  bluejay:{
+    name:'Blue Jay', portraitKey:'bluejay', tagline:'Territorial brawler. Harsh hits, loud pressure, and aggressive momentum.',
+    size:'small', class:'bruiser',
+    unlockRequires:'unlock_bluejay',
+    unlockHint:'Coming soon.',
+    stats:{hp:51,maxHp:51,atk:31,def:21,spd:13,dodge:6,acc:83,mdef:14,matk:3,critChance:8},
+    color:'#3a5cb8',
+    mainAttackId:'bluejay_crest_jab',
+    startAbilities:['bluejay_crest_jab','bluejay_jaybreaker','bluejay_crest_guard','bluejay_raucous_cry'],
+    passive:{id:'passive_bluejay_territorial_fury',name:'Territorial Fury',desc:'If Blue Jay was hit last turn, its next attack gains +10% Crit Chance.'},
+  },
+  cardinal:{
+    name:'Cardinal', portraitKey:'cardinal', tagline:'Crimson songbird. Strong clear notes and rallying support.',
+    size:'small', class:'singer',
+    unlockRequires:'unlock_cardinal',
+    unlockHint:'Coming soon.',
+    stats:{hp:49,maxHp:49,atk:2,def:10,spd:15,dodge:9,acc:93,mdef:19,matk:33,critChance:6},
+    color:'#c02030',
+    mainAttackId:'cardinal_crimson_note',
+    startAbilities:['cardinal_crimson_note','cardinal_scarlet_hymn','cardinal_crest_jab','cardinal_red_refrain'],
+    passive:{id:'passive_cardinal_scarlet_poise',name:'Scarlet Poise',desc:'Start battle with +4 MATK for 1 turn.'},
+  },
+  bushturkey:{
+    name:'Bush Turkey', portraitKey:'bushturkey', tagline:'Scrappy ground bruiser. Dirty hits, stubborn guard, and pressure.',
+    size:'medium', class:'bruiser',
+    unlockRequires:'unlock_bushturkey',
+    unlockHint:'Coming soon.',
+    stats:{hp:62,maxHp:62,atk:35,def:24,spd:12,dodge:6,acc:80,mdef:17,matk:4,critChance:6},
+    color:'#5a5040',
+    mainAttackId:'bturkey_scrap_peck',
+    startAbilities:['bturkey_scrap_peck','bturkey_brush_crash','bturkey_bush_guard','bturkey_rattle_call'],
+    passive:{id:'passive_bushturkey_scrapper',name:'Scrapper',desc:'At or below 50% HP, Bush Turkey gains +4 DEF.'},
+  },
+  vulture:{
+    name:'Vulture', portraitKey:'vulture', tagline:'Grim scavenger bruiser. Heavy blows and lingering pressure.',
+    size:'medium', class:'bruiser',
+    unlockRequires:'unlock_vulture',
+    unlockHint:'Coming soon.',
+    stats:{hp:61,maxHp:61,atk:34,def:23,spd:12,dodge:6,acc:81,mdef:19,matk:4,critChance:6},
+    color:'#6a5a50',
+    mainAttackId:'vulture_grave_jab',
+    startAbilities:['vulture_grave_jab','vulture_corpse_crush','vulture_bone_ward','vulture_grave_dirge'],
+    passive:{id:'passive_vulture_carrion_sense',name:'Carrion Sense',desc:'Vulture attacks against Bleeding targets gain +10% Crit Damage.'},
+  },
+  barnowl:{
+    name:'Barn Owl', portraitKey:'barnowl', tagline:'Silent dusk hunter. Clean set-up, precise dive, punishing finish.',
+    size:'medium', class:'predator',
+    unlockRequires:'unlock_barnowl',
+    unlockHint:'Coming soon.',
+    stats:{hp:56,maxHp:56,atk:35,def:10,spd:25,dodge:11,acc:93,mdef:15,matk:2,critChance:12},
+    color:'#c8b8a0',
+    mainAttackId:'barnowl_talon',
+    startAbilities:['barnowl_talon','barnowl_shadow_dive','barnowl_death_glare','barnowl_silent_glide'],
+    passive:{id:'passive_barnowl_silent_approach',name:'Silent Approach',desc:"Barn Owl's first attack from full HP gains +10% Accuracy."},
+  },
+  bustard:{
+    name:'Bustard', portraitKey:'bustard', tagline:'Heavy plains bruiser. Wide body, crushing steps, relentless force.',
+    size:'large', class:'bruiser',
+    unlockRequires:'unlock_bustard',
+    unlockHint:'Coming soon.',
+    stats:{hp:72,maxHp:72,atk:38,def:27,spd:13,dodge:6,acc:78,mdef:20,matk:4,critChance:6},
+    color:'#8a7860',
+    mainAttackId:'bustard_heavy_jab',
+    startAbilities:['bustard_heavy_jab','bustard_dust_trample','bustard_plainshield','bustard_steppe_call'],
+    passive:{id:'passive_bustard_heavy_steps',name:'Heavy Steps',desc:"Bustard's 2 EN attacks gain +10% Crit Damage."},
+  },
+  goldeneagle:{
+    name:'Golden Eagle', portraitKey:'goldeneagle', tagline:'Imperial hunter. High kill pressure and ruthless finishers.',
+    size:'large', class:'predator',
+    unlockRequires:'unlock_goldeneagle',
+    unlockHint:'Coming soon.',
+    stats:{hp:68,maxHp:68,atk:40,def:12,spd:28,dodge:10,acc:91,mdef:16,matk:2,critChance:12},
+    color:'#c9a020',
+    mainAttackId:'golden_sun_talon',
+    startAbilities:['golden_sun_talon','golden_sovereign_dive','golden_sky_verdict','golden_hunters_majesty'],
+    passive:{id:'passive_goldeneagle_sun_hunter',name:'Sun Hunter',desc:'Golden Eagle attacks against wounded targets gain +10% Crit Chance.'},
+  },
+  pelican:{
+    name:'Australian Pelican', portraitKey:'pelican', tagline:'Massive bill, massive body. Absorbs hits and refuses to yield.',
+    size:'xl', class:'tank',
+    unlockRequires:'unlock_pelican',
+    unlockHint:'Coming soon.',
+    stats:{hp:89,maxHp:89,atk:19,def:43,spd:6,dodge:4,acc:73,mdef:41,matk:5,critChance:5},
+    color:'#a0b8c8',
+    mainAttackId:'pelican_hookbill_snap',
+    startAbilities:['pelican_hookbill_snap','pelican_pouch_crush','pelican_broadside_guard','pelican_stillwater_recovery'],
+    passive:{id:'passive_pelican_deep_pouch',name:'Deep Pouch',desc:"Australian Pelican's self-heals restore 10% more HP."},
+  },
+  marabou:{
+    name:'Marabou Stork', portraitKey:'marabou', tagline:'Corpse-field predator. Grim pressure and towering execution.',
+    size:'xl', class:'predator',
+    unlockRequires:'unlock_marabou',
+    unlockHint:'Coming soon.',
+    stats:{hp:82,maxHp:82,atk:44,def:14,spd:27,dodge:11,acc:88,mdef:19,matk:3,critChance:10},
+    color:'#8a8a88',
+    mainAttackId:'marabou_rotbeak_jab',
+    startAbilities:['marabou_rotbeak_jab','marabou_ghoul_lunge','marabou_bone_sentence','marabou_grave_hunt'],
+    passive:{id:'passive_marabou_rot_feast',name:'Rot Feast',desc:'Marabou Stork attacks against Poisoned targets gain +10% Crit Chance.'},
   },
 };
 
@@ -1155,7 +1205,6 @@ function buildDukeStoryBossEnemy(){
     spd:Math.max(1,Math.floor(bs.spd||6)),
     acc:Math.max(60,Math.floor(bs.acc||84)),
     dodge:Math.max(0,Math.floor(bs.dodge||12)),
-    mdodge:Math.max(0,Math.floor(bs.mdodge??bs.dodge??12)),
     critChance:Math.max(0,Math.floor(bs.critChance||8)),
     critMult:Math.max(1.1,Number(bs.critMult||1.65)),
   };
@@ -1182,10 +1231,10 @@ function buildDukeStoryBossEnemy(){
     abilities:dukeAbilities,
     stats:{
       hp:stats.hp,maxHp:stats.maxHp,atk:stats.atk,def:stats.def,spd:stats.spd,acc:stats.acc,dodge:stats.dodge,
-      mdodge:stats.mdodge,mdef:stats.mdef,matk:stats.matk,en:6,cc,cd,critChance:stats.critChance,critMult:cd,
+      mdef:stats.mdef,matk:stats.matk,en:6,cc,cd,critChance:stats.critChance,critMult:cd,
     },
     hp:stats.hp,maxHp:stats.maxHp,atk:stats.atk,def:stats.def,spd:stats.spd,acc:stats.acc,dodge:stats.dodge,
-    mdodge:stats.mdodge,mdef:stats.mdef,matk:stats.matk,cc,cd,
+    mdef:stats.mdef,matk:stats.matk,cc,cd,
     energyMax:6,energy:6,energyRegen:0,
     _storyDirectStats:true,
     duke:{phase:1,nightfallTurns:0,decreeKey:null,decreeStacks:0,riverCd:0,summonCd:0,verdictCd:0},
@@ -1304,28 +1353,28 @@ const ENEMIES = [
   makeEnemy('Sky Sovereign','👑',200,35,18,6,'berserker',true,'👑 Final Boss',{acc:90,dodge:12,size:'xl',abilities:['eRage','eStun','ePoison','eFear','eShield','eBurn'],portraitKey:'baldEagle'}),
 ];
 
-// Birds that can appear as enemy combatants (adds variety). Set enemyClass for singer/tank/trickster; matk/mdef/mdodge feed scaling.
+// Birds that can appear as enemy combatants (adds variety). Set enemyClass for singer/tank/trickster; matk/mdef feed scaling.
 // Combat kits come from family skill slots + ABILITY_TEMPLATES (buildEdFromBirdEnemyTemplate). Penguin/emu have no family catalog yet — legacy abilities only.
 // Tier bands: keep aligned with js/world/ow_enemy_population.js OW_POOL_BY_BAND (overworld seeded packs).
 const BIRD_ENEMIES = [
-  {name:'Wild Sparrow',emoji:'',birdKey:'sparrow',tier:[1,2],hp:30,atk:6,def:2,matk:6,mdef:7,spd:9,acc:82,dodge:32,mdodge:28,enemyClass:'bruiser',size:'tiny',aiStyle:'berserker'},
-  {name:'Grove Cantor',emoji:'🎵',birdKey:'blackbird',tier:[1,2],hp:30,atk:5,def:3,matk:12,mdef:9,spd:7,acc:78,dodge:22,mdodge:18,enemyClass:'singer',size:'small',aiStyle:'cautious'},
-  {name:'Glitter Thief',emoji:'✨',birdKey:'magpie',tier:[1,2],hp:34,atk:7,def:4,matk:9,mdef:8,spd:8,acc:86,dodge:28,mdodge:22,enemyClass:'trickster',size:'medium',aiStyle:'aggressive'},
-  {name:'Rogue Crow',emoji:'‍⬛',birdKey:'crow',tier:[2,3],hp:38,atk:8,def:5,matk:8,mdef:9,spd:5,acc:88,dodge:14,mdodge:12,enemyClass:'trickster',size:'medium',aiStyle:'aggressive'},
-  {name:'Savage Kookaburra',emoji:'',birdKey:'kookaburra',tier:[2,3],hp:48,atk:10,def:5,matk:8,mdef:9,spd:7,acc:80,dodge:20,mdodge:16,enemyClass:'bruiser',size:'medium',aiStyle:'aggressive'},
-  {name:'Marsh Chorus',emoji:'🦩',birdKey:'flamingo',tier:[2,3],hp:46,atk:7,def:5,matk:11,mdef:11,spd:5,acc:76,dodge:14,mdodge:12,enemyClass:'singer',size:'large',aiStyle:'cautious'},
-  {name:'Frost Chanter',emoji:'🦉',birdKey:'snowyOwl',tier:[2,3],hp:34,atk:6,def:5,matk:13,mdef:9,spd:8,acc:84,dodge:22,mdodge:18,enemyClass:'singer',size:'small',aiStyle:'cautious'},
-  {name:'Feral Toucan',emoji:'',birdKey:'toucan',tier:[3,4],hp:48,atk:9,def:7,matk:10,mdef:9,spd:4,acc:74,dodge:10,mdodge:10,enemyClass:'tank',size:'large',aiStyle:'cautious'},
-  {name:'Outcast Goose',emoji:'',birdKey:'goose',tier:[3,4],hp:62,atk:11,def:8,matk:5,mdef:12,spd:2,acc:70,dodge:5,mdodge:8,enemyClass:'tank',size:'xl',aiStyle:'berserker'},
-  {name:'Shadow Raven',emoji:'',birdKey:'raven',tier:[3,4],hp:40,atk:8,def:4,matk:12,mdef:8,spd:7,acc:80,dodge:20,mdodge:16,enemyClass:'singer',size:'medium',aiStyle:'aggressive'},
-  {name:'Macaw Hexer',emoji:'🦜',birdKey:'macaw',tier:[3,4],hp:38,atk:6,def:4,matk:14,mdef:9,spd:9,acc:82,dodge:26,mdodge:20,enemyClass:'singer',size:'small',aiStyle:'cautious'},
-  {name:'Lyre Mimic',emoji:'🪶',birdKey:'lyrebird',tier:[3,4],hp:40,atk:6,def:5,matk:15,mdef:10,spd:6,acc:82,dodge:20,mdodge:16,enemyClass:'singer',size:'medium',aiStyle:'cautious'},
-  {name:'Pit Sentinel',emoji:'🐧',birdKey:'penguin',tier:[3,4],hp:66,atk:8,def:10,matk:5,mdef:14,spd:3,acc:75,dodge:12,mdodge:12,enemyClass:'tank',size:'xl',aiStyle:'defensive',abilities:['eShield','eWeaken']},
-  {name:'Apex Peregrine',emoji:'',birdKey:'peregrine',tier:[4],hp:36,atk:12,def:4,matk:7,mdef:7,spd:11,acc:90,dodge:26,mdodge:20,enemyClass:'predator',size:'small',aiStyle:'berserker'},
-  {name:'Storm Swan',emoji:'',birdKey:'swan',tier:[4],hp:50,atk:10,def:6,matk:11,mdef:10,spd:6,acc:82,dodge:18,mdodge:14,enemyClass:'tank',size:'large',aiStyle:'cautious'},
-  {name:'Iron Stork',emoji:'',birdKey:'shoebill',tier:[4],hp:72,atk:9,def:12,matk:6,mdef:16,spd:2,acc:72,dodge:5,mdodge:8,enemyClass:'tank',size:'xl',aiStyle:'defensive'},
-  {name:'Dust Bulwark',emoji:'',birdKey:'emu',tier:[4],hp:78,atk:11,def:11,matk:4,mdef:10,spd:2,acc:72,dodge:10,mdodge:10,enemyClass:'tank',size:'xl',aiStyle:'defensive',abilities:['eRage','eWeaken']},
-  {name:'War Harpy',emoji:'',birdKey:'harpy',tier:[4],hp:65,atk:14,def:7,matk:6,mdef:8,spd:5,acc:78,dodge:8,mdodge:8,enemyClass:'predator',size:'xl',aiStyle:'berserker'},
+  {name:'Wild Sparrow',emoji:'',birdKey:'sparrow',tier:[1,2],hp:30,atk:6,def:2,matk:6,mdef:7,spd:9,acc:82,dodge:32,enemyClass:'bruiser',size:'tiny',aiStyle:'berserker'},
+  {name:'Grove Cantor',emoji:'🎵',birdKey:'blackbird',tier:[1,2],hp:30,atk:5,def:3,matk:12,mdef:9,spd:7,acc:78,dodge:22,enemyClass:'singer',size:'small',aiStyle:'cautious'},
+  {name:'Glitter Thief',emoji:'✨',birdKey:'magpie',tier:[1,2],hp:34,atk:7,def:4,matk:9,mdef:8,spd:8,acc:86,dodge:28,enemyClass:'trickster',size:'medium',aiStyle:'aggressive'},
+  {name:'Rogue Crow',emoji:'‍⬛',birdKey:'crow',tier:[2,3],hp:38,atk:8,def:5,matk:8,mdef:9,spd:5,acc:88,dodge:14,enemyClass:'trickster',size:'medium',aiStyle:'aggressive'},
+  {name:'Savage Kookaburra',emoji:'',birdKey:'kookaburra',tier:[2,3],hp:48,atk:10,def:5,matk:8,mdef:9,spd:7,acc:80,dodge:20,enemyClass:'bruiser',size:'medium',aiStyle:'aggressive'},
+  {name:'Marsh Chorus',emoji:'🦩',birdKey:'flamingo',tier:[2,3],hp:46,atk:7,def:5,matk:11,mdef:11,spd:5,acc:76,dodge:14,enemyClass:'singer',size:'large',aiStyle:'cautious'},
+  {name:'Frost Chanter',emoji:'🦉',birdKey:'snowyOwl',tier:[2,3],hp:34,atk:6,def:5,matk:13,mdef:9,spd:8,acc:84,dodge:22,enemyClass:'singer',size:'small',aiStyle:'cautious'},
+  {name:'Feral Toucan',emoji:'',birdKey:'toucan',tier:[3,4],hp:48,atk:9,def:7,matk:10,mdef:9,spd:4,acc:74,dodge:10,enemyClass:'tank',size:'large',aiStyle:'cautious'},
+  {name:'Outcast Goose',emoji:'',birdKey:'goose',tier:[3,4],hp:62,atk:11,def:8,matk:5,mdef:12,spd:2,acc:70,dodge:5,enemyClass:'tank',size:'xl',aiStyle:'berserker'},
+  {name:'Shadow Raven',emoji:'',birdKey:'raven',tier:[3,4],hp:40,atk:8,def:4,matk:12,mdef:8,spd:7,acc:80,dodge:20,enemyClass:'singer',size:'medium',aiStyle:'aggressive'},
+  {name:'Macaw Hexer',emoji:'🦜',birdKey:'macaw',tier:[3,4],hp:38,atk:6,def:4,matk:14,mdef:9,spd:9,acc:82,dodge:26,enemyClass:'singer',size:'small',aiStyle:'cautious'},
+  {name:'Lyre Mimic',emoji:'🪶',birdKey:'lyrebird',tier:[3,4],hp:40,atk:6,def:5,matk:15,mdef:10,spd:6,acc:82,dodge:20,enemyClass:'singer',size:'medium',aiStyle:'cautious'},
+  {name:'Pit Sentinel',emoji:'🐧',birdKey:'penguin',tier:[3,4],hp:66,atk:8,def:10,matk:5,mdef:14,spd:3,acc:75,dodge:12,enemyClass:'tank',size:'xl',aiStyle:'defensive',abilities:['eShield','eWeaken']},
+  {name:'Apex Peregrine',emoji:'',birdKey:'peregrine',tier:[4],hp:36,atk:12,def:4,matk:7,mdef:7,spd:11,acc:90,dodge:26,enemyClass:'predator',size:'small',aiStyle:'berserker'},
+  {name:'Storm Swan',emoji:'',birdKey:'swan',tier:[4],hp:50,atk:10,def:6,matk:11,mdef:10,spd:6,acc:82,dodge:18,enemyClass:'tank',size:'large',aiStyle:'cautious'},
+  {name:'Iron Stork',emoji:'',birdKey:'shoebill',tier:[4],hp:72,atk:9,def:12,matk:6,mdef:16,spd:2,acc:72,dodge:5,enemyClass:'tank',size:'xl',aiStyle:'defensive'},
+  {name:'Dust Bulwark',emoji:'',birdKey:'emu',tier:[4],hp:78,atk:11,def:11,matk:4,mdef:10,spd:2,acc:72,dodge:10,enemyClass:'tank',size:'xl',aiStyle:'defensive',abilities:['eRage','eWeaken']},
+  {name:'War Harpy',emoji:'',birdKey:'harpy',tier:[4],hp:65,atk:14,def:7,matk:6,mdef:8,spd:5,acc:78,dodge:8,enemyClass:'predator',size:'xl',aiStyle:'berserker'},
 ];
 
 // ===================== BIOMES =====================
@@ -1503,8 +1552,8 @@ function upgradeEligibleForRewardPick(card, usedIds){
 function getUpgradePool(){ return UPGRADE_CARDS_REWORK.slice(); }
 
 // ---- Stat ledger: bird baseline vs level-up feathers vs card upgrades (Nest + combat tooltips) ----
-const STAT_LEDGER_TRACKED_KEYS = ['maxHp','atk','def','spd','acc','dodge','mdodge','matk','mdef','critChance'];
-const STAT_LEDGER_LABELS = {maxHp:'HP (max)',atk:'ATT',def:'DEF',spd:'SPD',acc:'ACC',dodge:'DODGE',mdodge:'M.DODGE',matk:'MATK',mdef:'MDEF',critChance:'CRIT %'};
+const STAT_LEDGER_TRACKED_KEYS = ['maxHp','atk','def','spd','acc','dodge','matk','mdef','critChance'];
+const STAT_LEDGER_LABELS = {maxHp:'HP (max)',atk:'ATT',def:'DEF',spd:'SPD',acc:'ACC',dodge:'DODGE',matk:'MATK',mdef:'MDEF',critChance:'CRIT %'};
 function cloneStatLedgerSlice(stats){
   const s = stats || {};
   const out = {};
@@ -1549,7 +1598,6 @@ function ensureStatLedgerAfterLoad(player){
   }
   const bd = BIRDS[player.birdKey] || {};
   const base = cloneStatLedgerSlice(bd.stats);
-  base.mdodge = Number.isFinite(Number(base.mdodge)) ? base.mdodge : base.dodge;
   L.birdBaseline = base;
   const hasSplits = Object.keys(L.fromLevel).length > 0 || Object.keys(L.fromUpgrades).length > 0;
   if(!hasSplits){
@@ -1852,13 +1900,16 @@ const CLASS_ROLE_BY_CLASS = {
 };
 
 const FINAL_BIRD_CLASS_BY_KEY = Object.freeze({
-  sparrow:'striker', hummingbird:'striker', robin:'striker', peregrine:'striker',
-  cassowary:'bruiser', emu:'bruiser', ostrich:'bruiser', secretary:'predator', secretarybird:'predator', kookaburra:'bruiser',
-  goose:'tank', swan:'striker', penguin:'tank', emperorpenguin:'tank', shoebill:'tank', shoebillstork:'tank',
+  sparrow:'striker', hummingbird:'striker', robin:'singer', peregrine:'striker',
+  cassowary:'bruiser', emu:'bruiser', ostrich:'bruiser', secretary:'predator', secretarybird:'predator', kookaburra:'trickster',
+  goose:'tank', swan:'tank', penguin:'tank', emperorpenguin:'tank', shoebill:'tank', shoebillstork:'tank',
   magpie:'trickster', seagull:'trickster', bowerbird:'trickster', crow:'trickster',
   snowyowl:'predator', harpy:'predator', harpyeagle:'predator', baldeagle:'predator', dukeblakiston:'predator', duke_blakiston:'predator', kiwi:'predator',
-  blackbird:'singer', phainopepla:'singer', macaw:'singer', lyrebird:'singer', flamingo:'striker', toucan:'striker', raven:'trickster', albatross:'striker', dove:'singer',
-  blackcockatoo:'bruiser',
+  blackbird:'singer', phainopepla:'singer', macaw:'singer', lyrebird:'singer', flamingo:'striker', toucan:'striker', raven:'trickster', albatross:'bruiser', dove:'singer',
+  blackcockatoo:'singer',
+  wren:'striker', fairywren:'singer', firecrest:'striker', wagtail:'trickster', galah:'trickster', bluejay:'bruiser',
+  cardinal:'singer', bushturkey:'bruiser', vulture:'bruiser', barnowl:'predator', bustard:'bruiser', goldeneagle:'predator',
+  pelican:'tank', marabou:'predator',
 });
 
 function normalizeBirdClassKey(birdKey=''){
@@ -2159,7 +2210,7 @@ const ALL_REWARDS = [
   {id:'g_matk2', tier:'grey', icon:'✨', name:'Spark Dust', desc:'MATK +1', tags:['offense','matk'], apply:p=>{ p.stats.matk=(p.stats.matk||0)+1; }},
   {id:'g_spd1', tier:'grey', icon:'💨', name:'Light Feathers', desc:'SPD +1', tags:['utility','spd'], apply:p=>{ p.stats.spd=(p.stats.spd||0)+1; }},
   {id:'g_dodge6', tier:'grey', icon:'🪽', name:'Side-Glide', desc:'Dodge +6%', tags:['defense','dodge'], apply:p=>{ p.stats.dodge=Math.min((p.stats.dodge||0)+6,100); }},
-  {id:'g_mdodge6', tier:'grey', icon:'🫧', name:'Aether Drift', desc:'MDodge +6%', tags:['defense','mdodge'], apply:p=>{ p.stats.mdodge=Math.min((p.stats.mdodge||0)+6,100); }},
+  {id:'g_mdodge6', tier:'grey', icon:'🫧', name:'Aether Drift', desc:'Dodge +6%', tags:['defense','dodge'], apply:p=>{ p.stats.dodge=Math.min((p.stats.dodge||0)+6,100); }},
   {id:'g_firstTurnEnergy', tier:'grey', icon:'🪺', name:'Warm Nest', desc:'+1 Energy on your first turn each battle', tags:['utility','energy'], apply:p=>{ p.firstTurnEnergy=(p.firstTurnEnergy||0)+1; }},
 
   {id:'u_hp25', tier:'green', icon:'❤️', name:'Stronger Heart', desc:'Max HP +12 (heal +12)', tags:['sustain','hp'], apply:p=>{ p.stats.maxHp+=12; p.stats.hp=Math.min(p.stats.hp+12,p.stats.maxHp); }},
@@ -2169,7 +2220,7 @@ const ALL_REWARDS = [
   {id:'u_matk5', tier:'green', icon:'🌙', name:'Moonlit Call', desc:'MATK +3', tags:['offense','matk'], apply:p=>{ p.stats.matk=(p.stats.matk||0)+3; }},
   {id:'u_spd2', tier:'green', icon:'🏁', name:'Tailwind Steps', desc:'SPD +2', tags:['utility','spd'], apply:p=>{ p.stats.spd=(p.stats.spd||0)+2; }},
   {id:'u_dodge10', tier:'green', icon:'🌪️', name:'Wind Step', desc:'Dodge +10%', tags:['defense','dodge'], apply:p=>{ p.stats.dodge=Math.min((p.stats.dodge||0)+10,100); }},
-  {id:'u_mdodge10', tier:'green', icon:'🌫️', name:'Mist Step', desc:'MDodge +10%', tags:['defense','mdodge'], apply:p=>{ p.stats.mdodge=Math.min((p.stats.mdodge||0)+10,100); }},
+  {id:'u_mdodge10', tier:'green', icon:'🌫️', name:'Mist Step', desc:'Dodge +10%', tags:['defense','dodge'], apply:p=>{ p.stats.dodge=Math.min((p.stats.dodge||0)+10,100); }},
   {id:'u_postHealPlus3', tier:'green', icon:'🍎', name:'Field Snack', desc:'+3% Max HP extra heal after every battle', tags:['sustain','scaling'], apply:p=>{ p.postBattleHealBonusPct=(p.postBattleHealBonusPct||0)+0.03; }},
   {id:'u_precision3', tier:'green', icon:'🎯', name:'Keen Sight', desc:'All skills: -3% miss chance (min 0%)', tags:['utility','accuracy'], apply:p=>{ p.missReduce=(p.missReduce||0)+0.03; }},
 
@@ -2356,13 +2407,13 @@ const ABILITY_TEMPLATES_LEARNABLE = {
 
   wormRiot:{
     id:'wormRiot', name:'Worm Riot', type:'utility', btnType:'utility',
-    desc:'Bait frenzy: enemy recovers HP but becomes exposed (Dodge/MDodge to 0).',
+    desc:'Bait frenzy: enemy recovers HP but becomes exposed (Dodge to 0).',
     cooldownByLevel:[4,4,3,3],
     levels:[
-      {lv:1, desc:'Enemy heals 30%, but enemy Dodge/MDodge = 0% for 2t.'},
-      {lv:2, desc:'Enemy heals 27%, Dodge/MDodge = 0% for 2t.'},
-      {lv:3, desc:'Enemy heals 24%, Dodge/MDodge = 0% for 2t.'},
-      {lv:4, desc:'Enemy heals 21%, Dodge/MDodge = 0% for 2t + Weaken 20%.', newAilment:'weaken', ailChance:20},
+      {lv:1, desc:'Enemy heals 30%, but enemy Dodge = 0% for 2t.'},
+      {lv:2, desc:'Enemy heals 27%, Dodge = 0% for 2t.'},
+      {lv:3, desc:'Enemy heals 24%, Dodge = 0% for 2t.'},
+      {lv:4, desc:'Enemy heals 21%, Dodge = 0% for 2t + Weaken 20%.', newAilment:'weaken', ailChance:20},
     ]
   },
   supersonic:{
@@ -2393,20 +2444,20 @@ const ABILITY_SKIP_TURN = {
   id:'skipTurn', name:'Skip Turn', type:'utility', btnType:'utility', energyCost:0,
   desc:'Do absolutely nothing and preserve your dodge.',
   levels:[
-    {lv:1, desc:'Skip your turn and preserve Dodge/MDodge.'},
-    {lv:2, desc:'Skip your turn and preserve Dodge/MDodge.'},
-    {lv:3, desc:'Skip your turn and preserve Dodge/MDodge.'},
-    {lv:4, desc:'Skip your turn and preserve Dodge/MDodge.'},
+    {lv:1, desc:'Skip your turn and preserve Dodge.'},
+    {lv:2, desc:'Skip your turn and preserve Dodge.'},
+    {lv:3, desc:'Skip your turn and preserve Dodge.'},
+    {lv:4, desc:'Skip your turn and preserve Dodge.'},
   ]
 };
 const ABILITY_SITTING_DUCK = {
   id:'sittingDuck', name:'Sitting Duck', type:'utility', btnType:'utility',
-  desc:'Do absolutely nothing. Drops ADodge and MDodge to 0% until your next turn.',
+  desc:'Do absolutely nothing. Drops dodge to 0% until your next turn.',
   levels:[
-    {lv:1, desc:'Waste your turn. ADodge/MDodge drop to 0% this round.'},
-    {lv:2, desc:'Waste your turn. ADodge/MDodge drop to 0% this round.'},
-    {lv:3, desc:'Waste your turn. ADodge/MDodge drop to 0% this round.'},
-    {lv:4, desc:'Waste your turn. ADodge/MDodge drop to 0% this round.'},
+    {lv:1, desc:'Waste your turn. Dodge drops to 0% this round.'},
+    {lv:2, desc:'Waste your turn. Dodge drops to 0% this round.'},
+    {lv:3, desc:'Waste your turn. Dodge drops to 0% this round.'},
+    {lv:4, desc:'Waste your turn. Dodge drops to 0% this round.'},
   ]
 };
 ABILITY_TEMPLATES['skipTurn'] = ABILITY_SKIP_TURN;
@@ -3210,7 +3261,7 @@ const STAGE_CLEAR_UNLOCKS = {
 const SPECIAL_UNLOCKS = [
   { id:'unlock_penguin', test:()=> G.endlessMode && (G.endlessBattle||0) >= 30 && (BIRDS[G.player?.birdKey]?.class==='tank'), bird:'penguin', label:'Emperor Penguin' },
   { id:'unlock_emu', test:()=> G.endlessMode && (G.endlessBattle||0) >= 40 && (BIRDS[G.player?.birdKey]?.class==='tank'), bird:'emu', label:'Emu' },
-  { id:'unlock_swan', test:()=> G.endlessMode && (G.endlessBattle||0) >= 30 && (BIRDS[G.player?.birdKey]?.class==='striker'), bird:'swan', label:'Swan' },
+  { id:'unlock_swan', test:()=> G.endlessMode && (G.endlessBattle||0) >= 30 && (BIRDS[G.player?.birdKey]?.class==='tank'), bird:'swan', label:'Swan' },
   { id:'unlock_flamingo', test:()=> G.endlessMode && (G.endlessBattle||0) >= 30 && (BIRDS[G.player?.birdKey]?.class==='striker'), bird:'flamingo', label:'Flamingo' },
   { id:'unlock_seagull', test:()=> G.endlessMode && (G.player?.birdLevel||1) >= 21 && (BIRDS[G.player?.birdKey]?.class==='trickster'), bird:'seagull', label:'Seagull' },
   { id:'unlock_albatross', test:()=> G.endlessMode && (G.endlessBattle||0) >= 50, bird:'albatross', label:'Albatross' },
@@ -3770,7 +3821,6 @@ function openNest() {
   const _nestDef=s.def+(G.battleHymnActive?G.battleHymnDEF:0);
   const _nestAcc=Math.min(100,s.acc+(G.battleHymnActive?G.battleHymnACC:0)-(G.playerStatus.accDebuff||0));
   const _nestDodge=getEffectiveDodge(p);
-  const _nestMDodge=getEffectiveMdodge(p);
   const _nestCrit=Math.min(100,(s.critChance||5)+(G.playerStatus.burning>0?20:0)+(p._velocityStacks||0));
   const _nestCritMultBase=p.goldCritMult||1.8;
   const _nestCritBonusPct=p.critDamageBonusPct||0;
@@ -3783,7 +3833,6 @@ function openNest() {
     <div class="nest-stat-card"><div class="nest-stat-val">${_nestStat(_nestDef,s.def)}</div><div class="nest-stat-lbl">DEF</div></div>
     <div class="nest-stat-card"><div class="nest-stat-val">${s.spd}</div><div class="nest-stat-lbl">SPD</div></div>
     <div class="nest-stat-card"><div class="nest-stat-val">${_nestStat(_nestDodge,s.dodge,'%')}</div><div class="nest-stat-lbl">DODGE</div></div>
-    <div class="nest-stat-card" title="Magic Dodge — chance to deflect enemy spells/status"><div class="nest-stat-val" style="color:#6ae8e8">${_nestMDodge}%${p.cardMdodge>0?` <span style='font-size:.7em;color:#4ab8c0'>(+${p.cardMdodge||0}card)</span>`:''}</div><div class="nest-stat-lbl" style="color:#4ab8c0">✦ MDODGE</div></div>
     <div class="nest-stat-card"><div class="nest-stat-val">${_nestStat(_nestAcc,s.acc,'%')}</div><div class="nest-stat-lbl">ACC</div></div>
     <div class="nest-stat-card"><div class="nest-stat-val" style="color:${_nestCrit>5?'#e8c96a':'var(--gold)'}">${_nestCrit}%</div><div class="nest-stat-lbl">🎯 Crit %</div></div>
     <div class="nest-stat-card"><div class="nest-stat-val" style="color:${_nestCritMultBase>1.5||_nestCritBonusPct>0?'#e8c96a':'var(--gold)'}">${_nestCritMultDisp}</div><div class="nest-stat-lbl">💥 Crit Dmg</div></div>
@@ -6570,10 +6619,9 @@ function continueRun() {
   normalizeAbilityCooldownsForPlayer(G.player);
   enforceAbilityCosts(G.player);
   recomputeClassPerkEffects();
-  // Migration: ensure mdodge and card stats exist
-  if(G.player.stats.mdodge===undefined) G.player.stats.mdodge = G.player.stats.dodge||20;
   if(G.player.cardDodge===undefined) G.player.cardDodge=0;
-  if(G.player.cardMdodge===undefined) G.player.cardMdodge=G.player.cardDodge||0; // retroactively mirror
+  if(G.player.stats && 'mdodge' in G.player.stats) delete G.player.stats.mdodge;
+  if('cardMdodge' in G.player) delete G.player.cardMdodge;
   ensureStatLedgerAfterLoad(G.player);
 
   const bsave=save.battle;
@@ -6736,20 +6784,20 @@ function mergeScaledStatsIntoEnemy(ed, encounterStage){
     playerBirdLevel:Math.max(1, Math.floor(G.player?.birdLevel||1)),
   };
   const scaled=ed._storyDirectStats ? {
-    hp:ed.hp,maxHp:ed.maxHp,atk:ed.atk,def:ed.def,spd:ed.spd,acc:ed.acc,dodge:ed.dodge,mdodge:ed.mdodge,mdef:ed.mdef,matk:ed.matk,cc:ed.cc||0.05,cd:ed.cd||1.5,en:ed.energyMax||ed.stats?.en||3,enemyClass:ed.enemyClass,effectiveLevel:ed.storyLevel||0,
+    hp:ed.hp,maxHp:ed.maxHp,atk:ed.atk,def:ed.def,spd:ed.spd,acc:ed.acc,dodge:ed.dodge,mdef:ed.mdef,matk:ed.matk,cc:ed.cc||0.05,cd:ed.cd||1.5,en:ed.energyMax||ed.stats?.en||3,enemyClass:ed.enemyClass,effectiveLevel:ed.storyLevel||0,
   } : (ed.isBoss
     ? buildScaledBoss(ed, encounterStage, scaleOpts)
     : buildScaledEnemy(ed, encounterStage, scaleOpts));
   ed.hp=scaled.hp; ed.maxHp=scaled.maxHp;
   ed.atk=scaled.atk; ed.def=scaled.def; ed.spd=scaled.spd;
-  ed.acc=scaled.acc; ed.dodge=scaled.dodge; ed.mdodge=scaled.mdodge;
+  ed.acc=scaled.acc; ed.dodge=scaled.dodge;
   ed.cc=scaled.cc; ed.cd=scaled.cd;
   ed.mdef=scaled.mdef; ed.matk=scaled.matk;
   ed.enemyClass=scaled.enemyClass||ed.enemyClass||inferEnemyClassFromStyle(ed.aiStyle);
   ed.combatTier = (scaled && 'tier' in scaled && scaled.tier!=null) ? scaled.tier : (ed.combatTier||ed.enemyTier||null);
   if(Number.isFinite(scaled.effectiveLevel)) ed.effectiveLevel=scaled.effectiveLevel;
   if(G.player?.mutBloodMoon){ ed.atk=Math.floor(ed.atk*1.10); ed.matk=Math.floor((ed.matk||ed.atk)*1.10); }
-  ed.stats = {hp:ed.hp, maxHp:ed.hp, atk:ed.atk, def:ed.def, spd:ed.spd, acc:ed.acc, dodge:ed.dodge, mdodge:ed.mdodge, mdef:ed.mdef, matk:ed.matk, cc:ed.cc, cd:ed.cd, critChance:Math.round((ed.cc||0.05)*100), critMult:ed.cd||1.5, en:(scaled.en||0)};
+  ed.stats = {hp:ed.hp, maxHp:ed.hp, atk:ed.atk, def:ed.def, spd:ed.spd, acc:ed.acc, dodge:ed.dodge, mdef:ed.mdef, matk:ed.matk, cc:ed.cc, cd:ed.cd, critChance:Math.round((ed.cc||0.05)*100), critMult:ed.cd||1.5, en:(scaled.en||0)};
   const baseEnemyEnergy = Math.max(1, scaled.en||ed.stats.en||3);
   ed.energyMax=baseEnemyEnergy;
   ed.energy=baseEnemyEnergy;
@@ -7371,7 +7419,6 @@ function applyEnemyFeatherFromPlayerMirror(stats,cls){
     case 'acc': stats.acc=Math.min(100,(stats.acc||75)+4); break;
     case 'dodge':
       stats.dodge=Math.min(95,(stats.dodge||0)+4);
-      stats.mdodge=Math.min(95,(stats.mdodge??stats.dodge??0)+2);
       break;
     case 'critChance': stats.critChance=Math.min(95,(stats.critChance||5)+1); break;
     default: stats.atk=(stats.atk||0)+2; break;
@@ -7386,7 +7433,7 @@ function applyStoryEnemyGrowth(stats,key){
     case 'mdef': stats.mdef=(stats.mdef||8)+1; break;
     case 'spd': stats.spd+=1; break;
     case 'acc': stats.acc=Math.min(100,(stats.acc||75)+2); break;
-    case 'dodge': stats.dodge=Math.min(95,(stats.dodge||0)+2); stats.mdodge=Math.min(95,(stats.mdodge||stats.dodge||0)+1); break;
+    case 'dodge': stats.dodge=Math.min(95,(stats.dodge||0)+2); break;
     case 'critChance': stats.critChance=Math.min(95,(stats.critChance||5)+1); break;
   }
 }
@@ -7426,7 +7473,6 @@ function buildStoryEnemyFromBirdKey(birdKey, stage){
     spd:Math.max(1,Math.floor(bd.stats?.spd||6)),
     acc:Math.max(60,Math.floor(bd.stats?.acc||80)),
     dodge:Math.max(0,Math.floor(bd.stats?.dodge||10)),
-    mdodge:Math.max(0,Math.floor((bd.stats?.mdodge ?? bd.stats?.dodge ?? 8))),
     critChance:Math.max(0,Math.floor(bd.stats?.critChance||5)),
     critMult:Math.max(1.1,Number(bd.stats?.critMult||1.5)),
   };
@@ -7471,7 +7517,7 @@ function buildStoryEnemyFromBirdKey(birdKey, stage){
     aiPersonality:cls,
     abilities:JSON.parse(JSON.stringify(enemyStub.abilities||[])),
     stats:{...stats,en},
-    hp:stats.hp,maxHp:stats.maxHp,atk:stats.atk,def:stats.def,spd:stats.spd,acc:stats.acc,dodge:stats.dodge,mdodge:stats.mdodge,mdef:stats.mdef,matk:stats.matk,
+    hp:stats.hp,maxHp:stats.maxHp,atk:stats.atk,def:stats.def,spd:stats.spd,acc:stats.acc,dodge:stats.dodge,mdef:stats.mdef,matk:stats.matk,
     cc:Math.max(0.05,Math.min(0.95,(stats.critChance||5)/100)), cd:stats.critMult||1.5,
     energyMax:en,energy:en,energyRegen:0,
     storyThreat:threat, storyLevel:level, storyEvolvedSlots:evolvedSlots,
@@ -7842,7 +7888,7 @@ function renderStarterFallbackGrid(reason=''){
   const starters = ['sparrow','goose','blackbird','crow','macaw','robin'];
   const row = document.createElement('div');
   row.className = 'size-birds-row';
-  const statMax={HP:1,ATK:1,DEF:1,SPD:1,Dodge:1,MDodge:1,ACC:1,Crit:1,MATK:1,MDEF:1};
+  const statMax={HP:1,ATK:1,DEF:1,SPD:1,Dodge:1,ACC:1,Crit:1,MATK:1,MDEF:1};
 
   starters.forEach(key=>{
     const bird = BIRDS?.[key];
@@ -8408,7 +8454,6 @@ function startGame() {
     critChance: bd.stats.critChance||5,
     passive: bd.passive||null,
     cardDodge: 0,
-    cardMdodge: 0,
     energyMax: 0,
     energy: 0,
     energyRegen: 0,
@@ -8420,8 +8465,6 @@ function startGame() {
   G.player.size = bd.size||'medium';
   G.player.energyMax = computePlayerMaxEnergy();
   G.player.energy = G.player.energyMax;
-  // MDodge base mirrors the bird's physical dodge stat
-  G.player.stats.mdodge = G.player.stats.dodge;
   codexMark('birds', G.player.birdKey, 'seen');
   (G.player.abilities||[]).forEach(a=>codexMark('abilities',a.id,'seen'));
   ensureMainAttackAndLoadoutRules();
@@ -8518,6 +8561,18 @@ function resetForNewBattle(){
     G.player._survivorMoltUsed=false;
     G.player._mimicUsed=false;
     G.player._mimicAbility=null;
+    G.player._blueJayHitLastTurn=false;
+    G.player._blueJayRecentHit=false;
+    G.player._shoebillHadUtilityPriorTurn=false;
+    G.player._crowMurderMindUsed=false;
+    G.player._sheetNextCrit=0;
+    G.player._hbUtilityFirst=true;
+    G.player._macawLastTurnFam='';
+    G.player._emuDustUsed=false;
+    delete G.player._magpieSpdLoan;
+    delete G.player._ostrichSpdLoan;
+    delete G.player._albatrossSpdLoan;
+    delete G.player._ravenGrimSpdLoan;
   }
 }
 
@@ -8549,7 +8604,6 @@ function buildEdFromBirdEnemyTemplate(src, opts={}){
   const isBoss=!!opts.isBoss;
   const mAtk=src.matk??6;
   const mDef=src.mdef??8;
-  const mDodge=src.mdodge??Math.max(0,Math.floor((src.dodge??10)*0.88));
   const baseEn=src.size==='xl'?5:src.size==='large'?4:src.size==='medium'?4:3;
   const aiStyle=src.aiStyle||'aggressive';
   return{
@@ -8560,7 +8614,7 @@ function buildEdFromBirdEnemyTemplate(src, opts={}){
     hp:src.hp,maxHp:src.hp,
     atk:src.atk,def:src.def,spd:src.spd,
     acc:src.acc,dodge:src.dodge,
-    matk:mAtk,mdef:mDef,mdodge:mDodge,
+    matk:mAtk,mdef:mDef,
     size:src.size||'medium',
     enemyClass:src.enemyClass||inferEnemyClassFromStyle(aiStyle),
     aiStyle,
@@ -8573,7 +8627,7 @@ function buildEdFromBirdEnemyTemplate(src, opts={}){
       hp:src.hp,maxHp:src.hp,
       atk:src.atk,def:src.def,spd:src.spd,
       acc:src.acc,dodge:src.dodge,
-      mdodge:mDodge,mdef:mDef,matk:mAtk,
+      mdef:mDef,matk:mAtk,
       cc:0.05,cd:1.5,critChance:5,critMult:1.5,
       en:baseEn,
     },
@@ -8905,7 +8959,6 @@ function refreshBattleUI() {
   const _effDef=p.def+(G.battleHymnActive?G.battleHymnDEF:0);
   const _effAcc=Math.min(100,p.acc+(G.battleHymnActive?G.battleHymnACC:0));
   const _effDodge=getEffectiveDodge(G.player);
-  const _effMDodge=getEffectiveMdodge(G.player);
   const _effSpd=(p.spd||0) + ((G.playerStatus?.slow?.spdPenalty)?-(G.playerStatus.slow.spdPenalty||0):0);
   const _effMatk=(p.matk||8);
   const _effMdef=(p.mdef||8);
@@ -8933,7 +8986,6 @@ function refreshBattleUI() {
      ${statCell('stat-def','DEF',_effDef,{title:_bt('def',p.def,_statNote('Battle DEF',_effDef-(p.def||0),'Battle Hymn increased DEF.','Debuffs reducing DEF.')),trend:_trendTag(_effDef-p.def)})}
      ${statCell('stat-mdef','MDEF',_effMdef,{title:_bt('mdef',p.mdef||8,'Magic Defence — resists enemy spells and ailments'),trend:_trendTag(_effMdef-(p.mdef||8))})}
      ${statCell('stat-dodge','Dodge',_effDodge,{suffix:'%',title:_bt('dodge',p.dodge,`Physical dodge. ${_statNote('Display',_effDodge-(p.dodge||0),'Evasion buffs active.','Debuffs reduced dodge.')}`),trend:_trendTag(_effDodge-p.dodge)})}
-     ${statCell('stat-mdodge','M.Dodge',_effMDodge,{suffix:'%',title:_bt('mdodge',p.mdodge??p.dodge??0,`Effective display ${_effMDodge}% (includes card bonuses).`),trend:_trendTag(_effMDodge-getBaseMdodge(G.player))})}
      ${statCell('stat-acc','ACC',_effAcc,{suffix:'%',title:_bt('acc',p.acc,_statNote('Battle ACC',_effAcc-(p.acc||0),'Battle Hymn increased ACC.','Blind/ruffle reduced ACC.')+_accCardBonus),trend:_trendTag(_effAcc-p.acc)})}
      ${statCell('stat-spd','SPD',_effSpd,{title:_bt('spd',p.spd,_statNote('Battle SPD',_effSpd-(p.spd||0),'Buff increased SPD.','Slow/clip effects reduced SPD.')),trend:_trendTag(_effSpd-p.spd)})}
      ${statCell('stat-cc','CC',_critChance,{suffix:'%',title:_bt('critChance',_ccBaseStore,`Shown value includes battle modifiers (e.g. burn). ${_statNote('vs stored CC',_critChance-_ccBaseStore,'Temporary buffs.','')}`),trend:_trendTag(_critChance-_ccBaseStore)})}
@@ -8954,8 +9006,7 @@ function refreshBattleUI() {
      ${enemyCell('stat-matk','MATK',ep2.matk||6,{title:'Magic attack'})}
      ${enemyCell('stat-def','DEF',ep2.def,{title:'Physical defence'})}
      ${enemyCell('stat-mdef','MDEF',ep2.mdef||8,{title:'Magic defence'})}
-     ${enemyCell('stat-dodge','Dodge',ep2.dodge||0,{suffix:'%',title:'Physical dodge'})}
-     ${enemyCell('stat-mdodge','M.Dodge',ep2.mdodge??ep2.dodge??0,{suffix:'%',title:'Magic dodge'})}
+     ${enemyCell('stat-dodge','Dodge',ep2.dodge||0,{suffix:'%',title:'Dodge'})}
      ${enemyCell('stat-acc','ACC',ep2.acc||70,{suffix:'%',title:'Accuracy'})}
      ${enemyCell('stat-spd','SPD',ep2.spd||0,{title:'Speed'})}
      ${enemyCell('stat-cc','CC',eCritChance,{suffix:'%',title:'Crit chance'})}
@@ -9108,8 +9159,6 @@ function renderStatuses(id, statuses) {
     else if (k==='tookie') { b.className='status-badge stunned'; b.textContent=`🦜 Tookie(+${v.atkBonus}%atk,${v.turns}t)`; }
     else if (k==='humDodge') { b.className='status-badge evading'; b.textContent=`🎵 Hum+${v.bonus}%(${v.turns}t)`; }
     else if (k==='lastStandBuff') { b.className='status-badge crit'; b.textContent=`🦅 LstStnd+${v.atkBonus}ATK(${v.turns}t)`; }
-    // MDodge card bonus badge (only shown when non-zero)
-    else if (k==='mdodgeCard' && v>0) { b.className='status-badge evading'; b.textContent=`✦${v}%MDdg`; }
     else if (k==='warcry') { b.className='status-badge stunned'; b.textContent=`🎺 Warcry+${v.atkBonus}%(${v.turns}t)`; }
     else if (k==='battleHymn') { b.className='status-badge evading'; b.textContent=`🎼 Hymn(${v.turns}t)`; }
     else if (k==='stunned') { b.className='status-badge stunned'; b.textContent=`😵 Stunned(${v}t)`; }
@@ -10875,13 +10924,12 @@ function getPlayerEffectiveAcc(){
   return Math.max(0,getPlayerBaseAcc()+getPlayerAccMod());
 }
 
-const SOFTCAP_K = {acc:120,dodge:120,mdodge:140};
+const SOFTCAP_K = {acc:120,dodge:120};
 const HIT_CLAMP = {min:0.15,max:0.95};
 function softCapChance(stat,k){return stat<=0?0:stat/(stat+k);}
 function clamp01(v){return Math.max(0,Math.min(1,v));}
 function getAccChance(acc){return softCapChance(Math.max(0,acc||0),SOFTCAP_K.acc);}
 function getDodgeChance(dodge){return softCapChance(Math.max(0,dodge||0),SOFTCAP_K.dodge);}
-function getMdodgeChance(mdodge){return softCapChance(Math.max(0,mdodge||0),SOFTCAP_K.mdodge);}
 function calcHitChance(attAcc,defDodge,baseHit=0.72){
   const raw = baseHit + (getAccChance(attAcc)-getDodgeChance(defDodge));
   return Math.max(HIT_CLAMP.min,Math.min(HIT_CLAMP.max,raw));
@@ -10972,7 +11020,6 @@ function getEnemyBaseStats(base){
     spd:Math.max(1,Math.floor(base.spd??s.spd??1)),
     acc:Math.max(60,Math.floor(base.acc??s.acc??70)),
     dodge:Math.max(0,Math.floor(base.dodge??s.dodge??5)),
-    mdodge:Math.max(0,Math.floor(base.mdodge??s.mdodge??(base.dodge??s.dodge??3))),
     cc:Math.max(0,Math.min(0.95,Number(ccRaw)||0.05)),
     cd:Math.max(1.1,Number(cdRaw)||1.5),
     en:Math.max(1,Math.floor(en)),
@@ -11107,7 +11154,6 @@ function buildScaledEnemy(enemyBase, stage, opts={}){
 
   const acc=Math.max(60,Math.min(96,Math.floor(accBase+Math.floor(gain/4)+(tier==='boss'?2:0))));
   const dodge=Math.max(0,Math.min(42,Math.floor(base.dodge+Math.floor(gain/6)+(tier==='boss'?2:0))));
-  const mdodge=Math.max(0,Math.min(32,Math.floor(base.mdodge+Math.floor(gain/7)+(tier==='boss'?1:0))));
 
   hp=Math.max(1,Math.round(hp));
   atk=Math.max(1,Math.round(atk));
@@ -11116,7 +11162,7 @@ function buildScaledEnemy(enemyBase, stage, opts={}){
   mdef=Math.max(0,Math.round(mdef));
   spd=Math.max(1,Math.round(spd));
 
-  return {hp,maxHp:hp,atk,def,matk,mdef,spd,acc,dodge,mdodge,cc,cd,critChance:Math.round(cc*100),critMult:cd,en:base.en,tier,enemyClass:classKey,effectiveLevel:L};
+  return {hp,maxHp:hp,atk,def,matk,mdef,spd,acc,dodge,cc,cd,critChance:Math.round(cc*100),critMult:cd,en:base.en,tier,enemyClass:classKey,effectiveLevel:L};
 }
 
 function buildScaledBoss(enemyBase, stage, opts={}){
@@ -11137,11 +11183,6 @@ function enemyScaleFactor(base, stage, diffMult){
     : buildScaledEnemy(base,stage,opts);
 }
 
-function getBaseMdodge(p) {
-  // MDodge base mirrors the bird's physical dodge stat
-  return p.stats.mdodge || p.stats.dodge || 20;
-}
-
 // Physical dodge: base stat + active buff bonuses + card bonus (capped +5)
 function getEffectiveDodge(p) {
   const cardBonus = Math.min(5, p.cardDodge || 0);
@@ -11152,15 +11193,6 @@ function getEffectiveDodge(p) {
   return Math.max(0, p.stats.dodge + buffBonus + cardBonus);
 }
 
-// Magic dodge: dedicated mdodge base stat + card bonus (capped +5)
-// Hum partially applies (50% of dodge bonus), Sitting Duck disables
-function getEffectiveMdodge(p) {
-  const cardBonus = Math.min(5, p.cardMdodge || 0);
-  const humBonus = G.playerStatus.humDodge&&G.playerStatus.humDodge.turns>0
-    ? Math.floor((G.playerStatus.humDodge.bonus||0) * 0.5) : 0;
-  if(G.playerStatus.sittingDuck) return 0;
-  return Math.max(0, getBaseMdodge(p) + humBonus + cardBonus);
-}
 function chance(p){return Math.random()*100<p;}
 
 // ------------------ STATUS HELPERS ------------------
@@ -11183,7 +11215,7 @@ function applyEnemySlow(spdPenalty,dodgePenalty,turns){
 }
 /**
  * Combat duration policy (skill audit):
- * - Stat modifiers (player/enemy ATK, MATK, DEF, MDEF, ACC, dodge/mdodge, SPD, etc.): default **1 turn**
+ * - Stat modifiers (player/enemy ATK, MATK, DEF, MDEF, ACC, dodge, SPD, etc.): default **1 turn**
  *   unless a skill is explicitly designed as sustained; same-ability refresh should replace, not stack.
  * - Ailments (Fear, Poison, Burn, Confused, Paralyze, Weaken-as-ailment track, etc.): **not** capped at 1 turn;
  *   durations may scale with skill level / template rules via applyAilment, tryApplyAilment, and bespoke handlers.
@@ -11256,6 +11288,27 @@ function dealDamage(target,amount,isCrit=false,isMagic=false,srcAbility=null) {
   if(target==='enemy' && !isMagic && !isCrit && classPerkCtx.predatorRhythm && (G.playerActionsThisTurn||0)===2 && chance(10)) isCrit=true;
   let critDmgAdd=isCrit?(G.player?.critDamageBonusPct||0):0;
   if(isCrit && target==='enemy' && (G.player?.critVsAfflictedBonusPct||0)>0 && enemyHasAfflictionForCardBonuses()) critDmgAdd+=G.player.critVsAfflictedBonusPct;
+  if(isCrit && target==='enemy'){
+    const _pid=BIRDS[G.player?.birdKey]?.passive?.id;
+    const es=G.enemyStatus||{};
+    if(_pid==='passive_snowyowl_whiteout_stalker'){
+      const delayed=!!(es.delayed&&es.delayed.dmg>0);
+      const chill=(es.chilled?.stacks||0)>0;
+      if(delayed||chill) critDmgAdd+=0.10;
+    }
+    if(_pid==='passive_cassowary_terror_kick' && (es.weaken||0)>0) critDmgAdd+=0.10;
+    if(_pid==='passive_vulture_carrion_sense' && (es.bleed?.stacks||0)>0) critDmgAdd+=0.10;
+    if(_pid==='passive_harpy_apex_grip'){
+      const ab=activeAb;
+      const k=String(ab?.btnType||ab?.type||ABILITY_TEMPLATES?.[ab?.id]?.btnType||'').toLowerCase();
+      if((k==='physical'||k==='ranged') && !G._firstAttackUsed) critDmgAdd+=0.10;
+    }
+    if((G.playerStatus.galahCritDmg||0)>0) critDmgAdd+=Math.max(0,G.playerStatus.galahCritDmg)/100;
+    const tmpl=ABILITY_TEMPLATES?.[activeAb?.id]||{};
+    const en=Number(tmpl.energy ?? tmpl.energyCost ?? activeAb?.energy ?? 1);
+    if(_pid==='passive_bustard_heavy_steps' && en>=2) critDmgAdd+=0.10;
+    if(_pid==='passive_shoebill_silent_stance' && !G.player._shoebillHadUtilityPriorTurn) critDmgAdd+=0.10;
+  }
   const critMult=(G.player.goldCritMult||1.5) + critDmgAdd;
   if (isCrit) dmg=Math.floor(dmg*critMult);
   if(target==='enemy'){
@@ -11304,52 +11357,22 @@ function dealDamage(target,amount,isCrit=false,isMagic=false,srcAbility=null) {
     if(classPerkCtx.warBody && (G.player.stats.hp||1)<=Math.floor((G.player.stats.maxHp||1)*0.5)) dmg=Math.floor(dmg*1.10);
     if(classPerkCtx.openingRush && isAttack && !G._firstAttackUsed) dmg=Math.floor(dmg*1.15);
     if(classPerkCtx.markedForDeath && (G.enemyStatus?.feared||0)>0) dmg=Math.floor(dmg*1.15);
-    if(G.player?.birdKey==='raven' && (G.enemyStatus?.feared||0)>0) dmg=Math.floor(dmg*1.12);
-    if(G.player?.birdKey==='robin' && BIRDS.robin?.passive?.id==='hedgeHunter'){
-      const accShaken=(G.enemyStatus?.accDebuff||0)>0;
-      const exposed=(G.enemyStatus?.exposedGuard?.pct||0)>0;
-      if((isAttack||isSpell) && (exposed || accShaken)) dmg=Math.floor(dmg*1.04);
+    const _esAff=G.enemyStatus||{};
+    const _burningNow=_esAff.burning && ((typeof _esAff.burning==='number'&&_esAff.burning>0)||(typeof _esAff.burning==='object'&&(_esAff.burning.turns||0)>0));
+    const _passId=BIRDS[G.player?.birdKey]?.passive?.id;
+    if(_passId==='passive_toucan_prism_beak' && _burningNow && (isAttack||isSpell)) dmg=Math.floor(dmg*1.10);
+    if(_passId==='passive_firecrest_emberwake' && _burningNow && (isAttack||isSpell)) dmg=Math.floor(dmg*1.10);
+    if(_passId==='passive_raven_grim_opportunity' && (isAttack||isSpell)){
+      const deb=(_esAff.poison?.stacks||0)>0||(_esAff.bleed?.stacks||0)>0||(_esAff.feared||0)>0||(_esAff.weaken||0)>0||(_esAff.paralyzed||0)>0||!!_esAff.confused||_burningNow||(_esAff.chilled?.stacks||0)>0||(_esAff.accDebuff||0)>0;
+      if(deb){
+        dmg=Math.floor(dmg*1.04);
+        if(!G.player._ravenGrimSpdThisTurn){ G.player.stats.spd=(G.player.stats.spd||1)+4; G.player._ravenGrimSpdThisTurn=true; G.player._ravenGrimSpdLoan=4; }
+      }
     }
-    if(G.player?.birdKey==='bowerbird' && BIRDS.bowerbird?.passive?.id==='collectorInstinct'){
-      const es=G.enemyStatus||{};
-      const compromised=(es.feared||0)>0||!!es.confused||(es.weaken||0)>0||(es.exposedGuard?.pct||0)>0;
-      if((isAttack||isSpell)&&compromised) dmg=Math.floor(dmg*1.05);
+    if(_passId==='passive_magpie_shiny_opportunist' && isCrit && isAttack && !(G.player._magpieCritSpdThisTurn)){
+      G.player._magpieCritSpdThisTurn=true;
+      G.playerStatus.magpieSpdNext=4;
     }
-    if(G.player?.birdKey==='toucan' && BIRDS.toucan?.passive?.id==='vividReach'){
-      const es=G.enemyStatus||{};
-      const vivid=!!es.confused||(es.weaken||0)>0||(es.exposedGuard?.pct||0)>0||((es.slow&&typeof es.slow==='object'?(es.slow.turns||0):Number(es.slow)||0)>0);
-      if((isAttack||isSpell)&&vivid) dmg=Math.floor(dmg*1.06);
-    }
-    if(G.player?.birdKey==='swan' && BIRDS.swan?.passive?.id==='lineOfGrace'){
-      const es=G.enemyStatus||{};
-      const accLoss=(es.accDebuff||0)>=8;
-      const poised=(es.exposedGuard?.pct||0)>0||(es.weaken||0)>0;
-      if((isAttack||isSpell)&&(accLoss||poised)) dmg=Math.floor(dmg*1.06);
-    }
-    if(G.player?.birdKey==='flamingo' && BIRDS.flamingo?.passive?.id==='marshPoise'){
-      const es=G.enemyStatus||{};
-      const slowOn=(es.slow&&((typeof es.slow==='object'&&(es.slow.turns||0)>0)||(typeof es.slow==='number'&&es.slow>0)));
-      const weak=(es.weaken||0)>0;
-      if((isAttack||isSpell)&&(slowOn||weak)) dmg=Math.floor(dmg*1.06);
-      if((isAttack||isSpell)&&(es.accDebuff||0)>=10) dmg=Math.floor(dmg*1.04);
-    }
-    if(G.player?.birdKey==='albatross' && BIRDS.albatross?.passive?.id==='tradeWinds'){
-      const es=G.enemyStatus||{};
-      const slowOn=(es.slow&&((typeof es.slow==='object'&&(es.slow.turns||0)>0)||(typeof es.slow==='number'&&es.slow>0)));
-      if(isAttack && slowOn) dmg=Math.floor(dmg*1.06);
-    }
-    if((G.player?.birdKey==='secretary'||G.player?.birdKey==='secretarybird') && BIRDS.secretary?.passive?.id==='stiltVerdict'){
-      const es=G.enemyStatus||{};
-      const slowOn=(es.slow&&((typeof es.slow==='object'&&(es.slow.turns||0)>0)||(typeof es.slow==='number'&&es.slow>0)));
-      const para=(es.paralyzed||0)>0;
-      if(isAttack && para) dmg=Math.floor(dmg*1.06);
-      if(isAttack && slowOn) dmg=Math.floor(dmg*1.05);
-      if(isAttack && (G.enemy.stats.hp||1)<=Math.floor((G.enemy.stats.maxHp||1)*0.45)) dmg=Math.floor(dmg*1.05);
-    }
-    if(G.player?.birdKey==='blackCockatoo' && ((G.enemyStatus?.feared||0)>0 || (G.enemyStatus?.paralyzed||0)>0)) dmg=Math.floor(dmg*1.08);
-    if(G.player?.birdKey==='kookaburra' && ((G.enemyStatus?.feared||0)>0 || (G.enemyStatus?.paralyzed||0)>0)) dmg=Math.floor(dmg*1.05);
-    if((G.player?.birdKey==='harpy' || G.player?.birdKey==='harpyeagle') && (G.enemy.stats.hp||1)<=Math.floor((G.enemy.stats.maxHp||1)*0.4)) dmg=Math.floor(dmg*1.18);
-    if(G.player?.birdKey==='seagull' && BIRDS.seagull?.passive?.id==='scavengeFlock' && (G.enemy.stats.hp||1)<=Math.floor((G.enemy.stats.maxHp||1)*0.6)) dmg=Math.floor(dmg*1.20);
     if(classPerkCtx.executionLine && (G.enemy.stats.hp||1)<=Math.floor((G.enemy.stats.maxHp||1)*0.4)) dmg=Math.floor(dmg*1.20);
     if(classPerkCtx.patientHunter && !G._perkFirstVsFullUsed && (G.enemy.stats.hp||0)>=(G.enemy.stats.maxHp||1)){
       dmg=Math.floor(dmg*1.15);
@@ -11401,8 +11424,9 @@ function dealDamage(target,amount,isCrit=false,isMagic=false,srcAbility=null) {
     G._currentPiercePct=0;
   } else { G._currentPiercePct=0; }
   if (target==='player') {
-    if(isMagic) dmg=Math.max(1,Math.floor(dmg*calcDefenseMultiplier(G.player.stats.mdef||0)));
-    else dmg=Math.max(1,Math.floor(dmg*calcDefenseMultiplier(G.player.stats.def||0)));
+    const _aura=getPassiveDefMdefBonuses();
+    if(isMagic) dmg=Math.max(1,Math.floor(dmg*calcDefenseMultiplier((G.player.stats.mdef||0)+_aura.mdef)));
+    else dmg=Math.max(1,Math.floor(dmg*calcDefenseMultiplier((G.player.stats.def||0)+_aura.def)));
     if((G.enemyStatus?.feared||0)>0 && G.player?.relTerrorLedger) dmg=Math.max(1,Math.floor(dmg*0.90));
     if(G.playerStatus?.ironResolve && G.playerStatus.ironResolve.turns>0) dmg=Math.max(1,Math.floor(dmg*0.80));
     const _bd=BIRDS[G.player.birdKey];
@@ -11459,6 +11483,7 @@ function dealDamage(target,amount,isCrit=false,isMagic=false,srcAbility=null) {
       dmg=Math.max(1,Math.floor(dmg*(1-passiveEvoBonus.drPct)));
     }
     G.player.stats.hp-=dmg;
+    if(BIRDS[G.player?.birdKey]?.passive?.id==='passive_bluejay_territorial_fury' && dmg>0) G.player._blueJayRecentHit=true;
     if((G.player?.lowHpSpdBonus||0)>0 && !G.player._lowHpSpdApplied && G.player.stats.hp<=Math.floor((G.player.stats.maxHp||1)*0.5)){
       G.player.stats.spd=(G.player.stats.spd||0)+G.player.lowHpSpdBonus;
       G.player._lowHpSpdApplied=true;
@@ -11570,6 +11595,7 @@ function dealDamage(target,amount,isCrit=false,isMagic=false,srcAbility=null) {
     const bleedFromCrit = isCrit ? ((G.player?.critBleed||0) + (G.player?.passiveBleedOnCrit||0)) : 0;
     if(canBleedHit && bleedFromCrit>0) applyAilment('enemy','bleed',bleedFromCrit);
     registerHit();
+    if(isAttack && (G.player._sheetNextCrit||0)>0) G.player._sheetNextCrit=0;
   }
   return {dmgDealt:dmg,wasDodged:false,wasBlocked,isCrit};
 }
@@ -11591,7 +11617,10 @@ function pdmg(mult=1,ab=null,opts={}) {
     const lv=Math.min(ab.level,4);
     const piercePct=(tmpl?.pierceDef||0) + (lv>=2?5:0) + (lv>=3?5:0); // scales per level
     G._currentPiercePct = piercePct;
-    // Kiwi Probe Master: high HP bonus
+    if(BIRDS[G.player.birdKey]?.passive?.id==='passive_kiwi_burrow_sense' && !G._firstAttackUsed) G._currentPiercePct=(G._currentPiercePct||0)+10;
+    const enCost=Number(tmpl.energy ?? tmpl.energyCost ?? ab?.energy ?? 1);
+    if(BIRDS[G.player.birdKey]?.passive?.id==='passive_secretary_long_leg_reach' && enCost<=1) G._currentPiercePct=(G._currentPiercePct||0)+10;
+    // Kiwi: high HP bonus (legacy curve)
     if(G.player.birdKey==='kiwi'&&G.enemy.stats.hp/G.enemy.stats.maxHp>0.75) base=Math.floor(base*1.10);
   } else {
     G._currentPiercePct=0;
@@ -11773,6 +11802,7 @@ function getPlayerMissChance(ab) {
   if((G.player?.augPostDefAcc||0)>0 && G.playerStatus?.postDefAccNext){ extra += G.player.augPostDefAcc; delete G.playerStatus.postDefAccNext; }
   if(G.player?.relHawkLedger && isEndlessRunActive()){ const eb=G.endlessBattle||0; if(eb>=10) extra+=8; if(eb>=20) extra+=8; if(eb>=30) extra+=8; }
   extra += (G.player?.hitChanceBonus||0);
+  if(BIRDS[G.player?.birdKey]?.passive?.id==='passive_barnowl_silent_approach' && isAttack && !G._firstAttackUsed && (G.player.stats.hp||0)>=(G.player.stats.maxHp||1)) accBonus+=10;
   return Math.max(floor, reduced - accBonus + tookiePenalty - (G.playerStatus.accDebuff||0) + classAdj + sizeAdj - missReduce - extra - getPlayerHitBonus(ab));
 }
 
@@ -11892,12 +11922,41 @@ function applyAilment(target,ailId,stacks=1) {
         G.enemy.stats.spd=cur;
         status.chilled.spdLost=(status.chilled.spdLost||0)+spdDrop;
       }
+      if(G.player?.birdKey==='albatross' && BIRDS.albatross?.passive?.id==='passive_albatross_cold_current'){
+        G.playerStatus.albatrossChillSpd=4;
+      }
     }
   } else if (ailId==='feared') {
     const extra=((target==='enemy')&&G.player?.mutDarkChorus)?1:0;
     status.feared=(status.feared||0)+stacks+extra;
   } else if (ailId==='delayed') {
     // set by caller with specific dmg
+  }
+  if(target==='enemy' && G.player){
+    const pid=BIRDS[G.player.birdKey]?.passive?.id;
+    if(pid==='passive_crow_murder_mind' && !G.player._crowMurderMindUsed){
+      const debKeys=new Set(['poison','bleed','weaken','paralyzed','feared','burning','chilled','confused','slow']);
+      if(debKeys.has(ailId) || ailId==='mud'){
+        G.player._crowMurderMindUsed=true;
+        if(ailId==='poison' && status.poison) status.poison.turns=(status.poison.turns||0)+1;
+        if(ailId==='bleed' && status.bleed) status.bleed.turns=(status.bleed.turns||0)+1;
+        if(ailId==='weaken') status.weaken=(status.weaken||0)+1;
+        if(ailId==='paralyzed') status.paralyzed=(status.paralyzed||0)+1;
+        if(ailId==='feared') status.feared=(status.feared||0)+1;
+        if(ailId==='burning'){
+          if(typeof status.burning==='number') status.burning+=1;
+          else if(status.burning&&typeof status.burning==='object') status.burning.turns=(status.burning.turns||0)+1;
+        }
+        if(ailId==='chilled' && status.chilled) status.chilled.turns=(status.chilled.turns||0)+1;
+        if(ailId==='confused' && status.confused&&typeof status.confused==='object') status.confused.turns=(status.confused.turns||0)+1;
+        if(ailId==='slow' && status.slow&&typeof status.slow==='object') status.slow.turns=(status.slow.turns||0)+1;
+      }
+    }
+    if(pid==='passive_dukeblakiston_court_of_night' && (ailId==='feared' || ailId==='weaken')){
+      G.playerStatus.dukeCourtBuff={atk:4, matk:4, turns:1};
+      G.player.stats.atk=(G.player.stats.atk||0)+4;
+      G.player.stats.matk=(G.player.stats.matk||0)+4;
+    }
   }
   return true;
 }
@@ -11921,6 +11980,16 @@ function getPlayerCritChance(ab) {
   const owlLens=G.playerStatus?.owlCritFocus;
   if(isAttack && owlLens && (owlLens.turns||0)>0) base += (owlLens.bonus||0);
   if((isAttack||kind==='spell') && G._pendingStrikeActionMods?.critBonus) base += G._pendingStrikeActionMods.critBonus;
+  const _pcId=BIRDS[G.player?.birdKey]?.passive?.id;
+  if(isAttack && (G.player._sheetNextCrit||0)>0) base += G.player._sheetNextCrit;
+  if(_pcId==='passive_peregrine_kill_dive' && isAttack && G.enemy && (G.enemy.stats.hp||1)<=Math.floor((G.enemy.stats.maxHp||1)*0.5)) base += 10;
+  if(_pcId==='passive_kookaburra_laughing_ambush' && isAttack && G.enemyStatus?.confused) base += 10;
+  const chillStacks=G.enemyStatus?.chilled?.stacks||0;
+  if(_pcId==='passive_flamingo_cold_wader' && (isAttack||kind==='spell')) base += chillStacks*5;
+  if(_pcId==='passive_marabou_rot_feast' && (isAttack||kind==='spell') && (G.enemyStatus?.poison?.stacks||0)>0) base += 10;
+  if((_pcId==='passive_goldeneagle_sun_hunter' || _pcId==='passive_baldeagle_sky_dominance') && isAttack && G.enemy && (G.enemy.stats.hp||1)<(G.enemy.stats.maxHp||1)) base += 10;
+  if(_pcId==='passive_harpy_apex_grip' && isAttack && !G._firstAttackUsed) base += 10;
+  if(_pcId==='passive_bluejay_territorial_fury' && isAttack && G.player._blueJayHitLastTurn) base += 10;
   return Math.min(100,base);
 }
 
@@ -11928,6 +11997,9 @@ function getPlayerHitBonus(ab) {
   let n=0;
   if (G.playerStatus.burning&&G.playerStatus.burning>0) n+=20;
   if (G._pendingStrikeActionMods?.hitBonus) n+=G._pendingStrikeActionMods.hitBonus;
+  if((G.playerStatus.macawFlairAcc||0)>0) n+=G.playerStatus.macawFlairAcc;
+  if((G.playerStatus.lyreAccSong||0)>0){ n+=G.playerStatus.lyreAccSong; delete G.playerStatus.lyreAccSong; }
+  if(BIRDS[G.player?.birdKey]?.passive?.id==='passive_wagtail_mocking_step' && G.enemyStatus?.confused) n+=10;
   return n;
 }
 
@@ -11979,9 +12051,6 @@ async function tickDoTs(who) {
   // Delayed (Resonance)
   if (status.delayed&&status.delayed.dmg>0) {
     let dmg=status.delayed.dmg;
-    if(who==='enemy' && G.player?.birdKey==='flamingo' && BIRDS.flamingo?.passive?.id==='marshPoise'){
-      dmg=Math.max(1, Math.floor(dmg*1.12));
-    }
     stats.hp-=dmg;
     spawnFloat(who,`🎵 -${dmg}`,'fn-status');
     setHpBar(who,stats.hp,stats.maxHp);
@@ -12160,7 +12229,7 @@ const ACTIONS = {
     await doSpell('enemy','🌀 Confused!');
     renderStatuses('enemy-status',G.enemyStatus);
     logMsg(`🎵 Dirge! ${G.enemy.name} confused ${turns}t (${skipC}% skip).`,'player-action');
-    const _bbD=BIRDS[G.player.birdKey];if(_bbD&&_bbD.passive&&_bbD.passive.onSpell){_bbD.passive.onSpell(G.player);setHpBar('player',G.player.stats.hp,G.player.stats.maxHp);spawnFloat('player','+2 Song','fn-heal');}
+    triggerBlackbirdSpellPassive();
   },
   async lullaby(ab) {
     const lv=ab.level;
@@ -12172,7 +12241,7 @@ const ACTIONS = {
     await doSpell('enemy','💤 Lullabied!');
     renderStatuses('enemy-status',G.enemyStatus);
     logMsg(`🎶 Lullaby! ATK reduced ${turns}t${dDmg>0?`, Resonance ${dDmg}`:''}.`,'player-action');
-    const _bbL=BIRDS[G.player.birdKey];if(_bbL&&_bbL.passive&&_bbL.passive.onSpell){_bbL.passive.onSpell(G.player);setHpBar('player',G.player.stats.hp,G.player.stats.maxHp);spawnFloat('player','+2 Song','fn-heal');}
+    triggerBlackbirdSpellPassive();
   },
   async crowStrike(ab) {
     const lv=ab.level;
@@ -13039,14 +13108,13 @@ const ACTIONS = {
   async skipTurn(ab) {
     spawnFloat('player','⏭ Skip','fn-status');
     await delay(350);
-    logMsg(`⏭ Skip Turn — you passed and kept Dodge/MDodge.`,'player-action');
+    logMsg(`⏭ Skip Turn — you passed and kept Dodge.`,'player-action');
   },
   async sittingDuck(ab) {
-    G.playerStatus.sittingDuck=1; // dodge/mdodge=0 this round
-    G.playerStatus.mdodgeSittingDuck=1;
+    G.playerStatus.sittingDuck=1; // dodge=0 this round
     spawnFloat('player','🦆 Nothing...','fn-status');
     await delay(600);
-    logMsg(`🦆 Sitting Duck... you just stood there (Dodge/MDodge now 0).`,'player-action');
+    logMsg(`🦆 Sitting Duck... you just stood there (Dodge now 0).`,'player-action');
   },
   async warcry(ab) {
     const lv=ab.level;
@@ -13173,7 +13241,7 @@ const ACTIONS = {
     G.enemy.stats.dodge=0;
     await doSpell('enemy',`🪱 Riot! +${heal}`);
     if(lv>=4&&tryApplyAilment('enemy','weaken',ab))spawnFloat('enemy','🐔 Weaken!','fn-status');
-    logMsg(`🪱 Worm Riot: enemy healed ${heal}, but Dodge/MDodge exposed for 2t.`,'player-action');
+    logMsg(`🪱 Worm Riot: enemy healed ${heal}, but Dodge exposed for 2t.`,'player-action');
   },
   async supersonic(ab) {
     const lv=ab.level;
@@ -14255,6 +14323,147 @@ Object.entries(CROW_SKILL_ACTION_OVERRIDES).forEach(([id, fn])=>{ ACTIONS[id]=fn
   kiwiScrape.forEach(([nid,sid,name])=>registerAbilityAlias(nid,sid,name));
 })();
 
+(function registerPlaceholderSpeciesAbilityAliases(){
+  [
+    ['wren_bramble_peck','multiPeck','Bramble Peck'],['wren_thornflight','dart','Thornflight'],['wren_hedge_feint','windFeint','Hedge Feint'],['wren_briar_step','trackPrey','Briar Step'],
+    ['fwren_azure_trill','dark_song','Azure Trill'],['fwren_sunthread_call','gloom_wing','Sunthread Call'],['fwren_glimmer_peck','shadow_peck','Glimmer Peck'],['fwren_blue_refrain','grim_sign','Blue Refrain'],
+    ['firecrest_ember_beak','needle_jab','Ember Beak'],['firecrest_flare_dart','dash','Flare Dart'],['firecrest_ashstep','blink_flutter','Ash Step'],['firecrest_kindle_mark','combo_strike','Kindle Mark'],
+    ['wagtail_snap','swoop','Wagtail Snap'],['wagtail_flicker_strike','steal_shine','Flicker Strike'],['wagtail_jeering_call','feather_flick','Jeering Call'],['wagtail_shadow_flick','dart','Shadow Flick'],
+    ['galah_pink_jab','echo_note','Pink Jab'],['galah_showstopper','mimic_song','Showstopper'],['galah_shrill_burst','feather_taunt','Shrill Burst'],['galah_spotlight_mark','chorus_mark','Spotlight Mark'],
+    ['bluejay_crest_jab','talon_jab','Crest Jab'],['bluejay_jaybreaker','dive','Jaybreaker'],['bluejay_crest_guard','keen_eye','Crest Guard'],['bluejay_raucous_cry','aerial_pace','Raucous Cry'],
+    ['cardinal_crimson_note','quick_peck','Crimson Note'],['cardinal_scarlet_hymn','bright_chirp','Scarlet Hymn'],['cardinal_crest_jab','dart_rush','Crest Jab'],['cardinal_red_refrain','hop_step','Red Refrain'],
+    ['bturkey_scrap_peck','raptorKick','Scrap Peck'],['bturkey_brush_crash','warStomp','Brush Crash'],['bturkey_bush_guard','momentumCharge','Bush Guard'],['bturkey_rattle_call','crushingTalon','Rattle Call'],
+    ['vulture_grave_jab','powerKick','Grave Jab'],['vulture_corpse_crush','stampedeStrike','Corpse Crush'],['vulture_bone_ward','sandKick','Bone Ward'],['vulture_grave_dirge','momentumCharge','Grave Dirge'],
+    ['barnowl_talon','talon_snap','Talon'],['barnowl_shadow_dive','silent_dive','Shadow Dive'],['barnowl_death_glare','owl_eye','Death Glare'],['barnowl_silent_glide','frost_glide','Silent Glide'],
+    ['bustard_heavy_jab','headWhip','Heavy Jab'],['bustard_dust_trample','warCharge','Dust Trample'],['bustard_plainshield','sandKick','Plainshield'],['bustard_steppe_call','momentumStrike','Steppe Call'],
+    ['golden_sun_talon','skyTalon','Sun Talon'],['golden_sovereign_dive','guard','Sovereign Dive'],['golden_sky_verdict','predatorMark','Sky Verdict'],['golden_hunters_majesty','freedomCry',"Hunter's Majesty"],
+    ['pelican_hookbill_snap','icebreakerHonk','Hookbill Snap'],['pelican_pouch_crush','snowWall','Pouch Crush'],['pelican_broadside_guard','guard','Broadside Guard'],['pelican_stillwater_recovery','tundraCall','Stillwater Recovery'],
+    ['marabou_rotbeak_jab','beak_jab','Rotbeak Jab'],['marabou_ghoul_lunge','omen_call','Ghoul Lunge'],['marabou_bone_sentence','dark_watch','Bone Sentence'],['marabou_grave_hunt','fate_mark','Grave Hunt'],
+  ].forEach(([nid,sid,name])=>registerAbilityAlias(nid,sid,name));
+})();
+
+function getSkillFamilyIdForPlayerAbility(abilityId){
+  const raw=String(abilityId||'');
+  if(!raw||!G.player) return '';
+  let canon=raw;
+  try{ canon=resolveAbilityAliasSourceId(raw); }catch(_){}
+  const slots=G.player.familyEvolutionState?.skillSlots;
+  if(Array.isArray(slots)){
+    for(let i=0;i<slots.length;i++){
+      const sid=String(slots[i]?.abilityId||'');
+      if(sid===raw||sid===canon) return String(slots[i]?.familyId||`slot${i}`);
+    }
+  }
+  return raw.split('_')[0]||'misc';
+}
+
+function getPassiveDefMdefBonuses(){
+  let def=0,mdef=0;
+  const p=G.player, bd=BIRDS[p?.birdKey], id=bd?.passive?.id;
+  if(!p?.stats) return {def,mdef};
+  const hp=p.stats.hp||0, mx=Math.max(1,p.stats.maxHp||1);
+  if(id==='passive_swan_regal_bearing' && hp>mx*0.7){ def+=4; mdef+=4; }
+  if(id==='passive_penguin_icebound_plating' && hp>mx*0.5) mdef+=4;
+  if(id==='passive_bushturkey_scrapper' && hp<=mx*0.5) def+=4;
+  return {def,mdef};
+}
+
+function wireAvianSheetPassiveHooks(){
+  const setHooks=(birdKey, h)=>{
+    const b=BIRDS[birdKey];
+    if(b?.passive) Object.assign(b.passive,h);
+  };
+  setHooks('sparrow',{onBattleStart(p){ p._sheetNextCrit=0; },onUtilityUse(p){ p._sheetNextCrit=10; }});
+  setHooks('wren',{onUtilityUse(){ applyPendingStrikeBuff({hitBonus:10,sourceAbilityId:'passive_wren'}); }});
+  setHooks('seagull',{onUtilityUse(){ applyPendingStrikeBuff({hitBonus:10,sourceAbilityId:'passive_seagull'}); }});
+  setHooks('hummingbird',{onBattleStart(p){ p._hbUtilityFirst=true; },onUtilityUse(p){
+    if(!p._hbUtilityFirst) return;
+    p._hbUtilityFirst=false;
+    G.playerStatus.hummingbirdSpd={bonus:6, turns:2};
+    p.stats.spd=(p.stats.spd||1)+6;
+  }});
+  setHooks('macaw',{onBattleStart(p){ p._macawFamCompared=false; p._macawLastTurnFam=''; p._macawFamThisTurn=''; },onAbilityUse(p,ab){
+    const fam=getSkillFamilyIdForPlayerAbility(ab?.id);
+    p._macawFamThisTurn=fam;
+    if(!p._macawFamCompared){
+      p._macawFamCompared=true;
+      if(p._macawLastTurnFam && fam && fam!==p._macawLastTurnFam) G.playerStatus.macawFlairAcc=10;
+    }
+  },onTurnEnd(p){
+    p._macawLastTurnFam=p._macawFamThisTurn||p._macawLastTurnFam;
+    p._macawFamCompared=false;
+  }});
+  setHooks('goose',{onBattleStart(p){
+    const bonus=4;
+    G.playerStatus.gooseHonkDef={amt:bonus, turns:1};
+    p.stats.def=(p.stats.def||0)+bonus;
+  }});
+  setHooks('cardinal',{onBattleStart(p){
+    const bonus=4;
+    G.playerStatus.cardinalMatk={amt:bonus, turns:1};
+    p.stats.matk=(p.stats.matk||0)+bonus;
+  }});
+  setHooks('bowerbird',{onBattleStart(p){ p._bowerFirstUtil=true; },onUtilityUse(p){
+    if(!p._bowerFirstUtil) return;
+    p._bowerFirstUtil=false;
+    applyPendingStrikeBuff({hitBonus:10,critBonus:5,sourceAbilityId:'passive_bowerbird'});
+  }});
+  setHooks('blackcockatoo',{onAbilityUse(p,ab){
+    const k=String(ab?.btnType||ab?.type||ABILITY_TEMPLATES?.[ab?.id]?.btnType||'').toLowerCase();
+    if(k!=='spell') return;
+    G.playerStatus.cockatooSongMatk={amt:4, turns:1};
+    p.stats.matk=(p.stats.matk||0)+4;
+  }});
+  setHooks('galah',{onAbilityUse(p,ab){
+    const k=String(ab?.btnType||ab?.type||ABILITY_TEMPLATES?.[ab?.id]?.btnType||'').toLowerCase();
+    if(k!=='spell' && k!=='utility') return;
+    const nm=String(ab?.name||ab?.id||'').toLowerCase();
+    if(k==='utility' && !/(call|song|cry|shriek|chorus|hymn|note|trill|mimic|burst|taunt)/.test(nm)) return;
+    G.playerStatus.galahCritDmg=5;
+  }});
+  setHooks('ostrich',{onAbilityUse(p,ab){
+    const t=ABILITY_TEMPLATES?.[ab?.id]||{};
+    const en=Number(t.energy ?? t.energyCost ?? ab?.energy ?? 1);
+    if(en>=2) G.playerStatus.ostrichSpdNext=4;
+  }});
+  setHooks('emu',{onBattleStart(p){ p._emuDustUsed=false; },onAbilityUse(p,ab){
+    if(p._emuDustUsed) return;
+    const blob=String(ab?.id||'')+String(ab?.name||'').toLowerCase();
+    if(/tailwind|rush|gust|pace|stride|momentum|dash|flutter|charge|sprint|skitter|surge|bolt|flurry/i.test(blob)){
+      p.stats.spd=(p.stats.spd||1)+2;
+      p._emuDustUsed=true;
+    }
+  }});
+  setHooks('lyrebird',{onBattleStart(p){ p._lyreFirstSong=true; },onAbilityUse(p,ab){
+    const k=String(ab?.btnType||ab?.type||ABILITY_TEMPLATES?.[ab?.id]?.btnType||'').toLowerCase();
+    if(k!=='spell' && k!=='utility') return;
+    if(!p._lyreFirstSong) return;
+    p._lyreFirstSong=false;
+    G.playerStatus.lyreAccSong=10;
+  }});
+  setHooks('fairywren',{onBattleStart(p){ p._fwrenFirstSong=true; },onAbilityUse(p,ab){
+    const k=String(ab?.btnType||ab?.type||ABILITY_TEMPLATES?.[ab?.id]?.btnType||'').toLowerCase();
+    if(k!=='spell') return;
+    if(!p._fwrenFirstSong) return;
+    p._fwrenFirstSong=false;
+    G.playerStatus.fairywrenMatk={amt:4, turns:1};
+    p.stats.matk=(p.stats.matk||0)+4;
+  }});
+  setHooks('robin',{onUtilityUse(p,ab){
+    const k=String(ab?.btnType||ab?.type||ABILITY_TEMPLATES?.[ab?.id]?.btnType||'').toLowerCase();
+    if(k!=='utility') return;
+    const blob=String(ab?.id||'')+String(ab?.name||'').toLowerCase();
+    if(!/heal|mend|soothe|recover|renew|buff|shield|guard|brace|chirp|bright|hop|grace|bless|rally|ward|pose|stance|gift|cleanse/i.test(blob)) return;
+    const old=G.playerStatus.robinDawnMatk;
+    if(old&&old.amt) p.stats.matk=Math.max(0,(p.stats.matk||0)-(old.amt||0));
+    G.playerStatus.robinDawnMatk={amt:4, turns:1};
+    p.stats.matk=(p.stats.matk||0)+4;
+  }});
+  setHooks('shoebill',{onUtilityUse(){ G.playerStatus.shoebillUsedUtility=1; }});
+  setHooks('pelican',{onBattleStart(){ G.player._pelicanDeepPouch=true; }});
+}
+wireAvianSheetPassiveHooks();
+
 const GOOSE_TWO_EN_TREE_IDS = Object.freeze([
   'gos_body_check','gos_heavy_slam','gos_dominance_crush','gos_pressing_check','gos_pressing_slam','gos_suffocating_crush','gos_cracking_check','gos_break_slam','gos_collapse_crush',
   'talon_slam','heavy_talon','trample_slam','crushing_stampede','wing_buffet','bone_buffet','gale_crush','rending_talon','finisher_slam','execution_crush','heavyTalon','fearHonk',
@@ -15137,11 +15346,7 @@ registerAbilityAlias('comboStrike','combo_strike','Combo Strike',{type:'utility'
 
 function triggerBlackbirdSpellPassive(){
   const bd=BIRDS[G.player?.birdKey];
-  if(bd?.passive?.onSpell){
-    bd.passive.onSpell(G.player);
-    setHpBar('player',G.player.stats.hp,G.player.stats.maxHp);
-    spawnFloat('player','+Song','fn-heal');
-  }
+  if(bd?.passive?.onSpell) bd.passive.onSpell(G.player);
 }
 async function executeBlackbirdSpellAction(ab, config={}){
   const lv=Math.max(1, Math.min(4, Number(ab?.level)||1));
@@ -18596,6 +18801,19 @@ function ensureStarterKitEnergySmoothing(){
 }
 ensureStarterKitEnergySmoothing();
 
+function checkBlackbirdOmenChorusAfterAbility(prev){
+  if(G.player?.birdKey!=='blackbird' || BIRDS.blackbird?.passive?.id!=='passive_blackbird_omen_chorus') return;
+  const now=G.enemyStatus?.delayed;
+  if(!now||now.dmg==null) return;
+  const pSig=prev&&prev.dmg!=null?Number(prev.dmg):null;
+  const nSig=Number(now.dmg);
+  if(pSig!==null && pSig===nSig) return;
+  const old=G.playerStatus.blackbirdOmenMatk;
+  if(old&&old.amt) G.player.stats.matk=Math.max(0,(G.player.stats.matk||0)-(old.amt||0));
+  G.playerStatus.blackbirdOmenMatk={amt:4, turns:1};
+  G.player.stats.matk=(G.player.stats.matk||0)+4;
+}
+
 async function playerAction(ab,fromQueue=false) {
   const now=(typeof performance!=='undefined'&&performance.now)?performance.now():Date.now();
   if(now<(G._actionTapLockUntil||0)) return;
@@ -18616,7 +18834,8 @@ async function playerAction(ab,fromQueue=false) {
   if(G.playerStatus.roosting==='pending'){
     const rd=G._roostData||{pct:.25,lv:1};
     const {pct,lv}=rd;
-    const heal=Math.max(1,Math.floor(G.player.stats.maxHp*pct));
+    let heal=Math.max(1,Math.floor(G.player.stats.maxHp*pct));
+    if(BIRDS[G.player?.birdKey]?.passive?.id==='passive_pelican_deep_pouch') heal=Math.floor(heal*1.1);
     G.player.stats.hp=Math.min(G.player.stats.hp+heal,G.player.stats.maxHp);
     await doHeal('player',heal);
     setHpBar('player',G.player.stats.hp,G.player.stats.maxHp);
@@ -18677,6 +18896,7 @@ async function playerAction(ab,fromQueue=false) {
   codexMark('abilities',ab.id,'used');
   if(G.enemy?.id==='duke_blakiston') dukeTrackDecree(ab.id);
   G._activePlayerAbility=ab;
+  const _delayedBeforeAbility = (G.enemyStatus?.delayed && G.enemyStatus.delayed.dmg!=null) ? {dmg:G.enemyStatus.delayed.dmg} : null;
   const _abKindNow=String(ab?.btnType||ab?.type||ABILITY_TEMPLATES?.[ab?.id]?.btnType||ABILITY_TEMPLATES?.[ab?.id]?.type||'').toLowerCase();
   const classPerkCtx=applyClassPerksToCombatContext(G.player?.birdKey,{});
   if(_abKindNow==='utility' && classPerkCtx.quickTheft && !G._perkUtilityRefundUsed){
@@ -18713,6 +18933,7 @@ async function playerAction(ab,fromQueue=false) {
     G.actionDamageHitsRemaining=1;
     await ACTIONS[ab.id](ab);
   }
+  checkBlackbirdOmenChorusAfterAbility(_delayedBeforeAbility);
   const _abKind=String(ab?.btnType||ab?.type||ABILITY_TEMPLATES?.[ab?.id]?.btnType||ABILITY_TEMPLATES?.[ab?.id]?.type||'').toLowerCase();
   if((_abKind==='physical'||_abKind==='ranged') && classPerkCtx.ironMomentum && /heavy|slam|crusher|smash/i.test((ab.name||ab.id||'').toLowerCase())){
     addStatus(G.playerStatus,'defending',1,999);
@@ -18728,9 +18949,10 @@ async function playerAction(ab,fromQueue=false) {
   if(ab.btnType==='spell' || ab.type==='spell'){
     reduceOtherSpellCooldownsOnCast(ab.id);
   }
-  // Passive: onAbilityUse (Flamingo Balance Master — stance tracking)
+  // Passive: onAbilityUse / onUtilityUse
   const _flBd=BIRDS[G.player.birdKey];
   if(_flBd&&_flBd.passive&&_flBd.passive.onAbilityUse) _flBd.passive.onAbilityUse(G.player,ab);
+  if(_abKind==='utility' && _flBd&&_flBd.passive&&_flBd.passive.onUtilityUse) _flBd.passive.onUtilityUse(G.player,ab);
   if(flybyWasCharged) G.actionDamageMult=1;
   delete G._pendingStrikeActionMods;
   G._activePlayerAbility=null;
@@ -18755,6 +18977,27 @@ function startPlayerTurn(player){
   G.playerActionsThisTurn=0;
   G.playerTurnFlags={energyGainedThisTurn:0,onHitTriggered:false,firstAttackResolved:false};
   G.utilityUsedThisTurn={};
+  G.player._blueJayHitLastTurn=!!G.player._blueJayRecentHit;
+  G.player._blueJayRecentHit=false;
+  G.player._shoebillHadUtilityPriorTurn=!!G.playerStatus.shoebillUsedUtility;
+  delete G.playerStatus.shoebillUsedUtility;
+  G.player._magpieCritSpdThisTurn=false;
+  if(G.playerStatus.magpieSpdNext){
+    const add=G.playerStatus.magpieSpdNext;
+    G.player.stats.spd=(G.player.stats.spd||1)+add;
+    G.player._magpieSpdLoan=add;
+    delete G.playerStatus.magpieSpdNext;
+  }
+  if(G.playerStatus.ostrichSpdNext){
+    G.player.stats.spd=(G.player.stats.spd||1)+G.playerStatus.ostrichSpdNext;
+    G.player._ostrichSpdLoan=G.playerStatus.ostrichSpdNext;
+    delete G.playerStatus.ostrichSpdNext;
+  }
+  if(G.playerStatus.albatrossChillSpd){
+    G.player.stats.spd=(G.player.stats.spd||1)+G.playerStatus.albatrossChillSpd;
+    G.player._albatrossSpdLoan=G.playerStatus.albatrossChillSpd;
+    delete G.playerStatus.albatrossChillSpd;
+  }
   if(G.playerStatus.perkSlipstream){
     G.player.stats.spd=(G.player.stats.spd||1)+1;
     G.playerStatus.perkSlipstream=0;
@@ -18894,9 +19137,9 @@ function spellMisses() {
 
 function summonHitLands(){
   const baseHit=1-(spellMissChance()/100);
-  const enemyMDodge=(G.enemy.stats.mdodge!==undefined?G.enemy.stats.mdodge:(G.enemy.stats.dodge||0));
+  const enemyDodgeForSummon=(G.enemy.stats.dodge!==undefined?G.enemy.stats.dodge:20);
   const attAcc=getPlayerEffectiveAcc();
-  const hitChance=calcHitChance(attAcc,enemyMDodge,clamp01(baseHit));
+  const hitChance=calcHitChance(attAcc,enemyDodgeForSummon,clamp01(baseHit));
   return Math.random()<hitChance;
 }
 
@@ -18913,7 +19156,6 @@ function matk(mult=1) {
   const matkVsEnemy=base-(G.enemy.stats.mdef||8);
   const adjust=matkVsEnemy*0.015; // ±1.5% per point difference
   const strikeAdd=(G._pendingStrikeActionMods?.matkMultAdd!=null?G._pendingStrikeActionMods.matkMultAdd:G._pendingStrikeActionMods?.multAdd)||0;
-  // MDodge compensation: spells are slightly stronger to offset player magic evasion
   return Math.max(1,Math.floor(pdmg(1,null,{skipPendingStrikeAdd:true})*(mult+adjust+strikeAdd)*base/7.2));
 }
 
@@ -19030,7 +19272,7 @@ Object.assign(ACTIONS, {
     await doSpell('enemy','🧠 BIRD BRAIN!');
     renderStatuses('enemy-status',G.enemyStatus);
     logMsg(`🧠 Bird Brain! ${dmg} psychic dmg + Confused${isCrit?' (CRIT)':''}!`,'player-action');
-    const _bb=BIRDS[G.player.birdKey];if(_bb&&_bb.passive&&_bb.passive.onSpell){_bb.passive.onSpell(G.player);setHpBar('player',G.player.stats.hp,G.player.stats.maxHp);spawnFloat('player','+2 Song','fn-heal');}
+    triggerBlackbirdSpellPassive();
   },
   async sonicDirge(ab) {
     if(spellMisses()){await doMiss('player');logMsg(`Sonic Dirge missed! (MATK ${G.player.stats.matk||8} vs MDEF ${G.enemy.stats.mdef||8})`,'miss');return;}
@@ -19049,7 +19291,7 @@ Object.assign(ACTIONS, {
     await doSpell('enemy','🔊 SONIC DIRGE!');
     renderStatuses('enemy-status',G.enemyStatus);
     logMsg(`🔊 Sonic Dirge! ${dmg} sonic dmg + ${skipC}% turn skip for ${skipT}t!`,'player-action');
-    const _bb2=BIRDS[G.player.birdKey];if(_bb2&&_bb2.passive&&_bb2.passive.onSpell){_bb2.passive.onSpell(G.player);setHpBar('player',G.player.stats.hp,G.player.stats.maxHp);spawnFloat('player','+2 Song','fn-heal');}
+    triggerBlackbirdSpellPassive();
   },
   async owlPsyche(ab) {
     if(spellMisses()){await doMiss('player');logMsg(`Owl's Psyche missed! (MATK ${G.player.stats.matk||8} vs MDEF ${G.enemy.stats.mdef||8})`,'miss');return;}
@@ -19064,7 +19306,7 @@ Object.assign(ACTIONS, {
     await doSpell('enemy','🦉 PSYCHE HOOT!');
     renderStatuses('enemy-status',G.enemyStatus);
     logMsg(`🦉 Owl's Psyche! ${dmg} psychic dmg + Paralysis chance.`,'player-action');
-    const _bb3=BIRDS[G.player.birdKey];if(_bb3&&_bb3.passive&&_bb3.passive.onSpell){_bb3.passive.onSpell(G.player);setHpBar('player',G.player.stats.hp,G.player.stats.maxHp);spawnFloat('player','+2 Song','fn-heal');}
+    triggerBlackbirdSpellPassive();
   },
   async shriekwave(ab) {
     if(spellMisses()){await doMiss('player');logMsg(`Shriekwave missed! (MATK ${G.player.stats.matk||8} vs MDEF ${G.enemy.stats.mdef||8})`,'miss');return;}
@@ -19081,7 +19323,7 @@ Object.assign(ACTIONS, {
     await doSpell('enemy','🔊 SHRIEKWAVE!');
     renderStatuses('enemy-status',G.enemyStatus);
     logMsg(`🔊 Shriekwave! ${dmg} dmg + Burn${isCrit?' (CRIT!)':''}!`,'player-action');
-    const _bb4=BIRDS[G.player.birdKey];if(_bb4&&_bb4.passive&&_bb4.passive.onSpell){_bb4.passive.onSpell(G.player);setHpBar('player',G.player.stats.hp,G.player.stats.maxHp);spawnFloat('player','+2 Song','fn-heal');}
+    triggerBlackbirdSpellPassive();
   },
   async mobSwarm(ab) {
     const lv=ab.level;
@@ -19108,7 +19350,7 @@ Object.assign(ACTIONS, {
     await doSpell('enemy',' MOB SWARM!');
     renderStatuses('enemy-status',G.enemyStatus);
     logMsg(` Mob Swarm! ${hits} hits, ${total} total!`,'player-action');
-    const _bb5=BIRDS[G.player.birdKey];if(_bb5&&_bb5.passive&&_bb5.passive.onSpell){_bb5.passive.onSpell(G.player);setHpBar('player',G.player.stats.hp,G.player.stats.maxHp);spawnFloat('player','+2 Song','fn-heal');}
+    triggerBlackbirdSpellPassive();
   },
   async thornBarrage(ab) {
     const lv=ab.level; const hits=lv>=3?3:2; let total=0;
@@ -19255,6 +19497,45 @@ function endPlayerTurn(force=false) {
     }
     if(G.playerStatus.regen<=0){delete G.playerStatus.regen;G.regenTurns=0;G.regenPct=0;}
   }
+  const _tickTmp=(key,stat)=>{
+    const o=G.playerStatus[key];
+    if(!o||typeof o!=='object') return;
+    o.turns=(o.turns||1)-1;
+    if(o.turns<=0){
+      if(stat==='def') G.player.stats.def=Math.max(0,(G.player.stats.def||0)-(o.amt||0));
+      if(stat==='matk') G.player.stats.matk=Math.max(0,(G.player.stats.matk||0)-(o.amt||0));
+      if(stat==='atk') G.player.stats.atk=Math.max(0,(G.player.stats.atk||0)-(o.atk||0));
+      delete G.playerStatus[key];
+    }
+  };
+  _tickTmp('gooseHonkDef','def');
+  _tickTmp('cardinalMatk','matk');
+  _tickTmp('cockatooSongMatk','matk');
+  _tickTmp('fairywrenMatk','matk');
+  _tickTmp('robinDawnMatk','matk');
+  _tickTmp('blackbirdOmenMatk','matk');
+  if(G.playerStatus.dukeCourtBuff){
+    G.playerStatus.dukeCourtBuff.turns--;
+    if(G.playerStatus.dukeCourtBuff.turns<=0){
+      G.player.stats.atk=Math.max(0,(G.player.stats.atk||0)-(G.playerStatus.dukeCourtBuff.atk||0));
+      G.player.stats.matk=Math.max(0,(G.player.stats.matk||0)-(G.playerStatus.dukeCourtBuff.matk||0));
+      delete G.playerStatus.dukeCourtBuff;
+    }
+  }
+  if(G.playerStatus.hummingbirdSpd){
+    G.playerStatus.hummingbirdSpd.turns--;
+    if(G.playerStatus.hummingbirdSpd.turns<=0){
+      G.player.stats.spd=Math.max(1,(G.player.stats.spd||1)-(G.playerStatus.hummingbirdSpd.bonus||0));
+      delete G.playerStatus.hummingbirdSpd;
+    }
+  }
+  delete G.playerStatus.galahCritDmg;
+  delete G.playerStatus.macawFlairAcc;
+  if(G.player._magpieSpdLoan){ G.player.stats.spd=Math.max(1,(G.player.stats.spd||1)-G.player._magpieSpdLoan); delete G.player._magpieSpdLoan; }
+  if(G.player._ostrichSpdLoan){ G.player.stats.spd=Math.max(1,(G.player.stats.spd||1)-G.player._ostrichSpdLoan); delete G.player._ostrichSpdLoan; }
+  if(G.player._albatrossSpdLoan){ G.player.stats.spd=Math.max(1,(G.player.stats.spd||1)-G.player._albatrossSpdLoan); delete G.player._albatrossSpdLoan; }
+  if(G.player._ravenGrimSpdLoan){ G.player.stats.spd=Math.max(1,(G.player.stats.spd||1)-G.player._ravenGrimSpdLoan); delete G.player._ravenGrimSpdLoan; }
+  G.player._ravenGrimSpdThisTurn=false;
   // Fire passive onTurnEnd
   const _ptbd=BIRDS[G.player.birdKey];
   if(_ptbd&&_ptbd.passive&&_ptbd.passive.onTurnEnd) _ptbd.passive.onTurnEnd(G.player);
@@ -19272,7 +19553,6 @@ function endPlayerTurn(force=false) {
     }
   }
   if(G.playerStatus.sittingDuck)delete G.playerStatus.sittingDuck;
-  if(G.playerStatus.mdodgeSittingDuck)delete G.playerStatus.mdodgeSittingDuck;
   if(G.playerStatus.guardianCry){G.playerStatus.guardianCry.turns--; if(G.playerStatus.guardianCry.turns<=0){G.player.stats.def=Math.max(0,G.player.stats.def-(G.playerStatus.guardianCry.defBonus||0));delete G.playerStatus.guardianCry;}}
   if(G.playerStatus.humImmuneToFear){G.playerStatus.humImmuneToFear--; if(G.playerStatus.humImmuneToFear<=0)delete G.playerStatus.humImmuneToFear;}
   if(G.playerStatus.wingStormSPD){
@@ -19871,12 +20151,12 @@ async function executeEnemyKitTemplateAbility(enemy, abilityId, totalEnemyMiss){
   if(btn==='spell'){
     G._incomingAttackKind='magic';
     G._incomingBypassesDeflect=true;
-    const effMDodge=getEffectiveMdodge(G.player);
+    const effDodgeSpell=getEffectiveDodge(G.player);
     const mAccEff=Math.max(0,Math.min(95,(enemy.stats.acc||70)-(G.enemyStatus.accDebuff||0)));
-    const mHitPct=Math.max(5,Math.min(95,Math.floor((mAccEff-effMDodge+100)/2)));
+    const mHitPct=Math.max(5,Math.min(95,Math.floor((mAccEff-effDodgeSpell+100)/2)));
     if(!chance(mHitPct)){
-      spawnFloat('player','✦ MDodge!','fn-dodge'); playAvatarAnim('player','do-dodge-r',400); SFX.dodge(); await delay(420);
-      logMsg(`✨ ${G.player.name} deflects ${name}!`,'system');
+      spawnFloat('player','Dodged!','fn-dodge'); playAvatarAnim('player','do-dodge-r',400); SFX.dodge(); await delay(420);
+      logMsg(`✨ ${G.player.name} slips the spell!`,'system');
       return;
     }
     await doSpell('enemy',`✦ ${name}!`);
@@ -20035,12 +20315,12 @@ async function enemyTurn() {
       if(enemyKitAbilityIsHardCC(action.abilityId,e)) usedHardCCThisTurn=true;
       if(eab){
         if(eab.dodgeable){
-          const effMDodge = getEffectiveMdodge(G.player);
+          const effDodgeAb = getEffectiveDodge(G.player);
           const mAccEff = Math.max(0, Math.min(95, (G.enemy.stats.acc||70) - (G.enemyStatus.accDebuff||0)));
-          const mHitPct = Math.max(5, Math.min(95, Math.floor((mAccEff - effMDodge + 100) / 2)));
+          const mHitPct = Math.max(5, Math.min(95, Math.floor((mAccEff - effDodgeAb + 100) / 2)));
           if(!chance(mHitPct)){
-            spawnFloat('player','✦ MDodge!','fn-dodge'); playAvatarAnim('player','do-dodge-r',400); SFX.dodge(); await delay(420);
-            logMsg(`✨ ${G.player.name} deflects the magic! (MDodge ${effMDodge}%)`, 'system');
+            spawnFloat('player','Dodged!','fn-dodge'); playAvatarAnim('player','do-dodge-r',400); SFX.dodge(); await delay(420);
+            logMsg(`✨ ${G.player.name} slips the magic!`, 'system');
             continue;
           }
         }
@@ -20704,7 +20984,6 @@ const LEVELUP_STAT_POOL = [
   {id:'spd2', label:'+2 SPD', stat:'spd', amount:2, apply(){ G.player.stats.spd=(G.player.stats.spd||0)+2; }},
   {id:'acc4', label:'+4 ACC', stat:'acc', amount:4, apply(){ G.player.stats.acc=(G.player.stats.acc||0)+4; }},
   {id:'dod4', label:'+4% Dodge', stat:'dodge', amount:4, apply(){ G.player.stats.dodge=Math.min(95,(G.player.stats.dodge||0)+4); }},
-  {id:'mdod4', label:'+4% Spell Dodge', stat:'mdodge', amount:4, apply(){ const b=G.player.stats.mdodge??G.player.stats.dodge??20; G.player.stats.mdodge=Math.min(95,b+4); }},
 ];
 const LEVELUP_FEATHER_POOL = LEVELUP_STAT_POOL;
 const ENDLESS_RARE_LEVELUP_CHOICES = [
@@ -20833,7 +21112,7 @@ function buildFeatherStatPanel(){
 
 function getLevelUpStatEffectDesc(opt){
   if(opt.stat==='goldCritMult') return `Increase crit damage multiplier by ${opt.amount}.`;
-  if(opt.stat==='dodge'||opt.stat==='mdodge') return `Increase ${opt.stat==='dodge'?'physical':'spell'} dodge by ${opt.amount}%.`;
+  if(opt.stat==='dodge') return `Increase dodge by ${opt.amount}%.`;
   if(opt.stat==='critChance') return `Increase crit chance by ${opt.amount}%.`;
   return `Improve ${String(opt.stat).toUpperCase()} by ${opt.amount}.`;
 }
@@ -21102,7 +21381,7 @@ function showLevelUpScreen() {
   const pairs=[
     ['HP','maxHp','stat'],['ATK','atk','stat'],['DEF','def','stat'],['SPD','spd','stat'],
     ['MATK','matk','stat'],['MDEF','mdef','stat'],['ACC','acc','stat'],
-    ['Dodge','dodge','stat'],['Spell dodge','mdodge','stat'],['Max EN','energyMax','en'],
+    ['Dodge','dodge','stat'],['Max EN','energyMax','en'],
   ];
   const prevWrap=document.getElementById('lu-stat-preview');
   if(prevWrap){
@@ -21110,7 +21389,6 @@ function showLevelUpScreen() {
       let val;
       if(kind==='critMult') val=(G.player.goldCritMult||1.5).toFixed(2);
       else if(kind==='en') val=G.player.energyMax ?? computePlayerMaxEnergy();
-      else if(key==='mdodge') val=now.mdodge ?? now.dodge ?? 20;
       else val=now[key]??0;
       return `<div class="lu-stat-row"><strong>${label}</strong><span><span class="v-new">${val}</span></span></div>`;
     }).join('');

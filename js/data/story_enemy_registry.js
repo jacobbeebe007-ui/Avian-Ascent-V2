@@ -35,16 +35,33 @@
     ostrich: { birdKey: 'ostrich', threatTier: 4, threatValue: 4, enemyEligible: true, bossOnly: false, minStage: 11, maxStage: 19 },
     cassowary: { birdKey: 'cassowary', threatTier: 4, threatValue: 4, enemyEligible: true, bossOnly: false, minStage: 11, maxStage: 19 },
     emu: { birdKey: 'emu', threatTier: 4, threatValue: 4, enemyEligible: true, bossOnly: false, minStage: 11, maxStage: 19 },
+    wren: { birdKey: 'wren', threatTier: 1, threatValue: 1, enemyEligible: true, bossOnly: false, minStage: 1, maxStage: 19 },
+    fairywren: { birdKey: 'fairywren', threatTier: 2, threatValue: 2, enemyEligible: true, bossOnly: false, minStage: 3, maxStage: 19 },
+    firecrest: { birdKey: 'firecrest', threatTier: 1, threatValue: 1, enemyEligible: true, bossOnly: false, minStage: 1, maxStage: 19 },
+    wagtail: { birdKey: 'wagtail', threatTier: 2, threatValue: 2, enemyEligible: true, bossOnly: false, minStage: 3, maxStage: 19 },
+    galah: { birdKey: 'galah', threatTier: 2, threatValue: 2, enemyEligible: true, bossOnly: false, minStage: 3, maxStage: 19 },
+    bluejay: { birdKey: 'bluejay', threatTier: 3, threatValue: 3, enemyEligible: true, bossOnly: false, minStage: 5, maxStage: 19 },
+    cardinal: { birdKey: 'cardinal', threatTier: 2, threatValue: 2, enemyEligible: true, bossOnly: false, minStage: 3, maxStage: 19 },
+    bushturkey: { birdKey: 'bushturkey', threatTier: 3, threatValue: 3, enemyEligible: true, bossOnly: false, minStage: 5, maxStage: 19 },
+    vulture: { birdKey: 'vulture', threatTier: 3, threatValue: 3, enemyEligible: true, bossOnly: false, minStage: 5, maxStage: 19 },
+    barnowl: { birdKey: 'barnowl', threatTier: 3, threatValue: 3, enemyEligible: true, bossOnly: false, minStage: 5, maxStage: 19 },
+    bustard: { birdKey: 'bustard', threatTier: 3, threatValue: 3, enemyEligible: true, bossOnly: false, minStage: 5, maxStage: 19 },
+    goldeneagle: { birdKey: 'goldeneagle', threatTier: 4, threatValue: 4, enemyEligible: true, bossOnly: false, minStage: 11, maxStage: 19 },
+    pelican: { birdKey: 'pelican', threatTier: 4, threatValue: 4, enemyEligible: true, bossOnly: false, minStage: 11, maxStage: 19 },
+    marabou: { birdKey: 'marabou', threatTier: 4, threatValue: 4, enemyEligible: true, bossOnly: false, minStage: 11, maxStage: 19 },
     dukeBlakiston: { birdKey: 'dukeBlakiston', threatTier: 5, threatValue: 6, enemyEligible: false, bossOnly: true, minStage: 20, maxStage: 20 },
   };
 
   const STORY_BIRD_CLASS = {
-    sparrow: 'striker', robin: 'striker', blackbird: 'singer', seagull: 'trickster', kiwi: 'predator',
+    sparrow: 'striker', robin: 'singer', blackbird: 'singer', seagull: 'trickster', kiwi: 'predator',
     hummingbird: 'striker', macaw: 'singer', crow: 'trickster', magpie: 'trickster', goose: 'tank', penguin: 'tank',
-    peregrine: 'striker', snowyOwl: 'predator', kookaburra: 'bruiser', lyrebird: 'singer', raven: 'trickster',
-    bowerbird: 'trickster', toucan: 'striker', swan: 'striker', flamingo: 'striker', albatross: 'striker',
-    blackCockatoo: 'bruiser', secretary: 'predator', shoebill: 'tank', harpy: 'predator', baldEagle: 'predator',
+    peregrine: 'striker', snowyOwl: 'predator', kookaburra: 'trickster', lyrebird: 'singer', raven: 'trickster',
+    bowerbird: 'trickster', toucan: 'striker', swan: 'tank', flamingo: 'striker', albatross: 'bruiser',
+    blackCockatoo: 'singer', secretary: 'predator', shoebill: 'tank', harpy: 'predator', baldEagle: 'predator',
     ostrich: 'bruiser', cassowary: 'bruiser', emu: 'bruiser', dukeBlakiston: 'predator',
+    wren: 'striker', fairywren: 'singer', firecrest: 'striker', wagtail: 'trickster', galah: 'trickster', bluejay: 'bruiser',
+    cardinal: 'singer', bushturkey: 'bruiser', vulture: 'bruiser', barnowl: 'predator', bustard: 'bruiser', goldeneagle: 'predator',
+    pelican: 'tank', marabou: 'predator',
   };
 
   const STORY_STAGE_BUDGETS = {
