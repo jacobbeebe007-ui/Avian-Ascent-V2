@@ -389,7 +389,6 @@
       spd: 100,
       acc: 200,
       dodge: 95,
-      mdodge: 95,
       maxHp: 9999,
       hp: 9999
     };
@@ -673,56 +672,6 @@ cooldown('chargeUp',3);
     };
   }
 
-  // 2) Full passive pass: no missing passives remained, so buff weaker ones.
-  if(globalThis.BIRDS){
-    if(BIRDS.blackbird?.passive){
-      BIRDS.blackbird.passive.name = 'Song Resilient';
-      BIRDS.blackbird.passive.desc = 'Every successful spell cast restores 3 HP and grants +1 MATK this battle (max +4).';
-      BIRDS.blackbird.passive.onBattleStart = function(p){ p._songResMatk = 0; };
-      BIRDS.blackbird.passive.onSpell = function(p){
-        p.stats.hp = Math.min(p.stats.maxHp, p.stats.hp + 3);
-        if((p._songResMatk||0) < 4){
-          p._songResMatk = (p._songResMatk||0) + 1;
-          p.stats.matk = (p.stats.matk||0) + 1;
-        }
-      };
-    }
-
-    if(BIRDS.albatross?.passive){
-      // Keep in sync with js/core/game.js (tradeWinds + dealDamage vs slowed).
-      BIRDS.albatross.passive.name = 'Trade-Wind Patience';
-      BIRDS.albatross.passive.desc = 'Every 2 turns, +1 SPD (max 20). Physical attacks deal +6% vs slowed foes.';
-      BIRDS.albatross.passive.onBattleStart = function(p){ p._oceanWandererTurns = 0; };
-      BIRDS.albatross.passive.onTurnEnd = function(p){
-        p._oceanWandererTurns = (p._oceanWandererTurns||0) + 1;
-        if((p._oceanWandererTurns % 2) === 0){
-          p.stats.spd = Math.min(20, (p.stats.spd||1) + 1);
-        }
-      };
-    }
-
-    if(BIRDS.macaw?.passive){
-      BIRDS.macaw.passive.desc = 'After an enemy uses an ability, gain +5% Dodge for 1 turn (max 20%). Your next Mimic-line spell reads that rhythm for extra payoff.';
-      BIRDS.macaw.passive.onBattleStart = function(p){ p._macawEchoDodge = 0; p._macawCopycatPulse = false; };
-      BIRDS.macaw.passive.onEnemyAbility = function(p, abilityId){
-        p._macawEchoDodge = Math.min(20, (p._macawEchoDodge||0) + 5);
-        G.playerStatus.humDodge = {bonus:p._macawEchoDodge, turns:1};
-        p._macawCopycatPulse = true;
-      };
-    }
-  }
-
-  // Albatross passive singer inside spell hit chance if its stack exists.
-  const _oldSpellMissChance = globalThis.spellMissChance;
-  if(typeof _oldSpellMissChance === 'function'){
-    globalThis.spellMissChance = function(){
-      let miss = _oldSpellMissChance.apply(this, arguments);
-      try{
-        miss -= Math.floor((G?.player?._tradeWindAcc || 0));
-      }catch(_){}
-      return clamp(miss, 0, 40);
-    };
-  }
 })();
 
 
