@@ -1178,9 +1178,8 @@ function makeEnemy(name, emoji, hp, atk, def, spd, style, isBoss=false, bossTitl
   const abilities = opts.abilities||[];
   const mdef = opts.mdef||8;
   const matk = opts.matk||6;
-  const baseEn = Number.isFinite(opts.baseEn)
-    ? opts.baseEn
-    : (isBoss ? 6 : (size==='xl'?5:size==='large'?4:size==='medium'?4:3));
+  const _enProf=getEnergyProfile(normalizeBirdSizeForEnergy(size));
+  const baseEn = Number.isFinite(opts.baseEn) ? opts.baseEn : _enProf.maxEN;
   const enemyClass = opts.enemyClass || inferEnemyClassFromStyle(style);
   const cc = Number.isFinite(opts.cc) ? opts.cc : (Number.isFinite(opts.critChance) ? (opts.critChance/100) : 0.05);
   const cd = Number.isFinite(opts.cd) ? opts.cd : (Number.isFinite(opts.critMult) ? opts.critMult : 1.5);
@@ -1221,6 +1220,7 @@ function buildDukeStoryBossEnemy(){
   const cc=Math.max(0.05,Math.min(0.95,(stats.critChance||5)/100));
   const cd=stats.critMult||1.65;
   const dukeAbilities=['dukeRiverGrip','dukeDecree','dukeWardens','dukeOwlsVerdict'].map(id=>({id,level:4}));
+  const _dukeEn=getEnergyProfile('xl');
   return {
     id:'duke_blakiston', name:'Duke Blakiston', portraitKey:'duke_blakiston', birdKey:'dukeBlakiston',
     isBoss:true, size:'xl', aiType:'boss_duke', aiPersonality:'predator',
@@ -1232,11 +1232,11 @@ function buildDukeStoryBossEnemy(){
     abilities:dukeAbilities,
     stats:{
       hp:stats.hp,maxHp:stats.maxHp,atk:stats.atk,def:stats.def,spd:stats.spd,acc:stats.acc,dodge:stats.dodge,
-      mdef:stats.mdef,matk:stats.matk,en:6,cc,cd,critChance:stats.critChance,critMult:cd,
+      mdef:stats.mdef,matk:stats.matk,en:_dukeEn.maxEN,cc,cd,critChance:stats.critChance,critMult:cd,
     },
     hp:stats.hp,maxHp:stats.maxHp,atk:stats.atk,def:stats.def,spd:stats.spd,acc:stats.acc,dodge:stats.dodge,
     mdef:stats.mdef,matk:stats.matk,cc,cd,
-    energyMax:6,energy:6,energyRegen:0,
+    energyMax:_dukeEn.maxEN,energy:_dukeEn.startEN,energyRegen:_dukeEn.regenEN,
     _storyDirectStats:true,
     duke:{phase:1,nightfallTurns:0,decreeKey:null,decreeStacks:0,riverCd:0,summonCd:0,verdictCd:0},
   };
@@ -1422,7 +1422,7 @@ function _upgFlatMaxHp(p, amount){
   p.stats.hp = Math.min((p.stats.hp||0) + amount, p.stats.maxHp);
 }
 function _upgGoldenFeather(p){
-  const sz = String((p.size || BIRDS[p.birdKey]?.size || 'medium')).toLowerCase();
+  const sz = normalizeBirdSizeForEnergy(p.size || BIRDS[p.birdKey]?.size || 'medium');
   const cap = ENERGY_STACK_CAP_BY_SIZE[sz] ?? 3;
   p.energyBonus = Math.min(cap, (p.energyBonus||0) + 1);
   p.energyMax = computePlayerMaxEnergy();
@@ -3451,23 +3451,70 @@ function getGrowthStageForLevel(lv){
 }
 const MAX_PLAYER_ACTIONS_PER_TURN=6;
 const MAX_ENEMY_ACTIONS_PER_TURN=3;
-const MAX_ENERGY_GAIN_PER_TURN=2;
+/** Caps card/passive EN gains per player turn (separate from size-based turn regen). */
+const MAX_ENERGY_GAIN_PER_TURN=12;
 
 // ============================================================
-//  ENERGY (RECOMMENDED) — StS full refill (size + class)
+//  ENERGY — size-based momentum (partial regen each turn)
 // ============================================================
-const ENERGY_BY_SIZE = { tiny:5, small:5, medium:4, large:2, xl:2 };
 const ENERGY_STACK_CAP_BY_SIZE = { tiny:3, small:3, medium:3, large:3, xl:3 };
 const MIN_MAX_ENERGY = 2;
 
-function computePlayerMaxEnergy(){
-  const bd=BIRDS[G.player?.birdKey]||{};
-  const size=(G.player?.size||bd.size||'medium').toLowerCase();
-  const base=ENERGY_BY_SIZE[size] ?? 3;
-  const sizeStackCap=ENERGY_STACK_CAP_BY_SIZE[size] ?? 3;
-  const bonus=Math.max(0, Math.min(sizeStackCap, G.player?.energyBonus||0));
-  return Math.max(MIN_MAX_ENERGY, base+bonus);
+function normalizeBirdSizeForEnergy(sz){
+  const s=String(sz||'medium').toLowerCase();
+  if(s==='extra_large'||s==='extra large') return 'xl';
+  return (['tiny','small','medium','large','xl'].includes(s)?s:'medium');
 }
+
+/**
+ * @param {string} size
+ * @returns {{maxEN:number,startEN:number,regenEN:number}}
+ */
+function getEnergyProfile(size){
+  const k=normalizeBirdSizeForEnergy(size);
+  if(k==='tiny'||k==='small') return {maxEN:5,startEN:4,regenEN:3};
+  if(k==='medium') return {maxEN:4,startEN:3,regenEN:2};
+  if(k==='large'||k==='xl') return {maxEN:3,startEN:2,regenEN:2};
+  return {maxEN:4,startEN:3,regenEN:2};
+}
+globalThis.getEnergyProfile=getEnergyProfile;
+
+function computePlayerEffectiveMaxEnergy(player){
+  const p=player;
+  if(!p) return MIN_MAX_ENERGY;
+  const bd=BIRDS[p.birdKey]||{};
+  const size=normalizeBirdSizeForEnergy(p.size||bd.size||'medium');
+  const prof=getEnergyProfile(size);
+  const sizeStackCap=ENERGY_STACK_CAP_BY_SIZE[size] ?? 3;
+  const bonus=Math.max(0, Math.min(sizeStackCap, p.energyBonus||0));
+  return Math.max(MIN_MAX_ENERGY, prof.maxEN+bonus);
+}
+
+function computePlayerMaxEnergy(){
+  return computePlayerEffectiveMaxEnergy(G.player);
+}
+
+function computePlayerStartEnergy(player){
+  const p=player||G.player;
+  const bd=BIRDS[p?.birdKey]||{};
+  const prof=getEnergyProfile(normalizeBirdSizeForEnergy(p?.size||bd.size||'medium'));
+  const cap=computePlayerEffectiveMaxEnergy(p);
+  return Math.min(cap, prof.startEN);
+}
+
+function computePlayerEnergyRegen(player){
+  const p=player||G.player;
+  const bd=BIRDS[p?.birdKey]||{};
+  return getEnergyProfile(normalizeBirdSizeForEnergy(p?.size||bd.size||'medium')).regenEN;
+}
+
+/*
+EN_SYSTEM_BALANCE_AUDIT (manual / grep-assisted)
+- Large & XL (maxEN 3): any slotted skill that reaches 3 EN is awkward with Frozen (+1) or multi-action turns.
+- Known template/meta ids at 3 EN (see ABILITY_TEMPLATES + FAMILY_ENERGY_BY_SLOT): deathDive, sonicDirge, owlPsyche, mobSwarm, wingStorm, murderMurmuration; several lines use energyByLevel ending in 3 (e.g. curvedTalons L4, wingStorm L4).
+- Large/XL birds that can still access those ids via family evolution / legacy pools (non-exhaustive): albatross (wingStorm/sonic lineages), harpy (deathDive/crush line), crow (murderMurmuration), snowy/owl-family picks (owlPsyche, sonicDirge), hummingbird (deathDive dive line), dukeBlakiston (silent_dive/deathDive lineage).
+- Grep hints: rg "energyCost:\\s*3" js/core/game.js ; rg "energyByLevel:\\[[^\\]]*3" js/core/game.js
+*/
 
 // ============================================================
 //  GAME STATE
@@ -6806,7 +6853,7 @@ function mergeScaledStatsIntoEnemy(ed, encounterStage){
     playerBirdLevel:Math.max(1, Math.floor(G.player?.birdLevel||1)),
   };
   const scaled=ed._storyDirectStats ? {
-    hp:ed.hp,maxHp:ed.maxHp,atk:ed.atk,def:ed.def,spd:ed.spd,acc:ed.acc,dodge:ed.dodge,mdef:ed.mdef,matk:ed.matk,cc:ed.cc||0.05,cd:ed.cd||1.5,en:ed.energyMax||ed.stats?.en||3,enemyClass:ed.enemyClass,effectiveLevel:ed.storyLevel||0,
+    hp:ed.hp,maxHp:ed.maxHp,atk:ed.atk,def:ed.def,spd:ed.spd,acc:ed.acc,dodge:ed.dodge,mdef:ed.mdef,matk:ed.matk,cc:ed.cc||0.05,cd:ed.cd||1.5,en:ed.energyMax||ed.stats?.en||getEnergyProfile(normalizeBirdSizeForEnergy(ed.size)).maxEN,enemyClass:ed.enemyClass,effectiveLevel:ed.storyLevel||0,
   } : (ed.isBoss
     ? buildScaledBoss(ed, encounterStage, scaleOpts)
     : buildScaledEnemy(ed, encounterStage, scaleOpts));
@@ -6820,10 +6867,11 @@ function mergeScaledStatsIntoEnemy(ed, encounterStage){
   if(Number.isFinite(scaled.effectiveLevel)) ed.effectiveLevel=scaled.effectiveLevel;
   if(G.player?.mutBloodMoon){ ed.atk=Math.floor(ed.atk*1.10); ed.matk=Math.floor((ed.matk||ed.atk)*1.10); }
   ed.stats = {hp:ed.hp, maxHp:ed.hp, atk:ed.atk, def:ed.def, spd:ed.spd, acc:ed.acc, dodge:ed.dodge, mdef:ed.mdef, matk:ed.matk, cc:ed.cc, cd:ed.cd, critChance:Math.round((ed.cc||0.05)*100), critMult:ed.cd||1.5, en:(scaled.en||0)};
-  const baseEnemyEnergy = Math.max(1, scaled.en||ed.stats.en||3);
-  ed.energyMax=baseEnemyEnergy;
-  ed.energy=baseEnemyEnergy;
-  ed.energyRegen=0;
+  const prof=getEnergyProfile(normalizeBirdSizeForEnergy(ed.size));
+  ed.energyMax=prof.maxEN;
+  ed.energyRegen=prof.regenEN;
+  ed.energy=prof.startEN;
+  ed.stats.en=prof.maxEN;
   return ed;
 }
 
@@ -7527,7 +7575,7 @@ function buildStoryEnemyFromBirdKey(birdKey, stage){
   stats.matk=Math.max(1,Math.floor(stats.matk*diffMult));
   const threat=getStoryThreatForBirdKey(birdKey);
   const size=bd.size||'medium';
-  const en=(size==='xl'?5:size==='large'?4:size==='medium'?4:3);
+  const enProf=getEnergyProfile(normalizeBirdSizeForEnergy(size));
   return {
     id:`story_${birdKey}_${stage}_${Math.floor(Math.random()*1e6)}`,
     name:bd.name,
@@ -7538,10 +7586,10 @@ function buildStoryEnemyFromBirdKey(birdKey, stage){
     aiStyle:(['predator','striker'].includes(cls)?'aggressive':(cls==='tank'?'defensive':(cls==='trickster'?'trickster':'cautious'))),
     aiPersonality:cls,
     abilities:JSON.parse(JSON.stringify(enemyStub.abilities||[])),
-    stats:{...stats,en},
+    stats:{...stats,en:enProf.maxEN},
     hp:stats.hp,maxHp:stats.maxHp,atk:stats.atk,def:stats.def,spd:stats.spd,acc:stats.acc,dodge:stats.dodge,mdef:stats.mdef,matk:stats.matk,
     cc:Math.max(0.05,Math.min(0.95,(stats.critChance||5)/100)), cd:stats.critMult||1.5,
-    energyMax:en,energy:en,energyRegen:0,
+    energyMax:enProf.maxEN,energy:enProf.startEN,energyRegen:enProf.regenEN,
     storyThreat:threat, storyLevel:level, storyEvolvedSlots:evolvedSlots,
     _storyDirectStats:true,
   };
@@ -8349,7 +8397,8 @@ function updateAscentPanel(key) {
     const sizeLabel=SIZE_LABELS[bird.size||'medium']||bird.size;
     const kit=materializeRosterPreviewKit(key);
     const dispStats=kit.stats&&Object.keys(kit.stats).length?kit.stats:bird.stats;
-    const maxEn=kit.energyMax>0?kit.energyMax:((ENERGY_BY_SIZE[(bird.size||'medium').toLowerCase()] ?? 3));
+    const maxEn=kit.energyMax>0?kit.energyMax:getEnergyProfile(normalizeBirdSizeForEnergy(bird.size||'medium')).maxEN;
+    const startEnShow=getEnergyProfile(normalizeBirdSizeForEnergy(bird.size||'medium')).startEN;
     const cc=dispStats.critChance||5;
     const cd=Number.isFinite(dispStats.critMult)?Number(dispStats.critMult):1.5;
     const roleSummary={
@@ -8383,7 +8432,7 @@ function updateAscentPanel(key) {
         <span class="ascent-stat-chip">MDEF <strong>${dispStats.mdef||0}</strong></span>
         <span class="ascent-stat-chip">CC <strong>${cc}%</strong></span>
         <span class="ascent-stat-chip">CD <strong>${cd.toFixed(1)}×</strong></span>
-        <span class="ascent-stat-chip">EN <strong>${maxEn}</strong></span>
+        <span class="ascent-stat-chip"><abbr title="Battle start / max momentum (EN)">EN</abbr> <strong>${startEnShow}/${maxEn}</strong></span>
       </div>`;
 
     const passiveName=escapeHtmlRoster(bird.passive?.name||'—');
@@ -8489,7 +8538,8 @@ function startGame() {
   G.player.class = bd.class;
   G.player.size = bd.size||'medium';
   G.player.energyMax = computePlayerMaxEnergy();
-  G.player.energy = G.player.energyMax;
+  G.player.energy = computePlayerStartEnergy(G.player);
+  G.player.energyRegen = computePlayerEnergyRegen(G.player);
   codexMark('birds', G.player.birdKey, 'seen');
   (G.player.abilities||[]).forEach(a=>codexMark('abilities',a.id,'seen'));
   ensureMainAttackAndLoadoutRules();
@@ -8573,6 +8623,8 @@ function resetForNewBattle(){
   G._perkFirstVsFullUsed=false;
   G._perkUtilityRefundUsed=false;
   G.turnCount=0;
+  G._playerEnergyTurnIndex=0;
+  G._enemyEnergyTurnIndex=0;
   G._incomingAttackKind=null;
   delete G._pendingStrikeActionMods;
   G._firstAttackUsed=false;
@@ -8594,6 +8646,9 @@ function resetForNewBattle(){
     G.player._hbUtilityFirst=true;
     G.player._macawLastTurnFam='';
     G.player._emuDustUsed=false;
+    G.player.energyMax=computePlayerMaxEnergy();
+    G.player.energy=computePlayerStartEnergy(G.player);
+    G.player.energyRegen=computePlayerEnergyRegen(G.player);
     delete G.player._magpieSpdLoan;
     delete G.player._ostrichSpdLoan;
     delete G.player._albatrossSpdLoan;
@@ -8629,9 +8684,10 @@ function buildEdFromBirdEnemyTemplate(src, opts={}){
   const isBoss=!!opts.isBoss;
   const mAtk=src.matk??6;
   const mDef=src.mdef??8;
-  const baseEn=src.size==='xl'?5:src.size==='large'?4:src.size==='medium'?4:3;
+  const prof=getEnergyProfile(normalizeBirdSizeForEnergy(src.size||'medium'));
   const aiStyle=src.aiStyle||'aggressive';
-  return{
+  const enemyClass=src.enemyClass||inferEnemyClassFromStyle(aiStyle);
+  const ed={
     name:src.name,
     emoji:src.emoji||'',
     birdKey:src.birdKey,
@@ -8641,7 +8697,7 @@ function buildEdFromBirdEnemyTemplate(src, opts={}){
     acc:src.acc,dodge:src.dodge,
     matk:mAtk,mdef:mDef,
     size:src.size||'medium',
-    enemyClass:src.enemyClass||inferEnemyClassFromStyle(aiStyle),
+    enemyClass,
     aiStyle,
     aiPersonality:src.aiPersonality||inferAIPersonalityFromStyle(aiStyle,src.name),
     isBoss,
@@ -8654,7 +8710,7 @@ function buildEdFromBirdEnemyTemplate(src, opts={}){
       acc:src.acc,dodge:src.dodge,
       mdef:mDef,matk:mAtk,
       cc:0.05,cd:1.5,critChance:5,critMult:1.5,
-      en:baseEn,
+      en:prof.maxEN,
     },
   };
   const tierArr=Array.isArray(src.tier)?src.tier:[1];
@@ -11101,7 +11157,8 @@ function getEnemyBaseStats(base){
   const s=base?.stats||{};
   const hp=(base.hp??s.maxHp??s.hp??1);
   const size=base?.size||'medium';
-  const en=(s.en??base.en??(base.isBoss?6:(size==='xl'?5:size==='large'?4:size==='medium'?4:3)));
+  const enDefault=getEnergyProfile(normalizeBirdSizeForEnergy(size)).maxEN;
+  const en=(s.en??base.en??enDefault);
   const ccRaw=(s.cc??base.cc??((s.critChance??base.critChance??5)/100));
   const cdRaw=(s.cd??base.cd??(s.critMult??base.critMult??1.5));
   return {
@@ -20327,13 +20384,23 @@ async function playerAction(ab,fromQueue=false) {
 
 function startPlayerTurn(player){
   player.energyMax = computePlayerMaxEnergy();
-  player.energy = player.energyMax;
+  player.energyRegen = computePlayerEnergyRegen(player);
+  const maxEn = player.energyMax;
+  const pte = (G._playerEnergyTurnIndex|0);
+  if(pte === 0){
+    G._playerEnergyTurnIndex = 1;
+    const cur = Number.isFinite(player.energy) ? player.energy : computePlayerStartEnergy(player);
+    player.energy = Math.min(maxEn, Math.max(0, cur));
+  }else{
+    const r = player.energyRegen || computePlayerEnergyRegen(player);
+    player.energy = Math.min(maxEn, Math.max(0, (player.energy||0) + r));
+  }
   G.sitAndWaitUsedThisTurn=false;
   if(typeof BS!=='undefined' && BS.turns===0 && (player.firstTurnEnergy||0)>0){
-    player.energy += player.firstTurnEnergy;
+    player.energy = Math.min(maxEn, (player.energy||0) + player.firstTurnEnergy);
   }
-  if(isEndlessRunActive() && G.enemy?.isBoss && player.relPredatoryMemory) player.energy += 1;
-  if(isEndlessRunActive() && player.relFeatheredClock && ((G.endlessBattle||0)%3===0)) player.energy += 1;
+  if(isEndlessRunActive() && G.enemy?.isBoss && player.relPredatoryMemory) player.energy = Math.min(maxEn, (player.energy||0) + 1);
+  if(isEndlessRunActive() && player.relFeatheredClock && ((G.endlessBattle||0)%3===0)) player.energy = Math.min(maxEn, (player.energy||0) + 1);
   G.playerActionsThisTurn=0;
   G.playerTurnFlags={energyGainedThisTurn:0,onHitTriggered:false,firstAttackResolved:false};
   G.utilityUsedThisTurn={};
@@ -20389,7 +20456,19 @@ function startPlayerTurn(player){
   }
 }
 function startEnemyTurn(enemy){
-  enemy.energy = enemy.energyMax||3;
+  const prof=getEnergyProfile(normalizeBirdSizeForEnergy(enemy?.size||'medium'));
+  const maxEn=Math.max(1, enemy.energyMax||prof.maxEN);
+  enemy.energyMax=maxEn;
+  enemy.energyRegen=Number.isFinite(enemy.energyRegen)?enemy.energyRegen:prof.regenEN;
+  const ete = (G._enemyEnergyTurnIndex|0);
+  if(ete === 0){
+    G._enemyEnergyTurnIndex = 1;
+    const cur = Number.isFinite(enemy.energy) ? enemy.energy : prof.startEN;
+    enemy.energy = Math.min(maxEn, Math.max(0, cur));
+  }else{
+    const r = enemy.energyRegen || prof.regenEN;
+    enemy.energy = Math.min(maxEn, Math.max(0, (enemy.energy||0) + r));
+  }
   G.phase='ENEMY';
 }
 function isSpellAbilityId(id){
@@ -20443,7 +20522,9 @@ function getAbilityEnergyCost(ab, player){
 
   const maxE = p?.energyMax ?? 99;
   cost = Math.min(cost, maxE);
-  if(G?.playerStatus?.frozen&&(G.playerStatus?.frozen?.turns||0)>0&&(isAttack||isSpell)) cost+=1;
+  const _fz=G?.playerStatus?.frozen;
+  const frzTurns=(typeof _fz==='object'&&_fz)?(_fz.turns||0):(typeof _fz==='number'?_fz:0);
+  if(frzTurns>0 && ab?.id!=='skipTurn' && t?.id!=='skipTurn') cost += 1;
 
   return Math.max(0, cost);
 }
@@ -21300,7 +21381,7 @@ function planEnemyTurn(e,p){
   const actions=[];
   const mem=getEnemyAIMemory(e);
   const profile=getAIPersonalityProfile(e);
-  let energy=e.energyMax||3;
+  let energy=Math.max(0, Number.isFinite(e.energy)?e.energy:(e.energyMax||getEnergyProfile(normalizeBirdSizeForEnergy(e?.size)).maxEN));
   const intentPick=selectEnemyIntent(e,p,pool,energy,mode);
   const intent=intentPick.intent||'attack';
   const archetype=intentPick.archetype||getEnemyArchetype(e);
@@ -23841,13 +23922,13 @@ function pickUniqueRewardByTier(tier,used){
 const _SHOP_UTILS_REGULAR = [
   {id:'shop_util_heal_missing20',tier:'green',icon:'🌿',name:'Field Rations',desc:'Restore 20% of missing HP',costOverride:22,apply:p=>{const miss=Math.max(0,p.stats.maxHp-p.stats.hp);const h=Math.max(1,Math.floor(miss*0.20));p.stats.hp=Math.min(p.stats.hp+h,p.stats.maxHp);}},
   {id:'shop_util_cleanse_missing35',tier:'green',icon:'🌿',name:'Spring Cleanse',desc:'Cleanse active debuffs and restore 35% of missing HP',costOverride:36,apply:p=>{G.playerStatus={};const miss=Math.max(0,p.stats.maxHp-p.stats.hp);const h=Math.max(1,Math.floor(miss*0.35));p.stats.hp=Math.min(p.stats.hp+h,p.stats.maxHp);}},
-  {id:'shop_util_refresh',tier:'purple',icon:'🔄',name:'Coupon Wing',desc:'Next shop refresh is free',apply:p=>{G._freeShopRefresh=(G._freeShopRefresh||0)+1;}},
-  {id:'shop_util_energy',tier:'green',icon:'⚡',name:'Spark Draft',desc:'Gain +1 max energy this run (max +3)',apply:p=>{p.energyBonus=Math.min(3,(p.energyBonus||0)+1);p.energyMax=Math.max(1,(p.energyMax||3)+1);}},
+  {id:'shop_util_refresh',tier:'purple',icon:'💎',name:'Coupon Wing',desc:'Next shop refresh is free',apply:p=>{G._freeShopRefresh=(G._freeShopRefresh||0)+1;}},
+  {id:'shop_util_energy',tier:'green',icon:'⚡',name:'Spark Draft',desc:'Gain +1 max energy this run (capped by size)',apply:p=>{_upgGoldenFeather(p);}},
   {id:'shop_util_focus',tier:'green',icon:'🎯',name:'Hunter Focus',desc:'ACC +5 and Crit +3%',apply:p=>{p.stats.acc=Math.min(100,(p.stats.acc||80)+5);p.stats.critChance=(p.stats.critChance||5)+3;}},
 ];
 const _SHOP_UTILS_BOSS = [
   {id:'shop_util_heal_boss_missing35',tier:'blue',icon:'🌿',name:'Boss First Aid',desc:'Cleanse and restore 35% of missing HP',costOverride:36,apply:p=>{G.playerStatus={};const miss=Math.max(0,p.stats.maxHp-p.stats.hp);const h=Math.max(1,Math.floor(miss*0.35));p.stats.hp=Math.min(p.stats.hp+h,p.stats.maxHp);}},
-  {id:'shop_util_discount',tier:'purple',icon:'💎',name:'Royal Voucher',desc:'Your next purchase costs 2 less shiny',apply:p=>{G._nextShopDiscount=Math.max(G._nextShopDiscount||0,2);}},
+  {id:'shop_util_discount',tier:'purple',icon:'💎',name:'Royal Voucher',desc:'Your next purchase costs 30 less shiny',apply:p=>{G._nextShopDiscount=Math.max(G._nextShopDiscount||0,2);}},
   {id:'shop_util_refresh2',tier:'gold',icon:'💎',name:'Double Refresh Pass',desc:'Gain 2 free shop refreshes',apply:p=>{G._freeShopRefresh=(G._freeShopRefresh||0)+2;}},
   {id:'shop_util_bossward',tier:'purple',icon:'🛡️',name:'Boss Ward',desc:'MDEF +3 and cleanse one debuff now',apply:p=>{p.stats.mdef=(p.stats.mdef||0)+3;const bad=['weaken','paralyzed','slow','burning','poison','bleed','feared','lullabied'];const hit=bad.find(k=>G.playerStatus[k]);if(hit) delete G.playerStatus[hit];}},
   {id:'shop_util_apex',tier:'purple',icon:'🦅',name:'Apex Talon Oil',desc:'ATK +3, MATK +3',apply:p=>{p.stats.atk+=3;p.stats.matk=(p.stats.matk||0)+3;}},
@@ -23952,7 +24033,7 @@ function generateShopItems() {
 
   renderShopItems();
 }
-const SHOP_COSTS={grey:24,green:36,blue:58,purple:78,gold:105};
+const SHOP_COSTS={grey:24,green:36,blue:58,purple:78,gold:156};
 
 const SHOP_STATE = {
   purchaseMadeThisVisit:false,
