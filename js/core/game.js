@@ -669,7 +669,7 @@ const BIRDS = {
     stats:{hp:49,maxHp:49,atk:3,def:11,spd:14,dodge:8,acc:92,mdef:21,matk:31,critChance:6},
     color:'#9a6ae8',
     startAbilities:['dark_song','shadow_peck','gloom_wing','grim_sign'],
-    mainAttackId:'shadow_peck',
+    mainAttackId:'dark_song',
     passive:{id:'passive_blackbird_omen_chorus',name:'Omen Chorus',desc:'When Blackbird applies Delayed, gain +4 MATK for 1 turn.'},
   },
   macaw:{
@@ -721,8 +721,8 @@ const BIRDS = {
     unlockHint:'Defeat Stage 20 on Normal mode to unlock.',
     stats:{hp:59,maxHp:59,atk:7,def:12,spd:15,dodge:9,acc:90,mdef:21,matk:34,critChance:8},
     color:'#2a1a3a',
-    mainAttackId:'beak_crack',
-    startAbilities:['beak_crack','boom_call','wing_beat','resonance_mark'],
+    mainAttackId:'boom_call',
+    startAbilities:['boom_call','resonance_mark','beak_crack','wing_beat'],
     passive:{id:'passive_blackcockatoo_resonant_crest',name:'Resonant Crest',desc:'After using a song/call, gain +4 MATK for 1 turn.'},
   },
   crow:{
@@ -783,8 +783,8 @@ const BIRDS = {
     size:'small', class:'singer',
     stats:{hp:48,maxHp:48,atk:4,def:10,spd:17,dodge:10,acc:93,mdef:18,matk:29,critChance:8},
     color:'#d86a4c',
-    mainAttackId:'quick_peck',
-    startAbilities:['quick_peck','dart_rush','bright_chirp','hop_step'],
+    mainAttackId:'bright_chirp',
+    startAbilities:['bright_chirp','hop_step','quick_peck','dart_rush'],
     passive:{id:'passive_robin_dawn_chorus',name:'Dawn Chorus',desc:'After using a healing or buff utility, gain +4 MATK for 1 turn.'},
   },
   bowerbird:{
@@ -976,8 +976,8 @@ const BIRDS = {
     unlockHint:'Coming soon.',
     stats:{hp:38,maxHp:38,atk:2,def:8,spd:15,dodge:9,acc:95,mdef:16,matk:28,critChance:6},
     color:'#4a7ae8',
-    mainAttackId:'fwren_azure_trill',
-    startAbilities:['fwren_azure_trill','fwren_sunthread_call','fwren_glimmer_peck','fwren_blue_refrain'],
+    mainAttackId:'fwren_song',
+    startAbilities:['fwren_song','fwren_bright_call','fwren_tiny_peck','fwren_refrain'],
     passive:{id:'passive_fairywren_brilliant_plumage',name:'Brilliant Plumage',desc:"Superb Fairywren's first song each battle grants +4 MATK for 1 turn."},
   },
   firecrest:{
@@ -1031,8 +1031,8 @@ const BIRDS = {
     unlockHint:'Coming soon.',
     stats:{hp:49,maxHp:49,atk:2,def:10,spd:15,dodge:9,acc:93,mdef:19,matk:33,critChance:6},
     color:'#c02030',
-    mainAttackId:'cardinal_crimson_note',
-    startAbilities:['cardinal_crimson_note','cardinal_scarlet_hymn','cardinal_crest_jab','cardinal_red_refrain'],
+    mainAttackId:'cardinal_note',
+    startAbilities:['cardinal_note','cardinal_hymn','cardinal_jab','cardinal_refrain'],
     passive:{id:'passive_cardinal_scarlet_poise',name:'Scarlet Poise',desc:'Start battle with +4 MATK for 1 turn.'},
   },
   bushturkey:{
@@ -4321,10 +4321,10 @@ const HUMMINGBIRD_SKILL_FAMILIES = Object.freeze({
 });
 
 const ROBIN_SKILL_SLOT_LAYOUT = Object.freeze([
-  {slotIndex:0, familyId:'peck', abilityId:'quick_peck'},
-  {slotIndex:1, familyId:'dart', abilityId:'dart_rush'},
-  {slotIndex:2, familyId:'chirp', abilityId:'bright_chirp'},
-  {slotIndex:3, familyId:'hop', abilityId:'hop_step'},
+  {slotIndex:0, familyId:'chirp', abilityId:'bright_chirp'},
+  {slotIndex:1, familyId:'hop', abilityId:'hop_step'},
+  {slotIndex:2, familyId:'peck', abilityId:'quick_peck'},
+  {slotIndex:3, familyId:'dart', abilityId:'dart_rush'},
 ]);
 const ROBIN_SKILL_FAMILIES = Object.freeze({
   peck:{
@@ -5306,10 +5306,10 @@ const LYREBIRD_SKILL_FAMILIES = Object.freeze({
 });
 
 const BLACK_COCKATOO_SKILL_SLOT_LAYOUT = Object.freeze([
-  {slotIndex:0, familyId:'beak', abilityId:'beak_crack'},
-  {slotIndex:1, familyId:'boom', abilityId:'boom_call'},
-  {slotIndex:2, familyId:'wing', abilityId:'wing_beat'},
-  {slotIndex:3, familyId:'resonance', abilityId:'resonance_mark'},
+  {slotIndex:0, familyId:'boom', abilityId:'boom_call'},
+  {slotIndex:1, familyId:'resonance', abilityId:'resonance_mark'},
+  {slotIndex:2, familyId:'beak', abilityId:'beak_crack'},
+  {slotIndex:3, familyId:'wing', abilityId:'wing_beat'},
 ]);
 const BLACK_COCKATOO_SKILL_FAMILIES = Object.freeze({
   beak:{
@@ -5881,19 +5881,19 @@ function migrateKiwiLegacyFamilySkillSlots(slots){
 /** Maps pre-overhaul Robin saves (needle/cut/chirp/stalk families) onto peck/dart/chirp/hop slot-state. */
 function migrateRobinLegacyFamilySkillSlots(slots){
   if(!Array.isArray(slots)) return slots;
-  const idxRules=[
+  const famRules=[
     {from:'needle',to:'peck',newBase:'quick_peck',legacyBases:['needleJab','nectarJab','rapidPeck','multiPeck','peck','headWhip']},
     {from:'cut',to:'dart',newBase:'dart_rush',legacyBases:['swoopCut','dart','swoop']},
     {from:'stalk',to:'hop',newBase:'hop_step',legacyBases:['trackPrey','markPrey','predatorMark','featherRuffle','windFeint','evade']},
   ];
   const chirpLegacy=new Set(['focusChirp','battleChirp','warcry','battleFocus','keen_focus']);
-  return slots.map((slot,i)=>{
+  return slots.map((slot)=>{
     if(!slot||typeof slot!=='object') return slot;
-    if(i===2 && slot.familyId==='chirp' && chirpLegacy.has(String(slot.abilityId||''))){
+    if(slot.familyId==='chirp' && chirpLegacy.has(String(slot.abilityId||''))){
       return {...slot,abilityId:'bright_chirp',pathId:null,tier:0,masteries:[],masteryCount:0};
     }
-    const rule=idxRules[i];
-    if(!rule||slot.familyId!==rule.from) return slot;
+    const rule=famRules.find(r=>r.from===slot.familyId);
+    if(!rule) return slot;
     const legacySet=new Set(rule.legacyBases);
     const tier=Number(slot.tier)||0;
     const branched=!!slot.pathId&&tier>0;
@@ -5912,6 +5912,20 @@ function migrateRobinLegacyFamilySkillSlots(slots){
       out.tier=0;
     }
     return out;
+  });
+}
+/** Reorders saved slot-state to match `baseSlots` when families moved between indices (Robin singer order, Black Cockatoo). */
+function remapSkillSlotsByFamilyOrder(slots, baseSlots){
+  if(!Array.isArray(slots)||!Array.isArray(baseSlots)||slots.length!==baseSlots.length) return slots;
+  const byFam=new Map();
+  for(const s of slots){
+    if(s&&s.familyId) byFam.set(String(s.familyId),{...s});
+  }
+  return baseSlots.map((b,i)=>{
+    const hit=byFam.get(String(b.familyId));
+    if(hit) return {...hit,slotIndex:i,familyId:b.familyId};
+    const raw=slots[i];
+    return raw&&typeof raw==='object'?{...raw,slotIndex:i}:createSkillSlotState(i,b.familyId,null,0,b.abilityId,0,[]);
   });
 }
 /** Maps legacy dash `delayed` path + old afterimage ids onto `rend` + hum_vein_dash line. */
@@ -6410,14 +6424,15 @@ function syncPlayerAbilitiesFromSkillSlots(player){
     const ab = ensureAbilityObjectFromTemplate(slot.abilityId, prior, slot.slotIndex);
     if(slot.familyId==='rapid') ab.fixedMainAttackCost = true;
     if((player.birdKey==='macaw' || player.birdKey==='lyrebird') && slot.abilityId==='echo_note') ab.fixedMainAttackCost = true;
+    if(player.birdKey==='blackbird' && slot.abilityId==='dark_song') ab.fixedMainAttackCost = true;
     if(player.birdKey==='hummingbird' && slot.abilityId==='needle_jab') ab.fixedMainAttackCost = true;
     if(player.birdKey==='peregrine' && slot.abilityId==='talon_jab') ab.fixedMainAttackCost = true;
     if(player.birdKey==='snowyOwl' && slot.abilityId==='talon_snap') ab.fixedMainAttackCost = true;
     if(player.birdKey==='kiwi' && slot.abilityId==='beak_jab') ab.fixedMainAttackCost = true;
-    if(player.birdKey==='blackCockatoo' && slot.abilityId==='beak_crack') ab.fixedMainAttackCost = true;
+    if(player.birdKey==='blackCockatoo' && (slot.abilityId==='beak_crack' || slot.abilityId==='boom_call')) ab.fixedMainAttackCost = true;
     if(player.birdKey==='kookaburra' && slot.abilityId==='beak_chop') ab.fixedMainAttackCost = true;
     if(player.birdKey==='raven' && slot.abilityId==='beak_jab') ab.fixedMainAttackCost = true;
-    if(player.birdKey==='robin' && slot.abilityId==='quick_peck') ab.fixedMainAttackCost = true;
+    if(player.birdKey==='robin' && (slot.abilityId==='quick_peck' || slot.abilityId==='bright_chirp')) ab.fixedMainAttackCost = true;
     if(player.birdKey==='bowerbird' && slot.abilityId==='trinket_toss') ab.fixedMainAttackCost = true;
     if(player.birdKey==='toucan' && slot.abilityId==='toucan_beak_jab') ab.fixedMainAttackCost = true;
     if(player.birdKey==='swan' && slot.abilityId==='neck_jab') ab.fixedMainAttackCost = true;
@@ -6460,7 +6475,11 @@ function ensureFamilyEvolutionState(player){
           return slot;
         });
     if(birdKey==='kiwi') rawSlots = migrateKiwiLegacyFamilySkillSlots(rawSlots);
-    if(birdKey==='robin') rawSlots = migrateRobinLegacyFamilySkillSlots(rawSlots);
+    if(birdKey==='robin'){
+      rawSlots = migrateRobinLegacyFamilySkillSlots(rawSlots);
+      rawSlots = remapSkillSlotsByFamilyOrder(rawSlots, baseSlots);
+    }
+    if(birdKey==='blackCockatoo') rawSlots = remapSkillSlotsByFamilyOrder(rawSlots, baseSlots);
     if(birdKey==='hummingbird') rawSlots = migrateHummingbirdLegacyFamilySkillSlots(rawSlots);
     if(birdKey==='bowerbird') rawSlots = migrateBowerbirdLegacyFamilySkillSlots(rawSlots);
     if(birdKey==='toucan') rawSlots = migrateToucanLegacyFamilySkillSlots(rawSlots);
@@ -14467,7 +14486,7 @@ Object.entries(CROW_SKILL_ACTION_OVERRIDES).forEach(([id, fn])=>{ ACTIONS[id]=fn
       desc:'Briar Step base. Tempo setup for the next burst.',
       levels:makeAbilityLevelData([{desc:'+12 SPD and +12% accuracy for 2t (refresh).'}, {desc:'Stronger step.'},{desc:'Stronger step.'},{desc:'Peak briar line.'}]),
     }],
-    ['fwren_azure_trill','dark_song','Azure Trill'],['fwren_sunthread_call','gloom_wing','Sunthread Call'],['fwren_glimmer_peck','shadow_peck','Glimmer Peck'],['fwren_blue_refrain','grim_sign','Blue Refrain'],
+    ['fwren_azure_trill','fwren_song','Azure Trill'],['fwren_sunthread_call','fwren_bright_call','Sunthread Call'],['fwren_glimmer_peck','fwren_tiny_peck','Glimmer Peck'],['fwren_blue_refrain','fwren_refrain','Blue Refrain'],
     ['firecrest_jab','dart','Cinder Jab',{
       desc:'Ember Beak base. Fast firecrest poke.',
       levels:makeAbilityLevelData([{desc:'Base 4 + 80% ATK; 15% pierce; +12% crit.'},{desc:'Hotter jab.'},{desc:'Hotter jab.'},{desc:'Peak ember beak.'}]),
@@ -14517,7 +14536,7 @@ Object.entries(CROW_SKILL_ACTION_OVERRIDES).forEach(([id, fn])=>{ ACTIONS[id]=fn
       levels:makeAbilityLevelData([{desc:'2 EN, CD 1. +12% accuracy and +12% crit damage for 2t (refresh).'}, {desc:'Brighter spotlight.'},{desc:'Brighter spotlight.'},{desc:'Peak mark line.'}]),
     }],
     ['bluejay_crest_jab','talon_jab','Crest Jab'],['bluejay_jaybreaker','dive','Jaybreaker'],['bluejay_crest_guard','keen_eye','Crest Guard'],['bluejay_raucous_cry','aerial_pace','Raucous Cry'],
-    ['cardinal_crimson_note','quick_peck','Crimson Note'],['cardinal_scarlet_hymn','bright_chirp','Scarlet Hymn'],['cardinal_crest_jab','dart_rush','Crest Jab'],['cardinal_red_refrain','hop_step','Red Refrain'],
+    ['cardinal_crimson_note','cardinal_note','Crimson Note'],['cardinal_scarlet_hymn','cardinal_hymn','Scarlet Hymn'],['cardinal_crest_jab','cardinal_jab','Crest Jab'],['cardinal_red_refrain','cardinal_refrain','Red Refrain'],
     ['bturkey_scrap_peck','raptorKick','Scrap Peck'],['bturkey_brush_crash','warStomp','Brush Crash'],['bturkey_bush_guard','momentumCharge','Bush Guard'],['bturkey_rattle_call','crushingTalon','Rattle Call'],
     ['vulture_grave_jab','powerKick','Grave Jab'],['vulture_corpse_crush','stampedeStrike','Corpse Crush'],['vulture_bone_ward','sandKick','Bone Ward'],['vulture_grave_dirge','momentumCharge','Grave Dirge'],
     ['barnowl_talon','talon_snap','Talon'],['barnowl_shadow_dive','silent_dive','Shadow Dive'],['barnowl_death_glare','owl_eye','Death Glare'],['barnowl_silent_glide','frost_glide','Silent Glide'],
@@ -14686,7 +14705,7 @@ for(const id of GOOSE_TWO_EN_TREE_IDS){
 }
 
 const BLACKBIRD_EVOLUTION_TEMPLATE_DEFS = [
-  ['dark_song','Dark Song','Blackbird base song. A neutral dark refrain before branching.',{type:'spell',btnType:'spell',energy:2,levels:[{desc:'100% spell dmg, 14% miss.'},{desc:'110% spell dmg, 12% miss.'},{desc:'120% spell dmg, 10% miss.'},{desc:'130% spell dmg, 8% miss.'}]}],
+  ['dark_song','Dark Song','Blackbird base song. A neutral dark refrain before branching.',{type:'spell',btnType:'spell',energy:1,fixedMainAttackCost:true,levels:[{desc:'Base 4 + 80% MATK; Delayed replace (non-stack).'},{desc:'Stronger toll.'},{desc:'Stronger toll.'},{desc:'Peak dark song.'}]}],
   ['dread_song','Dread Song','Song-line fear branch. A chilling refrain that rattles the target.',{type:'spell',btnType:'spell',energy:2,levels:[{desc:'108% spell dmg, Fear 20%.'},{desc:'118% spell dmg, Fear 24%.'},{desc:'128% spell dmg, Fear 28%.'},{desc:'138% spell dmg, Fear 32%.'}]}],
   ['panic_verse','Panic Verse','Song-line fear evolution. Pressure rises against frightened prey.',{type:'spell',btnType:'spell',energy:2,levels:[{desc:'122% spell dmg, Fear 24%. Bonus vs feared.'},{desc:'132% spell dmg, Fear 28%. Bonus vs feared.'},{desc:'142% spell dmg, Fear 32%. Bonus vs feared.'},{desc:'152% spell dmg, Fear 36%. Bonus vs feared.'}]}],
   ['night_anthem','Night Anthem','Song-line fear finisher. A night chorus that overwhelms the enemy.',{type:'spell',btnType:'spell',energy:2,levels:[{desc:'3 spell hits, Fear 26%.'},{desc:'3 spell hits, Fear 30%.'},{desc:'4 spell hits, Fear 34%.'},{desc:'4 spell hits, Fear 38%.'}]}],
@@ -14696,7 +14715,7 @@ const BLACKBIRD_EVOLUTION_TEMPLATE_DEFS = [
   ['hex_song','Hex Song','Song-line hex branch. Dark resonance that clouds aim and weakens resolve.',{type:'spell',btnType:'spell',energy:2,levels:[{desc:'100% spell dmg, ACC -10%, Weaken 10%.'},{desc:'110% spell dmg, ACC -12%, Weaken 12%.'},{desc:'120% spell dmg, ACC -14%, Weaken 14%.'},{desc:'130% spell dmg, ACC -16%, Weaken 16%.'}]}],
   ['hex_verse','Hex Verse','Song-line hex evolution. Stronger curse pressure.',{type:'spell',btnType:'spell',energy:2,levels:[{desc:'114% spell dmg, ACC -14%, Weaken 14%.'},{desc:'124% spell dmg, ACC -16%, Weaken 16%.'},{desc:'134% spell dmg, ACC -18%, Weaken 18%.'},{desc:'144% spell dmg, ACC -20%, Weaken 20%.'}]}],
   ['doom_anthem','Doom Anthem','Song-line hex finisher. A crushing doom-laden refrain.',{type:'spell',btnType:'spell',energy:2,levels:[{desc:'126% spell dmg, ACC -18%, Weaken 18%.'},{desc:'136% spell dmg, ACC -20%, Weaken 20%.'},{desc:'146% spell dmg, ACC -22%, Weaken 22%.'},{desc:'156% spell dmg, ACC -24%, Weaken 24%.'}]}],
-  ['shadow_peck','Shadow Peck','Blackbird base peck. A neutral shadow strike before branching.',{type:'physical',btnType:'physical',energy:1,levels:[{desc:'98% dmg, 10% miss.'},{desc:'106% dmg, 9% miss.'},{desc:'114% dmg, 8% miss.'},{desc:'122% dmg, 7% miss.'}]}],
+  ['shadow_peck','Shadow Peck','Blackbird base peck. A neutral shadow strike before branching.',{type:'physical',btnType:'physical',energy:1,fixedMainAttackCost:true,levels:[{desc:'Base 4 + 75% ATK; +12% crit chance.'},{desc:'Sharper peck.'},{desc:'Sharper peck.'},{desc:'Peak shadow peck.'}]}],
   ['rend_strike','Rend Strike','Shadow-peck bleed evolution. Tear open a darker wound.',{type:'physical',btnType:'physical',energy:1,levels:[{desc:'112% dmg, Bleed 18%.'},{desc:'120% dmg, Bleed 20%.'},{desc:'128% dmg, Bleed 22%.'},{desc:'136% dmg, Bleed 24%.'}]}],
   ['carrion_barrage','Carrion Barrage','Shadow-peck bleed finisher. Burst the target apart with carrion pressure.',{type:'spell',btnType:'spell',energy:1,levels:[{desc:'2 hybrid hits, Bleed 22%.'},{desc:'2 hybrid hits, Bleed 24%.'},{desc:'3 hybrid hits, Bleed 26%.'},{desc:'3 hybrid hits, Bleed 28%.'}]}],
   ['siphon_peck','Siphon Peck','Shadow-peck siphon branch. Drain life with shadow beaks.',{type:'physical',btnType:'physical',energy:1,levels:[{desc:'Hybrid strike, heal 6% of dmg.'},{desc:'Hybrid strike, heal 8% of dmg.'},{desc:'Hybrid strike, heal 10% of dmg.'},{desc:'Hybrid strike, heal 12% of dmg.'}]}],
@@ -14704,7 +14723,7 @@ const BLACKBIRD_EVOLUTION_TEMPLATE_DEFS = [
   ['soul_barrage','Soul Barrage','Shadow-peck siphon finisher. Tear fragments of soul away.',{type:'spell',btnType:'spell',energy:1,levels:[{desc:'2 spell hits, heal from each hit.'},{desc:'2 spell hits, heal from each hit.'},{desc:'3 spell hits, heal from each hit.'},{desc:'3 spell hits, heal from each hit.'}]}],
   ['bodkin_strike','Bodkin Strike','Shadow-peck pierce evolution. Sharper armor-punching precision.',{type:'physical',btnType:'physical',energy:1,levels:[{desc:'116% dmg, Pierce 20% DEF.'},{desc:'124% dmg, Pierce 24% DEF.'},{desc:'132% dmg, Pierce 28% DEF.'},{desc:'140% dmg, Pierce 32% DEF.'}]}],
   ['splinter_barrage','Splinter Barrage','Shadow-peck pierce finisher. Burst through armor with shadow shards.',{type:'spell',btnType:'spell',energy:1,levels:[{desc:'2 hybrid hits, Pierce 24% DEF.'},{desc:'2 hybrid hits, Pierce 28% DEF.'},{desc:'3 hybrid hits, Pierce 32% DEF.'},{desc:'3 hybrid hits, Pierce 36% DEF.'}]}],
-  ['gloom_wing','Gloom Wing','Blackbird base utility. A neutral wing shroud before branching.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Gain +20% dodge and enemy ACC -10% for 2 turns.'},{desc:'Gain +24% dodge and enemy ACC -12% for 2 turns.'},{desc:'Gain +28% dodge and enemy ACC -14% for 2 turns.'},{desc:'Gain +32% dodge and enemy ACC -16% for 2 turns.'}]}],
+  ['gloom_wing','Gloom Wing','Heavy control call before branching.',{type:'spell',btnType:'spell',energy:2,cooldownByLevel:[1,1,1,1],levels:[{desc:'Base 6 + 105% MATK; Weaken+Fear 2t (refresh).'},{desc:'Stronger gloom.'},{desc:'Stronger gloom.'},{desc:'Peak gloom wing.'}]}],
   ['shade_wing','Shade Wing','Gloom dodge branch. Melt into shade.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Gain +30% dodge for 2 turns.'},{desc:'Gain +35% dodge for 2 turns.'},{desc:'Gain +40% dodge for 2 turns.'},{desc:'Gain +45% dodge for 3 turns.'}]}],
   ['veil_wing','Veil Wing','Gloom dodge evolution. Thicker cover of shadow.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Gain +40% dodge for 2 turns and cleanse Weaken.'},{desc:'Gain +45% dodge for 2 turns and cleanse Weaken.'},{desc:'Gain +50% dodge for 2 turns and cleanse Weaken.'},{desc:'Gain +55% dodge for 3 turns and cleanse Weaken.'}]}],
   ['ghost_wing','Ghost Wing','Gloom dodge finisher. Become nearly untouchable.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Gain +50% dodge for 3 turns and cleanse Fear/Weaken.'},{desc:'Gain +55% dodge for 3 turns and cleanse Fear/Weaken.'},{desc:'Gain +60% dodge for 3 turns and cleanse Fear/Weaken.'},{desc:'Gain +65% dodge for 3 turns and cleanse Fear/Weaken.'}]}],
@@ -14714,14 +14733,14 @@ const BLACKBIRD_EVOLUTION_TEMPLATE_DEFS = [
   ['heavy_wing','Heavy Wing','Gloom slow branch. Drag enemy movement down.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Slow enemy for 2 turns.'},{desc:'Slow enemy for 2 turns.'},{desc:'Slow enemy for 3 turns.'},{desc:'Slow enemy for 3 turns.'}]}],
   ['drag_veil','Drag Veil','Gloom slow evolution. A heavier pall of night.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Stronger Slow for 2 turns.'},{desc:'Stronger Slow for 2 turns.'},{desc:'Stronger Slow for 3 turns.'},{desc:'Stronger Slow for 3 turns.'}]}],
   ['dusk_field','Dusk Field','Gloom slow finisher. Sink the battlefield into dusk.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Heavy Slow plus ACC down for 3 turns.'},{desc:'Heavy Slow plus ACC down for 3 turns.'},{desc:'Heavy Slow plus ACC down for 3 turns.'},{desc:'Heavy Slow plus ACC down for 4 turns.'}]}],
-  ['grim_sign','Grim Sign','Blackbird base setup. Mark your quarry before choosing a doom path.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Next attack +12% damage.'},{desc:'Next attack +15% damage.'},{desc:'Next attack +18% damage.'},{desc:'Next attack +21% damage.'}]}],
+  ['grim_sign','Grim Sign','Dark omen setup before branching.',{type:'utility',btnType:'utility',energy:2,cooldownByLevel:[1,1,1,1],levels:[{desc:'+12% accuracy and +12% crit 2t (refresh).'},{desc:'Stronger omen.'},{desc:'Stronger omen.'},{desc:'Peak grim sign.'}]}],
 ];
 for(const [id,name,desc,options] of BLACKBIRD_EVOLUTION_TEMPLATE_DEFS){
   ABILITY_TEMPLATES[id] = Object.assign(ABILITY_TEMPLATES[id]||{}, makeEvolutionAbilityTemplate(id,name,desc,options));
 }
 
 const MACAW_EVOLUTION_TEMPLATE_DEFS = [
-  ['echo_note','Echo Note','Echo-line neutral. A quick bright note before you specialize.',{type:'spell',btnType:'spell',energy:1,levels:[{desc:'~72% MATK spell chip.'},{desc:'~78% MATK spell chip.'},{desc:'~84% MATK spell chip.'},{desc:'~90% MATK spell chip.'}]}],
+  ['echo_note','Echo Note','Echo-line neutral. A quick bright note before you specialize.',{type:'spell',btnType:'spell',energy:1,fixedMainAttackCost:true,levels:[{desc:'Macaw: Base 4 + 80% MATK; +12% crit. Lyre: Base 4 + 80% MATK; Delayed replace.'},{desc:'Brighter note.'},{desc:'Brighter note.'},{desc:'Peak echo note.'}]}],
   ['ember_note','Ember Note','Echo-line burn branch. Hot harmonic pressure.',{type:'spell',btnType:'spell',energy:1,levels:[{desc:'~78% MATK, Burn 10%.'},{desc:'~84% MATK, Burn 12%.'},{desc:'~90% MATK, Burn 14%.'},{desc:'~96% MATK, Burn 16%.'}]}],
   ['ember_echo','Ember Echo','Echo-line burn evolution. Echoes bite harder on burning targets.',{type:'spell',btnType:'spell',energy:1,levels:[{desc:'~86% MATK, Burn 15%, bonus vs burning.'},{desc:'~92% MATK, Burn 17%.'},{desc:'~98% MATK, Burn 19%.'},{desc:'~104% MATK, Burn 21%.'}]}],
   ['ember_refrain','Ember Refrain','Echo-line burn finisher. Refrains that sear through wards.',{type:'spell',btnType:'spell',energy:1,levels:[{desc:'~94% MATK, Burn 20%, strong vs burning.'},{desc:'~100% MATK, Burn 22%.'},{desc:'~106% MATK, Burn 24%.'},{desc:'~112% MATK, Burn 26%.'}]}],
@@ -14730,7 +14749,7 @@ const MACAW_EVOLUTION_TEMPLATE_DEFS = [
   ['maddening_refrain','Maddening Refrain','Echo-line confuse finisher. A refrain that unravels focus.',{type:'spell',btnType:'spell',energy:1,levels:[{desc:'~92% MATK, Confuse 25%, bonus vs confused.'},{desc:'~98% MATK, Confuse 27%.'},{desc:'~104% MATK, Confuse 29%.'},{desc:'~110% MATK, Confuse 31%.'}]}],
   ['delayed_echo','Afterbeat Chime','Echo-line Resonance evolution. Part of the note arrives on their turn.',{type:'spell',btnType:'spell',energy:1,levels:[{desc:'~80% MATK + Resonance next turn.'},{desc:'~86% MATK + stronger Resonance.'},{desc:'~92% MATK + stronger Resonance.'},{desc:'~98% MATK + strongest Resonance.'}]}],
   ['returning_refrain','Returning Refrain','Echo-line Resonance finisher. The refrain returns harder vs debuffed prey.',{type:'spell',btnType:'spell',energy:1,levels:[{desc:'~88% MATK + big Resonance; bonus if debuffed.'},{desc:'~94% MATK + bigger Resonance.'},{desc:'~100% MATK + bigger Resonance.'},{desc:'~106% MATK + peak Resonance.'}]}],
-  ['mimic_song','Mimic Song','Mimic-line neutral. Signature vocal mimicry that rattles tempo.',{type:'spell',btnType:'spell',energy:2,levels:[{desc:'~92% MATK, light control pressure.'},{desc:'~100% MATK.'},{desc:'~108% MATK.'},{desc:'~116% MATK.'}]}],
+  ['mimic_song','Mimic Song','Mimic-line neutral. Signature vocal mimicry that rattles tempo.',{type:'spell',btnType:'spell',energy:2,cooldownByLevel:[1,1,1,1],levels:[{desc:'Base 6 + 100% MATK; Confuse+Delayed 1t (refresh).'},{desc:'Stronger mimic.'},{desc:'Stronger mimic.'},{desc:'Peak mimic song.'}]}],
   ['dread_mimic','Dread Mimic','Mimic-line fear branch. Copy a predator’s warning cry.',{type:'spell',btnType:'spell',energy:2,levels:[{desc:'~96% MATK, Fear chance.'},{desc:'~104% MATK, stronger Fear.'},{desc:'~112% MATK.'},{desc:'~120% MATK.'}]}],
   ['panic_chorus','Panic Chorus','Mimic-line fear evolution. Chorus of false threats.',{type:'spell',btnType:'spell',energy:2,levels:[{desc:'~108% MATK, Fear + ACC down.'},{desc:'~116% MATK.'},{desc:'~124% MATK.'},{desc:'~132% MATK.'}]}],
   ['terror_aria','Terror Aria','Mimic-line fear finisher. A solo that breaks nerve.',{type:'spell',btnType:'spell',energy:2,levels:[{desc:'2 hits, Fear, stronger vs feared.'},{desc:'2 hits.'},{desc:'3 hits.'},{desc:'3 hits, peak Fear pressure.'}]}],
@@ -14740,7 +14759,7 @@ const MACAW_EVOLUTION_TEMPLATE_DEFS = [
   ['mirror_mimic','Mirror Mimic','Mimic-line copycat branch. Strikes harder right after enemy tricks.',{type:'spell',btnType:'spell',energy:2,levels:[{desc:'~98% MATK; reactive bonus if enemy just acted.'},{desc:'~106% MATK.'},{desc:'~114% MATK.'},{desc:'~122% MATK.'}]}],
   ['echo_chorus','Echo Chorus','Mimic-line copycat evolution. Double-timed mimic payoff.',{type:'spell',btnType:'spell',energy:2,levels:[{desc:'2 hits; reactive bonus.'},{desc:'2 hits.'},{desc:'3 hits.'},{desc:'3 hits.'}]}],
   ['stolen_aria','Stolen Aria','Mimic-line copycat finisher. Steals the rhythm of a messy battlefield.',{type:'spell',btnType:'spell',energy:2,levels:[{desc:'Big spell hit; bonus vs debuffed or reactive.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Peak adaptive burst.'}]}],
-  ['feather_taunt','Feather Taunt','Taunt-line neutral. Flashy feathers bait a bad swing.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Taunt + enemy ACC down.'},{desc:'Stronger ACC down.'},{desc:'Stronger ACC down.'},{desc:'Strongest ACC down.'}]}],
+  ['feather_taunt','Feather Jab','Taunt-line neutral. Quick physical jab fallback.',{type:'physical',btnType:'physical',energy:1,fixedMainAttackCost:true,levels:[{desc:'Base 4 + 75% ATK; +12% crit damage.'},{desc:'Sharper jab.'},{desc:'Sharper jab.'},{desc:'Peak feather jab.'}]}],
   ['glitter_taunt','Glitter Taunt','Taunt-line accuracy-break branch. Dazzling colors ruin aim.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Enemy ACC -18% for 2t.'},{desc:'-20% ACC.'},{desc:'-22% ACC.'},{desc:'-24% ACC for 3t.'}]}],
   ['dazzle_flourish','Dazzle Flourish','Taunt-line accuracy-break evolution.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Enemy ACC -26% for 2t.'},{desc:'-28% ACC.'},{desc:'-30% ACC.'},{desc:'-32% ACC for 3t.'}]}],
   ['spectacle_storm','Spectacle Storm','Taunt-line accuracy-break finisher.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Enemy ACC -34% for 3t.'},{desc:'-36% ACC.'},{desc:'-38% ACC.'},{desc:'-40% ACC for 3t.'}]}],
@@ -14750,7 +14769,7 @@ const MACAW_EVOLUTION_TEMPLATE_DEFS = [
   ['mock_taunt','Mock Taunt','Taunt-line pressure branch. Mock openings into real punishment.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Taunt + Weaken + ACC down.'},{desc:'Stronger Weaken.'},{desc:'Stronger Weaken.'},{desc:'Peak bait pressure.'}]}],
   ['provoking_flourish','Provoking Flourish','Taunt-line pressure evolution.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Taunt + heavier Weaken.'},{desc:'Heavier Weaken.'},{desc:'Heavier Weaken.'},{desc:'Heaviest Weaken.'}]}],
   ['grand_spectacle','Grand Spectacle','Taunt-line pressure finisher.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Taunt + big Weaken + ACC crash.'},{desc:'Bigger crash.'},{desc:'Bigger crash.'},{desc:'Maximum spectacle.'}]}],
-  ['chorus_mark','Chorus Mark','Chorus-line neutral setup. Mark the measure before the finale.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Next attack +12% damage.'},{desc:'+15%.'},{desc:'+18%.'},{desc:'+21%.'}]}],
+  ['chorus_mark','Chorus Mark','Chorus-line neutral setup utility.',{type:'utility',btnType:'utility',energy:2,cooldownByLevel:[1,1,1,1],levels:[{desc:'+12% accuracy and +12 MATK 2t (refresh).'},{desc:'Stronger chorus.'},{desc:'Stronger chorus.'},{desc:'Peak chorus mark.'}]}],
   ['harmonic_measure','Harmonic Measure','Chorus-line damage-amp evolution.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Next attack +20% damage.'},{desc:'+24%.'},{desc:'+28%.'},{desc:'+32%.'}]}],
   ['finale_mark','Finale Mark','Chorus-line damage-amp finisher.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Next attack +30% damage.'},{desc:'+34%.'},{desc:'+38%.'},{desc:'+42%.'}]}],
   ['echo_mark','Chorus Toll Mark','Chorus-line Afterbeat branch. Mark now; Resonance pays next beat.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Next attack +8% + Resonance next turn (extra vs debuffed).'},{desc:'+10% + bigger Resonance.'},{desc:'+12% + bigger Resonance.'},{desc:'+14% + biggest Resonance.'}]}],
@@ -14765,9 +14784,9 @@ for(const [id,name,desc,options] of MACAW_EVOLUTION_TEMPLATE_DEFS){
 }
 
 const LYREBIRD_EVOLUTION_TEMPLATE_DEFS = [
-  ['mimic_chorus','Mimic Chorus','Mimic-line neutral. Signature imitation that steals tempo without committing to a branch.',{type:'spell',btnType:'spell',energy:2,levels:[{desc:'~92% MATK, light control pressure.'},{desc:'~100% MATK.'},{desc:'~108% MATK.'},{desc:'~116% MATK.'}]}],
-  ['display_step','Display Step','Display-line neutral. A poised flourish that baits attention before branching.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Taunt + modest ACC crash.'},{desc:'Stronger crash.'},{desc:'Stronger crash.'},{desc:'Strongest baseline display.'}]}],
-  ['refrain_mark','Refrain Mark','Refrain-line neutral setup. Mark the measure before the finale.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Next attack +12% damage.'},{desc:'+15%.'},{desc:'+18%.'},{desc:'+21%.'}]}],
+  ['mimic_chorus','Mimic Chorus','Mimic-line neutral. Signature imitation that steals tempo without committing to a branch.',{type:'spell',btnType:'spell',energy:2,cooldownByLevel:[1,1,1,1],levels:[{desc:'Base 6 + 105% MATK; Confuse+Weaken 2t (refresh).'},{desc:'Stronger chorus.'},{desc:'Stronger chorus.'},{desc:'Peak mimic chorus.'}]}],
+  ['display_step','Display Step','Display-line neutral. Physical flourish fallback.',{type:'physical',btnType:'physical',energy:1,fixedMainAttackCost:true,levels:[{desc:'Base 4 + 75% ATK; +12% crit chance.'},{desc:'Sharper step.'},{desc:'Sharper step.'},{desc:'Peak display step.'}]}],
+  ['refrain_mark','Refrain','Refrain-line neutral sustain setup.',{type:'utility',btnType:'utility',energy:2,cooldownByLevel:[1,1,1,1],levels:[{desc:'Heal ~14% MATK; +12 MATK 2t (refresh).'},{desc:'Stronger refrain.'},{desc:'Stronger refrain.'},{desc:'Peak refrain.'}]}],
   ['lyre_dread_chorus','Dread Chorus','Mimic-line fear branch. Borrowed predator warning.',{type:'spell',btnType:'spell',energy:2,levels:[{desc:'~96% MATK, Fear chance.'},{desc:'~104% MATK.'},{desc:'~112% MATK.'},{desc:'~120% MATK.'}]}],
   ['lyre_panic_verse','Panic Verse','Mimic-line fear evolution. False threats stack.',{type:'spell',btnType:'spell',energy:2,levels:[{desc:'~108% MATK, Fear + ACC down.'},{desc:'~116% MATK.'},{desc:'~124% MATK.'},{desc:'~132% MATK.'}]}],
   ['lyre_terror_anthem','Terror Anthem','Mimic-line fear finisher. A solo that breaks nerve.',{type:'spell',btnType:'spell',energy:2,levels:[{desc:'2 hits, Fear, stronger vs feared.'},{desc:'2 hits.'},{desc:'3 hits.'},{desc:'3 hits, peak Fear pressure.'}]}],
@@ -14800,7 +14819,7 @@ for(const [id,name,desc,options] of LYREBIRD_EVOLUTION_TEMPLATE_DEFS){
 }
 
 const BLACK_COCKATOO_EVOLUTION_TEMPLATE_DEFS = [
-  ['beak_crack','Beak Crack','Beak-line neutral. A heavy crack before you specialize.',{type:'physical',btnType:'physical',energy:1,fixedMainAttackCost:true,levels:[{desc:'~100% dmg, Pierce 10%.'},{desc:'Stronger crack.'},{desc:'Stronger crack.'},{desc:'Peak crack.'}]}],
+  ['beak_crack','Beak Crack','Beak-line neutral. A heavy crack before you specialize.',{type:'physical',btnType:'physical',energy:1,fixedMainAttackCost:true,levels:[{desc:'Base 5 + 85% ATK; +12% crit damage.'},{desc:'Stronger crack.'},{desc:'Stronger crack.'},{desc:'Peak crack.'}]}],
   ['bc_bodkin_bite','Bodkin Bite','Beak-line pierce evolution. Armor-breaking bite.',{type:'physical',btnType:'physical',energy:1,fixedMainAttackCost:true,levels:[{desc:'Pierce 20%.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Maximum pierce bite.'}]}],
   ['splinter_crush','Splinter Crush','Beak-line pierce finisher. Splinters guard.',{type:'physical',btnType:'physical',energy:1,fixedMainAttackCost:true,levels:[{desc:'Pierce 30% + bonus vs heavy armor.'},{desc:'Heavier.'},{desc:'Heavier.'},{desc:'Capstone crush.'}]}],
   ['dulling_crack','Dulling Crack','Beak-line weaken branch. Blunt their offense.',{type:'physical',btnType:'physical',energy:1,fixedMainAttackCost:true,levels:[{desc:'Weaken 10% chance.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Peak dulling crack.'}]}],
@@ -14809,7 +14828,7 @@ const BLACK_COCKATOO_EVOLUTION_TEMPLATE_DEFS = [
   ['split_crack','Split Crack','Beak-line break branch. Hairline cracks in defense.',{type:'physical',btnType:'physical',energy:1,fixedMainAttackCost:true,levels:[{desc:'Small DEF break.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Heavy split.'}]}],
   ['break_bite','Break Bite','Beak-line break evolution. Widen the crack.',{type:'physical',btnType:'physical',energy:1,fixedMainAttackCost:true,levels:[{desc:'Stronger DEF break.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Violent break.'}]}],
   ['ruin_crush','Ruin Crush','Beak-line break finisher. Ruin their footing.',{type:'physical',btnType:'physical',energy:1,fixedMainAttackCost:true,levels:[{desc:'Largest anti-defense bite.'},{desc:'Heavier.'},{desc:'Heavier.'},{desc:'Ruin capstone.'}]}],
-  ['boom_call','Boom Call','Boom-line neutral. A resonant crest call that defines the battlefield.',{type:'spell',btnType:'spell',energy:2,levels:[{desc:'~88% MATK sonic burst.'},{desc:'~96% MATK.'},{desc:'~104% MATK.'},{desc:'~112% MATK.'}]}],
+  ['boom_call','Boom Note','Boom-line neutral resonant song.',{type:'spell',btnType:'spell',energy:1,fixedMainAttackCost:true,levels:[{desc:'Base 4 + 80% MATK; Delayed replace.'},{desc:'Stronger note.'},{desc:'Stronger note.'},{desc:'Peak boom note.'}]}],
   ['cockatoo_dread_call','Dread Call','Boom-line fear branch. Booming predator warning.',{type:'spell',btnType:'spell',energy:2,levels:[{desc:'~92% MATK, Fear chance.'},{desc:'~100% MATK.'},{desc:'~108% MATK.'},{desc:'~116% MATK.'}]}],
   ['terror_boom','Terror Boom','Boom-line fear evolution. Chorus of dread.',{type:'spell',btnType:'spell',energy:2,levels:[{desc:'~104% MATK, stronger Fear.'},{desc:'~112% MATK.'},{desc:'~120% MATK.'},{desc:'~128% MATK.'}]}],
   ['black_shockwave','Black Shockwave','Boom-line fear finisher. A black shock of sound.',{type:'spell',btnType:'spell',energy:2,levels:[{desc:'2 hits; Fear; bonus vs feared.'},{desc:'2 hits.'},{desc:'3 hits.'},{desc:'3 hits, peak Fear.'}]}],
@@ -14819,7 +14838,7 @@ const BLACK_COCKATOO_EVOLUTION_TEMPLATE_DEFS = [
   ['echo_call','Hall Call','Boom-line Reverberation branch. Sound now, impact on their turn.',{type:'spell',btnType:'spell',energy:2,levels:[{desc:'~86% MATK + Resonance stack.'},{desc:'~94% MATK + bigger Resonance.'},{desc:'~102% MATK.'},{desc:'~110% MATK.'}]}],
   ['resonant_boom','Vault Boom','Boom-line Reverberation evolution. Harmonic pile-up.',{type:'spell',btnType:'spell',energy:2,levels:[{desc:'~96% MATK + strong Resonance.'},{desc:'~104% MATK.'},{desc:'~112% MATK.'},{desc:'~120% MATK.'}]}],
   ['returning_shockwave','Returning Shockwave','Boom-line Reverberation finisher. The wave returns harder.',{type:'spell',btnType:'spell',energy:2,levels:[{desc:'~106% MATK + massive Resonance; vs debuffed.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Peak shockwave.'}]}],
-  ['wing_beat','Wing Beat','Wing-line neutral. Heavy beat before you specialize.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Light ACC pressure + tempo.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Strongest baseline beat.'}]}],
+  ['wing_beat','Echo Guard','Wing-line neutral resonant guard setup.',{type:'utility',btnType:'utility',energy:2,cooldownByLevel:[1,1,1,1],levels:[{desc:'+12% accuracy and +12 MATK 2t (refresh).'},{desc:'Stronger guard.'},{desc:'Stronger guard.'},{desc:'Peak echo guard.'}]}],
   ['dust_beat','Dust Beat','Wing-line accuracy-break branch. Dust and grit in the eyes.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Enemy ACC -14% for 2t.'},{desc:'-16% ACC.'},{desc:'-18% ACC.'},{desc:'-20% ACC for 3t.'}]}],
   ['shudder_gust','Shudder Gust','Wing-line accuracy-break evolution.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Enemy ACC -22% for 2t.'},{desc:'-24% ACC.'},{desc:'-26% ACC.'},{desc:'-28% ACC for 3t.'}]}],
   ['black_gale','Black Gale','Wing-line accuracy-break finisher.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Enemy ACC -30% for 3t.'},{desc:'-32% ACC.'},{desc:'-34% ACC.'},{desc:'-36% ACC for 3t.'}]}],
@@ -14829,7 +14848,7 @@ const BLACK_COCKATOO_EVOLUTION_TEMPLATE_DEFS = [
   ['brace_beat','Brace Beat','Wing-line guard branch. Brace into the wind.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Small Guard + light resist.'},{desc:'Stronger brace.'},{desc:'Stronger.'},{desc:'Strongest brace.'}]}],
   ['guard_gust','Guard Gust','Wing-line guard evolution.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Bigger Guard window.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Iron posture.'}]}],
   ['iron_gale','Iron Gale','Wing-line guard finisher.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Huge Guard + stability.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Capstone gale.'}]}],
-  ['resonance_mark','Resonance Mark','Resonance-line neutral setup. Mark the measure before the boom.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Next attack +12% damage.'},{desc:'+15%.'},{desc:'+18%.'},{desc:'+21%.'}]}],
+  ['resonance_mark','Resonance Mark','Resonance-line heavy suppressive call.',{type:'spell',btnType:'spell',energy:2,cooldownByLevel:[1,1,1,1],levels:[{desc:'Base 6 + 105% MATK; Weaken+Fear 2t (refresh).'},{desc:'Stronger mark.'},{desc:'Stronger mark.'},{desc:'Peak resonance mark.'}]}],
   ['harmonic_pulse','Harmonic Pulse','Resonance-line amp evolution.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Next attack +20% damage.'},{desc:'+24%.'},{desc:'+28%.'},{desc:'+32%.'}]}],
   ['resonant_collapse','Resonant Collapse','Resonance-line amp finisher.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Next attack +30% damage.'},{desc:'+34%.'},{desc:'+38%.'},{desc:'+42%.'}]}],
   ['cockatoo_echo_mark','Crest Toll Mark','Resonance-line Returning Pulse branch. Mark now; collapse on their turn.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Next attack +8% + Resonance stack.'},{desc:'+10% + bigger Resonance.'},{desc:'+12%.'},{desc:'+14%.'}]}],
@@ -15016,7 +15035,7 @@ for(const [id,name,desc,options] of SEAGULL_EVOLUTION_TEMPLATE_DEFS){
 }
 
 const ROBIN_EVOLUTION_TEMPLATE_DEFS = [
-  ['quick_peck','Quick Peck','Peck-line neutral. A fast tidy jab before you specialize.',{type:'physical',btnType:'physical',energy:1,fixedMainAttackCost:true,levels:[{desc:'~95% dmg, light pierce.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Peak peck.'}]}],
+  ['quick_peck','Quick Peck','Peck-line neutral. A fast tidy jab before you specialize.',{type:'physical',btnType:'physical',energy:1,fixedMainAttackCost:true,levels:[{desc:'Base 4 + 80% ATK; +12% crit chance.'},{desc:'Sharper peck.'},{desc:'Sharper peck.'},{desc:'Peak peck.'}]}],
   ['rob_razor_jab','Razor Jab','Peck-line bleed evolution. Two quick wounds.',{type:'physical',btnType:'physical',energy:1,fixedMainAttackCost:true,levels:[{desc:'2 hits; Bleed chance.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Cruel jab.'}]}],
   ['rob_razor_flurry','Razor Flurry','Peck-line bleed finisher. Field flurry payoff.',{type:'physical',btnType:'physical',energy:1,fixedMainAttackCost:true,levels:[{desc:'3 hits; Bleed; vs bleeding.'},{desc:'4 hits.'},{desc:'Stronger.'},{desc:'Peak flurry.'}]}],
   ['rob_needle_peck','Needle Peck','Peck-line pierce branch. Picks at guard.',{type:'physical',btnType:'physical',energy:1,fixedMainAttackCost:true,levels:[{desc:'Pierce pressure.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Sharp needle.'}]}],
@@ -15025,7 +15044,7 @@ const ROBIN_EVOLUTION_TEMPLATE_DEFS = [
   ['rob_spot_peck','Spot Peck','Peck-line expose branch. Tags the opening.',{type:'physical',btnType:'physical',energy:1,fixedMainAttackCost:true,levels:[{desc:'Hit + small Exposed window.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Clean spot.'}]}],
   ['rob_mark_jab','Mark Jab','Peck-line expose evolution.',{type:'physical',btnType:'physical',energy:1,fixedMainAttackCost:true,levels:[{desc:'Stronger hit + expose.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Hard mark.'}]}],
   ['rob_open_flurry','Open Flurry','Peck-line expose finisher.',{type:'physical',btnType:'physical',energy:1,fixedMainAttackCost:true,levels:[{desc:'Flurry; bonus vs compromised.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Total open.'}]}],
-  ['dart_rush','Dart Rush','Dart-line neutral. Dart in for a committed strike.',{type:'physical',btnType:'physical',energy:2,levels:[{desc:'~108% dmg; ignores dodge this hit.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Peak rush.'}]}],
+  ['dart_rush',"Robin's Refrain",'Dart-line neutral sustain utility.',{type:'utility',btnType:'utility',energy:2,cooldownByLevel:[1,1,1,1],levels:[{desc:'Heal ~12% MATK; +12 MATK 2t (refresh).'},{desc:'Stronger refrain.'},{desc:'Stronger refrain.'},{desc:'Peak refrain.'}]}],
   ['rob_swift_dash','Swift Dash','Dart-line crit evolution.',{type:'physical',btnType:'physical',energy:2,levels:[{desc:'Stronger burst + crit pressure.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Swift capstone.'}]}],
   ['rob_flash_strike','Flash Strike','Dart-line crit finisher.',{type:'physical',btnType:'physical',energy:2,levels:[{desc:'Heavy crit burst.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Flash finish.'}]}],
   ['rob_rending_rush','Rending Rush','Dart-line bleed branch.',{type:'physical',btnType:'physical',energy:2,levels:[{desc:'Rush + Bleed chance.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Rending rush.'}]}],
@@ -15034,7 +15053,7 @@ const ROBIN_EVOLUTION_TEMPLATE_DEFS = [
   ['rob_passing_rush','Passing Rush','Dart-line return branch. Strike now, echo next turn.',{type:'physical',btnType:'physical',energy:2,levels:[{desc:'Hit + field echo damage.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Clean pass.'}]}],
   ['rob_return_dash','Return Dash','Dart-line return evolution.',{type:'physical',btnType:'physical',energy:2,levels:[{desc:'Bigger hit + echo.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Hard return.'}]}],
   ['rob_double_strike','Double Strike','Dart-line return finisher.',{type:'physical',btnType:'physical',energy:2,levels:[{desc:'Heavy hit + massive echo.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Double finish.'}]}],
-  ['bright_chirp','Bright Chirp','Chirp-line neutral. A cheerful tempo lift.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'+SPD; small dodge window.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Brightest chirp.'}]}],
+  ['bright_chirp','Bright Chirp','Chirp-line neutral bright song.',{type:'spell',btnType:'spell',energy:1,fixedMainAttackCost:true,levels:[{desc:'Base 4 + 80% MATK; +12% crit chance.'},{desc:'Brighter chirp.'},{desc:'Brighter chirp.'},{desc:'Peak bright chirp.'}]}],
   ['rob_rally_call','Rally Call','Chirp-line speed evolution.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Bigger SPD tempo.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Rally peak.'}]}],
   ['rob_quick_song','Quick Song','Chirp-line speed finisher.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Maximum speed cadence.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Morning song.'}]}],
   ['rob_distracting_chirp','Distracting Chirp','Chirp-line accuracy-break branch.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Enemy ACC down.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Distracting peak.'}]}],
@@ -15043,7 +15062,7 @@ const ROBIN_EVOLUTION_TEMPLATE_DEFS = [
   ['rob_dulling_chirp','Dulling Chirp','Chirp-line weaken branch.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Weaken chance.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Dulling peak.'}]}],
   ['rob_softening_call','Softening Call','Chirp-line weaken evolution.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Stronger Weaken odds.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Soft capstone.'}]}],
   ['rob_fading_song','Fading Song','Chirp-line weaken finisher.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Heavy Weaken pressure.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Fading finale.'}]}],
-  ['hop_step','Hop Step','Hop-line neutral. Light footwork before you specialize.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Small SPD + dodge setup.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Lively step.'}]}],
+  ['hop_step','Hop Refrain','Hop-line neutral lively call.',{type:'spell',btnType:'spell',energy:2,cooldownByLevel:[1,1,1,1],levels:[{desc:'Base 6 + 100% MATK; Delayed+Confuse 1t (refresh).'},{desc:'Stronger refrain.'},{desc:'Stronger refrain.'},{desc:'Peak hop refrain.'}]}],
   ['light_step','Light Step','Hop-line dodge branch.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Dodge window.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Light capstone.'}]}],
   ['quick_hop','Quick Hop','Hop-line dodge evolution.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Bigger dodge.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Quick peak.'}]}],
   ['spring_bound','Spring Bound','Hop-line dodge finisher.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Maximum evasive hop.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Spring finish.'}]}],
@@ -15055,6 +15074,20 @@ const ROBIN_EVOLUTION_TEMPLATE_DEFS = [
   ['repeat_bound','Repeat Bound','Hop-line trigger finisher.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Max amp + field echo.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Repeat finish.'}]}],
 ];
 for(const [id,name,desc,options] of ROBIN_EVOLUTION_TEMPLATE_DEFS){
+  ABILITY_TEMPLATES[id] = Object.assign(ABILITY_TEMPLATES[id]||{}, makeEvolutionAbilityTemplate(id,name,desc,options));
+}
+
+const CARDINAL_FWREN_BASE_TEMPLATE_DEFS = [
+  ['cardinal_note','Crimson Note','Cardinal main regal note.',{type:'spell',btnType:'spell',energy:1,fixedMainAttackCost:true,levels:[{desc:'Base 4 + 80% MATK; +12% crit.'},{desc:'Clearer note.'},{desc:'Clearer note.'},{desc:'Peak crimson note.'}]}],
+  ['cardinal_hymn','Scarlet Hymn','Heavy hymn with control pressure.',{type:'spell',btnType:'spell',energy:2,cooldownByLevel:[1,1,1,1],levels:[{desc:'Base 6 + 105% MATK; Weaken+Fear 2t (refresh).'},{desc:'Stronger hymn.'},{desc:'Stronger hymn.'},{desc:'Peak scarlet hymn.'}]}],
+  ['cardinal_jab','Crest Jab','Physical fallback jab.',{type:'physical',btnType:'physical',energy:1,fixedMainAttackCost:true,levels:[{desc:'Base 4 + 75% ATK; +12% crit damage.'},{desc:'Sharper jab.'},{desc:'Sharper jab.'},{desc:'Peak crest jab.'}]}],
+  ['cardinal_refrain','Red Refrain','Support refrain with sustain.',{type:'utility',btnType:'utility',energy:2,cooldownByLevel:[1,1,1,1],levels:[{desc:'Heal ~14% MATK; +12 MATK 2t (refresh).'},{desc:'Stronger refrain.'},{desc:'Stronger refrain.'},{desc:'Peak red refrain.'}]}],
+  ['fwren_song','Azure Trill','Fairywren bright main trill.',{type:'spell',btnType:'spell',energy:1,fixedMainAttackCost:true,levels:[{desc:'Base 4 + 80% MATK; +12% crit.'},{desc:'Brighter trill.'},{desc:'Brighter trill.'},{desc:'Peak azure trill.'}]}],
+  ['fwren_bright_call','Sunthread Call','Heavier call with disruption.',{type:'spell',btnType:'spell',energy:2,cooldownByLevel:[1,1,1,1],levels:[{desc:'Base 6 + 100% MATK; Confuse+Delayed 1t (refresh).'},{desc:'Stronger call.'},{desc:'Stronger call.'},{desc:'Peak sunthread.'}]}],
+  ['fwren_tiny_peck','Glimmer Peck','Tiny physical peck.',{type:'physical',btnType:'physical',energy:1,fixedMainAttackCost:true,levels:[{desc:'Base 4 + 75% ATK; +12% crit chance.'},{desc:'Sharper peck.'},{desc:'Sharper peck.'},{desc:'Peak glimmer peck.'}]}],
+  ['fwren_refrain','Blue Refrain','Tiny sustain refrain.',{type:'utility',btnType:'utility',energy:2,cooldownByLevel:[1,1,1,1],levels:[{desc:'Heal ~12% MATK; +12 MATK 2t (refresh).'},{desc:'Stronger refrain.'},{desc:'Stronger refrain.'},{desc:'Peak blue refrain.'}]}],
+];
+for(const [id,name,desc,options] of CARDINAL_FWREN_BASE_TEMPLATE_DEFS){
   ABILITY_TEMPLATES[id] = Object.assign(ABILITY_TEMPLATES[id]||{}, makeEvolutionAbilityTemplate(id,name,desc,options));
 }
 
@@ -15554,18 +15587,32 @@ function triggerBlackbirdSpellPassive(){
   const bd=BIRDS[G.player?.birdKey];
   if(bd?.passive?.onSpell) bd.passive.onSpell(G.player);
 }
+function applyBlackbirdDelayedReplace(flat){
+  const cap=Math.max(32, Math.floor(matk(2.2)));
+  const dmg=Math.min(cap, Math.max(1, Math.floor(flat)));
+  G.enemyStatus.delayed={dmg};
+  spawnFloat('enemy','⏳ Delayed!','fn-status');
+  logMsg(`⏳ Omen toll (${dmg} on their turn).`,'system');
+}
 async function executeBlackbirdSpellAction(ab, config={}){
   const lv=Math.max(1, Math.min(4, Number(ab?.level)||1));
   const miss=Math.max(0, (config.miss?.[lv-1] ?? spellMissChance()) - getPlayerHitBonus(ab));
   const hits=config.hits?.[lv-1] || 1;
+  const mFlat=config.matkFlat?.[lv-1];
+  const critXF=config.critChanceFlat?.[lv-1]||0;
   let total=0;
   for(let i=0;i<hits;i++){
     if(chance(miss)){ await doMiss('player'); if(hits===1) logMsg(`${config.name||ab?.name||ab?.id} missed!`,'miss'); continue; }
     const hybrid=config.damageKind==='hybrid';
-    const amount=hybrid
-      ? Math.max(1, Math.floor((pdmg(config.mult?.[lv-1] ?? 1, ab) + matk(Math.max(0.8,(config.mult?.[lv-1] ?? 1)*0.92))) / 2))
-      : matk(config.mult?.[lv-1] ?? 1);
-    const isCrit=chance(getPlayerCritChance(ab) + (config.bonusVs==='feared' && (G.enemyStatus?.feared||0)>0 ? 8 : 0));
+    let amount;
+    if(hybrid){
+      amount=Math.max(1, Math.floor((pdmg(config.mult?.[lv-1] ?? 1, ab) + matk(Math.max(0.8,(config.mult?.[lv-1] ?? 1)*0.92))) / 2));
+    }else if(mFlat!=null){
+      amount=Math.max(1, mFlat+matk(config.mult?.[lv-1] ?? 0.8));
+    }else{
+      amount=matk(config.mult?.[lv-1] ?? 1);
+    }
+    const isCrit=chance(Math.min(95,getPlayerCritChance(ab)+critXF + (config.bonusVs==='feared' && (G.enemyStatus?.feared||0)>0 ? 8 : 0)));
     const r=dealDamage('enemy', amount, isCrit, true, ab);
     total+=r.dmgDealt;
     await doAttack('player','enemy',r);
@@ -15577,6 +15624,12 @@ async function executeBlackbirdSpellAction(ab, config={}){
   if(config.bleedChance?.[lv-1] && chance(config.bleedChance[lv-1])){ applyAilment('enemy','bleed',1); spawnFloat('enemy','🩸 Bleed!','fn-poison'); }
   if(config.accDown?.[lv-1]) G.enemyStatus.accDebuff=(G.enemyStatus.accDebuff||0)+config.accDown[lv-1];
   if(config.weakenChance?.[lv-1] && spellAilmentRoll(config.weakenChance[lv-1], false)){ applyAilment('enemy','weaken',1); spawnFloat('enemy','🐔 Weaken!','fn-status'); }
+  if(total>0 && config.fearWeakenRefresh){
+    G.enemyStatus.weaken=Math.max(G.enemyStatus.weaken||0,2);
+    G.enemyStatus.feared=Math.max(G.enemyStatus.feared||0,2);
+    spawnFloat('enemy','🌑 Gloom!','fn-status');
+  }
+  if(total>0 && config.delayedReplaceFlat?.[lv-1]!=null) applyBlackbirdDelayedReplace(config.delayedReplaceFlat[lv-1]);
   renderStatuses('enemy-status',G.enemyStatus);
   await doSpell('enemy', config.fx||'🌑');
   logMsg(`${config.log||config.name||ab?.name||ab?.id}! ${total} dmg.`, 'player-action');
@@ -15596,10 +15649,20 @@ async function executeBlackbirdPeckAction(ab, config={}){
       amount=Math.max(1, Math.floor((pdmg(config.mult?.[lv-1] ?? 1, ab) + matk(Math.max(0.8,(config.mult?.[lv-1] ?? 1)*0.9))) / 2));
     }else{
       const prox={...ab,pierceDef:config.pierce?.[lv-1] ?? 0};
-      amount=pdmg(config.mult?.[lv-1] ?? 1, prox);
+      const flat=Math.max(0,Math.floor(config.flatAdd?.[lv-1]||0));
+      amount=Math.max(1,pdmg(config.mult?.[lv-1] ?? 1, prox)+flat);
     }
     const critBonus=(config.bonusVs==='feared' && (G.enemyStatus?.feared||0)>0)?10:0;
-    const r=dealDamage('enemy', amount, chance(getPlayerCritChance(ab)+critBonus), config.damageKind==='magic', ab);
+    const critXF=config.critChanceFlat?.[lv-1]||0;
+    let r;
+    if((config.critDmgBonus||0)>0){
+      const prevG=G.playerStatus.galahCritDmg||0;
+      G.playerStatus.galahCritDmg=prevG+config.critDmgBonus;
+      r=dealDamage('enemy', amount, chance(Math.min(95,getPlayerCritChance(ab)+critBonus+critXF)), config.damageKind==='magic', ab);
+      G.playerStatus.galahCritDmg=prevG;
+    }else{
+      r=dealDamage('enemy', amount, chance(Math.min(95,getPlayerCritChance(ab)+critBonus+critXF)), config.damageKind==='magic', ab);
+    }
     total+=r.dmgDealt;
     await doAttack('player','enemy',r);
     setHpBar('enemy',G.enemy.stats.hp,G.enemy.stats.maxHp);
@@ -15627,8 +15690,20 @@ async function executeBlackbirdGloomAction(ab, config={}){
   renderStatuses('enemy-status',G.enemyStatus);
   logMsg(`${config.log||ab?.name||ab?.id}! Shadows shift the tempo.`, 'player-action');
 }
+async function executeBlackbirdGrimSign(ab){
+  const t=2;
+  G.playerStatus.trailSenseAcc={pct:12,turns:t};
+  G.playerStatus.peregrineCritLens={bonus:12,turns:t};
+  await doSpell('player','☠');
+  renderStatuses('player-status',G.playerStatus);
+  logMsg(`☠ Grim Sign! +12% accuracy and +12% crit chance (${t}t, refresh).`,'player-action');
+}
 const BLACKBIRD_SKILL_ACTION_OVERRIDES = {
-  dark_song: ab=>executeBlackbirdSpellAction(ab,{name:'Dark Song',log:'🎶 Dark Song',fx:'🎶',miss:[14,12,10,8],mult:[1.00,1.10,1.20,1.30]}),
+  dark_song: async ab=>{
+    const lv=Math.max(1,Math.min(4,Number(ab?.level)||1));
+    const flatDel=[14,16,18,22][lv-1]||14;
+    await executeBlackbirdSpellAction(ab,{name:'Dark Song',log:'🎶 Dark Song',fx:'🎶',miss:[14,12,11,10],matkFlat:[4,4,4,4],mult:[0.80,0.80,0.80,0.80],delayedReplaceFlat:[flatDel,flatDel+2,flatDel+4,flatDel+6]});
+  },
   dread_song: ab=>executeBlackbirdSpellAction(ab,{name:'Dread Song',log:'😨 Dread Song',fx:'😨',miss:[14,12,10,8],mult:[1.08,1.18,1.28,1.38],fearChance:[20,24,28,32]}),
   panic_verse: ab=>executeBlackbirdSpellAction(ab,{name:'Panic Verse',log:'😨 Panic Verse',fx:'😨',miss:[13,11,9,7],mult:[1.22,1.32,1.42,1.52],fearChance:[24,28,32,36],bonusVs:'feared'}),
   night_anthem: ab=>executeBlackbirdSpellAction(ab,{name:'Night Anthem',log:'🌑 Night Anthem',fx:'🌑',hits:[3,3,4,4],miss:[16,14,12,10],mult:[0.44,0.50,0.52,0.58],fearChance:[26,30,34,38]}),
@@ -15638,7 +15713,7 @@ const BLACKBIRD_SKILL_ACTION_OVERRIDES = {
   hex_song: ab=>executeBlackbirdSpellAction(ab,{name:'Hex Song',log:'🕯 Hex Song',fx:'🕯',miss:[14,12,10,8],mult:[1.00,1.10,1.20,1.30],accDown:[10,12,14,16],weakenChance:[10,12,14,16]}),
   hex_verse: ab=>executeBlackbirdSpellAction(ab,{name:'Hex Verse',log:'🕯 Hex Verse',fx:'🕯',miss:[13,11,9,7],mult:[1.14,1.24,1.34,1.44],accDown:[14,16,18,20],weakenChance:[14,16,18,20]}),
   doom_anthem: ab=>executeBlackbirdSpellAction(ab,{name:'Doom Anthem',log:'🕯 Doom Anthem',fx:'🕯',miss:[12,10,8,6],mult:[1.26,1.36,1.46,1.56],accDown:[18,20,22,24],weakenChance:[18,20,22,24]}),
-  shadow_peck: ab=>executeBlackbirdPeckAction(ab,{name:'Shadow Peck',log:'🖤 Shadow Peck',damageKind:'physical',miss:[10,9,8,7],mult:[0.98,1.06,1.14,1.22]}),
+  shadow_peck: ab=>executeBlackbirdPeckAction(ab,{name:'Shadow Peck',log:'🖤 Shadow Peck',damageKind:'physical',miss:[12,11,10,9],mult:[0.75,0.78,0.81,0.84],flatAdd:[4,4,4,4],pierce:[0,0,0,0],critChanceFlat:[12,12,12,12]}),
   raking_peck: ab=>(G.player?.birdKey==='blackbird'
     ? executeBlackbirdPeckAction(ab,{name:'Raking Peck',log:'🩸 Raking Peck',damageKind:'physical',miss:[10,9,8,7],mult:[1.00,1.08,1.16,1.24],bleedChance:[10,12,14,16]})
     : ACTIONS.raking_peck?.__sharedOriginal ? ACTIONS.raking_peck.__sharedOriginal(ab) : executeGooseStrikeAction(ab,{name:'Raking Peck', log:'🩸 Raking Peck', miss:[10,9,8,7], mult:[1.00,1.08,1.16,1.24], bleedChance:[10,12,14,16]})),
@@ -15652,7 +15727,7 @@ const BLACKBIRD_SKILL_ACTION_OVERRIDES = {
     : ACTIONS.needle_peck?.__sharedOriginal ? ACTIONS.needle_peck.__sharedOriginal(ab) : executeGooseStrikeAction(ab,{name:'Needle Peck', log:'🪶 Needle Peck', miss:[10,9,8,7], mult:[1.02,1.10,1.18,1.26], pierce:[10,14,18,20]})),
   bodkin_strike: ab=>executeBlackbirdPeckAction(ab,{name:'Bodkin Strike',log:'🪶 Bodkin Strike',damageKind:'physical',miss:[8,7,6,5],mult:[1.16,1.24,1.32,1.40],pierce:[20,24,28,32]}),
   splinter_barrage: ab=>executeBlackbirdSpellAction(ab,{name:'Splinter Barrage',log:'🪶 Splinter Barrage',fx:'🪶',hits:[2,2,3,3],miss:[12,10,8,6],mult:[0.70,0.76,0.74,0.80],damageKind:'hybrid'}),
-  gloom_wing: ab=>executeBlackbirdGloomAction(ab,{log:'🌫 Gloom Wing',fx:'🌫',dodge:[20,24,28,32],accDown:[10,12,14,16],turns:[2,2,2,2]}),
+  gloom_wing: ab=>executeBlackbirdSpellAction(ab,{name:'Gloom Wing',log:'🌫 Gloom Wing',fx:'🌫',miss:[14,12,11,10],matkFlat:[6,6,6,6],mult:[1.05,1.05,1.05,1.05],fearWeakenRefresh:true}),
   shade_wing: ab=>executeBlackbirdGloomAction(ab,{log:'🌫 Shade Wing',fx:'🌫',dodge:[30,35,40,45],turns:[2,2,2,3]}),
   veil_wing: ab=>executeBlackbirdGloomAction(ab,{log:'🌫 Veil Wing',fx:'🌫',dodge:[40,45,50,55],turns:[2,2,2,3]}),
   ghost_wing: ab=>executeBlackbirdGloomAction(ab,{log:'👻 Ghost Wing',fx:'👻',dodge:[50,55,60,65],turns:[3,3,3,3]}),
@@ -15662,7 +15737,7 @@ const BLACKBIRD_SKILL_ACTION_OVERRIDES = {
   heavy_wing: ab=>executeBlackbirdGloomAction(ab,{log:'🌘 Heavy Wing',fx:'🌘',slow:[2,2,3,3],slowDodge:[10,12,14,16],turns:[2,2,3,3]}),
   drag_veil: ab=>executeBlackbirdGloomAction(ab,{log:'🌘 Drag Veil',fx:'🌘',slow:[3,3,4,4],slowDodge:[12,14,16,18],turns:[2,2,3,3]}),
   dusk_field: ab=>executeBlackbirdGloomAction(ab,{log:'🌘 Dusk Field',fx:'🌘',accDown:[10,12,14,16],slow:[4,4,5,5],slowDodge:[14,16,18,20],turns:[3,3,3,4]}),
-  grim_sign: ab=>executeSparrowMarkAmpAction(ab,{log:'☠ Grim Sign!',amp:[0.12,0.15,0.18,0.21]}),
+  grim_sign: ab=>executeBlackbirdGrimSign(ab),
   grim_mark: ab=>executeSparrowMarkAmpAction(ab,{log:'☠ Grim Mark!',amp:[0.18,0.22,0.26,0.30]}),
   grave_seal: ab=>executeSparrowMarkAmpAction(ab,{log:'☠ Grave Seal!',amp:[0.26,0.30,0.34,0.38]}),
   harbinger_doom: ab=>executeSparrowMarkAmpAction(ab,{log:'☠ Harbinger Doom!',amp:[0.34,0.38,0.42,0.46]}),
@@ -15709,7 +15784,7 @@ function macawEnemyHasDebuff(){
   if((s.exposedGuard?.pct||0)>0) return true;
   return false;
 }
-function applyMacawDelayed(flat, mb, debuffSynergy=null){
+function applyMacawDelayed(flat, mb, debuffSynergy=null, replace=false){
   let amt=Math.max(1, Math.floor(flat + (mb?.delayedFlat||0)));
   if(debuffSynergy && (debuffSynergy.perCategory||0)>0){
     const n=countEnemyCombatDebuffCategories();
@@ -15717,9 +15792,9 @@ function applyMacawDelayed(flat, mb, debuffSynergy=null){
     amt+=Math.min(capAdd, Math.floor(n*debuffSynergy.perCategory));
   }
   const cap=Math.max(40, Math.floor(matk(2.5)));
-  const merged=Math.min(cap, (G.enemyStatus.delayed?.dmg||0)+amt);
-  G.enemyStatus.delayed={dmg:merged};
-  logMsg(`🎵 Resonance builds (${merged} on their turn).`,'system');
+  const next=replace?Math.min(cap,amt):Math.min(cap,(G.enemyStatus.delayed?.dmg||0)+amt);
+  G.enemyStatus.delayed={dmg:next};
+  logMsg(`🎵 Resonance builds (${next} on their turn).`,'system');
 }
 async function executeMacawSpell(ab, config={}){
   const lv=Math.max(1, Math.min(4, Number(ab?.level)||1));
@@ -15736,11 +15811,15 @@ async function executeMacawSpell(ab, config={}){
     G.player._macawCopycatPulse=false;
   }
   const hits=config.hits?.[lv-1]||1;
+  const mFlat=config.matkFlat?.[lv-1];
+  const critXF=config.critChanceFlat?.[lv-1]||0;
   let total=0;
+  let anyHit=false;
   for(let i=0;i<hits;i++){
     if(chance(miss)){ await doMiss('player'); if(hits===1) logMsg(`${config.name||ab?.id} missed!`,'miss'); continue; }
-    const amount=matk(mult);
-    const isCrit=chance(getPlayerCritChance(ab));
+    anyHit=true;
+    const amount=Math.max(1,(mFlat!=null?mFlat:0)+matk(mult));
+    const isCrit=chance(Math.min(95,getPlayerCritChance(ab)+critXF));
     const r=dealDamage('enemy', amount, isCrit, true, ab);
     total+=r.dmgDealt;
     await doAttack('player','enemy', r);
@@ -15748,47 +15827,63 @@ async function executeMacawSpell(ab, config={}){
     if(G.battleOver) return;
   }
   const rc=mb.rider;
-  if(config.burnChance?.[lv-1] && spellAilmentRoll(config.burnChance[lv-1]+rc, hits>1)){
+  if(anyHit && config.burnChance?.[lv-1] && spellAilmentRoll(config.burnChance[lv-1]+rc, hits>1)){
     G.enemyStatus.burning=[3,3,4,4][Math.min(lv,4)-1]||4;
     spawnFloat('enemy','🔥 Burn!','fn-burn');
   }
-  if(config.confuseChance?.[lv-1] && spellAilmentRoll(config.confuseChance[lv-1]+rc, hits>1)){
+  if(anyHit && config.confuseChance?.[lv-1] && spellAilmentRoll(config.confuseChance[lv-1]+rc, hits>1)){
     G.enemyStatus.confused={turns:config.confuseTurns?.[lv-1]||3, skipChance:config.confuseSkip?.[lv-1]||26};
     spawnFloat('enemy','🌀 Confuse!','fn-status');
   }
-  if(config.fearChance?.[lv-1] && spellAilmentRoll(config.fearChance[lv-1]+rc, hits>1)){
+  if(anyHit && config.fearChance?.[lv-1] && spellAilmentRoll(config.fearChance[lv-1]+rc, hits>1)){
     applyAilment('enemy','feared', config.fearStacks?.[lv-1]||1);
     spawnFloat('enemy','😨 Fear!','fn-status');
   }
-  if(config.paraChance?.[lv-1] && spellAilmentRoll(config.paraChance[lv-1]+rc, hits>1)){
+  if(anyHit && config.paraChance?.[lv-1] && spellAilmentRoll(config.paraChance[lv-1]+rc, hits>1)){
     G.enemyStatus.paralyzed=(G.enemyStatus.paralyzed||0)+(config.paraTurns?.[lv-1]||2);
     spawnFloat('enemy','⚡ Para!','fn-status');
   }
-  if(config.accDown?.[lv-1]) G.enemyStatus.accDebuff=(G.enemyStatus.accDebuff||0)+config.accDown[lv-1]+mb.tauntAcc;
-  if(config.delayedFlat?.[lv-1]) applyMacawDelayed(config.delayedFlat[lv-1], mb, { perCategory:2, cap:10 });
+  if(anyHit && config.accDown?.[lv-1]) G.enemyStatus.accDebuff=(G.enemyStatus.accDebuff||0)+config.accDown[lv-1]+mb.tauntAcc;
+  if(anyHit && config.delayedFlat?.[lv-1]){
+    const syn=Object.prototype.hasOwnProperty.call(config,'delayedSynergy')?config.delayedSynergy:{ perCategory:2, cap:10 };
+    applyMacawDelayed(config.delayedFlat[lv-1], mb, syn, !!config.delayedReplace);
+  }
+  if(anyHit && config.fearWeakenRefresh){
+    G.enemyStatus.weaken=Math.max(G.enemyStatus.weaken||0,2);
+    G.enemyStatus.feared=Math.max(G.enemyStatus.feared||0,2);
+    spawnFloat('enemy','🌑 Pressure!','fn-status');
+  }
+  if(anyHit && config.weakenRefreshTurns){
+    const wt=Math.max(1,Math.floor(config.weakenRefreshTurns));
+    G.enemyStatus.weaken=Math.max(G.enemyStatus.weaken||0,wt);
+    spawnFloat('enemy','🐔 Weaken!','fn-status');
+  }
   renderStatuses('enemy-status',G.enemyStatus);
   await doSpell('enemy', config.fx||'🦜');
   logMsg(`${config.log||config.name||'🦜 Macaw spell'}! ${total} magic dmg.`, 'player-action');
 }
+function applySingerTempMatk(amt, turns){
+  const key='singerSetupMatk';
+  const n=Math.max(1,Math.floor(Number(amt)||0));
+  const t=Math.max(1,Math.floor(Number(turns)||1));
+  const prev=G.playerStatus[key];
+  if(prev&&prev.amt) G.player.stats.matk=Math.max(0,(G.player.stats.matk||0)-(prev.amt||0));
+  G.playerStatus[key]={amt:n, turns:t};
+  G.player.stats.matk=(G.player.stats.matk||0)+n;
+}
 async function executeMacawEchoNote(ab){
-  const slot=getAbilitySkillSlot(G.player, ab);
-  const path=slot?.pathId;
-  const tier=slot?.tier||0;
-  if(path==='delayed' && tier>=1){
-    return executeMacawSpell(ab,{name:'Echo Note',log:'🎵 Echo Note',fx:'🎵',miss:[13,11,9,7],mult:[0.78,0.84,0.90,0.96],delayedFlat:[8,10,13,16]});
+  if(G.player?.birdKey==='lyrebird'){
+    return executeMacawSpell(ab,{name:'Echo Note',log:'🎵 Echo Note',fx:'🎵',miss:[14,12,11,10],matkFlat:[4,4,4,4],mult:[0.80,0.80,0.80,0.80],delayedFlat:[14,16,18,22],delayedReplace:true,delayedSynergy:{perCategory:0,cap:0}});
   }
-  return executeMacawSpell(ab,{name:'Echo Note',log:'🎵 Echo Note',fx:'🎵',miss:[14,12,10,8],mult:[0.72,0.78,0.84,0.90]});
+  return executeMacawSpell(ab,{name:'Echo Note',log:'🎵 Echo Note',fx:'🎵',miss:[14,12,11,10],matkFlat:[4,4,4,4],mult:[0.80,0.80,0.80,0.80],critChanceFlat:[12,12,12,12]});
 }
 async function executeMacawChorusMark(ab){
-  const slot=getAbilitySkillSlot(G.player, ab);
-  const lv=Math.max(1,Math.min(4,ab.level||1));
-  const mb=getMacawMasteryBonuses(ab);
-  const base=[0.12,0.15,0.18,0.21];
-  let amp=base[lv-1]+mb.markAmp;
-  if((slot?.pathId==='damage_amp' || slot?.pathId==='amp') && (slot.tier||0)>=1) amp+=0.04;
-  G.playerStatus.huntersMarkBonusPct=amp;
-  await doSpell('enemy','🎯');
-  logMsg(`🎯 Chorus Mark! Next attack +${Math.round(amp*100)}% damage.`,'player-action');
+  const t=2;
+  G.playerStatus.trailSenseAcc={pct:12,turns:t};
+  applySingerTempMatk(12,t);
+  await doSpell('player','🎵');
+  renderStatuses('player-status',G.playerStatus);
+  logMsg(`🎵 Chorus Mark! +12% accuracy and +12 MATK (${t}t, refresh).`,'player-action');
 }
 async function executeMacawMarkAmp(ab, config){
   const lv=Math.max(1,Math.min(4,ab.level||1));
@@ -15852,7 +15947,7 @@ const MACAW_SKILL_ACTION_OVERRIDES = {
   maddening_refrain: ab=>executeMacawSpell(ab,{name:'Maddening Refrain',log:'🌀 Maddening Refrain',fx:'🌀',miss:[11,9,7,5],mult:[0.92,0.98,1.04,1.10],confuseChance:[25,27,29,31],confuseTurns:[3,3,3,4],confuseSkip:[30,32,34,36],bonusVsConfused:[0.08,0.09,0.10,0.11]}),
   delayed_echo: ab=>executeMacawSpell(ab,{name:'Afterbeat Chime',log:'🎵 Afterbeat Chime',fx:'🎵',miss:[12,10,8,6],mult:[0.80,0.86,0.92,0.98],delayedFlat:[14,18,22,26]}),
   returning_refrain: ab=>executeMacawSpell(ab,{name:'Returning Refrain',log:'🎵 Returning Refrain',fx:'🎵',miss:[11,9,7,5],mult:[0.88,0.94,1.00,1.06],delayedFlat:[20,24,28,32],bonusVsDebuffed:[0.08,0.09,0.10,0.11]}),
-  mimic_song: ab=>executeMacawSpell(ab,{name:'Mimic Song',log:'🦜 Mimic Song',fx:'🦜',miss:[12,10,8,6],mult:[0.92,1.00,1.08,1.16],confuseChance:[12,14,16,18],confuseTurns:[2,2,2,3],confuseSkip:[22,24,26,28],accDown:[6,8,8,10]}),
+  mimic_song: ab=>executeMacawSpell(ab,{name:'Mimic Song',log:'🦜 Mimic Song',fx:'🦜',miss:[14,12,11,10],matkFlat:[6,6,6,6],mult:[1.00,1.00,1.00,1.00],confuseChance:[26,30,34,38],confuseTurns:[1,1,1,1],confuseSkip:[22,24,26,28],delayedFlat:[12,14,16,20],delayedReplace:true,delayedSynergy:{perCategory:0,cap:0}}),
   dread_mimic: ab=>executeMacawSpell(ab,{name:'Dread Mimic',log:'😨 Dread Mimic',fx:'😨',miss:[12,10,8,6],mult:[0.96,1.04,1.12,1.20],fearChance:[18,20,22,24]}),
   panic_chorus: ab=>executeMacawSpell(ab,{name:'Panic Chorus',log:'😨 Panic Chorus',fx:'😨',miss:[11,9,7,5],mult:[1.08,1.16,1.24,1.32],fearChance:[22,24,26,28],accDown:[6,8,10,12]}),
   terror_aria: ab=>executeMacawSpell(ab,{name:'Terror Aria',log:'😨 Terror Aria',fx:'😨',hits:[2,2,3,3],miss:[11,10,9,8],mult:[0.52,0.56,0.50,0.54],fearChance:[28,30,32,34],bonusVsFeared:[0.10,0.11,0.12,0.13]}),
@@ -15862,7 +15957,7 @@ const MACAW_SKILL_ACTION_OVERRIDES = {
   mirror_mimic: ab=>executeMacawSpell(ab,{name:'Mirror Mimic',log:'🪞 Mirror Mimic',fx:'🪞',miss:[11,9,7,5],mult:[0.98,1.06,1.14,1.22],copycatPulseMult:[0.12,0.14,0.16,0.18]}),
   echo_chorus: ab=>executeMacawSpell(ab,{name:'Echo Chorus',log:'🪞 Echo Chorus',fx:'🪞',hits:[2,2,3,3],miss:[11,10,9,8],mult:[0.54,0.58,0.52,0.56],copycatPulseMult:[0.10,0.11,0.12,0.13]}),
   stolen_aria: ab=>executeMacawSpell(ab,{name:'Stolen Aria',log:'🪞 Stolen Aria',fx:'🪞',miss:[10,8,6,5],mult:[1.15,1.22,1.30,1.38],copycatPulseMult:[0.08,0.09,0.10,0.11],bonusVsDebuffed:[0.06,0.07,0.08,0.09]}),
-  feather_taunt: ab=>executeMacawTaunt(ab,{log:'🪶 Feather Taunt',fx:'🪶',accDown:[12,14,16,18],turns:[2,2,2,2],taunt:[1,1,1,1]}),
+  feather_taunt: ab=>executeBlackbirdPeckAction(ab,{name:'Feather Jab',log:'🪶 Feather Jab',damageKind:'physical',miss:[12,11,10,9],mult:[0.75,0.78,0.81,0.84],flatAdd:[4,4,4,4],pierce:[0,0,0,0],critDmgBonus:12}),
   glitter_taunt: ab=>executeMacawTaunt(ab,{log:'✨ Glitter Taunt',fx:'✨',accDown:[18,20,22,24],turns:[2,2,2,3]}),
   dazzle_flourish: ab=>executeMacawTaunt(ab,{log:'✨ Dazzle Flourish',fx:'✨',accDown:[26,28,30,32],turns:[2,2,3,3]}),
   spectacle_storm: ab=>executeMacawTaunt(ab,{log:'✨ Spectacle Storm',fx:'✨',accDown:[34,36,38,40],turns:[3,3,3,3]}),
@@ -15882,10 +15977,20 @@ const MACAW_SKILL_ACTION_OVERRIDES = {
   softening_measure: ab=>executeMacawChorusWeaken(ab,[14,16,18,20],[3,3,3,4],'🎵 Softening Measure!'),
   fading_finale: ab=>executeMacawChorusWeaken(ab,[18,20,22,24],[3,4,4,4],'🎵 Fading Finale!'),
 };
+async function executeLyreRefrainMark(ab){
+  const heal=Math.max(1,Math.floor(matk(0.14)));
+  G.player.stats.hp=Math.min(G.player.stats.maxHp,G.player.stats.hp+heal);
+  setHpBar('player',G.player.stats.hp,G.player.stats.maxHp);
+  spawnFloat('player',`+${heal}`,'fn-heal');
+  applySingerTempMatk(12,2);
+  await doSpell('player','🎵');
+  renderStatuses('player-status',G.playerStatus);
+  logMsg(`🎵 Refrain! +${heal} HP; +12 MATK (2t, refresh).`,'player-action');
+}
 const LYREBIRD_SKILL_ACTION_OVERRIDES = {
-  mimic_chorus: ab=>executeMacawSpell(ab,{name:'Mimic Chorus',log:'🎵 Mimic Chorus',fx:'🎵',miss:[12,10,8,6],mult:[0.92,1.00,1.08,1.16],confuseChance:[12,14,16,18],confuseTurns:[2,2,2,3],confuseSkip:[22,24,26,28],accDown:[6,8,8,10]}),
-  display_step: ab=>executeMacawTaunt(ab,{log:'🪶 Display Step',fx:'🪶',accDown:[8,10,12,14],turns:[2,2,2,2],taunt:[1,1,1,1]}),
-  refrain_mark: ab=>executeMacawChorusMark(ab),
+  mimic_chorus: ab=>executeMacawSpell(ab,{name:'Mimic Chorus',log:'🎵 Mimic Chorus',fx:'🎵',miss:[14,12,11,10],matkFlat:[6,6,6,6],mult:[1.05,1.05,1.05,1.05],confuseChance:[26,30,34,38],confuseTurns:[2,2,2,2],confuseSkip:[24,26,28,30],weakenRefreshTurns:2}),
+  display_step: ab=>executeBlackbirdPeckAction(ab,{name:'Display Step',log:'🪶 Display Step',damageKind:'physical',miss:[12,11,10,9],mult:[0.75,0.78,0.81,0.84],flatAdd:[4,4,4,4],pierce:[0,0,0,0],critChanceFlat:[12,12,12,12]}),
+  refrain_mark: ab=>executeLyreRefrainMark(ab),
   lyre_dread_chorus: ab=>executeMacawSpell(ab,{name:'Dread Chorus',log:'😨 Dread Chorus',fx:'😨',miss:[12,10,8,6],mult:[0.96,1.04,1.12,1.20],fearChance:[18,20,22,24]}),
   lyre_panic_verse: ab=>executeMacawSpell(ab,{name:'Panic Verse',log:'😨 Panic Verse',fx:'😨',miss:[11,9,7,5],mult:[1.08,1.16,1.24,1.32],fearChance:[22,24,26,28],accDown:[6,8,10,12]}),
   lyre_terror_anthem: ab=>executeMacawSpell(ab,{name:'Terror Anthem',log:'😨 Terror Anthem',fx:'😨',hits:[2,2,3,3],miss:[11,10,9,8],mult:[0.52,0.56,0.50,0.54],fearChance:[28,30,32,34],bonusVsFeared:[0.10,0.11,0.12,0.13]}),
@@ -15944,7 +16049,7 @@ function bcMatkBoom(mult){
   const adjust=matkVsEnemy*0.015;
   return Math.max(1,Math.floor(pdmg(1)*(mult+adjust)*base/7.2));
 }
-function applyBcDelayed(flat, mb, debuffSynergy=null){
+function applyBcDelayed(flat, mb, debuffSynergy=null, replace=false){
   let amt=Math.max(1, Math.floor(flat + (mb?.delayedFlat||0)));
   if(debuffSynergy && (debuffSynergy.perCategory||0)>0){
     const n=countEnemyCombatDebuffCategories();
@@ -15952,9 +16057,9 @@ function applyBcDelayed(flat, mb, debuffSynergy=null){
     amt+=Math.min(capAdd, Math.floor(n*debuffSynergy.perCategory));
   }
   const cap=Math.max(40, Math.floor(bcMatkBoom(2.5)));
-  const merged=Math.min(cap, (G.enemyStatus.delayed?.dmg||0)+amt);
-  G.enemyStatus.delayed={dmg:merged};
-  logMsg(`🔊 Resonance builds (${merged} on their turn).`,'system');
+  const next=replace?Math.min(cap,amt):Math.min(cap,(G.enemyStatus.delayed?.dmg||0)+amt);
+  G.enemyStatus.delayed={dmg:next};
+  logMsg(`🔊 Resonance builds (${next} on their turn).`,'system');
 }
 async function executeBlackCockatooSpell(ab, config={}){
   const lv=Math.max(1, Math.min(4, Number(ab?.level)||1));
@@ -15964,11 +16069,15 @@ async function executeBlackCockatooSpell(ab, config={}){
   if(config.bonusVsDebuffed?.[lv-1] && macawEnemyHasDebuff()) mult+=config.bonusVsDebuffed[lv-1];
   if(config.bonusVsFeared?.[lv-1] && (G.enemyStatus?.feared||0)>0) mult+=config.bonusVsFeared[lv-1];
   const hits=config.hits?.[lv-1]||1;
+  const mFlat=config.matkFlat?.[lv-1];
+  const critXF=config.critChanceFlat?.[lv-1]||0;
   let total=0;
+  let anyHit=false;
   for(let i=0;i<hits;i++){
     if(chance(miss)){ await doMiss('player'); if(hits===1) logMsg(`${config.name||ab?.id} missed!`,'miss'); continue; }
-    const amount=bcMatkBoom(mult);
-    const isCrit=chance(getPlayerCritChance(ab));
+    anyHit=true;
+    const amount=mFlat!=null?Math.max(1,mFlat+bcMatkBoom(mult)):bcMatkBoom(mult);
+    const isCrit=chance(Math.min(95,getPlayerCritChance(ab)+critXF));
     const r=dealDamage('enemy', amount, isCrit, true, ab);
     total+=r.dmgDealt;
     await doAttack('player','enemy', r);
@@ -15976,19 +16085,35 @@ async function executeBlackCockatooSpell(ab, config={}){
     if(G.battleOver) return;
   }
   const rc=mb.controlRider||0;
-  if(config.fearChance?.[lv-1] && spellAilmentRoll(config.fearChance[lv-1]+rc, hits>1)){
+  if(anyHit && config.fearChance?.[lv-1] && spellAilmentRoll(config.fearChance[lv-1]+rc, hits>1)){
     applyAilment('enemy','feared', config.fearStacks?.[lv-1]||1);
     spawnFloat('enemy','😨 Fear!','fn-status');
   }
-  if(config.paraChance?.[lv-1] && spellAilmentRoll(config.paraChance[lv-1]+rc, hits>1)){
+  if(anyHit && config.paraChance?.[lv-1] && spellAilmentRoll(config.paraChance[lv-1]+rc, hits>1)){
     G.enemyStatus.paralyzed=(G.enemyStatus.paralyzed||0)+(config.paraTurns?.[lv-1]||2);
     spawnFloat('enemy','⚡ Para!','fn-status');
   }
-  if(config.accDown?.[lv-1]) G.enemyStatus.accDebuff=(G.enemyStatus.accDebuff||0)+config.accDown[lv-1]+Math.floor(rc/2);
-  if(config.delayedFlat?.[lv-1]) applyBcDelayed(config.delayedFlat[lv-1], mb, { perCategory:2, cap:12 });
+  if(anyHit && config.accDown?.[lv-1]) G.enemyStatus.accDebuff=(G.enemyStatus.accDebuff||0)+config.accDown[lv-1]+Math.floor(rc/2);
+  if(anyHit && config.delayedFlat?.[lv-1]){
+    const syn=Object.prototype.hasOwnProperty.call(config,'delayedSynergy')?config.delayedSynergy:{ perCategory:2, cap:12 };
+    applyBcDelayed(config.delayedFlat[lv-1], mb, syn, !!config.delayedReplace);
+  }
+  if(anyHit && config.fearWeakenRefresh){
+    G.enemyStatus.weaken=Math.max(G.enemyStatus.weaken||0,2);
+    G.enemyStatus.feared=Math.max(G.enemyStatus.feared||0,2);
+    spawnFloat('enemy','🔊 Dread!','fn-status');
+  }
   renderStatuses('enemy-status',G.enemyStatus);
   await doSpell('enemy', config.fx||'🔊');
   logMsg(`${config.log||config.name||'🔊 Boom'}! ${total} sonic dmg.`, 'player-action');
+}
+async function executeBlackCockatooEchoGuard(ab){
+  const t=2;
+  G.playerStatus.trailSenseAcc={pct:12,turns:t};
+  applySingerTempMatk(12,t);
+  await doSpell('player','🛡');
+  renderStatuses('player-status',G.playerStatus);
+  logMsg(`🛡 Echo Guard! +12% accuracy and +12 MATK (${t}t, refresh).`,'player-action');
 }
 async function executeBlackCockatooBeakStrike(ab, cfg){
   const lv=Math.max(1,Math.min(4,ab.level||1));
@@ -16000,7 +16125,18 @@ async function executeBlackCockatooBeakStrike(ab, cfg){
   if(cfg.bonusVsArmor?.[lv-1] && (G.enemy.stats.def||0)>=5) mult+=cfg.bonusVsArmor[lv-1];
   if(cfg.bonusVsWeakened?.[lv-1] && (G.enemyStatus.weaken||0)>0) mult+=cfg.bonusVsWeakened[lv-1];
   const prox={...ab,pierceDef:pierce};
-  const r=dealDamage('enemy',pdmg(mult,prox),chance(getPlayerCritChance(ab)),false,prox);
+  const flat=Math.max(0,Math.floor(cfg.flatAdd?.[lv-1]||0));
+  const baseDmg=Math.max(1,pdmg(mult,prox)+flat);
+  const critDb=cfg.critDmgBonus?.[lv-1]||cfg.critDmgBonusFlat||0;
+  let r;
+  if(critDb>0){
+    const prevG=G.playerStatus.galahCritDmg||0;
+    G.playerStatus.galahCritDmg=prevG+critDb;
+    r=dealDamage('enemy',baseDmg,chance(getPlayerCritChance(ab)),false,prox);
+    G.playerStatus.galahCritDmg=prevG;
+  }else{
+    r=dealDamage('enemy',baseDmg,chance(getPlayerCritChance(ab)),false,prox);
+  }
   await doAttack('player','enemy',r);
   setHpBar('enemy',G.enemy.stats.hp,G.enemy.stats.maxHp);
   if(cfg.weakenChance?.[lv-1] && spellAilmentRoll(cfg.weakenChance[lv-1]+(mb.weakenRider||0), false)){
@@ -16047,7 +16183,7 @@ async function executeBlackCockatooResonanceRead(ab, ampArr, readArr, logPrefix,
   logMsg(`${logPrefix} Next attack +${Math.round((G.playerStatus.huntersMarkBonusPct||0)*100)}% plus +${Math.round((G.playerStatus.cockatooReadExtra||0)*100)}% vs compromised.`,'player-action');
 }
 const BLACK_COCKATOO_SKILL_ACTION_OVERRIDES = {
-  beak_crack: ab=>executeBlackCockatooBeakStrike(ab,{log:'🪶 Beak Crack',miss:[9,8,7,6],mult:[0.96,1.00,1.04,1.08],pierce:[10,12,14,16]}),
+  beak_crack: ab=>executeBlackCockatooBeakStrike(ab,{log:'🪶 Beak Crack',miss:[9,8,7,6],mult:[0.85,0.88,0.91,0.94],flatAdd:[5,5,5,5],pierce:[0,0,0,0],critDmgBonus:[12,12,12,12]}),
   bc_bodkin_bite: ab=>executeBlackCockatooBeakStrike(ab,{log:'🪶 Bodkin Bite',miss:[8,7,6,5],mult:[1.04,1.08,1.12,1.16],pierce:[20,22,26,30]}),
   splinter_crush: ab=>executeBlackCockatooBeakStrike(ab,{log:'🪶 Splinter Crush',miss:[7,6,5,4],mult:[1.12,1.16,1.20,1.26],pierce:[28,32,36,42],bonusVsArmor:[0.06,0.08,0.10,0.12]}),
   dulling_crack: ab=>executeBlackCockatooBeakStrike(ab,{log:'🪶 Dulling Crack',miss:[9,8,7,6],mult:[0.94,0.98,1.02,1.06],pierce:[6,8,10,12],weakenChance:[10,12,14,16]}),
@@ -16056,7 +16192,7 @@ const BLACK_COCKATOO_SKILL_ACTION_OVERRIDES = {
   split_crack: ab=>executeBlackCockatooBeakStrike(ab,{log:'🪶 Split Crack',miss:[9,8,7,6],mult:[0.98,1.02,1.06,1.10],pierce:[8,10,12,14],defBreak:[1,1,2,2],defBreakTurns:[2,2,2,3]}),
   break_bite: ab=>executeBlackCockatooBeakStrike(ab,{log:'🪶 Break Bite',miss:[8,7,6,5],mult:[1.06,1.10,1.14,1.18],pierce:[10,12,14,16],defBreak:[2,3,3,4],defBreakTurns:[2,2,3,3]}),
   ruin_crush: ab=>executeBlackCockatooBeakStrike(ab,{log:'🪶 Ruin Crush',miss:[7,6,5,4],mult:[1.14,1.18,1.22,1.28],pierce:[12,14,16,18],defBreak:[3,4,5,6],defBreakTurns:[3,3,4,4]}),
-  boom_call: ab=>executeBlackCockatooSpell(ab,{name:'Boom Call',log:'🔊 Boom Call',fx:'🔊',miss:[14,12,10,8],mult:[0.88,0.96,1.04,1.12]}),
+  boom_call: ab=>executeBlackCockatooSpell(ab,{name:'Boom Note',log:'🔊 Boom Note',fx:'🔊',miss:[14,12,11,10],matkFlat:[4,4,4,4],mult:[0.80,0.80,0.80,0.80],delayedFlat:[14,16,18,22],delayedReplace:true,delayedSynergy:{perCategory:0,cap:0}}),
   cockatoo_dread_call: ab=>executeBlackCockatooSpell(ab,{name:'Dread Call',log:'😨 Dread Call',fx:'😨',miss:[13,11,9,7],mult:[0.92,1.00,1.08,1.16],fearChance:[20,22,24,28]}),
   terror_boom: ab=>executeBlackCockatooSpell(ab,{name:'Terror Boom',log:'😨 Terror Boom',fx:'😨',miss:[12,10,8,6],mult:[1.04,1.12,1.20,1.28],fearChance:[26,28,30,32]}),
   black_shockwave: ab=>executeBlackCockatooSpell(ab,{name:'Black Shockwave',log:'🖤 Black Shockwave',fx:'🖤',hits:[2,2,3,3],miss:[11,10,9,8],mult:[0.52,0.56,0.50,0.54],fearChance:[28,30,32,34],bonusVsFeared:[0.10,0.11,0.12,0.13]}),
@@ -16066,7 +16202,7 @@ const BLACK_COCKATOO_SKILL_ACTION_OVERRIDES = {
   echo_call: ab=>executeBlackCockatooSpell(ab,{name:'Hall Call',log:'🔊 Hall Call',fx:'🔊',miss:[13,11,9,7],mult:[0.86,0.94,1.02,1.10],delayedFlat:[12,16,20,24]}),
   resonant_boom: ab=>executeBlackCockatooSpell(ab,{name:'Vault Boom',log:'🔊 Vault Boom',fx:'🔊',miss:[12,10,8,6],mult:[0.96,1.04,1.12,1.20],delayedFlat:[18,22,26,30]}),
   returning_shockwave: ab=>executeBlackCockatooSpell(ab,{name:'Returning Shockwave',log:'🔊 Returning Shockwave',fx:'🔊',miss:[11,9,7,5],mult:[1.06,1.14,1.22,1.30],delayedFlat:[22,26,30,36],bonusVsDebuffed:[0.08,0.09,0.10,0.11]}),
-  wing_beat: ab=>executeBlackCockatooWing(ab,{log:'🪶 Wing Beat',fx:'🪶',accDown:[5,6,7,8]}),
+  wing_beat: ab=>executeBlackCockatooEchoGuard(ab),
   dust_beat: ab=>executeBlackCockatooWing(ab,{log:'🌫 Dust Beat',fx:'🌫',accDown:[14,16,18,20]}),
   shudder_gust: ab=>executeBlackCockatooWing(ab,{log:'🌫 Shudder Gust',fx:'🌫',accDown:[22,24,26,28]}),
   black_gale: ab=>executeBlackCockatooWing(ab,{log:'🌑 Black Gale',fx:'🌑',accDown:[30,32,34,36]}),
@@ -16076,7 +16212,7 @@ const BLACK_COCKATOO_SKILL_ACTION_OVERRIDES = {
   brace_beat: ab=>executeBlackCockatooWing(ab,{log:'🛡 Brace Beat',fx:'🛡',defending:[10,12,14,16]}),
   guard_gust: ab=>executeBlackCockatooWing(ab,{log:'🛡 Guard Gust',fx:'🛡',defending:[16,20,24,28]}),
   iron_gale: ab=>executeBlackCockatooWing(ab,{log:'🛡 Iron Gale',fx:'🛡',defending:[24,30,34,38]}),
-  resonance_mark: ab=>executeBlackCockatooResonanceAmp(ab,[0.12,0.15,0.18,0.21],'🔊 Resonance Mark!','🎯'),
+  resonance_mark: ab=>executeBlackCockatooSpell(ab,{name:'Resonance Mark',log:'🔊 Resonance Mark',fx:'🔊',miss:[14,12,11,10],matkFlat:[6,6,6,6],mult:[1.05,1.05,1.05,1.05],fearWeakenRefresh:true}),
   harmonic_pulse: ab=>executeBlackCockatooResonanceAmp(ab,[0.20,0.24,0.28,0.32],'🔊 Harmonic Pulse!','🎯'),
   resonant_collapse: ab=>executeBlackCockatooResonanceAmp(ab,[0.30,0.34,0.38,0.42],'🔊 Resonant Collapse!','🎯'),
   cockatoo_echo_mark: ab=>executeBlackCockatooResonanceDelayed(ab,[0.08,0.10,0.12,0.14],[10,14,18,22],{ perCategory:3, cap:14 },'🔊 Crest Toll Mark!'),
@@ -17057,7 +17193,7 @@ const PEREGRINE_SKILL_ACTION_OVERRIDES = {
 Object.entries(PEREGRINE_SKILL_ACTION_OVERRIDES).forEach(([id, fn])=>{ ACTIONS[id]=fn; });
 
 const ROBIN_DART_ABILITY_IDS = new Set([
-  'dart_rush','rob_swift_dash','rob_flash_strike','rob_rending_rush','rob_rending_dash','rob_rending_strike','rob_passing_rush','rob_return_dash','rob_double_strike',
+  'rob_swift_dash','rob_flash_strike','rob_rending_rush','rob_rending_dash','rob_rending_strike','rob_passing_rush','rob_return_dash','rob_double_strike',
 ]);
 function getRobinMasteryBonuses(ab){
   const slot=getAbilitySkillSlot(G.player,ab);
@@ -17070,7 +17206,7 @@ function getRobinMasteryBonuses(ab){
   if(fam==='hop') return {...base, dodge:4*m.power+2*m.control, amp:0.04*m.power+0.015*m.precision, delayedChip:5*m.power+8*m.control, extraTurns:m.control>0?1:0};
   return {...base, dmg:0,missCut:0,pierce:0,rider:0,crit:0,delayedFlat:0,delayedChip:0,spd:0,dodge:0,accDown:0,weakenRider:0,extraTurns:0,amp:0,exposeBonus:0};
 }
-function robinApplyDelayed(flat, ab, synergy={}){
+function robinApplyDelayed(flat, ab, synergy={}, replace=false){
   const mb=getRobinMasteryBonuses(ab);
   let amt=Math.max(1,Math.floor(flat+(mb.delayedFlat||0)+(mb.delayedChip||0)));
   const spdPer=Number(synergy.spdPer)||0;
@@ -17081,7 +17217,7 @@ function robinApplyDelayed(flat, ab, synergy={}){
     amt+=Math.min(debCap, Math.floor(countEnemyCombatDebuffCategories()*debPer));
   }
   const mergeCap=Math.max(28,Math.floor((G.player.stats.atk||7)*3.3));
-  const merged=Math.min(mergeCap,(G.enemyStatus.delayed?.dmg||0)+amt);
+  const merged=replace?Math.min(mergeCap,amt):Math.min(mergeCap,(G.enemyStatus.delayed?.dmg||0)+amt);
   G.enemyStatus.delayed={dmg:merged};
   logMsg(`🐦 Field echo (${merged} next turn).`,'system');
 }
@@ -17104,7 +17240,10 @@ async function executeRobinPeckStrike(ab, cfg){
     if(cfg.bonusVsCompromised?.[lv-1] && macawEnemyHasDebuff()) mult+=cfg.bonusVsCompromised[lv-1]+(mb.exposeBonus||0);
     if(cfg.bonusVsArmor?.[lv-1] && (G.enemy.stats.def||0)>=5) mult+=cfg.bonusVsArmor[lv-1];
     const prox={...ab,pierceDef:pierce};
-    const r=dealDamage('enemy',pdmg(mult,prox),chance(getPlayerCritChance(ab)),false,prox);
+    const flat=Math.max(0,Math.floor(cfg.flatAdd?.[lv-1]||0));
+    const baseAmt=Math.max(1,pdmg(mult,prox)+flat);
+    const critXF=cfg.critChanceFlat?.[lv-1]||0;
+    const r=dealDamage('enemy',baseAmt,chance(Math.min(95,getPlayerCritChance(ab)+critXF)),false,prox);
     await doAttack('player','enemy',r);
     total+=r.dmgDealt;
     setHpBar('enemy',G.enemy.stats.hp,G.enemy.stats.maxHp);
@@ -17157,7 +17296,7 @@ async function executeRobinDartBurst(ab, cfg){
   setHpBar('enemy',G.enemy.stats.hp,G.enemy.stats.maxHp);
   const rc=mb.rider;
   if(cfg.bleedChance?.[lv-1] && chance(cfg.bleedChance[lv-1]+rc)) applyAilment('enemy','bleed',1);
-  if(cfg.delayed?.[lv-1]) robinApplyDelayed(cfg.delayed[lv-1],ab,cfg.delayedSynergy||{});
+  if(cfg.delayed?.[lv-1]) robinApplyDelayed(cfg.delayed[lv-1],ab,cfg.delayedSynergy||{},!!cfg.delayedReplace);
   renderStatuses('enemy-status',G.enemyStatus);
   G.robinDartCooldown=robinDartCooldownForLevel(lv);
   logMsg(`${cfg.log||'Dart'}! ${lastTotal} dmg.${G.robinDartCooldown>0?` CD ${G.robinDartCooldown}t`:''}`,'player-action');
@@ -17196,8 +17335,59 @@ async function executeRobinHopUtility(ab, cfg){
   renderStatuses('enemy-status',G.enemyStatus);
   logMsg(`${cfg.log||'Hop'}!${extra}`,'player-action');
 }
+async function executeRobinMatkSpell(ab, config={}){
+  const lv=Math.max(1, Math.min(4, Number(ab?.level)||1));
+  const mb=getRobinMasteryBonuses(ab);
+  const miss=Math.max(0,(config.miss?.[lv-1]??spellMissChance())-getPlayerHitBonus(ab)-(mb.missCut||0));
+  let mult=(config.mult?.[lv-1]??1);
+  if(config.bonusVsConfused?.[lv-1] && G.enemyStatus.confused) mult+=config.bonusVsConfused[lv-1];
+  if(config.bonusVsFeared?.[lv-1] && (G.enemyStatus?.feared||0)>0) mult+=config.bonusVsFeared[lv-1];
+  if(config.bonusVsDebuffed?.[lv-1] && macawEnemyHasDebuff()) mult+=config.bonusVsDebuffed[lv-1];
+  const hits=config.hits?.[lv-1]||1;
+  const mFlat=config.matkFlat?.[lv-1];
+  const critXF=config.critChanceFlat?.[lv-1]||0;
+  let total=0;
+  let anyHit=false;
+  for(let i=0;i<hits;i++){
+    if(chance(miss)){ await doMiss('player'); if(hits===1) logMsg(`${config.name||ab?.id} missed!`,'miss'); continue; }
+    anyHit=true;
+    const amount=Math.max(1,(mFlat!=null?mFlat:0)+matk(mult));
+    const isCrit=chance(Math.min(95,getPlayerCritChance(ab)+critXF));
+    const r=dealDamage('enemy', amount, isCrit, true, ab);
+    total+=r.dmgDealt;
+    await doAttack('player','enemy', r);
+    setHpBar('enemy',G.enemy.stats.hp,G.enemy.stats.maxHp);
+    if(G.battleOver) return;
+  }
+  const rc=mb.rider||0;
+  if(anyHit && config.confuseChance?.[lv-1] && spellAilmentRoll(config.confuseChance[lv-1]+rc, hits>1)){
+    G.enemyStatus.confused={turns:config.confuseTurns?.[lv-1]||3, skipChance:config.confuseSkip?.[lv-1]||26};
+    spawnFloat('enemy','🌀 Confuse!','fn-status');
+  }
+  if(anyHit && config.fearWeakenRefresh){
+    G.enemyStatus.weaken=Math.max(G.enemyStatus.weaken||0,2);
+    G.enemyStatus.feared=Math.max(G.enemyStatus.feared||0,2);
+    spawnFloat('enemy','🐦 Chorus!','fn-status');
+  }
+  if(anyHit && config.delayedFlat?.[lv-1]){
+    robinApplyDelayed(config.delayedFlat[lv-1], ab, config.delayedSynergy||{}, !!config.delayedReplace);
+  }
+  renderStatuses('enemy-status',G.enemyStatus);
+  await doSpell('enemy', config.fx||'🐦');
+  logMsg(`${config.log||config.name||'🐦 Robin song'}! ${total} magic dmg.`, 'player-action');
+}
+async function executeRobinRobinsRefrain(ab){
+  const heal=Math.max(1,Math.floor(matk(0.12)));
+  G.player.stats.hp=Math.min(G.player.stats.maxHp,G.player.stats.hp+heal);
+  setHpBar('player',G.player.stats.hp,G.player.stats.maxHp);
+  spawnFloat('player',`+${heal}`,'fn-heal');
+  applySingerTempMatk(12,2);
+  await doSpell('player','🐦');
+  renderStatuses('player-status',G.playerStatus);
+  logMsg(`🐦 Robin's Refrain! +${heal} HP; +12 MATK (2t, refresh).`,'player-action');
+}
 const ROBIN_SKILL_ACTION_OVERRIDES = {
-  quick_peck: ab=>executeRobinPeckStrike(ab,{log:'🐦 Quick Peck',hits:[1,1,1,1],miss:[9,8,7,6],mult:[0.94,0.98,1.02,1.06],pierce:[8,10,12,14]}),
+  quick_peck: ab=>executeRobinPeckStrike(ab,{log:'🐦 Quick Peck',hits:[1,1,1,1],miss:[12,11,10,9],mult:[0.80,0.83,0.86,0.89],flatAdd:[4,4,4,4],pierce:[0,0,0,0],critChanceFlat:[12,12,12,12]}),
   rob_razor_jab: ab=>executeRobinPeckStrike(ab,{log:'🩸 Razor Jab',hits:[2,2,2,2],miss:[8,7,6,5],mult:[0.52,0.56,0.60,0.64],pierce:[5,6,7,8],bleedChance:[12,14,16,18]}),
   rob_razor_flurry: ab=>executeRobinPeckStrike(ab,{log:'🩸 Razor Flurry',hits:[3,3,4,4],miss:[7,6,5,4],mult:[0.48,0.52,0.46,0.50],pierce:[6,8,10,12],bleedChance:[16,18,20,24],bonusVsBleed:[0.06,0.08,0.09,0.10]}),
   rob_needle_peck: ab=>executeRobinPeckStrike(ab,{log:'🪶 Needle Peck',hits:[1,1,1,1],miss:[8,7,6,5],mult:[0.96,1.02,1.06,1.10],pierce:[14,18,22,26]}),
@@ -17206,7 +17396,7 @@ const ROBIN_SKILL_ACTION_OVERRIDES = {
   rob_spot_peck: ab=>executeRobinPeckStrike(ab,{log:'🎯 Spot Peck',hits:[1,1,1,1],miss:[8,7,6,5],mult:[0.92,0.96,1.00,1.04],pierce:[8,10,12,14],applyExpose:[0.06,0.07,0.08,0.09],exposeTurns:[2,2,2,3]}),
   rob_mark_jab: ab=>executeRobinPeckStrike(ab,{log:'🎯 Mark Jab',hits:[2,2,2,2],miss:[7,6,5,4],mult:[0.50,0.54,0.57,0.60],pierce:[10,12,14,16],exposeAfter:[0.10,0.12,0.14,0.16],exposeTurns:[2,2,3,3]}),
   rob_open_flurry: ab=>executeRobinPeckStrike(ab,{log:'🎯 Open Flurry',hits:[3,3,4,4],miss:[6,5,4,3],mult:[0.46,0.50,0.48,0.52],pierce:[8,10,12,14],bonusVsCompromised:[0.08,0.10,0.12,0.14],exposeAfter:[0.04,0.05,0.06,0.07],exposeTurns:[2,2,2,3]}),
-  dart_rush: ab=>executeRobinDartBurst(ab,{log:'🐦 Dart Rush',mult:[1.06,1.12,1.18,1.24],pierce:[8,10,12,14]}),
+  dart_rush: ab=>executeRobinRobinsRefrain(ab),
   rob_swift_dash: ab=>executeRobinDartBurst(ab,{log:'🐦 Swift Dash',mult:[1.12,1.18,1.24,1.30],pierce:[10,12,14,16],critBonus:[8,10,12,14]}),
   rob_flash_strike: ab=>executeRobinDartBurst(ab,{log:'⚡ Flash Strike',mult:[1.18,1.24,1.30,1.36],pierce:[12,14,16,18],critBonus:[12,14,16,18],hits:[2,2,2,2],followMult:[0.64,0.68,0.70,0.74]}),
   rob_rending_rush: ab=>executeRobinDartBurst(ab,{log:'🩸 Rending Rush',mult:[1.04,1.10,1.14,1.20],pierce:[6,8,10,12],bleedChance:[18,20,22,25]}),
@@ -17215,7 +17405,7 @@ const ROBIN_SKILL_ACTION_OVERRIDES = {
   rob_passing_rush: ab=>executeRobinDartBurst(ab,{log:'✨ Passing Rush',mult:[1.00,1.06,1.12,1.18],pierce:[6,8,10,12],delayed:[10,14,18,22],delayedSynergy:{spdPer:0.42,debuffPer:2,debuffCap:12}}),
   rob_return_dash: ab=>executeRobinDartBurst(ab,{log:'✨ Return Dash',mult:[1.08,1.14,1.18,1.24],pierce:[8,10,12,14],delayed:[16,20,24,28],delayedSynergy:{spdPer:0.50,debuffPer:3,debuffCap:16}}),
   rob_double_strike: ab=>executeRobinDartBurst(ab,{log:'✨ Double Strike',mult:[1.10,1.16,1.20,1.26],pierce:[10,12,14,16],hits:[2,2,2,2],followMult:[0.62,0.66,0.68,0.70],delayed:[12,16,20,24],delayedSynergy:{spdPer:0.55,debuffPer:4,debuffCap:20}}),
-  bright_chirp: ab=>executeRobinChirpUtility(ab,{log:'🐦 Bright Chirp',fx:'🐦',spd:[1,1,2,2],dodge:[10,12,14,16],turns:[2,2,2,2]}),
+  bright_chirp: ab=>executeRobinMatkSpell(ab,{name:'Bright Chirp',log:'🐦 Bright Chirp',fx:'🐦',miss:[14,12,11,10],matkFlat:[4,4,4,4],mult:[0.80,0.80,0.80,0.80],critChanceFlat:[12,12,12,12]}),
   rob_rally_call: ab=>executeRobinChirpUtility(ab,{log:'🐦 Rally Call',fx:'🐦',spd:[2,3,3,4],dodge:[8,10,12,14],turns:[2,2,2,3]}),
   rob_quick_song: ab=>executeRobinChirpUtility(ab,{log:'🐦 Quick Song',fx:'🐦',spd:[4,4,5,6],dodge:[12,14,16,18],turns:[2,2,3,3]}),
   rob_distracting_chirp: ab=>executeRobinChirpUtility(ab,{log:'🌫 Distracting Chirp',fx:'🌫',accDown:[12,14,16,18],turns:[2,2,2,2]}),
@@ -17224,7 +17414,7 @@ const ROBIN_SKILL_ACTION_OVERRIDES = {
   rob_dulling_chirp: ab=>executeRobinChirpUtility(ab,{log:'🐔 Dulling Chirp',fx:'🐔',weakenChance:[24,28,32,36],turns:[2,2,2,2]}),
   rob_softening_call: ab=>executeRobinChirpUtility(ab,{log:'🐔 Softening Call',fx:'🐔',weakenChance:[30,34,38,42],turns:[2,2,3,3]}),
   rob_fading_song: ab=>executeRobinChirpUtility(ab,{log:'🐔 Fading Song',fx:'🐔',weakenChance:[36,40,44,48],turns:[3,3,3,3]}),
-  hop_step: ab=>executeRobinHopUtility(ab,{log:'🐦 Hop Step',fx:'🐦',spd:[1,1,1,2],dodge:[8,10,12,14],turns:[2,2,2,2]}),
+  hop_step: ab=>executeRobinMatkSpell(ab,{name:'Hop Refrain',log:'🐦 Hop Refrain',fx:'🐦',miss:[14,12,11,10],matkFlat:[6,6,6,6],mult:[1.00,1.00,1.00,1.00],confuseChance:[26,30,34,38],confuseTurns:[1,1,1,1],confuseSkip:[24,26,28,30],delayedFlat:[11,13,15,18],delayedReplace:true,delayedSynergy:{perCategory:0,cap:0}}),
   light_step: ab=>executeRobinHopUtility(ab,{log:'💨 Light Step',fx:'💨',dodge:[22,26,30,34],turns:[2,2,2,3]}),
   quick_hop: ab=>executeRobinHopUtility(ab,{log:'💨 Quick Hop',fx:'💨',dodge:[32,36,40,44],turns:[2,2,3,3]}),
   spring_bound: ab=>executeRobinHopUtility(ab,{log:'💨 Spring Bound',fx:'💨',dodge:[42,46,50,54],turns:[2,3,3,3]}),
@@ -19360,6 +19550,28 @@ const GALAH_SKILL_ACTION_OVERRIDES = {
 Object.entries(WAGTAIL_SKILL_ACTION_OVERRIDES).forEach(([id, fn])=>{ ACTIONS[id]=fn; });
 Object.entries(GALAH_SKILL_ACTION_OVERRIDES).forEach(([id, fn])=>{ ACTIONS[id]=fn; });
 
+async function executeSingerHealMatkRefrain(ab, healFrac, logLine, fx){
+  const heal=Math.max(1,Math.floor(matk(healFrac)));
+  G.player.stats.hp=Math.min(G.player.stats.maxHp,G.player.stats.hp+heal);
+  setHpBar('player',G.player.stats.hp,G.player.stats.maxHp);
+  spawnFloat('player',`+${heal}`,'fn-heal');
+  applySingerTempMatk(12,2);
+  await doSpell('player',fx||'🎵');
+  renderStatuses('player-status',G.playerStatus);
+  logMsg(`${logLine} +${heal} HP; +12 MATK (2t, refresh).`,'player-action');
+}
+const CARDINAL_FWREN_SKILL_ACTION_OVERRIDES = {
+  cardinal_note: ab=>executeMacawSpell(ab,{name:'Crimson Note',log:'🐦 Crimson Note',fx:'🐦',miss:[14,12,11,10],matkFlat:[4,4,4,4],mult:[0.80,0.80,0.80,0.80],critChanceFlat:[12,12,12,12]}),
+  cardinal_hymn: ab=>executeMacawSpell(ab,{name:'Scarlet Hymn',log:'🐦 Scarlet Hymn',fx:'🐦',miss:[14,12,11,10],matkFlat:[6,6,6,6],mult:[1.05,1.05,1.05,1.05],fearWeakenRefresh:true}),
+  cardinal_jab: ab=>executeBlackbirdPeckAction(ab,{name:'Crest Jab',log:'🐦 Crest Jab',damageKind:'physical',miss:[12,11,10,9],mult:[0.75,0.78,0.81,0.84],flatAdd:[4,4,4,4],pierce:[0,0,0,0],critDmgBonus:12}),
+  cardinal_refrain: ab=>executeSingerHealMatkRefrain(ab,0.14,'🐦 Red Refrain!', '🐦'),
+  fwren_song: ab=>executeMacawSpell(ab,{name:'Azure Trill',log:'✨ Azure Trill',fx:'✨',miss:[14,12,11,10],matkFlat:[4,4,4,4],mult:[0.80,0.80,0.80,0.80],critChanceFlat:[12,12,12,12]}),
+  fwren_bright_call: ab=>executeMacawSpell(ab,{name:'Sunthread Call',log:'✨ Sunthread Call',fx:'✨',miss:[14,12,11,10],matkFlat:[6,6,6,6],mult:[1.00,1.00,1.00,1.00],confuseChance:[26,30,34,38],confuseTurns:[1,1,1,1],confuseSkip:[22,24,26,28],delayedFlat:[11,13,15,18],delayedReplace:true,delayedSynergy:{perCategory:0,cap:0}}),
+  fwren_tiny_peck: ab=>executeBlackbirdPeckAction(ab,{name:'Glimmer Peck',log:'✨ Glimmer Peck',damageKind:'physical',miss:[12,11,10,9],mult:[0.75,0.78,0.81,0.84],flatAdd:[4,4,4,4],pierce:[0,0,0,0],critChanceFlat:[12,12,12,12]}),
+  fwren_refrain: ab=>executeSingerHealMatkRefrain(ab,0.12,'✨ Blue Refrain!', '✨'),
+};
+Object.entries(CARDINAL_FWREN_SKILL_ACTION_OVERRIDES).forEach(([id, fn])=>{ ACTIONS[id]=fn; });
+
 (function initStrikePreviewFromBirdOverrides(){
   [
     ['sparrow',SPARROW_SKILL_ACTION_OVERRIDES],
@@ -19387,6 +19599,8 @@ Object.entries(GALAH_SKILL_ACTION_OVERRIDES).forEach(([id, fn])=>{ ACTIONS[id]=f
     ['magpie',MAGPIE_SKILL_ACTION_OVERRIDES],
     ['wagtail',WAGTAIL_SKILL_ACTION_OVERRIDES],
     ['galah',GALAH_SKILL_ACTION_OVERRIDES],
+    ['cardinal',CARDINAL_FWREN_SKILL_ACTION_OVERRIDES],
+    ['fairywren',CARDINAL_FWREN_SKILL_ACTION_OVERRIDES],
   ].forEach(([bk,map])=>registerStrikePreviewForBird(bk,map));
 })();
 
@@ -20156,6 +20370,7 @@ function endPlayerTurn(force=false) {
   _tickTmp('featherFeintMdef','mdef');
   _tickTmp('cardinalMatk','matk');
   _tickTmp('cockatooSongMatk','matk');
+  _tickTmp('singerSetupMatk','matk');
   _tickTmp('fairywrenMatk','matk');
   _tickTmp('robinDawnMatk','matk');
   _tickTmp('blackbirdOmenMatk','matk');
