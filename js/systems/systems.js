@@ -805,12 +805,12 @@ cooldown('chargeUp',3);
     ]
   );
 
-  // Trickster class minor identity bump: more accuracy, poison/burn synergy.
+  // Trickster class minor identity bump: tempo, poison/burn synergy.
   if(globalThis.BIRDS){
     ['robin','bowerbird','flamingo','magpie'].forEach(k=>{
       const b = BIRDS[k];
       if(b?.class === 'trickster' && b.stats){
-        b.stats.acc = Math.min(95, (b.stats.acc||80) + 2);
+        b.stats.spd = (b.stats.spd||0) + 1;
       }
     });
   }
