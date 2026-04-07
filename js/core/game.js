@@ -650,7 +650,7 @@ const BIRDS = {
     color:'#6a8ae8',
     mainAttackId:'multiPeck',
     startAbilities:['multiPeck','dart','windFeint','trackPrey'],
-    passive:{id:'passive_sparrow_windskip',name:'Windskip',desc:"After using a utility, Sparrow's next attack gains +10% Crit Chance."},
+    passive:{id:'passive_sparrow_windskip',name:'Windskip',desc:'After using a utility, the next attack gains +10% Crit Chance. Supports tempo striker play.'},
   },
   hummingbird:{
     name:'Hummingbird', portraitKey:'hummingbird', tagline:'Blurred wings, needle beak. Zap & zip.',
@@ -661,7 +661,7 @@ const BIRDS = {
     color:'#40e8c0',
     mainAttackId:'needle_jab',
     startAbilities:['needle_jab','dash','blink_flutter','pulse_step'],
-    passive:{id:'passive_hummingbird_afterimage',name:'Afterimage',desc:'The first time Hummingbird uses a utility each battle, gain +6 SPD for 2 turns.'},
+    passive:{id:'passive_hummingbird_afterimage',name:'Afterimage',desc:'First utility used each battle: gain +6 SPD for 2 turns. Emphasises speed snowball.'},
   },
   blackbird:{
     name:'Blackbird', portraitKey:'blackbird', tagline:'Songs that shatter minds. Eyes like embers.',
@@ -670,7 +670,7 @@ const BIRDS = {
     color:'#9a6ae8',
     startAbilities:['dark_song','shadow_peck','gloom_wing','grim_sign'],
     mainAttackId:'dark_song',
-    passive:{id:'passive_blackbird_omen_chorus',name:'Omen Chorus',desc:'When Blackbird applies Delayed, gain +4 MATK for 1 turn.'},
+    passive:{id:'passive_blackbird_omen_chorus',name:'Omen Chorus',desc:'When Delayed is applied, gain +4 MATK for 1 turn. Rewards looming pressure.'},
   },
   macaw:{
     name:'Macaw', portraitKey:'macaw', tagline:'Every word is a weapon.',
@@ -679,7 +679,7 @@ const BIRDS = {
     color:'#1a6aba',
     mainAttackId:'echo_note',
     startAbilities:['echo_note','mimic_song','feather_taunt','chorus_mark'],
-    passive:{id:'passive_macaw_mimic_flair',name:'Mimic Flair',desc:'If Macaw uses a different skill family than last turn, gain +10% Accuracy this turn.'},
+    passive:{id:'passive_macaw_mimic_flair',name:'Mimic Flair',desc:'When using a different skill family than last turn, gain +10% Accuracy this turn. Encourages varied patterns.'},
   },
   peregrine:{
     name:'Peregrine Falcon', portraitKey:'peregrine', tagline:'Lock. Stoop. No survivors.',
@@ -690,7 +690,7 @@ const BIRDS = {
     color:'#6a8ac8',
     mainAttackId:'talon_jab',
     startAbilities:['talon_jab','dive','keen_eye','aerial_pace'],
-    passive:{id:'passive_peregrine_kill_dive',name:'Kill Dive',desc:'Attacks against targets below 50% HP gain +10% Crit Chance.'},
+    passive:{id:'passive_peregrine_kill_dive',name:'Kill Dive',desc:'When the target is below 50% HP, gain +10% Crit Chance. Executes wounded prey.'},
   },
   snowyOwl:{
     name:'Snowy Owl', portraitKey:'snowyOwl', tagline:'The snow listens. Then it falls.',
@@ -701,7 +701,7 @@ const BIRDS = {
     color:'#e8f0f8',
     mainAttackId:'talon_snap',
     startAbilities:['talon_snap','silent_dive','owl_eye','frost_glide'],
-    passive:{id:'passive_snowyowl_whiteout_stalker',name:'Whiteout Stalker',desc:'Attacks against Chilled or Delayed targets gain +10% Crit Damage.'},
+    passive:{id:'passive_snowyowl_whiteout_stalker',name:'Whiteout Stalker',desc:'Against Chilled or Delayed targets: +10% Crit Damage. Rewards setup hunting.'},
   },
   kiwi:{
     name:'Kiwi', portraitKey:'kiwi', tagline:'Nocturnal probe. Beak pierces armor like butter.',
@@ -712,7 +712,7 @@ const BIRDS = {
     color:'#a0784a',
     mainAttackId:'beak_jab',
     startAbilities:['beak_jab','night_probe','scent_hunt','scrape'],
-    passive:{id:'passive_kiwi_burrow_sense',name:'Burrow Sense',desc:"Kiwi's first attack each battle gains +10% DEF ignore."},
+    passive:{id:'passive_kiwi_burrow_sense',name:'Burrow Sense',desc:'First attack each battle: +10% DEF ignore. Piercing beak precision.'},
   },
   blackCockatoo:{
     name:'Black Cockatoo', portraitKey:'blackCockatoo', tagline:'Booming crest. Resonant voice and crushing notes.',
@@ -723,7 +723,7 @@ const BIRDS = {
     color:'#2a1a3a',
     mainAttackId:'boom_call',
     startAbilities:['boom_call','resonance_mark','beak_crack','wing_beat'],
-    passive:{id:'passive_blackcockatoo_resonant_crest',name:'Resonant Crest',desc:'After using a song/call, gain +4 MATK for 1 turn.'},
+    passive:{id:'passive_blackcockatoo_resonant_crest',name:'Resonant Crest',desc:'After using a song/call, gain +4 MATK for 1 turn. Feeds resonant singer loops.'},
   },
   crow:{
     name:'Crow', portraitKey:'crow', tagline:'Clever. Coordinated. Unsettling.',
@@ -732,7 +732,7 @@ const BIRDS = {
     color:'#c0c8d8',
     mainAttackId:'peck',
     startAbilities:['peck','murder_murmuration','dread_call','battle_focus'],
-    passive:{id:'passive_crow_murder_mind',name:'Murder Mind',desc:"Crow's first debuff applied each battle lasts +1 turn."},
+    passive:{id:'passive_crow_murder_mind',name:'Murder Mind',desc:'First debuff applied each battle lasts +1 extra turn. Smart control bird.'},
   },
   kookaburra:{
     name:'Kookaburra', portraitKey:'kookaburra', tagline:'Bush trickster. Laughing pressure, feints, and sudden drops.',
@@ -743,7 +743,7 @@ const BIRDS = {
     color:'#c8a060',
     mainAttackId:'beak_chop',
     startAbilities:['beak_chop','drop_strike','laugh_call','perch_watch'],
-    passive:{id:'passive_kookaburra_laughing_ambush',name:'Laughing Ambush',desc:'Attacks against Confused targets gain +10% Crit Chance.'},
+    passive:{id:'passive_kookaburra_laughing_ambush',name:'Laughing Ambush',desc:'Against Confused targets: +10% Crit Chance. Ambushes disrupted prey.'},
   },
   lyrebird:{
     name:'Lyrebird', portraitKey:'lyrebird', tagline:'The great deceiver. Master of all songs.',
@@ -754,7 +754,7 @@ const BIRDS = {
     color:'#c8902a',
     mainAttackId:'echo_note',
     startAbilities:['echo_note','mimic_chorus','display_step','refrain_mark'],
-    passive:{id:'passive_lyrebird_perfect_imitation',name:'Perfect Imitation',desc:"Lyrebird's first song/call each battle gains +10% Accuracy."},
+    passive:{id:'passive_lyrebird_perfect_imitation',name:'Perfect Imitation',desc:'First song/call each battle: +10% Accuracy. Reliable opener singer.'},
   },
   raven:{
     name:'Raven', portraitKey:'raven', tagline:'The field remembers. You only hurry the ending.',
@@ -765,7 +765,7 @@ const BIRDS = {
     color:'#6030d0',
     mainAttackId:'beak_jab',
     startAbilities:['beak_jab','omen_call','dark_watch','fate_mark'],
-    passive:{id:'passive_raven_grim_opportunity',name:'Grim Opportunity',desc:'When Raven hits a debuffed target, gain +4 SPD this turn.'},
+    passive:{id:'passive_raven_grim_opportunity',name:'Grim Opportunity',desc:'When hitting a debuffed target, gain +4 SPD this turn. Opportunistic trickster flow.'},
   },
   magpie:{
     name:'Magpie', portraitKey:'magpie', tagline:'Flashy thief. Swoops in, steals the moment, and slips away.',
@@ -776,7 +776,7 @@ const BIRDS = {
     color:'#2a2a2a',
     mainAttackId:'swoop',
     startAbilities:['swoop','steal_shine','feather_flick','shine_step'],
-    passive:{id:'passive_magpie_shiny_opportunist',name:'Shiny Opportunist',desc:'Once per turn, Magpie crits grant +4 SPD next turn.'},
+    passive:{id:'passive_magpie_shiny_opportunist',name:'Shiny Opportunist',desc:'Once per turn on crit: gain +4 SPD next turn. Feeds flashy tempo.'},
   },
   robin:{
     name:'Robin', portraitKey:'robin', tagline:'Bright hedge-songster. Quick notes, light strikes, and uplifting refrains.',
@@ -785,7 +785,7 @@ const BIRDS = {
     color:'#d86a4c',
     mainAttackId:'bright_chirp',
     startAbilities:['bright_chirp','hop_step','quick_peck','dart_rush'],
-    passive:{id:'passive_robin_dawn_chorus',name:'Dawn Chorus',desc:'After using a healing or buff utility, gain +4 MATK for 1 turn.'},
+    passive:{id:'passive_robin_dawn_chorus',name:'Dawn Chorus',desc:'After using a heal/buff utility, gain +4 MATK for 1 turn. Small support singer payoff.'},
   },
   bowerbird:{
     name:'Bowerbird', portraitKey:'bowerbird', tagline:'Stage-maker. Builds the bower, lures the eye, and cashes the display.',
@@ -796,7 +796,7 @@ const BIRDS = {
     color:'#4a6a9a',
     mainAttackId:'trinket_toss',
     startAbilities:['trinket_toss','lure_call','bower_build','display_mark'],
-    passive:{id:'passive_bowerbird_display_instinct',name:'Display Instinct',desc:"Bowerbird's first utility each battle gains +10% Accuracy and +5% Crit Chance."},
+    passive:{id:'passive_bowerbird_display_instinct',name:'Display Instinct',desc:'First utility each battle: +10% Accuracy and +5% Crit Chance. Rewards setup/display play.'},
   },
   toucan:{
     name:'Toucan', portraitKey:'toucan', tagline:'Oversized bill, vivid pressure, odd reach.',
@@ -807,7 +807,7 @@ const BIRDS = {
     color:'#60c840',
     mainAttackId:'toucan_beak_jab',
     startAbilities:['toucan_beak_jab','beak_slam','fruit_toss','color_mark'],
-    passive:{id:'passive_toucan_prism_beak',name:'Prism Beak',desc:'Toucan deals +10% damage to Burning targets.'},
+    passive:{id:'passive_toucan_prism_beak',name:'Prism Beak',desc:'Against Burning targets: +10% damage. Ties into prism/fire lane.'},
   },
   swan:{
     name:'Swan', portraitKey:'swan', tagline:'Regal bulwark. Grace, weight, and unbroken composure.',
@@ -818,7 +818,7 @@ const BIRDS = {
     color:'#f0f4fc',
     mainAttackId:'neck_jab',
     startAbilities:['neck_jab','wing_sweep','grace_glide','poise_mark'],
-    passive:{id:'passive_swan_regal_bearing',name:'Regal Bearing',desc:'While above 70% HP, gain +4 DEF and +4 MDEF.'},
+    passive:{id:'passive_swan_regal_bearing',name:'Regal Bearing',desc:'While above 70% HP: +4 DEF and +4 MDEF. Regal front-loaded tanking.'},
   },
   flamingo:{
     name:'Flamingo', portraitKey:'flamingo', tagline:'Wading lines. Soft water, hard footing.',
@@ -829,7 +829,7 @@ const BIRDS = {
     color:'#e8609a',
     mainAttackId:'leg_jab',
     startAbilities:['leg_jab','marsh_sweep','balance_pose','mire_mark'],
-    passive:{id:'passive_flamingo_cold_wader',name:'Cold Wader',desc:'Each stack of Chilled on the target gives Flamingo +5% Crit Chance.'},
+    passive:{id:'passive_flamingo_cold_wader',name:'Cold Wader',desc:'Per stack of Chilled on the target: +5% Crit Chance. Cold precision identity.'},
   },
   secretary:{
     name:'Secretary Bird', portraitKey:'secretary', tagline:'Stalking justice. The kick decides.',
@@ -840,7 +840,7 @@ const BIRDS = {
     color:'#e0a060',
     mainAttackId:'sec_leg_jab',
     startAbilities:['sec_leg_jab','sec_crushing_kick','hunter_stride','prey_mark'],
-    passive:{id:'passive_secretary_long_leg_reach',name:'Long-Leg Reach',desc:"Secretary Bird's 1 EN attacks gain +10% DEF ignore."},
+    passive:{id:'passive_secretary_long_leg_reach',name:'Long-Leg Reach',desc:'On 1 EN attacks: +10% DEF ignore. Long-leg execution feel.'},
   },
   albatross:{
     name:'Albatross', portraitKey:'albatross', tagline:'Vast ocean bruiser. Wide-wing blows and crushing returning sweeps.',
@@ -851,7 +851,7 @@ const BIRDS = {
     color:'#9fb7c9',
     mainAttackId:'alb_wing_jab',
     startAbilities:['alb_wing_jab','alb_ocean_sweep','alb_glide_line','alb_current_mark'],
-    passive:{id:'passive_albatross_cold_current',name:'Cold Current',desc:'When Albatross applies Chilled, gain +4 SPD next turn.'},
+    passive:{id:'passive_albatross_cold_current',name:'Cold Current',desc:'When applying Chilled, gain +4 SPD next turn. Cold-current bruiser identity.'},
   },
   seagull:{
     name:'Seagull', portraitKey:'seagull', tagline:'Coastal pest. Harrying swoops, noisy cries, scavenger’s payoff.',
@@ -862,7 +862,7 @@ const BIRDS = {
     color:'#b0c8d8',
     mainAttackId:'sgl_snap_peck',
     startAbilities:['sgl_snap_peck','sgl_swoop_pass','sgl_raucous_cry','sgl_scavenge_mark'],
-    passive:{id:'passive_seagull_scavengers_nerve',name:"Scavenger's Nerve",desc:"After using a utility, Seagull's next attack gains +10% Accuracy."},
+    passive:{id:'passive_seagull_scavengers_nerve',name:"Scavenger's Nerve",desc:'After using a utility, the next attack gains +10% Accuracy. Scavenging opportunist.'},
   },
   goose:{
     name:'Goose', portraitKey:'goose', tagline:'Territorial bruiser. Honk, check, refuse to yield.',
@@ -871,7 +871,7 @@ const BIRDS = {
     color:'#e8c96a',
     startAbilities:['gos_beak_snap','gos_body_check','gos_honk_blast','gos_brace_up'],
     mainAttackId:'gos_beak_snap',
-    passive:{id:'passive_goose_honking_wall',name:'Honking Wall',desc:'Start battle with +4 DEF for 1 turn.'},
+    passive:{id:'passive_goose_honking_wall',name:'Honking Wall',desc:'At battle start: +4 DEF for 1 turn. Immediate wall presence.'},
   },
   shoebill:{
     name:'Shoebill Stork', portraitKey:'shoebill', tagline:'Ancient. Patient. Inevitable.',
@@ -882,7 +882,7 @@ const BIRDS = {
     color:'#5a7090',
     startAbilities:['sbl_beak_chop','sbl_skull_crack','sbl_still_stance','sbl_dread_mark'],
     mainAttackId:'sbl_beak_chop',
-    passive:{id:'passive_shoebill_silent_stance',name:'Silent Stance',desc:"If Shoebill did not use a utility last turn, its next attack gains +10% Crit Damage."},
+    passive:{id:'passive_shoebill_silent_stance',name:'Silent Stance',desc:'If no utility was used last turn, the next attack gains +10% Crit Damage. Stoic burst predator/tank feel.'},
   },
   harpy:{
     name:'Harpy Eagle', portraitKey:'harpy', tagline:'Warlord of the canopy. No mercy.',
@@ -894,7 +894,7 @@ const BIRDS = {
     startAbilities:['hrp_talon_clutch','hrp_canopy_crush','hrp_predator_grip','hrp_prey_lock'],
     mainAttackId:'hrp_talon_clutch',
     abilityPool:['physical'],
-    passive:{id:'passive_harpy_apex_grip',name:'Apex Grip',desc:"Harpy Eagle's first attack each battle gains +10% Crit Chance and +10% Crit Damage."},
+    passive:{id:'passive_harpy_apex_grip',name:'Apex Grip',desc:'First attack each battle: +10% Crit Chance and +10% Crit Damage. Apex opener.'},
   },
   baldEagle:{
     name:'Bald Eagle', portraitKey:'baldEagle', tagline:'Unbreakable. Undying. Undefeated.',
@@ -905,7 +905,7 @@ const BIRDS = {
     color:'#e8e4d8',
     mainAttackId:'skyTalon',
     startAbilities:['skyTalon','guard','predatorMark','freedomCry'],
-    passive:{id:'passive_baldeagle_sky_dominance',name:'Sky Dominance',desc:'Bald Eagle attacks against wounded targets gain +10% Accuracy.'},
+    passive:{id:'passive_baldeagle_sky_dominance',name:'Sky Dominance',desc:'Against wounded targets: +10% Accuracy. Reliable finisher.'},
   },
   penguin:{
     name:'Emperor Penguin', portraitKey:'penguin', tagline:'Ice-clad waddler. Magic slides off its blubber.',
@@ -915,7 +915,7 @@ const BIRDS = {
     stats:{hp:89,maxHp:89,atk:18,def:42,spd:6,dodge:5,acc:74,mdef:42,matk:5,critChance:5},
     color:'#3a5878',
     startAbilities:['icebreakerHonk','snowWall','guard','tundraCall'],
-    passive:{id:'passive_penguin_icebound_plating',name:'Icebound Plating',desc:'While above 50% HP, gain +4 MDEF.'},
+    passive:{id:'passive_penguin_icebound_plating',name:'Icebound Plating',desc:'While above 50% HP: +4 MDEF. Icebound resilience.'},
   },
   ostrich:{
     name:'Ostrich', portraitKey:'ostrich', tagline:'Flightless thunder. Charges build to earth-shaking fury.',
@@ -925,7 +925,7 @@ const BIRDS = {
     stats:{hp:86,maxHp:86,atk:40,def:27,spd:20,dodge:9,acc:76,mdef:19,matk:3,critChance:8},
     color:'#b89060',
     startAbilities:['powerKick','stampedeStrike','sandKick','momentumCharge'],
-    passive:{id:'passive_ostrich_desert_momentum',name:'Desert Momentum',desc:'After using a 2 EN attack, gain +4 SPD next turn.'},
+    passive:{id:'passive_ostrich_desert_momentum',name:'Desert Momentum',desc:'After using a 2 EN attack, gain +4 SPD next turn. Momentum bruiser.'},
   },
   cassowary:{
     name:'Cassowary', portraitKey:'cassowary', tagline:'Jungle juggernaut. Bone-crushing kicks and armored hide.',
@@ -935,7 +935,7 @@ const BIRDS = {
     stats:{hp:88,maxHp:88,atk:43,def:30,spd:14,dodge:7,acc:77,mdef:21,matk:3,critChance:8},
     color:'#3b4a56',
     startAbilities:['raptorKick','warStomp','momentumCharge','crushingTalon'],
-    passive:{id:'passive_cassowary_terror_kick',name:'Terror Kick',desc:'Cassowary deals +10% Crit Damage to Weakened targets.'},
+    passive:{id:'passive_cassowary_terror_kick',name:'Terror Kick',desc:'Against Weakened targets: +10% Crit Damage. Punishes suppressed foes.'},
   },
   emu:{
     name:'Emu', portraitKey:'emu', tagline:'Flightless brute. Kicks and stomps with terrifying force.',
@@ -945,7 +945,7 @@ const BIRDS = {
     stats:{hp:86,maxHp:86,atk:40,def:28,spd:17,dodge:11,acc:77,mdef:20,matk:2,critChance:8},
     color:'#7a6040',
     startAbilities:['headWhip','warCharge','sandKick','momentumStrike'],
-    passive:{id:'passive_emu_dust_runner',name:'Dust Runner',desc:'The first SPD buff Emu gains each battle is increased by +2.'},
+    passive:{id:'passive_emu_dust_runner',name:'Dust Runner',desc:'First SPD buff each battle: that buff gains +2 SPD. Dust-runner momentum.'},
   },
   dukeBlakiston:{
     name:'Duke Blakiston', portraitKey:'dukeBlakiston', tagline:'Lord of the court. Boss-tier ruler with unique command, control, and execution skills.',
@@ -956,7 +956,7 @@ const BIRDS = {
     color:'#6f88c2',
     startAbilities:['nightTalon','nightfallCall','courtSummon','verdict'],
     mainAttackId:'nightTalon',
-    passive:{id:'passive_dukeblakiston_court_of_night',name:'Court of Night',desc:'When Duke Blakiston applies Fear or Weaken, gain +4 ATK and +4 MATK this turn.'},
+    passive:{id:'passive_dukeblakiston_court_of_night',name:'Court of Night',desc:'When applying Fear or Weaken, gain +4 ATK and +4 MATK this turn. Boss escalation passive.'},
   },
   wren:{
     name:'Wren', portraitKey:'wren', tagline:'Tiny hedge striker. Fast feet, sharp pecks, no wasted motion.',
@@ -967,7 +967,7 @@ const BIRDS = {
     color:'#6a9a6a',
     mainAttackId:'wren_quick_peck',
     startAbilities:['wren_quick_peck','wren_needle_dart','wren_feather_feint','wren_trail_step'],
-    passive:{id:'passive_wren_hedge_skipper',name:'Hedge Skipper',desc:"After using a utility, Wren's next attack gains +10% Accuracy."},
+    passive:{id:'passive_wren_hedge_skipper',name:'Hedge Skipper',desc:'After using a utility, the next attack gains +10% Accuracy. Tiny setup striker.'},
   },
   fairywren:{
     name:'Superb Fairywren', portraitKey:'fairywren', tagline:'Brilliant songster. Small frame, bright notes, quick support.',
@@ -978,7 +978,7 @@ const BIRDS = {
     color:'#4a7ae8',
     mainAttackId:'fwren_song',
     startAbilities:['fwren_song','fwren_bright_call','fwren_tiny_peck','fwren_refrain'],
-    passive:{id:'passive_fairywren_brilliant_plumage',name:'Brilliant Plumage',desc:"Superb Fairywren's first song each battle grants +4 MATK for 1 turn."},
+    passive:{id:'passive_fairywren_brilliant_plumage',name:'Brilliant Plumage',desc:'First song used each battle: gain +4 MATK for 1 turn. Bright opener singer.'},
   },
   firecrest:{
     name:'Firecrest', portraitKey:'firecrest', tagline:'Flash of flame. Tiny striker built around speed and burning finishers.',
@@ -989,7 +989,7 @@ const BIRDS = {
     color:'#e85a2a',
     mainAttackId:'firecrest_jab',
     startAbilities:['firecrest_jab','firecrest_burn_dash','firecrest_cinder_step','firecrest_heat_mark'],
-    passive:{id:'passive_firecrest_emberwake',name:'Emberwake',desc:'Firecrest deals +10% damage to Burning targets.'},
+    passive:{id:'passive_firecrest_emberwake',name:'Emberwake',desc:'Against Burning targets: +10% damage. Locked fire identity.'},
   },
   wagtail:{
     name:'Willie Wagtail', portraitKey:'wagtail', tagline:'Tail-flicking nuisance. Sharp feints, mocking calls, constant motion.',
@@ -1000,7 +1000,7 @@ const BIRDS = {
     color:'#2a2a2a',
     mainAttackId:'wagtail_peck',
     startAbilities:['wagtail_peck','wagtail_flick_strike','wagtail_mock_call','wagtail_tail_mark'],
-    passive:{id:'passive_wagtail_mocking_step',name:'Mocking Step',desc:'Willie Wagtail gains +10% Accuracy against Confused targets.'},
+    passive:{id:'passive_wagtail_mocking_step',name:'Mocking Step',desc:'Against Confused targets: +10% Accuracy. Tracks disrupted prey.'},
   },
   galah:{
     name:'Galah', portraitKey:'galah', tagline:'Loud pink menace. Flashy disruption, misdirection, and staged payoffs.',
@@ -1011,7 +1011,7 @@ const BIRDS = {
     color:'#e8a0c8',
     mainAttackId:'galah_beak_tap',
     startAbilities:['galah_beak_tap','galah_flash_strike','galah_screech','galah_show_mark'],
-    passive:{id:'passive_galah_showmanship',name:'Showmanship',desc:'After using a song/call, Galah gains +5% Crit Damage for 1 turn.'},
+    passive:{id:'passive_galah_showmanship',name:'Showmanship',desc:'After using a song/call: +5% Crit Damage for 1 turn. Showy conversion passive.'},
   },
   bluejay:{
     name:'Blue Jay', portraitKey:'bluejay', tagline:'Territorial brawler. Harsh hits, loud pressure, and aggressive momentum.',
@@ -1022,7 +1022,7 @@ const BIRDS = {
     color:'#3a5cb8',
     mainAttackId:'bluejay_crest_jab',
     startAbilities:['bluejay_crest_jab','bluejay_jaybreaker','bluejay_crest_guard','bluejay_raucous_cry'],
-    passive:{id:'passive_bluejay_territorial_fury',name:'Territorial Fury',desc:'If Blue Jay was hit last turn, its next attack gains +10% Crit Chance.'},
+    passive:{id:'passive_bluejay_territorial_fury',name:'Territorial Fury',desc:'If hit last turn, the next attack gains +10% Crit Chance. Territorial retaliation.'},
   },
   cardinal:{
     name:'Cardinal', portraitKey:'cardinal', tagline:'Crimson songbird. Strong clear notes and rallying support.',
@@ -1033,7 +1033,7 @@ const BIRDS = {
     color:'#c02030',
     mainAttackId:'cardinal_note',
     startAbilities:['cardinal_note','cardinal_hymn','cardinal_jab','cardinal_refrain'],
-    passive:{id:'passive_cardinal_scarlet_poise',name:'Scarlet Poise',desc:'Start battle with +4 MATK for 1 turn.'},
+    passive:{id:'passive_cardinal_scarlet_poise',name:'Scarlet Poise',desc:'At battle start: +4 MATK for 1 turn. Regal opening hymn.'},
   },
   bushturkey:{
     name:'Bush Turkey', portraitKey:'bushturkey', tagline:'Scrappy ground bruiser. Dirty hits, stubborn guard, and pressure.',
@@ -1044,7 +1044,7 @@ const BIRDS = {
     color:'#5a5040',
     mainAttackId:'bturkey_scrap_peck',
     startAbilities:['bturkey_scrap_peck','bturkey_brush_crash','bturkey_bush_guard','bturkey_rattle_call'],
-    passive:{id:'passive_bushturkey_scrapper',name:'Scrapper',desc:'At or below 50% HP, Bush Turkey gains +4 DEF.'},
+    passive:{id:'passive_bushturkey_scrapper',name:'Scrapper',desc:'At or below 50% HP: +4 DEF. Scrappy staying power.'},
   },
   vulture:{
     name:'Vulture', portraitKey:'vulture', tagline:'Grim scavenger bruiser. Heavy blows and lingering pressure.',
@@ -1055,7 +1055,7 @@ const BIRDS = {
     color:'#6a5a50',
     mainAttackId:'vulture_grave_jab',
     startAbilities:['vulture_grave_jab','vulture_corpse_crush','vulture_bone_ward','vulture_grave_dirge'],
-    passive:{id:'passive_vulture_carrion_sense',name:'Carrion Sense',desc:'Vulture attacks against Bleeding targets gain +10% Crit Damage.'},
+    passive:{id:'passive_vulture_carrion_sense',name:'Carrion Sense',desc:'Against Bleeding targets: +10% Crit Damage. Carrion execution identity.'},
   },
   barnowl:{
     name:'Barn Owl', portraitKey:'barnowl', tagline:'Silent dusk hunter. Clean set-up, precise dive, punishing finish.',
@@ -1066,7 +1066,7 @@ const BIRDS = {
     color:'#c8b8a0',
     mainAttackId:'barnowl_talon',
     startAbilities:['barnowl_talon','barnowl_shadow_dive','barnowl_death_glare','barnowl_silent_glide'],
-    passive:{id:'passive_barnowl_silent_approach',name:'Silent Approach',desc:"Barn Owl's first attack from full HP gains +10% Accuracy."},
+    passive:{id:'passive_barnowl_silent_approach',name:'Silent Approach',desc:'First attack from full HP: +10% Accuracy. Silent opening strike.'},
   },
   bustard:{
     name:'Bustard', portraitKey:'bustard', tagline:'Heavy plains bruiser. Wide body, crushing steps, relentless force.',
@@ -1077,7 +1077,7 @@ const BIRDS = {
     color:'#8a7860',
     mainAttackId:'bustard_heavy_jab',
     startAbilities:['bustard_heavy_jab','bustard_dust_trample','bustard_plainshield','bustard_steppe_call'],
-    passive:{id:'passive_bustard_heavy_steps',name:'Heavy Steps',desc:"Bustard's 2 EN attacks gain +10% Crit Damage."},
+    passive:{id:'passive_bustard_heavy_steps',name:'Heavy Steps',desc:'On 2 EN attacks: +10% Crit Damage. Heavy committed hits.'},
   },
   goldeneagle:{
     name:'Golden Eagle', portraitKey:'goldeneagle', tagline:'Imperial hunter. High kill pressure and ruthless finishers.',
@@ -1088,7 +1088,7 @@ const BIRDS = {
     color:'#c9a020',
     mainAttackId:'golden_talon',
     startAbilities:['golden_talon','golden_swoop','golden_verdict','golden_focus'],
-    passive:{id:'passive_goldeneagle_sun_hunter',name:'Sun Hunter',desc:'Golden Eagle attacks against wounded targets gain +10% Crit Chance.'},
+    passive:{id:'passive_goldeneagle_sun_hunter',name:'Sun Hunter',desc:'Against wounded targets: +10% Crit Chance. Imperial execution pressure.'},
   },
   pelican:{
     name:'Australian Pelican', portraitKey:'pelican', tagline:'Massive bill, massive body. Absorbs hits and refuses to yield.',
@@ -1099,7 +1099,7 @@ const BIRDS = {
     color:'#a0b8c8',
     mainAttackId:'pelican_snap',
     startAbilities:['pelican_snap','pelican_crush','pelican_guard','pelican_recovery'],
-    passive:{id:'passive_pelican_deep_pouch',name:'Deep Pouch',desc:"Australian Pelican's self-heals restore 10% more HP."},
+    passive:{id:'passive_pelican_deep_pouch',name:'Deep Pouch',desc:'When self-healing, restore 10% more HP. Deep tank sustain.'},
   },
   marabou:{
     name:'Marabou Stork', portraitKey:'marabou', tagline:'Corpse-field predator. Grim pressure and towering execution.',
@@ -1110,7 +1110,7 @@ const BIRDS = {
     color:'#8a8a88',
     mainAttackId:'marabou_jab',
     startAbilities:['marabou_jab','marabou_lunge','marabou_sentence','marabou_hunt'],
-    passive:{id:'passive_marabou_rot_feast',name:'Rot Feast',desc:'Marabou Stork attacks against Poisoned targets gain +10% Crit Chance.'},
+    passive:{id:'passive_marabou_rot_feast',name:'Rot Feast',desc:'Against Poisoned targets: +10% Crit Chance. Rot predator payoff.'},
   },
 };
 
@@ -3768,7 +3768,8 @@ function triggerPassive(trigger, ...args) {
 function renderPassiveBadge() {
   const badge=document.getElementById('passive-badge');
   if(!badge) return;
-  const bd=BIRDS[G.player.birdKey];
+  const key=G.player?.birdKey||G.selected;
+  const bd=key&&BIRDS[key];
   if(bd&&bd.passive){badge.textContent=`★ ${bd.passive.name}`;badge.title=bd.passive.desc;badge.style.display='inline-block';}
   else badge.style.display='none';
 }
@@ -8331,6 +8332,7 @@ function updateAscentPanel(key) {
     panel.innerHTML='<div class="ascent-empty">Select a fighter from the roster.</div>';
     _setSfselEmptyState(true);
     syncSelectTakeFlightButton();
+    renderPassiveBadge();
     return;
   }
 
@@ -8420,6 +8422,7 @@ function updateAscentPanel(key) {
     panel.classList.remove('is-empty');
     panel.classList.add('is-filled');
     _setSfselEmptyState(false);
+    renderPassiveBadge();
   }catch(err){
     console.error('updateAscentPanel failed:',key,err);
     panel.classList.add('is-empty');
@@ -8427,6 +8430,7 @@ function updateAscentPanel(key) {
     panel.innerHTML='<div class="ascent-empty">Could not load fighter profile.</div>';
     G.selected=null;
     _setSfselEmptyState(true);
+    renderPassiveBadge();
   }
   syncSelectTakeFlightButton();
 }
@@ -9137,12 +9141,14 @@ function renderStatuses(id, statuses) {
   const owner = id === 'player-status' ? 'player' : 'enemy';
   const ownerStats = owner === 'player' ? G?.player?.stats : G?.enemy?.stats;
   const poisonCap = G?.player ? (G.player.poisonCap||5) : 5;
+  const poisonBoundaryDamage = stacks=>{
+    const mult=owner==='player'?(G?.player?.poisonTickMult||1):1;
+    const flat=owner==='enemy'?((G?.player?.poisonFlatBonus||0)+(G?.player?.perkPoisonTickBonus||0)+(G?.player?.relVenomLedger?1:0)):0;
+    return Math.max(1,Math.floor(2*(stacks||0)*mult)+flat);
+  };
   const nextTickInfo = (key, value) => {
     if(key==='poison' && value?.stacks>0) {
-      const mult = owner === 'player' ? (G?.player?.poisonTickMult || 1) : 1;
-      const flat = owner === 'enemy' ? ((G?.player?.poisonFlatBonus||0)+(G?.player?.perkPoisonTickBonus||0)+(G?.player?.relVenomLedger?1:0)) : 0;
-      const per = Math.max(1, Math.floor(2 * value.stacks * mult) + flat);
-      return `Each end-of-turn boundary: ${per} poison (player turn end + enemy turn end).`;
+      return `Each end-of-turn boundary: ${poisonBoundaryDamage(value.stacks)} poison (player turn end + enemy turn end).`;
     }
     if(key==='bleed' && ((value?.turns||0)>0 || (value?.stacks||0)>0)){
       return 'Healing received and heal effects −50%.';
@@ -9172,7 +9178,7 @@ function renderStatuses(id, statuses) {
     const b=document.createElement('span');
     b.className=`status-badge ${k}`;
     let tooltipSummary='';
-    if (k==='poison') { const mult=owner==='player'?(G?.player?.poisonTickMult||1):1; const flat=owner==='enemy'?((G?.player?.poisonFlatBonus||0)+(G?.player?.perkPoisonTickBonus||0)+(G?.player?.relVenomLedger?1:0)):0; const per=Math.max(1,Math.floor(2*(v.stacks||0)*mult)+flat); b.textContent=`☣ Poison×${v.stacks}/${poisonCap}(${v.turns}t, ${per}/boundary)`; tooltipSummary='Stacks to 5. 2 damage per stack; ticks at end of player turn and enemy turn.'; }
+    if (k==='poison') { const per=poisonBoundaryDamage(v.stacks); b.textContent=`☣ Poison×${v.stacks}/${poisonCap}(${v.turns}t, ${per}/boundary)`; tooltipSummary='Stacks to 5. 2 damage per stack; ticks at end of player turn and enemy turn.'; }
     else if (k==='bleed') { b.className='status-badge bleed'; b.textContent=`🩸 Bleed(${v.turns||0}t, heal −50%)`; tooltipSummary='Non-stacking. Healing received/effects reduced by 50%. Refresh only.'; }
     else if (k==='weaken') { b.textContent=`🐔 Weaken(${v}t, −25% dmg, −40% dodge)`; tooltipSummary='Refresh only. Reserved for songs/calls.'; }
     else if (k==='paralyzed') { b.textContent=`⚡ Para(${v}t, 20% skip)`; }
@@ -9181,7 +9187,6 @@ function renderStatuses(id, statuses) {
     else if (k==='confused') { b.className='status-badge confused'; const sc=v.selfChance!=null?v.selfChance:(v.skipChance!=null?v.skipChance:STATUS_CONFUSED_SELF_PCT); b.textContent=`🌀 Confused(${v.turns}t,${sc}% self-hit)`; tooltipSummary='Non-stacking. 30% chance to hit yourself with your own attack.'; }
     else if (k==='tookie') { b.className='status-badge stunned'; b.textContent=`🦜 Tookie(+${v.atkBonus}%atk,${v.turns}t)`; }
     else if (k==='humDodge') { b.className='status-badge evading'; b.textContent=`🎵 Hum+${v.bonus}%(${v.turns}t)`; }
-    else if (k==='lastStandBuff') { b.className='status-badge crit'; b.textContent=`🦅 LstStnd+${v.atkBonus}ATK(${v.turns}t)`; }
     else if (k==='warcry') { b.className='status-badge stunned'; b.textContent=`🎺 Warcry+${v.atkBonus}%(${v.turns}t)`; }
     else if (k==='battleHymn') { b.className='status-badge evading'; b.textContent=`🎼 Hymn(${v.turns}t)`; }
     else if (k==='stunned') { b.className='status-badge stunned'; b.textContent=`😵 Stunned(${v}t)`; }
@@ -9222,9 +9227,6 @@ function renderStatuses(id, statuses) {
     el.appendChild(b);
   });
 }
-
-
-
 
 function setEnergyBar(side,cur,max){
   const fill=document.getElementById(`${side}-en-bar`);
@@ -10919,9 +10921,7 @@ function delay(ms) {
 function roll(a,b){return Math.floor(Math.random()*(b-a+1))+a;}
 
 // ============================================================
-//  MDODGE SYSTEM — player magic evasion
-// ============================================================
-const SIZE_MDODGE = {tiny:70, small:60, medium:50, large:45, xl:40};
+
 
 // Accuracy is fixed by bird traits (class + size), not level growth.
 const BASE_ACC_BY_CLASS = {
@@ -11600,14 +11600,6 @@ function dealDamage(target,amount,isCrit=false,isMagic=false,srcAbility=null) {
     if(wasBlocked){
       const _blkbd=BIRDS[G.player.birdKey];
       if(_blkbd&&_blkbd.passive&&_blkbd.passive.onBlock)_blkbd.passive.onBlock(G.player);
-      // Emu Rumble Strike: counter-attack on block (30% ATK)
-      if(_blkbd&&_blkbd.passive&&_blkbd.passive.id==='rumbleStrike'){
-        const ctrDmg=Math.max(1,Math.floor(G.player.stats.atk*0.30));
-        G.enemy.stats.hp-=ctrDmg;
-        spawnFloat('enemy',`⚡-${ctrDmg} Counter!`,'fn-dmg');
-        setHpBar('enemy',G.enemy.stats.hp,G.enemy.stats.maxHp);
-        logMsg(`🦆 Emu counter on block: ${ctrDmg} dmg!`,'system');
-      }
       if(G.playerStatus.counterThorns){
         const thorn=Math.max(1,Math.floor(dmg*G.playerStatus.counterThorns));
         G.enemy.stats.hp=Math.max(0,G.enemy.stats.hp-thorn);
@@ -20795,15 +20787,6 @@ function endPlayerTurn(force=false) {
   // Tick battleHymnDodge
   if(G.playerStatus.battleHymnDodge){G.playerStatus.battleHymnDodge.turns--;if(G.playerStatus.battleHymnDodge.turns<=0)delete G.playerStatus.battleHymnDodge;}
   // Tick Flamingo ATK bonus
-  // Tick Last Stand ATK bonus
-  if(G.playerStatus.lastStandBuff){
-    G.playerStatus.lastStandBuff.turns--;
-    if(G.playerStatus.lastStandBuff.turns<=0){
-      G.player.stats.atk=Math.max(1,G.player.stats.atk-G.playerStatus.lastStandBuff.atkBonus);
-      delete G.playerStatus.lastStandBuff;
-      logMsg('🦅 Last Stand ATK fades.','system');
-    }
-  }
   // Tick battleHymn
   if(G.playerStatus.battleHymn){
     G.playerStatus.battleHymn.turns--;
@@ -21872,49 +21855,6 @@ function checkDeath() {
   }
   if(G.player.stats.hp<=0){
     G._lastDeathCause = 'player_hp_zero';
-    // Bald Eagle Last Stand — survive at 1 HP once per battle
-    if(!G.player._lastStandUsed){
-      const _lsBd=BIRDS[G.player.birdKey];
-      if(_lsBd&&_lsBd.passive&&_lsBd.passive.id==='lastStand'){
-        G.player._lastStandUsed=true;
-        G.player.stats.hp=1;
-        G.playerStatus.lastStandBuff={atkBonus:5,turns:3};
-        G.player.stats.atk+=5;
-        spawnFloat('player','🦅 LAST STAND!','fn-crit');
-        SFX.crit(1.5);
-        logMsg(`🦅 LAST STAND! ${G.player.name} survives at 1 HP! +5 ATK for 3 turns!`,'boss');
-        renderStatuses('player-status',G.playerStatus);
-        setHpBar('player',1,G.player.stats.maxHp);
-        return false; // survived — battle continues
-      }
-    }
-    // Swan Song — final strike at 200% ATK
-    if(!G.player._swanSongFired){
-      const _ssBd=BIRDS[G.player.birdKey];
-      if(_ssBd&&_ssBd.passive&&_ssBd.passive.id==='swanSong'){
-        G.player._swanSongFired=true;
-        G.player.stats.hp=1;
-        const songDmg=Math.floor(G.player.stats.atk*2.0);
-        G.enemy.stats.hp-=songDmg;
-        spawnFloat('player','🦢 SWAN SONG!','fn-crit');
-        spawnFloat('enemy',`-${songDmg} 🦢`,'fn-dmg');
-        SFX.crit(1.5);
-        setHpBar('enemy',G.enemy.stats.hp,G.enemy.stats.maxHp);
-        logMsg(`🦢 SWAN SONG! Final strike deals ${songDmg} damage!`,'boss');
-        if(G.enemy.stats.hp<=0){
-          G.player.stats.hp=1;
-          logMsg(`🦢 Swan Song killed the enemy — ${G.player.name} survives at 1 HP!`,'boss');
-          setTimeout(()=>{G.battleOver=true;setTimeout(postCombat,700);},600);
-          return true;
-        } else {
-          G.player.stats.hp=0;
-          logMsg(`🦢 Swan Song was not enough... ${G.player.name} falls.`,'enemy-action');
-          G.battleOver=true;
-          setTimeout(showDefeat,900);
-          return true;
-        }
-      }
-    }
     G.battleOver=true;
     logMsg(`💀 ${G.player.name} has fallen...`,'enemy-action');
     setTimeout(showDefeat,700);
