@@ -1086,8 +1086,8 @@ const BIRDS = {
     unlockHint:'Coming soon.',
     stats:{hp:68,maxHp:68,atk:40,def:12,spd:28,dodge:10,acc:91,mdef:16,matk:2,critChance:12},
     color:'#c9a020',
-    mainAttackId:'golden_sun_talon',
-    startAbilities:['golden_sun_talon','golden_sovereign_dive','golden_sky_verdict','golden_hunters_majesty'],
+    mainAttackId:'golden_talon',
+    startAbilities:['golden_talon','golden_swoop','golden_verdict','golden_focus'],
     passive:{id:'passive_goldeneagle_sun_hunter',name:'Sun Hunter',desc:'Golden Eagle attacks against wounded targets gain +10% Crit Chance.'},
   },
   pelican:{
@@ -1108,8 +1108,8 @@ const BIRDS = {
     unlockHint:'Coming soon.',
     stats:{hp:82,maxHp:82,atk:44,def:14,spd:27,dodge:11,acc:88,mdef:19,matk:3,critChance:10},
     color:'#8a8a88',
-    mainAttackId:'marabou_rotbeak_jab',
-    startAbilities:['marabou_rotbeak_jab','marabou_ghoul_lunge','marabou_bone_sentence','marabou_grave_hunt'],
+    mainAttackId:'marabou_jab',
+    startAbilities:['marabou_jab','marabou_lunge','marabou_sentence','marabou_hunt'],
     passive:{id:'passive_marabou_rot_feast',name:'Rot Feast',desc:'Marabou Stork attacks against Poisoned targets gain +10% Crit Chance.'},
   },
 };
@@ -9637,7 +9637,7 @@ const ABILITY_DISPLAY_TAGS = {
   gos_beak_snap:['BASIC'], gos_body_check:['HEAVY','SIGNATURE'], gos_honk_blast:['UTILITY'], gos_brace_up:['GUARD','HEAL'],
   sbl_beak_chop:['BASIC'], sbl_skull_crack:['HEAVY','SIGNATURE'], sbl_still_stance:['GUARD'], sbl_dread_mark:['UTILITY','HEAL'],
   pelican_snap:['BASIC'], pelican_crush:['HEAVY','SIGNATURE'], pelican_guard:['GUARD'], pelican_recovery:['UTILITY','HEAL'],
-  hrp_talon_clutch:['BASIC'], hrp_canopy_crush:['HEAVY','SIGNATURE'], hrp_predator_grip:['GUARD'], hrp_prey_lock:['UTILITY'],
+  hrp_talon_clutch:['BASIC'], hrp_canopy_crush:['HEAVY','SIGNATURE'], hrp_predator_grip:['HEAVY','SIGNATURE'], hrp_prey_lock:['UTILITY'],
   savageKick:['HEAVY','SIGNATURE'], raptorKickFrenzy:['HEAVY','MULTI','SIGNATURE'], honkTerror:['CONTROL','SIGNATURE'],
   rallyCall:['UTILITY'], focusSight:['UTILITY'], battleRhythm:['UTILITY'],
 };
@@ -12029,7 +12029,7 @@ function getPlayerCritChance(ab) {
   const chillStacks=G.enemyStatus?.chilled?.stacks||0;
   if(_pcId==='passive_flamingo_cold_wader' && (isAttack||kind==='spell')) base += chillStacks*5;
   if(_pcId==='passive_marabou_rot_feast' && (isAttack||kind==='spell') && (G.enemyStatus?.poison?.stacks||0)>0) base += 10;
-  if((_pcId==='passive_goldeneagle_sun_hunter' || _pcId==='passive_baldeagle_sky_dominance') && isAttack && G.enemy && (G.enemy.stats.hp||1)<(G.enemy.stats.maxHp||1)) base += 10;
+  if(_pcId==='passive_goldeneagle_sun_hunter' && isAttack && G.enemy && (G.enemy.stats.hp||1)<(G.enemy.stats.maxHp||1)) base += 10;
   if(_pcId==='passive_harpy_apex_grip' && isAttack && !G._firstAttackUsed) base += 10;
   if(_pcId==='passive_bluejay_territorial_fury' && isAttack && G.player._blueJayHitLastTurn) base += 10;
   return Math.min(100,base);
@@ -12044,6 +12044,7 @@ function getPlayerHitBonus(ab) {
   if((G.playerStatus.macawFlairAcc||0)>0) n+=G.playerStatus.macawFlairAcc;
   if((G.playerStatus.lyreAccSong||0)>0){ n+=G.playerStatus.lyreAccSong; delete G.playerStatus.lyreAccSong; }
   if(BIRDS[G.player?.birdKey]?.passive?.id==='passive_wagtail_mocking_step' && G.enemyStatus?.confused) n+=10;
+  if(BIRDS[G.player?.birdKey]?.passive?.id==='passive_baldeagle_sky_dominance' && G.enemy && (G.enemy.stats.hp||1)<(G.enemy.stats.maxHp||1)) n+=10;
   return n;
 }
 
@@ -13786,6 +13787,99 @@ function preparePlayerPhysicalPierceFromAbility(ab){
   const enCost=Number(tmpl?.energy ?? tmpl?.energyCost ?? ab?.energy ?? 1);
   if(BIRDS[G.player.birdKey]?.passive?.id==='passive_secretary_long_leg_reach' && enCost<=1) G._currentPiercePct=(G._currentPiercePct||0)+10;
 }
+/** Predator sheet: exact DEF-ignore % (then Kiwi first-attack / Secretary 1 EN passives). */
+function preparePlayerPhysicalPierceExact(ab, basePct){
+  G._currentPiercePct=Math.max(0,Math.floor(Number(basePct)||0));
+  if(BIRDS[G.player.birdKey]?.passive?.id==='passive_kiwi_burrow_sense' && !G._firstAttackUsed) G._currentPiercePct=(G._currentPiercePct||0)+10;
+  const tmpl=getAbilityTemplateForUI(ab);
+  const enCost=Number(tmpl?.energy ?? tmpl?.energyCost ?? ab?.energy ?? 1);
+  if(BIRDS[G.player.birdKey]?.passive?.id==='passive_secretary_long_leg_reach' && enCost<=1) G._currentPiercePct=(G._currentPiercePct||0)+10;
+}
+function predatorHybridPhysicalDamage(flat, atkPct, matkPct, ab){
+  const fa=Math.max(0,Number(flat)||0);
+  let atkVal=Math.max(0,Number(G.player.stats.atk||0));
+  if(G.warcryActive) atkVal=Math.floor(atkVal*(1+G.warcryATK/100));
+  if(G.sitAndWaitActive) atkVal=Math.floor(atkVal*1.25);
+  if(G.tookieActive && G.playerStatus.tookie) atkVal=Math.floor(atkVal*(1+G.playerStatus.tookie.atkBonus/100));
+  const atkRoll=roll(Math.max(1,Math.floor(atkVal*0.8)), Math.max(1,Math.floor(atkVal*1.2)));
+  let matkVal=Math.max(0,Number(G.player.stats.matk||0));
+  const matkRoll=roll(Math.max(1,Math.floor(matkVal*0.8)), Math.max(1,Math.floor(matkVal*1.2)));
+  let base=fa+Math.floor(atkRoll*Number(atkPct||0))+Math.floor(matkRoll*Number(matkPct||0));
+  if(G.playerStatus.weaken&&G.playerStatus.weaken>0) base=Math.floor(base*0.75);
+  const __adm=(G.actionDamageHitsRemaining&&G.actionDamageHitsRemaining>0)?(G.actionDamageMult||1):1;
+  let strikeAdd=0;
+  if(G._pendingStrikeActionMods) strikeAdd=Number(G._pendingStrikeActionMods.multAdd)||0;
+  base=Math.floor(base*(1+strikeAdd)*__adm);
+  if((G.actionDamageHitsRemaining||0)>0){ G.actionDamageHitsRemaining=Math.max(0,G.actionDamageHitsRemaining-1); if(G.actionDamageHitsRemaining===0) G.actionDamageMult=1; }
+  return Math.max(1,base);
+}
+function applyPredatorBleedHighChance(){
+  if(chance(45)){ applyBleedStacksCap(1,1); spawnFloat('enemy','🩸 Bleed!','fn-poison'); }
+}
+function applyPredatorPoisonHighChance(){
+  if(chance(45)){ applyAilment('enemy','poison',1); spawnFloat('enemy','☣ Poison!','fn-poison'); }
+}
+function applyPredatorPoisonMediumChance(){
+  if(chance(40)){ applyAilment('enemy','poison',1); spawnFloat('enemy','☣ Poison!','fn-poison'); }
+}
+function applyEnemyBurningRefreshTurns(turns){
+  const t=Math.max(1,Math.floor(Number(turns)||2));
+  G.enemyStatus.burning=t;
+}
+async function executePredatorSheetStrike(ab, cfg){
+  const lv=Math.max(1,Math.min(4,ab?.level||1));
+  const mb=strikeFamilyMasteryBonuses(ab);
+  const missBase=cfg.miss?.[lv-1]??10;
+  const miss=cfg.cannotMiss?0:Math.max(0,missBase-getPlayerHitBonus(ab)-Math.floor(mb.missCut||0));
+  if(!cfg.cannotMiss && chance(miss)){ await doMiss('player'); logMsg(`${cfg.log||cfg.name||ab?.id} missed!`,'miss'); return; }
+  const flat=cfg.flat?.[lv-1]??0;
+  const atkPct=cfg.statPct?.[lv-1]??0;
+  const matkPct=cfg.matkPct?.[lv-1]??0;
+  const pierceX=cfg.pierceExact?.[lv-1]??cfg.pierceExact??0;
+  preparePlayerPhysicalPierceExact(ab,pierceX);
+  let dmg=matkPct?predatorHybridPhysicalDamage(flat,atkPct,matkPct,ab):tankFlatStatPhysicalDamage(flat,'atk',atkPct,ab);
+  let delayedExtra=0;
+  if(cfg.consumeDelayed){
+    const d=G.enemyStatus?.delayed;
+    if(d&&d.dmg>0){ delayedExtra=d.dmg; delete G.enemyStatus.delayed; spawnFloat('enemy',`💥 +${delayedExtra}`,'fn-dmg'); }
+    dmg+=delayedExtra;
+  }
+  const critFlat=(cfg.critChanceFlat?.[lv-1]||0)+Math.floor(mb.critBonus||0);
+  const critDb=cfg.critDmgBonus?.[lv-1]||0;
+  const prevG=critDb? (G.playerStatus.galahCritDmg||0):0;
+  if(critDb) G.playerStatus.galahCritDmg=prevG+critDb;
+  const isCrit=chance(Math.min(95,getPlayerCritChance(ab)+critFlat));
+  const r=dealDamage('enemy',dmg,isCrit,false,ab);
+  if(critDb) G.playerStatus.galahCritDmg=prevG;
+  await doAttack('player','enemy',r);
+  setHpBar('enemy',G.enemy.stats.hp,G.enemy.stats.maxHp);
+  if(typeof cfg.afterHit==='function') await cfg.afterHit(lv,mb,r);
+  renderStatuses('enemy-status',G.enemyStatus);
+  logMsg(`${cfg.log||cfg.name||ab?.id}! ${r.dmgDealt} dmg${delayedExtra?` (+${delayedExtra} delayed)`:''}.`,'player-action');
+}
+async function executePredatorSpdDodgeThisTurnUtility(ab, cfg){
+  const lv=Math.max(1,Math.min(4,Number(ab?.level)||1));
+  const spd=(cfg.spd&&cfg.spd[lv-1]!=null)?cfg.spd[lv-1]:(cfg.spdFlat??12);
+  const dodge=(cfg.dodgePct&&cfg.dodgePct[lv-1]!=null)?cfg.dodgePct[lv-1]:(cfg.dodgeFlat??12);
+  G.player.stats.spd=Math.min(20,(G.player.stats.spd||1)+spd);
+  G.player._predatorUtilitySpdLoan=(G.player._predatorUtilitySpdLoan||0)+spd;
+  G.playerStatus.humDodge={bonus:dodge, turns:1};
+  await doSpell('player',cfg.fx||'🪶');
+  renderStatuses('player-status',G.playerStatus);
+  logMsg(cfg.log||`+${spd} SPD, +${dodge}% dodge (this turn, refresh).`,'player-action');
+}
+async function executePredatorAtkMdefThisTurnUtility(ab, cfg){
+  const lv=Math.max(1,Math.min(4,Number(ab?.level)||1));
+  const atkB=(cfg.atk&&cfg.atk[lv-1]!=null)?cfg.atk[lv-1]:(cfg.atkFlat??12);
+  const mdfB=(cfg.mdef&&cfg.mdef[lv-1]!=null)?cfg.mdef[lv-1]:(cfg.mdefFlat??10);
+  G.player.stats.atk=(G.player.stats.atk||0)+atkB;
+  G.player.stats.mdef=(G.player.stats.mdef||0)+mdfB;
+  G.player._predatorAtkThisTurnLoan=(G.player._predatorAtkThisTurnLoan||0)+atkB;
+  G.player._predatorMdefThisTurnLoan=(G.player._predatorMdefThisTurnLoan||0)+mdfB;
+  await doSpell('player',cfg.fx||'🪶');
+  renderStatuses('player-status',G.playerStatus);
+  logMsg(cfg.log||`+${atkB} ATK, +${mdfB} MDEF (this turn, refresh).`,'player-action');
+}
 /** Sheet-style physical: flat + rolled stat band × pct (ATK/DEF). Mirrors pdmg weaken / flyby / strike tempo where applicable. */
 function tankFlatStatPhysicalDamage(flat, statKey, statPct, ab){
   const sk=String(statKey||'atk').toLowerCase();
@@ -14096,7 +14190,7 @@ const SHOEBILL_SKILL_ACTION_OVERRIDES = {
   sbl_read_doom: ab=>executeGooseBrace(ab,{log:'🦤 Read Doom', fx:'🦤', markAmpRead:{amp:[0.18,0.20,0.22,0.24], read:[0.12,0.14,0.16,0.18]}}),
 };
 const HARPY_SKILL_ACTION_OVERRIDES = {
-  hrp_talon_clutch: ab=>executeGooseStrikeAction(ab,{name:'Talon Clutch', log:'🦅 Talon Clutch', miss:[12,11,10,9], mult:[1.02,1.08,1.14,1.20], pierce:[12,14,16,18]}),
+  hrp_talon_clutch: ab=>executePredatorSheetStrike(ab,{log:'🦅 Talon Clutch',name:'Talon Clutch',miss:[10,9,8,7],flat:[4,4,4,4],statPct:[0.80,0.80,0.80,0.80],pierceExact:[15,15,15,15],afterHit(){ applyPredatorBleedHighChance(); }}),
   hrp_split_rend: ab=>executeGooseStrikeAction(ab,{name:'Split Rend', log:'🦅 Split Rend', miss:[11,10,9,8], mult:[1.10,1.16,1.22,1.30], pierce:[18,22,26,30], bonusVs:'guard', bonus:[0.06,0.08,0.10,0.12]}),
   hrp_bone_rip: ab=>executeGooseStrikeAction(ab,{name:'Bone Rip', log:'🦅 Bone Rip', miss:[10,9,8,7], mult:[1.22,1.30,1.38,1.46], pierce:[26,30,34,38], bonusVs:'guard', bonus:[0.10,0.12,0.14,0.16]}),
   hrp_rending_clutch: ab=>executeGooseStrikeAction(ab,{name:'Rending Clutch', log:'🩸 Rending Clutch', miss:[12,11,10,9], mult:[1.04,1.10,1.16,1.22], bleedChance:[12,14,16,18]}),
@@ -14105,7 +14199,7 @@ const HARPY_SKILL_ACTION_OVERRIDES = {
   hrp_crushing_clutch: ab=>executeGooseStrikeAction(ab,{name:'Crushing Clutch', log:'🦅 Crushing Clutch', miss:[12,11,10,9], mult:[0.96,1.02,1.08,1.14], weakenChance:[12,14,16,18]}),
   hrp_sapping_rend: ab=>executeGooseStrikeAction(ab,{name:'Sapping Rend', log:'🦅 Sapping Rend', miss:[11,10,9,8], mult:[1.04,1.10,1.16,1.22], weakenChance:[18,20,22,24]}),
   hrp_hollow_rip: ab=>executeGooseStrikeAction(ab,{name:'Hollow Rip', log:'🦅 Hollow Rip', miss:[10,9,8,7], mult:[1.14,1.22,1.30,1.38], weakenChance:[22,24,26,28], bonusVs:'weakened', bonus:[0.08,0.10,0.12,0.14]}),
-  hrp_canopy_crush: ab=>executeGooseStrikeAction(ab,{name:'Canopy Crush', log:'🦅 Canopy Crush', miss:[22,20,18,16], mult:[1.42,1.50,1.58,1.66], useBodyScaling:true, critBonus:[6,8,10,12]}),
+  hrp_canopy_crush: ab=>executePredatorSheetStrike(ab,{log:'🦅 Canopy Crush',name:'Canopy Crush',miss:[10,9,8,7],flat:[7,7,7,7],statPct:[1.05,1.05,1.05,1.05],pierceExact:[25,25,25,25],afterHit(){ G.playerStatus.predatorAtkNext=12; spawnFloat('player','⚔ Next +12 ATK','fn-status'); }}),
   hrp_predator_break: ab=>executeGooseStrikeAction(ab,{name:'Predator Break', log:'🦅 Predator Break', miss:[20,18,16,14], mult:[1.56,1.66,1.76,1.86], useBodyScaling:true, critBonus:[10,12,14,16]}),
   hrp_crown_dominion: ab=>executeGooseStrikeAction(ab,{name:'Crown Dominion', log:'🦅 Crown Dominion', miss:[18,16,14,12], mult:[1.70,1.80,1.90,2.00], useBodyScaling:true, critBonus:[14,16,18,22], pierce:[6,8,10,12]}),
   hrp_shock_crush: ab=>executeGooseStrikeAction(ab,{name:'Shock Crush', log:'⚡ Shock Crush', miss:[22,20,18,16], mult:[1.34,1.42,1.50,1.58], useBodyScaling:true, paraChance:[14,16,18,20]}),
@@ -14114,7 +14208,7 @@ const HARPY_SKILL_ACTION_OVERRIDES = {
   hrp_hunter_crush: ab=>executeGooseStrikeAction(ab,{name:'Hunter Crush', log:'☠ Hunter Crush', miss:[22,20,18,16], mult:[1.38,1.46,1.54,1.62], useBodyScaling:true, bonusVs:'low_hp', bonus:[0.14,0.16,0.18,0.20], lowHpThreshold:0.5}),
   hrp_prey_break: ab=>executeGooseStrikeAction(ab,{name:'Prey Break', log:'☠ Prey Break', miss:[20,18,16,14], mult:[1.50,1.60,1.70,1.80], useBodyScaling:true, bonusVs:'low_hp', bonus:[0.20,0.22,0.24,0.26], lowHpThreshold:0.5}),
   hrp_final_dominion: ab=>executeGooseStrikeAction(ab,{name:'Final Dominion', log:'☠ Final Dominion', miss:[18,16,14,12], mult:[1.62,1.74,1.86,1.98], useBodyScaling:true, bonusVs:'low_hp', bonus:[0.26,0.28,0.30,0.32], lowHpThreshold:0.45}),
-  hrp_predator_grip: ab=>executeGooseBrace(ab,{log:'🦅 Predator Grip', fx:'🦅', guard:[11,13,15,17]}),
+  hrp_predator_grip: ab=>executePredatorSheetStrike(ab,{log:'🦅 Predator Grip',name:'Predator Grip',miss:[34,32,30,28],flat:[9,9,9,9],statPct:[1.25,1.25,1.25,1.25],pierceExact:[40,40,40,40]}),
   hrp_iron_hold: ab=>executeGooseBrace(ab,{log:'🦅 Iron Hold', fx:'🦅', guard:[16,18,21,24]}),
   hrp_death_seize: ab=>executeGooseBrace(ab,{log:'🦅 Death Seize', fx:'🦅', guard:[22,26,30,34]}),
   hrp_lining_grip: ab=>executeGooseBrace(ab,{log:'🦅 Lining Grip', fx:'🦅', markAmp:[0.12,0.14,0.16,0.18]}),
@@ -14123,7 +14217,7 @@ const HARPY_SKILL_ACTION_OVERRIDES = {
   hrp_harsh_grip: ab=>executeHarpyGripAccBrace(ab,{log:'🦅 Harsh Grip', fx:'🦅', accDown:[8,10,12,14]}),
   hrp_breaking_hold: ab=>executeHarpyGripAccBrace(ab,{log:'🦅 Breaking Hold', fx:'🦅', accDown:[12,14,16,18], weakenChance:[10,12,14,16]}),
   hrp_blinding_seize: ab=>executeHarpyGripAccBrace(ab,{log:'🦅 Blinding Seize', fx:'🦅', accDown:[16,18,20,22], paraChance:[10,12,14,16]}),
-  hrp_prey_lock: ab=>executeGooseBrace(ab,{log:'🦅 Prey Lock', fx:'🦅', markAmp:[0.12,0.15,0.18,0.21]}),
+  hrp_prey_lock: ab=>executePredatorAtkMdefThisTurnUtility(ab,{log:'🦅 Prey Lock! +12 ATK, +10 MDEF (this turn).',fx:'🦅',atkFlat:12,mdefFlat:10}),
   hrp_hunter_claim: ab=>executeGooseBrace(ab,{log:'🦅 Hunter Claim', fx:'🦅', markAmp:[0.18,0.22,0.26,0.30]}),
   hrp_doom_dominion: ab=>executeGooseBrace(ab,{log:'🦅 Doom Dominion', fx:'🦅', markAmp:[0.26,0.30,0.34,0.38]}),
   hrp_crack_lock: ab=>executeHarpyLockExpose(ab,{log:'🦅 Crack Lock', expose:[0.10,0.12,0.14,0.16], turns:[2,2,2,2], defStrip:[1,1,2,2], defTurns:[2,2,2,3]}),
@@ -14294,7 +14388,7 @@ registerAbilityAlias('ruin_hunt','quarryBreak','Ruin Hunt',{type:'utility',btnTy
 registerAbilityAlias('opening_focus','battleFocus','Opening Focus',{type:'utility',btnType:'utility'});
 registerAbilityAlias('tempo_plan','battleFocus','Battle Plan',{type:'utility',btnType:'utility'});
 registerAbilityAlias('perfect_hunt','battleFocus','Perfect Hunt',{type:'utility',btnType:'utility'});
-registerAbilityAlias('nightTalon','deathDive','Night Talon',{isBasic:true,type:'physical',btnType:'physical',energyCost:3,energyByLevel:[3,3,3,3]});
+registerAbilityAlias('nightTalon','deathDive','Night Talon',{isBasic:true,type:'physical',btnType:'physical',energyCost:2,energyByLevel:[2,2,2,2]});
 registerAbilityAlias('huntersCry','victoryChant',"Hunter's Cry",{type:'utility',btnType:'utility'});
 registerAbilityAlias('fleshTear','fleshRipper','Flesh Tear',{isBasic:true,type:'physical',btnType:'physical'});
 registerAbilityAlias('raptorDive','deathDive','Raptor Dive',{type:'physical',btnType:'physical'});
@@ -14607,6 +14701,14 @@ Object.entries(CROW_SKILL_ACTION_OVERRIDES).forEach(([id, fn])=>{ ACTIONS[id]=fn
   kiwiScrape.forEach(([nid,sid,name])=>registerAbilityAlias(nid,sid,name));
 })();
 
+(function wireKiwiPredatorSheet(){
+  const _beak=ACTIONS.beak_jab, _night=ACTIONS.night_probe, _scent=ACTIONS.scent_hunt, _scrape=ACTIONS.scrape;
+  ACTIONS.beak_jab=async function(ab){ if(G.player?.birdKey==='kiwi') return executePredatorSheetStrike(ab,{log:'🥝 Probe Jab',name:'Probe Jab',miss:[10,9,8,7],flat:[3,3,3,3],statPct:[0.70,0.70,0.70,0.70],pierceExact:[15,15,15,15],afterHit(){ applyPredatorPoisonHighChance(); }}); return _beak(ab); };
+  ACTIONS.night_probe=async function(ab){ if(G.player?.birdKey==='kiwi') return executePredatorSheetStrike(ab,{log:'🥝 Night Probe',name:'Night Probe',miss:[10,9,8,7],flat:[5,5,5,5],statPct:[0.95,0.95,0.95,0.95],pierceExact:[25,25,25,25],afterHit(){ G.playerStatus.predatorAtkNext=12; spawnFloat('player','⚔ Next +12 ATK','fn-status'); }}); return _night(ab); };
+  ACTIONS.scent_hunt=async function(ab){ if(G.player?.birdKey==='kiwi') return executePredatorSheetStrike(ab,{log:'🥝 Scent Hunt',name:'Scent Hunt',miss:[34,32,30,28],flat:[9,9,9,9],statPct:[1.25,1.25,1.25,1.25],pierceExact:[40,40,40,40]}); return _scent(ab); };
+  ACTIONS.scrape=async function(ab){ if(G.player?.birdKey==='kiwi') return executePredatorAtkMdefThisTurnUtility(ab,{log:'🥝 Tunnel Scrape! +12 ATK, +10 MDEF (this turn).',fx:'🥝',atkFlat:12,mdefFlat:10}); return _scrape(ab); };
+})();
+
 (function registerPlaceholderSpeciesAbilityAliases(){
   [
     ['wren_quick_peck','dart','Quick Peck',{
@@ -14673,9 +14775,9 @@ Object.entries(CROW_SKILL_ACTION_OVERRIDES).forEach(([id, fn])=>{ ACTIONS[id]=fn
     ['vulture_grave_jab','powerKick','Grave Jab'],['vulture_corpse_crush','stampedeStrike','Corpse Crush'],['vulture_bone_ward','sandKick','Bone Ward'],['vulture_grave_dirge','momentumCharge','Grave Dirge'],
     ['barnowl_talon','talon_snap','Talon'],['barnowl_shadow_dive','silent_dive','Shadow Dive'],['barnowl_death_glare','owl_eye','Death Glare'],['barnowl_silent_glide','frost_glide','Silent Glide'],
     ['bustard_heavy_jab','headWhip','Heavy Jab'],['bustard_dust_trample','warCharge','Dust Trample'],['bustard_plainshield','sandKick','Plainshield'],['bustard_steppe_call','momentumStrike','Steppe Call'],
-    ['golden_sun_talon','skyTalon','Sun Talon'],['golden_sovereign_dive','guard','Sovereign Dive'],['golden_sky_verdict','predatorMark','Sky Verdict'],['golden_hunters_majesty','freedomCry',"Hunter's Majesty"],
+    ['golden_sun_talon','golden_talon','Sun Talon'],['golden_sovereign_dive','golden_swoop','Sovereign Dive'],['golden_sky_verdict','golden_verdict','Sky Verdict'],['golden_hunters_majesty','golden_focus',"Hunter's Majesty"],
     ['pelican_hookbill_snap','pelican_snap','Hookbill Snap'],['pelican_pouch_crush','pelican_crush','Pouch Crush'],['pelican_broadside_guard','pelican_guard','Broadside Guard'],['pelican_stillwater_recovery','pelican_recovery','Stillwater Recovery'],
-    ['marabou_rotbeak_jab','beak_jab','Rotbeak Jab'],['marabou_ghoul_lunge','omen_call','Ghoul Lunge'],['marabou_bone_sentence','dark_watch','Bone Sentence'],['marabou_grave_hunt','fate_mark','Grave Hunt'],
+    ['marabou_rotbeak_jab','marabou_jab','Rotbeak Jab'],['marabou_ghoul_lunge','marabou_lunge','Ghoul Lunge'],['marabou_bone_sentence','marabou_sentence','Bone Sentence'],['marabou_grave_hunt','marabou_hunt','Grave Hunt'],
   ].forEach(ent=>{
     const [nid,sid,name,ov]=ent;
     registerAbilityAlias(nid,sid,name,(ov&&typeof ov==='object')?ov:{});
@@ -15680,7 +15782,7 @@ for(const [id,name,desc,options] of PEREGRINE_EVOLUTION_TEMPLATE_DEFS){
   ABILITY_TEMPLATES[id] = Object.assign(ABILITY_TEMPLATES[id]||{}, makeEvolutionAbilityTemplate(id,name,desc,options));
 }
 const SNOWY_OWL_EVOLUTION_TEMPLATE_DEFS = [
-  ['talon_snap','Talon Snap','Talon-line neutral. A quiet precision snap before you specialize.',{type:'physical',btnType:'physical',energy:1,fixedMainAttackCost:true,levels:[{desc:'~100% dmg, Pierce 10%.'},{desc:'Stronger snap.'},{desc:'Stronger snap.'},{desc:'Peak snap.'}]}],
+  ['talon_snap','Talon Snap','Talon-line neutral. A quiet precision snap before you specialize.',{type:'physical',btnType:'physical',energy:1,fixedMainAttackCost:true,levels:[{desc:'1 EN. Base 3 + 70% ATK; 15% DEF ignore; high Bleed chance; Bleed non-stacks.'},{desc:'Stronger snap.'},{desc:'Stronger snap.'},{desc:'Peak snap.'}]}],
   ['talon_clutch','Talon Clutch','Talon-line pierce evolution. Clutch through guard.',{type:'physical',btnType:'physical',energy:1,fixedMainAttackCost:true,levels:[{desc:'Pierce 20%.'},{desc:'Stronger clutch.'},{desc:'Stronger clutch.'},{desc:'Maximum clutch.'}]}],
   ['talon_rend','Talon Rend','Talon-line pierce finisher. Armor-breaking rend.',{type:'physical',btnType:'physical',energy:1,fixedMainAttackCost:true,levels:[{desc:'Pierce 30% + bonus vs heavy armor.'},{desc:'Heavier rend.'},{desc:'Heavier rend.'},{desc:'Capstone rend.'}]}],
   ['razor_snap','Razor Snap','Talon-line bleed branch. Open the wound line.',{type:'physical',btnType:'physical',energy:1,fixedMainAttackCost:true,levels:[{desc:'Bleed 10%.'},{desc:'Stronger cut.'},{desc:'Stronger cut.'},{desc:'Peak razor snap.'}]}],
@@ -15689,7 +15791,7 @@ const SNOWY_OWL_EVOLUTION_TEMPLATE_DEFS = [
   ['frost_snap','Frost Snap','Talon-line frostbite branch. Chill their footing.',{type:'physical',btnType:'physical',energy:1,fixedMainAttackCost:true,levels:[{desc:'Hit + slow/chill pressure.'},{desc:'Stronger chill.'},{desc:'Stronger chill.'},{desc:'Peak frost snap.'}]}],
   ['frost_clutch','Frost Clutch','Talon-line frostbite evolution. Heavier winter grip.',{type:'physical',btnType:'physical',energy:1,fixedMainAttackCost:true,levels:[{desc:'Stronger slow + Weaken odds.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Relentless chill.'}]}],
   ['frost_rend','Frost Rend','Talon-line frostbite finisher. Shatter a slowed target.',{type:'physical',btnType:'physical',energy:1,fixedMainAttackCost:true,levels:[{desc:'Big control + bonus vs slowed prey.'},{desc:'Heavier.'},{desc:'Heavier.'},{desc:'White talon rend.'}]}],
-  ['silent_dive','Silent Dive','Dive-line neutral. A silent ambush burst that defines the owl.',{type:'physical',btnType:'physical',energy:2,levels:[{desc:'2 EN. Can’t be dodged. Ambush stoop.'},{desc:'Stronger dive.'},{desc:'Shorter downtime.'},{desc:'Peak silence; often no CD.'}], damageScaling:{ baseScaler:'ATT', secondaryScaler:'SPD', secondaryScaleValue:0.20, scalingNote:'SPD secondary; +10% while dodge up; +5%/debuff (max 3).', conditionalBonuses:_hbDashCond }}],
+  ['silent_dive','Silent Dive','Dive-line neutral. A silent ambush burst that defines the owl.',{type:'physical',btnType:'physical',energy:2,levels:[{desc:'2 EN. Base 6 + 100% ATK; 25% DEF ignore; +12 SPD next turn (refresh). Barn Owl: applies Delayed instead.'}], damageScaling:{ baseScaler:'ATT', secondaryScaler:'SPD', secondaryScaleValue:0.20, scalingNote:'SPD secondary; +10% while dodge up; +5%/debuff (max 3).', conditionalBonuses:_hbDashCond }}],
   ['ghost_dive','Ghost Dive','Dive-line crit branch. Crit-weighted ghost stoop.',{type:'physical',btnType:'physical',energy:2,levels:[{desc:'2 EN. Crit-biased ambush.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Maximum ghost dive.'}], damageScaling:{ baseScaler:'ATT', secondaryScaler:'SPD', secondaryScaleValue:0.24, scalingNote:'SPD secondary; +10% dodge up; +5%/debuff (max 3).', conditionalBonuses:_hbDashCond }}],
   ['kill_drop','Kill Drop','Dive-line crit evolution. Heavier killing drop.',{type:'physical',btnType:'physical',energy:2,levels:[{desc:'2 EN. Harder crit drop.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Strongest kill drop.'}], damageScaling:{ baseScaler:'ATT', secondaryScaler:'SPD', secondaryScaleValue:0.28, scalingNote:'SPD secondary; +10% dodge up; +6%/debuff (max 3).', conditionalBonuses:[{type:'while_self_buff_active',buff:'dodge_up',damageBonus:0.10},{type:'per_target_debuff',damageBonusPerStack:0.06,maxStacks:3}] }}],
   ['silent_impact','Silent Impact','Dive-line crit finisher. Terminal silent impact.',{type:'physical',btnType:'physical',energy:2,levels:[{desc:'2 EN. Maximum ambush crit route.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Capstone impact.'}], damageScaling:{ baseScaler:'ATT', secondaryScaler:'SPD', secondaryScaleValue:0.32, scalingNote:'SPD secondary; +12% dodge up; +6%/debuff (max 3).', conditionalBonuses:[{type:'while_self_buff_active',buff:'dodge_up',damageBonus:0.12},{type:'per_target_debuff',damageBonusPerStack:0.06,maxStacks:3}] }}],
@@ -15699,7 +15801,7 @@ const SNOWY_OWL_EVOLUTION_TEMPLATE_DEFS = [
   ['owl_passing_dive','Passing Dive','Dive-line return branch. Strike through; cold echo next turn.',{type:'physical',btnType:'physical',energy:2,levels:[{desc:'2 EN. Hit + delayed return chip.'},{desc:'Bigger echo.'},{desc:'Bigger echo.'},{desc:'Largest echo.'}], damageScaling:{ baseScaler:'ATT', secondaryScaler:'SPD', secondaryScaleValue:0.24, scalingNote:'SPD secondary; delayed return scales with SPD/debuffs.', conditionalBonuses:_hbDashCond }}],
   ['owl_return_drop','Return Drop','Dive-line return evolution. Harder pass + fatter echo.',{type:'physical',btnType:'physical',energy:2,levels:[{desc:'2 EN. Stronger delayed follow-up.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Peak return drop.'}], damageScaling:{ baseScaler:'ATT', secondaryScaler:'SPD', secondaryScaleValue:0.28, scalingNote:'SPD secondary; +10% dodge up; +6%/debuff (max 3).', conditionalBonuses:[{type:'while_self_buff_active',buff:'dodge_up',damageBonus:0.10},{type:'per_target_debuff',damageBonusPerStack:0.06,maxStacks:3}] }}],
   ['owl_double_impact','Double Impact','Dive-line return finisher. Maximum return-pass kill pressure.',{type:'physical',btnType:'physical',energy:2,levels:[{desc:'2 EN. Strongest delayed return route.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Capstone double impact.'}], damageScaling:{ baseScaler:'ATT', secondaryScaler:'SPD', secondaryScaleValue:0.32, scalingNote:'SPD secondary; +12% dodge up; +6%/debuff (max 3).', conditionalBonuses:[{type:'while_self_buff_active',buff:'dodge_up',damageBonus:0.12},{type:'per_target_debuff',damageBonusPerStack:0.06,maxStacks:3}] }}],
-  ['owl_eye','Owl Eye','Owl Eye-line neutral. Patient lock for the killing beat.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Next attack +14% damage.'},{desc:'+17%.'},{desc:'+20%.'},{desc:'+23%.'}]}],
+  ['owl_eye','Owl Eye','Owl Eye-line neutral. Heavy risky finisher.',{type:'physical',btnType:'physical',energy:3,cooldownByLevel:[1,1,1,1],levels:[{desc:'3 EN, CD 1. Base 10 + 130% ATK; 25% DEF ignore; high miss chance.'},{desc:'Stronger glare.'},{desc:'Stronger glare.'},{desc:'Peak glare.'}]}],
   ['owl_hunters_sight','Hunter\'s Sight','Owl Eye-line amp evolution. Widen the burst window.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Next attack +20% damage.'},{desc:'+24%.'},{desc:'+28%.'},{desc:'+32%.'}]}],
   ['moon_lock','Moon Lock','Owl Eye-line amp finisher. Moonlit execution setup.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Next attack +28% damage.'},{desc:'+32%.'},{desc:'+36%.'},{desc:'+40%.'}]}],
   ['expose_prey','Expose Prey','Owl Eye-line break branch. Stress their armor.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Temporary DEF shred.'},{desc:'Stronger shred.'},{desc:'Stronger shred.'},{desc:'Heavy shred.'}]}],
@@ -15708,7 +15810,7 @@ const SNOWY_OWL_EVOLUTION_TEMPLATE_DEFS = [
   ['cold_eye','Cold Eye','Owl Eye-line crit branch. Frost-sharp focus.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'+8% crit chance on attacks briefly.'},{desc:'+12%.'},{desc:'+16%.'},{desc:'+20%.'}]}],
   ['owl_killer_sight','Killer Sight','Owl Eye-line crit evolution. Harder stare.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'+12% crit briefly.'},{desc:'+16%.'},{desc:'+20%.'},{desc:'+24%.'}]}],
   ['owl_death_lock','Death Lock','Owl Eye-line crit finisher. Death-quiet focus.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'+16% crit briefly.'},{desc:'+20%.'},{desc:'+24%.'},{desc:'+28%.'}]}],
-  ['frost_glide','Frost Glide','Glide-line neutral. Calm winter positioning.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Light dodge + small chill on prey.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Strongest baseline glide.'}]}],
+  ['frost_glide','Frost Glide','Glide-line neutral. Short pursuit utility.',{type:'utility',btnType:'utility',energy:2,cooldownByLevel:[1,1,1,1],levels:[{desc:'2 EN, CD 1. +12 SPD and +12% dodge this turn (refresh).'}, {desc:'Stronger glide.'},{desc:'Stronger glide.'},{desc:'Peak glide.'}]}],
   ['silent_glide','Silent Glide','Glide-line dodge branch. Silent slip.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Dodge window.'},{desc:'Stronger slip.'},{desc:'Stronger slip.'},{desc:'Peak silent glide.'}]}],
   ['ghost_drift','Ghost Drift','Glide-line dodge evolution. Harder to track.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Heavy dodge.'},{desc:'Heavier.'},{desc:'Heavier.'},{desc:'Ghost drift.'}]}],
   ['snow_silence','Snow Silence','Glide-line dodge finisher. Vanish into snowfall.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Huge dodge + ACC pressure.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Total snow silence.'}]}],
@@ -18621,7 +18723,7 @@ async function executeSecretaryPrey(ab){
 }
 
 const SECRETARY_SKILL_ACTION_OVERRIDES = {
-  sec_leg_jab: ab=>executeSecretaryLegStrike(ab,{log:'🪶 Leg Jab',miss:[9,8,7,6],mult:[0.90,0.94,0.98,1.02],pierce:[10,12,14,16]}),
+  sec_leg_jab: ab=>executePredatorSheetStrike(ab,{log:'🪶 Raptor Jab',name:'Raptor Jab',miss:[10,9,8,7],flat:[4,4,4,4],statPct:[0.75,0.75,0.75,0.75],pierceExact:[15,15,15,15],afterHit(){ applyPredatorBleedHighChance(); }}),
   sec_leg_strike: ab=>executeSecretaryLegStrike(ab,{log:'🪶 Leg Strike',miss:[8,7,6,5],mult:[0.98,1.02,1.06,1.10],pierce:[16,20,24,28]}),
   sec_leg_pierce: ab=>executeSecretaryLegStrike(ab,{log:'🪶 Leg Pierce',miss:[7,6,5,4],mult:[1.06,1.10,1.14,1.18],pierce:[22,26,30,34],bonusVsArmor:[0.06,0.08,0.10,0.12]}),
   sec_razor_jab: ab=>executeSecretaryLegStrike(ab,{log:'🩸 Razor Jab',miss:[9,8,7,6],mult:[0.88,0.92,0.96,1.00],pierce:[8,10,12,14],bleedChance:[14,16,18,20]}),
@@ -18630,7 +18732,7 @@ const SECRETARY_SKILL_ACTION_OVERRIDES = {
   sec_dulling_jab: ab=>executeSecretaryLegStrike(ab,{log:'🪶 Dulling Jab',miss:[9,8,7,6],mult:[0.88,0.92,0.96,1.00],pierce:[8,10,12,14],weakenChance:[18,20,22,24]}),
   sec_dulling_strike: ab=>executeSecretaryLegStrike(ab,{log:'🪶 Dulling Strike',miss:[8,7,6,5],mult:[0.96,1.00,1.04,1.08],pierce:[10,12,14,16],weakenChance:[24,26,28,30]}),
   sec_dulling_pierce: ab=>executeSecretaryLegStrike(ab,{log:'🪶 Dulling Pierce',miss:[7,6,5,4],mult:[1.04,1.08,1.12,1.16],pierce:[12,14,16,18],weakenChance:[30,32,34,38]}),
-  sec_crushing_kick: ab=>executeSecretaryKick(ab,{log:'🪶 Crushing Kick',miss:[12,11,10,9],mult:[1.26,1.30,1.34,1.38],pierce:[6,8,10,12],critBonus:[6,8,10,12]}),
+  sec_crushing_kick: ab=>executePredatorSheetStrike(ab,{log:'🪶 Hunter Kick',name:'Hunter Kick',miss:[10,9,8,7],flat:[6,6,6,6],statPct:[1.0,1.0,1.0,1.0],pierceExact:[25,25,25,25],afterHit(){ G.playerStatus.ostrichSpdNext=12; spawnFloat('player','⚡ Next +12 SPD','fn-status'); }}),
   sec_hunter_stomp: ab=>executeSecretaryKick(ab,{log:'🪶 Hunter Stomp',miss:[11,10,9,8],mult:[1.32,1.36,1.40,1.44],pierce:[8,10,12,14],critBonus:[10,12,14,16]}),
   sec_execution_crush: ab=>executeSecretaryKick(ab,{log:'🪶 Execution Crush',miss:[10,9,8,7],mult:[1.38,1.42,1.46,1.50],pierce:[10,12,14,16],critBonus:[14,16,18,22]}),
   sec_shock_kick: ab=>executeSecretaryKick(ab,{log:'⚡ Shock Kick',miss:[12,11,10,9],mult:[1.20,1.24,1.28,1.32],pierce:[6,8,10,12],paraChance:[18,20,22,24],paraTurns:[2,2,2,3]}),
@@ -18639,7 +18741,7 @@ const SECRETARY_SKILL_ACTION_OVERRIDES = {
   sec_finisher_kick: ab=>executeSecretaryKick(ab,{log:'🪶 Finisher Kick',miss:[12,11,10,9],mult:[1.22,1.26,1.30,1.34],pierce:[8,10,12,14],lowHpBonus:[0.10,0.12,0.14,0.16],lowHpThreshold:[0.5,0.5,0.5,0.5]}),
   sec_finisher_stomp: ab=>executeSecretaryKick(ab,{log:'🪶 Finisher Stomp',miss:[11,10,9,8],mult:[1.28,1.32,1.36,1.40],pierce:[10,12,14,16],lowHpBonus:[0.12,0.14,0.16,0.18],lowHpThreshold:[0.5,0.5,0.45,0.45]}),
   sec_final_crush: ab=>executeSecretaryKick(ab,{log:'🪶 Final Crush',miss:[10,9,8,7],mult:[1.34,1.38,1.42,1.46],pierce:[12,14,16,18],lowHpBonus:[0.14,0.16,0.18,0.22],lowHpThreshold:[0.45,0.45,0.4,0.4]}),
-  hunter_stride: ab=>executeSecretaryStride(ab),
+  hunter_stride: ab=>executePredatorSheetStrike(ab,{log:'🪶 Execution Kick',name:'Execution Kick',miss:[32,30,28,26],flat:[8,8,8,8],statPct:[1.20,1.20,1.20,1.20],pierceExact:[40,40,40,40]}),
   long_pace: ab=>executeSecretaryStride(ab),
   predator_advance: ab=>executeSecretaryStride(ab),
   side_stride: ab=>executeSecretaryStride(ab),
@@ -18648,7 +18750,7 @@ const SECRETARY_SKILL_ACTION_OVERRIDES = {
   lining_stride: ab=>executeSecretaryStride(ab),
   measured_pace: ab=>executeSecretaryStride(ab),
   kill_advance: ab=>executeSecretaryStride(ab),
-  prey_mark: ab=>executeSecretaryPrey(ab),
+  prey_mark: ab=>executePredatorSpdDodgeThisTurnUtility(ab,{log:'🪶 Prey Mark! +12 SPD, +12% dodge (this turn).',fx:'🪶'}),
   hunter_sight: ab=>executeSecretaryPrey(ab),
   prey_collapse: ab=>executeSecretaryPrey(ab),
   open_mark: ab=>executeSecretaryPrey(ab),
@@ -18659,6 +18761,72 @@ const SECRETARY_SKILL_ACTION_OVERRIDES = {
   read_collapse: ab=>executeSecretaryPrey(ab),
 };
 Object.entries(SECRETARY_SKILL_ACTION_OVERRIDES).forEach(([id, fn])=>{ ACTIONS[id]=fn; });
+
+(function wirePredatorDukeBaldGoldenMarabou(){
+  async function executeDukeNightfallCall(){
+    await doSpell('enemy','🌙');
+    G.enemyStatus.feared=Math.max(G.enemyStatus.feared||0,2);
+    G.enemyStatus.weaken=Math.max(G.enemyStatus.weaken||0,2);
+    renderStatuses('enemy-status',G.enemyStatus);
+    logMsg(`🌙 Nightfall Call! Fear + Weaken (2t, refresh).`,'player-action');
+  }
+  async function executeDukeCourtSummonSheet(){
+    await doSpell('player','👑');
+    const prev=G.playerStatus.predatorCourtSummon;
+    if(prev){
+      G.player.stats.atk=Math.max(0,(G.player.stats.atk||0)-(prev.atk||0));
+      G.player.stats.matk=Math.max(0,(G.player.stats.matk||0)-(prev.matk||0));
+    }
+    G.playerStatus.humDodge={bonus:24, turns:2};
+    applyTankFlatMdefBoostRefresh(18,2);
+    G.playerStatus.predatorCourtSummon={atk:20, matk:20, turns:2};
+    G.player.stats.atk=(G.player.stats.atk||0)+20;
+    G.player.stats.matk=(G.player.stats.matk||0)+20;
+    renderStatuses('player-status',G.playerStatus);
+    logMsg('👑 Court Summon! +24% dodge (2t), +18 MDEF (2t), +20 ATK / +20 MATK (2t, refresh).','player-action');
+  }
+  registerAbilityAlias('golden_talon','hrp_talon_clutch','Sun Talon',{isBasic:true,type:'physical',btnType:'physical',fixedMainAttackCost:true,desc:'Imperial talon opener. Bleed pressure.',levels:makeAbilityLevelData([{desc:'1 EN. Base 4 + 80% ATK; 15% DEF ignore; high Bleed chance (non-stack).'}])});
+  registerAbilityAlias('golden_swoop','sec_crushing_kick','Sovereign Dive',{type:'physical',btnType:'physical',energy:2,energyByLevel:[2,2,2,2],desc:'Heavy dive that primes the next strike.',levels:makeAbilityLevelData([{desc:'2 EN. Base 7 + 105% ATK; 25% DEF ignore; +12 ATK next turn (refresh).'}])});
+  registerAbilityAlias('golden_verdict','hrp_predator_grip','Sky Verdict',{type:'physical',btnType:'physical',energy:2,cooldownByLevel:[1,1,1,1],desc:'Risky aerial finisher.',levels:makeAbilityLevelData([{desc:'2 EN, CD 1. Base 9 + 125% ATK; 40% DEF ignore; high miss chance.'}])});
+  registerAbilityAlias('golden_focus','hrp_prey_lock',"Hunter's Majesty",{type:'utility',btnType:'utility',energy:2,cooldownByLevel:[1,1,1,1],desc:'Burst aggression and focus.',levels:makeAbilityLevelData([{desc:'2 EN, CD 1. +12 ATK and +10 MDEF this turn (refresh).'}])});
+  registerAbilityAlias('marabou_jab','sec_leg_jab','Rotbeak Jab',{isBasic:true,type:'physical',btnType:'physical',fixedMainAttackCost:true,desc:'Grim poison opener.',levels:makeAbilityLevelData([{desc:'1 EN. Base 4 + 80% ATK; 15% DEF ignore; high Poison chance (stacks to 5).'}])});
+  registerAbilityAlias('marabou_lunge','hrp_canopy_crush','Ghoul Lunge',{type:'physical',btnType:'physical',energy:2,energyByLevel:[2,2,2,2],desc:'Heavy lunge with poison pressure.',levels:makeAbilityLevelData([{desc:'2 EN. Base 7 + 105% ATK; 25% DEF ignore; Poison chance (stacks to 5).'}])});
+  registerAbilityAlias('marabou_sentence','hunter_stride','Bone Sentence',{type:'physical',btnType:'physical',energy:2,cooldownByLevel:[1,1,1,1],desc:'XL execution strike.',levels:makeAbilityLevelData([{desc:'2 EN, CD 1. Base 9 + 125% ATK; 40% DEF ignore; high miss chance.'}])});
+  registerAbilityAlias('marabou_hunt','prey_mark','Grave Hunt',{type:'utility',btnType:'utility',energy:2,cooldownByLevel:[1,1,1,1],desc:'Grim burrow setup.',levels:makeAbilityLevelData([{desc:'2 EN, CD 1. +12 ATK and +10 MDEF this turn (refresh).'}])});
+  const GOLDEN_MARABOU_SHEET={
+    golden_talon: ab=>executePredatorSheetStrike(ab,{log:'☀ Sun Talon',name:'Sun Talon',miss:[10,9,8,7],flat:[4,4,4,4],statPct:[0.80,0.80,0.80,0.80],pierceExact:[15,15,15,15],afterHit(){ applyPredatorBleedHighChance(); }}),
+    golden_swoop: ab=>executePredatorSheetStrike(ab,{log:'☀ Sovereign Dive',name:'Sovereign Dive',miss:[10,9,8,7],flat:[7,7,7,7],statPct:[1.05,1.05,1.05,1.05],pierceExact:[25,25,25,25],afterHit(){ G.playerStatus.predatorAtkNext=12; spawnFloat('player','⚔ Next +12 ATK','fn-status'); }}),
+    golden_verdict: ab=>executePredatorSheetStrike(ab,{log:'☀ Sky Verdict',name:'Sky Verdict',miss:[34,32,30,28],flat:[9,9,9,9],statPct:[1.25,1.25,1.25,1.25],pierceExact:[40,40,40,40]}),
+    golden_focus: ab=>executePredatorAtkMdefThisTurnUtility(ab,{log:"☀ Hunter's Majesty! +12 ATK, +10 MDEF (this turn).",fx:'☀',atkFlat:12,mdefFlat:10}),
+    marabou_jab: ab=>executePredatorSheetStrike(ab,{log:'🜏 Rotbeak Jab',name:'Rotbeak Jab',miss:[10,9,8,7],flat:[4,4,4,4],statPct:[0.80,0.80,0.80,0.80],pierceExact:[15,15,15,15],afterHit(){ applyPredatorPoisonHighChance(); }}),
+    marabou_lunge: ab=>executePredatorSheetStrike(ab,{log:'🜏 Ghoul Lunge',name:'Ghoul Lunge',miss:[10,9,8,7],flat:[7,7,7,7],statPct:[1.05,1.05,1.05,1.05],pierceExact:[25,25,25,25],afterHit(){ applyPredatorPoisonMediumChance(); }}),
+    marabou_sentence: ab=>executePredatorSheetStrike(ab,{log:'🜏 Bone Sentence',name:'Bone Sentence',miss:[34,32,30,28],flat:[9,9,9,9],statPct:[1.25,1.25,1.25,1.25],pierceExact:[40,40,40,40]}),
+    marabou_hunt: ab=>executePredatorAtkMdefThisTurnUtility(ab,{log:'🜏 Grave Hunt! +12 ATK, +10 MDEF (this turn).',fx:'🜏',atkFlat:12,mdefFlat:10}),
+  };
+  Object.entries(GOLDEN_MARABOU_SHEET).forEach(([id,fn])=>{ ACTIONS[id]=fn; });
+  const _legacyWrap=(nid,sid)=>{ ACTIONS[nid]=async function(ab){ const nm=ABILITY_TEMPLATES[nid]?.name||ABILITY_TEMPLATES[sid]?.name; const prox={...ab,id:sid,name:nm}; return ACTIONS[sid](prox); }; };
+  _legacyWrap('golden_sun_talon','golden_talon');
+  _legacyWrap('golden_sovereign_dive','golden_swoop');
+  _legacyWrap('golden_sky_verdict','golden_verdict');
+  _legacyWrap('golden_hunters_majesty','golden_focus');
+  _legacyWrap('marabou_rotbeak_jab','marabou_jab');
+  _legacyWrap('marabou_ghoul_lunge','marabou_lunge');
+  _legacyWrap('marabou_bone_sentence','marabou_sentence');
+  _legacyWrap('marabou_grave_hunt','marabou_hunt');
+  const _nt=ACTIONS.nightTalon, _nfc=ACTIONS.nightfallCall, _cs=ACTIONS.courtSummon, _ver=ACTIONS.verdict;
+  ACTIONS.nightTalon=async function(ab){ if(G.player?.birdKey!=='dukeBlakiston') return _nt(ab); return executePredatorSheetStrike(ab,{log:'🦉 Night Talon',name:'Night Talon',miss:[10,9,8,7],flat:[7,7,7,7],statPct:[0.95,0.95,0.95,0.95],matkPct:[0.45,0.45,0.45,0.45],pierceExact:[25,25,25,25],afterHit(){ applyPredatorBleedHighChance(); G.playerStatus.owlCritFocus={bonus:12, turns:1}; spawnFloat('player','🎯 +12% crit (this turn)','fn-status'); }}); };
+  ACTIONS.nightfallCall=async function(ab){ if(G.player?.birdKey!=='dukeBlakiston') return _nfc(ab); return executeDukeNightfallCall(ab); };
+  ACTIONS.courtSummon=async function(ab){ if(G.player?.birdKey!=='dukeBlakiston') return _cs(ab); return executeDukeCourtSummonSheet(ab); };
+  ACTIONS.verdict=async function(ab){ if(G.player?.birdKey!=='dukeBlakiston') return _ver(ab); return executePredatorSheetStrike(ab,{log:'⚖ Verdict',name:'Verdict',cannotMiss:true,flat:[12,12,12,12],statPct:[1.30,1.30,1.30,1.30],matkPct:[0.70,0.70,0.70,0.70],pierceExact:[40,40,40,40],consumeDelayed:true,afterHit(){ applyEnemyBurningRefreshTurns(2); spawnFloat('enemy','🔥 Burn (2t)','fn-burn'); }}); };
+  const _g=ACTIONS.guard;
+  ACTIONS.guard=async function(ab){ if(G.player?.birdKey==='baldEagle') return executePredatorSheetStrike(ab,{log:'🦅 Guard Break',name:'Guard Break',miss:[10,9,8,7],flat:[6,6,6,6],statPct:[1.0,1.0,1.0,1.0],pierceExact:[25,25,25,25],afterHit(){ G.playerStatus.predatorAtkNext=12; spawnFloat('player','⚔ Next +12 ATK','fn-status'); }}); return _g(ab); };
+  const _st=ACTIONS.skyTalon;
+  ACTIONS.skyTalon=async function(ab){ if(G.player?.birdKey==='baldEagle') return executePredatorSheetStrike(ab,{log:'🦅 Sky Talon',name:'Sky Talon',miss:[10,9,8,7],flat:[4,4,4,4],statPct:[0.80,0.80,0.80,0.80],pierceExact:[15,15,15,15],afterHit(){ if(chance(45)){ applyEnemyBurningRefreshTurns(2); spawnFloat('enemy','🔥 Burn!','fn-burn'); } }}); return _st(ab); };
+  const _pm=ACTIONS.predatorMark;
+  ACTIONS.predatorMark=async function(ab){ if(G.player?.birdKey==='baldEagle') return executePredatorSheetStrike(ab,{log:'🦅 Predator Mark',name:'Predator Mark',miss:[34,32,30,28],flat:[9,9,9,9],statPct:[1.20,1.20,1.20,1.20],pierceExact:[40,40,40,40]}); return _pm(ab); };
+  const _fc=ACTIONS.freedomCry;
+  ACTIONS.freedomCry=async function(ab){ if(G.player?.birdKey==='baldEagle') return executePredatorSpdDodgeThisTurnUtility(ab,{log:'🦅 Freedom Cry! +12 SPD, +12% dodge (this turn).',fx:'🦅'}); return _fc(ab); };
+})();
 
 function getAlbatrossMasteryBonuses(ab){
   const slot=getAbilitySkillSlot(G.player,ab);
@@ -19150,7 +19318,7 @@ const SEAGULL_SKILL_ACTION_OVERRIDES = {
 Object.entries(SEAGULL_SKILL_ACTION_OVERRIDES).forEach(([id, fn])=>{ ACTIONS[id]=fn; });
 
 const SNOWY_OWL_DIVE_ABILITY_IDS = new Set([
-  'silent_dive','ghost_dive','kill_drop','silent_impact','frost_dive','winter_drop','whiteout_impact','owl_passing_dive','owl_return_drop','owl_double_impact',
+  'ghost_dive','kill_drop','silent_impact','frost_dive','winter_drop','whiteout_impact','owl_passing_dive','owl_return_drop','owl_double_impact',
 ]);
 function getSnowyOwlMasteryBonuses(ab){
   const slot=getAbilitySkillSlot(G.player,ab);
@@ -19391,7 +19559,7 @@ async function executeSnowyOwlGlide(ab){
   else logMsg(`🦉 Glide.`,'player-action');
 }
 const SNOWY_OWL_SKILL_ACTION_OVERRIDES = {
-  talon_snap: ab=>executeSnowyOwlTalonStrike(ab,{log:'🦉 Talon Snap',miss:[9,8,7,6],mult:[0.98,1.04,1.08,1.12],pierce:[10,12,14,16]}),
+  talon_snap: ab=>executePredatorSheetStrike(ab,{log:'🦉 Talon Snap',name:'Talon Snap',miss:[10,9,8,7],flat:[3,3,3,3],statPct:[0.70,0.70,0.70,0.70],pierceExact:[15,15,15,15],afterHit(){ applyPredatorBleedHighChance(); }}),
   talon_clutch: ab=>executeSnowyOwlTalonStrike(ab,{log:'🦉 Talon Clutch',miss:[8,7,6,5],mult:[1.06,1.12,1.16,1.20],pierce:[18,22,26,30]}),
   talon_rend: ab=>executeSnowyOwlTalonStrike(ab,{log:'🦉 Talon Rend',miss:[7,6,5,4],mult:[1.14,1.20,1.26,1.32],pierce:[28,32,36,42],bonusVsArmor:[0.06,0.08,0.10,0.12]}),
   razor_snap: ab=>executeSnowyOwlTalonStrike(ab,{log:'🩸 Razor Snap',miss:[9,8,7,6],mult:[0.96,1.02,1.06,1.10],pierce:[6,8,10,12],bleedChance:[10,12,14,16]}),
@@ -19400,7 +19568,15 @@ const SNOWY_OWL_SKILL_ACTION_OVERRIDES = {
   frost_snap: ab=>executeSnowyOwlTalonStrike(ab,{log:'❄ Frost Snap',miss:[8,7,6,5],mult:[0.94,1.00,1.04,1.08],pierce:[8,10,12,14],hybrid:[1,1,1,1],frostSlowSpd:[1,1,2,2],frostSlowDodge:[6,7,8,9],frostSlowTurns:[2,2,2,3],weakenChance:[12,14,16,18]}),
   frost_clutch: ab=>executeSnowyOwlTalonStrike(ab,{log:'❄ Frost Clutch',miss:[7,6,5,4],mult:[1.02,1.08,1.12,1.16],pierce:[10,12,14,16],hybrid:[1,1,1,1],frostSlowSpd:[2,2,3,3],frostSlowDodge:[8,9,10,11],frostSlowTurns:[2,3,3,3],weakenChance:[18,20,22,25]}),
   frost_rend: ab=>executeSnowyOwlTalonStrike(ab,{log:'❄ Frost Rend',miss:[6,5,4,3],mult:[1.10,1.16,1.20,1.24],pierce:[12,14,16,18],hybrid:[1,1,1,1],frostSlowSpd:[2,3,3,4],frostSlowDodge:[9,10,11,12],frostSlowTurns:[3,3,3,4],weakenChance:[22,25,28,32],bonusVsSlowed:[0.08,0.10,0.12,0.14]}),
-  silent_dive: ab=>executeSnowyOwlDiveStrike(ab,{log:'🦉 Silent Dive',mult:[1.05,1.12,1.20,1.30]}),
+  silent_dive: ab=>{
+    if(G.player?.birdKey==='barnowl'){
+      return executePredatorSheetStrike(ab,{log:'🦉 Shadow Dive',name:'Shadow Dive',miss:[10,9,8,7],flat:[6,6,6,6],statPct:[1.0,1.0,1.0,1.0],pierceExact:[25,25,25,25],afterHit(lv){
+        const flat=[8,10,12,14][Math.max(0,Math.min(3,(lv||1)-1))];
+        snowyOwlApplyDelayed(flat,ab,{});
+      }});
+    }
+    return executePredatorSheetStrike(ab,{log:'🦉 Silent Dive',name:'Silent Dive',miss:[10,9,8,7],flat:[6,6,6,6],statPct:[1.0,1.0,1.0,1.0],pierceExact:[25,25,25,25],afterHit(){ G.playerStatus.ostrichSpdNext=12; spawnFloat('player','⚡ Next +12 SPD','fn-status'); }});
+  },
   ghost_dive: ab=>executeSnowyOwlDiveStrike(ab,{log:'🦉 Ghost Dive',mult:[1.10,1.18,1.26,1.34],critBonus:[8,10,12,14]}),
   kill_drop: ab=>executeSnowyOwlDiveStrike(ab,{log:'🦉 Kill Drop',mult:[1.16,1.24,1.32,1.40],critBonus:[12,14,16,18]}),
   silent_impact: ab=>executeSnowyOwlDiveStrike(ab,{log:'🦉 Silent Impact',mult:[1.22,1.30,1.38,1.46],critBonus:[14,16,18,22]}),
@@ -19410,7 +19586,7 @@ const SNOWY_OWL_SKILL_ACTION_OVERRIDES = {
   owl_passing_dive: ab=>executeSnowyOwlDiveStrike(ab,{log:'✨ Passing Dive',mult:[1.00,1.08,1.14,1.22],delayed:[12,16,20,24],delayedSynergy:{ spdPer:0.44, debuffPer:2, debuffCap:12 }}),
   owl_return_drop: ab=>executeSnowyOwlDiveStrike(ab,{log:'✨ Return Drop',mult:[1.08,1.14,1.20,1.28],delayed:[18,24,30,36],delayedSynergy:{ spdPer:0.52, debuffPer:3, debuffCap:16 }}),
   owl_double_impact: ab=>executeSnowyOwlDiveStrike(ab,{log:'✨ Double Impact',mult:[1.14,1.20,1.26,1.34],delayed:[24,30,38,46],delayedSynergy:{ spdPer:0.60, debuffPer:4, debuffCap:22 }}),
-  owl_eye: ab=>executeSnowyOwlEyeLine(ab),
+  owl_eye: ab=>executePredatorSheetStrike(ab,{log:'🦉 Owl Eye',name:'Owl Eye',miss:[36,34,32,30],flat:[10,10,10,10],statPct:[1.30,1.30,1.30,1.30],pierceExact:[25,25,25,25]}),
   owl_hunters_sight: ab=>executeSnowyOwlEyeLine(ab),
   moon_lock: ab=>executeSnowyOwlEyeLine(ab),
   expose_prey: ab=>executeSnowyOwlEyeLine(ab),
@@ -19419,7 +19595,7 @@ const SNOWY_OWL_SKILL_ACTION_OVERRIDES = {
   cold_eye: ab=>executeSnowyOwlEyeLine(ab),
   owl_killer_sight: ab=>executeSnowyOwlEyeLine(ab),
   owl_death_lock: ab=>executeSnowyOwlEyeLine(ab),
-  frost_glide: ab=>executeSnowyOwlGlide(ab),
+  frost_glide: ab=>executePredatorSpdDodgeThisTurnUtility(ab,{log:'🦉 Frost Glide! +12 SPD, +12% dodge (this turn).',fx:'❄'}),
   silent_glide: ab=>executeSnowyOwlGlide(ab),
   ghost_drift: ab=>executeSnowyOwlGlide(ab),
   snow_silence: ab=>executeSnowyOwlGlide(ab),
@@ -20077,6 +20253,12 @@ function startPlayerTurn(player){
     G.player._ostrichSpdLoan=G.playerStatus.ostrichSpdNext;
     delete G.playerStatus.ostrichSpdNext;
   }
+  if(G.playerStatus.predatorAtkNext){
+    const add=G.playerStatus.predatorAtkNext;
+    G.player.stats.atk=(G.player.stats.atk||0)+add;
+    G.player._predatorAtkLoan=add;
+    delete G.playerStatus.predatorAtkNext;
+  }
   if(G.playerStatus.albatrossChillSpd){
     G.player.stats.spd=(G.player.stats.spd||1)+G.playerStatus.albatrossChillSpd;
     G.player._albatrossSpdLoan=G.playerStatus.albatrossChillSpd;
@@ -20625,6 +20807,15 @@ function endPlayerTurn(force=false) {
       delete G.playerStatus.dukeCourtBuff;
     }
   }
+  if(G.playerStatus.predatorCourtSummon){
+    G.playerStatus.predatorCourtSummon.turns--;
+    if(G.playerStatus.predatorCourtSummon.turns<=0){
+      const c=G.playerStatus.predatorCourtSummon;
+      G.player.stats.atk=Math.max(0,(G.player.stats.atk||0)-(c.atk||0));
+      G.player.stats.matk=Math.max(0,(G.player.stats.matk||0)-(c.matk||0));
+      delete G.playerStatus.predatorCourtSummon;
+    }
+  }
   if(G.playerStatus.hummingbirdSpd){
     G.playerStatus.hummingbirdSpd.turns--;
     if(G.playerStatus.hummingbirdSpd.turns<=0){
@@ -20636,6 +20827,10 @@ function endPlayerTurn(force=false) {
   delete G.playerStatus.macawFlairAcc;
   if(G.player._magpieSpdLoan){ G.player.stats.spd=Math.max(1,(G.player.stats.spd||1)-G.player._magpieSpdLoan); delete G.player._magpieSpdLoan; }
   if(G.player._ostrichSpdLoan){ G.player.stats.spd=Math.max(1,(G.player.stats.spd||1)-G.player._ostrichSpdLoan); delete G.player._ostrichSpdLoan; }
+  if(G.player._predatorUtilitySpdLoan){ G.player.stats.spd=Math.max(1,(G.player.stats.spd||1)-G.player._predatorUtilitySpdLoan); delete G.player._predatorUtilitySpdLoan; }
+  if(G.player._predatorAtkLoan){ G.player.stats.atk=Math.max(0,(G.player.stats.atk||0)-G.player._predatorAtkLoan); delete G.player._predatorAtkLoan; }
+  if(G.player._predatorAtkThisTurnLoan){ G.player.stats.atk=Math.max(0,(G.player.stats.atk||0)-G.player._predatorAtkThisTurnLoan); delete G.player._predatorAtkThisTurnLoan; }
+  if(G.player._predatorMdefThisTurnLoan){ G.player.stats.mdef=Math.max(0,(G.player.stats.mdef||0)-G.player._predatorMdefThisTurnLoan); delete G.player._predatorMdefThisTurnLoan; }
   if(G.player._albatrossSpdLoan){ G.player.stats.spd=Math.max(1,(G.player.stats.spd||1)-G.player._albatrossSpdLoan); delete G.player._albatrossSpdLoan; }
   if(G.player._ravenGrimSpdLoan){ G.player.stats.spd=Math.max(1,(G.player.stats.spd||1)-G.player._ravenGrimSpdLoan); delete G.player._ravenGrimSpdLoan; }
   G.player._ravenGrimSpdThisTurn=false;
