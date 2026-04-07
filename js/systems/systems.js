@@ -653,25 +653,6 @@ cooldown('chargeUp',3);
     }
   };
 
-  // Tick enemy DoTs at start of player turn.
-  const _oldAfterEnemyTurn = globalThis.afterEnemyTurn;
-  if(typeof _oldAfterEnemyTurn === 'function'){
-    globalThis.afterEnemyTurn = async function(){
-      try{
-        if(G?.enemy?.stats?.hp > 0){
-          await tickDoTs('enemy');
-          if(G.enemy.stats.hp <= 0){
-            if(typeof checkDeath === 'function'){
-              const ended = checkDeath();
-              if(ended) return;
-            }
-          }
-        }
-      }catch(err){ console.error(err); }
-      return await _oldAfterEnemyTurn.apply(this, arguments);
-    };
-  }
-
 })();
 
 
