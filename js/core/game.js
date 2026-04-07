@@ -1097,8 +1097,8 @@ const BIRDS = {
     unlockHint:'Coming soon.',
     stats:{hp:89,maxHp:89,atk:19,def:43,spd:6,dodge:4,acc:73,mdef:41,matk:5,critChance:5},
     color:'#a0b8c8',
-    mainAttackId:'pelican_hookbill_snap',
-    startAbilities:['pelican_hookbill_snap','pelican_pouch_crush','pelican_broadside_guard','pelican_stillwater_recovery'],
+    mainAttackId:'pelican_snap',
+    startAbilities:['pelican_snap','pelican_crush','pelican_guard','pelican_recovery'],
     passive:{id:'passive_pelican_deep_pouch',name:'Deep Pouch',desc:"Australian Pelican's self-heals restore 10% more HP."},
   },
   marabou:{
@@ -6442,6 +6442,7 @@ function syncPlayerAbilitiesFromSkillSlots(player){
     if(player.birdKey==='seagull' && slot.abilityId==='sgl_snap_peck') ab.fixedMainAttackCost = true;
     if(player.birdKey==='goose' && slot.abilityId==='gos_beak_snap') ab.fixedMainAttackCost = true;
     if(player.birdKey==='shoebill' && slot.abilityId==='sbl_beak_chop') ab.fixedMainAttackCost = true;
+    if(player.birdKey==='pelican' && slot.abilityId==='pelican_snap') ab.fixedMainAttackCost = true;
     if((player.birdKey==='harpy' || player.birdKey==='harpyeagle') && slot.abilityId==='hrp_talon_clutch') ab.fixedMainAttackCost = true;
     return ab;
   });
@@ -9633,8 +9634,9 @@ const ABILITY_DISPLAY_TAGS = {
   victoryChant:['UTILITY'], battleChirp:['UTILITY'], battleFocus:['UTILITY'], focusChirp:['UTILITY'],
   steal_shine:['UTILITY','SIGNATURE'], feather_flick:['UTILITY'], featherFlick:['UTILITY'], graceStep:['UTILITY'],
   sgl_snap_peck:['BASIC'], sgl_swoop_pass:['HEAVY','SIGNATURE'], sgl_raucous_cry:['UTILITY','CONTROL'], sgl_scavenge_mark:['UTILITY'],
-  gos_beak_snap:['BASIC'], gos_body_check:['HEAVY','SIGNATURE'], gos_honk_blast:['UTILITY','CONTROL'], gos_brace_up:['GUARD'],
-  sbl_beak_chop:['BASIC'], sbl_skull_crack:['HEAVY','SIGNATURE'], sbl_still_stance:['GUARD'], sbl_dread_mark:['UTILITY'],
+  gos_beak_snap:['BASIC'], gos_body_check:['HEAVY','SIGNATURE'], gos_honk_blast:['UTILITY'], gos_brace_up:['GUARD','HEAL'],
+  sbl_beak_chop:['BASIC'], sbl_skull_crack:['HEAVY','SIGNATURE'], sbl_still_stance:['GUARD'], sbl_dread_mark:['UTILITY','HEAL'],
+  pelican_snap:['BASIC'], pelican_crush:['HEAVY','SIGNATURE'], pelican_guard:['GUARD'], pelican_recovery:['UTILITY','HEAL'],
   hrp_talon_clutch:['BASIC'], hrp_canopy_crush:['HEAVY','SIGNATURE'], hrp_predator_grip:['GUARD'], hrp_prey_lock:['UTILITY'],
   savageKick:['HEAVY','SIGNATURE'], raptorKickFrenzy:['HEAVY','MULTI','SIGNATURE'], honkTerror:['CONTROL','SIGNATURE'],
   rallyCall:['UTILITY'], focusSight:['UTILITY'], battleRhythm:['UTILITY'],
@@ -13774,6 +13776,127 @@ async function executeHarpyGripAccBrace(ab, cfg){
   renderStatuses('enemy-status',G.enemyStatus);
   logMsg(`${cfg.log}! Prey vision falters (−${down} ACC).`,'player-action');
 }
+function preparePlayerPhysicalPierceFromAbility(ab){
+  if(!ab){ G._currentPiercePct=0; return; }
+  const tmpl=getAbilityTemplateForUI(ab);
+  const lv=Math.min(ab.level||1,4);
+  let piercePct=(tmpl?.pierceDef||0)+(Number(ab.pierceDef)||0)+(lv>=2?5:0)+(lv>=3?5:0);
+  G._currentPiercePct=piercePct;
+  if(BIRDS[G.player.birdKey]?.passive?.id==='passive_kiwi_burrow_sense' && !G._firstAttackUsed) G._currentPiercePct=(G._currentPiercePct||0)+10;
+  const enCost=Number(tmpl?.energy ?? tmpl?.energyCost ?? ab?.energy ?? 1);
+  if(BIRDS[G.player.birdKey]?.passive?.id==='passive_secretary_long_leg_reach' && enCost<=1) G._currentPiercePct=(G._currentPiercePct||0)+10;
+}
+/** Sheet-style physical: flat + rolled stat band × pct (ATK/DEF). Mirrors pdmg weaken / flyby / strike tempo where applicable. */
+function tankFlatStatPhysicalDamage(flat, statKey, statPct, ab){
+  const sk=String(statKey||'atk').toLowerCase();
+  let statVal=Math.max(0,Number(G.player.stats[sk]||0));
+  if(sk==='atk'){
+    if(G.warcryActive) statVal=Math.floor(statVal*(1+G.warcryATK/100));
+    if(G.sitAndWaitActive) statVal=Math.floor(statVal*1.25);
+    if(G.tookieActive && G.playerStatus.tookie) statVal=Math.floor(statVal*(1+G.playerStatus.tookie.atkBonus/100));
+  }
+  const rolled=roll(Math.max(1,Math.floor(statVal*0.8)), Math.max(1,Math.floor(statVal*1.2)));
+  let base=Math.floor(Number(flat)||0)+Math.floor(rolled*Number(statPct||0));
+  if(G.playerStatus.weaken&&G.playerStatus.weaken>0) base=Math.floor(base*0.75);
+  const __adm=(G.actionDamageHitsRemaining&&G.actionDamageHitsRemaining>0)?(G.actionDamageMult||1):1;
+  let strikeAdd=0;
+  if(G._pendingStrikeActionMods) strikeAdd=Number(G._pendingStrikeActionMods.multAdd)||0;
+  base=Math.floor(base*(1+strikeAdd)*__adm);
+  if((G.actionDamageHitsRemaining||0)>0){ G.actionDamageHitsRemaining=Math.max(0,G.actionDamageHitsRemaining-1); if(G.actionDamageHitsRemaining===0) G.actionDamageMult=1; }
+  return Math.max(1,base);
+}
+function applyTankFlatDefBoostRefresh(amt, turns=1){
+  const a=Math.max(0,Math.floor(amt));
+  const t=Math.max(1,turns|0);
+  const prev=G.playerStatus.defBoost;
+  if(prev&&prev.amt) G.player.stats.def=Math.max(0,(G.player.stats.def||0)-prev.amt);
+  G.player.stats.def=(G.player.stats.def||0)+a;
+  G.playerStatus.defBoost={amt:a, turns:t};
+}
+function applyTankFlatMdefBoostRefresh(amt, turns=1){
+  const a=Math.max(0,Math.floor(amt));
+  const t=Math.max(1,turns|0);
+  const prev=G.playerStatus.tankTempMdef;
+  if(prev&&prev.amt) G.player.stats.mdef=Math.max(0,(G.player.stats.mdef||0)-prev.amt);
+  G.player.stats.mdef=(G.player.stats.mdef||0)+a;
+  G.playerStatus.tankTempMdef={amt:a, turns:t};
+}
+function applyEnemyAccPenaltyRefresh(amt, turns=2){
+  const a=Math.max(0,Math.floor(amt));
+  const t=Math.max(1,turns|0);
+  const prev=G.enemyStatus.bruiserAccMark;
+  if(prev&&(prev.turns||0)>0) G.enemyStatus.accDebuff=Math.max(0,(G.enemyStatus.accDebuff||0)-(prev.amt||0));
+  G.enemyStatus.accDebuff=(G.enemyStatus.accDebuff||0)+a;
+  G.enemyStatus.bruiserAccMark={amt:a, turns:t};
+}
+function applyEnemyWeakenRefreshTurns(turns=1){
+  G.enemyStatus.weaken=Math.max(G.enemyStatus.weaken||0, Math.max(1,turns|0));
+}
+function applyBleedStacksCap(stacks, cap=1){
+  const status=G.enemyStatus;
+  if(!status.bleed) status.bleed={stacks:0,turns:3};
+  const want=Math.min(Math.max(1,Math.floor(stacks||1)), Math.max(1,cap|0));
+  status.bleed.stacks=want;
+  status.bleed.turns=3;
+}
+async function executeTankSheetStrike(ab, cfg){
+  const lv=Math.max(1,Math.min(4,ab?.level||1));
+  const mb=strikeFamilyMasteryBonuses(ab);
+  const miss=Math.max(0,(cfg.miss?.[lv-1]??10)-getPlayerHitBonus(ab)-Math.floor(mb.missCut||0));
+  if(chance(miss)){ await doMiss('player'); logMsg(`${cfg.log||cfg.name||ab?.id} missed!`,'miss'); return; }
+  const flat=cfg.flat?.[lv-1]??0;
+  const pct=cfg.statPct?.[lv-1]??0;
+  const statKey=cfg.statKey||'atk';
+  const pierceExtra=(cfg.pierce?.[lv-1]??0)+(mb.pierce||0);
+  preparePlayerPhysicalPierceFromAbility({...ab,pierceDef:pierceExtra});
+  let dmg=tankFlatStatPhysicalDamage(flat, statKey, pct, ab);
+  const critFlat=(cfg.critChanceFlat?.[lv-1]||0)+Math.floor(mb.critBonus||0);
+  const critDb=cfg.critDmgBonus?.[lv-1]||0;
+  const prevG=critDb? (G.playerStatus.galahCritDmg||0):0;
+  if(critDb) G.playerStatus.galahCritDmg=prevG+critDb;
+  const isCrit=chance(Math.min(95,getPlayerCritChance(ab)+critFlat));
+  const r=dealDamage('enemy',dmg,isCrit,false,ab);
+  if(critDb) G.playerStatus.galahCritDmg=prevG;
+  await doAttack('player','enemy',r);
+  setHpBar('enemy',G.enemy.stats.hp,G.enemy.stats.maxHp);
+  if(typeof cfg.afterHit==='function') await cfg.afterHit(lv,mb,r);
+  renderStatuses('enemy-status',G.enemyStatus);
+  logMsg(`${cfg.log||cfg.name||ab?.id}! ${r.dmgDealt} dmg.`,'player-action');
+}
+async function executeTankHonkGuardUtility(ab, cfg){
+  const lv=Math.max(1,Math.min(4,ab.level||1));
+  await doSpell('player',cfg.fx||'🛡');
+  applyTankFlatDefBoostRefresh(cfg.defAmt?.[lv-1]??10, cfg.defTurns?.[lv-1]??1);
+  renderStatuses('player-status',G.playerStatus);
+  logMsg(`${cfg.log||ab.name||'Guard'}! +${cfg.defAmt?.[lv-1]??10} DEF (${cfg.defTurns?.[lv-1]??1}t, refresh).`,'player-action');
+}
+async function executeTankHealPlusBuffs(ab, cfg){
+  const lv=Math.max(1,Math.min(4,ab.level||1));
+  await doSpell('player',cfg.fx||'💚');
+  const frac=cfg.healFrac?.[lv-1]??0.14;
+  let heal=Math.max(1,Math.floor((G.player.stats.maxHp||1)*frac));
+  if(BIRDS[G.player?.birdKey]?.passive?.id==='passive_pelican_deep_pouch') heal=Math.floor(heal*1.1);
+  G.player.stats.hp=Math.min(G.player.stats.maxHp,G.player.stats.hp+heal);
+  await doHeal('player',heal);
+  setHpBar('player',G.player.stats.hp,G.player.stats.maxHp);
+  if(cfg.mdefAmt?.[lv-1]) applyTankFlatMdefBoostRefresh(cfg.mdefAmt[lv-1], cfg.mdefTurns?.[lv-1]??1);
+  if(cfg.defAmt?.[lv-1]) applyTankFlatDefBoostRefresh(cfg.defAmt[lv-1], cfg.defTurns?.[lv-1]??1);
+  renderStatuses('player-status',G.playerStatus);
+  logMsg(`${cfg.log||ab.name||'Recovery'}! +${heal} HP.`,'player-action');
+}
+async function executeBruiserCall(ab, cfg){
+  await doSpell('player',cfg.fx||'📢');
+  if(cfg.applyWeaken) applyEnemyWeakenRefreshTurns(cfg.weakenTurns||1);
+  if(cfg.spdBonus){
+    const b=cfg.spdBonus;
+    G.player.stats.spd=Math.min(20,(G.player.stats.spd||1)+b);
+    G.playerStatus.bruiserCallSpd={bonus:b, turns:Math.max(1,cfg.spdTurns||1)};
+  }
+  if(cfg.accPenaltyAmt) applyEnemyAccPenaltyRefresh(cfg.accPenaltyAmt, cfg.accPenaltyTurns||2);
+  renderStatuses('player-status',G.playerStatus);
+  renderStatuses('enemy-status',G.enemyStatus);
+  logMsg(`${cfg.log||ab.name||'Call'}!`,'player-action');
+}
 async function executeShoebillSwampStance(ab, cfg){
   const lv=Math.max(1,Math.min(4,ab.level||1));
   const mb=getShoebillMasteryBonuses(ab);
@@ -13878,7 +14001,7 @@ const GOOSE_SKILL_ACTION_OVERRIDES = {
   needle_peck: ab=>executeGooseStrikeAction(ab,{name:'Needle Peck', log:'🪶 Needle Peck', miss:[10,9,8,7], mult:[1.02,1.10,1.18,1.26], pierce:[10,14,18,20]}),
   bodkin_bite: ab=>executeGooseStrikeAction(ab,{name:'Bodkin Bite', log:'🪶 Bodkin Bite', miss:[9,8,7,6], mult:[1.14,1.22,1.30,1.38], pierce:[20,24,28,30]}),
   armor_maul: ab=>executeGooseStrikeAction(ab,{name:'Armor Maul', log:'🪶 Armor Maul', miss:[8,7,6,5], mult:[1.26,1.34,1.42,1.50], pierce:[30,32,34,36], bonusVs:'guard', bonus:[0.10,0.12,0.14,0.16]}),
-  gos_beak_snap: ab=>executeGooseStrikeAction(ab,{name:'Beak Snap', log:'🪿 Beak Snap', miss:[10,9,8,7], mult:[0.98,1.04,1.10,1.16]}),
+  gos_beak_snap: ab=>executeTankSheetStrike(ab,{name:'Beak Snap', log:'🪿 Beak Snap', miss:[10,9,8,7], flat:[4,4,4,4], statPct:[0.75,0.75,0.75,0.75], statKey:'atk', pierce:[0,0,0,0], critChanceFlat:[12,12,12,12]}),
   gos_hook_bite: ab=>executeGooseStrikeAction(ab,{name:'Hook Bite', log:'🪝 Hook Bite', miss:[9,8,7,6], mult:[1.08,1.14,1.20,1.28], pierce:[12,16,20,24], bonusVs:'guard', bonus:[0.06,0.08,0.10,0.12]}),
   gos_hook_tear: ab=>executeGooseStrikeAction(ab,{name:'Hook Tear', log:'🪝 Hook Tear', miss:[8,7,6,5], mult:[1.18,1.26,1.34,1.42], pierce:[22,26,30,34], bonusVs:'guard', bonus:[0.10,0.12,0.14,0.16]}),
   gos_raking_snap: ab=>executeGooseStrikeAction(ab,{name:'Raking Snap', log:'🩸 Raking Snap', miss:[10,9,8,7], mult:[1.00,1.06,1.12,1.18], bleedChance:[12,14,16,18]}),
@@ -13887,7 +14010,7 @@ const GOOSE_SKILL_ACTION_OVERRIDES = {
   gos_dulling_snap: ab=>executeGooseStrikeAction(ab,{name:'Dulling Snap', log:'🐔 Dulling Snap', miss:[10,9,8,7], mult:[0.94,1.00,1.06,1.12], weakenChance:[12,14,16,18]}),
   gos_grinding_bite: ab=>executeGooseStrikeAction(ab,{name:'Grinding Bite', log:'🐔 Grinding Bite', miss:[9,8,7,6], mult:[1.02,1.08,1.14,1.20], weakenChance:[18,20,22,24]}),
   gos_fading_tear: ab=>executeGooseStrikeAction(ab,{name:'Fading Tear', log:'🐔 Fading Tear', miss:[8,7,6,5], mult:[1.12,1.20,1.28,1.36], weakenChance:[22,24,26,28], bonusVs:'weakened', bonus:[0.08,0.10,0.12,0.14]}),
-  gos_body_check: ab=>executeGooseStrikeAction(ab,{name:'Body Check', log:'💥 Body Check', miss:[22,20,18,16], mult:[1.38,1.46,1.54,1.62], useBodyScaling:true, critBonus:[4,6,8,10]}),
+  gos_body_check: ab=>executeTankSheetStrike(ab,{name:'Body Check', log:'💥 Body Check', miss:[22,20,18,16], flat:[6,6,6,6], statPct:[1.05,1.05,1.05,1.05], statKey:'def', pierce:[0,0,0,0], afterHit(){ applyTankFlatDefBoostRefresh(10,1); spawnFloat('player','🧱 +10 DEF','fn-status'); }}),
   gos_heavy_slam: ab=>executeGooseStrikeAction(ab,{name:'Heavy Slam', log:'💥 Heavy Slam', miss:[20,18,16,14], mult:[1.52,1.62,1.72,1.82], useBodyScaling:true, critBonus:[8,10,12,14]}),
   gos_dominance_crush: ab=>executeGooseStrikeAction(ab,{name:'Dominance Crush', log:'💥 Dominance Crush', miss:[18,16,14,12], mult:[1.68,1.78,1.88,1.98], useBodyScaling:true, critBonus:[12,14,16,20]}),
   gos_pressing_check: ab=>executeGooseStrikeAction(ab,{name:'Pressing Check', log:'💥 Pressing Check', miss:[22,20,18,16], mult:[1.32,1.40,1.48,1.56], useBodyScaling:true, weakenChance:[14,16,18,20]}),
@@ -13896,7 +14019,7 @@ const GOOSE_SKILL_ACTION_OVERRIDES = {
   gos_cracking_check: ab=>executeGooseStrikeAction(ab,{name:'Cracking Check', log:'💥 Cracking Check', miss:[22,20,18,16], mult:[1.34,1.42,1.50,1.58], useBodyScaling:true, pierce:[8,10,12,14], defBreak:[1,1,2,2]}),
   gos_break_slam: ab=>executeGooseStrikeAction(ab,{name:'Break Slam', log:'💥 Break Slam', miss:[20,18,16,14], mult:[1.46,1.54,1.62,1.70], useBodyScaling:true, pierce:[12,14,16,18], defBreak:[2,2,2,3]}),
   gos_collapse_crush: ab=>executeGooseStrikeAction(ab,{name:'Collapse Crush', log:'💥 Collapse Crush', miss:[18,16,14,12], mult:[1.58,1.68,1.78,1.88], useBodyScaling:true, pierce:[16,18,20,22], defBreak:[2,3,3,4], applyExpose:[0.08,0.09,0.10,0.11], exposeTurns:[2,2,3,3]}),
-  gos_honk_blast: ab=>executeGooseHonkPhysical(ab,{log:'📣 Honk Blast', miss:[22,20,18,16], mult:[0.92,0.98,1.04,1.10], accDown:[6,8,10,12], fearChance:[8,10,12,14]}),
+  gos_honk_blast: ab=>executeTankHonkGuardUtility(ab,{log:'📣 Honk Guard', fx:'📣', defAmt:[10,10,10,10], defTurns:[1,1,1,1]}),
   gos_dread_blare: ab=>executeGooseHonkPhysical(ab,{log:'😨 Dread Blare', miss:[21,19,17,15], mult:[1.02,1.08,1.14,1.20], fearChance:[20,22,25,28], accDown:[4,5,6,8]}),
   gos_panic_uproar: ab=>executeGooseHonkPhysical(ab,{log:'😨 Panic Uproar', miss:[20,18,16,14], mult:[1.12,1.20,1.28,1.36], fearChance:[26,28,30,32], bonusVs:'feared', bonus:[0.10,0.12,0.14,0.16]}),
   gos_harsh_honk: ab=>executeGooseHonkPhysical(ab,{log:'📣 Harsh Honk', miss:[21,19,17,15], mult:[1.00,1.06,1.12,1.18], accDown:[10,12,14,16]}),
@@ -13905,7 +14028,7 @@ const GOOSE_SKILL_ACTION_OVERRIDES = {
   gos_keen_honk: ab=>executeGooseHonkUtility(ab,{log:'📣 Keen Honk', fx:'📣', spd:[1,1,2,2]}),
   gos_rally_blare: ab=>executeGooseHonkUtility(ab,{log:'📣 Rally Blare', fx:'📣', spd:[2,2,3,3], humDodge:[8,10,12,14], humTurns:[2,2,2,3]}),
   gos_charge_uproar: ab=>executeGooseHonkUtility(ab,{log:'📣 Charge Uproar', fx:'📣', spd:[3,3,4,4], humDodge:[12,14,16,18], humTurns:[2,3,3,3]}),
-  gos_brace_up: ab=>executeGooseBrace(ab,{log:'🛡 Brace Up', fx:'🛡', guard:[10,12,14,16]}),
+  gos_brace_up: ab=>executeTankHealPlusBuffs(ab,{log:'🛡 Brace Up', fx:'🛡', healFrac:[0.14,0.14,0.14,0.14], defAmt:[10,10,10,10], defTurns:[1,1,1,1]}),
   gos_hold_line: ab=>executeGooseBrace(ab,{log:'🛡 Hold the Line', fx:'🛡', guard:[16,18,20,22]}),
   gos_stand_fast: ab=>executeGooseBrace(ab,{log:'🛡 Stand Fast', fx:'🛡', guard:[22,26,30,34]}),
   gos_brace_mark: ab=>executeGooseBrace(ab,{log:'🎯 Brace Mark', fx:'🎯', markAmp:[0.12,0.14,0.16,0.18]}),
@@ -13926,7 +14049,7 @@ const GOOSE_SKILL_ACTION_OVERRIDES = {
   execution_crush: ab=>executeGooseStrikeAction(ab,{name:'Execution Crush', log:'☠ Execution Crush', miss:[16,14,12,10], mult:[1.80,1.90,2.00,2.10], useBodyScaling:true, bonusVs:'low_hp', bonus:[0.25,0.28,0.31,0.34], lowHpThreshold:0.55}),
 };
 const SHOEBILL_SKILL_ACTION_OVERRIDES = {
-  sbl_beak_chop: ab=>executeGooseStrikeAction(ab,{name:'Beak Chop', log:'🦤 Beak Chop', miss:[11,10,9,8], mult:[0.98,1.04,1.10,1.16], pierce:[10,12,14,16]}),
+  sbl_beak_chop: ab=>executeTankSheetStrike(ab,{name:'Beak Chop', log:'🦤 Beak Chop', miss:[11,10,9,8], flat:[5,5,5,5], statPct:[0.80,0.80,0.80,0.80], statKey:'atk', pierce:[0,0,0,0], critDmgBonus:[12,12,12,12]}),
   sbl_split_break: ab=>executeGooseStrikeAction(ab,{name:'Split Break', log:'🦤 Split Break', miss:[10,9,8,7], mult:[1.08,1.14,1.20,1.28], pierce:[16,20,24,28], bonusVs:'guard', bonus:[0.06,0.08,0.10,0.12]}),
   sbl_bone_cleave: ab=>executeGooseStrikeAction(ab,{name:'Bone Cleave', log:'🦤 Bone Cleave', miss:[9,8,7,6], mult:[1.20,1.28,1.36,1.44], pierce:[24,28,32,36], bonusVs:'guard', bonus:[0.10,0.12,0.14,0.16]}),
   sbl_rending_chop: ab=>executeGooseStrikeAction(ab,{name:'Rending Chop', log:'🩸 Rending Chop', miss:[11,10,9,8], mult:[1.00,1.06,1.12,1.18], bleedChance:[12,14,16,18]}),
@@ -13935,7 +14058,10 @@ const SHOEBILL_SKILL_ACTION_OVERRIDES = {
   sbl_dulling_chop: ab=>executeGooseStrikeAction(ab,{name:'Dulling Chop', log:'🦤 Dulling Chop', miss:[11,10,9,8], mult:[0.94,1.00,1.06,1.12], weakenChance:[12,14,16,18]}),
   sbl_sapping_break: ab=>executeGooseStrikeAction(ab,{name:'Sapping Break', log:'🦤 Sapping Break', miss:[10,9,8,7], mult:[1.02,1.08,1.14,1.20], weakenChance:[18,20,22,24]}),
   sbl_hollow_cleave: ab=>executeGooseStrikeAction(ab,{name:'Hollow Cleave', log:'🦤 Hollow Cleave', miss:[9,8,7,6], mult:[1.12,1.20,1.28,1.36], weakenChance:[22,24,26,28], bonusVs:'weakened', bonus:[0.08,0.10,0.12,0.14]}),
-  sbl_skull_crack: ab=>executeGooseStrikeAction(ab,{name:'Skull Crack', log:'🦤 Skull Crack', miss:[22,20,18,16], mult:[1.40,1.48,1.56,1.64], useBodyScaling:true, critBonus:[5,7,9,11]}),
+  sbl_skull_crack: ab=>executeTankSheetStrike(ab,{name:'Skull Crack', log:'🦤 Skull Crack', miss:[22,20,18,16], flat:[7,7,7,7], statPct:[1.10,1.10,1.10,1.10], statKey:'def', pierce:[0,0,0,0], afterHit(){
+    const down=Math.max(1,Math.floor((G.enemy.stats.def||0)*0.10));
+    peregrineApplyDefBreak(down,1);
+  }}),
   sbl_grave_collapse: ab=>executeGooseStrikeAction(ab,{name:'Grave Collapse', log:'🦤 Grave Collapse', miss:[20,18,16,14], mult:[1.54,1.64,1.74,1.84], useBodyScaling:true, critBonus:[9,11,13,15]}),
   sbl_skull_ruin: ab=>executeGooseStrikeAction(ab,{name:'Skull Ruin', log:'🦤 Skull Ruin', miss:[18,16,14,12], mult:[1.68,1.78,1.88,1.98], useBodyScaling:true, critBonus:[13,15,17,20], pierce:[6,8,10,12]}),
   sbl_dread_crack: ab=>executeGooseStrikeAction(ab,{name:'Dread Crack', log:'😨 Dread Crack', miss:[22,20,18,16], mult:[1.32,1.38,1.44,1.50], useBodyScaling:true, fearChance:[14,16,18,20], accDown:[5,6,7,8]}),
@@ -13944,7 +14070,13 @@ const SHOEBILL_SKILL_ACTION_OVERRIDES = {
   sbl_hunter_crack: ab=>executeGooseStrikeAction(ab,{name:'Hunter Crack', log:'☠ Hunter Crack', miss:[22,20,18,16], mult:[1.36,1.44,1.52,1.60], useBodyScaling:true, bonusVs:'low_hp', bonus:[0.12,0.14,0.16,0.18], lowHpThreshold:0.5}),
   sbl_prey_collapse: ab=>executeGooseStrikeAction(ab,{name:'Prey Collapse', log:'☠ Prey Collapse', miss:[20,18,16,14], mult:[1.48,1.58,1.68,1.78], useBodyScaling:true, bonusVs:'low_hp', bonus:[0.18,0.20,0.22,0.24], lowHpThreshold:0.5}),
   sbl_final_ruin: ab=>executeGooseStrikeAction(ab,{name:'Final Ruin', log:'☠ Final Ruin', miss:[18,16,14,12], mult:[1.60,1.72,1.84,1.96], useBodyScaling:true, bonusVs:'low_hp', bonus:[0.24,0.26,0.28,0.30], lowHpThreshold:0.45}),
-  sbl_still_stance: ab=>executeGooseBrace(ab,{log:'🦤 Still Stance', fx:'🦤', guard:[11,13,15,17]}),
+  sbl_still_stance: async ab=>{
+    await doSpell('player','🦤');
+    applyTankFlatDefBoostRefresh(10,1);
+    applyTankFlatMdefBoostRefresh(10,1);
+    renderStatuses('player-status',G.playerStatus);
+    logMsg(`🦤 Still Stance! +10 DEF / +10 MDEF (1t, refresh).`,'player-action');
+  },
   sbl_hold_ground: ab=>executeGooseBrace(ab,{log:'🦤 Hold Ground', fx:'🦤', guard:[16,18,21,24]}),
   sbl_dead_still: ab=>executeGooseBrace(ab,{log:'🦤 Dead Still', fx:'🦤', guard:[22,26,30,34]}),
   sbl_slow_step: ab=>executeShoebillSwampStance(ab,{log:'🦤 Slow Step', fx:'🦤', humDodge:[22,26,30,34], humTurns:[2,2,3,3]}),
@@ -13953,7 +14085,7 @@ const SHOEBILL_SKILL_ACTION_OVERRIDES = {
   sbl_lining_stance: ab=>executeGooseBrace(ab,{log:'🦤 Lining Stance', fx:'🦤', markAmp:[0.12,0.14,0.16,0.18]}),
   sbl_measured_hold: ab=>executeGooseBrace(ab,{log:'🦤 Measured Hold', fx:'🦤', markAmp:[0.18,0.20,0.22,0.24]}),
   sbl_killing_silence: ab=>executeGooseBrace(ab,{log:'🦤 Killing Silence', fx:'🦤', markAmp:[0.26,0.28,0.30,0.32]}),
-  sbl_dread_mark: ab=>executeGooseBrace(ab,{log:'🦤 Dread Mark', fx:'🦤', markAmp:[0.12,0.15,0.18,0.21]}),
+  sbl_dread_mark: ab=>executeTankHealPlusBuffs(ab,{log:'🦤 Dread Recovery', fx:'💚', healFrac:[0.16,0.16,0.16,0.16], mdefAmt:[10,10,10,10], mdefTurns:[1,1,1,1]}),
   sbl_grave_sign: ab=>executeGooseBrace(ab,{log:'🦤 Grave Sign', fx:'🦤', markAmp:[0.18,0.22,0.26,0.30]}),
   sbl_doom_mark: ab=>executeGooseBrace(ab,{log:'🦤 Doom Mark', fx:'🦤', markAmp:[0.26,0.30,0.34,0.38]}),
   sbl_crack_sign: ab=>executeShoebillDreadExpose(ab,{log:'🦤 Crack Sign', expose:[0.10,0.12,0.14,0.16], turns:[2,2,2,2], defStrip:[1,1,2,2], defTurns:[2,2,2,3]}),
@@ -14028,7 +14160,7 @@ registerAbilityAlias('mockingPeck','dart','Mocking Peck',{isBasic:true,desc:'Tri
 // Toucan pre-overhaul flat-kit ids (fruitSpit, sunCall, jungleChorus, echoScreech) removed from live aliases —
 // migrateToucanLegacyFamilySkillSlots + legacyBaseAbilityIds rewrite saves to toucan_beak_jab / beak_slam / fruit_toss / color_mark.
 registerAbilityAlias('bracePeck','gooseHonk','Brace Peck',{isBasic:true,desc:'Tank basic. Heavy peck that steadies the line.'});
-registerAbilityAlias('icebreakerHonk','gooseHonk','Icebreaker Honk',{isBasic:true,desc:'Tank basic. Chilling honk that cracks defenses.'});
+registerAbilityAlias('icebreakerHonk','gooseHonk','Icebreaker Jab',{isBasic:true,desc:'Tank basic. Base 4 + 75% ATK; applies Chilled (stacks to 5).'});
 registerAbilityAlias('huntersJab','dart',"Hunter's Jab",{isBasic:true,desc:'Predator basic. Precise jab for clean finishing lines.'});
 registerAbilityAlias('needleJab','nectarJab','Needle Jab',{isBasic:true,desc:'Striker basic. Needle-fast jab with clean pressure.'});
 registerAbilityAlias('windFeint','evade','Wind Feint',{type:'utility',btnType:'utility'});
@@ -14542,7 +14674,7 @@ Object.entries(CROW_SKILL_ACTION_OVERRIDES).forEach(([id, fn])=>{ ACTIONS[id]=fn
     ['barnowl_talon','talon_snap','Talon'],['barnowl_shadow_dive','silent_dive','Shadow Dive'],['barnowl_death_glare','owl_eye','Death Glare'],['barnowl_silent_glide','frost_glide','Silent Glide'],
     ['bustard_heavy_jab','headWhip','Heavy Jab'],['bustard_dust_trample','warCharge','Dust Trample'],['bustard_plainshield','sandKick','Plainshield'],['bustard_steppe_call','momentumStrike','Steppe Call'],
     ['golden_sun_talon','skyTalon','Sun Talon'],['golden_sovereign_dive','guard','Sovereign Dive'],['golden_sky_verdict','predatorMark','Sky Verdict'],['golden_hunters_majesty','freedomCry',"Hunter's Majesty"],
-    ['pelican_hookbill_snap','icebreakerHonk','Hookbill Snap'],['pelican_pouch_crush','snowWall','Pouch Crush'],['pelican_broadside_guard','guard','Broadside Guard'],['pelican_stillwater_recovery','tundraCall','Stillwater Recovery'],
+    ['pelican_hookbill_snap','pelican_snap','Hookbill Snap'],['pelican_pouch_crush','pelican_crush','Pouch Crush'],['pelican_broadside_guard','pelican_guard','Broadside Guard'],['pelican_stillwater_recovery','pelican_recovery','Stillwater Recovery'],
     ['marabou_rotbeak_jab','beak_jab','Rotbeak Jab'],['marabou_ghoul_lunge','omen_call','Ghoul Lunge'],['marabou_bone_sentence','dark_watch','Bone Sentence'],['marabou_grave_hunt','fate_mark','Grave Hunt'],
   ].forEach(ent=>{
     const [nid,sid,name,ov]=ent;
@@ -14948,7 +15080,7 @@ for(const [id,name,desc,options] of RAVEN_EVOLUTION_TEMPLATE_DEFS){
 }
 
 const ALBATROSS_EVOLUTION_TEMPLATE_DEFS = [
-  ['alb_wing_jab','Wing Jab','Wing-line neutral. A wide reach strike before you specialize.',{type:'physical',btnType:'physical',energy:1,fixedMainAttackCost:true,levels:[{desc:'~92% ATK; light pierce.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Peak jab.'}]}],
+  ['alb_wing_jab','Coldwing Jab','Wing-line neutral. A wide reach strike before you specialize.',{type:'physical',btnType:'physical',energy:1,fixedMainAttackCost:true,levels:[{desc:'1 EN. Base 5 + 85% ATK; +12% crit chance.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Peak jab.'}]}],
   ['alb_wing_sweep','Wing Sweep','Wing-line pierce evolution. Broad arc through guard.',{type:'physical',btnType:'physical',energy:1,fixedMainAttackCost:true,levels:[{desc:'Heavier pierce reach.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Wide sweep.'}]}],
   ['alb_wing_arc','Wing Arc','Wing-line pierce finisher. Capstone anti-defense arc.',{type:'physical',btnType:'physical',energy:1,fixedMainAttackCost:true,levels:[{desc:'Max pierce vs heavy guard.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Horizon arc.'}]}],
   ['alb_razor_jab','Razor Jab','Wing-line bleed branch.',{type:'physical',btnType:'physical',energy:1,fixedMainAttackCost:true,levels:[{desc:'Cut + Bleed chance.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Salt razor.'}]}],
@@ -14957,7 +15089,7 @@ const ALBATROSS_EVOLUTION_TEMPLATE_DEFS = [
   ['alb_spot_jab','Spot Jab','Wing-line expose branch.',{type:'physical',btnType:'physical',energy:1,fixedMainAttackCost:true,levels:[{desc:'Bonus vs compromised.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Spot line.'}]}],
   ['alb_spot_sweep','Spot Sweep','Wing-line expose evolution.',{type:'physical',btnType:'physical',energy:1,fixedMainAttackCost:true,levels:[{desc:'Harder line on bad footing.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Wide spot.'}]}],
   ['alb_open_arc','Open Arc','Wing-line expose finisher.',{type:'physical',btnType:'physical',energy:1,fixedMainAttackCost:true,levels:[{desc:'Expose + precision payoff.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Open sky.'}]}],
-  ['alb_ocean_sweep','Ocean Sweep','Sweep-line neutral. A vast wing wash that steals tempo.',{type:'physical',btnType:'physical',energy:2,levels:[{desc:'2 EN. Broad hit + Slow current.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Peak sweep.'}]}],
+  ['alb_ocean_sweep','Cold Current','Sweep-line neutral. Heavy wing wash with momentum.',{type:'physical',btnType:'physical',energy:2,cooldownByLevel:[1,1,1,1],levels:[{desc:'2 EN, CD 1. Base 7 + 105% ATK; +12 SPD next turn.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Peak sweep.'}]}],
   ['alb_pulling_current','Pulling Current','Sweep-line slow evolution.',{type:'physical',btnType:'physical',energy:2,levels:[{desc:'2 EN. Stronger pull + mire.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Dragging tide.'}]}],
   ['alb_tempest_wake','Tempest Wake','Sweep-line slow finisher.',{type:'physical',btnType:'physical',energy:2,levels:[{desc:'2 EN. Max slow; bonus vs already slowed.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Tempest wash.'}]}],
   ['alb_pressing_sweep','Pressing Sweep','Sweep-line weaken branch.',{type:'physical',btnType:'physical',energy:2,levels:[{desc:'2 EN. Sweep + Weaken odds.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Pressing wash.'}]}],
@@ -14966,7 +15098,7 @@ const ALBATROSS_EVOLUTION_TEMPLATE_DEFS = [
   ['alb_echo_sweep','Echo Sweep','Sweep-line return branch.',{type:'physical',btnType:'physical',energy:2,levels:[{desc:'2 EN. Hit + wake next turn.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Echo wash.'}]}],
   ['alb_return_current','Return Current','Sweep-line return evolution.',{type:'physical',btnType:'physical',energy:2,levels:[{desc:'2 EN. Bigger returning wake.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Return tide.'}]}],
   ['alb_returning_tempest','Returning Tempest','Sweep-line return finisher.',{type:'physical',btnType:'physical',energy:2,levels:[{desc:'2 EN. Peak delayed wake.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Inevitable tempest.'}]}],
-  ['alb_glide_line','Glide Line','Glide-line neutral. Ride the fight instead of chasing it.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'+SPD; light dodge window.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Steady glide.'}]}],
+  ['alb_glide_line','Glide Guard','Glide-line neutral. Defensive glide brace.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'1 EN. +10 DEF 1t (refresh).'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Steady glide.'}]}],
   ['alb_long_drift','Long Drift','Glide-line speed evolution.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'More SPD + tempo.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Long line.'}]}],
   ['alb_endless_current','Endless Current','Glide-line speed finisher.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Peak endurance tempo.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Endless sky.'}]}],
   ['alb_soft_glide','Soft Glide','Glide-line dodge branch.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Dodge + enemy ACC slip.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Soft air.'}]}],
@@ -14975,7 +15107,7 @@ const ALBATROSS_EVOLUTION_TEMPLATE_DEFS = [
   ['alb_steady_glide','Steady Glide','Glide-line guard branch.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Guard stance + stability.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Steady wing.'}]}],
   ['alb_broad_drift','Broad Drift','Glide-line guard evolution.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Heavier guard window.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Broad shear.'}]}],
   ['alb_ocean_current','Ocean Current','Glide-line guard finisher.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Peak oceanic brace.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Deep current guard.'}]}],
-  ['alb_current_mark','Current Mark','Current-line neutral. Mark prey into a bad flow.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Next hit +12% damage.'},{desc:'+15%.'},{desc:'+18%.'},{desc:'+21%.'}]}],
+  ['alb_current_mark','Current Call','Current-line neutral. Debuff/setup call.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'1 EN. Weaken 1t + +10 SPD 1t (refresh).'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Peak call.'}]}],
   ['alb_pull_mark','Pull Mark','Current-line amp evolution.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Next hit +18% damage.'},{desc:'+22%.'},{desc:'+26%.'},{desc:'+30%.'}]}],
   ['alb_wake_mark','Wake Mark','Current-line amp finisher.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Next hit +26% damage.'},{desc:'+30%.'},{desc:'+34%.'},{desc:'+38%.'}]}],
   ['alb_crack_current','Crack Current','Current-line DEF break branch.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Small DEF break.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Cracked flow.'}]}],
@@ -15178,7 +15310,7 @@ for(const [id,name,desc,options] of TOUCAN_EVOLUTION_TEMPLATE_DEFS){
 }
 
 const SWAN_EVOLUTION_TEMPLATE_DEFS = [
-  ['neck_jab','Neck Jab','Neck-line neutral. Precision jab before you specialize.',{type:'physical',btnType:'physical',energy:1,fixedMainAttackCost:true,levels:[{desc:'~90% ATK; light pierce.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Peak jab.'}]}],
+  ['neck_jab','Neck Jab','Neck-line neutral. Precision jab before you specialize.',{type:'physical',btnType:'physical',energy:1,fixedMainAttackCost:true,levels:[{desc:'1 EN. Base 5 + 80% ATK; +12% crit chance.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Peak jab.'}]}],
   ['neck_lunge','Neck Lunge','Neck-line pierce evolution.',{type:'physical',btnType:'physical',energy:1,levels:[{desc:'Stronger pierce vs guard.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Lunge capstone.'}]}],
   ['swan_pierce','Swan Pierce','Neck-line pierce finisher.',{type:'physical',btnType:'physical',energy:1,levels:[{desc:'Max pierce; bonus vs high DEF.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Royal skewer.'}]}],
   ['swan_razor_jab','Razor Jab','Neck-line bleed branch.',{type:'physical',btnType:'physical',energy:1,levels:[{desc:'Jab + bleed odds.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Razor jab.'}]}],
@@ -15187,7 +15319,7 @@ const SWAN_EVOLUTION_TEMPLATE_DEFS = [
   ['spot_jab','Spot Jab','Neck-line expose branch.',{type:'physical',btnType:'physical',energy:1,levels:[{desc:'Bonus vs compromised prey.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Spot jab.'}]}],
   ['spot_lunge','Spot Lunge','Neck-line expose evolution.',{type:'physical',btnType:'physical',energy:1,levels:[{desc:'Harder line on marked prey.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Spot lunge.'}]}],
   ['open_pierce','Open Pierce','Neck-line expose finisher.',{type:'physical',btnType:'physical',energy:1,levels:[{desc:'Expose + precision payoff.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Open pierce.'}]}],
-  ['wing_sweep','Wing Sweep','Sweep-line neutral. Graceful committed wing force.',{type:'physical',btnType:'physical',energy:2,levels:[{desc:'2 EN. Strong sweep arc.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Peak sweep.'}]}],
+  ['wing_sweep','Wing Sweep','Sweep-line neutral. Graceful committed wing force.',{type:'physical',btnType:'physical',energy:2,cooldownByLevel:[1,1,1,1],levels:[{desc:'2 EN, CD 1. Base 7 + 105% DEF; +10 DEF 1t (refresh).'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Peak sweep.'}]}],
   ['silver_arc','Silver Arc','Sweep-line crit evolution.',{type:'physical',btnType:'physical',energy:2,levels:[{desc:'2 EN. Crit-leaning arc.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Silver arc.'}]}],
   ['regal_crest','Regal Crest','Sweep-line crit finisher.',{type:'physical',btnType:'physical',energy:2,levels:[{desc:'2 EN. Maximum regal burst.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Regal crest.'}]}],
   ['pressing_sweep','Pressing Sweep','Sweep-line weaken branch.',{type:'physical',btnType:'physical',energy:2,levels:[{desc:'2 EN. Sweep + weaken odds.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Pressing sweep.'}]}],
@@ -15196,7 +15328,7 @@ const SWAN_EVOLUTION_TEMPLATE_DEFS = [
   ['echo_sweep','Echo Sweep','Sweep-line delayed branch.',{type:'physical',btnType:'physical',energy:2,levels:[{desc:'2 EN. Hit + after-wing next turn.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Echo sweep.'}]}],
   ['return_arc','Return Arc','Sweep-line delayed evolution.',{type:'physical',btnType:'physical',energy:2,levels:[{desc:'2 EN. Bigger return wing.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Return arc.'}]}],
   ['double_crest','Double Crest','Sweep-line delayed finisher.',{type:'physical',btnType:'physical',energy:2,levels:[{desc:'2 EN. Maximum delayed follow-up.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Double crest.'}]}],
-  ['grace_glide','Grace Glide','Glide-line neutral. Float the line; steady posture.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Dodge + light enemy ACC pressure.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Grace glide.'}]}],
+  ['grace_glide','Grace Guard','Glide-line neutral. Elegant defensive brace.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'1 EN. +10 DEF and +10 MDEF 1t (refresh).'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Grace glide.'}]}],
   ['swan_ghost_drift','Ghost Drift','Glide-line dodge evolution.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Heavy dodge window.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Ghost drift.'}]}],
   ['swan_white_waltz','White Waltz','Glide-line dodge finisher.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Huge dodge + ACC veil.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'White waltz.'}]}],
   ['light_glide','Light Glide','Glide-line speed branch.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'SPD surge; light dodge.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Light glide.'}]}],
@@ -15205,7 +15337,7 @@ const SWAN_EVOLUTION_TEMPLATE_DEFS = [
   ['distracting_glide','Distracting Glide','Glide-line ACC-break branch.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Enemy ACC down.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Distracting glide.'}]}],
   ['veil_drift','Veil Drift','Glide-line ACC-break evolution.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Heavier ACC crash.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Veil drift.'}]}],
   ['blinding_waltz','Blinding Waltz','Glide-line ACC-break finisher.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'ACC crash + brief blur.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Blinding waltz.'}]}],
-  ['poise_mark','Poise Mark','Poise-line neutral. Mark the finishing line.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Next-hit damage amp.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Poise mark.'}]}],
+  ['poise_mark','Poise Recovery','Poise-line neutral. Regal tank recovery.',{type:'utility',btnType:'utility',energy:2,cooldownByLevel:[1,1,1,1],levels:[{desc:'2 EN, CD 1. Heal 15% Max HP; +10 MDEF 1t (refresh).'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Poise mark.'}]}],
   ['poised_step','Poised Step','Poise-line amp evolution.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Bigger next-hit window.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Poised step.'}]}],
   ['final_poise','Final Poise','Poise-line amp finisher.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Maximum composed setup.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Final poise.'}]}],
   ['swan_crack_mark','Crack Mark','Poise-line DEF break branch.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Temporary DEF shred.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Crack mark.'}]}],
@@ -15305,7 +15437,7 @@ for(const [id,name,desc,options] of SECRETARY_EVOLUTION_TEMPLATE_DEFS){
 
 const _gosBody=(v,note)=>({ baseScaler:'ATT', secondaryScaler:'DEF', secondaryScaleValue:v, scalingNote:note||'DEF adds body weight.', conditionalBonuses:[{type:'while_guarding', damageBonus:0.07}] });
 const GOOSE_EVOLUTION_TEMPLATE_DEFS = [
-  ['gos_beak_snap','Beak Snap','Beak-line neutral. Angry close snap before you branch.',{type:'physical',btnType:'physical',energy:1,levels:[{desc:'1 EN. Territorial bite snap.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Peak snap.'}]}],
+  ['gos_beak_snap','Beak Snap','Beak-line neutral. Angry close snap before you branch.',{type:'physical',btnType:'physical',energy:1,levels:[{desc:'1 EN. Base 4 + 75% ATK; +12% crit chance.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Peak snap.'}]}],
   ['gos_hook_bite','Hook Bite','Beak-line pierce evolution. Hook through guard.',{type:'physical',btnType:'physical',energy:1,levels:[{desc:'Pierce + anti-guard bite.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Hook tear setup.'}]}],
   ['gos_hook_tear','Hook Tear','Beak-line pierce finisher. Punish shell and stance.',{type:'physical',btnType:'physical',energy:1,levels:[{desc:'Heavy pierce vs armor.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Armor-hook maul.'}]}],
   ['gos_raking_snap','Raking Snap','Beak-line bleed branch.',{type:'physical',btnType:'physical',energy:1,levels:[{desc:'Raking wound pressure.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Bloody snap.'}]}],
@@ -15314,7 +15446,7 @@ const GOOSE_EVOLUTION_TEMPLATE_DEFS = [
   ['gos_dulling_snap','Dulling Snap','Beak-line weaken branch.',{type:'physical',btnType:'physical',energy:1,levels:[{desc:'Weaken on snap.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Dull their offense.'}]}],
   ['gos_grinding_bite','Grinding Bite','Beak-line weaken evolution.',{type:'physical',btnType:'physical',energy:1,levels:[{desc:'Grind down ATK tempo.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Stubborn bite.'}]}],
   ['gos_fading_tear','Fading Tear','Beak-line weaken finisher.',{type:'physical',btnType:'physical',energy:1,levels:[{desc:'Bonus vs weakened prey.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Submission tear.'}]}],
-  ['gos_body_check','Body Check','Body-line neutral. Signature shoulder check (2 EN).',{type:'physical',btnType:'physical',energy:2,levels:[{desc:'2 EN. Blunt territorial impact.'},{desc:'Stronger check.'},{desc:'Stronger.'},{desc:'Peak check.'}], damageScaling:_gosBody(0.26,'DEF adds check weight.')}],
+  ['gos_body_check','Body Check','Body-line neutral. Signature shoulder check (2 EN).',{type:'physical',btnType:'physical',energy:2,cooldownByLevel:[1,1,1,1],levels:[{desc:'2 EN, CD 1. Base 6 + 105% DEF; +10 DEF 1t (refresh).'},{desc:'Stronger check.'},{desc:'Stronger.'},{desc:'Peak check.'}]}],
   ['gos_heavy_slam','Heavy Slam','Body-line crit evolution.',{type:'physical',btnType:'physical',energy:2,levels:[{desc:'2 EN. Heavier crit bias.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Slam apex.'}], damageScaling:_gosBody(0.30,'DEF adds slam force.')}],
   ['gos_dominance_crush','Dominance Crush','Body-line crit finisher.',{type:'physical',btnType:'physical',energy:2,levels:[{desc:'2 EN. Brute dominance.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Territorial crush.'}], damageScaling:_gosBody(0.34,'DEF adds crush force.')}],
   ['gos_pressing_check','Pressing Check','Body-line weaken branch.',{type:'physical',btnType:'physical',energy:2,levels:[{desc:'2 EN. Body check + weaken odds.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Crowd their swing.'}], damageScaling:_gosBody(0.26,'DEF adds press weight.')}],
@@ -15323,7 +15455,7 @@ const GOOSE_EVOLUTION_TEMPLATE_DEFS = [
   ['gos_cracking_check','Cracking Check','Body-line break branch.',{type:'physical',btnType:'physical',energy:2,levels:[{desc:'2 EN. Pierce + armor stress.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Crack the shell.'}], damageScaling:_gosBody(0.28,'DEF adds break leverage.')}],
   ['gos_break_slam','Break Slam','Body-line break evolution.',{type:'physical',btnType:'physical',energy:2,levels:[{desc:'2 EN. Harder DEF stress.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Shatter stance.'}], damageScaling:_gosBody(0.32,'DEF adds break force.')}],
   ['gos_collapse_crush','Collapse Crush','Body-line break finisher.',{type:'physical',btnType:'physical',energy:2,levels:[{desc:'2 EN. Expose + collapse.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Total collapse.'}], damageScaling:_gosBody(0.36,'DEF adds collapse drive.')}],
-  ['gos_honk_blast','Honk Blast','Honk-line neutral. Loud disruption (1 EN).',{type:'physical',btnType:'physical',energy:1,levels:[{desc:'1 EN. Strike + ACC crash + light fear.'},{desc:'Stronger blare.'},{desc:'Stronger.'},{desc:'Peak honk.'}]}],
+  ['gos_honk_blast','Honk Guard','Honk-line neutral. Short defensive brace (1 EN).',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'1 EN. +10 DEF 1t (refresh); no damage.'},{desc:'Stronger brace.'},{desc:'Stronger.'},{desc:'Peak guard honk.'}]}],
   ['gos_dread_blare','Dread Blare','Honk-line fear evolution.',{type:'physical',btnType:'physical',energy:1,levels:[{desc:'Heavier fear + noise.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Dread field.'}]}],
   ['gos_panic_uproar','Panic Uproar','Honk-line fear finisher.',{type:'physical',btnType:'physical',energy:1,levels:[{desc:'Bonus vs feared prey.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Total panic.'}]}],
   ['gos_harsh_honk','Harsh Honk','Honk-line ACC-break branch.',{type:'physical',btnType:'physical',energy:1,levels:[{desc:'Harsh noise; big ACC hit.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Grating honk.'}]}],
@@ -15332,7 +15464,7 @@ const GOOSE_EVOLUTION_TEMPLATE_DEFS = [
   ['gos_keen_honk','Keen Honk','Honk-line speed branch.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'SPD surge; stubborn advance.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Keen tempo.'}]}],
   ['gos_rally_blare','Rally Blare','Honk-line speed evolution.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'SPD + dodge window.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Rallying blare.'}]}],
   ['gos_charge_uproar','Charge Uproar','Honk-line speed finisher.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Big SPD + heavy dodge.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Charge uproar.'}]}],
-  ['gos_brace_up','Brace Up','Brace-line neutral. Stand your ground (1 EN).',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'1 EN. Long guard window.'},{desc:'Stronger brace.'},{desc:'Stronger.'},{desc:'Iron posture.'}]}],
+  ['gos_brace_up','Brace Up','Brace-line neutral. Heal and brace (2 EN).',{type:'utility',btnType:'utility',energy:2,cooldownByLevel:[1,1,1,1],levels:[{desc:'2 EN, CD 1. Heal 14% Max HP; +10 DEF 1t (refresh).'},{desc:'Stronger brace.'},{desc:'Stronger.'},{desc:'Iron posture.'}]}],
   ['gos_hold_line','Hold the Line','Brace-line guard evolution.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Heavier guard stack.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Unmovable.'}]}],
   ['gos_stand_fast','Stand Fast','Brace-line guard finisher.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Maximum stubborn guard.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Last stand posture.'}]}],
   ['gos_brace_mark','Brace Mark','Brace-line amp branch.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Next-hit damage amp.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Marked brace.'}]}],
@@ -15348,7 +15480,7 @@ for(const [id,name,desc,options] of GOOSE_EVOLUTION_TEMPLATE_DEFS){
 
 const _sblCrack=(v,note)=>({ baseScaler:'ATT', secondaryScaler:'DEF', secondaryScaleValue:v, scalingNote:note||'DEF adds crushing beak weight.', conditionalBonuses:[{type:'while_guarding', damageBonus:0.08}] });
 const SHOEBILL_EVOLUTION_TEMPLATE_DEFS = [
-  ['sbl_beak_chop','Beak Chop','Beak-line neutral. Heavy swamp chop before you branch.',{type:'physical',btnType:'physical',energy:1,fixedMainAttackCost:true,levels:[{desc:'1 EN. Crushing beak chop.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Peak chop.'}]}],
+  ['sbl_beak_chop','Beak Chop','Beak-line neutral. Heavy swamp chop before you branch.',{type:'physical',btnType:'physical',energy:1,fixedMainAttackCost:true,levels:[{desc:'1 EN. Base 5 + 80% ATK; +12% crit damage.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Peak chop.'}]}],
   ['sbl_split_break','Split Break','Beak-line pierce evolution. Split guard and shell.',{type:'physical',btnType:'physical',energy:1,levels:[{desc:'Pierce + anti-guard.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Split pressure.'}]}],
   ['sbl_bone_cleave','Bone Cleave','Beak-line pierce finisher. Armor-breaking cleave.',{type:'physical',btnType:'physical',energy:1,levels:[{desc:'Heavy pierce payoff.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Bone line.'}]}],
   ['sbl_rending_chop','Rending Chop','Beak-line bleed branch.',{type:'physical',btnType:'physical',energy:1,levels:[{desc:'Rending wound pressure.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Bloody chop.'}]}],
@@ -15357,7 +15489,7 @@ const SHOEBILL_EVOLUTION_TEMPLATE_DEFS = [
   ['sbl_dulling_chop','Dulling Chop','Beak-line weaken branch.',{type:'physical',btnType:'physical',energy:1,levels:[{desc:'Weaken on chop.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Dull their swing.'}]}],
   ['sbl_sapping_break','Sapping Break','Beak-line weaken evolution.',{type:'physical',btnType:'physical',energy:1,levels:[{desc:'Sap offense tempo.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Sapping break.'}]}],
   ['sbl_hollow_cleave','Hollow Cleave','Beak-line weaken finisher.',{type:'physical',btnType:'physical',energy:1,levels:[{desc:'Bonus vs weakened prey.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Hollow finish.'}]}],
-  ['sbl_skull_crack','Skull Crack','Crack-line neutral. Signature skull strike (2 EN).',{type:'physical',btnType:'physical',energy:2,levels:[{desc:'2 EN. Crushing beak drop.'},{desc:'Stronger crack.'},{desc:'Stronger.'},{desc:'Peak crack.'}], damageScaling:_sblCrack(0.28,'DEF adds drop weight.')}],
+  ['sbl_skull_crack','Skull Crack','Crack-line neutral. Signature skull strike (2 EN).',{type:'physical',btnType:'physical',energy:2,cooldownByLevel:[1,1,1,1],levels:[{desc:'2 EN, CD 1. Base 7 + 110% DEF; enemy −10% DEF 1t (refresh).'},{desc:'Stronger crack.'},{desc:'Stronger.'},{desc:'Peak crack.'}]}],
   ['sbl_grave_collapse','Grave Collapse','Crack-line crit evolution.',{type:'physical',btnType:'physical',energy:2,levels:[{desc:'2 EN. Heavier crit bias.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Grave collapse.'}], damageScaling:_sblCrack(0.32,'DEF adds collapse force.')}],
   ['sbl_skull_ruin','Skull Ruin','Crack-line crit finisher.',{type:'physical',btnType:'physical',energy:2,levels:[{desc:'2 EN. Brutal skull ruin.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Total ruin.'}], damageScaling:_sblCrack(0.36,'DEF adds ruin drive.')}],
   ['sbl_dread_crack','Dread Crack','Crack-line fear branch.',{type:'physical',btnType:'physical',energy:2,levels:[{desc:'2 EN. Fear + noise trauma.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Dread crack.'}], damageScaling:_sblCrack(0.26,'DEF adds intimidation weight.')}],
@@ -15366,7 +15498,7 @@ const SHOEBILL_EVOLUTION_TEMPLATE_DEFS = [
   ['sbl_hunter_crack','Hunter Crack','Crack-line execute branch.',{type:'physical',btnType:'physical',energy:2,levels:[{desc:'2 EN. Finisher crack vs wounded prey.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Hunter crack.'}], damageScaling:_sblCrack(0.28,'DEF adds execution weight.')}],
   ['sbl_prey_collapse','Prey Collapse','Crack-line execute evolution.',{type:'physical',btnType:'physical',energy:2,levels:[{desc:'2 EN. Wider kill window.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Prey collapse.'}], damageScaling:_sblCrack(0.32,'DEF adds prey drive.')}],
   ['sbl_final_ruin','Final Ruin','Crack-line execute finisher.',{type:'physical',btnType:'physical',energy:2,levels:[{desc:'2 EN. Terminal swamp execution.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Final ruin.'}], damageScaling:_sblCrack(0.36,'DEF adds terminal crush.')}],
-  ['sbl_still_stance','Still Stance','Stance-line neutral. Loom without moving.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'1 EN. Guard stack; patient bulk.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Iron stillness.'}]}],
+  ['sbl_still_stance','Still Stance','Stance-line neutral. Loom without moving.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'1 EN. +10 DEF and +10 MDEF 1t (refresh).'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Iron stillness.'}]}],
   ['sbl_hold_ground','Hold Ground','Stance-line guard evolution.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Heavier guard.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Unmovable.'}]}],
   ['sbl_dead_still','Dead Still','Stance-line guard finisher.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Maximum stubborn guard.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Dead still.'}]}],
   ['sbl_slow_step','Slow Step','Stance-line dodge branch.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Careful dodge; minimal motion.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Slow step.'}]}],
@@ -15375,7 +15507,7 @@ const SHOEBILL_EVOLUTION_TEMPLATE_DEFS = [
   ['sbl_lining_stance','Lining Stance','Stance-line amp branch.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Next-hit damage amp.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Lining stance.'}]}],
   ['sbl_measured_hold','Measured Hold','Stance-line amp evolution.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Bigger next-hit window.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Measured hold.'}]}],
   ['sbl_killing_silence','Killing Silence','Stance-line amp finisher.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Maximum kill setup.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Killing silence.'}]}],
-  ['sbl_dread_mark','Dread Mark','Dread-line neutral. Mark prey for collapse.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Next-hit damage amp.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Dread mark.'}]}],
+  ['sbl_dread_mark','Dread Recovery','Dread-line neutral. Big self-recovery.',{type:'utility',btnType:'utility',energy:2,cooldownByLevel:[1,1,1,1],levels:[{desc:'2 EN, CD 1. Heal 16% Max HP; +10 MDEF 1t (refresh).'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Dread mark.'}]}],
   ['sbl_grave_sign','Grave Sign','Dread-line amp evolution.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Bigger next-hit window.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Grave sign.'}]}],
   ['sbl_doom_mark','Doom Mark','Dread-line amp finisher.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Maximum doom setup.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Doom mark.'}]}],
   ['sbl_crack_sign','Crack Sign','Dread-line DEF break branch.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Expose + DEF stress.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Crack sign.'}]}],
@@ -15386,6 +15518,16 @@ const SHOEBILL_EVOLUTION_TEMPLATE_DEFS = [
   ['sbl_read_doom','Read Doom','Dread-line read finisher.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'Capstone read payoff.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Read doom.'}]}],
 ];
 for(const [id,name,desc,options] of SHOEBILL_EVOLUTION_TEMPLATE_DEFS){
+  ABILITY_TEMPLATES[id] = Object.assign(ABILITY_TEMPLATES[id]||{}, makeEvolutionAbilityTemplate(id,name,desc,options));
+}
+
+const PELICAN_SHEET_TEMPLATE_DEFS = [
+  ['pelican_snap','Hookbill Snap','Pelican basic jab.',{type:'physical',btnType:'physical',energy:1,fixedMainAttackCost:true,levels:[{desc:'1 EN. Base 4 + 75% ATK; +12% crit chance.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Peak snap.'}]}],
+  ['pelican_crush','Pouch Crush','Heavy DEF-scaling strike.',{type:'physical',btnType:'physical',energy:2,cooldownByLevel:[1,1,1,1],levels:[{desc:'2 EN, CD 1. Base 7 + 110% DEF; +10 DEF 1t (refresh).'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Peak crush.'}]}],
+  ['pelican_guard','Broadside Guard','Bulky defensive brace.',{type:'utility',btnType:'utility',energy:1,levels:[{desc:'1 EN. +10 DEF and +10 MDEF 1t (refresh).'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Broadside.'}]}],
+  ['pelican_recovery','Stillwater Recovery','Massive self-sustain.',{type:'utility',btnType:'utility',energy:2,cooldownByLevel:[1,1,1,1],levels:[{desc:'2 EN, CD 1. Heal 16% Max HP; +10 MDEF 1t (refresh).'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Stillwater.'}]}],
+];
+for(const [id,name,desc,options] of PELICAN_SHEET_TEMPLATE_DEFS){
   ABILITY_TEMPLATES[id] = Object.assign(ABILITY_TEMPLATES[id]||{}, makeEvolutionAbilityTemplate(id,name,desc,options));
 }
 const SHOEBILL_TWO_EN_TREE_IDS = Object.freeze([
@@ -17957,8 +18099,11 @@ async function executeSwanGlide(ab){
   const turns=2+(mb.glideTurns||0);
   await doSpell('player','🦢');
   if(id==='grace_glide'){
-    G.playerStatus.humDodge={bonus:[12,14,16,18][lv-1]+mb.dodge, turns};
-    G.enemyStatus.accDebuff=(G.enemyStatus.accDebuff||0)+[6,8,10,12][lv-1]+mb.accDown;
+    applyTankFlatDefBoostRefresh(10,1);
+    applyTankFlatMdefBoostRefresh(10,1);
+    renderStatuses('player-status',G.playerStatus);
+    logMsg(`🦢 Grace Guard! +10 DEF / +10 MDEF (1t, refresh).`,'player-action');
+    return;
   }else if(id==='swan_ghost_drift'){
     G.playerStatus.humDodge={bonus:[22,26,30,34][lv-1]+mb.dodge, turns:[2,2,3,3][lv-1]};
   }else if(id==='swan_white_waltz'){
@@ -18067,7 +18212,7 @@ const TOUCAN_SKILL_ACTION_OVERRIDES = {
 Object.entries(TOUCAN_SKILL_ACTION_OVERRIDES).forEach(([id, fn])=>{ ACTIONS[id]=fn; });
 
 const SWAN_SKILL_ACTION_OVERRIDES = {
-  neck_jab: ab=>executeSwanNeckStrike(ab,{log:'🦢 Neck Jab',miss:[9,8,7,6],mult:[0.90,0.94,0.98,1.02],pierce:[10,12,14,16]}),
+  neck_jab: ab=>executeTankSheetStrike(ab,{name:'Neck Jab',log:'🦢 Neck Jab',miss:[10,9,8,7],flat:[5,5,5,5],statPct:[0.80,0.80,0.80,0.80],statKey:'atk',pierce:[0,0,0,0],critChanceFlat:[12,12,12,12]}),
   neck_lunge: ab=>executeSwanNeckStrike(ab,{log:'🦢 Neck Lunge',miss:[8,7,6,5],mult:[0.98,1.02,1.06,1.10],pierce:[16,20,24,28]}),
   swan_pierce: ab=>executeSwanNeckStrike(ab,{log:'🦢 Swan Pierce',miss:[7,6,5,4],mult:[1.06,1.10,1.14,1.18],pierce:[24,28,32,36],bonusVsArmor:[0.06,0.08,0.10,0.12]}),
   swan_razor_jab: ab=>executeSwanNeckStrike(ab,{log:'🩸 Razor Jab',miss:[9,8,7,6],mult:[0.88,0.92,0.96,1.00],pierce:[8,10,12,14],bleedChance:[14,16,18,20]}),
@@ -18076,7 +18221,7 @@ const SWAN_SKILL_ACTION_OVERRIDES = {
   spot_jab: ab=>executeSwanNeckStrike(ab,{log:'🎯 Spot Jab',miss:[9,8,7,6],mult:[0.88,0.92,0.96,1.00],pierce:[10,12,14,16],bonusVsCompromised:[0.05,0.06,0.07,0.08]}),
   spot_lunge: ab=>executeSwanNeckStrike(ab,{log:'🎯 Spot Lunge',miss:[8,7,6,5],mult:[0.96,1.00,1.04,1.08],pierce:[12,14,16,18],bonusVsCompromised:[0.08,0.09,0.10,0.11]}),
   open_pierce: ab=>executeSwanNeckStrike(ab,{log:'🎯 Open Pierce',miss:[7,6,5,4],mult:[1.02,1.06,1.10,1.14],pierce:[14,16,18,20],bonusVsCompromised:[0.10,0.12,0.14,0.16],applyExpose:[0.06,0.07,0.08,0.09],exposeTurns:[2,2,3,3]}),
-  wing_sweep: ab=>executeSwanSweep(ab,{log:'🦢 Wing Sweep',miss:[12,11,10,9],mult:[1.28,1.34,1.40,1.46],pierce:[8,10,12,14]}),
+  wing_sweep: ab=>executeTankSheetStrike(ab,{name:'Wing Sweep',log:'🦢 Wing Sweep',miss:[22,20,18,16],flat:[7,7,7,7],statPct:[1.05,1.05,1.05,1.05],statKey:'def',pierce:[0,0,0,0],afterHit(){ applyTankFlatDefBoostRefresh(10,1); spawnFloat('player','🧱 +10 DEF','fn-status'); }}),
   silver_arc: ab=>executeSwanSweep(ab,{log:'✨ Silver Arc',miss:[11,10,9,8],mult:[1.24,1.30,1.36,1.42],pierce:[10,12,14,16],critBonus:[8,10,12,14]}),
   regal_crest: ab=>executeSwanSweep(ab,{log:'✨ Regal Crest',miss:[10,9,8,7],mult:[1.30,1.36,1.42,1.48],pierce:[12,14,16,18],critBonus:[12,14,16,20]}),
   pressing_sweep: ab=>executeSwanSweep(ab,{log:'🦢 Pressing Sweep',miss:[12,11,10,9],mult:[1.22,1.28,1.34,1.40],pierce:[6,8,10,12],weakenChance:[22,24,26,28]}),
@@ -18094,7 +18239,7 @@ const SWAN_SKILL_ACTION_OVERRIDES = {
   distracting_glide: ab=>executeSwanGlide(ab),
   veil_drift: ab=>executeSwanGlide(ab),
   blinding_waltz: ab=>executeSwanGlide(ab),
-  poise_mark: ab=>executeSwanPoise(ab),
+  poise_mark: ab=>executeTankHealPlusBuffs(ab,{log:'🦢 Poise Recovery',fx:'💚',healFrac:[0.15,0.15,0.15,0.15],mdefAmt:[10,10,10,10],mdefTurns:[1,1,1,1]}),
   poised_step: ab=>executeSwanPoise(ab),
   final_poise: ab=>executeSwanPoise(ab),
   swan_crack_mark: ab=>executeSwanPoise(ab),
@@ -18598,8 +18743,10 @@ async function executeAlbatrossGlide(ab){
   const turns=2+(mb.glideExtra||0);
   await doSpell('player','🌊');
   if(id==='alb_glide_line'){
-    G.player.stats.spd=Math.min(20,(G.player.stats.spd||1)+[1,1,2,2][lv-1]+mb.spd);
-    G.playerStatus.humDodge={bonus:[10,12,14,16][lv-1]+mb.dodge, turns};
+    applyTankFlatDefBoostRefresh(10,1);
+    renderStatuses('player-status',G.playerStatus);
+    logMsg(`🌊 Glide Guard! +10 DEF (1t, refresh).`,'player-action');
+    return;
   }else if(id==='alb_long_drift'){
     G.player.stats.spd=Math.min(20,(G.player.stats.spd||1)+[2,2,3,3][lv-1]+mb.spd);
     G.playerStatus.humDodge={bonus:[8,10,12,14][lv-1]+mb.dodge, turns};
@@ -18631,10 +18778,7 @@ async function executeAlbatrossCurrent(ab){
   const lv=Math.max(1,Math.min(4,ab.level||1));
   const mb=getAlbatrossMasteryBonuses(ab);
   if(id==='alb_current_mark'){
-    G.playerStatus.huntersMarkBonusPct=(0.12+(mb.markAmp||0));
-    await doSpell('enemy','🌊');
-    renderStatuses('player-status',G.playerStatus);
-    logMsg(`🌊 Current Mark! Next hit +${Math.round((G.playerStatus.huntersMarkBonusPct||0)*100)}%.`,'player-action');
+    await executeBruiserCall(ab,{fx:'🌊',log:'🌊 Current Call',applyWeaken:true,weakenTurns:1,spdBonus:10,spdTurns:1});
     return;
   }
   if(id==='alb_pull_mark'){
@@ -18663,7 +18807,7 @@ async function executeAlbatrossCurrent(ab){
   logMsg(`🌊 Read the wake! Next hit +${Math.round((G.playerStatus.huntersMarkBonusPct||0)*100)}% and +${Math.round((G.playerStatus.cockatooReadExtra||0)*100)}% vs compromised.`,'player-action');
 }
 const ALBATROSS_SKILL_ACTION_OVERRIDES = {
-  alb_wing_jab: ab=>executeAlbatrossWingStrike(ab,{log:'🌊 Wing Jab',miss:[9,8,7,6],mult:[0.90,0.94,0.98,1.02],pierce:[10,12,14,16]}),
+  alb_wing_jab: ab=>executeTankSheetStrike(ab,{name:'Coldwing Jab',log:'🌊 Coldwing Jab',miss:[10,9,8,7],flat:[5,5,5,5],statPct:[0.85,0.85,0.85,0.85],statKey:'atk',pierce:[0,0,0,0],critChanceFlat:[12,12,12,12]}),
   alb_wing_sweep: ab=>executeAlbatrossWingStrike(ab,{log:'🌊 Wing Sweep',miss:[8,7,6,5],mult:[0.98,1.02,1.06,1.10],pierce:[16,20,24,28],bonusVsArmor:[0.04,0.05,0.06,0.07]}),
   alb_wing_arc: ab=>executeAlbatrossWingStrike(ab,{log:'🌊 Wing Arc',miss:[7,6,5,4],mult:[1.06,1.10,1.14,1.18],pierce:[24,28,32,36],bonusVsArmor:[0.08,0.10,0.12,0.14]}),
   alb_razor_jab: ab=>executeAlbatrossWingStrike(ab,{log:'🩸 Razor Jab',miss:[9,8,7,6],mult:[0.88,0.92,0.96,1.00],pierce:[8,10,12,14],bleedChance:[14,16,18,20]}),
@@ -18672,7 +18816,7 @@ const ALBATROSS_SKILL_ACTION_OVERRIDES = {
   alb_spot_jab: ab=>executeAlbatrossWingStrike(ab,{log:'🎯 Spot Jab',miss:[9,8,7,6],mult:[0.88,0.92,0.96,1.00],pierce:[10,12,14,16],bonusVsCompromised:[0.05,0.06,0.07,0.08]}),
   alb_spot_sweep: ab=>executeAlbatrossWingStrike(ab,{log:'🎯 Spot Sweep',miss:[8,7,6,5],mult:[0.96,1.00,1.04,1.08],pierce:[12,14,16,18],bonusVsCompromised:[0.08,0.09,0.10,0.11]}),
   alb_open_arc: ab=>executeAlbatrossWingStrike(ab,{log:'🎯 Open Arc',miss:[7,6,5,4],mult:[1.02,1.06,1.10,1.14],pierce:[14,16,18,20],bonusVsCompromised:[0.10,0.12,0.14,0.16],applyExpose:[0.06,0.07,0.08,0.09],exposeTurns:[2,2,3,3]}),
-  alb_ocean_sweep: ab=>executeAlbatrossSweep(ab,{log:'🌊 Ocean Sweep',miss:[12,11,10,9],mult:[1.12,1.16,1.20,1.24],pierce:[6,8,10,12],slow:[1,1,2,2],slowDodge:[8,8,10,10],slowTurns:[2,2,2,3]}),
+  alb_ocean_sweep: ab=>executeTankSheetStrike(ab,{name:'Cold Current',log:'🌊 Cold Current',miss:[22,20,18,16],flat:[7,7,7,7],statPct:[1.05,1.05,1.05,1.05],statKey:'atk',pierce:[0,0,0,0],afterHit(){ G.playerStatus.ostrichSpdNext=12; spawnFloat('player','⚡ Next +12 SPD','fn-status'); }}),
   alb_pulling_current: ab=>executeAlbatrossSweep(ab,{log:'🌊 Pulling Current',miss:[11,10,9,8],mult:[1.16,1.20,1.24,1.28],pierce:[8,10,12,14],slow:[2,2,2,3],slowDodge:[10,10,12,12],slowTurns:[2,2,3,3]}),
   alb_tempest_wake: ab=>executeAlbatrossSweep(ab,{log:'🌊 Tempest Wake',miss:[10,9,8,7],mult:[1.20,1.24,1.28,1.32],pierce:[10,12,14,16],slow:[2,3,3,4],slowDodge:[12,12,14,14],slowTurns:[2,3,3,3],bonusVsSlowed:[0.04,0.05,0.06,0.07]}),
   alb_pressing_sweep: ab=>executeAlbatrossSweep(ab,{log:'🌊 Pressing Sweep',miss:[12,11,10,9],mult:[1.14,1.18,1.22,1.26],pierce:[6,8,10,12],weakenChance:[22,24,26,28]}),
@@ -18701,6 +18845,97 @@ const ALBATROSS_SKILL_ACTION_OVERRIDES = {
   alb_read_wake: ab=>executeAlbatrossCurrent(ab),
 };
 Object.entries(ALBATROSS_SKILL_ACTION_OVERRIDES).forEach(([id, fn])=>{ ACTIONS[id]=fn; });
+
+(function patchSheetTankBruiserActions(){
+  const crowDefend0=ACTIONS.crowDefend;
+  ACTIONS.crowDefend=async function(ab){
+    if(G.player?.birdKey==='penguin'){
+      await doSpell('player','🛡');
+      applyTankFlatDefBoostRefresh(10,1);
+      applyTankFlatMdefBoostRefresh(10,1);
+      renderStatuses('player-status',G.playerStatus);
+      logMsg(`🐧 Guard! +10 DEF / +10 MDEF (1t, refresh).`,'player-action');
+      return;
+    }
+    return crowDefend0.call(ACTIONS,ab);
+  };
+  ACTIONS.icebreakerHonk=async ab=>{
+    await executeTankSheetStrike(ab,{name:'Icebreaker Jab',log:'🐧 Icebreaker Jab',miss:[10,9,8,7],flat:[4,4,4,4],statPct:[0.75,0.75,0.75,0.75],statKey:'atk',pierce:[0,0,0,0],afterHit(){ applyAilment('enemy','chilled',1); spawnFloat('enemy','❄ Chilled!','fn-status'); }});
+  };
+  ACTIONS.snowWall=async ab=>{
+    await executeTankSheetStrike(ab,{name:'Snow Wall',log:'🐧 Snow Wall',miss:[22,20,18,16],flat:[6,6,6,6],statPct:[1.05,1.05,1.05,1.05],statKey:'def',pierce:[0,0,0,0],afterHit(){ applyTankFlatDefBoostRefresh(10,1); spawnFloat('player','🧱 +10 DEF','fn-status'); }});
+  };
+  ACTIONS.tundraCall=async ab=>executeTankHealPlusBuffs(ab,{log:'🐧 Tundra Recovery',fx:'💚',healFrac:[0.15,0.15,0.15,0.15],mdefAmt:[10,10,10,10],mdefTurns:[1,1,1,1]});
+
+  ACTIONS.pelican_snap=ab=>executeTankSheetStrike(ab,{name:'Hookbill Snap',log:'🐦 Hookbill Snap',miss:[10,9,8,7],flat:[4,4,4,4],statPct:[0.75,0.75,0.75,0.75],statKey:'atk',pierce:[0,0,0,0],critChanceFlat:[12,12,12,12]});
+  ACTIONS.pelican_crush=ab=>executeTankSheetStrike(ab,{name:'Pouch Crush',log:'🐦 Pouch Crush',miss:[22,20,18,16],flat:[7,7,7,7],statPct:[1.10,1.10,1.10,1.10],statKey:'def',pierce:[0,0,0,0],afterHit(){ applyTankFlatDefBoostRefresh(10,1); spawnFloat('player','🧱 +10 DEF','fn-status'); }});
+  ACTIONS.pelican_guard=async ab=>{
+    await doSpell('player','🛡');
+    applyTankFlatDefBoostRefresh(10,1);
+    applyTankFlatMdefBoostRefresh(10,1);
+    renderStatuses('player-status',G.playerStatus);
+    logMsg(`🐦 Broadside Guard! +10 DEF / +10 MDEF (1t, refresh).`,'player-action');
+  };
+  ACTIONS.pelican_recovery=ab=>executeTankHealPlusBuffs(ab,{log:'🐦 Stillwater Recovery',fx:'💚',healFrac:[0.16,0.16,0.16,0.16],mdefAmt:[10,10,10,10],mdefTurns:[1,1,1,1]});
+
+  const headWhip0=ACTIONS.headWhip;
+  ACTIONS.headWhip=async function(ab){
+    if(G.player?.birdKey==='emu') return executeTankSheetStrike(ab,{name:'Head Whip',log:'🦤 Head Whip',miss:[10,9,8,7],flat:[6,6,6,6],statPct:[0.90,0.90,0.90,0.90],statKey:'atk',pierce:[0,0,0,0],critDmgBonus:[12,12,12,12]});
+    if(G.player?.birdKey==='bustard') return executeTankSheetStrike(ab,{name:'Heavy Jab',log:'🪶 Heavy Jab',miss:[10,9,8,7],flat:[5,5,5,5],statPct:[0.85,0.85,0.85,0.85],statKey:'atk',pierce:[0,0,0,0],critChanceFlat:[12,12,12,12]});
+    return headWhip0.call(ACTIONS,ab);
+  };
+
+  ACTIONS.powerKick=ab=>executeTankSheetStrike(ab,{name:'Power Kick',log:'🦵 Power Kick',miss:[10,9,8,7],flat:[6,6,6,6],statPct:[0.90,0.90,0.90,0.90],statKey:'atk',pierce:[0,0,0,0],critDmgBonus:[12,12,12,12]});
+  ACTIONS.stampedeStrike=ab=>executeTankSheetStrike(ab,{name:'Stampede Strike',log:'🦵 Stampede Strike',miss:[22,20,18,16],flat:[8,8,8,8],statPct:[1.10,1.10,1.10,1.10],statKey:'atk',pierce:[0,0,0,0],afterHit(){ G.playerStatus.ostrichSpdNext=12; spawnFloat('player','⚡ Next +12 SPD','fn-status'); }});
+  ACTIONS.sandKick=async ab=>{
+    const emu=G.player?.birdKey==='emu';
+    await executeTankHonkGuardUtility(ab,{log:emu?'💨 Dust Guard':'🏜️ Sand Guard',fx:emu?'💨':'🏜️',defAmt:[10,10,10,10],defTurns:[1,1,1,1]});
+  };
+  const chargeUp0=ACTIONS.chargeUp;
+  ACTIONS.momentumCharge=async function(ab){
+    if(G.player?.birdKey==='cassowary'){
+      await doSpell('player','🛡');
+      applyTankFlatDefBoostRefresh(10,1);
+      renderStatuses('player-status',G.playerStatus);
+      logMsg(`🦤 Momentum Guard! +10 DEF (1t, refresh).`,'player-action');
+      return;
+    }
+    if(G.player?.birdKey==='ostrich'||G.player?.birdKey==='vulture'){
+      await executeBruiserCall(ab,{fx:'📣',log:G.player.birdKey==='vulture'?'🜏 Grave Dirge':'⚡ Momentum Call',applyWeaken:true,weakenTurns:1,spdBonus:10,spdTurns:1});
+      return;
+    }
+    return chargeUp0.call(ACTIONS,ab);
+  };
+  ACTIONS.raptorKick=ab=>executeTankSheetStrike(ab,{name:'Raptor Kick',log:'🦤 Raptor Kick',miss:[10,9,8,7],flat:[6,6,6,6],statPct:[0.90,0.90,0.90,0.90],statKey:'atk',pierce:[0,0,0,0],critChanceFlat:[12,12,12,12]});
+  ACTIONS.warStomp=ab=>executeTankSheetStrike(ab,{name:'War Stomp',log:'🦤 War Stomp',miss:[22,20,18,16],flat:[8,8,8,8],statPct:[1.10,1.10,1.10,1.10],statKey:'atk',pierce:[0,0,0,0],afterHit(){ applyEnemyWeakenRefreshTurns(1); spawnFloat('enemy','🐔 Weaken!','fn-status'); }});
+  ACTIONS.warCharge=ab=>executeTankSheetStrike(ab,{name:'War Charge',log:'🦤 War Charge',miss:[22,20,18,16],flat:[8,8,8,8],statPct:[1.10,1.10,1.10,1.10],statKey:'atk',pierce:[0,0,0,0],afterHit(){ G.playerStatus.ostrichSpdNext=12; spawnFloat('player','⚡ Next +12 SPD','fn-status'); }});
+  ACTIONS.momentumStrike=async ab=>executeBruiserCall(ab,{fx:'📣',log:'🦤 Momentum Cry',applyWeaken:true,weakenTurns:1,spdBonus:10,spdTurns:1});
+  ACTIONS.crushingTalon=async ab=>executeBruiserCall(ab,{fx:'📣',log:'🦤 Crushing Call',applyWeaken:true,weakenTurns:1,accPenaltyAmt:12,accPenaltyTurns:2});
+  if(ABILITY_TEMPLATES.crushingTalon) Object.assign(ABILITY_TEMPLATES.crushingTalon,{name:'Crushing Call',type:'utility',btnType:'utility',desc:'Call: Weaken + enemy ACC −12% for 2t (refresh).'});
+  if(ABILITY_TEMPLATES.momentumStrike) Object.assign(ABILITY_TEMPLATES.momentumStrike,{name:'Momentum Cry',type:'utility',btnType:'utility',desc:'Call: Weaken + +10 SPD 1t (refresh).'});
+
+  ACTIONS.bluejay_crest_jab=ab=>executeTankSheetStrike(ab,{name:'Crest Jab',log:'🐦 Crest Jab',miss:[10,9,8,7],flat:[5,5,5,5],statPct:[0.85,0.85,0.85,0.85],statKey:'atk',pierce:[0,0,0,0],critChanceFlat:[12,12,12,12]});
+  ACTIONS.bluejay_jaybreaker=ab=>executeTankSheetStrike(ab,{name:'Jaybreaker',log:'🐦 Jaybreaker',miss:[22,20,18,16],flat:[7,7,7,7],statPct:[1.05,1.05,1.05,1.05],statKey:'atk',pierce:[0,0,0,0],afterHit(){ applyEnemyWeakenRefreshTurns(1); spawnFloat('enemy','🐔 Weaken!','fn-status'); }});
+  ACTIONS.bluejay_crest_guard=async ab=>executeTankHonkGuardUtility(ab,{log:'🐦 Crest Guard',fx:'🛡',defAmt:[10,10,10,10],defTurns:[1,1,1,1]});
+  ACTIONS.bluejay_raucous_cry=async ab=>executeBruiserCall(ab,{fx:'📣',log:'🐦 Raucous Cry',applyWeaken:true,weakenTurns:1,spdBonus:10,spdTurns:1});
+
+  ACTIONS.bturkey_scrap_peck=ab=>executeTankSheetStrike(ab,{name:'Scrap Peck',log:'🦃 Scrap Peck',miss:[10,9,8,7],flat:[5,5,5,5],statPct:[0.85,0.85,0.85,0.85],statKey:'atk',pierce:[0,0,0,0],critDmgBonus:[12,12,12,12]});
+  ACTIONS.bturkey_brush_crash=ab=>executeTankSheetStrike(ab,{name:'Brush Crash',log:'🦃 Brush Crash',miss:[22,20,18,16],flat:[7,7,7,7],statPct:[1.05,1.05,1.05,1.05],statKey:'atk',pierce:[0,0,0,0],afterHit(){ applyEnemyWeakenRefreshTurns(1); spawnFloat('enemy','🐔 Weaken!','fn-status'); }});
+  ACTIONS.bturkey_bush_guard=async ab=>executeTankHonkGuardUtility(ab,{log:'🦃 Bush Guard',fx:'🛡',defAmt:[10,10,10,10],defTurns:[1,1,1,1]});
+  ACTIONS.bturkey_rattle_call=ACTIONS.crushingTalon;
+
+  ACTIONS.vulture_grave_jab=ab=>executeTankSheetStrike(ab,{name:'Grave Jab',log:'🜏 Grave Jab',miss:[10,9,8,7],flat:[5,5,5,5],statPct:[0.85,0.85,0.85,0.85],statKey:'atk',pierce:[0,0,0,0],afterHit(){ applyBleedStacksCap(1,1); spawnFloat('enemy','🩸 Bleed!','fn-poison'); }});
+  ACTIONS.vulture_corpse_crush=ab=>executeTankSheetStrike(ab,{name:'Corpse Crush',log:'🜏 Corpse Crush',miss:[22,20,18,16],flat:[7,7,7,7],statPct:[1.05,1.05,1.05,1.05],statKey:'atk',pierce:[0,0,0,0],afterHit(){ applyBleedStacksCap(1,1); spawnFloat('enemy','🩸 Bleed!','fn-poison'); }});
+  ACTIONS.vulture_bone_ward=async ab=>executeTankHonkGuardUtility(ab,{log:'🜏 Bone Ward',fx:'🛡',defAmt:[10,10,10,10],defTurns:[1,1,1,1]});
+
+  ACTIONS.bustard_dust_trample=ACTIONS.warCharge;
+  ACTIONS.bustard_plainshield=ACTIONS.sandKick;
+  ACTIONS.bustard_steppe_call=ACTIONS.momentumStrike;
+
+  if(ABILITY_TEMPLATES.snowWall) Object.assign(ABILITY_TEMPLATES.snowWall,{name:'Snow Wall',type:'physical',btnType:'physical',energyCost:2,energyByLevel:[2,2,2,2],cooldownByLevel:[1,1,1,1],desc:'2 EN, CD 1. Base 6 + 105% DEF; +10 DEF 1t (refresh).'});
+  if(ABILITY_TEMPLATES.tundraCall) Object.assign(ABILITY_TEMPLATES.tundraCall,{name:'Tundra Recovery',energyCost:2,energyByLevel:[2,2,2,2],cooldownByLevel:[1,1,1,1],desc:'2 EN, CD 1. Heal 15% Max HP; +10 MDEF 1t (refresh).'});
+  if(ABILITY_TEMPLATES.icebreakerHonk) Object.assign(ABILITY_TEMPLATES.icebreakerHonk,{name:'Icebreaker Jab',type:'physical',btnType:'physical',energyCost:1,energyByLevel:[1,1,1,1],desc:'1 EN. Base 4 + 75% ATK; Chilled +1 (stacks to 5).'});
+})();
 
 function getSeagullMasteryBonuses(ab){
   const slot=getAbilitySkillSlot(G.player,ab);
@@ -20367,7 +20602,15 @@ function endPlayerTurn(force=false) {
     }
   };
   _tickTmp('gooseHonkDef','def');
+  _tickTmp('tankTempMdef','mdef');
   _tickTmp('featherFeintMdef','mdef');
+  if(G.playerStatus.bruiserCallSpd){
+    G.playerStatus.bruiserCallSpd.turns--;
+    if(G.playerStatus.bruiserCallSpd.turns<=0){
+      G.player.stats.spd=Math.max(1,(G.player.stats.spd||1)-(G.playerStatus.bruiserCallSpd.bonus||0));
+      delete G.playerStatus.bruiserCallSpd;
+    }
+  }
   _tickTmp('cardinalMatk','matk');
   _tickTmp('cockatooSongMatk','matk');
   _tickTmp('singerSetupMatk','matk');
@@ -21249,6 +21492,14 @@ function afterEnemyTurn() {
   if(G.enemyStatus.exposedGuard){
     G.enemyStatus.exposedGuard.turns--;
     if(G.enemyStatus.exposedGuard.turns<=0) delete G.enemyStatus.exposedGuard;
+  }
+  if(G.enemyStatus.bruiserAccMark){
+    G.enemyStatus.bruiserAccMark.turns--;
+    if(G.enemyStatus.bruiserAccMark.turns<=0){
+      const a=G.enemyStatus.bruiserAccMark.amt||0;
+      if(a) G.enemyStatus.accDebuff=Math.max(0,(G.enemyStatus.accDebuff||0)-a);
+      delete G.enemyStatus.bruiserAccMark;
+    }
   }
   if(G.enemyStatus.peregrineDefBreak){
     G.enemyStatus.peregrineDefBreak.turns--;
