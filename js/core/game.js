@@ -646,7 +646,7 @@ const BIRDS = {
   sparrow:{
     name:'Sparrow', portraitKey:'sparrow', tagline:'Swift as wind, strikes like needles.',
     size:'tiny', class:'striker',
-    stats:{hp:37,maxHp:37,atk:23,def:6,spd:24,dodge:18,acc:92,mdef:5,matk:2,critChance:10},
+    stats:{hp:35,maxHp:35,atk:18,def:6,spd:23,dodge:15,acc:88,mdef:5,matk:5,critChance:10},
     color:'#6a8ae8',
     mainAttackId:'multiPeck',
     startAbilities:['multiPeck','dart','windFeint','trackPrey'],
@@ -657,7 +657,7 @@ const BIRDS = {
     size:'tiny', class:'striker',
     unlockRequires:'unlock_hummingbird',
     unlockHint:'Defeat Stage 10 with Sparrow.',
-    stats:{hp:36,maxHp:36,atk:21,def:4,spd:27,dodge:20,acc:94,mdef:4,matk:2,critChance:18},
+    stats:{hp:34,maxHp:34,atk:15,def:5,spd:28,dodge:17,acc:94,mdef:3,matk:4,critChance:18},
     color:'#40e8c0',
     mainAttackId:'needle_jab',
     startAbilities:['needle_jab','dash','blink_flutter','pulse_step'],
@@ -666,7 +666,7 @@ const BIRDS = {
   blackbird:{
     name:'Blackbird', portraitKey:'blackbird', tagline:'Songs that shatter minds. Eyes like embers.',
     size:'small', class:'singer',
-    stats:{hp:49,maxHp:49,atk:3,def:11,spd:14,dodge:8,acc:92,mdef:21,matk:31,critChance:6},
+    stats:{hp:44,maxHp:44,atk:3,def:7,spd:10,dodge:6,acc:91,mdef:16,matk:28,critChance:6},
     color:'#9a6ae8',
     startAbilities:['dark_song','shadow_peck','gloom_wing','grim_sign'],
     mainAttackId:'dark_song',
@@ -675,7 +675,7 @@ const BIRDS = {
   macaw:{
     name:'Macaw', portraitKey:'macaw', tagline:'Every word is a weapon.',
     size:'small', class:'singer',
-    stats:{hp:48,maxHp:48,atk:4,def:9,spd:17,dodge:9,acc:93,mdef:17,matk:32,critChance:8},
+    stats:{hp:46,maxHp:46,atk:2,def:7,spd:12,dodge:7,acc:94,mdef:14,matk:28,critChance:8},
     color:'#1a6aba',
     mainAttackId:'echo_note',
     startAbilities:['echo_note','mimic_song','feather_taunt','chorus_mark'],
@@ -686,7 +686,7 @@ const BIRDS = {
     size:'small', class:'striker',
     unlockRequires:'unlock_peregrine',
     unlockHint:'Defeat Stage 20 with Hummingbird.',
-    stats:{hp:45,maxHp:45,atk:27,def:7,spd:29,dodge:17,acc:92,mdef:6,matk:2,critChance:12},
+    stats:{hp:43,maxHp:43,atk:22,def:6,spd:23,dodge:11,acc:93,mdef:5,matk:3,critChance:12},
     color:'#6a8ac8',
     mainAttackId:'talon_jab',
     startAbilities:['talon_jab','dive','keen_eye','aerial_pace'],
@@ -697,7 +697,7 @@ const BIRDS = {
     size:'small', class:'predator',
     unlockRequires:'juvenileWin',
     unlockHint:'Defeat Stage 20 on Normal mode to unlock.',
-    stats:{hp:46,maxHp:46,atk:32,def:9,spd:21,dodge:10,acc:94,mdef:14,matk:2,critChance:15},
+    stats:{hp:45,maxHp:45,atk:22,def:9,spd:16,dodge:7,acc:93,mdef:12,matk:4,critChance:15},
     color:'#e8f0f8',
     mainAttackId:'talon_snap',
     startAbilities:['talon_snap','silent_dive','owl_eye','frost_glide'],
@@ -708,7 +708,7 @@ const BIRDS = {
     size:'small', class:'predator',
     unlockRequires:'unlock_kiwi',
     unlockHint:'Defeat Stage 20 with Magpie.',
-    stats:{hp:49,maxHp:49,atk:30,def:11,spd:19,dodge:11,acc:93,mdef:15,matk:2,critChance:12},
+    stats:{hp:47,maxHp:47,atk:21,def:10,spd:14,dodge:8,acc:92,mdef:13,matk:4,critChance:12},
     color:'#a0784a',
     mainAttackId:'beak_jab',
     startAbilities:['beak_jab','night_probe','scent_hunt','scrape'],
@@ -719,7 +719,7 @@ const BIRDS = {
     size:'medium', class:'singer',
     unlockRequires:'juvenileWin',
     unlockHint:'Defeat Stage 20 on Normal mode to unlock.',
-    stats:{hp:59,maxHp:59,atk:7,def:12,spd:15,dodge:9,acc:90,mdef:21,matk:34,critChance:8},
+    stats:{hp:50,maxHp:50,atk:3,def:7,spd:11,dodge:6,acc:89,mdef:15,matk:26,critChance:8},
     color:'#2a1a3a',
     mainAttackId:'boom_call',
     startAbilities:['boom_call','resonance_mark','beak_crack','wing_beat'],
@@ -728,7 +728,7 @@ const BIRDS = {
   crow:{
     name:'Crow', portraitKey:'crow', tagline:'Clever. Coordinated. Unsettling.',
     size:'medium', class:'trickster',
-    stats:{hp:56,maxHp:56,atk:14,def:10,spd:25,dodge:20,acc:91,mdef:13,matk:16,critChance:8},
+    stats:{hp:49,maxHp:49,atk:11,def:7,spd:15,dodge:13,acc:88,mdef:9,matk:13,critChance:8},
     color:'#c0c8d8',
     mainAttackId:'peck',
     startAbilities:['peck','murder_murmuration','dread_call','battle_focus'],
@@ -739,7 +739,7 @@ const BIRDS = {
     size:'medium', class:'trickster',
     unlockRequires:'unlock_kookaburra',
     unlockHint:'Defeat Stage 10 with Macaw.',
-    stats:{hp:58,maxHp:58,atk:17,def:11,spd:23,dodge:19,acc:89,mdef:12,matk:16,critChance:8},
+    stats:{hp:51,maxHp:51,atk:11,def:6,spd:15,dodge:13,acc:87,mdef:8,matk:15,critChance:8},
     color:'#c8a060',
     mainAttackId:'beak_chop',
     startAbilities:['beak_chop','drop_strike','laugh_call','perch_watch'],
@@ -750,7 +750,7 @@ const BIRDS = {
     size:'medium', class:'singer',
     unlockRequires:'unlock_lyrebird',
     unlockHint:'Defeat Stage 20 with Kookaburra.',
-    stats:{hp:58,maxHp:58,atk:4,def:11,spd:18,dodge:11,acc:93,mdef:20,matk:34,critChance:6},
+    stats:{hp:53,maxHp:53,atk:3,def:7,spd:11,dodge:7,acc:94,mdef:15,matk:25,critChance:6},
     color:'#c8902a',
     mainAttackId:'echo_note',
     startAbilities:['echo_note','mimic_chorus','display_step','refrain_mark'],
@@ -761,7 +761,7 @@ const BIRDS = {
     size:'medium', class:'trickster',
     unlockRequires:'juvenileWin',
     unlockHint:'Defeat Stage 20 on Normal mode to unlock.',
-    stats:{hp:57,maxHp:57,atk:16,def:9,spd:23,dodge:19,acc:89,mdef:14,matk:17,critChance:8},
+    stats:{hp:52,maxHp:52,atk:10,def:7,spd:14,dodge:12,acc:89,mdef:10,matk:15,critChance:8},
     color:'#6030d0',
     mainAttackId:'beak_jab',
     startAbilities:['beak_jab','omen_call','dark_watch','fate_mark'],
@@ -772,7 +772,7 @@ const BIRDS = {
     size:'medium', class:'trickster',
     unlockRequires:'unlock_magpie',
     unlockHint:'Defeat Stage 10 with Robin.',
-    stats:{hp:57,maxHp:57,atk:14,def:9,spd:26,dodge:21,acc:91,mdef:12,matk:16,critChance:10},
+    stats:{hp:48,maxHp:48,atk:10,def:6,spd:16,dodge:14,acc:90,mdef:9,matk:13,critChance:10},
     color:'#2a2a2a',
     mainAttackId:'swoop',
     startAbilities:['swoop','steal_shine','feather_flick','shine_step'],
@@ -781,7 +781,7 @@ const BIRDS = {
   robin:{
     name:'Robin', portraitKey:'robin', tagline:'Bright hedge-songster. Quick notes, light strikes, and uplifting refrains.',
     size:'small', class:'singer',
-    stats:{hp:48,maxHp:48,atk:4,def:10,spd:17,dodge:10,acc:93,mdef:18,matk:29,critChance:8},
+    stats:{hp:42,maxHp:42,atk:3,def:6,spd:13,dodge:8,acc:93,mdef:13,matk:27,critChance:8},
     color:'#d86a4c',
     mainAttackId:'bright_chirp',
     startAbilities:['bright_chirp','hop_step','quick_peck','dart_rush'],
@@ -792,7 +792,7 @@ const BIRDS = {
     size:'medium', class:'trickster',
     unlockRequires:'juvenileWin',
     unlockHint:'Defeat Stage 20 on Normal mode to unlock.',
-    stats:{hp:57,maxHp:57,atk:13,def:10,spd:24,dodge:19,acc:90,mdef:13,matk:19,critChance:8},
+    stats:{hp:50,maxHp:50,atk:8,def:6,spd:15,dodge:15,acc:92,mdef:10,matk:14,critChance:8},
     color:'#4a6a9a',
     mainAttackId:'trinket_toss',
     startAbilities:['trinket_toss','lure_call','bower_build','display_mark'],
@@ -803,7 +803,7 @@ const BIRDS = {
     size:'large', class:'striker',
     unlockRequires:'unlock_toucan',
     unlockHint:'Enter: "Ahh Ahh Eee Eee Tookie Tookie"',
-    stats:{hp:67,maxHp:67,atk:32,def:11,spd:33,dodge:20,acc:87,mdef:10,matk:2,critChance:6},
+    stats:{hp:58,maxHp:58,atk:17,def:8,spd:16,dodge:10,acc:84,mdef:9,matk:4,critChance:6},
     color:'#60c840',
     mainAttackId:'toucan_beak_jab',
     startAbilities:['toucan_beak_jab','beak_slam','fruit_toss','color_mark'],
@@ -814,7 +814,7 @@ const BIRDS = {
     size:'large', class:'tank',
     unlockRequires:'unlock_swan',
     unlockHint:'Reach Endless Stage 30 with any Tank.',
-    stats:{hp:73,maxHp:73,atk:16,def:39,spd:5,dodge:5,acc:77,mdef:37,matk:6,critChance:5},
+    stats:{hp:65,maxHp:65,atk:8,def:20,spd:6,dodge:4,acc:80,mdef:23,matk:3,critChance:5},
     color:'#f0f4fc',
     mainAttackId:'neck_jab',
     startAbilities:['neck_jab','wing_sweep','grace_glide','poise_mark'],
@@ -825,7 +825,7 @@ const BIRDS = {
     size:'large', class:'striker',
     unlockRequires:'unlock_flamingo',
     unlockHint:'Reach Endless Stage 30 with any Striker.',
-    stats:{hp:66,maxHp:66,atk:31,def:9,spd:33,dodge:25,acc:89,mdef:8,matk:2,critChance:6},
+    stats:{hp:60,maxHp:60,atk:15,def:8,spd:14,dodge:9,acc:86,mdef:14,matk:4,critChance:6},
     color:'#e8609a',
     mainAttackId:'leg_jab',
     startAbilities:['leg_jab','marsh_sweep','balance_pose','mire_mark'],
@@ -836,7 +836,7 @@ const BIRDS = {
     size:'large', class:'predator',
     unlockRequires:'unlock_secretary',
     unlockHint:'Defeat Stage 10 with Crow.',
-    stats:{hp:67,maxHp:67,atk:41,def:12,spd:27,dodge:11,acc:91,mdef:15,matk:2,critChance:8},
+    stats:{hp:62,maxHp:62,atk:21,def:9,spd:15,dodge:6,acc:90,mdef:10,matk:3,critChance:8},
     color:'#e0a060',
     mainAttackId:'sec_leg_jab',
     startAbilities:['sec_leg_jab','sec_crushing_kick','hunter_stride','prey_mark'],
@@ -847,7 +847,7 @@ const BIRDS = {
     size:'large', class:'bruiser',
     unlockRequires:'unlock_albatross',
     unlockHint:'Reach Endless Stage 50 with any bird.',
-    stats:{hp:72,maxHp:72,atk:37,def:26,spd:14,dodge:7,acc:79,mdef:21,matk:3,critChance:6},
+    stats:{hp:64,maxHp:64,atk:19,def:15,spd:9,dodge:5,acc:79,mdef:12,matk:4,critChance:6},
     color:'#9fb7c9',
     mainAttackId:'alb_wing_jab',
     startAbilities:['alb_wing_jab','alb_ocean_sweep','alb_glide_line','alb_current_mark'],
@@ -858,7 +858,7 @@ const BIRDS = {
     size:'medium', class:'trickster',
     unlockRequires:'unlock_seagull',
     unlockHint:'Reach level 21 in Endless mode with any Trickster.',
-    stats:{hp:56,maxHp:56,atk:13,def:9,spd:26,dodge:21,acc:90,mdef:12,matk:17,critChance:10},
+    stats:{hp:47,maxHp:47,atk:9,def:7,spd:16,dodge:14,acc:86,mdef:10,matk:12,critChance:10},
     color:'#b0c8d8',
     mainAttackId:'sgl_snap_peck',
     startAbilities:['sgl_snap_peck','sgl_swoop_pass','sgl_raucous_cry','sgl_scavenge_mark'],
@@ -867,7 +867,7 @@ const BIRDS = {
   goose:{
     name:'Goose', portraitKey:'goose', tagline:'Territorial bruiser. Honk, check, refuse to yield.',
     size:'xl', class:'tank',
-    stats:{hp:88,maxHp:88,atk:20,def:43,spd:5,dodge:5,acc:73,mdef:39,matk:6,critChance:5},
+    stats:{hp:72,maxHp:72,atk:8,def:20,spd:3,dodge:2,acc:75,mdef:24,matk:3,critChance:5},
     color:'#e8c96a',
     startAbilities:['gos_beak_snap','gos_body_check','gos_honk_blast','gos_brace_up'],
     mainAttackId:'gos_beak_snap',
@@ -878,7 +878,7 @@ const BIRDS = {
     size:'xl', class:'tank',
     unlockRequires:'unlock_shoebill',
     unlockHint:'Defeat Stage 10 with Goose.',
-    stats:{hp:90,maxHp:90,atk:21,def:43,spd:5,dodge:4,acc:74,mdef:40,matk:5,critChance:5},
+    stats:{hp:74,maxHp:74,atk:10,def:21,spd:3,dodge:2,acc:76,mdef:21,matk:3,critChance:5},
     color:'#5a7090',
     startAbilities:['sbl_beak_chop','sbl_skull_crack','sbl_still_stance','sbl_dread_mark'],
     mainAttackId:'sbl_beak_chop',
@@ -889,7 +889,7 @@ const BIRDS = {
     size:'xl', class:'predator',
     unlockRequires:'unlock_harpy',
     unlockHint:'Defeat Stage 20 with Hummingbird.',
-    stats:{hp:80,maxHp:80,atk:45,def:13,spd:29,dodge:12,acc:89,mdef:17,matk:2,critChance:15},
+    stats:{hp:71,maxHp:71,atk:21,def:9,spd:11,dodge:5,acc:88,mdef:11,matk:3,critChance:15},
     color:'#c84030',
     startAbilities:['hrp_talon_clutch','hrp_canopy_crush','hrp_predator_grip','hrp_prey_lock'],
     mainAttackId:'hrp_talon_clutch',
@@ -901,7 +901,7 @@ const BIRDS = {
     size:'xl', class:'predator',
     unlockRequires:'juvenileWin',
     unlockHint:'Defeat Stage 20 on Normal mode to unlock.',
-    stats:{hp:81,maxHp:81,atk:43,def:14,spd:29,dodge:12,acc:88,mdef:18,matk:2,critChance:12},
+    stats:{hp:69,maxHp:69,atk:20,def:9,spd:11,dodge:6,acc:89,mdef:11,matk:3,critChance:12},
     color:'#e8e4d8',
     mainAttackId:'skyTalon',
     startAbilities:['skyTalon','guard','predatorMark','freedomCry'],
@@ -912,7 +912,7 @@ const BIRDS = {
     size:'xl', class:'tank',
     unlockRequires:'unlock_penguin',
     unlockHint:'Reach Endless Stage 30 with any Tank.',
-    stats:{hp:89,maxHp:89,atk:18,def:42,spd:6,dodge:5,acc:74,mdef:42,matk:5,critChance:5},
+    stats:{hp:76,maxHp:76,atk:7,def:20,spd:3,dodge:2,acc:74,mdef:25,matk:3,critChance:5},
     color:'#3a5878',
     startAbilities:['icebreakerHonk','snowWall','guard','tundraCall'],
     passive:{id:'passive_penguin_icebound_plating',name:'Icebound Plating',desc:'While above 50% HP: +4 MDEF. Icebound resilience.'},
@@ -922,7 +922,7 @@ const BIRDS = {
     size:'xl', class:'bruiser',
     unlockRequires:'unlock_ostrich',
     unlockHint:'Defeat Stage 20 with Shoebill.',
-    stats:{hp:86,maxHp:86,atk:40,def:27,spd:20,dodge:9,acc:76,mdef:19,matk:3,critChance:8},
+    stats:{hp:75,maxHp:75,atk:19,def:13,spd:11,dodge:4,acc:76,mdef:10,matk:3,critChance:8},
     color:'#b89060',
     startAbilities:['powerKick','stampedeStrike','sandKick','momentumCharge'],
     passive:{id:'passive_ostrich_desert_momentum',name:'Desert Momentum',desc:'After using a 2 EN attack, gain +4 SPD next turn. Momentum bruiser.'},
@@ -932,7 +932,7 @@ const BIRDS = {
     size:'xl', class:'bruiser',
     unlockRequires:'juvenileWin',
     unlockHint:'Defeat Stage 20 on Normal mode to unlock.',
-    stats:{hp:88,maxHp:88,atk:43,def:30,spd:14,dodge:7,acc:77,mdef:21,matk:3,critChance:8},
+    stats:{hp:74,maxHp:74,atk:20,def:14,spd:9,dodge:3,acc:78,mdef:11,matk:3,critChance:8},
     color:'#3b4a56',
     startAbilities:['raptorKick','warStomp','momentumCharge','crushingTalon'],
     passive:{id:'passive_cassowary_terror_kick',name:'Terror Kick',desc:'Against Weakened targets: +10% Crit Damage. Punishes suppressed foes.'},
@@ -942,7 +942,7 @@ const BIRDS = {
     size:'xl', class:'bruiser',
     unlockRequires:'unlock_emu',
     unlockHint:'Reach Endless Stage 40 with any Tank.',
-    stats:{hp:86,maxHp:86,atk:40,def:28,spd:17,dodge:11,acc:77,mdef:20,matk:2,critChance:8},
+    stats:{hp:73,maxHp:73,atk:18,def:12,spd:12,dodge:4,acc:77,mdef:11,matk:3,critChance:8},
     color:'#7a6040',
     startAbilities:['headWhip','warCharge','sandKick','momentumStrike'],
     passive:{id:'passive_emu_dust_runner',name:'Dust Runner',desc:'First SPD buff each battle: that buff gains +2 SPD. Dust-runner momentum.'},
@@ -952,7 +952,7 @@ const BIRDS = {
     size:'xl', class:'predator',
     unlockRequires:'unlock_duke_blakiston',
     unlockHint:"Enter code 'Blakiston' on the selection screen.",
-    stats:{hp:89,maxHp:89,atk:45,def:15,spd:32,dodge:13,acc:90,mdef:19,matk:2,critChance:8},
+    stats:{hp:78,maxHp:78,atk:19,def:10,spd:11,dodge:5,acc:90,mdef:10,matk:5,critChance:8},
     color:'#6f88c2',
     startAbilities:['nightTalon','nightfallCall','courtSummon','verdict'],
     mainAttackId:'nightTalon',
@@ -963,7 +963,7 @@ const BIRDS = {
     size:'tiny', class:'striker',
     unlockRequires:'unlock_wren',
     unlockHint:'Coming soon.',
-    stats:{hp:36,maxHp:36,atk:22,def:6,spd:24,dodge:19,acc:93,mdef:5,matk:2,critChance:10},
+    stats:{hp:34,maxHp:34,atk:17,def:5,spd:24,dodge:16,acc:89,mdef:5,matk:5,critChance:10},
     color:'#6a9a6a',
     mainAttackId:'wren_quick_peck',
     startAbilities:['wren_quick_peck','wren_needle_dart','wren_feather_feint','wren_trail_step'],
@@ -974,7 +974,7 @@ const BIRDS = {
     size:'tiny', class:'singer',
     unlockRequires:'unlock_fairywren',
     unlockHint:'Coming soon.',
-    stats:{hp:38,maxHp:38,atk:2,def:8,spd:15,dodge:9,acc:95,mdef:16,matk:28,critChance:6},
+    stats:{hp:36,maxHp:36,atk:3,def:7,spd:13,dodge:11,acc:95,mdef:15,matk:23,critChance:6},
     color:'#4a7ae8',
     mainAttackId:'fwren_song',
     startAbilities:['fwren_song','fwren_bright_call','fwren_tiny_peck','fwren_refrain'],
@@ -985,7 +985,7 @@ const BIRDS = {
     size:'tiny', class:'striker',
     unlockRequires:'unlock_firecrest',
     unlockHint:'Coming soon.',
-    stats:{hp:36,maxHp:36,atk:22,def:5,spd:27,dodge:17,acc:94,mdef:5,matk:2,critChance:12},
+    stats:{hp:35,maxHp:35,atk:16,def:5,spd:26,dodge:12,acc:92,mdef:6,matk:7,critChance:12},
     color:'#e85a2a',
     mainAttackId:'firecrest_jab',
     startAbilities:['firecrest_jab','firecrest_burn_dash','firecrest_cinder_step','firecrest_heat_mark'],
@@ -996,7 +996,7 @@ const BIRDS = {
     size:'small', class:'trickster',
     unlockRequires:'unlock_wagtail',
     unlockHint:'Coming soon.',
-    stats:{hp:47,maxHp:47,atk:11,def:8,spd:24,dodge:21,acc:92,mdef:11,matk:13,critChance:8},
+    stats:{hp:43,maxHp:43,atk:9,def:6,spd:17,dodge:14,acc:93,mdef:9,matk:15,critChance:8},
     color:'#2a2a2a',
     mainAttackId:'wagtail_peck',
     startAbilities:['wagtail_peck','wagtail_flick_strike','wagtail_mock_call','wagtail_tail_mark'],
@@ -1007,7 +1007,7 @@ const BIRDS = {
     size:'small', class:'trickster',
     unlockRequires:'unlock_galah',
     unlockHint:'Coming soon.',
-    stats:{hp:48,maxHp:48,atk:13,def:9,spd:22,dodge:19,acc:90,mdef:10,matk:15,critChance:8},
+    stats:{hp:45,maxHp:45,atk:10,def:7,spd:15,dodge:12,acc:90,mdef:10,matk:16,critChance:8},
     color:'#e8a0c8',
     mainAttackId:'galah_beak_tap',
     startAbilities:['galah_beak_tap','galah_flash_strike','galah_screech','galah_show_mark'],
@@ -1018,7 +1018,7 @@ const BIRDS = {
     size:'small', class:'bruiser',
     unlockRequires:'unlock_bluejay',
     unlockHint:'Coming soon.',
-    stats:{hp:51,maxHp:51,atk:31,def:21,spd:13,dodge:6,acc:83,mdef:14,matk:3,critChance:8},
+    stats:{hp:46,maxHp:46,atk:20,def:14,spd:12,dodge:6,acc:84,mdef:13,matk:5,critChance:8},
     color:'#3a5cb8',
     mainAttackId:'bluejay_crest_jab',
     startAbilities:['bluejay_crest_jab','bluejay_jaybreaker','bluejay_crest_guard','bluejay_raucous_cry'],
@@ -1029,7 +1029,7 @@ const BIRDS = {
     size:'small', class:'singer',
     unlockRequires:'unlock_cardinal',
     unlockHint:'Coming soon.',
-    stats:{hp:49,maxHp:49,atk:2,def:10,spd:15,dodge:9,acc:93,mdef:19,matk:33,critChance:6},
+    stats:{hp:44,maxHp:44,atk:3,def:7,spd:10,dodge:6,acc:92,mdef:15,matk:29,critChance:6},
     color:'#c02030',
     mainAttackId:'cardinal_note',
     startAbilities:['cardinal_note','cardinal_hymn','cardinal_jab','cardinal_refrain'],
@@ -1040,7 +1040,7 @@ const BIRDS = {
     size:'medium', class:'bruiser',
     unlockRequires:'unlock_bushturkey',
     unlockHint:'Coming soon.',
-    stats:{hp:62,maxHp:62,atk:35,def:24,spd:12,dodge:6,acc:80,mdef:17,matk:4,critChance:6},
+    stats:{hp:51,maxHp:51,atk:20,def:15,spd:9,dodge:5,acc:80,mdef:14,matk:5,critChance:6},
     color:'#5a5040',
     mainAttackId:'bturkey_scrap_peck',
     startAbilities:['bturkey_scrap_peck','bturkey_brush_crash','bturkey_bush_guard','bturkey_rattle_call'],
@@ -1051,7 +1051,7 @@ const BIRDS = {
     size:'medium', class:'bruiser',
     unlockRequires:'unlock_vulture',
     unlockHint:'Coming soon.',
-    stats:{hp:61,maxHp:61,atk:34,def:23,spd:12,dodge:6,acc:81,mdef:19,matk:4,critChance:6},
+    stats:{hp:54,maxHp:54,atk:22,def:14,spd:8,dodge:4,acc:81,mdef:15,matk:5,critChance:6},
     color:'#6a5a50',
     mainAttackId:'vulture_grave_jab',
     startAbilities:['vulture_grave_jab','vulture_corpse_crush','vulture_bone_ward','vulture_grave_dirge'],
@@ -1062,7 +1062,7 @@ const BIRDS = {
     size:'medium', class:'predator',
     unlockRequires:'unlock_barnowl',
     unlockHint:'Coming soon.',
-    stats:{hp:56,maxHp:56,atk:35,def:10,spd:25,dodge:11,acc:93,mdef:15,matk:2,critChance:12},
+    stats:{hp:50,maxHp:50,atk:22,def:7,spd:13,dodge:7,acc:91,mdef:11,matk:8,critChance:12},
     color:'#c8b8a0',
     mainAttackId:'barnowl_talon',
     startAbilities:['barnowl_talon','barnowl_shadow_dive','barnowl_death_glare','barnowl_silent_glide'],
@@ -1073,7 +1073,7 @@ const BIRDS = {
     size:'large', class:'bruiser',
     unlockRequires:'unlock_bustard',
     unlockHint:'Coming soon.',
-    stats:{hp:72,maxHp:72,atk:38,def:27,spd:13,dodge:6,acc:78,mdef:20,matk:4,critChance:6},
+    stats:{hp:63,maxHp:63,atk:19,def:15,spd:8,dodge:4,acc:78,mdef:14,matk:4,critChance:6},
     color:'#8a7860',
     mainAttackId:'bustard_heavy_jab',
     startAbilities:['bustard_heavy_jab','bustard_dust_trample','bustard_plainshield','bustard_steppe_call'],
@@ -1084,7 +1084,7 @@ const BIRDS = {
     size:'large', class:'predator',
     unlockRequires:'unlock_goldeneagle',
     unlockHint:'Coming soon.',
-    stats:{hp:68,maxHp:68,atk:40,def:12,spd:28,dodge:10,acc:91,mdef:16,matk:2,critChance:12},
+    stats:{hp:61,maxHp:61,atk:22,def:10,spd:14,dodge:6,acc:92,mdef:9,matk:3,critChance:12},
     color:'#c9a020',
     mainAttackId:'golden_talon',
     startAbilities:['golden_talon','golden_swoop','golden_verdict','golden_focus'],
@@ -1095,7 +1095,7 @@ const BIRDS = {
     size:'xl', class:'tank',
     unlockRequires:'unlock_pelican',
     unlockHint:'Coming soon.',
-    stats:{hp:89,maxHp:89,atk:19,def:43,spd:6,dodge:4,acc:73,mdef:41,matk:5,critChance:5},
+    stats:{hp:77,maxHp:77,atk:8,def:21,spd:2,dodge:1,acc:73,mdef:25,matk:3,critChance:5},
     color:'#a0b8c8',
     mainAttackId:'pelican_snap',
     startAbilities:['pelican_snap','pelican_crush','pelican_guard','pelican_recovery'],
@@ -1106,7 +1106,7 @@ const BIRDS = {
     size:'xl', class:'predator',
     unlockRequires:'unlock_marabou',
     unlockHint:'Coming soon.',
-    stats:{hp:82,maxHp:82,atk:44,def:14,spd:27,dodge:11,acc:88,mdef:19,matk:3,critChance:10},
+    stats:{hp:76,maxHp:76,atk:19,def:10,spd:9,dodge:4,acc:84,mdef:13,matk:5,critChance:10},
     color:'#8a8a88',
     mainAttackId:'marabou_jab',
     startAbilities:['marabou_jab','marabou_lunge','marabou_sentence','marabou_hunt'],
@@ -1439,7 +1439,7 @@ const UPGRADE_CARDS_REWORK = [
   {id:'g_fleet_step',tier:'grey',icon:'💨',name:'Fleet Step',desc:'+1 SPD',tags:['stat','spd'],apply:p=>_upgFlatStat(p,'spd',1)},
   {id:'g_quick_blood',tier:'grey',icon:'💥',name:'Quick Blood',desc:'+3% crit chance',tags:['stat','crit'],apply:p=>{p.stats.critChance=Math.min(95,(p.stats.critChance||5)+3);}},
   {id:'g_sharpened_finish',tier:'grey',icon:'🩸',name:'Sharpened Finish',desc:'+5% crit damage',tags:['stat','crit'],apply:p=>{p.critDamageBonusPct=(p.critDamageBonusPct||0)+0.05;}},
-  {id:'g_focused_eye',tier:'grey',icon:'🎯',name:'Focused Eye',desc:'+4% hit chance',tags:['stat','accuracy'],apply:p=>{p.hitChanceBonus=(p.hitChanceBonus||0)+4;}},
+  {id:'g_focused_eye',tier:'grey',icon:'🪶',name:'Steady Plumule',desc:'+1 DEF',tags:['stat','def'],apply:p=>_upgFlatStat(p,'def',1)},
   {id:'g_light_frame',tier:'grey',icon:'🪽',name:'Light Frame',desc:'+3% Dodge',tags:['defense','dodge'],apply:p=>{p.stats.dodge=Math.min(95,(p.stats.dodge||0)+3);}},
   {id:'g_first_bite',tier:'grey',icon:'🦴',name:'First Bite',desc:'First attack each battle +5% damage',tags:['opening','offense'],stackable:false,apply:p=>{p.firstAttackEachBattleBonusPct=Math.max(p.firstAttackEachBattleBonusPct||0,0.05);}},
   {id:'g_guard_posture',tier:'grey',icon:'🛡',name:'Guard Posture',desc:'First hit taken each battle reduced by -10% damage',tags:['defense'],stackable:false,apply:p=>{p.firstHitReduce=Math.max(p.firstHitReduce||0,0.10);}},
@@ -1459,7 +1459,7 @@ const UPGRADE_CARDS_REWORK = [
   {id:'gr_tailwind',tier:'green',icon:'🌬️',name:'Tailwind',desc:'+2 SPD',tags:['stat','spd'],apply:p=>_upgFlatStat(p,'spd',2)},
   {id:'gr_predators_eye',tier:'green',icon:'👁️',name:"Predator's Eye",desc:'+5% crit chance',tags:['stat','crit'],apply:p=>{p.stats.critChance=Math.min(95,(p.stats.critChance||5)+5);}},
   {id:'gr_execution_habit',tier:'green',icon:'💢',name:'Execution Habit',desc:'+10% crit damage',tags:['stat','crit'],apply:p=>{p.critDamageBonusPct=(p.critDamageBonusPct||0)+0.10;}},
-  {id:'gr_calm_focus',tier:'green',icon:'🎯',name:'Calm Focus',desc:'+6% hit chance',tags:['stat','accuracy'],apply:p=>{p.hitChanceBonus=(p.hitChanceBonus||0)+6;}},
+  {id:'gr_calm_focus',tier:'green',icon:'🔷',name:'Calm Focus',desc:'+2 MDEF',tags:['stat','mdef'],apply:p=>_upgFlatStat(p,'mdef',2)},
   {id:'gr_hard_plumage',tier:'green',icon:'🛡️',name:'Hard Plumage',desc:'First hit taken each battle reduced by -15% damage',tags:['defense'],stackable:false,apply:p=>{p.firstHitReduce=Math.max(p.firstHitReduce||0,0.15);}},
   {id:'gr_field_dressing',tier:'green',icon:'🌿',name:'Field Dressing',desc:'Heal 5 HP on kill',tags:['combat-trigger','sustain'],apply:p=>{p.healOnKill=(p.healOnKill||0)+5;}},
   {id:'gr_slipstream_tonic',tier:'green',icon:'💧',name:'Slipstream Tonic',desc:'Heal 3 HP on dodge',tags:['combat-trigger','sustain'],apply:p=>{p.healOnDodge=(p.healOnDodge||0)+3;}},
@@ -1480,7 +1480,7 @@ const UPGRADE_CARDS_REWORK = [
   {id:'b_skirmishers_form',tier:'blue',icon:'⚔️',name:"Skirmisher's Form",desc:'+2 ATK, +2 SPD',tags:['hybrid','atk','spd'],apply:p=>{_upgFlatStat(p,'atk',2);_upgFlatStat(p,'spd',2);}},
   {id:'b_runic_guard',tier:'blue',icon:'🔮',name:'Runic Guard',desc:'+2 MATK, +2 MDEF',tags:['hybrid','matk','mdef'],apply:p=>{_upgFlatStat(p,'matk',2);_upgFlatStat(p,'mdef',2);}},
   {id:'b_iron_gale',tier:'blue',icon:'🌪️',name:'Iron Gale',desc:'+2 DEF, +2 SPD',tags:['hybrid','def','spd'],apply:p=>{_upgFlatStat(p,'def',2);_upgFlatStat(p,'spd',2);}},
-  {id:'b_predators_mind',tier:'blue',icon:'🧠',name:"Predator's Mind",desc:'+5% hit chance, +5% crit damage',tags:['hybrid','accuracy','crit'],apply:p=>{p.hitChanceBonus=(p.hitChanceBonus||0)+5;p.critDamageBonusPct=(p.critDamageBonusPct||0)+0.05;}},
+  {id:'b_predators_mind',tier:'blue',icon:'🧠',name:"Predator's Mind",desc:'+5% crit chance, +5% crit damage',tags:['hybrid','crit'],apply:p=>{p.stats.critChance=Math.min(95,(p.stats.critChance||5)+5);p.critDamageBonusPct=(p.critDamageBonusPct||0)+0.05;}},
   {id:'b_deep_cut',tier:'blue',icon:'🩸',name:'Deep Cut',desc:'Bleed applied by you gains +1 stack',tags:['status-synergy','bleed'],stackable:false,apply:p=>{p.bleedBonusStacks=Math.max(p.bleedBonusStacks||0,1);}},
   {id:'b_venom_reservoir',tier:'blue',icon:'☣️',name:'Venom Reservoir',desc:'Poison lasts +1 turn',tags:['status-synergy','poison'],stackable:false,apply:p=>{p.poisonExtraTurns=Math.max(p.poisonExtraTurns||0,1);}},
   {id:'b_frozen_nerve',tier:'blue',icon:'❄️',name:'Frozen Nerve',desc:'Chill lasts +1 turn',tags:['status-synergy','chill'],stackable:false,apply:p=>{p.chillExtraTurns=Math.max(p.chillExtraTurns||0,1);}},
@@ -1507,14 +1507,14 @@ const UPGRADE_CARDS_REWORK = [
   {id:'p_execution_window',tier:'purple',icon:'🪓',name:'Execution Window',desc:'Crits vs afflicted enemies deal +20% crit damage',tags:['status-synergy','crit','ailment'],stackable:false,apply:p=>{p.critVsAfflictedBonusPct=Math.max(p.critVsAfflictedBonusPct||0,0.20);}},
   {id:'p_rot_and_ruin',tier:'purple',icon:'🦠',name:'Rot and Ruin',desc:'+7% damage per ailment on target (max +20%)',tags:['status-synergy','ailment'],stackable:false,apply:p=>{p.damagePerAilmentPct=Math.max(p.damagePerAilmentPct||0,0.07);p.damagePerAilmentPctCap=Math.max(p.damagePerAilmentPctCap||0,0.20);}},
   {id:'p_survivors_molt',tier:'purple',icon:'🪶',name:"Survivor's Molt",desc:'Once per battle below 30% HP, heal 8',tags:['combat-trigger','defense'],stackable:false,apply:p=>{p.survivorMoltHeal=Math.max(p.survivorMoltHeal||0,8);}},
-  {id:'p_precision_talon',tier:'purple',icon:'🏹',name:'Precision Talon',desc:'+10% hit chance',tags:['stat','accuracy'],apply:p=>{p.hitChanceBonus=(p.hitChanceBonus||0)+10;}},
+  {id:'p_precision_talon',tier:'purple',icon:'🏹',name:'Precision Talon',desc:'+10% crit damage',tags:['stat','crit'],apply:p=>{p.critDamageBonusPct=(p.critDamageBonusPct||0)+0.10;}},
   {id:'p_relentless_strike',tier:'purple',icon:'⚔️',name:'Relentless Strike',desc:'First attack each turn deals +10% damage',tags:['opening','offense'],stackable:false,apply:p=>{p.firstAttackEachTurnBonusPct=Math.max(p.firstAttackEachTurnBonusPct||0,0.10);}},
   // GOLD
   {id:'z_king_bloodline',tier:'gold',icon:'👑',name:'King Bloodline',desc:'+36 Max HP',tags:['stat','hp'],stackable:false,apply:p=>_upgFlatMaxHp(p,36)},
   {id:'z_sky_hunter',tier:'gold',icon:'🦅',name:'Sky Hunter',desc:'+5 ATK',tags:['stat','atk'],stackable:false,apply:p=>_upgFlatStat(p,'atk',5)},
   {id:'z_void_hunter',tier:'gold',icon:'🌑',name:'Void Hunter',desc:'+5 MATK',tags:['stat','matk'],stackable:false,apply:p=>_upgFlatStat(p,'matk',5)},
   {id:'z_crown_of_the_four_winds',tier:'gold',icon:'👑',name:'Crown of the Four Winds',desc:'+2 ATK, +2 SPD, +5% crit chance, +5% dodge',tags:['hybrid','atk','spd','crit','dodge'],stackable:false,apply:p=>{_upgFlatStat(p,'atk',2);_upgFlatStat(p,'spd',2);p.stats.critChance=Math.min(95,(p.stats.critChance||5)+5);p.stats.dodge=Math.min(95,(p.stats.dodge||0)+5);}},
-  {id:'z_blackstone_sigil',tier:'gold',icon:'🗿',name:'Blackstone Sigil',desc:'+2 MATK, +2 MDEF, +5% hit chance, +5% crit damage',tags:['hybrid','matk','mdef','accuracy','crit'],stackable:false,apply:p=>{_upgFlatStat(p,'matk',2);_upgFlatStat(p,'mdef',2);p.hitChanceBonus=(p.hitChanceBonus||0)+5;p.critDamageBonusPct=(p.critDamageBonusPct||0)+0.05;}},
+  {id:'z_blackstone_sigil',tier:'gold',icon:'🗿',name:'Blackstone Sigil',desc:'+2 MATK, +2 MDEF, +1 SPD, +5% crit damage',tags:['hybrid','matk','mdef','spd','crit'],stackable:false,apply:p=>{_upgFlatStat(p,'matk',2);_upgFlatStat(p,'mdef',2);_upgFlatStat(p,'spd',1);p.critDamageBonusPct=(p.critDamageBonusPct||0)+0.05;}},
   {id:'z_golden_feather',tier:'gold',icon:'🪶',name:'Golden Feather',desc:'+1 Max EN (max 3 copies per run)',tags:['unique','energy'],stackable:true,maxStacks:3,runSpawnCap:3,apply:p=>_upgGoldenFeather(p)},
   {id:'z_sky_predator',tier:'gold',icon:'🦅',name:'Sky Predator',desc:'First attack each battle always crits',tags:['unique','offense'],stackable:false,apply:p=>{p.firstAttackAlwaysCrit=true;}},
   {id:'z_blackstone_trophy',tier:'gold',icon:'🏆',name:'Blackstone Trophy',desc:'Enemies start battle with Fear(1)',tags:['unique','control'],stackable:false,apply:p=>{p.openingEnemyFear=Math.max(p.openingEnemyFear||0,1);}},
@@ -1674,8 +1674,8 @@ function getDerivedMechanicalBonusLines(player){
   if((p.critVsAfflictedBonusPct||0)>0) lines.push(`+${pct(p.critVsAfflictedBonusPct)} crit damage vs afflicted`);
   if((p.damagePerAilmentPct||0)>0 && (p.damagePerAilmentPctCap||0)>0) lines.push(`+${pct(p.damagePerAilmentPct)}%/ailment (cap +${pct(p.damagePerAilmentPctCap)})`);
   if((p.augAttackDmgPct||0)>0) lines.push(`+${pct(p.augAttackDmgPct)}% attack-skill damage`);
-  if((p.augSpellAcc||0)>0) lines.push(`+${p.augSpellAcc}% spell hit chance (Endless augment)`);
-  if((p.augAttackAcc||0)>0) lines.push(`+${p.augAttackAcc}% attack-skill hit chance (Endless augment)`);
+  if((p.augAttackCrit||0)>0) lines.push(`+${p.augAttackCrit}% attack-skill crit chance (Endless augment)`);
+  if((p.augSpellCrit||0)>0) lines.push(`+${p.augSpellCrit}% spell crit chance (Endless augment)`);
   if(p.firstAttackFree) lines.push('First attack each battle costs 0 EN');
   if(p.firstSpellFree) lines.push('First spell each battle costs 0 EN');
   if((p.augFirstSpellCostDown||0)>0) lines.push(`First spell each battle costs ${p.augFirstSpellCostDown} less EN`);
@@ -1689,7 +1689,7 @@ function getDerivedMechanicalBonusLines(player){
 
 const ENDLESS_SKILL_AUGMENTS = [
   {id:'aug_razor_edge',name:'Razor Edge',tier:'blue',type:'augment',desc:'Endless only — Attack skills deal +20% damage to Bleeding enemies.',apply:p=>{p.augAttackVsBleedPct=(p.augAttackVsBleedPct||0)+0.20;}},
-  {id:'aug_pinpoint_strike',name:'Pinpoint Strike',tier:'green',type:'augment',desc:'Endless only — Attack skills gain +12% hit chance.',apply:p=>{p.augAttackAcc=(p.augAttackAcc||0)+12;}},
+  {id:'aug_pinpoint_strike',name:'Pinpoint Strike',tier:'green',type:'augment',desc:'Endless only — Attack skills gain +12% crit chance.',apply:p=>{p.augAttackCrit=(p.augAttackCrit||0)+12;}},
   {id:'aug_blood_trigger',name:'Blood Trigger',tier:'green',type:'augment',desc:'Endless only — Attack-skill crits apply Bleed(1).',apply:p=>{p.augCritBleed=(p.augCritBleed||0)+1;}},
   {id:'aug_piercing_talon',name:'Piercing Talon',tier:'blue',type:'augment',desc:'Endless only — Attack skills ignore 15% DEF.',apply:p=>{p.augAttackPiercePct=(p.augAttackPiercePct||0)+0.15;}},
   {id:'aug_ambush_claw',name:'Ambush Claw',tier:'blue',type:'augment',desc:'Endless only — First attack skill each battle deals +35% damage.',apply:p=>{p.augFirstAttackBattlePct=(p.augFirstAttackBattlePct||0)+0.35;}},
@@ -1701,7 +1701,7 @@ const ENDLESS_SKILL_AUGMENTS = [
   {id:'aug_runic_burst',name:'Runic Burst',tier:'blue',type:'augment',desc:'Endless only — Spell skills deal +18% damage.',apply:p=>{p.augSpellDmgPct=(p.augSpellDmgPct||0)+0.18;}},
   {id:'aug_venom_verse',name:'Venom Verse',tier:'green',type:'augment',desc:'Endless only — Spell skills apply Poison(1) on hit.',apply:p=>{p.augSpellPoison=true;}},
   {id:'aug_dread_verse',name:'Dread Verse',tier:'blue',type:'augment',desc:'Endless only — First spell each battle applies Fear(1).',apply:p=>{p.augFirstSpellFear=true;}},
-  {id:'aug_arcane_accuracy',name:'Arcane Accuracy',tier:'green',type:'augment',desc:'Endless only — Spell skills gain +14% hit chance.',apply:p=>{p.augSpellAcc=(p.augSpellAcc||0)+14;}},
+  {id:'aug_arcane_accuracy',name:'Arcane Edge',tier:'green',type:'augment',desc:'Endless only — Spell skills gain +12% crit chance.',apply:p=>{p.augSpellCrit=(p.augSpellCrit||0)+12;}},
   {id:'aug_mana_rend',name:'Mana Rend',tier:'blue',type:'augment',desc:'Endless only — Spell skills ignore 15% MDEF.',apply:p=>{p.augSpellPiercePct=(p.augSpellPiercePct||0)+0.15;}},
   {id:'aug_echo_rune',name:'Echo Rune',tier:'purple',type:'augment',desc:'Endless only — Every fourth spell repeats at 40% power.',apply:p=>{p.augFourthSpellEcho=0.40;}},
   {id:'aug_withering_chant',name:'Withering Chant',tier:'blue',type:'augment',desc:'Endless only — Spells deal +25% damage to Poisoned enemies.',apply:p=>{p.augSpellVsPoisonPct=(p.augSpellVsPoisonPct||0)+0.25;}},
@@ -1714,7 +1714,7 @@ const ENDLESS_SKILL_AUGMENTS = [
   {id:'aug_evasive_drift',name:'Evasive Drift',tier:'green',type:'augment',desc:'Endless only — Defensive skills grant +6% Dodge this turn.',apply:p=>{p.augDefSkillDodge=(p.augDefSkillDodge||0)+6;}},
   {id:'aug_clear_mind',name:'Clear Mind',tier:'green',type:'augment',desc:'Endless only — Defensive skills remove Fear from you.',apply:p=>{p.augDefSkillClearFear=true;}},
   {id:'aug_rebound_plumage',name:'Rebound Plumage',tier:'blue',type:'augment',desc:'Endless only — After defensive skill, next attack +15% damage.',apply:p=>{p.augPostDefAtkPct=(p.augPostDefAtkPct||0)+0.15;}},
-  {id:'aug_patient_hunter',name:'Patient Hunter',tier:'blue',type:'augment',desc:'Endless only — After defensive skill, next attack +10% hit chance.',apply:p=>{p.augPostDefAcc=(p.augPostDefAcc||0)+10;}},
+  {id:'aug_patient_hunter',name:'Patient Hunter',tier:'blue',type:'augment',desc:'Endless only — After defensive skill, next attack +10% damage.',apply:p=>{p.augPostDefAtkPct=(p.augPostDefAtkPct||0)+0.10;}},
   {id:'aug_iron_resolve',name:'Iron Resolve',tier:'purple',type:'augment',desc:'Endless only — First defensive skill each battle grants -20% damage taken for 1 turn.',apply:p=>{p.augIronResolve=true;}},
   {id:'aug_feather_reserve',name:'Feather Reserve',tier:'blue',type:'augment',desc:'Endless only — Defensive skill has 25% chance to refund 1 Energy.',apply:p=>{p.augDefSkillRefund=25;}},
   {id:'aug_counter_instinct',name:'Counter Instinct',tier:'purple',type:'augment',desc:'Endless only — After defensive skill, if enemy attacks next turn they gain Bleed(1).',apply:p=>{p.augCounterInstinct=true;}},
@@ -1734,7 +1734,7 @@ const ENDLESS_RELICS = [
   {id:'rel_terror_ledger',name:'Terror Ledger',tier:'blue',type:'relic',desc:'Endless only — Feared enemies deal -10% damage.',apply:p=>{p.relTerrorLedger=true;}},
   {id:'rel_duel_record',name:'Duel Record',tier:'blue',type:'relic',desc:'Endless only — Every 3 endless wins, gain +1% crit chance.',apply:p=>{p.relDuelRecord=true;}},
   {id:'rel_wind_ledger',name:'Wind Ledger',tier:'blue',type:'relic',desc:'Endless only — Every 4 battles, first attack +10% dmg (stacks to +50% until boss).',apply:p=>{p.relWindLedger=true;}},
-  {id:'rel_hawk_ledger',name:'Hawk Ledger',tier:'blue',type:'relic',desc:'Endless only — Gain +8% hit chance at endless milestone thresholds.',apply:p=>{p.relHawkLedger=true;}},
+  {id:'rel_hawk_ledger',name:'Hawk Ledger',tier:'blue',type:'relic',desc:'Endless only — Gain +4% crit chance per milestone (battles 10 / 20 / 30).',apply:p=>{p.relHawkLedger=true;}},
   {id:'rel_iron_ledger',name:'Iron Ledger',tier:'blue',type:'relic',desc:'Endless only — First hit taken each battle deals -12% damage.',apply:p=>{p.relIronLedger=true;}},
   {id:'rel_predators_archive',name:"Predator's Archive",tier:'purple',type:'relic',desc:'Endless only — After every boss kill, gain +1 ATK and +1 MATK.',apply:p=>{p.relPredatorsArchive=true;}},
   {id:'rel_molting_doctrine',name:'Molting Doctrine',tier:'purple',type:'relic',desc:'Endless only — Every 8 endless battles, gain +5 Max HP.',apply:p=>{p.relMoltingDoctrine=true;}},
@@ -1995,7 +1995,7 @@ const CLASS_PERK_DEFS = {
     {id:'executionLine',name:'Execution Line',desc:'+20% damage to enemies below 40% HP.',apply:p=>{p.perkExecutePct=(p.perkExecutePct||0)+0.20;}},
   ],
   singer:[
-    {id:'arcFocus',name:'Arc Focus',desc:'Spells gain +8% accuracy.',apply:p=>{p.perkSpellAcc=(p.perkSpellAcc||0)+8;}},
+    {id:'arcFocus',name:'Arc Focus',desc:'Spells deal +8% damage.',apply:p=>{/* effect applied in dealDamage via class perk flag */}},
     {id:'songline',name:'Songline',desc:'Buffs you apply last 1 extra turn.',apply:p=>{p.perkBuffDuration=(p.perkBuffDuration||0)+1;}},
     {id:'restorativeRhythm',name:'Restorative Rhythm',desc:'Healing skills restore +3 HP.',apply:p=>{p.perkHealFlat=(p.perkHealFlat||0)+3;}},
   ],
@@ -2218,7 +2218,7 @@ const ALL_REWARDS = [
   {id:'u_spd2', tier:'green', icon:'🏁', name:'Tailwind Steps', desc:'SPD +2', tags:['utility','spd'], apply:p=>{ p.stats.spd=(p.stats.spd||0)+2; }},
   {id:'u_dodge10', tier:'green', icon:'🌪️', name:'Wind Step', desc:'Dodge +10%', tags:['defense','dodge'], apply:p=>{ p.stats.dodge=Math.min((p.stats.dodge||0)+10,100); }},
   {id:'u_postHealPlus3', tier:'green', icon:'🍎', name:'Field Snack', desc:'+3% Max HP extra heal after every battle', tags:['sustain','scaling'], apply:p=>{ p.postBattleHealBonusPct=(p.postBattleHealBonusPct||0)+0.03; }},
-  {id:'u_precision3', tier:'green', icon:'🎯', name:'Keen Sight', desc:'All skills: -3% miss chance (min 0%)', tags:['utility','accuracy'], apply:p=>{ p.missReduce=(p.missReduce||0)+0.03; }},
+  {id:'u_precision3', tier:'green', icon:'🎯', name:'Keen Sight', desc:'+3% crit chance', tags:['utility','crit'], apply:p=>{ p.stats.critChance=Math.min(95,(p.stats.critChance||5)+3); }},
 
   {id:'r_energyMax1', tier:'blue', icon:'🔵', name:'Second Lung', desc:'Max Energy +1', tags:['utility','energy'], apply:p=>{ p.energyBonus=(p.energyBonus||0)+1; p.energyMax=(p.energyMax||0)+1; }},
   {id:'r_hp45', tier:'blue', icon:'🫀', name:'War-Heart', desc:'Max HP +20 (heal +20)', tags:['sustain','hp'], apply:p=>{ p.stats.maxHp+=20; p.stats.hp=Math.min(p.stats.hp+20,p.stats.maxHp); }},
@@ -2227,7 +2227,7 @@ const ALL_REWARDS = [
   {id:'r_atk9', tier:'blue', icon:'🦅', name:'Predator Poise', desc:'ATK +3', tags:['offense','atk'], apply:p=>{ p.stats.atk+=3; }},
   {id:'r_matk9', tier:'blue', icon:'🔮', name:'Storm Hymn', desc:'MATK +3', tags:['offense','matk'], apply:p=>{ p.stats.matk=(p.stats.matk||0)+3; }},
   {id:'r_speed4', tier:'blue', icon:'🌬️', name:'Jetstream', desc:'SPD +4', tags:['utility','spd'], apply:p=>{ p.stats.spd=(p.stats.spd||0)+4; }},
-  {id:'r_precision6', tier:'blue', icon:'🏹', name:'Falcon Focus', desc:'All skills: -6% miss chance (min 0%)', tags:['utility','accuracy'], apply:p=>{ p.missReduce=(p.missReduce||0)+0.06; }},
+  {id:'r_precision6', tier:'blue', icon:'🏹', name:'Falcon Focus', desc:'+6% crit chance', tags:['utility','crit'], apply:p=>{ p.stats.critChance=Math.min(95,(p.stats.critChance||5)+6); }},
 
   {id:'e_energyMax2', tier:'purple', icon:'🟣', name:'Third Lung', desc:'Max Energy +2', tags:['utility','energy'], apply:p=>{ p.energyBonus=(p.energyBonus||0)+2; p.energyMax=(p.energyMax||0)+2; }},
   {id:'e_fullHeal', tier:'purple', icon:'💉', name:'Sky Tonic', desc:'Full heal + Max HP +30', tags:['sustain','hp'], apply:p=>{ p.stats.maxHp+=30; p.stats.hp=p.stats.maxHp; }},
@@ -2240,7 +2240,7 @@ const ALL_REWARDS = [
   {id:'l_energyMax3', tier:'gold', icon:'👑', name:'Sun-Blessed Lungs', desc:'Max Energy +3', tags:['utility','energy'], apply:p=>{ p.energyBonus=(p.energyBonus||0)+3; p.energyMax=(p.energyMax||0)+3; }},
   {id:'l_titanHide', tier:'gold', icon:'🏔️', name:'Titan Hide', desc:'Max HP +45, DEF +6, MDEF +6', tags:['sustain','defense'], apply:p=>{ p.stats.maxHp+=45; p.stats.hp=p.stats.maxHp; p.stats.def+=6; p.stats.mdef=(p.stats.mdef||0)+6; }},
   {id:'l_apexOffense', tier:'gold', icon:'🦅', name:'Apex Instinct', desc:'ATK +7, MATK +7', tags:['offense'], apply:p=>{ p.stats.atk+=7; p.stats.matk=(p.stats.matk||0)+7; }},
-  {id:'l_trueSight', tier:'gold', icon:'👁️', name:'True Sight', desc:'All skills: -12% miss chance (min 0%)', tags:['utility','accuracy'], apply:p=>{ p.missReduce=(p.missReduce||0)+0.12; }},
+  {id:'l_trueSight', tier:'gold', icon:'👁️', name:'True Sight', desc:'+10% crit damage', tags:['utility','crit'], apply:p=>{ p.critDamageBonusPct=(p.critDamageBonusPct||0)+0.10; }},
   {id:'l_roostFeast', tier:'gold', icon:'🔥', name:'Eternal Roost', desc:'Full heal + +12% Max HP extra heal after every battle', tags:['sustain','scaling'], apply:p=>{ p.stats.hp=p.stats.maxHp; p.postBattleHealBonusPct=(p.postBattleHealBonusPct||0)+0.12; }},
 ];
 
@@ -7413,12 +7413,12 @@ function weightedPick(entries){
 }
 function classGrowthWeightsForStory(cls){
   const c=String(cls||'striker').toLowerCase();
-  if(c==='striker') return [{k:'atk',w:4},{k:'spd',w:4},{k:'acc',w:3},{k:'dodge',w:2},{k:'critChance',w:2},{k:'def',w:1}];
-  if(c==='predator') return [{k:'atk',w:4},{k:'spd',w:3},{k:'acc',w:3},{k:'critChance',w:3},{k:'def',w:2},{k:'maxHp',w:2}];
+  if(c==='striker') return [{k:'atk',w:4},{k:'spd',w:4},{k:'critChance',w:3},{k:'dodge',w:2},{k:'def',w:2},{k:'matk',w:1}];
+  if(c==='predator') return [{k:'atk',w:4},{k:'spd',w:4},{k:'critChance',w:4},{k:'def',w:2},{k:'maxHp',w:2},{k:'mdef',w:1}];
   if(c==='bruiser') return [{k:'maxHp',w:4},{k:'atk',w:3},{k:'def',w:3},{k:'spd',w:2},{k:'mdef',w:2}];
   if(c==='tank') return [{k:'maxHp',w:5},{k:'def',w:4},{k:'mdef',w:3},{k:'atk',w:2},{k:'spd',w:1}];
-  if(c==='trickster') return [{k:'spd',w:4},{k:'acc',w:4},{k:'dodge',w:3},{k:'matk',w:2},{k:'atk',w:2},{k:'maxHp',w:1}];
-  return [{k:'matk',w:4},{k:'mdef',w:3},{k:'maxHp',w:3},{k:'spd',w:2},{k:'acc',w:2},{k:'atk',w:1}]; // singer
+  if(c==='trickster') return [{k:'spd',w:5},{k:'dodge',w:4},{k:'matk',w:3},{k:'atk',w:2},{k:'maxHp',w:1},{k:'critChance',w:1}];
+  return [{k:'matk',w:4},{k:'mdef',w:3},{k:'maxHp',w:3},{k:'spd',w:3},{k:'critChance',w:2},{k:'atk',w:1}]; // singer
 }
 /** Story OW enemy level scales 1→12 across stages 1→20 (mirrors expected player progression depth). */
 function getStoryEnemyLevelForStage(stage){
@@ -11437,6 +11437,7 @@ function dealDamage(target,amount,isCrit=false,isMagic=false,srcAbility=null) {
       dmg=Math.floor(dmg*(1+G.player.augFourthSpellEcho));
     }
     if(isSpell && (G.player?.augSpellDmgPct||0)>0) dmg=Math.floor(dmg*(1+G.player.augSpellDmgPct));
+    if(isSpell && classPerkCtx.arcFocus) dmg=Math.floor(dmg*1.08);
     if(isSpell && G.enemyStatus?.poison?.stacks>0 && (G.player?.augSpellVsPoisonPct||0)>0) dmg=Math.floor(dmg*(1+G.player.augSpellVsPoisonPct));
     if(isSpell && (G.enemyStatus?.feared||0)>0 && (G.player?.augSpellVsFearPct||0)>0) dmg=Math.floor(dmg*(1+G.player.augSpellVsFearPct));
     if(isAttack && (G.player?.augAttackVsBleedPct||0)>0 && G.enemyStatus?.bleed?.stacks>0) dmg=Math.floor(dmg*(1+G.player.augAttackVsBleedPct));
@@ -11881,18 +11882,11 @@ function getPlayerMissChance(ab) {
   let extra=0;
   const kind=String(tmpl.btnType||tmpl.type||'').toLowerCase();
   const isAttack=(kind==='physical'||kind==='ranged');
-  const isSpell=(kind==='spell');
-  if(isAttack) extra+=(G.player?.augAttackAcc||0);
-  if(isSpell) extra+=(G.player?.augSpellAcc||0);
-  if(isSpell && classPerkCtx.arcFocus) extra+=8;
-  if((G.playerStatus?.perkUtilityAcc||0)>0){ extra+=8; delete G.playerStatus.perkUtilityAcc; }
   if(classPerkCtx.falseOpening){
     const es=G.enemyStatus||{};
     const debuffed=!!(es.poison||es.bleed||es.burning||es.weaken||es.feared||es.confused||es.paralyzed||es.slow||es.chilled||es.accDebuff>0);
     if(debuffed) extra += 6;
   }
-  if((G.player?.augPostDefAcc||0)>0 && G.playerStatus?.postDefAccNext){ extra += G.player.augPostDefAcc; delete G.playerStatus.postDefAccNext; }
-  if(G.player?.relHawkLedger && isEndlessRunActive()){ const eb=G.endlessBattle||0; if(eb>=10) extra+=8; if(eb>=20) extra+=8; if(eb>=30) extra+=8; }
   extra += (G.player?.hitChanceBonus||0);
   if(BIRDS[G.player?.birdKey]?.passive?.id==='passive_barnowl_silent_approach' && isAttack && !G._firstAttackUsed && (G.player.stats.hp||0)>=(G.player.stats.maxHp||1)) accBonus+=10;
   return Math.max(floor, reduced - accBonus + tookiePenalty - (G.playerStatus.accDebuff||0) + classAdj + sizeAdj - missReduce - extra - getPlayerHitBonus(ab));
@@ -12050,6 +12044,13 @@ function getPlayerCritChance(ab) {
     base += (G.player?.firstAttackCritBonus||0);
   }
   if(isAttack) base += (G.player?.augAttackCrit||0);
+  if(kind==='spell') base += (G.player?.augSpellCrit||0);
+  if(G.player?.relHawkLedger && isEndlessRunActive()){
+    const eb=G.endlessBattle||0;
+    if(eb>=10) base+=4;
+    if(eb>=20) base+=4;
+    if(eb>=30) base+=4;
+  }
   const pfLens=G.playerStatus?.peregrineCritLens;
   if(isAttack && pfLens && (pfLens.turns||0)>0) base += (pfLens.bonus||0);
   const kookLens=G.playerStatus?.kookaCritLens;
@@ -20187,7 +20188,6 @@ async function playerAction(ab,fromQueue=false) {
     if((G.player?.augDefSkillDodge||0)>0) G.playerStatus.humDodge={bonus:Math.max(G.playerStatus.humDodge?.bonus||0,G.player.augDefSkillDodge),turns:1};
     if(G.player?.augDefSkillClearFear) delete G.playerStatus.feared;
     if((G.player?.augPostDefAtkPct||0)>0) G.playerStatus.postDefAtkPct=G.player.augPostDefAtkPct;
-    if((G.player?.augPostDefAcc||0)>0) G.playerStatus.postDefAccNext=true;
     if(G.player?.augIronResolve && !G.player._augIronResolveUsed){ G.playerStatus.ironResolve={turns:1}; G.player._augIronResolveUsed=true; }
     if(G.player?.augDefSkillRefund && chance(G.player.augDefSkillRefund)) gainEnergy(G.player,1);
     if(G.player?.augCounterInstinct) G.playerStatus.counterInstinct=2;
@@ -20202,9 +20202,6 @@ async function playerAction(ab,fromQueue=false) {
   if(_abKindNow==='utility' && classPerkCtx.quickTheft && !G._perkUtilityRefundUsed){
     gainEnergy(G.player,1);
     G._perkUtilityRefundUsed=true;
-  }
-  if((_abKindNow==='utility' || _abKindNow==='buff' || _abKindNow==='defend') && G.player?.perkUtilityAcc){
-    G.playerStatus.perkUtilityAcc=1;
   }
   if(classPerkCtx.holdTheLine && /guard|defend|shield|crowdefend/i.test(ab.id||'')){
     G.playerStatus.holdTheLineBoost=1;
@@ -22347,7 +22344,7 @@ const LEVELUP_STAT_POOL = [
   {id:'def3', label:'+3 DEF', stat:'def', amount:3, apply(){ G.player.stats.def=(G.player.stats.def||0)+3; }},
   {id:'mdef3', label:'+3 MDEF', stat:'mdef', amount:3, apply(){ G.player.stats.mdef=(G.player.stats.mdef||0)+3; }},
   {id:'spd2', label:'+2 SPD', stat:'spd', amount:2, apply(){ G.player.stats.spd=(G.player.stats.spd||0)+2; }},
-  {id:'acc4', label:'+4 ACC', stat:'acc', amount:4, apply(){ G.player.stats.acc=(G.player.stats.acc||0)+4; }},
+  {id:'crit3feather', label:'+3% Crit Chance', stat:'critChance', amount:3, apply(){ G.player.stats.critChance=Math.min(95,(G.player.stats.critChance||5)+3); }},
   {id:'dod4', label:'+4% Dodge', stat:'dodge', amount:4, apply(){ G.player.stats.dodge=Math.min(95,(G.player.stats.dodge||0)+4); }},
 ];
 const LEVELUP_FEATHER_POOL = LEVELUP_STAT_POOL;
