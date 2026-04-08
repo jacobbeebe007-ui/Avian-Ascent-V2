@@ -646,7 +646,7 @@ const BIRDS = {
   sparrow:{
     name:'Sparrow', portraitKey:'sparrow', tagline:'Swift as wind, strikes like needles.',
     size:'tiny', class:'striker',
-    stats:{hp:37,maxHp:37,atk:23,def:6,spd:24,dodge:18,acc:92,mdef:5,matk:2,critChance:10},
+    stats:{hp:30,maxHp:30,atk:5,def:2,spd:5,dodge:3,acc:88,mdef:2,matk:1,critChance:10},
     color:'#6a8ae8',
     mainAttackId:'multiPeck',
     startAbilities:['multiPeck','dart','windFeint','trackPrey'],
@@ -657,7 +657,7 @@ const BIRDS = {
     size:'tiny', class:'striker',
     unlockRequires:'unlock_hummingbird',
     unlockHint:'Defeat Stage 10 with Sparrow.',
-    stats:{hp:36,maxHp:36,atk:21,def:4,spd:27,dodge:20,acc:94,mdef:4,matk:2,critChance:18},
+    stats:{hp:30,maxHp:30,atk:4,def:2,spd:7,dodge:3,acc:94,mdef:1,matk:1,critChance:18},
     color:'#40e8c0',
     mainAttackId:'needle_jab',
     startAbilities:['needle_jab','dash','blink_flutter','pulse_step'],
@@ -666,7 +666,7 @@ const BIRDS = {
   blackbird:{
     name:'Blackbird', portraitKey:'blackbird', tagline:'Songs that shatter minds. Eyes like embers.',
     size:'small', class:'singer',
-    stats:{hp:49,maxHp:49,atk:3,def:11,spd:14,dodge:8,acc:92,mdef:21,matk:31,critChance:6},
+    stats:{hp:39,maxHp:39,atk:1,def:2,spd:2,dodge:2,acc:91,mdef:3,matk:7,critChance:6},
     color:'#9a6ae8',
     startAbilities:['dark_song','shadow_peck','gloom_wing','grim_sign'],
     mainAttackId:'dark_song',
@@ -675,7 +675,7 @@ const BIRDS = {
   macaw:{
     name:'Macaw', portraitKey:'macaw', tagline:'Every word is a weapon.',
     size:'small', class:'singer',
-    stats:{hp:48,maxHp:48,atk:4,def:9,spd:17,dodge:9,acc:93,mdef:17,matk:32,critChance:8},
+    stats:{hp:40,maxHp:40,atk:1,def:2,spd:2,dodge:2,acc:94,mdef:3,matk:7,critChance:8},
     color:'#1a6aba',
     mainAttackId:'echo_note',
     startAbilities:['echo_note','mimic_song','feather_taunt','chorus_mark'],
@@ -686,7 +686,7 @@ const BIRDS = {
     size:'small', class:'striker',
     unlockRequires:'unlock_peregrine',
     unlockHint:'Defeat Stage 20 with Hummingbird.',
-    stats:{hp:45,maxHp:45,atk:27,def:7,spd:29,dodge:17,acc:92,mdef:6,matk:2,critChance:12},
+    stats:{hp:37,maxHp:37,atk:6,def:2,spd:5,dodge:2,acc:93,mdef:1,matk:1,critChance:12},
     color:'#6a8ac8',
     mainAttackId:'talon_jab',
     startAbilities:['talon_jab','dive','keen_eye','aerial_pace'],
@@ -697,7 +697,7 @@ const BIRDS = {
     size:'small', class:'predator',
     unlockRequires:'juvenileWin',
     unlockHint:'Defeat Stage 20 on Normal mode to unlock.',
-    stats:{hp:46,maxHp:46,atk:32,def:9,spd:21,dodge:10,acc:94,mdef:14,matk:2,critChance:15},
+    stats:{hp:40,maxHp:40,atk:5,def:2,spd:4,dodge:2,acc:93,mdef:2,matk:2,critChance:15},
     color:'#e8f0f8',
     mainAttackId:'talon_snap',
     startAbilities:['talon_snap','silent_dive','owl_eye','frost_glide'],
@@ -708,7 +708,7 @@ const BIRDS = {
     size:'small', class:'predator',
     unlockRequires:'unlock_kiwi',
     unlockHint:'Defeat Stage 20 with Magpie.',
-    stats:{hp:49,maxHp:49,atk:30,def:11,spd:19,dodge:11,acc:93,mdef:15,matk:2,critChance:12},
+    stats:{hp:41,maxHp:41,atk:5,def:3,spd:3,dodge:2,acc:92,mdef:2,matk:2,critChance:12},
     color:'#a0784a',
     mainAttackId:'beak_jab',
     startAbilities:['beak_jab','night_probe','scent_hunt','scrape'],
@@ -719,7 +719,7 @@ const BIRDS = {
     size:'medium', class:'singer',
     unlockRequires:'juvenileWin',
     unlockHint:'Defeat Stage 20 on Normal mode to unlock.',
-    stats:{hp:59,maxHp:59,atk:7,def:12,spd:15,dodge:9,acc:90,mdef:21,matk:34,critChance:8},
+    stats:{hp:45,maxHp:45,atk:1,def:2,spd:2,dodge:2,acc:89,mdef:3,matk:6,critChance:8},
     color:'#2a1a3a',
     mainAttackId:'boom_call',
     startAbilities:['boom_call','resonance_mark','beak_crack','wing_beat'],
@@ -728,7 +728,7 @@ const BIRDS = {
   crow:{
     name:'Crow', portraitKey:'crow', tagline:'Clever. Coordinated. Unsettling.',
     size:'medium', class:'trickster',
-    stats:{hp:56,maxHp:56,atk:14,def:10,spd:25,dodge:20,acc:91,mdef:13,matk:16,critChance:8},
+    stats:{hp:44,maxHp:44,atk:2,def:1,spd:4,dodge:4,acc:88,mdef:2,matk:3,critChance:8},
     color:'#c0c8d8',
     mainAttackId:'peck',
     startAbilities:['peck','murder_murmuration','dread_call','battle_focus'],
@@ -739,7 +739,7 @@ const BIRDS = {
     size:'medium', class:'trickster',
     unlockRequires:'unlock_kookaburra',
     unlockHint:'Defeat Stage 10 with Macaw.',
-    stats:{hp:58,maxHp:58,atk:17,def:11,spd:23,dodge:19,acc:89,mdef:12,matk:16,critChance:8},
+    stats:{hp:46,maxHp:46,atk:2,def:1,spd:4,dodge:4,acc:87,mdef:2,matk:3,critChance:8},
     color:'#c8a060',
     mainAttackId:'beak_chop',
     startAbilities:['beak_chop','drop_strike','laugh_call','perch_watch'],
@@ -750,7 +750,7 @@ const BIRDS = {
     size:'medium', class:'singer',
     unlockRequires:'unlock_lyrebird',
     unlockHint:'Defeat Stage 20 with Kookaburra.',
-    stats:{hp:58,maxHp:58,atk:4,def:11,spd:18,dodge:11,acc:93,mdef:20,matk:34,critChance:6},
+    stats:{hp:48,maxHp:48,atk:1,def:2,spd:2,dodge:2,acc:94,mdef:3,matk:6,critChance:6},
     color:'#c8902a',
     mainAttackId:'echo_note',
     startAbilities:['echo_note','mimic_chorus','display_step','refrain_mark'],
@@ -761,7 +761,7 @@ const BIRDS = {
     size:'medium', class:'trickster',
     unlockRequires:'juvenileWin',
     unlockHint:'Defeat Stage 20 on Normal mode to unlock.',
-    stats:{hp:57,maxHp:57,atk:16,def:9,spd:23,dodge:19,acc:89,mdef:14,matk:17,critChance:8},
+    stats:{hp:47,maxHp:47,atk:2,def:1,spd:4,dodge:4,acc:89,mdef:2,matk:3,critChance:8},
     color:'#6030d0',
     mainAttackId:'beak_jab',
     startAbilities:['beak_jab','omen_call','dark_watch','fate_mark'],
@@ -772,7 +772,7 @@ const BIRDS = {
     size:'medium', class:'trickster',
     unlockRequires:'unlock_magpie',
     unlockHint:'Defeat Stage 10 with Robin.',
-    stats:{hp:57,maxHp:57,atk:14,def:9,spd:26,dodge:21,acc:91,mdef:12,matk:16,critChance:10},
+    stats:{hp:44,maxHp:44,atk:1,def:1,spd:4,dodge:5,acc:90,mdef:2,matk:3,critChance:10},
     color:'#2a2a2a',
     mainAttackId:'swoop',
     startAbilities:['swoop','steal_shine','feather_flick','shine_step'],
@@ -781,7 +781,7 @@ const BIRDS = {
   robin:{
     name:'Robin', portraitKey:'robin', tagline:'Bright hedge-songster. Quick notes, light strikes, and uplifting refrains.',
     size:'small', class:'singer',
-    stats:{hp:48,maxHp:48,atk:4,def:10,spd:17,dodge:10,acc:93,mdef:18,matk:29,critChance:8},
+    stats:{hp:38,maxHp:38,atk:1,def:2,spd:2,dodge:2,acc:93,mdef:3,matk:7,critChance:8},
     color:'#d86a4c',
     mainAttackId:'bright_chirp',
     startAbilities:['bright_chirp','hop_step','quick_peck','dart_rush'],
@@ -792,7 +792,7 @@ const BIRDS = {
     size:'medium', class:'trickster',
     unlockRequires:'juvenileWin',
     unlockHint:'Defeat Stage 20 on Normal mode to unlock.',
-    stats:{hp:57,maxHp:57,atk:13,def:10,spd:24,dodge:19,acc:90,mdef:13,matk:19,critChance:8},
+    stats:{hp:45,maxHp:45,atk:2,def:1,spd:4,dodge:4,acc:92,mdef:2,matk:3,critChance:8},
     color:'#4a6a9a',
     mainAttackId:'trinket_toss',
     startAbilities:['trinket_toss','lure_call','bower_build','display_mark'],
@@ -803,7 +803,7 @@ const BIRDS = {
     size:'large', class:'striker',
     unlockRequires:'unlock_toucan',
     unlockHint:'Enter: "Ahh Ahh Eee Eee Tookie Tookie"',
-    stats:{hp:67,maxHp:67,atk:32,def:11,spd:33,dodge:20,acc:87,mdef:10,matk:2,critChance:6},
+    stats:{hp:52,maxHp:52,atk:4,def:2,spd:4,dodge:3,acc:84,mdef:1,matk:1,critChance:6},
     color:'#60c840',
     mainAttackId:'toucan_beak_jab',
     startAbilities:['toucan_beak_jab','beak_slam','fruit_toss','color_mark'],
@@ -814,7 +814,7 @@ const BIRDS = {
     size:'large', class:'tank',
     unlockRequires:'unlock_swan',
     unlockHint:'Reach Endless Stage 30 with any Tank.',
-    stats:{hp:73,maxHp:73,atk:16,def:39,spd:5,dodge:5,acc:77,mdef:37,matk:6,critChance:5},
+    stats:{hp:58,maxHp:58,atk:2,def:5,spd:1,dodge:1,acc:80,mdef:5,matk:1,critChance:5},
     color:'#f0f4fc',
     mainAttackId:'neck_jab',
     startAbilities:['neck_jab','wing_sweep','grace_glide','poise_mark'],
@@ -825,7 +825,7 @@ const BIRDS = {
     size:'large', class:'striker',
     unlockRequires:'unlock_flamingo',
     unlockHint:'Reach Endless Stage 30 with any Striker.',
-    stats:{hp:66,maxHp:66,atk:31,def:9,spd:33,dodge:25,acc:89,mdef:8,matk:2,critChance:6},
+    stats:{hp:53,maxHp:53,atk:4,def:2,spd:4,dodge:2,acc:86,mdef:2,matk:1,critChance:6},
     color:'#e8609a',
     mainAttackId:'leg_jab',
     startAbilities:['leg_jab','marsh_sweep','balance_pose','mire_mark'],
@@ -836,7 +836,7 @@ const BIRDS = {
     size:'large', class:'predator',
     unlockRequires:'unlock_secretary',
     unlockHint:'Defeat Stage 10 with Crow.',
-    stats:{hp:67,maxHp:67,atk:41,def:12,spd:27,dodge:11,acc:91,mdef:15,matk:2,critChance:8},
+    stats:{hp:55,maxHp:55,atk:5,def:2,spd:4,dodge:1,acc:90,mdef:2,matk:1,critChance:8},
     color:'#e0a060',
     mainAttackId:'sec_leg_jab',
     startAbilities:['sec_leg_jab','sec_crushing_kick','hunter_stride','prey_mark'],
@@ -847,7 +847,7 @@ const BIRDS = {
     size:'large', class:'bruiser',
     unlockRequires:'unlock_albatross',
     unlockHint:'Reach Endless Stage 50 with any bird.',
-    stats:{hp:72,maxHp:72,atk:37,def:26,spd:14,dodge:7,acc:79,mdef:21,matk:3,critChance:6},
+    stats:{hp:57,maxHp:57,atk:5,def:4,spd:2,dodge:1,acc:79,mdef:2,matk:1,critChance:6},
     color:'#9fb7c9',
     mainAttackId:'alb_wing_jab',
     startAbilities:['alb_wing_jab','alb_ocean_sweep','alb_glide_line','alb_current_mark'],
@@ -858,7 +858,7 @@ const BIRDS = {
     size:'medium', class:'trickster',
     unlockRequires:'unlock_seagull',
     unlockHint:'Reach level 21 in Endless mode with any Trickster.',
-    stats:{hp:56,maxHp:56,atk:13,def:9,spd:26,dodge:21,acc:90,mdef:12,matk:17,critChance:10},
+    stats:{hp:43,maxHp:43,atk:2,def:1,spd:4,dodge:4,acc:86,mdef:2,matk:3,critChance:10},
     color:'#b0c8d8',
     mainAttackId:'sgl_snap_peck',
     startAbilities:['sgl_snap_peck','sgl_swoop_pass','sgl_raucous_cry','sgl_scavenge_mark'],
@@ -867,7 +867,7 @@ const BIRDS = {
   goose:{
     name:'Goose', portraitKey:'goose', tagline:'Territorial bruiser. Honk, check, refuse to yield.',
     size:'xl', class:'tank',
-    stats:{hp:88,maxHp:88,atk:20,def:43,spd:5,dodge:5,acc:73,mdef:39,matk:6,critChance:5},
+    stats:{hp:65,maxHp:65,atk:2,def:5,spd:1,dodge:1,acc:75,mdef:4,matk:1,critChance:5},
     color:'#e8c96a',
     startAbilities:['gos_beak_snap','gos_body_check','gos_honk_blast','gos_brace_up'],
     mainAttackId:'gos_beak_snap',
@@ -878,7 +878,7 @@ const BIRDS = {
     size:'xl', class:'tank',
     unlockRequires:'unlock_shoebill',
     unlockHint:'Defeat Stage 10 with Goose.',
-    stats:{hp:90,maxHp:90,atk:21,def:43,spd:5,dodge:4,acc:74,mdef:40,matk:5,critChance:5},
+    stats:{hp:66,maxHp:66,atk:2,def:5,spd:1,dodge:1,acc:76,mdef:4,matk:1,critChance:5},
     color:'#5a7090',
     startAbilities:['sbl_beak_chop','sbl_skull_crack','sbl_still_stance','sbl_dread_mark'],
     mainAttackId:'sbl_beak_chop',
@@ -889,7 +889,7 @@ const BIRDS = {
     size:'xl', class:'predator',
     unlockRequires:'unlock_harpy',
     unlockHint:'Defeat Stage 20 with Hummingbird.',
-    stats:{hp:80,maxHp:80,atk:45,def:13,spd:29,dodge:12,acc:89,mdef:17,matk:2,critChance:15},
+    stats:{hp:63,maxHp:63,atk:4,def:2,spd:3,dodge:2,acc:88,mdef:2,matk:1,critChance:15},
     color:'#c84030',
     startAbilities:['hrp_talon_clutch','hrp_canopy_crush','hrp_predator_grip','hrp_prey_lock'],
     mainAttackId:'hrp_talon_clutch',
@@ -901,7 +901,7 @@ const BIRDS = {
     size:'xl', class:'predator',
     unlockRequires:'juvenileWin',
     unlockHint:'Defeat Stage 20 on Normal mode to unlock.',
-    stats:{hp:81,maxHp:81,atk:43,def:14,spd:29,dodge:12,acc:88,mdef:18,matk:2,critChance:12},
+    stats:{hp:62,maxHp:62,atk:4,def:2,spd:3,dodge:2,acc:89,mdef:2,matk:1,critChance:12},
     color:'#e8e4d8',
     mainAttackId:'skyTalon',
     startAbilities:['skyTalon','guard','predatorMark','freedomCry'],
@@ -912,7 +912,7 @@ const BIRDS = {
     size:'xl', class:'tank',
     unlockRequires:'unlock_penguin',
     unlockHint:'Reach Endless Stage 30 with any Tank.',
-    stats:{hp:89,maxHp:89,atk:18,def:42,spd:6,dodge:5,acc:74,mdef:42,matk:5,critChance:5},
+    stats:{hp:68,maxHp:68,atk:2,def:4,spd:1,dodge:1,acc:74,mdef:5,matk:1,critChance:5},
     color:'#3a5878',
     startAbilities:['icebreakerHonk','snowWall','guard','tundraCall'],
     passive:{id:'passive_penguin_icebound_plating',name:'Icebound Plating',desc:'While above 50% HP: +4 MDEF. Icebound resilience.'},
@@ -922,7 +922,7 @@ const BIRDS = {
     size:'xl', class:'bruiser',
     unlockRequires:'unlock_ostrich',
     unlockHint:'Defeat Stage 20 with Shoebill.',
-    stats:{hp:86,maxHp:86,atk:40,def:27,spd:20,dodge:9,acc:76,mdef:19,matk:3,critChance:8},
+    stats:{hp:66,maxHp:66,atk:4,def:4,spd:2,dodge:1,acc:76,mdef:2,matk:1,critChance:8},
     color:'#b89060',
     startAbilities:['powerKick','stampedeStrike','sandKick','momentumCharge'],
     passive:{id:'passive_ostrich_desert_momentum',name:'Desert Momentum',desc:'After using a 2 EN attack, gain +4 SPD next turn. Momentum bruiser.'},
@@ -932,7 +932,7 @@ const BIRDS = {
     size:'xl', class:'bruiser',
     unlockRequires:'juvenileWin',
     unlockHint:'Defeat Stage 20 on Normal mode to unlock.',
-    stats:{hp:88,maxHp:88,atk:43,def:30,spd:14,dodge:7,acc:77,mdef:21,matk:3,critChance:8},
+    stats:{hp:65,maxHp:65,atk:4,def:4,spd:2,dodge:1,acc:78,mdef:2,matk:1,critChance:8},
     color:'#3b4a56',
     startAbilities:['raptorKick','warStomp','momentumCharge','crushingTalon'],
     passive:{id:'passive_cassowary_terror_kick',name:'Terror Kick',desc:'Against Weakened targets: +10% Crit Damage. Punishes suppressed foes.'},
@@ -942,7 +942,7 @@ const BIRDS = {
     size:'xl', class:'bruiser',
     unlockRequires:'unlock_emu',
     unlockHint:'Reach Endless Stage 40 with any Tank.',
-    stats:{hp:86,maxHp:86,atk:40,def:28,spd:17,dodge:11,acc:77,mdef:20,matk:2,critChance:8},
+    stats:{hp:64,maxHp:64,atk:4,def:4,spd:2,dodge:1,acc:77,mdef:2,matk:1,critChance:8},
     color:'#7a6040',
     startAbilities:['headWhip','warCharge','sandKick','momentumStrike'],
     passive:{id:'passive_emu_dust_runner',name:'Dust Runner',desc:'First SPD buff each battle: that buff gains +2 SPD. Dust-runner momentum.'},
@@ -952,7 +952,7 @@ const BIRDS = {
     size:'xl', class:'predator',
     unlockRequires:'unlock_duke_blakiston',
     unlockHint:"Enter code 'Blakiston' on the selection screen.",
-    stats:{hp:89,maxHp:89,atk:45,def:15,spd:32,dodge:13,acc:90,mdef:19,matk:2,critChance:8},
+    stats:{hp:68,maxHp:68,atk:4,def:2,spd:3,dodge:1,acc:90,mdef:2,matk:2,critChance:8},
     color:'#6f88c2',
     startAbilities:['nightTalon','nightfallCall','courtSummon','verdict'],
     mainAttackId:'nightTalon',
@@ -963,7 +963,7 @@ const BIRDS = {
     size:'tiny', class:'striker',
     unlockRequires:'unlock_wren',
     unlockHint:'Coming soon.',
-    stats:{hp:36,maxHp:36,atk:22,def:6,spd:24,dodge:19,acc:93,mdef:5,matk:2,critChance:10},
+    stats:{hp:30,maxHp:30,atk:4,def:2,spd:5,dodge:4,acc:89,mdef:2,matk:1,critChance:10},
     color:'#6a9a6a',
     mainAttackId:'wren_quick_peck',
     startAbilities:['wren_quick_peck','wren_needle_dart','wren_feather_feint','wren_trail_step'],
@@ -974,7 +974,7 @@ const BIRDS = {
     size:'tiny', class:'singer',
     unlockRequires:'unlock_fairywren',
     unlockHint:'Coming soon.',
-    stats:{hp:38,maxHp:38,atk:2,def:8,spd:15,dodge:9,acc:95,mdef:16,matk:28,critChance:6},
+    stats:{hp:32,maxHp:32,atk:1,def:2,spd:3,dodge:2,acc:95,mdef:3,matk:7,critChance:6},
     color:'#4a7ae8',
     mainAttackId:'fwren_song',
     startAbilities:['fwren_song','fwren_bright_call','fwren_tiny_peck','fwren_refrain'],
@@ -985,7 +985,7 @@ const BIRDS = {
     size:'tiny', class:'striker',
     unlockRequires:'unlock_firecrest',
     unlockHint:'Coming soon.',
-    stats:{hp:36,maxHp:36,atk:22,def:5,spd:27,dodge:17,acc:94,mdef:5,matk:2,critChance:12},
+    stats:{hp:30,maxHp:30,atk:5,def:1,spd:5,dodge:3,acc:92,mdef:2,matk:2,critChance:12},
     color:'#e85a2a',
     mainAttackId:'firecrest_jab',
     startAbilities:['firecrest_jab','firecrest_burn_dash','firecrest_cinder_step','firecrest_heat_mark'],
@@ -996,7 +996,7 @@ const BIRDS = {
     size:'small', class:'trickster',
     unlockRequires:'unlock_wagtail',
     unlockHint:'Coming soon.',
-    stats:{hp:47,maxHp:47,atk:11,def:8,spd:24,dodge:21,acc:92,mdef:11,matk:13,critChance:8},
+    stats:{hp:38,maxHp:38,atk:2,def:2,spd:4,dodge:4,acc:93,mdef:2,matk:3,critChance:8},
     color:'#2a2a2a',
     mainAttackId:'wagtail_peck',
     startAbilities:['wagtail_peck','wagtail_flick_strike','wagtail_mock_call','wagtail_tail_mark'],
@@ -1007,7 +1007,7 @@ const BIRDS = {
     size:'small', class:'trickster',
     unlockRequires:'unlock_galah',
     unlockHint:'Coming soon.',
-    stats:{hp:48,maxHp:48,atk:13,def:9,spd:22,dodge:19,acc:90,mdef:10,matk:15,critChance:8},
+    stats:{hp:40,maxHp:40,atk:2,def:2,spd:4,dodge:4,acc:90,mdef:2,matk:3,critChance:8},
     color:'#e8a0c8',
     mainAttackId:'galah_beak_tap',
     startAbilities:['galah_beak_tap','galah_flash_strike','galah_screech','galah_show_mark'],
@@ -1018,7 +1018,7 @@ const BIRDS = {
     size:'small', class:'bruiser',
     unlockRequires:'unlock_bluejay',
     unlockHint:'Coming soon.',
-    stats:{hp:51,maxHp:51,atk:31,def:21,spd:13,dodge:6,acc:83,mdef:14,matk:3,critChance:8},
+    stats:{hp:40,maxHp:40,atk:5,def:4,spd:2,dodge:2,acc:84,mdef:2,matk:2,critChance:8},
     color:'#3a5cb8',
     mainAttackId:'bluejay_crest_jab',
     startAbilities:['bluejay_crest_jab','bluejay_jaybreaker','bluejay_crest_guard','bluejay_raucous_cry'],
@@ -1029,7 +1029,7 @@ const BIRDS = {
     size:'small', class:'singer',
     unlockRequires:'unlock_cardinal',
     unlockHint:'Coming soon.',
-    stats:{hp:49,maxHp:49,atk:2,def:10,spd:15,dodge:9,acc:93,mdef:19,matk:33,critChance:6},
+    stats:{hp:39,maxHp:39,atk:1,def:2,spd:2,dodge:2,acc:92,mdef:3,matk:7,critChance:6},
     color:'#c02030',
     mainAttackId:'cardinal_note',
     startAbilities:['cardinal_note','cardinal_hymn','cardinal_jab','cardinal_refrain'],
@@ -1040,7 +1040,7 @@ const BIRDS = {
     size:'medium', class:'bruiser',
     unlockRequires:'unlock_bushturkey',
     unlockHint:'Coming soon.',
-    stats:{hp:62,maxHp:62,atk:35,def:24,spd:12,dodge:6,acc:80,mdef:17,matk:4,critChance:6},
+    stats:{hp:46,maxHp:46,atk:5,def:4,spd:2,dodge:2,acc:80,mdef:2,matk:1,critChance:6},
     color:'#5a5040',
     mainAttackId:'bturkey_scrap_peck',
     startAbilities:['bturkey_scrap_peck','bturkey_brush_crash','bturkey_bush_guard','bturkey_rattle_call'],
@@ -1051,7 +1051,7 @@ const BIRDS = {
     size:'medium', class:'bruiser',
     unlockRequires:'unlock_vulture',
     unlockHint:'Coming soon.',
-    stats:{hp:61,maxHp:61,atk:34,def:23,spd:12,dodge:6,acc:81,mdef:19,matk:4,critChance:6},
+    stats:{hp:48,maxHp:48,atk:6,def:4,spd:1,dodge:2,acc:81,mdef:2,matk:1,critChance:6},
     color:'#6a5a50',
     mainAttackId:'vulture_grave_jab',
     startAbilities:['vulture_grave_jab','vulture_corpse_crush','vulture_bone_ward','vulture_grave_dirge'],
@@ -1062,7 +1062,7 @@ const BIRDS = {
     size:'medium', class:'predator',
     unlockRequires:'unlock_barnowl',
     unlockHint:'Coming soon.',
-    stats:{hp:56,maxHp:56,atk:35,def:10,spd:25,dodge:11,acc:93,mdef:15,matk:2,critChance:12},
+    stats:{hp:45,maxHp:45,atk:5,def:2,spd:4,dodge:2,acc:91,mdef:2,matk:1,critChance:12},
     color:'#c8b8a0',
     mainAttackId:'barnowl_talon',
     startAbilities:['barnowl_talon','barnowl_shadow_dive','barnowl_death_glare','barnowl_silent_glide'],
@@ -1073,7 +1073,7 @@ const BIRDS = {
     size:'large', class:'bruiser',
     unlockRequires:'unlock_bustard',
     unlockHint:'Coming soon.',
-    stats:{hp:72,maxHp:72,atk:38,def:27,spd:13,dodge:6,acc:78,mdef:20,matk:4,critChance:6},
+    stats:{hp:56,maxHp:56,atk:5,def:4,spd:2,dodge:1,acc:78,mdef:2,matk:1,critChance:6},
     color:'#8a7860',
     mainAttackId:'bustard_heavy_jab',
     startAbilities:['bustard_heavy_jab','bustard_dust_trample','bustard_plainshield','bustard_steppe_call'],
@@ -1084,7 +1084,7 @@ const BIRDS = {
     size:'large', class:'predator',
     unlockRequires:'unlock_goldeneagle',
     unlockHint:'Coming soon.',
-    stats:{hp:68,maxHp:68,atk:40,def:12,spd:28,dodge:10,acc:91,mdef:16,matk:2,critChance:12},
+    stats:{hp:55,maxHp:55,atk:5,def:2,spd:3,dodge:2,acc:92,mdef:2,matk:1,critChance:12},
     color:'#c9a020',
     mainAttackId:'golden_talon',
     startAbilities:['golden_talon','golden_swoop','golden_verdict','golden_focus'],
@@ -1095,7 +1095,7 @@ const BIRDS = {
     size:'xl', class:'tank',
     unlockRequires:'unlock_pelican',
     unlockHint:'Coming soon.',
-    stats:{hp:89,maxHp:89,atk:19,def:43,spd:6,dodge:4,acc:73,mdef:41,matk:5,critChance:5},
+    stats:{hp:68,maxHp:68,atk:1,def:4,spd:1,dodge:1,acc:73,mdef:6,matk:1,critChance:5},
     color:'#a0b8c8',
     mainAttackId:'pelican_snap',
     startAbilities:['pelican_snap','pelican_crush','pelican_guard','pelican_recovery'],
@@ -1106,7 +1106,7 @@ const BIRDS = {
     size:'xl', class:'predator',
     unlockRequires:'unlock_marabou',
     unlockHint:'Coming soon.',
-    stats:{hp:82,maxHp:82,atk:44,def:14,spd:27,dodge:11,acc:88,mdef:19,matk:3,critChance:10},
+    stats:{hp:67,maxHp:67,atk:4,def:2,spd:3,dodge:2,acc:84,mdef:2,matk:1,critChance:10},
     color:'#8a8a88',
     mainAttackId:'marabou_jab',
     startAbilities:['marabou_jab','marabou_lunge','marabou_sentence','marabou_hunt'],
@@ -1194,7 +1194,7 @@ function buildDukeStoryBossEnemy(){
   const bd=BIRDS.dukeBlakiston;
   const dukeLv=12;
   const featherTotal=3*dukeLv;
-  const bs=bd&&bd.stats?bd.stats:{hp:68,maxHp:68,atk:11,def:9,spd:6,dodge:12,acc:84,mdef:14,matk:14,critChance:8};
+  const bs=bd&&bd.stats?bd.stats:{hp:68,maxHp:68,atk:4,def:2,spd:3,dodge:1,acc:90,mdef:2,matk:2,critChance:8};
   const stats={
     hp:Math.max(1,Math.floor(bs.hp??bs.maxHp??68)),
     maxHp:Math.max(1,Math.floor(bs.maxHp??bs.hp??68)),
@@ -1355,24 +1355,24 @@ const ENEMIES = [
 // Combat kits come from family skill slots + ABILITY_TEMPLATES (buildEdFromBirdEnemyTemplate). Penguin/emu have no family catalog yet — legacy abilities only.
 // Tier bands: keep aligned with js/world/ow_enemy_population.js OW_POOL_BY_BAND (overworld seeded packs).
 const BIRD_ENEMIES = [
-  {name:'Wild Sparrow',emoji:'',birdKey:'sparrow',tier:[1,2],hp:30,atk:6,def:2,matk:6,mdef:7,spd:9,acc:82,dodge:32,enemyClass:'bruiser',size:'tiny',aiStyle:'berserker'},
-  {name:'Grove Cantor',emoji:'🎵',birdKey:'blackbird',tier:[1,2],hp:30,atk:5,def:3,matk:12,mdef:9,spd:7,acc:78,dodge:22,enemyClass:'singer',size:'small',aiStyle:'cautious'},
-  {name:'Glitter Thief',emoji:'✨',birdKey:'magpie',tier:[1,2],hp:34,atk:7,def:4,matk:9,mdef:8,spd:8,acc:86,dodge:28,enemyClass:'trickster',size:'medium',aiStyle:'aggressive'},
-  {name:'Rogue Crow',emoji:'‍⬛',birdKey:'crow',tier:[2,3],hp:38,atk:8,def:5,matk:8,mdef:9,spd:5,acc:88,dodge:14,enemyClass:'trickster',size:'medium',aiStyle:'aggressive'},
-  {name:'Savage Kookaburra',emoji:'',birdKey:'kookaburra',tier:[2,3],hp:48,atk:10,def:5,matk:8,mdef:9,spd:7,acc:80,dodge:20,enemyClass:'bruiser',size:'medium',aiStyle:'aggressive'},
-  {name:'Marsh Chorus',emoji:'🦩',birdKey:'flamingo',tier:[2,3],hp:46,atk:7,def:5,matk:11,mdef:11,spd:5,acc:76,dodge:14,enemyClass:'singer',size:'large',aiStyle:'cautious'},
-  {name:'Frost Chanter',emoji:'🦉',birdKey:'snowyOwl',tier:[2,3],hp:34,atk:6,def:5,matk:13,mdef:9,spd:8,acc:84,dodge:22,enemyClass:'singer',size:'small',aiStyle:'cautious'},
-  {name:'Feral Toucan',emoji:'',birdKey:'toucan',tier:[3,4],hp:48,atk:9,def:7,matk:10,mdef:9,spd:4,acc:74,dodge:10,enemyClass:'tank',size:'large',aiStyle:'cautious'},
-  {name:'Outcast Goose',emoji:'',birdKey:'goose',tier:[3,4],hp:62,atk:11,def:8,matk:5,mdef:12,spd:2,acc:70,dodge:5,enemyClass:'tank',size:'xl',aiStyle:'berserker'},
-  {name:'Shadow Raven',emoji:'',birdKey:'raven',tier:[3,4],hp:40,atk:8,def:4,matk:12,mdef:8,spd:7,acc:80,dodge:20,enemyClass:'singer',size:'medium',aiStyle:'aggressive'},
-  {name:'Macaw Hexer',emoji:'🦜',birdKey:'macaw',tier:[3,4],hp:38,atk:6,def:4,matk:14,mdef:9,spd:9,acc:82,dodge:26,enemyClass:'singer',size:'small',aiStyle:'cautious'},
-  {name:'Lyre Mimic',emoji:'🪶',birdKey:'lyrebird',tier:[3,4],hp:40,atk:6,def:5,matk:15,mdef:10,spd:6,acc:82,dodge:20,enemyClass:'singer',size:'medium',aiStyle:'cautious'},
-  {name:'Pit Sentinel',emoji:'🐧',birdKey:'penguin',tier:[3,4],hp:66,atk:8,def:10,matk:5,mdef:14,spd:3,acc:75,dodge:12,enemyClass:'tank',size:'xl',aiStyle:'defensive',abilities:['eShield','eWeaken']},
-  {name:'Apex Peregrine',emoji:'',birdKey:'peregrine',tier:[4],hp:36,atk:12,def:4,matk:7,mdef:7,spd:11,acc:90,dodge:26,enemyClass:'predator',size:'small',aiStyle:'berserker'},
-  {name:'Storm Swan',emoji:'',birdKey:'swan',tier:[4],hp:50,atk:10,def:6,matk:11,mdef:10,spd:6,acc:82,dodge:18,enemyClass:'tank',size:'large',aiStyle:'cautious'},
-  {name:'Iron Stork',emoji:'',birdKey:'shoebill',tier:[4],hp:72,atk:9,def:12,matk:6,mdef:16,spd:2,acc:72,dodge:5,enemyClass:'tank',size:'xl',aiStyle:'defensive'},
-  {name:'Dust Bulwark',emoji:'',birdKey:'emu',tier:[4],hp:78,atk:11,def:11,matk:4,mdef:10,spd:2,acc:72,dodge:10,enemyClass:'tank',size:'xl',aiStyle:'defensive',abilities:['eRage','eWeaken']},
-  {name:'War Harpy',emoji:'',birdKey:'harpy',tier:[4],hp:65,atk:14,def:7,matk:6,mdef:8,spd:5,acc:78,dodge:8,enemyClass:'predator',size:'xl',aiStyle:'berserker'},
+  {name:'Wild Sparrow',emoji:'',birdKey:'sparrow',tier:[1,2],hp:30,atk:5,def:2,matk:1,mdef:2,spd:5,acc:88,dodge:3,enemyClass:'bruiser',size:'tiny',aiStyle:'berserker'},
+  {name:'Grove Cantor',emoji:'🎵',birdKey:'blackbird',tier:[1,2],hp:39,atk:1,def:2,matk:7,mdef:3,spd:2,acc:91,dodge:2,enemyClass:'singer',size:'small',aiStyle:'cautious'},
+  {name:'Glitter Thief',emoji:'✨',birdKey:'magpie',tier:[1,2],hp:44,atk:1,def:1,matk:3,mdef:2,spd:4,acc:90,dodge:5,enemyClass:'trickster',size:'medium',aiStyle:'aggressive'},
+  {name:'Rogue Crow',emoji:'‍⬛',birdKey:'crow',tier:[2,3],hp:44,atk:2,def:1,matk:3,mdef:2,spd:4,acc:88,dodge:4,enemyClass:'trickster',size:'medium',aiStyle:'aggressive'},
+  {name:'Savage Kookaburra',emoji:'',birdKey:'kookaburra',tier:[2,3],hp:46,atk:2,def:1,matk:3,mdef:2,spd:4,acc:87,dodge:4,enemyClass:'bruiser',size:'medium',aiStyle:'aggressive'},
+  {name:'Marsh Chorus',emoji:'🦩',birdKey:'flamingo',tier:[2,3],hp:53,atk:4,def:2,matk:1,mdef:2,spd:4,acc:86,dodge:2,enemyClass:'singer',size:'large',aiStyle:'cautious'},
+  {name:'Frost Chanter',emoji:'🦉',birdKey:'snowyOwl',tier:[2,3],hp:40,atk:5,def:2,matk:2,mdef:2,spd:4,acc:93,dodge:2,enemyClass:'singer',size:'small',aiStyle:'cautious'},
+  {name:'Feral Toucan',emoji:'',birdKey:'toucan',tier:[3,4],hp:52,atk:4,def:2,matk:1,mdef:1,spd:4,acc:84,dodge:3,enemyClass:'tank',size:'large',aiStyle:'cautious'},
+  {name:'Outcast Goose',emoji:'',birdKey:'goose',tier:[3,4],hp:65,atk:2,def:5,matk:1,mdef:4,spd:1,acc:75,dodge:1,enemyClass:'tank',size:'xl',aiStyle:'berserker'},
+  {name:'Shadow Raven',emoji:'',birdKey:'raven',tier:[3,4],hp:47,atk:2,def:1,matk:3,mdef:2,spd:4,acc:89,dodge:4,enemyClass:'singer',size:'medium',aiStyle:'aggressive'},
+  {name:'Macaw Hexer',emoji:'🦜',birdKey:'macaw',tier:[3,4],hp:40,atk:1,def:2,matk:7,mdef:3,spd:2,acc:94,dodge:2,enemyClass:'singer',size:'small',aiStyle:'cautious'},
+  {name:'Lyre Mimic',emoji:'🪶',birdKey:'lyrebird',tier:[3,4],hp:48,atk:1,def:2,matk:6,mdef:3,spd:2,acc:94,dodge:2,enemyClass:'singer',size:'medium',aiStyle:'cautious'},
+  {name:'Pit Sentinel',emoji:'🐧',birdKey:'penguin',tier:[3,4],hp:68,atk:2,def:4,matk:1,mdef:5,spd:1,acc:74,dodge:1,enemyClass:'tank',size:'xl',aiStyle:'defensive',abilities:['eShield','eWeaken']},
+  {name:'Apex Peregrine',emoji:'',birdKey:'peregrine',tier:[4],hp:37,atk:6,def:2,matk:1,mdef:1,spd:5,acc:93,dodge:2,enemyClass:'predator',size:'small',aiStyle:'berserker'},
+  {name:'Storm Swan',emoji:'',birdKey:'swan',tier:[4],hp:58,atk:2,def:5,matk:1,mdef:5,spd:1,acc:80,dodge:1,enemyClass:'tank',size:'large',aiStyle:'cautious'},
+  {name:'Iron Stork',emoji:'',birdKey:'shoebill',tier:[4],hp:66,atk:2,def:5,matk:1,mdef:4,spd:1,acc:76,dodge:1,enemyClass:'tank',size:'xl',aiStyle:'defensive'},
+  {name:'Dust Bulwark',emoji:'',birdKey:'emu',tier:[4],hp:64,atk:4,def:4,matk:1,mdef:2,spd:2,acc:77,dodge:1,enemyClass:'tank',size:'xl',aiStyle:'defensive',abilities:['eRage','eWeaken']},
+  {name:'War Harpy',emoji:'',birdKey:'harpy',tier:[4],hp:63,atk:4,def:2,matk:1,mdef:2,spd:3,acc:88,dodge:2,enemyClass:'predator',size:'xl',aiStyle:'berserker'},
 ];
 
 // ===================== BIOMES =====================
@@ -7461,12 +7461,13 @@ function weightedPick(entries){
 }
 function classGrowthWeightsForStory(cls){
   const c=String(cls||'striker').toLowerCase();
-  if(c==='striker') return [{k:'atk',w:4},{k:'spd',w:4},{k:'acc',w:3},{k:'dodge',w:2},{k:'critChance',w:2},{k:'def',w:1}];
-  if(c==='predator') return [{k:'atk',w:4},{k:'spd',w:3},{k:'acc',w:3},{k:'critChance',w:3},{k:'def',w:2},{k:'maxHp',w:2}];
-  if(c==='bruiser') return [{k:'maxHp',w:4},{k:'atk',w:3},{k:'def',w:3},{k:'spd',w:2},{k:'mdef',w:2}];
-  if(c==='tank') return [{k:'maxHp',w:5},{k:'def',w:4},{k:'mdef',w:3},{k:'atk',w:2},{k:'spd',w:1}];
-  if(c==='trickster') return [{k:'spd',w:4},{k:'acc',w:4},{k:'dodge',w:3},{k:'matk',w:2},{k:'atk',w:2},{k:'maxHp',w:1}];
-  return [{k:'matk',w:4},{k:'mdef',w:3},{k:'maxHp',w:3},{k:'spd',w:2},{k:'acc',w:2},{k:'atk',w:1}]; // singer
+  // Weights only over stats granted per level-up feather (mirrors applyEnemyFeatherFromPlayerMirror).
+  if(c==='striker') return [{k:'atk',w:4},{k:'spd',w:4},{k:'dodge',w:3},{k:'maxHp',w:2},{k:'def',w:2},{k:'mdef',w:1},{k:'matk',w:1}];
+  if(c==='predator') return [{k:'atk',w:4},{k:'spd',w:3},{k:'dodge',w:3},{k:'maxHp',w:2},{k:'def',w:2},{k:'mdef',w:2},{k:'matk',w:1}];
+  if(c==='bruiser') return [{k:'maxHp',w:4},{k:'atk',w:3},{k:'def',w:3},{k:'mdef',w:2},{k:'spd',w:2},{k:'dodge',w:1},{k:'matk',w:1}];
+  if(c==='tank') return [{k:'maxHp',w:5},{k:'def',w:4},{k:'mdef',w:3},{k:'atk',w:2},{k:'dodge',w:2},{k:'spd',w:1},{k:'matk',w:1}];
+  if(c==='trickster') return [{k:'spd',w:4},{k:'dodge',w:4},{k:'atk',w:2},{k:'matk',w:2},{k:'maxHp',w:2},{k:'def',w:2},{k:'mdef',w:2}];
+  return [{k:'matk',w:4},{k:'mdef',w:3},{k:'maxHp',w:3},{k:'spd',w:2},{k:'dodge',w:2},{k:'atk',w:1},{k:'def',w:1}]; // singer
 }
 /** Story OW enemy level scales 1→12 across stages 1→20 (mirrors expected player progression depth). */
 function getStoryEnemyLevelForStage(stage){
@@ -7478,33 +7479,29 @@ function applyEnemyFeatherFromPlayerMirror(stats,cls){
   const key=weightedPick(classGrowthWeightsForStory(cls));
   switch(key){
     case 'maxHp':
-      stats.maxHp=(stats.maxHp||1)+12;
+      stats.maxHp=(stats.maxHp||1)+4;
       stats.hp=stats.maxHp;
       break;
-    case 'atk': stats.atk=(stats.atk||0)+4; break;
-    case 'matk': stats.matk=(stats.matk||8)+4; break;
-    case 'def': stats.def=(stats.def||0)+3; break;
-    case 'mdef': stats.mdef=(stats.mdef||8)+3; break;
+    case 'atk': stats.atk=(stats.atk||0)+2; break;
+    case 'matk': stats.matk=(stats.matk||8)+2; break;
+    case 'def': stats.def=(stats.def||0)+2; break;
+    case 'mdef': stats.mdef=(stats.mdef||8)+2; break;
     case 'spd': stats.spd=(stats.spd||1)+2; break;
-    case 'acc': stats.acc=Math.min(100,(stats.acc||75)+4); break;
     case 'dodge':
-      stats.dodge=Math.min(95,(stats.dodge||0)+4);
+      stats.dodge=Math.min(95,(stats.dodge||0)+2);
       break;
-    case 'critChance': stats.critChance=Math.min(95,(stats.critChance||5)+1); break;
     default: stats.atk=(stats.atk||0)+2; break;
   }
 }
 function applyStoryEnemyGrowth(stats,key){
   switch(key){
-    case 'maxHp': stats.maxHp+=6; stats.hp=stats.maxHp; break;
+    case 'maxHp': stats.maxHp+=4; stats.hp=stats.maxHp; break;
     case 'atk': stats.atk+=2; break;
     case 'matk': stats.matk=(stats.matk||8)+2; break;
-    case 'def': stats.def+=1; break;
-    case 'mdef': stats.mdef=(stats.mdef||8)+1; break;
-    case 'spd': stats.spd+=1; break;
-    case 'acc': stats.acc=Math.min(100,(stats.acc||75)+2); break;
+    case 'def': stats.def+=2; break;
+    case 'mdef': stats.mdef=(stats.mdef||8)+2; break;
+    case 'spd': stats.spd+=2; break;
     case 'dodge': stats.dodge=Math.min(95,(stats.dodge||0)+2); break;
-    case 'critChance': stats.critChance=Math.min(95,(stats.critChance||5)+1); break;
   }
 }
 function chooseStoryPathForSlot(slot, birdKey, cls){
@@ -22482,20 +22479,19 @@ function getGoldCardLimit(){
 // ============================================================
 let _luSelectedStatChoiceId=null;
 const LEVELUP_STAT_POOL = [
-  {id:'vit12', label:'+12 Vitality', stat:'maxHp', amount:12, apply(){ G.player.stats.maxHp=(G.player.stats.maxHp||1)+12; G.player.stats.hp=Math.min((G.player.stats.hp||1)+12,G.player.stats.maxHp||1); }},
-  {id:'atk4', label:'+4 ATK', stat:'atk', amount:4, apply(){ G.player.stats.atk=(G.player.stats.atk||0)+4; }},
-  {id:'matk4', label:'+4 MATK', stat:'matk', amount:4, apply(){ G.player.stats.matk=(G.player.stats.matk||0)+4; }},
-  {id:'def3', label:'+3 DEF', stat:'def', amount:3, apply(){ G.player.stats.def=(G.player.stats.def||0)+3; }},
-  {id:'mdef3', label:'+3 MDEF', stat:'mdef', amount:3, apply(){ G.player.stats.mdef=(G.player.stats.mdef||0)+3; }},
+  {id:'vit4', label:'+4 Max HP', stat:'maxHp', amount:4, apply(){ G.player.stats.maxHp=(G.player.stats.maxHp||1)+4; G.player.stats.hp=Math.min((G.player.stats.hp||1)+4,G.player.stats.maxHp||1); }},
+  {id:'atk2', label:'+2 ATK', stat:'atk', amount:2, apply(){ G.player.stats.atk=(G.player.stats.atk||0)+2; }},
+  {id:'matk2', label:'+2 MATK', stat:'matk', amount:2, apply(){ G.player.stats.matk=(G.player.stats.matk||0)+2; }},
+  {id:'def2', label:'+2 DEF', stat:'def', amount:2, apply(){ G.player.stats.def=(G.player.stats.def||0)+2; }},
+  {id:'mdef2', label:'+2 MDEF', stat:'mdef', amount:2, apply(){ G.player.stats.mdef=(G.player.stats.mdef||0)+2; }},
   {id:'spd2', label:'+2 SPD', stat:'spd', amount:2, apply(){ G.player.stats.spd=(G.player.stats.spd||0)+2; }},
-  {id:'acc4', label:'+4 ACC', stat:'acc', amount:4, apply(){ G.player.stats.acc=(G.player.stats.acc||0)+4; }},
-  {id:'dod4', label:'+4% Dodge', stat:'dodge', amount:4, apply(){ G.player.stats.dodge=Math.min(95,(G.player.stats.dodge||0)+4); }},
+  {id:'dod2', label:'+2 Dodge', stat:'dodge', amount:2, apply(){ G.player.stats.dodge=Math.min(95,(G.player.stats.dodge||0)+2); }},
 ];
 const LEVELUP_FEATHER_POOL = LEVELUP_STAT_POOL;
 const ENDLESS_RARE_LEVELUP_CHOICES = [
-  {id:'vit18', label:'+18 Vitality', stat:'maxHp', amount:18, apply(){ G.player.stats.maxHp=(G.player.stats.maxHp||1)+18; G.player.stats.hp=Math.min((G.player.stats.hp||1)+18,G.player.stats.maxHp||1); }},
-  {id:'atk6', label:'+6 ATK', stat:'atk', amount:6, apply(){ G.player.stats.atk=(G.player.stats.atk||0)+6; }},
-  {id:'spd3', label:'+3 SPD', stat:'spd', amount:3, apply(){ G.player.stats.spd=(G.player.stats.spd||0)+3; }},
+  {id:'vit8', label:'+8 Max HP (rare)', stat:'maxHp', amount:8, apply(){ G.player.stats.maxHp=(G.player.stats.maxHp||1)+8; G.player.stats.hp=Math.min((G.player.stats.hp||1)+8,G.player.stats.maxHp||1); }},
+  {id:'atk4r', label:'+4 ATK (rare)', stat:'atk', amount:4, apply(){ G.player.stats.atk=(G.player.stats.atk||0)+4; }},
+  {id:'spd4r', label:'+4 SPD (rare)', stat:'spd', amount:4, apply(){ G.player.stats.spd=(G.player.stats.spd||0)+4; }},
 ];
 
 function isMainAttackAbility(ab){
