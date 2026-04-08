@@ -15,7 +15,7 @@
 .enemy-trait-badge{display:inline-block;margin-top:6px;padding:2px 8px;border:1px solid rgba(201,168,76,.25);border-radius:999px;font-size:.72rem;color:var(--gold-light);background:rgba(201,168,76,.08)}
 .shop-row-label{grid-column:1/-1;font-family:'Cinzel',serif;font-size:.82rem;letter-spacing:.12em;color:var(--gold-light);padding:2px 4px 0}
 .artifact-card{box-shadow:0 0 0 1px rgba(201,168,76,.18), 0 0 18px rgba(201,168,76,.12) inset}
-.damage-tag-float{font-size:.72rem;opacity:.95}
+.damage-tag-float{font-size:.72rem;opacity:.95;color:var(--gold-light,#e8c96a);animation:float-up 1.08s ease-out forwards}
 
 
 /* ===== 07_all-birds-menu-animation-patch.css ===== */
