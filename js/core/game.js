@@ -6711,7 +6711,7 @@ function continueRun() {
     showScreen('screen-battle');
     updateStageProgress();
     refreshBattleUI();
-    if(G.turn==='enemy') setTimeout(enemyTurn,350);
+    if(G.turn==='enemy') scheduleOpeningEnemyTurn();
     return;
   }
 
@@ -8209,6 +8209,7 @@ function buildBirdCard(key, bird, locked) {
 }
 
 function selectBird(key, el) {
+  primeAudioIfNeeded();
   const ui=ensureUIState();
   G.selected = key;
   ui.expandedBird = key;
@@ -8495,6 +8496,7 @@ function beginRun(){ return startGame(); }
 // ============================================================
 function startGame() {
   if(!G.selected) return;
+  primeAudioIfNeeded();
   beginThemeBgmFadeOutForRunStart();
   G.endlessMode = (ensureUIState().gameMode==='endless');
   if (G.endlessMode) {
@@ -8731,6 +8733,26 @@ function bossTitleForStageMilestone(stage){
   return titles[Math.min(idx,titles.length-1)];
 }
 
+/** After battle DOM is shown, wait for layout then run the first enemy turn (speed initiative). */
+const OPENING_ENEMY_DELAY_MS = 920;
+function scheduleOpeningEnemyTurn(){
+  const tick=()=>{
+    try{
+      primeAudioIfNeeded();
+      const scr=document.getElementById('screen-battle');
+      if(scr&&typeof scr.scrollIntoView==='function'){
+        try{ scr.scrollIntoView({block:'nearest',behavior:'smooth',inline:'nearest'}); }
+        catch(_){ try{ scr.scrollIntoView(false); }catch(__){} }
+      }
+    }catch(_){}
+    const nm=G.enemy?.name?String(G.enemy.name):'';
+    showBattleCaption(nm?`${nm} strikes first!`:'Enemy strikes first!',780);
+    setTimeout(()=>{ try{ enemyTurn(); }catch(err){ console.error(err); } },OPENING_ENEMY_DELAY_MS);
+  };
+  if(typeof requestAnimationFrame==='function') requestAnimationFrame(()=>requestAnimationFrame(tick));
+  else setTimeout(tick,0);
+}
+
 function loadStage() {
   // Overworld shop: open the shop instead of a battle.
   if (G._pendingOverworldShop) {
@@ -8848,7 +8870,7 @@ function loadStage() {
   }
   if (G.turn==='enemy') {
     logMsg(`⚡ ${G.enemy.name} (SPD ${G.enemy.stats.spd}) is faster — they strike first!`,'miss');
-    setTimeout(enemyTurn, 800);
+    scheduleOpeningEnemyTurn();
   }
   tryStartDukeBattleBgmIfNeeded();
 }
@@ -9700,10 +9722,13 @@ function getAbilityDisplayTags(ab){
 }
 
 function renderActions() {
-  const grid=document.getElementById('actions-grid'); grid.innerHTML='';
+  const grid=document.getElementById('actions-grid');
+  if(!grid) return;
+  grid.innerHTML='';
   renderEnergyOrbs();
   if(G.player?.abilities?.length) enforceAbilityCosts(G.player);
   const locked=!canPlayerAct();
+  const endTurnBlocked=!!(G.actionBusy||G.turnPhase===TURN.RESOLVING);
   let allAbilities=[...G.player.abilities];
   const order={physical:0,ranged:1,spell:2,utility:3};
   allAbilities=allAbilities.sort((a,b)=>{
@@ -9839,15 +9864,28 @@ function renderActions() {
     grid.appendChild(btn);
   });
 
+  const hasPlayableAction=[...grid.querySelectorAll('.action-btn[data-ab-id]')].some(b=>!b.disabled);
+
   const endWrap=document.createElement('div');
   endWrap.className='actions-grid-footer';
   const endBtn=document.createElement('button');
   endBtn.className='action-btn endturn-mini end-turn-bar__btn';
   endBtn.textContent='End Turn';
-  endBtn.disabled=locked;
+  endBtn.disabled=endTurnBlocked;
   endBtn.onclick=()=>endPlayerTurn();
   endWrap.appendChild(endBtn);
   grid.appendChild(endWrap);
+
+  if(!G.battleOver&&G.turn==='player'&&G.turnPhase===TURN.PLAYER&&G.phase==='PLAYER'&&!G.actionBusy
+    &&!hasPlayableAction&&(G.player?.energy||0)<=0
+    &&G._noEnAutoPassScheduledSerial!==(G._playerTurnSerial|0)){
+    G._noEnAutoPassScheduledSerial=G._playerTurnSerial|0;
+    queueMicrotask(()=>{
+      if(G.battleOver||G.turn!=='player'||G.turnPhase!==TURN.PLAYER||G.phase!=='PLAYER') return;
+      if(G._noEnAutoPassScheduledSerial!==(G._playerTurnSerial|0)) return;
+      try{ endPlayerTurn(true); }catch(_){}
+    });
+  }
 }
 
 // ===== TOOLTIPS / SKILL UI RESOLVER =====
@@ -10844,10 +10882,11 @@ function logMsg(msg,cls='') {
 function playAvatarAnim(who,cls,dur=600) {
   return new Promise(res=>{
     const el=getAvatar(who);
+    if(!el){ res(); return; }
     el.classList.remove('do-smash-r','do-smash-l','do-hit','do-dodge-r','do-dodge-l','do-miss-r','do-miss-l','do-shield');
     void el.offsetWidth;
     el.classList.add(cls);
-    setTimeout(()=>{el.classList.remove(cls);res();},dur);
+    setTimeout(()=>{ try{ el.classList.remove(cls); }catch(_){} res(); },dur);
   });
 }
 
@@ -10890,10 +10929,11 @@ function spawnFloat(who,text,cls) {
 
 function flashPanel(who,color) {
   const p=getPanel(who);
+  if(!p) return;
   p.classList.remove('flash-red','flash-blue');
   void p.offsetWidth;
   p.classList.add(`flash-${color}`);
-  setTimeout(()=>p.classList.remove(`flash-${color}`),600);
+  setTimeout(()=>{ try{ p.classList.remove(`flash-${color}`); }catch(_){} },600);
 }
 
 async function doAttack(attacker,target,result) {
@@ -20380,6 +20420,7 @@ async function playerAction(ab,fromQueue=false) {
 
 
 function startPlayerTurn(player){
+  G._playerTurnSerial=(G._playerTurnSerial|0)+1;
   player.energyMax = computePlayerMaxEnergy();
   player.energyRegen = computePlayerEnergyRegen(player);
   const maxEn = player.energyMax;
@@ -23463,6 +23504,13 @@ function getAudioCtx() {
   if (!_audioCtx) { try { _audioCtx = new (window.AudioContext||window.webkitAudioContext)(); } catch(e){} }
   return _audioCtx;
 }
+/** Call from user gestures (e.g. start run) so the first battle SFX are not blocked as autoplay. */
+function primeAudioIfNeeded() {
+  const ctx = getAudioCtx();
+  if (!ctx || ctx.state !== 'suspended') return;
+  try { ctx.resume().catch(() => {}); } catch (_) {}
+}
+globalThis.primeAudioIfNeeded = primeAudioIfNeeded;
 function toggleSound() {
   _soundEnabled = !_soundEnabled;
   const btn=document.getElementById('sound-toggle-btn');
@@ -23471,16 +23519,22 @@ function toggleSound() {
 function playTone(freq, type='square', dur=0.12, vol=0.18, delay=0, freqEnd=null) {
   if (!_soundEnabled) return;
   const ctx = getAudioCtx(); if (!ctx) return;
-  const osc = ctx.createOscillator();
-  const gain = ctx.createGain();
-  osc.connect(gain); gain.connect(ctx.destination);
-  osc.type = type;
-  osc.frequency.setValueAtTime(freq, ctx.currentTime + delay);
-  if (freqEnd !== null) osc.frequency.linearRampToValueAtTime(freqEnd, ctx.currentTime + delay + dur);
-  gain.gain.setValueAtTime(vol, ctx.currentTime + delay);
-  gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + delay + dur);
-  osc.start(ctx.currentTime + delay);
-  osc.stop(ctx.currentTime + delay + dur + 0.05);
+  const run = () => {
+    try {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain); gain.connect(ctx.destination);
+      osc.type = type;
+      osc.frequency.setValueAtTime(freq, ctx.currentTime + delay);
+      if (freqEnd !== null) osc.frequency.linearRampToValueAtTime(freqEnd, ctx.currentTime + delay + dur);
+      gain.gain.setValueAtTime(vol, ctx.currentTime + delay);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + delay + dur);
+      osc.start(ctx.currentTime + delay);
+      osc.stop(ctx.currentTime + delay + dur + 0.05);
+    } catch (_) {}
+  };
+  if (ctx.state === 'suspended') ctx.resume().then(run).catch(() => {});
+  else run();
 }
 const SFX = {
   hit(urgency=1)  { playTone(180*urgency,'sawtooth',.09,.22,0,120*urgency); },
