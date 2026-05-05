@@ -7396,10 +7396,15 @@ function getStoryThreatForBirdKey(key){
   return 2;
 }
 function getStoryAllowedThreatMinMax(stage){
-  if(stage<=2) return [1,1];
-  if(stage<=4) return [1,2];
-  if(stage<=9) return [1,3];
-  if(stage<=14) return [2,4];
+  const s=Math.max(1,Math.floor(Number(stage))||1);
+  if(typeof getStoryStageThreatAllowList==='function'){
+    const list=getStoryStageThreatAllowList(s);
+    if(list&&list.length) return [Math.min(...list),Math.max(...list)];
+  }
+  if(s<=5) return [1,1];
+  if(s<=10) return [1,2];
+  if(s<=15) return [3,3];
+  if(s<=19) return [4,4];
   return [3,4];
 }
 function getStoryEnemyLevelBand(stage){
@@ -7791,7 +7796,10 @@ function showNextStagePreview() {
   } else {
     const tier=storyTierFromStage(nextStage);
     const isBoss=(nextStage===STORY_MILESTONE_BOSS_STAGE || nextStage===STORY_DUKE_STAGE);
-    const pool=pickBirdEnemyPoolForTier(isBoss?4:tier);
+    let pool;
+    if(isBoss) pool=pickBirdEnemyPoolForTier(4);
+    else if(G.endlessMode) pool=pickBirdEnemyPoolForTier(tier);
+    else pool=pickBirdEnemyPoolForStoryStage(nextStage);
     const src=pool[Math.floor((nextStage*17)%Math.max(1,pool.length))];
     enemy=buildEdFromBirdEnemyTemplate(src,{isBoss,bossTitle:isBoss?bossTitleForStageMilestone(nextStage):''});
     const sizeLabel={tiny:'Tiny',small:'Small',medium:'Medium',large:'Large',xl:'Extra Large'}[enemy.size]||'?';
@@ -8662,9 +8670,9 @@ function normalizeEnemyNameKey(name){
 /** Story / endless tier band 1–5 from stage depth (matches loadStage). */
 function storyTierFromStage(stage){
   const s=Math.max(1,Number(stage)||1);
-  if(s<=4) return 1;
-  if(s<=9) return 2;
-  if(s<=14) return 3;
+  if(s<=5) return 1;
+  if(s<=10) return 2;
+  if(s<=15) return 3;
   if(s<=19) return 4;
   return 5;
 }
@@ -8675,6 +8683,33 @@ function pickBirdEnemyPoolForTier(tier){
   let pool=BIRD_ENEMIES.filter(e=>Array.isArray(e.tier)&&e.tier.includes(band));
   if(!pool.length) pool=BIRD_ENEMIES.slice();
   return pool;
+}
+
+/** Story / endless: filter BIRD_ENEMIES by registry threat whitelist for this stage (matches story_enemy_registry). */
+function pickBirdEnemyPoolForStoryStage(stageNumber){
+  const st=Math.max(1,Math.floor(Number(stageNumber))||1);
+  let allowList;
+  if(typeof getStoryStageThreatAllowList==='function'){
+    allowList=getStoryStageThreatAllowList(st);
+  } else {
+    allowList=[];
+    const[mn,mx]=getStoryAllowedThreatMinMax(st);
+    for(let t=mn;t<=mx;t++) allowList.push(t);
+  }
+  const allow=new Set(allowList);
+  let pool=BIRD_ENEMIES.filter(e=>{
+    let th=typeof getStoryRegistryThreatForBirdKey==='function'?getStoryRegistryThreatForBirdKey(e.birdKey):null;
+    if(!Number.isFinite(th)) th=getStoryThreatForBirdKey(e.birdKey);
+    return allow.has(th);
+  });
+  if(!pool.length) pool=pickBirdEnemyPoolForTier(storyTierFromStage(st));
+  return pool;
+}
+
+function pickRandomBirdEnemyDraftForStage(stageNumber, opts={}){
+  const pool=pickBirdEnemyPoolForStoryStage(stageNumber);
+  const src=pool[Math.floor(Math.random()*pool.length)];
+  return buildEdFromBirdEnemyTemplate(src,opts);
 }
 
 /** Build a combat draft from a BIRD_ENEMIES row (before mergeScaledStatsIntoEnemy). */
@@ -8791,12 +8826,7 @@ function loadStage() {
   } else {
     // Determine tier from stage
     const stage = encounterStage;
-    let tier;
-    if(stage<=4) tier=1;
-    else if(stage<=9) tier=2;
-    else if(stage<=14) tier=3;
-    else if(stage<=19) tier=4;
-    else tier=5; // final boss
+    const tier=storyTierFromStage(stage);
     
     const isMilestoneBirdBoss = (stage === STORY_MILESTONE_BOSS_STAGE);
     
@@ -8809,7 +8839,7 @@ function loadStage() {
     } else if(!ed && isMilestoneBirdBoss){
       ed=pickRandomBirdEnemyDraft(4,{isBoss:true,bossTitle:bossTitleForStageMilestone(stage)});
     } else if(!ed){
-      ed=pickRandomBirdEnemyDraft(tier,{isBoss:false});
+      ed=pickRandomBirdEnemyDraftForStage(stage,{isBoss:false});
     }
 
   }
@@ -9864,7 +9894,14 @@ function renderActions() {
     grid.appendChild(btn);
   });
 
-  const hasPlayableAction=[...grid.querySelectorAll('.action-btn[data-ab-id]')].some(b=>!b.disabled);
+  const _passOnlyActionIds=new Set(['skipTurn','sittingDuck','endTurn']);
+  const hasPlayableAction=[...grid.querySelectorAll('.action-btn[data-ab-id]')].some(b=>{
+    if(b.disabled) return false;
+    const id=b.getAttribute('data-ab-id')||'';
+    if(_passOnlyActionIds.has(id)) return false;
+    return true;
+  });
+  const outOfPlannedActions=((G.player?.energy||0)<=0||(G.playerActionsThisTurn||0)>=MAX_PLAYER_ACTIONS_PER_TURN);
 
   const endWrap=document.createElement('div');
   endWrap.className='actions-grid-footer';
@@ -9877,7 +9914,7 @@ function renderActions() {
   grid.appendChild(endWrap);
 
   if(!G.battleOver&&G.turn==='player'&&G.turnPhase===TURN.PLAYER&&G.phase==='PLAYER'&&!G.actionBusy
-    &&!hasPlayableAction&&(G.player?.energy||0)<=0
+    &&!hasPlayableAction&&outOfPlannedActions
     &&G._noEnAutoPassScheduledSerial!==(G._playerTurnSerial|0)){
     G._noEnAutoPassScheduledSerial=G._playerTurnSerial|0;
     queueMicrotask(()=>{
@@ -20576,6 +20613,10 @@ function syncAbilityEnergyCost(ability){
   return ability.energyCost;
 }
 function canUseAbility(player, ability){
+  if(typeof G!=='undefined'&&player===G.player&&G.turnPhase===TURN.PLAYER
+    && (G.playerActionsThisTurn||0)>=MAX_PLAYER_ACTIONS_PER_TURN){
+    return false;
+  }
   const cost=getAbilityEnergyCost(ability, player);
   return (player.energy||0) >= cost;
 }
@@ -24864,32 +24905,6 @@ wireThemeBgmAutoplayUnlock();
       }catch(_){}
     };
   }
-})();
-
-
-
-/* ============================================================
-   PATCH: Goose Honk damage tuning (was too high)
-   New dmgMult per level: 1.10 / 1.25 / 1.40 / 1.55
-   (keeps Tank identity without deleting targets)
-   ============================================================ */
-(function(){
-  const T=globalThis.ABILITY_TEMPLATES;
-  if(!T) return;
-  const h=T.honkAttack;
-  if(!h) return;
-  h.baseDmgMult = 1.10;
-  h.levels = h.levels || [];
-  const mult=[1.10,1.25,1.40,1.55];
-  for(let i=0;i<4;i++){
-    if(!h.levels[i]) h.levels[i]={lv:i+1,desc:''};
-    h.levels[i].dmgMult = mult[i];
-  }
-  // update displayed desc to match (optional)
-  if(h.levels[0]) h.levels[0].desc = '110% dmg, 25% miss';
-  if(h.levels[1]) h.levels[1].desc = '125% dmg, 20% miss — 15% Paralysis';
-  if(h.levels[2]) h.levels[2].desc = '140% dmg, 18% miss, 20% Paralysis';
-  if(h.levels[3]) h.levels[3].desc = '155% dmg, 12% miss, 25% Paralysis, 10% Stun';
 })();
 
 
