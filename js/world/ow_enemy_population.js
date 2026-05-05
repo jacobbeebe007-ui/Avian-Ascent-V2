@@ -1,6 +1,6 @@
 /**
  * Deterministic per-pack overworld enemy population (stages 1–9, 11–19).
- * Tier pools mirror BIRD_ENEMIES + pickBirdEnemyPoolForTier in js/core/game.js — keep in sync when editing tiers.
+ * Tier bands match getStoryStageThreatAllowList + storyTierFromStage (game.js).
  */
 (function (global) {
   'use strict';
@@ -23,25 +23,25 @@
 
   var OW_PACK_COUNT = OW_PACK_SEEDS.length;
 
-  /** Same banding as storyTierFromStage in game.js */
+  /** Same banding as storyTierFromStage in game.js / getStoryStageThreatAllowList. */
   function storyTierFromStage(stage) {
     var s = Math.max(1, Math.floor(Number(stage)) || 1);
-    if (s <= 4) return 1;
-    if (s <= 9) return 2;
-    if (s <= 14) return 3;
+    if (s <= 5) return 1;
+    if (s <= 10) return 2;
+    if (s <= 15) return 3;
     if (s <= 19) return 4;
     return 5;
   }
 
   /**
-   * Static snapshot: birdKey lists per tier band (1–4), same membership as
-   * BIRD_ENEMIES.filter(e => e.tier.includes(band)).
+   * birdKeys per band aligned to story threat whitelist (BIRD_ENEMIES subset):
+   * band 1 → threat 1, band 2 → 1–2, band 3 → 3, band 4 → 4.
    */
   var OW_POOL_BY_BAND = {
     1: ['sparrow', 'blackbird', 'magpie'],
-    2: ['sparrow', 'blackbird', 'magpie', 'crow', 'kookaburra', 'flamingo', 'snowyOwl'],
-    3: ['crow', 'kookaburra', 'flamingo', 'snowyOwl', 'toucan', 'goose', 'raven', 'macaw', 'lyrebird', 'penguin'],
-    4: ['toucan', 'goose', 'raven', 'macaw', 'lyrebird', 'penguin', 'peregrine', 'swan', 'shoebill', 'emu', 'harpy'],
+    2: ['sparrow', 'blackbird', 'magpie', 'crow'],
+    3: ['kookaburra', 'flamingo', 'snowyOwl', 'toucan', 'raven', 'lyrebird', 'peregrine'],
+    4: ['shoebill', 'emu', 'harpy'],
   };
 
   /** Display labels aligned with blackstone_overworld_new BIRDS / resolveOwEnemySpriteKey. */

@@ -52,18 +52,6 @@
     dukeBlakiston: { birdKey: 'dukeBlakiston', threatTier: 5, threatValue: 6, enemyEligible: false, bossOnly: true, minStage: 20, maxStage: 20 },
   };
 
-  const STORY_BIRD_CLASS = {
-    sparrow: 'striker', robin: 'singer', blackbird: 'singer', seagull: 'trickster', kiwi: 'predator',
-    hummingbird: 'striker', macaw: 'singer', crow: 'trickster', magpie: 'trickster', goose: 'tank', penguin: 'tank',
-    peregrine: 'striker', snowyOwl: 'predator', kookaburra: 'trickster', lyrebird: 'singer', raven: 'trickster',
-    bowerbird: 'trickster', toucan: 'striker', swan: 'tank', flamingo: 'striker', albatross: 'bruiser',
-    blackCockatoo: 'singer', secretary: 'predator', shoebill: 'tank', harpy: 'predator', baldEagle: 'predator',
-    ostrich: 'bruiser', cassowary: 'bruiser', emu: 'bruiser', dukeBlakiston: 'predator',
-    wren: 'striker', fairywren: 'singer', firecrest: 'striker', wagtail: 'trickster', galah: 'trickster', bluejay: 'bruiser',
-    cardinal: 'singer', bushturkey: 'bruiser', vulture: 'bruiser', barnowl: 'predator', bustard: 'bruiser', goldeneagle: 'predator',
-    pelican: 'tank', marabou: 'predator',
-  };
-
   const STORY_STAGE_BUDGETS = {
     1: 2, 2: 2, 3: 3, 4: 3, 5: 4, 6: 4, 7: 5, 8: 5, 9: 5,
     10: 0, 11: 6, 12: 6, 13: 7, 14: 7, 15: 7, 16: 8, 17: 8, 18: 9, 19: 9, 20: 0,
@@ -141,19 +129,26 @@
     return e ? e.threatValue : null;
   }
 
+  /** Allowed registry threatValue bands for normal story stages (whitelists). */
+  function getStoryStageThreatAllowList(stageNumber) {
+    const st = Math.max(1, Math.floor(Number(stageNumber)) || 1);
+    if (st <= 5) return [1];
+    if (st <= 10) return [1, 2];
+    if (st <= 15) return [3];
+    if (st <= 19) return [4];
+    return [3, 4];
+  }
+
   function buildAllowedEnemyPool(stageNumber) {
     const st = Math.max(1, Math.floor(Number(stageNumber)) || 1);
+    const allowed = new Set(getStoryStageThreatAllowList(st));
     return Object.keys(STORY_ENEMY_REGISTRY).filter((key) => {
       const e = STORY_ENEMY_REGISTRY[key];
       if (!e.enemyEligible) return false;
       if (e.bossOnly) return false;
       if (st < e.minStage) return false;
       if (st > e.maxStage) return false;
-      if (st <= 2) return e.threatValue === 1;
-      if (st <= 4) return e.threatValue <= 2;
-      if (st <= 9) return e.threatValue <= 3;
-      if (st <= 14) return e.threatValue >= 2 && e.threatValue <= 4;
-      return e.threatValue >= 3 && e.threatValue <= 4;
+      return allowed.has(e.threatValue);
     });
   }
 
@@ -166,35 +161,6 @@
       clone[j] = t;
     }
     return clone;
-  }
-
-  function getBirdDef(key) {
-    const birds = global.BIRDS || global.BirdRoster || {};
-    if (birds[key]) return birds[key];
-    if (typeof key === 'string' && birds[key.toLowerCase?.()]) return birds[key.toLowerCase()];
-    return null;
-  }
-
-  function getBirdClass(key) {
-    const bird = getBirdDef(key);
-    const fromRoster = bird?.class || bird?.birdClass;
-    if (fromRoster) return String(fromRoster).toLowerCase();
-    const bk = STORY_ENEMY_REGISTRY[key]?.birdKey || key;
-    return STORY_BIRD_CLASS[bk] || null;
-  }
-
-  function isBadEarlyPair(stageNumber, keyA, keyB) {
-    if (stageNumber > 9) return false;
-    const a = STORY_ENEMY_REGISTRY[keyA];
-    const b = STORY_ENEMY_REGISTRY[keyB];
-    if (!a || !b) return false;
-    if (a.threatValue >= 3 && b.threatValue >= 3 && stageNumber <= 8) return true;
-    const classA = String(getBirdClass(keyA) || '').toLowerCase();
-    const classB = String(getBirdClass(keyB) || '').toLowerCase();
-    const heavy = new Set(['tank', 'bruiser', 'predator']);
-    if (stageNumber <= 6 && heavy.has(classA) && heavy.has(classB)) return true;
-    if (stageNumber <= 6 && classA === 'trickster' && classB === 'trickster') return true;
-    return false;
   }
 
   function pickEnemyPair(stageNumber, playerBirdKey) {
@@ -215,7 +181,6 @@
         const a = STORY_ENEMY_REGISTRY[aKey];
         const b = STORY_ENEMY_REGISTRY[bKey];
         const total = a.threatValue + b.threatValue;
-        if (isBadEarlyPair(stageNumber, aKey, bKey)) continue;
         if (total > budget) continue;
         const score = total;
         if (score > bestScore) {
@@ -270,4 +235,5 @@
   global.getPlayerThreatValue = getPlayerThreatValue;
   global.getStoryRegistryThreatForBirdKey = getStoryRegistryThreatForBirdKey;
   global.getPlayerThreatBudgetAdjustment = getPlayerThreatBudgetAdjustment;
+  global.getStoryStageThreatAllowList = getStoryStageThreatAllowList;
 })(typeof window !== 'undefined' ? window : globalThis);
