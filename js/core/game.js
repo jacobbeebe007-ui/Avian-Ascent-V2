@@ -9840,7 +9840,7 @@ function renderActions() {
     }
     const shortDesc=(((ab.levels&&ab.levels[(ab.level||1)-1]?.desc)||ab.desc||'')+getAbilityDamageScalingHintForUI(ab)).replace(/<[^>]+>/g,'').slice(0,100);
     const _tmplUI=getAbilityTemplateForUI(ab);
-    const _dmgEst=estimateSkillDamageRange(ab,_tmplUI,G.player);
+    const _dmgEst=estimateSkillDamageRange(ab,_tmplUI,G.player,{isPlayerCombatPreview:true});
     let dmgChip='';
     if(_dmgEst.isDamaging&&_dmgEst.dmgLow!=null){
       if(_dmgEst.hybridSplit){
@@ -9960,6 +9960,8 @@ function estimateMultiplierFromSkillDescription(txt=''){
   const s=String(txt||'');
   const matk=s.match(/(\d+(?:\.\d+)?)\s*%\s*M\.?\s*ATK/i);
   if(matk) return (Number(matk[1])||0)/100;
+  const matkCompact=s.match(/(\d+(?:\.\d+)?)\s*%\s*MATK\b/i);
+  if(matkCompact) return (Number(matkCompact[1])||0)/100;
   const dmgPer=s.match(/(\d+(?:\.\d+)?)\s*%\s*dmg(?:\s*per\s*hit)?/i);
   if(dmgPer) return (Number(dmgPer[1])||0)/100;
   const multi=s.match(/(\d+)\s*[x×]\s*(\d+(?:\.\d+)?)\s*%/i);
@@ -10119,7 +10121,9 @@ function estimateHybridSplitBands(tmpl,ab,physMult,multCore,lv,spec,opts,pending
  */
 function estimateSkillDamageRange(ab,tmpl,attacker,opts){
   opts=opts||{};
-  const isPlayerCombat=opts.isPlayerCombatPreview!==undefined?opts.isPlayerCombatPreview:(attacker===G?.player);
+  const isPlayerCombat=opts.isPlayerCombatPreview!==undefined
+    ? !!opts.isPlayerCombatPreview
+    : !!(G?.player&&attacker===G.player);
   const p=attacker||G?.player;
   const stats=p&&(p.stats||p)||{};
   let pAtk=Number(stats.atk||0);
@@ -10495,12 +10499,16 @@ function buildGenericUtilityStatPreviewFromAction(ab,tmpl){
 function getSkillStatPreviewLines(ab,tmpl){
   const id=ab?.id;
   if(!id||!G?.player) return [];
-  const fn=SKILL_STAT_PREVIEW[id];
-  if(typeof fn==='function'){
-    try{
-      const r=fn(G.player,ab,tmpl)||[];
-      if(r.length) return r;
-    }catch(_){}
+  const canon=(typeof resolveAbilityAliasSourceId==='function')?resolveAbilityAliasSourceId(id):id;
+  const keys=[id,canon].filter((k,i,a)=>k&&a.indexOf(k)===i);
+  for(const key of keys){
+    const fn=SKILL_STAT_PREVIEW[key];
+    if(typeof fn==='function'){
+      try{
+        const r=fn(G.player,ab,tmpl)||[];
+        if(r.length) return r;
+      }catch(_){}
+    }
   }
   return buildGenericUtilityStatPreviewFromAction(ab,tmpl);
 }
@@ -10516,7 +10524,7 @@ function buildActionTooltipHTML(ab){
   const hitClass=hit===null?'':(hit>=80?'tt-hit-great':hit>=55?'tt-hit-good':'tt-hit-bad');
   const energy=getEnergyCost(ab);
   const cooldown=getTemplateCooldown(ab);
-  const {isDamaging,dmgLow,dmgHigh,btnType,hybridSplit}=estimateSkillDamageRange(ab,tmpl,G.player);
+  const {isDamaging,dmgLow,dmgHigh,btnType,hybridSplit}=estimateSkillDamageRange(ab,tmpl,G.player,{isPlayerCombatPreview:true});
   const effectList=(ab.ailmentIds||[]).length?ab.ailmentIds.map(a=>a.replace(/_/g,' ')).join(', '):'—';
 
   let html=`<div class="tt-name">${tmpl.name}</div><div class="tt-type">${tmpl.type} · Lv${ab.level}</div>`;
@@ -10917,13 +10925,18 @@ function logMsg(msg,cls='') {
 //  ANIMATION ENGINE
 // ============================================================
 function playAvatarAnim(who,cls,dur=600) {
+  const animCls=['do-smash-r','do-smash-l','do-hit','do-dodge-r','do-dodge-l','do-miss-r','do-miss-l','do-shield'];
   return new Promise(res=>{
-    const el=getAvatar(who);
-    if(!el){ res(); return; }
-    el.classList.remove('do-smash-r','do-smash-l','do-hit','do-dodge-r','do-dodge-l','do-miss-r','do-miss-l','do-shield');
-    void el.offsetWidth;
-    el.classList.add(cls);
-    setTimeout(()=>{ try{ el.classList.remove(cls); }catch(_){} res(); },dur);
+    const wrap=getAvatarWrap(who);
+    const inner=getAvatar(who);
+    const host=wrap||inner;
+    if(!host){ res(); return; }
+    for(const node of [wrap,inner].filter(Boolean)){
+      animCls.forEach(c=>node.classList.remove(c));
+    }
+    void host.offsetWidth;
+    host.classList.add(cls);
+    setTimeout(()=>{ try{ host.classList.remove(cls); }catch(_){} res(); },dur);
   });
 }
 
