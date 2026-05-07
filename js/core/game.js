@@ -7433,9 +7433,9 @@ function getStoryAllowedThreatMinMax(stage){
     if(list&&list.length) return [Math.min(...list),Math.max(...list)];
   }
   if(s<=5) return [1,1];
-  if(s<=10) return [1,2];
-  if(s<=15) return [2,2];
-  if(s<=19) return [2,3];
+  if(s<=9) return [2,2];
+  if(s<=15) return [3,3];
+  if(s<=19) return [4,4];
   return [3,4];
 }
 function getStoryEnemyLevelBand(stage){
@@ -7647,32 +7647,30 @@ function pickFallbackStoryEnemyPair(pool, budget){
 }
 
 function generateStoryStageEnemyKeys(stage, playerBirdKey){
+  const st=Math.max(1,Math.floor(Number(stage)||1));
+  if(STORY_BOSS_STAGES.has(st)){
+    return st===STORY_DUKE_STAGE ? ['dukeBlakiston'] : [];
+  }
+  const chainCount=typeof globalThis.getStoryEncounterChainCount==='function'
+    ? Math.max(1,globalThis.getStoryEncounterChainCount(st))
+    : 2;
   if(typeof globalThis.pickEnemyPair==='function'){
     try{
       const p=globalThis.pickEnemyPair(stage, playerBirdKey||'');
-      if(Array.isArray(p)&&p.length>=2) return p;
+      if(Array.isArray(p)&&p.length>=1) return p;
     }catch(err){ console.warn('[StoryEncounter] pickEnemyPair failed', err); }
   }
-  const [minThreat,maxThreat]=getStoryAllowedThreatMinMax(stage);
+  const [minThreat,maxThreat]=getStoryAllowedThreatMinMax(st);
   const all=Object.keys(BIRDS||{}).filter(k=>k!=='dukeBlakiston' && k!=='duke_blakiston');
   const pool=all.filter(k=>{
     const t=getStoryThreatForBirdKey(k);
     return t>=minThreat && t<=maxThreat;
   });
-  if(pool.length<2) return ['sparrow','robin'];
-  let budget=(typeof getStoryStageBudget==='function'?getStoryStageBudget(stage):Math.max(2,stage))+
-    (typeof getPlayerThreatBudgetAdjustment==='function'?getPlayerThreatBudgetAdjustment(stage,playerBirdKey||''):0);
+  if(pool.length<1) return Array.from({length:chainCount},()=>'sparrow');
   const shuffled=pool.slice().sort(()=>Math.random()-.5);
-  for(let i=0;i<360;i++){
-    const first=pickRandom(shuffled);
-    const firstThreat=getStoryThreatForBirdKey(first);
-    const others=shuffled.filter(k=>k!==first);
-    const exactPool=others.filter(k=>firstThreat+getStoryThreatForBirdKey(k)===budget);
-    if(exactPool.length) return [first, pickRandom(exactPool)];
-    const underPool=others.filter(k=>firstThreat+getStoryThreatForBirdKey(k)<=budget);
-    if(underPool.length) return [first, pickRandom(underPool)];
-  }
-  return pickFallbackStoryEnemyPair(pool, budget);
+  const out=[];
+  for(let i=0;i<chainCount;i++) out.push(shuffled[i%shuffled.length]);
+  return out;
 }
 
 function commitStoryEncounterMeta(stageNum, playerBirdKey, owBirdKeys){
@@ -7698,7 +7696,7 @@ function commitStoryEncounterMeta(stageNum, playerBirdKey, owBirdKeys){
   try{ if(typeof window!=='undefined') window.currentStageEncounter=G.currentStoryEncounter; }catch(_){}
 }
 
-/** Linear story (and shared save state): two bird enemies per non-boss stage, threat sum matches budget when possible. */
+/** Linear story (and shared save state): variable-length enemy chains per stage band (see getStoryEncounterChainCount). */
 function syncStoryEncounterBirdQueue(encounterStage){
   if(G.endlessMode) return;
   const st=Math.max(1,Math.floor(Number(encounterStage)||1));
@@ -7730,7 +7728,7 @@ function syncStoryEncounterBirdQueue(encounterStage){
   const rolled=generateStoryStageEnemyKeys(st,G.player?.birdKey);
   G._owStageEnemies=normalizeOwEnemyListForBattle(rolled);
   G._owEnemyIndex=0;
-  G._owEnemyCount=Math.max(2,G._owStageEnemies?.length||2);
+  G._owEnemyCount=Math.max(1,G._owStageEnemies?.length||1);
   G._owEncounterRollStage=st;
   commitStoryEncounterMeta(st, G.player?.birdKey, G._owStageEnemies);
 }
@@ -7769,7 +7767,7 @@ function handleOverworldReturn() {
       const rolled=generateStoryStageEnemyKeys(stageNum, pbk);
       G._owStageEnemies = normalizeOwEnemyListForBattle(rolled);
       G._owEnemyIndex   = 0;
-      G._owEnemyCount = G._owStageEnemies.length || 2;
+      G._owEnemyCount = Math.max(1, G._owStageEnemies?.length || 1);
       G._owEncounterRollStage = stageNum;
       commitStoryEncounterMeta(stageNum, pbk, G._owStageEnemies);
     } else {
@@ -8740,7 +8738,7 @@ function pickBirdEnemyPoolForTier(tier){
   return pool;
 }
 
-/** Story / endless: filter BIRD_ENEMIES by registry threat whitelist for this stage (matches story_enemy_registry). */
+/** Story / endless: filter BIRD_ENEMIES by registry threat whitelist for this stage (getStoryStageThreatAllowList; stages 6–9 are tier 2 only). */
 function pickBirdEnemyPoolForStoryStage(stageNumber){
   const st=Math.max(1,Math.floor(Number(stageNumber))||1);
   let allowList;
