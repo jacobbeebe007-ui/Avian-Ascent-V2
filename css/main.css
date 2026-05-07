@@ -1821,6 +1821,11 @@ body.ui-mobile-mode #screen-battle .level-badge{font-size:.7rem;}
 /* ===== NEST / INVENTORY MODAL ===== */
 .nest-btn{background:rgba(201,168,76,.1);border:1px solid rgba(201,168,76,.4);border-radius:8px;padding:6px 12px;cursor:pointer;color:var(--gold);font-family:"Cinzel",serif;font-size:.8rem;letter-spacing:.06em;transition:all .2s;}
 .nest-btn:hover{background:rgba(201,168,76,.2);transform:scale(1.05);}
+/* Overworld iframe embed: hide chrome until nest modal opens (script adds class in <head>). */
+html.avian-ow-nest-embed #action-tooltip{display:none!important;}
+html.avian-ow-nest-embed #app > *:not(#nest-modal){display:none!important;}
+html.avian-ow-nest-embed #app{min-height:100vh;background:#0a0c0f;}
+
 #nest-modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.82);z-index:8000;align-items:flex-start;justify-content:center;padding:20px;overflow-y:auto;}
 #nest-modal.open{display:flex;}
 .nest-inner{background:var(--surface);border:1px solid rgba(201,168,76,.4);border-radius:16px;max-width:700px;width:100%;padding:26px;position:relative;margin:auto;}
