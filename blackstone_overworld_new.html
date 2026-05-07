@@ -280,7 +280,7 @@ function getNodePortraitBird(n){ return n?.portraitBird || ''; }
 function inferCompletedStageFromNodeId(nodeId){
   return inferOwCompletedStageFromNodeId(nodeId, NODES);
 }
-function getNodeBattleCount(n){ if(!n)return 0; if(!isCombatNode(n))return 0; var st=Math.max(1,Math.floor(Number(n.stage)||1)); if(typeof isBossStageStory==='function'&&isBossStageStory(st))return 1; return 2; }
+function getNodeBattleCount(n){ if(!n)return 0; if(!isCombatNode(n))return 0; var st=Math.max(1,Math.floor(Number(n.stage)||1)); if(typeof isBossStageStory==='function'&&isBossStageStory(st))return 1; if(typeof getStoryEncounterChainCount==='function')return getStoryEncounterChainCount(st); return 2; }
 function isNodeCompleted(n){
   if(!n) return false;
   if(isCombatNode(n)) return Number(n.stage||0) <= OVERWORLD_PROGRESS.completedStage;

@@ -1,5 +1,5 @@
 /**
- * Master story-mode enemy registry + encounter pair picker.
+ * Master story-mode enemy registry + encounter chain picker (variable-length sequences).
  * Canonical combat entities are built in game.js (buildStoryEnemyFromBirdKey).
  */
 (function initStoryEnemyRegistry(global) {
@@ -129,14 +129,26 @@
     return e ? e.threatValue : null;
   }
 
-  /** Allowed registry threatValue bands for normal story stages (whitelists). */
+  /** Allowed registry threatValue bands per stage band (must match encounter chains below). */
   function getStoryStageThreatAllowList(stageNumber) {
     const st = Math.max(1, Math.floor(Number(stageNumber)) || 1);
+    if (STORY_BOSS_STAGES.has(st)) return [];
     if (st <= 5) return [1];
-    if (st <= 10) return [1, 2];
+    if (st <= 9) return [2];
     if (st <= 15) return [3];
     if (st <= 19) return [4];
     return [3, 4];
+  }
+
+  /** Battles per non-boss story stage (boss stages use chain length 1). Keep in sync with blackstone getNodeBattleCount. */
+  function getStoryEncounterChainCount(stageNumber) {
+    const st = Math.max(1, Math.floor(Number(stageNumber)) || 1);
+    if (STORY_BOSS_STAGES.has(st)) return 1;
+    if (st <= 5) return 5;
+    if (st <= 9) return 3;
+    if (st <= 15) return 2;
+    if (st <= 19) return 2;
+    return 2;
   }
 
   function buildAllowedEnemyPool(stageNumber) {
@@ -163,45 +175,32 @@
     return clone;
   }
 
-  function pickEnemyPair(stageNumber, playerBirdKey) {
-    const pool = buildAllowedEnemyPool(stageNumber);
-    if (pool.length < 2) {
-      console.warn('[StoryEncounter] Pool too small for stage', stageNumber, pool);
-      return ['sparrow', 'robin'];
+  /**
+   * Pick ordered birdKeys for this stage’s combat chain. Boss stages return [] (handled in game.js).
+   * Repeats allowed when chainCount exceeds distinct pool size (wrapped shuffle).
+   */
+  function pickStoryEncounterBirdKeys(stageNumber, playerBirdKey) {
+    void playerBirdKey;
+    const st = Math.max(1, Math.floor(Number(stageNumber)) || 1);
+    if (isBossStage(st)) return [];
+    const chainCount = getStoryEncounterChainCount(st);
+    const poolKeys = buildAllowedEnemyPool(st);
+    if (!poolKeys.length) {
+      console.warn('[StoryEncounter] Empty pool for stage', st);
+      return Array.from({ length: chainCount }, () => 'sparrow');
     }
-    const budget =
-      getStoryStageBudget(stageNumber) + getPlayerThreatBudgetAdjustment(stageNumber, playerBirdKey);
-    const shuffled = shuffle(pool);
-    let bestPair = null;
-    let bestScore = -Infinity;
-    for (let i = 0; i < shuffled.length; i++) {
-      for (let j = i + 1; j < shuffled.length; j++) {
-        const aKey = shuffled[i];
-        const bKey = shuffled[j];
-        const a = STORY_ENEMY_REGISTRY[aKey];
-        const b = STORY_ENEMY_REGISTRY[bKey];
-        const total = a.threatValue + b.threatValue;
-        if (total > budget) continue;
-        const score = total;
-        if (score > bestScore) {
-          bestScore = score;
-          bestPair = [a.birdKey, b.birdKey];
-        }
-      }
+    const shuffled = shuffle(poolKeys);
+    const out = [];
+    for (let i = 0; i < chainCount; i++) {
+      const rk = shuffled[i % shuffled.length];
+      out.push(STORY_ENEMY_REGISTRY[rk].birdKey);
     }
-    if (!bestPair) {
-      const sorted = shuffled
-        .slice()
-        .sort((ka, kb) => STORY_ENEMY_REGISTRY[ka].threatValue - STORY_ENEMY_REGISTRY[kb].threatValue);
-      bestPair = [
-        STORY_ENEMY_REGISTRY[sorted[0]].birdKey,
-        STORY_ENEMY_REGISTRY[sorted[1]].birdKey,
-      ];
-    }
-    return bestPair;
+    return out;
   }
 
-  /** Stable whitelist used by pickEnemyPair — safe to show as “may appear” on overworld. Returns registry birdKeys. */
+  const pickEnemyPair = pickStoryEncounterBirdKeys;
+
+  /** Stable whitelist used by pickStoryEncounterBirdKeys — safe to show as “may appear” on overworld. Returns registry birdKeys. */
   function getStoryStageEnemyCandidateBirdKeys(stageNumber) {
     const pool = buildAllowedEnemyPool(stageNumber);
     const birdKeys = pool.map((k) => STORY_ENEMY_REGISTRY[k]?.birdKey || k);
@@ -221,13 +220,16 @@
         enemies: [],
       };
     }
-    const pair = pickEnemyPair(st, playerBirdKey);
-    const budget = getStoryStageBudget(st) + getPlayerThreatBudgetAdjustment(st, playerBirdKey);
+    const birdKeys = pickStoryEncounterBirdKeys(st, playerBirdKey);
+    const budget = birdKeys.reduce((acc, bk) => {
+      const v = getStoryRegistryThreatForBirdKey(bk);
+      return acc + (Number.isFinite(v) ? v : 0);
+    }, 0);
     return {
       stageNumber: st,
       isBoss: false,
       budget,
-      birdKeys: pair,
+      birdKeys,
       enemies: [],
     };
   }
@@ -239,8 +241,10 @@
   global.getEnemyLevelBandForStage = getEnemyLevelBandForStage;
   global.getEvolvedSlotCountForLevel = getEvolvedSlotCountForLevel;
   global.normalizeBirdKey = normalizeBirdKey;
+  global.pickStoryEncounterBirdKeys = pickStoryEncounterBirdKeys;
   global.pickEnemyPair = pickEnemyPair;
   global.generateStoryEncounter = generateStoryEncounter;
+  global.getStoryEncounterChainCount = getStoryEncounterChainCount;
   global.getPlayerThreatValue = getPlayerThreatValue;
   global.getStoryRegistryThreatForBirdKey = getStoryRegistryThreatForBirdKey;
   global.getPlayerThreatBudgetAdjustment = getPlayerThreatBudgetAdjustment;
