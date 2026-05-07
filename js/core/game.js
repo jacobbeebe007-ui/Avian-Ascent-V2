@@ -7403,8 +7403,8 @@ function getStoryAllowedThreatMinMax(stage){
   }
   if(s<=5) return [1,1];
   if(s<=10) return [1,2];
-  if(s<=15) return [3,3];
-  if(s<=19) return [4,4];
+  if(s<=15) return [2,2];
+  if(s<=19) return [2,3];
   return [3,4];
 }
 function getStoryEnemyLevelBand(stage){
@@ -8606,6 +8606,30 @@ function makeEndlessEnemy(stage) {
   return ed;
 }
 
+/** Stats that may be temporarily modified during combat — snapshotted at battle start and restored when combat ends. */
+const BATTLE_TEMP_PLAYER_STAT_KEYS = ['atk','def','spd','dodge','mdef','matk','critChance'];
+
+function captureBattleTempPlayerStats(){
+  if(!G.player?.stats) return;
+  const snap = {};
+  for(const k of BATTLE_TEMP_PLAYER_STAT_KEYS){
+    const v = G.player.stats[k];
+    snap[k] = (typeof v === 'number' && Number.isFinite(v)) ? v : 0;
+  }
+  G._battleTempPlayerStatsSnapshot = snap;
+}
+
+function restoreBattleTempPlayerStats(){
+  const snap = G._battleTempPlayerStatsSnapshot;
+  if(!snap || !G.player?.stats){
+    G._battleTempPlayerStatsSnapshot = null;
+    return;
+  }
+  for(const k of BATTLE_TEMP_PLAYER_STAT_KEYS){
+    if(Object.prototype.hasOwnProperty.call(snap, k)) G.player.stats[k] = snap[k];
+  }
+  G._battleTempPlayerStatsSnapshot = null;
+}
 
 function resetForNewBattle(){
   G.playerStatus={};
@@ -8858,6 +8882,7 @@ function loadStage() {
   // Remove stat bonuses before resetting flags (avoid accumulating across battles)
   resetForNewBattle();
   recomputeClassPerkEffects();
+  captureBattleTempPlayerStats();
   // Reset Goose bruise accumulator per battle
   if(G.player._bruiseAcc!==undefined) G.player._bruiseAcc=0;
   // Reset battle stats
@@ -12756,6 +12781,9 @@ const ACTIONS = {
   async guardianCry(ab){
     const lv=ab.level;
     const defBonus=[4,6,8,10][lv-1];
+    if(G.playerStatus.guardianCry){
+      G.player.stats.def=Math.max(0,(G.player.stats.def||0)-(G.playerStatus.guardianCry.defBonus||0));
+    }
     G.player.stats.def+=defBonus;
     G.playerStatus.guardianCry={turns:lv>=3?3:2,defBonus};
     delete G.playerStatus.weaken;
@@ -12813,9 +12841,14 @@ const ACTIONS = {
     await doAttack('player','enemy',r);
     setHpBar('enemy',G.enemy.stats.hp,G.enemy.stats.maxHp);
     if(G.battleOver)return;
-    G.enemyStatus.burning={turns:[3,3,4,4][lv-1]};
+    const burnTurns=[3,3,4,4][lv-1];
+    G.enemyStatus.burning={turns:burnTurns};
     const critBonus=[15,20,20,25][lv-1];
+    if(G.playerStatus.fleshRipperCrit){
+      G.player.stats.critChance=Math.max(0,(G.player.stats.critChance||5)-(G.playerStatus.fleshRipperCrit.amt||0));
+    }
     G.player.stats.critChance=Math.min((G.player.stats.critChance||5)+critBonus,100);
+    G.playerStatus.fleshRipperCrit={amt:critBonus,turns:burnTurns};
     spawnFloat('player',`+${critBonus}% Crit`,'fn-crit');
     logMsg(`🦅 Flesh Ripper! ${r.dmgDealt} dmg + Burn! +${critBonus}% Crit${lowHpBonus>0?' (Low HP bonus!)':''}!`,'player-action');
   },
@@ -12829,9 +12862,16 @@ const ACTIONS = {
     if(G.battleOver)return;
     if(r.isCrit){
       const spdGain=[2,3,4,5][lv-1];
-      G.player.stats.spd+=spdGain;
+      const spdCapTurns=3;
+      if(G.playerStatus.diveGougeSpd){
+        G.playerStatus.diveGougeSpd.amt=(G.playerStatus.diveGougeSpd.amt||0)+spdGain;
+        G.playerStatus.diveGougeSpd.turns=spdCapTurns;
+      } else {
+        G.playerStatus.diveGougeSpd={amt:spdGain,turns:spdCapTurns};
+      }
+      G.player.stats.spd=Math.min(20,(G.player.stats.spd||1)+spdGain);
       spawnFloat('player',`+${spdGain} SPD`,'fn-crit');
-      logMsg(`💨 Crit! +${spdGain} SPD gained!`,'player-action');
+      logMsg(`💨 Crit! +${spdGain} SPD (${spdCapTurns}t)!`,'player-action');
     }
     if(tryApplyAilment('enemy','weaken',ab))spawnFloat('enemy','🐔 Weaken!','fn-status');
     logMsg(`⚡ Dive Gouge! ${r.dmgDealt} dmg${r.isCrit?' (CRIT!)':''}!`,'player-action');
@@ -20919,6 +20959,9 @@ Object.assign(ACTIONS, {
   },
   async bulwarkRoar(ab) {
     const lv=ab.level; const defB=[6,8,10,12][lv-1]; const atkRed=[10,15,20,25][lv-1]; const turns=[2,2,3,3][lv-1];
+    if(G.playerStatus.bulwarkRoar){
+      G.player.stats.def=Math.max(0,(G.player.stats.def||0)-(G.playerStatus.bulwarkRoar.defBonus||0));
+    }
     G.player.stats.def+=defB; G.playerStatus.bulwarkRoar={turns,defBonus:defB};
     G.enemyStatus.featherRuffle={...(G.enemyStatus.featherRuffle||{}),atkReduction:atkRed,turns:Math.max((G.enemyStatus.featherRuffle||{}).turns||0,turns),accDrop:(G.enemyStatus.featherRuffle||{}).accDrop||0};
     if(lv>=2) G.playerStatus.humDodge={bonus:10,turns:2};
@@ -21121,6 +21164,30 @@ function endPlayerTurn(force=false) {
   if(G.playerStatus.wingStormSPD){
     G.playerStatus.wingStormSPD.turns--;
     if(G.playerStatus.wingStormSPD.turns<=0){G.player.stats.spd=Math.max(1,(G.player.stats.spd||1)-(G.playerStatus.wingStormSPD.spd||0));delete G.playerStatus.wingStormSPD;}
+  }
+  if(G.playerStatus.bulwarkRoar){
+    G.playerStatus.bulwarkRoar.turns--;
+    if(G.playerStatus.bulwarkRoar.turns<=0){
+      const b=G.playerStatus.bulwarkRoar.defBonus||0;
+      G.player.stats.def=Math.max(0,(G.player.stats.def||0)-b);
+      delete G.playerStatus.bulwarkRoar;
+    }
+  }
+  if(G.playerStatus.fleshRipperCrit){
+    G.playerStatus.fleshRipperCrit.turns--;
+    if(G.playerStatus.fleshRipperCrit.turns<=0){
+      const c=G.playerStatus.fleshRipperCrit.amt||0;
+      G.player.stats.critChance=Math.max(0,(G.player.stats.critChance||5)-c);
+      delete G.playerStatus.fleshRipperCrit;
+    }
+  }
+  if(G.playerStatus.diveGougeSpd){
+    G.playerStatus.diveGougeSpd.turns--;
+    if(G.playerStatus.diveGougeSpd.turns<=0){
+      const d=G.playerStatus.diveGougeSpd.amt||0;
+      G.player.stats.spd=Math.max(1,(G.player.stats.spd||1)-d);
+      delete G.playerStatus.diveGougeSpd;
+    }
   }
   if(G.enemyStatus.wormRiotExpose){
     G.enemyStatus.wormRiotExpose.turns--;
@@ -22128,6 +22195,7 @@ function getBattleStatsSafe(){
 
 function postCombat() {
   try {
+    restoreBattleTempPlayerStats();
     // Hard reset any combat locks so UI can't get stuck
     G.animLock = false;
     G.turn = 'post';
@@ -23454,6 +23522,7 @@ function showVictory(){
   if((G.ui?.gameMode||'story')==='story') startStoryCinematic();
 }
 function showDefeat(){
+  restoreBattleTempPlayerStats();
   G.phase='REWARD';
   G.playerStatus = {};
   G.enemyStatus = {};
