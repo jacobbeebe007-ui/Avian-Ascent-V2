@@ -201,6 +201,15 @@
     return bestPair;
   }
 
+  /** Stable whitelist used by pickEnemyPair — safe to show as “may appear” on overworld. Returns registry birdKeys. */
+  function getStoryStageEnemyCandidateBirdKeys(stageNumber) {
+    const pool = buildAllowedEnemyPool(stageNumber);
+    const birdKeys = pool.map((k) => STORY_ENEMY_REGISTRY[k]?.birdKey || k);
+    return birdKeys.slice().sort((a, b) =>
+      String(a).localeCompare(String(b), undefined, { sensitivity: 'base' })
+    );
+  }
+
   function generateStoryEncounter(stageNumber, playerBirdKey, _playerLevel) {
     const st = Math.max(1, Math.floor(Number(stageNumber)) || 1);
     if (isBossStage(st)) {
@@ -236,4 +245,5 @@
   global.getStoryRegistryThreatForBirdKey = getStoryRegistryThreatForBirdKey;
   global.getPlayerThreatBudgetAdjustment = getPlayerThreatBudgetAdjustment;
   global.getStoryStageThreatAllowList = getStoryStageThreatAllowList;
+  global.getStoryStageEnemyCandidateBirdKeys = getStoryStageEnemyCandidateBirdKeys;
 })(typeof window !== 'undefined' ? window : globalThis);
