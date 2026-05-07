@@ -190,7 +190,7 @@ html,body{width:100%;height:100%;overflow:hidden;background:#060d05;}
     <div class="hdr-title-wrap">
       <span class="orn">&#10022;</span><h1>BLACKSTONE FOREST</h1><span class="orn">&#10022;</span>
     </div>
-    <span id="hdr-hint">Arrows &middot; Enter &middot; B = Bird &middot; Scroll = Zoom &middot; Drag = Pan</span>
+    <span id="hdr-hint">Choose a node &middot; Enter opens travel panel &middot; B = Bird &middot; Scroll / pinch = Zoom &middot; Drag = Pan</span>
     <div class="hdr-spacer" aria-hidden="true"></div>
   </header>
   <div id="vp">
@@ -824,7 +824,7 @@ function updateInfo(){
 
 function setHL(id,on){const n=NODES[id];if(!n||!n._sh)return;n._sh.setAttribute('stroke-width',on?3.5:2);if(n._topRing)n._topRing.setAttribute('stroke-width',on?3.5:2);}
 function _openNodeOv(){const n=NODES[curPos];if(!n||n.type==='start')return;openOv();applyNodeActionButton(document.getElementById('ov-confirm-btn'),n);}
-function setPos(nId){if(isMoving)return;if(nId===curPos){_openNodeOv();return;}isMoving=true;setHL(curPos,false);curPos=nId;setHL(curPos,true);const pl=document.getElementById('player');pl.className='moving';updateCamera(true);updateInfo();clearTimeout(moveTimer);moveTimer=setTimeout(()=>{isMoving=false;pl.className='arrive';setTimeout(()=>{pl.className='idle';},500);_openNodeOv();},520);}
+function setPos(nId){if(isMoving)return;if(nId===curPos){_openNodeOv();return;}isMoving=true;setHL(curPos,false);curPos=nId;setHL(curPos,true);const pl=document.getElementById('player');pl.className='moving';updateCamera(true);updateInfo();clearTimeout(moveTimer);moveTimer=setTimeout(()=>{isMoving=false;pl.className='arrive';setTimeout(()=>{pl.className='idle';},500);},520);}
 function openOv(){
   const n=NODES[curPos],vc=nvc(n);
   if(n.type==='start')return;
