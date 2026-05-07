@@ -103,176 +103,6 @@
 })();
 
 
-// ===== 10_script_10.js =====
-
-/* ===== Ability balance + ailment wiring patch ===== */
-(function(){
-  const PATCHES = {"evade":{"energyCost":1,"energyByLevel":[1,1,1,1],"cooldownByLevel":[3,3,3,3],"desc":"+25% dodge for 3 turns. Universal utility.","allowedClasses":["striker","trickster","bruiser","tank","singer","trickster","singer","trickster"]},"crowDefend":{"energyCost":1,"energyByLevel":[1,1,1,1],"cooldownByLevel":[2,2,2,2],"desc":"Block the next incoming hit. Universal utility.","allowedClasses":["striker","trickster","bruiser","tank","singer","trickster","singer","trickster"]},"roost":{"energyCost":1,"energyByLevel":[1,1,1,1],"cooldownByLevel":[3,3,3,3],"allowedClasses":["striker","trickster","bruiser","tank","singer","trickster","singer","trickster"]},"preen":{"energyCost":1,"energyByLevel":[1,1,1,1],"cooldownByLevel":[2,2,2,2],"desc":"Cleanse your debuffs.","allowedClasses":["striker","trickster","bruiser","tank","singer","trickster","singer","trickster"]},"hum":{"energyCost":1,"energyByLevel":[1,1,1,1],"cooldownByLevel":[2,2,2,2],"desc":"Hum a warding tone. Gain +20% dodge for 3 turns.","allowedClasses":["striker","trickster","bruiser","tank","singer","trickster","singer","trickster"]},"counter":{"energyCost":1,"energyByLevel":[1,1,1,1],"cooldownByLevel":[3,3,3,3],"desc":"Brace and reflect the next physical or ranged hit.","allowedClasses":["striker","trickster","bruiser","tank","singer","trickster","singer","trickster"]},"chargeUp":{"energyCost":1,"energyByLevel":[1,1,1,1],"cooldownByLevel":[2,2,2,2],"desc":"Charge power now; your next attack deals double damage.","allowedClasses":["striker","trickster","bruiser","tank","singer","trickster","singer","trickster"]},"fruitSweetener":{"energyCost":1,"energyByLevel":[1,1,1,1],"cooldownByLevel":[3,3,3,3],"desc":"Restore 15% HP instantly.","allowedClasses":["striker","trickster","bruiser","tank","singer","trickster","singer","trickster"]},"molt":{"energyCost":1,"energyByLevel":[1,1,1,1],"cooldownByLevel":[2,2,2,2],"desc":"Cleanse 1 negative status and reduce enemy DEF.","allowedClasses":["striker","trickster","bruiser","tank","singer","trickster","singer","trickster"]},"reveille":{"energyCost":1,"energyByLevel":[1,1,1,1],"cooldownByLevel":[3,3,3,3],"desc":"Regenerate HP over 3 turns.","allowedClasses":["striker","trickster","bruiser","tank","singer","trickster","singer","trickster"]},"battleHymn":{"energyCost":2,"energyByLevel":[2,2,2,2],"cooldownByLevel":[4,4,4,4],"desc":"Raise DEF for 3 turns; higher levels also add Dodge.","allowedClasses":["striker","trickster","bruiser","tank","singer","trickster","singer","trickster"]},"skyHymn":{"energyCost":2,"energyByLevel":[2,2,2,2],"cooldownByLevel":[4,4,4,4],"desc":"Heal slightly and grant momentum for the next turn.","allowedClasses":["striker","trickster","bruiser","tank","singer","trickster","singer","trickster"]},"victoryChant":{"energyCost":2,"energyByLevel":[2,2,2,2],"cooldownByLevel":[4,4,4,4],"desc":"Restore HP and reduce all cooldowns by 1.","allowedClasses":["striker","trickster","bruiser","tank","singer","trickster","singer","trickster"]},"taunt":{"energyCost":1,"energyByLevel":[1,1,1,1],"cooldownByLevel":[2,2,2,2],"desc":"Force the enemy to target you next turn at reduced accuracy.","allowedClasses":["striker","trickster","bruiser","tank","singer","trickster","singer","trickster"]},"bulwarkRoar":{"energyCost":2,"energyByLevel":[2,2,2,2],"cooldownByLevel":[3,3,3,3],"desc":"Gain DEF for 3 turns and reduce enemy ATK. Bruiser utility.","allowedClasses":["bruiser","tank"]},"shieldWing":{"energyCost":1,"energyByLevel":[1,1,1,1],"cooldownByLevel":[2,2,2,2],"desc":"Raise a shield-wing and gain block based on DEF.","allowedClasses":["bruiser","tank"]},"guardianCry":{"energyCost":1,"energyByLevel":[1,1,1,1],"cooldownByLevel":[2,2,2,2],"desc":"Gain DEF and cleanse one debuff.","allowedClasses":["bruiser","tank"]},"ironHonk":{"energyCost":1,"energyByLevel":[1,1,1,1],"desc":"Tank strike with reliable Weaken pressure.","allowedClasses":["bruiser","tank"]},"cannonball":{"energyCost":2,"energyByLevel":[2,2,2,2],"cooldownByLevel":[3,3,3,3],"desc":"Massive body slam. High damage with slight recoil.","allowedClasses":["bruiser","tank"]},"retribution":{"energyCost":1,"energyByLevel":[1,1,1,1],"desc":"130% damage. Guaranteed crit if the enemy has any negative status.","allowedClasses":["bruiser","tank"]},"curvedTalons":{"energyCost":2,"energyByLevel":[2,2,2,2],"desc":"Heavy slashing strike that inflicts bleed.","allowedClasses":["bruiser","tank"]},"eyeGouge":{"energyCost":1,"energyByLevel":[1,1,1,1],"desc":"Peck at the eyes. Small damage and enemy ACC down.","allowedClasses":["bruiser","tank"]},"dirge":{"energyCost":1,"energyByLevel":[1,1,1,1],"cooldownByLevel":[3,3,3,3],"desc":"Song \u2014 confuse enemy for 2 turns. Caster control.","allowedClasses":["singer","trickster","singer","trickster"]},"lullaby":{"energyCost":2,"energyByLevel":[2,2,2,2],"cooldownByLevel":[3,3,3,3],"desc":"Song \u2014 slow enemy and reduce ATK. Caster control.","allowedClasses":["singer","trickster","singer","trickster"]},"sonicDirge":{"energyCost":2,"energyByLevel":[2,2,2,2],"cooldownByLevel":[3,3,3,3],"desc":"Piercing sonic spell that can disrupt the enemy turn.","allowedClasses":["singer","trickster","singer","trickster"]},"shriekwave":{"energyCost":2,"energyByLevel":[2,2,2,2],"cooldownByLevel":[3,3,3,3],"desc":"Explosive song blast that applies Burn.","allowedClasses":["singer","trickster","singer","trickster"]},"astralRefrain":{"energyCost":2,"energyByLevel":[2,2,2,2],"cooldownByLevel":[3,3,3,3],"desc":"Astral refrain \u2014 130% mAtt and Weaken pressure.","allowedClasses":["singer","trickster","singer","trickster"]},"marshHex":{"energyCost":2,"energyByLevel":[2,2,2,2],"cooldownByLevel":[3,3,3,3],"desc":"A hex from the marsh. Poison, Slow, and curse pressure.","allowedClasses":["singer","trickster","singer","trickster"]},"nightChill":{"energyCost":1,"energyByLevel":[1,1,1,1],"cooldownByLevel":[2,2,2,2],"desc":"90% mAtt and Chilled pressure.","allowedClasses":["singer","trickster","singer","trickster"]},"stormCall":{"energyCost":3,"energyByLevel":[3,3,3,3],"cooldownByLevel":[4,4,4,4],"desc":"Heavy lightning spell with burst damage.","allowedClasses":["singer","trickster","singer","trickster"]},"plagueBlast":{"energyCost":2,"energyByLevel":[2,2,2,2],"cooldownByLevel":[3,3,3,3],"desc":"Blast the enemy with multiple poison stacks.","allowedClasses":["singer","trickster","singer","trickster"]},"toxicSpit":{"energyCost":2,"energyByLevel":[2,2,2,2],"cooldownByLevel":[2,2,2,2],"desc":"Venomous spit. Strong poison application and bonus damage on poisoned targets.","allowedClasses":["singer","trickster","singer","trickster"]},"shadowFeint":{"energyCost":1,"energyByLevel":[1,1,1,1],"cooldownByLevel":[2,2,2,2],"desc":"A feinting strike that can inflict Confuse.","allowedClasses":["singer","trickster","singer","trickster"]},"shadowJab":{"energyCost":1,"energyByLevel":[1,1,1,1],"desc":"A focused dark jab with light Fear pressure.","allowedClasses":["singer","trickster","singer","trickster"]},"shadowPounce":{"energyCost":2,"energyByLevel":[2,2,2,2],"cooldownByLevel":[2,2,2,2],"desc":"Burst strike that excels against debuffed targets.","allowedClasses":["singer","trickster","singer","trickster"]},"spellLance":{"energyCost":1,"energyByLevel":[1,1,1,1],"cooldownByLevel":[1,1,1,1],"desc":"Focused magical thrust.","allowedClasses":["singer","trickster","singer","trickster"]},"dirgeOfDread":{"energyCost":2,"energyByLevel":[2,2,2,2],"cooldownByLevel":[3,3,3,3],"desc":"Control song that applies Fear and Weaken.","allowedClasses":["singer","trickster","singer","trickster"]},"murderMurmuration":{"energyCost":3,"energyByLevel":[3,3,3,3],"cooldownByLevel":[4,4,4,4],"desc":"Summon a murderous flock for heavy multi-hit control damage.","allowedClasses":["singer","trickster","singer","trickster"]},"swoop":{"energyCost":1,"energyByLevel":[1,1,1,1],"cooldownByLevel":[2,2,2,2],"desc":"Rush strike that never misses.","allowedClasses":["trickster","striker"]},"diveBomb":{"energyCost":2,"energyByLevel":[2,2,2,2],"cooldownByLevel":[3,3,3,3],"desc":"Heavy diving strike with stun chance.","allowedClasses":["trickster","striker"]},"flyby":{"energyCost":1,"energyByLevel":[1,1,1,1],"cooldownByLevel":[2,2,2,2],"desc":"Your next attack this battle deals 2\u00d7 damage.","allowedClasses":["trickster","striker"]},"pinionVolley":{"energyCost":2,"energyByLevel":[2,2,2,2],"cooldownByLevel":[1,1,1,1],"desc":"Two reliable piercing hits.","allowedClasses":["trickster","striker"]},"bowedWing":{"energyCost":1,"energyByLevel":[1,1,1,1],"desc":"Reliable ranged poke with Slow pressure.","allowedClasses":["trickster","striker"]},"wingClip":{"energyCost":1,"energyByLevel":[1,1,1,1],"cooldownByLevel":[2,2,2,2],"desc":"Clip wings to reduce SPD; later also reduces Dodge.","allowedClasses":["trickster","striker"]},"dustDevil":{"energyCost":2,"energyByLevel":[2,2,2,2],"cooldownByLevel":[3,3,3,3],"desc":"Blinding storm that reduces enemy ACC.","allowedClasses":["trickster","striker"]},"thornBarrage":{"energyCost":2,"energyByLevel":[2,2,2,2],"cooldownByLevel":[2,2,2,2],"desc":"Rapid thorn volleys that pierce and stack Slow pressure.","allowedClasses":["trickster","striker"]},"tailPull":{"energyCost":1,"energyByLevel":[1,1,1,1],"cooldownByLevel":[2,2,2,2],"desc":"Remove 1 positive buff from the enemy.","allowedClasses":["trickster","striker"]},"flurry":{"energyCost":2,"energyByLevel":[2,2,2,2],"cooldownByLevel":[2,2,2,2],"desc":"4\u20136 rapid strikes at 40% each.","allowedClasses":["striker"]},"deathDive":{"energyCost":3,"energyByLevel":[3,3,3,3],"cooldownByLevel":[3,3,3,3],"desc":"200% damage plunge with high risk and stun chance.","allowedClasses":["striker"]},"aerialPoop":{"energyCost":1,"energyByLevel":[1,1,1,1],"desc":"Bombing run \u2014 80% pAtt and enemy ACC -20% for 2 turns."},"birdBrain":{"energyCost":2,"energyByLevel":[2,2,2,2],"desc":"Psychic overload \u2014 120% mAtt and 25% Confuse."},"cactiSpine":{"energyCost":1,"energyByLevel":[1,1,1,1],"desc":"Spine volley \u2014 110% pAtt and Poison."},"mudshot":{"energyCost":2,"energyByLevel":[2,2,2,2],"desc":"Fling mud \u2014 90% pAtt and apply Mud / Weaken pressure."},"owlPsyche":{"energyCost":2,"energyByLevel":[2,2,2,2],"desc":"Owl Psyche \u2014 110% mAtt and 25% Fear."},"supersonic":{"energyCost":1,"energyByLevel":[1,1,1,1],"desc":"A sonic strike that scales from SPD and ignores dodge."},"tookieTookie":{"energyCost":2,"energyByLevel":[2,2,2,2],"desc":"+40% ATK for 2 turns, but +20% miss chance while active."},"wormRiot":{"energyCost":1,"energyByLevel":[1,1,1,1],"desc":"Cause a worm frenzy \u2014 enemy gains minor regeneration but becomes Vulnerable."},"sitAndWait":{"energyCost":1,"energyByLevel":[1,1,1,1],"cooldownByLevel":[1,1,1,1],"desc":"Sit and wait. Gain +30% attack next turn; if struck first, the buff is lost."},"stickLance":{"energyCost":1,"energyByLevel":[1,1,1,1],"desc":"Use twice in a row: first gather a stick, then strike for heavy damage."}};
-
-  function mergeAbilityPatch(tmpl, patch){
-    if(!tmpl || !patch) return;
-    Object.assign(tmpl, patch);
-  }
-
-  function applyAbilityPatches(store){
-    if(!store) return;
-    for(const [id, patch] of Object.entries(PATCHES)){
-      if(store[id]) mergeAbilityPatch(store[id], patch);
-    }
-  }
-
-  applyAbilityPatches(globalThis.ABILITY_TEMPLATES);
-  applyAbilityPatches(globalThis.ABILITY_TEMPLATES_EXTRA);
-  if(typeof globalThis.sanitizeAbilityClassRouting === 'function'){
-    globalThis.sanitizeAbilityClassRouting(globalThis.ABILITY_TEMPLATES);
-    globalThis.sanitizeAbilityClassRouting(globalThis.ABILITY_TEMPLATES_EXTRA);
-  }
-
-  const _origGetAbilityEnergyCost = globalThis.getAbilityEnergyCost;
-  if(typeof _origGetAbilityEnergyCost === 'function'){
-    globalThis.getAbilityEnergyCost = function(ab, player){
-      let cost = _origGetAbilityEnergyCost(ab, player);
-      if(!ab) return 1;
-      // Every ability costs at least 1 EN.
-      cost = Math.max(1, cost||0);
-      return cost;
-    };
-  }
-
-  // Utility helpers for ailment objects
-  function statusTurns(v){
-    if(v == null) return 0;
-    if(typeof v === 'number') return v;
-    if(typeof v === 'object') return Math.max(0, v.turns||0);
-    return 0;
-  }
-
-  if(typeof globalThis.applyAilment !== 'function') globalThis.applyAilment = function(target, ailId, stacks=1){
-    const status = target==='player' ? G.playerStatus : G.enemyStatus;
-    codexMark('statuses', ailId, 'seen');
-    if(target==='player' && G.player){
-      const bd=BIRDS[G.player.birdKey];
-      const p=bd&&bd.passive;
-      if(ailId==='poison'&&p&&p.immunePoison){ spawnFloat('player','🛡 Poison Immune!','fn-status'); return false; }
-      if(ailId==='weaken'&&p&&p.immuneWeaken){ spawnFloat('player','🛡 Weaken Immune!','fn-status'); return false; }
-      if(ailId==='feared'&&((p&&p.immuneFear)||G.player.stats.immuneFear)){ spawnFloat('player','🛡 Fear Immune!','fn-status'); return false; }
-      if(ailId==='confused'&&p&&p.immuneConfused){ spawnFloat('player','🛡 Confuse Immune!','fn-status'); return false; }
-      if(ailId==='paralyzed'&&((p&&p.immuneStun)||G.player.immuneParalyze)){ spawnFloat('player','🛡 Stun Immune!','fn-status'); return false; }
-    }
-    if(ailId==='poison' || ailId==='bleed'){
-      const key = ailId==='bleed' ? 'bleed' : 'poison';
-      if(!status[key]) status[key]={stacks:0,turns:3};
-      const cap = target==='player' ? (G.player?.poisonCap||5) : 5;
-      const biomeBonus=(target==='player' && (G.biomeMod?.enemyPoisonPlus||0)>0)?G.biomeMod.enemyPoisonPlus:0;
-      status[key].stacks=Math.min((status[key].stacks||0)+stacks+biomeBonus, cap);
-      status[key].turns=Math.max(status[key].turns||0,3);
-      return true;
-    }
-    if(ailId==='weaken'){ status.weaken=Math.max(status.weaken||0,3); return true; }
-    if(ailId==='paralyzed'){ status.paralyzed=Math.max(status.paralyzed||0,3); return true; }
-    if(ailId==='burning'){ status.burning=Math.max(status.burning||0,3); return true; }
-    if(ailId==='feared'){ status.feared=Math.max(status.feared||0,0)+Math.max(1,stacks); return true; }
-    if(ailId==='confused'){
-      const cur=status.confused||{turns:0,skipChance:0};
-      status.confused={turns:Math.max(cur.turns||0,2),skipChance:Math.max(cur.skipChance||0,25)};
-      return true;
-    }
-    if(ailId==='slow'){
-      const cur=status.slow||{turns:0,spdPenalty:0,dodgePenalty:0};
-      status.slow={turns:Math.max(cur.turns||0,3),spdPenalty:Math.max(cur.spdPenalty||0,2),dodgePenalty:Math.max(cur.dodgePenalty||0,10)};
-      return true;
-    }
-    if(ailId==='mud'){
-      const cur=status.mud||{turns:0};
-      status.mud={turns:Math.max(cur.turns||0,2)};
-      return true;
-    }
-    if(ailId==='chilled'){
-      const cur=status.slow||{turns:0,spdPenalty:0,dodgePenalty:0};
-      status.slow={turns:Math.max(cur.turns||0,2),spdPenalty:Math.max(cur.spdPenalty||0,3),dodgePenalty:Math.max(cur.dodgePenalty||0,5)};
-      return true;
-    }
-    if(ailId==='delayed') return true;
-    return true;
-  };
-
-  if(typeof globalThis.tickDoTs !== 'function') globalThis.tickDoTs = async function(who){
-    const status=who==='player'?G.playerStatus:G.enemyStatus;
-    const stats=who==='player'?G.player.stats:G.enemy.stats;
-    const nm = who==='player' ? G.player.name : G.enemy.name;
-
-    if(status.poison&&status.poison.stacks>0&&status.poison.turns>0){
-      const tickMult = who==='player' ? (G.player?.poisonTickMult||1) : 1;
-      const dmg=Math.max(1, Math.floor(status.poison.stacks * tickMult));
-      stats.hp-=dmg;
-      spawnFloat(who,`☣ -${dmg}`,'fn-poison');
-      setHpBar(who,stats.hp,stats.maxHp);
-      logMsg(`☣ Avian Poison deals ${dmg} poison damage to ${nm}!`,'poison-tick');
-      if(who==='enemy' && globalThis.BS) BS.dmgDealt+=dmg;
-      if(globalThis.SFX?.poison) SFX.poison();
-      status.poison.turns--;
-      if(status.poison.turns<=0) delete status.poison;
-      await delay(350);
-    }
-    if(status.bleed&&status.bleed.stacks>0&&status.bleed.turns>0){
-      const dmg=Math.max(1,Math.floor(status.bleed.stacks*1.5));
-      stats.hp-=dmg;
-      spawnFloat(who,`🩸 -${dmg}`,'fn-dmg');
-      setHpBar(who,stats.hp,stats.maxHp);
-      logMsg(`🩸 Bleed deals ${dmg} damage to ${nm}!`,'poison-tick');
-      if(who==='enemy' && globalThis.BS) BS.dmgDealt+=dmg;
-      status.bleed.turns--;
-      if(status.bleed.turns<=0) delete status.bleed;
-      await delay(350);
-    }
-    if(statusTurns(status.burning)>0){
-      const dmg=Math.max(1,Math.floor((stats.maxHp||1)*0.04));
-      stats.hp-=dmg;
-      spawnFloat(who,`🔥 -${dmg}`,'fn-burn');
-      setHpBar(who,stats.hp,stats.maxHp);
-      logMsg(`🔥 Burn deals ${dmg} damage to ${nm}!`,'burn-tick');
-      if(who==='enemy' && globalThis.BS) BS.dmgDealt+=dmg;
-      if(typeof status.burning==='number') status.burning--;
-      else status.burning.turns--;
-      if(statusTurns(status.burning)<=0) delete status.burning;
-      await delay(350);
-    }
-    if(status.delayed&&status.delayed.dmg>0){
-      const dmg=status.delayed.dmg;
-      stats.hp-=dmg;
-      spawnFloat(who,`🎵 -${dmg}`,'fn-status');
-      setHpBar(who,stats.hp,stats.maxHp);
-      logMsg(`🎵 Resonance detonates! ${dmg} damage!`,'system');
-      delete status.delayed;
-      await delay(350);
-    }
-  };
-
-})();
-
-
-// ===== 11_script_11.js =====
-
-/* ===== Piercing cleanup patch =====
-   Use only effective-DEF reduction for pierce.
-   Disable legacy flat bonus damage pierce path.
-*/
-(function(){
-  const oldDealDamage = globalThis.dealDamage;
-  if(typeof oldDealDamage === 'function'){
-    globalThis.dealDamage = function(target, amount, isCrit=false, isMagic=false, srcAbility=null){
-      const oldPierce = globalThis.G ? globalThis.G._currentPiercePct : 0;
-      if(globalThis.G) globalThis.G._currentPiercePct = 0;
-      try{
-        return oldDealDamage.call(this, target, amount, isCrit, isMagic, srcAbility);
-      } finally {
-        if(globalThis.G) globalThis.G._currentPiercePct = 0;
-      }
-    };
-  }
-})();
-
-
 // ===== 12_script_12.js =====
 
 /* ===== Enemy balance pass ===== */
@@ -314,14 +144,13 @@
     };
   }
 
-  // Rebalance action pool construction by mode.
   const _oldBuildEnemyActionPool = globalThis.buildEnemyActionPool;
   if(typeof _oldBuildEnemyActionPool === 'function'){
     globalThis.buildEnemyActionPool = function(e, mode){
       const pool = _oldBuildEnemyActionPool.apply(this, arguments) || [];
       // Reweight by duplicating or filtering.
       const out = [];
-      const hpPct = (e?.stats?.hp||1)/Math.max(1,e?.stats?.maxHp||1);
+      const hpPct = (e?.stats?.hp||1)/Math.max(1,e.stats?.maxHp||1);
       for(const a of pool){
         const id = a.abilityId || '';
         const t = a.type || '';
@@ -385,9 +214,7 @@
 })();
 
 
-// ===== 14_script_14.js =====
-
-/* ===== Shop: sync energy UI after purchase (upgrade list lives in game.js UPGRADE_CARDS_REWORK) ===== */
+// ===== Shop: energy sync + bonus pulse + combat UI orbs =====
 (function(){
   function syncPlayerEnergyState(p){
     if(!p) return;
@@ -404,30 +231,6 @@
     }catch(err){ console.error(err); }
   }
 
-  // Re-render purchase descriptions more clearly after buy.
-  const _origShopBuySelected = globalThis.shopBuySelected;
-  if(typeof _origShopBuySelected === 'function'){
-    globalThis.shopBuySelected = function(){
-      const beforeEnergy = G?.player?.energyMax;
-      const out = _origShopBuySelected.apply(this, arguments);
-      try{
-        syncPlayerEnergyState(G.player);
-        const afterEnergy = G?.player?.energyMax;
-        if(typeof renderShopItems === 'function') renderShopItems();
-        if(afterEnergy && beforeEnergy && afterEnergy > beforeEnergy){
-          logMsg(`⚡ Max Energy increased to ${afterEnergy}!`, 'exp-gain');
-        }
-      }catch(err){ console.error(err); }
-      return out;
-    };
-  }
-})();
-
-
-// ===== 16_script_16.js =====
-
-/* ===== Energy tooltip + bonus pulse ===== */
-(function(){
   function flashBonusEnergy(beforeMax, afterMax){
     try{
       if(!G?.player) return;
@@ -439,13 +242,20 @@
     }catch(err){ console.error(err); }
   }
 
-  const _origShopBuySelectedEnergy = globalThis.shopBuySelected;
-  if(typeof _origShopBuySelectedEnergy === 'function'){
+  const _origShopBuySelected = globalThis.shopBuySelected;
+  if(typeof _origShopBuySelected === 'function'){
     globalThis.shopBuySelected = function(){
       const beforeMax = G?.player?.energyMax || 0;
-      const out = _origShopBuySelectedEnergy.apply(this, arguments);
-      const afterMax = G?.player?.energyMax || 0;
-      flashBonusEnergy(beforeMax, afterMax);
+      const out = _origShopBuySelected.apply(this, arguments);
+      try{
+        syncPlayerEnergyState(G.player);
+        const afterEnergy = G?.player?.energyMax;
+        if(typeof renderShopItems === 'function') renderShopItems();
+        if(afterEnergy != null && beforeMax != null && afterEnergy > beforeMax){
+          logMsg(`⚡ Max Energy increased to ${afterEnergy}!`, 'exp-gain');
+        }
+        flashBonusEnergy(beforeMax, afterEnergy || 0);
+      }catch(err){ console.error(err); }
       return out;
     };
   }
