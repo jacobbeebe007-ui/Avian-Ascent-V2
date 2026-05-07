@@ -3,6 +3,16 @@
 <html lang="en">
 <head>
 <meta charset="utf-8"/>
+<script>
+(function(){
+  try{
+    if(new URLSearchParams(location.search).get('avianOwNestEmbed')==='1'){
+      document.documentElement.classList.add('avian-ow-nest-embed');
+      window.__AVIAN_OW_NEST_EMBED__=true;
+    }
+  }catch(_){}
+})();
+</script>
 <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
 <meta name="description" content="A roguelike of feathers and fortune — plan your run and take flight."/>
 <meta name="theme-color" content="#0a0c0f"/>

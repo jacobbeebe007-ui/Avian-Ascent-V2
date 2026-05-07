@@ -172,6 +172,16 @@ html,body{width:100%;height:100%;overflow:hidden;background:#060d05;}
   .zbtn{width:26px;height:26px;font-size:14px;}
   #zoom-ctrl{bottom:8px;left:8px;}
 }
+
+/* Nest overlay (in-map preview via iframe — same UI as main game nest) */
+.ow-nest-overlay{display:none;position:fixed;inset:0;z-index:200;background:rgba(2,4,2,.94);flex-direction:column;align-items:center;justify-content:center;padding:12px;box-sizing:border-box;}
+.ow-nest-overlay.open{display:flex;}
+.ow-nest-overlay-frame{width:100%;max-width:min(740px,100%);height:min(92vh,840px);display:flex;flex-direction:column;background:#0a0c0f;border:1px solid rgba(200,160,32,.38);border-radius:12px;overflow:hidden;box-shadow:0 16px 56px rgba(0,0,0,.65);}
+.ow-nest-overlay-bar{flex-shrink:0;display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:linear-gradient(180deg,#080c06,#040804);border-bottom:1px solid rgba(200,160,32,.22);}
+.ow-nest-overlay-title{font-family:Cinzel,serif;font-size:10px;letter-spacing:3px;color:var(--gold-l);}
+.ow-nest-overlay-close{background:rgba(200,160,32,.08);border:1px solid rgba(200,160,32,.32);color:var(--gold);border-radius:8px;width:36px;height:36px;cursor:pointer;font-size:18px;line-height:1;display:flex;align-items:center;justify-content:center;padding:0;}
+.ow-nest-overlay-close:hover{background:rgba(200,160,32,.2);border-color:var(--gold);}
+.ow-nest-overlay-iframe{flex:1;width:100%;border:0;background:#0a0c0f;min-height:0;}
 </style>
 </head>
 <body>
@@ -252,6 +262,15 @@ html,body{width:100%;height:100%;overflow:hidden;background:#060d05;}
     <div id="pick-div"></div>
     <div id="pick-grid"></div>
     <button id="pick-ok">CONFIRM &#9654;</button>
+  </div>
+</div>
+<div id="ow-nest-overlay" class="ow-nest-overlay" aria-hidden="true">
+  <div class="ow-nest-overlay-frame">
+    <div class="ow-nest-overlay-bar">
+      <span class="ow-nest-overlay-title">YOUR NEST</span>
+      <button type="button" class="ow-nest-overlay-close" id="ow-nest-overlay-close" aria-label="Close nest">&#10005;</button>
+    </div>
+    <iframe id="ow-nest-iframe" class="ow-nest-overlay-iframe" title="Nest summary"></iframe>
   </div>
 </div>
 <script src="js/world/overworld_bridge.js"></script>
@@ -726,6 +745,33 @@ function drawMM(){
 }
 
 let curPos=0,birdIdx=0,isMoving=false,moveTimer=null;
+const owNestOverlayEl=document.getElementById('ow-nest-overlay');
+const owNestIframeEl=document.getElementById('ow-nest-iframe');
+function closeOwNestOverlay(){
+  if(!owNestOverlayEl)return;
+  owNestOverlayEl.classList.remove('open');
+  owNestOverlayEl.setAttribute('aria-hidden','true');
+  if(owNestIframeEl) owNestIframeEl.src='about:blank';
+}
+function openOwNestOverlay(){
+  try{ mergeOwStateWithCurrentNode(curPos); }catch(_){}
+  if(!owNestOverlayEl||!owNestIframeEl)return;
+  owNestOverlayEl.classList.add('open');
+  owNestOverlayEl.setAttribute('aria-hidden','false');
+  owNestIframeEl.src='index.html?avianOwNestEmbed=1&t='+Date.now();
+}
+window.addEventListener('message',function(ev){
+  try{
+    if(ev.data&&ev.data.type==='avianOwNestClose') closeOwNestOverlay();
+  }catch(_){}
+});
+document.getElementById('ow-nest-overlay-close')?.addEventListener('click',closeOwNestOverlay);
+document.addEventListener('keydown',function(e){
+  if(e.key==='Escape'&&owNestOverlayEl&&owNestOverlayEl.classList.contains('open')){
+    e.preventDefault();
+    closeOwNestOverlay();
+  }
+});
 function clamp(v,lo,hi){return Math.max(lo,Math.min(hi,v));}
 
 function applyCamera(anim){
@@ -900,9 +946,7 @@ document.getElementById('btn-next').addEventListener('click',()=>{
 });
 
 document.getElementById('hdr-nest-btn').addEventListener('click',()=>{
-  mergeOwStateWithCurrentNode(curPos);
-  persistOwNavIntent({ action: 'nest' });
-  window.location.href='index.html';
+  openOwNestOverlay();
 });
 
 applyBird();

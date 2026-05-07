@@ -3958,7 +3958,39 @@ function openNest() {
 }
 function closeNest() {
   document.getElementById('nest-modal').classList.remove('open');
+  if(globalThis.__AVIAN_OW_NEST_EMBED__ && typeof window !== 'undefined' && window.parent && window.parent !== window){
+    try{ window.parent.postMessage({ type: 'avianOwNestClose' }, '*'); }catch(_){}
+  }
 }
+
+/**
+ * Minimal bootstrap when index.html is loaded in an iframe from the overworld map (?avianOwNestEmbed=1).
+ * Reuses continueRun + openNest so the panel matches the main game nest exactly.
+ */
+function bootstrapOwNestEmbed(){
+  try{
+    const a=document.getElementById('theme-bgm-audio');
+    if(a){ try{ a.pause(); }catch(_){} }
+  }catch(_){}
+  const save=loadSaveData();
+  if(!save?.player){
+    G.player=null;
+    openNest();
+    return;
+  }
+  G._continueRunOpenNestOnly=true;
+  try{
+    continueRun();
+  }catch(err){
+    console.error('bootstrapOwNestEmbed failed', err);
+    G._continueRunOpenNestOnly=false;
+    try{
+      G.player=save.player||null;
+      openNest();
+    }catch(_){}
+  }
+}
+globalThis.bootstrapOwNestEmbed=bootstrapOwNestEmbed;
 
 function codexMark(type, id, field='seen'){
   if(!id) return;
@@ -6723,7 +6755,9 @@ function continueRun() {
   ensureStatLedgerAfterLoad(G.player);
 
   const bsave=save.battle;
-  if(save.inBattle&&bsave&&bsave.enemy){
+  // Overworld "Nest" explicitly resumes on the war room with the nest modal — do not
+  // hijack that flow with a stale mid-battle snapshot (player was safe on the map).
+  if(save.inBattle&&bsave&&bsave.enemy && !G._continueRunOpenNestOnly){
     G._continueRunOpenNestOnly=false;
     G.enemy=bsave.enemy;
     G.enemy.class = resolveFinalClass(G.enemy?.class || G.enemy?.enemyClass, G.enemy?.birdKey || G.enemy?.portraitKey || G.enemy?.id || '');
@@ -6753,7 +6787,10 @@ function continueRun() {
       initSelection();
       wireRefGuideClicks();
     }catch(_){}
-    requestAnimationFrame(()=>{ try{ openNest(); }catch(_){} });
+    requestAnimationFrame(()=>{
+      try{ openNest(); }catch(_){}
+      try{ saveRun(); }catch(_){}
+    });
     return;
   }
   loadStage();
@@ -7793,7 +7830,6 @@ function handleOverworldReturn() {
     return true;
   }
   if (intent.action === 'nest') {
-    try { localStorage.removeItem(_OW_NAV_KEY); } catch(_) {}
     const nestSave = loadSaveData();
     if (!nestSave?.player) return false;
     G._continueRunOpenNestOnly = true;
@@ -7802,6 +7838,7 @@ function handleOverworldReturn() {
     } catch (err) {
       console.error('Overworld nest: continueRun failed', err);
       G._continueRunOpenNestOnly = false;
+      try { localStorage.setItem(_OW_NAV_KEY, JSON.stringify(intent)); } catch (_) {}
       return false;
     }
     return true;
@@ -25540,7 +25577,9 @@ SPRITE_KEYS_ALL.add('magpie');
   }
 
   try{
-    if(typeof globalThis.initSelectionSafe === 'function') globalThis.initSelectionSafe();
+    if(globalThis.__AVIAN_OW_NEST_EMBED__ && typeof globalThis.bootstrapOwNestEmbed === 'function'){
+      globalThis.bootstrapOwNestEmbed();
+    }else if(typeof globalThis.initSelectionSafe === 'function') globalThis.initSelectionSafe();
     else if(typeof globalThis.initSelection === 'function') globalThis.initSelection();
   }catch(e){}
 })();
