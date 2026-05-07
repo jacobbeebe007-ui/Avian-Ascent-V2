@@ -10,6 +10,7 @@
   ],
   "js_bundles": [
     "js/world/overworld_bridge.js",
+    "js/data/story_milestone_boss_pool.js",
     "js/core/game.js",
     "js/data/content.js",
     "js/systems/systems.js",

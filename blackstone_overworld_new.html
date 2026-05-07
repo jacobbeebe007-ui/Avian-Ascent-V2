@@ -92,6 +92,15 @@ html,body{width:100%;height:100%;overflow:hidden;background:#060d05;}
 .ov-enemy-sprite{width:56px;height:56px;border-radius:6px;background-size:200% 200%;background-position:0% 0%;image-rendering:pixelated;background-color:rgba(0,0,0,.28);}
 .ov-enemy-name{font-family:'Cinzel',serif;font-size:8px;letter-spacing:1px;color:var(--gold-l);text-transform:uppercase;}
 .ov-enemy-meta{font-size:11px;color:var(--parch);line-height:1.3;}
+#ov-enemies.ov-enemies--pool{flex-direction:column;flex-wrap:nowrap;align-items:stretch;gap:2px;max-width:420px;max-height:min(42vh,220px);overflow-y:auto;overflow-x:hidden;text-align:left;padding:4px 8px;margin:8px auto 0;border:1px solid rgba(200,160,32,.14);border-radius:8px;background:rgba(2,4,2,.5);line-height:normal;font-family:'EB Garamond',serif;font-size:12px;color:var(--parch);}
+.ov-enemy-pool-hint{font-family:'EB Garamond',serif;font-size:12px;color:var(--gold-d);font-style:italic;margin:0 0 8px 0;line-height:1.3;text-align:center;}
+.ov-enemy-row{display:flex;align-items:center;gap:10px;padding:6px 4px;border-bottom:1px solid rgba(200,160,32,.1);cursor:pointer;text-align:left;}
+.ov-enemy-row:last-child{border-bottom:none;}
+.ov-enemy-row:hover,.ov-enemy-row:focus-visible{background:rgba(200,160,32,.08);outline:none;}
+.ov-enemy-row-sprite{width:40px;height:40px;flex-shrink:0;border-radius:4px;background-size:200% 200%;background-position:0% 0%;image-rendering:pixelated;background-color:rgba(0,0,0,.28);}
+.ov-enemy-row-text{flex:1;min-width:0;}
+.ov-enemy-row-name{font-family:'Cinzel',serif;font-size:9px;letter-spacing:1px;color:var(--gold-l);text-transform:uppercase;}
+.ov-enemy-row-meta{font-family:'EB Garamond',serif;font-size:11px;color:var(--parch);line-height:1.25;}
 #ov-bird-popup{display:none;position:fixed;inset:0;z-index:1200;align-items:center;justify-content:center;padding:16px;background:rgba(0,0,0,.62);}
 #ov-bird-popup.on{display:flex;}
 .ov-bird-popup-frame{position:relative;max-width:340px;width:100%;padding:22px 20px 18px;border:1px solid rgba(200,160,32,.35);border-radius:10px;background:linear-gradient(145deg,#050905,#0c120a);box-shadow:0 16px 48px rgba(0,0,0,.5);}
@@ -500,9 +509,15 @@ function openOvBirdInfoPopup(spriteKey,displayLabel,threat,band){
   pop.classList.add('on');
   pop.setAttribute('aria-hidden','false');
 }
+function owLabelFromBirdKey(bk){
+  var row=BIRDS.find(function(b){return b.k===bk;});
+  if(row)return row.n;
+  return String(bk||'').replace(/([A-Z])/g,' $1').replace(/^./,function(c){return c.toUpperCase();}).trim();
+}
 function fillOvEnemiesPanel(n){
   const oe=document.getElementById('ov-enemies');
   oe.innerHTML='';
+  oe.classList.remove('ov-enemies--pool');
   if(n.type==='shop'){
     const d=document.createElement('div');
     d.style.cssText='font-family:EB Garamond,serif;font-style:italic;font-size:13px;color:var(--gold-d)';
@@ -514,44 +529,64 @@ function fillOvEnemiesPanel(n){
   const st=Math.max(1,Math.floor(Number(n.stage)||1));
   const band=owLevelBand(st);
   var keys=[];
-  if(typeof generateStoryEncounter==='function'){
-    var enc=generateStoryEncounter(st, window.activeBirdKeyForOwPreview||null, null);
-    if(enc&&enc.isBoss){ keys=st===20?['dukeBlakiston']:[]; }
-    else if(enc&&enc.birdKeys&&enc.birdKeys.length){ keys=enc.birdKeys; }
+  var hint='Rolled when you enter — possible enemies:';
+  if(typeof isBossStageStory==='function' && isBossStageStory(st)){
+    if(st===20){
+      keys=['dukeBlakiston'];
+      hint='Fixed encounter — final boss:';
+    }else if(st===10){
+      keys=(typeof getStoryMilestoneBossCandidateBirdKeys==='function') ? getStoryMilestoneBossCandidateBirdKeys() : [];
+      hint='Rolled when you enter — one random boss from:';
+    }
+  }else if(typeof getStoryStageEnemyCandidateBirdKeys==='function'){
+    keys=getStoryStageEnemyCandidateBirdKeys(st);
   }
-  if(!keys.length) return;
+  if(!keys.length){
+    const empty=document.createElement('div');
+    empty.style.cssText='font-family:EB Garamond,serif;font-style:italic;font-size:12px;color:var(--gold-d)';
+    empty.textContent='Enemy lineup revealed in combat.';
+    oe.appendChild(empty);
+    return;
+  }
+  oe.classList.add('ov-enemies--pool');
+  const hintEl=document.createElement('p');
+  hintEl.className='ov-enemy-pool-hint';
+  hintEl.textContent=hint;
+  oe.appendChild(hintEl);
   keys.forEach(function(bk){
-    var row=BIRDS.find(function(b){return b.k===bk;});
-    var label=row?row.n:String(bk).replace(/([A-Z])/g,' $1').replace(/^./,function(c){return c.toUpperCase();}).trim();
+    var label=owLabelFromBirdKey(bk);
     var sk=resolveOwEnemySpriteKey(label);
     if(sk==='harpy') sk='harpyEagle';
     if(sk==='secretary') sk='secretaryBird';
     const threat=owThreatForSpriteKey(sk);
     const threatLbl=OW_THREAT_LABELS[threat]||'?';
     const src=SPRITES[sk]||'';
-    const card=document.createElement('div');
-    card.className='ov-enemy-card';
-    card.tabIndex=0;
-    card.setAttribute('role','button');
-    card.setAttribute('aria-label','View abilities: '+label);
+    const row=document.createElement('div');
+    row.className='ov-enemy-row';
+    row.tabIndex=0;
+    row.setAttribute('role','button');
+    row.setAttribute('aria-label','View details: '+label);
     const sp=document.createElement('div');
-    sp.className='ov-enemy-sprite';
+    sp.className='ov-enemy-row-sprite';
     if(src) sp.style.backgroundImage='url('+JSON.stringify(src)+')';
+    const tx=document.createElement('div');
+    tx.className='ov-enemy-row-text';
     const nm=document.createElement('div');
-    nm.className='ov-enemy-name';
+    nm.className='ov-enemy-row-name';
     nm.textContent=label;
     const mt=document.createElement('div');
-    mt.className='ov-enemy-meta';
+    mt.className='ov-enemy-row-meta';
     mt.textContent='Threat: '+threatLbl+' · LVL '+band[0]+'–'+band[1];
-    card.appendChild(sp);
-    card.appendChild(nm);
-    card.appendChild(mt);
+    tx.appendChild(nm);
+    tx.appendChild(mt);
+    row.appendChild(sp);
+    row.appendChild(tx);
     function openP(){openOvBirdInfoPopup(sk,label,threat,band);}
-    card.addEventListener('click',function(e){e.stopPropagation();openP();});
-    card.addEventListener('keydown',function(e){
+    row.addEventListener('click',function(e){e.stopPropagation();openP();});
+    row.addEventListener('keydown',function(e){
       if(e.key==='Enter'||e.key===' '){e.preventDefault();openP();}
     });
-    oe.appendChild(card);
+    oe.appendChild(row);
   });
 }
 
@@ -882,7 +917,7 @@ applyCamera(false);
 window.addEventListener('resize',()=>applyCamera(false));
 requestAnimationFrame(()=>requestAnimationFrame(()=>{pl.style.transition='left .5s cubic-bezier(.25,.46,.45,.94),top .5s cubic-bezier(.25,.46,.45,.94)';document.getElementById('root').focus();}));
 </script>
-<script src="js/data/story_enemy_registry.js"></script><script src="js/world/ow_enemy_population.js"></script>
+<script src="js/data/story_enemy_registry.js"></script><script src="js/data/story_milestone_boss_pool.js"></script><script src="js/world/ow_enemy_population.js"></script>
 <script>
 // ── Avian Ascent · Overworld Integration Bootstrap ───────────────────────────
 (function(){
@@ -918,7 +953,6 @@ requestAnimationFrame(()=>requestAnimationFrame(()=>{pl.style.transition='left .
     nodes: NODES,
   });
   const activeBirdKey  = save?.player?.birdKey || owState?.birdKey || null;
-  try{ window.activeBirdKeyForOwPreview = activeBirdKey; }catch(_){}
   const currentStage   = Math.max(1, overworldProgress.completedStage + 1);
   const shinyObjects   = save ? (save.shinyObjects || 0) : null;
   const hasActiveRun   = !!(save?.player);

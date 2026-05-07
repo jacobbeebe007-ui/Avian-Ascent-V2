@@ -8731,7 +8731,8 @@ function storyTierFromStage(stage){
   return 5;
 }
 
-/** @see js/world/ow_enemy_population.js OW_POOL_BY_BAND — update both if BIRD_ENEMIES tiers change. */
+/** @see js/world/ow_enemy_population.js OW_POOL_BY_BAND — update both if BIRD_ENEMIES tiers change.
+ *  Tier rows including band 4: keep js/data/story_milestone_boss_pool.js STORY_MILESTONE_BOSS_POOL_KEYS in sync (stage 10 boss). */
 function pickBirdEnemyPoolForTier(tier){
   const band=Math.min(Math.max(Number(tier)||1,1),4);
   let pool=BIRD_ENEMIES.filter(e=>Array.isArray(e.tier)&&e.tier.includes(band));
