@@ -530,8 +530,8 @@
 
 
 
-<!-- Patch order: each later script may wrap globals from earlier (see systems.js / ui.js headers). -->
-<script src="js/data/ability_passive_upgrade_pack.js"></script><script src="js/data/story_enemy_registry.js"></script><script src="js/core/game.js"></script><script src="js/data/content.js"></script><script src="js/systems/systems.js"></script><script src="js/systems/shop.js"></script><script src="js/ui/ui.js"></script><script src="js/ui/sprites.js"></script>
+<!-- Patch order: overworld_bridge.js (keys + shared progress helpers), then each later script may wrap globals from earlier (see systems.js / ui.js headers). -->
+<script src="js/data/ability_passive_upgrade_pack.js"></script><script src="js/data/story_enemy_registry.js"></script><script src="js/world/overworld_bridge.js"></script><script src="js/core/game.js"></script><script src="js/data/content.js"></script><script src="js/systems/systems.js"></script><script src="js/systems/shop.js"></script><script src="js/ui/ui.js"></script><script src="js/ui/sprites.js"></script>
 <script>
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', function () {

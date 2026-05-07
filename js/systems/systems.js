@@ -1,7 +1,7 @@
 // ===== 17_script_17.js =====
 
 /* ===== Aviant polish systems patch =====
- * Script load order (index.html): game.js -> content.js -> systems.js -> shop.js ->
+ * Script load order (index.html): overworld_bridge.js -> game.js -> content.js -> systems.js -> shop.js ->
  * ui.js -> sprites.js. Later files wrap globals registered earlier.
  * Consolidated here (vs content.js): dealDamage, edmg, afterEnemyTurn.
  * getUpgradePool: ui.js wraps game.js (normalize upgrade apply + audit in one place).

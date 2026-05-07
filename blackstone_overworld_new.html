@@ -245,6 +245,7 @@ html,body{width:100%;height:100%;overflow:hidden;background:#060d05;}
     <button id="pick-ok">CONFIRM &#9654;</button>
   </div>
 </div>
+<script src="js/world/overworld_bridge.js"></script>
 <script>
 const SVG_NS='http://www.w3.org/2000/svg';
 const MAP_W=1536,MAP_H=1024,UNLOCKED=23;
@@ -265,14 +266,10 @@ function syncOverworldProgress(progress={}){
 }
 
 function getCurrentActionableStage(){ return Math.max(1, OVERWORLD_PROGRESS.completedStage + 1); }
-function isCombatNode(n){ return !!n && (n.type==='stage'||n.type==='boss'||n.final); }
+function isCombatNode(n){ return isOwCombatNode(n); }
 function getNodePortraitBird(n){ return n?.portraitBird || ''; }
 function inferCompletedStageFromNodeId(nodeId){
-  const n=NODES[Math.max(0,Math.floor(Number(nodeId)||0))];
-  if(!n) return 0;
-  if(isCombatNode(n)) return Math.max(0,Number(n.stage||1)-1);
-  if(n.type==='shop') return Math.max(0,Number(NODES[n.id-1]?.stage||0));
-  return 0;
+  return inferOwCompletedStageFromNodeId(nodeId, NODES);
 }
 function getNodeBattleCount(n){ if(!n)return 0; if(!isCombatNode(n))return 0; var st=Math.max(1,Math.floor(Number(n.stage)||1)); if(typeof isBossStageStory==='function'&&isBossStageStory(st))return 1; return 2; }
 function isNodeCompleted(n){
@@ -868,16 +865,8 @@ document.getElementById('btn-next').addEventListener('click',()=>{
 });
 
 document.getElementById('hdr-nest-btn').addEventListener('click',()=>{
-  // Persist map position, then open main game with a "nest" intent (restores run + nest modal)
-  try{
-    const owRaw=localStorage.getItem('avianAscent_overworld');
-    if(owRaw){
-      const ow=JSON.parse(owRaw);
-      ow.nodeId=curPos;
-      localStorage.setItem('avianAscent_overworld',JSON.stringify(ow));
-    }
-    localStorage.setItem('avianAscent_nav', JSON.stringify({ action: 'nest' }));
-  }catch(_){}
+  mergeOwStateWithCurrentNode(curPos);
+  persistOwNavIntent({ action: 'nest' });
   window.location.href='index.html';
 });
 
@@ -897,15 +886,8 @@ requestAnimationFrame(()=>requestAnimationFrame(()=>{pl.style.transition='left .
 <script>
 // ── Avian Ascent · Overworld Integration Bootstrap ───────────────────────────
 (function(){
-  const SAVE_KEY = 'avianAscent_save_v1';
-  const OW_KEY   = 'avianAscent_overworld';
-  const NAV_KEY  = 'avianAscent_nav';
-
-  // ── Read persisted state ──────────────────────────────────────────────────
-  let save = null;
-  try { save = JSON.parse(localStorage.getItem(SAVE_KEY) || 'null'); } catch(_) {}
-  let owState = null;
-  try { owState = JSON.parse(localStorage.getItem(OW_KEY) || 'null'); } catch(_) {}
+  let save = readOwSaveParsed();
+  let owState = readOwStateParsed();
 
   // Per-run seeded stage enemies (story overworld): validate/create pack, patch NODES, persist.
   if (typeof buildOwEnemyPopulation === 'function' && typeof applyOwPopulationToNodes === 'function' && typeof isValidOverworldEnemySeedPack === 'function' && typeof mulberry32 === 'function' && typeof OW_PACK_SEED_COUNT === 'number') {
@@ -921,24 +903,20 @@ requestAnimationFrame(()=>requestAnimationFrame(()=>{pl.style.transition='left .
       const pop = buildOwEnemyPopulation(pack.packIndex);
       applyOwPopulationToNodes(NODES, pop);
       if (dirty) {
-        try { localStorage.setItem(SAVE_KEY, JSON.stringify(save)); } catch (_) {}
+        try { localStorage.setItem(AVIAN_OW_KEYS.SAVE, JSON.stringify(save)); } catch (_) {}
       }
     } else if (save && !save.player && save.overworldEnemySeedPack != null) {
       delete save.overworldEnemySeedPack;
-      try { localStorage.setItem(SAVE_KEY, JSON.stringify(save)); } catch (_) {}
+      try { localStorage.setItem(AVIAN_OW_KEYS.SAVE, JSON.stringify(save)); } catch (_) {}
     }
   }
 
-  const savedProgress  = save?.overworldProgress || null;
-  const savedNodeId = Number(savedProgress?.currentNodeId);
-  const owNodeId = Number(owState?.nodeId);
-  const inferredCompletedStage = Number.isFinite(owNodeId) ? inferCompletedStageFromNodeId(owNodeId) : 0;
-  const savedCompletedStage = Math.max(inferredCompletedStage, Math.max(0, Math.floor(Number(savedProgress?.completedStage ?? ((save?.stage || 1) - 1)) || 0)));
-  const overworldProgress = {
-    completedStage: savedCompletedStage,
-    currentNodeId: Number.isFinite(owNodeId) ? Math.max(0, Math.floor(owNodeId)) : (Number.isFinite(savedNodeId) ? Math.max(0, Math.floor(savedNodeId)) : 0),
-    lastSummary: savedProgress?.lastSummary || null,
-  };
+  const overworldProgress = mergeOverworldBootstrapProgress({
+    savedProgress: save?.overworldProgress || null,
+    owState,
+    saveStage: save?.stage,
+    nodes: NODES,
+  });
   const activeBirdKey  = save?.player?.birdKey || owState?.birdKey || null;
   try{ window.activeBirdKeyForOwPreview = activeBirdKey; }catch(_){}
   const currentStage   = Math.max(1, overworldProgress.completedStage + 1);
@@ -1050,17 +1028,12 @@ requestAnimationFrame(()=>requestAnimationFrame(()=>{pl.style.transition='left .
       const n = NODES[curPos];
       if (!n || n.type === 'start' || !isActionable(n)) return;
 
-      // Persist the current overworld position for when we return
-      try {
-        localStorage.setItem(OW_KEY, JSON.stringify({nodeId: curPos, birdKey: activeBirdKey}));
-      } catch(_) {}
+      persistOwMapSnapshot(curPos, activeBirdKey);
 
       if (n.type === 'shop') {
-        try { localStorage.setItem(NAV_KEY, JSON.stringify({action:'shop', nodeId:curPos})); } catch(_) {}
+        persistOwNavIntent({action:'shop', nodeId:curPos});
       } else {
-        try {
-          localStorage.setItem(NAV_KEY, JSON.stringify({action:'battle', nodeId:curPos, stage:n.stage, terrain:n.terrain||''}));
-        } catch(_) {}
+        persistOwNavIntent({action:'battle', nodeId:curPos, stage:n.stage, terrain:n.terrain||''});
       }
 
       window.location.href = 'index.html';
