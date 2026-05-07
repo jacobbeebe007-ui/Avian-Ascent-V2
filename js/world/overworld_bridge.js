@@ -51,6 +51,25 @@
   };
 
   /**
+   * Map node id for the next combat story stage after clearing `completedStage`
+   * (matches blackstone_overworld_new.html NODES; shops are skipped).
+   * @param {number} completedStage stage just cleared (1–20)
+   * @returns {number|null} map node id, or null to use caller fallback (e.g. beat stage 20)
+   */
+  global.resolveOverworldCursorNodeIdAfterClear = function (completedStage) {
+    const st = Math.max(0, Math.floor(Number(completedStage) || 0));
+    const nextStage = st + 1;
+    if (nextStage > 20) return null;
+    /** @type {Record<number, number>} */
+    const stageToNode = {
+      1: 1, 2: 2, 3: 3, 4: 4, 5: 6, 6: 7, 7: 8, 8: 9, 9: 10, 10: 11,
+      11: 13, 12: 14, 13: 15, 14: 17, 15: 18, 16: 19, 17: 20, 18: 21, 19: 22, 20: 23,
+    };
+    const id = stageToNode[nextStage];
+    return Number.isFinite(id) ? id : null;
+  };
+
+  /**
    * Builds the overworldProgress object shown on the map (matches legacy bootstrap).
    */
   global.mergeOverworldBootstrapProgress = function (opts) {

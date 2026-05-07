@@ -6848,7 +6848,12 @@ function finalizeOverworldStageClear(clearedStage, nodeId, summary={}) {
   const stageNum = Math.max(1, Math.floor(Number(clearedStage) || 1));
   const progress = ensureOverworldProgress(stageNum);
   progress.completedStage = Math.max(progress.completedStage || 0, stageNum);
-  if(Number.isFinite(Number(nodeId))) progress.currentNodeId = Math.max(0, Math.floor(Number(nodeId)));
+  const nextCursor =
+    typeof globalThis.resolveOverworldCursorNodeIdAfterClear === 'function'
+      ? globalThis.resolveOverworldCursorNodeIdAfterClear(progress.completedStage)
+      : null;
+  if (nextCursor != null) progress.currentNodeId = nextCursor;
+  else if (Number.isFinite(Number(nodeId))) progress.currentNodeId = Math.max(0, Math.floor(Number(nodeId)));
   progress.lastSummary = {
     stage: stageNum,
     nodeId: Number.isFinite(Number(nodeId)) ? Math.max(0, Math.floor(Number(nodeId))) : progress.currentNodeId,
@@ -10874,6 +10879,12 @@ function continueStageTransitionAfterRewards(){
     });
     clearOverworldPendingBattle();
     saveRun();
+    try{
+      const owp=G._overworldProgress;
+      const nid=owp && Number.isFinite(Number(owp.currentNodeId)) ? Math.floor(Number(owp.currentNodeId)) : 0;
+      if(typeof globalThis.persistOwMapSnapshot==='function')
+        globalThis.persistOwMapSnapshot(nid, G.player?.birdKey||null);
+    }catch(_){}
     try { window.location.href = 'blackstone_overworld_new.html'; return; } catch(_) {}
   } else if (G._owStageEnemies?.length) {
     G._owStageEnemies = null;
@@ -24428,6 +24439,14 @@ function exitStorkShop() {
       clearOverworldPendingBattle();
     }
     saveRun();
+    try{
+      const owp=G._overworldProgress;
+      const nid=owp && Number.isFinite(Number(owp.currentNodeId))
+        ? Math.floor(Number(owp.currentNodeId))
+        : (Number.isFinite(Number(returningShopNodeId)) ? Math.floor(Number(returningShopNodeId)) : 0);
+      if(typeof globalThis.persistOwMapSnapshot==='function')
+        globalThis.persistOwMapSnapshot(nid, G.player?.birdKey||null);
+    }catch(_){}
     try { window.location.href = 'blackstone_overworld_new.html'; return; } catch(_) {}
   }
   advanceStage();
