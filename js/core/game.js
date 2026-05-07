@@ -2625,6 +2625,7 @@ const ABILITY_TEMPLATES_EXTRA = {
   },
   dukeRiverGrip:{
     id:'dukeRiverGrip', name:'River Grip', type:'spell', btnType:'spell',
+    energyByLevel:[2,2,2,2],
     desc:'Summon freezing current to damage and slow the enemy.',
     levels:[
       {lv:1, desc:'90% MATK damage. Slow 2 turns.'},
@@ -2635,6 +2636,7 @@ const ABILITY_TEMPLATES_EXTRA = {
   },
   dukeDecree:{
     id:'dukeDecree', name:'Royal Decree', type:'spell', btnType:'spell',
+    energyByLevel:[2,2,3,3],
     desc:'Apply pressure with royal decree and resonance.',
     levels:[
       {lv:1, desc:'Inflict Weaken 1 turn + Resonance 8 damage.'},
@@ -2645,6 +2647,7 @@ const ABILITY_TEMPLATES_EXTRA = {
   },
   dukeWardens:{
     id:'dukeWardens', name:'Court Wardens', type:'utility', btnType:'utility',
+    energyByLevel:[1,1,2,2],
     desc:'Raise owl wardens to harden your defenses and composure.',
     levels:[
       {lv:1, desc:'Gain Defending(1) and +2 DEF this turn.'},
@@ -6660,7 +6663,22 @@ function continueRun() {
     G.overworldEnemySeedPack={v:1,packIndex:save.overworldEnemySeedPack.packIndex};
   }
   const oc = save.owEncounterChain;
-  if(!G.endlessMode && oc && Array.isArray(oc.owStageEnemies) && oc.owStageEnemies.length){
+  const _pendRestore = Number(G._owPendingBattleStage);
+  const encStForOcRestore = (Number.isFinite(_pendRestore) && _pendRestore > 0)
+    ? Math.floor(_pendRestore)
+    : Math.max(1, Math.floor(Number(save.stage) || 1));
+  const skipOcEnemyRestore = !G.endlessMode && STORY_BOSS_STAGES.has(encStForOcRestore);
+
+  const _applyOcNavHintsIfUnset = ()=>{
+    const havePending = Number.isFinite(Number(G._owPendingBattleStage)) && Number(G._owPendingBattleStage) > 0;
+    if(!havePending && Number.isFinite(Number(oc.owPendingBattleStage))) G._owPendingBattleStage = Math.floor(Number(oc.owPendingBattleStage));
+    const haveNode = Number.isFinite(Number(G._owPendingNodeId));
+    if(!haveNode && Number.isFinite(Number(oc.owPendingNodeId))) G._owPendingNodeId = Math.floor(Number(oc.owPendingNodeId));
+    const haveTerrain = typeof G._battleTerrain === 'string' && G._battleTerrain.trim();
+    if(!haveTerrain && typeof oc.battleTerrain === 'string' && oc.battleTerrain.trim()) G._battleTerrain = oc.battleTerrain.trim();
+  };
+
+  if(!G.endlessMode && oc && Array.isArray(oc.owStageEnemies) && oc.owStageEnemies.length && !skipOcEnemyRestore){
     G._owStageEnemies = oc.owStageEnemies.slice();
     G._owEnemyIndex = Math.max(0, Math.floor(Number(oc.owEnemyIndex) || 0));
     G._owEnemyCount = Math.max(1, Math.floor(Number(oc.owEnemyCount) || G._owStageEnemies.length));
@@ -6669,9 +6687,17 @@ function continueRun() {
     G._owEncounterDraftsSig = (G._owEncounterDrafts && oc.owEncounterDraftsSig) ? oc.owEncounterDraftsSig : null;
     G._owEncounterMaterialized = null;
     G._owEncounterMaterializedSig = null;
-    if(Number.isFinite(Number(oc.owPendingBattleStage))) G._owPendingBattleStage = Math.floor(Number(oc.owPendingBattleStage));
-    if(Number.isFinite(Number(oc.owPendingNodeId))) G._owPendingNodeId = Math.floor(Number(oc.owPendingNodeId));
-    if(typeof oc.battleTerrain === 'string' && oc.battleTerrain.trim()) G._battleTerrain = oc.battleTerrain.trim();
+    _applyOcNavHintsIfUnset();
+  } else if(!G.endlessMode && skipOcEnemyRestore && oc){
+    G._owStageEnemies = null;
+    G._owEnemyIndex = 0;
+    G._owEnemyCount = 1;
+    G._owEncounterRollStage = null;
+    G._owEncounterDrafts = null;
+    G._owEncounterDraftsSig = null;
+    G._owEncounterMaterialized = null;
+    G._owEncounterMaterializedSig = null;
+    _applyOcNavHintsIfUnset();
   } else if(!save.inBattle && !oc){
     G._owStageEnemies = null;
     G._owEncounterDrafts = null;
@@ -7672,19 +7698,18 @@ function syncStoryEncounterBirdQueue(encounterStage){
   if(G.endlessMode) return;
   const st=Math.max(1,Math.floor(Number(encounterStage)||1));
   if(STORY_BOSS_STAGES.has(st)){
-    if(_isOverworldRun() && Array.isArray(G._owStageEnemies) && G._owStageEnemies.length>0){
-      G._owEnemyCount=Math.max(G._owEnemyCount||0,G._owStageEnemies.length);
-      commitStoryEncounterMeta(st, G.player?.birdKey, G._owStageEnemies);
-      return;
-    }
-    G._owStageEnemies=null;
-    G._owEnemyIndex=0;
-    G._owEnemyCount=1;
     G._owEncounterRollStage=null;
     G._owEncounterDrafts=null;
     G._owEncounterDraftsSig=null;
     G._owEncounterMaterialized=null;
     G._owEncounterMaterializedSig=null;
+    G._owEnemyIndex=0;
+    G._owEnemyCount=1;
+    if(st===STORY_DUKE_STAGE){
+      G._owStageEnemies=['dukeBlakiston'];
+    }else{
+      G._owStageEnemies=null;
+    }
     commitStoryEncounterMeta(st, G.player?.birdKey, G._owStageEnemies);
     return;
   }
@@ -9957,7 +9982,7 @@ function getAbilityTemplateForUI(abOrId){
   const id=isObj?String(abOrId.id||''):String(abOrId||'');
   if(!id) return null;
   const canon=(typeof resolveAbilityAliasSourceId==='function')?resolveAbilityAliasSourceId(id):id;
-  let t=ABILITY_TEMPLATES[canon]||ABILITY_TEMPLATES[id];
+  let t=ABILITY_TEMPLATES[id]||ABILITY_TEMPLATES[canon];
   if(!t&&typeof ABILITY_TEMPLATES_EXTRA!=='undefined') t=ABILITY_TEMPLATES_EXTRA[id]||ABILITY_TEMPLATES_EXTRA[canon];
   if(!t&&typeof ABILITY_TEMPLATES_MAGIC!=='undefined') t=ABILITY_TEMPLATES_MAGIC[id]||ABILITY_TEMPLATES_MAGIC[canon];
   if(!t&&typeof ABILITY_TEMPLATES_LEARNABLE!=='undefined') t=ABILITY_TEMPLATES_LEARNABLE[id]||ABILITY_TEMPLATES_LEARNABLE[canon];
@@ -14690,7 +14715,7 @@ registerAbilityAlias('ruin_hunt','quarryBreak','Ruin Hunt',{type:'utility',btnTy
 registerAbilityAlias('opening_focus','battleFocus','Opening Focus',{type:'utility',btnType:'utility'});
 registerAbilityAlias('tempo_plan','battleFocus','Battle Plan',{type:'utility',btnType:'utility'});
 registerAbilityAlias('perfect_hunt','battleFocus','Perfect Hunt',{type:'utility',btnType:'utility'});
-registerAbilityAlias('nightTalon','deathDive','Night Talon',{isBasic:true,type:'physical',btnType:'physical',energyCost:2,energyByLevel:[2,2,2,2]});
+registerAbilityAlias('nightTalon','deathDive','Night Talon',{isBasic:true,type:'physical',btnType:'physical',energyCost:2,energyByLevel:[2,2,2,2],fixedMainAttackCost:true});
 registerAbilityAlias('huntersCry','victoryChant',"Hunter's Cry",{type:'utility',btnType:'utility'});
 registerAbilityAlias('fleshTear','fleshRipper','Flesh Tear',{isBasic:true,type:'physical',btnType:'physical'});
 registerAbilityAlias('raptorDive','deathDive','Raptor Dive',{type:'physical',btnType:'physical'});
@@ -14717,9 +14742,9 @@ registerAbilityAlias('dizzyChorus','dirge','Dizzy Chorus',{type:'utility',btnTyp
 registerAbilityAlias('echoLaugh','shriekwave','Echo Laugh',{type:'spell',btnType:'spell'});
 registerAbilityAlias('skyTalon','skyStrike','Sky Talon',{isBasic:true,type:'physical',btnType:'physical'});
 registerAbilityAlias('freedomCry','victoryChant','Freedom Cry',{type:'utility',btnType:'utility'});
-registerAbilityAlias('nightfallCall','dukeDecree','Nightfall Call',{type:'spell',btnType:'spell'});
-registerAbilityAlias('courtSummon','dukeWardens','Court Summon',{type:'utility',btnType:'utility'});
-registerAbilityAlias('verdict','dukeRiverGrip','Verdict',{type:'spell',btnType:'spell'});
+registerAbilityAlias('nightfallCall','dukeDecree','Nightfall Call',{type:'spell',btnType:'spell',energyByLevel:[2,2,3,3]});
+registerAbilityAlias('courtSummon','dukeWardens','Court Summon',{type:'utility',btnType:'utility',energyByLevel:[1,2,2,3]});
+registerAbilityAlias('verdict','dukeRiverGrip','Verdict',{type:'spell',btnType:'spell',energyByLevel:[3,3,3,4],cooldownByLevel:[3,3,2,2]});
 
 Object.assign(ABILITY_TEMPLATES.windFeint||{}, makeEvolutionAbilityTemplate('windFeint','Feather Feint','Sparrow base evasive feint. Dodge and MDEF before branching.', {type:'utility', btnType:'utility', energy:2, cooldownByLevel:[1,1,1,1], levels:[{desc:'+12% dodge and +10 MDEF for 2 turns (refresh).'},{desc:'Stronger feint.'},{desc:'Stronger feint.'},{desc:'Peak feint.'}]}));
 Object.assign(ABILITY_TEMPLATES.predatorMark||{}, makeEvolutionAbilityTemplate('predatorMark','Predator Mark','Mark-line execute branch. Hunt the weakened target.', {type:'utility', btnType:'utility', energy:1, levels:[{desc:'Mark prey. Next attack gains +16% damage, +12% more below 50% HP.'},{desc:'Mark prey. Next attack gains +20% damage, +14% more below 50% HP.'},{desc:'Mark prey. Next attack gains +24% damage, +16% more below 50% HP.'},{desc:'Mark prey. Next attack gains +28% damage, +18% more below 50% HP.'}]}));
@@ -20636,9 +20661,16 @@ function getAbilityEnergyCost(ab, player){
   const tType=(t?.btnType||t?.type||ab.btnType||ab.type||'').toLowerCase();
   const isAttack=(tType==='physical'||tType==='ranged');
   const isSpell=(tType==='spell');
-  // Family skill tree: tiering up slotted skills should not raise EN (spells, utilities, and secondary attacks use tier-1 cost).
+  // Family skill tree: flat EN curves stay at tier-1 display/spend; progressive energyByLevel tracks authored ramps.
   if(p && usesFamilySkillEvolution(p) && !isMainAttackAbility(ab) && Array.isArray(t?.energyByLevel) && t.energyByLevel.length){
-    cost = Math.max(0, Math.floor(Number(t.energyByLevel[0])||0));
+    const arr=t.energyByLevel.map(x=>Math.max(0,Math.floor(Number(x)||0)));
+    const progressive=arr.some((v,i)=>i>0&&v!==arr[0]);
+    if(progressive){
+      const idx=Math.min(Math.max((ab.level||1)-1,0),arr.length-1);
+      cost=arr[idx];
+    }else{
+      cost=arr[0];
+    }
   }
 
   if(isAttack && !G._firstAttackUsed && p?.firstAttackFree) cost=0;
