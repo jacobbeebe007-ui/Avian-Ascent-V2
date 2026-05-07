@@ -6500,7 +6500,7 @@ function syncPlayerAbilitiesFromSkillSlots(player){
 // ============================================================
 //  SAVE / LOAD SYSTEM (localStorage)
 // ============================================================
-const SAVE_KEY='avianAscent_save_v1';
+const SAVE_KEY = globalThis.AVIAN_OW_KEYS?.SAVE ?? 'avianAscent_save_v1';
 function ensureFamilyEvolutionState(player){
   if(!player || typeof player!=='object') return null;
   const birdKey = String(player.birdKey || '');
@@ -6767,8 +6767,8 @@ function goMainMenu() {
 // ============================================================
 //  OVERWORLD BRIDGE
 // ============================================================
-const _OW_STATE_KEY = 'avianAscent_overworld';
-const _OW_NAV_KEY   = 'avianAscent_nav';
+const _OW_STATE_KEY = globalThis.AVIAN_OW_KEYS?.STATE ?? 'avianAscent_overworld';
+const _OW_NAV_KEY = globalThis.AVIAN_OW_KEYS?.NAV ?? 'avianAscent_nav';
 
 function getEncounterStage() {
   const pending = Number(G?._owPendingBattleStage);
@@ -6777,6 +6777,8 @@ function getEncounterStage() {
 }
 
 function normalizeOverworldProgress(progress=null, fallbackStage=1) {
+  const impl = globalThis.normalizeOverworldProgressShared;
+  if(typeof impl === 'function') return impl(progress, fallbackStage);
   const nextStage = Math.max(1, Math.floor(Number(fallbackStage) || 1));
   const rawCompleted = Number(progress?.completedStage);
   const ceiling = Math.max(0, nextStage - 1);

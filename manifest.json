@@ -9,6 +9,7 @@
     "css/ui.css"
   ],
   "js_bundles": [
+    "js/world/overworld_bridge.js",
     "js/core/game.js",
     "js/data/content.js",
     "js/systems/systems.js",
