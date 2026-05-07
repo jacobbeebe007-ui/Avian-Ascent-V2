@@ -3152,6 +3152,9 @@ function normalizeAbilityTemplates(){
 }
 normalizeAbilityTemplates();
 
+sanitizeAbilityClassRouting(ABILITY_TEMPLATES);
+if(typeof ABILITY_TEMPLATES_EXTRA!=='undefined') sanitizeAbilityClassRouting(ABILITY_TEMPLATES_EXTRA);
+
 Object.values(ABILITY_TEMPLATES).forEach(t=>{
   if(!t) return;
   if(!t.description) t.description=t.desc||`${t.name} ability.`;
@@ -12410,8 +12413,6 @@ function tickDelayedForTarget(side){
   logMsg(`🎵 Resonance detonates! ${dmg} damage!`,'system');
   delete status.delayed;
 }
-/** Legacy name kept for bundled patches; combat uses boundary tick helpers above. */
-async function tickDoTs(){}
 
 function tickStatuses(who) {
   const s=who==='player'?G.playerStatus:G.enemyStatus;

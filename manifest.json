@@ -13,7 +13,6 @@
     "js/data/content.js",
     "js/systems/systems.js",
     "js/systems/shop.js",
-    "js/systems/fixes.js",
     "js/ui/ui.js",
     "js/ui/sprites.js"
   ],
