@@ -190,7 +190,7 @@ html,body{width:100%;height:100%;overflow:hidden;background:#060d05;}
     <div class="hdr-title-wrap">
       <span class="orn">&#10022;</span><h1>BLACKSTONE FOREST</h1><span class="orn">&#10022;</span>
     </div>
-    <span id="hdr-hint">Choose a node &middot; Enter opens travel panel &middot; B = Bird &middot; Scroll / pinch = Zoom &middot; Drag = Pan</span>
+    <span id="hdr-hint">Tap map nodes &middot; OPEN LOCATION or Enter opens panel &middot; B = Bird &middot; Zoom / Pan map</span>
     <div class="hdr-spacer" aria-hidden="true"></div>
   </header>
   <div id="vp">
@@ -233,6 +233,7 @@ html,body{width:100%;height:100%;overflow:hidden;background:#060d05;}
       <span id="hdr-shiny-count">&#11088; 0</span>
       <button type="button" class="nbtn" id="btn-prev">&#9664; PREV</button>
       <button type="button" id="hdr-nest-btn">&#x1F3E0; NEST</button>
+      <button type="button" class="nbtn" id="btn-open-node">OPEN LOCATION ▶</button>
       <button type="button" class="nbtn" id="btn-next">NEXT &#9654;</button>
     </div>
   </div>
@@ -692,8 +693,9 @@ ns.appendChild(pathG);
 
 NODES.forEach(n=>{
   const reach=n.id<=UNLOCKED,vc=nvc(n),g=mk('g');
-  g.style.cursor=(reach&&n.id>0&&isNodeUnlocked(n))?'pointer':'default';
-  if(reach&&n.id>0&&isNodeUnlocked(n))g.addEventListener('click',()=>setPos(n.id));
+  // Any on-map node may be selected; overlay confirms whether entering is allowed.
+  g.style.cursor=(reach&&n.id>0)?'pointer':'default';
+  if(reach&&n.id>0)g.addEventListener('click',()=>setPos(n.id));
   n._g=g;n._vc=vc;
   if(!reach){
     const sh=mk('circle',{cx:n.x,cy:n.y,r:vc.r,fill:'rgba(18,18,12,.65)',stroke:vc.lock,'stroke-width':'1.2',opacity:'.38'});
@@ -819,12 +821,15 @@ function updateInfo(){
   document.getElementById('btn-prev').disabled=curPos<=0;
   const nextNd=NODES[curPos+1];
   document.getElementById('btn-next').disabled=curPos>=UNLOCKED||!nextNd||!isNodeUnlocked(nextNd)||nodeBlocksAdvance(NODES[curPos]);
+  const nCur=NODES[curPos];
+  const openBtn=document.getElementById('btn-open-node');
+  if(openBtn) openBtn.disabled=!nCur||nCur.type==='start'||isMoving;
   syncNodeVisualState();
 }
 
 function setHL(id,on){const n=NODES[id];if(!n||!n._sh)return;n._sh.setAttribute('stroke-width',on?3.5:2);if(n._topRing)n._topRing.setAttribute('stroke-width',on?3.5:2);}
 function _openNodeOv(){const n=NODES[curPos];if(!n||n.type==='start')return;openOv();applyNodeActionButton(document.getElementById('ov-confirm-btn'),n);}
-function setPos(nId){if(isMoving)return;if(nId===curPos){_openNodeOv();return;}isMoving=true;setHL(curPos,false);curPos=nId;setHL(curPos,true);const pl=document.getElementById('player');pl.className='moving';updateCamera(true);updateInfo();clearTimeout(moveTimer);moveTimer=setTimeout(()=>{isMoving=false;pl.className='arrive';setTimeout(()=>{pl.className='idle';},500);},520);}
+function setPos(nId){if(isMoving)return;if(nId===curPos){_openNodeOv();return;}isMoving=true;setHL(curPos,false);curPos=nId;setHL(curPos,true);const pl=document.getElementById('player');pl.className='moving';updateCamera(true);updateInfo();clearTimeout(moveTimer);moveTimer=setTimeout(()=>{isMoving=false;pl.className='arrive';setTimeout(()=>{pl.className='idle';},500);_openNodeOv();},520);}
 function openOv(){
   const n=NODES[curPos],vc=nvc(n);
   if(n.type==='start')return;
@@ -914,7 +919,7 @@ document.getElementById('root').addEventListener('keydown',e=>{
   if(!dirs.includes(e.key))return;e.preventDefault();if(isMoving)return;
   const cn=NODES[curPos],cands=[];
   if(curPos>0)cands.push(NODES[curPos-1]);if(curPos<UNLOCKED)cands.push(NODES[curPos+1]);
-  const openCands=cands.filter(c=>isNodeUnlocked(c));
+  const openCands=cands.filter(c=>c&&c.id>0&&c.id<=UNLOCKED);
   if(!openCands.length)return;let best=null,bs=-Infinity;
   for(const c of openCands){const dx=c.x-cn.x,dy=c.y-cn.y;const sc=e.key==='ArrowRight'?dx-Math.abs(dy)*.4:e.key==='ArrowLeft'?-dx-Math.abs(dy)*.4:e.key==='ArrowUp'?-dy-Math.abs(dx)*.4:dy-Math.abs(dx)*.4;if(sc>bs){bs=sc;best=c.id;}}
   if(best!==null)setPos(best);
@@ -947,6 +952,10 @@ document.getElementById('btn-next').addEventListener('click',()=>{
 
 document.getElementById('hdr-nest-btn').addEventListener('click',()=>{
   openOwNestOverlay();
+});
+document.getElementById('btn-open-node').addEventListener('click',()=>{
+  if(isMoving)return;
+  _openNodeOv();
 });
 
 applyBird();
