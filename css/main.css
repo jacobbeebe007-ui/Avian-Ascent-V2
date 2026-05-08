@@ -66,6 +66,7 @@ header p{color:var(--text-dim);font-style:italic;font-size:1rem;margin-top:4px;}
 .start-screen-bg{
   position:absolute;
   inset:0;
+  pointer-events:none;
   background-image:url("../assets/ui/start-screen.png"), linear-gradient(165deg,#1c2838 0%,#0d121a 42%,#06080e 100%);
   background-position:center center, center center;
   /* PNG: show entire image (letterboxing). Gradient: always fill behind it */
