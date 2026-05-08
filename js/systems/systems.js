@@ -965,18 +965,8 @@ cooldown('chargeUp',3);
     ]
   );
 
-  // Pool spells still referenced by saves, aliases, and migration (birdBrain, sonicDirge, supersonic, wingStorm; rotChorus→sonicDirge). Not Albatross live kit (alb_* + slot migration).
-  setLevels('birdBrain',
-    'Psychic overload. Direct magic hit with confusion pressure.',
-    [
-      {lv:1, desc:'110% mAtt. 18% Confuse'},
-      {lv:2, desc:'120% mAtt. 22% Confuse'},
-      {lv:3, desc:'130% mAtt. 26% Confuse'},
-      {lv:4, desc:'142% mAtt. 30% Confuse + Weaken 10%'},
-    ]
-  );
-
-  setLevels('owlPsyche',
+  // Shared spell ladders for alias targets (thunderScreech / stormChorus / wingStorm / supersonic). Not Albatross live kit (alb_*).
+  setLevels('stormChorus',
     'Dark psychic burst. Fear-focused caster strike.',
     [
       {lv:1, desc:'100% mAtt. 18% Fear'},
@@ -986,7 +976,7 @@ cooldown('chargeUp',3);
     ]
   );
 
-  setLevels('sonicDirge',
+  setLevels('thunderScreech',
     'Piercing wail. Spell pressure with turn disruption.',
     [
       {lv:1, desc:'100% mAtt, 14% spell miss. 18% Sonic Skip'},
