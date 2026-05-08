@@ -6,7 +6,7 @@
   'use strict';
 
   global.AVIAN_OW_KEYS = {
-    SAVE: 'avianAscent_save_v1',
+    SAVE: 'avianAscent_save_v2',
     STATE: 'avianAscent_overworld',
     NAV: 'avianAscent_nav',
   };

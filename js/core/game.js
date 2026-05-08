@@ -234,7 +234,7 @@ const ABILITY_TEMPLATES = {
       {lv:4, desc:'Gain +5 DEF for 1 turn, guard stance active + stronger thorns. CD 2t'},
     ]
   },
-  // Shoebill Stork live kit: sbl_beak_chop / sbl_skull_crack / sbl_still_stance / sbl_dread_mark (family evolution). Legacy id `shoebillClamp` removed — save migration only in legacyBaseAbilityIds + migrateShoebillLegacyFamilySkillSlots.
+  // Shoebill Stork live kit: sbl_beak_chop / sbl_skull_crack / sbl_still_stance / sbl_dread_mark (family evolution).
   // ---- CASSOWARY / EMU (stomp line; Trample + aliases → Serpent Crusher) ----
   serpentCrusher:{
     id:'serpentCrusher', name:'Serpent Crusher', type:'physical', btnType:'physical',
@@ -1569,7 +1569,6 @@ function ensureStatLedger(player){
       fromLevel:{},
       fromUpgrades:{},
       mechanicalLines:[],
-      legacyCombinedStats:false,
     };
   }
   const L = player._statLedger;
@@ -1585,13 +1584,11 @@ function initStatLedgerForNewRun(player){
   L.fromLevel = {};
   L.fromUpgrades = {};
   L.mechanicalLines = [];
-  L.legacyCombinedStats = false;
 }
 function ensureStatLedgerAfterLoad(player){
   if(!player?.stats) return;
   const L = ensureStatLedger(player);
   if(L.birdBaseline && typeof L.birdBaseline === 'object' && Object.keys(L.birdBaseline).length > 0){
-    if(L.legacyCombinedStats === undefined) L.legacyCombinedStats = false;
     return;
   }
   const bd = BIRDS[player.birdKey] || {};
@@ -1599,7 +1596,6 @@ function ensureStatLedgerAfterLoad(player){
   L.birdBaseline = base;
   const hasSplits = Object.keys(L.fromLevel).length > 0 || Object.keys(L.fromUpgrades).length > 0;
   if(!hasSplits){
-    L.legacyCombinedStats = true;
     L.fromLevel = {};
     L.fromUpgrades = {};
     if(!Array.isArray(L.mechanicalLines)) L.mechanicalLines = [];
@@ -1648,7 +1644,6 @@ function buildStatBreakdownTitle(statKey, rawVal, player){
   const rem = cur - b - lv - u;
   let t = `${(STAT_LEDGER_LABELS[statKey]||statKey).toUpperCase()}: ${cur} — base ${b} + level ${formatLedgerDelta(lv)} + upgrades ${formatLedgerDelta(u)}`;
   if(Math.abs(rem) > 0.05) t += ` + other ${rem >= 0 ? '+' : ''}${formatLedgerDelta(rem)}`;
-  if(L.legacyCombinedStats) t += ' (Run started before stat tracking: feather vs upgrade split is approximate.)';
   return t;
 }
 function getDerivedMechanicalBonusLines(player){
@@ -2031,67 +2026,8 @@ function getBirdClassRoleByKey(birdKey=''){
   return resolveFinalClass(BIRDS?.[birdKey]?.class || '', birdKey);
 }
 
-function migrateLegacyClassPerkState(target=G, playerRef=null){
-  if(!target || typeof target!=='object') return ensureClassPerkState(target);
-  const state=ensureClassPerkState(target);
-  const legacyMap=(target.classPerksByBird && typeof target.classPerksByBird==='object') ? target.classPerksByBird : {};
-  const playerBirdKey=playerRef?.birdKey || target.player?.birdKey || '';
-
-  Object.entries(legacyMap).forEach(([birdKey, perkIds])=>{
-    const normalizedKey=String(birdKey||'');
-    if(!normalizedKey) return;
-    const merged=normalizeClassPerkIdList([...(state.classPerks[normalizedKey]||[]), ...normalizeClassPerkIdList(perkIds)]);
-    if(merged.length) state.classPerks[normalizedKey]=merged;
-  });
-
-  const migratedRunPerks=[];
-  (Array.isArray(target.runClassPerks)?target.runClassPerks:[]).forEach(entry=>{
-    if(!entry) return;
-    if(typeof entry==='string'){
-      if(!playerBirdKey) return;
-      migratedRunPerks.push({
-        birdKey:playerBirdKey,
-        classPerkId:entry,
-        source:'legacy-class-perk',
-      });
-      return;
-    }
-    const birdKey=String(entry.birdKey || playerBirdKey || '').trim();
-    const classPerkId=String(entry.classPerkId || entry.perkId || entry.id || '').trim();
-    if(!birdKey || !classPerkId) return;
-    migratedRunPerks.push({
-      birdKey,
-      classPerkId,
-      source:String(entry.source||'legacy-class-perk'),
-    });
-  });
-  state.runClassPerks=migratedRunPerks.filter((entry, idx, arr)=>(
-    arr.findIndex(other=>other.birdKey===entry.birdKey && other.classPerkId===entry.classPerkId && other.source===entry.source)===idx
-  ));
-
-  Object.entries(state.classPerks).forEach(([birdKey, perkIds])=>{
-    state.classPerks[birdKey]=normalizeClassPerkIdList(perkIds).filter(perkId=>{
-      const role=getBirdClassRoleByKey(birdKey);
-      return (CLASS_PERK_BY_CLASS[role]||[]).some(perk=>perk.id===perkId);
-    });
-    if(!state.classPerks[birdKey].length) delete state.classPerks[birdKey];
-  });
-
-  Object.entries(state.classPerks).forEach(([birdKey, perkIds])=>{
-    perkIds.forEach(perkId=>{
-      const exists=state.runClassPerks.some(entry=>entry.birdKey===birdKey && entry.classPerkId===perkId);
-      if(!exists){
-        state.runClassPerks.push({birdKey,classPerkId:perkId,source:'legacy-class-perk'});
-      }
-    });
-  });
-
-  delete target.classPerksByBird;
-  return state;
-}
-
 function getBirdClassPerks(birdKey){
-  const state=migrateLegacyClassPerkState(G, G.player);
+  const state=ensureClassPerkState(G);
   const normalizedKey=String(birdKey || G.player?.birdKey || '').trim();
   return normalizeClassPerkIdList(state.classPerks[normalizedKey]||[]);
 }
@@ -2160,7 +2096,7 @@ function applyClassPerksToCombatContext(birdKey, context={}){
 }
 
 function recomputeClassPerkEffects(){
-  migrateLegacyClassPerkState(G, G.player);
+  ensureClassPerkState(G);
   if(!G.player?.birdKey) return;
   applyClassPerksToStats(G.player.birdKey, G.player);
 }
@@ -2762,20 +2698,9 @@ Object.assign(ABILITY_TEMPLATES, ABILITY_TEMPLATES_EXTRA);
 //  MAGIC ABILITIES (from CSV) — for songbird/corvid builds
 // ============================================================
 const ABILITY_TEMPLATES_MAGIC = {
-  birdBrain:{
-    cooldownByLevel:[3,4,3,4],
-    id:'birdBrain', name:'Bird Brain', type:'spell', btnType:'spell',
-    desc:'Psychic overload — 80% M.ATK psychic damage + Confuse.',
-    levels:[
-      {lv:1, desc:'80% M.ATK dmg + Confuse 3t (15% fumble)'},
-      {lv:2, desc:'100% M.ATK dmg + Confuse 4t (20% fumble)'},
-      {lv:3, desc:'120% M.ATK dmg + Confuse (20%), Brain Fog: SPD/ACC −10% for 2t'},
-      {lv:4, desc:'145% M.ATK dmg + Confuse (25%), Brain Fog: SPD/ACC −15% for 3t'},
-    ]
-  },
-  sonicDirge:{
+  thunderScreech:{
     cooldownByLevel:[3,4,5,6],
-    id:'sonicDirge', name:'Sonic Dirge', type:'spell', btnType:'spell',
+    id:'thunderScreech', name:'Thunder Screech', type:'spell', btnType:'spell',
     desc:'Piercing wail — 90% M.ATK sonic damage. Chance to skip enemy turn.',
     levels:[
       {lv:1, desc:'90% M.ATK dmg + 15% chance to skip enemy next turn (3t)'},
@@ -2784,9 +2709,9 @@ const ABILITY_TEMPLATES_MAGIC = {
       {lv:4, desc:'155% M.ATK, ignores 30% M.DEF, chain heals you for 20% max HP. 25% skip (5t)'},
     ]
   },
-  owlPsyche:{
+  stormChorus:{
     cooldownByLevel:[4,5,6,7],
-    id:'owlPsyche', name:"Owl's Psyche", type:'spell', btnType:'spell',
+    id:'stormChorus', name:'Storm Chorus', type:'spell', btnType:'spell',
     desc:'Hypnotic hoot — 70% M.ATK + Paralyze. Lv3+ adds Fear.',
     levels:[
       {lv:1, desc:'70% M.ATK dmg + Paralyze 15% skip 3t'},
@@ -3052,9 +2977,8 @@ const ABILITY_ENERGY_PATCH = {
   dustDevil:{energyCost:2,skillType:'debuff',role:[]},
   spellLance:{energyCost:2,skillType:'spell',role:[]},
   shriekwave:{energyCost:2,skillType:'spell',role:[]},
-  birdBrain:{energyCost:2,skillType:'spell',role:['control']},
-  sonicDirge:{energyCost:3,skillType:'spell',role:['hardControl']},
-  owlPsyche:{energyCost:3,skillType:'spell',role:['hardControl']},
+  thunderScreech:{energyCost:3,skillType:'spell',role:['hardControl']},
+  stormChorus:{energyCost:3,skillType:'spell',role:['hardControl']},
   mobSwarm:{energyCost:3,skillType:'spell',role:['multiHit']},
   wingStorm:{energyCost:3,skillType:'spell',role:[]},
   murderMurmuration:{energyCost:3,skillType:'spell',role:[]},
@@ -3140,7 +3064,7 @@ const ABILITY_POOL_DEBUFF = [
   'featherRuffle','wingClip','tailPull','taunt',
 ];
 const ABILITY_POOL_MAGIC = [
-  'birdBrain','sonicDirge','owlPsyche','shriekwave','mobSwarm','spellLance','astralRefrain','murderMurmuration','wingStorm',
+  'thunderScreech','stormChorus','shriekwave','mobSwarm','spellLance','astralRefrain','murderMurmuration','wingStorm',
 ];
 const ABILITY_POOL_UTILITY = Object.values(ABILITY_TEMPLATES)
   .filter(t=>t&&(t.btnType||t.type)==='utility')
@@ -3155,14 +3079,6 @@ function removeMimicEverywhere(){
   if(typeof BIRDS!=='undefined') Object.values(BIRDS).forEach(b=>{ if(Array.isArray(b.extraAbilities)) b.extraAbilities=b.extraAbilities.filter(id=>id!=='mimic'); });
 }
 
-
-function removeMimicEverywhere(){
-  const GG = globalThis.G;
-  if(typeof ABILITY_TEMPLATES!=='undefined') delete ABILITY_TEMPLATES.mimic;
-  if('ACTIONS' in globalThis && globalThis.ACTIONS) delete globalThis.ACTIONS.mimic;
-  if(GG?.player?.abilities) GG.player.abilities=GG.player.abilities.filter(a=>a.id!=='mimic');
-  if(typeof BIRDS!=='undefined') Object.values(BIRDS).forEach(b=>{ if(Array.isArray(b.extraAbilities)) b.extraAbilities=b.extraAbilities.filter(id=>id!=='mimic'); });
-}
 
 const MAGIC_CLASSES = new Set(['singer','trickster']);
 // removeMimicEverywhere(); // moved to after G init
@@ -3474,8 +3390,8 @@ function computePlayerEnergyRegen(player){
 /*
 EN_SYSTEM_BALANCE_AUDIT (manual / grep-assisted)
 - Large & XL (maxEN 3): any slotted skill that reaches 3 EN is awkward with Frozen (+1) or multi-action turns.
-- Known template/meta ids at 3 EN (see ABILITY_TEMPLATES + FAMILY_ENERGY_BY_SLOT): deathDive, sonicDirge, owlPsyche, mobSwarm, wingStorm, murderMurmuration; several lines use energyByLevel ending in 3 (e.g. curvedTalons L4, wingStorm L4).
-- Large/XL birds that can still access those ids via family evolution / legacy pools (non-exhaustive): albatross (wingStorm/sonic lineages), harpy (deathDive/crush line), crow (murderMurmuration), snowy/owl-family picks (owlPsyche, sonicDirge), hummingbird (deathDive dive line), dukeBlakiston (silent_dive/deathDive lineage).
+- Known template/meta ids at 3 EN (see ABILITY_TEMPLATES + FAMILY_ENERGY_BY_SLOT): deathDive, thunderScreech, stormChorus, mobSwarm, wingStorm, murderMurmuration; several lines use energyByLevel ending in 3 (e.g. curvedTalons L4, wingStorm L4).
+- Large/XL birds that reach those ids via family evolution (non-exhaustive): albatross sweep/current branches, harpy crush line, crow murder chain, snowy owl lines via thunderScreech/stormChorus aliases, hummingbird dive line, dukeBlakiston dive lineage.
 - Grep hints: rg "energyCost:\\s*3" js/core/game.js ; rg "energyByLevel:\\[[^\\]]*3" js/core/game.js
 */
 
@@ -3883,9 +3799,8 @@ function openNest() {
   const mechCombined=[];
   for(const line of [...mechFromCards,...mechDerived]){ if(line && !mechSeen.has(line)){ mechSeen.add(line); mechCombined.push(line); } }
   const mechHtml=mechCombined.length?`<div class="nest-ledger-mech-block">${mechCombined.map(l=>`<div class="nest-ledger-mech">${l}</div>`).join('')}</div>`:'';
-  const ledgerNote=Ldg?.legacyCombinedStats?`<p class="nest-ledger-note">Runs started before this update: feather vs upgrade split is approximate; totals still match your real stats above.</p>`:'';
-  if(nestUpgRows.length||nestLvlRows.length||mechHtml||ledgerNote){
-    html+=`<div class="nest-section nest-ledger-section"><div class="nest-section-title">✨ Run bonuses (from Feathers &amp; cards)</div>${ledgerNote}`;
+  if(nestUpgRows.length||nestLvlRows.length||mechHtml){
+    html+=`<div class="nest-section nest-ledger-section"><div class="nest-section-title">✨ Run bonuses (from Feathers &amp; cards)</div>`;
     if(nestLvlRows.length) html+=`<div class="nest-ledger-subtitle">Level-up (Feathers)</div><div class="nest-ledger-grid">${nestLvlRows.join('')}</div>`;
     if(nestUpgRows.length) html+=`<div class="nest-ledger-subtitle">Card / shop / reward stats</div><div class="nest-ledger-grid">${nestUpgRows.join('')}</div>`;
     if(mechHtml) html+=`<div class="nest-ledger-subtitle">Card &amp; passive combat modifiers</div>${mechHtml}`;
@@ -4422,16 +4337,6 @@ const ROBIN_SKILL_FAMILIES = Object.freeze({
     },
   },
 });
-
-/**
- * Pre–family-evolution Bowerbird flat-kit and misplaced-generic ids (save migration ONLY).
- * Not registered as live ability aliases — `migrateBowerbirdLegacyFamilySkillSlots` + `legacyBaseAbilityIds` rewrite slots to family bases.
- */
-const LEGACY_BOWERBIRD_FLAT_SKILL_FOR_MIGRATION = Object.freeze(new Set([
-  'decorate','inspireSong','charmDisplay','focusCall',
-  'aerialPoop','victoryChant','taunt','battleFocus',
-  'windFeint','trackPrey','markPrey','peck','headWhip',
-]));
 
 const BOWERBIRD_SKILL_SLOT_LAYOUT = Object.freeze([
   {slotIndex:0, familyId:'trinket', abilityId:'trinket_toss'},
@@ -5569,72 +5474,42 @@ const FAMILY_EVOLUTION_BIRD_DATA = Object.freeze({
     slotLayout:SPARROW_SKILL_SLOT_LAYOUT,
     families:SPARROW_SKILL_FAMILIES,
     abilityLookup:buildFamilySkillAbilityLookup(SPARROW_SKILL_SLOT_LAYOUT, SPARROW_SKILL_FAMILIES),
-    legacyBaseAbilityIds:Object.freeze({
-      rapid:{legacy:['rapidPeck'], current:'multiPeck'},
-      mark:{legacy:['markPrey'], current:'trackPrey'},
-    }),
+
   },
   goose:{
     birdKey:'goose',
     slotLayout:GOOSE_SKILL_SLOT_LAYOUT,
     families:GOOSE_SKILL_FAMILIES,
     abilityLookup:buildFamilySkillAbilityLookup(GOOSE_SKILL_SLOT_LAYOUT, GOOSE_SKILL_FAMILIES),
-    legacyBaseAbilityIds:Object.freeze({
-      beak:{legacy:['peck','headWhip'], current:'gos_beak_snap'},
-      body:{legacy:['talon_slam','heavyTalon','heavy_talon','territorial_honk','gooseHonk','fearHonk'], current:'gos_body_check'},
-      honk:{legacy:['guard','iron_guard','bulwark_brace','fortress_stance'], current:'gos_honk_blast'},
-      brace:{legacy:['talon_slam','heavy_talon','trample_slam','crushing_stampede','wing_buffet','bone_buffet','gale_crush','rending_talon','finisher_slam','execution_crush','spite_guard','punish_brace','retribution_fortress','steady_guard','restoring_brace','enduring_fortress'], current:'gos_brace_up'},
-    }),
+
   },
   blackbird:{
     birdKey:'blackbird',
     slotLayout:BLACKBIRD_SKILL_SLOT_LAYOUT,
     families:BLACKBIRD_SKILL_FAMILIES,
     abilityLookup:buildFamilySkillAbilityLookup(BLACKBIRD_SKILL_SLOT_LAYOUT, BLACKBIRD_SKILL_FAMILIES),
-    legacyBaseAbilityIds:Object.freeze({
-      song:{legacy:['stormChorus'], current:'dark_song'},
-      peck:{legacy:['blackPeck'], current:'shadow_peck'},
-      gloom:{legacy:['battleChorus'], current:'gloom_wing'},
-      sign:{legacy:['thunderScreech'], current:'grim_sign'},
-    }),
+
   },
   crow:{
     birdKey:'crow',
     slotLayout:CROW_SKILL_SLOT_LAYOUT,
     families:CROW_SKILL_FAMILIES,
     abilityLookup:buildFamilySkillAbilityLookup(CROW_SKILL_SLOT_LAYOUT, CROW_SKILL_FAMILIES),
-    legacyBaseAbilityIds:Object.freeze({
-      peck:{legacy:['crowStrike', 'mockingPeck', 'peck'], current:'peck'},
-      murder:{legacy:['stickLance', 'murderMurmuration'], current:'murder_murmuration'},
-      call:{legacy:['guard', 'dreadCall'], current:'dread_call'},
-      focus:{legacy:['battleFocus'], current:'battle_focus'},
-    }),
+
   },
   magpie:{
     birdKey:'magpie',
     slotLayout:MAGPIE_SKILL_SLOT_LAYOUT,
     families:MAGPIE_SKILL_FAMILIES,
     abilityLookup:buildFamilySkillAbilityLookup(MAGPIE_SKILL_SLOT_LAYOUT, MAGPIE_SKILL_FAMILIES),
-    legacyBaseAbilityIds:Object.freeze({
-      // These legacy ids are retained only to migrate old Magpie save slots into the
-      // new family-slot layout. They should not be granted or surfaced as live Magpie skills.
-      swoop:{legacy:['featherFlick', 'swoopCut', 'swoop'], current:'swoop'},
-      steal:{legacy:['glintJab', 'stealTempo', 'stealShine'], current:'steal_shine'},
-      flick:{legacy:['mockingSong', 'featherFlick'], current:'feather_flick'},
-      dart:{legacy:['stealTempo', 'glintJab', 'dart'], current:'shine_step'},
-    }),
+
   },
   hummingbird:{
     birdKey:'hummingbird',
     slotLayout:HUMMINGBIRD_SKILL_SLOT_LAYOUT,
     families:HUMMINGBIRD_SKILL_FAMILIES,
     abilityLookup:buildFamilySkillAbilityLookup(HUMMINGBIRD_SKILL_SLOT_LAYOUT, HUMMINGBIRD_SKILL_FAMILIES),
-    legacyBaseAbilityIds:Object.freeze({
-      needle:{legacy:['multiPeck','rapidPeck','nectarJab','needleJab'], current:'needle_jab'},
-      dash:{legacy:['sonicDash','swoop'], current:'dash'},
-      flutter:{legacy:['blinkFlutter','evade'], current:'blink_flutter'},
-      combo:{legacy:['comboStrike','talonRake','burst','combo_strike'], current:'pulse_step'},
-    }),
+
   },
   robin:{
     birdKey:'robin',
@@ -5642,219 +5517,126 @@ const FAMILY_EVOLUTION_BIRD_DATA = Object.freeze({
     families:ROBIN_SKILL_FAMILIES,
     abilityLookup:buildFamilySkillAbilityLookup(ROBIN_SKILL_SLOT_LAYOUT, ROBIN_SKILL_FAMILIES),
     // legacy*: pre–family-evolution flat kit ids — save/load + migrateRobinLegacyFamilySkillSlots only; live Robin kit is quick_peck / dart_rush / bright_chirp / hop_step.
-    legacyBaseAbilityIds:Object.freeze({
-      peck:{legacy:['needleJab','nectarJab','rapidPeck','multiPeck','peck','headWhip'], current:'quick_peck'},
-      dart:{legacy:['swoopCut','dart','swoop'], current:'dart_rush'},
-      chirp:{legacy:['focusChirp','battleChirp','warcry','battleFocus','keen_focus'], current:'bright_chirp'},
-      hop:{legacy:['trackPrey','markPrey','predatorMark','featherRuffle','windFeint','evade'], current:'hop_step'},
-    }),
+
   },
   peregrine:{
     birdKey:'peregrine',
     slotLayout:PEREGRINE_SKILL_SLOT_LAYOUT,
     families:PEREGRINE_SKILL_FAMILIES,
     abilityLookup:buildFamilySkillAbilityLookup(PEREGRINE_SKILL_SLOT_LAYOUT, PEREGRINE_SKILL_FAMILIES),
-    legacyBaseAbilityIds:Object.freeze({
-      talon:{legacy:['swoopCut','dart','swoop'], current:'talon_jab'},
-      dive:{legacy:['skyfallStrike','deathDive','skyStrike'], current:'dive'},
-      eye:{legacy:['windFeint','evade','trackPrey','huntersMark'], current:'keen_eye'},
-      pace:{legacy:['windFeint','trackPrey','predatorMark','featherRuffle','markPrey'], current:'aerial_pace'},
-    }),
+
   },
   kiwi:{
     birdKey:'kiwi',
     slotLayout:KIWI_SKILL_SLOT_LAYOUT,
     families:KIWI_SKILL_FAMILIES,
     abilityLookup:buildFamilySkillAbilityLookup(KIWI_SKILL_SLOT_LAYOUT, KIWI_SKILL_FAMILIES),
-    legacyBaseAbilityIds:Object.freeze({
-      beak:{legacy:['silentPierce','peck','needle_peck','probeStrike'], current:'beak_jab'},
-      probe:{legacy:['diveBomb','beakSlam','heavyTalon','heavy_talon'], current:'night_probe'},
-      scent:{legacy:['trackPrey','predatorMark','featherRuffle','markPrey','huntersMark'], current:'scent_hunt'},
-      scrape:{legacy:['windFeint','evade'], current:'scrape'},
-    }),
+
   },
   snowyOwl:{
     birdKey:'snowyOwl',
     slotLayout:SNOWY_OWL_SKILL_SLOT_LAYOUT,
     families:SNOWY_OWL_SKILL_FAMILIES,
     abilityLookup:buildFamilySkillAbilityLookup(SNOWY_OWL_SKILL_SLOT_LAYOUT, SNOWY_OWL_SKILL_FAMILIES),
-    legacyBaseAbilityIds:Object.freeze({
-      talon:{legacy:['silentPierce','peck','needle_peck','mockingPeck','crowStrike'], current:'talon_snap'},
-      dive:{legacy:['nightTalon','deathDive','skyStrike','heavyTalon','diveBomb','skyfallStrike'], current:'silent_dive'},
-      eye:{legacy:['trackPrey','predatorMark','featherRuffle','markPrey','huntersMark'], current:'owl_eye'},
-      glide:{legacy:['windFeint','evade','huntersCry','dread_call','dreadCall','victoryChant'], current:'frost_glide'},
-    }),
+
   },
   macaw:{
     birdKey:'macaw',
     slotLayout:MACAW_SKILL_SLOT_LAYOUT,
     families:MACAW_SKILL_FAMILIES,
     abilityLookup:buildFamilySkillAbilityLookup(MACAW_SKILL_SLOT_LAYOUT, MACAW_SKILL_FAMILIES),
-    legacyBaseAbilityIds:Object.freeze({
-      echo:{legacy:['echoSong', 'shriekwave'], current:'echo_note'},
-      mimic:{legacy:['mimicSong', 'birdBrain'], current:'mimic_song'},
-      taunt:{legacy:['confuseChorus', 'dirge', 'distractingChorus', 'jungleChorus', 'dizzyChorus'], current:'feather_taunt'},
-      chorus:{legacy:['battleChorus', 'victoryChant', 'inspireSong', 'freedomCry'], current:'chorus_mark'},
-    }),
+
   },
   lyrebird:{
     birdKey:'lyrebird',
     slotLayout:LYREBIRD_SKILL_SLOT_LAYOUT,
     families:LYREBIRD_SKILL_FAMILIES,
     abilityLookup:buildFamilySkillAbilityLookup(LYREBIRD_SKILL_SLOT_LAYOUT, LYREBIRD_SKILL_FAMILIES),
-    legacyBaseAbilityIds:Object.freeze({
-      echo:{legacy:['echoSong','shriekwave'], current:'echo_note'},
-      mimic:{legacy:['mimicSong','birdBrain'], current:'mimic_chorus'},
-      display:{legacy:['confuseChorus','dirge','dizzyChorus','feather_taunt','mockingPeck'], current:'display_step'},
-      refrain:{legacy:['battleChorus','victoryChant','inspireSong','chorus_mark','echo_mark'], current:'refrain_mark'},
-    }),
+
   },
   blackCockatoo:{
     birdKey:'blackCockatoo',
     slotLayout:BLACK_COCKATOO_SKILL_SLOT_LAYOUT,
     families:BLACK_COCKATOO_SKILL_FAMILIES,
     abilityLookup:buildFamilySkillAbilityLookup(BLACK_COCKATOO_SKILL_SLOT_LAYOUT, BLACK_COCKATOO_SKILL_FAMILIES),
-    // Pre–family-evolution flat ids only (migrate tier-0 bases into slot-state skills).
-    legacyBaseAbilityIds:Object.freeze({
-      beak:{legacy:['peck','piercingScreech','mainAttack'], current:'beak_crack'},
-      boom:{legacy:['stormChorus','thunderScreech','sonicDirge','birdBrain'], current:'boom_call'},
-      wing:{legacy:['battleChorus','victoryChant'], current:'wing_beat'},
-      resonance:{legacy:['battleChorus','thunderScreech'], current:'resonance_mark'},
-    }),
+
   },
   kookaburra:{
     birdKey:'kookaburra',
     slotLayout:KOOKABURRA_SKILL_SLOT_LAYOUT,
     families:KOOKABURRA_SKILL_FAMILIES,
     abilityLookup:buildFamilySkillAbilityLookup(KOOKABURRA_SKILL_SLOT_LAYOUT, KOOKABURRA_SKILL_FAMILIES),
-    // Save migration only: pre–family-evolution Kookaburra flat ids → current tier-0 bases (not used for new runs).
-    legacyBaseAbilityIds:Object.freeze({
-      beak:{legacy:['mockingPeck','peck','mainAttack'], current:'beak_chop'},
-      laugh:{legacy:['laughingCall','echoLaugh','dizzyChorus'], current:'laugh_call'},
-      watch:{legacy:['dizzyChorus','battleChorus'], current:'perch_watch'},
-      drop:{legacy:['echoLaugh','diveBomb','heavyTalon','heavy_talon'], current:'drop_strike'},
-    }),
+
   },
   raven:{
     birdKey:'raven',
     slotLayout:RAVEN_SKILL_SLOT_LAYOUT,
     families:RAVEN_SKILL_FAMILIES,
     abilityLookup:buildFamilySkillAbilityLookup(RAVEN_SKILL_SLOT_LAYOUT, RAVEN_SKILL_FAMILIES),
-    legacyBaseAbilityIds:Object.freeze({
-      beak:{legacy:['blackPeck','probeStrike','peck','silentPierce','needle_peck'], current:'beak_jab'},
-      omen:{legacy:['dreadCall','dread_call','dirge','hex_song','ominous_call','mocking_cry','ruin_chorus'], current:'omen_call'},
-      watch:{legacy:['nightfallSong','battleFocus','battle_focus','keen_focus','weakpoint_focus','opening_focus'], current:'dark_watch'},
-      fate:{legacy:['fearChorus','lullaby','grim_sign','markPrey','trackPrey','dusk_field'], current:'fate_mark'},
-    }),
+
   },
   bowerbird:{
     birdKey:'bowerbird',
     slotLayout:BOWERBIRD_SKILL_SLOT_LAYOUT,
     families:BOWERBIRD_SKILL_FAMILIES,
     abilityLookup:buildFamilySkillAbilityLookup(BOWERBIRD_SKILL_SLOT_LAYOUT, BOWERBIRD_SKILL_FAMILIES),
-    /** Tier-0 id normalization for old saves; see LEGACY_BOWERBIRD_FLAT_SKILL_FOR_MIGRATION + migrateBowerbirdLegacyFamilySkillSlots. */
-    legacyBaseAbilityIds:Object.freeze({
-      trinket:{legacy:['decorate','aerialPoop','peck','headWhip'], current:'trinket_toss'},
-      lure:{legacy:['inspireSong','victoryChant'], current:'lure_call'},
-      build:{legacy:['charmDisplay','taunt','windFeint'], current:'bower_build'},
-      display:{legacy:['focusCall','battleFocus','battle_focus','trackPrey','markPrey'], current:'display_mark'},
-    }),
+
   },
   toucan:{
     birdKey:'toucan',
     slotLayout:TOUCAN_SKILL_SLOT_LAYOUT,
     families:TOUCAN_SKILL_FAMILIES,
     abilityLookup:buildFamilySkillAbilityLookup(TOUCAN_SKILL_SLOT_LAYOUT, TOUCAN_SKILL_FAMILIES),
-    legacyBaseAbilityIds:Object.freeze({
-      beak:{legacy:['fruitSpit','peck','headWhip','mudshot','needle_peck','probeStrike','decorate'], current:'toucan_beak_jab'},
-      slam:{legacy:['sunCall','beakSlam','heavyTalon','heavy_talon','bodySlam','talon_slam','savageKick'], current:'beak_slam'},
-      toss:{legacy:['jungleChorus','taunt','distractingChorus','confuseChorus','windFeint'], current:'fruit_toss'},
-      mark:{legacy:['echoScreech','shriekwave','owlPsyche','trackPrey','markPrey','battleFocus','battle_focus'], current:'color_mark'},
-    }),
+
   },
   swan:{
     birdKey:'swan',
     slotLayout:SWAN_SKILL_SLOT_LAYOUT,
     families:SWAN_SKILL_FAMILIES,
     abilityLookup:buildFamilySkillAbilityLookup(SWAN_SKILL_SLOT_LAYOUT, SWAN_SKILL_FAMILIES),
-    legacyBaseAbilityIds:Object.freeze({
-      neck:{legacy:['bracePeck','peck','headWhip','probeStrike','needle_peck'], current:'neck_jab'},
-      sweep:{legacy:['wingShield','royalGuard','guard','bodySlam','heavyTalon','heavy_talon','talon_slam','savageKick'], current:'wing_sweep'},
-      glide:{legacy:['calmingSong','hum','evade','windFeint','royalGuard','guard'], current:'grace_glide'},
-      poise:{legacy:['battleFocus','battle_focus','trackPrey','markPrey','guard'], current:'poise_mark'},
-    }),
+
   },
   flamingo:{
     birdKey:'flamingo',
     slotLayout:FLAMINGO_SKILL_SLOT_LAYOUT,
     families:FLAMINGO_SKILL_FAMILIES,
     abilityLookup:buildFamilySkillAbilityLookup(FLAMINGO_SKILL_SLOT_LAYOUT, FLAMINGO_SKILL_FAMILIES),
-    legacyBaseAbilityIds:Object.freeze({
-      leg:{legacy:['mudshot','peck','headWhip','needle_peck','probeStrike','decorate'], current:'leg_jab'},
-      sweep:{legacy:['marshCall','rotChorus','bodySlam','heavyTalon','heavy_talon','talon_slam','savageKick','wingShield','royalGuard','guard'], current:'marsh_sweep'},
-      pose:{legacy:['bogWhisper','hum','preen','windFeint','calmingSong','evade'], current:'balance_pose'},
-      mire:{legacy:['battleFocus','battle_focus','trackPrey','markPrey'], current:'mire_mark'},
-    }),
+
   },
   secretary:{
     birdKey:'secretary',
     slotLayout:SECRETARY_SKILL_SLOT_LAYOUT,
     families:SECRETARY_SKILL_FAMILIES,
     abilityLookup:buildFamilySkillAbilityLookup(SECRETARY_SKILL_SLOT_LAYOUT, SECRETARY_SKILL_FAMILIES),
-    legacyBaseAbilityIds:Object.freeze({
-      leg:{legacy:['headWhip','peck','probeStrike','needle_peck','bracePeck'], current:'sec_leg_jab'},
-      kick:{legacy:['serratedSlash','tearing_bite','rend_strike','tearing_jab','bodySlam','heavyTalon','heavy_talon','talon_slam','savageKick','beakSlam','serpentCrusher','trample','warCharge','warStomp','stampedeStrike'], current:'sec_crushing_kick'},
-      stride:{legacy:['guard','royalGuard','windFeint','hum','evade','calmingSong','sitAndWait','crowDefend'], current:'hunter_stride'},
-      prey:{legacy:['threatDisplay','battleFocus','battle_focus','trackPrey','markPrey','intimidate','taunt'], current:'prey_mark'},
-    }),
+
   },
   albatross:{
     birdKey:'albatross',
     slotLayout:ALBATROSS_SKILL_SLOT_LAYOUT,
     families:ALBATROSS_SKILL_FAMILIES,
     abilityLookup:buildFamilySkillAbilityLookup(ALBATROSS_SKILL_SLOT_LAYOUT, ALBATROSS_SKILL_FAMILIES),
-    legacyBaseAbilityIds:Object.freeze({
-      wing:{legacy:['galeStrike','supersonic'], current:'alb_wing_jab'},
-      sweep:{legacy:['oceanCall','wingStorm'], current:'alb_ocean_sweep'},
-      glide:{legacy:['windChorus','hum','veil_wing'], current:'alb_glide_line'},
-      current:{legacy:['stormSong','sonicDirge'], current:'alb_current_mark'},
-    }),
+
   },
   seagull:{
     birdKey:'seagull',
     slotLayout:SEAGULL_SKILL_SLOT_LAYOUT,
     families:SEAGULL_SKILL_FAMILIES,
     abilityLookup:buildFamilySkillAbilityLookup(SEAGULL_SKILL_SLOT_LAYOUT, SEAGULL_SKILL_FAMILIES),
-    legacyBaseAbilityIds:Object.freeze({
-      snap:{legacy:['featherFlick','peck','headWhip','rapidPeck','multiPeck'], current:'sgl_snap_peck'},
-      swoop:{legacy:['diveSnatch','swoop','dart','diveBomb','swoopCut'], current:'sgl_swoop_pass'},
-      cry:{legacy:['blindScreech','shriekwave','windSlash','distractingChorus','dizzyChorus','dirge','taunt'], current:'sgl_raucous_cry'},
-      scavenge:{legacy:['distractingChorus','trackPrey','markPrey','predatorMark','battleFocus','battle_focus'], current:'sgl_scavenge_mark'},
-    }),
+
   },
   shoebill:{
     birdKey:'shoebill',
     slotLayout:SHOEBILL_SKILL_SLOT_LAYOUT,
     families:SHOEBILL_SKILL_FAMILIES,
     abilityLookup:buildFamilySkillAbilityLookup(SHOEBILL_SKILL_SLOT_LAYOUT, SHOEBILL_SKILL_FAMILIES),
-    legacyBaseAbilityIds:Object.freeze({
-      beak:{legacy:['bracePeck','peck','headWhip','probeStrike','needle_peck','mockingPeck'], current:'sbl_beak_chop'},
-      crack:{legacy:['shoebillClamp','heavyTalon','heavy_talon','talon_slam','beakSlam','bodySlam'], current:'sbl_skull_crack'},
-      stance:{legacy:['guard','royalGuard','wingShield','iron_guard','bulwark_brace','crowDefend','iceGuard'], current:'sbl_still_stance'},
-      dread:{legacy:['huntersCry','victoryChant','dread_call','dreadCall','trackPrey','markPrey','predatorMark','battleFocus','battle_focus','featherRuffle'], current:'sbl_dread_mark'},
-    }),
+
   },
   harpy:{
     birdKey:'harpy',
     slotLayout:HARPY_SKILL_SLOT_LAYOUT,
     families:HARPY_SKILL_FAMILIES,
     abilityLookup:buildFamilySkillAbilityLookup(HARPY_SKILL_SLOT_LAYOUT, HARPY_SKILL_FAMILIES),
-    legacyBaseAbilityIds:Object.freeze({
-      talon:{legacy:['fleshTear','fleshRipper','peck','headWhip','probeStrike','needle_peck','mockingPeck','bracePeck','crowStrike'], current:'hrp_talon_clutch'},
-      crush:{legacy:['raptorDive','deathDive','skyStrike','skyfallStrike','beakSlam','executionTalon','heavyTalon','heavy_talon','talon_slam','bodySlam','diveBomb'], current:'hrp_canopy_crush'},
-      grip:{legacy:['predatorMark','trackPrey','markPrey','huntersMark','guard','royalGuard','wingShield','huntersCry','victoryChant','battleFocus','battle_focus','featherRuffle','dread_call','dreadCall','evade','windFeint'], current:'hrp_predator_grip'},
-      lock:{legacy:['predatorBrand','finalHunt','executionTalon','beakSlam','deathDive','heavyTalon','heavy_talon','rending_talon','finisher_slam','execution_crush','predatorMark','trackPrey','markPrey'], current:'hrp_prey_lock'},
-    }),
+
   },
 });
 
@@ -5884,430 +5666,10 @@ function createSkillSlotState(slotIndex, familyId, pathId, tier, abilityId, mast
     masteries:Array.isArray(masteries)?masteries.filter(Boolean).map(String):[],
   };
 }
-function migrateKiwiLegacyFamilySkillSlots(slots){
-  if(!Array.isArray(slots)) return slots;
-  const idxRules=[
-    {from:'probe',to:'beak',newBase:'beak_jab',legacyBases:['silentPierce','peck','needle_peck','probeStrike']},
-    {from:'plunge',to:'probe',newBase:'night_probe',legacyBases:['diveBomb','beakSlam','heavyTalon','heavy_talon']},
-    {from:'veil',to:'scrape',newBase:'scrape',legacyBases:['windFeint','evade']},
-    {from:'stalk',to:'scent',newBase:'scent_hunt',legacyBases:['trackPrey','predatorMark','featherRuffle','markPrey','huntersMark']},
-  ];
-  return slots.map((slot,i)=>{
-    if(!slot||typeof slot!=='object') return slot;
-    const rule=idxRules[i];
-    if(!rule||slot.familyId!==rule.from) return slot;
-    const legacySet=new Set(rule.legacyBases);
-    const tier=Number(slot.tier)||0;
-    const branched=!!slot.pathId&&tier>0;
-    const out={...slot,familyId:rule.to};
-    if(branched){
-      out.pathId=null;
-      out.tier=0;
-      out.abilityId=rule.newBase;
-      out.masteries=[];
-      out.masteryCount=0;
-      return out;
-    }
-    if(legacySet.has(String(slot.abilityId||''))){
-      out.abilityId=rule.newBase;
-      out.pathId=null;
-      out.tier=0;
-    }
-    return out;
-  });
-}
-/** Maps pre-overhaul Robin saves (needle/cut/chirp/stalk families) onto peck/dart/chirp/hop slot-state. */
-function migrateRobinLegacyFamilySkillSlots(slots){
-  if(!Array.isArray(slots)) return slots;
-  const famRules=[
-    {from:'needle',to:'peck',newBase:'quick_peck',legacyBases:['needleJab','nectarJab','rapidPeck','multiPeck','peck','headWhip']},
-    {from:'cut',to:'dart',newBase:'dart_rush',legacyBases:['swoopCut','dart','swoop']},
-    {from:'stalk',to:'hop',newBase:'hop_step',legacyBases:['trackPrey','markPrey','predatorMark','featherRuffle','windFeint','evade']},
-  ];
-  const chirpLegacy=new Set(['focusChirp','battleChirp','warcry','battleFocus','keen_focus']);
-  return slots.map((slot)=>{
-    if(!slot||typeof slot!=='object') return slot;
-    if(slot.familyId==='chirp' && chirpLegacy.has(String(slot.abilityId||''))){
-      return {...slot,abilityId:'bright_chirp',pathId:null,tier:0,masteries:[],masteryCount:0};
-    }
-    const rule=famRules.find(r=>r.from===slot.familyId);
-    if(!rule) return slot;
-    const legacySet=new Set(rule.legacyBases);
-    const tier=Number(slot.tier)||0;
-    const branched=!!slot.pathId&&tier>0;
-    const out={...slot,familyId:rule.to};
-    if(branched){
-      out.pathId=null;
-      out.tier=0;
-      out.abilityId=rule.newBase;
-      out.masteries=[];
-      out.masteryCount=0;
-      return out;
-    }
-    if(legacySet.has(String(slot.abilityId||''))){
-      out.abilityId=rule.newBase;
-      out.pathId=null;
-      out.tier=0;
-    }
-    return out;
-  });
-}
-/** Reorders saved slot-state to match `baseSlots` when families moved between indices (Robin singer order, Black Cockatoo). */
-function remapSkillSlotsByFamilyOrder(slots, baseSlots){
-  if(!Array.isArray(slots)||!Array.isArray(baseSlots)||slots.length!==baseSlots.length) return slots;
-  const byFam=new Map();
-  for(const s of slots){
-    if(s&&s.familyId) byFam.set(String(s.familyId),{...s});
-  }
-  return baseSlots.map((b,i)=>{
-    const hit=byFam.get(String(b.familyId));
-    if(hit) return {...hit,slotIndex:i,familyId:b.familyId};
-    const raw=slots[i];
-    return raw&&typeof raw==='object'?{...raw,slotIndex:i}:createSkillSlotState(i,b.familyId,null,0,b.abilityId,0,[]);
-  });
-}
-/** Maps legacy dash `delayed` path + old afterimage ids onto `rend` + hum_vein_dash line. */
-function migrateHummingbirdLegacyFamilySkillSlots(slots){
-  if(!Array.isArray(slots)) return slots;
-  const oldToNew={passing_dash:'hum_vein_dash',afterimage_rush:'hum_tear_rush',return_blur:'hum_red_blur'};
-  return slots.map(slot=>{
-    if(!slot) return slot;
-    if(slot.familyId==='combo' && String(slot.abilityId||'')==='combo_strike' && (!slot.pathId||Number(slot.tier)===0)){
-      return {...slot,abilityId:'pulse_step'};
-    }
-    if(slot.familyId!=='dash') return slot;
-    const id=String(slot.abilityId||'');
-    if(slot.pathId==='delayed'||oldToNew[id]){
-      return {...slot,pathId:'rend',abilityId:oldToNew[id]||'hum_vein_dash'};
-    }
-    return slot;
-  });
-}
-/** Rewrites pre-overhaul Bowerbird flat saves into trinket/lure/build/display slot-state (live kit: trinket_toss, lure_call, bower_build, display_mark). */
-function migrateBowerbirdLegacyFamilySkillSlots(slots){
-  if(!Array.isArray(slots)) return slots;
-  const byIndex=[
-    {fam:'trinket',base:'trinket_toss',legacy:new Set(['decorate','aerialPoop','peck','headWhip'])},
-    {fam:'lure',base:'lure_call',legacy:new Set(['inspireSong','victoryChant'])},
-    {fam:'build',base:'bower_build',legacy:new Set(['charmDisplay','taunt','windFeint'])},
-    {fam:'display',base:'display_mark',legacy:new Set(['focusCall','battleFocus','battle_focus','trackPrey','markPrey'])},
-  ];
-  return slots.map((slot,i)=>{
-    const rule=byIndex[i];
-    if(!slot||!rule) return slot;
-    const id=String(slot.abilityId||'');
-    const tier=Number(slot.tier)||0;
-    const branched=!!slot.pathId&&tier>0;
-    const wrongFam=slot.familyId!==rule.fam;
-    const isLegacy=id && rule.legacy.has(id);
-    if(branched && wrongFam){
-      return {...slot,familyId:rule.fam,pathId:null,tier:0,abilityId:rule.base,masteries:[],masteryCount:0};
-    }
-    if(isLegacy || (wrongFam && !slot.pathId && LEGACY_BOWERBIRD_FLAT_SKILL_FOR_MIGRATION.has(id))){
-      return {...slot,familyId:rule.fam,pathId:null,tier:0,abilityId:rule.base,masteries:[],masteryCount:0};
-    }
-    return slot;
-  }).map(slot=>{
-    if(!slot||slot.familyId!=='lure') return slot;
-    const echoMap={bow_echo_call:'bow_rank_call',bow_echo_lure:'bow_acrid_lure',bow_echo_snare:'bow_viral_snare'};
-    if(slot.pathId==='delayed'||echoMap[slot.abilityId]){
-      return {...slot,pathId:'toxic',abilityId:echoMap[String(slot.abilityId||'')]||'bow_rank_call'};
-    }
-    return slot;
-  });
-}
-/**
- * Pre–family-evolution Toucan flat-kit ids (save migration ONLY).
- * Live kit: toucan_beak_jab (Beak Jab), beak_slam, fruit_toss, color_mark. Old flat ids below are not live aliases.
- */
-const LEGACY_TOUCAN_FLAT_SKILL_FOR_MIGRATION = Object.freeze(new Set([
-  'fruitSpit','sunCall','jungleChorus','echoScreech','peck','headWhip','mudshot','windFeint','taunt','battleFocus','battle_focus',
-  'trackPrey','markPrey','owlPsyche','shriekwave','decorate','victoryChant','dreadCall','dread_call',
-]));
-function migrateToucanLegacyFamilySkillSlots(slots){
-  if(!Array.isArray(slots)) return slots;
-  const byIndex=[
-    {fam:'beak',base:'toucan_beak_jab',legacy:new Set(['fruitSpit','peck','headWhip','mudshot','needle_peck','probeStrike','decorate'])},
-    {fam:'slam',base:'beak_slam',legacy:new Set(['sunCall','beakSlam','heavyTalon','heavy_talon','bodySlam','talon_slam','savageKick'])},
-    {fam:'toss',base:'fruit_toss',legacy:new Set(['jungleChorus','taunt','distractingChorus','confuseChorus','windFeint'])},
-    {fam:'mark',base:'color_mark',legacy:new Set(['echoScreech','shriekwave','owlPsyche','trackPrey','markPrey','battleFocus','battle_focus'])},
-  ];
-  return slots.map((slot,i)=>{
-    const rule=byIndex[i];
-    if(!slot||!rule) return slot;
-    const id=String(slot.abilityId||'');
-    const tier=Number(slot.tier)||0;
-    const branched=!!slot.pathId&&tier>0;
-    const wrongFam=slot.familyId!==rule.fam;
-    const isLegacy=id && rule.legacy.has(id);
-    if(branched && wrongFam){
-      return {...slot,familyId:rule.fam,pathId:null,tier:0,abilityId:rule.base,masteries:[],masteryCount:0};
-    }
-    if(isLegacy || (wrongFam && !slot.pathId && LEGACY_TOUCAN_FLAT_SKILL_FOR_MIGRATION.has(id))){
-      return {...slot,familyId:rule.fam,pathId:null,tier:0,abilityId:rule.base,masteries:[],masteryCount:0};
-    }
-    return slot;
-  }).map(slot=>{
-    if(!slot||slot.familyId!=='slam') return slot;
-    const slamMap={echo_slam:'tou_press_slam',return_smash:'tou_dent_smash',double_crush:'tou_split_crush'};
-    if(slot.pathId==='delayed'||slamMap[slot.abilityId]){
-      return {...slot,pathId:'cull',abilityId:slamMap[String(slot.abilityId||'')]||'tou_press_slam'};
-    }
-    return slot;
-  });
-}
-/** Pre–family-evolution Swan flat kit (save migration only). Live: neck_jab, wing_sweep, grace_glide, poise_mark. */
-const LEGACY_SWAN_FLAT_SKILL_FOR_MIGRATION = Object.freeze(new Set([
-  'bracePeck','wingShield','royalGuard','calmingSong','hum','guard','peck','headWhip','windFeint','battleFocus','battle_focus',
-  'trackPrey','markPrey','probeStrike','needle_peck','bodySlam','heavyTalon','heavy_talon','talon_slam','savageKick','evade',
-]));
-function migrateSwanLegacyFamilySkillSlots(slots){
-  if(!Array.isArray(slots)) return slots;
-  const byIndex=[
-    {fam:'neck',base:'neck_jab',legacy:new Set(['bracePeck','peck','headWhip','probeStrike','needle_peck'])},
-    {fam:'sweep',base:'wing_sweep',legacy:new Set(['wingShield','royalGuard','guard','bodySlam','heavyTalon','heavy_talon','talon_slam','savageKick'])},
-    {fam:'glide',base:'grace_glide',legacy:new Set(['calmingSong','hum','evade','windFeint','royalGuard','guard'])},
-    {fam:'poise',base:'poise_mark',legacy:new Set(['battleFocus','battle_focus','trackPrey','markPrey','guard'])},
-  ];
-  return slots.map((slot,i)=>{
-    const rule=byIndex[i];
-    if(!slot||!rule) return slot;
-    const id=String(slot.abilityId||'');
-    const tier=Number(slot.tier)||0;
-    const branched=!!slot.pathId&&tier>0;
-    const wrongFam=slot.familyId!==rule.fam;
-    const isLegacy=id && rule.legacy.has(id);
-    if(branched && wrongFam){
-      return {...slot,familyId:rule.fam,pathId:null,tier:0,abilityId:rule.base,masteries:[],masteryCount:0};
-    }
-    if(isLegacy || (wrongFam && !slot.pathId && LEGACY_SWAN_FLAT_SKILL_FOR_MIGRATION.has(id))){
-      return {...slot,familyId:rule.fam,pathId:null,tier:0,abilityId:rule.base,masteries:[],masteryCount:0};
-    }
-    return slot;
-  });
-}
-/** Pre–family-evolution Flamingo flat kit (save migration only). Live: leg_jab, marsh_sweep, balance_pose, mire_mark. */
-const LEGACY_FLAMINGO_FLAT_SKILL_FOR_MIGRATION = Object.freeze(new Set([
-  'mudshot','marshCall','bogWhisper','rotChorus','peck','headWhip','windFeint','hum','preen','battleFocus','battle_focus',
-  'trackPrey','markPrey','probeStrike','needle_peck','decorate','bodySlam','heavyTalon','heavy_talon','talon_slam','savageKick',
-  'calmingSong','evade','wingShield','royalGuard','guard',
-]));
-function migrateFlamingoLegacyFamilySkillSlots(slots){
-  if(!Array.isArray(slots)) return slots;
-  const byIndex=[
-    {fam:'leg',base:'leg_jab',legacy:new Set(['mudshot','peck','headWhip','needle_peck','probeStrike','decorate'])},
-    {fam:'sweep',base:'marsh_sweep',legacy:new Set(['marshCall','rotChorus','bodySlam','heavyTalon','heavy_talon','talon_slam','savageKick','wingShield','royalGuard','guard'])},
-    {fam:'pose',base:'balance_pose',legacy:new Set(['bogWhisper','hum','preen','windFeint','calmingSong','evade','royalGuard','guard'])},
-    {fam:'mire',base:'mire_mark',legacy:new Set(['battleFocus','battle_focus','trackPrey','markPrey'])},
-  ];
-  return slots.map((slot,i)=>{
-    const rule=byIndex[i];
-    if(!slot||!rule) return slot;
-    const id=String(slot.abilityId||'');
-    const tier=Number(slot.tier)||0;
-    const branched=!!slot.pathId&&tier>0;
-    const wrongFam=slot.familyId!==rule.fam;
-    const isLegacy=id && rule.legacy.has(id);
-    if(branched && wrongFam){
-      return {...slot,familyId:rule.fam,pathId:null,tier:0,abilityId:rule.base,masteries:[],masteryCount:0};
-    }
-    if(isLegacy || (wrongFam && !slot.pathId && LEGACY_FLAMINGO_FLAT_SKILL_FOR_MIGRATION.has(id))){
-      return {...slot,familyId:rule.fam,pathId:null,tier:0,abilityId:rule.base,masteries:[],masteryCount:0};
-    }
-    return slot;
-  }).map(slot=>{
-    if(!slot||slot.familyId!=='sweep') return slot;
-    const wakeMap={flm_echo_sweep:'flm_reed_cut',flm_return_surge:'flm_bog_surge',flm_wake_crest:'flm_crimson_crest'};
-    if(slot.pathId==='delayed'||wakeMap[slot.abilityId]){
-      return {...slot,pathId:'redwake',abilityId:wakeMap[String(slot.abilityId||'')]||'flm_reed_cut'};
-    }
-    return slot;
-  });
-}
-/** Pre–family-evolution Secretary Bird flat kit (save migration only). Live: sec_leg_jab, sec_crushing_kick, hunter_stride, prey_mark. */
-const LEGACY_SECRETARY_FLAT_SKILL_FOR_MIGRATION = Object.freeze(new Set([
-  'headWhip','serratedSlash','guard','threatDisplay','peck','probeStrike','needle_peck','bracePeck','windFeint','hum','evade','calmingSong',
-  'battleFocus','battle_focus','trackPrey','markPrey','intimidate','taunt','bodySlam','heavyTalon','heavy_talon','talon_slam','savageKick',
-  'tearing_bite','rend_strike','tearing_jab','beakSlam','royalGuard','sitAndWait','crowDefend',
-  'serpentCrusher','trample','warCharge','warStomp','stampedeStrike',
-]));
-function migrateSecretaryLegacyFamilySkillSlots(slots){
-  if(!Array.isArray(slots)) return slots;
-  const byIndex=[
-    {fam:'leg',base:'sec_leg_jab',legacy:new Set(['headWhip','peck','probeStrike','needle_peck','bracePeck'])},
-    {fam:'kick',base:'sec_crushing_kick',legacy:new Set(['serratedSlash','tearing_bite','rend_strike','tearing_jab','bodySlam','heavyTalon','heavy_talon','talon_slam','savageKick','beakSlam','serpentCrusher','trample','warCharge','warStomp','stampedeStrike'])},
-    {fam:'stride',base:'hunter_stride',legacy:new Set(['guard','royalGuard','windFeint','hum','evade','calmingSong','sitAndWait','crowDefend'])},
-    {fam:'prey',base:'prey_mark',legacy:new Set(['threatDisplay','battleFocus','battle_focus','trackPrey','markPrey','intimidate','taunt'])},
-  ];
-  return slots.map((slot,i)=>{
-    const rule=byIndex[i];
-    if(!slot||!rule) return slot;
-    const id=String(slot.abilityId||'');
-    const tier=Number(slot.tier)||0;
-    const branched=!!slot.pathId&&tier>0;
-    const wrongFam=slot.familyId!==rule.fam;
-    const isLegacy=id && rule.legacy.has(id);
-    if(branched && wrongFam){
-      return {...slot,familyId:rule.fam,pathId:null,tier:0,abilityId:rule.base,masteries:[],masteryCount:0};
-    }
-    if(isLegacy || (wrongFam && !slot.pathId && LEGACY_SECRETARY_FLAT_SKILL_FOR_MIGRATION.has(id))){
-      return {...slot,familyId:rule.fam,pathId:null,tier:0,abilityId:rule.base,masteries:[],masteryCount:0};
-    }
-    return slot;
-  });
-}
-/**
- * Maps pre–family-evolution Albatross flat kit onto alb_* slot bases.
- * Legacy ids (migration only): galeStrike, supersonic, oceanCall, wingStorm, windChorus, hum, veil_wing, stormSong, sonicDirge.
- */
-function migrateAlbatrossLegacyFamilySkillSlots(slots){
-  if(!Array.isArray(slots)) return slots;
-  const idxRules=[
-    {fam:'wing', newBase:'alb_wing_jab', legacyBases:['galeStrike','supersonic']},
-    {fam:'sweep', newBase:'alb_ocean_sweep', legacyBases:['oceanCall','wingStorm']},
-    {fam:'glide', newBase:'alb_glide_line', legacyBases:['windChorus','hum','veil_wing']},
-    {fam:'current', newBase:'alb_current_mark', legacyBases:['stormSong','sonicDirge']},
-  ];
-  return slots.map((slot,i)=>{
-    if(!slot||typeof slot!=='object') return slot;
-    const rule=idxRules[i];
-    if(!rule||slot.familyId!==rule.fam) return slot;
-    const tier=Number(slot.tier)||0;
-    const branched=!!slot.pathId&&tier>0;
-    if(branched){
-      return {...slot,pathId:null,tier:0,abilityId:rule.newBase,masteries:[],masteryCount:0};
-    }
-    const id=String(slot.abilityId||'');
-    if(rule.legacyBases.includes(id)){
-      return {...slot,pathId:null,tier:0,abilityId:rule.newBase,masteries:[],masteryCount:0};
-    }
-    return slot;
-  });
-}
-/**
- * Pre–family-evolution Seagull flat kit → sgl_* bases.
- * Legacy ids (migration only): featherFlick, diveSnatch, blindScreech, distractingChorus, shriekwave, …
- * Not registered as registerAbilityAlias → sgl_* (those globals stay Magpie/Macaw/Shoebill chains).
- */
-function migrateSeagullLegacyFamilySkillSlots(slots){
-  if(!Array.isArray(slots)) return slots;
-  const idxRules=[
-    {fam:'snap', newBase:'sgl_snap_peck', legacyBases:['featherFlick','peck','headWhip','rapidPeck','multiPeck']},
-    {fam:'swoop', newBase:'sgl_swoop_pass', legacyBases:['diveSnatch','swoop','dart','diveBomb','swoopCut']},
-    {fam:'cry', newBase:'sgl_raucous_cry', legacyBases:['blindScreech','shriekwave','windSlash','distractingChorus','dizzyChorus','dirge','taunt']},
-    {fam:'scavenge', newBase:'sgl_scavenge_mark', legacyBases:['distractingChorus','trackPrey','markPrey','predatorMark','battleFocus','battle_focus']},
-  ];
-  return slots.map((slot,i)=>{
-    if(!slot||typeof slot!=='object') return slot;
-    const rule=idxRules[i];
-    if(!rule||slot.familyId!==rule.fam) return slot;
-    const tier=Number(slot.tier)||0;
-    const branched=!!slot.pathId&&tier>0;
-    if(branched){
-      return {...slot,pathId:null,tier:0,abilityId:rule.newBase,masteries:[],masteryCount:0};
-    }
-    const id=String(slot.abilityId||'');
-    if(rule.legacyBases.includes(id)){
-      return {...slot,pathId:null,tier:0,abilityId:rule.newBase,masteries:[],masteryCount:0};
-    }
-    return slot;
-  });
-}
-/**
- * Pre–family-evolution Shoebill flat kit → sbl_* bases.
- * Migration-only strings (no live template/action): bracePeck, shoebillClamp, guard, huntersCry, victoryChant, etc.
- */
-function migrateShoebillLegacyFamilySkillSlots(slots){
-  if(!Array.isArray(slots)) return slots;
-  const idxRules=[
-    {fam:'beak', newBase:'sbl_beak_chop', legacyBases:['bracePeck','peck','headWhip','probeStrike','needle_peck','mockingPeck']},
-    {fam:'crack', newBase:'sbl_skull_crack', legacyBases:['shoebillClamp','heavyTalon','heavy_talon','talon_slam','beakSlam','bodySlam']},
-    {fam:'stance', newBase:'sbl_still_stance', legacyBases:['guard','royalGuard','wingShield','iron_guard','bulwark_brace','crowDefend','iceGuard']},
-    {fam:'dread', newBase:'sbl_dread_mark', legacyBases:['huntersCry','victoryChant','dread_call','dreadCall','trackPrey','markPrey','predatorMark','battleFocus','battle_focus','featherRuffle']},
-  ];
-  return slots.map((slot,i)=>{
-    if(!slot||typeof slot!=='object') return slot;
-    const rule=idxRules[i];
-    if(!rule) return slot;
-    const tier=Number(slot.tier)||0;
-    const branched=!!slot.pathId&&tier>0;
-    if(branched && (slot.familyId===rule.fam || rule.legacyBases.includes(String(slot.abilityId||'')))){
-      return {...slot,familyId:rule.fam,pathId:null,tier:0,abilityId:rule.newBase,masteries:[],masteryCount:0};
-    }
-    if(slot.familyId!==rule.fam){
-      const id=String(slot.abilityId||'');
-      if(rule.legacyBases.includes(id)){
-        return {...slot,familyId:rule.fam,pathId:null,tier:0,abilityId:rule.newBase,masteries:[],masteryCount:0};
-      }
-      return slot;
-    }
-    const id=String(slot.abilityId||'');
-    if(rule.legacyBases.includes(id)){
-      return {...slot,pathId:null,tier:0,abilityId:rule.newBase,masteries:[],masteryCount:0};
-    }
-    return slot;
-  });
-}
-/** Pre–family-evolution Harpy flat kit → hrp_* bases (fleshTear / raptorDive / predatorMark / executionTalon and resolved aliases). */
-function migrateHarpyLegacyFamilySkillSlots(slots){
-  if(!Array.isArray(slots)) return slots;
-  const idxRules=[
-    {fam:'talon', newBase:'hrp_talon_clutch', legacyBases:['fleshTear','fleshRipper','peck','headWhip','probeStrike','needle_peck','mockingPeck','bracePeck','crowStrike']},
-    {fam:'crush', newBase:'hrp_canopy_crush', legacyBases:['raptorDive','deathDive','skyStrike','skyfallStrike','beakSlam','executionTalon','heavyTalon','heavy_talon','talon_slam','bodySlam','diveBomb']},
-    {fam:'grip', newBase:'hrp_predator_grip', legacyBases:['predatorMark','trackPrey','markPrey','huntersMark','guard','royalGuard','wingShield','huntersCry','victoryChant','battleFocus','battle_focus','featherRuffle','dread_call','dreadCall','evade','windFeint']},
-    {fam:'lock', newBase:'hrp_prey_lock', legacyBases:['predatorBrand','finalHunt','executionTalon','beakSlam','deathDive','heavyTalon','heavy_talon','rending_talon','finisher_slam','execution_crush','predatorMark','trackPrey','markPrey']},
-  ];
-  return slots.map((slot,i)=>{
-    if(!slot||typeof slot!=='object') return slot;
-    const rule=idxRules[i];
-    if(!rule) return slot;
-    const tier=Number(slot.tier)||0;
-    const branched=!!slot.pathId&&tier>0;
-    if(branched && (slot.familyId===rule.fam || rule.legacyBases.includes(String(slot.abilityId||'')))){
-      return {...slot,familyId:rule.fam,pathId:null,tier:0,abilityId:rule.newBase,masteries:[],masteryCount:0};
-    }
-    if(slot.familyId!==rule.fam){
-      const id=String(slot.abilityId||'');
-      if(rule.legacyBases.includes(id)){
-        return {...slot,familyId:rule.fam,pathId:null,tier:0,abilityId:rule.newBase,masteries:[],masteryCount:0};
-      }
-      return slot;
-    }
-    const id=String(slot.abilityId||'');
-    if(rule.legacyBases.includes(id)){
-      return {...slot,pathId:null,tier:0,abilityId:rule.newBase,masteries:[],masteryCount:0};
-    }
-    return slot;
-  });
-}
-function migrateGooseLegacyFamilySkillSlots(slots){
-  if(!Array.isArray(slots)) return slots;
-  const layout=[
-    {familyId:'beak', abilityId:'gos_beak_snap', oldFamilies:new Set(['peck'])},
-    {familyId:'body', abilityId:'gos_body_check', oldFamilies:new Set(['honk','heavy'])},
-    {familyId:'honk', abilityId:'gos_honk_blast', oldFamilies:new Set(['guard'])},
-    {familyId:'brace', abilityId:'gos_brace_up', oldFamilies:new Set(['heavy'])},
-  ];
-  return slots.map((slot,i)=>{
-    if(!slot||typeof slot!=='object') return slot;
-    const L=layout[i];
-    if(!L) return slot;
-    if(L.oldFamilies.has(slot.familyId) || slot.familyId!==L.familyId){
-      return {...slot,familyId:L.familyId,pathId:null,tier:0,abilityId:L.abilityId,masteries:[],masteryCount:0};
-    }
-    return slot;
-  });
-}
 function getBaseSkillSlotsForBird(birdKey){
   const data = getBirdFamilyEvolutionData(birdKey);
   if(!data) return [];
   return data.slotLayout.map(slot=>createSkillSlotState(slot.slotIndex, slot.familyId, null, 0, slot.abilityId, 0, []));
-}
-function migrateLegacyFamilyBaseAbilityId(abilityId, birdKey, familyId, pathId=null, tier=0){
-  const id = String(abilityId||'');
-  if(pathId || Number(tier||0)>0) return id;
-  const familyMigration = getBirdFamilyEvolutionData(birdKey)?.legacyBaseAbilityIds?.[familyId];
-  return familyMigration && familyMigration.legacy.includes(id) ? familyMigration.current : id;
 }
 function getFamilyEvolutionAbilityStateFromId(birdKey, abilityId){
   const lookup = getBirdFamilyEvolutionData(birdKey)?.abilityLookup;
@@ -6345,7 +5707,6 @@ function normalizeSkillSlotState(slot, fallback, birdKey='sparrow'){
   }
   let next = createSkillSlotState(slot?.slotIndex ?? base.slotIndex, slot?.familyId ?? base.familyId, slot?.pathId ?? base.pathId, slot?.tier ?? base.tier, slot?.abilityId ?? base.abilityId, slot?.masteryCount ?? base.masteryCount, slot?.masteries ?? base.masteries);
   if(usesFamilySkillEvolution({birdKey}) && next.abilityId){
-    next.abilityId = migrateLegacyFamilyBaseAbilityId(next.abilityId, birdKey, next.familyId, next.pathId, next.tier);
     const info = getFamilyEvolutionAbilityStateFromId(birdKey, next.abilityId);
     if(info && info.familyId===next.familyId){
       next.pathId = next.pathId || info.pathId || null;
@@ -6495,7 +5856,7 @@ function syncPlayerAbilitiesFromSkillSlots(player){
 // ============================================================
 //  SAVE / LOAD SYSTEM (localStorage)
 // ============================================================
-const SAVE_KEY = globalThis.AVIAN_OW_KEYS?.SAVE ?? 'avianAscent_save_v1';
+const SAVE_KEY = globalThis.AVIAN_OW_KEYS?.SAVE ?? 'avianAscent_save_v2';
 function ensureFamilyEvolutionState(player){
   if(!player || typeof player!=='object') return null;
   const birdKey = String(player.birdKey || '');
@@ -6512,30 +5873,13 @@ function ensureFamilyEvolutionState(player){
     let rawSlots = Array.isArray(state.skillSlots) && state.skillSlots.length
       ? state.skillSlots
       : baseSlots.map((slot, idx)=>{
-          const currentId = migrateLegacyFamilyBaseAbilityId(player.abilities?.[idx]?.id, birdKey, slot.familyId, null, 0);
+          const currentId = String(player.abilities?.[idx]?.id || '');
           const info = getFamilyEvolutionAbilityStateFromId(birdKey, currentId);
           if(info && info.familyId===slot.familyId){
             return createSkillSlotState(slot.slotIndex, info.familyId, info.pathId, info.tier, info.abilityId, 0, []);
           }
           return slot;
         });
-    if(birdKey==='kiwi') rawSlots = migrateKiwiLegacyFamilySkillSlots(rawSlots);
-    if(birdKey==='robin'){
-      rawSlots = migrateRobinLegacyFamilySkillSlots(rawSlots);
-      rawSlots = remapSkillSlotsByFamilyOrder(rawSlots, baseSlots);
-    }
-    if(birdKey==='blackCockatoo') rawSlots = remapSkillSlotsByFamilyOrder(rawSlots, baseSlots);
-    if(birdKey==='hummingbird') rawSlots = migrateHummingbirdLegacyFamilySkillSlots(rawSlots);
-    if(birdKey==='bowerbird') rawSlots = migrateBowerbirdLegacyFamilySkillSlots(rawSlots);
-    if(birdKey==='toucan') rawSlots = migrateToucanLegacyFamilySkillSlots(rawSlots);
-    if(birdKey==='swan') rawSlots = migrateSwanLegacyFamilySkillSlots(rawSlots);
-    if(birdKey==='flamingo') rawSlots = migrateFlamingoLegacyFamilySkillSlots(rawSlots);
-    if(birdKey==='albatross') rawSlots = migrateAlbatrossLegacyFamilySkillSlots(rawSlots);
-    if(birdKey==='seagull') rawSlots = migrateSeagullLegacyFamilySkillSlots(rawSlots);
-    if(birdKey==='shoebill') rawSlots = migrateShoebillLegacyFamilySkillSlots(rawSlots);
-    if(birdKey==='harpy' || birdKey==='harpyeagle') rawSlots = migrateHarpyLegacyFamilySkillSlots(rawSlots);
-    if(birdKey==='goose') rawSlots = migrateGooseLegacyFamilySkillSlots(rawSlots);
-    if(birdKey==='secretary' || birdKey==='secretarybird') rawSlots = migrateSecretaryLegacyFamilySkillSlots(rawSlots);
     state.skillSlots = baseSlots.map((baseSlot, idx)=>normalizeSkillSlotState(rawSlots[idx], baseSlot, birdKey));
     syncPlayerAbilitiesFromSkillSlots(player);
   }else{
@@ -6643,7 +5987,7 @@ function continueRun() {
   syncPlayerAbilitiesFromSkillSlots(G.player);
   G.classPerks = JSON.parse(JSON.stringify(save.classPerks||save.classPerksByBird||{}));
   G.runClassPerks = JSON.parse(JSON.stringify(save.runClassPerks||[]));
-  migrateLegacyClassPerkState(G, G.player);
+  ensureClassPerkState(G);
   G._classPerkChoicesGranted = Math.max(getClassPerkGrantCountForMode('story'), getClassPerkGrantCountForMode('endless'));
   if(!G.player._appliedClassPerkIds || typeof G.player._appliedClassPerkIds!=='object'){
     G.player._appliedClassPerkIds=Object.fromEntries(getBirdClassPerks(G.player?.birdKey).map(id=>[id,true]));
@@ -9790,7 +9134,7 @@ function installErrorHUD(){
 const ABILITY_DISPLAY_TAGS = {
   rapidPeck:['BASIC'], blackPeck:['BASIC'], gooseHonk:['BASIC'], headWhip:['BASIC'], kick:['BASIC'], raptorKick:['BASIC'],
   talonStrike:['HEAVY'], heavyTalon:['HEAVY'], bodySlam:['HEAVY'], trample:['HEAVY'], skyStrike:['HEAVY','SIGNATURE'],
-  windSlash:['SPELL'], shriekwave:['SPELL','CONTROL'], owlPsyche:['SPELL','CONTROL','SIGNATURE'], mudLash:['SPELL','CONTROL','SIGNATURE'],
+  windSlash:['SPELL'], shriekwave:['SPELL','CONTROL'], stormChorus:['SPELL','CONTROL','SIGNATURE'], mudLash:['SPELL','CONTROL','SIGNATURE'],
   murderMurmuration:['MULTI','SIGNATURE'], stickLance:['HEAVY','SIGNATURE'],
   fishSnatcher:['UTILITY','HEAL','SIGNATURE'], fruitBomb:['SPELL','SIGNATURE'],
   roost:['HEAL'], preen:['UTILITY','HEAL'], crowDefend:['GUARD'], guard:['GUARD'], evade:['UTILITY'],
@@ -14593,7 +13937,7 @@ registerAbilityAlias('raptorKickFrenzy','talonRake','Raptor Kick Frenzy');
 registerAbilityAlias('intimidatingStare','intimidate','Intimidating Stare');
 registerAbilityAlias('focusSight','evade','Focus Sight');
 registerAbilityAlias('battleRhythm','chargeUp','Battle Rhythm');
-registerAbilityAlias('fruitBomb','owlPsyche','Fruit Bomb');
+registerAbilityAlias('fruitBomb','stormChorus','Fruit Bomb');
 // Legacy display ids (historically Seagull flat kit among others). Live Seagull uses sgl_* + slot migration — do not alias these to sgl_* (would hijack shared templates).
 registerAbilityAlias('diveSnatch','fishSnatcher','Dive Snatch');
 registerAbilityAlias('savageKick','beakSlam','Savage Kick');
@@ -14602,8 +13946,7 @@ registerAbilityAlias('dreadCall','dirge','Dread Call',{type:'utility',btnType:'u
 // Basic-move family aliases to keep starter identities distinct.
 registerAbilityAlias('swoopCut','dart','Swoop Cut',{isBasic:true,desc:'Striker basic. Quick cut with clean hit pressure.'});
 registerAbilityAlias('mockingPeck','dart','Mocking Peck',{isBasic:true,desc:'Trickster basic. Reliable peck that taunts the line.'});
-// Toucan pre-overhaul flat-kit ids (fruitSpit, sunCall, jungleChorus, echoScreech) removed from live aliases —
-// migrateToucanLegacyFamilySkillSlots + legacyBaseAbilityIds rewrite saves to toucan_beak_jab / beak_slam / fruit_toss / color_mark.
+// Toucan pre-overhaul flat-kit ids no longer use dedicated aliases — live kit is toucan_beak_jab / beak_slam / fruit_toss / color_mark.
 registerAbilityAlias('bracePeck','gooseHonk','Brace Peck',{isBasic:true,desc:'Tank basic. Heavy peck that steadies the line.'});
 registerAbilityAlias('icebreakerHonk','gooseHonk','Icebreaker Jab',{isBasic:true,desc:'Tank basic. Base 4 + 75% ATK; applies Chilled (stacks to 5).'});
 registerAbilityAlias('huntersJab','dart',"Hunter's Jab",{isBasic:true,desc:'Predator basic. Precise jab for clean finishing lines.'});
@@ -14647,19 +13990,17 @@ registerAbilityAlias('ricochet_dart','dart','Ricochet Dart',{type:'physical',btn
 registerAbilityAlias('trick_arrow','dart','Trick Arrow',{type:'physical',btnType:'physical'});
 registerAbilityAlias('phantom_javelin','dart','Phantom Javelin',{type:'physical',btnType:'physical'});
 registerAbilityAlias('echoSong','shriekwave','Echo Song',{type:'spell',btnType:'spell'});
-registerAbilityAlias('mimicSong','birdBrain','Mimic Song',{type:'utility',btnType:'utility'});
+registerAbilityAlias('mimicSong','mimic_song','Mimic Song',{type:'spell',btnType:'spell'});
 registerAbilityAlias('confuseChorus','dirge','Confuse Chorus',{type:'spell',btnType:'spell'});
 registerAbilityAlias('blindScreech','featherRuffle','Blind Screech',{type:'utility',btnType:'utility'}); // see diveSnatch note (Seagull cry legacy)
 registerAbilityAlias('distractingChorus','taunt','Distracting Chorus',{type:'utility',btnType:'utility'}); // Macaw/Bowerbird/Toucan migrations also reference this id
 registerAbilityAlias('marshCall','mudLash','Marsh Call',{type:'spell',btnType:'spell'});
 registerAbilityAlias('bogWhisper','preen','Bog Whisper',{type:'utility',btnType:'utility'});
-registerAbilityAlias('rotChorus','sonicDirge','Rot Chorus',{type:'spell',btnType:'spell'});
+registerAbilityAlias('rotChorus','thunderScreech','Rot Chorus',{type:'spell',btnType:'spell'});
 registerAbilityAlias('nightfallSong','lullaby','Nightfall Song',{type:'utility',btnType:'utility'});
 registerAbilityAlias('fearChorus','dirge','Fear Chorus',{type:'spell',btnType:'spell'});
-registerAbilityAlias('piercingScreech','sonicDirge','Piercing Screech',{type:'spell',btnType:'spell'});
-registerAbilityAlias('stormChorus','owlPsyche','Storm Chorus',{type:'spell',btnType:'spell'});
+registerAbilityAlias('piercingScreech','thunderScreech','Piercing Screech',{type:'spell',btnType:'spell'});
 registerAbilityAlias('battleChorus','victoryChant','Battle Chorus',{type:'utility',btnType:'utility'});
-registerAbilityAlias('thunderScreech','sonicDirge','Thunder Screech',{type:'spell',btnType:'spell'});
 registerAbilityAlias('dark_song','stormChorus','Dark Song',{type:'spell',btnType:'spell',desc:'Blackbird base song. A neutral dark refrain before branching.'});
 registerAbilityAlias('dread_song','fearChorus','Dread Song',{type:'spell',btnType:'spell'});
 registerAbilityAlias('panic_verse','thunderScreech','Panic Verse',{type:'spell',btnType:'spell'});
@@ -14753,13 +14094,10 @@ registerAbilityAlias('momentumStrike','savageKick','Momentum Strike',{type:'phys
 registerAbilityAlias('powerKick','kick','Power Kick',{isBasic:true,type:'physical',btnType:'physical'});
 registerAbilityAlias('stampedeStrike','trample','Stampede Strike',{type:'physical',btnType:'physical'});
 registerAbilityAlias('fearHonk','honkTerror','Fear Honk',{type:'utility',btnType:'utility',desc:'Debuff honk: applies Fear without direct damage.'});
-// Swan pre-overhaul flat-kit display ids (wingShield, royalGuard, calmingSong) removed from live aliases —
-// migrateSwanLegacyFamilySkillSlots + legacyBaseAbilityIds rewrite saves to wing_sweep / grace_glide / poise_mark / neck_jab.
-// migrateFlamingoLegacyFamilySkillSlots + legacyBaseAbilityIds rewrite saves to leg_jab / marsh_sweep / balance_pose / mire_mark.
-// migrateSecretaryLegacyFamilySkillSlots + legacyBaseAbilityIds rewrite saves to sec_leg_jab / sec_crushing_kick / hunter_stride / prey_mark (includes legacy stomp ids: serpentCrusher, trample, warCharge, …).
+// Swan / Flamingo / Secretary legacy flat-kit display ids were removed from aliases — live kits use family-evolution bases only.
 registerAbilityAlias('snowWall','iceGuard','Snow Wall',{type:'utility',btnType:'utility'});
 registerAbilityAlias('tundraCall','rallyCall','Tundra Call',{type:'utility',btnType:'utility'});
-// Bowerbird flat-kit display ids (decorate / inspireSong / charmDisplay / focusCall) removed from aliases — family slot migration maps them to trinket_toss / lure_call / bower_build / display_mark.
+// Bowerbird legacy flat-kit display ids map via aliases only — live bases stay trinket_toss / lure_call / bower_build / display_mark.
 // Legacy display ids → canonical ACTIONS (other birds/codex/old saves). Kookaburra’s live kit uses laugh_call / family evolution instead.
 registerAbilityAlias('laughingCall','theJoker','Laughing Call',{type:'spell',btnType:'spell'});
 registerAbilityAlias('dizzyChorus','dirge','Dizzy Chorus',{type:'utility',btnType:'utility'});
@@ -15575,10 +14913,6 @@ const ALBATROSS_EVOLUTION_TEMPLATE_DEFS = [
 for(const [id,name,desc,options] of ALBATROSS_EVOLUTION_TEMPLATE_DEFS){
   ABILITY_TEMPLATES[id] = Object.assign(ABILITY_TEMPLATES[id]||{}, makeEvolutionAbilityTemplate(id,name,desc,options));
 }
-// Albatross pre-overhaul flat ids (galeStrike, supersonic, oceanCall, wingStorm, windChorus, stormSong, sonicDirge, …)
-// are not registered as aliases — they would overwrite global pool abilities (supersonic/wingStorm/sonicDirge).
-// Saves are rewritten via legacyBaseAbilityIds + migrateAlbatrossLegacyFamilySkillSlots → alb_*.
-
 const SEAGULL_EVOLUTION_TEMPLATE_DEFS = [
   ['sgl_snap_peck','Snap Peck','Snap-line neutral. A quick coastal jab before you specialize.',{type:'physical',btnType:'physical',energy:1,fixedMainAttackCost:true,levels:[{desc:'~92% ATK; light pierce.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Peak snap.'}]}],
   ['sgl_raking_bite','Raking Bite','Snap-line bleed evolution. Tear a messy line.',{type:'physical',btnType:'physical',energy:1,fixedMainAttackCost:true,levels:[{desc:'Hit + Bleed chance.'},{desc:'Stronger.'},{desc:'Stronger.'},{desc:'Raking finish.'}]}],
@@ -20893,27 +20227,8 @@ Object.assign(ACTIONS, {
 });
 
 Object.assign(ACTIONS, {
-  async birdBrain(ab) {
-    if(spellMisses()){await doMiss('player');logMsg(`Bird Brain missed! (MATK ${G.player.stats.matk||8} vs MDEF ${G.enemy.stats.mdef||8})`,'miss');return;}
-    const lv=ab.level;
-    const effectiveMDEF=(G.enemy.stats.mdef||8);
-    const matkBase=G.player.stats.matk||8;
-    const baseDmg=Math.max(1,Math.floor([.62,.78,.95,1.12][lv-1]*matkBase/(effectiveMDEF||1)*7.2));
-    const isCrit=chance(getPlayerCritChance(ab));
-    const dmg=isCrit?Math.floor(baseDmg*(G.player.goldCritMult||1.5)):baseDmg;
-    G.enemy.stats.hp-=dmg; setHpBar('enemy',G.enemy.stats.hp,G.enemy.stats.maxHp);
-    spawnFloat('enemy',`🧠 -${dmg}${isCrit?' CRIT':''}!`,'fn-dmg');
-    const skipC=[20,22,25,30][lv-1];
-    const confT=[3,4,4,5][lv-1];
-    if(spellAilmentRoll([45,50,55,60][lv-1],false)) G.enemyStatus.confused={turns:confT,skipChance:skipC};
-    if(lv>=3){G.enemyStatus.accDebuff=(G.enemyStatus.accDebuff||0)+([0,0,10,15][lv-1]);G.enemy.stats.spd=Math.max(1,G.enemy.stats.spd-([0,0,2,3][lv-1]));}
-    await doSpell('enemy','🧠 BIRD BRAIN!');
-    renderStatuses('enemy-status',G.enemyStatus);
-    logMsg(`🧠 Bird Brain! ${dmg} psychic dmg + Confused${isCrit?' (CRIT)':''}!`,'player-action');
-    triggerBlackbirdSpellPassive();
-  },
-  async sonicDirge(ab) {
-    if(spellMisses()){await doMiss('player');logMsg(`Sonic Dirge missed! (MATK ${G.player.stats.matk||8} vs MDEF ${G.enemy.stats.mdef||8})`,'miss');return;}
+  async thunderScreech(ab) {
+    if(spellMisses()){await doMiss('player');logMsg(`Thunder Screech missed! (MATK ${G.player.stats.matk||8} vs MDEF ${G.enemy.stats.mdef||8})`,'miss');return;}
     const lv=ab.level;
     const ignoreMDEF=lv>=3?0.3:0;
     const effectiveMDEF=(G.enemy.stats.mdef||8)*(1-ignoreMDEF);
@@ -20926,13 +20241,13 @@ Object.assign(ACTIONS, {
     const skipT=[3,3,4,5][lv-1];
     if(spellAilmentRoll([40,45,50,55][lv-1],false)) G.enemyStatus.sonicSkip={chance:skipC,turns:skipT};
     if(lv>=4){const selfHeal=Math.floor(G.player.stats.maxHp*.2);G.player.stats.hp=Math.min(G.player.stats.hp+selfHeal,G.player.stats.maxHp);setHpBar('player',G.player.stats.hp,G.player.stats.maxHp);spawnFloat('player',`+${selfHeal}`,'fn-heal');}
-    await doSpell('enemy','🔊 SONIC DIRGE!');
+    await doSpell('enemy','🔊 THUNDER SCREECH!');
     renderStatuses('enemy-status',G.enemyStatus);
-    logMsg(`🔊 Sonic Dirge! ${dmg} sonic dmg + ${skipC}% turn skip for ${skipT}t!`,'player-action');
+    logMsg(`🔊 Thunder Screech! ${dmg} sonic dmg + ${skipC}% turn skip for ${skipT}t!`,'player-action');
     triggerBlackbirdSpellPassive();
   },
-  async owlPsyche(ab) {
-    if(spellMisses()){await doMiss('player');logMsg(`Owl's Psyche missed! (MATK ${G.player.stats.matk||8} vs MDEF ${G.enemy.stats.mdef||8})`,'miss');return;}
+  async stormChorus(ab) {
+    if(spellMisses()){await doMiss('player');logMsg(`Storm Chorus missed! (MATK ${G.player.stats.matk||8} vs MDEF ${G.enemy.stats.mdef||8})`,'miss');return;}
     const lv=ab.level;
     const dmg=matk([.7,.9,1.1,1.3][lv-1]);
     G.enemy.stats.hp-=dmg; setHpBar('enemy',G.enemy.stats.hp,G.enemy.stats.maxHp);
@@ -20941,9 +20256,9 @@ Object.assign(ACTIONS, {
     const turns=lv>=3?2:lv>=2?4:3;
     if(spellAilmentRoll(paraC,false))G.enemyStatus.paralyzed=(G.enemyStatus.paralyzed||0)+turns;
     if(lv>=4) G.player._mdefPierce=true;
-    await doSpell('enemy','🦉 PSYCHE HOOT!');
+    await doSpell('enemy','🦉 STORM CHORUS!');
     renderStatuses('enemy-status',G.enemyStatus);
-    logMsg(`🦉 Owl's Psyche! ${dmg} psychic dmg + Paralysis chance.`,'player-action');
+    logMsg(`🦉 Storm Chorus! ${dmg} psychic dmg + Paralysis chance.`,'player-action');
     triggerBlackbirdSpellPassive();
   },
   async shriekwave(ab) {
