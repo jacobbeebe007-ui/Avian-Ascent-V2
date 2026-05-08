@@ -4,12 +4,19 @@
   "version": "1.0.0",
   "description": "Static browser game server scripts for local preview/mobile testing",
   "scripts": {
-    "dev": "python3 -m http.server ${PORT:-8000} --bind 0.0.0.0",
-    "preview": "python3 -m http.server ${PORT:-8000} --bind 0.0.0.0",
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview --host 0.0.0.0",
+    "preview:static": "python3 -m http.server ${PORT:-8000} --bind 0.0.0.0",
     "test": "node scripts/ci-check.js",
     "ci": "npm run test",
     "ability-inventory": "node scripts/ability-inventory.js",
     "skills-master": "node scripts/skills-master.js",
-    "upgrade-inventory": "node scripts/upgrade-inventory.js"
+    "upgrade-inventory": "node scripts/upgrade-inventory.js",
+    "gen:ability-tree": "node scripts/build-ability-family-tree.js"
+  },
+  "devDependencies": {
+    "esbuild": "^0.25.0",
+    "vite": "^6.3.5"
   }
 }

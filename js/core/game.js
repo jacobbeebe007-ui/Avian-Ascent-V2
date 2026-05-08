@@ -48,44 +48,8 @@ const PORTRAITS = {
   blackCockatoo:'', emu:''
 };
 // ============================================================
-//  AILMENT DEFINITIONS
+//  AILMENT DEFINITIONS (globalThis.AILMENTS from src/data/ailments.js via src/main.ts)
 // ============================================================
-const AILMENTS = {
-  chilled:{
-    id:'chilled', name:'Chilled', icon:'❄', color:'#7fd6ff',
-    desc:'Stacks to 5: −8% SPD per stack. At 5 stacks becomes Frozen.',
-    spdMult:0.92,
-  },
-
-  poison:{
-    id:'poison', name:'Poison', icon:'☣', color:'#4cb44c',
-    desc:'Stacks to 5. 2 damage per stack. Ticks at end of player turn and enemy turn.',
-    tick(who, stacks){ return 2*stacks; },
-  },
-  bleed:{
-    id:'bleed', name:'Bleed', icon:'🩸', color:'#be384c',
-    desc:'Non-stacking. Healing received reduced 50%. Refresh duration only.',
-  },
-  weaken:{
-    id:'weaken', name:'Chicken Pox', icon:'🐔', color:'#c9a840',
-    desc:'Refresh only. −25% damage and −40% Dodge. Reserved for songs/calls.',
-    dodgeMult: 0.6, dmgMult: 0.75,
-  },
-  paralyzed:{
-    id:'paralyzed', name:'Paralysis', icon:'⚡', color:'#c8c840',
-    desc:'20% chance to skip turn each round. 3 turns.',
-    skipChance: 20,
-  },
-  burning:{
-    id:'burning', name:'Feather Disease', icon:'🔥', color:'#dc641e',
-    desc:'Non-stacking. 7 flat damage at end of enemy turn; −20% DEF and MDEF while burning.',
-    hitBonus: 0, critBonus: 0,
-  },
-  delayed:{
-    id:'delayed', name:'Resonance', icon:'🎵', color:'#c850c8',
-    desc:'Non-stacking. Stored damage detonates at end of target next turn; reapply refreshes.',
-  }
-};
 
 // ============================================================
 //  BASE ABILITY TEMPLATES
@@ -3434,19 +3398,33 @@ globalThis.registerGameModule = registerGameModule;
 let _warnedMissingAbilityPassiveUpgradePack = false;
 function initDataPacks(){
   const pack = globalThis.ABILITY_PASSIVE_UPGRADE_PACK;
+  const tree = globalThis.ABILITY_FAMILY_TREE;
   if(pack && typeof pack === 'object'){
     G.dataPacks = G.dataPacks || {};
     G.dataPacks.abilityPassiveUpgrade = Object.freeze({
       STATUS_GLOSSARY: pack.STATUS_GLOSSARY || Object.freeze({}),
       ABILITY_DEFS: pack.ABILITY_DEFS || Object.freeze({}),
     });
-    return;
   }
-  G.dataPacks = G.dataPacks || {};
-  G.dataPacks.abilityPassiveUpgrade = null;
-  if(!_warnedMissingAbilityPassiveUpgradePack){
-    _warnedMissingAbilityPassiveUpgradePack = true;
-    console.warn('[DataPack] ABILITY_PASSIVE_UPGRADE_PACK missing; metadata overlays disabled.');
+  else{
+    G.dataPacks = G.dataPacks || {};
+    G.dataPacks.abilityPassiveUpgrade = null;
+    if(!_warnedMissingAbilityPassiveUpgradePack){
+      _warnedMissingAbilityPassiveUpgradePack = true;
+      console.warn('[DataPack] ABILITY_PASSIVE_UPGRADE_PACK missing; metadata overlays disabled.');
+    }
+  }
+  if(tree && typeof tree === 'object' && tree.birds){
+    G.dataPacks = G.dataPacks || {};
+    G.dataPacks.abilityFamilyTree = Object.freeze({
+      version: tree.version,
+      sourceHint: tree.sourceHint,
+      birds: tree.birds,
+    });
+  }
+  else{
+    G.dataPacks = G.dataPacks || {};
+    G.dataPacks.abilityFamilyTree = null;
   }
 }
 
@@ -23464,27 +23442,6 @@ function pickUniqueRewardByTier(tier,used){
   used.add(pick.id);
   return pick;
 }
-// ── Utility item pools (global so _findShopItemById can look them up) ──────
-const _SHOP_UTILS_REGULAR = [
-  {id:'shop_util_heal_missing20',tier:'green',icon:'🌿',name:'Field Rations',desc:'Restore 20% of missing HP',costOverride:22,apply:p=>{const miss=Math.max(0,p.stats.maxHp-p.stats.hp);const h=Math.max(1,Math.floor(miss*0.20));p.stats.hp=Math.min(p.stats.hp+h,p.stats.maxHp);}},
-  {id:'shop_util_cleanse_missing35',tier:'green',icon:'🌿',name:'Spring Cleanse',desc:'Cleanse active debuffs and restore 35% of missing HP',costOverride:36,apply:p=>{G.playerStatus={};const miss=Math.max(0,p.stats.maxHp-p.stats.hp);const h=Math.max(1,Math.floor(miss*0.35));p.stats.hp=Math.min(p.stats.hp+h,p.stats.maxHp);}},
-  {id:'shop_util_refresh',tier:'purple',icon:'💎',name:'Coupon Wing',desc:'Next shop refresh is free',apply:p=>{G._freeShopRefresh=(G._freeShopRefresh||0)+1;}},
-  {id:'shop_util_energy',tier:'green',icon:'⚡',name:'Spark Draft',desc:'Gain +1 max energy this run (capped by size)',apply:p=>{_upgGoldenFeather(p);}},
-  {id:'shop_util_focus',tier:'green',icon:'🎯',name:'Hunter Focus',desc:'ACC +5 and Crit +3%',apply:p=>{p.stats.acc=Math.min(100,(p.stats.acc||80)+5);p.stats.critChance=(p.stats.critChance||5)+3;}},
-];
-const _SHOP_UTILS_BOSS = [
-  {id:'shop_util_heal_boss_missing35',tier:'blue',icon:'🌿',name:'Boss First Aid',desc:'Cleanse and restore 35% of missing HP',costOverride:36,apply:p=>{G.playerStatus={};const miss=Math.max(0,p.stats.maxHp-p.stats.hp);const h=Math.max(1,Math.floor(miss*0.35));p.stats.hp=Math.min(p.stats.hp+h,p.stats.maxHp);}},
-  {id:'shop_util_discount',tier:'purple',icon:'💎',name:'Royal Voucher',desc:'Your next purchase costs 30 less shiny',apply:p=>{G._nextShopDiscount=Math.max(G._nextShopDiscount||0,2);}},
-  {id:'shop_util_refresh2',tier:'gold',icon:'💎',name:'Double Refresh Pass',desc:'Gain 2 free shop refreshes',apply:p=>{G._freeShopRefresh=(G._freeShopRefresh||0)+2;}},
-  {id:'shop_util_bossward',tier:'purple',icon:'🛡️',name:'Boss Ward',desc:'MDEF +3 and cleanse one debuff now',apply:p=>{p.stats.mdef=(p.stats.mdef||0)+3;const bad=['weaken','paralyzed','slow','burning','poison','bleed','feared','lullabied'];const hit=bad.find(k=>G.playerStatus[k]);if(hit) delete G.playerStatus[hit];}},
-  {id:'shop_util_apex',tier:'purple',icon:'🦅',name:'Apex Talon Oil',desc:'ATK +3, MATK +3',apply:p=>{p.stats.atk+=3;p.stats.matk=(p.stats.matk||0)+3;}},
-];
-
-function makeUtilityOffer(kind='regular'){
-  const arr=kind==='boss'?_SHOP_UTILS_BOSS:_SHOP_UTILS_REGULAR;
-  const pick=arr[Math.floor(Math.random()*arr.length)];
-  return {...pick};
-}
 
 // Reconstruct a shop item (with its apply function) from a persisted ID.
 // Used when restoring saved shop snapshots for overworld nodes.
@@ -23579,7 +23536,7 @@ function generateShopItems() {
 
   renderShopItems();
 }
-const SHOP_COSTS={grey:24,green:36,blue:58,purple:78,gold:156};
+const SHOP_COSTS={grey:36,green:48,blue:70,purple:82,gold:164};
 
 const SHOP_STATE = {
   purchaseMadeThisVisit:false,

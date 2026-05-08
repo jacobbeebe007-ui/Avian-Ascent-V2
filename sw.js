@@ -1,5 +1,6 @@
-/* Avian Ascent — offline shell. Bump CACHE_VERSION when shipped assets change. */
-const CACHE_VERSION = 'avian-ascent-v3';
+/* Avian Ascent — offline shell. Bump CACHE_VERSION when shipped assets change.
+ * Precaches the Vite-built classic bundle at ./assets/avian-game.js (copy in dist/ after `npm run build`). */
+const CACHE_VERSION = 'avian-ascent-v4';
 const PRECACHE = [
   './',
   './index.html',
@@ -7,18 +8,10 @@ const PRECACHE = [
   './css/sprites.css',
   './css/shop.css',
   './css/ui.css',
-  './js/data/ability_passive_upgrade_pack.js',
-  './js/world/overworld_bridge.js',
-  './js/data/story_milestone_boss_pool.js',
-  './js/core/game.js',
-  './js/data/content.js',
-  './js/systems/systems.js',
-  './js/systems/shop.js',
-  './js/ui/ui.js',
-  './js/ui/sprites.js',
+  './assets/avian-game.js',
   './site.webmanifest',
   './icons/icon-192.png',
-  './icons/icon-512.png'
+  './icons/icon-512.png',
 ];
 
 self.addEventListener('install', (event) => {
@@ -29,11 +22,12 @@ self.addEventListener('install', (event) => {
 
 self.addEventListener('activate', (event) => {
   event.waitUntil(
-    caches.keys().then((keys) =>
-      Promise.all(
-        keys.filter((k) => k !== CACHE_VERSION).map((k) => caches.delete(k))
+    caches
+      .keys()
+      .then((keys) =>
+        Promise.all(keys.filter((k) => k !== CACHE_VERSION).map((k) => caches.delete(k)))
       )
-    ).then(() => self.clients.claim())
+      .then(() => self.clients.claim())
   );
 });
 
