@@ -965,7 +965,7 @@ cooldown('chargeUp',3);
     ]
   );
 
-  // Generic legacy / pool spells: birdBrain, sonicDirge, supersonic, wingStorm (shops, old saves, rotChorus→sonicDirge chain). Not Albatross live kit (Albatross uses alb_* + slot migration only).
+  // Pool spells still referenced by saves, aliases, and migration (birdBrain, sonicDirge, supersonic, wingStorm; rotChorus→sonicDirge). Not Albatross live kit (alb_* + slot migration).
   setLevels('birdBrain',
     'Psychic overload. Direct magic hit with confusion pressure.',
     [

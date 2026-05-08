@@ -2199,50 +2199,7 @@ const NORMAL_WEIGHTS = [42,34,17,7,0];
 // Boss drop weights (fallback; boss rewards are mostly handled by generateBossRewards)
 const BOSS_WEIGHTS   = [2,4,42,52,0];
 
-const ALL_REWARDS = [
-  {id:'g_hp10', tier:'grey', icon:'💊', name:'Stitched Wing', desc:'Max HP +6 (heal +6)', tags:['sustain','hp'], apply:p=>{ p.stats.maxHp+=6; p.stats.hp=Math.min(p.stats.hp+6,p.stats.maxHp); }},
-  {id:'g_heal35', tier:'grey', icon:'🌿', name:'Forest Rest', desc:'Heal 35% of Max HP', tags:['sustain','heal'], apply:p=>{ p.stats.hp=Math.min(p.stats.hp+Math.floor(p.stats.maxHp*0.35),p.stats.maxHp); }},
-  {id:'g_def2', tier:'grey', icon:'🌰', name:'Bark Plating', desc:'DEF +1', tags:['defense','def'], apply:p=>{ p.stats.def+=1; }},
-  {id:'g_mdef2', tier:'grey', icon:'🪨', name:'Stone Down', desc:'MDEF +1', tags:['defense','mdef'], apply:p=>{ p.stats.mdef=(p.stats.mdef||0)+1; }},
-  {id:'g_atk2', tier:'grey', icon:'🪶', name:'Sharpened Feather', desc:'ATK +1', tags:['offense','atk'], apply:p=>{ p.stats.atk+=1; }},
-  {id:'g_matk2', tier:'grey', icon:'✨', name:'Spark Dust', desc:'MATK +1', tags:['offense','matk'], apply:p=>{ p.stats.matk=(p.stats.matk||0)+1; }},
-  {id:'g_spd1', tier:'grey', icon:'💨', name:'Light Feathers', desc:'SPD +1', tags:['utility','spd'], apply:p=>{ p.stats.spd=(p.stats.spd||0)+1; }},
-  {id:'g_dodge6', tier:'grey', icon:'🪽', name:'Side-Glide', desc:'Dodge +6%', tags:['defense','dodge'], apply:p=>{ p.stats.dodge=Math.min((p.stats.dodge||0)+6,100); }},
-  {id:'g_firstTurnEnergy', tier:'grey', icon:'🪺', name:'Warm Nest', desc:'+1 Energy on your first turn each battle', tags:['utility','energy'], apply:p=>{ p.firstTurnEnergy=(p.firstTurnEnergy||0)+1; }},
-
-  {id:'u_hp25', tier:'green', icon:'❤️', name:'Stronger Heart', desc:'Max HP +12 (heal +12)', tags:['sustain','hp'], apply:p=>{ p.stats.maxHp+=12; p.stats.hp=Math.min(p.stats.hp+12,p.stats.maxHp); }},
-  {id:'u_def4', tier:'green', icon:'🛡️', name:'Iron Feathers', desc:'DEF +2', tags:['defense','def'], apply:p=>{ p.stats.def+=2; }},
-  {id:'u_mdef4', tier:'green', icon:'🔷', name:'Runic Plumage', desc:'MDEF +2', tags:['defense','mdef'], apply:p=>{ p.stats.mdef=(p.stats.mdef||0)+2; }},
-  {id:'u_atk5', tier:'green', icon:'⚔️', name:'Talons Honed', desc:'ATK +1', tags:['offense','atk'], apply:p=>{ p.stats.atk+=1; }},
-  {id:'u_matk5', tier:'green', icon:'🌙', name:'Moonlit Call', desc:'MATK +3', tags:['offense','matk'], apply:p=>{ p.stats.matk=(p.stats.matk||0)+3; }},
-  {id:'u_spd2', tier:'green', icon:'🏁', name:'Tailwind Steps', desc:'SPD +2', tags:['utility','spd'], apply:p=>{ p.stats.spd=(p.stats.spd||0)+2; }},
-  {id:'u_dodge10', tier:'green', icon:'🌪️', name:'Wind Step', desc:'Dodge +10%', tags:['defense','dodge'], apply:p=>{ p.stats.dodge=Math.min((p.stats.dodge||0)+10,100); }},
-  {id:'u_postHealPlus3', tier:'green', icon:'🍎', name:'Field Snack', desc:'+3% Max HP extra heal after every battle', tags:['sustain','scaling'], apply:p=>{ p.postBattleHealBonusPct=(p.postBattleHealBonusPct||0)+0.03; }},
-  {id:'u_precision3', tier:'green', icon:'🎯', name:'Keen Sight', desc:'All skills: -3% miss chance (min 0%)', tags:['utility','accuracy'], apply:p=>{ p.missReduce=(p.missReduce||0)+0.03; }},
-
-  {id:'r_energyMax1', tier:'blue', icon:'🔵', name:'Second Lung', desc:'Max Energy +1', tags:['utility','energy'], apply:p=>{ p.energyBonus=(p.energyBonus||0)+1; p.energyMax=(p.energyMax||0)+1; }},
-  {id:'r_hp45', tier:'blue', icon:'🫀', name:'War-Heart', desc:'Max HP +20 (heal +20)', tags:['sustain','hp'], apply:p=>{ p.stats.maxHp+=20; p.stats.hp=Math.min(p.stats.hp+20,p.stats.maxHp); }},
-  {id:'r_def7', tier:'blue', icon:'🧱', name:'Quill Armor', desc:'DEF +3', tags:['defense','def'], apply:p=>{ p.stats.def+=3; }},
-  {id:'r_mdef7', tier:'blue', icon:'🧿', name:'Glyph Down', desc:'MDEF +3', tags:['defense','mdef'], apply:p=>{ p.stats.mdef=(p.stats.mdef||0)+3; }},
-  {id:'r_atk9', tier:'blue', icon:'🦅', name:'Predator Poise', desc:'ATK +3', tags:['offense','atk'], apply:p=>{ p.stats.atk+=3; }},
-  {id:'r_matk9', tier:'blue', icon:'🔮', name:'Storm Hymn', desc:'MATK +3', tags:['offense','matk'], apply:p=>{ p.stats.matk=(p.stats.matk||0)+3; }},
-  {id:'r_speed4', tier:'blue', icon:'🌬️', name:'Jetstream', desc:'SPD +4', tags:['utility','spd'], apply:p=>{ p.stats.spd=(p.stats.spd||0)+4; }},
-  {id:'r_precision6', tier:'blue', icon:'🏹', name:'Falcon Focus', desc:'All skills: -6% miss chance (min 0%)', tags:['utility','accuracy'], apply:p=>{ p.missReduce=(p.missReduce||0)+0.06; }},
-
-  {id:'e_energyMax2', tier:'purple', icon:'🟣', name:'Third Lung', desc:'Max Energy +2', tags:['utility','energy'], apply:p=>{ p.energyBonus=(p.energyBonus||0)+2; p.energyMax=(p.energyMax||0)+2; }},
-  {id:'e_fullHeal', tier:'purple', icon:'💉', name:'Sky Tonic', desc:'Full heal + Max HP +30', tags:['sustain','hp'], apply:p=>{ p.stats.maxHp+=30; p.stats.hp=p.stats.maxHp; }},
-  {id:'e_def12', tier:'purple', icon:'🏰', name:'Bastion Plumage', desc:'DEF +4', tags:['defense','def'], apply:p=>{ p.stats.def+=4; }},
-  {id:'e_mdef12', tier:'purple', icon:'🪬', name:'Aegis Down', desc:'MDEF +4', tags:['defense','mdef'], apply:p=>{ p.stats.mdef=(p.stats.mdef||0)+4; }},
-  {id:'e_atk16', tier:'purple', icon:'🗡️', name:'Raptor Creed', desc:'ATK +5', tags:['offense','atk'], apply:p=>{ p.stats.atk+=5; }},
-  {id:'e_matk16', tier:'purple', icon:'⚡', name:'Thunder Chorus', desc:'MATK +5', tags:['offense','matk'], apply:p=>{ p.stats.matk=(p.stats.matk||0)+5; }},
-  {id:'e_postHealPlus7', tier:'purple', icon:'🥣', name:'Roost Meal', desc:'+7% Max HP extra heal after every battle', tags:['sustain','scaling'], apply:p=>{ p.postBattleHealBonusPct=(p.postBattleHealBonusPct||0)+0.07; }},
-
-  {id:'l_energyMax3', tier:'gold', icon:'👑', name:'Sun-Blessed Lungs', desc:'Max Energy +3', tags:['utility','energy'], apply:p=>{ p.energyBonus=(p.energyBonus||0)+3; p.energyMax=(p.energyMax||0)+3; }},
-  {id:'l_titanHide', tier:'gold', icon:'🏔️', name:'Titan Hide', desc:'Max HP +45, DEF +6, MDEF +6', tags:['sustain','defense'], apply:p=>{ p.stats.maxHp+=45; p.stats.hp=p.stats.maxHp; p.stats.def+=6; p.stats.mdef=(p.stats.mdef||0)+6; }},
-  {id:'l_apexOffense', tier:'gold', icon:'🦅', name:'Apex Instinct', desc:'ATK +7, MATK +7', tags:['offense'], apply:p=>{ p.stats.atk+=7; p.stats.matk=(p.stats.matk||0)+7; }},
-  {id:'l_trueSight', tier:'gold', icon:'👁️', name:'True Sight', desc:'All skills: -12% miss chance (min 0%)', tags:['utility','accuracy'], apply:p=>{ p.missReduce=(p.missReduce||0)+0.12; }},
-  {id:'l_roostFeast', tier:'gold', icon:'🔥', name:'Eternal Roost', desc:'Full heal + +12% Max HP extra heal after every battle', tags:['sustain','scaling'], apply:p=>{ p.stats.hp=p.stats.maxHp; p.postBattleHealBonusPct=(p.postBattleHealBonusPct||0)+0.12; }},
-];
+// Post-combat reward picks use UPGRADE_CARDS_REWORK via rollUpgradeCard / generateBossRewards.
 
 // ============================================================
 //  LEARNABLE ABILITIES — universal abilities gained at level-up
@@ -6490,8 +6447,14 @@ function ensureAbilityObjectFromTemplate(id, existing=null, slotIndex=null){
   const level = Math.max(1, Number(existing?.level || 1));
   const out = {...tmpl, ...(existing||{}), id, name:tmpl.name||existing?.name||id, level};
   if(Number.isFinite(slotIndex)) out.slotIndex = slotIndex;
+  const canon=(typeof resolveAbilityAliasSourceId==='function')?resolveAbilityAliasSourceId(id):id;
+  const tmplCanon = ABILITY_TEMPLATES?.[canon] || tmpl;
+  if(!String(out.btnType||'').trim() && tmplCanon.btnType) out.btnType = tmplCanon.btnType;
+  if(!String(out.type||'').trim() && tmplCanon.type) out.type = tmplCanon.type;
+  if(out.btnType && !out.type) out.type = out.btnType;
+  if(out.type && !out.btnType) out.btnType = out.type;
   out.energyCost = getAbilityEnergyCost(out, G.player);
-  out.ailmentIds = deriveAbilityAilments(out, tmpl);
+  out.ailmentIds = deriveAbilityAilments(out, tmplCanon);
   return out;
 }
 function syncPlayerAbilitiesFromSkillSlots(player){
@@ -9867,7 +9830,6 @@ function renderActions() {
   }
   allAbilities.forEach((ab,idx)=>{
     const btn=document.createElement('button');
-    btn.className=`action-btn ${ab.btnType}`;
     btn.setAttribute('data-ab-idx',idx);
     btn.setAttribute('data-ab-id',ab.id||'');
     const energyCost=syncAbilityEnergyCost(ab);
@@ -9925,8 +9887,11 @@ function renderActions() {
     btn.title=`${ab.name}\nEnergy: ${energyCost}`;
     const ailDots=(ab.ailmentIds||[]).map(a=>`<div class="ail-dot ${a}"></div>`).join('');
     const dmgTypes=['physical','ranged','spell'];
+    const _tmplUI=getAbilityTemplateForUI(ab);
+    const effBtn=getEffectiveAbilityBtnType(ab,_tmplUI);
+    btn.className=`action-btn ${effBtn}`;
     let modTxt='';
-    if(dmgTypes.includes(ab.btnType||ab.type)){
+    if(dmgTypes.includes(effBtn)){
       const mods=[];
       if(G.warcryActive) mods.push('⬆ ATK buff');
       if(G.playerStatus?.weaken) mods.push('⬇ Weakened');
@@ -9935,7 +9900,6 @@ function renderActions() {
       if(mods.length) modTxt=`<span class=\"btn-mod\" title=\"${mods.join(' | ')}\">${mods.join(' · ')}</span>`;
     }
     const shortDesc=(((ab.levels&&ab.levels[(ab.level||1)-1]?.desc)||ab.desc||'')+getAbilityDamageScalingHintForUI(ab)).replace(/<[^>]+>/g,'').slice(0,100);
-    const _tmplUI=getAbilityTemplateForUI(ab);
     const _dmgEst=estimateSkillDamageRange(ab,_tmplUI,G.player,{isPlayerCombatPreview:true});
     let dmgChip='';
     if(_dmgEst.isDamaging&&_dmgEst.dmgLow!=null){
@@ -10052,6 +10016,13 @@ function getAbilityTemplateForUI(abOrId){
   return null;
 }
 
+/** Physical / ranged / spell / utility: prefer the live slot object over catalog templates so evolved/path IDs match combat routing and damage previews. */
+function getEffectiveAbilityBtnType(ab, tmpl){
+  const fromSlot = String(ab?.btnType || ab?.type || '').trim().toLowerCase();
+  if(fromSlot) return fromSlot;
+  return String(tmpl?.btnType || tmpl?.type || '').trim().toLowerCase();
+}
+
 function estimateMultiplierFromSkillDescription(txt=''){
   const s=String(txt||'');
   const matk=s.match(/(\d+(?:\.\d+)?)\s*%\s*M\.?\s*ATK/i);
@@ -10071,8 +10042,8 @@ function estimateMultiplierFromSkillDescription(txt=''){
   for(const m of all){
     const v=Number(m[1])||0;
     const pos=m.index??0;
-    const slice=s.slice(Math.max(0,pos-12),pos+18);
-    if(/miss|skip|fumble|chance to|ailment|poison|burn|bleed|para|confuse|fear|weak/i.test(slice)&&v<=35) continue;
+    const slice=s.slice(Math.max(0,pos-22),pos+22);
+    if(/miss|skip|fumble|chance to|ailment|poison|burn|bleed|para|confuse|fear|weak|weaken|slow\b|chill|expose|next attack|crit chance|dodge|hum dodge|restore|heal|shield|buff|debuff|−\s*\d+\s*def|def −|−\s*\d+\s*acc|acc −/i.test(slice)&&v<=45) continue;
     if(v>bestV) bestV=v;
   }
   if(bestV>0) return bestV/100;
@@ -10228,20 +10199,23 @@ function estimateSkillDamageRange(ab,tmpl,attacker,opts){
     pAtk=getEffectivePlayerAtkForDamagePreview();
     pMatk=Number(G.player.stats?.matk||8);
   }
-  if(!tmpl) return {isDamaging:false,dmgLow:null,dmgHigh:null,btnType:'',hybridSplit:null};
-  const btnType=String(tmpl.btnType||tmpl.type||ab?.btnType||ab?.type||'').toLowerCase();
+  if(!tmpl) return {isDamaging:false,dmgLow:null,dmgHigh:null,btnType:'',hybridSplit:null,lv:1,lvData:null};
+  const btnType=getEffectiveAbilityBtnType(ab,tmpl);
   const isDamaging=['physical','ranged','spell'].includes(btnType);
-  const scaleStat=(btnType==='spell')
-    ? (isPlayerCombat&&G?.player ? getEffectivePlayerOffensiveMatkForPreview() : softenMainStatForCombat(pMatk)*COMBAT_OFFENSIVE_STAT_MULT)
-    : (isPlayerCombat&&G?.player ? getEffectivePlayerOffensiveAtkForPreview() : softenMainStatForCombat(pAtk)*COMBAT_OFFENSIVE_STAT_MULT);
   const levels=Array.isArray(tmpl.levels)?tmpl.levels:[];
   const lv=Math.max(1,Math.min(ab?.level||1,levels.length||1));
   const lvData=levels[lv-1]||{desc:(ab?.desc||tmpl.desc||'')};
+  if(!isDamaging){
+    return {isDamaging:false,dmgLow:null,dmgHigh:null,btnType,lv,lvData,hybridSplit:null};
+  }
+  const scaleStat=(btnType==='spell')
+    ? (isPlayerCombat&&G?.player ? getEffectivePlayerOffensiveMatkForPreview() : softenMainStatForCombat(pMatk)*COMBAT_OFFENSIVE_STAT_MULT)
+    : (isPlayerCombat&&G?.player ? getEffectivePlayerOffensiveAtkForPreview() : softenMainStatForCombat(pAtk)*COMBAT_OFFENSIVE_STAT_MULT);
   let dmgMult=(tmpl.baseDmgMult!==undefined)?(Number(tmpl.baseDmgMult)||0)+0.1*(lv-1):null;
   if(!(dmgMult>0)){
     dmgMult=estimateMultiplierFromSkillDescription(lvData?.desc||'')??estimateMultiplierFromSkillDescription(tmpl?.desc||'');
   }
-  if(!(dmgMult>0)) return {isDamaging,dmgLow:null,dmgHigh:null,btnType,lv,lvData,hybridSplit:null};
+  if(!(dmgMult>0)) return {isDamaging:true,dmgLow:null,dmgHigh:null,btnType,lv,lvData,hybridSplit:null};
   const strikePrev=getStrikePreviewMultiplierForAbility(ab?.id,lv,p);
   if(strikePrev!=null) dmgMult=strikePrev;
   const multCore=dmgMult;
@@ -12513,8 +12487,8 @@ const ACTIONS = {
     for(let i=0;i<hits;i++){
       if(playerAttackMisses(ab)){
         await doMiss('player');
-        logMsg(`Rapid Peck chain broke on strike ${i+1}.`,'miss');
-        break;
+        logMsg(`Rapid Peck strike ${i+1}/${hits} missed.`,'miss');
+        continue;
       }
       const isCrit=chance(critC)||chance(getPlayerCritChance(ab));
       const r=dealDamage('enemy',pdmg(dmgM,ab),isCrit);
@@ -14863,12 +14837,7 @@ function getCrowMasteryCounts(ab){
 async function executeCrowStrikeAction(ab, config={}){
   const lv=Math.max(1, Math.min(4, Number(ab?.level)||1));
   const mastery=getCrowMasteryCounts(ab);
-  const miss=Math.max(0, (config.miss?.[lv-1] ?? 0) - getPlayerHitBonus(ab) - mastery.precision*2);
-  if(chance(miss)){
-    await doMiss('player');
-    logMsg(`${config.name||ab?.name||ab?.id} missed!`,'miss');
-    return;
-  }
+  const missBase=Math.max(0, (config.miss?.[lv-1] ?? 0) - getPlayerHitBonus(ab) - mastery.precision*2);
   let mult=(config.mult?.[lv-1] ?? 1) + mastery.power*0.05;
   if(config.bonusVs?.includes('bleed') && (G.enemyStatus?.bleed?.stacks||0)>0) mult += (config.bonus?.[lv-1] ?? 0) + mastery.control*0.01;
   if(config.bonusVs?.includes('feared') && (G.enemyStatus?.feared||0)>0) mult += (config.bonus?.[lv-1] ?? 0) + mastery.control*0.01;
@@ -14882,6 +14851,11 @@ async function executeCrowStrikeAction(ab, config={}){
   const flatAdd=Math.max(0,Math.floor(config.flatAdd?.[lv-1]||0));
   const hy=config.hybridAdditive;
   for(let i=0;i<hits;i++){
+    if(chance(missBase)){
+      await doMiss('player');
+      logMsg(`${config.name||ab?.name||ab?.id} strike ${i+1}/${hits} missed.`,'miss');
+      continue;
+    }
     const prox={...ab, pierceDef:(config.pierce?.[lv-1] ?? 0) + mastery.precision*4};
     const isCrit=chance(Math.min(95, getPlayerCritChance(ab) + critBonus + critChanceFlat + (getCrowCompromisedTargetBonus()?mastery.precision*3:0)));
     let amount;
@@ -14908,18 +14882,20 @@ async function executeCrowStrikeAction(ab, config={}){
     G.enemyStatus.delayed={dmg:d};
     spawnFloat('enemy','⏳ Delayed!','fn-status');
   }
-  if(config.bleedChance?.[lv-1] && chance(config.bleedChance[lv-1] + mastery.control*5)){ applyAilment('enemy','bleed',1); spawnFloat('enemy','🩸 Bleed!','fn-poison'); }
-  if(config.fearChance?.[lv-1] && chance(config.fearChance[lv-1] + mastery.control*5)){ applyAilment('enemy','feared',1); spawnFloat('enemy','😨 Fear!','fn-status'); }
-  if(config.weakenChance?.[lv-1] && chance(config.weakenChance[lv-1] + mastery.control*5)){ applyAilment('enemy','weaken',1); spawnFloat('enemy','🐔 Weaken!','fn-status'); }
-  if(config.expose?.[lv-1]){
-    G.enemyStatus.exposedGuard={turns:config.exposeTurns?.[lv-1]||2, pct:(config.expose[lv-1]||0)+mastery.control*0.01};
-    spawnFloat('enemy','🎯 Exposed!','fn-status');
-  }
-  if(config.markBonus?.[lv-1]){
-    G.playerStatus.huntersMarkBonusPct=(config.markBonus[lv-1]||0)+mastery.power*0.03;
+  if(total>0){
+    if(config.bleedChance?.[lv-1] && chance(config.bleedChance[lv-1] + mastery.control*5)){ applyAilment('enemy','bleed',1); spawnFloat('enemy','🩸 Bleed!','fn-poison'); }
+    if(config.fearChance?.[lv-1] && chance(config.fearChance[lv-1] + mastery.control*5)){ applyAilment('enemy','feared',1); spawnFloat('enemy','😨 Fear!','fn-status'); }
+    if(config.weakenChance?.[lv-1] && chance(config.weakenChance[lv-1] + mastery.control*5)){ applyAilment('enemy','weaken',1); spawnFloat('enemy','🐔 Weaken!','fn-status'); }
+    if(config.expose?.[lv-1]){
+      G.enemyStatus.exposedGuard={turns:config.exposeTurns?.[lv-1]||2, pct:(config.expose[lv-1]||0)+mastery.control*0.01};
+      spawnFloat('enemy','🎯 Exposed!','fn-status');
+    }
+    if(config.markBonus?.[lv-1]){
+      G.playerStatus.huntersMarkBonusPct=(config.markBonus[lv-1]||0)+mastery.power*0.03;
+    }
+    triggerCrowOpportunistIfNeeded();
   }
   renderStatuses('enemy-status',G.enemyStatus);
-  triggerCrowOpportunistIfNeeded();
   logMsg(`${config.log||config.name||ab?.name||ab?.id}! ${total} dmg.`, 'player-action');
 }
 async function executeCrowCallAction(ab, config={}){
@@ -17396,8 +17372,6 @@ async function executeHummingbirdDashStrike(ab, cfg){
   if(G.hummingbirdDashCooldown>0){logMsg(`Dash on cooldown! (${G.hummingbirdDashCooldown}t)`,'miss');return;}
   const lv=Math.max(1,Math.min(4,ab.level||1));
   const mb=getHummingbirdMasteryBonuses(ab);
-  const oldDodge=G.enemy.stats.dodge;
-  G.enemy.stats.dodge=0;
   let mult=(cfg.mult?.[lv-1]||1)+mb.dmg;
   const critBoost=(cfg.critBonus?.[lv-1]||0)+mb.crit;
   const hybridHit=!!cfg.hybrid?.[lv-1];
@@ -17406,39 +17380,42 @@ async function executeHummingbirdDashStrike(ab, cfg){
     if(hybridHit) return Math.max(1,Math.floor((pdmgWithAlternateScaling(m,pierceAb)+matk(Math.max(0.55,m*0.52)))/2));
     return pdmgWithAlternateScaling(m,pierceAb);
   };
-  const isCrit=chance(getPlayerCritChance(ab)+critBoost);
   const flatAdd=Math.max(0,Math.floor(cfg.flatAdd?.[lv-1]||0));
-  const dmg=Math.max(1,calcDmg(mult)+flatAdd);
-  const r=dealDamage('enemy',dmg,isCrit);
-  r.wasDodged=false;
-  await doAttack('player','enemy',r);
-  let lastTotal=r.dmgDealt;
-  const extraHits=(cfg.hits?.[lv-1]||1)-1;
+  const hitsTotal=Math.max(1,cfg.hits?.[lv-1]||1);
   const followMult=cfg.followMult?.[lv-1]??mult*0.52;
-  for(let i=0;i<extraHits;i++){
+  let lastTotal=0;
+  for(let swing=0;swing<hitsTotal;swing++){
     if(G.battleOver) break;
-    const isCrit2=chance(getPlayerCritChance(ab)+critBoost*0.75);
-    const d2=Math.max(1,calcDmg(followMult+mb.dmg*0.35)+Math.floor(flatAdd*0.55));
-    const r2=dealDamage('enemy',d2,isCrit2);
-    r2.wasDodged=false;
-    await doAttack('player','enemy',r2);
-    lastTotal+=r2.dmgDealt;
+    if(playerAttackMisses(ab)){
+      await doMiss('player');
+      logMsg(`${cfg.log||'Dash'} strike ${swing+1}/${hitsTotal} missed.`,'miss');
+      continue;
+    }
+    const multSwing=swing===0?mult:(followMult+mb.dmg*0.35);
+    const critBoostSwing=swing===0?critBoost:critBoost*0.75;
+    const flatSwing=swing===0?flatAdd:Math.floor(flatAdd*0.55);
+    const isCritSwing=chance(getPlayerCritChance(ab)+critBoostSwing);
+    const dmg=Math.max(1,calcDmg(multSwing)+flatSwing);
+    const r=dealDamage('enemy',dmg,isCritSwing,false,pierceAb);
+    await doAttack('player','enemy',r);
+    lastTotal+=r.dmgDealt;
     setHpBar('enemy',G.enemy.stats.hp,G.enemy.stats.maxHp);
   }
-  G.enemy.stats.dodge=oldDodge;
   setHpBar('enemy',G.enemy.stats.hp,G.enemy.stats.maxHp);
-  if(cfg.paraChance?.[lv-1] && chance(cfg.paraChance[lv-1]+mb.rider)){
-    G.enemyStatus.paralyzed=(G.enemyStatus.paralyzed||0)+(cfg.paraTurns?.[lv-1]||2);
-    spawnFloat('enemy','⚡ Para!','fn-status');
-  }
-  if(cfg.bleedChance?.[lv-1] && chance(cfg.bleedChance[lv-1]+mb.rider+(mb.bleedRider||0))){
-    applyAilment('enemy','bleed',1);
-    spawnFloat('enemy','🩸 Bleed!','fn-poison');
-  }
-  if(cfg.delayed?.[lv-1]) hummingbirdApplyDelayed(cfg.delayed[lv-1],ab,cfg.delayedSynergy||{});
-  if(cfg.applyBurningTurns?.[lv-1]){
-    G.enemyStatus.burning={turns:cfg.applyBurningTurns[lv-1]};
-    spawnFloat('enemy','🔥 Burn!','fn-burn');
+  if(lastTotal>0){
+    if(cfg.paraChance?.[lv-1] && chance(cfg.paraChance[lv-1]+mb.rider)){
+      G.enemyStatus.paralyzed=(G.enemyStatus.paralyzed||0)+(cfg.paraTurns?.[lv-1]||2);
+      spawnFloat('enemy','⚡ Para!','fn-status');
+    }
+    if(cfg.bleedChance?.[lv-1] && chance(cfg.bleedChance[lv-1]+mb.rider+(mb.bleedRider||0))){
+      applyAilment('enemy','bleed',1);
+      spawnFloat('enemy','🩸 Bleed!','fn-poison');
+    }
+    if(cfg.delayed?.[lv-1]) hummingbirdApplyDelayed(cfg.delayed[lv-1],ab,cfg.delayedSynergy||{});
+    if(cfg.applyBurningTurns?.[lv-1]){
+      G.enemyStatus.burning={turns:cfg.applyBurningTurns[lv-1]};
+      spawnFloat('enemy','🔥 Burn!','fn-burn');
+    }
   }
   renderStatuses('enemy-status',G.enemyStatus);
   G.hummingbirdDashCooldown=(cfg.fixedCooldown!=null)?cfg.fixedCooldown:((ab.id==='dash'||ab.id==='firecrest_burn_dash')?1:hummingbirdDashCooldownForLevel(lv));
@@ -17654,8 +17631,6 @@ async function executePeregrineDiveStrike(ab, cfg){
   if((G.peregrineDiveCooldown||0)>0){logMsg(`Dive on cooldown! (${G.peregrineDiveCooldown}t)`,'miss');return;}
   const lv=Math.max(1,Math.min(4,ab.level||1));
   const mb=getPeregrineMasteryBonuses(ab);
-  const oldDodge=G.enemy.stats.dodge;
-  G.enemy.stats.dodge=0;
   let mult=(cfg.mult?.[lv-1]||1)+mb.dmg;
   const diveAmp=G.playerStatus.peregrineDiveAmp;
   if(diveAmp && (diveAmp.turns||0)>0){
@@ -17674,33 +17649,36 @@ async function executePeregrineDiveStrike(ab, cfg){
     if(hybridHit) return Math.max(1,Math.floor((pdmgWithAlternateScaling(m,pierceAb)+matk(Math.max(0.55,m*0.52)))/2));
     return pdmgWithAlternateScaling(m,pierceAb);
   };
-  const isCrit=chance(getPlayerCritChance(ab)+critBoost+weakCrit);
   const flatAdd=Math.max(0,Math.floor(cfg.flatAdd?.[lv-1]||0));
-  const dmg=Math.max(1,calcDmg(mult)+flatAdd);
-  const r=dealDamage('enemy',dmg,isCrit);
-  r.wasDodged=false;
-  await doAttack('player','enemy',r);
-  let lastTotal=r.dmgDealt;
-  const extraHits=(cfg.hits?.[lv-1]||1)-1;
+  const hitsTotal=Math.max(1,cfg.hits?.[lv-1]||1);
   const followMult=cfg.followMult?.[lv-1]??mult*0.52;
-  for(let i=0;i<extraHits;i++){
+  let lastTotal=0;
+  for(let swing=0;swing<hitsTotal;swing++){
     if(G.battleOver) break;
-    const isCrit2=chance(getPlayerCritChance(ab)+critBoost*0.75+weakCrit);
-    const d2=Math.max(1,calcDmg(followMult+mb.dmg*0.35)+Math.floor(flatAdd*0.55));
-    const r2=dealDamage('enemy',d2,isCrit2);
-    r2.wasDodged=false;
-    await doAttack('player','enemy',r2);
-    lastTotal+=r2.dmgDealt;
+    if(playerAttackMisses(ab)){
+      await doMiss('player');
+      logMsg(`${cfg.log||'Dive'} strike ${swing+1}/${hitsTotal} missed.`,'miss');
+      continue;
+    }
+    const multSwing=swing===0?mult:(followMult+mb.dmg*0.35);
+    const critSwingBoost=swing===0?critBoost:critBoost*0.75;
+    const flatSwing=swing===0?flatAdd:Math.floor(flatAdd*0.55);
+    const isCritSwing=chance(getPlayerCritChance(ab)+critSwingBoost+weakCrit);
+    const dmg=Math.max(1,calcDmg(multSwing)+flatSwing);
+    const r=dealDamage('enemy',dmg,isCritSwing,false,pierceAb);
+    await doAttack('player','enemy',r);
+    lastTotal+=r.dmgDealt;
     setHpBar('enemy',G.enemy.stats.hp,G.enemy.stats.maxHp);
   }
-  G.enemy.stats.dodge=oldDodge;
   setHpBar('enemy',G.enemy.stats.hp,G.enemy.stats.maxHp);
-  const paraRoll=(cfg.paraChance?.[lv-1]||0)+mb.rider+mb.shock;
-  if(cfg.paraChance?.[lv-1] && chance(paraRoll)){
-    G.enemyStatus.paralyzed=(G.enemyStatus.paralyzed||0)+(cfg.paraTurns?.[lv-1]||2);
-    spawnFloat('enemy','⚡ Para!','fn-status');
+  if(lastTotal>0){
+    const paraRoll=(cfg.paraChance?.[lv-1]||0)+mb.rider+mb.shock;
+    if(cfg.paraChance?.[lv-1] && chance(paraRoll)){
+      G.enemyStatus.paralyzed=(G.enemyStatus.paralyzed||0)+(cfg.paraTurns?.[lv-1]||2);
+      spawnFloat('enemy','⚡ Para!','fn-status');
+    }
+    if(cfg.delayed?.[lv-1]) peregrineApplyDelayed(cfg.delayed[lv-1],ab,cfg.delayedSynergy||{});
   }
-  if(cfg.delayed?.[lv-1]) peregrineApplyDelayed(cfg.delayed[lv-1],ab,cfg.delayedSynergy||{});
   renderStatuses('enemy-status',G.enemyStatus);
   G.peregrineDiveCooldown=(ab.id==='dive')?1:peregrineDiveCooldownForLevel(lv);
   logMsg(`${cfg.log||'Dive'}! ${lastTotal} dmg.${G.peregrineDiveCooldown>0?` CD ${G.peregrineDiveCooldown}t`:''}`,'player-action');
@@ -17873,35 +17851,35 @@ async function executeRobinDartBurst(ab, cfg){
   if((G.robinDartCooldown||0)>0){logMsg(`Dart on cooldown! (${G.robinDartCooldown}t)`,'miss');return;}
   const lv=Math.max(1,Math.min(4,ab.level||1));
   const mb=getRobinMasteryBonuses(ab);
-  const oldDodge=G.enemy.stats.dodge;
-  G.enemy.stats.dodge=0;
   let mult=(cfg.mult?.[lv-1]||1)+mb.dmg;
   const critBoost=(cfg.critBonus?.[lv-1]||0)+mb.crit;
   const pierceAb={...ab,pierceDef:(cfg.pierce?.[lv-1]||0)+mb.pierce};
   const calcDmg=(m)=>pdmgWithAlternateScaling(m,pierceAb);
-  const isCrit=chance(getPlayerCritChance(ab)+critBoost);
-  const dmg=calcDmg(mult);
-  const r=dealDamage('enemy',dmg,isCrit,false,pierceAb);
-  r.wasDodged=false;
-  await doAttack('player','enemy',r);
-  let lastTotal=r.dmgDealt;
-  const extraHits=(cfg.hits?.[lv-1]||1)-1;
+  const hitsTotal=Math.max(1,cfg.hits?.[lv-1]||1);
   const followMult=cfg.followMult?.[lv-1]??mult*0.55;
-  for(let i=0;i<extraHits;i++){
+  let lastTotal=0;
+  for(let swing=0;swing<hitsTotal;swing++){
     if(G.battleOver) break;
-    const isCrit2=chance(getPlayerCritChance(ab)+critBoost*0.75);
-    const d2=calcDmg(followMult+mb.dmg*0.35);
-    const r2=dealDamage('enemy',d2,isCrit2,false,pierceAb);
-    r2.wasDodged=false;
-    await doAttack('player','enemy',r2);
-    lastTotal+=r2.dmgDealt;
+    if(playerAttackMisses(ab)){
+      await doMiss('player');
+      logMsg(`${cfg.log||'Dart'} strike ${swing+1}/${hitsTotal} missed.`,'miss');
+      continue;
+    }
+    const multSwing=swing===0?mult:(followMult+mb.dmg*0.35);
+    const critSwingBoost=swing===0?critBoost:critBoost*0.75;
+    const isCritSwing=chance(getPlayerCritChance(ab)+critSwingBoost);
+    const dmg=calcDmg(multSwing);
+    const r=dealDamage('enemy',dmg,isCritSwing,false,pierceAb);
+    await doAttack('player','enemy',r);
+    lastTotal+=r.dmgDealt;
     setHpBar('enemy',G.enemy.stats.hp,G.enemy.stats.maxHp);
   }
-  G.enemy.stats.dodge=oldDodge;
   setHpBar('enemy',G.enemy.stats.hp,G.enemy.stats.maxHp);
   const rc=mb.rider;
-  if(cfg.bleedChance?.[lv-1] && chance(cfg.bleedChance[lv-1]+rc)) applyAilment('enemy','bleed',1);
-  if(cfg.delayed?.[lv-1]) robinApplyDelayed(cfg.delayed[lv-1],ab,cfg.delayedSynergy||{},!!cfg.delayedReplace);
+  if(lastTotal>0){
+    if(cfg.bleedChance?.[lv-1] && chance(cfg.bleedChance[lv-1]+rc)) applyAilment('enemy','bleed',1);
+    if(cfg.delayed?.[lv-1]) robinApplyDelayed(cfg.delayed[lv-1],ab,cfg.delayedSynergy||{},!!cfg.delayedReplace);
+  }
   renderStatuses('enemy-status',G.enemyStatus);
   G.robinDartCooldown=robinDartCooldownForLevel(lv);
   logMsg(`${cfg.log||'Dart'}! ${lastTotal} dmg.${G.robinDartCooldown>0?` CD ${G.robinDartCooldown}t`:''}`,'player-action');
@@ -19775,8 +19753,6 @@ async function executeSnowyOwlDiveStrike(ab, cfg){
   if((G.snowyOwlDiveCooldown||0)>0){logMsg(`Silent Dive on cooldown! (${G.snowyOwlDiveCooldown}t)`,'miss');return;}
   const lv=Math.max(1,Math.min(4,ab.level||1));
   const mb=getSnowyOwlMasteryBonuses(ab);
-  const oldDodge=G.enemy.stats.dodge;
-  G.enemy.stats.dodge=0;
   let mult=(cfg.mult?.[lv-1]||1)+mb.dmg;
   if(G.player._snowyFirstSilentDive){
     mult*=1.10;
@@ -19792,34 +19768,36 @@ async function executeSnowyOwlDiveStrike(ab, cfg){
     if(hybridHit) return Math.max(1,Math.floor((pdmgWithAlternateScaling(m,pierceAb)+matk(Math.max(0.55,m*0.52)))/2));
     return pdmgWithAlternateScaling(m,pierceAb);
   };
-  const isCrit=chance(getPlayerCritChance(ab)+critBoost+weakCrit);
-  const dmg=calcDmg(mult);
-  const r=dealDamage('enemy',dmg,isCrit);
-  r.wasDodged=false;
-  await doAttack('player','enemy',r);
-  let lastTotal=r.dmgDealt;
-  const extraHits=(cfg.hits?.[lv-1]||1)-1;
+  const hitsTotal=Math.max(1,cfg.hits?.[lv-1]||1);
   const followMult=cfg.followMult?.[lv-1]??mult*0.52;
-  for(let i=0;i<extraHits;i++){
+  let lastTotal=0;
+  for(let swing=0;swing<hitsTotal;swing++){
     if(G.battleOver) break;
-    const isCrit2=chance(getPlayerCritChance(ab)+critBoost*0.75+weakCrit);
-    const d2=calcDmg(followMult+mb.dmg*0.35);
-    const r2=dealDamage('enemy',d2,isCrit2);
-    r2.wasDodged=false;
-    await doAttack('player','enemy',r2);
-    lastTotal+=r2.dmgDealt;
+    if(playerAttackMisses(ab)){
+      await doMiss('player');
+      logMsg(`${cfg.log||'Silent Dive'} strike ${swing+1}/${hitsTotal} missed.`,'miss');
+      continue;
+    }
+    const multSwing=swing===0?mult:(followMult+mb.dmg*0.35);
+    const critSwingBoost=swing===0?critBoost:critBoost*0.75;
+    const isCritSwing=chance(getPlayerCritChance(ab)+critSwingBoost+weakCrit);
+    const dmg=calcDmg(multSwing);
+    const r=dealDamage('enemy',dmg,isCritSwing,false,pierceAb);
+    await doAttack('player','enemy',r);
+    lastTotal+=r.dmgDealt;
     setHpBar('enemy',G.enemy.stats.hp,G.enemy.stats.maxHp);
   }
-  G.enemy.stats.dodge=oldDodge;
   setHpBar('enemy',G.enemy.stats.hp,G.enemy.stats.maxHp);
-  if(cfg.postSlowSpd?.[lv-1]){
-    applyEnemySlow(cfg.postSlowSpd[lv-1]+mb.chill,(cfg.postSlowDodge?.[lv-1]||8)+mb.chill,(cfg.postSlowTurns?.[lv-1]||2)+(mb.slow>0?1:0));
-    spawnFloat('enemy','❄ Slow!','fn-status');
+  if(lastTotal>0){
+    if(cfg.postSlowSpd?.[lv-1]){
+      applyEnemySlow(cfg.postSlowSpd[lv-1]+mb.chill,(cfg.postSlowDodge?.[lv-1]||8)+mb.chill,(cfg.postSlowTurns?.[lv-1]||2)+(mb.slow>0?1:0));
+      spawnFloat('enemy','❄ Slow!','fn-status');
+    }
+    if(cfg.postWeakenChance?.[lv-1] && chance(cfg.postWeakenChance[lv-1]+mb.rider)){
+      applyAilment('enemy','weaken',1); spawnFloat('enemy','🐔 Frostbite!','fn-status');
+    }
+    if(cfg.delayed?.[lv-1]) snowyOwlApplyDelayed(cfg.delayed[lv-1],ab,cfg.delayedSynergy||{});
   }
-  if(cfg.postWeakenChance?.[lv-1] && chance(cfg.postWeakenChance[lv-1]+mb.rider)){
-    applyAilment('enemy','weaken',1); spawnFloat('enemy','🐔 Frostbite!','fn-status');
-  }
-  if(cfg.delayed?.[lv-1]) snowyOwlApplyDelayed(cfg.delayed[lv-1],ab,cfg.delayedSynergy||{});
   renderStatuses('enemy-status',G.enemyStatus);
   G.snowyOwlDiveCooldown=snowyOwlDiveCooldownForLevel(lv);
   logMsg(`${cfg.log||'Silent Dive'}! ${lastTotal} dmg.${G.snowyOwlDiveCooldown>0?` CD ${G.snowyOwlDiveCooldown}t`:''}`,'player-action');
@@ -20443,6 +20421,8 @@ async function playerAction(ab,fromQueue=false) {
       else {ab=autoAb;logMsg(`🔁 Auto action: ${ab.name}!`,'system');}
     } else G.autoQueuedAbilityId=null;
   }
+  const _tmplAct=getAbilityTemplateForUI(ab);
+  const effActKind=getEffectiveAbilityBtnType(ab,_tmplAct);
   // Roost delivery at start of turn
   if(G.playerStatus.roosting==='pending'){
     const rd=G._roostData||{pct:.25,lv:1};
@@ -20461,18 +20441,17 @@ async function playerAction(ab,fromQueue=false) {
     G._roostData=null;
   }
   if(G.playerStatus.stunned>0){logMsg(`😵 Stunned — can't act!`,'miss');renderActions();refreshBattleUI();return;}
-  const _abKindEarly=String(ab?.btnType||ab?.type||ABILITY_TEMPLATES?.[ab?.id]?.btnType||ABILITY_TEMPLATES?.[ab?.id]?.type||'').toLowerCase();
   const _pcl=G.playerStatus.confused;
-  const _dmgEarly=_abKindEarly==='physical'||_abKindEarly==='ranged'||_abKindEarly==='spell';
+  const _dmgEarly=effActKind==='physical'||effActKind==='ranged'||effActKind==='spell';
   G._playerConfusesSelfThisAction=!!(_pcl&&(_pcl.turns||0)>0&&_dmgEarly&&chance(Number.isFinite(_pcl.selfChance)?_pcl.selfChance:STATUS_CONFUSED_SELF_PCT));
   if(G.playerStatus.paralyzed>0&&!G.player.immuneParalyze&&chance(AILMENTS.paralyzed.skipChance||20)){
     spawnFloat('player','⚡ Para!','fn-status');await delay(400);
     logMsg(`⚡ Paralyzed — cannot act!`,'miss');renderActions();refreshBattleUI();return;
   }
   if(G.playerStatus.feared>0&&!G.player.humImmuneToFear&&!G.player.bulwarkFearImmune){
-    if(ab.btnType==='utility'&&ab.id!=='crowDefend'){/* utility ok */}
+    if(effActKind==='utility'&&ab.id!=='crowDefend'){/* utility ok */}
     else if(ab.id==='crowDefend'){logMsg(`😨 Feared — cannot defend!`,'miss');renderActions();refreshBattleUI();return;}
-    else if(_abKindEarly!=='utility'&&chance(STATUS_FEAR_SKIP_PCT)){
+    else if(effActKind!=='utility'&&chance(STATUS_FEAR_SKIP_PCT)){
       playAvatarAnim('player','do-miss-r',560);spawnFloat('player','😨 Panic!','fn-miss');await delay(560);
       logMsg(`😨 Feared — you panic and lose this action!`,'miss');renderActions();refreshBattleUI();return;
     }
@@ -20490,12 +20469,11 @@ async function playerAction(ab,fromQueue=false) {
   if(ROBIN_DART_ABILITY_IDS.has(ab.id) && (G.robinDartCooldown||0)>0){logMsg(`${ab.name} on cooldown! (${G.robinDartCooldown}t)`,'miss');return;}
   if(BOWERBIRD_LURE_ABILITY_IDS.has(ab.id) && (G.bowerbirdLureCooldown||0)>0){logMsg(`${ab.name} on cooldown! (${G.bowerbirdLureCooldown}t)`,'miss');return;}
   if(!canUseAbility(G.player,ab)){logMsg(`Not enough energy for ${ab.name}!`,'miss');return;}
-  const _abk=String(ab?.btnType||ab?.type||ABILITY_TEMPLATES?.[ab?.id]?.btnType||ABILITY_TEMPLATES?.[ab?.id]?.type||'').toLowerCase();
-  if(_abk==='utility' && G.utilityUsedThisTurn?.[ab.id]){
+  if(effActKind==='utility' && G.utilityUsedThisTurn?.[ab.id]){
     logMsg(`${ab.name} already used this turn!`,'miss');
     return;
   }
-  const _defSkill=(_abk==='utility' || ab?.id==='crowDefend');
+  const _defSkill=(effActKind==='utility' || ab?.id==='crowDefend');
   if(_defSkill){
     if((G.player?.augDefSkillDef||0)>0) G.player.stats.def=(G.player.stats.def||0)+G.player.augDefSkillDef;
     if((G.player?.augDefSkillMdef||0)>0) G.player.stats.mdef=(G.player.stats.mdef||0)+G.player.augDefSkillMdef;
@@ -20516,13 +20494,12 @@ async function playerAction(ab,fromQueue=false) {
   if(G.enemy?.id==='duke_blakiston') dukeTrackDecree(ab.id);
   G._activePlayerAbility=ab;
   const _delayedBeforeAbility = (G.enemyStatus?.delayed && G.enemyStatus.delayed.dmg!=null) ? {dmg:G.enemyStatus.delayed.dmg} : null;
-  const _abKindNow=String(ab?.btnType||ab?.type||ABILITY_TEMPLATES?.[ab?.id]?.btnType||ABILITY_TEMPLATES?.[ab?.id]?.type||'').toLowerCase();
   const classPerkCtx=applyClassPerksToCombatContext(G.player?.birdKey,{});
-  if(_abKindNow==='utility' && classPerkCtx.quickTheft && !G._perkUtilityRefundUsed){
+  if(effActKind==='utility' && classPerkCtx.quickTheft && !G._perkUtilityRefundUsed){
     gainEnergy(G.player,1);
     G._perkUtilityRefundUsed=true;
   }
-  if((_abKindNow==='utility' || _abKindNow==='buff' || _abKindNow==='defend') && G.player?.perkUtilityAcc){
+  if((effActKind==='utility' || effActKind==='buff' || effActKind==='defend') && G.player?.perkUtilityAcc){
     G.playerStatus.perkUtilityAcc=1;
   }
   if(classPerkCtx.holdTheLine && /guard|defend|shield|crowdefend/i.test(ab.id||'')){
@@ -20536,15 +20513,15 @@ async function playerAction(ab,fromQueue=false) {
   if(BUFF_AB_IDS.has(ab.id)) G.runBuffs++;
   if(DEBUFF_AB_IDS.has(ab.id)) G.runDebuffs++;
   // Apply flyby momentum multiplier if charged and this is an attack
-  const flybyWasCharged=G.flybyCharged && ['physical','ranged','spell'].includes(ab.btnType);
+  const flybyWasCharged=G.flybyCharged && ['physical','ranged','spell'].includes(effActKind);
   if(flybyWasCharged){G.flybyCharged=false;delete G.playerStatus.flyby; G.actionDamageMult=1.75; G.actionDamageHitsRemaining=1;}
-  const chargedDouble=G.chargeUpActive && ab.id!=='chargeUp' && ['physical','ranged','spell'].includes(ab.btnType);
-  const lyrebirdSongEcho = G.player?.birdKey==='lyrebird' && !G.player?._lyrebirdSongEchoUsed && ab.btnType==='spell';
+  const chargedDouble=G.chargeUpActive && ab.id!=='chargeUp' && ['physical','ranged','spell'].includes(effActKind);
+  const lyrebirdSongEcho = G.player?.birdKey==='lyrebird' && !G.player?._lyrebirdSongEchoUsed && effActKind==='spell';
   if(chargedDouble){G.chargeUpActive=false;delete G.playerStatus.chargeUp;logMsg('⚡ Charge Up triggers: action repeats!','system');}
   if(lyrebirdSongEcho){G.player._lyrebirdSongEchoUsed=true;logMsg('🎵 Perfect Mimicry triggers: Song repeats at 40% power!','system');}
   // Temporarily double ATK for flyby
   if(flybyWasCharged) G.player.stats.atk*=2;
-  if(['physical','ranged','spell'].includes(_abKindNow)) promotePendingStrikeBuffToActive();
+  if(['physical','ranged','spell'].includes(effActKind)) promotePendingStrikeBuffToActive();
   await ACTIONS[ab.id](ab);
   if(chargedDouble && !G.battleOver && G.enemy.stats.hp>0){await ACTIONS[ab.id](ab);}
   if(lyrebirdSongEcho && !G.battleOver && G.enemy.stats.hp>0){
@@ -20553,25 +20530,24 @@ async function playerAction(ab,fromQueue=false) {
     await ACTIONS[ab.id](ab);
   }
   checkBlackbirdOmenChorusAfterAbility(_delayedBeforeAbility);
-  const _abKind=String(ab?.btnType||ab?.type||ABILITY_TEMPLATES?.[ab?.id]?.btnType||ABILITY_TEMPLATES?.[ab?.id]?.type||'').toLowerCase();
-  if((_abKind==='physical'||_abKind==='ranged') && classPerkCtx.ironMomentum && /heavy|slam|crusher|smash/i.test((ab.name||ab.id||'').toLowerCase())){
+  if((effActKind==='physical'||effActKind==='ranged') && classPerkCtx.ironMomentum && /heavy|slam|crusher|smash/i.test((ab.name||ab.id||'').toLowerCase())){
     addStatus(G.playerStatus,'defending',1,999);
   }
-  if(_abKind==='physical'||_abKind==='ranged') G._firstAttackUsed=true;
-  if(_abKind==='spell'){ G._firstSpellUsed=true; G._spellCastCount=(G._spellCastCount||0)+1; }
+  if(effActKind==='physical'||effActKind==='ranged') G._firstAttackUsed=true;
+  if(effActKind==='spell'){ G._firstSpellUsed=true; G._spellCastCount=(G._spellCastCount||0)+1; }
   G._lastPlayerAbility = ab.id;
-  if(_abKind==='utility'){
+  if(effActKind==='utility'){
     G.utilityUsedThisTurn = G.utilityUsedThisTurn || {};
     G.utilityUsedThisTurn[ab.id] = true;
   }
   setAbilityCooldown(ab);
-  if(ab.btnType==='spell' || ab.type==='spell'){
+  if(effActKind==='spell'){
     reduceOtherSpellCooldownsOnCast(ab.id);
   }
   // Passive: onAbilityUse / onUtilityUse
   const _flBd=BIRDS[G.player.birdKey];
   if(_flBd&&_flBd.passive&&_flBd.passive.onAbilityUse) _flBd.passive.onAbilityUse(G.player,ab);
-  if(_abKind==='utility' && _flBd&&_flBd.passive&&_flBd.passive.onUtilityUse) _flBd.passive.onUtilityUse(G.player,ab);
+  if(effActKind==='utility' && _flBd&&_flBd.passive&&_flBd.passive.onUtilityUse) _flBd.passive.onUtilityUse(G.player,ab);
   if(flybyWasCharged) G.actionDamageMult=1;
   delete G._pendingStrikeActionMods;
   G._activePlayerAbility=null;
