@@ -1,0 +1,15 @@
+{
+  "_notes": "Ordered legacy shell scripts concatenated for dev (/__avian_legacy_game.js) and production (assets/avian-game.js). Do not wrap the concatenated output in an outer IIFE: top-level function declarations must remain on window for inline onclick handlers in index.html. src/main.ts runs first as ES modules and assigns leaf globals (e.g. AILMENTS) before the classic bundle executes.",
+  "gameShellScripts": [
+    "js/data/ability_passive_upgrade_pack.js",
+    "js/data/ability_family_tree.js",
+    "js/data/story_enemy_registry.js",
+    "js/world/overworld_bridge.js",
+    "js/core/game.js",
+    "js/data/content.js",
+    "js/systems/systems.js",
+    "js/systems/shop.js",
+    "js/ui/ui.js",
+    "js/ui/sprites.js"
+  ]
+}

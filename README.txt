@@ -1,13 +1,16 @@
 Avian Ascent Refactored Project
 
 Structure
-- index.html
+- index.html (loads `/src/main.ts` under Vite; legacy order is js/bootstrap/load-order.json)
 - css/main.css
 - css/sprites.css
 - css/battle.css
 - css/shop.css
 - css/ui.css
-- js/core/game.js
+- js/bootstrap/load-order.json (canonical ordered list for legacy concat)
+- js/core/game.js (large gameplay core; concatenated in prod as assets/avian-game.js)
+- src/main.ts (ESM bootstrap: leaf globals on globalThis, then classic concat)
+- src/data/*.js (leaf modules; extend here before legacy bundle)
 - js/data/content.js
 - js/systems/systems.js
 - js/systems/shop.js
@@ -17,24 +20,21 @@ Structure
 
 Notes
 - This is a real consolidation refactor from the split project zip.
-- Original execution order was preserved inside each bundle.
-- The goal is to make future maintenance easier without changing runtime behavior.
+- Legacy scripts share one browser global realm; they are concatenated without an outer IIFE so top-level `function foo()` stays on `window` for inline `onclick` handlers.
+- `npm test` still parses source files under `js/` (including js/core/game.js), not the emitted bundle.
 
-Local Run / Preview
-- This is a static HTML/CSS/JS game.
-- Start a local server:
-  - `npm run dev`
-  - or `PORT=8080 npm run dev`
-- Open:
-  - `http://localhost:8000` (or your chosen port)
+Local Run / Preview (Vite)
+- Install once: `npm install`
+- Dev server: `npm run dev` (default http://localhost:5173). Dev middleware serves `/__avian_legacy_game.js` built from the manifest (same order as the former nine `<script>` tags).
+- Production build: `npm run build` → `dist/` including minified `assets/avian-game.js`, hashed `assets/index-*.js`, copied CSS/icons/manifest, and `sw.js`.
+- Preview built output: `npm run preview` (binds `0.0.0.0`).
+- Serving only the repo root with Python (`preview:static`) does not load the game unless you run `npm run build` first and serve `dist/` — index.html expects `/src/main.ts` resolution from Vite.
 
 Mobile on same Wi-Fi
-- Start with `npm run dev` (binds to `0.0.0.0`).
-- Find your computer's LAN IP (example `192.168.1.25`).
-- On phone browser open `http://192.168.1.25:8000`.
+- Run `npm run dev -- --host 0.0.0.0` or `npm run preview` after a build; open `http://<LAN-ip>:<port>`.
 
 Merge/CI quick check
-- Run `npm test` before pushing/PR.
+- Run `npm test` before pushing/PR (needs Node.js).
 - This validates JS parse and verifies every sprite path in CSS points to an existing file.
 
 
