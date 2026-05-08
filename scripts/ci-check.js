@@ -365,7 +365,149 @@ function runAbilityMetadataParityCheck(){
   }
 }
 
-['js/core/game.js','js/data/content.js','js/systems/systems.js','js/systems/shop.js'].forEach(f=>{
+function collectFamilyTreeAbilityIds(tree){
+  const ids = new Set();
+  const birds = tree && tree.birds;
+  if(!birds || typeof birds !== 'object') return ids;
+  for(const bird of Object.values(birds)){
+    for(const slot of bird.slotLayout || []){
+      if(slot && slot.abilityId) ids.add(String(slot.abilityId));
+    }
+    const families = bird.families || {};
+    for(const fam of Object.values(families)){
+      const paths = fam.paths || {};
+      for(const pth of Object.values(paths)){
+        const abs = pth.abilities || {};
+        for(const v of Object.values(abs)){
+          if(v != null && String(v).length) ids.add(String(v));
+        }
+      }
+    }
+  }
+  return ids;
+}
+
+/** Optional: non-empty birdKey, familyId, pathId (plan structural sanity). */
+function collectFamilyTreeStructuralGaps(tree){
+  const gaps = [];
+  const birds = tree && tree.birds;
+  if(!birds || typeof birds !== 'object'){
+    gaps.push('missing or invalid tree.birds');
+    return gaps;
+  }
+  for(const [birdKey, bird] of Object.entries(birds)){
+    if(!bird || typeof bird !== 'object'){
+      gaps.push(`bird entry "${birdKey}": not an object`);
+      continue;
+    }
+    if(!String(bird.birdKey || '').trim()) gaps.push(`bird "${birdKey}": empty birdKey`);
+    const families = bird.families || {};
+    for(const [fk, fam] of Object.entries(families)){
+      if(!fam || typeof fam !== 'object'){
+        gaps.push(`${birdKey}.families.${fk}: invalid`);
+        continue;
+      }
+      if(!String(fam.familyId || '').trim()) gaps.push(`${birdKey}.families.${fk}: empty familyId`);
+      const paths = fam.paths || {};
+      for(const [pk, pth] of Object.entries(paths)){
+        if(!pth || typeof pth !== 'object'){
+          gaps.push(`${birdKey}.paths.${pk}: invalid`);
+          continue;
+        }
+        if(!String(pth.pathId || '').trim()) gaps.push(`${birdKey}.families.${fk}.paths.${pk}: empty pathId`);
+      }
+    }
+  }
+  return gaps;
+}
+
+function treeIdMatchesTemplate(id, templateSet, aliasToSource){
+  if(templateSet.has(id)) return true;
+  const seen = new Set();
+  let cur = id;
+  while(aliasToSource.has(cur) && !seen.has(cur)){
+    seen.add(cur);
+    cur = aliasToSource.get(cur);
+    if(templateSet.has(cur)) return true;
+  }
+  return false;
+}
+
+/** Ids declared in Kiwi V2 bridge rows: ['kiwi_*','templateId','Name'] */
+function extractKiwiBridgeAliasIds(gameSrc){
+  const ids = new Set();
+  const re = /\['(kiwi_[a-z0-9_]+)'\s*,/g;
+  let m;
+  while((m = re.exec(gameSrc))) ids.add(m[1]);
+  return ids;
+}
+
+function runAbilityFamilyTreeParityCheck(){
+  const absTree = path.join(__dirname, '..', 'js', 'data', 'ability_family_tree.js');
+  if(!fs.existsSync(absTree)){
+    fail('Missing js/data/ability_family_tree.js (run npm run gen:ability-tree)');
+    return;
+  }
+  let tree;
+  try{
+    tree = require(absTree);
+  }catch(e){
+    fail(`Ability family tree: require failed (${e.message})`);
+    return;
+  }
+  const structuralGaps = collectFamilyTreeStructuralGaps(tree);
+  if(structuralGaps.length){
+    const lines = [
+      'Ability family tree structural gaps:',
+      ...structuralGaps.slice(0, 40).map(g => `- ${g}`),
+      ...(structuralGaps.length > 40 ? [`- … (${structuralGaps.length} total)`] : [])
+    ];
+    if(IS_DEV_MODE && !STRICT_PARITY){
+      console.warn(lines.join('\n'));
+    }else if(STRICT_PARITY){
+      fail(lines.join('\n'));
+      return;
+    }
+  }
+  const { ids: templateIds, parseError } = getTemplateAbilityIds();
+  if(parseError){
+    fail(`Ability family tree parity: ${parseError}`);
+    return;
+  }
+  const gamePath = path.join(__dirname, '..', 'js', 'core', 'game.js');
+  const gameSrc = fs.readFileSync(gamePath, 'utf8');
+  const aliasToSource = new Map();
+  const reAlias = /registerAbilityAlias\(\s*'([^']+)'\s*,\s*'([^']+)'/g;
+  let am;
+  while((am = reAlias.exec(gameSrc))){
+    aliasToSource.set(am[1], am[2]);
+  }
+  const actionKeys = extractActionsBlockKeys(gameSrc);
+  const overrideKeys = extractSkillOverrideKeys(gameSrc);
+  const acceptableIds = new Set(templateIds);
+  actionKeys.forEach(k => acceptableIds.add(k));
+  overrideKeys.forEach(k => acceptableIds.add(k));
+  extractRegisterAliasIds(gameSrc).forEach(k => acceptableIds.add(k));
+  extractKiwiBridgeAliasIds(gameSrc).forEach(k => acceptableIds.add(k));
+  const treeIds = collectFamilyTreeAbilityIds(tree);
+  const missingTemplates = [...treeIds].filter(id => !treeIdMatchesTemplate(id, acceptableIds, aliasToSource)).sort();
+  if(!missingTemplates.length) return;
+
+  const lines = [
+    'Ability family tree vs wired ability ids (templates / ACTIONS / overrides / alias new-ids):',
+    `- family-tree ability ids not found (${missingTemplates.length}): ${missingTemplates.join(', ') || 'none'}`
+  ];
+
+  if(IS_DEV_MODE && !STRICT_PARITY){
+    console.warn(lines.join('\n'));
+    return;
+  }
+  if(STRICT_PARITY){
+    fail(lines.join('\n'));
+  }
+}
+
+['js/core/game.js','js/data/content.js','js/systems/systems.js','js/systems/shop.js','js/data/ability_family_tree.js'].forEach(f=>{
   if(fs.existsSync(f)) parseJs(f);
 });
 
@@ -374,6 +516,7 @@ function runAbilityMetadataParityCheck(){
 });
 
 runAbilityMetadataParityCheck();
+runAbilityFamilyTreeParityCheck();
 runAbilityInventoryAndWiringReport();
 
 if(process.exitCode){
