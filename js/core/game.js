@@ -37,18 +37,21 @@
 // ===== 04_script_04.js =====
 
 // ============================================================
-//  PORTRAITS (legacy keys; UI uses sprite4 PNG via renderBirdIconHTML)
-// ============================================================
-const PORTRAITS = {
-  robin:'', sparrow:'', phainopepla:'', crow:'', goose:'',
-  kookaburra:'', toucan:'', peregrine:'', secretary:'',
-  lyrebird:'', shoebill:'', harpy:'', flamingo:'', baldEagle:'',
-  macaw:'', snowyOwl:'', raven:'', swan:'', hummingbird:'',
-  kiwi:'', penguin:'', ostrich:'', seagull:'', magpie:'',
-  blackCockatoo:'', emu:''
-};
-// ============================================================
-//  AILMENT DEFINITIONS (globalThis.AILMENTS from src/data/ailments.js via src/main.ts)
+//  Extracted data tables (loaded earlier via js/bootstrap/load-order.json):
+//    PORTRAITS — js/data/portraits.js
+//    AILMENTS  — js/data/ailments.js
+//    BIOMES    — js/data/biomes.js
+//  Bare references below resolve via globalThis (no const shadowing here).
+//
+//  TODO (next session, see plan Phase 3): extract the larger tables
+//    BIRDS                — line ~604,  ~670 lines
+//    ENEMIES              — line ~1275, ~60  lines
+//    UPGRADE_CARDS_REWORK — line ~1391, medium
+//    ABILITY_TEMPLATES    — line ~96,   ~5300 lines (do this last & in chunks)
+//  Each follows the same pattern as portraits.js / biomes.js: an IIFE that
+//  assigns `globalThis.<NAME> = <literal>;` and a manifest entry placed
+//  BEFORE js/core/game.js. Run `node scripts/build-bundle.js && node scripts/smoke.js`
+//  after each move; revert if smoke fails.
 // ============================================================
 
 // ============================================================
@@ -1340,12 +1343,7 @@ const BIRD_ENEMIES = [
 ];
 
 // ===================== BIOMES =====================
-const BIOMES = [
-  { id:'wetlands', name:'Black Marsh Wetlands', stageMin:1, stageMax:10, mod:{ enemyPoisonPlus:1 } },
-  { id:'cliffs', name:'Razor Cliffline', stageMin:11, stageMax:20, mod:{ enemyCritPlus:0.05 } },
-  { id:'stormcoast', name:'Storm Coast', stageMin:21, stageMax:30, mod:{ lightningBonus:0.15 } },
-  { id:'court', name:"Blakiston's Court", stageMin:31, stageMax:9999, mod:{ dread:1 } },
-];
+// BIOMES table lives in js/data/biomes.js (assigns globalThis.BIOMES).
 
 function getBiomeForStage(stage){
   for(const b of BIOMES){
@@ -5833,8 +5831,16 @@ function syncPlayerAbilitiesFromSkillSlots(player){
 
 // ============================================================
 //  SAVE / LOAD SYSTEM (localStorage)
+//
+//  SAVE_KEY is the localStorage bucket; bumping it nukes old runs.
+//  SAVE_SCHEMA_VERSION (set in js/systems/save-migrations.js) is the
+//  in-blob version. Bump that + add a migration step instead of bumping
+//  the key when shipping shape changes. See docs/save-versioning.md.
 // ============================================================
 const SAVE_KEY = globalThis.AVIAN_OW_KEYS?.SAVE ?? 'avianAscent_save_v2';
+const RUN_SAVE_SCHEMA_VERSION = (typeof globalThis.Avian?.systems?.SAVE_SCHEMA_VERSION === 'number')
+  ? globalThis.Avian.systems.SAVE_SCHEMA_VERSION
+  : 1;
 function ensureFamilyEvolutionState(player){
   if(!player || typeof player!=='object') return null;
   const birdKey = String(player.birdKey || '');
@@ -5930,13 +5936,20 @@ function saveRun() {
     delete save.player.passive;
     ensureFamilyEvolutionState(save.player);
     syncPlayerAbilitiesFromSkillSlots(save.player);
+    save.schemaVersion = RUN_SAVE_SCHEMA_VERSION;
     localStorage.setItem(SAVE_KEY, JSON.stringify(save));
   } catch(e){ console.warn('Save failed',e); }
 }
 function loadSaveData() {
   try {
     const raw=localStorage.getItem(SAVE_KEY);
-    return raw?JSON.parse(raw):null;
+    if(!raw) return null;
+    let parsed = JSON.parse(raw);
+    if(parsed && typeof parsed === 'object'){
+      const migrate = globalThis.Avian?.systems?.runSaveMigrations;
+      if(typeof migrate === 'function') parsed = migrate(parsed);
+    }
+    return parsed;
   } catch(e){ return null; }
 }
 function deleteSave() {

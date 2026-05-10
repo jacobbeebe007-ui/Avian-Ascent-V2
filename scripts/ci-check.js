@@ -515,6 +515,150 @@ function runAbilityFamilyTreeParityCheck(){
   if(fs.existsSync(f)) checkSpriteRefs(f);
 });
 
+/* ============================================================
+ * Phase 4 lint hardening (A.5)
+ *   - HTML must have no inline on… handlers.
+ *   - No new globalThis.<name> = … outside the allowed bootstrap files.
+ *   - Every data-action / data-input / data-change name in HTML must
+ *     resolve to a function known to the bundle.
+ * ========================================================== */
+
+function runHtmlInlineHandlerCheck(){
+  const htmlPath = 'index.html';
+  if(!fs.existsSync(htmlPath)) return;
+  const html = fs.readFileSync(htmlPath, 'utf8');
+  const re = /\son(?:click|input|change|submit|focus|blur|key(?:up|down|press)|mouse(?:over|out|enter|leave|down|up|move)|load|error|drag|drop|wheel|context(?:menu)?|paste|cut|copy)\s*=/gi;
+  const hits = html.match(re);
+  if(hits && hits.length){
+    fail(`HTML lint: ${hits.length} inline on… attribute(s) found in index.html. Replace with data-action / data-input / data-change.`);
+  }
+}
+
+const GLOBALS_ALLOWED_FILES = new Set([
+  'js/bootstrap/_namespace.js',
+]);
+function isDataFile(rel){
+  const norm = rel.replace(/\\/g, '/');
+  return norm.startsWith('js/data/');
+}
+function listScriptFilesForLint(){
+  const out = [];
+  function walk(dir){
+    if(!fs.existsSync(dir)) return;
+    for(const entry of fs.readdirSync(dir, { withFileTypes: true })){
+      const full = path.join(dir, entry.name).replace(/\\/g, '/');
+      if(entry.isDirectory()) walk(full);
+      else if(entry.isFile() && entry.name.endsWith('.js')) out.push(full);
+    }
+  }
+  walk('js');
+  if(fs.existsSync('sw.js')) out.push('sw.js');
+  return out.filter(f => !f.endsWith('avian-game.bundle.js'));
+}
+
+function collectTopLevelFunctionNames(){
+  /* Names that already exist as top-level `function X(` declarations across
+   * the bundle. Re-assigning these via `globalThis.X = wrapper(X)` is an
+   * existing wrapper pattern, not a new global, so it's exempt from the
+   * baseline check. */
+  const names = new Set();
+  for(const rel of listScriptFilesForLint()){
+    const src = fs.readFileSync(rel, 'utf8');
+    const re = /^\s*function\s+([A-Za-z_$][A-Za-z0-9_$]*)\s*\(/gm;
+    let m;
+    while((m = re.exec(src))) names.add(m[1]);
+  }
+  return names;
+}
+
+function runGlobalsBaselineCheck(){
+  const baselineFile = path.join(__dirname, '.globals-baseline.json');
+  const established = collectTopLevelFunctionNames();
+  const found = new Map();
+  for(const rel of listScriptFilesForLint()){
+    if(GLOBALS_ALLOWED_FILES.has(rel) || isDataFile(rel)) continue;
+    const src = fs.readFileSync(rel, 'utf8');
+    const re = /globalThis\.([A-Za-z_$][A-Za-z0-9_$]*)\s*=(?!=)/g;
+    let m;
+    while((m = re.exec(src))){
+      const name = m[1];
+      if(established.has(name)) continue; // wrapper of an existing function
+      if(!found.has(name)) found.set(name, rel);
+    }
+  }
+  const foundNames = Array.from(found.keys()).sort();
+  if(!fs.existsSync(baselineFile)){
+    fs.writeFileSync(baselineFile, JSON.stringify(foundNames, null, 2) + '\n', 'utf8');
+    console.log(`[ci-check] wrote initial globals baseline (${foundNames.length} names) → scripts/.globals-baseline.json`);
+    return;
+  }
+  let baseline;
+  try{
+    baseline = JSON.parse(fs.readFileSync(baselineFile, 'utf8'));
+  }catch(e){
+    fail(`Globals baseline parse error: ${e.message}`);
+    return;
+  }
+  const baselineSet = new Set(baseline);
+  const newOnes = foundNames.filter(n => !baselineSet.has(n));
+  if(newOnes.length){
+    fail(
+      `Globals regression: ${newOnes.length} new globalThis.<name> assignment(s) outside js/data/* and js/bootstrap/_namespace.js:\n` +
+      newOnes.map(n => `  - globalThis.${n} (in ${found.get(n)})`).join('\n') +
+      `\nPrefer attaching to Avian.actions / Avian.systems / Avian.ui instead.\n` +
+      `If the new global is intentional, regenerate the baseline by deleting scripts/.globals-baseline.json and rerunning ci-check.`,
+    );
+  }
+}
+
+function collectDataActionNames(html){
+  const out = new Set();
+  const re = /\sdata-(?:action|input|change|submit)\s*=\s*"([^"]+)"/g;
+  let m;
+  while((m = re.exec(html))){
+    const spec = m[1];
+    const name = spec.split(':', 1)[0].trim();
+    if(name) out.add(name);
+  }
+  return Array.from(out);
+}
+
+function collectFunctionNames(){
+  const names = new Set();
+  for(const rel of listScriptFilesForLint()){
+    const src = fs.readFileSync(rel, 'utf8');
+    let m;
+    const r1 = /function\s+([A-Za-z_$][A-Za-z0-9_$]*)\s*\(/g;
+    while((m = r1.exec(src))) names.add(m[1]);
+    const r2 = /globalThis\.([A-Za-z_$][A-Za-z0-9_$]*)\s*=(?!=)\s*(?:function|\(|[A-Za-z_$])/g;
+    while((m = r2.exec(src))) names.add(m[1]);
+    const r3 = /Avian\.actions(?:\.register\(\s*'([A-Za-z_$][A-Za-z0-9_$]*)'|\.([A-Za-z_$][A-Za-z0-9_$]*)\s*=)/g;
+    while((m = r3.exec(src))){
+      if(m[1]) names.add(m[1]);
+      if(m[2]) names.add(m[2]);
+    }
+  }
+  return names;
+}
+
+function runDataActionResolutionCheck(){
+  const htmlPath = 'index.html';
+  if(!fs.existsSync(htmlPath)) return;
+  const html = fs.readFileSync(htmlPath, 'utf8');
+  const used = collectDataActionNames(html);
+  const known = collectFunctionNames();
+  const missing = used.filter(n => !known.has(n)).sort();
+  if(missing.length){
+    fail(
+      `data-action lint: ${missing.length} action(s) referenced in index.html have no matching function or Avian.actions registration:\n` +
+      missing.map(n => `  - ${n}`).join('\n'),
+    );
+  }
+}
+
+runHtmlInlineHandlerCheck();
+runGlobalsBaselineCheck();
+runDataActionResolutionCheck();
 runAbilityMetadataParityCheck();
 runAbilityFamilyTreeParityCheck();
 runAbilityInventoryAndWiringReport();

@@ -54,32 +54,32 @@
 <header>
 <h1>⚔ AVIAN ASCENT ⚔</h1>
 <p>A Roguelike of Feathers &amp; Fortune</p>
-<div style="text-align:center;margin-top:8px;"><button class="menu-btn" onclick="openSettingsModal()">⚙ Settings</button></div>
+<div style="text-align:center;margin-top:8px;"><button class="menu-btn" data-action="openSettingsModal">⚙ Settings</button></div>
 </header>
 <!-- START -->
 <div class="screen screen-start active" id="screen-start">
 <div class="start-screen-bg" aria-hidden="true"></div>
 <div class="start-screen-vignette" aria-hidden="true"></div>
-<button type="button" class="theme-music-btn theme-music-btn--start" id="theme-music-btn-start" onclick="toggleThemeMusicMuted()" title="Menu music" aria-label="Toggle menu music">🔊</button>
+<button type="button" class="theme-music-btn theme-music-btn--start" id="theme-music-btn-start" data-action="toggleThemeMusicMuted" title="Menu music" aria-label="Toggle menu music">🔊</button>
 <div class="start-screen-inner">
-<button type="button" class="take-flight-btn" id="take-flight-btn" onclick="takeFlightToSelect()">Take Flight</button>
+<button type="button" class="take-flight-btn" id="take-flight-btn" data-action="takeFlightToSelect">Take Flight</button>
 </div>
 </div>
 <!-- SELECT: war-room navigation splash + roster deck -->
 <div class="screen" id="screen-select">
-<button type="button" class="theme-music-btn theme-music-btn--select" id="theme-music-btn-select" onclick="toggleThemeMusicMuted()" title="Menu music" aria-label="Toggle menu music">🔊</button>
+<button type="button" class="theme-music-btn theme-music-btn--select" id="theme-music-btn-select" data-action="toggleThemeMusicMuted" title="Menu music" aria-label="Toggle menu music">🔊</button>
 <div class="select-screen-bg" aria-hidden="true"></div>
 <div class="select-screen-scrim" aria-hidden="true"></div>
 <div class="splash-hotspot-layer" aria-hidden="false">
-<button type="button" class="splash-hotspot splash-hotspot--supplies" onclick="openSelectHubPanel('supplies')" aria-label="Supplies — codex and unlock code">
+<button type="button" class="splash-hotspot splash-hotspot--supplies" data-action="openSelectHubPanel:supplies" aria-label="Supplies — codex and unlock code">
 <span class="splash-hotspot-title">Supplies</span>
 <span class="splash-hotspot-desc">Codex &amp; unlock</span>
 </button>
-<button type="button" class="splash-hotspot splash-hotspot--map" onclick="openSelectHubPanel('map')" aria-label="Mission map — difficulty and mode">
+<button type="button" class="splash-hotspot splash-hotspot--map" data-action="openSelectHubPanel:map" aria-label="Mission map — difficulty and mode">
 <span class="splash-hotspot-title">Mission map</span>
 <span class="splash-hotspot-desc">Difficulty &amp; mode</span>
 </button>
-<button type="button" class="splash-hotspot splash-hotspot--door splash-hotspot--primary" onclick="openSelectHubPanel('door')" aria-label="Begin ascent — champion roster">
+<button type="button" class="splash-hotspot splash-hotspot--door splash-hotspot--primary" data-action="openSelectHubPanel:door" aria-label="Begin ascent — champion roster">
 <span class="splash-hotspot-title">Begin Ascent</span>
 <span class="splash-hotspot-desc">Choose your champion</span>
 </button>
@@ -91,29 +91,29 @@
 <h2 class="splash-title">Avian Ascent</h2>
 <p class="splash-sub">Roguelike of feathers &amp; fortune — plan your run from the war room.</p>
 </div>
-<button type="button" class="splash-settings-btn" onclick="openSettingsModal()">⚙ Settings</button>
+<button type="button" class="splash-settings-btn" data-action="openSettingsModal">⚙ Settings</button>
 </div>
 <p class="splash-roster-hint" id="splash-roster-hint">Supplies by the bags (codex, unlock, runs &amp; scores). Map on the table. Ascent through the door.</p>
 </div>
 </div>
 <div class="select-hub-panels" id="select-hub-panels" aria-hidden="true">
-<button type="button" class="select-hub-backdrop" onclick="closeSelectHubPanel()" aria-label="Close panel"></button>
+<button type="button" class="select-hub-backdrop" data-action="closeSelectHubPanel" aria-label="Close panel"></button>
 <div class="select-hub-panel select-hub-panel--supplies" id="select-hub-supplies" role="dialog" aria-modal="true" aria-labelledby="hub-supplies-title" aria-hidden="true">
 <div class="select-hub-panel-inner select-hub-panel-inner--supplies">
 <header class="select-hub-panel-head">
 <h3 class="select-hub-panel-title" id="hub-supplies-title">Supplies</h3>
-<button type="button" class="select-hub-return-btn" onclick="closeSelectHubPanel()">← Return to war room</button>
+<button type="button" class="select-hub-return-btn" data-action="closeSelectHubPanel">← Return to war room</button>
 </header>
 <div class="supplies-subnav" role="tablist" aria-label="Supplies sections">
-<button type="button" class="supplies-subnav-btn is-active" id="supplies-nav-reference" role="tab" aria-selected="true" aria-controls="supplies-view-reference" onclick="setSuppliesSubView('reference')">Reference &amp; unlock</button>
-<button type="button" class="supplies-subnav-btn" id="supplies-nav-records" role="tab" aria-selected="false" aria-controls="supplies-view-records" onclick="setSuppliesSubView('records')">Runs &amp; highscores</button>
+<button type="button" class="supplies-subnav-btn is-active" id="supplies-nav-reference" role="tab" aria-selected="true" aria-controls="supplies-view-reference" data-action="setSuppliesSubView:reference">Reference &amp; unlock</button>
+<button type="button" class="supplies-subnav-btn" id="supplies-nav-records" role="tab" aria-selected="false" aria-controls="supplies-view-records" data-action="setSuppliesSubView:records">Runs &amp; highscores</button>
 </div>
 <div class="supplies-subview is-active" id="supplies-view-reference" role="tabpanel" aria-labelledby="supplies-nav-reference">
 <p class="select-hub-lead">Codex and secret unlocks live with the baggage.</p>
 <button type="button" class="splash-codex-btn ref-guide-open-btn" id="ref-guide-open-btn">📖 Reference — Codex</button>
 <div class="splash-unlock">
 <label class="splash-unlock-label" for="dev-code-input">Unlock code</label>
-<input autocomplete="off" class="splash-unlock-input" id="dev-code-input" maxlength="32" oninput="checkDevCode(this.value)" placeholder="Code…" spellcheck="false" type="password"/>
+<input autocomplete="off" class="splash-unlock-input" id="dev-code-input" maxlength="32" data-input="checkDevCode" placeholder="Code…" spellcheck="false" type="password"/>
 <div class="splash-unlock-msg" id="dev-code-msg"></div>
 </div>
 </div>
@@ -134,7 +134,7 @@
 <div class="select-hub-panel-inner">
 <header class="select-hub-panel-head">
 <h3 class="select-hub-panel-title" id="hub-map-title">Mission map</h3>
-<button type="button" class="select-hub-return-btn" onclick="closeSelectHubPanel()">← Return to war room</button>
+<button type="button" class="select-hub-return-btn" data-action="closeSelectHubPanel">← Return to war room</button>
 </header>
 <p class="select-hub-lead">Set difficulty and run mode before you deploy.</p>
 <div class="diff-picker" id="diff-picker"></div>
@@ -153,13 +153,13 @@
     <div class="sfsel__filters">
       <div class="sfsel__filter-wrap">
         <label class="sfsel__filter-label" for="roster-filter-select">Filter:</label>
-        <select class="sfsel__filter-select" id="roster-filter-select" onchange="onRosterFilterChange(this.value)"></select>
+        <select class="sfsel__filter-select" id="roster-filter-select" data-change="onRosterFilterChange"></select>
       </div>
       <div id="view-toggle" hidden></div>
       <div id="lock-toggle" hidden></div>
       <span class="sel-bird-count" id="bird-count-label"></span>
     </div>
-    <button type="button" class="sfsel__return-btn" onclick="closeSelectHubPanel()">← War Room</button>
+    <button type="button" class="sfsel__return-btn" data-action="closeSelectHubPanel">← War Room</button>
   </header>
   <div class="sfsel__main">
     <!-- LEFT: roster grid -->
@@ -177,10 +177,10 @@
       </div>
       <div class="sfsel__actions" id="sfsel-actions">
         <div class="sel-continue-run-wrap" id="continue-row" style="display:none">
-          <button type="button" class="continue-run-btn" onclick="continueRun()">🪺 Continue last run</button>
+          <button type="button" class="continue-run-btn" data-action="continueRun">🪺 Continue last run</button>
           <p class="sel-continue-info" id="continue-info"></p>
         </div>
-        <button type="button" class="take-flight-select-btn" id="take-flight-select-btn" disabled onclick="startGame()" aria-disabled="true">✈ Take Flight</button>
+        <button type="button" class="take-flight-select-btn" id="take-flight-select-btn" disabled data-action="startGame" aria-disabled="true">✈ Take Flight</button>
       </div>
     </aside>
   </div>
@@ -206,15 +206,15 @@
 <div class="topbar-center">
 <div class="battle-caption" id="battle-caption" aria-live="polite"></div>
 <div class="topbar-battle-btns">
-<button type="button" class="nest-btn" onclick="openNest()">🪺 Nest</button>
-<button type="button" class="menu-btn" onclick="openSettingsModal()">⚙ Settings</button>
-<button type="button" class="menu-btn battle-abandon-btn" onclick="openAbandonModal()">⟨ Abandon</button>
+<button type="button" class="nest-btn" data-action="openNest">🪺 Nest</button>
+<button type="button" class="menu-btn" data-action="openSettingsModal">⚙ Settings</button>
+<button type="button" class="menu-btn battle-abandon-btn" data-action="openAbandonModal">⟨ Abandon</button>
 </div>
 </div>
 <div class="topbar-right">
 <div class="shiny-topbar">✨ Shinies: <strong id="battle-shiny-count">0</strong></div>
-<button class="menu-btn" onclick="goMainMenu()">⏸ Menu</button>
-<button class="sound-btn" id="sound-toggle-btn" onclick="toggleSound()" title="Toggle Sound">🔊</button>
+<button class="menu-btn" data-action="goMainMenu">⏸ Menu</button>
+<button class="sound-btn" id="sound-toggle-btn" data-action="toggleSound" title="Toggle Sound">🔊</button>
 </div>
 </div>
 
@@ -330,8 +330,8 @@
 </div>
 <!-- Confirm buttons always outside panels, shown/hidden via JS -->
 <div id="lu-confirm-area" style="text-align:center;margin-top:18px;">
-<button class="confirm-btn" id="lu-skill-confirm" onclick="confirmSkillUpgrade()">✓ Confirm Stat Upgrade</button>
-<button class="confirm-btn" id="lu-skip-btn" onclick="afterLevelUp()" style="display:none;background:linear-gradient(135deg,#2a3040,#3a4050,#2a3040);color:var(--text-dim);font-size:.85rem;padding:8px 28px;">⟩ Exit Level Up</button>
+<button class="confirm-btn" id="lu-skill-confirm" data-action="confirmSkillUpgrade">✓ Confirm Stat Upgrade</button>
+<button class="confirm-btn" id="lu-skip-btn" data-action="afterLevelUp" style="display:none;background:linear-gradient(135deg,#2a3040,#3a4050,#2a3040);color:var(--text-dim);font-size:.85rem;padding:8px 28px;">⟩ Exit Level Up</button>
 </div>
 </div>
 </div>
@@ -341,10 +341,10 @@
 <h2 id="reward-title">✦ Victory! ✦</h2>
 <p id="reward-sub" style="color:var(--text-dim);margin-bottom:8px">Choose your reward:</p>
 <div id="battle-summary-bar"></div>
-<div style="text-align:right;margin-bottom:8px"><button class="nest-btn" onclick="openNest()">🪺 View Nest</button></div>
+<div style="text-align:right;margin-bottom:8px"><button class="nest-btn" data-action="openNest">🪺 View Nest</button></div>
 <div class="next-stage-preview" id="next-stage-preview" style="display:none;"></div>
 <div class="reward-grid" id="reward-grid"></div>
-<div style="text-align:center"><button class="confirm-btn" id="reward-confirm-btn" onclick="confirmReward()">✓ Take This Reward</button></div>
+<div style="text-align:center"><button class="confirm-btn" id="reward-confirm-btn" data-action="confirmReward">✓ Take This Reward</button></div>
 </div>
 </div>
 <!-- GAME OVER -->
@@ -354,7 +354,7 @@
 <p id="gameover-msg" style="color:var(--text-dim);font-size:1.1rem;margin-bottom:16px"></p>
 <div class="victory-stats" id="run-stats" style="display:none"></div>
 <div id="run-unlocks"></div>
-<button class="start-btn" id="fly-again-btn" onclick="location.reload()">Fly Again</button>
+<button class="start-btn" id="fly-again-btn" data-action="reloadPage">Fly Again</button>
 <div id="story-cinematic" style="display:none;max-width:760px;margin:16px auto 8px;padding:12px;border:1px solid rgba(201,168,76,.35);border-radius:12px;background:rgba(18,14,8,.88);text-align:left;">
 <div id="story-cinematic-text" style="min-height:92px;max-height:170px;overflow:auto;white-space:pre-wrap;line-height:1.45;color:var(--text-dim);font-size:.9rem;"></div>
 <div class="story-controls" style="display:flex;gap:8px;justify-content:flex-end;margin-top:10px;">
@@ -363,16 +363,16 @@
 <button class="nest-btn" id="story-skip-btn" type="button" style="color:var(--gold-light);border-color:rgba(201,168,76,.6)">Skip</button>
 </div>
 </div>
-<button class="start-btn" onclick="goMainMenu()" style="margin-top:12px;background:linear-gradient(135deg,#2a3040,#3a4050,#2a3040);color:var(--text-dim);font-size:.9rem;">🏠 Main Menu</button>
+<button class="start-btn" data-action="goMainMenu" style="margin-top:12px;background:linear-gradient(135deg,#2a3040,#3a4050,#2a3040);color:var(--text-dim);font-size:.9rem;">🏠 Main Menu</button>
 </div>
 </div>
 <!-- GAME REFERENCE CODEX (outside #screen-select: avoids overflow/stacking clipping) -->
 <div class="ref-guide-modal" id="ref-guide-modal" aria-hidden="true">
-<div class="ref-guide-modal-backdrop" onclick="closeRefGuideModal()"></div>
+<div class="ref-guide-modal-backdrop" data-action="closeRefGuideModal"></div>
 <div class="ref-guide-modal-panel" role="dialog" aria-modal="true" aria-labelledby="ref-guide-modal-title">
 <div class="ref-guide-modal-head">
 <h3 id="ref-guide-modal-title">Game reference</h3>
-<button type="button" class="ref-guide-modal-close" onclick="closeRefGuideModal()" aria-label="Close codex">×</button>
+<button type="button" class="ref-guide-modal-close" data-action="closeRefGuideModal" aria-label="Close codex">×</button>
 </div>
 <div class="ref-guide-modal-scroll">
 <div class="ref-tabs" id="ref-tabs"></div>
@@ -381,9 +381,9 @@
 </div>
 </div>
 <!-- NEST MODAL -->
-<div id="nest-modal" onclick="if(event.target===this)closeNest()">
+<div id="nest-modal" data-action="closeNest" data-backdrop="1">
 <div class="nest-inner">
-<button class="nest-close" onclick="closeNest()">✕</button>
+<button class="nest-close" data-action="closeNest">✕</button>
 <h2>🪺 Your Nest</h2>
 <p class="nest-subtitle" id="nest-subtitle">Everything you carry into battle.</p>
 <div id="nest-content"></div>
@@ -400,7 +400,7 @@
 <div class="shop-btn-row">
 <button class="shop-buy-btn" data-shop-action="buy" disabled="" id="shop-buy-btn">✓ Buy Selected</button>
 <button class="shop-refresh-btn" data-shop-action="refresh" id="shop-refresh-btn">🔄 Refresh (20🌟)</button>
-<button class="menu-btn" id="shop-nest-btn" onclick="openNest()">🪺 Nest</button>
+<button class="menu-btn" id="shop-nest-btn" data-action="openNest">🪺 Nest</button>
 <button class="shop-exit-btn" data-shop-action="exit" id="shop-exit-btn">Continue ›</button>
 </div>
 <p style="text-align:center;font-size:.72rem;color:var(--text-dim);margin-top:10px">Grey 24🌟 · Green 36🌟 · Blue 58🌟 · Purple 78🌟 · Gold 105🌟 · Refresh starts 10🌟</p>
@@ -427,7 +427,7 @@
 <h3>🪹 Choose your reward from the nest:</h3>
 <div class="grove-reward-grid reward-grid" id="grove-reward-grid"></div>
 </div>
-<button class="grove-btn-enter" id="grove-continue-btn" onclick="groveFinish()" style="display:none;">Continue →</button>
+<button class="grove-btn-enter" id="grove-continue-btn" data-action="groveFinish" style="display:none;">Continue →</button>
 </div>
 </div>
 <!-- ABANDON MODAL -->
@@ -435,17 +435,17 @@
 <div class="abandon-inner">
 <h3>⛔ Abandon Run?</h3>
 <p>This will end your current run. Any unlocks you've earned <strong style="color:var(--text)">will be saved</strong>, but your progress will be lost.</p>
-<button class="abandon-confirm-btn" onclick="confirmAbandon()">Yes, Abandon</button>
-<button class="abandon-cancel-btn" onclick="closeAbandonModal()">Cancel</button>
+<button class="abandon-confirm-btn" data-action="confirmAbandon">Yes, Abandon</button>
+<button class="abandon-cancel-btn" data-action="closeAbandonModal">Cancel</button>
 </div>
 </div>
 <!-- SETTINGS MODAL -->
-<div class="abandon-modal" id="settings-modal" onclick="if(event.target===this)closeSettingsModal()">
+<div class="abandon-modal" id="settings-modal" data-action="closeSettingsModal" data-backdrop="1">
 <div class="abandon-inner" style="max-width:560px;text-align:left;">
 <h3>⚙ Accessibility &amp; Settings</h3>
 <div style="display:grid;gap:12px;margin-top:10px;">
 <label style="display:flex;justify-content:space-between;align-items:center;gap:12px;">Font Size
-<select id="setting-font-size" onchange="updateAccessibilitySettings()">
+<select id="setting-font-size" data-change="updateAccessibilitySettings">
 <option value="90">Small (90%)</option>
 <option value="100">Default (100%)</option>
 <option value="115">Large (115%)</option>
@@ -453,7 +453,7 @@
 </select>
 </label>
 <label style="display:flex;justify-content:space-between;align-items:center;gap:12px;">Color Blind Mode
-<select id="setting-color-blind" onchange="updateAccessibilitySettings()">
+<select id="setting-color-blind" data-change="updateAccessibilitySettings">
 <option value="off">Off</option>
 <option value="protanopia">Protanopia-friendly</option>
 <option value="deuteranopia">Deuteranopia-friendly</option>
@@ -461,42 +461,42 @@
 </select>
 </label>
 <label style="display:flex;justify-content:space-between;align-items:center;gap:12px;">Reduce Motion
-<input id="setting-reduce-motion" onchange="updateAccessibilitySettings()" type="checkbox"/>
+<input id="setting-reduce-motion" data-change="updateAccessibilitySettings" type="checkbox"/>
 </label>
 <label style="display:flex;justify-content:space-between;align-items:center;gap:12px;">High Contrast UI
-<input id="setting-high-contrast" onchange="updateAccessibilitySettings()" type="checkbox"/>
+<input id="setting-high-contrast" data-change="updateAccessibilitySettings" type="checkbox"/>
 </label>
 <label style="display:flex;justify-content:space-between;align-items:center;gap:12px;">Battle UI Layout
-<select id="setting-ui-mode" onchange="updateAccessibilitySettings()">
+<select id="setting-ui-mode" data-change="updateAccessibilitySettings">
 <option value="desktop">Desktop (Default)</option>
 <option value="mobile">Mobile (Compact)</option>
 </select>
 </label>
 <label style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;">Menu music volume
-<input id="setting-music-volume" type="range" min="0" max="100" step="5" value="50" style="flex:1;min-width:140px;max-width:220px;" oninput="updateMusicSettingsFromControls()"/>
+<input id="setting-music-volume" type="range" min="0" max="100" step="5" value="50" style="flex:1;min-width:140px;max-width:220px;" data-input="updateMusicSettingsFromControls"/>
 </label>
 <label style="display:flex;justify-content:space-between;align-items:center;gap:12px;">Mute menu music
-<input id="setting-music-muted" type="checkbox" onchange="updateMusicSettingsFromControls()"/>
+<input id="setting-music-muted" type="checkbox" data-change="updateMusicSettingsFromControls"/>
 </label>
 </div>
 <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:14px;">
-<button class="menu-btn" onclick="exportCombatTelemetry()">📊 Export Combat Telemetry</button>
-<button class="menu-btn" onclick="if(window.showErrorHUD) window.showErrorHUD();">🖥 Open Console</button>
+<button class="menu-btn" data-action="exportCombatTelemetry">📊 Export Combat Telemetry</button>
+<button class="menu-btn" data-action="openConsoleHud">🖥 Open Console</button>
 </div>
 <div style="display:flex;flex-wrap:wrap;gap:10px;justify-content:space-between;align-items:center;margin-top:16px;">
-<button type="button" class="menu-btn" onclick="returnToWarRoomFromSettings()">🏕 Return to war room</button>
-<button class="abandon-cancel-btn" onclick="closeSettingsModal()">Close</button>
+<button type="button" class="menu-btn" data-action="returnToWarRoomFromSettings">🏕 Return to war room</button>
+<button class="abandon-cancel-btn" data-action="closeSettingsModal">Close</button>
 </div>
 </div>
 </div>
 <!-- ABILITY MODIFICATION MODAL -->
-<div class="abandon-modal" id="ability-mod-modal" onclick="if(event.target===this)closeAbilityModModal()">
+<div class="abandon-modal" id="ability-mod-modal" data-action="closeAbilityModModal" data-backdrop="1">
 <div class="abandon-inner" style="max-width:560px;text-align:left;">
 <h3>✨ Skill modification</h3>
 <p id="ability-mod-sub" style="color:var(--text-dim);margin-bottom:10px;font-size:.9rem;">Choose one ailment to add at Lv.4.</p>
 <div id="ability-mod-options" style="display:grid;grid-template-columns:1fr;gap:8px;"></div>
 <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:12px;">
-<button class="abandon-cancel-btn" onclick="closeAbilityModModal()">Cancel</button>
+<button class="abandon-cancel-btn" data-action="closeAbilityModModal">Cancel</button>
 </div>
 </div>
 </div>
@@ -543,10 +543,24 @@
 <!-- Avian Ascent classic shell. Source order lives in js/bootstrap/load-order.json.
      Regenerate after editing any source file: `node scripts/build-bundle.js`
      (or `npm run dev` for live concat via Vite). -->
-<script>document.documentElement.style.pointerEvents='none';</script>
-<script defer src="./js/avian-game.bundle.js"
-        onload="document.documentElement.style.pointerEvents=''"
-        onerror="document.documentElement.style.pointerEvents='';alert('Avian Ascent: js/avian-game.bundle.js is missing. Run: node scripts/build-bundle.js');"></script>
+<script>
+  /* Pointer-events guard: keep the page locked until the bundle has loaded
+     so half-wired buttons can't dispatch on the splash. The same script
+     injects the bundle and attaches load/error hooks programmatically — no
+     inline on-attributes (lint-clean per Phase 4 ci-check). */
+  (function () {
+    document.documentElement.style.pointerEvents = 'none';
+    var s = document.createElement('script');
+    s.defer = true;
+    s.src = './js/avian-game.bundle.js';
+    s.onload = function () { document.documentElement.style.pointerEvents = ''; };
+    s.onerror = function () {
+      document.documentElement.style.pointerEvents = '';
+      alert('Avian Ascent: js/avian-game.bundle.js is missing. Run: node scripts/build-bundle.js');
+    };
+    document.head.appendChild(s);
+  })();
+</script>
 <script>
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', function () {
