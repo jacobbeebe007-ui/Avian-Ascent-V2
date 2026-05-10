@@ -161,6 +161,51 @@
     }
   };
 
+  /* Replay-seed share: copies the QoL share string to clipboard. The
+   * button is injected into the gameover screen by systems.js; the
+   * action is resolved here so data-action="copyReplaySeed" works. */
+  Avian.actions.copyReplaySeed = function copyReplaySeed(_arg, e) {
+    var Avian2 = globalThis.Avian || {};
+    var systems = Avian2.systems || {};
+    var seedApi = systems.replaySeed;
+    if (!seedApi || typeof seedApi.shareString !== 'function') return;
+    var text = seedApi.shareString();
+    if (!text) return;
+    var done = function () {
+      try {
+        var btn = e && e.target && e.target.closest && e.target.closest('[data-action]');
+        if (btn) {
+          var prev = btn.textContent;
+          btn.textContent = '✓ Copied seed';
+          setTimeout(function () { try { btn.textContent = prev; } catch (_x) {} }, 1500);
+        }
+      } catch (_x) { /* noop */ }
+    };
+    try {
+      if (navigator && navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+        navigator.clipboard.writeText(text).then(done, function () { fallbackCopy(text, done); });
+        return;
+      }
+    } catch (_x) { /* fall through */ }
+    fallbackCopy(text, done);
+  };
+
+  function fallbackCopy(text, done) {
+    try {
+      var ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.position = 'fixed';
+      ta.style.left = '-9999px';
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+      if (typeof done === 'function') done();
+    } catch (err) {
+      try { console.warn('[router] copyReplaySeed fallback', err); } catch (_x) {}
+    }
+  }
+
   function attach() {
     document.addEventListener('click', onClick, true);
     document.addEventListener('input', onInput, true);

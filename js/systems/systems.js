@@ -88,6 +88,52 @@
   // Player outgoing damage soft-cap (was content.js) + crit/magic floats.
   const _innerDealDamage = globalThis.dealDamage;
   if(typeof _innerDealDamage === 'function'){
+    /* ----------------------------------------------------------
+     * Phase 8 / B.3 synergy consume hook. Flag-gated so today's
+     * balance is byte-equivalent unless `Avian.flags.synergyShopEnabled`
+     * is true. When on, certain `*ConsumeBonusPct` player fields cause
+     * statuses to be consumed off the target for a damage boost.
+     * The consume itself is delegated to `Avian.statuses.consume` so
+     * registered onConsume hooks fire.
+     * ---------------------------------------------------------- */
+    function applySynergyConsume(target, isCrit, isMagic, baseAmount){
+      const Avian = globalThis.Avian;
+      if(!Avian || !Avian.flags || !Avian.flags.synergyShopEnabled) return baseAmount;
+      if(target !== 'enemy') return baseAmount;
+      const G = globalThis.G;
+      const p = G && G.player;
+      if(!p) return baseAmount;
+      const consume = Avian.statuses && Avian.statuses.consume;
+      if(typeof consume !== 'function') return baseAmount;
+
+      let mult = 1;
+
+      /* Bleed Drinker: physical attacks consume Bleed for +50%. */
+      if(!isMagic && p.bleedConsumeBonusPct && Avian.statuses.peek('enemy','bleed')){
+        consume('enemy','bleed', { from: 'syn_bleeddrinker' });
+        mult *= 1 + Number(p.bleedConsumeBonusPct);
+      }
+      /* Plague Eater: spells consume Poison for +50%. */
+      if(isMagic && p.poisonConsumeBonusPct && Avian.statuses.peek('enemy','poison')){
+        consume('enemy','poison', { from: 'syn_plague_eater' });
+        mult *= 1 + Number(p.poisonConsumeBonusPct);
+      }
+      /* Frost Shatter: first strike each turn consumes Chill for +75%. */
+      if(p.chillConsumeBonusPct && !p._frostShatterUsedThisTurn && Avian.statuses.peek('enemy','chilled')){
+        consume('enemy','chilled', { from: 'syn_frost_shatter' });
+        p._frostShatterUsedThisTurn = true;
+        mult *= 1 + Number(p.chillConsumeBonusPct);
+      }
+      /* Weakness Finisher: crits consume Weaken for +40%. */
+      if(isCrit && p.weakenConsumeBonusPct && Avian.statuses.peek('enemy','weaken')){
+        consume('enemy','weaken', { from: 'syn_weakness_finisher' });
+        mult *= 1 + Number(p.weakenConsumeBonusPct);
+      }
+      if(mult === 1) return baseAmount;
+      try { Avian.debug = Avian.debug || {}; Avian.debug.lastSynergyMult = mult; } catch(_){}
+      return Math.max(1, Math.floor((Number(baseAmount)||1) * mult));
+    }
+
     globalThis.dealDamage = function(target, amount, isCrit=false, isMagic=false, srcAbility=null){
       let adjAmount = amount;
       let softCapFactor = 1;
@@ -99,7 +145,8 @@
           adjAmount = Math.max(1, Math.floor((amount||1) * softCapFactor));
         }
       }catch(_){}
-      const out = _innerDealDamage.call(this, target, adjAmount, isCrit, isMagic, srcAbility);
+      const synergyAdj = applySynergyConsume(target, isCrit, isMagic, adjAmount);
+      const out = _innerDealDamage.call(this, target, synergyAdj, isCrit, isMagic, srcAbility);
       /* Phase 5: damage breakdown plumbing (B.6 partial). UI tooltips read
        * from Avian.debug.lastDamage to show "X applied = base * softcap, crit, magic"
        * without forking dealDamage's math. */
@@ -109,8 +156,10 @@
           Avian.debug.lastDamage = {
             target,
             base: amount,
-            applied: adjAmount,
+            applied: synergyAdj,
+            softCapApplied: adjAmount,
             softCapFactor,
+            synergyMult: synergyAdj === adjAmount ? 1 : (synergyAdj / Math.max(1, adjAmount)),
             isCrit: !!isCrit,
             isMagic: !!isMagic,
             ability: srcAbility ? (srcAbility.id || srcAbility.name || null) : null,
@@ -125,6 +174,25 @@
       return out;
     };
   }
+
+  /* Reset Frost Shatter "first strike each turn" flag at end-of-turn.
+   * Hook lives outside the dealDamage wrapper because end-of-turn
+   * boundaries flow through tickStatuses('player'). */
+  (function attachFrostShatterTurnReset(){
+    const _origTickStatuses = globalThis.tickStatuses;
+    if(typeof _origTickStatuses !== 'function' || _origTickStatuses.__avianFrostReset) return;
+    const wrapped = function tickStatusesWithFrostReset(who){
+      const out = _origTickStatuses.apply(this, arguments);
+      try {
+        if(who === 'player' && globalThis.G && globalThis.G.player){
+          globalThis.G.player._frostShatterUsedThisTurn = false;
+        }
+      } catch(_){}
+      return out;
+    };
+    wrapped.__avianFrostReset = true;
+    globalThis.tickStatuses = wrapped;
+  })();
 
   /* ============================================================
    * Phase 10 — class-perk deck trigger (B.4).
@@ -252,6 +320,55 @@
       if(!bag) return null;
       return id in bag ? bag[id] : null;
     };
+
+    /* ----------------------------------------------------------
+     * First migration: `delayed` (Resonance).
+     * Detonation lives in `tickDelayedForTarget` (boundary tick).
+     * We register the verb as an OBSERVER + future extension point
+     * (no behavior change today). Wrappers below call hooks at the
+     * three lifecycle points so abilities and tooling can react.
+     * ---------------------------------------------------------- */
+    if(typeof Avian.statuses.register === 'function'){
+      Avian.statuses.register('delayed', {
+        /** Fires when `tryApplyAilment(target,'delayed',...)` succeeds. */
+        onApply: function(target, ctx){
+          if(globalThis.Avian?.debug?.enabled){
+            try { console.info('[Avian] delayed.onApply', target, ctx); } catch(_e){}
+          }
+        },
+        /** Fires when the boundary detonation fires (set by the wrapper below). */
+        onTick: function(side, value){
+          if(globalThis.Avian?.debug?.enabled){
+            try { console.info('[Avian] delayed.onTick', side, value); } catch(_e){}
+          }
+        },
+        /** Lets abilities consume the stored damage early. Returning the
+         *  payload tells the ability how much damage was banked. */
+        onConsume: function(target, value/*, source */){
+          if(!value || typeof value !== 'object') return null;
+          return { dmg: Math.max(0, Number(value.dmg) || 0) };
+        },
+      });
+    }
+
+    /* Wrap `tickDelayedForTarget` so the verb's onTick fires after the
+     * existing detonation. Pre-existing behavior is unchanged. */
+    const _origTickDelayed = globalThis.tickDelayedForTarget;
+    if(typeof _origTickDelayed === 'function' && !_origTickDelayed.__avianDelayedVerb){
+      const wrapped = function tickDelayedForTargetVerb(side){
+        const status = side === 'player' ? globalThis.G?.playerStatus : globalThis.G?.enemyStatus;
+        const before = status && status.delayed ? Object.assign({}, status.delayed) : null;
+        const out = _origTickDelayed.apply(this, arguments);
+        try {
+          if(before && before.dmg && Avian.statuses.delayed && typeof Avian.statuses.delayed.onTick === 'function'){
+            Avian.statuses.delayed.onTick(side, before);
+          }
+        } catch(err){ try { console.warn('[Avian] delayed verb onTick wrap', err); } catch(_e){} }
+        return out;
+      };
+      wrapped.__avianDelayedVerb = true;
+      globalThis.tickDelayedForTarget = wrapped;
+    }
   })();
 
   // Enemy trait system
@@ -1204,4 +1321,176 @@ cooldown('chargeUp',3);
       {lv:4, desc:'136% dmg, 8% miss — Burn 24% + Poison 10%', ailChance:24, newAilment2:'poison', ailChance2:10},
     ]
   );
+})();
+
+/* =================================================================
+ * Run-summary QoL: replay-seed share button + personal-best diff.
+ * Wraps showVictory / showDefeat to inject the additional UI block
+ * inside #screen-gameover. Pure DOM augmentation — does not touch
+ * the existing stats/unlock rendering or balance logic.
+ * ============================================================== */
+(function attachRunSummaryQolUi(){
+  function safeNumber(n){ return Number.isFinite(n) ? n : 0; }
+  function injectQolBlock(won){
+    try {
+      const root = document.getElementById('screen-gameover');
+      if(!root) return;
+      const inner = document.getElementById('gameover-inner') || root;
+      const Avian = globalThis.Avian || {};
+      const systems = Avian.systems || {};
+      const seedApi = systems.replaySeed;
+      const pbApi   = systems.personalBest;
+      const G = globalThis.G || {};
+      const birdKey = (G.player && G.player.birdKey) || '';
+      const stagesCleared = won
+        ? safeNumber(G.stage)
+        : Math.max(0, safeNumber(G.stage) - 1);
+      const durationSec = (pbApi && typeof pbApi.runDurationSec === 'function')
+        ? safeNumber(pbApi.runDurationSec())
+        : 0;
+
+      let pbDiff = null;
+      if(pbApi && typeof pbApi.record === 'function' && birdKey){
+        try { pbDiff = pbApi.record(birdKey, stagesCleared, durationSec); }
+        catch(err){ try { console.warn('[Avian] pb.record', err); } catch(_e){} }
+      }
+      Avian.debug = Avian.debug || {};
+      Avian.debug.lastRunPb = pbDiff;
+
+      let host = document.getElementById('run-qol-summary');
+      if(!host){
+        host = document.createElement('div');
+        host.id = 'run-qol-summary';
+        host.style.cssText = 'display:flex;flex-direction:column;gap:6px;align-items:center;margin:8px 0 6px;font-size:.78rem;color:var(--text-dim);';
+        const stats = document.getElementById('run-stats');
+        if(stats && stats.parentNode === inner){
+          inner.insertBefore(host, stats.nextSibling);
+        } else {
+          inner.appendChild(host);
+        }
+      }
+      host.innerHTML = '';
+
+      if(pbDiff){
+        const badge = document.createElement('div');
+        const fmt = (pbApi && typeof pbApi.formatDuration === 'function')
+          ? pbApi.formatDuration
+          : function(s){ return s + 's'; };
+        const lines = [];
+        lines.push('Stage: <strong style="color:var(--text)">' + stagesCleared + '</strong>');
+        lines.push('Time: <strong style="color:var(--text)">' + fmt(durationSec) + '</strong>');
+        if(pbDiff.isPersonalBest){
+          lines.unshift('<span style="color:var(--gold-light)">★ Personal Best</span>');
+        } else if(pbDiff.previous){
+          lines.unshift('<span style="color:#9aa">PB: stage ' + safeNumber(pbDiff.previous.stages) + ' · ' + fmt(safeNumber(pbDiff.previous.durationSec)) + '</span>');
+        }
+        badge.innerHTML = lines.join(' &nbsp;·&nbsp; ');
+        badge.style.cssText = 'padding:6px 10px;border:1px solid rgba(201,168,76,.3);border-radius:8px;background:rgba(20,15,5,.4);';
+        host.appendChild(badge);
+      }
+
+      if(seedApi && typeof seedApi.shareString === 'function' && seedApi.shareString()){
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'nest-btn';
+        btn.setAttribute('data-action', 'copyReplaySeed');
+        btn.textContent = '🔗 Copy Replay Seed';
+        btn.style.cssText = 'background:rgba(40,35,25,.7);border:1px solid rgba(201,168,76,.4);color:var(--gold-light);padding:5px 12px;border-radius:6px;font-size:.78rem;cursor:pointer;';
+        host.appendChild(btn);
+      }
+    } catch(err){ try { console.warn('[Avian] runSummaryQolUi', err); } catch(_e){} }
+  }
+
+  const _origVictory = globalThis.showVictory;
+  if(typeof _origVictory === 'function'){
+    globalThis.showVictory = function(){
+      const out = _origVictory.apply(this, arguments);
+      injectQolBlock(true);
+      return out;
+    };
+  }
+  const _origDefeat = globalThis.showDefeat;
+  if(typeof _origDefeat === 'function'){
+    globalThis.showDefeat = function(){
+      const out = _origDefeat.apply(this, arguments);
+      injectQolBlock(false);
+      return out;
+    };
+  }
+})();
+
+/* =================================================================
+ * Endless counter-tag bands — feed the suggested counter-tag into the
+ * enemy spawn path. Wraps `loadStage`; reads
+ * `Avian.systems.endlessBands.suggest(stage)` (which itself enforces
+ * the enable flag and cadence), stashes the result on G.enemy and
+ * emits an event for any UI/debug tooling that wants to render a
+ * "danger band" badge. We intentionally do NOT mutate the enemy's
+ * stats / abilities — that's a larger balance pass once the simulator
+ * harness can verify it. This commit is a wiring + observability
+ * commit, fully gated by Avian.flags.endlessBandsEnabled (default off).
+ * ============================================================== */
+(function attachEndlessBandsLoadStageHook(){
+  const _orig = globalThis.loadStage;
+  if(typeof _orig !== 'function') return;
+  if(_orig.__avianEndlessBands) return;
+  const wrapped = function loadStageEndlessBands(){
+    const out = _orig.apply(this, arguments);
+    try {
+      const Avian = globalThis.Avian;
+      const G = globalThis.G;
+      const bands = Avian && Avian.systems && Avian.systems.endlessBands;
+      if(bands && typeof bands.suggest === 'function' && G && G.enemy){
+        const stage = typeof G.stage === 'number' ? G.stage : 0;
+        const counter = bands.suggest(stage);
+        if(counter){
+          G.enemy.endlessBandTag = counter;
+          try {
+            if(typeof globalThis.AvianEvents !== 'undefined' && AvianEvents && typeof AvianEvents.emit === 'function'){
+              AvianEvents.emit('endless:band', { stage: stage, counter: counter, enemyId: G.enemy.id || G.enemy.name });
+            }
+          } catch(_e){ /* event bus optional */ }
+          try {
+            if(typeof globalThis.logMsg === 'function'){
+              globalThis.logMsg('⚠ Counter-band: ' + counter + ' approaches.', 'system');
+            }
+          } catch(_e){}
+        }
+      }
+    } catch(err){ try { console.warn('[Avian] endlessBands.loadStage', err); } catch(_e){} }
+    return out;
+  };
+  wrapped.__avianEndlessBands = true;
+  globalThis.loadStage = wrapped;
+})();
+
+/* =================================================================
+ * Endless counter-tag bands — record tags acquired via the shop /
+ * post-combat reward apply path. The recordTagPick call is gated by
+ * `Avian.flags.endlessBandsEnabled` indirectly (suggest() only fires
+ * when enabled), so leaving recording always-on is harmless and lets
+ * the dominant-tag history exist for tooling / debug HUDs even when
+ * counter bands are off.
+ * ============================================================== */
+(function attachEndlessBandsTagFeed(){
+  const _orig = globalThis.applyUpgradeWithMaxHpHealing;
+  if(typeof _orig !== 'function') return;
+  globalThis.applyUpgradeWithMaxHpHealing = function(player, applyFn, sourceLabel, meta){
+    const out = _orig.apply(this, arguments);
+    try {
+      const Avian = globalThis.Avian;
+      const recordTagPick = Avian && Avian.systems && Avian.systems.endlessBands &&
+        Avian.systems.endlessBands.recordTagPick;
+      if(typeof recordTagPick === 'function'){
+        let tags = null;
+        if(meta && Array.isArray(meta.tags)) tags = meta.tags;
+        else if(meta && meta.id && Array.isArray(globalThis.UPGRADE_CARDS_REWORK)){
+          const found = globalThis.UPGRADE_CARDS_REWORK.find(c => c && c.id === meta.id);
+          if(found && Array.isArray(found.tags)) tags = found.tags;
+        }
+        if(tags && tags.length) recordTagPick(tags);
+      }
+    } catch(err){ try { console.warn('[Avian] endlessBands.recordTagPick', err); } catch(_e){} }
+    return out;
+  };
 })();
