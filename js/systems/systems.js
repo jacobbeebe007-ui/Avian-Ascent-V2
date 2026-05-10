@@ -90,15 +90,34 @@
   if(typeof _innerDealDamage === 'function'){
     globalThis.dealDamage = function(target, amount, isCrit=false, isMagic=false, srcAbility=null){
       let adjAmount = amount;
+      let softCapFactor = 1;
       try{
         if(target === 'enemy' && globalThis.G?.player?.stats){
           const stat = isMagic ? (G.player.stats.matk || 0) : (G.player.stats.atk || 0);
           const threshold = isMagic ? 12 : 10;
-          const factor = 1 - Math.max(0, Math.min(0.18, (stat - threshold) * 0.015));
-          adjAmount = Math.max(1, Math.floor((amount||1) * factor));
+          softCapFactor = 1 - Math.max(0, Math.min(0.18, (stat - threshold) * 0.015));
+          adjAmount = Math.max(1, Math.floor((amount||1) * softCapFactor));
         }
       }catch(_){}
       const out = _innerDealDamage.call(this, target, adjAmount, isCrit, isMagic, srcAbility);
+      /* Phase 5: damage breakdown plumbing (B.6 partial). UI tooltips read
+       * from Avian.debug.lastDamage to show "X applied = base * softcap, crit, magic"
+       * without forking dealDamage's math. */
+      try{
+        const Avian = globalThis.Avian;
+        if(Avian && Avian.debug){
+          Avian.debug.lastDamage = {
+            target,
+            base: amount,
+            applied: adjAmount,
+            softCapFactor,
+            isCrit: !!isCrit,
+            isMagic: !!isMagic,
+            ability: srcAbility ? (srcAbility.id || srcAbility.name || null) : null,
+            at: Date.now(),
+          };
+        }
+      }catch(_){}
       try{
         if(isCrit) spawnFloat(target, '✦ Crit', 'damage-tag-float');
         if(isMagic) spawnFloat(target, '✦ Magic', 'damage-tag-float');
@@ -106,6 +125,134 @@
       return out;
     };
   }
+
+  /* ============================================================
+   * Phase 10 — class-perk deck trigger (B.4).
+   * Wraps the existing `startGame` so the deck appears once at run
+   * start. Default UI handler is a no-op skip; UI overrides plug in via
+   * Avian.systems.classPerks.onPickRequested.
+   * ========================================================== */
+  (function attachClassPerkDeckTrigger(){
+    const Avian = globalThis.Avian;
+    if(!Avian || !Avian.systems || !Avian.systems.classPerks) return;
+    const orig = globalThis.startGame;
+    if(typeof orig !== 'function') return;
+    if(orig.__avianClassPerks) return;
+    const wrapped = function startGameClassPerks(){
+      const out = orig.apply(this, arguments);
+      try { Avian.systems.classPerks.maybeOpen(); }
+      catch(err) { try { console.warn('[Avian] classPerks startGame hook', err); } catch(_e){} }
+      try {
+        if(typeof Avian.systems._qolStartGameHook === 'function') Avian.systems._qolStartGameHook();
+      } catch(err) { try { console.warn('[Avian] qol startGame hook', err); } catch(_e){} }
+      return out;
+    };
+    wrapped.__avianClassPerks = true;
+    globalThis.startGame = wrapped;
+  })();
+
+  /* ============================================================
+   * Phase 9 — tier-pick stage trigger (B.1).
+   * Wraps `applyBiomeModifiers` (called once per stage transition) and
+   * fires Avian.systems.tierPick.maybeOpen(stage). The pick API is
+   * detection-only by default; UI overrides plug in via
+   * Avian.systems.tierPick.onPickRequested.
+   * ========================================================== */
+  (function attachTierPickStageTrigger(){
+    const Avian = globalThis.Avian;
+    if(!Avian || !Avian.systems || !Avian.systems.tierPick) return;
+    const orig = globalThis.applyBiomeModifiers;
+    if(typeof orig !== 'function') return;
+    if(orig.__avianTierPick) return;
+    const wrapped = function applyBiomeModifiersTierPick(){
+      const out = orig.apply(this, arguments);
+      try {
+        const stage = globalThis.G && globalThis.G.stage;
+        if(typeof stage === 'number') Avian.systems.tierPick.maybeOpen(stage);
+      } catch(err) { try { console.warn('[Avian] tierPick stage hook', err); } catch(_e){} }
+      return out;
+    };
+    wrapped.__avianTierPick = true;
+    globalThis.applyBiomeModifiers = wrapped;
+  })();
+
+  /* ============================================================
+   * Phase 7 — status verb dispatcher (B.2).
+   *
+   * Purely additive: legacy flag-style ailment math in game.js is
+   * unchanged. After the existing tryApplyAilment / tickStatuses run,
+   * we dispatch onApply / onTick to anything registered via
+   * Avian.statuses.register(id, hooks). consumeStatus(target, id, source)
+   * is the entry point for abilities that "eat" a status for bonus
+   * effects. Migration plan: move one ailment per commit (see
+   * docs/status-verbs.md) and run smoke + run-balance after each.
+   * ========================================================== */
+  (function attachStatusVerbDispatcher(){
+    const Avian = globalThis.Avian;
+    if(!Avian || !Avian.statuses) return;
+
+    const _origTryApply = globalThis.tryApplyAilment;
+    if(typeof _origTryApply === 'function'){
+      globalThis.tryApplyAilment = function(target, ailId, ab){
+        const applied = _origTryApply.apply(this, arguments);
+        if(applied){
+          const status = Avian.statuses[ailId];
+          if(status && typeof status.onApply === 'function'){
+            try { status.onApply(target, { ability: ab, id: ailId }); }
+            catch(err){ try { console.warn('[Avian] status.onApply ' + ailId, err); } catch(_e){} }
+          }
+        }
+        return applied;
+      };
+    }
+
+    const _origTick = globalThis.tickStatuses;
+    if(typeof _origTick === 'function'){
+      globalThis.tickStatuses = function(who){
+        const out = _origTick.apply(this, arguments);
+        try {
+          const bag = who === 'player' ? globalThis.G?.playerStatus : globalThis.G?.enemyStatus;
+          if(bag && typeof bag === 'object'){
+            for(const id of Object.keys(bag)){
+              const status = Avian.statuses[id];
+              if(status && typeof status.onTick === 'function'){
+                try { status.onTick(who, bag[id]); }
+                catch(err){ try { console.warn('[Avian] status.onTick ' + id, err); } catch(_e){} }
+              }
+            }
+          }
+        } catch(_e){ /* defensive — never break tick */ }
+        return out;
+      };
+    }
+
+    /**
+     * Consume a status from a target. If the status is registered with an
+     * onConsume hook the hook gets a chance to mutate the source / return
+     * a payload (e.g. damage multiplier). Either way the status is removed
+     * after consumption. Returns the onConsume payload, or null.
+     */
+    Avian.statuses.consume = function consumeStatus(target, id, source){
+      const bag = target === 'player' ? globalThis.G?.playerStatus : globalThis.G?.enemyStatus;
+      if(!bag || !(id in bag)) return null;
+      const status = Avian.statuses[id];
+      const stacks = bag[id];
+      let payload = null;
+      if(status && typeof status.onConsume === 'function'){
+        try { payload = status.onConsume(target, stacks, source) || null; }
+        catch(err){ try { console.warn('[Avian] status.onConsume ' + id, err); } catch(_e){} }
+      }
+      delete bag[id];
+      return payload;
+    };
+
+    /** Read-only inspect helper for tests / debug tooltips. */
+    Avian.statuses.peek = function peekStatus(target, id){
+      const bag = target === 'player' ? globalThis.G?.playerStatus : globalThis.G?.enemyStatus;
+      if(!bag) return null;
+      return id in bag ? bag[id] : null;
+    };
+  })();
 
   // Enemy trait system
   function enemyTraitFor(e){
