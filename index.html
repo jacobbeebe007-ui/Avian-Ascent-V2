@@ -62,7 +62,7 @@
 <div class="start-screen-vignette" aria-hidden="true"></div>
 <button type="button" class="theme-music-btn theme-music-btn--start" id="theme-music-btn-start" onclick="toggleThemeMusicMuted()" title="Menu music" aria-label="Toggle menu music">🔊</button>
 <div class="start-screen-inner">
-<button type="button" class="take-flight-btn" id="take-flight-btn">Take Flight</button>
+<button type="button" class="take-flight-btn" id="take-flight-btn" onclick="takeFlightToSelect()">Take Flight</button>
 </div>
 </div>
 <!-- SELECT: war-room navigation splash + roster deck -->
@@ -540,8 +540,13 @@
 
 
 
-<!-- Load order: js/bootstrap/load-order.json — classic shell is injected by src/main.ts after ESM bridge assigns leaf globals (see vite.config.mjs). -->
-<script type="module" src="/src/main.ts"></script>
+<!-- Avian Ascent classic shell. Source order lives in js/bootstrap/load-order.json.
+     Regenerate after editing any source file: `node scripts/build-bundle.js`
+     (or `npm run dev` for live concat via Vite). -->
+<script>document.documentElement.style.pointerEvents='none';</script>
+<script defer src="./js/avian-game.bundle.js"
+        onload="document.documentElement.style.pointerEvents=''"
+        onerror="document.documentElement.style.pointerEvents='';alert('Avian Ascent: js/avian-game.bundle.js is missing. Run: node scripts/build-bundle.js');"></script>
 <script>
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', function () {
