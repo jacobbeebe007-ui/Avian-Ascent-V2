@@ -150,8 +150,32 @@
   };
 
   /* Auto-stamp a seed when startGame fires. Hook from systems.js so
-   * the wrapper sequence stays consistent with other Phase X triggers. */
+   * the wrapper sequence stays consistent with other Phase X triggers.
+   * Also records a run-start timestamp on G so the personalBest UI can
+   * compute duration without altering runHistory. */
   Avian.systems._qolStartGameHook = function _qolStartGameHook() {
     seedApi.start();
+    var G = globalThis.G;
+    if (G && typeof G._qolRunStartedAt !== 'number') {
+      G._qolRunStartedAt = Date.now();
+    }
+  };
+
+  /** Returns elapsed seconds since the current run started, or null. */
+  pbApi.runDurationSec = function runDurationSec() {
+    var G = globalThis.G;
+    if (!G || typeof G._qolRunStartedAt !== 'number') return null;
+    return Math.max(0, Math.floor((Date.now() - G._qolRunStartedAt) / 1000));
+  };
+
+  /** Format a seconds count as `Hh Mm Ss` for compact UI. */
+  pbApi.formatDuration = function formatDuration(sec) {
+    sec = Math.max(0, Math.floor(Number(sec) || 0));
+    var h = Math.floor(sec / 3600);
+    var m = Math.floor((sec % 3600) / 60);
+    var s = sec % 60;
+    if (h > 0) return h + 'h ' + m + 'm ' + s + 's';
+    if (m > 0) return m + 'm ' + s + 's';
+    return s + 's';
   };
 })();
