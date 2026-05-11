@@ -2248,6 +2248,7 @@ const SPARROW_EVOLUTION_TEMPLATES = {
 };
 Object.assign(ABILITY_TEMPLATES, SPARROW_EVOLUTION_TEMPLATES);
 
+/** Balance caps: max one major rider evolution per tier beyond baseline; hard CC heavily gated (see inner logic). */
 function enforceAbilityBalanceSpec(){
   const HARD_CC=new Set(['paralyzed','stunned','confused']);
   const MAJOR_AIL=new Set(['paralyzed','confused','burning','poison','weaken','delayed','feared','slow','mud','chilled','frozen']);
@@ -2361,6 +2362,7 @@ Object.entries(ABILITY_ENERGY_PATCH).forEach(([id, patch])=>{
   if(ABILITY_TEMPLATES[id]) Object.assign(ABILITY_TEMPLATES[id], patch);
 });
 
+/** Prefer mild curves on fillers; keep heavy finishers explicit in ABILITY_ENERGY_PATCH. */
 const ENERGY_BY_LEVEL_PATCH={
   rapidPeck:[1,1,1,1], dart:[1,1,1,1], evade:[1,1,2,2], blackPeck:[1,1,1,1],
   dirge:[3,3,3,3], lullaby:[2,2,2,3], crowStrike:[1,1,1,1], talonRake:[1,1,1,2],
@@ -2762,6 +2764,7 @@ function computePlayerEnergyRegen(player){
 
 /*
 EN_SYSTEM_BALANCE_AUDIT (manual / grep-assisted)
+- Physical filler attacks: prefer flat [1,1,1,1] EN-by-level baselines; spells skew [1,1,2,2] / [2,2,2,3] (see template-factories + ABILITY_ENERGY_PATCH).
 - Large & XL (maxEN 3): any slotted skill that reaches 3 EN is awkward with Frozen (+1) or multi-action turns.
 - Known template/meta ids at 3 EN (see ABILITY_TEMPLATES + FAMILY_ENERGY_BY_SLOT): deathDive, thunderScreech, stormChorus, mobSwarm, wingStorm, murderMurmuration; several lines use energyByLevel ending in 3 (e.g. curvedTalons L4, wingStorm L4).
 - Large/XL birds that reach those ids via family evolution (non-exhaustive): albatross sweep/current branches, harpy crush line, crow murder chain, snowy owl lines via thunderScreech/stormChorus aliases, hummingbird dive line, dukeBlakiston dive lineage.
@@ -4855,6 +4858,25 @@ function buildFamilySkillAbilityLookup(slotLayout, families){
   }
   return Object.freeze(out);
 }
+function buildGapFamilyEvolutionBirdEntries(){
+  const raw = globalThis.Avian?.data?.familyEvolutionGapBirds;
+  if(!raw||typeof raw!=='object') return {};
+  const out = Object.create(null);
+  for(const k of Object.keys(raw)){
+    const v = raw[k];
+    if(!v||typeof v!=='object') continue;
+    const slotLayout = v.slotLayout;
+    const families = v.families;
+    if(!slotLayout||!families) continue;
+    out[k] = {
+      birdKey:String(v.birdKey||k),
+      slotLayout,
+      families,
+      abilityLookup:buildFamilySkillAbilityLookup(slotLayout, families),
+    };
+  }
+  return out;
+}
 const FAMILY_EVOLUTION_BIRD_DATA = Object.freeze({
   sparrow:{
     birdKey:'sparrow',
@@ -5025,6 +5047,7 @@ const FAMILY_EVOLUTION_BIRD_DATA = Object.freeze({
     abilityLookup:buildFamilySkillAbilityLookup(HARPY_SKILL_SLOT_LAYOUT, HARPY_SKILL_FAMILIES),
 
   },
+  ...buildGapFamilyEvolutionBirdEntries(),
 });
 
 function isSkillEvolutionLevel(level){
@@ -5236,6 +5259,25 @@ function syncPlayerAbilitiesFromSkillSlots(player){
     if(player.birdKey==='shoebill' && slot.abilityId==='sbl_beak_chop') ab.fixedMainAttackCost = true;
     if(player.birdKey==='pelican' && slot.abilityId==='pelican_snap') ab.fixedMainAttackCost = true;
     if((player.birdKey==='harpy' || player.birdKey==='harpyeagle') && slot.abilityId==='hrp_talon_clutch') ab.fixedMainAttackCost = true;
+    if(player.birdKey==='baldEagle' && slot.abilityId==='skyTalon') ab.fixedMainAttackCost = true;
+    if(player.birdKey==='penguin' && slot.abilityId==='icebreakerHonk') ab.fixedMainAttackCost = true;
+    if(player.birdKey==='ostrich' && slot.abilityId==='powerKick') ab.fixedMainAttackCost = true;
+    if(player.birdKey==='cassowary' && slot.abilityId==='raptorKick') ab.fixedMainAttackCost = true;
+    if(player.birdKey==='emu' && slot.abilityId==='headWhip') ab.fixedMainAttackCost = true;
+    if(player.birdKey==='dukeBlakiston' && slot.abilityId==='nightTalon') ab.fixedMainAttackCost = true;
+    if(player.birdKey==='wren' && slot.abilityId==='wren_quick_peck') ab.fixedMainAttackCost = true;
+    if(player.birdKey==='fairywren' && slot.abilityId==='fwren_song') ab.fixedMainAttackCost = true;
+    if(player.birdKey==='firecrest' && slot.abilityId==='firecrest_jab') ab.fixedMainAttackCost = true;
+    if(player.birdKey==='wagtail' && slot.abilityId==='wagtail_peck') ab.fixedMainAttackCost = true;
+    if(player.birdKey==='galah' && slot.abilityId==='galah_beak_tap') ab.fixedMainAttackCost = true;
+    if(player.birdKey==='bluejay' && slot.abilityId==='bluejay_crest_jab') ab.fixedMainAttackCost = true;
+    if(player.birdKey==='cardinal' && slot.abilityId==='cardinal_note') ab.fixedMainAttackCost = true;
+    if(player.birdKey==='bushturkey' && slot.abilityId==='bturkey_scrap_peck') ab.fixedMainAttackCost = true;
+    if(player.birdKey==='vulture' && slot.abilityId==='vulture_grave_jab') ab.fixedMainAttackCost = true;
+    if(player.birdKey==='barnowl' && slot.abilityId==='barnowl_talon') ab.fixedMainAttackCost = true;
+    if(player.birdKey==='bustard' && slot.abilityId==='bustard_heavy_jab') ab.fixedMainAttackCost = true;
+    if(player.birdKey==='goldeneagle' && slot.abilityId==='golden_talon') ab.fixedMainAttackCost = true;
+    if(player.birdKey==='marabou' && slot.abilityId==='marabou_jab') ab.fixedMainAttackCost = true;
     return ab;
   });
 }
@@ -5251,7 +5293,7 @@ function syncPlayerAbilitiesFromSkillSlots(player){
 const SAVE_KEY = globalThis.AVIAN_OW_KEYS?.SAVE ?? 'avianAscent_save_v2';
 const RUN_SAVE_SCHEMA_VERSION = (typeof globalThis.Avian?.systems?.SAVE_SCHEMA_VERSION === 'number')
   ? globalThis.Avian.systems.SAVE_SCHEMA_VERSION
-  : 1;
+  : 2;
 function ensureFamilyEvolutionState(player){
   if(!player || typeof player!=='object') return null;
   const birdKey = String(player.birdKey || '');
@@ -5278,6 +5320,11 @@ function ensureFamilyEvolutionState(player){
     state.skillSlots = baseSlots.map((baseSlot, idx)=>normalizeSkillSlotState(rawSlots[idx], baseSlot, birdKey));
     syncPlayerAbilitiesFromSkillSlots(player);
   }else{
+    try{
+      if(birdKey && BIRDS?.[birdKey]){
+        console.warn('[family-evolution] Missing catalog for playable birdKey='+birdKey+'; using mirrored flat slots until data lands.');
+      }
+    }catch(_e){}
     const mirrored = Array.isArray(player.abilities)
       ? player.abilities.slice(0,4).map((ab, idx)=>createSkillSlotState(idx, null, null, 0, ab?.id || '', 0, []))
       : [];
@@ -6540,8 +6587,16 @@ function handleOverworldReturn() {
     G._currentShopNodeId = intent.nodeId ?? null; // persist shop snapshot by node
     setOverworldCurrentNode(intent.nodeId);
     G._pendingOverworldShop = true; // loadStage() will detect this and open shop instead
-    continueRun();
-    return true;
+    try{
+      continueRun();
+      return true;
+    }catch(err){
+      console.error('handleOverworldReturn shop failed', err);
+      G._pendingOverworldShop = false;
+      G._currentShopNodeId = null;
+      try{ localStorage.setItem(_OW_NAV_KEY, JSON.stringify(intent)); }catch(_){}
+      return false;
+    }
   }
   if (intent.action === 'nest') {
     const nestSave = loadSaveData();
@@ -7125,10 +7180,6 @@ function materializeRosterPreviewKit(birdKey){
     G.player=stub;
     stub.energyMax=computePlayerMaxEnergy();
     ensureFamilyEvolutionState(stub);
-    if(!usesFamilySkillEvolution(stub)){
-      const bd=BIRDS[birdKey];
-      stub.abilities=(bd.startAbilities||[]).map((id, idx)=>ensureAbilityObjectFromTemplate(id, {id, level:1}, idx));
-    }
     out.abilities=Array.isArray(stub.abilities)?stub.abilities.slice():[];
     out.energyMax=Math.max(0, Number(stub.energyMax)||computePlayerMaxEnergy());
     out.stats=stub.stats?{...stub.stats}:{};
@@ -22833,6 +22884,104 @@ function showUnlockToast(msg) {
 let _shopItems=[];
 let _shopSelectedIdx=null;
 
+/** Shelf utilities (non-upgrade slots). IDs must stay stable for overworld shop snapshots. */
+const _SHOP_UTILS_REGULAR = [
+  {
+    id:'shop_util_discount_stamp',
+    tier:'green',
+    icon:'🏷️',
+    name:'Merchant Stamp',
+    desc:'Your next purchase in this shop costs 15★ less.',
+    stackable:false,
+    apply(_p){ G._nextShopDiscount = Math.max(G._nextShopDiscount||0, 15); },
+  },
+  {
+    id:'shop_util_glitter_tip',
+    tier:'grey',
+    icon:'✨',
+    name:'Glitter Tip',
+    desc:'Gain 10 shinies immediately.',
+    stackable:false,
+    apply(_p){ G.shinyObjects = Math.max(0, Math.floor(Number(G.shinyObjects)||0)+10); },
+  },
+  {
+    id:'shop_util_free_refresh',
+    tier:'blue',
+    icon:'🔄',
+    name:'Complimentary Rinse',
+    desc:'Your next shelf refresh costs 0★.',
+    stackable:false,
+    apply(_p){ G._freeShopRefresh = Math.max(0, Math.floor(Number(G._freeShopRefresh)||0)+1); },
+  },
+  {
+    id:'shop_util_nesting_kit',
+    tier:'green',
+    icon:'🪺',
+    name:'Nesting Kit',
+    desc:'Heal 8% Max HP.',
+    stackable:false,
+    apply(p){
+      const mh = Math.max(1, Number(p?.stats?.maxHp)||1);
+      const heal = Math.max(1, Math.floor(mh*0.08));
+      p.stats.hp = Math.min(mh, Math.floor(Number(p?.stats?.hp)||0)+heal);
+      if(typeof spawnFloat==='function') spawnFloat('player', `+${heal} 🌿`, 'fn-heal');
+    },
+  },
+];
+const _SHOP_UTILS_BOSS = [
+  {
+    id:'shop_util_elite_rebate',
+    tier:'purple',
+    icon:'⚜️',
+    name:'Elite Rebate',
+    desc:'Your next purchase in this shop costs 25★ less.',
+    stackable:false,
+    apply(_p){ G._nextShopDiscount = Math.max(G._nextShopDiscount||0, 25); },
+  },
+  {
+    id:'shop_util_shiny_surplus',
+    tier:'blue',
+    icon:'💫',
+    name:'Shiny Surplus',
+    desc:'Gain 18 shinies immediately.',
+    stackable:false,
+    apply(_p){ G.shinyObjects = Math.max(0, Math.floor(Number(G.shinyObjects)||0)+18); },
+  },
+  {
+    id:'shop_util_premium_rinse',
+    tier:'purple',
+    icon:'🌀',
+    name:'Premium Rinse',
+    desc:'Two shelf refreshes cost 0★ next.',
+    stackable:false,
+    apply(_p){ G._freeShopRefresh = Math.max(0, Math.floor(Number(G._freeShopRefresh)||0)+2); },
+  },
+  {
+    id:'shop_util_golden_nest',
+    tier:'gold',
+    icon:'🏆',
+    name:'Golden Nest',
+    desc:'Heal 18% Max HP.',
+    stackable:false,
+    apply(p){
+      const mh = Math.max(1, Number(p?.stats?.maxHp)||1);
+      const heal = Math.max(1, Math.floor(mh*0.18));
+      p.stats.hp = Math.min(mh, Math.floor(Number(p?.stats?.hp)||0)+heal);
+      if(typeof spawnFloat==='function') spawnFloat('player', `+${heal} 🌿`, 'fn-heal');
+    },
+  },
+];
+
+function makeUtilityOffer(mode){
+  const pool = mode==='boss' ? _SHOP_UTILS_BOSS : _SHOP_UTILS_REGULAR;
+  const src = pool[Math.floor(Math.random()*pool.length)];
+  return {...src, apply:src.apply};
+}
+
+function syncShopItemsToGlobal(){
+  try{ globalThis._shopItems = _shopItems; }catch(_){}
+}
+
 const SHOP_HEALING_ITEMS = Object.freeze([
   {id:'shop_heal_fresh_pond',tier:'grey',icon:'💧',name:'Fresh Pond',desc:'Heal 15% Max HP',costOverride:8,healPct:0.15,isHealingShopItem:true},
   {id:'shop_heal_bird_bath',tier:'green',icon:'🛁',name:'Bird Bath',desc:'Heal 30% Max HP',costOverride:14,healPct:0.30,isHealingShopItem:true},
@@ -22986,9 +23135,9 @@ function getShopRefreshCost(){
 }
 
 function renderShopItems() {
-  const grid=document.getElementById('shop-items-grid'); if(!grid) return;
+  const grid=document.getElementById('shop-items-grid'); if(!grid){ syncShopItemsToGlobal(); return; }
   grid.innerHTML='';
-  document.getElementById('shop-shiny-count').textContent=G.shinyObjects;
+  const shinyCt=document.getElementById('shop-shiny-count'); if(shinyCt) shinyCt.textContent=G.shinyObjects;
   SHOP_STATE.selectedIndex=null;
   _shopSelectedIdx=null;
   const buyBtn=document.getElementById('shop-buy-btn'); if(buyBtn) buyBtn.disabled=true;
@@ -23009,10 +23158,10 @@ function renderShopItems() {
     const canSelect=canAfford && !alreadyBoughtHeal;
 
     const div=document.createElement('div');
-    div.className=`shop-item tier-${item.tier} ${canAfford?'':'cant-afford'} ${alreadyBoughtHeal?'shop-locked-visit':''}`;
+    div.className=`shop-item tier-${item.tier||'grey'} ${canAfford?'':'cant-afford'} ${alreadyBoughtHeal?'shop-locked-visit':''}`;
     div.innerHTML=`
       <div class="shop-item-cost">${cost}🌟</div>
-      <div class="reward-tier-label">${REWARD_TIERS[item.tier].label}</div>
+      <div class="reward-tier-label">${(REWARD_TIERS[item.tier]||REWARD_TIERS.grey).label}</div>
       <span class="reward-icon">${item.icon}</span>
       <div class="reward-name">${item.name}</div>
       <div class="reward-desc">${item.desc}</div>`;
@@ -23029,6 +23178,7 @@ function renderShopItems() {
 
     grid.appendChild(div);
   });
+  syncShopItemsToGlobal();
 }
 
 async function shopBuySelected() {

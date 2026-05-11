@@ -40,7 +40,7 @@
       baseMissChance: 8,
       baseDmgMult: 1.0,
       pierceDef: 0,
-      energyByLevel: [0, 0, 0, 0],
+      energyByLevel: [1, 1, 1, 1],
       cooldownByLevel: [1, 1, 1, 1],
       ailments: [],
       levels: [
@@ -87,7 +87,7 @@
       baseMissChance: 10,
       baseDmgMult: 0.55,
       hitsByLevel: [2, 3, 3, 4],
-      energyByLevel: [0, 0, 1, 1],
+      energyByLevel: [1, 1, 2, 2],
       cooldownByLevel: [1, 2, 2, 3],
       ailments: [],
       levels: [
@@ -110,7 +110,7 @@
       baseDmgMult: 0.4,
       ailments: [ailmentId],
       ailmentChance: [40, 55, 70, 85],
-      energyByLevel: [0, 0, 1, 1],
+      energyByLevel: [1, 1, 2, 2],
       cooldownByLevel: [2, 2, 3, 3],
       levels: [
         { lv: 1, desc: 'Light hit. Apply ' + ailmentId + '.' },
@@ -130,7 +130,7 @@
       isBasic: false,
       baseMissChance: 0,
       baseDmgMult: 0,
-      energyByLevel: [0, 0, 0, 0],
+      energyByLevel: [1, 1, 1, 1],
       cooldownByLevel: [1, 1, 2, 2],
       ailments: [],
       levels: [

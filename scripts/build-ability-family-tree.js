@@ -2,6 +2,9 @@
 /**
  * Generates js/data/ability_family_tree.js from the family-evolution block in js/core/game.js.
  * Run after editing skill families in game.js: node scripts/build-ability-family-tree.js
+ *
+ * Loads js/data/family-evolution-gap-birds.js first (same order as the browser bundle) so
+ * spread-merge entries resolve when evaluating the sliced game.js block.
  */
 const fs = require('fs');
 const path = require('path');
@@ -9,11 +12,13 @@ const vm = require('vm');
 
 const ROOT = path.join(__dirname, '..');
 const GAME = path.join(ROOT, 'js', 'core', 'game.js');
+const GAP = path.join(ROOT, 'js', 'data', 'family-evolution-gap-birds.js');
 const OUT = path.join(ROOT, 'js', 'data', 'ability_family_tree.js');
 
-/** 1-based inclusive line range: SKILL_EVOLUTION_LEVEL_INTERVAL through closing `FAMILY_EVOLUTION_BIRD_DATA` freeze */
-const START_LINE = 3856;
-const END_LINE = 5619;
+/** 1-based inclusive start: SKILL_EVOLUTION_LEVEL_INTERVAL */
+const START_LINE = 3268;
+/** Exclusive end index for slice(): first line AFTER FAMILY_EVOLUTION_BIRD_DATA closing }); */
+const END_LINE = 5051;
 
 function sliceGameJsLines(src) {
   const lines = src.split(/\r?\n/);
@@ -69,6 +74,7 @@ function compactBirdEntry(entry) {
 
 function buildTreeFromGameJs() {
   const src = fs.readFileSync(GAME, 'utf8');
+  const gapSrc = fs.readFileSync(GAP, 'utf8');
   const slice = sliceGameJsLines(src);
   const ctx = vm.createContext({
     Object,
@@ -82,6 +88,8 @@ function buildTreeFromGameJs() {
     JSON,
     console,
   });
+  ctx.globalThis = ctx;
+  vm.runInContext(gapSrc, ctx);
   vm.runInContext(
     `${slice}\n;var __ABILITY_FAMILY_TREE_EXPORT = FAMILY_EVOLUTION_BIRD_DATA;`,
     ctx
