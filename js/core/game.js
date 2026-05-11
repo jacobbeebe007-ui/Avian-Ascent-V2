@@ -5330,6 +5330,12 @@ function ensureFamilyEvolutionState(player){
       : [];
     state.skillSlots = mirrored;
   }
+  // #region agent log
+  try{
+    const aids=(player.abilities||[]).map(a=>a&&a.id).filter(Boolean);
+    fetch('http://127.0.0.1:7386/ingest/37e6c709-0e20-46b6-8aa4-cf86e1542b64',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'fe2be0'},body:JSON.stringify({sessionId:'fe2be0',runId:'pre-fix',hypothesisId:'B',location:'game.js:ensureFamilyEvolutionState',message:'family state after ensure',data:{birdKey:String(player.birdKey||''),hasCatalog:!!catalog,slotsLen:(state.skillSlots||[]).length,abilityIds:aids.slice(0,8)},timestamp:Date.now()})}).catch(()=>{});
+  }catch(_){}
+  // #endregion
   return state;
 }
 /** Must match js/world/ow_enemy_population.js pack count (10). */
@@ -5549,6 +5555,11 @@ function continueRun() {
     });
     return;
   }
+  // #region agent log
+  try{
+    fetch('http://127.0.0.1:7386/ingest/37e6c709-0e20-46b6-8aa4-cf86e1542b64',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'fe2be0'},body:JSON.stringify({sessionId:'fe2be0',runId:'pre-fix',hypothesisId:'E',location:'game.js:continueRun:beforeLoadStage',message:'about to loadStage',data:{birdKey:String(G.player?.birdKey||''),Gstage:G.stage,pendingOwBattle:G._owPendingBattleStage,owEnemyLen:(G._owStageEnemies||[]).length,owIdx:G._owEnemyIndex,endless:!!G.endlessMode},timestamp:Date.now()})}).catch(()=>{});
+  }catch(_){}
+  // #endregion
   loadStage();
 }
 function goMainMenu() {
@@ -6574,10 +6585,20 @@ function handleOverworldReturn() {
       G._owEnemyCount = 1;
       commitStoryEncounterMeta(stageNum, pbk, null);
     }
+    // #region agent log
+    try{
+      fetch('http://127.0.0.1:7386/ingest/37e6c709-0e20-46b6-8aa4-cf86e1542b64',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'fe2be0'},body:JSON.stringify({sessionId:'fe2be0',runId:'pre-fix',hypothesisId:'D',location:'game.js:handleOverworldReturn:battle',message:'OW battle intent applied',data:{stageNum,pbk:String(pbk||''),owKeys:(G._owStageEnemies||[]).slice(),isBossStage:STORY_BOSS_STAGES.has(stageNum)},timestamp:Date.now()})}).catch(()=>{});
+    }catch(_){}
+    // #endregion
     try{
       continueRun(); // restores state; continueRun ends with loadStage()
     }catch(err){
       console.error('handleOverworldReturn battle failed', err);
+      // #region agent log
+      try{
+        fetch('http://127.0.0.1:7386/ingest/37e6c709-0e20-46b6-8aa4-cf86e1542b64',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'fe2be0'},body:JSON.stringify({sessionId:'fe2be0',runId:'pre-fix',hypothesisId:'C',location:'game.js:handleOverworldReturn:battleCatch',message:'continueRun threw',data:{err:String(err&&err.message||err)},timestamp:Date.now()})}).catch(()=>{});
+      }catch(_){}
+      // #endregion
       try{ localStorage.setItem(_OW_NAV_KEY, JSON.stringify(intent)); }catch(_){ }
       return false;
     }
@@ -7702,6 +7723,11 @@ function loadStage() {
     mergeScaledStatsIntoEnemy(ed, encounterStage);
   }
   G.enemy = ed;
+  // #region agent log
+  try{
+    fetch('http://127.0.0.1:7386/ingest/37e6c709-0e20-46b6-8aa4-cf86e1542b64',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'fe2be0'},body:JSON.stringify({sessionId:'fe2be0',runId:'pre-fix',hypothesisId:'A',location:'game.js:loadStage:afterEnemyAssign',message:'enemy resolved',data:{encounterStage,haveEnemy:!!G.enemy,enemyId:G.enemy&&(G.enemy.id||G.enemy.name)||null,owBk:(G._owStageEnemies&&G._owStageEnemies[G._owEnemyIndex||0])||null,endless:!!G.endlessMode},timestamp:Date.now()})}).catch(()=>{});
+  }catch(_){}
+  // #endregion
   const stageEvt = {stage:encounterStage, enemyId:G.enemy.id||G.enemy.name, isBoss:!!G.enemy.isBoss};
   AvianEvents.emit('stage:loaded', stageEvt);
   runModuleHook('onStageLoaded', stageEvt);
