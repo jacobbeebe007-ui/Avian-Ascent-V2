@@ -1,0 +1,306 @@
+{
+  "generatedAt": "2026-05-11T10:49:32.827Z",
+  "note": "Gap birds now carry authored catalogs in js/data/family-evolution-gap-birds.js",
+  "birds": {
+    "baldEagle": {
+      "birdKey": "baldEagle",
+      "startAbilities": [
+        "skyTalon",
+        "guard",
+        "predatorMark",
+        "freedomCry"
+      ],
+      "familySlotIds": [
+        "a",
+        "b",
+        "c",
+        "d"
+      ]
+    },
+    "penguin": {
+      "birdKey": "penguin",
+      "startAbilities": [
+        "icebreakerHonk",
+        "snowWall",
+        "guard",
+        "tundraCall"
+      ],
+      "familySlotIds": [
+        "a",
+        "b",
+        "c",
+        "d"
+      ]
+    },
+    "ostrich": {
+      "birdKey": "ostrich",
+      "startAbilities": [
+        "powerKick",
+        "stampedeStrike",
+        "sandKick",
+        "momentumCharge"
+      ],
+      "familySlotIds": [
+        "a",
+        "b",
+        "c",
+        "d"
+      ]
+    },
+    "cassowary": {
+      "birdKey": "cassowary",
+      "startAbilities": [
+        "raptorKick",
+        "warStomp",
+        "momentumCharge",
+        "crushingTalon"
+      ],
+      "familySlotIds": [
+        "a",
+        "b",
+        "c",
+        "d"
+      ]
+    },
+    "emu": {
+      "birdKey": "emu",
+      "startAbilities": [
+        "headWhip",
+        "warCharge",
+        "sandKick",
+        "momentumStrike"
+      ],
+      "familySlotIds": [
+        "a",
+        "b",
+        "c",
+        "d"
+      ]
+    },
+    "dukeBlakiston": {
+      "birdKey": "dukeBlakiston",
+      "startAbilities": [
+        "nightTalon",
+        "nightfallCall",
+        "courtSummon",
+        "verdict"
+      ],
+      "familySlotIds": [
+        "a",
+        "b",
+        "c",
+        "d"
+      ]
+    },
+    "wren": {
+      "birdKey": "wren",
+      "startAbilities": [
+        "wren_quick_peck",
+        "wren_needle_dart",
+        "wren_feather_feint",
+        "wren_trail_step"
+      ],
+      "familySlotIds": [
+        "a",
+        "b",
+        "c",
+        "d"
+      ]
+    },
+    "fairywren": {
+      "birdKey": "fairywren",
+      "startAbilities": [
+        "fwren_song",
+        "fwren_bright_call",
+        "fwren_tiny_peck",
+        "fwren_refrain"
+      ],
+      "familySlotIds": [
+        "a",
+        "b",
+        "c",
+        "d"
+      ]
+    },
+    "firecrest": {
+      "birdKey": "firecrest",
+      "startAbilities": [
+        "firecrest_jab",
+        "firecrest_burn_dash",
+        "firecrest_cinder_step",
+        "firecrest_heat_mark"
+      ],
+      "familySlotIds": [
+        "a",
+        "b",
+        "c",
+        "d"
+      ]
+    },
+    "wagtail": {
+      "birdKey": "wagtail",
+      "startAbilities": [
+        "wagtail_peck",
+        "wagtail_flick_strike",
+        "wagtail_mock_call",
+        "wagtail_tail_mark"
+      ],
+      "familySlotIds": [
+        "a",
+        "b",
+        "c",
+        "d"
+      ]
+    },
+    "galah": {
+      "birdKey": "galah",
+      "startAbilities": [
+        "galah_beak_tap",
+        "galah_flash_strike",
+        "galah_screech",
+        "galah_show_mark"
+      ],
+      "familySlotIds": [
+        "a",
+        "b",
+        "c",
+        "d"
+      ]
+    },
+    "bluejay": {
+      "birdKey": "bluejay",
+      "startAbilities": [
+        "bluejay_crest_jab",
+        "bluejay_jaybreaker",
+        "bluejay_crest_guard",
+        "bluejay_raucous_cry"
+      ],
+      "familySlotIds": [
+        "a",
+        "b",
+        "c",
+        "d"
+      ]
+    },
+    "cardinal": {
+      "birdKey": "cardinal",
+      "startAbilities": [
+        "cardinal_note",
+        "cardinal_hymn",
+        "cardinal_jab",
+        "cardinal_refrain"
+      ],
+      "familySlotIds": [
+        "a",
+        "b",
+        "c",
+        "d"
+      ]
+    },
+    "bushturkey": {
+      "birdKey": "bushturkey",
+      "startAbilities": [
+        "bturkey_scrap_peck",
+        "bturkey_brush_crash",
+        "bturkey_bush_guard",
+        "bturkey_rattle_call"
+      ],
+      "familySlotIds": [
+        "a",
+        "b",
+        "c",
+        "d"
+      ]
+    },
+    "vulture": {
+      "birdKey": "vulture",
+      "startAbilities": [
+        "vulture_grave_jab",
+        "vulture_corpse_crush",
+        "vulture_bone_ward",
+        "vulture_grave_dirge"
+      ],
+      "familySlotIds": [
+        "a",
+        "b",
+        "c",
+        "d"
+      ]
+    },
+    "barnowl": {
+      "birdKey": "barnowl",
+      "startAbilities": [
+        "barnowl_talon",
+        "barnowl_shadow_dive",
+        "barnowl_death_glare",
+        "barnowl_silent_glide"
+      ],
+      "familySlotIds": [
+        "a",
+        "b",
+        "c",
+        "d"
+      ]
+    },
+    "bustard": {
+      "birdKey": "bustard",
+      "startAbilities": [
+        "bustard_heavy_jab",
+        "bustard_dust_trample",
+        "bustard_plainshield",
+        "bustard_steppe_call"
+      ],
+      "familySlotIds": [
+        "a",
+        "b",
+        "c",
+        "d"
+      ]
+    },
+    "goldeneagle": {
+      "birdKey": "goldeneagle",
+      "startAbilities": [
+        "golden_talon",
+        "golden_swoop",
+        "golden_verdict",
+        "golden_focus"
+      ],
+      "familySlotIds": [
+        "a",
+        "b",
+        "c",
+        "d"
+      ]
+    },
+    "pelican": {
+      "birdKey": "pelican",
+      "startAbilities": [
+        "pelican_snap",
+        "pelican_crush",
+        "pelican_guard",
+        "pelican_recovery"
+      ],
+      "familySlotIds": [
+        "a",
+        "b",
+        "c",
+        "d"
+      ]
+    },
+    "marabou": {
+      "birdKey": "marabou",
+      "startAbilities": [
+        "marabou_jab",
+        "marabou_lunge",
+        "marabou_sentence",
+        "marabou_hunt"
+      ],
+      "familySlotIds": [
+        "a",
+        "b",
+        "c",
+        "d"
+      ]
+    }
+  }
+}

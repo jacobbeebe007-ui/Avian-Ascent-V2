@@ -6,7 +6,7 @@
   const TREE = Object.freeze({
   "version": 1,
   "sourceHint": "Generated from js/core/game.js family-evolution block; re-run scripts/build-ability-family-tree.js after edits.",
-  "generatedAt": "2026-05-08T16:11:33.662Z",
+  "generatedAt": "2026-05-11T10:53:04.834Z",
   "birds": {
     "sparrow": {
       "birdKey": "sparrow",
@@ -4678,6 +4678,3826 @@
             "1": "Lock",
             "2": "Claim",
             "3": "Dominion"
+          }
+        }
+      }
+    },
+    "baldEagle": {
+      "birdKey": "baldEagle",
+      "slotLayout": [
+        {
+          "slotIndex": 0,
+          "familyId": "a",
+          "abilityId": "skyTalon"
+        },
+        {
+          "slotIndex": 1,
+          "familyId": "b",
+          "abilityId": "guard"
+        },
+        {
+          "slotIndex": 2,
+          "familyId": "c",
+          "abilityId": "predatorMark"
+        },
+        {
+          "slotIndex": 3,
+          "familyId": "d",
+          "abilityId": "freedomCry"
+        }
+      ],
+      "families": {
+        "a": {
+          "familyId": "a",
+          "displayName": "Sky Talon Line",
+          "baseAbilityId": "skyTalon",
+          "maxTier": 3,
+          "paths": {
+            "pierce": {
+              "pathId": "pierce",
+              "displayName": "Pierce",
+              "abilities": {
+                "1": "skyTalon",
+                "2": "talon_rake",
+                "3": "talon_rend"
+              }
+            },
+            "bleed": {
+              "pathId": "bleed",
+              "displayName": "Bleed",
+              "abilities": {
+                "1": "slice_jab",
+                "2": "slice_rake",
+                "3": "slice_rend"
+              }
+            },
+            "execute": {
+              "pathId": "execute",
+              "displayName": "Execute",
+              "abilities": {
+                "1": "hunters_jab",
+                "2": "hunters_rake",
+                "3": "hunters_rend"
+              }
+            }
+          },
+          "slotRole": "filler_attack",
+          "tierNames": {
+            "1": "I",
+            "2": "II",
+            "3": "III"
+          }
+        },
+        "b": {
+          "familyId": "b",
+          "displayName": "Shield Line",
+          "baseAbilityId": "guard",
+          "maxTier": 3,
+          "paths": {
+            "guard": {
+              "pathId": "guard",
+              "displayName": "Guard",
+              "abilities": {
+                "1": "guard",
+                "2": "gos_hold_line",
+                "3": "gos_stand_fast"
+              }
+            },
+            "amp": {
+              "pathId": "amp",
+              "displayName": "Amp",
+              "abilities": {
+                "1": "iron_guard",
+                "2": "gos_press_line",
+                "3": "gos_final_stand"
+              }
+            },
+            "read": {
+              "pathId": "read",
+              "displayName": "Read",
+              "abilities": {
+                "1": "steady_guard",
+                "2": "gos_read_line",
+                "3": "gos_read_stand"
+              }
+            }
+          },
+          "slotRole": "guard_setup",
+          "tierNames": {
+            "1": "Brace",
+            "2": "Hold",
+            "3": "Stand"
+          }
+        },
+        "c": {
+          "familyId": "c",
+          "displayName": "Predator Mark Line",
+          "baseAbilityId": "predatorMark",
+          "maxTier": 3,
+          "paths": {
+            "amp": {
+              "pathId": "amp",
+              "displayName": "Amp",
+              "abilities": {
+                "1": "markPrey",
+                "2": "brandPrey",
+                "3": "huntersMark"
+              }
+            },
+            "break": {
+              "pathId": "break",
+              "displayName": "Break",
+              "abilities": {
+                "1": "exposeWeakness",
+                "2": "exposeGuard",
+                "3": "quarryBreak"
+              }
+            },
+            "execute": {
+              "pathId": "execute",
+              "displayName": "Execute",
+              "abilities": {
+                "1": "predatorMark",
+                "2": "predatorBrand",
+                "3": "finalHunt"
+              }
+            }
+          },
+          "slotRole": "setup_payoff",
+          "tierNames": {
+            "1": "Mark",
+            "2": "Sign",
+            "3": "Finale"
+          }
+        },
+        "d": {
+          "familyId": "d",
+          "displayName": "Freedom Rally Line",
+          "baseAbilityId": "freedomCry",
+          "maxTier": 3,
+          "paths": {
+            "speed": {
+              "pathId": "speed",
+              "displayName": "Speed",
+              "abilities": {
+                "1": "freedomCry",
+                "2": "tailwindGust",
+                "3": "hyperCurrent"
+              }
+            },
+            "dodge": {
+              "pathId": "dodge",
+              "displayName": "Dodge",
+              "abilities": {
+                "1": "graceStep",
+                "2": "slipVeil",
+                "3": "phantomGale"
+              }
+            },
+            "acc_break": {
+              "pathId": "acc_break",
+              "displayName": "Accuracy Break",
+              "abilities": {
+                "1": "featherDrift",
+                "2": "blindingVeil",
+                "3": "stormShroud"
+              }
+            }
+          },
+          "slotRole": "mobility_utility",
+          "tierNames": {
+            "1": "Stride",
+            "2": "Draft",
+            "3": "Storm"
+          }
+        }
+      }
+    },
+    "penguin": {
+      "birdKey": "penguin",
+      "slotLayout": [
+        {
+          "slotIndex": 0,
+          "familyId": "a",
+          "abilityId": "icebreakerHonk"
+        },
+        {
+          "slotIndex": 1,
+          "familyId": "b",
+          "abilityId": "snowWall"
+        },
+        {
+          "slotIndex": 2,
+          "familyId": "c",
+          "abilityId": "guard"
+        },
+        {
+          "slotIndex": 3,
+          "familyId": "d",
+          "abilityId": "tundraCall"
+        }
+      ],
+      "families": {
+        "a": {
+          "familyId": "a",
+          "displayName": "Ice Honk Line",
+          "baseAbilityId": "icebreakerHonk",
+          "maxTier": 3,
+          "paths": {
+            "chill": {
+              "pathId": "chill",
+              "displayName": "Chill",
+              "abilities": {
+                "1": "icebreakerHonk",
+                "2": "gos_dread_blare",
+                "3": "gos_panic_uproar"
+              }
+            },
+            "break": {
+              "pathId": "break",
+              "displayName": "Break",
+              "abilities": {
+                "1": "gos_harsh_honk",
+                "2": "gos_wavering_blare",
+                "3": "gos_blinding_uproar"
+              }
+            },
+            "speed": {
+              "pathId": "speed",
+              "displayName": "Rally",
+              "abilities": {
+                "1": "gos_keen_honk",
+                "2": "gos_rally_blare",
+                "3": "gos_charge_uproar"
+              }
+            }
+          },
+          "slotRole": "tank_strike",
+          "tierNames": {
+            "1": "Peck",
+            "2": "Blast",
+            "3": "Wave"
+          }
+        },
+        "b": {
+          "familyId": "b",
+          "displayName": "Ice Wall Line",
+          "baseAbilityId": "snowWall",
+          "maxTier": 3,
+          "paths": {
+            "crit": {
+              "pathId": "crit",
+              "displayName": "Crit",
+              "abilities": {
+                "1": "snowWall",
+                "2": "silver_arc",
+                "3": "regal_crest"
+              }
+            },
+            "weaken": {
+              "pathId": "weaken",
+              "displayName": "Weaken",
+              "abilities": {
+                "1": "pressing_sweep",
+                "2": "pressing_arc",
+                "3": "crushing_crest"
+              }
+            },
+            "return": {
+              "pathId": "return",
+              "displayName": "Return",
+              "abilities": {
+                "1": "echo_sweep",
+                "2": "return_arc",
+                "3": "double_crest"
+              }
+            }
+          },
+          "slotRole": "signature_attack",
+          "tierNames": {
+            "1": "Open",
+            "2": "Break",
+            "3": "Ruin"
+          }
+        },
+        "c": {
+          "familyId": "c",
+          "displayName": "Brace Line",
+          "baseAbilityId": "guard",
+          "maxTier": 3,
+          "paths": {
+            "guard": {
+              "pathId": "guard",
+              "displayName": "Guard",
+              "abilities": {
+                "1": "guard",
+                "2": "gos_hold_line",
+                "3": "gos_stand_fast"
+              }
+            },
+            "amp": {
+              "pathId": "amp",
+              "displayName": "Amp",
+              "abilities": {
+                "1": "iron_guard",
+                "2": "gos_press_line",
+                "3": "gos_final_stand"
+              }
+            },
+            "read": {
+              "pathId": "read",
+              "displayName": "Read",
+              "abilities": {
+                "1": "steady_guard",
+                "2": "gos_read_line",
+                "3": "gos_read_stand"
+              }
+            }
+          },
+          "slotRole": "guard_setup",
+          "tierNames": {
+            "1": "Brace",
+            "2": "Hold",
+            "3": "Stand"
+          }
+        },
+        "d": {
+          "familyId": "d",
+          "displayName": "Tundra Sustain Line",
+          "baseAbilityId": "tundraCall",
+          "maxTier": 3,
+          "paths": {
+            "heal": {
+              "pathId": "heal",
+              "displayName": "Heal",
+              "abilities": {
+                "1": "tundraCall",
+                "2": "preen",
+                "3": "molt"
+              }
+            },
+            "guard": {
+              "pathId": "guard",
+              "displayName": "Wall",
+              "abilities": {
+                "1": "guardianCry",
+                "2": "bulwarkRoar",
+                "3": "fortress_stance"
+              }
+            },
+            "cleanse": {
+              "pathId": "cleanse",
+              "displayName": "Cleanse",
+              "abilities": {
+                "1": "reveille",
+                "2": "battleHymn",
+                "3": "victoryChant"
+              }
+            }
+          },
+          "slotRole": "tank_sustain",
+          "tierNames": {
+            "1": "Recover",
+            "2": "Bulk",
+            "3": "Anchor"
+          }
+        }
+      }
+    },
+    "ostrich": {
+      "birdKey": "ostrich",
+      "slotLayout": [
+        {
+          "slotIndex": 0,
+          "familyId": "a",
+          "abilityId": "powerKick"
+        },
+        {
+          "slotIndex": 1,
+          "familyId": "b",
+          "abilityId": "stampedeStrike"
+        },
+        {
+          "slotIndex": 2,
+          "familyId": "c",
+          "abilityId": "sandKick"
+        },
+        {
+          "slotIndex": 3,
+          "familyId": "d",
+          "abilityId": "momentumCharge"
+        }
+      ],
+      "families": {
+        "a": {
+          "familyId": "a",
+          "displayName": "Kick Line",
+          "baseAbilityId": "powerKick",
+          "maxTier": 3,
+          "paths": {
+            "pierce": {
+              "pathId": "pierce",
+              "displayName": "Pierce",
+              "abilities": {
+                "1": "powerKick",
+                "2": "talon_rake",
+                "3": "talon_rend"
+              }
+            },
+            "bleed": {
+              "pathId": "bleed",
+              "displayName": "Bleed",
+              "abilities": {
+                "1": "slice_jab",
+                "2": "slice_rake",
+                "3": "slice_rend"
+              }
+            },
+            "execute": {
+              "pathId": "execute",
+              "displayName": "Execute",
+              "abilities": {
+                "1": "hunters_jab",
+                "2": "hunters_rake",
+                "3": "hunters_rend"
+              }
+            }
+          },
+          "slotRole": "filler_attack",
+          "tierNames": {
+            "1": "I",
+            "2": "II",
+            "3": "III"
+          }
+        },
+        "b": {
+          "familyId": "b",
+          "displayName": "Charge Line",
+          "baseAbilityId": "stampedeStrike",
+          "maxTier": 3,
+          "paths": {
+            "crit": {
+              "pathId": "crit",
+              "displayName": "Crit",
+              "abilities": {
+                "1": "stampedeStrike",
+                "2": "silver_arc",
+                "3": "regal_crest"
+              }
+            },
+            "weaken": {
+              "pathId": "weaken",
+              "displayName": "Weaken",
+              "abilities": {
+                "1": "pressing_sweep",
+                "2": "pressing_arc",
+                "3": "crushing_crest"
+              }
+            },
+            "return": {
+              "pathId": "return",
+              "displayName": "Return",
+              "abilities": {
+                "1": "echo_sweep",
+                "2": "return_arc",
+                "3": "double_crest"
+              }
+            }
+          },
+          "slotRole": "signature_attack",
+          "tierNames": {
+            "1": "Open",
+            "2": "Break",
+            "3": "Ruin"
+          }
+        },
+        "c": {
+          "familyId": "c",
+          "displayName": "Dust Line",
+          "baseAbilityId": "sandKick",
+          "maxTier": 3,
+          "paths": {
+            "guard": {
+              "pathId": "guard",
+              "displayName": "Guard",
+              "abilities": {
+                "1": "sandKick",
+                "2": "gos_hold_line",
+                "3": "gos_stand_fast"
+              }
+            },
+            "amp": {
+              "pathId": "amp",
+              "displayName": "Amp",
+              "abilities": {
+                "1": "iron_guard",
+                "2": "gos_press_line",
+                "3": "gos_final_stand"
+              }
+            },
+            "read": {
+              "pathId": "read",
+              "displayName": "Read",
+              "abilities": {
+                "1": "steady_guard",
+                "2": "gos_read_line",
+                "3": "gos_read_stand"
+              }
+            }
+          },
+          "slotRole": "guard_setup",
+          "tierNames": {
+            "1": "Brace",
+            "2": "Hold",
+            "3": "Stand"
+          }
+        },
+        "d": {
+          "familyId": "d",
+          "displayName": "Momentum Line",
+          "baseAbilityId": "momentumCharge",
+          "maxTier": 3,
+          "paths": {
+            "speed": {
+              "pathId": "speed",
+              "displayName": "Speed",
+              "abilities": {
+                "1": "momentumCharge",
+                "2": "tailwindGust",
+                "3": "hyperCurrent"
+              }
+            },
+            "dodge": {
+              "pathId": "dodge",
+              "displayName": "Dodge",
+              "abilities": {
+                "1": "graceStep",
+                "2": "slipVeil",
+                "3": "phantomGale"
+              }
+            },
+            "acc_break": {
+              "pathId": "acc_break",
+              "displayName": "Accuracy Break",
+              "abilities": {
+                "1": "featherDrift",
+                "2": "blindingVeil",
+                "3": "stormShroud"
+              }
+            }
+          },
+          "slotRole": "mobility_utility",
+          "tierNames": {
+            "1": "Stride",
+            "2": "Draft",
+            "3": "Storm"
+          }
+        }
+      }
+    },
+    "cassowary": {
+      "birdKey": "cassowary",
+      "slotLayout": [
+        {
+          "slotIndex": 0,
+          "familyId": "a",
+          "abilityId": "raptorKick"
+        },
+        {
+          "slotIndex": 1,
+          "familyId": "b",
+          "abilityId": "warStomp"
+        },
+        {
+          "slotIndex": 2,
+          "familyId": "c",
+          "abilityId": "momentumCharge"
+        },
+        {
+          "slotIndex": 3,
+          "familyId": "d",
+          "abilityId": "crushingTalon"
+        }
+      ],
+      "families": {
+        "a": {
+          "familyId": "a",
+          "displayName": "Kick Line",
+          "baseAbilityId": "raptorKick",
+          "maxTier": 3,
+          "paths": {
+            "pierce": {
+              "pathId": "pierce",
+              "displayName": "Pierce",
+              "abilities": {
+                "1": "raptorKick",
+                "2": "talon_rake",
+                "3": "talon_rend"
+              }
+            },
+            "bleed": {
+              "pathId": "bleed",
+              "displayName": "Bleed",
+              "abilities": {
+                "1": "slice_jab",
+                "2": "slice_rake",
+                "3": "slice_rend"
+              }
+            },
+            "execute": {
+              "pathId": "execute",
+              "displayName": "Execute",
+              "abilities": {
+                "1": "hunters_jab",
+                "2": "hunters_rake",
+                "3": "hunters_rend"
+              }
+            }
+          },
+          "slotRole": "filler_attack",
+          "tierNames": {
+            "1": "I",
+            "2": "II",
+            "3": "III"
+          }
+        },
+        "b": {
+          "familyId": "b",
+          "displayName": "Stomp Line",
+          "baseAbilityId": "warStomp",
+          "maxTier": 3,
+          "paths": {
+            "crit": {
+              "pathId": "crit",
+              "displayName": "Crit",
+              "abilities": {
+                "1": "warStomp",
+                "2": "silver_arc",
+                "3": "regal_crest"
+              }
+            },
+            "weaken": {
+              "pathId": "weaken",
+              "displayName": "Weaken",
+              "abilities": {
+                "1": "pressing_sweep",
+                "2": "pressing_arc",
+                "3": "crushing_crest"
+              }
+            },
+            "return": {
+              "pathId": "return",
+              "displayName": "Return",
+              "abilities": {
+                "1": "echo_sweep",
+                "2": "return_arc",
+                "3": "double_crest"
+              }
+            }
+          },
+          "slotRole": "signature_attack",
+          "tierNames": {
+            "1": "Open",
+            "2": "Break",
+            "3": "Ruin"
+          }
+        },
+        "c": {
+          "familyId": "c",
+          "displayName": "Momentum Line",
+          "baseAbilityId": "momentumCharge",
+          "maxTier": 3,
+          "paths": {
+            "speed": {
+              "pathId": "speed",
+              "displayName": "Speed",
+              "abilities": {
+                "1": "momentumCharge",
+                "2": "tailwindGust",
+                "3": "hyperCurrent"
+              }
+            },
+            "dodge": {
+              "pathId": "dodge",
+              "displayName": "Dodge",
+              "abilities": {
+                "1": "graceStep",
+                "2": "slipVeil",
+                "3": "phantomGale"
+              }
+            },
+            "acc_break": {
+              "pathId": "acc_break",
+              "displayName": "Accuracy Break",
+              "abilities": {
+                "1": "featherDrift",
+                "2": "blindingVeil",
+                "3": "stormShroud"
+              }
+            }
+          },
+          "slotRole": "mobility_utility",
+          "tierNames": {
+            "1": "Stride",
+            "2": "Draft",
+            "3": "Storm"
+          }
+        },
+        "d": {
+          "familyId": "d",
+          "displayName": "Talon Line",
+          "baseAbilityId": "crushingTalon",
+          "maxTier": 3,
+          "paths": {
+            "pierce": {
+              "pathId": "pierce",
+              "displayName": "Pierce",
+              "abilities": {
+                "1": "crushingTalon",
+                "2": "talon_rake",
+                "3": "talon_rend"
+              }
+            },
+            "bleed": {
+              "pathId": "bleed",
+              "displayName": "Bleed",
+              "abilities": {
+                "1": "slice_jab",
+                "2": "slice_rake",
+                "3": "slice_rend"
+              }
+            },
+            "execute": {
+              "pathId": "execute",
+              "displayName": "Execute",
+              "abilities": {
+                "1": "hunters_jab",
+                "2": "hunters_rake",
+                "3": "hunters_rend"
+              }
+            }
+          },
+          "slotRole": "filler_attack",
+          "tierNames": {
+            "1": "I",
+            "2": "II",
+            "3": "III"
+          }
+        }
+      }
+    },
+    "emu": {
+      "birdKey": "emu",
+      "slotLayout": [
+        {
+          "slotIndex": 0,
+          "familyId": "a",
+          "abilityId": "headWhip"
+        },
+        {
+          "slotIndex": 1,
+          "familyId": "b",
+          "abilityId": "warCharge"
+        },
+        {
+          "slotIndex": 2,
+          "familyId": "c",
+          "abilityId": "sandKick"
+        },
+        {
+          "slotIndex": 3,
+          "familyId": "d",
+          "abilityId": "momentumStrike"
+        }
+      ],
+      "families": {
+        "a": {
+          "familyId": "a",
+          "displayName": "Whip Line",
+          "baseAbilityId": "headWhip",
+          "maxTier": 3,
+          "paths": {
+            "pierce": {
+              "pathId": "pierce",
+              "displayName": "Pierce",
+              "abilities": {
+                "1": "headWhip",
+                "2": "talon_rake",
+                "3": "talon_rend"
+              }
+            },
+            "bleed": {
+              "pathId": "bleed",
+              "displayName": "Bleed",
+              "abilities": {
+                "1": "slice_jab",
+                "2": "slice_rake",
+                "3": "slice_rend"
+              }
+            },
+            "execute": {
+              "pathId": "execute",
+              "displayName": "Execute",
+              "abilities": {
+                "1": "hunters_jab",
+                "2": "hunters_rake",
+                "3": "hunters_rend"
+              }
+            }
+          },
+          "slotRole": "filler_attack",
+          "tierNames": {
+            "1": "I",
+            "2": "II",
+            "3": "III"
+          }
+        },
+        "b": {
+          "familyId": "b",
+          "displayName": "Charge Line",
+          "baseAbilityId": "warCharge",
+          "maxTier": 3,
+          "paths": {
+            "crit": {
+              "pathId": "crit",
+              "displayName": "Crit",
+              "abilities": {
+                "1": "warCharge",
+                "2": "silver_arc",
+                "3": "regal_crest"
+              }
+            },
+            "weaken": {
+              "pathId": "weaken",
+              "displayName": "Weaken",
+              "abilities": {
+                "1": "pressing_sweep",
+                "2": "pressing_arc",
+                "3": "crushing_crest"
+              }
+            },
+            "return": {
+              "pathId": "return",
+              "displayName": "Return",
+              "abilities": {
+                "1": "echo_sweep",
+                "2": "return_arc",
+                "3": "double_crest"
+              }
+            }
+          },
+          "slotRole": "signature_attack",
+          "tierNames": {
+            "1": "Open",
+            "2": "Break",
+            "3": "Ruin"
+          }
+        },
+        "c": {
+          "familyId": "c",
+          "displayName": "Dust Line",
+          "baseAbilityId": "sandKick",
+          "maxTier": 3,
+          "paths": {
+            "guard": {
+              "pathId": "guard",
+              "displayName": "Guard",
+              "abilities": {
+                "1": "sandKick",
+                "2": "gos_hold_line",
+                "3": "gos_stand_fast"
+              }
+            },
+            "amp": {
+              "pathId": "amp",
+              "displayName": "Amp",
+              "abilities": {
+                "1": "iron_guard",
+                "2": "gos_press_line",
+                "3": "gos_final_stand"
+              }
+            },
+            "read": {
+              "pathId": "read",
+              "displayName": "Read",
+              "abilities": {
+                "1": "steady_guard",
+                "2": "gos_read_line",
+                "3": "gos_read_stand"
+              }
+            }
+          },
+          "slotRole": "guard_setup",
+          "tierNames": {
+            "1": "Brace",
+            "2": "Hold",
+            "3": "Stand"
+          }
+        },
+        "d": {
+          "familyId": "d",
+          "displayName": "Strike Line",
+          "baseAbilityId": "momentumStrike",
+          "maxTier": 3,
+          "paths": {
+            "pierce": {
+              "pathId": "pierce",
+              "displayName": "Pierce",
+              "abilities": {
+                "1": "momentumStrike",
+                "2": "talon_rake",
+                "3": "talon_rend"
+              }
+            },
+            "bleed": {
+              "pathId": "bleed",
+              "displayName": "Bleed",
+              "abilities": {
+                "1": "slice_jab",
+                "2": "slice_rake",
+                "3": "slice_rend"
+              }
+            },
+            "execute": {
+              "pathId": "execute",
+              "displayName": "Execute",
+              "abilities": {
+                "1": "hunters_jab",
+                "2": "hunters_rake",
+                "3": "hunters_rend"
+              }
+            }
+          },
+          "slotRole": "filler_attack",
+          "tierNames": {
+            "1": "I",
+            "2": "II",
+            "3": "III"
+          }
+        }
+      }
+    },
+    "dukeBlakiston": {
+      "birdKey": "dukeBlakiston",
+      "slotLayout": [
+        {
+          "slotIndex": 0,
+          "familyId": "a",
+          "abilityId": "nightTalon"
+        },
+        {
+          "slotIndex": 1,
+          "familyId": "b",
+          "abilityId": "nightfallCall"
+        },
+        {
+          "slotIndex": 2,
+          "familyId": "c",
+          "abilityId": "courtSummon"
+        },
+        {
+          "slotIndex": 3,
+          "familyId": "d",
+          "abilityId": "verdict"
+        }
+      ],
+      "families": {
+        "a": {
+          "familyId": "a",
+          "displayName": "Night Talon Line",
+          "baseAbilityId": "nightTalon",
+          "maxTier": 3,
+          "paths": {
+            "pierce": {
+              "pathId": "pierce",
+              "displayName": "Pierce",
+              "abilities": {
+                "1": "nightTalon",
+                "2": "talon_rake",
+                "3": "talon_rend"
+              }
+            },
+            "bleed": {
+              "pathId": "bleed",
+              "displayName": "Bleed",
+              "abilities": {
+                "1": "slice_jab",
+                "2": "slice_rake",
+                "3": "slice_rend"
+              }
+            },
+            "execute": {
+              "pathId": "execute",
+              "displayName": "Execute",
+              "abilities": {
+                "1": "hunters_jab",
+                "2": "hunters_rake",
+                "3": "hunters_rend"
+              }
+            }
+          },
+          "slotRole": "filler_attack",
+          "tierNames": {
+            "1": "I",
+            "2": "II",
+            "3": "III"
+          }
+        },
+        "b": {
+          "familyId": "b",
+          "displayName": "Court Call Line",
+          "baseAbilityId": "nightfallCall",
+          "maxTier": 3,
+          "paths": {
+            "fear": {
+              "pathId": "fear",
+              "displayName": "Fear",
+              "abilities": {
+                "1": "dread_mimic",
+                "2": "panic_chorus",
+                "3": "terror_aria"
+              }
+            },
+            "paralysis": {
+              "pathId": "paralysis",
+              "displayName": "Paralysis",
+              "abilities": {
+                "1": "shock_mimic",
+                "2": "static_chorus",
+                "3": "lock_aria"
+              }
+            },
+            "copycat": {
+              "pathId": "copycat",
+              "displayName": "Copycat",
+              "abilities": {
+                "1": "nightfallCall",
+                "2": "echo_chorus",
+                "3": "stolen_aria"
+              }
+            }
+          },
+          "slotRole": "signature_spell",
+          "tierNames": {
+            "1": "Call",
+            "2": "Verse",
+            "3": "Aria"
+          }
+        },
+        "c": {
+          "familyId": "c",
+          "displayName": "Summon Line",
+          "baseAbilityId": "courtSummon",
+          "maxTier": 3,
+          "paths": {
+            "damage_amp": {
+              "pathId": "damage_amp",
+              "displayName": "Damage Amp",
+              "abilities": {
+                "1": "courtSummon",
+                "2": "harmonic_measure",
+                "3": "finale_mark"
+              }
+            },
+            "delayed": {
+              "pathId": "delayed",
+              "displayName": "Afterbeat",
+              "abilities": {
+                "1": "echo_mark",
+                "2": "resonant_measure",
+                "3": "delayed_finale"
+              }
+            },
+            "weaken": {
+              "pathId": "weaken",
+              "displayName": "Weaken",
+              "abilities": {
+                "1": "cracking_mark",
+                "2": "softening_measure",
+                "3": "fading_finale"
+              }
+            }
+          },
+          "slotRole": "support_spell",
+          "tierNames": {
+            "1": "Cue",
+            "2": "Cadence",
+            "3": "Curtain"
+          }
+        },
+        "d": {
+          "familyId": "d",
+          "displayName": "Verdict Line",
+          "baseAbilityId": "verdict",
+          "maxTier": 3,
+          "paths": {
+            "crit": {
+              "pathId": "crit",
+              "displayName": "Crit",
+              "abilities": {
+                "1": "verdict",
+                "2": "silver_arc",
+                "3": "regal_crest"
+              }
+            },
+            "weaken": {
+              "pathId": "weaken",
+              "displayName": "Weaken",
+              "abilities": {
+                "1": "pressing_sweep",
+                "2": "pressing_arc",
+                "3": "crushing_crest"
+              }
+            },
+            "return": {
+              "pathId": "return",
+              "displayName": "Return",
+              "abilities": {
+                "1": "echo_sweep",
+                "2": "return_arc",
+                "3": "double_crest"
+              }
+            }
+          },
+          "slotRole": "signature_attack",
+          "tierNames": {
+            "1": "Open",
+            "2": "Break",
+            "3": "Ruin"
+          }
+        }
+      }
+    },
+    "wren": {
+      "birdKey": "wren",
+      "slotLayout": [
+        {
+          "slotIndex": 0,
+          "familyId": "a",
+          "abilityId": "wren_quick_peck"
+        },
+        {
+          "slotIndex": 1,
+          "familyId": "b",
+          "abilityId": "wren_needle_dart"
+        },
+        {
+          "slotIndex": 2,
+          "familyId": "c",
+          "abilityId": "wren_feather_feint"
+        },
+        {
+          "slotIndex": 3,
+          "familyId": "d",
+          "abilityId": "wren_trail_step"
+        }
+      ],
+      "families": {
+        "a": {
+          "familyId": "a",
+          "displayName": "Quick Peck Line",
+          "baseAbilityId": "wren_quick_peck",
+          "maxTier": 3,
+          "paths": {
+            "pierce": {
+              "pathId": "pierce",
+              "displayName": "Pierce",
+              "abilities": {
+                "1": "wren_quick_peck",
+                "2": "talon_rake",
+                "3": "talon_rend"
+              }
+            },
+            "bleed": {
+              "pathId": "bleed",
+              "displayName": "Bleed",
+              "abilities": {
+                "1": "slice_jab",
+                "2": "slice_rake",
+                "3": "slice_rend"
+              }
+            },
+            "execute": {
+              "pathId": "execute",
+              "displayName": "Execute",
+              "abilities": {
+                "1": "hunters_jab",
+                "2": "hunters_rake",
+                "3": "hunters_rend"
+              }
+            }
+          },
+          "slotRole": "filler_attack",
+          "tierNames": {
+            "1": "I",
+            "2": "II",
+            "3": "III"
+          }
+        },
+        "b": {
+          "familyId": "b",
+          "displayName": "Needle Line",
+          "baseAbilityId": "wren_needle_dart",
+          "maxTier": 3,
+          "paths": {
+            "pierce": {
+              "pathId": "pierce",
+              "displayName": "Pierce",
+              "abilities": {
+                "1": "wren_needle_dart",
+                "2": "talon_rake",
+                "3": "talon_rend"
+              }
+            },
+            "bleed": {
+              "pathId": "bleed",
+              "displayName": "Bleed",
+              "abilities": {
+                "1": "slice_jab",
+                "2": "slice_rake",
+                "3": "slice_rend"
+              }
+            },
+            "execute": {
+              "pathId": "execute",
+              "displayName": "Execute",
+              "abilities": {
+                "1": "hunters_jab",
+                "2": "hunters_rake",
+                "3": "hunters_rend"
+              }
+            }
+          },
+          "slotRole": "filler_attack",
+          "tierNames": {
+            "1": "I",
+            "2": "II",
+            "3": "III"
+          }
+        },
+        "c": {
+          "familyId": "c",
+          "displayName": "Feint Line",
+          "baseAbilityId": "wren_feather_feint",
+          "maxTier": 3,
+          "paths": {
+            "acc_break": {
+              "pathId": "acc_break",
+              "displayName": "Accuracy Break",
+              "abilities": {
+                "1": "glitter_taunt",
+                "2": "dazzle_flourish",
+                "3": "spectacle_storm"
+              }
+            },
+            "dodge": {
+              "pathId": "dodge",
+              "displayName": "Dodge",
+              "abilities": {
+                "1": "slip_taunt",
+                "2": "feather_flourish",
+                "3": "mirage_spectacle"
+              }
+            },
+            "pressure": {
+              "pathId": "pressure",
+              "displayName": "Pressure",
+              "abilities": {
+                "1": "wren_feather_feint",
+                "2": "provoking_flourish",
+                "3": "grand_spectacle"
+              }
+            }
+          },
+          "slotRole": "trick_utility",
+          "tierNames": {
+            "1": "Feint",
+            "2": "Flourish",
+            "3": "Spectacle"
+          }
+        },
+        "d": {
+          "familyId": "d",
+          "displayName": "Trail Line",
+          "baseAbilityId": "wren_trail_step",
+          "maxTier": 3,
+          "paths": {
+            "speed": {
+              "pathId": "speed",
+              "displayName": "Speed",
+              "abilities": {
+                "1": "wren_trail_step",
+                "2": "tailwindGust",
+                "3": "hyperCurrent"
+              }
+            },
+            "dodge": {
+              "pathId": "dodge",
+              "displayName": "Dodge",
+              "abilities": {
+                "1": "graceStep",
+                "2": "slipVeil",
+                "3": "phantomGale"
+              }
+            },
+            "acc_break": {
+              "pathId": "acc_break",
+              "displayName": "Accuracy Break",
+              "abilities": {
+                "1": "featherDrift",
+                "2": "blindingVeil",
+                "3": "stormShroud"
+              }
+            }
+          },
+          "slotRole": "mobility_utility",
+          "tierNames": {
+            "1": "Stride",
+            "2": "Draft",
+            "3": "Storm"
+          }
+        }
+      }
+    },
+    "fairywren": {
+      "birdKey": "fairywren",
+      "slotLayout": [
+        {
+          "slotIndex": 0,
+          "familyId": "a",
+          "abilityId": "fwren_song"
+        },
+        {
+          "slotIndex": 1,
+          "familyId": "b",
+          "abilityId": "fwren_bright_call"
+        },
+        {
+          "slotIndex": 2,
+          "familyId": "c",
+          "abilityId": "fwren_tiny_peck"
+        },
+        {
+          "slotIndex": 3,
+          "familyId": "d",
+          "abilityId": "fwren_refrain"
+        }
+      ],
+      "families": {
+        "a": {
+          "familyId": "a",
+          "displayName": "Song Line",
+          "baseAbilityId": "fwren_song",
+          "maxTier": 3,
+          "paths": {
+            "burn": {
+              "pathId": "burn",
+              "displayName": "Burn",
+              "abilities": {
+                "1": "ember_note",
+                "2": "ember_echo",
+                "3": "ember_refrain"
+              }
+            },
+            "confuse": {
+              "pathId": "confuse",
+              "displayName": "Confuse",
+              "abilities": {
+                "1": "warble_note",
+                "2": "dizzy_echo",
+                "3": "maddening_refrain"
+              }
+            },
+            "delayed": {
+              "pathId": "delayed",
+              "displayName": "Resonance",
+              "abilities": {
+                "1": "fwren_song",
+                "2": "delayed_echo",
+                "3": "returning_refrain"
+              }
+            }
+          },
+          "slotRole": "filler_spell",
+          "tierNames": {
+            "1": "Note",
+            "2": "Echo",
+            "3": "Refrain"
+          }
+        },
+        "b": {
+          "familyId": "b",
+          "displayName": "Bright Call Line",
+          "baseAbilityId": "fwren_bright_call",
+          "maxTier": 3,
+          "paths": {
+            "fear": {
+              "pathId": "fear",
+              "displayName": "Fear",
+              "abilities": {
+                "1": "dread_mimic",
+                "2": "panic_chorus",
+                "3": "terror_aria"
+              }
+            },
+            "paralysis": {
+              "pathId": "paralysis",
+              "displayName": "Paralysis",
+              "abilities": {
+                "1": "shock_mimic",
+                "2": "static_chorus",
+                "3": "lock_aria"
+              }
+            },
+            "copycat": {
+              "pathId": "copycat",
+              "displayName": "Copycat",
+              "abilities": {
+                "1": "fwren_bright_call",
+                "2": "echo_chorus",
+                "3": "stolen_aria"
+              }
+            }
+          },
+          "slotRole": "signature_spell",
+          "tierNames": {
+            "1": "Call",
+            "2": "Verse",
+            "3": "Aria"
+          }
+        },
+        "c": {
+          "familyId": "c",
+          "displayName": "Peck Line",
+          "baseAbilityId": "fwren_tiny_peck",
+          "maxTier": 3,
+          "paths": {
+            "pierce": {
+              "pathId": "pierce",
+              "displayName": "Pierce",
+              "abilities": {
+                "1": "fwren_tiny_peck",
+                "2": "talon_rake",
+                "3": "talon_rend"
+              }
+            },
+            "bleed": {
+              "pathId": "bleed",
+              "displayName": "Bleed",
+              "abilities": {
+                "1": "slice_jab",
+                "2": "slice_rake",
+                "3": "slice_rend"
+              }
+            },
+            "execute": {
+              "pathId": "execute",
+              "displayName": "Execute",
+              "abilities": {
+                "1": "hunters_jab",
+                "2": "hunters_rake",
+                "3": "hunters_rend"
+              }
+            }
+          },
+          "slotRole": "filler_attack",
+          "tierNames": {
+            "1": "I",
+            "2": "II",
+            "3": "III"
+          }
+        },
+        "d": {
+          "familyId": "d",
+          "displayName": "Refrain Line",
+          "baseAbilityId": "fwren_refrain",
+          "maxTier": 3,
+          "paths": {
+            "burn": {
+              "pathId": "burn",
+              "displayName": "Burn",
+              "abilities": {
+                "1": "ember_note",
+                "2": "ember_echo",
+                "3": "ember_refrain"
+              }
+            },
+            "confuse": {
+              "pathId": "confuse",
+              "displayName": "Confuse",
+              "abilities": {
+                "1": "warble_note",
+                "2": "dizzy_echo",
+                "3": "maddening_refrain"
+              }
+            },
+            "delayed": {
+              "pathId": "delayed",
+              "displayName": "Resonance",
+              "abilities": {
+                "1": "fwren_refrain",
+                "2": "delayed_echo",
+                "3": "returning_refrain"
+              }
+            }
+          },
+          "slotRole": "filler_spell",
+          "tierNames": {
+            "1": "Note",
+            "2": "Echo",
+            "3": "Refrain"
+          }
+        }
+      }
+    },
+    "firecrest": {
+      "birdKey": "firecrest",
+      "slotLayout": [
+        {
+          "slotIndex": 0,
+          "familyId": "a",
+          "abilityId": "firecrest_jab"
+        },
+        {
+          "slotIndex": 1,
+          "familyId": "b",
+          "abilityId": "firecrest_burn_dash"
+        },
+        {
+          "slotIndex": 2,
+          "familyId": "c",
+          "abilityId": "firecrest_cinder_step"
+        },
+        {
+          "slotIndex": 3,
+          "familyId": "d",
+          "abilityId": "firecrest_heat_mark"
+        }
+      ],
+      "families": {
+        "a": {
+          "familyId": "a",
+          "displayName": "Flame Jab Line",
+          "baseAbilityId": "firecrest_jab",
+          "maxTier": 3,
+          "paths": {
+            "pierce": {
+              "pathId": "pierce",
+              "displayName": "Pierce",
+              "abilities": {
+                "1": "firecrest_jab",
+                "2": "talon_rake",
+                "3": "talon_rend"
+              }
+            },
+            "bleed": {
+              "pathId": "bleed",
+              "displayName": "Bleed",
+              "abilities": {
+                "1": "slice_jab",
+                "2": "slice_rake",
+                "3": "slice_rend"
+              }
+            },
+            "execute": {
+              "pathId": "execute",
+              "displayName": "Execute",
+              "abilities": {
+                "1": "hunters_jab",
+                "2": "hunters_rake",
+                "3": "hunters_rend"
+              }
+            }
+          },
+          "slotRole": "filler_attack",
+          "tierNames": {
+            "1": "I",
+            "2": "II",
+            "3": "III"
+          }
+        },
+        "b": {
+          "familyId": "b",
+          "displayName": "Burn Dash Line",
+          "baseAbilityId": "firecrest_burn_dash",
+          "maxTier": 3,
+          "paths": {
+            "pierce": {
+              "pathId": "pierce",
+              "displayName": "Pierce",
+              "abilities": {
+                "1": "firecrest_burn_dash",
+                "2": "talon_rake",
+                "3": "talon_rend"
+              }
+            },
+            "bleed": {
+              "pathId": "bleed",
+              "displayName": "Bleed",
+              "abilities": {
+                "1": "slice_jab",
+                "2": "slice_rake",
+                "3": "slice_rend"
+              }
+            },
+            "execute": {
+              "pathId": "execute",
+              "displayName": "Execute",
+              "abilities": {
+                "1": "hunters_jab",
+                "2": "hunters_rake",
+                "3": "hunters_rend"
+              }
+            }
+          },
+          "slotRole": "filler_attack",
+          "tierNames": {
+            "1": "I",
+            "2": "II",
+            "3": "III"
+          }
+        },
+        "c": {
+          "familyId": "c",
+          "displayName": "Cinder Line",
+          "baseAbilityId": "firecrest_cinder_step",
+          "maxTier": 3,
+          "paths": {
+            "speed": {
+              "pathId": "speed",
+              "displayName": "Speed",
+              "abilities": {
+                "1": "firecrest_cinder_step",
+                "2": "tailwindGust",
+                "3": "hyperCurrent"
+              }
+            },
+            "dodge": {
+              "pathId": "dodge",
+              "displayName": "Dodge",
+              "abilities": {
+                "1": "graceStep",
+                "2": "slipVeil",
+                "3": "phantomGale"
+              }
+            },
+            "acc_break": {
+              "pathId": "acc_break",
+              "displayName": "Accuracy Break",
+              "abilities": {
+                "1": "featherDrift",
+                "2": "blindingVeil",
+                "3": "stormShroud"
+              }
+            }
+          },
+          "slotRole": "mobility_utility",
+          "tierNames": {
+            "1": "Stride",
+            "2": "Draft",
+            "3": "Storm"
+          }
+        },
+        "d": {
+          "familyId": "d",
+          "displayName": "Heat Mark Line",
+          "baseAbilityId": "firecrest_heat_mark",
+          "maxTier": 3,
+          "paths": {
+            "damage_amp": {
+              "pathId": "damage_amp",
+              "displayName": "Damage Amp",
+              "abilities": {
+                "1": "firecrest_heat_mark",
+                "2": "harmonic_measure",
+                "3": "finale_mark"
+              }
+            },
+            "delayed": {
+              "pathId": "delayed",
+              "displayName": "Afterbeat",
+              "abilities": {
+                "1": "echo_mark",
+                "2": "resonant_measure",
+                "3": "delayed_finale"
+              }
+            },
+            "weaken": {
+              "pathId": "weaken",
+              "displayName": "Weaken",
+              "abilities": {
+                "1": "cracking_mark",
+                "2": "softening_measure",
+                "3": "fading_finale"
+              }
+            }
+          },
+          "slotRole": "support_spell",
+          "tierNames": {
+            "1": "Cue",
+            "2": "Cadence",
+            "3": "Curtain"
+          }
+        }
+      }
+    },
+    "wagtail": {
+      "birdKey": "wagtail",
+      "slotLayout": [
+        {
+          "slotIndex": 0,
+          "familyId": "a",
+          "abilityId": "wagtail_peck"
+        },
+        {
+          "slotIndex": 1,
+          "familyId": "b",
+          "abilityId": "wagtail_flick_strike"
+        },
+        {
+          "slotIndex": 2,
+          "familyId": "c",
+          "abilityId": "wagtail_mock_call"
+        },
+        {
+          "slotIndex": 3,
+          "familyId": "d",
+          "abilityId": "wagtail_tail_mark"
+        }
+      ],
+      "families": {
+        "a": {
+          "familyId": "a",
+          "displayName": "Peck Line",
+          "baseAbilityId": "wagtail_peck",
+          "maxTier": 3,
+          "paths": {
+            "pierce": {
+              "pathId": "pierce",
+              "displayName": "Pierce",
+              "abilities": {
+                "1": "wagtail_peck",
+                "2": "talon_rake",
+                "3": "talon_rend"
+              }
+            },
+            "bleed": {
+              "pathId": "bleed",
+              "displayName": "Bleed",
+              "abilities": {
+                "1": "slice_jab",
+                "2": "slice_rake",
+                "3": "slice_rend"
+              }
+            },
+            "execute": {
+              "pathId": "execute",
+              "displayName": "Execute",
+              "abilities": {
+                "1": "hunters_jab",
+                "2": "hunters_rake",
+                "3": "hunters_rend"
+              }
+            }
+          },
+          "slotRole": "filler_attack",
+          "tierNames": {
+            "1": "I",
+            "2": "II",
+            "3": "III"
+          }
+        },
+        "b": {
+          "familyId": "b",
+          "displayName": "Flick Line",
+          "baseAbilityId": "wagtail_flick_strike",
+          "maxTier": 3,
+          "paths": {
+            "pierce": {
+              "pathId": "pierce",
+              "displayName": "Pierce",
+              "abilities": {
+                "1": "wagtail_flick_strike",
+                "2": "talon_rake",
+                "3": "talon_rend"
+              }
+            },
+            "bleed": {
+              "pathId": "bleed",
+              "displayName": "Bleed",
+              "abilities": {
+                "1": "slice_jab",
+                "2": "slice_rake",
+                "3": "slice_rend"
+              }
+            },
+            "execute": {
+              "pathId": "execute",
+              "displayName": "Execute",
+              "abilities": {
+                "1": "hunters_jab",
+                "2": "hunters_rake",
+                "3": "hunters_rend"
+              }
+            }
+          },
+          "slotRole": "filler_attack",
+          "tierNames": {
+            "1": "I",
+            "2": "II",
+            "3": "III"
+          }
+        },
+        "c": {
+          "familyId": "c",
+          "displayName": "Mock Line",
+          "baseAbilityId": "wagtail_mock_call",
+          "maxTier": 3,
+          "paths": {
+            "acc_break": {
+              "pathId": "acc_break",
+              "displayName": "Accuracy Break",
+              "abilities": {
+                "1": "glitter_taunt",
+                "2": "dazzle_flourish",
+                "3": "spectacle_storm"
+              }
+            },
+            "dodge": {
+              "pathId": "dodge",
+              "displayName": "Dodge",
+              "abilities": {
+                "1": "slip_taunt",
+                "2": "feather_flourish",
+                "3": "mirage_spectacle"
+              }
+            },
+            "pressure": {
+              "pathId": "pressure",
+              "displayName": "Pressure",
+              "abilities": {
+                "1": "wagtail_mock_call",
+                "2": "provoking_flourish",
+                "3": "grand_spectacle"
+              }
+            }
+          },
+          "slotRole": "trick_utility",
+          "tierNames": {
+            "1": "Feint",
+            "2": "Flourish",
+            "3": "Spectacle"
+          }
+        },
+        "d": {
+          "familyId": "d",
+          "displayName": "Tail Mark Line",
+          "baseAbilityId": "wagtail_tail_mark",
+          "maxTier": 3,
+          "paths": {
+            "damage_amp": {
+              "pathId": "damage_amp",
+              "displayName": "Damage Amp",
+              "abilities": {
+                "1": "wagtail_tail_mark",
+                "2": "harmonic_measure",
+                "3": "finale_mark"
+              }
+            },
+            "delayed": {
+              "pathId": "delayed",
+              "displayName": "Afterbeat",
+              "abilities": {
+                "1": "echo_mark",
+                "2": "resonant_measure",
+                "3": "delayed_finale"
+              }
+            },
+            "weaken": {
+              "pathId": "weaken",
+              "displayName": "Weaken",
+              "abilities": {
+                "1": "cracking_mark",
+                "2": "softening_measure",
+                "3": "fading_finale"
+              }
+            }
+          },
+          "slotRole": "support_spell",
+          "tierNames": {
+            "1": "Cue",
+            "2": "Cadence",
+            "3": "Curtain"
+          }
+        }
+      }
+    },
+    "galah": {
+      "birdKey": "galah",
+      "slotLayout": [
+        {
+          "slotIndex": 0,
+          "familyId": "a",
+          "abilityId": "galah_beak_tap"
+        },
+        {
+          "slotIndex": 1,
+          "familyId": "b",
+          "abilityId": "galah_flash_strike"
+        },
+        {
+          "slotIndex": 2,
+          "familyId": "c",
+          "abilityId": "galah_screech"
+        },
+        {
+          "slotIndex": 3,
+          "familyId": "d",
+          "abilityId": "galah_show_mark"
+        }
+      ],
+      "families": {
+        "a": {
+          "familyId": "a",
+          "displayName": "Tap Line",
+          "baseAbilityId": "galah_beak_tap",
+          "maxTier": 3,
+          "paths": {
+            "pierce": {
+              "pathId": "pierce",
+              "displayName": "Pierce",
+              "abilities": {
+                "1": "galah_beak_tap",
+                "2": "talon_rake",
+                "3": "talon_rend"
+              }
+            },
+            "bleed": {
+              "pathId": "bleed",
+              "displayName": "Bleed",
+              "abilities": {
+                "1": "slice_jab",
+                "2": "slice_rake",
+                "3": "slice_rend"
+              }
+            },
+            "execute": {
+              "pathId": "execute",
+              "displayName": "Execute",
+              "abilities": {
+                "1": "hunters_jab",
+                "2": "hunters_rake",
+                "3": "hunters_rend"
+              }
+            }
+          },
+          "slotRole": "filler_attack",
+          "tierNames": {
+            "1": "I",
+            "2": "II",
+            "3": "III"
+          }
+        },
+        "b": {
+          "familyId": "b",
+          "displayName": "Flash Line",
+          "baseAbilityId": "galah_flash_strike",
+          "maxTier": 3,
+          "paths": {
+            "pierce": {
+              "pathId": "pierce",
+              "displayName": "Pierce",
+              "abilities": {
+                "1": "galah_flash_strike",
+                "2": "talon_rake",
+                "3": "talon_rend"
+              }
+            },
+            "bleed": {
+              "pathId": "bleed",
+              "displayName": "Bleed",
+              "abilities": {
+                "1": "slice_jab",
+                "2": "slice_rake",
+                "3": "slice_rend"
+              }
+            },
+            "execute": {
+              "pathId": "execute",
+              "displayName": "Execute",
+              "abilities": {
+                "1": "hunters_jab",
+                "2": "hunters_rake",
+                "3": "hunters_rend"
+              }
+            }
+          },
+          "slotRole": "filler_attack",
+          "tierNames": {
+            "1": "I",
+            "2": "II",
+            "3": "III"
+          }
+        },
+        "c": {
+          "familyId": "c",
+          "displayName": "Screech Line",
+          "baseAbilityId": "galah_screech",
+          "maxTier": 3,
+          "paths": {
+            "fear": {
+              "pathId": "fear",
+              "displayName": "Fear",
+              "abilities": {
+                "1": "dread_mimic",
+                "2": "panic_chorus",
+                "3": "terror_aria"
+              }
+            },
+            "paralysis": {
+              "pathId": "paralysis",
+              "displayName": "Paralysis",
+              "abilities": {
+                "1": "shock_mimic",
+                "2": "static_chorus",
+                "3": "lock_aria"
+              }
+            },
+            "copycat": {
+              "pathId": "copycat",
+              "displayName": "Copycat",
+              "abilities": {
+                "1": "galah_screech",
+                "2": "echo_chorus",
+                "3": "stolen_aria"
+              }
+            }
+          },
+          "slotRole": "signature_spell",
+          "tierNames": {
+            "1": "Call",
+            "2": "Verse",
+            "3": "Aria"
+          }
+        },
+        "d": {
+          "familyId": "d",
+          "displayName": "Show Mark Line",
+          "baseAbilityId": "galah_show_mark",
+          "maxTier": 3,
+          "paths": {
+            "damage_amp": {
+              "pathId": "damage_amp",
+              "displayName": "Damage Amp",
+              "abilities": {
+                "1": "galah_show_mark",
+                "2": "harmonic_measure",
+                "3": "finale_mark"
+              }
+            },
+            "delayed": {
+              "pathId": "delayed",
+              "displayName": "Afterbeat",
+              "abilities": {
+                "1": "echo_mark",
+                "2": "resonant_measure",
+                "3": "delayed_finale"
+              }
+            },
+            "weaken": {
+              "pathId": "weaken",
+              "displayName": "Weaken",
+              "abilities": {
+                "1": "cracking_mark",
+                "2": "softening_measure",
+                "3": "fading_finale"
+              }
+            }
+          },
+          "slotRole": "support_spell",
+          "tierNames": {
+            "1": "Cue",
+            "2": "Cadence",
+            "3": "Curtain"
+          }
+        }
+      }
+    },
+    "bluejay": {
+      "birdKey": "bluejay",
+      "slotLayout": [
+        {
+          "slotIndex": 0,
+          "familyId": "a",
+          "abilityId": "bluejay_crest_jab"
+        },
+        {
+          "slotIndex": 1,
+          "familyId": "b",
+          "abilityId": "bluejay_jaybreaker"
+        },
+        {
+          "slotIndex": 2,
+          "familyId": "c",
+          "abilityId": "bluejay_crest_guard"
+        },
+        {
+          "slotIndex": 3,
+          "familyId": "d",
+          "abilityId": "bluejay_raucous_cry"
+        }
+      ],
+      "families": {
+        "a": {
+          "familyId": "a",
+          "displayName": "Crest Jab Line",
+          "baseAbilityId": "bluejay_crest_jab",
+          "maxTier": 3,
+          "paths": {
+            "pierce": {
+              "pathId": "pierce",
+              "displayName": "Pierce",
+              "abilities": {
+                "1": "bluejay_crest_jab",
+                "2": "talon_rake",
+                "3": "talon_rend"
+              }
+            },
+            "bleed": {
+              "pathId": "bleed",
+              "displayName": "Bleed",
+              "abilities": {
+                "1": "slice_jab",
+                "2": "slice_rake",
+                "3": "slice_rend"
+              }
+            },
+            "execute": {
+              "pathId": "execute",
+              "displayName": "Execute",
+              "abilities": {
+                "1": "hunters_jab",
+                "2": "hunters_rake",
+                "3": "hunters_rend"
+              }
+            }
+          },
+          "slotRole": "filler_attack",
+          "tierNames": {
+            "1": "I",
+            "2": "II",
+            "3": "III"
+          }
+        },
+        "b": {
+          "familyId": "b",
+          "displayName": "Jaybreaker Line",
+          "baseAbilityId": "bluejay_jaybreaker",
+          "maxTier": 3,
+          "paths": {
+            "crit": {
+              "pathId": "crit",
+              "displayName": "Crit",
+              "abilities": {
+                "1": "bluejay_jaybreaker",
+                "2": "silver_arc",
+                "3": "regal_crest"
+              }
+            },
+            "weaken": {
+              "pathId": "weaken",
+              "displayName": "Weaken",
+              "abilities": {
+                "1": "pressing_sweep",
+                "2": "pressing_arc",
+                "3": "crushing_crest"
+              }
+            },
+            "return": {
+              "pathId": "return",
+              "displayName": "Return",
+              "abilities": {
+                "1": "echo_sweep",
+                "2": "return_arc",
+                "3": "double_crest"
+              }
+            }
+          },
+          "slotRole": "signature_attack",
+          "tierNames": {
+            "1": "Open",
+            "2": "Break",
+            "3": "Ruin"
+          }
+        },
+        "c": {
+          "familyId": "c",
+          "displayName": "Crest Guard Line",
+          "baseAbilityId": "bluejay_crest_guard",
+          "maxTier": 3,
+          "paths": {
+            "guard": {
+              "pathId": "guard",
+              "displayName": "Guard",
+              "abilities": {
+                "1": "bluejay_crest_guard",
+                "2": "gos_hold_line",
+                "3": "gos_stand_fast"
+              }
+            },
+            "amp": {
+              "pathId": "amp",
+              "displayName": "Amp",
+              "abilities": {
+                "1": "iron_guard",
+                "2": "gos_press_line",
+                "3": "gos_final_stand"
+              }
+            },
+            "read": {
+              "pathId": "read",
+              "displayName": "Read",
+              "abilities": {
+                "1": "steady_guard",
+                "2": "gos_read_line",
+                "3": "gos_read_stand"
+              }
+            }
+          },
+          "slotRole": "guard_setup",
+          "tierNames": {
+            "1": "Brace",
+            "2": "Hold",
+            "3": "Stand"
+          }
+        },
+        "d": {
+          "familyId": "d",
+          "displayName": "Cry Line",
+          "baseAbilityId": "bluejay_raucous_cry",
+          "maxTier": 3,
+          "paths": {
+            "acc_break": {
+              "pathId": "acc_break",
+              "displayName": "Accuracy Break",
+              "abilities": {
+                "1": "glitter_taunt",
+                "2": "dazzle_flourish",
+                "3": "spectacle_storm"
+              }
+            },
+            "dodge": {
+              "pathId": "dodge",
+              "displayName": "Dodge",
+              "abilities": {
+                "1": "slip_taunt",
+                "2": "feather_flourish",
+                "3": "mirage_spectacle"
+              }
+            },
+            "pressure": {
+              "pathId": "pressure",
+              "displayName": "Pressure",
+              "abilities": {
+                "1": "bluejay_raucous_cry",
+                "2": "provoking_flourish",
+                "3": "grand_spectacle"
+              }
+            }
+          },
+          "slotRole": "trick_utility",
+          "tierNames": {
+            "1": "Feint",
+            "2": "Flourish",
+            "3": "Spectacle"
+          }
+        }
+      }
+    },
+    "cardinal": {
+      "birdKey": "cardinal",
+      "slotLayout": [
+        {
+          "slotIndex": 0,
+          "familyId": "a",
+          "abilityId": "cardinal_note"
+        },
+        {
+          "slotIndex": 1,
+          "familyId": "b",
+          "abilityId": "cardinal_hymn"
+        },
+        {
+          "slotIndex": 2,
+          "familyId": "c",
+          "abilityId": "cardinal_jab"
+        },
+        {
+          "slotIndex": 3,
+          "familyId": "d",
+          "abilityId": "cardinal_refrain"
+        }
+      ],
+      "families": {
+        "a": {
+          "familyId": "a",
+          "displayName": "Note Line",
+          "baseAbilityId": "cardinal_note",
+          "maxTier": 3,
+          "paths": {
+            "burn": {
+              "pathId": "burn",
+              "displayName": "Burn",
+              "abilities": {
+                "1": "ember_note",
+                "2": "ember_echo",
+                "3": "ember_refrain"
+              }
+            },
+            "confuse": {
+              "pathId": "confuse",
+              "displayName": "Confuse",
+              "abilities": {
+                "1": "warble_note",
+                "2": "dizzy_echo",
+                "3": "maddening_refrain"
+              }
+            },
+            "delayed": {
+              "pathId": "delayed",
+              "displayName": "Resonance",
+              "abilities": {
+                "1": "cardinal_note",
+                "2": "delayed_echo",
+                "3": "returning_refrain"
+              }
+            }
+          },
+          "slotRole": "filler_spell",
+          "tierNames": {
+            "1": "Note",
+            "2": "Echo",
+            "3": "Refrain"
+          }
+        },
+        "b": {
+          "familyId": "b",
+          "displayName": "Hymn Line",
+          "baseAbilityId": "cardinal_hymn",
+          "maxTier": 3,
+          "paths": {
+            "fear": {
+              "pathId": "fear",
+              "displayName": "Fear",
+              "abilities": {
+                "1": "dread_mimic",
+                "2": "panic_chorus",
+                "3": "terror_aria"
+              }
+            },
+            "paralysis": {
+              "pathId": "paralysis",
+              "displayName": "Paralysis",
+              "abilities": {
+                "1": "shock_mimic",
+                "2": "static_chorus",
+                "3": "lock_aria"
+              }
+            },
+            "copycat": {
+              "pathId": "copycat",
+              "displayName": "Copycat",
+              "abilities": {
+                "1": "cardinal_hymn",
+                "2": "echo_chorus",
+                "3": "stolen_aria"
+              }
+            }
+          },
+          "slotRole": "signature_spell",
+          "tierNames": {
+            "1": "Call",
+            "2": "Verse",
+            "3": "Aria"
+          }
+        },
+        "c": {
+          "familyId": "c",
+          "displayName": "Jab Line",
+          "baseAbilityId": "cardinal_jab",
+          "maxTier": 3,
+          "paths": {
+            "pierce": {
+              "pathId": "pierce",
+              "displayName": "Pierce",
+              "abilities": {
+                "1": "cardinal_jab",
+                "2": "talon_rake",
+                "3": "talon_rend"
+              }
+            },
+            "bleed": {
+              "pathId": "bleed",
+              "displayName": "Bleed",
+              "abilities": {
+                "1": "slice_jab",
+                "2": "slice_rake",
+                "3": "slice_rend"
+              }
+            },
+            "execute": {
+              "pathId": "execute",
+              "displayName": "Execute",
+              "abilities": {
+                "1": "hunters_jab",
+                "2": "hunters_rake",
+                "3": "hunters_rend"
+              }
+            }
+          },
+          "slotRole": "filler_attack",
+          "tierNames": {
+            "1": "I",
+            "2": "II",
+            "3": "III"
+          }
+        },
+        "d": {
+          "familyId": "d",
+          "displayName": "Refrain Line",
+          "baseAbilityId": "cardinal_refrain",
+          "maxTier": 3,
+          "paths": {
+            "burn": {
+              "pathId": "burn",
+              "displayName": "Burn",
+              "abilities": {
+                "1": "ember_note",
+                "2": "ember_echo",
+                "3": "ember_refrain"
+              }
+            },
+            "confuse": {
+              "pathId": "confuse",
+              "displayName": "Confuse",
+              "abilities": {
+                "1": "warble_note",
+                "2": "dizzy_echo",
+                "3": "maddening_refrain"
+              }
+            },
+            "delayed": {
+              "pathId": "delayed",
+              "displayName": "Resonance",
+              "abilities": {
+                "1": "cardinal_refrain",
+                "2": "delayed_echo",
+                "3": "returning_refrain"
+              }
+            }
+          },
+          "slotRole": "filler_spell",
+          "tierNames": {
+            "1": "Note",
+            "2": "Echo",
+            "3": "Refrain"
+          }
+        }
+      }
+    },
+    "bushturkey": {
+      "birdKey": "bushturkey",
+      "slotLayout": [
+        {
+          "slotIndex": 0,
+          "familyId": "a",
+          "abilityId": "bturkey_scrap_peck"
+        },
+        {
+          "slotIndex": 1,
+          "familyId": "b",
+          "abilityId": "bturkey_brush_crash"
+        },
+        {
+          "slotIndex": 2,
+          "familyId": "c",
+          "abilityId": "bturkey_bush_guard"
+        },
+        {
+          "slotIndex": 3,
+          "familyId": "d",
+          "abilityId": "bturkey_rattle_call"
+        }
+      ],
+      "families": {
+        "a": {
+          "familyId": "a",
+          "displayName": "Scrap Line",
+          "baseAbilityId": "bturkey_scrap_peck",
+          "maxTier": 3,
+          "paths": {
+            "pierce": {
+              "pathId": "pierce",
+              "displayName": "Pierce",
+              "abilities": {
+                "1": "bturkey_scrap_peck",
+                "2": "talon_rake",
+                "3": "talon_rend"
+              }
+            },
+            "bleed": {
+              "pathId": "bleed",
+              "displayName": "Bleed",
+              "abilities": {
+                "1": "slice_jab",
+                "2": "slice_rake",
+                "3": "slice_rend"
+              }
+            },
+            "execute": {
+              "pathId": "execute",
+              "displayName": "Execute",
+              "abilities": {
+                "1": "hunters_jab",
+                "2": "hunters_rake",
+                "3": "hunters_rend"
+              }
+            }
+          },
+          "slotRole": "filler_attack",
+          "tierNames": {
+            "1": "I",
+            "2": "II",
+            "3": "III"
+          }
+        },
+        "b": {
+          "familyId": "b",
+          "displayName": "Brush Crash Line",
+          "baseAbilityId": "bturkey_brush_crash",
+          "maxTier": 3,
+          "paths": {
+            "crit": {
+              "pathId": "crit",
+              "displayName": "Crit",
+              "abilities": {
+                "1": "bturkey_brush_crash",
+                "2": "silver_arc",
+                "3": "regal_crest"
+              }
+            },
+            "weaken": {
+              "pathId": "weaken",
+              "displayName": "Weaken",
+              "abilities": {
+                "1": "pressing_sweep",
+                "2": "pressing_arc",
+                "3": "crushing_crest"
+              }
+            },
+            "return": {
+              "pathId": "return",
+              "displayName": "Return",
+              "abilities": {
+                "1": "echo_sweep",
+                "2": "return_arc",
+                "3": "double_crest"
+              }
+            }
+          },
+          "slotRole": "signature_attack",
+          "tierNames": {
+            "1": "Open",
+            "2": "Break",
+            "3": "Ruin"
+          }
+        },
+        "c": {
+          "familyId": "c",
+          "displayName": "Bush Guard Line",
+          "baseAbilityId": "bturkey_bush_guard",
+          "maxTier": 3,
+          "paths": {
+            "guard": {
+              "pathId": "guard",
+              "displayName": "Guard",
+              "abilities": {
+                "1": "bturkey_bush_guard",
+                "2": "gos_hold_line",
+                "3": "gos_stand_fast"
+              }
+            },
+            "amp": {
+              "pathId": "amp",
+              "displayName": "Amp",
+              "abilities": {
+                "1": "iron_guard",
+                "2": "gos_press_line",
+                "3": "gos_final_stand"
+              }
+            },
+            "read": {
+              "pathId": "read",
+              "displayName": "Read",
+              "abilities": {
+                "1": "steady_guard",
+                "2": "gos_read_line",
+                "3": "gos_read_stand"
+              }
+            }
+          },
+          "slotRole": "guard_setup",
+          "tierNames": {
+            "1": "Brace",
+            "2": "Hold",
+            "3": "Stand"
+          }
+        },
+        "d": {
+          "familyId": "d",
+          "displayName": "Rattle Line",
+          "baseAbilityId": "bturkey_rattle_call",
+          "maxTier": 3,
+          "paths": {
+            "acc_break": {
+              "pathId": "acc_break",
+              "displayName": "Accuracy Break",
+              "abilities": {
+                "1": "glitter_taunt",
+                "2": "dazzle_flourish",
+                "3": "spectacle_storm"
+              }
+            },
+            "dodge": {
+              "pathId": "dodge",
+              "displayName": "Dodge",
+              "abilities": {
+                "1": "slip_taunt",
+                "2": "feather_flourish",
+                "3": "mirage_spectacle"
+              }
+            },
+            "pressure": {
+              "pathId": "pressure",
+              "displayName": "Pressure",
+              "abilities": {
+                "1": "bturkey_rattle_call",
+                "2": "provoking_flourish",
+                "3": "grand_spectacle"
+              }
+            }
+          },
+          "slotRole": "trick_utility",
+          "tierNames": {
+            "1": "Feint",
+            "2": "Flourish",
+            "3": "Spectacle"
+          }
+        }
+      }
+    },
+    "vulture": {
+      "birdKey": "vulture",
+      "slotLayout": [
+        {
+          "slotIndex": 0,
+          "familyId": "a",
+          "abilityId": "vulture_grave_jab"
+        },
+        {
+          "slotIndex": 1,
+          "familyId": "b",
+          "abilityId": "vulture_corpse_crush"
+        },
+        {
+          "slotIndex": 2,
+          "familyId": "c",
+          "abilityId": "vulture_bone_ward"
+        },
+        {
+          "slotIndex": 3,
+          "familyId": "d",
+          "abilityId": "vulture_grave_dirge"
+        }
+      ],
+      "families": {
+        "a": {
+          "familyId": "a",
+          "displayName": "Grave Jab Line",
+          "baseAbilityId": "vulture_grave_jab",
+          "maxTier": 3,
+          "paths": {
+            "pierce": {
+              "pathId": "pierce",
+              "displayName": "Pierce",
+              "abilities": {
+                "1": "vulture_grave_jab",
+                "2": "talon_rake",
+                "3": "talon_rend"
+              }
+            },
+            "bleed": {
+              "pathId": "bleed",
+              "displayName": "Bleed",
+              "abilities": {
+                "1": "slice_jab",
+                "2": "slice_rake",
+                "3": "slice_rend"
+              }
+            },
+            "execute": {
+              "pathId": "execute",
+              "displayName": "Execute",
+              "abilities": {
+                "1": "hunters_jab",
+                "2": "hunters_rake",
+                "3": "hunters_rend"
+              }
+            }
+          },
+          "slotRole": "filler_attack",
+          "tierNames": {
+            "1": "I",
+            "2": "II",
+            "3": "III"
+          }
+        },
+        "b": {
+          "familyId": "b",
+          "displayName": "Corpse Crush Line",
+          "baseAbilityId": "vulture_corpse_crush",
+          "maxTier": 3,
+          "paths": {
+            "crit": {
+              "pathId": "crit",
+              "displayName": "Crit",
+              "abilities": {
+                "1": "vulture_corpse_crush",
+                "2": "silver_arc",
+                "3": "regal_crest"
+              }
+            },
+            "weaken": {
+              "pathId": "weaken",
+              "displayName": "Weaken",
+              "abilities": {
+                "1": "pressing_sweep",
+                "2": "pressing_arc",
+                "3": "crushing_crest"
+              }
+            },
+            "return": {
+              "pathId": "return",
+              "displayName": "Return",
+              "abilities": {
+                "1": "echo_sweep",
+                "2": "return_arc",
+                "3": "double_crest"
+              }
+            }
+          },
+          "slotRole": "signature_attack",
+          "tierNames": {
+            "1": "Open",
+            "2": "Break",
+            "3": "Ruin"
+          }
+        },
+        "c": {
+          "familyId": "c",
+          "displayName": "Bone Ward Line",
+          "baseAbilityId": "vulture_bone_ward",
+          "maxTier": 3,
+          "paths": {
+            "guard": {
+              "pathId": "guard",
+              "displayName": "Guard",
+              "abilities": {
+                "1": "vulture_bone_ward",
+                "2": "gos_hold_line",
+                "3": "gos_stand_fast"
+              }
+            },
+            "amp": {
+              "pathId": "amp",
+              "displayName": "Amp",
+              "abilities": {
+                "1": "iron_guard",
+                "2": "gos_press_line",
+                "3": "gos_final_stand"
+              }
+            },
+            "read": {
+              "pathId": "read",
+              "displayName": "Read",
+              "abilities": {
+                "1": "steady_guard",
+                "2": "gos_read_line",
+                "3": "gos_read_stand"
+              }
+            }
+          },
+          "slotRole": "guard_setup",
+          "tierNames": {
+            "1": "Brace",
+            "2": "Hold",
+            "3": "Stand"
+          }
+        },
+        "d": {
+          "familyId": "d",
+          "displayName": "Dirge Line",
+          "baseAbilityId": "vulture_grave_dirge",
+          "maxTier": 3,
+          "paths": {
+            "fear": {
+              "pathId": "fear",
+              "displayName": "Fear",
+              "abilities": {
+                "1": "dread_mimic",
+                "2": "panic_chorus",
+                "3": "terror_aria"
+              }
+            },
+            "paralysis": {
+              "pathId": "paralysis",
+              "displayName": "Paralysis",
+              "abilities": {
+                "1": "shock_mimic",
+                "2": "static_chorus",
+                "3": "lock_aria"
+              }
+            },
+            "copycat": {
+              "pathId": "copycat",
+              "displayName": "Copycat",
+              "abilities": {
+                "1": "vulture_grave_dirge",
+                "2": "echo_chorus",
+                "3": "stolen_aria"
+              }
+            }
+          },
+          "slotRole": "signature_spell",
+          "tierNames": {
+            "1": "Call",
+            "2": "Verse",
+            "3": "Aria"
+          }
+        }
+      }
+    },
+    "barnowl": {
+      "birdKey": "barnowl",
+      "slotLayout": [
+        {
+          "slotIndex": 0,
+          "familyId": "a",
+          "abilityId": "barnowl_talon"
+        },
+        {
+          "slotIndex": 1,
+          "familyId": "b",
+          "abilityId": "barnowl_shadow_dive"
+        },
+        {
+          "slotIndex": 2,
+          "familyId": "c",
+          "abilityId": "barnowl_death_glare"
+        },
+        {
+          "slotIndex": 3,
+          "familyId": "d",
+          "abilityId": "barnowl_silent_glide"
+        }
+      ],
+      "families": {
+        "a": {
+          "familyId": "a",
+          "displayName": "Talon Line",
+          "baseAbilityId": "barnowl_talon",
+          "maxTier": 3,
+          "paths": {
+            "pierce": {
+              "pathId": "pierce",
+              "displayName": "Pierce",
+              "abilities": {
+                "1": "barnowl_talon",
+                "2": "talon_rake",
+                "3": "talon_rend"
+              }
+            },
+            "bleed": {
+              "pathId": "bleed",
+              "displayName": "Bleed",
+              "abilities": {
+                "1": "slice_jab",
+                "2": "slice_rake",
+                "3": "slice_rend"
+              }
+            },
+            "execute": {
+              "pathId": "execute",
+              "displayName": "Execute",
+              "abilities": {
+                "1": "hunters_jab",
+                "2": "hunters_rake",
+                "3": "hunters_rend"
+              }
+            }
+          },
+          "slotRole": "filler_attack",
+          "tierNames": {
+            "1": "I",
+            "2": "II",
+            "3": "III"
+          }
+        },
+        "b": {
+          "familyId": "b",
+          "displayName": "Shadow Dive Line",
+          "baseAbilityId": "barnowl_shadow_dive",
+          "maxTier": 3,
+          "paths": {
+            "crit": {
+              "pathId": "crit",
+              "displayName": "Crit",
+              "abilities": {
+                "1": "barnowl_shadow_dive",
+                "2": "silver_arc",
+                "3": "regal_crest"
+              }
+            },
+            "weaken": {
+              "pathId": "weaken",
+              "displayName": "Weaken",
+              "abilities": {
+                "1": "pressing_sweep",
+                "2": "pressing_arc",
+                "3": "crushing_crest"
+              }
+            },
+            "return": {
+              "pathId": "return",
+              "displayName": "Return",
+              "abilities": {
+                "1": "echo_sweep",
+                "2": "return_arc",
+                "3": "double_crest"
+              }
+            }
+          },
+          "slotRole": "signature_attack",
+          "tierNames": {
+            "1": "Open",
+            "2": "Break",
+            "3": "Ruin"
+          }
+        },
+        "c": {
+          "familyId": "c",
+          "displayName": "Glare Line",
+          "baseAbilityId": "barnowl_death_glare",
+          "maxTier": 3,
+          "paths": {
+            "damage_amp": {
+              "pathId": "damage_amp",
+              "displayName": "Damage Amp",
+              "abilities": {
+                "1": "barnowl_death_glare",
+                "2": "harmonic_measure",
+                "3": "finale_mark"
+              }
+            },
+            "delayed": {
+              "pathId": "delayed",
+              "displayName": "Afterbeat",
+              "abilities": {
+                "1": "echo_mark",
+                "2": "resonant_measure",
+                "3": "delayed_finale"
+              }
+            },
+            "weaken": {
+              "pathId": "weaken",
+              "displayName": "Weaken",
+              "abilities": {
+                "1": "cracking_mark",
+                "2": "softening_measure",
+                "3": "fading_finale"
+              }
+            }
+          },
+          "slotRole": "support_spell",
+          "tierNames": {
+            "1": "Cue",
+            "2": "Cadence",
+            "3": "Curtain"
+          }
+        },
+        "d": {
+          "familyId": "d",
+          "displayName": "Glide Line",
+          "baseAbilityId": "barnowl_silent_glide",
+          "maxTier": 3,
+          "paths": {
+            "speed": {
+              "pathId": "speed",
+              "displayName": "Speed",
+              "abilities": {
+                "1": "barnowl_silent_glide",
+                "2": "tailwindGust",
+                "3": "hyperCurrent"
+              }
+            },
+            "dodge": {
+              "pathId": "dodge",
+              "displayName": "Dodge",
+              "abilities": {
+                "1": "graceStep",
+                "2": "slipVeil",
+                "3": "phantomGale"
+              }
+            },
+            "acc_break": {
+              "pathId": "acc_break",
+              "displayName": "Accuracy Break",
+              "abilities": {
+                "1": "featherDrift",
+                "2": "blindingVeil",
+                "3": "stormShroud"
+              }
+            }
+          },
+          "slotRole": "mobility_utility",
+          "tierNames": {
+            "1": "Stride",
+            "2": "Draft",
+            "3": "Storm"
+          }
+        }
+      }
+    },
+    "bustard": {
+      "birdKey": "bustard",
+      "slotLayout": [
+        {
+          "slotIndex": 0,
+          "familyId": "a",
+          "abilityId": "bustard_heavy_jab"
+        },
+        {
+          "slotIndex": 1,
+          "familyId": "b",
+          "abilityId": "bustard_dust_trample"
+        },
+        {
+          "slotIndex": 2,
+          "familyId": "c",
+          "abilityId": "bustard_plainshield"
+        },
+        {
+          "slotIndex": 3,
+          "familyId": "d",
+          "abilityId": "bustard_steppe_call"
+        }
+      ],
+      "families": {
+        "a": {
+          "familyId": "a",
+          "displayName": "Heavy Jab Line",
+          "baseAbilityId": "bustard_heavy_jab",
+          "maxTier": 3,
+          "paths": {
+            "pierce": {
+              "pathId": "pierce",
+              "displayName": "Pierce",
+              "abilities": {
+                "1": "bustard_heavy_jab",
+                "2": "talon_rake",
+                "3": "talon_rend"
+              }
+            },
+            "bleed": {
+              "pathId": "bleed",
+              "displayName": "Bleed",
+              "abilities": {
+                "1": "slice_jab",
+                "2": "slice_rake",
+                "3": "slice_rend"
+              }
+            },
+            "execute": {
+              "pathId": "execute",
+              "displayName": "Execute",
+              "abilities": {
+                "1": "hunters_jab",
+                "2": "hunters_rake",
+                "3": "hunters_rend"
+              }
+            }
+          },
+          "slotRole": "filler_attack",
+          "tierNames": {
+            "1": "I",
+            "2": "II",
+            "3": "III"
+          }
+        },
+        "b": {
+          "familyId": "b",
+          "displayName": "Trample Line",
+          "baseAbilityId": "bustard_dust_trample",
+          "maxTier": 3,
+          "paths": {
+            "crit": {
+              "pathId": "crit",
+              "displayName": "Crit",
+              "abilities": {
+                "1": "bustard_dust_trample",
+                "2": "silver_arc",
+                "3": "regal_crest"
+              }
+            },
+            "weaken": {
+              "pathId": "weaken",
+              "displayName": "Weaken",
+              "abilities": {
+                "1": "pressing_sweep",
+                "2": "pressing_arc",
+                "3": "crushing_crest"
+              }
+            },
+            "return": {
+              "pathId": "return",
+              "displayName": "Return",
+              "abilities": {
+                "1": "echo_sweep",
+                "2": "return_arc",
+                "3": "double_crest"
+              }
+            }
+          },
+          "slotRole": "signature_attack",
+          "tierNames": {
+            "1": "Open",
+            "2": "Break",
+            "3": "Ruin"
+          }
+        },
+        "c": {
+          "familyId": "c",
+          "displayName": "Plainshield Line",
+          "baseAbilityId": "bustard_plainshield",
+          "maxTier": 3,
+          "paths": {
+            "guard": {
+              "pathId": "guard",
+              "displayName": "Guard",
+              "abilities": {
+                "1": "bustard_plainshield",
+                "2": "gos_hold_line",
+                "3": "gos_stand_fast"
+              }
+            },
+            "amp": {
+              "pathId": "amp",
+              "displayName": "Amp",
+              "abilities": {
+                "1": "iron_guard",
+                "2": "gos_press_line",
+                "3": "gos_final_stand"
+              }
+            },
+            "read": {
+              "pathId": "read",
+              "displayName": "Read",
+              "abilities": {
+                "1": "steady_guard",
+                "2": "gos_read_line",
+                "3": "gos_read_stand"
+              }
+            }
+          },
+          "slotRole": "guard_setup",
+          "tierNames": {
+            "1": "Brace",
+            "2": "Hold",
+            "3": "Stand"
+          }
+        },
+        "d": {
+          "familyId": "d",
+          "displayName": "Steppe Call Line",
+          "baseAbilityId": "bustard_steppe_call",
+          "maxTier": 3,
+          "paths": {
+            "fear": {
+              "pathId": "fear",
+              "displayName": "Fear",
+              "abilities": {
+                "1": "dread_mimic",
+                "2": "panic_chorus",
+                "3": "terror_aria"
+              }
+            },
+            "paralysis": {
+              "pathId": "paralysis",
+              "displayName": "Paralysis",
+              "abilities": {
+                "1": "shock_mimic",
+                "2": "static_chorus",
+                "3": "lock_aria"
+              }
+            },
+            "copycat": {
+              "pathId": "copycat",
+              "displayName": "Copycat",
+              "abilities": {
+                "1": "bustard_steppe_call",
+                "2": "echo_chorus",
+                "3": "stolen_aria"
+              }
+            }
+          },
+          "slotRole": "signature_spell",
+          "tierNames": {
+            "1": "Call",
+            "2": "Verse",
+            "3": "Aria"
+          }
+        }
+      }
+    },
+    "goldeneagle": {
+      "birdKey": "goldeneagle",
+      "slotLayout": [
+        {
+          "slotIndex": 0,
+          "familyId": "a",
+          "abilityId": "golden_talon"
+        },
+        {
+          "slotIndex": 1,
+          "familyId": "b",
+          "abilityId": "golden_swoop"
+        },
+        {
+          "slotIndex": 2,
+          "familyId": "c",
+          "abilityId": "golden_verdict"
+        },
+        {
+          "slotIndex": 3,
+          "familyId": "d",
+          "abilityId": "golden_focus"
+        }
+      ],
+      "families": {
+        "a": {
+          "familyId": "a",
+          "displayName": "Sun Talon Line",
+          "baseAbilityId": "golden_talon",
+          "maxTier": 3,
+          "paths": {
+            "pierce": {
+              "pathId": "pierce",
+              "displayName": "Pierce",
+              "abilities": {
+                "1": "golden_talon",
+                "2": "talon_rake",
+                "3": "talon_rend"
+              }
+            },
+            "bleed": {
+              "pathId": "bleed",
+              "displayName": "Bleed",
+              "abilities": {
+                "1": "slice_jab",
+                "2": "slice_rake",
+                "3": "slice_rend"
+              }
+            },
+            "execute": {
+              "pathId": "execute",
+              "displayName": "Execute",
+              "abilities": {
+                "1": "hunters_jab",
+                "2": "hunters_rake",
+                "3": "hunters_rend"
+              }
+            }
+          },
+          "slotRole": "filler_attack",
+          "tierNames": {
+            "1": "I",
+            "2": "II",
+            "3": "III"
+          }
+        },
+        "b": {
+          "familyId": "b",
+          "displayName": "Swoop Line",
+          "baseAbilityId": "golden_swoop",
+          "maxTier": 3,
+          "paths": {
+            "crit": {
+              "pathId": "crit",
+              "displayName": "Crit",
+              "abilities": {
+                "1": "golden_swoop",
+                "2": "silver_arc",
+                "3": "regal_crest"
+              }
+            },
+            "weaken": {
+              "pathId": "weaken",
+              "displayName": "Weaken",
+              "abilities": {
+                "1": "pressing_sweep",
+                "2": "pressing_arc",
+                "3": "crushing_crest"
+              }
+            },
+            "return": {
+              "pathId": "return",
+              "displayName": "Return",
+              "abilities": {
+                "1": "echo_sweep",
+                "2": "return_arc",
+                "3": "double_crest"
+              }
+            }
+          },
+          "slotRole": "signature_attack",
+          "tierNames": {
+            "1": "Open",
+            "2": "Break",
+            "3": "Ruin"
+          }
+        },
+        "c": {
+          "familyId": "c",
+          "displayName": "Verdict Line",
+          "baseAbilityId": "golden_verdict",
+          "maxTier": 3,
+          "paths": {
+            "crit": {
+              "pathId": "crit",
+              "displayName": "Crit",
+              "abilities": {
+                "1": "golden_verdict",
+                "2": "silver_arc",
+                "3": "regal_crest"
+              }
+            },
+            "weaken": {
+              "pathId": "weaken",
+              "displayName": "Weaken",
+              "abilities": {
+                "1": "pressing_sweep",
+                "2": "pressing_arc",
+                "3": "crushing_crest"
+              }
+            },
+            "return": {
+              "pathId": "return",
+              "displayName": "Return",
+              "abilities": {
+                "1": "echo_sweep",
+                "2": "return_arc",
+                "3": "double_crest"
+              }
+            }
+          },
+          "slotRole": "signature_attack",
+          "tierNames": {
+            "1": "Open",
+            "2": "Break",
+            "3": "Ruin"
+          }
+        },
+        "d": {
+          "familyId": "d",
+          "displayName": "Focus Line",
+          "baseAbilityId": "golden_focus",
+          "maxTier": 3,
+          "paths": {
+            "speed": {
+              "pathId": "speed",
+              "displayName": "Speed",
+              "abilities": {
+                "1": "golden_focus",
+                "2": "tailwindGust",
+                "3": "hyperCurrent"
+              }
+            },
+            "dodge": {
+              "pathId": "dodge",
+              "displayName": "Dodge",
+              "abilities": {
+                "1": "graceStep",
+                "2": "slipVeil",
+                "3": "phantomGale"
+              }
+            },
+            "acc_break": {
+              "pathId": "acc_break",
+              "displayName": "Accuracy Break",
+              "abilities": {
+                "1": "featherDrift",
+                "2": "blindingVeil",
+                "3": "stormShroud"
+              }
+            }
+          },
+          "slotRole": "mobility_utility",
+          "tierNames": {
+            "1": "Stride",
+            "2": "Draft",
+            "3": "Storm"
+          }
+        }
+      }
+    },
+    "pelican": {
+      "birdKey": "pelican",
+      "slotLayout": [
+        {
+          "slotIndex": 0,
+          "familyId": "a",
+          "abilityId": "pelican_snap"
+        },
+        {
+          "slotIndex": 1,
+          "familyId": "b",
+          "abilityId": "pelican_crush"
+        },
+        {
+          "slotIndex": 2,
+          "familyId": "c",
+          "abilityId": "pelican_guard"
+        },
+        {
+          "slotIndex": 3,
+          "familyId": "d",
+          "abilityId": "pelican_recovery"
+        }
+      ],
+      "families": {
+        "a": {
+          "familyId": "a",
+          "displayName": "Snap Line",
+          "baseAbilityId": "pelican_snap",
+          "maxTier": 3,
+          "paths": {
+            "pierce": {
+              "pathId": "pierce",
+              "displayName": "Pierce",
+              "abilities": {
+                "1": "pelican_snap",
+                "2": "talon_rake",
+                "3": "talon_rend"
+              }
+            },
+            "bleed": {
+              "pathId": "bleed",
+              "displayName": "Bleed",
+              "abilities": {
+                "1": "slice_jab",
+                "2": "slice_rake",
+                "3": "slice_rend"
+              }
+            },
+            "execute": {
+              "pathId": "execute",
+              "displayName": "Execute",
+              "abilities": {
+                "1": "hunters_jab",
+                "2": "hunters_rake",
+                "3": "hunters_rend"
+              }
+            }
+          },
+          "slotRole": "filler_attack",
+          "tierNames": {
+            "1": "I",
+            "2": "II",
+            "3": "III"
+          }
+        },
+        "b": {
+          "familyId": "b",
+          "displayName": "Crush Line",
+          "baseAbilityId": "pelican_crush",
+          "maxTier": 3,
+          "paths": {
+            "crit": {
+              "pathId": "crit",
+              "displayName": "Crit",
+              "abilities": {
+                "1": "pelican_crush",
+                "2": "silver_arc",
+                "3": "regal_crest"
+              }
+            },
+            "weaken": {
+              "pathId": "weaken",
+              "displayName": "Weaken",
+              "abilities": {
+                "1": "pressing_sweep",
+                "2": "pressing_arc",
+                "3": "crushing_crest"
+              }
+            },
+            "return": {
+              "pathId": "return",
+              "displayName": "Return",
+              "abilities": {
+                "1": "echo_sweep",
+                "2": "return_arc",
+                "3": "double_crest"
+              }
+            }
+          },
+          "slotRole": "signature_attack",
+          "tierNames": {
+            "1": "Open",
+            "2": "Break",
+            "3": "Ruin"
+          }
+        },
+        "c": {
+          "familyId": "c",
+          "displayName": "Guard Line",
+          "baseAbilityId": "pelican_guard",
+          "maxTier": 3,
+          "paths": {
+            "guard": {
+              "pathId": "guard",
+              "displayName": "Guard",
+              "abilities": {
+                "1": "pelican_guard",
+                "2": "gos_hold_line",
+                "3": "gos_stand_fast"
+              }
+            },
+            "amp": {
+              "pathId": "amp",
+              "displayName": "Amp",
+              "abilities": {
+                "1": "iron_guard",
+                "2": "gos_press_line",
+                "3": "gos_final_stand"
+              }
+            },
+            "read": {
+              "pathId": "read",
+              "displayName": "Read",
+              "abilities": {
+                "1": "steady_guard",
+                "2": "gos_read_line",
+                "3": "gos_read_stand"
+              }
+            }
+          },
+          "slotRole": "guard_setup",
+          "tierNames": {
+            "1": "Brace",
+            "2": "Hold",
+            "3": "Stand"
+          }
+        },
+        "d": {
+          "familyId": "d",
+          "displayName": "Recovery Line",
+          "baseAbilityId": "pelican_recovery",
+          "maxTier": 3,
+          "paths": {
+            "heal": {
+              "pathId": "heal",
+              "displayName": "Heal",
+              "abilities": {
+                "1": "pelican_recovery",
+                "2": "preen",
+                "3": "molt"
+              }
+            },
+            "guard": {
+              "pathId": "guard",
+              "displayName": "Wall",
+              "abilities": {
+                "1": "guardianCry",
+                "2": "bulwarkRoar",
+                "3": "fortress_stance"
+              }
+            },
+            "cleanse": {
+              "pathId": "cleanse",
+              "displayName": "Cleanse",
+              "abilities": {
+                "1": "reveille",
+                "2": "battleHymn",
+                "3": "victoryChant"
+              }
+            }
+          },
+          "slotRole": "tank_sustain",
+          "tierNames": {
+            "1": "Recover",
+            "2": "Bulk",
+            "3": "Anchor"
+          }
+        }
+      }
+    },
+    "marabou": {
+      "birdKey": "marabou",
+      "slotLayout": [
+        {
+          "slotIndex": 0,
+          "familyId": "a",
+          "abilityId": "marabou_jab"
+        },
+        {
+          "slotIndex": 1,
+          "familyId": "b",
+          "abilityId": "marabou_lunge"
+        },
+        {
+          "slotIndex": 2,
+          "familyId": "c",
+          "abilityId": "marabou_sentence"
+        },
+        {
+          "slotIndex": 3,
+          "familyId": "d",
+          "abilityId": "marabou_hunt"
+        }
+      ],
+      "families": {
+        "a": {
+          "familyId": "a",
+          "displayName": "Rotbeak Line",
+          "baseAbilityId": "marabou_jab",
+          "maxTier": 3,
+          "paths": {
+            "pierce": {
+              "pathId": "pierce",
+              "displayName": "Pierce",
+              "abilities": {
+                "1": "marabou_jab",
+                "2": "talon_rake",
+                "3": "talon_rend"
+              }
+            },
+            "bleed": {
+              "pathId": "bleed",
+              "displayName": "Bleed",
+              "abilities": {
+                "1": "slice_jab",
+                "2": "slice_rake",
+                "3": "slice_rend"
+              }
+            },
+            "execute": {
+              "pathId": "execute",
+              "displayName": "Execute",
+              "abilities": {
+                "1": "hunters_jab",
+                "2": "hunters_rake",
+                "3": "hunters_rend"
+              }
+            }
+          },
+          "slotRole": "filler_attack",
+          "tierNames": {
+            "1": "I",
+            "2": "II",
+            "3": "III"
+          }
+        },
+        "b": {
+          "familyId": "b",
+          "displayName": "Lunge Line",
+          "baseAbilityId": "marabou_lunge",
+          "maxTier": 3,
+          "paths": {
+            "pierce": {
+              "pathId": "pierce",
+              "displayName": "Pierce",
+              "abilities": {
+                "1": "marabou_lunge",
+                "2": "talon_rake",
+                "3": "talon_rend"
+              }
+            },
+            "bleed": {
+              "pathId": "bleed",
+              "displayName": "Bleed",
+              "abilities": {
+                "1": "slice_jab",
+                "2": "slice_rake",
+                "3": "slice_rend"
+              }
+            },
+            "execute": {
+              "pathId": "execute",
+              "displayName": "Execute",
+              "abilities": {
+                "1": "hunters_jab",
+                "2": "hunters_rake",
+                "3": "hunters_rend"
+              }
+            }
+          },
+          "slotRole": "filler_attack",
+          "tierNames": {
+            "1": "I",
+            "2": "II",
+            "3": "III"
+          }
+        },
+        "c": {
+          "familyId": "c",
+          "displayName": "Sentence Line",
+          "baseAbilityId": "marabou_sentence",
+          "maxTier": 3,
+          "paths": {
+            "crit": {
+              "pathId": "crit",
+              "displayName": "Crit",
+              "abilities": {
+                "1": "marabou_sentence",
+                "2": "silver_arc",
+                "3": "regal_crest"
+              }
+            },
+            "weaken": {
+              "pathId": "weaken",
+              "displayName": "Weaken",
+              "abilities": {
+                "1": "pressing_sweep",
+                "2": "pressing_arc",
+                "3": "crushing_crest"
+              }
+            },
+            "return": {
+              "pathId": "return",
+              "displayName": "Return",
+              "abilities": {
+                "1": "echo_sweep",
+                "2": "return_arc",
+                "3": "double_crest"
+              }
+            }
+          },
+          "slotRole": "signature_attack",
+          "tierNames": {
+            "1": "Open",
+            "2": "Break",
+            "3": "Ruin"
+          }
+        },
+        "d": {
+          "familyId": "d",
+          "displayName": "Hunt Line",
+          "baseAbilityId": "marabou_hunt",
+          "maxTier": 3,
+          "paths": {
+            "damage_amp": {
+              "pathId": "damage_amp",
+              "displayName": "Damage Amp",
+              "abilities": {
+                "1": "marabou_hunt",
+                "2": "harmonic_measure",
+                "3": "finale_mark"
+              }
+            },
+            "delayed": {
+              "pathId": "delayed",
+              "displayName": "Afterbeat",
+              "abilities": {
+                "1": "echo_mark",
+                "2": "resonant_measure",
+                "3": "delayed_finale"
+              }
+            },
+            "weaken": {
+              "pathId": "weaken",
+              "displayName": "Weaken",
+              "abilities": {
+                "1": "cracking_mark",
+                "2": "softening_measure",
+                "3": "fading_finale"
+              }
+            }
+          },
+          "slotRole": "support_spell",
+          "tierNames": {
+            "1": "Cue",
+            "2": "Cadence",
+            "3": "Curtain"
           }
         }
       }
