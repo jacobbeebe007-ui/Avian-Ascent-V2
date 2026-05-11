@@ -78,7 +78,11 @@ In dev tools:
 
 ```js
 Avian.systems.listSaveMigrations()
-// → [{ from: 0, to: 1, note: 'baseline' }, …]
+// → [{ from: 0, to: 1, note: 'baseline chain…' }, { from: 1, to: 2, note: 'clear skillSlots…' }]
 Avian.systems.SAVE_SCHEMA_VERSION
-// → 1
+// → 2
 ```
+
+## v2 migration
+
+- Clears `player.familyEvolutionState.skillSlots` when migrating from schema v1 so every bird re-seeds from the new family-evolution catalogs instead of legacy mirrored flat slots.

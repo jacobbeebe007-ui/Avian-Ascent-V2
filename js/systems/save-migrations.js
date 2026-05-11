@@ -25,23 +25,29 @@
   'use strict';
 
   /** Bump when adding a migration. */
-  var TARGET = 1;
+  var TARGET = 2;
 
   /** @type {Array<{from:number,to:number,fn:(save:any)=>any,note?:string}>} */
   var migrations = [
-    /* Migrations are intentionally empty at v1 — current saves are baseline.
-     * Example template:
-     * {
-     *   from: 1, to: 2, note: 'add ui.actionQueueVisible default',
-     *   fn: function (save) {
-     *     save.ui = save.ui || {};
-     *     if (typeof save.ui.actionQueueVisible !== 'boolean') {
-     *       save.ui.actionQueueVisible = true;
-     *     }
-     *     return save;
-     *   },
-     * },
-     */
+    {
+      from: 0,
+      to: 1,
+      note: 'baseline chain for saves missing schemaVersion',
+      fn: function (save) {
+        return save;
+      },
+    },
+    {
+      from: 1,
+      to: 2,
+      note: 'clear mirrored skillSlots so family-evolution catalogs rebuild on load',
+      fn: function (save) {
+        if (save.player && save.player.familyEvolutionState && Array.isArray(save.player.familyEvolutionState.skillSlots)) {
+          delete save.player.familyEvolutionState.skillSlots;
+        }
+        return save;
+      },
+    },
   ];
 
   var Avian = globalThis.Avian || (globalThis.Avian = { systems: {}, debug: {} });

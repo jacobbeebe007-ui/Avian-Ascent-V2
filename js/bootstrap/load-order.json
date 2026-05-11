@@ -14,6 +14,7 @@
     "js/data/story_enemy_registry.js",
     "js/world/overworld_bridge.js",
     "js/systems/save-migrations.js",
+    "js/data/family-evolution-gap-birds.js",
     "js/core/game.js",
     "js/data/enemies.js",
     "js/data/upgrade-cards.js",
