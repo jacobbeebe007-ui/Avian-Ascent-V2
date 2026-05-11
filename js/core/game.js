@@ -15,6 +15,9 @@
   }
 
   // Make the normal Dove enemy use the Dove sprite instead of Swan.
+  // Deferred so that ENEMIES (extracted to js/data/enemies.js, which loads
+  // AFTER game.js per js/bootstrap/load-order.json) is populated before we
+  // try to patch the Dove entry.
   function patchDoveEnemy() {
     try {
       if (Array.isArray(globalThis.ENEMIES)) {
@@ -29,7 +32,9 @@
       console.error(err);
     }
   }
-  patchDoveEnemy();
+  if (typeof queueMicrotask === 'function') queueMicrotask(patchDoveEnemy);
+  else if (typeof Promise !== 'undefined' && typeof Promise.resolve === 'function') Promise.resolve().then(patchDoveEnemy);
+  else setTimeout(patchDoveEnemy, 0);
 
 })();
 
@@ -23681,10 +23686,22 @@ wireThemeBgmAutoplayUnlock();
     globalThis.buildBirdCard = wrapped;
   }
 
-  // Refresh selection if already on screen
-  try{
-    if(typeof initSelectionSafe==='function') initSelectionSafe();
-  }catch(_){}
+  // Refresh selection if already on screen.
+  // Deferred so that modules listed AFTER js/core/game.js in
+  // js/bootstrap/load-order.json (enemies, upgrade-cards, systems wrappers,
+  // ui, sprites) finish loading before initSelectionSafe → handleOverworldReturn
+  // → continueRun → loadStage runs. Without this defer, an OW return
+  // would fire here before the post-game.js modules registered, which
+  // could swallow an error in continueRun and strand the player on the
+  // default screen-start splash.
+  const _avianSpritePatchInit = function(){
+    try{
+      if(typeof initSelectionSafe==='function') initSelectionSafe();
+    }catch(_){}
+  };
+  if(typeof queueMicrotask === 'function') queueMicrotask(_avianSpritePatchInit);
+  else if(typeof Promise !== 'undefined' && typeof Promise.resolve === 'function') Promise.resolve().then(_avianSpritePatchInit);
+  else setTimeout(_avianSpritePatchInit, 0);
 })();
 
 
@@ -24265,7 +24282,27 @@ SPRITE_KEYS_ALL.add('magpie');
   try{
     if(globalThis.__AVIAN_OW_NEST_EMBED__ && typeof globalThis.bootstrapOwNestEmbed === 'function'){
       globalThis.bootstrapOwNestEmbed();
-    }else if(typeof globalThis.initSelectionSafe === 'function') globalThis.initSelectionSafe();
-    else if(typeof globalThis.initSelection === 'function') globalThis.initSelection();
+    }else{
+      // Defer until the rest of the bundle finishes loading so that modules
+      // listed AFTER js/core/game.js in js/bootstrap/load-order.json
+      // (enemies, upgrade-cards, tier-pick, class-perks-deck, endless-bands,
+      // qol, content, systems, shop, ui, sprites) have all registered their
+      // globals + wrappers before initSelectionSafe → handleOverworldReturn →
+      // continueRun → loadStage runs. Without this defer, an OW return
+      // would fire before ENEMIES / UPGRADE_CARDS_REWORK exist and the
+      // outer try/catch above silently aborts, stranding the player on
+      // the default screen-start splash. queueMicrotask runs at the end
+      // of the current synchronous task — i.e. after the bundle script
+      // completes — which is exactly when every module is ready.
+      const _avianBootstrapInit = function(){
+        try{
+          if(typeof globalThis.initSelectionSafe === 'function') globalThis.initSelectionSafe();
+          else if(typeof globalThis.initSelection === 'function') globalThis.initSelection();
+        }catch(_e){}
+      };
+      if(typeof queueMicrotask === 'function') queueMicrotask(_avianBootstrapInit);
+      else if(typeof Promise !== 'undefined' && typeof Promise.resolve === 'function') Promise.resolve().then(_avianBootstrapInit);
+      else setTimeout(_avianBootstrapInit, 0);
+    }
   }catch(e){}
 })();
