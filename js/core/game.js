@@ -5465,6 +5465,10 @@ function continueRun() {
     ? Math.floor(_pendRestore)
     : Math.max(1, Math.floor(Number(save.stage) || 1));
   const skipOcEnemyRestore = !G.endlessMode && STORY_BOSS_STAGES.has(encStForOcRestore);
+  const ocRollStage = (oc && Number.isFinite(Number(oc.owEncounterRollStage)))
+    ? Math.floor(Number(oc.owEncounterRollStage))
+    : null;
+  const ocAlignedWithPendingEncounter = ocRollStage == null || ocRollStage === encStForOcRestore;
 
   const _applyOcNavHintsIfUnset = ()=>{
     const havePending = Number.isFinite(Number(G._owPendingBattleStage)) && Number(G._owPendingBattleStage) > 0;
@@ -5475,7 +5479,7 @@ function continueRun() {
     if(!haveTerrain && typeof oc.battleTerrain === 'string' && oc.battleTerrain.trim()) G._battleTerrain = oc.battleTerrain.trim();
   };
 
-  if(!G.endlessMode && oc && Array.isArray(oc.owStageEnemies) && oc.owStageEnemies.length && !skipOcEnemyRestore){
+  if(!G.endlessMode && oc && ocAlignedWithPendingEncounter && Array.isArray(oc.owStageEnemies) && oc.owStageEnemies.length && !skipOcEnemyRestore){
     G._owStageEnemies = oc.owStageEnemies.slice();
     G._owEnemyIndex = Math.max(0, Math.floor(Number(oc.owEnemyIndex) || 0));
     G._owEnemyCount = Math.max(1, Math.floor(Number(oc.owEnemyCount) || G._owStageEnemies.length));
@@ -5496,12 +5500,19 @@ function continueRun() {
     G._owEncounterMaterializedSig = null;
     _applyOcNavHintsIfUnset();
   } else if(!save.inBattle && !oc){
-    G._owStageEnemies = null;
-    G._owEncounterDrafts = null;
-    G._owEncounterDraftsSig = null;
-    G._owEncounterMaterialized = null;
-    G._owEncounterMaterializedSig = null;
-    G._owEncounterRollStage = null;
+    const preserveOwBattleIntent = !G.endlessMode
+      && Number.isFinite(Number(G._owPendingBattleStage))
+      && Number(G._owPendingBattleStage) > 0
+      && Array.isArray(G._owStageEnemies)
+      && G._owStageEnemies.length > 0;
+    if(!preserveOwBattleIntent){
+      G._owStageEnemies = null;
+      G._owEncounterDrafts = null;
+      G._owEncounterDraftsSig = null;
+      G._owEncounterMaterialized = null;
+      G._owEncounterMaterializedSig = null;
+      G._owEncounterRollStage = null;
+    }
   }
   // Re-attach passive reference (fns can't be serialized)
   const bd=BIRDS[G.player.birdKey];
