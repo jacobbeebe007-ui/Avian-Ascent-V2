@@ -5213,7 +5213,7 @@ function applySkillSlotMastery(slot, masteryId, player=G.player){
   slot.masteryCount = (slot.masteries||[]).length;
   return pick;
 }
-function ensureAbilityObjectFromTemplate(id, existing=null, slotIndex=null){
+function ensureAbilityObjectFromTemplate(id, existing=null, slotIndex=null, energyCostPlayer=null){
   const tmpl = ABILITY_TEMPLATES?.[id] || {};
   const level = Math.max(1, Number(existing?.level || 1));
   const out = {...tmpl, ...(existing||{}), id, name:tmpl.name||existing?.name||id, level};
@@ -5224,7 +5224,8 @@ function ensureAbilityObjectFromTemplate(id, existing=null, slotIndex=null){
   if(!String(out.type||'').trim() && tmplCanon.type) out.type = tmplCanon.type;
   if(out.btnType && !out.type) out.type = out.btnType;
   if(out.type && !out.btnType) out.btnType = out.type;
-  out.energyCost = getAbilityEnergyCost(out, G.player);
+  const costCtx = energyCostPlayer ?? G.player;
+  out.energyCost = getAbilityEnergyCost(out, costCtx);
   out.ailmentIds = deriveAbilityAilments(out, tmplCanon);
   return out;
 }
@@ -5236,7 +5237,7 @@ function syncPlayerAbilitiesFromSkillSlots(player){
   const byId = new Map((player.abilities||[]).map(ab=>[ab?.id, ab]));
   player.abilities = slots.map(slot=>{
     const prior = bySlot.get(slot.slotIndex) || byId.get(slot.abilityId) || null;
-    const ab = ensureAbilityObjectFromTemplate(slot.abilityId, prior, slot.slotIndex);
+    const ab = ensureAbilityObjectFromTemplate(slot.abilityId, prior, slot.slotIndex, player);
     if(slot.familyId==='rapid') ab.fixedMainAttackCost = true;
     if((player.birdKey==='macaw' || player.birdKey==='lyrebird') && slot.abilityId==='echo_note') ab.fixedMainAttackCost = true;
     if(player.birdKey==='blackbird' && slot.abilityId==='dark_song') ab.fixedMainAttackCost = true;
@@ -19506,13 +19507,13 @@ function getAbilityEnergyCost(ab, player){
     cost = ab.energyCost;
   }
 
-  if(isMainAttackAbility(ab) && !isSpellAbilityId(ab.id) && !(ab.fixedMainAttackCost || t?.fixedMainAttackCost)) cost = 1;
+  if(isMainAttackAbility(ab, p) && !isSpellAbilityId(ab.id) && !(ab.fixedMainAttackCost || t?.fixedMainAttackCost)) cost = 1;
 
   const tType=(t?.btnType||t?.type||ab.btnType||ab.type||'').toLowerCase();
   const isAttack=(tType==='physical'||tType==='ranged');
   const isSpell=(tType==='spell');
   // Family skill tree: flat EN curves stay at tier-1 display/spend; progressive energyByLevel tracks authored ramps.
-  if(p && usesFamilySkillEvolution(p) && !isMainAttackAbility(ab) && Array.isArray(t?.energyByLevel) && t.energyByLevel.length){
+  if(p && usesFamilySkillEvolution(p) && !isMainAttackAbility(ab, p) && Array.isArray(t?.energyByLevel) && t.energyByLevel.length){
     const arr=t.energyByLevel.map(x=>Math.max(0,Math.floor(Number(x)||0)));
     const progressive=arr.some((v,i)=>i>0&&v!==arr[0]);
     if(progressive){
@@ -19528,7 +19529,7 @@ function getAbilityEnergyCost(ab, player){
   if(isSpell && !G._firstSpellUsed && (p?.augFirstSpellCostDown||0)>0) cost=Math.max(0,cost-p.augFirstSpellCostDown);
   if(isSpell && p?.mutArcOverload) cost+=1;
 
-  if(cost===1 && isMultiHitAbility(ab) && !isMainAttackAbility(ab)) cost += 1;
+  if(cost===1 && isMultiHitAbility(ab) && !isMainAttackAbility(ab, p)) cost += 1;
 
   const maxE = p?.energyMax ?? 99;
   cost = Math.min(cost, maxE);
@@ -21520,13 +21521,14 @@ const ENDLESS_RARE_LEVELUP_CHOICES = [
   {id:'spd4r', label:'+4 SPD (rare)', stat:'spd', amount:4, apply(){ G.player.stats.spd=(G.player.stats.spd||0)+4; }},
 ];
 
-function isMainAttackAbility(ab){
+function isMainAttackAbility(ab, ownerPlayer=null){
   if(!ab) return false;
   if(ab.isMainAttack) return true;
   const t = ABILITY_TEMPLATES?.[ab.id];
   if(t?.isMainAttack) return true;
   if(ab.slot==='main') return true;
-  if(ab.id===G?.player?.mainAttackId) return true;
+  const owner = ownerPlayer ?? G?.player;
+  if(ab.id===owner?.mainAttackId) return true;
   return false;
 }
 
@@ -21945,11 +21947,12 @@ function ailmentSlotsForLevel(tmpl, level){
 }
 function deriveAbilityAilments(ab, tmpl){
   if(!tmpl) return [];
+  const levels = Array.isArray(tmpl.levels) ? tmpl.levels : [];
   const contactAilments=['poison','paralyzed','burning','weaken'];
   const isContactOnly=tmpl.type==='spell'||tmpl.type==='utility';
   const ailIds=[];
   for(let i=0;i<(ab.level||1);i++){
-    const d=tmpl.levels[i]||{};
+    const d=levels[i]||{};
     [d.newAilment,d.newAilment2,d.newAilment3].forEach(a=>{
       if(!a) return;
       if(isContactOnly&&contactAilments.includes(a)) return;
