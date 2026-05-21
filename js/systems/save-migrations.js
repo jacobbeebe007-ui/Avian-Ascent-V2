@@ -25,7 +25,11 @@
   'use strict';
 
   /** Bump when adding a migration. */
-  var TARGET = 2;
+  var TARGET = 3;
+
+  /** Combat-pack version stamp surfaced on the save blob. Wipes attached when
+   *  this changes so legacy ability/perk/family state never bleeds into a run. */
+  var COMBAT_PACK_VERSION = '2026.05-combat-rewrite';
 
   /** @type {Array<{from:number,to:number,fn:(save:any)=>any,note?:string}>} */
   var migrations = [
@@ -48,12 +52,46 @@
         return save;
       },
     },
+    {
+      from: 2,
+      to: 3,
+      note: 'combat rewrite: wipe ability/perk/family run state; new content is sourced from Avian.data.combatPack at runtime. Currency, unlocks, cosmetics preserved.',
+      fn: function (save) {
+        if (!save) return save;
+        // Preserve persistent meta (currency, unlocks, cosmetics, codex shells)
+        // by wiping only the run/player-combat fields below.
+        if (save.player && typeof save.player === 'object') {
+          var p = save.player;
+          p.abilities = [];
+          p.mainAttackId = null;
+          p.classPerks = [];
+          p.endlessRewards = [];
+          delete p.passiveEvolutionBonuses;
+          if (p.passive && typeof p.passive === 'object') {
+            // Drop old auto-attached passive blob; combat-pack-boot rebinds at load.
+            delete p.passive;
+          }
+          delete p.familyEvolutionState;
+          delete p.skillSlotState;
+          delete p.skillSlots;
+        }
+        // Drop volatile shop snapshot — pool generator now rolls from shop-pool.
+        delete save._shopSnapshots;
+        delete save.shopSnapshots;
+        // Record combat-pack version so future migrations can detect a refresh.
+        save.combatPackVersion = COMBAT_PACK_VERSION;
+        // Surface a one-shot notice for the UI layer.
+        save._combatRewriteNoticePending = true;
+        return save;
+      },
+    },
   ];
 
   var Avian = globalThis.Avian || (globalThis.Avian = { systems: {}, debug: {} });
   if (!Avian.systems) Avian.systems = Object.create(null);
 
   Avian.systems.SAVE_SCHEMA_VERSION = TARGET;
+  Avian.systems.COMBAT_PACK_VERSION = COMBAT_PACK_VERSION;
 
   /**
    * Apply ordered migrations until the save is at the current schema version.

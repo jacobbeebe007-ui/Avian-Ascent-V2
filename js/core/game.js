@@ -896,9 +896,13 @@ function _upgGoldenFeather(p){
   p.energy = Math.min((p.energy||0) + 1, p.energyMax);
 }
 
-// UPGRADE_CARDS_REWORK lives in js/data/upgrade-cards.js (assigns
-// globalThis.UPGRADE_CARDS_REWORK, loaded AFTER game.js so it can use
-// _upgFlatStat / _upgFlatMaxHp / _upgGoldenFeather / BIRDS at apply time).
+// Combat rewrite: legacy stat-card reward pool is retired. Post-combat reward
+// flow keeps using `getUpgradePool` but the pool is permanently empty — the new
+// ability shop in js/systems/shop-v2.js (rolled by js/systems/combat-pack-boot.js)
+// is the only source of new player content. Variable retained so legacy callers
+// that touch UPGRADE_CARDS_REWORK directly (audits, codex) still resolve.
+if (typeof globalThis.UPGRADE_CARDS_REWORK === 'undefined') globalThis.UPGRADE_CARDS_REWORK = [];
+var UPGRADE_CARDS_REWORK = globalThis.UPGRADE_CARDS_REWORK;
 
 function countUpgradeAcquisitionsThisRun(upgradeId){
   return (G.collectedRewards||[]).filter(r=>r.id===upgradeId).length;
@@ -3266,7 +3270,7 @@ function codexMark(type, id, field='seen'){
 }
 
 const SKILL_EVOLUTION_LEVEL_INTERVAL = 3;
-const FAMILY_EVOLUTION_STATE_VERSION = 12;
+const FAMILY_EVOLUTION_STATE_VERSION = 13; /* bumped for combat rewrite: wipes legacy family-evolution state */
 const SPARROW_SKILL_SLOT_LAYOUT = Object.freeze([
   {slotIndex:0, familyId:'rapid', abilityId:'multiPeck'},
   {slotIndex:1, familyId:'dart', abilityId:'dart'},
@@ -11296,6 +11300,12 @@ function tickStatuses(who) {
 // ============================================================
 //  PLAYER ACTIONS
 // ============================================================
+/* Note (combat rewrite): ACTIONS is the legacy hand-coded handler map. As of
+ * the combat-pack rewrite, every entry below is replaced at boot by dispatcher
+ * proxies in js/systems/combat-pack-boot.js. The function bodies below are
+ * retained as historic reference (they never run) but the LIVE behaviour comes
+ * from Avian.dispatcher.execute() driven by the skill-trees data pack. Treat
+ * additions here as dead code: extend the spreadsheets + dispatcher instead. */
 const ACTIONS = {
   async mainAttack(ab) {
     const birdClass=(BIRDS[G.player.birdKey]&&BIRDS[G.player.birdKey].class)||'';
@@ -24496,3 +24506,18 @@ SPRITE_KEYS_ALL.add('magpie');
     }
   }catch(e){}
 })();
+
+/* Combat rewrite: surface the legacy registries on globalThis so the new
+ * combat-pack boot glue (js/systems/combat-pack-boot.js) can mutate them
+ * regardless of whether it runs from the concatenated bundle (same script
+ * scope) or as a separate <script> in dev mode (where top-level `const`
+ * declarations are NOT visible across files). */
+try {
+  if (typeof ABILITY_TEMPLATES !== 'undefined' && !globalThis.ABILITY_TEMPLATES) globalThis.ABILITY_TEMPLATES = ABILITY_TEMPLATES;
+  if (typeof ACTIONS !== 'undefined' && !globalThis.ACTIONS) globalThis.ACTIONS = ACTIONS;
+  if (typeof CLASS_PERK_DEFS !== 'undefined' && !globalThis.CLASS_PERK_DEFS) globalThis.CLASS_PERK_DEFS = CLASS_PERK_DEFS;
+  if (typeof CLASS_PERK_BY_CLASS !== 'undefined' && !globalThis.CLASS_PERK_BY_CLASS) globalThis.CLASS_PERK_BY_CLASS = CLASS_PERK_BY_CLASS;
+  if (typeof PASSIVE_EVOLUTION_DEFS !== 'undefined' && !globalThis.PASSIVE_EVOLUTION_DEFS) globalThis.PASSIVE_EVOLUTION_DEFS = PASSIVE_EVOLUTION_DEFS;
+  if (typeof _SHOP_UTILS_REGULAR !== 'undefined' && !globalThis._SHOP_UTILS_REGULAR) globalThis._SHOP_UTILS_REGULAR = _SHOP_UTILS_REGULAR;
+  if (typeof _SHOP_UTILS_BOSS !== 'undefined' && !globalThis._SHOP_UTILS_BOSS) globalThis._SHOP_UTILS_BOSS = _SHOP_UTILS_BOSS;
+} catch (_e) { /* boot continues even if a particular symbol is missing */ }

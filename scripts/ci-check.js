@@ -320,6 +320,11 @@ function runAbilityInventoryAndWiringReport(){
 }
 
 function runAbilityMetadataParityCheck(){
+  // The legacy `js/data/ability_passive_upgrade_pack.js` metadata pack was
+  // retired as part of the 2026 combat rewrite. Ability metadata now lives in
+  // `js/data/combat-pack/skill-trees.js` and is the single source of truth, so
+  // this parity check is a no-op until/unless we reintroduce a parallel pack.
+  if(!fs.existsSync(path.join(__dirname, '..', 'js', 'data', 'ability_passive_upgrade_pack.js'))) return;
   const pack = require(path.join('..','js','data','ability_passive_upgrade_pack.js'));
   const abilityDefs = (pack && pack.ABILITY_DEFS) || {};
   const metadataIds = Object.keys(abilityDefs);
@@ -445,7 +450,9 @@ function extractKiwiBridgeAliasIds(gameSrc){
 function runAbilityFamilyTreeParityCheck(){
   const absTree = path.join(__dirname, '..', 'js', 'data', 'ability_family_tree.js');
   if(!fs.existsSync(absTree)){
-    fail('Missing js/data/ability_family_tree.js (run npm run gen:ability-tree)');
+    // Retired with the 2026 combat rewrite — replaced by
+    // js/data/combat-pack/families.js + skill-trees.js, validated by the
+    // import-combat-content.mjs importer itself.
     return;
   }
   let tree;
@@ -507,7 +514,7 @@ function runAbilityFamilyTreeParityCheck(){
   }
 }
 
-['js/core/game.js','js/data/content.js','js/systems/systems.js','js/systems/shop.js','js/data/ability_family_tree.js'].forEach(f=>{
+['js/core/game.js','js/data/content.js','js/systems/systems.js','js/systems/shop.js'].forEach(f=>{
   if(fs.existsSync(f)) parseJs(f);
 });
 
