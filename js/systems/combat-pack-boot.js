@@ -1,0 +1,276 @@
+/* Avian Ascent — Combat Pack Boot Glue.
+ *
+ * Runs after `js/core/game.js` (so `ACTIONS`, `ABILITY_TEMPLATES`, `BIRDS`,
+ * `UPGRADE_CARDS_REWORK`, etc. exist) and after the combat-pack data files
+ * (so `Avian.data.combatPack` is populated). Job: bind the data to the live
+ * registries the game already reads, without touching the runtime helpers.
+ *
+ * Specifically:
+ *   1. Joins each `BIRDS[key]` with `combatPack.birdKits[key]`:
+ *        - sets `startAbilities` to the 4-slot layout (2 starters + 2 empties)
+ *        - sets `passive` to `{id,name,desc}` from `combatPack.birdPassives`
+ *        - sets `mainAttackId` to the slot-0 starter's ability id
+ *        - exposes `combatFamilies` so the family-evolution UI can show the
+ *          per-bird Power/Ailment/Utility branches
+ *   2. Populates `ABILITY_TEMPLATES` from `combatPack.skillTrees` so legacy
+ *      lookups like `ABILITY_TEMPLATES[id]?.btnType` keep resolving.
+ *   3. Registers dispatcher proxies in `ACTIONS` for every ability id.
+ *   4. Monkey-patches `generateShopItems` so the existing shop UI sells
+ *      ability families from `combatPack.shopPool` instead of stat cards.
+ *
+ * Anything that the old combat layer used to wire is replaced or no-op'd
+ * (CLASS_PERK_DEFS, PASSIVE_EVOLUTION_DEFS, UPGRADE_CARDS_REWORK,
+ * _SHOP_UTILS_REGULAR/_BOSS, FAMILY_EVOLUTION_BIRD_DATA gap birds) so the
+ * legacy code paths starve of content but the helpers still run.
+ */
+(function () {
+  'use strict';
+  var Avian = globalThis.Avian || (globalThis.Avian = {});
+  if (!Avian.data || !Avian.data.combatPack) {
+    console.warn('[combat-pack-boot] missing Avian.data.combatPack — skipping bind.');
+    return;
+  }
+  var pack = Avian.data.combatPack;
+
+  // 1. ── Empty legacy content registries -----------------------------------
+  function clearObject(target, label) {
+    if (!target || typeof target !== 'object') return;
+    if (Object.isFrozen(target)) {
+      if (Avian.debug && Avian.debug.enabled) console.warn('[combat-pack-boot] skipping frozen', label);
+      return;
+    }
+    for (var key in target) { try { delete target[key]; } catch (_e) { /* sealed value */ } }
+  }
+  try {
+    if (typeof globalThis.UPGRADE_CARDS_REWORK !== 'undefined') globalThis.UPGRADE_CARDS_REWORK = [];
+    clearObject(globalThis.CLASS_PERK_DEFS, 'CLASS_PERK_DEFS');
+    clearObject(globalThis.CLASS_PERK_BY_CLASS, 'CLASS_PERK_BY_CLASS');
+    clearObject(globalThis.PASSIVE_EVOLUTION_DEFS, 'PASSIVE_EVOLUTION_DEFS');
+    if (Array.isArray(globalThis._SHOP_UTILS_REGULAR)) globalThis._SHOP_UTILS_REGULAR.length = 0;
+    if (Array.isArray(globalThis._SHOP_UTILS_BOSS)) globalThis._SHOP_UTILS_BOSS.length = 0;
+  } catch (e) {
+    console.warn('[combat-pack-boot] failed to clear legacy registries:', e);
+  }
+
+  // 2. ── Build ABILITY_TEMPLATES rows from skill trees ---------------------
+  function rowToTemplate(row) {
+    var isMagic = /magic|song|spell/i.test(row.category || '');
+    var btnType = isMagic ? 'spell' : (row.target === 'self' && row.noDamage ? 'utility' : 'physical');
+    return {
+      id: row.id,
+      name: row.name || row.id,
+      type: btnType,
+      btnType: btnType,
+      desc: row.designNote || row.riderText || '',
+      energyCost: row.apCost || 1,
+      energy: row.apCost || 1,
+      energyByLevel: [row.apCost || 1, row.apCost || 1, row.apCost || 1, row.apCost || 1],
+      pierceDef: row.pierceDef || 0,
+      pierceMdef: row.pierceMdef || 0,
+      hits: row.hits || 1,
+      baseDmgMult: (row.scalePct || 0) / 100,
+      ailments: row.ailment ? (Array.isArray(row.ailment) ? row.ailment : [row.ailment]) : [],
+      ailChance: row.ailmentChance || 0,
+      levels: [
+        { lv: 1, desc: row.designNote || row.riderText || '' },
+        { lv: 2, desc: row.designNote || '' },
+        { lv: 3, desc: row.designNote || '' },
+        { lv: 4, desc: row.designNote || '' },
+      ],
+      _combatPackRow: row,
+    };
+  }
+  try {
+    if (typeof globalThis.ABILITY_TEMPLATES !== 'undefined') {
+      // Wipe legacy entries first
+      for (var ai in globalThis.ABILITY_TEMPLATES) delete globalThis.ABILITY_TEMPLATES[ai];
+      for (var id in pack.skillTrees) {
+        globalThis.ABILITY_TEMPLATES[id] = rowToTemplate(pack.skillTrees[id]);
+      }
+    }
+  } catch (e) {
+    console.warn('[combat-pack-boot] failed to populate ABILITY_TEMPLATES:', e);
+  }
+
+  // The data pack uses fuller bird names (e.g. "shoebillstork") while BIRDS in
+  // js/data/birds.js uses shorter keys ("shoebill"). Map BIRDS-side key → pack-side key.
+  var BIRD_KEY_ALIASES = Object.freeze({
+    shoebill: 'shoebillstork',
+    penguin: 'emperorpenguin',
+    fairywren: 'superbfairywren',
+    wagtail: 'williewagtail',
+    pelican: 'australianpelican',
+  });
+  function packKeyFor(birdKey) {
+    return BIRD_KEY_ALIASES[birdKey] || birdKey;
+  }
+
+  // 3. ── Join BIRDS with bird kits + passives ------------------------------
+  function buildAbilityInstance(abId, familyId, slot) {
+    var row = pack.skillTrees && pack.skillTrees[abId];
+    if (!row) return null;
+    var isMagic = /magic|song|spell/i.test(row.category || '');
+    var btnType = isMagic ? 'spell' : (row.target === 'self' && row.noDamage ? 'utility' : 'physical');
+    return {
+      id: row.id,
+      familyId: familyId,
+      name: row.name,
+      desc: row.designNote || row.riderText || '',
+      type: btnType,
+      btnType: btnType,
+      energy: row.apCost || 1,
+      energyCost: row.apCost || 1,
+      level: 1,
+      slotIndex: slot,
+      pierceDef: row.pierceDef || 0,
+      pierceMdef: row.pierceMdef || 0,
+      ailmentIds: row.ailment ? (Array.isArray(row.ailment) ? row.ailment : [row.ailment]) : [],
+    };
+  }
+  // Locate a starter ability id by bird kit slot. The data pack has the family ID via Ability Families
+  // (one family per (bird, slot)) and the base ability row sits at <FAMILY>_L1_BASE.
+  function familyIdFor(birdKey, slot) {
+    if (!pack.families) return null;
+    var alias = packKeyFor(birdKey);
+    for (var id in pack.families) {
+      var f = pack.families[id];
+      if (f.kind === 'starter' && (f.birdKey === birdKey || f.birdKey === alias) && f.starterSlot === slot) return id;
+    }
+    return null;
+  }
+  function abilityIdForFamily(familyId) {
+    return familyId + '_L1_BASE';
+  }
+  try {
+    if (typeof globalThis.BIRDS === 'object' && globalThis.BIRDS) {
+      for (var birdKey in globalThis.BIRDS) {
+        var bird = globalThis.BIRDS[birdKey];
+        if (!bird) continue;
+        var alias = packKeyFor(birdKey);
+        var kit = pack.birdKits && (pack.birdKits[birdKey] || pack.birdKits[alias]);
+        if (!kit) continue;
+        // Resolve the two starter family ids
+        var famA = familyIdFor(birdKey, 0);
+        var famB = familyIdFor(birdKey, 1);
+        if (!famA || !famB) continue;
+        var starterA = abilityIdForFamily(famA);
+        var starterB = abilityIdForFamily(famB);
+        bird.startAbilities = [starterA, starterB];
+        bird.mainAttackId = starterA;
+        bird.combatFamilies = [famA, famB];
+        // Locate the passive by birdKey (with alias fallback)
+        var passive = null;
+        for (var pid in (pack.birdPassives || {})) {
+          var pBird = pack.birdPassives[pid].birdKey;
+          if (pBird === birdKey || pBird === alias) { passive = pack.birdPassives[pid]; break; }
+        }
+        if (passive) {
+          bird.passive = {
+            id: passive.id,
+            name: passive.name,
+            desc: passive.effect || '',
+            trigger: passive.trigger || '',
+          };
+        } else {
+          bird.passive = { id: birdKey + '_passive_unset', name: 'No Passive', desc: '' };
+        }
+      }
+    }
+  } catch (e) {
+    console.warn('[combat-pack-boot] failed to join BIRDS with combat pack:', e);
+  }
+
+  // 4. ── Register dispatcher proxies for ACTIONS ---------------------------
+  try {
+    if (typeof globalThis.ACTIONS === 'object' && globalThis.ACTIONS) {
+      // Clear all legacy ACTIONS handlers so nothing maps to dead bird-specific JS
+      for (var ak in globalThis.ACTIONS) delete globalThis.ACTIONS[ak];
+      if (Avian.dispatcher && typeof Avian.dispatcher.registerActions === 'function') {
+        var n = Avian.dispatcher.registerActions(globalThis.ACTIONS);
+        if (Avian.debug && Avian.debug.enabled) console.log('[combat-pack-boot] registered', n, 'dispatcher proxies in ACTIONS');
+      }
+    }
+  } catch (e) {
+    console.warn('[combat-pack-boot] failed to register ACTIONS proxies:', e);
+  }
+
+  // 5. ── Shop monkey-patch -------------------------------------------------
+  try {
+    if (typeof globalThis.generateShopItems === 'function' && Avian.shop) {
+      var _origGen = globalThis.generateShopItems;
+      globalThis.generateShopItems = function () {
+        var nodeId = (globalThis.G && globalThis.G._currentShopNodeId) != null ? globalThis.G._currentShopNodeId : null;
+        var mode = (globalThis.G && globalThis.G._shopMode) || 'boss';
+
+        // Restore snapshot path: same as legacy
+        if (nodeId != null && globalThis.G && globalThis.G._shopSnapshots && globalThis.G._shopSnapshots[nodeId]) {
+          var snap = globalThis.G._shopSnapshots[nodeId];
+          var bought = new Set(snap.boughtIds || []);
+          globalThis._shopItems = (snap.itemIds || [])
+            .filter(function (id) { return !bought.has(id); })
+            .map(function (id) {
+              // Healing items keep their legacy lookup
+              if (typeof globalThis._findShopItemById === 'function') {
+                var item = globalThis._findShopItemById(id);
+                if (item) return item;
+              }
+              return Avian.shop.findById(id);
+            })
+            .filter(Boolean);
+          if (typeof globalThis.renderShopItems === 'function') globalThis.renderShopItems();
+          return;
+        }
+
+        // First visit: healing shelf + 5 ability offers
+        globalThis._shopItems = [];
+        var SHOP_HEALING_ITEMS = globalThis.SHOP_HEALING_ITEMS;
+        var SHOP_STATE = globalThis.SHOP_STATE;
+        if (SHOP_HEALING_ITEMS && SHOP_STATE) {
+          var healOffers = SHOP_HEALING_ITEMS
+            .filter(function (it) { return !(SHOP_STATE.healingPurchasesThisVisit && SHOP_STATE.healingPurchasesThisVisit.has(it.id)); })
+            .map(function (it) {
+              return Object.assign({}, it, {
+                apply: function (p) {
+                  var heal = Math.max(1, Math.floor((p.stats.maxHp || 1) * (it.healPct || 0)));
+                  p.stats.hp = Math.min((p.stats.maxHp || 1), (p.stats.hp || 0) + heal);
+                  if (typeof spawnFloat === 'function') spawnFloat('player', '+' + heal + ' 🌿', 'fn-heal');
+                },
+              });
+            });
+          globalThis._shopItems.push.apply(globalThis._shopItems, healOffers);
+        }
+        var abilityOffers = Avian.shop.rollStockForMode(mode);
+        globalThis._shopItems.push.apply(globalThis._shopItems, abilityOffers);
+
+        if (nodeId != null) {
+          if (!globalThis.G._shopSnapshots) globalThis.G._shopSnapshots = {};
+          globalThis.G._shopSnapshots[nodeId] = {
+            mode: mode,
+            itemIds: globalThis._shopItems.map(function (it) { return it.id; }),
+            boughtIds: [],
+          };
+          if (typeof globalThis.saveRun === 'function') globalThis.saveRun();
+        }
+        if (typeof globalThis.renderShopItems === 'function') globalThis.renderShopItems();
+      };
+    }
+  } catch (e) {
+    console.warn('[combat-pack-boot] failed to patch generateShopItems:', e);
+  }
+
+  // 6. ── getUpgradePool returns empty (legacy stat cards retired) ---------
+  try {
+    if (typeof globalThis.getUpgradePool === 'function') {
+      globalThis.getUpgradePool = function () { return []; };
+    }
+  } catch (_e) { /* noop */ }
+
+  // 7. ── Family-evolution gap birds: drop (data pack supplies them) -------
+  try {
+    if (Avian.data && Avian.data.familyEvolutionGapBirds) {
+      Avian.data.familyEvolutionGapBirds = {};
+    }
+  } catch (_e) { /* noop */ }
+
+  if (Avian.debug && Avian.debug.enabled) console.log('[combat-pack-boot] complete.');
+})();
