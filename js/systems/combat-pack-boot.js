@@ -56,12 +56,25 @@
   function rowToTemplate(row) {
     var isMagic = /magic|song|spell/i.test(row.category || '');
     var btnType = isMagic ? 'spell' : (row.target === 'self' && row.noDamage ? 'utility' : 'physical');
+    var ailmentList = row.ailment ? (Array.isArray(row.ailment) ? row.ailment : [row.ailment]) : [];
+    var primaryAil = ailmentList[0] || null;
+    var secondaryAil = ailmentList[1] || null;
+    var ailChance = row.ailmentChance || 0;
+    var desc = row.designNote || row.riderText || '';
+    var level = {
+      lv: 1,
+      desc: desc,
+      newAilment: primaryAil,
+      ailChance: ailChance,
+      newAilment2: secondaryAil,
+      ailChance2: secondaryAil ? ailChance : 0,
+    };
     return {
       id: row.id,
       name: row.name || row.id,
       type: btnType,
       btnType: btnType,
-      desc: row.designNote || row.riderText || '',
+      desc: desc,
       energyCost: row.apCost || 1,
       energy: row.apCost || 1,
       energyByLevel: [row.apCost || 1, row.apCost || 1, row.apCost || 1, row.apCost || 1],
@@ -69,13 +82,13 @@
       pierceMdef: row.pierceMdef || 0,
       hits: row.hits || 1,
       baseDmgMult: (row.scalePct || 0) / 100,
-      ailments: row.ailment ? (Array.isArray(row.ailment) ? row.ailment : [row.ailment]) : [],
-      ailChance: row.ailmentChance || 0,
+      ailments: ailmentList,
+      ailChance: ailChance,
       levels: [
-        { lv: 1, desc: row.designNote || row.riderText || '' },
-        { lv: 2, desc: row.designNote || '' },
-        { lv: 3, desc: row.designNote || '' },
-        { lv: 4, desc: row.designNote || '' },
+        Object.assign({}, level, { lv: 1 }),
+        Object.assign({}, level, { lv: 2 }),
+        Object.assign({}, level, { lv: 3 }),
+        Object.assign({}, level, { lv: 4 }),
       ],
       _combatPackRow: row,
     };
@@ -178,6 +191,88 @@
     }
   } catch (e) {
     console.warn('[combat-pack-boot] failed to join BIRDS with combat pack:', e);
+  }
+
+  // 3b. ── Build FAMILY_EVOLUTION_BIRD_DATA from combatPack ----------------
+  function levelToTier(level) {
+    if (level === 1) return 0;
+    if (level === 3) return 1;
+    if (level === 6) return 2;
+    if (level === 9) return 3;
+    return 0;
+  }
+  function branchToPathId(branch) {
+    var b = String(branch || '').toLowerCase();
+    if (b === 'base') return null;
+    return b; // 'power' | 'ailment' | 'utility'
+  }
+  function buildFamilyForBird(birdKey) {
+    if (!pack.families || !pack.skillTrees) return null;
+    var alias = packKeyFor(birdKey);
+    var bridKeys = [birdKey, alias];
+    // Collect starter families for this bird, by starterSlot
+    var startersBySlot = Object.create(null);
+    for (var fid in pack.families) {
+      var fam = pack.families[fid];
+      if (fam.kind !== 'starter') continue;
+      if (bridKeys.indexOf(fam.birdKey) === -1) continue;
+      startersBySlot[fam.starterSlot] = fam;
+    }
+    var slot0Fam = startersBySlot[0];
+    var slot1Fam = startersBySlot[1];
+    if (!slot0Fam || !slot1Fam) return null;
+    // Build family path data for each starter family
+    function buildFamilyEntry(fam, slotIdx) {
+      var paths = { power: { pathId: 'power', displayName: 'Power', abilities: {} }, ailment: { pathId: 'ailment', displayName: 'Ailment', abilities: {} }, utility: { pathId: 'utility', displayName: 'Utility', abilities: {} } };
+      var baseId = null;
+      for (var rid in pack.skillTrees) {
+        var row = pack.skillTrees[rid];
+        if (row.familyId !== fam.id) continue;
+        var tier = levelToTier(row.level);
+        var pathId = branchToPathId(row.branch);
+        if (pathId === null) {
+          baseId = row.id;
+        } else if (paths[pathId]) {
+          paths[pathId].abilities[tier] = row.id;
+        }
+      }
+      return {
+        familyId: fam.id,
+        displayName: fam.name || fam.id,
+        baseAbilityId: baseId,
+        maxTier: fam.maxTier || 3,
+        starterSlot: slotIdx,
+        paths: paths,
+      };
+    }
+    var famEntry0 = buildFamilyEntry(slot0Fam, 0);
+    var famEntry1 = buildFamilyEntry(slot1Fam, 1);
+    var slotLayout = [
+      { slotIndex: 0, familyId: slot0Fam.id, abilityId: famEntry0.baseAbilityId, isStarterMain: true, type: 'starter' },
+      { slotIndex: 1, familyId: slot1Fam.id, abilityId: famEntry1.baseAbilityId, isStarterMain: false, type: 'starter' },
+      { slotIndex: 2, familyId: null, abilityId: null, type: 'empty' },
+      { slotIndex: 3, familyId: null, abilityId: null, type: 'empty' },
+    ];
+    var families = Object.create(null);
+    families[slot0Fam.id] = famEntry0;
+    families[slot1Fam.id] = famEntry1;
+    var abilityLookup = (typeof globalThis.buildFamilySkillAbilityLookup === 'function')
+      ? globalThis.buildFamilySkillAbilityLookup(slotLayout, families)
+      : Object.create(null);
+    return { birdKey: birdKey, slotLayout: slotLayout, families: families, abilityLookup: abilityLookup };
+  }
+  try {
+    if (typeof globalThis.FAMILY_EVOLUTION_BIRD_DATA === 'object' && globalThis.FAMILY_EVOLUTION_BIRD_DATA) {
+      for (var fkk in globalThis.FAMILY_EVOLUTION_BIRD_DATA) delete globalThis.FAMILY_EVOLUTION_BIRD_DATA[fkk];
+      if (typeof globalThis.BIRDS === 'object' && globalThis.BIRDS) {
+        for (var bk2 in globalThis.BIRDS) {
+          var entry = buildFamilyForBird(bk2);
+          if (entry) globalThis.FAMILY_EVOLUTION_BIRD_DATA[bk2] = entry;
+        }
+      }
+    }
+  } catch (e) {
+    console.warn('[combat-pack-boot] failed to build FAMILY_EVOLUTION_BIRD_DATA:', e);
   }
 
   // 4. ── Register dispatcher proxies for ACTIONS ---------------------------

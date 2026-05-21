@@ -211,17 +211,35 @@ function getTemplateAbilityIds(){
   const learnObj = extractObjectLiteralAfterMarker(gameSrc, 'const ABILITY_TEMPLATES_LEARNABLE =');
   const magicObj = extractObjectLiteralAfterMarker(gameSrc, 'const ABILITY_TEMPLATES_MAGIC =');
   const sparrowEvo = extractObjectLiteralAfterMarker(gameSrc, 'const SPARROW_EVOLUTION_TEMPLATES =');
-  if(!baseObj || !extraObj) return { ids: [], parseError: 'Could not parse ABILITY_TEMPLATES blocks from js/core/game.js' };
 
-  const ids = new Set([
-    ...extractTopLevelObjectKeys(baseObj),
-    ...extractTopLevelObjectKeys(extraObj),
-    ...(learnObj ? extractTopLevelObjectKeys(learnObj) : []),
-    ...(magicObj ? extractTopLevelObjectKeys(magicObj) : []),
-    ...(sparrowEvo ? extractTopLevelObjectKeys(sparrowEvo) : []),
-    ...extractAbilityTemplateAssignKeys(gameSrc)
-  ]);
+  const ids = new Set();
+  if (baseObj && baseObj.includes(':')) extractTopLevelObjectKeys(baseObj).forEach(k => ids.add(k));
+  if (extraObj) extractTopLevelObjectKeys(extraObj).forEach(k => ids.add(k));
+  if (learnObj) extractTopLevelObjectKeys(learnObj).forEach(k => ids.add(k));
+  if (magicObj) extractTopLevelObjectKeys(magicObj).forEach(k => ids.add(k));
+  if (sparrowEvo) extractTopLevelObjectKeys(sparrowEvo).forEach(k => ids.add(k));
+  extractAbilityTemplateAssignKeys(gameSrc).forEach(k => ids.add(k));
+
+  // Combat rewrite: ability content now lives in the combat data pack. If no
+  // legacy ABILITY_TEMPLATES literal was found in game.js, harvest ids from
+  // js/data/combat-pack/skill-trees.js so downstream checks can still report
+  // meaningful coverage.
+  if (ids.size === 0) {
+    try {
+      const skillTreesPath = path.join(__dirname, '..', 'js', 'data', 'combat-pack', 'skill-trees.js');
+      if (fs.existsSync(skillTreesPath)) {
+        const sandbox = { globalThis: {} };
+        sandbox.globalThis = sandbox;
+        const code = fs.readFileSync(skillTreesPath, 'utf8');
+        new Function('globalThis', code)(sandbox);
+        const trees = sandbox?.Avian?.data?.combatPack?.skillTrees || {};
+        for (const k of Object.keys(trees)) ids.add(k);
+      }
+    } catch (_e) { /* swallow; report parseError below if we still have nothing */ }
+  }
+
   ids.delete('mimic');
+  if (ids.size === 0) return { ids: [], parseError: 'Could not parse ABILITY_TEMPLATES blocks from js/core/game.js' };
   return { ids: Array.from(ids), parseError: null };
 }
 
