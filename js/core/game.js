@@ -640,6 +640,16 @@ function getPassiveEvolutionBonuses(player=G.player){
   if(c2==='utility'){ out.spdFlat+=1; out.drPct+=0.15; out.controlPct+=0.10; }
   return out;
 }
+function getPassiveDefMdefBonuses(){
+  let def=0,mdef=0;
+  const p=G.player, bd=BIRDS[p?.birdKey], id=bd?.passive?.id;
+  if(!p?.stats) return {def,mdef};
+  const hp=p.stats.hp||0, mx=Math.max(1,p.stats.maxHp||1);
+  if(id==='passive_swan_regal_bearing' && hp>mx*0.7){ def+=4; mdef+=4; }
+  if(id==='passive_penguin_icebound_plating' && hp>mx*0.5) mdef+=4;
+  if(id==='passive_bushturkey_scrapper' && hp<=mx*0.5) def+=4;
+  return {def,mdef};
+}
 function getEndlessRewardPool(type){
   if(type==='augment') return ENDLESS_SKILL_AUGMENTS;
   if(type==='mutation') return ENDLESS_MUTATIONS;
@@ -1493,6 +1503,12 @@ function getGrowthStageForLevel(lv){
 }
 const MAX_PLAYER_ACTIONS_PER_TURN=6;
 const MAX_ENEMY_ACTIONS_PER_TURN=3;
+/** Legacy per-bird movement ability ids still referenced by cooldown UI + playerAction guards. */
+const HUMMINGBIRD_DASH_ABILITY_IDS=new Set(['sonicDash','hummingbirdDash']);
+const PEREGRINE_DIVE_ABILITY_IDS=new Set(['peregrineDive','deathDive']);
+const SNOWY_OWL_DIVE_ABILITY_IDS=new Set(['snowyOwlDive']);
+const ROBIN_DART_ABILITY_IDS=new Set(['robinDart','dart']);
+const BOWERBIRD_LURE_ABILITY_IDS=new Set(['bowerbirdLure','bowerLure']);
 /** Caps card/passive EN gains per player turn (separate from size-based turn regen). */
 const MAX_ENERGY_GAIN_PER_TURN=12;
 
@@ -1702,6 +1718,7 @@ let G = {
     combatDropdownOpen:{player:true,enemy:true},
   },
 };
+globalThis.G = G;
 
 const DEFAULT_UI_STATE = Object.freeze({
   gameMode:'story',
@@ -4557,8 +4574,13 @@ function normalizeBattleTurnState(){
     }else if(G.turn==='enemy'){
       G.phase='ENEMY';
       G.turnPhase=TURN.ENEMY;
+    }else if(G.phase==='PLAYER'&&G.turnPhase===TURN.PLAYER){
+      G.turn='player';
+    }else if(G.phase==='ENEMY'&&G.turnPhase===TURN.ENEMY){
+      G.turn='enemy';
     }
   }
+  syncCombatTurnFlags();
 }
 
 function resetForNewBattle(){
@@ -5395,7 +5417,17 @@ function lockActionUI(locked){
 }
 
 function canPlayerAct(){
-  return G.phase==='PLAYER'&&G.turnPhase===TURN.PLAYER&&!G.actionBusy&&!G.animLock;
+  return !G.battleOver&&G.turn==='player'&&G.phase==='PLAYER'&&G.turnPhase===TURN.PLAYER&&!G.actionBusy&&!G.animLock;
+}
+
+function syncCombatTurnFlags(){
+  if(G.battleOver||!G.player||!G.enemy) return;
+  if(G.turnPhase===TURN.RESOLVING) return;
+  if(G.phase==='PLAYER'&&G.turnPhase===TURN.PLAYER){
+    G.turn='player';
+  }else if(G.phase==='ENEMY'&&G.turnPhase===TURN.ENEMY){
+    G.turn='enemy';
+  }
 }
 
 function renderEnemyPlan(){
@@ -5521,10 +5553,12 @@ function failsafeAdvance(reason='') {
   }
 }
 
-window.addEventListener('error', () => {
+window.addEventListener('error', (ev) => {
+  try { console.error('[game] uncaught error:', ev.message, ev.error || ev); } catch(_) {}
   try { failsafeAdvance('window.onerror'); } catch(_) {}
 });
-window.addEventListener('unhandledrejection', () => {
+window.addEventListener('unhandledrejection', (ev) => {
+  try { console.error('[game] unhandled rejection:', ev.reason); } catch(_) {}
   try { failsafeAdvance('unhandledrejection'); } catch(_) {}
 });
 
@@ -5824,7 +5858,10 @@ function renderActions() {
       ${ailDots?`<div class="ailment-icons">${ailDots}</div>`:''}
       <span class="kb-hint">[${idx+1}]</span>`;
     const currentAb = ()=> (G?.player?.abilities||[]).find(x=>x.id===ab.id) || ab;
-    btn.onclick=()=>enqueueAction(()=>playerAction(currentAb(),true));
+    btn.onclick=()=>enqueueAction(()=>{
+      const act=globalThis.playerAction||playerAction;
+      return act(currentAb(),true);
+    });
     // Tooltip - desktop hover + mobile tap toggle
     // Desktop: hover tooltips
     btn.addEventListener('mouseenter',e=>{if(!window._isTouchDevice)showActionTooltip(e,currentAb());});
@@ -5881,6 +5918,16 @@ function renderActions() {
       try{ endPlayerTurn(true); }catch(_){}
     });
   }
+}
+
+if(typeof Avian?.actions?.register==='function'){
+  Avian.actions.register('fireAbilitySlot', function(slotIdx){
+    const idx=Number(slotIdx);
+    if(!Number.isFinite(idx)||idx<0) return;
+    const btns=[...document.querySelectorAll('#actions-grid .action-btn[data-ab-idx]')].filter(b=>!b.classList.contains('endturn-mini'));
+    const btn=btns[idx];
+    if(btn&&!btn.disabled) btn.click();
+  });
 }
 
 // ===== TOOLTIPS / SKILL UI RESOLVER =====
@@ -7612,6 +7659,8 @@ function dealDamage(target,amount,isCrit=false,isMagic=false,srcAbility=null) {
   const classPerkCtx=applyClassPerksToCombatContext(G.player?.birdKey,{});
   const activeAb=srcAbility||G._activePlayerAbility||null;
   const activeType=String(activeAb?.btnType||activeAb?.type||ABILITY_TEMPLATES?.[activeAb?.id]?.btnType||ABILITY_TEMPLATES?.[activeAb?.id]?.type||'').toLowerCase();
+  const isAttack=(activeType==='physical'||activeType==='ranged');
+  const isSpell=(activeType==='spell');
   if(target==='enemy' && !isMagic && !isCrit && classPerkCtx.predatorRhythm && (G.playerActionsThisTurn||0)===2 && chance(10)) isCrit=true;
   let critDmgAdd=isCrit?(G.player?.critDamageBonusPct||0):0;
   if(isCrit && target==='enemy' && (G.player?.critVsAfflictedBonusPct||0)>0 && enemyHasAfflictionForCardBonuses()) critDmgAdd+=G.player.critVsAfflictedBonusPct;
@@ -7641,10 +7690,6 @@ function dealDamage(target,amount,isCrit=false,isMagic=false,srcAbility=null) {
   const critMult=(G.player.goldCritMult||1.5) + critDmgAdd;
   if (isCrit) dmg=Math.floor(dmg*critMult);
   if(target==='enemy'){
-    const ab=G._activePlayerAbility||null;
-    const kind=String(ab?.btnType||ab?.type||ABILITY_TEMPLATES?.[ab?.id]?.btnType||ABILITY_TEMPLATES?.[ab?.id]?.type||'').toLowerCase();
-    const isAttack=(kind==='physical'||kind==='ranged');
-    const isSpell=(kind==='spell');
     if(G.enemyStatus?.bleed?.stacks>0){
       dmg += (G.player?.vsBleedFlatBonus||0);
       if((G.player?.vsBleedPctBonus||0)>0) dmg=Math.floor(dmg*(1+G.player.vsBleedPctBonus));
@@ -8462,7 +8507,14 @@ async function playerAction(ab,fromQueue=false) {
   const now=(typeof performance!=='undefined'&&performance.now)?performance.now():Date.now();
   if(now<(G._actionTapLockUntil||0)) return;
   G._actionTapLockUntil=now+220;
-  if((!fromQueue&&!canPlayerAct())||G.turn!=='player')return;
+  if(!fromQueue&&!canPlayerAct()){
+    logMsg('Cannot act right now.','system');
+    return;
+  }
+  if(G.turn!=='player'){
+    logMsg('Not your turn.','system');
+    return;
+  }
   if((G.playerActionsThisTurn||0)>=MAX_PLAYER_ACTIONS_PER_TURN){logMsg('Action limit reached — end your turn.','system');return;}
 
   G.playerTurnFlags = G.playerTurnFlags || {};
@@ -8697,6 +8749,7 @@ function startPlayerTurn(player){
   G.turnPhase=TURN.PLAYER;
   G.phase='PLAYER';
   G.animLock=false;
+  syncCombatTurnFlags();
   applyOpeningStrikePassiveOnTurnStart();
   renderEnergyOrbs();
   renderActions();

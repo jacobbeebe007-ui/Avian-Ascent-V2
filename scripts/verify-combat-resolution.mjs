@@ -194,6 +194,56 @@ if (typeof sandbox.computePlayerEnergyRegenThisTurn === 'function') {
   check('paralyzed blocks EN regen', paraRegen === 0);
 }
 
+check('globalThis.G is exported for cross-module combat', !!sandbox.G);
+
+if (sandbox.G && typeof sandbox.preparePlayerCombatLoadout === 'function' && typeof sandbox.playerAction === 'function' && sandbox.Avian?.dispatcher?.execute) {
+  const G = sandbox.G;
+  G.player = {
+    birdKey: 'sparrow',
+    size: 'small',
+    name: 'Sparrow',
+    stats: { hp: 50, maxHp: 50, atk: 12, matk: 8, def: 5, mdef: 6, spd: 10, dodge: 5, acc: 80, critChance: 5 },
+    abilities: [],
+    energy: 4,
+    energyMax: 6,
+    energyRegen: 3,
+    familyEvolutionState: { skillSlots: sandbox.getBaseSkillSlotsForBird('sparrow') },
+  };
+  G.enemy = { name: 'Test Crow', stats: { hp: 80, maxHp: 80, atk: 8, def: 4, mdef: 6, spd: 5, dodge: 0, acc: 70 }, energy: 3, energyMax: 3 };
+  G.playerStatus = {};
+  G.enemyStatus = {};
+  G.turn = 'player';
+  G.phase = 'PLAYER';
+  G.turnPhase = sandbox.TURN?.PLAYER || 'PLAYER';
+  G.battleOver = false;
+  G.actionBusy = false;
+  G.animLock = false;
+  G.actionQueue = [];
+  G.playerActionsThisTurn = 0;
+  G.playerTurnFlags = { energyGainedThisTurn: 0, onHitTriggered: false };
+  sandbox.preparePlayerCombatLoadout(G.player);
+  const ab = G.player.abilities[0];
+  const enBefore = G.player.energy;
+  const hpBefore = G.enemy.stats.hp;
+  check('combat sandbox has starter ability', !!ab?.id, `got=${ab?.id}`);
+  if (ab?.id) {
+    const _prevRefresh = sandbox.refreshBattleUI;
+    const _prevPlan = sandbox.renderEnemyPlan;
+    sandbox.refreshBattleUI = function(){};
+    sandbox.renderEnemyPlan = function(){};
+    try {
+      await sandbox.playerAction(ab, true);
+      check('playerAction spends EN', G.player.energy < enBefore, `before=${enBefore} after=${G.player.energy}`);
+      check('playerAction deals damage to enemy', G.enemy.stats.hp < hpBefore, `before=${hpBefore} after=${G.enemy.stats.hp}`);
+    } catch (e) {
+      check('playerAction completes without throw', false, String(e && e.stack || e));
+    } finally {
+      if (_prevRefresh) sandbox.refreshBattleUI = _prevRefresh;
+      if (_prevPlan) sandbox.renderEnemyPlan = _prevPlan;
+    }
+  }
+}
+
 const starterId = 'SPARROW_F1_L1_BASE';
 check(`ABILITY_TEMPLATES[${starterId}] exists`, !!ABILITY_TEMPLATES?.[starterId]);
 check(`ACTIONS[${starterId}] is a function`, typeof ACTIONS?.[starterId] === 'function');
@@ -229,3 +279,4 @@ if (failed.length > 0) {
   process.exit(1);
 }
 console.log(`\n${checks.length} of ${checks.length} checks passed.`);
+process.exit(0);

@@ -40,13 +40,15 @@
     return p && p.skillTrees ? p.skillTrees[abId] : null;
   }
   function statBase(scaleStat) {
-    if (!globalThis.G || !G.player || !G.player.stats) return 0;
-    if (scaleStat === 'MATK') return G.player.stats.matk || 0;
-    return G.player.stats.atk || 0;
+    var g = globalThis.G;
+    if (!g || !g.player || !g.player.stats) return 0;
+    if (scaleStat === 'MATK') return g.player.stats.matk || 0;
+    return g.player.stats.atk || 0;
   }
   function maxHpForScaling() {
-    if (!globalThis.G || !G.player || !G.player.stats) return 0;
-    return G.player.stats.maxHp || 0;
+    var g = globalThis.G;
+    if (!g || !g.player || !g.player.stats) return 0;
+    return g.player.stats.maxHp || 0;
   }
 
   function computeRawHitDamage(row) {
@@ -124,9 +126,10 @@
   };
 
   function runPreRiders(row, _ab) {
-    if (!globalThis.G || !G.player) return;
-    var ps = G.playerStatus = G.playerStatus || {};
-    var p = G.player;
+    var g = globalThis.G;
+    if (!g || !g.player) return;
+    var ps = g.playerStatus = g.playerStatus || {};
+    var p = g.player;
     if (!row.riders) return;
     for (var i = 0; i < row.riders.length; i++) {
       var r = row.riders[i];
@@ -136,13 +139,14 @@
   }
   function applyConditionalDamageBonus(row, dmg) {
     if (!row.riders) return dmg;
-    var es = (globalThis.G && G.enemyStatus) || {};
+    var g = globalThis.G;
+    var es = (g && g.enemyStatus) || {};
     for (var i = 0; i < row.riders.length; i++) {
       var r = row.riders[i];
       if (r.kind === 'bonusVsAilment' && r.ailment === 'bleed') {
         if ((es.bleed && es.bleed.stacks > 0) && r.value > 0) dmg = Math.floor(dmg * (1 + r.value / 100));
       } else if (r.kind === 'bonusVsLowHp') {
-        var enemy = (globalThis.G && G.enemy && G.enemy.stats) || null;
+        var enemy = (g && g.enemy && g.enemy.stats) || null;
         if (enemy && enemy.hp && enemy.maxHp && enemy.hp <= Math.floor(enemy.maxHp * (r.threshold || 0.35))) {
           if (r.value > 0) dmg = Math.floor(dmg * (1 + r.value / 100));
         }
@@ -152,36 +156,44 @@
   }
 
   function runPostRiders(row, hitsLanded, hitsAttempted, anyCrit) {
-    if (!globalThis.G || !G.player) return;
-    var ps = G.playerStatus = G.playerStatus || {};
+    var g = globalThis.G;
+    if (!g || !g.player) return;
+    var ps = g.playerStatus = g.playerStatus || {};
     if (!row.riders) return;
     for (var i = 0; i < row.riders.length; i++) {
       var r = row.riders[i];
-      if (r.kind === 'refundApOnCrit' && anyCrit && !G._dispatcherRefundedThisTurn) {
-        if (typeof gainEnergy === 'function') gainEnergy(G.player, r.value || 1);
-        G._dispatcherRefundedThisTurn = true;
+      if (r.kind === 'refundApOnCrit' && anyCrit && !g._dispatcherRefundedThisTurn) {
+        if (typeof gainEnergy === 'function') gainEnergy(g.player, r.value || 1);
+        g._dispatcherRefundedThisTurn = true;
       }
       if (r.kind === 'gainApNextTurn' && (r.value || 0) > 0) {
-        G._dispatcherApNextTurnPending = (G._dispatcherApNextTurnPending || 0) + (r.value || 0);
+        g._dispatcherApNextTurnPending = (g._dispatcherApNextTurnPending || 0) + (r.value || 0);
       }
     }
   }
 
   function applyDispatcherHitMods(raw) {
     var r = raw;
-    if (globalThis.G && G._pendingStrikeActionMods) {
-      var strikeAdd = Number(G._pendingStrikeActionMods.multAdd) || 0;
+    var g = globalThis.G;
+    if (g && g._pendingStrikeActionMods) {
+      var strikeAdd = Number(g._pendingStrikeActionMods.multAdd) || 0;
       if (strikeAdd) r = Math.floor(r * (1 + strikeAdd));
     }
-    if (globalThis.G) {
-      var __adm = (G.actionDamageHitsRemaining && G.actionDamageHitsRemaining > 0) ? (G.actionDamageMult || 1) : 1;
+    if (g) {
+      var __adm = (g.actionDamageHitsRemaining && g.actionDamageHitsRemaining > 0) ? (g.actionDamageMult || 1) : 1;
       r = Math.floor(r * __adm);
-      if ((G.actionDamageHitsRemaining || 0) > 0) {
-        G.actionDamageHitsRemaining = Math.max(0, G.actionDamageHitsRemaining - 1);
-        if (G.actionDamageHitsRemaining === 0) G.actionDamageMult = 1;
+      if ((g.actionDamageHitsRemaining || 0) > 0) {
+        g.actionDamageHitsRemaining = Math.max(0, g.actionDamageHitsRemaining - 1);
+        if (g.actionDamageHitsRemaining === 0) g.actionDamageMult = 1;
       }
     }
     return Math.max(1, r);
+  }
+
+  function resolveDealDamage() {
+    if (typeof globalThis.dealDamage === 'function') return globalThis.dealDamage;
+    if (typeof dealDamage === 'function') return dealDamage;
+    return null;
   }
 
   // ---- core execute -----------------------------------------------------
@@ -192,8 +204,10 @@
       if (typeof logMsg === 'function') logMsg('Dispatcher: no row for ' + ab.id, 'miss');
       return;
     }
+    var g = globalThis.G;
     var src = syntheticSrcAbility(row, ab);
-    G._activePlayerAbility = src;
+    if (g) g._activePlayerAbility = src;
+    else G._activePlayerAbility = src;
 
     // Pre-damage riders (self buffs etc.)
     runPreRiders(row, ab);
@@ -203,10 +217,9 @@
     var totalDmg = 0;
 
     if (row.noDamage || row.target === 'self') {
-      // Self-target utility: no attack animation, just rider effects + ailments self-apply ignored
-      if (globalThis.G) {
-        G._lastAbilityHitsLanded = 0;
-        G._lastAbilityAnyCrit = false;
+      if (g) {
+        g._lastAbilityHitsLanded = 0;
+        g._lastAbilityAnyCrit = false;
       }
       if (typeof logMsg === 'function') logMsg('🛡 ' + (row.name || ab.id) + (row.riderText ? ' — ' + row.riderText : ''), 'player-action');
       if (typeof refreshBattleUI === 'function') refreshBattleUI();
@@ -216,7 +229,7 @@
     var hits = Math.max(1, row.hits || 1);
     var isMagic = isMagicCategory(row.category);
 
-    var enemyDodge = (globalThis.G && G.enemy && G.enemy.stats) ? (G.enemy.stats.dodge || 0) : 0;
+    var enemyDodge = (g && g.enemy && g.enemy.stats) ? (g.enemy.stats.dodge || 0) : 0;
     var playerAcc = (typeof getPlayerEffectiveAcc === 'function') ? getPlayerEffectiveAcc() : 80;
     var baseHitFrac = (typeof calcHitChance === 'function') ? calcHitChance(playerAcc, enemyDodge, 0.85) : 0.85;
 
@@ -228,16 +241,18 @@
       var crit = (typeof chance === 'function') ? chance(getCritChanceFor(src)) : false;
       if (crit) anyCrit = true;
       // Pierce: feed the % so dealDamage will use it
-      G._currentPiercePct = isMagic ? (row.pierceMdef || 0) : (row.pierceDef || 0);
+      if (g) g._currentPiercePct = isMagic ? (row.pierceMdef || 0) : (row.pierceDef || 0);
+      else G._currentPiercePct = isMagic ? (row.pierceMdef || 0) : (row.pierceDef || 0);
       var raw = computeRawHitDamage(row);
       raw = applyConditionalDamageBonus(row, raw);
       raw = applyDispatcherHitMods(raw);
-      var res = (typeof dealDamage === 'function') ? dealDamage('enemy', raw, crit, isMagic, src) : { dmgDealt: raw, wasDodged: false, wasBlocked: false, isCrit: crit };
+      var dealFn = resolveDealDamage();
+      var res = dealFn ? dealFn('enemy', raw, crit, isMagic, src) : { dmgDealt: raw, wasDodged: false, wasBlocked: false, isCrit: crit };
       if (typeof doAttack === 'function') await doAttack('player', 'enemy', res);
-      if (typeof setHpBar === 'function' && globalThis.G && G.enemy && G.enemy.stats) setHpBar('enemy', G.enemy.stats.hp, G.enemy.stats.maxHp);
+      if (typeof setHpBar === 'function' && g && g.enemy && g.enemy.stats) setHpBar('enemy', g.enemy.stats.hp, g.enemy.stats.maxHp);
       if (res && !res.wasDodged) hitsLanded++;
       totalDmg += (res && res.dmgDealt) || 0;
-      if (globalThis.G && G.enemy && G.enemy.stats && G.enemy.stats.hp <= 0) break;
+      if (g && g.enemy && g.enemy.stats && g.enemy.stats.hp <= 0) break;
     }
 
     // Ailment roll (post-damage); skip if all hits missed
@@ -246,23 +261,23 @@
       if (aids.length) {
         var aid = aids[Math.floor(Math.random() * aids.length)];
         var ailCh = row.ailmentChance;
-        if (globalThis.G && G.player && typeof Avian !== 'undefined' && Avian.mutations && typeof Avian.mutations.getMechanicsRollup === 'function') {
-          var eqM = Avian.mutations.getMechanicsRollup(G.player);
+        if (g && g.player && typeof Avian !== 'undefined' && Avian.mutations && typeof Avian.mutations.getMechanicsRollup === 'function') {
+          var eqM = Avian.mutations.getMechanicsRollup(g.player);
           if (isMagic) ailCh += (Number(eqM.magicAilmentChance) || 0);
           else ailCh += (Number(eqM.physicalAilmentChance) || 0);
         }
         if (typeof chance === 'function' && chance(ailCh) && typeof applyAilment === 'function') {
           applyAilment('enemy', aid, 1);
-          if (typeof renderStatuses === 'function' && globalThis.G && G.enemyStatus) renderStatuses('enemy-status', G.enemyStatus);
+          if (typeof renderStatuses === 'function' && g && g.enemyStatus) renderStatuses('enemy-status', g.enemyStatus);
         }
       }
     }
 
     runPostRiders(row, hitsLanded, hits, anyCrit);
 
-    if (globalThis.G) {
-      G._lastAbilityHitsLanded = hitsLanded;
-      G._lastAbilityAnyCrit = anyCrit;
+    if (g) {
+      g._lastAbilityHitsLanded = hitsLanded;
+      g._lastAbilityAnyCrit = anyCrit;
     }
 
     if (typeof logMsg === 'function') {
@@ -300,14 +315,14 @@
   // Status tick: clear dispatcher-loaned stat bonuses at start of player turn.
   dispatcher.onPlayerTurnStart = function onPlayerTurnStart(player) {
     if (!player || !player.stats) return;
-    var ps = (globalThis.G && G.playerStatus) || null;
+    var g = globalThis.G;
+    var ps = (g && g.playerStatus) || null;
     if (!ps) return;
-    // Apply any pending AP/EN gain from last turn
-    if (G._dispatcherApNextTurnPending) {
-      if (typeof gainEnergy === 'function') gainEnergy(player, G._dispatcherApNextTurnPending);
-      G._dispatcherApNextTurnPending = 0;
+    if (g._dispatcherApNextTurnPending) {
+      if (typeof gainEnergy === 'function') gainEnergy(player, g._dispatcherApNextTurnPending);
+      g._dispatcherApNextTurnPending = 0;
     }
-    G._dispatcherRefundedThisTurn = false;
+    g._dispatcherRefundedThisTurn = false;
     // Decay one-turn riders
     if ((ps.dispatcherDodgeT || 0) > 0) { ps.dispatcherDodgeT--; if (ps.dispatcherDodgeT <= 0) { delete ps.dispatcherDodge; delete ps.dispatcherDodgeT; } }
     if ((ps.dispatcherSpeedT || 0) > 0) { ps.dispatcherSpeedT--; if (ps.dispatcherSpeedT <= 0) { if (player.stats && ps._dispatcherSpdLoan) { player.stats.spd = Math.max(0, (player.stats.spd || 0) - ps._dispatcherSpdLoan); } delete ps._dispatcherSpdLoan; delete ps.dispatcherSpeed; delete ps.dispatcherSpeedT; } }
@@ -321,12 +336,12 @@
 
   // Crit / dodge surface read by combat helpers via legacy aug fields.
   dispatcher.modifyCritChance = function modifyCritChance(base) {
-    var ps = (globalThis.G && G.playerStatus) || null;
+    var ps = (globalThis.G && globalThis.G.playerStatus) || null;
     if (!ps) return base;
     return base + (ps.dispatcherCrit || 0);
   };
   dispatcher.modifyDodge = function modifyDodge(base) {
-    var ps = (globalThis.G && G.playerStatus) || null;
+    var ps = (globalThis.G && globalThis.G.playerStatus) || null;
     if (!ps) return base;
     return base + (ps.dispatcherDodge || 0);
   };
