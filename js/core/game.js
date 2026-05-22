@@ -2640,6 +2640,62 @@ function getEncounterStage() {
   return Math.max(1, Math.floor(Number(G?.stage) || 1));
 }
 
+function getStageEncounterChainLength(){
+  if(G.endlessMode) return 1;
+  const fromList = Array.isArray(G._owStageEnemies) ? G._owStageEnemies.length : 0;
+  const fromCount = Math.max(0, Math.floor(Number(G._owEnemyCount) || 0));
+  return Math.max(1, fromList || fromCount || 1);
+}
+
+function hasMultiEnemyChainPending(){
+  if(G.endlessMode) return false;
+  const chain = Array.isArray(G._owStageEnemies) ? G._owStageEnemies : null;
+  if(!chain || chain.length <= 1) return false;
+  const idx = Math.max(0, Math.floor(Number(G._owEnemyIndex) || 0));
+  return idx < chain.length - 1;
+}
+
+function resetStageBattleStats(){
+  G._stageBattleStats = null;
+  G._deferredStageLevelUp = false;
+}
+
+function accumulateStageBattleStats(){
+  if(typeof BS === 'undefined' || !BS) return;
+  const cur = {
+    dmgDealt: Number(BS.dmgDealt) || 0,
+    dmgTaken: Number(BS.dmgTaken) || 0,
+    crits: Number(BS.crits) || 0,
+    dodges: Number(BS.dodges) || 0,
+    turns: Number(BS.turns) || 0,
+    highestHit: Number(BS.highestHit) || 0,
+  };
+  if(!G._stageBattleStats){
+    G._stageBattleStats = {...cur};
+    return;
+  }
+  const acc = G._stageBattleStats;
+  acc.dmgDealt = (acc.dmgDealt || 0) + cur.dmgDealt;
+  acc.dmgTaken = (acc.dmgTaken || 0) + cur.dmgTaken;
+  acc.crits = (acc.crits || 0) + cur.crits;
+  acc.dodges = (acc.dodges || 0) + cur.dodges;
+  acc.turns = (acc.turns || 0) + cur.turns;
+  acc.highestHit = Math.max(acc.highestHit || 0, cur.highestHit);
+}
+
+function continueToNextEncounterBird(){
+  G._owEnemyIndex = (G._owEnemyIndex || 0) + 1;
+  G.battleOver = false;
+  saveRun();
+  const battleNum = Math.min((G._owEnemyIndex || 0) + 1, getStageEncounterChainLength());
+  const total = getStageEncounterChainLength();
+  logMsg(`⚔ Next opponent approaches — Battle ${battleNum} of ${total}`, 'system');
+  setTimeout(() => {
+    try { loadStage(); }
+    catch (err) { console.error('continueToNextEncounterBird failed:', err); }
+  }, 700);
+}
+
 function normalizeOverworldProgress(progress=null, fallbackStage=1) {
   const impl = globalThis.normalizeOverworldProgressShared;
   if(typeof impl === 'function') return impl(progress, fallbackStage);
@@ -2706,6 +2762,7 @@ function clearOverworldPendingBattle() {
   G._battleTerrain = null;
   G._encounterPreviewCollapsed = null;
   G._owEncounterRollStage = null;
+  resetStageBattleStats();
 }
 
 /** Lock story/template rolls per stage slot (no numeric scaling). */
@@ -3599,6 +3656,7 @@ function syncStoryEncounterBirdQueue(encounterStage){
   G._owEnemyIndex=0;
   G._owEnemyCount=Math.max(1,G._owStageEnemies?.length||1);
   G._owEncounterRollStage=st;
+  resetStageBattleStats();
   commitStoryEncounterMeta(st, G.player?.birdKey, G._owStageEnemies);
 }
 
@@ -3630,6 +3688,7 @@ function handleOverworldReturn() {
     G._owPendingNodeId = Number.isFinite(Number(intent.nodeId)) ? Math.floor(Number(intent.nodeId)) : null;
     G._battleTerrain = (typeof intent.terrain === 'string' && intent.terrain.trim()) ? intent.terrain.trim() : null;
     G._owSequenceShiny = 0;
+    resetStageBattleStats();
     const stageNum=G._owPendingBattleStage;
     const pbk=save?.player?.birdKey;
     if(!G.endlessMode && !STORY_BOSS_STAGES.has(stageNum)){
@@ -3645,20 +3704,10 @@ function handleOverworldReturn() {
       G._owEnemyCount = 1;
       commitStoryEncounterMeta(stageNum, pbk, null);
     }
-    // #region agent log
-    try{
-      fetch('http://127.0.0.1:7386/ingest/37e6c709-0e20-46b6-8aa4-cf86e1542b64',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'fe2be0'},body:JSON.stringify({sessionId:'fe2be0',runId:'pre-fix',hypothesisId:'D',location:'game.js:handleOverworldReturn:battle',message:'OW battle intent applied',data:{stageNum,pbk:String(pbk||''),owKeys:(G._owStageEnemies||[]).slice(),isBossStage:STORY_BOSS_STAGES.has(stageNum)},timestamp:Date.now()})}).catch(()=>{});
-    }catch(_){}
-    // #endregion
     try{
       continueRun(); // restores state; continueRun ends with loadStage()
     }catch(err){
       console.error('handleOverworldReturn battle failed', err);
-      // #region agent log
-      try{
-        fetch('http://127.0.0.1:7386/ingest/37e6c709-0e20-46b6-8aa4-cf86e1542b64',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'fe2be0'},body:JSON.stringify({sessionId:'fe2be0',runId:'pre-fix',hypothesisId:'C',location:'game.js:handleOverworldReturn:battleCatch',message:'continueRun threw',data:{err:String(err&&err.message||err)},timestamp:Date.now()})}).catch(()=>{});
-      }catch(_){}
-      // #endregion
       try{ localStorage.setItem(_OW_NAV_KEY, JSON.stringify(intent)); }catch(_){ }
       return false;
     }
@@ -6817,25 +6866,25 @@ function getClassPerkTriggerForCurrentStage(){
 }
 
 function continueStageTransitionAfterRewards(){
-  if(maybeOfferPassiveEvolutionChoice()) return;
-  if(maybeOfferClassPerkChoice()) return;
+  if(!hasMultiEnemyChainPending() && maybeOfferPassiveEvolutionChoice()) return;
+  if(!hasMultiEnemyChainPending() && maybeOfferClassPerkChoice()) return;
 
   const lastEnemyWasBoss = G.enemy && G.enemy.isBoss;
   const safeHP = G.player.stats.hp > G.player.stats.maxHp * 0.2;
-  const multiEnemyChainPending = G._owStageEnemies && G._owEnemyIndex < (G._owStageEnemies.length - 1);
+  const multiEnemyChainPending = hasMultiEnemyChainPending();
   if(!lastEnemyWasBoss && safeHP && Math.random() < 0.1 && !multiEnemyChainPending){
     setTimeout(()=>showGroveEvent(), 350);
     return;
   }
 
   G.phase='PLAYER';
-  if (G._owStageEnemies && G._owEnemyIndex < (G._owStageEnemies.length - 1)) {
+  if (multiEnemyChainPending) {
     G._owEnemyIndex++;
-    G.stage--;
     saveRun();
     loadStage();
     return;
   }
+  resetStageBattleStats();
   if (!G.endlessMode && _isOverworldRun()) {
     finalizeOverworldStageClear(G._owPendingBattleStage || G.stage, G._owPendingNodeId, {
       shinyGain: G._owSequenceShiny || 0,
@@ -10494,12 +10543,23 @@ function postCombat() {
     checkRunUnlocks();
     saveRun();
 
-    // Transition (always happens)
+    if (hasMultiEnemyChainPending()) {
+      accumulateStageBattleStats();
+      if (leveled) G._deferredStageLevelUp = true;
+      continueToNextEncounterBird();
+      return;
+    }
+
+    accumulateStageBattleStats();
+    const showLevelUp = leveled || !!G._deferredStageLevelUp;
+    if (G._deferredStageLevelUp) G._deferredStageLevelUp = false;
+
+    // Transition (stage complete or single-enemy fight)
     G.phase='REWARD';
     if (G.enemy.isBoss && !_isOverworldRun() && !isEndlessRunActive()) {
       // In normal (non-overworld) mode: boss kill → inline Stork Shop
       setTimeout(() => {
-        if (leveled) {
+        if (showLevelUp) {
           G._pendingStorkShop = true;
           G._pendingShopMode = 'boss';
           G.phase='LEVELUP';
@@ -10512,7 +10572,7 @@ function postCombat() {
       // Overworld mode OR non-boss: go to reward screen; continueStageTransitionAfterRewards
       // handles overworld finalization and return after the player picks a reward.
       setTimeout(() => {
-        showRewardScreen(leveled);
+        showRewardScreen(showLevelUp);
       }, 250);
     }
 
@@ -10643,7 +10703,7 @@ function confirmReward() {
   const lastEnemyWasBoss = !!(G.enemy && G.enemy.isBoss);
   G.phase='REWARD';
   // Overworld runs never show the inline Stork Shop — the overworld map has its own shop nodes
-  const multiEnemyChainPending = G._owStageEnemies && G._owEnemyIndex < (G._owStageEnemies.length - 1);
+  const multiEnemyChainPending = hasMultiEnemyChainPending();
   const shopDue = isShopDueAfterBattle({
     stage: G.stage,
     endlessMode: !!G.endlessMode,
@@ -11867,13 +11927,28 @@ function doScreenShake(heavy=false) {
 // ============================================================
 let BS = { dmgDealt:0, dmgTaken:0, crits:0, dodges:0, turns:0, highestHit:0 };
 function resetBattleStats() { BS={dmgDealt:0,dmgTaken:0,crits:0,dodges:0,turns:0,highestHit:0}; }
+function getBattleSummaryStats(){
+  const acc = G._stageBattleStats;
+  if(acc && typeof acc === 'object'){
+    return {
+      dmgDealt: Number(acc.dmgDealt) || 0,
+      dmgTaken: Number(acc.dmgTaken) || 0,
+      crits: Number(acc.crits) || 0,
+      dodges: Number(acc.dodges) || 0,
+      turns: Number(acc.turns) || 0,
+      highestHit: Number(acc.highestHit) || 0,
+    };
+  }
+  return (typeof BS !== 'undefined' && BS) ? BS : { dmgDealt:0, dmgTaken:0, crits:0, dodges:0, turns:0, highestHit:0 };
+}
 function renderBattleSummary() {
   const el=document.getElementById('battle-summary-bar'); if(!el) return;
+  const stats = getBattleSummaryStats();
   el.innerHTML=`<div class="battle-summary">
-    <div><div class="bsum-val">${BS.dmgDealt}</div><div class="bsum-lbl">Dmg Dealt</div></div>
-    <div><div class="bsum-val">${BS.crits}</div><div class="bsum-lbl">Crits</div></div>
-    <div><div class="bsum-val">${BS.dodges}</div><div class="bsum-lbl">Dodges</div></div>
-    <div><div class="bsum-val">${BS.turns}</div><div class="bsum-lbl">Turns</div></div>
+    <div><div class="bsum-val">${stats.dmgDealt}</div><div class="bsum-lbl">Dmg Dealt</div></div>
+    <div><div class="bsum-val">${stats.crits}</div><div class="bsum-lbl">Crits</div></div>
+    <div><div class="bsum-val">${stats.dodges}</div><div class="bsum-lbl">Dodges</div></div>
+    <div><div class="bsum-val">${stats.turns}</div><div class="bsum-lbl">Turns</div></div>
   </div>`;
 }
 

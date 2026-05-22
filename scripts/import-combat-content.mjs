@@ -25,8 +25,11 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const ROOT = path.resolve(__dirname, '..');
 
-const SHOP_XLSX = process.env.AA_SHOP_XLSX || 'c:\\Users\\JaK_d\\Desktop\\Avian Ascent\\New - avian_ascent_shop_learnable_abilities.xlsx';
-const PERKS_XLSX = process.env.AA_PERKS_XLSX || 'c:\\Users\\JaK_d\\Desktop\\Avian Ascent\\avian_ascent_passive_perks.xlsx';
+const NEW_SHEETS = 'c:\\Users\\JaK_d\\Desktop\\Avian Ascent\\New Sheets';
+const SHOP_XLSX = process.env.AA_SHOP_XLSX || path.join(NEW_SHEETS, 'New - avian_ascent_shop_learnable_abilities.xlsx');
+const PERKS_XLSX = process.env.AA_PERKS_XLSX || path.join(NEW_SHEETS, 'avian_ascent_passive_perks.xlsx');
+const ABILITY_XLSX = process.env.AA_ABILITY_XLSX || path.join(NEW_SHEETS, 'avian_ascent_ability_skill_trees_unique_starter_kits.xlsx');
+const ABILITY_SHEET_NAMES = ['Class Rules', 'Level 1 Kits', 'Ability Families', 'Skill Trees'];
 const OUTPUT_DIR = path.join(ROOT, 'js', 'data', 'combat-pack');
 
 // ---------------------------------------------------------------------------
@@ -815,6 +818,14 @@ function stringifyDeepFrozen(obj) {
 // ---------------------------------------------------------------------------
 // Main
 // ---------------------------------------------------------------------------
+function mergeAbilitySheets(perksSheets, abilitySheets) {
+  const merged = { ...perksSheets };
+  for (const name of ABILITY_SHEET_NAMES) {
+    if (abilitySheets[name]?.length) merged[name] = abilitySheets[name];
+  }
+  return merged;
+}
+
 function main() {
   for (const p of [SHOP_XLSX, PERKS_XLSX]) {
     if (!existsSync(p)) {
@@ -825,7 +836,14 @@ function main() {
   console.log('[importer] reading shop xlsx :', SHOP_XLSX);
   const shopSheets = readWorkbook(SHOP_XLSX);
   console.log('[importer] reading perks xlsx:', PERKS_XLSX);
-  const perksSheets = readWorkbook(PERKS_XLSX);
+  let perksSheets = readWorkbook(PERKS_XLSX);
+  if (existsSync(ABILITY_XLSX)) {
+    console.log('[importer] reading ability xlsx:', ABILITY_XLSX);
+    const abilitySheets = readWorkbook(ABILITY_XLSX);
+    perksSheets = mergeAbilitySheets(perksSheets, abilitySheets);
+  } else {
+    console.warn('[importer] ability xlsx not found — using perks workbook for ability sheets:', ABILITY_XLSX);
+  }
 
   ensureDir(OUTPUT_DIR);
 

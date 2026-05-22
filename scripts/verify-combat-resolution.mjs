@@ -244,6 +244,72 @@ if (sandbox.G && typeof sandbox.preparePlayerCombatLoadout === 'function' && typ
   }
 }
 
+if (typeof sandbox.hasMultiEnemyChainPending === 'function' && sandbox.G) {
+  const G = sandbox.G;
+  G.endlessMode = false;
+  G._owStageEnemies = ['crow', 'magpie', 'robin'];
+  G._owEnemyIndex = 0;
+  G._owEnemyCount = 3;
+  check('hasMultiEnemyChainPending true mid-chain', sandbox.hasMultiEnemyChainPending() === true);
+  G._owEnemyIndex = 2;
+  check('hasMultiEnemyChainPending false on final bird', sandbox.hasMultiEnemyChainPending() === false);
+  G._owEnemyIndex = 0;
+  check('getStageEncounterChainLength reads chain', sandbox.getStageEncounterChainLength() === 3);
+
+  let rewardShown = false;
+  let chainContinued = false;
+  const prevShow = sandbox.showRewardScreen;
+  const prevContinue = sandbox.continueToNextEncounterBird;
+  const prevRestore = sandbox.restoreBattleTempPlayerStats;
+  const prevSave = sandbox.saveRun;
+  sandbox.showRewardScreen = () => { rewardShown = true; };
+  sandbox.continueToNextEncounterBird = () => { chainContinued = true; };
+  sandbox.restoreBattleTempPlayerStats = () => {};
+  sandbox.saveRun = () => {};
+  sandbox.spawnFloat = () => {};
+  sandbox.logMsg = () => {};
+  sandbox.SFX = { exp: () => {}, levelUp: () => {} };
+  G._owEnemyIndex = 0;
+  G.player = {
+    birdKey: 'sparrow',
+    name: 'Sparrow',
+    birdLevel: 1,
+    exp: 0,
+    stats: { hp: 40, maxHp: 50, atk: 10, matk: 8, def: 5, mdef: 6, spd: 10 },
+    shinyObjects: 0,
+  };
+  G.enemy = { name: 'Test Crow', isBoss: false, stats: { hp: 0, maxHp: 80, atk: 8, def: 4, mdef: 6, spd: 5 } };
+  G.ui = { gameMode: 'story' };
+  G.battleOver = true;
+  G.turn = 'post';
+  try {
+    sandbox.postCombat();
+    check('postCombat mid-chain skips reward screen', !rewardShown);
+    check('postCombat mid-chain calls continueToNextEncounterBird', chainContinued);
+  } catch (e) {
+    check('postCombat mid-chain completes without throw', false, String(e && e.stack || e));
+  }
+  G._owStageEnemies = ['crow'];
+  G._owEnemyIndex = 0;
+  G._owEnemyCount = 1;
+  rewardShown = false;
+  chainContinued = false;
+  const prevTimeout = sandbox.setTimeout;
+  sandbox.setTimeout = (fn) => { fn(); return 0; };
+  try {
+    sandbox.postCombat();
+    check('postCombat single-enemy schedules reward screen', rewardShown);
+    check('postCombat single-enemy does not continue chain', !chainContinued);
+  } catch (e) {
+    check('postCombat single-enemy completes without throw', false, String(e && e.stack || e));
+  }
+  sandbox.setTimeout = prevTimeout;
+  if (prevShow) sandbox.showRewardScreen = prevShow;
+  if (prevContinue) sandbox.continueToNextEncounterBird = prevContinue;
+  if (prevRestore) sandbox.restoreBattleTempPlayerStats = prevRestore;
+  if (prevSave) sandbox.saveRun = prevSave;
+}
+
 const starterId = 'SPARROW_F1_L1_BASE';
 check(`ABILITY_TEMPLATES[${starterId}] exists`, !!ABILITY_TEMPLATES?.[starterId]);
 check(`ACTIONS[${starterId}] is a function`, typeof ACTIONS?.[starterId] === 'function');
@@ -269,6 +335,21 @@ check('BIRDS.sparrow.passive is set', !!BIRDS?.sparrow?.passive?.id);
 const legacyIds = ['rapidPeck', 'beak_jab', 'multiPeck', 'dart', 'windFeint', 'trackPrey'];
 const legacyMain = legacyIds.includes(String(BIRDS?.sparrow?.mainAttackId || ''));
 check('sparrow mainAttackId is NOT a legacy id', !legacyMain);
+
+const snowyTrees = Avian?.data?.combatPack?.skillTrees;
+const snowyF1 = snowyTrees?.['SNOWY_OWL_F1_L1_BASE'];
+const snowyF2 = snowyTrees?.['SNOWY_OWL_F2_L1_BASE'];
+check('Snowy Owl F1 starter row exists', !!snowyF1);
+check('Snowy Owl F2 starter row exists', !!snowyF2);
+if (snowyF1 && snowyF2) {
+  check('Snowy Owl starters registered in ABILITY_TEMPLATES', !!ABILITY_TEMPLATES?.[snowyF1.id] && !!ABILITY_TEMPLATES?.[snowyF2.id]);
+  const rowSig = (r) => `${r.apCost}|${r.baseFlat}|${r.scalePct}|${r.ailment}|${r.ailmentChance}|${r.designNote}|${r.riderText}`;
+  if (rowSig(snowyF1) === rowSig(snowyF2)) {
+    console.log('[note] Snowy Owl starters still share identical combat-pack stats — run `node scripts/import-combat-content.mjs --verify` after updating the spreadsheet.');
+  } else {
+    check('Snowy Owl starters have distinct combat-pack rows', true);
+  }
+}
 
 const failed = checks.filter(c => !c.ok);
 for (const c of checks) {

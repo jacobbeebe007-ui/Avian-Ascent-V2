@@ -60,7 +60,9 @@
     var primaryAil = ailmentList[0] || null;
     var secondaryAil = ailmentList[1] || null;
     var ailChance = row.ailmentChance || 0;
-    var desc = row.designNote || row.riderText || '';
+    var desc = row.riderText && row.designNote && row.riderText !== row.designNote
+      ? row.designNote + ' — ' + row.riderText
+      : (row.designNote || row.riderText || '');
     var level = {
       lv: 1,
       desc: desc,
