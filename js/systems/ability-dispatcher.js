@@ -187,6 +187,10 @@
 
     if (row.noDamage || row.target === 'self') {
       // Self-target utility: no attack animation, just rider effects + ailments self-apply ignored
+      if (globalThis.G) {
+        G._lastAbilityHitsLanded = 0;
+        G._lastAbilityAnyCrit = false;
+      }
       if (typeof logMsg === 'function') logMsg('🛡 ' + (row.name || ab.id) + (row.riderText ? ' — ' + row.riderText : ''), 'player-action');
       if (typeof refreshBattleUI === 'function') refreshBattleUI();
       return;
@@ -222,9 +226,14 @@
     if (hitsLanded > 0 && row.ailmentChance > 0) {
       var aids = ailmentIdsFromRow(row);
       if (aids.length) {
-        // For multi-option ailments (e.g. "chilled / weaken / delayed"), pick one at random.
         var aid = aids[Math.floor(Math.random() * aids.length)];
-        if (typeof chance === 'function' && chance(row.ailmentChance) && typeof applyAilment === 'function') {
+        var ailCh = row.ailmentChance;
+        if (globalThis.G && G.player && typeof Avian !== 'undefined' && Avian.mutations && typeof Avian.mutations.getMechanicsRollup === 'function') {
+          var eqM = Avian.mutations.getMechanicsRollup(G.player);
+          if (isMagic) ailCh += (Number(eqM.magicAilmentChance) || 0);
+          else ailCh += (Number(eqM.physicalAilmentChance) || 0);
+        }
+        if (typeof chance === 'function' && chance(ailCh) && typeof applyAilment === 'function') {
           applyAilment('enemy', aid, 1);
           if (typeof renderStatuses === 'function' && globalThis.G && G.enemyStatus) renderStatuses('enemy-status', G.enemyStatus);
         }
@@ -232,6 +241,11 @@
     }
 
     runPostRiders(row, hitsLanded, hits, anyCrit);
+
+    if (globalThis.G) {
+      G._lastAbilityHitsLanded = hitsLanded;
+      G._lastAbilityAnyCrit = anyCrit;
+    }
 
     if (typeof logMsg === 'function') {
       var label = isMagic ? '🎶' : '⚔';

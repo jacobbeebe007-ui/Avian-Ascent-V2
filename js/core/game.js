@@ -401,12 +401,14 @@ function ensureStatLedger(player){
       birdBaseline:{},
       fromLevel:{},
       fromUpgrades:{},
+      fromEquipment:{},
       mechanicalLines:[],
     };
   }
   const L = player._statLedger;
   if(!L.fromLevel || typeof L.fromLevel !== 'object') L.fromLevel = {};
   if(!L.fromUpgrades || typeof L.fromUpgrades !== 'object') L.fromUpgrades = {};
+  if(!L.fromEquipment || typeof L.fromEquipment !== 'object') L.fromEquipment = {};
   if(!Array.isArray(L.mechanicalLines)) L.mechanicalLines = [];
   return L;
 }
@@ -416,6 +418,7 @@ function initStatLedgerForNewRun(player){
   L.birdBaseline = cloneStatLedgerSlice(player.stats);
   L.fromLevel = {};
   L.fromUpgrades = {};
+  L.fromEquipment = {};
   L.mechanicalLines = [];
 }
 function ensureStatLedgerAfterLoad(player){
@@ -473,9 +476,10 @@ function buildStatBreakdownTitle(statKey, rawVal, player){
   const b = Number(L.birdBaseline[statKey]||0);
   const lv = Number(L.fromLevel?.[statKey]||0);
   const u = Number(L.fromUpgrades?.[statKey]||0);
+  const eq = Number(L.fromEquipment?.[statKey]||0);
   const cur = Number(rawVal)||0;
-  const rem = cur - b - lv - u;
-  let t = `${(STAT_LEDGER_LABELS[statKey]||statKey).toUpperCase()}: ${cur} — base ${b} + level ${formatLedgerDelta(lv)} + upgrades ${formatLedgerDelta(u)}`;
+  const rem = cur - b - lv - u - eq;
+  let t = `${(STAT_LEDGER_LABELS[statKey]||statKey).toUpperCase()}: ${cur} — base ${b} + level ${formatLedgerDelta(lv)} + upgrades ${formatLedgerDelta(u)} + equipment ${formatLedgerDelta(eq)}`;
   if(Math.abs(rem) > 0.05) t += ` + other ${rem >= 0 ? '+' : ''}${formatLedgerDelta(rem)}`;
   return t;
 }
@@ -663,37 +667,29 @@ function buildEndlessRewardCard(entry){
   };
 }
 function rollEndlessReward(kind='relic'){
-  if(!isEndlessRunActive()) return null;
-  const pool=getEndlessRewardPool(kind).filter(x=>!hasEndlessReward(x.id));
-  if(!pool.length) return null;
-  const pick=pool[Math.floor(Math.random()*pool.length)];
-  return buildEndlessRewardCard(pick);
+  if(typeof Avian?.mutations?.rollMutationReward!=='function') return null;
+  const tier = kind==='mutation' ? 'purple' : (kind==='augment' ? 'blue' : 'green');
+  return Avian.mutations.rollMutationReward({ tier, stage: G.stage, isBoss: !!(G.enemy && G.enemy.isBoss) });
 }
 function applyEndlessProgressionMilestones(){
   if(!isEndlessRunActive()) return;
   const eb=G.endlessBattle||0;
   const p=G.player;
-  if(!p) return;
-  // periodic relic gains
-  if(p.relEndlessTalon && eb%5===0) p.stats.atk+=1;
-  if(p.relEndlessPlumage && eb%5===0) p.stats.def+=1;
-  if(p.relEndlessVerse && eb%5===0) p.stats.matk=(p.stats.matk||0)+1;
-  if(p.relEndlessWard && eb%5===0) p.stats.mdef=(p.stats.mdef||0)+1;
-  if(p.relLongHunt && eb%6===0) p.stats.spd=(p.stats.spd||0)+1;
-  if(p.relDuelRecord && eb%3===0) p.stats.critChance=(p.stats.critChance||0)+1;
-  if(p.relMoltingDoctrine && eb%8===0){ p.stats.maxHp+=5; p.stats.hp=Math.min(p.stats.maxHp,p.stats.hp+5); }
-  if(p.relWindLedger && eb%4===0) p.relWindLedgerStacks=Math.min(5,(p.relWindLedgerStacks||0)+1);
-  if(p.mutLongWar && eb%5===0){
-    const stats=['atk','def','matk','mdef','spd'];
-    const key=stats[Math.floor(Math.random()*stats.length)];
-    p.stats[key]=(p.stats[key]||0)+1;
+  if(!p || eb<=0 || eb%5!==0) return;
+  if(typeof Avian?.mutations?.rollMutationReward==='function'){
+    const rw=Avian.mutations.rollMutationReward({ tier: eb%10===0?'purple':'blue', stage: G.stage });
+    if(rw && typeof Avian.mutations.addToInventory==='function'){
+      Avian.mutations.addToInventory(p, rw.mutationItemId || rw.id);
+      logMsg(`🧬 Milestone mutation: ${rw.name} added to inventory.`, 'system');
+    }
   }
 }
 
 function rollUpgradeCard(){
-  const tier=rollRarity();
-  const pool=getUpgradePool().filter(c=>c.tier===tier&&upgradeEligibleForRewardPick(c,null));
-  return pool.length?pool[Math.floor(Math.random()*pool.length)]:null;
+  if(typeof Avian?.mutations?.rollMutationReward==='function'){
+    return Avian.mutations.rollMutationReward({ stage: G.stage, isBoss: !!(G.enemy && G.enemy.isBoss) });
+  }
+  return null;
 }
 
 const REWARD_TIERS = {
@@ -1920,6 +1916,7 @@ function openNest() {
       html+=`<div class="nest-section"><div class="nest-section-title">🧬 Class Perks · ${idToClassLabel(role)}</div><div class="nest-rewards-list">${perkCards}</div></div>`;
     }
   }
+  html+=buildNestEquipmentSection(p);
   // Stats
   const s=p.stats;
   // Compute effective in-battle stats
@@ -1965,8 +1962,14 @@ function openNest() {
   const Ldg=p._statLedger;
   const upgMap=Ldg?.fromUpgrades||{};
   const lvlMap=Ldg?.fromLevel||{};
+  const eqMap=Ldg?.fromEquipment||{};
+  const nestEqRows=[];
   const nestUpgRows=[];
   const nestLvlRows=[];
+  for(const k of STAT_LEDGER_TRACKED_KEYS){
+    const ev=Number(eqMap[k]||0);
+    if(Math.abs(ev)>0.0001) nestEqRows.push(`<div class="nest-ledger-row"><span class="nest-ledger-k">${STAT_LEDGER_LABELS[k]||k}</span><span class="nest-ledger-v">+${formatLedgerDelta(ev)}</span></div>`);
+  }
   for(const k of STAT_LEDGER_TRACKED_KEYS){
     const uv=Number(upgMap[k]||0);
     if(Math.abs(uv)>0.0001) nestUpgRows.push(`<div class="nest-ledger-row"><span class="nest-ledger-k">${STAT_LEDGER_LABELS[k]||k}</span><span class="nest-ledger-v">+${formatLedgerDelta(uv)}</span></div>`);
@@ -1981,9 +1984,10 @@ function openNest() {
   const mechCombined=[];
   for(const line of [...mechFromCards,...mechDerived]){ if(line && !mechSeen.has(line)){ mechSeen.add(line); mechCombined.push(line); } }
   const mechHtml=mechCombined.length?`<div class="nest-ledger-mech-block">${mechCombined.map(l=>`<div class="nest-ledger-mech">${l}</div>`).join('')}</div>`:'';
-  if(nestUpgRows.length||nestLvlRows.length||mechHtml){
+  if(nestUpgRows.length||nestLvlRows.length||nestEqRows.length||mechHtml){
     html+=`<div class="nest-section nest-ledger-section"><div class="nest-section-title">✨ Run bonuses (from Feathers &amp; cards)</div>`;
     if(nestLvlRows.length) html+=`<div class="nest-ledger-subtitle">Level-up (Feathers)</div><div class="nest-ledger-grid">${nestLvlRows.join('')}</div>`;
+    if(nestEqRows.length) html+=`<div class="nest-ledger-subtitle">Equipped mutations</div><div class="nest-ledger-grid">${nestEqRows.join('')}</div>`;
     if(nestUpgRows.length) html+=`<div class="nest-ledger-subtitle">Card / shop / reward stats</div><div class="nest-ledger-grid">${nestUpgRows.join('')}</div>`;
     if(mechHtml) html+=`<div class="nest-ledger-subtitle">Card &amp; passive combat modifiers</div>${mechHtml}`;
     html+=`</div>`;
@@ -2008,13 +2012,76 @@ function openNest() {
     html+=`</div></div>`;
   }
   content.innerHTML=html;
+  content.onclick=handleNestEquipClick;
   modal.classList.add('open');
 }
 function closeNest() {
   document.getElementById('nest-modal').classList.remove('open');
+  const content=document.getElementById('nest-content');
+  if(content) content.onclick=null;
   if(globalThis.__AVIAN_OW_NEST_EMBED__ && typeof window !== 'undefined' && window.parent && window.parent !== window){
     try{ window.parent.postMessage({ type: 'avianOwNestClose' }, '*'); }catch(_){}
   }
+}
+
+function _nestMutationItemHtml(itemId, slotLbl, slotKey, slotIndex){
+  const item=typeof Avian?.mutations?.getItem==='function'?Avian.mutations.getItem(itemId):null;
+  if(!item) return `<div class="nest-equip-slot" data-nest-slot="${slotKey}" data-nest-idx="${slotIndex}"><div class="nest-equip-slot-lbl">${slotLbl}</div><div class="nest-equip-slot-name" style="color:var(--text-dim)">Empty</div></div>`;
+  const tip=escapeHtmlRoster(item.statLine||item.name);
+  return `<div class="nest-equip-slot filled tier-${item.tier}" title="${tip}" data-nest-slot="${slotKey}" data-nest-idx="${slotIndex}" data-nest-item="${itemId}"><div class="nest-equip-slot-lbl">${slotLbl}</div><div class="nest-equip-slot-name">${escapeHtmlRoster(item.name)}</div></div>`;
+}
+
+function handleNestEquipClick(ev){
+  const el=ev.target.closest('[data-nest-slot],[data-nest-inv]');
+  if(!el || !G.player) return;
+  if(el.dataset.nestInv){
+    const itemId=el.dataset.nestInv;
+    if(typeof Avian?.mutations?.equipAuto==='function') Avian.mutations.equipAuto(G.player, itemId);
+    saveRun(); openNest(); return;
+  }
+  const slotKey=el.dataset.nestSlot;
+  const slotIndex=Number(el.dataset.nestIdx)||0;
+  if(el.dataset.nestItem){
+    if(typeof Avian?.mutations?.unequip==='function') Avian.mutations.unequip(G.player, slotKey, slotIndex);
+    saveRun(); openNest(); return;
+  }
+}
+
+function buildNestEquipmentSection(player){
+  if(typeof Avian?.mutations?.ensurePlayerMutationState!=='function') return '';
+  Avian.mutations.ensurePlayerMutationState(player);
+  const slotsDef=Avian.data?.mutations?.slots;
+  const order=slotsDef?.order||['wing','feet','head','beak','chest','eyes','tail','plumage','syrinx'];
+  const limits=slotsDef?.limits||{};
+  const labels=Avian.mutations.SLOT_LABELS||{};
+  const eq=player.equippedMutations||{};
+  let slotsHtml='';
+  for(const sk of order){
+    const cap=limits[sk]||1;
+    const arr=Array.isArray(eq[sk])?eq[sk]:[];
+    for(let i=0;i<cap;i++){
+      const lbl=cap>1?`${labels[sk]||sk} ${i+1}`:(labels[sk]||sk);
+      slotsHtml+=_nestMutationItemHtml(arr[i]||null, lbl, sk, i);
+    }
+  }
+  const summary=typeof Avian.mutations.getEquippedSummary==='function'?Avian.mutations.getEquippedSummary(player):{lines:[]};
+  const bonusHtml=(summary.lines||[]).map(l=>`<span class="nest-equip-bonus-chip">${escapeHtmlRoster(l.label)} ${escapeHtmlRoster(String(l.value))}</span>`).join('')||'<span class="nest-inv-empty">No mutation bonuses yet.</span>';
+  const inv=player.mutationInventory||[];
+  let invHtml='';
+  if(!inv.length){
+    invHtml='<div class="nest-inv-empty">Inventory empty — win battles, visit the shop, or explore the grove.</div>';
+  } else {
+    invHtml='<div class="nest-inventory-grid">';
+    for(const entry of inv){
+      const id=typeof entry==='string'?entry:entry?.itemId;
+      const item=Avian.mutations.getItem(id);
+      if(!item) continue;
+      const tip=escapeHtmlRoster(item.statLine||item.name);
+      invHtml+=`<div class="nest-inv-item tier-${item.tier}" title="${tip}" data-nest-inv="${id}"><strong>${escapeHtmlRoster(item.name)}</strong><br><span style="color:var(--text-dim)">${escapeHtmlRoster(labels[item.slot]||item.slot)} · ${item.tier}</span></div>`;
+    }
+    invHtml+='</div>';
+  }
+  return `<div class="nest-section nest-equipment-section"><div class="nest-section-title">🧬 Mutations Equipped</div><div class="nest-equip-grid">${slotsHtml}</div><div class="nest-ledger-subtitle">Bonus from equipped</div><div class="nest-equip-bonus">${bonusHtml}</div><div class="nest-section-title" style="margin-top:14px">🎒 Mutation Inventory (${inv.length})</div>${invHtml}<p class="nest-ledger-note">Click inventory items to equip. Click equipped items to store in inventory. Full slots auto-swap.</p></div>`;
 }
 
 /**
@@ -2266,7 +2333,7 @@ function syncPlayerAbilitiesFromSkillSlots(player){
   if(!slots.length) return;
   const bySlot = new Map((player.abilities||[]).map(ab=>[Number.isFinite(ab?.slotIndex)?ab.slotIndex:-1, ab]));
   const byId = new Map((player.abilities||[]).map(ab=>[ab?.id, ab]));
-  player.abilities = slots.map(slot=>{
+  player.abilities = slots.filter(slot=>slot.abilityId).map(slot=>{
     const prior = bySlot.get(slot.slotIndex) || byId.get(slot.abilityId) || null;
     const ab = ensureAbilityObjectFromTemplate(slot.abilityId, prior, slot.slotIndex, player);
     if(slot.isStarterMain) ab.fixedMainAttackCost = true;
@@ -2441,6 +2508,8 @@ function continueRun() {
   }
   if(!Array.isArray(G.player.endlessRewards)) G.player.endlessRewards=[];
   ensurePassiveEvolutionState(G.player);
+  if(typeof Avian?.mutations?.ensurePlayerMutationState==='function') Avian.mutations.ensurePlayerMutationState(G.player);
+  if(typeof Avian?.mutations?.reapplyPlayerStatsFromSources==='function') Avian.mutations.reapplyPlayerStatsFromSources(G.player);
   G.runUpgradesPurchased=new Set(save.runUpgradesPurchased||[]);
   G._shopSnapshots=save.shopSnapshots||{};
   G._pendingLevelUpChoices=0;
@@ -4393,7 +4462,10 @@ function startGame() {
     energy: 0,
     energyRegen: 0,
     passiveEvolution:{tier:0,choices:{},pathHistory:[]},
+    mutationInventory: [],
+    equippedMutations: null,
   };
+  if(typeof Avian?.mutations?.ensurePlayerMutationState==='function') Avian.mutations.ensurePlayerMutationState(G.player);
   ensureFamilyEvolutionState(G.player);
   syncPlayerAbilitiesFromSkillSlots(G.player);
   G.player.class = bd.class;
@@ -4754,6 +4826,7 @@ function loadStage() {
   // Bird passive hooks (onBattleStart)
   const bd2=BIRDS[G.player.birdKey||'sparrow'];
   if(bd2&&bd2.passive&&bd2.passive.onBattleStart) bd2.passive.onBattleStart(G.player);
+  if(typeof Avian?.passives?.onBattleStart==='function') Avian.passives.onBattleStart();
   if((G.player?.openingEnemyFear||0)>0){
     G.enemyStatus.feared=Math.max(G.enemyStatus.feared||0, G.player.openingEnemyFear);
   }
@@ -7041,7 +7114,12 @@ function magicalGuardValueFromPlayerMdef(mdefRaw, burnMult){
 function getPhysicalPierceFractionForDamage(ab){
   const fromAb = ab ? (getPlayerPiercePctForAbility(ab) || 0) : 0;
   const pts = Number(G._currentPiercePct) || 0;
-  return Math.min(0.95, fromAb + pts / 100);
+  let eqPct = 0;
+  if(typeof Avian?.mutations?.getMechanicsRollup==='function' && G.player){
+    const m=Avian.mutations.getMechanicsRollup(G.player);
+    eqPct = (Number(m.piercePct)||0) + (Number(m.defPenPct)||0);
+  }
+  return Math.min(0.95, fromAb + pts / 100 + eqPct / 100);
 }
 
 /** UI / preview: template pierce without relying on G._currentPiercePct from pdmg. */
@@ -7325,7 +7403,10 @@ function getEffectiveDodge(p) {
     + (G.playerStatus.battleHymnDodge&&G.playerStatus.battleHymnDodge.turns>0 ? G.playerStatus.battleHymnDodge.bonus : 0)
     + (G.playerStatus.evading>0&&G.playerStatus.evadeBonus ? G.playerStatus.evadeBonus : 0);
   if(G.playerStatus.sittingDuck) return 0;
-  return Math.max(0, p.stats.dodge + buffBonus + cardBonus);
+  let dodge = p.stats.dodge + buffBonus + cardBonus;
+  dodge += (G.playerStatus.passiveDodge || 0);
+  if(typeof Avian?.dispatcher?.modifyDodge==='function') dodge = Avian.dispatcher.modifyDodge(dodge);
+  return Math.max(0, dodge);
 }
 
 function chance(p){return Math.random()*100<p;}
@@ -7538,6 +7619,20 @@ function dealDamage(target,amount,isCrit=false,isMagic=false,srcAbility=null) {
       dmg=Math.floor(dmg*(1+add));
     }
     if(isAttack && (G.player?.augAttackDmgPct||0)>0) dmg=Math.floor(dmg*(1+G.player.augAttackDmgPct));
+    if(target==='enemy' && G.player && typeof Avian?.mutations?.getMechanicsRollup==='function'){
+      const _eqM=Avian.mutations.getMechanicsRollup(G.player);
+      if(isAttack && (_eqM.lightAttackDmgPct||0)>0) dmg=Math.floor(dmg*(1+_eqM.lightAttackDmgPct/100));
+      if(isAttack && (_eqM.mediumAttackDmgPct||0)>0) dmg=Math.floor(dmg*(1+_eqM.mediumAttackDmgPct/100));
+      if(_eqM.damageBonuses && _eqM.damageBonuses.length){
+        for(const db of _eqM.damageBonuses){
+          if(!db || !db.pct) continue;
+          if(db.tag==='light' && isAttack) dmg=Math.floor(dmg*(1+db.pct/100));
+          else if(db.tag==='medium' && isAttack) dmg=Math.floor(dmg*(1+db.pct/100));
+          else if((db.tag==='magic'||db.tag==='spell') && isSpell) dmg=Math.floor(dmg*(1+db.pct/100));
+          else if(db.tag==='generic'||!db.tag) dmg=Math.floor(dmg*(1+db.pct/100));
+        }
+      }
+    }
     if(isSpell && !G._firstSpellUsed && (G.player?.firstSpellBattleBonusPct||0)>0){
       dmg=Math.floor(dmg*(1+G.player.firstSpellBattleBonusPct));
     }
@@ -8189,6 +8284,8 @@ function getPlayerCritChance(ab) {
   if(_pcId==='passive_goldeneagle_sun_hunter' && isAttack && G.enemy && (G.enemy.stats.hp||1)<(G.enemy.stats.maxHp||1)) base += 10;
   if(_pcId==='passive_harpy_apex_grip' && isAttack && !G._firstAttackUsed) base += 10;
   if(_pcId==='passive_bluejay_territorial_fury' && isAttack && G.player._blueJayHitLastTurn) base += 10;
+  base += (G.playerStatus?.passiveCrit || 0);
+  if(typeof Avian?.dispatcher?.modifyCritChance==='function') base = Avian.dispatcher.modifyCritChance(base);
   return Math.min(100,base);
 }
 
@@ -8464,10 +8561,17 @@ async function playerAction(ab,fromQueue=false) {
   if(effActKind==='spell'){
     reduceOtherSpellCooldownsOnCast(ab.id);
   }
-  // Passive: onAbilityUse / onUtilityUse
+  // Passive: combat-pack router + legacy hooks
   const _flBd=BIRDS[G.player.birdKey];
   if(_flBd&&_flBd.passive&&_flBd.passive.onAbilityUse) _flBd.passive.onAbilityUse(G.player,ab);
   if(effActKind==='utility' && _flBd&&_flBd.passive&&_flBd.passive.onUtilityUse) _flBd.passive.onUtilityUse(G.player,ab);
+  if(typeof Avian?.passives?.onPlayerAbilityUse==='function'){
+    Avian.passives.onPlayerAbilityUse(ab, {
+      hitsLanded: G._lastAbilityHitsLanded || 0,
+      anyCrit: !!G._lastAbilityAnyCrit,
+      effActKind,
+    });
+  }
   if(flybyWasCharged) G.actionDamageMult=1;
   delete G._pendingStrikeActionMods;
   G._activePlayerAbility=null;
@@ -8539,6 +8643,8 @@ function startPlayerTurn(player){
     delete G.playerStatus.perkSlipstreamDecay;
   }
   if(player.mutSuddenFlight) player._mutSuddenFlightUsed=false;
+  if(typeof Avian?.passives?.onPlayerTurnStart==='function') Avian.passives.onPlayerTurnStart(player);
+  if(typeof Avian?.dispatcher?.onPlayerTurnStart==='function') Avian.dispatcher.onPlayerTurnStart(player);
   G.turn='player';
   G.turnPhase=TURN.PLAYER;
   G.phase='PLAYER';
@@ -10391,7 +10497,12 @@ function confirmReward() {
     return;
   }
 
-  applyUpgradeWithMaxHpHealing(G.player, ()=>G._pendingReward.apply(G.player), G._pendingReward.name||'Upgrade', {id:G._pendingReward.id, desc:G._pendingReward.desc});
+  if(G._pendingReward.type==='mutation'){
+    const itemId=G._pendingReward.mutationItemId||G._pendingReward.id;
+    if(typeof Avian?.mutations?.addToInventory==='function') Avian.mutations.addToInventory(G.player, itemId);
+  } else {
+    applyUpgradeWithMaxHpHealing(G.player, ()=>G._pendingReward.apply(G.player), G._pendingReward.name||'Upgrade', {id:G._pendingReward.id, desc:G._pendingReward.desc});
+  }
   if(G._pendingReward.endlessOnly){ logMsg('♾ Endless-only reward acquired (not available in Story Mode).','system'); }
   const rewardEvt={tier:G._pendingReward.tier, id:G._pendingReward.id||G._pendingReward.name};
   AvianEvents.emit('reward:confirmed', rewardEvt);
@@ -10518,66 +10629,58 @@ function generateNormalRewards() {
   }
   if(isEndlessRunActive()){
     const eb=G.endlessBattle||0;
-    const milestone=eb>0 && (eb%5===0);
-    if(milestone){
-      const kind=(eb%10===0)?'mutation':(eb%3===0?'augment':'relic');
-      const er=rollEndlessReward(kind);
-      if(er) out[0]=er;
-    } else if(G.player?.relEndlessThesis){
-      const er=rollEndlessReward('relic');
-      if(er) out[0]=er;
+    if(eb>0 && eb%5===0){
+      const tier=eb%10===0?'purple':'blue';
+      const er=typeof Avian?.mutations?.rollMutationReward==='function'
+        ? Avian.mutations.rollMutationReward({ tier, stage: G.stage, isBoss: false })
+        : rollEndlessReward('mutation');
+      if(er && !used.has(er.id)){ used.add(er.id); out[0]=er; }
     }
   }
   return out;
 }
 
 function generateBossRewards() {
-
-
   const out=[]; const used=new Set();
   const stage=G.stage;
   const endlessBattle=G.endlessBattle||0;
-  
-  function pickTier(tier){
-    const pool=getUpgradePool().filter(r=>r.tier===tier&&upgradeEligibleForRewardPick(r,used));
-    if(!pool.length) return null;
-    const rw=pool[Math.floor(Math.random()*pool.length)];
-    used.add(rw.id); return rw;
+
+  function pickMutation(tier){
+    if(typeof Avian?.mutations?.rollMutationReward!=='function') return null;
+    let guard=0;
+    while(guard<20){
+      guard++;
+      const rw=Avian.mutations.rollMutationReward({ tier, stage, isBoss: true });
+      if(rw && !used.has(rw.id)){ used.add(rw.id); return rw; }
+    }
+    return null;
   }
-  function pick(forced){
-    const r=pickTier(forced)||pickTier('purple')||pickTier('blue');
-    if(r) out.push(r);
+
+  if(endlessBattle>0 && endlessBattle%20===0){
+    for(let i=0;i<3;i++){ const r=pickMutation('purple')||pickMutation('blue'); if(r) out.push(r); }
+  } else if(stage===STORY_MILESTONE_BOSS_STAGE || stage===STORY_DUKE_STAGE){
+    const r=pickMutation('purple'); if(r) out.push(r);
+  } else {
+    const r=pickMutation('purple')||pickMutation('blue'); if(r) out.push(r);
   }
-  
-  // Stage 40 endless boss: 3 high-tier non-gold
-  if(endlessBattle>0&&endlessBattle%20===0){
-    for(let i=0;i<3;i++){const r=pickTier('purple')||pickTier('blue');if(r)out.push(r);}
-  }
-  // Stage 10 / 20 story bosses: 1 purple guaranteed
-  else if(stage===STORY_MILESTONE_BOSS_STAGE || stage===STORY_DUKE_STAGE){
-    pick('purple');
-  }
-  // Default boss: purple baseline
-  else {
-    pick('purple');
-  }
-  
+
   if(isEndlessRunActive()){
     const eb=G.endlessBattle||0;
-    const kind=(eb%10===0)?'mutation':(eb%2===0?'augment':'relic');
-    const er=rollEndlessReward(kind);
+    const tier=eb%10===0?'gold':'purple';
+    const er=pickMutation(tier);
     if(er) out.unshift(er);
   }
 
-  // Fill remaining 3 slots
   while(out.length<3){
     let tier;
-    if(stage>=35||endlessBattle>30){tier=rollWeighted(['blue','purple'],[50,50]);}
-    else if(stage>=20||endlessBattle>10){tier=rollWeighted(['blue','purple'],[50,50]);}
-    else{tier=rollTier(true);}
-    const r=pickTier(tier);
+    if(stage>=35||endlessBattle>30) tier=rollWeighted(['blue','purple'],[50,50]);
+    else if(stage>=20||endlessBattle>10) tier=rollWeighted(['blue','purple'],[50,50]);
+    else tier=typeof Avian?.mutations?.rollTierForContext==='function'
+      ? Avian.mutations.rollTierForContext({ stage, isBoss: true })
+      : 'blue';
+    const r=pickMutation(tier);
     if(r) out.push(r);
-    else {const fallback=pickTier('blue')||pickTier('purple');if(fallback)out.push(fallback);else break;}
+    else break;
   }
   return out.slice(0,3);
 }
@@ -11358,22 +11461,26 @@ function showGroveNestRewards(){
   const grid = document.getElementById('grove-reward-grid');
   grid.innerHTML='';
 
-  // Grove nest rewards: mostly blue/purple, with small grey chance and no gold rewards.
+  // Grove nest rewards: mutation equipment picks
   const used = new Set();
   const picks=[];
-  const pick=(tier)=>{
-    const avail=getUpgradePool().filter(r=>r.tier===tier&&upgradeEligibleForRewardPick(r,used));
-    if(!avail.length) return null;
-    const r=avail[Math.floor(Math.random()*avail.length)];
-    used.add(r.id); return r;
+  const pickMutation=(tier)=>{
+    if(typeof Avian?.mutations?.rollMutationReward!=='function') return null;
+    let guard=0;
+    while(guard<15){
+      guard++;
+      const rw=Avian.mutations.rollMutationReward({ tier, stage: G.stage||1 });
+      if(rw && !used.has(rw.id)){ used.add(rw.id); return rw; }
+    }
+    return null;
   };
   const rollNestTier=()=>{
-    if(chance(5)) return 'grey';
+    if(chance(5)) return 'green';
     return chance(56)?'blue':'purple';
   };
   while(picks.length<3){
     const tier=rollNestTier();
-    const rw=pick(tier)||pick('blue')||pick('purple')||pick('grey');
+    const rw=pickMutation(tier)||pickMutation('blue')||pickMutation('purple')||pickMutation('green');
     if(!rw) break;
     picks.push(rw);
   }
@@ -11408,7 +11515,12 @@ function groveFinish(){
   // If a nest reward was selected, apply it
   if(G._groveNestReward){
     const rw=G._groveNestReward;
-    applyUpgradeWithMaxHpHealing(G.player, ()=>rw.apply(G.player), rw.name||'Grove Nest Reward', {id:rw.id, desc:rw.desc});
+    if(rw.type==='mutation'){
+      const itemId=rw.mutationItemId||rw.id;
+      if(typeof Avian?.mutations?.addToInventory==='function') Avian.mutations.addToInventory(G.player, itemId);
+    } else {
+      applyUpgradeWithMaxHpHealing(G.player, ()=>rw.apply(G.player), rw.name||'Grove Nest Reward', {id:rw.id, desc:rw.desc});
+    }
     if(!G.collectedRewards)G.collectedRewards=[];
     G.collectedRewards.push({id:rw.id||rw.name,icon:rw.icon,tier:rw.tier,name:rw.name,desc:rw.desc});
     codexMark('artifacts', rw.id||rw.name, 'seen');
@@ -12253,7 +12365,12 @@ async function shopBuySelected() {
 
   G.shinyObjects-=cost;
   if(discount>0) G._nextShopDiscount=0;
-  applyUpgradeWithMaxHpHealing(G.player, ()=>item.apply(G.player), item.name||'Shop Item', {id:item.id, desc:item.desc});
+  if(item.type==='mutation'){
+    const itemId=item.mutationItemId||item.id;
+    if(typeof Avian?.mutations?.addToInventory==='function') Avian.mutations.addToInventory(G.player, itemId);
+  } else {
+    applyUpgradeWithMaxHpHealing(G.player, ()=>item.apply(G.player), item.name||'Shop Item', {id:item.id, desc:item.desc});
+  }
   refreshPlayerAbilityAilments();
   enforceAbilityCosts(G.player);
 

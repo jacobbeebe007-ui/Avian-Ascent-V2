@@ -86,3 +86,9 @@ Avian.systems.SAVE_SCHEMA_VERSION
 ## v2 migration
 
 - Clears `player.familyEvolutionState.skillSlots` when migrating from schema v1 so every bird re-seeds from the new family-evolution catalogs instead of legacy mirrored flat slots.
+
+## v4 migration
+
+- Initializes `player.mutationInventory` and `player.equippedMutations` for the slot-based mutations/equipment system.
+- Clears legacy Endless run-modifier flags (`mutBloodMoon`, etc.) and `endlessRewards`.
+- Stamps `mutationsPackVersion` on the save blob.

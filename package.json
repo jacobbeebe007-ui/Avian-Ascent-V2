@@ -16,7 +16,8 @@
     "ability-inventory": "node scripts/ability-inventory.js",
     "skills-master": "node scripts/skills-master.js",
     "upgrade-inventory": "node scripts/upgrade-inventory.js",
-    "gen:ability-tree": "node scripts/build-ability-family-tree.js"
+    "gen:ability-tree": "node scripts/build-ability-family-tree.js",
+    "import-mutations": "node scripts/import-mutations-content.mjs"
   },
   "devDependencies": {
     "esbuild": "^0.25.0",

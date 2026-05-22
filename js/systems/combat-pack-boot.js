@@ -336,6 +336,25 @@
         }
         var abilityOffers = Avian.shop.rollStockForMode(mode);
         globalThis._shopItems.push.apply(globalThis._shopItems, abilityOffers);
+        if (Avian.mutations && typeof Avian.mutations.rollMutationReward === 'function') {
+          var mutUsed = new Set();
+          for (var mi = 0; mi < 2; mi++) {
+            var mrw = Avian.mutations.rollMutationReward({ stage: Math.max(1, Number(globalThis.G && G.stage) || 1), isBoss: mode === 'boss' });
+            if (!mrw || mutUsed.has(mrw.id)) continue;
+            mutUsed.add(mrw.id);
+            globalThis._shopItems.push({
+              id: mrw.id,
+              tier: mrw.tier,
+              icon: mrw.icon || '🧬',
+              name: mrw.name,
+              desc: mrw.desc,
+              type: 'mutation',
+              mutationItemId: mrw.mutationItemId || mrw.id,
+              costOverride: ({ white: 8, green: 14, blue: 22, purple: 32, gold: 48 })[mrw.tier] || 20,
+              apply: function (p) { Avian.mutations.addToInventory(p, mrw.mutationItemId || mrw.id); },
+            });
+          }
+        }
 
         if (nodeId != null) {
           if (!globalThis.G._shopSnapshots) globalThis.G._shopSnapshots = {};

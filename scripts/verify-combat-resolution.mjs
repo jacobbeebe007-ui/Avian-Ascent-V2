@@ -151,6 +151,20 @@ check('Avian.dispatcher.execute is a function', typeof Avian?.dispatcher?.execut
 check('ABILITY_TEMPLATES is populated', !!(ABILITY_TEMPLATES && Object.keys(ABILITY_TEMPLATES).length > 0), `count=${ABILITY_TEMPLATES ? Object.keys(ABILITY_TEMPLATES).length : 0}`);
 check('ACTIONS map is populated', !!(ACTIONS && Object.keys(ACTIONS).length > 0), `count=${ACTIONS ? Object.keys(ACTIONS).length : 0}`);
 
+check('Avian.passives.onPlayerAbilityUse is a function', typeof Avian?.passives?.onPlayerAbilityUse === 'function');
+check('Avian.mutations.getItem is a function', typeof Avian?.mutations?.getItem === 'function');
+check('Mutations catalog populated', !!(Avian?.data?.mutations?.byId && Object.keys(Avian.data.mutations.byId).length > 1000), `count=${Avian?.data?.mutations?.byId ? Object.keys(Avian.data.mutations.byId).length : 0}`);
+
+if (typeof sandbox.syncPlayerAbilitiesFromSkillSlots === 'function' && BIRDS?.sparrow) {
+  const testPlayer = {
+    birdKey: 'sparrow',
+    abilities: [],
+    familyEvolutionState: { skillSlots: sandbox.getBaseSkillSlotsForBird('sparrow') },
+  };
+  sandbox.syncPlayerAbilitiesFromSkillSlots(testPlayer);
+  check('syncPlayerAbilitiesFromSkillSlots skips empty slots', testPlayer.abilities.length === 2, `got=${testPlayer.abilities.length}`);
+}
+
 const starterId = 'SPARROW_F1_L1_BASE';
 check(`ABILITY_TEMPLATES[${starterId}] exists`, !!ABILITY_TEMPLATES?.[starterId]);
 check(`ACTIONS[${starterId}] is a function`, typeof ACTIONS?.[starterId] === 'function');

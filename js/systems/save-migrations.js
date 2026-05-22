@@ -25,11 +25,12 @@
   'use strict';
 
   /** Bump when adding a migration. */
-  var TARGET = 3;
+  var TARGET = 4;
 
   /** Combat-pack version stamp surfaced on the save blob. Wipes attached when
    *  this changes so legacy ability/perk/family state never bleeds into a run. */
   var COMBAT_PACK_VERSION = '2026.05-combat-rewrite';
+  var MUTATIONS_PACK_VERSION = '2026.05-mutations-v1';
 
   /** @type {Array<{from:number,to:number,fn:(save:any)=>any,note?:string}>} */
   var migrations = [
@@ -85,6 +86,22 @@
         return save;
       },
     },
+    {
+      from: 3,
+      to: 4,
+      note: 'mutations equipment: init inventory/equipped slots; clear legacy endless run-modifier flags',
+      fn: function (save) {
+        if (!save || !save.player) return save;
+        var p = save.player;
+        p.mutationInventory = Array.isArray(p.mutationInventory) ? p.mutationInventory : [];
+        p.equippedMutations = p.equippedMutations && typeof p.equippedMutations === 'object' ? p.equippedMutations : null;
+        p.endlessRewards = [];
+        var legacyMutFlags = ['mutBloodMoon', 'mutVenomSeason', 'mutGaleTempo', 'mutArcOverload', 'mutHuntersCruelty', 'mutIronSky', 'mutSuddenFlight', 'mutDarkChorus', 'mutRazorInstinct', 'mutLongWar'];
+        for (var i = 0; i < legacyMutFlags.length; i++) delete p[legacyMutFlags[i]];
+        save.mutationsPackVersion = MUTATIONS_PACK_VERSION;
+        return save;
+      },
+    },
   ];
 
   var Avian = globalThis.Avian || (globalThis.Avian = { systems: {}, debug: {} });
@@ -92,6 +109,7 @@
 
   Avian.systems.SAVE_SCHEMA_VERSION = TARGET;
   Avian.systems.COMBAT_PACK_VERSION = COMBAT_PACK_VERSION;
+  Avian.systems.MUTATIONS_PACK_VERSION = MUTATIONS_PACK_VERSION;
 
   /**
    * Apply ordered migrations until the save is at the current schema version.
