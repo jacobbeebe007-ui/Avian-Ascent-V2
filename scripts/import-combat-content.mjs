@@ -789,6 +789,8 @@ function buildShopPool(shopSheets) {
       upgradeSummary: get(r, h, 'Upgrade Family Summary'),
       tags: (get(r, h, 'Tags') || '').split(/[,;]/).map((t) => t.trim()).filter(Boolean),
       balanceNotes: get(r, h, 'Balance Notes'),
+      shortDesc: pickShortDescription(r, h),
+      familyDesc: get(r, h, 'Family Description') || '',
     };
   }
   return { tierRules: TIER_RULES, entries };
@@ -846,6 +848,16 @@ function mergeAbilitySheets(perksSheets, abilitySheets) {
 
 function main() {
   if (process.argv.includes('--inspect-headers')) {
+    if (process.argv.includes('--shop') && existsSync(SHOP_XLSX)) {
+      const shopSheets = readWorkbook(SHOP_XLSX);
+      for (const name of ['Shop Ability Pool', 'Ability Upgrade Trees', 'Tier AP Rules']) {
+        const rows = shopSheets[name] || [];
+        console.log('===', name, 'rows=', rows.length, '===');
+        if (!rows.length) continue;
+        console.log(rows[0].map((h, i) => `${i + 1}:${h}`).join('\n'));
+      }
+      process.exit(0);
+    }
     const abilitySheets = existsSync(ABILITY_XLSX) ? readWorkbook(ABILITY_XLSX) : {};
     for (const name of ABILITY_SHEET_NAMES) {
       const rows = abilitySheets[name] || [];

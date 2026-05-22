@@ -100,6 +100,8 @@
   };
 
   shop.describeAbility = function describeAbility(entry) {
+    var fromEntry = String(entry.shortDesc || '').trim();
+    if (fromEntry) return fromEntry;
     var p = pack();
     if (!p || !p.skillTrees) return entry.name || '';
     var row = p.skillTrees[entry.baseAbilityId];
@@ -166,7 +168,7 @@
       id: row.id,
       familyId: familyId,
       name: row.name,
-      desc: row.designNote || row.riderText || '',
+      desc: row.shortDesc || row.designNote || row.riderText || '',
       type: btnType,
       btnType: btnType,
       energy: row.apCost || 1,
