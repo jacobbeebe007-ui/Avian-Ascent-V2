@@ -60,9 +60,12 @@
     var primaryAil = ailmentList[0] || null;
     var secondaryAil = ailmentList[1] || null;
     var ailChance = row.ailmentChance || 0;
-    var desc = row.riderText && row.designNote && row.riderText !== row.designNote
-      ? row.designNote + ' — ' + row.riderText
-      : (row.designNote || row.riderText || '');
+    var desc = String(row.shortDesc || '').trim();
+    if (!desc) {
+      desc = row.riderText && row.designNote && row.riderText !== row.designNote
+        ? row.designNote + ' — ' + row.riderText
+        : (row.designNote || row.riderText || '');
+    }
     var level = {
       lv: 1,
       desc: desc,
@@ -77,6 +80,7 @@
       type: btnType,
       btnType: btnType,
       desc: desc,
+      shortDesc: desc,
       energyCost: row.apCost || 1,
       energy: row.apCost || 1,
       energyByLevel: [row.apCost || 1, row.apCost || 1, row.apCost || 1, row.apCost || 1],
@@ -130,7 +134,7 @@
       id: row.id,
       familyId: familyId,
       name: row.name,
-      desc: row.designNote || row.riderText || '',
+      desc: row.shortDesc || row.designNote || row.riderText || '',
       type: btnType,
       btnType: btnType,
       energy: row.apCost || 1,

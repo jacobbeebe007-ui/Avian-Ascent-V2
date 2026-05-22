@@ -159,14 +159,14 @@ function readWorkbook(xlsxPath) {
     if (id && target) relMap[id] = target.replace(/^\/+/, '');
   }
   const sheetMetas = [];
-  for (const m of wb.matchAll(/<x:sheet\s+name="([^"]+)"\s+sheetId="(\d+)"\s+r:id="([^"]+)"|<sheet\s+name="([^"]+)"\s+sheetId="(\d+)"\s+r:id="([^"]+)"/g)) {
-    sheetMetas.push({ name: decodeEntities(m[1] || m[4]), rid: m[3] || m[6] });
+  for (const m of wb.matchAll(/<(?:x:)?sheet\b[^>]*\bname="([^"]+)"[^>]*\br:id="([^"]+)"/g)) {
+    sheetMetas.push({ name: decodeEntities(m[1]), rid: m[2] });
   }
   const sheets = Object.create(null);
   for (const meta of sheetMetas) {
     const target = relMap[meta.rid];
     if (!target) continue;
-    const key = target.startsWith('xl/') ? target : 'xl/' + target;
+    const key = target.startsWith('xl/') ? target : ('xl/' + target.replace(/^\/+/, ''));
     const sheetXml = entries[key];
     if (!sheetXml) continue;
     sheets[meta.name] = parseSheet(sheetXml, sharedStrings);
@@ -553,6 +553,22 @@ function buildFamilies(perksSheets, shopSheets) {
 // ---------------------------------------------------------------------------
 // Build skill trees: 880 (bird) + 1500 (shop) ability rows
 // ---------------------------------------------------------------------------
+function pickShortDescription(r, h) {
+  const candidates = [
+    'Short Description',
+    'Short Desc',
+    'Ability Short Description',
+    'UI Short Description',
+    'Tooltip Short Description',
+    'Description Short',
+  ];
+  for (const name of candidates) {
+    const val = get(r, h, name);
+    if (val) return val;
+  }
+  return '';
+}
+
 function buildSkillTrees(perksSheets, shopSheets) {
   const out = {};
 
@@ -576,6 +592,7 @@ function buildSkillTrees(perksSheets, shopSheets) {
     const codeTags = get(r, h, 'Code Tags') || get(r, h, 'Tags') || '';
     const replaces = get(r, h, 'Replaces / Upgrades') || get(r, h, 'Prerequisite') || '';
     const name = get(r, h, 'Ability Name') || id;
+    const shortDesc = pickShortDescription(r, h);
     const category = (get(r, h, 'Ability Category') || 'Physical').toLowerCase();
     const hits = formula.hits;
     return {
@@ -607,6 +624,7 @@ function buildSkillTrees(perksSheets, shopSheets) {
       riders: parseRiders(riderText, codeTags),
       tags: codeTags.split(/[;,]/).map((t) => t.trim()).filter(Boolean),
       replaces,
+      shortDesc,
       designNote: get(r, h, 'Design Note') || get(r, h, 'Balance Notes') || '',
       tier: get(r, h, 'Purchase Tier') || '',
     };
@@ -827,6 +845,16 @@ function mergeAbilitySheets(perksSheets, abilitySheets) {
 }
 
 function main() {
+  if (process.argv.includes('--inspect-headers')) {
+    const abilitySheets = existsSync(ABILITY_XLSX) ? readWorkbook(ABILITY_XLSX) : {};
+    for (const name of ABILITY_SHEET_NAMES) {
+      const rows = abilitySheets[name] || [];
+      console.log('===', name, 'rows=', rows.length, '===');
+      if (!rows.length) continue;
+      console.log(rows[0].map((h, i) => `${i + 1}:${h}`).join('\n'));
+    }
+    process.exit(0);
+  }
   for (const p of [SHOP_XLSX, PERKS_XLSX]) {
     if (!existsSync(p)) {
       console.error('[importer] missing input xlsx:', p);

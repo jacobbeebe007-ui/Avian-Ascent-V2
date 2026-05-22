@@ -343,12 +343,10 @@ check('Snowy Owl F1 starter row exists', !!snowyF1);
 check('Snowy Owl F2 starter row exists', !!snowyF2);
 if (snowyF1 && snowyF2) {
   check('Snowy Owl starters registered in ABILITY_TEMPLATES', !!ABILITY_TEMPLATES?.[snowyF1.id] && !!ABILITY_TEMPLATES?.[snowyF2.id]);
-  const rowSig = (r) => `${r.apCost}|${r.baseFlat}|${r.scalePct}|${r.ailment}|${r.ailmentChance}|${r.designNote}|${r.riderText}`;
-  if (rowSig(snowyF1) === rowSig(snowyF2)) {
-    console.log('[note] Snowy Owl starters still share identical combat-pack stats — run `node scripts/import-combat-content.mjs --verify` after updating the spreadsheet.');
-  } else {
-    check('Snowy Owl starters have distinct combat-pack rows', true);
-  }
+  check('Snowy Owl starters have shortDesc in combat pack', !!snowyF1.shortDesc && !!snowyF2.shortDesc);
+  check('ABILITY_TEMPLATES use shortDesc for Snowy Owl UI', !!(ABILITY_TEMPLATES?.[snowyF1.id]?.desc) && ABILITY_TEMPLATES[snowyF1.id].desc === snowyF1.shortDesc);
+  const rowSig = (r) => `${r.apCost}|${r.baseFlat}|${r.scalePct}|${r.hits}|${r.ailment}|${r.ailmentChance}|${r.shortDesc}`;
+  check('Snowy Owl starters have distinct combat-pack rows', rowSig(snowyF1) !== rowSig(snowyF2), `f1=${rowSig(snowyF1)} f2=${rowSig(snowyF2)}`);
 }
 
 const failed = checks.filter(c => !c.ok);

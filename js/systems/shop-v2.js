@@ -104,6 +104,8 @@
     if (!p || !p.skillTrees) return entry.name || '';
     var row = p.skillTrees[entry.baseAbilityId];
     if (!row) return entry.name || '';
+    var shortDesc = String(row.shortDesc || '').trim();
+    if (shortDesc) return shortDesc;
     var bits = [];
     bits.push((row.apCost || 1) + ' AP · ' + (row.target === 'self' ? 'Self' : row.target === 'self_and_enemy' ? 'Self+Enemy' : 'Enemy'));
     if (!row.noDamage) {
