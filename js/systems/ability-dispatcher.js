@@ -94,7 +94,7 @@
       btnType: btnType,
       energy: row.apCost,
       energyCost: row.apCost,
-      level: 1,
+      level: (ab && ab.level) || 1,
       pierceDef: row.pierceDef,
       pierceMdef: row.pierceMdef,
       hits: row.hits,
@@ -167,6 +167,23 @@
     }
   }
 
+  function applyDispatcherHitMods(raw) {
+    var r = raw;
+    if (globalThis.G && G._pendingStrikeActionMods) {
+      var strikeAdd = Number(G._pendingStrikeActionMods.multAdd) || 0;
+      if (strikeAdd) r = Math.floor(r * (1 + strikeAdd));
+    }
+    if (globalThis.G) {
+      var __adm = (G.actionDamageHitsRemaining && G.actionDamageHitsRemaining > 0) ? (G.actionDamageMult || 1) : 1;
+      r = Math.floor(r * __adm);
+      if ((G.actionDamageHitsRemaining || 0) > 0) {
+        G.actionDamageHitsRemaining = Math.max(0, G.actionDamageHitsRemaining - 1);
+        if (G.actionDamageHitsRemaining === 0) G.actionDamageMult = 1;
+      }
+    }
+    return Math.max(1, r);
+  }
+
   // ---- core execute -----------------------------------------------------
   dispatcher.execute = async function execute(ab) {
     if (!ab || !ab.id) return;
@@ -210,10 +227,11 @@
       }
       var crit = (typeof chance === 'function') ? chance(getCritChanceFor(src)) : false;
       if (crit) anyCrit = true;
-      // Pierce: feed the % so dealDamage will use it (physical path only)
-      G._currentPiercePct = isMagic ? 0 : (row.pierceDef || 0);
+      // Pierce: feed the % so dealDamage will use it
+      G._currentPiercePct = isMagic ? (row.pierceMdef || 0) : (row.pierceDef || 0);
       var raw = computeRawHitDamage(row);
       raw = applyConditionalDamageBonus(row, raw);
+      raw = applyDispatcherHitMods(raw);
       var res = (typeof dealDamage === 'function') ? dealDamage('enemy', raw, crit, isMagic, src) : { dmgDealt: raw, wasDodged: false, wasBlocked: false, isCrit: crit };
       if (typeof doAttack === 'function') await doAttack('player', 'enemy', res);
       if (typeof setHpBar === 'function' && globalThis.G && G.enemy && G.enemy.stats) setHpBar('enemy', G.enemy.stats.hp, G.enemy.stats.maxHp);

@@ -165,6 +165,35 @@ if (typeof sandbox.syncPlayerAbilitiesFromSkillSlots === 'function' && BIRDS?.sp
   check('syncPlayerAbilitiesFromSkillSlots skips empty slots', testPlayer.abilities.length === 2, `got=${testPlayer.abilities.length}`);
 }
 
+if (typeof sandbox.preparePlayerCombatLoadout === 'function' && BIRDS?.sparrow) {
+  const loadoutPlayer = {
+    birdKey: 'sparrow',
+    size: 'small',
+    abilities: [],
+    familyEvolutionState: { skillSlots: sandbox.getBaseSkillSlotsForBird('sparrow') },
+  };
+  sandbox.preparePlayerCombatLoadout(loadoutPlayer);
+  check('preparePlayerCombatLoadout yields >=2 abilities for sparrow', loadoutPlayer.abilities.length >= 2, `got=${loadoutPlayer.abilities.length}`);
+}
+
+if (typeof sandbox.computePlayerEffectiveMaxEnergy === 'function') {
+  const enPlayer = { birdKey: 'sparrow', size: 'small', energyBonus: 0 };
+  check('computePlayerEffectiveMaxEnergy === 6', sandbox.computePlayerEffectiveMaxEnergy(enPlayer) === 6);
+  check('computePlayerStartEnergy === 4', sandbox.computePlayerStartEnergy(enPlayer) === 4);
+  check('computePlayerEnergyRegen === 3', sandbox.computePlayerEnergyRegen(enPlayer) === 3);
+}
+
+if (typeof sandbox.computePlayerEnergyRegenThisTurn === 'function') {
+  const chilledPlayer = { birdKey: 'sparrow', size: 'small' };
+  const base = sandbox.computePlayerEnergyRegen(chilledPlayer);
+  const chilledRegen = sandbox.computePlayerEnergyRegenThisTurn(chilledPlayer, { chilled: { stacks: 2, turns: 2 } });
+  check('chilled stacks reduce EN regen by 1 per stack', chilledRegen === Math.max(0, base - 2), `base=${base} got=${chilledRegen}`);
+  const frozenRegen = sandbox.computePlayerEnergyRegenThisTurn(chilledPlayer, { frozen: { turns: 1 } });
+  check('frozen blocks EN regen', frozenRegen === 0);
+  const paraRegen = sandbox.computePlayerEnergyRegenThisTurn(chilledPlayer, { paralyzed: 2 });
+  check('paralyzed blocks EN regen', paraRegen === 0);
+}
+
 const starterId = 'SPARROW_F1_L1_BASE';
 check(`ABILITY_TEMPLATES[${starterId}] exists`, !!ABILITY_TEMPLATES?.[starterId]);
 check(`ACTIONS[${starterId}] is a function`, typeof ACTIONS?.[starterId] === 'function');

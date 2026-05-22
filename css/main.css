@@ -1887,16 +1887,6 @@ html.avian-ow-nest-embed #app{min-height:100vh;background:#0a0c0f;}
 .nest-inv-item:hover{border-color:var(--gold);transform:translateY(-1px);}
 .nest-inv-empty{color:var(--text-dim);font-size:.82rem;text-align:center;padding:12px 0;}
 
-/* ===== COMBO METER ===== */
-#combo-meter{display:flex;align-items:center;gap:8px;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:6px 14px;}
-.combo-label{font-family:"Cinzel",serif;font-size:.75rem;color:var(--text-dim);}
-.combo-pips{display:flex;gap:4px;}
-.combo-pip{width:14px;height:14px;border-radius:50%;border:1px solid var(--border);background:var(--surface2);transition:all .3s;}
-.combo-pip.filled{background:var(--gold);border-color:var(--gold-light);box-shadow:0 0 6px rgba(201,168,76,.5);}
-.combo-pip.ready{background:var(--gold-light);border-color:#fff;box-shadow:0 0 10px rgba(232,201,106,.8);animation:combo-pulse .6s ease infinite alternate;}
-@keyframes combo-pulse{0%{box-shadow:0 0 6px rgba(232,201,106,.6);}100%{box-shadow:0 0 14px rgba(232,201,106,1);}}
-.combo-txt{font-size:.75rem;color:var(--gold);}
-
 /* ===== PASSIVE TRAIT BADGE ===== */
 .passive-badge{display:inline-block;background:rgba(201,168,76,.1);border:1px solid rgba(201,168,76,.3);border-radius:12px;padding:2px 10px;font-size:.72rem;color:var(--gold);margin-top:5px;cursor:help;}
 
