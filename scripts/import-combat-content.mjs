@@ -564,9 +564,13 @@ function pickShortDescription(r, h) {
   ];
   for (const name of candidates) {
     const val = get(r, h, name);
-    if (val) return val;
+    if (val) return normalizeShortDesc(val);
   }
   return '';
+}
+
+function normalizeShortDesc(text) {
+  return String(text || '').replace(/\bAP\/EN\b/gi, 'EN');
 }
 
 function buildSkillTrees(perksSheets, shopSheets) {

@@ -293,9 +293,10 @@
   function buildRewardCard(item) {
     if (!item) return null;
     var tier = item.tier || 'white';
+    var uiTier = tier === 'white' ? 'grey' : tier;
     return {
       id: item.id,
-      tier: tier,
+      tier: uiTier,
       type: 'mutation',
       icon: TIER_ICONS[tier] || '🧬',
       name: item.name,

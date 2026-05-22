@@ -704,11 +704,21 @@ function rollUpgradeCard(){
 
 const REWARD_TIERS = {
   grey:{label:'Common', color:'grey'},
+  white:{label:'Common', color:'grey'},
   green:{label:'Uncommon', color:'green'},
   blue:{label:'Rare', color:'blue'},
   purple:{label:'Epic', color:'purple'},
   gold:{label:'Legendary', color:'gold'},
 };
+function normalizeRewardTier(tier){
+  const t=String(tier||'grey').toLowerCase();
+  if(t==='white') return 'grey';
+  return REWARD_TIERS[t]?t:'grey';
+}
+function rewardTierMeta(tier){
+  const key=normalizeRewardTier(tier);
+  return REWARD_TIERS[key]||REWARD_TIERS.grey;
+}
 
 const CLASS_ROLE_BY_CLASS = {
   striker:'striker',
@@ -10572,6 +10582,8 @@ function postCombat() {
       // Overworld mode OR non-boss: go to reward screen; continueStageTransitionAfterRewards
       // handles overworld finalization and return after the player picks a reward.
       setTimeout(() => {
+        if (typeof lockActionUI === 'function') lockActionUI(false);
+        G.animLock = false;
         showRewardScreen(showLevelUp);
       }, 250);
     }
@@ -10602,25 +10614,36 @@ function rollTier(isBoss) {
 }
 
 function showRewardScreen(hasLevelUp) {
+  G.animLock=false;
+  if(typeof lockActionUI==='function') lockActionUI(false);
   showScreen('screen-reward');
   G._rewardScreenMode='normal';
   G._pendingLevelUp=hasLevelUp;
   G._pendingReward=null;
-  const isBoss=G.enemy.isBoss;
+  const isBoss=G.enemy?.isBoss;
   document.getElementById('reward-title').textContent=isBoss?'👑 Boss Defeated!':'✦ Victory! ✦';
   document.getElementById('reward-sub').textContent=
-    isBoss?`${G.enemy.bossTitle||'Boss'} falls! Choose your epic reward:`:'The enemy falls. Choose your reward:';
+    isBoss?`${G.enemy?.bossTitle||'Boss'} falls! Choose your epic reward:`:'The enemy falls. Choose your reward:';
   const pool=isBoss?generateBossRewards():generateNormalRewards();
   const grid=document.getElementById('reward-grid'); grid.innerHTML='';
   renderBattleSummary();
   const confirmBtn=document.getElementById('reward-confirm-btn');
   confirmBtn.textContent='✓ Take This Reward';
   confirmBtn.className='confirm-btn';
+  if(!pool.length){
+    grid.innerHTML='<div style="grid-column:1/-1;color:var(--text-dim);text-align:center;padding:12px 0;">No rewards available — continue onward.</div>';
+    confirmBtn.textContent='Continue →';
+    confirmBtn.className='confirm-btn visible';
+    G._pendingReward={id:'_reward_skip',name:'Continue',tier:'grey',icon:'➡️',desc:'',apply:()=>{}};
+    return;
+  }
   pool.forEach(rw=>{
+    const tierCss=normalizeRewardTier(rw.tier);
+    const tierMeta=rewardTierMeta(rw.tier);
     const c=document.createElement('div');
-    c.className=`reward-card tier-${rw.tier}`;
+    c.className=`reward-card tier-${tierCss}`;
     c.innerHTML=`
-      <div class="reward-tier-label">${REWARD_TIERS[rw.tier].label}</div>
+      <div class="reward-tier-label">${tierMeta.label}</div>
       <span class="reward-icon">${rw.icon}</span>
       <div class="reward-name">${rw.name}</div>
       <div class="reward-desc">${rw.desc}</div>`;
@@ -10719,11 +10742,15 @@ function confirmReward() {
     }
     G.phase='LEVELUP';
     showLevelUpScreen();
-    failsafeAdvance('confirmReward after showLevelUpScreen');
-    return;
+    if(G._pendingLevelUpChoices>0){
+      failsafeAdvance('confirmReward after showLevelUpScreen');
+      return;
+    }
+    G._pendingLevelUp=false;
   }
 
   if(shopDue) showStorkShop(shopMode);
+  else if(_isOverworldRun()) continueStageTransitionAfterRewards();
   else advanceStage();
 
   failsafeAdvance('confirmReward after shop/advance');
@@ -11654,10 +11681,12 @@ function showGroveNestRewards(){
   }
 
   picks.forEach(rw=>{
+    const tierCss=normalizeRewardTier(rw.tier);
+    const tierMeta=rewardTierMeta(rw.tier);
     const c=document.createElement('div');
-    c.className=`reward-card tier-${rw.tier}`;
+    c.className=`reward-card tier-${tierCss}`;
     c.innerHTML=`
-      <div class="reward-tier-label">${REWARD_TIERS[rw.tier].label}</div>
+      <div class="reward-tier-label">${tierMeta.label}</div>
       <span class="reward-icon">${rw.icon}</span>
       <div class="reward-name">${rw.name}</div>
       <div class="reward-desc">${rw.desc}</div>`;
@@ -12852,7 +12881,7 @@ function syncThemeBgmPlaybackForScreen(screenId){
   const onMenu=screenId==='screen-start'||screenId==='screen-select';
   if(!onMenu){
     if(_themeBgmFadeActive) return;
-    el.pause();
+    try{ el.pause(); }catch(_){}
     return;
   }
   cancelThemeBgmFade();
