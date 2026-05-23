@@ -7663,6 +7663,18 @@ function decaySourceStatLoans(ps,player,bagName){
   }
   if(!Object.keys(bag).length) delete ps[bagName];
 }
+/** Percentage stat loan: computes amt from current stat (minus this source's prior loan), then delegates to applySourceStatLoan. */
+function applySourceStatLoanPct(ps,player,bagName,statKey,sourceId,pct,turns=1){
+  if(!ps||!player||!player.stats||!statKey) return 0;
+  if(!ps[bagName]) ps[bagName]=Object.create(null);
+  const bag=ps[bagName];
+  const slotKey=statKey+':'+String(sourceId||'unknown');
+  const prev=bag[slotKey];
+  let base=Number(player.stats[statKey])||0;
+  if(prev&&prev.amt) base=Math.max(0,Math.round((base-(prev.amt||0))*100)/100);
+  const amt=Math.max(0,Math.round(base*(Number(pct)||0)/100*100)/100);
+  return applySourceStatLoan(ps,player,bagName,statKey,sourceId,amt,turns);
+}
 function clamp(n,min,max){ return Math.max(min, Math.min(max,n)); }
 function clampSkipChance(v){return Math.max(20,Math.min(35,Math.round(v||20)));}
 const STATUS_CONFUSED_SELF_PCT = 30;

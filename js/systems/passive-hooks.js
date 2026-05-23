@@ -184,6 +184,7 @@
     if (!globalThis.G || !G.player) return;
     var ps = G.playerStatus = G.playerStatus || {};
     var applyLoan = typeof globalThis.applySourceStatLoan === 'function' ? globalThis.applySourceStatLoan : null;
+    var applyLoanPct = typeof globalThis.applySourceStatLoanPct === 'function' ? globalThis.applySourceStatLoanPct : null;
     var slotId = String(perkId || 'passive') + ':' + effect.kind;
 
     switch (effect.kind) {
@@ -191,7 +192,8 @@
         applyPassiveDisplaySlot(ps, perkId, 'gainDodge', effect.value);
         break;
       case 'gainSpeed':
-        if (applyLoan) applyLoan(ps, G.player, '_passiveStatLoans', 'spd', slotId, effect.value, 1);
+        if (applyLoanPct) applyLoanPct(ps, G.player, '_passiveStatLoans', 'spd', slotId, effect.value, 1);
+        else if (applyLoan) applyLoan(ps, G.player, '_passiveStatLoans', 'spd', slotId, effect.value, 1);
         break;
       case 'gainCritChance':
         applyPassiveDisplaySlot(ps, perkId, 'gainCritChance', effect.value);
@@ -200,10 +202,12 @@
         applyPassiveDisplaySlot(ps, perkId, 'gainCritDamage', effect.value);
         break;
       case 'gainAtk':
-        if (applyLoan) applyLoan(ps, G.player, '_passiveStatLoans', 'atk', slotId, effect.value, 1);
+        if (applyLoanPct) applyLoanPct(ps, G.player, '_passiveStatLoans', 'atk', slotId, effect.value, 1);
+        else if (applyLoan) applyLoan(ps, G.player, '_passiveStatLoans', 'atk', slotId, effect.value, 1);
         break;
       case 'gainMatk':
-        if (applyLoan) applyLoan(ps, G.player, '_passiveStatLoans', 'matk', slotId, effect.value, 1);
+        if (applyLoanPct) applyLoanPct(ps, G.player, '_passiveStatLoans', 'matk', slotId, effect.value, 1);
+        else if (applyLoan) applyLoan(ps, G.player, '_passiveStatLoans', 'matk', slotId, effect.value, 1);
         break;
       case 'ailmentChanceBonus': {
         if (!ps._passiveAilmentBonusSlots) ps._passiveAilmentBonusSlots = Object.create(null);

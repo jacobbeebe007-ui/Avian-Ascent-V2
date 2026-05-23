@@ -198,17 +198,24 @@
     return Number(value) || 0;
   }
 
+  function applyDispatcherStatLoanPct(ps, player, statKey, sourceId, pct) {
+    if (typeof globalThis.applySourceStatLoanPct === 'function') {
+      return globalThis.applySourceStatLoanPct(ps, player, '_dispatcherStatLoans', statKey, String(sourceId || 'unknown') + ':' + statKey, pct, 1);
+    }
+    return applyDispatcherStatLoan(ps, player, statKey, sourceId, pct);
+  }
+
   // ---- riders -----------------------------------------------------------
   function makeStatRiderHandlers(sourceId) {
     return {
       gainDodge: function (n, ps) { applyDispatcherDisplaySlot(ps, sourceId, 'gainDodge', n); spawnTrendFloat('player', 'buff'); },
-      gainSpeed: function (n, ps, p) { applyDispatcherStatLoan(ps, p, 'spd', sourceId, n); spawnTrendFloat('player', 'buff'); },
+      gainSpeed: function (n, ps, p) { applyDispatcherStatLoanPct(ps, p, 'spd', sourceId, n); spawnTrendFloat('player', 'buff'); },
       gainCritChance: function (n, ps) { applyDispatcherDisplaySlot(ps, sourceId, 'gainCritChance', n); spawnTrendFloat('player', 'buff'); },
       gainCritDamage: function (n, ps) { applyDispatcherDisplaySlot(ps, sourceId, 'gainCritDamage', n); spawnTrendFloat('player', 'buff'); },
-      gainAtk: function (n, ps, p) { applyDispatcherStatLoan(ps, p, 'atk', sourceId, n); spawnTrendFloat('player', 'buff'); },
-      gainMatk: function (n, ps, p) { applyDispatcherStatLoan(ps, p, 'matk', sourceId, n); spawnTrendFloat('player', 'buff'); },
-      gainDef: function (n, ps, p) { applyDispatcherStatLoan(ps, p, 'def', sourceId, n); spawnTrendFloat('player', 'buff'); },
-      gainMdef: function (n, ps, p) { applyDispatcherStatLoan(ps, p, 'mdef', sourceId, n); spawnTrendFloat('player', 'buff'); },
+      gainAtk: function (n, ps, p) { applyDispatcherStatLoanPct(ps, p, 'atk', sourceId, n); spawnTrendFloat('player', 'buff'); },
+      gainMatk: function (n, ps, p) { applyDispatcherStatLoanPct(ps, p, 'matk', sourceId, n); spawnTrendFloat('player', 'buff'); },
+      gainDef: function (n, ps, p) { applyDispatcherStatLoanPct(ps, p, 'def', sourceId, n); spawnTrendFloat('player', 'buff'); },
+      gainMdef: function (n, ps, p) { applyDispatcherStatLoanPct(ps, p, 'mdef', sourceId, n); spawnTrendFloat('player', 'buff'); },
       gainGuard: function (_n, ps) {
         if (typeof globalThis.refreshStatus === 'function') globalThis.refreshStatus(ps, 'defending', 1, 999);
         else ps.defending = Math.max(ps.defending || 0, 1);

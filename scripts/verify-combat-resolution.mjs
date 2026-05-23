@@ -349,6 +349,34 @@ if (snowyF1 && snowyF2) {
   check('Snowy Owl starters have distinct combat-pack rows', rowSig(snowyF1) !== rowSig(snowyF2), `f1=${rowSig(snowyF1)} f2=${rowSig(snowyF2)}`);
 }
 
+// Rider import: enemy debuff text must not produce self gainMatk/gainAtk riders
+const allSkillTrees = Avian?.data?.combatPack?.skillTrees || {};
+let riderMisparseCount = 0;
+for (const id in allSkillTrees) {
+  const row = allSkillTrees[id];
+  const rt = String(row.riderText || '');
+  const riders = row.riders || [];
+  if (/loses\s+\d+(?:\.\d+)?\s*%\s*Magic\s*Attack/i.test(rt) && !/gain\s+.*Magic\s*Attack/i.test(rt) && riders.some((r) => r.kind === 'gainMatk')) {
+    riderMisparseCount++;
+  }
+  if (/loses\s+\d+(?:\.\d+)?\s*%\s*Attack/i.test(rt) && !/Magic\s*Attack/i.test(rt.match(/loses\s+\d+(?:\.\d+)?\s*%\s*Attack/i)?.[0] || '') && !/gain\s+.*Attack/i.test(rt) && riders.some((r) => r.kind === 'gainAtk')) {
+    riderMisparseCount++;
+  }
+}
+check('no spurious gainMatk/gainAtk from enemy loses rider text', riderMisparseCount === 0, `count=${riderMisparseCount}`);
+
+const prismSquawk = allSkillTrees['MACAW_F1_L1_BASE'];
+if (prismSquawk) {
+  check('Prism Squawk baseFlat is 5 (damage base, not stat buff)', prismSquawk.baseFlat === 5, `got=${prismSquawk.baseFlat}`);
+  check('Prism Squawk has no gainMatk rider', !(prismSquawk.riders || []).some((r) => r.kind === 'gainMatk'));
+  check('Prism Squawk has reduceEnemyMatk rider', (prismSquawk.riders || []).some((r) => r.kind === 'reduceEnemyMatk'));
+}
+const tacticalPrism = allSkillTrees['MACAW_F1_L3_UTILITY'];
+if (tacticalPrism) {
+  check('Tactical Prism Squawk keeps gainMatk rider', (tacticalPrism.riders || []).some((r) => r.kind === 'gainMatk'));
+  check('Tactical Prism Squawk keeps gainMdef rider', (tacticalPrism.riders || []).some((r) => r.kind === 'gainMdef'));
+}
+
 const failed = checks.filter(c => !c.ok);
 for (const c of checks) {
   console.log(`${c.ok ? '[ok]  ' : '[FAIL]'} ${c.name}${c.detail ? ` -- ${c.detail}` : ''}`);
