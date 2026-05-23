@@ -7629,6 +7629,40 @@ function chance(p){return Math.random()*100<p;}
 // ------------------ STATUS HELPERS ------------------
 function addStatus(obj,key,val,cap=99){ obj[key]=Math.min(cap,(obj[key]||0)+val); }
 function setStatusMax(obj,key,val){ obj[key]=Math.max(obj[key]||0,val); }
+/** Timed numeric status: refresh duration (Math.max), never stack turns. */
+function refreshStatus(obj,key,turns,cap=99){ obj[key]=Math.min(cap,Math.max(obj[key]||0,Math.max(1,Math.floor(Number(turns)||1)))); }
+/** Source-keyed stat loan: same source refreshes magnitude + duration; different sources may combine. */
+function applySourceStatLoan(ps,player,bagName,statKey,sourceId,value,turns=1){
+  if(!ps||!player||!player.stats||!statKey) return 0;
+  if(!ps[bagName]) ps[bagName]=Object.create(null);
+  const bag=ps[bagName];
+  const slotKey=statKey+':'+String(sourceId||'unknown');
+  const prev=bag[slotKey];
+  if(prev&&prev.amt){
+    player.stats[statKey]=Math.max(0,Math.round(((player.stats[statKey]||0)-(prev.amt||0))*100)/100);
+  }
+  const amt=Math.max(prev?(prev.amt||0):0,Number(value)||0);
+  if(amt>0){
+    player.stats[statKey]=Math.round(((player.stats[statKey]||0)+amt)*100)/100;
+    bag[slotKey]={statKey,amt,turns:Math.max(1,Math.floor(Number(turns)||1)),sourceId:String(sourceId||'')};
+  }else if(bag[slotKey]) delete bag[slotKey];
+  return amt;
+}
+function decaySourceStatLoans(ps,player,bagName){
+  if(!ps||!player||!player.stats||!ps[bagName]) return;
+  const bag=ps[bagName];
+  for(const k in bag){
+    const entry=bag[k];
+    if(!entry) continue;
+    entry.turns=(entry.turns||1)-1;
+    if(entry.turns<=0){
+      const sk=entry.statKey||String(k).split(':')[0];
+      player.stats[sk]=Math.max(0,Math.round(((player.stats[sk]||0)-(entry.amt||0))*100)/100);
+      delete bag[k];
+    }
+  }
+  if(!Object.keys(bag).length) delete ps[bagName];
+}
 function clamp(n,min,max){ return Math.max(min, Math.min(max,n)); }
 function clampSkipChance(v){return Math.max(20,Math.min(35,Math.round(v||20)));}
 const STATUS_CONFUSED_SELF_PCT = 30;
@@ -7912,6 +7946,9 @@ function dealDamage(target,amount,isCrit=false,isMagic=false,srcAbility=null) {
       dmg=Math.floor(dmg*(1+G.player.firstAttackEachBattleBonusPct));
     }
     if((passiveEvoBonus.damagePct||0)>0) dmg=Math.floor(dmg*(1+passiveEvoBonus.damagePct));
+    if(typeof Avian?.passives?.applyDamageBonus==='function'){
+      dmg=Avian.passives.applyDamageBonus(dmg,activeAb,{isAttack,isSpell,isMagic});
+    }
   }
   let wasBlocked=false;
   const def=target==='enemy'?G.enemyStatus.defending:G.playerStatus.defending;
@@ -8767,7 +8804,7 @@ async function playerAction(ab,fromQueue=false) {
   }
   checkBlackbirdOmenChorusAfterAbility(_delayedBeforeAbility);
   if((effActKind==='physical'||effActKind==='ranged') && classPerkCtx.ironMomentum && /heavy|slam|crusher|smash/i.test((ab.name||ab.id||'').toLowerCase())){
-    addStatus(G.playerStatus,'defending',1,999);
+    refreshStatus(G.playerStatus,'defending',1,999);
   }
   if(effActKind==='physical'||effActKind==='ranged') G._firstAttackUsed=true;
   if(effActKind==='spell'){ G._firstSpellUsed=true; G._spellCastCount=(G._spellCastCount||0)+1; }
@@ -8787,7 +8824,10 @@ async function playerAction(ab,fromQueue=false) {
   if(typeof Avian?.passives?.onPlayerAbilityUse==='function'){
     Avian.passives.onPlayerAbilityUse(ab, {
       hitsLanded: G._lastAbilityHitsLanded || 0,
+      firstHitLanded: (G._lastAbilityHitsLanded || 0) > 0,
       anyCrit: !!G._lastAbilityAnyCrit,
+      crit: !!G._lastAbilityAnyCrit,
+      ailmentFailed: !!G._lastAbilityAilmentFailed,
       effActKind,
     });
   }
@@ -9957,7 +9997,7 @@ function dukeNightfall(){
   const d=G.enemy.duke; d.phase=2; d.nightfallTurns=2;
   setStatusMax(G.enemyStatus,'nightfall',2);
   setStatusMax(G.playerStatus,'blind',Math.max(G.playerStatus.blind||0,1));
-  addStatus(G.enemyStatus,'defending',10,999);
+  refreshStatus(G.enemyStatus,'defending',10,999);
   logMsg('🦉 Nightfall descends. The marsh swallows light.','boss');
 }
 function dukeRiverGrip(){
@@ -9973,8 +10013,8 @@ function dukeTrackDecree(abilityId){
 }
 function dukeApplyDecreePunish(){
   const d=G.enemy.duke; const st=d.decreeStacks||0; if(st<=0) return;
-  addStatus(G.playerStatus,'weaken',1+Math.floor(st/2),6);
-  addStatus(G.playerStatus,'vulnerable',1,6);
+  refreshStatus(G.playerStatus,'weaken',1+Math.floor(st/2),6);
+  refreshStatus(G.playerStatus,'vulnerable',1,6);
   spawnFloat('player',`📜 Decree(${st})`,'fn-status');
   logMsg(`📜 Court Decree punishes repetition (${st}).`,'boss');
 }
@@ -9986,8 +10026,8 @@ function dukeOwlsVerdict(){
   logMsg('🦉 Owl’s Verdict!','boss');
 }
 function dukeSummonCourt(){
-  addStatus(G.enemyStatus,'defending',18,999);
-  addStatus(G.enemyStatus,'wardens',2,4);
+  refreshStatus(G.enemyStatus,'defending',18,999);
+  refreshStatus(G.enemyStatus,'wardens',2,4);
   spawnFloat('enemy','🛡️ Court Guards!','fn-status');
   logMsg('🛡️ The Court gathers—wardens at his wings.','boss');
 }
@@ -10041,7 +10081,7 @@ async function executeEnemyKitTemplateAbility(enemy, abilityId, totalEnemyMiss){
   }
   if(cat==='guard'){
     await doSpell('enemy',`🛡 ${name}!`);
-    G.enemyStatus.defending=(G.enemyStatus.defending||0)+1;
+    refreshStatus(G.enemyStatus,'defending',1,999);
     await doShield('enemy');
     renderStatuses('enemy-status',G.enemyStatus);
     logMsg(`${enemy.name} braces!`,'enemy-action');
@@ -10049,7 +10089,7 @@ async function executeEnemyKitTemplateAbility(enemy, abilityId, totalEnemyMiss){
   }
   if(cat==='buff'){
     await doSpell('enemy',`⚡ ${name}!`);
-    G.enemyStatus.atkBuff=(G.enemyStatus.atkBuff||0)+Math.floor((enemy.stats.atk||8)*0.22);
+    G.enemyStatus.atkBuff=Math.max(G.enemyStatus.atkBuff||0,Math.floor((enemy.stats.atk||8)*0.22));
     logMsg(`${enemy.name} surges — ATK up!`,'enemy-action');
     renderStatuses('enemy-status',G.enemyStatus);
     return;

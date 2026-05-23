@@ -4,6 +4,9 @@
  * Aligned with the Ailment Reference sheet from the combat rewrite spreadsheets:
  *   Chilled, Weaken, Delayed, Poison, Burning, Paralysed, Bleed.
  * IDs preserved for compatibility with `applyAilment` in js/core/game.js.
+ *
+ * Stack vs refresh is enforced at runtime in `applyAilment` / `refreshStatus`:
+ * only Poison and Chilled stack counters; all other ailments refresh duration.
  */
 (function () {
   globalThis.AILMENTS = {

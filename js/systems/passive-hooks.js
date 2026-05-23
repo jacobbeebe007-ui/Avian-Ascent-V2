@@ -77,6 +77,11 @@
     return out;
   }
 
+  function rowFor(abId) {
+    var p = pack();
+    return p && p.skillTrees ? p.skillTrees[abId] : null;
+  }
+
   // ---- trigger matchers -------------------------------------------------
   function classifyTrigger(text) {
     var s = String(text || '').toLowerCase();
@@ -88,11 +93,14 @@
     if (/once per turn when a magic song does not apply its ailment/.test(s)) return { kind: 'magicAilmentFailed', cap: 'turn' };
     if (/once per turn when the first hit of a physical ability lands/.test(s)) return { kind: 'firstHitLanded', cap: 'turn' };
     if (/first damaging physical ability used against an enemy without bleed/.test(s)) return { kind: 'firstAttackVsNonBleeding', cap: 'battle' };
-    if (/when using a physical ability against a bleeding enemy/.test(s)) return { kind: 'physicalVsBleeding' };
+    if (/when using a physical ability against a bleeding enemy|physical ability against a bleeding enemy/.test(s)) return { kind: 'physicalVsBleeding' };
+    if (/when the enemy is bleeding/.test(s)) return { kind: 'enemyBleeding' };
+    if (/when damaging an enemy that already has any ailment|when attacking an enemy with a debuff or ailment|when damaging a debuffed enemy/.test(s)) return { kind: 'vsAfflictedEnemy' };
+    if (/when attacking an enemy below \d+% health|below \d+% health.*physical/.test(s)) return { kind: 'executeLowHp', threshold: 0.4 };
     if (/once per turn when an ability lands a crit|on crit/.test(s)) return { kind: 'onCrit', cap: 'turn' };
     if (/once per turn after using a utility/.test(s)) return { kind: 'afterUtility', cap: 'turn' };
     if (/once per turn at the start of your turn|start of your turn/.test(s)) return { kind: 'turnStart', cap: 'turn' };
-    if (/below \d+% health|low\s*hp|low-health/.test(s)) return { kind: 'lowHp', threshold: 0.5 };
+    if (/below \d+% health|low\s*hp|low-health|while below \d+% health/.test(s)) return { kind: 'lowHp', threshold: 0.5 };
     if (/once per turn when (?:you|the player) is hit/.test(s)) return { kind: 'onHit', cap: 'turn' };
     if (/once per battle/.test(s)) return { kind: 'oncePerBattle', cap: 'battle' };
     return { kind: 'unknown', text: s };
@@ -111,27 +119,184 @@
     if ((m = s.match(/\+(\d+(?:\.\d+)?)\s*%\s*Physical\s*Attack/i))) out.push({ kind: 'gainAtk', value: Number(m[1]) });
     if ((m = s.match(/\+(\d+(?:\.\d+)?)\s*%\s*Magic\s*Ailment\s*Chance/i))) out.push({ kind: 'ailmentChanceBonus', kindFilter: 'magic', value: Number(m[1]) });
     if ((m = s.match(/\+(\d+(?:\.\d+)?)\s*%\s*Bleed\s*chance/i))) out.push({ kind: 'ailmentChanceBonus', ailment: 'bleed', value: Number(m[1]) });
-    if ((m = s.match(/deal\s*\+?(\d+(?:\.\d+)?)\s*%\s*Physical\s*damage/i))) out.push({ kind: 'bonusVsAilment', ailment: 'bleed', value: Number(m[1]) });
-    if ((m = s.match(/\+(\d+(?:\.\d+)?)\s*%\s*Damage/i))) out.push({ kind: 'flatDamageBonus', value: Number(m[1]) });
+    if ((m = s.match(/deal\s*\+?(\d+(?:\.\d+)?)\s*%\s*Physical\s*damage/i))) out.push({ kind: 'bonusVsAilment', ailment: 'bleed', dmgType: 'physical', value: Number(m[1]) });
+    if ((m = s.match(/physical abilities deal\s*\+?(\d+(?:\.\d+)?)\s*%\s*damage/i))) out.push({ kind: 'bonusVsAilment', ailment: 'bleed', dmgType: 'physical', value: Number(m[1]) });
+    if ((m = s.match(/mixed abilities deal\s*\+?(\d+(?:\.\d+)?)\s*%\s*damage/i))) out.push({ kind: 'flatDamageBonus', dmgType: 'mixed', value: Number(m[1]) });
+    if ((m = s.match(/gain\s*\+?(\d+(?:\.\d+)?)\s*%\s*damage on that ability/i))) out.push({ kind: 'flatDamageBonus', dmgType: 'any', value: Number(m[1]) });
+    if ((m = s.match(/\+(\d+(?:\.\d+)?)\s*%\s*Damage/i))) out.push({ kind: 'flatDamageBonus', dmgType: 'any', value: Number(m[1]) });
     return out;
   }
 
+  function recomputePassiveDisplays(ps) {
+    ps.passiveDodge = 0;
+    ps.passiveCrit = 0;
+    ps.passiveCritDmg = 0;
+    var slots = ps._passiveDisplaySlots;
+    if (!slots) return;
+    for (var k in slots) {
+      var s = slots[k];
+      if (!s || (s.turns || 0) <= 0) continue;
+      if (s.kind === 'gainDodge') ps.passiveDodge = Math.max(ps.passiveDodge || 0, s.value || 0);
+      if (s.kind === 'gainCritChance') ps.passiveCrit = Math.max(ps.passiveCrit || 0, s.value || 0);
+      if (s.kind === 'gainCritDamage') ps.passiveCritDmg = Math.max(ps.passiveCritDmg || 0, s.value || 0);
+    }
+  }
+
+  function recomputePassiveAilmentBonus(ps) {
+    ps.passiveAilmentBonus = 0;
+    var slots = ps._passiveAilmentBonusSlots;
+    if (!slots) return;
+    for (var k in slots) {
+      var s = slots[k];
+      if (!s || (s.turns || 0) <= 0) continue;
+      ps.passiveAilmentBonus = Math.max(ps.passiveAilmentBonus || 0, s.value || 0);
+    }
+  }
+
+  function applyPassiveDisplaySlot(ps, perkId, kind, value) {
+    if (!ps._passiveDisplaySlots) ps._passiveDisplaySlots = Object.create(null);
+    var key = perkId + ':' + kind;
+    var prev = ps._passiveDisplaySlots[key];
+    ps._passiveDisplaySlots[key] = {
+      kind: kind,
+      value: Math.max(prev ? (prev.value || 0) : 0, Number(value) || 0),
+      turns: 1,
+    };
+    recomputePassiveDisplays(ps);
+  }
+
+  function decayPassiveSlotBag(ps, bagName, recomputeFn) {
+    var bag = ps[bagName];
+    if (!bag) return;
+    for (var k in bag) {
+      var s = bag[k];
+      if (!s) continue;
+      s.turns = (s.turns || 1) - 1;
+      if (s.turns <= 0) delete bag[k];
+    }
+    if (!Object.keys(bag).length) delete ps[bagName];
+    if (recomputeFn) recomputeFn(ps);
+  }
+
   // ---- effect application -----------------------------------------------
-  function applyEffect(effect) {
+  function applyEffect(perkId, effect) {
     if (!effect || typeof effect !== 'object') return;
     if (!globalThis.G || !G.player) return;
     var ps = G.playerStatus = G.playerStatus || {};
+    var applyLoan = typeof globalThis.applySourceStatLoan === 'function' ? globalThis.applySourceStatLoan : null;
+    var slotId = String(perkId || 'passive') + ':' + effect.kind;
+
     switch (effect.kind) {
-      case 'gainDodge': ps.passiveDodge = Math.max(ps.passiveDodge || 0, effect.value); ps.passiveDodgeT = 1; break;
-      case 'gainSpeed': if (G.player.stats) { G.player.stats.spd = (G.player.stats.spd || 0) + effect.value; ps._passiveSpdLoan = (ps._passiveSpdLoan || 0) + effect.value; } ps.passiveSpeedT = 1; break;
-      case 'gainCritChance': ps.passiveCrit = Math.max(ps.passiveCrit || 0, effect.value); ps.passiveCritT = 1; break;
-      case 'gainCritDamage': ps.passiveCritDmg = Math.max(ps.passiveCritDmg || 0, effect.value); ps.passiveCritDmgT = 1; break;
-      case 'gainAtk': if (G.player.stats) { G.player.stats.atk = (G.player.stats.atk || 0) + effect.value; ps._passiveAtkLoan = (ps._passiveAtkLoan || 0) + effect.value; } ps.passiveAtkT = 1; break;
-      case 'gainMatk': if (G.player.stats) { G.player.stats.matk = (G.player.stats.matk || 0) + effect.value; ps._passiveMatkLoan = (ps._passiveMatkLoan || 0) + effect.value; } ps.passiveMatkT = 1; break;
-      case 'ailmentChanceBonus': ps.passiveAilmentBonus = (ps.passiveAilmentBonus || 0) + effect.value; ps.passiveAilmentBonusT = 1; break;
+      case 'gainDodge':
+        applyPassiveDisplaySlot(ps, perkId, 'gainDodge', effect.value);
+        break;
+      case 'gainSpeed':
+        if (applyLoan) applyLoan(ps, G.player, '_passiveStatLoans', 'spd', slotId, effect.value, 1);
+        break;
+      case 'gainCritChance':
+        applyPassiveDisplaySlot(ps, perkId, 'gainCritChance', effect.value);
+        break;
+      case 'gainCritDamage':
+        applyPassiveDisplaySlot(ps, perkId, 'gainCritDamage', effect.value);
+        break;
+      case 'gainAtk':
+        if (applyLoan) applyLoan(ps, G.player, '_passiveStatLoans', 'atk', slotId, effect.value, 1);
+        break;
+      case 'gainMatk':
+        if (applyLoan) applyLoan(ps, G.player, '_passiveStatLoans', 'matk', slotId, effect.value, 1);
+        break;
+      case 'ailmentChanceBonus': {
+        if (!ps._passiveAilmentBonusSlots) ps._passiveAilmentBonusSlots = Object.create(null);
+        var prevA = ps._passiveAilmentBonusSlots[perkId];
+        ps._passiveAilmentBonusSlots[perkId] = {
+          value: Math.max(prevA ? (prevA.value || 0) : 0, Number(effect.value) || 0),
+          turns: 1,
+          kindFilter: effect.kindFilter || null,
+          ailment: effect.ailment || null,
+        };
+        recomputePassiveAilmentBonus(ps);
+        break;
+      }
+      case 'bonusVsAilment':
+      case 'flatDamageBonus':
+        /* Conditional damage — evaluated in applyDamageBonus, not stat loans. */
+        break;
       default: break;
     }
   }
+
+  function enemyHasAilmentCategory(es, ailment) {
+    if (!es) return false;
+    if (ailment === 'bleed') return (es.bleed && es.bleed.stacks > 0);
+    if (ailment === 'poison') return (es.poison && es.poison.stacks > 0);
+    return false;
+  }
+
+  function enemyHasAnyAffliction(es) {
+    if (!es) return false;
+    var burning = es.burning && ((typeof es.burning === 'number' && es.burning > 0) || (typeof es.burning === 'object' && (es.burning.turns || 0) > 0));
+    return (es.poison && es.poison.stacks > 0) || (es.bleed && es.bleed.stacks > 0) || (es.feared || 0) > 0
+      || (es.weaken || 0) > 0 || (es.paralyzed || 0) > 0 || !!es.confused || burning
+      || (es.chilled && es.chilled.stacks > 0) || (es.accDebuff || 0) > 0;
+  }
+
+  function triggerMatchesForDamage(trigger, row, ctx) {
+    if (!row) return false;
+    var es = (G.enemyStatus || {});
+    switch (trigger.kind) {
+      case 'physicalVsBleeding':
+      case 'enemyBleeding':
+        return row.category === 'physical' && es.bleed && es.bleed.stacks > 0;
+      case 'vsAfflictedEnemy':
+        return enemyHasAnyAffliction(es);
+      case 'executeLowHp': {
+        var enemy = G.enemy && G.enemy.stats;
+        if (!enemy) return false;
+        return row.category === 'physical' && enemy.hp <= Math.floor((enemy.maxHp || 1) * (trigger.threshold || 0.4));
+      }
+      case 'lowHp': {
+        var p = G.player && G.player.stats;
+        if (!p) return false;
+        return p.hp <= Math.floor((p.maxHp || 1) * (trigger.threshold || 0.5));
+      }
+      default:
+        return false;
+    }
+  }
+
+  function damageTypeMatches(row, dmgType, ctx) {
+    if (!dmgType || dmgType === 'any') return true;
+    if (dmgType === 'mixed') return true;
+    if (dmgType === 'physical') return row.category === 'physical';
+    if (dmgType === 'magic') return /magic|song|spell/i.test(row.category || '');
+    if (ctx && ctx.isAttack && dmgType === 'physical') return true;
+    if (ctx && ctx.isSpell && dmgType === 'magic') return true;
+    return false;
+  }
+
+  Avian.passives.applyDamageBonus = function applyDamageBonus(dmg, ab, ctx) {
+    if (!globalThis.G || !G.player || !ab) return dmg;
+    var perk = passiveFor(G.player.birdKey);
+    if (!perk) return dmg;
+    var trigger = classifyTrigger(perk.trigger);
+    var row = rowFor(ab.id);
+    if (!row) return dmg;
+    if (!triggerMatchesForDamage(trigger, row, ctx || {})) return dmg;
+    var effects = classifyEffect(perk.effect);
+    var es = G.enemyStatus || {};
+    for (var i = 0; i < effects.length; i++) {
+      var eff = effects[i];
+      if (eff.kind === 'bonusVsAilment') {
+        if (eff.ailment === 'bleed' && !enemyHasAilmentCategory(es, 'bleed')) continue;
+        if (!damageTypeMatches(row, eff.dmgType, ctx)) continue;
+        if (eff.value > 0) dmg = Math.floor(dmg * (1 + eff.value / 100));
+      } else if (eff.kind === 'flatDamageBonus') {
+        if (!damageTypeMatches(row, eff.dmgType, ctx)) continue;
+        if (eff.value > 0) dmg = Math.floor(dmg * (1 + eff.value / 100));
+      }
+    }
+    return dmg;
+  };
 
   // ---- per-trigger gate -------------------------------------------------
   function gate(birdKey, perkId, cap) {
@@ -147,7 +312,7 @@
 
   // ---- triggers ---------------------------------------------------------
   function matchTrigger(trigger, ab, context) {
-    var row = ab && Avian.data && Avian.data.combatPack && Avian.data.combatPack.skillTrees && Avian.data.combatPack.skillTrees[ab.id];
+    var row = rowFor(ab && ab.id);
     if (!row) return false;
     switch (trigger.kind) {
       case 'afterMultiHitPhysical': return row.category === 'physical' && (row.hits || 1) >= 2;
@@ -160,9 +325,15 @@
         var es = (G.enemyStatus || {});
         return row.category === 'physical' && !(es.bleed && es.bleed.stacks > 0);
       }
-      case 'physicalVsBleeding': {
+      case 'physicalVsBleeding':
+      case 'enemyBleeding': {
         var es2 = (G.enemyStatus || {});
         return row.category === 'physical' && es2.bleed && es2.bleed.stacks > 0;
+      }
+      case 'vsAfflictedEnemy': return enemyHasAnyAffliction(G.enemyStatus || {});
+      case 'executeLowHp': {
+        var enemy = G.enemy && G.enemy.stats;
+        return row.category === 'physical' && enemy && enemy.hp <= Math.floor((enemy.maxHp || 1) * (trigger.threshold || 0.4));
       }
       case 'onCrit': return context && context.crit;
       case 'afterUtility': return row.category === 'utility' || row.target === 'self';
@@ -188,7 +359,11 @@
     if (!matchTrigger(trigger, ab, context || {})) return;
     if (trigger.cap && !gate(bird, perk.id, trigger.cap)) return;
     var effects = classifyEffect(perk.effect);
-    for (var i = 0; i < effects.length; i++) applyEffect(effects[i]);
+    for (var i = 0; i < effects.length; i++) {
+      var eff = effects[i];
+      if (eff.kind === 'bonusVsAilment' || eff.kind === 'flatDamageBonus') continue;
+      applyEffect(perk.id, eff);
+    }
   };
 
   Avian.passives.onBattleStart = function onBattleStart() {
@@ -196,21 +371,17 @@
   };
 
   Avian.passives.onPlayerTurnStart = function onPlayerTurnStart(player) {
-    // Decay passive one-turn buffs and reset per-turn gates.
     if (G.passiveState) {
       for (var k in G.passiveState) G.passiveState[k].firedThisTurn = false;
     }
     var ps = G.playerStatus = G.playerStatus || {};
-    if ((ps.passiveDodgeT || 0) > 0) { ps.passiveDodgeT--; if (ps.passiveDodgeT <= 0) { delete ps.passiveDodge; delete ps.passiveDodgeT; } }
-    if ((ps.passiveSpeedT || 0) > 0) { ps.passiveSpeedT--; if (ps.passiveSpeedT <= 0) { if (player && player.stats && ps._passiveSpdLoan) { player.stats.spd = Math.max(0, (player.stats.spd || 0) - ps._passiveSpdLoan); } delete ps._passiveSpdLoan; delete ps.passiveSpeedT; } }
-    if ((ps.passiveCritT || 0) > 0) { ps.passiveCritT--; if (ps.passiveCritT <= 0) { delete ps.passiveCrit; delete ps.passiveCritT; } }
-    if ((ps.passiveCritDmgT || 0) > 0) { ps.passiveCritDmgT--; if (ps.passiveCritDmgT <= 0) { delete ps.passiveCritDmg; delete ps.passiveCritDmgT; } }
-    if ((ps.passiveAtkT || 0) > 0) { ps.passiveAtkT--; if (ps.passiveAtkT <= 0) { if (player && player.stats && ps._passiveAtkLoan) player.stats.atk = Math.max(0, (player.stats.atk || 0) - ps._passiveAtkLoan); delete ps._passiveAtkLoan; delete ps.passiveAtkT; } }
-    if ((ps.passiveMatkT || 0) > 0) { ps.passiveMatkT--; if (ps.passiveMatkT <= 0) { if (player && player.stats && ps._passiveMatkLoan) player.stats.matk = Math.max(0, (player.stats.matk || 0) - ps._passiveMatkLoan); delete ps._passiveMatkLoan; delete ps.passiveMatkT; } }
-    if ((ps.passiveAilmentBonusT || 0) > 0) { ps.passiveAilmentBonusT--; if (ps.passiveAilmentBonusT <= 0) { delete ps.passiveAilmentBonus; delete ps.passiveAilmentBonusT; } }
+    if (typeof globalThis.decaySourceStatLoans === 'function') {
+      globalThis.decaySourceStatLoans(ps, player, '_passiveStatLoans');
+    }
+    decayPassiveSlotBag(ps, '_passiveDisplaySlots', recomputePassiveDisplays);
+    decayPassiveSlotBag(ps, '_passiveAilmentBonusSlots', recomputePassiveAilmentBonus);
   };
 
-  // Resolve a passive description for display.
   Avian.passives.describeFor = function describeFor(birdKey) {
     var perk = passiveFor(birdKey);
     if (!perk) return null;
