@@ -6,8 +6,7 @@
  * Shop offer composition (per visit):
  *   - 3 healing items (unchanged shelf, retained from game.js's
  *     `SHOP_HEALING_ITEMS`).
- *   - 5 ability-learning offers rolled from the pool by rarity × stage gate.
- *   - 1 wild-card offer (re-roll across all tiers for variety).
+ *   - 4 ability-learning offers rolled from the pool by rarity × stage gate.
  *
  * Item shape mirrors the legacy `_shopItems[]` entries so the existing
  * shop UI (`renderShopItems`, `shopBuySelected`) continues to render them
@@ -34,6 +33,13 @@
   // Tier name from spreadsheet → CSS class used by renderShopItems
   var TIER_CSS = { White: 'grey', Green: 'green', Blue: 'blue', Purple: 'purple', Gold: 'gold' };
   var TIER_ICON = { White: '⚪', Green: '🟢', Blue: '🔵', Purple: '🟣', Gold: '🟡' };
+  var SHOP_COST_BY_EN = { 1: 50, 2: 100, 3: 150 };
+
+  function shopCostForEntry(entry) {
+    var row = pack() && pack().skillTrees && pack().skillTrees[entry.baseAbilityId];
+    var en = Math.max(1, Math.round(Number(row && row.apCost) || 1));
+    return SHOP_COST_BY_EN[en] || SHOP_COST_BY_EN[3];
+  }
 
   function pack() { return (Avian.data && Avian.data.combatPack) || null; }
   function poolEntries() {
@@ -91,7 +97,7 @@
       icon: icon,
       name: entry.name,
       desc: shop.describeAbility(entry),
-      costOverride: entry.shopCost || 30,
+      costOverride: shopCostForEntry(entry),
       isLearnAbility: true,
       designedFor: entry.designedFor || '',
       tags: entry.tags || [],
@@ -184,7 +190,7 @@
   shop.rollStockForMode = function rollStockForMode(mode) {
     var stage = currentStageNumber();
     var used = new Set();
-    var count = mode === 'boss' ? 6 : 5;
+    var count = 4;
     var items = [];
     for (var i = 0; i < count; i++) {
       var entry = shop.rollOffer(stage, used);

@@ -797,6 +797,13 @@ function buildGenericEndless(perksSheets) {
 // ---------------------------------------------------------------------------
 // Shop pool — base abilities with their economy fields
 // ---------------------------------------------------------------------------
+const SHOP_COST_BY_EN = { 1: 50, 2: 100, 3: 150 };
+
+function shopCostFromAp(apCost) {
+  const en = Math.max(1, Math.round(Number(apCost) || 1));
+  return SHOP_COST_BY_EN[en] || SHOP_COST_BY_EN[3];
+}
+
 function buildShopPool(shopSheets) {
   const rows = shopSheets['Shop Ability Pool'] || [];
   if (!rows.length) throw new Error('Missing Shop Ability Pool sheet');
@@ -829,6 +836,7 @@ function buildShopPool(shopSheets) {
     const id = remapShopId(get(r, h, 'Ability ID'), tier);
     const famId = remapShopId(get(r, h, 'Family ID'), tier);
     if (!id || !famId) continue;
+    const apCost = asNum(get(r, h, 'AP Cost') || get(r, h, 'AP/EN Cost') || '');
     entries[famId] = {
       familyId: famId,
       baseAbilityId: id,
@@ -838,7 +846,8 @@ function buildShopPool(shopSheets) {
       rarityWeight: asNum(get(r, h, 'Rarity Weight')),
       shopUnlock: get(r, h, 'Shop Unlock'),
       shopUnlockStage: asNum(get(r, h, 'Shop Unlock')),
-      shopCost: asNum(get(r, h, 'Shop Cost')),
+      apCost: apCost || 1,
+      shopCost: shopCostFromAp(apCost),
       category: get(r, h, 'Ability Category'),
       style: get(r, h, 'Style'),
       designedFor: get(r, h, 'Designed For'),

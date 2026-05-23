@@ -489,7 +489,7 @@ function buildStatBreakdownTitle(statKey, rawVal, player){
   const eq = Number(L.fromEquipment?.[statKey]||0);
   const cur = Number(rawVal)||0;
   const rem = cur - b - lv - u - eq;
-  let t = `${(STAT_LEDGER_LABELS[statKey]||statKey).toUpperCase()}: ${cur} — base ${b} + level ${formatLedgerDelta(lv)} + upgrades ${formatLedgerDelta(u)} + equipment ${formatLedgerDelta(eq)}`;
+  let t = `${(STAT_LEDGER_LABELS[statKey]||statKey).toUpperCase()}: ${formatCombatNumber(cur)} — base ${formatCombatNumber(b)} + level ${formatLedgerDelta(lv)} + upgrades ${formatLedgerDelta(u)} + equipment ${formatLedgerDelta(eq)}`;
   if(Math.abs(rem) > 0.05) t += ` + other ${rem >= 0 ? '+' : ''}${formatLedgerDelta(rem)}`;
   return t;
 }
@@ -1404,7 +1404,7 @@ function checkSecretUnlockChar(ch){
 // ============================================================
 //  EXP SYSTEM
 // ============================================================
-// --- Shiny economy (tuned vs SHOP_COSTS / healing shelf 10–28, abilities ~36–164) ---
+// --- Shiny economy (tuned vs SHOP_COSTS / healing shelf 10–28, abilities 50–150 by EN) ---
 /** Normal story kill: early / mid / late stage bands. */
 const SHINY_NORMAL_STORY = Object.freeze({ early: [6, 10], mid: [8, 13], late: [10, 16] });
 /** Boss story kill by stage band. */
@@ -1963,14 +1963,14 @@ function openNest() {
   // Stats
   const s=p.stats;
   // Compute effective in-battle stats
-  const _nestWarcry=G.warcryActive?Math.floor(s.atk*(1+G.warcryATK/100)):s.atk;
+  const _nestWarcry=G.warcryActive?(s.atk||0)*(1+G.warcryATK/100):s.atk;
   const _nestDef=s.def+(G.battleHymnActive?G.battleHymnDEF:0);
   const _nestAcc=Math.min(100,s.acc+(G.battleHymnActive?G.battleHymnACC:0)-(G.playerStatus.accDebuff||0));
   const _nestDodge=getEffectiveDodge(p);
   const _nestCrit=Math.min(100,(s.critChance||5)+(p._velocityStacks||0));
   const _nestCritMultBase=p.goldCritMult||1.8;
   const _nestCritBonusPct=p.critDamageBonusPct||0;
-  const _nestCritMultDisp=_nestCritBonusPct>0?`${_nestCritMultBase.toFixed(1)}× <span class="nest-crit-bonus" title="Added to multiplier on critical hits">(+${_nestCritBonusPct.toFixed(2)})</span>`:`${_nestCritMultBase.toFixed(1)}×`;
+  const _nestCritMultDisp=_nestCritBonusPct>0?`${formatCombatNumber(_nestCritMultBase)}× <span class="nest-crit-bonus" title="Added to multiplier on critical hits">(+${formatCombatNumber(_nestCritBonusPct)})</span>`:`${formatCombatNumber(_nestCritMultBase)}×`;
   function _nestStat(val,base,suffix=''){const d=val-base;const col=d>0?'var(--red-light)':d<0?'var(--purple-light)':'var(--gold)';const arr=d>0?' ▲▲':d<0?' ▼▼':'';return `<span style="color:${col}">${formatCombatNumber(val)}${suffix}${arr}</span>`;}
   html+=`<div class="nest-section"><div class="nest-section-title">📊 Stats ${G.turn?'(In Battle)':''}</div>
   <div class="nest-stats-grid">
@@ -2108,7 +2108,11 @@ function buildNestEquipmentSection(player){
     }
   }
   const summary=typeof Avian.mutations.getEquippedSummary==='function'?Avian.mutations.getEquippedSummary(player):{lines:[]};
-  const bonusHtml=(summary.lines||[]).map(l=>`<span class="nest-equip-bonus-chip">${escapeHtmlRoster(l.label)} ${escapeHtmlRoster(String(l.value))}</span>`).join('')||'<span class="nest-inv-empty">No mutation bonuses yet.</span>';
+  const bonusHtml=(summary.lines||[]).map(l=>{
+    const valStr=String(l.value);
+    const valDisp=valStr.includes('%')?valStr:formatCombatNumber(l.value);
+    return `<span class="nest-equip-bonus-chip">${escapeHtmlRoster(l.label)} ${escapeHtmlRoster(valDisp)}</span>`;
+  }).join('')||'<span class="nest-inv-empty">No mutation bonuses yet.</span>';
   const inv=player.mutationInventory||[];
   let invHtml='';
   if(!inv.length){
@@ -5183,11 +5187,11 @@ function refreshBattleUI() {
   const escAttr=(s)=>String(s??'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
   const _trendTag = (diff) => diff>0 ? '<small class="stat-trend up">▲▲</small>' : (diff<0 ? '<small class="stat-trend down">▼▼</small>' : '');
   const _atkDiff = G.warcryActive ? Math.max(1,Math.floor((p.atk||0)*(G.warcryATK||0)/100)) : (G.playerStatus.weaken ? -1 : 0);
-  const _effAtk=G.warcryActive?Math.floor(p.atk*(1+G.warcryATK/100)):p.atk;
+  const _effAtk=G.warcryActive?(p.atk||0)*(1+G.warcryATK/100):p.atk;
   const _critChance = Math.min(100,(p.critChance||5));
   const _critBase=G.player.goldCritMult||1.5;
   const _critBonusPct=G.player.critDamageBonusPct||0;
-  const _critMultDisplay=_critBonusPct>0?`${_critBase.toFixed(1)}×<small class="stat-cd-bonus">+${_critBonusPct.toFixed(2)}</small>`:`${_critBase.toFixed(1)}×`;
+  const _critMultHtml=_critBonusPct>0?`${formatCombatNumber(_critBase)}×<small class="stat-cd-bonus">+${formatCombatNumber(_critBonusPct)}</small>`:`${formatCombatNumber(_critBase)}×`;
   const _ccBaseStore=(p.critChance||5);
   const _statNote=(label,diff,srcUp='',srcDown='')=>`${label} ${diff>=0?'+':''}${diff}. ${diff>0?srcUp:(diff<0?srcDown:'No active modifier.')}`;
   const _atkNote=(G.warcryActive?`Warcry +${G.warcryATK}% ATK.`:'') + (G.playerStatus.weaken?' Weaken reducing output.':'');
@@ -5207,13 +5211,13 @@ function refreshBattleUI() {
      ${statCell('stat-acc','ACC',_effAcc,{suffix:'%',title:_bt('acc',p.acc,_statNote('Battle ACC',_effAcc-(p.acc||0),'Battle Hymn increased ACC.','Blind/ruffle reduced ACC.')+_accCardBonus),trend:_trendTag(_effAcc-p.acc)})}
      ${statCell('stat-spd','SPD',_effSpd,{title:_bt('spd',p.spd,_statNote('Battle SPD',_effSpd-(p.spd||0),'Buff increased SPD.','Slow/clip effects reduced SPD.')),trend:_trendTag(_effSpd-p.spd)})}
      ${statCell('stat-cc','CC',_critChance,{suffix:'%',title:_bt('critChance',_ccBaseStore,`Shown value includes battle modifiers (e.g. burn). ${_statNote('vs stored CC',_critChance-_ccBaseStore,'Temporary buffs.','')}`),trend:_trendTag(_critChance-_ccBaseStore)})}
-     ${statCell('stat-cd','CD',_critMultDisplay,{suffix:'',title:`Base crit multiplier ${_critBase.toFixed(2)}×. On critical hits, +${_critBonusPct.toFixed(2)} is added to the multiplier (e.g. Execution Beak). Shown value is base; small +number is the crit-only add.`})}
+     <div class="stat-mini stat-cd" title="${escAttr(`Base crit multiplier ${formatCombatNumber(_critBase)}×. On critical hits, +${formatCombatNumber(_critBonusPct)} is added to the multiplier (e.g. Execution Beak). Shown value is base; small +number is the crit-only add.`)}"><span class="stat-k">CD</span><span class="stat-v">${_critMultHtml}</span></div>
      ${_pHintRow}`;
 
   // Enemy stats display
   const eal=document.getElementById('enemy-abilities-list');
   const ep2=G.enemy.stats;
-  const eCritChance=Math.max(0,Math.min(100,Math.round((ep2.cc??((ep2.critChance||5)/100))*100)));
+  const eCritChance=Math.max(0,Math.min(100,(ep2.cc??((ep2.critChance||5)/100))*100));
   const eCritMult=(ep2.cd??ep2.critMult??1.5);
   const _eTrendTag = (diff) => diff>0 ? '<small class="stat-trend up">▲▲</small>' : (diff<0 ? '<small class="stat-trend down">▼▼</small>' : '');
   const _eBase = G.enemy._battleStatBase || {};
@@ -10899,6 +10903,7 @@ function applyUpgradeWithMaxHpHealing(player, applyFn, sourceLabel='Upgrade', me
   const beforeMax=Math.max(1, Number(player.stats?.maxHp||1));
   const beforeHp=Math.max(0, Number(player.stats?.hp||0));
   applyFn();
+  if(player.stats) normalizeCombatStats(player.stats);
   if(player.stats) recordUpgradeApplyInLedger(player, beforeStatsSnap, player.stats, meta);
   const afterMax=Math.max(1, Number(player.stats?.maxHp||beforeMax));
   const gained=Math.max(0, afterMax-beforeMax);
@@ -11552,6 +11557,7 @@ async function confirmSkillUpgrade() {
       }
       if(n>0) lines.push(`${n}× ${opt.label}`);
     }
+    if(G.player.stats) normalizeCombatStats(G.player.stats);
     if(typeof refreshBattleUI==='function') refreshBattleUI();
     logMsg(`📈 ${lines.join(', ')}`,'exp-gain');
     delete G._luFeatherDraft;

@@ -207,6 +207,7 @@
     if (player.stats.maxHp != null) {
       player.stats.hp = Math.min(player.stats.hp || player.stats.maxHp, player.stats.maxHp);
     }
+    if (typeof normalizeCombatStats === 'function') normalizeCombatStats(player.stats);
   }
 
   function unequip(player, slotKey, slotIndex) {
