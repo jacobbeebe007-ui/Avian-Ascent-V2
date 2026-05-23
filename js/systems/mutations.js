@@ -140,7 +140,7 @@
     return firstOpenSlot(player, sk) >= 0 || arr.length > 0;
   }
 
-  var MECHANICAL_STAT_KEYS = ['lightAttackDmgPct', 'mediumAttackDmgPct', 'defPenPct', 'physicalAilmentChance', 'magicAilmentChance'];
+  var MECHANICAL_STAT_KEYS = ['lightAttackDmgPct', 'mediumAttackDmgPct', 'heavyAttackDmgPct', 'defPenPct', 'physicalAilmentChance', 'magicAilmentChance'];
 
   function sumEquippedStats(player) {
     var stats = Object.create(null);
@@ -257,6 +257,7 @@
     var m = roll.mechanics;
     if (m.lightAttackDmgPct) lines.push({ key: 'lightDmg', label: 'Light Dmg', value: '+' + m.lightAttackDmgPct + '%' });
     if (m.mediumAttackDmgPct) lines.push({ key: 'mediumDmg', label: 'Medium Dmg', value: '+' + m.mediumAttackDmgPct + '%' });
+    if (m.heavyAttackDmgPct) lines.push({ key: 'heavyDmg', label: 'Heavy Dmg', value: '+' + m.heavyAttackDmgPct + '%' });
     if (m.piercePct || m.defPenPct) lines.push({ key: 'pierce', label: 'Pierce', value: '+' + (m.piercePct || m.defPenPct) + '%' });
     if (m.physicalAilmentChance) lines.push({ key: 'physAil', label: 'Phys Ailment', value: '+' + m.physicalAilmentChance + '%' });
     if (m.magicAilmentChance) lines.push({ key: 'magAil', label: 'Magic Ailment', value: '+' + m.magicAilmentChance + '%' });

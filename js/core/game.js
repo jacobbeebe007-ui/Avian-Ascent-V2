@@ -7868,13 +7868,16 @@ function dealDamage(target,amount,isCrit=false,isMagic=false,srcAbility=null) {
     if(isAttack && (G.player?.augAttackDmgPct||0)>0) dmg=Math.floor(dmg*(1+G.player.augAttackDmgPct));
     if(target==='enemy' && G.player && typeof Avian?.mutations?.getMechanicsRollup==='function'){
       const _eqM=Avian.mutations.getMechanicsRollup(G.player);
-      if(isAttack && (_eqM.lightAttackDmgPct||0)>0) dmg=Math.floor(dmg*(1+_eqM.lightAttackDmgPct/100));
-      if(isAttack && (_eqM.mediumAttackDmgPct||0)>0) dmg=Math.floor(dmg*(1+_eqM.mediumAttackDmgPct/100));
+      const attackWeight=activeAb ? getAbilityAttackWeight(activeAb, G.player) : null;
+      if(attackWeight==='light' && (_eqM.lightAttackDmgPct||0)>0) dmg=Math.floor(dmg*(1+_eqM.lightAttackDmgPct/100));
+      if(attackWeight==='medium' && (_eqM.mediumAttackDmgPct||0)>0) dmg=Math.floor(dmg*(1+_eqM.mediumAttackDmgPct/100));
+      if(attackWeight==='heavy' && (_eqM.heavyAttackDmgPct||0)>0) dmg=Math.floor(dmg*(1+_eqM.heavyAttackDmgPct/100));
       if(_eqM.damageBonuses && _eqM.damageBonuses.length){
         for(const db of _eqM.damageBonuses){
           if(!db || !db.pct) continue;
-          if(db.tag==='light' && isAttack) dmg=Math.floor(dmg*(1+db.pct/100));
-          else if(db.tag==='medium' && isAttack) dmg=Math.floor(dmg*(1+db.pct/100));
+          if(db.tag==='light' && attackWeight==='light') dmg=Math.floor(dmg*(1+db.pct/100));
+          else if(db.tag==='medium' && attackWeight==='medium') dmg=Math.floor(dmg*(1+db.pct/100));
+          else if(db.tag==='heavy' && attackWeight==='heavy') dmg=Math.floor(dmg*(1+db.pct/100));
           else if((db.tag==='magic'||db.tag==='spell') && isSpell) dmg=Math.floor(dmg*(1+db.pct/100));
           else if(db.tag==='generic'||!db.tag) dmg=Math.floor(dmg*(1+db.pct/100));
         }
@@ -8953,12 +8956,11 @@ function isMultiHitAbility(ab){
   return /(\b\d+\s*[-–]\s*\d+\s*hits?\b|\b\d+\s*hits?\b|\b\d+×\b|multi-hit|strikes? at)/.test(texts);
 }
 
-function getAbilityEnergyCost(ab, player){
+function getAbilityAuthoredEnergyCost(ab, player){
   const p = player || G.player;
   const t = getAbilityTemplateForUI(ab);
 
   let cost = 0;
-  // Always derive from template + level first — stale ab.energyCost caused wrong EN on cards / spend.
   if(Array.isArray(t?.energyByLevel) && t.energyByLevel.length){
     const idx = Math.min((ab.level||1)-1, t.energyByLevel.length-1);
     cost = Number(t.energyByLevel[idx]) ?? 0;
@@ -8970,10 +8972,6 @@ function getAbilityEnergyCost(ab, player){
 
   if(isMainAttackAbility(ab, p) && !isSpellAbilityId(ab.id) && !(ab.fixedMainAttackCost || t?.fixedMainAttackCost)) cost = 1;
 
-  const tType=(t?.btnType||t?.type||ab.btnType||ab.type||'').toLowerCase();
-  const isAttack=(tType==='physical'||tType==='ranged');
-  const isSpell=(tType==='spell');
-  // Family skill tree: flat EN curves stay at tier-1 display/spend; progressive energyByLevel tracks authored ramps.
   if(p && usesFamilySkillEvolution(p) && !isMainAttackAbility(ab, p) && Array.isArray(t?.energyByLevel) && t.energyByLevel.length){
     const arr=t.energyByLevel.map(x=>Math.max(0,Math.floor(Number(x)||0)));
     const progressive=arr.some((v,i)=>i>0&&v!==arr[0]);
@@ -8984,6 +8982,26 @@ function getAbilityEnergyCost(ab, player){
       cost=arr[0];
     }
   }
+
+  return Math.max(0, cost);
+}
+
+function getAbilityAttackWeight(ab, player){
+  const cost = getAbilityAuthoredEnergyCost(ab, player);
+  if(cost===1) return 'light';
+  if(cost===2) return 'medium';
+  if(cost===3) return 'heavy';
+  return null;
+}
+
+function getAbilityEnergyCost(ab, player){
+  const p = player || G.player;
+  const t = getAbilityTemplateForUI(ab);
+  let cost = getAbilityAuthoredEnergyCost(ab, p);
+
+  const tType=(t?.btnType||t?.type||ab.btnType||ab.type||'').toLowerCase();
+  const isAttack=(tType==='physical'||tType==='ranged');
+  const isSpell=(tType==='spell');
 
   if(isAttack && !G._firstAttackUsed && p?.firstAttackFree) cost=0;
   if(isSpell && !G._firstSpellUsed && p?.firstSpellFree) cost=0;

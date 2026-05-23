@@ -38,6 +38,7 @@ const STAT_MAP = {
   'Crit Chance': 'critChance',
   'Light Attack Damage': 'lightAttackDmgPct',
   'Medium Attack Damage': 'mediumAttackDmgPct',
+  'Heavy Attack Damage': 'heavyAttackDmgPct',
   'DEF Penetration': 'defPenPct',
   'Physical Ailment Chance': 'physicalAilmentChance',
   'Magic Ailment Chance': 'magicAilmentChance',
