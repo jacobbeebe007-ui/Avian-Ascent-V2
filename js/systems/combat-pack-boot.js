@@ -341,7 +341,7 @@
         return Avian.shop.findById(id);
       }
 
-      globalThis.generateShopItems = function () {
+      globalThis.__avianPatchedGenerateShopItems = function () {
         var nodeId = (globalThis.G && globalThis.G._currentShopNodeId) != null ? globalThis.G._currentShopNodeId : null;
         var mode = (globalThis.G && globalThis.G._shopMode) || 'boss';
 
@@ -365,7 +365,7 @@
         } else {
           var abilityOffers = Avian.shop.rollStockForMode(mode);
           items.push.apply(items, abilityOffers);
-          if (Avian.mutations && typeof Avian.mutations.rollMutationReward === 'function') {
+          if (mode !== 'endless-boss' && Avian.mutations && typeof Avian.mutations.rollMutationReward === 'function') {
             var mutUsed = new Set();
             for (var mi = 0; mi < 2; mi++) {
               var mrw = Avian.mutations.rollMutationReward({ stage: Math.max(1, Number(globalThis.G && G.stage) || 1), isBoss: mode === 'boss' });
@@ -393,6 +393,7 @@
         }
         if (typeof globalThis.renderShopItems === 'function') globalThis.renderShopItems();
       };
+      globalThis.generateShopItems = globalThis.__avianPatchedGenerateShopItems;
     }
   } catch (e) {
     console.warn('[combat-pack-boot] failed to patch generateShopItems:', e);

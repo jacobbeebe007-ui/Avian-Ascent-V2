@@ -6,7 +6,8 @@
  * Shop offer composition (per visit):
  *   - 3 healing items (unchanged shelf, retained from game.js's
  *     `SHOP_HEALING_ITEMS`).
- *   - 4 ability-learning offers rolled from the pool by rarity × stage gate.
+ *   - 4 ability-learning offers rolled from the pool by rarity × stage gate
+ *     (endless-boss shops offer 1 ability + healing only).
  *
  * Item shape mirrors the legacy `_shopItems[]` entries so the existing
  * shop UI (`renderShopItems`, `shopBuySelected`) continues to render them
@@ -190,7 +191,7 @@
   shop.rollStockForMode = function rollStockForMode(mode) {
     var stage = currentStageNumber();
     var used = new Set();
-    var count = 4;
+    var count = mode === 'endless-boss' ? 1 : 4;
     var items = [];
     for (var i = 0; i < count; i++) {
       var entry = shop.rollOffer(stage, used);
