@@ -7816,6 +7816,10 @@ function dealDamage(target,amount,isCrit=false,isMagic=false,srcAbility=null) {
   const isSpell=(activeType==='spell');
   if(target==='enemy' && !isMagic && !isCrit && classPerkCtx.predatorRhythm && (G.playerActionsThisTurn||0)===2 && chance(10)) isCrit=true;
   let critDmgAdd=isCrit?(G.player?.critDamageBonusPct||0):0;
+  if(isCrit && target==='enemy' && typeof Avian?.mutations?.getMechanicsRollup==='function'){
+    const _eqCritM=Avian.mutations.getMechanicsRollup(G.player);
+    if((_eqCritM.critDamageBonusPct||0)>0) critDmgAdd+=_eqCritM.critDamageBonusPct/100;
+  }
   if(isCrit && target==='enemy' && (G.player?.critVsAfflictedBonusPct||0)>0 && enemyHasAfflictionForCardBonuses()) critDmgAdd+=G.player.critVsAfflictedBonusPct;
   if(isCrit && target==='enemy'){
     const _pid=BIRDS[G.player?.birdKey]?.passive?.id;
@@ -7872,6 +7876,7 @@ function dealDamage(target,amount,isCrit=false,isMagic=false,srcAbility=null) {
       if(attackWeight==='light' && (_eqM.lightAttackDmgPct||0)>0) dmg=Math.floor(dmg*(1+_eqM.lightAttackDmgPct/100));
       if(attackWeight==='medium' && (_eqM.mediumAttackDmgPct||0)>0) dmg=Math.floor(dmg*(1+_eqM.mediumAttackDmgPct/100));
       if(attackWeight==='heavy' && (_eqM.heavyAttackDmgPct||0)>0) dmg=Math.floor(dmg*(1+_eqM.heavyAttackDmgPct/100));
+      if(isMultiHitAbility(activeAb) && (_eqM.multiHitDmgPct||0)>0) dmg=Math.floor(dmg*(1+_eqM.multiHitDmgPct/100));
       if(_eqM.damageBonuses && _eqM.damageBonuses.length){
         for(const db of _eqM.damageBonuses){
           if(!db || !db.pct) continue;

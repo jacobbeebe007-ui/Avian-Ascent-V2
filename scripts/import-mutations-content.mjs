@@ -2,7 +2,7 @@
 /*
  * Avian Ascent — Mutations / Equipment Importer
  *
- * Reads avian_ascent_expanded_tiered_item_list.xlsx and emits js/data/mutations/*
+ * Reads avian_ascent_expanded_tiered_item_list_damage_v2.xlsx and emits js/data/mutations/*
  *
  *   node scripts/import-mutations-content.mjs [--verify]
  *
@@ -16,7 +16,8 @@ import { homedir } from 'node:os';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, '..');
-const DEFAULT_XLSX = path.join(homedir(), 'Downloads', 'avian_ascent_expanded_tiered_item_list.xlsx');
+const NEW_SHEETS = path.join(homedir(), 'Desktop', 'Avian Ascent', 'New Sheets');
+const DEFAULT_XLSX = path.join(NEW_SHEETS, 'avian_ascent_expanded_tiered_item_list_damage_v2.xlsx');
 const MUTATIONS_XLSX = process.env.AA_MUTATIONS_XLSX || DEFAULT_XLSX;
 const OUTPUT_DIR = path.join(ROOT, 'js', 'data', 'mutations');
 
@@ -36,9 +37,14 @@ const STAT_MAP = {
   'Magic Attack Base': 'matk',
   'Magic Defence': 'mdef',
   'Crit Chance': 'critChance',
+  'Crit Damage': 'critDamageBonusPct',
+  'Light Attack': 'lightAttackDmgPct',
   'Light Attack Damage': 'lightAttackDmgPct',
+  'Medium Attack': 'mediumAttackDmgPct',
   'Medium Attack Damage': 'mediumAttackDmgPct',
+  'Heavy Attack': 'heavyAttackDmgPct',
   'Heavy Attack Damage': 'heavyAttackDmgPct',
+  'Multi-hit Damage': 'multiHitDmgPct',
   'DEF Penetration': 'defPenPct',
   'Physical Ailment Chance': 'physicalAilmentChance',
   'Magic Ailment Chance': 'magicAilmentChance',
@@ -333,7 +339,7 @@ function main() {
     jsHeader('index.js', 'Mutations catalog index — byId lookup and drop weights.') +
     `var Avian=globalThis.Avian||(globalThis.Avian={});Avian.data=Avian.data||Object.create(null);\nvar m=Avian.data.mutations=Avian.data.mutations||Object.create(null);\nvar byId=Object.create(null);\n` +
     TIER_KEYS.map((t) => `if(m.items_${t}){for(var k in m.items_${t})byId[k]=m.items_${t}[k];}`).join('\n') +
-    `\nm.byId=Object.freeze(byId);\nm.dropWeights=Object.freeze(${JSON.stringify(dropWeights)});\nm.version='2026.05-mutations-v1';\n})();\n`
+    `\nm.byId=Object.freeze(byId);\nm.dropWeights=Object.freeze(${JSON.stringify(dropWeights)});\nm.version='2026.05-mutations-v2-damage-cleanup';\n})();\n`
   );
 
   console.log(`[mutations-importer] ${count} items, ${(totalBytes / 1024 / 1024).toFixed(2)} MiB written to ${OUTPUT_DIR}`);

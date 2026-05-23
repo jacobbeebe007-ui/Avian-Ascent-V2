@@ -140,7 +140,10 @@
     return firstOpenSlot(player, sk) >= 0 || arr.length > 0;
   }
 
-  var MECHANICAL_STAT_KEYS = ['lightAttackDmgPct', 'mediumAttackDmgPct', 'heavyAttackDmgPct', 'defPenPct', 'physicalAilmentChance', 'magicAilmentChance'];
+  var MECHANICAL_STAT_KEYS = [
+    'lightAttackDmgPct', 'mediumAttackDmgPct', 'heavyAttackDmgPct',
+    'multiHitDmgPct', 'critDamageBonusPct', 'defPenPct', 'physicalAilmentChance', 'magicAilmentChance',
+  ];
 
   function sumEquippedStats(player) {
     var stats = Object.create(null);
@@ -255,9 +258,11 @@
       lines.push({ key: k, label: labels[k] || k, value: s[k] });
     }
     var m = roll.mechanics;
-    if (m.lightAttackDmgPct) lines.push({ key: 'lightDmg', label: 'Light Dmg', value: '+' + m.lightAttackDmgPct + '%' });
-    if (m.mediumAttackDmgPct) lines.push({ key: 'mediumDmg', label: 'Medium Dmg', value: '+' + m.mediumAttackDmgPct + '%' });
-    if (m.heavyAttackDmgPct) lines.push({ key: 'heavyDmg', label: 'Heavy Dmg', value: '+' + m.heavyAttackDmgPct + '%' });
+    if (m.lightAttackDmgPct) lines.push({ key: 'lightDmg', label: 'Light Attack', value: '+' + m.lightAttackDmgPct + '%' });
+    if (m.mediumAttackDmgPct) lines.push({ key: 'mediumDmg', label: 'Medium Attack', value: '+' + m.mediumAttackDmgPct + '%' });
+    if (m.heavyAttackDmgPct) lines.push({ key: 'heavyDmg', label: 'Heavy Attack', value: '+' + m.heavyAttackDmgPct + '%' });
+    if (m.multiHitDmgPct) lines.push({ key: 'multiHitDmg', label: 'Multi-hit', value: '+' + m.multiHitDmgPct + '%' });
+    if (m.critDamageBonusPct) lines.push({ key: 'critDmg', label: 'Crit Damage', value: '+' + m.critDamageBonusPct + '%' });
     if (m.piercePct || m.defPenPct) lines.push({ key: 'pierce', label: 'Pierce', value: '+' + (m.piercePct || m.defPenPct) + '%' });
     if (m.physicalAilmentChance) lines.push({ key: 'physAil', label: 'Phys Ailment', value: '+' + m.physicalAilmentChance + '%' });
     if (m.magicAilmentChance) lines.push({ key: 'magAil', label: 'Magic Ailment', value: '+' + m.magicAilmentChance + '%' });
