@@ -72,7 +72,7 @@
       name: 'Delayed',
       icon: '🎵',
       color: '#c850c8',
-      desc: 'Non-stacking. Stored damage detonates at end of target next turn. Reapplying refreshes — primary Singer payoff.',
+      desc: 'Non-stacking. Stored damage detonates at end of target next turn. Reapplying refreshes stored damage.',
     },
   };
 })();

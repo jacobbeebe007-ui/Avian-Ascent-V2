@@ -2,7 +2,7 @@
 /*
  * Avian Ascent — Mutations / Equipment Importer
  *
- * Reads avian_ascent_expanded_tiered_item_list_damage_v2.xlsx and emits js/data/mutations/*
+ * Reads avian_ascent_expanded_tiered_item_list_v3.xlsx and emits js/data/mutations/*
  *
  *   node scripts/import-mutations-content.mjs [--verify]
  *
@@ -17,7 +17,7 @@ import { homedir } from 'node:os';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, '..');
 const NEW_SHEETS = path.join(homedir(), 'Desktop', 'Avian Ascent', 'New Sheets');
-const DEFAULT_XLSX = path.join(NEW_SHEETS, 'avian_ascent_expanded_tiered_item_list_damage_v2.xlsx');
+const DEFAULT_XLSX = path.join(NEW_SHEETS, 'avian_ascent_expanded_tiered_item_list_v3.xlsx');
 const MUTATIONS_XLSX = process.env.AA_MUTATIONS_XLSX || DEFAULT_XLSX;
 const OUTPUT_DIR = path.join(ROOT, 'js', 'data', 'mutations');
 
@@ -48,6 +48,7 @@ const STAT_MAP = {
   'DEF Penetration': 'defPenPct',
   'Physical Ailment Chance': 'physicalAilmentChance',
   'Magic Ailment Chance': 'magicAilmentChance',
+  'Delayed %': 'delayedDmgPct',
 };
 
 const TIER_KEYS = ['white', 'green', 'blue', 'purple', 'gold'];
@@ -99,6 +100,25 @@ function colNumFromRef(ref) {
   return n;
 }
 
+function parseInlineStr(body) {
+  const isM = /<is>([\s\S]*?)<\/is>/.exec(body || '');
+  if (!isM) return '';
+  return [...isM[1].matchAll(/<t[^>]*>([\s\S]*?)<\/t>/g)].map((x) => decodeEntities(x[1])).join('');
+}
+
+function normaliseAilmentId(s) {
+  const k = String(s || '').trim().toLowerCase();
+  if (!k || /^none$/i.test(k)) return null;
+  if (/^bleed/.test(k)) return 'bleed';
+  if (/^burning|^burn/.test(k)) return 'burning';
+  if (/^chilled|^chill/.test(k)) return 'chilled';
+  if (/^delayed/.test(k)) return 'delayed';
+  if (/^paralys|^paraly[sz]ed/.test(k)) return 'paralyzed';
+  if (/^poison/.test(k)) return 'poison';
+  if (/^weaken/.test(k)) return 'weaken';
+  return null;
+}
+
 function parseSharedStrings(xml) {
   const out = [];
   const reSi = /<si\b[^>]*>([\s\S]*?)<\/si>/g;
@@ -129,7 +149,8 @@ function parseSheet(xml, sharedStrings) {
       const col = refM ? colNumFromRef(refM[1]) : cells.length + 1;
       let val = '';
       const vM = /<(?:x:)?v>([\s\S]*?)<\/(?:x:)?v>/.exec(body);
-      if (t === 's' && vM) val = sharedStrings[parseInt(vM[1], 10)] || '';
+      if (t === 'inlineStr') val = parseInlineStr(body);
+      else if (t === 's' && vM) val = sharedStrings[parseInt(vM[1], 10)] || '';
       else if (vM) val = decodeEntities(vM[1]);
       cells.push({ col, val: val == null ? '' : String(val) });
     }
@@ -154,9 +175,9 @@ function readWorkbook(xlsxPath) {
     if (id && target) relMap[id] = target.replace(/^\/+/, '');
   }
   const sheets = Object.create(null);
-  for (const m of wb.matchAll(/<(?:x:)?sheet\s+name="([^"]+)"\s+sheetId="(\d+)"\s+r:id="([^"]+)"/g)) {
+  for (const m of wb.matchAll(/<(?:x:)?sheet\b[^>]*\bname="([^"]+)"[^>]*\br:id="([^"]+)"/g)) {
     const name = decodeEntities(m[1]);
-    const target = relMap[m[3]];
+    const target = relMap[m[2]];
     if (!target) continue;
     const key = target.startsWith('xl/') ? target : 'xl/' + target;
     if (entries[key]) sheets[name] = parseSheet(entries[key], sharedStrings);
@@ -221,6 +242,9 @@ function parseItemRow(row, header) {
   addStatRoll(stats, get(row, header, 'Secondary Stat'), get(row, header, 'Secondary Roll'), get(row, header, 'Secondary Unit'));
   addStatRoll(stats, get(row, header, 'Tertiary Stat'), get(row, header, 'Tertiary Roll'), get(row, header, 'Tertiary Unit'));
 
+  const delayedPctCol = get(row, header, 'Delayed %');
+  if (delayedPctCol) stats.delayedDmgPct = (stats.delayedDmgPct || 0) + asNum(delayedPctCol);
+
   const tradeStat = get(row, header, 'Trade-off Stat');
   const tradeRoll = get(row, header, 'Trade-off Roll');
   if (tradeStat && tradeRoll) {
@@ -243,10 +267,10 @@ function parseItemRow(row, header) {
   const penTarget = get(row, header, 'Penetration Target') || get(row, header, 'Penetration Bonus');
   if (penTarget && !mechanics.piercePct) mechanics.piercePct = asNum(penTarget);
 
-  const physAil = get(row, header, 'Physical Ailment');
+  const physAil = normaliseAilmentId(get(row, header, 'Physical Ailment'));
   const physAilCh = get(row, header, 'Physical Ailment Chance');
   if (physAil) mechanics.physicalAilment = { id: physAil, chance: asNum(physAilCh) };
-  const magAil = get(row, header, 'Magic Ailment');
+  const magAil = normaliseAilmentId(get(row, header, 'Magic Ailment'));
   const magAilCh = get(row, header, 'Magic Ailment Chance');
   if (magAil) mechanics.magicAilment = { id: magAil, chance: asNum(magAilCh) };
 
@@ -339,7 +363,7 @@ function main() {
     jsHeader('index.js', 'Mutations catalog index — byId lookup and drop weights.') +
     `var Avian=globalThis.Avian||(globalThis.Avian={});Avian.data=Avian.data||Object.create(null);\nvar m=Avian.data.mutations=Avian.data.mutations||Object.create(null);\nvar byId=Object.create(null);\n` +
     TIER_KEYS.map((t) => `if(m.items_${t}){for(var k in m.items_${t})byId[k]=m.items_${t}[k];}`).join('\n') +
-    `\nm.byId=Object.freeze(byId);\nm.dropWeights=Object.freeze(${JSON.stringify(dropWeights)});\nm.version='2026.05-mutations-v2-damage-cleanup';\n})();\n`
+    `\nm.byId=Object.freeze(byId);\nm.dropWeights=Object.freeze(${JSON.stringify(dropWeights)});\nm.version='2026.05-mutations-v3';\n})();\n`
   );
 
   console.log(`[mutations-importer] ${count} items, ${(totalBytes / 1024 / 1024).toFixed(2)} MiB written to ${OUTPUT_DIR}`);

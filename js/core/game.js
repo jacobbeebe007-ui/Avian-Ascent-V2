@@ -8134,12 +8134,14 @@ function dealDamage(target,amount,isCrit=false,isMagic=false,srcAbility=null) {
       if((G.player?.augCritBleed||0)>0 && isCrit) applyAilment('enemy','bleed',G.player.augCritBleed);
       if((G.player?.relCarrionLedger||false) && (G.enemyStatus?.bleed?.stacks||0)>0) G.enemy.stats.hp=Math.max(0,G.enemy.stats.hp-1);
       if((G.player?.augHuntersMarkPct||0)>0) G.playerStatus.huntersMarkBonusPct=G.player.augHuntersMarkPct;
+      tryMutationOnHitAilments(dmg, false, true);
     }
     if(_atkKind==='spell' && dmg>0){
       if(G.player?.augSpellPoison) applyAilment('enemy','poison',1);
       if(G.player?.augSpellCritPoison && isCrit) applyAilment('enemy','poison',1);
       if(G.player?.augFirstSpellFear && !G._firstSpellUsed) applyAilment('enemy','feared',1);
       if((G.player?.chillOnSpellChance||0)>0 && chance(Math.min(95,G.player.chillOnSpellChance))) applyAilment('enemy','chilled',1);
+      tryMutationOnHitAilments(dmg, true, false);
     }
     if(G.enemy?.id==='duke_blakiston' && (G.enemyStatus.wardens||0)>0){
       G.enemyStatus.wardens-=1;
@@ -8457,6 +8459,49 @@ function tryApplyAilment(target,ailId,ab) {
   return true;
 }
 
+function getDelayedDmgBoostPct() {
+  if (!G.player) return 0;
+  const eqM = (typeof Avian !== 'undefined' && Avian.mutations && typeof Avian.mutations.getMechanicsRollup === 'function')
+    ? Avian.mutations.getMechanicsRollup(G.player) : null;
+  return Number(eqM?.delayedDmgPct) || 0;
+}
+
+function applyDelayedDamage(target, hitDmg) {
+  if (!hitDmg || Number(hitDmg) <= 0) return false;
+  const status = target === 'player' ? G.playerStatus : G.enemyStatus;
+  let pct = 0;
+  if (target === 'enemy' && G.player) pct = getDelayedDmgBoostPct();
+  const stored = Math.max(1, Math.floor(Number(hitDmg) * (1 + pct / 100)));
+  status.delayed = { dmg: stored };
+  codexMark('statuses', 'delayed', 'seen');
+  if (typeof renderStatuses === 'function') {
+    renderStatuses(target === 'player' ? 'player-status' : 'enemy-status', status);
+  }
+  spawnFloat(target === 'player' ? 'player' : 'enemy', `🎵 Delayed(${stored})`, 'fn-status');
+  const who = target === 'player' ? (G.player?.name || 'you') : (G.enemy?.name || 'enemy');
+  logMsg(`🎵 Delayed stores ${stored} damage — detonates end of ${who}'s next turn!`, 'system');
+  return true;
+}
+
+function tryMutationOnHitAilments(dmg, isMagic, isPhysical) {
+  if (!G.player || !dmg || dmg <= 0) return;
+  const eqM = (typeof Avian !== 'undefined' && Avian.mutations && typeof Avian.mutations.getMechanicsRollup === 'function')
+    ? Avian.mutations.getMechanicsRollup(G.player) : null;
+  if (!eqM) return;
+  const list = isMagic ? (eqM.magicAilments || []) : isPhysical ? (eqM.physicalAilments || []) : [];
+  for (let i = 0; i < list.length; i++) {
+    const entry = list[i];
+    if (!entry || !entry.id || !entry.chance) continue;
+    if (!chance(Math.min(95, Number(entry.chance)))) continue;
+    if (entry.id === 'delayed') {
+      applyDelayedDamage('enemy', dmg);
+    } else {
+      applyAilment('enemy', entry.id, 1);
+    }
+    if (typeof renderStatuses === 'function') renderStatuses('enemy-status', G.enemyStatus);
+  }
+}
+
 function applyAilment(target,ailId,stacks=1) {
   const status=target==='player'?G.playerStatus:G.enemyStatus;
   codexMark('statuses',ailId,'seen');
@@ -8500,7 +8545,7 @@ function applyAilment(target,ailId,stacks=1) {
     const t=Math.max(1, Math.floor(Number(stacks)||2));
     status.confused={turns:t,selfChance:STATUS_CONFUSED_SELF_PCT};
   } else if (ailId==='delayed') {
-    // set by caller with specific dmg
+    return false;
   }
   if(target==='enemy' && G.player){
     const pid=BIRDS[G.player.birdKey]?.passive?.id;

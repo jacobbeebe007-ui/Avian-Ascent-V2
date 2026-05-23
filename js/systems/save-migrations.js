@@ -30,7 +30,7 @@
   /** Combat-pack version stamp surfaced on the save blob. Wipes attached when
    *  this changes so legacy ability/perk/family state never bleeds into a run. */
   var COMBAT_PACK_VERSION = '2026.05-combat-rewrite';
-  var MUTATIONS_PACK_VERSION = '2026.05-mutations-v1';
+  var MUTATIONS_PACK_VERSION = '2026.05-mutations-v3';
 
   /** @type {Array<{from:number,to:number,fn:(save:any)=>any,note?:string}>} */
   var migrations = [

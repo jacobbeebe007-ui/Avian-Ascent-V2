@@ -13,5 +13,5 @@ if(m.items_purple){for(var k in m.items_purple)byId[k]=m.items_purple[k];}
 if(m.items_gold){for(var k in m.items_gold)byId[k]=m.items_gold[k];}
 m.byId=Object.freeze(byId);
 m.dropWeights=Object.freeze({"white":52,"green":25,"blue":14,"purple":7,"gold":2});
-m.version='2026.05-mutations-v2-damage-cleanup';
+m.version='2026.05-mutations-v3';
 })();

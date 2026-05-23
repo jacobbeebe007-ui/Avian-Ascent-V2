@@ -422,8 +422,14 @@
           if (isMagic) ailCh += (Number(eqM.magicAilmentChance) || 0);
           else ailCh += (Number(eqM.physicalAilmentChance) || 0);
         }
-        if (typeof chance === 'function' && chance(ailCh) && typeof applyAilment === 'function') {
-          if (applyAilment('enemy', aid, 1)) {
+        if (typeof chance === 'function' && chance(ailCh)) {
+          var applied = false;
+          if (aid === 'delayed' && typeof applyDelayedDamage === 'function') {
+            applied = applyDelayedDamage('enemy', totalDmg);
+          } else if (typeof applyAilment === 'function') {
+            applied = applyAilment('enemy', aid, 1);
+          }
+          if (applied) {
             ailmentsApplied[aid] = true;
             if (typeof renderStatuses === 'function' && g && g.enemyStatus) renderStatuses('enemy-status', g.enemyStatus);
           }

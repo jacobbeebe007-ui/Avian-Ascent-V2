@@ -147,7 +147,19 @@
   var MECHANICAL_STAT_KEYS = [
     'lightAttackDmgPct', 'mediumAttackDmgPct', 'heavyAttackDmgPct',
     'multiHitDmgPct', 'critDamageBonusPct', 'defPenPct', 'physicalAilmentChance', 'magicAilmentChance',
+    'delayedDmgPct',
   ];
+
+  function pushAilmentEntry(list, entry) {
+    if (!entry || !entry.id || !entry.chance) return;
+    for (var i = 0; i < list.length; i++) {
+      if (list[i].id === entry.id) {
+        list[i].chance = (Number(list[i].chance) || 0) + Number(entry.chance);
+        return;
+      }
+    }
+    list.push({ id: entry.id, chance: Number(entry.chance) });
+  }
 
   function sumEquippedStats(player) {
     var stats = Object.create(null);
@@ -177,9 +189,13 @@
         }
         if (m.physicalAilment) {
           mech.physicalAilmentChance = (mech.physicalAilmentChance || 0) + Number(m.physicalAilment.chance || 0);
+          mech.physicalAilments = mech.physicalAilments || [];
+          pushAilmentEntry(mech.physicalAilments, m.physicalAilment);
         }
         if (m.magicAilment) {
           mech.magicAilmentChance = (mech.magicAilmentChance || 0) + Number(m.magicAilment.chance || 0);
+          mech.magicAilments = mech.magicAilments || [];
+          pushAilmentEntry(mech.magicAilments, m.magicAilment);
         }
       }
     }
@@ -271,6 +287,7 @@
     if (m.piercePct || m.defPenPct) lines.push({ key: 'pierce', label: 'Pierce', value: '+' + (m.piercePct || m.defPenPct) + '%' });
     if (m.physicalAilmentChance) lines.push({ key: 'physAil', label: 'Phys Ailment', value: '+' + m.physicalAilmentChance + '%' });
     if (m.magicAilmentChance) lines.push({ key: 'magAil', label: 'Magic Ailment', value: '+' + m.magicAilmentChance + '%' });
+    if (m.delayedDmgPct) lines.push({ key: 'delayedDmg', label: 'Delayed', value: '+' + m.delayedDmgPct + '% dmg' });
     return { stats: s, mechanics: m, lines: lines };
   }
 
