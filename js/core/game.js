@@ -423,6 +423,9 @@ function initStatLedgerForNewRun(player){
 }
 function ensureStatLedgerAfterLoad(player){
   if(!player?.stats) return;
+  if(typeof Avian?.mutations?.reapplyPlayerStatsFromSources==='function'){
+    Avian.mutations.reapplyPlayerStatsFromSources(player);
+  }
   const L = ensureStatLedger(player);
   if(L.birdBaseline && typeof L.birdBaseline === 'object' && Object.keys(L.birdBaseline).length > 0){
     return;
@@ -1958,8 +1961,9 @@ function openNest() {
   const _nestAcc=Math.min(100,s.acc+(G.battleHymnActive?G.battleHymnACC:0)-(G.playerStatus.accDebuff||0));
   const _nestDodge=getEffectiveDodge(p);
   const _nestCrit=Math.min(100,(s.critChance||5)+(p._velocityStacks||0));
+  const _eqMech=typeof Avian?.mutations?.getMechanicsRollup==='function'?Avian.mutations.getMechanicsRollup(p):null;
   const _nestCritMultBase=p.goldCritMult||1.8;
-  const _nestCritBonusPct=p.critDamageBonusPct||0;
+  const _nestCritBonusPct=(p.critDamageBonusPct||0)+(_eqMech?.critDamageBonusPct||0);
   const _nestCritMultDisp=_nestCritBonusPct>0?`${formatCombatNumber(_nestCritMultBase)}× <span class="nest-crit-bonus" title="Added to multiplier on critical hits">(+${formatCombatNumber(_nestCritBonusPct)})</span>`:`${formatCombatNumber(_nestCritMultBase)}×`;
   function _nestStat(val,base,suffix=''){const d=val-base;const col=d>0?'var(--red-light)':d<0?'var(--purple-light)':'var(--gold)';const arr=d>0?' ▲▲':d<0?' ▼▼':'';return `<span style="color:${col}">${formatCombatNumber(val)}${suffix}${arr}</span>`;}
   html+=`<div class="nest-section"><div class="nest-section-title">📊 Stats ${G.turn?'(In Battle)':''}</div>
@@ -2057,16 +2061,42 @@ function closeNest() {
   }
 }
 
+function nestTierCssClass(tier){
+  return normalizeRewardTier(tier);
+}
+function nestTierColorVar(tier){
+  const key=nestTierCssClass(tier);
+  return {grey:'var(--tier-grey)',green:'var(--tier-green)',blue:'var(--tier-blue)',purple:'var(--tier-purple)',gold:'var(--gold)'}[key]||'var(--gold)';
+}
+function getNestSlotIcons(){
+  return Avian?.mutations?.SLOT_ICONS||{};
+}
+
 function _nestMutationItemHtml(itemId, slotLbl, slotKey, slotIndex){
+  const icons=getNestSlotIcons();
+  const slotBadge=icons[slotKey]?`<span class="nest-slot-badge" title="${escapeHtmlRoster(slotLbl)}">${icons[slotKey]}</span>`:'';
+  if(!itemId){
+    return `<div class="nest-equip-slot" data-nest-slot="${slotKey}" data-nest-idx="${slotIndex}"><div class="nest-equip-slot-lbl">${slotBadge}${slotLbl}</div><div class="nest-equip-slot-name" style="color:var(--text-dim)">Empty</div></div>`;
+  }
   const item=typeof Avian?.mutations?.getItem==='function'?Avian.mutations.getItem(itemId):null;
-  if(!item) return `<div class="nest-equip-slot" data-nest-slot="${slotKey}" data-nest-idx="${slotIndex}"><div class="nest-equip-slot-lbl">${slotLbl}</div><div class="nest-equip-slot-name" style="color:var(--text-dim)">Empty</div></div>`;
+  if(!item){
+    return `<div class="nest-equip-slot" data-nest-slot="${slotKey}" data-nest-idx="${slotIndex}"><div class="nest-equip-slot-lbl">${slotBadge}${slotLbl}</div><div class="nest-equip-slot-name" style="color:var(--text-dim)">Empty</div></div>`;
+  }
+  const tierCss=nestTierCssClass(item.tier);
+  const tierMeta=rewardTierMeta(item.tier);
+  const tierColor=nestTierColorVar(item.tier);
   const tip=escapeHtmlRoster(item.statLine||item.name);
-  return `<div class="nest-equip-slot filled tier-${item.tier}" title="${tip}" data-nest-slot="${slotKey}" data-nest-idx="${slotIndex}" data-nest-item="${itemId}"><div class="nest-equip-slot-lbl">${slotLbl}</div><div class="nest-equip-slot-name">${escapeHtmlRoster(item.name)}</div></div>`;
+  return `<div class="nest-equip-slot filled tier-${item.tier} tier-ui-${tierCss}" title="${tip}" data-nest-slot="${slotKey}" data-nest-idx="${slotIndex}" data-nest-item="${itemId}"><div class="nest-equip-slot-lbl">${slotBadge}${slotLbl}</div><div class="nest-tier-label" style="color:${tierColor}">${tierMeta.label}</div><div class="nest-equip-slot-name" style="color:${tierColor}">${escapeHtmlRoster(item.name)}</div></div>`;
 }
 
 function handleNestEquipClick(ev){
-  const el=ev.target.closest('[data-nest-slot],[data-nest-inv]');
+  const el=ev.target.closest('[data-nest-slot],[data-nest-inv],[data-nest-filter]');
   if(!el || !G.player) return;
+  if(el.dataset.nestFilter){
+    G._nestActiveSlotFilter=el.dataset.nestFilter;
+    openNest();
+    return;
+  }
   if(el.dataset.nestInv){
     const itemId=el.dataset.nestInv;
     if(typeof Avian?.mutations?.equipAuto==='function') Avian.mutations.equipAuto(G.player, itemId);
@@ -2087,15 +2117,21 @@ function buildNestEquipmentSection(player){
   const order=slotsDef?.order||['wing','feet','head','beak','chest','eyes','tail','plumage','syrinx'];
   const limits=slotsDef?.limits||{};
   const labels=Avian.mutations.SLOT_LABELS||{};
+  const icons=getNestSlotIcons();
+  if(!G._nestActiveSlotFilter || !order.includes(G._nestActiveSlotFilter)) G._nestActiveSlotFilter=order[0];
+  const activeFilter=G._nestActiveSlotFilter;
+  const filterHtml=`<div class="nest-slot-filters">${order.map(sk=>{
+    const active=sk===activeFilter?' active':'';
+    const icon=icons[sk]||'🧬';
+    return `<button type="button" class="nest-slot-filter${active}" data-nest-filter="${sk}">${icon} ${escapeHtmlRoster(labels[sk]||sk)}</button>`;
+  }).join('')}</div>`;
   const eq=player.equippedMutations||{};
   let slotsHtml='';
-  for(const sk of order){
-    const cap=limits[sk]||1;
-    const arr=Array.isArray(eq[sk])?eq[sk]:[];
-    for(let i=0;i<cap;i++){
-      const lbl=cap>1?`${labels[sk]||sk} ${i+1}`:(labels[sk]||sk);
-      slotsHtml+=_nestMutationItemHtml(arr[i]||null, lbl, sk, i);
-    }
+  const cap=limits[activeFilter]||1;
+  const arr=Array.isArray(eq[activeFilter])?eq[activeFilter]:[];
+  for(let i=0;i<cap;i++){
+    const lbl=cap>1?`${labels[activeFilter]||activeFilter} ${i+1}`:(labels[activeFilter]||activeFilter);
+    slotsHtml+=_nestMutationItemHtml(arr[i]||null, lbl, activeFilter, i);
   }
   const summary=typeof Avian.mutations.getEquippedSummary==='function'?Avian.mutations.getEquippedSummary(player):{lines:[]};
   const bonusHtml=(summary.lines||[]).map(l=>{
@@ -2104,21 +2140,30 @@ function buildNestEquipmentSection(player){
     return `<span class="nest-equip-bonus-chip">${escapeHtmlRoster(l.label)} ${escapeHtmlRoster(valDisp)}</span>`;
   }).join('')||'<span class="nest-inv-empty">No mutation bonuses yet.</span>';
   const inv=player.mutationInventory||[];
+  const filteredInv=inv.filter(entry=>{
+    const id=typeof entry==='string'?entry:entry?.itemId;
+    const item=Avian.mutations.getItem(id);
+    return item && item.slot===activeFilter;
+  });
   let invHtml='';
-  if(!inv.length){
-    invHtml='<div class="nest-inv-empty">Inventory empty — win battles, visit the shop, or explore the grove.</div>';
+  if(!filteredInv.length){
+    invHtml=`<div class="nest-inv-empty">No ${escapeHtmlRoster(labels[activeFilter]||activeFilter)} mutations in inventory.</div>`;
   } else {
     invHtml='<div class="nest-inventory-grid">';
-    for(const entry of inv){
+    for(const entry of filteredInv){
       const id=typeof entry==='string'?entry:entry?.itemId;
       const item=Avian.mutations.getItem(id);
       if(!item) continue;
+      const tierCss=nestTierCssClass(item.tier);
+      const tierMeta=rewardTierMeta(item.tier);
+      const tierColor=nestTierColorVar(item.tier);
       const tip=escapeHtmlRoster(item.statLine||item.name);
-      invHtml+=`<div class="nest-inv-item tier-${item.tier}" title="${tip}" data-nest-inv="${id}"><strong>${escapeHtmlRoster(item.name)}</strong><br><span style="color:var(--text-dim)">${escapeHtmlRoster(labels[item.slot]||item.slot)} · ${item.tier}</span></div>`;
+      const slotBadge=icons[item.slot]?`<span class="nest-slot-badge">${icons[item.slot]}</span>`:'';
+      invHtml+=`<div class="nest-inv-item tier-${item.tier} tier-ui-${tierCss}" title="${tip}" data-nest-inv="${id}">${slotBadge}<div class="nest-tier-label" style="color:${tierColor}">${tierMeta.label}</div><strong style="color:${tierColor}">${escapeHtmlRoster(item.name)}</strong><br><span style="color:${tierColor}">${escapeHtmlRoster(labels[item.slot]||item.slot)}</span></div>`;
     }
     invHtml+='</div>';
   }
-  return `<div class="nest-section nest-equipment-section"><div class="nest-section-title">🧬 Mutations Equipped</div><div class="nest-equip-grid">${slotsHtml}</div><div class="nest-ledger-subtitle">Bonus from equipped</div><div class="nest-equip-bonus">${bonusHtml}</div><div class="nest-section-title" style="margin-top:14px">🎒 Mutation Inventory (${inv.length})</div>${invHtml}<p class="nest-ledger-note">Click inventory items to equip. Click equipped items to store in inventory. Full slots auto-swap.</p></div>`;
+  return `<div class="nest-section nest-equipment-section"><div class="nest-section-title">🧬 Mutations Equipped</div>${filterHtml}<div class="nest-ledger-subtitle">Equipped · ${escapeHtmlRoster(labels[activeFilter]||activeFilter)}</div><div class="nest-equip-grid">${slotsHtml}</div><div class="nest-ledger-subtitle">Bonus from equipped</div><div class="nest-equip-bonus">${bonusHtml}</div><div class="nest-section-title" style="margin-top:14px">🎒 Inventory · ${escapeHtmlRoster(labels[activeFilter]||activeFilter)} (${filteredInv.length})</div>${invHtml}<p class="nest-ledger-note">Select a slot type above. Click inventory items to equip. Click equipped items to store in inventory.</p></div>`;
 }
 
 /**
@@ -2219,20 +2264,24 @@ function getBaseSkillSlotsForBird(birdKey){
   return data.slotLayout.map(slot=>createSkillSlotState(slot.slotIndex, slot.familyId, null, 0, slot.abilityId, 0, []));
 }
 function getFamilyEvolutionAbilityStateFromId(birdKey, abilityId){
-  const lookup = getBirdFamilyEvolutionData(birdKey)?.abilityLookup;
-  if(!lookup) return null;
   const raw = String(abilityId || '');
-  let state = lookup[raw] || null;
+  const lookup = getBirdFamilyEvolutionData(birdKey)?.abilityLookup;
+  let state = lookup?.[raw] || null;
   if(state) return state;
   const canon = resolveAbilityAliasSourceId(raw);
-  if(canon && canon !== raw) state = lookup[canon] || null;
-  return state;
+  if(canon && canon !== raw && lookup?.[canon]) return lookup[canon];
+  const universal = globalThis.UNIVERSAL_FAMILY_ABILITY_LOOKUP;
+  if(universal?.[raw]) return universal[raw];
+  if(canon && universal?.[canon]) return universal[canon];
+  return null;
 }
 function getSkillSlotFamilyDef(slotOrFamilyId, birdKey='sparrow'){
-  const catalog = getBirdSkillFamilyCatalog(birdKey);
-  if(!catalog) return null;
   const familyId = typeof slotOrFamilyId==='string' ? slotOrFamilyId : slotOrFamilyId?.familyId;
-  return catalog[familyId] || null;
+  if(!familyId) return null;
+  const catalog = getBirdSkillFamilyCatalog(birdKey);
+  if(catalog?.[familyId]) return catalog[familyId];
+  if(typeof globalThis.buildFamilyEntryFromPackId==='function') return globalThis.buildFamilyEntryFromPackId(familyId);
+  return null;
 }
 function getSkillSlotPathDef(slot, birdKey='sparrow'){
   const family = getSkillSlotFamilyDef(slot, birdKey);
@@ -2249,7 +2298,7 @@ function normalizeSkillSlotState(slot, fallback, birdKey='sparrow'){
   const base = fallback || createSkillSlotState(0, null, null, 0, '', 0, []);
   const catalog = getBirdSkillFamilyCatalog(birdKey);
   const rawFam = slot?.familyId ?? base.familyId;
-  if(catalog && rawFam && !catalog[rawFam]){
+  if(catalog && rawFam && !catalog[rawFam] && !getSkillSlotFamilyDef(rawFam, birdKey)){
     return createSkillSlotState(base.slotIndex, base.familyId, null, 0, base.abilityId, 0, []);
   }
   let next = createSkillSlotState(slot?.slotIndex ?? base.slotIndex, slot?.familyId ?? base.familyId, slot?.pathId ?? base.pathId, slot?.tier ?? base.tier, slot?.abilityId ?? base.abilityId, slot?.masteryCount ?? base.masteryCount, slot?.masteries ?? base.masteries);
@@ -2316,7 +2365,6 @@ function resolveSkillSlotEvolutionAction(slot, player=G.player){
   if(!slot || !usesFamilySkillEvolution(player)) return 'none';
   if(slotNeedsPathChoice(slot)) return 'choose_path';
   if(slotCanTierUp(slot, player?.birdKey)) return 'tier_up';
-  if(isSkillSlotMaxTier(slot, player?.birdKey) && !!G.endlessMode) return 'mastery';
   return 'none';
 }
 function applySkillPathSelection(slot, pathId, player=G.player){
@@ -2416,6 +2464,22 @@ function ensureFamilyEvolutionState(player){
           return slot;
         });
     state.skillSlots = baseSlots.map((baseSlot, idx)=>normalizeSkillSlotState(rawSlots[idx], baseSlot, birdKey));
+    (player.abilities||[]).forEach((ab, idx)=>{
+      if(!ab?.id) return;
+      const slot = state.skillSlots[idx];
+      if(!slot) return;
+      const famId = ab.familyId || slot.familyId;
+      if(!famId && !getFamilyEvolutionAbilityStateFromId(birdKey, ab.id)) return;
+      const resolvedFam = famId || getFamilyEvolutionAbilityStateFromId(birdKey, ab.id)?.familyId;
+      if(resolvedFam) slot.familyId = resolvedFam;
+      slot.abilityId = ab.id;
+      slot.slotIndex = idx;
+      const info = getFamilyEvolutionAbilityStateFromId(birdKey, ab.id);
+      if(info && info.familyId===slot.familyId){
+        slot.pathId = slot.pathId || info.pathId || null;
+        slot.tier = Math.max(slot.tier||0, info.tier||0);
+      }
+    });
     syncPlayerAbilitiesFromSkillSlots(player);
   }else{
     try{
@@ -2476,6 +2540,7 @@ function saveRun() {
       } : null,
       savedAt: Date.now(),
       shinyObjects: Math.max(0, Math.floor(Number(G.shinyObjects) || 0)),
+      pendingSkillEvolutionChoices: Math.max(0, Math.floor(Number(G._pendingSkillEvolutionChoices) || 0)),
       owEncounterChain: (!G.endlessMode && Array.isArray(G._owStageEnemies) && G._owStageEnemies.length) ? {
         owStageEnemies: G._owStageEnemies.slice(),
         owEnemyIndex: G._owEnemyIndex || 0,
@@ -2546,7 +2611,7 @@ function continueRun() {
   G.runUpgradesPurchased=new Set(save.runUpgradesPurchased||[]);
   G._shopSnapshots=save.shopSnapshots||{};
   G._pendingLevelUpChoices=0;
-  G._pendingSkillEvolutionChoices=0;
+  G._pendingSkillEvolutionChoices=Math.max(0, Math.floor(Number(save.pendingSkillEvolutionChoices) || 0));
   G.codex=save.codex||{abilities:{},enemies:{},birds:{},artifacts:{},statuses:{}};
   G.shinyObjects = Math.max(0, Math.floor(Number(save.shinyObjects) || 0));
   G.overworldEnemySeedPack=null;
@@ -4647,10 +4712,16 @@ function restoreBattleTempPlayerStats(){
     if(Object.prototype.hasOwnProperty.call(snap, k)) G.player.stats[k] = snap[k];
   }
   G._battleTempPlayerStatsSnapshot = null;
+  if(typeof Avian?.mutations?.reapplyPlayerStatsFromSources==='function'){
+    Avian.mutations.reapplyPlayerStatsFromSources(G.player);
+  }
 }
 
 function preparePlayerCombatLoadout(player){
   if(!player) return;
+  if(typeof Avian?.mutations?.reapplyPlayerStatsFromSources==='function'){
+    Avian.mutations.reapplyPlayerStatsFromSources(player);
+  }
   ensureFamilyEvolutionState(player);
   syncPlayerAbilitiesFromSkillSlots(player);
   ensureMainAttackAndLoadoutRules();
@@ -5182,18 +5253,19 @@ function refreshBattleUI() {
   // Stats
   // Compute effective stats with buffs for display
   const _effDef=p.def+(G.battleHymnActive?G.battleHymnDEF:0);
-  const _effAcc=Math.min(100,p.acc+(G.battleHymnActive?G.battleHymnACC:0));
+  const _effAcc=Math.min(100,p.acc+(G.battleHymnActive?G.battleHymnACC:0)-(G.playerStatus?.accDebuff||0));
   const _effDodge=getEffectiveDodge(G.player);
   const _effSpd=(p.spd||0) + ((G.playerStatus?.slow?.spdPenalty)?-(G.playerStatus.slow.spdPenalty||0):0);
   const _effMatk=(p.matk||8);
   const _effMdef=(p.mdef||8);
+  const _eqMechCombat=typeof Avian?.mutations?.getMechanicsRollup==='function'?Avian.mutations.getMechanicsRollup(G.player):null;
   const escAttr=(s)=>String(s??'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
   const _trendTag = (diff) => diff>0 ? '<small class="stat-trend up">▲▲</small>' : (diff<0 ? '<small class="stat-trend down">▼▼</small>' : '');
   const _atkDiff = G.warcryActive ? Math.max(1,Math.floor((p.atk||0)*(G.warcryATK||0)/100)) : (G.playerStatus.weaken ? -1 : 0);
   const _effAtk=G.warcryActive?(p.atk||0)*(1+G.warcryATK/100):p.atk;
   const _critChance = Math.min(100,(p.critChance||5));
   const _critBase=G.player.goldCritMult||1.5;
-  const _critBonusPct=G.player.critDamageBonusPct||0;
+  const _critBonusPct=(G.player.critDamageBonusPct||0)+(_eqMechCombat?.critDamageBonusPct||0);
   const _critMultHtml=_critBonusPct>0?`${formatCombatNumber(_critBase)}×<small class="stat-cd-bonus">+${formatCombatNumber(_critBonusPct)}</small>`:`${formatCombatNumber(_critBase)}×`;
   const _ccBaseStore=(p.critChance||5);
   const _statNote=(label,diff,srcUp='',srcDown='')=>`${label} ${diff>=0?'+':''}${diff}. ${diff>0?srcUp:(diff<0?srcDown:'No active modifier.')}`;
@@ -11392,12 +11464,13 @@ function renderSkillEvolutionSlotSelection(){
   grid.innerHTML='';
   grid.classList.remove('lu-feather-grid');
   getSkillSlots(G.player).slice().sort((a,b)=>a.slotIndex-b.slotIndex).forEach(slot=>{
+    if(!slot?.abilityId) return;
     const tmpl = ABILITY_TEMPLATES?.[slot.abilityId] || {};
     const family = getSkillSlotFamilyDef(slot, G.player?.birdKey);
     const action = resolveSkillSlotEvolutionAction(slot, G.player);
     const card=document.createElement('div');
     card.className='skill-upgrade-card';
-    card.innerHTML=`<div class="su-name">${tmpl.name || slot.abilityId}</div><div class="su-lv">${family?.displayName||slot.familyId||'Family'} · Tier ${slot.tier||0}${slot.pathId?` · ${slot.pathId.replace(/_/g,' ')}`:''}</div><div class="su-effect">${(tmpl.levels?.[0]?.desc||tmpl.desc||'No description')}<br><span style="color:var(--gold-light)">${action==='choose_path'?'Choose a branch path.':action==='tier_up'?'Preview the next tier in this path.':action==='mastery'?'Choose an Endless mastery.':'No further evolution available in Story mode.'}</span></div>`;
+    card.innerHTML=`<div class="su-name">${tmpl.name || slot.abilityId}</div><div class="su-lv">${family?.displayName||slot.familyId||'Family'} · Tier ${slot.tier||0}${slot.pathId?` · ${slot.pathId.replace(/_/g,' ')}`:''}</div><div class="su-effect">${(tmpl.levels?.[0]?.desc||tmpl.desc||'No description')}<br><span style="color:var(--gold-light)">${action==='choose_path'?'Choose a branch path.':action==='tier_up'?'Preview the next tier in this path.':'Fully evolved — no further upgrades.'}</span></div>`;
     if(action==='none'){
       card.style.opacity='.55';
       card.style.cursor='default';
@@ -11501,7 +11574,6 @@ function confirmSkillEvolutionChoice(){
     const action = resolveSkillSlotEvolutionAction(slot, G.player);
     if(action==='choose_path') return renderSkillEvolutionPathSelection(slot);
     if(action==='tier_up') return renderSkillEvolutionTierPreview(slot);
-    if(action==='mastery') return renderSkillEvolutionMasterySelection(slot);
     logMsg('That slot has no evolution available right now.','miss');
     return;
   }

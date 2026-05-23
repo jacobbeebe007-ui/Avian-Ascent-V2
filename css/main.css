@@ -1886,6 +1886,17 @@ html.avian-ow-nest-embed #app{min-height:100vh;background:#0a0c0f;}
 .nest-equip-slot.tier-blue{border-color:rgba(106,168,232,.5);}
 .nest-equip-slot.tier-purple{border-color:rgba(168,106,232,.5);}
 .nest-equip-slot.tier-gold{border-color:rgba(201,168,76,.7);}
+.nest-equip-slot.tier-ui-grey,.nest-inv-item.tier-ui-grey{border-color:rgba(106,120,144,.45);background:linear-gradient(180deg,rgba(106,120,144,.08),var(--surface2));}
+.nest-equip-slot.tier-ui-green,.nest-inv-item.tier-ui-green{border-color:rgba(76,138,106,.45);background:linear-gradient(180deg,rgba(76,138,106,.10),var(--surface2));}
+.nest-equip-slot.tier-ui-blue,.nest-inv-item.tier-ui-blue{border-color:rgba(74,106,201,.45);background:linear-gradient(180deg,rgba(74,106,201,.10),var(--surface2));}
+.nest-equip-slot.tier-ui-purple,.nest-inv-item.tier-ui-purple{border-color:rgba(122,76,201,.45);background:linear-gradient(180deg,rgba(122,76,201,.10),var(--surface2));}
+.nest-equip-slot.tier-ui-gold,.nest-inv-item.tier-ui-gold{border-color:rgba(201,168,76,.55);background:linear-gradient(180deg,rgba(201,168,76,.12),var(--surface2));}
+.nest-tier-label{font-size:.58rem;letter-spacing:.08em;text-transform:uppercase;margin:2px 0;font-family:'Cinzel',serif;}
+.nest-slot-filters{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0 10px;}
+.nest-slot-filter{font-size:.68rem;padding:4px 10px;border-radius:999px;border:1px solid var(--border);background:var(--surface2);color:var(--text-dim);cursor:pointer;transition:all .15s;font-family:'Cinzel',serif;}
+.nest-slot-filter:hover{border-color:var(--gold);color:var(--text);}
+.nest-slot-filter.active{border-color:var(--gold);background:rgba(201,168,76,.12);color:var(--gold-light);}
+.nest-slot-badge{display:inline-block;font-size:.85rem;margin-right:4px;vertical-align:middle;}
 .nest-equip-bonus{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0 4px;}
 .nest-equip-bonus-chip{font-size:.72rem;padding:3px 8px;border-radius:999px;background:rgba(106,184,154,.15);border:1px solid rgba(106,184,154,.35);color:#6ab89a;}
 .nest-inventory-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;max-height:220px;overflow-y:auto;}

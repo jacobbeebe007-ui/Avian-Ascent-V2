@@ -212,6 +212,65 @@
     if (b === 'base') return null;
     return b; // 'power' | 'ailment' | 'utility'
   }
+  function buildFamilyEntry(fam, slotIdx) {
+    var paths = { power: { pathId: 'power', displayName: 'Power', abilities: {} }, ailment: { pathId: 'ailment', displayName: 'Ailment', abilities: {} }, utility: { pathId: 'utility', displayName: 'Utility', abilities: {} } };
+    var baseId = null;
+    for (var rid in pack.skillTrees) {
+      var row = pack.skillTrees[rid];
+      if (row.familyId !== fam.id) continue;
+      var tier = levelToTier(row.level);
+      var pathId = branchToPathId(row.branch);
+      if (pathId === null) {
+        baseId = row.id;
+      } else if (paths[pathId]) {
+        paths[pathId].abilities[tier] = row.id;
+      }
+    }
+    return {
+      familyId: fam.id,
+      displayName: fam.name || fam.id,
+      baseAbilityId: baseId,
+      maxTier: fam.maxTier || 3,
+      starterSlot: slotIdx,
+      paths: paths,
+    };
+  }
+  var UNIVERSAL_FAMILY_CACHE = Object.create(null);
+  globalThis.buildFamilyEntryFromPackId = function buildFamilyEntryFromPackId(familyId) {
+    if (!familyId) return null;
+    if (UNIVERSAL_FAMILY_CACHE[familyId]) return UNIVERSAL_FAMILY_CACHE[familyId];
+    var fam = pack.families && pack.families[familyId];
+    if (!fam) return null;
+    var entry = buildFamilyEntry(fam, fam.starterSlot != null ? fam.starterSlot : -1);
+    UNIVERSAL_FAMILY_CACHE[familyId] = entry;
+    return entry;
+  };
+  globalThis.UNIVERSAL_FAMILY_ABILITY_LOOKUP = Object.create(null);
+  for (var ufId in (pack.families || {})) {
+    var ufEntry = globalThis.buildFamilyEntryFromPackId(ufId);
+    if (!ufEntry) continue;
+    for (var ufPathKey in (ufEntry.paths || {})) {
+      var ufPath = ufEntry.paths[ufPathKey];
+      for (var ufTierKey in (ufPath.abilities || {})) {
+        var ufAbId = ufPath.abilities[ufTierKey];
+        var ufTier = Number(ufTierKey) || 0;
+        globalThis.UNIVERSAL_FAMILY_ABILITY_LOOKUP[ufAbId] = {
+          familyId: ufEntry.familyId,
+          pathId: ufPath.pathId,
+          tier: ufTier,
+          abilityId: ufAbId,
+        };
+      }
+    }
+    if (ufEntry.baseAbilityId) {
+      globalThis.UNIVERSAL_FAMILY_ABILITY_LOOKUP[ufEntry.baseAbilityId] = {
+        familyId: ufEntry.familyId,
+        pathId: null,
+        tier: 0,
+        abilityId: ufEntry.baseAbilityId,
+      };
+    }
+  }
   function buildFamilyForBird(birdKey) {
     if (!pack.families || !pack.skillTrees) return null;
     var alias = packKeyFor(birdKey);
@@ -227,30 +286,6 @@
     var slot0Fam = startersBySlot[0];
     var slot1Fam = startersBySlot[1];
     if (!slot0Fam || !slot1Fam) return null;
-    // Build family path data for each starter family
-    function buildFamilyEntry(fam, slotIdx) {
-      var paths = { power: { pathId: 'power', displayName: 'Power', abilities: {} }, ailment: { pathId: 'ailment', displayName: 'Ailment', abilities: {} }, utility: { pathId: 'utility', displayName: 'Utility', abilities: {} } };
-      var baseId = null;
-      for (var rid in pack.skillTrees) {
-        var row = pack.skillTrees[rid];
-        if (row.familyId !== fam.id) continue;
-        var tier = levelToTier(row.level);
-        var pathId = branchToPathId(row.branch);
-        if (pathId === null) {
-          baseId = row.id;
-        } else if (paths[pathId]) {
-          paths[pathId].abilities[tier] = row.id;
-        }
-      }
-      return {
-        familyId: fam.id,
-        displayName: fam.name || fam.id,
-        baseAbilityId: baseId,
-        maxTier: fam.maxTier || 3,
-        starterSlot: slotIdx,
-        paths: paths,
-      };
-    }
     var famEntry0 = buildFamilyEntry(slot0Fam, 0);
     var famEntry1 = buildFamilyEntry(slot1Fam, 1);
     var slotLayout = [

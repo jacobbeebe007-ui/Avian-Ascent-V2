@@ -341,9 +341,11 @@
     if (!item) return null;
     var tier = item.tier || 'white';
     var uiTier = tier === 'white' ? 'grey' : tier;
+    var tierLabels = { grey: 'Common', green: 'Uncommon', blue: 'Rare', purple: 'Epic', gold: 'Legendary' };
     return {
       id: item.id,
       tier: uiTier,
+      tierLabel: tierLabels[uiTier] || 'Common',
       type: 'mutation',
       icon: SLOT_ICONS[item.slot] || '🧬',
       name: item.name,
@@ -435,6 +437,7 @@
   mutations.formatMutationDesc = formatMutationDesc;
   mutations.formatSlotTag = formatSlotTag;
   mutations.SLOT_LABELS = SLOT_LABELS;
+  mutations.SLOT_ICONS = SLOT_ICONS;
   mutations.TIER_ICONS = TIER_ICONS;
   mutations.MUTATION_SHOP_COSTS = MUTATION_SHOP_COSTS;
 

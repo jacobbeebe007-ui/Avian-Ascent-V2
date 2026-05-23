@@ -154,6 +154,18 @@
     if (slot < 0) slot = player.abilities.length >= 4 ? 3 : player.abilities.length;
     var built = shop.buildAbilityInstance(baseAbilityId, familyId, slot);
     player.abilities[slot] = built;
+    if (typeof globalThis.ensureFamilyEvolutionState === 'function') {
+      globalThis.ensureFamilyEvolutionState(player);
+      var slots = (typeof globalThis.getSkillSlots === 'function') ? globalThis.getSkillSlots(player) : [];
+      var skillSlot = (typeof globalThis.getSkillSlotByIndex === 'function') ? globalThis.getSkillSlotByIndex(player, slot) : null;
+      if (skillSlot) {
+        skillSlot.familyId = familyId;
+        skillSlot.abilityId = baseAbilityId;
+        skillSlot.pathId = null;
+        skillSlot.tier = 0;
+        skillSlot.slotIndex = slot;
+      }
+    }
     // Register the dispatcher proxy for this id
     if (Avian.dispatcher && typeof Avian.dispatcher.registerActions === 'function' && globalThis.ACTIONS) {
       Avian.dispatcher.registerActions(globalThis.ACTIONS);
