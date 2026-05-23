@@ -59,13 +59,12 @@
     var soft = (typeof softenMainStatForCombat === 'function') ? softenMainStatForCombat(stat) : stat;
     var hp = Number(row.hpScalePct) || 0;
     var atkMult = (typeof COMBAT_OFFENSIVE_STAT_MULT === 'number') ? COMBAT_OFFENSIVE_STAT_MULT : 0.75;
-    var dmg = b + Math.floor(soft * atkMult * (s / 100));
-    if (hp > 0) dmg += Math.floor(maxHpForScaling() * (hp / 100));
-    // Small variance ±20% to mirror legacy pdmg roll
-    var lo = Math.max(1, Math.floor(dmg * 0.85));
-    var hi = Math.max(lo, Math.floor(dmg * 1.15));
-    var rolled = Math.floor(Math.random() * (hi - lo + 1)) + lo;
-    return Math.max(1, rolled);
+    var dmg = b + (soft * atkMult * (s / 100));
+    if (hp > 0) dmg += (maxHpForScaling() * (hp / 100));
+    var lo = Math.max(1, dmg * 0.85);
+    var hi = Math.max(lo, dmg * 1.15);
+    var rolled = lo + Math.random() * (hi - lo);
+    return Math.max(1, Math.round(rolled * 100) / 100);
   }
 
   function getCritChanceFor(ab) {
@@ -105,37 +104,115 @@
     };
   }
 
+  function spawnTrendFloat(who, kind) {
+    if (typeof spawnFloat !== 'function') return;
+    if (kind === 'buff') spawnFloat(who, '▲▲', 'fn-buff-trend');
+    else if (kind === 'debuff') spawnFloat(who, '▼▼', 'fn-debuff-trend');
+  }
+
+  function applyEnemyStatDebuff(statKey, pct) {
+    var g = globalThis.G;
+    if (!g || !g.enemy || !g.enemy.stats) return false;
+    var es = g.enemyStatus = g.enemyStatus || {};
+    var stats = g.enemy.stats;
+    var cur = Number(stats[statKey]) || 0;
+    var amt = Math.round(cur * (Number(pct) || 0) / 100 * 100) / 100;
+    if (amt <= 0) return false;
+    stats[statKey] = Math.max(0, Math.round((cur - amt) * 100) / 100);
+    if (!es.dispatcherDebuffs) es.dispatcherDebuffs = [];
+    es.dispatcherDebuffs.push({ statKey: statKey, amt: amt, turns: 1 });
+    spawnTrendFloat('enemy', 'debuff');
+    return true;
+  }
+
+  function revertEnemyDispatcherDebuffs() {
+    var g = globalThis.G;
+    if (!g || !g.enemy || !g.enemy.stats || !g.enemyStatus || !g.enemyStatus.dispatcherDebuffs) return;
+    var stats = g.enemy.stats;
+    var list = g.enemyStatus.dispatcherDebuffs;
+    for (var i = 0; i < list.length; i++) {
+      var d = list[i];
+      if ((d.turns || 0) <= 0) continue;
+      d.turns--;
+      if (d.turns <= 0) {
+        stats[d.statKey] = Math.round(((Number(stats[d.statKey]) || 0) + (d.amt || 0)) * 100) / 100;
+      }
+    }
+    g.enemyStatus.dispatcherDebuffs = list.filter(function (d) { return (d.turns || 0) > 0; });
+    if (!g.enemyStatus.dispatcherDebuffs.length) delete g.enemyStatus.dispatcherDebuffs;
+  }
+
   // ---- riders -----------------------------------------------------------
   var riderHandlers = {
-    gainDodge: function (n, ps) { ps.dispatcherDodge = Math.max(ps.dispatcherDodge || 0, n); ps.dispatcherDodgeT = 1; },
-    gainSpeed: function (n, ps, p) { ps.dispatcherSpeed = Math.max(ps.dispatcherSpeed || 0, n); ps.dispatcherSpeedT = 1; if (p && p.stats) p.stats.spd = (p.stats.spd || 0) + n; ps._dispatcherSpdLoan = (ps._dispatcherSpdLoan || 0) + n; },
-    gainCritChance: function (n, ps) { ps.dispatcherCrit = Math.max(ps.dispatcherCrit || 0, n); ps.dispatcherCritT = 1; },
-    gainCritDamage: function (n, ps) { ps.dispatcherCritDmg = Math.max(ps.dispatcherCritDmg || 0, n); ps.dispatcherCritDmgT = 1; },
-    gainAtk: function (n, ps, p) { if (!p || !p.stats) return; p.stats.atk = (p.stats.atk || 0) + n; ps._dispatcherAtkLoan = (ps._dispatcherAtkLoan || 0) + n; ps.dispatcherAtkT = 1; },
-    gainMatk: function (n, ps, p) { if (!p || !p.stats) return; p.stats.matk = (p.stats.matk || 0) + n; ps._dispatcherMatkLoan = (ps._dispatcherMatkLoan || 0) + n; ps.dispatcherMatkT = 1; },
-    gainGuard: function (_n, ps) { ps.defending = Math.max(ps.defending || 0, 1); },
-    gainBrace: function (_n, ps) { ps.dispatcherBrace = 1; ps.dispatcherBraceT = 1; },
-    gainCounter: function (_n, ps) { ps.counterInstinct = Math.max(ps.counterInstinct || 0, 1); },
-    gainTaunt: function (_n, ps) { ps.dispatcherTaunt = 1; ps.dispatcherTauntT = 1; },
+    gainDodge: function (n, ps) { ps.dispatcherDodge = Math.max(ps.dispatcherDodge || 0, n); ps.dispatcherDodgeT = 1; spawnTrendFloat('player', 'buff'); },
+    gainSpeed: function (n, ps, p) { ps.dispatcherSpeed = Math.max(ps.dispatcherSpeed || 0, n); ps.dispatcherSpeedT = 1; if (p && p.stats) p.stats.spd = Math.round(((p.stats.spd || 0) + n) * 100) / 100; ps._dispatcherSpdLoan = (ps._dispatcherSpdLoan || 0) + n; spawnTrendFloat('player', 'buff'); },
+    gainCritChance: function (n, ps) { ps.dispatcherCrit = Math.max(ps.dispatcherCrit || 0, n); ps.dispatcherCritT = 1; spawnTrendFloat('player', 'buff'); },
+    gainCritDamage: function (n, ps) { ps.dispatcherCritDmg = Math.max(ps.dispatcherCritDmg || 0, n); ps.dispatcherCritDmgT = 1; spawnTrendFloat('player', 'buff'); },
+    gainAtk: function (n, ps, p) { if (!p || !p.stats) return; p.stats.atk = Math.round(((p.stats.atk || 0) + n) * 100) / 100; ps._dispatcherAtkLoan = (ps._dispatcherAtkLoan || 0) + n; ps.dispatcherAtkT = 1; spawnTrendFloat('player', 'buff'); },
+    gainMatk: function (n, ps, p) { if (!p || !p.stats) return; p.stats.matk = Math.round(((p.stats.matk || 0) + n) * 100) / 100; ps._dispatcherMatkLoan = (ps._dispatcherMatkLoan || 0) + n; ps.dispatcherMatkT = 1; spawnTrendFloat('player', 'buff'); },
+    gainDef: function (n, ps, p) { if (!p || !p.stats) return; p.stats.def = Math.round(((p.stats.def || 0) + n) * 100) / 100; ps._dispatcherDefLoan = (ps._dispatcherDefLoan || 0) + n; ps.dispatcherDefT = 1; spawnTrendFloat('player', 'buff'); },
+    gainMdef: function (n, ps, p) { if (!p || !p.stats) return; p.stats.mdef = Math.round(((p.stats.mdef || 0) + n) * 100) / 100; ps._dispatcherMdefLoan = (ps._dispatcherMdefLoan || 0) + n; ps.dispatcherMdefT = 1; spawnTrendFloat('player', 'buff'); },
+    gainGuard: function (_n, ps) { ps.defending = Math.max(ps.defending || 0, 1); spawnTrendFloat('player', 'buff'); },
+    gainBrace: function (_n, ps) { ps.dispatcherBrace = 1; ps.dispatcherBraceT = 1; spawnTrendFloat('player', 'buff'); },
+    gainCounter: function (_n, ps) { ps.counterInstinct = Math.max(ps.counterInstinct || 0, 1); spawnTrendFloat('player', 'buff'); },
+    gainTaunt: function (_n, ps) { ps.dispatcherTaunt = 1; ps.dispatcherTauntT = 1; spawnTrendFloat('player', 'buff'); },
+    reduceEnemyDodge: function (n) { applyEnemyStatDebuff('dodge', n); },
+    reduceEnemyAtk: function (n) { applyEnemyStatDebuff('atk', n); },
+    reduceEnemyMatk: function (n) { applyEnemyStatDebuff('matk', n); },
+    reduceEnemySpd: function (n) { applyEnemyStatDebuff('spd', n); },
+    reduceEnemyCrit: function (n) { applyEnemyStatDebuff('critChance', n); },
+    reduceEnemyDef: function (n) { applyEnemyStatDebuff('def', n); },
+    reduceEnemyMdef: function (n) { applyEnemyStatDebuff('mdef', n); },
+    healMaxHpPct: function (n, _ps, p) {
+      if (!p || !p.stats) return;
+      var heal = Math.round((Number(p.stats.maxHp) || 0) * (Number(n) || 0) / 100 * 100) / 100;
+      if (heal <= 0) return;
+      p.stats.hp = Math.min(Number(p.stats.maxHp) || 0, Math.round(((Number(p.stats.hp) || 0) + heal) * 100) / 100);
+      if (typeof setHpBar === 'function') setHpBar('player', p.stats.hp, p.stats.maxHp);
+      if (typeof spawnFloat === 'function') spawnFloat('player', '+' + heal, 'fn-heal');
+      spawnTrendFloat('player', 'buff');
+    },
     refundApOnCrit: function (_n, ps) { ps._dispatcherRefundApOnCrit = 1; },
     gainApNextTurn: function (n, ps) { ps._dispatcherApNextTurn = (ps._dispatcherApNextTurn || 0) + n; },
-    bonusVsAilment: function () { /* read by computeRawHitDamage via cond bonus, see applyConditionalBonus */ },
+    bonusVsAilment: function () { /* read by applyConditionalDamageBonus */ },
     bonusVsLowHp: function () { /* handled in conditional bonus */ },
     tagFlag: function () { /* tags don't mutate state directly */ },
     raw: function () { /* unresolved free-text; safe no-op */ },
   };
 
-  function runPreRiders(row, _ab) {
+  function riderWhenMatches(r, ctx) {
+    var w = r.when;
+    if (!w) return true;
+    if (w === 'onHit') return ctx.hitsLanded > 0;
+    if (w.indexOf('onAilment:') === 0) {
+      var aid = w.slice('onAilment:'.length);
+      return ctx.ailmentsApplied && ctx.ailmentsApplied[aid];
+    }
+    return false;
+  }
+
+  function runRiders(row, ctx) {
     var g = globalThis.G;
-    if (!g || !g.player) return;
+    if (!g || !g.player || !row.riders) return;
     var ps = g.playerStatus = g.playerStatus || {};
     var p = g.player;
-    if (!row.riders) return;
+    ctx.applied = ctx.applied || Object.create(null);
     for (var i = 0; i < row.riders.length; i++) {
       var r = row.riders[i];
+      if (r.kind === 'refundApOnCrit' || r.kind === 'gainApNextTurn' || r.kind === 'bonusVsAilment' || r.kind === 'bonusVsLowHp' || r.kind === 'tagFlag' || r.kind === 'raw') continue;
+      if (!riderWhenMatches(r, ctx)) continue;
+      var rKey = r.kind + '|' + (r.when || '') + '|' + (r.value || '');
+      if (ctx.applied[rKey]) continue;
       var fn = riderHandlers[r.kind];
-      if (fn) fn(r.value, ps, p, r);
+      if (fn) {
+        fn(r.value, ps, p, r);
+        ctx.applied[rKey] = true;
+      }
     }
+  }
+
+  function runPreRiders(row, _ab) {
+    runRiders(row, { hitsLanded: 1, ailmentsApplied: {} });
   }
   function applyConditionalDamageBonus(row, dmg) {
     if (!row.riders) return dmg;
@@ -209,8 +286,10 @@
     if (g) g._activePlayerAbility = src;
     else G._activePlayerAbility = src;
 
-    // Pre-damage riders (self buffs etc.)
-    runPreRiders(row, ab);
+    // Pre-damage riders only for self / no-damage abilities
+    if (row.noDamage || row.target === 'self') {
+      runPreRiders(row, ab);
+    }
 
     var anyCrit = false;
     var hitsLanded = 0;
@@ -256,6 +335,7 @@
     }
 
     // Ailment roll (post-damage); skip if all hits missed
+    var ailmentsApplied = {};
     if (hitsLanded > 0 && row.ailmentChance > 0) {
       var aids = ailmentIdsFromRow(row);
       if (aids.length) {
@@ -267,11 +347,16 @@
           else ailCh += (Number(eqM.physicalAilmentChance) || 0);
         }
         if (typeof chance === 'function' && chance(ailCh) && typeof applyAilment === 'function') {
-          applyAilment('enemy', aid, 1);
-          if (typeof renderStatuses === 'function' && g && g.enemyStatus) renderStatuses('enemy-status', g.enemyStatus);
+          if (applyAilment('enemy', aid, 1)) {
+            ailmentsApplied[aid] = true;
+            if (typeof renderStatuses === 'function' && g && g.enemyStatus) renderStatuses('enemy-status', g.enemyStatus);
+          }
         }
       }
     }
+
+    var riderCtx = { hitsLanded: hitsLanded, ailmentsApplied: ailmentsApplied };
+    runRiders(row, riderCtx);
 
     runPostRiders(row, hitsLanded, hits, anyCrit);
 
@@ -329,9 +414,12 @@
     if ((ps.dispatcherCritT || 0) > 0) { ps.dispatcherCritT--; if (ps.dispatcherCritT <= 0) { delete ps.dispatcherCrit; delete ps.dispatcherCritT; } }
     if ((ps.dispatcherCritDmgT || 0) > 0) { ps.dispatcherCritDmgT--; if (ps.dispatcherCritDmgT <= 0) { delete ps.dispatcherCritDmg; delete ps.dispatcherCritDmgT; } }
     if ((ps.dispatcherAtkT || 0) > 0) { ps.dispatcherAtkT--; if (ps.dispatcherAtkT <= 0) { if (player.stats && ps._dispatcherAtkLoan) player.stats.atk = Math.max(0, (player.stats.atk || 0) - ps._dispatcherAtkLoan); delete ps._dispatcherAtkLoan; delete ps.dispatcherAtkT; } }
-    if ((ps.dispatcherMatkT || 0) > 0) { ps.dispatcherMatkT--; if (ps.dispatcherMatkT <= 0) { if (player.stats && ps._dispatcherMatkLoan) player.stats.matk = Math.max(0, (player.stats.matk || 0) - ps._dispatcherMatkLoan); delete ps._dispatcherMatkLoan; delete ps.dispatcherMatkT; } }
+    if ((ps.dispatcherMatkT || 0) > 0) { ps.dispatcherMatkT--; if (ps.dispatcherMatkT <= 0) { if (player.stats && ps._dispatcherMatkLoan) player.stats.matk = Math.max(0, Math.round(((player.stats.matk || 0) - ps._dispatcherMatkLoan) * 100) / 100); delete ps._dispatcherMatkLoan; delete ps.dispatcherMatkT; } }
+    if ((ps.dispatcherDefT || 0) > 0) { ps.dispatcherDefT--; if (ps.dispatcherDefT <= 0) { if (player.stats && ps._dispatcherDefLoan) player.stats.def = Math.max(0, Math.round(((player.stats.def || 0) - ps._dispatcherDefLoan) * 100) / 100); delete ps._dispatcherDefLoan; delete ps.dispatcherDefT; } }
+    if ((ps.dispatcherMdefT || 0) > 0) { ps.dispatcherMdefT--; if (ps.dispatcherMdefT <= 0) { if (player.stats && ps._dispatcherMdefLoan) player.stats.mdef = Math.max(0, Math.round(((player.stats.mdef || 0) - ps._dispatcherMdefLoan) * 100) / 100); delete ps._dispatcherMdefLoan; delete ps.dispatcherMdefT; } }
     if ((ps.dispatcherBraceT || 0) > 0) { ps.dispatcherBraceT--; if (ps.dispatcherBraceT <= 0) { delete ps.dispatcherBrace; delete ps.dispatcherBraceT; } }
     if ((ps.dispatcherTauntT || 0) > 0) { ps.dispatcherTauntT--; if (ps.dispatcherTauntT <= 0) { delete ps.dispatcherTaunt; delete ps.dispatcherTauntT; } }
+    revertEnemyDispatcherDebuffs();
   };
 
   // Crit / dodge surface read by combat helpers via legacy aug fields.

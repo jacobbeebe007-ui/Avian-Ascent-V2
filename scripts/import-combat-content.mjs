@@ -28,7 +28,13 @@ const ROOT = path.resolve(__dirname, '..');
 const NEW_SHEETS = 'c:\\Users\\JaK_d\\Desktop\\Avian Ascent\\New Sheets';
 const SHOP_XLSX = process.env.AA_SHOP_XLSX || path.join(NEW_SHEETS, 'New - avian_ascent_shop_learnable_abilities.xlsx');
 const PERKS_XLSX = process.env.AA_PERKS_XLSX || path.join(NEW_SHEETS, 'avian_ascent_passive_perks.xlsx');
-const ABILITY_XLSX = process.env.AA_ABILITY_XLSX || path.join(NEW_SHEETS, 'avian_ascent_ability_skill_trees_unique_starter_kits.xlsx');
+const ABILITY_XLSX_CANDIDATES = [
+  'avian_ascent_ability_skill_trees_en_balanced_v2_updated.xlsx',
+  'avian_ascent_ability_skill_trees_unique_starter_kits.xlsx',
+];
+const ABILITY_XLSX = process.env.AA_ABILITY_XLSX
+  || ABILITY_XLSX_CANDIDATES.map((f) => path.join(NEW_SHEETS, f)).find((p) => existsSync(p))
+  || path.join(NEW_SHEETS, ABILITY_XLSX_CANDIDATES[0]);
 const ABILITY_SHEET_NAMES = ['Class Rules', 'Level 1 Kits', 'Ability Families', 'Skill Trees'];
 const OUTPUT_DIR = path.join(ROOT, 'js', 'data', 'combat-pack');
 
@@ -362,28 +368,74 @@ function normaliseAilmentId(s) {
 }
 
 // Rider parser — emit a small structured list driven by tags + numeric regexes
+function parseRiderWhen(text) {
+  if (/after\s+attack/i.test(text)) return 'onHit';
+  if (/if\s+(?:this\s+)?hits?|if\s+at\s+least\s+\d+\s+hits?\s+land/i.test(text)) return 'onHit';
+  if (/if\s+weaken\s+applies?|when\s+weaken\s+applies?|target\s+is\s+weakened/i.test(text)) return 'onAilment:weaken';
+  if (/if\s+bleed\s+applies?|when\s+bleed\s+applies?|if\s+bleeding\s+applies?|enemy\s+is\s+already\s+bleeding/i.test(text)) return 'onAilment:bleed';
+  if (/if\s+chilled?\s+applies?|when\s+chilled?\s+applies?|target\s+is\s+chilled?/i.test(text)) return 'onAilment:chilled';
+  if (/if\s+burning\s+applies?|when\s+burning\s+applies?/i.test(text)) return 'onAilment:burning';
+  if (/if\s+poison\s+applies?|when\s+poison\s+applies?/i.test(text)) return 'onAilment:poison';
+  if (/if\s+paralys/i.test(text)) return 'onAilment:paralyzed';
+  if (/if\s+delayed\s+applies?/i.test(text)) return 'onAilment:delayed';
+  return null;
+}
+
 function parseRiders(riderText, codeTags) {
   const riders = [];
   const text = (riderText || '').trim();
   if (!text || /^none$/i.test(text)) return riders;
-  // Self gain riders, until next turn
-  const addUntilNext = (kind, n) => riders.push({ kind, value: n, scope: 'self', duration: 'untilNextTurn' });
+  const when = parseRiderWhen(text);
+  const addSelf = (kind, n, extra = {}) => riders.push({ kind, value: n, scope: 'self', duration: 'untilNextTurn', when, ...extra });
+  const addEnemy = (kind, n, extra = {}) => riders.push({ kind, value: n, scope: 'enemy', duration: 'untilNextTurn', when: when || 'onHit', ...extra });
   let m;
-  if ((m = text.match(/\+?\s*(\d+(?:\.\d+)?)\s*%\s*Dodge/i))) addUntilNext('gainDodge', Number(m[1]));
-  if ((m = text.match(/\+?\s*(\d+(?:\.\d+)?)\s*%\s*Speed/i))) addUntilNext('gainSpeed', Number(m[1]));
-  if ((m = text.match(/\+?\s*(\d+(?:\.\d+)?)\s*%\s*Crit\s*Chance/i))) addUntilNext('gainCritChance', Number(m[1]));
-  if ((m = text.match(/\+?\s*(\d+(?:\.\d+)?)\s*%\s*Crit\s*Damage/i))) addUntilNext('gainCritDamage', Number(m[1]));
-  if ((m = text.match(/\+?\s*(\d+(?:\.\d+)?)\s*%\s*Magic\s*Attack/i))) addUntilNext('gainMatk', Number(m[1]));
-  if ((m = text.match(/\+?\s*(\d+(?:\.\d+)?)\s*%\s*(?:Physical\s*)?Attack(?!\s*Damage)/i))) addUntilNext('gainAtk', Number(m[1]));
-  if (/\bguard\b/i.test(text) && /defence|defense|gain/i.test(text)) {
-    addUntilNext('gainGuard', 1);
+
+  // Self gain riders
+  for (const gm of text.matchAll(/\+?\s*(\d+(?:\.\d+)?)\s*%\s*Dodge/gi)) addSelf('gainDodge', Number(gm[1]));
+  for (const gm of text.matchAll(/\+?\s*(\d+(?:\.\d+)?)\s*%\s*Speed/gi)) addSelf('gainSpeed', Number(gm[1]));
+  for (const gm of text.matchAll(/\+?\s*(\d+(?:\.\d+)?)\s*%\s*Crit\s*Chance/gi)) addSelf('gainCritChance', Number(gm[1]));
+  for (const gm of text.matchAll(/\+?\s*(\d+(?:\.\d+)?)\s*%\s*Crit\s*Damage/gi)) addSelf('gainCritDamage', Number(gm[1]));
+  for (const gm of text.matchAll(/\+?\s*(\d+(?:\.\d+)?)\s*%\s*Magic\s*Attack/gi)) addSelf('gainMatk', Number(gm[1]));
+  for (const gm of text.matchAll(/\+?\s*(\d+(?:\.\d+)?)\s*%\s*Magic\s*Defen[cs]e/gi)) addSelf('gainMdef', Number(gm[1]));
+  for (const gm of text.matchAll(/\+?\s*(\d+(?:\.\d+)?)\s*%\s*Defen[cs]e(?!\s*and)/gi)) {
+    if (!/Magic\s*Defen/i.test(gm[0])) addSelf('gainDef', Number(gm[1]));
   }
-  if (/brace|damage reduction/i.test(text)) addUntilNext('gainBrace', 1);
-  if (/counter\s*chance|small counter/i.test(text)) addUntilNext('gainCounter', 1);
-  if (/taunt/i.test(text)) addUntilNext('gainTaunt', 1);
+  for (const gm of text.matchAll(/\+?\s*(\d+(?:\.\d+)?)\s*%\s*(?:Physical\s*)?Attack(?!\s*Damage)/gi)) {
+    if (!/Magic\s*Attack/i.test(gm[0])) addSelf('gainAtk', Number(gm[1]));
+  }
+
+  // Enemy debuff riders
+  for (const gm of text.matchAll(/(?:enemy\s+loses|reduce\s+enemy\s+dodge\s+by)\s+(\d+(?:\.\d+)?)\s*%\s*Dodge/gi)) addEnemy('reduceEnemyDodge', Number(gm[1]));
+  for (const gm of text.matchAll(/enemy\s+loses\s+(\d+(?:\.\d+)?)\s*%\s*Attack(?!\s*and)/gi)) {
+    if (!/Magic\s*Attack/i.test(gm[0])) addEnemy('reduceEnemyAtk', Number(gm[1]));
+  }
+  for (const gm of text.matchAll(/enemy\s+loses\s+(\d+(?:\.\d+)?)\s*%\s*Magic\s*Attack/gi)) addEnemy('reduceEnemyMatk', Number(gm[1]));
+  for (const gm of text.matchAll(/enemy\s+loses\s+(\d+(?:\.\d+)?)\s*%\s*Speed/gi)) addEnemy('reduceEnemySpd', Number(gm[1]));
+  for (const gm of text.matchAll(/enemy\s+loses\s+(\d+(?:\.\d+)?)\s*%\s*Crit\s*Chance/gi)) addEnemy('reduceEnemyCrit', Number(gm[1]));
+  for (const gm of text.matchAll(/enemy\s+loses\s+(\d+(?:\.\d+)?)\s*%\s*Magic\s*Defen[cs]e/gi)) addEnemy('reduceEnemyMdef', Number(gm[1]));
+  for (const gm of text.matchAll(/enemy\s+loses\s+(\d+(?:\.\d+)?)\s*%\s*Defen[cs]e(?!\s*and)/gi)) {
+    if (!/Magic\s*Defen/i.test(gm[0])) addEnemy('reduceEnemyDef', Number(gm[1]));
+  }
+  // Combined "Attack and Magic Attack"
+  if ((m = text.match(/enemy\s+loses\s+(\d+(?:\.\d+)?)\s*%\s*Attack\s+and\s+(\d+(?:\.\d+)?)\s*%\s*Magic\s*Attack/i))) {
+    addEnemy('reduceEnemyAtk', Number(m[1]));
+    addEnemy('reduceEnemyMatk', Number(m[2]));
+  }
+
+  // Heal % max HP
+  if ((m = text.match(/heal\s+(\d+(?:\.\d+)?)\s*%\s*Max\s*Health/i))) {
+    riders.push({ kind: 'healMaxHpPct', value: Number(m[1]), scope: 'self', when });
+  }
+
+  if (/\bguard\b/i.test(text) && /defence|defense|gain/i.test(text)) addSelf('gainGuard', 1);
+  if (/brace|damage reduction/i.test(text)) addSelf('gainBrace', 1);
+  if (/counter\s*chance|small counter/i.test(text)) addSelf('gainCounter', 1);
+  if (/taunt/i.test(text)) addSelf('gainTaunt', 1);
+
   // Resource
   if (/refund\s+1\s*(?:AP|EN)\s*once\s*per\s*turn/i.test(text)) riders.push({ kind: 'refundApOnCrit', value: 1, oncePerTurn: true });
   if ((m = text.match(/\+?\s*(\d+)\s*(?:AP|EN)\s*recovery\s*(?:next\s*turn|on\s*next\s*turn)/i))) riders.push({ kind: 'gainApNextTurn', value: Number(m[1]) });
+
   // Conditional damage
   if (/against\s+bleeding|vs\s+bleeding|enemy\s+is\s+bleeding|bleeding\s+enemies?/i.test(text)) {
     const pm = text.match(/\+?\s*(\d+(?:\.\d+)?)\s*%/);
@@ -394,7 +446,8 @@ function parseRiders(riderText, codeTags) {
     const pm = text.match(/below\s+(\d+(?:\.\d+)?)\s*%/i);
     riders.push({ kind: 'bonusVsLowHp', threshold: pm ? Number(pm[1]) / 100 : 0.35, value: 0 });
   }
-  // Tag-driven fallthroughs (from "Code Tags" column when present)
+
+  // Tag-driven fallthroughs
   const tags = (codeTags || '').split(/[;,]/).map((t) => t.trim()).filter(Boolean);
   for (const tg of tags) {
     if (/pierce-upgrade/i.test(tg)) riders.push({ kind: 'tagFlag', tag: 'pierceUpgrade' });

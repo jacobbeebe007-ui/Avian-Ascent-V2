@@ -144,11 +144,7 @@
   function getStoryEncounterChainCount(stageNumber) {
     const st = Math.max(1, Math.floor(Number(stageNumber)) || 1);
     if (STORY_BOSS_STAGES.has(st)) return 1;
-    if (st <= 5) return 5;
-    if (st <= 9) return 3;
-    if (st <= 15) return 2;
-    if (st <= 19) return 2;
-    return 2;
+    return 3;
   }
 
   function buildAllowedEnemyPool(stageNumber) {

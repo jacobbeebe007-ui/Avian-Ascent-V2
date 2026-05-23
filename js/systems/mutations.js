@@ -10,10 +10,29 @@
   var mutations = Avian.mutations || Object.create(null);
 
   var TIER_ICONS = { white: '🤍', green: '💚', blue: '💙', purple: '💜', gold: '👑' };
+  var MUTATION_SHOP_COSTS = { white: 8, green: 14, blue: 22, purple: 32, gold: 48 };
   var SLOT_LABELS = {
     wing: 'Wing', feet: 'Feet', head: 'Head', beak: 'Beak', chest: 'Chest',
     eyes: 'Eyes', tail: 'Tail', plumage: 'Plumage', syrinx: 'Syrinx',
   };
+  var SLOT_DISPLAY_TAGS = {
+    feet: 'foot', wing: 'wing', head: 'head', beak: 'beak', chest: 'chest',
+    eyes: 'eyes', tail: 'tail', plumage: 'plumage', syrinx: 'syrinx',
+  };
+
+  function formatSlotTag(slot) {
+    if (!slot) return '';
+    var tag = SLOT_DISPLAY_TAGS[slot] || slot;
+    return '(' + tag + ')';
+  }
+
+  function formatMutationDesc(item) {
+    if (!item) return '';
+    var base = item.statLine || (SLOT_LABELS[item.slot] || item.slot) + ' mutation';
+    var tag = formatSlotTag(item.slot);
+    if (!tag || base.indexOf(tag) >= 0) return base;
+    return base + ' ' + tag;
+  }
 
   function pack() { return (Avian.data && Avian.data.mutations) || null; }
   function slotsDef() { var p = pack(); return (p && p.slots) || { limits: {}, order: [] }; }
@@ -300,7 +319,7 @@
       type: 'mutation',
       icon: TIER_ICONS[tier] || '🧬',
       name: item.name,
-      desc: item.statLine || (SLOT_LABELS[item.slot] || item.slot) + ' mutation',
+      desc: formatMutationDesc(item),
       mutationItemId: item.id,
       apply: function (p) {
         if (typeof Avian.mutations.addToInventory === 'function') {
@@ -308,6 +327,56 @@
         }
       },
     };
+  }
+
+  function toShopOffer(item) {
+    var card = buildRewardCard(item);
+    if (!card) return null;
+    var tier = String(item.tier || 'white').toLowerCase();
+    card.costOverride = MUTATION_SHOP_COSTS[tier] || 20;
+    return card;
+  }
+
+  function reconstructShopOffer(id) {
+    var item = getItem(id);
+    return item ? toShopOffer(item) : null;
+  }
+
+  function rollUniqueFromTier(tier, used) {
+    var attempts = 50;
+    while (attempts-- > 0) {
+      var drop = rollDrop(tier);
+      if (!drop) return null;
+      if (used.has(drop.id)) continue;
+      used.add(drop.id);
+      return drop;
+    }
+    var fallback = rollDrop(tier);
+    if (fallback) used.add(fallback.id);
+    return fallback;
+  }
+
+  function rollShopMutations(spec, used) {
+    used = used || new Set();
+    var offers = [];
+    if (!spec) return offers;
+    if (spec.tiers && spec.count) {
+      for (var i = 0; i < spec.count; i++) {
+        var tier = spec.tiers[Math.floor(Math.random() * spec.tiers.length)];
+        var picked = rollUniqueFromTier(tier, used);
+        if (picked) offers.push(toShopOffer(picked));
+      }
+      return offers;
+    }
+    for (var tierKey in spec) {
+      if (tierKey === 'tiers' || tierKey === 'count') continue;
+      var n = spec[tierKey];
+      for (var j = 0; j < n; j++) {
+        var item = rollUniqueFromTier(tierKey, used);
+        if (item) offers.push(toShopOffer(item));
+      }
+    }
+    return offers;
   }
 
   function rollMutationReward(opts) {
@@ -332,8 +401,14 @@
   mutations.rollTierForContext = rollTierForContext;
   mutations.rollMutationReward = rollMutationReward;
   mutations.buildRewardCard = buildRewardCard;
+  mutations.toShopOffer = toShopOffer;
+  mutations.reconstructShopOffer = reconstructShopOffer;
+  mutations.rollShopMutations = rollShopMutations;
+  mutations.formatMutationDesc = formatMutationDesc;
+  mutations.formatSlotTag = formatSlotTag;
   mutations.SLOT_LABELS = SLOT_LABELS;
   mutations.TIER_ICONS = TIER_ICONS;
+  mutations.MUTATION_SHOP_COSTS = MUTATION_SHOP_COSTS;
 
   Avian.mutations = mutations;
   Avian.systems.mutations = mutations;

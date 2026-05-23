@@ -169,7 +169,6 @@
       }catch(_){}
       try{
         if(isCrit) spawnFloat(target, '✦ Crit', 'damage-tag-float');
-        if(isMagic) spawnFloat(target, '✦ Magic', 'damage-tag-float');
       }catch(_){}
       return out;
     };
@@ -563,7 +562,8 @@
           }
           const firstRewardIdx=items.findIndex(item=>!item?.isHealingShopItem && !String(item?.id||'').startsWith('shop_util_'));
           if(firstRewardIdx!==-1){
-            labels.push({idx:firstRewardIdx, text:'UPGRADES'});
+            const rewardLabel=items[firstRewardIdx]?.type==='mutation'?'MUTATIONS':'UPGRADES';
+            labels.push({idx:firstRewardIdx, text:rewardLabel});
           }
           labels.reverse().forEach(l=>{
             if(cards[l.idx]){

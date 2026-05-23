@@ -298,75 +298,95 @@
   // 5. ── Shop monkey-patch -------------------------------------------------
   try {
     if (typeof globalThis.generateShopItems === 'function' && Avian.shop) {
-      var _origGen = globalThis.generateShopItems;
+      var OVERWORLD_SHOP_MUTATION_SPEC = {
+        5: { tiers: ['white', 'green'], count: 10 },
+        12: { white: 4, green: 12, blue: 4 },
+        16: { green: 4, blue: 12, purple: 4 },
+      };
+
+      function buildHealingOffers() {
+        var SHOP_HEALING_ITEMS = globalThis.SHOP_HEALING_ITEMS;
+        var SHOP_STATE = globalThis.SHOP_STATE;
+        if (!SHOP_HEALING_ITEMS || !SHOP_STATE) return [];
+        return SHOP_HEALING_ITEMS
+          .filter(function (it) { return !(SHOP_STATE.healingPurchasesThisVisit && SHOP_STATE.healingPurchasesThisVisit.has(it.id)); })
+          .map(function (it) {
+            return Object.assign({}, it, {
+              apply: function (p) {
+                var heal = Math.max(1, Math.floor((p.stats.maxHp || 1) * (it.healPct || 0)));
+                p.stats.hp = Math.min((p.stats.maxHp || 1), (p.stats.hp || 0) + heal);
+                if (typeof spawnFloat === 'function') spawnFloat('player', '+' + heal + ' 🌿', 'fn-heal');
+              },
+            });
+          });
+      }
+
+      function setShopItems(items) {
+        if (typeof globalThis.assignShopItems === 'function') {
+          globalThis.assignShopItems(items);
+        } else {
+          globalThis._shopItems = items;
+        }
+      }
+
+      function restoreShopItemById(id) {
+        if (typeof globalThis._findShopItemById === 'function') {
+          var found = globalThis._findShopItemById(id);
+          if (found) return found;
+        }
+        if (Avian.mutations && typeof Avian.mutations.reconstructShopOffer === 'function') {
+          var mut = Avian.mutations.reconstructShopOffer(id);
+          if (mut) return mut;
+        }
+        return Avian.shop.findById(id);
+      }
+
       globalThis.generateShopItems = function () {
         var nodeId = (globalThis.G && globalThis.G._currentShopNodeId) != null ? globalThis.G._currentShopNodeId : null;
         var mode = (globalThis.G && globalThis.G._shopMode) || 'boss';
 
-        // Restore snapshot path: same as legacy
         if (nodeId != null && globalThis.G && globalThis.G._shopSnapshots && globalThis.G._shopSnapshots[nodeId]) {
           var snap = globalThis.G._shopSnapshots[nodeId];
           var bought = new Set(snap.boughtIds || []);
-          globalThis._shopItems = (snap.itemIds || [])
+          setShopItems((snap.itemIds || [])
             .filter(function (id) { return !bought.has(id); })
-            .map(function (id) {
-              // Healing items keep their legacy lookup
-              if (typeof globalThis._findShopItemById === 'function') {
-                var item = globalThis._findShopItemById(id);
-                if (item) return item;
-              }
-              return Avian.shop.findById(id);
-            })
-            .filter(Boolean);
+            .map(restoreShopItemById)
+            .filter(Boolean));
           if (typeof globalThis.renderShopItems === 'function') globalThis.renderShopItems();
           return;
         }
 
-        // First visit: healing shelf + 5 ability offers
-        globalThis._shopItems = [];
-        var SHOP_HEALING_ITEMS = globalThis.SHOP_HEALING_ITEMS;
-        var SHOP_STATE = globalThis.SHOP_STATE;
-        if (SHOP_HEALING_ITEMS && SHOP_STATE) {
-          var healOffers = SHOP_HEALING_ITEMS
-            .filter(function (it) { return !(SHOP_STATE.healingPurchasesThisVisit && SHOP_STATE.healingPurchasesThisVisit.has(it.id)); })
-            .map(function (it) {
-              return Object.assign({}, it, {
-                apply: function (p) {
-                  var heal = Math.max(1, Math.floor((p.stats.maxHp || 1) * (it.healPct || 0)));
-                  p.stats.hp = Math.min((p.stats.maxHp || 1), (p.stats.hp || 0) + heal);
-                  if (typeof spawnFloat === 'function') spawnFloat('player', '+' + heal + ' 🌿', 'fn-heal');
-                },
-              });
-            });
-          globalThis._shopItems.push.apply(globalThis._shopItems, healOffers);
-        }
-        var abilityOffers = Avian.shop.rollStockForMode(mode);
-        globalThis._shopItems.push.apply(globalThis._shopItems, abilityOffers);
-        if (Avian.mutations && typeof Avian.mutations.rollMutationReward === 'function') {
-          var mutUsed = new Set();
-          for (var mi = 0; mi < 2; mi++) {
-            var mrw = Avian.mutations.rollMutationReward({ stage: Math.max(1, Number(globalThis.G && G.stage) || 1), isBoss: mode === 'boss' });
-            if (!mrw || mutUsed.has(mrw.id)) continue;
-            mutUsed.add(mrw.id);
-            globalThis._shopItems.push({
-              id: mrw.id,
-              tier: mrw.tier,
-              icon: mrw.icon || '🧬',
-              name: mrw.name,
-              desc: mrw.desc,
-              type: 'mutation',
-              mutationItemId: mrw.mutationItemId || mrw.id,
-              costOverride: ({ white: 8, green: 14, blue: 22, purple: 32, gold: 48 })[mrw.tier] || 20,
-              apply: function (p) { Avian.mutations.addToInventory(p, mrw.mutationItemId || mrw.id); },
-            });
+        var items = buildHealingOffers();
+        var mutationSpec = nodeId != null ? OVERWORLD_SHOP_MUTATION_SPEC[nodeId] : null;
+
+        if (mutationSpec && Avian.mutations && typeof Avian.mutations.rollShopMutations === 'function') {
+          var mutOffers = Avian.mutations.rollShopMutations(mutationSpec);
+          items.push.apply(items, mutOffers);
+        } else {
+          var abilityOffers = Avian.shop.rollStockForMode(mode);
+          items.push.apply(items, abilityOffers);
+          if (Avian.mutations && typeof Avian.mutations.rollMutationReward === 'function') {
+            var mutUsed = new Set();
+            for (var mi = 0; mi < 2; mi++) {
+              var mrw = Avian.mutations.rollMutationReward({ stage: Math.max(1, Number(globalThis.G && G.stage) || 1), isBoss: mode === 'boss' });
+              if (!mrw || mutUsed.has(mrw.id)) continue;
+              mutUsed.add(mrw.id);
+              var rawTier = mrw.tier === 'grey' ? 'white' : mrw.tier;
+              var costs = (Avian.mutations.MUTATION_SHOP_COSTS) || { white: 8, green: 14, blue: 22, purple: 32, gold: 48 };
+              items.push(Object.assign({}, mrw, {
+                costOverride: costs[rawTier] || costs[mrw.tier] || 20,
+              }));
+            }
           }
         }
+
+        setShopItems(items);
 
         if (nodeId != null) {
           if (!globalThis.G._shopSnapshots) globalThis.G._shopSnapshots = {};
           globalThis.G._shopSnapshots[nodeId] = {
             mode: mode,
-            itemIds: globalThis._shopItems.map(function (it) { return it.id; }),
+            itemIds: items.map(function (it) { return it.id; }),
             boughtIds: [],
           };
           if (typeof globalThis.saveRun === 'function') globalThis.saveRun();

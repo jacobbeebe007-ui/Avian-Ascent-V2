@@ -465,10 +465,20 @@ function recordUpgradeApplyInLedger(player, beforeStats, afterStats, meta){
     if(line) L.mechanicalLines.push(line);
   }
 }
+function formatCombatNumber(n) {
+  return (Number(n) || 0).toFixed(2);
+}
+function applyFractionalHp(stats, delta) {
+  stats.hp = Math.max(0, Math.round((Number(stats.hp) + delta) * 100) / 100);
+}
+function normalizeCombatStats(stats) {
+  if (!stats) return;
+  for (const k of ['hp', 'maxHp', 'atk', 'def', 'matk', 'mdef', 'spd', 'acc', 'dodge', 'critChance']) {
+    if (stats[k] != null) stats[k] = Math.round(Number(stats[k]) * 100) / 100;
+  }
+}
 function formatLedgerDelta(n){
-  const x = Number(n)||0;
-  if(Math.abs(x - Math.round(x)) < 0.01) return String(Math.round(x));
-  return x.toFixed(1);
+  return formatCombatNumber(n);
 }
 function buildStatBreakdownTitle(statKey, rawVal, player){
   const L = player?._statLedger;
@@ -1394,17 +1404,35 @@ function checkSecretUnlockChar(ch){
 // ============================================================
 //  EXP SYSTEM
 // ============================================================
+// --- Shiny economy (tuned vs SHOP_COSTS / healing shelf 10–28, abilities ~36–164) ---
+/** Normal story kill: early / mid / late stage bands. */
+const SHINY_NORMAL_STORY = Object.freeze({ early: [6, 10], mid: [8, 13], late: [10, 16] });
+/** Boss story kill by stage band. */
+const SHINY_BOSS_STORY = Object.freeze({ early: [16, 24], mid: [22, 32], late: [30, 44] });
+/** Endless mode per-kill ranges (+ battle-index inflation cap). */
+const SHINY_NORMAL_ENDLESS = [5, 9];
+const SHINY_BOSS_ENDLESS = [24, 36];
+const SHINY_ENDLESS_INFLATION_CAP = 6;
+const SHINY_BONUS_PERFECT = 1;
+const SHINY_BONUS_FAST = 1;
+const SHINY_BONUS_MAGPIE = 2;
+
 function expForLevel(lv) {
-  if(lv<=15) return Math.floor(80 * Math.pow(1.38, lv - 1));
-  if(lv<=25) return Math.floor(80 * Math.pow(1.38, 14) * Math.pow(1.18, lv - 15));
-  return Math.floor(80 * Math.pow(1.38, 14) * Math.pow(1.18, 10) * Math.pow(1.08, lv - 25));
+  if(lv<=15) return Math.floor(70 * Math.pow(1.34, lv - 1));
+  if(lv<=25) return Math.floor(70 * Math.pow(1.34, 14) * Math.pow(1.16, lv - 15));
+  return Math.floor(70 * Math.pow(1.34, 14) * Math.pow(1.16, 10) * Math.pow(1.07, lv - 25));
 }
 
 // --- EXP balancing tunables (tune story + endless pacing here) ---
 /** Base EXP by enemy level (Lv 0–10); Lv 10+ uses BASE_EXP_POST10_* additive + log2 curve (no exponential chaining). */
-const BASE_EXP_BY_ENEMY_LEVEL = [10,13,18,25,35,48,66,91,126,174,240];
-const BASE_EXP_POST10_LINEAR_PER_LEVEL = 22;
-const BASE_EXP_POST10_LOG_SCALE = 12;
+const BASE_EXP_BY_ENEMY_LEVEL = [14, 18, 25, 35, 49, 67, 92, 127, 176, 244, 336];
+const BASE_EXP_POST10_LINEAR_PER_LEVEL = 28;
+const BASE_EXP_POST10_LOG_SCALE = 14;
+/** Story/endless: extra EXP from encounter depth (applied in compute*ExpGain). */
+const STORY_STAGE_EXP_BONUS_PER_STAGE = 0.05;
+const STORY_STAGE_EXP_BONUS_CAP = 1.0;
+const ENDLESS_BATTLE_EXP_BONUS_PER_BATTLE = 0.03;
+const ENDLESS_BATTLE_EXP_BONUS_CAP = 1.2;
 /** Endless (stage 21+): normal kills cannot exceed this fraction of expForLevel(plv + 1). */
 const ENDLESS_EXP_NORMAL_CAP_PCT = 0.30;
 /** Endless (stage 21+): boss kills cannot exceed this fraction of expForLevel(plv + 1). */
@@ -1451,6 +1479,15 @@ function relativeLevelExpMultiplier(enemyLv, playerLv) {
   return 1.40;
 }
 
+function stageExpMultiplier() {
+  if (isEndlessRunActive()) {
+    const eb = Math.max(0, Math.floor(Number(G.endlessBattle) || 0));
+    return 1 + Math.min(ENDLESS_BATTLE_EXP_BONUS_CAP, eb * ENDLESS_BATTLE_EXP_BONUS_PER_BATTLE);
+  }
+  const stage = Math.max(1, getEncounterStage());
+  return 1 + Math.min(STORY_STAGE_EXP_BONUS_CAP, (stage - 1) * STORY_STAGE_EXP_BONUS_PER_STAGE);
+}
+
 function computeNormalEnemyExpGain(enemy) {
   if (!enemy) return 0;
   const plv = Math.max(1, Math.floor(G.player?.birdLevel || 1));
@@ -1458,7 +1495,7 @@ function computeNormalEnemyExpGain(enemy) {
   const base = baseExpForEnemyLevel(elv);
   const tMult = threatTierExpMultiplierForEnemy(enemy);
   const rMult = relativeLevelExpMultiplier(elv, plv);
-  let exp = Math.max(1, Math.round(base * tMult * rMult));
+  let exp = Math.max(1, Math.round(base * tMult * rMult * stageExpMultiplier()));
   if (isEndlessRunActive()) {
     const nextLevelExp = expForLevel(plv + 1);
     const normalCap = Math.max(1, Math.round(nextLevelExp * ENDLESS_EXP_NORMAL_CAP_PCT));
@@ -1469,7 +1506,7 @@ function computeNormalEnemyExpGain(enemy) {
 
 function computeBossExpGain(enemy) {
   const plv = Math.max(1, Math.floor(G.player?.birdLevel || 1));
-  let exp = Math.round(expForLevel(plv + 1) * 0.65);
+  let exp = Math.round(expForLevel(plv + 1) * 0.72 * stageExpMultiplier());
   if (enemy) {
     const elv = getEnemyPreviewLevel(enemy);
     if (elv > plv) exp = Math.round(exp * (1 + 0.03 * Math.min(elv - plv, 5)));
@@ -1934,19 +1971,19 @@ function openNest() {
   const _nestCritMultBase=p.goldCritMult||1.8;
   const _nestCritBonusPct=p.critDamageBonusPct||0;
   const _nestCritMultDisp=_nestCritBonusPct>0?`${_nestCritMultBase.toFixed(1)}× <span class="nest-crit-bonus" title="Added to multiplier on critical hits">(+${_nestCritBonusPct.toFixed(2)})</span>`:`${_nestCritMultBase.toFixed(1)}×`;
-  function _nestStat(val,base,suffix=''){const d=val-base;const col=d>0?'#6ab89a':d<0?'#e87070':'var(--gold)';const arr=d>0?' ↑':d<0?' ↓':'';return `<span style="color:${col}">${val}${suffix}${arr}</span>`;}
+  function _nestStat(val,base,suffix=''){const d=val-base;const col=d>0?'var(--red-light)':d<0?'var(--purple-light)':'var(--gold)';const arr=d>0?' ▲▲':d<0?' ▼▼':'';return `<span style="color:${col}">${formatCombatNumber(val)}${suffix}${arr}</span>`;}
   html+=`<div class="nest-section"><div class="nest-section-title">📊 Stats ${G.turn?'(In Battle)':''}</div>
   <div class="nest-stats-grid">
-    <div class="nest-stat-card"><div class="nest-stat-val">${s.hp}/${s.maxHp}</div><div class="nest-stat-lbl">HP</div></div>
+    <div class="nest-stat-card"><div class="nest-stat-val">${formatCombatNumber(s.hp)}/${formatCombatNumber(s.maxHp)}</div><div class="nest-stat-lbl">HP</div></div>
     <div class="nest-stat-card"><div class="nest-stat-val">${_nestStat(_nestWarcry,s.atk)}</div><div class="nest-stat-lbl">ATK</div></div>
     <div class="nest-stat-card"><div class="nest-stat-val">${_nestStat(_nestDef,s.def)}</div><div class="nest-stat-lbl">DEF</div></div>
-    <div class="nest-stat-card"><div class="nest-stat-val">${s.spd}</div><div class="nest-stat-lbl">SPD</div></div>
+    <div class="nest-stat-card"><div class="nest-stat-val">${formatCombatNumber(s.spd)}</div><div class="nest-stat-lbl">SPD</div></div>
     <div class="nest-stat-card"><div class="nest-stat-val">${_nestStat(_nestDodge,s.dodge,'%')}</div><div class="nest-stat-lbl">DODGE</div></div>
     <div class="nest-stat-card"><div class="nest-stat-val">${_nestStat(_nestAcc,s.acc,'%')}</div><div class="nest-stat-lbl">ACC</div></div>
-    <div class="nest-stat-card"><div class="nest-stat-val" style="color:${_nestCrit>5?'#e8c96a':'var(--gold)'}">${_nestCrit}%</div><div class="nest-stat-lbl">🎯 Crit %</div></div>
+    <div class="nest-stat-card"><div class="nest-stat-val" style="color:${_nestCrit>5?'#e8c96a':'var(--gold)'}">${formatCombatNumber(_nestCrit)}%</div><div class="nest-stat-lbl">🎯 Crit %</div></div>
     <div class="nest-stat-card"><div class="nest-stat-val" style="color:${_nestCritMultBase>1.5||_nestCritBonusPct>0?'#e8c96a':'var(--gold)'}">${_nestCritMultDisp}</div><div class="nest-stat-lbl">💥 Crit Dmg</div></div>
-    <div class="nest-stat-card" title="Magic Attack — improves spell and ailment potency"><div class="nest-stat-val" style="color:#6ae8e8">${s.matk||8}</div><div class="nest-stat-lbl" style="color:#4ab8c0">✦ M.ATK</div></div>
-    <div class="nest-stat-card" title="Magic Defence — resists enemy spells and ailments"><div class="nest-stat-val" style="color:#6ae8e8">${s.mdef||8}</div><div class="nest-stat-lbl" style="color:#4ab8c0">✦ M.DEF</div></div>
+    <div class="nest-stat-card" title="Magic Attack — improves spell and ailment potency"><div class="nest-stat-val" style="color:#6ae8e8">${formatCombatNumber(s.matk||8)}</div><div class="nest-stat-lbl" style="color:#4ab8c0">✦ M.ATK</div></div>
+    <div class="nest-stat-card" title="Magic Defence — resists enemy spells and ailments"><div class="nest-stat-val" style="color:#6ae8e8">${formatCombatNumber(s.mdef||8)}</div><div class="nest-stat-lbl" style="color:#4ab8c0">✦ M.DEF</div></div>
   </div></div>`;
   // Abilities
   html+=`<div class="nest-section"><div class="nest-section-title">⚔ Abilities (${p.abilities.length})</div><div class="nest-abilities-grid">`;
@@ -4512,6 +4549,7 @@ function startGame() {
     mutationInventory: [],
     equippedMutations: null,
   };
+  normalizeCombatStats(G.player.stats);
   if(typeof Avian?.mutations?.ensurePlayerMutationState==='function') Avian.mutations.ensurePlayerMutationState(G.player);
   ensureFamilyEvolutionState(G.player);
   syncPlayerAbilitiesFromSkillSlots(G.player);
@@ -4882,6 +4920,18 @@ function loadStage() {
     mergeScaledStatsIntoEnemy(ed, encounterStage);
   }
   G.enemy = ed;
+  if (G.enemy && G.enemy.stats) {
+    const es = G.enemy.stats;
+    G.enemy._battleStatBase = {
+      atk: Number(es.atk) || 0,
+      matk: Number(es.matk) || 0,
+      def: Number(es.def) || 0,
+      mdef: Number(es.mdef) || 0,
+      dodge: Number(es.dodge) || 0,
+      acc: Number(es.acc) || 0,
+      spd: Number(es.spd) || 0,
+    };
+  }
   const stageEvt = {stage:encounterStage, enemyId:G.enemy.id||G.enemy.name, isBoss:!!G.enemy.isBoss};
   AvianEvents.emit('stage:loaded', stageEvt);
   runModuleHook('onStageLoaded', stageEvt);
@@ -5131,7 +5181,7 @@ function refreshBattleUI() {
   const _effMatk=(p.matk||8);
   const _effMdef=(p.mdef||8);
   const escAttr=(s)=>String(s??'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
-  const _trendTag = (diff) => diff>0 ? '<small class="stat-trend up">▲</small>' : (diff<0 ? '<small class="stat-trend down">▼</small>' : '');
+  const _trendTag = (diff) => diff>0 ? '<small class="stat-trend up">▲▲</small>' : (diff<0 ? '<small class="stat-trend down">▼▼</small>' : '');
   const _atkDiff = G.warcryActive ? Math.max(1,Math.floor((p.atk||0)*(G.warcryATK||0)/100)) : (G.playerStatus.weaken ? -1 : 0);
   const _effAtk=G.warcryActive?Math.floor(p.atk*(1+G.warcryATK/100)):p.atk;
   const _critChance = Math.min(100,(p.critChance||5));
@@ -5143,7 +5193,7 @@ function refreshBattleUI() {
   const _atkNote=(G.warcryActive?`Warcry +${G.warcryATK}% ATK.`:'') + (G.playerStatus.weaken?' Weaken reducing output.':'');
   const _accCardBonus=(G.player.firstAttackAccBonus||0)>0?` Shop/card hit bonus +${G.player.firstAttackAccBonus}% (applies to all attacks).`:'';
   const statCell=(klass,label,val,{suffix='',title='',trend=''}={})=>
-    `<div class="stat-mini ${klass}" title="${escAttr(title)}"><span class="stat-k">${label}</span><span class="stat-v">${val}${suffix}${trend}</span></div>`;
+    `<div class="stat-mini ${klass}" title="${escAttr(title)}"><span class="stat-k">${label}</span><span class="stat-v">${formatCombatNumber(val)}${suffix}${trend}</span></div>`;
   const _bt=(key,raw,extra='')=>{ const b=buildStatBreakdownTitle(key,raw,G.player); return [b,extra].filter(Boolean).join(' | '); };
   const _pCombatHint=buildPlayerCombatStatHint();
   const _pHintRow=_pCombatHint?`<div class="stat-status-hint" style="grid-column:1/-1">${escAttr(_pCombatHint)}</div>`:'';
@@ -5165,20 +5215,22 @@ function refreshBattleUI() {
   const ep2=G.enemy.stats;
   const eCritChance=Math.max(0,Math.min(100,Math.round((ep2.cc??((ep2.critChance||5)/100))*100)));
   const eCritMult=(ep2.cd??ep2.critMult??1.5);
-  const enemyCell=(klass,label,val,{suffix='',title=''}={})=>
-    `<div class="est ${klass}" title="${escAttr(title)}"><span class="stat-k">${label}</span><span class="stat-v">${val}${suffix}</span></div>`;
+  const _eTrendTag = (diff) => diff>0 ? '<small class="stat-trend up">▲▲</small>' : (diff<0 ? '<small class="stat-trend down">▼▼</small>' : '');
+  const _eBase = G.enemy._battleStatBase || {};
+  const enemyCell=(klass,label,val,{suffix='',title='',trend='',baseKey=''}={})=>
+    `<div class="est ${klass}" title="${escAttr(title)}"><span class="stat-k">${label}</span><span class="stat-v">${formatCombatNumber(val)}${suffix}${trend || (baseKey ? _eTrendTag(val - (Number(_eBase[baseKey])||val)) : '')}</span></div>`;
   const _eCombatHint=buildEnemyCombatStatHint();
   const _eHintRow=_eCombatHint?`<div class="stat-status-hint est-hint" style="grid-column:1/-1">${escAttr(_eCombatHint)}</div>`:'';
   document.getElementById('enemy-stats-mini').innerHTML =
-    `${enemyCell('stat-atk','ATK',ep2.atk,{title:'Physical attack'})}
-     ${enemyCell('stat-matk','MATK',ep2.matk||6,{title:'Magic attack'})}
-     ${enemyCell('stat-def','DEF',ep2.def,{title:'Physical defence'})}
-     ${enemyCell('stat-mdef','MDEF',ep2.mdef||8,{title:'Magic defence'})}
-     ${enemyCell('stat-dodge','Dodge',ep2.dodge||0,{suffix:'%',title:'Dodge'})}
-     ${enemyCell('stat-acc','ACC',ep2.acc||70,{suffix:'%',title:'Accuracy'})}
-     ${enemyCell('stat-spd','SPD',ep2.spd||0,{title:'Speed'})}
+    `${enemyCell('stat-atk','ATK',ep2.atk,{title:'Physical attack',baseKey:'atk'})}
+     ${enemyCell('stat-matk','MATK',ep2.matk||6,{title:'Magic attack',baseKey:'matk'})}
+     ${enemyCell('stat-def','DEF',ep2.def,{title:'Physical defence',baseKey:'def'})}
+     ${enemyCell('stat-mdef','MDEF',ep2.mdef||8,{title:'Magic defence',baseKey:'mdef'})}
+     ${enemyCell('stat-dodge','Dodge',ep2.dodge||0,{suffix:'%',title:'Dodge',baseKey:'dodge'})}
+     ${enemyCell('stat-acc','ACC',ep2.acc||70,{suffix:'%',title:'Accuracy',baseKey:'acc'})}
+     ${enemyCell('stat-spd','SPD',ep2.spd||0,{title:'Speed',baseKey:'spd'})}
      ${enemyCell('stat-cc','CC',eCritChance,{suffix:'%',title:'Crit chance'})}
-     ${enemyCell('stat-cd','CD',Number(eCritMult).toFixed(1),{suffix:'×',title:'Crit damage'})}
+     ${enemyCell('stat-cd','CD',Number(eCritMult),{suffix:'×',title:'Crit damage'})}
      ${_eHintRow}`;
   if(eal){
     eal.innerHTML='';
@@ -5248,7 +5300,7 @@ function setHpBar(who,hp,max) {
 
   const hpTextEl=document.getElementById(`${who}-hp-text`);
   if(hpTextEl){
-    hpTextEl.textContent=`${Math.max(0,hp)}/${max} (${Math.round(pct)}%)`;
+    hpTextEl.textContent=`${formatCombatNumber(Math.max(0,hp))}/${formatCombatNumber(max)} (${pct.toFixed(2)}%)`;
     hpTextEl.classList.remove('hp-delta-up','hp-delta-down');
     if(delta<0){ hpTextEl.classList.add('hp-delta-down'); }
     else if(delta>0){ hpTextEl.classList.add('hp-delta-up'); }
@@ -7073,13 +7125,16 @@ function spawnFloat(who,text,cls) {
   el.className=`float-number ${cls}`;
 
   const lower=raw.toLowerCase();
-  const isDamage = cls==='fn-dmg' || cls==='fn-crit' || /^[-−]/.test(raw) || lower.includes(' dmg');
+  const isDamage = cls==='fn-dmg' || cls==='fn-crit' || cls==='fn-magic' || /^[-−]/.test(raw) || lower.includes(' dmg');
   const isAilment = ['poison','bleed','burn','weaken','para','fear','confuse','slow','stun','lull','resonance'].some(k=>lower.includes(k));
   const isBuff = ['immune','guard','evade','dodge','heal','atk','def','acc','crit','energy'].some(k=>lower.includes(k));
 
   if(isDamage) el.classList.add('float-damage');
+  if(cls==='fn-magic') el.classList.add('float-magic');
   if(isAilment || cls==='fn-poison' || cls==='fn-burn') el.classList.add('float-ailment');
   if(isBuff && !isDamage) el.classList.add('float-buff');
+  if(cls==='fn-buff-trend') el.classList.add('float-buff-trend');
+  if(cls==='fn-debuff-trend') el.classList.add('float-debuff-trend');
 
   const iconMatch = raw.match(/^([^\w\s+\-]+)/);
   const icon = iconMatch ? iconMatch[0] : '';
@@ -7130,13 +7185,18 @@ async function doAttack(attacker,target,result) {
     // Urgency: pitch scales up as enemy HP drops (1.0 → 1.5 as enemy goes 100% → 0%)
     const enemyHpPct = target==='enemy' ? Math.max(0, G.enemy.stats.hp / G.enemy.stats.maxHp) : 1;
     const urgency = target==='enemy' ? 1 + (1 - enemyHpPct) * 0.5 : 1;
+    const dmgDisp = formatCombatNumber(result.dmgDealt);
     if (result.isCrit) {
-      spawnFloat(target,`💥 -${result.dmgDealt}!`,'fn-crit');
+      spawnFloat(target,`💥 -${dmgDisp}!`,'fn-crit');
       SFX.crit(urgency);
       if(dmgPct>=0.25) doScreenShake(dmgPct>=0.50);
       if(target==='enemy'){ BS.crits++; G.runCrits++; }
+    } else if (result.isMagic) {
+      spawnFloat(target,`-${dmgDisp}`,'fn-magic');
+      SFX.hit(urgency);
+      if(dmgPct>=0.25) doScreenShake(dmgPct>=0.50);
     } else {
-      spawnFloat(target,`-${result.dmgDealt}`,'fn-dmg');
+      spawnFloat(target,`-${dmgDisp}`,'fn-dmg');
       SFX.hit(urgency);
       if(dmgPct>=0.25) doScreenShake(dmgPct>=0.50);
     }
@@ -7902,7 +7962,7 @@ function dealDamage(target,amount,isCrit=false,isMagic=false,srcAbility=null) {
       if(classPerkCtx.slipstream){
         G.playerStatus.perkSlipstream=1;
       }
-      return {dmgDealt:0,wasDodged:true,wasBlocked:false,isCrit};
+      return {dmgDealt:0,wasDodged:true,wasBlocked:false,isCrit,isMagic};
     }
     const bypassDeflect=!!G._incomingBypassesDeflect;
     if(G.playerStatus.parry&&G.playerStatus.parry>0){
@@ -7991,13 +8051,13 @@ function dealDamage(target,amount,isCrit=false,isMagic=false,srcAbility=null) {
     dmg=applyBossBurstBuffer(dmg);
     if(G._playerConfusesSelfThisAction){
       G._playerConfusesSelfThisAction=false;
-      G.player.stats.hp=Math.max(0,G.player.stats.hp-dmg);
+      applyFractionalHp(G.player.stats, -dmg);
       setHpBar('player',G.player.stats.hp,G.player.stats.maxHp);
-      spawnFloat('player',`🌀 -${dmg}`,'fn-dmg');
-      logMsg(`🌀 Confused — you hit yourself for ${dmg}!`,'miss');
-      return {dmgDealt:dmg,wasDodged:false,wasBlocked:false,isCrit};
+      spawnFloat('player',`🌀 -${formatCombatNumber(dmg)}`,'fn-dmg');
+      logMsg(`🌀 Confused — you hit yourself for ${formatCombatNumber(dmg)}!`,'miss');
+      return {dmgDealt:dmg,wasDodged:false,wasBlocked:false,isCrit,isMagic};
     }
-    G.enemy.stats.hp-=dmg;
+    G.enemy.stats.hp = Math.max(0, Math.round((Number(G.enemy.stats.hp) - dmg) * 100) / 100);
     const _atkKind=String(srcAbility?.btnType||srcAbility?.type||G._activePlayerAbility?.btnType||G._activePlayerAbility?.type||'').toLowerCase();
     if((_atkKind==='physical'||_atkKind==='ranged') && dmg>0){
       if(isCrit && (G.player?.healOnCrit||0)>0){
@@ -8038,7 +8098,7 @@ function dealDamage(target,amount,isCrit=false,isMagic=false,srcAbility=null) {
       // Prevent any further action; death flow handles transitions
       G.animLock=false;
       G.turnPhase=null;
-      return {dmgDealt:dmg,wasDodged:false,wasBlocked,isCrit};
+      return {dmgDealt:dmg,wasDodged:false,wasBlocked,isCrit,isMagic};
     }
     const _secbd=BIRDS[G.player.birdKey];
     if(_secbd&&_secbd.passive&&_secbd.passive.onPhysicalHit&&!isMagic) _secbd.passive.onPhysicalHit(G.player,G);
@@ -8049,7 +8109,7 @@ function dealDamage(target,amount,isCrit=false,isMagic=false,srcAbility=null) {
     registerHit();
     if(isAttack && (G.player._sheetNextCrit||0)>0) G.player._sheetNextCrit=0;
   }
-  return {dmgDealt:dmg,wasDodged:false,wasBlocked,isCrit};
+  return {dmgDealt:dmg,wasDodged:false,wasBlocked,isCrit,isMagic};
 }
 
 function pdmg(mult=1,ab=null,opts={}) {
@@ -10482,31 +10542,33 @@ function postCombat() {
       }
     }
 
-    // Shiny reward economy rebalance
+    // Shiny reward — tuned so ~4–8 normal kills afford a white-tier shop item (36 shinies)
     const isStoryMode=(G.ui?.gameMode||'story')==='story';
     const stage=Math.max(1,getEncounterStage());
     const endlessBattle=Math.max(0,G.endlessBattle||0);
     let shinyGain=0;
     if(G.enemy.isBoss){
       if(isStoryMode){
-        if(stage>=20) shinyGain=roll(75,110);
-        else if(stage>=10) shinyGain=roll(55,75);
-        else shinyGain=roll(40,55);
+        if(stage>=20) shinyGain=roll(SHINY_BOSS_STORY.late[0], SHINY_BOSS_STORY.late[1]);
+        else if(stage>=10) shinyGain=roll(SHINY_BOSS_STORY.mid[0], SHINY_BOSS_STORY.mid[1]);
+        else shinyGain=roll(SHINY_BOSS_STORY.early[0], SHINY_BOSS_STORY.early[1]);
       } else {
-        shinyGain=roll(60,85);
+        shinyGain=roll(SHINY_BOSS_ENDLESS[0], SHINY_BOSS_ENDLESS[1]);
       }
     } else {
       if(isStoryMode){
-        shinyGain = (stage<10) ? roll(20,30) : roll(30,45);
+        if(stage>=20) shinyGain=roll(SHINY_NORMAL_STORY.late[0], SHINY_NORMAL_STORY.late[1]);
+        else if(stage>=10) shinyGain=roll(SHINY_NORMAL_STORY.mid[0], SHINY_NORMAL_STORY.mid[1]);
+        else shinyGain=roll(SHINY_NORMAL_STORY.early[0], SHINY_NORMAL_STORY.early[1]);
       } else {
-        const infl=Math.min(12,Math.floor(endlessBattle/8));
-        shinyGain = roll(18,28) + infl;
+        const infl=Math.min(SHINY_ENDLESS_INFLATION_CAP, Math.floor(endlessBattle/10));
+        shinyGain=roll(SHINY_NORMAL_ENDLESS[0], SHINY_NORMAL_ENDLESS[1]) + infl;
       }
     }
 
     // SAFE: bs defaults prevent crashes
-    const perfectBonus = (bs.dmgTaken <= 0) ? 2 : 0;
-    const fastWinBonus = (bs.turns <= 3) ? 1 : 0;
+    const perfectBonus = (bs.dmgTaken <= 0) ? SHINY_BONUS_PERFECT : 0;
+    const fastWinBonus = (bs.turns <= 3) ? SHINY_BONUS_FAST : 0;
 
     if(G.player?.moltingRitual){
       G.player.stats.atk += 1;
@@ -10514,15 +10576,15 @@ function postCombat() {
       G.player.stats.hp = Math.min(G.player.stats.hp, G.player.stats.maxHp);
       logMsg('🔥 Molting Ritual: +1 ATK, -3 Max HP.', 'system');
     }
-    const magpieBonus = (G.player?.birdKey==='magpie') ? 3 : 0;
+    const magpieBonus = (G.player?.birdKey==='magpie') ? SHINY_BONUS_MAGPIE : 0;
     shinyGain += perfectBonus + fastWinBonus + magpieBonus;
     G.shinyObjects += shinyGain;
     if(_isOverworldRun()) G._owSequenceShiny = (G._owSequenceShiny||0) + shinyGain;
 
     const bonusParts = [];
-    if (perfectBonus > 0) bonusParts.push('perfect +2');
-    if (fastWinBonus > 0) bonusParts.push('fast +1');
-    if (magpieBonus > 0) bonusParts.push('shiny collector +3');
+    if (perfectBonus > 0) bonusParts.push(`perfect +${SHINY_BONUS_PERFECT}`);
+    if (fastWinBonus > 0) bonusParts.push(`fast +${SHINY_BONUS_FAST}`);
+    if (magpieBonus > 0) bonusParts.push(`shiny collector +${SHINY_BONUS_MAGPIE}`);
     const bonusTxt = bonusParts.length ? ` (${bonusParts.join(', ')})` : '';
     logMsg(`✨ +${shinyGain} Shiny Object${shinyGain > 1 ? 's' : ''}${bonusTxt}! (Total: ${G.shinyObjects})`, 'exp-gain');
 
@@ -12347,14 +12409,18 @@ function makeUtilityOffer(mode){
   return {...src, apply:src.apply};
 }
 
+function assignShopItems(items){
+  _shopItems=Array.isArray(items)?items:[];
+  try{ globalThis._shopItems=_shopItems; }catch(_){}
+}
 function syncShopItemsToGlobal(){
-  try{ globalThis._shopItems = _shopItems; }catch(_){}
+  assignShopItems(_shopItems);
 }
 
 const SHOP_HEALING_ITEMS = Object.freeze([
-  {id:'shop_heal_fresh_pond',tier:'grey',icon:'💧',name:'Fresh Pond',desc:'Heal 15% Max HP',costOverride:8,healPct:0.15,isHealingShopItem:true},
-  {id:'shop_heal_bird_bath',tier:'green',icon:'🛁',name:'Bird Bath',desc:'Heal 30% Max HP',costOverride:14,healPct:0.30,isHealingShopItem:true},
-  {id:'shop_heal_honey_feeder',tier:'blue',icon:'🍯',name:'Honey Feeder',desc:'Heal 50% Max HP',costOverride:20,healPct:0.50,isHealingShopItem:true},
+  {id:'shop_heal_fresh_pond',tier:'grey',icon:'💧',name:'Fresh Pond',desc:'Heal 25% Max HP',costOverride:10,healPct:0.25,isHealingShopItem:true},
+  {id:'shop_heal_bird_bath',tier:'green',icon:'🛁',name:'Bird Bath',desc:'Heal 50% Max HP',costOverride:18,healPct:0.50,isHealingShopItem:true},
+  {id:'shop_heal_honey_feeder',tier:'blue',icon:'🍯',name:'Honey Feeder',desc:'Heal 75% Max HP',costOverride:28,healPct:0.75,isHealingShopItem:true},
 ]);
 
 function showStorkShop(mode='boss') {
@@ -12368,7 +12434,7 @@ function enterStorkShopScreen(){
   showScreen('screen-stork-shop');
   const buyBtn=document.getElementById('shop-buy-btn'); if(buyBtn) buyBtn.disabled=true;
   const log=document.getElementById('shop-purchase-log');
-  if(log) log.textContent=(G._shopMode==='grey'?'Stork Market: 3 healing items · 6 upgrades available.':'Boss Market: 3 healing items · 6 elite upgrades available.');
+  if(log) log.textContent='Stork Market: 3 healing items on top · mutations below. Spend your shinies wisely!';
   renderShopItems();
 }
 
@@ -12401,6 +12467,14 @@ function _findShopItemById(id) {
   }
   const upg = getUpgradePool().find(x => x.id === id);
   if (upg) return upg;
+  if (typeof Avian?.mutations?.reconstructShopOffer === 'function') {
+    const mut = Avian.mutations.reconstructShopOffer(id);
+    if (mut) return mut;
+  }
+  if (typeof Avian?.shop?.findById === 'function') {
+    const ability = Avian.shop.findById(id);
+    if (ability) return ability;
+  }
   const util = [..._SHOP_UTILS_REGULAR,..._SHOP_UTILS_BOSS].find(x => x.id === id);
   if (util) return {...util};
   return null;
@@ -12413,16 +12487,16 @@ function generateShopItems() {
   if (nodeId != null && G._shopSnapshots?.[nodeId]) {
     const snap = G._shopSnapshots[nodeId];
     const bought = new Set(snap.boughtIds || []);
-    _shopItems = (snap.itemIds || [])
+    assignShopItems((snap.itemIds || [])
       .filter(id => !bought.has(id))
       .map(id => _findShopItemById(id))
-      .filter(Boolean);
+      .filter(Boolean));
     renderShopItems();
     return;
   }
 
   // ── First visit: generate random items ──────────────────────────────────────
-  _shopItems = [];
+  assignShopItems([]);
   const used = new Set();
   const goldCapReached = getGoldCardCount() >= getGoldCardLimit();
 
@@ -12486,6 +12560,13 @@ const SHOP_STATE = {
   healingPurchasesThisVisit:new Set(),
 };
 
+try{
+  globalThis.assignShopItems=assignShopItems;
+  globalThis.SHOP_HEALING_ITEMS=SHOP_HEALING_ITEMS;
+  globalThis.SHOP_STATE=SHOP_STATE;
+  globalThis._findShopItemById=_findShopItemById;
+}catch(_){}
+
 function shopResetVisitState(){
   SHOP_STATE.purchaseMadeThisVisit = false;
   SHOP_STATE.selectedIndex = null;
@@ -12504,6 +12585,9 @@ function getShopRefreshCost(){
 }
 
 function renderShopItems() {
+  if(Array.isArray(globalThis._shopItems) && globalThis._shopItems.length>_shopItems.length){
+    assignShopItems(globalThis._shopItems);
+  }
   const grid=document.getElementById('shop-items-grid'); if(!grid){ syncShopItemsToGlobal(); return; }
   grid.innerHTML='';
   const shinyCt=document.getElementById('shop-shiny-count'); if(shinyCt) shinyCt.textContent=G.shinyObjects;
@@ -12551,6 +12635,9 @@ function renderShopItems() {
 }
 
 async function shopBuySelected() {
+  if(Array.isArray(globalThis._shopItems) && globalThis._shopItems.length>_shopItems.length){
+    assignShopItems(globalThis._shopItems);
+  }
   const selected=(SHOP_STATE.selectedIndex!==null?SHOP_STATE.selectedIndex:_shopSelectedIdx);
   if(selected===null||selected>=_shopItems.length) return false;
   const item=_shopItems[selected];
@@ -12594,6 +12681,7 @@ async function shopBuySelected() {
       G._shopSnapshots[G._currentShopNodeId].boughtIds.push(item.id);
   }
   _shopItems.splice(selected,1);
+  assignShopItems(_shopItems);
   if(isHealingItem) SHOP_STATE.healingPurchasesThisVisit.add(item.id);
   SHOP_STATE.selectedIndex=null;
   _shopSelectedIdx=null;
