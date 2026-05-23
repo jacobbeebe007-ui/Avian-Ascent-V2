@@ -372,7 +372,7 @@
               if (!mrw || mutUsed.has(mrw.id)) continue;
               mutUsed.add(mrw.id);
               var rawTier = mrw.tier === 'grey' ? 'white' : mrw.tier;
-              var costs = (Avian.mutations.MUTATION_SHOP_COSTS) || { white: 8, green: 14, blue: 22, purple: 32, gold: 48 };
+              var costs = (Avian.mutations.MUTATION_SHOP_COSTS) || { white: 16, green: 28, blue: 44, purple: 64, gold: 96 };
               items.push(Object.assign({}, mrw, {
                 costOverride: costs[rawTier] || costs[mrw.tier] || 20,
               }));

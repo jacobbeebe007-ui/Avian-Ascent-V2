@@ -9,22 +9,27 @@
 #shop-items-grid .shop-item.tier-grey,
 #shop-items-grid .reward-card.tier-grey{
   box-shadow: 0 0 10px rgba(160,170,185,.10), inset 0 0 8px rgba(160,170,185,.04);
+  background: linear-gradient(180deg, rgba(106,120,144,.10), var(--surface));
 }
 #shop-items-grid .shop-item.tier-green,
 #shop-items-grid .reward-card.tier-green{
   box-shadow: 0 0 14px rgba(76,138,106,.22), inset 0 0 10px rgba(76,138,106,.08);
+  background: linear-gradient(180deg, rgba(76,138,106,.10), var(--surface));
 }
 #shop-items-grid .shop-item.tier-blue,
 #shop-items-grid .reward-card.tier-blue{
   box-shadow: 0 0 16px rgba(74,106,201,.24), inset 0 0 10px rgba(74,106,201,.08);
+  background: linear-gradient(180deg, rgba(74,106,201,.10), var(--surface));
 }
 #shop-items-grid .shop-item.tier-purple,
 #shop-items-grid .reward-card.tier-purple{
   box-shadow: 0 0 18px rgba(122,76,201,.28), inset 0 0 10px rgba(122,76,201,.10);
+  background: linear-gradient(180deg, rgba(122,76,201,.10), var(--surface));
 }
 #shop-items-grid .shop-item.tier-gold,
 #shop-items-grid .reward-card.tier-gold{
   box-shadow: 0 0 20px rgba(201,168,76,.32), 0 0 34px rgba(232,201,106,.14), inset 0 0 12px rgba(201,168,76,.10);
+  background: linear-gradient(180deg, rgba(201,168,76,.12), var(--surface));
 }
 #shop-items-grid .shop-item:hover,
 #shop-items-grid .reward-card:hover{

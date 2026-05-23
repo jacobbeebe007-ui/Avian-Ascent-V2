@@ -1707,11 +1707,11 @@ body.ui-mobile-mode #screen-battle .level-badge{font-size:.7rem;}
 .reward-card.tier-blue::before{background:var(--tier-blue);}
 .reward-card.tier-purple::before{background:var(--tier-purple);}
 .reward-card.tier-gold::before{background:linear-gradient(90deg,var(--gold),var(--gold-light),var(--gold));}
-.reward-card.tier-grey{border-color:rgba(106,120,144,.4);}
-.reward-card.tier-green{border-color:rgba(76,138,106,.4);}
-.reward-card.tier-blue{border-color:rgba(74,106,201,.4);}
-.reward-card.tier-purple{border-color:rgba(122,76,201,.4);}
-.reward-card.tier-gold{border-color:rgba(201,168,76,.6);box-shadow:0 0 20px rgba(201,168,76,.2);}
+.reward-card.tier-grey{border-color:rgba(106,120,144,.4);background:linear-gradient(180deg,rgba(106,120,144,.10),var(--surface));}
+.reward-card.tier-green{border-color:rgba(76,138,106,.4);background:linear-gradient(180deg,rgba(76,138,106,.10),var(--surface));}
+.reward-card.tier-blue{border-color:rgba(74,106,201,.4);background:linear-gradient(180deg,rgba(74,106,201,.10),var(--surface));}
+.reward-card.tier-purple{border-color:rgba(122,76,201,.4);background:linear-gradient(180deg,rgba(122,76,201,.10),var(--surface));}
+.reward-card.tier-gold{border-color:rgba(201,168,76,.6);box-shadow:0 0 20px rgba(201,168,76,.2);background:linear-gradient(180deg,rgba(201,168,76,.12),var(--surface));}
 .reward-card:hover.tier-grey{border-color:var(--tier-grey);}
 .reward-card:hover.tier-green{border-color:var(--tier-green);}
 .reward-card:hover.tier-blue{border-color:var(--tier-blue);}
@@ -2577,19 +2577,24 @@ img{image-rendering:pixelated;image-rendering:crisp-edges;}
 }
 .shop-item.tier-grey{
   box-shadow:0 0 10px rgba(160,170,185,.10), inset 0 0 8px rgba(160,170,185,.04);
+  background:linear-gradient(180deg,rgba(106,120,144,.10),var(--surface));
 }
 .shop-item.tier-green{
   box-shadow:0 0 14px rgba(76,138,106,.22), inset 0 0 10px rgba(76,138,106,.08);
+  background:linear-gradient(180deg,rgba(76,138,106,.10),var(--surface));
 }
 .shop-item.tier-blue{
   box-shadow:0 0 16px rgba(74,106,201,.24), inset 0 0 10px rgba(74,106,201,.08);
+  background:linear-gradient(180deg,rgba(74,106,201,.10),var(--surface));
 }
 .shop-item.tier-purple{
   box-shadow:0 0 18px rgba(122,76,201,.28), inset 0 0 10px rgba(122,76,201,.10);
+  background:linear-gradient(180deg,rgba(122,76,201,.10),var(--surface));
 }
 .shop-item.tier-gold{
   box-shadow:0 0 20px rgba(201,168,76,.32), 0 0 34px rgba(232,201,106,.14), inset 0 0 12px rgba(201,168,76,.10);
   animation:storkGoldShimmer 2.2s ease-in-out infinite;
+  background:linear-gradient(180deg,rgba(201,168,76,.12),var(--surface));
 }
 .shop-item.shop-locked-visit{
   pointer-events:none !important; opacity:.55 !important; filter:saturate(.82) !important;

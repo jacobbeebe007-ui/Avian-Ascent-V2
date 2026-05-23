@@ -10,7 +10,11 @@
   var mutations = Avian.mutations || Object.create(null);
 
   var TIER_ICONS = { white: '🤍', green: '💚', blue: '💙', purple: '💜', gold: '👑' };
-  var MUTATION_SHOP_COSTS = { white: 8, green: 14, blue: 22, purple: 32, gold: 48 };
+  var SLOT_ICONS = {
+    wing: '🪽', feet: '🦶', head: '🪖', beak: '🦅', chest: '🛡',
+    eyes: '👁', tail: '🪶', plumage: '✨', syrinx: '🎵',
+  };
+  var MUTATION_SHOP_COSTS = { white: 16, green: 28, blue: 44, purple: 64, gold: 96 };
   var SLOT_LABELS = {
     wing: 'Wing', feet: 'Feet', head: 'Head', beak: 'Beak', chest: 'Chest',
     eyes: 'Eyes', tail: 'Tail', plumage: 'Plumage', syrinx: 'Syrinx',
@@ -324,7 +328,7 @@
       id: item.id,
       tier: uiTier,
       type: 'mutation',
-      icon: TIER_ICONS[tier] || '🧬',
+      icon: SLOT_ICONS[item.slot] || '🧬',
       name: item.name,
       desc: formatMutationDesc(item),
       mutationItemId: item.id,

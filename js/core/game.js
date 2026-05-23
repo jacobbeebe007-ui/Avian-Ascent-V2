@@ -2363,7 +2363,9 @@ function applySkillSlotMastery(slot, masteryId, player=G.player){
 function ensureAbilityObjectFromTemplate(id, existing=null, slotIndex=null, energyCostPlayer=null){
   const tmpl = ABILITY_TEMPLATES?.[id] || {};
   const level = Math.max(1, Number(existing?.level || 1));
-  const out = {...tmpl, ...(existing||{}), id, name:tmpl.name||existing?.name||id, level};
+  const idChanged = existing?.id && existing.id !== id;
+  const preserved = idChanged ? { level: existing.level } : existing;
+  const out = {...tmpl, ...(preserved||{}), id, name:tmpl.name||existing?.name||id, level};
   if(Number.isFinite(slotIndex)) out.slotIndex = slotIndex;
   if(!String(out.btnType||'').trim() && tmpl.btnType) out.btnType = tmpl.btnType;
   if(!String(out.type||'').trim() && tmpl.type) out.type = tmpl.type;
@@ -5946,7 +5948,7 @@ function renderActions() {
       if(G.playerStatus?.battleHymn) mods.push('⬆ Hymn buff');
       if(mods.length) modTxt=`<span class=\"btn-mod\" title=\"${mods.join(' | ')}\">${mods.join(' · ')}</span>`;
     }
-    const shortDesc=(((ab.levels&&ab.levels[(ab.level||1)-1]?.desc)||ab.desc||'')+getAbilityDamageScalingHintForUI(ab)).replace(/<[^>]+>/g,'').slice(0,100);
+    const shortDesc=((getAbDesc(ab)||'')+getAbilityDamageScalingHintForUI(ab)).replace(/<[^>]+>/g,'').slice(0,100);
     const _dmgEst=estimateSkillDamageRange(ab,_tmplUI,G.player,{isPlayerCombatPreview:true});
     let dmgChip='';
     if(_dmgEst.isDamaging&&_dmgEst.dmgLow!=null){
