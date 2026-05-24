@@ -392,10 +392,16 @@
         if (nodeId != null && globalThis.G && globalThis.G._shopSnapshots && globalThis.G._shopSnapshots[nodeId]) {
           var snap = globalThis.G._shopSnapshots[nodeId];
           var bought = new Set(snap.boughtIds || []);
-          setShopItems((snap.itemIds || [])
+          var SHOP_STATE = globalThis.SHOP_STATE;
+          if (SHOP_STATE) {
+            SHOP_STATE.featherBoughtThisVisit = bought.has('shop_mutated_feather');
+          }
+          var restored = (snap.itemIds || [])
             .filter(function (id) { return !bought.has(id); })
             .map(restoreShopItemById)
-            .filter(Boolean));
+            .filter(Boolean);
+          if (!bought.has('shop_mutated_feather')) appendPinnedFeather(restored);
+          setShopItems(restored);
           if (typeof globalThis.renderShopItems === 'function') globalThis.renderShopItems();
           return;
         }

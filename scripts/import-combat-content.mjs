@@ -282,25 +282,31 @@ const CLASS_KEY = (s) => (s || '').trim().toLowerCase();
 //                  "Base 6 + 100% ATK + 5% Max Health", "No direct damage"
 // ---------------------------------------------------------------------------
 function parseDamageFormula(text) {
-  const out = { hits: 1, baseFlat: 0, scaleStat: 'ATK', scalePct: 0, hpScalePct: 0, noDamage: false };
+  const out = {
+    hits: 1,
+    baseFlat: 0,
+    scaleStat: 'ATK',
+    scalePct: 0,
+    secondaryScaleStat: null,
+    secondaryScalePct: 0,
+    hpScalePct: 0,
+    noDamage: false,
+  };
   if (!text) { out.noDamage = true; return out; }
   const s = String(text).trim();
   if (/no\s+direct\s+damage|none/i.test(s)) { out.noDamage = true; return out; }
-  // Hit count
   const hitsM = s.match(/(\d+)\s*hits?\s+of\s+/i);
   if (hitsM) out.hits = parseInt(hitsM[1], 10);
-  // Base flat
   const baseM = s.match(/Base\s+(\d+(?:\.\d+)?)/i);
   if (baseM) out.baseFlat = Number(baseM[1]);
-  // Scaling: pick first ATK/MATK pct
-  const atkM = s.match(/(\d+(?:\.\d+)?)\s*%\s*ATK\b/i);
-  const matkM = s.match(/(\d+(?:\.\d+)?)\s*%\s*MATK\b/i);
-  if (matkM) {
-    out.scaleStat = 'MATK';
-    out.scalePct = Number(matkM[1]);
-  } else if (atkM) {
-    out.scaleStat = 'ATK';
-    out.scalePct = Number(atkM[1]);
+  const statMatches = [...s.matchAll(/(\d+(?:\.\d+)?)\s*%\s*(ATK|MATK|SPD|DEF|MDEF|ACC|DODGE)\b/gi)];
+  if (statMatches.length >= 1) {
+    out.scaleStat = String(statMatches[0][2]).toUpperCase();
+    out.scalePct = Number(statMatches[0][1]);
+  }
+  if (statMatches.length >= 2) {
+    out.secondaryScaleStat = String(statMatches[1][2]).toUpperCase();
+    out.secondaryScalePct = Number(statMatches[1][1]);
   }
   const hpM = s.match(/(\d+(?:\.\d+)?)\s*%\s*Max\s*Health/i);
   if (hpM) out.hpScalePct = Number(hpM[1]);
@@ -670,6 +676,8 @@ function buildSkillTrees(perksSheets, shopSheets) {
       baseFlat: formula.baseFlat,
       scaleStat: formula.scaleStat,
       scalePct: formula.scalePct,
+      secondaryScaleStat: formula.secondaryScaleStat,
+      secondaryScalePct: formula.secondaryScalePct,
       hpScalePct: formula.hpScalePct,
       noDamage: formula.noDamage,
       pierceDef: pierce.def,

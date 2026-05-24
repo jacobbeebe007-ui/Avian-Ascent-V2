@@ -78,75 +78,32 @@
           else if(/magpie/i.test(title)) key = 'magpie';
           else if(/kookaburra/i.test(title)) key = 'kookaburra';
           else if(/peregrine/i.test(title)) key = 'peregrine';
-          else if(/lyrebird/i.test(title)) key = 'lyrebird';
-          else if(/penguin/i.test(title)) key = 'penguin';
-          else if(/emu/i.test(title)) key = 'emu';
-          else if(/swan/i.test(title)) key = 'swan';
-          else if(/flamingo/i.test(title)) key = 'flamingo';
-          else if(/seagull/i.test(title)) key = 'seagull';
-          else if(/albatross/i.test(title)) key = 'albatross';
+          else if(/snowy/i.test(title)) key = 'snowyowl';
           else if(/toucan/i.test(title)) key = 'toucan';
-          if(key && typeof globalThis.renderBirdIconHTML === 'function'){
-            portrait.innerHTML = renderBirdIconHTML(key, 'small', false);
+          else if(/harpy/i.test(title)) key = 'harpyeagle';
+          else if(/bald eagle/i.test(title)) key = 'baldeagle';
+          else if(/cockatoo/i.test(title)) key = 'blackcockatoo';
+          else if(/ostrich/i.test(title)) key = 'ostrich';
+          else if(/cassowary/i.test(title)) key = 'cassowary';
+          if(key && typeof globalThis.renderBirdPortrait === 'function'){
+            globalThis.renderBirdPortrait(portrait, key);
           }
         });
-      }catch(err){ console.error('unlock popup sprite render failed:', err); }
+      }catch(_){}
       return out;
     };
   }
-
-  const oldShowVictory = globalThis.showVictory;
-  if(typeof oldShowVictory === 'function'){
-    globalThis.showVictory = function(){
-      try{ if(typeof globalThis.handleBossClearUnlocks === 'function') handleBossClearUnlocks(); }catch(err){ console.error(err); }
-      return oldShowVictory.apply(this, arguments);
-    };
-  }
-
 })();
 
 
-// ===== 29_oai-shop-tier-class-fix.js =====
-
+// ===== 18_oai-shop-glow-colors.css =====
 (function(){
-  function inferTier(item){
-    if(!item) return '';
-    return (item.tier || item.rarity || item.color || '').toString().toLowerCase();
-  }
-
   function applyShopTierClasses(){
-    try{
-      const grid = document.getElementById('shop-items-grid');
-      if(!grid || !globalThis._shopItems) return;
-      const cards = [...grid.querySelectorAll('.shop-item, .reward-card')];
-      cards.forEach((card, idx)=>{
-        ['tier-grey','tier-green','tier-blue','tier-purple','tier-gold'].forEach(c=>card.classList.remove(c));
-        const tier = inferTier(globalThis._shopItems[idx]);
-        if(['grey','green','blue','purple','gold'].includes(tier)){
-          card.classList.add('tier-' + tier);
-        }
-      });
-    }catch(err){ console.error('applyShopTierClasses failed:', err); }
+    document.querySelectorAll('#shop-items-grid .shop-item, #shop-items-grid .reward-card').forEach(el=>{
+      const tier=(el.className.match(/tier-(grey|green|blue|purple|gold)/)||[])[1];
+      if(tier) el.dataset.tier=tier;
+    });
   }
-
-  const oldRenderShopItems = globalThis.renderShopItems;
-  if(typeof oldRenderShopItems === 'function'){
-    globalThis.renderShopItems = function(){
-      const out = oldRenderShopItems.apply(this, arguments);
-      setTimeout(applyShopTierClasses, 0);
-      return out;
-    };
-  }
-
-  const oldRefreshShopUI = globalThis.refreshShopUI;
-  if(typeof oldRefreshShopUI === 'function'){
-    globalThis.refreshShopUI = function(){
-      const out = oldRefreshShopUI.apply(this, arguments);
-      setTimeout(applyShopTierClasses, 0);
-      return out;
-    };
-  }
-
   document.addEventListener('DOMContentLoaded', ()=>setTimeout(applyShopTierClasses, 0));
 })();
 
@@ -159,8 +116,6 @@
     const sell = document.getElementById('shop-sell-btn');
     const refresh = document.getElementById('shop-refresh-btn');
     const exit = document.getElementById('shop-exit-btn') || document.querySelector('[data-shop-action="exit"]');
-    const buyTab = document.getElementById('shop-tab-buy');
-    const sellTab = document.getElementById('shop-tab-sell');
     if(buy && buy.dataset.bound !== '1'){
       buy.dataset.bound = '1';
       buy.addEventListener('click', function(e){ e.preventDefault(); shopBuySelected(); });
@@ -177,22 +132,36 @@
       exit.dataset.bound = '1';
       exit.addEventListener('click', function(e){ e.preventDefault(); exitStorkShop(); });
     }
-    if(buyTab && buyTab.dataset.bound !== '1'){
-      buyTab.dataset.bound = '1';
-      buyTab.addEventListener('click', function(e){ e.preventDefault(); if(typeof setShopTab==='function') setShopTab('buy'); });
-    }
-    if(sellTab && sellTab.dataset.bound !== '1'){
-      sellTab.dataset.bound = '1';
-      sellTab.addEventListener('click', function(e){ e.preventDefault(); if(typeof setShopTab==='function') setShopTab('sell'); });
-    }
   }
-  const oldRenderShopItems = globalThis.renderShopItems;
-  if(typeof oldRenderShopItems === 'function'){
-    globalThis.renderShopItems = function(){
-      const out = oldRenderShopItems.apply(this, arguments);
+
+  function bindShopDelegation(){
+    const screen = document.getElementById('screen-stork-shop');
+    if(!screen || screen.dataset.shopDelegated === '1') return;
+    screen.dataset.shopDelegated = '1';
+    screen.addEventListener('click', function(e){
+      const tab = e.target.closest('[data-shop-tab]');
+      if(tab){
+        e.preventDefault();
+        if(typeof setShopTab === 'function') setShopTab(tab.dataset.shopTab);
+      }
+    });
+  }
+
+  function wrapShopRenderer(name){
+    const oldFn = globalThis[name];
+    if(typeof oldFn !== 'function') return;
+    globalThis[name] = function(){
+      const out = oldFn.apply(this, arguments);
       bindShopButtons();
+      bindShopDelegation();
       return out;
     };
   }
-  document.addEventListener('DOMContentLoaded', bindShopButtons);
+
+  wrapShopRenderer('renderShopItems');
+  wrapShopRenderer('renderShopSellItems');
+  document.addEventListener('DOMContentLoaded', function(){
+    bindShopButtons();
+    bindShopDelegation();
+  });
 })();

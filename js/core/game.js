@@ -2800,7 +2800,6 @@ function saveRun() {
       } : null,
       savedAt: Date.now(),
       shinyObjects: Math.max(0, Math.floor(Number(G.shinyObjects) || 0)),
-      pendingSkillEvolutionChoices: Math.max(0, Math.floor(Number(G._pendingSkillEvolutionChoices) || 0)),
       owEncounterChain: (!G.endlessMode && Array.isArray(G._owStageEnemies) && G._owStageEnemies.length) ? {
         owStageEnemies: G._owStageEnemies.slice(),
         owEnemyIndex: G._owEnemyIndex || 0,
@@ -6463,6 +6462,24 @@ function getEffectivePlayerOffensiveMatkForPreview(){
   const m=Number(G?.player?.stats?.matk||8);
   return softenMainStatForCombat(m)*COMBAT_OFFENSIVE_STAT_MULT;
 }
+function getPackRowScaleStatRaw(statKey, stats, isPlayerCombat){
+  const key=String(statKey||'ATK').toUpperCase();
+  const s=stats||(isPlayerCombat&&G?.player?.stats)||{};
+  if(key==='MATK') return Number(s.matk||8);
+  if(key==='SPD') return Number(s.spd||0);
+  if(key==='DEF') return Number(s.def||0);
+  if(key==='MDEF') return Number(s.mdef||0);
+  if(key==='ACC') return Number(s.acc||0);
+  if(key==='DODGE') return Number(s.dodge||0);
+  if(key==='ATK'&&isPlayerCombat&&G?.player) return getEffectivePlayerAtkForDamagePreview();
+  return Number(s.atk||0);
+}
+function packRowScaleContribution(scaleStat, scalePct, stats, isPlayerCombat){
+  const pct=Number(scalePct)||0;
+  if(pct<=0) return 0;
+  const raw=getPackRowScaleStatRaw(scaleStat, stats, isPlayerCombat);
+  return softenMainStatForCombat(raw)*COMBAT_OFFENSIVE_STAT_MULT*(pct/100);
+}
 
 /** `${birdKey}::${abilityId}` → mult[] parsed from that bird's SKILL_ACTION_OVERRIDES (avoids shared id clashes e.g. dart). */
 const STRIKE_PREVIEW_MULT_SCOPED=Object.create(null);
@@ -6607,14 +6624,12 @@ function estimateSkillDamageRange(ab,tmpl,attacker,opts){
   }
   const packRow=tmpl._combatPackRow;
   if(packRow&&!packRow.noDamage){
-    const statRaw=(packRow.scaleStat==='MATK')
-      ? (isPlayerCombat&&G?.player ? Number(G.player.stats?.matk||8) : pMatk)
-      : (isPlayerCombat&&G?.player ? getEffectivePlayerAtkForDamagePreview() : pAtk);
-    const soft=softenMainStatForCombat(statRaw);
     const b=Number(packRow.baseFlat)||0;
-    const s=Number(packRow.scalePct)||0;
     const hp=Number(packRow.hpScalePct)||0;
-    let core=b+Math.floor(soft*COMBAT_OFFENSIVE_STAT_MULT*(s/100));
+    let core=b+Math.floor(packRowScaleContribution(packRow.scaleStat, packRow.scalePct, isPlayerCombat&&G?.player?G.player.stats:stats, isPlayerCombat));
+    if(packRow.secondaryScaleStat&&Number(packRow.secondaryScalePct)>0){
+      core+=Math.floor(packRowScaleContribution(packRow.secondaryScaleStat, packRow.secondaryScalePct, isPlayerCombat&&G?.player?G.player.stats:stats, isPlayerCombat));
+    }
     if(hp>0){
       const mhp=Number((isPlayerCombat&&G?.player?G.player.stats:stats).maxHp)||0;
       core+=Math.floor(mhp*(hp/100));
@@ -11848,16 +11863,8 @@ function finalizeSkillEvolutionChoice(message){
     openNest();
     return;
   }
+  resetLevelUpFlowState();
   if(message) logMsg(message, 'exp-gain');
-  G._pendingSkillEvolutionChoices = Math.max(0, (G._pendingSkillEvolutionChoices||1)-1);
-  if((G._pendingSkillEvolutionChoices||0)>0){
-    renderSkillEvolutionSlotSelection();
-    return;
-  }
-  showLevelUpScreen();
-  if(!(G._pendingLevelUpChoices>0)){
-    afterLevelUp();
-  }
 }
 function confirmSkillEvolutionChoice(){
   const flow = G._skillEvolutionFlow || {step:'slot'};
@@ -13009,6 +13016,17 @@ function setShopTab(tab){
   if(buyBtn) buyBtn.style.display=G._shopTab==='buy'?'':'none';
   if(sellBtn) sellBtn.style.display=G._shopTab==='sell'?'':'none';
   if(refreshBtn) refreshBtn.style.display=G._shopTab==='buy'?'':'none';
+  const log=document.getElementById('shop-purchase-log');
+  if(log){
+    if(G._shopTab==='sell'){
+      log.textContent='Sell mutations from your inventory for half their shop buy price (in shinies).';
+    } else {
+      const mode=G._shopMode||'boss';
+      log.textContent=mode==='endless-boss'
+        ? 'Stork Market: healing · 1 ability · Mutated Feather (78🌟, does not refresh).'
+        : 'Stork Market: 3 healing · 6 abilities · 1 Mutated Feather (78🌟, does not refresh). Sell mutations on the Sell tab.';
+    }
+  }
   if(G._shopTab==='buy') renderShopItems();
   else renderShopSellItems();
 }

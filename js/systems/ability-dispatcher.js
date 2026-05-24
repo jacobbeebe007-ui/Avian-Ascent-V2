@@ -42,24 +42,38 @@
   function statBase(scaleStat) {
     var g = globalThis.G;
     if (!g || !g.player || !g.player.stats) return 0;
-    if (scaleStat === 'MATK') return g.player.stats.matk || 0;
-    return g.player.stats.atk || 0;
+    var st = g.player.stats;
+    var key = String(scaleStat || 'ATK').toUpperCase();
+    if (key === 'MATK') return st.matk || 0;
+    if (key === 'SPD') return st.spd || 0;
+    if (key === 'DEF') return st.def || 0;
+    if (key === 'MDEF') return st.mdef || 0;
+    if (key === 'ACC') return st.acc || 0;
+    if (key === 'DODGE') return st.dodge || 0;
+    return st.atk || 0;
   }
   function maxHpForScaling() {
     var g = globalThis.G;
     if (!g || !g.player || !g.player.stats) return 0;
     return g.player.stats.maxHp || 0;
   }
+  function scaleContribution(scaleStat, scalePct) {
+    var pct = Number(scalePct) || 0;
+    if (pct <= 0) return 0;
+    var stat = statBase(scaleStat);
+    var soft = (typeof softenMainStatForCombat === 'function') ? softenMainStatForCombat(stat) : stat;
+    var atkMult = (typeof COMBAT_OFFENSIVE_STAT_MULT === 'number') ? COMBAT_OFFENSIVE_STAT_MULT : 0.75;
+    return soft * atkMult * (pct / 100);
+  }
 
   function computeRawHitDamage(row) {
     if (row.noDamage) return 0;
     var b = Number(row.baseFlat) || 0;
-    var s = Number(row.scalePct) || 0;
-    var stat = statBase(row.scaleStat);
-    var soft = (typeof softenMainStatForCombat === 'function') ? softenMainStatForCombat(stat) : stat;
     var hp = Number(row.hpScalePct) || 0;
-    var atkMult = (typeof COMBAT_OFFENSIVE_STAT_MULT === 'number') ? COMBAT_OFFENSIVE_STAT_MULT : 0.75;
-    var dmg = b + (soft * atkMult * (s / 100));
+    var dmg = b + scaleContribution(row.scaleStat, row.scalePct);
+    if (row.secondaryScaleStat && Number(row.secondaryScalePct) > 0) {
+      dmg += scaleContribution(row.secondaryScaleStat, row.secondaryScalePct);
+    }
     if (hp > 0) dmg += (maxHpForScaling() * (hp / 100));
     var lo = Math.max(1, dmg * 0.85);
     var hi = Math.max(lo, dmg * 1.15);
