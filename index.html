@@ -116,6 +116,7 @@
 <input autocomplete="off" class="splash-unlock-input" id="dev-code-input" maxlength="32" data-input="checkDevCode" placeholder="Code…" spellcheck="false" type="password"/>
 <div class="splash-unlock-msg" id="dev-code-msg"></div>
 <button type="button" class="splash-erase-btn" data-action="openEraseProgressModal">🗑 Erase saved progress</button>
+<button type="button" class="splash-cache-btn" data-action="openClearCacheModal">Clear cached data</button>
 </div>
 </div>
 <div class="supplies-subview" id="supplies-view-records" role="tabpanel" aria-labelledby="supplies-nav-records">
@@ -439,9 +440,18 @@
 <div class="abandon-modal" id="erase-progress-modal">
 <div class="abandon-inner">
 <h3>🗑 Erase Saved Progress?</h3>
-<p>This permanently deletes your run save, bird unlocks, run history, highscores, and personal bests. Accessibility and music settings are kept.</p>
+<p>This permanently deletes your run save, bird unlocks, run history, highscores, and personal bests. Accessibility and music settings are kept. Cached game assets are not affected — use Clear cached data for that.</p>
 <button class="abandon-confirm-btn" data-action="confirmEraseProgress">Yes, erase everything</button>
 <button class="abandon-cancel-btn" data-action="closeEraseProgressModal">Cancel</button>
+</div>
+</div>
+<!-- CLEAR CACHE MODAL -->
+<div class="abandon-modal" id="clear-cache-modal">
+<div class="abandon-inner">
+<h3>Clear Cached Data?</h3>
+<p>This removes offline cached JavaScript, CSS, and other game assets (service worker and browser cache). Your saves, unlocks, and settings are kept. The page will reload to fetch fresh files.</p>
+<button class="abandon-confirm-btn" data-action="confirmClearCache">Yes, clear cache</button>
+<button class="abandon-cancel-btn" data-action="closeClearCacheModal">Cancel</button>
 </div>
 </div>
 <!-- SETTINGS MODAL -->

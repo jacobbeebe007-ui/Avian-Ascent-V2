@@ -326,19 +326,22 @@
   function applyDispatcherHitMods(raw) {
     var r = raw;
     var g = globalThis.G;
+    var roundDmg = (typeof globalThis.roundCombatDamage === 'function')
+      ? globalThis.roundCombatDamage
+      : function(n) { return Math.max(0.01, Math.round(Number(n) * 100) / 100); };
     if (g && g._pendingStrikeActionMods) {
       var strikeAdd = Number(g._pendingStrikeActionMods.multAdd) || 0;
-      if (strikeAdd) r = Math.floor(r * (1 + strikeAdd));
+      if (strikeAdd) r = roundDmg(r * (1 + strikeAdd));
     }
     if (g) {
       var __adm = (g.actionDamageHitsRemaining && g.actionDamageHitsRemaining > 0) ? (g.actionDamageMult || 1) : 1;
-      r = Math.floor(r * __adm);
+      r = roundDmg(r * __adm);
       if ((g.actionDamageHitsRemaining || 0) > 0) {
         g.actionDamageHitsRemaining = Math.max(0, g.actionDamageHitsRemaining - 1);
         if (g.actionDamageHitsRemaining === 0) g.actionDamageMult = 1;
       }
     }
-    return Math.max(1, r);
+    return roundDmg(r);
   }
 
   function resolveDealDamage() {
