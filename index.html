@@ -393,9 +393,14 @@
 <p style="text-align:center;color:var(--text-dim);font-style:italic;font-size:.85rem;margin-bottom:12px">The ancient stork trades in shiny things.</p>
 <div class="shiny-bar">🌟 <span class="shiny-val" id="shop-shiny-count">0</span> Shiny Objects</div>
 <div class="shop-purchase-log" id="shop-purchase-log"></div>
+<div class="shop-tab-row">
+<button type="button" class="shop-tab active" id="shop-tab-buy" data-shop-tab="buy">Buy</button>
+<button type="button" class="shop-tab" id="shop-tab-sell" data-shop-tab="sell">Sell</button>
+</div>
 <div class="shop-items-grid" id="shop-items-grid"></div>
 <div class="shop-btn-row">
 <button class="shop-buy-btn" data-shop-action="buy" disabled="" id="shop-buy-btn">✓ Buy Selected</button>
+<button class="shop-sell-btn" data-shop-action="sell" disabled="" id="shop-sell-btn" style="display:none">✓ Sell Selected</button>
 <button class="shop-refresh-btn" data-shop-action="refresh" id="shop-refresh-btn">🔄 Refresh (20🌟)</button>
 <button class="menu-btn" id="shop-nest-btn" data-action="openNest">🪺 Nest</button>
 <button class="shop-exit-btn" data-shop-action="exit" id="shop-exit-btn">Continue ›</button>

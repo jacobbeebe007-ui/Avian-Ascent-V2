@@ -2072,13 +2072,131 @@ function formatAbilityLevelPathway(tmpl){
     .filter(Boolean)
     .join('\n');
 }
+function makeMutatedFeatherShopOffer(){
+  return {
+    id:'shop_mutated_feather',
+    tier:'purple',
+    icon:'🪶',
+    name:'Mutated Feather',
+    desc:'Upgrade one equipped skill (use from Nest).',
+    costOverride:78,
+    isPinnedShopItem:true,
+    isFeatherShopItem:true,
+    stackable:false,
+    apply(p){
+      p.mutatedFeatherCount=(p.mutatedFeatherCount||0)+1;
+    },
+  };
+}
+try{ globalThis.makeMutatedFeatherShopOffer=makeMutatedFeatherShopOffer; }catch(_){}
+
+function buildNestAbilitySection(player){
+  ensureFamilyEvolutionState(player);
+  if(typeof Avian?.shop?.ensureAbilityInventory==='function') Avian.shop.ensureAbilityInventory(player);
+  const featherCt=Math.max(0, Number(player.mutatedFeatherCount)||0);
+  const canMutate=featherCt>0;
+  const selectedSlot=Number.isFinite(G._nestSelectedAbilitySlot)?G._nestSelectedAbilitySlot:null;
+  const slots=getSkillSlots(player).slice().sort((a,b)=>a.slotIndex-b.slotIndex);
+  let equippedHtml='';
+  for(const slot of slots){
+    const label=getSkillSlotDisplayLabel(slot);
+    const pathLbl=slot.pathId?` · ${slot.pathId.replace(/_/g,' ')}`:'';
+    const tierLbl=slot.abilityId?`Tier ${slot.tier||0}${pathLbl}`:'Empty';
+    const isFlex=slot.slotIndex>=2;
+    const isSelected=selectedSlot===slot.slotIndex;
+    const action=slot.abilityId?resolveSkillSlotEvolutionAction(slot, player):'none';
+    const mutateEnabled=canMutate && action!=='none';
+    const tmpl=slot.abilityId?(ABILITY_TEMPLATES[slot.abilityId]||{}):{};
+    const desc=tmpl.levels?.[0]?.desc||tmpl.desc||'';
+    equippedHtml+=`<div class="nest-ab-slot-card${isSelected?' selected':''}${!slot.abilityId?' empty':''}" data-nest-ab-slot="${slot.slotIndex}">
+      <div class="nest-ab-slot-head"><span class="nest-ab-slot-idx">Slot ${slot.slotIndex+1}</span>${isFlex && slot.abilityId?`<button type="button" class="nest-ab-unequip-btn" data-nest-ab-unequip="${slot.slotIndex}">Store</button>`:''}</div>
+      <div class="nest-ab-name">${slot.abilityId?escapeHtmlRoster(label):'<span class="nest-inv-empty">Empty</span>'}</div>
+      <div class="nest-ab-lv">${tierLbl}</div>
+      ${desc?`<div class="nest-ab-desc">${escapeHtmlRoster(desc)}</div>`:''}
+      ${slot.abilityId?`<button type="button" class="nest-mutate-btn${mutateEnabled?'':' disabled'}" data-nest-ab-mutate="${slot.slotIndex}" ${mutateEnabled?'':'disabled'} title="${mutateEnabled?'Spend 1 Mutated Feather to upgrade this skill':'Need a Mutated Feather in your Nest'}">Mutate Ability</button>`:''}
+    </div>`;
+  }
+  const inv=player.abilityInventory||[];
+  let vaultHtml='';
+  if(!inv.length){
+    vaultHtml=`<div class="nest-inv-empty">No shop abilities in vault. Buy abilities at Stork's Emporium.</div>`;
+  } else {
+    vaultHtml='<div class="nest-ability-vault-grid">';
+    inv.forEach((entry, idx)=>{
+      const name=entry.name||entry.abilityId||'Ability';
+      vaultHtml+=`<div class="nest-ab-vault-item" data-nest-ab-vault="${idx}" title="Click to equip into selected flex slot (or first empty slot 3–4)"><strong>${escapeHtmlRoster(name)}</strong><br><span class="nest-ab-lv">Tier ${entry.tier||0}</span></div>`;
+    });
+    vaultHtml+='</div>';
+  }
+  const slotHint=selectedSlot!=null?`Selected slot ${selectedSlot+1} for equip.`:'Click a flex slot (3–4) to select, then click a vault ability to equip.';
+  return `<div class="nest-section nest-ability-section"><div class="nest-section-title">⚔ Abilities · 🪶 Mutated Feathers: ${featherCt}</div><div class="nest-ledger-subtitle">Equipped loadout</div><div class="nest-abilities-grid">${equippedHtml}</div><div class="nest-ledger-subtitle">Ability vault (${inv.length})</div>${vaultHtml}<p class="nest-ledger-note">${slotHint} Starter slots (1–2) mutate with feathers but stay fixed. Flex slots (3–4) hold shop abilities.</p></div>`;
+}
+
+function beginNestMutateFlow(slotIndex){
+  if(!G.player || (G.player.mutatedFeatherCount||0)<=0){
+    logMsg('No Mutated Feather available. Buy one at Stork\'s shop or find one as a rare drop.','miss');
+    return;
+  }
+  ensureFamilyEvolutionState(G.player);
+  const slot=getSkillSlotByIndex(G.player, slotIndex);
+  if(!slot?.abilityId){ logMsg('That slot has no ability to mutate.','miss'); return; }
+  const action=resolveSkillSlotEvolutionAction(slot, G.player);
+  if(action==='none'){ logMsg('That skill is fully evolved.','miss'); return; }
+  closeNest();
+  G._nestMutateFlow=true;
+  G._nestMutateSlotIndex=slotIndex;
+  showScreen('screen-levelup');
+  resetLevelUpFlowState();
+  setLevelUpPanelTitle('🪶 Mutate Ability');
+  document.getElementById('lu-sub').textContent=`Spend 1 Mutated Feather to evolve ${getSkillSlotDisplayLabel(slot)}.`;
+  configureLevelUpSecondary('✕ Cancel', cancelNestMutateFlow, true);
+  if(action==='choose_path') renderSkillEvolutionPathSelection(slot);
+  else if(action==='tier_up') renderSkillEvolutionTierPreview(slot);
+}
+
+function cancelNestMutateFlow(){
+  resetLevelUpFlowState();
+  G._nestMutateFlow=false;
+  G._nestMutateSlotIndex=null;
+  openNest();
+}
+
+function handleNestAbilityClick(ev){
+  const el=ev.target.closest('[data-nest-ab-slot],[data-nest-ab-vault],[data-nest-ab-mutate],[data-nest-ab-unequip]');
+  if(!el || !G.player) return;
+  ev.stopPropagation();
+  if(el.dataset.nestAbMutate!=null){
+    beginNestMutateFlow(Number(el.dataset.nestAbMutate));
+    return;
+  }
+  if(el.dataset.nestAbUnequip!=null){
+    const si=Number(el.dataset.nestAbUnequip);
+    if(typeof Avian?.shop?.unequipToVault==='function' && Avian.shop.unequipToVault(G.player, si)){
+      saveRun(); openNest();
+    }
+    return;
+  }
+  if(el.dataset.nestAbVault!=null){
+    const vi=Number(el.dataset.nestAbVault);
+    const target=Number.isFinite(G._nestSelectedAbilitySlot)?G._nestSelectedAbilitySlot:undefined;
+    if(typeof Avian?.shop?.equipVaultAbility==='function' && Avian.shop.equipVaultAbility(G.player, vi, target)){
+      saveRun(); openNest();
+    }
+    return;
+  }
+  if(el.dataset.nestAbSlot!=null){
+    G._nestSelectedAbilitySlot=Number(el.dataset.nestAbSlot);
+    openNest();
+  }
+}
+
 function openNest() {
   const modal=document.getElementById('nest-modal');
   const content=document.getElementById('nest-content');
   const sub=document.getElementById('nest-subtitle');
   const p=G.player;
   if(!p){content.innerHTML='<p style="color:var(--text-dim);text-align:center">No active run.</p>';modal.classList.add('open');return;}
-  sub.textContent=`${p.name} · Stage ${G.stage} · Lv.${p.birdLevel}`;
+  sub.textContent=`${p.name} · Stage ${G.stage} · Lv.${p.birdLevel} · 🪶 ${Math.max(0, Number(p.mutatedFeatherCount)||0)}`;
   let html='';
   // Passive trait
   const bd=BIRDS[p.birdKey];
@@ -2098,6 +2216,7 @@ function openNest() {
     }
   }
   html+=buildNestEquipmentSection(p);
+  html+=buildNestAbilitySection(p);
   // Stats
   const s=p.stats;
   // Compute effective in-battle stats
@@ -2124,22 +2243,6 @@ function openNest() {
     <div class="nest-stat-card" title="Magic Attack — improves spell and ailment potency"><div class="nest-stat-val" style="color:#6ae8e8">${formatCombatNumber(s.matk||8)}</div><div class="nest-stat-lbl" style="color:#4ab8c0">✦ M.ATK</div></div>
     <div class="nest-stat-card" title="Magic Defence — resists enemy spells and ailments"><div class="nest-stat-val" style="color:#6ae8e8">${formatCombatNumber(s.mdef||8)}</div><div class="nest-stat-lbl" style="color:#4ab8c0">✦ M.DEF</div></div>
   </div></div>`;
-  // Abilities
-  html+=`<div class="nest-section"><div class="nest-section-title">⚔ Abilities (${p.abilities.length})</div><div class="nest-abilities-grid">`;
-  p.abilities.forEach(ab=>{
-    const tmpl=ABILITY_TEMPLATES[ab.id];
-    const lv=Math.min(ab.level,4);
-    const desc=tmpl?.levels?.[lv-1]?.desc || tmpl?.desc || ab?.desc || 'No description available.';
-    const path=tmpl?formatAbilityLevelPathway(tmpl):'';
-    const abType=String(ab.type||ab.btnType||tmpl?.type||tmpl?.btnType||'ability');
-    html+=`<div class="nest-ab-card">
-      <div class="nest-ab-name ${abType}">${ab.name}</div>
-      <div class="nest-ab-lv">Level ${ab.level} · ${abType}</div>
-      <div class="nest-ab-desc">${desc}</div>
-      ${path?`<div class="nest-ab-path">${path.replace(/\n/g,'<br>')}</div>`:''}
-    </div>`;
-  });
-  html+=`</div></div>`;
   // Run bonuses (feathers / card stats / mechanics) — above collected card list
   const Ldg=p._statLedger;
   const upgMap=Ldg?.fromUpgrades||{};
@@ -2194,7 +2297,13 @@ function openNest() {
     html+=`</div></div>`;
   }
   content.innerHTML=html;
-  content.onclick=handleNestEquipClick;
+  content.onclick=(ev)=>{
+    if(ev.target.closest('[data-nest-ab-slot],[data-nest-ab-vault],[data-nest-ab-mutate],[data-nest-ab-unequip]')){
+      handleNestAbilityClick(ev);
+      return;
+    }
+    handleNestEquipClick(ev);
+  };
   wireNestMutationTooltips(content);
   modal.classList.add('open');
 }
@@ -2845,10 +2954,13 @@ function continueRun() {
   ensurePassiveEvolutionState(G.player);
   if(typeof Avian?.mutations?.ensurePlayerMutationState==='function') Avian.mutations.ensurePlayerMutationState(G.player);
   if(typeof Avian?.mutations?.reapplyPlayerStatsFromSources==='function') Avian.mutations.reapplyPlayerStatsFromSources(G.player);
+  if(!Array.isArray(G.player.abilityInventory)) G.player.abilityInventory=[];
+  G.player.mutatedFeatherCount=Math.max(0, Number(G.player.mutatedFeatherCount)||0);
+  if(typeof Avian?.shop?.ensureAbilityInventory==='function') Avian.shop.ensureAbilityInventory(G.player);
   G.runUpgradesPurchased=new Set(save.runUpgradesPurchased||[]);
   G._shopSnapshots=save.shopSnapshots||{};
   G._pendingLevelUpChoices=0;
-  G._pendingSkillEvolutionChoices=Math.max(0, Math.floor(Number(save.pendingSkillEvolutionChoices) || 0));
+  G._pendingSkillEvolutionChoices=0;
   G.codex=save.codex||{abilities:{},enemies:{},birds:{},artifacts:{},statuses:{}};
   G.shinyObjects = Math.max(0, Math.floor(Number(save.shinyObjects) || 0));
   G.overworldEnemySeedPack=null;
@@ -4793,6 +4905,8 @@ function startGame() {
     passiveEvolution:{tier:0,choices:{},pathHistory:[]},
     mutationInventory: [],
     equippedMutations: null,
+    abilityInventory: [],
+    mutatedFeatherCount: 0,
   };
   normalizeCombatStats(G.player.stats);
   if(typeof Avian?.mutations?.ensurePlayerMutationState==='function') Avian.mutations.ensurePlayerMutationState(G.player);
@@ -11030,6 +11144,11 @@ function postCombat() {
     const bonusTxt = bonusParts.length ? ` (${bonusParts.join(', ')})` : '';
     logMsg(`✨ +${shinyGain} Shiny Object${shinyGain > 1 ? 's' : ''}${bonusTxt}! (Total: ${G.shinyObjects})`, 'exp-gain');
 
+    if (G.player && Math.random() < 0.01) {
+      G.player.mutatedFeatherCount = (G.player.mutatedFeatherCount || 0) + 1;
+      logMsg('🪶 Mutated Feather found!', 'exp-gain');
+    }
+
     // Level up check
     let leveled = false;
     let levelUpsGained = 0;
@@ -11045,13 +11164,10 @@ function postCombat() {
 
       leveled = true;
       levelUpsGained++;
-      if(isSkillEvolutionLevel(G.player.birdLevel)){
-        G._pendingSkillEvolutionChoices = (G._pendingSkillEvolutionChoices||0) + 1;
-      }
       logMsg(`🌟 LEVEL UP! Now Lv.${G.player.birdLevel}! Healed ${lvHeal} HP.`, 'exp-gain');
       SFX.levelUp();
     }
-    G._pendingLevelUpChoices = (G._pendingLevelUpChoices||0) + levelUpsGained * 3;
+    G._pendingLevelUpChoices = (G._pendingLevelUpChoices||0) + levelUpsGained;
 
     handleBossClearUnlocks();
     checkRunUnlocks();
@@ -11525,6 +11641,7 @@ function ensureMainAttackAndLoadoutRules(){
   if(!G.player) return;
   const bd=BIRDS[G.player.birdKey]||{};
   if(usesFamilySkillEvolution(G.player)){
+    syncPlayerAbilitiesFromSkillSlots(G.player);
     if(!Array.isArray(G.player.abilities)) G.player.abilities=[];
     G.player.abilities=G.player.abilities.filter(ab=>ab&&ab.id&&ab.id!=='skipTurn'&&ab.id!=='sittingDuck');
     G.player.abilities=G.player.abilities.filter(ab=>ab.id!=='mainAttack');
@@ -11658,7 +11775,7 @@ function renderSkillEvolutionPathSelection(slot){
   setLevelUpPanelTitle(`🧬 ${family?.displayName||'Skill Evolution'}`);
   document.getElementById('lu-sub').textContent=`Choose 1 of 3 tier-1 branches for ${currentTmpl.name || family?.displayName || 'this skill'}.`;
   configureLevelUpConfirm('✓ Evolve Skill', confirmSkillEvolutionChoice, false);
-  configureLevelUpSecondary('⟨ Back', renderSkillEvolutionSlotSelection, true);
+  configureLevelUpSecondary(G._nestMutateFlow?'✕ Cancel':'⟨ Back', G._nestMutateFlow?cancelNestMutateFlow:renderSkillEvolutionSlotSelection, true);
   grid.innerHTML='';
   getSkillEvolutionPathOptions(slot, G.player?.birdKey).forEach(option=>{
     const tmpl = option.abilityTemplate || {};
@@ -11682,7 +11799,7 @@ function renderSkillEvolutionTierPreview(slot){
   setLevelUpPanelTitle('🧬 Preview Tier Upgrade');
   document.getElementById('lu-sub').textContent=`${currentTmpl.name || slot.abilityId} will evolve into ${nextTmpl.name || nextId}.`;
   configureLevelUpConfirm('✓ Apply Tier Upgrade', confirmSkillEvolutionChoice, true);
-  configureLevelUpSecondary('⟨ Back', renderSkillEvolutionSlotSelection, true);
+  configureLevelUpSecondary(G._nestMutateFlow?'✕ Cancel':'⟨ Back', G._nestMutateFlow?cancelNestMutateFlow:renderSkillEvolutionSlotSelection, true);
   grid.innerHTML=`<div class="skill-upgrade-card selected"><div class="su-name">${currentTmpl.name || slot.abilityId} → ${nextTmpl.name || nextId}</div><div class="su-lv">Tier ${slot.tier||0} → Tier ${nextTier}</div><div class="su-effect">${nextTmpl.levels?.[0]?.desc || nextTmpl.desc || 'No description available.'}</div></div>`;
 }
 function renderSkillEvolutionMasterySelection(slot){
@@ -11721,6 +11838,16 @@ function finalizeSkillEvolutionChoice(message){
   refreshPlayerAbilityAilments();
   (G.player.abilities||[]).forEach(a=>codexMark('abilities', a.id, 'seen'));
   saveRun();
+  if(G._nestMutateFlow){
+    if((G.player.mutatedFeatherCount||0)>0) G.player.mutatedFeatherCount--;
+    resetLevelUpFlowState();
+    G._nestMutateFlow=false;
+    G._nestMutateSlotIndex=null;
+    if(message) logMsg(message, 'exp-gain');
+    if(typeof refreshBattleUI==='function') try{ refreshBattleUI(); }catch(_){}
+    openNest();
+    return;
+  }
   if(message) logMsg(message, 'exp-gain');
   G._pendingSkillEvolutionChoices = Math.max(0, (G._pendingSkillEvolutionChoices||1)-1);
   if((G._pendingSkillEvolutionChoices||0)>0){
@@ -11728,7 +11855,6 @@ function finalizeSkillEvolutionChoice(message){
     return;
   }
   showLevelUpScreen();
-  // showLevelUpScreen will continue to afterLevelUp when no stat choices remain
   if(!(G._pendingLevelUpChoices>0)){
     afterLevelUp();
   }
@@ -11914,7 +12040,6 @@ async function confirmSkillUpgrade() {
     const grid=document.getElementById('lu-skill-grid');
     if(grid){ grid.innerHTML=''; grid.classList.remove('lu-feather-grid'); }
     saveRun();
-    if(beginSkillEvolutionFlow()) return;
     afterLevelUp();
     return;
   }
@@ -11945,7 +12070,6 @@ function onExitLevelUpRequested(){
 }
 
 function afterLevelUp() {
-  if(beginSkillEvolutionFlow()) return;
   // After level-up: go to Stork shop if it was a boss (non-overworld only), otherwise advance
   if(G._pendingStorkShop && !_isOverworldRun()){
     const m=G._pendingShopMode||'boss'; G._pendingStorkShop=false; G._pendingShopMode=null; showStorkShop(m);
@@ -12855,22 +12979,109 @@ const SHOP_HEALING_ITEMS = Object.freeze([
 
 function showStorkShop(mode='boss') {
   G._shopMode=mode;
-  generateShopItems();
   enterStorkShopScreen();
 }
 
 function enterStorkShopScreen(){
   shopResetVisitState();
   showScreen('screen-stork-shop');
+  setShopTab('buy');
   const buyBtn=document.getElementById('shop-buy-btn'); if(buyBtn) buyBtn.disabled=true;
   const log=document.getElementById('shop-purchase-log');
   if(log){
     const mode=G._shopMode||'boss';
     log.textContent=mode==='endless-boss'
-      ? 'Stork Market: healing on top · abilities below. Spend your shinies wisely!'
-      : 'Stork Market: 3 healing items on top · mutations below. Spend your shinies wisely!';
+      ? 'Stork Market: healing · 1 ability · Mutated Feather (78🌟, does not refresh).'
+      : 'Stork Market: 3 healing · 6 abilities · 1 Mutated Feather (78🌟, does not refresh). Sell mutations on the Sell tab.';
   }
-  renderShopItems();
+  generateShopItems();
+}
+
+function setShopTab(tab){
+  G._shopTab=(tab==='sell')?'sell':'buy';
+  const buyTab=document.getElementById('shop-tab-buy');
+  const sellTab=document.getElementById('shop-tab-sell');
+  if(buyTab) buyTab.classList.toggle('active', G._shopTab==='buy');
+  if(sellTab) sellTab.classList.toggle('active', G._shopTab==='sell');
+  const buyBtn=document.getElementById('shop-buy-btn');
+  const sellBtn=document.getElementById('shop-sell-btn');
+  const refreshBtn=document.getElementById('shop-refresh-btn');
+  if(buyBtn) buyBtn.style.display=G._shopTab==='buy'?'':'none';
+  if(sellBtn) sellBtn.style.display=G._shopTab==='sell'?'':'none';
+  if(refreshBtn) refreshBtn.style.display=G._shopTab==='buy'?'':'none';
+  if(G._shopTab==='buy') renderShopItems();
+  else renderShopSellItems();
+}
+
+function getMutationSellPrice(tier){
+  const raw=String(tier||'white').toLowerCase();
+  const key=raw==='grey'?'white':raw;
+  const costs=(Avian?.mutations?.MUTATION_SHOP_COSTS)||{white:16,green:28,blue:44,purple:64,gold:96};
+  return Math.max(1, Math.floor((costs[key]||costs[raw]||20)/2));
+}
+
+function renderShopSellItems(){
+  const grid=document.getElementById('shop-items-grid'); if(!grid) return;
+  grid.innerHTML='';
+  const shinyCt=document.getElementById('shop-shiny-count'); if(shinyCt) shinyCt.textContent=G.shinyObjects;
+  SHOP_STATE.selectedIndex=null;
+  _shopSelectedIdx=null;
+  const sellBtn=document.getElementById('shop-sell-btn'); if(sellBtn) sellBtn.disabled=true;
+  const inv=G.player?.mutationInventory||[];
+  if(!inv.length){
+    grid.innerHTML='<div style="grid-column:1/-1;color:var(--text-dim);text-align:center;padding:24px 0;">No mutations in inventory to sell.</div>';
+    return;
+  }
+  const labels=Avian?.mutations?.SLOT_LABELS||{};
+  const icons=Avian?.mutations?.SLOT_ICONS||{};
+  inv.forEach((entry, idx)=>{
+    const id=typeof entry==='string'?entry:entry?.itemId;
+    const item=Avian?.mutations?.getItem?.(id);
+    if(!item) return;
+    const tierCss=normalizeRewardTier(item.tier);
+    const tierMeta=rewardTierMeta(item.tier);
+    const price=getMutationSellPrice(item.tier);
+    const div=document.createElement('div');
+    div.className=`shop-item tier-${tierCss} shop-sell-item`;
+    div.innerHTML=`
+      <div class="shop-item-cost">${price}🌟</div>
+      <div class="reward-tier-label">${tierMeta.label}</div>
+      <span class="reward-icon">${icons[item.slot]||'🧬'}</span>
+      <div class="reward-name">${item.name}</div>
+      <div class="reward-desc">${labels[item.slot]||item.slot} · Sell for half buy price</div>`;
+    div.addEventListener('click', ()=>{
+      document.querySelectorAll('.shop-item').forEach(x=>x.classList.remove('selected'));
+      div.classList.add('selected');
+      SHOP_STATE.selectedIndex=idx;
+      _shopSelectedIdx=idx;
+      if(sellBtn) sellBtn.disabled=false;
+    });
+    grid.appendChild(div);
+  });
+}
+
+function shopSellSelected(){
+  const selected=(SHOP_STATE.selectedIndex!==null?SHOP_STATE.selectedIndex:_shopSelectedIdx);
+  if(selected===null || !G.player) return false;
+  const inv=G.player.mutationInventory||[];
+  const entry=inv[selected];
+  if(!entry) return false;
+  const id=typeof entry==='string'?entry:entry?.itemId;
+  const item=Avian?.mutations?.getItem?.(id);
+  if(!item) return false;
+  const price=getMutationSellPrice(item.tier);
+  G.shinyObjects+=price;
+  inv.splice(selected, 1);
+  G.player.mutationInventory=inv;
+  if(typeof Avian?.mutations?.reapplyPlayerStatsFromSources==='function') Avian.mutations.reapplyPlayerStatsFromSources(G.player);
+  logMsg(`💰 Sold ${item.name} for ${price}🌟.`, 'exp-gain');
+  const log=document.getElementById('shop-purchase-log');
+  if(log) log.textContent=`✓ Sold: ${item.name} (+${price}🌟).`;
+  SHOP_STATE.selectedIndex=null;
+  _shopSelectedIdx=null;
+  saveRun();
+  renderShopSellItems();
+  return true;
 }
 
 function rollShopTier(weights){
@@ -12889,6 +13100,7 @@ function pickUniqueRewardByTier(tier,used){
 // Reconstruct a shop item (with its apply function) from a persisted ID.
 // Used when restoring saved shop snapshots for overworld nodes.
 function _findShopItemById(id) {
+  if (id === 'shop_mutated_feather') return makeMutatedFeatherShopOffer();
   const healDef = SHOP_HEALING_ITEMS.find(x => x.id === id);
   if (healDef) {
     return {
@@ -12996,6 +13208,8 @@ const SHOP_STATE = {
   purchaseMadeThisVisit:false,
   selectedIndex:null,
   healingPurchasesThisVisit:new Set(),
+  featherBoughtThisVisit:false,
+  pinnedFeatherOffer:null,
 };
 
 try{
@@ -13003,14 +13217,19 @@ try{
   globalThis.SHOP_HEALING_ITEMS=SHOP_HEALING_ITEMS;
   globalThis.SHOP_STATE=SHOP_STATE;
   globalThis._findShopItemById=_findShopItemById;
+  globalThis.setShopTab=setShopTab;
+  globalThis.shopSellSelected=shopSellSelected;
 }catch(_){}
 
 function shopResetVisitState(){
   SHOP_STATE.purchaseMadeThisVisit = false;
   SHOP_STATE.selectedIndex = null;
   SHOP_STATE.healingPurchasesThisVisit = new Set();
+  SHOP_STATE.featherBoughtThisVisit = false;
+  SHOP_STATE.pinnedFeatherOffer = null;
   _shopSelectedIdx = null;
   G._shopRefreshCount = 0;
+  G._shopTab = 'buy';
 }
 function shopLockVisitState(){
   SHOP_STATE.purchaseMadeThisVisit = true;
@@ -13121,6 +13340,7 @@ async function shopBuySelected() {
   _shopItems.splice(selected,1);
   assignShopItems(_shopItems);
   if(isHealingItem) SHOP_STATE.healingPurchasesThisVisit.add(item.id);
+  if(item.isFeatherShopItem) SHOP_STATE.featherBoughtThisVisit=true;
   SHOP_STATE.selectedIndex=null;
   _shopSelectedIdx=null;
   saveRun();
@@ -13138,11 +13358,13 @@ function shopRefresh() {
     G.shinyObjects-=rc;
   }
   G._shopRefreshCount=(G._shopRefreshCount||0)+1;
-  // Clear snapshot so refreshed items become the new static inventory for this node
   const _rNodeId = G._currentShopNodeId ?? null;
+  const keepFeather=!SHOP_STATE.featherBoughtThisVisit;
+  const savedFeather=keepFeather?SHOP_STATE.pinnedFeatherOffer:null;
   if (_rNodeId != null && G._shopSnapshots) delete G._shopSnapshots[_rNodeId];
+  if(keepFeather && savedFeather) SHOP_STATE.pinnedFeatherOffer=savedFeather;
   const log=document.getElementById('shop-purchase-log');
-  if(log) log.textContent='🔄 Shop refreshed — new items are now locked in for this visit!';
+  if(log) log.textContent='🔄 Shop refreshed — abilities re-rolled. Mutated Feather unchanged if still available.';
   generateShopItems();
   return true;
 }

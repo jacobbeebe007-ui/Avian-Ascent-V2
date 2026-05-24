@@ -2914,3 +2914,18 @@ img{image-rendering:pixelated;image-rendering:crisp-edges;}
 }
 
 /* Begin Ascent hub: undo generic #screen-select bird-grid caps; do NOT zero the scroller (was collapsing the roster on phones). */
+
+/* Nest ability vault + mutate */
+.nest-ab-slot-card{background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px;transition:border-color .15s;}
+.nest-ab-slot-card.selected{border-color:var(--gold);box-shadow:0 0 0 1px rgba(201,168,76,.35);}
+.nest-ab-slot-card.empty{opacity:.85;border-style:dashed;}
+.nest-ab-slot-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;}
+.nest-ab-slot-idx{font-size:.68rem;color:var(--text-dim);letter-spacing:.06em;text-transform:uppercase;}
+.nest-ab-unequip-btn{font-size:.65rem;padding:2px 8px;border-radius:6px;border:1px solid rgba(201,168,76,.4);background:rgba(201,168,76,.08);color:var(--gold);cursor:pointer;}
+.nest-ab-unequip-btn:hover{background:rgba(201,168,76,.18);}
+.nest-ability-vault-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px;margin-top:8px;}
+.nest-ab-vault-item{background:var(--surface2);border:1px dashed rgba(201,168,76,.35);border-radius:8px;padding:10px;cursor:pointer;font-size:.82rem;transition:all .15s;}
+.nest-ab-vault-item:hover{border-color:var(--gold);background:rgba(201,168,76,.08);}
+.nest-mutate-btn{margin-top:8px;width:100%;padding:6px 10px;border-radius:8px;border:1px solid rgba(168,106,232,.55);background:rgba(168,106,232,.15);color:var(--purple-light);font-family:"Cinzel",serif;font-size:.72rem;cursor:pointer;letter-spacing:.04em;}
+.nest-mutate-btn:hover:not(.disabled):not(:disabled){background:rgba(168,106,232,.28);}
+.nest-mutate-btn.disabled,.nest-mutate-btn:disabled{opacity:.45;cursor:not-allowed;border-color:var(--border);background:var(--surface2);color:var(--text-dim);}

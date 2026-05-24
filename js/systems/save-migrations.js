@@ -25,7 +25,7 @@
   'use strict';
 
   /** Bump when adding a migration. */
-  var TARGET = 4;
+  var TARGET = 5;
 
   /** Combat-pack version stamp surfaced on the save blob. Wipes attached when
    *  this changes so legacy ability/perk/family state never bleeds into a run. */
@@ -99,6 +99,18 @@
         var legacyMutFlags = ['mutBloodMoon', 'mutVenomSeason', 'mutGaleTempo', 'mutArcOverload', 'mutHuntersCruelty', 'mutIronSky', 'mutSuddenFlight', 'mutDarkChorus', 'mutRazorInstinct', 'mutLongWar'];
         for (var i = 0; i < legacyMutFlags.length; i++) delete p[legacyMutFlags[i]];
         save.mutationsPackVersion = MUTATIONS_PACK_VERSION;
+        return save;
+      },
+    },
+    {
+      from: 4,
+      to: 5,
+      note: 'mutated feather + ability vault: init player.mutatedFeatherCount and player.abilityInventory',
+      fn: function (save) {
+        if (!save || !save.player) return save;
+        var p = save.player;
+        p.mutatedFeatherCount = Math.max(0, Math.floor(Number(p.mutatedFeatherCount) || 0));
+        p.abilityInventory = Array.isArray(p.abilityInventory) ? p.abilityInventory : [];
         return save;
       },
     },

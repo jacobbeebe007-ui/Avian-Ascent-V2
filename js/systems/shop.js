@@ -156,11 +156,18 @@
 (function(){
   function bindShopButtons(){
     const buy = document.getElementById('shop-buy-btn');
+    const sell = document.getElementById('shop-sell-btn');
     const refresh = document.getElementById('shop-refresh-btn');
     const exit = document.getElementById('shop-exit-btn') || document.querySelector('[data-shop-action="exit"]');
+    const buyTab = document.getElementById('shop-tab-buy');
+    const sellTab = document.getElementById('shop-tab-sell');
     if(buy && buy.dataset.bound !== '1'){
       buy.dataset.bound = '1';
       buy.addEventListener('click', function(e){ e.preventDefault(); shopBuySelected(); });
+    }
+    if(sell && sell.dataset.bound !== '1'){
+      sell.dataset.bound = '1';
+      sell.addEventListener('click', function(e){ e.preventDefault(); if(typeof shopSellSelected==='function') shopSellSelected(); });
     }
     if(refresh && refresh.dataset.bound !== '1'){
       refresh.dataset.bound = '1';
@@ -169,6 +176,14 @@
     if(exit && exit.dataset.bound !== '1'){
       exit.dataset.bound = '1';
       exit.addEventListener('click', function(e){ e.preventDefault(); exitStorkShop(); });
+    }
+    if(buyTab && buyTab.dataset.bound !== '1'){
+      buyTab.dataset.bound = '1';
+      buyTab.addEventListener('click', function(e){ e.preventDefault(); if(typeof setShopTab==='function') setShopTab('buy'); });
+    }
+    if(sellTab && sellTab.dataset.bound !== '1'){
+      sellTab.dataset.bound = '1';
+      sellTab.addEventListener('click', function(e){ e.preventDefault(); if(typeof setShopTab==='function') setShopTab('sell'); });
     }
   }
   const oldRenderShopItems = globalThis.renderShopItems;

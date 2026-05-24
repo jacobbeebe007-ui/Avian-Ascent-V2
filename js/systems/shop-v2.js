@@ -1,29 +1,11 @@
 /* Avian Ascent — Stork Shop v2 (combat rewrite).
  *
- * Replaces the legacy stat-card shop with an ability-learning shop fed by
- * Avian.data.combatPack.shopPool (150 universal families across 5 tiers).
- *
  * Shop offer composition (per visit):
- *   - 3 healing items (unchanged shelf, retained from game.js's
- *     `SHOP_HEALING_ITEMS`).
- *   - 4 ability-learning offers rolled from the pool by rarity × stage gate
- *     (endless-boss shops offer 1 ability + healing only).
+ *   - 3 healing items (from game.js SHOP_HEALING_ITEMS).
+ *   - 6 ability-learning offers rolled from combat pack shop pool.
+ *   - 1 pinned Mutated Feather (game.js).
  *
- * Item shape mirrors the legacy `_shopItems[]` entries so the existing
- * shop UI (`renderShopItems`, `shopBuySelected`) continues to render them
- * without modification:
- *
- *   { id, tier, icon, name, desc, costOverride, apply(p), isLearnAbility:true,
- *     familyId, baseAbilityId, tags, designedFor }
- *
- * `apply(p)`:
- *   1. Validates the player has < 4 active abilities (or replaces if full).
- *   2. Instantiates the ability from `Avian.data.combatPack.skillTrees`.
- *   3. Pushes it into `p.abilities[]` and registers its action handler.
- *
- * For "shop is full kit" UX, we keep the simple "fill first empty slot"
- * default. The dispatcher already knows the row at runtime — no change to
- * combat is required when slots gain/lose abilities.
+ * Purchased abilities go to player.abilityInventory; equip from the Nest.
  */
 (function () {
   'use strict';
@@ -31,7 +13,6 @@
   Avian.systems = Avian.systems || Object.create(null);
   var shop = Object.create(null);
 
-  // Tier name from spreadsheet → CSS class used by renderShopItems
   var TIER_CSS = { White: 'grey', Green: 'green', Blue: 'blue', Purple: 'purple', Gold: 'gold' };
   var TIER_ICON = { White: '⚪', Green: '🟢', Blue: '🔵', Purple: '🟣', Gold: '🟡' };
   var SHOP_COST_BY_EN = { 1: 50, 2: 100, 3: 150 };
@@ -54,7 +35,6 @@
   }
 
   function unlockStageOf(entry) {
-    // Spreadsheet uses strings like "Stage 1+", "Stage 8+", "Stage 20+ / rare shop"
     var s = String(entry.shopUnlock || '');
     var m = s.match(/(\d+)/);
     return m ? Number(m[1]) : 1;
@@ -75,6 +55,25 @@
     }
     return items[items.length - 1];
   }
+
+  function getSkillSlots(player) {
+    if (typeof globalThis.getSkillSlots === 'function') return globalThis.getSkillSlots(player);
+    return Array.isArray(player && player.familyEvolutionState && player.familyEvolutionState.skillSlots)
+      ? player.familyEvolutionState.skillSlots : [];
+  }
+
+  shop.ensureAbilityInventory = function ensureAbilityInventory(player) {
+    if (!player) return [];
+    if (!Array.isArray(player.abilityInventory)) player.abilityInventory = [];
+    return player.abilityInventory;
+  };
+
+  shop.hasFamilyOwned = function hasFamilyOwned(player, familyId) {
+    if (!familyId || !player) return false;
+    var inv = shop.ensureAbilityInventory(player);
+    if (inv.some(function (e) { return e && e.familyId === familyId; })) return true;
+    return getSkillSlots(player).some(function (s) { return s && s.familyId === familyId && s.abilityId; });
+  };
 
   shop.rollOffer = function rollOffer(stage, used) {
     var entries = poolEntries();
@@ -102,7 +101,7 @@
       isLearnAbility: true,
       designedFor: entry.designedFor || '',
       tags: entry.tags || [],
-      apply: function (p) { shop.learnAbility(p, entry.familyId, entry.baseAbilityId); },
+      apply: function (p) { shop.addAbilityToVault(p, entry.familyId, entry.baseAbilityId); },
     };
   };
 
@@ -131,9 +130,8 @@
     return bits.join(' · ');
   };
 
-  shop.learnAbility = function learnAbility(player, familyId, baseAbilityId) {
+  shop.addAbilityToVault = function addAbilityToVault(player, familyId, baseAbilityId) {
     if (!player) return false;
-    player.abilities = player.abilities || [];
     var pck = pack();
     if (!pck) return false;
     var row = pck.skillTrees && pck.skillTrees[baseAbilityId];
@@ -141,40 +139,24 @@
       if (typeof logMsg === 'function') logMsg('Shop: missing skill tree row ' + baseAbilityId, 'miss');
       return false;
     }
-    // Prevent duplicate family
-    if (player.abilities.some(function (a) { return a && (a.familyId === familyId || a.id === baseAbilityId); })) {
-      if (typeof logMsg === 'function') logMsg('Already learned ' + row.name + '.', 'miss');
+    if (shop.hasFamilyOwned(player, familyId)) {
+      if (typeof logMsg === 'function') logMsg('Already own ' + row.name + ' (check Nest vault or loadout).', 'miss');
       return false;
     }
-    // Choose a slot: first empty, or replace last if full
-    var slot = -1;
-    for (var i = 0; i < 4; i++) {
-      if (!player.abilities[i]) { slot = i; break; }
-    }
-    if (slot < 0) slot = player.abilities.length >= 4 ? 3 : player.abilities.length;
-    var built = shop.buildAbilityInstance(baseAbilityId, familyId, slot);
-    player.abilities[slot] = built;
-    if (typeof globalThis.ensureFamilyEvolutionState === 'function') {
-      globalThis.ensureFamilyEvolutionState(player);
-      var slots = (typeof globalThis.getSkillSlots === 'function') ? globalThis.getSkillSlots(player) : [];
-      var skillSlot = (typeof globalThis.getSkillSlotByIndex === 'function') ? globalThis.getSkillSlotByIndex(player, slot) : null;
-      if (skillSlot) {
-        skillSlot.familyId = familyId;
-        skillSlot.abilityId = baseAbilityId;
-        skillSlot.pathId = null;
-        skillSlot.tier = 0;
-        skillSlot.slotIndex = slot;
-      }
-    }
-    // Register the dispatcher proxy for this id
-    if (Avian.dispatcher && typeof Avian.dispatcher.registerActions === 'function' && globalThis.ACTIONS) {
-      Avian.dispatcher.registerActions(globalThis.ACTIONS);
-    }
-    if (typeof refreshBattleUI === 'function') {
-      try { refreshBattleUI(); } catch (_e) { /* during shop screen, ok to skip */ }
-    }
-    if (typeof logMsg === 'function') logMsg('🎓 Learned ' + row.name + '!', 'exp-gain');
+    var inv = shop.ensureAbilityInventory(player);
+    inv.push({
+      familyId: familyId,
+      abilityId: baseAbilityId,
+      name: row.name,
+      tier: 0,
+      pathId: null,
+    });
+    if (typeof logMsg === 'function') logMsg('🎓 ' + row.name + ' stored in Nest vault — equip from your Nest.', 'exp-gain');
     return true;
+  };
+
+  shop.learnAbility = function learnAbility(player, familyId, baseAbilityId) {
+    return shop.addAbilityToVault(player, familyId, baseAbilityId);
   };
 
   shop.buildAbilityInstance = function buildAbilityInstance(abId, familyId, slot) {
@@ -200,10 +182,96 @@
     };
   };
 
+  shop.resolveFlexSlotIndex = function resolveFlexSlotIndex(player, preferred) {
+    var slots = getSkillSlots(player);
+    if (Number.isFinite(preferred) && preferred >= 2 && preferred <= 3) {
+      var pref = slots.find(function (s) { return s && s.slotIndex === preferred; });
+      if (pref) return preferred;
+    }
+    var empty = slots.find(function (s) { return s && s.slotIndex >= 2 && !s.abilityId; });
+    if (empty) return empty.slotIndex;
+    return 2;
+  };
+
+  shop.equipVaultAbility = function equipVaultAbility(player, vaultIndex, slotIndex) {
+    if (!player) return false;
+    var inv = shop.ensureAbilityInventory(player);
+    var entry = inv[vaultIndex];
+    if (!entry) return false;
+    if (typeof globalThis.ensureFamilyEvolutionState === 'function') globalThis.ensureFamilyEvolutionState(player);
+    var targetSlot = shop.resolveFlexSlotIndex(player, slotIndex);
+    if (targetSlot < 2) targetSlot = 2;
+    if (typeof globalThis.getSkillSlotByIndex !== 'function') return false;
+    var skillSlot = globalThis.getSkillSlotByIndex(player, targetSlot);
+    if (!skillSlot) return false;
+    if (skillSlot.abilityId && skillSlot.familyId) {
+      var pck = pack();
+      var curRow = pck && pck.skillTrees && pck.skillTrees[skillSlot.abilityId];
+      inv.push({
+        familyId: skillSlot.familyId,
+        abilityId: skillSlot.abilityId,
+        name: (curRow && curRow.name) || skillSlot.abilityId,
+        tier: skillSlot.tier || 0,
+        pathId: skillSlot.pathId || null,
+      });
+    }
+    skillSlot.familyId = entry.familyId;
+    skillSlot.abilityId = entry.abilityId;
+    skillSlot.pathId = entry.pathId || null;
+    skillSlot.tier = entry.tier || 0;
+    skillSlot.slotIndex = targetSlot;
+    inv.splice(vaultIndex, 1);
+    if (typeof globalThis.syncPlayerAbilitiesFromSkillSlots === 'function') {
+      globalThis.syncPlayerAbilitiesFromSkillSlots(player);
+    }
+    if (typeof globalThis.ensureMainAttackAndLoadoutRules === 'function') {
+      globalThis.ensureMainAttackAndLoadoutRules();
+    }
+    if (Avian.dispatcher && typeof Avian.dispatcher.registerActions === 'function' && globalThis.ACTIONS) {
+      Avian.dispatcher.registerActions(globalThis.ACTIONS);
+    }
+    if (typeof refreshBattleUI === 'function') {
+      try { refreshBattleUI(); } catch (_e) { /* ok during nest/shop */ }
+    }
+    return true;
+  };
+
+  shop.unequipToVault = function unequipToVault(player, slotIndex) {
+    if (!player || slotIndex < 2) return false;
+    if (typeof globalThis.ensureFamilyEvolutionState === 'function') globalThis.ensureFamilyEvolutionState(player);
+    if (typeof globalThis.getSkillSlotByIndex !== 'function') return false;
+    var slot = globalThis.getSkillSlotByIndex(player, slotIndex);
+    if (!slot || !slot.abilityId) return false;
+    var inv = shop.ensureAbilityInventory(player);
+    var pck = pack();
+    var row = pck && pck.skillTrees && pck.skillTrees[slot.abilityId];
+    inv.push({
+      familyId: slot.familyId,
+      abilityId: slot.abilityId,
+      name: (row && row.name) || slot.abilityId,
+      tier: slot.tier || 0,
+      pathId: slot.pathId || null,
+    });
+    slot.familyId = null;
+    slot.abilityId = null;
+    slot.pathId = null;
+    slot.tier = 0;
+    if (typeof globalThis.syncPlayerAbilitiesFromSkillSlots === 'function') {
+      globalThis.syncPlayerAbilitiesFromSkillSlots(player);
+    }
+    if (typeof globalThis.ensureMainAttackAndLoadoutRules === 'function') {
+      globalThis.ensureMainAttackAndLoadoutRules();
+    }
+    if (typeof refreshBattleUI === 'function') {
+      try { refreshBattleUI(); } catch (_e) { /* ok */ }
+    }
+    return true;
+  };
+
   shop.rollStockForMode = function rollStockForMode(mode) {
     var stage = currentStageNumber();
     var used = new Set();
-    var count = mode === 'endless-boss' ? 1 : 4;
+    var count = mode === 'endless-boss' ? 1 : 6;
     var items = [];
     for (var i = 0; i < count; i++) {
       var entry = shop.rollOffer(stage, used);
@@ -214,8 +282,10 @@
     return items;
   };
 
-  // For overworld restore-by-id: find the abilities by their persisted id
   shop.findById = function findById(id) {
+    if (id === 'shop_mutated_feather' && typeof globalThis.makeMutatedFeatherShopOffer === 'function') {
+      return globalThis.makeMutatedFeatherShopOffer();
+    }
     var entries = poolEntries();
     for (var k in entries) {
       if (entries[k].baseAbilityId === id) return shop.makeItem(entries[k]);

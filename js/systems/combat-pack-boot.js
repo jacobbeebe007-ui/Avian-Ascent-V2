@@ -337,11 +337,6 @@
   // 5. ── Shop monkey-patch -------------------------------------------------
   try {
     if (typeof globalThis.generateShopItems === 'function' && Avian.shop) {
-      var OVERWORLD_SHOP_MUTATION_SPEC = {
-        5: { tiers: ['white', 'green'], count: 10 },
-        12: { white: 4, green: 12, blue: 4 },
-        16: { green: 4, blue: 12, purple: 4 },
-      };
 
       function buildHealingOffers() {
         var SHOP_HEALING_ITEMS = globalThis.SHOP_HEALING_ITEMS;
@@ -380,6 +375,16 @@
         return Avian.shop.findById(id);
       }
 
+      function appendPinnedFeather(items) {
+        var SHOP_STATE = globalThis.SHOP_STATE;
+        if (!SHOP_STATE || SHOP_STATE.featherBoughtThisVisit) return items;
+        if (!SHOP_STATE.pinnedFeatherOffer && typeof globalThis.makeMutatedFeatherShopOffer === 'function') {
+          SHOP_STATE.pinnedFeatherOffer = globalThis.makeMutatedFeatherShopOffer();
+        }
+        if (SHOP_STATE.pinnedFeatherOffer) items.push(SHOP_STATE.pinnedFeatherOffer);
+        return items;
+      }
+
       globalThis.__avianPatchedGenerateShopItems = function () {
         var nodeId = (globalThis.G && globalThis.G._currentShopNodeId) != null ? globalThis.G._currentShopNodeId : null;
         var mode = (globalThis.G && globalThis.G._shopMode) || 'boss';
@@ -396,28 +401,9 @@
         }
 
         var items = buildHealingOffers();
-        var mutationSpec = nodeId != null ? OVERWORLD_SHOP_MUTATION_SPEC[nodeId] : null;
-
-        if (mutationSpec && Avian.mutations && typeof Avian.mutations.rollShopMutations === 'function') {
-          var mutOffers = Avian.mutations.rollShopMutations(mutationSpec);
-          items.push.apply(items, mutOffers);
-        } else {
-          var abilityOffers = Avian.shop.rollStockForMode(mode);
-          items.push.apply(items, abilityOffers);
-          if (mode !== 'endless-boss' && Avian.mutations && typeof Avian.mutations.rollMutationReward === 'function') {
-            var mutUsed = new Set();
-            for (var mi = 0; mi < 2; mi++) {
-              var mrw = Avian.mutations.rollMutationReward({ stage: Math.max(1, Number(globalThis.G && G.stage) || 1), isBoss: mode === 'boss' });
-              if (!mrw || mutUsed.has(mrw.id)) continue;
-              mutUsed.add(mrw.id);
-              var rawTier = mrw.tier === 'grey' ? 'white' : mrw.tier;
-              var costs = (Avian.mutations.MUTATION_SHOP_COSTS) || { white: 16, green: 28, blue: 44, purple: 64, gold: 96 };
-              items.push(Object.assign({}, mrw, {
-                costOverride: costs[rawTier] || costs[mrw.tier] || 20,
-              }));
-            }
-          }
-        }
+        var abilityOffers = Avian.shop.rollStockForMode(mode);
+        items.push.apply(items, abilityOffers);
+        appendPinnedFeather(items);
 
         setShopItems(items);
 
