@@ -21,7 +21,7 @@
     mud: 'Mud: a dirty slowdown effect that impairs movement.',
     dustDevil: 'Blind: lowers Accuracy for a short time.',
     featherRuffle: 'Ruffled: enemy offense is reduced.',
-    defending: 'Block: reduces incoming damage.',
+    defending: 'Shield: enemy damage reduction while blocking.',
     evading: 'Evade: higher chance to dodge attacks.',
     lullabied: 'Lulled: reduced offense while drowsy.',
     delayed: 'Resonance: delayed damage will detonate soon.'

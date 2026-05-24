@@ -1126,6 +1126,22 @@ header p{color:var(--text-dim);font-style:italic;font-size:1rem;margin-top:4px;}
   letter-spacing:.05em;
 }
 .splash-unlock-msg{font-size:.7rem;color:var(--text-dim);min-height:14px;}
+.splash-erase-btn{
+  margin-top:8px;
+  width:100%;
+  box-sizing:border-box;
+  background:rgba(180,60,50,.15);
+  border:1px solid rgba(200,90,80,.45);
+  border-radius:8px;
+  color:#e8a0a0;
+  font-family:'Cinzel',serif;
+  font-size:.72rem;
+  letter-spacing:.06em;
+  padding:8px 10px;
+  cursor:pointer;
+  transition:background .2s,border-color .2s;
+}
+.splash-erase-btn:hover{background:rgba(180,60,50,.28);border-color:rgba(220,110,100,.65);}
 .splash-continue-wrap{margin-top:0;padding-top:0;}
 .splash-continue-wrap .sel-continue-row{margin-bottom:0;}
 .splash-roster-hint{
@@ -1811,6 +1827,7 @@ body.ui-mobile-mode #screen-battle .level-badge{font-size:.7rem;}
 
 /* ===== ACTION TOOLTIP ===== */
 #action-tooltip{position:fixed;background:var(--surface);border:1px solid var(--gold);border-radius:10px;padding:12px 15px;z-index:9999;pointer-events:none;max-width:240px;min-width:170px;font-size:.83rem;line-height:1.5;box-shadow:0 6px 28px rgba(0,0,0,.7);display:none;}
+#action-tooltip.is-touch-open{pointer-events:auto;max-width:min(92vw,320px);}
 .tt-name{font-family:'Cinzel',serif;color:var(--gold);font-size:.92rem;margin-bottom:1px;}
 .tt-type{color:var(--text-dim);font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;margin-bottom:7px;padding-bottom:5px;border-bottom:1px solid var(--border);}
 .tt-row{display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin-bottom:3px;}

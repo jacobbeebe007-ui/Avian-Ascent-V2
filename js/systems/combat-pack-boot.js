@@ -74,6 +74,8 @@
       newAilment2: secondaryAil,
       ailChance2: secondaryAil ? ailChance : 0,
     };
+    var apCost = row.apCost || 1;
+    var isStarterMain = row.starterSlot === 0 && row.level === 1 && row.branch === 'base';
     return {
       id: row.id,
       name: row.name || row.id,
@@ -81,9 +83,11 @@
       btnType: btnType,
       desc: desc,
       shortDesc: desc,
-      energyCost: row.apCost || 1,
-      energy: row.apCost || 1,
-      energyByLevel: [row.apCost || 1, row.apCost || 1, row.apCost || 1, row.apCost || 1],
+      energyCost: apCost,
+      energy: apCost,
+      energyByLevel: [apCost, apCost, apCost, apCost],
+      isMainAttack: isStarterMain || undefined,
+      fixedMainAttackCost: (isStarterMain && apCost >= 2) || undefined,
       pierceDef: row.pierceDef || 0,
       pierceMdef: row.pierceMdef || 0,
       hits: row.hits || 1,

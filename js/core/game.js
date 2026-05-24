@@ -496,6 +496,158 @@ function buildStatBreakdownTitle(statKey, rawVal, player){
   if(Math.abs(rem) > 0.05) t += ` + other ${rem >= 0 ? '+' : ''}${formatLedgerDelta(rem)}`;
   return t;
 }
+function getEquippedStatSources(player, statKey){
+  const lines = [];
+  if(!player?.equippedMutations) return lines;
+  for(const slot in player.equippedMutations){
+    const arr = player.equippedMutations[slot];
+    if(!Array.isArray(arr)) continue;
+    for(const id of arr){
+      if(!id) continue;
+      const item = typeof Avian?.mutations?.getItem==='function' ? Avian.mutations.getItem(id) : null;
+      const val = Number(item?.stats?.[statKey]) || 0;
+      if(!item || Math.abs(val) < 0.0001) continue;
+      lines.push({ name: item.name, value: val });
+    }
+  }
+  return lines;
+}
+function getBattleStatModifierLines(statKey){
+  const lines = [];
+  if(statKey==='atk' && G?.warcryActive) lines.push(`Warcry: +${G.warcryATK||0}% ATK`);
+  if(statKey==='atk' && G?.sitAndWaitActive) lines.push('Sit and Wait: +25% ATK');
+  if(statKey==='atk' && G?.playerStatus?.tookie?.turns>0) lines.push(`Tookie Tookie: +${G.playerStatus.tookie.atkBonus||0}% ATK`);
+  if(statKey==='def' && G?.battleHymnActive) lines.push('Battle Hymn: +DEF');
+  if(statKey==='acc' && G?.battleHymnActive) lines.push('Battle Hymn: +ACC');
+  if(statKey==='atk' && G?.playerStatus?.weaken) lines.push('Weaken: reduced output');
+  if(statKey==='def' && G?.playerStatus?.weaken) lines.push('Weaken: reduced DEF');
+  if(statKey==='dodge' && G?.playerStatus?.slow) lines.push('Slow: reduced dodge');
+  if(statKey==='spd' && G?.playerStatus?.slow) lines.push('Slow: reduced SPD');
+  if(statKey==='acc' && (G?.playerStatus?.blind||G?.playerStatus?.dustDevil)) lines.push('Blind: reduced ACC');
+  if(statKey==='critChance' && playerHasBurning()) lines.push('Burning: crit penalty');
+  return lines;
+}
+function richTooltipCloseBtn(){
+  if(!window._isTouchDevice) return '';
+  return `<div style="text-align:right;margin-top:8px"><button type="button" onclick="hideTooltip()" style="background:rgba(201,168,76,.2);border:1px solid var(--gold);border-radius:4px;color:var(--gold);padding:2px 10px;cursor:pointer;font-size:.75rem;">✕ Close</button></div>`;
+}
+function buildPassiveTooltipHTML(birdKey){
+  const info = typeof Avian?.passives?.describeFor==='function' ? Avian.passives.describeFor(birdKey) : null;
+  const bd = birdKey && BIRDS[birdKey];
+  const p = info || (bd?.passive ? { name: bd.passive.name, desc: bd.passive.desc, trigger: bd.passive.trigger||'' } : null);
+  if(!p) return '';
+  let html = `<div class="tt-name">★ ${escapeHtmlRoster(p.name)}</div><div class="tt-type">Passive</div>`;
+  if(p.trigger) html += `<div class="tt-row"><span class="tt-lbl">Trigger</span><span class="tt-val" style="font-size:.88em">${escapeHtmlRoster(p.trigger)}</span></div>`;
+  html += `<div class="tt-desc">${escapeHtmlRoster(p.desc||p.effect||'')}</div>`;
+  if(p.balance) html += `<div class="tt-note" style="opacity:.75;margin-top:6px;font-size:.78em">${escapeHtmlRoster(p.balance)}</div>`;
+  html += richTooltipCloseBtn();
+  return html;
+}
+function buildMutationTooltipHTML(itemId){
+  const item = typeof Avian?.mutations?.getItem==='function' ? Avian.mutations.getItem(itemId) : null;
+  if(!item) return '';
+  const desc = typeof Avian?.mutations?.formatMutationDesc==='function'
+    ? Avian.mutations.formatMutationDesc(item)
+    : (item.statLine || item.name);
+  let html = `<div class="tt-name">${escapeHtmlRoster(item.name)}</div>`;
+  html += `<div class="tt-type">${escapeHtmlRoster(item.tier||'mutation')} · ${escapeHtmlRoster(item.slot||'')}</div>`;
+  html += `<div class="tt-desc">${escapeHtmlRoster(desc)}</div>`;
+  const s = item.stats || {};
+  for(const k of STAT_LEDGER_TRACKED_KEYS){
+    const val = Number(s[k]) || 0;
+    if(Math.abs(val) < 0.0001) continue;
+    html += `<div class="tt-row"><span class="tt-lbl">${escapeHtmlRoster(STAT_LEDGER_LABELS[k]||k)}</span><span class="tt-val">+${formatCombatNumber(val)}</span></div>`;
+  }
+  const m = item.mechanics || {};
+  if(m.piercePct) html += `<div class="tt-row"><span class="tt-lbl">Pierce</span><span class="tt-val">+${m.piercePct}%</span></div>`;
+  if(m.physicalAilment?.chance) html += `<div class="tt-row"><span class="tt-lbl">Phys ailment</span><span class="tt-val">+${m.physicalAilment.chance}% ${escapeHtmlRoster(m.physicalAilment.id||'')}</span></div>`;
+  if(m.magicAilment?.chance) html += `<div class="tt-row"><span class="tt-lbl">Magic ailment</span><span class="tt-val">+${m.magicAilment.chance}% ${escapeHtmlRoster(m.magicAilment.id||'')}</span></div>`;
+  html += richTooltipCloseBtn();
+  return html;
+}
+function buildRichStatTooltipHtml(statKey, rawVal, player){
+  const label = (STAT_LEDGER_LABELS[statKey]||statKey).toUpperCase();
+  let html = `<div class="tt-name">${label}</div>`;
+  html += `<div class="tt-row"><span class="tt-lbl">Total</span><span class="tt-val">${formatCombatNumber(rawVal)}</span></div>`;
+  const L = player?._statLedger;
+  if(L?.birdBaseline && Object.keys(L.birdBaseline).length){
+    const rows = [
+      ['Base', Number(L.birdBaseline[statKey]||0)],
+      ['Level', Number(L.fromLevel?.[statKey]||0)],
+      ['Upgrades', Number(L.fromUpgrades?.[statKey]||0)],
+      ['Equipment (total)', Number(L.fromEquipment?.[statKey]||0)],
+    ];
+    for(const [lbl, val] of rows){
+      if(Math.abs(val) < 0.0001 && lbl !== 'Base') continue;
+      html += `<div class="tt-row"><span class="tt-lbl">${lbl}</span><span class="tt-val">${val >= 0 && lbl !== 'Base' ? '+' : ''}${formatCombatNumber(val)}</span></div>`;
+    }
+    for(const src of getEquippedStatSources(player, statKey)){
+      html += `<div class="tt-row"><span class="tt-lbl">${escapeHtmlRoster(src.name)}</span><span class="tt-val">+${formatCombatNumber(src.value)}</span></div>`;
+    }
+    const cur = Number(rawVal)||0;
+    const rem = cur - Number(L.birdBaseline[statKey]||0) - Number(L.fromLevel?.[statKey]||0) - Number(L.fromUpgrades?.[statKey]||0) - Number(L.fromEquipment?.[statKey]||0);
+    if(Math.abs(rem) > 0.05) html += `<div class="tt-row"><span class="tt-lbl">Other</span><span class="tt-val">${rem >= 0 ? '+' : ''}${formatCombatNumber(rem)}</span></div>`;
+  }
+  for(const line of getDerivedMechanicalBonusLines(player)){
+    if(statKey==='atk' && /light attack/i.test(line)) html += `<div class="tt-row"><span class="tt-val" style="font-size:.88em">${escapeHtmlRoster(line)}</span></div>`;
+    if(statKey==='critChance' && /crit/i.test(line)) html += `<div class="tt-row"><span class="tt-val" style="font-size:.88em">${escapeHtmlRoster(line)}</span></div>`;
+  }
+  for(const line of getBattleStatModifierLines(statKey)){
+    html += `<div class="tt-row"><span class="tt-lbl">Battle</span><span class="tt-val" style="font-size:.88em">${escapeHtmlRoster(line)}</span></div>`;
+  }
+  html += richTooltipCloseBtn();
+  return html;
+}
+const RICH_TOOLTIP_LONG_PRESS_MS = 500;
+function showRichTooltipHtml(html, pointerEvt){
+  const tt = document.getElementById('action-tooltip');
+  if(!tt || !html) return;
+  tt.innerHTML = html;
+  tt.style.display = 'block';
+  tt.classList.toggle('is-touch-open', !!window._isTouchDevice);
+  positionTooltip(pointerEvt);
+}
+function bindRichTooltip(el, getHtml, opts={}){
+  if(!el || typeof getHtml!=='function' || el._richTooltipBound) return;
+  el._richTooltipBound = true;
+  const longPressMs = opts.longPressMs ?? RICH_TOOLTIP_LONG_PRESS_MS;
+  let timer = null;
+  const show = (e) => {
+    const html = getHtml();
+    if(!html) return;
+    showRichTooltipHtml(html, e);
+  };
+  el.addEventListener('mouseenter', (e) => { if(!window._isTouchDevice) show(e); });
+  el.addEventListener('mousemove', (e) => { if(!window._isTouchDevice) moveTooltip(e); });
+  el.addEventListener('mouseleave', () => { if(!window._isTouchDevice) hideTooltip(); });
+  el.addEventListener('touchstart', (e) => {
+    window._isTouchDevice = true;
+    timer = setTimeout(() => {
+      timer = null;
+      const touch = e.touches[0];
+      show({ clientX: touch.clientX, clientY: touch.clientY });
+    }, longPressMs);
+  }, { passive: true });
+  el.addEventListener('touchend', () => { if(timer){ clearTimeout(timer); timer = null; } }, { passive: true });
+  el.addEventListener('touchmove', () => { if(timer){ clearTimeout(timer); timer = null; } }, { passive: true });
+}
+function wireNestMutationTooltips(root){
+  if(!root) return;
+  root.querySelectorAll('[data-nest-item],[data-nest-inv]').forEach(el=>{
+    const id = el.dataset.nestItem || el.dataset.nestInv;
+    if(!id) return;
+    bindRichTooltip(el, () => buildMutationTooltipHTML(id));
+  });
+}
+function wireCombatStatTooltips(){
+  const grid = document.getElementById('player-stats-mini');
+  if(!grid) return;
+  grid.querySelectorAll('[data-stat-key]').forEach(el=>{
+    const key = el.dataset.statKey;
+    const raw = Number(el.dataset.statRaw);
+    bindRichTooltip(el, () => buildRichStatTooltipHtml(key, raw, G.player));
+  });
+}
 function getDerivedMechanicalBonusLines(player){
   if(!player) return [];
   const lines = [];
@@ -1886,9 +2038,9 @@ removeMimicEverywhere();
 // Dismiss tooltip on outside tap (mobile)
 document.addEventListener('touchstart',e=>{
   const tt=document.getElementById('action-tooltip');
-  if(tt&&tt.style.display==='block'&&!e.target.closest('.action-btn')&&!e.target.closest('#action-tooltip')){
-    hideTooltip();
-  }
+  if(!tt||tt.style.display!=='block') return;
+  const keep = e.target.closest('.action-btn,#action-tooltip,.stat-mini,#passive-badge,.enemy-ab-tag,[data-nest-item],[data-nest-inv],[data-reward-mutation]');
+  if(!keep) hideTooltip();
 },{passive:true});
 
 // ============================================================
@@ -1910,8 +2062,13 @@ function renderPassiveBadge() {
   if(!badge) return;
   const key=G.player?.birdKey||G.selected;
   const bd=key&&BIRDS[key];
-  if(bd&&bd.passive){badge.textContent=`★ ${bd.passive.name}`;badge.title=bd.passive.desc;badge.style.display='inline-block';}
-  else badge.style.display='none';
+  if(bd&&bd.passive){
+    badge.textContent=`★ ${bd.passive.name}`;
+    badge.title='';
+    badge.style.display='inline-block';
+    badge._richTooltipBound = false;
+    bindRichTooltip(badge, () => buildPassiveTooltipHTML(key));
+  } else badge.style.display='none';
 }
 
 // ============================================================
@@ -2050,6 +2207,7 @@ function openNest() {
   }
   content.innerHTML=html;
   content.onclick=handleNestEquipClick;
+  wireNestMutationTooltips(content);
   modal.classList.add('open');
 }
 function closeNest() {
@@ -2085,8 +2243,7 @@ function _nestMutationItemHtml(itemId, slotLbl, slotKey, slotIndex){
   const tierCss=nestTierCssClass(item.tier);
   const tierMeta=rewardTierMeta(item.tier);
   const tierColor=nestTierColorVar(item.tier);
-  const tip=escapeHtmlRoster(item.statLine||item.name);
-  return `<div class="nest-equip-slot filled tier-${item.tier} tier-ui-${tierCss}" title="${tip}" data-nest-slot="${slotKey}" data-nest-idx="${slotIndex}" data-nest-item="${itemId}"><div class="nest-equip-slot-lbl">${slotBadge}${slotLbl}</div><div class="nest-tier-label" style="color:${tierColor}">${tierMeta.label}</div><div class="nest-equip-slot-name" style="color:${tierColor}">${escapeHtmlRoster(item.name)}</div></div>`;
+  return `<div class="nest-equip-slot filled tier-${item.tier} tier-ui-${tierCss}" data-nest-slot="${slotKey}" data-nest-idx="${slotIndex}" data-nest-item="${itemId}"><div class="nest-equip-slot-lbl">${slotBadge}${slotLbl}</div><div class="nest-tier-label" style="color:${tierColor}">${tierMeta.label}</div><div class="nest-equip-slot-name" style="color:${tierColor}">${escapeHtmlRoster(item.name)}</div></div>`;
 }
 
 function handleNestEquipClick(ev){
@@ -2157,9 +2314,8 @@ function buildNestEquipmentSection(player){
       const tierCss=nestTierCssClass(item.tier);
       const tierMeta=rewardTierMeta(item.tier);
       const tierColor=nestTierColorVar(item.tier);
-      const tip=escapeHtmlRoster(item.statLine||item.name);
       const slotBadge=icons[item.slot]?`<span class="nest-slot-badge">${icons[item.slot]}</span>`:'';
-      invHtml+=`<div class="nest-inv-item tier-${item.tier} tier-ui-${tierCss}" title="${tip}" data-nest-inv="${id}">${slotBadge}<div class="nest-tier-label" style="color:${tierColor}">${tierMeta.label}</div><strong style="color:${tierColor}">${escapeHtmlRoster(item.name)}</strong><br><span style="color:${tierColor}">${escapeHtmlRoster(labels[item.slot]||item.slot)}</span></div>`;
+      invHtml+=`<div class="nest-inv-item tier-${item.tier} tier-ui-${tierCss}" data-nest-inv="${id}">${slotBadge}<div class="nest-tier-label" style="color:${tierColor}">${tierMeta.label}</div><strong style="color:${tierColor}">${escapeHtmlRoster(item.name)}</strong><br><span style="color:${tierColor}">${escapeHtmlRoster(labels[item.slot]||item.slot)}</span></div>`;
     }
     invHtml+='</div>';
   }
@@ -2423,7 +2579,7 @@ function syncPlayerAbilitiesFromSkillSlots(player){
   player.abilities = slots.filter(slot=>slot.abilityId).map(slot=>{
     const prior = bySlot.get(slot.slotIndex) || byId.get(slot.abilityId) || null;
     const ab = ensureAbilityObjectFromTemplate(slot.abilityId, prior, slot.slotIndex, player);
-    if(slot.isStarterMain) ab.fixedMainAttackCost = true;
+    if(slot.isStarterMain || slot.slotIndex === 0) ab.fixedMainAttackCost = true;
     return ab;
   });
 }
@@ -2575,6 +2731,64 @@ function loadSaveData() {
 }
 function deleteSave() {
   localStorage.removeItem(SAVE_KEY);
+}
+function clearAllProgress() {
+  const preserve = {
+    access: localStorage.getItem(ACCESS_KEY),
+    music: localStorage.getItem(MUSIC_SETTINGS_KEY),
+  };
+  const keys = [
+    SAVE_KEY,
+    globalThis.AVIAN_OW_KEYS?.STATE ?? 'avianAscent_overworld',
+    globalThis.AVIAN_OW_KEYS?.NAV ?? 'avianAscent_nav',
+    UNLOCK_KEY,
+    RUN_HISTORY_KEY,
+    HIGHSCORE_KEY,
+    TELEMETRY_KEY,
+    'avianAscent_personal_bests',
+    'avianAscent_last_seed',
+    'blakiston_debug_unlocked',
+  ];
+  for (const k of keys) {
+    try { localStorage.removeItem(k); } catch (_) { /* noop */ }
+  }
+  if (preserve.access != null) {
+    try { localStorage.setItem(ACCESS_KEY, preserve.access); } catch (_) { /* noop */ }
+  }
+  if (preserve.music != null) {
+    try { localStorage.setItem(MUSIC_SETTINGS_KEY, preserve.music); } catch (_) { /* noop */ }
+  }
+  delete G.player;
+  G._shopSnapshots = {};
+  G.collectedRewards = [];
+  window.__blakistonDebugUnlocked = false;
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.getRegistrations().then((regs) => {
+      for (const reg of regs) reg.unregister();
+    }).catch(() => {});
+    if ('caches' in window) {
+      caches.keys().then((names) => Promise.all(names.map((n) => caches.delete(n)))).catch(() => {});
+    }
+  }
+}
+function openEraseProgressModal() {
+  document.getElementById('erase-progress-modal')?.classList.add('open');
+}
+function closeEraseProgressModal() {
+  document.getElementById('erase-progress-modal')?.classList.remove('open');
+}
+function confirmEraseProgress() {
+  clearAllProgress();
+  closeEraseProgressModal();
+  closeSelectHubPanel();
+  deleteSave();
+  const msg = document.getElementById('dev-code-msg');
+  if (msg) {
+    msg.textContent = '🗑 All saved progress erased.';
+    msg.style.color = 'var(--gold-light)';
+    setTimeout(() => { if (msg) msg.textContent = ''; }, 3200);
+  }
+  initSelectionSafe();
 }
 function continueRun() {
   const save=loadSaveData();
@@ -5271,23 +5485,26 @@ function refreshBattleUI() {
   const _statNote=(label,diff,srcUp='',srcDown='')=>`${label} ${diff>=0?'+':''}${diff}. ${diff>0?srcUp:(diff<0?srcDown:'No active modifier.')}`;
   const _atkNote=(G.warcryActive?`Warcry +${G.warcryATK}% ATK.`:'') + (G.playerStatus.weaken?' Weaken reducing output.':'');
   const _accCardBonus=(G.player.firstAttackAccBonus||0)>0?` Shop/card hit bonus +${G.player.firstAttackAccBonus}% (applies to all attacks).`:'';
-  const statCell=(klass,label,val,{suffix='',title='',trend=''}={})=>
-    `<div class="stat-mini ${klass}" title="${escAttr(title)}"><span class="stat-k">${label}</span><span class="stat-v">${formatCombatNumber(val)}${suffix}${trend}</span></div>`;
+  const statCell=(klass,label,val,{suffix='',title='',trend='',statKey='',statRaw=null}={})=>{
+    const dataAttr=statKey?` data-stat-key="${statKey}" data-stat-raw="${Number(statRaw ?? val)}"`:'';
+    return `<div class="stat-mini ${klass}"${dataAttr} title="${escAttr(title)}"><span class="stat-k">${label}</span><span class="stat-v">${formatCombatNumber(val)}${suffix}${trend}</span></div>`;
+  };
   const _bt=(key,raw,extra='')=>{ const b=buildStatBreakdownTitle(key,raw,G.player); return [b,extra].filter(Boolean).join(' | '); };
   const _pCombatHint=buildPlayerCombatStatHint();
   const _pHintRow=_pCombatHint?`<div class="stat-status-hint" style="grid-column:1/-1">${escAttr(_pCombatHint)}</div>`:'';
 
   document.getElementById('player-stats-mini').innerHTML =
-    `${statCell('stat-atk','ATK',_effAtk,{title:_bt('atk',p.atk,_statNote('Battle ATK',_effAtk-(p.atk||0),_atkNote,'Debuffs reducing ATK effect.')),trend:_trendTag(_effAtk-(p.atk||0))})}
-     ${statCell('stat-matk','MATK',_effMatk,{title:_bt('matk',p.matk||8,'Magic Attack — improves spell/ailment potency'),trend:_trendTag(_effMatk-(p.matk||8))})}
-     ${statCell('stat-def','DEF',_effDef,{title:_bt('def',p.def,_statNote('Battle DEF',_effDef-(p.def||0),'Battle Hymn increased DEF.','Debuffs reducing DEF.')),trend:_trendTag(_effDef-p.def)})}
-     ${statCell('stat-mdef','MDEF',_effMdef,{title:_bt('mdef',p.mdef||8,'Magic Defence — resists enemy spells and ailments'),trend:_trendTag(_effMdef-(p.mdef||8))})}
-     ${statCell('stat-dodge','Dodge',_effDodge,{suffix:'%',title:_bt('dodge',p.dodge,`Physical dodge. ${_statNote('Display',_effDodge-(p.dodge||0),'Evasion buffs active.','Debuffs reduced dodge.')}`),trend:_trendTag(_effDodge-p.dodge)})}
-     ${statCell('stat-acc','ACC',_effAcc,{suffix:'%',title:_bt('acc',p.acc,_statNote('Battle ACC',_effAcc-(p.acc||0),'Battle Hymn increased ACC.','Blind/ruffle reduced ACC.')+_accCardBonus),trend:_trendTag(_effAcc-p.acc)})}
-     ${statCell('stat-spd','SPD',_effSpd,{title:_bt('spd',p.spd,_statNote('Battle SPD',_effSpd-(p.spd||0),'Buff increased SPD.','Slow/clip effects reduced SPD.')),trend:_trendTag(_effSpd-p.spd)})}
-     ${statCell('stat-cc','CC',_critChance,{suffix:'%',title:_bt('critChance',_ccBaseStore,`Shown value includes battle modifiers (e.g. burn). ${_statNote('vs stored CC',_critChance-_ccBaseStore,'Temporary buffs.','')}`),trend:_trendTag(_critChance-_ccBaseStore)})}
+    `${statCell('stat-atk','ATK',_effAtk,{title:_bt('atk',p.atk,_statNote('Battle ATK',_effAtk-(p.atk||0),_atkNote,'Debuffs reducing ATK effect.')),trend:_trendTag(_effAtk-(p.atk||0)),statKey:'atk',statRaw:p.atk})}
+     ${statCell('stat-matk','MATK',_effMatk,{title:_bt('matk',p.matk||8,'Magic Attack — improves spell/ailment potency'),trend:_trendTag(_effMatk-(p.matk||8)),statKey:'matk',statRaw:p.matk||8})}
+     ${statCell('stat-def','DEF',_effDef,{title:_bt('def',p.def,_statNote('Battle DEF',_effDef-(p.def||0),'Battle Hymn increased DEF.','Debuffs reducing DEF.')),trend:_trendTag(_effDef-p.def),statKey:'def',statRaw:p.def})}
+     ${statCell('stat-mdef','MDEF',_effMdef,{title:_bt('mdef',p.mdef||8,'Magic Defence — resists enemy spells and ailments'),trend:_trendTag(_effMdef-(p.mdef||8)),statKey:'mdef',statRaw:p.mdef||8})}
+     ${statCell('stat-dodge','Dodge',_effDodge,{suffix:'%',title:_bt('dodge',p.dodge,`Physical dodge. ${_statNote('Display',_effDodge-(p.dodge||0),'Evasion buffs active.','Debuffs reduced dodge.')}`),trend:_trendTag(_effDodge-p.dodge),statKey:'dodge',statRaw:p.dodge})}
+     ${statCell('stat-acc','ACC',_effAcc,{suffix:'%',title:_bt('acc',p.acc,_statNote('Battle ACC',_effAcc-(p.acc||0),'Battle Hymn increased ACC.','Blind/ruffle reduced ACC.')+_accCardBonus),trend:_trendTag(_effAcc-p.acc),statKey:'acc',statRaw:p.acc})}
+     ${statCell('stat-spd','SPD',_effSpd,{title:_bt('spd',p.spd,_statNote('Battle SPD',_effSpd-(p.spd||0),'Buff increased SPD.','Slow/clip effects reduced SPD.')),trend:_trendTag(_effSpd-p.spd),statKey:'spd',statRaw:p.spd})}
+     ${statCell('stat-cc','CC',_critChance,{suffix:'%',title:_bt('critChance',_ccBaseStore,`Shown value includes battle modifiers (e.g. burn). ${_statNote('vs stored CC',_critChance-_ccBaseStore,'Temporary buffs.','')}`),trend:_trendTag(_critChance-_ccBaseStore),statKey:'critChance',statRaw:_ccBaseStore})}
      <div class="stat-mini stat-cd" title="${escAttr(`Base crit multiplier ${formatCombatNumber(_critBase)}×. On critical hits, +${formatCombatNumber(_critBonusPct)} is added to the multiplier (e.g. Execution Beak). Shown value is base; small +number is the crit-only add.`)}"><span class="stat-k">CD</span><span class="stat-v">${_critMultHtml}</span></div>
      ${_pHintRow}`;
+  wireCombatStatTooltips();
 
   // Enemy stats display
   const eal=document.getElementById('enemy-abilities-list');
@@ -5318,10 +5535,7 @@ function refreshBattleUI() {
         const eab=ENEMY_ABILITY_POOL[entry];
         if(!eab) return;
         const t=document.createElement('span');t.className='enemy-ab-tag';t.textContent=eab.name;
-        const ttHtml=buildEnemyAbilityTooltipHtml(entry, G.enemy.stats);
-        t.addEventListener('mouseenter',e=>showTooltip(e,ttHtml,e.clientX+12,e.clientY+12));
-        t.addEventListener('mousemove',e=>moveTooltip(e.clientX+12,e.clientY+12));
-        t.addEventListener('mouseleave',hideTooltip);
+        bindRichTooltip(t, () => buildEnemyAbilityTooltipHtml(entry, G.enemy.stats) + richTooltipCloseBtn());
         eal.appendChild(t);
         return;
       }
@@ -5329,10 +5543,7 @@ function refreshBattleUI() {
       const tmpl=getAbilityTemplateForUI(entry);
       const t=document.createElement('span');t.className='enemy-ab-tag';t.textContent=tmpl?.name||entry.name||entry.id;
       const ctx={level:entry.level,storyLevel:G.enemy.storyLevel};
-      const ttHtml=buildEnemyAbilityTooltipHtml(entry.id, G.enemy.stats, ctx);
-      t.addEventListener('mouseenter',e=>showTooltip(e,ttHtml,e.clientX+12,e.clientY+12));
-      t.addEventListener('mousemove',e=>moveTooltip(e.clientX+12,e.clientY+12));
-      t.addEventListener('mouseleave',hideTooltip);
+      bindRichTooltip(t, () => buildEnemyAbilityTooltipHtml(entry.id, G.enemy.stats, ctx) + richTooltipCloseBtn());
       eal.appendChild(t);
     });
   }
@@ -5354,7 +5565,7 @@ function refreshBattleUI() {
     }
   }
 
-  document.getElementById('player-shield-overlay').className='shield-overlay'+(G.playerStatus.defending>0?' active':'');
+  document.getElementById('player-shield-overlay').className='shield-overlay';
   document.getElementById('enemy-shield-overlay').className='shield-overlay'+(G.enemyStatus.defending>0?' active':'');
 
   renderEnemyPlan();
@@ -6807,7 +7018,7 @@ function buildActionTooltipHTML(ab){
   const scaleNote=tmpl.damageScaling?.scalingNote;
   html+=`<div class="tt-desc">${lvData.desc}${scaleNote?`<div class="tt-scaling" style="opacity:.92;margin-top:6px;font-size:.9em;border-top:1px solid rgba(255,255,255,.12);padding-top:6px">${scaleNote}</div>`:''}</div>`;
   html+=`<div class="tt-note" style="opacity:.75;margin-top:6px;font-size:.78em">Damage estimate uses your current stats, skill tier mults, DEF/M.DEF mitigation, and common buffs — combat rolls can vary.</div>`;
-  if(window._isTouchDevice) html+=`<div style="text-align:right;margin-top:8px"><button onclick="hideTooltip()" style="background:rgba(201,168,76,.2);border:1px solid var(--gold);border-radius:4px;color:var(--gold);padding:2px 10px;cursor:pointer;font-size:.75rem;">✕ Close</button></div>`;
+  if(window._isTouchDevice) html+=richTooltipCloseBtn();
   return html;
 }
 
@@ -6818,6 +7029,7 @@ function showActionTooltip(e,ab) {
   if (!html) return;
   tt.innerHTML=html;
   tt.style.display='block';
+  tt.classList.toggle('is-touch-open', !!window._isTouchDevice);
   positionTooltip(e);
 }
 function positionTooltip(e) {
@@ -6871,6 +7083,7 @@ function hideTooltip() {
   tt.style.display='none';
   tt._currentAbId=null;
   tt.style.transform='';
+  tt.classList.remove('is-touch-open');
 }
 
 function getAbDesc(ab) {
@@ -7354,6 +7567,7 @@ function clamp01(v){return Math.max(0,Math.min(1,v));}
 
 /** Locked combat tuning: offensive stats ×0.75; guard in denominators ×0.80. */
 const COMBAT_OFFENSIVE_STAT_MULT = 0.75;
+const POST_BATTLE_HEAL_PCT = 0.33;
 const COMBAT_GUARD_DEF_MULT = 0.80;
 const COMBAT_GUARD_MDEF_MULT = 0.80;
 const HIT_CHANCE_PCT_CLAMP = {min:35,max:97};
@@ -7454,7 +7668,7 @@ function applyGrowthStageTransition(p, fromStage, toStage){
     p.passiveBleedOnCrit = (toStage===GROWTH.JUVENILE)?1:((toStage===GROWTH.ADULT||toStage===GROWTH.APEX)?2:0);
   }
   if(cls==='tank'){
-    p.guardBlockPct = (toStage===GROWTH.ADULT||toStage===GROWTH.APEX)?0.75:0.50;
+    /* guardBlockPct legacy removed — mitigation uses DEF/MDEF guard pipeline */
   }
   if(cls==='singer'){
     p.spellAilmentEvery = (toStage===GROWTH.FLETCHLING)?4:3;
@@ -8128,15 +8342,11 @@ function dealDamage(target,amount,isCrit=false,isMagic=false,srcAbility=null) {
     }
   }
   let wasBlocked=false;
-  const def=target==='enemy'?G.enemyStatus.defending:G.playerStatus.defending;
-  const defAb=G.player.abilities.find(a=>a.id==='crowDefend');
-  let blockPct=0.4;
-  if (defAb) {
-    if (defAb.level>=4) blockPct=0.25;
-    else if (defAb.level>=3) blockPct=0.35;
-    else if (defAb.level>=2) blockPct=0.45;
+  if (target==='enemy') {
+    const def=G.enemyStatus.defending;
+    const blockPct=0.4;
+    if (def>0){dmg=Math.floor(dmg*blockPct);wasBlocked=true;}
   }
-  if (def>0){dmg=Math.floor(dmg*blockPct);wasBlocked=true;}
   if (target==='player') {
     G._currentPiercePct=0;
     const _aura=getPassiveDefMdefBonuses();
@@ -9026,7 +9236,8 @@ async function playerAction(ab,fromQueue=false) {
   }
   checkBlackbirdOmenChorusAfterAbility(_delayedBeforeAbility);
   if((effActKind==='physical'||effActKind==='ranged') && classPerkCtx.ironMomentum && /heavy|slam|crusher|smash/i.test((ab.name||ab.id||'').toLowerCase())){
-    refreshStatus(G.playerStatus,'defending',1,999);
+    applySourceStatLoanPct(G.playerStatus, G.player, '_ironMomentumLoans', 'def', ab.id||'ironMomentum', 8, 1);
+    spawnTrendFloat('player', 'buff');
   }
   if(effActKind==='physical'||effActKind==='ranged') G._firstAttackUsed=true;
   if(effActKind==='spell'){ G._firstSpellUsed=true; G._spellCastCount=(G._spellCastCount||0)+1; }
@@ -9189,7 +9400,7 @@ function getAbilityAuthoredEnergyCost(ab, player){
     cost = ab.energyCost;
   }
 
-  if(isMainAttackAbility(ab, p) && !isSpellAbilityId(ab.id) && !(ab.fixedMainAttackCost || t?.fixedMainAttackCost)) cost = 1;
+  if(isMainAttackAbility(ab, p) && !isSpellAbilityId(ab.id) && cost <= 1 && !(ab.fixedMainAttackCost || t?.fixedMainAttackCost)) cost = 1;
 
   if(p && usesFamilySkillEvolution(p) && !isMainAttackAbility(ab, p) && Array.isArray(t?.energyByLevel) && t.energyByLevel.length){
     const arr=t.energyByLevel.map(x=>Math.max(0,Math.floor(Number(x)||0)));
@@ -9348,10 +9559,10 @@ Object.assign(ACTIONS, {
   },
   async shieldWing(ab){
     const lv=Math.max(1,Math.min(ab.level||1,4));
-    const amt = Math.max(8, Math.floor((G.player.stats.def||5)*(2+0.3*(lv-1))));
-    G.playerStatus.defending = (G.playerStatus.defending||0) + amt;
-    spawnFloat('player', `+${amt}🛡️`, 'fn-status');
-    renderStatuses('player-status', G.playerStatus);
+    const pct = 8 + (lv-1)*2;
+    applySourceStatLoanPct(G.playerStatus, G.player, '_shieldWingLoans', 'def', ab.id||'shieldWing', pct, 2);
+    spawnFloat('player', `+${pct}% DEF`, 'fn-status');
+    spawnTrendFloat('player', 'buff');
   },
   async ironHonk(ab){
     const lv=Math.max(1,Math.min(ab.level||1,4));
@@ -10780,7 +10991,7 @@ function postCombat() {
 
     // Post-battle heal
     const postHealMult=G.player?.mutHuntersCruelty?0.5:1;
-    const postHeal = Math.max(1, Math.floor(G.player.stats.maxHp * 0.20 * postHealMult));
+    const postHeal = Math.max(1, Math.floor(G.player.stats.maxHp * POST_BATTLE_HEAL_PCT * postHealMult));
     G.player.stats.hp = Math.min(G.player.stats.hp + postHeal, G.player.stats.maxHp);
     spawnFloat('player', `+${postHeal} 🩹`, 'fn-heal');
 
@@ -11083,6 +11294,8 @@ function showRewardScreen(hasLevelUp) {
       <div class="reward-name">${rw.name}</div>
       <div class="reward-desc">${rw.desc}</div>`;
     grid.appendChild(c);
+    const mutId = rw.mutationItemId || rw.id;
+    if(mutId) bindRichTooltip(c, () => buildMutationTooltipHTML(mutId));
   });
   const allGranted = grantRewardPool(pool);
   if (allGranted) {
@@ -12019,6 +12232,8 @@ function showGroveNestRewards(){
       document.getElementById('grove-continue-btn').textContent='Claim Reward →';
     };
     grid.appendChild(c);
+    const mutId = rw.mutationItemId || rw.id;
+    if(mutId) bindRichTooltip(c, () => buildMutationTooltipHTML(mutId));
   });
 }
 
@@ -12606,6 +12821,7 @@ function buildRefGuide() {
 
   const mechanics=`<div class="ref-skills-grid">
     ${card('Energy & Cooldowns','Main attacks are free unless spells. Abilities spend energy and many skills have cooldowns.',true,'core')}
+    ${card('Post-Battle Recovery','After each victory, all birds heal for 33% of max HP (halved with Hunter\'s Cruelty mutation).',true,'heal')}
     ${card('Role Taxonomy','Birds are grouped by roles: Striker, Bruiser, Tank, Trickster, Predator, Singer.',true,'roles')}
     ${card('Passive Evolution (Endless)','In Endless mode, passives evolve at milestones with offensive vs utility choices.',true,'endless')}
     ${card('Enemy AI Profiles','Enemy personalities (aggressive, tactical, control, tank, predator, etc.) bias action planning.',true,'ai')}

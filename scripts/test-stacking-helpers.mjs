@@ -33,7 +33,7 @@ function getAbilityAuthoredEnergyCost(ab, template, opts = {}) {
   }
   const isMainAttack = opts.isMainAttack || false;
   const isSpell = template?.type === 'spell' || template?.btnType === 'spell';
-  if (isMainAttack && !isSpell && !(ab.fixedMainAttackCost || template?.fixedMainAttackCost)) cost = 1;
+  if (isMainAttack && !isSpell && cost <= 1 && !(ab.fixedMainAttackCost || template?.fixedMainAttackCost)) cost = 1;
   if (opts.usesFamilyEvolution && !isMainAttack && Array.isArray(template?.energyByLevel) && template.energyByLevel.length) {
     const arr = template.energyByLevel.map(x => Math.max(0, Math.floor(Number(x) || 0)));
     const progressive = arr.some((v, i) => i > 0 && v !== arr[0]);
@@ -92,10 +92,14 @@ applySourceStatLoan(ps, player, '_dispatcherStatLoans', 'atk', 'skillB:atk', 3, 
 assert(player.stats.atk === 18, 'different-source atk loans combine (15+3)');
 
 // Attack weight tests
-const mainAttackTpl = { energyCost: 2, type: 'physical' };
+const mainAttackTpl = { energyCost: 2, type: 'physical', fixedMainAttackCost: true };
 assert(
-  getAbilityAttackWeight({ id: 'mainAttack', level: 1 }, mainAttackTpl, { isMainAttack: true }) === 'light',
-  'mainAttack forced to light (1 EN authored)'
+  getAbilityAttackWeight({ id: 'mainAttack', level: 1, fixedMainAttackCost: true }, mainAttackTpl, { isMainAttack: true }) === 'medium',
+  'mainAttack with 2 EN authored → medium'
+);
+assert(
+  getAbilityAttackWeight({ id: 'mainAttack', level: 1 }, { energyCost: 1, type: 'physical' }, { isMainAttack: true }) === 'light',
+  'mainAttack forced to light when authored 1 EN'
 );
 
 const deathDiveTpl = { energyCost: 3, type: 'physical', role: ['finisher'] };

@@ -115,6 +115,7 @@
 <label class="splash-unlock-label" for="dev-code-input">Unlock code</label>
 <input autocomplete="off" class="splash-unlock-input" id="dev-code-input" maxlength="32" data-input="checkDevCode" placeholder="Code…" spellcheck="false" type="password"/>
 <div class="splash-unlock-msg" id="dev-code-msg"></div>
+<button type="button" class="splash-erase-btn" data-action="openEraseProgressModal">🗑 Erase saved progress</button>
 </div>
 </div>
 <div class="supplies-subview" id="supplies-view-records" role="tabpanel" aria-labelledby="supplies-nav-records">
@@ -432,6 +433,15 @@
 <p>This will end your current run. Any unlocks you've earned <strong style="color:var(--text)">will be saved</strong>, but your progress will be lost.</p>
 <button class="abandon-confirm-btn" data-action="confirmAbandon">Yes, Abandon</button>
 <button class="abandon-cancel-btn" data-action="closeAbandonModal">Cancel</button>
+</div>
+</div>
+<!-- ERASE PROGRESS MODAL -->
+<div class="abandon-modal" id="erase-progress-modal">
+<div class="abandon-inner">
+<h3>🗑 Erase Saved Progress?</h3>
+<p>This permanently deletes your run save, bird unlocks, run history, highscores, and personal bests. Accessibility and music settings are kept.</p>
+<button class="abandon-confirm-btn" data-action="confirmEraseProgress">Yes, erase everything</button>
+<button class="abandon-cancel-btn" data-action="closeEraseProgressModal">Cancel</button>
 </div>
 </div>
 <!-- SETTINGS MODAL -->

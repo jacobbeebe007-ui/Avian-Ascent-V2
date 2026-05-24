@@ -216,9 +216,9 @@
       gainMatk: function (n, ps, p) { applyDispatcherStatLoanPct(ps, p, 'matk', sourceId, n); spawnTrendFloat('player', 'buff'); },
       gainDef: function (n, ps, p) { applyDispatcherStatLoanPct(ps, p, 'def', sourceId, n); spawnTrendFloat('player', 'buff'); },
       gainMdef: function (n, ps, p) { applyDispatcherStatLoanPct(ps, p, 'mdef', sourceId, n); spawnTrendFloat('player', 'buff'); },
-      gainGuard: function (_n, ps) {
-        if (typeof globalThis.refreshStatus === 'function') globalThis.refreshStatus(ps, 'defending', 1, 999);
-        else ps.defending = Math.max(ps.defending || 0, 1);
+      gainGuard: function (n, ps, p) {
+        var pct = Number(n) || 8;
+        applyDispatcherStatLoanPct(ps, p, 'def', sourceId, pct);
         spawnTrendFloat('player', 'buff');
       },
       gainBrace: function (_n, ps) { ps.dispatcherBrace = 1; ps.dispatcherBraceT = 1; spawnTrendFloat('player', 'buff'); },
