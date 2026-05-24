@@ -191,7 +191,6 @@ function buildDukeStoryBossEnemy(){
     enemyTier:'boss',
     bossTitle:'🌩 Stage Boss',
     storyLevel:dukeLv,
-    storyThreat:6,
     abilities:dukeAbilities,
     stats:{
       hp:stats.hp,maxHp:stats.maxHp,atk:stats.atk,def:stats.def,spd:stats.spd,acc:stats.acc,dodge:stats.dodge,
@@ -1586,13 +1585,10 @@ const ENDLESS_BATTLE_EXP_BONUS_CAP = 1.2;
 const ENDLESS_EXP_NORMAL_CAP_PCT = 0.30;
 /** Endless (stage 21+): boss kills cannot exceed this fraction of expForLevel(plv + 1). */
 const ENDLESS_EXP_BOSS_CAP_PCT = 0.85;
-/** Normalized threat-tier spread (getStoryThreatForBirdKey → multiplier); narrower than ad-hoc per-tier values. */
-const THREAT_TIER_EXP_MULTIPLIERS = Object.freeze({
-  LOW: 0.90,
-  STANDARD: 1.00,
-  HIGH: 1.15,
-  ELITE: 1.30,
-});
+/** Threat tier EXP multipliers removed — level-relative scaling only. */
+function threatTierExpMultiplierForEnemy(_enemy) {
+  return 1;
+}
 
 function baseExpForEnemyLevel(lv) {
   const L = Math.max(0, Math.floor(Number(lv) || 0));
@@ -1601,18 +1597,6 @@ function baseExpForEnemyLevel(lv) {
   const linear = BASE_EXP_POST10_LINEAR_PER_LEVEL * over;
   const softLog = BASE_EXP_POST10_LOG_SCALE * Math.log2(over + 1);
   return Math.max(BASE_EXP_BY_ENEMY_LEVEL[10], Math.round(BASE_EXP_BY_ENEMY_LEVEL[10] + linear + softLog));
-}
-
-/** Threat tier EXP multipliers (story registry + getStoryThreatForBirdKey class fallback). Bosses use boss formula instead. */
-function threatTierExpMultiplierForEnemy(enemy) {
-  if (!enemy || enemy.isBoss) return 1;
-  const key = enemy.birdKey || enemy.portraitKey || '';
-  const th = getStoryThreatForBirdKey(key);
-  if (th <= 1) return THREAT_TIER_EXP_MULTIPLIERS.LOW;
-  if (th === 2) return THREAT_TIER_EXP_MULTIPLIERS.STANDARD;
-  if (th === 3) return THREAT_TIER_EXP_MULTIPLIERS.HIGH;
-  if (th >= 4) return THREAT_TIER_EXP_MULTIPLIERS.ELITE;
-  return THREAT_TIER_EXP_MULTIPLIERS.STANDARD;
 }
 
 function relativeLevelExpMultiplier(enemyLv, playerLv) {
@@ -3137,14 +3121,16 @@ function clearOverworldPendingBattle() {
   resetStageBattleStats();
 }
 
-/** Lock story/template rolls per stage slot (no numeric scaling). */
+/** Lock story rolls per stage slot; rebuild when bird chain, player level, or difficulty changes. */
 function ensureOwEncounterDrafts(encounterStage){
   if(G.endlessMode || !G._owStageEnemies?.length){
     G._owEncounterDrafts = null;
     G._owEncounterDraftsSig = null;
     return;
   }
-  const sig = `${encounterStage}|${(G._owStageEnemies || []).join(',')}`;
+  const plv = Math.max(1, Math.floor(G.player?.birdLevel || 1));
+  const diffId = G.difficulty || 'juvenile';
+  const sig = `${encounterStage}|${(G._owStageEnemies || []).join(',')}|lv${plv}|d${diffId}`;
   if(G._owEncounterDraftsSig === sig && Array.isArray(G._owEncounterDrafts) && G._owEncounterDrafts.length === G._owStageEnemies.length) return;
   G._owEncounterDraftsSig = sig;
   G._owEncounterDrafts = G._owStageEnemies.map(bk=>{
@@ -3153,22 +3139,17 @@ function ensureOwEncounterDrafts(encounterStage){
   });
 }
 
-/** One overworld slot: draft template before universal scaling (mirrors loadStage OW branch). */
+/** One overworld slot: story enemy draft before mergeScaledStatsIntoEnemy. */
 function buildOwEnemyDraftFromBirdKey(bk, encounterStage){
-  let ed = null;
   const bkNorm = String(bk||'').toLowerCase();
-  if((bkNorm==='duke_blakiston'||bkNorm==='dukeblakiston') && encounterStage>=20){
-    ed = makeDukeBlakiston();
-  } else {
-    if(!STORY_BOSS_STAGES.has(encounterStage)){
-      ed = buildStoryEnemyFromBirdKey(bk, encounterStage);
-    }
-    if(!ed){
-      const bEnemy = BIRD_ENEMIES.find(e => e.birdKey === bk);
-      if(bEnemy) ed = buildEdFromBirdEnemyTemplate(bEnemy);
-    }
+  if((bkNorm==='duke_blakiston'||bkNorm==='dukeblakiston') && encounterStage>=STORY_DUKE_STAGE){
+    return makeDukeBlakiston();
   }
-  return ed;
+  const isMilestoneBoss = encounterStage === STORY_MILESTONE_BOSS_STAGE;
+  return buildStoryEnemyFromBirdKey(bk, encounterStage, {
+    isBoss: isMilestoneBoss,
+    bossTitle: isMilestoneBoss ? bossTitleForStageMilestone(encounterStage) : '',
+  });
 }
 
 /** Apply the same scaling merge loadStage uses; mutates ed in place. */
@@ -3286,22 +3267,9 @@ function getEnemyPreviewLevel(enemy){
   return computeEnemyEffectiveLevel(st, Math.max(1, Math.floor(G.player?.birdLevel||1)), !!(G.endlessMode && st>20));
 }
 
-function getEnemyPreviewThreatLine(enemy){
-  if(!enemy) return {short:'—', detail:'Threat: —'};
-  if(Number.isFinite(enemy.storyThreat)){
-    const n=enemy.storyThreat;
-    return {short:`Threat ${n}`, detail:`Threat ${n}`};
-  }
-  const tier=enemy.combatTier || enemy.enemyTier;
-  if(tier){
-    const lab=String(tier).charAt(0).toUpperCase()+String(tier).slice(1);
-    return {short:lab, detail:`Tier: ${lab}`};
-  }
-  if(enemy.birdKey){
-    const t=getStoryThreatForBirdKey(enemy.birdKey);
-    return {short:`Threat ${t}`, detail:`Threat ${t}`};
-  }
-  return {short:'—', detail:'Threat: —'};
+function getEnemyPreviewLevelLine(enemy){
+  const lv=getEnemyPreviewLevel(enemy);
+  return {short:`Lv. ${lv}`, detail:`Level ${lv}`};
 }
 
 function buildEnemyInfoPopupAbilitiesHtml(enemy){
@@ -3381,7 +3349,7 @@ function openEnemyInfoPopup(){
   const cls=idToClassLabel(resolveFinalClass(G.enemy.class||G.enemy.enemyClass||inferEnemyClassFromStyle(aiStyle), G.enemy.birdKey||''));
   const szRaw=SIZE_LABELS[String(G.enemy.size||'medium').toLowerCase()]||String(G.enemy.size||'');
   const sz=escapeEncounterPreviewHtml(szRaw);
-  const thr=getEnemyPreviewThreatLine(G.enemy);
+  const thr=getEnemyPreviewLevelLine(G.enemy);
   const meta=document.getElementById('enemy-info-popup-meta');
   if(meta) meta.innerHTML=`Class: ${escapeEncounterPreviewHtml(cls)} · Size: ${sz}<br/>LVL ${lv} · ${escapeEncounterPreviewHtml(thr.detail)}`;
   const ab=document.getElementById('enemy-info-popup-abilities');
@@ -3480,7 +3448,7 @@ function buildEncounterPreviewTooltipHtml(enemy){
   const cls=idToClassLabel(resolveFinalClass(enemy.class||enemy.enemyClass||inferEnemyClassFromStyle(enemy.aiStyle), enemy.birdKey||''));
   const sz=SIZE_LABELS[String(enemy.size||'medium').toLowerCase()]||escapeEncounterPreviewHtml(enemy.size||'');
   const lv=getEnemyPreviewLevel(enemy);
-  const thr=getEnemyPreviewThreatLine(enemy);
+  const thr=getEnemyPreviewLevelLine(enemy);
   const mini=enemy.portraitKey||enemy.birdKey||'';
   const icon=(PORTRAITS[mini]||PORTRAITS[String(mini).toLowerCase()]||enemy.emoji||'🪶');
   const keys=getEnemyPreviewSkillKeys(enemy);
@@ -3552,7 +3520,7 @@ function renderEncounterPreview(){
     const sprite=(PORTRAITS[pk]||PORTRAITS[String(pk).toLowerCase()]||`<span class="enc-preview-emoji">${enemy.emoji||'🪶'}</span>`);
     const nm=escapeEncounterPreviewHtml(enemy.name||'—');
     const lv=getEnemyPreviewLevel(enemy);
-    const thr=getEnemyPreviewThreatLine(enemy);
+    const thr=getEnemyPreviewLevelLine(enemy);
     const cur=isCurrent?' enc-preview-card--current':'';
     return `<div class="enc-preview-card${cur}" data-enc-idx="${i}" tabindex="0" aria-label="${nm}, level ${lv}, ${thr.short}">
 <div class="enc-preview-sprite">${sprite}</div>
@@ -3702,40 +3670,11 @@ function normalizeOwEnemyListForBattle(enemies){
   });
 }
 
-/** Story fights that are a single boss (no two-bird queue): milestone boss at 10, Duke Blakiston at 20. */
+/** Story fights that are a single boss (no multi-bird queue): milestone boss at 10, Duke Blakiston at 20. */
 const STORY_BOSS_STAGES = new Set([10, 20]);
 const STORY_MILESTONE_BOSS_STAGE = 10;
 const STORY_DUKE_STAGE = 20;
-function normalizeBirdKeyForThreat(key){
-  const compact=String(key||'').toLowerCase().replace(/[^a-z0-9_]/g,'');
-  const aliases={peregrinefalcon:'peregrine',snowyowl:'snowyowl',secretarybird:'secretarybird',emperorpenguin:'emperorpenguin'};
-  return aliases[compact] || compact;
-}
-function getStoryThreatForBirdKey(key){
-  if(typeof getStoryRegistryThreatForBirdKey==='function'){
-    const reg=getStoryRegistryThreatForBirdKey(key);
-    if(Number.isFinite(reg)) return reg;
-  }
-  const norm=normalizeBirdKeyForThreat(key);
-  const birdDef=BIRDS?.[key]||BIRDS?.[norm];
-  const birdClass=String(birdDef?.class||'').toLowerCase();
-  if(['tank','bruiser'].includes(birdClass)) return 4;
-  if(['predator'].includes(birdClass)) return 4;
-  if(['trickster','singer'].includes(birdClass)) return 3;
-  return 2;
-}
-function getStoryAllowedThreatMinMax(stage){
-  const s=Math.max(1,Math.floor(Number(stage))||1);
-  if(typeof getStoryStageThreatAllowList==='function'){
-    const list=getStoryStageThreatAllowList(s);
-    if(list&&list.length) return [Math.min(...list),Math.max(...list)];
-  }
-  if(s<=5) return [1,1];
-  if(s<=9) return [2,2];
-  if(s<=15) return [3,3];
-  if(s<=19) return [4,4];
-  return [3,4];
-}
+const STORY_BOSS_STAT_MULT = Object.freeze({ hp: 2.0, atk: 1.3, matk: 1.3 });
 function getStoryEnemyLevelBand(stage){
   if(stage<=4) return [0,2];
   if(stage<=9) return [1,3];
@@ -3803,13 +3742,123 @@ function classGrowthWeightsForStory(cls){
   if(c==='trickster') return [{k:'spd',w:4},{k:'dodge',w:4},{k:'atk',w:2},{k:'matk',w:2},{k:'maxHp',w:2},{k:'def',w:2},{k:'mdef',w:2}];
   return [{k:'matk',w:4},{k:'mdef',w:3},{k:'maxHp',w:3},{k:'spd',w:2},{k:'dodge',w:2},{k:'atk',w:1},{k:'def',w:1}]; // singer
 }
-/** Story OW enemy level scales 1→12 across stages 1→20 (mirrors expected player progression depth). */
-function getStoryEnemyLevelForStage(stage){
-  const s=Math.max(1,Math.min(20,Math.floor(Number(stage)||1)));
-  return Math.max(1,Math.min(12,Math.round(1+(s-1)*11/19)));
+function buildStoryEnemyFromBirdKey(birdKey, stage, opts={}){
+  const bd=BIRDS?.[birdKey];
+  if(!bd) return null;
+  const stats={
+    hp:Math.max(1,Math.floor(bd.stats?.hp||bd.stats?.maxHp||30)),
+    maxHp:Math.max(1,Math.floor(bd.stats?.maxHp||bd.stats?.hp||30)),
+    atk:Math.max(1,Math.floor(bd.stats?.atk||6)),
+    def:Math.max(0,Math.floor(bd.stats?.def||2)),
+    matk:Math.max(1,Math.floor(bd.stats?.matk||8)),
+    mdef:Math.max(0,Math.floor(bd.stats?.mdef||8)),
+    spd:Math.max(1,Math.floor(bd.stats?.spd||6)),
+    acc:Math.max(60,Math.floor(bd.stats?.acc||80)),
+    dodge:Math.max(0,Math.floor(bd.stats?.dodge||10)),
+    critChance:Math.max(0,Math.floor(bd.stats?.critChance||5)),
+    critMult:Math.max(1.1,Number(bd.stats?.critMult||1.5)),
+  };
+  const plv=Math.max(1, Math.floor(G.player?.birdLevel||1));
+  const level=typeof getEnemyLevelForDifficulty==='function'
+    ? getEnemyLevelForDifficulty(plv, G.difficulty||'juvenile')
+    : plv;
+  const cls=String(bd.class||'striker').toLowerCase();
+  const featherTotal=3*level;
+  for(let i=0;i<featherTotal;i++) applyEnemyFeatherFromPlayerMirror(stats,cls);
+  const enemyStub={birdKey, abilities:[], familyEvolutionState:{}};
+  const baseSlots=getBaseSkillSlotsForBird(birdKey);
+  const slots=baseSlots.map(b=>normalizeSkillSlotState(JSON.parse(JSON.stringify(b)),b,birdKey));
+  enemyStub.familyEvolutionState.skillSlots=slots;
+  const evolvedSlots=Math.min(getStoryEvolvedSlotCount(level), slots.length);
+  const thresholds=[3,6,9,12];
+  const upgrades=thresholds.filter(t=>level>=t).length;
+  for(let i=0;i<evolvedSlots;i++){
+    const slot=slots[i];
+    if(!slot) continue;
+    if(!slot.pathId){
+      const pid=chooseStoryPathForSlot(slot,birdKey,cls);
+      if(pid) applySkillPathSelection(slot,pid,enemyStub);
+    }
+    const ups=Math.min(3,upgrades);
+    for(let n=0;n<ups;n++) autoUpgradeSkillSlotTier(slot,enemyStub);
+  }
+  syncPlayerAbilitiesFromSkillSlots(enemyStub);
+  const diffMult = DIFFICULTIES[G.difficulty||'juvenile']?.mult || 1;
+  stats.maxHp=Math.max(1,Math.floor(stats.maxHp*diffMult));
+  stats.hp=stats.maxHp;
+  stats.atk=Math.max(1,Math.floor(stats.atk*diffMult));
+  stats.matk=Math.max(1,Math.floor(stats.matk*diffMult));
+  if(opts.isBoss){
+    stats.maxHp=Math.max(1,Math.floor(stats.maxHp*STORY_BOSS_STAT_MULT.hp));
+    stats.hp=stats.maxHp;
+    stats.atk=Math.max(1,Math.floor(stats.atk*STORY_BOSS_STAT_MULT.atk));
+    stats.matk=Math.max(1,Math.floor(stats.matk*STORY_BOSS_STAT_MULT.matk));
+  }
+  const size=bd.size||'medium';
+  const enProf=getEnergyProfile(normalizeBirdSizeForEnergy(size));
+  return {
+    id:`story_${birdKey}_${stage}_${Math.floor(Math.random()*1e6)}`,
+    name:bd.name,
+    birdKey,
+    portraitKey:bd.portraitKey||birdKey,
+    size,
+    enemyClass:cls,
+    aiStyle:(['predator','striker'].includes(cls)?'aggressive':(cls==='tank'?'defensive':(cls==='trickster'?'trickster':'cautious'))),
+    aiPersonality:cls,
+    abilities:JSON.parse(JSON.stringify(enemyStub.abilities||[])),
+    stats:{...stats,en:enProf.maxEN},
+    hp:stats.hp,maxHp:stats.maxHp,atk:stats.atk,def:stats.def,spd:stats.spd,acc:stats.acc,dodge:stats.dodge,mdef:stats.mdef,matk:stats.matk,
+    cc:Math.max(0.05,Math.min(0.95,(stats.critChance||5)/100)), cd:stats.critMult||1.5,
+    energyMax:enProf.maxEN,energy:enProf.startEN,energyRegen:enProf.regenEN,
+    isBoss:!!opts.isBoss,
+    bossTitle:opts.bossTitle||'',
+    storyLevel:level, storyEvolvedSlots:evolvedSlots,
+    _storyDirectStats:true,
+  };
+}
+
+function generateStoryStageEnemyKeys(stage, playerBirdKey){
+  const st=Math.max(1,Math.floor(Number(stage)||1));
+  if(STORY_BOSS_STAGES.has(st)){
+    if(st===STORY_DUKE_STAGE) return ['dukeBlakiston'];
+    if(st===STORY_MILESTONE_BOSS_STAGE){
+      const pickBoss=typeof pickRandomMilestoneBossKey==='function'?pickRandomMilestoneBossKey:null;
+      return [pickBoss?pickBoss():'harpy'];
+    }
+    return [];
+  }
+  if(typeof globalThis.pickStoryEncounterBirdKeys==='function'){
+    try{
+      const p=globalThis.pickStoryEncounterBirdKeys(st, playerBirdKey||'');
+      if(Array.isArray(p)&&p.length>=1) return p;
+    }catch(err){ console.warn('[StoryEncounter] pickStoryEncounterBirdKeys failed', err); }
+  }
+  const chainCount=typeof globalThis.getStoryEncounterChainCount==='function'
+    ? Math.max(1,globalThis.getStoryEncounterChainCount(st))
+    : 3;
+  return Array.from({length:chainCount},()=>'sparrow');
+}
+
+function commitStoryEncounterMeta(stageNum, playerBirdKey, owBirdKeys){
+  const st=Math.max(1,Math.floor(Number(stageNum)||1));
+  if(STORY_BOSS_STAGES.has(st)){
+    G.currentStoryEncounter={
+      stageNumber:st,
+      isBoss:true,
+      birdKeys: st===STORY_DUKE_STAGE ? ['dukeBlakiston'] : (Array.isArray(owBirdKeys)?owBirdKeys.filter(Boolean):[])
+    };
+  }else{
+    const keys=Array.isArray(owBirdKeys)?owBirdKeys.filter(Boolean):[];
+    G.currentStoryEncounter={
+      stageNumber:st,
+      isBoss:false,
+      birdKeys: keys.slice()
+    };
+  }
+  try{ if(typeof window!=='undefined') window.currentStageEncounter=G.currentStoryEncounter; }catch(_){}
 }
 /** One feather = same stat increments as player LEVELUP_STAT_POOL choices (class-weighted pick). */
-function applyEnemyFeatherFromPlayerMirror(stats,cls){
+function applyEnemyFeatherFromPlayerMirror(stats, cls){
   const key=weightedPick(classGrowthWeightsForStory(cls));
   switch(key){
     case 'maxHp':
@@ -3861,138 +3910,6 @@ function chooseStoryPathForSlot(slot, birdKey, cls){
   const best=scored.sort((a,b)=>b.score-a.score)[0];
   return best?.opt?.pathId || options[0].pathId;
 }
-function buildStoryEnemyFromBirdKey(birdKey, stage){
-  const bd=BIRDS?.[birdKey];
-  if(!bd) return null;
-  const stats={
-    hp:Math.max(1,Math.floor(bd.stats?.hp||bd.stats?.maxHp||30)),
-    maxHp:Math.max(1,Math.floor(bd.stats?.maxHp||bd.stats?.hp||30)),
-    atk:Math.max(1,Math.floor(bd.stats?.atk||6)),
-    def:Math.max(0,Math.floor(bd.stats?.def||2)),
-    matk:Math.max(1,Math.floor(bd.stats?.matk||8)),
-    mdef:Math.max(0,Math.floor(bd.stats?.mdef||8)),
-    spd:Math.max(1,Math.floor(bd.stats?.spd||6)),
-    acc:Math.max(60,Math.floor(bd.stats?.acc||80)),
-    dodge:Math.max(0,Math.floor(bd.stats?.dodge||10)),
-    critChance:Math.max(0,Math.floor(bd.stats?.critChance||5)),
-    critMult:Math.max(1.1,Number(bd.stats?.critMult||1.5)),
-  };
-  const level=getStoryEnemyLevelForStage(stage);
-  const cls=String(bd.class||'striker').toLowerCase();
-  const featherTotal=3*level;
-  for(let i=0;i<featherTotal;i++) applyEnemyFeatherFromPlayerMirror(stats,cls);
-  const enemyStub={birdKey, abilities:[], familyEvolutionState:{}};
-  const baseSlots=getBaseSkillSlotsForBird(birdKey);
-  const slots=baseSlots.map(b=>normalizeSkillSlotState(JSON.parse(JSON.stringify(b)),b,birdKey));
-  enemyStub.familyEvolutionState.skillSlots=slots;
-  const evolvedSlots=Math.min(getStoryEvolvedSlotCount(level), slots.length);
-  const thresholds=[3,6,9,12];
-  const upgrades=thresholds.filter(t=>level>=t).length;
-  for(let i=0;i<evolvedSlots;i++){
-    const slot=slots[i];
-    if(!slot) continue;
-    if(!slot.pathId){
-      const pid=chooseStoryPathForSlot(slot,birdKey,cls);
-      if(pid) applySkillPathSelection(slot,pid,enemyStub);
-    }
-    const ups=Math.min(3,upgrades);
-    for(let n=0;n<ups;n++) autoUpgradeSkillSlotTier(slot,enemyStub);
-  }
-  syncPlayerAbilitiesFromSkillSlots(enemyStub);
-  const diffMult = DIFFICULTIES[G.difficulty||'juvenile']?.mult || 1;
-  stats.maxHp=Math.max(1,Math.floor(stats.maxHp*diffMult));
-  stats.hp=stats.maxHp;
-  stats.atk=Math.max(1,Math.floor(stats.atk*diffMult));
-  stats.matk=Math.max(1,Math.floor(stats.matk*diffMult));
-  const threat=getStoryThreatForBirdKey(birdKey);
-  const size=bd.size||'medium';
-  const enProf=getEnergyProfile(normalizeBirdSizeForEnergy(size));
-  return {
-    id:`story_${birdKey}_${stage}_${Math.floor(Math.random()*1e6)}`,
-    name:bd.name,
-    birdKey,
-    portraitKey:bd.portraitKey||birdKey,
-    size,
-    enemyClass:cls,
-    aiStyle:(['predator','striker'].includes(cls)?'aggressive':(cls==='tank'?'defensive':(cls==='trickster'?'trickster':'cautious'))),
-    aiPersonality:cls,
-    abilities:JSON.parse(JSON.stringify(enemyStub.abilities||[])),
-    stats:{...stats,en:enProf.maxEN},
-    hp:stats.hp,maxHp:stats.maxHp,atk:stats.atk,def:stats.def,spd:stats.spd,acc:stats.acc,dodge:stats.dodge,mdef:stats.mdef,matk:stats.matk,
-    cc:Math.max(0.05,Math.min(0.95,(stats.critChance||5)/100)), cd:stats.critMult||1.5,
-    energyMax:enProf.maxEN,energy:enProf.startEN,energyRegen:enProf.regenEN,
-    storyThreat:threat, storyLevel:level, storyEvolvedSlots:evolvedSlots,
-    _storyDirectStats:true,
-  };
-}
-/** Two distinct birds whose combined threat is ≤ budget; prefers lower sum. Randomized order. */
-function pickFallbackStoryEnemyPair(pool, budget){
-  if(pool.length<2) return [pool[0], pool[0]];
-  const keys=pool.slice().sort(()=>Math.random()-.5);
-  let best=null, bestSum=Infinity;
-  for(let i=0;i<keys.length;i++){
-    for(let j=i+1;j<keys.length;j++){
-      const a=keys[i], b=keys[j];
-      const sum=getStoryThreatForBirdKey(a)+getStoryThreatForBirdKey(b);
-      if(sum<=budget && sum<bestSum){ best=[a,b]; bestSum=sum; }
-    }
-  }
-  if(best) return best;
-  for(let i=0;i<keys.length;i++){
-    for(let j=i+1;j<keys.length;j++) return [keys[i],keys[j]];
-  }
-  return [keys[0], keys[1]];
-}
-
-function generateStoryStageEnemyKeys(stage, playerBirdKey){
-  const st=Math.max(1,Math.floor(Number(stage)||1));
-  if(STORY_BOSS_STAGES.has(st)){
-    return st===STORY_DUKE_STAGE ? ['dukeBlakiston'] : [];
-  }
-  const chainCount=typeof globalThis.getStoryEncounterChainCount==='function'
-    ? Math.max(1,globalThis.getStoryEncounterChainCount(st))
-    : 2;
-  if(typeof globalThis.pickEnemyPair==='function'){
-    try{
-      const p=globalThis.pickEnemyPair(stage, playerBirdKey||'');
-      if(Array.isArray(p)&&p.length>=1) return p;
-    }catch(err){ console.warn('[StoryEncounter] pickEnemyPair failed', err); }
-  }
-  const [minThreat,maxThreat]=getStoryAllowedThreatMinMax(st);
-  const all=Object.keys(BIRDS||{}).filter(k=>k!=='dukeBlakiston' && k!=='duke_blakiston');
-  const pool=all.filter(k=>{
-    const t=getStoryThreatForBirdKey(k);
-    return t>=minThreat && t<=maxThreat;
-  });
-  if(pool.length<1) return Array.from({length:chainCount},()=>'sparrow');
-  const shuffled=pool.slice().sort(()=>Math.random()-.5);
-  const out=[];
-  for(let i=0;i<chainCount;i++) out.push(shuffled[i%shuffled.length]);
-  return out;
-}
-
-function commitStoryEncounterMeta(stageNum, playerBirdKey, owBirdKeys){
-  const st=Math.max(1,Math.floor(Number(stageNum)||1));
-  if(STORY_BOSS_STAGES.has(st)){
-    G.currentStoryEncounter={
-      stageNumber:st,
-      isBoss:true,
-      budget:0,
-      birdKeys: st===STORY_DUKE_STAGE ? ['dukeBlakiston'] : []
-    };
-  }else{
-    const keys=Array.isArray(owBirdKeys)?owBirdKeys.filter(Boolean):[];
-    const budget=(typeof getStoryStageBudget==='function'?getStoryStageBudget(st):0)+
-      (typeof getPlayerThreatBudgetAdjustment==='function'?getPlayerThreatBudgetAdjustment(st, playerBirdKey||''):0);
-    G.currentStoryEncounter={
-      stageNumber:st,
-      isBoss:false,
-      budget,
-      birdKeys: keys.slice()
-    };
-  }
-  try{ if(typeof window!=='undefined') window.currentStageEncounter=G.currentStoryEncounter; }catch(_){}
-}
 
 /** Linear story (and shared save state): variable-length enemy chains per stage band (see getStoryEncounterChainCount). */
 function syncStoryEncounterBirdQueue(encounterStage){
@@ -4008,6 +3925,9 @@ function syncStoryEncounterBirdQueue(encounterStage){
     G._owEnemyCount=1;
     if(st===STORY_DUKE_STAGE){
       G._owStageEnemies=['dukeBlakiston'];
+    }else if(st===STORY_MILESTONE_BOSS_STAGE){
+      const pickBoss=typeof pickRandomMilestoneBossKey==='function'?pickRandomMilestoneBossKey:null;
+      G._owStageEnemies=[pickBoss?pickBoss():'harpy'];
     }else{
       G._owStageEnemies=null;
     }
@@ -5089,25 +5009,9 @@ function pickBirdEnemyPoolForTier(tier){
   return pool;
 }
 
-/** Story / endless: filter BIRD_ENEMIES by registry threat whitelist for this stage (getStoryStageThreatAllowList; stages 6–9 are tier 2 only). */
+/** Endless: pick from BIRD_ENEMIES tier band (story uses encounter-generator). */
 function pickBirdEnemyPoolForStoryStage(stageNumber){
-  const st=Math.max(1,Math.floor(Number(stageNumber))||1);
-  let allowList;
-  if(typeof getStoryStageThreatAllowList==='function'){
-    allowList=getStoryStageThreatAllowList(st);
-  } else {
-    allowList=[];
-    const[mn,mx]=getStoryAllowedThreatMinMax(st);
-    for(let t=mn;t<=mx;t++) allowList.push(t);
-  }
-  const allow=new Set(allowList);
-  let pool=BIRD_ENEMIES.filter(e=>{
-    let th=typeof getStoryRegistryThreatForBirdKey==='function'?getStoryRegistryThreatForBirdKey(e.birdKey):null;
-    if(!Number.isFinite(th)) th=getStoryThreatForBirdKey(e.birdKey);
-    return allow.has(th);
-  });
-  if(!pool.length) pool=pickBirdEnemyPoolForTier(storyTierFromStage(st));
-  return pool;
+  return pickBirdEnemyPoolForTier(storyTierFromStage(stageNumber));
 }
 
 function pickRandomBirdEnemyDraftForStage(stageNumber, opts={}){
@@ -5227,25 +5131,23 @@ function loadStage() {
   if (G.endlessMode && encounterStage > ENDLESS_STORY_END_STAGE) {
     G.endlessBattle = getEndlessEffectiveBattleNumber(encounterStage);
     ed = makeEndlessEnemy(encounterStage);
-  } else {
-    // Determine tier from stage
+  } else if (!ed) {
     const stage = encounterStage;
-    const tier=storyTierFromStage(stage);
-    
-    const isMilestoneBirdBoss = (stage === STORY_MILESTONE_BOSS_STAGE);
-    
-    if(!ed && (tier===5 || stage===STORY_DUKE_STAGE)){
-      if(stage===STORY_DUKE_STAGE && !G.endlessMode){
-        ed=makeDukeBlakiston();
-      } else {
-        ed=pickRandomBirdEnemyDraft(4,{isBoss:true,bossTitle:stage===STORY_DUKE_STAGE?'🌩 Stage Boss':'👑 Final Guardian'});
-      }
-    } else if(!ed && isMilestoneBirdBoss){
-      ed=pickRandomBirdEnemyDraft(4,{isBoss:true,bossTitle:bossTitleForStageMilestone(stage)});
-    } else if(!ed){
-      ed=pickRandomBirdEnemyDraftForStage(stage,{isBoss:false});
+    if (stage === STORY_DUKE_STAGE && !G.endlessMode) {
+      ed = makeDukeBlakiston();
+    } else if (stage === STORY_MILESTONE_BOSS_STAGE && !G.endlessMode) {
+      const bossKey = G._owStageEnemies?.[0]
+        || (typeof pickRandomMilestoneBossKey === 'function' ? pickRandomMilestoneBossKey() : 'harpy');
+      ed = buildStoryEnemyFromBirdKey(bossKey, stage, {
+        isBoss: true,
+        bossTitle: bossTitleForStageMilestone(stage),
+      });
+    } else if (!G.endlessMode) {
+      const bk = G._owStageEnemies?.[G._owEnemyIndex || 0];
+      if (bk) ed = buildOwEnemyDraftFromBirdKey(bk, stage);
+    } else {
+      ed = pickRandomBirdEnemyDraftForStage(stage, { isBoss: false });
     }
-
   }
   if(ed && !skipEnemyScalarMerge){
     mergeScaledStatsIntoEnemy(ed, encounterStage);

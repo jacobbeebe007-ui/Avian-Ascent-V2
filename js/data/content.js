@@ -108,75 +108,7 @@
 /* ===== Enemy balance pass ===== */
 (function(){
   // Enemy ability implementations live in js/core/game.js (ENEMY_ABILITY_POOL).
-
-  // edmg / afterEnemyTurn: merged into js/systems/systems.js (Aviant polish patch).
-
-  // Smarter enemy action choice: less control spam, no pointless heal/shield loops.
-  const _oldEnemyActionFromPool = globalThis.enemyActionFromPool;
-  if(typeof _oldEnemyActionFromPool === 'function'){
-    globalThis.enemyActionFromPool = function(e,key){
-      const mode = getEnemyMode(e,G.player);
-      const pool = buildEnemyActionPool(e,mode) || [];
-      const strike = pool.find(a=>a.type==='strike') || {type:'strike',icon:'⚔',label:'Attack'};
-      const heavy = pool.find(a=>a.type==='heavy') || pool.find(a=>a.type==='ability'&&['eStun','eRage'].includes(a.abilityId)) || strike;
-      let defend = pool.find(a=>a.type==='defend') || pool.find(a=>a.type==='ability'&&['eShield','eHeal'].includes(a.abilityId)) || strike;
-      let debuff = pool.find(a=>a.type==='ability'&&['eWeaken','eFear','eBlind'].includes(a.abilityId)) || strike;
-
-      if(defend.abilityId==='eShield' && (G.enemyStatus.defending||0)>0) defend = strike;
-      if(defend.abilityId==='eHeal' && ((e.stats.hp||1)/Math.max(1,e.stats.maxHp||1))>0.65) defend = strike;
-
-      if(debuff.abilityId==='eFear' && (G.playerStatus.feared||0)>=1) debuff = strike;
-      if(debuff.abilityId==='eWeaken' && (G.playerStatus.weaken||0)>=3) debuff = strike;
-      if(debuff.abilityId==='eBlind' && (G.playerStatus.dustDevil?.turns||0)>=2) debuff = strike;
-
-      let a = strike;
-      if(key==='heavy'){
-        a = heavy;
-        if(a.abilityId==='eRage' && (G.enemyStatus.rageBuff||0)>0) a = strike;
-      }else if(key==='defend'){
-        a = defend;
-      }else if(key==='debuff'){
-        a = debuff;
-      }else{
-        a = strike;
-      }
-      return {...a, energyCost:getEnemyActionEnergyCost(a)};
-    };
-  }
-
-  const _oldBuildEnemyActionPool = globalThis.buildEnemyActionPool;
-  if(typeof _oldBuildEnemyActionPool === 'function'){
-    globalThis.buildEnemyActionPool = function(e, mode){
-      const pool = _oldBuildEnemyActionPool.apply(this, arguments) || [];
-      // Reweight by duplicating or filtering.
-      const out = [];
-      const hpPct = (e?.stats?.hp||1)/Math.max(1,e.stats?.maxHp||1);
-      for(const a of pool){
-        const id = a.abilityId || '';
-        const t = a.type || '';
-        let weight = 1;
-        if(mode==='setup'){
-          if(t==='strike') weight = 4;
-          else if(t==='defend') weight = 1;
-          else if(t==='ability' && ['eWeaken','eFear','eBlind'].includes(id)) weight = 2;
-          else weight = 1;
-        }else if(mode==='execute'){
-          if(t==='strike') weight = 4;
-          else if(t==='heavy') weight = 3;
-          else if(t==='ability' && ['eStun','eBurn','ePoison'].includes(id)) weight = 2;
-          else weight = 1;
-        }else if(mode==='recover'){
-          if(id==='eHeal' && hpPct > 0.65) weight = 0;
-          else if(id==='eShield' && (G.enemyStatus.defending||0)>0) weight = 0;
-          else if(t==='strike') weight = 3;
-          else if(t==='defend') weight = 1;
-          else weight = 1;
-        }
-        for(let i=0;i<weight;i++) out.push(a);
-      }
-      return out.length ? out : pool;
-    };
-  }
+  // Legacy enemyActionFromPool / buildEnemyActionPool overlays removed — planEnemyTurn in game.js is canonical.
 })();
 
 

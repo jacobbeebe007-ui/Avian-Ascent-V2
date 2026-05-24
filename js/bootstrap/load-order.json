@@ -24,6 +24,8 @@
     "js/data/mutations/index.js",
     "js/data/birds.js",
     "js/data/story_enemy_registry.js",
+    "js/data/story_milestone_boss_pool.js",
+    "js/systems/encounter-generator.js",
     "js/world/overworld_bridge.js",
     "js/systems/save-migrations.js",
     "js/core/game.js",

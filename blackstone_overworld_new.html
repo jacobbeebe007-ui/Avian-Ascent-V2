@@ -434,20 +434,17 @@ const SPRITES = {
   dukeBlakiston: 'assets/sprites/Duke Blakiston.png',
 };
 
-const OW_THREAT_LABELS={1:'Low',2:'Moderate',3:'High',4:'Extreme',6:'Final'};
-function owLevelBand(st){
-  const s=Math.max(1,Math.floor(Number(st)||1));
-  if(s<=4)return[0,2];
-  if(s<=9)return[1,3];
-  if(s<=14)return[4,6];
-  return[7,10];
+function owExpectedEnemyLevel(){
+  try{
+    var raw=localStorage.getItem('avian_save_v1')||localStorage.getItem('avian_run_v1');
+    var save=raw?JSON.parse(raw):null;
+    var plv=Math.max(1,Math.floor(Number(save?.player?.birdLevel)||1));
+    var diff=save?.difficulty||'juvenile';
+    if(typeof getEnemyLevelForDifficulty==='function') return getEnemyLevelForDifficulty(plv,diff);
+    return plv;
+  }catch(_){ return 1; }
 }
 function normOwKey(s){return String(s||'').toLowerCase().replace(/[^a-z0-9]/g,'');}
-function owThreatForSpriteKey(sk){
-  const c=normOwKey(sk);
-  const map={sparrow:1,robin:1,blackbird:1,seagull:1,kiwi:1,dove:1,hummingbird:2,macaw:2,crow:2,magpie:2,goose:2,penguin:2,emperorpenguin:2,peregrine:3,snowyowl:3,kookaburra:3,lyrebird:3,raven:3,bowerbird:3,toucan:3,swan:3,flamingo:3,albatross:3,blackcockatoo:4,secretarybird:4,shoebill:4,harpy:4,harpyeagle:4,baldeagle:4,ostrich:4,cassowary:4,emu:4,dukeblakiston:6};
-  return map[c]!=null?map[c]:2;
-}
 const OW_BIRD_INFO={
   sparrow:{cls:'Bruiser',size:'Tiny',abs:[['Wing Dust','Reduces your ACC by 15%.']]},
   robin:{cls:'Striker',size:'Small',abs:[['Wing Dust','Reduces your ACC by 15%.']]},
@@ -505,7 +502,7 @@ function closeOvBirdPopup(){
   const p=document.getElementById('ov-bird-popup');
   if(p){p.classList.remove('on');p.setAttribute('aria-hidden','true');}
 }
-function openOvBirdInfoPopup(spriteKey,displayLabel,threat,band){
+function openOvBirdInfoPopup(spriteKey,displayLabel,enemyLevel){
   const meta=owBirdMetaForKey(spriteKey)||{};
   const src=SPRITES[spriteKey]||'';
   const sp=document.getElementById('ov-bird-popup-sprite');
@@ -514,10 +511,9 @@ function openOvBirdInfoPopup(spriteKey,displayLabel,threat,band){
     sp.classList.toggle('ov-bird-popup-sprite--empty',!src);
   }
   document.getElementById('ov-bird-popup-name').innerHTML='<strong>'+escapeOvHtml(displayLabel)+'</strong>';
-  const thrLbl=OW_THREAT_LABELS[threat]||'?';
   document.getElementById('ov-bird-popup-meta').innerHTML=
     'Class: '+escapeOvHtml(meta.cls||'—')+' · Size: '+escapeOvHtml(meta.size||'—')+'<br/>'+
-    'Threat: '+escapeOvHtml(thrLbl)+' · LVL '+band[0]+'–'+band[1];
+    'Level '+escapeOvHtml(String(enemyLevel));
   const ul=document.getElementById('ov-bird-popup-abilities');
   if(meta.abs&&meta.abs.length){
     ul.innerHTML='<ul>'+meta.abs.map(([n,d])=>'<li><strong>'+escapeOvHtml(n)+'</strong> — '+escapeOvHtml(d)+'</li>').join('')+'</ul>';
@@ -547,7 +543,7 @@ function fillOvEnemiesPanel(n){
   }
   if(!isCombatNode(n)) return;
   const st=Math.max(1,Math.floor(Number(n.stage)||1));
-  const band=owLevelBand(st);
+  const enemyLv=owExpectedEnemyLevel();
   var keys=[];
   var hint='Rolled when you enter — possible enemies:';
   if(typeof isBossStageStory==='function' && isBossStageStory(st)){
@@ -578,8 +574,6 @@ function fillOvEnemiesPanel(n){
     var sk=resolveOwEnemySpriteKey(label);
     if(sk==='harpy') sk='harpyEagle';
     if(sk==='secretary') sk='secretaryBird';
-    const threat=owThreatForSpriteKey(sk);
-    const threatLbl=OW_THREAT_LABELS[threat]||'?';
     const src=SPRITES[sk]||'';
     const row=document.createElement('div');
     row.className='ov-enemy-row';
@@ -596,12 +590,12 @@ function fillOvEnemiesPanel(n){
     nm.textContent=label;
     const mt=document.createElement('div');
     mt.className='ov-enemy-row-meta';
-    mt.textContent='Threat: '+threatLbl+' · LVL '+band[0]+'–'+band[1];
+    mt.textContent='Level '+enemyLv;
     tx.appendChild(nm);
     tx.appendChild(mt);
     row.appendChild(sp);
     row.appendChild(tx);
-    function openP(){openOvBirdInfoPopup(sk,label,threat,band);}
+    function openP(){openOvBirdInfoPopup(sk,label,enemyLv);}
     row.addEventListener('click',function(e){e.stopPropagation();openP();});
     row.addEventListener('keydown',function(e){
       if(e.key==='Enter'||e.key===' '){e.preventDefault();openP();}
@@ -970,7 +964,7 @@ applyCamera(false);
 window.addEventListener('resize',()=>applyCamera(false));
 requestAnimationFrame(()=>requestAnimationFrame(()=>{pl.style.transition='left .5s cubic-bezier(.25,.46,.45,.94),top .5s cubic-bezier(.25,.46,.45,.94)';document.getElementById('root').focus();}));
 </script>
-<script src="js/data/story_enemy_registry.js"></script><script src="js/data/story_milestone_boss_pool.js"></script><script src="js/world/ow_enemy_population.js"></script>
+<script src="js/data/birds.js"></script><script src="js/data/story_enemy_registry.js"></script><script src="js/data/story_milestone_boss_pool.js"></script><script src="js/systems/encounter-generator.js"></script><script src="js/world/ow_enemy_population.js"></script>
 <script>
 // ── Avian Ascent · Overworld Integration Bootstrap ───────────────────────────
 (function(){

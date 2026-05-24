@@ -1,6 +1,6 @@
 /**
  * Deterministic per-pack overworld enemy population (stages 1–9, 11–19).
- * Tier bands match getStoryStageThreatAllowList + storyTierFromStage (game.js).
+ * Portrait seeds use the same random bird pool as encounter-generator (when loaded).
  */
 (function (global) {
   'use strict';
@@ -23,28 +23,6 @@
 
   var OW_PACK_COUNT = OW_PACK_SEEDS.length;
 
-  /** Same banding as storyTierFromStage in game.js / getStoryStageThreatAllowList. */
-  function storyTierFromStage(stage) {
-    var s = Math.max(1, Math.floor(Number(stage)) || 1);
-    if (s <= 5) return 1;
-    if (s <= 10) return 2;
-    if (s <= 15) return 3;
-    if (s <= 19) return 4;
-    return 5;
-  }
-
-  /**
-   * birdKeys per band aligned to story threat whitelist (BIRD_ENEMIES subset):
-   * band 1 → threat 1, band 2 → 1–2, band 3 → 3, band 4 → 4.
-   */
-  var OW_POOL_BY_BAND = {
-    1: ['sparrow', 'blackbird', 'magpie'],
-    2: ['sparrow', 'blackbird', 'magpie', 'crow'],
-    3: ['kookaburra', 'flamingo', 'snowyOwl', 'toucan', 'raven', 'lyrebird', 'peregrine'],
-    4: ['shoebill', 'emu', 'harpy'],
-  };
-
-  /** Display labels aligned with blackstone_overworld_new BIRDS / resolveOwEnemySpriteKey. */
   var OW_BIRD_KEY_TO_LABEL = {
     sparrow: 'Sparrow',
     blackbird: 'Blackbird',
@@ -73,10 +51,16 @@
   }
 
   function poolKeysForStage(stage) {
-    var tier = storyTierFromStage(stage);
-    var band = Math.min(Math.max(Math.floor(Number(tier)) || 1, 1), 4);
-    var pool = OW_POOL_BY_BAND[band];
-    return pool && pool.length ? pool.slice() : OW_POOL_BY_BAND[1].slice();
+    if (typeof global.getStoryStageEnemyCandidateBirdKeys === 'function') {
+      var keys = global.getStoryStageEnemyCandidateBirdKeys(stage);
+      if (keys && keys.length) return keys.slice();
+    }
+    if (global.Avian && global.Avian.systems && global.Avian.systems.encounterGenerator &&
+        typeof global.Avian.systems.encounterGenerator.getStoryRandomBirdPool === 'function') {
+      var pool = global.Avian.systems.encounterGenerator.getStoryRandomBirdPool(stage, '');
+      if (pool && pool.length) return pool.slice();
+    }
+    return ['sparrow', 'crow', 'magpie'];
   }
 
   function pickTwoDistinct(pool, rng) {
@@ -124,7 +108,6 @@
       if (!n || n.type !== 'stage') continue;
       var st = Math.floor(Number(n.stage));
       if (!(st >= 1 && st <= 9) && !(st >= 11 && st <= 19)) continue;
-      // Enemy identity comes from story_enemy_registry — do not patch n.enemies.
       var en = byStage[st];
       void en;
       var pb = portraitByStage[st];
@@ -148,5 +131,4 @@
   global.buildOwEnemyPopulation = buildOwEnemyPopulation;
   global.applyOwPopulationToNodes = applyOwPopulationToNodes;
   global.isValidOverworldEnemySeedPack = isValidOverworldEnemySeedPack;
-  global.storyTierFromStageOw = storyTierFromStage;
 })(typeof window !== 'undefined' ? window : globalThis);

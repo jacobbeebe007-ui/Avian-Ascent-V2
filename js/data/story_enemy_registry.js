@@ -1,73 +1,21 @@
 /**
- * Master story-mode enemy registry + encounter chain picker (variable-length sequences).
- * Canonical combat entities are built in game.js (buildStoryEnemyFromBirdKey).
+ * Story-mode encounter metadata (boss stages, chain length, level bands).
+ * Random bird picking lives in js/systems/encounter-generator.js.
  */
 (function initStoryEnemyRegistry(global) {
   'use strict';
 
-  const STORY_ENEMY_REGISTRY = {
-    sparrow: { birdKey: 'sparrow', threatTier: 1, threatValue: 1, enemyEligible: true, bossOnly: false, minStage: 1, maxStage: 19 },
-    robin: { birdKey: 'robin', threatTier: 1, threatValue: 1, enemyEligible: true, bossOnly: false, minStage: 1, maxStage: 19 },
-    blackbird: { birdKey: 'blackbird', threatTier: 1, threatValue: 1, enemyEligible: true, bossOnly: false, minStage: 1, maxStage: 19 },
-    seagull: { birdKey: 'seagull', threatTier: 1, threatValue: 1, enemyEligible: true, bossOnly: false, minStage: 1, maxStage: 19 },
-    kiwi: { birdKey: 'kiwi', threatTier: 1, threatValue: 1, enemyEligible: true, bossOnly: false, minStage: 1, maxStage: 19 },
-    hummingbird: { birdKey: 'hummingbird', threatTier: 2, threatValue: 2, enemyEligible: true, bossOnly: false, minStage: 3, maxStage: 19 },
-    macaw: { birdKey: 'macaw', threatTier: 2, threatValue: 2, enemyEligible: true, bossOnly: false, minStage: 3, maxStage: 19 },
-    crow: { birdKey: 'crow', threatTier: 2, threatValue: 2, enemyEligible: true, bossOnly: false, minStage: 3, maxStage: 19 },
-    magpie: { birdKey: 'magpie', threatTier: 2, threatValue: 2, enemyEligible: true, bossOnly: false, minStage: 3, maxStage: 19 },
-    goose: { birdKey: 'goose', threatTier: 2, threatValue: 2, enemyEligible: true, bossOnly: false, minStage: 3, maxStage: 19 },
-    penguin: { birdKey: 'penguin', threatTier: 2, threatValue: 2, enemyEligible: true, bossOnly: false, minStage: 3, maxStage: 19 },
-    peregrine: { birdKey: 'peregrine', threatTier: 3, threatValue: 3, enemyEligible: true, bossOnly: false, minStage: 5, maxStage: 19 },
-    snowyOwl: { birdKey: 'snowyOwl', threatTier: 3, threatValue: 3, enemyEligible: true, bossOnly: false, minStage: 5, maxStage: 19 },
-    kookaburra: { birdKey: 'kookaburra', threatTier: 3, threatValue: 3, enemyEligible: true, bossOnly: false, minStage: 5, maxStage: 19 },
-    lyrebird: { birdKey: 'lyrebird', threatTier: 3, threatValue: 3, enemyEligible: true, bossOnly: false, minStage: 5, maxStage: 19 },
-    raven: { birdKey: 'raven', threatTier: 3, threatValue: 3, enemyEligible: true, bossOnly: false, minStage: 5, maxStage: 19 },
-    bowerbird: { birdKey: 'bowerbird', threatTier: 3, threatValue: 3, enemyEligible: true, bossOnly: false, minStage: 5, maxStage: 19 },
-    toucan: { birdKey: 'toucan', threatTier: 3, threatValue: 3, enemyEligible: true, bossOnly: false, minStage: 5, maxStage: 19 },
-    swan: { birdKey: 'swan', threatTier: 3, threatValue: 3, enemyEligible: true, bossOnly: false, minStage: 5, maxStage: 19 },
-    flamingo: { birdKey: 'flamingo', threatTier: 3, threatValue: 3, enemyEligible: true, bossOnly: false, minStage: 5, maxStage: 19 },
-    albatross: { birdKey: 'albatross', threatTier: 3, threatValue: 3, enemyEligible: true, bossOnly: false, minStage: 5, maxStage: 19 },
-    blackCockatoo: { birdKey: 'blackCockatoo', threatTier: 4, threatValue: 4, enemyEligible: true, bossOnly: false, minStage: 11, maxStage: 19 },
-    secretary: { birdKey: 'secretary', threatTier: 4, threatValue: 4, enemyEligible: true, bossOnly: false, minStage: 11, maxStage: 19 },
-    shoebill: { birdKey: 'shoebill', threatTier: 4, threatValue: 4, enemyEligible: true, bossOnly: false, minStage: 11, maxStage: 19 },
-    harpy: { birdKey: 'harpy', threatTier: 4, threatValue: 4, enemyEligible: true, bossOnly: false, minStage: 11, maxStage: 19 },
-    baldEagle: { birdKey: 'baldEagle', threatTier: 4, threatValue: 4, enemyEligible: true, bossOnly: false, minStage: 11, maxStage: 19 },
-    ostrich: { birdKey: 'ostrich', threatTier: 4, threatValue: 4, enemyEligible: true, bossOnly: false, minStage: 11, maxStage: 19 },
-    cassowary: { birdKey: 'cassowary', threatTier: 4, threatValue: 4, enemyEligible: true, bossOnly: false, minStage: 11, maxStage: 19 },
-    emu: { birdKey: 'emu', threatTier: 4, threatValue: 4, enemyEligible: true, bossOnly: false, minStage: 11, maxStage: 19 },
-    wren: { birdKey: 'wren', threatTier: 1, threatValue: 1, enemyEligible: true, bossOnly: false, minStage: 1, maxStage: 19 },
-    fairywren: { birdKey: 'fairywren', threatTier: 2, threatValue: 2, enemyEligible: true, bossOnly: false, minStage: 3, maxStage: 19 },
-    firecrest: { birdKey: 'firecrest', threatTier: 1, threatValue: 1, enemyEligible: true, bossOnly: false, minStage: 1, maxStage: 19 },
-    wagtail: { birdKey: 'wagtail', threatTier: 2, threatValue: 2, enemyEligible: true, bossOnly: false, minStage: 3, maxStage: 19 },
-    galah: { birdKey: 'galah', threatTier: 2, threatValue: 2, enemyEligible: true, bossOnly: false, minStage: 3, maxStage: 19 },
-    bluejay: { birdKey: 'bluejay', threatTier: 3, threatValue: 3, enemyEligible: true, bossOnly: false, minStage: 5, maxStage: 19 },
-    cardinal: { birdKey: 'cardinal', threatTier: 2, threatValue: 2, enemyEligible: true, bossOnly: false, minStage: 3, maxStage: 19 },
-    bushturkey: { birdKey: 'bushturkey', threatTier: 3, threatValue: 3, enemyEligible: true, bossOnly: false, minStage: 5, maxStage: 19 },
-    vulture: { birdKey: 'vulture', threatTier: 3, threatValue: 3, enemyEligible: true, bossOnly: false, minStage: 5, maxStage: 19 },
-    barnowl: { birdKey: 'barnowl', threatTier: 3, threatValue: 3, enemyEligible: true, bossOnly: false, minStage: 5, maxStage: 19 },
-    bustard: { birdKey: 'bustard', threatTier: 3, threatValue: 3, enemyEligible: true, bossOnly: false, minStage: 5, maxStage: 19 },
-    goldeneagle: { birdKey: 'goldeneagle', threatTier: 4, threatValue: 4, enemyEligible: true, bossOnly: false, minStage: 11, maxStage: 19 },
-    pelican: { birdKey: 'pelican', threatTier: 4, threatValue: 4, enemyEligible: true, bossOnly: false, minStage: 11, maxStage: 19 },
-    marabou: { birdKey: 'marabou', threatTier: 4, threatValue: 4, enemyEligible: true, bossOnly: false, minStage: 11, maxStage: 19 },
-    dukeBlakiston: { birdKey: 'dukeBlakiston', threatTier: 5, threatValue: 6, enemyEligible: false, bossOnly: true, minStage: 20, maxStage: 20 },
-  };
-
-  const STORY_STAGE_BUDGETS = {
-    1: 2, 2: 2, 3: 3, 4: 3, 5: 4, 6: 4, 7: 5, 8: 5, 9: 5,
-    10: 0, 11: 6, 12: 6, 13: 7, 14: 7, 15: 7, 16: 8, 17: 8, 18: 9, 19: 9, 20: 0,
-  };
-
   const STORY_BOSS_STAGES = new Set([10, 20]);
-
-  function getStoryStageBudget(stageNumber) {
-    const s = Math.max(1, Math.floor(Number(stageNumber)) || 1);
-    if (STORY_BOSS_STAGES.has(s)) return 0;
-    if (Object.prototype.hasOwnProperty.call(STORY_STAGE_BUDGETS, s)) return STORY_STAGE_BUDGETS[s];
-    return Math.max(2, s);
-  }
 
   function isBossStage(stageNumber) {
     return STORY_BOSS_STAGES.has(Number(stageNumber));
+  }
+
+  /** Battles per non-boss story stage (boss stages use chain length 1). Keep in sync with blackstone getNodeBattleCount. */
+  function getStoryEncounterChainCount(stageNumber) {
+    const st = Math.max(1, Math.floor(Number(stageNumber)) || 1);
+    if (STORY_BOSS_STAGES.has(st)) return 1;
+    return 3;
   }
 
   function getEnemyLevelBandForStage(stageNumber) {
@@ -94,156 +42,33 @@
       .toLowerCase();
   }
 
-  function registryKeyFromPlayerBird(playerBirdKey) {
-    const n = normalizeBirdKey(playerBirdKey).replace(/[^a-z0-9_]/g, '');
-    const aliases = {
-      peregrinefalcon: 'peregrine', snowyowl: 'snowyowl', secretarybird: 'secretary',
-      emperorpenguin: 'penguin', harpyeagle: 'harpy', baldeagle: 'baldEagle', blackcockatoo: 'blackCockatoo',
-      dukeblakiston: 'dukeBlakiston', duke_blakiston: 'dukeBlakiston',
-    };
-    if (aliases[n]) return aliases[n];
-    if (STORY_ENEMY_REGISTRY[playerBirdKey]) return playerBirdKey;
-    const hit = Object.keys(STORY_ENEMY_REGISTRY).find((k) => normalizeBirdKey(k) === n);
-    return hit || playerBirdKey;
-  }
-
-  function getPlayerThreatValue(playerBirdKey) {
-    const rk = registryKeyFromPlayerBird(playerBirdKey);
-    const entry = STORY_ENEMY_REGISTRY[rk];
-    if (entry) return entry.threatValue;
-    return 1;
-  }
-
-  function getPlayerThreatBudgetAdjustment(stageNumber, playerBirdKey) {
-    const threat = getPlayerThreatValue(playerBirdKey);
-    const st = Math.max(1, Math.floor(Number(stageNumber)) || 1);
-    if (threat <= 2) return 0;
-    if (threat === 3) return st >= 3 ? 1 : 0;
-    if (threat >= 4) return st >= 2 ? 1 : 0;
-    return 0;
-  }
-
-  function getStoryRegistryThreatForBirdKey(birdKey) {
-    const rk = registryKeyFromPlayerBird(birdKey);
-    const e = STORY_ENEMY_REGISTRY[rk];
-    return e ? e.threatValue : null;
-  }
-
-  /** Allowed registry threatValue bands per stage band (must match encounter chains below). */
-  function getStoryStageThreatAllowList(stageNumber) {
-    const st = Math.max(1, Math.floor(Number(stageNumber)) || 1);
-    if (STORY_BOSS_STAGES.has(st)) return [];
-    if (st <= 5) return [1];
-    if (st <= 9) return [2];
-    if (st <= 15) return [3];
-    if (st <= 19) return [4];
-    return [3, 4];
-  }
-
-  /** Battles per non-boss story stage (boss stages use chain length 1). Keep in sync with blackstone getNodeBattleCount. */
-  function getStoryEncounterChainCount(stageNumber) {
-    const st = Math.max(1, Math.floor(Number(stageNumber)) || 1);
-    if (STORY_BOSS_STAGES.has(st)) return 1;
-    return 3;
-  }
-
-  function buildAllowedEnemyPool(stageNumber) {
-    const st = Math.max(1, Math.floor(Number(stageNumber)) || 1);
-    const allowed = new Set(getStoryStageThreatAllowList(st));
-    return Object.keys(STORY_ENEMY_REGISTRY).filter((key) => {
-      const e = STORY_ENEMY_REGISTRY[key];
-      if (!e.enemyEligible) return false;
-      if (e.bossOnly) return false;
-      if (st < e.minStage) return false;
-      if (st > e.maxStage) return false;
-      return allowed.has(e.threatValue);
-    });
-  }
-
-  function shuffle(arr) {
-    const clone = arr.slice();
-    for (let i = clone.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      const t = clone[i];
-      clone[i] = clone[j];
-      clone[j] = t;
-    }
-    return clone;
-  }
-
-  /**
-   * Pick ordered birdKeys for this stage’s combat chain. Boss stages return [] (handled in game.js).
-   * Repeats allowed when chainCount exceeds distinct pool size (wrapped shuffle).
-   */
-  function pickStoryEncounterBirdKeys(stageNumber, playerBirdKey) {
-    void playerBirdKey;
-    const st = Math.max(1, Math.floor(Number(stageNumber)) || 1);
-    if (isBossStage(st)) return [];
-    const chainCount = getStoryEncounterChainCount(st);
-    const poolKeys = buildAllowedEnemyPool(st);
-    if (!poolKeys.length) {
-      console.warn('[StoryEncounter] Empty pool for stage', st);
-      return Array.from({ length: chainCount }, () => 'sparrow');
-    }
-    const shuffled = shuffle(poolKeys);
-    const out = [];
-    for (let i = 0; i < chainCount; i++) {
-      const rk = shuffled[i % shuffled.length];
-      out.push(STORY_ENEMY_REGISTRY[rk].birdKey);
-    }
-    return out;
-  }
-
-  const pickEnemyPair = pickStoryEncounterBirdKeys;
-
-  /** Stable whitelist used by pickStoryEncounterBirdKeys — safe to show as “may appear” on overworld. Returns registry birdKeys. */
-  function getStoryStageEnemyCandidateBirdKeys(stageNumber) {
-    const pool = buildAllowedEnemyPool(stageNumber);
-    const birdKeys = pool.map((k) => STORY_ENEMY_REGISTRY[k]?.birdKey || k);
-    return birdKeys.slice().sort((a, b) =>
-      String(a).localeCompare(String(b), undefined, { sensitivity: 'base' })
-    );
-  }
-
   function generateStoryEncounter(stageNumber, playerBirdKey, _playerLevel) {
     const st = Math.max(1, Math.floor(Number(stageNumber)) || 1);
     if (isBossStage(st)) {
       return {
         stageNumber: st,
         isBoss: true,
-        budget: 0,
         birdKeys: st === 20 ? ['dukeBlakiston'] : [],
         enemies: [],
       };
     }
-    const birdKeys = pickStoryEncounterBirdKeys(st, playerBirdKey);
-    const budget = birdKeys.reduce((acc, bk) => {
-      const v = getStoryRegistryThreatForBirdKey(bk);
-      return acc + (Number.isFinite(v) ? v : 0);
-    }, 0);
+    const pickFn = global.pickStoryEncounterBirdKeys;
+    const birdKeys = typeof pickFn === 'function'
+      ? pickFn(st, playerBirdKey)
+      : [];
     return {
       stageNumber: st,
       isBoss: false,
-      budget,
       birdKeys,
       enemies: [],
     };
   }
 
-  global.STORY_ENEMY_REGISTRY = STORY_ENEMY_REGISTRY;
   global.STORY_BOSS_STAGES_REGISTRY = STORY_BOSS_STAGES;
-  global.getStoryStageBudget = getStoryStageBudget;
   global.isBossStageStory = isBossStage;
   global.getEnemyLevelBandForStage = getEnemyLevelBandForStage;
   global.getEvolvedSlotCountForLevel = getEvolvedSlotCountForLevel;
   global.normalizeBirdKey = normalizeBirdKey;
-  global.pickStoryEncounterBirdKeys = pickStoryEncounterBirdKeys;
-  global.pickEnemyPair = pickEnemyPair;
-  global.generateStoryEncounter = generateStoryEncounter;
   global.getStoryEncounterChainCount = getStoryEncounterChainCount;
-  global.getPlayerThreatValue = getPlayerThreatValue;
-  global.getStoryRegistryThreatForBirdKey = getStoryRegistryThreatForBirdKey;
-  global.getPlayerThreatBudgetAdjustment = getPlayerThreatBudgetAdjustment;
-  global.getStoryStageThreatAllowList = getStoryStageThreatAllowList;
-  global.getStoryStageEnemyCandidateBirdKeys = getStoryStageEnemyCandidateBirdKeys;
+  global.generateStoryEncounter = generateStoryEncounter;
 })(typeof window !== 'undefined' ? window : globalThis);
