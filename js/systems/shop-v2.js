@@ -99,6 +99,7 @@
       desc: shop.describeAbility(entry),
       costOverride: shopCostForEntry(entry),
       isLearnAbility: true,
+      shopCategory: 'abilities',
       designedFor: entry.designedFor || '',
       tags: entry.tags || [],
       apply: function (p) { shop.addAbilityToVault(p, entry.familyId, entry.baseAbilityId); },
@@ -163,8 +164,9 @@
     var pck = pack();
     var row = pck && pck.skillTrees && pck.skillTrees[abId];
     if (!row) return { id: abId, familyId: familyId, name: abId, level: 1, energy: 1, energyCost: 1, slotIndex: slot };
-    var isMagic = /magic|song|spell/i.test(row.category);
-    var btnType = isMagic ? 'spell' : (row.target === 'self' && row.noDamage ? 'utility' : 'physical');
+    var btnType = (typeof globalThis.resolveCombatRowBtnType === 'function')
+      ? globalThis.resolveCombatRowBtnType(row)
+      : (/magic|song|spell/i.test(row.category) ? 'spell' : (row.target === 'self' && row.noDamage ? 'utility' : 'physical'));
     return {
       id: row.id,
       familyId: familyId,
@@ -271,7 +273,7 @@
   shop.rollStockForMode = function rollStockForMode(mode) {
     var stage = currentStageNumber();
     var used = new Set();
-    var count = mode === 'endless-boss' ? 1 : 6;
+    var count = mode === 'endless-boss' ? 1 : 9;
     var items = [];
     for (var i = 0; i < count; i++) {
       var entry = shop.rollOffer(stage, used);

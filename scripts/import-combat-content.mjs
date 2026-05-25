@@ -279,7 +279,7 @@ const CLASS_KEY = (s) => (s || '').trim().toLowerCase();
 
 // ---------------------------------------------------------------------------
 // Formula parser: "2 hits of Base 2 + 40% ATK each", "Base 3 + 55% ATK",
-//                  "Base 6 + 100% ATK + 5% Max Health", "No direct damage"
+//                  "Base 6 + 100% ATK + 5% Lifesteal", "No direct damage"
 // ---------------------------------------------------------------------------
 function parseDamageFormula(text) {
   const out = {
@@ -289,7 +289,7 @@ function parseDamageFormula(text) {
     scalePct: 0,
     secondaryScaleStat: null,
     secondaryScalePct: 0,
-    hpScalePct: 0,
+    lifestealPct: 0,
     noDamage: false,
   };
   if (!text) { out.noDamage = true; return out; }
@@ -308,8 +308,8 @@ function parseDamageFormula(text) {
     out.secondaryScaleStat = String(statMatches[1][2]).toUpperCase();
     out.secondaryScalePct = Number(statMatches[1][1]);
   }
-  const hpM = s.match(/(\d+(?:\.\d+)?)\s*%\s*Max\s*Health/i);
-  if (hpM) out.hpScalePct = Number(hpM[1]);
+  const hpM = s.match(/(\d+(?:\.\d+)?)\s*%\s*(?:Max\s*Health|Lifesteal)/i);
+  if (hpM) out.lifestealPct = Number(hpM[1]);
   return out;
 }
 
@@ -629,7 +629,10 @@ function pickShortDescription(r, h) {
 }
 
 function normalizeShortDesc(text) {
-  return String(text || '').replace(/\bAP\/EN\b/gi, 'EN');
+  return String(text || '')
+    .replace(/\bAP\/EN\b/gi, 'EN')
+    .replace(/(\d+(?:\.\d+)?)\s*%\s*Max\s*Health/gi, '$1% Lifesteal')
+    .replace(/\bMax\s*Health\s*%/gi, 'Lifesteal %');
 }
 
 function buildSkillTrees(perksSheets, shopSheets) {
@@ -678,7 +681,8 @@ function buildSkillTrees(perksSheets, shopSheets) {
       scalePct: formula.scalePct,
       secondaryScaleStat: formula.secondaryScaleStat,
       secondaryScalePct: formula.secondaryScalePct,
-      hpScalePct: formula.hpScalePct,
+      lifestealPct: formula.lifestealPct,
+      hpScalePct: 0,
       noDamage: formula.noDamage,
       pierceDef: pierce.def,
       pierceMdef: pierce.mdef,

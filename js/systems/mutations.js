@@ -30,9 +30,29 @@
     return '(' + tag + ')';
   }
 
+  function normalizeMutationCritStatLine(statLine) {
+    if (!statLine) return statLine;
+    var parts = String(statLine).split(';').map(function (s) { return s.trim(); }).filter(Boolean);
+    if (!parts.length) return statLine;
+    var full = parts.join('; ');
+    var hasCritChance = /\bCrit\s*Chance\b/i.test(full);
+    var hasCritDamage = /\bCrit\s*Damage\b/i.test(full);
+    var out = [];
+    for (var i = 0; i < parts.length; i++) {
+      var p = parts[i];
+      if (/\bCritical\b/i.test(p)) {
+        if (hasCritChance || hasCritDamage) continue;
+        out.push(p.replace(/\bCritical\b/i, 'Crit Damage'));
+        continue;
+      }
+      out.push(p);
+    }
+    return out.join('; ');
+  }
+
   function formatMutationDesc(item) {
     if (!item) return '';
-    var base = item.statLine || (SLOT_LABELS[item.slot] || item.slot) + ' mutation';
+    var base = normalizeMutationCritStatLine(item.statLine || (SLOT_LABELS[item.slot] || item.slot) + ' mutation');
     var tag = formatSlotTag(item.slot);
     if (!tag || base.indexOf(tag) >= 0) return base;
     return base + ' ' + tag;
@@ -161,6 +181,44 @@
     list.push({ id: entry.id, chance: Number(entry.chance) });
   }
 
+  function rollupMutationItem(item, stats, mech) {
+    if (!item) return;
+    var s = item.stats || {};
+    for (var k in s) {
+      if (MECHANICAL_STAT_KEYS.indexOf(k) >= 0) {
+        mech[k] = (mech[k] || 0) + (Number(s[k]) || 0);
+      } else {
+        stats[k] = (stats[k] || 0) + (Number(s[k]) || 0);
+      }
+    }
+    var m = item.mechanics || {};
+    if (m.piercePct) mech.piercePct = (mech.piercePct || 0) + Number(m.piercePct);
+    if (m.damageBonus) {
+      mech.damageBonuses = mech.damageBonuses || [];
+      mech.damageBonuses.push(m.damageBonus);
+    }
+    if (m.physicalAilment) {
+      mech.physicalAilmentChance = (mech.physicalAilmentChance || 0) + Number(m.physicalAilment.chance || 0);
+      mech.physicalAilments = mech.physicalAilments || [];
+      pushAilmentEntry(mech.physicalAilments, m.physicalAilment);
+    }
+    if (m.magicAilment) {
+      mech.magicAilmentChance = (mech.magicAilmentChance || 0) + Number(m.magicAilment.chance || 0);
+      mech.magicAilments = mech.magicAilments || [];
+      pushAilmentEntry(mech.magicAilments, m.magicAilment);
+    }
+  }
+
+  function sumMutationIds(ids) {
+    var stats = Object.create(null);
+    var mech = Object.create(null);
+    if (!Array.isArray(ids)) return { stats: stats, mechanics: mech };
+    for (var i = 0; i < ids.length; i++) {
+      rollupMutationItem(getItem(ids[i]), stats, mech);
+    }
+    return { stats: stats, mechanics: mech };
+  }
+
   function sumEquippedStats(player) {
     var stats = Object.create(null);
     var mech = Object.create(null);
@@ -169,37 +227,79 @@
     for (var slot in eq) {
       if (!Array.isArray(eq[slot])) continue;
       for (var i = 0; i < eq[slot].length; i++) {
-        var id = eq[slot][i];
-        if (!id) continue;
-        var item = getItem(id);
-        if (!item) continue;
-        var s = item.stats || {};
-        for (var k in s) {
-          if (MECHANICAL_STAT_KEYS.indexOf(k) >= 0) {
-            mech[k] = (mech[k] || 0) + (Number(s[k]) || 0);
-          } else {
-            stats[k] = (stats[k] || 0) + (Number(s[k]) || 0);
-          }
-        }
-        var m = item.mechanics || {};
-        if (m.piercePct) mech.piercePct = (mech.piercePct || 0) + Number(m.piercePct);
-        if (m.damageBonus) {
-          mech.damageBonuses = mech.damageBonuses || [];
-          mech.damageBonuses.push(m.damageBonus);
-        }
-        if (m.physicalAilment) {
-          mech.physicalAilmentChance = (mech.physicalAilmentChance || 0) + Number(m.physicalAilment.chance || 0);
-          mech.physicalAilments = mech.physicalAilments || [];
-          pushAilmentEntry(mech.physicalAilments, m.physicalAilment);
-        }
-        if (m.magicAilment) {
-          mech.magicAilmentChance = (mech.magicAilmentChance || 0) + Number(m.magicAilment.chance || 0);
-          mech.magicAilments = mech.magicAilments || [];
-          pushAilmentEntry(mech.magicAilments, m.magicAilment);
-        }
+        rollupMutationItem(getItem(eq[slot][i]), stats, mech);
       }
     }
     return { stats: stats, mechanics: mech };
+  }
+
+  function enemyMutationCount(stage, isBoss) {
+    stage = Math.max(1, Number(stage) || 1);
+    var count = 0;
+    if (stage <= 2) {
+      count = Math.random() < 0.4 ? 1 : 0;
+    } else if (stage <= 6) {
+      count = 1;
+    } else if (stage <= 12) {
+      count = Math.random() < 0.5 ? 2 : 1;
+    } else {
+      count = 2;
+    }
+    if (isBoss) count = Math.min(3, count + 1);
+    return count;
+  }
+
+  function rollEnemyMutations(opts) {
+    opts = opts || {};
+    var stage = Math.max(1, Number(opts.stage) || 1);
+    var isBoss = !!opts.isBoss;
+    var endless = !!opts.endless;
+    var count = enemyMutationCount(stage, isBoss);
+    var used = new Set();
+    var ids = [];
+    for (var i = 0; i < count; i++) {
+      var tier = rollTierForContext({ stage: stage, isBoss: isBoss, endless: endless });
+      var drop = rollUniqueFromTier(tier, used);
+      if (drop && drop.id) ids.push(drop.id);
+    }
+    return ids;
+  }
+
+  function applyMutationsToEntity(entity, ids) {
+    if (!entity || !entity.stats) return entity;
+    ids = Array.isArray(ids) ? ids : [];
+    entity.mutationIds = ids;
+    var roll = sumMutationIds(ids);
+    entity._mutationMechanics = roll.mechanics;
+    var keys = (typeof STAT_LEDGER_TRACKED_KEYS !== 'undefined')
+      ? STAT_LEDGER_TRACKED_KEYS
+      : ['maxHp', 'atk', 'def', 'spd', 'acc', 'dodge', 'matk', 'mdef', 'critChance'];
+    var prevMaxHp = Number(entity.stats.maxHp) || Number(entity.stats.hp) || 0;
+    for (var i = 0; i < keys.length; i++) {
+      var k = keys[i];
+      var add = Number(roll.stats[k]) || 0;
+      if (!add) continue;
+      var cur = Number(entity.stats[k]) || 0;
+      entity.stats[k] = k === 'critChance' ? Math.max(0, Math.min(100, cur + add)) : Math.max(0, cur + add);
+    }
+    if (roll.stats.maxHp) {
+      var delta = (Number(entity.stats.maxHp) || 0) - prevMaxHp;
+      entity.stats.hp = Math.max(1, (Number(entity.stats.hp) || prevMaxHp) + delta);
+      entity.hp = entity.stats.hp;
+      entity.maxHp = entity.stats.maxHp;
+    }
+    entity.atk = entity.stats.atk;
+    entity.def = entity.stats.def;
+    entity.spd = entity.stats.spd;
+    entity.acc = entity.stats.acc;
+    entity.dodge = entity.stats.dodge;
+    entity.mdef = entity.stats.mdef;
+    entity.matk = entity.stats.matk;
+    entity.cc = (Number(entity.stats.critChance) || 0) / 100;
+    entity.stats.cc = entity.cc;
+    entity.cd = Number(entity.stats.cd ?? entity.cd ?? entity.stats.critMult ?? 1.5);
+    entity.stats.critMult = entity.cd;
+    return entity;
   }
 
   function reapplyPlayerStatsFromSources(player) {
@@ -273,12 +373,12 @@
     var roll = sumEquippedStats(player);
     var lines = [];
     var s = roll.stats;
+    var m = roll.mechanics;
     var labels = (typeof STAT_LEDGER_LABELS !== 'undefined') ? STAT_LEDGER_LABELS : {};
     for (var k in s) {
       if (!s[k]) continue;
       lines.push({ key: k, label: labels[k] || k, value: s[k] });
     }
-    var m = roll.mechanics;
     if (m.lightAttackDmgPct) lines.push({ key: 'lightDmg', label: 'Light Attack', value: '+' + m.lightAttackDmgPct + '%' });
     if (m.mediumAttackDmgPct) lines.push({ key: 'mediumDmg', label: 'Medium Attack', value: '+' + m.mediumAttackDmgPct + '%' });
     if (m.heavyAttackDmgPct) lines.push({ key: 'heavyDmg', label: 'Heavy Attack', value: '+' + m.heavyAttackDmgPct + '%' });
@@ -386,6 +486,37 @@
     return fallback;
   }
 
+  function rollMutationShopTier(stage) {
+    stage = Math.max(1, Number(stage) || 1);
+    if (stage >= 15) return chanceWeighted(['white', 'green', 'blue', 'purple'], [20, 30, 35, 15]);
+    if (stage >= 8) return chanceWeighted(['white', 'green', 'blue'], [35, 40, 25]);
+    if (stage >= 4) return chanceWeighted(['white', 'green'], [55, 45]);
+    return 'white';
+  }
+
+  function rollMutationStock(count, stage, used) {
+    used = used || new Set();
+    var offers = [];
+    var fallbackTiers = ['white', 'green', 'blue', 'purple', 'gold'];
+    for (var i = 0; i < count; i++) {
+      var tier = rollMutationShopTier(stage);
+      var picked = rollUniqueFromTier(tier, used);
+      if (!picked) {
+        for (var j = 0; j < fallbackTiers.length; j++) {
+          picked = rollUniqueFromTier(fallbackTiers[j], used);
+          if (picked) break;
+        }
+      }
+      if (!picked) continue;
+      var offer = toShopOffer(picked);
+      if (offer) {
+        offer.shopCategory = 'mutation';
+        offers.push(offer);
+      }
+    }
+    return offers;
+  }
+
   function rollShopMutations(spec, used) {
     used = used || new Set();
     var offers = [];
@@ -426,6 +557,9 @@
   mutations.unequip = unequip;
   mutations.getEquippedSummary = getEquippedSummary;
   mutations.getMechanicsRollup = getMechanicsRollup;
+  mutations.sumMutationIds = sumMutationIds;
+  mutations.rollEnemyMutations = rollEnemyMutations;
+  mutations.applyMutationsToEntity = applyMutationsToEntity;
   mutations.reapplyPlayerStatsFromSources = reapplyPlayerStatsFromSources;
   mutations.rollDrop = rollDrop;
   mutations.rollTierForContext = rollTierForContext;
@@ -434,6 +568,7 @@
   mutations.toShopOffer = toShopOffer;
   mutations.reconstructShopOffer = reconstructShopOffer;
   mutations.rollShopMutations = rollShopMutations;
+  mutations.rollMutationStock = rollMutationStock;
   mutations.formatMutationDesc = formatMutationDesc;
   mutations.formatSlotTag = formatSlotTag;
   mutations.SLOT_LABELS = SLOT_LABELS;

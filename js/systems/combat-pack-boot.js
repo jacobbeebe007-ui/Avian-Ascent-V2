@@ -53,9 +53,18 @@
   }
 
   // 2. ── Build ABILITY_TEMPLATES rows from skill trees ---------------------
+  function resolveCombatRowBtnType(row) {
+    if (!row) return 'utility';
+    if (/magic|song|spell/i.test(row.category || '')) return 'spell';
+    if (String(row.scaleStat || '').toUpperCase() === 'MATK') return 'spell';
+    if (Number(row.pierceMdef) > 0 && !Number(row.pierceDef)) return 'spell';
+    if (row.target === 'self' && row.noDamage) return 'utility';
+    return 'physical';
+  }
+  globalThis.resolveCombatRowBtnType = resolveCombatRowBtnType;
+
   function rowToTemplate(row) {
-    var isMagic = /magic|song|spell/i.test(row.category || '');
-    var btnType = isMagic ? 'spell' : (row.target === 'self' && row.noDamage ? 'utility' : 'physical');
+    var btnType = resolveCombatRowBtnType(row);
     var ailmentList = row.ailment ? (Array.isArray(row.ailment) ? row.ailment : [row.ailment]) : [];
     var primaryAil = ailmentList[0] || null;
     var secondaryAil = ailmentList[1] || null;
@@ -132,8 +141,7 @@
   function buildAbilityInstance(abId, familyId, slot) {
     var row = pack.skillTrees && pack.skillTrees[abId];
     if (!row) return null;
-    var isMagic = /magic|song|spell/i.test(row.category || '');
-    var btnType = isMagic ? 'spell' : (row.target === 'self' && row.noDamage ? 'utility' : 'physical');
+    var btnType = resolveCombatRowBtnType(row);
     return {
       id: row.id,
       familyId: familyId,
@@ -346,6 +354,7 @@
           .filter(function (it) { return !(SHOP_STATE.healingPurchasesThisVisit && SHOP_STATE.healingPurchasesThisVisit.has(it.id)); })
           .map(function (it) {
             return Object.assign({}, it, {
+              shopCategory: 'healing',
               apply: function (p) {
                 var heal = Math.max(1, Math.floor((p.stats.maxHp || 1) * (it.healPct || 0)));
                 p.stats.hp = Math.min((p.stats.maxHp || 1), (p.stats.hp || 0) + heal);
@@ -381,8 +390,16 @@
         if (!SHOP_STATE.pinnedFeatherOffer && typeof globalThis.makeMutatedFeatherShopOffer === 'function') {
           SHOP_STATE.pinnedFeatherOffer = globalThis.makeMutatedFeatherShopOffer();
         }
-        if (SHOP_STATE.pinnedFeatherOffer) items.push(SHOP_STATE.pinnedFeatherOffer);
+        if (SHOP_STATE.pinnedFeatherOffer) {
+          SHOP_STATE.pinnedFeatherOffer.shopCategory = 'misc';
+          items.push(SHOP_STATE.pinnedFeatherOffer);
+        }
         return items;
+      }
+
+      function currentShopStage() {
+        if (!globalThis.G) return 1;
+        return Math.max(1, Number(globalThis.G.stage) || 1);
       }
 
       globalThis.__avianPatchedGenerateShopItems = function () {
@@ -409,6 +426,11 @@
         var items = buildHealingOffers();
         var abilityOffers = Avian.shop.rollStockForMode(mode);
         items.push.apply(items, abilityOffers);
+        if (Avian.mutations && typeof Avian.mutations.rollMutationStock === 'function') {
+          var mutCount = mode === 'endless-boss' ? 1 : 9;
+          var mutOffers = Avian.mutations.rollMutationStock(mutCount, currentShopStage(), new Set());
+          items.push.apply(items, mutOffers);
+        }
         appendPinnedFeather(items);
 
         setShopItems(items);

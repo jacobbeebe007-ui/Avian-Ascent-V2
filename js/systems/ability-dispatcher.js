@@ -69,12 +69,10 @@
   function computeRawHitDamage(row) {
     if (row.noDamage) return 0;
     var b = Number(row.baseFlat) || 0;
-    var hp = Number(row.hpScalePct) || 0;
     var dmg = b + scaleContribution(row.scaleStat, row.scalePct);
     if (row.secondaryScaleStat && Number(row.secondaryScalePct) > 0) {
       dmg += scaleContribution(row.secondaryScaleStat, row.secondaryScalePct);
     }
-    if (hp > 0) dmg += (maxHpForScaling() * (hp / 100));
     var lo = Math.max(1, dmg * 0.85);
     var hi = Math.max(lo, dmg * 1.15);
     var rolled = lo + Math.random() * (hi - lo);
@@ -306,14 +304,17 @@
     if (!row.riders) return dmg;
     var g = globalThis.G;
     var es = (g && g.enemyStatus) || {};
+    var roundDmg = (typeof globalThis.roundCombatDamage === 'function')
+      ? globalThis.roundCombatDamage
+      : function(n) { return Math.max(0.01, Math.round(Number(n) * 100) / 100); };
     for (var i = 0; i < row.riders.length; i++) {
       var r = row.riders[i];
       if (r.kind === 'bonusVsAilment' && r.ailment === 'bleed') {
-        if ((es.bleed && es.bleed.stacks > 0) && r.value > 0) dmg = Math.floor(dmg * (1 + r.value / 100));
+        if ((es.bleed && es.bleed.stacks > 0) && r.value > 0) dmg = roundDmg(dmg * (1 + r.value / 100));
       } else if (r.kind === 'bonusVsLowHp') {
         var enemy = (g && g.enemy && g.enemy.stats) || null;
         if (enemy && enemy.hp && enemy.maxHp && enemy.hp <= Math.floor(enemy.maxHp * (r.threshold || 0.35))) {
-          if (r.value > 0) dmg = Math.floor(dmg * (1 + r.value / 100));
+          if (r.value > 0) dmg = roundDmg(dmg * (1 + r.value / 100));
         }
       }
     }

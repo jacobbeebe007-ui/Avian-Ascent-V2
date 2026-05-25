@@ -38,6 +38,7 @@ const STAT_MAP = {
   'Magic Defence': 'mdef',
   'Crit Chance': 'critChance',
   'Crit Damage': 'critDamageBonusPct',
+  Critical: 'critDamageBonusPct',
   'Light Attack': 'lightAttackDmgPct',
   'Light Attack Damage': 'lightAttackDmgPct',
   'Medium Attack': 'mediumAttackDmgPct',
@@ -290,7 +291,32 @@ function parseItemRow(row, header) {
     buildTags,
   };
   if (Object.keys(mechanics).length) item.mechanics = mechanics;
+  normalizeMutationCritStats(item);
   return item;
+}
+
+function normalizeMutationCritStatLine(statLine) {
+  if (!statLine) return statLine;
+  const parts = String(statLine).split(';').map((s) => s.trim()).filter(Boolean);
+  if (!parts.length) return statLine;
+  const full = parts.join('; ');
+  const hasCritChance = /\bCrit\s*Chance\b/i.test(full);
+  const hasCritDamage = /\bCrit\s*Damage\b/i.test(full);
+  const out = [];
+  for (const p of parts) {
+    if (/\bCritical\b/i.test(p)) {
+      if (hasCritChance || hasCritDamage) continue;
+      out.push(p.replace(/\bCritical\b/i, 'Crit Damage'));
+      continue;
+    }
+    out.push(p);
+  }
+  return out.join('; ');
+}
+
+function normalizeMutationCritStats(item) {
+  if (!item) return;
+  if (item.statLine) item.statLine = normalizeMutationCritStatLine(item.statLine);
 }
 
 function buildDropWeights(tierRows) {

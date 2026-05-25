@@ -474,6 +474,15 @@ function roundCombatDamage(n) {
   return Math.max(0.01, Math.round(Number(n) * 100) / 100);
 }
 globalThis.roundCombatDamage = roundCombatDamage;
+function rollCombatSpread(lo, hi) {
+  const a = Number(lo) || 0;
+  const b = Number(hi) || a;
+  const low = Math.min(a, b);
+  const high = Math.max(a, b);
+  const rolled = low + Math.random() * (high - low);
+  return roundCombatDamage(Math.max(0.01, rolled));
+}
+globalThis.rollCombatSpread = rollCombatSpread;
 function applyFractionalHp(stats, delta) {
   stats.hp = Math.max(0, Math.round((Number(stats.hp) + delta) * 100) / 100);
 }
@@ -601,6 +610,53 @@ function buildRichStatTooltipHtml(statKey, rawVal, player){
   html += richTooltipCloseBtn();
   return html;
 }
+function getEnemyMutationStatSources(enemy, statKey){
+  const lines = [];
+  const ids = enemy?.mutationIds || [];
+  for (const id of ids) {
+    const item = typeof Avian?.mutations?.getItem === 'function' ? Avian.mutations.getItem(id) : null;
+    const val = Number(item?.stats?.[statKey]) || 0;
+    if (!item || Math.abs(val) < 0.0001) continue;
+    lines.push({ name: item.name, value: val });
+  }
+  return lines;
+}
+function buildEnemyMutationsTooltipHtml(enemy){
+  if (!enemy) return '';
+  const ids = enemy.mutationIds || [];
+  if (!ids.length) return '';
+  let html = `<div class="tt-name">${escapeHtmlRoster(enemy.name || 'Enemy')}</div>`;
+  html += `<div class="tt-type">Mutations</div>`;
+  for (const id of ids) {
+    const item = typeof Avian?.mutations?.getItem === 'function' ? Avian.mutations.getItem(id) : null;
+    if (!item) continue;
+    const desc = typeof Avian?.mutations?.formatMutationDesc === 'function'
+      ? Avian.mutations.formatMutationDesc(item)
+      : (item.statLine || item.name);
+    html += `<div class="tt-row"><span class="tt-lbl">${escapeHtmlRoster(item.name)}</span></div>`;
+    html += `<div class="tt-desc" style="font-size:.88em;margin-bottom:4px">${escapeHtmlRoster(desc)}</div>`;
+  }
+  html += richTooltipCloseBtn();
+  return html;
+}
+function buildEnemyRichStatTooltipHtml(statKey, rawVal, enemy){
+  const label = (STAT_LEDGER_LABELS[statKey] || statKey).toUpperCase();
+  let html = `<div class="tt-name">${label}</div>`;
+  html += `<div class="tt-row"><span class="tt-lbl">Total</span><span class="tt-val">${formatCombatNumber(rawVal)}</span></div>`;
+  const base = enemy?._statBaseBeforeMutations;
+  if (base && Object.keys(base).length) {
+    const bVal = Number(base[statKey]) || 0;
+    html += `<div class="tt-row"><span class="tt-lbl">Scaled base</span><span class="tt-val">${formatCombatNumber(bVal)}</span></div>`;
+    for (const src of getEnemyMutationStatSources(enemy, statKey)) {
+      html += `<div class="tt-row"><span class="tt-lbl">${escapeHtmlRoster(src.name)}</span><span class="tt-val">+${formatCombatNumber(src.value)}</span></div>`;
+    }
+  }
+  if (statKey === 'critChance' && (enemy?._mutationMechanics?.critDamageBonusPct || 0) > 0) {
+    html += `<div class="tt-row"><span class="tt-val" style="font-size:.88em">+${enemy._mutationMechanics.critDamageBonusPct}% crit damage on crits</span></div>`;
+  }
+  html += richTooltipCloseBtn();
+  return html;
+}
 const RICH_TOOLTIP_LONG_PRESS_MS = 500;
 function showRichTooltipHtml(html, pointerEvt){
   const tt = document.getElementById('action-tooltip');
@@ -650,6 +706,20 @@ function wireCombatStatTooltips(){
     const raw = Number(el.dataset.statRaw);
     bindRichTooltip(el, () => buildRichStatTooltipHtml(key, raw, G.player));
   });
+}
+function wireCombatEnemyStatTooltips(){
+  const grid = document.getElementById('enemy-stats-mini');
+  if(!grid) return;
+  grid.querySelectorAll('[data-stat-key]').forEach(el=>{
+    const key = el.dataset.statKey;
+    const raw = Number(el.dataset.statRaw);
+    bindRichTooltip(el, () => buildEnemyRichStatTooltipHtml(key, raw, G.enemy));
+  });
+}
+function wireEnemyMutationTooltips(){
+  const wrap = document.getElementById('enemy-avatar-wrap');
+  if(!wrap) return;
+  bindRichTooltip(wrap, () => buildEnemyMutationsTooltipHtml(G.enemy));
 }
 function getDerivedMechanicalBonusLines(player){
   if(!player) return [];
@@ -1700,6 +1770,9 @@ const MIN_MAX_ENERGY = 2;
 const PLAYER_ENERGY_MAX = 6;
 const PLAYER_ENERGY_START = 4;
 const PLAYER_ENERGY_REGEN = 3;
+const ENEMY_ENERGY_MAX = 6;
+const ENEMY_ENERGY_START = 4;
+const ENEMY_ENERGY_REGEN = 3;
 
 function normalizeBirdSizeForEnergy(sz){
   const s=String(sz||'medium').toLowerCase();
@@ -1718,7 +1791,11 @@ function getEnergyProfile(size){
   if(k==='large'||k==='xl') return {maxEN:3,startEN:2,regenEN:2};
   return {maxEN:4,startEN:3,regenEN:2};
 }
+function getEnemyEnergyProfile(){
+  return {maxEN:ENEMY_ENERGY_MAX,startEN:ENEMY_ENERGY_START,regenEN:ENEMY_ENERGY_REGEN};
+}
 globalThis.getEnergyProfile=getEnergyProfile;
+globalThis.getEnemyEnergyProfile=getEnemyEnergyProfile;
 
 function computePlayerEffectiveMaxEnergy(player){
   const p=player;
@@ -2082,6 +2159,7 @@ function makeMutatedFeatherShopOffer(){
     costOverride:78,
     isPinnedShopItem:true,
     isFeatherShopItem:true,
+    shopCategory:'misc',
     stackable:false,
     apply(p){
       p.mutatedFeatherCount=(p.mutatedFeatherCount||0)+1;
@@ -2132,6 +2210,94 @@ function buildNestAbilitySection(player){
   return `<div class="nest-section nest-ability-section"><div class="nest-section-title">⚔ Abilities · 🪶 Mutated Feathers: ${featherCt}</div><div class="nest-ledger-subtitle">Equipped loadout</div><div class="nest-abilities-grid">${equippedHtml}</div><div class="nest-ledger-subtitle">Ability vault (${inv.length})</div>${vaultHtml}<p class="nest-ledger-note">${slotHint} Starter slots (1–2) mutate with feathers but stay fixed. Flex slots (3–4) hold shop abilities.</p></div>`;
 }
 
+function closeNestMutateModal(){
+  const modal=document.getElementById('nest-mutate-modal');
+  if(modal){ modal.classList.remove('open'); modal.setAttribute('aria-hidden','true'); }
+  const grid=document.getElementById('nest-mutate-grid');
+  if(grid) grid.innerHTML='';
+  const confirm=document.getElementById('nest-mutate-confirm');
+  if(confirm){ confirm.style.display='none'; confirm.onclick=null; }
+  delete G._nestMutateSelectedId;
+}
+
+function attachNestMutateCardTooltip(card, abilityId){
+  if(!card || !abilityId) return;
+  const abObj=()=>ensureAbilityObjectFromTemplate(abilityId, null, G._nestMutateSlotIndex, G.player);
+  card.addEventListener('mouseenter',e=>{if(!window._isTouchDevice)showActionTooltip(e,abObj());});
+  card.addEventListener('mousemove',e=>{if(!window._isTouchDevice)moveTooltip(e);});
+  card.addEventListener('mouseleave',()=>{if(!window._isTouchDevice)hideTooltip();});
+}
+
+function renderNestMutatePathChoices(slot){
+  const grid=document.getElementById('nest-mutate-grid');
+  const title=document.getElementById('nest-mutate-title');
+  const sub=document.getElementById('nest-mutate-sub');
+  const confirm=document.getElementById('nest-mutate-confirm');
+  if(!grid) return;
+  const family=getSkillSlotFamilyDef(slot, G.player?.birdKey);
+  const currentTmpl=ABILITY_TEMPLATES?.[slot.abilityId]||{};
+  if(title) title.textContent=`🧬 ${family?.displayName||'Skill Evolution'}`;
+  if(sub) sub.textContent=`Choose 1 of 3 tier-1 branches for ${currentTmpl.name||getSkillSlotDisplayLabel(slot)}.`;
+  if(confirm) confirm.style.display='none';
+  grid.innerHTML='';
+  const options=getSkillEvolutionPathOptions(slot, G.player?.birdKey);
+  if(!options.length){
+    grid.innerHTML='<p style="color:var(--text-dim);text-align:center;padding:12px 0;">This ability cannot be mutated yet.</p>';
+    return;
+  }
+  options.forEach(option=>{
+    const tmpl=option.abilityTemplate||{};
+    const card=document.createElement('div');
+    card.className='skill-upgrade-card';
+    card.innerHTML=`<div class="su-name">${option.displayName}</div><div class="su-lv">Tier 1 · ${tmpl.name||option.abilityId}</div><div class="su-effect">${tmpl.levels?.[0]?.desc||tmpl.desc||'No description available.'}</div>`;
+    attachNestMutateCardTooltip(card, option.abilityId);
+    card.onclick=()=>{
+      const before=ABILITY_TEMPLATES?.[slot.abilityId]?.name||slot.abilityId;
+      applySkillPathSelection(slot, option.pathId, G.player);
+      const after=ABILITY_TEMPLATES?.[slot.abilityId]?.name||slot.abilityId;
+      finalizeSkillEvolutionChoice(`🧬 ${before} committed to the ${option.pathId.replace(/_/g,' ')} path → ${after}.`);
+    };
+    grid.appendChild(card);
+  });
+}
+
+function renderNestMutateTierPreview(slot){
+  const grid=document.getElementById('nest-mutate-grid');
+  const title=document.getElementById('nest-mutate-title');
+  const sub=document.getElementById('nest-mutate-sub');
+  const confirm=document.getElementById('nest-mutate-confirm');
+  if(!grid) return;
+  const nextTier=(slot.tier||0)+1;
+  const path=getSkillSlotPathDef(slot, G.player?.birdKey);
+  const nextId=path?.abilities?.[nextTier];
+  const currentTmpl=ABILITY_TEMPLATES?.[slot.abilityId]||{};
+  const nextTmpl=ABILITY_TEMPLATES?.[nextId]||{};
+  if(title) title.textContent='🧬 Preview Tier Upgrade';
+  if(sub) sub.textContent=`${currentTmpl.name||slot.abilityId} will evolve into ${nextTmpl.name||nextId}.`;
+  grid.innerHTML=`<div class="skill-upgrade-card selected"><div class="su-name">${currentTmpl.name||slot.abilityId} → ${nextTmpl.name||nextId}</div><div class="su-lv">Tier ${slot.tier||0} → Tier ${nextTier}</div><div class="su-effect">${nextTmpl.levels?.[0]?.desc||nextTmpl.desc||'No description available.'}</div></div>`;
+  attachNestMutateCardTooltip(grid.querySelector('.skill-upgrade-card'), nextId);
+  if(confirm){
+    confirm.style.display='';
+    confirm.textContent='✓ Apply Upgrade';
+    confirm.onclick=()=>{
+      const before=ABILITY_TEMPLATES?.[slot.abilityId]?.name||slot.abilityId;
+      autoUpgradeSkillSlotTier(slot, G.player);
+      const after=ABILITY_TEMPLATES?.[slot.abilityId]?.name||slot.abilityId;
+      finalizeSkillEvolutionChoice(`🧬 ${before} evolved into ${after}!`);
+    };
+  }
+}
+
+function openNestMutateModal(slot, action){
+  wireNestMutateModal();
+  const modal=document.getElementById('nest-mutate-modal');
+  const sub=document.getElementById('nest-mutate-sub');
+  if(sub) sub.textContent=`Spend 1 Mutated Feather to evolve ${getSkillSlotDisplayLabel(slot)}.`;
+  if(action==='choose_path') renderNestMutatePathChoices(slot);
+  else if(action==='tier_up') renderNestMutateTierPreview(slot);
+  if(modal){ modal.classList.add('open'); modal.setAttribute('aria-hidden','false'); }
+}
+
 function beginNestMutateFlow(slotIndex){
   if(!G.player || (G.player.mutatedFeatherCount||0)<=0){
     logMsg('No Mutated Feather available. Buy one at Stork\'s shop or find one as a rare drop.','miss');
@@ -2142,23 +2308,28 @@ function beginNestMutateFlow(slotIndex){
   if(!slot?.abilityId){ logMsg('That slot has no ability to mutate.','miss'); return; }
   const action=resolveSkillSlotEvolutionAction(slot, G.player);
   if(action==='none'){ logMsg('That skill is fully evolved.','miss'); return; }
-  closeNest();
+  if(!getSkillSlotFamilyDef(slot, G.player?.birdKey)){
+    logMsg('This ability has no evolution tree available.','miss');
+    return;
+  }
   G._nestMutateFlow=true;
   G._nestMutateSlotIndex=slotIndex;
-  showScreen('screen-levelup');
-  resetLevelUpFlowState();
-  setLevelUpPanelTitle('🪶 Mutate Ability');
-  document.getElementById('lu-sub').textContent=`Spend 1 Mutated Feather to evolve ${getSkillSlotDisplayLabel(slot)}.`;
-  configureLevelUpSecondary('✕ Cancel', cancelNestMutateFlow, true);
-  if(action==='choose_path') renderSkillEvolutionPathSelection(slot);
-  else if(action==='tier_up') renderSkillEvolutionTierPreview(slot);
+  openNestMutateModal(slot, action);
 }
 
 function cancelNestMutateFlow(){
-  resetLevelUpFlowState();
   G._nestMutateFlow=false;
   G._nestMutateSlotIndex=null;
-  openNest();
+  closeNestMutateModal();
+}
+
+function wireNestMutateModal(){
+  const modal=document.getElementById('nest-mutate-modal');
+  if(!modal || modal.dataset.nestMutateWired==='1') return;
+  modal.dataset.nestMutateWired='1';
+  document.getElementById('nest-mutate-cancel')?.addEventListener('click', e=>{ e.preventDefault(); cancelNestMutateFlow(); });
+  document.getElementById('nest-mutate-close-btn')?.addEventListener('click', e=>{ e.preventDefault(); cancelNestMutateFlow(); });
+  modal.addEventListener('click', e=>{ if(e.target===modal) cancelNestMutateFlow(); });
 }
 
 function handleNestAbilityClick(ev){
@@ -2665,10 +2836,15 @@ function ensureAbilityObjectFromTemplate(id, existing=null, slotIndex=null, ener
   const preserved = idChanged ? { level: existing.level } : existing;
   const out = {...tmpl, ...(preserved||{}), id, name:tmpl.name||existing?.name||id, level};
   if(Number.isFinite(slotIndex)) out.slotIndex = slotIndex;
-  if(!String(out.btnType||'').trim() && tmpl.btnType) out.btnType = tmpl.btnType;
-  if(!String(out.type||'').trim() && tmpl.type) out.type = tmpl.type;
-  if(out.btnType && !out.type) out.type = out.btnType;
-  if(out.type && !out.btnType) out.btnType = out.type;
+  if(tmpl && (tmpl.btnType || tmpl.type)){
+    out.btnType = tmpl.btnType || tmpl.type;
+    out.type = out.btnType;
+  } else {
+    if(!String(out.btnType||'').trim() && tmpl.btnType) out.btnType = tmpl.btnType;
+    if(!String(out.type||'').trim() && tmpl.type) out.type = tmpl.type;
+    if(out.btnType && !out.type) out.type = out.btnType;
+    if(out.type && !out.btnType) out.btnType = out.type;
+  }
   const costCtx = energyCostPlayer ?? G.player;
   out.energyCost = getAbilityEnergyCost(out, costCtx);
   out.ailmentIds = deriveAbilityAilments(out, tmpl);
@@ -3288,11 +3464,37 @@ function mergeScaledStatsIntoEnemy(ed, encounterStage){
   if(Number.isFinite(scaled.effectiveLevel)) ed.effectiveLevel=scaled.effectiveLevel;
   if(G.player?.mutBloodMoon){ ed.atk=Math.floor(ed.atk*1.10); ed.matk=Math.floor((ed.matk||ed.atk)*1.10); }
   ed.stats = {hp:ed.hp, maxHp:ed.hp, atk:ed.atk, def:ed.def, spd:ed.spd, acc:ed.acc, dodge:ed.dodge, mdef:ed.mdef, matk:ed.matk, cc:ed.cc, cd:ed.cd, critChance:Math.round((ed.cc||0.05)*100), critMult:ed.cd||1.5, en:(scaled.en||0)};
-  const prof=getEnergyProfile(normalizeBirdSizeForEnergy(ed.size));
+  const prof=getEnemyEnergyProfile();
   ed.energyMax=prof.maxEN;
   ed.energyRegen=prof.regenEN;
   ed.energy=prof.startEN;
   ed.stats.en=prof.maxEN;
+  if (!ed._mutationsApplied) {
+    ed._statBaseBeforeMutations = {
+      atk: Number(ed.stats.atk) || 0,
+      matk: Number(ed.stats.matk) || 0,
+      def: Number(ed.stats.def) || 0,
+      mdef: Number(ed.stats.mdef) || 0,
+      dodge: Number(ed.stats.dodge) || 0,
+      acc: Number(ed.stats.acc) || 0,
+      spd: Number(ed.stats.spd) || 0,
+      critChance: Number(ed.stats.critChance) || 0,
+      maxHp: Number(ed.stats.maxHp) || 0,
+    };
+    if (typeof Avian?.mutations?.rollEnemyMutations === 'function') {
+      if (!Array.isArray(ed.mutationIds) || !ed.mutationIds.length) {
+        ed.mutationIds = Avian.mutations.rollEnemyMutations({
+          stage: encounterStage,
+          isBoss: !!ed.isBoss,
+          endless: !!(G.endlessMode && encounterStage > 20),
+        });
+      }
+      if (typeof Avian.mutations.applyMutationsToEntity === 'function') {
+        Avian.mutations.applyMutationsToEntity(ed, ed.mutationIds);
+      }
+    }
+    ed._mutationsApplied = true;
+  }
   return ed;
 }
 
@@ -3584,9 +3786,20 @@ function buildEncounterPreviewTooltipHtml(enemy){
     }
     return `<li>${escapeEncounterPreviewHtml(n)}${badge}${desc?`<div style="font-size:.65rem;color:var(--text-dim);margin:1px 0 3px">${desc}</div>`:''}</li>`;
   }).join('');
+  const mutIds=enemy.mutationIds||[];
+  let mutBlock='';
+  if(mutIds.length){
+    const mutItems=mutIds.map(id=>{
+      const item=typeof Avian?.mutations?.getItem==='function'?Avian.mutations.getItem(id):null;
+      if(!item) return '';
+      const desc=typeof Avian?.mutations?.formatMutationDesc==='function'?Avian.mutations.formatMutationDesc(item):(item.statLine||item.name);
+      return `<li><strong>${escapeEncounterPreviewHtml(item.name)}</strong> — ${escapeEncounterPreviewHtml(desc)}</li>`;
+    }).filter(Boolean).join('');
+    if(mutItems) mutBlock=`<div class="enc-preview-tt-skills"><div class="enc-preview-tt-skills-h">Mutations</div><ul class="enc-preview-tt-ul">${mutItems}</ul></div>`;
+  }
   return `<div class="enc-preview-tt"><div class="enc-preview-tt-head">${icon} <strong>${nm}</strong></div>
 <div class="enc-preview-tt-meta">Class: ${escapeEncounterPreviewHtml(cls)}<br/>Size: ${escapeEncounterPreviewHtml(sz)}<br/>LVL ${lv}<br/>${escapeEncounterPreviewHtml(thr.detail)}</div>
-<div class="enc-preview-tt-skills"><div class="enc-preview-tt-skills-h">Combat Abilities</div><ul class="enc-preview-tt-ul">${skillItems}</ul></div></div>`;
+<div class="enc-preview-tt-skills"><div class="enc-preview-tt-skills-h">Combat Abilities</div><ul class="enc-preview-tt-ul">${skillItems}</ul></div>${mutBlock}</div>`;
 }
 
 function _initEncounterPreviewCollapse(){
@@ -3906,7 +4119,7 @@ function buildStoryEnemyFromBirdKey(birdKey, stage, opts={}){
     stats.matk=Math.max(1,Math.floor(stats.matk*STORY_BOSS_STAT_MULT.matk));
   }
   const size=bd.size||'medium';
-  const enProf=getEnergyProfile(normalizeBirdSizeForEnergy(size));
+  const enProf=getEnemyEnergyProfile();
   return {
     id:`story_${birdKey}_${stage}_${Math.floor(Math.random()*1e6)}`,
     name:bd.name,
@@ -5267,15 +5480,15 @@ function loadStage() {
   }
   G.enemy = ed;
   if (G.enemy && G.enemy.stats) {
-    const es = G.enemy.stats;
+    const base = G.enemy._statBaseBeforeMutations || G.enemy.stats;
     G.enemy._battleStatBase = {
-      atk: Number(es.atk) || 0,
-      matk: Number(es.matk) || 0,
-      def: Number(es.def) || 0,
-      mdef: Number(es.mdef) || 0,
-      dodge: Number(es.dodge) || 0,
-      acc: Number(es.acc) || 0,
-      spd: Number(es.spd) || 0,
+      atk: Number(base.atk) || 0,
+      matk: Number(base.matk) || 0,
+      def: Number(base.def) || 0,
+      mdef: Number(base.mdef) || 0,
+      dodge: Number(base.dodge) || 0,
+      acc: Number(base.acc) || 0,
+      spd: Number(base.spd) || 0,
     };
   }
   const stageEvt = {stage:encounterStage, enemyId:G.enemy.id||G.enemy.name, isBoss:!!G.enemy.isBoss};
@@ -5567,21 +5780,25 @@ function refreshBattleUI() {
   const eCritMult=(ep2.cd??ep2.critMult??1.5);
   const _eTrendTag = (diff) => diff>0 ? '<small class="stat-trend up">▲▲</small>' : (diff<0 ? '<small class="stat-trend down">▼▼</small>' : '');
   const _eBase = G.enemy._battleStatBase || {};
-  const enemyCell=(klass,label,val,{suffix='',title='',trend='',baseKey=''}={})=>
-    `<div class="est ${klass}" title="${escAttr(title)}"><span class="stat-k">${label}</span><span class="stat-v">${formatCombatNumber(val)}${suffix}${trend || (baseKey ? _eTrendTag(val - (Number(_eBase[baseKey])||val)) : '')}</span></div>`;
+  const enemyCell=(klass,label,val,{suffix='',title='',trend='',baseKey='',statKey='',statRaw=null}={})=>{
+    const dataAttr=statKey?` data-stat-key="${statKey}" data-stat-raw="${Number(statRaw ?? val)}"`:'';
+    return `<div class="est ${klass}"${dataAttr} title="${escAttr(title)}"><span class="stat-k">${label}</span><span class="stat-v">${formatCombatNumber(val)}${suffix}${trend || (baseKey ? _eTrendTag(val - (Number(_eBase[baseKey])||val)) : '')}</span></div>`;
+  };
   const _eCombatHint=buildEnemyCombatStatHint();
   const _eHintRow=_eCombatHint?`<div class="stat-status-hint est-hint" style="grid-column:1/-1">${escAttr(_eCombatHint)}</div>`:'';
   document.getElementById('enemy-stats-mini').innerHTML =
-    `${enemyCell('stat-atk','ATK',ep2.atk,{title:'Physical attack',baseKey:'atk'})}
-     ${enemyCell('stat-matk','MATK',ep2.matk||6,{title:'Magic attack',baseKey:'matk'})}
-     ${enemyCell('stat-def','DEF',ep2.def,{title:'Physical defence',baseKey:'def'})}
-     ${enemyCell('stat-mdef','MDEF',ep2.mdef||8,{title:'Magic defence',baseKey:'mdef'})}
-     ${enemyCell('stat-dodge','Dodge',ep2.dodge||0,{suffix:'%',title:'Dodge',baseKey:'dodge'})}
-     ${enemyCell('stat-acc','ACC',ep2.acc||70,{suffix:'%',title:'Accuracy',baseKey:'acc'})}
-     ${enemyCell('stat-spd','SPD',ep2.spd||0,{title:'Speed',baseKey:'spd'})}
-     ${enemyCell('stat-cc','CC',eCritChance,{suffix:'%',title:'Crit chance'})}
+    `${enemyCell('stat-atk','ATK',ep2.atk,{title:'Physical attack',baseKey:'atk',statKey:'atk',statRaw:ep2.atk})}
+     ${enemyCell('stat-matk','MATK',ep2.matk||6,{title:'Magic attack',baseKey:'matk',statKey:'matk',statRaw:ep2.matk||6})}
+     ${enemyCell('stat-def','DEF',ep2.def,{title:'Physical defence',baseKey:'def',statKey:'def',statRaw:ep2.def})}
+     ${enemyCell('stat-mdef','MDEF',ep2.mdef||8,{title:'Magic defence',baseKey:'mdef',statKey:'mdef',statRaw:ep2.mdef||8})}
+     ${enemyCell('stat-dodge','Dodge',ep2.dodge||0,{suffix:'%',title:'Dodge',baseKey:'dodge',statKey:'dodge',statRaw:ep2.dodge||0})}
+     ${enemyCell('stat-acc','ACC',ep2.acc||70,{suffix:'%',title:'Accuracy',baseKey:'acc',statKey:'acc',statRaw:ep2.acc||70})}
+     ${enemyCell('stat-spd','SPD',ep2.spd||0,{title:'Speed',baseKey:'spd',statKey:'spd',statRaw:ep2.spd||0})}
+     ${enemyCell('stat-cc','CC',eCritChance,{suffix:'%',title:'Crit chance',statKey:'critChance',statRaw:eCritChance})}
      ${enemyCell('stat-cd','CD',Number(eCritMult),{suffix:'×',title:'Crit damage'})}
      ${_eHintRow}`;
+  wireCombatEnemyStatTooltips();
+  wireEnemyMutationTooltips();
   if(eal){
     eal.innerHTML='';
     (G.enemy.abilities||[]).forEach(entry=>{
@@ -6197,6 +6414,34 @@ function getAbilityDisplayTags(ab){
   return ABILITY_DISPLAY_TAGS[id] || [String((ab?.type||ab?.btnType||'utility')).toUpperCase()];
 }
 
+/** True when the player can click and afford this ability (mirrors renderActions disable rules). */
+function isPlayerAbilityUsable(ab){
+  if(!ab || !G.player) return false;
+  if(G.turnPhase===TURN.PLAYER && (G.playerActionsThisTurn||0)>=MAX_PLAYER_ACTIONS_PER_TURN) return false;
+  if(ab.id==='crowDefend' && G.crowDefendCooldown>0) return false;
+  if((ab.id==='swoop' || (ab.id==='sonicDash' && G.player?.birdKey!=='hummingbird')) && G.swoopCooldown>0) return false;
+  if((G.player?.birdKey==='hummingbird' || G.player?.birdKey==='firecrest') && HUMMINGBIRD_DASH_ABILITY_IDS.has(ab.id) && G.hummingbirdDashCooldown>0) return false;
+  if(G.player?.birdKey==='peregrine' && PEREGRINE_DIVE_ABILITY_IDS.has(ab.id) && G.peregrineDiveCooldown>0) return false;
+  if(G.player?.birdKey==='snowyOwl' && SNOWY_OWL_DIVE_ABILITY_IDS.has(ab.id) && G.snowyOwlDiveCooldown>0) return false;
+  if(G.player?.birdKey==='robin' && ROBIN_DART_ABILITY_IDS.has(ab.id) && G.robinDartCooldown>0) return false;
+  if(G.player?.birdKey==='bowerbird' && BOWERBIRD_LURE_ABILITY_IDS.has(ab.id) && G.bowerbirdLureCooldown>0) return false;
+  if(ab.id==='intimidate' && G.intimidateCooldown>0) return false;
+  if(getAbilityCooldown(ab.id)>0) return false;
+  if(ab.id==='sitAndWait' && G.sitAndWaitUsedThisTurn) return false;
+  if(G.autoQueuedAbilityId && ab.id!==G.autoQueuedAbilityId) return false;
+  if(G.turnPhase===TURN.PLAYER && !canUseAbility(G.player, ab)) return false;
+  return true;
+}
+
+function playerHasAffordableAbility(player){
+  if(!player?.abilities?.length) return false;
+  if(player===G.player){
+    if(!canPlayerAct()) return false;
+    if((G.playerStatus?.stunned||0)>0) return false;
+  }
+  return player.abilities.some(ab=>isPlayerAbilityUsable(ab));
+}
+
 function renderActions() {
   const grid=document.getElementById('actions-grid');
   if(!grid) return;
@@ -6351,8 +6596,6 @@ function renderActions() {
     if(_passOnlyActionIds.has(id)) return false;
     return true;
   });
-  const outOfPlannedActions=((G.player?.energy||0)<=0||(G.playerActionsThisTurn||0)>=MAX_PLAYER_ACTIONS_PER_TURN);
-
   const endWrap=document.createElement('div');
   endWrap.className='actions-grid-footer';
   const endBtn=document.createElement('button');
@@ -6364,7 +6607,7 @@ function renderActions() {
   grid.appendChild(endWrap);
 
   if(!G.battleOver&&G.turn==='player'&&G.turnPhase===TURN.PLAYER&&G.phase==='PLAYER'&&!G.actionBusy
-    &&!hasPlayableAction&&outOfPlannedActions
+    &&!hasPlayableAction&&canPlayerAct()
     &&G._noEnAutoPassScheduledSerial!==(G._playerTurnSerial|0)){
     G._noEnAutoPassScheduledSerial=G._playerTurnSerial|0;
     queueMicrotask(()=>{
@@ -6412,11 +6655,16 @@ function getAbilityTemplateForUI(abOrId){
   return null;
 }
 
-/** Physical / ranged / spell / utility: prefer the live slot object over catalog templates so evolved/path IDs match combat routing and damage previews. */
+/** Physical / ranged / spell / utility: derive from combat pack row when available. */
 function getEffectiveAbilityBtnType(ab, tmpl){
-  const fromSlot = String(ab?.btnType || ab?.type || '').trim().toLowerCase();
-  if(fromSlot) return fromSlot;
-  return String(tmpl?.btnType || tmpl?.type || '').trim().toLowerCase();
+  const t=tmpl||getAbilityTemplateForUI(ab);
+  const packRow=t?._combatPackRow;
+  if(typeof globalThis.resolveCombatRowBtnType==='function' && packRow){
+    return globalThis.resolveCombatRowBtnType(packRow);
+  }
+  const fromTmpl=String(t?.btnType||t?.type||'').trim().toLowerCase();
+  if(fromTmpl) return fromTmpl;
+  return String(ab?.btnType||ab?.type||'').trim().toLowerCase();
 }
 
 function estimateMultiplierFromSkillDescription(txt=''){
@@ -6625,14 +6873,9 @@ function estimateSkillDamageRange(ab,tmpl,attacker,opts){
   const packRow=tmpl._combatPackRow;
   if(packRow&&!packRow.noDamage){
     const b=Number(packRow.baseFlat)||0;
-    const hp=Number(packRow.hpScalePct)||0;
     let core=b+Math.floor(packRowScaleContribution(packRow.scaleStat, packRow.scalePct, isPlayerCombat&&G?.player?G.player.stats:stats, isPlayerCombat));
     if(packRow.secondaryScaleStat&&Number(packRow.secondaryScalePct)>0){
       core+=Math.floor(packRowScaleContribution(packRow.secondaryScaleStat, packRow.secondaryScalePct, isPlayerCombat&&G?.player?G.player.stats:stats, isPlayerCombat));
-    }
-    if(hp>0){
-      const mhp=Number((isPlayerCombat&&G?.player?G.player.stats:stats).maxHp)||0;
-      core+=Math.floor(mhp*(hp/100));
     }
     let hitLo=Math.max(1,Math.floor(core*0.85));
     let hitHi=Math.max(hitLo,Math.floor(core*1.15));
@@ -7074,6 +7317,8 @@ function buildActionTooltipHTML(ab){
   for(const line of statLines){
     html+=`<div class="tt-row"><span class="tt-lbl">Stat preview</span><span class="tt-val" style="font-size:.88em">${line}</span></div>`;
   }
+  const lsPct=getAbilityLifestealPct(ab);
+  if(lsPct>0) html+=`<div class="tt-row"><span class="tt-lbl">Lifesteal</span><span class="tt-val">${lsPct}% of damage dealt</span></div>`;
   const pb=G.playerStatus?.pendingStrikeBuff;
   if(pb && ['physical','ranged','spell'].includes(btnType)){
     const pct=Math.round((Number(pb.multAdd)||0)*100);
@@ -8272,6 +8517,23 @@ function refreshEnemyStrikerDodgeMark(dodgeCut, turns){
   G.enemyStatus.strikerDodgeMark={amt,turns:t};
 }
 
+function getAbilityLifestealPct(abOrId){
+  const tmpl=getAbilityTemplateForUI(abOrId);
+  const row=tmpl?._combatPackRow;
+  if(!row) return 0;
+  return Math.max(0, Number(row.lifestealPct ?? row.hpScalePct) || 0);
+}
+
+function applyLifestealFromDamage(dmg, srcAbility){
+  if(dmg<=0 || !G.player) return;
+  const pct=getAbilityLifestealPct(srcAbility||G._activePlayerAbility);
+  if(pct<=0) return;
+  const heal=scaleHealForBleed('player', Math.max(1, Math.floor(dmg * pct / 100)));
+  if(heal<=0) return;
+  G.player.stats.hp=Math.min(G.player.stats.maxHp||1, (G.player.stats.hp||0)+heal);
+  spawnFloat('player', `+${heal} 💉`, 'fn-heal');
+}
+
 function dealDamage(target,amount,isCrit=false,isMagic=false,srcAbility=null) {
   let dmg=roundCombatDamage(Math.max(0.01, amount));
   const passiveEvoBonus=getPassiveEvolutionBonuses(G.player);
@@ -8496,7 +8758,7 @@ function dealDamage(target,amount,isCrit=false,isMagic=false,srcAbility=null) {
     if((passiveEvoBonus.drPct||0)>0){
       dmg=roundCombatDamage(dmg*(1-passiveEvoBonus.drPct));
     }
-    G.player.stats.hp-=dmg;
+    applyFractionalHp(G.player.stats, -dmg);
     if(BIRDS[G.player?.birdKey]?.passive?.id==='passive_bluejay_territorial_fury' && dmg>0) G.player._blueJayRecentHit=true;
     if((G.player?.lowHpSpdBonus||0)>0 && !G.player._lowHpSpdApplied && G.player.stats.hp<=Math.floor((G.player.stats.maxHp||1)*0.5)){
       G.player.stats.spd=(G.player.stats.spd||0)+G.player.lowHpSpdBonus;
@@ -8565,6 +8827,7 @@ function dealDamage(target,amount,isCrit=false,isMagic=false,srcAbility=null) {
       return {dmgDealt:dmg,wasDodged:false,wasBlocked:false,isCrit,isMagic};
     }
     G.enemy.stats.hp = Math.max(0, Math.round((Number(G.enemy.stats.hp) - dmg) * 100) / 100);
+    if(dmg>0) applyLifestealFromDamage(dmg, srcAbility||G._activePlayerAbility);
     const _atkKind=String(srcAbility?.btnType||srcAbility?.type||G._activePlayerAbility?.btnType||G._activePlayerAbility?.type||'').toLowerCase();
     if((_atkKind==='physical'||_atkKind==='ranged') && dmg>0){
       if(isCrit && (G.player?.healOnCrit||0)>0){
@@ -8631,7 +8894,7 @@ function pdmg(mult=1,ab=null,opts={}) {
   const __adm=(G.actionDamageHitsRemaining&&G.actionDamageHitsRemaining>0)?(G.actionDamageMult||1):1;
   let strikeAdd=0;
   if(!opts.skipPendingStrikeAdd && G._pendingStrikeActionMods) strikeAdd=Number(G._pendingStrikeActionMods.multAdd)||0;
-  let base=roundCombatDamage(roll(effCore*.8, effCore*1.2)*(mult+strikeAdd)*__adm);
+  let base=roundCombatDamage(rollCombatSpread(effCore*.8, effCore*1.2)*(mult+strikeAdd)*__adm);
   if((G.actionDamageHitsRemaining||0)>0){ G.actionDamageHitsRemaining=Math.max(0,G.actionDamageHitsRemaining-1); if(G.actionDamageHitsRemaining===0) G.actionDamageMult=1; }
   if (G.playerStatus.weaken&&G.playerStatus.weaken>0) base=roundCombatDamage(base*.75);
   if(ab){
@@ -8703,7 +8966,7 @@ function computeSecondaryStatFlatForPhysical(scaler, coeff, mult){
   const eff=softenMainStatForCombat(stat)*COMBAT_OFFENSIVE_STAT_MULT;
   const core=eff*coeff*(mult||1);
   if(core<0.5) return 0;
-  return Math.floor(roll(Math.max(1,core*0.82), Math.max(1,core*1.18)));
+  return rollCombatSpread(Math.max(0.01, core*0.82), Math.max(0.01, core*1.18));
 }
 function applyConditionalPhysicalDamageMultipliers(subtotal, conditionalBonuses){
   let m=1;
@@ -8736,6 +8999,8 @@ function pdmgWithAlternateScaling(mult=1, ab=null){
   return applyConditionalPhysicalDamageMultipliers(total, sc.conditionalBonuses);
 }
 function getAbilityDamageScalingHintForUI(ab){
+  const ls=getAbilityLifestealPct(ab);
+  if(ls>0) return ` Lifesteal ${ls}%`;
   const note=getAbilityTemplateForUI(ab)?.damageScaling?.scalingNote;
   return note?` ${String(note)}`:'';
 }
@@ -8749,14 +9014,14 @@ function calcEnemyAbilityDamage(enemy,{stat='atk',base=0,scaling=1,variance=0.15
 }
 
 function applyBossBurstBuffer(rawDamage){
-  const dmg=Math.max(0,Math.floor(rawDamage||0));
+  const dmg=roundCombatDamage(Math.max(0, rawDamage||0));
   const e=G.enemy;
   if(!e?.isBoss) return dmg;
-  const maxHp=Math.max(1,Math.floor(e?.stats?.maxHp||e?.maxHp||1));
-  const cap=Math.floor(maxHp*0.40);
+  const maxHp=Math.max(1, Number(e?.stats?.maxHp||e?.maxHp||1));
+  const cap=roundCombatDamage(maxHp*0.40);
   if(dmg<=cap) return dmg;
   const excess=dmg-cap;
-  return cap+Math.floor(excess*0.70);
+  return roundCombatDamage(cap+excess*0.70);
 }
 
 function edmg(mult=1) {
@@ -8779,7 +9044,9 @@ function edmg(mult=1) {
 function rollEnemyCritDamage(baseDamage){
   const raw=Math.max(1,Math.floor(baseDamage||1));
   const cc=Math.max(0,Math.min(0.95,G.enemy?.stats?.cc??((G.enemy?.stats?.critChance||5)/100)));
-  const cd=Math.max(1.1,Number(G.enemy?.stats?.cd??G.enemy?.stats?.critMult??1.5));
+  let cd=Math.max(1.1,Number(G.enemy?.stats?.cd??G.enemy?.stats?.critMult??1.5));
+  const mutCrit=Number(G.enemy?._mutationMechanics?.critDamageBonusPct)||0;
+  if(mutCrit>0) cd+=mutCrit/100;
   const isCrit=chance(Math.round(cc*100));
   return {amount:isCrit?Math.max(1,Math.floor(raw*cd)):raw,isCrit};
 }
@@ -9438,8 +9705,8 @@ function startPlayerTurn(player){
   }
 }
 function startEnemyTurn(enemy){
-  const prof=getEnergyProfile(normalizeBirdSizeForEnergy(enemy?.size||'medium'));
-  const maxEn=Math.max(1, enemy.energyMax||prof.maxEN);
+  const prof=getEnemyEnergyProfile();
+  const maxEn=prof.maxEN;
   enemy.energyMax=maxEn;
   enemy.energyRegen=Number.isFinite(enemy.energyRegen)?enemy.energyRegen:prof.regenEN;
   const ete = (G._enemyEnergyTurnIndex|0);
@@ -9609,10 +9876,10 @@ function matk(mult=1) {
   const soft=softenMainStatForCombat(b)*COMBAT_OFFENSIVE_STAT_MULT;
   const strikeAdd=(G._pendingStrikeActionMods?.matkMultAdd!=null?G._pendingStrikeActionMods.matkMultAdd:G._pendingStrikeActionMods?.multAdd)||0;
   const __adm=(G.actionDamageHitsRemaining&&G.actionDamageHitsRemaining>0)?(G.actionDamageMult||1):1;
-  let base=Math.floor(roll(Math.max(1,Math.floor(soft*.8)),Math.max(1,Math.floor(soft*1.2)))*(mult+strikeAdd)*__adm);
+  let base=roundCombatDamage(rollCombatSpread(Math.max(0.01, soft*.8), Math.max(0.01, soft*1.2))*(mult+strikeAdd)*__adm);
   if((G.actionDamageHitsRemaining||0)>0){ G.actionDamageHitsRemaining=Math.max(0,G.actionDamageHitsRemaining-1); if(G.actionDamageHitsRemaining===0) G.actionDamageMult=1; }
-  if(G.playerStatus.weaken&&G.playerStatus.weaken>0) base=Math.floor(base*.75);
-  return Math.max(1,base);
+  if(G.playerStatus.weaken&&G.playerStatus.weaken>0) base=roundCombatDamage(base*.75);
+  return Math.max(0.01, base);
 }
 
 
@@ -9717,9 +9984,9 @@ Object.assign(ACTIONS, {
     const ignoreMDEF=lv>=3?0.3:0;
     const effectiveMDEF=(G.enemy.stats.mdef||8)*(1-ignoreMDEF);
     const matkBase=G.player.stats.matk||8;
-    const dmg=Math.max(1,Math.floor(pdmg(1)*([.9,1.1,1.3,1.55][lv-1])*(matkBase/(effectiveMDEF||1))*0.88));
-    G.enemy.stats.hp-=dmg; setHpBar('enemy',G.enemy.stats.hp,G.enemy.stats.maxHp);
-    spawnFloat('enemy',`🔊 -${dmg}`,'fn-dmg');
+    const dmg=roundCombatDamage(Math.max(0.01, pdmg(1)*([.9,1.1,1.3,1.55][lv-1])*(matkBase/(effectiveMDEF||1))*0.88));
+    applyFractionalHp(G.enemy.stats, -dmg); setHpBar('enemy',G.enemy.stats.hp,G.enemy.stats.maxHp);
+    spawnFloat('enemy',`🔊 -${formatCombatNumber(dmg)}`,'fn-dmg');
     if(lv>=2){const dot=Math.floor(G.enemy.stats.maxHp*.1);G.enemy.stats.hp-=dot;setHpBar('enemy',G.enemy.stats.hp,G.enemy.stats.maxHp);spawnFloat('enemy',`-${dot}`,'fn-poison');}
     const skipC=[20,22,25,30][lv-1];
     const skipT=[3,3,4,5][lv-1];
@@ -9734,8 +10001,8 @@ Object.assign(ACTIONS, {
     if(spellMisses()){await doMiss('player');logMsg(`Storm Chorus missed! (MATK ${G.player.stats.matk||8} vs MDEF ${G.enemy.stats.mdef||8})`,'miss');return;}
     const lv=ab.level;
     const dmg=matk([.7,.9,1.1,1.3][lv-1]);
-    G.enemy.stats.hp-=dmg; setHpBar('enemy',G.enemy.stats.hp,G.enemy.stats.maxHp);
-    spawnFloat('enemy',`🦉 -${dmg}`,'fn-dmg');
+    applyFractionalHp(G.enemy.stats, -dmg); setHpBar('enemy',G.enemy.stats.hp,G.enemy.stats.maxHp);
+    spawnFloat('enemy',`🦉 -${formatCombatNumber(dmg)}`,'fn-dmg');
     const paraC=[15,20,20,25][lv-1];
     const turns=lv>=3?2:lv>=2?4:3;
     if(spellAilmentRoll(paraC,false))G.enemyStatus.paralyzed=(G.enemyStatus.paralyzed||0)+turns;
@@ -9749,12 +10016,13 @@ Object.assign(ACTIONS, {
     if(spellMisses()){await doMiss('player');logMsg(`Shriekwave missed! (MATK ${G.player.stats.matk||8} vs MDEF ${G.enemy.stats.mdef||8})`,'miss');return;}
     const lv=ab.level;
     const isBurned=enemyHasBurning();
-    const dmg=matk([1.0,1.2,1.4,1.65][lv-1]);
+    const rawDmg=matk([1.0,1.2,1.4,1.65][lv-1]);
     const burnCritBonus=(isBurned&&lv>=3)?15:0;
     const isCrit=chance(Math.min(95,getPlayerCritChance(ab)+burnCritBonus));
-    G.enemy.stats.hp-=(isCrit?roundCombatDamage(dmg*(G.player.goldCritMult||1.5)):dmg);
+    const dmg=isCrit?roundCombatDamage(rawDmg*(G.player.goldCritMult||1.5)):rawDmg;
+    applyFractionalHp(G.enemy.stats, -dmg);
     setHpBar('enemy',G.enemy.stats.hp,G.enemy.stats.maxHp);
-    spawnFloat('enemy',`🔥 -${dmg}${isCrit?' CRIT':''}!`,'fn-burn');
+    spawnFloat('enemy',`🔥 -${formatCombatNumber(dmg)}${isCrit?' CRIT':''}!`,'fn-burn');
     if(spellAilmentRoll([55,60,65,70][lv-1],false)) G.enemyStatus.burning={turns:[3,4,4,5][lv-1]};
     if(lv>=4&&chance(15))applyAilment('enemy','poison',1);
     await doSpell('enemy','🔊 SHRIEKWAVE!');
@@ -9770,8 +10038,8 @@ Object.assign(ACTIONS, {
     for(let i=0;i<hits;i++){
       if(!summonHitLands()){await doMiss('player');continue;}
       const d=matk(dmgM);
-      G.enemy.stats.hp-=d; total+=d;
-      spawnFloat('enemy',` -${d}`,'fn-dmg');
+      applyFractionalHp(G.enemy.stats, -d); total+=d;
+      spawnFloat('enemy',` -${formatCombatNumber(d)}`,'fn-dmg');
       setHpBar('enemy',G.enemy.stats.hp,G.enemy.stats.maxHp);
       await delay(180);
       if(G.battleOver)return;
@@ -9830,7 +10098,7 @@ Object.assign(ACTIONS, {
   async astralRefrain(ab) {
     if(spellMisses()){await doMiss('player');logMsg('Astral Refrain missed!','miss');return;}
     const lv=ab.level; const dmg=matk([.95,1.1,1.3,1.5][lv-1]);
-    G.enemy.stats.hp-=dmg; setHpBar('enemy',G.enemy.stats.hp,G.enemy.stats.maxHp); spawnFloat('enemy',`✨ -${dmg}`,'fn-dmg');
+    applyFractionalHp(G.enemy.stats, -dmg); setHpBar('enemy',G.enemy.stats.hp,G.enemy.stats.maxHp); spawnFloat('enemy',`✨ -${formatCombatNumber(dmg)}`,'fn-dmg');
     const accDrop=[10,12,15,20][lv-1]; G.enemyStatus.accDebuff=(G.enemyStatus.accDebuff||0)+accDrop;
     if(spellAilmentRoll([35,40,45,50][lv-1],false)){applyAilment('enemy','weaken',1);spawnFloat('enemy','🐔','fn-status');}
     if(spellAilmentRoll([30,35,40,45][lv-1],false)) G.enemyStatus.confused={turns:3+Math.floor(lv/2),skipChance:20+5*lv};
@@ -9840,7 +10108,7 @@ Object.assign(ACTIONS, {
   },
   async murderMurmuration(ab) {
     const lv=ab.level; const hits=[3,4,4,5][lv-1]; const mult=[.4,.42,.48,.5][lv-1]; let total=0;
-    for(let i=0;i<hits;i++){if(!summonHitLands()){await doMiss('player');continue;}const d=matk(mult); G.enemy.stats.hp-=d; total+=d; spawnFloat('enemy',`‍⬛ -${d}`,'fn-dmg'); setHpBar('enemy',G.enemy.stats.hp,G.enemy.stats.maxHp); await delay(150); if(G.battleOver)return;}
+    for(let i=0;i<hits;i++){if(!summonHitLands()){await doMiss('player');continue;}const d=matk(mult); applyFractionalHp(G.enemy.stats, -d); total+=d; spawnFloat('enemy',`‍⬛ -${formatCombatNumber(d)}`,'fn-dmg'); setHpBar('enemy',G.enemy.stats.hp,G.enemy.stats.maxHp); await delay(150); if(G.battleOver)return;}
     const conf=[15,20,25,30][lv-1]; if(spellAilmentRoll(conf,true)) G.enemyStatus.confused={turns:1,skipChance:16+lv*2};
     const fearT=[0,1,2,2][lv-1]; if(fearT>0&&spellAilmentRoll([10,12,14,16][lv-1],true)) G.enemyStatus.feared=(G.enemyStatus.feared||0)+fearT;
     if(lv>=4) G.enemyStatus.featherRuffle={...(G.enemyStatus.featherRuffle||{}),atkReduction:15,turns:2,accDrop:(G.enemyStatus.featherRuffle||{}).accDrop||0};
@@ -11855,7 +12123,7 @@ function finalizeSkillEvolutionChoice(message){
   saveRun();
   if(G._nestMutateFlow){
     if((G.player.mutatedFeatherCount||0)>0) G.player.mutatedFeatherCount--;
-    resetLevelUpFlowState();
+    closeNestMutateModal();
     G._nestMutateFlow=false;
     G._nestMutateSlotIndex=null;
     if(message) logMsg(message, 'exp-gain');
@@ -12992,43 +13260,65 @@ function showStorkShop(mode='boss') {
 function enterStorkShopScreen(){
   shopResetVisitState();
   showScreen('screen-stork-shop');
-  setShopTab('buy');
+  setShopTab('healing');
   const buyBtn=document.getElementById('shop-buy-btn'); if(buyBtn) buyBtn.disabled=true;
   const log=document.getElementById('shop-purchase-log');
   if(log){
     const mode=G._shopMode||'boss';
     log.textContent=mode==='endless-boss'
-      ? 'Stork Market: healing · 1 ability · Mutated Feather (78🌟, does not refresh).'
-      : 'Stork Market: 3 healing · 6 abilities · 1 Mutated Feather (78🌟, does not refresh). Sell mutations on the Sell tab.';
+      ? 'Healing · 1 ability · 1 mutation · Mutated Feather (Misc tab, 78🌟).'
+      : 'Healing · Misc · 9 Abilities · 9 Mutations · Sell inventory mutations on Sell tab.';
   }
   generateShopItems();
 }
 
+const SHOP_BUY_CATEGORY_TABS=['healing','misc','abilities','mutations'];
+
+function shopItemMatchesCategory(item, category){
+  if(!item) return false;
+  if(category==='healing') return !!item.isHealingShopItem || item.shopCategory==='healing';
+  if(category==='misc') return !!item.isFeatherShopItem || item.shopCategory==='misc';
+  if(category==='abilities') return !!item.isLearnAbility || item.shopCategory==='abilities';
+  if(category==='mutations') return item.type==='mutation' || item.shopCategory==='mutation';
+  return true;
+}
+
+function getShopCategoryLogText(category){
+  const mode=G._shopMode||'boss';
+  if(category==='healing') return 'Healing items restore HP once per visit each.';
+  if(category==='misc') return 'Mutated Feather (78🌟) upgrades a skill from your Nest — pinned, does not refresh.';
+  if(category==='abilities') return mode==='endless-boss' ? 'One ability offer this visit.' : 'Nine ability offers — stored in Nest vault when bought.';
+  if(category==='mutations') return mode==='endless-boss' ? 'One mutation offer this visit.' : 'Nine mutation offers — weighted by tier.';
+  return '';
+}
+
 function setShopTab(tab){
-  G._shopTab=(tab==='sell')?'sell':'buy';
-  const buyTab=document.getElementById('shop-tab-buy');
+  const isSell=(tab==='sell');
+  G._shopTab=isSell?'sell':'buy';
+  G._shopCategoryTab=(!isSell && SHOP_BUY_CATEGORY_TABS.includes(tab))?tab:(G._shopCategoryTab||'healing');
+  if(!isSell && SHOP_BUY_CATEGORY_TABS.includes(tab)) G._shopCategoryTab=tab;
+  SHOP_BUY_CATEGORY_TABS.forEach(cat=>{
+    const el=document.getElementById('shop-tab-'+cat);
+    if(el) el.classList.toggle('active', !isSell && G._shopCategoryTab===cat);
+  });
   const sellTab=document.getElementById('shop-tab-sell');
-  if(buyTab) buyTab.classList.toggle('active', G._shopTab==='buy');
-  if(sellTab) sellTab.classList.toggle('active', G._shopTab==='sell');
+  if(sellTab) sellTab.classList.toggle('active', isSell);
   const buyBtn=document.getElementById('shop-buy-btn');
   const sellBtn=document.getElementById('shop-sell-btn');
   const refreshBtn=document.getElementById('shop-refresh-btn');
-  if(buyBtn) buyBtn.style.display=G._shopTab==='buy'?'':'none';
-  if(sellBtn) sellBtn.style.display=G._shopTab==='sell'?'':'none';
-  if(refreshBtn) refreshBtn.style.display=G._shopTab==='buy'?'':'none';
+  if(buyBtn) buyBtn.style.display=isSell?'none':'';
+  if(sellBtn) sellBtn.style.display=isSell?'':'none';
+  if(refreshBtn) refreshBtn.style.display=isSell?'none':'';
   const log=document.getElementById('shop-purchase-log');
   if(log){
-    if(G._shopTab==='sell'){
+    if(isSell){
       log.textContent='Sell mutations from your inventory for half their shop buy price (in shinies).';
     } else {
-      const mode=G._shopMode||'boss';
-      log.textContent=mode==='endless-boss'
-        ? 'Stork Market: healing · 1 ability · Mutated Feather (78🌟, does not refresh).'
-        : 'Stork Market: 3 healing · 6 abilities · 1 Mutated Feather (78🌟, does not refresh). Sell mutations on the Sell tab.';
+      log.textContent=getShopCategoryLogText(G._shopCategoryTab);
     }
   }
-  if(G._shopTab==='buy') renderShopItems();
-  else renderShopSellItems();
+  if(isSell) renderShopSellItems();
+  else renderShopItems();
 }
 
 function getMutationSellPrice(tier){
@@ -13276,7 +13566,18 @@ function renderShopItems() {
     refreshBtn.textContent=`🔄 Refresh (${rCost}🌟)`;
   }
 
-  _shopItems.forEach((item,idx)=>{
+  const category=G._shopCategoryTab||'healing';
+  const visible=_shopItems
+    .map((item,idx)=>({item,idx}))
+    .filter(({item})=>shopItemMatchesCategory(item, category));
+
+  if(!visible.length){
+    grid.innerHTML=`<div style="grid-column:1/-1;color:var(--text-dim);text-align:center;padding:24px 0;">Nothing in this category right now.</div>`;
+    syncShopItemsToGlobal();
+    return;
+  }
+
+  visible.forEach(({item,idx})=>{
     let baseCost=(typeof item.costOverride==='number')?item.costOverride:(SHOP_COSTS[item.tier]||1);
     if(G.player?.mutLongWar) baseCost=Math.ceil(baseCost*1.15);
     const cost=Math.max(0,baseCost-Math.max(0,G._nextShopDiscount||0));
