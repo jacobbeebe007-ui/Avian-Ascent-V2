@@ -11321,6 +11321,7 @@ function checkDeath() {
       if(_bossBd&&_bossBd.passive&&_bossBd.passive.onBossKill) _bossBd.passive.onBossKill(G.player);
     }
     logMsg(`✨ ${G.enemy.name} defeated!`,'crit');
+    if(isDukeStoryBossFight()) beginDukeBattleBgmFadeOut();
     setTimeout(postCombat,700);return true;
   }
   if(G.player.stats.hp<=0){
@@ -14010,8 +14011,13 @@ const ACCESS_KEY='avian_accessibility_v1';
 const MUSIC_SETTINGS_KEY='avian_music_v1';
 const THEME_BGM_DEFAULT_VOLUME_PCT=50;
 const THEME_BGM_RUN_START_FADE_MS=1400;
+const DUKE_BGM_FADE_IN_MS=1200;
+const DUKE_BGM_FADE_OUT_MS=1400;
 let _themeBgmFadeRaf=null;
 let _themeBgmFadeActive=false;
+let _dukeBgmFadeRaf=null;
+let _dukeBgmFadeActive=false;
+let _dukeBgmFadeOutActive=false;
 function cancelThemeBgmFade(){
   if(_themeBgmFadeRaf!=null){
     cancelAnimationFrame(_themeBgmFadeRaf);
@@ -14071,10 +14077,102 @@ function getThemeBgmAudio(){
 function getDukeBattleBgmAudio(){
   return document.getElementById('duke-battle-bgm-audio');
 }
-function stopDukeBattleBgm(){
+function cancelDukeBgmFade(){
+  if(_dukeBgmFadeRaf!=null){
+    cancelAnimationFrame(_dukeBgmFadeRaf);
+    _dukeBgmFadeRaf=null;
+  }
+  _dukeBgmFadeActive=false;
+  _dukeBgmFadeOutActive=false;
+}
+function getDukeBgmTargetVolume(){
+  const s=getMusicSettings();
+  return s.muted?0:Math.max(0,Math.min(1,s.volume/100));
+}
+function primeDukeBattleBgmAudio(){
+  const el=getDukeBattleBgmAudio();
+  if(!el||el.dataset.dukePrimed==='1') return;
+  el.dataset.dukePrimed='1';
+  try{ el.load(); }catch(_){}
+}
+function stopDukeBattleBgmImmediate(){
+  cancelDukeBgmFade();
   const el=getDukeBattleBgmAudio();
   if(!el) return;
   try{ el.pause(); el.currentTime=0; }catch(_){}
+  applyDukeBattleBgmToAudioEl();
+}
+function stopDukeBattleBgm(){
+  stopDukeBattleBgmImmediate();
+}
+function duckThemeBgmForBattle(){
+  cancelThemeBgmFade();
+  const theme=getThemeBgmAudio();
+  if(theme){
+    try{ theme.pause(); }catch(_){}
+  }
+}
+function beginDukeBattleBgmFadeIn(durationMs=DUKE_BGM_FADE_IN_MS){
+  const el=getDukeBattleBgmAudio();
+  if(!el) return;
+  const target=getDukeBgmTargetVolume();
+  if(target<=0.001){
+    stopDukeBattleBgmImmediate();
+    return;
+  }
+  cancelDukeBgmFade();
+  _dukeBgmFadeActive=true;
+  el.muted=false;
+  el.volume=0;
+  const t0=performance.now();
+  const dur=Math.max(200,Number(durationMs)||DUKE_BGM_FADE_IN_MS);
+  try{ el.currentTime=0; el.play().catch(()=>{}); }catch(_){}
+  function tick(now){
+    if(!_dukeBgmFadeActive){ _dukeBgmFadeRaf=null; return; }
+    const u=Math.min(1,(now-t0)/dur);
+    el.volume=Math.max(0,target*u);
+    if(u>=1){
+      el.volume=target;
+      _dukeBgmFadeActive=false;
+      _dukeBgmFadeRaf=null;
+      return;
+    }
+    _dukeBgmFadeRaf=requestAnimationFrame(tick);
+  }
+  _dukeBgmFadeRaf=requestAnimationFrame(tick);
+}
+function beginDukeBattleBgmFadeOut(onDone, durationMs=DUKE_BGM_FADE_OUT_MS){
+  const el=getDukeBattleBgmAudio();
+  if(!el){
+    if(typeof onDone==='function') onDone();
+    return;
+  }
+  if(el.paused){
+    if(typeof onDone==='function') onDone();
+    return;
+  }
+  cancelDukeBgmFade();
+  _dukeBgmFadeOutActive=true;
+  _dukeBgmFadeActive=true;
+  const fromVol=Number(el.volume)||getDukeBgmTargetVolume();
+  const t0=performance.now();
+  const dur=Math.max(200,Number(durationMs)||DUKE_BGM_FADE_OUT_MS);
+  function tick(now){
+    if(!_dukeBgmFadeActive){ _dukeBgmFadeRaf=null; _dukeBgmFadeOutActive=false; return; }
+    const u=Math.min(1,(now-t0)/dur);
+    el.volume=Math.max(0,fromVol*(1-u));
+    if(u>=1){
+      try{ el.pause(); el.currentTime=0; }catch(_){}
+      _dukeBgmFadeActive=false;
+      _dukeBgmFadeOutActive=false;
+      _dukeBgmFadeRaf=null;
+      applyDukeBattleBgmToAudioEl();
+      if(typeof onDone==='function') onDone();
+      return;
+    }
+    _dukeBgmFadeRaf=requestAnimationFrame(tick);
+  }
+  _dukeBgmFadeRaf=requestAnimationFrame(tick);
 }
 function isDukeStoryBossFight(){
   if(G.endlessMode) return false;
@@ -14087,13 +14185,22 @@ function isDukeStoryBossFight(){
 }
 function tryStartDukeBattleBgmIfNeeded(){
   if(!isDukeStoryBossFight()){
-    stopDukeBattleBgm();
+    stopDukeBattleBgmImmediate();
     return;
   }
   const el=getDukeBattleBgmAudio();
-  if(!el||getMusicSettings().muted) return;
-  applyDukeBattleBgmToAudioEl();
-  try{ el.currentTime=0; el.play(); }catch(_){}
+  if(!el||getMusicSettings().muted){
+    stopDukeBattleBgmImmediate();
+    return;
+  }
+  if(_dukeBgmFadeActive&&!_dukeBgmFadeOutActive) return;
+  if(!el.paused&&!_dukeBgmFadeOutActive){
+    const target=getDukeBgmTargetVolume();
+    if(Math.abs(Number(el.volume)-target)<0.02) return;
+  }
+  duckThemeBgmForBattle();
+  primeDukeBattleBgmAudio();
+  beginDukeBattleBgmFadeIn();
 }
 /** Call once so the browser fetches/decodes the MP3 (hidden via clip, not display:none). */
 function primeThemeBgmAudio(){
@@ -14139,7 +14246,7 @@ function syncThemeMusicButtonLabels(){
   });
 }
 function syncThemeBgmPlaybackForScreen(screenId){
-  if(screenId!=='screen-battle') stopDukeBattleBgm();
+  if(screenId!=='screen-battle'&&!_dukeBgmFadeOutActive) stopDukeBattleBgmImmediate();
   const el=getThemeBgmAudio();
   if(!el) return;
   const onMenu=screenId==='screen-start'||screenId==='screen-select';
@@ -14162,6 +14269,8 @@ function toggleThemeMusicMuted(){
   const active=document.querySelector('.screen.active');
   if(active&&(active.id==='screen-start'||active.id==='screen-select')){
     tryPlayThemeBgmForCurrentMenuScreen();
+  }else if(active?.id==='screen-battle'&&isDukeStoryBossFight()){
+    tryStartDukeBattleBgmIfNeeded();
   }
 }
 function updateMusicSettingsFromControls(){
@@ -14177,6 +14286,8 @@ function updateMusicSettingsFromControls(){
   const active=document.querySelector('.screen.active');
   if(active&&(active.id==='screen-start'||active.id==='screen-select')){
     tryPlayThemeBgmForCurrentMenuScreen();
+  }else if(active?.id==='screen-battle'&&isDukeStoryBossFight()){
+    tryStartDukeBattleBgmIfNeeded();
   }
 }
 function wireThemeBgmAutoplayUnlock(){
@@ -14313,6 +14424,7 @@ applyUIStateToDOM();
 applyThemeMusicToAudioEl();
 syncThemeMusicButtonLabels();
 syncThemeBgmPlaybackForScreen((document.querySelector('.screen.active')||{}).id||'screen-start');
+primeDukeBattleBgmAudio();
 wireThemeBgmAutoplayUnlock();
 
 
