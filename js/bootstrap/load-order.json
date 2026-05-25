@@ -27,6 +27,7 @@
     "js/data/story_milestone_boss_pool.js",
     "js/systems/encounter-generator.js",
     "js/world/overworld_bridge.js",
+    "js/world/ow_map_runtime.js",
     "js/world/map-forge.js",
     "js/systems/save-migrations.js",
     "js/core/game.js",

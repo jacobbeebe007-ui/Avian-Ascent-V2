@@ -14,6 +14,138 @@
     BUILDNEST: 'avian_buildnest_unlocked',
     FORGE_DRAFTS: 'avian_map_forge_drafts',
     FORGE_CURRENT_ID: 'avian_map_forge_current_id',
+    CUSTOM_PROGRESS: 'avian_ow_custom_progress',
+    MAP_STACK: 'avian_ow_map_stack',
+  };
+
+  function emptyCustomProgress() {
+    return { nodeClears: {}, worldsCompleted: {}, bonusRepeats: {}, activeMapId: 'main' };
+  }
+
+  global.readOwCustomProgress = function () {
+    try {
+      const raw = global.localStorage.getItem(global.AVIAN_OW_KEYS.CUSTOM_PROGRESS);
+      const p = raw ? JSON.parse(raw) : null;
+      if (!p || typeof p !== 'object') return emptyCustomProgress();
+      return {
+        nodeClears: p.nodeClears && typeof p.nodeClears === 'object' ? p.nodeClears : {},
+        worldsCompleted: p.worldsCompleted && typeof p.worldsCompleted === 'object' ? p.worldsCompleted : {},
+        bonusRepeats: p.bonusRepeats && typeof p.bonusRepeats === 'object' ? p.bonusRepeats : {},
+        activeMapId: p.activeMapId || 'main',
+      };
+    } catch (_) {
+      return emptyCustomProgress();
+    }
+  };
+
+  global.writeOwCustomProgress = function (progress) {
+    try {
+      global.localStorage.setItem(global.AVIAN_OW_KEYS.CUSTOM_PROGRESS, JSON.stringify(progress));
+      return true;
+    } catch (_) {
+      return false;
+    }
+  };
+
+  global.resetOwCustomProgress = function () {
+    global.writeOwCustomProgress(emptyCustomProgress());
+  };
+
+  global.getOwActiveMapId = function () {
+    return global.readOwCustomProgress().activeMapId || 'main';
+  };
+
+  global.setOwActiveMapId = function (mapId) {
+    const p = global.readOwCustomProgress();
+    p.activeMapId = String(mapId || 'main');
+    global.writeOwCustomProgress(p);
+  };
+
+  global.readOwMapStack = function () {
+    try {
+      const raw = global.localStorage.getItem(global.AVIAN_OW_KEYS.MAP_STACK);
+      const list = raw ? JSON.parse(raw) : [];
+      return Array.isArray(list) ? list : [];
+    } catch (_) {
+      return [];
+    }
+  };
+
+  global.writeOwMapStack = function (stack) {
+    try {
+      global.localStorage.setItem(global.AVIAN_OW_KEYS.MAP_STACK, JSON.stringify(stack || []));
+    } catch (_) {}
+  };
+
+  global.pushOwMapStack = function (entry) {
+    const stack = global.readOwMapStack();
+    stack.push(entry);
+    global.writeOwMapStack(stack);
+  };
+
+  global.popOwMapStack = function () {
+    const stack = global.readOwMapStack();
+    const entry = stack.pop();
+    global.writeOwMapStack(stack);
+    return entry || null;
+  };
+
+  global.clearOwMapStack = function () {
+    global.writeOwMapStack([]);
+    global.setOwActiveMapId('main');
+  };
+
+  global.isOwNodeCleared = function (mapId, nodeId, progress) {
+    const p = progress || global.readOwCustomProgress();
+    const key = typeof global.owNodeKey === 'function'
+      ? global.owNodeKey(mapId, nodeId)
+      : String(mapId) + ':' + nodeId;
+    return !!(p.nodeClears && p.nodeClears[key]);
+  };
+
+  global.markOwNodeCleared = function (mapId, nodeId) {
+    const p = global.readOwCustomProgress();
+    const key = typeof global.owNodeKey === 'function'
+      ? global.owNodeKey(mapId, nodeId)
+      : String(mapId) + ':' + nodeId;
+    p.nodeClears[key] = true;
+    global.writeOwCustomProgress(p);
+  };
+
+  global.isOwWorldCompleted = function (worldId, progress) {
+    const p = progress || global.readOwCustomProgress();
+    return !!(p.worldsCompleted && p.worldsCompleted[worldId]);
+  };
+
+  global.markOwWorldCompleted = function (worldId) {
+    const p = global.readOwCustomProgress();
+    p.worldsCompleted[worldId] = true;
+    global.writeOwCustomProgress(p);
+  };
+
+  global.getBonusRepeatCount = function (mapId, nodeId, progress) {
+    const p = progress || global.readOwCustomProgress();
+    const key = typeof global.owNodeKey === 'function'
+      ? global.owNodeKey(mapId, nodeId)
+      : String(mapId) + ':' + nodeId;
+    return Math.max(0, Math.floor(Number(p.bonusRepeats?.[key]) || 0));
+  };
+
+  global.incrementBonusRepeatCount = function (mapId, nodeId) {
+    const p = global.readOwCustomProgress();
+    const key = typeof global.owNodeKey === 'function'
+      ? global.owNodeKey(mapId, nodeId)
+      : String(mapId) + ':' + nodeId;
+    p.bonusRepeats[key] = Math.max(0, Math.floor(Number(p.bonusRepeats[key]) || 0)) + 1;
+    global.writeOwCustomProgress(p);
+    return p.bonusRepeats[key];
+  };
+
+  global.canEnterBonusNode = function (mapId, nodeId, bonusConfig, progress) {
+    const cfg = bonusConfig || {};
+    const max = Math.max(1, Math.floor(Number(cfg.maxRepeats) || 20));
+    const count = global.getBonusRepeatCount(mapId, nodeId, progress);
+    return count < max;
   };
 
   /**
@@ -44,6 +176,7 @@
   global.normalizeOverworldProgressShared = normalizeOverworldProgressShared;
 
   global.isOwCombatNode = function (n) {
+    if (typeof global.isForgeCombatNode === 'function') return global.isForgeCombatNode(n);
     return !!n && (n.type === 'stage' || n.type === 'boss' || n.final);
   };
 
@@ -57,13 +190,14 @@
     return 0;
   };
 
-  /** Highest combat stage number on a node list. */
+  /** Highest combat stage number on a node list (main-map stages only). */
   global.getMaxStageFromOwNodes = function (nodes) {
     const arr = nodes || [];
     let max = 0;
     for (const n of arr) {
+      if (!n || n.type === 'bonus' || n.type === 'world' || n.type === 'return') continue;
       if (!global.isOwCombatNode(n)) continue;
-      max = Math.max(max, Math.floor(Number(n.stage) || 0));
+      max = Math.max(max, Math.floor(Number(n.stage || n.subStage) || 0));
     }
     return Math.max(1, max || 20);
   };

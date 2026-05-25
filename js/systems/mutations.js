@@ -249,6 +249,27 @@
     return count;
   }
 
+  function rollTierFromBand(bandId) {
+    var bands = global.OW_MUTATION_BANDS || {};
+    var tiers = bands[String(bandId || 'grey_green')] || ['white', 'green'];
+    if (!tiers.length) return 'white';
+    return tiers[Math.floor(Math.random() * tiers.length)];
+  }
+
+  function rollEnemyMutationsFromForgeSlot(opts) {
+    opts = opts || {};
+    var max = Math.max(0, Math.min(11, Math.floor(Number(opts.maxMutations) || 0)));
+    if (max <= 0) return [];
+    var used = new Set();
+    var ids = [];
+    for (var i = 0; i < max; i++) {
+      var tier = rollTierFromBand(opts.mutationBand);
+      var drop = rollUniqueFromTier(tier, used);
+      if (drop && drop.id) ids.push(drop.id);
+    }
+    return ids;
+  }
+
   function rollEnemyMutations(opts) {
     opts = opts || {};
     var stage = Math.max(1, Number(opts.stage) || 1);
@@ -559,6 +580,8 @@
   mutations.getMechanicsRollup = getMechanicsRollup;
   mutations.sumMutationIds = sumMutationIds;
   mutations.rollEnemyMutations = rollEnemyMutations;
+  mutations.rollEnemyMutationsFromForgeSlot = rollEnemyMutationsFromForgeSlot;
+  mutations.rollTierFromBand = rollTierFromBand;
   mutations.applyMutationsToEntity = applyMutationsToEntity;
   mutations.reapplyPlayerStatsFromSources = reapplyPlayerStatsFromSources;
   mutations.rollDrop = rollDrop;

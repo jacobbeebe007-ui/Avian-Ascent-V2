@@ -143,6 +143,9 @@ html,body{width:100%;height:100%;overflow:hidden;background:#060d05;}
 #hdr-forge-btn{font-family:'Cinzel',serif;font-size:8px;letter-spacing:2px;background:rgba(96,136,58,.08);border:1px solid rgba(96,136,58,.35);color:#b8e070;padding:5px 14px;cursor:pointer;transition:all .2s;white-space:nowrap;display:none;}
 #hdr-forge-btn:hover{background:rgba(96,136,58,.2);border-color:#90b434;}
 #hdr-forge-btn.is-visible{display:inline-block;}
+#hdr-return-ow-btn{font-family:'Cinzel',serif;font-size:8px;letter-spacing:2px;background:rgba(80,128,160,.08);border:1px solid rgba(80,128,160,.35);color:#90c0e0;padding:5px 14px;cursor:pointer;transition:all .2s;white-space:nowrap;display:none;margin-right:8px;}
+#hdr-return-ow-btn:hover{background:rgba(80,128,160,.2);border-color:#90c0e0;}
+#hdr-return-ow-btn.is-visible{display:inline-block;}
 #hdr-nest-btn:hover{background:rgba(200,160,32,.18);border-color:var(--gold);}
 #hdr-shiny-count{font-family:'Cinzel',serif;font-size:9px;color:var(--gold);letter-spacing:1px;background:rgba(200,160,32,.06);border:1px solid rgba(200,160,32,.22);padding:5px 10px;white-space:nowrap;}
 
@@ -195,6 +198,7 @@ html,body{width:100%;height:100%;overflow:hidden;background:#060d05;}
     </div>
     <span id="hdr-hint">Tap map nodes &middot; OPEN LOCATION or Enter opens panel &middot; B = Bird &middot; Zoom / Pan map</span>
     <div class="hdr-spacer">
+      <button type="button" id="hdr-return-ow-btn">← Overworld</button>
       <button type="button" id="hdr-forge-btn">← Map Forge</button>
     </div>
   </header>
@@ -280,14 +284,22 @@ html,body{width:100%;height:100%;overflow:hidden;background:#060d05;}
   </div>
 </div>
 <script src="js/world/overworld_bridge.js"></script>
+<script src="js/world/ow_map_runtime.js"></script>
 <script>
 const SVG_NS='http://www.w3.org/2000/svg';
 const _URL_PARAMS=new URLSearchParams(location.search);
 const _IS_PLAYTEST=_URL_PARAMS.get('playtest')==='1';
-const _CUSTOM_MAP=typeof loadCustomOverworldMap==='function'?loadCustomOverworldMap():null;
+const _CUSTOM_MAP_RAW=typeof loadCustomOverworldMap==='function'?loadCustomOverworldMap():null;
+const _CUSTOM_MAP=_CUSTOM_MAP_RAW&&typeof upgradeMapToV2==='function'?upgradeMapToV2(_CUSTOM_MAP_RAW):_CUSTOM_MAP_RAW;
 const _USE_CUSTOM=!!(_CUSTOM_MAP&&(typeof isCustomOverworldActive==='function'?isCustomOverworldActive():false));
-const MAP_W=_CUSTOM_MAP?.mapWidth||1536,MAP_H=_CUSTOM_MAP?.mapHeight||1024;
+const _OW_PROGRESS=typeof readOwCustomProgress==='function'?readOwCustomProgress():{nodeClears:{},worldsCompleted:{},bonusRepeats:{},activeMapId:'main'};
+const _ACTIVE_MAP_ID=typeof getOwActiveMapId==='function'?getOwActiveMapId():'main';
+const _MAP_SLICE=_USE_CUSTOM&&typeof resolveOwActiveMapSlice==='function'?resolveOwActiveMapSlice(_CUSTOM_MAP,_ACTIVE_MAP_ID):null;
+const MAP_W=_MAP_SLICE?.backgroundDataUrl?_CUSTOM_MAP?.mapWidth||1536:(_CUSTOM_MAP?.mapWidth||1536),MAP_H=_CUSTOM_MAP?.mapHeight||1024;
 let MAP_MAX_STAGE=20;
+let _PATH_REVEAL=_USE_CUSTOM&&_CUSTOM_MAP?.pathReveal!==false;
+let _CURRENT_MAP_ID=_MAP_SLICE?.mapId||'main';
+let _WORLD_INDEX=_MAP_SLICE?.worldIndex??null;
 
 // Mobile viewport height fix (accounts for browser chrome on iOS/Android)
 function setVH(){document.documentElement.style.setProperty('--vh',(window.innerHeight*.01)+'px');}
@@ -305,7 +317,25 @@ function syncOverworldProgress(progress={}){
 }
 
 function getCurrentActionableStage(){ return Math.max(1, OVERWORLD_PROGRESS.completedStage + 1); }
-function isCombatNode(n){ return isOwCombatNode(n); }
+function isCombatNode(n){ return typeof isForgeCombatNode==='function'?isForgeCombatNode(n):isOwCombatNode(n); }
+function owNodeVisible(idx){
+  if(_IS_PLAYTEST&&_USE_CUSTOM) return true;
+  if(!_PATH_REVEAL||!_USE_CUSTOM) return true;
+  return typeof isNodeVisibleOnMap==='function'?isNodeVisibleOnMap(NODES,idx,_OW_PROGRESS,_CURRENT_MAP_ID,{worldId:_CURRENT_MAP_ID},true):true;
+}
+function owPathVisible(segIdx){
+  if(_IS_PLAYTEST&&_USE_CUSTOM) return true;
+  if(!_PATH_REVEAL||!_USE_CUSTOM) return true;
+  return typeof isPathSegmentRevealed==='function'?isPathSegmentRevealed(NODES,segIdx,_OW_PROGRESS,_CURRENT_MAP_ID,{worldId:_CURRENT_MAP_ID},true):true;
+}
+function owNodeCleared(n){
+  if(!n||!_USE_CUSTOM) return false;
+  return typeof isOwNodeCleared==='function'?isOwNodeCleared(_CURRENT_MAP_ID,n.id,_OW_PROGRESS):false;
+}
+function nodeDisplayLabel(n){
+  if(typeof getNodeDisplayLabel==='function') return getNodeDisplayLabel(n,_WORLD_INDEX);
+  return n?.stage||'';
+}
 function getNodePortraitBird(n){ return n?.portraitBird || ''; }
 function inferCompletedStageFromNodeId(nodeId){
   return inferOwCompletedStageFromNodeId(nodeId, NODES);
@@ -323,19 +353,45 @@ function isNodeCompleted(n){
 function isNodeUnlocked(n){
   if(_IS_PLAYTEST&&_USE_CUSTOM&&n&&n.type!=='start') return true;
   if(!n||n.type==='start') return true;
+  if(n.type==='world'){
+    const prev=NODES[n.id-1];
+    if(!prev||prev.type==='start') return true;
+    if(isCombatNode(prev)) return (OVERWORLD_PROGRESS.completedStage||0) >= Number(prev.stage||1)-1;
+    if(prev.type==='shop'){ const p2=NODES[n.id-2]; return (OVERWORLD_PROGRESS.completedStage||0) >= Number(p2?.stage||0); }
+    return owNodeCleared(prev);
+  }
+  if(n.type==='bonus'){
+    if(!canEnterBonusNode||!_USE_CUSTOM) return isNodeUnlocked({type:'shop'});
+    const prev=NODES[n.id-1];
+    const prevOk=prev&&(isCombatNode(prev)?(OVERWORLD_PROGRESS.completedStage||0)>=Number(prev.stage||1)-1:owNodeCleared(prev));
+    return prevOk && canEnterBonusNode(_CURRENT_MAP_ID,n.id,n.bonusConfig,_OW_PROGRESS);
+  }
+  if(n.type==='return'){
+    return typeof isOwWorldCompleted==='function'&&isOwWorldCompleted(_CURRENT_MAP_ID,_OW_PROGRESS);
+  }
   if(n.type==='shop'){
     const prev=NODES[n.id-1];
-    return (OVERWORLD_PROGRESS.completedStage||0) >= Number(prev?.stage||0);
+    return (OVERWORLD_PROGRESS.completedStage||0) >= Number(prev?.stage||0)||owNodeCleared(prev);
   }
   if(isCombatNode(n)){
+    if(_WORLD_INDEX!=null) return owNodeCleared(NODES[n.id-1])||n.id===1;
     return (OVERWORLD_PROGRESS.completedStage||0) >= Number(n.stage||1)-1;
   }
   return false;
 }
 function isActionable(n){
-  if(_IS_PLAYTEST&&_USE_CUSTOM&&n&&n.type!=='start') return true;
+  if(_IS_PLAYTEST&&_USE_CUSTOM&&n&&n.type!=='start'&&n.type!=='return') return true;
   if(!n || n.type==='start') return false;
-  if(isCombatNode(n)) return Number(n.stage||0) === getCurrentActionableStage();
+  if(n.type==='return') return isNodeUnlocked(n);
+  if(n.type==='world') return isNodeUnlocked(n);
+  if(n.type==='bonus') return isNodeUnlocked(n);
+  if(isCombatNode(n)){
+    if(_WORLD_INDEX!=null){
+      const prev=NODES[n.id-1];
+      return isNodeUnlocked(n)&&(!prev||prev.type==='start'||owNodeCleared(prev));
+    }
+    return Number(n.stage||0) === getCurrentActionableStage();
+  }
   if(n.type==='shop'){
     const prev=NODES[n.id-1];
     return OVERWORLD_PROGRESS.completedStage >= Number(prev?.stage||0);
@@ -388,8 +444,12 @@ function applyNodeActionButton(btn,n){
   btn.disabled=!ok;
   btn.className='';
   if(n.type==='shop'){ btn.textContent=ok?'ENTER SHOP ▶':'SHOP LOCKED'; btn.classList.add('is-shop'); return; }
+  if(n.type==='world'){ btn.textContent=ok?'ENTER WORLD ▶':'WORLD LOCKED'; return; }
+  if(n.type==='bonus'){ btn.textContent=ok?'ENTER BONUS ▶':'BONUS LOCKED'; return; }
+  if(n.type==='return'){ btn.textContent=ok?'RETURN TO OVERWORLD ▶':'CLEAR WORLD BOSS FIRST'; return; }
   if(n.type==='boss'||n.final){ btn.textContent=ok?'FACE BOSS ▶':'BOSS LOCKED'; btn.classList.add('is-boss'); return; }
-  btn.textContent=ok?`ENTER STAGE ${n.stage} ▶`:`LOCKED · STAGE ${n.stage}`;
+  const lbl=nodeDisplayLabel(n);
+  btn.textContent=ok?('ENTER STAGE '+lbl+' ▶'):('LOCKED · STAGE '+lbl);
 }
 
 const P={
@@ -654,18 +714,20 @@ const DEFAULT_NODES=[
   {id:22, type:'stage', name:'Throne Gate',          x:766,  y:184,  stage:19, terrain:'Throne Approach', portraitBird:'baldEagle'},
   {id:23, type:'boss',  name:"Blakiston's Court",    x:792,  y:82,   stage:20, terrain:'Castle Throne', final:true},
 ];
-let NODES=_USE_CUSTOM
-  ? (typeof normalizeOwMapNodes==='function'?normalizeOwMapNodes(_CUSTOM_MAP.nodes):(_CUSTOM_MAP.nodes||[]).map((n,i)=>Object.assign({},n,{id:i})))
+let NODES=_USE_CUSTOM&&_MAP_SLICE
+  ? (typeof normalizeOwMapNodes==='function'?normalizeOwMapNodes(_MAP_SLICE.nodes):(_MAP_SLICE.nodes||[]).map((n,i)=>Object.assign({},n,{id:i})))
   : DEFAULT_NODES.map(n=>Object.assign({},n));
 let UNLOCKED=NODES.length-1;
-if(_USE_CUSTOM){
-  MAP_MAX_STAGE=_CUSTOM_MAP.maxStage|| (typeof getMaxStageFromOwNodes==='function'?getMaxStageFromOwNodes(NODES):20);
-  if(_CUSTOM_MAP.backgroundDataUrl){
+if(_USE_CUSTOM&&_MAP_SLICE){
+  MAP_MAX_STAGE=_WORLD_INDEX!=null
+    ? (NODES.filter(n=>isCombatNode(n)).length||1)
+    : (_CUSTOM_MAP.maxStage||(typeof getMaxStageFromOwNodes==='function'?getMaxStageFromOwNodes(NODES):20));
+  if(_MAP_SLICE.backgroundDataUrl){
     const _bgEl=document.getElementById('bg-img');
-    if(_bgEl) _bgEl.src=_CUSTOM_MAP.backgroundDataUrl;
+    if(_bgEl) _bgEl.src=_MAP_SLICE.backgroundDataUrl;
   }
   const _hdrTitle=document.querySelector('#hdr h1');
-  if(_hdrTitle&&_CUSTOM_MAP.name) _hdrTitle.textContent=String(_CUSTOM_MAP.name).toUpperCase();
+  if(_hdrTitle) _hdrTitle.textContent=String(_MAP_SLICE.name||_CUSTOM_MAP.name||'Custom Map').toUpperCase();
 }
 if(_IS_PLAYTEST&&_USE_CUSTOM){
   const _forgeBtn=document.getElementById('hdr-forge-btn');
@@ -677,12 +739,26 @@ if(_IS_PLAYTEST&&_USE_CUSTOM){
     });
   }
 }
+if(_USE_CUSTOM&&_ACTIVE_MAP_ID!=='main'){
+  const _retBtn=document.getElementById('hdr-return-ow-btn');
+  if(_retBtn){
+    _retBtn.classList.add('is-visible');
+    _retBtn.addEventListener('click',()=>{
+      if(typeof popOwMapStack==='function') popOwMapStack();
+      if(typeof setOwActiveMapId==='function') setOwActiveMapId('main');
+      location.reload();
+    });
+  }
+}
 
 const NVC={
   start:{ring:'#60883a',glow:'rgba(96,136,58,.3)',r:22,lock:'#2a3820'},
   stage:{ring:'#887030',glow:'rgba(136,112,48,.27)',r:20,lock:'#2a2818'},
   shop: {ring:'#988028',glow:'rgba(152,128,40,.3)',r:22,lock:'#2a2818'},
   boss: {ring:'#8a3020',glow:'rgba(138,48,32,.38)',r:27,lock:'#2a1810'},
+  world:{ring:'#208878',glow:'rgba(32,136,120,.35)',r:24,lock:'#1a3830'},
+  bonus:{ring:'#c89010',glow:'rgba(200,144,16,.35)',r:21,lock:'#2a2818'},
+  return:{ring:'#5080a0',glow:'rgba(80,128,160,.32)',r:20,lock:'#283038'},
 };
 const NVC_FINAL={ring:'#7820a0',glow:'rgba(120,32,160,.42)',r:31,lock:'#201020'};
 const nvc=n=>n.final?NVC_FINAL:(NVC[n.type]||NVC.stage);
@@ -708,19 +784,19 @@ ns.appendChild(ndefs);
 
 const pathG=mk('g');
 NODES.slice(0,-1).forEach((n,i)=>{
+  if(!owPathVisible(i)) return;
   const nx=NODES[i+1],lit=i<UNLOCKED;
   if(lit){
-    // Lit path — solid dark grey with a very subtle lighter thread
     pathG.appendChild(mk('line',{x1:n.x,y1:n.y,x2:nx.x,y2:nx.y,stroke:'#2a2a26','stroke-width':'3','stroke-linecap':'round',opacity:'.85'}));
     pathG.appendChild(mk('line',{x1:n.x,y1:n.y,x2:nx.x,y2:nx.y,stroke:'#484440','stroke-width':'1.2','stroke-linecap':'round',opacity:'.6'}));
   } else {
-    // Locked — barely visible dark grey dots
     pathG.appendChild(mk('line',{x1:n.x,y1:n.y,x2:nx.x,y2:nx.y,stroke:'#282824','stroke-width':'1.5','stroke-dasharray':'4 10','stroke-linecap':'round',opacity:'.3'}));
   }
 });
 ns.appendChild(pathG);
 
-NODES.forEach(n=>{
+NODES.forEach((n,ni)=>{
+  if(!owNodeVisible(ni)) return;
   const reach=n.id<=UNLOCKED,vc=nvc(n),g=mk('g');
   // Any on-map node may be selected; overlay confirms whether entering is allowed.
   g.style.cursor=(reach&&n.id>0)?'pointer':'default';
@@ -730,17 +806,19 @@ NODES.forEach(n=>{
     const sh=mk('circle',{cx:n.x,cy:n.y,r:vc.r,fill:'rgba(18,18,12,.65)',stroke:vc.lock,'stroke-width':'1.2',opacity:'.38'});
     n._sh=sh;g.appendChild(sh);
     const tx=mk('text',{x:n.x,y:n.y+1,'text-anchor':'middle','dominant-baseline':'middle','font-family':'Cinzel,serif','font-size':'8',fill:'rgba(100,92,60,.35)'});
-    tx.style.pointerEvents='none';tx.textContent=n.type==='shop'?'$':n.type==='boss'?'B':String(n.stage??'');g.appendChild(tx);
+    tx.style.pointerEvents='none';
+    const sym={shop:'$',boss:'B',world:'W',bonus:'★',return:'↩',start:'⌂'};
+    tx.textContent=sym[n.type]||String(n.stage??nodeDisplayLabel(n)??'');
+    g.appendChild(tx);
     ns.appendChild(g);return;
   }
   g.appendChild(mk('circle',{cx:n.x,cy:n.y,r:vc.r+5,fill:vc.glow,filter:'url(#ngf)',opacity:'.55'}));
   const main=mk('circle',{cx:n.x,cy:n.y,r:vc.r,fill:'rgba(6,12,5,.72)',stroke:vc.ring,'stroke-width':'2'});
   n._sh=main;g.appendChild(main);
   const bk=getNodePortraitBird(n);
-  if(n.type!=='start'&&n.type!=='shop'){
-    // Stage number centred in node — clear and legible
+  if(n.type!=='start'&&n.type!=='shop'&&n.type!=='world'&&n.type!=='bonus'&&n.type!=='return'){
     const fontSize=n.type==='boss'||n.final?10:vc.r>24?11:10;
-    const numTxt=n.final?'20':n.type==='boss'?String(n.stage):String(n.stage);
+    const numTxt=n.final?'20':nodeDisplayLabel(n);
     const stgNum=mk('text',{x:n.x,y:n.y+1,'text-anchor':'middle','dominant-baseline':'middle',
       'font-family':'Cinzel,serif','font-size':String(fontSize),'font-weight':'600',
       fill:vc.ring,opacity:'.9'});
@@ -1147,10 +1225,43 @@ requestAnimationFrame(()=>requestAnimationFrame(()=>{pl.style.transition='left .
 
       persistOwMapSnapshot(curPos, activeBirdKey);
 
+      if (n.type === 'world' && n.worldId) {
+        if (typeof pushOwMapStack === 'function') pushOwMapStack({ parentMapId: 'main', returnNodeId: curPos, worldId: n.worldId });
+        if (typeof setOwActiveMapId === 'function') setOwActiveMapId(n.worldId);
+        location.reload();
+        return;
+      }
+      if (n.type === 'return') {
+        if (typeof popOwMapStack === 'function') popOwMapStack();
+        if (typeof setOwActiveMapId === 'function') setOwActiveMapId('main');
+        location.reload();
+        return;
+      }
       if (n.type === 'shop') {
-        persistOwNavIntent({action:'shop', nodeId:curPos});
+        persistOwNavIntent({action:'shop', nodeId:curPos, mapId:_CURRENT_MAP_ID});
       } else {
-        persistOwNavIntent({action:'battle', nodeId:curPos, stage:n.stage, terrain:n.terrain||''});
+        const enc = (typeof ensureNodeEncounter==='function') ? ensureNodeEncounter(n) : n.encounter;
+        const scaleStage = _WORLD_INDEX != null && typeof syntheticStageForWorldNode==='function'
+          ? syntheticStageForWorldNode(_WORLD_INDEX, n.subStage||1)
+          : (n.stage||1);
+        const nodeKey = typeof owNodeKey==='function' ? owNodeKey(_CURRENT_MAP_ID, curPos) : (_CURRENT_MAP_ID+':'+curPos);
+        const bonusRepeats = typeof getBonusRepeatCount==='function' ? getBonusRepeatCount(_CURRENT_MAP_ID, curPos, _OW_PROGRESS) : 0;
+        persistOwNavIntent({
+          action:'battle',
+          nodeId:curPos,
+          stage:scaleStage,
+          terrain:n.terrain||'',
+          mapId:_CURRENT_MAP_ID,
+          nodeKey,
+          encounter:enc,
+          bonus:n.type==='bonus'?n.bonusConfig:null,
+          isBonus:n.type==='bonus',
+          isWorldInterior:_WORLD_INDEX!=null,
+          worldId:_WORLD_INDEX!=null?_CURRENT_MAP_ID:null,
+          worldIndex:_WORLD_INDEX,
+          subStage:n.subStage||null,
+          powerTier:n.type==='bonus'&&n.bonusConfig?.powerProgression?bonusRepeats:0,
+        });
       }
 
       window.location.href = 'index.html';

@@ -3112,7 +3112,10 @@ img{image-rendering:pixelated;image-rendering:crisp-edges;}
   font-size:.75rem;
 }
 .map-forge-node-move:disabled{opacity:.35;cursor:not-allowed;}
-.map-forge-hint{font-size:.68rem;color:var(--text-dim);line-height:1.35;margin:0;}
+.map-forge-breadcrumb{font-size:.72rem;color:var(--gold-dim,var(--text-dim));margin:0 0 4px;font-family:'Cinzel',serif;letter-spacing:.06em;}
+.map-forge-encounter-panel,.map-forge-bonus-panel{display:flex;flex-direction:column;gap:6px;padding-top:8px;border-top:1px solid rgba(201,168,76,.16);}
+.map-forge-encounter-row{display:flex;flex-direction:column;gap:4px;margin-bottom:6px;}
+.map-forge-bonus-reward-row{display:flex;justify-content:space-between;align-items:center;font-size:.72rem;color:var(--text-dim);padding:4px 0;}
 .map-forge-canvas-wrap{
   position:relative;
   background:#060804;

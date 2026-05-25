@@ -3538,7 +3538,34 @@ function mergeScaledStatsIntoEnemy(ed, encounterStage){
       critChance: Number(ed.stats.critChance) || 0,
       maxHp: Number(ed.stats.maxHp) || 0,
     };
-    if (typeof Avian?.mutations?.rollEnemyMutations === 'function') {
+    const forgeEnc = G._owForgeEncounter;
+    const slotIdx = Math.max(0, G._owEnemyIndex || 0);
+    const forgeSlot = forgeEnc?.slots?.[slotIdx];
+    if (typeof globalThis.applyForgePowerScaling === 'function' && (G._owForgePowerTier || 0) > 0) {
+      globalThis.applyForgePowerScaling(ed, G._owForgePowerTier);
+      ed._statBaseBeforeMutations = {
+        atk: Number(ed.stats.atk) || 0,
+        matk: Number(ed.stats.matk) || 0,
+        def: Number(ed.stats.def) || 0,
+        mdef: Number(ed.stats.mdef) || 0,
+        dodge: Number(ed.stats.dodge) || 0,
+        acc: Number(ed.stats.acc) || 0,
+        spd: Number(ed.stats.spd) || 0,
+        critChance: Number(ed.stats.critChance) || 0,
+        maxHp: Number(ed.stats.maxHp) || 0,
+      };
+    }
+    if (typeof Avian?.mutations?.rollEnemyMutationsFromForgeSlot === 'function' && forgeSlot) {
+      ed.mutationIds = Avian.mutations.rollEnemyMutationsFromForgeSlot({
+        mutationBand: forgeSlot.mutationBand,
+        maxMutations: forgeSlot.maxMutations,
+        stage: encounterStage,
+        isBoss: !!ed.isBoss,
+      });
+      if (typeof Avian.mutations.applyMutationsToEntity === 'function') {
+        Avian.mutations.applyMutationsToEntity(ed, ed.mutationIds);
+      }
+    } else if (typeof Avian?.mutations?.rollEnemyMutations === 'function') {
       if (!Array.isArray(ed.mutationIds) || !ed.mutationIds.length) {
         ed.mutationIds = Avian.mutations.rollEnemyMutations({
           stage: encounterStage,
@@ -4357,6 +4384,21 @@ function handleOverworldReturn() {
   try { localStorage.removeItem(_OW_NAV_KEY); } catch(_) {}
 
   if (intent.action === 'battle') {
+    G._owForgeNavMeta = {
+      mapId: intent.mapId || 'main',
+      nodeKey: intent.nodeKey || null,
+      encounter: intent.encounter || null,
+      bonusConfig: intent.bonus || null,
+      powerTier: Math.max(0, Math.floor(Number(intent.powerTier) || 0)),
+      isBonus: !!intent.isBonus,
+      isWorldInterior: !!intent.isWorldInterior,
+      worldId: intent.worldId || null,
+      worldIndex: intent.worldIndex != null ? Number(intent.worldIndex) : null,
+      subStage: intent.subStage != null ? Number(intent.subStage) : null,
+      skipMainStageAdvance: !!(intent.isBonus || intent.isWorldInterior),
+    };
+    G._owForgeEncounter = intent.encounter || null;
+    G._owForgePowerTier = G._owForgeNavMeta.powerTier;
     G._owPendingBattleStage = Math.max(1, Math.floor(Number(intent.stage) || save.stage || 1));
     G._owPendingNodeId = Number.isFinite(Number(intent.nodeId)) ? Math.floor(Number(intent.nodeId)) : null;
     G._battleTerrain = (typeof intent.terrain === 'string' && intent.terrain.trim()) ? intent.terrain.trim() : null;
@@ -4364,7 +4406,18 @@ function handleOverworldReturn() {
     resetStageBattleStats();
     const stageNum=G._owPendingBattleStage;
     const pbk=save?.player?.birdKey;
-    if(!G.endlessMode && !STORY_BOSS_STAGES.has(stageNum)){
+    if(!G.endlessMode && !STORY_BOSS_STAGES.has(stageNum) && intent.encounter){
+      const resolveFn = typeof globalThis.resolveForgeEncounterBirdKeys === 'function'
+        ? globalThis.resolveForgeEncounterBirdKeys : null;
+      const rolled = resolveFn
+        ? resolveFn(intent.encounter, pbk, stageNum)
+        : generateStoryStageEnemyKeys(stageNum, pbk);
+      G._owStageEnemies = normalizeOwEnemyListForBattle(rolled);
+      G._owEnemyIndex   = 0;
+      G._owEnemyCount = Math.max(1, G._owStageEnemies?.length || 1);
+      G._owEncounterRollStage = stageNum;
+      commitStoryEncounterMeta(stageNum, pbk, G._owStageEnemies);
+    } else if(!G.endlessMode && !STORY_BOSS_STAGES.has(stageNum)){
       const rolled=generateStoryStageEnemyKeys(stageNum, pbk);
       G._owStageEnemies = normalizeOwEnemyListForBattle(rolled);
       G._owEnemyIndex   = 0;
@@ -7653,10 +7706,39 @@ function continueStageTransitionAfterRewards(){
   }
   resetStageBattleStats();
   if (!G.endlessMode && _isOverworldRun()) {
-    finalizeOverworldStageClear(G._owPendingBattleStage || G.stage, G._owPendingNodeId, {
-      shinyGain: G._owSequenceShiny || 0,
-      enemiesDefeated: G._owEnemyCount || G._owStageEnemies?.length || 1,
-    });
+    const forgeMeta = G._owForgeNavMeta || null;
+    if (forgeMeta && typeof globalThis.markOwNodeCleared === 'function' && forgeMeta.mapId != null && G._owPendingNodeId != null) {
+      globalThis.markOwNodeCleared(forgeMeta.mapId, G._owPendingNodeId);
+      if (forgeMeta.isBonus && typeof globalThis.incrementBonusRepeatCount === 'function') {
+        globalThis.incrementBonusRepeatCount(forgeMeta.mapId, G._owPendingNodeId);
+        if (forgeMeta.bonusConfig && typeof globalThis.grantForgeBonusRewards === 'function') {
+          const bonusGranted = globalThis.grantForgeBonusRewards(G.player, forgeMeta.bonusConfig, G);
+          if (bonusGranted.shinies > 0) {
+            logMsg('Bonus reward: +' + bonusGranted.shinies + ' shinies!', 'boss');
+          }
+          if (bonusGranted.mutations?.length) {
+            logMsg('Bonus reward: mutation added to nest inventory!', 'boss');
+          }
+        }
+      }
+      if (forgeMeta.isWorldInterior && G.enemy?.isBoss && forgeMeta.worldId && typeof globalThis.markOwWorldCompleted === 'function') {
+        globalThis.markOwWorldCompleted(forgeMeta.worldId);
+        const stack = typeof globalThis.readOwMapStack === 'function' ? globalThis.readOwMapStack() : [];
+        const entry = stack[stack.length - 1];
+        if (entry && typeof globalThis.markOwNodeCleared === 'function') {
+          globalThis.markOwNodeCleared(entry.parentMapId || 'main', entry.returnNodeId);
+        }
+      }
+    }
+    if (!forgeMeta?.skipMainStageAdvance) {
+      finalizeOverworldStageClear(G._owPendingBattleStage || G.stage, G._owPendingNodeId, {
+        shinyGain: G._owSequenceShiny || 0,
+        enemiesDefeated: G._owEnemyCount || G._owStageEnemies?.length || 1,
+      });
+    }
+    G._owForgeNavMeta = null;
+    G._owForgeEncounter = null;
+    G._owForgePowerTier = 0;
     clearOverworldPendingBattle();
     saveRun();
     try{
