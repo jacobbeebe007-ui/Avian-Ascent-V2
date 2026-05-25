@@ -43,6 +43,9 @@ const checks = [
   { label: 'ACTIONS handler map',       re: /Object\.assign\(\s*ACTIONS\s*,/ },
   { label: 'takeFlightToSelect global', re: /globalThis\.takeFlightToSelect\s*=/ },
   { label: 'showScreen function',       re: /\bfunction\s+showScreen\b/ },
+  { label: 'handleOverworldReturn global', re: /globalThis\.handleOverworldReturn\s*=/ },
+  { label: 'OW bootstrap defer',        re: /queueMicrotask\s*\(\s*_avianBootstrapInit\s*\)/ },
+  { label: 'resolveForgeEncounterBirdKeys', re: /global\.resolveForgeEncounterBirdKeys\s*=\s*function/ },
   { label: 'bundle hash injected',      re: /globalThis\.__AVIAN_BUNDLE_HASH__\s*=/ },
 ];
 
