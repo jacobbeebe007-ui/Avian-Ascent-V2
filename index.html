@@ -392,9 +392,9 @@
 <button type="button" class="nest-mutate-close" id="nest-mutate-close-btn" aria-label="Close">✕</button>
 <h3 class="nest-mutate-title" id="nest-mutate-title">🪶 Mutate Ability</h3>
 <p class="nest-mutate-sub" id="nest-mutate-sub"></p>
-<div class="nest-mutate-grid skill-grid" id="nest-mutate-grid"></div>
+<div class="nest-mutate-grid" id="nest-mutate-grid"></div>
 <div class="nest-mutate-actions">
-<button type="button" class="confirm-btn" id="nest-mutate-confirm" style="display:none">✓ Apply Upgrade</button>
+<button type="button" class="confirm-btn" id="nest-mutate-confirm" style="display:none" disabled>✓ Confirm Mutation</button>
 <button type="button" class="menu-btn" id="nest-mutate-cancel">✕ Cancel</button>
 </div>
 </div>
@@ -407,7 +407,8 @@
 <div class="shiny-bar">🌟 <span class="shiny-val" id="shop-shiny-count">0</span> Shiny Objects</div>
 <div class="shop-purchase-log" id="shop-purchase-log"></div>
 <div class="shop-tab-row">
-<button type="button" class="shop-tab active" id="shop-tab-healing" data-shop-tab="healing">Healing</button>
+<button type="button" class="shop-tab active" id="shop-tab-all" data-shop-tab="all">All</button>
+<button type="button" class="shop-tab" id="shop-tab-healing" data-shop-tab="healing">Healing</button>
 <button type="button" class="shop-tab" id="shop-tab-misc" data-shop-tab="misc">Misc</button>
 <button type="button" class="shop-tab" id="shop-tab-abilities" data-shop-tab="abilities">Abilities</button>
 <button type="button" class="shop-tab" id="shop-tab-mutations" data-shop-tab="mutations">Mutations</button>
@@ -514,6 +515,21 @@
 <label style="display:flex;justify-content:space-between;align-items:center;gap:12px;">Mute menu music
 <input id="setting-music-muted" type="checkbox" data-change="updateMusicSettingsFromControls"/>
 </label>
+<div style="margin-top:6px;padding-top:10px;border-top:1px solid var(--border);">
+<div style="font-family:'Cinzel',serif;font-size:.78rem;letter-spacing:.08em;color:var(--text-dim);margin-bottom:8px;">TOOLTIPS</div>
+<label style="display:flex;justify-content:space-between;align-items:center;gap:12px;">Ability tooltips
+<input id="setting-tt-abilities" type="checkbox" checked data-change="updateAccessibilitySettings"/>
+</label>
+<label style="display:flex;justify-content:space-between;align-items:center;gap:12px;">Mutation tooltips
+<input id="setting-tt-mutations" type="checkbox" checked data-change="updateAccessibilitySettings"/>
+</label>
+<label style="display:flex;justify-content:space-between;align-items:center;gap:12px;">Item tooltips
+<input id="setting-tt-items" type="checkbox" checked data-change="updateAccessibilitySettings"/>
+</label>
+<label style="display:flex;justify-content:space-between;align-items:center;gap:12px;">Passive tooltips
+<input id="setting-tt-passives" type="checkbox" checked data-change="updateAccessibilitySettings"/>
+</label>
+</div>
 </div>
 <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:14px;">
 <button class="menu-btn" data-action="exportCombatTelemetry">📊 Export Combat Telemetry</button>

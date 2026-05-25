@@ -548,34 +548,9 @@
         const grid=document.getElementById('shop-items-grid');
         if(!grid) return out;
         const cards=[...grid.querySelectorAll('.shop-item')];
-        // row labels
-        if(!grid.querySelector('.shop-row-label')){
-          const items=(globalThis._shopItems||[]);
-          const labels = [];
-          const firstHealingIdx=items.findIndex(item=>item?.isHealingShopItem);
-          if(firstHealingIdx!==-1){
-            labels.push({idx:firstHealingIdx, text:'HEALING'});
-          }
-          const firstUtilityIdx=items.findIndex(item=>String(item?.id||'').startsWith('shop_util_'));
-          if(firstUtilityIdx!==-1){
-            labels.push({idx:firstUtilityIdx, text:'UTILITY'});
-          }
-          const firstRewardIdx=items.findIndex(item=>!item?.isHealingShopItem && !String(item?.id||'').startsWith('shop_util_'));
-          if(firstRewardIdx!==-1){
-            const rewardLabel=items[firstRewardIdx]?.type==='mutation'?'MUTATIONS':'UPGRADES';
-            labels.push({idx:firstRewardIdx, text:rewardLabel});
-          }
-          labels.reverse().forEach(l=>{
-            if(cards[l.idx]){
-              const div=document.createElement('div');
-              div.className='shop-row-label';
-              div.textContent=l.text;
-              grid.insertBefore(div, cards[l.idx]);
-            }
-          });
-        }
-        cards.forEach((card, idx)=>{
-          const item = (globalThis._shopItems||[])[idx];
+        cards.forEach((card)=>{
+          const idx=Number(card.dataset.shopIdx);
+          const item=(globalThis._shopItems||[])[idx];
           if(item?.id?.startsWith('art_')) card.classList.add('artifact-card');
         });
       }catch(err){ console.error(err); }

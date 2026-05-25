@@ -107,16 +107,19 @@
   };
 
   shop.describeAbility = function describeAbility(entry) {
-    var fromEntry = String(entry.shortDesc || '').trim();
+    var normalizeEnLabel = function (s) {
+      return String(s || '').replace(/\b(\d+)\s*AP\b/g, '$1 EN').replace(/\bAP\s*·/g, 'EN ·');
+    };
+    var fromEntry = normalizeEnLabel(String(entry.shortDesc || '').trim());
     if (fromEntry) return fromEntry;
     var p = pack();
     if (!p || !p.skillTrees) return entry.name || '';
     var row = p.skillTrees[entry.baseAbilityId];
     if (!row) return entry.name || '';
-    var shortDesc = String(row.shortDesc || '').trim();
+    var shortDesc = normalizeEnLabel(String(row.shortDesc || '').trim());
     if (shortDesc) return shortDesc;
     var bits = [];
-    bits.push((row.apCost || 1) + ' AP · ' + (row.target === 'self' ? 'Self' : row.target === 'self_and_enemy' ? 'Self+Enemy' : 'Enemy'));
+    bits.push((row.apCost || 1) + ' EN · ' + (row.target === 'self' ? 'Self' : row.target === 'self_and_enemy' ? 'Self+Enemy' : 'Enemy'));
     if (!row.noDamage) {
       var damage = (row.hits > 1 ? row.hits + '× ' : '') + 'Base ' + (row.baseFlat || 0) + ' + ' + (row.scalePct || 0) + '% ' + (row.scaleStat || 'ATK');
       bits.push(damage);
