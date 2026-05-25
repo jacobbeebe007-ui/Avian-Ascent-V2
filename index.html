@@ -83,6 +83,10 @@
 <span class="splash-hotspot-title">Begin Ascent</span>
 <span class="splash-hotspot-desc">Choose your champion</span>
 </button>
+<button type="button" class="splash-hotspot splash-hotspot--forge is-buildnest-hidden" id="build-nest-hotspot" data-action="openMapForge" aria-label="Build Nest — overworld map editor">
+<span class="splash-hotspot-title">Build Nest</span>
+<span class="splash-hotspot-desc">Map forge &amp; export</span>
+</button>
 </div>
 <div class="select-screen-content">
 <div class="select-splash" aria-label="Camp navigation">
@@ -190,6 +194,65 @@
 </div><!-- /#select-hub-door -->
 </div><!-- /#select-hub-panels -->
 </div><!-- /#screen-select -->
+<!-- MAP FORGE (BuildNest unlock) -->
+<div class="screen" id="screen-map-forge">
+<div class="map-forge-inner">
+<header class="map-forge-head">
+<div class="map-forge-head-left">
+<h2 class="map-forge-title">Build Nest — Map Forge</h2>
+<label class="map-forge-name-label" for="map-forge-name">Map name</label>
+<input type="text" class="map-forge-name-input" id="map-forge-name" maxlength="64" placeholder="Untitled Map"/>
+<label class="map-forge-name-label" for="map-forge-draft-select">Draft</label>
+<select class="map-forge-draft-select" id="map-forge-draft-select"></select>
+</div>
+<div class="map-forge-head-actions">
+<button type="button" class="menu-btn" data-action="newMapForge">New</button>
+<button type="button" class="menu-btn" data-action="saveMapForgeDraft">Save draft</button>
+<button type="button" class="menu-btn" data-action="exportMapForge">Export JSON</button>
+<button type="button" class="menu-btn map-forge-btn-accent" data-action="playtestMapForge">Playtest</button>
+<button type="button" class="menu-btn map-forge-btn-accent" data-action="activateMapForNextRun">Use on next run</button>
+<button type="button" class="menu-btn" data-action="closeMapForge">← War room</button>
+</div>
+</header>
+<p class="map-forge-status" id="map-forge-status"></p>
+<div class="map-forge-body">
+<aside class="map-forge-sidebar">
+<div class="map-forge-toolbar">
+<span class="map-forge-toolbar-label">Place</span>
+<button type="button" class="map-forge-tool-btn" data-forge-tool="stage">Stage</button>
+<button type="button" class="map-forge-tool-btn" data-forge-tool="boss">Boss</button>
+<button type="button" class="map-forge-tool-btn" data-forge-tool="shop">Shop</button>
+<button type="button" class="map-forge-tool-btn" data-forge-tool="start">Start</button>
+<button type="button" class="map-forge-tool-btn map-forge-tool-danger" data-action="deleteMapForgeNode">Delete</button>
+</div>
+<label class="map-forge-upload-label">
+<span class="menu-btn">Upload background</span>
+<input type="file" id="map-forge-upload" accept="image/*" hidden/>
+</label>
+<label class="map-forge-upload-label">
+<span class="menu-btn">Import JSON</span>
+<input type="file" id="map-forge-import" accept="application/json,.json" hidden/>
+</label>
+<div class="map-forge-node-editor" id="map-forge-node-editor">
+<label class="map-forge-field-label" for="map-forge-node-name">Node name</label>
+<input type="text" class="map-forge-field-input" id="map-forge-node-name" maxlength="48"/>
+<label class="map-forge-field-label" for="map-forge-node-terrain">Terrain</label>
+<input type="text" class="map-forge-field-input" id="map-forge-node-terrain" maxlength="48"/>
+<label class="map-forge-field-check"><input type="checkbox" id="map-forge-node-final"/> Final boss</label>
+</div>
+<div class="map-forge-node-list-wrap">
+<div class="map-forge-node-list-title">Path order</div>
+<div class="map-forge-node-list" id="map-forge-node-list"></div>
+</div>
+<p class="map-forge-hint">Click the map to place nodes. Drag to reposition. Path connects nodes in list order.</p>
+</aside>
+<div class="map-forge-canvas-wrap">
+<img class="map-forge-bg" id="map-forge-bg" alt="" draggable="false"/>
+<svg class="map-forge-svg" id="map-forge-svg" xmlns="http://www.w3.org/2000/svg"></svg>
+</div>
+</div>
+</div>
+</div>
 <!-- BATTLE -->
 <div class="screen" id="screen-battle">
 <div class="battle-screen-inner">

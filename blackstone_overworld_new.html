@@ -140,6 +140,9 @@ html,body{width:100%;height:100%;overflow:hidden;background:#060d05;}
 
 /* ── Nest button ─────────────────────────────────────────────── */
 #hdr-nest-btn{font-family:'Cinzel',serif;font-size:8px;letter-spacing:2px;background:rgba(200,160,32,.06);border:1px solid rgba(200,160,32,.22);color:var(--gold);padding:5px 14px;cursor:pointer;transition:all .2s;white-space:nowrap;}
+#hdr-forge-btn{font-family:'Cinzel',serif;font-size:8px;letter-spacing:2px;background:rgba(96,136,58,.08);border:1px solid rgba(96,136,58,.35);color:#b8e070;padding:5px 14px;cursor:pointer;transition:all .2s;white-space:nowrap;display:none;}
+#hdr-forge-btn:hover{background:rgba(96,136,58,.2);border-color:#90b434;}
+#hdr-forge-btn.is-visible{display:inline-block;}
 #hdr-nest-btn:hover{background:rgba(200,160,32,.18);border-color:var(--gold);}
 #hdr-shiny-count{font-family:'Cinzel',serif;font-size:9px;color:var(--gold);letter-spacing:1px;background:rgba(200,160,32,.06);border:1px solid rgba(200,160,32,.22);padding:5px 10px;white-space:nowrap;}
 
@@ -191,7 +194,9 @@ html,body{width:100%;height:100%;overflow:hidden;background:#060d05;}
       <span class="orn">&#10022;</span><h1>BLACKSTONE FOREST</h1><span class="orn">&#10022;</span>
     </div>
     <span id="hdr-hint">Tap map nodes &middot; OPEN LOCATION or Enter opens panel &middot; B = Bird &middot; Zoom / Pan map</span>
-    <div class="hdr-spacer" aria-hidden="true"></div>
+    <div class="hdr-spacer">
+      <button type="button" id="hdr-forge-btn">← Map Forge</button>
+    </div>
   </header>
   <div id="vp">
     <div id="scaler">
@@ -277,7 +282,12 @@ html,body{width:100%;height:100%;overflow:hidden;background:#060d05;}
 <script src="js/world/overworld_bridge.js"></script>
 <script>
 const SVG_NS='http://www.w3.org/2000/svg';
-const MAP_W=1536,MAP_H=1024,UNLOCKED=23;
+const _URL_PARAMS=new URLSearchParams(location.search);
+const _IS_PLAYTEST=_URL_PARAMS.get('playtest')==='1';
+const _CUSTOM_MAP=typeof loadCustomOverworldMap==='function'?loadCustomOverworldMap():null;
+const _USE_CUSTOM=!!(_CUSTOM_MAP&&(typeof isCustomOverworldActive==='function'?isCustomOverworldActive():false));
+const MAP_W=_CUSTOM_MAP?.mapWidth||1536,MAP_H=_CUSTOM_MAP?.mapHeight||1024;
+let MAP_MAX_STAGE=20;
 
 // Mobile viewport height fix (accounts for browser chrome on iOS/Android)
 function setVH(){document.documentElement.style.setProperty('--vh',(window.innerHeight*.01)+'px');}
@@ -310,16 +320,8 @@ function isNodeCompleted(n){
   }
   return n.type==='start';
 }
-function isActionable(n){
-  if(!n || n.type==='start') return false;
-  if(isCombatNode(n)) return Number(n.stage||0) === getCurrentActionableStage();
-  if(n.type==='shop'){
-    const prev=NODES[n.id-1];
-    return OVERWORLD_PROGRESS.completedStage >= Number(prev?.stage||0);
-  }
-  return false;
-}
 function isNodeUnlocked(n){
+  if(_IS_PLAYTEST&&_USE_CUSTOM&&n&&n.type!=='start') return true;
   if(!n||n.type==='start') return true;
   if(n.type==='shop'){
     const prev=NODES[n.id-1];
@@ -327,6 +329,16 @@ function isNodeUnlocked(n){
   }
   if(isCombatNode(n)){
     return (OVERWORLD_PROGRESS.completedStage||0) >= Number(n.stage||1)-1;
+  }
+  return false;
+}
+function isActionable(n){
+  if(_IS_PLAYTEST&&_USE_CUSTOM&&n&&n.type!=='start') return true;
+  if(!n || n.type==='start') return false;
+  if(isCombatNode(n)) return Number(n.stage||0) === getCurrentActionableStage();
+  if(n.type==='shop'){
+    const prev=NODES[n.id-1];
+    return OVERWORLD_PROGRESS.completedStage >= Number(prev?.stage||0);
   }
   return false;
 }
@@ -616,7 +628,7 @@ const BIRDS=[
 ];
 
 // Nodes matched to Blackstone image landmarks (1536x1024)
-const NODES=[
+const DEFAULT_NODES=[
   {id:0,  type:'start', name:'The Barn',           x:1211, y:764,  stage:0, terrain:'Old Farmstead'},
   {id:1,  type:'stage', name:'Barn Gate',           x:1086, y:825,  stage:1, terrain:'Overgrown Yard', portraitBird:'sparrow'},
   {id:2,  type:'stage', name:'Riverside Crossing',  x:922,  y:853,  stage:2, terrain:'River Ford', portraitBird:'crow'},
@@ -642,6 +654,29 @@ const NODES=[
   {id:22, type:'stage', name:'Throne Gate',          x:766,  y:184,  stage:19, terrain:'Throne Approach', portraitBird:'baldEagle'},
   {id:23, type:'boss',  name:"Blakiston's Court",    x:792,  y:82,   stage:20, terrain:'Castle Throne', final:true},
 ];
+let NODES=_USE_CUSTOM
+  ? (typeof normalizeOwMapNodes==='function'?normalizeOwMapNodes(_CUSTOM_MAP.nodes):(_CUSTOM_MAP.nodes||[]).map((n,i)=>Object.assign({},n,{id:i})))
+  : DEFAULT_NODES.map(n=>Object.assign({},n));
+let UNLOCKED=NODES.length-1;
+if(_USE_CUSTOM){
+  MAP_MAX_STAGE=_CUSTOM_MAP.maxStage|| (typeof getMaxStageFromOwNodes==='function'?getMaxStageFromOwNodes(NODES):20);
+  if(_CUSTOM_MAP.backgroundDataUrl){
+    const _bgEl=document.getElementById('bg-img');
+    if(_bgEl) _bgEl.src=_CUSTOM_MAP.backgroundDataUrl;
+  }
+  const _hdrTitle=document.querySelector('#hdr h1');
+  if(_hdrTitle&&_CUSTOM_MAP.name) _hdrTitle.textContent=String(_CUSTOM_MAP.name).toUpperCase();
+}
+if(_IS_PLAYTEST&&_USE_CUSTOM){
+  const _forgeBtn=document.getElementById('hdr-forge-btn');
+  if(_forgeBtn){
+    _forgeBtn.classList.add('is-visible');
+    _forgeBtn.addEventListener('click',()=>{
+      try{ if(typeof clearCustomOverworldMode==='function') clearCustomOverworldMode(); }catch(_){}
+      location.href='index.html?forge=1';
+    });
+  }
+}
 
 const NVC={
   start:{ring:'#60883a',glow:'rgba(96,136,58,.3)',r:22,lock:'#2a3820'},
@@ -998,6 +1033,7 @@ requestAnimationFrame(()=>requestAnimationFrame(()=>{pl.style.transition='left .
     owState,
     saveStage: save?.stage,
     nodes: NODES,
+    maxStage: _USE_CUSTOM ? MAP_MAX_STAGE : 20,
   });
   const activeBirdKey  = save?.player?.birdKey || owState?.birdKey || null;
   const currentStage   = Math.max(1, overworldProgress.completedStage + 1);

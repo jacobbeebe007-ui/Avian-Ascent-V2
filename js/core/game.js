@@ -1531,6 +1531,27 @@ function grantUnlock(id) {
 }
 function isUnlocked(id) { return !!getUnlocks()[id]; }
 
+function isBuildNestUnlocked() {
+  try { return localStorage.getItem('avian_buildnest_unlocked') === '1'; } catch(_) { return false; }
+}
+function syncBuildNestUnlockUI() {
+  document.body.classList.toggle('build-nest-unlocked', isBuildNestUnlocked());
+}
+globalThis.isBuildNestUnlocked = isBuildNestUnlocked;
+globalThis.syncBuildNestUnlockUI = syncBuildNestUnlockUI;
+
+function getActiveOwNodesForProgress() {
+  if (typeof globalThis.isCustomOverworldActive !== 'function' || !globalThis.isCustomOverworldActive()) return null;
+  const map = typeof globalThis.loadCustomOverworldMap === 'function' ? globalThis.loadCustomOverworldMap() : null;
+  return map?.nodes || null;
+}
+function getStoryMaxStage() {
+  const custom = typeof globalThis.getActiveCustomOverworldMaxStage === 'function'
+    ? globalThis.getActiveCustomOverworldMaxStage() : null;
+  return custom != null ? custom : 20;
+}
+globalThis.getStoryMaxStage = getStoryMaxStage;
+
 
 // ============================================================
 //  UNLOCK PROGRESSION (Stage 10/20 + special endless)
@@ -3374,12 +3395,13 @@ function continueToNextEncounterBird(){
 }
 
 function normalizeOverworldProgress(progress=null, fallbackStage=1) {
+  const maxStage = getStoryMaxStage();
   const impl = globalThis.normalizeOverworldProgressShared;
-  if(typeof impl === 'function') return impl(progress, fallbackStage);
+  if(typeof impl === 'function') return impl(progress, fallbackStage, maxStage);
   const nextStage = Math.max(1, Math.floor(Number(fallbackStage) || 1));
   const rawCompleted = Number(progress?.completedStage);
   const ceiling = Math.max(0, nextStage - 1);
-  const merged = Math.min(20, Math.max(
+  const merged = Math.min(maxStage, Math.max(
     ceiling,
     Number.isFinite(rawCompleted) ? Math.floor(rawCompleted) : 0
   ));
@@ -3408,9 +3430,10 @@ function finalizeOverworldStageClear(clearedStage, nodeId, summary={}) {
   const stageNum = Math.max(1, Math.floor(Number(clearedStage) || 1));
   const progress = ensureOverworldProgress(stageNum);
   progress.completedStage = Math.max(progress.completedStage || 0, stageNum);
+  const owNodes = getActiveOwNodesForProgress();
   const nextCursor =
     typeof globalThis.resolveOverworldCursorNodeIdAfterClear === 'function'
-      ? globalThis.resolveOverworldCursorNodeIdAfterClear(progress.completedStage)
+      ? globalThis.resolveOverworldCursorNodeIdAfterClear(progress.completedStage, owNodes)
       : null;
   if (nextCursor != null) progress.currentNodeId = nextCursor;
   else if (Number.isFinite(Number(nodeId))) progress.currentNodeId = Math.max(0, Math.floor(Number(nodeId)));
@@ -3419,7 +3442,7 @@ function finalizeOverworldStageClear(clearedStage, nodeId, summary={}) {
     nodeId: Number.isFinite(Number(nodeId)) ? Math.max(0, Math.floor(Number(nodeId))) : progress.currentNodeId,
     shinyGain: Math.max(0, Math.floor(Number(summary?.shinyGain) || 0)),
     enemiesDefeated: Math.max(1, Math.floor(Number(summary?.enemiesDefeated) || 1)),
-    nextStage: Math.min(20, stageNum + 1),
+    nextStage: Math.min(getStoryMaxStage(), stageNum + 1),
   };
   G.stage = Math.max(1, progress.completedStage + 1);
   return progress;
@@ -4403,7 +4426,7 @@ function showNextStagePreview() {
   const el=document.getElementById('next-stage-preview');
   if(!el) return;
   const nextStage=G.stage+1;
-  if(!G.endlessMode && nextStage > 20){ el.style.display='none'; return; }
+  if(!G.endlessMode && nextStage > getStoryMaxStage()){ el.style.display='none'; return; }
   let enemy;
   if(G.endlessMode&&nextStage>20){
     el.innerHTML=`<div class="nsp-title">Next Up</div><div class="nsp-enemy">⚔</div><div class="nsp-name" style="color:var(--gold)">Endless Battle ${G.endlessBattle+1}</div><div class="nsp-stats">Scaled enemies await...</div>`;
@@ -4599,6 +4622,17 @@ function renderStarterFallbackGrid(reason=''){
 
 function initSelectionSafe(){
   // If we navigated back from the overworld, handle the pending intent first.
+  try { syncBuildNestUnlockUI(); } catch(_) {}
+  try {
+    const params = new URLSearchParams(globalThis.location?.search || '');
+    if (params.get('forge') === '1' && isBuildNestUnlocked()) {
+      try { globalThis.history.replaceState(null, '', globalThis.location.pathname + globalThis.location.hash); } catch(_) {}
+      if (typeof globalThis.openMapForge === 'function') {
+        globalThis.openMapForge();
+        return;
+      }
+    }
+  } catch(_) {}
   try { if (handleOverworldReturn()) return; } catch(_) {}
   try{
     initSelection();
@@ -5195,6 +5229,11 @@ function startGame() {
   // Launch the overworld map between stages (endless mode goes straight to battle)
   if (!G.endlessMode) {
     try {
+      const mode = typeof globalThis.getCustomOverworldMode === 'function'
+        ? globalThis.getCustomOverworldMode() : null;
+      if (mode === 'playtest' && typeof globalThis.clearCustomOverworldMode === 'function') {
+        globalThis.clearCustomOverworldMode();
+      }
       localStorage.setItem(_OW_STATE_KEY, JSON.stringify({nodeId:0, birdKey:G.selected}));
       localStorage.removeItem(_OW_NAV_KEY);
       window.location.href = 'blackstone_overworld_new.html';
@@ -5670,7 +5709,7 @@ function showScreen(id) {
   closeSelectHubPanel();
   document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
   document.getElementById(id).classList.add('active');
-  if(id==='screen-stork-shop' || id==='screen-grove'){
+  if(id==='screen-stork-shop' || id==='screen-grove' || id==='screen-map-forge'){
     const el=document.getElementById(id);
     if(el){
       el.scrollTop=0;
@@ -5685,6 +5724,7 @@ function showScreen(id) {
   runModuleHook('onScreenChange', evt);
   syncThemeBgmPlaybackForScreen(id);
 }
+globalThis.showScreen = showScreen;
 
 // ============================================================
 //  UI
@@ -12403,8 +12443,8 @@ function afterLevelUp() {
 function advanceStage() {
   G.stage++;
   if(isEndlessRunActive()) applyEndlessProgressionMilestones();
-  // Story run ends after stage 20 (ENEMIES.length is template count, not stage cap — do not use it here)
-  if(!G.endlessMode && G.stage > 20){
+  // Story run ends after final story stage (20 for default Blackstone map)
+  if(!G.endlessMode && G.stage > getStoryMaxStage()){
     try { localStorage.removeItem(_OW_STATE_KEY); localStorage.removeItem(_OW_NAV_KEY); } catch(_) {}
     deleteSave();
     showVictory();
@@ -12925,10 +12965,10 @@ function updateStageProgress() {
   const curStage=getEncounterStage();
   if(G.endlessMode&&curStage>20){wrap.style.display='none';return;}
   wrap.style.display='flex';
-  const total=20;
+  const total=getStoryMaxStage();
   const cur=Math.min(curStage,total);
   document.getElementById('stage-progress-fill').style.width=(cur/total*100)+'%';
-  document.getElementById('stage-progress-txt').textContent=`${cur}/20`;
+  document.getElementById('stage-progress-txt').textContent=`${cur}/${total}`;
   // Mark boss stages
   const bossEl=document.getElementById('stage-progress-bosses');
   if(bossEl&&!bossEl.children.length){
@@ -13999,6 +14039,16 @@ function checkDevCode(val) {
     if (msg) { msg.textContent = '📖 Reference: all Codex entries unlocked for browsing.'; msg.style.color = 'var(--gold-light)'; }
     setTimeout(() => { if (msg) msg.textContent = ''; }, 3200);
     renderReferenceGuide();
+    return;
+  }
+  if (code === 'buildnest') {
+    try { localStorage.setItem('avian_buildnest_unlocked', '1'); } catch(_) {}
+    const input = document.getElementById('dev-code-input');
+    if (input) input.value = '';
+    if (msg) { msg.textContent = '🪺 Build Nest unlocked — map forge available in the war room.'; msg.style.color = 'var(--gold-light)'; }
+    setTimeout(() => { if (msg) msg.textContent = ''; }, 3200);
+    syncBuildNestUnlockUI();
+    initSelectionSafe();
     return;
   }
   if (val.length >= 10) {

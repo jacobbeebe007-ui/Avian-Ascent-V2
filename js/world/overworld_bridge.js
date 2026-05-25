@@ -9,19 +9,26 @@
     SAVE: 'avianAscent_save_v2',
     STATE: 'avianAscent_overworld',
     NAV: 'avianAscent_nav',
+    CUSTOM_MAP: 'avian_map_forge_active_map',
+    CUSTOM_MODE: 'avian_use_custom_overworld',
+    BUILDNEST: 'avian_buildnest_unlocked',
+    FORGE_DRAFTS: 'avian_map_forge_drafts',
+    FORGE_CURRENT_ID: 'avian_map_forge_current_id',
   };
 
   /**
    * Canonical merge — keep in sync with normalizeOverworldProgress in game.js callers.
    * @param {object|null|undefined} progress
    * @param {number} fallbackStage current story stage (ceiling for completedStage)
+   * @param {number} [maxStage=20] story stage cap for this map
    */
-  function normalizeOverworldProgressShared(progress, fallbackStage) {
+  function normalizeOverworldProgressShared(progress, fallbackStage, maxStage) {
+    const cap = Math.max(1, Math.floor(Number(maxStage) || 20));
     const nextStage = Math.max(1, Math.floor(Number(fallbackStage) || 1));
     const rawCompleted = Number(progress?.completedStage);
     const ceiling = Math.max(0, nextStage - 1);
     const merged = Math.min(
-      20,
+      cap,
       Math.max(ceiling, Number.isFinite(rawCompleted) ? Math.floor(rawCompleted) : 0)
     );
     const completedStage = Math.min(merged, ceiling);
@@ -50,15 +57,101 @@
     return 0;
   };
 
+  /** Highest combat stage number on a node list. */
+  global.getMaxStageFromOwNodes = function (nodes) {
+    const arr = nodes || [];
+    let max = 0;
+    for (const n of arr) {
+      if (!global.isOwCombatNode(n)) continue;
+      max = Math.max(max, Math.floor(Number(n.stage) || 0));
+    }
+    return Math.max(1, max || 20);
+  };
+
+  /** @param {Array} nodes */
+  global.buildStageToNodeMap = function (nodes) {
+    /** @type {Record<number, number>} */
+    const map = {};
+    for (const n of nodes || []) {
+      if (!global.isOwCombatNode(n)) continue;
+      const st = Math.floor(Number(n.stage) || 0);
+      if (st > 0) map[st] = Math.max(0, Math.floor(Number(n.id) || 0));
+    }
+    return map;
+  };
+
+  global.loadCustomOverworldMap = function () {
+    try {
+      const raw = global.localStorage.getItem(global.AVIAN_OW_KEYS.CUSTOM_MAP);
+      if (!raw) return null;
+      const parsed = JSON.parse(raw);
+      if (!parsed || !Array.isArray(parsed.nodes) || !parsed.nodes.length) return null;
+      return parsed;
+    } catch (_) {
+      return null;
+    }
+  };
+
+  global.getCustomOverworldMode = function () {
+    try {
+      return global.localStorage.getItem(global.AVIAN_OW_KEYS.CUSTOM_MODE) || null;
+    } catch (_) {
+      return null;
+    }
+  };
+
+  global.isCustomOverworldActive = function () {
+    const mode = global.getCustomOverworldMode();
+    return mode === 'run' || mode === 'playtest';
+  };
+
+  global.getActiveCustomOverworldMaxStage = function () {
+    if (!global.isCustomOverworldActive()) return null;
+    const map = global.loadCustomOverworldMap();
+    if (!map) return null;
+    if (Number.isFinite(Number(map.maxStage)) && Number(map.maxStage) > 0) {
+      return Math.floor(Number(map.maxStage));
+    }
+    return global.getMaxStageFromOwNodes(map.nodes);
+  };
+
+  global.persistCustomOverworldMap = function (mapDef) {
+    try {
+      global.localStorage.setItem(global.AVIAN_OW_KEYS.CUSTOM_MAP, JSON.stringify(mapDef));
+      return true;
+    } catch (_) {
+      return false;
+    }
+  };
+
+  global.setCustomOverworldMode = function (mode) {
+    try {
+      if (mode) global.localStorage.setItem(global.AVIAN_OW_KEYS.CUSTOM_MODE, String(mode));
+      else global.localStorage.removeItem(global.AVIAN_OW_KEYS.CUSTOM_MODE);
+    } catch (_) {}
+  };
+
+  global.clearCustomOverworldMode = function () {
+    global.setCustomOverworldMode(null);
+  };
+
   /**
    * Map node id for the next combat story stage after clearing `completedStage`
    * (matches blackstone_overworld_new.html NODES; shops are skipped).
    * @param {number} completedStage stage just cleared (1–20)
-   * @returns {number|null} map node id, or null to use caller fallback (e.g. beat stage 20)
+   * @param {Array|null} [nodes] optional custom node list
+   * @returns {number|null} map node id, or null to use caller fallback (e.g. beat final stage)
    */
-  global.resolveOverworldCursorNodeIdAfterClear = function (completedStage) {
+  global.resolveOverworldCursorNodeIdAfterClear = function (completedStage, nodes) {
     const st = Math.max(0, Math.floor(Number(completedStage) || 0));
     const nextStage = st + 1;
+    if (Array.isArray(nodes) && nodes.length) {
+      const maxStage = global.getMaxStageFromOwNodes(nodes);
+      if (nextStage > maxStage) return null;
+      const stageToNode = global.buildStageToNodeMap(nodes);
+      const id = stageToNode[nextStage];
+      return Number.isFinite(id) ? id : null;
+    }
     if (nextStage > 20) return null;
     /** @type {Record<number, number>} */
     const stageToNode = {
@@ -77,6 +170,9 @@
     const owState = opts.owState || null;
     const saveStage = opts.saveStage;
     const nodes = opts.nodes || [];
+    const maxStage = opts.maxStage != null
+      ? Math.max(1, Math.floor(Number(opts.maxStage) || 20))
+      : global.getMaxStageFromOwNodes(nodes);
     const owNodeId = Number(owState?.nodeId);
     const inferredCompletedStage = Number.isFinite(owNodeId)
       ? global.inferOwCompletedStageFromNodeId(owNodeId, nodes)
@@ -86,15 +182,20 @@
       Math.max(0, Math.floor(Number(savedProgress?.completedStage ?? ((saveStage || 1) - 1)) || 0))
     );
     const savedNodeId = Number(savedProgress?.currentNodeId);
-    return {
-      completedStage: savedCompletedStage,
-      currentNodeId: Number.isFinite(owNodeId)
-        ? Math.max(0, Math.floor(owNodeId))
-        : Number.isFinite(savedNodeId)
-          ? Math.max(0, Math.floor(savedNodeId))
-          : 0,
-      lastSummary: savedProgress?.lastSummary || null,
-    };
+    const normalized = normalizeOverworldProgressShared(
+      {
+        completedStage: savedCompletedStage,
+        currentNodeId: Number.isFinite(owNodeId)
+          ? Math.max(0, Math.floor(owNodeId))
+          : Number.isFinite(savedNodeId)
+            ? Math.max(0, Math.floor(savedNodeId))
+            : 0,
+        lastSummary: savedProgress?.lastSummary || null,
+      },
+      Math.max(1, Number(saveStage) || 1),
+      maxStage
+    );
+    return normalized;
   };
 
   global.readOwSaveParsed = function () {
@@ -136,5 +237,17 @@
     try {
       global.localStorage.setItem(global.AVIAN_OW_KEYS.NAV, JSON.stringify(obj));
     } catch (_) {}
+  };
+
+  global.normalizeOwMapNodes = function (nodes) {
+    const list = Array.isArray(nodes) ? nodes.slice() : [];
+    return list.map((n, i) => {
+      const copy = Object.assign({}, n);
+      copy.id = i;
+      copy.x = Math.round(Number(copy.x) || 0);
+      copy.y = Math.round(Number(copy.y) || 0);
+      if (copy.type === 'start') copy.stage = 0;
+      return copy;
+    });
   };
 })(typeof window !== 'undefined' ? window : globalThis);
