@@ -35,6 +35,7 @@ body::before{content:'';position:fixed;inset:0;background-image:radial-gradient(
   min-height:100vh;
 }
 #app:has(#screen-select.active) > header{display:none !important;}
+#app:has(#screen-battle.active) > header{display:none !important;}
 header{text-align:center;padding:24px 0 16px;border-bottom:1px solid rgba(201,168,76,.25);margin-bottom:24px;}
 header h1{font-family:'Cinzel',serif;font-size:2.6rem;font-weight:900;letter-spacing:.1em;background:linear-gradient(135deg,var(--gold) 0%,var(--gold-light) 50%,var(--gold) 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
 header p{color:var(--text-dim);font-style:italic;font-size:1rem;margin-top:4px;}
@@ -325,6 +326,17 @@ header p{color:var(--text-dim);font-style:italic;font-size:1rem;margin-top:4px;}
   text-align:right;
   max-width:min(200px, 40vw);
 }
+.splash-hotspot--fortune{
+  /* Feathers & Fortune — middle-right */
+  right:clamp(4%, 5vw, 14%);
+  left:auto;
+  top:50%;
+  bottom:auto;
+  transform:translateY(-50%);
+  align-items:flex-end;
+  text-align:right;
+  max-width:min(200px, 40vw);
+}
 .splash-hotspot--door{
   /* Open doorway — upper-center */
   left:50%;
@@ -366,6 +378,9 @@ body.build-nest-unlocked .splash-hotspot--forge.is-buildnest-hidden{
 .splash-hotspot--map:hover{
   transform:translateY(-2px);
 }
+.splash-hotspot--fortune:hover{
+  transform:translateY(calc(-50% - 2px));
+}
 .splash-hotspot--door:hover{
   transform:translate(-50%,calc(-50% - 2px));
 }
@@ -402,6 +417,13 @@ body.build-nest-unlocked .splash-hotspot--forge.is-buildnest-hidden{
   .splash-hotspot--map{
     right:2%;
     bottom:clamp(10%, 7vh, 20%);
+    max-width:42vw;
+    padding:8px 10px;
+  }
+  .splash-hotspot--fortune{
+    right:2%;
+    top:42%;
+    transform:translateY(-50%);
     max-width:42vw;
     padding:8px 10px;
   }
@@ -505,6 +527,48 @@ body.build-nest-unlocked .splash-hotspot--forge.is-buildnest-hidden{
 .supplies-subnav-btn:focus-visible{outline:2px solid var(--gold);outline-offset:2px;}
 .supplies-subview{display:none;flex-direction:column;gap:12px;}
 .supplies-subview.is-active{display:flex;}
+.fortune-subview{display:none;flex-direction:column;gap:12px;}
+.fortune-subview.is-active{display:flex;}
+.fortune-currency-bar{
+  display:flex;flex-wrap:wrap;gap:12px 20px;
+  padding:10px 14px;margin-bottom:12px;
+  border-radius:10px;border:1px solid rgba(201,168,76,.28);
+  background:rgba(14,16,22,.5);
+  font-size:.82rem;color:var(--text-dim);
+}
+.fortune-currency-item strong{color:var(--gold-light);font-family:'Cinzel',serif;}
+.fortune-store-msg{min-height:1.2em;font-size:.78rem;color:var(--gold-light);margin:0 0 8px;}
+.fortune-birds-grid{
+  display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;
+}
+.fortune-bird-card{
+  display:flex;flex-direction:column;align-items:center;gap:6px;
+  padding:12px 10px;border-radius:10px;
+  border:1px solid rgba(120,100,70,.35);
+  background:rgba(8,10,14,.55);
+  text-align:center;
+}
+.fortune-bird-card.is-owned{opacity:.72;border-color:rgba(106,184,154,.35);}
+.fortune-bird-portrait{width:56px;height:56px;}
+.fortune-bird-name{font-family:'Cinzel',serif;font-size:.78rem;color:var(--gold-light);}
+.fortune-bird-cost{font-size:.7rem;color:var(--text-dim);}
+.fortune-bird-hint{font-size:.62rem;color:var(--text-dim);line-height:1.25;}
+.fortune-hire-btn{margin-top:4px;font-size:.68rem;padding:5px 10px;}
+.fortune-hire-btn:disabled{opacity:.5;cursor:not-allowed;}
+.fortune-artifact-lead{font-size:.8rem;color:var(--text-dim);margin:0 0 10px;}
+.fortune-artifact-stub{
+  display:flex;gap:10px;align-items:flex-start;
+  padding:10px 12px;margin-bottom:8px;border-radius:10px;
+  border:1px solid rgba(120,100,70,.3);background:rgba(6,8,10,.45);
+}
+.fortune-artifact-icon{font-size:1.4rem;}
+.fortune-artifact-name{font-family:'Cinzel',serif;font-size:.78rem;color:var(--gold-light);}
+.fortune-artifact-desc{font-size:.72rem;color:var(--text-dim);margin-top:2px;}
+.fortune-artifact-soon{font-size:.65rem;color:rgba(201,168,76,.65);margin-top:4px;font-style:italic;}
+.fortune-owned-title{font-family:'Cinzel',serif;font-size:.72rem;letter-spacing:.08em;color:var(--text-dim);text-transform:uppercase;margin:14px 0 6px;}
+.fortune-empty{font-size:.78rem;color:var(--text-dim);text-align:center;padding:12px;}
+.fortune-owned-row{font-size:.76rem;color:var(--text-dim);padding:4px 0;}
+.select-hub-panel-inner--fortune{max-width:min(720px,96vw);}
 .supplies-records-lead{margin-bottom:0;}
 #supplies-view-records .supplies-records-block{
   margin:0;
@@ -2905,7 +2969,7 @@ img{image-rendering:pixelated;image-rendering:crisp-edges;}
 .tactical-action-tray{background:linear-gradient(180deg,rgba(4,8,4,.96),rgba(3,6,3,.97));border:1px solid rgba(200,160,32,.3);border-radius:14px;padding:14px 14px 12px;margin-top:6px;box-shadow:0 -6px 22px rgba(0,0,0,.38),inset 0 1px 0 rgba(255,255,255,.04);border-top:1px solid rgba(200,160,32,.22);}
 .tactical-action-tray h3{margin-bottom:10px;font-size:.86rem;letter-spacing:.1em;padding-bottom:6px;border-bottom:1px solid rgba(200,160,32,.14);}
 #screen-battle .actions-grid-footer{border-top-color:rgba(200,160,32,.2);}
-.actions-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;}
+.actions-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;}
 .action-btn{min-height:120px;min-width:0;padding:9px 10px;border-radius:10px;gap:4px;align-items:stretch;}
 #screen-battle .action-btn.endturn-mini{min-height:auto;align-self:center;}
 .btn-name{font-size:.83rem;line-height:1.2;}

@@ -1531,6 +1531,34 @@ function grantUnlock(id) {
 }
 function isUnlocked(id) { return !!getUnlocks()[id]; }
 
+/** Stages fully cleared this Flight (1 egg each, awarded only on victory or defeat). */
+function getStagesCompletedThisFlight() {
+  const stage = Math.max(1, Math.floor(Number(G.stage) || 1));
+  const storyMax = getStoryMaxStage();
+  let completed = Math.max(0, stage - 1);
+  if (!G.endlessMode && G._overworldProgress) {
+    const ow = Math.max(0, Math.floor(Number(G._overworldProgress.completedStage) || 0));
+    completed = Math.max(completed, ow);
+  }
+  if (!G.endlessMode && stage > storyMax) completed = storyMax;
+  return completed;
+}
+
+/** Grant Saved Eggs once when a Flight ends in victory or defeat (not on abandon). */
+function awardSavedEggsForFlightEnd() {
+  if (G._savedEggsFlightEndAwarded) return 0;
+  const n = getStagesCompletedThisFlight();
+  if (n <= 0) return 0;
+  G._savedEggsFlightEndAwarded = true;
+  if (typeof globalThis.addSavedEggs === 'function') globalThis.addSavedEggs(n);
+  return n;
+}
+
+function tryAwardGoldenGooseEgg() {
+  /* TODO: enable drop when Golden Goose Egg loot is designed */
+  return false;
+}
+
 function isBuildNestUnlocked() {
   try { return localStorage.getItem('avian_buildnest_unlocked') === '1'; } catch(_) { return false; }
 }
@@ -2426,28 +2454,8 @@ function openNest() {
   if(!p){content.innerHTML='<p style="color:var(--text-dim);text-align:center">No active run.</p>';modal.classList.add('open');return;}
   sub.textContent=`${p.name} · Stage ${G.stage} · Lv.${p.birdLevel} · 🪶 ${Math.max(0, Number(p.mutatedFeatherCount)||0)}`;
   let html='';
-  // Passive trait
-  const bd=BIRDS[p.birdKey];
-  if(bd&&bd.passive){
-    html+=`<div class="nest-passive"><div class="nest-passive-title">★ PASSIVE: ${bd.passive.name}</div>${bd.passive.desc}</div>`;
-  }
-  const ownedClassPerks=getBirdClassPerks(p.birdKey);
-  if(ownedClassPerks.length){
-    const role=getBirdClassRoleByKey(p.birdKey);
-    const perkCards=ownedClassPerks.map(perkId=>{
-      const perk=(CLASS_PERK_BY_CLASS[role]||[]).find(entry=>entry.id===perkId);
-      if(!perk) return '';
-      return `<div class="nest-reward-row"><span class="nest-reward-icon">🧬</span><span class="nest-reward-name">${perk.name}</span><span class="nest-reward-desc">${perk.desc}</span></div>`;
-    }).join('');
-    if(perkCards){
-      html+=`<div class="nest-section"><div class="nest-section-title">🧬 Class Perks · ${idToClassLabel(role)}</div><div class="nest-rewards-list">${perkCards}</div></div>`;
-    }
-  }
-  html+=buildNestEquipmentSection(p);
-  html+=buildNestAbilitySection(p);
-  // Stats
+  // Stats (first — in-battle values when G.turn is set)
   const s=p.stats;
-  // Compute effective in-battle stats
   const _nestWarcry=G.warcryActive?(s.atk||0)*(1+G.warcryATK/100):s.atk;
   const _nestDef=s.def+(G.battleHymnActive?G.battleHymnDEF:0);
   const _nestAcc=Math.min(100,s.acc+(G.battleHymnActive?G.battleHymnACC:0)-(G.playerStatus.accDebuff||0));
@@ -2471,6 +2479,25 @@ function openNest() {
     <div class="nest-stat-card" title="Magic Attack — improves spell and ailment potency"><div class="nest-stat-val" style="color:#6ae8e8">${formatCombatNumber(s.matk||8)}</div><div class="nest-stat-lbl" style="color:#4ab8c0">✦ M.ATK</div></div>
     <div class="nest-stat-card" title="Magic Defence — resists enemy spells and ailments"><div class="nest-stat-val" style="color:#6ae8e8">${formatCombatNumber(s.mdef||8)}</div><div class="nest-stat-lbl" style="color:#4ab8c0">✦ M.DEF</div></div>
   </div></div>`;
+  // Passive trait
+  const bd=BIRDS[p.birdKey];
+  if(bd&&bd.passive){
+    html+=`<div class="nest-passive"><div class="nest-passive-title">★ PASSIVE: ${bd.passive.name}</div>${bd.passive.desc}</div>`;
+  }
+  const ownedClassPerks=getBirdClassPerks(p.birdKey);
+  if(ownedClassPerks.length){
+    const role=getBirdClassRoleByKey(p.birdKey);
+    const perkCards=ownedClassPerks.map(perkId=>{
+      const perk=(CLASS_PERK_BY_CLASS[role]||[]).find(entry=>entry.id===perkId);
+      if(!perk) return '';
+      return `<div class="nest-reward-row"><span class="nest-reward-icon">🧬</span><span class="nest-reward-name">${perk.name}</span><span class="nest-reward-desc">${perk.desc}</span></div>`;
+    }).join('');
+    if(perkCards){
+      html+=`<div class="nest-section"><div class="nest-section-title">🧬 Class Perks · ${idToClassLabel(role)}</div><div class="nest-rewards-list">${perkCards}</div></div>`;
+    }
+  }
+  html+=buildNestEquipmentSection(p);
+  html+=buildNestAbilitySection(p);
   // Run bonuses (feathers / card stats / mechanics) — above collected card list
   const Ldg=p._statLedger;
   const upgMap=Ldg?.fromUpgrades||{};
@@ -3113,6 +3140,7 @@ function clearAllProgress() {
     globalThis.AVIAN_OW_KEYS?.STATE ?? 'avianAscent_overworld',
     globalThis.AVIAN_OW_KEYS?.NAV ?? 'avianAscent_nav',
     UNLOCK_KEY,
+    globalThis.FORTUNE_META_KEY || 'avianAscent_meta_v1',
     RUN_HISTORY_KEY,
     HIGHSCORE_KEY,
     TELEMETRY_KEY,
@@ -3180,6 +3208,7 @@ function continueRun() {
   G.endlessBattle=save.endlessBattle||0;
   G.bossKills=save.bossKills||0;
   G.stage=Math.max(1,Math.floor(Number(save.stage)||1));
+  G._savedEggsFlightEndAwarded = false;
   G._overworldProgress = normalizeOverworldProgress(save.overworldProgress||null, G.stage);
   if(!G.endlessMode && _isOverworldRun()){
     G.stage = Math.max(1, (G._overworldProgress?.completedStage||0) + 1);
@@ -5384,6 +5413,7 @@ function startGame() {
   G.runUpgradesPurchased = new Set();
   G.codex = {abilities:{},enemies:{},birds:{},artifacts:{},statuses:{}};
   G.shinyObjects = 0;
+  G._savedEggsFlightEndAwarded = false;
   G.runClassPerks = [];
   G.classPerks = {};
   G._classPerkChoicesGranted = 0;
@@ -5831,14 +5861,152 @@ function setSuppliesSubView(which){
 }
 globalThis.setSuppliesSubView = setSuppliesSubView;
 
+let _fortuneTab = 'birds';
+
+function setFortuneTab(which) {
+  const tab = which === 'artifacts' ? 'artifacts' : 'birds';
+  _fortuneTab = tab;
+  const birdsView = document.getElementById('fortune-view-birds');
+  const artView = document.getElementById('fortune-view-artifacts');
+  const bBirds = document.getElementById('fortune-nav-birds');
+  const bArt = document.getElementById('fortune-nav-artifacts');
+  if (birdsView) birdsView.classList.toggle('is-active', tab === 'birds');
+  if (artView) artView.classList.toggle('is-active', tab === 'artifacts');
+  if (bBirds) {
+    bBirds.classList.toggle('is-active', tab === 'birds');
+    bBirds.setAttribute('aria-selected', String(tab === 'birds'));
+  }
+  if (bArt) {
+    bArt.classList.toggle('is-active', tab === 'artifacts');
+    bArt.setAttribute('aria-selected', String(tab === 'artifacts'));
+  }
+  renderFortuneStore();
+}
+globalThis.setFortuneTab = setFortuneTab;
+
+function renderFortuneCurrencyBar() {
+  const savedEl = document.getElementById('fortune-saved-eggs-count');
+  const gooseEl = document.getElementById('fortune-goose-eggs-count');
+  const saved = typeof globalThis.getSavedEggBalance === 'function' ? globalThis.getSavedEggBalance() : 0;
+  const goose = typeof globalThis.getGoldenGooseEggBalance === 'function' ? globalThis.getGoldenGooseEggBalance() : 0;
+  if (savedEl) savedEl.textContent = String(saved);
+  if (gooseEl) gooseEl.textContent = String(goose);
+}
+
+function renderFortuneBirdsTab() {
+  const grid = document.getElementById('fortune-birds-grid');
+  const msg = document.getElementById('fortune-store-msg');
+  if (!grid) return;
+  if (typeof globalThis.rebuildFortuneHireCatalog === 'function') globalThis.rebuildFortuneHireCatalog();
+  const catalog = globalThis.FORTUNE_HIRE_BIRDS || [];
+  const balance = typeof globalThis.getSavedEggBalance === 'function' ? globalThis.getSavedEggBalance() : 0;
+  grid.innerHTML = '';
+  if (!catalog.length) {
+    grid.innerHTML = '<p class="fortune-empty">No birds available to hire yet.</p>';
+    return;
+  }
+  catalog.forEach(row => {
+    const bird = BIRDS[row.birdKey];
+    if (!bird) return;
+    const owned = isUnlocked(row.unlockId);
+    const canAfford = balance >= row.savedEggCost;
+    const card = document.createElement('div');
+    card.className = 'fortune-bird-card' + (owned ? ' is-owned' : '');
+    const portrait = typeof renderBirdIconHTML === 'function'
+      ? renderBirdIconHTML(bird.portraitKey || row.birdKey, 'small', false)
+      : '';
+    const btnDisabled = owned || !canAfford;
+    const btnLabel = owned ? 'Hired' : (canAfford ? 'Hire' : 'Need eggs');
+    card.innerHTML = `
+      <div class="fortune-bird-portrait">${portrait}</div>
+      <div class="fortune-bird-name">${bird.name}</div>
+      <div class="fortune-bird-cost">🥚 ${row.savedEggCost} Saved Eggs</div>
+      ${row.unlockHint && !owned ? `<div class="fortune-bird-hint">${row.unlockHint}</div>` : ''}
+      <button type="button" class="fortune-hire-btn menu-btn" data-action="purchaseFortuneBird:${row.birdKey}" ${btnDisabled ? 'disabled' : ''}>${btnLabel}</button>`;
+    grid.appendChild(card);
+  });
+  if (msg && !msg.dataset.pinned) msg.textContent = '';
+}
+
+function renderFortuneArtifactsTab() {
+  const list = document.getElementById('fortune-artifacts-list');
+  const ownedWrap = document.getElementById('fortune-owned-artifacts');
+  if (!list || !ownedWrap) return;
+  const stubs = globalThis.FORTUNE_ARTIFACT_STUBS || [];
+  const meta = typeof globalThis.getFortuneMeta === 'function' ? globalThis.getFortuneMeta() : { ownedArtifacts: {} };
+  const owned = meta.ownedArtifacts || {};
+  const ownedIds = Object.keys(owned).filter(id => owned[id]);
+  list.innerHTML = '<p class="fortune-artifact-lead">Artifacts are not in combat yet. Golden Goose Eggs will unlock purchases here once drops are live.</p>';
+  stubs.forEach(stub => {
+    const row = document.createElement('div');
+    row.className = 'fortune-artifact-stub';
+    row.innerHTML = `<span class="fortune-artifact-icon">${stub.icon || '✦'}</span><div><div class="fortune-artifact-name">${stub.name}</div><div class="fortune-artifact-desc">${stub.desc}</div><div class="fortune-artifact-soon">Coming soon · Golden Goose Egg</div></div>`;
+    list.appendChild(row);
+  });
+  if (!ownedIds.length) {
+    ownedWrap.innerHTML = '<p class="fortune-empty">You do not own any artifacts yet.</p>';
+  } else {
+    ownedWrap.innerHTML = ownedIds.map(id => {
+      const stub = stubs.find(s => s.id === id);
+      return `<div class="fortune-owned-row">${stub ? stub.icon + ' ' + stub.name : id}</div>`;
+    }).join('');
+  }
+}
+
+function renderFortuneStore() {
+  renderFortuneCurrencyBar();
+  if (_fortuneTab === 'artifacts') renderFortuneArtifactsTab();
+  else renderFortuneBirdsTab();
+}
+
+function purchaseFortuneBird(birdKey) {
+  const key = String(birdKey || '').trim();
+  if (!key) return;
+  const msg = document.getElementById('fortune-store-msg');
+  const catalog = globalThis.FORTUNE_HIRE_BIRDS || [];
+  const row = catalog.find(r => r.birdKey === key);
+  if (!row) {
+    if (msg) { msg.textContent = 'Unknown bird.'; msg.dataset.pinned = '1'; }
+    return;
+  }
+  if (isUnlocked(row.unlockId)) {
+    if (msg) { msg.textContent = `${BIRDS[key]?.name || key} is already on your roster.`; msg.dataset.pinned = '1'; }
+    renderFortuneStore();
+    return;
+  }
+  const balance = typeof globalThis.getSavedEggBalance === 'function' ? globalThis.getSavedEggBalance() : 0;
+  if (balance < row.savedEggCost) {
+    if (msg) { msg.textContent = `Need ${row.savedEggCost} Saved Eggs (you have ${balance}).`; msg.dataset.pinned = '1'; }
+    return;
+  }
+  if (typeof globalThis.spendSavedEggs !== 'function' || !globalThis.spendSavedEggs(row.savedEggCost)) {
+    if (msg) { msg.textContent = 'Not enough Saved Eggs.'; msg.dataset.pinned = '1'; }
+    return;
+  }
+  grantUnlock(row.unlockId);
+  if (msg) {
+    msg.textContent = `Hired ${BIRDS[key]?.name || key}!`;
+    msg.style.color = 'var(--gold-light)';
+    msg.dataset.pinned = '1';
+    setTimeout(() => { if (msg) { msg.textContent = ''; delete msg.dataset.pinned; msg.style.color = ''; } }, 2800);
+  }
+  try { buildBirdGrid(); } catch (_) { /* noop */ }
+  renderFortuneStore();
+}
+globalThis.purchaseFortuneBird = purchaseFortuneBird;
+
 function openSelectHubPanel(which){
-  const allowed = {supplies:1,map:1,door:1};
+  const allowed = {supplies:1,map:1,door:1,fortune:1};
   if(!allowed[which]) return;
   const root = document.getElementById('select-hub-panels');
   const screenEl = document.getElementById('screen-select');
   if(!root || !screenEl) return;
   if(which === 'supplies') setSuppliesSubView('reference');
-  ['supplies','map','door'].forEach(w=>{
+  if(which === 'fortune') {
+    _fortuneTab = 'birds';
+    setFortuneTab('birds');
+  }
+  ['supplies','map','door','fortune'].forEach(w=>{
     const p = document.getElementById('select-hub-'+w);
     if(!p) return;
     const on = w===which;
@@ -5860,7 +6028,7 @@ function closeSelectHubPanel(){
     root.setAttribute('aria-hidden','true');
   }
   screenEl?.classList.remove('select-hub-panel-active');
-  ['supplies','map','door'].forEach(w=>{
+  ['supplies','map','door','fortune'].forEach(w=>{
     const p = document.getElementById('select-hub-'+w);
     if(p){
       p.classList.remove('is-open');
@@ -12789,7 +12957,7 @@ function showVictory(){
   document.getElementById('gameover-title').textContent='⚔ Ascended! ⚔';
   const endMsg=G.endlessMode
     ?`${G.player.name} conquered Stage 20 and flies into endless glory! The battle continues...`
-    :`${G.player.name} conquered all 20 stages and ascended to legend! 🔓 New birds unlocked!`;
+    :`${G.player.name} conquered all ${getStoryMaxStage()} stages and ascended to legend! 🔓 New birds unlocked!`;
   const abilityList=(G.player.abilities||[]).map(a=>`${ABILITY_TEMPLATES[a.id]?.name||a.id} Lv${a.level||1}`).join(' · ');
   document.getElementById('gameover-msg').textContent=endMsg;
   const flyAgainBtn=document.getElementById('fly-again-btn');
@@ -12808,6 +12976,12 @@ function showVictory(){
     advanceStage();
     return;
   }
+  const savedEggsEarned = awardSavedEggsForFlightEnd();
+  if (savedEggsEarned > 0) {
+    const eggTxt = ` 🥚 +${savedEggsEarned} Saved Egg${savedEggsEarned > 1 ? 's' : ''} banked.`;
+    const msgEl = document.getElementById('gameover-msg');
+    if (msgEl) msgEl.textContent = (msgEl.textContent || '') + eggTxt;
+  }
   renderUnlockPopupsOnGameover();
   const endEvt={won:true, bird:G.player?.birdKey||'unknown', stageReached:G.stage||20, deathCause:'victory', endless:!!G.endlessMode};
   AvianEvents.emit('run:end', endEvt);
@@ -12823,6 +12997,7 @@ function showDefeat(){
   G.actionQueue=[];
   G.actionBusy=false;
   G.turnCount = 0;
+  const savedEggsEarned = awardSavedEggsForFlightEnd();
   deleteSave();
   SFX.defeat();
   checkRunUnlocks();
@@ -12831,7 +13006,8 @@ function showDefeat(){
   document.getElementById('gameover-inner').className='gameover-inner lose';
   document.getElementById('gameover-title').textContent='💀 Fallen';
   const stageLabel=G.endlessMode&&G.stage>20?`Endless Battle ${G.endlessBattle}`:`Stage ${G.stage}`;
-  document.getElementById('gameover-msg').textContent=`${G.player.name} fell at ${stageLabel}. Lv.${G.player.birdLevel}. Rise again.`;
+  const eggTxt = savedEggsEarned > 0 ? ` 🥚 +${savedEggsEarned} Saved Egg${savedEggsEarned > 1 ? 's' : ''} for stages cleared.` : '';
+  document.getElementById('gameover-msg').textContent=`${G.player.name} fell at ${stageLabel}. Lv.${G.player.birdLevel}. Rise again.${eggTxt}`;
   const flyAgainBtn=document.getElementById('fly-again-btn');
   if(flyAgainBtn) flyAgainBtn.style.display='inline-block';
   hideStoryCinematic();
