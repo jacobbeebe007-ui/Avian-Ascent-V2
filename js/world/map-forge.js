@@ -175,6 +175,9 @@
     if (n.final) out.final = true;
     if (n.encounter) out.encounter = JSON.parse(JSON.stringify(n.encounter));
     if (n.bonusConfig) out.bonusConfig = JSON.parse(JSON.stringify(n.bonusConfig));
+    if (Array.isArray(n.clearRewards) && n.clearRewards.length) {
+      out.clearRewards = JSON.parse(JSON.stringify(n.clearRewards));
+    }
     return out;
   }
 
@@ -224,6 +227,106 @@
     };
   }
 
+  function getSelectedNode() {
+    const slice = getEditingSlice();
+    if (!slice || _selectedId == null) return null;
+    return slice.nodes.find((x) => x.id === _selectedId) || null;
+  }
+
+  function pickNodeAtPoint(svg, e) {
+    const pt = mapPointFromEvent(svg, e);
+    const slice = getEditingSlice();
+    if (!slice) return null;
+    let best = null;
+    let bestDist = Infinity;
+    slice.nodes.forEach((n) => {
+      const vc = nvc(n);
+      const dx = pt.x - n.x;
+      const dy = pt.y - n.y;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      if (dist <= vc.r + 8 && dist < bestDist) {
+        bestDist = dist;
+        best = n;
+      }
+    });
+    return best;
+  }
+
+  function ensureNodeClearRewards(n) {
+    if (!n || !global.isForgeCombatNode || !global.isForgeCombatNode(n)) return;
+    if (!Array.isArray(n.clearRewards) && n.bonusConfig?.rewards?.length) {
+      n.clearRewards = JSON.parse(JSON.stringify(n.bonusConfig.rewards));
+      delete n.bonusConfig.rewards;
+    }
+    if (!Array.isArray(n.clearRewards)) n.clearRewards = [];
+  }
+
+  function renderClearRewardsList(n) {
+    const list = document.getElementById('map-forge-clear-reward-list');
+    if (!list) return;
+    ensureNodeClearRewards(n);
+    list.innerHTML = '';
+    const bands = global.OW_MUTATION_BAND_OPTIONS || [];
+    (n.clearRewards || []).forEach((r, i) => {
+      const row = document.createElement('div');
+      row.className = 'map-forge-clear-reward-row';
+      if (r.type === 'shinies') {
+        const lbl = document.createElement('span');
+        lbl.className = 'map-forge-reward-type-label';
+        lbl.textContent = 'Shinies';
+        const minIn = document.createElement('input');
+        minIn.type = 'number';
+        minIn.className = 'map-forge-reward-num';
+        minIn.min = '0';
+        minIn.value = String(r.min ?? 10);
+        minIn.onchange = () => {
+          r.min = Math.max(0, Math.floor(Number(minIn.value) || 0));
+          if (r.max < r.min) r.max = r.min;
+          renderClearRewardsList(n);
+        };
+        const dash = document.createElement('span');
+        dash.textContent = '–';
+        dash.className = 'map-forge-reward-dash';
+        const maxIn = document.createElement('input');
+        maxIn.type = 'number';
+        maxIn.className = 'map-forge-reward-num';
+        maxIn.min = '0';
+        maxIn.value = String(r.max ?? 25);
+        maxIn.onchange = () => {
+          r.max = Math.max(r.min ?? 0, Math.floor(Number(maxIn.value) || 0));
+          renderClearRewardsList(n);
+        };
+        row.appendChild(lbl);
+        row.appendChild(minIn);
+        row.appendChild(dash);
+        row.appendChild(maxIn);
+      } else {
+        const lbl = document.createElement('span');
+        lbl.className = 'map-forge-reward-type-label';
+        lbl.textContent = 'Mutation';
+        const tierSel = document.createElement('select');
+        tierSel.className = 'map-forge-field-input map-forge-reward-tier';
+        bands.forEach((b) => {
+          const o = document.createElement('option');
+          o.value = b.id;
+          o.textContent = b.label;
+          if ((r.tierBand || 'blue_purple') === b.id) o.selected = true;
+          tierSel.appendChild(o);
+        });
+        tierSel.onchange = () => { r.tierBand = tierSel.value; };
+        row.appendChild(lbl);
+        row.appendChild(tierSel);
+      }
+      const rm = document.createElement('button');
+      rm.type = 'button';
+      rm.textContent = '×';
+      rm.className = 'map-forge-node-move';
+      rm.onclick = () => { n.clearRewards.splice(i, 1); renderClearRewardsList(n); };
+      row.appendChild(rm);
+      list.appendChild(row);
+    });
+  }
+
   function syncBreadcrumb() {
     const el = document.getElementById('map-forge-breadcrumb');
     if (!el) return;
@@ -237,8 +340,13 @@
     const backBtn = document.getElementById('map-forge-world-back');
     if (backBtn) backBtn.style.display = _editContext === 'main' ? 'none' : '';
     const editBtn = document.getElementById('map-forge-edit-world-btn');
+    const sidebarEnter = document.getElementById('map-forge-sidebar-enter-world');
+    const sidebarExit = document.getElementById('map-forge-sidebar-exit-world');
     const n = _map?.nodes?.find((x) => x.id === _selectedId);
-    if (editBtn) editBtn.style.display = (_editContext === 'main' && n?.type === 'world') ? '' : 'none';
+    const showEnter = _editContext === 'main' && n?.type === 'world';
+    if (editBtn) editBtn.style.display = showEnter ? '' : 'none';
+    if (sidebarEnter) sidebarEnter.style.display = showEnter ? '' : 'none';
+    if (sidebarExit) sidebarExit.style.display = _editContext !== 'main' ? '' : 'none';
   }
 
   function renderDraftSelect() {
@@ -261,8 +369,10 @@
     const slice = getEditingSlice();
     const n = slice?.nodes?.find((x) => x.id === _selectedId);
     const isCombat = n && global.isForgeCombatNode && global.isForgeCombatNode(n);
+    const rewardsPanel = document.getElementById('map-forge-clear-rewards-panel');
     if (!isCombat) {
       panel.style.display = 'none';
+      if (rewardsPanel) rewardsPanel.style.display = 'none';
       return;
     }
     panel.style.display = '';
@@ -326,7 +436,7 @@
       bonusEl.style.display = showBonus ? '' : 'none';
       if (showBonus) {
         if (!n.bonusConfig) {
-          n.bonusConfig = { powerProgression: true, maxRepeats: 5, rewards: [{ type: 'shinies', min: 15, max: 30 }] };
+          n.bonusConfig = { powerProgression: true, maxRepeats: 5 };
         }
         const cfg = n.bonusConfig;
         const powEl = document.getElementById('map-forge-bonus-power');
@@ -336,39 +446,11 @@
           repEl.value = String(cfg.maxRepeats || 5);
           repEl.onchange = () => { cfg.maxRepeats = Math.max(1, Math.min(20, Math.floor(Number(repEl.value) || 5))); };
         }
-        const rewardsEl = document.getElementById('map-forge-bonus-rewards');
-        if (rewardsEl && !rewardsEl.dataset.wired) {
-          rewardsEl.dataset.wired = '1';
-          document.getElementById('map-forge-bonus-add-shiny')?.addEventListener('click', () => {
-            cfg.rewards = cfg.rewards || [];
-            cfg.rewards.push({ type: 'shinies', min: 10, max: 25 });
-            renderEncounterPanel();
-          });
-          document.getElementById('map-forge-bonus-add-mut')?.addEventListener('click', () => {
-            cfg.rewards = cfg.rewards || [];
-            cfg.rewards.push({ type: 'mutation', tierBand: 'blue_purple' });
-            renderEncounterPanel();
-          });
-        }
-        const list = document.getElementById('map-forge-bonus-reward-list');
-        if (list) {
-          list.innerHTML = '';
-          (cfg.rewards || []).forEach((r, i) => {
-            const li = document.createElement('div');
-            li.className = 'map-forge-bonus-reward-row';
-            li.textContent = r.type === 'shinies'
-              ? 'Shinies ' + r.min + '-' + r.max
-              : 'Mutation (' + (r.tierBand || 'blue_purple') + ')';
-            const rm = document.createElement('button');
-            rm.type = 'button';
-            rm.textContent = '×';
-            rm.className = 'map-forge-node-move';
-            rm.onclick = () => { cfg.rewards.splice(i, 1); renderEncounterPanel(); };
-            li.appendChild(rm);
-            list.appendChild(li);
-          });
-        }
       }
+    }
+    if (rewardsPanel) {
+      rewardsPanel.style.display = '';
+      renderClearRewardsList(n);
     }
   }
 
@@ -584,7 +666,7 @@
     } else {
       const base = { x, y, name: _tool === 'shop' ? 'Stork Emporium' : _tool === 'bonus' ? 'Bonus Stage' : _tool === 'boss' ? 'Boss Stage' : _tool === 'return' ? 'Return Gate' : 'Stage' };
       if (_tool === 'shop') slice.nodes.push(Object.assign(base, { type: 'shop' }));
-      else if (_tool === 'bonus') slice.nodes.push(Object.assign(base, { type: 'bonus', terrain: 'Bonus Arena', bonusConfig: { powerProgression: true, maxRepeats: 5, rewards: [{ type: 'shinies', min: 15, max: 30 }] } }));
+      else if (_tool === 'bonus') slice.nodes.push(Object.assign(base, { type: 'bonus', terrain: 'Bonus Arena', bonusConfig: { powerProgression: true, maxRepeats: 5 }, clearRewards: [{ type: 'shinies', min: 15, max: 30 }] }));
       else if (_tool === 'boss') slice.nodes.push(Object.assign(base, { type: 'boss', terrain: 'Boss Arena' }));
       else if (_tool === 'return') slice.nodes.push(Object.assign(base, { type: 'return' }));
       else slice.nodes.push(Object.assign(base, { type: 'stage', terrain: 'Wilds' }));
@@ -599,15 +681,81 @@
 
   function deleteSelectedNode() {
     const slice = getEditingSlice();
-    const n = slice?.nodes?.find((x) => x.id === _selectedId);
-    if (!n || n.type === 'start') { setStatus('Cannot delete Start node.', true); return; }
-    slice.nodes = slice.nodes.filter((x) => x.id !== _selectedId);
+    if (_selectedId == null) { setStatus('Select a node to delete.', true); return; }
+    const idx = slice?.nodes?.findIndex((x) => x.id === _selectedId) ?? -1;
+    if (idx < 0) { setStatus('Select a node to delete.', true); return; }
+    const n = slice.nodes[idx];
+    if (n.type === 'start') { setStatus('Cannot delete Start node.', true); return; }
+    slice.nodes.splice(idx, 1);
     if (n.type === 'world' && n.worldId && _map.worlds[n.worldId]) delete _map.worlds[n.worldId];
     _map = normalizeMap(_map);
     _selectedId = null;
     renderNodeList();
     renderForgeCanvas();
     syncNodeEditorFields();
+    setStatus('Node deleted.');
+  }
+
+  function deselectNode() {
+    _selectedId = null;
+    renderNodeList();
+    renderForgeCanvas();
+    syncNodeEditorFields();
+    setStatus('');
+  }
+
+  function duplicateSelectedNode() {
+    const slice = getEditingSlice();
+    const n = getSelectedNode();
+    if (!n) { setStatus('Select a node to duplicate.', true); return; }
+    if (n.type === 'start') { setStatus('Cannot duplicate Start node.', true); return; }
+    const copy = JSON.parse(JSON.stringify(n));
+    copy.x = Math.min(MAP_W - 40, (n.x || 0) + 40);
+    copy.y = Math.min(MAP_H - 40, (n.y || 0) + 40);
+    delete copy.id;
+    if (copy.type === 'world' && copy.worldId) {
+      _worldCounter += 1;
+      const wid = 'world' + _worldCounter;
+      const srcWorld = _map.worlds[n.worldId];
+      copy.worldId = wid;
+      copy.name = (n.name || 'World') + ' Copy';
+      _map.worlds[wid] = srcWorld
+        ? JSON.parse(JSON.stringify(srcWorld))
+        : {
+          name: copy.name,
+          worldIndex: _worldCounter,
+          backgroundDataUrl: '',
+          nodes: [
+            { id: 0, type: 'start', name: 'World Start', x: 768, y: 800, stage: 0 },
+            { id: 1, type: 'return', name: 'Return Gate', x: 768, y: 150 },
+          ],
+        };
+      _map.worlds[wid].name = copy.name;
+      _map.worlds[wid].worldIndex = _worldCounter;
+    }
+    slice.nodes.push(copy);
+    _map = normalizeMap(_map);
+    _selectedId = slice.nodes[slice.nodes.length - 1]?.id ?? null;
+    renderNodeList();
+    renderForgeCanvas();
+    syncNodeEditorFields();
+    setStatus('Node duplicated.');
+  }
+
+  function addShinyReward() {
+    const n = getSelectedNode();
+    if (!n || !global.isForgeCombatNode || !global.isForgeCombatNode(n)) return;
+    ensureNodeClearRewards(n);
+    n.clearRewards.push({ type: 'shinies', min: 10, max: 25 });
+    renderClearRewardsList(n);
+  }
+
+  function addMutReward() {
+    const n = getSelectedNode();
+    if (!n || !global.isForgeCombatNode || !global.isForgeCombatNode(n)) return;
+    ensureNodeClearRewards(n);
+    n.clearRewards.push({ type: 'mutation', tierBand: 'blue_purple' });
+    renderClearRewardsList(n);
   }
 
   function editWorldMap() {
@@ -731,8 +879,8 @@
     document.querySelectorAll('[data-forge-tool]').forEach((btn) => {
       btn.addEventListener('click', () => setTool(btn.getAttribute('data-forge-tool')));
     });
-    document.getElementById('map-forge-edit-world-btn')?.addEventListener('click', editWorldMap);
-    document.getElementById('map-forge-world-back')?.addEventListener('click', exitWorldEditor);
+    document.getElementById('map-forge-add-shiny')?.addEventListener('click', addShinyReward);
+    document.getElementById('map-forge-add-mut')?.addEventListener('click', addMutReward);
     document.getElementById('map-forge-path-preview')?.addEventListener('change', (e) => {
       _pathRevealPreview = !!e.target.checked;
       renderForgeCanvas();
@@ -753,7 +901,18 @@
           e.preventDefault();
           return;
         }
-        if (e.button === 0) placeNode(mapPointFromEvent(svg, e).x, mapPointFromEvent(svg, e).y);
+        if (_tool === 'select') {
+          const picked = pickNodeAtPoint(svg, e);
+          _selectedId = picked ? picked.id : null;
+          renderNodeList();
+          renderForgeCanvas();
+          syncNodeEditorFields();
+          return;
+        }
+        if (e.button === 0) {
+          const pt = mapPointFromEvent(svg, e);
+          placeNode(pt.x, pt.y);
+        }
       });
       global.addEventListener('mousemove', (e) => {
         if (!_drag) return;
@@ -801,6 +960,16 @@
     document.getElementById('map-forge-name')?.addEventListener('change', function () {
       if (_map) _map.name = this.value.trim() || 'Untitled Map';
     });
+    global.addEventListener('keydown', (e) => {
+      const forgeScreen = document.getElementById('screen-map-forge');
+      if (!forgeScreen?.classList.contains('active')) return;
+      const tag = e.target?.tagName;
+      if (tag === 'INPUT' || tag === 'SELECT' || tag === 'TEXTAREA') return;
+      if (e.key === 'Delete' || e.key === 'Backspace') {
+        e.preventDefault();
+        deleteSelectedNode();
+      }
+    });
   }
 
   function initMapForge() {
@@ -842,12 +1011,18 @@
   global.setMapForgeTool = setTool;
   global.editWorldMap = editWorldMap;
   global.exitWorldEditor = exitWorldEditor;
+  global.deselectMapForgeNode = deselectNode;
+  global.duplicateMapForgeNode = duplicateSelectedNode;
+  global.addMapForgeShinyReward = addShinyReward;
+  global.addMapForgeMutReward = addMutReward;
 
   if (global.Avian?.actions) {
     Object.assign(global.Avian.actions, {
       openMapForge, closeMapForge, saveMapForgeDraft, exportMapForge,
       playtestMapForge, activateMapForNextRun, deleteMapForgeNode: deleteSelectedNode,
       newMapForge, editWorldMap, exitWorldEditor,
+      deselectMapForgeNode: deselectNode, duplicateMapForgeNode: duplicateSelectedNode,
+      addMapForgeShinyReward: addShinyReward, addMapForgeMutReward: addMutReward,
     });
   }
 })(typeof window !== 'undefined' ? window : globalThis);

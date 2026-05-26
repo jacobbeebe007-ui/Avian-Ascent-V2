@@ -1531,34 +1531,6 @@ function grantUnlock(id) {
 }
 function isUnlocked(id) { return !!getUnlocks()[id]; }
 
-/** Stages fully cleared this Flight (1 egg each, awarded only on victory or defeat). */
-function getStagesCompletedThisFlight() {
-  const stage = Math.max(1, Math.floor(Number(G.stage) || 1));
-  const storyMax = getStoryMaxStage();
-  let completed = Math.max(0, stage - 1);
-  if (!G.endlessMode && G._overworldProgress) {
-    const ow = Math.max(0, Math.floor(Number(G._overworldProgress.completedStage) || 0));
-    completed = Math.max(completed, ow);
-  }
-  if (!G.endlessMode && stage > storyMax) completed = storyMax;
-  return completed;
-}
-
-/** Grant Saved Eggs once when a Flight ends in victory or defeat (not on abandon). */
-function awardSavedEggsForFlightEnd() {
-  if (G._savedEggsFlightEndAwarded) return 0;
-  const n = getStagesCompletedThisFlight();
-  if (n <= 0) return 0;
-  G._savedEggsFlightEndAwarded = true;
-  if (typeof globalThis.addSavedEggs === 'function') globalThis.addSavedEggs(n);
-  return n;
-}
-
-function tryAwardGoldenGooseEgg() {
-  /* TODO: enable drop when Golden Goose Egg loot is designed */
-  return false;
-}
-
 function isBuildNestUnlocked() {
   try { return localStorage.getItem('avian_buildnest_unlocked') === '1'; } catch(_) { return false; }
 }
@@ -2454,8 +2426,28 @@ function openNest() {
   if(!p){content.innerHTML='<p style="color:var(--text-dim);text-align:center">No active run.</p>';modal.classList.add('open');return;}
   sub.textContent=`${p.name} · Stage ${G.stage} · Lv.${p.birdLevel} · 🪶 ${Math.max(0, Number(p.mutatedFeatherCount)||0)}`;
   let html='';
-  // Stats (first — in-battle values when G.turn is set)
+  // Passive trait
+  const bd=BIRDS[p.birdKey];
+  if(bd&&bd.passive){
+    html+=`<div class="nest-passive"><div class="nest-passive-title">★ PASSIVE: ${bd.passive.name}</div>${bd.passive.desc}</div>`;
+  }
+  const ownedClassPerks=getBirdClassPerks(p.birdKey);
+  if(ownedClassPerks.length){
+    const role=getBirdClassRoleByKey(p.birdKey);
+    const perkCards=ownedClassPerks.map(perkId=>{
+      const perk=(CLASS_PERK_BY_CLASS[role]||[]).find(entry=>entry.id===perkId);
+      if(!perk) return '';
+      return `<div class="nest-reward-row"><span class="nest-reward-icon">🧬</span><span class="nest-reward-name">${perk.name}</span><span class="nest-reward-desc">${perk.desc}</span></div>`;
+    }).join('');
+    if(perkCards){
+      html+=`<div class="nest-section"><div class="nest-section-title">🧬 Class Perks · ${idToClassLabel(role)}</div><div class="nest-rewards-list">${perkCards}</div></div>`;
+    }
+  }
+  html+=buildNestEquipmentSection(p);
+  html+=buildNestAbilitySection(p);
+  // Stats
   const s=p.stats;
+  // Compute effective in-battle stats
   const _nestWarcry=G.warcryActive?(s.atk||0)*(1+G.warcryATK/100):s.atk;
   const _nestDef=s.def+(G.battleHymnActive?G.battleHymnDEF:0);
   const _nestAcc=Math.min(100,s.acc+(G.battleHymnActive?G.battleHymnACC:0)-(G.playerStatus.accDebuff||0));
@@ -2479,25 +2471,6 @@ function openNest() {
     <div class="nest-stat-card" title="Magic Attack — improves spell and ailment potency"><div class="nest-stat-val" style="color:#6ae8e8">${formatCombatNumber(s.matk||8)}</div><div class="nest-stat-lbl" style="color:#4ab8c0">✦ M.ATK</div></div>
     <div class="nest-stat-card" title="Magic Defence — resists enemy spells and ailments"><div class="nest-stat-val" style="color:#6ae8e8">${formatCombatNumber(s.mdef||8)}</div><div class="nest-stat-lbl" style="color:#4ab8c0">✦ M.DEF</div></div>
   </div></div>`;
-  // Passive trait
-  const bd=BIRDS[p.birdKey];
-  if(bd&&bd.passive){
-    html+=`<div class="nest-passive"><div class="nest-passive-title">★ PASSIVE: ${bd.passive.name}</div>${bd.passive.desc}</div>`;
-  }
-  const ownedClassPerks=getBirdClassPerks(p.birdKey);
-  if(ownedClassPerks.length){
-    const role=getBirdClassRoleByKey(p.birdKey);
-    const perkCards=ownedClassPerks.map(perkId=>{
-      const perk=(CLASS_PERK_BY_CLASS[role]||[]).find(entry=>entry.id===perkId);
-      if(!perk) return '';
-      return `<div class="nest-reward-row"><span class="nest-reward-icon">🧬</span><span class="nest-reward-name">${perk.name}</span><span class="nest-reward-desc">${perk.desc}</span></div>`;
-    }).join('');
-    if(perkCards){
-      html+=`<div class="nest-section"><div class="nest-section-title">🧬 Class Perks · ${idToClassLabel(role)}</div><div class="nest-rewards-list">${perkCards}</div></div>`;
-    }
-  }
-  html+=buildNestEquipmentSection(p);
-  html+=buildNestAbilitySection(p);
   // Run bonuses (feathers / card stats / mechanics) — above collected card list
   const Ldg=p._statLedger;
   const upgMap=Ldg?.fromUpgrades||{};
@@ -2709,23 +2682,6 @@ function bootstrapOwNestEmbed(){
   }
 }
 globalThis.bootstrapOwNestEmbed=bootstrapOwNestEmbed;
-
-/**
- * Settings embed when index.html is loaded in an iframe from the overworld map (?avianOwSettingsEmbed=1).
- */
-function bootstrapOwSettingsEmbed(){
-  try{
-    const a=document.getElementById('theme-bgm-audio');
-    if(a){ try{ a.pause(); }catch(_){} }
-  }catch(_){}
-  try{
-    openSettingsModal();
-  }catch(err){
-    owLog('error', 'bootstrapOwSettingsEmbed failed', err);
-    if(typeof globalThis.pushErrorHUD === 'function') globalThis.pushErrorHUD('Crash', err.message || String(err), err);
-  }
-}
-globalThis.bootstrapOwSettingsEmbed=bootstrapOwSettingsEmbed;
 
 function codexMark(type, id, field='seen'){
   if(!id) return;
@@ -3140,7 +3096,6 @@ function clearAllProgress() {
     globalThis.AVIAN_OW_KEYS?.STATE ?? 'avianAscent_overworld',
     globalThis.AVIAN_OW_KEYS?.NAV ?? 'avianAscent_nav',
     UNLOCK_KEY,
-    globalThis.FORTUNE_META_KEY || 'avianAscent_meta_v1',
     RUN_HISTORY_KEY,
     HIGHSCORE_KEY,
     TELEMETRY_KEY,
@@ -3208,7 +3163,6 @@ function continueRun() {
   G.endlessBattle=save.endlessBattle||0;
   G.bossKills=save.bossKills||0;
   G.stage=Math.max(1,Math.floor(Number(save.stage)||1));
-  G._savedEggsFlightEndAwarded = false;
   G._overworldProgress = normalizeOverworldProgress(save.overworldProgress||null, G.stage);
   if(!G.endlessMode && _isOverworldRun()){
     G.stage = Math.max(1, (G._overworldProgress?.completedStage||0) + 1);
@@ -3263,11 +3217,7 @@ function continueRun() {
     if(!haveTerrain && typeof oc.battleTerrain === 'string' && oc.battleTerrain.trim()) G._battleTerrain = oc.battleTerrain.trim();
   };
 
-  const haveFreshOwNavEnemies = !G.endlessMode
-    && Number.isFinite(Number(G._owPendingBattleStage)) && Number(G._owPendingBattleStage) > 0
-    && Array.isArray(G._owStageEnemies) && G._owStageEnemies.length > 0;
-
-  if(!G.endlessMode && !haveFreshOwNavEnemies && oc && ocAlignedWithPendingEncounter && Array.isArray(oc.owStageEnemies) && oc.owStageEnemies.length && !skipOcEnemyRestore){
+  if(!G.endlessMode && oc && ocAlignedWithPendingEncounter && Array.isArray(oc.owStageEnemies) && oc.owStageEnemies.length && !skipOcEnemyRestore){
     G._owStageEnemies = oc.owStageEnemies.slice();
     G._owEnemyIndex = Math.max(0, Math.floor(Number(oc.owEnemyIndex) || 0));
     G._owEnemyCount = Math.max(1, Math.floor(Number(oc.owEnemyCount) || G._owStageEnemies.length));
@@ -3370,24 +3320,6 @@ function goMainMenu() {
 // ============================================================
 const _OW_STATE_KEY = globalThis.AVIAN_OW_KEYS?.STATE ?? 'avianAscent_overworld';
 const _OW_NAV_KEY = globalThis.AVIAN_OW_KEYS?.NAV ?? 'avianAscent_nav';
-
-function owLog(level, msg, detail){
-  const text = String(msg || '');
-  globalThis.__AVIAN_OW_LOG_SUPPRESS = true;
-  try{
-    const fn = level === 'error' ? console.error : (level === 'info' ? console.info : console.warn);
-    fn('[ow-return]', text, detail != null ? detail : '');
-  }finally{
-    globalThis.__AVIAN_OW_LOG_SUPPRESS = false;
-  }
-  if(level === 'info' || typeof globalThis.pushErrorHUD !== 'function') return;
-  const kind = level === 'error' ? 'Error' : 'Warn';
-  let meta = detail;
-  if(detail instanceof Error) meta = detail;
-  else if(detail != null && typeof detail === 'object') meta = { stack: JSON.stringify(detail) };
-  else if(detail != null) meta = { stack: String(detail) };
-  globalThis.pushErrorHUD(kind, '[ow-return] ' + text, meta);
-}
 
 function flyAgain() {
   deleteSave();
@@ -4428,58 +4360,6 @@ function syncStoryEncounterBirdQueue(encounterStage){
   commitStoryEncounterMeta(st, G.player?.birdKey, G._owStageEnemies);
 }
 
-/** Roll overworld battle enemy keys; forge encounter with story-roll fallback. */
-function _applyOwBattleEnemyRoll(stageNum, pbk, intent){
-  if(G.endlessMode || STORY_BOSS_STAGES.has(stageNum)){
-    G._owStageEnemies = null;
-    G._owEnemyIndex = 0;
-    G._owEnemyCount = 1;
-    commitStoryEncounterMeta(stageNum, pbk, null);
-    return;
-  }
-  let rolled = null;
-  if(intent?.encounter){
-    try{
-      const resolveFn = typeof globalThis.resolveForgeEncounterBirdKeys === 'function'
-        ? globalThis.resolveForgeEncounterBirdKeys : null;
-      rolled = resolveFn
-        ? resolveFn(intent.encounter, pbk, stageNum)
-        : generateStoryStageEnemyKeys(stageNum, pbk);
-    }catch(err){
-      owLog('warn', 'forge encounter resolution failed; falling back to story roll', err);
-      rolled = generateStoryStageEnemyKeys(stageNum, pbk);
-    }
-  }else{
-    rolled = generateStoryStageEnemyKeys(stageNum, pbk);
-  }
-  G._owStageEnemies = normalizeOwEnemyListForBattle(rolled);
-  if(!Array.isArray(G._owStageEnemies) || !G._owStageEnemies.length){
-    owLog('warn', 'empty enemy list after roll; forcing sparrow fallback');
-    const chainCount = typeof globalThis.getStoryEncounterChainCount === 'function'
-      ? Math.max(1, globalThis.getStoryEncounterChainCount(stageNum))
-      : 3;
-    G._owStageEnemies = Array.from({ length: chainCount }, () => 'sparrow');
-  }
-  G._owEnemyIndex = 0;
-  G._owEnemyCount = Math.max(1, G._owStageEnemies.length);
-  G._owEncounterRollStage = stageNum;
-  commitStoryEncounterMeta(stageNum, pbk, G._owStageEnemies);
-}
-
-/** War-room recovery when overworld → battle handoff fails (avoid stranding on title splash). */
-function recoverFromOverworldHandoffFailure(reason){
-  owLog('warn', 'handoff recovery: ' + String(reason || ''));
-  try{
-    showScreen('screen-select');
-    initSelection();
-    wireRefGuideClicks();
-    const info = document.getElementById('continue-info');
-    if(info) info.textContent = 'Could not start battle from the map — use Continue last run.';
-  }catch(err){
-    owLog('error', 'recoverFromOverworldHandoffFailure failed', err);
-  }
-}
-
 /**
  * Called on index.html startup. If the player navigated here from the overworld
  * (entering a stage or shop node), restore the run and route correctly.
@@ -4492,16 +4372,8 @@ function handleOverworldReturn() {
   if (!intent?.action) return false;
 
   const save = loadSaveData();
-  if (!save?.player) {
-    owLog('warn', 'no save player; aborting handoff', {
-      action: intent.action,
-      stage: intent.stage,
-      hasRawSave: !!localStorage.getItem(SAVE_KEY),
-    });
-    return false;
-  }
+  if (!save?.player) return false;
   if (save?.endlessMode) {
-    owLog('warn', 'endless save with overworld nav; clearing nav');
     try {
       localStorage.removeItem(_OW_NAV_KEY);
       localStorage.removeItem(_OW_STATE_KEY);
@@ -4509,23 +4381,15 @@ function handleOverworldReturn() {
     return false;
   }
 
-  try {
-    owLog('info', 'handoff start', {
-      action: intent.action,
-      stage: intent.stage,
-      hasPlayer: !!save?.player,
-    });
-  } catch(_) {}
-
   try { localStorage.removeItem(_OW_NAV_KEY); } catch(_) {}
 
   if (intent.action === 'battle') {
-    globalThis.__AVIAN_OW_HANDOFF__ = true;
     G._owForgeNavMeta = {
       mapId: intent.mapId || 'main',
       nodeKey: intent.nodeKey || null,
       encounter: intent.encounter || null,
       bonusConfig: intent.bonus || null,
+      clearRewards: Array.isArray(intent.clearRewards) ? intent.clearRewards : null,
       powerTier: Math.max(0, Math.floor(Number(intent.powerTier) || 0)),
       isBonus: !!intent.isBonus,
       isWorldInterior: !!intent.isWorldInterior,
@@ -4543,26 +4407,36 @@ function handleOverworldReturn() {
     resetStageBattleStats();
     const stageNum=G._owPendingBattleStage;
     const pbk=save?.player?.birdKey;
-    try{
-      _applyOwBattleEnemyRoll(stageNum, pbk, intent);
-    }catch(err){
-      owLog('error', 'enemy roll setup failed', err);
-      try{ localStorage.setItem(_OW_NAV_KEY, JSON.stringify(intent)); }catch(_){}
-      return false;
+    if(!G.endlessMode && !STORY_BOSS_STAGES.has(stageNum) && intent.encounter){
+      const resolveFn = typeof globalThis.resolveForgeEncounterBirdKeys === 'function'
+        ? globalThis.resolveForgeEncounterBirdKeys : null;
+      const rolled = resolveFn
+        ? resolveFn(intent.encounter, pbk, stageNum)
+        : generateStoryStageEnemyKeys(stageNum, pbk);
+      G._owStageEnemies = normalizeOwEnemyListForBattle(rolled);
+      G._owEnemyIndex   = 0;
+      G._owEnemyCount = Math.max(1, G._owStageEnemies?.length || 1);
+      G._owEncounterRollStage = stageNum;
+      commitStoryEncounterMeta(stageNum, pbk, G._owStageEnemies);
+    } else if(!G.endlessMode && !STORY_BOSS_STAGES.has(stageNum)){
+      const rolled=generateStoryStageEnemyKeys(stageNum, pbk);
+      G._owStageEnemies = normalizeOwEnemyListForBattle(rolled);
+      G._owEnemyIndex   = 0;
+      G._owEnemyCount = Math.max(1, G._owStageEnemies?.length || 1);
+      G._owEncounterRollStage = stageNum;
+      commitStoryEncounterMeta(stageNum, pbk, G._owStageEnemies);
+    } else {
+      G._owStageEnemies = null;
+      G._owEnemyIndex   = 0;
+      G._owEnemyCount = 1;
+      commitStoryEncounterMeta(stageNum, pbk, null);
     }
     try{
       continueRun(); // restores state; continueRun ends with loadStage()
-      const battleActive = document.getElementById('screen-battle')?.classList.contains('active');
-      if (!battleActive || !G.enemy) {
-        throw new Error('Overworld handoff did not reach battle (screen-battle inactive or enemy missing)');
-      }
     }catch(err){
-      owLog('error', 'handleOverworldReturn battle failed', err);
-      if(typeof globalThis.pushErrorHUD === 'function') globalThis.pushErrorHUD('Crash', err.message || String(err), err);
+      console.error('handleOverworldReturn battle failed', err);
       try{ localStorage.setItem(_OW_NAV_KEY, JSON.stringify(intent)); }catch(_){ }
       return false;
-    }finally{
-      globalThis.__AVIAN_OW_HANDOFF__ = false;
     }
     return true;
   }
@@ -4813,24 +4687,7 @@ function initSelectionSafe(){
       }
     }
   } catch(_) {}
-  let hadOwPendingNav = false;
-  try { hadOwPendingNav = !!localStorage.getItem(_OW_NAV_KEY); } catch(_) {}
-  try {
-    if (handleOverworldReturn()) return;
-  } catch(err) {
-    owLog('error', 'initSelectionSafe handoff failed', err);
-    if(typeof globalThis.pushErrorHUD === 'function') globalThis.pushErrorHUD('Crash', err.message || String(err), err);
-    recoverFromOverworldHandoffFailure('exception');
-    return;
-  }
-  if (hadOwPendingNav) {
-    const onStart = document.getElementById('screen-start')?.classList.contains('active');
-    const onBattle = document.getElementById('screen-battle')?.classList.contains('active');
-    if (onStart && !onBattle) {
-      recoverFromOverworldHandoffFailure('handoff incomplete');
-      return;
-    }
-  }
+  try { if (handleOverworldReturn()) return; } catch(_) {}
   try{
     initSelection();
     wireRefGuideClicks();
@@ -5413,7 +5270,6 @@ function startGame() {
   G.runUpgradesPurchased = new Set();
   G.codex = {abilities:{},enemies:{},birds:{},artifacts:{},statuses:{}};
   G.shinyObjects = 0;
-  G._savedEggsFlightEndAwarded = false;
   G.runClassPerks = [];
   G.classPerks = {};
   G._classPerkChoicesGranted = 0;
@@ -5750,18 +5606,6 @@ function loadStage() {
     mergeScaledStatsIntoEnemy(ed, encounterStage);
   }
   G.enemy = ed;
-  if (!G.enemy) {
-    owLog('error', 'loadStage enemy draft missing; synthesizing sparrow fallback', {
-      encounterStage,
-      owStageEnemies: G._owStageEnemies,
-      owEnemyIndex: G._owEnemyIndex,
-    });
-    G.enemy = buildOwEnemyDraftFromBirdKey('sparrow', encounterStage);
-    if (G.enemy) mergeScaledStatsIntoEnemy(G.enemy, encounterStage);
-  }
-  if (!G.enemy) {
-    throw new Error('loadStage: could not materialize enemy');
-  }
   if (G.enemy && G.enemy.stats) {
     const base = G.enemy._statBaseBeforeMutations || G.enemy.stats;
     G.enemy._battleStatBase = {
@@ -5861,152 +5705,14 @@ function setSuppliesSubView(which){
 }
 globalThis.setSuppliesSubView = setSuppliesSubView;
 
-let _fortuneTab = 'birds';
-
-function setFortuneTab(which) {
-  const tab = which === 'artifacts' ? 'artifacts' : 'birds';
-  _fortuneTab = tab;
-  const birdsView = document.getElementById('fortune-view-birds');
-  const artView = document.getElementById('fortune-view-artifacts');
-  const bBirds = document.getElementById('fortune-nav-birds');
-  const bArt = document.getElementById('fortune-nav-artifacts');
-  if (birdsView) birdsView.classList.toggle('is-active', tab === 'birds');
-  if (artView) artView.classList.toggle('is-active', tab === 'artifacts');
-  if (bBirds) {
-    bBirds.classList.toggle('is-active', tab === 'birds');
-    bBirds.setAttribute('aria-selected', String(tab === 'birds'));
-  }
-  if (bArt) {
-    bArt.classList.toggle('is-active', tab === 'artifacts');
-    bArt.setAttribute('aria-selected', String(tab === 'artifacts'));
-  }
-  renderFortuneStore();
-}
-globalThis.setFortuneTab = setFortuneTab;
-
-function renderFortuneCurrencyBar() {
-  const savedEl = document.getElementById('fortune-saved-eggs-count');
-  const gooseEl = document.getElementById('fortune-goose-eggs-count');
-  const saved = typeof globalThis.getSavedEggBalance === 'function' ? globalThis.getSavedEggBalance() : 0;
-  const goose = typeof globalThis.getGoldenGooseEggBalance === 'function' ? globalThis.getGoldenGooseEggBalance() : 0;
-  if (savedEl) savedEl.textContent = String(saved);
-  if (gooseEl) gooseEl.textContent = String(goose);
-}
-
-function renderFortuneBirdsTab() {
-  const grid = document.getElementById('fortune-birds-grid');
-  const msg = document.getElementById('fortune-store-msg');
-  if (!grid) return;
-  if (typeof globalThis.rebuildFortuneHireCatalog === 'function') globalThis.rebuildFortuneHireCatalog();
-  const catalog = globalThis.FORTUNE_HIRE_BIRDS || [];
-  const balance = typeof globalThis.getSavedEggBalance === 'function' ? globalThis.getSavedEggBalance() : 0;
-  grid.innerHTML = '';
-  if (!catalog.length) {
-    grid.innerHTML = '<p class="fortune-empty">No birds available to hire yet.</p>';
-    return;
-  }
-  catalog.forEach(row => {
-    const bird = BIRDS[row.birdKey];
-    if (!bird) return;
-    const owned = isUnlocked(row.unlockId);
-    const canAfford = balance >= row.savedEggCost;
-    const card = document.createElement('div');
-    card.className = 'fortune-bird-card' + (owned ? ' is-owned' : '');
-    const portrait = typeof renderBirdIconHTML === 'function'
-      ? renderBirdIconHTML(bird.portraitKey || row.birdKey, 'small', false)
-      : '';
-    const btnDisabled = owned || !canAfford;
-    const btnLabel = owned ? 'Hired' : (canAfford ? 'Hire' : 'Need eggs');
-    card.innerHTML = `
-      <div class="fortune-bird-portrait">${portrait}</div>
-      <div class="fortune-bird-name">${bird.name}</div>
-      <div class="fortune-bird-cost">🥚 ${row.savedEggCost} Saved Eggs</div>
-      ${row.unlockHint && !owned ? `<div class="fortune-bird-hint">${row.unlockHint}</div>` : ''}
-      <button type="button" class="fortune-hire-btn menu-btn" data-action="purchaseFortuneBird:${row.birdKey}" ${btnDisabled ? 'disabled' : ''}>${btnLabel}</button>`;
-    grid.appendChild(card);
-  });
-  if (msg && !msg.dataset.pinned) msg.textContent = '';
-}
-
-function renderFortuneArtifactsTab() {
-  const list = document.getElementById('fortune-artifacts-list');
-  const ownedWrap = document.getElementById('fortune-owned-artifacts');
-  if (!list || !ownedWrap) return;
-  const stubs = globalThis.FORTUNE_ARTIFACT_STUBS || [];
-  const meta = typeof globalThis.getFortuneMeta === 'function' ? globalThis.getFortuneMeta() : { ownedArtifacts: {} };
-  const owned = meta.ownedArtifacts || {};
-  const ownedIds = Object.keys(owned).filter(id => owned[id]);
-  list.innerHTML = '<p class="fortune-artifact-lead">Artifacts are not in combat yet. Golden Goose Eggs will unlock purchases here once drops are live.</p>';
-  stubs.forEach(stub => {
-    const row = document.createElement('div');
-    row.className = 'fortune-artifact-stub';
-    row.innerHTML = `<span class="fortune-artifact-icon">${stub.icon || '✦'}</span><div><div class="fortune-artifact-name">${stub.name}</div><div class="fortune-artifact-desc">${stub.desc}</div><div class="fortune-artifact-soon">Coming soon · Golden Goose Egg</div></div>`;
-    list.appendChild(row);
-  });
-  if (!ownedIds.length) {
-    ownedWrap.innerHTML = '<p class="fortune-empty">You do not own any artifacts yet.</p>';
-  } else {
-    ownedWrap.innerHTML = ownedIds.map(id => {
-      const stub = stubs.find(s => s.id === id);
-      return `<div class="fortune-owned-row">${stub ? stub.icon + ' ' + stub.name : id}</div>`;
-    }).join('');
-  }
-}
-
-function renderFortuneStore() {
-  renderFortuneCurrencyBar();
-  if (_fortuneTab === 'artifacts') renderFortuneArtifactsTab();
-  else renderFortuneBirdsTab();
-}
-
-function purchaseFortuneBird(birdKey) {
-  const key = String(birdKey || '').trim();
-  if (!key) return;
-  const msg = document.getElementById('fortune-store-msg');
-  const catalog = globalThis.FORTUNE_HIRE_BIRDS || [];
-  const row = catalog.find(r => r.birdKey === key);
-  if (!row) {
-    if (msg) { msg.textContent = 'Unknown bird.'; msg.dataset.pinned = '1'; }
-    return;
-  }
-  if (isUnlocked(row.unlockId)) {
-    if (msg) { msg.textContent = `${BIRDS[key]?.name || key} is already on your roster.`; msg.dataset.pinned = '1'; }
-    renderFortuneStore();
-    return;
-  }
-  const balance = typeof globalThis.getSavedEggBalance === 'function' ? globalThis.getSavedEggBalance() : 0;
-  if (balance < row.savedEggCost) {
-    if (msg) { msg.textContent = `Need ${row.savedEggCost} Saved Eggs (you have ${balance}).`; msg.dataset.pinned = '1'; }
-    return;
-  }
-  if (typeof globalThis.spendSavedEggs !== 'function' || !globalThis.spendSavedEggs(row.savedEggCost)) {
-    if (msg) { msg.textContent = 'Not enough Saved Eggs.'; msg.dataset.pinned = '1'; }
-    return;
-  }
-  grantUnlock(row.unlockId);
-  if (msg) {
-    msg.textContent = `Hired ${BIRDS[key]?.name || key}!`;
-    msg.style.color = 'var(--gold-light)';
-    msg.dataset.pinned = '1';
-    setTimeout(() => { if (msg) { msg.textContent = ''; delete msg.dataset.pinned; msg.style.color = ''; } }, 2800);
-  }
-  try { buildBirdGrid(); } catch (_) { /* noop */ }
-  renderFortuneStore();
-}
-globalThis.purchaseFortuneBird = purchaseFortuneBird;
-
 function openSelectHubPanel(which){
-  const allowed = {supplies:1,map:1,door:1,fortune:1};
+  const allowed = {supplies:1,map:1,door:1};
   if(!allowed[which]) return;
   const root = document.getElementById('select-hub-panels');
   const screenEl = document.getElementById('screen-select');
   if(!root || !screenEl) return;
   if(which === 'supplies') setSuppliesSubView('reference');
-  if(which === 'fortune') {
-    _fortuneTab = 'birds';
-    setFortuneTab('birds');
-  }
-  ['supplies','map','door','fortune'].forEach(w=>{
+  ['supplies','map','door'].forEach(w=>{
     const p = document.getElementById('select-hub-'+w);
     if(!p) return;
     const on = w===which;
@@ -6028,7 +5734,7 @@ function closeSelectHubPanel(){
     root.setAttribute('aria-hidden','true');
   }
   screenEl?.classList.remove('select-hub-panel-active');
-  ['supplies','map','door','fortune'].forEach(w=>{
+  ['supplies','map','door'].forEach(w=>{
     const p = document.getElementById('select-hub-'+w);
     if(p){
       p.classList.remove('is-open');
@@ -6657,7 +6363,161 @@ window.addEventListener('unhandledrejection', (ev) => {
 });
 
 
-// installErrorHUD lives in js/ui/error-hud.js (floating console modal).
+// ============================================================
+// ON-SCREEN ERROR HUD (mobile-friendly)
+// ============================================================
+function installErrorHUD(){
+  if (document.getElementById('error-hud')) return;
+
+  const hud = document.createElement('div');
+  hud.id = 'error-hud';
+  hud.style.cssText = `
+    position:fixed; left:8px; right:8px; bottom:8px;
+    z-index:999999; font:12px/1.25 monospace;
+    color:#fff; background:rgba(40,0,0,.92);
+    border:1px solid rgba(255,120,120,.65);
+    border-radius:12px; padding:10px;
+    box-shadow:0 8px 24px rgba(0,0,0,.45);
+    max-height:40vh; overflow:auto; display:none;
+  `;
+
+  hud.innerHTML = `
+    <div style="display:flex; gap:8px; align-items:center; justify-content:space-between;">
+      <div style="font-weight:700; letter-spacing:.08em; color:#ffb3b3;">
+        ⚠ ERROR
+      </div>
+      <div style="display:flex; gap:6px;">
+        <button id="eh-copy" style="padding:4px 8px;border-radius:8px;border:1px solid rgba(255,255,255,.25);background:rgba(255,255,255,.08);color:#fff;">Copy</button>
+        <button id="eh-clear" style="padding:4px 8px;border-radius:8px;border:1px solid rgba(255,255,255,.25);background:rgba(255,255,255,.08);color:#fff;">Clear</button>
+        <button id="eh-hide" style="padding:4px 8px;border-radius:8px;border:1px solid rgba(255,255,255,.25);background:rgba(255,255,255,.08);color:#fff;">Hide</button>
+      </div>
+    </div>
+
+    <div id="eh-meta" style="margin-top:6px; opacity:.85;">
+      (Errors will appear here)
+    </div>
+
+    <div id="eh-list" style="margin-top:8px; display:flex; flex-direction:column; gap:6px;"></div>
+
+    <label style="display:flex; gap:8px; align-items:center; margin-top:10px; opacity:.9;">
+      <input id="eh-autofix" type="checkbox" checked />
+      Auto-recover (calls failsafeAdvance)
+    </label>
+  `;
+
+  document.body.appendChild(hud);
+
+  const list = hud.querySelector('#eh-list');
+  const meta = hud.querySelector('#eh-meta');
+  const btnHide = hud.querySelector('#eh-hide');
+  const btnClear = hud.querySelector('#eh-clear');
+  const btnCopy = hud.querySelector('#eh-copy');
+  const chkAuto = hud.querySelector('#eh-autofix');
+
+  const store = {
+    max: 8,
+    items: [],
+  };
+
+  function showHUD(){
+    hud.style.display = 'block';
+  }
+
+  function escapeHtml(v){
+    return String(v).replace(/[&<>"']/g, c=>({
+      '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'
+    }[c]));
+  }
+
+  function pushItem(kind, msg, src, line, col, stack){
+    const time = new Date().toLocaleTimeString();
+    const entry = {
+      time, kind,
+      msg: String(msg || ''),
+      src: String(src || ''),
+      line: line ?? '',
+      col: col ?? '',
+      stack: String(stack || ''),
+    };
+    store.items.unshift(entry);
+    if(store.items.length > store.max) store.items.pop();
+
+    meta.textContent = `${store.items.length} error(s) captured. Latest at ${time}.`;
+    list.innerHTML = '';
+
+    store.items.forEach(e=>{
+      const box = document.createElement('div');
+      box.style.cssText = `
+        padding:8px; border-radius:10px;
+        border:1px solid rgba(255,255,255,.18);
+        background:rgba(255,255,255,.06);
+      `;
+      const loc = e.src ? `@ ${e.src}${e.line!==''?`:${e.line}`:''}${e.col!==''?`:${e.col}`:''}` : '';
+      box.innerHTML = `
+        <div style="opacity:.9"><strong>${e.kind}</strong> • ${e.time}</div>
+        <div style="margin-top:4px">${escapeHtml(e.msg)}</div>
+        ${loc ? `<div style="margin-top:4px; opacity:.75">${escapeHtml(loc)}</div>` : ''}
+        ${e.stack ? `<details style="margin-top:6px; opacity:.9"><summary>stack</summary><pre style="white-space:pre-wrap;margin:6px 0 0 0">${escapeHtml(e.stack)}</pre></details>`:''}
+      `;
+      list.appendChild(box);
+    });
+
+    showHUD();
+
+    if(chkAuto && chkAuto.checked){
+      try{
+        if(typeof failsafeAdvance === 'function') failsafeAdvance('ErrorHUD auto-recover');
+      }catch(_){ }
+    }
+  }
+
+  btnHide.onclick = ()=>{ hud.style.display='none'; };
+  btnClear.onclick = ()=>{
+    store.items = [];
+    list.innerHTML = '';
+    meta.textContent = '(Errors cleared)';
+  };
+  btnCopy.onclick = async ()=>{
+    const text = store.items.map(e=>{
+      return `[${e.time}] ${e.kind}: ${e.msg}\n${e.src}${e.line!==''?`:${e.line}`:''}${e.col!==''?`:${e.col}`:''}\n${e.stack}\n`;
+    }).join('\n');
+    try{
+      await navigator.clipboard.writeText(text);
+      meta.textContent = 'Copied to clipboard ✅';
+    }catch(err){
+      meta.textContent = 'Copy failed (clipboard not available on this device).';
+      console.warn('Clipboard copy failed:', err);
+    }
+  };
+
+  window.addEventListener('error', (ev)=>{
+    const err = ev.error;
+    pushItem(
+      'Error',
+      ev.message,
+      ev.filename,
+      ev.lineno,
+      ev.colno,
+      err && err.stack ? err.stack : ''
+    );
+  });
+
+  window.addEventListener('unhandledrejection', (ev)=>{
+    const r = ev.reason;
+    pushItem(
+      'PromiseRejection',
+      r && r.message ? r.message : String(r),
+      '',
+      '',
+      '',
+      r && r.stack ? r.stack : ''
+    );
+  });
+
+  window.showErrorHUD = ()=> showHUD();
+}
+
+
 
 const ABILITY_DISPLAY_TAGS = {
   rapidPeck:['BASIC'], blackPeck:['BASIC'], gooseHonk:['BASIC'], headWhip:['BASIC'], kick:['BASIC'], raptorKick:['BASIC'],
@@ -7852,14 +7712,17 @@ function continueStageTransitionAfterRewards(){
       globalThis.markOwNodeCleared(forgeMeta.mapId, G._owPendingNodeId);
       if (forgeMeta.isBonus && typeof globalThis.incrementBonusRepeatCount === 'function') {
         globalThis.incrementBonusRepeatCount(forgeMeta.mapId, G._owPendingNodeId);
-        if (forgeMeta.bonusConfig && typeof globalThis.grantForgeBonusRewards === 'function') {
-          const bonusGranted = globalThis.grantForgeBonusRewards(G.player, forgeMeta.bonusConfig, G);
-          if (bonusGranted.shinies > 0) {
-            logMsg('Bonus reward: +' + bonusGranted.shinies + ' shinies!', 'boss');
-          }
-          if (bonusGranted.mutations?.length) {
-            logMsg('Bonus reward: mutation added to nest inventory!', 'boss');
-          }
+      }
+      const rewardList = forgeMeta.clearRewards?.length
+        ? forgeMeta.clearRewards
+        : (forgeMeta.isBonus && forgeMeta.bonusConfig?.rewards ? forgeMeta.bonusConfig.rewards : null);
+      if (rewardList?.length && typeof globalThis.grantForgeClearRewards === 'function') {
+        const granted = globalThis.grantForgeClearRewards(G.player, rewardList, G);
+        if (granted.shinies > 0) {
+          logMsg('Clear reward: +' + granted.shinies + ' shinies!', 'boss');
+        }
+        if (granted.mutations?.length) {
+          logMsg('Clear reward: mutation added to nest inventory!', 'boss');
         }
       }
       if (forgeMeta.isWorldInterior && G.enemy?.isBoss && forgeMeta.worldId && typeof globalThis.markOwWorldCompleted === 'function') {
@@ -12957,7 +12820,7 @@ function showVictory(){
   document.getElementById('gameover-title').textContent='⚔ Ascended! ⚔';
   const endMsg=G.endlessMode
     ?`${G.player.name} conquered Stage 20 and flies into endless glory! The battle continues...`
-    :`${G.player.name} conquered all ${getStoryMaxStage()} stages and ascended to legend! 🔓 New birds unlocked!`;
+    :`${G.player.name} conquered all 20 stages and ascended to legend! 🔓 New birds unlocked!`;
   const abilityList=(G.player.abilities||[]).map(a=>`${ABILITY_TEMPLATES[a.id]?.name||a.id} Lv${a.level||1}`).join(' · ');
   document.getElementById('gameover-msg').textContent=endMsg;
   const flyAgainBtn=document.getElementById('fly-again-btn');
@@ -12976,12 +12839,6 @@ function showVictory(){
     advanceStage();
     return;
   }
-  const savedEggsEarned = awardSavedEggsForFlightEnd();
-  if (savedEggsEarned > 0) {
-    const eggTxt = ` 🥚 +${savedEggsEarned} Saved Egg${savedEggsEarned > 1 ? 's' : ''} banked.`;
-    const msgEl = document.getElementById('gameover-msg');
-    if (msgEl) msgEl.textContent = (msgEl.textContent || '') + eggTxt;
-  }
   renderUnlockPopupsOnGameover();
   const endEvt={won:true, bird:G.player?.birdKey||'unknown', stageReached:G.stage||20, deathCause:'victory', endless:!!G.endlessMode};
   AvianEvents.emit('run:end', endEvt);
@@ -12997,7 +12854,6 @@ function showDefeat(){
   G.actionQueue=[];
   G.actionBusy=false;
   G.turnCount = 0;
-  const savedEggsEarned = awardSavedEggsForFlightEnd();
   deleteSave();
   SFX.defeat();
   checkRunUnlocks();
@@ -13006,8 +12862,7 @@ function showDefeat(){
   document.getElementById('gameover-inner').className='gameover-inner lose';
   document.getElementById('gameover-title').textContent='💀 Fallen';
   const stageLabel=G.endlessMode&&G.stage>20?`Endless Battle ${G.endlessBattle}`:`Stage ${G.stage}`;
-  const eggTxt = savedEggsEarned > 0 ? ` 🥚 +${savedEggsEarned} Saved Egg${savedEggsEarned > 1 ? 's' : ''} for stages cleared.` : '';
-  document.getElementById('gameover-msg').textContent=`${G.player.name} fell at ${stageLabel}. Lv.${G.player.birdLevel}. Rise again.${eggTxt}`;
+  document.getElementById('gameover-msg').textContent=`${G.player.name} fell at ${stageLabel}. Lv.${G.player.birdLevel}. Rise again.`;
   const flyAgainBtn=document.getElementById('fly-again-btn');
   if(flyAgainBtn) flyAgainBtn.style.display='inline-block';
   hideStoryCinematic();
@@ -14673,9 +14528,6 @@ function openSettingsModal(){
 }
 function closeSettingsModal(){
   const m=document.getElementById('settings-modal'); if(m) m.classList.remove('open');
-  if(globalThis.__AVIAN_OW_SETTINGS_EMBED__){
-    try{ window.parent.postMessage({ type: 'avianOwSettingsClose' }, '*'); }catch(_){}
-  }
 }
 function returnToWarRoomFromSettings(){
   closeSettingsModal();
@@ -14895,8 +14747,22 @@ wireThemeBgmAutoplayUnlock();
     globalThis.buildBirdCard = wrapped;
   }
 
-  // initSelectionSafe is deferred once at bundle boot (_avianBootstrapInit) so
-  // post-game.js modules are registered before handleOverworldReturn → loadStage.
+  // Refresh selection if already on screen.
+  // Deferred so that modules listed AFTER js/core/game.js in
+  // js/bootstrap/load-order.json (enemies, upgrade-cards, systems wrappers,
+  // ui, sprites) finish loading before initSelectionSafe → handleOverworldReturn
+  // → continueRun → loadStage runs. Without this defer, an OW return
+  // would fire here before the post-game.js modules registered, which
+  // could swallow an error in continueRun and strand the player on the
+  // default screen-start splash.
+  const _avianSpritePatchInit = function(){
+    try{
+      if(typeof initSelectionSafe==='function') initSelectionSafe();
+    }catch(_){}
+  };
+  if(typeof queueMicrotask === 'function') queueMicrotask(_avianSpritePatchInit);
+  else if(typeof Promise !== 'undefined' && typeof Promise.resolve === 'function') Promise.resolve().then(_avianSpritePatchInit);
+  else setTimeout(_avianSpritePatchInit, 0);
 })();
 
 
@@ -15477,8 +15343,6 @@ SPRITE_KEYS_ALL.add('magpie');
   try{
     if(globalThis.__AVIAN_OW_NEST_EMBED__ && typeof globalThis.bootstrapOwNestEmbed === 'function'){
       globalThis.bootstrapOwNestEmbed();
-    }else if(globalThis.__AVIAN_OW_SETTINGS_EMBED__ && typeof globalThis.bootstrapOwSettingsEmbed === 'function'){
-      globalThis.bootstrapOwSettingsEmbed();
     }else{
       // Defer until the rest of the bundle finishes loading so that modules
       // listed AFTER js/core/game.js in js/bootstrap/load-order.json
@@ -15495,10 +15359,7 @@ SPRITE_KEYS_ALL.add('magpie');
         try{
           if(typeof globalThis.initSelectionSafe === 'function') globalThis.initSelectionSafe();
           else if(typeof globalThis.initSelection === 'function') globalThis.initSelection();
-        }catch(_e){
-          owLog('error', 'bootstrap initSelectionSafe failed', _e);
-          if(typeof globalThis.pushErrorHUD === 'function') globalThis.pushErrorHUD('Crash', _e?.message || String(_e), _e);
-        }
+        }catch(_e){}
       };
       if(typeof queueMicrotask === 'function') queueMicrotask(_avianBootstrapInit);
       else if(typeof Promise !== 'undefined' && typeof Promise.resolve === 'function') Promise.resolve().then(_avianBootstrapInit);

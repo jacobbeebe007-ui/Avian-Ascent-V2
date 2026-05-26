@@ -250,7 +250,7 @@
   }
 
   function rollTierFromBand(bandId) {
-    var bands = globalThis.OW_MUTATION_BANDS || {};
+    var bands = global.OW_MUTATION_BANDS || {};
     var tiers = bands[String(bandId || 'grey_green')] || ['white', 'green'];
     if (!tiers.length) return 'white';
     return tiers[Math.floor(Math.random() * tiers.length)];

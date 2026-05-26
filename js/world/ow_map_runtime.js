@@ -172,10 +172,31 @@
       }
       if (global.isForgeCombatNode(n)) global.ensureNodeEncounter(n);
       if (n.type === 'bonus' && !n.bonusConfig) {
-        n.bonusConfig = { powerProgression: true, maxRepeats: 5, rewards: [{ type: 'shinies', min: 15, max: 30 }] };
+        n.bonusConfig = { powerProgression: true, maxRepeats: 5 };
+      }
+      if (global.isForgeCombatNode(n)) {
+        if (!Array.isArray(n.clearRewards) && n.bonusConfig?.rewards?.length) {
+          n.clearRewards = JSON.parse(JSON.stringify(n.bonusConfig.rewards));
+          delete n.bonusConfig.rewards;
+        }
+        if (!Array.isArray(n.clearRewards)) n.clearRewards = [];
       }
     });
-    Object.keys(m.worlds).forEach((wid) => global.recomputeWorldSubStages(m.worlds[wid]));
+    Object.keys(m.worlds).forEach((wid) => {
+      const w = m.worlds[wid];
+      if (w?.nodes) {
+        w.nodes.forEach((n) => {
+          if (global.isForgeCombatNode(n)) {
+            if (!Array.isArray(n.clearRewards) && n.bonusConfig?.rewards?.length) {
+              n.clearRewards = JSON.parse(JSON.stringify(n.bonusConfig.rewards));
+              delete n.bonusConfig.rewards;
+            }
+            if (!Array.isArray(n.clearRewards)) n.clearRewards = [];
+          }
+        });
+      }
+      global.recomputeWorldSubStages(w);
+    });
     return m;
   };
 
@@ -253,10 +274,10 @@
     return ed;
   };
 
-  global.grantForgeBonusRewards = function (player, bonusConfig, G) {
-    if (!bonusConfig || !Array.isArray(bonusConfig.rewards)) return { shinies: 0, mutations: [] };
+  global.grantForgeClearRewards = function (player, rewards, G) {
+    if (!Array.isArray(rewards) || !rewards.length) return { shinies: 0, mutations: [] };
     const granted = { shinies: 0, mutations: [] };
-    bonusConfig.rewards.forEach((r) => {
+    rewards.forEach((r) => {
       if (!r) return;
       if (r.type === 'shinies') {
         const lo = Math.max(0, Math.floor(Number(r.min) || 0));
@@ -280,5 +301,10 @@
       }
     });
     return granted;
+  };
+
+  global.grantForgeBonusRewards = function (player, bonusConfig, G) {
+    const rewards = bonusConfig?.rewards || bonusConfig?.clearRewards;
+    return global.grantForgeClearRewards(player, rewards, G);
   };
 })(typeof window !== 'undefined' ? window : globalThis);

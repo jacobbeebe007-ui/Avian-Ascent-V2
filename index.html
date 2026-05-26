@@ -6,14 +6,9 @@
 <script>
 (function(){
   try{
-    var params=new URLSearchParams(location.search);
-    if(params.get('avianOwNestEmbed')==='1'){
+    if(new URLSearchParams(location.search).get('avianOwNestEmbed')==='1'){
       document.documentElement.classList.add('avian-ow-nest-embed');
       window.__AVIAN_OW_NEST_EMBED__=true;
-    }
-    if(params.get('avianOwSettingsEmbed')==='1'){
-      document.documentElement.classList.add('avian-ow-settings-embed');
-      window.__AVIAN_OW_SETTINGS_EMBED__=true;
     }
   }catch(_){}
 })();
@@ -84,10 +79,6 @@
 <span class="splash-hotspot-title">Mission map</span>
 <span class="splash-hotspot-desc">Difficulty &amp; mode</span>
 </button>
-<button type="button" class="splash-hotspot splash-hotspot--fortune" data-action="openSelectHubPanel:fortune" aria-label="Feathers and Fortune — global shop">
-<span class="splash-hotspot-title">Feathers &amp; Fortune</span>
-<span class="splash-hotspot-desc">Global shop</span>
-</button>
 <button type="button" class="splash-hotspot splash-hotspot--door splash-hotspot--primary" data-action="openSelectHubPanel:door" aria-label="Begin ascent — champion roster">
 <span class="splash-hotspot-title">Begin Ascent</span>
 <span class="splash-hotspot-desc">Choose your champion</span>
@@ -106,7 +97,7 @@
 </div>
 <button type="button" class="splash-settings-btn" data-action="openSettingsModal">⚙ Settings</button>
 </div>
-<p class="splash-roster-hint" id="splash-roster-hint">Supplies by the bags. Map on the table. Feathers &amp; Fortune on the wall. Ascent through the door.</p>
+<p class="splash-roster-hint" id="splash-roster-hint">Supplies by the bags (codex, unlock, runs &amp; scores). Map on the table. Ascent through the door.</p>
 </div>
 </div>
 <div class="select-hub-panels" id="select-hub-panels" aria-hidden="true">
@@ -157,32 +148,6 @@
 <div class="endless-row splash-mode-row">
 <div id="game-mode-toggle"></div>
 <input id="endless-check" type="checkbox" style="display:none"/>
-</div>
-</div>
-</div>
-<div class="select-hub-panel select-hub-panel--fortune" id="select-hub-fortune" role="dialog" aria-modal="true" aria-labelledby="hub-fortune-title" aria-hidden="true">
-<div class="select-hub-panel-inner select-hub-panel-inner--fortune">
-<header class="select-hub-panel-head">
-<h3 class="select-hub-panel-title" id="hub-fortune-title">Feathers &amp; Fortune</h3>
-<button type="button" class="select-hub-return-btn" data-action="closeSelectHubPanel">← Return to war room</button>
-</header>
-<p class="select-hub-lead">Spend meta currency earned across Flights. Saved Eggs persist; Golden Goose Eggs will buy artifacts later.</p>
-<div class="fortune-currency-bar" aria-label="Global currency">
-<span class="fortune-currency-item">🥚 Saved Eggs: <strong id="fortune-saved-eggs-count">0</strong></span>
-<span class="fortune-currency-item">✨ Golden Goose Eggs: <strong id="fortune-goose-eggs-count">0</strong></span>
-</div>
-<div class="fortune-subnav supplies-subnav" role="tablist" aria-label="Feathers and Fortune shop">
-<button type="button" class="supplies-subnav-btn fortune-subnav-btn is-active" id="fortune-nav-birds" role="tab" aria-selected="true" aria-controls="fortune-view-birds" data-action="setFortuneTab:birds">Hiring Birds</button>
-<button type="button" class="supplies-subnav-btn fortune-subnav-btn" id="fortune-nav-artifacts" role="tab" aria-selected="false" aria-controls="fortune-view-artifacts" data-action="setFortuneTab:artifacts">Artifacts</button>
-</div>
-<p class="fortune-store-msg" id="fortune-store-msg" aria-live="polite"></p>
-<div class="fortune-subview is-active" id="fortune-view-birds" role="tabpanel" aria-labelledby="fortune-nav-birds">
-<div class="fortune-birds-grid" id="fortune-birds-grid"></div>
-</div>
-<div class="fortune-subview" id="fortune-view-artifacts" role="tabpanel" aria-labelledby="fortune-nav-artifacts">
-<div id="fortune-artifacts-list"></div>
-<div class="fortune-owned-title">Owned artifacts</div>
-<div id="fortune-owned-artifacts"></div>
 </div>
 </div>
 </div>
@@ -243,8 +208,8 @@
 </div>
 <div class="map-forge-head-actions">
 <button type="button" class="menu-btn" data-action="newMapForge">New</button>
-<button type="button" class="menu-btn" id="map-forge-world-back" data-action="exitWorldEditor" style="display:none">← Main map</button>
-<button type="button" class="menu-btn" id="map-forge-edit-world-btn" data-action="editWorldMap" style="display:none">Edit World Map</button>
+<button type="button" class="menu-btn" id="map-forge-world-back" data-action="exitWorldEditor" style="display:none">Exit to Main Map</button>
+<button type="button" class="menu-btn" id="map-forge-edit-world-btn" data-action="editWorldMap" style="display:none">Enter World Map</button>
 <button type="button" class="menu-btn" data-action="saveMapForgeDraft">Save draft</button>
 <button type="button" class="menu-btn" data-action="exportMapForge">Export JSON</button>
 <button type="button" class="menu-btn map-forge-btn-accent" data-action="playtestMapForge">Playtest</button>
@@ -264,7 +229,18 @@
 <button type="button" class="map-forge-tool-btn" data-forge-tool="shop">Shop</button>
 <button type="button" class="map-forge-tool-btn" data-forge-tool="return">Return</button>
 <button type="button" class="map-forge-tool-btn" data-forge-tool="start">Start</button>
+</div>
+<div class="map-forge-toolbar">
+<span class="map-forge-toolbar-label">Edit</span>
+<button type="button" class="map-forge-tool-btn" data-forge-tool="select">Select</button>
+<button type="button" class="menu-btn map-forge-tool-btn" data-action="duplicateMapForgeNode">Duplicate</button>
+<button type="button" class="menu-btn map-forge-tool-btn" data-action="deselectMapForgeNode">Deselect</button>
 <button type="button" class="map-forge-tool-btn map-forge-tool-danger" data-action="deleteMapForgeNode">Delete</button>
+</div>
+<div class="map-forge-toolbar">
+<span class="map-forge-toolbar-label">Navigate</span>
+<button type="button" class="menu-btn map-forge-tool-btn" id="map-forge-sidebar-enter-world" data-action="editWorldMap" style="display:none">Enter World Map</button>
+<button type="button" class="menu-btn map-forge-tool-btn" id="map-forge-sidebar-exit-world" data-action="exitWorldEditor" style="display:none">Exit to Main Map</button>
 </div>
 <label class="map-forge-upload-label">
 <span class="menu-btn">Upload background</span>
@@ -291,6 +267,14 @@
 <option value="5">5 enemies</option>
 </select>
 <div id="map-forge-encounter-rows"></div>
+<div class="map-forge-clear-rewards-panel" id="map-forge-clear-rewards-panel" style="display:none">
+<div class="map-forge-field-label">Clear rewards</div>
+<div id="map-forge-clear-reward-list"></div>
+<div class="map-forge-clear-rewards-add">
+<button type="button" class="menu-btn" id="map-forge-add-shiny">+ Shinies</button>
+<button type="button" class="menu-btn" id="map-forge-add-mut">+ Mutation</button>
+</div>
+</div>
 <div class="map-forge-bonus-panel" id="map-forge-bonus-panel" style="display:none">
 <div class="map-forge-field-label">Bonus stage options</div>
 <label class="map-forge-field-check"><input type="checkbox" id="map-forge-bonus-power" checked/> Power progression (+10% per clear)</label>
@@ -298,12 +282,6 @@
 <select class="map-forge-field-input" id="map-forge-bonus-repeats">
 <option value="1">1</option><option value="3">3</option><option value="5" selected>5</option><option value="10">10</option><option value="20">20</option>
 </select>
-<div class="map-forge-field-label">Rewards on clear</div>
-<div id="map-forge-bonus-reward-list"></div>
-<div id="map-forge-bonus-rewards">
-<button type="button" class="menu-btn" id="map-forge-bonus-add-shiny">+ Shinies</button>
-<button type="button" class="menu-btn" id="map-forge-bonus-add-mut">+ Mutation</button>
-</div>
 </div>
 </div>
 <label class="map-forge-field-check"><input type="checkbox" id="map-forge-path-reveal" checked/> Hidden paths until cleared</label>
@@ -312,7 +290,7 @@
 <div class="map-forge-node-list-title">Path order</div>
 <div class="map-forge-node-list" id="map-forge-node-list"></div>
 </div>
-<p class="map-forge-hint">Click the map to place nodes. Drag to reposition. Path connects nodes in list order.</p>
+<p class="map-forge-hint">Select tool: click nodes to select. Other tools: click map to place. Drag to reposition. Path connects nodes in list order.</p>
 </aside>
 <div class="map-forge-canvas-wrap">
 <img class="map-forge-bg" id="map-forge-bg" alt="" draggable="false"/>
@@ -667,7 +645,7 @@
 <button class="menu-btn" data-action="openConsoleHud">🖥 Open Console</button>
 </div>
 <div style="display:flex;flex-wrap:wrap;gap:10px;justify-content:space-between;align-items:center;margin-top:16px;">
-<button type="button" class="menu-btn settings-embed-hide" data-action="returnToWarRoomFromSettings">🏕 Return to war room</button>
+<button type="button" class="menu-btn" data-action="returnToWarRoomFromSettings">🏕 Return to war room</button>
 <button class="abandon-cancel-btn" data-action="closeSettingsModal">Close</button>
 </div>
 </div>

@@ -5,7 +5,6 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Blackstone Forest — Avian Ascent</title>
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600&family=Cinzel+Decorative:wght@400;700&family=EB+Garamond:ital,wght@0,400;1,400&display=swap" rel="stylesheet">
-<link href="css/ui.css" rel="stylesheet">
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 :root{--gold:#c8a020;--gold-l:#f0d060;--gold-d:#8a6010;--parch:#d4c090;--mist:#8aaa98;}
@@ -141,8 +140,6 @@ html,body{width:100%;height:100%;overflow:hidden;background:#060d05;}
 
 /* ── Nest button ─────────────────────────────────────────────── */
 #hdr-nest-btn{font-family:'Cinzel',serif;font-size:8px;letter-spacing:2px;background:rgba(200,160,32,.06);border:1px solid rgba(200,160,32,.22);color:var(--gold);padding:5px 14px;cursor:pointer;transition:all .2s;white-space:nowrap;}
-#hdr-settings-btn{font-family:'Cinzel',serif;font-size:8px;letter-spacing:2px;background:rgba(200,160,32,.06);border:1px solid rgba(200,160,32,.22);color:var(--gold);padding:5px 14px;cursor:pointer;transition:all .2s;white-space:nowrap;margin-right:8px;}
-#hdr-settings-btn:hover{background:rgba(200,160,32,.18);border-color:var(--gold);}
 #hdr-forge-btn{font-family:'Cinzel',serif;font-size:8px;letter-spacing:2px;background:rgba(96,136,58,.08);border:1px solid rgba(96,136,58,.35);color:#b8e070;padding:5px 14px;cursor:pointer;transition:all .2s;white-space:nowrap;display:none;}
 #hdr-forge-btn:hover{background:rgba(96,136,58,.2);border-color:#90b434;}
 #hdr-forge-btn.is-visible{display:inline-block;}
@@ -201,7 +198,6 @@ html,body{width:100%;height:100%;overflow:hidden;background:#060d05;}
     </div>
     <span id="hdr-hint">Tap map nodes &middot; OPEN LOCATION or Enter opens panel &middot; B = Bird &middot; Zoom / Pan map</span>
     <div class="hdr-spacer">
-      <button type="button" id="hdr-settings-btn">&#9881; Settings</button>
       <button type="button" id="hdr-return-ow-btn">← Overworld</button>
       <button type="button" id="hdr-forge-btn">← Map Forge</button>
     </div>
@@ -287,17 +283,6 @@ html,body{width:100%;height:100%;overflow:hidden;background:#060d05;}
     <iframe id="ow-nest-iframe" class="ow-nest-overlay-iframe" title="Nest summary"></iframe>
   </div>
 </div>
-<div id="ow-settings-overlay" class="ow-nest-overlay" aria-hidden="true">
-  <div class="ow-nest-overlay-frame">
-    <div class="ow-nest-overlay-bar">
-      <span class="ow-nest-overlay-title">SETTINGS</span>
-      <button type="button" class="ow-nest-overlay-close" id="ow-settings-overlay-close" aria-label="Close settings">&#10005;</button>
-    </div>
-    <iframe id="ow-settings-iframe" class="ow-nest-overlay-iframe" title="Game settings"></iframe>
-  </div>
-</div>
-<script src="js/ui/error-hud.js"></script>
-<script>document.addEventListener('DOMContentLoaded',function(){try{if(typeof installErrorHUD==='function')installErrorHUD();}catch(e){console.error(e);}});</script>
 <script src="js/world/overworld_bridge.js"></script>
 <script src="js/world/ow_map_runtime.js"></script>
 <script>
@@ -871,19 +856,11 @@ function drawMM(){
 let curPos=0,birdIdx=0,isMoving=false,moveTimer=null;
 const owNestOverlayEl=document.getElementById('ow-nest-overlay');
 const owNestIframeEl=document.getElementById('ow-nest-iframe');
-const owSettingsOverlayEl=document.getElementById('ow-settings-overlay');
-const owSettingsIframeEl=document.getElementById('ow-settings-iframe');
 function closeOwNestOverlay(){
   if(!owNestOverlayEl)return;
   owNestOverlayEl.classList.remove('open');
   owNestOverlayEl.setAttribute('aria-hidden','true');
   if(owNestIframeEl) owNestIframeEl.src='about:blank';
-}
-function closeOwSettingsOverlay(){
-  if(!owSettingsOverlayEl)return;
-  owSettingsOverlayEl.classList.remove('open');
-  owSettingsOverlayEl.setAttribute('aria-hidden','true');
-  if(owSettingsIframeEl) owSettingsIframeEl.src='about:blank';
 }
 function openOwNestOverlay(){
   try{ mergeOwStateWithCurrentNode(curPos); }catch(_){}
@@ -892,31 +869,16 @@ function openOwNestOverlay(){
   owNestOverlayEl.setAttribute('aria-hidden','false');
   owNestIframeEl.src='index.html?avianOwNestEmbed=1&t='+Date.now();
 }
-function openOwSettingsOverlay(){
-  if(!owSettingsOverlayEl||!owSettingsIframeEl)return;
-  owSettingsOverlayEl.classList.add('open');
-  owSettingsOverlayEl.setAttribute('aria-hidden','false');
-  owSettingsIframeEl.src='index.html?avianOwSettingsEmbed=1&t='+Date.now();
-}
 window.addEventListener('message',function(ev){
   try{
     if(ev.data&&ev.data.type==='avianOwNestClose') closeOwNestOverlay();
-    if(ev.data&&ev.data.type==='avianOwSettingsClose') closeOwSettingsOverlay();
-  }catch(err){
-    if(typeof pushErrorHUD==='function') pushErrorHUD('Error','Overworld message handler failed',err);
-  }
+  }catch(_){}
 });
 document.getElementById('ow-nest-overlay-close')?.addEventListener('click',closeOwNestOverlay);
-document.getElementById('ow-settings-overlay-close')?.addEventListener('click',closeOwSettingsOverlay);
-document.getElementById('hdr-settings-btn')?.addEventListener('click',openOwSettingsOverlay);
 document.addEventListener('keydown',function(e){
   if(e.key==='Escape'&&owNestOverlayEl&&owNestOverlayEl.classList.contains('open')){
     e.preventDefault();
     closeOwNestOverlay();
-  }
-  if(e.key==='Escape'&&owSettingsOverlayEl&&owSettingsOverlayEl.classList.contains('open')){
-    e.preventDefault();
-    closeOwSettingsOverlay();
   }
 });
 function clamp(v,lo,hi){return Math.max(lo,Math.min(hi,v));}
@@ -1257,7 +1219,6 @@ requestAnimationFrame(()=>requestAnimationFrame(()=>{pl.style.transition='left .
 
   if (confirmBtn) {
     confirmBtn.addEventListener('click', function(e) {
-      try {
       e.stopPropagation(); // don't dismiss the overlay backdrop
       const n = NODES[curPos];
       if (!n || n.type === 'start' || !isActionable(n)) return;
@@ -1294,6 +1255,7 @@ requestAnimationFrame(()=>requestAnimationFrame(()=>{pl.style.transition='left .
           nodeKey,
           encounter:enc,
           bonus:n.type==='bonus'?n.bonusConfig:null,
+          clearRewards:Array.isArray(n.clearRewards)?n.clearRewards:(n.type==='bonus'&&n.bonusConfig?.rewards?n.bonusConfig.rewards:null),
           isBonus:n.type==='bonus',
           isWorldInterior:_WORLD_INDEX!=null,
           worldId:_WORLD_INDEX!=null?_CURRENT_MAP_ID:null,
@@ -1304,10 +1266,6 @@ requestAnimationFrame(()=>requestAnimationFrame(()=>{pl.style.transition='left .
       }
 
       window.location.href = 'index.html';
-      } catch (err) {
-        if (typeof pushErrorHUD === 'function') pushErrorHUD('Crash', 'Overworld stage entry failed: ' + (err.message || String(err)), err);
-        else console.error(err);
-      }
     });
   }
 
