@@ -2426,28 +2426,8 @@ function openNest() {
   if(!p){content.innerHTML='<p style="color:var(--text-dim);text-align:center">No active run.</p>';modal.classList.add('open');return;}
   sub.textContent=`${p.name} · Stage ${G.stage} · Lv.${p.birdLevel} · 🪶 ${Math.max(0, Number(p.mutatedFeatherCount)||0)}`;
   let html='';
-  // Passive trait
-  const bd=BIRDS[p.birdKey];
-  if(bd&&bd.passive){
-    html+=`<div class="nest-passive"><div class="nest-passive-title">★ PASSIVE: ${bd.passive.name}</div>${bd.passive.desc}</div>`;
-  }
-  const ownedClassPerks=getBirdClassPerks(p.birdKey);
-  if(ownedClassPerks.length){
-    const role=getBirdClassRoleByKey(p.birdKey);
-    const perkCards=ownedClassPerks.map(perkId=>{
-      const perk=(CLASS_PERK_BY_CLASS[role]||[]).find(entry=>entry.id===perkId);
-      if(!perk) return '';
-      return `<div class="nest-reward-row"><span class="nest-reward-icon">🧬</span><span class="nest-reward-name">${perk.name}</span><span class="nest-reward-desc">${perk.desc}</span></div>`;
-    }).join('');
-    if(perkCards){
-      html+=`<div class="nest-section"><div class="nest-section-title">🧬 Class Perks · ${idToClassLabel(role)}</div><div class="nest-rewards-list">${perkCards}</div></div>`;
-    }
-  }
-  html+=buildNestEquipmentSection(p);
-  html+=buildNestAbilitySection(p);
-  // Stats
+  // Stats (top of Nest)
   const s=p.stats;
-  // Compute effective in-battle stats
   const _nestWarcry=G.warcryActive?(s.atk||0)*(1+G.warcryATK/100):s.atk;
   const _nestDef=s.def+(G.battleHymnActive?G.battleHymnDEF:0);
   const _nestAcc=Math.min(100,s.acc+(G.battleHymnActive?G.battleHymnACC:0)-(G.playerStatus.accDebuff||0));
@@ -2471,6 +2451,25 @@ function openNest() {
     <div class="nest-stat-card" title="Magic Attack — improves spell and ailment potency"><div class="nest-stat-val" style="color:#6ae8e8">${formatCombatNumber(s.matk||8)}</div><div class="nest-stat-lbl" style="color:#4ab8c0">✦ M.ATK</div></div>
     <div class="nest-stat-card" title="Magic Defence — resists enemy spells and ailments"><div class="nest-stat-val" style="color:#6ae8e8">${formatCombatNumber(s.mdef||8)}</div><div class="nest-stat-lbl" style="color:#4ab8c0">✦ M.DEF</div></div>
   </div></div>`;
+  // Passive trait
+  const bd=BIRDS[p.birdKey];
+  if(bd&&bd.passive){
+    html+=`<div class="nest-passive"><div class="nest-passive-title">★ PASSIVE: ${bd.passive.name}</div>${bd.passive.desc}</div>`;
+  }
+  const ownedClassPerks=getBirdClassPerks(p.birdKey);
+  if(ownedClassPerks.length){
+    const role=getBirdClassRoleByKey(p.birdKey);
+    const perkCards=ownedClassPerks.map(perkId=>{
+      const perk=(CLASS_PERK_BY_CLASS[role]||[]).find(entry=>entry.id===perkId);
+      if(!perk) return '';
+      return `<div class="nest-reward-row"><span class="nest-reward-icon">🧬</span><span class="nest-reward-name">${perk.name}</span><span class="nest-reward-desc">${perk.desc}</span></div>`;
+    }).join('');
+    if(perkCards){
+      html+=`<div class="nest-section"><div class="nest-section-title">🧬 Class Perks · ${idToClassLabel(role)}</div><div class="nest-rewards-list">${perkCards}</div></div>`;
+    }
+  }
+  html+=buildNestEquipmentSection(p);
+  html+=buildNestAbilitySection(p);
   // Run bonuses (feathers / card stats / mechanics) — above collected card list
   const Ldg=p._statLedger;
   const upgMap=Ldg?.fromUpgrades||{};
@@ -3102,6 +3101,7 @@ function clearAllProgress() {
     'avianAscent_personal_bests',
     'avianAscent_last_seed',
     'blakiston_debug_unlocked',
+    globalThis.FORTUNE_META_KEY || 'avianAscent_meta_v1',
   ];
   for (const k of keys) {
     try { localStorage.removeItem(k); } catch (_) { /* noop */ }
@@ -4729,6 +4729,8 @@ function renderStarterFallbackGrid(reason=''){
 }
 
 function initSelectionSafe(){
+  try { if(typeof rebuildFortuneHireCatalog==='function') rebuildFortuneHireCatalog(); } catch(_) {}
+  try { if(typeof syncFortuneBalances==='function') syncFortuneBalances(); } catch(_) {}
   // If we navigated back from the overworld, handle the pending intent first.
   try { syncBuildNestUnlockUI(); } catch(_) {}
   try {
@@ -5760,13 +5762,23 @@ function setSuppliesSubView(which){
 globalThis.setSuppliesSubView = setSuppliesSubView;
 
 function openSelectHubPanel(which){
-  const allowed = {supplies:1,map:1,door:1};
+  const allowed = {supplies:1,map:1,door:1,fortune:1,inventory:1};
   if(!allowed[which]) return;
   const root = document.getElementById('select-hub-panels');
   const screenEl = document.getElementById('screen-select');
   if(!root || !screenEl) return;
   if(which === 'supplies') setSuppliesSubView('reference');
-  ['supplies','map','door'].forEach(w=>{
+  if(which === 'fortune'){
+    const msg=document.getElementById('fortune-shop-msg');
+    if(msg) msg.textContent='';
+    if(typeof renderFortuneShop==='function') renderFortuneShop();
+    else if(typeof setFortuneSubView==='function') setFortuneSubView('hiring');
+  }
+  if(which === 'inventory'){
+    if(typeof renderFortuneInventory==='function') renderFortuneInventory();
+    else if(typeof syncFortuneBalances==='function') syncFortuneBalances();
+  }
+  ['supplies','map','door','fortune','inventory'].forEach(w=>{
     const p = document.getElementById('select-hub-'+w);
     if(!p) return;
     const on = w===which;
@@ -5788,7 +5800,7 @@ function closeSelectHubPanel(){
     root.setAttribute('aria-hidden','true');
   }
   screenEl?.classList.remove('select-hub-panel-active');
-  ['supplies','map','door'].forEach(w=>{
+  ['supplies','map','door','fortune','inventory'].forEach(w=>{
     const p = document.getElementById('select-hub-'+w);
     if(p){
       p.classList.remove('is-open');
@@ -12858,6 +12870,7 @@ function showVictory(){
   if(!G.endlessMode){
     try { localStorage.removeItem(_OW_STATE_KEY); localStorage.removeItem(_OW_NAV_KEY); } catch(_) {}
   }
+  G._flightSavedEggsAwarded=0;
   // HARD RESET COMBAT STATE
   G.animLock = false;
   G.turnPhase = null;
@@ -12904,6 +12917,8 @@ function showVictory(){
     advanceStage();
     return;
   }
+  G._flightSavedEggsAwarded=typeof awardFlightSavedEggs==='function'?awardFlightSavedEggs():0;
+  if(G._flightSavedEggsAwarded>0) showRunStats();
   renderUnlockPopupsOnGameover();
   const endEvt={won:true, bird:G.player?.birdKey||'unknown', stageReached:G.stage||20, deathCause:'victory', endless:!!G.endlessMode};
   AvianEvents.emit('run:end', endEvt);
@@ -12912,6 +12927,7 @@ function showVictory(){
   if((G.ui?.gameMode||'story')==='story') startStoryCinematic();
 }
 function showDefeat(){
+  G._flightSavedEggsAwarded=typeof awardFlightSavedEggs==='function'?awardFlightSavedEggs():0;
   restoreBattleTempPlayerStats();
   G.phase='REWARD';
   G.playerStatus = {};
@@ -12954,6 +12970,7 @@ function showRunStats(){
     <div class="vstat"><div class="vstat-val">${G.runCrits||0}</div><div class="vstat-lbl">Critical Hits</div></div>
     <div class="vstat"><div class="vstat-val">${G.collectedRewards.length}</div><div class="vstat-lbl">Rewards</div></div>
     <div class="vstat"><div class="vstat-val">${G.shinyObjects||0}</div><div class="vstat-lbl">Shiny Objects</div></div>
+    ${G._flightSavedEggsAwarded>0?`<div class="vstat"><div class="vstat-val">+${G._flightSavedEggsAwarded} 🥚</div><div class="vstat-lbl">Saved Eggs</div></div>`:''}
     <div class="vstat"><div class="vstat-val">${G.player.stats.atk}</div><div class="vstat-lbl">Final ATK</div></div>
     <div class="vstat"><div class="vstat-val">${G.player.stats.hp}/${G.player.stats.maxHp}</div><div class="vstat-lbl">HP Left</div></div>`;
   el.style.display='grid';

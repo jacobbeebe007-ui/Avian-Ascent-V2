@@ -79,6 +79,16 @@
 <span class="splash-hotspot-title">Mission map</span>
 <span class="splash-hotspot-desc">Difficulty &amp; mode</span>
 </button>
+<button type="button" class="splash-hotspot splash-hotspot--inventory" data-action="openSelectHubPanel:inventory" aria-label="Inventory — global treasures">
+<span class="splash-hotspot-title">Inventory</span>
+<span class="splash-hotspot-desc">Eggs · Artifacts · Vault</span>
+<span class="inventory-artifact-badge" id="inventory-artifact-badge" hidden aria-label="Owned artifacts count"></span>
+</button>
+<button type="button" class="splash-hotspot splash-hotspot--fortune" data-action="openSelectHubPanel:fortune" aria-label="Feathers and Fortune — global store">
+<span class="splash-hotspot-title">Feathers &amp; Fortune</span>
+<span class="splash-hotspot-desc">Hire birds · Artifacts</span>
+<span class="fortune-egg-badge" id="fortune-egg-badge" hidden aria-label="Saved Eggs balance"></span>
+</button>
 <button type="button" class="splash-hotspot splash-hotspot--door splash-hotspot--primary" data-action="openSelectHubPanel:door" aria-label="Begin ascent — champion roster">
 <span class="splash-hotspot-title">Begin Ascent</span>
 <span class="splash-hotspot-desc">Choose your champion</span>
@@ -97,7 +107,7 @@
 </div>
 <button type="button" class="splash-settings-btn" data-action="openSettingsModal">⚙ Settings</button>
 </div>
-<p class="splash-roster-hint" id="splash-roster-hint">Supplies by the bags (codex, unlock, runs &amp; scores). Map on the table. Ascent through the door.</p>
+<p class="splash-roster-hint" id="splash-roster-hint">Supplies by the bags. Map on the table. Inventory and Feathers &amp; Fortune on the wall. Ascent through the door.</p>
 </div>
 </div>
 <div class="select-hub-panels" id="select-hub-panels" aria-hidden="true">
@@ -133,6 +143,57 @@
 <div class="run-history-title">— HIGHSCORES —</div>
 <div class="run-history-grid" id="highscore-grid"></div>
 </div>
+</div>
+</div>
+</div>
+<div class="select-hub-panel select-hub-panel--inventory" id="select-hub-inventory" role="dialog" aria-modal="true" aria-labelledby="hub-inventory-title" aria-hidden="true">
+<div class="select-hub-panel-inner select-hub-panel-inner--inventory">
+<header class="select-hub-panel-head">
+<h3 class="select-hub-panel-title" id="hub-inventory-title">Inventory</h3>
+<button type="button" class="select-hub-return-btn" data-action="closeSelectHubPanel">← Return to war room</button>
+</header>
+<p class="select-hub-lead">Your global vault across Flights — Saved Eggs banked at victory or defeat, plus treasures bought at Feathers &amp; Fortune.</p>
+<div class="fortune-balance-bar inventory-balance-bar" aria-label="Global currency">
+<span class="fortune-balance-chip"><span class="fortune-balance-icon">🥚</span> Saved Eggs: <strong id="inventory-balance-saved">0</strong></span>
+<span class="fortune-balance-chip fortune-balance-chip--goose"><span class="fortune-balance-icon">🪿</span> Golden Goose: <strong id="inventory-balance-goose">0</strong></span>
+</div>
+<section class="inventory-section" aria-labelledby="inventory-artifacts-heading">
+<h4 class="inventory-section-title" id="inventory-artifacts-heading">Artifacts</h4>
+<p class="inventory-section-lead">Permanent relics purchased with Golden Goose Eggs.</p>
+<p class="inventory-empty" id="inventory-artifacts-empty">No artifacts yet. Visit Feathers &amp; Fortune to buy relics.</p>
+<div class="inventory-items-grid" id="inventory-artifacts-grid"></div>
+</section>
+<section class="inventory-section" aria-labelledby="inventory-misc-heading">
+<h4 class="inventory-section-title" id="inventory-misc-heading">Other treasures</h4>
+<p class="inventory-section-lead">Future global items will appear here.</p>
+<p class="inventory-empty" id="inventory-misc-empty">Nothing here yet — future global items will appear in this vault.</p>
+<div class="inventory-items-grid" id="inventory-misc-grid"></div>
+</section>
+</div>
+</div>
+<div class="select-hub-panel select-hub-panel--fortune" id="select-hub-fortune" role="dialog" aria-modal="true" aria-labelledby="hub-fortune-title" aria-hidden="true">
+<div class="select-hub-panel-inner select-hub-panel-inner--fortune">
+<header class="select-hub-panel-head">
+<h3 class="select-hub-panel-title" id="hub-fortune-title">Feathers &amp; Fortune</h3>
+<button type="button" class="select-hub-return-btn" data-action="closeSelectHubPanel">← Return to war room</button>
+</header>
+<p class="select-hub-lead">Global treasures earned across Flights. Saved Eggs are banked when a Flight ends in victory or defeat (1 per stage completed). Golden Goose Eggs are rare finds for Artifacts.</p>
+<div class="fortune-balance-bar" aria-label="Global currency">
+<span class="fortune-balance-chip"><span class="fortune-balance-icon">🥚</span> Saved Eggs: <strong id="fortune-balance-saved">0</strong></span>
+<span class="fortune-balance-chip fortune-balance-chip--goose"><span class="fortune-balance-icon">🪿</span> Golden Goose: <strong id="fortune-balance-goose">0</strong></span>
+</div>
+<div class="fortune-subnav" role="tablist" aria-label="Store sections">
+<button type="button" class="fortune-subnav-btn is-active" id="fortune-nav-hiring" role="tab" aria-selected="true" aria-controls="fortune-view-hiring" data-action="setFortuneSubView:hiring">Hiring Birds</button>
+<button type="button" class="fortune-subnav-btn" id="fortune-nav-artifacts" role="tab" aria-selected="false" aria-controls="fortune-view-artifacts" data-action="setFortuneSubView:artifacts">Artifacts</button>
+</div>
+<div class="fortune-shop-msg" id="fortune-shop-msg" aria-live="polite"></div>
+<div class="fortune-subview is-active" id="fortune-view-hiring" role="tabpanel" aria-labelledby="fortune-nav-hiring">
+<p class="fortune-tab-lead">Spend Saved Eggs to permanently hire locked champions for every future Flight.</p>
+<div class="fortune-hiring-grid" id="fortune-hiring-grid"></div>
+</div>
+<div class="fortune-subview" id="fortune-view-artifacts" role="tabpanel" aria-labelledby="fortune-nav-artifacts">
+<p class="fortune-tab-lead">Rare Artifacts cost Golden Goose Eggs. Drops are not in the game yet — stock up when they appear.</p>
+<div class="fortune-artifacts-grid" id="fortune-artifacts-grid"></div>
 </div>
 </div>
 </div>
