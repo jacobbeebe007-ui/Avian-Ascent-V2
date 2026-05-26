@@ -6,9 +6,14 @@
 <script>
 (function(){
   try{
-    if(new URLSearchParams(location.search).get('avianOwNestEmbed')==='1'){
+    var params=new URLSearchParams(location.search);
+    if(params.get('avianOwNestEmbed')==='1'){
       document.documentElement.classList.add('avian-ow-nest-embed');
       window.__AVIAN_OW_NEST_EMBED__=true;
+    }
+    if(params.get('avianOwSettingsEmbed')==='1'){
+      document.documentElement.classList.add('avian-ow-settings-embed');
+      window.__AVIAN_OW_SETTINGS_EMBED__=true;
     }
   }catch(_){}
 })();
@@ -632,7 +637,7 @@
 <button class="menu-btn" data-action="openConsoleHud">🖥 Open Console</button>
 </div>
 <div style="display:flex;flex-wrap:wrap;gap:10px;justify-content:space-between;align-items:center;margin-top:16px;">
-<button type="button" class="menu-btn" data-action="returnToWarRoomFromSettings">🏕 Return to war room</button>
+<button type="button" class="menu-btn settings-embed-hide" data-action="returnToWarRoomFromSettings">🏕 Return to war room</button>
 <button class="abandon-cancel-btn" data-action="closeSettingsModal">Close</button>
 </div>
 </div>

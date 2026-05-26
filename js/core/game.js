@@ -2683,6 +2683,23 @@ function bootstrapOwNestEmbed(){
 }
 globalThis.bootstrapOwNestEmbed=bootstrapOwNestEmbed;
 
+/**
+ * Settings embed when index.html is loaded in an iframe from the overworld map (?avianOwSettingsEmbed=1).
+ */
+function bootstrapOwSettingsEmbed(){
+  try{
+    const a=document.getElementById('theme-bgm-audio');
+    if(a){ try{ a.pause(); }catch(_){} }
+  }catch(_){}
+  try{
+    openSettingsModal();
+  }catch(err){
+    owLog('error', 'bootstrapOwSettingsEmbed failed', err);
+    if(typeof globalThis.pushErrorHUD === 'function') globalThis.pushErrorHUD('Crash', err.message || String(err), err);
+  }
+}
+globalThis.bootstrapOwSettingsEmbed=bootstrapOwSettingsEmbed;
+
 function codexMark(type, id, field='seen'){
   if(!id) return;
   if(!G.codex) G.codex={abilities:{},enemies:{},birds:{},artifacts:{},statuses:{}};
@@ -3217,7 +3234,11 @@ function continueRun() {
     if(!haveTerrain && typeof oc.battleTerrain === 'string' && oc.battleTerrain.trim()) G._battleTerrain = oc.battleTerrain.trim();
   };
 
-  if(!G.endlessMode && oc && ocAlignedWithPendingEncounter && Array.isArray(oc.owStageEnemies) && oc.owStageEnemies.length && !skipOcEnemyRestore){
+  const haveFreshOwNavEnemies = !G.endlessMode
+    && Number.isFinite(Number(G._owPendingBattleStage)) && Number(G._owPendingBattleStage) > 0
+    && Array.isArray(G._owStageEnemies) && G._owStageEnemies.length > 0;
+
+  if(!G.endlessMode && !haveFreshOwNavEnemies && oc && ocAlignedWithPendingEncounter && Array.isArray(oc.owStageEnemies) && oc.owStageEnemies.length && !skipOcEnemyRestore){
     G._owStageEnemies = oc.owStageEnemies.slice();
     G._owEnemyIndex = Math.max(0, Math.floor(Number(oc.owEnemyIndex) || 0));
     G._owEnemyCount = Math.max(1, Math.floor(Number(oc.owEnemyCount) || G._owStageEnemies.length));
@@ -3320,6 +3341,24 @@ function goMainMenu() {
 // ============================================================
 const _OW_STATE_KEY = globalThis.AVIAN_OW_KEYS?.STATE ?? 'avianAscent_overworld';
 const _OW_NAV_KEY = globalThis.AVIAN_OW_KEYS?.NAV ?? 'avianAscent_nav';
+
+function owLog(level, msg, detail){
+  const text = String(msg || '');
+  globalThis.__AVIAN_OW_LOG_SUPPRESS = true;
+  try{
+    const fn = level === 'error' ? console.error : (level === 'info' ? console.info : console.warn);
+    fn('[ow-return]', text, detail != null ? detail : '');
+  }finally{
+    globalThis.__AVIAN_OW_LOG_SUPPRESS = false;
+  }
+  if(level === 'info' || typeof globalThis.pushErrorHUD !== 'function') return;
+  const kind = level === 'error' ? 'Error' : 'Warn';
+  let meta = detail;
+  if(detail instanceof Error) meta = detail;
+  else if(detail != null && typeof detail === 'object') meta = { stack: JSON.stringify(detail) };
+  else if(detail != null) meta = { stack: String(detail) };
+  globalThis.pushErrorHUD(kind, '[ow-return] ' + text, meta);
+}
 
 function flyAgain() {
   deleteSave();
@@ -4378,7 +4417,7 @@ function _applyOwBattleEnemyRoll(stageNum, pbk, intent){
         ? resolveFn(intent.encounter, pbk, stageNum)
         : generateStoryStageEnemyKeys(stageNum, pbk);
     }catch(err){
-      console.warn('[ow-return] forge encounter resolution failed; falling back to story roll', err);
+      owLog('warn', 'forge encounter resolution failed; falling back to story roll', err);
       rolled = generateStoryStageEnemyKeys(stageNum, pbk);
     }
   }else{
@@ -4386,7 +4425,7 @@ function _applyOwBattleEnemyRoll(stageNum, pbk, intent){
   }
   G._owStageEnemies = normalizeOwEnemyListForBattle(rolled);
   if(!Array.isArray(G._owStageEnemies) || !G._owStageEnemies.length){
-    console.warn('[ow-return] empty enemy list after roll; forcing sparrow fallback');
+    owLog('warn', 'empty enemy list after roll; forcing sparrow fallback');
     const chainCount = typeof globalThis.getStoryEncounterChainCount === 'function'
       ? Math.max(1, globalThis.getStoryEncounterChainCount(stageNum))
       : 3;
@@ -4400,7 +4439,7 @@ function _applyOwBattleEnemyRoll(stageNum, pbk, intent){
 
 /** War-room recovery when overworld → battle handoff fails (avoid stranding on title splash). */
 function recoverFromOverworldHandoffFailure(reason){
-  try{ console.warn('[ow-return] handoff recovery:', reason); }catch(_){}
+  owLog('warn', 'handoff recovery: ' + String(reason || ''));
   try{
     showScreen('screen-select');
     initSelection();
@@ -4408,7 +4447,7 @@ function recoverFromOverworldHandoffFailure(reason){
     const info = document.getElementById('continue-info');
     if(info) info.textContent = 'Could not start battle from the map — use Continue last run.';
   }catch(err){
-    console.error('[ow-return] recoverFromOverworldHandoffFailure failed', err);
+    owLog('error', 'recoverFromOverworldHandoffFailure failed', err);
   }
 }
 
@@ -4425,7 +4464,7 @@ function handleOverworldReturn() {
 
   const save = loadSaveData();
   if (!save?.player) {
-    console.warn('[ow-return] no save player; aborting handoff', {
+    owLog('warn', 'no save player; aborting handoff', {
       action: intent.action,
       stage: intent.stage,
       hasRawSave: !!localStorage.getItem(SAVE_KEY),
@@ -4433,7 +4472,7 @@ function handleOverworldReturn() {
     return false;
   }
   if (save?.endlessMode) {
-    console.warn('[ow-return] endless save with overworld nav; clearing nav');
+    owLog('warn', 'endless save with overworld nav; clearing nav');
     try {
       localStorage.removeItem(_OW_NAV_KEY);
       localStorage.removeItem(_OW_STATE_KEY);
@@ -4442,7 +4481,7 @@ function handleOverworldReturn() {
   }
 
   try {
-    console.info('[ow-return] handoff start', {
+    owLog('info', 'handoff start', {
       action: intent.action,
       stage: intent.stage,
       hasPlayer: !!save?.player,
@@ -4452,6 +4491,7 @@ function handleOverworldReturn() {
   try { localStorage.removeItem(_OW_NAV_KEY); } catch(_) {}
 
   if (intent.action === 'battle') {
+    globalThis.__AVIAN_OW_HANDOFF__ = true;
     G._owForgeNavMeta = {
       mapId: intent.mapId || 'main',
       nodeKey: intent.nodeKey || null,
@@ -4477,16 +4517,23 @@ function handleOverworldReturn() {
     try{
       _applyOwBattleEnemyRoll(stageNum, pbk, intent);
     }catch(err){
-      console.error('[ow-return] enemy roll setup failed', err);
+      owLog('error', 'enemy roll setup failed', err);
       try{ localStorage.setItem(_OW_NAV_KEY, JSON.stringify(intent)); }catch(_){}
       return false;
     }
     try{
       continueRun(); // restores state; continueRun ends with loadStage()
+      const battleActive = document.getElementById('screen-battle')?.classList.contains('active');
+      if (!battleActive || !G.enemy) {
+        throw new Error('Overworld handoff did not reach battle (screen-battle inactive or enemy missing)');
+      }
     }catch(err){
-      console.error('handleOverworldReturn battle failed', err);
+      owLog('error', 'handleOverworldReturn battle failed', err);
+      if(typeof globalThis.pushErrorHUD === 'function') globalThis.pushErrorHUD('Crash', err.message || String(err), err);
       try{ localStorage.setItem(_OW_NAV_KEY, JSON.stringify(intent)); }catch(_){ }
       return false;
+    }finally{
+      globalThis.__AVIAN_OW_HANDOFF__ = false;
     }
     return true;
   }
@@ -4742,13 +4789,15 @@ function initSelectionSafe(){
   try {
     if (handleOverworldReturn()) return;
   } catch(err) {
-    console.error('[ow-return] initSelectionSafe handoff failed', err);
+    owLog('error', 'initSelectionSafe handoff failed', err);
+    if(typeof globalThis.pushErrorHUD === 'function') globalThis.pushErrorHUD('Crash', err.message || String(err), err);
     recoverFromOverworldHandoffFailure('exception');
     return;
   }
-  if (hadOwPendingNav || _isOverworldRun()) {
+  if (hadOwPendingNav) {
     const onStart = document.getElementById('screen-start')?.classList.contains('active');
-    if (onStart) {
+    const onBattle = document.getElementById('screen-battle')?.classList.contains('active');
+    if (onStart && !onBattle) {
       recoverFromOverworldHandoffFailure('handoff incomplete');
       return;
     }
@@ -5672,7 +5721,7 @@ function loadStage() {
   }
   G.enemy = ed;
   if (!G.enemy) {
-    console.error('[loadStage] enemy draft missing; synthesizing sparrow fallback', {
+    owLog('error', 'loadStage enemy draft missing; synthesizing sparrow fallback', {
       encounterStage,
       owStageEnemies: G._owStageEnemies,
       owEnemyIndex: G._owEnemyIndex,
@@ -6440,161 +6489,7 @@ window.addEventListener('unhandledrejection', (ev) => {
 });
 
 
-// ============================================================
-// ON-SCREEN ERROR HUD (mobile-friendly)
-// ============================================================
-function installErrorHUD(){
-  if (document.getElementById('error-hud')) return;
-
-  const hud = document.createElement('div');
-  hud.id = 'error-hud';
-  hud.style.cssText = `
-    position:fixed; left:8px; right:8px; bottom:8px;
-    z-index:999999; font:12px/1.25 monospace;
-    color:#fff; background:rgba(40,0,0,.92);
-    border:1px solid rgba(255,120,120,.65);
-    border-radius:12px; padding:10px;
-    box-shadow:0 8px 24px rgba(0,0,0,.45);
-    max-height:40vh; overflow:auto; display:none;
-  `;
-
-  hud.innerHTML = `
-    <div style="display:flex; gap:8px; align-items:center; justify-content:space-between;">
-      <div style="font-weight:700; letter-spacing:.08em; color:#ffb3b3;">
-        ⚠ ERROR
-      </div>
-      <div style="display:flex; gap:6px;">
-        <button id="eh-copy" style="padding:4px 8px;border-radius:8px;border:1px solid rgba(255,255,255,.25);background:rgba(255,255,255,.08);color:#fff;">Copy</button>
-        <button id="eh-clear" style="padding:4px 8px;border-radius:8px;border:1px solid rgba(255,255,255,.25);background:rgba(255,255,255,.08);color:#fff;">Clear</button>
-        <button id="eh-hide" style="padding:4px 8px;border-radius:8px;border:1px solid rgba(255,255,255,.25);background:rgba(255,255,255,.08);color:#fff;">Hide</button>
-      </div>
-    </div>
-
-    <div id="eh-meta" style="margin-top:6px; opacity:.85;">
-      (Errors will appear here)
-    </div>
-
-    <div id="eh-list" style="margin-top:8px; display:flex; flex-direction:column; gap:6px;"></div>
-
-    <label style="display:flex; gap:8px; align-items:center; margin-top:10px; opacity:.9;">
-      <input id="eh-autofix" type="checkbox" checked />
-      Auto-recover (calls failsafeAdvance)
-    </label>
-  `;
-
-  document.body.appendChild(hud);
-
-  const list = hud.querySelector('#eh-list');
-  const meta = hud.querySelector('#eh-meta');
-  const btnHide = hud.querySelector('#eh-hide');
-  const btnClear = hud.querySelector('#eh-clear');
-  const btnCopy = hud.querySelector('#eh-copy');
-  const chkAuto = hud.querySelector('#eh-autofix');
-
-  const store = {
-    max: 8,
-    items: [],
-  };
-
-  function showHUD(){
-    hud.style.display = 'block';
-  }
-
-  function escapeHtml(v){
-    return String(v).replace(/[&<>"']/g, c=>({
-      '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'
-    }[c]));
-  }
-
-  function pushItem(kind, msg, src, line, col, stack){
-    const time = new Date().toLocaleTimeString();
-    const entry = {
-      time, kind,
-      msg: String(msg || ''),
-      src: String(src || ''),
-      line: line ?? '',
-      col: col ?? '',
-      stack: String(stack || ''),
-    };
-    store.items.unshift(entry);
-    if(store.items.length > store.max) store.items.pop();
-
-    meta.textContent = `${store.items.length} error(s) captured. Latest at ${time}.`;
-    list.innerHTML = '';
-
-    store.items.forEach(e=>{
-      const box = document.createElement('div');
-      box.style.cssText = `
-        padding:8px; border-radius:10px;
-        border:1px solid rgba(255,255,255,.18);
-        background:rgba(255,255,255,.06);
-      `;
-      const loc = e.src ? `@ ${e.src}${e.line!==''?`:${e.line}`:''}${e.col!==''?`:${e.col}`:''}` : '';
-      box.innerHTML = `
-        <div style="opacity:.9"><strong>${e.kind}</strong> • ${e.time}</div>
-        <div style="margin-top:4px">${escapeHtml(e.msg)}</div>
-        ${loc ? `<div style="margin-top:4px; opacity:.75">${escapeHtml(loc)}</div>` : ''}
-        ${e.stack ? `<details style="margin-top:6px; opacity:.9"><summary>stack</summary><pre style="white-space:pre-wrap;margin:6px 0 0 0">${escapeHtml(e.stack)}</pre></details>`:''}
-      `;
-      list.appendChild(box);
-    });
-
-    showHUD();
-
-    if(chkAuto && chkAuto.checked){
-      try{
-        if(typeof failsafeAdvance === 'function') failsafeAdvance('ErrorHUD auto-recover');
-      }catch(_){ }
-    }
-  }
-
-  btnHide.onclick = ()=>{ hud.style.display='none'; };
-  btnClear.onclick = ()=>{
-    store.items = [];
-    list.innerHTML = '';
-    meta.textContent = '(Errors cleared)';
-  };
-  btnCopy.onclick = async ()=>{
-    const text = store.items.map(e=>{
-      return `[${e.time}] ${e.kind}: ${e.msg}\n${e.src}${e.line!==''?`:${e.line}`:''}${e.col!==''?`:${e.col}`:''}\n${e.stack}\n`;
-    }).join('\n');
-    try{
-      await navigator.clipboard.writeText(text);
-      meta.textContent = 'Copied to clipboard ✅';
-    }catch(err){
-      meta.textContent = 'Copy failed (clipboard not available on this device).';
-      console.warn('Clipboard copy failed:', err);
-    }
-  };
-
-  window.addEventListener('error', (ev)=>{
-    const err = ev.error;
-    pushItem(
-      'Error',
-      ev.message,
-      ev.filename,
-      ev.lineno,
-      ev.colno,
-      err && err.stack ? err.stack : ''
-    );
-  });
-
-  window.addEventListener('unhandledrejection', (ev)=>{
-    const r = ev.reason;
-    pushItem(
-      'PromiseRejection',
-      r && r.message ? r.message : String(r),
-      '',
-      '',
-      '',
-      r && r.stack ? r.stack : ''
-    );
-  });
-
-  window.showErrorHUD = ()=> showHUD();
-}
-
-
+// installErrorHUD lives in js/ui/error-hud.js (floating console modal).
 
 const ABILITY_DISPLAY_TAGS = {
   rapidPeck:['BASIC'], blackPeck:['BASIC'], gooseHonk:['BASIC'], headWhip:['BASIC'], kick:['BASIC'], raptorKick:['BASIC'],
@@ -14602,6 +14497,9 @@ function openSettingsModal(){
 }
 function closeSettingsModal(){
   const m=document.getElementById('settings-modal'); if(m) m.classList.remove('open');
+  if(globalThis.__AVIAN_OW_SETTINGS_EMBED__){
+    try{ window.parent.postMessage({ type: 'avianOwSettingsClose' }, '*'); }catch(_){}
+  }
 }
 function returnToWarRoomFromSettings(){
   closeSettingsModal();
@@ -14821,22 +14719,8 @@ wireThemeBgmAutoplayUnlock();
     globalThis.buildBirdCard = wrapped;
   }
 
-  // Refresh selection if already on screen.
-  // Deferred so that modules listed AFTER js/core/game.js in
-  // js/bootstrap/load-order.json (enemies, upgrade-cards, systems wrappers,
-  // ui, sprites) finish loading before initSelectionSafe → handleOverworldReturn
-  // → continueRun → loadStage runs. Without this defer, an OW return
-  // would fire here before the post-game.js modules registered, which
-  // could swallow an error in continueRun and strand the player on the
-  // default screen-start splash.
-  const _avianSpritePatchInit = function(){
-    try{
-      if(typeof initSelectionSafe==='function') initSelectionSafe();
-    }catch(_){}
-  };
-  if(typeof queueMicrotask === 'function') queueMicrotask(_avianSpritePatchInit);
-  else if(typeof Promise !== 'undefined' && typeof Promise.resolve === 'function') Promise.resolve().then(_avianSpritePatchInit);
-  else setTimeout(_avianSpritePatchInit, 0);
+  // initSelectionSafe is deferred once at bundle boot (_avianBootstrapInit) so
+  // post-game.js modules are registered before handleOverworldReturn → loadStage.
 })();
 
 
@@ -15417,6 +15301,8 @@ SPRITE_KEYS_ALL.add('magpie');
   try{
     if(globalThis.__AVIAN_OW_NEST_EMBED__ && typeof globalThis.bootstrapOwNestEmbed === 'function'){
       globalThis.bootstrapOwNestEmbed();
+    }else if(globalThis.__AVIAN_OW_SETTINGS_EMBED__ && typeof globalThis.bootstrapOwSettingsEmbed === 'function'){
+      globalThis.bootstrapOwSettingsEmbed();
     }else{
       // Defer until the rest of the bundle finishes loading so that modules
       // listed AFTER js/core/game.js in js/bootstrap/load-order.json
@@ -15434,7 +15320,8 @@ SPRITE_KEYS_ALL.add('magpie');
           if(typeof globalThis.initSelectionSafe === 'function') globalThis.initSelectionSafe();
           else if(typeof globalThis.initSelection === 'function') globalThis.initSelection();
         }catch(_e){
-          console.error('[ow-return] bootstrap initSelectionSafe failed', _e);
+          owLog('error', 'bootstrap initSelectionSafe failed', _e);
+          if(typeof globalThis.pushErrorHUD === 'function') globalThis.pushErrorHUD('Crash', _e?.message || String(_e), _e);
         }
       };
       if(typeof queueMicrotask === 'function') queueMicrotask(_avianBootstrapInit);

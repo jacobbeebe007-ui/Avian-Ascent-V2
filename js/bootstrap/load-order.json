@@ -30,6 +30,7 @@
     "js/world/ow_map_runtime.js",
     "js/world/map-forge.js",
     "js/systems/save-migrations.js",
+    "js/ui/error-hud.js",
     "js/core/game.js",
     "js/data/enemies.js",
     "js/systems/ability-dispatcher.js",

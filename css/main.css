@@ -1902,6 +1902,12 @@ body.ui-desktop-mode #action-tooltip:not(.is-touch-open) .tt-type{font-size:.66r
 html.avian-ow-nest-embed #app > *:not(#nest-modal){display:none!important;}
 html.avian-ow-nest-embed #app{min-height:100vh;background:#0a0c0f;}
 html.avian-ow-nest-embed #action-tooltip{z-index:99999;}
+/* Overworld settings iframe embed */
+html.avian-ow-settings-embed #app > *:not(#settings-modal){display:none!important;}
+html.avian-ow-settings-embed #app{min-height:100vh;background:#0a0c0f;}
+html.avian-ow-settings-embed #settings-modal{display:flex!important;align-items:center;justify-content:center;}
+html.avian-ow-settings-embed #settings-modal.open{display:flex!important;}
+html.avian-ow-settings-embed .settings-embed-hide{display:none!important;}
 
 #nest-modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.82);z-index:8000;align-items:flex-start;justify-content:center;padding:20px;overflow-y:auto;}
 #nest-modal.open{display:flex;}

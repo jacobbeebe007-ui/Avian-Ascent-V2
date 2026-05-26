@@ -46,6 +46,8 @@ const checks = [
   { label: 'handleOverworldReturn global', re: /globalThis\.handleOverworldReturn\s*=/ },
   { label: 'OW bootstrap defer',        re: /queueMicrotask\s*\(\s*_avianBootstrapInit\s*\)/ },
   { label: 'resolveForgeEncounterBirdKeys', re: /global\.resolveForgeEncounterBirdKeys\s*=\s*function/ },
+  { label: 'installErrorHUD global', re: /global\.installErrorHUD\s*=\s*installErrorHUD/ },
+  { label: 'pushErrorHUD global', re: /global\.pushErrorHUD\s*=\s*pushErrorHUD/ },
   { label: 'bundle hash injected',      re: /globalThis\.__AVIAN_BUNDLE_HASH__\s*=/ },
 ];
 
