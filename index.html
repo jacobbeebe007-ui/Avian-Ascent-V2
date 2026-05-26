@@ -213,6 +213,9 @@
 <button type="button" class="menu-btn" data-action="saveMapForgeDraft">Save draft</button>
 <button type="button" class="menu-btn" data-action="exportMapForge">Export JSON</button>
 <button type="button" class="menu-btn map-forge-btn-accent" data-action="playtestMapForge">Playtest</button>
+<button type="button" class="menu-btn map-forge-btn-accent" id="map-forge-playtest-from-btn" data-action="playtestFromSelectedNode">Playtest from here</button>
+<button type="button" class="menu-btn" data-action="undoMapForge">Undo</button>
+<button type="button" class="menu-btn" data-action="redoMapForge">Redo</button>
 <button type="button" class="menu-btn map-forge-btn-accent" data-action="activateMapForNextRun">Use on next run</button>
 <button type="button" class="menu-btn" data-action="closeMapForge">← War room</button>
 </div>
@@ -236,6 +239,26 @@
 <button type="button" class="menu-btn map-forge-tool-btn" data-action="duplicateMapForgeNode">Duplicate</button>
 <button type="button" class="menu-btn map-forge-tool-btn" data-action="deselectMapForgeNode">Deselect</button>
 <button type="button" class="map-forge-tool-btn map-forge-tool-danger" data-action="deleteMapForgeNode">Delete</button>
+<button type="button" class="menu-btn map-forge-tool-btn" data-action="copyMapForgeConfig">Copy cfg</button>
+<button type="button" class="menu-btn map-forge-tool-btn" data-action="pasteMapForgeConfig">Paste cfg</button>
+</div>
+<div class="map-forge-toolbar">
+<span class="map-forge-toolbar-label">Align</span>
+<button type="button" class="menu-btn map-forge-tool-btn" data-action="alignMapForgeLeft">Left</button>
+<button type="button" class="menu-btn map-forge-tool-btn" data-action="alignMapForgeCenterH">Center H</button>
+<button type="button" class="menu-btn map-forge-tool-btn" data-action="alignMapForgeRight">Right</button>
+<button type="button" class="menu-btn map-forge-tool-btn" data-action="alignMapForgeTop">Top</button>
+<button type="button" class="menu-btn map-forge-tool-btn" data-action="alignMapForgeCenterV">Center V</button>
+<button type="button" class="menu-btn map-forge-tool-btn" data-action="alignMapForgeBottom">Bottom</button>
+<button type="button" class="menu-btn map-forge-tool-btn" data-action="distributeMapForgeH">Dist H</button>
+<button type="button" class="menu-btn map-forge-tool-btn" data-action="distributeMapForgeV">Dist V</button>
+</div>
+<div class="map-forge-toolbar">
+<span class="map-forge-toolbar-label">View</span>
+<button type="button" class="menu-btn map-forge-tool-btn" data-action="mapForgeZoomFit">Fit</button>
+<button type="button" class="menu-btn map-forge-tool-btn" data-action="mapForgeZoom100">100%</button>
+<button type="button" class="menu-btn map-forge-tool-btn" data-action="mapForgeZoom200">200%</button>
+<label class="map-forge-field-check"><input type="checkbox" id="map-forge-snap-grid"/> Snap grid</label>
 </div>
 <div class="map-forge-toolbar">
 <span class="map-forge-toolbar-label">Navigate</span>
@@ -254,8 +277,22 @@
 <label class="map-forge-field-label" for="map-forge-node-name">Node name</label>
 <input type="text" class="map-forge-field-input" id="map-forge-node-name" maxlength="48"/>
 <label class="map-forge-field-label" for="map-forge-node-terrain">Terrain</label>
-<input type="text" class="map-forge-field-input" id="map-forge-node-terrain" maxlength="48"/>
+<select class="map-forge-field-input" id="map-forge-terrain-select"></select>
+<input type="text" class="map-forge-field-input" id="map-forge-terrain-custom" maxlength="48" placeholder="Custom terrain" style="display:none"/>
+<img class="map-forge-arena-preview" id="map-forge-arena-preview" alt="" width="120" height="68"/>
+<label class="map-forge-field-label" for="map-forge-portrait-bird">Portrait bird</label>
+<select class="map-forge-field-input" id="map-forge-portrait-bird"></select>
 <label class="map-forge-field-check"><input type="checkbox" id="map-forge-node-final"/> Final boss</label>
+<div class="map-forge-world-rename" id="map-forge-world-rename-wrap" style="display:none">
+<label class="map-forge-field-label" for="map-forge-world-rename">World name</label>
+<input type="text" class="map-forge-field-input" id="map-forge-world-rename" maxlength="48"/>
+<button type="button" class="menu-btn" data-action="addWorldTemplate">Add world template</button>
+</div>
+</div>
+<div class="map-forge-map-summary" id="map-forge-map-summary"></div>
+<div class="map-forge-validation-wrap">
+<div class="map-forge-field-label">Validation</div>
+<div class="map-forge-validation-panel" id="map-forge-validation-panel"></div>
 </div>
 <div class="map-forge-encounter-panel" id="map-forge-encounter-panel" style="display:none">
 <div class="map-forge-field-label">Encounter — enemies in chain</div>
@@ -267,6 +304,12 @@
 <option value="5">5 enemies</option>
 </select>
 <div id="map-forge-encounter-rows"></div>
+<div class="map-forge-encounter-presets">
+<button type="button" class="menu-btn" data-action="applyEncounterPreset:standardStage">Standard stage</button>
+<button type="button" class="menu-btn" data-action="applyEncounterPreset:miniBoss">Mini-boss</button>
+<button type="button" class="menu-btn" data-action="applyEncounterPreset:hardBoss">Hard boss</button>
+</div>
+<div class="map-forge-boss-stats-panel" id="map-forge-boss-stats-panel" style="display:none"></div>
 <div class="map-forge-clear-rewards-panel" id="map-forge-clear-rewards-panel" style="display:none">
 <div class="map-forge-field-label">Clear rewards</div>
 <div id="map-forge-clear-reward-list"></div>
@@ -286,15 +329,32 @@
 </div>
 <label class="map-forge-field-check"><input type="checkbox" id="map-forge-path-reveal" checked/> Hidden paths until cleared</label>
 <label class="map-forge-field-check"><input type="checkbox" id="map-forge-path-preview"/> Preview path reveal</label>
+<div class="map-forge-node-list-filters" id="map-forge-node-list-filters">
+<button type="button" class="map-forge-filter-btn is-active" data-forge-filter="all">All</button>
+<button type="button" class="map-forge-filter-btn" data-forge-filter="stage">Stage</button>
+<button type="button" class="map-forge-filter-btn" data-forge-filter="boss">Boss</button>
+<button type="button" class="map-forge-filter-btn" data-forge-filter="bonus">Bonus</button>
+<button type="button" class="map-forge-filter-btn" data-forge-filter="world">World</button>
+<button type="button" class="map-forge-filter-btn" data-forge-filter="shop">Shop</button>
+</div>
+<div class="map-forge-bulk-actions">
+<button type="button" class="menu-btn" data-action="bulkSelectAllStages">Select all stages</button>
+<button type="button" class="menu-btn" data-action="bulkApplyEncounter">Apply preset to checked</button>
+<button type="button" class="menu-btn" data-action="bulkApplyRewards">Copy rewards to checked</button>
+</div>
 <div class="map-forge-node-list-wrap">
 <div class="map-forge-node-list-title">Path order</div>
 <div class="map-forge-node-list" id="map-forge-node-list"></div>
 </div>
-<p class="map-forge-hint">Select tool: click nodes to select. Other tools: click map to place. Drag to reposition. Path connects nodes in list order.</p>
+<p class="map-forge-hint">S=Select, 1–7=place, arrows=nudge, Shift+arrows=10px, Ctrl+D=duplicate, Ctrl+Z/Y=undo, Del=delete, Esc=deselect. Shift+click multi-select.</p>
 </aside>
-<div class="map-forge-canvas-wrap">
+<div class="map-forge-canvas-wrap" id="map-forge-canvas-wrap">
+<div class="map-forge-canvas-inner" id="map-forge-canvas-inner">
 <img class="map-forge-bg" id="map-forge-bg" alt="" draggable="false"/>
 <svg class="map-forge-svg" id="map-forge-svg" xmlns="http://www.w3.org/2000/svg"></svg>
+</div>
+<canvas class="map-forge-minimap" id="map-forge-minimap" width="160" height="107"></canvas>
+<button type="button" class="menu-btn map-forge-fight-btn" id="map-forge-fight-btn" data-action="fightMapForgeNode">Fight this node</button>
 </div>
 </div>
 </div>
@@ -556,6 +616,15 @@
 <div class="grove-reward-grid reward-grid" id="grove-reward-grid"></div>
 </div>
 <button class="grove-btn-enter" id="grove-continue-btn" data-action="groveFinish" style="display:none;">Continue →</button>
+</div>
+</div>
+<!-- MAP FORGE UNSAVED MODAL -->
+<div class="abandon-modal" id="map-forge-unsaved-modal">
+<div class="abandon-inner">
+<h3>Unsaved map changes</h3>
+<p>Your map has unsaved changes. Discard them and continue?</p>
+<button class="abandon-confirm-btn" data-action="confirmMapForgeDiscard">Discard changes</button>
+<button class="abandon-cancel-btn" data-action="cancelMapForgeDiscard">Cancel</button>
 </div>
 </div>
 <!-- ABANDON MODAL -->

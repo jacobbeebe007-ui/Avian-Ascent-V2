@@ -3490,9 +3490,11 @@ function buildOwEnemyDraftFromBirdKey(bk, encounterStage){
     return makeDukeBlakiston();
   }
   const isMilestoneBoss = encounterStage === STORY_MILESTONE_BOSS_STAGE;
+  const isForgeBoss = !!(G._owForgeNavMeta?.forgeNodeIsBoss || G._owForgeNavMeta?.isForgeTest && G._owForgeNavMeta?.forgeNodeIsBoss);
+  const isBoss = isMilestoneBoss || isForgeBoss;
   return buildStoryEnemyFromBirdKey(bk, encounterStage, {
-    isBoss: isMilestoneBoss,
-    bossTitle: isMilestoneBoss ? bossTitleForStageMilestone(encounterStage) : '',
+    isBoss,
+    bossTitle: isBoss ? (isMilestoneBoss ? bossTitleForStageMilestone(encounterStage) : 'Boss') : '',
   });
 }
 
@@ -3541,6 +3543,21 @@ function mergeScaledStatsIntoEnemy(ed, encounterStage){
     const forgeEnc = G._owForgeEncounter;
     const slotIdx = Math.max(0, G._owEnemyIndex || 0);
     const forgeSlot = forgeEnc?.slots?.[slotIdx];
+    if (forgeSlot?.useCustomStats && forgeSlot.customStats) {
+      const cs = forgeSlot.customStats;
+      const apply = (k, v) => {
+        if (v == null) return;
+        ed.stats[k] = v;
+        if (k === 'maxHp') { ed.maxHp = v; ed.hp = v; ed.stats.hp = v; }
+        else if (k in ed) ed[k] = v;
+      };
+      apply('maxHp', cs.maxHp);
+      apply('atk', cs.atk);
+      apply('def', cs.def);
+      apply('matk', cs.matk);
+      apply('mdef', cs.mdef);
+      apply('spd', cs.spd);
+    }
     if (typeof globalThis.applyForgePowerScaling === 'function' && (G._owForgePowerTier || 0) > 0) {
       globalThis.applyForgePowerScaling(ed, G._owForgePowerTier);
       ed._statBaseBeforeMutations = {
@@ -4382,6 +4399,43 @@ function handleOverworldReturn() {
   }
 
   try { localStorage.removeItem(_OW_NAV_KEY); } catch(_) {}
+
+  if (intent.action === 'forgeTest') {
+    G._owForgeReturnToForge = true;
+    G._owForgeNavMeta = {
+      mapId: intent.mapId || 'main',
+      encounter: intent.encounter || null,
+      clearRewards: Array.isArray(intent.clearRewards) ? intent.clearRewards : null,
+      isForgeTest: true,
+      forgeNodeIsBoss: !!intent.isBoss,
+    };
+    G._owForgeEncounter = intent.encounter || null;
+    G._owForgePowerTier = 0;
+    G._owPendingBattleStage = Math.max(1, Math.floor(Number(intent.stage) || save.stage || 1));
+    G._owPendingNodeId = Number.isFinite(Number(intent.nodeId)) ? Math.floor(Number(intent.nodeId)) : null;
+    G._battleTerrain = (typeof intent.terrain === 'string' && intent.terrain.trim()) ? intent.terrain.trim() : null;
+    G._owSequenceShiny = 0;
+    resetStageBattleStats();
+    const stageNum = G._owPendingBattleStage;
+    const pbk = save?.player?.birdKey;
+    const resolveFn = typeof globalThis.resolveForgeEncounterBirdKeys === 'function'
+      ? globalThis.resolveForgeEncounterBirdKeys : null;
+    const rolled = resolveFn && intent.encounter
+      ? resolveFn(intent.encounter, pbk, stageNum)
+      : (pbk ? [pbk] : ['sparrow']);
+    G._owStageEnemies = normalizeOwEnemyListForBattle(rolled);
+    G._owEnemyIndex = 0;
+    G._owEnemyCount = Math.max(1, G._owStageEnemies?.length || 1);
+    G._owEncounterRollStage = stageNum;
+    try {
+      continueRun();
+    } catch (err) {
+      console.error('handleOverworldReturn forgeTest failed', err);
+      G._owForgeReturnToForge = false;
+      return false;
+    }
+    return true;
+  }
 
   if (intent.action === 'battle') {
     G._owForgeNavMeta = {
@@ -7706,6 +7760,17 @@ function continueStageTransitionAfterRewards(){
     return;
   }
   resetStageBattleStats();
+  if (G._owForgeReturnToForge) {
+    G._owForgeReturnToForge = false;
+    G._owForgeNavMeta = null;
+    G._owForgeEncounter = null;
+    G._owForgePowerTier = 0;
+    clearOverworldPendingBattle();
+    saveRun();
+    if (typeof showScreen === 'function') showScreen('screen-map-forge');
+    if (typeof globalThis.openMapForge === 'function') globalThis.openMapForge({ skipReload: true });
+    return;
+  }
   if (!G.endlessMode && _isOverworldRun()) {
     const forgeMeta = G._owForgeNavMeta || null;
     if (forgeMeta && typeof globalThis.markOwNodeCleared === 'function' && forgeMeta.mapId != null && G._owPendingNodeId != null) {

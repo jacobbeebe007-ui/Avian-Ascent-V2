@@ -56,11 +56,25 @@
     while (enc.slots.length < enc.enemyCount) {
       enc.slots.push({ birdKey: 'random', mutationBand: 'grey_green', maxMutations: 1 });
     }
-    enc.slots = enc.slots.slice(0, enc.enemyCount).map((s) => ({
-      birdKey: s.birdKey || 'random',
-      mutationBand: s.mutationBand || 'grey_green',
-      maxMutations: Math.max(0, Math.min(11, Math.floor(Number(s.maxMutations) || 0))),
-    }));
+    enc.slots = enc.slots.slice(0, enc.enemyCount).map((s) => {
+      const slot = {
+        birdKey: s.birdKey || 'random',
+        mutationBand: s.mutationBand || 'grey_green',
+        maxMutations: Math.max(0, Math.min(11, Math.floor(Number(s.maxMutations) || 0))),
+      };
+      if (s.useCustomStats) slot.useCustomStats = true;
+      if (s.customStats && typeof s.customStats === 'object') {
+        slot.customStats = {
+          maxHp: Math.max(1, Math.floor(Number(s.customStats.maxHp) || 1)),
+          atk: Math.max(1, Math.floor(Number(s.customStats.atk) || 1)),
+          def: Math.max(0, Math.floor(Number(s.customStats.def) || 0)),
+          matk: Math.max(1, Math.floor(Number(s.customStats.matk) || 1)),
+          mdef: Math.max(0, Math.floor(Number(s.customStats.mdef) || 0)),
+          spd: Math.max(1, Math.floor(Number(s.customStats.spd) || 1)),
+        };
+      }
+      return slot;
+    });
     return enc;
   };
 
@@ -306,5 +320,136 @@
   global.grantForgeBonusRewards = function (player, bonusConfig, G) {
     const rewards = bonusConfig?.rewards || bonusConfig?.clearRewards;
     return global.grantForgeClearRewards(player, rewards, G);
+  };
+
+  global.FORGE_TERRAIN_PRESETS = [
+    { label: 'Overgrown Yard', terrain: 'Overgrown Yard', arenaId: 'barn' },
+    { label: 'River Ford', terrain: 'River Ford', arenaId: 'river' },
+    { label: 'River Rapids', terrain: 'River Rapids', arenaId: 'river' },
+    { label: 'Rocky Outcrop', terrain: 'Rocky Outcrop', arenaId: 'open-glade' },
+    { label: 'Collapsed Mill', terrain: 'Collapsed Mill', arenaId: 'ruins' },
+    { label: 'Darkwood Path', terrain: 'Darkwood Path', arenaId: 'forest' },
+    { label: 'Ancient Trail', terrain: 'Ancient Trail', arenaId: 'trees' },
+    { label: 'Stone Bridge', terrain: 'Stone Bridge', arenaId: 'bridge' },
+    { label: 'Bridge Crossing', terrain: 'Bridge Crossing', arenaId: 'bridge' },
+    { label: 'Ashen Forest', terrain: 'Ashen Forest', arenaId: 'forest' },
+    { label: 'Highland Ridge', terrain: 'Highland Ridge', arenaId: 'open-glade' },
+    { label: 'Shadow Hollow', terrain: 'Shadow Hollow', arenaId: 'trees' },
+    { label: 'Mountain Pass', terrain: 'Mountain Pass', arenaId: 'castle-gate' },
+    { label: 'Castle Road', terrain: 'Castle Road', arenaId: 'castle-interior' },
+    { label: 'Castle Walls', terrain: 'Castle Walls', arenaId: 'castle-interior' },
+    { label: 'Outer Courtyard', terrain: 'Outer Courtyard', arenaId: 'castle-interior' },
+    { label: 'Castle Spire', terrain: 'Castle Spire', arenaId: 'castle-interior' },
+    { label: 'Throne Approach', terrain: 'Throne Approach', arenaId: 'castle-gate' },
+    { label: 'Castle Throne', terrain: 'Castle Throne Room', arenaId: 'castle-throne' },
+    { label: 'Open Glade', terrain: 'Open Glade', arenaId: 'open-glade' },
+    { label: 'Wilds', terrain: 'Wilds', arenaId: 'forest' },
+    { label: 'Boss Arena', terrain: 'Boss Arena', arenaId: 'castle-interior' },
+    { label: 'Bonus Arena', terrain: 'Bonus Arena', arenaId: 'open-glade' },
+  ];
+
+  global.FORGE_ENCOUNTER_PRESETS = {
+    standardStage: { enemyCount: 3, slots: [{ birdKey: 'random', mutationBand: 'grey_green', maxMutations: 1 }, { birdKey: 'random', mutationBand: 'grey_green', maxMutations: 1 }, { birdKey: 'random', mutationBand: 'grey_green', maxMutations: 1 }] },
+    miniBoss: { enemyCount: 2, slots: [{ birdKey: 'random', mutationBand: 'blue_purple', maxMutations: 2 }, { birdKey: 'random', mutationBand: 'blue_purple', maxMutations: 2 }] },
+    hardBoss: { enemyCount: 1, slots: [{ birdKey: 'random', mutationBand: 'purple_gold', maxMutations: 3 }] },
+  };
+
+  const MUT_BAND_WEIGHT = { grey: 1, grey_green: 2, green: 3, green_blue: 4, blue: 5, blue_purple: 6, purple: 7, purple_gold: 8, gold: 9 };
+
+  global.summarizeMapSlice = function (slice, mapDef) {
+    if (!slice?.nodes) return { combat: 0, worlds: 0, bonus: 0, shop: 0, avgMutTier: 0, bonusPower: [] };
+    const nodes = slice.nodes;
+    let combat = 0;
+    let worlds = 0;
+    let bonus = 0;
+    let shop = 0;
+    let mutSum = 0;
+    let mutCount = 0;
+    const bonusPower = [];
+    nodes.forEach((n) => {
+      if (n.type === 'world') worlds += 1;
+      else if (n.type === 'bonus') {
+        bonus += 1;
+        if (n.bonusConfig?.powerProgression) bonusPower.push(n.bonusConfig.maxRepeats || 5);
+      } else if (n.type === 'shop') shop += 1;
+      else if (n.type === 'stage' || n.type === 'boss') combat += 1;
+      if (global.isForgeCombatNode(n) && n.encounter?.slots) {
+        n.encounter.slots.forEach((s) => {
+          mutSum += MUT_BAND_WEIGHT[s.mutationBand] || 3;
+          mutCount += 1;
+        });
+      }
+    });
+    return {
+      combat,
+      worlds: slice.mapId === 'main' ? worlds : 0,
+      bonus,
+      shop,
+      avgMutTier: mutCount ? (mutSum / mutCount).toFixed(1) : '—',
+      bonusPower,
+      mapId: slice.mapId,
+    };
+  };
+
+  global.collectMapValidationIssues = function (map) {
+    const issues = [];
+    const add = (severity, message, mapId, nodeId) => issues.push({ severity, message, mapId: mapId || 'main', nodeId: nodeId ?? null });
+
+    const nodes = map?.nodes || [];
+    if (!nodes.length) add('error', 'Add at least one node.');
+    if (nodes.filter((n) => n.type === 'start').length !== 1) add('error', 'Exactly one Start node required.');
+    if (nodes[0] && nodes[0].type !== 'start') add('error', 'First node must be Start.');
+    if (!nodes.some((n) => n.type === 'stage' || n.type === 'boss')) add('error', 'Add at least one Stage or Boss.');
+    if (!map?.backgroundDataUrl) add('error', 'Upload a main map background image.');
+
+    const worldIdsUsed = new Set(nodes.filter((n) => n.type === 'world' && n.worldId).map((n) => n.worldId));
+    Object.keys(map?.worlds || {}).forEach((wid) => {
+      if (!worldIdsUsed.has(wid)) add('error', 'Orphaned world data: ' + wid, 'main', null);
+    });
+
+    if (!nodes.some((n) => n.type === 'boss' && n.final)) add('warning', 'No final boss marked on main map.');
+
+    let firstCombatIdx = nodes.findIndex((n) => n.type === 'stage' || n.type === 'boss');
+    const shopBeforeCombat = nodes.findIndex((n, i) => n.type === 'shop' && (firstCombatIdx < 0 || i < firstCombatIdx));
+    if (shopBeforeCombat >= 0) add('warning', 'Shop appears before first combat node.', 'main', nodes[shopBeforeCombat]?.id);
+
+    nodes.forEach((n) => {
+      if (n.type === 'bonus' && (!Array.isArray(n.clearRewards) || !n.clearRewards.length)) {
+        add('warning', 'Bonus node has no clear rewards.', 'main', n.id);
+      }
+    });
+
+    Object.keys(map?.worlds || {}).forEach((wid) => {
+      const w = map.worlds[wid];
+      const wn = w?.nodes || [];
+      if (!w?.backgroundDataUrl) add('warning', 'World "' + (w.name || wid) + '" has no background.', wid, null);
+      if (!wn.some((n) => n.type === 'return')) add('warning', 'World "' + (w.name || wid) + '" missing return gate.', wid, null);
+      if (!wn.some((n) => n.type === 'boss')) add('warning', 'World "' + (w.name || wid) + '" missing boss.', wid, null);
+      const bossIdx = wn.findIndex((n) => n.type === 'boss');
+      const retIdx = wn.findIndex((n) => n.type === 'return');
+      if (bossIdx >= 0 && retIdx >= 0 && retIdx <= bossIdx) {
+        add('warning', 'Return gate should come after boss in path order.', wid, wn[retIdx]?.id);
+      }
+    });
+
+    return issues;
+  };
+
+  global.previewForgeSlotStats = function (birdKey, stage, isBoss) {
+    const bd = global.BIRDS?.[birdKey];
+    if (!bd || birdKey === 'random') return null;
+    const st = Math.max(1, Math.floor(Number(stage) || 1));
+    let maxHp = Math.max(1, Math.floor(bd.stats?.maxHp || bd.stats?.hp || 30));
+    let atk = Math.max(1, Math.floor(bd.stats?.atk || 6));
+    let def = Math.max(0, Math.floor(bd.stats?.def || 2));
+    let matk = Math.max(1, Math.floor(bd.stats?.matk || 8));
+    let mdef = Math.max(0, Math.floor(bd.stats?.mdef || 8));
+    let spd = Math.max(1, Math.floor(bd.stats?.spd || 6));
+    if (isBoss) {
+      maxHp = Math.floor(maxHp * 2);
+      atk = Math.floor(atk * 1.3);
+      matk = Math.floor(matk * 1.3);
+    }
+    return { maxHp, atk, def, matk, mdef, spd };
   };
 })(typeof window !== 'undefined' ? window : globalThis);
