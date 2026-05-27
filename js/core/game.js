@@ -2005,6 +2005,21 @@ let G = {
 };
 globalThis.G = G;
 
+function _agentDbgLog(location, message, data, hypothesisId) {
+  const payload = { sessionId: '5e515f', location, message, data: data || {}, timestamp: Date.now(), hypothesisId: hypothesisId || '' };
+  try {
+    const k = 'avianAscent_dbg_5e515f';
+    const arr = JSON.parse(localStorage.getItem(k) || '[]');
+    arr.push(payload);
+    if (arr.length > 300) arr.splice(0, arr.length - 300);
+    localStorage.setItem(k, JSON.stringify(arr));
+  } catch (_) {}
+  // #region agent log
+  fetch('http://127.0.0.1:7940/ingest/a2f9b3c2-6614-4231-b7d9-0c870302a25c', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': '5e515f' }, body: JSON.stringify(payload) }).catch(() => {});
+  // #endregion
+}
+globalThis._agentDbgLog = _agentDbgLog;
+
 const DEFAULT_UI_STATE = Object.freeze({
   gameMode:'story',
   battleLayout:'desktop',
@@ -5727,6 +5742,9 @@ function loadStage() {
     G.playerStatus.tensionCoil={turns:1,pct:0.15};
   }
   preparePlayerCombatLoadout(G.player);
+  // #region agent log
+  _agentDbgLog('game.js:loadStage:afterPrepareLoadout', 'after preparePlayerCombatLoadout', { abilityCount: G.player?.abilities?.length || 0, mainAttackId: G.player?.mainAttackId || null }, 'H5');
+  // #endregion
   normalizeBattleTurnState();
   // Speed determines first turn
   const pSpd=G.player.stats.spd, eSpd=G.enemy.stats.spd;
@@ -5734,13 +5752,22 @@ function loadStage() {
   G.turnPhase = G.turn==='player'?TURN.PLAYER:TURN.ENEMY;
   G.phase = G.turn==='player' ? 'PLAYER' : 'ENEMY';
   if(G.turn==='player') startPlayerTurn(G.player);
+  // #region agent log
+  _agentDbgLog('game.js:loadStage:afterStartPlayerTurn', 'after turn init', { turn: G.turn, playerEnergy: G.player?.energy, enemyHp: G.enemy?.stats?.hp }, 'H5');
+  // #endregion
   G.enemyNextAction = planEnemyAction();
   showScreen('screen-battle');
+  // #region agent log
+  _agentDbgLog('game.js:loadStage:afterShowScreen', 'battle screen shown', { activeScreen: document.querySelector('.screen.active')?.id || null }, 'H5');
+  // #endregion
   const _battleLogEl=document.getElementById('battle-log'); if(_battleLogEl) _battleLogEl.innerHTML='';
   updateBattleArena();
   initBattleLogDrawer();
   updateStageProgress();
   refreshBattleUI();
+  // #region agent log
+  _agentDbgLog('game.js:loadStage:afterRefreshBattleUI', 'refreshBattleUI done', { actionsGrid: !!document.getElementById('actions-grid') }, 'H5');
+  // #endregion
   if (G.enemy.isBoss) {
     const stageLabel = G.endlessMode && encounterStage > 20
       ? `Endless Battle ${G.endlessBattle}` : `Stage ${encounterStage}`;
@@ -5755,6 +5782,9 @@ function loadStage() {
     scheduleOpeningEnemyTurn();
   }
   tryStartDukeBattleBgmIfNeeded();
+  // #region agent log
+  _agentDbgLog('game.js:loadStage:complete', 'loadStage complete', { turn: G.turn, battleOver: !!G.battleOver }, 'H5');
+  // #endregion
 }
 
 function setSuppliesSubView(which){
@@ -6443,7 +6473,7 @@ function failsafeAdvance(reason='') {
 
 window.addEventListener('error', (ev) => {
   // #region agent log
-  fetch('http://127.0.0.1:7940/ingest/a2f9b3c2-6614-4231-b7d9-0c870302a25c',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'5e515f'},body:JSON.stringify({sessionId:'5e515f',location:'game.js:window.error',message:'uncaught error',data:{msg:String(ev.message||''),file:String(ev.filename||''),line:ev.lineno||null,col:ev.colno||null},timestamp:Date.now(),hypothesisId:'H5'})}).catch(()=>{});
+  _agentDbgLog('game.js:window.error', 'uncaught error', { msg: String(ev.message || ''), file: String(ev.filename || ''), line: ev.lineno || null, col: ev.colno || null, stack: String(ev.error?.stack || '').slice(0, 800) }, 'H5');
   // #endregion
   try { console.error('[game] uncaught error:', ev.message, ev.error || ev); } catch(_) {}
   try { failsafeAdvance('window.onerror'); } catch(_) {}
