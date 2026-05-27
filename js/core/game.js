@@ -3307,6 +3307,9 @@ function continueRun() {
     return;
   }
 
+  // #region agent log
+  fetch('http://127.0.0.1:7940/ingest/a2f9b3c2-6614-4231-b7d9-0c870302a25c',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'5e515f'},body:JSON.stringify({sessionId:'5e515f',location:'game.js:continueRun:preLoadStage',message:'continueRun calling loadStage',data:{stage:G.stage,pendingStage:G._owPendingBattleStage,owEnemies:G._owStageEnemies,inBattle:!!save?.inBattle},timestamp:Date.now(),hypothesisId:'H4'})}).catch(()=>{});
+  // #endregion
   loadStage();
 }
 function goMainMenu() {
@@ -4438,6 +4441,9 @@ function handleOverworldReturn() {
   }
 
   if (intent.action === 'battle') {
+    // #region agent log
+    fetch('http://127.0.0.1:7940/ingest/a2f9b3c2-6614-4231-b7d9-0c870302a25c',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'5e515f'},body:JSON.stringify({sessionId:'5e515f',location:'game.js:handleOverworldReturn:battle',message:'OW battle intent',data:{stage:intent.stage,nodeId:intent.nodeId,hasEncounter:!!intent.encounter,hasSave:!!save?.player},timestamp:Date.now(),hypothesisId:'H1'})}).catch(()=>{});
+    // #endregion
     G._owForgeNavMeta = {
       mapId: intent.mapId || 'main',
       nodeKey: intent.nodeKey || null,
@@ -4486,8 +4492,14 @@ function handleOverworldReturn() {
       commitStoryEncounterMeta(stageNum, pbk, null);
     }
     try{
+      // #region agent log
+      fetch('http://127.0.0.1:7940/ingest/a2f9b3c2-6614-4231-b7d9-0c870302a25c',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'5e515f'},body:JSON.stringify({sessionId:'5e515f',location:'game.js:handleOverworldReturn:preContinueRun',message:'Before continueRun',data:{pendingStage:G._owPendingBattleStage,owEnemies:G._owStageEnemies,owCount:G._owEnemyCount,encounterRollStage:G._owEncounterRollStage},timestamp:Date.now(),hypothesisId:'H1,H4'})}).catch(()=>{});
+      // #endregion
       continueRun(); // restores state; continueRun ends with loadStage()
     }catch(err){
+      // #region agent log
+      fetch('http://127.0.0.1:7940/ingest/a2f9b3c2-6614-4231-b7d9-0c870302a25c',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'5e515f'},body:JSON.stringify({sessionId:'5e515f',location:'game.js:handleOverworldReturn:battleCatch',message:'continueRun failed',data:{err:String(err&&err.message||err),stack:String(err&&err.stack||'').slice(0,500)},timestamp:Date.now(),hypothesisId:'H1'})}).catch(()=>{});
+      // #endregion
       console.error('handleOverworldReturn battle failed', err);
       try{ localStorage.setItem(_OW_NAV_KEY, JSON.stringify(intent)); }catch(_){ }
       return false;
@@ -4743,7 +4755,11 @@ function initSelectionSafe(){
       }
     }
   } catch(_) {}
-  try { if (handleOverworldReturn()) return; } catch(_) {}
+  try { if (handleOverworldReturn()) return; } catch(err) {
+    // #region agent log
+    fetch('http://127.0.0.1:7940/ingest/a2f9b3c2-6614-4231-b7d9-0c870302a25c',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'5e515f'},body:JSON.stringify({sessionId:'5e515f',location:'game.js:initSelectionSafe:owCatch',message:'handleOverworldReturn outer catch',data:{err:String(err&&err.message||err)},timestamp:Date.now(),hypothesisId:'H1'})}).catch(()=>{});
+    // #endregion
+  }
   try{
     initSelection();
     wireRefGuideClicks();
@@ -5606,6 +5622,9 @@ function scheduleOpeningEnemyTurn(){
 }
 
 function loadStage() {
+  // #region agent log
+  fetch('http://127.0.0.1:7940/ingest/a2f9b3c2-6614-4231-b7d9-0c870302a25c',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'5e515f'},body:JSON.stringify({sessionId:'5e515f',location:'game.js:loadStage:entry',message:'loadStage start',data:{encounterStage:typeof getEncounterStage==='function'?getEncounterStage():null,owEnemies:G._owStageEnemies,owIdx:G._owEnemyIndex},timestamp:Date.now(),hypothesisId:'H2,H3'})}).catch(()=>{});
+  // #endregion
   // Overworld shop: open the shop instead of a battle.
   if (G._pendingOverworldShop) {
     G._pendingOverworldShop = false;
@@ -5662,6 +5681,9 @@ function loadStage() {
     mergeScaledStatsIntoEnemy(ed, encounterStage);
   }
   G.enemy = ed;
+  // #region agent log
+  fetch('http://127.0.0.1:7940/ingest/a2f9b3c2-6614-4231-b7d9-0c870302a25c',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'5e515f'},body:JSON.stringify({sessionId:'5e515f',location:'game.js:loadStage:enemySet',message:'G.enemy assigned',data:{hasEnemy:!!G.enemy,enemyId:G.enemy?.id||G.enemy?.name||null,hasStats:!!G.enemy?.stats,birdKey:G._owStageEnemies?.[G._owEnemyIndex||0]||null},timestamp:Date.now(),hypothesisId:'H2,H5'})}).catch(()=>{});
+  // #endregion
   if (G.enemy && G.enemy.stats) {
     const base = G.enemy._statBaseBeforeMutations || G.enemy.stats;
     G.enemy._battleStatBase = {
@@ -6420,6 +6442,9 @@ function failsafeAdvance(reason='') {
 }
 
 window.addEventListener('error', (ev) => {
+  // #region agent log
+  fetch('http://127.0.0.1:7940/ingest/a2f9b3c2-6614-4231-b7d9-0c870302a25c',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'5e515f'},body:JSON.stringify({sessionId:'5e515f',location:'game.js:window.error',message:'uncaught error',data:{msg:String(ev.message||''),file:String(ev.filename||''),line:ev.lineno||null,col:ev.colno||null},timestamp:Date.now(),hypothesisId:'H5'})}).catch(()=>{});
+  // #endregion
   try { console.error('[game] uncaught error:', ev.message, ev.error || ev); } catch(_) {}
   try { failsafeAdvance('window.onerror'); } catch(_) {}
 });
