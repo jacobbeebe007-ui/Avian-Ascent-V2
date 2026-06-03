@@ -236,6 +236,16 @@
     }).join('');
   }
 
+  function getEquipTargetSlotIndex(player, itemId, slotKeyOptional) {
+    var item = getItem(itemId);
+    if (!item || !player) return -1;
+    ensurePlayerMutationState(player);
+    var sk = slotKeyOptional || item.slot;
+    var idx = firstOpenSlot(player, sk);
+    if (idx >= 0) return idx;
+    return 0;
+  }
+
   function getCompareBaselineId(player, itemId) {
     var item = getItem(itemId);
     if (!item || !player) return null;
@@ -243,9 +253,9 @@
     var sk = item.slot;
     var arr = player.equippedMutations[sk];
     if (!Array.isArray(arr)) return null;
-    var idx = firstOpenSlot(player, sk);
-    if (idx >= 0) return null;
-    return arr[0] || null;
+    var idx = getEquipTargetSlotIndex(player, itemId, sk);
+    if (idx < 0 || idx >= arr.length) return null;
+    return arr[idx] || null;
   }
 
   function pack() { return (Avian.data && Avian.data.mutations) || null; }
@@ -855,6 +865,7 @@
   mutations.formatMutationStatCompactHtml = formatMutationStatCompactHtml;
   mutations.buildMutationCompareLines = buildMutationCompareLines;
   mutations.formatMutationCompareHtml = formatMutationCompareHtml;
+  mutations.getEquipTargetSlotIndex = getEquipTargetSlotIndex;
   mutations.getCompareBaselineId = getCompareBaselineId;
   mutations.formatSlotTag = formatSlotTag;
   mutations.SLOT_LABELS = SLOT_LABELS;

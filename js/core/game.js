@@ -2622,7 +2622,9 @@ function _nestMutationItemHtml(itemId, slotLbl, slotKey, slotIndex){
   const tierCss=nestTierCssClass(item.tier);
   const tierMeta=rewardTierMeta(item.tier);
   const tierColor=nestTierColorVar(item.tier);
-  return `<div class="nest-equip-slot filled tier-${item.tier} tier-ui-${tierCss}" data-nest-slot="${slotKey}" data-nest-idx="${slotIndex}" data-nest-item="${itemId}"><div class="nest-equip-slot-lbl">${slotBadge}${slotLbl}</div><div class="nest-tier-label" style="color:${tierColor}">${tierMeta.label}</div><div class="nest-equip-slot-name" style="color:${tierColor}">${escapeHtmlRoster(item.name)}</div></div>`;
+  const statsBlock=getMutationDescHtml(item,{compact:true});
+  const statsHtml=statsBlock?`<div class="nest-mut-stats mut-stat-compact-wrap nest-equip-mut-stats">${statsBlock}</div>`:'';
+  return `<div class="nest-equip-slot filled tier-${item.tier} tier-ui-${tierCss}" data-nest-slot="${slotKey}" data-nest-idx="${slotIndex}" data-nest-item="${itemId}"><div class="nest-equip-slot-lbl">${slotBadge}${slotLbl}</div><div class="nest-tier-label" style="color:${tierColor}">${tierMeta.label}</div><div class="nest-equip-slot-name" style="color:${tierColor}">${escapeHtmlRoster(item.name)}</div>${statsHtml}</div>`;
 }
 
 function handleNestEquipClick(ev){
@@ -2714,7 +2716,7 @@ function buildNestEquipmentSection(player){
     }
     invHtml+='</div>';
   }
-  return `<div class="nest-section nest-equipment-section"><div class="nest-section-title">🧬 Mutations Equipped</div>${filterHtml}<div class="nest-ledger-subtitle">Equipped · ${escapeHtmlRoster(filterLabel)}</div><div class="nest-equip-grid${activeFilter==='all'?' nest-equip-grid-all':''}">${slotsHtml}</div>${compareToggleHtml}<div class="nest-ledger-subtitle">Bonus from equipped</div><div class="nest-equip-bonus">${bonusHtml}</div><div class="nest-section-title" style="margin-top:14px">🎒 Inventory · ${escapeHtmlRoster(filterLabel)} (${filteredInv.length})</div>${invHtml}<p class="nest-ledger-note">Select a slot type above. Click inventory items to equip. Click equipped items to store in inventory.${compareMode?' Compare mode shows stat changes vs the equipped item you would replace.':''}</p></div>`;
+  return `<div class="nest-section nest-equipment-section"><div class="nest-section-title">🧬 Mutations Equipped</div>${filterHtml}<div class="nest-ledger-subtitle">Equipped · ${escapeHtmlRoster(filterLabel)}</div><div class="nest-equip-grid${activeFilter==='all'?' nest-equip-grid-all':''}">${slotsHtml}</div>${compareToggleHtml}<div class="nest-ledger-subtitle">Bonus from equipped</div><div class="nest-equip-bonus">${bonusHtml}</div><div class="nest-section-title" style="margin-top:14px">🎒 Inventory · ${escapeHtmlRoster(filterLabel)} (${filteredInv.length})</div>${invHtml}<p class="nest-ledger-note">Select a slot type above. Click inventory items to equip. Click equipped items to store in inventory.${compareMode?' Compare mode shows stat changes vs the equipped mutation in the slot you would replace.':''}</p></div>`;
 }
 
 /**
@@ -2972,14 +2974,23 @@ function syncPlayerAbilitiesFromSkillSlots(player){
   if(!player || !usesFamilySkillEvolution(player)) return;
   const slots = getSkillSlots(player).slice().sort((a,b)=>a.slotIndex-b.slotIndex);
   if(!slots.length) return;
+  const seenAbilityIds=new Set();
   const bySlot = new Map((player.abilities||[]).map(ab=>[Number.isFinite(ab?.slotIndex)?ab.slotIndex:-1, ab]));
   const byId = new Map((player.abilities||[]).map(ab=>[ab?.id, ab]));
-  player.abilities = slots.filter(slot=>slot.abilityId).map(slot=>{
+  const out=[];
+  for(const slot of slots){
+    if(!slot.abilityId) continue;
+    if(seenAbilityIds.has(slot.abilityId)){
+      try{ console.warn('[abilities] duplicate skill slot abilityId='+slot.abilityId+' slot='+slot.slotIndex); }catch(_){}
+      continue;
+    }
+    seenAbilityIds.add(slot.abilityId);
     const prior = bySlot.get(slot.slotIndex) || byId.get(slot.abilityId) || null;
     const ab = ensureAbilityObjectFromTemplate(slot.abilityId, prior, slot.slotIndex, player);
     if(slot.isStarterMain || slot.slotIndex === 0) ab.fixedMainAttackCost = true;
-    return ab;
-  });
+    out.push(ab);
+  }
+  player.abilities = out;
 }
 
 // ============================================================
@@ -5911,6 +5922,7 @@ function loadStage() {
   updateBattleArena();
   initBattleLogDrawer();
   updateStageProgress();
+  if(G.player) ensureMainAttackAndLoadoutRules();
   refreshBattleUI();
   // #region agent log
   _agentDbgLog('game.js:loadStage:afterRefreshBattleUI', 'refreshBattleUI done', { actionsGrid: !!document.getElementById('actions-grid') }, 'H5');
@@ -6909,7 +6921,8 @@ function renderCombatItems(){
     btn.type='button';
     btn.className='combat-item-btn';
     const pct=Math.round((def.healPct||0)*100);
-    btn.innerHTML=`<span class="combat-item-icon">${def.icon}</span><span class="combat-item-label">${def.name}</span><span class="combat-item-meta">Heal ${pct}% max HP · ${def.energyCost} EN · once/turn · ×${count}/${def.maxHold}</span>`;
+    const shortName=def.name.replace(/\s+Water$/,'');
+    btn.innerHTML=`<span class="combat-item-icon">${def.icon}</span><span class="combat-item-label">${shortName}</span><span class="combat-item-meta">${pct}% · ${def.energyCost}EN · ×${count}</span>`;
     const usable=!locked && !healUsed && count>0 && (G.player.energy||0)>=def.energyCost;
     btn.disabled=!usable;
     btn.title=def.combatHint||`${def.name}: heal ${pct}% max HP for ${def.energyCost} EN (one heal item per turn)`;
@@ -6924,6 +6937,10 @@ function renderCombatItems(){
 function renderActions() {
   const grid=document.getElementById('actions-grid');
   if(!grid) return;
+  if(G.player && usesFamilySkillEvolution(G.player)){
+    syncPlayerAbilitiesFromSkillSlots(G.player);
+    ensureMainAttackAndLoadoutRules();
+  }
   grid.innerHTML='';
   renderEnergyOrbs();
   renderCombatItems();
@@ -8436,6 +8453,31 @@ function clamp01(v){return Math.max(0,Math.min(1,v));}
 /** Locked combat tuning: offensive stats ×0.75; guard in denominators ×0.80. */
 const COMBAT_OFFENSIVE_STAT_MULT = 0.75;
 const POST_BATTLE_HEAL_PCT = 0.33;
+
+function shouldApplyPostBattleHealNow(){
+  if(!G.player) return false;
+  if(G.endlessMode) return true;
+  return !hasMultiEnemyChainPending();
+}
+
+function applyPostBattleHealIfDue(){
+  if(!shouldApplyPostBattleHealNow() || !G.player) return;
+  const postHealMult=G.player?.mutHuntersCruelty?0.5:1;
+  const postHeal=Math.max(1, Math.floor(G.player.stats.maxHp * POST_BATTLE_HEAL_PCT * postHealMult));
+  G.player.stats.hp=Math.min(G.player.stats.hp + postHeal, G.player.stats.maxHp);
+  spawnFloat('player', `+${postHeal} 🩹`, 'fn-heal');
+  const flatHeal=(G.player.postBattleFlatHeal || 0);
+  if(flatHeal>0){
+    G.player.stats.hp=Math.min(G.player.stats.maxHp, G.player.stats.hp + flatHeal);
+    spawnFloat('player', `+${flatHeal} 🩹`, 'fn-heal');
+  }
+  const bonusPct=(G.player.postBattleHealBonusPct || 0);
+  if(bonusPct>0){
+    const extra=Math.max(1, Math.floor(G.player.stats.maxHp * bonusPct));
+    G.player.stats.hp=Math.min(G.player.stats.hp + extra, G.player.stats.maxHp);
+    spawnFloat('player', `+${extra} 🩹`, 'fn-heal');
+  }
+}
 const COMBAT_GUARD_DEF_MULT = 0.80;
 const COMBAT_GUARD_MDEF_MULT = 0.80;
 const HIT_CHANCE_PCT_CLAMP = {min:35,max:97};
@@ -8697,8 +8739,8 @@ function resolveMutationRewardTiers({ stage, isBoss }={}){
       const bossTiers=ENDLESS_BOSS_MUTATION_REWARD_TIERS[eb];
       return bossTiers ? [...bossTiers] : [];
     }
-    const tier=getEndlessNormalFightTier(eb);
-    return tier ? [tier] : [];
+    if(eb>0 && eb%ENDLESS_BOSS_CADENCE!==0) return rollRandomAnyMutationTiers(3);
+    return [];
   }
   return getStoryMutationRewardTiers(st, !!isBoss);
 }
@@ -11933,10 +11975,7 @@ function postCombat() {
       spawnFloat('player', `+${expGain} EXP`, 'fn-exp');
       logMsg(`+${expGain} EXP!`, 'exp-gain');
       SFX.exp();
-      const postHealMult = G.player?.mutHuntersCruelty ? 0.5 : 1;
-      const postHeal = Math.max(1, Math.floor(G.player.stats.maxHp * POST_BATTLE_HEAL_PCT * postHealMult));
-      G.player.stats.hp = Math.min(G.player.stats.hp + postHeal, G.player.stats.maxHp);
-      spawnFloat('player', `+${postHeal} 🩹`, 'fn-heal');
+      applyPostBattleHealIfDue();
       saveRun();
       G.phase = 'PLAYER';
       if (typeof lockActionUI === 'function') lockActionUI(false);
@@ -11960,27 +11999,7 @@ function postCombat() {
     logMsg(`+${expGain} EXP!`, 'exp-gain');
     SFX.exp();
 
-    // Post-battle heal
-    const postHealMult=G.player?.mutHuntersCruelty?0.5:1;
-    const postHeal = Math.max(1, Math.floor(G.player.stats.maxHp * POST_BATTLE_HEAL_PCT * postHealMult));
-    G.player.stats.hp = Math.min(G.player.stats.hp + postHeal, G.player.stats.maxHp);
-    spawnFloat('player', `+${postHeal} 🩹`, 'fn-heal');
-
-    // Flat post-battle heal (if present)
-    const flatHeal = (G.player.postBattleFlatHeal || 0);
-    if(flatHeal>0){
-      G.player.stats.hp = Math.min(G.player.stats.maxHp, G.player.stats.hp + flatHeal);
-      spawnFloat('player', `+${flatHeal} 🩹`, 'fn-heal');
-    }
-
-    // Bonus heal (if present)
-    const bonusPct = (G.player.postBattleHealBonusPct || 0);
-    if (bonusPct > 0) {
-      const extra = Math.max(1, Math.floor(G.player.stats.maxHp * bonusPct));
-      G.player.stats.hp = Math.min(G.player.stats.hp + extra, G.player.stats.maxHp);
-      spawnFloat('player', `+${extra} 🩹`, 'fn-heal');
-    }
-
+    applyPostBattleHealIfDue();
 
     if(isEndlessRunActive() && G.enemy?.isBoss){
       if(G.player?.relBattleCarcass){
@@ -13860,7 +13879,7 @@ function buildRefGuide() {
 
   const mechanics=`<div class="ref-skills-grid">
     ${card('Energy & Cooldowns','Main attacks are free unless spells. Abilities spend energy and many skills have cooldowns.',true,'core')}
-    ${card('Post-Battle Recovery','After each victory, all birds heal for 33% of max HP (halved with Hunter\'s Cruelty mutation).',true,'heal')}
+    ${card('Post-Battle Recovery','Story: heal 33% max HP once when you clear a full stage (not between birds in a multi-fight node). Endless: heal after each victory. Halved with Hunter\'s Cruelty mutation.',true,'heal')}
     ${card('Role Taxonomy','Birds are grouped by roles: Striker, Bruiser, Tank, Trickster, Predator, Singer.',true,'roles')}
     ${card('Mutation Slots','Equip mutations in wing, feet, head, beak, chest, eyes, tail, plumage, and syrinx slots (limits per slot). Manage loadout in the Nest.',true,'mutations')}
     ${card('Nest Inventory','Found mutations go to nest inventory. Equip, compare, and sell extras between battles.',true,'nest')}
