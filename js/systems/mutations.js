@@ -130,6 +130,14 @@
     }).join('');
   }
 
+  function formatMutationStatCompactHtml(item) {
+    var lines = buildMutationStatLines(item);
+    if (!lines.length) return '';
+    return lines.map(function (ln) {
+      return '<span class="mut-stat-chip ' + ln.colorClass + '">' + escapeMutHtml(ln.label) + ' ' + escapeMutHtml(ln.value) + '</span>';
+    }).join(' · ');
+  }
+
   function formatMutationDesc(item) {
     if (!item) return '';
     var lines = buildMutationStatLines(item);
@@ -844,6 +852,7 @@
   mutations.formatMutationDesc = formatMutationDesc;
   mutations.buildMutationStatLines = buildMutationStatLines;
   mutations.formatMutationDescHtml = formatMutationDescHtml;
+  mutations.formatMutationStatCompactHtml = formatMutationStatCompactHtml;
   mutations.buildMutationCompareLines = buildMutationCompareLines;
   mutations.formatMutationCompareHtml = formatMutationCompareHtml;
   mutations.getCompareBaselineId = getCompareBaselineId;

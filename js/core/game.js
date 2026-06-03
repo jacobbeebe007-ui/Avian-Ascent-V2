@@ -216,7 +216,7 @@ const ENEMY_ABILITY_POOL = {
   eWeaken:  {name:'Screech', desc:'Apply Weaken for 3 turns.', dmg:'0 direct', dodgeable:true, fn(e,p,G){
     const _bd=BIRDS[G.player.birdKey];const ps=_bd&&_bd.passive;
     if(ps&&ps.immuneWeaken){spawnFloat('player','🛡 Immune!','fn-status');return;}
-    G.playerStatus.weaken=Math.max(G.playerStatus.weaken||0,3);
+    applyWeakenStack('player', 1);
     logMsg(`🐔 ${e.name} weakens you!`,'enemy-action');
   }},
   eStun:    {name:'Body Slam', desc:'Deal 80% ATK and 25% chance to stun.', dmg:'~80% ATK + stun', fn(e,p,G){
@@ -531,8 +531,8 @@ function getBattleStatModifierLines(statKey){
   if(statKey==='atk' && G?.playerStatus?.tookie?.turns>0) lines.push(`Tookie Tookie: +${G.playerStatus.tookie.atkBonus||0}% ATK`);
   if(statKey==='def' && G?.battleHymnActive) lines.push('Battle Hymn: +DEF');
   if(statKey==='acc' && G?.battleHymnActive) lines.push('Battle Hymn: +ACC');
-  if(statKey==='atk' && G?.playerStatus?.weaken) lines.push('Weaken: reduced output');
-  if(statKey==='def' && G?.playerStatus?.weaken) lines.push('Weaken: reduced DEF');
+  if(statKey==='atk' && getWeakenStacks(G?.playerStatus)>0) lines.push('Weaken: reduced output');
+  if(statKey==='def' && getWeakenStacks(G?.playerStatus)>0) lines.push('Weaken: reduced DEF');
   if(statKey==='dodge' && G?.playerStatus?.slow) lines.push('Slow: reduced dodge');
   if(statKey==='spd' && G?.playerStatus?.slow) lines.push('Slow: reduced SPD');
   if(statKey==='acc' && (G?.playerStatus?.blind||G?.playerStatus?.dustDevil)) lines.push('Blind: reduced ACC');
@@ -555,11 +555,16 @@ function buildPassiveTooltipHTML(birdKey){
   html += richTooltipCloseBtn();
   return html;
 }
-function getMutationDescHtml(itemOrId){
+function getMutationDescHtml(itemOrId, opts={}){
   const item = typeof itemOrId==='string'
     ? (typeof Avian?.mutations?.getItem==='function' ? Avian.mutations.getItem(itemOrId) : null)
     : itemOrId;
   if(!item) return '';
+  const compact=!!opts.compact;
+  if(compact && typeof Avian?.mutations?.formatMutationStatCompactHtml==='function'){
+    const html=Avian.mutations.formatMutationStatCompactHtml(item);
+    return html?`<div class="mut-stat-compact">${html}</div>`:'';
+  }
   return typeof Avian?.mutations?.formatMutationDescHtml==='function'
     ? Avian.mutations.formatMutationDescHtml(item)
     : escapeHtmlRoster(typeof Avian?.mutations?.formatMutationDesc==='function' ? Avian.mutations.formatMutationDesc(item) : (item.statLine||item.name));
@@ -2004,7 +2009,7 @@ let G = {
   speed:1,
   ui:{
     gameMode:'story',
-    battleLayout:'desktop',
+    battleLayout:'mobile',
     selectionView:'size',
     expandedBird:null,
     combatDropdownOpen:{player:true,enemy:true},
@@ -2029,7 +2034,7 @@ globalThis._agentDbgLog = _agentDbgLog;
 
 const DEFAULT_UI_STATE = Object.freeze({
   gameMode:'story',
-  battleLayout:'desktop',
+  battleLayout:'mobile',
   selectionView:'size',
   expandedBird:null,
   combatDropdownOpen:{player:true,enemy:true},
@@ -2598,10 +2603,10 @@ function _nestInventoryMutStatsHtml(player,itemId,compareMode){
     const baseline=baseId?Avian.mutations.getItem(baseId):null;
     statsHtml=Avian.mutations.formatMutationCompareHtml(item,baseline);
   } else {
-    statsHtml=getMutationDescHtml(item);
+    statsHtml=getMutationDescHtml(item,{compact:true});
   }
   if(!statsHtml) return '';
-  return `<div class="nest-mut-stats">${statsHtml}</div>`;
+  return `<div class="nest-mut-stats mut-stat-compact-wrap">${statsHtml}</div>`;
 }
 
 function _nestMutationItemHtml(itemId, slotLbl, slotKey, slotIndex){
@@ -5365,9 +5370,9 @@ function startSelectedBird(key){
 function beginRun(){ return startGame(); }
 
 const COMBAT_ITEM_CATALOG = Object.freeze({
-  freshWater: Object.freeze({ itemKey:'freshWater', shopId:'shop_item_fresh_water', tier:'grey', icon:'💧', name:'Fresh Water', healPct:0.25, energyCost:1, maxHold:3, costOverride:20 }),
-  sugarWater: Object.freeze({ itemKey:'sugarWater', shopId:'shop_item_sugar_water', tier:'green', icon:'🥤', name:'Sugar Water', healPct:0.50, energyCost:2, maxHold:2, costOverride:30 }),
-  honeyWater: Object.freeze({ itemKey:'honeyWater', shopId:'shop_item_honey_water', tier:'blue', icon:'🍯', name:'Honey Water', healPct:0.75, energyCost:3, maxHold:1, costOverride:40 }),
+  freshWater: Object.freeze({ itemKey:'freshWater', shopId:'shop_item_fresh_water', tier:'grey', icon:'💧', name:'Fresh Water', healPct:0.25, energyCost:1, maxHold:3, costOverride:20, combatHint:'Restore 25% of your max HP. Costs 1 energy. You can use one heal item per turn.' }),
+  sugarWater: Object.freeze({ itemKey:'sugarWater', shopId:'shop_item_sugar_water', tier:'green', icon:'🥤', name:'Sugar Water', healPct:0.50, energyCost:2, maxHold:2, costOverride:30, combatHint:'Restore 50% of your max HP. Costs 2 energy. You can use one heal item per turn.' }),
+  honeyWater: Object.freeze({ itemKey:'honeyWater', shopId:'shop_item_honey_water', tier:'blue', icon:'🍯', name:'Honey Water', healPct:0.75, energyCost:3, maxHold:1, costOverride:40, combatHint:'Restore 75% of your max HP. Costs 3 energy. You can use one heal item per turn.' }),
 });
 
 function createDefaultCombatItems(){
@@ -6020,9 +6025,12 @@ function scrollToSelectRoster(){
 globalThis.scrollToSelectRoster = scrollToSelectRoster;
 
 function showScreen(id) {
+  const prev=(document.querySelector('.screen.active')||{}).id;
   closeSelectHubPanel();
   document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
   document.getElementById(id).classList.add('active');
+  if(prev==='screen-battle' && id!=='screen-battle') stopAllGameAudio();
+  if(prev==='screen-gameover' && (id==='screen-select'||id==='screen-start')) stopAllGameAudio();
   if(id==='screen-stork-shop' || id==='screen-grove' || id==='screen-map-forge'){
     const el=document.getElementById(id);
     if(el){
@@ -6046,7 +6054,11 @@ globalThis.showScreen = showScreen;
 function buildPlayerCombatStatHint(){
   const s=G.playerStatus||{};
   const parts=[];
-  if((s.weaken||0)>0) parts.push(`Weaken ${s.weaken}t (−25% dmg, −40% dodge)`);
+  if(getWeakenStacks(s)>0){
+    const st=getWeakenStacks(s);
+    const turns=typeof s.weaken==='number'?s.weaken:(s.weaken?.turns||0);
+    parts.push(`Weaken ×${st} (${turns}t, −${Math.round((1-getWeakenDamageMult(st))*100)}% dmg, −${getWeakenDodgePenalty(st)} dodge)`);
+  }
   if((s.feared||0)>0) parts.push(`Fear ${s.feared}t (30% skip)`);
   if(s.humDodge?.bonus) parts.push(`Dodge buff +${s.humDodge.bonus}% (${s.humDodge.turns||0}t)`);
   if(s.peregrineCritLens?.bonus) parts.push(`Crit lens +${s.peregrineCritLens.bonus}% (${s.peregrineCritLens.turns||0}t)`);
@@ -6059,7 +6071,7 @@ function buildEnemyCombatStatHint(){
   const s=G.enemyStatus||{};
   const parts=[];
   if((s.accDebuff||0)>0) parts.push(`ACC −${s.accDebuff}%`);
-  if((s.weaken||0)>0) parts.push(`Weaken ${s.weaken}t`);
+  if(getWeakenStacks(s)>0) parts.push(`Weaken ×${getWeakenStacks(s)}`);
   if((s.feared||0)>0) parts.push(`Feared ${s.feared}t`);
   if(s.slow) parts.push('Slow');
   if((s.poison?.stacks||0)>0) parts.push(`Poison ×${s.poison.stacks}`);
@@ -6130,7 +6142,7 @@ function refreshBattleUI() {
   const _eqMechCombat=typeof Avian?.mutations?.getMechanicsRollup==='function'?Avian.mutations.getMechanicsRollup(G.player):null;
   const escAttr=(s)=>String(s??'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
   const _trendTag = (diff) => diff>0 ? '<small class="stat-trend up">▲▲</small>' : (diff<0 ? '<small class="stat-trend down">▼▼</small>' : '');
-  const _atkDiff = G.warcryActive ? Math.max(1,Math.floor((p.atk||0)*(G.warcryATK||0)/100)) : (G.playerStatus.weaken ? -1 : 0);
+  const _atkDiff = G.warcryActive ? Math.max(1,Math.floor((p.atk||0)*(G.warcryATK||0)/100)) : (getWeakenStacks(G.playerStatus)>0 ? -1 : 0);
   const _effAtk=G.warcryActive?(p.atk||0)*(1+G.warcryATK/100):p.atk;
   const _critChance = Math.min(100,(p.critChance||5));
   const _critBase=G.player.goldCritMult||1.5;
@@ -6138,7 +6150,7 @@ function refreshBattleUI() {
   const _critMultHtml=_critBonusPct>0?`${formatCombatNumber(_critBase)}×<small class="stat-cd-bonus">+${formatCombatNumber(_critBonusPct)}</small>`:`${formatCombatNumber(_critBase)}×`;
   const _ccBaseStore=(p.critChance||5);
   const _statNote=(label,diff,srcUp='',srcDown='')=>`${label} ${diff>=0?'+':''}${diff}. ${diff>0?srcUp:(diff<0?srcDown:'No active modifier.')}`;
-  const _atkNote=(G.warcryActive?`Warcry +${G.warcryATK}% ATK.`:'') + (G.playerStatus.weaken?' Weaken reducing output.':'');
+  const _atkNote=(G.warcryActive?`Warcry +${G.warcryATK}% ATK.`:'') + (getWeakenStacks(G.playerStatus)>0?' Weaken reducing output.':'');
   const _accCardBonus=(G.player.firstAttackAccBonus||0)>0?` Shop/card hit bonus +${G.player.firstAttackAccBonus}% (applies to all attacks).`:'';
   const statCell=(klass,label,val,{suffix='',title='',trend='',statKey='',statRaw=null}={})=>{
     const dataAttr=statKey?` data-stat-key="${statKey}" data-stat-raw="${Number(statRaw ?? val)}"`:'';
@@ -6324,7 +6336,14 @@ function renderStatuses(id, statuses) {
     let tooltipSummary='';
     if (k==='poison') { const per=poisonBoundaryDamage(v.stacks); b.textContent=`☣ Poison×${v.stacks}/${poisonCap}(${v.turns}t, ${per}/boundary)`; tooltipSummary='Stacks to 5. 2 damage per stack; ticks at end of player turn and enemy turn.'; }
     else if (k==='bleed') { b.className='status-badge bleed'; b.textContent=`🩸 Bleed(${v.turns||0}t, heal −50%)`; tooltipSummary='Non-stacking. Healing received/effects reduced by 50%. Refresh only.'; }
-    else if (k==='weaken') { b.textContent=`🐔 Weaken(${v}t, −25% dmg, −40% dodge)`; tooltipSummary='Refresh only. Reserved for songs/calls.'; }
+    else if (k==='weaken') {
+      const st=getWeakenStacks(statuses);
+      const turns=typeof v==='number'?v:(v?.turns||0);
+      const dmgPct=Math.round((1-getWeakenDamageMult(st))*100);
+      const dodgePen=getWeakenDodgePenalty(st);
+      b.textContent=`🐔 Weaken×${st}(${turns}t, −${dmgPct}% dmg, −${dodgePen} dodge)`;
+      tooltipSummary=(AILMENTS?.weaken?.desc)||'Stacks to 3. −10% outgoing damage and −10 dodge per stack. Refreshes duration.';
+    }
     else if (k==='paralyzed') { b.textContent=`⚡ Para(${v}t, 20% skip)`; }
     else if (k==='burning') { const bt=typeof v==='number'?v:(v.turns||0); b.textContent=`🔥 Burn(${bt}t, 7@enemy end, −20% DEF/MDEF)`; tooltipSummary='Non-stacking. 7 flat damage end of enemy turn; −20% DEF and MDEF while burning.'; }
     else if (k==='delayed') { b.textContent=`🎵 Delayed(${v.dmg}dmg)`; tooltipSummary='Non-stacking. Stored damage detonates end of target next turn; reapply refreshes/replaces.'; }
@@ -6865,7 +6884,9 @@ function useCombatItem(itemKey){
   SFX.heal?.();
   G.player.combatItems[itemKey]--;
   G._combatHealUsedThisTurn=true;
-  logMsg(`Used ${def.name}: +${heal} HP (${def.energyCost} EN).`,'exp-gain');
+  codexMark('items', itemKey, 'seen');
+  codexMark('items', itemKey, 'used');
+  logMsg(`${def.name}: restored ${heal} HP (${Math.round((def.healPct||0)*100)}% max, ${def.energyCost} energy).`,'exp-gain');
   renderEnergyOrbs();
   renderCombatItems();
   renderActions();
@@ -6888,10 +6909,13 @@ function renderCombatItems(){
     btn.type='button';
     btn.className='combat-item-btn';
     const pct=Math.round((def.healPct||0)*100);
-    btn.innerHTML=`<span class="combat-item-icon">${def.icon}</span><span class="combat-item-label">${def.name}</span><span class="combat-item-meta">×${count}/${def.maxHold} · ${pct}% · ${def.energyCost} EN</span>`;
+    btn.innerHTML=`<span class="combat-item-icon">${def.icon}</span><span class="combat-item-label">${def.name}</span><span class="combat-item-meta">Heal ${pct}% max HP · ${def.energyCost} EN · once/turn · ×${count}/${def.maxHold}</span>`;
     const usable=!locked && !healUsed && count>0 && (G.player.energy||0)>=def.energyCost;
     btn.disabled=!usable;
-    btn.title=`${def.name}: heal ${pct}% max HP for ${def.energyCost} EN (1 heal per turn)`;
+    btn.title=def.combatHint||`${def.name}: heal ${pct}% max HP for ${def.energyCost} EN (one heal item per turn)`;
+    if(typeof bindRichTooltip==='function' && tooltipsEnabled('items')){
+      bindRichTooltip(btn, ()=>`<div class="tt-name">${escapeHtmlRoster(def.name)}</div><div class="tt-type">Battle heal item</div><div class="tt-body">${escapeHtmlRoster(def.combatHint||'')}</div>${richTooltipCloseBtn()}`, {category:'items'});
+    }
     btn.onclick=()=>useCombatItem(itemKey);
     row.appendChild(btn);
   });
@@ -6982,7 +7006,7 @@ function renderActions() {
     if(dmgTypes.includes(effBtn)){
       const mods=[];
       if(G.warcryActive) mods.push('⬆ ATK buff');
-      if(G.playerStatus?.weaken) mods.push('⬇ Weakened');
+      if(getWeakenStacks(G.playerStatus)>0) mods.push('⬇ Weakened');
       if(G.playerStatus?.feared) mods.push('⬇ Fear hit penalty');
       if(G.playerStatus?.battleHymn) mods.push('⬆ Hymn buff');
       if(mods.length) modTxt=`<span class=\"btn-mod\" title=\"${mods.join(' | ')}\">${mods.join(' · ')}</span>`;
@@ -7274,9 +7298,10 @@ function estimateHybridSplitBands(tmpl,ab,physMult,multCore,lv,spec,opts,pending
     atkLo=Math.max(1,Math.floor(scaleStat*0.8*physMult));
     atkHi=Math.max(atkLo,Math.floor(scaleStat*1.2*physMult));
   }
-  if((G?.playerStatus?.weaken||0)>0){
-    atkLo=Math.max(1,Math.floor(atkLo*0.75));
-    atkHi=Math.max(1,Math.floor(atkHi*0.75));
+  if(getWeakenStacks(G?.playerStatus)>0){
+    const wm=getWeakenDamageMult(getWeakenStacks(G.playerStatus));
+    atkLo=Math.max(1,Math.floor(atkLo*wm));
+    atkHi=Math.max(1,Math.floor(atkHi*wm));
   }
   if(applyMit&&G?.enemy){
     const en=G.enemy.stats||G.enemy;
@@ -7291,7 +7316,7 @@ function estimateHybridSplitBands(tmpl,ab,physMult,multCore,lv,spec,opts,pending
   const effM=getEffectivePlayerOffensiveMatkForPreview();
   let mLo=Math.max(1,Math.floor(effM*0.8));
   let mHi=Math.max(1,Math.floor(effM*1.2));
-  if((G?.playerStatus?.weaken||0)>0){ mLo=Math.max(1,Math.floor(mLo*0.75)); mHi=Math.max(1,Math.floor(mHi*0.75)); }
+  if(getWeakenStacks(G?.playerStatus)>0){ const wm=getWeakenDamageMult(getWeakenStacks(G.playerStatus)); mLo=Math.max(1,Math.floor(mLo*wm)); mHi=Math.max(1,Math.floor(mHi*wm)); }
   const smult=mInner;
   let matkLo=Math.max(1,Math.floor(mLo*smult));
   let matkHi=Math.max(matkLo,Math.floor(mHi*smult));
@@ -7350,9 +7375,10 @@ function estimateSkillDamageRange(ab,tmpl,attacker,opts){
         dmgHigh=Math.max(dmgLow,roundCombatDamage(dmgHigh*(1+add)));
       }
     }
-    if(isPlayerCombat&&(G?.playerStatus?.weaken||0)>0){
-      dmgLow=roundCombatDamage(dmgLow*0.75);
-      dmgHigh=roundCombatDamage(dmgHigh*0.75);
+    if(isPlayerCombat&&getWeakenStacks(G?.playerStatus)>0){
+      const wm=getWeakenDamageMult(getWeakenStacks(G.playerStatus));
+      dmgLow=roundCombatDamage(dmgLow*wm);
+      dmgHigh=roundCombatDamage(dmgHigh*wm);
     }
     const applyMit=opts.applyMitigation!==false;
     if(applyMit&&isPlayerCombat&&G?.enemy){
@@ -7411,7 +7437,7 @@ function estimateSkillDamageRange(ab,tmpl,attacker,opts){
       const effM=getEffectivePlayerOffensiveMatkForPreview();
       let mLo=Math.max(1,Math.floor(effM*0.8));
       let mHi=Math.max(1,Math.floor(effM*1.2));
-      if((G?.playerStatus?.weaken||0)>0){ mLo=Math.max(1,Math.floor(mLo*0.75)); mHi=Math.max(1,Math.floor(mHi*0.75)); }
+      if(getWeakenStacks(G?.playerStatus)>0){ const wm=getWeakenDamageMult(getWeakenStacks(G.playerStatus)); mLo=Math.max(1,Math.floor(mLo*wm)); mHi=Math.max(1,Math.floor(mHi*wm)); }
       const mult=dmgMult;
       dmgLow=Math.max(1,Math.floor(mLo*mult));
       dmgHigh=Math.max(dmgLow,Math.floor(mHi*mult));
@@ -7439,9 +7465,10 @@ function estimateSkillDamageRange(ab,tmpl,attacker,opts){
       dmgHigh=Math.max(dmgLow,Math.floor(scaleStat*1.2*dmgMult));
     }
   }
-  if(isPlayerCombat&&['physical','ranged'].includes(btnType)&&(G?.playerStatus?.weaken||0)>0){
-    if(dmgLow!=null) dmgLow=roundCombatDamage(dmgLow*0.75);
-    if(dmgHigh!=null) dmgHigh=roundCombatDamage(dmgHigh*0.75);
+  if(isPlayerCombat&&['physical','ranged'].includes(btnType)&&getWeakenStacks(G?.playerStatus)>0){
+    const wm=getWeakenDamageMult(getWeakenStacks(G.playerStatus));
+    if(dmgLow!=null) dmgLow=roundCombatDamage(dmgLow*wm);
+    if(dmgHigh!=null) dmgHigh=roundCombatDamage(dmgHigh*wm);
   }
   const applyMit=opts.applyMitigation!==false;
   if(applyMit&&isPlayerCombat&&G?.enemy&&isDamaging){
@@ -8339,11 +8366,12 @@ async function doAttack(attacker,target,result) {
   await attackP;
 }
 
-async function doMiss(attacker) {
-  if(attacker==='player') registerMiss();
+async function doMiss(attacker, kind='accuracy') {
+  if(attacker==='player' && kind!=='dodge') registerMiss();
   const cls=attacker==='player'?'do-miss-r':'do-miss-l';
-  spawnFloat(attacker,'Miss!','fn-miss');
-  SFX.miss();
+  const isDodge=kind==='dodge';
+  spawnFloat(attacker, isDodge?'Dodge!':'Miss!', isDodge?'fn-dodge':'fn-miss');
+  if(isDodge) SFX.dodge(); else SFX.miss();
   await playAvatarAnim(attacker,cls,580);
 }
 
@@ -8833,6 +8861,7 @@ function getEffectiveDodge(p) {
   if(G.playerStatus.sittingDuck) return 0;
   let dodge = p.stats.dodge + buffBonus + cardBonus;
   dodge += (G.playerStatus.passiveDodge || 0);
+  dodge -= getWeakenDodgePenalty(getWeakenStacks(G.playerStatus));
   if(typeof Avian?.dispatcher?.modifyDodge==='function') dodge = Avian.dispatcher.modifyDodge(dodge);
   return Math.max(0, dodge);
 }
@@ -8892,10 +8921,36 @@ function clamp(n,min,max){ return Math.max(min, Math.min(max,n)); }
 function clampSkipChance(v){return Math.max(20,Math.min(35,Math.round(v||20)));}
 const STATUS_CONFUSED_SELF_PCT = 30;
 const STATUS_FEAR_SKIP_PCT = 30;
+const WEAKEN_MAX_STACKS = 3;
+const WEAKEN_TURNS_DEFAULT = 3;
+function getWeakenStacks(statusObj){
+  if(!statusObj) return 0;
+  const w=statusObj.weaken;
+  if(!w) return 0;
+  if(typeof w==='number') return w>0?1:0;
+  return Math.min(WEAKEN_MAX_STACKS, Math.max(0, Math.floor(Number(w.stacks)||0)));
+}
+function getWeakenDamageMult(stacks){
+  const n=Math.max(0, Math.min(WEAKEN_MAX_STACKS, Number(stacks)||0));
+  return Math.max(0.7, 1 - 0.1 * n);
+}
+function getWeakenDodgePenalty(stacks){
+  return 10 * Math.max(0, Math.min(WEAKEN_MAX_STACKS, Number(stacks)||0));
+}
+function applyWeakenStack(target, addStacks=1){
+  const status=target==='player'?G.playerStatus:G.enemyStatus;
+  if(!status) return;
+  let w=status.weaken;
+  if(typeof w==='number' && w>0) w={stacks:1, turns:w};
+  else if(!w || typeof w!=='object') w={stacks:0, turns:0};
+  w.stacks=Math.min(WEAKEN_MAX_STACKS, (w.stacks||0)+Math.max(1, Math.floor(Number(addStacks)||1)));
+  w.turns=WEAKEN_TURNS_DEFAULT;
+  status.weaken=w;
+}
 function getEffectiveEnemyDodgeForPlayerHit(){
   let d = G.enemy?.stats?.dodge ?? 0;
-  if((G.enemyStatus?.weaken||0)>0) d = Math.floor(d * 0.6);
-  return Math.max(0, d);
+  const pen=getWeakenDodgePenalty(getWeakenStacks(G.enemyStatus));
+  return Math.max(0, d - pen);
 }
 function scaleHealForBleed(who, raw){
   const st = who==='player' ? G.playerStatus : G.enemyStatus;
@@ -9071,7 +9126,7 @@ function dealDamage(target,amount,isCrit=false,isMagic=false,srcAbility=null) {
       const chill=(es.chilled?.stacks||0)>0;
       if(delayed||chill) critDmgAdd+=0.10;
     }
-    if(_pid==='passive_cassowary_terror_kick' && (es.weaken||0)>0) critDmgAdd+=0.10;
+    if(_pid==='passive_cassowary_terror_kick' && getWeakenStacks(es)>0) critDmgAdd+=0.10;
     if(_pid==='passive_vulture_carrion_sense' && (es.bleed?.stacks||0)>0) critDmgAdd+=0.10;
     if(_pid==='passive_harpy_apex_grip'){
       const ab=activeAb;
@@ -9154,7 +9209,7 @@ function dealDamage(target,amount,isCrit=false,isMagic=false,srcAbility=null) {
     if(_passId==='passive_toucan_prism_beak' && _burningNow && (isAttack||isSpell)) dmg=roundCombatDamage(dmg*1.10);
     if(_passId==='passive_firecrest_emberwake' && _burningNow && (isAttack||isSpell)) dmg=roundCombatDamage(dmg*1.10);
     if(_passId==='passive_raven_grim_opportunity' && (isAttack||isSpell)){
-      const deb=(_esAff.poison?.stacks||0)>0||(_esAff.bleed?.stacks||0)>0||(_esAff.feared||0)>0||(_esAff.weaken||0)>0||(_esAff.paralyzed||0)>0||!!_esAff.confused||_burningNow||(_esAff.chilled?.stacks||0)>0||(_esAff.accDebuff||0)>0;
+      const deb=(_esAff.poison?.stacks||0)>0||(_esAff.bleed?.stacks||0)>0||(_esAff.feared||0)>0||getWeakenStacks(_esAff)>0||(_esAff.paralyzed||0)>0||!!_esAff.confused||_burningNow||(_esAff.chilled?.stacks||0)>0||(_esAff.accDebuff||0)>0;
       if(deb){
         dmg=roundCombatDamage(dmg*1.04);
         if(!G.player._ravenGrimSpdThisTurn){ G.player.stats.spd=(G.player.stats.spd||1)+4; G.player._ravenGrimSpdThisTurn=true; G.player._ravenGrimSpdLoan=4; }
@@ -9410,7 +9465,7 @@ function pdmg(mult=1,ab=null,opts={}) {
   if(!opts.skipPendingStrikeAdd && G._pendingStrikeActionMods) strikeAdd=Number(G._pendingStrikeActionMods.multAdd)||0;
   let base=roundCombatDamage(rollCombatSpread(effCore*.8, effCore*1.2)*(mult+strikeAdd)*__adm);
   if((G.actionDamageHitsRemaining||0)>0){ G.actionDamageHitsRemaining=Math.max(0,G.actionDamageHitsRemaining-1); if(G.actionDamageHitsRemaining===0) G.actionDamageMult=1; }
-  if (G.playerStatus.weaken&&G.playerStatus.weaken>0) base=roundCombatDamage(base*.75);
+  if(getWeakenStacks(G.playerStatus)>0) base=roundCombatDamage(base*getWeakenDamageMult(getWeakenStacks(G.playerStatus)));
   if(ab){
     const tmpl=getAbilityTemplateForUI(ab);
     const lv=Math.min(ab.level,4);
@@ -9431,7 +9486,7 @@ function countEnemyCombatDebuffCategories(){
   const s=G.enemyStatus||{};
   let n=0;
   if((s.feared||0)>0) n++;
-  if((s.weaken||0)>0) n++;
+  if(getWeakenStacks(s)>0) n++;
   if((s.paralyzed||0)>0) n++;
   if(s.confused) n++;
   if(s.burning) n++;
@@ -9452,7 +9507,7 @@ function countAilmentCategoriesOnEnemy(){
   if((s.poison?.stacks||0)>0) n++;
   if((s.bleed?.stacks||0)>0) n++;
   if((s.feared||0)>0) n++;
-  if((s.weaken||0)>0) n++;
+  if(getWeakenStacks(s)>0) n++;
   if((s.paralyzed||0)>0) n++;
   if(s.confused && ((typeof s.confused==='object'&&(s.confused.turns||0)>0))) n++;
   if(s.burning && ((typeof s.burning==='number'&&s.burning>0)||(typeof s.burning==='object'&&(s.burning.turns||0)>0))) n++;
@@ -9542,7 +9597,7 @@ function edmg(mult=1) {
   const raw=G.enemy.stats.atk;
   const effCore=softenMainStatForCombat(raw)*COMBAT_OFFENSIVE_STAT_MULT;
   const lull=(G.enemyStatus.lullabied>0)?0.5:1;
-  const weak=(G.enemyStatus.weaken&&G.enemyStatus.weaken>0)?0.75:1;
+  const weak=getWeakenDamageMult(getWeakenStacks(G.enemyStatus));
   const ruffleReduct=G.enemyStatus.featherRuffle&&G.enemyStatus.featherRuffle.turns>0
     ?(1-(G.enemyStatus.featherRuffle.atkReduction||0)/100):1;
   let out=Math.floor(roll(Math.max(1,Math.floor(effCore*.8)),Math.max(1,Math.floor(effCore*1.2)))*mult*lull*weak*ruffleReduct);
@@ -9596,7 +9651,7 @@ function getPlayerMissChance(ab) {
   if((G.playerStatus?.perkUtilityAcc||0)>0){ extra+=8; delete G.playerStatus.perkUtilityAcc; }
   if(classPerkCtx.falseOpening){
     const es=G.enemyStatus||{};
-    const debuffed=!!(es.poison||es.bleed||es.burning||es.weaken||es.feared||es.confused||es.paralyzed||es.slow||es.chilled||es.accDebuff>0);
+    const debuffed=!!(es.poison||es.bleed||es.burning||getWeakenStacks(es)||es.feared||es.confused||es.paralyzed||es.slow||es.chilled||es.accDebuff>0);
     if(debuffed) extra += 6;
   }
   if((G.player?.augPostDefAcc||0)>0 && G.playerStatus?.postDefAccNext){ extra += G.player.augPostDefAcc; delete G.playerStatus.postDefAccNext; }
@@ -9629,15 +9684,37 @@ function getPlayerAccuracy() {
   return Math.min(acc,100);
 }
 
-// Check if player attack misses given ability miss chance + accuracy system
-// Returns true if miss
-function playerAttackMisses(ab) {
+/** Returns { hit, reason: 'accuracy'|'dodge'|null } for player attacks vs enemy. */
+function resolvePlayerAttackHit(ab) {
   const t=ABILITY_TEMPLATES?.[ab?.id]||ABILITY_TEMPLATES_EXTRA?.[ab?.id]||ab||{};
   const kind=String(t.btnType||t.type||ab?.btnType||ab?.type||'').toLowerCase();
   const isAttack=(kind==='physical'||kind==='ranged');
-  if(isAttack && !G._firstAttackUsed && G.player?.firstAttackAlwaysHit) return false;
-  if(!isAttack) return chance(getPlayerMissChance(ab));
-  return Math.random()*100 >= getPlayerHitPercentForAttack(ab);
+  if(isAttack && !G._firstAttackUsed && G.player?.firstAttackAlwaysHit) return {hit:true, reason:null};
+  if(!isAttack){
+    if(chance(getPlayerMissChance(ab))) return {hit:false, reason:'accuracy'};
+    return {hit:true, reason:null};
+  }
+  let miss=getPlayerMissChance(ab);
+  if(!G._firstAttackUsed) miss=Math.max(0,miss-(G.player?.firstAttackAccBonus||0));
+  const accSkew=(getPlayerEffectiveAcc()-75)*0.22;
+  let accHit=100-miss+accSkew;
+  accHit=Math.max(HIT_CHANCE_PCT_CLAMP.min, Math.min(HIT_CHANCE_PCT_CLAMP.max, accHit));
+  if(Math.random()*100>=accHit) return {hit:false, reason:'accuracy'};
+  const dodgePct=effectiveDodgePercentForCombat(getEffectiveEnemyDodgeForPlayerHit());
+  if(Math.random()*100<dodgePct) return {hit:false, reason:'dodge'};
+  return {hit:true, reason:null};
+}
+function playerAttackMisses(ab) {
+  return !resolvePlayerAttackHit(ab).hit;
+}
+async function doPlayerAttackMiss(ab) {
+  const r=resolvePlayerAttackHit(ab);
+  if(r.hit) return false;
+  await doMiss('player', r.reason==='dodge'?'dodge':'accuracy');
+  const name=ab?.name||'Attack';
+  if(r.reason==='dodge') logMsg(`${G.enemy?.name||'Enemy'} dodged ${name}!`,'dodge');
+  else logMsg(`${name} missed!`,'miss');
+  return true;
 }
 
 function getPlayerDmgMult(ab) {
@@ -9754,7 +9831,8 @@ function applyAilment(target,ailId,stacks=1) {
     const bonusTurns=fromPlayer?Math.min(2, Math.floor(Number(G.player?.bleedBonusStacks)||0)):0;
     status.bleed={stacks:1,turns:3+bonusTurns};
   } else if (ailId==='weaken') {
-    status.weaken=Math.max(status.weaken||0, 3);
+    applyWeakenStack(target, stacks);
+    return true;
   } else if (ailId==='paralyzed') {
     status.paralyzed=3;
   } else if (ailId==='burning') {
@@ -9781,7 +9859,7 @@ function applyAilment(target,ailId,stacks=1) {
         G.player._crowMurderMindUsed=true;
         if(ailId==='poison' && status.poison) status.poison.turns=(status.poison.turns||0)+1;
         if(ailId==='bleed' && status.bleed) status.bleed.turns=(status.bleed.turns||0)+1;
-        if(ailId==='weaken') status.weaken=(status.weaken||0)+1;
+        if(ailId==='weaken') applyWeakenStack(target, 1);
         if(ailId==='paralyzed') status.paralyzed=(status.paralyzed||0)+1;
         if(ailId==='feared') status.feared=(status.feared||0)+1;
         if(ailId==='burning'){
@@ -9917,6 +9995,10 @@ function tickStatuses(who) {
       }
     }
     else if (k==='counterThorns') { /* temporary per defending window */ }
+    else if (k==='weaken' && typeof s[k]==='object' && s[k].turns!=null) {
+      s[k].turns--;
+      if(s[k].turns<=0) delete s[k];
+    }
     else if (typeof s[k]==='number'&&s[k]>0) s[k]--;
     else if (typeof s[k]==='object'&&s[k].turns!==undefined) { /* skip */ }
   });
@@ -10393,7 +10475,7 @@ function matk(mult=1) {
   const __adm=(G.actionDamageHitsRemaining&&G.actionDamageHitsRemaining>0)?(G.actionDamageMult||1):1;
   let base=roundCombatDamage(rollCombatSpread(Math.max(0.01, soft*.8), Math.max(0.01, soft*1.2))*(mult+strikeAdd)*__adm);
   if((G.actionDamageHitsRemaining||0)>0){ G.actionDamageHitsRemaining=Math.max(0,G.actionDamageHitsRemaining-1); if(G.actionDamageHitsRemaining===0) G.actionDamageMult=1; }
-  if(G.playerStatus.weaken&&G.playerStatus.weaken>0) base=roundCombatDamage(base*.75);
+  if(getWeakenStacks(G.playerStatus)>0) base=roundCombatDamage(base*getWeakenDamageMult(getWeakenStacks(G.playerStatus)));
   return Math.max(0.01, base);
 }
 
@@ -10435,7 +10517,7 @@ Object.assign(ACTIONS, {
     const r = dealDamage('enemy', pdmg(0.55 + (lv-1)*0.1, ab), chance(getPlayerCritChance(ab)), false, ab);
     await doAttack('player','enemy', r);
     setHpBar('enemy', G.enemy.stats.hp, G.enemy.stats.maxHp);
-    G.enemyStatus.weaken=Math.max(G.enemyStatus.weaken||0,2+(lv>=3?1:0));
+    applyWeakenStack('enemy', 1);
     spawnFloat('enemy','🐔 Weaken!','fn-status');
   },
   async dirgeOfDread(ab){
@@ -10446,7 +10528,7 @@ Object.assign(ACTIONS, {
     const r = dealDamage('enemy', dmg, chance(getPlayerCritChance(ab)), true, ab);
     setHpBar('enemy', G.enemy.stats.hp, G.enemy.stats.maxHp);
     G.enemyStatus.feared=(G.enemyStatus.feared||0)+(2+(lv>=3?1:0));
-    G.enemyStatus.weaken=Math.max(G.enemyStatus.weaken||0,2);
+    applyWeakenStack('enemy', 1);
     renderStatuses('enemy-status', G.enemyStatus);
   },
   async skyHymn(ab){
@@ -10466,7 +10548,7 @@ Object.assign(ACTIONS, {
     const dmg = (typeof matk==='function') ? matk(1.25 + (lv-1)*0.18) : pdmg(1.1 + (lv-1)*0.12, ab);
     const r = dealDamage('enemy', dmg, chance(getPlayerCritChance(ab)), true, ab);
     setHpBar('enemy', G.enemy.stats.hp, G.enemy.stats.maxHp);
-    G.enemyStatus.weaken=Math.max(G.enemyStatus.weaken||0,2+(lv>=3?1:0));
+    applyWeakenStack('enemy', 1);
     G.enemyStatus.feared=(G.enemyStatus.feared||0)+1;
     renderStatuses('enemy-status', G.enemyStatus);
   },
@@ -10576,7 +10658,7 @@ Object.assign(ACTIONS, {
     const lv=ab.level; const hits=lv>=3?3:2; let total=0;
     const spdPen=[2,2,3,3][lv-1], dodgePen=[10,12,15,20][lv-1], turns=[2,2,3,3][lv-1];
     for(let i=0;i<hits;i++){
-      if(playerAttackMisses(ab)){await doMiss('player');continue;}
+      if(await doPlayerAttackMiss(ab)) continue;
       G._currentPiercePct=50;
       const r=dealDamage('enemy',pdmg([.75,.82,.8,.88][lv-1],ab));
       total+=r.dmgDealt; await doAttack('player','enemy',r); setHpBar('enemy',G.enemy.stats.hp,G.enemy.stats.maxHp); if(G.battleOver)return;
@@ -10588,7 +10670,7 @@ Object.assign(ACTIONS, {
   },
   async shadowPounce(ab) {
     const lv=ab.level;
-    if(playerAttackMisses(ab)){await doMiss('player');logMsg('Shadow Pounce missed!','miss');return;}
+    if(await doPlayerAttackMiss(ab)) return;
     const hpPct=(G.enemy.stats.hp/Math.max(1,G.enemy.stats.maxHp));
     const finisher=(hpPct<0.4?[0,0,0,0.3][lv-1]:hpPct<0.5?[0,0.1,0.2,0.3][lv-1]:0);
     const isCrit=chance(Math.min(100,(G.player.stats.critChance||5)+[20,25,30,35][lv-1]));
@@ -11245,7 +11327,7 @@ function planEnemyTurn(e,p){
       if(opening[cat]) w*=opening[cat];
       if(['aggressive','duelist','executioner'].includes((e.aiPersonality||'')) && pHp<0.5 && (cat==='guard'||cat==='heal') && eHp>0.25) w*=0.7;
       if(['control','seer'].includes((e.aiPersonality||''))){
-        const hasDebuffs=!!(G.playerStatus.weaken||G.playerStatus.feared||G.playerStatus.confused||G.playerStatus.paralyzed||G.playerStatus.poison||G.playerStatus.bleed||G.playerStatus.accDebuff);
+        const hasDebuffs=!!(getWeakenStacks(G.playerStatus)||G.playerStatus.feared||G.playerStatus.confused||G.playerStatus.paralyzed||G.playerStatus.poison||G.playerStatus.bleed||G.playerStatus.accDebuff);
         if(!hasDebuffs && cat==='control' && !mem.openingSetupUsed) w*=1.3;
         if(mem.openingSetupUsed && cat==='control') w*=0.75;
         if(hasDebuffs && (cat==='damage'||cat==='heavy')) w*=1.15;
@@ -11328,7 +11410,7 @@ function dukeTrackDecree(abilityId){
 }
 function dukeApplyDecreePunish(){
   const d=G.enemy.duke; const st=d.decreeStacks||0; if(st<=0) return;
-  refreshStatus(G.playerStatus,'weaken',1+Math.floor(st/2),6);
+  applyWeakenStack('player', 1+Math.floor(st/2));
   refreshStatus(G.playerStatus,'vulnerable',1,6);
   spawnFloat('player',`📜 Decree(${st})`,'fn-status');
   logMsg(`📜 Court Decree punishes repetition (${st}).`,'boss');
@@ -12046,6 +12128,7 @@ function applySingleReward(rw) {
   if (rw.type === 'mutation') {
     const itemId = rw.mutationItemId || rw.id;
     if (typeof Avian?.mutations?.addToInventory === 'function') Avian.mutations.addToInventory(G.player, itemId);
+    codexMark('mutations', itemId, 'seen');
   } else {
     applyUpgradeWithMaxHpHealing(G.player, () => rw.apply(G.player), rw.name || 'Upgrade', { id: rw.id, desc: rw.desc });
   }
@@ -12190,7 +12273,7 @@ function showRewardScreen(hasLevelUp) {
         <div class="reward-tier-label">${tierMeta.label}</div>
         <span class="reward-icon">${rw.icon}</span>
         <div class="reward-name">${rw.name}</div>
-        <div class="reward-desc">${getMutationDescHtml(rw.mutationItemId||rw.id)||escapeHtmlRoster(rw.desc||'')}</div>`;
+        <div class="reward-desc mut-stat-compact-wrap">${getMutationDescHtml(rw.mutationItemId||rw.id,{compact:true})||escapeHtmlRoster(rw.desc||'')}</div>`;
       c.onclick=()=>{
         document.querySelectorAll('#reward-grid .reward-card').forEach(x=>x.classList.remove('selected'));
         c.classList.add('selected');
@@ -12209,7 +12292,7 @@ function showRewardScreen(hasLevelUp) {
     const tierMeta=rewardTierMeta(rw.tier);
     const c=document.createElement('div');
     c.className=`reward-card tier-${tierCss} received`;
-    const mutDescHtml=getMutationDescHtml(rw.mutationItemId||rw.id);
+    const mutDescHtml=getMutationDescHtml(rw.mutationItemId||rw.id,{compact:true});
     c.innerHTML=`
       <div class="reward-tier-label">${tierMeta.label}</div>
       <span class="reward-icon">${rw.icon}</span>
@@ -12979,12 +13062,13 @@ function grantGroveNestMutation(){
   if(rw.type==='mutation'){
     const itemId=rw.mutationItemId||rw.id;
     if(typeof Avian?.mutations?.addToInventory==='function') Avian.mutations.addToInventory(G.player, itemId);
+    codexMark('mutations', itemId, 'seen');
   } else if(typeof rw.apply==='function'){
     applyUpgradeWithMaxHpHealing(G.player, ()=>rw.apply(G.player), rw.name||'Grove Nest Reward', {id:rw.id, desc:rw.desc});
   }
   if(!G.collectedRewards) G.collectedRewards=[];
   G.collectedRewards.push({id:rw.id||rw.name,icon:rw.icon,tier:rw.tier,name:rw.name,desc:rw.desc});
-  codexMark('artifacts', rw.id||rw.name, 'seen');
+  if(rw.type!=='mutation') codexMark('artifacts', rw.id||rw.name, 'seen');
   return rw;
 }
 
@@ -13366,6 +13450,8 @@ function toggleSound() {
 function playTone(freq, type='square', dur=0.12, vol=0.18, delay=0, freqEnd=null) {
   if (!_soundEnabled) return;
   const ctx = getAudioCtx(); if (!ctx) return;
+  const volScale=getAudioVolumeMultipliers().masterSfx;
+  if(volScale<=0.001) return;
   const run = () => {
     try {
       const osc = ctx.createOscillator();
@@ -13374,7 +13460,7 @@ function playTone(freq, type='square', dur=0.12, vol=0.18, delay=0, freqEnd=null
       osc.type = type;
       osc.frequency.setValueAtTime(freq, ctx.currentTime + delay);
       if (freqEnd !== null) osc.frequency.linearRampToValueAtTime(freqEnd, ctx.currentTime + delay + dur);
-      gain.gain.setValueAtTime(vol, ctx.currentTime + delay);
+      gain.gain.setValueAtTime(vol*volScale, ctx.currentTime + delay);
       gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + delay + dur);
       osc.start(ctx.currentTime + delay);
       osc.stop(ctx.currentTime + delay + dur + 0.05);
@@ -13672,8 +13758,11 @@ function buildRefGuide() {
     {k:'enemies',label:'☠ Enemies'},
     {k:'statuses',label:'☣ Status Effects'},
     {k:'artifacts',label:'💎 Artefacts'},
+    {k:'mutations',label:'🧬 Mutations'},
+    {k:'items',label:'💧 Items'},
     {k:'mechanics',label:'⚙ Mechanics'},
   ];
+  _refActiveTab=Math.max(0,Math.min(_refActiveTab,defs.length-1));
   const prevQ=(document.getElementById('ref-search-input')?.value||'').toLowerCase();
   const prevShowLocked=!!document.getElementById('ref-show-locked')?.checked;
   tabs.innerHTML = `<div style="display:flex;gap:8px;margin-bottom:10px"><input id="ref-search-input" placeholder="Search codex..." style="flex:1;background:rgba(0,0,0,.25);border:1px solid var(--border);color:var(--text);padding:7px 9px;border-radius:8px"/><label style="font-size:.72rem;color:var(--text-dim)"><input id="ref-show-locked" type="checkbox"> Show locked</label></div>` + defs.map((t,i)=>`<div class="ref-tab${i===_refActiveTab?' active':''}" onclick="selectRefTab(${i})">${t.label}</div>`).join('');
@@ -13724,8 +13813,33 @@ function buildRefGuide() {
   const statuses=statusIds.filter(id=>isMatch(id)).map(id=>{
     const u=!!G.codex?.statuses?.[id]?.seen;
     if(!u&&!showLocked) return '';
-    const d=(packStatusGlossary[id]||AILMENTS[id]?.desc)||'Status effect.';
-    return card(id[0].toUpperCase()+id.slice(1),d,u,'status');
+    const ail=AILMENTS[id];
+    const d=(ail?.desc||packStatusGlossary[id])||'Status effect.';
+    const label=ail?.name||(id[0].toUpperCase()+id.slice(1));
+    return card(label,d,u,'status');
+  }).join('');
+
+  const mutCatalog=(typeof Avian?.mutations?.getCatalog==='function')?Avian.mutations.getCatalog():(Avian?.data?.mutations?.byId||{});
+  const mutations=Object.entries(mutCatalog).filter(([id,item])=>{
+    if(!item) return false;
+    const slotLbl=Avian?.mutations?.SLOT_LABELS?.[item.slot]||item.slot||'';
+    return isMatch(item.name)||isMatch(id)||isMatch(slotLbl)||isMatch(item.tier);
+  }).map(([id,item])=>{
+    const u=!!G.codex?.mutations?.[id]?.seen;
+    if(!u&&!showLocked) return '';
+    const slotLbl=Avian?.mutations?.SLOT_LABELS?.[item.slot]||item.slot||'';
+    const tier=item.tier||'';
+    const stats=u?getMutationDescHtml(item,{compact:true}):'';
+    const body=u?`${stats}<div style="font-size:.78em;margin-top:6px;color:var(--text-dim)">${escapeHtmlRoster(slotLbl)} · ${escapeHtmlRoster(tier)} tier</div>`:'Unlock by finding this mutation in a run, shop, or nest.';
+    return card(item.name||id,body,u,`${tier} · ${slotLbl}`);
+  }).join('');
+
+  const combatItems=Object.values(COMBAT_ITEM_CATALOG||{}).filter(def=>isMatch(def.name)||isMatch(def.combatHint)).map(def=>{
+    const u=!!G.codex?.items?.[def.itemKey]?.seen;
+    if(!u&&!showLocked) return '';
+    const pct=Math.round((def.healPct||0)*100);
+    const desc=def.combatHint||`Restore ${pct}% max HP for ${def.energyCost} energy (one heal item per turn).`;
+    return card(def.name,desc,u,`${def.tier||'item'} · battle`);
   }).join('');
 
   const tierOrder=['grey','green','blue','purple','gold'];
@@ -13748,19 +13862,24 @@ function buildRefGuide() {
     ${card('Energy & Cooldowns','Main attacks are free unless spells. Abilities spend energy and many skills have cooldowns.',true,'core')}
     ${card('Post-Battle Recovery','After each victory, all birds heal for 33% of max HP (halved with Hunter\'s Cruelty mutation).',true,'heal')}
     ${card('Role Taxonomy','Birds are grouped by roles: Striker, Bruiser, Tank, Trickster, Predator, Singer.',true,'roles')}
+    ${card('Mutation Slots','Equip mutations in wing, feet, head, beak, chest, eyes, tail, plumage, and syrinx slots (limits per slot). Manage loadout in the Nest.',true,'mutations')}
+    ${card('Nest Inventory','Found mutations go to nest inventory. Equip, compare, and sell extras between battles.',true,'nest')}
+    ${card('Stork Shop','Spend Shiny Objects on upgrades, combat heal items, and mutation stock between fights.',true,'shop')}
+    ${card('Mutated Feathers','Rare currency used for mutation-focused rewards and nest progression (when offered).',true,'feathers')}
+    ${card('Hit vs Dodge','Accuracy rolls can Miss. If the attack connects, a separate dodge roll may show Dodge — not Miss.',true,'combat')}
+    ${card('Weaken (stacks)','Stacks to ×3: −10% outgoing damage and −10 Dodge per stack. Refreshes 3-turn duration.',true,'ailment')}
     ${card('Passive Evolution (Endless)','In Endless mode, passives evolve at milestones with offensive vs utility choices.',true,'endless')}
     ${card('Enemy AI Profiles','Enemy personalities (aggressive, tactical, control, tank, predator, etc.) bias action planning.',true,'ai')}
     ${card('Codex Unlocks','Entries unlock when seen/used during runs. Use search and Show Locked to browse all.',true,'codex')}
   </div>`;
 
-  panels.innerHTML=`
-    <div class="ref-panel ${_refActiveTab===0?'active':''}" id="ref-panel-0"><div class="ref-skills-grid">${birds||'<div class="ref-entry-desc">No matching birds.</div>'}</div></div>
-    <div class="ref-panel ${_refActiveTab===1?'active':''}" id="ref-panel-1"><div class="ref-skills-grid">${abilities||'<div class="ref-entry-desc">No matching abilities.</div>'}</div></div>
-    <div class="ref-panel ${_refActiveTab===2?'active':''}" id="ref-panel-2"><div class="ref-skills-grid">${enemies||'<div class="ref-entry-desc">No matching enemies.</div>'}</div></div>
-    <div class="ref-panel ${_refActiveTab===3?'active':''}" id="ref-panel-3"><div class="ref-skills-grid">${statuses||'<div class="ref-entry-desc">No matching statuses.</div>'}</div></div>
-    <div class="ref-panel ${_refActiveTab===4?'active':''}" id="ref-panel-4"><div class="ref-skills-grid">${arts}</div></div>
-    <div class="ref-panel ${_refActiveTab===5?'active':''}" id="ref-panel-5">${mechanics}</div>
-  `;
+  const panelBodies=[birds,abilities,enemies,statuses,arts,mutations,combatItems];
+  const panelFallback=['No matching birds.','No matching abilities.','No matching enemies.','No matching statuses.','No matching artefacts.','No matching mutations.','No matching items.'];
+  panels.innerHTML=panelBodies.map((html,i)=>{
+    const inner=html||`<div class="ref-entry-desc">${panelFallback[i]}</div>`;
+    const wrap=i===4?inner:`<div class="ref-skills-grid">${inner}</div>`;
+    return `<div class="ref-panel ${_refActiveTab===i?'active':''}" id="ref-panel-${i}">${wrap}</div>`;
+  }).join('')+`<div class="ref-panel ${_refActiveTab===7?'active':''}" id="ref-panel-7">${mechanics}</div>`;
   const qEl=document.getElementById('ref-search-input');
   const lEl=document.getElementById('ref-show-locked');
   if(qEl){ qEl.value=prevQ; qEl.oninput=()=>buildRefGuide(); }
@@ -13974,7 +14093,7 @@ function buildShopBuyCard(item, idx, {isSelected, canSelect, cost}){
     <div class="reward-tier-label">${(REWARD_TIERS[item.tier]||REWARD_TIERS.grey).label}</div>
     <span class="reward-icon">${item.icon}</span>
     <div class="reward-name">${item.name}</div>
-    <div class="reward-desc">${item.type==='mutation'||item.mutationItemId?(getMutationDescHtml(item.mutationItemId||item.id)||escapeHtmlRoster(item.desc||'')):escapeHtmlRoster(item.desc||'')}</div>`;
+    <div class="reward-desc mut-stat-compact-wrap">${item.type==='mutation'||item.mutationItemId?(getMutationDescHtml(item.mutationItemId||item.id,{compact:true})||escapeHtmlRoster(item.desc||'')):escapeHtmlRoster(item.desc||'')}</div>`;
   if(item.desc && tooltipsEnabled('items')) div.title=item.type==='mutation'?String(item.desc||'').replace(/\n/g,' · '):item.desc;
   div.addEventListener('click', ()=>{
     if(SHOP_STATE.selectedBuyIndices.has(idx)){
@@ -14297,6 +14416,7 @@ function purchaseShopItemAtIndex(idx, costOverride){
   if(item.type==='mutation'){
     const itemId=item.mutationItemId||item.id;
     if(typeof Avian?.mutations?.addToInventory==='function') Avian.mutations.addToInventory(G.player, itemId);
+    codexMark('mutations', itemId, 'seen');
   } else if(item.isCombatItem && typeof item.apply==='function'){
     item.apply(G.player);
   } else {
@@ -14435,13 +14555,14 @@ function confirmAbandon() {
   closeAbandonModal();
   checkRunUnlocks();
   deleteSave();
+  stopAllGameAudio();
   showScreen('screen-select');initSelectionSafe();
   renderRunHistory();
 }
 
 
 function unlockAllCodexEntries(){
-  if(!G.codex) G.codex={abilities:{},enemies:{},birds:{},artifacts:{},statuses:{}};
+  if(!G.codex) G.codex={abilities:{},enemies:{},birds:{},artifacts:{},statuses:{},mutations:{},items:{}};
   const ensure=(type,id,used=false)=>{
     if(!id) return;
     if(!G.codex[type]) G.codex[type]={};
@@ -14459,6 +14580,16 @@ function unlockAllCodexEntries(){
     const pool=(typeof getUpgradePool==='function') ? getUpgradePool() : [];
     pool.forEach(r=>ensure('artifacts',r?.id||r?.name,false));
   }catch(_){/* ignore artifact unlock errors */}
+
+  try{
+    const mutCatalog=(typeof Avian?.mutations?.getCatalog==='function')?Avian.mutations.getCatalog():(Avian?.data?.mutations?.byId||{});
+    Object.keys(mutCatalog).forEach(id=>ensure('mutations',id,false));
+  }catch(_){/* ignore mutation unlock errors */}
+
+  Object.keys(COMBAT_ITEM_CATALOG||{}).forEach(key=>{
+    const def=COMBAT_ITEM_CATALOG[key];
+    if(def?.itemKey) ensure('items',def.itemKey,false);
+  });
 }
 
 // ============================================================
@@ -14574,12 +14705,14 @@ function getMusicSettings(){
   try{
     const raw=JSON.parse(localStorage.getItem(MUSIC_SETTINGS_KEY)||'{}');
     const vol=Number(raw.volume);
+    const cfg=getAccessibilitySettings();
     return{
       muted:!!raw.muted,
-      volume:Number.isFinite(vol)?Math.max(0,Math.min(100,vol)):THEME_BGM_DEFAULT_VOLUME_PCT,
+      volume:Number.isFinite(vol)?Math.max(0,Math.min(100,vol)):(Number(cfg.audio?.music)||THEME_BGM_DEFAULT_VOLUME_PCT),
     };
   }catch(_){
-    return{muted:false,volume:THEME_BGM_DEFAULT_VOLUME_PCT};
+    const cfg=getAccessibilitySettings();
+    return{muted:false,volume:Number(cfg.audio?.music)||THEME_BGM_DEFAULT_VOLUME_PCT};
   }
 }
 function saveMusicSettings(s){
@@ -14606,7 +14739,8 @@ function cancelDukeBgmFade(){
 }
 function getDukeBgmTargetVolume(){
   const s=getMusicSettings();
-  return s.muted?0:Math.max(0,Math.min(1,s.volume/100));
+  const mult=getAudioVolumeMultipliers();
+  return s.muted?0:Math.max(0,Math.min(1,s.volume/100*mult.masterMusic));
 }
 function primeDukeBattleBgmAudio(){
   const el=getDukeBattleBgmAudio();
@@ -14741,17 +14875,30 @@ function applyDukeBattleBgmToAudioEl(){
   const el=getDukeBattleBgmAudio();
   if(!el) return;
   const s=getMusicSettings();
-  el.volume=Math.max(0,Math.min(1,s.volume/100));
+  const mult=getAudioVolumeMultipliers();
+  el.volume=Math.max(0,Math.min(1,s.volume/100*mult.masterMusic));
   el.muted=!!s.muted;
 }
 function applyThemeMusicToAudioEl(){
   const el=getThemeBgmAudio();
   if(!el) return;
   const s=getMusicSettings();
-  el.volume=Math.max(0,Math.min(1,s.volume/100));
+  const mult=getAudioVolumeMultipliers();
+  el.volume=Math.max(0,Math.min(1,s.volume/100*mult.masterMusic));
   el.muted=!!s.muted;
   applyDukeBattleBgmToAudioEl();
 }
+function stopAllGameAudio(){
+  cancelThemeBgmFade();
+  cancelDukeBgmFade();
+  const theme=getThemeBgmAudio();
+  const duke=getDukeBattleBgmAudio();
+  if(theme){ try{ theme.pause(); theme.currentTime=0; }catch(_){} }
+  if(duke){ try{ duke.pause(); duke.currentTime=0; }catch(_){} }
+  const ctx=getAudioCtx();
+  if(ctx && ctx.state==='running'){ try{ ctx.suspend(); }catch(_){} }
+}
+globalThis.stopAllGameAudio=stopAllGameAudio;
 function syncThemeMusicButtonLabels(){
   const s=getMusicSettings();
   const icon=s.muted?'🔇':'🔊';
@@ -14827,21 +14974,98 @@ function wireThemeBgmAutoplayUnlock(){
 globalThis.toggleThemeMusicMuted=toggleThemeMusicMuted;
 globalThis.updateMusicSettingsFromControls=updateMusicSettingsFromControls;
 
+function detectPreferredUIMode(){
+  const narrow=typeof window!=='undefined' && window.matchMedia && window.matchMedia('(max-width: 768px)').matches;
+  const touch=(typeof navigator!=='undefined' && (navigator.maxTouchPoints||0)>0);
+  if(narrow || (touch && typeof window!=='undefined' && window.innerWidth<1024)) return 'mobile';
+  return 'desktop';
+}
+function normalizeAccessibilitySettings(raw){
+  raw=raw&&typeof raw==='object'?raw:{};
+  let musicVol=THEME_BGM_DEFAULT_VOLUME_PCT;
+  try{
+    const leg=JSON.parse(localStorage.getItem(MUSIC_SETTINGS_KEY)||'{}');
+    if(Number.isFinite(Number(leg.volume))) musicVol=Number(leg.volume);
+  }catch(_){}
+  const audio=Object.assign({master:100,music:musicVol,sfx:100}, raw.audio||{});
+  if(raw.musicVolume!=null && raw.audio?.music==null) audio.music=Number(raw.musicVolume)||musicVol;
+  return {
+    fontSize:Number(raw.fontSize)||100,
+    colorBlind:String(raw.colorBlind||'off'),
+    reduceMotion:!!raw.reduceMotion,
+    highContrast:!!raw.highContrast,
+    uiMode:(raw.uiMode==='desktop')?'desktop':'mobile',
+    uiAutoDetect:raw.uiAutoDetect!==false,
+    audio,
+    tooltips:{...DEFAULT_TOOLTIP_SETTINGS, ...(raw.tooltips||{})},
+  };
+}
 function getAccessibilitySettings(){
   try{
     const raw=JSON.parse(localStorage.getItem(ACCESS_KEY)||'{}');
-    return Object.assign({
-      fontSize:100,
-      colorBlind:'off',
-      reduceMotion:false,
-      highContrast:false,
-      uiMode:'desktop',
-      tooltips:{...DEFAULT_TOOLTIP_SETTINGS},
-    }, raw, { tooltips: { ...DEFAULT_TOOLTIP_SETTINGS, ...(raw.tooltips||{}) } });
+    return normalizeAccessibilitySettings(raw);
   }catch(_){
-    return {fontSize:100,colorBlind:'off',reduceMotion:false,highContrast:false,uiMode:'desktop',tooltips:{...DEFAULT_TOOLTIP_SETTINGS}};
+    return normalizeAccessibilitySettings({});
   }
 }
+function bootstrapAccessibilityDefaults(){
+  let raw=null;
+  try{ raw=JSON.parse(localStorage.getItem(ACCESS_KEY)||'null'); }catch(_){}
+  if(!raw || typeof raw!=='object'){
+    const uiMode=detectPreferredUIMode();
+    const cfg=normalizeAccessibilitySettings({
+      uiMode,
+      uiAutoDetect:true,
+      fontSize:uiMode==='mobile'?115:100,
+    });
+    localStorage.setItem(ACCESS_KEY, JSON.stringify(cfg));
+    return;
+  }
+  if(raw.uiMode==null || raw.uiMode===''){
+    raw.uiMode=detectPreferredUIMode();
+    raw.uiAutoDetect=raw.uiAutoDetect!==false;
+    localStorage.setItem(ACCESS_KEY, JSON.stringify(normalizeAccessibilitySettings(raw)));
+  }
+}
+let _uiAutoDetectResizeTimer=null;
+function wireUiAutoDetectResize(){
+  if(typeof window==='undefined' || window._uiAutoDetectWired) return;
+  window._uiAutoDetectWired=true;
+  window.addEventListener('resize', ()=>{
+    clearTimeout(_uiAutoDetectResizeTimer);
+    _uiAutoDetectResizeTimer=setTimeout(()=>{
+      const cfg=getAccessibilitySettings();
+      if(!cfg.uiAutoDetect) return;
+      const next=detectPreferredUIMode();
+      if(cfg.uiMode===next) return;
+      cfg.uiMode=next;
+      localStorage.setItem(ACCESS_KEY, JSON.stringify(cfg));
+      applyAccessibilitySettings(cfg);
+      const ui=document.getElementById('setting-ui-mode');
+      if(ui) ui.value=next;
+    }, 200);
+  });
+}
+function getAudioVolumeMultipliers(){
+  const cfg=getAccessibilitySettings();
+  const a=cfg.audio||{};
+  const master=Math.max(0, Math.min(1, (Number(a.master)||100)/100));
+  const sfx=Math.max(0, Math.min(1, (Number(a.sfx)||100)/100));
+  const music=Math.max(0, Math.min(1, (Number(a.music)||100)/100));
+  return {master, sfx, music, masterSfx:master*sfx, masterMusic:master*music};
+}
+function selectSettingsTab(ev){
+  const btn=ev?.target?.closest?.('[data-settings-tab]');
+  if(!btn) return;
+  const tab=btn.dataset.settingsTab;
+  document.querySelectorAll('.settings-tab').forEach(t=>{
+    t.classList.toggle('active', t===btn || t.dataset.settingsTab===tab);
+  });
+  document.querySelectorAll('.settings-panel').forEach(p=>{
+    p.classList.toggle('active', p.dataset.settingsPanel===tab);
+  });
+}
+globalThis.selectSettingsTab=selectSettingsTab;
 function applyUIStateToDOM(){
   const ui=ensureUIState();
   const main=document.getElementById('endless-check');
@@ -14888,15 +15112,22 @@ function openSettingsModal(){
   const rm=document.getElementById('setting-reduce-motion');
   const hc=document.getElementById('setting-high-contrast');
   const ui=document.getElementById('setting-ui-mode');
+  const uiAuto=document.getElementById('setting-ui-auto-detect');
   if(font) font.value=String(cfg.fontSize||100);
   if(cb) cb.value=cfg.colorBlind||'off';
   if(rm) rm.checked=!!cfg.reduceMotion;
   if(hc) hc.checked=!!cfg.highContrast;
   if(ui) ui.value=ensureUIState().battleLayout;
+  if(uiAuto) uiAuto.checked=cfg.uiAutoDetect!==false;
   const ms=getMusicSettings();
+  const a=cfg.audio||{};
+  const master=document.getElementById('setting-master-volume');
   const mv=document.getElementById('setting-music-volume');
+  const sv=document.getElementById('setting-sfx-volume');
   const mm=document.getElementById('setting-music-muted');
-  if(mv) mv.value=String(ms.volume);
+  if(master) master.value=String(a.master??100);
+  if(mv) mv.value=String(a.music??ms.volume);
+  if(sv) sv.value=String(a.sfx??100);
   if(mm) mm.checked=!!ms.muted;
   const tt=cfg.tooltips||DEFAULT_TOOLTIP_SETTINGS;
   const ttAb=document.getElementById('setting-tt-abilities');
@@ -14919,12 +15150,19 @@ function returnToWarRoomFromSettings(){
 }
 globalThis.returnToWarRoomFromSettings = returnToWarRoomFromSettings;
 function updateAccessibilitySettings(){
+  const prev=getAccessibilitySettings();
   const cfg={
     fontSize:Number(document.getElementById('setting-font-size')?.value||100),
     colorBlind:String(document.getElementById('setting-color-blind')?.value||'off'),
     reduceMotion:!!document.getElementById('setting-reduce-motion')?.checked,
     highContrast:!!document.getElementById('setting-high-contrast')?.checked,
     uiMode:String(document.getElementById('setting-ui-mode')?.value||ensureUIState().battleLayout),
+    uiAutoDetect:!!document.getElementById('setting-ui-auto-detect')?.checked,
+    audio:Object.assign({}, prev.audio, {
+      master:Number(document.getElementById('setting-master-volume')?.value??prev.audio?.master??100),
+      music:Number(document.getElementById('setting-music-volume')?.value??prev.audio?.music??THEME_BGM_DEFAULT_VOLUME_PCT),
+      sfx:Number(document.getElementById('setting-sfx-volume')?.value??prev.audio?.sfx??100),
+    }),
     tooltips:{
       abilities:!!document.getElementById('setting-tt-abilities')?.checked,
       mutations:!!document.getElementById('setting-tt-mutations')?.checked,
@@ -14934,10 +15172,45 @@ function updateAccessibilitySettings(){
   };
   localStorage.setItem(ACCESS_KEY, JSON.stringify(cfg));
   applyAccessibilitySettings(cfg);
+  applyThemeMusicToAudioEl();
+  syncThemeMusicButtonLabels();
 }
+function updateAudioSettingsFromControls(){
+  const prev=getAccessibilitySettings();
+  const ms=getMusicSettings();
+  const cfg=normalizeAccessibilitySettings(Object.assign({}, prev, {
+    audio:{
+      master:Number(document.getElementById('setting-master-volume')?.value??prev.audio?.master??100),
+      music:Number(document.getElementById('setting-music-volume')?.value??prev.audio?.music??THEME_BGM_DEFAULT_VOLUME_PCT),
+      sfx:Number(document.getElementById('setting-sfx-volume')?.value??prev.audio?.sfx??100),
+    },
+  }));
+  saveMusicSettings({muted:!!document.getElementById('setting-music-muted')?.checked, volume:cfg.audio.music});
+  localStorage.setItem(ACCESS_KEY, JSON.stringify(cfg));
+  applyThemeMusicToAudioEl();
+  syncThemeMusicButtonLabels();
+  const active=document.querySelector('.screen.active');
+  if(active&&(active.id==='screen-start'||active.id==='screen-select')){
+    tryPlayThemeBgmForCurrentMenuScreen();
+  }else if(active?.id==='screen-battle'&&isDukeStoryBossFight()){
+    tryStartDukeBattleBgmIfNeeded();
+  }
+}
+function updateMusicSettingsFromControls(){
+  updateAudioSettingsFromControls();
+}
+globalThis.updateAudioSettingsFromControls=updateAudioSettingsFromControls;
 
 installErrorHUD();
+bootstrapAccessibilityDefaults();
 applyAccessibilitySettings();
+wireUiAutoDetectResize();
+if(typeof window!=='undefined'){
+  window.addEventListener('pagehide', ()=>stopAllGameAudio());
+  document.addEventListener('visibilitychange', ()=>{
+    if(document.visibilityState==='hidden') stopAllGameAudio();
+  });
+}
 wireCombatDropdownStateSync();
 applyUIStateToDOM();
 applyThemeMusicToAudioEl();

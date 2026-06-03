@@ -316,6 +316,7 @@
 </div>
 <div class="map-forge-toolbar">
 <span class="map-forge-toolbar-label">View</span>
+<button type="button" class="map-forge-tool-btn" data-forge-tool="pan" title="Drag canvas to pan (H). Hold Space for temporary pan.">Grab</button>
 <button type="button" class="menu-btn map-forge-tool-btn" data-action="mapForgeZoomFit">Fit</button>
 <button type="button" class="menu-btn map-forge-tool-btn" data-action="mapForgeZoom100">100%</button>
 <button type="button" class="menu-btn map-forge-tool-btn" data-action="mapForgeZoom200">200%</button>
@@ -722,10 +723,28 @@
 </div>
 <!-- SETTINGS MODAL -->
 <div class="abandon-modal" id="settings-modal" data-action="closeSettingsModal" data-backdrop="1">
-<div class="abandon-inner" style="max-width:560px;text-align:left;">
-<h3>⚙ Accessibility &amp; Settings</h3>
-<div style="display:grid;gap:12px;margin-top:10px;">
-<label style="display:flex;justify-content:space-between;align-items:center;gap:12px;">Font Size
+<div class="abandon-inner settings-modal-inner" style="max-width:620px;text-align:left;">
+<h3>⚙ Settings</h3>
+<div class="settings-tabs" role="tablist">
+<button type="button" class="settings-tab active" data-settings-tab="display" data-action="selectSettingsTab">Display</button>
+<button type="button" class="settings-tab" data-settings-tab="accessibility" data-action="selectSettingsTab">Accessibility</button>
+<button type="button" class="settings-tab" data-settings-tab="audio" data-action="selectSettingsTab">Audio</button>
+<button type="button" class="settings-tab" data-settings-tab="tooltips" data-action="selectSettingsTab">Tooltips</button>
+</div>
+<div class="settings-panel active" id="settings-panel-display" data-settings-panel="display">
+<label class="settings-row">Auto-detect screen size
+<input id="setting-ui-auto-detect" type="checkbox" data-change="updateAccessibilitySettings"/>
+</label>
+<label class="settings-row">Battle UI layout
+<select id="setting-ui-mode" data-change="updateAccessibilitySettings">
+<option value="mobile">Mobile (Compact)</option>
+<option value="desktop">Desktop</option>
+</select>
+</label>
+<p class="settings-hint">Auto-detect picks mobile layout on phones and compact tablets.</p>
+</div>
+<div class="settings-panel" id="settings-panel-accessibility" data-settings-panel="accessibility">
+<label class="settings-row">Font size
 <select id="setting-font-size" data-change="updateAccessibilitySettings">
 <option value="90">Small (90%)</option>
 <option value="100">Default (100%)</option>
@@ -733,7 +752,7 @@
 <option value="130">Extra Large (130%)</option>
 </select>
 </label>
-<label style="display:flex;justify-content:space-between;align-items:center;gap:12px;">Color Blind Mode
+<label class="settings-row">Color blind mode
 <select id="setting-color-blind" data-change="updateAccessibilitySettings">
 <option value="off">Off</option>
 <option value="protanopia">Protanopia-friendly</option>
@@ -741,39 +760,40 @@
 <option value="tritanopia">Tritanopia-friendly</option>
 </select>
 </label>
-<label style="display:flex;justify-content:space-between;align-items:center;gap:12px;">Reduce Motion
+<label class="settings-row">Reduce motion
 <input id="setting-reduce-motion" data-change="updateAccessibilitySettings" type="checkbox"/>
 </label>
-<label style="display:flex;justify-content:space-between;align-items:center;gap:12px;">High Contrast UI
+<label class="settings-row">High contrast UI
 <input id="setting-high-contrast" data-change="updateAccessibilitySettings" type="checkbox"/>
 </label>
-<label style="display:flex;justify-content:space-between;align-items:center;gap:12px;">Battle UI Layout
-<select id="setting-ui-mode" data-change="updateAccessibilitySettings">
-<option value="desktop">Desktop (Default)</option>
-<option value="mobile">Mobile (Compact)</option>
-</select>
+</div>
+<div class="settings-panel" id="settings-panel-audio" data-settings-panel="audio">
+<label class="settings-row settings-row-range">Master volume
+<input id="setting-master-volume" type="range" min="0" max="100" step="5" value="100" data-input="updateAudioSettingsFromControls"/>
 </label>
-<label style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;">Menu music volume
-<input id="setting-music-volume" type="range" min="0" max="100" step="5" value="50" style="flex:1;min-width:140px;max-width:220px;" data-input="updateMusicSettingsFromControls"/>
+<label class="settings-row settings-row-range">Music volume
+<input id="setting-music-volume" type="range" min="0" max="100" step="5" value="50" data-input="updateAudioSettingsFromControls"/>
 </label>
-<label style="display:flex;justify-content:space-between;align-items:center;gap:12px;">Mute menu music
-<input id="setting-music-muted" type="checkbox" data-change="updateMusicSettingsFromControls"/>
+<label class="settings-row settings-row-range">SFX volume
+<input id="setting-sfx-volume" type="range" min="0" max="100" step="5" value="100" data-input="updateAudioSettingsFromControls"/>
 </label>
-<div style="margin-top:6px;padding-top:10px;border-top:1px solid var(--border);">
-<div style="font-family:'Cinzel',serif;font-size:.78rem;letter-spacing:.08em;color:var(--text-dim);margin-bottom:8px;">TOOLTIPS</div>
-<label style="display:flex;justify-content:space-between;align-items:center;gap:12px;">Ability tooltips
-<input id="setting-tt-abilities" type="checkbox" checked data-change="updateAccessibilitySettings"/>
-</label>
-<label style="display:flex;justify-content:space-between;align-items:center;gap:12px;">Mutation tooltips
-<input id="setting-tt-mutations" type="checkbox" checked data-change="updateAccessibilitySettings"/>
-</label>
-<label style="display:flex;justify-content:space-between;align-items:center;gap:12px;">Item tooltips
-<input id="setting-tt-items" type="checkbox" checked data-change="updateAccessibilitySettings"/>
-</label>
-<label style="display:flex;justify-content:space-between;align-items:center;gap:12px;">Passive tooltips
-<input id="setting-tt-passives" type="checkbox" checked data-change="updateAccessibilitySettings"/>
+<label class="settings-row">Mute music
+<input id="setting-music-muted" type="checkbox" data-change="updateAudioSettingsFromControls"/>
 </label>
 </div>
+<div class="settings-panel" id="settings-panel-tooltips" data-settings-panel="tooltips">
+<label class="settings-row">Ability tooltips
+<input id="setting-tt-abilities" type="checkbox" checked data-change="updateAccessibilitySettings"/>
+</label>
+<label class="settings-row">Mutation tooltips
+<input id="setting-tt-mutations" type="checkbox" checked data-change="updateAccessibilitySettings"/>
+</label>
+<label class="settings-row">Item tooltips
+<input id="setting-tt-items" type="checkbox" checked data-change="updateAccessibilitySettings"/>
+</label>
+<label class="settings-row">Passive tooltips
+<input id="setting-tt-passives" type="checkbox" checked data-change="updateAccessibilitySettings"/>
+</label>
 </div>
 <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:14px;">
 <button class="menu-btn" data-action="exportCombatTelemetry">📊 Export Combat Telemetry</button>

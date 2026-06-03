@@ -43,9 +43,7 @@
       name: 'Weaken',
       icon: '🐔',
       color: '#c9a840',
-      desc: 'Non-stacking. −25% outgoing damage and −40% Dodge. Reapplying refreshes duration. Main Singer ailment.',
-      dodgeMult: 0.6,
-      dmgMult: 0.75,
+      desc: 'Stacks to 3. Each stack: −10% outgoing damage and −10 Dodge. Reapplying adds a stack (max 3) and refreshes duration to 3 turns. Main Singer ailment.',
     },
 
     paralyzed: {

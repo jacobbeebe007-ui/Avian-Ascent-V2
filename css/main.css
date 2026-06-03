@@ -1931,6 +1931,7 @@ body.build-nest-unlocked .splash-hotspot--forge.is-buildnest-hidden{
 .log-entry.system{color:var(--gold);font-style:italic;}
 .log-entry.crit{color:var(--gold-light);font-weight:bold;}
 .log-entry.miss{color:var(--text-dim);font-style:italic;}
+.log-entry.dodge{color:#8aa8e8;font-style:italic;}
 .log-entry.poison-tick{color:#6ae86a;}
 .log-entry.burn-tick{color:#ff8c40;}
 .log-entry.exp-gain{color:#aa66ff;font-style:italic;}
@@ -2260,7 +2261,7 @@ html.avian-ow-nest-embed #action-tooltip{z-index:99999;}
 .nest-slot-filter{font-size:.68rem;padding:4px 10px;border-radius:999px;border:1px solid var(--border);background:var(--surface2);color:var(--text-dim);cursor:pointer;transition:all .15s;font-family:'Cinzel',serif;}
 .nest-slot-filter:hover{border-color:var(--gold);color:var(--text);}
 .nest-slot-filter.active{border-color:var(--gold);background:rgba(201,168,76,.12);color:var(--gold-light);}
-.nest-slot-badge{display:inline-block;font-size:.85rem;margin-right:4px;vertical-align:middle;}
+.nest-slot-badge{display:inline-block;font-size:.65rem;margin-right:3px;vertical-align:middle;opacity:.9;}
 .nest-compare-toggle-row{display:flex;justify-content:center;margin:4px 0 10px;}
 .nest-compare-toggle{display:inline-flex;align-items:center;gap:8px;cursor:pointer;font-size:.72rem;color:var(--text-dim);user-select:none;}
 .nest-compare-toggle input{position:absolute;opacity:0;width:0;height:0;pointer-events:none;}
@@ -2404,6 +2405,21 @@ html.avian-ow-nest-embed #action-tooltip{z-index:99999;}
 .abandon-inner{background:var(--surface);border:1px solid var(--red);border-radius:12px;padding:26px 30px;max-width:360px;text-align:center;}
 .abandon-inner h3{font-family:'Cinzel',serif;color:var(--red-light);font-size:1.1rem;margin-bottom:8px;}
 .abandon-inner p{color:var(--text-dim);font-size:.88rem;margin-bottom:18px;line-height:1.5;}
+.settings-modal-inner{border-color:rgba(201,168,76,.45);max-width:620px!important;text-align:left;}
+.settings-modal-inner h3{color:var(--gold);text-align:center;}
+.settings-tabs{display:flex;flex-wrap:wrap;gap:6px;margin:12px 0 10px;}
+.settings-tab{padding:6px 12px;border-radius:999px;border:1px solid var(--border);background:var(--surface2);color:var(--text-dim);font-family:'Cinzel',serif;font-size:.72rem;cursor:pointer;transition:all .15s;}
+.settings-tab:hover{border-color:var(--gold);color:var(--text);}
+.settings-tab.active{border-color:var(--gold);background:rgba(201,168,76,.12);color:var(--gold-light);}
+.settings-panel{display:none;gap:10px;margin-bottom:4px;}
+.settings-panel.active{display:grid;}
+.settings-row{display:flex;justify-content:space-between;align-items:center;gap:12px;font-size:.85rem;}
+.settings-row-range{flex-wrap:wrap;}
+.settings-row-range input[type=range]{flex:1;min-width:140px;max-width:220px;}
+.settings-hint{font-size:.72rem;color:var(--text-dim);margin:0;line-height:1.4;}
+.mut-stat-compact{font-size:.72rem;line-height:1.35;text-align:center;color:var(--text-dim);}
+.mut-stat-compact .mut-stat-chip{margin:0 2px;}
+.reward-desc.mut-stat-compact-wrap,.nest-mut-stats.mut-stat-compact-wrap{padding-top:4px;}
 .abandon-confirm-btn{background:linear-gradient(135deg,rgba(201,76,76,.25),rgba(201,76,76,.1));border:1px solid var(--red);color:var(--red-light);padding:8px 22px;border-radius:8px;font-family:'Cinzel',serif;font-size:.85rem;cursor:pointer;margin-right:8px;}
 .abandon-cancel-btn{background:rgba(30,35,55,.9);border:1px solid var(--border);color:var(--text-dim);padding:8px 18px;border-radius:8px;cursor:pointer;font-size:.85rem;}
 /* Unlock toast */
@@ -3422,6 +3438,13 @@ img{image-rendering:pixelated;image-rendering:crisp-edges;}
   aspect-ratio:1536/1024;
   max-height:min(72vh,720px);
 }
+.map-forge-canvas-wrap.is-grab-tool{cursor:grab;}
+.map-forge-canvas-wrap.is-grab-tool.is-panning{cursor:grabbing;}
+.map-forge-canvas-wrap.is-grab-tool .map-forge-svg{cursor:grab;}
+.map-forge-canvas-wrap.is-grab-tool.is-panning .map-forge-svg{cursor:grabbing;}
+.map-forge-canvas-wrap.is-panning{user-select:none;}
+.map-forge-canvas-wrap.is-space-pan{cursor:grab;}
+.map-forge-canvas-wrap.is-space-pan.is-panning{cursor:grabbing;}
 .map-forge-canvas-inner{
   position:absolute;
   inset:0;

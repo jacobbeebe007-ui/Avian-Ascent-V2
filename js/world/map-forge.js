@@ -340,6 +340,7 @@
     syncPlaytestFromBtn();
     applyCanvasTransform();
     syncBreadcrumb();
+    syncForgeCanvasCursor();
   }
 
   function renderValidationPanel() {
@@ -972,11 +973,29 @@
     renderMapSummary();
   }
 
+  function syncForgeCanvasCursor() {
+    const wrap = document.getElementById('map-forge-canvas-wrap');
+    if (!wrap) return;
+    wrap.classList.toggle('is-grab-tool', _tool === 'pan');
+    if (_tool !== 'pan') wrap.classList.remove('is-panning');
+  }
+
+  function beginPanDrag(clientX, clientY) {
+    _panDrag = { x: clientX, y: clientY, panX: _panX, panY: _panY };
+    document.getElementById('map-forge-canvas-wrap')?.classList.add('is-panning');
+  }
+
+  function endPanDrag() {
+    _panDrag = null;
+    document.getElementById('map-forge-canvas-wrap')?.classList.remove('is-panning');
+  }
+
   function setTool(tool) {
     _tool = tool;
     document.querySelectorAll('[data-forge-tool]').forEach((btn) => {
       btn.classList.toggle('is-active', btn.getAttribute('data-forge-tool') === tool);
     });
+    syncForgeCanvasCursor();
   }
 
   function placeNode(x, y) {
@@ -1579,6 +1598,11 @@
     const svg = document.getElementById('map-forge-svg');
     if (svg) {
       svg.addEventListener('mousedown', (e) => {
+        if (_tool === 'pan' && e.button === 0) {
+          e.preventDefault();
+          beginPanDrag(e.clientX, e.clientY);
+          return;
+        }
         const g = e.target.closest('[data-node-id]');
         if (g) {
           const nid = Number(g.getAttribute('data-node-id'));
@@ -1636,15 +1660,15 @@
           _map = normalizeMap(_map);
         }
         _drag = null;
-        _panDrag = null;
+        endPanDrag();
       });
     }
     const canvasWrap = document.getElementById('map-forge-canvas-wrap');
     canvasWrap?.addEventListener('mousedown', (e) => {
       if (!document.getElementById('screen-map-forge')?.classList.contains('active')) return;
-      if (e.button === 1 || (_spacePan && e.button === 0)) {
+      if (e.button === 1 || (_spacePan && e.button === 0) || (_tool === 'pan' && e.button === 0)) {
         e.preventDefault();
-        _panDrag = { x: e.clientX, y: e.clientY, panX: _panX, panY: _panY };
+        beginPanDrag(e.clientX, e.clientY);
       }
     });
     canvasWrap?.addEventListener('wheel', (e) => {
@@ -1677,10 +1701,14 @@
     global.addEventListener('keydown', (e) => {
       if (e.code === 'Space' && document.getElementById('screen-map-forge')?.classList.contains('active')) {
         _spacePan = true;
+        document.getElementById('map-forge-canvas-wrap')?.classList.add('is-space-pan');
       }
     });
     global.addEventListener('keyup', (e) => {
-      if (e.code === 'Space') _spacePan = false;
+      if (e.code === 'Space') {
+        _spacePan = false;
+        document.getElementById('map-forge-canvas-wrap')?.classList.remove('is-space-pan');
+      }
     });
     document.getElementById('map-forge-upload')?.addEventListener('change', function () {
       const file = this.files && this.files[0];
@@ -1741,6 +1769,7 @@
       if (e.key === 'Delete' || e.key === 'Backspace') { e.preventDefault(); deleteSelectedNode(); return; }
       if (e.key === 'Escape') { deselectNode(); return; }
       if (e.key === 's' || e.key === 'S') { setTool('select'); return; }
+      if (e.key === 'h' || e.key === 'H') { setTool('pan'); return; }
       if (toolKeys[e.key]) { setTool(toolKeys[e.key]); return; }
       if (e.ctrlKey && e.key === 'd') { e.preventDefault(); duplicateSelectedNode(); return; }
       if (e.ctrlKey && e.key === 'z') { e.preventDefault(); undoMapForge(); return; }
