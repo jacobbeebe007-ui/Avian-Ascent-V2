@@ -2575,6 +2575,35 @@ function getNestSlotIcons(){
   return Avian?.mutations?.SLOT_ICONS||{};
 }
 
+const NEST_MUT_COMPARE_LS_KEY='avian_nest_mut_compare';
+function readNestMutCompareMode(){
+  if(G._nestMutCompare!=null) return !!G._nestMutCompare;
+  try{
+    const v=localStorage.getItem(NEST_MUT_COMPARE_LS_KEY);
+    if(v!=null) G._nestMutCompare=(v==='1'||v==='true');
+  }catch(_){}
+  if(G._nestMutCompare==null) G._nestMutCompare=false;
+  return G._nestMutCompare;
+}
+function setNestMutCompareMode(on){
+  G._nestMutCompare=!!on;
+  try{ localStorage.setItem(NEST_MUT_COMPARE_LS_KEY,G._nestMutCompare?'1':'0'); }catch(_){}
+}
+function _nestInventoryMutStatsHtml(player,itemId,compareMode){
+  const item=typeof Avian?.mutations?.getItem==='function'?Avian.mutations.getItem(itemId):null;
+  if(!item) return '';
+  let statsHtml='';
+  if(compareMode && typeof Avian?.mutations?.formatMutationCompareHtml==='function'){
+    const baseId=typeof Avian?.mutations?.getCompareBaselineId==='function'?Avian.mutations.getCompareBaselineId(player,itemId):null;
+    const baseline=baseId?Avian.mutations.getItem(baseId):null;
+    statsHtml=Avian.mutations.formatMutationCompareHtml(item,baseline);
+  } else {
+    statsHtml=getMutationDescHtml(item);
+  }
+  if(!statsHtml) return '';
+  return `<div class="nest-mut-stats">${statsHtml}</div>`;
+}
+
 function _nestMutationItemHtml(itemId, slotLbl, slotKey, slotIndex){
   const icons=getNestSlotIcons();
   const slotBadge=icons[slotKey]?`<span class="nest-slot-badge" title="${escapeHtmlRoster(slotLbl)}">${icons[slotKey]}</span>`:'';
@@ -2592,6 +2621,12 @@ function _nestMutationItemHtml(itemId, slotLbl, slotKey, slotIndex){
 }
 
 function handleNestEquipClick(ev){
+  const compareToggle=ev.target.closest('[data-nest-compare-toggle]');
+  if(compareToggle){
+    setNestMutCompareMode(compareToggle.checked);
+    openNest();
+    return;
+  }
   const el=ev.target.closest('[data-nest-slot],[data-nest-inv],[data-nest-filter]');
   if(!el || !G.player) return;
   if(el.dataset.nestFilter){
@@ -2654,6 +2689,8 @@ function buildNestEquipmentSection(player){
     return activeFilter==='all' || item.slot===activeFilter;
   });
   const filterLabel=activeFilter==='all'?'All mutations':(labels[activeFilter]||activeFilter);
+  const compareMode=readNestMutCompareMode();
+  const compareToggleHtml=`<div class="nest-compare-toggle-row"><label class="nest-compare-toggle"><input type="checkbox" data-nest-compare-toggle${compareMode?' checked':''}/><span class="nest-compare-switch" aria-hidden="true"></span><span class="nest-compare-label">Compare to equipped</span></label></div>`;
   let invHtml='';
   if(!filteredInv.length){
     invHtml=`<div class="nest-inv-empty">No ${escapeHtmlRoster(filterLabel)} in inventory.</div>`;
@@ -2667,11 +2704,12 @@ function buildNestEquipmentSection(player){
       const tierMeta=rewardTierMeta(item.tier);
       const tierColor=nestTierColorVar(item.tier);
       const slotBadge=icons[item.slot]?`<span class="nest-slot-badge">${icons[item.slot]}</span>`:'';
-      invHtml+=`<div class="nest-inv-item tier-${item.tier} tier-ui-${tierCss}" data-nest-inv="${id}">${slotBadge}<div class="nest-tier-label" style="color:${tierColor}">${tierMeta.label}</div><strong style="color:${tierColor}">${escapeHtmlRoster(item.name)}</strong><br><span style="color:${tierColor}">${escapeHtmlRoster(labels[item.slot]||item.slot)}</span></div>`;
+      const statsBlock=_nestInventoryMutStatsHtml(player,id,compareMode);
+      invHtml+=`<div class="nest-inv-item tier-${item.tier} tier-ui-${tierCss}" data-nest-inv="${id}">${slotBadge}<div class="nest-tier-label" style="color:${tierColor}">${tierMeta.label}</div><strong style="color:${tierColor}">${escapeHtmlRoster(item.name)}</strong><br><span style="color:${tierColor}">${escapeHtmlRoster(labels[item.slot]||item.slot)}</span>${statsBlock}</div>`;
     }
     invHtml+='</div>';
   }
-  return `<div class="nest-section nest-equipment-section"><div class="nest-section-title">🧬 Mutations Equipped</div>${filterHtml}<div class="nest-ledger-subtitle">Equipped · ${escapeHtmlRoster(filterLabel)}</div><div class="nest-equip-grid${activeFilter==='all'?' nest-equip-grid-all':''}">${slotsHtml}</div><div class="nest-ledger-subtitle">Bonus from equipped</div><div class="nest-equip-bonus">${bonusHtml}</div><div class="nest-section-title" style="margin-top:14px">🎒 Inventory · ${escapeHtmlRoster(filterLabel)} (${filteredInv.length})</div>${invHtml}<p class="nest-ledger-note">Select a slot type above. Click inventory items to equip. Click equipped items to store in inventory.</p></div>`;
+  return `<div class="nest-section nest-equipment-section"><div class="nest-section-title">🧬 Mutations Equipped</div>${filterHtml}<div class="nest-ledger-subtitle">Equipped · ${escapeHtmlRoster(filterLabel)}</div><div class="nest-equip-grid${activeFilter==='all'?' nest-equip-grid-all':''}">${slotsHtml}</div>${compareToggleHtml}<div class="nest-ledger-subtitle">Bonus from equipped</div><div class="nest-equip-bonus">${bonusHtml}</div><div class="nest-section-title" style="margin-top:14px">🎒 Inventory · ${escapeHtmlRoster(filterLabel)} (${filteredInv.length})</div>${invHtml}<p class="nest-ledger-note">Select a slot type above. Click inventory items to equip. Click equipped items to store in inventory.${compareMode?' Compare mode shows stat changes vs the equipped item you would replace.':''}</p></div>`;
 }
 
 /**

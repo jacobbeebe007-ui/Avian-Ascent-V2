@@ -137,6 +137,109 @@
     return lines.map(function (ln) { return ln.label + ' ' + ln.value; }).join('\n');
   }
 
+  function getMutationStatNumericMap(item) {
+    if (!item) return Object.create(null);
+    var stats = Object.create(null);
+    var mech = Object.create(null);
+    rollupMutationItem(item, stats, mech);
+    var map = Object.create(null);
+    var order = ['atk', 'matk', 'def', 'mdef', 'spd', 'acc', 'dodge', 'critChance', 'maxHp'];
+    for (var i = 0; i < order.length; i++) {
+      var k = order[i];
+      var v = Number(stats[k]) || 0;
+      if (v) map[k] = v;
+    }
+    if (mech.lightAttackDmgPct) map.lightDmg = Number(mech.lightAttackDmgPct);
+    if (mech.mediumAttackDmgPct) map.mediumDmg = Number(mech.mediumAttackDmgPct);
+    if (mech.heavyAttackDmgPct) map.heavyDmg = Number(mech.heavyAttackDmgPct);
+    if (mech.multiHitDmgPct) map.multiHitDmg = Number(mech.multiHitDmgPct);
+    if (mech.critDamageBonusPct) map.critDmg = Number(mech.critDamageBonusPct);
+    if (mech.piercePct || mech.defPenPct) map.pierce = Number(mech.piercePct || mech.defPenPct);
+    if (mech.delayedDmgPct) map.delayedDmg = Number(mech.delayedDmgPct);
+    var m = item.mechanics || {};
+    if (m.physicalAilment && m.physicalAilment.chance) map.physAil = Number(m.physicalAilment.chance);
+    else if (mech.physicalAilmentChance) map.physAil = Number(mech.physicalAilmentChance);
+    if (m.magicAilment && m.magicAilment.chance) map.magAil = Number(m.magicAilment.chance);
+    else if (mech.magicAilmentChance) map.magAil = Number(mech.magicAilmentChance);
+    return map;
+  }
+
+  function formatCompareDelta(key, delta) {
+    var d = Number(delta) || 0;
+    if (!d) return '';
+    if (key === 'critChance') return (d > 0 ? '▲+' : '▼') + d + '%';
+    var pctKeys = ['lightDmg', 'mediumDmg', 'heavyDmg', 'multiHitDmg', 'critDmg', 'pierce', 'delayedDmg', 'physAil', 'magAil'];
+    if (pctKeys.indexOf(key) >= 0) return (d > 0 ? '▲+' : '▼') + d + '%';
+    return (d > 0 ? '▲+' : '▼') + d;
+  }
+
+  function buildMutationCompareLines(candidate, baselineItem) {
+    if (!candidate) return [];
+    if (!baselineItem) return buildMutationStatLines(candidate);
+    var candLines = buildMutationStatLines(candidate);
+    var baseLines = buildMutationStatLines(baselineItem);
+    var baseByKey = Object.create(null);
+    for (var i = 0; i < baseLines.length; i++) baseByKey[baseLines[i].key] = baseLines[i];
+    var candMap = getMutationStatNumericMap(candidate);
+    var baseMap = getMutationStatNumericMap(baselineItem);
+    var out = [];
+    for (var j = 0; j < candLines.length; j++) {
+      var ln = candLines[j];
+      var delta = null;
+      var deltaClass = '';
+      if (candMap[ln.key] != null && baseMap[ln.key] != null) {
+        var diff = candMap[ln.key] - baseMap[ln.key];
+        if (diff > 0.0001) {
+          delta = formatCompareDelta(ln.key, diff);
+          deltaClass = 'mut-stat-delta-up';
+        } else if (diff < -0.0001) {
+          delta = formatCompareDelta(ln.key, diff);
+          deltaClass = 'mut-stat-delta-down';
+        }
+      } else if (candMap[ln.key] != null && baseMap[ln.key] == null) {
+        delta = '▲new';
+        deltaClass = 'mut-stat-delta-up';
+      } else if (baseByKey[ln.key] && ln.value !== baseByKey[ln.key].value) {
+        delta = '▲';
+        deltaClass = 'mut-stat-delta-up';
+      }
+      out.push({
+        key: ln.key,
+        label: ln.label,
+        value: ln.value,
+        colorClass: ln.colorClass,
+        delta: delta,
+        deltaClass: deltaClass,
+      });
+    }
+    return out;
+  }
+
+  function formatMutationCompareHtml(candidate, baselineItem) {
+    if (!candidate) return '';
+    if (!baselineItem) return formatMutationDescHtml(candidate);
+    var lines = buildMutationCompareLines(candidate, baselineItem);
+    if (!lines.length) return '';
+    return lines.map(function (ln) {
+      var deltaHtml = ln.delta
+        ? ' <span class="mut-stat-delta ' + ln.deltaClass + '">' + escapeMutHtml(ln.delta) + '</span>'
+        : '';
+      return '<div class="mut-stat-line"><span class="' + ln.colorClass + '">' + escapeMutHtml(ln.label) + ' ' + escapeMutHtml(ln.value) + '</span>' + deltaHtml + '</div>';
+    }).join('');
+  }
+
+  function getCompareBaselineId(player, itemId) {
+    var item = getItem(itemId);
+    if (!item || !player) return null;
+    ensurePlayerMutationState(player);
+    var sk = item.slot;
+    var arr = player.equippedMutations[sk];
+    if (!Array.isArray(arr)) return null;
+    var idx = firstOpenSlot(player, sk);
+    if (idx >= 0) return null;
+    return arr[0] || null;
+  }
+
   function pack() { return (Avian.data && Avian.data.mutations) || null; }
   function slotsDef() { var p = pack(); return (p && p.slots) || { limits: {}, order: [] }; }
 
@@ -741,6 +844,9 @@
   mutations.formatMutationDesc = formatMutationDesc;
   mutations.buildMutationStatLines = buildMutationStatLines;
   mutations.formatMutationDescHtml = formatMutationDescHtml;
+  mutations.buildMutationCompareLines = buildMutationCompareLines;
+  mutations.formatMutationCompareHtml = formatMutationCompareHtml;
+  mutations.getCompareBaselineId = getCompareBaselineId;
   mutations.formatSlotTag = formatSlotTag;
   mutations.SLOT_LABELS = SLOT_LABELS;
   mutations.SLOT_ICONS = SLOT_ICONS;
