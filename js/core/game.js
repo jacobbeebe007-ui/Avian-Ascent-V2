@@ -555,25 +555,24 @@ function buildPassiveTooltipHTML(birdKey){
   html += richTooltipCloseBtn();
   return html;
 }
+function getMutationDescHtml(itemOrId){
+  const item = typeof itemOrId==='string'
+    ? (typeof Avian?.mutations?.getItem==='function' ? Avian.mutations.getItem(itemOrId) : null)
+    : itemOrId;
+  if(!item) return '';
+  return typeof Avian?.mutations?.formatMutationDescHtml==='function'
+    ? Avian.mutations.formatMutationDescHtml(item)
+    : escapeHtmlRoster(typeof Avian?.mutations?.formatMutationDesc==='function' ? Avian.mutations.formatMutationDesc(item) : (item.statLine||item.name));
+}
 function buildMutationTooltipHTML(itemId){
   const item = typeof Avian?.mutations?.getItem==='function' ? Avian.mutations.getItem(itemId) : null;
   if(!item) return '';
-  const desc = typeof Avian?.mutations?.formatMutationDesc==='function'
-    ? Avian.mutations.formatMutationDesc(item)
-    : (item.statLine || item.name);
+  const slotLbl = typeof Avian?.mutations?.SLOT_LABELS?.[item.slot]==='string'
+    ? Avian.mutations.SLOT_LABELS[item.slot] : (item.slot||'');
   let html = `<div class="tt-name">${escapeHtmlRoster(item.name)}</div>`;
-  html += `<div class="tt-type">${escapeHtmlRoster(item.tier||'mutation')} · ${escapeHtmlRoster(item.slot||'')}</div>`;
-  html += `<div class="tt-desc">${escapeHtmlRoster(desc)}</div>`;
-  const s = item.stats || {};
-  for(const k of STAT_LEDGER_TRACKED_KEYS){
-    const val = Number(s[k]) || 0;
-    if(Math.abs(val) < 0.0001) continue;
-    html += `<div class="tt-row"><span class="tt-lbl">${escapeHtmlRoster(STAT_LEDGER_LABELS[k]||k)}</span><span class="tt-val">+${formatCombatNumber(val)}</span></div>`;
-  }
-  const m = item.mechanics || {};
-  if(m.piercePct) html += `<div class="tt-row"><span class="tt-lbl">Pierce</span><span class="tt-val">+${m.piercePct}%</span></div>`;
-  if(m.physicalAilment?.chance) html += `<div class="tt-row"><span class="tt-lbl">Phys ailment</span><span class="tt-val">+${m.physicalAilment.chance}% ${escapeHtmlRoster(m.physicalAilment.id||'')}</span></div>`;
-  if(m.magicAilment?.chance) html += `<div class="tt-row"><span class="tt-lbl">Magic ailment</span><span class="tt-val">+${m.magicAilment.chance}% ${escapeHtmlRoster(m.magicAilment.id||'')}</span></div>`;
+  html += `<div class="tt-type">${escapeHtmlRoster(item.tier||'mutation')} · ${escapeHtmlRoster(slotLbl)}</div>`;
+  const statHtml = getMutationDescHtml(item);
+  if(statHtml) html += `<div class="tt-mut-stats">${statHtml}</div>`;
   html += richTooltipCloseBtn();
   return html;
 }
@@ -601,8 +600,9 @@ function buildRichStatTooltipHtml(statKey, rawVal, player){
     if(Math.abs(rem) > 0.05) html += `<div class="tt-row"><span class="tt-lbl">Other</span><span class="tt-val">${rem >= 0 ? '+' : ''}${formatCombatNumber(rem)}</span></div>`;
   }
   for(const line of getDerivedMechanicalBonusLines(player)){
-    if(statKey==='atk' && /light attack/i.test(line)) html += `<div class="tt-row"><span class="tt-val" style="font-size:.88em">${escapeHtmlRoster(line)}</span></div>`;
-    if(statKey==='critChance' && /crit/i.test(line)) html += `<div class="tt-row"><span class="tt-val" style="font-size:.88em">${escapeHtmlRoster(line)}</span></div>`;
+    const showAtk = statKey==='atk' && /attack damage|pierce/i.test(line);
+    const showCrit = statKey==='critChance' && /crit/i.test(line);
+    if(showAtk || showCrit) html += `<div class="tt-row"><span class="tt-val" style="font-size:.88em">${escapeHtmlRoster(line)}</span></div>`;
   }
   for(const line of getBattleStatModifierLines(statKey)){
     html += `<div class="tt-row"><span class="tt-lbl">Battle</span><span class="tt-val" style="font-size:.88em">${escapeHtmlRoster(line)}</span></div>`;
@@ -630,11 +630,9 @@ function buildEnemyMutationsTooltipHtml(enemy){
   for (const id of ids) {
     const item = typeof Avian?.mutations?.getItem === 'function' ? Avian.mutations.getItem(id) : null;
     if (!item) continue;
-    const desc = typeof Avian?.mutations?.formatMutationDesc === 'function'
-      ? Avian.mutations.formatMutationDesc(item)
-      : (item.statLine || item.name);
     html += `<div class="tt-row"><span class="tt-lbl">${escapeHtmlRoster(item.name)}</span></div>`;
-    html += `<div class="tt-desc" style="font-size:.88em;margin-bottom:4px">${escapeHtmlRoster(desc)}</div>`;
+    const statHtml = getMutationDescHtml(item);
+    if(statHtml) html += `<div class="tt-mut-stats" style="margin-bottom:6px">${statHtml}</div>`;
   }
   html += richTooltipCloseBtn();
   return html;
@@ -760,6 +758,15 @@ function getDerivedMechanicalBonusLines(player){
   if((p.firstHitReduce||0)>0) lines.push(`First hit each battle: −${pct(p.firstHitReduce)}% damage taken`);
   if((p.vsBleedPctBonus||0)>0) lines.push(`+${pct(p.vsBleedPctBonus)}% damage vs bleeding`);
   if((p.openingEnemyFear||0)>0) lines.push(`Enemies start with Fear(${p.openingEnemyFear})`);
+  const mRoll = typeof Avian?.mutations?.getMechanicsRollup==='function' ? Avian.mutations.getMechanicsRollup(p) : null;
+  if(mRoll){
+    if((mRoll.lightAttackDmgPct||0)>0) lines.push(`+${mRoll.lightAttackDmgPct}% light attack damage (mutations)`);
+    if((mRoll.mediumAttackDmgPct||0)>0) lines.push(`+${mRoll.mediumAttackDmgPct}% medium attack damage (mutations)`);
+    if((mRoll.heavyAttackDmgPct||0)>0) lines.push(`+${mRoll.heavyAttackDmgPct}% heavy attack damage (mutations)`);
+    if((mRoll.multiHitDmgPct||0)>0) lines.push(`+${mRoll.multiHitDmgPct}% multi-hit damage (mutations)`);
+    if((mRoll.critDamageBonusPct||0)>0) lines.push(`+${mRoll.critDamageBonusPct}% crit damage (mutations)`);
+    if((mRoll.piercePct||mRoll.defPenPct||0)>0) lines.push(`+${mRoll.piercePct||mRoll.defPenPct}% pierce (mutations)`);
+  }
   return lines;
 }
 
@@ -3792,10 +3799,34 @@ function openEnemyInfoPopup(){
   const thr=getEnemyPreviewLevelLine(G.enemy);
   const meta=document.getElementById('enemy-info-popup-meta');
   if(meta) meta.innerHTML=`Class: ${escapeEncounterPreviewHtml(cls)} · Size: ${sz}<br/>LVL ${lv} · ${escapeEncounterPreviewHtml(thr.detail)}`;
+  const mutEl=document.getElementById('enemy-info-popup-mutations');
+  if(mutEl) mutEl.innerHTML=buildEnemyInfoPopupMutationsHtml(G.enemy);
+  const passEl=document.getElementById('enemy-info-popup-passive');
+  if(passEl){
+    const bk=G.enemy.birdKey||G.enemy.templateKey;
+    const bird=bk&&BIRDS[bk]?BIRDS[bk]:null;
+    const passive=bird?.passive;
+    passEl.innerHTML=passive
+      ? `<div class="enemy-info-passive-name">★ ${escapeHtmlRoster(passive.name)}</div><div class="enemy-info-passive-desc">${escapeHtmlRoster(passive.desc||passive.effect||'')}</div>`
+      : '<p class="enemy-info-empty">None</p>';
+  }
   const ab=document.getElementById('enemy-info-popup-abilities');
   if(ab) ab.innerHTML=buildEnemyInfoPopupAbilitiesHtml(G.enemy);
   popup.style.display='flex';
   popup.classList.add('enemy-info-popup--open');
+}
+
+function buildEnemyInfoPopupMutationsHtml(enemy){
+  const ids=enemy?.mutationIds||[];
+  if(!ids.length) return '<p class="enemy-info-empty">None</p>';
+  const tierIcons=typeof Avian?.mutations?.TIER_ICONS==='object'?Avian.mutations.TIER_ICONS:{};
+  return ids.map(id=>{
+    const item=typeof Avian?.mutations?.getItem==='function'?Avian.mutations.getItem(id):null;
+    if(!item) return '';
+    const icon=tierIcons[item.tier]||'🧬';
+    const stats=getMutationDescHtml(item);
+    return `<div class="enemy-info-mut-row"><span class="enemy-info-mut-icon">${icon}</span><div class="enemy-info-mut-body"><div class="enemy-info-mut-name">${escapeHtmlRoster(item.name)}</div>${stats?`<div class="enemy-info-mut-stats">${stats}</div>`:''}</div></div>`;
+  }).filter(Boolean).join('');
 }
 
 function wireEnemyInfoPopupOnce(){
@@ -3810,7 +3841,7 @@ function wireEnemyInfoPopupOnce(){
   wrap.style.cursor='pointer';
   wrap.setAttribute('role','button');
   wrap.setAttribute('tabindex','0');
-  wrap.setAttribute('aria-label','View enemy abilities');
+  wrap.setAttribute('aria-label','View enemy details');
   wrap.addEventListener('click',e=>{ e.stopPropagation(); openEnemyInfoPopup(); });
   wrap.addEventListener('keydown',e=>{
     if(e.key==='Enter'||e.key===' '){ e.preventDefault(); openEnemyInfoPopup(); }
@@ -3919,8 +3950,10 @@ function buildEncounterPreviewTooltipHtml(enemy){
     const mutItems=mutIds.map(id=>{
       const item=typeof Avian?.mutations?.getItem==='function'?Avian.mutations.getItem(id):null;
       if(!item) return '';
-      const desc=typeof Avian?.mutations?.formatMutationDesc==='function'?Avian.mutations.formatMutationDesc(item):(item.statLine||item.name);
-      return `<li><strong>${escapeEncounterPreviewHtml(item.name)}</strong> — ${escapeEncounterPreviewHtml(desc)}</li>`;
+      const descHtml=getMutationDescHtml(item);
+      const descPlain=typeof Avian?.mutations?.formatMutationDesc==='function'?Avian.mutations.formatMutationDesc(item):(item.statLine||item.name);
+      const descBody=descHtml||escapeEncounterPreviewHtml(descPlain);
+      return `<li><strong>${escapeEncounterPreviewHtml(item.name)}</strong>${descHtml?`<div class="enc-preview-mut-stats">${descBody}</div>`:` — ${descBody}`}</li>`;
     }).filter(Boolean).join('');
     if(mutItems) mutBlock=`<div class="enc-preview-tt-skills"><div class="enc-preview-tt-skills-h">Mutations</div><ul class="enc-preview-tt-ul">${mutItems}</ul></div>`;
   }
@@ -5292,6 +5325,68 @@ function startSelectedBird(key){
 }
 
 function beginRun(){ return startGame(); }
+
+const COMBAT_ITEM_CATALOG = Object.freeze({
+  freshWater: Object.freeze({ itemKey:'freshWater', shopId:'shop_item_fresh_water', tier:'grey', icon:'💧', name:'Fresh Water', healPct:0.25, energyCost:1, maxHold:3, costOverride:20 }),
+  sugarWater: Object.freeze({ itemKey:'sugarWater', shopId:'shop_item_sugar_water', tier:'green', icon:'🥤', name:'Sugar Water', healPct:0.50, energyCost:2, maxHold:2, costOverride:30 }),
+  honeyWater: Object.freeze({ itemKey:'honeyWater', shopId:'shop_item_honey_water', tier:'blue', icon:'🍯', name:'Honey Water', healPct:0.75, energyCost:3, maxHold:1, costOverride:40 }),
+});
+
+function createDefaultCombatItems(){
+  return { freshWater:3, sugarWater:0, honeyWater:0 };
+}
+
+function ensureCombatItems(player){
+  if(!player) return null;
+  if(!player.combatItems || typeof player.combatItems!=='object') player.combatItems=createDefaultCombatItems();
+  for(const key of Object.keys(COMBAT_ITEM_CATALOG)){
+    const def=COMBAT_ITEM_CATALOG[key];
+    player.combatItems[key]=Math.max(0, Math.min(def.maxHold, Math.floor(Number(player.combatItems[key])||0)));
+  }
+  return player.combatItems;
+}
+
+function getCombatItemCount(player, itemKey){
+  ensureCombatItems(player);
+  return Math.max(0, Math.floor(Number(player?.combatItems?.[itemKey])||0));
+}
+
+function canAddCombatItem(player, itemKey, n=1){
+  const def=COMBAT_ITEM_CATALOG[itemKey];
+  if(!def) return false;
+  return getCombatItemCount(player, itemKey)+Math.max(1,Math.floor(Number(n)||1))<=def.maxHold;
+}
+
+function addCombatItem(player, itemKey, n=1){
+  const def=COMBAT_ITEM_CATALOG[itemKey];
+  if(!def || !player) return 0;
+  ensureCombatItems(player);
+  const add=Math.max(1,Math.floor(Number(n)||1));
+  const room=def.maxHold-getCombatItemCount(player, itemKey);
+  const applied=Math.min(add, Math.max(0, room));
+  if(applied>0) player.combatItems[itemKey]+=applied;
+  return applied;
+}
+
+function buildCombatItemShopOffer(def){
+  const pct=Math.round((def.healPct||0)*100);
+  return {
+    id:def.shopId,
+    tier:def.tier,
+    icon:def.icon,
+    name:def.name,
+    desc:`Battle item · Hold ${def.maxHold} · Heal ${pct}% max HP (${def.energyCost} EN in combat)`,
+    costOverride:def.costOverride,
+    itemKey:def.itemKey,
+    isCombatItem:true,
+    shopCategory:'items',
+    apply(p){
+      const added=addCombatItem(p, def.itemKey, 1);
+      if(added>0 && typeof logMsg==='function') logMsg(`+1 ${def.name} (${getCombatItemCount(p, def.itemKey)}/${def.maxHold})`,'exp-gain');
+    },
+  };
+}
+
 // ============================================================
 //  GAME FLOW
 // ============================================================
@@ -5336,6 +5431,7 @@ function startGame() {
     equippedMutations: null,
     abilityInventory: [],
     mutatedFeatherCount: 0,
+    combatItems: createDefaultCombatItems(),
   };
   normalizeCombatStats(G.player.stats);
   if(typeof Avian?.mutations?.ensurePlayerMutationState==='function') Avian.mutations.ensurePlayerMutationState(G.player);
@@ -6703,11 +6799,72 @@ function playerHasAffordableAbility(player){
   return player.abilities.some(ab=>isPlayerAbilityUsable(ab));
 }
 
+function canUseCombatItem(itemKey){
+  if(!G.player || G.turn!=='player' || G.phase!=='PLAYER' || G.turnPhase!==TURN.PLAYER) return false;
+  if(G._combatHealUsedThisTurn) return false;
+  if(!canPlayerAct()) return false;
+  const def=COMBAT_ITEM_CATALOG[itemKey];
+  if(!def || getCombatItemCount(G.player, itemKey)<=0) return false;
+  return (G.player.energy||0)>=def.energyCost;
+}
+
+function useCombatItem(itemKey){
+  const def=COMBAT_ITEM_CATALOG[itemKey];
+  if(!def || !G.player) return false;
+  if(!canUseCombatItem(itemKey)){
+    if(G._combatHealUsedThisTurn) logMsg('Already used a heal item this turn.','miss');
+    else if(getCombatItemCount(G.player, itemKey)<=0) logMsg(`No ${def.name} left.`,'miss');
+    else logMsg('Not enough energy.','miss');
+    return false;
+  }
+  const fakeAb={ id:'combat_item_'+itemKey, energyCost:def.energyCost, name:def.name };
+  spendEnergy(G.player, fakeAb);
+  const rawHeal=Math.max(1, Math.floor((G.player.stats.maxHp||1)*(def.healPct||0)));
+  const heal=scaleHealForBleed('player', rawHeal);
+  G.player.stats.hp=Math.min(G.player.stats.maxHp||1, (G.player.stats.hp||0)+heal);
+  setHpBar('player', G.player.stats.hp, G.player.stats.maxHp);
+  spawnFloat('player', `+${heal}`, 'fn-heal');
+  SFX.heal?.();
+  G.player.combatItems[itemKey]--;
+  G._combatHealUsedThisTurn=true;
+  logMsg(`Used ${def.name}: +${heal} HP (${def.energyCost} EN).`,'exp-gain');
+  renderEnergyOrbs();
+  renderCombatItems();
+  renderActions();
+  refreshBattleUI();
+  if((G.player.energy||0)<=0) endPlayerTurn(true);
+  return true;
+}
+
+function renderCombatItems(){
+  const row=document.getElementById('combat-items-row');
+  if(!row || !G.player) return;
+  ensureCombatItems(G.player);
+  row.innerHTML='';
+  const locked=!canPlayerAct();
+  const healUsed=!!G._combatHealUsedThisTurn;
+  Object.keys(COMBAT_ITEM_CATALOG).forEach(itemKey=>{
+    const def=COMBAT_ITEM_CATALOG[itemKey];
+    const count=getCombatItemCount(G.player, itemKey);
+    const btn=document.createElement('button');
+    btn.type='button';
+    btn.className='combat-item-btn';
+    const pct=Math.round((def.healPct||0)*100);
+    btn.innerHTML=`<span class="combat-item-icon">${def.icon}</span><span class="combat-item-label">${def.name}</span><span class="combat-item-meta">×${count}/${def.maxHold} · ${pct}% · ${def.energyCost} EN</span>`;
+    const usable=!locked && !healUsed && count>0 && (G.player.energy||0)>=def.energyCost;
+    btn.disabled=!usable;
+    btn.title=`${def.name}: heal ${pct}% max HP for ${def.energyCost} EN (1 heal per turn)`;
+    btn.onclick=()=>useCombatItem(itemKey);
+    row.appendChild(btn);
+  });
+}
+
 function renderActions() {
   const grid=document.getElementById('actions-grid');
   if(!grid) return;
   grid.innerHTML='';
   renderEnergyOrbs();
+  renderCombatItems();
   if(G.player?.abilities?.length) enforceAbilityCosts(G.player);
   const locked=!canPlayerAct();
   const endTurnBlocked=!!(G.actionBusy||G.turnPhase===TURN.RESOLVING);
@@ -10005,6 +10162,7 @@ function startPlayerTurn(player){
     delete G.playerStatus.perkSlipstreamDecay;
   }
   if(player.mutSuddenFlight) player._mutSuddenFlightUsed=false;
+  G._combatHealUsedThisTurn=false;
   if(typeof Avian?.passives?.onPlayerTurnStart==='function') Avian.passives.onPlayerTurnStart(player);
   if(typeof Avian?.dispatcher?.onPlayerTurnStart==='function') Avian.dispatcher.onPlayerTurnStart(player);
   G.turn='player';
@@ -10436,17 +10594,7 @@ Object.assign(ACTIONS, {
   },
 });
 
-function endPlayerTurn(force=false) {
-  if(!force && (G.actionBusy||(G.actionQueue&&G.actionQueue.length))){
-    logMsg('Actions pending…','miss');
-    return;
-  }
-  if(G.turnPhase!==TURN.PLAYER||G.phase!=='PLAYER') return;
-  G.animLock=false;
-  G.turnPhase=TURN.ENEMY;
-  G.phase='ENEMY';
-  lockActionUI(true);
-  BS.turns++;
+function tickTimedBuffsAfterEnemyPhase(){
   // Tick Tookie Tookie
   if(G.playerStatus.tookie){
     G.playerStatus.tookie.turns--;
@@ -10512,17 +10660,6 @@ function endPlayerTurn(force=false) {
     G.playerStatus.battleHymn.turns--;
     if(G.playerStatus.battleHymn.turns<=0){G.player.stats.def-=G.playerStatus.battleHymn.defBonus;delete G.playerStatus.battleHymn;delete G.playerStatus.battleHymnDodge;G.battleHymnActive=false;G.battleHymnDEF=0;G.battleHymnACC=0;}
   }
-  // Tick regen
-  if(G.playerStatus.regen){
-    G.playerStatus.regen--;
-    if(G.regenPct>0){
-      const healAmt=scaleHealForBleed('player',Math.max(1,Math.floor(G.player.stats.maxHp*G.regenPct)));
-      G.player.stats.hp=Math.min(G.player.stats.hp+healAmt,G.player.stats.maxHp);
-      spawnFloat('player',`+${healAmt}`,'fn-heal');
-      setHpBar('player',G.player.stats.hp,G.player.stats.maxHp);
-    }
-    if(G.playerStatus.regen<=0){delete G.playerStatus.regen;G.regenTurns=0;G.regenPct=0;}
-  }
   const _tickTmp=(key,stat)=>{
     const o=G.playerStatus[key];
     if(!o||typeof o!=='object') return;
@@ -10586,14 +10723,6 @@ function endPlayerTurn(force=false) {
   if(G.player._albatrossSpdLoan){ G.player.stats.spd=Math.max(1,(G.player.stats.spd||1)-G.player._albatrossSpdLoan); delete G.player._albatrossSpdLoan; }
   if(G.player._ravenGrimSpdLoan){ G.player.stats.spd=Math.max(1,(G.player.stats.spd||1)-G.player._ravenGrimSpdLoan); delete G.player._ravenGrimSpdLoan; }
   G.player._ravenGrimSpdThisTurn=false;
-  // Fire passive onTurnEnd
-  const _ptbd=BIRDS[G.player.birdKey];
-  if(_ptbd&&_ptbd.passive&&_ptbd.passive.onTurnEnd) _ptbd.passive.onTurnEnd(G.player);
-  // Ostrich Rage Charge: reset if last action wasn't honkAttack
-  if((G.player.birdKey==='ostrich'||G.player.birdKey==='emu')&&G.player._rageCharge>0&&!['honkAttack','headWhip'].includes(G._lastPlayerAbility)){
-    G.player._rageCharge=0;
-  }
-  G._lastPlayerAbility=null;
   if(G.playerStatus.desertStrider){
     G.playerStatus.desertStrider.turns--;
     if(G.playerStatus.desertStrider.turns<=0){
@@ -10645,6 +10774,35 @@ function endPlayerTurn(force=false) {
     }
   }
   tickStatuses('player');
+}
+
+function endPlayerTurn(force=false) {
+  if(!force && (G.actionBusy||(G.actionQueue&&G.actionQueue.length))){
+    logMsg('Actions pending…','miss');
+    return;
+  }
+  if(G.turnPhase!==TURN.PLAYER||G.phase!=='PLAYER') return;
+  G.animLock=false;
+  G.turnPhase=TURN.ENEMY;
+  G.phase='ENEMY';
+  lockActionUI(true);
+  BS.turns++;
+  if(G.playerStatus.regen){
+    G.playerStatus.regen--;
+    if(G.regenPct>0){
+      const healAmt=scaleHealForBleed('player',Math.max(1,Math.floor(G.player.stats.maxHp*G.regenPct)));
+      G.player.stats.hp=Math.min(G.player.stats.hp+healAmt,G.player.stats.maxHp);
+      spawnFloat('player',`+${healAmt}`,'fn-heal');
+      setHpBar('player',G.player.stats.hp,G.player.stats.maxHp);
+    }
+    if(G.playerStatus.regen<=0){delete G.playerStatus.regen;G.regenTurns=0;G.regenPct=0;}
+  }
+  const _ptbd=BIRDS[G.player.birdKey];
+  if(_ptbd&&_ptbd.passive&&_ptbd.passive.onTurnEnd) _ptbd.passive.onTurnEnd(G.player);
+  if((G.player.birdKey==='ostrich'||G.player.birdKey==='emu')&&G.player._rageCharge>0&&!['honkAttack','headWhip'].includes(G._lastPlayerAbility)){
+    G.player._rageCharge=0;
+  }
+  G._lastPlayerAbility=null;
   tickPoisonDamageOnly('player');
   tickPoisonDamageOnly('enemy');
   tickDelayedForTarget('player');
@@ -11561,6 +11719,9 @@ function afterEnemyTurn() {
   if(G.intimidateCooldown>0)G.intimidateCooldown--;
   if(G.crowDefendCooldown>0)G.crowDefendCooldown--;
   if(G.abilityCooldowns){Object.keys(G.abilityCooldowns).forEach(k=>{G.abilityCooldowns[k]=Math.max(0,(G.abilityCooldowns[k]||0)-1); if(G.abilityCooldowns[k]===0) delete G.abilityCooldowns[k];});}
+  tickTimedBuffsAfterEnemyPhase();
+  if(typeof Avian?.dispatcher?.onAfterEnemyTurn==='function') Avian.dispatcher.onAfterEnemyTurn(G.player);
+  if(typeof Avian?.passives?.onAfterEnemyTurn==='function') Avian.passives.onAfterEnemyTurn(G.player);
   G.turn='player';
   G.turnPhase=TURN.PLAYER;
   G.phase='PLAYER';
@@ -11991,7 +12152,7 @@ function showRewardScreen(hasLevelUp) {
         <div class="reward-tier-label">${tierMeta.label}</div>
         <span class="reward-icon">${rw.icon}</span>
         <div class="reward-name">${rw.name}</div>
-        <div class="reward-desc">${rw.desc}</div>`;
+        <div class="reward-desc">${getMutationDescHtml(rw.mutationItemId||rw.id)||escapeHtmlRoster(rw.desc||'')}</div>`;
       c.onclick=()=>{
         document.querySelectorAll('#reward-grid .reward-card').forEach(x=>x.classList.remove('selected'));
         c.classList.add('selected');
@@ -12010,11 +12171,12 @@ function showRewardScreen(hasLevelUp) {
     const tierMeta=rewardTierMeta(rw.tier);
     const c=document.createElement('div');
     c.className=`reward-card tier-${tierCss} received`;
+    const mutDescHtml=getMutationDescHtml(rw.mutationItemId||rw.id);
     c.innerHTML=`
       <div class="reward-tier-label">${tierMeta.label}</div>
       <span class="reward-icon">${rw.icon}</span>
       <div class="reward-name">${rw.name}</div>
-      <div class="reward-desc">${rw.desc}</div>`;
+      <div class="reward-desc">${mutDescHtml||escapeHtmlRoster(rw.desc||'')}</div>`;
     grid.appendChild(c);
     const mutId = rw.mutationItemId || rw.id;
     if(mutId) bindRichTooltip(c, () => buildMutationTooltipHTML(mutId), { category: 'mutations' });
@@ -13617,10 +13779,10 @@ function syncShopItemsToGlobal(){
   assignShopItems(_shopItems);
 }
 
-const SHOP_HEALING_ITEMS = Object.freeze([
-  {id:'shop_heal_fresh_pond',tier:'grey',icon:'💧',name:'Fresh Pond',desc:'Heal 25% Max HP',costOverride:10,healPct:0.25,isHealingShopItem:true},
-  {id:'shop_heal_bird_bath',tier:'green',icon:'🛁',name:'Bird Bath',desc:'Heal 50% Max HP',costOverride:18,healPct:0.50,isHealingShopItem:true},
-  {id:'shop_heal_honey_feeder',tier:'blue',icon:'🍯',name:'Honey Feeder',desc:'Heal 75% Max HP',costOverride:28,healPct:0.75,isHealingShopItem:true},
+const SHOP_COMBAT_ITEMS = Object.freeze([
+  buildCombatItemShopOffer(COMBAT_ITEM_CATALOG.freshWater),
+  buildCombatItemShopOffer(COMBAT_ITEM_CATALOG.sugarWater),
+  buildCombatItemShopOffer(COMBAT_ITEM_CATALOG.honeyWater),
 ]);
 
 function showStorkShop(mode='boss') {
@@ -13637,8 +13799,8 @@ function enterStorkShopScreen(){
   if(log){
     const mode=G._shopMode||'boss';
     log.textContent=mode==='endless-boss'
-      ? 'Healing · 1 ability · 1 mutation · Mutated Feather (Misc tab, 78🌟).'
-      : 'Healing · Misc · 9 Abilities · 9 Mutations · Sell inventory mutations on Sell tab.';
+      ? 'Items · 1 ability · 1 mutation · Mutated Feather (Misc tab, 78🌟).'
+      : 'Items · Misc · 9 Abilities · 9 Mutations · Sell inventory mutations on Sell tab.';
   }
   generateShopItems();
 }
@@ -13655,10 +13817,10 @@ const SHOP_STATE = {
   pinnedFeatherOffer:null,
 };
 
-const SHOP_BUY_CATEGORY_TABS=['all','healing','misc','abilities','mutations'];
-const SHOP_CATEGORY_DISPLAY_ORDER=['healing','misc','abilities','mutations'];
+const SHOP_BUY_CATEGORY_TABS=['all','items','misc','abilities','mutations'];
+const SHOP_CATEGORY_DISPLAY_ORDER=['items','misc','abilities','mutations'];
 const SHOP_CATEGORY_TITLES={
-  healing:'Healing',
+  items:'Items',
   misc:'Misc',
   abilities:'Abilities',
   mutations:'Mutations',
@@ -13666,7 +13828,8 @@ const SHOP_CATEGORY_TITLES={
 
 function resolveShopItemCategory(item){
   if(!item) return null;
-  if(item.isHealingShopItem||item.shopCategory==='healing') return 'healing';
+  if(item.isCombatItem||item.shopCategory==='items') return 'items';
+  if(item.isHealingShopItem||item.shopCategory==='healing') return 'items';
   if(item.isFeatherShopItem||item.shopCategory==='misc') return 'misc';
   if(item.isLearnAbility||item.shopCategory==='abilities') return 'abilities';
   if(item.type==='mutation'||item.shopCategory==='mutation') return 'mutations';
@@ -13676,7 +13839,7 @@ function resolveShopItemCategory(item){
 function shopItemMatchesCategory(item, category){
   if(!item) return false;
   if(category==='all') return resolveShopItemCategory(item)!==null;
-  if(category==='healing') return !!item.isHealingShopItem || item.shopCategory==='healing';
+  if(category==='items') return !!item.isCombatItem || item.shopCategory==='items' || !!item.isHealingShopItem;
   if(category==='misc') return !!item.isFeatherShopItem || item.shopCategory==='misc';
   if(category==='abilities') return !!item.isLearnAbility || item.shopCategory==='abilities';
   if(category==='mutations') return item.type==='mutation' || item.shopCategory==='mutation';
@@ -13686,7 +13849,7 @@ function shopItemMatchesCategory(item, category){
 function getShopCategoryLogText(category){
   const mode=G._shopMode||'boss';
   if(category==='all') return 'All offerings — select items, then Buy Selected.';
-  if(category==='healing') return 'Healing items restore HP once per visit each.';
+  if(category==='items') return 'Stackable battle heals — buy until your hold cap, then use in combat (1 heal per turn).';
   if(category==='misc') return 'Mutated Feather (78🌟) upgrades a skill from your Nest — pinned, does not refresh.';
   if(category==='abilities') return mode==='endless-boss' ? 'One ability offer this visit.' : 'Nine ability offers — stored in Nest vault when bought.';
   if(category==='mutations') return mode==='endless-boss' ? 'One mutation offer this visit.' : 'Nine mutation offers — weighted by tier.';
@@ -13762,10 +13925,10 @@ function appendShopSectionHeading(grid, title){
 }
 
 function buildShopBuyCard(item, idx, {isSelected, canSelect, cost}){
-  const isHealingItem=!!item.isHealingShopItem;
-  const alreadyBoughtHeal=!!(isHealingItem && SHOP_STATE.healingPurchasesThisVisit?.has(item.id));
+  const isCombatShopItem=!!item.isCombatItem;
+  const atCap=isCombatShopItem && item.itemKey && !canAddCombatItem(G.player, item.itemKey, 1);
   const div=document.createElement('div');
-  div.className=`shop-item tier-${item.tier||'grey'}${isSelected?' selected':''}${(!isSelected && !canSelect)?' cant-afford':''}${alreadyBoughtHeal?' shop-locked-visit':''}`;
+  div.className=`shop-item tier-${item.tier||'grey'}${isSelected?' selected':''}${(!isSelected && !canSelect)?' cant-afford':''}${atCap?' shop-locked-visit':''}`;
   div.dataset.shopIdx=String(idx);
   div.innerHTML=`
     <div class="shop-item-select-tick">✓</div>
@@ -13773,8 +13936,8 @@ function buildShopBuyCard(item, idx, {isSelected, canSelect, cost}){
     <div class="reward-tier-label">${(REWARD_TIERS[item.tier]||REWARD_TIERS.grey).label}</div>
     <span class="reward-icon">${item.icon}</span>
     <div class="reward-name">${item.name}</div>
-    <div class="reward-desc">${item.desc}</div>`;
-  if(item.desc && tooltipsEnabled('items')) div.title=item.desc;
+    <div class="reward-desc">${item.type==='mutation'||item.mutationItemId?(getMutationDescHtml(item.mutationItemId||item.id)||escapeHtmlRoster(item.desc||'')):escapeHtmlRoster(item.desc||'')}</div>`;
+  if(item.desc && tooltipsEnabled('items')) div.title=item.type==='mutation'?String(item.desc||'').replace(/\n/g,' · '):item.desc;
   div.addEventListener('click', ()=>{
     if(SHOP_STATE.selectedBuyIndices.has(idx)){
       SHOP_STATE.selectedBuyIndices.delete(idx);
@@ -13913,16 +14076,10 @@ function pickUniqueRewardByTier(tier,used){
 // Used when restoring saved shop snapshots for overworld nodes.
 function _findShopItemById(id) {
   if (id === 'shop_mutated_feather') return makeMutatedFeatherShopOffer();
-  const healDef = SHOP_HEALING_ITEMS.find(x => x.id === id);
-  if (healDef) {
-    return {
-      ...healDef,
-      apply(p) {
-        const heal = Math.max(1, Math.floor((p.stats.maxHp||1)*(healDef.healPct||0)));
-        p.stats.hp = Math.min((p.stats.maxHp||1),(p.stats.hp||0)+heal);
-        spawnFloat('player',`+${heal} 🌿`,'fn-heal');
-      }
-    };
+  const combatDef = SHOP_COMBAT_ITEMS.find(x => x.id === id);
+  if (combatDef) {
+    const def = COMBAT_ITEM_CATALOG[combatDef.itemKey];
+    if (def) return buildCombatItemShopOffer(def);
   }
   const upg = getUpgradePool().find(x => x.id === id);
   if (upg) return upg;
@@ -13962,18 +14119,7 @@ function generateShopItems() {
   const used = new Set();
   const goldCapReached = getGoldCardCount() >= getGoldCardLimit();
 
-  // Healing shelf: 3 items always at top
-  const healOffers = SHOP_HEALING_ITEMS
-    .filter(it => !SHOP_STATE.healingPurchasesThisVisit?.has(it.id))
-    .map(it => ({
-      ...it,
-      apply(p) {
-        const heal = Math.max(1, Math.floor((p.stats.maxHp||1)*(it.healPct||0)));
-        p.stats.hp = Math.min((p.stats.maxHp||1),(p.stats.hp||0)+heal);
-        spawnFloat('player',`+${heal} 🌿`,'fn-heal');
-      }
-    }));
-  _shopItems.push(...healOffers);
+  _shopItems.push(...SHOP_COMBAT_ITEMS.map(it => ({ ...it })));
 
   if (mode === 'grey') {
     // Regular shop: 5 upgrade cards + 1 utility = 6 upgrade slots
@@ -14017,7 +14163,8 @@ function generateShopItems() {
 
 try{
   globalThis.assignShopItems=assignShopItems;
-  globalThis.SHOP_HEALING_ITEMS=SHOP_HEALING_ITEMS;
+  globalThis.SHOP_COMBAT_ITEMS=SHOP_COMBAT_ITEMS;
+  globalThis.COMBAT_ITEM_CATALOG=COMBAT_ITEM_CATALOG;
   globalThis.SHOP_STATE=SHOP_STATE;
   globalThis._findShopItemById=_findShopItemById;
   globalThis.setShopTab=setShopTab;
@@ -14068,10 +14215,9 @@ function renderShopItems() {
   function appendCategoryCards(rows){
     rows.forEach(({item,idx})=>{
       const cost=getShopItemBaseCost(item);
-      const isHealingItem=!!item.isHealingShopItem;
-      const alreadyBoughtHeal=!!(isHealingItem && SHOP_STATE.healingPurchasesThisVisit?.has(item.id));
+      const atCap=!!(item.isCombatItem && item.itemKey && !canAddCombatItem(G.player, item.itemKey, 1));
       const isSelected=SHOP_STATE.selectedBuyIndices.has(idx);
-      const canSelect=!alreadyBoughtHeal && (isSelected || remaining>=getShopMarginalBuyCost(item));
+      const canSelect=!atCap && (isSelected || remaining>=getShopMarginalBuyCost(item));
       grid.appendChild(buildShopBuyCard(item, idx, {isSelected, canSelect, cost}));
     });
   }
@@ -14104,8 +14250,7 @@ function renderShopItems() {
 function purchaseShopItemAtIndex(idx, costOverride){
   const item=_shopItems[idx];
   if(!item) return null;
-  const isHealingItem=!!item.isHealingShopItem;
-  if(isHealingItem && SHOP_STATE.healingPurchasesThisVisit?.has(item.id)) return null;
+  if(item.isCombatItem && item.itemKey && !canAddCombatItem(G.player, item.itemKey, 1)) return null;
   const cost=(typeof costOverride==='number')?costOverride:getShopItemBuyCost(item);
   if(G.shinyObjects<cost) return null;
 
@@ -14114,6 +14259,8 @@ function purchaseShopItemAtIndex(idx, costOverride){
   if(item.type==='mutation'){
     const itemId=item.mutationItemId||item.id;
     if(typeof Avian?.mutations?.addToInventory==='function') Avian.mutations.addToInventory(G.player, itemId);
+  } else if(item.isCombatItem && typeof item.apply==='function'){
+    item.apply(G.player);
   } else {
     applyUpgradeWithMaxHpHealing(G.player, ()=>item.apply(G.player), item.name||'Shop Item', {id:item.id, desc:item.desc});
   }
@@ -14132,9 +14279,8 @@ function purchaseShopItemAtIndex(idx, costOverride){
   }
   _shopItems.splice(idx,1);
   assignShopItems(_shopItems);
-  if(isHealingItem) SHOP_STATE.healingPurchasesThisVisit.add(item.id);
   if(item.isFeatherShopItem) SHOP_STATE.featherBoughtThisVisit=true;
-  return {item, cost, isHealingItem};
+  return {item, cost, isCombatItem:!!item.isCombatItem};
 }
 
 async function shopBuySelected() {
@@ -14150,7 +14296,7 @@ async function shopBuySelected() {
   for(const idx of indices){
     const item=_shopItems[idx];
     if(!item) continue;
-    if(item.isHealingShopItem && SHOP_STATE.healingPurchasesThisVisit?.has(item.id)) continue;
+    if(item.isCombatItem && item.itemKey && !canAddCombatItem(G.player, item.itemKey, 1)) continue;
     const base=getShopItemBaseCost(item);
     const applied=Math.min(discount, base);
     const cost=base-applied;

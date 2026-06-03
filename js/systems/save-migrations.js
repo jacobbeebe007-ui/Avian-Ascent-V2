@@ -25,7 +25,7 @@
   'use strict';
 
   /** Bump when adding a migration. */
-  var TARGET = 5;
+  var TARGET = 6;
 
   /** Combat-pack version stamp surfaced on the save blob. Wipes attached when
    *  this changes so legacy ability/perk/family state never bleeds into a run. */
@@ -111,6 +111,23 @@
         var p = save.player;
         p.mutatedFeatherCount = Math.max(0, Math.floor(Number(p.mutatedFeatherCount) || 0));
         p.abilityInventory = Array.isArray(p.abilityInventory) ? p.abilityInventory : [];
+        return save;
+      },
+    },
+    {
+      from: 5,
+      to: 6,
+      note: 'combat consumables: init player.combatItems (3 Fresh Water default)',
+      fn: function (save) {
+        if (!save || !save.player) return save;
+        var p = save.player;
+        if (!p.combatItems || typeof p.combatItems !== 'object') {
+          p.combatItems = { freshWater: 3, sugarWater: 0, honeyWater: 0 };
+        } else {
+          p.combatItems.freshWater = Math.max(0, Math.min(3, Math.floor(Number(p.combatItems.freshWater) || 0)));
+          p.combatItems.sugarWater = Math.max(0, Math.min(2, Math.floor(Number(p.combatItems.sugarWater) || 0)));
+          p.combatItems.honeyWater = Math.max(0, Math.min(1, Math.floor(Number(p.combatItems.honeyWater) || 0)));
+        }
         return save;
       },
     },

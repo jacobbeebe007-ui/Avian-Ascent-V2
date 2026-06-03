@@ -498,17 +498,21 @@
     return count;
   };
 
-  // Status tick: clear dispatcher-loaned stat bonuses at start of player turn.
   dispatcher.onPlayerTurnStart = function onPlayerTurnStart(player) {
     if (!player || !player.stats) return;
     var g = globalThis.G;
-    var ps = (g && g.playerStatus) || null;
-    if (!ps) return;
     if (g._dispatcherApNextTurnPending) {
       if (typeof gainEnergy === 'function') gainEnergy(player, g._dispatcherApNextTurnPending);
       g._dispatcherApNextTurnPending = 0;
     }
     g._dispatcherRefundedThisTurn = false;
+  };
+
+  dispatcher.onAfterEnemyTurn = function onAfterEnemyTurn(player) {
+    if (!player || !player.stats) return;
+    var g = globalThis.G;
+    var ps = (g && g.playerStatus) || null;
+    if (!ps) return;
     if (typeof globalThis.decaySourceStatLoans === 'function') {
       globalThis.decaySourceStatLoans(ps, player, '_dispatcherStatLoans');
     }

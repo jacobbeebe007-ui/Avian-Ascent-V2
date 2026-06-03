@@ -346,22 +346,12 @@
   try {
     if (typeof globalThis.generateShopItems === 'function' && Avian.shop) {
 
-      function buildHealingOffers() {
-        var SHOP_HEALING_ITEMS = globalThis.SHOP_HEALING_ITEMS;
-        var SHOP_STATE = globalThis.SHOP_STATE;
-        if (!SHOP_HEALING_ITEMS || !SHOP_STATE) return [];
-        return SHOP_HEALING_ITEMS
-          .filter(function (it) { return !(SHOP_STATE.healingPurchasesThisVisit && SHOP_STATE.healingPurchasesThisVisit.has(it.id)); })
-          .map(function (it) {
-            return Object.assign({}, it, {
-              shopCategory: 'healing',
-              apply: function (p) {
-                var heal = Math.max(1, Math.floor((p.stats.maxHp || 1) * (it.healPct || 0)));
-                p.stats.hp = Math.min((p.stats.maxHp || 1), (p.stats.hp || 0) + heal);
-                if (typeof spawnFloat === 'function') spawnFloat('player', '+' + heal + ' 🌿', 'fn-heal');
-              },
-            });
-          });
+      function buildCombatItemOffers() {
+        var SHOP_COMBAT_ITEMS = globalThis.SHOP_COMBAT_ITEMS;
+        if (!SHOP_COMBAT_ITEMS) return [];
+        return SHOP_COMBAT_ITEMS.map(function (it) {
+          return Object.assign({}, it, { shopCategory: 'items' });
+        });
       }
 
       function setShopItems(items) {
@@ -423,7 +413,7 @@
           return;
         }
 
-        var items = buildHealingOffers();
+        var items = buildCombatItemOffers();
         var abilityOffers = Avian.shop.rollStockForMode(mode);
         items.push.apply(items, abilityOffers);
         if (Avian.mutations && typeof Avian.mutations.rollMutationStock === 'function') {

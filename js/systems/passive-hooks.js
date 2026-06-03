@@ -378,6 +378,9 @@
     if (G.passiveState) {
       for (var k in G.passiveState) G.passiveState[k].firedThisTurn = false;
     }
+  };
+
+  Avian.passives.onAfterEnemyTurn = function onAfterEnemyTurn(player) {
     var ps = G.playerStatus = G.playerStatus || {};
     if (typeof globalThis.decaySourceStatLoans === 'function') {
       globalThis.decaySourceStatLoans(ps, player, '_passiveStatLoans');

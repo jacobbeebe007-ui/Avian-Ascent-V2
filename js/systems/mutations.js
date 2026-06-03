@@ -50,12 +50,91 @@
     return out.join('; ');
   }
 
+  var MUT_STAT_DISPLAY = {
+    maxHp: 'HP', atk: 'ATK', def: 'DEF', spd: 'SPD', acc: 'ACC', dodge: 'DODGE',
+    matk: 'MATK', mdef: 'MDEF', critChance: 'CRIT',
+  };
+  var MUT_STAT_COLOR = {
+    atk: 'mut-stat-atk', matk: 'mut-stat-matk', def: 'mut-stat-def', mdef: 'mut-stat-mdef',
+    spd: 'mut-stat-spd', acc: 'mut-stat-acc', dodge: 'mut-stat-dodge', critChance: 'mut-stat-crit',
+    maxHp: 'mut-stat-hp', lightDmg: 'mut-stat-atk', mediumDmg: 'mut-stat-atk', heavyDmg: 'mut-stat-atk',
+    multiHitDmg: 'mut-stat-atk', critDmg: 'mut-stat-crit', pierce: 'mut-stat-atk',
+    physAil: 'mut-stat-ail', magAil: 'mut-stat-ail', delayedDmg: 'mut-stat-atk',
+  };
+
+  function mutStatColorClass(key) {
+    return MUT_STAT_COLOR[key] || 'mut-stat-misc';
+  }
+
+  function formatStatLineValue(key, raw) {
+    var n = Number(raw) || 0;
+    if (!n) return '';
+    if (key === 'critChance') return (n > 0 ? '+' : '') + n + '%';
+    return (n > 0 ? '+' : '') + n;
+  }
+
+  function buildMutationStatLines(item) {
+    if (!item) return [];
+    var stats = Object.create(null);
+    var mech = Object.create(null);
+    rollupMutationItem(item, stats, mech);
+    var lines = [];
+    var order = ['atk', 'matk', 'def', 'mdef', 'spd', 'acc', 'dodge', 'critChance', 'maxHp'];
+    for (var i = 0; i < order.length; i++) {
+      var k = order[i];
+      var v = Number(stats[k]) || 0;
+      if (!v) continue;
+      var disp = formatStatLineValue(k, v);
+      lines.push({ key: k, label: MUT_STAT_DISPLAY[k] || k.toUpperCase(), value: disp, colorClass: mutStatColorClass(k) });
+    }
+    if (mech.lightAttackDmgPct) lines.push({ key: 'lightDmg', label: 'Light Attack', value: '+' + mech.lightAttackDmgPct + '%', colorClass: mutStatColorClass('lightDmg') });
+    if (mech.mediumAttackDmgPct) lines.push({ key: 'mediumDmg', label: 'Medium Attack', value: '+' + mech.mediumAttackDmgPct + '%', colorClass: mutStatColorClass('mediumDmg') });
+    if (mech.heavyAttackDmgPct) lines.push({ key: 'heavyDmg', label: 'Heavy Attack', value: '+' + mech.heavyAttackDmgPct + '%', colorClass: mutStatColorClass('heavyDmg') });
+    if (mech.multiHitDmgPct) lines.push({ key: 'multiHitDmg', label: 'Multi-hit', value: '+' + mech.multiHitDmgPct + '%', colorClass: mutStatColorClass('multiHitDmg') });
+    if (mech.critDamageBonusPct) lines.push({ key: 'critDmg', label: 'Crit Damage', value: '+' + mech.critDamageBonusPct + '%', colorClass: mutStatColorClass('critDmg') });
+    if (mech.piercePct || mech.defPenPct) lines.push({ key: 'pierce', label: 'Pierce', value: '+' + (mech.piercePct || mech.defPenPct) + '%', colorClass: mutStatColorClass('pierce') });
+    if (mech.delayedDmgPct) lines.push({ key: 'delayedDmg', label: 'Delayed', value: '+' + mech.delayedDmgPct + '% dmg', colorClass: mutStatColorClass('delayedDmg') });
+    var m = item.mechanics || {};
+    if (m.physicalAilment && m.physicalAilment.chance) {
+      lines.push({
+        key: 'physAil',
+        label: 'Phys ailment',
+        value: '+' + m.physicalAilment.chance + '% ' + (m.physicalAilment.id || ''),
+        colorClass: mutStatColorClass('physAil'),
+      });
+    } else if (mech.physicalAilmentChance) {
+      lines.push({ key: 'physAil', label: 'Phys ailment', value: '+' + mech.physicalAilmentChance + '%', colorClass: mutStatColorClass('physAil') });
+    }
+    if (m.magicAilment && m.magicAilment.chance) {
+      lines.push({
+        key: 'magAil',
+        label: 'Magic ailment',
+        value: '+' + m.magicAilment.chance + '% ' + (m.magicAilment.id || ''),
+        colorClass: mutStatColorClass('magAil'),
+      });
+    } else if (mech.magicAilmentChance) {
+      lines.push({ key: 'magAil', label: 'Magic ailment', value: '+' + mech.magicAilmentChance + '%', colorClass: mutStatColorClass('magAil') });
+    }
+    return lines;
+  }
+
+  function escapeMutHtml(s) {
+    return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  }
+
+  function formatMutationDescHtml(item) {
+    var lines = buildMutationStatLines(item);
+    if (!lines.length) return '';
+    return lines.map(function (ln) {
+      return '<div class="mut-stat-line"><span class="' + ln.colorClass + '">' + escapeMutHtml(ln.label) + ' ' + escapeMutHtml(ln.value) + '</span></div>';
+    }).join('');
+  }
+
   function formatMutationDesc(item) {
     if (!item) return '';
-    var base = normalizeMutationCritStatLine(item.statLine || (SLOT_LABELS[item.slot] || item.slot) + ' mutation');
-    var tag = formatSlotTag(item.slot);
-    if (!tag || base.indexOf(tag) >= 0) return base;
-    return base + ' ' + tag;
+    var lines = buildMutationStatLines(item);
+    if (!lines.length) return item.name || '';
+    return lines.map(function (ln) { return ln.label + ' ' + ln.value; }).join('\n');
   }
 
   function pack() { return (Avian.data && Avian.data.mutations) || null; }
@@ -660,6 +739,8 @@
   mutations.rollShopMutations = rollShopMutations;
   mutations.rollMutationStock = rollMutationStock;
   mutations.formatMutationDesc = formatMutationDesc;
+  mutations.buildMutationStatLines = buildMutationStatLines;
+  mutations.formatMutationDescHtml = formatMutationDescHtml;
   mutations.formatSlotTag = formatSlotTag;
   mutations.SLOT_LABELS = SLOT_LABELS;
   mutations.SLOT_ICONS = SLOT_ICONS;
