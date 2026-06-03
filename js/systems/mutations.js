@@ -92,7 +92,9 @@
     if (mech.heavyAttackDmgPct) lines.push({ key: 'heavyDmg', label: 'Heavy Attack', value: '+' + mech.heavyAttackDmgPct + '%', colorClass: mutStatColorClass('heavyDmg') });
     if (mech.multiHitDmgPct) lines.push({ key: 'multiHitDmg', label: 'Multi-hit', value: '+' + mech.multiHitDmgPct + '%', colorClass: mutStatColorClass('multiHitDmg') });
     if (mech.critDamageBonusPct) lines.push({ key: 'critDmg', label: 'Crit Damage', value: '+' + mech.critDamageBonusPct + '%', colorClass: mutStatColorClass('critDmg') });
-    if (mech.piercePct || mech.defPenPct) lines.push({ key: 'pierce', label: 'Pierce', value: '+' + (mech.piercePct || mech.defPenPct) + '%', colorClass: mutStatColorClass('pierce') });
+    if (mech.piercePct) lines.push({ key: 'pierce', label: 'Penetration', value: '+' + mech.piercePct + '%', colorClass: mutStatColorClass('pierce') });
+    if (mech.defPenPct) lines.push({ key: 'defPen', label: 'DEF Pen', value: '+' + mech.defPenPct + '%', colorClass: mutStatColorClass('defPen') });
+    if (mech.mdefPenPct) lines.push({ key: 'mdefPen', label: 'MDEF Pen', value: '+' + mech.mdefPenPct + '%', colorClass: mutStatColorClass('mdefPen') });
     if (mech.delayedDmgPct) lines.push({ key: 'delayedDmg', label: 'Delayed', value: '+' + mech.delayedDmgPct + '% dmg', colorClass: mutStatColorClass('delayedDmg') });
     var m = item.mechanics || {};
     if (m.physicalAilment && m.physicalAilment.chance) {
@@ -176,7 +178,7 @@
     var d = Number(delta) || 0;
     if (!d) return '';
     if (key === 'critChance') return (d > 0 ? '▲+' : '▼') + d + '%';
-    var pctKeys = ['lightDmg', 'mediumDmg', 'heavyDmg', 'multiHitDmg', 'critDmg', 'pierce', 'delayedDmg', 'physAil', 'magAil'];
+    var pctKeys = ['lightDmg', 'mediumDmg', 'heavyDmg', 'multiHitDmg', 'critDmg', 'pierce', 'defPen', 'mdefPen', 'delayedDmg', 'physAil', 'magAil'];
     if (pctKeys.indexOf(key) >= 0) return (d > 0 ? '▲+' : '▼') + d + '%';
     return (d > 0 ? '▲+' : '▼') + d;
   }
@@ -366,7 +368,7 @@
 
   var MECHANICAL_STAT_KEYS = [
     'lightAttackDmgPct', 'mediumAttackDmgPct', 'heavyAttackDmgPct',
-    'multiHitDmgPct', 'critDamageBonusPct', 'defPenPct', 'physicalAilmentChance', 'magicAilmentChance',
+    'multiHitDmgPct', 'critDamageBonusPct', 'defPenPct', 'mdefPenPct', 'physicalAilmentChance', 'magicAilmentChance',
     'delayedDmgPct',
   ];
 
@@ -605,7 +607,9 @@
     if (m.heavyAttackDmgPct) lines.push({ key: 'heavyDmg', label: 'Heavy Attack', value: '+' + m.heavyAttackDmgPct + '%' });
     if (m.multiHitDmgPct) lines.push({ key: 'multiHitDmg', label: 'Multi-hit', value: '+' + m.multiHitDmgPct + '%' });
     if (m.critDamageBonusPct) lines.push({ key: 'critDmg', label: 'Crit Damage', value: '+' + m.critDamageBonusPct + '%' });
-    if (m.piercePct || m.defPenPct) lines.push({ key: 'pierce', label: 'Pierce', value: '+' + (m.piercePct || m.defPenPct) + '%' });
+    if (m.piercePct) lines.push({ key: 'pierce', label: 'Penetration', value: '+' + m.piercePct + '%' });
+    if (m.defPenPct) lines.push({ key: 'defPen', label: 'DEF Pen', value: '+' + m.defPenPct + '%' });
+    if (m.mdefPenPct) lines.push({ key: 'mdefPen', label: 'MDEF Pen', value: '+' + m.mdefPenPct + '%' });
     if (m.physicalAilmentChance) lines.push({ key: 'physAil', label: 'Phys Ailment', value: '+' + m.physicalAilmentChance + '%' });
     if (m.magicAilmentChance) lines.push({ key: 'magAil', label: 'Magic Ailment', value: '+' + m.magicAilmentChance + '%' });
     if (m.delayedDmgPct) lines.push({ key: 'delayedDmg', label: 'Delayed', value: '+' + m.delayedDmgPct + '% dmg' });

@@ -47,6 +47,7 @@ const STAT_MAP = {
   'Heavy Attack Damage': 'heavyAttackDmgPct',
   'Multi-hit Damage': 'multiHitDmgPct',
   'DEF Penetration': 'defPenPct',
+  'MDEF Penetration': 'mdefPenPct',
   'Physical Ailment Chance': 'physicalAilmentChance',
   'Magic Ailment Chance': 'magicAilmentChance',
   'Delayed %': 'delayedDmgPct',

@@ -770,7 +770,9 @@ function getDerivedMechanicalBonusLines(player){
     if((mRoll.heavyAttackDmgPct||0)>0) lines.push(`+${mRoll.heavyAttackDmgPct}% heavy attack damage (mutations)`);
     if((mRoll.multiHitDmgPct||0)>0) lines.push(`+${mRoll.multiHitDmgPct}% multi-hit damage (mutations)`);
     if((mRoll.critDamageBonusPct||0)>0) lines.push(`+${mRoll.critDamageBonusPct}% crit damage (mutations)`);
-    if((mRoll.piercePct||mRoll.defPenPct||0)>0) lines.push(`+${mRoll.piercePct||mRoll.defPenPct}% pierce (mutations)`);
+    if((mRoll.piercePct||0)>0) lines.push(`+${mRoll.piercePct}% penetration (mutations)`);
+    if((mRoll.defPenPct||0)>0) lines.push(`+${mRoll.defPenPct}% DEF pen (mutations)`);
+    if((mRoll.mdefPenPct||0)>0) lines.push(`+${mRoll.mdefPenPct}% MDEF pen (mutations)`);
   }
   return lines;
 }
@@ -5382,7 +5384,7 @@ function beginRun(){ return startGame(); }
 
 const COMBAT_ITEM_CATALOG = Object.freeze({
   freshWater: Object.freeze({ itemKey:'freshWater', shopId:'shop_item_fresh_water', tier:'grey', icon:'💧', name:'Fresh Water', healPct:0.25, energyCost:1, maxHold:3, costOverride:20, combatHint:'Restore 25% of your max HP. Costs 1 energy. You can use one heal item per turn.' }),
-  sugarWater: Object.freeze({ itemKey:'sugarWater', shopId:'shop_item_sugar_water', tier:'green', icon:'🥤', name:'Sugar Water', healPct:0.50, energyCost:2, maxHold:2, costOverride:30, combatHint:'Restore 50% of your max HP. Costs 2 energy. You can use one heal item per turn.' }),
+  sugarWater: Object.freeze({ itemKey:'sugarWater', shopId:'shop_item_sugar_water', tier:'green', icon:'🌾', name:'Bird Seed', healPct:0.50, energyCost:2, maxHold:2, costOverride:30, combatHint:'Restore 50% of your max HP. Costs 2 energy. You can use one heal item per turn.' }),
   honeyWater: Object.freeze({ itemKey:'honeyWater', shopId:'shop_item_honey_water', tier:'blue', icon:'🍯', name:'Honey Water', healPct:0.75, energyCost:3, maxHold:1, costOverride:40, combatHint:'Restore 75% of your max HP. Costs 3 energy. You can use one heal item per turn.' }),
 });
 
@@ -6921,8 +6923,7 @@ function renderCombatItems(){
     btn.type='button';
     btn.className='combat-item-btn';
     const pct=Math.round((def.healPct||0)*100);
-    const shortName=def.name.replace(/\s+Water$/,'');
-    btn.innerHTML=`<span class="combat-item-icon">${def.icon}</span><span class="combat-item-label">${shortName}</span><span class="combat-item-meta">${pct}% · ${def.energyCost}EN · ×${count}</span>`;
+    btn.innerHTML=`<span class="combat-item-main"><span class="combat-item-icon" aria-hidden="true">${def.icon}</span><span class="combat-item-label">${escapeHtmlRoster(def.name)}</span></span><span class="combat-item-meta">${pct}% · ${def.energyCost} EN · ×${count}</span>`;
     const usable=!locked && !healUsed && count>0 && (G.player.energy||0)>=def.energyCost;
     btn.disabled=!usable;
     btn.title=def.combatHint||`${def.name}: heal ${pct}% max HP for ${def.energyCost} EN (one heal item per turn)`;
@@ -7401,7 +7402,7 @@ function estimateSkillDamageRange(ab,tmpl,attacker,opts){
     if(applyMit&&isPlayerCombat&&G?.enemy){
       const en=G.enemy.stats||G.enemy;
       if(btnType==='spell'){
-        const pierce=Math.min(0.95,(Number(packRow.pierceMdef)||0)/100);
+        const pierce=getMagicalPierceFractionForPreview(ab);
         const gM=magicalGuardValueFromEnemyMdef(Number(en.mdef??8),pierce);
         const mul=damageMitigationMultiplierFromGuard(gM);
         dmgLow=roundCombatDamage(dmgLow*mul);
@@ -7491,7 +7492,8 @@ function estimateSkillDamageRange(ab,tmpl,attacker,opts){
   if(applyMit&&isPlayerCombat&&G?.enemy&&isDamaging){
     const en=G.enemy.stats||G.enemy;
     if(btnType==='spell'){
-      const gM=magicalGuardValueFromEnemyMdef(Number(en.mdef??8));
+      const pierce=getMagicalPierceFractionForPreview(ab);
+      const gM=magicalGuardValueFromEnemyMdef(Number(en.mdef??8),pierce);
       const mul=damageMitigationMultiplierFromGuard(gM);
       if(dmgLow!=null) dmgLow=roundCombatDamage(dmgLow*mul);
       if(dmgHigh!=null) dmgHigh=roundCombatDamage(dmgHigh*mul);
@@ -8528,29 +8530,53 @@ function magicalGuardValueFromPlayerMdef(mdefRaw, burnMult){
   return Math.max(0, Math.floor(softenMainStatForCombat(m) * COMBAT_GUARD_MDEF_MULT));
 }
 
+function getMutationPhysicalPiercePct(){
+  if(typeof Avian?.mutations?.getMechanicsRollup!=='function' || !G.player) return 0;
+  const m=Avian.mutations.getMechanicsRollup(G.player);
+  return (Number(m.piercePct)||0) + (Number(m.defPenPct)||0);
+}
+function getMutationMagicalPiercePct(){
+  if(typeof Avian?.mutations?.getMechanicsRollup!=='function' || !G.player) return 0;
+  const m=Avian.mutations.getMechanicsRollup(G.player);
+  return Number(m.mdefPenPct)||0;
+}
+
 /** Pierce 0–1: fractional ability pierce + template pts on G._currentPiercePct. */
 function getPhysicalPierceFractionForDamage(ab){
   const fromAb = ab ? (getPlayerPiercePctForAbility(ab) || 0) : 0;
   const pts = Number(G._currentPiercePct) || 0;
-  let eqPct = 0;
-  if(typeof Avian?.mutations?.getMechanicsRollup==='function' && G.player){
-    const m=Avian.mutations.getMechanicsRollup(G.player);
-    eqPct = (Number(m.piercePct)||0) + (Number(m.defPenPct)||0);
-  }
+  const eqPct = getMutationPhysicalPiercePct();
+  return Math.min(0.95, fromAb + pts / 100 + eqPct / 100);
+}
+
+function getMagicalPierceFractionForDamage(ab){
+  const pts = Number(G._currentPiercePct) || 0;
+  let fromAb = 0;
+  if(ab?.pierceMdef) fromAb = Number(ab.pierceMdef) / 100;
+  const eqPct = getMutationMagicalPiercePct();
   return Math.min(0.95, fromAb + pts / 100 + eqPct / 100);
 }
 
 /** UI / preview: template pierce without relying on G._currentPiercePct from pdmg. */
 function getPhysicalPierceFractionForPreview(ab){
   const fromAb = ab ? (getPlayerPiercePctForAbility(ab) || 0) : 0;
-  if (!ab) return Math.min(0.95, fromAb);
+  if (!ab) return Math.min(0.95, fromAb + getMutationPhysicalPiercePct() / 100);
   const tmpl = getAbilityTemplateForUI(ab);
   const lv = Math.min(ab.level || 1, 4);
   let pts = (tmpl?.pierceDef || 0) + (lv >= 2 ? 5 : 0) + (lv >= 3 ? 5 : 0);
   if (BIRDS[G.player.birdKey]?.passive?.id === 'passive_kiwi_burrow_sense' && !G._firstAttackUsed) pts += 10;
   const enCost = Number(tmpl?.energy ?? tmpl.energyCost ?? ab?.energy ?? 1);
   if (BIRDS[G.player.birdKey]?.passive?.id === 'passive_secretary_long_leg_reach' && enCost <= 1) pts += 10;
-  return Math.min(0.95, fromAb + pts / 100);
+  return Math.min(0.95, fromAb + pts / 100 + getMutationPhysicalPiercePct() / 100);
+}
+
+function getMagicalPierceFractionForPreview(ab){
+  let fromAb = 0;
+  if(ab){
+    const tmpl = getAbilityTemplateForUI(ab);
+    fromAb = (Number(tmpl?.pierceMdef) || Number(ab.pierceMdef) || 0) / 100;
+  }
+  return Math.min(0.95, fromAb + getMutationMagicalPiercePct() / 100);
 }
 
 function calcHitChance(attAcc, defDodgeRaw, baseHitFrac){
@@ -9419,11 +9445,8 @@ function dealDamage(target,amount,isCrit=false,isMagic=false,srcAbility=null) {
       const guard=physicalGuardValueFromEnemyDef(G.enemy.stats.def||0,pierce);
       dmg=roundCombatDamage(dmg*damageMitigationMultiplierFromGuard(guard));
     } else {
-      let pierce=0;
       const a=srcAbility||G._activePlayerAbility||null;
-      const pts=Number(G._currentPiercePct)||0;
-      if(pts>0) pierce=Math.min(0.95, pts/100);
-      else if(a?.pierceMdef) pierce=Math.min(0.95, Number(a.pierceMdef)/100);
+      const pierce=getMagicalPierceFractionForDamage(a);
       const guard=magicalGuardValueFromEnemyMdef(G.enemy.stats.mdef||0,pierce);
       dmg=roundCombatDamage(dmg*damageMitigationMultiplierFromGuard(guard));
     }
@@ -13699,6 +13722,113 @@ function renderRunHistory() {
 //  REFERENCE GUIDE — tabbed, dynamically built
 // ============================================================
 let _refActiveTab = 0;
+const _refFilters = {
+  abRarity: '',
+  abEn: '',
+  abType: '',
+  mutTier: '',
+  mutSlot: '',
+  mutCategory: '',
+};
+
+function refAbilityEnergyCost(t) {
+  if (!t) return 0;
+  if (Number.isFinite(Number(t.energy))) return Number(t.energy);
+  if (Number.isFinite(Number(t.energyCost))) return Number(t.energyCost);
+  const byLv = t.energyByLevel;
+  if (Array.isArray(byLv) && byLv.length) return Number(byLv[0]) || 0;
+  return 0;
+}
+
+function refAbilityCodexType(id, t) {
+  const mapped = String(t?.codexType || t?.type || 'physical').toLowerCase();
+  if (mapped === 'song') return 'spell';
+  return mapped;
+}
+
+function refAbilityPassesEnFilter(enCost, filter) {
+  if (!filter) return true;
+  const en = Number(enCost) || 0;
+  if (filter === '0') return en <= 0;
+  if (filter === '1') return en === 1;
+  if (filter === '2') return en === 2;
+  if (filter === '3plus') return en >= 3;
+  return true;
+}
+
+function buildRefFilterBarHtml(activeTab) {
+  if (activeTab === 1) {
+    const r = _refFilters.abRarity || '';
+    const e = _refFilters.abEn || '';
+    const ty = _refFilters.abType || '';
+    return `<div class="ref-filter-bar">
+<label>Tier<select id="ref-filter-ab-rarity" data-ref-filter="abRarity">
+<option value=""${r === '' ? ' selected' : ''}>All</option>
+<option value="common"${r === 'common' ? ' selected' : ''}>Common</option>
+<option value="uncommon"${r === 'uncommon' ? ' selected' : ''}>Uncommon</option>
+<option value="rare"${r === 'rare' ? ' selected' : ''}>Rare</option>
+<option value="epic"${r === 'epic' ? ' selected' : ''}>Epic</option>
+</select></label>
+<label>EN cost<select id="ref-filter-ab-en" data-ref-filter="abEn">
+<option value=""${e === '' ? ' selected' : ''}>All</option>
+<option value="0"${e === '0' ? ' selected' : ''}>Free (0)</option>
+<option value="1"${e === '1' ? ' selected' : ''}>1 EN</option>
+<option value="2"${e === '2' ? ' selected' : ''}>2 EN</option>
+<option value="3plus"${e === '3plus' ? ' selected' : ''}>3+ EN</option>
+</select></label>
+<label>Type<select id="ref-filter-ab-type" data-ref-filter="abType">
+<option value=""${ty === '' ? ' selected' : ''}>All</option>
+<option value="physical"${ty === 'physical' ? ' selected' : ''}>Physical</option>
+<option value="ranged"${ty === 'ranged' ? ' selected' : ''}>Ranged</option>
+<option value="spell"${ty === 'spell' ? ' selected' : ''}>Spell</option>
+<option value="utility"${ty === 'utility' ? ' selected' : ''}>Utility</option>
+</select></label>
+</div>`;
+  }
+  if (activeTab === 5) {
+    const tier = _refFilters.mutTier || '';
+    const slot = _refFilters.mutSlot || '';
+    const cat = _refFilters.mutCategory || '';
+    const slotLabels = (typeof Avian !== 'undefined' && Avian.mutations && Avian.mutations.SLOT_LABELS) || {};
+    const slotOpts = Object.keys(slotLabels).map((sk) => {
+      const sel = slot === sk ? ' selected' : '';
+      return `<option value="${sk}"${sel}>${slotLabels[sk]}</option>`;
+    }).join('');
+    return `<div class="ref-filter-bar">
+<label>Tier<select id="ref-filter-mut-tier" data-ref-filter="mutTier">
+<option value=""${tier === '' ? ' selected' : ''}>All</option>
+<option value="white"${tier === 'white' ? ' selected' : ''}>White</option>
+<option value="green"${tier === 'green' ? ' selected' : ''}>Green</option>
+<option value="blue"${tier === 'blue' ? ' selected' : ''}>Blue</option>
+<option value="purple"${tier === 'purple' ? ' selected' : ''}>Purple</option>
+<option value="gold"${tier === 'gold' ? ' selected' : ''}>Gold</option>
+</select></label>
+<label>Slot<select id="ref-filter-mut-slot" data-ref-filter="mutSlot">
+<option value=""${slot === '' ? ' selected' : ''}>All</option>
+${slotOpts}
+</select></label>
+<label>Category<select id="ref-filter-mut-category" data-ref-filter="mutCategory">
+<option value=""${cat === '' ? ' selected' : ''}>All</option>
+<option value="hybrid"${cat === 'hybrid' ? ' selected' : ''}>Hybrid</option>
+<option value="offensive"${cat === 'offensive' ? ' selected' : ''}>Offensive</option>
+<option value="defensive"${cat === 'defensive' ? ' selected' : ''}>Defensive</option>
+</select></label>
+</div>`;
+  }
+  return '';
+}
+
+function wireRefFilterSelects() {
+  document.querySelectorAll('[data-ref-filter]').forEach((el) => {
+    el.onchange = () => {
+      const key = el.getAttribute('data-ref-filter');
+      if (key && Object.prototype.hasOwnProperty.call(_refFilters, key)) {
+        _refFilters[key] = el.value || '';
+        buildRefGuide();
+      }
+    };
+  });
+}
 
 const ABILITIES_REFERENCE = {
   multiPeck:{desc:'Sparrow neutral opener.',effect:'Multi-hit physical setup before choosing a branch.'},
@@ -13743,9 +13873,9 @@ function toggleRefGuide() {
 
 function selectRefTab(idx) {
   _refActiveTab = idx;
-  document.querySelectorAll('.ref-tab').forEach((t,i) => t.classList.toggle('active', i===idx));
-  document.querySelectorAll('.ref-panel').forEach((p,i) => p.classList.toggle('active', i===idx));
+  buildRefGuide();
 }
+globalThis.selectRefTab = selectRefTab;
 
 function skillCard(id) {
   const tmpl = ABILITY_TEMPLATES[id];
@@ -13784,7 +13914,8 @@ function buildRefGuide() {
   _refActiveTab=Math.max(0,Math.min(_refActiveTab,defs.length-1));
   const prevQ=(document.getElementById('ref-search-input')?.value||'').toLowerCase();
   const prevShowLocked=!!document.getElementById('ref-show-locked')?.checked;
-  tabs.innerHTML = `<div style="display:flex;gap:8px;margin-bottom:10px"><input id="ref-search-input" placeholder="Search codex..." style="flex:1;background:rgba(0,0,0,.25);border:1px solid var(--border);color:var(--text);padding:7px 9px;border-radius:8px"/><label style="font-size:.72rem;color:var(--text-dim)"><input id="ref-show-locked" type="checkbox"> Show locked</label></div>` + defs.map((t,i)=>`<div class="ref-tab${i===_refActiveTab?' active':''}" onclick="selectRefTab(${i})">${t.label}</div>`).join('');
+  const filterBar = buildRefFilterBarHtml(_refActiveTab);
+  tabs.innerHTML = `<div class="ref-codex-toolbar"><input id="ref-search-input" placeholder="Search codex..." class="ref-search-input"/><label class="ref-show-locked-label"><input id="ref-show-locked" type="checkbox"> Show locked</label></div>${filterBar}` + defs.map((t,i)=>`<div class="ref-tab${i===_refActiveTab?' active':''}" onclick="selectRefTab(${i})">${t.label}</div>`).join('');
 
   const q=prevQ;
   const showLocked=prevShowLocked;
@@ -13802,13 +13933,21 @@ function buildRefGuide() {
   const packAbilityDefs = G.dataPacks?.abilityPassiveUpgrade?.ABILITY_DEFS || {};
   const abilities=Object.entries(ABILITY_TEMPLATES||{}).filter(([id,t])=>{
     const metaDef = packAbilityDefs[id] || {};
+    const rarity = String(t.rarity || 'common').toLowerCase();
+    if (_refFilters.abRarity && rarity !== _refFilters.abRarity) return false;
+    const enCost = refAbilityEnergyCost(t);
+    if (!refAbilityPassesEnFilter(enCost, _refFilters.abEn)) return false;
+    const codexType = refAbilityCodexType(id, t);
+    if (_refFilters.abType && codexType !== _refFilters.abType) return false;
     return isMatch(t.name)||isMatch(t.shortDesc)||isMatch(t.desc)||isMatch(metaDef.role)||isMatch(metaDef.notes);
   }).map(([id,t])=>{
     const c=G.codex?.abilities?.[id]||{seen:false,used:false};
     const u=!!c.seen;
     if(!u&&!showLocked) return '';
     const packDef = packAbilityDefs[id] || null;
-    const meta=`${t.rarity||'common'} · ${t.codexType||'attack'}`;
+    const enCost = refAbilityEnergyCost(t);
+    const enLabel = enCost <= 0 ? 'Free' : `${enCost} EN`;
+    const meta=`${enLabel} · ${t.rarity||'common'} · ${refAbilityCodexType(id, t)}`;
     const base=(t.shortDesc||t.desc||'No description yet.');
     const roleLine=packDef?.role?`<br><strong style="color:var(--gold-light)">Role:</strong> ${packDef.role}`:'';
     const notesLine=packDef?.notes?`<br><strong style="color:var(--gold-light)">Pack Notes:</strong> ${packDef.notes}`:'';
@@ -13841,6 +13980,11 @@ function buildRefGuide() {
   const mutCatalog=(typeof Avian?.mutations?.getCatalog==='function')?Avian.mutations.getCatalog():(Avian?.data?.mutations?.byId||{});
   const mutations=Object.entries(mutCatalog).filter(([id,item])=>{
     if(!item) return false;
+    const tier = String(item.tier || '').toLowerCase();
+    if (_refFilters.mutTier && tier !== _refFilters.mutTier) return false;
+    if (_refFilters.mutSlot && item.slot !== _refFilters.mutSlot) return false;
+    const category = String(item.category || '').toLowerCase();
+    if (_refFilters.mutCategory && category !== _refFilters.mutCategory) return false;
     const slotLbl=Avian?.mutations?.SLOT_LABELS?.[item.slot]||item.slot||'';
     return isMatch(item.name)||isMatch(id)||isMatch(slotLbl)||isMatch(item.tier);
   }).map(([id,item])=>{
@@ -13889,7 +14033,8 @@ function buildRefGuide() {
     ${card('Weaken (stacks)','Stacks to ×3: −10% outgoing damage and −10 Dodge per stack. Refreshes 3-turn duration.',true,'ailment')}
     ${card('Passive Evolution (Endless)','In Endless mode, passives evolve at milestones with offensive vs utility choices.',true,'endless')}
     ${card('Enemy AI Profiles','Enemy personalities (aggressive, tactical, control, tank, predator, etc.) bias action planning.',true,'ai')}
-    ${card('Codex Unlocks','Entries unlock when seen/used during runs. Use search and Show Locked to browse all.',true,'codex')}
+    ${card('Codex Unlocks','Entries unlock when seen/used during runs. Use search, filters, and Show Locked to browse all.',true,'codex')}
+    ${card('DEF & MDEF Penetration','DEF Penetration and generic Penetration bonuses ignore physical guard. MDEF Penetration ignores magical guard. Ability pierce stacks on top of equipped mutations.',true,'penetration')}
   </div>`;
 
   const panelBodies=[birds,abilities,enemies,statuses,arts,mutations,combatItems];
@@ -13903,6 +14048,7 @@ function buildRefGuide() {
   const lEl=document.getElementById('ref-show-locked');
   if(qEl){ qEl.value=prevQ; qEl.oninput=()=>buildRefGuide(); }
   if(lEl){ lEl.checked=prevShowLocked; lEl.onchange=()=>buildRefGuide(); }
+  wireRefFilterSelects();
 }
 
 
@@ -14999,6 +15145,23 @@ function detectPreferredUIMode(){
   if(narrow || (touch && typeof window!=='undefined' && window.innerWidth<1024)) return 'mobile';
   return 'desktop';
 }
+function resolveUiMode(cfg){
+  const c=cfg||getAccessibilitySettings();
+  if(c.uiAutoDetect!==false) return detectPreferredUIMode();
+  return (c.uiMode==='desktop')?'desktop':'mobile';
+}
+const DEFAULT_COMBAT_LAYOUT={avatarScale:100,combatantsScale:100,actionTrayScale:100,battleLogScale:100};
+function normalizeCombatLayout(raw){
+  const d=DEFAULT_COMBAT_LAYOUT;
+  const r=raw&&typeof raw==='object'?raw:{};
+  const clamp=(n,min,max)=>Math.max(min,Math.min(max,Number(n)||100));
+  return {
+    avatarScale:clamp(r.avatarScale,70,130),
+    combatantsScale:clamp(r.combatantsScale,70,130),
+    actionTrayScale:clamp(r.actionTrayScale,70,130),
+    battleLogScale:clamp(r.battleLogScale,70,150),
+  };
+}
 function normalizeAccessibilitySettings(raw){
   raw=raw&&typeof raw==='object'?raw:{};
   let musicVol=THEME_BGM_DEFAULT_VOLUME_PCT;
@@ -15015,6 +15178,7 @@ function normalizeAccessibilitySettings(raw){
     highContrast:!!raw.highContrast,
     uiMode:(raw.uiMode==='desktop')?'desktop':'mobile',
     uiAutoDetect:raw.uiAutoDetect!==false,
+    combatLayout:normalizeCombatLayout(raw.combatLayout),
     audio,
     tooltips:{...DEFAULT_TOOLTIP_SETTINGS, ...(raw.tooltips||{})},
   };
@@ -15056,7 +15220,7 @@ function wireUiAutoDetectResize(){
       const cfg=getAccessibilitySettings();
       if(!cfg.uiAutoDetect) return;
       const next=detectPreferredUIMode();
-      if(cfg.uiMode===next) return;
+      if(resolveUiMode(cfg)===next) return;
       cfg.uiMode=next;
       localStorage.setItem(ACCESS_KEY, JSON.stringify(cfg));
       applyAccessibilitySettings(cfg);
@@ -15112,6 +15276,40 @@ function wireCombatDropdownStateSync(){
     el.addEventListener('toggle', ()=>syncCombatDropdownUIState());
   });
 }
+function applyCombatLayoutSettings(cfg){
+  const cl=normalizeCombatLayout(cfg?.combatLayout);
+  const battle=document.getElementById('screen-battle');
+  if(!battle) return;
+  battle.style.setProperty('--combat-avatar-scale', String(cl.avatarScale));
+  battle.style.setProperty('--combat-combatants-scale', String(cl.combatantsScale));
+  battle.style.setProperty('--combat-action-scale', String(cl.actionTrayScale));
+  battle.style.setProperty('--combat-log-scale', String(cl.battleLogScale));
+}
+function syncCombatLayoutLabels(cl){
+  const c=normalizeCombatLayout(cl);
+  const pairs=[
+    ['setting-combat-avatar-val',c.avatarScale],
+    ['setting-combat-combatants-val',c.combatantsScale],
+    ['setting-combat-action-val',c.actionTrayScale],
+    ['setting-combat-log-val',c.battleLogScale],
+  ];
+  pairs.forEach(([id,pct])=>{const el=document.getElementById(id);if(el)el.textContent=`${pct}%`;});
+}
+function syncUiModeControls(cfg){
+  const effective=resolveUiMode(cfg);
+  const ui=document.getElementById('setting-ui-mode');
+  const uiAuto=document.getElementById('setting-ui-auto-detect');
+  const hint=document.getElementById('setting-ui-mode-hint');
+  if(ui){
+    ui.value=effective;
+    ui.disabled=!!(uiAuto&&uiAuto.checked);
+  }
+  if(hint){
+    hint.textContent=(uiAuto&&uiAuto.checked)
+      ? 'Auto-detect is choosing the layout from your screen size.'
+      : 'Pick compact mobile or desktop battle and war-room layout.';
+  }
+}
 function applyAccessibilitySettings(s){
   const cfg=s||getAccessibilitySettings();
   document.documentElement.style.fontSize=`${Math.max(85,Math.min(140,Number(cfg.fontSize)||100))}%`;
@@ -15121,8 +15319,12 @@ function applyAccessibilitySettings(s){
   if(cfg.colorBlind==='protanopia') document.body.classList.add('cb-protanopia');
   if(cfg.colorBlind==='deuteranopia') document.body.classList.add('cb-deuteranopia');
   if(cfg.colorBlind==='tritanopia') document.body.classList.add('cb-tritanopia');
-  ensureUIState().battleLayout=(cfg.uiMode==='mobile')?'mobile':'desktop';
+  const mode=resolveUiMode(cfg);
+  ensureUIState().battleLayout=(mode==='mobile')?'mobile':'desktop';
   applyUIStateToDOM();
+  applyCombatLayoutSettings(cfg);
+  syncUiModeControls(cfg);
+  syncCombatLayoutLabels(cfg.combatLayout);
 }
 function openSettingsModal(){
   const cfg=getAccessibilitySettings();
@@ -15136,8 +15338,14 @@ function openSettingsModal(){
   if(cb) cb.value=cfg.colorBlind||'off';
   if(rm) rm.checked=!!cfg.reduceMotion;
   if(hc) hc.checked=!!cfg.highContrast;
-  if(ui) ui.value=ensureUIState().battleLayout;
   if(uiAuto) uiAuto.checked=cfg.uiAutoDetect!==false;
+  syncUiModeControls(cfg);
+  const cl=normalizeCombatLayout(cfg.combatLayout);
+  const setRange=(id,val)=>{const el=document.getElementById(id);if(el)el.value=String(val);};
+  setRange('setting-combat-avatar-scale',cl.avatarScale);
+  setRange('setting-combat-combatants-scale',cl.combatantsScale);
+  setRange('setting-combat-action-scale',cl.actionTrayScale);
+  setRange('setting-combat-log-scale',cl.battleLogScale);
   const ms=getMusicSettings();
   const a=cfg.audio||{};
   const master=document.getElementById('setting-master-volume');
@@ -15168,15 +15376,31 @@ function returnToWarRoomFromSettings(){
   if(typeof initSelectionSafe==='function') initSelectionSafe();
 }
 globalThis.returnToWarRoomFromSettings = returnToWarRoomFromSettings;
+function resetCombatLayoutSettings(){
+  const prev=getAccessibilitySettings();
+  const cfg=Object.assign({}, prev, {combatLayout:Object.assign({}, DEFAULT_COMBAT_LAYOUT)});
+  localStorage.setItem(ACCESS_KEY, JSON.stringify(cfg));
+  applyAccessibilitySettings(cfg);
+  openSettingsModal();
+}
+globalThis.resetCombatLayoutSettings=resetCombatLayoutSettings;
 function updateAccessibilitySettings(){
   const prev=getAccessibilitySettings();
+  const uiAutoDetect=!!document.getElementById('setting-ui-auto-detect')?.checked;
+  const manualUiMode=String(document.getElementById('setting-ui-mode')?.value||ensureUIState().battleLayout);
   const cfg={
     fontSize:Number(document.getElementById('setting-font-size')?.value||100),
     colorBlind:String(document.getElementById('setting-color-blind')?.value||'off'),
     reduceMotion:!!document.getElementById('setting-reduce-motion')?.checked,
     highContrast:!!document.getElementById('setting-high-contrast')?.checked,
-    uiMode:String(document.getElementById('setting-ui-mode')?.value||ensureUIState().battleLayout),
-    uiAutoDetect:!!document.getElementById('setting-ui-auto-detect')?.checked,
+    uiMode:manualUiMode,
+    uiAutoDetect,
+    combatLayout:normalizeCombatLayout({
+      avatarScale:document.getElementById('setting-combat-avatar-scale')?.value,
+      combatantsScale:document.getElementById('setting-combat-combatants-scale')?.value,
+      actionTrayScale:document.getElementById('setting-combat-action-scale')?.value,
+      battleLogScale:document.getElementById('setting-combat-log-scale')?.value,
+    }),
     audio:Object.assign({}, prev.audio, {
       master:Number(document.getElementById('setting-master-volume')?.value??prev.audio?.master??100),
       music:Number(document.getElementById('setting-music-volume')?.value??prev.audio?.music??THEME_BGM_DEFAULT_VOLUME_PCT),
@@ -15189,8 +15413,9 @@ function updateAccessibilitySettings(){
       passives:!!document.getElementById('setting-tt-passives')?.checked,
     },
   };
-  localStorage.setItem(ACCESS_KEY, JSON.stringify(cfg));
-  applyAccessibilitySettings(cfg);
+  if(uiAutoDetect) cfg.uiMode=detectPreferredUIMode();
+  localStorage.setItem(ACCESS_KEY, JSON.stringify(normalizeAccessibilitySettings(cfg)));
+  applyAccessibilitySettings(getAccessibilitySettings());
   applyThemeMusicToAudioEl();
   syncThemeMusicButtonLabels();
 }

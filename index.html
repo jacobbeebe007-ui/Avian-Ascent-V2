@@ -741,7 +741,23 @@
 <option value="desktop">Desktop</option>
 </select>
 </label>
-<p class="settings-hint">Auto-detect picks mobile layout on phones and compact tablets.</p>
+<p class="settings-hint" id="setting-ui-mode-hint">Auto-detect picks mobile layout on phones and compact tablets.</p>
+<div class="settings-subsection">
+<p class="settings-subsection-title">Combat layout</p>
+<label class="settings-row">Avatar size <span id="setting-combat-avatar-val">100%</span>
+<input id="setting-combat-avatar-scale" type="range" min="70" max="130" value="100" data-change="updateAccessibilitySettings"/>
+</label>
+<label class="settings-row">Combatant panels <span id="setting-combat-combatants-val">100%</span>
+<input id="setting-combat-combatants-scale" type="range" min="70" max="130" value="100" data-change="updateAccessibilitySettings"/>
+</label>
+<label class="settings-row">Action tray <span id="setting-combat-action-val">100%</span>
+<input id="setting-combat-action-scale" type="range" min="70" max="130" value="100" data-change="updateAccessibilitySettings"/>
+</label>
+<label class="settings-row">Battle log <span id="setting-combat-log-val">100%</span>
+<input id="setting-combat-log-scale" type="range" min="70" max="150" value="100" data-change="updateAccessibilitySettings"/>
+</label>
+<button type="button" class="menu-btn settings-reset-btn" data-action="resetCombatLayoutSettings">Reset combat layout</button>
+</div>
 </div>
 <div class="settings-panel" id="settings-panel-accessibility" data-settings-panel="accessibility">
 <label class="settings-row">Font size
