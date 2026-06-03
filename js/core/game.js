@@ -5383,9 +5383,9 @@ function startSelectedBird(key){
 function beginRun(){ return startGame(); }
 
 const COMBAT_ITEM_CATALOG = Object.freeze({
-  freshWater: Object.freeze({ itemKey:'freshWater', shopId:'shop_item_fresh_water', tier:'grey', icon:'💧', name:'Fresh Water', healPct:0.25, energyCost:1, maxHold:3, costOverride:20, combatHint:'Restore 25% of your max HP. Costs 1 energy. You can use one heal item per turn.' }),
-  sugarWater: Object.freeze({ itemKey:'sugarWater', shopId:'shop_item_sugar_water', tier:'green', icon:'🌾', name:'Bird Seed', healPct:0.50, energyCost:2, maxHold:2, costOverride:30, combatHint:'Restore 50% of your max HP. Costs 2 energy. You can use one heal item per turn.' }),
-  honeyWater: Object.freeze({ itemKey:'honeyWater', shopId:'shop_item_honey_water', tier:'blue', icon:'🍯', name:'Honey Water', healPct:0.75, energyCost:3, maxHold:1, costOverride:40, combatHint:'Restore 75% of your max HP. Costs 3 energy. You can use one heal item per turn.' }),
+  freshWater: Object.freeze({ itemKey:'freshWater', shopId:'shop_item_fresh_water', tier:'grey', icon:'💧', name:'Fresh Water', healPct:0.25, energyCost:1, maxHold:3, costOverride:12, combatHint:'Restore 25% of your max HP. Costs 1 energy. You can use one heal item per turn.' }),
+  sugarWater: Object.freeze({ itemKey:'sugarWater', shopId:'shop_item_sugar_water', tier:'green', icon:'🌾', name:'Bird Seed', healPct:0.50, energyCost:2, maxHold:2, costOverride:22, combatHint:'Restore 50% of your max HP. Costs 2 energy. You can use one heal item per turn.' }),
+  honeyWater: Object.freeze({ itemKey:'honeyWater', shopId:'shop_item_honey_water', tier:'blue', icon:'🍯', name:'Honey Water', healPct:0.75, energyCost:3, maxHold:1, costOverride:32, combatHint:'Restore 75% of your max HP. Costs 3 energy. You can use one heal item per turn.' }),
 });
 
 function createDefaultCombatItems(){
@@ -8454,18 +8454,21 @@ function clamp01(v){return Math.max(0,Math.min(1,v));}
 
 /** Locked combat tuning: offensive stats ×0.75; guard in denominators ×0.80. */
 const COMBAT_OFFENSIVE_STAT_MULT = 0.75;
-const POST_BATTLE_HEAL_PCT = 0.33;
+const POST_BATTLE_HEAL_PCT_STORY = 0.10;
+const POST_BATTLE_HEAL_PCT_ENDLESS = 0.33;
+
+function getPostBattleHealPct(){
+  return G.endlessMode ? POST_BATTLE_HEAL_PCT_ENDLESS : POST_BATTLE_HEAL_PCT_STORY;
+}
 
 function shouldApplyPostBattleHealNow(){
-  if(!G.player) return false;
-  if(G.endlessMode) return true;
-  return !hasMultiEnemyChainPending();
+  return !!G.player;
 }
 
 function applyPostBattleHealIfDue(){
-  if(!shouldApplyPostBattleHealNow() || !G.player) return;
+  if(!shouldApplyPostBattleHealNow()) return;
   const postHealMult=G.player?.mutHuntersCruelty?0.5:1;
-  const postHeal=Math.max(1, Math.floor(G.player.stats.maxHp * POST_BATTLE_HEAL_PCT * postHealMult));
+  const postHeal=Math.max(1, Math.floor(G.player.stats.maxHp * getPostBattleHealPct() * postHealMult));
   G.player.stats.hp=Math.min(G.player.stats.hp + postHeal, G.player.stats.maxHp);
   spawnFloat('player', `+${postHeal} 🩹`, 'fn-heal');
   const flatHeal=(G.player.postBattleFlatHeal || 0);
@@ -14023,7 +14026,7 @@ function buildRefGuide() {
 
   const mechanics=`<div class="ref-skills-grid">
     ${card('Energy & Cooldowns','Main attacks are free unless spells. Abilities spend energy and many skills have cooldowns.',true,'core')}
-    ${card('Post-Battle Recovery','Story: heal 33% max HP once when you clear a full stage (not between birds in a multi-fight node). Endless: heal after each victory. Halved with Hunter\'s Cruelty mutation.',true,'heal')}
+    ${card('Post-Battle Recovery','Story: heal 10% max HP after each bird you defeat in a stage (including multi-bird nodes). Endless: heal 33% max HP after each victory. Halved with Hunter\'s Cruelty mutation.',true,'heal')}
     ${card('Role Taxonomy','Birds are grouped by roles: Striker, Bruiser, Tank, Trickster, Predator, Singer.',true,'roles')}
     ${card('Mutation Slots','Equip mutations in wing, feet, head, beak, chest, eyes, tail, plumage, and syrinx slots (limits per slot). Manage loadout in the Nest.',true,'mutations')}
     ${card('Nest Inventory','Found mutations go to nest inventory. Equip, compare, and sell extras between battles.',true,'nest')}
