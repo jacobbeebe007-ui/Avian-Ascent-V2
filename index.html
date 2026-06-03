@@ -624,7 +624,7 @@
 <p class="nest-mutate-sub" id="nest-mutate-sub"></p>
 <div class="nest-mutate-grid" id="nest-mutate-grid"></div>
 <div class="nest-mutate-actions">
-<button type="button" class="confirm-btn" id="nest-mutate-confirm" style="display:none" disabled>✓ Confirm Mutation</button>
+<button type="button" class="confirm-btn" id="nest-mutate-confirm" disabled>✓ Confirm Mutation</button>
 <button type="button" class="menu-btn" id="nest-mutate-cancel">✕ Cancel</button>
 </div>
 </div>
@@ -659,7 +659,7 @@
 <div class="screen" id="screen-grove">
 <div class="grove-inner">
 <h2 style="font-family:'Cinzel',serif;color:var(--gold-light);margin-bottom:8px;font-size:1.35rem;letter-spacing:.1em;">🌳 Whispering Grove</h2>
-<p class="grove-intro" id="grove-intro-text">Ancient trees hide secrets. The wind carries the scent of reward — and danger.<br/><em>Only one can be chosen. Risk the grove?</em></p>
+<p class="grove-intro" id="grove-intro-text">Ancient trees hide secrets — eggs, fruit, nests, or ambush.<br/><em>Pick one tree. Risk the grove?</em></p>
 <div class="grove-opt-row" id="grove-opt-row">
 <button class="grove-btn-opt" id="grove-optout-btn">← Ignore &amp; Move On</button>
 <button class="grove-btn-enter" id="grove-enter-btn">Enter the Grove →</button>
@@ -673,7 +673,7 @@
 <div id="grove-result-msg"></div>
 <!-- Nest reward section — shown on nest pick -->
 <div id="grove-reward-section">
-<h3>🪹 Choose your reward from the nest:</h3>
+<h3 id="grove-reward-heading" style="display:none">🪹 Nest reward</h3>
 <div class="grove-reward-grid reward-grid" id="grove-reward-grid"></div>
 </div>
 <button class="grove-btn-enter" id="grove-continue-btn" data-action="groveFinish" style="display:none;">Continue →</button>

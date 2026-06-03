@@ -2253,13 +2253,19 @@ function buildNestAbilitySection(player){
   return `<div class="nest-section nest-ability-section"><div class="nest-section-title">⚔ Abilities · 🪶 Mutated Feathers: ${featherCt}</div><div class="nest-ledger-subtitle">Equipped loadout</div><div class="nest-abilities-grid">${equippedHtml}</div><div class="nest-ledger-subtitle">Ability vault (${inv.length})</div>${vaultHtml}<p class="nest-ledger-note">${slotHint} Starter slots (1–2) mutate with feathers but stay fixed. Flex slots (3–4) hold shop abilities.</p></div>`;
 }
 
+function setNestMutateConfirmVisible(visible, enabled){
+  const confirm=document.getElementById('nest-mutate-confirm');
+  if(!confirm) return;
+  confirm.className=visible?'confirm-btn visible':'confirm-btn';
+  confirm.disabled=!visible||!enabled;
+}
+
 function closeNestMutateModal(){
   const modal=document.getElementById('nest-mutate-modal');
   if(modal){ modal.classList.remove('open'); modal.setAttribute('aria-hidden','true'); }
   const grid=document.getElementById('nest-mutate-grid');
   if(grid) grid.innerHTML='';
-  const confirm=document.getElementById('nest-mutate-confirm');
-  if(confirm){ confirm.style.display='none'; confirm.disabled=true; }
+  setNestMutateConfirmVisible(false, false);
   delete G._nestMutateSelectedId;
   delete G._nestMutateAction;
 }
@@ -2268,8 +2274,7 @@ function updateNestMutateSelection(card, selectedId){
   document.querySelectorAll('#nest-mutate-grid .skill-upgrade-card').forEach(x=>x.classList.remove('selected'));
   if(card) card.classList.add('selected');
   G._nestMutateSelectedId=selectedId;
-  const confirm=document.getElementById('nest-mutate-confirm');
-  if(confirm) confirm.disabled=!selectedId;
+  setNestMutateConfirmVisible(true, !!selectedId);
 }
 
 function confirmNestMutateChoice(){
@@ -2312,16 +2317,13 @@ function renderNestMutatePathChoices(slot){
   if(title) title.textContent=`🧬 ${family?.displayName||'Skill Evolution'}`;
   if(sub) sub.textContent=`Choose 1 of 3 tier-1 branches for ${currentTmpl.name||getSkillSlotDisplayLabel(slot)}.`;
   delete G._nestMutateSelectedId;
-  if(confirm){
-    confirm.style.display='';
-    confirm.textContent='✓ Confirm Mutation';
-    confirm.disabled=true;
-  }
+  if(confirm) confirm.textContent='✓ Confirm Mutation';
+  setNestMutateConfirmVisible(true, false);
   grid.innerHTML='';
   const options=getSkillEvolutionPathOptions(slot, G.player?.birdKey);
   if(!options.length){
     grid.innerHTML='<p style="color:var(--text-dim);text-align:center;padding:12px 0;grid-column:1/-1;">This ability cannot be mutated yet.</p>';
-    if(confirm) confirm.style.display='none';
+    setNestMutateConfirmVisible(false, false);
     return;
   }
   options.forEach(option=>{
@@ -2350,11 +2352,8 @@ function renderNestMutateTierPreview(slot){
   if(sub) sub.textContent=`${currentTmpl.name||slot.abilityId} will evolve into ${nextTmpl.name||nextId}.`;
   grid.innerHTML=`<div class="skill-upgrade-card selected"><div class="su-name">${currentTmpl.name||slot.abilityId} → ${nextTmpl.name||nextId}</div><div class="su-lv">Tier ${slot.tier||0} → Tier ${nextTier}</div><div class="su-effect">${nextTmpl.levels?.[0]?.desc||nextTmpl.desc||'No description available.'}</div></div>`;
   attachNestMutateCardTooltip(grid.querySelector('.skill-upgrade-card'), nextId);
-  if(confirm){
-    confirm.style.display='';
-    confirm.textContent='✓ Confirm Mutation';
-    confirm.disabled=false;
-  }
+  if(confirm) confirm.textContent='✓ Confirm Mutation';
+  setNestMutateConfirmVisible(true, true);
 }
 
 function openNestMutateModal(slot, action){
@@ -3594,6 +3593,15 @@ function mergeScaledStatsIntoEnemy(ed, encounterStage){
       ed.mutationIds = Avian.mutations.rollEnemyMutationsFromForgeSlot({
         mutationBand: forgeSlot.mutationBand,
         maxMutations: forgeSlot.maxMutations,
+        stage: encounterStage,
+        isBoss: !!ed.isBoss,
+      });
+      if (typeof Avian.mutations.applyMutationsToEntity === 'function') {
+        Avian.mutations.applyMutationsToEntity(ed, ed.mutationIds);
+      }
+    } else if (typeof Avian?.mutations?.rollEndlessEnemyMutations === 'function'
+      && (G._groveAmbushActive || (G.endlessMode && encounterStage > 20))) {
+      ed.mutationIds = Avian.mutations.rollEndlessEnemyMutations(G.player, {
         stage: encounterStage,
         isBoss: !!ed.isBoss,
       });
@@ -7807,6 +7815,12 @@ function getClassPerkTriggerForCurrentStage(){
   return 'endless-class-perk-30';
 }
 
+function resumeAfterGrove(){
+  G._skipGroveRoll = true;
+  continueStageTransitionAfterRewards();
+  G._skipGroveRoll = false;
+}
+
 function continueStageTransitionAfterRewards(){
   if(!hasMultiEnemyChainPending() && maybeOfferPassiveEvolutionChoice()) return;
   if(!hasMultiEnemyChainPending() && maybeOfferClassPerkChoice()) return;
@@ -7814,7 +7828,7 @@ function continueStageTransitionAfterRewards(){
   const lastEnemyWasBoss = G.enemy && G.enemy.isBoss;
   const safeHP = G.player.stats.hp > G.player.stats.maxHp * 0.2;
   const multiEnemyChainPending = hasMultiEnemyChainPending();
-  if(!lastEnemyWasBoss && safeHP && Math.random() < 0.1 && !multiEnemyChainPending){
+  if(!G._skipGroveRoll && !lastEnemyWasBoss && safeHP && Math.random() < 0.1 && !multiEnemyChainPending){
     setTimeout(()=>showGroveEvent(), 350);
     return;
   }
@@ -8402,7 +8416,8 @@ const ENDLESS_STORY_END_STAGE = 20;
 const ENDLESS_BOSS_CADENCE = 10;
 const ENDLESS_SHOP_CADENCE = ENDLESS_BOSS_CADENCE;
 const ENEMY_ENDLESS_EXTRA_LEVEL_EVERY = 5;
-const ENEMY_ENDLESS_EXTRA_LEVEL_STEP = 2;
+const ENEMY_ENDLESS_EXTRA_LEVEL_STEP = 3;
+const ENEMY_ENDLESS_EXTRA_LEVEL_BONUS_EVERY = 3;
 const ENEMY_HP_PER_LEVEL_BY_SIZE = Object.freeze({tiny:2.55,small:3.3,medium:3.95,large:4.7,xl:5.55});
 const ENEMY_ATK_PER_LEVEL_BY_SIZE = Object.freeze({tiny:0.45,small:0.55,medium:0.64,large:0.72,xl:0.81});
 const ENEMY_MATK_PER_LEVEL_BY_SIZE = Object.freeze({tiny:0.51,small:0.62,medium:0.70,large:0.77,xl:0.83});
@@ -8499,6 +8514,7 @@ function computeEnemyEffectiveLevel(stage, playerBirdLevel, isEndless){
   if(isEndless && endlessBattle>0){
     // Keep endless growth uncapped after stage 20.
     L+=Math.floor(endlessBattle/ENEMY_ENDLESS_EXTRA_LEVEL_EVERY)*ENEMY_ENDLESS_EXTRA_LEVEL_STEP;
+    L+=Math.floor(endlessBattle/ENEMY_ENDLESS_EXTRA_LEVEL_BONUS_EVERY);
   }
   return Math.max(1,L);
 }
@@ -11629,6 +11645,24 @@ function postCombat() {
     G.turn = 'post';
     if (typeof lockActionUI === 'function') lockActionUI(true);
 
+    if (G._groveAmbushActive) {
+      G._groveAmbushActive = false;
+      const expGain = computeNormalEnemyExpGain(G.enemy);
+      G.player.exp += expGain;
+      spawnFloat('player', `+${expGain} EXP`, 'fn-exp');
+      logMsg(`+${expGain} EXP!`, 'exp-gain');
+      SFX.exp();
+      const postHealMult = G.player?.mutHuntersCruelty ? 0.5 : 1;
+      const postHeal = Math.max(1, Math.floor(G.player.stats.maxHp * POST_BATTLE_HEAL_PCT * postHealMult));
+      G.player.stats.hp = Math.min(G.player.stats.hp + postHeal, G.player.stats.maxHp);
+      spawnFloat('player', `+${postHeal} 🩹`, 'fn-heal');
+      saveRun();
+      G.phase = 'PLAYER';
+      if (typeof lockActionUI === 'function') lockActionUI(false);
+      setTimeout(() => resumeAfterGrove(), 250);
+      return;
+    }
+
     const bs = getBattleStatsSafe();
 
     // EXP — enemy level + threat tier + relative level (normal); boss = 65% level-up threshold (+ small bonus if boss above player level)
@@ -11919,11 +11953,15 @@ function showRewardScreen(hasLevelUp) {
   G._pendingLevelUp=hasLevelUp;
   G._pendingReward=null;
   G._pendingRewardQueue=null;
+  G._pendingEndlessMutationPick=null;
   G._rewardsAlreadyGranted=false;
   const isBoss=G.enemy?.isBoss;
   document.getElementById('reward-title').textContent=isBoss?'👑 Boss Defeated!':'✦ Victory! ✦';
   const pool=buildMutationRewardPool();
-  if(pool.length===1){
+  const endlessPickOne=isEndlessRunActive() && pool.length>1;
+  if(endlessPickOne){
+    document.getElementById('reward-sub').textContent='The enemy falls. Choose 1 mutation to keep:';
+  } else if(pool.length===1){
     document.getElementById('reward-sub').textContent='The enemy falls. You earned this mutation:';
   } else if(isBoss){
     document.getElementById('reward-sub').textContent=`${G.enemy?.bossTitle||'Boss'} falls! You earned these mutations:`;
@@ -11939,6 +11977,32 @@ function showRewardScreen(hasLevelUp) {
     grid.innerHTML='<div style="grid-column:1/-1;color:var(--text-dim);text-align:center;padding:12px 0;">No rewards available — continue onward.</div>';
     confirmBtn.className='confirm-btn visible';
     G._rewardsAlreadyGranted=true;
+    return;
+  }
+  if(endlessPickOne){
+    G._rewardScreenMode='endless-mutation-pick';
+    G._pendingEndlessMutationPick=pool;
+    pool.forEach(rw=>{
+      const tierCss=normalizeRewardTier(rw.tier);
+      const tierMeta=rewardTierMeta(rw.tier);
+      const c=document.createElement('div');
+      c.className=`reward-card tier-${tierCss}`;
+      c.innerHTML=`
+        <div class="reward-tier-label">${tierMeta.label}</div>
+        <span class="reward-icon">${rw.icon}</span>
+        <div class="reward-name">${rw.name}</div>
+        <div class="reward-desc">${rw.desc}</div>`;
+      c.onclick=()=>{
+        document.querySelectorAll('#reward-grid .reward-card').forEach(x=>x.classList.remove('selected'));
+        c.classList.add('selected');
+        G._pendingReward=rw;
+        confirmBtn.textContent='✓ Claim Mutation';
+        confirmBtn.className='confirm-btn visible';
+      };
+      grid.appendChild(c);
+      const mutId = rw.mutationItemId || rw.id;
+      if(mutId) bindRichTooltip(c, () => buildMutationTooltipHTML(mutId), { category: 'mutations' });
+    });
     return;
   }
   pool.forEach(rw=>{
@@ -11981,6 +12045,26 @@ function confirmReward() {
     return;
   }
   if(document.getElementById('gold-replace-ui')) return;
+
+  if(G._rewardScreenMode==='endless-mutation-pick'){
+    if(!G._pendingReward){
+      logMsg('Choose a mutation first.','miss');
+      return;
+    }
+    const rw=G._pendingReward;
+    if(rw.tier==='gold'&&getGoldCardCount()>=getGoldCardLimit()&&!G._goldReplaceMode){
+      showGoldReplaceUI(rw);
+      return;
+    }
+    applySingleReward(rw);
+    G._pendingReward=null;
+    G._pendingEndlessMutationPick=null;
+    G._rewardScreenMode='normal';
+    G._rewardsAlreadyGranted=true;
+    document.getElementById('reward-confirm-btn').textContent='Continue →';
+    document.getElementById('reward-confirm-btn').className='confirm-btn visible';
+    return;
+  }
 
   if (G._rewardsAlreadyGranted) {
     finishRewardScreenFlow();
@@ -12685,11 +12769,77 @@ function isBossStage(stage){
   return s===STORY_MILESTONE_BOSS_STAGE || s===STORY_DUKE_STAGE;
 }
 
+const GROVE_OUTCOME_POOL = Object.freeze(['egg','ambush','fruit','nest']);
+
+function grantGroveNestMutation(){
+  const rw=typeof Avian?.mutations?.rollMutationRewardFromDropWeights==='function'
+    ? Avian.mutations.rollMutationRewardFromDropWeights({ stage: G.stage||1 })
+    : null;
+  if(!rw) return null;
+  if(rw.type==='mutation'){
+    const itemId=rw.mutationItemId||rw.id;
+    if(typeof Avian?.mutations?.addToInventory==='function') Avian.mutations.addToInventory(G.player, itemId);
+  } else if(typeof rw.apply==='function'){
+    applyUpgradeWithMaxHpHealing(G.player, ()=>rw.apply(G.player), rw.name||'Grove Nest Reward', {id:rw.id, desc:rw.desc});
+  }
+  if(!G.collectedRewards) G.collectedRewards=[];
+  G.collectedRewards.push({id:rw.id||rw.name,icon:rw.icon,tier:rw.tier,name:rw.name,desc:rw.desc});
+  codexMark('artifacts', rw.id||rw.name, 'seen');
+  return rw;
+}
+
+function startGroveAmbushBattle(){
+  G._groveAmbushActive=true;
+  const encounterStage=getEncounterStage();
+  let ed=pickRandomBirdEnemyDraftForStage(encounterStage, { isBoss: false });
+  ed._mutationsApplied=false;
+  mergeScaledStatsIntoEnemy(ed, encounterStage);
+  G.enemy=ed;
+  G.autoQueuedAbilityId=null;
+  G._breakClampStreak=0;
+  G.abilityCooldowns=G.abilityCooldowns||{};
+  codexMark('enemies', G.enemy.id||G.enemy.name, 'seen');
+  if(!G.enemy.aiType) G.enemy.aiType=mapAiStyleToType(G.enemy.aiStyle);
+  if(!G.enemy.aiPersonality) G.enemy.aiPersonality=inferAIPersonalityFromStyle(G.enemy.aiStyle,G.enemy.name);
+  enforceAbilityCosts(G.player);
+  applyBiomeModifiers();
+  resetForNewBattle();
+  recomputeClassPerkEffects();
+  captureBattleTempPlayerStats();
+  if(G.player._bruiseAcc!==undefined) G.player._bruiseAcc=0;
+  resetBattleStats();
+  document.getElementById('player-panel')?.classList.remove('player-danger');
+  document.getElementById('enemy-panel')?.classList.remove('boss-phase-two');
+  const pb=document.getElementById('boss-phase-banner');if(pb){pb.textContent='';pb.classList.remove('visible');}
+  const bd2=BIRDS[G.player.birdKey||'sparrow'];
+  if(bd2&&bd2.passive&&bd2.passive.onBattleStart) bd2.passive.onBattleStart(G.player);
+  if(typeof Avian?.passives?.onBattleStart==='function') Avian.passives.onBattleStart();
+  preparePlayerCombatLoadout(G.player);
+  normalizeBattleTurnState();
+  G.battleOver=false;
+  G.animLock=false;
+  G.actionBusy=false;
+  G.actionQueue=[];
+  const pSpd=G.player.stats.spd, eSpd=G.enemy.stats.spd;
+  G.turn = pSpd >= eSpd ? 'player' : 'enemy';
+  G.turnPhase = G.turn==='player'?TURN.PLAYER:TURN.ENEMY;
+  G.phase = G.turn==='player' ? 'PLAYER' : 'ENEMY';
+  if(G.turn==='player') startPlayerTurn(G.player);
+  G.enemyNextAction = planEnemyAction();
+  showScreen('screen-battle');
+  const _battleLogEl=document.getElementById('battle-log'); if(_battleLogEl) _battleLogEl.innerHTML='';
+  updateBattleArena();
+  initBattleLogDrawer();
+  updateStageProgress();
+  refreshBattleUI();
+  logMsg(`🌳 Grove Ambush! ${G.enemy.name} (Lv.${G.player.birdLevel}) strikes!`,'enemy-action');
+  if(G.turn==='enemy') scheduleOpeningEnemyTurn();
+  saveRun();
+}
+
 function showGroveEvent(){
   G._groveOutcomes = null;
   G._groveResolved = false;
-  G._groveNestReward = null;
-  // Reset UI
   const trees = document.getElementById('grove-trees');
   trees.style.display = 'none';
   document.getElementById('grove-result-msg').textContent = '';
@@ -12699,39 +12849,34 @@ function showGroveEvent(){
   document.getElementById('grove-opt-row').style.display = 'flex';
   document.getElementById('grove-intro-text').style.display = '';
 
-  // Flavor based on size
   const isSmall = ['tiny','small'].includes(G.player.size||'medium');
   const sizeHint = isSmall
     ? `<em>Your small form lets you slip into tight spaces — but beware larger threats.</em>`
     : `<em>Your size grants power, but agility may be needed here.</em>`;
   document.getElementById('grove-intro-text').innerHTML =
-    `Ancient trees hide secrets. The wind carries the scent of reward — and danger.<br><br>${sizeHint}<br><br><strong>Risk the grove?</strong>`;
+    `Ancient trees hide secrets — eggs, fruit, nests, or ambush.<br><br>${sizeHint}<br><br><strong>Pick one tree. Risk the grove?</strong>`;
 
   document.getElementById('grove-optout-btn').onclick = ()=>{
     logMsg('🌳 You leave the grove undisturbed. Onward.','system');
     G.phase='PLAYER';
-  loadStage();
+    saveRun();
+    resumeAfterGrove();
   };
   document.getElementById('grove-enter-btn').onclick = ()=> enterGrove();
 
-  // Reset tree cards
   document.querySelectorAll('.grove-tree').forEach(t=>{
     t.className='grove-tree';
     t.innerHTML='🌳<span class="grove-rustle">Rustle…</span>';
     t.style.opacity='1'; t.style.transform='';
     t.onclick=null;
+    t.classList.remove('grove-other-trees');
   });
 
   showScreen('screen-grove');
 }
 
 function enterGrove(){
-  // Build outcomes: always 1 nest + 2 unique risky picked at random
-  const riskyPool = ['cat','snake','egg'];
-  const pair = pickRandom(riskyPool, 2);
-  const raw = ['nest', ...pair];
-  // Shuffle
-  G._groveOutcomes = raw.sort(()=>Math.random()-.5);
+  G._groveOutcomes = pickRandom(GROVE_OUTCOME_POOL, 3);
 
   document.getElementById('grove-opt-row').style.display = 'none';
   document.getElementById('grove-intro-text').style.display = 'none';
@@ -12748,78 +12893,72 @@ async function resolveGrove(idx){
   G._groveResolved = true;
 
   const type = G._groveOutcomes[idx];
-  const isSmall = ['tiny','small'].includes(G.player.size||'medium');
   const trees = document.querySelectorAll('.grove-tree');
-  // Lock all trees immediately
   trees.forEach(t=>{ t.onclick=null; });
 
   const chosen = trees[idx];
   chosen.classList.add('revealed');
 
-  // Brief dramatic pause before reveal
   await new Promise(r=>setTimeout(r,350));
 
   const hp = G.player.stats.hp;
   const maxHp = G.player.stats.maxHp;
-  const missing = maxHp - hp;
   const resultEl = document.getElementById('grove-result-msg');
   let msg='', flavor='', floatClass='fn-heal';
 
   switch(type){
-    // ── NEST: safe, pick a reward ──────────────────────────────
     case 'nest':{
       chosen.className='grove-tree revealed outcome-nest';
-      chosen.innerHTML=`<span>🪹</span><span class="grove-outcome-label">Safe Nest!</span>`;
-      msg = '✨ A shiny nest! Choose your reward.';
-      SFX.spell(); SFX.exp();
+      chosen.innerHTML=`<span>🪹</span><span class="grove-outcome-label">Hidden Nest!</span>`;
+      const rw=grantGroveNestMutation();
+      if(rw){
+        msg=`🪹 Nest treasure: ${rw.name} added to your nest inventory!`;
+        SFX.spell(); SFX.exp();
+      } else {
+        msg='🪹 The nest is empty this time.';
+      }
       resultEl.textContent = msg;
       resultEl.style.color = 'var(--gold)';
-      // Dim unselected
+      trees.forEach((t,i)=>{ if(i!==idx) t.classList.add('grove-other-trees'); });
+      logMsg(`🌳 Grove: ${msg}`,'exp-gain');
+      await new Promise(r=>setTimeout(r,900));
+      document.getElementById('grove-continue-btn').style.display='inline-block';
+      return;
+    }
+    case 'ambush':{
+      chosen.className='grove-tree revealed outcome-ambush';
+      chosen.innerHTML=`<span>⚔️</span><span class="grove-outcome-label">Ambush!</span>`;
+      msg='⚔️ A rival bird bursts from the branches!';
+      flavor='Fight at your level — victory lets you move on.';
+      resultEl.innerHTML = `<strong>${msg}</strong><br><span style="color:var(--text-dim);font-size:.82rem;">${flavor}</span>`;
+      resultEl.style.color = 'var(--red-light)';
+      logMsg(`🌳 Grove: ${msg}`,'enemy-action');
       trees.forEach((t,i)=>{ if(i!==idx) t.classList.add('grove-other-trees'); });
       await new Promise(r=>setTimeout(r,700));
-      showGroveNestRewards();
-      return; // don't show continue yet — reward pick does it
+      startGroveAmbushBattle();
+      return;
     }
-    // ── CAT: always bad ─────────────────────────────────────────
-    case 'cat':{
-      chosen.className='grove-tree revealed outcome-cat';
-      chosen.innerHTML=`<span>🐱</span><span class="grove-outcome-label">Cat Ambush!</span>`;
-      const dmg = Math.max(1, Math.floor(hp * 0.30));
-      G.player.stats.hp = Math.max(1, hp - dmg);
-      setHpBar('player', G.player.stats.hp, G.player.stats.maxHp);
-      msg = `😾 A wild cat pounces! −${dmg} HP (−30% current)`;
-      flavor = isSmall ? 'You were too small to dodge it!' : 'Even your size couldn\'t stop those claws!';
-      floatClass='fn-dmg';
-      doScreenShake(true); SFX.hit(1.5);
-      spawnFloat('player',`-${dmg}`,'fn-dmg');
-      break;
-    }
-    // ── SNAKE: size-dependent ────────────────────────────────────
-    case 'snake':{
-      chosen.className='grove-tree revealed outcome-snake';
-      const heal = Math.max(1, Math.floor(maxHp * 0.20));
+    case 'fruit':{
+      chosen.className='grove-tree revealed outcome-fruit';
+      const heal = Math.max(1, Math.floor(maxHp * 0.25));
       G.player.stats.hp = Math.min(maxHp, hp + heal);
       setHpBar('player', G.player.stats.hp, G.player.stats.maxHp);
-      chosen.innerHTML=`<span>🐍💚</span><span class="grove-outcome-label">Serpent Remedy!</span>`;
-      msg = `🐍 Ancient serpent salve! +${heal} HP (20% max)`;
-      flavor = 'The grove mends your flock equally.';
+      chosen.innerHTML=`<span>🍎</span><span class="grove-outcome-label">Grove Fruit!</span>`;
+      msg = `🍎 Ripe grove fruit! +${heal} HP (25% max)`;
+      flavor = 'Sweet restoration from the canopy.';
       floatClass='fn-heal';
       SFX.heal();
       spawnFloat('player',`+${heal}`,'fn-heal');
       break;
     }
-    // ── EGG: size-dependent ──────────────────────────────────────
     case 'egg':{
       chosen.className='grove-tree revealed outcome-egg';
-      const heal = Math.max(1, Math.floor(maxHp * 0.10));
-      G.player.stats.hp = Math.min(maxHp, hp + heal);
-      setHpBar('player', G.player.stats.hp, G.player.stats.maxHp);
-      chosen.innerHTML=`<span>🥚✨</span><span class="grove-outcome-label">Golden Egg!</span>`;
-      msg = `🥚 Nourishing yolk shared by all birds! +${heal} HP (10% max)`;
-      flavor = 'No thorns, no traps — only renewal.';
+      const added=typeof addSavedEggs==='function'?addSavedEggs(1):0;
+      chosen.innerHTML=`<span>🥚</span><span class="grove-outcome-label">Saved Egg!</span>`;
+      msg = added ? '🥚 A Saved Egg is tucked safely in your global bank (+1)!' : '🥚 You found an egg, but the bank could not be reached.';
+      flavor = 'Banked immediately — no Flight completion required.';
       floatClass='fn-heal';
-      SFX.heal();
-      spawnFloat('player',`+${heal}`,'fn-heal');
+      SFX.exp();
       break;
     }
   }
@@ -12827,93 +12966,15 @@ async function resolveGrove(idx){
   resultEl.innerHTML = `<strong>${msg}</strong><br><span style="color:var(--text-dim);font-size:.82rem;">${flavor}</span>`;
   resultEl.style.color = floatClass==='fn-heal' ? 'var(--green-light)' : 'var(--red-light)';
   logMsg(`🌳 Grove: ${msg}`, floatClass==='fn-heal'?'exp-gain':'enemy-action');
-
-  // Dim unchosen trees with fade
   trees.forEach((t,i)=>{ if(i!==idx) t.classList.add('grove-other-trees'); });
-
-  // Show continue after a beat
   await new Promise(r=>setTimeout(r,900));
   document.getElementById('grove-continue-btn').style.display='inline-block';
 }
 
-function showGroveNestRewards(){
-  document.getElementById('grove-reward-section').style.display='block';
-  const grid = document.getElementById('grove-reward-grid');
-  grid.innerHTML='';
-
-  // Grove nest rewards: mutation equipment picks
-  const used = new Set();
-  const picks=[];
-  const pickMutation=(tier)=>{
-    if(typeof Avian?.mutations?.rollMutationReward!=='function') return null;
-    let guard=0;
-    while(guard<15){
-      guard++;
-      const rw=Avian.mutations.rollMutationReward({ tier, stage: G.stage||1 });
-      if(rw && !used.has(rw.id)){ used.add(rw.id); return rw; }
-    }
-    return null;
-  };
-  const rollNestTier=()=>{
-    if(chance(5)) return 'green';
-    return chance(56)?'blue':'purple';
-  };
-  while(picks.length<3){
-    const tier=rollNestTier();
-    const rw=pickMutation(tier)||pickMutation('blue')||pickMutation('purple')||pickMutation('green');
-    if(!rw) break;
-    picks.push(rw);
-  }
-
-  if(!picks.length){
-    grid.innerHTML='<div style="grid-column:1/-1;color:var(--text-dim);text-align:center;padding:10px 0;">The nest is empty this time. Continue onward.</div>';
-    document.getElementById('grove-continue-btn').style.display='inline-block';
-    document.getElementById('grove-continue-btn').textContent='Continue →';
-    return;
-  }
-
-  picks.forEach(rw=>{
-    const tierCss=normalizeRewardTier(rw.tier);
-    const tierMeta=rewardTierMeta(rw.tier);
-    const c=document.createElement('div');
-    c.className=`reward-card tier-${tierCss}`;
-    c.innerHTML=`
-      <div class="reward-tier-label">${tierMeta.label}</div>
-      <span class="reward-icon">${rw.icon}</span>
-      <div class="reward-name">${rw.name}</div>
-      <div class="reward-desc">${rw.desc}</div>`;
-    c.onclick=()=>{
-      document.querySelectorAll('#grove-reward-grid .reward-card').forEach(x=>x.classList.remove('selected'));
-      c.classList.add('selected');
-      G._groveNestReward=rw;
-      document.getElementById('grove-continue-btn').style.display='inline-block';
-      document.getElementById('grove-continue-btn').textContent='Claim Reward →';
-    };
-    grid.appendChild(c);
-    const mutId = rw.mutationItemId || rw.id;
-    if(mutId) bindRichTooltip(c, () => buildMutationTooltipHTML(mutId), { category: 'mutations' });
-  });
-}
-
 function groveFinish(){
-  // If a nest reward was selected, apply it
-  if(G._groveNestReward){
-    const rw=G._groveNestReward;
-    if(rw.type==='mutation'){
-      const itemId=rw.mutationItemId||rw.id;
-      if(typeof Avian?.mutations?.addToInventory==='function') Avian.mutations.addToInventory(G.player, itemId);
-    } else {
-      applyUpgradeWithMaxHpHealing(G.player, ()=>rw.apply(G.player), rw.name||'Grove Nest Reward', {id:rw.id, desc:rw.desc});
-    }
-    if(!G.collectedRewards)G.collectedRewards=[];
-    G.collectedRewards.push({id:rw.id||rw.name,icon:rw.icon,tier:rw.tier,name:rw.name,desc:rw.desc});
-    codexMark('artifacts', rw.id||rw.name, 'seen');
-    logMsg(`🪹 Grove Nest: ${rw.name} claimed!`,'exp-gain');
-    G._groveNestReward=null;
-  }
   saveRun();
   G.phase='PLAYER';
-  loadStage();
+  resumeAfterGrove();
 }
 
 // ============================================================
@@ -12982,6 +13043,7 @@ function showVictory(){
   if((G.ui?.gameMode||'story')==='story') startStoryCinematic();
 }
 function showDefeat(){
+  G._groveAmbushActive=false;
   G._flightSavedEggsAwarded=typeof awardFlightSavedEggs==='function'?awardFlightSavedEggs():0;
   restoreBattleTempPlayerStats();
   G.phase='REWARD';

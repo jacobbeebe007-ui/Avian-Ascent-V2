@@ -418,6 +418,63 @@
     return player._mutationMechanics || Object.create(null);
   }
 
+  function rollTierFromDropWeights() {
+    var p = pack();
+    var dw = (p && p.dropWeights) || { white: 52, green: 25, blue: 14, purple: 7, gold: 2 };
+    var tiers = ['white', 'green', 'blue', 'purple', 'gold'];
+    var weights = tiers.map(function (t) { return Math.max(0, Number(dw[t]) || 0); });
+    return chanceWeighted(tiers, weights);
+  }
+
+  function countPlayerEquippedMutations(player) {
+    ensurePlayerMutationState(player);
+    var n = 0;
+    var eq = player.equippedMutations;
+    if (!eq) return 0;
+    for (var slot in eq) {
+      if (!Array.isArray(eq[slot])) continue;
+      for (var i = 0; i < eq[slot].length; i++) {
+        if (eq[slot][i]) n++;
+      }
+    }
+    return n;
+  }
+
+  function getPlayerEquippedMutationTiers(player) {
+    ensurePlayerMutationState(player);
+    var tiers = [];
+    var eq = player.equippedMutations;
+    if (!eq) return tiers;
+    for (var slot in eq) {
+      if (!Array.isArray(eq[slot])) continue;
+      for (var i = 0; i < eq[slot].length; i++) {
+        var id = eq[slot][i];
+        if (!id) continue;
+        var item = getItem(id);
+        if (item && item.tier) tiers.push(String(item.tier).toLowerCase());
+      }
+    }
+    return tiers;
+  }
+
+  function rollEndlessEnemyMutations(player, opts) {
+    opts = opts || {};
+    var playerCount = countPlayerEquippedMutations(player);
+    var delta = Math.floor(Math.random() * 3) - 1;
+    var count = Math.max(0, Math.min(11, playerCount + delta));
+    var playerTiers = getPlayerEquippedMutationTiers(player);
+    var used = new Set();
+    var ids = [];
+    for (var i = 0; i < count; i++) {
+      var tier = playerTiers.length
+        ? playerTiers[Math.floor(Math.random() * playerTiers.length)]
+        : rollTierFromDropWeights();
+      var drop = rollUniqueFromTier(tier, used);
+      if (drop && drop.id) ids.push(drop.id);
+    }
+    return ids;
+  }
+
   function rollTierForContext(opts) {
     opts = opts || {};
     var stage = opts.stage || (globalThis.G && G.stage) || 1;
@@ -567,6 +624,12 @@
     return buildRewardCard(item);
   }
 
+  function rollMutationRewardFromDropWeights(opts) {
+    var tier = rollTierFromDropWeights();
+    var item = rollDrop(tier, opts || {});
+    return buildRewardCard(item);
+  }
+
   mutations.getCatalog = getCatalog;
   mutations.getItem = getItem;
   mutations.createEmptyEquipped = createEmptyEquipped;
@@ -587,6 +650,10 @@
   mutations.rollDrop = rollDrop;
   mutations.rollTierForContext = rollTierForContext;
   mutations.rollMutationReward = rollMutationReward;
+  mutations.rollMutationRewardFromDropWeights = rollMutationRewardFromDropWeights;
+  mutations.rollTierFromDropWeights = rollTierFromDropWeights;
+  mutations.countPlayerEquippedMutations = countPlayerEquippedMutations;
+  mutations.rollEndlessEnemyMutations = rollEndlessEnemyMutations;
   mutations.buildRewardCard = buildRewardCard;
   mutations.toShopOffer = toShopOffer;
   mutations.reconstructShopOffer = reconstructShopOffer;
