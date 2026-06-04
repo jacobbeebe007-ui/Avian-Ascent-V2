@@ -5917,6 +5917,9 @@ function loadStage() {
   // #endregion
   G.enemyNextAction = planEnemyAction();
   showScreen('screen-battle');
+  const _battleAccCfg=getAccessibilitySettings();
+  applyCombatLayoutSettings(_battleAccCfg);
+  applyCombatArrangement(_battleAccCfg);
   // #region agent log
   _agentDbgLog('game.js:loadStage:afterShowScreen', 'battle screen shown', { activeScreen: document.querySelector('.screen.active')?.id || null }, 'H5');
   // #endregion
@@ -6059,6 +6062,11 @@ function showScreen(id) {
   AvianEvents.emit('screen:change', evt);
   runModuleHook('onScreenChange', evt);
   syncThemeBgmPlaybackForScreen(id);
+  if(id==='screen-battle'){
+    const _accCfg=getAccessibilitySettings();
+    applyCombatLayoutSettings(_accCfg);
+    applyCombatArrangement(_accCfg);
+  }
 }
 globalThis.showScreen = showScreen;
 
@@ -14037,6 +14045,7 @@ function buildRefGuide() {
     ${card('Passive Evolution (Endless)','In Endless mode, passives evolve at milestones with offensive vs utility choices.',true,'endless')}
     ${card('Enemy AI Profiles','Enemy personalities (aggressive, tactical, control, tank, predator, etc.) bias action planning.',true,'ai')}
     ${card('Codex Unlocks','Entries unlock when seen/used during runs. Use search, filters, and Show Locked to browse all.',true,'codex')}
+    ${card('Combat Screen Layout','Settings → Display: pick Original, Compact, Actions First, Log Focus, or Custom. Custom opens a panel editor to reorder sections and hide what you do not need (⊞ Panels in battle). Size sliders still fine-tune avatars, panels, action tray, and log.',true,'combat-ui')}
     ${card('DEF & MDEF Penetration','DEF Penetration and generic Penetration bonuses ignore physical guard. MDEF Penetration ignores magical guard. Ability pierce stacks on top of equipped mutations.',true,'penetration')}
   </div>`;
 
@@ -15153,6 +15162,65 @@ function resolveUiMode(cfg){
   if(c.uiAutoDetect!==false) return detectPreferredUIMode();
   return (c.uiMode==='desktop')?'desktop':'mobile';
 }
+const COMBAT_ARRANGEMENTS=['classic','compact','actionsFirst','logFocus','custom'];
+const DEFAULT_COMBAT_ARRANGEMENT='classic';
+const COMBAT_ARRANGEMENT_HINTS={
+  classic:'Original: fighters side by side, then actions and battle log.',
+  compact:'Compact: stacked layout with smaller panels — good for phones or tight screens.',
+  actionsFirst:'Actions First: ability tray above fighters so you can act without scrolling.',
+  logFocus:'Log Focus: tall battle log beside the fight on wide screens; taller log when narrow.',
+  custom:'Custom: reorder panels and hide sections via Customize panels… or ⊞ Panels during battle.',
+};
+const COMBAT_PANEL_DEFS=[
+  {id:'topbar', label:'Top bar (menu & stage)'},
+  {id:'stageProgress', label:'Stage progress bar'},
+  {id:'encounterPreview', label:'Encounter preview'},
+  {id:'exp', label:'EXP bar'},
+  {id:'player', label:'Your bird'},
+  {id:'enemy', label:'Enemy'},
+  {id:'actions', label:'Actions'},
+  {id:'log', label:'Battle log'},
+];
+const COMBAT_PANEL_IDS=COMBAT_PANEL_DEFS.map(d=>d.id);
+const DEFAULT_COMBAT_CUSTOM_LAYOUT={
+  order:COMBAT_PANEL_IDS.slice(),
+  visible:Object.fromEntries(COMBAT_PANEL_IDS.map(id=>[id,true])),
+};
+function normalizeCombatCustomLayout(raw){
+  const d=DEFAULT_COMBAT_CUSTOM_LAYOUT;
+  const r=raw&&typeof raw==='object'?raw:{};
+  const order=[];
+  const seen=new Set();
+  (Array.isArray(r.order)?r.order:[]).forEach(pid=>{
+    const id=String(pid||'');
+    if(!COMBAT_PANEL_IDS.includes(id)||seen.has(id)) return;
+    seen.add(id);
+    order.push(id);
+  });
+  COMBAT_PANEL_IDS.forEach(id=>{if(!seen.has(id)) order.push(id);});
+  const visIn=r.visible&&typeof r.visible==='object'?r.visible:{};
+  const visible=Object.assign({}, d.visible);
+  COMBAT_PANEL_IDS.forEach(id=>{
+    if(visIn[id]!=null) visible[id]=!!visIn[id];
+  });
+  visible.topbar=true;
+  return {order, visible};
+}
+let _combatCustomDraft=null;
+function resetCombatCustomDraft(){
+  _combatCustomDraft=null;
+}
+function getCombatCustomDraft(){
+  if(!_combatCustomDraft){
+    const cfg=getAccessibilitySettings();
+    _combatCustomDraft=normalizeCombatCustomLayout(cfg.combatCustomLayout);
+  }
+  return _combatCustomDraft;
+}
+function normalizeCombatArrangement(raw){
+  const id=String(raw||'').toLowerCase();
+  return COMBAT_ARRANGEMENTS.includes(id)?id:DEFAULT_COMBAT_ARRANGEMENT;
+}
 const DEFAULT_COMBAT_LAYOUT={avatarScale:100,combatantsScale:100,actionTrayScale:100,battleLogScale:100};
 function normalizeCombatLayout(raw){
   const d=DEFAULT_COMBAT_LAYOUT;
@@ -15182,6 +15250,8 @@ function normalizeAccessibilitySettings(raw){
     uiMode:(raw.uiMode==='desktop')?'desktop':'mobile',
     uiAutoDetect:raw.uiAutoDetect!==false,
     combatLayout:normalizeCombatLayout(raw.combatLayout),
+    combatArrangement:normalizeCombatArrangement(raw.combatArrangement),
+    combatCustomLayout:normalizeCombatCustomLayout(raw.combatCustomLayout),
     audio,
     tooltips:{...DEFAULT_TOOLTIP_SETTINGS, ...(raw.tooltips||{})},
   };
@@ -15288,6 +15358,154 @@ function applyCombatLayoutSettings(cfg){
   battle.style.setProperty('--combat-action-scale', String(cl.actionTrayScale));
   battle.style.setProperty('--combat-log-scale', String(cl.battleLogScale));
 }
+function clearCombatCustomPanelStyles(){
+  const battle=document.getElementById('screen-battle');
+  if(!battle) return;
+  battle.querySelectorAll('[data-combat-panel]').forEach(el=>{
+    el.classList.remove('combat-panel-hidden');
+    el.style.order='';
+  });
+}
+function applyCombatCustomPanels(raw){
+  const battle=document.getElementById('screen-battle');
+  if(!battle) return;
+  const layout=normalizeCombatCustomLayout(raw);
+  clearCombatCustomPanelStyles();
+  layout.order.forEach((pid,idx)=>{
+    const el=battle.querySelector('[data-combat-panel="'+pid+'"]');
+    if(!el) return;
+    el.style.order=String(idx);
+    if(layout.visible[pid]===false) el.classList.add('combat-panel-hidden');
+  });
+}
+function syncCombatCustomEditRow(arrId){
+  const id=arrId!=null?String(arrId):normalizeCombatArrangement(getAccessibilitySettings().combatArrangement);
+  const show=id==='custom';
+  const row=document.getElementById('setting-combat-custom-edit-row');
+  const fab=document.getElementById('combat-custom-layout-fab');
+  if(row) row.style.display=show?'block':'none';
+  if(fab) fab.style.display=show?'inline-block':'none';
+}
+function renderCombatCustomPanelEditor(){
+  const list=document.getElementById('combat-custom-panel-list');
+  if(!list) return;
+  const draft=getCombatCustomDraft();
+  const defs=Object.fromEntries(COMBAT_PANEL_DEFS.map(d=>[d.id,d]));
+  list.textContent='';
+  draft.order.forEach((pid,idx)=>{
+    const def=defs[pid]||{id:pid,label:pid};
+    const row=document.createElement('div');
+    row.className='combat-custom-panel-row';
+    row.setAttribute('role','listitem');
+    const label=document.createElement('span');
+    label.className='combat-custom-panel-label';
+    label.textContent=def.label;
+    row.appendChild(label);
+    if(pid==='topbar'){
+      const note=document.createElement('span');
+      note.className='settings-hint';
+      note.textContent='Always visible';
+      row.appendChild(note);
+    }else{
+      const lab=document.createElement('label');
+      lab.className='combat-custom-panel-show';
+      const cb=document.createElement('input');
+      cb.type='checkbox';
+      cb.checked=draft.visible[pid]!==false;
+      cb.dataset.panelId=pid;
+      cb.dataset.change='toggleCombatCustomPanelVisible';
+      lab.appendChild(cb);
+      lab.appendChild(document.createTextNode(' Show'));
+      row.appendChild(lab);
+    }
+    const moves=document.createElement('div');
+    moves.className='combat-custom-panel-moves';
+    const up=document.createElement('button');
+    up.type='button';
+    up.className='menu-btn';
+    up.textContent='↑';
+    up.disabled=idx===0;
+    up.dataset.action='moveCombatCustomPanel:up';
+    up.dataset.combatDraftId=pid;
+    const down=document.createElement('button');
+    down.type='button';
+    down.className='menu-btn';
+    down.textContent='↓';
+    down.disabled=idx===draft.order.length-1;
+    down.dataset.action='moveCombatCustomPanel:down';
+    down.dataset.combatDraftId=pid;
+    moves.appendChild(up);
+    moves.appendChild(down);
+    row.appendChild(moves);
+    list.appendChild(row);
+  });
+}
+function openCombatCustomLayoutModal(){
+  resetCombatCustomDraft();
+  renderCombatCustomPanelEditor();
+  const m=document.getElementById('combat-custom-layout-modal');
+  if(m) m.classList.add('open');
+}
+function closeCombatCustomLayoutModal(){
+  resetCombatCustomDraft();
+  const m=document.getElementById('combat-custom-layout-modal');
+  if(m) m.classList.remove('open');
+}
+function saveCombatCustomLayoutFromModal(){
+  const prev=getAccessibilitySettings();
+  const draft=normalizeCombatCustomLayout(getCombatCustomDraft());
+  const cfg=Object.assign({}, prev, {combatArrangement:'custom', combatCustomLayout:draft});
+  localStorage.setItem(ACCESS_KEY, JSON.stringify(normalizeAccessibilitySettings(cfg)));
+  resetCombatCustomDraft();
+  closeCombatCustomLayoutModal();
+  const arrSel=document.getElementById('setting-combat-arrangement');
+  if(arrSel) arrSel.value='custom';
+  applyAccessibilitySettings(getAccessibilitySettings());
+}
+function resetCombatCustomLayoutDraft(){
+  _combatCustomDraft=normalizeCombatCustomLayout(null);
+  renderCombatCustomPanelEditor();
+}
+function toggleCombatCustomPanelVisible(checked, ev){
+  const pid=ev?.target?.dataset?.panelId;
+  if(!pid||pid==='topbar') return;
+  const draft=getCombatCustomDraft();
+  draft.visible[pid]=!!checked;
+  renderCombatCustomPanelEditor();
+}
+function moveCombatCustomPanel(dir, ev){
+  const pid=ev?.target?.closest?.('[data-combat-draft-id]')?.dataset?.combatDraftId;
+  if(!pid) return;
+  const draft=getCombatCustomDraft();
+  const o=draft.order;
+  const i=o.indexOf(pid);
+  if(i<0) return;
+  const j=(dir==='up')?i-1:i+1;
+  if(j<0||j>=o.length) return;
+  o.splice(i,1);
+  o.splice(j,0,pid);
+  renderCombatCustomPanelEditor();
+}
+globalThis.openCombatCustomLayoutModal=openCombatCustomLayoutModal;
+globalThis.closeCombatCustomLayoutModal=closeCombatCustomLayoutModal;
+globalThis.saveCombatCustomLayoutFromModal=saveCombatCustomLayoutFromModal;
+globalThis.resetCombatCustomLayoutDraft=resetCombatCustomLayoutDraft;
+globalThis.toggleCombatCustomPanelVisible=toggleCombatCustomPanelVisible;
+globalThis.moveCombatCustomPanel=moveCombatCustomPanel;
+function applyCombatArrangement(cfg){
+  const battle=document.getElementById('screen-battle');
+  if(!battle) return;
+  const id=normalizeCombatArrangement(cfg?.combatArrangement);
+  COMBAT_ARRANGEMENTS.forEach(k=>battle.classList.remove('combat-arr--'+k));
+  battle.classList.add('combat-arr--'+id);
+  clearCombatCustomPanelStyles();
+  if(id==='custom') applyCombatCustomPanels(cfg?.combatCustomLayout);
+  syncCombatCustomEditRow(id);
+  const hint=document.getElementById('setting-combat-arrangement-hint');
+  if(hint) hint.textContent=COMBAT_ARRANGEMENT_HINTS[id]||COMBAT_ARRANGEMENT_HINTS.classic;
+  const sel=document.getElementById('setting-combat-arrangement');
+  if(sel) sel.value=id;
+}
 function syncCombatLayoutLabels(cl){
   const c=normalizeCombatLayout(cl);
   const pairs=[
@@ -15326,6 +15544,7 @@ function applyAccessibilitySettings(s){
   ensureUIState().battleLayout=(mode==='mobile')?'mobile':'desktop';
   applyUIStateToDOM();
   applyCombatLayoutSettings(cfg);
+  applyCombatArrangement(cfg);
   syncUiModeControls(cfg);
   syncCombatLayoutLabels(cfg.combatLayout);
 }
@@ -15342,7 +15561,11 @@ function openSettingsModal(){
   if(rm) rm.checked=!!cfg.reduceMotion;
   if(hc) hc.checked=!!cfg.highContrast;
   if(uiAuto) uiAuto.checked=cfg.uiAutoDetect!==false;
+  const arrSel=document.getElementById('setting-combat-arrangement');
+  if(arrSel) arrSel.value=normalizeCombatArrangement(cfg.combatArrangement);
+  syncCombatCustomEditRow(cfg.combatArrangement);
   syncUiModeControls(cfg);
+  applyCombatArrangement(cfg);
   const cl=normalizeCombatLayout(cfg.combatLayout);
   const setRange=(id,val)=>{const el=document.getElementById(id);if(el)el.value=String(val);};
   setRange('setting-combat-avatar-scale',cl.avatarScale);
@@ -15404,6 +15627,8 @@ function updateAccessibilitySettings(){
       actionTrayScale:document.getElementById('setting-combat-action-scale')?.value,
       battleLogScale:document.getElementById('setting-combat-log-scale')?.value,
     }),
+    combatArrangement:normalizeCombatArrangement(document.getElementById('setting-combat-arrangement')?.value),
+    combatCustomLayout:prev.combatCustomLayout,
     audio:Object.assign({}, prev.audio, {
       master:Number(document.getElementById('setting-master-volume')?.value??prev.audio?.master??100),
       music:Number(document.getElementById('setting-music-volume')?.value??prev.audio?.music??THEME_BGM_DEFAULT_VOLUME_PCT),

@@ -430,7 +430,7 @@
 <div class="battle-arena-floor" aria-hidden="true"></div>
 </div>
 <div class="battle-layout">
-<div class="battle-top tactical-topbar">
+<div class="battle-top tactical-topbar" data-combat-panel="topbar">
 <div class="topbar-left">
 <div class="level-badge" id="level-label">STAGE 1</div>
 <span class="bird-lv" id="bird-lv-label">Lv.1</span>
@@ -441,6 +441,7 @@
 <div class="topbar-battle-btns">
 <button type="button" class="nest-btn" data-action="openNest">🪺 Nest</button>
 <button type="button" class="menu-btn" data-action="openSettingsModal">⚙ Settings</button>
+<button type="button" id="combat-custom-layout-fab" class="menu-btn" data-action="openCombatCustomLayoutModal" style="display:none" title="Customize combat panel layout">⊞ Panels</button>
 <button type="button" class="menu-btn battle-abandon-btn" data-action="openAbandonModal">⟨ Abandon</button>
 </div>
 </div>
@@ -451,7 +452,7 @@
 </div>
 </div>
 
-<div class="stage-progress-wrap" id="stage-progress-wrap" style="display:none">
+<div class="stage-progress-wrap" id="stage-progress-wrap" data-combat-panel="stageProgress" style="display:none">
 <span style="font-size:.72rem;color:var(--text-dim);white-space:nowrap">Stage</span>
 <div class="stage-progress-bg">
 <div class="stage-progress-fill" id="stage-progress-fill" style="width:0%"></div>
@@ -459,7 +460,7 @@
 </div>
 <span id="stage-progress-txt" style="font-size:.72rem;color:var(--text-dim);white-space:nowrap">1/20</span>
 </div>
-<div class="encounter-preview-wrap" id="encounter-preview-wrap" style="display:none" aria-label="Encounter preview">
+<div class="encounter-preview-wrap" id="encounter-preview-wrap" data-combat-panel="encounterPreview" style="display:none" aria-label="Encounter preview">
 <div class="encounter-preview-header">
 <span class="encounter-preview-title">Level</span>
 <button class="encounter-preview-toggle" id="encounter-preview-toggle" type="button" aria-expanded="true" aria-controls="encounter-preview-body" title="Toggle encounter preview"></button>
@@ -468,14 +469,14 @@
 <div class="encounter-preview-inner"></div>
 </div>
 </div>
-<div class="exp-row tactical-exp-row">
+<div class="exp-row tactical-exp-row" data-combat-panel="exp">
 <span class="exp-label">EXP</span>
 <div class="exp-bg"><div class="exp-fill" id="exp-bar" style="width:0%"></div></div>
 <span class="exp-txt" id="exp-txt">0 / 100</span>
 </div>
 
-<div class="combatants tactical-battlefield">
-<div class="combatant-panel player" id="player-panel">
+<div class="combatants tactical-battlefield" data-combat-panel="combatants">
+<div class="combatant-panel player" id="player-panel" data-combat-panel="player">
 <div class="shield-overlay" id="player-shield-overlay"></div>
 <div class="combatant-name" id="player-name">—</div>
 <div class="combatant-meta"><span id="player-class-label">—</span></div>
@@ -495,7 +496,7 @@
 </details>
 </div>
 
-<div class="combatant-panel enemy" id="enemy-panel">
+<div class="combatant-panel enemy" id="enemy-panel" data-combat-panel="enemy">
 <div class="shield-overlay" id="enemy-shield-overlay"></div>
 <div class="combatant-name" id="enemy-name">—</div>
 <div class="combatant-meta"><span id="enemy-class-label">—</span></div>
@@ -519,14 +520,14 @@
 </div>
 </div>
 
-<div class="action-panel tactical-action-tray">
+<div class="action-panel tactical-action-tray" data-combat-panel="actions">
 <h3>⚔ Action Tray</h3>
 <div class="energy-orbs" id="energy-orbs"></div><div class="energy-text" id="energy-text"></div>
 <div class="combat-items-row" id="combat-items-row" aria-label="Battle items"></div>
 <div class="actions-grid" id="actions-grid"></div>
 </div>
 
-<div class="battle-support-area">
+<div class="battle-support-area" data-combat-panel="log">
 <div class="battle-log-section" id="battle-log-section">
 <button type="button" class="battle-log-toggle" id="battle-log-toggle" aria-expanded="true" aria-controls="battle-log">Battle log</button>
 <div class="battle-log" id="battle-log" role="log" aria-live="polite"></div>
@@ -744,17 +745,31 @@
 <p class="settings-hint" id="setting-ui-mode-hint">Auto-detect picks mobile layout on phones and compact tablets.</p>
 <div class="settings-subsection">
 <p class="settings-subsection-title">Combat layout</p>
+<label class="settings-row">Combat screen arrangement
+<select id="setting-combat-arrangement" data-change="updateAccessibilitySettings">
+<option value="classic">Original</option>
+<option value="compact">Compact</option>
+<option value="actionsFirst">Actions First</option>
+<option value="logFocus">Log Focus</option>
+<option value="custom">Custom</option>
+</select>
+</label>
+<p class="settings-hint" id="setting-combat-arrangement-hint">Original: fighters side by side, then actions and log.</p>
+<div id="setting-combat-custom-edit-row" class="settings-custom-layout-row" style="display:none">
+<button type="button" class="menu-btn" data-action="openCombatCustomLayoutModal">Customize panels…</button>
+<p class="settings-hint">Reorder panels and hide sections you do not need. Top bar stays visible for menu access.</p>
+</div>
 <label class="settings-row">Avatar size <span id="setting-combat-avatar-val">100%</span>
-<input id="setting-combat-avatar-scale" type="range" min="70" max="130" value="100" data-change="updateAccessibilitySettings"/>
+<input id="setting-combat-avatar-scale" type="range" min="70" max="130" value="100" data-change="updateAccessibilitySettings" data-input="updateAccessibilitySettings"/>
 </label>
 <label class="settings-row">Combatant panels <span id="setting-combat-combatants-val">100%</span>
-<input id="setting-combat-combatants-scale" type="range" min="70" max="130" value="100" data-change="updateAccessibilitySettings"/>
+<input id="setting-combat-combatants-scale" type="range" min="70" max="130" value="100" data-change="updateAccessibilitySettings" data-input="updateAccessibilitySettings"/>
 </label>
 <label class="settings-row">Action tray <span id="setting-combat-action-val">100%</span>
-<input id="setting-combat-action-scale" type="range" min="70" max="130" value="100" data-change="updateAccessibilitySettings"/>
+<input id="setting-combat-action-scale" type="range" min="70" max="130" value="100" data-change="updateAccessibilitySettings" data-input="updateAccessibilitySettings"/>
 </label>
 <label class="settings-row">Battle log <span id="setting-combat-log-val">100%</span>
-<input id="setting-combat-log-scale" type="range" min="70" max="150" value="100" data-change="updateAccessibilitySettings"/>
+<input id="setting-combat-log-scale" type="range" min="70" max="150" value="100" data-change="updateAccessibilitySettings" data-input="updateAccessibilitySettings"/>
 </label>
 <button type="button" class="menu-btn settings-reset-btn" data-action="resetCombatLayoutSettings">Reset combat layout</button>
 </div>
@@ -818,6 +833,19 @@
 <div style="display:flex;flex-wrap:wrap;gap:10px;justify-content:space-between;align-items:center;margin-top:16px;">
 <button type="button" class="menu-btn" data-action="returnToWarRoomFromSettings">🏕 Return to war room</button>
 <button class="abandon-cancel-btn" data-action="closeSettingsModal">Close</button>
+</div>
+</div>
+</div>
+<!-- COMBAT CUSTOM LAYOUT MODAL -->
+<div class="abandon-modal" id="combat-custom-layout-modal" data-action="closeCombatCustomLayoutModal" data-backdrop="1">
+<div class="abandon-inner settings-modal-inner" style="max-width:480px;text-align:left;">
+<h3>Customize combat panels</h3>
+<p class="settings-hint">Move sections up or down. Uncheck Show to hide a panel. The top bar always stays visible for menu access.</p>
+<div id="combat-custom-panel-list" class="combat-custom-panel-list" role="list"></div>
+<div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:14px;justify-content:flex-end;">
+<button type="button" class="menu-btn" data-action="resetCombatCustomLayoutDraft">Reset to default</button>
+<button type="button" class="abandon-cancel-btn" data-action="closeCombatCustomLayoutModal">Cancel</button>
+<button type="button" class="abandon-confirm-btn" data-action="saveCombatCustomLayoutFromModal">Save</button>
 </div>
 </div>
 </div>
