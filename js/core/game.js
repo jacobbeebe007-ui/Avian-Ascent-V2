@@ -8454,7 +8454,7 @@ function clamp01(v){return Math.max(0,Math.min(1,v));}
 
 /** Locked combat tuning: offensive stats ×0.75; guard in denominators ×0.80. */
 const COMBAT_OFFENSIVE_STAT_MULT = 0.75;
-const POST_BATTLE_HEAL_PCT_STORY = 0.10;
+const POST_BATTLE_HEAL_PCT_STORY = 0.20;
 const POST_BATTLE_HEAL_PCT_ENDLESS = 0.33;
 
 function getPostBattleHealPct(){
@@ -14026,7 +14026,7 @@ function buildRefGuide() {
 
   const mechanics=`<div class="ref-skills-grid">
     ${card('Energy & Cooldowns','Main attacks are free unless spells. Abilities spend energy and many skills have cooldowns.',true,'core')}
-    ${card('Post-Battle Recovery','Story: heal 10% max HP after each bird you defeat in a stage (including multi-bird nodes). Endless: heal 33% max HP after each victory. Halved with Hunter\'s Cruelty mutation.',true,'heal')}
+    ${card('Post-Battle Recovery','Story: heal 20% max HP after each bird you defeat in a stage (including multi-bird nodes). Endless: heal 33% max HP after each victory. Halved with Hunter\'s Cruelty mutation.',true,'heal')}
     ${card('Role Taxonomy','Birds are grouped by roles: Striker, Bruiser, Tank, Trickster, Predator, Singer.',true,'roles')}
     ${card('Mutation Slots','Equip mutations in wing, feet, head, beak, chest, eyes, tail, plumage, and syrinx slots (limits per slot). Manage loadout in the Nest.',true,'mutations')}
     ${card('Nest Inventory','Found mutations go to nest inventory. Equip, compare, and sell extras between battles.',true,'nest')}
