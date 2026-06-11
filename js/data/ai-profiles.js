@@ -1,9 +1,10 @@
 /**
  * Data-driven enemy AI personality, archetype, and difficulty modifiers.
  */
-(function initAIProfiles(global) {
+(function initAIProfiles() {
   'use strict';
 
+  var global = globalThis;
   var Avian = global.Avian || (global.Avian = {});
   Avian.data = Avian.data || {};
   Avian.data.aiProfiles = Object.freeze({

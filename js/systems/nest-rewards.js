@@ -1,9 +1,10 @@
 /**
  * Shakeable nest reward drops after story stage / endless victories.
  */
-(function initNestRewards(global) {
+(function initNestRewards() {
   'use strict';
 
+  var global = globalThis;
   var Avian = global.Avian || (global.Avian = {});
   Avian.systems = Avian.systems || {};
   var ns = Avian.systems.nestRewards = Avian.systems.nestRewards || {};

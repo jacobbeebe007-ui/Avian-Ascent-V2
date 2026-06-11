@@ -1,9 +1,10 @@
 /**
  * Enhanced enemy AI planner with EV scoring, difficulty hooks, and initiative awareness.
  */
-(function initEnemyAI(global) {
+(function initEnemyAI() {
   'use strict';
 
+  var global = globalThis;
   var Avian = global.Avian || (global.Avian = {});
   Avian.systems = Avian.systems || {};
   var ns = Avian.systems.enemyAi = Avian.systems.enemyAi || {};

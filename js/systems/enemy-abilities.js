@@ -1,9 +1,10 @@
 /**
  * Enemy skill evolution: base starters only unless player has mirrored mutations.
  */
-(function initEnemyAbilities(global) {
+(function initEnemyAbilities() {
   'use strict';
 
+  var global = globalThis;
   var Avian = global.Avian || (global.Avian = {});
   Avian.systems = Avian.systems || {};
   var ns = Avian.systems.enemyAbilities = Avian.systems.enemyAbilities || {};
