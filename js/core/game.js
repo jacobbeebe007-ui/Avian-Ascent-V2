@@ -4222,46 +4222,27 @@ function getStoryEnemyLevelBand(stage){
   return [7,10];
 }
 function getStoryEvolvedSlotCount(level){
-  if(level<=2) return 0;
-  if(level<=5) return 1;
-  if(level<=8) return 2;
-  if(level<=11) return 3;
-  return 4;
+  const budget=typeof getEnemyMutatedAbilityBudget==='function'?getEnemyMutatedAbilityBudget(level):{slots:0};
+  return budget.slots||0;
 }
-/** Tier band (max of template tier ranges) → evolved slot count + tier-up passes for OW/endless bird enemies. */
+/** Tier band → enemy level hint for skill mirroring budget. */
 function getOwEnemySkillDepthFromTierBand(band){
   const b=Math.min(4,Math.max(1,Math.floor(Number(band))||1));
   const levelHint=[3,5,7,10][b-1]||4;
-  const evolvedSlots=Math.min(getStoryEvolvedSlotCount(levelHint),4);
-  const thresholds=[3,6,9,12];
-  const upgrades=thresholds.filter(t=>levelHint>=t).length;
-  return{evolvedSlots,upgrades};
+  const budget=typeof getEnemyMutatedAbilityBudget==='function'?getEnemyMutatedAbilityBudget(levelHint):{slots:0,tiers:[]};
+  return{evolvedSlots:budget.slots||0,upgrades:0,levelHint};
 }
 /**
- * Fill enemy.abilities from family skill slots + ABILITY_TEMPLATES (same master list as playable birds).
- * Mutates enemy.familyEvolutionState.skillSlots; returns true when a catalog exists for birdKey.
+ * Fill enemy.abilities from base starters + player-mirrored mutations (when player has evolved slots).
  */
 function materializeEnemyFamilySkillSlots(enemy, birdKey, enemyClass, evolvedSlotCount, upgradeCount){
-  if(!enemy||!birdKey||!usesFamilySkillEvolution({birdKey})) return false;
-  const baseSlots=getBaseSkillSlotsForBird(birdKey);
-  if(!baseSlots.length) return false;
-  if(!enemy.familyEvolutionState||typeof enemy.familyEvolutionState!=='object') enemy.familyEvolutionState={};
-  const slots=baseSlots.map(b=>normalizeSkillSlotState(JSON.parse(JSON.stringify(b)),b,birdKey));
-  enemy.familyEvolutionState.skillSlots=slots;
-  const cls=String(enemyClass||enemy.enemyClass||BIRDS?.[birdKey]?.class||'striker').toLowerCase();
-  const nEv=Math.min(Math.max(0,Math.floor(Number(evolvedSlotCount)||0)),slots.length);
-  const ups=Math.min(3,Math.max(0,Math.floor(Number(upgradeCount)||0)));
-  for(let i=0;i<nEv;i++){
-    const slot=slots[i];
-    if(!slot) continue;
-    if(!slot.pathId){
-      const pid=chooseStoryPathForSlot(slot,birdKey,cls);
-      if(pid) applySkillPathSelection(slot,pid,enemy);
-    }
-    for(let n=0;n<ups;n++) autoUpgradeSkillSlotTier(slot,enemy);
+  void upgradeCount;
+  const level=Number.isFinite(enemy?.storyLevel)?enemy.storyLevel
+    :(Number.isFinite(enemy?.effectiveLevel)?enemy.effectiveLevel:Math.max(1,Math.floor(Number(evolvedSlotCount)||1)*3));
+  if(typeof materializeEnemySkillsFromPlayerMirror==='function'){
+    return materializeEnemySkillsFromPlayerMirror(enemy,birdKey,level,G.player,enemyClass||enemy?.enemyClass);
   }
-  syncPlayerAbilitiesFromSkillSlots(enemy);
-  return true;
+  return false;
 }
 function rollInt(min,max){ return Math.floor(Math.random()*(max-min+1))+min; }
 function pickRandom(arr){ return arr[Math.floor(Math.random()*arr.length)]; }
@@ -4306,23 +4287,10 @@ function buildStoryEnemyFromBirdKey(birdKey, stage, opts={}){
   const featherTotal=3*level;
   for(let i=0;i<featherTotal;i++) applyEnemyFeatherFromPlayerMirror(stats,cls);
   const enemyStub={birdKey, abilities:[], familyEvolutionState:{}};
-  const baseSlots=getBaseSkillSlotsForBird(birdKey);
-  const slots=baseSlots.map(b=>normalizeSkillSlotState(JSON.parse(JSON.stringify(b)),b,birdKey));
-  enemyStub.familyEvolutionState.skillSlots=slots;
-  const evolvedSlots=Math.min(getStoryEvolvedSlotCount(level), slots.length);
-  const thresholds=[3,6,9,12];
-  const upgrades=thresholds.filter(t=>level>=t).length;
-  for(let i=0;i<evolvedSlots;i++){
-    const slot=slots[i];
-    if(!slot) continue;
-    if(!slot.pathId){
-      const pid=chooseStoryPathForSlot(slot,birdKey,cls);
-      if(pid) applySkillPathSelection(slot,pid,enemyStub);
-    }
-    const ups=Math.min(3,upgrades);
-    for(let n=0;n<ups;n++) autoUpgradeSkillSlotTier(slot,enemyStub);
+  if(typeof materializeEnemySkillsFromPlayerMirror==='function'){
+    materializeEnemySkillsFromPlayerMirror(enemyStub,birdKey,level,G.player,cls);
   }
-  syncPlayerAbilitiesFromSkillSlots(enemyStub);
+  const evolvedSlots=getStoryEvolvedSlotCount(level);
   const diffMult = DIFFICULTIES[G.difficulty||'juvenile']?.mult || 1;
   stats.maxHp=Math.max(1,Math.floor(stats.maxHp*diffMult));
   stats.hp=stats.maxHp;
@@ -4336,6 +4304,8 @@ function buildStoryEnemyFromBirdKey(birdKey, stage, opts={}){
   }
   const size=bd.size||'medium';
   const enProf=getEnemyEnergyProfile();
+  const aiStyle=(['predator','striker'].includes(cls)?'aggressive':(cls==='tank'?'defensive':(cls==='trickster'?'trickster':'cautious')));
+  const aiPersonality=typeof inferAIPersonalityFromClass==='function'?inferAIPersonalityFromClass(cls):inferAIPersonalityFromStyle(aiStyle,bd.name);
   return {
     id:`story_${birdKey}_${stage}_${Math.floor(Math.random()*1e6)}`,
     name:bd.name,
@@ -4343,8 +4313,8 @@ function buildStoryEnemyFromBirdKey(birdKey, stage, opts={}){
     portraitKey:bd.portraitKey||birdKey,
     size,
     enemyClass:cls,
-    aiStyle:(['predator','striker'].includes(cls)?'aggressive':(cls==='tank'?'defensive':(cls==='trickster'?'trickster':'cautious'))),
-    aiPersonality:cls,
+    aiStyle,
+    aiPersonality,
     abilities:JSON.parse(JSON.stringify(enemyStub.abilities||[])),
     stats:{...stats,en:enProf.maxEN},
     hp:stats.hp,maxHp:stats.maxHp,atk:stats.atk,def:stats.def,spd:stats.spd,acc:stats.acc,dodge:stats.dodge,mdef:stats.mdef,matk:stats.matk,
@@ -4463,6 +4433,7 @@ function syncStoryEncounterBirdQueue(encounterStage){
     G._owEncounterMaterializedSig=null;
     G._owEnemyIndex=0;
     G._owEnemyCount=1;
+    G._defeatedEncounterBirds=[];
     if(st===STORY_DUKE_STAGE){
       G._owStageEnemies=['dukeBlakiston'];
     }else if(st===STORY_MILESTONE_BOSS_STAGE){
@@ -4488,6 +4459,7 @@ function syncStoryEncounterBirdQueue(encounterStage){
   G._owEnemyIndex=0;
   G._owEnemyCount=Math.max(1,G._owStageEnemies?.length||1);
   G._owEncounterRollStage=st;
+  G._defeatedEncounterBirds=[];
   resetStageBattleStats();
   commitStoryEncounterMeta(st, G.player?.birdKey, G._owStageEnemies);
 }
@@ -5758,7 +5730,13 @@ function buildEdFromBirdEnemyTemplate(src, opts={}){
   const tierArr=Array.isArray(src.tier)?src.tier:[1];
   const band=Math.max(1,...tierArr.map(t=>Number(t)||1));
   const depth=getOwEnemySkillDepthFromTierBand(band);
-  if(!materializeEnemyFamilySkillSlots(ed,ed.birdKey,ed.enemyClass,depth.evolvedSlots,depth.upgrades)){
+  const skillLevel=depth.levelHint||Math.max(1,band*3);
+  ed.storyLevel=skillLevel;
+  if(typeof materializeEnemySkillsFromPlayerMirror==='function'){
+    if(!materializeEnemySkillsFromPlayerMirror(ed,ed.birdKey,skillLevel,G.player,ed.enemyClass)){
+      ed.abilities=[...(src.abilities||[])];
+    }
+  }else if(!materializeEnemyFamilySkillSlots(ed,ed.birdKey,ed.enemyClass,depth.evolvedSlots,depth.upgrades)){
     ed.abilities=[...(src.abilities||[])];
   }
   return ed;
@@ -11032,23 +11010,10 @@ function getEnemyActionEnergyCost(action){
   return 1+frz;
 }
 
-const AI_PERSONALITY_PROFILES = {
-  aggressive:{damageBias:1.35,heavyBias:1.25,controlBias:0.85,buffBias:0.60,guardBias:0.55,healBias:0.50,finisherBias:1.20,repeatBias:0.85},
-  tactical:{damageBias:1.10,heavyBias:1.00,controlBias:1.10,buffBias:1.00,guardBias:0.90,healBias:0.80,finisherBias:1.05,repeatBias:0.80},
-  opportunistic:{damageBias:1.15,heavyBias:1.10,controlBias:0.95,buffBias:0.70,guardBias:0.70,healBias:0.65,finisherBias:1.50,repeatBias:0.80},
-  control:{damageBias:0.95,heavyBias:0.85,controlBias:1.40,buffBias:1.00,guardBias:0.85,healBias:0.75,finisherBias:1.00,repeatBias:0.75},
-  tank:{damageBias:0.95,heavyBias:0.90,controlBias:1.00,buffBias:0.95,guardBias:1.35,healBias:1.15,finisherBias:0.95,repeatBias:0.80},
-  duelist:{damageBias:1.25,heavyBias:1.20,controlBias:0.95,buffBias:0.70,guardBias:0.60,healBias:0.50,finisherBias:1.30,repeatBias:0.90},
-  executioner:{damageBias:1.25,heavyBias:1.30,controlBias:1.05,buffBias:0.55,guardBias:0.50,healBias:0.45,finisherBias:1.65,repeatBias:0.95},
-  seer:{damageBias:0.95,heavyBias:0.80,controlBias:1.45,buffBias:1.25,guardBias:0.85,healBias:0.70,finisherBias:0.95,repeatBias:0.70},
-  reaper:{damageBias:1.05,heavyBias:0.95,controlBias:1.20,buffBias:1.10,guardBias:0.75,healBias:1.25,finisherBias:1.15,repeatBias:0.80},
-  scavenger:{damageBias:1.10,heavyBias:1.10,controlBias:1.00,buffBias:0.75,guardBias:0.65,healBias:0.60,finisherBias:1.45,repeatBias:0.80},
-  predator:{damageBias:1.20,heavyBias:1.15,controlBias:1.20,buffBias:0.90,guardBias:0.75,healBias:0.65,finisherBias:1.40,repeatBias:0.85},
-};
-
 function getAIPersonalityProfile(enemy){
+  const profiles=globalThis.AI_PERSONALITY_PROFILES||{};
   const id=(enemy?.aiPersonality||'tactical').toLowerCase();
-  return AI_PERSONALITY_PROFILES[id]||AI_PERSONALITY_PROFILES.tactical;
+  return profiles[id]||profiles.tactical||{damageBias:1.1,heavyBias:1,controlBias:1.1,buffBias:1,guardBias:0.9,healBias:0.8,finisherBias:1.05,repeatBias:0.8};
 }
 function getEnemyAIMemory(enemy){
   if(!enemy.aiMemory){
@@ -11230,14 +11195,9 @@ function getEnemyArchetype(e){
   if(['singer'].includes(cls)) return 'singer';
   return 'striker';
 }
-const ARCHETYPE_INTENT_WEIGHTS = Object.freeze({
-  striker:{attack:60,pressure:25,buff:10,control:5,finish:0},
-  predator:{attack:35,pressure:30,control:15,buff:20,finish:0},
-  bruiser:{attack:40,buff:30,pressure:20,control:10,finish:0},
-  tank:{buff:40,attack:30,pressure:20,control:10,finish:0},
-  trickster:{pressure:40,control:30,attack:20,buff:10,finish:0},
-  singer:{control:40,attack:30,buff:20,pressure:10,finish:0},
-});
+function getArchetypeIntentWeights(){
+  return globalThis.ARCHETYPE_INTENT_WEIGHTS||{striker:{attack:60,pressure:25,buff:10,control:5,finish:0}};
+}
 function getArchetypePriorityOrder(archetype){
   if(archetype==='predator') return ['control','heavy','damage','buff','guard','heal'];
   if(archetype==='bruiser') return ['buff','heavy','damage','guard','control','heal'];
@@ -11265,7 +11225,8 @@ function selectEnemyIntent(e,p,pool,totalEnergy,mode){
   }
   if(canFinish) return {intent:'finish', canFinish:true, archetype};
 
-  const base=ARCHETYPE_INTENT_WEIGHTS[archetype]||ARCHETYPE_INTENT_WEIGHTS.striker;
+  const intentWeights=getArchetypeIntentWeights();
+  const base=intentWeights[archetype]||intentWeights.striker;
   const weights={...base};
   const pHp=(p.stats.hp||1)/Math.max(1,p.stats.maxHp||1);
   const eHp=(e.stats.hp||1)/Math.max(1,e.stats.maxHp||1);
@@ -11332,114 +11293,7 @@ function getEnemyActionComboBonus(enemy,action,cat){
   if(p==='predator' && ['eShield','eRage','eWeaken','eFear'].includes(prev) && (cat==='heavy'||cat==='damage')) return 1.35;
   return 1;
 }
-function planEnemyTurn(e,p){
-  const mode=getEnemyMode(e,p);
-  const pool=buildEnemyActionPool(e,mode);
-  const actions=[];
-  const mem=getEnemyAIMemory(e);
-  const profile=getAIPersonalityProfile(e);
-  let energy=Math.max(0, Number.isFinite(e.energy)?e.energy:(e.energyMax||getEnergyProfile(normalizeBirdSizeForEnergy(e?.size)).maxEN));
-  const intentPick=selectEnemyIntent(e,p,pool,energy,mode);
-  const intent=intentPick.intent||'attack';
-  const archetype=intentPick.archetype||getEnemyArchetype(e);
-  const intentPool=filterEnemyActionsByIntent(intent,pool);
-  const energySpendCap=getEnemyEnergySpendCap(e,p,pool,energy,intent,!!intentPick.canFinish);
-  let spentEnergy=0;
-  let actionsTaken=0;
-  const earlyTurnLimit=((G.stage||1)<=5)?2:MAX_ENEMY_ACTIONS_PER_TURN;
-  const maxActions=Math.min(earlyTurnLimit,6);
-  let turnHadDamage=false;
-
-  if(intent==='pressure'){
-    const controlPick=(intentPool.length?intentPool:pool).find(a=>classifyEnemyActionCategory(a)==='control' && getEnemyActionEnergyCost(a)<=energy && (spentEnergy+getEnemyActionEnergyCost(a)<=energySpendCap));
-    if(controlPick && actionsTaken<maxActions){
-      const c=getEnemyActionEnergyCost(controlPick);
-      actions.push({...controlPick,energyCost:c,category:classifyEnemyActionCategory(controlPick)});
-      energy-=c; spentEnergy+=c; actionsTaken++;
-      mem.lastAbilityId=controlPick.abilityId||controlPick.type;
-      mem.lastActionCategory='control';
-      mem.openingSetupUsed=true;
-      mem.utilityStreak=(mem.utilityStreak||0)+1;
-    }
-    const basicPick=pool.find(a=>['strike','heavy'].includes(a.type) && getEnemyActionEnergyCost(a)<=energy && (spentEnergy+getEnemyActionEnergyCost(a)<=energySpendCap));
-    if(basicPick && actionsTaken<maxActions){
-      const c=getEnemyActionEnergyCost(basicPick);
-      const cat=classifyEnemyActionCategory(basicPick);
-      actions.push({...basicPick,energyCost:c,category:cat});
-      energy-=c; spentEnergy+=c; actionsTaken++;
-      turnHadDamage = projectedEnemyActionDamage(basicPick,e)>0;
-      mem.lastAbilityId=basicPick.abilityId||basicPick.type;
-      mem.lastActionCategory=cat;
-      mem.utilityStreak=0;
-    }
-  }
-
-  while(energy>0 && actionsTaken<maxActions && spentEnergy<energySpendCap){
-    const source=(intentPool.length?intentPool:pool);
-    const affordable=source.filter(a=>getEnemyActionEnergyCost(a)<=energy);
-    if(!affordable.length) break;
-    let best=null; let bestScore=-1;
-    for(const cand of affordable){
-      const cat=classifyEnemyActionCategory(cand);
-      let w=10;
-      if(cat==='damage') w*=profile.damageBias;
-      if(cat==='heavy') w*=profile.heavyBias;
-      if(cat==='control') w*=profile.controlBias;
-      if(cat==='buff') w*=profile.buffBias;
-      if(cat==='guard') w*=profile.guardBias;
-      if(cat==='heal') w*=profile.healBias;
-      w*=getArchetypeCategoryBonus(archetype,cat);
-      if(intent==='attack' && (cat==='damage'||cat==='heavy')) w*=1.35;
-      if(intent==='control' && cat==='control') w*=1.40;
-      if(intent==='buff' && (cat==='buff'||cat==='guard'||cat==='heal')) w*=1.45;
-      if(intent==='finish' && (cat==='damage'||cat==='heavy')) w*=1.55;
-      const pHp=(p.stats.hp||1)/Math.max(1,p.stats.maxHp||1);
-      const eHp=(e.stats.hp||1)/Math.max(1,e.stats.maxHp||1);
-      if(pHp<=0.5 && (cat==='heavy'||cat==='damage')) w*=profile.finisherBias;
-      if(mem.lastAbilityId && (cand.abilityId||cand.type)===mem.lastAbilityId) w*=profile.repeatBias;
-      if(!mem.lastTurnHadDamage && (cat==='damage'||cat==='heavy')) w*=1.45;
-      if(mem.utilityStreak>=1 && (cat==='damage'||cat==='heavy')) w*=1.25;
-      const opening=getEnemyOpeningBias(e,G.enemyTurnCount||1);
-      if(opening[cat]) w*=opening[cat];
-      if(['aggressive','duelist','executioner'].includes((e.aiPersonality||'')) && pHp<0.5 && (cat==='guard'||cat==='heal') && eHp>0.25) w*=0.7;
-      if(['control','seer'].includes((e.aiPersonality||''))){
-        const hasDebuffs=!!(getWeakenStacks(G.playerStatus)||G.playerStatus.feared||G.playerStatus.confused||G.playerStatus.paralyzed||G.playerStatus.poison||G.playerStatus.bleed||G.playerStatus.accDebuff);
-        if(!hasDebuffs && cat==='control' && !mem.openingSetupUsed) w*=1.3;
-        if(mem.openingSetupUsed && cat==='control') w*=0.75;
-        if(hasDebuffs && (cat==='damage'||cat==='heavy')) w*=1.15;
-      }
-      if((e.aiPersonality||'')==='tank' && eHp<0.5 && (cat==='guard'||cat==='heal')) w*=1.2;
-      if((e.aiPersonality||'')==='reaper' && eHp<0.7 && cat==='heal') w*=1.3;
-      if((e.aiPersonality||'')==='reaper' && (G.playerStatus.poison?.stacks||0)>0 && (cat==='damage'||cat==='heavy')) w*=1.2;
-      if(['scavenger','opportunistic'].includes((e.aiPersonality||'')) && pHp<0.5 && (cat==='heavy'||cat==='damage')) w*=1.25;
-      if((e.aiPersonality||'')==='predator' && mem.utilityStreak>=1 && (cat==='damage'||cat==='heavy')) w*=1.4;
-      if(getEnemyActionComboBonus(e,cand,cat)>1) w*=getEnemyActionComboBonus(e,cand,cat);
-      const cost=getEnemyActionEnergyCost(cand);
-      if(cost===energy) w*=1.1;
-      if(w>bestScore){bestScore=w;best={...cand,energyCost:cost,category:cat};}
-    }
-    if(!best) break;
-    if((spentEnergy + best.energyCost) > energySpendCap) break;
-    actions.push(best);
-    energy-=best.energyCost;
-    spentEnergy+=best.energyCost;
-    actionsTaken++;
-    const didDmg=projectedEnemyActionDamage(best,e)>0;
-    turnHadDamage = turnHadDamage || didDmg;
-    mem.lastAbilityId=best.abilityId||best.type;
-    mem.lastActionCategory=best.category;
-    if((G.enemyTurnCount||1)<=1 && (best.category==='control'||best.category==='buff'||best.category==='guard')) mem.openingSetupUsed=true;
-    mem.utilityStreak=(best.category==='guard'||best.category==='heal'||best.category==='buff'||best.category==='control')?(mem.utilityStreak+1):0;
-    if(globalThis.__AI_DEBUG){
-      console.debug('[AI]', e.name, 'arch=', archetype, 'intent=', intent, 'persona=', e.aiPersonality, 'pick=', mem.lastAbilityId, 'cat=', best.category, 'EN->', energy, 'cap=', energySpendCap);
-    }
-  }
-  if(!turnHadDamage){
-    const fallback=pool.find(a=>['strike','heavy'].includes(a.type)&&getEnemyActionEnergyCost(a)<= (e.energyMax||3));
-    if(fallback && actions.length<maxActions) actions.push({...fallback,energyCost:getEnemyActionEnergyCost(fallback),category:classifyEnemyActionCategory(fallback)});
-  }
-  return {mode,intent,archetype,actions,energySpendCap};
-}
+/* planEnemyTurn — implemented in js/systems/enemy-ai.js (enhanced EV planner). */
 
 function enemyHpPct(e){ return (e?.stats?.hp||1)/Math.max(1,(e?.stats?.maxHp||1)); }
 function playerHpPct(){ return (G.player?.stats?.hp||1)/Math.max(1,(G.player?.stats?.maxHp||1)); }
@@ -11690,6 +11544,7 @@ async function enemyTurn() {
     G.playerStatus.counterInstinct--;
     if(G.playerStatus.counterInstinct<=0) delete G.playerStatus.counterInstinct;
   }
+  G.enemyNextAction=planEnemyAction();
   const rawPlan=(G.enemyNextAction&&G.enemyNextAction.actions&&G.enemyNextAction.actions.length)?G.enemyNextAction.actions:planEnemyTurn(e,G.player).actions;
   const plan=rawPlan.slice(0,MAX_ENEMY_ACTIONS_PER_TURN);
   G.enemyLastPlan=plan;
@@ -12035,6 +11890,13 @@ function postCombat() {
 
     applyPostBattleHealIfDue();
 
+    if(!Array.isArray(G._defeatedEncounterBirds)) G._defeatedEncounterBirds=[];
+    G._defeatedEncounterBirds.push({
+      level:getEnemyPreviewLevel(G.enemy),
+      birdKey:G.enemy?.birdKey||G.enemy?.portraitKey||'',
+      isBoss:!!G.enemy?.isBoss,
+    });
+
     if(isEndlessRunActive() && G.enemy?.isBoss){
       if(G.player?.relBattleCarcass){
         G.player.stats.hp=Math.min(G.player.stats.maxHp, G.player.stats.hp+4);
@@ -12280,86 +12142,125 @@ function drainPendingRewardQueue() {
   return grantRewardPool(queue);
 }
 
+function renderNestRewardCollectedTray(){
+  const tray=document.getElementById('nest-reward-tray');
+  if(!tray) return;
+  tray.innerHTML='';
+  const collected=G._nestRewardsCollected||[];
+  collected.forEach((drop)=>{
+    const tierCss=normalizeRewardTier(drop.tier||'white');
+    const chip=document.createElement('div');
+    chip.className='nest-reward-chip tier-'+tierCss;
+    chip.innerHTML=`<span class="nest-reward-chip-icon">${drop.icon||'🎁'}</span><span class="nest-reward-chip-name">${escapeHtmlRoster(drop.name||'Reward')}</span>`;
+    tray.appendChild(chip);
+  });
+}
+
+function revealNextNestDrop(){
+  const drops=G._nestRewardDrops||[];
+  const idx=G._nestRewardDropIndex||0;
+  if(idx>=drops.length){
+    const hint=document.getElementById('nest-shake-hint');
+    if(hint) hint.textContent='All rewards collected!';
+    const nest=document.getElementById('reward-nest');
+    if(nest) nest.classList.remove('nest-shakeable');
+    const confirmBtn=document.getElementById('reward-confirm-btn');
+    if(confirmBtn){
+      confirmBtn.textContent='Continue →';
+      confirmBtn.className='confirm-btn visible';
+    }
+    G._rewardsAlreadyGranted=true;
+    return;
+  }
+  const drop=drops[idx];
+  G._nestRewardDropIndex=idx+1;
+  const fallZone=document.getElementById('nest-falling-rewards');
+  if(fallZone){
+    const tierCss=normalizeRewardTier(drop.tier||'white');
+    const el=document.createElement('div');
+    el.className='nest-falling-reward tier-'+tierCss;
+    el.innerHTML=`<span class="nest-falling-icon">${drop.icon||'🎁'}</span><span class="nest-falling-name">${escapeHtmlRoster(drop.name||'Reward')}</span>`;
+    fallZone.appendChild(el);
+    requestAnimationFrame(()=>el.classList.add('landed'));
+  }
+  if(typeof grantNestDrop==='function') grantNestDrop(drop);
+  if(!G._nestRewardsCollected) G._nestRewardsCollected=[];
+  G._nestRewardsCollected.push(drop);
+  renderNestRewardCollectedTray();
+  const hint=document.getElementById('nest-shake-hint');
+  if(hint){
+    const left=Math.max(0,drops.length-(G._nestRewardDropIndex||0));
+    hint.textContent=left>0?`Tap the nest to shake (${left} left)`:'All rewards collected!';
+  }
+  if((G._nestRewardDropIndex||0)>=drops.length) revealNextNestDrop();
+}
+
+function handleNestShake(){
+  const nest=document.getElementById('reward-nest');
+  if(!nest||!nest.classList.contains('nest-shakeable')) return;
+  nest.classList.remove('nest-shaking');
+  void nest.offsetWidth;
+  nest.classList.add('nest-shaking');
+  setTimeout(()=>{
+    nest.classList.remove('nest-shaking');
+    revealNextNestDrop();
+  },480);
+}
+globalThis.handleNestShake=handleNestShake;
+
 function showRewardScreen(hasLevelUp) {
   G.animLock=false;
   if(typeof lockActionUI==='function') lockActionUI(false);
   showScreen('screen-reward');
-  G._rewardScreenMode='normal';
+  G._rewardScreenMode='nest';
   G._pendingLevelUp=hasLevelUp;
   G._pendingReward=null;
   G._pendingRewardQueue=null;
   G._pendingEndlessMutationPick=null;
   G._rewardsAlreadyGranted=false;
-  const isBoss=G.enemy?.isBoss;
+  G._nestRewardDropIndex=0;
+  G._nestRewardsCollected=[];
+
+  const defeated=typeof getDefeatedBirdsForReward==='function'?getDefeatedBirdsForReward():[];
+  const isBoss=defeated.some(b=>b.isBoss)||!!G.enemy?.isBoss;
+  const drops=typeof buildNestRewardDrops==='function'
+    ? buildNestRewardDrops(defeated,{difficulty:G.difficulty,stage:getEncounterStage(),isBoss})
+    : [];
+
+  G._nestRewardDrops=drops;
+  G._defeatedEncounterBirds=[];
+
   document.getElementById('reward-title').textContent=isBoss?'👑 Boss Defeated!':'✦ Victory! ✦';
-  const pool=buildMutationRewardPool();
-  const endlessPickOne=isEndlessRunActive() && pool.length>1;
-  if(endlessPickOne){
-    document.getElementById('reward-sub').textContent='The enemy falls. Choose 1 mutation to keep:';
-  } else if(pool.length===1){
-    document.getElementById('reward-sub').textContent='The enemy falls. You earned this mutation:';
-  } else if(isBoss){
-    document.getElementById('reward-sub').textContent=`${G.enemy?.bossTitle||'Boss'} falls! You earned these mutations:`;
-  } else {
-    document.getElementById('reward-sub').textContent='The enemy falls. You earned these mutations:';
-  }
-  const grid=document.getElementById('reward-grid'); grid.innerHTML='';
+  const dropCount=drops.length;
+  document.getElementById('reward-sub').textContent=dropCount>1
+    ?`Shake the nest — ${dropCount} rewards await!`
+    :(dropCount===1?'Shake the nest for your reward!':'No nest rewards — continue onward.');
+
+  const fallZone=document.getElementById('nest-falling-rewards');
+  if(fallZone) fallZone.innerHTML='';
+  renderNestRewardCollectedTray();
   renderBattleSummary();
+
+  const nest=document.getElementById('reward-nest');
   const confirmBtn=document.getElementById('reward-confirm-btn');
   confirmBtn.textContent='Continue →';
   confirmBtn.className='confirm-btn';
-  if(!pool.length){
-    grid.innerHTML='<div style="grid-column:1/-1;color:var(--text-dim);text-align:center;padding:12px 0;">No rewards available — continue onward.</div>';
+
+  if(!dropCount){
+    const hint=document.getElementById('nest-shake-hint');
+    if(hint) hint.textContent='No rewards this time.';
+    if(nest) nest.classList.remove('nest-shakeable');
     confirmBtn.className='confirm-btn visible';
     G._rewardsAlreadyGranted=true;
     return;
   }
-  if(endlessPickOne){
-    G._rewardScreenMode='endless-mutation-pick';
-    G._pendingEndlessMutationPick=pool;
-    pool.forEach(rw=>{
-      const tierCss=normalizeRewardTier(rw.tier);
-      const tierMeta=rewardTierMeta(rw.tier);
-      const c=document.createElement('div');
-      c.className=`reward-card tier-${tierCss}`;
-      c.innerHTML=`
-        <div class="reward-tier-label">${tierMeta.label}</div>
-        <span class="reward-icon">${rw.icon}</span>
-        <div class="reward-name">${rw.name}</div>
-        <div class="reward-desc mut-stat-compact-wrap">${getMutationDescHtml(rw.mutationItemId||rw.id,{compact:true})||escapeHtmlRoster(rw.desc||'')}</div>`;
-      c.onclick=()=>{
-        document.querySelectorAll('#reward-grid .reward-card').forEach(x=>x.classList.remove('selected'));
-        c.classList.add('selected');
-        G._pendingReward=rw;
-        confirmBtn.textContent='✓ Claim Mutation';
-        confirmBtn.className='confirm-btn visible';
-      };
-      grid.appendChild(c);
-      const mutId = rw.mutationItemId || rw.id;
-      if(mutId) bindRichTooltip(c, () => buildMutationTooltipHTML(mutId), { category: 'mutations' });
-    });
-    return;
+
+  if(nest){
+    nest.classList.add('nest-shakeable');
+    nest.onclick=handleNestShake;
   }
-  pool.forEach(rw=>{
-    const tierCss=normalizeRewardTier(rw.tier);
-    const tierMeta=rewardTierMeta(rw.tier);
-    const c=document.createElement('div');
-    c.className=`reward-card tier-${tierCss} received`;
-    const mutDescHtml=getMutationDescHtml(rw.mutationItemId||rw.id,{compact:true});
-    c.innerHTML=`
-      <div class="reward-tier-label">${tierMeta.label}</div>
-      <span class="reward-icon">${rw.icon}</span>
-      <div class="reward-name">${rw.name}</div>
-      <div class="reward-desc">${mutDescHtml||escapeHtmlRoster(rw.desc||'')}</div>`;
-    grid.appendChild(c);
-    const mutId = rw.mutationItemId || rw.id;
-    if(mutId) bindRichTooltip(c, () => buildMutationTooltipHTML(mutId), { category: 'mutations' });
-  });
-  const allGranted = grantRewardPool(pool);
-  if (allGranted) {
-    G._rewardsAlreadyGranted = true;
-    confirmBtn.className = 'confirm-btn visible';
-  }
+  const hint=document.getElementById('nest-shake-hint');
+  if(hint) hint.textContent=`Tap the nest to shake (${dropCount} reward${dropCount>1?'s':''})`;
 }
 
 function confirmReward() {
@@ -12381,6 +12282,14 @@ function confirmReward() {
     return;
   }
   if(document.getElementById('gold-replace-ui')) return;
+
+  if(G._rewardScreenMode==='nest' && !G._rewardsAlreadyGranted){
+    const left=Math.max(0,(G._nestRewardDrops||[]).length-(G._nestRewardDropIndex||0));
+    if(left>0){
+      logMsg('Shake the nest to collect all rewards first.','miss');
+      return;
+    }
+  }
 
   if(G._rewardScreenMode==='endless-mutation-pick'){
     if(!G._pendingReward){
@@ -14045,7 +13954,7 @@ function buildRefGuide() {
     ${card('Passive Evolution (Endless)','In Endless mode, passives evolve at milestones with offensive vs utility choices.',true,'endless')}
     ${card('Enemy AI Profiles','Enemy personalities (aggressive, tactical, control, tank, predator, etc.) bias action planning.',true,'ai')}
     ${card('Codex Unlocks','Entries unlock when seen/used during runs. Use search, filters, and Show Locked to browse all.',true,'codex')}
-    ${card('Combat Screen Layout','Settings → Display: pick Original, Compact, Actions First, Log Focus, or Custom. Custom opens a panel editor to reorder sections and hide what you do not need (⊞ Panels in battle). Size sliders still fine-tune avatars, panels, action tray, and log.',true,'combat-ui')}
+    ${card('Combat Screen Layout','Settings → Display: pick Original, Compact, Actions First, Log Focus, or Custom. Custom opens a panel editor to reorder sections and hide what you do not need. Size sliders still fine-tune avatars, panels, action tray, and log.',true,'combat-ui')}
     ${card('DEF & MDEF Penetration','DEF Penetration and generic Penetration bonuses ignore physical guard. MDEF Penetration ignores magical guard. Ability pierce stacks on top of equipped mutations.',true,'penetration')}
   </div>`;
 
@@ -15169,7 +15078,7 @@ const COMBAT_ARRANGEMENT_HINTS={
   compact:'Compact: stacked layout with smaller panels — good for phones or tight screens.',
   actionsFirst:'Actions First: ability tray above fighters so you can act without scrolling.',
   logFocus:'Log Focus: tall battle log beside the fight on wide screens; taller log when narrow.',
-  custom:'Custom: reorder panels and hide sections via Customize panels… or ⊞ Panels during battle.',
+  custom:'Custom: reorder panels and hide sections via Customize panels… in Settings → Display.',
 };
 const COMBAT_PANEL_DEFS=[
   {id:'topbar', label:'Top bar (menu & stage)'},
@@ -15382,9 +15291,7 @@ function syncCombatCustomEditRow(arrId){
   const id=arrId!=null?String(arrId):normalizeCombatArrangement(getAccessibilitySettings().combatArrangement);
   const show=id==='custom';
   const row=document.getElementById('setting-combat-custom-edit-row');
-  const fab=document.getElementById('combat-custom-layout-fab');
   if(row) row.style.display=show?'block':'none';
-  if(fab) fab.style.display=show?'inline-block':'none';
 }
 function renderCombatCustomPanelEditor(){
   const list=document.getElementById('combat-custom-panel-list');

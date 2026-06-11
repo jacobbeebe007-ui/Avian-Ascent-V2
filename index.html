@@ -441,7 +441,6 @@
 <div class="topbar-battle-btns">
 <button type="button" class="nest-btn" data-action="openNest">🪺 Nest</button>
 <button type="button" class="menu-btn" data-action="openSettingsModal">⚙ Settings</button>
-<button type="button" id="combat-custom-layout-fab" class="menu-btn" data-action="openCombatCustomLayoutModal" style="display:none" title="Customize combat panel layout">⊞ Panels</button>
 <button type="button" class="menu-btn battle-abandon-btn" data-action="openAbandonModal">⟨ Abandon</button>
 </div>
 </div>
@@ -573,12 +572,18 @@
 <div class="screen" id="screen-reward">
 <div class="reward-screen-inner">
 <h2 id="reward-title">✦ Victory! ✦</h2>
-<p id="reward-sub" style="color:var(--text-dim);margin-bottom:8px">Choose your reward:</p>
+<p id="reward-sub" style="color:var(--text-dim);margin-bottom:8px">Shake the nest for rewards!</p>
 <div id="battle-summary-bar"></div>
 <div style="text-align:right;margin-bottom:8px"><button class="nest-btn" data-action="openNest">🪺 View Nest</button></div>
 <div class="next-stage-preview" id="next-stage-preview" style="display:none;"></div>
-<div class="reward-grid" id="reward-grid"></div>
-<div style="text-align:center"><button class="confirm-btn" id="reward-confirm-btn" data-action="confirmReward">✓ Take This Reward</button></div>
+<div class="nest-reward-scene" id="nest-reward-scene">
+<div class="nest-falling-zone" id="nest-falling-rewards" aria-live="polite"></div>
+<button type="button" class="reward-nest nest-shakeable" id="reward-nest" aria-label="Shake nest for rewards">🪺</button>
+<p class="nest-shake-hint" id="nest-shake-hint">Tap the nest to shake</p>
+<div class="nest-reward-tray" id="nest-reward-tray" aria-label="Collected rewards"></div>
+</div>
+<div class="reward-grid" id="reward-grid" style="display:none" aria-hidden="true"></div>
+<div style="text-align:center"><button class="confirm-btn" id="reward-confirm-btn" data-action="confirmReward">Continue →</button></div>
 </div>
 </div>
 <!-- GAME OVER -->
