@@ -2056,27 +2056,33 @@ body.ui-mobile-mode #screen-battle .level-badge{font-size:.7rem;}
 .reward-tabs{display:flex;gap:10px;justify-content:center;margin:16px 0;}
 .reward-tab{padding:8px 20px;border-radius:20px;border:1px solid var(--border);background:var(--surface2);cursor:pointer;font-family:'Cinzel',serif;font-size:.82rem;transition:all .2s;letter-spacing:.06em;}
 .reward-tab.active{background:rgba(201,168,76,.15);border-color:var(--gold);color:var(--gold);}
-.nest-reward-scene{position:relative;min-height:280px;margin:12px auto 8px;padding:8px 0 4px;}
-.nest-falling-zone{position:relative;min-height:120px;margin-bottom:8px;pointer-events:none;}
-.nest-falling-reward{position:absolute;left:50%;top:0;transform:translateX(-50%) translateY(-40px);opacity:0;display:flex;flex-direction:column;align-items:center;gap:4px;padding:8px 12px;border-radius:10px;border:2px solid var(--border);background:var(--surface2);transition:transform .65s cubic-bezier(.22,1,.24,1),opacity .45s ease;}
-.nest-falling-reward.landed{opacity:1;transform:translateX(-50%) translateY(72px);}
-.nest-falling-icon{font-size:2rem;line-height:1;}
-.nest-falling-name{font-size:.72rem;font-family:'Cinzel',serif;color:var(--text-dim);max-width:140px;}
-.reward-nest{display:block;margin:0 auto;font-size:4.2rem;line-height:1;background:transparent;border:none;cursor:default;filter:drop-shadow(0 6px 14px rgba(0,0,0,.35));transition:transform .2s ease;}
+.nest-reward-scene{display:flex;flex-direction:column;align-items:center;min-height:200px;margin:12px auto 8px;padding:8px 0 4px;max-width:720px;}
+.reward-nest{display:block;margin:0 auto;font-size:4.2rem;line-height:1;background:transparent;border:none;cursor:default;filter:drop-shadow(0 6px 14px rgba(0,0,0,.35));transition:transform .2s ease;position:relative;z-index:2;}
 .reward-nest.nest-shakeable{cursor:pointer;}
 .reward-nest.nest-shakeable:hover{transform:scale(1.06);}
 .reward-nest.nest-shaking{animation:nest-shake .48s ease;}
 @keyframes nest-shake{0%,100%{transform:rotate(0) translateY(0)}15%{transform:rotate(-8deg) translateY(-4px)}30%{transform:rotate(7deg) translateY(2px)}45%{transform:rotate(-6deg) translateY(-2px)}60%{transform:rotate(5deg) translateY(1px)}75%{transform:rotate(-3deg) translateY(-1px)}}
-.nest-shake-hint{font-size:.82rem;color:var(--text-dim);margin:8px 0 12px;}
-.nest-reward-tray{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;min-height:44px;margin-top:6px;}
-.nest-reward-chip{display:inline-flex;align-items:center;gap:6px;padding:5px 10px;border-radius:999px;border:1px solid var(--border);background:var(--surface2);font-size:.72rem;}
-.nest-reward-chip.tier-grey{border-color:rgba(106,120,144,.45);}
-.nest-reward-chip.tier-green{border-color:rgba(76,138,106,.45);}
-.nest-reward-chip.tier-blue{border-color:rgba(74,106,201,.45);}
-.nest-reward-chip.tier-purple{border-color:rgba(122,76,201,.45);}
-.nest-reward-chip.tier-gold{border-color:rgba(201,168,76,.55);}
-.nest-reward-chip-icon{font-size:1rem;}
-.nest-reward-chip-name{font-family:'Cinzel',serif;color:var(--text-dim);}
+.nest-shake-hint{font-size:.82rem;color:var(--text-dim);margin:8px 0 10px;text-align:center;}
+.nest-reward-tray{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;width:100%;margin-top:4px;min-height:0;}
+.nest-reward-tray:empty{display:none;}
+.nest-reward-card{opacity:0;transform:translateY(-28px);animation:nest-reward-fall .55s cubic-bezier(.22,1,.24,1) forwards;background:var(--surface);border:2px solid var(--border);border-radius:12px;padding:14px 12px;text-align:center;position:relative;overflow:hidden;}
+.nest-reward-card.tier-grey{border-color:rgba(106,120,144,.4);background:linear-gradient(180deg,rgba(106,120,144,.10),var(--surface));}
+.nest-reward-card.tier-green{border-color:rgba(76,138,106,.4);background:linear-gradient(180deg,rgba(76,138,106,.10),var(--surface));}
+.nest-reward-card.tier-blue{border-color:rgba(74,106,201,.4);background:linear-gradient(180deg,rgba(74,106,201,.10),var(--surface));}
+.nest-reward-card.tier-purple{border-color:rgba(122,76,201,.4);background:linear-gradient(180deg,rgba(122,76,201,.10),var(--surface));}
+.nest-reward-card.tier-gold{border-color:rgba(201,168,76,.6);background:linear-gradient(180deg,rgba(201,168,76,.12),var(--surface));box-shadow:0 0 16px rgba(201,168,76,.18);}
+.nest-reward-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;}
+.nest-reward-card.tier-grey::before{background:var(--tier-grey);}
+.nest-reward-card.tier-green::before{background:var(--tier-green);}
+.nest-reward-card.tier-blue::before{background:var(--tier-blue);}
+.nest-reward-card.tier-purple::before{background:var(--tier-purple);}
+.nest-reward-card.tier-gold::before{background:linear-gradient(90deg,var(--gold),var(--gold-light),var(--gold));}
+@keyframes nest-reward-fall{0%{opacity:0;transform:translateY(-28px)}100%{opacity:1;transform:translateY(0)}}
+.nest-reward-card .reward-tier-label{font-size:.68rem;letter-spacing:.1em;font-family:'Cinzel',serif;margin-bottom:6px;text-transform:uppercase;}
+.nest-reward-card .reward-icon{font-size:2rem;display:block;margin-bottom:6px;}
+.nest-reward-card .reward-name{font-family:'Cinzel',serif;font-size:.88rem;color:var(--gold-light);margin-bottom:4px;}
+.nest-reward-card .reward-desc{font-size:.72rem;color:var(--text-dim);line-height:1.35;}
+.nest-reward-footnote{font-size:.72rem;color:var(--text-dim);margin:10px 0 4px;text-align:center;font-style:italic;opacity:.9;}
 .reward-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:4px;}
 .reward-card{background:var(--surface);border:2px solid var(--border);border-radius:12px;padding:18px 14px;cursor:pointer;transition:all .3s;position:relative;overflow:hidden;}
 .reward-card:hover{transform:translateY(-3px);box-shadow:0 8px 24px rgba(0,0,0,.4);}
@@ -2164,6 +2170,7 @@ body.ui-mobile-mode #screen-battle .level-badge{font-size:.7rem;}
   .combatants{grid-template-columns:1fr;}
   .vs-separator{display:none;}
   .reward-grid{grid-template-columns:1fr;}
+  .nest-reward-tray{grid-template-columns:1fr;}
   .skill-grid,.new-card-grid{grid-template-columns:1fr;}
   header h1{font-size:1.8rem;}
 }

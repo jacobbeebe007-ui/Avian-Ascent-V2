@@ -12142,68 +12142,82 @@ function drainPendingRewardQueue() {
   return grantRewardPool(queue);
 }
 
+function buildNestRewardCardHtml(drop, animDelayMs=0){
+  const tierCss=normalizeRewardTier(drop.tier||'white');
+  const tierMeta=rewardTierMeta(drop.tier);
+  const desc=drop.type==='mutation'
+    ?(getMutationDescHtml(drop.mutationItemId||drop.id,{compact:true})||escapeHtmlRoster(drop.desc||''))
+    :escapeHtmlRoster(drop.desc||'');
+  const style=animDelayMs>0?` style="animation-delay:${animDelayMs}ms"`:'';
+  return `<div class="nest-reward-card tier-${tierCss}"${style}>
+    <div class="reward-tier-label">${tierMeta.label}</div>
+    <span class="reward-icon">${drop.icon||'🎁'}</span>
+    <div class="reward-name">${escapeHtmlRoster(drop.name||'Reward')}</div>
+    <div class="reward-desc">${desc}</div>
+  </div>`;
+}
+
 function renderNestRewardCollectedTray(){
   const tray=document.getElementById('nest-reward-tray');
   if(!tray) return;
-  tray.innerHTML='';
   const collected=G._nestRewardsCollected||[];
-  collected.forEach((drop)=>{
-    const tierCss=normalizeRewardTier(drop.tier||'white');
-    const chip=document.createElement('div');
-    chip.className='nest-reward-chip tier-'+tierCss;
-    chip.innerHTML=`<span class="nest-reward-chip-icon">${drop.icon||'🎁'}</span><span class="nest-reward-chip-name">${escapeHtmlRoster(drop.name||'Reward')}</span>`;
-    tray.appendChild(chip);
+  tray.innerHTML=collected.map((drop,i)=>buildNestRewardCardHtml(drop, i*110)).join('');
+  collected.forEach((drop, i)=>{
+    if(drop.type!=='mutation') return;
+    const mutId=drop.mutationItemId||drop.id;
+    const card=tray.children[i];
+    if(mutId&&card&&typeof bindRichTooltip==='function'){
+      bindRichTooltip(card, ()=>buildMutationTooltipHTML(mutId), {category:'mutations'});
+    }
   });
 }
 
-function revealNextNestDrop(){
+function finishNestRewardReveal(){
+  const hint=document.getElementById('nest-shake-hint');
+  if(hint) hint.textContent='Rewards collected!';
+  const footnote=document.getElementById('nest-reward-footnote');
+  if(footnote) footnote.style.display='block';
+  const nest=document.getElementById('reward-nest');
+  if(nest){
+    nest.classList.remove('nest-shakeable');
+    nest.onclick=null;
+  }
+  const confirmBtn=document.getElementById('reward-confirm-btn');
+  if(confirmBtn){
+    confirmBtn.textContent='Continue →';
+    confirmBtn.className='confirm-btn visible';
+  }
+  G._rewardsAlreadyGranted=true;
+  G._nestShaken=true;
+}
+
+function revealAllNestDrops(){
   const drops=G._nestRewardDrops||[];
-  const idx=G._nestRewardDropIndex||0;
-  if(idx>=drops.length){
-    const hint=document.getElementById('nest-shake-hint');
-    if(hint) hint.textContent='All rewards collected!';
-    const nest=document.getElementById('reward-nest');
-    if(nest) nest.classList.remove('nest-shakeable');
-    const confirmBtn=document.getElementById('reward-confirm-btn');
-    if(confirmBtn){
-      confirmBtn.textContent='Continue →';
-      confirmBtn.className='confirm-btn visible';
-    }
-    G._rewardsAlreadyGranted=true;
+  if(!drops.length){
+    finishNestRewardReveal();
     return;
   }
-  const drop=drops[idx];
-  G._nestRewardDropIndex=idx+1;
-  const fallZone=document.getElementById('nest-falling-rewards');
-  if(fallZone){
-    const tierCss=normalizeRewardTier(drop.tier||'white');
-    const el=document.createElement('div');
-    el.className='nest-falling-reward tier-'+tierCss;
-    el.innerHTML=`<span class="nest-falling-icon">${drop.icon||'🎁'}</span><span class="nest-falling-name">${escapeHtmlRoster(drop.name||'Reward')}</span>`;
-    fallZone.appendChild(el);
-    requestAnimationFrame(()=>el.classList.add('landed'));
-  }
-  if(typeof grantNestDrop==='function') grantNestDrop(drop);
   if(!G._nestRewardsCollected) G._nestRewardsCollected=[];
-  G._nestRewardsCollected.push(drop);
-  renderNestRewardCollectedTray();
-  const hint=document.getElementById('nest-shake-hint');
-  if(hint){
-    const left=Math.max(0,drops.length-(G._nestRewardDropIndex||0));
-    hint.textContent=left>0?`Tap the nest to shake (${left} left)`:'All rewards collected!';
+  const start=G._nestRewardDropIndex||0;
+  for(let i=start;i<drops.length;i++){
+    const drop=drops[i];
+    if(typeof grantNestDrop==='function') grantNestDrop(drop);
+    G._nestRewardsCollected.push(drop);
   }
-  if((G._nestRewardDropIndex||0)>=drops.length) revealNextNestDrop();
+  G._nestRewardDropIndex=drops.length;
+  renderNestRewardCollectedTray();
+  finishNestRewardReveal();
 }
 
 function handleNestShake(){
   const nest=document.getElementById('reward-nest');
-  if(!nest||!nest.classList.contains('nest-shakeable')) return;
+  if(!nest||!nest.classList.contains('nest-shakeable')||G._nestShaken) return;
   nest.classList.remove('nest-shaking');
   void nest.offsetWidth;
   nest.classList.add('nest-shaking');
   setTimeout(()=>{
     nest.classList.remove('nest-shaking');
-    revealNextNestDrop();
+    revealAllNestDrops();
   },480);
 }
 globalThis.handleNestShake=handleNestShake;
@@ -12220,6 +12234,7 @@ function showRewardScreen(hasLevelUp) {
   G._rewardsAlreadyGranted=false;
   G._nestRewardDropIndex=0;
   G._nestRewardsCollected=[];
+  G._nestShaken=false;
 
   const defeated=typeof getDefeatedBirdsForReward==='function'?getDefeatedBirdsForReward():[];
   const isBoss=defeated.some(b=>b.isBoss)||!!G.enemy?.isBoss;
@@ -12233,11 +12248,11 @@ function showRewardScreen(hasLevelUp) {
   document.getElementById('reward-title').textContent=isBoss?'👑 Boss Defeated!':'✦ Victory! ✦';
   const dropCount=drops.length;
   document.getElementById('reward-sub').textContent=dropCount>1
-    ?`Shake the nest — ${dropCount} rewards await!`
-    :(dropCount===1?'Shake the nest for your reward!':'No nest rewards — continue onward.');
+    ?`Tap the nest once — ${dropCount} rewards will fall out!`
+    :(dropCount===1?'Tap the nest once for your reward!':'No nest rewards — continue onward.');
 
-  const fallZone=document.getElementById('nest-falling-rewards');
-  if(fallZone) fallZone.innerHTML='';
+  const footnote=document.getElementById('nest-reward-footnote');
+  if(footnote) footnote.style.display='none';
   renderNestRewardCollectedTray();
   renderBattleSummary();
 
@@ -12260,7 +12275,7 @@ function showRewardScreen(hasLevelUp) {
     nest.onclick=handleNestShake;
   }
   const hint=document.getElementById('nest-shake-hint');
-  if(hint) hint.textContent=`Tap the nest to shake (${dropCount} reward${dropCount>1?'s':''})`;
+  if(hint) hint.textContent='Tap the nest to shake';
 }
 
 function confirmReward() {
@@ -12283,12 +12298,9 @@ function confirmReward() {
   }
   if(document.getElementById('gold-replace-ui')) return;
 
-  if(G._rewardScreenMode==='nest' && !G._rewardsAlreadyGranted){
-    const left=Math.max(0,(G._nestRewardDrops||[]).length-(G._nestRewardDropIndex||0));
-    if(left>0){
-      logMsg('Shake the nest to collect all rewards first.','miss');
-      return;
-    }
+  if(G._rewardScreenMode==='nest' && !G._rewardsAlreadyGranted && !G._nestShaken){
+    logMsg('Shake the nest to collect your rewards first.','miss');
+    return;
   }
 
   if(G._rewardScreenMode==='endless-mutation-pick'){
