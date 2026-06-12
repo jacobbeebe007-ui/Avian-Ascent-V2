@@ -104,20 +104,26 @@
     const st = Math.max(1, Math.floor(Number(scalingStage) || 1));
     const pbk = String(playerBirdKey || '').trim();
     let pool = [];
-    if (typeof global.getStoryStageEnemyCandidateBirdKeys === 'function') {
-      pool = global.getStoryStageEnemyCandidateBirdKeys(st, pbk).slice();
+    if (typeof global.getStoryStageEnemyCandidateIds === 'function') {
+      pool = global.getStoryStageEnemyCandidateIds(st, pbk).slice();
+    } else if (typeof global.pickStoryEncounterEnemyIds === 'function') {
+      pool = global.pickStoryEncounterEnemyIds(st, pbk, enc.enemyCount || 1).slice();
     } else if (typeof global.pickStoryEncounterBirdKeys === 'function') {
       pool = global.pickStoryEncounterBirdKeys(st, pbk).slice();
     }
-    if (!pool.length) pool = ['sparrow', 'crow', 'magpie'];
-    pool = pool.filter((k) => k && k !== pbk);
-    if (!pool.length) pool = ['sparrow'];
+    if (!pool.length) pool = ['EN-SPARR-HESQ-L01'];
     const out = [];
     const slots = enc.slots || [];
     for (let i = 0; i < enc.enemyCount; i++) {
       const slot = slots[i] || { birdKey: 'random' };
-      if (slot.birdKey && slot.birdKey !== 'random') {
-        out.push(slot.birdKey);
+      if (slot.enemyId && typeof global.isRosterEnemyId === 'function' && global.isRosterEnemyId(slot.enemyId)) {
+        out.push(slot.enemyId);
+      } else if (slot.birdKey && slot.birdKey !== 'random') {
+        if (typeof global.resolveOwStageToken === 'function') {
+          out.push(global.resolveOwStageToken(slot.birdKey, st, { isBoss: !!slot.isBoss }));
+        } else {
+          out.push(slot.birdKey);
+        }
       } else {
         out.push(pool[Math.floor(Math.random() * pool.length)]);
       }

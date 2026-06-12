@@ -275,7 +275,13 @@ function birdKey(name) {
   return BIRD_NAME_TO_KEY[trimmed] || trimmed.toLowerCase().replace(/[^a-z0-9]/g, '');
 }
 
-const CLASS_KEY = (s) => (s || '').trim().toLowerCase();
+const LEGACY_CLASS_TO_NEW = {
+  striker: 'rogue', singer: 'mage', predator: 'inquisitor', trickster: 'bard', tank: 'knight', bruiser: 'knight',
+};
+const CLASS_KEY = (s) => {
+  const raw = (s || '').trim().toLowerCase().split(/\s+/)[0];
+  return LEGACY_CLASS_TO_NEW[raw] || raw;
+};
 
 // ---------------------------------------------------------------------------
 // Formula parser: "2 hits of Base 2 + 40% ATK each", "Base 3 + 55% ATK",

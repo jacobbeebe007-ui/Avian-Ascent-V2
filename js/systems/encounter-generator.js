@@ -1,6 +1,6 @@
 /**
- * Story-mode random encounter generator.
- * Picks from all playable birds (minus Duke + milestone boss pool on normal stages).
+ * Story-mode random encounter generator (enemy roster).
+ * Picks authored roster rows by stage level band; excludes player bird.
  */
 (function initEncounterGenerator(global) {
   'use strict';
@@ -20,32 +20,12 @@
     murder: 2,
   };
 
-  var EXCLUDED_BIRD_KEYS = new Set(['dukeBlakiston', 'duke_blakiston']);
-
   function normalizeBirdKey(key) {
     return String(key || '')
       .trim()
       .replace(/\s+/g, '')
       .replace(/['\u2019]/g, '')
       .toLowerCase();
-  }
-
-  function isExcludedBirdKey(birdKey) {
-    var n = normalizeBirdKey(birdKey);
-    if (EXCLUDED_BIRD_KEYS.has(birdKey)) return true;
-    if (n === 'dukeblakiston' || n === 'duke_blakiston') return true;
-    return false;
-  }
-
-  function getMilestoneBossKeys() {
-    if (typeof global.getStoryMilestoneBossCandidateBirdKeys === 'function') {
-      return global.getStoryMilestoneBossCandidateBirdKeys();
-    }
-    return [];
-  }
-
-  function getBirdsCatalog() {
-    return global.BIRDS || {};
   }
 
   function getStoryEncounterChainCount(stageNumber) {
@@ -63,9 +43,6 @@
     return STORY_BOSS_STAGES.has(Number(stageNumber));
   }
 
-  /**
-   * Enemy level from player level + difficulty offset (min 1).
-   */
   function getEnemyLevelForDifficulty(playerLevel, difficultyId) {
     var plv = Math.max(1, Math.floor(Number(playerLevel)) || 1);
     var diff = String(difficultyId || 'juvenile').toLowerCase();
@@ -75,88 +52,94 @@
     return Math.max(1, plv + offset);
   }
 
-  /**
-   * All birds eligible for random normal-stage encounters.
-   */
-  function getStoryRandomBirdPool(stageNumber, playerBirdKey) {
-    void stageNumber;
-    var birds = getBirdsCatalog();
-    var milestone = new Set(getMilestoneBossKeys().map(function (k) { return normalizeBirdKey(k); }));
+  function getRosterRow(id) {
+    if (typeof global.getEnemyRosterRow === 'function') return global.getEnemyRosterRow(id);
+    var r = Avian.data && Avian.data.enemyRoster;
+    return r && r.byId ? r.byId[id] : null;
+  }
+
+  /** Candidate enemy roster ids for overworld preview (same pool as picker). */
+  function getStoryStageEnemyCandidateIds(stageNumber, playerBirdKey) {
+    var pickFn = global.pickStoryEncounterEnemyIds;
+    if (typeof pickFn !== 'function') return [];
+    var st = Math.max(1, Math.floor(Number(stageNumber)) || 1);
+    if (isBossStage(st)) return pickFn(st, playerBirdKey, 1);
+    var bandFn = global.getStoryEnemyLevelBand;
+    var band = typeof bandFn === 'function' ? bandFn(st) : { min: 1, max: 2 };
+    if (band.boss || band.duke) return pickFn(st, playerBirdKey, 1);
+    var roster = Avian.data && Avian.data.enemyRoster;
+    if (!roster || !roster.normalByLevel) return [];
     var playerNorm = normalizeBirdKey(playerBirdKey);
     var out = [];
+    var min = Math.max(1, band.min || 1);
+    var max = Math.max(min, band.max || min);
+    for (var lv = min; lv <= max; lv++) {
+      var ids = roster.normalByLevel[lv] || [];
+      for (var i = 0; i < ids.length; i++) {
+        var row = getRosterRow(ids[i]);
+        if (!row || row.isBoss) continue;
+        if (playerNorm && normalizeBirdKey(row.birdKey) === playerNorm) continue;
+        if (out.indexOf(ids[i]) < 0) out.push(ids[i]);
+      }
+    }
+    return out.sort();
+  }
 
-    Object.keys(birds).forEach(function (key) {
-      if (isExcludedBirdKey(key)) return;
-      if (milestone.has(normalizeBirdKey(key))) return;
-      if (playerNorm && normalizeBirdKey(key) === playerNorm) return;
-      out.push(key);
-    });
-
-    return out.sort(function (a, b) {
-      return String(a).localeCompare(String(b), undefined, { sensitivity: 'base' });
+  /** Candidate birdKeys derived from roster pool (portrait preview). */
+  function getStoryStageEnemyCandidateBirdKeys(stageNumber, playerBirdKey) {
+    return getStoryStageEnemyCandidateIds(stageNumber, playerBirdKey).map(function (id) {
+      var row = getRosterRow(id);
+      return row && row.birdKey ? row.birdKey : id;
     });
   }
 
-  function shuffle(arr) {
-    var clone = arr.slice();
-    for (var i = clone.length - 1; i > 0; i--) {
-      var j = Math.floor(Math.random() * (i + 1));
-      var t = clone[i];
-      clone[i] = clone[j];
-      clone[j] = t;
+  function pickStoryEncounterEnemyIds(stageNumber, playerBirdKey) {
+    var st = Math.max(1, Math.floor(Number(stageNumber)) || 1);
+    var chainCount = getStoryEncounterChainCount(st);
+    var rosterNs = Avian.systems.enemyRoster;
+    if (rosterNs && typeof rosterNs.pickStoryEncounterEnemyIds === 'function') {
+      return rosterNs.pickStoryEncounterEnemyIds(st, playerBirdKey, chainCount);
     }
-    return clone;
+    return ['EN-SPARR-HESQ-L01'];
+  }
+
+  /** Legacy alias: returns birdKeys for callers not yet migrated to roster ids. */
+  function pickStoryEncounterBirdKeys(stageNumber, playerBirdKey) {
+    return pickStoryEncounterEnemyIds(stageNumber, playerBirdKey).map(function (id) {
+      var row = getRosterRow(id);
+      if (row && row.birdKey) return row.birdKey;
+      if (id === global.STORY_DUKE_ROSTER_ID || String(id).indexOf('DUKEB') >= 0) return 'dukeBlakiston';
+      return id;
+    });
   }
 
   function pickRandomMilestoneBossKey() {
-    var pool = getMilestoneBossKeys();
-    if (!pool.length) return 'harpy';
-    return pool[Math.floor(Math.random() * pool.length)];
-  }
-
-  /**
-   * Pick ordered birdKeys for a stage combat chain.
-   * Boss stage 20 → Duke; stage 10 → [] (boss rolled in loadStage); normal → unique shuffle sample.
-   */
-  function pickStoryEncounterBirdKeys(stageNumber, playerBirdKey) {
-    var st = Math.max(1, Math.floor(Number(stageNumber)) || 1);
-    if (st === STORY_DUKE_STAGE) return ['dukeBlakiston'];
-    if (isBossStage(st)) return [];
-
-    var chainCount = getStoryEncounterChainCount(st);
-    var pool = getStoryRandomBirdPool(st, playerBirdKey);
-    if (!pool.length) {
-      console.warn('[EncounterGenerator] Empty pool for stage', st);
-      return Array.from({ length: chainCount }, function () { return 'sparrow'; });
-    }
-
-    var shuffled = shuffle(pool);
-    var out = [];
-    for (var i = 0; i < chainCount; i++) {
-      out.push(shuffled[i % shuffled.length]);
-    }
-    return out;
-  }
-
-  /** Stable candidate list for overworld preview (same pool as picker, sorted). */
-  function getStoryStageEnemyCandidateBirdKeys(stageNumber, playerBirdKey) {
-    return getStoryRandomBirdPool(stageNumber, playerBirdKey);
+    var st = STORY_MILESTONE_BOSS_STAGE;
+    var ids = pickStoryEncounterEnemyIds(st, '', 1);
+    var row = ids.length ? getRosterRow(ids[0]) : null;
+    return row && row.birdKey ? row.birdKey : 'harpy';
   }
 
   ns.getEnemyLevelForDifficulty = getEnemyLevelForDifficulty;
-  ns.getStoryRandomBirdPool = getStoryRandomBirdPool;
+  ns.pickStoryEncounterEnemyIds = pickStoryEncounterEnemyIds;
   ns.pickStoryEncounterBirdKeys = pickStoryEncounterBirdKeys;
+  ns.getStoryStageEnemyCandidateIds = getStoryStageEnemyCandidateIds;
   ns.getStoryStageEnemyCandidateBirdKeys = getStoryStageEnemyCandidateBirdKeys;
   ns.pickRandomMilestoneBossKey = pickRandomMilestoneBossKey;
   ns.isBossStage = isBossStage;
   ns.STORY_BOSS_STAGES = STORY_BOSS_STAGES;
 
   global.getEnemyLevelForDifficulty = getEnemyLevelForDifficulty;
+  global.pickStoryEncounterEnemyIds = pickStoryEncounterEnemyIds;
   global.pickStoryEncounterBirdKeys = pickStoryEncounterBirdKeys;
-  global.pickEnemyPair = pickStoryEncounterBirdKeys;
+  global.pickEnemyPair = pickStoryEncounterEnemyIds;
   global.pickRandomMilestoneBossKey = pickRandomMilestoneBossKey;
   global.getStoryStageEnemyCandidateBirdKeys = function (stageNumber) {
     var playerBirdKey = (global.G && global.G.player && global.G.player.birdKey) || '';
     return getStoryStageEnemyCandidateBirdKeys(stageNumber, playerBirdKey);
+  };
+  global.getStoryStageEnemyCandidateIds = function (stageNumber, playerBirdKey) {
+    var pbk = playerBirdKey != null ? playerBirdKey : ((global.G && global.G.player && global.G.player.birdKey) || '');
+    return getStoryStageEnemyCandidateIds(stageNumber, pbk);
   };
 })(typeof window !== 'undefined' ? window : globalThis);

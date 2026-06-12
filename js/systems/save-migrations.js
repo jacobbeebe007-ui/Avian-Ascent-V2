@@ -25,7 +25,7 @@
   'use strict';
 
   /** Bump when adding a migration. */
-  var TARGET = 6;
+  var TARGET = 7;
 
   /** Combat-pack version stamp surfaced on the save blob. Wipes attached when
    *  this changes so legacy ability/perk/family state never bleeds into a run. */
@@ -127,6 +127,24 @@
           p.combatItems.freshWater = Math.max(0, Math.min(3, Math.floor(Number(p.combatItems.freshWater) || 0)));
           p.combatItems.sugarWater = Math.max(0, Math.min(2, Math.floor(Number(p.combatItems.sugarWater) || 0)));
           p.combatItems.honeyWater = Math.max(0, Math.min(1, Math.floor(Number(p.combatItems.honeyWater) || 0)));
+        }
+        return save;
+      },
+    },
+    {
+      from: 6,
+      to: 7,
+      note: 'master bird list: map legacy class ids (striker/singer/etc.) to knight/rogue/mage/siren/inquisitor/bard',
+      fn: function (save) {
+        if (!save || !save.player) return save;
+        var map = {
+          striker: 'rogue', singer: 'mage', predator: 'inquisitor', trickster: 'bard', tank: 'knight', bruiser: 'knight',
+          support: 'mage', vanguard: 'knight', defender: 'knight', skirmisher: 'rogue', assassin: 'rogue',
+        };
+        var p = save.player;
+        if (p.class) {
+          var raw = String(p.class).toLowerCase().split(/\s+/)[0];
+          if (map[raw]) p.class = map[raw];
         }
         return save;
       },

@@ -2,7 +2,6 @@
  * Smoke tests for js/systems/encounter-generator.js
  */
 import { createRequire } from 'module';
-import { pathToFileURL } from 'url';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
@@ -22,6 +21,7 @@ function ok(label, cond) {
 
 function loadShell() {
   globalThis.window = globalThis;
+  globalThis.Avian = { data: Object.create(null), systems: Object.create(null) };
   globalThis.document = {
     getElementById: () => null,
     querySelector: () => null,
@@ -31,25 +31,22 @@ function loadShell() {
   };
   globalThis.localStorage = { getItem: () => null, setItem() {}, removeItem() {} };
 
-  const birdsPath = path.join(root, 'js/data/birds.js');
-  require(birdsPath);
-
-  const registryPath = path.join(root, 'js/data/story_enemy_registry.js');
-  require(registryPath);
-
-  const milestonePath = path.join(root, 'js/data/story_milestone_boss_pool.js');
-  require(milestonePath);
-
-  const genPath = path.join(root, 'js/systems/encounter-generator.js');
-  require(genPath);
+  require(path.join(root, 'js/data/enemy-roster.js'));
+  require(path.join(root, 'js/data/birds.js'));
+  require(path.join(root, 'js/systems/story-enemy-levels.js'));
+  require(path.join(root, 'js/systems/enemy-roster-runtime.js'));
+  require(path.join(root, 'js/data/story_enemy_registry.js'));
+  require(path.join(root, 'js/data/story_milestone_boss_pool.js'));
+  require(path.join(root, 'js/systems/encounter-generator.js'));
 }
 
 loadShell();
 
 const gen = globalThis.Avian?.systems?.encounterGenerator;
+const roster = globalThis.Avian.data.enemyRoster;
 ok('encounterGenerator namespace present', !!gen);
 ok('getEnemyLevelForDifficulty is a function', typeof gen?.getEnemyLevelForDifficulty === 'function');
-ok('pickStoryEncounterBirdKeys is a function', typeof gen?.pickStoryEncounterBirdKeys === 'function');
+ok('pickStoryEncounterEnemyIds is a function', typeof gen?.pickStoryEncounterEnemyIds === 'function');
 
 ok('Fletchling level offset', gen.getEnemyLevelForDifficulty(5, 'fletchling') === 4);
 ok('Juvenile same level', gen.getEnemyLevelForDifficulty(5, 'juvenile') === 5);
@@ -57,24 +54,21 @@ ok('Predator +1 level', gen.getEnemyLevelForDifficulty(5, 'predator') === 6);
 ok('Murder +2 levels', gen.getEnemyLevelForDifficulty(5, 'murder') === 7);
 ok('Level floor at 1', gen.getEnemyLevelForDifficulty(1, 'fletchling') === 1);
 
-const milestone = new Set(globalThis.getStoryMilestoneBossCandidateBirdKeys?.() || []);
-const pool = gen.getStoryRandomBirdPool(3, 'sparrow');
-ok('Pool excludes Duke', !pool.some((k) => String(k).toLowerCase().includes('duke')));
-ok('Pool excludes player bird', !pool.includes('sparrow'));
-for (const mk of milestone) {
-  ok(`Pool excludes milestone boss ${mk}`, !pool.includes(mk));
-}
-ok('Pool has many birds', pool.length >= 30);
+const pool = gen.getStoryStageEnemyCandidateIds(3, 'sparrow');
+ok('Pool excludes player bird roster rows', !pool.some((id) => roster.byId[id]?.birdKey === 'sparrow'));
+ok('Pool has many enemies', pool.length >= 30);
 
-const chain = gen.pickStoryEncounterBirdKeys(3, 'crow');
+const chain = gen.pickStoryEncounterEnemyIds(3, 'crow');
 ok('Normal stage chain length 3', chain.length === 3);
+ok('Chain returns roster ids', chain.every((id) => String(id).startsWith('EN-') || String(id).startsWith('BO-')));
 const unique = new Set(chain);
-ok('Chain birds unique when pool large enough', unique.size === chain.length);
+ok('Chain enemies unique when pool large enough', unique.size === chain.length);
 
-ok('Stage 20 returns Duke', gen.pickStoryEncounterBirdKeys(20, 'sparrow')[0] === 'dukeBlakiston');
+const stage20 = gen.pickStoryEncounterEnemyIds(20, 'sparrow', 1);
+ok('Stage 20 returns Duke roster id', stage20[0] === globalThis.getStoryDukeRosterId());
 
-const bossPick = globalThis.pickRandomMilestoneBossKey();
-ok('Milestone boss pick in pool', milestone.has(bossPick));
+const stage10 = gen.pickStoryEncounterEnemyIds(10, 'sparrow', 1);
+ok('Stage 10 milestone from L6 roster', stage10.length === 1 && roster.byId[stage10[0]]?.storyLevel === 6);
 
 if (process.exitCode) {
   console.error('\nEncounter generator verification failed.');

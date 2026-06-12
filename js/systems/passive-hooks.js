@@ -65,17 +65,60 @@
     return out;
   }
 
+  var LEGACY_CLASS_MAP = {
+    striker: 'rogue', singer: 'mage', predator: 'inquisitor', trickster: 'bard', tank: 'knight', bruiser: 'knight',
+  };
+
+  function normalizeKlass(klass) {
+    var k = String(klass || '').toLowerCase().split(/\s+/)[0];
+    return LEGACY_CLASS_MAP[k] || k;
+  }
+
   function classGenericEndless(klass) {
     var p = pack();
     var out = [];
     if (!p || !p.endlessPassives || !p.endlessPassives.generic) return out;
     var gp = p.endlessPassives.generic;
+    var nk = normalizeKlass(klass);
     for (var id in gp) {
-      if (gp[id].class === klass) out.push(gp[id]);
+      if (normalizeKlass(gp[id].class) === nk) out.push(gp[id]);
     }
     out.sort(function (a, b) { return (a.rank || '').localeCompare(b.rank || ''); });
     return out;
   }
+
+  function classPerkForBird(birdKey) {
+    var birds = globalThis.BIRDS || {};
+    var bird = birds[birdKey];
+    if (!bird) return null;
+    var pid = bird.passive && bird.passive.id;
+    var p = pack();
+    if (pid && p && p.birdPassives && p.birdPassives[pid]) return p.birdPassives[pid];
+    return null;
+  }
+
+  Avian.passives.applyClassPerkAtBattleStart = function applyClassPerkAtBattleStart() {
+    if (!globalThis.G || !G.player) return;
+    var perk = classPerkForBird(G.player.birdKey);
+    if (!perk || !perk.classPerkEffect) return;
+    var effects = classifyEffect(perk.classPerkEffect);
+    for (var i = 0; i < effects.length; i++) applyEffect('classPerk:' + (perk.classPerk || 'perk'), effects[i]);
+    var s = String(perk.classPerkEffect || '');
+    var m;
+    if ((m = s.match(/\+(\d+(?:\.\d+)?)\s*%\s*Max\s*HP/i))) {
+      var pct = Number(m[1]) / 100;
+      var maxHp = Math.max(1, Math.floor((G.player.stats.maxHp || 1) * (1 + pct)));
+      G.player.stats.maxHp = maxHp;
+      G.player.stats.hp = Math.min(G.player.stats.hp || maxHp, maxHp);
+    }
+    if ((m = s.match(/\+(\d+(?:\.\d+)?)\s*%\s*Defen[cs]e/i))) {
+      var defPct = Number(m[1]) / 100;
+      G.player.stats.def = Math.floor((G.player.stats.def || 0) * (1 + defPct));
+    }
+    if ((m = s.match(/\+(\d+(?:\.\d+)?)\s*%\s*Armou?r\s*Penetration/i))) {
+      G.player.classPerkPenetration = Math.max(G.player.classPerkPenetration || 0, Number(m[1]));
+    }
+  };
 
   function rowFor(abId) {
     var p = pack();
@@ -86,6 +129,7 @@
   function classifyTrigger(text) {
     var s = String(text || '').toLowerCase();
     if (!s) return { kind: 'none' };
+    if (/first physical attack each turn|first physical ability each turn/.test(s)) return { kind: 'firstPhysicalTurn', cap: 'turn' };
     if (/once per turn after using a multi-hit physical/.test(s)) return { kind: 'afterMultiHitPhysical', cap: 'turn' };
     if (/once per turn after using a 1 ap/.test(s)) return { kind: 'after1ApAbility', cap: 'turn' };
     if (/once per turn after using a 2 ap|after using a 2 ap/.test(s)) return { kind: 'after2ApAbility', cap: 'turn' };
@@ -117,6 +161,9 @@
     if ((m = s.match(/\+(\d+(?:\.\d+)?)\s*%\s*Crit\s*Damage/i))) out.push({ kind: 'gainCritDamage', value: Number(m[1]) });
     if ((m = s.match(/\+(\d+(?:\.\d+)?)\s*%\s*Magic\s*Attack/i))) out.push({ kind: 'gainMatk', value: Number(m[1]) });
     if ((m = s.match(/\+(\d+(?:\.\d+)?)\s*%\s*Physical\s*Attack/i))) out.push({ kind: 'gainAtk', value: Number(m[1]) });
+    if ((m = s.match(/\+(\d+(?:\.\d+)?)\s*%\s*Physical\s*damage/i))) out.push({ kind: 'flatDamageBonus', dmgType: 'physical', value: Number(m[1]) });
+    if ((m = s.match(/\+(\d+(?:\.\d+)?)\s*%\s*Physical\s*Ailment\s*chance/i))) out.push({ kind: 'ailmentChanceBonus', kindFilter: 'physical', value: Number(m[1]) });
+    if ((m = s.match(/\+(\d+(?:\.\d+)?)\s*%\s*Armou?r\s*Penetration/i))) out.push({ kind: 'armorPenetration', value: Number(m[1]) });
     if ((m = s.match(/\+(\d+(?:\.\d+)?)\s*%\s*Magic\s*Ailment\s*Chance/i))) out.push({ kind: 'ailmentChanceBonus', kindFilter: 'magic', value: Number(m[1]) });
     if ((m = s.match(/\+(\d+(?:\.\d+)?)\s*%\s*Bleed\s*chance/i))) out.push({ kind: 'ailmentChanceBonus', ailment: 'bleed', value: Number(m[1]) });
     if ((m = s.match(/deal\s*\+?(\d+(?:\.\d+)?)\s*%\s*Physical\s*damage/i))) out.push({ kind: 'bonusVsAilment', ailment: 'bleed', dmgType: 'physical', value: Number(m[1]) });
@@ -372,6 +419,9 @@
 
   Avian.passives.onBattleStart = function onBattleStart() {
     G.passiveState = Object.create(null);
+    if (typeof Avian.passives.applyClassPerkAtBattleStart === 'function') {
+      Avian.passives.applyClassPerkAtBattleStart();
+    }
   };
 
   Avian.passives.onPlayerTurnStart = function onPlayerTurnStart(player) {

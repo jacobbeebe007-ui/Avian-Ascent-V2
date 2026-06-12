@@ -19,11 +19,17 @@
   }
 
   function getEnemyLevelBandForStage(stageNumber) {
+    if (typeof global.getStoryEnemyLevelBand === 'function') {
+      return global.getStoryEnemyLevelBand(stageNumber);
+    }
     const s = Math.max(1, Math.floor(Number(stageNumber)) || 1);
-    if (s <= 4) return { min: 0, max: 2 };
-    if (s <= 9) return { min: 1, max: 3 };
-    if (s <= 14) return { min: 4, max: 6 };
-    return { min: 7, max: 10 };
+    if (s <= 4) return { min: 1, max: 2 };
+    if (s <= 9) return { min: 3, max: 5 };
+    if (s === 10) return { boss: true, level: 6 };
+    if (s <= 14) return { min: 6, max: 8 };
+    if (s <= 19) return { min: 9, max: 10 };
+    if (s === 20) return { duke: true, level: 10 };
+    return { min: 9, max: 10 };
   }
 
   function getEvolvedSlotCountForLevel(level) {
@@ -45,21 +51,29 @@
   function generateStoryEncounter(stageNumber, playerBirdKey, _playerLevel) {
     const st = Math.max(1, Math.floor(Number(stageNumber)) || 1);
     if (isBossStage(st)) {
+      const dukeId = typeof global.getStoryDukeRosterId === 'function'
+        ? global.getStoryDukeRosterId()
+        : global.STORY_DUKE_ROSTER_ID;
       return {
         stageNumber: st,
         isBoss: true,
         birdKeys: st === 20 ? ['dukeBlakiston'] : [],
+        enemyIds: st === 20 ? [dukeId || 'BO-DUKEB-STORY-L10'] : [],
         enemies: [],
       };
     }
-    const pickFn = global.pickStoryEncounterBirdKeys;
-    const birdKeys = typeof pickFn === 'function'
+    const pickFn = global.pickStoryEncounterEnemyIds || global.pickStoryEncounterBirdKeys;
+    const enemyIds = typeof pickFn === 'function'
       ? pickFn(st, playerBirdKey)
       : [];
     return {
       stageNumber: st,
       isBoss: false,
-      birdKeys,
+      birdKeys: enemyIds.map((id) => {
+        const row = global.getEnemyRosterRow && global.getEnemyRosterRow(id);
+        return row && row.birdKey ? row.birdKey : id;
+      }),
+      enemyIds,
       enemies: [],
     };
   }
