@@ -32,6 +32,7 @@
     "js/world/ow_map_runtime.js",
     "js/world/map-forge.js",
     "js/systems/save-migrations.js",
+    "js/systems/combat-formulas.js",
     "js/core/game.js",
     "js/data/ai-profiles.js",
     "js/systems/enemy-abilities.js",

@@ -439,25 +439,34 @@
     var hits = Math.max(1, row.hits || 1);
     var isMagic = isMagicCategory(row.category);
 
-    var enemyDodge = (g && g.enemy && g.enemy.stats) ? (g.enemy.stats.dodge || 0) : 0;
+    var enemyDodge = (typeof getEffectiveEnemyDodgeForPlayerHit === 'function')
+      ? getEffectiveEnemyDodgeForPlayerHit()
+      : ((g && g.enemy && g.enemy.stats) ? (g.enemy.stats.dodge || 0) : 0);
     var playerAcc = (typeof getPlayerEffectiveAcc === 'function') ? getPlayerEffectiveAcc() : 80;
-    var baseHitFrac = (typeof calcHitChance === 'function') ? calcHitChance(playerAcc, enemyDodge, 0.85) : 0.85;
+    var enCost = row.apCost || 1;
+    var hitPct = (typeof calculateAbilityHitChancePct === 'function')
+      ? calculateAbilityHitChancePct(playerAcc, enemyDodge, enCost)
+      : 85;
+    var baseHitFrac = hitPct / 100;
 
     for (var i = 0; i < hits; i++) {
       if (Math.random() >= baseHitFrac) {
         if (typeof doMiss === 'function') await doMiss('player');
         continue;
       }
-      var crit = (typeof chance === 'function') ? chance(getCritChanceFor(src)) : false;
-      if (crit) anyCrit = true;
       // Pierce: feed the % so dealDamage will use it
-      if (g) g._currentPiercePct = isMagic ? (row.pierceMdef || 0) : (row.pierceDef || 0);
-      else G._currentPiercePct = isMagic ? (row.pierceMdef || 0) : (row.pierceDef || 0);
-      var raw = computeRawHitDamage(row);
-      raw = applyConditionalDamageBonus(row, raw);
-      raw = applyDispatcherHitMods(raw);
+      if (g) {
+        g._currentPiercePct = isMagic ? (row.pierceMdef || 0) : (row.pierceDef || 0);
+        g._dispatcherCombatRow = row;
+      } else {
+        G._currentPiercePct = isMagic ? (row.pierceMdef || 0) : (row.pierceDef || 0);
+        G._dispatcherCombatRow = row;
+      }
       var dealFn = resolveDealDamage();
-      var res = dealFn ? dealFn('enemy', raw, crit, isMagic, src) : { dmgDealt: raw, wasDodged: false, wasBlocked: false, isCrit: crit };
+      var res = dealFn ? dealFn('enemy', 0, false, isMagic, src) : { dmgDealt: 0, wasDodged: false, wasBlocked: false, isCrit: false };
+      if (g) g._dispatcherCombatRow = null;
+      else G._dispatcherCombatRow = null;
+      if (res && res.isCrit) anyCrit = true;
       if (typeof doAttack === 'function') await doAttack('player', 'enemy', res);
       if (typeof setHpBar === 'function' && g && g.enemy && g.enemy.stats) setHpBar('enemy', g.enemy.stats.hp, g.enemy.stats.maxHp);
       if (res && !res.wasDodged) hitsLanded++;
@@ -516,6 +525,12 @@
   // same registry at boot. We don't redeclare it; instead we attach a
   // generic proxy function for each new ability id, called by playerAction
   // via `await ACTIONS[ab.id](ab)`.
+  dispatcher.applyPostCurveModifiers = function applyPostCurveModifiers(dmg, row) {
+    if (!row) return dmg;
+    dmg = applyConditionalDamageBonus(row, dmg);
+    return applyDispatcherHitMods(dmg);
+  };
+
   dispatcher.registerActions = function registerActions(target) {
     var p = pack();
     if (!p || !p.skillTrees) return 0;

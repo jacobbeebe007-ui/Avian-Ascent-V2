@@ -134,33 +134,33 @@
       return Math.max(1, Math.floor((Number(baseAmount)||1) * mult));
     }
 
+    globalThis.avianApplySynergyConsumeDamage = applySynergyConsume;
+    try {
+      if (typeof globalThis.Avian?.combat?.logCrowSanityCheck === 'function') {
+        globalThis.Avian.combat.logCrowSanityCheck();
+      }
+    } catch (_) {}
+
     globalThis.dealDamage = function(target, amount, isCrit=false, isMagic=false, srcAbility=null){
-      let adjAmount = amount;
-      let softCapFactor = 1;
-      try{
-        if(target === 'enemy' && globalThis.G?.player?.stats){
-          const stat = isMagic ? (G.player.stats.matk || 0) : (G.player.stats.atk || 0);
-          const threshold = isMagic ? 12 : 10;
-          softCapFactor = 1 - Math.max(0, Math.min(0.18, (stat - threshold) * 0.015));
-          adjAmount = Math.max(1, Math.floor((amount||1) * softCapFactor));
-        }
-      }catch(_){}
-      const synergyAdj = applySynergyConsume(target, isCrit, isMagic, adjAmount);
-      const out = _innerDealDamage.call(this, target, synergyAdj, isCrit, isMagic, srcAbility);
+      const out = _innerDealDamage.call(this, target, amount, isCrit, isMagic, srcAbility);
       /* Phase 5: damage breakdown plumbing (B.6 partial). UI tooltips read
-       * from Avian.debug.lastDamage to show "X applied = base * softcap, crit, magic"
-       * without forking dealDamage's math. */
+       * from Avian.debug.lastDamage to show curved formula breakdown. */
       try{
         const Avian = globalThis.Avian;
+        const G = globalThis.G;
         if(Avian && Avian.debug){
+          const curved = G && G._lastCurvedDamageMeta;
           Avian.debug.lastDamage = {
             target,
             base: amount,
-            applied: synergyAdj,
-            softCapApplied: adjAmount,
-            softCapFactor,
-            synergyMult: synergyAdj === adjAmount ? 1 : (synergyAdj / Math.max(1, adjAmount)),
-            isCrit: !!isCrit,
+            applied: out && out.dmgDealt != null ? out.dmgDealt : amount,
+            attackingStat: curved ? curved.attackingStat : null,
+            abilityPower: curved ? curved.abilityPower : null,
+            effectiveDef: curved ? curved.effectiveDef : null,
+            curvedBase: curved ? curved.dmg : null,
+            enCost: curved ? curved.enCost : null,
+            minDamageFloor: curved ? (curved.enCost || 0) * 2 : null,
+            isCrit: !!(out && out.isCrit),
             isMagic: !!isMagic,
             ability: srcAbility ? (srcAbility.id || srcAbility.name || null) : null,
             at: Date.now(),
@@ -168,7 +168,7 @@
         }
       }catch(_){}
       try{
-        if(isCrit) spawnFloat(target, '✦ Crit', 'damage-tag-float');
+        if(out && out.isCrit) spawnFloat(target, '✦ Crit', 'damage-tag-float');
       }catch(_){}
       return out;
     };

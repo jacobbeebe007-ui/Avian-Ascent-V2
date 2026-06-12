@@ -84,7 +84,8 @@
       btn = String((tmpl && (tmpl.btnType || tmpl.type)) || 'physical').toLowerCase();
     }
     var def = btn === 'spell' ? ctx.playerMdef : ctx.playerDef;
-    var mitigation = 1 - Math.min(0.55, def / (def + 40));
+    var curveK = (typeof global.DEFENCE_CURVE_VALUE === 'number') ? global.DEFENCE_CURVE_VALUE : 25;
+    var mitigation = curveK / (curveK + Math.max(0, def || 0));
     var hit = estimateHitChance(ctx, e);
     var finisher = pHp < 0.4 ? 1.25 : 1;
     var preferStat = btn === 'spell'

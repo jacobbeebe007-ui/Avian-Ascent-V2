@@ -8518,7 +8518,7 @@ function applyPostBattleHealIfDue(){
 }
 const COMBAT_GUARD_DEF_MULT = 0.80;
 const COMBAT_GUARD_MDEF_MULT = 0.80;
-const HIT_CHANCE_PCT_CLAMP = {min:35,max:97};
+const HIT_CHANCE_PCT_CLAMP = {min: MIN_HIT_CHANCE || 40, max: MAX_HIT_CHANCE || 95};
 
 /** Soft-cap main stats for formulas (bands 25–30 / 40–50; hard 99). */
 function softenMainStatForCombat(n){
@@ -9262,46 +9262,88 @@ function applyLifestealFromDamage(dmg, srcAbility){
   spawnFloat('player', `+${heal} 💉`, 'fn-heal');
 }
 
+function getEnemyAbilityAuthoredEnCost(ab){
+  if(!ab) return 1;
+  const tmpl=getAbilityTemplateForUI(ab);
+  return Math.max(1, Number(tmpl?.energy ?? tmpl.energyCost ?? tmpl?.apCost ?? ab?.energy ?? ab?.energyCost ?? 1));
+}
+
+function computePlayerOutgoingCurvedBase(isMagic, srcAbility){
+  const activeAb=srcAbility||G._activePlayerAbility||null;
+  const enCost=activeAb?getAbilityAuthoredEnergyCost(activeAb,G.player):1;
+  const attackingStat=isMagic?(G.player.stats.matk||0):(G.player.stats.atk||0);
+  const abilityPower=getAbilityPowerForEnCost(enCost);
+  let pierce=isMagic?getMagicalPierceFractionForDamage(activeAb):getPhysicalPierceFractionForDamage(activeAb);
+  if(G.playerStatus?.openingStrikePierce) pierce=Math.max(pierce,0.45);
+  const rawDef=isMagic?(G.enemy.stats.mdef||0):(G.enemy.stats.def||0);
+  const effDef=effectiveDefence(rawDef,pierce,{burning:enemyHasBurning()});
+  const dmg=calculateCurvedDamage(attackingStat,abilityPower,effDef);
+  return {dmg,enCost,attackingStat,abilityPower,effectiveDef:effDef};
+}
+
+function applyCurvedMitigationToPlayer(preMit,isMagic,srcAbility){
+  const _aura=getPassiveDefMdefBonuses();
+  const rawDef=isMagic
+    ? ((G.player.stats.mdef||0)+_aura.mdef)
+    : ((G.player.stats.def||0)+_aura.def);
+  let pen=0;
+  if(isMagic){
+    pen=Math.min(0.95, (Number(srcAbility?.pierceMdef)||0)/100 + (Number(G._currentPiercePct)||0)/100);
+  } else if(srcAbility){
+    pen=getPhysicalPierceFractionForDamage(srcAbility);
+  }
+  const effDef=effectiveDefence(rawDef,pen,{burning:playerHasBurning()});
+  return Math.max(0, preMit*curvedDefenceMultiplier(effDef));
+}
+
+function computePlayerCritDamageAdd(activeAb){
+  let critDmgAdd=Number(G.player?.critDamageBonusPct)||0;
+  if(typeof Avian?.mutations?.getMechanicsRollup==='function'){
+    const _eqCritM=Avian.mutations.getMechanicsRollup(G.player);
+    if((_eqCritM.critDamageBonusPct||0)>0) critDmgAdd+=_eqCritM.critDamageBonusPct/100;
+  }
+  if((G.player?.critVsAfflictedBonusPct||0)>0 && enemyHasAfflictionForCardBonuses()) critDmgAdd+=G.player.critVsAfflictedBonusPct;
+  const _pid=BIRDS[G.player?.birdKey]?.passive?.id;
+  const es=G.enemyStatus||{};
+  if(_pid==='passive_snowyowl_whiteout_stalker'){
+    const delayed=!!(es.delayed&&es.delayed.dmg>0);
+    const chill=(es.chilled?.stacks||0)>0;
+    if(delayed||chill) critDmgAdd+=0.10;
+  }
+  if(_pid==='passive_cassowary_terror_kick' && getWeakenStacks(es)>0) critDmgAdd+=0.10;
+  if(_pid==='passive_vulture_carrion_sense' && (es.bleed?.stacks||0)>0) critDmgAdd+=0.10;
+  if(_pid==='passive_harpy_apex_grip'){
+    const ab=activeAb;
+    const k=String(ab?.btnType||ab?.type||ABILITY_TEMPLATES?.[ab?.id]?.btnType||'').toLowerCase();
+    if((k==='physical'||k==='ranged') && !G._firstAttackUsed) critDmgAdd+=0.10;
+  }
+  if((G.playerStatus.galahCritDmg||0)>0) critDmgAdd+=Math.max(0,G.playerStatus.galahCritDmg)/100;
+  const _tcb=G.playerStatus.tricksterCritDmgBuff;
+  if(_tcb && (_tcb.turns||0)>0 && (_tcb.pct||0)>0) critDmgAdd+=Math.max(0,_tcb.pct)/100;
+  const tmpl=ABILITY_TEMPLATES?.[activeAb?.id]||{};
+  const en=Number(tmpl.energy ?? tmpl.energyCost ?? activeAb?.energy ?? 1);
+  if(_pid==='passive_bustard_heavy_steps' && en>=2) critDmgAdd+=0.10;
+  if(_pid==='passive_shoebill_silent_stance' && !G.player._shoebillHadUtilityPriorTurn) critDmgAdd+=0.10;
+  return critDmgAdd;
+}
+
 function dealDamage(target,amount,isCrit=false,isMagic=false,srcAbility=null) {
-  let dmg=roundCombatDamage(Math.max(0.01, amount));
   const passiveEvoBonus=getPassiveEvolutionBonuses(G.player);
   const classPerkCtx=applyClassPerksToCombatContext(G.player?.birdKey,{});
   const activeAb=srcAbility||G._activePlayerAbility||null;
   const activeType=String(activeAb?.btnType||activeAb?.type||ABILITY_TEMPLATES?.[activeAb?.id]?.btnType||ABILITY_TEMPLATES?.[activeAb?.id]?.type||'').toLowerCase();
   const isAttack=(activeType==='physical'||activeType==='ranged');
   const isSpell=(activeType==='spell');
-  if(target==='enemy' && !isMagic && !isCrit && classPerkCtx.predatorRhythm && (G.playerActionsThisTurn||0)===2 && chance(10)) isCrit=true;
-  let critDmgAdd=isCrit?(G.player?.critDamageBonusPct||0):0;
-  if(isCrit && target==='enemy' && typeof Avian?.mutations?.getMechanicsRollup==='function'){
-    const _eqCritM=Avian.mutations.getMechanicsRollup(G.player);
-    if((_eqCritM.critDamageBonusPct||0)>0) critDmgAdd+=_eqCritM.critDamageBonusPct/100;
+  let curvedMeta=null;
+  let dmg;
+  if(target==='enemy'){
+    curvedMeta=computePlayerOutgoingCurvedBase(isMagic,activeAb);
+    dmg=roundCombatDamage(Math.max(0.01, curvedMeta.dmg));
+    G._lastCurvedDamageMeta=curvedMeta;
+    isCrit=false;
+  } else {
+    dmg=roundCombatDamage(Math.max(0.01, amount));
   }
-  if(isCrit && target==='enemy' && (G.player?.critVsAfflictedBonusPct||0)>0 && enemyHasAfflictionForCardBonuses()) critDmgAdd+=G.player.critVsAfflictedBonusPct;
-  if(isCrit && target==='enemy'){
-    const _pid=BIRDS[G.player?.birdKey]?.passive?.id;
-    const es=G.enemyStatus||{};
-    if(_pid==='passive_snowyowl_whiteout_stalker'){
-      const delayed=!!(es.delayed&&es.delayed.dmg>0);
-      const chill=(es.chilled?.stacks||0)>0;
-      if(delayed||chill) critDmgAdd+=0.10;
-    }
-    if(_pid==='passive_cassowary_terror_kick' && getWeakenStacks(es)>0) critDmgAdd+=0.10;
-    if(_pid==='passive_vulture_carrion_sense' && (es.bleed?.stacks||0)>0) critDmgAdd+=0.10;
-    if(_pid==='passive_harpy_apex_grip'){
-      const ab=activeAb;
-      const k=String(ab?.btnType||ab?.type||ABILITY_TEMPLATES?.[ab?.id]?.btnType||'').toLowerCase();
-      if((k==='physical'||k==='ranged') && !G._firstAttackUsed) critDmgAdd+=0.10;
-    }
-    if((G.playerStatus.galahCritDmg||0)>0) critDmgAdd+=Math.max(0,G.playerStatus.galahCritDmg)/100;
-    const _tcb=G.playerStatus.tricksterCritDmgBuff;
-    if(_tcb && (_tcb.turns||0)>0 && (_tcb.pct||0)>0) critDmgAdd+=Math.max(0,_tcb.pct)/100;
-    const tmpl=ABILITY_TEMPLATES?.[activeAb?.id]||{};
-    const en=Number(tmpl.energy ?? tmpl.energyCost ?? activeAb?.energy ?? 1);
-    if(_pid==='passive_bustard_heavy_steps' && en>=2) critDmgAdd+=0.10;
-    if(_pid==='passive_shoebill_silent_stance' && !G.player._shoebillHadUtilityPriorTurn) critDmgAdd+=0.10;
-  }
-  const critMult=(G.player.goldCritMult||1.5) + critDmgAdd;
-  if (isCrit) dmg=roundCombatDamage(dmg*critMult);
   if(target==='enemy'){
     if(G.enemyStatus?.bleed?.stacks>0){
       dmg += (G.player?.vsBleedFlatBonus||0);
@@ -9375,10 +9417,6 @@ function dealDamage(target,amount,isCrit=false,isMagic=false,srcAbility=null) {
         if(!G.player._ravenGrimSpdThisTurn){ G.player.stats.spd=(G.player.stats.spd||1)+4; G.player._ravenGrimSpdThisTurn=true; G.player._ravenGrimSpdLoan=4; }
       }
     }
-    if(_passId==='passive_magpie_shiny_opportunist' && isCrit && isAttack && !(G.player._magpieCritSpdThisTurn)){
-      G.player._magpieCritSpdThisTurn=true;
-      G.playerStatus.magpieSpdNext=4;
-    }
     if(classPerkCtx.executionLine && (G.enemy.stats.hp||1)<=Math.floor((G.enemy.stats.maxHp||1)*0.4)) dmg=roundCombatDamage(dmg*1.20);
     if(classPerkCtx.patientHunter && !G._perkFirstVsFullUsed && (G.enemy.stats.hp||0)>=(G.enemy.stats.maxHp||1)){
       dmg=roundCombatDamage(dmg*1.15);
@@ -9414,6 +9452,26 @@ function dealDamage(target,amount,isCrit=false,isMagic=false,srcAbility=null) {
     if(typeof Avian?.passives?.applyDamageBonus==='function'){
       dmg=Avian.passives.applyDamageBonus(dmg,activeAb,{isAttack,isSpell,isMagic});
     }
+    if(G._dispatcherCombatRow && typeof Avian?.dispatcher?.applyPostCurveModifiers==='function'){
+      dmg=Avian.dispatcher.applyPostCurveModifiers(dmg,G._dispatcherCombatRow);
+    }
+    if(!isMagic && classPerkCtx.predatorRhythm && (G.playerActionsThisTurn||0)===2 && chance(10)) isCrit=true;
+    if(!isCrit && typeof getPlayerCritChance==='function' && chance(getPlayerCritChance(activeAb))) isCrit=true;
+    if(isCrit){
+      const critDmgAdd=computePlayerCritDamageAdd(activeAb);
+      const critMult=(G.player.goldCritMult||BASE_CRIT_DAMAGE||1.5)+critDmgAdd;
+      dmg=roundCombatDamage(dmg*critMult);
+      if(_passId==='passive_magpie_shiny_opportunist' && isAttack && !(G.player._magpieCritSpdThisTurn)){
+        G.player._magpieCritSpdThisTurn=true;
+        G.playerStatus.magpieSpdNext=4;
+      }
+    }
+    if(typeof globalThis.avianApplySynergyConsumeDamage==='function'){
+      dmg=globalThis.avianApplySynergyConsumeDamage('enemy',isCrit,isMagic,dmg);
+    }
+    if(curvedMeta){
+      dmg=applyMinimumDamage(roundCurvedDamage(dmg),curvedMeta.enCost);
+    }
   }
   let wasBlocked=false;
   if (target==='enemy') {
@@ -9426,16 +9484,25 @@ function dealDamage(target,amount,isCrit=false,isMagic=false,srcAbility=null) {
     if (def>0){dmg=roundCombatDamage(dmg*blockPct);wasBlocked=true;}
   }
   if (target==='player') {
-    G._currentPiercePct=0;
-    const _aura=getPassiveDefMdefBonuses();
-    const _burnP=playerHasBurning()?0.8:1;
-    if(isMagic){
-      const gv=magicalGuardValueFromPlayerMdef((G.player.stats.mdef||0)+_aura.mdef,_burnP);
-      dmg=roundCombatDamage(dmg*damageMitigationMultiplierFromGuard(gv));
-    }else{
-      const gv=physicalGuardValueFromPlayerDef((G.player.stats.def||0)+_aura.def,_burnP);
-      dmg=roundCombatDamage(dmg*damageMitigationMultiplierFromGuard(gv));
+    const enemyEnCost=getEnemyAbilityAuthoredEnCost(activeAb);
+    const playerDodge = getEffectiveDodge(G.player);
+    const enemyBaseAcc=Math.max(0, (G.enemy.stats.acc||70) - (G.enemyStatus.accDebuff||0) - (G.enemyStatus.enemyBlind>0?15:0));
+    const hitPct=calculateAbilityHitChancePct(enemyBaseAcc, playerDodge, enemyEnCost);
+    if (Math.random()*100>=hitPct){
+      G._currentPiercePct=0;
+      const _pbd=BIRDS[G.player.birdKey]; if(_pbd&&_pbd.passive&&_pbd.passive.onDodge)_pbd.passive.onDodge(G.player);
+      if((G.player?.healOnDodge||0)>0){
+        const heal=scaleHealForBleed('player',Math.max(0,G.player.healOnDodge||0));
+        G.player.stats.hp=Math.min(G.player.stats.maxHp,G.player.stats.hp+heal);
+        spawnFloat('player',`+${heal}`,'fn-heal');
+      }
+      if(classPerkCtx.slipstream){
+        G.playerStatus.perkSlipstream=1;
+      }
+      return {dmgDealt:0,wasDodged:true,wasBlocked:false,isCrit,isMagic};
     }
+    dmg=roundCombatDamage(applyCurvedMitigationToPlayer(dmg,isMagic,activeAb));
+    G._currentPiercePct=0;
     if((G.enemyStatus?.feared||0)>0 && G.player?.relTerrorLedger) dmg=roundCombatDamage(dmg*0.90);
     if(G.playerStatus?.ironResolve && G.playerStatus.ironResolve.turns>0) dmg=roundCombatDamage(dmg*0.80);
     const _bd=BIRDS[G.player.birdKey];
@@ -9451,23 +9518,12 @@ function dealDamage(target,amount,isCrit=false,isMagic=false,srcAbility=null) {
       const guardedPct=getGuardedPhysReducPct(G.playerStatus);
       if(guardedPct>0) dmg=roundCombatDamage(dmg*(1-guardedPct/100));
     }
-    const playerDodge = getEffectiveDodge(G.player);
-    const enemyBaseAcc=Math.min(G.enemy.stats.acc||70, 95);
-    const enemyAccDebuff=(G.enemyStatus.accDebuff||0)+(G.enemyStatus.enemyBlind>0?15:0);
-    const effectiveAcc=Math.max(0, enemyBaseAcc - enemyAccDebuff);
-    const hitChance=calcHitChance(effectiveAcc,playerDodge,0.72);
-    if (Math.random()>=hitChance){
-      const _pbd=BIRDS[G.player.birdKey]; if(_pbd&&_pbd.passive&&_pbd.passive.onDodge)_pbd.passive.onDodge(G.player);
-      if((G.player?.healOnDodge||0)>0){
-        const heal=scaleHealForBleed('player',Math.max(0,G.player.healOnDodge||0));
-        G.player.stats.hp=Math.min(G.player.stats.maxHp,G.player.stats.hp+heal);
-        spawnFloat('player',`+${heal}`,'fn-heal');
-      }
-      if(classPerkCtx.slipstream){
-        G.playerStatus.perkSlipstream=1;
-      }
-      return {dmgDealt:0,wasDodged:true,wasBlocked:false,isCrit,isMagic};
+    if(!isCrit){
+      const rr=rollEnemyCritDamage(dmg);
+      dmg=rr.amount;
+      isCrit=rr.isCrit;
     }
+    dmg=applyMinimumDamage(roundCurvedDamage(dmg), enemyEnCost);
     const bypassDeflect=!!G._incomingBypassesDeflect;
     if(G.playerStatus.parry&&G.playerStatus.parry>0){
       const isParryValid=(G._incomingAttackKind==='physical'||G._incomingAttackKind==='ranged')&&!bypassDeflect;
@@ -9533,21 +9589,7 @@ function dealDamage(target,amount,isCrit=false,isMagic=false,srcAbility=null) {
     const _pbd2=BIRDS[G.player.birdKey]; if(_pbd2&&_pbd2.passive&&_pbd2.passive.onDamage)_pbd2.passive.onDamage(G.player,dmg);
     if(G.player._berserkerMode){if(!G.player._berserkDmgAcc)G.player._berserkDmgAcc=0;G.player._berserkDmgAcc+=dmg;while(G.player._berserkDmgAcc>=15){G.player._berserkDmgAcc-=15;G.player.stats.atk++;spawnFloat('player','⚔+1','fn-status');}}
   } else {
-    if(!isMagic){
-      const a=srcAbility||G._activePlayerAbility||null;
-      let pierce=getPhysicalPierceFractionForDamage(a);
-      if(G.playerStatus.openingStrikePierce){
-        pierce=Math.max(pierce,0.45);
-        delete G.playerStatus.openingStrikePierce;
-      }
-      const guard=physicalGuardValueFromEnemyDef(G.enemy.stats.def||0,pierce);
-      dmg=roundCombatDamage(dmg*damageMitigationMultiplierFromGuard(guard));
-    } else {
-      const a=srcAbility||G._activePlayerAbility||null;
-      const pierce=getMagicalPierceFractionForDamage(a);
-      const guard=magicalGuardValueFromEnemyMdef(G.enemy.stats.mdef||0,pierce);
-      dmg=roundCombatDamage(dmg*damageMitigationMultiplierFromGuard(guard));
-    }
+    if(G.playerStatus?.openingStrikePierce) delete G.playerStatus.openingStrikePierce;
     G._currentPiercePct=0;
     dmg=applyBossBurstBuffer(dmg);
     if(G._playerConfusesSelfThisAction){
@@ -9757,13 +9799,13 @@ function applyBossBurstBuffer(rawDamage){
 }
 
 function edmg(mult=1) {
-  const raw=G.enemy.stats.atk;
-  const effCore=softenMainStatForCombat(raw)*COMBAT_OFFENSIVE_STAT_MULT;
+  const atk=G.enemy.stats.atk||0;
+  const abilityPower=getAbilityPowerForLegacyMult(mult);
   const lull=(G.enemyStatus.lullabied>0)?0.5:1;
   const weak=getWeakenDamageMult(getWeakenStacks(G.enemyStatus));
   const ruffleReduct=G.enemyStatus.featherRuffle&&G.enemyStatus.featherRuffle.turns>0
     ?(1-(G.enemyStatus.featherRuffle.atkReduction||0)/100):1;
-  let out=Math.floor(roll(Math.max(1,Math.floor(effCore*.8)),Math.max(1,Math.floor(effCore*1.2)))*mult*lull*weak*ruffleReduct);
+  let out=Math.max(1, Math.floor(atk*abilityPower*lull*weak*ruffleReduct));
   if((G.biomeMod?.lightningBonus||0)>0 && getEnemyKitAbilityIds(G.enemy).includes('eStun')){
     out=Math.floor(out*(1+G.biomeMod.lightningBonus));
   }
@@ -9824,18 +9866,16 @@ function getPlayerMissChance(ab) {
   return Math.max(floor, reduced - accBonus + tookiePenalty - (G.playerStatus.accDebuff||0) + classAdj + sizeAdj - missReduce - extra - getPlayerHitBonus(ab));
 }
 
-/** Hit % after assigned ability miss, enemy dodge curve, and ACC skew; clamped 35–97. */
+/** Hit % = attacker ACC − target DODGE − EN-tier accuracy penalty; clamped 40–95. */
 function getPlayerHitPercentForAttack(ab){
-  let miss=getPlayerMissChance(ab);
+  const enCost=getAbilityAuthoredEnergyCost(ab,G.player);
+  const dodge=getEffectiveEnemyDodgeForPlayerHit();
+  let acc=getPlayerEffectiveAcc();
   const t=ABILITY_TEMPLATES?.[ab?.id]||ABILITY_TEMPLATES_EXTRA?.[ab?.id]||ab||{};
   const kind=String(t.btnType||t.type||ab?.btnType||ab?.type||'').toLowerCase();
   const isAttack=(kind==='physical'||kind==='ranged');
-  if(isAttack && !G._firstAttackUsed) miss=Math.max(0,miss-(G.player?.firstAttackAccBonus||0));
-  let hit=100-miss;
-  const dodge=effectiveDodgePercentForCombat(getEffectiveEnemyDodgeForPlayerHit());
-  const accSkew=(getPlayerEffectiveAcc()-75)*0.22;
-  hit=hit-dodge+accSkew;
-  return Math.max(HIT_CHANCE_PCT_CLAMP.min,Math.min(HIT_CHANCE_PCT_CLAMP.max,hit));
+  if(isAttack && !G._firstAttackUsed) acc+=Number(G.player?.firstAttackAccBonus||0);
+  return calculateAbilityHitChancePct(acc, dodge, enCost);
 }
 
 function getPlayerAccuracy() {
@@ -9857,14 +9897,8 @@ function resolvePlayerAttackHit(ab) {
     if(chance(getPlayerMissChance(ab))) return {hit:false, reason:'accuracy'};
     return {hit:true, reason:null};
   }
-  let miss=getPlayerMissChance(ab);
-  if(!G._firstAttackUsed) miss=Math.max(0,miss-(G.player?.firstAttackAccBonus||0));
-  const accSkew=(getPlayerEffectiveAcc()-75)*0.22;
-  let accHit=100-miss+accSkew;
-  accHit=Math.max(HIT_CHANCE_PCT_CLAMP.min, Math.min(HIT_CHANCE_PCT_CLAMP.max, accHit));
-  if(Math.random()*100>=accHit) return {hit:false, reason:'accuracy'};
-  const dodgePct=effectiveDodgePercentForCombat(getEffectiveEnemyDodgeForPlayerHit());
-  if(Math.random()*100<dodgePct) return {hit:false, reason:'dodge'};
+  const hitPct=getPlayerHitPercentForAttack(ab);
+  if(Math.random()*100>=hitPct) return {hit:false, reason:'accuracy'};
   return {hit:true, reason:null};
 }
 function playerAttackMisses(ab) {
@@ -11458,8 +11492,7 @@ function dukeApplyDecreePunish(){
 }
 function dukeOwlsVerdict(){
   const p=G.player.stats; const missing=1-(p.hp/p.maxHp); const mult=1.15+missing*0.95;
-  const burst=rollEnemyCritDamage(edmg(1.35*mult));
-  const r=dealDamage('player',burst.amount);
+  const r=dealDamage('player',edmg(1.35*mult));
   spawnFloat('player',`🦉-${r.dmgDealt}`,'fn-dmg');
   logMsg('🦉 Owl’s Verdict!','boss');
 }
@@ -11484,8 +11517,7 @@ function dukeTurnAI(){
   if(d.riverCd===0){ d.riverCd=3; mem.utilityStreak=(mem.utilityStreak||0)+1; mem.lastTurnHadDamage=false; mem.lastAbilityId='dukeRiverGrip'; mem.lastActionCategory='control'; dukeRiverGrip(); return; }
   const p=G.player.stats;
   if(d.verdictCd===0 && (p.hp<=Math.floor(p.maxHp*0.5) || (G.enemyStatus.enraged||0)>0)){ d.verdictCd=3; mem.utilityStreak=0; mem.lastAbilityId='dukeOwlsVerdict'; mem.lastActionCategory='heavy'; mem.lastTurnHadDamage=true; dukeOwlsVerdict(); return; }
-  const snap=rollEnemyCritDamage(edmg(1.0));
-  const r=dealDamage('player',snap.amount);
+  const r=dealDamage('player',edmg(1.0));
   mem.utilityStreak=0; mem.lastAbilityId='dukeTalons'; mem.lastActionCategory='damage'; mem.lastTurnHadDamage=(r.dmgDealt||0)>0;
   spawnFloat('player',`-${r.dmgDealt}`,'fn-dmg');
   logMsg('🦉 Talons in the dark.','boss');
@@ -11540,41 +11572,35 @@ async function executeEnemyKitTemplateAbility(enemy, abilityId, totalEnemyMiss){
       logMsg(`${enemy.name} fumbles!`,'miss');
       return;
     }
-    let mult=(tmpl.baseDmgMult!=null)?(Number(tmpl.baseDmgMult)||0)+0.1*((ab.level||1)-1):null;
-    if(!(mult>0)) mult=0.88;
-    mult=Math.max(0.22,mult);
+    const enCost=getEnemyAbilityAuthoredEnCost(ab);
+    const abilityPower=getAbilityPowerForEnCost(enCost)+Math.min(0.15,0.05*((ab.level||1)-1));
     const atk=enemy.stats.atk||8;
-    const raw=Math.max(1,Math.floor(roll(Math.floor(atk*0.8),Math.floor(atk*1.2))*mult));
-    const rr=rollEnemyCritDamage(raw);
-    const r=dealDamage('player',rr.amount,rr.isCrit,false,ab);
+    const raw=Math.max(1, Math.floor(atk*abilityPower));
+    const r=dealDamage('player',raw,false,false,ab);
     await doAttack('enemy','player',r);
     setHpBar('player',G.player.stats.hp,G.player.stats.maxHp);
     if(r.wasDodged) logMsg(`${name} — dodged!`,'miss');
-    else logMsg(`${enemy.name} — ${name}${rr.isCrit?' CRIT':''} for ${r.dmgDealt}!`,'enemy-action');
+    else logMsg(`${enemy.name} — ${name}${r.isCrit?' CRIT':''} for ${r.dmgDealt}!`,'enemy-action');
     return;
   }
   if(btn==='spell'){
     G._incomingAttackKind='magic';
     G._incomingBypassesDeflect=true;
-    const effDodgeSpell=getEffectiveDodge(G.player);
-    const mAccEff=Math.max(0,Math.min(95,(enemy.stats.acc||70)-(G.enemyStatus.accDebuff||0)));
-    const mHitPct=Math.max(5,Math.min(95,Math.floor((mAccEff-effDodgeSpell+100)/2)));
-    if(!chance(mHitPct)){
+    const enCost=getEnemyAbilityAuthoredEnCost(ab);
+    const abilityPower=getAbilityPowerForEnCost(enCost)+Math.min(0.15,0.05*((ab.level||1)-1));
+    const matkN=enemy.stats.matk||8;
+    const raw=Math.max(1, Math.floor(matkN*abilityPower));
+    const r=dealDamage('player',raw,false,true,ab);
+    if(r.wasDodged){
       spawnFloat('player','Dodged!','fn-dodge'); playAvatarAnim('player','do-dodge-r',400); SFX.dodge(); await delay(420);
       logMsg(`✨ ${G.player.name} slips the spell!`,'system');
       return;
     }
     await doSpell('enemy',`✦ ${name}!`);
-    let mult=(tmpl.baseDmgMult!=null)?(Number(tmpl.baseDmgMult)||0)+0.1*((ab.level||1)-1):0.82;
-    mult=Math.max(0.22,mult);
-    const matkN=enemy.stats.matk||8;
-    const raw=Math.max(1,Math.floor(roll(Math.floor(matkN*0.75),Math.floor(matkN*1.15))*mult));
-    const rr=rollEnemyCritDamage(raw);
-    const r=dealDamage('player',rr.amount,rr.isCrit,true,ab);
     await doAttack('enemy','player',r);
     setHpBar('player',G.player.stats.hp,G.player.stats.maxHp);
     if(r.wasDodged) logMsg(`${name} — dodged!`,'miss');
-    else logMsg(`${enemy.name} — ${name}${rr.isCrit?' CRIT':''} for ${r.dmgDealt}!`,'enemy-action');
+    else logMsg(`${enemy.name} — ${name}${r.isCrit?' CRIT':''} for ${r.dmgDealt}!`,'enemy-action');
     return;
   }
   await doSpell('enemy',`✦ ${name}!`);
@@ -11702,8 +11728,7 @@ async function enemyTurn() {
       }
       if(totalEnemyMiss>0&&chance(totalEnemyMiss)){await doMiss('enemy');logMsg(`${e.name} attack missed!`,'miss');}
       else{
-        const strikeRoll=rollEnemyCritDamage(edmg());
-        const r=dealDamage('player',strikeRoll.amount);
+        const r=dealDamage('player',edmg());
         await doAttack('enemy','player',r);
         setHpBar('player',G.player.stats.hp,G.player.stats.maxHp);
         if(r.wasDodged)logMsg(`${e.name} attacks — dodged!`,'enemy-action');
@@ -11727,8 +11752,7 @@ async function enemyTurn() {
       const missTot=20+totalEnemyMiss;
       if(chance(missTot)){await doMiss('enemy');logMsg(`${e.name} heavy missed!`,'miss');}
       else{
-        const heavyRoll=rollEnemyCritDamage(edmg(1.6));
-        const r=dealDamage('player',heavyRoll.amount);
+        const r=dealDamage('player',edmg(1.6));
         await doAttack('enemy','player',r);
         setHpBar('player',G.player.stats.hp,G.player.stats.maxHp);
         if(r.wasDodged)logMsg(`Heavy — dodged!`,'enemy-action');
