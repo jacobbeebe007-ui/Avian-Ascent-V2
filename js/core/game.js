@@ -6400,6 +6400,13 @@ function renderStatuses(id, statuses) {
     else if (k==='feared') { b.className='status-badge feared'; b.textContent=`😨 Feared(${v}t,30% skip)`; tooltipSummary='Refresh only. 30% chance to skip turn.'; }
     else if (k==='lullabied') { b.className='status-badge lullabied'; b.textContent=`💤 Lulled(${v}t)`; tooltipSummary='Debuff: chance to skip actions while lulled.'; }
     else if (k==='evading') { b.className='status-badge evading'; b.textContent=`💨 Evade(${v}t)`; }
+    else if (k==='guarded') {
+      const pct=Math.floor(Number(v.physReducPct)||0);
+      const t=Math.floor(Number(v.turns)||0);
+      b.className='status-badge guarded';
+      b.textContent=`🛡 Guarded(${pct}%·${t}t)`;
+      tooltipSummary='Physical attack damage reduction only. Does not reduce magic or song damage.';
+    }
     else if (k==='defending') { b.className='status-badge defending'; b.textContent=`🛡 Guard(${v}t)`; tooltipSummary='Damage reduction while guarding.'; }
     else if (k==='dustDevil') { b.className='status-badge feared'; b.textContent=`🌪 Blinded(${v.turns}t,-${v.accDrop||15}%ACC)`; }
     else if (k==='featherRuffle') { b.className='status-badge weaken'; b.textContent=`🪶 Ruffled(${v.turns}t,-${v.atkReduction}%ATK${v.accDrop>0?',-'+v.accDrop+'%ACC':''})`; }
@@ -8973,6 +8980,58 @@ function addStatus(obj,key,val,cap=99){ obj[key]=Math.min(cap,(obj[key]||0)+val)
 function setStatusMax(obj,key,val){ obj[key]=Math.max(obj[key]||0,val); }
 /** Timed numeric status: refresh duration (Math.max), never stack turns. */
 function refreshStatus(obj,key,turns,cap=99){ obj[key]=Math.min(cap,Math.max(obj[key]||0,Math.max(1,Math.floor(Number(turns)||1)))); }
+
+function getGuardedPhysReducPct(status){
+  const g=status?.guarded;
+  if(!g||typeof g!=='object') return 0;
+  const turns=Math.floor(Number(g.turns)||0);
+  if(turns<=0) return 0;
+  return Math.max(0, Math.min(90, Number(g.physReducPct)||0));
+}
+
+function applyGuardedBuff(side, opts={}){
+  const status=side==='enemy'?G.enemyStatus:G.playerStatus;
+  if(!status) return;
+  const pct=Math.max(0, Math.min(90, Math.floor(Number(opts.physReducPct)||0)));
+  const turns=Math.max(1, Math.floor(Number(opts.turns)||1));
+  const sourceAbilityId=opts.sourceAbilityId?String(opts.sourceAbilityId):'';
+  const cur=status.guarded;
+  if(cur&&typeof cur==='object'){
+    status.guarded={
+      turns:Math.max(cur.turns||0, turns),
+      physReducPct:Math.max(Number(cur.physReducPct)||0, pct),
+      sourceAbilityId:sourceAbilityId||cur.sourceAbilityId||'',
+    };
+  }else{
+    status.guarded={turns, physReducPct:pct, sourceAbilityId};
+  }
+}
+
+function tickGuardedStatus(status){
+  if(!status?.guarded||typeof status.guarded!=='object') return;
+  status.guarded.turns=Math.max(0, Math.floor(Number(status.guarded.turns)||0)-1);
+  if(status.guarded.turns<=0) delete status.guarded;
+}
+
+function playerIsGuarding(playerStatus){
+  const s=playerStatus||{};
+  if((s.defending||0)>0) return true;
+  return getGuardedPhysReducPct(s)>0;
+}
+
+function resolveGuardedReductionPct(row, riderValue=0, ab=null){
+  const explicit=Number(riderValue)||0;
+  if(explicit>0) return Math.min(90, explicit);
+  const text=String(row?.riderText||row?.shortDesc||'');
+  const m=text.match(/(\d+(?:\.\d+)?)\s*%\s*damage\s*reduction/i);
+  if(m) return Math.min(90, Number(m[1]));
+  const level=Math.max(1, Math.floor(Number(ab?.level)||Number(row?.level)||1));
+  const ap=Math.max(1, Math.floor(Number(row?.apCost)||1));
+  let base=15, step=5;
+  if(ap===2){ base=22; step=6; }
+  else if(ap>=3){ base=30; step=7; }
+  return Math.min(50, base+(level-1)*step);
+}
 /** Source-keyed stat loan: same source refreshes magnitude + duration; different sources may combine. */
 function applySourceStatLoan(ps,player,bagName,statKey,sourceId,value,turns=1){
   if(!ps||!player||!player.stats||!statKey) return 0;
@@ -9358,6 +9417,10 @@ function dealDamage(target,amount,isCrit=false,isMagic=false,srcAbility=null) {
   }
   let wasBlocked=false;
   if (target==='enemy') {
+    if(!isMagic){
+      const enemyGuardedPct=getGuardedPhysReducPct(G.enemyStatus);
+      if(enemyGuardedPct>0) dmg=roundCombatDamage(dmg*(1-enemyGuardedPct/100));
+    }
     const def=G.enemyStatus.defending;
     const blockPct=0.4;
     if (def>0){dmg=roundCombatDamage(dmg*blockPct);wasBlocked=true;}
@@ -9385,6 +9448,8 @@ function dealDamage(target,amount,isCrit=false,isMagic=false,srcAbility=null) {
     } else {
       // Physical resist (Goose Bruised Hide)
       if(_p&&_p.physicalResist) dmg=roundCombatDamage(dmg*(1-_p.physicalResist));
+      const guardedPct=getGuardedPhysReducPct(G.playerStatus);
+      if(guardedPct>0) dmg=roundCombatDamage(dmg*(1-guardedPct/100));
     }
     const playerDodge = getEffectiveDodge(G.player);
     const enemyBaseAcc=Math.min(G.enemy.stats.acc||70, 95);
@@ -9649,7 +9714,7 @@ function applyConditionalPhysicalDamageMultipliers(subtotal, conditionalBonuses)
       const th=Number(c.threshold);
       if(Number.isFinite(th) && (G.player.stats.spd||0)>=th) m+=Number(c.damageBonus)||0;
     }
-    if(c.type==='while_guarding' && (G.playerStatus.defending||0)>0) m+=Number(c.damageBonus)||0;
+    if(c.type==='while_guarding' && playerIsGuarding(G.playerStatus)) m+=Number(c.damageBonus)||0;
   }
   return Math.max(1, Math.floor(subtotal*m));
 }
@@ -10094,6 +10159,7 @@ function tickStatuses(who) {
       }
     }
     else if (k==='counterThorns') { /* temporary per defending window */ }
+    else if (k==='guarded' && typeof s[k]==='object') tickGuardedStatus(s);
     else if (k==='weaken' && typeof s[k]==='object' && s[k].turns!=null) {
       s[k].turns--;
       if(s[k].turns<=0) delete s[k];
@@ -10101,7 +10167,7 @@ function tickStatuses(who) {
     else if (typeof s[k]==='number'&&s[k]>0) s[k]--;
     else if (typeof s[k]==='object'&&s[k].turns!==undefined) { /* skip */ }
   });
-  if(who==='player' && !s.defending && s.counterThorns) delete s.counterThorns;
+  if(who==='player' && !playerIsGuarding(s) && s.counterThorns) delete s.counterThorns;
 }
 
 // ============================================================
@@ -14792,6 +14858,20 @@ function checkDevCode(val) {
     setTimeout(() => { if (msg) msg.textContent = ''; }, 3200);
     syncBuildNestUnlockUI();
     initSelectionSafe();
+    return;
+  }
+  if (code === 'goldengoose') {
+    if (typeof addSavedEggs === 'function') addSavedEggs(9999);
+    if (typeof addGoldenGooseEggs === 'function') addGoldenGooseEggs(9000);
+    const input = document.getElementById('dev-code-input');
+    if (input) input.value = '';
+    if (msg) {
+      msg.textContent = '🪿 GoldenGoose: +9999 Saved Eggs and +9000 Golden Goose Eggs!';
+      msg.style.color = 'var(--gold-light)';
+    }
+    setTimeout(() => { if (msg) msg.textContent = ''; }, 3200);
+    if (typeof syncFortuneBalances === 'function') syncFortuneBalances();
+    if (typeof renderFortuneInventory === 'function') renderFortuneInventory();
     return;
   }
   if (val.length >= 10) {

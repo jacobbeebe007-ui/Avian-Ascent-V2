@@ -434,7 +434,11 @@ function parseRiders(riderText, codeTags) {
   }
 
   if (/\bguard\b/i.test(text) && /defence|defense|gain/i.test(text)) addSelf('gainGuard', 1);
-  if (/brace|damage reduction/i.test(text)) addSelf('gainBrace', 1);
+  if ((m = text.match(/(\d+(?:\.\d+)?)\s*%\s*damage\s*reduction/i))) {
+    addSelf('gainGuarded', Number(m[1]));
+  } else if (/brace|damage reduction/i.test(text)) {
+    addSelf('gainGuarded', 0);
+  }
   if (/counter\s*chance|small counter/i.test(text)) addSelf('gainCounter', 1);
   if (/taunt/i.test(text)) addSelf('gainTaunt', 1);
 

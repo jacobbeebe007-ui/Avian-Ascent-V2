@@ -12,7 +12,22 @@
   /* Reward tiers */
   --tier-grey:#6a7890; --tier-green:#4c8a6a; --tier-blue:#4c6ac9;
   --tier-purple:#7a4cc9; --tier-gold:#c9a84c;
+  --scrollbar-thumb:rgba(130,110,80,.22);
+  --scrollbar-thumb-hover:rgba(160,140,100,.38);
+  --scrollbar-track:transparent;
 }
+html{
+  scrollbar-width:thin;
+  scrollbar-color:var(--scrollbar-thumb) var(--scrollbar-track);
+}
+*::-webkit-scrollbar{width:8px;height:8px;}
+*::-webkit-scrollbar-track{background:var(--scrollbar-track);}
+*::-webkit-scrollbar-thumb{
+  background:var(--scrollbar-thumb);
+  border-radius:4px;
+}
+*:hover::-webkit-scrollbar-thumb,
+*:focus-within::-webkit-scrollbar-thumb{background:var(--scrollbar-thumb-hover);}
 *{box-sizing:border-box;margin:0;padding:0;}
 body{background:var(--bg);color:var(--text);font-family:'Crimson Pro',serif;font-size:16px;min-height:100vh;overflow-x:hidden;}
 body.reduce-motion *, body.reduce-motion *::before, body.reduce-motion *::after{animation:none !important;transition:none !important;scroll-behavior:auto !important;}
@@ -1729,6 +1744,9 @@ body.build-nest-unlocked .splash-hotspot--forge.is-buildnest-hidden{
 .status-badge.confused{background:rgba(122,76,201,.15);border-color:var(--purple);color:var(--purple-light);}
 .status-badge.feared{background:rgba(201,76,76,.15);border-color:var(--red);color:var(--red-light);}
 .status-badge.defending{background:rgba(74,106,201,.15);border-color:var(--blue);color:var(--blue-light);}
+.status-badge.guarded::before{content:'GRD';}
+.status-badge.guarded{background:rgba(74,106,201,.18);border-color:rgba(106,138,232,.65);color:var(--blue-light);}
+.story-cinematic-scroll{min-height:92px;max-height:170px;overflow:auto;white-space:pre-wrap;line-height:1.45;color:var(--text-dim);font-size:.9rem;}
 .status-badge.roosting{background:rgba(76,138,106,.15);border-color:var(--green);color:var(--green-light);}
 .status-badge.lullabied{background:rgba(122,76,201,.1);border-color:var(--purple);color:var(--purple-light);}
 .status-badge.evading{background:rgba(74,106,201,.1);border-color:var(--blue);color:var(--blue-light);}
@@ -1971,8 +1989,9 @@ body.build-nest-unlocked .splash-hotspot--forge.is-buildnest-hidden{
 
 .battle-log{background:linear-gradient(180deg,rgba(3,7,3,.96),rgba(2,5,2,.98));border:1px solid rgba(200,160,32,.18);border-radius:12px;padding:12px 14px;height:124px;overflow-y:auto;font-size:.88rem;line-height:1.6;box-shadow:inset 0 1px 0 rgba(255,255,255,.04);}
 .battle-log::-webkit-scrollbar{width:4px;}
-.battle-log::-webkit-scrollbar-track{background:var(--surface2);}
-.battle-log::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px;}
+.battle-log::-webkit-scrollbar-track{background:var(--scrollbar-track);}
+.battle-log::-webkit-scrollbar-thumb{background:var(--scrollbar-thumb);border-radius:2px;}
+.battle-log:hover::-webkit-scrollbar-thumb{background:var(--scrollbar-thumb-hover);}
 .log-entry{margin-bottom:1px;}
 .log-entry.player-action{color:var(--blue-light);}
 .log-entry.enemy-action{color:var(--red-light);}
@@ -3344,10 +3363,13 @@ img{image-rendering:pixelated;image-rendering:crisp-edges;}
 }
 
 @media (min-width: 900px){
-  #bird-grid, .battle-log, .ref-guide-modal-scroll, .showcase-section, .ascent-panel{scrollbar-color: transparent transparent;}
+  #bird-grid, .battle-log, .ref-guide-modal-scroll, .showcase-section, .ascent-panel{
+    scrollbar-color:var(--scrollbar-thumb) var(--scrollbar-track);
+  }
   #bird-grid::-webkit-scrollbar, .battle-log::-webkit-scrollbar{width:8px;height:8px;}
-  #bird-grid::-webkit-scrollbar-thumb, .battle-log::-webkit-scrollbar-thumb{background:transparent;}
-  #bird-grid::-webkit-scrollbar-track, .battle-log::-webkit-scrollbar-track{background:transparent;}
+  #bird-grid::-webkit-scrollbar-thumb, .battle-log::-webkit-scrollbar-thumb{background:var(--scrollbar-thumb);}
+  #bird-grid::-webkit-scrollbar-track, .battle-log::-webkit-scrollbar-track{background:var(--scrollbar-track);}
+  #bird-grid:hover::-webkit-scrollbar-thumb, .battle-log:hover::-webkit-scrollbar-thumb{background:var(--scrollbar-thumb-hover);}
 }
 
 

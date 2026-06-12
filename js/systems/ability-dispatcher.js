@@ -220,8 +220,39 @@
     return applyDispatcherStatLoan(ps, player, statKey, sourceId, pct);
   }
 
+  function applyGuardedFromRow(row, riderValue, ab) {
+    var resolve = (typeof globalThis.resolveGuardedReductionPct === 'function')
+      ? globalThis.resolveGuardedReductionPct
+      : (typeof resolveGuardedReductionPct === 'function' ? resolveGuardedReductionPct : null);
+    var apply = (typeof globalThis.applyGuardedBuff === 'function')
+      ? globalThis.applyGuardedBuff
+      : (typeof applyGuardedBuff === 'function' ? applyGuardedBuff : null);
+    if (!apply) return;
+    var pct = resolve ? resolve(row, riderValue, ab) : (Number(riderValue) || 20);
+    apply('player', { physReducPct: pct, turns: 1, sourceAbilityId: row && row.id ? row.id : '' });
+    spawnTrendFloat('player', 'buff');
+  }
+
+  function rowGrantsGuardedViaRider(row) {
+    var riders = (row && row.riders) || [];
+    for (var i = 0; i < riders.length; i++) {
+      var k = riders[i] && riders[i].kind;
+      if (k === 'gainGuarded' || k === 'gainBrace') return true;
+    }
+    return false;
+  }
+
+  function shouldAutoApplyGuarded(row) {
+    if (!row || !row.noDamage) return false;
+    if (row.target !== 'self' && row.target !== 'self_and_enemy') return false;
+    var text = String(row.riderText || row.shortDesc || '');
+    if (/guard|brace|damage reduction/i.test(text)) return true;
+    if (/guard/i.test(String(row.category || ''))) return true;
+    return rowGrantsGuardedViaRider(row);
+  }
+
   // ---- riders -----------------------------------------------------------
-  function makeStatRiderHandlers(sourceId) {
+  function makeStatRiderHandlers(sourceId, row, ab) {
     return {
       gainDodge: function (n, ps) { applyDispatcherDisplaySlot(ps, sourceId, 'gainDodge', n); spawnTrendFloat('player', 'buff'); },
       gainSpeed: function (n, ps, p) { applyDispatcherStatLoanPct(ps, p, 'spd', sourceId, n); spawnTrendFloat('player', 'buff'); },
@@ -236,7 +267,8 @@
         applyDispatcherStatLoanPct(ps, p, 'def', sourceId, pct);
         spawnTrendFloat('player', 'buff');
       },
-      gainBrace: function (_n, ps) { ps.dispatcherBrace = 1; ps.dispatcherBraceT = 1; spawnTrendFloat('player', 'buff'); },
+      gainGuarded: function (n) { applyGuardedFromRow(row, n, ab); },
+      gainBrace: function (n) { applyGuardedFromRow(row, n, ab); },
       gainCounter: function (_n, ps) { ps.counterInstinct = Math.max(ps.counterInstinct || 0, 1); spawnTrendFloat('player', 'buff'); },
       gainTaunt: function (_n, ps) { ps.dispatcherTaunt = 1; ps.dispatcherTauntT = 1; spawnTrendFloat('player', 'buff'); },
       reduceEnemyDodge: function (n) { applyEnemyStatDebuff('dodge', n, sourceId); },
@@ -278,13 +310,13 @@
     return false;
   }
 
-  function runRiders(row, ctx) {
+  function runRiders(row, ctx, ab) {
     var g = globalThis.G;
     if (!g || !g.player || !row.riders) return;
     var ps = g.playerStatus = g.playerStatus || {};
     var p = g.player;
     var sourceId = row.id || (ctx && ctx.sourceAbilityId) || 'unknown';
-    var statHandlers = makeStatRiderHandlers(sourceId);
+    var statHandlers = makeStatRiderHandlers(sourceId, row, ab);
     ctx.applied = ctx.applied || Object.create(null);
     for (var i = 0; i < row.riders.length; i++) {
       var r = row.riders[i];
@@ -300,8 +332,11 @@
     }
   }
 
-  function runPreRiders(row, _ab) {
-    runRiders(row, { hitsLanded: 1, ailmentsApplied: {} });
+  function runPreRiders(row, ab) {
+    runRiders(row, { hitsLanded: 1, ailmentsApplied: {} }, ab);
+    if (shouldAutoApplyGuarded(row) && !rowGrantsGuardedViaRider(row)) {
+      applyGuardedFromRow(row, 0, ab);
+    }
   }
   function applyConditionalDamageBonus(row, dmg) {
     if (!row.riders) return dmg;
@@ -459,7 +494,7 @@
     }
 
     var riderCtx = { hitsLanded: hitsLanded, ailmentsApplied: ailmentsApplied };
-    runRiders(row, riderCtx);
+    runRiders(row, riderCtx, ab);
 
     runPostRiders(row, hitsLanded, hits, anyCrit);
 
@@ -520,7 +555,6 @@
       globalThis.decaySourceStatLoans(ps, player, '_dispatcherStatLoans');
     }
     decayDispatcherDisplaySlots(ps);
-    if ((ps.dispatcherBraceT || 0) > 0) { ps.dispatcherBraceT--; if (ps.dispatcherBraceT <= 0) { delete ps.dispatcherBrace; delete ps.dispatcherBraceT; } }
     if ((ps.dispatcherTauntT || 0) > 0) { ps.dispatcherTauntT--; if (ps.dispatcherTauntT <= 0) { delete ps.dispatcherTaunt; delete ps.dispatcherTauntT; } }
     revertEnemyDispatcherDebuffs();
   };
