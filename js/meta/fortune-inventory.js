@@ -1,4 +1,4 @@
-/* War room Inventory — global holdings vault (read-only). */
+/* War room Inventory — global holdings vault and artifact equip. */
 (function () {
   'use strict';
 
@@ -28,6 +28,27 @@
     }
   }
 
+  function renderInventoryEquippedNote(artifacts, equippedId) {
+    var note = document.getElementById('inventory-equipped-note');
+    if (!note) return;
+    if (!artifacts.length) {
+      note.textContent = '';
+      note.hidden = true;
+      return;
+    }
+    note.hidden = false;
+    if (!equippedId) {
+      note.textContent = 'No artifact equipped for your next Flight.';
+      return;
+    }
+    var equipped = artifacts.find(function (art) {
+      return art.id === equippedId;
+    });
+    note.textContent = equipped
+      ? 'Equipped for next Flight: ' + equipped.name
+      : 'No artifact equipped for your next Flight.';
+  }
+
   function renderInventoryCurrency(rows) {
     var savedEl = document.getElementById('inventory-balance-saved');
     var gooseEl = document.getElementById('inventory-balance-goose');
@@ -45,6 +66,9 @@
     var grid = document.getElementById('inventory-artifacts-grid');
     var empty = document.getElementById('inventory-artifacts-empty');
     if (!grid) return;
+    var equippedId =
+      typeof globalThis.getEquippedArtifactId === 'function' ? globalThis.getEquippedArtifactId() : null;
+    renderInventoryEquippedNote(artifacts, equippedId);
     if (!artifacts.length) {
       grid.innerHTML = '';
       if (empty) empty.hidden = false;
@@ -53,10 +77,23 @@
     if (empty) empty.hidden = true;
     grid.innerHTML = artifacts
       .map(function (art) {
+        var isEquipped = art.id === equippedId;
+        var cardClass =
+          'inventory-item-card inventory-item-card--artifact' + (isEquipped ? ' inventory-item-card--equipped' : '');
+        var equippedBadge = isEquipped
+          ? '<span class="inventory-item-equipped-badge">Equipped</span>'
+          : '';
+        var btnAction = isEquipped
+          ? 'data-action="unequipFortuneArtifact"'
+          : 'data-action="equipFortuneArtifact:' + esc(art.id) + '"';
+        var btnLabel = isEquipped ? 'Unequip' : 'Equip';
         return (
-          '<div class="inventory-item-card inventory-item-card--artifact">' +
+          '<div class="' +
+          cardClass +
+          '">' +
           '<div class="inventory-item-icon">' +
           esc(art.icon) +
+          equippedBadge +
           '</div>' +
           '<div class="inventory-item-name">' +
           esc(art.name) +
@@ -64,7 +101,11 @@
           '<p class="inventory-item-desc">' +
           esc(art.desc) +
           '</p>' +
-          '<p class="inventory-item-note">Effect coming soon.</p></div>'
+          '<button type="button" class="fortune-buy-btn fortune-buy-btn--artifact inventory-equip-btn" ' +
+          btnAction +
+          '>' +
+          esc(btnLabel) +
+          '</button></div>'
         );
       })
       .join('');
@@ -112,6 +153,20 @@
     if (typeof globalThis.syncFortuneBalances === 'function') globalThis.syncFortuneBalances();
   }
 
+  function equipFortuneArtifact(artifactId) {
+    if (typeof globalThis.setEquippedArtifact !== 'function') return;
+    if (!globalThis.setEquippedArtifact(artifactId)) return;
+    renderFortuneInventory();
+  }
+
+  function unequipFortuneArtifact() {
+    if (typeof globalThis.setEquippedArtifact !== 'function') return;
+    globalThis.setEquippedArtifact(null);
+    renderFortuneInventory();
+  }
+
   globalThis.renderFortuneInventory = renderFortuneInventory;
   globalThis.syncInventoryHotspotBadge = syncInventoryHotspotBadge;
+  globalThis.equipFortuneArtifact = equipFortuneArtifact;
+  globalThis.unequipFortuneArtifact = unequipFortuneArtifact;
 })();

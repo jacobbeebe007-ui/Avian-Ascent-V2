@@ -1,9 +1,8 @@
-/* Feathers & Fortune — war room store UI and purchases. */
+/* Cuckoo's Feathers & Fortune Emporium — war room store UI and purchases. */
 (function () {
   'use strict';
 
   var FORTUNE_TAB = 'hiring';
-  var ARTIFACT_EGG_COST = 1;
 
   function esc(s) {
     return String(s || '')
@@ -19,22 +18,31 @@
   }
 
   function setFortuneSubView(view) {
-    FORTUNE_TAB = view === 'artifacts' ? 'artifacts' : 'hiring';
+    FORTUNE_TAB = view === 'artifacts' ? 'artifacts' : view === 'trade' ? 'trade' : 'hiring';
     var hiringBtn = document.getElementById('fortune-nav-hiring');
     var artBtn = document.getElementById('fortune-nav-artifacts');
+    var tradeBtn = document.getElementById('fortune-nav-trade');
     var hiringView = document.getElementById('fortune-view-hiring');
     var artView = document.getElementById('fortune-view-artifacts');
+    var tradeView = document.getElementById('fortune-view-trade');
     var isHiring = FORTUNE_TAB === 'hiring';
+    var isArtifacts = FORTUNE_TAB === 'artifacts';
+    var isTrade = FORTUNE_TAB === 'trade';
     if (hiringBtn) {
       hiringBtn.classList.toggle('is-active', isHiring);
       hiringBtn.setAttribute('aria-selected', isHiring ? 'true' : 'false');
     }
     if (artBtn) {
-      artBtn.classList.toggle('is-active', !isHiring);
-      artBtn.setAttribute('aria-selected', !isHiring ? 'true' : 'false');
+      artBtn.classList.toggle('is-active', isArtifacts);
+      artBtn.setAttribute('aria-selected', isArtifacts ? 'true' : 'false');
+    }
+    if (tradeBtn) {
+      tradeBtn.classList.toggle('is-active', isTrade);
+      tradeBtn.setAttribute('aria-selected', isTrade ? 'true' : 'false');
     }
     if (hiringView) hiringView.classList.toggle('is-active', isHiring);
-    if (artView) artView.classList.toggle('is-active', !isHiring);
+    if (artView) artView.classList.toggle('is-active', isArtifacts);
+    if (tradeView) tradeView.classList.toggle('is-active', isTrade);
   }
 
   function syncFortuneBalances() {
@@ -127,10 +135,11 @@
     }
     var html = '';
     stubs.forEach(function (art) {
+      var cost = Math.max(0, Math.floor(Number(art.gooseEggCost) || 0));
       var owned = typeof globalThis.ownsArtifact === 'function' && globalThis.ownsArtifact(art.id);
-      var canAfford = goose >= ARTIFACT_EGG_COST;
+      var canAfford = goose >= cost;
       var stateClass = owned ? ' is-owned' : canAfford ? ' is-affordable' : ' is-locked';
-      var btnLabel = owned ? 'Owned' : 'Buy · ' + fmt(ARTIFACT_EGG_COST) + ' 🪿';
+      var btnLabel = owned ? 'Owned' : 'Buy · ' + fmt(cost) + ' 🪿';
       var btnDisabled = owned || !canAfford;
       html +=
         '<div class="fortune-artifact-card' +
@@ -145,9 +154,62 @@
         '<p class="fortune-artifact-desc">' +
         esc(art.desc) +
         '</p>' +
-        '<p class="fortune-artifact-note">Gameplay effect coming soon.</p>' +
         '<button type="button" class="fortune-buy-btn fortune-buy-btn--artifact" data-action="purchaseFortuneArtifact:' +
         esc(art.id) +
+        '" ' +
+        (btnDisabled ? 'disabled' : '') +
+        '>' +
+        esc(btnLabel) +
+        '</button></div>';
+    });
+    grid.innerHTML = html;
+  }
+
+  function renderFortuneTradeGrid() {
+    var grid = document.getElementById('fortune-trade-grid');
+    if (!grid) return;
+    var offers = globalThis.FORTUNE_TRADE_OFFERS || [];
+    var saved = typeof getSavedEggBalance === 'function' ? getSavedEggBalance() : 0;
+    if (!offers.length) {
+      grid.innerHTML = '<p class="fortune-empty">No trade offers available yet.</p>';
+      return;
+    }
+    var html = '';
+    offers.forEach(function (offer) {
+      var purchases =
+        typeof globalThis.getTradePurchaseCount === 'function' ? globalThis.getTradePurchaseCount(offer.id) : 0;
+      var maxed = offer.maxPurchases != null && purchases >= Math.max(0, Math.floor(Number(offer.maxPurchases) || 0));
+      var cost =
+        typeof globalThis.getTradeOfferCost === 'function'
+          ? globalThis.getTradeOfferCost(offer, purchases)
+          : Math.max(0, Math.floor(Number(offer.baseCost) || 0));
+      var canAfford = saved >= cost;
+      var stateClass = maxed ? ' is-owned' : canAfford ? ' is-affordable' : ' is-locked';
+      var btnLabel = maxed ? 'Maxed' : canAfford ? 'Trade · ' + fmt(cost) + ' 🥚' : 'Need more eggs';
+      var btnDisabled = maxed || !canAfford;
+      var progress =
+        offer.maxPurchases != null
+          ? '<p class="fortune-trade-progress">' +
+            esc(String(purchases) + '/' + String(offer.maxPurchases)) +
+            (offer.capLabel ? ' · ' + esc(offer.capLabel) : '') +
+            '</p>'
+          : '';
+      html +=
+        '<div class="fortune-artifact-card fortune-trade-card' +
+        stateClass +
+        '">' +
+        '<div class="fortune-artifact-icon">' +
+        esc(offer.icon) +
+        '</div>' +
+        '<div class="fortune-artifact-name">' +
+        esc(offer.name) +
+        '</div>' +
+        '<p class="fortune-artifact-desc">' +
+        esc(offer.desc) +
+        '</p>' +
+        progress +
+        '<button type="button" class="fortune-buy-btn" data-action="purchaseFortuneTrade:' +
+        esc(offer.id) +
         '" ' +
         (btnDisabled ? 'disabled' : '') +
         '>' +
@@ -161,6 +223,7 @@
     syncFortuneBalances();
     renderFortuneHiringGrid();
     renderFortuneArtifactsGrid();
+    renderFortuneTradeGrid();
     setFortuneSubView(FORTUNE_TAB);
   }
 
@@ -195,11 +258,40 @@
       renderFortuneShop();
       return;
     }
-    if (typeof globalThis.spendGoldenGooseEggs !== 'function' || !globalThis.spendGoldenGooseEggs(ARTIFACT_EGG_COST)) return;
+    var cost = Math.max(0, Math.floor(Number(art.gooseEggCost) || 0));
+    if (typeof globalThis.spendGoldenGooseEggs !== 'function' || !globalThis.spendGoldenGooseEggs(cost)) return;
     if (typeof globalThis.grantArtifact === 'function') globalThis.grantArtifact(artifactId);
+    var autoEquipped =
+      typeof globalThis.getEquippedArtifactId === 'function' &&
+      globalThis.getEquippedArtifactId() === artifactId;
     var msg = document.getElementById('fortune-shop-msg');
     if (msg) {
-      msg.textContent = art.name + ' acquired! (Effect activates in a future update.)';
+      msg.textContent = autoEquipped
+        ? art.name + ' acquired and equipped for your next Flight.'
+        : art.name + ' acquired! Equip it from Inventory before your next Flight.';
+      msg.style.color = 'var(--gold-light)';
+    }
+    renderFortuneShop();
+    if (typeof globalThis.renderFortuneInventory === 'function') globalThis.renderFortuneInventory();
+  }
+
+  function purchaseFortuneTrade(tradeId) {
+    if (typeof globalThis.commitFortuneTradePurchase !== 'function') return;
+    var result = globalThis.commitFortuneTradePurchase(tradeId);
+    var msg = document.getElementById('fortune-shop-msg');
+    if (!result || !result.ok) {
+      if (msg) {
+        if (result && result.reason === 'maxed') msg.textContent = 'This trade is maxed out.';
+        else if (result && result.reason === 'funds') msg.textContent = 'Not enough Saved Eggs.';
+        else msg.textContent = 'Trade unavailable.';
+        msg.style.color = 'var(--text-dim)';
+      }
+      renderFortuneShop();
+      return;
+    }
+    if (msg) {
+      var offer = result.offer || {};
+      msg.textContent = (offer.name || 'Trade') + ' complete!';
       msg.style.color = 'var(--gold-light)';
     }
     renderFortuneShop();
@@ -227,7 +319,7 @@
   globalThis.syncFortuneBalances = syncFortuneBalances;
   globalThis.purchaseFortuneBird = purchaseFortuneBird;
   globalThis.purchaseFortuneArtifact = purchaseFortuneArtifact;
+  globalThis.purchaseFortuneTrade = purchaseFortuneTrade;
   globalThis.getCompletedStagesForFlight = getCompletedStagesForFlight;
   globalThis.awardFlightSavedEggs = awardFlightSavedEggs;
-  globalThis.FORTUNE_ARTIFACT_EGG_COST = ARTIFACT_EGG_COST;
 })();

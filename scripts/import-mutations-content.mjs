@@ -46,8 +46,11 @@ const STAT_MAP = {
   'Heavy Attack': 'heavyAttackDmgPct',
   'Heavy Attack Damage': 'heavyAttackDmgPct',
   'Multi-hit Damage': 'multiHitDmgPct',
-  'DEF Penetration': 'defPenPct',
-  'MDEF Penetration': 'mdefPenPct',
+  'DEF Penetration': 'armorPen',
+  'Armour Penetration': 'armorPen',
+  'MDEF Penetration': 'magicPen',
+  'Magic Penetration': 'magicPen',
+  Penetration: 'armorPen',
   'Physical Ailment Chance': 'physicalAilmentChance',
   'Magic Ailment Chance': 'magicAilmentChance',
   'Delayed %': 'delayedDmgPct',
@@ -265,9 +268,9 @@ function parseItemRow(row, header) {
     if (db) mechanics.damageBonus = db;
   }
   const penBonus = get(row, header, 'Penetration Bonus');
-  if (penBonus) mechanics.piercePct = asNum(penBonus);
+  if (penBonus) stats.armorPen = (stats.armorPen || 0) + asNum(penBonus);
   const penTarget = get(row, header, 'Penetration Target') || get(row, header, 'Penetration Bonus');
-  if (penTarget && !mechanics.piercePct) mechanics.piercePct = asNum(penTarget);
+  if (penTarget && !stats.armorPen) stats.armorPen = asNum(penTarget);
 
   const physAil = normaliseAilmentId(get(row, header, 'Physical Ailment'));
   const physAilCh = get(row, header, 'Physical Ailment Chance');

@@ -525,13 +525,17 @@
     };
   }
 
-  // Shop 3x4 + artifact row
-  const ARTIFACTS = [
-    {id:'art_goldenFeather', tier:'gold', icon:'🪶', name:'Golden Feather', desc:'+1 Max Energy permanently.', apply(p){ p.energyBonus=(p.energyBonus||0)+1; if(typeof computePlayerMaxEnergy==='function') p.energyMax=computePlayerMaxEnergy(); }},
-    {id:'art_stormCrown', tier:'purple', icon:'👑', name:'Storm Crown', desc:'Burn damage is doubled.', apply(p){ p.burnBonus = (p.burnBonus||1) * 2; }},
-    {id:'art_murderBanner', tier:'purple', icon:'⚑', name:'Murder Banner', desc:'Crow-tagged physical attacks deal +25% damage.', apply(p){ p.crowBonus=(p.crowBonus||0)+0.25; }},
-    {id:'art_skyLantern', tier:'blue', icon:'🏮', name:'Sky Lantern', desc:'Gain +1 Energy on the first turn of each battle.', apply(p){ p.firstTurnEnergy=(p.firstTurnEnergy||0)+1; }}
-  ];
+  // Shop 3x4 + artifact row (single source: fortune catalog)
+  const ARTIFACTS = (globalThis.FORTUNE_ARTIFACT_STUBS || []).map(function (art) {
+    return {
+      id: art.id,
+      tier: art.tier,
+      icon: art.icon,
+      name: art.name,
+      desc: art.desc,
+      apply: art.apply,
+    };
+  });
 
   const _oldGenerateShopItemsPolish = globalThis.generateShopItems;
   if(typeof _oldGenerateShopItemsPolish === 'function'){

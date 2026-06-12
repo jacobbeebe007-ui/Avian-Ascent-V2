@@ -156,5 +156,39 @@ assert(
   'progressive energyByLevel L4 → heavy (3 EN)'
 );
 
+/** Mirrors dodgeBonusFromSpeed from game.js (0.20 per SPD; 4 SPD = +0.80, 5 SPD = +1). */
+function dodgeBonusFromSpeed(spd) {
+  return Math.round(Math.max(0, Number(spd) || 0) * 0.20 * 100) / 100;
+}
+assert(dodgeBonusFromSpeed(4) === 0.8, '4 SPD → +0.80 dodge');
+assert(dodgeBonusFromSpeed(5) === 1, '5 SPD → +1 dodge');
+assert(dodgeBonusFromSpeed(25) === 5, '25 SPD → +5 dodge');
+
+function capTrackedStatValue(statKey, value) {
+  const v = Number(value) || 0;
+  if (statKey === 'critChance') return Math.max(0, Math.min(100, v));
+  if (statKey === 'armorPen' || statKey === 'magicPen') return Math.max(0, Math.min(95, v));
+  return Math.max(0, v);
+}
+function rollupLegacyPen(stats, key, value) {
+  const v = Number(value) || 0;
+  if (!v) return;
+  if (key === 'defPenPct' || key === 'piercePct' || key === 'armorPen') stats.armorPen = (stats.armorPen || 0) + v;
+  else if (key === 'mdefPenPct' || key === 'magicPen') stats.magicPen = (stats.magicPen || 0) + v;
+}
+function getPlayerArmorPenPctFrom(stats, passivePiercePct, augAttackPiercePct) {
+  let pct = Number(stats?.armorPen) || 0;
+  pct += Number(passivePiercePct) || 0;
+  if (augAttackPiercePct) pct += augAttackPiercePct * 100;
+  return Math.min(95, Math.max(0, pct));
+}
+
+const penStats = {};
+rollupLegacyPen(penStats, 'defPenPct', 10);
+rollupLegacyPen(penStats, 'piercePct', 5);
+assert(penStats.armorPen === 15, 'legacy defPenPct + piercePct → armorPen 15');
+assert(capTrackedStatValue('armorPen', 120) === 95, 'armorPen caps at 95');
+assert(getPlayerArmorPenPctFrom({ armorPen: 10 }, 12, 0.15) === 37, 'armorPen 10 + passive 12 + augment 15% = 37');
+
 if (failed) { process.exit(1); }
 console.log('All stacking helper tests passed.');

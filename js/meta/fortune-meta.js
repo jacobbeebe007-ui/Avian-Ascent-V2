@@ -4,8 +4,23 @@
 
   var META_KEY = 'avianAscent_meta_v1';
 
+  var DEFAULT_TRADE_PURCHASES = {
+    trade_goldenGoose: 0,
+    trade_freshWaterCap: 0,
+    trade_sugarWaterCap: 0,
+    trade_honeyWaterCap: 0,
+  };
+
   function emptyMeta() {
-    return { savedEggs: 0, goldenGooseEggs: 0, ownedArtifacts: {}, ownedMisc: {} };
+    return {
+      savedEggs: 0,
+      goldenGooseEggs: 0,
+      ownedArtifacts: {},
+      ownedMisc: {},
+      equippedArtifactId: null,
+      tradePurchases: Object.assign({}, DEFAULT_TRADE_PURCHASES),
+      combatItemCapBonus: { freshWater: 0, sugarWater: 0, honeyWater: 0 },
+    };
   }
 
   function normalizeOwnedMisc(raw) {
@@ -18,13 +33,41 @@
     return out;
   }
 
+  function normalizeTradePurchases(raw) {
+    var out = Object.assign({}, DEFAULT_TRADE_PURCHASES);
+    if (!raw || typeof raw !== 'object') return out;
+    Object.keys(DEFAULT_TRADE_PURCHASES).forEach(function (id) {
+      out[id] = Math.max(0, Math.floor(Number(raw[id]) || 0));
+    });
+    return out;
+  }
+
+  function normalizeCombatItemCapBonus(raw) {
+    return {
+      freshWater: Math.max(0, Math.floor(Number(raw && raw.freshWater) || 0)),
+      sugarWater: Math.max(0, Math.floor(Number(raw && raw.sugarWater) || 0)),
+      honeyWater: Math.max(0, Math.floor(Number(raw && raw.honeyWater) || 0)),
+    };
+  }
+
+  function normalizeEquippedArtifactId(rawId, ownedArtifacts) {
+    var id = rawId != null && rawId !== '' ? String(rawId) : null;
+    if (!id) return null;
+    if (!ownedArtifacts || !ownedArtifacts[id]) return null;
+    return id;
+  }
+
   function normalizeMeta(raw) {
     var m = raw && typeof raw === 'object' ? raw : emptyMeta();
+    var ownedArtifacts = m.ownedArtifacts && typeof m.ownedArtifacts === 'object' ? m.ownedArtifacts : {};
     return {
       savedEggs: Math.max(0, Math.floor(Number(m.savedEggs) || 0)),
       goldenGooseEggs: Math.max(0, Math.floor(Number(m.goldenGooseEggs) || 0)),
-      ownedArtifacts: m.ownedArtifacts && typeof m.ownedArtifacts === 'object' ? m.ownedArtifacts : {},
+      ownedArtifacts: ownedArtifacts,
       ownedMisc: normalizeOwnedMisc(m.ownedMisc),
+      equippedArtifactId: normalizeEquippedArtifactId(m.equippedArtifactId, ownedArtifacts),
+      tradePurchases: normalizeTradePurchases(m.tradePurchases),
+      combatItemCapBonus: normalizeCombatItemCapBonus(m.combatItemCapBonus),
     };
   }
 
@@ -93,11 +136,35 @@
     return !!getFortuneMeta().ownedArtifacts[id];
   }
 
+  function getEquippedArtifactId() {
+    return getFortuneMeta().equippedArtifactId || null;
+  }
+
+  function setEquippedArtifact(artifactId) {
+    var m = getFortuneMeta();
+    if (artifactId == null || artifactId === '') {
+      m.equippedArtifactId = null;
+      saveFortuneMeta(m);
+      return true;
+    }
+    var id = String(artifactId);
+    if (!m.ownedArtifacts[id]) return false;
+    m.equippedArtifactId = id;
+    saveFortuneMeta(m);
+    return true;
+  }
+
+  function equipArtifactIfEmpty(artifactId) {
+    if (!artifactId || getEquippedArtifactId()) return false;
+    return setEquippedArtifact(artifactId);
+  }
+
   function grantArtifact(id) {
     if (!id) return false;
     var m = getFortuneMeta();
     m.ownedArtifacts[id] = true;
     saveFortuneMeta(m);
+    equipArtifactIfEmpty(id);
     return true;
   }
 
@@ -127,6 +194,50 @@
     return m.ownedMisc[id];
   }
 
+  function getTradePurchaseCount(tradeId) {
+    if (!tradeId) return 0;
+    var purchases = getFortuneMeta().tradePurchases || {};
+    return Math.max(0, Math.floor(Number(purchases[tradeId]) || 0));
+  }
+
+  function getTradeOfferById(tradeId) {
+    var offers = globalThis.FORTUNE_TRADE_OFFERS || [];
+    return offers.find(function (o) {
+      return o.id === tradeId;
+    }) || null;
+  }
+
+  function isTradeOfferMaxed(offer, purchasesSoFar) {
+    if (!offer || offer.maxPurchases == null) return false;
+    return getTradePurchaseCount(offer.id) >= Math.max(0, Math.floor(Number(offer.maxPurchases) || 0));
+  }
+
+  function commitFortuneTradePurchase(tradeId) {
+    var offer = getTradeOfferById(tradeId);
+    if (!offer) return { ok: false, reason: 'missing' };
+    var purchasesSoFar = getTradePurchaseCount(tradeId);
+    if (isTradeOfferMaxed(offer, purchasesSoFar)) return { ok: false, reason: 'maxed' };
+    var cost =
+      typeof globalThis.getTradeOfferCost === 'function'
+        ? globalThis.getTradeOfferCost(offer, purchasesSoFar)
+        : Math.max(0, Math.floor(Number(offer.baseCost) || 0));
+    if (!spendSavedEggs(cost)) return { ok: false, reason: 'funds' };
+
+    var m = getFortuneMeta();
+    m.tradePurchases = normalizeTradePurchases(m.tradePurchases);
+    m.tradePurchases[tradeId] = purchasesSoFar + 1;
+
+    if (tradeId === 'trade_goldenGoose') {
+      m.goldenGooseEggs += 1;
+    } else if (offer.itemKey) {
+      m.combatItemCapBonus = normalizeCombatItemCapBonus(m.combatItemCapBonus);
+      m.combatItemCapBonus[offer.itemKey] = (m.combatItemCapBonus[offer.itemKey] || 0) + 1;
+    }
+
+    saveFortuneMeta(m);
+    return { ok: true, cost: cost, offer: offer };
+  }
+
   globalThis.FORTUNE_META_KEY = META_KEY;
   globalThis.getFortuneMeta = getFortuneMeta;
   globalThis.saveFortuneMeta = saveFortuneMeta;
@@ -138,7 +249,12 @@
   globalThis.spendGoldenGooseEggs = spendGoldenGooseEggs;
   globalThis.ownsArtifact = ownsArtifact;
   globalThis.grantArtifact = grantArtifact;
+  globalThis.getEquippedArtifactId = getEquippedArtifactId;
+  globalThis.setEquippedArtifact = setEquippedArtifact;
+  globalThis.equipArtifactIfEmpty = equipArtifactIfEmpty;
   globalThis.getOwnedMiscCount = getOwnedMiscCount;
   globalThis.getAllOwnedMisc = getAllOwnedMisc;
   globalThis.addOwnedMisc = addOwnedMisc;
+  globalThis.getTradePurchaseCount = getTradePurchaseCount;
+  globalThis.commitFortuneTradePurchase = commitFortuneTradePurchase;
 })();

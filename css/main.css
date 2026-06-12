@@ -335,7 +335,7 @@ header p{color:var(--text-dim);font-style:italic;font-size:1rem;margin-top:4px;}
   transform:translateY(-50%);
   align-items:flex-end;
   text-align:right;
-  max-width:min(210px, 42vw);
+  max-width:min(260px, 48vw);
 }
 .splash-hotspot--inventory{
   /* Inventory — middle-right, above Feathers & Fortune */
@@ -346,14 +346,7 @@ header p{color:var(--text-dim);font-style:italic;font-size:1rem;margin-top:4px;}
   transform:translateY(-50%);
   align-items:flex-end;
   text-align:right;
-  max-width:min(210px, 42vw);
-}
-.splash-hotspot--inventory:hover,
-.splash-hotspot--inventory:focus-visible{
-  transform:translateY(-50%);
-  border-color:rgba(232,201,106,.6);
-  background:rgba(16,18,26,.52);
-  box-shadow:0 10px 32px rgba(0,0,0,.35);
+  max-width:min(260px, 48vw);
 }
 .fortune-egg-badge{
   position:absolute;
@@ -384,13 +377,6 @@ header p{color:var(--text-dim);font-style:italic;font-size:1rem;margin-top:4px;}
   background:linear-gradient(180deg,#9a72d8,#6a48a8);
   border:1px solid rgba(220,200,255,.55);
   box-shadow:0 2px 8px rgba(0,0,0,.35);
-}
-.splash-hotspot--fortune:hover,
-.splash-hotspot--fortune:focus-visible{
-  transform:translateY(-50%);
-  border-color:rgba(232,201,106,.6);
-  background:rgba(16,18,26,.52);
-  box-shadow:0 10px 32px rgba(0,0,0,.35);
 }
 .splash-hotspot--door{
   /* Open doorway — upper-center */
@@ -429,6 +415,12 @@ body.build-nest-unlocked .splash-hotspot--forge.is-buildnest-hidden{
   border-color:rgba(232,201,106,.6);
   background:rgba(16,18,26,.52);
   box-shadow:0 10px 32px rgba(0,0,0,.35);
+}
+.splash-hotspot--inventory:hover,
+.splash-hotspot--inventory:focus-visible,
+.splash-hotspot--fortune:hover,
+.splash-hotspot--fortune:focus-visible{
+  transform:translateY(calc(-50% - 2px));
 }
 .splash-hotspot--map:hover{
   transform:translateY(-2px);
@@ -606,9 +598,23 @@ body.build-nest-unlocked .splash-hotspot--forge.is-buildnest-hidden{
 }
 .fortune-balance-chip strong{color:var(--gold-light);font-family:'Cinzel',serif;}
 .fortune-balance-chip--goose{border-color:rgba(180,140,255,.35);}
+.fortune-welcome{
+  margin:0 0 4px;
+  font-family:'Cinzel',serif;
+  font-size:.88rem;
+  color:var(--gold-light);
+  letter-spacing:.04em;
+}
+.fortune-owner-note{
+  margin:0 0 10px;
+  font-size:.74rem;
+  color:rgba(200,198,190,.62);
+  line-height:1.35;
+  font-style:italic;
+}
 .fortune-subnav{
   display:grid;
-  grid-template-columns:1fr 1fr;
+  grid-template-columns:1fr 1fr 1fr;
   gap:8px;
   margin:0 0 12px;
 }
@@ -637,7 +643,12 @@ body.build-nest-unlocked .splash-hotspot--forge.is-buildnest-hidden{
 .fortune-subview.is-active{display:flex;}
 .fortune-tab-lead{margin:0;font-size:.78rem;color:rgba(200,198,190,.75);line-height:1.4;}
 .fortune-shop-msg{min-height:1.2em;font-size:.76rem;color:var(--text-dim);margin-bottom:4px;}
-.fortune-hiring-grid,.fortune-artifacts-grid{
+.fortune-trade-progress{
+  margin:0;
+  font-size:.7rem;
+  color:rgba(200,198,190,.68);
+}
+.fortune-hiring-grid,.fortune-artifacts-grid,.fortune-trade-grid{
   display:grid;
   grid-template-columns:repeat(auto-fill,minmax(min(100%,200px),1fr));
   gap:10px;
@@ -727,7 +738,34 @@ body.build-nest-unlocked .splash-hotspot--forge.is-buildnest-hidden{
   background:rgba(6,8,12,.52);
 }
 .inventory-item-card--artifact{border-color:rgba(180,140,255,.35);background:rgba(12,8,20,.55);}
+.inventory-item-card--equipped{
+  border-color:rgba(232,201,106,.65);
+  background:rgba(20,14,32,.68);
+  box-shadow:0 0 0 1px rgba(232,201,106,.18) inset,0 8px 24px rgba(120,80,200,.18);
+}
 .inventory-item-card--misc{border-color:rgba(106,184,154,.35);}
+.inventory-equipped-note{
+  margin:0 0 8px;
+  font-size:.76rem;
+  color:rgba(200,198,190,.72);
+  line-height:1.35;
+}
+.inventory-equipped-note[hidden]{display:none;}
+.inventory-item-equipped-badge{
+  position:absolute;
+  top:-4px;
+  right:calc(50% - 36px);
+  font-size:.58rem;
+  font-family:'Cinzel',serif;
+  letter-spacing:.04em;
+  text-transform:uppercase;
+  color:#1a1408;
+  background:linear-gradient(180deg,#f0d878,#c9a84c);
+  border:1px solid rgba(255,240,200,.55);
+  border-radius:999px;
+  padding:2px 7px;
+}
+.inventory-equip-btn{margin-top:4px;width:100%;}
 .inventory-item-icon{
   position:relative;
   display:flex;

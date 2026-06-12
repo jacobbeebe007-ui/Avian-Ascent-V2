@@ -1,4 +1,4 @@
-/* Feathers & Fortune — war room store catalog (hire birds, artifact stubs). */
+/* Cuckoo's Feathers & Fortune Emporium — war room store catalog. */
 (function () {
   'use strict';
 
@@ -46,10 +46,96 @@
   }
 
   var FORTUNE_ARTIFACT_STUBS = [
-    { id: 'art_goldenFeather', icon: '🪶', name: 'Golden Feather', desc: '+1 Max Energy permanently.' },
-    { id: 'art_stormCrown', icon: '👑', name: 'Storm Crown', desc: 'Burn damage is doubled.' },
-    { id: 'art_murderBanner', icon: '⚑', name: 'Murder Banner', desc: 'Crow-tagged physical attacks deal +25% damage.' },
-    { id: 'art_skyLantern', icon: '🏮', name: 'Sky Lantern', desc: 'Gain +1 Energy on the first turn of each battle.' },
+    {
+      id: 'art_goldenFeather',
+      tier: 'gold',
+      icon: '🪶',
+      name: 'Golden Feather',
+      desc: '+1 Max Energy permanently.',
+      gooseEggCost: 1000,
+      apply: function (p) {
+        p.energyBonus = (p.energyBonus || 0) + 1;
+        if (typeof globalThis.computePlayerMaxEnergy === 'function') p.energyMax = globalThis.computePlayerMaxEnergy();
+      },
+    },
+    {
+      id: 'art_stormCrown',
+      tier: 'purple',
+      icon: '👑',
+      name: 'Storm Crown',
+      desc: 'Burn damage is doubled.',
+      gooseEggCost: 100,
+      apply: function (p) {
+        p.burnBonus = (p.burnBonus || 1) * 2;
+      },
+    },
+    {
+      id: 'art_murderBanner',
+      tier: 'purple',
+      icon: '⚑',
+      name: 'Murder Banner',
+      desc: 'Knight Classes physical attacks deal +25% damage.',
+      gooseEggCost: 200,
+      apply: function (p) {
+        p.knightPhysBonus = (p.knightPhysBonus || 0) + 0.25;
+      },
+    },
+    {
+      id: 'art_skyLantern',
+      tier: 'blue',
+      icon: '🏮',
+      name: 'Sky Lantern',
+      desc: 'Gain +1 Energy on the first turn of each battle.',
+      gooseEggCost: 250,
+      apply: function (p) {
+        p.firstTurnEnergy = (p.firstTurnEnergy || 0) + 1;
+      },
+    },
+  ];
+
+  var FORTUNE_TRADE_OFFERS = [
+    {
+      id: 'trade_goldenGoose',
+      icon: '🪿',
+      name: 'Golden Goose Egg',
+      desc: 'Exchange Saved Eggs for one Golden Goose Egg.',
+      baseCost: 10,
+      costStep: 0,
+      maxPurchases: null,
+    },
+    {
+      id: 'trade_freshWaterCap',
+      itemKey: 'freshWater',
+      icon: '💧',
+      name: 'Fresh Water Satchel',
+      desc: 'Carry one more Fresh Water into every Flight.',
+      baseCost: 50,
+      costStep: 25,
+      maxPurchases: 6,
+      capLabel: 'Max hold 3 → 9',
+    },
+    {
+      id: 'trade_sugarWaterCap',
+      itemKey: 'sugarWater',
+      icon: '🌾',
+      name: 'Bird Seed Pouch',
+      desc: 'Carry one more Bird Seed into every Flight.',
+      baseCost: 100,
+      costStep: 25,
+      maxPurchases: 4,
+      capLabel: 'Max hold 2 → 6',
+    },
+    {
+      id: 'trade_honeyWaterCap',
+      itemKey: 'honeyWater',
+      icon: '🍯',
+      name: 'Honey Water Flask',
+      desc: 'Carry one more Honey Water into every Flight.',
+      baseCost: 150,
+      costStep: 25,
+      maxPurchases: 2,
+      capLabel: 'Max hold 1 → 3',
+    },
   ];
 
   var FORTUNE_MISC_STUBS = [];
@@ -65,6 +151,12 @@
     });
     if (misc) return { kind: 'misc', id: misc.id, icon: misc.icon, name: misc.name, desc: misc.desc };
     return null;
+  }
+
+  function getTradeOfferCost(offer, purchasesSoFar) {
+    if (!offer) return 0;
+    var count = Math.max(0, Math.floor(Number(purchasesSoFar) || 0));
+    return Math.max(0, Math.floor(Number(offer.baseCost) || 0) + count * Math.max(0, Math.floor(Number(offer.costStep) || 0)));
   }
 
   function getOwnedInventoryRows(meta) {
@@ -109,11 +201,25 @@
     return { currency: currency, artifacts: artifacts, misc: misc };
   }
 
+  function applyOwnedFortuneArtifacts(player) {
+    if (!player) return;
+    var equippedId =
+      typeof globalThis.getEquippedArtifactId === 'function' ? globalThis.getEquippedArtifactId() : null;
+    if (!equippedId) return;
+    var art = FORTUNE_ARTIFACT_STUBS.find(function (a) {
+      return a.id === equippedId;
+    });
+    if (art && typeof art.apply === 'function') art.apply(player);
+  }
+
   globalThis.FORTUNE_HIRE_BIRDS = buildHireBirdCatalog();
   globalThis.FORTUNE_ARTIFACT_STUBS = FORTUNE_ARTIFACT_STUBS;
+  globalThis.FORTUNE_TRADE_OFFERS = FORTUNE_TRADE_OFFERS;
   globalThis.FORTUNE_MISC_STUBS = FORTUNE_MISC_STUBS;
   globalThis.getFortuneItemDef = getFortuneItemDef;
+  globalThis.getTradeOfferCost = getTradeOfferCost;
   globalThis.getOwnedInventoryRows = getOwnedInventoryRows;
+  globalThis.applyOwnedFortuneArtifacts = applyOwnedFortuneArtifacts;
   globalThis.rebuildFortuneHireCatalog = function () {
     globalThis.FORTUNE_HIRE_BIRDS = buildHireBirdCatalog();
   };

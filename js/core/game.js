@@ -382,8 +382,8 @@ function upgradeEligibleForRewardPick(card, usedIds){
 function getUpgradePool(){ return UPGRADE_CARDS_REWORK.slice(); }
 
 // ---- Stat ledger: bird baseline vs level-up feathers vs card upgrades (Nest + combat tooltips) ----
-const STAT_LEDGER_TRACKED_KEYS = ['maxHp','atk','def','spd','acc','dodge','matk','mdef','critChance'];
-const STAT_LEDGER_LABELS = {maxHp:'HP (max)',atk:'ATT',def:'DEF',spd:'SPD',acc:'ACC',dodge:'DODGE',matk:'MATK',mdef:'MDEF',critChance:'CRIT %'};
+const STAT_LEDGER_TRACKED_KEYS = ['maxHp','atk','def','spd','acc','dodge','matk','mdef','critChance','armorPen','magicPen'];
+const STAT_LEDGER_LABELS = {maxHp:'HP (max)',atk:'ATT',def:'DEF',spd:'SPD',acc:'ACC',dodge:'DODGE',matk:'MATK',mdef:'MDEF',critChance:'CRIT %',armorPen:'ARMOUR PEN %',magicPen:'MAGIC PEN %'};
 function cloneStatLedgerSlice(stats){
   const s = stats || {};
   const out = {};
@@ -488,9 +488,24 @@ function applyFractionalHp(stats, delta) {
 }
 function normalizeCombatStats(stats) {
   if (!stats) return;
-  for (const k of ['hp', 'maxHp', 'atk', 'def', 'matk', 'mdef', 'spd', 'acc', 'dodge', 'critChance']) {
+  for (const k of ['hp', 'maxHp', 'atk', 'def', 'matk', 'mdef', 'spd', 'acc', 'dodge', 'critChance', 'armorPen', 'magicPen']) {
     if (stats[k] != null) stats[k] = Math.round(Number(stats[k]) * 100) / 100;
   }
+}
+function capPctStatValue(statKey, value) {
+  const v = Number(value) || 0;
+  if (statKey === 'critChance') return Math.max(0, Math.min(100, v));
+  if (statKey === 'armorPen' || statKey === 'magicPen') return Math.max(0, Math.min(95, v));
+  return Math.max(0, v);
+}
+const SPD_TO_DODGE_RATE = 0.20;
+function dodgeBonusFromSpeed(spd) {
+  return Math.round(Math.max(0, Number(spd) || 0) * SPD_TO_DODGE_RATE * 100) / 100;
+}
+globalThis.dodgeBonusFromSpeed = dodgeBonusFromSpeed;
+function dodgeSpdAttributionNote(player) {
+  const n = dodgeBonusFromSpeed(player?.stats?.spd);
+  return n > 0 ? ` +${formatCombatNumber(n)} from SPD (5 SPD = +1 DODGE)` : '';
 }
 function formatLedgerDelta(n){
   return formatCombatNumber(n);
@@ -506,6 +521,7 @@ function buildStatBreakdownTitle(statKey, rawVal, player){
   const rem = cur - b - lv - u - eq;
   let t = `${(STAT_LEDGER_LABELS[statKey]||statKey).toUpperCase()}: ${formatCombatNumber(cur)} — base ${formatCombatNumber(b)} + level ${formatLedgerDelta(lv)} + upgrades ${formatLedgerDelta(u)} + equipment ${formatLedgerDelta(eq)}`;
   if(Math.abs(rem) > 0.05) t += ` + other ${rem >= 0 ? '+' : ''}${formatLedgerDelta(rem)}`;
+  if(statKey === 'dodge') t += dodgeSpdAttributionNote(player);
   return t;
 }
 function getEquippedStatSources(player, statKey){
@@ -770,10 +786,9 @@ function getDerivedMechanicalBonusLines(player){
     if((mRoll.heavyAttackDmgPct||0)>0) lines.push(`+${mRoll.heavyAttackDmgPct}% heavy attack damage (mutations)`);
     if((mRoll.multiHitDmgPct||0)>0) lines.push(`+${mRoll.multiHitDmgPct}% multi-hit damage (mutations)`);
     if((mRoll.critDamageBonusPct||0)>0) lines.push(`+${mRoll.critDamageBonusPct}% crit damage (mutations)`);
-    if((mRoll.piercePct||0)>0) lines.push(`+${mRoll.piercePct}% penetration (mutations)`);
-    if((mRoll.defPenPct||0)>0) lines.push(`+${mRoll.defPenPct}% DEF pen (mutations)`);
-    if((mRoll.mdefPenPct||0)>0) lines.push(`+${mRoll.mdefPenPct}% MDEF pen (mutations)`);
   }
+  if((p.stats?.armorPen||0)>0) lines.push(`+${p.stats.armorPen}% armour penetration`);
+  if((p.stats?.magicPen||0)>0) lines.push(`+${p.stats.magicPen}% magic penetration`);
   return lines;
 }
 
@@ -2478,6 +2493,8 @@ function openNest() {
     <div class="nest-stat-card"><div class="nest-stat-val" style="color:${_nestCritMultBase>1.5||_nestCritBonusPct>0?'#e8c96a':'var(--gold)'}">${_nestCritMultDisp}</div><div class="nest-stat-lbl">💥 Crit Dmg</div></div>
     <div class="nest-stat-card" title="Magic Attack — improves spell and ailment potency"><div class="nest-stat-val" style="color:#6ae8e8">${formatCombatNumber(s.matk||8)}</div><div class="nest-stat-lbl" style="color:#4ab8c0">✦ M.ATK</div></div>
     <div class="nest-stat-card" title="Magic Defence — resists enemy spells and ailments"><div class="nest-stat-val" style="color:#6ae8e8">${formatCombatNumber(s.mdef||8)}</div><div class="nest-stat-lbl" style="color:#4ab8c0">✦ M.DEF</div></div>
+    ${(s.armorPen||0)>0?`<div class="nest-stat-card" title="Ignores enemy DEF when dealing physical damage"><div class="nest-stat-val">${formatCombatNumber(s.armorPen)}%</div><div class="nest-stat-lbl">Armour Pen</div></div>`:''}
+    ${(s.magicPen||0)>0?`<div class="nest-stat-card" title="Ignores enemy MDEF when dealing magical damage"><div class="nest-stat-val">${formatCombatNumber(s.magicPen)}%</div><div class="nest-stat-lbl">Magic Pen</div></div>`:''}
   </div></div>`;
   // Passive trait
   const bd=BIRDS[p.birdKey];
@@ -5360,16 +5377,31 @@ const COMBAT_ITEM_CATALOG = Object.freeze({
   honeyWater: Object.freeze({ itemKey:'honeyWater', shopId:'shop_item_honey_water', tier:'blue', icon:'🍯', name:'Honey Water', healPct:0.75, energyCost:3, maxHold:1, costOverride:32, combatHint:'Restore 75% of your max HP. Costs 3 energy. You can use one heal item per turn.' }),
 });
 
+function getCombatItemMaxHold(itemKey){
+  const def=COMBAT_ITEM_CATALOG[itemKey];
+  if(!def) return 0;
+  const meta=typeof getFortuneMeta==='function'?getFortuneMeta():null;
+  const bonus=meta?.combatItemCapBonus?.[itemKey]||0;
+  return def.maxHold+Math.max(0, Math.floor(Number(bonus)||0));
+}
+
+function playerIsKnightClass(player){
+  if(!player) return false;
+  const raw=String(BIRDS?.[player.birdKey]?.class||player.class||'').toLowerCase();
+  if(raw==='knight'||raw==='vanguard') return true;
+  return resolveFinalClass(player.class, player.birdKey)==='bruiser';
+}
+
 function createDefaultCombatItems(){
-  return { freshWater:3, sugarWater:0, honeyWater:0 };
+  return { freshWater:getCombatItemMaxHold('freshWater'), sugarWater:0, honeyWater:0 };
 }
 
 function ensureCombatItems(player){
   if(!player) return null;
   if(!player.combatItems || typeof player.combatItems!=='object') player.combatItems=createDefaultCombatItems();
   for(const key of Object.keys(COMBAT_ITEM_CATALOG)){
-    const def=COMBAT_ITEM_CATALOG[key];
-    player.combatItems[key]=Math.max(0, Math.min(def.maxHold, Math.floor(Number(player.combatItems[key])||0)));
+    const maxHold=getCombatItemMaxHold(key);
+    player.combatItems[key]=Math.max(0, Math.min(maxHold, Math.floor(Number(player.combatItems[key])||0)));
   }
   return player.combatItems;
 }
@@ -5382,7 +5414,7 @@ function getCombatItemCount(player, itemKey){
 function canAddCombatItem(player, itemKey, n=1){
   const def=COMBAT_ITEM_CATALOG[itemKey];
   if(!def) return false;
-  return getCombatItemCount(player, itemKey)+Math.max(1,Math.floor(Number(n)||1))<=def.maxHold;
+  return getCombatItemCount(player, itemKey)+Math.max(1,Math.floor(Number(n)||1))<=getCombatItemMaxHold(itemKey);
 }
 
 function addCombatItem(player, itemKey, n=1){
@@ -5390,7 +5422,7 @@ function addCombatItem(player, itemKey, n=1){
   if(!def || !player) return 0;
   ensureCombatItems(player);
   const add=Math.max(1,Math.floor(Number(n)||1));
-  const room=def.maxHold-getCombatItemCount(player, itemKey);
+  const room=getCombatItemMaxHold(itemKey)-getCombatItemCount(player, itemKey);
   const applied=Math.min(add, Math.max(0, room));
   if(applied>0) player.combatItems[itemKey]+=applied;
   return applied;
@@ -5398,19 +5430,20 @@ function addCombatItem(player, itemKey, n=1){
 
 function buildCombatItemShopOffer(def){
   const pct=Math.round((def.healPct||0)*100);
+  const maxHold=getCombatItemMaxHold(def.itemKey);
   return {
     id:def.shopId,
     tier:def.tier,
     icon:def.icon,
     name:def.name,
-    desc:`Battle item · Hold ${def.maxHold} · Heal ${pct}% max HP (${def.energyCost} EN in combat)`,
+    desc:`Battle item · Hold ${maxHold} · Heal ${pct}% max HP (${def.energyCost} EN in combat)`,
     costOverride:def.costOverride,
     itemKey:def.itemKey,
     isCombatItem:true,
     shopCategory:'items',
     apply(p){
       const added=addCombatItem(p, def.itemKey, 1);
-      if(added>0 && typeof logMsg==='function') logMsg(`+1 ${def.name} (${getCombatItemCount(p, def.itemKey)}/${def.maxHold})`,'exp-gain');
+      if(added>0 && typeof logMsg==='function') logMsg(`+1 ${def.name} (${getCombatItemCount(p, def.itemKey)}/${getCombatItemMaxHold(def.itemKey)})`,'exp-gain');
     },
   };
 }
@@ -5467,6 +5500,7 @@ function startGame() {
   syncPlayerAbilitiesFromSkillSlots(G.player);
   G.player.class = bd.class;
   G.player.size = bd.size||'medium';
+  if(typeof applyOwnedFortuneArtifacts==='function') applyOwnedFortuneArtifacts(G.player);
   G.player.energyMax = computePlayerMaxEnergy();
   G.player.energy = computePlayerStartEnergy(G.player);
   G.player.energyRegen = computePlayerEnergyRegen(G.player);
@@ -6159,17 +6193,21 @@ function refreshBattleUI() {
   const _bt=(key,raw,extra='')=>{ const b=buildStatBreakdownTitle(key,raw,G.player); return [b,extra].filter(Boolean).join(' | '); };
   const _pCombatHint=buildPlayerCombatStatHint();
   const _pHintRow=_pCombatHint?`<div class="stat-status-hint" style="grid-column:1/-1">${escAttr(_pCombatHint)}</div>`:'';
+  const _effArmorPen=getPlayerArmorPenPct(G.player);
+  const _effMagicPen=getPlayerMagicPenPct(G.player);
+  const _penCells=`${(_effArmorPen>0)?statCell('stat-armor-pen','Armour Pen',_effArmorPen,{suffix:'%',title:_bt('armorPen',p.armorPen||0,'Ignores enemy DEF on physical hits.'),statKey:'armorPen',statRaw:p.armorPen||0}):''}${(_effMagicPen>0)?statCell('stat-magic-pen','Magic Pen',_effMagicPen,{suffix:'%',title:_bt('magicPen',p.magicPen||0,'Ignores enemy MDEF on magical hits.'),statKey:'magicPen',statRaw:p.magicPen||0}):''}`;
 
   document.getElementById('player-stats-mini').innerHTML =
     `${statCell('stat-atk','ATK',_effAtk,{title:_bt('atk',p.atk,_statNote('Battle ATK',_effAtk-(p.atk||0),_atkNote,'Debuffs reducing ATK effect.')),trend:_trendTag(_effAtk-(p.atk||0)),statKey:'atk',statRaw:p.atk})}
      ${statCell('stat-matk','MATK',_effMatk,{title:_bt('matk',p.matk||8,'Magic Attack — improves spell/ailment potency'),trend:_trendTag(_effMatk-(p.matk||8)),statKey:'matk',statRaw:p.matk||8})}
      ${statCell('stat-def','DEF',_effDef,{title:_bt('def',p.def,_statNote('Battle DEF',_effDef-(p.def||0),'Battle Hymn increased DEF.','Debuffs reducing DEF.')),trend:_trendTag(_effDef-p.def),statKey:'def',statRaw:p.def})}
      ${statCell('stat-mdef','MDEF',_effMdef,{title:_bt('mdef',p.mdef||8,'Magic Defence — resists enemy spells and ailments'),trend:_trendTag(_effMdef-(p.mdef||8)),statKey:'mdef',statRaw:p.mdef||8})}
-     ${statCell('stat-dodge','Dodge',_effDodge,{suffix:'%',title:_bt('dodge',p.dodge,`Physical dodge. ${_statNote('Display',_effDodge-(p.dodge||0),'Evasion buffs active.','Debuffs reduced dodge.')}`),trend:_trendTag(_effDodge-p.dodge),statKey:'dodge',statRaw:p.dodge})}
+     ${statCell('stat-dodge','Dodge',_effDodge,{suffix:'%',title:_bt('dodge',p.dodge,`Physical dodge.${dodgeSpdAttributionNote(G.player)} ${_statNote('Display',_effDodge-(p.dodge||0)-dodgeBonusFromSpeed(p.spd),'Evasion buffs active.','Debuffs reduced dodge.')}`),trend:_trendTag(_effDodge-p.dodge-dodgeBonusFromSpeed(p.spd)),statKey:'dodge',statRaw:p.dodge})}
      ${statCell('stat-acc','ACC',_effAcc,{suffix:'%',title:_bt('acc',p.acc,_statNote('Battle ACC',_effAcc-(p.acc||0),'Battle Hymn increased ACC.','Blind/ruffle reduced ACC.')+_accCardBonus),trend:_trendTag(_effAcc-p.acc),statKey:'acc',statRaw:p.acc})}
      ${statCell('stat-spd','SPD',_effSpd,{title:_bt('spd',p.spd,_statNote('Battle SPD',_effSpd-(p.spd||0),'Buff increased SPD.','Slow/clip effects reduced SPD.')),trend:_trendTag(_effSpd-p.spd),statKey:'spd',statRaw:p.spd})}
      ${statCell('stat-cc','CC',_critChance,{suffix:'%',title:_bt('critChance',_ccBaseStore,`Shown value includes battle modifiers (e.g. burn). ${_statNote('vs stored CC',_critChance-_ccBaseStore,'Temporary buffs.','')}`),trend:_trendTag(_critChance-_ccBaseStore),statKey:'critChance',statRaw:_ccBaseStore})}
      <div class="stat-mini stat-cd" title="${escAttr(`Base crit multiplier ${formatCombatNumber(_critBase)}×. On critical hits, +${formatCombatNumber(_critBonusPct)} is added to the multiplier (e.g. Execution Beak). Shown value is base; small +number is the crit-only add.`)}"><span class="stat-k">CD</span><span class="stat-v">${_critMultHtml}</span></div>
+     ${_penCells}
      ${_pHintRow}`;
   wireCombatStatTooltips();
 
@@ -6186,12 +6224,14 @@ function refreshBattleUI() {
   };
   const _eCombatHint=buildEnemyCombatStatHint();
   const _eHintRow=_eCombatHint?`<div class="stat-status-hint est-hint" style="grid-column:1/-1">${escAttr(_eCombatHint)}</div>`:'';
+  const _effEnemyDodge=(ep2.dodge||0)+dodgeBonusFromSpeed(ep2.spd);
+  const _enemyDodgeSpdNote=dodgeBonusFromSpeed(ep2.spd)>0?` +${formatCombatNumber(dodgeBonusFromSpeed(ep2.spd))} from SPD (5 SPD = +1 DODGE)`:'';
   document.getElementById('enemy-stats-mini').innerHTML =
     `${enemyCell('stat-atk','ATK',ep2.atk,{title:'Physical attack',baseKey:'atk',statKey:'atk',statRaw:ep2.atk})}
      ${enemyCell('stat-matk','MATK',ep2.matk||6,{title:'Magic attack',baseKey:'matk',statKey:'matk',statRaw:ep2.matk||6})}
      ${enemyCell('stat-def','DEF',ep2.def,{title:'Physical defence',baseKey:'def',statKey:'def',statRaw:ep2.def})}
      ${enemyCell('stat-mdef','MDEF',ep2.mdef||8,{title:'Magic defence',baseKey:'mdef',statKey:'mdef',statRaw:ep2.mdef||8})}
-     ${enemyCell('stat-dodge','Dodge',ep2.dodge||0,{suffix:'%',title:'Dodge',baseKey:'dodge',statKey:'dodge',statRaw:ep2.dodge||0})}
+     ${enemyCell('stat-dodge','Dodge',_effEnemyDodge,{suffix:'%',title:`Dodge${_enemyDodgeSpdNote}`,baseKey:'dodge',statKey:'dodge',statRaw:ep2.dodge||0})}
      ${enemyCell('stat-acc','ACC',ep2.acc||70,{suffix:'%',title:'Accuracy',baseKey:'acc',statKey:'acc',statRaw:ep2.acc||70})}
      ${enemyCell('stat-spd','SPD',ep2.spd||0,{title:'Speed',baseKey:'spd',statKey:'spd',statRaw:ep2.spd||0})}
      ${enemyCell('stat-cc','CC',eCritChance,{suffix:'%',title:'Crit chance',statKey:'critChance',statRaw:eCritChance})}
@@ -7207,7 +7247,7 @@ function getPackRowScaleStatRaw(statKey, stats, isPlayerCombat){
   if(key==='DEF') return Number(s.def||0);
   if(key==='MDEF') return Number(s.mdef||0);
   if(key==='ACC') return Number(s.acc||0);
-  if(key==='DODGE') return Number(s.dodge||0);
+  if(key==='DODGE') return Number(s.dodge||0) + dodgeBonusFromSpeed(s.spd);
   if(key==='ATK'&&isPlayerCombat&&G?.player) return getEffectivePlayerAtkForDamagePreview();
   return Number(s.atk||0);
 }
@@ -8519,22 +8559,25 @@ function magicalGuardValueFromPlayerMdef(mdefRaw, burnMult){
   return Math.max(0, Math.floor(softenMainStatForCombat(m) * COMBAT_GUARD_MDEF_MULT));
 }
 
-function getMutationPhysicalPiercePct(){
-  if(typeof Avian?.mutations?.getMechanicsRollup!=='function' || !G.player) return 0;
-  const m=Avian.mutations.getMechanicsRollup(G.player);
-  return (Number(m.piercePct)||0) + (Number(m.defPenPct)||0);
+function getPlayerArmorPenPct(player=G.player){
+  let pct=Number(player?.stats?.armorPen)||0;
+  pct+=(getPassiveEvolutionBonuses(player).piercePct||0);
+  if(player?.augAttackPiercePct) pct+=player.augAttackPiercePct*100;
+  return Math.min(95, Math.max(0, pct));
 }
-function getMutationMagicalPiercePct(){
-  if(typeof Avian?.mutations?.getMechanicsRollup!=='function' || !G.player) return 0;
-  const m=Avian.mutations.getMechanicsRollup(G.player);
-  return Number(m.mdefPenPct)||0;
+function getPlayerMagicPenPct(player=G.player){
+  let pct=Number(player?.stats?.magicPen)||0;
+  if(player?.augSpellPiercePct) pct+=player.augSpellPiercePct*100;
+  return Math.min(95, Math.max(0, pct));
 }
+globalThis.getPlayerArmorPenPct=getPlayerArmorPenPct;
+globalThis.getPlayerMagicPenPct=getPlayerMagicPenPct;
 
 /** Pierce 0–1: fractional ability pierce + template pts on G._currentPiercePct. */
 function getPhysicalPierceFractionForDamage(ab){
   const fromAb = ab ? (getPlayerPiercePctForAbility(ab) || 0) : 0;
   const pts = Number(G._currentPiercePct) || 0;
-  const eqPct = getMutationPhysicalPiercePct();
+  const eqPct = getPlayerArmorPenPct();
   return Math.min(0.95, fromAb + pts / 100 + eqPct / 100);
 }
 
@@ -8542,21 +8585,21 @@ function getMagicalPierceFractionForDamage(ab){
   const pts = Number(G._currentPiercePct) || 0;
   let fromAb = 0;
   if(ab?.pierceMdef) fromAb = Number(ab.pierceMdef) / 100;
-  const eqPct = getMutationMagicalPiercePct();
+  const eqPct = getPlayerMagicPenPct();
   return Math.min(0.95, fromAb + pts / 100 + eqPct / 100);
 }
 
 /** UI / preview: template pierce without relying on G._currentPiercePct from pdmg. */
 function getPhysicalPierceFractionForPreview(ab){
   const fromAb = ab ? (getPlayerPiercePctForAbility(ab) || 0) : 0;
-  if (!ab) return Math.min(0.95, fromAb + getMutationPhysicalPiercePct() / 100);
+  if (!ab) return Math.min(0.95, fromAb + getPlayerArmorPenPct() / 100);
   const tmpl = getAbilityTemplateForUI(ab);
   const lv = Math.min(ab.level || 1, 4);
   let pts = (tmpl?.pierceDef || 0) + (lv >= 2 ? 5 : 0) + (lv >= 3 ? 5 : 0);
   if (BIRDS[G.player.birdKey]?.passive?.id === 'passive_kiwi_burrow_sense' && !G._firstAttackUsed) pts += 10;
   const enCost = Number(tmpl?.energy ?? tmpl.energyCost ?? ab?.energy ?? 1);
   if (BIRDS[G.player.birdKey]?.passive?.id === 'passive_secretary_long_leg_reach' && enCost <= 1) pts += 10;
-  return Math.min(0.95, fromAb + pts / 100 + getMutationPhysicalPiercePct() / 100);
+  return Math.min(0.95, fromAb + pts / 100 + getPlayerArmorPenPct() / 100);
 }
 
 function getMagicalPierceFractionForPreview(ab){
@@ -8565,7 +8608,7 @@ function getMagicalPierceFractionForPreview(ab){
     const tmpl = getAbilityTemplateForUI(ab);
     fromAb = (Number(tmpl?.pierceMdef) || Number(ab.pierceMdef) || 0) / 100;
   }
-  return Math.min(0.95, fromAb + getMutationMagicalPiercePct() / 100);
+  return Math.min(0.95, fromAb + getPlayerMagicPenPct() / 100);
 }
 
 function calcHitChance(attAcc, defDodgeRaw, baseHitFrac){
@@ -8916,7 +8959,7 @@ function getEffectiveDodge(p) {
     + (G.playerStatus.battleHymnDodge&&G.playerStatus.battleHymnDodge.turns>0 ? G.playerStatus.battleHymnDodge.bonus : 0)
     + (G.playerStatus.evading>0&&G.playerStatus.evadeBonus ? G.playerStatus.evadeBonus : 0);
   if(G.playerStatus.sittingDuck) return 0;
-  let dodge = p.stats.dodge + buffBonus + cardBonus;
+  let dodge = (p.stats.dodge || 0) + dodgeBonusFromSpeed(p.stats.spd) + buffBonus + cardBonus;
   dodge += (G.playerStatus.passiveDodge || 0);
   dodge -= getWeakenDodgePenalty(getWeakenStacks(G.playerStatus));
   if(typeof Avian?.dispatcher?.modifyDodge==='function') dodge = Avian.dispatcher.modifyDodge(dodge);
@@ -9005,7 +9048,7 @@ function applyWeakenStack(target, addStacks=1){
   status.weaken=w;
 }
 function getEffectiveEnemyDodgeForPlayerHit(){
-  let d = G.enemy?.stats?.dodge ?? 0;
+  let d = (G.enemy?.stats?.dodge ?? 0) + dodgeBonusFromSpeed(G.enemy?.stats?.spd);
   const pen=getWeakenDodgePenalty(getWeakenStacks(G.enemyStatus));
   return Math.max(0, d - pen);
 }
@@ -9255,6 +9298,7 @@ function dealDamage(target,amount,isCrit=false,isMagic=false,srcAbility=null) {
     if(isSpell && G.enemyStatus?.poison?.stacks>0 && (G.player?.augSpellVsPoisonPct||0)>0) dmg=roundCombatDamage(dmg*(1+G.player.augSpellVsPoisonPct));
     if(isSpell && (G.enemyStatus?.feared||0)>0 && (G.player?.augSpellVsFearPct||0)>0) dmg=roundCombatDamage(dmg*(1+G.player.augSpellVsFearPct));
     if(isAttack && (G.player?.augAttackVsBleedPct||0)>0 && G.enemyStatus?.bleed?.stacks>0) dmg=roundCombatDamage(dmg*(1+G.player.augAttackVsBleedPct));
+    if(isAttack && !isMagic && (G.player?.knightPhysBonus||0)>0 && playerIsKnightClass(G.player)) dmg=roundCombatDamage(dmg*(1+G.player.knightPhysBonus));
     if(isAttack && (G.player?.augFirstAttackBattlePct||0)>0 && !G._firstAttackUsed) dmg=roundCombatDamage(dmg*(1+G.player.augFirstAttackBattlePct));
     if(isAttack && (G.player?.augAttackExecutePct||0)>0 && G.enemy.stats.hp<=Math.floor((G.enemy.stats.maxHp||1)*0.5)) dmg=roundCombatDamage(dmg*(1+G.player.augAttackExecutePct));
     if(classPerkCtx.warBody && (G.player.stats.hp||1)<=Math.floor((G.player.stats.maxHp||1)*0.5)) dmg=roundCombatDamage(dmg*1.10);
@@ -10011,7 +10055,8 @@ function tickBurningEndEnemyPhase(){
     if(!b) continue;
     const turns=typeof b==='number'?b:b.turns;
     if(!turns||turns<=0){ delete status.burning; continue; }
-    const dmg=7;
+    const burnMult=side==='enemy'?(G.player?.burnBonus||1):1;
+    const dmg=roundCombatDamage(7*burnMult);
     stats.hp-=dmg;
     spawnFloat(side,`🔥 -${dmg}`,'fn-burn');
     setHpBar(side,stats.hp,stats.maxHp);

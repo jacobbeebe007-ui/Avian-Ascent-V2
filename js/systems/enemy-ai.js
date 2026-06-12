@@ -29,7 +29,9 @@
       playerGoesFirst: playerGoesFirst,
       playerDef: Math.max(0, p && p.stats ? (p.stats.def || 0) : 0),
       playerMdef: Math.max(0, p && p.stats ? (p.stats.mdef || 0) : 0),
-      playerDodge: Math.max(0, p && p.stats ? (p.stats.dodge || 0) : 0),
+      playerDodge: (typeof global.getEffectiveDodge === 'function' && p)
+        ? Math.max(0, global.getEffectiveDodge(p))
+        : Math.max(0, (p && p.stats ? (p.stats.dodge || 0) : 0) + (typeof global.dodgeBonusFromSpeed === 'function' ? global.dodgeBonusFromSpeed(p && p.stats ? p.stats.spd : 0) : 0)),
       playerAcc: Math.max(60, p && p.stats ? (p.stats.acc || 80) : 80),
       playerDefending: !!(g.playerStatus && g.playerStatus.defending),
       diffMod: getDiffMod(),

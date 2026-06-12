@@ -49,7 +49,10 @@
     if (key === 'DEF') return st.def || 0;
     if (key === 'MDEF') return st.mdef || 0;
     if (key === 'ACC') return st.acc || 0;
-    if (key === 'DODGE') return st.dodge || 0;
+    if (key === 'DODGE') {
+      var spdBonus = (typeof globalThis.dodgeBonusFromSpeed === 'function') ? globalThis.dodgeBonusFromSpeed(st.spd) : 0;
+      return (st.dodge || 0) + spdBonus;
+    }
     return st.atk || 0;
   }
   function maxHpForScaling() {

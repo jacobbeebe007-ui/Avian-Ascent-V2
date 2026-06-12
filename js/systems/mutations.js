@@ -52,13 +52,14 @@
 
   var MUT_STAT_DISPLAY = {
     maxHp: 'HP', atk: 'ATK', def: 'DEF', spd: 'SPD', acc: 'ACC', dodge: 'DODGE',
-    matk: 'MATK', mdef: 'MDEF', critChance: 'CRIT',
+    matk: 'MATK', mdef: 'MDEF', critChance: 'CRIT', armorPen: 'Armour Pen', magicPen: 'Magic Pen',
   };
   var MUT_STAT_COLOR = {
     atk: 'mut-stat-atk', matk: 'mut-stat-matk', def: 'mut-stat-def', mdef: 'mut-stat-mdef',
     spd: 'mut-stat-spd', acc: 'mut-stat-acc', dodge: 'mut-stat-dodge', critChance: 'mut-stat-crit',
-    maxHp: 'mut-stat-hp', lightDmg: 'mut-stat-atk', mediumDmg: 'mut-stat-atk', heavyDmg: 'mut-stat-atk',
-    multiHitDmg: 'mut-stat-atk', critDmg: 'mut-stat-crit', pierce: 'mut-stat-atk',
+    maxHp: 'mut-stat-hp', armorPen: 'mut-stat-atk', magicPen: 'mut-stat-matk',
+    lightDmg: 'mut-stat-atk', mediumDmg: 'mut-stat-atk', heavyDmg: 'mut-stat-atk',
+    multiHitDmg: 'mut-stat-atk', critDmg: 'mut-stat-crit',
     physAil: 'mut-stat-ail', magAil: 'mut-stat-ail', delayedDmg: 'mut-stat-atk',
   };
 
@@ -69,8 +70,27 @@
   function formatStatLineValue(key, raw) {
     var n = Number(raw) || 0;
     if (!n) return '';
-    if (key === 'critChance') return (n > 0 ? '+' : '') + n + '%';
+    if (key === 'critChance' || key === 'armorPen' || key === 'magicPen') return (n > 0 ? '+' : '') + n + '%';
     return (n > 0 ? '+' : '') + n;
+  }
+
+  function addArmorPenStat(stats, value) {
+    var v = Number(value) || 0;
+    if (!v) return;
+    stats.armorPen = (Number(stats.armorPen) || 0) + v;
+  }
+
+  function addMagicPenStat(stats, value) {
+    var v = Number(value) || 0;
+    if (!v) return;
+    stats.magicPen = (Number(stats.magicPen) || 0) + v;
+  }
+
+  function capTrackedStatValue(statKey, value) {
+    var v = Number(value) || 0;
+    if (statKey === 'critChance') return Math.max(0, Math.min(100, v));
+    if (statKey === 'armorPen' || statKey === 'magicPen') return Math.max(0, Math.min(95, v));
+    return Math.max(0, v);
   }
 
   function buildMutationStatLines(item) {
@@ -79,7 +99,7 @@
     var mech = Object.create(null);
     rollupMutationItem(item, stats, mech);
     var lines = [];
-    var order = ['atk', 'matk', 'def', 'mdef', 'spd', 'acc', 'dodge', 'critChance', 'maxHp'];
+    var order = ['atk', 'matk', 'def', 'mdef', 'spd', 'acc', 'dodge', 'critChance', 'armorPen', 'magicPen', 'maxHp'];
     for (var i = 0; i < order.length; i++) {
       var k = order[i];
       var v = Number(stats[k]) || 0;
@@ -92,9 +112,6 @@
     if (mech.heavyAttackDmgPct) lines.push({ key: 'heavyDmg', label: 'Heavy Attack', value: '+' + mech.heavyAttackDmgPct + '%', colorClass: mutStatColorClass('heavyDmg') });
     if (mech.multiHitDmgPct) lines.push({ key: 'multiHitDmg', label: 'Multi-hit', value: '+' + mech.multiHitDmgPct + '%', colorClass: mutStatColorClass('multiHitDmg') });
     if (mech.critDamageBonusPct) lines.push({ key: 'critDmg', label: 'Crit Damage', value: '+' + mech.critDamageBonusPct + '%', colorClass: mutStatColorClass('critDmg') });
-    if (mech.piercePct) lines.push({ key: 'pierce', label: 'Penetration', value: '+' + mech.piercePct + '%', colorClass: mutStatColorClass('pierce') });
-    if (mech.defPenPct) lines.push({ key: 'defPen', label: 'DEF Pen', value: '+' + mech.defPenPct + '%', colorClass: mutStatColorClass('defPen') });
-    if (mech.mdefPenPct) lines.push({ key: 'mdefPen', label: 'MDEF Pen', value: '+' + mech.mdefPenPct + '%', colorClass: mutStatColorClass('mdefPen') });
     if (mech.delayedDmgPct) lines.push({ key: 'delayedDmg', label: 'Delayed', value: '+' + mech.delayedDmgPct + '% dmg', colorClass: mutStatColorClass('delayedDmg') });
     var m = item.mechanics || {};
     if (m.physicalAilment && m.physicalAilment.chance) {
@@ -153,7 +170,7 @@
     var mech = Object.create(null);
     rollupMutationItem(item, stats, mech);
     var map = Object.create(null);
-    var order = ['atk', 'matk', 'def', 'mdef', 'spd', 'acc', 'dodge', 'critChance', 'maxHp'];
+    var order = ['atk', 'matk', 'def', 'mdef', 'spd', 'acc', 'dodge', 'critChance', 'armorPen', 'magicPen', 'maxHp'];
     for (var i = 0; i < order.length; i++) {
       var k = order[i];
       var v = Number(stats[k]) || 0;
@@ -164,7 +181,8 @@
     if (mech.heavyAttackDmgPct) map.heavyDmg = Number(mech.heavyAttackDmgPct);
     if (mech.multiHitDmgPct) map.multiHitDmg = Number(mech.multiHitDmgPct);
     if (mech.critDamageBonusPct) map.critDmg = Number(mech.critDamageBonusPct);
-    if (mech.piercePct || mech.defPenPct) map.pierce = Number(mech.piercePct || mech.defPenPct);
+    if (stats.armorPen) map.armorPen = Number(stats.armorPen);
+    if (stats.magicPen) map.magicPen = Number(stats.magicPen);
     if (mech.delayedDmgPct) map.delayedDmg = Number(mech.delayedDmgPct);
     var m = item.mechanics || {};
     if (m.physicalAilment && m.physicalAilment.chance) map.physAil = Number(m.physicalAilment.chance);
@@ -177,8 +195,8 @@
   function formatCompareDelta(key, delta) {
     var d = Number(delta) || 0;
     if (!d) return '';
-    if (key === 'critChance') return (d > 0 ? '▲+' : '▼') + d + '%';
-    var pctKeys = ['lightDmg', 'mediumDmg', 'heavyDmg', 'multiHitDmg', 'critDmg', 'pierce', 'defPen', 'mdefPen', 'delayedDmg', 'physAil', 'magAil'];
+    if (key === 'critChance' || key === 'armorPen' || key === 'magicPen') return (d > 0 ? '▲+' : '▼') + d + '%';
+    var pctKeys = ['lightDmg', 'mediumDmg', 'heavyDmg', 'multiHitDmg', 'critDmg', 'delayedDmg', 'physAil', 'magAil'];
     if (pctKeys.indexOf(key) >= 0) return (d > 0 ? '▲+' : '▼') + d + '%';
     return (d > 0 ? '▲+' : '▼') + d;
   }
@@ -368,9 +386,11 @@
 
   var MECHANICAL_STAT_KEYS = [
     'lightAttackDmgPct', 'mediumAttackDmgPct', 'heavyAttackDmgPct',
-    'multiHitDmgPct', 'critDamageBonusPct', 'defPenPct', 'mdefPenPct', 'physicalAilmentChance', 'magicAilmentChance',
+    'multiHitDmgPct', 'critDamageBonusPct', 'physicalAilmentChance', 'magicAilmentChance',
     'delayedDmgPct',
   ];
+  var LEGACY_ARMOR_PEN_KEYS = ['defPenPct', 'piercePct'];
+  var LEGACY_MAGIC_PEN_KEYS = ['mdefPenPct'];
 
   function pushAilmentEntry(list, entry) {
     if (!entry || !entry.id || !entry.chance) return;
@@ -387,14 +407,24 @@
     if (!item) return;
     var s = item.stats || {};
     for (var k in s) {
-      if (MECHANICAL_STAT_KEYS.indexOf(k) >= 0) {
+      if (LEGACY_ARMOR_PEN_KEYS.indexOf(k) >= 0) {
+        addArmorPenStat(stats, s[k]);
+      } else if (LEGACY_MAGIC_PEN_KEYS.indexOf(k) >= 0) {
+        addMagicPenStat(stats, s[k]);
+      } else if (k === 'armorPen') {
+        addArmorPenStat(stats, s[k]);
+      } else if (k === 'magicPen') {
+        addMagicPenStat(stats, s[k]);
+      } else if (MECHANICAL_STAT_KEYS.indexOf(k) >= 0) {
         mech[k] = (mech[k] || 0) + (Number(s[k]) || 0);
       } else {
         stats[k] = (stats[k] || 0) + (Number(s[k]) || 0);
       }
     }
     var m = item.mechanics || {};
-    if (m.piercePct) mech.piercePct = (mech.piercePct || 0) + Number(m.piercePct);
+    if (m.piercePct) addArmorPenStat(stats, m.piercePct);
+    if (m.defPenPct) addArmorPenStat(stats, m.defPenPct);
+    if (m.mdefPenPct) addMagicPenStat(stats, m.mdefPenPct);
     if (m.damageBonus) {
       mech.damageBonuses = mech.damageBonuses || [];
       mech.damageBonuses.push(m.damageBonus);
@@ -503,7 +533,7 @@
       var add = Number(roll.stats[k]) || 0;
       if (!add) continue;
       var cur = Number(entity.stats[k]) || 0;
-      entity.stats[k] = k === 'critChance' ? Math.max(0, Math.min(100, cur + add)) : Math.max(0, cur + add);
+      entity.stats[k] = capTrackedStatValue(k, cur + add);
     }
     if (roll.stats.maxHp) {
       var delta = (Number(entity.stats.maxHp) || 0) - prevMaxHp;
@@ -545,7 +575,7 @@
     for (var i = 0; i < keys.length; i++) {
       var k = keys[i];
       var v = (Number(base[k]) || 0) + (Number(fromLevel[k]) || 0) + (Number(fromUpgrades[k]) || 0) + (Number(eqRoll.stats[k]) || 0);
-      player.stats[k] = k === 'critChance' ? Math.max(0, Math.min(100, v)) : Math.max(0, v);
+      player.stats[k] = capTrackedStatValue(k, v);
     }
     if (player.stats.maxHp != null) {
       player.stats.hp = Math.min(player.stats.hp || player.stats.maxHp, player.stats.maxHp);
@@ -607,9 +637,6 @@
     if (m.heavyAttackDmgPct) lines.push({ key: 'heavyDmg', label: 'Heavy Attack', value: '+' + m.heavyAttackDmgPct + '%' });
     if (m.multiHitDmgPct) lines.push({ key: 'multiHitDmg', label: 'Multi-hit', value: '+' + m.multiHitDmgPct + '%' });
     if (m.critDamageBonusPct) lines.push({ key: 'critDmg', label: 'Crit Damage', value: '+' + m.critDamageBonusPct + '%' });
-    if (m.piercePct) lines.push({ key: 'pierce', label: 'Penetration', value: '+' + m.piercePct + '%' });
-    if (m.defPenPct) lines.push({ key: 'defPen', label: 'DEF Pen', value: '+' + m.defPenPct + '%' });
-    if (m.mdefPenPct) lines.push({ key: 'mdefPen', label: 'MDEF Pen', value: '+' + m.mdefPenPct + '%' });
     if (m.physicalAilmentChance) lines.push({ key: 'physAil', label: 'Phys Ailment', value: '+' + m.physicalAilmentChance + '%' });
     if (m.magicAilmentChance) lines.push({ key: 'magAil', label: 'Magic Ailment', value: '+' + m.magicAilmentChance + '%' });
     if (m.delayedDmgPct) lines.push({ key: 'delayedDmg', label: 'Delayed', value: '+' + m.delayedDmgPct + '% dmg' });
