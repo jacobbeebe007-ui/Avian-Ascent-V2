@@ -19,6 +19,11 @@ const bundle = readFileSync(bundlePath, 'utf8');
 // Build a minimal DOM stub so the bundle's UI code doesn't throw during boot.
 function makeDomStub() {
   const noop = () => {};
+  const styleStub = {
+    setProperty: noop,
+    getPropertyValue: () => '',
+    removeProperty: noop,
+  };
   const elementProto = {
     appendChild: noop,
     removeChild: noop,
@@ -35,7 +40,7 @@ function makeDomStub() {
     click: noop,
     contains: () => false,
     classList: { add: noop, remove: noop, toggle: noop, contains: () => false, replace: noop },
-    style: {},
+    style: styleStub,
     dataset: {},
     children: [],
     childNodes: [],
@@ -234,7 +239,9 @@ if (sandbox.G && typeof sandbox.preparePlayerCombatLoadout === 'function' && typ
     try {
       await sandbox.playerAction(ab, true);
       check('playerAction spends EN', G.player.energy < enBefore, `before=${enBefore} after=${G.player.energy}`);
-      check('playerAction deals damage to enemy', G.enemy.stats.hp < hpBefore, `before=${hpBefore} after=${G.enemy.stats.hp}`);
+      const dmgDealt=hpBefore-(G.enemy.stats.hp||0);
+      check('playerAction deals damage to enemy', dmgDealt>0, `before=${hpBefore} after=${G.enemy.stats.hp}`);
+      check('starter damage is modest (not EN-power inflated)', dmgDealt>0 && dmgDealt<30, `dealt=${dmgDealt}`);
     } catch (e) {
       check('playerAction completes without throw', false, String(e && e.stack || e));
     } finally {

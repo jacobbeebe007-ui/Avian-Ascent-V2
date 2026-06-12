@@ -69,17 +69,12 @@
     return soft * atkMult * (pct / 100);
   }
 
-  function computeRawHitDamage(row) {
+  function computeRawHitDamage(row, stats) {
     if (row.noDamage) return 0;
-    var b = Number(row.baseFlat) || 0;
-    var dmg = b + scaleContribution(row.scaleStat, row.scalePct);
-    if (row.secondaryScaleStat && Number(row.secondaryScalePct) > 0) {
-      dmg += scaleContribution(row.secondaryScaleStat, row.secondaryScalePct);
+    if (typeof globalThis.computeAbilityRawDamage === 'function') {
+      return globalThis.computeAbilityRawDamage(row, stats || (globalThis.G && G.player && G.player.stats) || {});
     }
-    var lo = Math.max(1, dmg * 0.85);
-    var hi = Math.max(lo, dmg * 1.15);
-    var rolled = lo + Math.random() * (hi - lo);
-    return Math.max(1, Math.round(rolled * 100) / 100);
+    return 0;
   }
 
   function getCritChanceFor(ab) {
@@ -525,9 +520,9 @@
   // same registry at boot. We don't redeclare it; instead we attach a
   // generic proxy function for each new ability id, called by playerAction
   // via `await ACTIONS[ab.id](ab)`.
+  dispatcher.applyDispatcherHitMods = applyDispatcherHitMods;
+
   dispatcher.applyPostCurveModifiers = function applyPostCurveModifiers(dmg, row) {
-    if (!row) return dmg;
-    dmg = applyConditionalDamageBonus(row, dmg);
     return applyDispatcherHitMods(dmg);
   };
 
