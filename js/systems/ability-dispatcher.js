@@ -94,7 +94,9 @@
   function syntheticSrcAbility(row, ab) {
     // Provide a shape that legacy helpers (`dealDamage`, `getPlayerCritChance`)
     // can interrogate without crashing.
-    var btnType = isMagicCategory(row.category) ? 'spell' : (row.target === 'self' && row.noDamage ? 'utility' : 'physical');
+    var btnType = (typeof globalThis.resolveCombatRowBtnType === 'function')
+      ? globalThis.resolveCombatRowBtnType(row)
+      : (isMagicCategory(row.category) ? 'spell' : (row.target === 'self' && row.noDamage ? 'utility' : 'physical'));
     return {
       id: row.id,
       name: row.name || (ab && ab.name) || row.id,

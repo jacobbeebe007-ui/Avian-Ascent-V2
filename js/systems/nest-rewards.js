@@ -133,6 +133,56 @@
     return Object.assign({ type: 'mutation' }, rw);
   }
 
+  function buildEndlessClearRewardDrops(defeatedBirds, opts) {
+    opts = opts || {};
+    var birds = Array.isArray(defeatedBirds) ? defeatedBirds : [];
+    var difficulty = opts.difficulty || 'juvenile';
+    var stage = Math.max(1, Math.floor(Number(opts.stage) || 1));
+    var used = new Set();
+    var drops = [];
+    birds.forEach(function (bird) {
+      var level = Math.max(1, Math.floor(Number(bird.level) || 1));
+      var heal = rollNestHealingDrop(level, difficulty);
+      drops.push({
+        type: 'combat_item',
+        itemKey: heal.itemKey,
+        quantity: heal.quantity,
+        tier: heal.tier,
+        icon: heal.icon,
+        name: heal.name,
+        desc: 'Healing item for battle.',
+      });
+      var tier = rollNestMutationTier(level);
+      var dataTier = tier === 'grey' ? 'white' : tier;
+      var rw = null;
+      if (typeof Avian.mutations !== 'undefined' && typeof Avian.mutations.rollMutationReward === 'function') {
+        var guard = 0;
+        while (guard < 25) {
+          guard++;
+          rw = Avian.mutations.rollMutationReward({ tier: dataTier, stage: stage, isBoss: !!bird.isBoss });
+          if (!rw) continue;
+          if (used.has(rw.id)) continue;
+          used.add(rw.id);
+          break;
+        }
+      }
+      if (!rw) {
+        drops.push({
+          type: 'combat_item',
+          itemKey: 'freshWater',
+          quantity: 1,
+          tier: 'grey',
+          icon: '💧',
+          name: 'Fresh Water',
+          desc: 'Fallback endless reward.',
+        });
+      } else {
+        drops.push(Object.assign({ type: 'mutation' }, rw));
+      }
+    });
+    return drops;
+  }
+
   function buildNestRewardDrops(defeatedBirds, opts) {
     opts = opts || {};
     var birds = Array.isArray(defeatedBirds) ? defeatedBirds : [];
@@ -199,10 +249,12 @@
 
   ns.getNestMutationTiersForBirdLevel = getNestMutationTiersForBirdLevel;
   ns.buildNestRewardDrops = buildNestRewardDrops;
+  ns.buildEndlessClearRewardDrops = buildEndlessClearRewardDrops;
   ns.getDefeatedBirdsForReward = getDefeatedBirdsForReward;
   ns.grantNestDrop = grantNestDrop;
 
   global.buildNestRewardDrops = buildNestRewardDrops;
+  global.buildEndlessClearRewardDrops = buildEndlessClearRewardDrops;
   global.getDefeatedBirdsForReward = getDefeatedBirdsForReward;
   global.grantNestDrop = grantNestDrop;
 })();

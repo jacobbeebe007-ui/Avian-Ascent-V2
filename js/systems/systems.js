@@ -745,13 +745,7 @@
       if(status.bleed.turns <= 0) delete status.bleed;
     }
 
-    if(status.burning && ((typeof status.burning === 'number' && status.burning > 0) || (typeof status.burning === 'object' && status.burning.turns > 0))){
-      const turns = typeof status.burning === 'number' ? status.burning : status.burning.turns;
-      await applyTick('🔥','fn-status', Math.max(1, (stats.maxHp||1) * 0.04), '🔥 Burn deals {dmg} damage to {name}!');
-      if(typeof status.burning === 'number') status.burning = turns - 1;
-      else status.burning.turns = turns - 1;
-      if((typeof status.burning === 'number' && status.burning <= 0) || (typeof status.burning === 'object' && status.burning.turns <= 0)) delete status.burning;
-    }
+    /* Burn tick handled by tickBurningEndEnemyPhase in game.js (7 flat, end enemy phase). */
 
     if(status.delayed && status.delayed.dmg > 0){
       await applyTick('🎵','fn-status', status.delayed.dmg, '🎵 Resonance detonates for {dmg} damage on {name}!');

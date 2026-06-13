@@ -107,9 +107,11 @@
   };
 
   shop.describeAbility = function describeAbility(entry) {
-    var normalizeEnLabel = function (s) {
-      return String(s || '').replace(/\b(\d+)\s*AP\b/g, '$1 EN').replace(/\bAP\s*·/g, 'EN ·');
-    };
+    var normalizeEnLabel = (typeof globalThis.normalizeCombatEnLabel === 'function')
+      ? globalThis.normalizeCombatEnLabel
+      : function (s) {
+        return String(s || '').replace(/\b(\d+)\s*AP\b/g, '$1 EN').replace(/\bAP\s*·/g, 'EN ·');
+      };
     var fromEntry = normalizeEnLabel(String(entry.shortDesc || '').trim());
     if (fromEntry) return fromEntry;
     var p = pack();

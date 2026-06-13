@@ -536,6 +536,7 @@ function getBattleStatModifierLines(statKey){
   if(statKey==='spd' && G?.playerStatus?.slow) lines.push('Slow: reduced SPD');
   if(statKey==='acc' && (G?.playerStatus?.blind||G?.playerStatus?.dustDevil)) lines.push('Blind: reduced ACC');
   if(statKey==='critChance' && playerHasBurning()) lines.push('Burning: crit penalty');
+  if((statKey==='def' || statKey==='mdef') && playerHasBurning()) lines.push('Burning: −20% DEF/MDEF');
   return lines;
 }
 function richTooltipCloseBtn(){
@@ -1525,12 +1526,12 @@ const UNLOCK_KEY = 'avianAscent_unlocks_v1';
 // ============================================================
 //  DIFFICULTY SYSTEM
 // ============================================================
-// `mult` scales enemy HP + ATK/MATK only (see buildScaledEnemy). It is the main difficulty knob vs the player.
+// `mult` scales all enemy combat stats (see buildScaledEnemy). It is the main difficulty knob vs the player.
 const DIFFICULTIES = {
-  fletchling:{ id:'fletchling', label:'Fletchling', emoji:'🥚', mult:0.80, color:'#6ab89a', desc:'Gentler fights — good for learning.', scalingTip:'Enemy max HP and attack damage: ×0.8 (easier than Normal).' },
-  juvenile:  { id:'juvenile',   label:'Juvenile',   emoji:'🕊️', mult:1.00, color:'#e8c96a', desc:'Standard challenge — recommended default.', scalingTip:'Enemy max HP and attack damage: ×1.0 (baseline).' },
-  predator:  { id:'predator',   label:'Predator',   emoji:'🦅', mult:1.20, color:'#e87070', desc:'Harder enemies and sharper pressure.', scalingTip:'Enemy max HP and attack damage: ×1.2.' },
-  murder:    { id:'murder',     label:'Murder',     emoji:'‍⬛', mult:1.40, color:'#c040e0', desc:'Very hard — for experts.', unlockRequires:'predatorWin', scalingTip:'Enemy max HP and attack damage: ×1.4.' },
+  fletchling:{ id:'fletchling', label:'Fletchling', emoji:'🥚', mult:0.80, color:'#6ab89a', desc:'Gentler fights — good for learning.',   scalingTip:'Enemy combat stats: ×0.8 (easier than Normal).' },
+  juvenile:  { id:'juvenile',   label:'Juvenile',   emoji:'🕊️', mult:1.00, color:'#e8c96a', desc:'Standard challenge — recommended default.', scalingTip:'Enemy combat stats: ×1.0 (baseline).' },
+  predator:  { id:'predator',   label:'Predator',   emoji:'🦅', mult:1.20, color:'#e87070', desc:'Harder enemies and sharper pressure.', scalingTip:'Enemy combat stats: ×1.2.' },
+  murder:    { id:'murder',     label:'Murder',     emoji:'‍⬛', mult:1.40, color:'#c040e0', desc:'Very hard — for experts.', unlockRequires:'predatorWin', scalingTip:'Enemy combat stats: ×1.4.' },
 };
 function getUnlocks() {
   try { return JSON.parse(localStorage.getItem(UNLOCK_KEY)||'{}'); } catch(e){ return {}; }
@@ -3687,6 +3688,7 @@ function mergeScaledStatsIntoEnemy(ed, encounterStage){
       ed.mutationIds = Avian.mutations.rollEndlessEnemyMutations(G.player, {
         stage: encounterStage,
         isBoss: !!ed.isBoss,
+        endlessBattle: getEndlessEffectiveBattleNumber(encounterStage),
       });
       if (typeof Avian.mutations.applyMutationsToEntity === 'function') {
         Avian.mutations.applyMutationsToEntity(ed, ed.mutationIds);
@@ -5282,7 +5284,8 @@ function escapeHtmlRoster(s){
 }
 function rosterAbilityBlurb(t){
   const raw=(t.levels&&t.levels[0]&&t.levels[0].desc!=null)?t.levels[0].desc:(t.desc!=null?t.desc:'No description');
-  return escapeHtmlRoster(String(raw).trim());
+  const text=typeof globalThis.normalizeCombatEnLabel==='function'?globalThis.normalizeCombatEnLabel(String(raw).trim()):String(raw).trim();
+  return escapeHtmlRoster(text);
 }
 /** Same skill slot → ability pipeline as a new run (family evolution + ABILITY_TEMPLATES), for roster UI only. */
 function buildRosterPreviewStubForBirdKey(birdKey){
@@ -5705,8 +5708,9 @@ function makeEndlessEnemy(stage) {
   const st=Math.max(1,Number(stage)||1);
   const endlessBattle=getEndlessEffectiveBattleNumber(st);
   const isBoss=endlessBattle>0 ? (endlessBattle%ENDLESS_BOSS_CADENCE===0) : (st%10===0);
+  const playerLv=Math.max(1,Math.floor(G.player?.birdLevel||1));
   const rosterId=typeof pickEndlessRosterEnemyId==='function'
-    ? pickEndlessRosterEnemyId(st,isBoss)
+    ? pickEndlessRosterEnemyId(st,isBoss,playerLv)
     : 'EN-SPARR-HESQ-L01';
   const bossTitle=isBoss
     ? (st>20?'💀 Endless Titan':bossTitleForStageMilestone(st))
@@ -5881,7 +5885,7 @@ function pickRandomBirdEnemyDraftForStage(stageNumber, opts={}){
 function pickRandomBirdEnemyDraft(tier, opts={}){
   void tier;
   const rosterId=typeof pickEndlessRosterEnemyId==='function'
-    ? pickEndlessRosterEnemyId(G.stage||1, !!opts.isBoss)
+    ? pickEndlessRosterEnemyId(G.stage||1, !!opts.isBoss, Math.max(1, Math.floor(G.player?.birdLevel||1)))
     : 'EN-SPARR-HESQ-L01';
   return buildEdFromBirdEnemyTemplate(rosterId, opts);
 }
@@ -6286,12 +6290,12 @@ function refreshBattleUI() {
 
   // Stats
   // Compute effective stats with buffs for display
-  const _effDef=p.def+(G.battleHymnActive?G.battleHymnDEF:0);
+  const _effDef=Math.floor((p.def+(G.battleHymnActive?G.battleHymnDEF:0))*(playerHasBurning()?0.8:1));
   const _effAcc=Math.min(100,p.acc+(G.battleHymnActive?G.battleHymnACC:0)-(G.playerStatus?.accDebuff||0));
   const _effDodge=getEffectiveDodge(G.player);
   const _effSpd=(p.spd||0) + ((G.playerStatus?.slow?.spdPenalty)?-(G.playerStatus.slow.spdPenalty||0):0);
   const _effMatk=(p.matk||8);
-  const _effMdef=(p.mdef||8);
+  const _effMdef=Math.floor((p.mdef||8)*(playerHasBurning()?0.8:1));
   const _eqMechCombat=typeof Avian?.mutations?.getMechanicsRollup==='function'?Avian.mutations.getMechanicsRollup(G.player):null;
   const escAttr=(s)=>String(s??'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
   const _trendTag = (diff) => diff>0 ? '<small class="stat-trend up">▲</small>' : (diff<0 ? '<small class="stat-trend down">▼</small>' : '');
@@ -6343,13 +6347,15 @@ function refreshBattleUI() {
   };
   const _eCombatHint=buildEnemyCombatStatHint();
   const _eHintRow=_eCombatHint?`<div class="stat-status-hint est-hint" style="grid-column:1/-1">${escAttr(_eCombatHint)}</div>`:'';
+  const _effEnemyDef=Math.floor((ep2.def||0)*(enemyHasBurning()?0.8:1));
+  const _effEnemyMdef=Math.floor((ep2.mdef||8)*(enemyHasBurning()?0.8:1));
   const _effEnemyDodge=(ep2.dodge||0);
-  const _enemyDodgeSpdNote='';
+  const _enemyDodgeSpdNote=enemyHasBurning()?' — Burning: −20% DEF/MDEF':'';
   document.getElementById('enemy-stats-mini').innerHTML =
     `${enemyCell('stat-atk','ATK',ep2.atk,{title:'Physical attack',baseKey:'atk',statKey:'atk',statRaw:ep2.atk})}
      ${enemyCell('stat-matk','MATK',ep2.matk||6,{title:'Magic attack',baseKey:'matk',statKey:'matk',statRaw:ep2.matk||6})}
-     ${enemyCell('stat-def','DEF',ep2.def,{title:'Physical defence',baseKey:'def',statKey:'def',statRaw:ep2.def})}
-     ${enemyCell('stat-mdef','MDEF',ep2.mdef||8,{title:'Magic defence',baseKey:'mdef',statKey:'mdef',statRaw:ep2.mdef||8})}
+     ${enemyCell('stat-def','DEF',_effEnemyDef,{title:'Physical defence'+_enemyDodgeSpdNote,baseKey:'def',statKey:'def',statRaw:ep2.def,trend:_eTrendTag(_effEnemyDef-(ep2.def||0))})}
+     ${enemyCell('stat-mdef','MDEF',_effEnemyMdef,{title:'Magic defence'+_enemyDodgeSpdNote,baseKey:'mdef',statKey:'mdef',statRaw:ep2.mdef||8,trend:_eTrendTag(_effEnemyMdef-(ep2.mdef||8))})}
      ${enemyCell('stat-dodge','Dodge',_effEnemyDodge,{suffix:'%',title:`Dodge${_enemyDodgeSpdNote}`,baseKey:'dodge',statKey:'dodge',statRaw:ep2.dodge||0})}
      ${enemyCell('stat-acc','ACC',ep2.acc||70,{suffix:'%',title:'Accuracy',baseKey:'acc',statKey:'acc',statRaw:ep2.acc||70})}
      ${enemyCell('stat-spd','SPD',ep2.spd||0,{title:'Speed',baseKey:'spd',statKey:'spd',statRaw:ep2.spd||0})}
@@ -8849,8 +8855,8 @@ const ENEMY_PLAYER_LEVEL_TO_EFFECTIVE = 0.42;
 // - After Story clears (Stage 20), endless adds an extra ramp every N battles.
 // - Effective level growth is intentionally unbounded (no level-10/story-end cap).
 const ENDLESS_STORY_END_STAGE = 20;
-const ENDLESS_BOSS_CADENCE = 10;
-const ENDLESS_SHOP_CADENCE = ENDLESS_BOSS_CADENCE;
+const ENDLESS_BOSS_CADENCE = 20;
+const ENDLESS_SHOP_CADENCE = 10;
 const ENEMY_ENDLESS_EXTRA_LEVEL_EVERY = 5;
 const ENEMY_ENDLESS_EXTRA_LEVEL_STEP = 3;
 const ENEMY_ENDLESS_EXTRA_LEVEL_BONUS_EVERY = 3;
@@ -9028,14 +9034,36 @@ function buildScaledEnemy(enemyBase, stage, opts={}){
   hp*=diffMult;
   atk*=diffMult;
   matk*=diffMult;
+  def*=diffMult;
+  mdef*=diffMult;
+  spd*=diffMult;
 
   const storyMult = getStoryEnemyPowerMultiplier(s, tier, opts);
   hp *= storyMult;
   atk *= storyMult;
   matk *= storyMult;
+  def *= storyMult;
+  mdef *= storyMult;
+  spd *= storyMult;
 
-  const acc=Math.max(60,Math.min(96,Math.floor(accBase+Math.floor(gain/4)+(tier==='boss'?2:0))));
-  const dodge=Math.max(0,Math.min(42,Math.floor(base.dodge+Math.floor(gain/6)+(tier==='boss'?2:0))));
+  const endlessBattle=isEndless?getEndlessEffectiveBattleNumber(s):0;
+  const pl=Math.max(1,Math.floor(opts.playerBirdLevel||1));
+  let rampMult=1;
+  if(isEndless&&endlessBattle>0&&pl>=20&&L>=20){
+    const rampSteps=Math.floor(endlessBattle/3);
+    rampMult=1+rampSteps*0.05;
+  }
+  hp*=rampMult;
+  atk*=rampMult;
+  matk*=rampMult;
+  def*=rampMult;
+  mdef*=rampMult;
+  spd*=rampMult;
+
+  let acc=Math.max(60,Math.min(96,Math.floor(accBase+Math.floor(gain/4)+(tier==='boss'?2:0))));
+  let dodge=Math.max(0,Math.min(42,Math.floor(base.dodge+Math.floor(gain/6)+(tier==='boss'?2:0))));
+  acc=Math.max(60,Math.min(96,Math.floor(acc*diffMult*storyMult*rampMult)));
+  dodge=Math.max(0,Math.min(42,Math.floor(dodge*diffMult*storyMult*rampMult)));
 
   hp=Math.max(1,Math.round(hp));
   atk=Math.max(1,Math.round(atk));
@@ -12134,7 +12162,7 @@ function isGreyShopStage(stage){
 function isShopDueAfterBattle({ stage, endlessMode, endlessBattle, lastEnemyWasBoss } = {}){
   if(endlessMode){
     const eb = Math.max(0, Math.floor(Number(endlessBattle) || 0));
-    return eb > 0 && eb % ENDLESS_BOSS_CADENCE === 0;
+    return eb > 0 && eb % ENDLESS_SHOP_CADENCE === 0;
   }
   return !!lastEnemyWasBoss || isGreyShopStage(stage);
 }
@@ -12540,9 +12568,12 @@ function showRewardScreen(hasLevelUp) {
 
   const defeated=typeof getDefeatedBirdsForReward==='function'?getDefeatedBirdsForReward():[];
   const isBoss=defeated.some(b=>b.isBoss)||!!G.enemy?.isBoss;
-  const drops=typeof buildNestRewardDrops==='function'
-    ? buildNestRewardDrops(defeated,{difficulty:G.difficulty,stage:getEncounterStage(),isBoss})
-    : [];
+  const useEndlessRewards=G.endlessMode&&getEncounterStage()>20;
+  const drops=useEndlessRewards&&typeof buildEndlessClearRewardDrops==='function'
+    ? buildEndlessClearRewardDrops(defeated,{difficulty:G.difficulty,stage:getEncounterStage(),isBoss})
+    :(typeof buildNestRewardDrops==='function'
+      ? buildNestRewardDrops(defeated,{difficulty:G.difficulty,stage:getEncounterStage(),isBoss})
+      : []);
 
   G._nestRewardDrops=drops;
   G._defeatedEncounterBirds=[];
@@ -14491,8 +14522,10 @@ function buildShopBuyCard(item, idx, {isSelected, canSelect, cost}){
   div.dataset.shopIdx=String(idx);
   div.innerHTML=`
     <div class="shop-item-select-tick">✓</div>
-    <div class="shop-item-cost">${cost}🌟</div>
-    <div class="reward-tier-label">${(REWARD_TIERS[item.tier]||REWARD_TIERS.grey).label}</div>
+    <div class="shop-item-head">
+      <div class="reward-tier-label">${(REWARD_TIERS[item.tier]||REWARD_TIERS.grey).label}</div>
+      <div class="shop-item-cost">${cost}🌟</div>
+    </div>
     <span class="reward-icon">${item.icon}</span>
     <div class="reward-name">${item.name}</div>
     <div class="reward-desc mut-stat-compact-wrap">${item.type==='mutation'||item.mutationItemId?(getMutationDescHtml(item.mutationItemId||item.id,{compact:true})||escapeHtmlRoster(item.desc||'')):escapeHtmlRoster(item.desc||'')}</div>`;
@@ -14574,8 +14607,10 @@ function renderShopSellItems(){
     div.dataset.shopIdx=String(idx);
     div.innerHTML=`
       <div class="shop-item-select-tick">✓</div>
-      <div class="shop-item-cost">${price}🌟</div>
-      <div class="reward-tier-label">${tierMeta.label}</div>
+      <div class="shop-item-head">
+        <div class="reward-tier-label">${tierMeta.label}</div>
+        <div class="shop-item-cost">${price}🌟</div>
+      </div>
       <span class="reward-icon">${icons[item.slot]||'🧬'}</span>
       <div class="reward-name">${item.name}</div>
       <div class="reward-desc">${labels[item.slot]||item.slot} · Sell for half buy price</div>`;

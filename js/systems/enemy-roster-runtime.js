@@ -113,22 +113,31 @@
     return out;
   }
 
-  function pickEndlessRosterEnemyId(stage, isBoss) {
+  function nearestBossRosterLevel(level) {
+    var lv = Math.max(1, Math.min(20, Math.floor(Number(level) || 1)));
+    if (lv <= 10) return 10;
+    if (lv <= 20) return 20;
+    return 30;
+  }
+
+  function pickEndlessRosterEnemyId(stage, isBoss, playerBirdLevel) {
     var r = roster();
     if (!r) return 'EN-SPARR-HESQ-L01';
-    var battle = typeof global.getEndlessEffectiveBattleNumber === 'function'
-      ? global.getEndlessEffectiveBattleNumber(stage)
-      : Math.max(1, Math.floor(Number(stage) || 1));
-    var level = Math.max(1, Math.min(10, 1 + Math.floor(battle / 3)));
+    var baseLv = Math.max(1, Math.min(20, Math.floor(Number(playerBirdLevel) || 1)));
+    var level;
     if (isBoss) {
-      var bosses = r.bossesByLevel && r.bossesByLevel[level];
+      level = Math.random() < 0.5 ? baseLv : Math.min(20, baseLv + 1);
+      var bossRosterLv = nearestBossRosterLevel(level);
+      var bosses = r.bossesByLevel && r.bossesByLevel[bossRosterLv];
       if (bosses && bosses.length) return pickRandom(bosses);
-      level = Math.min(10, level + 1);
-      bosses = r.bossesByLevel && r.bossesByLevel[level];
+      bosses = r.bossesByLevel && r.bossesByLevel[20];
       if (bosses && bosses.length) return pickRandom(bosses);
+    } else {
+      var delta = Math.floor(Math.random() * 3) - 1;
+      level = Math.max(1, Math.min(20, baseLv + delta));
+      var normals = r.normalByLevel && r.normalByLevel[level];
+      if (normals && normals.length) return pickRandom(normals);
     }
-    var normals = r.normalByLevel && r.normalByLevel[level];
-    if (normals && normals.length) return pickRandom(normals);
     return 'EN-SPARR-HESQ-L01';
   }
 

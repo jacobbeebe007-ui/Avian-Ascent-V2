@@ -53,11 +53,18 @@
   }
 
   // 2. ── Build ABILITY_TEMPLATES rows from skill trees ---------------------
+  function normalizeEnLabel(s) {
+    return String(s || '').replace(/\b(\d+)\s*AP\b/g, '$1 EN').replace(/\bAP\s*·/g, 'EN ·');
+  }
+  globalThis.normalizeCombatEnLabel = normalizeEnLabel;
+
   function resolveCombatRowBtnType(row) {
     if (!row) return 'utility';
     if (/magic|song|spell/i.test(row.category || '')) return 'spell';
     if (String(row.scaleStat || '').toUpperCase() === 'MATK') return 'spell';
     if (Number(row.pierceMdef) > 0 && !Number(row.pierceDef)) return 'spell';
+    if (row.branch === 'utility' && (row.noDamage || row.target === 'self')) return 'utility';
+    if (/utility|guard|heal|buff|control/i.test(row.category || '') && row.noDamage) return 'utility';
     if (row.target === 'self' && row.noDamage) return 'utility';
     return 'physical';
   }
@@ -69,11 +76,11 @@
     var primaryAil = ailmentList[0] || null;
     var secondaryAil = ailmentList[1] || null;
     var ailChance = row.ailmentChance || 0;
-    var desc = String(row.shortDesc || '').trim();
+    var desc = normalizeEnLabel(String(row.shortDesc || '').trim());
     if (!desc) {
-      desc = row.riderText && row.designNote && row.riderText !== row.designNote
+      desc = normalizeEnLabel(row.riderText && row.designNote && row.riderText !== row.designNote
         ? row.designNote + ' — ' + row.riderText
-        : (row.designNote || row.riderText || '');
+        : (row.designNote || row.riderText || ''));
     }
     var level = {
       lv: 1,

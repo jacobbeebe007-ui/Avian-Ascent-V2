@@ -1051,7 +1051,9 @@ body.build-nest-unlocked .splash-hotspot--forge.is-buildnest-hidden{
   color:var(--gold-light);
   margin:6px 0 4px;
 }
+.mother-goose-hatch-feather-gain{font-family:'Cinzel',serif;font-size:1.35rem;color:var(--gold-light);margin-top:4px;}
 .mother-goose-hatch-feather-total{font-family:'Cinzel',serif;font-size:1rem;color:#e8e0d0;}
+.mother-goose-hatch-feather-total--secondary{font-size:.72rem;color:rgba(200,198,190,.75);margin-top:2px;}
 .mother-goose-hatch-msg{
   margin:0 0 14px;
   font-size:.78rem;
@@ -2908,15 +2910,16 @@ html.avian-ow-nest-embed #action-tooltip{z-index:99999;}
 .shiny-bar{display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:18px;font-family:'Cinzel',serif;font-size:1rem;color:var(--gold);}
 .shiny-val{font-size:1.4rem;font-weight:700;}
 .shop-items-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:16px;}
-.shop-item{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px 12px;cursor:pointer;transition:all .25s;position:relative;text-align:center;}
+.shop-item{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px 12px 12px;cursor:pointer;transition:all .25s;position:relative;text-align:center;}
 .shop-item:hover{transform:translateY(-2px);border-color:var(--gold);}
 .shop-item.selected{border-color:var(--gold-light);box-shadow:0 0 18px rgba(232,201,106,.25);}
 .shop-item.cant-afford{opacity:.45;cursor:not-allowed;}
-.shop-item .reward-tier-label{font-family:'Cinzel',serif;font-size:.65rem;letter-spacing:.12em;margin-bottom:6px;}
+.shop-item-head{display:flex;align-items:center;justify-content:space-between;gap:6px;margin-bottom:8px;min-height:1.4em;}
+.shop-item .reward-tier-label{font-family:'Cinzel',serif;font-size:.65rem;letter-spacing:.12em;margin-bottom:0;flex:1;text-align:left;}
 .shop-item .reward-icon{font-size:1.6rem;display:block;margin-bottom:5px;}
 .shop-item .reward-name{font-size:.85rem;font-weight:700;margin-bottom:3px;color:var(--text);}
 .shop-item .reward-desc{font-size:.72rem;color:var(--text-dim);line-height:1.35;}
-.shop-item-cost{position:absolute;top:6px;left:7px;right:auto;font-family:'Cinzel',serif;font-size:.68rem;color:var(--gold);background:rgba(20,15,5,.9);border:1px solid rgba(201,168,76,.3);border-radius:8px;padding:1px 6px;}
+.shop-item-cost{position:static;flex-shrink:0;font-family:'Cinzel',serif;font-size:.68rem;color:var(--gold);background:rgba(20,15,5,.9);border:1px solid rgba(201,168,76,.3);border-radius:8px;padding:1px 6px;}
 .shop-item-select-tick{position:absolute;top:6px;right:7px;width:20px;height:20px;border-radius:50%;background:rgba(201,168,76,.25);border:1px solid var(--gold-light);color:var(--gold-light);font-size:.72rem;line-height:18px;text-align:center;display:none;pointer-events:none;}
 .shop-item.selected .shop-item-select-tick{display:block;}
 .shop-section-heading{grid-column:1/-1;font-family:'Cinzel',serif;font-size:.82rem;letter-spacing:.12em;color:var(--gold-light);padding:2px 4px 0;margin-top:4px;}

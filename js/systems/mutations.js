@@ -691,15 +691,20 @@
   function rollEndlessEnemyMutations(player, opts) {
     opts = opts || {};
     var playerCount = countPlayerEquippedMutations(player);
-    var delta = Math.floor(Math.random() * 3) - 1;
-    var count = Math.max(0, Math.min(11, playerCount + delta));
+    var count = Math.max(0, Math.min(11, playerCount));
     var playerTiers = getPlayerEquippedMutationTiers(player);
     var used = new Set();
     var ids = [];
     for (var i = 0; i < count; i++) {
-      var tier = playerTiers.length
-        ? playerTiers[Math.floor(Math.random() * playerTiers.length)]
-        : rollTierFromDropWeights();
+      var tier;
+      if (playerTiers.length) {
+        tier = playerTiers[i % playerTiers.length];
+      } else {
+        var ebFn = global.getEndlessNormalFightTier;
+        var eb = opts.endlessBattle;
+        tier = (typeof ebFn === 'function' && eb) ? ebFn(eb) : null;
+        if (!tier) tier = rollTierFromDropWeights();
+      }
       var drop = rollUniqueFromTier(tier, used);
       if (drop && drop.id) ids.push(drop.id);
     }

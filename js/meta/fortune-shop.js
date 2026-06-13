@@ -155,6 +155,8 @@
       );
     }
 
+    var gain = Math.max(0, Math.floor(Number(result.feathersGained) || 0));
+    var total = Math.max(0, Math.floor(Number(result.speciesFeatherTotal) || 0));
     var featherHtml =
       '<div class="mother-goose-hatch-card mother-goose-hatch-card--feather ' +
       speciesCss +
@@ -166,8 +168,11 @@
       '<span class="bird-card-tier-badge ' +
       speciesCss +
       '">Species Feather</span>' +
-      '<div class="mother-goose-hatch-feather-total">×' +
-      fmt(result.speciesFeatherTotal || 0) +
+      '<div class="mother-goose-hatch-feather-gain">+' +
+      fmt(gain || total) +
+      '</div>' +
+      '<div class="mother-goose-hatch-feather-total mother-goose-hatch-feather-total--secondary">Total: ' +
+      fmt(total) +
       '</div></div>';
     if (compact) return featherHtml;
     return featherHtml + '<p class="mother-goose-hatch-msg">Species Feather — Collect more to mutate your bird.</p>';
@@ -477,7 +482,7 @@
       '</strong>' +
       (result.isNew
         ? '<p>New card at tier ' + esc(result.tierAfter || 'grey') + '.</p>'
-        : '<p>Species Feathers: ' + fmt(result.speciesFeatherTotal || 0) + '</p>');
+        : '<p>+' + fmt(result.feathersGained || 0) + ' Species Feathers</p><p class="mother-goose-hatch-feather-total--secondary">Total: ' + fmt(result.speciesFeatherTotal || 0) + '</p>');
   }
 
   function afterHatchRefresh(msgText) {
