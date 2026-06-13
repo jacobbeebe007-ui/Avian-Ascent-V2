@@ -86,8 +86,12 @@
 </button>
 <button type="button" class="splash-hotspot splash-hotspot--fortune" data-action="openSelectHubPanel:fortune" aria-label="Cuckoo's Feathers and Fortune Emporium — global store">
 <span class="splash-hotspot-title">Cuckoo's Feathers &amp; Fortune Emporium</span>
-<span class="splash-hotspot-desc">Cuckoo's shop · Trade · Hire · Relics</span>
+<span class="splash-hotspot-desc">Trade · Relics</span>
 <span class="fortune-egg-badge" id="fortune-egg-badge" hidden aria-label="Saved Eggs balance"></span>
+</button>
+<button type="button" class="splash-hotspot splash-hotspot--hatchery" data-action="openSelectHubPanel:hatchery" aria-label="The Hatchery — hatch bird cards">
+<span class="splash-hotspot-title">The Hatchery</span>
+<span class="splash-hotspot-desc">Mother Goose · Eggs</span>
 </button>
 <button type="button" class="splash-hotspot splash-hotspot--door splash-hotspot--primary" data-action="openSelectHubPanel:door" aria-label="Begin ascent — champion roster">
 <span class="splash-hotspot-title">Begin Ascent</span>
@@ -107,7 +111,7 @@
 </div>
 <button type="button" class="splash-settings-btn" data-action="openSettingsModal">⚙ Settings</button>
 </div>
-<p class="splash-roster-hint" id="splash-roster-hint">Supplies by the bags. Map on the table. Inventory and Cuckoo's Emporium on the wall. Ascent through the door.</p>
+<p class="splash-roster-hint" id="splash-roster-hint">Supplies by the bags. Map on the table. Inventory and Cuckoo's Emporium on the wall. Hatch at The Hatchery. Ascent through the door.</p>
 </div>
 </div>
 <div class="select-hub-panels" id="select-hub-panels" aria-hidden="true">
@@ -165,8 +169,9 @@
 <section class="inventory-subview is-active" id="inventory-view-feathers" role="tabpanel" aria-labelledby="inventory-nav-feathers">
 <h4 class="inventory-section-title" id="inventory-feathers-heading">Feather Sack</h4>
 <p class="inventory-section-lead">Duplicates from Mother Goose eggs. Collect feathers to mutate bird cards to higher tiers.</p>
+<div class="inventory-feather-filters inventory-feather-amount-filters" id="inventory-feather-amount-filters" role="group" aria-label="Filter by feather amount"></div>
 <div class="inventory-feather-filters" id="inventory-feather-filters" role="group" aria-label="Filter by card tier"></div>
-<p class="inventory-empty" id="inventory-feathers-empty">No Species Feathers yet. Hatch duplicates at Mother Goose's nest.</p>
+<p class="inventory-empty" id="inventory-feathers-empty">No Species Feathers yet. Hatch duplicates at The Hatchery.</p>
 <div class="inventory-feathers-scroll">
 <div class="inventory-feathers-grid" id="inventory-feathers-grid"></div>
 </div>
@@ -200,25 +205,34 @@
 <span class="fortune-balance-chip fortune-balance-chip--goose"><span class="fortune-balance-icon">🪿</span> Golden Goose Eggs: <strong id="fortune-balance-goose">0</strong></span>
 </div>
 <div class="fortune-subnav" role="tablist" aria-label="Store sections">
-<button type="button" class="fortune-subnav-btn is-active" id="fortune-nav-mother-goose" role="tab" aria-selected="true" aria-controls="fortune-view-mother-goose" data-action="setFortuneSubView:mother-goose">Mother Goose</button>
+<button type="button" class="fortune-subnav-btn is-active" id="fortune-nav-trade" role="tab" aria-selected="true" aria-controls="fortune-view-trade" data-action="setFortuneSubView:trade">Trade</button>
 <button type="button" class="fortune-subnav-btn" id="fortune-nav-artifacts" role="tab" aria-selected="false" aria-controls="fortune-view-artifacts" data-action="setFortuneSubView:artifacts">Artifacts</button>
-<button type="button" class="fortune-subnav-btn" id="fortune-nav-trade" role="tab" aria-selected="false" aria-controls="fortune-view-trade" data-action="setFortuneSubView:trade">Trade</button>
 </div>
 <div class="fortune-shop-msg" id="fortune-shop-msg" aria-live="polite"></div>
-<div class="fortune-subview is-active" id="fortune-view-mother-goose" role="tabpanel" aria-labelledby="fortune-nav-mother-goose">
-<p class="fortune-tab-lead">Spend Golden Goose Eggs to hatch bird cards. Duplicates become Species Feathers for mutations.</p>
-<div class="mother-goose-pity" id="mother-goose-pity" aria-live="polite"></div>
-<div class="mother-goose-grid" id="mother-goose-grid"></div>
-<div class="mother-goose-result" id="mother-goose-result" aria-live="polite"></div>
+<div class="fortune-subview is-active" id="fortune-view-trade" role="tabpanel" aria-labelledby="fortune-nav-trade">
+<p class="fortune-tab-lead">Exchange Saved Eggs for Golden Goose Eggs and expanded heal-item carry limits.</p>
+<div class="fortune-trade-grid" id="fortune-trade-grid"></div>
 </div>
 <div class="fortune-subview" id="fortune-view-artifacts" role="tabpanel" aria-labelledby="fortune-nav-artifacts">
 <p class="fortune-tab-lead">Rare Artifacts cost Golden Goose Eggs. Effects apply on every future Flight once owned.</p>
 <div class="fortune-artifacts-grid" id="fortune-artifacts-grid"></div>
 </div>
-<div class="fortune-subview" id="fortune-view-trade" role="tabpanel" aria-labelledby="fortune-nav-trade">
-<p class="fortune-tab-lead">Exchange Saved Eggs for Golden Goose Eggs and expanded heal-item carry limits.</p>
-<div class="fortune-trade-grid" id="fortune-trade-grid"></div>
 </div>
+</div>
+<div class="select-hub-panel select-hub-panel--hatchery" id="select-hub-hatchery" role="dialog" aria-modal="true" aria-labelledby="hub-hatchery-title" aria-hidden="true">
+<div class="select-hub-panel-inner select-hub-panel-inner--hatchery">
+<header class="select-hub-panel-head">
+<h3 class="select-hub-panel-title" id="hub-hatchery-title">The Hatchery</h3>
+<button type="button" class="select-hub-return-btn" data-action="closeSelectHubPanel">← Return to war room</button>
+</header>
+<p class="select-hub-lead">Spend Golden Goose Eggs to hatch bird cards. Duplicates become Species Feathers for mutations.</p>
+<div class="fortune-balance-bar hatchery-balance-bar" aria-label="Global currency">
+<span class="fortune-balance-chip"><span class="fortune-balance-icon">🥚</span> Saved Eggs: <strong id="hatchery-balance-saved">0</strong></span>
+<span class="fortune-balance-chip fortune-balance-chip--goose"><span class="fortune-balance-icon">🪿</span> Golden Goose Eggs: <strong id="hatchery-balance-goose">0</strong></span>
+</div>
+<div class="mother-goose-pity" id="mother-goose-pity" aria-live="polite"></div>
+<div class="mother-goose-grid" id="mother-goose-grid"></div>
+<div class="mother-goose-result" id="mother-goose-result" aria-live="polite"></div>
 </div>
 </div>
 <div class="select-hub-panel" id="select-hub-map" role="dialog" aria-modal="true" aria-labelledby="hub-map-title" aria-hidden="true">
@@ -324,9 +338,17 @@
 <button type="button" class="menu-btn map-forge-tool-btn" data-action="duplicateMapForgeNode">Duplicate</button>
 <button type="button" class="menu-btn map-forge-tool-btn" data-action="deselectMapForgeNode">Deselect</button>
 <button type="button" class="map-forge-tool-btn map-forge-tool-danger" data-action="deleteMapForgeNode">Delete</button>
-<button type="button" class="menu-btn map-forge-tool-btn" data-action="copyMapForgeConfig">Copy cfg</button>
-<button type="button" class="menu-btn map-forge-tool-btn" data-action="pasteMapForgeConfig">Paste cfg</button>
 </div>
+<div class="map-forge-toolbar">
+<span class="map-forge-toolbar-label">View</span>
+<button type="button" class="map-forge-tool-btn" data-forge-tool="pan" title="Drag canvas to pan (H). Hold Space for temporary pan.">Grab</button>
+<button type="button" class="menu-btn map-forge-tool-btn" data-action="mapForgeZoomFit">Fit</button>
+<button type="button" class="menu-btn map-forge-tool-btn" data-action="mapForgeZoom100">100%</button>
+<button type="button" class="menu-btn map-forge-tool-btn" data-action="mapForgeZoom200">200%</button>
+<label class="map-forge-field-check"><input type="checkbox" id="map-forge-snap-grid"/> Snap grid</label>
+</div>
+<details class="map-forge-advanced">
+<summary class="map-forge-toolbar-label">Advanced</summary>
 <div class="map-forge-toolbar">
 <span class="map-forge-toolbar-label">Align</span>
 <button type="button" class="menu-btn map-forge-tool-btn" data-action="alignMapForgeLeft">Left</button>
@@ -339,13 +361,14 @@
 <button type="button" class="menu-btn map-forge-tool-btn" data-action="distributeMapForgeV">Dist V</button>
 </div>
 <div class="map-forge-toolbar">
-<span class="map-forge-toolbar-label">View</span>
-<button type="button" class="map-forge-tool-btn" data-forge-tool="pan" title="Drag canvas to pan (H). Hold Space for temporary pan.">Grab</button>
-<button type="button" class="menu-btn map-forge-tool-btn" data-action="mapForgeZoomFit">Fit</button>
-<button type="button" class="menu-btn map-forge-tool-btn" data-action="mapForgeZoom100">100%</button>
-<button type="button" class="menu-btn map-forge-tool-btn" data-action="mapForgeZoom200">200%</button>
-<label class="map-forge-field-check"><input type="checkbox" id="map-forge-snap-grid"/> Snap grid</label>
+<span class="map-forge-toolbar-label">Bulk</span>
+<button type="button" class="menu-btn" data-action="bulkSelectAllStages">Select all stages</button>
+<button type="button" class="menu-btn" data-action="bulkApplyEncounter">Apply preset to checked</button>
+<button type="button" class="menu-btn" data-action="bulkApplyRewards">Copy rewards to checked</button>
+<button type="button" class="menu-btn map-forge-tool-btn" data-action="copyMapForgeConfig">Copy cfg</button>
+<button type="button" class="menu-btn map-forge-tool-btn" data-action="pasteMapForgeConfig">Paste cfg</button>
 </div>
+</details>
 <div class="map-forge-toolbar">
 <span class="map-forge-toolbar-label">Navigate</span>
 <button type="button" class="menu-btn map-forge-tool-btn" id="map-forge-sidebar-enter-world" data-action="editWorldMap" style="display:none">Enter World Map</button>
@@ -391,17 +414,28 @@
 </select>
 <div id="map-forge-encounter-rows"></div>
 <div class="map-forge-encounter-presets">
-<button type="button" class="menu-btn" data-action="applyEncounterPreset:standardStage">Standard stage</button>
-<button type="button" class="menu-btn" data-action="applyEncounterPreset:miniBoss">Mini-boss</button>
-<button type="button" class="menu-btn" data-action="applyEncounterPreset:hardBoss">Hard boss</button>
+<select class="map-forge-field-input" id="map-forge-encounter-preset">
+<option value="standardStage">Standard stage</option>
+<option value="miniBoss">Mini-boss</option>
+<option value="hardBoss">Hard boss</option>
+</select>
+<button type="button" class="menu-btn" id="map-forge-apply-preset">Apply preset</button>
 </div>
 <div class="map-forge-boss-stats-panel" id="map-forge-boss-stats-panel" style="display:none"></div>
 <div class="map-forge-clear-rewards-panel" id="map-forge-clear-rewards-panel" style="display:none">
-<div class="map-forge-field-label">Clear rewards</div>
+<div class="map-forge-field-label">Stage rewards</div>
 <div id="map-forge-clear-reward-list"></div>
 <div class="map-forge-clear-rewards-add">
-<button type="button" class="menu-btn" id="map-forge-add-shiny">+ Shinies</button>
-<button type="button" class="menu-btn" id="map-forge-add-mut">+ Mutation</button>
+<select class="map-forge-field-input" id="map-forge-reward-add-type">
+<option value="shinies">Shinies</option>
+<option value="mutation">Mutation</option>
+<option value="nest">Reward Nest</option>
+<option value="item">Heal item</option>
+<option value="savedEggs">Saved Eggs</option>
+<option value="goldenGoose">Golden Goose Egg</option>
+<option value="speciesFeathers">Species Feather</option>
+</select>
+<button type="button" class="menu-btn" id="map-forge-add-reward">Add reward</button>
 </div>
 </div>
 <div class="map-forge-bonus-panel" id="map-forge-bonus-panel" style="display:none">
@@ -422,11 +456,6 @@
 <button type="button" class="map-forge-filter-btn" data-forge-filter="bonus">Bonus</button>
 <button type="button" class="map-forge-filter-btn" data-forge-filter="world">World</button>
 <button type="button" class="map-forge-filter-btn" data-forge-filter="shop">Shop</button>
-</div>
-<div class="map-forge-bulk-actions">
-<button type="button" class="menu-btn" data-action="bulkSelectAllStages">Select all stages</button>
-<button type="button" class="menu-btn" data-action="bulkApplyEncounter">Apply preset to checked</button>
-<button type="button" class="menu-btn" data-action="bulkApplyRewards">Copy rewards to checked</button>
 </div>
 <div class="map-forge-node-list-wrap">
 <div class="map-forge-node-list-title">Path order</div>

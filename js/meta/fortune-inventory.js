@@ -4,7 +4,16 @@
 
   var INVENTORY_TAB = 'feathers';
   var FEATHER_FILTER = 'all';
+  var FEATHER_AMOUNT_FILTER = 'all';
   var FEATHER_TIERS = ['all', 'grey', 'green', 'blue', 'purple', 'gold', 'orange'];
+  var FEATHER_AMOUNT_FILTERS = [
+    { id: 'all', label: 'All' },
+    { id: '1', label: '1+' },
+    { id: '5', label: '5+' },
+    { id: '10', label: '10+' },
+    { id: '20', label: '20+' },
+    { id: 'canUpgrade', label: 'Can upgrade' },
+  ];
 
   function esc(s) {
     return String(s || '')
@@ -94,6 +103,78 @@
       });
     }
     renderInventoryFeathers();
+  }
+
+  function setInventoryFeatherAmountFilter(filter) {
+    FEATHER_AMOUNT_FILTER = filter || 'all';
+    var wrap = document.getElementById('inventory-feather-amount-filters');
+    if (wrap) {
+      wrap.querySelectorAll('.inventory-feather-filter-btn').forEach(function (btn) {
+        var t = btn.getAttribute('data-feather-amount') || 'all';
+        btn.classList.toggle('is-active', t === FEATHER_AMOUNT_FILTER);
+      });
+    }
+    renderInventoryFeathers();
+  }
+
+  function renderInventoryFeatherAmountFilters() {
+    var wrap = document.getElementById('inventory-feather-amount-filters');
+    if (!wrap || wrap.dataset.wired === '1') return;
+    wrap.dataset.wired = '1';
+    wrap.innerHTML = FEATHER_AMOUNT_FILTERS.map(function (row) {
+      var active = row.id === FEATHER_AMOUNT_FILTER ? ' is-active' : '';
+      return (
+        '<button type="button" class="inventory-feather-filter-btn' +
+        active +
+        '" data-feather-amount="' +
+        esc(row.id) +
+        '" data-action="setInventoryFeatherAmountFilter:' +
+        esc(row.id) +
+        '">' +
+        esc(row.label) +
+        '</button>'
+      );
+    }).join('');
+  }
+
+  function featherPassesAmountFilter(birdKey, count) {
+    if (FEATHER_AMOUNT_FILTER === 'all') return true;
+    if (FEATHER_AMOUNT_FILTER === 'canUpgrade') {
+      if (typeof globalThis.getBirdCardProgress !== 'function' || typeof globalThis.ownsBirdCard !== 'function') return false;
+      if (!globalThis.ownsBirdCard(birdKey)) return false;
+      var progress = globalThis.getBirdCardProgress(birdKey);
+      if (!progress || !progress.canUpgrade) return false;
+      return count >= (progress.cost || 0);
+    }
+    var min = Math.max(0, Math.floor(Number(FEATHER_AMOUNT_FILTER) || 0));
+    return count >= min;
+  }
+
+  function buildFeatherMutateBtn(birdKey) {
+    if (typeof globalThis.ownsBirdCard !== 'function' || !globalThis.ownsBirdCard(birdKey)) return '';
+    if (typeof globalThis.getBirdCardProgress !== 'function') return '';
+    var progress = globalThis.getBirdCardProgress(birdKey);
+    if (!progress || !progress.canUpgrade) return '';
+    var feathers =
+      typeof globalThis.getSpeciesFeathers === 'function' ? globalThis.getSpeciesFeathers(birdKey) : 0;
+    var cost = progress.cost || 0;
+    if (feathers < cost) return '';
+    var pack = tierPack();
+    var preview = progress.preview;
+    var label = preview && preview.isTierUp
+      ? 'Ascend to ' + ((pack && pack.TIER_LABELS && pack.TIER_LABELS[preview.tierAfter]) || preview.tierAfter)
+      : 'Upgrade star';
+    return (
+      '<button type="button" class="inventory-feather-mutate-btn" data-action="mutateBirdCardSelect:' +
+      esc(birdKey) +
+      '">' +
+      esc(label) +
+      ' (' +
+      fmt(feathers) +
+      '/' +
+      fmt(cost) +
+      ' 🪶)</button>'
+    );
   }
 
   function renderInventoryFeatherFilters() {
@@ -201,6 +282,7 @@
   }
 
   function renderInventoryFeathers() {
+    renderInventoryFeatherAmountFilters();
     renderInventoryFeatherFilters();
     var grid = document.getElementById('inventory-feathers-grid');
     var empty = document.getElementById('inventory-feathers-empty');
@@ -228,9 +310,11 @@
       .filter(function (row) {
         return FEATHER_FILTER === 'all' || row.cardTier === FEATHER_FILTER;
       })
+      .filter(function (row) {
+        return featherPassesAmountFilter(row.birdKey, row.count);
+      })
       .sort(function (a, b) {
-        var tierOrder = FEATHER_TIERS.indexOf(a.cardTier) - FEATHER_TIERS.indexOf(b.cardTier);
-        if (tierOrder !== 0) return tierOrder;
+        if (b.count !== a.count) return b.count - a.count;
         return a.birdName.localeCompare(b.birdName);
       });
 
@@ -238,8 +322,10 @@
       grid.innerHTML = '';
       empty.hidden = false;
       empty.textContent =
-        FEATHER_FILTER === 'all'
-          ? 'No Species Feathers yet. Hatch duplicates at Mother Goose\'s nest.'
+        FEATHER_AMOUNT_FILTER !== 'all'
+          ? 'No feathers match this amount filter.'
+          : FEATHER_FILTER === 'all'
+          ? 'No Species Feathers yet. Hatch duplicates at The Hatchery.'
           : 'No Species Feathers for ' + speciesRarityLabel(FEATHER_FILTER) + ' tier birds.';
       return;
     }
@@ -281,7 +367,9 @@
           '</span></div>' +
           '<div class="inventory-feather-count">×' +
           fmt(row.count) +
-          '</div></div>'
+          '</div>' +
+          buildFeatherMutateBtn(row.birdKey) +
+          '</div>'
         );
       })
       .join('');
@@ -349,4 +437,5 @@
   globalThis.unequipFortuneArtifact = unequipFortuneArtifact;
   globalThis.setInventorySubView = setInventorySubView;
   globalThis.setInventoryFeatherFilter = setInventoryFeatherFilter;
+  globalThis.setInventoryFeatherAmountFilter = setInventoryFeatherAmountFilter;
 })();

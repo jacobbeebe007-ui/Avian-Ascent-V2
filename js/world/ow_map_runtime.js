@@ -4,16 +4,26 @@
 (function (global) {
   'use strict';
 
+  global.OW_CARD_TIER_MUTATION_OPTIONS = [
+    { id: 'grey', label: 'Grey' },
+    { id: 'green', label: 'Green' },
+    { id: 'blue', label: 'Blue' },
+    { id: 'purple', label: 'Purple' },
+    { id: 'gold', label: 'Gold' },
+    { id: 'orange', label: 'Orange' },
+  ];
+
   global.OW_MUTATION_BANDS = {
     grey: ['white'],
-    grey_green: ['white', 'green'],
     green: ['green'],
-    green_blue: ['green', 'blue'],
     blue: ['blue'],
-    blue_purple: ['blue', 'purple'],
     purple: ['purple'],
-    purple_gold: ['purple', 'gold'],
     gold: ['gold'],
+    orange: ['gold'],
+    grey_green: ['white', 'green'],
+    green_blue: ['green', 'blue'],
+    blue_purple: ['blue', 'purple'],
+    purple_gold: ['purple', 'gold'],
   };
 
   global.OW_MUTATION_BAND_OPTIONS = [
@@ -41,7 +51,7 @@
     const count = isBoss ? 1 : 3;
     const slots = [];
     for (let i = 0; i < count; i++) {
-      slots.push({ birdKey: 'random', mutationBand: 'grey_green', maxMutations: isBoss ? 2 : 1 });
+      slots.push({ birdKey: 'random', enemyLevel: 1, mutationBand: 'green', maxMutations: isBoss ? 2 : 1 });
     }
     return { enemyCount: count, slots };
   };
@@ -54,14 +64,17 @@
     const enc = node.encounter;
     enc.enemyCount = Math.max(1, Math.min(5, Math.floor(Number(enc.enemyCount) || enc.slots.length || 1)));
     while (enc.slots.length < enc.enemyCount) {
-      enc.slots.push({ birdKey: 'random', mutationBand: 'grey_green', maxMutations: 1 });
+      enc.slots.push({ birdKey: 'random', enemyLevel: 1, mutationBand: 'green', maxMutations: 1 });
     }
     enc.slots = enc.slots.slice(0, enc.enemyCount).map((s) => {
       const slot = {
         birdKey: s.birdKey || 'random',
-        mutationBand: s.mutationBand || 'grey_green',
+        enemyLevel: Math.max(1, Math.min(20, Math.floor(Number(s.enemyLevel) || 1))),
+        mutationBand: s.mutationBand || 'green',
         maxMutations: Math.max(0, Math.min(11, Math.floor(Number(s.maxMutations) || 0))),
       };
+      if (s.enemyId) slot.enemyId = String(s.enemyId);
+      if (s.isBoss) slot.isBoss = true;
       if (s.useCustomStats) slot.useCustomStats = true;
       if (s.customStats && typeof s.customStats === 'object') {
         slot.customStats = {
@@ -100,7 +113,7 @@
   };
 
   global.resolveForgeEncounterBirdKeys = function (encounter, playerBirdKey, scalingStage) {
-    const enc = encounter || { enemyCount: 1, slots: [{ birdKey: 'random', mutationBand: 'grey_green', maxMutations: 1 }] };
+    const enc = encounter || { enemyCount: 1, slots: [{ birdKey: 'random', enemyLevel: 1, mutationBand: 'green', maxMutations: 1 }] };
     const st = Math.max(1, Math.floor(Number(scalingStage) || 1));
     const pbk = String(playerBirdKey || '').trim();
     let pool = [];
@@ -119,8 +132,17 @@
       if (slot.enemyId && typeof global.isRosterEnemyId === 'function' && global.isRosterEnemyId(slot.enemyId)) {
         out.push(slot.enemyId);
       } else if (slot.birdKey && slot.birdKey !== 'random') {
-        if (typeof global.resolveOwStageToken === 'function') {
-          out.push(global.resolveOwStageToken(slot.birdKey, st, { isBoss: !!slot.isBoss }));
+        const lv = slot.enemyLevel || st;
+        if (typeof global.pickRosterIdForBirdAndLevel === 'function') {
+          const picked = global.pickRosterIdForBirdAndLevel(slot.birdKey, lv, { isBoss: !!slot.isBoss });
+          if (picked) out.push(picked);
+          else if (typeof global.resolveOwStageToken === 'function') {
+            out.push(global.resolveOwStageToken(slot.birdKey, lv, { isBoss: !!slot.isBoss }));
+          } else {
+            out.push(slot.birdKey);
+          }
+        } else if (typeof global.resolveOwStageToken === 'function') {
+          out.push(global.resolveOwStageToken(slot.birdKey, lv, { isBoss: !!slot.isBoss }));
         } else {
           out.push(slot.birdKey);
         }
@@ -267,6 +289,9 @@
   };
 
   global.getForgeBirdOptions = function () {
+    if (typeof global.listForgeEnemySpeciesOptions === 'function') {
+      return global.listForgeEnemySpeciesOptions();
+    }
     const birds = global.BIRDS || {};
     const keys = Object.keys(birds).sort();
     return [{ id: 'random', label: 'Random' }].concat(
@@ -295,8 +320,26 @@
   };
 
   global.grantForgeClearRewards = function (player, rewards, G) {
-    if (!Array.isArray(rewards) || !rewards.length) return { shinies: 0, mutations: [] };
-    const granted = { shinies: 0, mutations: [] };
+    const empty = { shinies: 0, mutations: [], items: [], nests: 0, savedEggs: 0, goldenGoose: 0, feathers: [] };
+    if (!Array.isArray(rewards) || !rewards.length) return empty;
+    const granted = Object.assign({}, empty, { mutations: [], items: [], feathers: [] });
+    const rollForgeMutation = (band) => {
+      if (typeof global.Avian?.mutations?.rollEnemyMutationsFromForgeSlot !== 'function') return [];
+      return global.Avian.mutations.rollEnemyMutationsFromForgeSlot({
+        mutationBand: band || 'blue',
+        maxMutations: 1,
+        stage: G?.stage || 1,
+        isBoss: false,
+      });
+    };
+    const grantMutationIds = (ids) => {
+      ids.forEach((id) => {
+        if (id && typeof global.Avian?.mutations?.addToInventory === 'function') {
+          global.Avian.mutations.addToInventory(player, id);
+          granted.mutations.push(id);
+        }
+      });
+    };
     rewards.forEach((r) => {
       if (!r) return;
       if (r.type === 'shinies') {
@@ -305,19 +348,42 @@
         const gain = lo + Math.floor(Math.random() * (hi - lo + 1));
         granted.shinies += gain;
         if (G) G.shinyObjects = (G.shinyObjects || 0) + gain;
-      } else if (r.type === 'mutation' && typeof global.Avian?.mutations?.rollEnemyMutationsFromForgeSlot === 'function') {
-        const ids = global.Avian.mutations.rollEnemyMutationsFromForgeSlot({
-          mutationBand: r.tierBand || 'blue_purple',
-          maxMutations: 1,
-          stage: G?.stage || 1,
-          isBoss: false,
+      } else if (r.type === 'mutation') {
+        const count = Math.max(1, Math.floor(Number(r.count) || 1));
+        const band = r.tierBand || r.tier || 'blue';
+        for (let i = 0; i < count; i++) grantMutationIds(rollForgeMutation(band));
+      } else if (r.type === 'nest' && Array.isArray(r.slots)) {
+        r.slots.forEach((slot) => {
+          grantMutationIds(rollForgeMutation(slot?.tier || 'blue'));
+          granted.nests += 1;
         });
-        ids.forEach((id) => {
-          if (id && typeof global.Avian.mutations.addToInventory === 'function') {
-            global.Avian.mutations.addToInventory(player, id);
-            granted.mutations.push(id);
-          }
-        });
+      } else if (r.type === 'item' && r.itemKey) {
+        const lo = Math.max(0, Math.floor(Number(r.min) || Number(r.qty) || 1));
+        const hi = Math.max(lo, Math.floor(Number(r.max) || lo));
+        const qty = lo + Math.floor(Math.random() * (hi - lo + 1));
+        if (typeof global.addCombatItem === 'function') global.addCombatItem(player, r.itemKey, qty);
+        granted.items.push({ itemKey: r.itemKey, quantity: qty });
+      } else if (r.type === 'savedEggs') {
+        const n = Math.max(0, Math.floor(Number(r.count) || 0));
+        if (n && typeof global.addSavedEggs === 'function') global.addSavedEggs(n);
+        granted.savedEggs += n;
+      } else if (r.type === 'goldenGoose') {
+        const n = Math.max(0, Math.floor(Number(r.count) || 0));
+        if (n && typeof global.addGoldenGooseEggs === 'function') global.addGoldenGooseEggs(n);
+        granted.goldenGoose += n;
+      } else if (r.type === 'speciesFeathers') {
+        let bk = r.birdKey || 'random';
+        if (bk === 'random') {
+          const meta = typeof global.getFortuneMeta === 'function' ? global.getFortuneMeta() : null;
+          const owned = meta?.birdCards?.owned || {};
+          const keys = Object.keys(owned);
+          bk = keys.length ? keys[Math.floor(Math.random() * keys.length)] : null;
+        }
+        const n = Math.max(0, Math.floor(Number(r.count) || 0));
+        if (bk && n && typeof global.addSpeciesFeathers === 'function') {
+          global.addSpeciesFeathers(bk, n);
+          granted.feathers.push({ birdKey: bk, count: n });
+        }
       }
     });
     return granted;
@@ -355,9 +421,25 @@
   ];
 
   global.FORGE_ENCOUNTER_PRESETS = {
-    standardStage: { enemyCount: 3, slots: [{ birdKey: 'random', mutationBand: 'grey_green', maxMutations: 1 }, { birdKey: 'random', mutationBand: 'grey_green', maxMutations: 1 }, { birdKey: 'random', mutationBand: 'grey_green', maxMutations: 1 }] },
-    miniBoss: { enemyCount: 2, slots: [{ birdKey: 'random', mutationBand: 'blue_purple', maxMutations: 2 }, { birdKey: 'random', mutationBand: 'blue_purple', maxMutations: 2 }] },
-    hardBoss: { enemyCount: 1, slots: [{ birdKey: 'random', mutationBand: 'purple_gold', maxMutations: 3 }] },
+    standardStage: {
+      enemyCount: 3,
+      slots: [
+        { birdKey: 'random', enemyLevel: 1, mutationBand: 'green', maxMutations: 1 },
+        { birdKey: 'random', enemyLevel: 1, mutationBand: 'green', maxMutations: 1 },
+        { birdKey: 'random', enemyLevel: 1, mutationBand: 'green', maxMutations: 1 },
+      ],
+    },
+    miniBoss: {
+      enemyCount: 2,
+      slots: [
+        { birdKey: 'random', enemyLevel: 5, mutationBand: 'blue', maxMutations: 2 },
+        { birdKey: 'random', enemyLevel: 5, mutationBand: 'blue', maxMutations: 2 },
+      ],
+    },
+    hardBoss: {
+      enemyCount: 1,
+      slots: [{ birdKey: 'random', enemyLevel: 10, mutationBand: 'purple', maxMutations: 3 }],
+    },
   };
 
   const MUT_BAND_WEIGHT = { grey: 1, grey_green: 2, green: 3, green_blue: 4, blue: 5, blue_purple: 6, purple: 7, purple_gold: 8, gold: 9 };

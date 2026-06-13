@@ -2,7 +2,7 @@
 (function () {
   'use strict';
 
-  var FORTUNE_TAB = 'mother-goose';
+  var FORTUNE_TAB = 'trade';
   var HATCH_BATCH_SIZE = 10;
   var ROYAL_EGG_CLASS = 'knight';
 
@@ -217,21 +217,13 @@
   }
 
   function setFortuneSubView(view) {
-    FORTUNE_TAB =
-      view === 'artifacts' ? 'artifacts' : view === 'trade' ? 'trade' : 'mother-goose';
-    var gooseBtn = document.getElementById('fortune-nav-mother-goose');
+    FORTUNE_TAB = view === 'artifacts' ? 'artifacts' : 'trade';
     var artBtn = document.getElementById('fortune-nav-artifacts');
     var tradeBtn = document.getElementById('fortune-nav-trade');
-    var gooseView = document.getElementById('fortune-view-mother-goose');
     var artView = document.getElementById('fortune-view-artifacts');
     var tradeView = document.getElementById('fortune-view-trade');
-    var isMotherGoose = FORTUNE_TAB === 'mother-goose';
     var isArtifacts = FORTUNE_TAB === 'artifacts';
     var isTrade = FORTUNE_TAB === 'trade';
-    if (gooseBtn) {
-      gooseBtn.classList.toggle('is-active', isMotherGoose);
-      gooseBtn.setAttribute('aria-selected', isMotherGoose ? 'true' : 'false');
-    }
     if (artBtn) {
       artBtn.classList.toggle('is-active', isArtifacts);
       artBtn.setAttribute('aria-selected', isArtifacts ? 'true' : 'false');
@@ -240,7 +232,6 @@
       tradeBtn.classList.toggle('is-active', isTrade);
       tradeBtn.setAttribute('aria-selected', isTrade ? 'true' : 'false');
     }
-    if (gooseView) gooseView.classList.toggle('is-active', isMotherGoose);
     if (artView) artView.classList.toggle('is-active', isArtifacts);
     if (tradeView) tradeView.classList.toggle('is-active', isTrade);
   }
@@ -256,6 +247,10 @@
     var invGooseEl = document.getElementById('inventory-balance-goose');
     if (invSavedEl) invSavedEl.textContent = fmt(saved);
     if (invGooseEl) invGooseEl.textContent = fmt(goose);
+    var hatchSavedEl = document.getElementById('hatchery-balance-saved');
+    var hatchGooseEl = document.getElementById('hatchery-balance-goose');
+    if (hatchSavedEl) hatchSavedEl.textContent = fmt(saved);
+    if (hatchGooseEl) hatchGooseEl.textContent = fmt(goose);
     var badge = document.getElementById('fortune-egg-badge');
     if (badge) {
       badge.textContent = saved > 0 ? fmt(saved) : '';
@@ -334,6 +329,25 @@
             (offer.capLabel ? ' · ' + esc(offer.capLabel) : '') +
             '</p>'
           : '';
+      var bulkBtns = '';
+      if (offer.id === 'trade_goldenGoose' && !maxed) {
+        [1, 10, 100].forEach(function (qty) {
+          var bulkCost = cost * qty;
+          var canBulk = saved >= bulkCost;
+          bulkBtns +=
+            '<button type="button" class="fortune-buy-btn fortune-buy-btn--bulk" data-action="purchaseFortuneTrade:' +
+            esc(offer.id) +
+            ':' +
+            qty +
+            '" ' +
+            (canBulk ? '' : 'disabled') +
+            '>Buy ×' +
+            qty +
+            ' · ' +
+            fmt(bulkCost) +
+            ' 🥚</button>';
+        });
+      }
       html +=
         '<div class="fortune-artifact-card fortune-trade-card' +
         stateClass +
@@ -348,13 +362,16 @@
         esc(offer.desc) +
         '</p>' +
         progress +
-        '<button type="button" class="fortune-buy-btn" data-action="purchaseFortuneTrade:' +
-        esc(offer.id) +
-        '" ' +
-        (btnDisabled ? 'disabled' : '') +
-        '>' +
-        esc(btnLabel) +
-        '</button></div>';
+        (offer.id === 'trade_goldenGoose' && bulkBtns
+          ? '<div class="fortune-trade-bulk-btns">' + bulkBtns + '</div>'
+          : '<button type="button" class="fortune-buy-btn" data-action="purchaseFortuneTrade:' +
+            esc(offer.id) +
+            '" ' +
+            (btnDisabled ? 'disabled' : '') +
+            '>' +
+            esc(btnLabel) +
+            '</button>') +
+        '</div>';
     });
     grid.innerHTML = html;
   }
@@ -464,12 +481,7 @@
   }
 
   function afterHatchRefresh(msgText) {
-    var msg = document.getElementById('fortune-shop-msg');
-    if (msg && msgText) {
-      msg.textContent = msgText;
-      msg.style.color = 'var(--gold-light)';
-    }
-    renderFortuneShop();
+    renderHatchery();
     if (typeof globalThis.initSelectionSafe === 'function') globalThis.initSelectionSafe();
     if (typeof globalThis.renderFortuneInventory === 'function') globalThis.renderFortuneInventory();
   }
@@ -534,12 +546,21 @@
       msg.textContent = result && result.ok ? 'Pity choice: ' + birdKey + ' granted!' : 'Could not resolve pity choice.';
       msg.style.color = result && result.ok ? 'var(--gold-light)' : 'var(--text-dim)';
     }
-    renderFortuneShop();
+    renderHatchery();
+  }
+
+  function renderMotherGooseShop() {
+    renderMotherGoosePity();
+    renderMotherGooseGrid();
+  }
+
+  function renderHatchery() {
+    syncFortuneBalances();
+    renderMotherGooseShop();
   }
 
   function renderFortuneShop() {
     syncFortuneBalances();
-    renderMotherGooseGrid();
     renderFortuneArtifactsGrid();
     renderFortuneTradeGrid();
     setFortuneSubView(FORTUNE_TAB);
@@ -571,9 +592,16 @@
     if (typeof globalThis.renderFortuneInventory === 'function') globalThis.renderFortuneInventory();
   }
 
-  function purchaseFortuneTrade(tradeId) {
+  function purchaseFortuneTrade(spec) {
     if (typeof globalThis.commitFortuneTradePurchase !== 'function') return;
-    var result = globalThis.commitFortuneTradePurchase(tradeId);
+    var tradeId = spec;
+    var count = 1;
+    if (typeof spec === 'string' && spec.indexOf(':') >= 0) {
+      var parts = spec.split(':');
+      tradeId = parts[0];
+      count = Math.max(1, Math.floor(Number(parts[1]) || 1));
+    }
+    var result = globalThis.commitFortuneTradePurchase(tradeId, count);
     var msg = document.getElementById('fortune-shop-msg');
     if (!result || !result.ok) {
       if (msg) {
@@ -612,6 +640,7 @@
 
   globalThis.setFortuneSubView = setFortuneSubView;
   globalThis.renderFortuneShop = renderFortuneShop;
+  globalThis.renderHatchery = renderHatchery;
   globalThis.syncFortuneBalances = syncFortuneBalances;
   globalThis.purchaseFortuneArtifact = purchaseFortuneArtifact;
   globalThis.purchaseFortuneTrade = purchaseFortuneTrade;

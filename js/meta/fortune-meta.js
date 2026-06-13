@@ -273,30 +273,36 @@
     return getTradePurchaseCount(offer.id) >= Math.max(0, Math.floor(Number(offer.maxPurchases) || 0));
   }
 
-  function commitFortuneTradePurchase(tradeId) {
+  function commitFortuneTradePurchase(tradeId, count) {
     var offer = getTradeOfferById(tradeId);
     if (!offer) return { ok: false, reason: 'missing' };
+    var batch = Math.max(1, Math.floor(Number(count) || 1));
     var purchasesSoFar = getTradePurchaseCount(tradeId);
-    if (isTradeOfferMaxed(offer, purchasesSoFar)) return { ok: false, reason: 'maxed' };
-    var cost =
+    if (offer.maxPurchases != null) {
+      var max = Math.max(0, Math.floor(Number(offer.maxPurchases) || 0));
+      if (purchasesSoFar >= max) return { ok: false, reason: 'maxed' };
+      if (purchasesSoFar + batch > max) return { ok: false, reason: 'maxed' };
+    }
+    var unitCost =
       typeof globalThis.getTradeOfferCost === 'function'
         ? globalThis.getTradeOfferCost(offer, purchasesSoFar)
         : Math.max(0, Math.floor(Number(offer.baseCost) || 0));
-    if (!spendSavedEggs(cost)) return { ok: false, reason: 'funds' };
+    var totalCost = unitCost * batch;
+    if (!spendSavedEggs(totalCost)) return { ok: false, reason: 'funds' };
 
     var m = getFortuneMeta();
     m.tradePurchases = normalizeTradePurchases(m.tradePurchases);
-    m.tradePurchases[tradeId] = purchasesSoFar + 1;
+    m.tradePurchases[tradeId] = purchasesSoFar + batch;
 
     if (tradeId === 'trade_goldenGoose') {
-      m.goldenGooseEggs += 1;
+      m.goldenGooseEggs += batch;
     } else if (offer.itemKey) {
       m.combatItemCapBonus = normalizeCombatItemCapBonus(m.combatItemCapBonus);
-      m.combatItemCapBonus[offer.itemKey] = (m.combatItemCapBonus[offer.itemKey] || 0) + 1;
+      m.combatItemCapBonus[offer.itemKey] = (m.combatItemCapBonus[offer.itemKey] || 0) + batch;
     }
 
     saveFortuneMeta(m);
-    return { ok: true, cost: cost, offer: offer };
+    return { ok: true, cost: totalCost, count: batch, offer: offer };
   }
 
   globalThis.FORTUNE_META_KEY = META_KEY;

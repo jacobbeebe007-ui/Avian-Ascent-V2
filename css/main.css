@@ -345,12 +345,23 @@ header p{color:var(--text-dim);font-style:italic;font-size:1rem;margin-top:4px;}
   /* Feathers & Fortune — middle-right, below Inventory */
   right:clamp(4%, 5vw, 14%);
   left:auto;
-  top:clamp(56%, 52vh, 62%);
+  top:clamp(48%, 44vh, 54%);
   bottom:auto;
   transform:translateY(-50%);
   align-items:flex-end;
   text-align:right;
   max-width:min(260px, 48vw);
+}
+.splash-hotspot--hatchery{
+  /* The Hatchery — middle-right, below Emporium */
+  right:clamp(4%, 5vw, 14%);
+  left:auto;
+  top:clamp(62%, 58vh, 68%);
+  bottom:auto;
+  transform:translateY(-50%);
+  align-items:flex-end;
+  text-align:right;
+  max-width:min(220px, 44vw);
 }
 .splash-hotspot--inventory{
   /* Inventory — middle-right, above Feathers & Fortune */
@@ -434,7 +445,9 @@ body.build-nest-unlocked .splash-hotspot--forge.is-buildnest-hidden{
 .splash-hotspot--inventory:hover,
 .splash-hotspot--inventory:focus-visible,
 .splash-hotspot--fortune:hover,
-.splash-hotspot--fortune:focus-visible{
+.splash-hotspot--fortune:focus-visible,
+.splash-hotspot--hatchery:hover,
+.splash-hotspot--hatchery:focus-visible{
   transform:translateY(calc(-50% - 2px));
 }
 .splash-hotspot--map:hover{
@@ -481,7 +494,13 @@ body.build-nest-unlocked .splash-hotspot--forge.is-buildnest-hidden{
   }
   .splash-hotspot--fortune{
     right:2%;
-    top:clamp(54%, 50vh, 60%);
+    top:clamp(46%, 42vh, 52%);
+    max-width:44vw;
+    padding:8px 10px;
+  }
+  .splash-hotspot--hatchery{
+    right:2%;
+    top:clamp(58%, 54vh, 64%);
     max-width:44vw;
     padding:8px 10px;
   }
@@ -663,6 +682,13 @@ body.build-nest-unlocked .splash-hotspot--forge.is-buildnest-hidden{
   font-size:.7rem;
   color:rgba(200,198,190,.68);
 }
+.fortune-trade-bulk-btns{
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+  width:100%;
+}
+.fortune-buy-btn--bulk{font-size:.72rem;}
 .fortune-hiring-grid,.fortune-artifacts-grid,.fortune-trade-grid{
   display:grid;
   grid-template-columns:repeat(auto-fill,minmax(min(100%,200px),1fr));
@@ -906,6 +932,21 @@ body.build-nest-unlocked .splash-hotspot--forge.is-buildnest-hidden{
   color:#e8e0d0;
   margin-top:2px;
 }
+.inventory-feather-amount-filters{margin-bottom:6px;}
+.inventory-feather-mutate-btn{
+  margin-top:6px;
+  width:100%;
+  font-size:.62rem;
+  padding:5px 6px;
+  border-radius:6px;
+  border:1px solid rgba(201,168,76,.35);
+  background:rgba(201,168,76,.12);
+  color:var(--gold-light);
+  cursor:pointer;
+}
+.inventory-feather-mutate-btn:hover{background:rgba(201,168,76,.22);}
+.select-hub-panel--hatchery .select-hub-panel-inner--hatchery{max-width:min(920px,96vw);}
+.hatchery-balance-bar{margin-bottom:8px;}
 .mother-goose-hatch-modal{
   display:none;
   position:fixed;
@@ -3912,7 +3953,53 @@ body.ui-mobile-mode #screen-select #mobile-select-details-anchor{display:block;o
 .map-forge-node-move:disabled{opacity:.35;cursor:not-allowed;}
 .map-forge-breadcrumb{font-size:.72rem;color:var(--gold-dim,var(--text-dim));margin:0 0 4px;font-family:'Cinzel',serif;letter-spacing:.06em;}
 .map-forge-encounter-panel,.map-forge-bonus-panel,.map-forge-clear-rewards-panel{display:flex;flex-direction:column;gap:6px;padding-top:8px;border-top:1px solid rgba(201,168,76,.16);}
-.map-forge-encounter-row{display:flex;flex-direction:column;gap:4px;margin-bottom:6px;}
+.map-forge-advanced{
+  padding:6px 0;
+  border-top:1px solid rgba(201,168,76,.12);
+}
+.map-forge-advanced summary{
+  cursor:pointer;
+  font-size:.7rem;
+  color:var(--text-dim);
+  list-style:none;
+  user-select:none;
+}
+.map-forge-advanced summary::-webkit-details-marker{display:none;}
+.map-forge-advanced[open] summary{margin-bottom:6px;color:var(--gold-dim,var(--gold-light));}
+.map-forge-encounter-presets{display:flex;flex-wrap:wrap;gap:6px;align-items:center;}
+.map-forge-encounter-row{
+  display:flex;
+  flex-direction:column;
+  gap:4px;
+  margin-bottom:8px;
+  padding:6px;
+  border:1px solid rgba(201,168,76,.14);
+  border-radius:8px;
+  background:rgba(4,6,10,.35);
+}
+.map-forge-encounter-row-head{
+  font-family:'Cinzel',serif;
+  font-size:.68rem;
+  color:var(--gold-dim,var(--gold-light));
+  letter-spacing:.06em;
+}
+.map-forge-encounter-row-grid{
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:6px;
+}
+.map-forge-encounter-field{
+  display:flex;
+  flex-direction:column;
+  gap:2px;
+  font-size:.62rem;
+  color:var(--text-dim);
+}
+.map-forge-encounter-field--wide{grid-column:1/-1;}
+.map-forge-nest-slots{display:flex;flex-direction:column;gap:4px;width:100%;}
+.map-forge-nest-slot-row{display:flex;align-items:center;gap:6px;font-size:.68rem;}
+.map-forge-nest-slot-label{min-width:3.5em;color:var(--text-dim);}
+.map-forge-clear-rewards-add select{flex:1;min-width:8em;}
 .map-forge-clear-reward-row{display:flex;flex-wrap:wrap;align-items:center;gap:6px;font-size:.72rem;color:var(--text-dim);padding:4px 0;}
 .map-forge-reward-type-label{min-width:4.5em;font-family:'Cinzel',serif;font-size:.68rem;color:var(--gold-dim,var(--gold-light));}
 .map-forge-reward-num{width:3.5em;padding:4px 6px;font-size:.72rem;background:rgba(0,0,0,.35);border:1px solid rgba(201,168,76,.22);color:var(--text);border-radius:3px;}

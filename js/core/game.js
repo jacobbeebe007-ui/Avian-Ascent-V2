@@ -4735,6 +4735,8 @@ function buildRosterFilterSelect(){
   const roleOptions=ROLE_ORDER.map(c=>`<option value="role:${c}">${idToClassLabel(c)}</option>`).join('');
   sel.innerHTML=`
     <option value="all">All Birds</option>
+    <option value="alpha">Alphabetical</option>
+    <option value="speciesTier">Species rarity (Tiers)</option>
     <option value="size">By Size</option>
     <option value="unlocked">Unlocked</option>
     <option value="locked">Locked</option>
@@ -4750,6 +4752,8 @@ function syncRosterFilterSelect(){
   if(ui.lockFilter==='unlocked') v='unlocked';
   else if(ui.lockFilter==='locked') v='locked';
   else if(ui.selectionView==='size') v='size';
+  else if(ui.selectionView==='alpha') v='alpha';
+  else if(ui.selectionView==='speciesTier') v='speciesTier';
   else if(ui.selectionView && ui.selectionView!=='all') v=ui.selectionView;
   sel.value=v;
 }
@@ -4757,6 +4761,8 @@ function onRosterFilterChange(value){
   const ui=ensureUIState();
   if(value==='all'){ ui.selectionView='all'; ui.lockFilter='all'; }
   else if(value==='size'){ ui.selectionView='size'; ui.lockFilter='all'; }
+  else if(value==='alpha'){ ui.selectionView='alpha'; ui.lockFilter='all'; }
+  else if(value==='speciesTier'){ ui.selectionView='speciesTier'; ui.lockFilter='all'; }
   else if(value==='unlocked'){ ui.selectionView='all'; ui.lockFilter='unlocked'; }
   else if(value==='locked'){ ui.selectionView='all'; ui.lockFilter='locked'; }
   else if(value.startsWith('role:')){ ui.selectionView=value; ui.lockFilter='all'; }
@@ -4948,9 +4954,16 @@ function buildBirdGrid() {
   if(!ui.selectionView) ui.selectionView='all';
   migrateLegacySelectionView(ui);
   const selectedView=ui.selectionView;
-  const view = String(selectedView).startsWith('role:') ? 'all' : (selectedView==='size' ? 'size' : 'all');
+  const isAlpha = selectedView === 'alpha';
+  const isSpeciesTier = selectedView === 'speciesTier';
+  const view = isAlpha || isSpeciesTier ? selectedView : (String(selectedView).startsWith('role:') ? 'all' : (selectedView==='size' ? 'size' : 'all'));
   const classFilter = String(selectedView).startsWith('role:') ? (String(selectedView).split(':')[1]||'all') : 'all';
   const lockFilter = ['all','unlocked','locked'].includes(ui.lockFilter) ? ui.lockFilter : 'unlocked';
+  const starterKeys = (typeof Avian?.data?.motherGooseCatalog?.starterBirdKeys === 'function'
+    ? Avian.data.motherGooseCatalog.starterBirdKeys()
+    : ['sparrow','blackbird','macaw','crow','goose']);
+  const speciesTierOrder = ['grey','green','blue','purple','gold','orange'];
+  const speciesTierLabels = Avian?.data?.birdCardTiers?.SPECIES_RARITY_LABELS || {};
 
   const grid = document.getElementById('bird-grid');
   if(!grid) return;
@@ -4978,28 +4991,33 @@ function buildBirdGrid() {
   const fallbackStarters = ['sparrow','goose','blackbird','crow','macaw','robin'];
 
   const groups = {};
-  const orderedKeys = view==='size' ? SIZE_ORDER : ROLE_ORDER;
-  const groupLabels = view==='size' ? SIZE_LABELS : ROLE_LABELS;
+  const orderedKeys = view==='size' ? SIZE_ORDER : (view==='speciesTier' ? speciesTierOrder : ROLE_ORDER);
+  const groupLabels = view==='size' ? SIZE_LABELS : (view==='speciesTier' ? speciesTierLabels : ROLE_LABELS);
 
   orderedKeys.forEach(k => groups[k]=[]);
 
   safeBirdEntries.forEach(([key, bird]) => {
-    const groupKey = view==='size' ? (bird.size||'medium') : classToRoleId(bird.class,key);
+    let groupKey;
+    if(view==='size') groupKey = bird.size||'medium';
+    else if(view==='speciesTier') {
+      const rarityMeta=getBirdSpeciesRarityMeta(key);
+      groupKey = rarityMeta.speciesTier||'grey';
+    } else groupKey = classToRoleId(bird.class,key);
     if(!groups[groupKey]) groups[groupKey]=[];
     groups[groupKey].push([key, bird]);
   });
 
-  let totalUnlocked=0, totalBirds=0;
-  if(view==='all'){
+  const appendSection=(title, entries)=>{
+    if(!entries||!entries.length) return;
     const section = document.createElement('div');
     section.className = 'size-section';
     const header = document.createElement('div');
     header.className = 'size-header';
-    header.innerHTML = `<div class="size-header-line"></div><div class="size-header-title">All Birds</div><div class="size-header-line"></div>`;
+    header.innerHTML = `<div class="size-header-line"></div><div class="size-header-title">${title}</div><div class="size-header-line"></div>`;
     section.appendChild(header);
     const row = document.createElement('div');
     row.className='size-birds-row';
-    safeBirdEntries.forEach(([key,bird])=>{
+    entries.forEach(([key,bird])=>{
       totalBirds++;
       const locked = bird.unlockRequires && !isUnlocked(bird.unlockRequires);
       if(!locked) totalUnlocked++;
@@ -5007,6 +5025,24 @@ function buildBirdGrid() {
     });
     section.appendChild(row);
     grid.appendChild(section);
+  };
+
+  let totalUnlocked=0, totalBirds=0;
+  if(view==='alpha'){
+    const sorted = safeBirdEntries.slice().sort((a,b)=>String(a[1].name||a[0]).localeCompare(String(b[1].name||b[0])));
+    appendSection('Alphabetical', sorted);
+  } else if(view==='all'){
+    const starterSet = new Set(starterKeys);
+    const starters = safeBirdEntries.filter(([key])=>starterSet.has(key));
+    const others = safeBirdEntries.filter(([key])=>!starterSet.has(key));
+    if(starters.length) appendSection('Starters', starters);
+    if(others.length) appendSection('All other birds', others);
+  } else if(view==='speciesTier'){
+    speciesTierOrder.forEach(groupKey=>{
+      const entries = (groups[groupKey]||[]).slice().sort((a,b)=>String(a[1].name||a[0]).localeCompare(String(b[1].name||b[0])));
+      if(!entries.length) return;
+      appendSection(groupLabels[groupKey]||groupKey, entries);
+    });
   } else orderedKeys.forEach(groupKey => {
     const entries = groups[groupKey];
     if(!entries||!entries.length) return;
@@ -5163,6 +5199,7 @@ function mutateBirdCardSelect(birdKey){
   if(result?.ok){
     updateAscentPanel(birdKey);
     if(typeof buildBirdGrid==='function') try{ buildBirdGrid(); }catch(_){}
+    if(typeof renderFortuneInventory==='function') try{ renderFortuneInventory(); }catch(_){}
   }
 }
 globalThis.mutateBirdCardSelect=mutateBirdCardSelect;
@@ -5401,7 +5438,7 @@ function updateAscentPanel(key) {
       ? escapeHtmlRoster(formatPassiveEffectForTier(key, previewTier, previewStars))
       : '';
     const cardHint=!ownsCard
-      ? '<p class="ascent-card-hint">No card — hatch at Mother Goose in Feathers &amp; Fortune.</p>'
+      ? '<p class="ascent-card-hint">No card — hatch at <strong>The Hatchery</strong>.</p>'
       : '';
     const mutateBtn=canMutate
       ? (preview?.isTierUp
@@ -6068,7 +6105,7 @@ function setSuppliesSubView(which){
 globalThis.setSuppliesSubView = setSuppliesSubView;
 
 function openSelectHubPanel(which){
-  const allowed = {supplies:1,map:1,door:1,fortune:1,inventory:1};
+  const allowed = {supplies:1,map:1,door:1,fortune:1,inventory:1,hatchery:1};
   if(!allowed[which]) return;
   const root = document.getElementById('select-hub-panels');
   const screenEl = document.getElementById('screen-select');
@@ -6078,13 +6115,17 @@ function openSelectHubPanel(which){
     const msg=document.getElementById('fortune-shop-msg');
     if(msg) msg.textContent='';
     if(typeof renderFortuneShop==='function') renderFortuneShop();
-    else if(typeof setFortuneSubView==='function') setFortuneSubView('mother-goose');
+    else if(typeof setFortuneSubView==='function') setFortuneSubView('trade');
+  }
+  if(which === 'hatchery'){
+    if(typeof renderHatchery==='function') renderHatchery();
+    else if(typeof syncFortuneBalances==='function') syncFortuneBalances();
   }
   if(which === 'inventory'){
     if(typeof renderFortuneInventory==='function') renderFortuneInventory();
     else if(typeof syncFortuneBalances==='function') syncFortuneBalances();
   }
-  ['supplies','map','door','fortune','inventory'].forEach(w=>{
+  ['supplies','map','door','fortune','inventory','hatchery'].forEach(w=>{
     const p = document.getElementById('select-hub-'+w);
     if(!p) return;
     const on = w===which;
@@ -6106,7 +6147,7 @@ function closeSelectHubPanel(){
     root.setAttribute('aria-hidden','true');
   }
   screenEl?.classList.remove('select-hub-panel-active');
-  ['supplies','map','door','fortune','inventory'].forEach(w=>{
+  ['supplies','map','door','fortune','inventory','hatchery'].forEach(w=>{
     const p = document.getElementById('select-hub-'+w);
     if(p){
       p.classList.remove('is-open');

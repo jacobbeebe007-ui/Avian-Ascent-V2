@@ -166,6 +166,88 @@
     return pickRandom(pool);
   }
 
+  function pickRosterIdForBirdAndLevel(birdKey, level, opts) {
+    opts = opts || {};
+    var r = roster();
+    if (!r) return null;
+    var bk = String(birdKey || '').trim();
+    if (!bk || bk === 'random') return null;
+    var lv = Math.max(1, Math.min(20, Math.floor(Number(level) || 1)));
+    var pool = [];
+    if (opts.isBoss && r.bossesByBirdLevel && r.bossesByBirdLevel[bk] && r.bossesByBirdLevel[bk][lv]) {
+      pool = pool.concat(r.bossesByBirdLevel[bk][lv]);
+    }
+    if (r.byBirdLevel && r.byBirdLevel[bk] && r.byBirdLevel[bk][lv]) {
+      pool = pool.concat(r.byBirdLevel[bk][lv]);
+    }
+    if (!pool.length && r.byBirdLevel && r.byBirdLevel[bk]) {
+      var levels = Object.keys(r.byBirdLevel[bk]).map(Number).filter(function (n) {
+        return n > 0;
+      });
+      if (levels.length) {
+        var nearest = levels.reduce(function (best, n) {
+          return Math.abs(n - lv) < Math.abs(best - lv) ? n : best;
+        }, levels[0]);
+        pool = (r.byBirdLevel[bk][nearest] || []).slice();
+      }
+    }
+    return pickRandom(pool);
+  }
+
+  function listForgeEnemySpeciesOptions() {
+    var r = roster();
+    var birds = global.BIRDS || {};
+    var keys = [];
+    if (r && r.byBirdLevel) {
+      keys = Object.keys(r.byBirdLevel).filter(function (k) {
+        return k && (birds[k] || getRosterRow(k));
+      });
+    }
+    keys.sort(function (a, b) {
+      var na = (birds[a] && birds[a].name) || a;
+      var nb = (birds[b] && birds[b].name) || b;
+      return String(na).localeCompare(String(nb));
+    });
+    return [{ id: 'random', label: 'Random' }].concat(
+      keys.map(function (k) {
+        return { id: k, label: (birds[k] && birds[k].name) || k };
+      })
+    );
+  }
+
+  function listEnemyVariantsForBird(birdKey, level, opts) {
+    opts = opts || {};
+    var r = roster();
+    var bk = String(birdKey || '').trim();
+    if (!bk || bk === 'random') {
+      return [{ id: '', label: 'Any variant (random)' }];
+    }
+    var lv = Math.max(1, Math.min(20, Math.floor(Number(level) || 1)));
+    var ids = [];
+    if (opts.isBoss && r && r.bossesByBirdLevel && r.bossesByBirdLevel[bk] && r.bossesByBirdLevel[bk][lv]) {
+      ids = ids.concat(r.bossesByBirdLevel[bk][lv]);
+    }
+    if (r && r.byBirdLevel && r.byBirdLevel[bk] && r.byBirdLevel[bk][lv]) {
+      ids = ids.concat(r.byBirdLevel[bk][lv]);
+    }
+    var seen = {};
+    var out = [{ id: '', label: 'Any variant (random)' }];
+    ids.forEach(function (id) {
+      if (!id || seen[id]) return;
+      seen[id] = true;
+      var row = getRosterRow(id);
+      if (!row) return;
+      var label = row.fantasyTitle || row.name || id;
+      if (row.enemyVariant) label += ' — ' + row.enemyVariant;
+      label += ' (Lv.' + (row.storyLevel || lv) + ')';
+      out.push({ id: id, label: label });
+    });
+    if (out.length === 1) {
+      out.push({ id: '', label: 'No roster rows at level ' + lv });
+    }
+    return out;
+  }
+
   function buildEnemyFromRosterId(enemyId, opts) {
     opts = opts || {};
     var row = getRosterRow(enemyId);
@@ -263,6 +345,9 @@
     return pickRosterIdForBirdAndStage(s, stage, opts) || s;
   }
 
+  ns.pickRosterIdForBirdAndLevel = pickRosterIdForBirdAndLevel;
+  ns.listForgeEnemySpeciesOptions = listForgeEnemySpeciesOptions;
+  ns.listEnemyVariantsForBird = listEnemyVariantsForBird;
   ns.getRosterRow = getRosterRow;
   ns.isRosterEnemyId = isRosterEnemyId;
   ns.pickStoryEncounterEnemyIds = pickStoryEncounterEnemyIds;
@@ -271,6 +356,9 @@
   ns.resolveOwStageToken = resolveOwStageToken;
   ns.filterNormalPoolForBand = filterNormalPoolForBand;
 
+  global.pickRosterIdForBirdAndLevel = pickRosterIdForBirdAndLevel;
+  global.listForgeEnemySpeciesOptions = listForgeEnemySpeciesOptions;
+  global.listEnemyVariantsForBird = listEnemyVariantsForBird;
   global.getEnemyRosterRow = getRosterRow;
   global.isRosterEnemyId = isRosterEnemyId;
   global.pickStoryEncounterEnemyIds = pickStoryEncounterEnemyIds;
