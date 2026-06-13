@@ -68,29 +68,40 @@
     return bird && bird.emoji ? esc(bird.emoji) : '🐦';
   }
 
-  var _hatchRevealTimer = null;
+  var _hatchRevealTimers = [];
 
-  function buildHatchEggGridHtml(eggType, count) {
+  function clearHatchRevealTimers() {
+    _hatchRevealTimers.forEach(function (t) {
+      clearTimeout(t);
+    });
+    _hatchRevealTimers = [];
+  }
+
+  function buildHatchSlotsHtml(results, eggType) {
     var def = eggTypeDef(eggType) || { icon: '🥚', id: eggType || 'cracked' };
-    var n = Math.max(1, Math.min(HATCH_BATCH_SIZE, Math.floor(Number(count) || 1)));
+    var list = Array.isArray(results) ? results : [];
     var html = '';
-    for (var i = 0; i < n; i++) {
+    list.forEach(function (result) {
       html +=
-        '<div class="mother-goose-hatch-egg mother-goose-egg-icon mother-goose-egg-icon--' +
+        '<div class="mother-goose-hatch-slot">' +
+        '<div class="mother-goose-hatch-flip is-shaking">' +
+        '<div class="mother-goose-hatch-flip-front">' +
+        '<span class="mother-goose-hatch-egg mother-goose-egg-icon mother-goose-egg-icon--' +
         esc(def.id) +
-        ' is-shaking" aria-hidden="false">' +
+        '" aria-hidden="true">' +
         esc(def.icon) +
-        '</div>';
-    }
+        '</span></div>' +
+        '<div class="mother-goose-hatch-flip-back" aria-hidden="true">' +
+        buildHatchRevealHtml(result, true) +
+        '</div></div></div>';
+    });
     return html;
   }
 
   function closeMotherGooseHatchModal() {
-    if (_hatchRevealTimer) {
-      clearTimeout(_hatchRevealTimer);
-      _hatchRevealTimer = null;
-    }
+    clearHatchRevealTimers();
     var modal = document.getElementById('mother-goose-hatch-modal');
+    var panel = modal && modal.querySelector('.mother-goose-hatch-panel');
     var eggWrap = document.getElementById('mother-goose-hatch-egg-wrap');
     var eggGrid = document.getElementById('mother-goose-hatch-egg-grid');
     var reveal = document.getElementById('mother-goose-hatch-reveal');
@@ -99,8 +110,17 @@
       modal.classList.remove('open');
       modal.setAttribute('aria-hidden', 'true');
     }
-    if (eggWrap) eggWrap.hidden = false;
-    if (eggGrid) eggGrid.innerHTML = '';
+    if (panel) {
+      panel.classList.remove('mother-goose-hatch-panel--batch', 'mother-goose-hatch-panel--single');
+    }
+    if (eggWrap) {
+      eggWrap.hidden = false;
+      eggWrap.classList.remove('mother-goose-hatch-egg-wrap--single');
+    }
+    if (eggGrid) {
+      eggGrid.innerHTML = '';
+      eggGrid.classList.remove('mother-goose-hatch-egg-grid--batch', 'mother-goose-hatch-egg-grid--single');
+    }
     if (reveal) {
       reveal.hidden = true;
       reveal.innerHTML = '';
@@ -184,41 +204,66 @@
 
   function showMotherGooseHatchModalBatch(results, eggType, count) {
     var modal = document.getElementById('mother-goose-hatch-modal');
+    var panel = modal && modal.querySelector('.mother-goose-hatch-panel');
     var eggWrap = document.getElementById('mother-goose-hatch-egg-wrap');
     var eggGrid = document.getElementById('mother-goose-hatch-egg-grid');
     var reveal = document.getElementById('mother-goose-hatch-reveal');
     var closeBtn = document.getElementById('mother-goose-hatch-close');
-    if (!modal || !reveal || !results || !results.length) {
+    if (!modal || !eggGrid || !results || !results.length) {
       if (results && results[0]) showMotherGooseResult(results[0]);
       return;
     }
 
     var batch = results.length > 1;
+    var eggId = eggType || results[0].eggType;
     closeMotherGooseHatchModal();
-    if (eggGrid) eggGrid.innerHTML = buildHatchEggGridHtml(eggType || results[0].eggType, count || results.length);
-    reveal.innerHTML = results
-      .map(function (r) {
-        return buildHatchRevealHtml(r, batch);
-      })
-      .join('');
-    if (batch) reveal.classList.add('mother-goose-hatch-reveal--batch');
-    if (eggWrap) eggWrap.hidden = false;
-    reveal.hidden = true;
+
+    if (panel) panel.classList.add(batch ? 'mother-goose-hatch-panel--batch' : 'mother-goose-hatch-panel--single');
+    if (eggWrap) {
+      eggWrap.hidden = false;
+      if (!batch) eggWrap.classList.add('mother-goose-hatch-egg-wrap--single');
+    }
+    if (eggGrid) {
+      eggGrid.classList.add(batch ? 'mother-goose-hatch-egg-grid--batch' : 'mother-goose-hatch-egg-grid--single');
+      eggGrid.innerHTML = buildHatchSlotsHtml(results, eggId);
+    }
+    if (reveal) {
+      reveal.innerHTML = '';
+      reveal.hidden = true;
+      reveal.classList.remove('mother-goose-hatch-reveal--batch');
+    }
     if (closeBtn) closeBtn.hidden = true;
     modal.classList.add('open');
     modal.setAttribute('aria-hidden', 'false');
 
-    _hatchRevealTimer = setTimeout(function () {
-      _hatchRevealTimer = null;
-      if (eggGrid) {
-        eggGrid.querySelectorAll('.mother-goose-hatch-egg').forEach(function (el) {
-          el.classList.remove('is-shaking');
+    var flips = eggGrid ? eggGrid.querySelectorAll('.mother-goose-hatch-flip') : [];
+    var flipMs = 520;
+    var staggerMs = 100;
+    var shakeMs = 1400;
+
+    _hatchRevealTimers.push(
+      setTimeout(function () {
+        flips.forEach(function (flip, idx) {
+          _hatchRevealTimers.push(
+            setTimeout(function () {
+              flip.classList.remove('is-shaking');
+              flip.classList.add('is-flipped');
+              var back = flip.querySelector('.mother-goose-hatch-flip-back');
+              if (back) back.setAttribute('aria-hidden', 'false');
+              var front = flip.querySelector('.mother-goose-hatch-flip-front');
+              if (front) front.setAttribute('aria-hidden', 'true');
+              if (idx === flips.length - 1) {
+                _hatchRevealTimers.push(
+                  setTimeout(function () {
+                    if (closeBtn) closeBtn.hidden = false;
+                  }, flipMs),
+                );
+              }
+            }, idx * staggerMs),
+          );
         });
-      }
-      if (eggWrap) eggWrap.hidden = true;
-      reveal.hidden = false;
-      if (closeBtn) closeBtn.hidden = false;
-    }, 1600);
+      }, shakeMs),
+    );
   }
 
   function setFortuneSubView(view) {

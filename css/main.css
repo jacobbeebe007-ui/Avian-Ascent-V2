@@ -969,6 +969,18 @@ body.build-nest-unlocked .splash-hotspot--forge.is-buildnest-hidden{
   box-shadow:0 18px 50px rgba(0,0,0,.55);
   text-align:center;
 }
+.mother-goose-hatch-panel--batch{
+  width:min(980px,calc(100vw - 24px));
+  padding:26px 20px 18px;
+}
+.mother-goose-hatch-panel--single{padding:28px 22px 18px;}
+.mother-goose-hatch-title{
+  margin:0 0 12px;
+  font-family:'Cinzel',serif;
+  font-size:1rem;
+  color:var(--gold-light);
+  letter-spacing:.06em;
+}
 .mother-goose-hatch-egg-wrap{
   display:flex;
   justify-content:center;
@@ -976,6 +988,7 @@ body.build-nest-unlocked .splash-hotspot--forge.is-buildnest-hidden{
   min-height:100px;
   margin-bottom:8px;
 }
+.mother-goose-hatch-egg-wrap--single{min-height:220px;margin-bottom:12px;}
 .mother-goose-hatch-egg-grid{
   display:flex;
   flex-wrap:wrap;
@@ -984,11 +997,90 @@ body.build-nest-unlocked .splash-hotspot--forge.is-buildnest-hidden{
   align-items:center;
   max-width:100%;
 }
+.mother-goose-hatch-egg-grid--batch{
+  display:grid;
+  grid-template-columns:repeat(5,1fr);
+  gap:12px;
+  width:100%;
+  max-width:920px;
+  margin:0 auto;
+}
+.mother-goose-hatch-egg-grid--single{
+  display:flex;
+  justify-content:center;
+  width:100%;
+}
+.mother-goose-hatch-slot{width:100%;min-width:0;}
+.mother-goose-hatch-egg-grid--single .mother-goose-hatch-slot{max-width:260px;}
+.mother-goose-hatch-flip{
+  position:relative;
+  width:100%;
+  aspect-ratio:3/4;
+  min-height:132px;
+  perspective:900px;
+  transform-style:preserve-3d;
+  transition:transform .52s cubic-bezier(.4,.2,.2,1);
+}
+.mother-goose-hatch-egg-grid--single .mother-goose-hatch-flip{
+  aspect-ratio:4/5;
+  min-height:240px;
+}
+.mother-goose-hatch-flip-front,
+.mother-goose-hatch-flip-back{
+  position:absolute;
+  inset:0;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  border-radius:12px;
+  backface-visibility:hidden;
+  -webkit-backface-visibility:hidden;
+}
+.mother-goose-hatch-flip-front{
+  border:2px solid rgba(201,168,76,.35);
+  background:rgba(12,10,8,.82);
+}
+.mother-goose-hatch-flip-back{
+  transform:rotateY(180deg);
+  padding:4px;
+  overflow:hidden;
+}
+.mother-goose-hatch-flip.is-flipped{transform:rotateY(180deg);}
+.mother-goose-hatch-flip.is-shaking .mother-goose-hatch-flip-front .mother-goose-hatch-egg{
+  animation:mother-goose-egg-shake .45s ease-in-out infinite;
+}
+.mother-goose-hatch-flip-back .mother-goose-hatch-card{
+  width:100%;
+  max-width:none;
+  margin:0;
+  padding:8px 6px;
+  box-sizing:border-box;
+}
+.mother-goose-hatch-flip-back .mother-goose-hatch-portrait{margin:4px 0;}
+.mother-goose-hatch-flip-back .mother-goose-hatch-card-name{font-size:.72rem;margin:4px 0 2px;}
+.mother-goose-hatch-flip-back .mother-goose-hatch-feather-glyph{font-size:1.8rem;}
+.mother-goose-hatch-flip-back .mother-goose-hatch-feather-gain{font-size:1.05rem;}
+.mother-goose-hatch-flip-back .class-badge{font-size:.55rem;padding:2px 6px;}
+.mother-goose-hatch-flip-back .bird-card-tier-badge{font-size:.58rem;}
+.mother-goose-hatch-egg-grid--single .mother-goose-hatch-flip-back .mother-goose-hatch-card{padding:14px 10px;}
+.mother-goose-hatch-egg-grid--single .mother-goose-hatch-flip-back .mother-goose-hatch-card-name{font-size:.9rem;}
+.mother-goose-hatch-egg-grid--single .mother-goose-hatch-flip-back .mother-goose-hatch-feather-glyph{font-size:2.4rem;}
+.mother-goose-hatch-egg-grid--batch .mother-goose-hatch-flip-front .mother-goose-hatch-egg{font-size:2.4rem;}
+.mother-goose-hatch-egg-grid--batch .mother-goose-hatch-flip-front .mother-goose-hatch-egg.mother-goose-egg-icon--cracked{font-size:2.1rem;}
+.mother-goose-hatch-egg-grid--batch .mother-goose-hatch-flip-front .mother-goose-hatch-egg.mother-goose-egg-icon--feathered{font-size:2.5rem;}
+.mother-goose-hatch-egg-grid--batch .mother-goose-hatch-flip-front .mother-goose-hatch-egg.mother-goose-egg-icon--gleaming{font-size:2.7rem;}
+.mother-goose-hatch-egg-grid--batch .mother-goose-hatch-flip-front .mother-goose-hatch-egg.mother-goose-egg-icon--royal{font-size:2.9rem;}
+.mother-goose-hatch-egg-grid--batch .mother-goose-hatch-flip-front .mother-goose-hatch-egg.mother-goose-egg-icon--ancestral{font-size:3.1rem;}
 .mother-goose-hatch-egg{
   font-size:3.2rem;
   line-height:1;
   display:inline-block;
   transform-origin:center bottom;
+}
+@media (max-width:600px){
+  .mother-goose-hatch-egg-grid--batch{grid-template-columns:repeat(3,1fr);gap:8px;}
+  .mother-goose-hatch-panel--batch{width:min(100%,calc(100vw - 16px));padding:18px 12px 14px;}
+  .mother-goose-hatch-flip{min-height:108px;}
 }
 .mother-goose-egg-icon{font-size:2rem;line-height:1;}
 .mother-goose-egg-icon--cracked{font-size:2.25rem;}
@@ -1020,7 +1112,6 @@ body.build-nest-unlocked .splash-hotspot--forge.is-buildnest-hidden{
 .mother-goose-hatch-reveal--batch .mother-goose-hatch-portrait{margin:4px 0;}
 .mother-goose-hatch-reveal--batch .mother-goose-hatch-card-name{font-size:.72rem;}
 .mother-goose-hatch-reveal--batch .mother-goose-hatch-feather-glyph{font-size:1.8rem;}
-.mother-goose-hatch-egg.is-shaking{animation:mother-goose-egg-shake .45s ease-in-out infinite;}
 @keyframes mother-goose-egg-shake{
   0%,100%{transform:rotate(0deg) translateY(0);}
   20%{transform:rotate(-8deg) translateY(-2px);}
