@@ -46,6 +46,18 @@
   let _bulkChecked = new Set();
   let _configClipboard = null;
   let _pendingDirtyAction = null;
+  let _actionStatusUntil = 0;
+
+  function upgradeMapSafe(raw) {
+    if (typeof global.upgradeMapToV2 === 'function') return global.upgradeMapToV2(raw);
+    console.error('[map-forge] upgradeMapToV2 not loaded — using raw map object');
+    const m = Object.assign({}, raw || {});
+    m.schemaVersion = 2;
+    m.worlds = m.worlds && typeof m.worlds === 'object' ? m.worlds : {};
+    m.nodes = Array.isArray(m.nodes) ? m.nodes : [];
+    m.pathReveal = m.pathReveal !== false;
+    return m;
+  }
 
   function mkId() {
     return 'map-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8);
@@ -56,7 +68,7 @@
   }
 
   function createEmptyMap() {
-    return global.upgradeMapToV2({
+    return upgradeMapSafe({
       schemaVersion: 2,
       id: mkId(),
       name: 'Untitled Map',
@@ -122,7 +134,7 @@
   }
 
   function normalizeMap(map) {
-    let copy = global.upgradeMapToV2 ? global.upgradeMapToV2(Object.assign({}, map)) : Object.assign({}, map);
+    let copy = upgradeMapSafe(Object.assign({}, map));
     copy.schemaVersion = 2;
     copy.mapWidth = MAP_W;
     copy.mapHeight = MAP_H;
@@ -160,11 +172,59 @@
     return copy;
   }
 
-  function setStatus(msg, isError) {
+  function setStatus(msg, isError, isWarn) {
     const el = document.getElementById('map-forge-status');
     if (!el) return;
     el.textContent = msg || '';
-    el.style.color = isError ? 'var(--red-light, #ff9090)' : 'var(--text-dim, #9a9488)';
+    el.classList.remove('map-forge-status--warn');
+    if (isError) el.style.color = 'var(--red-light, #ff9090)';
+    else if (isWarn) {
+      el.style.color = '#e8c060';
+      el.classList.add('map-forge-status--warn');
+    } else el.style.color = 'var(--text-dim, #9a9488)';
+    if (msg) _actionStatusUntil = Date.now() + 3500;
+  }
+
+  function getValidationIssues() {
+    if (!_map || typeof global.collectMapValidationIssues !== 'function') return [];
+    return global.collectMapValidationIssues(_map);
+  }
+
+  function isEmptyDraft(map) {
+    if (!map) return true;
+    if (map.backgroundDataUrl) return false;
+    const nodes = map.nodes || [];
+    const combat = nodes.filter((n) => n.type === 'stage' || n.type === 'boss');
+    return combat.length === 0;
+  }
+
+  function syncForgeValidationStatus(issues) {
+    if (Date.now() < _actionStatusUntil) return;
+    const list = Array.isArray(issues) ? issues : getValidationIssues();
+    const errors = list.filter((i) => i.severity === 'error');
+    const warnings = list.filter((i) => i.severity === 'warning');
+    const el = document.getElementById('map-forge-status');
+    if (!el) return;
+    if (errors.length) {
+      const hint = isEmptyDraft(_map) ? 'New map — upload a background, then place Stage nodes. ' : '';
+      const first = errors[0].message || '';
+      const extra = errors.length > 1 ? ' (+' + (errors.length - 1) + ' more)' : '';
+      el.textContent = hint + errors.length + (errors.length === 1 ? ' issue: ' : ' issues — ') + first + extra;
+      el.classList.remove('map-forge-status--warn');
+      el.style.color = 'var(--red-light, #ff9090)';
+      return;
+    }
+    if (warnings.length) {
+      const first = warnings[0].message || '';
+      const extra = warnings.length > 1 ? ' (+' + (warnings.length - 1) + ' more)' : '';
+      el.textContent = warnings.length + (warnings.length === 1 ? ' warning: ' : ' warnings — ') + first + extra;
+      el.classList.add('map-forge-status--warn');
+      el.style.color = '#e8c060';
+      return;
+    }
+    el.textContent = '';
+    el.classList.remove('map-forge-status--warn');
+    el.style.color = 'var(--text-dim, #9a9488)';
   }
 
   function validateMap(map) {
@@ -331,29 +391,34 @@
   }
 
   function refreshForgeUI() {
-    renderNodeList();
-    renderForgeCanvas();
-    syncNodeEditorFields();
-    renderValidationPanel();
-    renderMapSummary();
-    renderMinimap();
-    syncPlaytestFromBtn();
-    applyCanvasTransform();
-    syncBreadcrumb();
-    syncForgeCanvasCursor();
+    try {
+      renderNodeList();
+      renderForgeCanvas();
+      syncNodeEditorFields();
+      renderValidationPanel();
+      renderMapSummary();
+      renderMinimap();
+      syncPlaytestFromBtn();
+      applyCanvasTransform();
+      syncBreadcrumb();
+      syncForgeCanvasCursor();
+    } catch (err) {
+      console.error('[map-forge] refreshForgeUI failed', err);
+      setStatus('Map Forge UI error. See console for details.', true);
+    }
   }
 
   function renderValidationPanel() {
     const panel = document.getElementById('map-forge-validation-panel');
     if (!panel || !_map) return;
-    const issues = typeof global.collectMapValidationIssues === 'function'
-      ? global.collectMapValidationIssues(_map) : [];
+    const issues = getValidationIssues();
     panel.innerHTML = '';
     if (!issues.length) {
       const ok = document.createElement('div');
       ok.className = 'map-forge-validation-ok';
       ok.textContent = 'No issues found.';
       panel.appendChild(ok);
+      syncForgeValidationStatus(issues);
       return;
     }
     issues.forEach((iss) => {
@@ -375,6 +440,7 @@
       };
       panel.appendChild(row);
     });
+    syncForgeValidationStatus(issues);
   }
 
   function renderMapSummary() {
@@ -1352,22 +1418,27 @@
   }
 
   function loadMap(map) {
-    _map = normalizeMap(Object.assign(createEmptyMap(), map || {}));
-    _editContext = 'main';
-    _selectedId = null;
-    const nameEl = document.getElementById('map-forge-name');
-    if (nameEl) nameEl.value = _map.name || '';
-    const pathEl = document.getElementById('map-forge-path-reveal');
-    if (pathEl) pathEl.checked = _map.pathReveal !== false;
-    renderDraftSelect();
-    renderNodeList();
-    renderForgeCanvas();
-    syncNodeEditorFields();
-    syncBreadcrumb();
-    refreshForgeUI();
-    markSavedFingerprint();
-    pushHistory();
-    setStatus('');
+    try {
+      _map = normalizeMap(Object.assign(createEmptyMap(), map || {}));
+      _editContext = 'main';
+      _selectedId = null;
+      const nameEl = document.getElementById('map-forge-name');
+      if (nameEl) nameEl.value = _map.name || '';
+      const pathEl = document.getElementById('map-forge-path-reveal');
+      if (pathEl) pathEl.checked = _map.pathReveal !== false;
+      renderDraftSelect();
+      renderNodeList();
+      renderForgeCanvas();
+      syncNodeEditorFields();
+      syncBreadcrumb();
+      _actionStatusUntil = 0;
+      refreshForgeUI();
+      markSavedFingerprint();
+      pushHistory();
+    } catch (err) {
+      console.error('[map-forge] loadMap failed', err);
+      setStatus('Map Forge failed to load map. See console for details.', true);
+    }
   }
 
   function saveMapForgeDraft() {
@@ -2014,14 +2085,19 @@
 
   function openMapForge(opts) {
     if (global.isBuildNestUnlocked && !global.isBuildNestUnlocked()) return;
-    if (global.showScreen) global.showScreen('screen-map-forge');
-    wireMapForge();
-    populateForgeSelects();
-    if (opts?.skipReload && _map) {
-      refreshForgeUI();
-      return;
+    try {
+      if (global.showScreen) global.showScreen('screen-map-forge');
+      wireMapForge();
+      populateForgeSelects();
+      if (opts?.skipReload && _map) {
+        refreshForgeUI();
+        return;
+      }
+      initMapForge();
+    } catch (err) {
+      console.error('[map-forge] openMapForge failed', err);
+      setStatus('Map Forge failed to load. See console for details.', true);
     }
-    initMapForge();
   }
 
   function closeMapForge() {

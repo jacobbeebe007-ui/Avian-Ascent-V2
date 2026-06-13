@@ -51,6 +51,14 @@ body::before{content:'';position:fixed;inset:0;background-image:radial-gradient(
 }
 #app:has(#screen-select.active) > header{display:none !important;}
 #app:has(#screen-battle.active) > header{display:none !important;}
+#app:has(#screen-map-forge.active){
+  max-width:none;
+  width:100%;
+  margin:0;
+  padding:8px 12px;
+  min-height:100vh;
+}
+#app:has(#screen-map-forge.active) > header{display:none !important;}
 header{text-align:center;padding:24px 0 16px;border-bottom:1px solid rgba(201,168,76,.25);margin-bottom:24px;}
 header h1{font-family:'Cinzel',serif;font-size:2.6rem;font-weight:900;letter-spacing:.1em;background:linear-gradient(135deg,var(--gold) 0%,var(--gold-light) 50%,var(--gold) 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
 header p{color:var(--text-dim);font-style:italic;font-size:1rem;margin-top:4px;}
@@ -3923,15 +3931,17 @@ body.ui-mobile-mode #screen-select #mobile-select-details-anchor{display:block;o
 #screen-map-forge{
   overflow:auto;
   background:linear-gradient(180deg,#06080c,#0a0e14);
+  min-height:calc(100dvh - 16px);
 }
 .map-forge-inner{
-  max-width:min(1400px,100%);
+  max-width:none;
+  width:100%;
   margin:0 auto;
-  padding:16px 18px 24px;
+  padding:12px 14px 16px;
   display:flex;
   flex-direction:column;
   gap:10px;
-  min-height:100%;
+  min-height:calc(100dvh - 24px);
   box-sizing:border-box;
 }
 .map-forge-head{
@@ -3963,13 +3973,14 @@ body.ui-mobile-mode #screen-select #mobile-select-details-anchor{display:block;o
 .map-forge-head-actions{display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end;}
 .map-forge-btn-accent{border-color:rgba(96,136,58,.55)!important;color:#b8e070!important;}
 .map-forge-status{min-height:1.2em;font-size:.78rem;margin:0;color:var(--text-dim);}
+.map-forge-status--warn{color:#e8c060!important;}
 .map-forge-body{
   display:grid;
-  grid-template-columns:minmax(220px,280px) 1fr;
+  grid-template-columns:minmax(260px,320px) 1fr;
   gap:14px;
   align-items:stretch;
   flex:1;
-  min-height:min(72vh,720px);
+  min-height:0;
 }
 .map-forge-sidebar{
   display:flex;
@@ -4109,6 +4120,16 @@ body.ui-mobile-mode #screen-select #mobile-select-details-anchor{display:block;o
   overflow:hidden;
   aspect-ratio:1536/1024;
   max-height:min(72vh,720px);
+  min-height:280px;
+}
+@media (min-width:1024px){
+  .map-forge-body{min-height:min(82vh,900px);}
+  .map-forge-canvas-wrap{
+    height:100%;
+    min-height:520px;
+    max-height:min(88vh,980px);
+    aspect-ratio:auto;
+  }
 }
 .map-forge-canvas-wrap.is-grab-tool{cursor:grab;}
 .map-forge-canvas-wrap.is-grab-tool.is-panning{cursor:grabbing;}
