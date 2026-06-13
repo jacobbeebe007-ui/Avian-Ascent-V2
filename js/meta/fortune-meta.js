@@ -13,7 +13,7 @@
 
   function emptyMeta() {
     return {
-      metaSchemaVersion: 2,
+      metaSchemaVersion: 3,
       savedEggs: 0,
       goldenGooseEggs: 0,
       ownedArtifacts: {},
@@ -127,7 +127,7 @@
     if (typeof globalThis.migrateBirdCardsInMeta === 'function') {
       globalThis.migrateBirdCardsInMeta(out);
     } else {
-      out.metaSchemaVersion = 2;
+      out.metaSchemaVersion = 3;
     }
     return out;
   }

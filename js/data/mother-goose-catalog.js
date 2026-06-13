@@ -2,8 +2,23 @@
 (function () {
   'use strict';
 
-  var ANCESTRAL_EXCLUDE = {
-    dukeBlakiston: false,
+  var ANCESTRAL_DUKE_CHANCE = 0.1;
+
+  var ANCESTRAL_TIER_FALLBACK_WEIGHT = {
+    grey: 40,
+    green: 30,
+    blue: 20,
+    purple: 12,
+    gold: 6,
+    orange: 1,
+  };
+
+  /** Eggs that grant unlock on hatch — prior roster unlock not required. */
+  var GACHA_EGG_IDS = {
+    feathered: true,
+    gleaming: true,
+    royal: true,
+    ancestral: true,
   };
 
   var EGG_TYPES = {
@@ -45,7 +60,7 @@
       name: 'Ancestral Egg',
       cost: 75,
       icon: '🌙',
-      desc: 'Boss and event pool. Hatches Ancestral-only species when unlocked.',
+      desc: '10% Duke Blakiston; otherwise hatches other species with odds favouring lower tiers.',
       enabled: true,
     },
   };
@@ -93,31 +108,38 @@
     return true;
   }
 
+  function birdClassRoleId(bird) {
+    return typeof globalThis.classToRoleId === 'function'
+      ? globalThis.classToRoleId(bird.class)
+      : String(bird.class || '').toLowerCase();
+  }
+
   function buildPoolForEgg(eggId, opts) {
     opts = opts || {};
     var birds = globalThis.BIRDS || {};
     var out = [];
+    var id = String(eggId || '').toLowerCase();
+    var isGacha = !!GACHA_EGG_IDS[id];
+
     Object.keys(birds).forEach(function (key) {
       var bird = birds[key];
       if (!bird || !isInNormalPool(key)) return;
-      if (!birdHasEggPool(key, eggId)) return;
+      if (!birdHasEggPool(key, id)) return;
 
-      if (eggId === 'cracked') {
+      if (id === 'cracked') {
         out.push(key);
         return;
       }
 
-      if (!isUnlockedBird(bird, key)) return;
+      if (!isGacha && !isUnlockedBird(bird, key)) return;
 
-      if (eggId === 'feathered' && getSpeciesTier(key) === 'orange') return;
+      if (id === 'feathered' && getSpeciesTier(key) === 'orange') return;
 
-      if (eggId === 'royal') {
+      if (id === 'royal') {
+        var st = getSpeciesTier(key);
+        if (st !== 'purple' && st !== 'gold') return;
         var cls = String(opts.classFilter || '').toLowerCase();
-        var birdCls =
-          typeof globalThis.classToRoleId === 'function'
-            ? globalThis.classToRoleId(bird.class)
-            : String(bird.class || '').toLowerCase();
-        if (cls && birdCls !== cls) return;
+        if (cls && birdClassRoleId(bird) !== cls) return;
       }
 
       out.push(key);
@@ -145,6 +167,28 @@
     return buildPoolForEgg('ancestral');
   }
 
+  function buildAncestralFallbackPool() {
+    var birds = globalThis.BIRDS || {};
+    var out = [];
+    Object.keys(birds).forEach(function (key) {
+      if (key === 'dukeBlakiston') return;
+      var bird = birds[key];
+      if (!bird || !isInNormalPool(key)) return;
+      var row = getBirdSpeciesRow(key);
+      if (!row || !Array.isArray(row.eggPools) || !row.eggPools.length) return;
+      var hasOther = false;
+      for (var i = 0; i < row.eggPools.length; i++) {
+        if (row.eggPools[i] !== 'ancestral') {
+          hasOther = true;
+          break;
+        }
+      }
+      if (!hasOther) return;
+      out.push(key);
+    });
+    return out;
+  }
+
   function syncAncestralEggEnabled() {
     var data = speciesTiers();
     var hasAncestralBird = false;
@@ -153,7 +197,7 @@
         if (birdHasEggPool(key, 'ancestral')) hasAncestralBird = true;
       });
     }
-    EGG_TYPES.ancestral.enabled = hasAncestralBird;
+    EGG_TYPES.ancestral.enabled = hasAncestralBird || buildAncestralFallbackPool().length > 0;
   }
 
   function getEggPool(eggType, opts) {
@@ -163,7 +207,11 @@
     if (id === 'feathered') return buildFeatheredPool();
     if (id === 'gleaming') return buildGleamingPool();
     if (id === 'royal') return buildRoyalPool(opts.classFilter);
-    if (id === 'ancestral') return buildAncestralPool();
+    if (id === 'ancestral') {
+      var pool = buildAncestralPool();
+      if (pool.length) return pool;
+      return buildAncestralFallbackPool();
+    }
     return [];
   }
 
@@ -179,6 +227,11 @@
     var feathers = speciesFeathers && speciesFeathers[birdKey] ? speciesFeathers[birdKey] : 0;
     if (feathers < 12) w += 10;
     return Math.max(1, w);
+  }
+
+  function ancestralFallbackWeight(birdKey) {
+    var tier = getSpeciesTier(birdKey);
+    return Math.max(1, ANCESTRAL_TIER_FALLBACK_WEIGHT[tier] || 5);
   }
 
   function pickWeighted(pool, weightFn) {
@@ -198,11 +251,34 @@
     return pool[pool.length - 1];
   }
 
+  function pickAncestral(opts) {
+    var dukeKey = 'dukeBlakiston';
+    var dukeEligible = birdHasEggPool(dukeKey, 'ancestral') && isInNormalPool(dukeKey);
+
+    if (dukeEligible && Math.random() < ANCESTRAL_DUKE_CHANCE) {
+      return dukeKey;
+    }
+
+    var fallback = buildAncestralFallbackPool();
+    if (fallback.length) {
+      return pickWeighted(fallback, ancestralFallbackWeight);
+    }
+    if (dukeEligible) return dukeKey;
+    return null;
+  }
+
   function pickFromPool(eggType, opts) {
     opts = opts || {};
+    var id = String(eggType || '').toLowerCase();
+
+    if (id === 'ancestral') {
+      return pickAncestral(opts);
+    }
+
     var pool = getEggPool(eggType, opts);
     if (!pool.length) return null;
-    if (String(eggType).toLowerCase() === 'gleaming') {
+
+    if (id === 'gleaming') {
       return pickWeighted(pool, function (key) {
         return gleamingWeight(key, opts.ownedCards, opts.speciesFeathers);
       });
@@ -220,18 +296,23 @@
   var catalog = {
     starterBirdKeys: starterBirdKeys,
     STARTER_BIRD_KEYS: starterBirdKeys,
-    ANCESTRAL_EXCLUDE: ANCESTRAL_EXCLUDE,
+    ANCESTRAL_DUKE_CHANCE: ANCESTRAL_DUKE_CHANCE,
+    ANCESTRAL_TIER_FALLBACK_WEIGHT: ANCESTRAL_TIER_FALLBACK_WEIGHT,
     EGG_TYPES: EGG_TYPES,
     getEggPool: getEggPool,
     pickFromPool: pickFromPool,
+    pickAncestral: pickAncestral,
     getEggTypeDef: getEggTypeDef,
     isUnlockedBird: isUnlockedBird,
     buildCrackedPool: buildCrackedPool,
     buildFeatheredPool: buildFeatheredPool,
     buildGleamingPool: buildGleamingPool,
+    buildRoyalPool: buildRoyalPool,
     buildAncestralPool: buildAncestralPool,
+    buildAncestralFallbackPool: buildAncestralFallbackPool,
     getBirdSpeciesRow: getBirdSpeciesRow,
     gleamingWeight: gleamingWeight,
+    ancestralFallbackWeight: ancestralFallbackWeight,
   };
 
   var Avian = globalThis.Avian || (globalThis.Avian = {});

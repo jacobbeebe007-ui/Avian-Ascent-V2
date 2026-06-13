@@ -1194,6 +1194,12 @@ body.build-nest-unlocked .splash-hotspot--forge.is-buildnest-hidden{
 .sfsel__detail .ascent-strip--filled{
   flex-direction:column;
 }
+.ascent-strip--tier-grey{border-color:rgba(106,120,144,.45)!important;background:linear-gradient(180deg,rgba(106,120,144,.1),rgba(14,12,10,.94))!important;}
+.ascent-strip--tier-green{border-color:rgba(76,138,106,.45)!important;background:linear-gradient(180deg,rgba(76,138,106,.1),rgba(12,16,12,.94))!important;}
+.ascent-strip--tier-blue{border-color:rgba(76,106,201,.45)!important;background:linear-gradient(180deg,rgba(76,106,201,.1),rgba(12,14,22,.94))!important;}
+.ascent-strip--tier-purple{border-color:rgba(120,76,180,.45)!important;background:linear-gradient(180deg,rgba(120,76,180,.1),rgba(16,12,20,.94))!important;}
+.ascent-strip--tier-gold{border-color:rgba(180,140,40,.5)!important;background:linear-gradient(180deg,rgba(180,140,40,.12),rgba(18,14,8,.94))!important;}
+.ascent-strip--tier-orange{border-color:rgba(200,100,40,.5)!important;background:linear-gradient(180deg,rgba(200,100,40,.12),rgba(20,12,8,.94))!important;}
 .sfsel__detail .ascent-strip-portrait-wrap{
   width:auto !important;
   max-width:100%;
@@ -1280,6 +1286,36 @@ body.build-nest-unlocked .splash-hotspot--forge.is-buildnest-hidden{
   border-radius:4px;
   background:rgba(20,22,30,.5);
 }
+.bird-card-stars,.ascent-card-stars-wrap,.inventory-feather-stars{
+  display:inline-flex;
+  align-items:center;
+  gap:1px;
+  line-height:1;
+}
+.bird-card-star{
+  font-size:.58rem;
+  color:rgba(120,115,105,.55);
+  letter-spacing:0;
+}
+.bird-card-star.is-filled{color:var(--gold-light);text-shadow:0 0 6px rgba(232,201,106,.35);}
+.bird-card-rarity-badge{
+  font-size:.48rem;
+  font-weight:600;
+  letter-spacing:.04em;
+  text-transform:uppercase;
+  padding:1px 5px;
+  border-radius:4px;
+  border:1px solid rgba(255,255,255,.1);
+  opacity:.88;
+}
+.bird-card-rarity-badge.tier-grey{background:rgba(106,120,144,.28);color:#d8dde8;}
+.bird-card-rarity-badge.tier-green{background:rgba(76,138,106,.28);color:#b8e8c8;}
+.bird-card-rarity-badge.tier-blue{background:rgba(76,106,201,.28);color:#c8d4ff;}
+.bird-card-rarity-badge.tier-purple{background:rgba(120,76,180,.28);color:#e0c8ff;}
+.bird-card-rarity-badge.tier-gold{background:rgba(180,140,40,.28);color:#ffe8a0;}
+.bird-card-rarity-badge.tier-orange{background:rgba(200,100,40,.28);color:#ffd0a8;}
+.ascent-card-progress .ascent-card-rarity{font-size:.72rem;color:rgba(210,204,192,.85);}
+.ascent-card-progress .ascent-card-stars-wrap{margin:0 4px;}
 .ascent-card-progress{
   display:flex;
   flex-wrap:wrap;
@@ -1899,9 +1935,27 @@ body.build-nest-unlocked .splash-hotspot--forge.is-buildnest-hidden{
 
 
 /* BIRD CARD compact */
-.bird-card{background:rgba(52,40,16,.88);border:1px solid rgba(201,168,76,.35);border-radius:10px;padding:14px 12px;cursor:pointer;transition:all .25s;position:relative;}
+.bird-card{background:rgba(52,40,16,.88);border:2px solid rgba(201,168,76,.35);border-radius:10px;padding:14px 12px;cursor:pointer;transition:all .25s;position:relative;}
+.bird-card.bird-card--tier-grey{background:linear-gradient(180deg,rgba(106,120,144,.14),rgba(42,38,32,.9));border-color:rgba(106,120,144,.5);}
+.bird-card.bird-card--tier-green{background:linear-gradient(180deg,rgba(76,138,106,.14),rgba(36,44,36,.9));border-color:rgba(76,138,106,.52);}
+.bird-card.bird-card--tier-blue{background:linear-gradient(180deg,rgba(76,106,201,.14),rgba(34,38,52,.9));border-color:rgba(76,106,201,.52);}
+.bird-card.bird-card--tier-purple{background:linear-gradient(180deg,rgba(120,76,180,.14),rgba(40,34,50,.9));border-color:rgba(120,76,180,.55);}
+.bird-card.bird-card--tier-gold{background:linear-gradient(180deg,rgba(180,140,40,.16),rgba(48,40,24,.92));border-color:rgba(180,140,40,.58);}
+.bird-card.bird-card--tier-orange{background:linear-gradient(180deg,rgba(200,100,40,.16),rgba(52,36,24,.92));border-color:rgba(200,100,40,.58);}
 .bird-card:hover{transform:translateY(-2px);border-color:var(--gold);background:rgba(68,52,18,.95);box-shadow:0 4px 18px rgba(201,168,76,.2);}
+.bird-card.bird-card--tier-grey:hover{border-color:var(--tier-grey);box-shadow:0 4px 18px rgba(106,120,144,.28);}
+.bird-card.bird-card--tier-green:hover{border-color:var(--tier-green);box-shadow:0 4px 18px rgba(76,138,106,.28);}
+.bird-card.bird-card--tier-blue:hover{border-color:var(--tier-blue);box-shadow:0 4px 18px rgba(76,106,201,.28);}
+.bird-card.bird-card--tier-purple:hover{border-color:var(--tier-purple);box-shadow:0 4px 18px rgba(120,76,180,.28);}
+.bird-card.bird-card--tier-gold:hover{border-color:var(--tier-gold);box-shadow:0 4px 18px rgba(201,168,76,.32);}
+.bird-card.bird-card--tier-orange:hover{border-color:var(--tier-orange);box-shadow:0 4px 18px rgba(200,100,40,.32);}
 .bird-card.selected{border-color:var(--gold-light);background:rgba(80,60,18,.98);box-shadow:0 0 22px rgba(232,201,106,.35);}
+.bird-card.bird-card--tier-grey.selected{border-color:#d8dde8;box-shadow:0 0 20px rgba(106,120,144,.35);}
+.bird-card.bird-card--tier-green.selected{border-color:#b8e8c8;box-shadow:0 0 20px rgba(76,138,106,.35);}
+.bird-card.bird-card--tier-blue.selected{border-color:#c8d4ff;box-shadow:0 0 20px rgba(76,106,201,.35);}
+.bird-card.bird-card--tier-purple.selected{border-color:#e0c8ff;box-shadow:0 0 20px rgba(120,76,180,.35);}
+.bird-card.bird-card--tier-gold.selected{border-color:#ffe8a0;box-shadow:0 0 22px rgba(201,168,76,.4);}
+.bird-card.bird-card--tier-orange.selected{border-color:#ffd0a8;box-shadow:0 0 22px rgba(200,100,40,.38);}
 .bird-card.bird-locked{opacity:.65;cursor:not-allowed;border-color:rgba(60,50,35,.4);}
 .bird-card.bird-locked:hover{transform:none;box-shadow:none;border-color:rgba(60,50,35,.4);}
 .bird-card.bird-locked .sprite4{filter:grayscale(1) brightness(0) contrast(1.1) !important; opacity:.92;}

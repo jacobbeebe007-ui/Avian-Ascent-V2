@@ -5073,10 +5073,31 @@ document.addEventListener('click', (e)=>{
 });
 
 
+function renderBirdCardStarsHtml(stars, maxStars=5) {
+  const n=Math.max(0, Math.min(maxStars, Math.floor(Number(stars)||0)));
+  let html=`<span class="bird-card-stars" aria-label="${n} of ${maxStars} stars">`;
+  for(let i=0;i<maxStars;i++){
+    html+=`<span class="bird-card-star${i<n?' is-filled':''}">${i<n?'★':'☆'}</span>`;
+  }
+  return html+'</span>';
+}
+
+function getBirdSpeciesRarityMeta(birdKey) {
+  const cat=Avian?.data?.motherGooseCatalog;
+  const tierPack=Avian?.data?.birdCardTiers;
+  const row=cat?.getBirdSpeciesRow?.(birdKey);
+  const speciesTier=row?.speciesTier||'grey';
+  const label=tierPack?.TIER_LABELS?.[speciesTier]||speciesTier;
+  const css=tierPack?.TIER_CSS?.[speciesTier]||'tier-grey';
+  return {speciesTier, label, css};
+}
+
 function buildBirdCard(key, bird, locked) {
   const card = document.createElement('div');
   const ui=ensureUIState();
-  card.className = 'bird-card' + (locked ? ' bird-locked' : '') + (ui.expandedBird===key?' selected':'');
+  const cardTier=!locked&&typeof getBirdCardTier==='function'?getBirdCardTier(key):'grey';
+  const tierCss=Avian?.data?.birdCardTiers?.TIER_CSS?.[cardTier]||'tier-grey';
+  card.className = 'bird-card' + (locked ? ' bird-locked' : ` bird-card--${tierCss}`) + (ui.expandedBird===key?' selected':'');
   if (!locked) card.onclick = () => selectBird(key, card);
 
   const cls = classToRoleId(bird.class);
@@ -5095,9 +5116,14 @@ function buildBirdCard(key, bird, locked) {
       <div class="lock-overlay"><span class="lock-icon" style="font-size:1rem;">🔒</span><div class="lock-label" style="font-size:.6rem;color:#555;line-height:1.3;">${unlockLabel}</div></div>`;
   } else {
     const cardTier=typeof getBirdCardTier==='function'?getBirdCardTier(key):'grey';
+    const cardStars=typeof getBirdCardStars==='function'?getBirdCardStars(key):0;
     const tierPack=Avian?.data?.birdCardTiers;
     const tierLabel=tierPack?.TIER_LABELS?.[cardTier]||cardTier;
     const tierCss=tierPack?.TIER_CSS?.[cardTier]||'tier-grey';
+    const maxStars=tierPack?.STARS_PER_TIER||5;
+    const starsHtml=renderBirdCardStarsHtml(cardStars, maxStars);
+    const rarityMeta=getBirdSpeciesRarityMeta(key);
+    const rarityBadge=`<span class="bird-card-rarity-badge ${rarityMeta.css}" title="Species rarity">${escapeHtmlRoster(rarityMeta.label)} species</span>`;
     const feathers=typeof getSpeciesFeathers==='function'?getSpeciesFeathers(key):0;
     const featherChip=feathers>0?`<span class="bird-feather-chip" title="Species Feathers">🪶 ${feathers}</span>`:'';
     card.innerHTML = `
@@ -5105,8 +5131,10 @@ function buildBirdCard(key, bird, locked) {
         <span class="class-badge class-${cls}">${idToClassLabel(cls).toUpperCase()}</span>
         <span class="bird-size-chip">${SIZE_LABELS[bird.size||'medium']||bird.size}</span>
         <span class="bird-card-tier-badge ${tierCss}">${tierLabel}</span>
+        ${rarityBadge}
         ${featherChip}
       </div>
+      ${starsHtml}
       <div style="display:flex;justify-content:center;margin:4px auto 8px;">${renderBirdIconHTML(key,sizeClass,false)}</div>
       <div class="bird-nm">${bird.name}</div>
       <div class="bird-tagline-mini">${bird.tagline||''}</div>`;
@@ -5350,34 +5378,42 @@ function updateAscentPanel(key) {
     const passiveName=escapeHtmlRoster(passiveInfo?.name||bird.passive?.name||'—');
     const passiveDesc=escapeHtmlRoster(passiveInfo?.desc||passiveInfo?.effect||bird.passive?.desc||'No passive listed.');
     const cardTier=typeof getBirdCardTier==='function'?getBirdCardTier(key):'grey';
+    const cardStars=typeof getBirdCardStars==='function'?getBirdCardStars(key):0;
     const tierPack=Avian?.data?.birdCardTiers;
     const tierLabel=escapeHtmlRoster(tierPack?.TIER_LABELS?.[cardTier]||cardTier);
     const tierCss=tierPack?.TIER_CSS?.[cardTier]||'tier-grey';
-    const nextTier=typeof nextBirdCardTier==='function'?nextBirdCardTier(cardTier):null;
-    const nextTierLabel=nextTier?(tierPack?.TIER_LABELS?.[nextTier]||nextTier):null;
+    const maxStars=tierPack?.STARS_PER_TIER||5;
+    const starsHtml=renderBirdCardStarsHtml(cardStars, maxStars);
+    const rarityMeta=getBirdSpeciesRarityMeta(key);
+    const rarityLabel=escapeHtmlRoster(rarityMeta.label);
+    const progress=typeof getBirdCardProgress==='function'?getBirdCardProgress(key):null;
+    const preview=progress?.preview||null;
+    const previewTierLabel=preview?(tierPack?.TIER_LABELS?.[preview.tierAfter]||preview.tierAfter):null;
     const speciesFeathers=typeof getSpeciesFeathers==='function'?getSpeciesFeathers(key):0;
-    const mutationCost=typeof getBirdCardMutationCost==='function'?getBirdCardMutationCost(cardTier):0;
+    const mutationCost=progress?.cost??(typeof getBirdCardMutationCost==='function'?getBirdCardMutationCost(cardTier):0);
     const ownsCard=typeof ownsBirdCard==='function'?ownsBirdCard(key):true;
-    const canMutate=!!(nextTier&&speciesFeathers>=mutationCost&&ownsCard);
-    const nextPassivePreview=nextTier&&typeof formatPassiveEffectForTier==='function'
-      ? escapeHtmlRoster(formatPassiveEffectForTier(key, nextTier))
-      : '';
-    const tierUnlocks=typeof getTierAbilityUnlockSummary==='function'?getTierAbilityUnlockSummary(key, cardTier):[];
-    const tierUnlockHtml=tierUnlocks.length
-      ? `<ul class="ascent-tier-unlocks">${tierUnlocks.map(t=>`<li>${escapeHtmlRoster(t)}</li>`).join('')}</ul>`
+    const canMutate=!!(progress?.canUpgrade&&speciesFeathers>=mutationCost&&ownsCard);
+    const previewTier=preview?(preview.isTierUp?preview.tierAfter:cardTier):cardTier;
+    const previewStars=preview?(preview.isTierUp?preview.starsAfter:(preview.starsAfter??cardStars+1)):cardStars;
+    const nextPassivePreview=progress?.canUpgrade&&typeof formatPassiveEffectForTier==='function'
+      ? escapeHtmlRoster(formatPassiveEffectForTier(key, previewTier, previewStars))
       : '';
     const cardHint=!ownsCard
       ? '<p class="ascent-card-hint">No card — hatch at Mother Goose in Feathers &amp; Fortune.</p>'
       : '';
     const mutateBtn=canMutate
-      ? `<button type="button" class="ascent-mutate-btn" data-action="mutateBirdCardSelect:${key}">Mutate to ${escapeHtmlRoster(nextTierLabel)} (${speciesFeathers}/${mutationCost} 🪶)</button>`
-      : (nextTier&&ownsCard?`<p class="ascent-mutate-hint">Species Feathers: ${speciesFeathers} / ${mutationCost} for ${escapeHtmlRoster(nextTierLabel||'next tier')}</p>`:'');
+      ? (preview?.isTierUp
+        ? `<button type="button" class="ascent-mutate-btn" data-action="mutateBirdCardSelect:${key}">Ascend to ${escapeHtmlRoster(previewTierLabel)} (${speciesFeathers}/${mutationCost} 🪶)</button>`
+        : `<button type="button" class="ascent-mutate-btn" data-action="mutateBirdCardSelect:${key}">Upgrade star (${speciesFeathers}/${mutationCost} 🪶)</button>`)
+      : (progress?.canUpgrade&&ownsCard
+        ? `<p class="ascent-mutate-hint">Species Feathers: ${speciesFeathers} / ${mutationCost} for ${preview?.isTierUp?'ascending to '+escapeHtmlRoster(previewTierLabel||'next tier'):'next star'}</p>`
+        : (progress?.isMax&&ownsCard?'<p class="ascent-mutate-hint">Card at maximum tier and stars.</p>':''));
     const classPerkInfo=getBirdAuthoredClassPerk(key);
     const classPerkName=escapeHtmlRoster(classPerkInfo?.name||'—');
     const classPerkDesc=escapeHtmlRoster(classPerkInfo?.effect||'No class perk listed.');
 
     panel.innerHTML = `
-      <div class="ascent-strip ascent-strip--filled">
+      <div class="ascent-strip ascent-strip--filled ascent-strip--${tierCss}">
         <div class="ascent-strip-portrait-wrap" aria-hidden="true"><div class="ascent-panel-portrait">${renderBirdIconHTML(key, sizeClass, false)}</div></div>
         <div class="ascent-strip-body">
           <div class="ascent-strip-title-row">
@@ -5385,12 +5421,15 @@ function updateAscentPanel(key) {
             <span class="class-badge class-${cls}">${escapeHtmlRoster(classLabel.toUpperCase())}</span>
             <span class="bird-size-chip">${escapeHtmlRoster(sizeLabel)}</span>
             <span class="bird-card-tier-badge ${tierCss}">${tierLabel}</span>
+            <span class="bird-card-rarity-badge ${rarityMeta.css}">${rarityLabel} species</span>
             <span class="ascent-strip-tagline">${escapeHtmlRoster(bird.tagline||'')}</span>
           </div>
           ${cardHint}
           <div class="ascent-card-progress">
             <span class="ascent-card-tier">Card tier: <strong class="${tierCss}">${tierLabel}</strong></span>
-            ${ownsCard?`<span class="ascent-card-feathers">Species Feathers: <strong>${speciesFeathers}</strong>${nextTier?` / ${mutationCost}`:''}</span>`:''}
+            <span class="ascent-card-stars-wrap">${starsHtml}</span>
+            <span class="ascent-card-rarity">Rarity: <strong class="${rarityMeta.css}">${rarityLabel}</strong></span>
+            ${ownsCard?`<span class="ascent-card-feathers">Species Feathers: <strong>${speciesFeathers}</strong>${progress?.canUpgrade?` / ${mutationCost}`:''}</span>`:''}
             ${mutateBtn}
           </div>
           <div class="ascent-strip-hscroll" tabindex="0" role="region" aria-label="Stats, passive, and skills">
@@ -5401,8 +5440,7 @@ function updateAscentPanel(key) {
             <div class="ascent-hblock ascent-hblock-passive">
               <div class="ascent-hblock-label">Passive</div>
               <div class="ascent-panel-passive ascent-panel-passive--inline"><strong>${passiveName}:</strong> ${passiveDesc}</div>
-              ${nextPassivePreview?`<div class="ascent-passive-next"><span class="ascent-hblock-label">Next tier</span> ${nextPassivePreview}</div>`:''}
-              ${tierUnlockHtml}
+              ${nextPassivePreview?`<div class="ascent-passive-next"><span class="ascent-hblock-label">After next upgrade</span> ${nextPassivePreview}</div>`:''}
             </div>
             <div class="ascent-hblock ascent-hblock-class-perk">
               <div class="ascent-hblock-label">Class perk</div>

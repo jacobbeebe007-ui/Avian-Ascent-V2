@@ -1,4 +1,4 @@
-/* Bird card tier progression — stats, abilities, passive tier at run/preview time. */
+/* Bird card tier progression — stats, passives at run/preview time. */
 (function () {
   'use strict';
 
@@ -15,7 +15,12 @@
     return pack && typeof pack.normalizeTier === 'function' ? pack.normalizeTier(t) : String(t || 'grey').toLowerCase();
   }
 
-  function getPassiveBonusFraction(birdKey, tier) {
+  function clampStars(stars) {
+    var pack = tiers();
+    return pack && typeof pack.clampStars === 'function' ? pack.clampStars(stars) : Math.max(0, Math.min(5, Math.floor(Number(stars) || 0)));
+  }
+
+  function getPassiveBonusAtTier(birdKey, tier) {
     var data = scalingData();
     if (!data || !data[birdKey]) return null;
     var row = data[birdKey];
@@ -25,10 +30,25 @@
     return row.grey != null ? Number(row.grey) : null;
   }
 
-  function formatPassiveEffectForTier(birdKey, tier) {
+  function getPassiveBonusFraction(birdKey, tier, stars) {
+    var t = tiers();
+    var tierNorm = normalizeTier(tier);
+    var s = clampStars(stars);
+    var base = getPassiveBonusAtTier(birdKey, tierNorm);
+    if (base == null) return null;
+    if (!t || typeof t.nextTier !== 'function' || typeof t.STARS_PER_TIER !== 'number') return base;
+    var nxt = t.nextTier(tierNorm);
+    if (!nxt) return base;
+    var nextBonus = getPassiveBonusAtTier(birdKey, nxt);
+    if (nextBonus == null) return base;
+    return base + (nextBonus - base) * (s / t.STARS_PER_TIER);
+  }
+
+  function formatPassiveEffectForTier(birdKey, tier, stars) {
     var data = scalingData();
     var birds = globalThis.BIRDS || {};
-    var frac = getPassiveBonusFraction(birdKey, tier);
+    var starVal = stars != null ? stars : (typeof globalThis.getBirdCardStars === 'function' ? globalThis.getBirdCardStars(birdKey) : 0);
+    var frac = getPassiveBonusFraction(birdKey, tier, starVal);
     if (data && data[birdKey] && data[birdKey].effectTemplate && frac != null) {
       var pct = (frac * 100).toFixed(frac * 100 % 1 === 0 ? 0 : 1);
       return String(data[birdKey].effectTemplate).replace('{pct}', pct);
@@ -49,7 +69,7 @@
     return null;
   }
 
-  function applyBirdCardStats(player, tier) {
+  function applyBirdCardStats(player, tier, stars) {
     var t = tiers();
     var birds = globalThis.BIRDS || {};
     if (!player || !t || !player.birdKey) return;
@@ -60,13 +80,17 @@
     var base = bd.stats;
     var fromCard = {};
     var scaled = {};
+    var s = clampStars(stars);
+    var mult = typeof t.getEffectiveStatMultiplier === 'function'
+      ? t.getEffectiveStatMultiplier(tier, s)
+      : t.getTierStatMultiplier(tier);
 
     t.SCALED_STAT_KEYS.forEach(function (key) {
       if (base[key] == null) return;
       var guard = statGuardKey(key);
       var val = guard
-        ? t.applyGuardrailedStatMult(base[key], guard, tier, size)
-        : Math.max(key === 'dodge' || key === 'acc' ? 0 : 1, Math.round(base[key] * t.getTierStatMultiplier(tier)));
+        ? t.applyGuardrailedStatMult(base[key], guard, tier, size, s)
+        : Math.max(key === 'dodge' || key === 'acc' ? 0 : 1, Math.round(base[key] * mult));
       scaled[key] = val;
       fromCard[key] = val - (Number(base[key]) || 0);
     });
@@ -91,82 +115,27 @@
     }
   }
 
-  function preferPowerPath(options) {
-    if (!options || !options.length) return null;
-    var power = options.find(function (o) {
-      return String(o.pathId || '').toLowerCase() === 'power';
-    });
-    return power || options[0];
-  }
-
-  function applyBirdCardAbilities(player, tier) {
-    if (!player || typeof globalThis.usesFamilySkillEvolution !== 'function') return;
-    if (!globalThis.usesFamilySkillEvolution(player)) return;
-    if (typeof globalThis.ensureFamilyEvolutionState !== 'function') return;
-
-    globalThis.ensureFamilyEvolutionState(player);
-    var t = tiers();
-    var birdKey = player.birdKey;
-    var slots =
-      typeof globalThis.getSkillSlots === 'function' ? globalThis.getSkillSlots(player) : player.familyEvolutionState?.skillSlots || [];
-
-    if (t.tierIndex(tier) >= t.tierIndex('green')) {
-      var slot2 = slots.find(function (s) {
-        return s.slotIndex === 2;
-      });
-      if (slot2 && slot2.familyId && !slot2.pathId && typeof globalThis.getSkillEvolutionPathOptions === 'function') {
-        var opts2 = globalThis.getSkillEvolutionPathOptions(slot2, birdKey);
-        var pick2 = preferPowerPath(opts2);
-        if (pick2 && typeof globalThis.applySkillPathSelection === 'function') {
-          globalThis.applySkillPathSelection(slot2, pick2.pathId, player);
-        }
-      }
-    }
-
-    if (t.tierIndex(tier) >= t.tierIndex('purple')) {
-      var slot0 = slots.find(function (s) {
-        return s.slotIndex === 0;
-      });
-      if (slot0 && slot0.familyId) {
-        if (!slot0.pathId && typeof globalThis.getSkillEvolutionPathOptions === 'function') {
-          var opts0 = globalThis.getSkillEvolutionPathOptions(slot0, birdKey);
-          var pick0 = preferPowerPath(opts0);
-          if (pick0 && typeof globalThis.applySkillPathSelection === 'function') {
-            globalThis.applySkillPathSelection(slot0, pick0.pathId, player);
-          }
-        }
-        if (typeof globalThis.autoUpgradeSkillSlotTier === 'function' && typeof globalThis.slotCanTierUp === 'function') {
-          while (globalThis.slotCanTierUp(slot0, birdKey) && (slot0.tier || 0) < 3) {
-            globalThis.autoUpgradeSkillSlotTier(slot0, player);
-          }
-        }
-      }
-    }
-
-    if (typeof globalThis.syncPlayerAbilitiesFromSkillSlots === 'function') {
-      globalThis.syncPlayerAbilitiesFromSkillSlots(player);
-    }
+  function applyBirdCardAbilities(_player, _tier) {
+    /* Tier-based ability unlocks removed — redesigned separately. */
   }
 
   function applyBirdCardProgression(player) {
     if (!player || !player.birdKey) return player;
     var tier =
       typeof globalThis.getBirdCardTier === 'function' ? globalThis.getBirdCardTier(player.birdKey) : 'grey';
+    var stars =
+      typeof globalThis.getBirdCardStars === 'function' ? globalThis.getBirdCardStars(player.birdKey) : 0;
     tier = normalizeTier(tier);
+    stars = clampStars(stars);
     player._birdCardTier = tier;
+    player._birdCardStars = stars;
     if (!player.stats) return player;
-    applyBirdCardStats(player, tier);
-    applyBirdCardAbilities(player, tier);
+    applyBirdCardStats(player, tier, stars);
     return player;
   }
 
-  function getTierAbilityUnlockSummary(birdKey, tier) {
-    var t = tiers();
-    if (!t) return [];
-    var out = [];
-    if (t.tierIndex(tier) >= t.tierIndex('green')) out.push('Green: 3rd ability path unlocked');
-    if (t.tierIndex(tier) >= t.tierIndex('purple')) out.push('Purple: Signature ability (tier 3)');
-    return out;
+  function getTierAbilityUnlockSummary(_birdKey, _tier) {
+    return [];
   }
 
   var pack = {

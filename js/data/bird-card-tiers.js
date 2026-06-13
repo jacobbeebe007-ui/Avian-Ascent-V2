@@ -1,8 +1,10 @@
-/* Bird card tier constants — mutation costs, stat multipliers, balance guardrails. */
+/* Bird card tier constants — star progression, mutation costs, stat multipliers. */
 (function () {
   'use strict';
 
   var TIER_ORDER = ['grey', 'green', 'blue', 'purple', 'gold', 'orange'];
+
+  var STARS_PER_TIER = 5;
 
   var TIER_STAT_MULTIPLIER = {
     grey: 1.0,
@@ -13,21 +15,23 @@
     orange: 1.3,
   };
 
-  var MUTATION_COST = {
-    grey: 12,
-    green: 30,
-    blue: 60,
-    purple: 100,
-    gold: 160,
+  /** Species Feathers cost per star upgrade within each card tier. */
+  var MUTATION_COST_PER_STAR = {
+    grey: 20,
+    green: 24,
+    blue: 28,
+    purple: 32,
+    gold: 36,
+    orange: 40,
   };
 
-  var DUPLICATE_FEATHER_YIELD_DEFAULT = 8;
+  var DUPLICATE_FEATHER_YIELD_DEFAULT = 4;
   var DUPLICATE_FEATHER_YIELD_BY_EGG = {
-    cracked: 8,
-    feathered: 8,
-    gleaming: 10,
-    royal: 8,
-    ancestral: 12,
+    cracked: 4,
+    feathered: 4,
+    gleaming: 4,
+    royal: 4,
+    ancestral: 4,
   };
 
   var PITY_THRESHOLDS = {
@@ -48,11 +52,6 @@
   };
 
   var SCALED_STAT_KEYS = ['maxHp', 'hp', 'atk', 'def', 'spd', 'dodge', 'acc', 'mdef', 'matk'];
-
-  var TIER_ABILITY_UNLOCK = {
-    green: { unlockSlot2PathTier1: true },
-    purple: { signaturePathTier3: true },
-  };
 
   var TIER_LABELS = {
     grey: 'Grey',
@@ -77,6 +76,10 @@
     return TIER_ORDER.indexOf(t) >= 0 ? t : 'grey';
   }
 
+  function clampStars(stars) {
+    return Math.max(0, Math.min(STARS_PER_TIER, Math.floor(Number(stars) || 0)));
+  }
+
   function tierIndex(tier) {
     return TIER_ORDER.indexOf(normalizeTier(tier));
   }
@@ -91,9 +94,41 @@
     return TIER_STAT_MULTIPLIER[normalizeTier(tier)] || 1;
   }
 
+  function getMutationCostPerStar(tier) {
+    var t = normalizeTier(tier);
+    return Math.max(0, Math.floor(Number(MUTATION_COST_PER_STAR[t]) || 0));
+  }
+
+  /** @deprecated Use getMutationCostPerStar — kept for transitional callers. */
   function getMutationCostForTier(currentTier) {
-    var t = normalizeTier(currentTier);
-    return Math.max(0, Math.floor(Number(MUTATION_COST[t]) || 0));
+    return getMutationCostPerStar(currentTier);
+  }
+
+  function getEffectiveStatMultiplier(tier, stars) {
+    var t = normalizeTier(tier);
+    var s = clampStars(stars);
+    var base = getTierStatMultiplier(t);
+    var nxt = nextTier(t);
+    var nextMult = nxt ? getTierStatMultiplier(nxt) : base;
+    return base + (nextMult - base) * (s / STARS_PER_TIER);
+  }
+
+  function canUpgradeBirdCard(tier, stars) {
+    var t = normalizeTier(tier);
+    var s = clampStars(stars);
+    if (s < STARS_PER_TIER) return true;
+    return !!nextTier(t);
+  }
+
+  function previewUpgrade(tier, stars) {
+    var t = normalizeTier(tier);
+    var s = clampStars(stars);
+    if (s < STARS_PER_TIER) {
+      return { tierAfter: t, starsAfter: s + 1, isTierUp: false };
+    }
+    var nxt = nextTier(t);
+    if (!nxt) return { tierAfter: t, starsAfter: s, isTierUp: false };
+    return { tierAfter: nxt, starsAfter: 0, isTierUp: true };
   }
 
   function getDuplicateFeatherYield(eggType) {
@@ -111,10 +146,10 @@
     return 'medium';
   }
 
-  function applyGuardrailedStatMult(baseVal, statKey, tier, size) {
+  function applyGuardrailedStatMult(baseVal, statKey, tier, size, stars) {
     var base = Math.max(0, Number(baseVal) || 0);
     if (!base) return base;
-    var mult = getTierStatMultiplier(tier);
+    var mult = getEffectiveStatMultiplier(tier, stars);
     var bucket = runtimeSizeBucket(size);
     var guard = STAT_GUARD_MAX_BONUS[statKey];
     var maxBonusFrac = guard && guard[bucket] != null ? guard[bucket] : null;
@@ -129,8 +164,9 @@
 
   var pack = {
     TIER_ORDER: TIER_ORDER,
+    STARS_PER_TIER: STARS_PER_TIER,
     TIER_STAT_MULTIPLIER: TIER_STAT_MULTIPLIER,
-    MUTATION_COST: MUTATION_COST,
+    MUTATION_COST_PER_STAR: MUTATION_COST_PER_STAR,
     DUPLICATE_FEATHER_YIELD_DEFAULT: DUPLICATE_FEATHER_YIELD_DEFAULT,
     DUPLICATE_FEATHER_YIELD_BY_EGG: DUPLICATE_FEATHER_YIELD_BY_EGG,
     PITY_THRESHOLDS: PITY_THRESHOLDS,
@@ -138,14 +174,18 @@
     PITY_RARE_FEATHER_BONUS: PITY_RARE_FEATHER_BONUS,
     STAT_GUARD_MAX_BONUS: STAT_GUARD_MAX_BONUS,
     SCALED_STAT_KEYS: SCALED_STAT_KEYS,
-    TIER_ABILITY_UNLOCK: TIER_ABILITY_UNLOCK,
     TIER_LABELS: TIER_LABELS,
     TIER_CSS: TIER_CSS,
     normalizeTier: normalizeTier,
+    clampStars: clampStars,
     tierIndex: tierIndex,
     nextTier: nextTier,
     getTierStatMultiplier: getTierStatMultiplier,
+    getMutationCostPerStar: getMutationCostPerStar,
     getMutationCostForTier: getMutationCostForTier,
+    getEffectiveStatMultiplier: getEffectiveStatMultiplier,
+    canUpgradeBirdCard: canUpgradeBirdCard,
+    previewUpgrade: previewUpgrade,
     getDuplicateFeatherYield: getDuplicateFeatherYield,
     applyGuardrailedStatMult: applyGuardrailedStatMult,
     runtimeSizeBucket: runtimeSizeBucket,
@@ -156,8 +196,14 @@
   Avian.data.birdCardTiers = Object.freeze(pack);
 
   globalThis.BIRD_CARD_TIER_ORDER = TIER_ORDER;
+  globalThis.BIRD_CARD_STARS_PER_TIER = STARS_PER_TIER;
   globalThis.getBirdCardTierMultiplier = getTierStatMultiplier;
-  globalThis.getBirdCardMutationCost = getMutationCostForTier;
+  globalThis.getBirdCardMutationCost = getMutationCostPerStar;
+  globalThis.getBirdCardMutationCostPerStar = getMutationCostPerStar;
+  globalThis.getEffectiveBirdCardStatMultiplier = getEffectiveStatMultiplier;
   globalThis.normalizeBirdCardTier = normalizeTier;
   globalThis.nextBirdCardTier = nextTier;
+  globalThis.clampBirdCardStars = clampStars;
+  globalThis.canUpgradeBirdCard = canUpgradeBirdCard;
+  globalThis.previewBirdCardUpgrade = previewUpgrade;
 })();

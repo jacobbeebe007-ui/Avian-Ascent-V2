@@ -11,6 +11,12 @@
     return String(t || 'grey').toLowerCase();
   }
 
+  function clampStars(stars) {
+    var t = tiers();
+    if (t && typeof t.clampStars === 'function') return t.clampStars(stars);
+    return Math.max(0, Math.min(5, Math.floor(Number(stars) || 0)));
+  }
+
   function emptyBirdCardsBlock() {
     return { owned: {}, mutationHistory: {} };
   }
@@ -33,6 +39,7 @@
       if (!row || typeof row !== 'object') return;
       out[key] = {
         tier: normalizeTier(row.tier),
+        stars: clampStars(row.stars),
         acquiredAt: row.acquiredAt != null ? row.acquiredAt : Date.now(),
       };
     });
@@ -87,10 +94,13 @@
     var owned = meta.birdCards.owned;
     var ts = Date.now();
     Object.keys(owned).forEach(function (key) {
-      if (owned[key] && owned[key].tier) owned[key].tier = normalizeTier(owned[key].tier);
+      if (!owned[key] || typeof owned[key] !== 'object') return;
+      owned[key].tier = normalizeTier(owned[key].tier);
+      if (owned[key].stars == null) owned[key].stars = 0;
+      owned[key].stars = clampStars(owned[key].stars);
     });
     starterBirdKeys().forEach(function (key) {
-      if (!owned[key]) owned[key] = { tier: 'grey', acquiredAt: ts };
+      if (!owned[key]) owned[key] = { tier: 'grey', stars: 0, acquiredAt: ts };
     });
 
     var birds = globalThis.BIRDS || {};
@@ -99,11 +109,11 @@
       var bird = birds[key];
       if (!bird || !bird.unlockRequires) return;
       if (unlocks[bird.unlockRequires] && !owned[key]) {
-        owned[key] = { tier: 'grey', acquiredAt: ts };
+        owned[key] = { tier: 'grey', stars: 0, acquiredAt: ts };
       }
     });
 
-    meta.metaSchemaVersion = 2;
+    meta.metaSchemaVersion = 3;
     return meta;
   }
 
@@ -131,6 +141,30 @@
     if (card && card.tier) return normalizeTier(card.tier);
     if (starterBirdKeys().indexOf(birdKey) >= 0) return 'grey';
     return 'grey';
+  }
+
+  function getBirdCardStars(birdKey) {
+    var card = getBirdCard(birdKey);
+    if (card && card.stars != null) return clampStars(card.stars);
+    return 0;
+  }
+
+  function getBirdCardProgress(birdKey) {
+    var t = tiers();
+    var tier = getBirdCardTier(birdKey);
+    var stars = getBirdCardStars(birdKey);
+    var cost = t && typeof t.getMutationCostPerStar === 'function' ? t.getMutationCostPerStar(tier) : 0;
+    var canUpgrade = t && typeof t.canUpgradeBirdCard === 'function' ? t.canUpgradeBirdCard(tier, stars) : false;
+    var preview = t && typeof t.previewUpgrade === 'function' ? t.previewUpgrade(tier, stars) : null;
+    var isMax = !canUpgrade;
+    return {
+      tier: tier,
+      stars: stars,
+      cost: cost,
+      canUpgrade: canUpgrade,
+      isMax: isMax,
+      preview: preview,
+    };
   }
 
   function getSpeciesFeathers(birdKey) {
@@ -173,7 +207,8 @@
     if (!m.birdCards.owned) m.birdCards.owned = {};
     var isNew = !m.birdCards.owned[birdKey];
     m.birdCards.owned[birdKey] = {
-      tier: normalizeTier(tier || 'grey'),
+      tier: 'grey',
+      stars: 0,
       acquiredAt: m.birdCards.owned[birdKey]?.acquiredAt || Date.now(),
     };
     saveMeta(m);
@@ -184,18 +219,35 @@
     if (!birdKey || !ownsBirdCard(birdKey)) return { ok: false, reason: 'no_card' };
     var t = tiers();
     if (!t) return { ok: false, reason: 'config' };
-    var current = getBirdCardTier(birdKey);
-    var next = t.nextTier(current);
-    if (!next) return { ok: false, reason: 'max_tier' };
-    var cost = t.getMutationCostForTier(current);
+
+    var card = getBirdCard(birdKey);
+    var tier = normalizeTier(card && card.tier);
+    var stars = clampStars(card && card.stars);
+
+    if (!t.canUpgradeBirdCard(tier, stars)) return { ok: false, reason: 'max_tier' };
+
+    var cost = t.getMutationCostPerStar(tier);
     if (!spendSpeciesFeathers(birdKey, cost)) return { ok: false, reason: 'feathers' };
 
+    var preview = t.previewUpgrade(tier, stars);
+    var tierAfter = preview.tierAfter;
+    var starsAfter = preview.starsAfter;
+    var isTierUp = !!preview.isTierUp;
+
     var m = loadMeta();
-    m.birdCards.owned[birdKey].tier = next;
+    m.birdCards.owned[birdKey].tier = tierAfter;
+    m.birdCards.owned[birdKey].stars = starsAfter;
     if (!m.birdCards.mutationHistory[birdKey]) m.birdCards.mutationHistory[birdKey] = [];
-    m.birdCards.mutationHistory[birdKey].push(next);
+    m.birdCards.mutationHistory[birdKey].push({ tier: tierAfter, stars: starsAfter, at: Date.now() });
     saveMeta(m);
-    return { ok: true, tier: next, cost: cost };
+
+    return {
+      ok: true,
+      tier: tierAfter,
+      stars: starsAfter,
+      isTierUp: isTierUp,
+      cost: cost,
+    };
   }
 
   function getPityState() {
@@ -283,6 +335,8 @@
     getBirdCard: getBirdCard,
     ownsBirdCard: ownsBirdCard,
     getBirdCardTier: getBirdCardTier,
+    getBirdCardStars: getBirdCardStars,
+    getBirdCardProgress: getBirdCardProgress,
     getSpeciesFeathers: getSpeciesFeathers,
     addSpeciesFeathers: addSpeciesFeathers,
     spendSpeciesFeathers: spendSpeciesFeathers,
@@ -304,6 +358,8 @@
   globalThis.getBirdCard = getBirdCard;
   globalThis.ownsBirdCard = ownsBirdCard;
   globalThis.getBirdCardTier = getBirdCardTier;
+  globalThis.getBirdCardStars = getBirdCardStars;
+  globalThis.getBirdCardProgress = getBirdCardProgress;
   globalThis.getSpeciesFeathers = getSpeciesFeathers;
   globalThis.addSpeciesFeathers = addSpeciesFeathers;
   globalThis.mutateBirdCard = mutateBirdCard;

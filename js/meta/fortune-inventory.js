@@ -242,6 +242,18 @@
     grid.innerHTML = entries
       .map(function (row) {
         var css = tierCss(row.cardTier);
+        var cardStars =
+          typeof globalThis.getBirdCardStars === 'function' ? globalThis.getBirdCardStars(row.birdKey) : 0;
+        var maxStars = (tierPack() && tierPack().STARS_PER_TIER) || 5;
+        var starsHtml = '';
+        for (var si = 0; si < maxStars; si++) {
+          starsHtml +=
+            '<span class="bird-card-star' +
+            (si < cardStars ? ' is-filled' : '') +
+            '">' +
+            (si < cardStars ? '★' : '☆') +
+            '</span>';
+        }
         return (
           '<div class="inventory-feather-card ' +
           css +
@@ -259,7 +271,9 @@
           '</div>' +
           '<div class="inventory-feather-tier">' +
           esc(tierLabel(row.cardTier)) +
-          ' card</div>' +
+          ' · <span class="inventory-feather-stars">' +
+          starsHtml +
+          '</span></div>' +
           '<div class="inventory-feather-count">×' +
           fmt(row.count) +
           '</div></div>'

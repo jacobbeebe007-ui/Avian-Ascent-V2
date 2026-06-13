@@ -59,6 +59,8 @@ const scripts = [
 
 for (const s of scripts) loadScript(s);
 
+const tiers = sandbox.Avian.data.birdCardTiers;
+
 let passed = 0;
 let failed = 0;
 
@@ -81,8 +83,9 @@ assert(species.starterBirdKeys.length === 5, '5 starter birds from sheet');
 
 console.log('[verify-bird-cards] meta normalize / migration');
 const meta = sandbox.getFortuneMeta();
-assert(meta.metaSchemaVersion === 2, 'metaSchemaVersion is 2');
+assert(meta.metaSchemaVersion === 3, 'metaSchemaVersion is 3');
 assert(meta.birdCards && meta.birdCards.owned.sparrow, 'starter sparrow grey card');
+assert(meta.birdCards.owned.sparrow.stars === 0, 'starter sparrow starts at 0 stars');
 assert(meta.birdCards.owned.crow, 'unlocked crow grey card from migration');
 assert(!meta.birdCards.owned.robin, 'robin not auto-migrated (not a starter)');
 
@@ -110,21 +113,64 @@ sandbox._unlocks.unlock_duke_blakiston = true;
 sandbox.isUnlocked = (id) => !!sandbox._unlocks[id];
 assert(cat.buildAncestralPool().join(',') === 'dukeBlakiston', 'ancestral pool is duke only when unlocked');
 
+console.log('[verify-bird-cards] gleaming + royal pools (no prior unlock)');
+const gleamingFresh = cat.buildGleamingPool();
+assert(gleamingFresh.length > 0, 'gleaming pool non-empty without unlocks');
+assert(gleamingFresh.includes('hummingbird'), 'gleaming includes hummingbird from sheet');
+const royalKnight = cat.buildRoyalPool('knight');
+assert(royalKnight.length > 0, 'royal knight pool non-empty');
+assert(
+  royalKnight.every((k) => {
+    const st = species.byBirdKey[k] && species.byBirdKey[k].speciesTier;
+    return st === 'purple' || st === 'gold';
+  }),
+  'royal pool only purple/gold species',
+);
+const ancestralFallback = cat.buildAncestralFallbackPool();
+assert(ancestralFallback.length > 0, 'ancestral fallback pool non-empty');
+assert(!ancestralFallback.includes('dukeBlakiston'), 'ancestral fallback excludes duke');
+
 console.log('[verify-bird-cards] hatch duplicate + feathers');
 sandbox.saveFortuneMeta({ ...sandbox.getFortuneMeta(), goldenGooseEggs: 100 });
 const hatch1 = sandbox.hatchEgg('cracked');
 assert(hatch1.ok, 'hatch succeeds');
 if (hatch1.isNew) {
   const dup = sandbox.hatchEgg('cracked');
-  assert(dup.ok && !dup.isNew && dup.feathersGained === 8, 'duplicate yields 8 feathers');
+  assert(dup.ok && !dup.isNew && dup.feathersGained === 4, 'duplicate yields 4 feathers');
 } else {
-  assert(hatch1.feathersGained === 0 || hatch1.feathersGained === 8, 'hatch result shape ok');
+  assert(hatch1.feathersGained === 0 || hatch1.feathersGained === 4, 'hatch result shape ok');
 }
 
-console.log('[verify-bird-cards] mutation costs');
-sandbox.addSpeciesFeathers('sparrow', 12);
-const mut = sandbox.mutateBirdCard('sparrow');
-assert(mut.ok && mut.tier === 'green' && mut.cost === 12, 'grey→green costs 12 feathers');
+console.log('[verify-bird-cards] star mutation costs');
+assert(tiers.getDuplicateFeatherYield('cracked') === 4, 'duplicate feather default is 4');
+assert(
+  tiers.getEffectiveStatMultiplier('grey', 1) > tiers.getEffectiveStatMultiplier('grey', 0),
+  'grey 1 star has higher stat mult than 0 stars',
+);
+sandbox.addSpeciesFeathers('sparrow', 20);
+const mut1 = sandbox.mutateBirdCard('sparrow');
+assert(mut1.ok && mut1.tier === 'grey' && mut1.stars === 1 && mut1.cost === 20, 'grey 0★→1★ costs 20 feathers');
+sandbox.addSpeciesFeathers('sparrow', 100);
+for (let i = 0; i < 4; i++) {
+  const m = sandbox.mutateBirdCard('sparrow');
+  assert(m.ok, 'additional grey star upgrades succeed');
+}
+const tierUp = sandbox.mutateBirdCard('sparrow');
+assert(
+  tierUp.ok && tierUp.tier === 'green' && tierUp.stars === 0 && tierUp.isTierUp,
+  'grey 5★→green 0★ tier-up at cost 20',
+);
+
+console.log('[verify-bird-cards] max tier');
+const orangeCard = {
+  tier: 'orange',
+  stars: 5,
+  acquiredAt: Date.now(),
+};
+const mMax = sandbox.getFortuneMeta();
+mMax.birdCards.owned.sparrow = orangeCard;
+sandbox.saveFortuneMeta(mMax);
+assert(!sandbox.mutateBirdCard('sparrow').ok, 'orange 5★ cannot upgrade further');
 
 console.log('[verify-bird-cards] pity counter');
 const pity = sandbox.getPityState();
