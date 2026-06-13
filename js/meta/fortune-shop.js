@@ -3,6 +3,9 @@
   'use strict';
 
   var FORTUNE_TAB = 'hiring';
+  var ROYAL_EGG_CLASS = 'knight';
+
+  var ROYAL_CLASSES = ['knight', 'rogue', 'mage', 'siren', 'inquisitor', 'bard'];
 
   function esc(s) {
     return String(s || '')
@@ -18,19 +21,33 @@
   }
 
   function setFortuneSubView(view) {
-    FORTUNE_TAB = view === 'artifacts' ? 'artifacts' : view === 'trade' ? 'trade' : 'hiring';
+    FORTUNE_TAB =
+      view === 'artifacts'
+        ? 'artifacts'
+        : view === 'trade'
+          ? 'trade'
+          : view === 'mother-goose'
+            ? 'mother-goose'
+            : 'hiring';
     var hiringBtn = document.getElementById('fortune-nav-hiring');
+    var gooseBtn = document.getElementById('fortune-nav-mother-goose');
     var artBtn = document.getElementById('fortune-nav-artifacts');
     var tradeBtn = document.getElementById('fortune-nav-trade');
     var hiringView = document.getElementById('fortune-view-hiring');
+    var gooseView = document.getElementById('fortune-view-mother-goose');
     var artView = document.getElementById('fortune-view-artifacts');
     var tradeView = document.getElementById('fortune-view-trade');
     var isHiring = FORTUNE_TAB === 'hiring';
+    var isMotherGoose = FORTUNE_TAB === 'mother-goose';
     var isArtifacts = FORTUNE_TAB === 'artifacts';
     var isTrade = FORTUNE_TAB === 'trade';
     if (hiringBtn) {
       hiringBtn.classList.toggle('is-active', isHiring);
       hiringBtn.setAttribute('aria-selected', isHiring ? 'true' : 'false');
+    }
+    if (gooseBtn) {
+      gooseBtn.classList.toggle('is-active', isMotherGoose);
+      gooseBtn.setAttribute('aria-selected', isMotherGoose ? 'true' : 'false');
     }
     if (artBtn) {
       artBtn.classList.toggle('is-active', isArtifacts);
@@ -41,6 +58,7 @@
       tradeBtn.setAttribute('aria-selected', isTrade ? 'true' : 'false');
     }
     if (hiringView) hiringView.classList.toggle('is-active', isHiring);
+    if (gooseView) gooseView.classList.toggle('is-active', isMotherGoose);
     if (artView) artView.classList.toggle('is-active', isArtifacts);
     if (tradeView) tradeView.classList.toggle('is-active', isTrade);
   }
@@ -139,7 +157,7 @@
       var owned = typeof globalThis.ownsArtifact === 'function' && globalThis.ownsArtifact(art.id);
       var canAfford = goose >= cost;
       var stateClass = owned ? ' is-owned' : canAfford ? ' is-affordable' : ' is-locked';
-      var btnLabel = owned ? 'Owned' : 'Buy · ' + fmt(cost) + ' 🪿';
+      var btnLabel = owned ? 'Owned' : 'Buy · ' + fmt(cost) + ' Golden Goose Eggs';
       var btnDisabled = owned || !canAfford;
       html +=
         '<div class="fortune-artifact-card' +
@@ -219,9 +237,142 @@
     grid.innerHTML = html;
   }
 
+  function renderMotherGoosePity() {
+    var el = document.getElementById('mother-goose-pity');
+    if (!el || typeof globalThis.getPityState !== 'function') return;
+    var pity = globalThis.getPityState();
+    var parts = ['Eggs until next safety: ' + fmt(pity.eggsUntilNext || 0)];
+    if (pity.pityChoicePending && pity.pityChoiceOptions && pity.pityChoiceOptions.length) {
+      parts.push('Pity choice ready (modal TODO). Options: ' + pity.pityChoiceOptions.join(', '));
+    }
+    el.textContent = parts.join(' · ');
+  }
+
+  function renderMotherGooseGrid() {
+    var grid = document.getElementById('mother-goose-grid');
+    if (!grid) return;
+    var types = globalThis.MOTHER_GOOSE_EGG_TYPES || {};
+    var goose = typeof getGoldenGooseEggBalance === 'function' ? getGoldenGooseEggBalance() : 0;
+    var html = '';
+    Object.keys(types).forEach(function (id) {
+      var egg = types[id];
+      if (!egg) return;
+      var cost = Math.max(0, Math.floor(Number(egg.cost) || 0));
+      var enabled = !!egg.enabled;
+      var canAfford = goose >= cost;
+      var stateClass = !enabled ? ' is-disabled' : canAfford ? ' is-affordable' : ' is-locked';
+      var btnAction = id === 'royal' ? 'hatchRoyalEgg:' + ROYAL_EGG_CLASS : 'purchaseMotherGooseEgg:' + id;
+      var btnLabel = !enabled ? 'Coming soon' : enabled && id === 'royal' ? 'Hatch · ' + fmt(cost) + ' 🪿' : 'Hatch · ' + fmt(cost) + ' 🪿';
+      var btnDisabled = !enabled || !canAfford;
+      var royalPick =
+        id === 'royal' && enabled
+          ? '<div class="mother-goose-class-pick" role="group" aria-label="Royal Egg class">' +
+            ROYAL_CLASSES.map(function (cls) {
+              var active = cls === ROYAL_EGG_CLASS ? ' is-active' : '';
+              return (
+                '<button type="button" class="mother-goose-class-btn' +
+                active +
+                '" data-action="setRoyalEggClass:' +
+                esc(cls) +
+                '">' +
+                esc(cls) +
+                '</button>'
+              );
+            }).join('') +
+            '</div>'
+          : '';
+      html +=
+        '<div class="fortune-artifact-card mother-goose-egg-card' +
+        stateClass +
+        '">' +
+        '<div class="fortune-artifact-icon">' +
+        esc(egg.icon) +
+        '</div>' +
+        '<div class="fortune-artifact-name">' +
+        esc(egg.name) +
+        '</div>' +
+        '<p class="fortune-artifact-desc">' +
+        esc(egg.desc) +
+        '</p>' +
+        royalPick +
+        '<button type="button" class="fortune-buy-btn" data-action="' +
+        esc(btnAction) +
+        '" ' +
+        (btnDisabled ? 'disabled' : '') +
+        '>' +
+        esc(btnLabel) +
+        '</button></div>';
+    });
+    grid.innerHTML = html || '<p class="fortune-empty">No eggs configured.</p>';
+    renderMotherGoosePity();
+  }
+
+  function showMotherGooseResult(result) {
+    var el = document.getElementById('mother-goose-result');
+    if (!el) return;
+    if (!result || !result.ok) {
+      el.textContent = result && result.reason === 'funds' ? 'Not enough Golden Goose Eggs.' : 'Hatch failed.';
+      el.className = 'mother-goose-result mother-goose-result--error';
+      return;
+    }
+    el.className = 'mother-goose-result mother-goose-result--success';
+    el.innerHTML =
+      '<strong>' +
+      esc(result.message || 'Hatched!') +
+      '</strong>' +
+      (result.isNew
+        ? '<p>New card at tier ' + esc(result.tierAfter || 'grey') + '.</p>'
+        : '<p>Species Feathers: ' + fmt(result.speciesFeatherTotal || 0) + '</p>');
+  }
+
+  function purchaseMotherGooseEgg(eggType) {
+    if (typeof globalThis.hatchEgg !== 'function') return;
+    var result = globalThis.hatchEgg(eggType, {});
+    showMotherGooseResult(result);
+    var msg = document.getElementById('fortune-shop-msg');
+    if (msg && result && result.ok) {
+      msg.textContent = result.message || 'Egg hatched!';
+      msg.style.color = 'var(--gold-light)';
+    }
+    renderFortuneShop();
+    if (typeof globalThis.initSelectionSafe === 'function') globalThis.initSelectionSafe();
+  }
+
+  function hatchRoyalEgg(classId) {
+    if (typeof globalThis.hatchEgg !== 'function') return;
+    var cls = classId || ROYAL_EGG_CLASS;
+    var result = globalThis.hatchEgg('royal', { classFilter: cls });
+    showMotherGooseResult(result);
+    var msg = document.getElementById('fortune-shop-msg');
+    if (msg && result && result.ok) {
+      msg.textContent = result.message || 'Royal egg hatched!';
+      msg.style.color = 'var(--gold-light)';
+    }
+    renderFortuneShop();
+    if (typeof globalThis.initSelectionSafe === 'function') globalThis.initSelectionSafe();
+  }
+
+  function setRoyalEggClass(classId) {
+    if (!classId) return;
+    ROYAL_EGG_CLASS = String(classId).toLowerCase();
+    renderMotherGooseGrid();
+  }
+
+  function resolvePityChoiceAction(birdKey) {
+    if (typeof globalThis.resolvePityChoice !== 'function') return;
+    var result = globalThis.resolvePityChoice(birdKey);
+    var msg = document.getElementById('fortune-shop-msg');
+    if (msg) {
+      msg.textContent = result && result.ok ? 'Pity choice: ' + birdKey + ' granted!' : 'Could not resolve pity choice.';
+      msg.style.color = result && result.ok ? 'var(--gold-light)' : 'var(--text-dim)';
+    }
+    renderFortuneShop();
+  }
+
   function renderFortuneShop() {
     syncFortuneBalances();
     renderFortuneHiringGrid();
+    renderMotherGooseGrid();
     renderFortuneArtifactsGrid();
     renderFortuneTradeGrid();
     setFortuneSubView(FORTUNE_TAB);
@@ -320,6 +471,10 @@
   globalThis.purchaseFortuneBird = purchaseFortuneBird;
   globalThis.purchaseFortuneArtifact = purchaseFortuneArtifact;
   globalThis.purchaseFortuneTrade = purchaseFortuneTrade;
+  globalThis.purchaseMotherGooseEgg = purchaseMotherGooseEgg;
+  globalThis.hatchRoyalEgg = hatchRoyalEgg;
+  globalThis.setRoyalEggClass = setRoyalEggClass;
+  globalThis.resolvePityChoiceAction = resolvePityChoiceAction;
   globalThis.getCompletedStagesForFlight = getCompletedStagesForFlight;
   globalThis.awardFlightSavedEggs = awardFlightSavedEggs;
 })();

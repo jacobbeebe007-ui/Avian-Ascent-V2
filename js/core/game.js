@@ -374,8 +374,11 @@ function initStatLedgerForNewRun(player){
   L.fromLevel = {};
   L.fromUpgrades = {};
   L.fromEquipment = {};
+  L.fromCardTier = {};
   L.mechanicalLines = [];
 }
+globalThis.ensureStatLedger=ensureStatLedger;
+globalThis.cloneStatLedgerSlice=cloneStatLedgerSlice;
 function syncBirdBaselineFromCatalog(player){
   if(!player?.stats || !player.birdKey) return;
   const bd=BIRDS[player.birdKey];
@@ -2994,6 +2997,14 @@ function syncPlayerAbilitiesFromSkillSlots(player){
   }
   player.abilities = out;
 }
+globalThis.getSkillSlots=getSkillSlots;
+globalThis.usesFamilySkillEvolution=usesFamilySkillEvolution;
+globalThis.ensureFamilyEvolutionState=ensureFamilyEvolutionState;
+globalThis.getSkillEvolutionPathOptions=getSkillEvolutionPathOptions;
+globalThis.applySkillPathSelection=applySkillPathSelection;
+globalThis.autoUpgradeSkillSlotTier=autoUpgradeSkillSlotTier;
+globalThis.slotCanTierUp=slotCanTierUp;
+globalThis.syncPlayerAbilitiesFromSkillSlots=syncPlayerAbilitiesFromSkillSlots;
 
 // ============================================================
 //  SAVE / LOAD SYSTEM (localStorage)
@@ -5083,10 +5094,18 @@ function buildBirdCard(key, bird, locked) {
       <div class="bird-nm" style="color:#555;font-size:.8rem;">${bird.name}</div>
       <div class="lock-overlay"><span class="lock-icon" style="font-size:1rem;">🔒</span><div class="lock-label" style="font-size:.6rem;color:#555;line-height:1.3;">${unlockLabel}</div></div>`;
   } else {
+    const cardTier=typeof getBirdCardTier==='function'?getBirdCardTier(key):'grey';
+    const tierPack=Avian?.data?.birdCardTiers;
+    const tierLabel=tierPack?.TIER_LABELS?.[cardTier]||cardTier;
+    const tierCss=tierPack?.TIER_CSS?.[cardTier]||'tier-grey';
+    const feathers=typeof getSpeciesFeathers==='function'?getSpeciesFeathers(key):0;
+    const featherChip=feathers>0?`<span class="bird-feather-chip" title="Species Feathers">🪶 ${feathers}</span>`:'';
     card.innerHTML = `
       <div class="bird-card-head">
         <span class="class-badge class-${cls}">${idToClassLabel(cls).toUpperCase()}</span>
         <span class="bird-size-chip">${SIZE_LABELS[bird.size||'medium']||bird.size}</span>
+        <span class="bird-card-tier-badge ${tierCss}">${tierLabel}</span>
+        ${featherChip}
       </div>
       <div style="display:flex;justify-content:center;margin:4px auto 8px;">${renderBirdIconHTML(key,sizeClass,false)}</div>
       <div class="bird-nm">${bird.name}</div>
@@ -5107,6 +5126,16 @@ function selectBird(key, el) {
     try{ el.scrollIntoView({block:'nearest', behavior:'smooth', inline:'nearest'}); }catch(_){ try{ el.scrollIntoView(false); }catch(__){} }
   }
 }
+
+function mutateBirdCardSelect(birdKey){
+  if(!birdKey||typeof mutateBirdCard!=='function') return;
+  const result=mutateBirdCard(birdKey);
+  if(result?.ok){
+    updateAscentPanel(birdKey);
+    if(typeof buildBirdGrid==='function') try{ buildBirdGrid(); }catch(_){}
+  }
+}
+globalThis.mutateBirdCardSelect=mutateBirdCardSelect;
 
 
 /* ===== Sprite/Portrait helper: always prefer sprite when available ===== */
@@ -5225,6 +5254,7 @@ function materializeRosterPreviewKit(birdKey){
     G.player=stub;
     stub.energyMax=computePlayerMaxEnergy();
     ensureFamilyEvolutionState(stub);
+    if(typeof applyBirdCardProgression==='function') applyBirdCardProgression(stub);
     out.abilities=Array.isArray(stub.abilities)?stub.abilities.slice():[];
     out.energyMax=Math.max(0, Number(stub.energyMax)||computePlayerMaxEnergy());
     out.stats=stub.stats?{...stub.stats}:{};
@@ -5319,6 +5349,29 @@ function updateAscentPanel(key) {
     const passiveInfo=getBirdPassiveInfo(key);
     const passiveName=escapeHtmlRoster(passiveInfo?.name||bird.passive?.name||'—');
     const passiveDesc=escapeHtmlRoster(passiveInfo?.desc||passiveInfo?.effect||bird.passive?.desc||'No passive listed.');
+    const cardTier=typeof getBirdCardTier==='function'?getBirdCardTier(key):'grey';
+    const tierPack=Avian?.data?.birdCardTiers;
+    const tierLabel=escapeHtmlRoster(tierPack?.TIER_LABELS?.[cardTier]||cardTier);
+    const tierCss=tierPack?.TIER_CSS?.[cardTier]||'tier-grey';
+    const nextTier=typeof nextBirdCardTier==='function'?nextBirdCardTier(cardTier):null;
+    const nextTierLabel=nextTier?(tierPack?.TIER_LABELS?.[nextTier]||nextTier):null;
+    const speciesFeathers=typeof getSpeciesFeathers==='function'?getSpeciesFeathers(key):0;
+    const mutationCost=typeof getBirdCardMutationCost==='function'?getBirdCardMutationCost(cardTier):0;
+    const ownsCard=typeof ownsBirdCard==='function'?ownsBirdCard(key):true;
+    const canMutate=!!(nextTier&&speciesFeathers>=mutationCost&&ownsCard);
+    const nextPassivePreview=nextTier&&typeof formatPassiveEffectForTier==='function'
+      ? escapeHtmlRoster(formatPassiveEffectForTier(key, nextTier))
+      : '';
+    const tierUnlocks=typeof getTierAbilityUnlockSummary==='function'?getTierAbilityUnlockSummary(key, cardTier):[];
+    const tierUnlockHtml=tierUnlocks.length
+      ? `<ul class="ascent-tier-unlocks">${tierUnlocks.map(t=>`<li>${escapeHtmlRoster(t)}</li>`).join('')}</ul>`
+      : '';
+    const cardHint=!ownsCard
+      ? '<p class="ascent-card-hint">No card — hatch at Mother Goose in Feathers &amp; Fortune.</p>'
+      : '';
+    const mutateBtn=canMutate
+      ? `<button type="button" class="ascent-mutate-btn" data-action="mutateBirdCardSelect:${key}">Mutate to ${escapeHtmlRoster(nextTierLabel)} (${speciesFeathers}/${mutationCost} 🪶)</button>`
+      : (nextTier&&ownsCard?`<p class="ascent-mutate-hint">Species Feathers: ${speciesFeathers} / ${mutationCost} for ${escapeHtmlRoster(nextTierLabel||'next tier')}</p>`:'');
     const classPerkInfo=getBirdAuthoredClassPerk(key);
     const classPerkName=escapeHtmlRoster(classPerkInfo?.name||'—');
     const classPerkDesc=escapeHtmlRoster(classPerkInfo?.effect||'No class perk listed.');
@@ -5331,7 +5384,14 @@ function updateAscentPanel(key) {
             <span class="ascent-panel-name">${escapeHtmlRoster(bird.name)}</span>
             <span class="class-badge class-${cls}">${escapeHtmlRoster(classLabel.toUpperCase())}</span>
             <span class="bird-size-chip">${escapeHtmlRoster(sizeLabel)}</span>
+            <span class="bird-card-tier-badge ${tierCss}">${tierLabel}</span>
             <span class="ascent-strip-tagline">${escapeHtmlRoster(bird.tagline||'')}</span>
+          </div>
+          ${cardHint}
+          <div class="ascent-card-progress">
+            <span class="ascent-card-tier">Card tier: <strong class="${tierCss}">${tierLabel}</strong></span>
+            ${ownsCard?`<span class="ascent-card-feathers">Species Feathers: <strong>${speciesFeathers}</strong>${nextTier?` / ${mutationCost}`:''}</span>`:''}
+            ${mutateBtn}
           </div>
           <div class="ascent-strip-hscroll" tabindex="0" role="region" aria-label="Stats, passive, and skills">
             <div class="ascent-hblock ascent-hblock-stats">
@@ -5341,6 +5401,8 @@ function updateAscentPanel(key) {
             <div class="ascent-hblock ascent-hblock-passive">
               <div class="ascent-hblock-label">Passive</div>
               <div class="ascent-panel-passive ascent-panel-passive--inline"><strong>${passiveName}:</strong> ${passiveDesc}</div>
+              ${nextPassivePreview?`<div class="ascent-passive-next"><span class="ascent-hblock-label">Next tier</span> ${nextPassivePreview}</div>`:''}
+              ${tierUnlockHtml}
             </div>
             <div class="ascent-hblock ascent-hblock-class-perk">
               <div class="ascent-hblock-label">Class perk</div>
@@ -5521,6 +5583,7 @@ function startGame() {
   normalizeAbilityCooldownsForPlayer(G.player);
   enforceAbilityCosts(G.player);
   initStatLedgerForNewRun(G.player);
+  if(typeof applyBirdCardProgression==='function') applyBirdCardProgression(G.player);
   G.stage = 1;
   G.endlessBattle = 0;
   G.autoQueuedAbilityId=null;

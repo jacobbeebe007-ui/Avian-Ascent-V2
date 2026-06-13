@@ -53,6 +53,38 @@
     return null;
   }
 
+  function passiveTierScaleRatio(birdKey, tier) {
+    var scaling = Avian.data && Avian.data.birdCardPassiveScaling;
+    if (!scaling || !scaling[birdKey] || scaling[birdKey].scaling !== 'percentBonus') return 1;
+    var grey = Number(scaling[birdKey].grey) || 0;
+    if (grey <= 0) return 1;
+    var t = String(tier || 'grey').toLowerCase();
+    var frac = scaling[birdKey][t];
+    if (t === 'orange' && scaling[birdKey].orange && typeof scaling[birdKey].orange === 'object') {
+      frac = scaling[birdKey].orange.bonus;
+    }
+    frac = Number(frac);
+    if (!Number.isFinite(frac)) return 1;
+    return frac / grey;
+  }
+
+  function scalePassiveEffects(effects, birdKey, tier) {
+    var ratio = passiveTierScaleRatio(birdKey, tier);
+    if (!ratio || ratio === 1) return effects;
+    var scaledKinds = {
+      gainDodge: 1, gainSpeed: 1, gainCritChance: 1, gainCritDamage: 1, gainAtk: 1, gainMatk: 1,
+      flatDamageBonus: 1, bonusVsAilment: 1, ailmentChanceBonus: 1, armorPenetration: 1,
+    };
+    return effects.map(function (eff) {
+      if (!eff || !scaledKinds[eff.kind] || !Number.isFinite(eff.value)) return eff;
+      return { kind: eff.kind, value: eff.value * ratio, dmgType: eff.dmgType, ailment: eff.ailment, kindFilter: eff.kindFilter };
+    });
+  }
+
+  function currentPassiveTier() {
+    return (globalThis.G && G.player && G.player._birdCardTier) || 'grey';
+  }
+
   function endlessForBird(birdKey) {
     var p = pack();
     var out = [];
@@ -333,7 +365,7 @@
     var row = rowFor(ab.id);
     if (!row) return dmg;
     if (!triggerMatchesForDamage(trigger, row, ctx || {})) return dmg;
-    var effects = classifyEffect(perk.effect);
+    var effects = scalePassiveEffects(classifyEffect(perk.effect), G.player.birdKey, currentPassiveTier());
     var es = G.enemyStatus || {};
     for (var i = 0; i < effects.length; i++) {
       var eff = effects[i];
@@ -409,7 +441,7 @@
     var trigger = classifyTrigger(perk.trigger);
     if (!matchTrigger(trigger, ab, context || {})) return;
     if (trigger.cap && !gate(bird, perk.id, trigger.cap)) return;
-    var effects = classifyEffect(perk.effect);
+    var effects = scalePassiveEffects(classifyEffect(perk.effect), bird, currentPassiveTier());
     for (var i = 0; i < effects.length; i++) {
       var eff = effects[i];
       if (eff.kind === 'bonusVsAilment' || eff.kind === 'flatDamageBonus') continue;
@@ -442,7 +474,14 @@
   Avian.passives.describeFor = function describeFor(birdKey) {
     var perk = passiveFor(birdKey);
     if (!perk) return null;
-    return { id: perk.id, name: perk.name, desc: perk.effect, trigger: perk.trigger, balance: perk.balanceNote };
+    var tier =
+      (globalThis.G && G.player && G.player.birdKey === birdKey && G.player._birdCardTier) ||
+      (typeof globalThis.getBirdCardTier === 'function' ? globalThis.getBirdCardTier(birdKey) : 'grey');
+    var effectText = perk.effect;
+    if (typeof globalThis.formatPassiveEffectForTier === 'function') {
+      effectText = globalThis.formatPassiveEffectForTier(birdKey, tier) || perk.effect;
+    }
+    return { id: perk.id, name: perk.name, desc: effectText, effect: effectText, trigger: perk.trigger, balance: perk.balanceNote };
   };
 
   Avian.systems.passives = Avian.passives;

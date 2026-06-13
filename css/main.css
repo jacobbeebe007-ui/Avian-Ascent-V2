@@ -629,7 +629,7 @@ body.build-nest-unlocked .splash-hotspot--forge.is-buildnest-hidden{
 }
 .fortune-subnav{
   display:grid;
-  grid-template-columns:1fr 1fr 1fr;
+  grid-template-columns:repeat(4, 1fr);
   gap:8px;
   margin:0 0 12px;
 }
@@ -1079,7 +1079,108 @@ body.build-nest-unlocked .splash-hotspot--forge.is-buildnest-hidden{
 .sfsel__roster .bird-card-head{
   margin-bottom:4px;
   gap:4px;
+  flex-wrap:wrap;
 }
+.bird-card-tier-badge{
+  font-size:.5rem;
+  font-weight:700;
+  letter-spacing:.04em;
+  text-transform:uppercase;
+  padding:1px 5px;
+  border-radius:4px;
+  border:1px solid rgba(255,255,255,.12);
+}
+.bird-card-tier-badge.tier-grey{background:rgba(106,120,144,.35);color:#d8dde8;}
+.bird-card-tier-badge.tier-green{background:rgba(76,138,106,.35);color:#b8e8c8;}
+.bird-card-tier-badge.tier-blue{background:rgba(76,106,201,.35);color:#c8d4ff;}
+.bird-card-tier-badge.tier-purple{background:rgba(120,76,180,.35);color:#e0c8ff;}
+.bird-card-tier-badge.tier-gold{background:rgba(180,140,40,.35);color:#ffe8a0;}
+.bird-card-tier-badge.tier-orange{background:rgba(200,100,40,.35);color:#ffd0a8;}
+.bird-feather-chip{
+  font-size:.5rem;
+  color:rgba(210,204,192,.9);
+  padding:1px 4px;
+  border-radius:4px;
+  background:rgba(20,22,30,.5);
+}
+.ascent-card-progress{
+  display:flex;
+  flex-wrap:wrap;
+  align-items:center;
+  gap:8px 12px;
+  margin:6px 0 8px;
+  font-size:.72rem;
+  color:rgba(210,204,192,.88);
+}
+.ascent-mutate-btn{
+  font:inherit;
+  font-size:.68rem;
+  cursor:pointer;
+  padding:6px 10px;
+  border-radius:8px;
+  border:1px solid rgba(120,180,120,.45);
+  background:rgba(30,50,36,.55);
+  color:#b8e8c8;
+}
+.ascent-mutate-btn:hover{border-color:rgba(160,220,160,.65);}
+.ascent-passive-next{
+  margin-top:6px;
+  font-size:.72rem;
+  color:rgba(200,198,190,.75);
+}
+.ascent-tier-unlocks{
+  margin:6px 0 0;
+  padding-left:1.1rem;
+  font-size:.68rem;
+  color:rgba(200,198,190,.7);
+}
+.ascent-card-hint,.ascent-mutate-hint{
+  font-size:.72rem;
+  color:rgba(200,198,190,.65);
+  margin:4px 0 6px;
+}
+.mother-goose-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fill, minmax(140px, 1fr));
+  gap:10px;
+  margin-bottom:12px;
+}
+.mother-goose-pity{
+  font-size:.72rem;
+  color:rgba(210,204,192,.8);
+  margin-bottom:10px;
+}
+.mother-goose-class-pick{
+  display:flex;
+  flex-wrap:wrap;
+  gap:4px;
+  margin:8px 0;
+}
+.mother-goose-class-btn{
+  font:inherit;
+  font-size:.58rem;
+  text-transform:capitalize;
+  padding:4px 6px;
+  border-radius:6px;
+  border:1px solid rgba(120,100,70,.4);
+  background:rgba(14,16,22,.55);
+  color:rgba(210,204,192,.85);
+  cursor:pointer;
+}
+.mother-goose-class-btn.is-active{
+  border-color:rgba(232,201,106,.65);
+  color:var(--gold-light);
+}
+.mother-goose-result{
+  font-size:.78rem;
+  padding:10px 12px;
+  border-radius:10px;
+  border:1px solid rgba(120,100,70,.35);
+  background:rgba(14,16,22,.45);
+}
+.mother-goose-result--success{border-color:rgba(120,180,120,.45);color:#c8e8d0;}
+.mother-goose-result--error{border-color:rgba(180,80,80,.45);color:#e8b8b8;}
+.mother-goose-egg-card.is-disabled{opacity:.55;}
 /* Filter dropdown in the topbar */
 .sfsel__filter-wrap{
   display:flex;

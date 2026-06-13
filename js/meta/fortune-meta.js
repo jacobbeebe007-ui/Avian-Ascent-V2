@@ -13,6 +13,7 @@
 
   function emptyMeta() {
     return {
+      metaSchemaVersion: 2,
       savedEggs: 0,
       goldenGooseEggs: 0,
       ownedArtifacts: {},
@@ -20,6 +21,16 @@
       equippedArtifactId: null,
       tradePurchases: Object.assign({}, DEFAULT_TRADE_PURCHASES),
       combatItemCapBonus: { freshWater: 0, sugarWater: 0, honeyWater: 0 },
+      birdCards: { owned: {}, mutationHistory: {} },
+      speciesFeathers: {},
+      motherGoose: {
+        totalHatches: 0,
+        eggsSinceChoice: 0,
+        pityChoicePending: false,
+        pityChoiceOptions: [],
+        lastHatch: null,
+      },
+      eggPurchaseHistory: [],
     };
   }
 
@@ -57,10 +68,50 @@
     return id;
   }
 
+  function normalizeBirdCardsBlock(m) {
+    var owned = {};
+    var hist = {};
+    if (m.birdCards && typeof m.birdCards === 'object') {
+      if (m.birdCards.owned && typeof m.birdCards.owned === 'object') owned = m.birdCards.owned;
+      if (m.birdCards.mutationHistory && typeof m.birdCards.mutationHistory === 'object') hist = m.birdCards.mutationHistory;
+    }
+    return { owned: owned, mutationHistory: hist };
+  }
+
+  function normalizeSpeciesFeathers(raw) {
+    var out = {};
+    if (!raw || typeof raw !== 'object') return out;
+    Object.keys(raw).forEach(function (key) {
+      var n = Math.max(0, Math.floor(Number(raw[key]) || 0));
+      if (n > 0) out[key] = n;
+    });
+    return out;
+  }
+
+  function normalizeMotherGoose(raw) {
+    var base = {
+      totalHatches: 0,
+      eggsSinceChoice: 0,
+      pityChoicePending: false,
+      pityChoiceOptions: [],
+      lastHatch: null,
+    };
+    if (!raw || typeof raw !== 'object') return base;
+    base.totalHatches = Math.max(0, Math.floor(Number(raw.totalHatches) || 0));
+    base.eggsSinceChoice = Math.max(0, Math.floor(Number(raw.eggsSinceChoice) || 0));
+    base.pityChoicePending = !!raw.pityChoicePending;
+    base.pityChoiceOptions = Array.isArray(raw.pityChoiceOptions)
+      ? raw.pityChoiceOptions.filter(Boolean).map(String)
+      : [];
+    base.lastHatch = raw.lastHatch && typeof raw.lastHatch === 'object' ? raw.lastHatch : null;
+    return base;
+  }
+
   function normalizeMeta(raw) {
     var m = raw && typeof raw === 'object' ? raw : emptyMeta();
     var ownedArtifacts = m.ownedArtifacts && typeof m.ownedArtifacts === 'object' ? m.ownedArtifacts : {};
-    return {
+    var out = {
+      metaSchemaVersion: Math.max(1, Math.floor(Number(m.metaSchemaVersion) || 1)),
       savedEggs: Math.max(0, Math.floor(Number(m.savedEggs) || 0)),
       goldenGooseEggs: Math.max(0, Math.floor(Number(m.goldenGooseEggs) || 0)),
       ownedArtifacts: ownedArtifacts,
@@ -68,7 +119,17 @@
       equippedArtifactId: normalizeEquippedArtifactId(m.equippedArtifactId, ownedArtifacts),
       tradePurchases: normalizeTradePurchases(m.tradePurchases),
       combatItemCapBonus: normalizeCombatItemCapBonus(m.combatItemCapBonus),
+      birdCards: normalizeBirdCardsBlock(m),
+      speciesFeathers: normalizeSpeciesFeathers(m.speciesFeathers),
+      motherGoose: normalizeMotherGoose(m.motherGoose),
+      eggPurchaseHistory: Array.isArray(m.eggPurchaseHistory) ? m.eggPurchaseHistory.slice(-50) : [],
     };
+    if (typeof globalThis.migrateBirdCardsInMeta === 'function') {
+      globalThis.migrateBirdCardsInMeta(out);
+    } else {
+      out.metaSchemaVersion = 2;
+    }
+    return out;
   }
 
   function getFortuneMeta() {
