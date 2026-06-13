@@ -2,6 +2,10 @@
 (function () {
   'use strict';
 
+  var INVENTORY_TAB = 'artifacts';
+  var FEATHER_FILTER = 'all';
+  var FEATHER_TIERS = ['all', 'grey', 'green', 'blue', 'purple', 'gold', 'orange'];
+
   function esc(s) {
     return String(s || '')
       .replace(/&/g, '&amp;')
@@ -15,6 +19,33 @@
     return String(Math.floor(Number(n) || 0));
   }
 
+  function tierPack() {
+    return globalThis.Avian && globalThis.Avian.data && globalThis.Avian.data.birdCardTiers;
+  }
+
+  function tierLabel(tier) {
+    var pack = tierPack();
+    return (pack && pack.TIER_LABELS && pack.TIER_LABELS[tier]) || tier;
+  }
+
+  function tierCss(tier) {
+    var pack = tierPack();
+    return (pack && pack.TIER_CSS && pack.TIER_CSS[tier]) || 'tier-grey';
+  }
+
+  function birdPortraitHtml(birdKey) {
+    var birds = globalThis.BIRDS || {};
+    var bird = birds[birdKey];
+    if (typeof globalThis.renderBirdIconHTML === 'function' && bird) {
+      var sizeClass =
+        typeof globalThis.getUISizeClass === 'function'
+          ? globalThis.getUISizeClass(bird, 'select')
+          : 'medium';
+      return globalThis.renderBirdIconHTML(birdKey, sizeClass, false);
+    }
+    return bird && bird.emoji ? esc(bird.emoji) : '🐦';
+  }
+
   function syncInventoryHotspotBadge() {
     var meta = typeof globalThis.getFortuneMeta === 'function' ? globalThis.getFortuneMeta() : null;
     var ownedArt = meta && meta.ownedArtifacts ? meta.ownedArtifacts : {};
@@ -26,6 +57,59 @@
       badge.textContent = count > 0 ? fmt(count) : '';
       badge.hidden = !(count > 0);
     }
+  }
+
+  function setInventorySubView(view) {
+    INVENTORY_TAB =
+      view === 'feathers' ? 'feathers' : view === 'misc' ? 'misc' : 'artifacts';
+    var tabs = ['artifacts', 'feathers', 'misc'];
+    tabs.forEach(function (id) {
+      var btn = document.getElementById('inventory-nav-' + id);
+      var panel = document.getElementById('inventory-view-' + id);
+      var active = id === INVENTORY_TAB;
+      if (btn) {
+        btn.classList.toggle('is-active', active);
+        btn.setAttribute('aria-selected', active ? 'true' : 'false');
+      }
+      if (panel) {
+        panel.classList.toggle('is-active', active);
+        panel.hidden = !active;
+      }
+    });
+    if (INVENTORY_TAB === 'feathers') renderInventoryFeathers();
+  }
+
+  function setInventoryFeatherFilter(tier) {
+    FEATHER_FILTER = tier || 'all';
+    var wrap = document.getElementById('inventory-feather-filters');
+    if (wrap) {
+      wrap.querySelectorAll('.inventory-feather-filter-btn').forEach(function (btn) {
+        var t = btn.getAttribute('data-feather-tier') || 'all';
+        btn.classList.toggle('is-active', t === FEATHER_FILTER);
+      });
+    }
+    renderInventoryFeathers();
+  }
+
+  function renderInventoryFeatherFilters() {
+    var wrap = document.getElementById('inventory-feather-filters');
+    if (!wrap || wrap.dataset.wired === '1') return;
+    wrap.dataset.wired = '1';
+    wrap.innerHTML = FEATHER_TIERS.map(function (tier) {
+      var active = tier === FEATHER_FILTER ? ' is-active' : '';
+      var label = tier === 'all' ? 'All tiers' : tierLabel(tier);
+      return (
+        '<button type="button" class="inventory-feather-filter-btn' +
+        active +
+        '" data-feather-tier="' +
+        esc(tier) +
+        '" data-action="setInventoryFeatherFilter:' +
+        esc(tier) +
+        '">' +
+        esc(label) +
+        '</button>'
+      );
+    }).join('');
   }
 
   function renderInventoryEquippedNote(artifacts, equippedId) {
@@ -111,6 +195,79 @@
       .join('');
   }
 
+  function renderInventoryFeathers() {
+    renderInventoryFeatherFilters();
+    var grid = document.getElementById('inventory-feathers-grid');
+    var empty = document.getElementById('inventory-feathers-empty');
+    if (!grid || !empty) return;
+
+    var meta = typeof globalThis.getFortuneMeta === 'function' ? globalThis.getFortuneMeta() : null;
+    var store = (meta && meta.speciesFeathers) || {};
+    var birds = globalThis.BIRDS || {};
+    var entries = Object.keys(store)
+      .filter(function (key) {
+        return Math.floor(Number(store[key]) || 0) > 0;
+      })
+      .map(function (key) {
+        var count = Math.floor(Number(store[key]) || 0);
+        var cardTier =
+          typeof globalThis.getBirdCardTier === 'function' ? globalThis.getBirdCardTier(key) : 'grey';
+        var bird = birds[key];
+        return {
+          birdKey: key,
+          birdName: bird && bird.name ? bird.name : key,
+          count: count,
+          cardTier: cardTier,
+        };
+      })
+      .filter(function (row) {
+        return FEATHER_FILTER === 'all' || row.cardTier === FEATHER_FILTER;
+      })
+      .sort(function (a, b) {
+        var tierOrder = FEATHER_TIERS.indexOf(a.cardTier) - FEATHER_TIERS.indexOf(b.cardTier);
+        if (tierOrder !== 0) return tierOrder;
+        return a.birdName.localeCompare(b.birdName);
+      });
+
+    if (!entries.length) {
+      grid.innerHTML = '';
+      empty.hidden = false;
+      empty.textContent =
+        FEATHER_FILTER === 'all'
+          ? 'No Species Feathers yet. Hatch duplicates at Mother Goose\'s nest.'
+          : 'No Species Feathers for ' + tierLabel(FEATHER_FILTER) + ' tier birds.';
+      return;
+    }
+    empty.hidden = true;
+    grid.innerHTML = entries
+      .map(function (row) {
+        var css = tierCss(row.cardTier);
+        return (
+          '<div class="inventory-feather-card ' +
+          css +
+          '" title="' +
+          esc(row.birdName) +
+          ' — ' +
+          fmt(row.count) +
+          ' Species Feathers">' +
+          '<div class="inventory-feather-portrait">' +
+          birdPortraitHtml(row.birdKey) +
+          '</div>' +
+          '<div class="inventory-feather-icon" aria-hidden="true">🪶</div>' +
+          '<div class="inventory-feather-name">' +
+          esc(row.birdName) +
+          '</div>' +
+          '<div class="inventory-feather-tier">' +
+          esc(tierLabel(row.cardTier)) +
+          ' card</div>' +
+          '<div class="inventory-feather-count">×' +
+          fmt(row.count) +
+          '</div></div>'
+        );
+      })
+      .join('');
+  }
+
   function renderInventoryMisc(misc) {
     var grid = document.getElementById('inventory-misc-grid');
     var empty = document.getElementById('inventory-misc-empty');
@@ -148,7 +305,9 @@
         : { currency: [], artifacts: [], misc: [] };
     renderInventoryCurrency(rows);
     renderInventoryArtifacts(rows.artifacts || []);
+    renderInventoryFeathers();
     renderInventoryMisc(rows.misc || []);
+    setInventorySubView(INVENTORY_TAB);
     syncInventoryHotspotBadge();
     if (typeof globalThis.syncFortuneBalances === 'function') globalThis.syncFortuneBalances();
   }
@@ -169,4 +328,6 @@
   globalThis.syncInventoryHotspotBadge = syncInventoryHotspotBadge;
   globalThis.equipFortuneArtifact = equipFortuneArtifact;
   globalThis.unequipFortuneArtifact = unequipFortuneArtifact;
+  globalThis.setInventorySubView = setInventorySubView;
+  globalThis.setInventoryFeatherFilter = setInventoryFeatherFilter;
 })();

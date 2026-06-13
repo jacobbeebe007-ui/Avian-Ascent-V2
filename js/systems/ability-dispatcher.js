@@ -221,7 +221,16 @@
       : (typeof applyGuardedBuff === 'function' ? applyGuardedBuff : null);
     if (!apply) return;
     var pct = resolve ? resolve(row, riderValue, ab) : (Number(riderValue) || 20);
-    var turns = Number(riderValue) > 0 ? Math.max(1, Math.floor(Number(riderValue))) : 1;
+    var turns = 1;
+    if (row && row.guardedTurns != null) turns = Math.max(1, Math.floor(Number(row.guardedTurns) || 1));
+    else if (row && row.riders) {
+      for (var gi = 0; gi < row.riders.length; gi++) {
+        var gr = row.riders[gi];
+        if (!gr || (gr.kind !== 'gainGuarded' && gr.kind !== 'gainBrace')) continue;
+        if (gr.turns != null) { turns = Math.max(1, Math.floor(Number(gr.turns) || 1)); break; }
+        if (gr.duration === 'untilEndOfEnemyTurn' || gr.duration === 'enemyTurn') { turns = 1; break; }
+      }
+    }
     apply('player', { physReducPct: pct, turns: turns, sourceAbilityId: row && row.id ? row.id : '' });
     spawnTrendFloat('player', 'buff');
   }

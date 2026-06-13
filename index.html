@@ -157,14 +157,28 @@
 <span class="fortune-balance-chip"><span class="fortune-balance-icon">🥚</span> Saved Eggs: <strong id="inventory-balance-saved">0</strong></span>
 <span class="fortune-balance-chip fortune-balance-chip--goose"><span class="fortune-balance-icon">🪿</span> Golden Goose Eggs: <strong id="inventory-balance-goose">0</strong></span>
 </div>
-<section class="inventory-section" aria-labelledby="inventory-artifacts-heading">
+<div class="inventory-subnav" role="tablist" aria-label="Inventory sections">
+<button type="button" class="inventory-subnav-btn is-active" id="inventory-nav-artifacts" role="tab" aria-selected="true" aria-controls="inventory-view-artifacts" data-action="setInventorySubView:artifacts">Artifacts</button>
+<button type="button" class="inventory-subnav-btn" id="inventory-nav-feathers" role="tab" aria-selected="false" aria-controls="inventory-view-feathers" data-action="setInventorySubView:feathers">Species Feathers</button>
+<button type="button" class="inventory-subnav-btn" id="inventory-nav-misc" role="tab" aria-selected="false" aria-controls="inventory-view-misc" data-action="setInventorySubView:misc">Other treasures</button>
+</div>
+<section class="inventory-subview is-active" id="inventory-view-artifacts" role="tabpanel" aria-labelledby="inventory-nav-artifacts">
 <h4 class="inventory-section-title" id="inventory-artifacts-heading">Artifacts</h4>
 <p class="inventory-section-lead">Equip <strong>one</strong> relic for your next Flight. You keep every artifact you buy — switch loadout here before ascending.</p>
 <p class="inventory-equipped-note" id="inventory-equipped-note" hidden></p>
 <p class="inventory-empty" id="inventory-artifacts-empty">No artifacts yet. Visit Cuckoo's Emporium to buy relics.</p>
 <div class="inventory-items-grid" id="inventory-artifacts-grid"></div>
 </section>
-<section class="inventory-section" aria-labelledby="inventory-misc-heading">
+<section class="inventory-subview" id="inventory-view-feathers" role="tabpanel" aria-labelledby="inventory-nav-feathers" hidden>
+<h4 class="inventory-section-title" id="inventory-feathers-heading">Species Feathers</h4>
+<p class="inventory-section-lead">Duplicates from Mother Goose eggs. Collect feathers to mutate bird cards to higher tiers.</p>
+<div class="inventory-feather-filters" id="inventory-feather-filters" role="group" aria-label="Filter by card tier"></div>
+<p class="inventory-empty" id="inventory-feathers-empty">No Species Feathers yet. Hatch duplicates at Mother Goose's nest.</p>
+<div class="inventory-feathers-scroll">
+<div class="inventory-feathers-grid" id="inventory-feathers-grid"></div>
+</div>
+</section>
+<section class="inventory-subview" id="inventory-view-misc" role="tabpanel" aria-labelledby="inventory-nav-misc" hidden>
 <h4 class="inventory-section-title" id="inventory-misc-heading">Other treasures</h4>
 <p class="inventory-section-lead">Future global items will appear here.</p>
 <p class="inventory-empty" id="inventory-misc-empty">Nothing here yet — future global items will appear in this vault.</p>
@@ -867,6 +881,16 @@
 <button type="button" class="abandon-cancel-btn" data-action="closeCombatCustomLayoutModal">Cancel</button>
 <button type="button" class="abandon-confirm-btn" data-action="saveCombatCustomLayoutFromModal">Save</button>
 </div>
+</div>
+</div>
+<!-- MOTHER GOOSE HATCH MODAL -->
+<div class="mother-goose-hatch-modal" id="mother-goose-hatch-modal" role="dialog" aria-modal="true" aria-labelledby="mother-goose-hatch-title" aria-hidden="true" data-action="closeMotherGooseHatchModal" data-backdrop="1">
+<div class="mother-goose-hatch-panel">
+<div class="mother-goose-hatch-egg-wrap" id="mother-goose-hatch-egg-wrap">
+<div class="mother-goose-hatch-egg" id="mother-goose-hatch-egg" aria-hidden="false">🥚</div>
+</div>
+<div class="mother-goose-hatch-reveal" id="mother-goose-hatch-reveal" hidden></div>
+<button type="button" class="mother-goose-hatch-close" id="mother-goose-hatch-close" data-action="closeMotherGooseHatchModal" hidden>Continue</button>
 </div>
 </div>
 <!-- ABILITY MODIFICATION MODAL -->

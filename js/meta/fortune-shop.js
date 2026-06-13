@@ -20,6 +20,157 @@
     return String(Math.floor(Number(n) || 0));
   }
 
+  function tierPack() {
+    return globalThis.Avian && globalThis.Avian.data && globalThis.Avian.data.birdCardTiers;
+  }
+
+  function tierLabel(tier) {
+    var pack = tierPack();
+    return (pack && pack.TIER_LABELS && pack.TIER_LABELS[tier]) || tier;
+  }
+
+  function tierCss(tier) {
+    var pack = tierPack();
+    return (pack && pack.TIER_CSS && pack.TIER_CSS[tier]) || 'tier-grey';
+  }
+
+  function speciesTierForBird(birdKey) {
+    var cat = globalThis.Avian && globalThis.Avian.data && globalThis.Avian.data.motherGooseCatalog;
+    if (cat && typeof cat.getBirdSpeciesRow === 'function') {
+      var row = cat.getBirdSpeciesRow(birdKey);
+      if (row && row.speciesTier) return row.speciesTier;
+    }
+    return 'grey';
+  }
+
+  function birdPortraitHtml(birdKey) {
+    var birds = globalThis.BIRDS || {};
+    var bird = birds[birdKey];
+    if (typeof globalThis.renderBirdIconHTML === 'function' && bird) {
+      var sizeClass =
+        typeof globalThis.getUISizeClass === 'function'
+          ? globalThis.getUISizeClass(bird, 'select')
+          : 'medium';
+      return globalThis.renderBirdIconHTML(birdKey, sizeClass, false);
+    }
+    return bird && bird.emoji ? esc(bird.emoji) : '🐦';
+  }
+
+  var _hatchRevealTimer = null;
+
+  function closeMotherGooseHatchModal() {
+    if (_hatchRevealTimer) {
+      clearTimeout(_hatchRevealTimer);
+      _hatchRevealTimer = null;
+    }
+    var modal = document.getElementById('mother-goose-hatch-modal');
+    var eggWrap = document.getElementById('mother-goose-hatch-egg-wrap');
+    var reveal = document.getElementById('mother-goose-hatch-reveal');
+    var closeBtn = document.getElementById('mother-goose-hatch-close');
+    var egg = document.getElementById('mother-goose-hatch-egg');
+    if (modal) {
+      modal.classList.remove('open');
+      modal.setAttribute('aria-hidden', 'true');
+    }
+    if (eggWrap) eggWrap.hidden = false;
+    if (reveal) {
+      reveal.hidden = true;
+      reveal.innerHTML = '';
+    }
+    if (closeBtn) closeBtn.hidden = true;
+    if (egg) egg.classList.remove('is-shaking');
+  }
+
+  function buildHatchRevealHtml(result) {
+    var birdKey = result.birdKey;
+    var birdName = result.birdName || birdKey;
+    var birds = globalThis.BIRDS || {};
+    var bird = birds[birdKey];
+    var cls =
+      bird && typeof globalThis.classToRoleId === 'function'
+        ? globalThis.classToRoleId(bird.class)
+        : 'knight';
+    var classLabel =
+      typeof globalThis.idToClassLabel === 'function' ? globalThis.idToClassLabel(cls) : cls;
+
+    if (result.isNew) {
+      var tier = result.tierAfter || 'grey';
+      var css = tierCss(tier);
+      return (
+        '<div class="mother-goose-hatch-card mother-goose-hatch-card--bird ' +
+        css +
+        '">' +
+        '<span class="class-badge class-' +
+        esc(cls) +
+        '">' +
+        esc(String(classLabel).toUpperCase()) +
+        '</span>' +
+        '<div class="mother-goose-hatch-portrait">' +
+        birdPortraitHtml(birdKey) +
+        '</div>' +
+        '<div class="mother-goose-hatch-card-name">' +
+        esc(birdName) +
+        '</div>' +
+        '<span class="bird-card-tier-badge ' +
+        css +
+        '">' +
+        esc(tierLabel(tier)) +
+        '</span></div>' +
+        '<p class="mother-goose-hatch-msg">Congratulations you have unlocked <strong>' +
+        esc(birdName) +
+        '</strong>! This Bird is now unlocked and is playable through the Character Select Screen.</p>'
+      );
+    }
+
+    var speciesTier = speciesTierForBird(birdKey);
+    var featherCss = tierCss(speciesTier);
+    return (
+      '<div class="mother-goose-hatch-card mother-goose-hatch-card--feather ' +
+      featherCss +
+      '">' +
+      '<div class="mother-goose-hatch-feather-glyph" aria-hidden="true">🪶</div>' +
+      '<div class="mother-goose-hatch-card-name">' +
+      esc(birdName) +
+      '</div>' +
+      '<span class="bird-card-tier-badge ' +
+      featherCss +
+      '">Species Feather</span>' +
+      '<div class="mother-goose-hatch-feather-total">×' +
+      fmt(result.speciesFeatherTotal || 0) +
+      '</div></div>' +
+      '<p class="mother-goose-hatch-msg">Species Feather — Collect more to mutate your bird.</p>'
+    );
+  }
+
+  function showMotherGooseHatchModal(result) {
+    var modal = document.getElementById('mother-goose-hatch-modal');
+    var eggWrap = document.getElementById('mother-goose-hatch-egg-wrap');
+    var egg = document.getElementById('mother-goose-hatch-egg');
+    var reveal = document.getElementById('mother-goose-hatch-reveal');
+    var closeBtn = document.getElementById('mother-goose-hatch-close');
+    if (!modal || !reveal) {
+      showMotherGooseResult(result);
+      return;
+    }
+
+    closeMotherGooseHatchModal();
+    reveal.innerHTML = buildHatchRevealHtml(result);
+    if (egg) egg.classList.add('is-shaking');
+    if (eggWrap) eggWrap.hidden = false;
+    reveal.hidden = true;
+    if (closeBtn) closeBtn.hidden = true;
+    modal.classList.add('open');
+    modal.setAttribute('aria-hidden', 'false');
+
+    _hatchRevealTimer = setTimeout(function () {
+      _hatchRevealTimer = null;
+      if (egg) egg.classList.remove('is-shaking');
+      if (eggWrap) eggWrap.hidden = true;
+      reveal.hidden = false;
+      if (closeBtn) closeBtn.hidden = false;
+    }, 1600);
+  }
+
   function setFortuneSubView(view) {
     FORTUNE_TAB =
       view === 'artifacts'
@@ -328,7 +479,8 @@
   function purchaseMotherGooseEgg(eggType) {
     if (typeof globalThis.hatchEgg !== 'function') return;
     var result = globalThis.hatchEgg(eggType, {});
-    showMotherGooseResult(result);
+    if (result && result.ok) showMotherGooseHatchModal(result);
+    else showMotherGooseResult(result);
     var msg = document.getElementById('fortune-shop-msg');
     if (msg && result && result.ok) {
       msg.textContent = result.message || 'Egg hatched!';
@@ -336,13 +488,15 @@
     }
     renderFortuneShop();
     if (typeof globalThis.initSelectionSafe === 'function') globalThis.initSelectionSafe();
+    if (typeof globalThis.renderFortuneInventory === 'function') globalThis.renderFortuneInventory();
   }
 
   function hatchRoyalEgg(classId) {
     if (typeof globalThis.hatchEgg !== 'function') return;
     var cls = classId || ROYAL_EGG_CLASS;
     var result = globalThis.hatchEgg('royal', { classFilter: cls });
-    showMotherGooseResult(result);
+    if (result && result.ok) showMotherGooseHatchModal(result);
+    else showMotherGooseResult(result);
     var msg = document.getElementById('fortune-shop-msg');
     if (msg && result && result.ok) {
       msg.textContent = result.message || 'Royal egg hatched!';
@@ -350,6 +504,7 @@
     }
     renderFortuneShop();
     if (typeof globalThis.initSelectionSafe === 'function') globalThis.initSelectionSafe();
+    if (typeof globalThis.renderFortuneInventory === 'function') globalThis.renderFortuneInventory();
   }
 
   function setRoyalEggClass(classId) {
@@ -475,6 +630,7 @@
   globalThis.hatchRoyalEgg = hatchRoyalEgg;
   globalThis.setRoyalEggClass = setRoyalEggClass;
   globalThis.resolvePityChoiceAction = resolvePityChoiceAction;
+  globalThis.closeMotherGooseHatchModal = closeMotherGooseHatchModal;
   globalThis.getCompletedStagesForFlight = getCompletedStagesForFlight;
   globalThis.awardFlightSavedEggs = awardFlightSavedEggs;
 })();

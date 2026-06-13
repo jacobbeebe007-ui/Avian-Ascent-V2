@@ -814,6 +814,183 @@ body.build-nest-unlocked .splash-hotspot--forge.is-buildnest-hidden{
   text-align:center;
 }
 .inventory-item-note{margin:0;font-size:.62rem;color:rgba(180,175,165,.7);font-style:italic;text-align:center;}
+.inventory-subnav{
+  display:flex;
+  flex-wrap:wrap;
+  gap:6px;
+  margin:0 0 14px;
+}
+.inventory-subnav-btn{
+  font:inherit;
+  font-family:'Cinzel',serif;
+  font-size:.64rem;
+  letter-spacing:.06em;
+  text-transform:uppercase;
+  cursor:pointer;
+  padding:7px 10px;
+  border-radius:8px;
+  border:1px solid rgba(120,100,70,.4);
+  background:rgba(14,16,22,.55);
+  color:rgba(210,204,192,.85);
+  transition:border-color .2s ease,color .2s ease,background .2s ease;
+}
+.inventory-subnav-btn.is-active{
+  border-color:rgba(232,201,106,.65);
+  background:rgba(201,168,76,.14);
+  color:var(--gold-light);
+}
+.inventory-subview{display:block;}
+.inventory-subview[hidden]{display:none!important;}
+.inventory-feather-filters{
+  display:flex;
+  flex-wrap:wrap;
+  gap:6px;
+  margin:0 0 10px;
+}
+.inventory-feather-filter-btn{
+  font:inherit;
+  font-size:.62rem;
+  letter-spacing:.04em;
+  cursor:pointer;
+  padding:5px 9px;
+  border-radius:999px;
+  border:1px solid rgba(120,100,70,.35);
+  background:rgba(10,12,18,.5);
+  color:rgba(210,204,192,.82);
+}
+.inventory-feather-filter-btn.is-active{
+  border-color:rgba(232,201,106,.55);
+  color:var(--gold-light);
+  background:rgba(201,168,76,.12);
+}
+.inventory-feathers-scroll{
+  max-height:min(52vh,420px);
+  overflow-y:auto;
+  padding-right:4px;
+}
+.inventory-feathers-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fill,minmax(min(100%,130px),1fr));
+  gap:10px;
+}
+.inventory-feather-card{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:4px;
+  padding:12px 10px;
+  border-radius:12px;
+  border:2px solid rgba(120,100,70,.35);
+  background:rgba(8,10,16,.58);
+  text-align:center;
+  position:relative;
+}
+.inventory-feather-card.tier-grey{border-color:rgba(106,120,144,.55);}
+.inventory-feather-card.tier-green{border-color:rgba(76,138,106,.55);}
+.inventory-feather-card.tier-blue{border-color:rgba(76,106,201,.55);}
+.inventory-feather-card.tier-purple{border-color:rgba(120,76,180,.55);}
+.inventory-feather-card.tier-gold{border-color:rgba(180,140,40,.6);}
+.inventory-feather-card.tier-orange{border-color:rgba(200,100,40,.6);}
+.inventory-feather-portrait{display:flex;justify-content:center;min-height:52px;}
+.inventory-feather-icon{font-size:1.4rem;line-height:1;margin-top:-4px;}
+.inventory-feather-name{
+  font-family:'Cinzel',serif;
+  font-size:.72rem;
+  color:var(--gold-light);
+  line-height:1.2;
+}
+.inventory-feather-tier{font-size:.58rem;color:rgba(200,198,190,.72);text-transform:uppercase;letter-spacing:.05em;}
+.inventory-feather-count{
+  font-family:'Cinzel',serif;
+  font-size:.82rem;
+  color:#e8e0d0;
+  margin-top:2px;
+}
+.mother-goose-hatch-modal{
+  display:none;
+  position:fixed;
+  inset:0;
+  z-index:9500;
+  align-items:center;
+  justify-content:center;
+  padding:16px;
+  background:rgba(0,0,0,.72);
+}
+.mother-goose-hatch-modal.open{display:flex;}
+.mother-goose-hatch-panel{
+  width:min(320px,calc(100vw - 32px));
+  padding:22px 18px 16px;
+  border-radius:14px;
+  border:1px solid rgba(201,168,76,.45);
+  background:linear-gradient(180deg,rgba(18,14,8,.97),rgba(10,8,6,.98));
+  box-shadow:0 18px 50px rgba(0,0,0,.55);
+  text-align:center;
+}
+.mother-goose-hatch-egg-wrap{
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  min-height:100px;
+  margin-bottom:8px;
+}
+.mother-goose-hatch-egg{
+  font-size:3.2rem;
+  line-height:1;
+  display:inline-block;
+  transform-origin:center bottom;
+}
+.mother-goose-hatch-egg.is-shaking{animation:mother-goose-egg-shake .45s ease-in-out infinite;}
+@keyframes mother-goose-egg-shake{
+  0%,100%{transform:rotate(0deg) translateY(0);}
+  20%{transform:rotate(-8deg) translateY(-2px);}
+  40%{transform:rotate(8deg) translateY(0);}
+  60%{transform:rotate(-6deg) translateY(-3px);}
+  80%{transform:rotate(6deg) translateY(-1px);}
+}
+.mother-goose-hatch-reveal[hidden]{display:none!important;}
+.mother-goose-hatch-card{
+  margin:0 auto 12px;
+  padding:14px 12px;
+  border-radius:12px;
+  border:2px solid rgba(201,168,76,.35);
+  background:rgba(12,10,8,.75);
+  max-width:240px;
+}
+.mother-goose-hatch-card.tier-grey{border-color:rgba(106,120,144,.55);}
+.mother-goose-hatch-card.tier-green{border-color:rgba(76,138,106,.55);}
+.mother-goose-hatch-card.tier-blue{border-color:rgba(76,106,201,.55);}
+.mother-goose-hatch-card.tier-purple{border-color:rgba(120,76,180,.55);}
+.mother-goose-hatch-card.tier-gold{border-color:rgba(180,140,40,.65);box-shadow:0 0 16px rgba(201,168,76,.15);}
+.mother-goose-hatch-card.tier-orange{border-color:rgba(200,100,40,.65);}
+.mother-goose-hatch-card--feather .mother-goose-hatch-feather-glyph{font-size:2.6rem;line-height:1;margin:4px 0;}
+.mother-goose-hatch-portrait{display:flex;justify-content:center;margin:8px 0;}
+.mother-goose-hatch-card-name{
+  font-family:'Cinzel',serif;
+  font-size:.95rem;
+  color:var(--gold-light);
+  margin:6px 0 4px;
+}
+.mother-goose-hatch-feather-total{font-family:'Cinzel',serif;font-size:1rem;color:#e8e0d0;}
+.mother-goose-hatch-msg{
+  margin:0 0 14px;
+  font-size:.78rem;
+  line-height:1.45;
+  color:rgba(210,204,192,.9);
+}
+.mother-goose-hatch-close{
+  font:inherit;
+  font-family:'Cinzel',serif;
+  font-size:.72rem;
+  letter-spacing:.08em;
+  text-transform:uppercase;
+  cursor:pointer;
+  padding:10px 18px;
+  border-radius:8px;
+  border:1px solid rgba(201,168,76,.5);
+  background:rgba(201,168,76,.14);
+  color:var(--gold-light);
+}
+.mother-goose-hatch-close:hover{background:rgba(201,168,76,.24);}
 #supplies-view-records .supplies-records-block{
   margin:0;
   max-width:none;

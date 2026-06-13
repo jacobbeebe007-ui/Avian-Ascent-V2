@@ -11206,7 +11206,6 @@ function endPlayerTurn(force=false) {
   tickDelayedForTarget('player');
   if(G.player.stats.hp<=0||G.enemy.stats.hp<=0){if(checkDeath())return;}
   tickGuardedStatus(G.enemyStatus);
-  tickStatuses('enemy', {skipGuarded:true});
   G.turn='enemy';
   lockActionUI(true);
   refreshBattleUI();
