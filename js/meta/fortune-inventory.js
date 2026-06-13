@@ -2,7 +2,7 @@
 (function () {
   'use strict';
 
-  var INVENTORY_TAB = 'artifacts';
+  var INVENTORY_TAB = 'feathers';
   var FEATHER_FILTER = 'all';
   var FEATHER_TIERS = ['all', 'grey', 'green', 'blue', 'purple', 'gold', 'orange'];
 
@@ -26,6 +26,11 @@
   function tierLabel(tier) {
     var pack = tierPack();
     return (pack && pack.TIER_LABELS && pack.TIER_LABELS[tier]) || tier;
+  }
+
+  function speciesRarityLabel(tier) {
+    var pack = tierPack();
+    return (pack && pack.SPECIES_RARITY_LABELS && pack.SPECIES_RARITY_LABELS[tier]) || tierLabel(tier);
   }
 
   function tierCss(tier) {
@@ -97,7 +102,7 @@
     wrap.dataset.wired = '1';
     wrap.innerHTML = FEATHER_TIERS.map(function (tier) {
       var active = tier === FEATHER_FILTER ? ' is-active' : '';
-      var label = tier === 'all' ? 'All tiers' : tierLabel(tier);
+      var label = tier === 'all' ? 'All tiers' : speciesRarityLabel(tier);
       return (
         '<button type="button" class="inventory-feather-filter-btn' +
         active +
@@ -235,7 +240,7 @@
       empty.textContent =
         FEATHER_FILTER === 'all'
           ? 'No Species Feathers yet. Hatch duplicates at Mother Goose\'s nest.'
-          : 'No Species Feathers for ' + tierLabel(FEATHER_FILTER) + ' tier birds.';
+          : 'No Species Feathers for ' + speciesRarityLabel(FEATHER_FILTER) + ' tier birds.';
       return;
     }
     empty.hidden = true;

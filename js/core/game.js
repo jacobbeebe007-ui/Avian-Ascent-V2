@@ -2033,7 +2033,8 @@ globalThis._agentDbgLog = _agentDbgLog;
 const DEFAULT_UI_STATE = Object.freeze({
   gameMode:'story',
   battleLayout:'mobile',
-  selectionView:'size',
+  selectionView:'all',
+  lockFilter:'unlocked',
   expandedBird:null,
   combatDropdownOpen:{player:true,enemy:true},
 });
@@ -2043,6 +2044,7 @@ function ensureUIState(){
   G.ui.gameMode = (G.ui.gameMode==='endless') ? 'endless' : 'story';
   G.ui.battleLayout = (G.ui.battleLayout==='mobile') ? 'mobile' : 'desktop';
   G.ui.selectionView = String(G.ui.selectionView || DEFAULT_UI_STATE.selectionView);
+  G.ui.lockFilter = ['all','unlocked','locked'].includes(G.ui.lockFilter) ? G.ui.lockFilter : DEFAULT_UI_STATE.lockFilter;
   G.ui.expandedBird = G.ui.expandedBird ? String(G.ui.expandedBird) : null;
   if(!G.ui.combatDropdownOpen || typeof G.ui.combatDropdownOpen!=='object') G.ui.combatDropdownOpen={};
   G.ui.combatDropdownOpen.player = !!G.ui.combatDropdownOpen.player;
@@ -4695,7 +4697,7 @@ let shopPurchaseMade = false;
 function initSelection() {
   const ui=ensureUIState();
   ui.selectionView='all';
-  if(!ui.lockFilter) ui.lockFilter='all';
+  if(!ui.lockFilter) ui.lockFilter='unlocked';
   migrateLegacySelectionView(ui);
   if(!ui.expandedBird && G.selected) ui.expandedBird=G.selected;
   applyUIStateToDOM();
@@ -4729,7 +4731,7 @@ function buildRosterFilterSelect(){
   const sel=document.getElementById('roster-filter-select');
   if(!sel) return;
   const ui=ensureUIState();
-  if(!ui.lockFilter) ui.lockFilter='all';
+  if(!ui.lockFilter) ui.lockFilter='unlocked';
   const roleOptions=ROLE_ORDER.map(c=>`<option value="role:${c}">${idToClassLabel(c)}</option>`).join('');
   sel.innerHTML=`
     <option value="all">All Birds</option>
@@ -4948,7 +4950,7 @@ function buildBirdGrid() {
   const selectedView=ui.selectionView;
   const view = String(selectedView).startsWith('role:') ? 'all' : (selectedView==='size' ? 'size' : 'all');
   const classFilter = String(selectedView).startsWith('role:') ? (String(selectedView).split(':')[1]||'all') : 'all';
-  const lockFilter = ['all','unlocked','locked'].includes(ui.lockFilter) ? ui.lockFilter : 'all';
+  const lockFilter = ['all','unlocked','locked'].includes(ui.lockFilter) ? ui.lockFilter : 'unlocked';
 
   const grid = document.getElementById('bird-grid');
   if(!grid) return;
@@ -5087,7 +5089,7 @@ function getBirdSpeciesRarityMeta(birdKey) {
   const tierPack=Avian?.data?.birdCardTiers;
   const row=cat?.getBirdSpeciesRow?.(birdKey);
   const speciesTier=row?.speciesTier||'grey';
-  const label=tierPack?.TIER_LABELS?.[speciesTier]||speciesTier;
+  const label=tierPack?.SPECIES_RARITY_LABELS?.[speciesTier]||tierPack?.TIER_LABELS?.[speciesTier]||speciesTier;
   const css=tierPack?.TIER_CSS?.[speciesTier]||'tier-grey';
   return {speciesTier, label, css};
 }
@@ -6076,7 +6078,7 @@ function openSelectHubPanel(which){
     const msg=document.getElementById('fortune-shop-msg');
     if(msg) msg.textContent='';
     if(typeof renderFortuneShop==='function') renderFortuneShop();
-    else if(typeof setFortuneSubView==='function') setFortuneSubView('hiring');
+    else if(typeof setFortuneSubView==='function') setFortuneSubView('mother-goose');
   }
   if(which === 'inventory'){
     if(typeof renderFortuneInventory==='function') renderFortuneInventory();

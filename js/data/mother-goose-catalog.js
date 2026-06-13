@@ -3,6 +3,10 @@
   'use strict';
 
   var ANCESTRAL_DUKE_CHANCE = 0.1;
+  var ROYAL_BLUE_ROLL_CHANCE = 0.25;
+
+  var FEATHERED_SPECIES_TIERS = { grey: true, green: true };
+  var GLEAMING_SPECIES_TIERS = { blue: true, green: true };
 
   var ANCESTRAL_TIER_FALLBACK_WEIGHT = {
     grey: 40,
@@ -64,6 +68,93 @@
       enabled: true,
     },
   };
+
+  function speciesRarityLabels() {
+    var pack = globalThis.Avian && globalThis.Avian.data && globalThis.Avian.data.birdCardTiers;
+    return (pack && pack.SPECIES_RARITY_LABELS) || {
+      grey: 'Common',
+      green: 'Uncommon',
+      blue: 'Rare',
+      purple: 'Legendary',
+      gold: 'Exotic',
+      orange: 'Ancestral',
+    };
+  }
+
+  function rarityLabel(tierKey) {
+    var labels = speciesRarityLabels();
+    return labels[tierKey] || tierKey;
+  }
+
+  function pct(n) {
+    return Math.round(n * 100) + '%';
+  }
+
+  function formatEggDescription(eggId) {
+    var id = String(eggId || '').toLowerCase();
+    var labels = speciesRarityLabels();
+    if (id === 'cracked') {
+      return pct(1) + ' ' + rarityLabel('grey') + ' species.';
+    }
+    if (id === 'feathered') {
+      return (
+        rarityLabel('grey') +
+        ' & ' +
+        rarityLabel('green') +
+        ' species — equal odds within pool.'
+      );
+    }
+    if (id === 'gleaming') {
+      var data = speciesTiers();
+      var wGreen =
+        data && data.gleamingWeightBySpeciesTier && data.gleamingWeightBySpeciesTier.green != null
+          ? data.gleamingWeightBySpeciesTier.green
+          : 5;
+      var wBlue =
+        data && data.gleamingWeightBySpeciesTier && data.gleamingWeightBySpeciesTier.blue != null
+          ? data.gleamingWeightBySpeciesTier.blue
+          : 5;
+      var baseTotal = Math.max(1, wGreen + wBlue);
+      return (
+        rarityLabel('green') +
+        ' ' +
+        pct(wGreen / baseTotal) +
+        ' · ' +
+        rarityLabel('blue') +
+        ' ' +
+        pct(wBlue / baseTotal) +
+        ' base odds (weighted further by collection).'
+      );
+    }
+    if (id === 'royal') {
+      return (
+        pct(1 - ROYAL_BLUE_ROLL_CHANCE) +
+        ' ' +
+        rarityLabel('purple') +
+        ' · ' +
+        pct(ROYAL_BLUE_ROLL_CHANCE) +
+        ' ' +
+        rarityLabel('blue') +
+        ' — class you select.'
+      );
+    }
+    if (id === 'ancestral') {
+      var fb = ANCESTRAL_TIER_FALLBACK_WEIGHT;
+      var fbTotal = 0;
+      Object.keys(fb).forEach(function (k) {
+        fbTotal += fb[k];
+      });
+      fbTotal = Math.max(1, fbTotal);
+      var parts = [pct(ANCESTRAL_DUKE_CHANCE) + ' ' + rarityLabel('orange') + ' (Duke Blakiston)'];
+      ['grey', 'green', 'blue', 'purple', 'gold'].forEach(function (tk) {
+        if (fb[tk]) {
+          parts.push(pct((fb[tk] / fbTotal) * (1 - ANCESTRAL_DUKE_CHANCE)) + ' ' + rarityLabel(tk));
+        }
+      });
+      return parts.join(' · ') + ' on fallback.';
+    }
+    return '';
+  }
 
   function speciesTiers() {
     return (globalThis.Avian && globalThis.Avian.data && globalThis.Avian.data.motherGooseSpeciesTiers) || null;
@@ -133,11 +224,14 @@
 
       if (!isGacha && !isUnlockedBird(bird, key)) return;
 
-      if (id === 'feathered' && getSpeciesTier(key) === 'orange') return;
+      var speciesTier = getSpeciesTier(key);
+
+      if (id === 'feathered' && !FEATHERED_SPECIES_TIERS[speciesTier]) return;
+
+      if (id === 'gleaming' && !GLEAMING_SPECIES_TIERS[speciesTier]) return;
 
       if (id === 'royal') {
-        var st = getSpeciesTier(key);
-        if (st !== 'purple' && st !== 'gold') return;
+        if (speciesTier !== 'purple') return;
         var cls = String(opts.classFilter || '').toLowerCase();
         if (cls && birdClassRoleId(bird) !== cls) return;
       }
@@ -161,6 +255,27 @@
 
   function buildRoyalPool(classId) {
     return buildPoolForEgg('royal', { classFilter: classId });
+  }
+
+  function birdInRoyalBluePool(birdKey) {
+    var row = getBirdSpeciesRow(birdKey);
+    if (!row || !Array.isArray(row.eggPools)) return false;
+    if (getSpeciesTier(birdKey) !== 'blue') return false;
+    return row.eggPools.indexOf('gleaming') >= 0 || row.eggPools.indexOf('royal') >= 0;
+  }
+
+  function buildRoyalBluePool(classId) {
+    var birds = globalThis.BIRDS || {};
+    var out = [];
+    var cls = String(classId || '').toLowerCase();
+    Object.keys(birds).forEach(function (key) {
+      var bird = birds[key];
+      if (!bird || !isInNormalPool(key)) return;
+      if (!birdInRoyalBluePool(key)) return;
+      if (cls && birdClassRoleId(bird) !== cls) return;
+      out.push(key);
+    });
+    return out;
   }
 
   function buildAncestralPool() {
@@ -283,12 +398,32 @@
         return gleamingWeight(key, opts.ownedCards, opts.speciesFeathers);
       });
     }
+
+    if (id === 'royal') {
+      var bluePool = buildRoyalBluePool(opts.classFilter);
+      var useBlue = bluePool.length && Math.random() < ROYAL_BLUE_ROLL_CHANCE;
+      var royalPool = useBlue ? bluePool : pool;
+      if (!royalPool.length) royalPool = pool.length ? pool : bluePool;
+      if (!royalPool.length) return null;
+      return royalPool[Math.floor(Math.random() * royalPool.length)];
+    }
+
     return pool[Math.floor(Math.random() * pool.length)];
   }
 
   function getEggTypeDef(eggType) {
     syncAncestralEggEnabled();
-    return EGG_TYPES[String(eggType || '').toLowerCase()] || null;
+    var base = EGG_TYPES[String(eggType || '').toLowerCase()];
+    if (!base) return null;
+    return {
+      id: base.id,
+      name: base.name,
+      cost: base.cost,
+      icon: base.icon,
+      desc: formatEggDescription(base.id),
+      enabled: base.enabled,
+      requiresClassPick: base.requiresClassPick,
+    };
   }
 
   syncAncestralEggEnabled();
@@ -297,17 +432,20 @@
     starterBirdKeys: starterBirdKeys,
     STARTER_BIRD_KEYS: starterBirdKeys,
     ANCESTRAL_DUKE_CHANCE: ANCESTRAL_DUKE_CHANCE,
+    ROYAL_BLUE_ROLL_CHANCE: ROYAL_BLUE_ROLL_CHANCE,
     ANCESTRAL_TIER_FALLBACK_WEIGHT: ANCESTRAL_TIER_FALLBACK_WEIGHT,
     EGG_TYPES: EGG_TYPES,
     getEggPool: getEggPool,
     pickFromPool: pickFromPool,
     pickAncestral: pickAncestral,
     getEggTypeDef: getEggTypeDef,
+    formatEggDescription: formatEggDescription,
     isUnlockedBird: isUnlockedBird,
     buildCrackedPool: buildCrackedPool,
     buildFeatheredPool: buildFeatheredPool,
     buildGleamingPool: buildGleamingPool,
     buildRoyalPool: buildRoyalPool,
+    buildRoyalBluePool: buildRoyalBluePool,
     buildAncestralPool: buildAncestralPool,
     buildAncestralFallbackPool: buildAncestralFallbackPool,
     getBirdSpeciesRow: getBirdSpeciesRow,

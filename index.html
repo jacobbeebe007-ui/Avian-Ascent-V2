@@ -158,25 +158,25 @@
 <span class="fortune-balance-chip fortune-balance-chip--goose"><span class="fortune-balance-icon">🪿</span> Golden Goose Eggs: <strong id="inventory-balance-goose">0</strong></span>
 </div>
 <div class="inventory-subnav" role="tablist" aria-label="Inventory sections">
-<button type="button" class="inventory-subnav-btn is-active" id="inventory-nav-artifacts" role="tab" aria-selected="true" aria-controls="inventory-view-artifacts" data-action="setInventorySubView:artifacts">Artifacts</button>
-<button type="button" class="inventory-subnav-btn" id="inventory-nav-feathers" role="tab" aria-selected="false" aria-controls="inventory-view-feathers" data-action="setInventorySubView:feathers">Species Feathers</button>
+<button type="button" class="inventory-subnav-btn is-active" id="inventory-nav-feathers" role="tab" aria-selected="true" aria-controls="inventory-view-feathers" data-action="setInventorySubView:feathers">Feather Sack</button>
+<button type="button" class="inventory-subnav-btn" id="inventory-nav-artifacts" role="tab" aria-selected="false" aria-controls="inventory-view-artifacts" data-action="setInventorySubView:artifacts">Artifacts</button>
 <button type="button" class="inventory-subnav-btn" id="inventory-nav-misc" role="tab" aria-selected="false" aria-controls="inventory-view-misc" data-action="setInventorySubView:misc">Other treasures</button>
 </div>
-<section class="inventory-subview is-active" id="inventory-view-artifacts" role="tabpanel" aria-labelledby="inventory-nav-artifacts">
-<h4 class="inventory-section-title" id="inventory-artifacts-heading">Artifacts</h4>
-<p class="inventory-section-lead">Equip <strong>one</strong> relic for your next Flight. You keep every artifact you buy — switch loadout here before ascending.</p>
-<p class="inventory-equipped-note" id="inventory-equipped-note" hidden></p>
-<p class="inventory-empty" id="inventory-artifacts-empty">No artifacts yet. Visit Cuckoo's Emporium to buy relics.</p>
-<div class="inventory-items-grid" id="inventory-artifacts-grid"></div>
-</section>
-<section class="inventory-subview" id="inventory-view-feathers" role="tabpanel" aria-labelledby="inventory-nav-feathers" hidden>
-<h4 class="inventory-section-title" id="inventory-feathers-heading">Species Feathers</h4>
+<section class="inventory-subview is-active" id="inventory-view-feathers" role="tabpanel" aria-labelledby="inventory-nav-feathers">
+<h4 class="inventory-section-title" id="inventory-feathers-heading">Feather Sack</h4>
 <p class="inventory-section-lead">Duplicates from Mother Goose eggs. Collect feathers to mutate bird cards to higher tiers.</p>
 <div class="inventory-feather-filters" id="inventory-feather-filters" role="group" aria-label="Filter by card tier"></div>
 <p class="inventory-empty" id="inventory-feathers-empty">No Species Feathers yet. Hatch duplicates at Mother Goose's nest.</p>
 <div class="inventory-feathers-scroll">
 <div class="inventory-feathers-grid" id="inventory-feathers-grid"></div>
 </div>
+</section>
+<section class="inventory-subview" id="inventory-view-artifacts" role="tabpanel" aria-labelledby="inventory-nav-artifacts" hidden>
+<h4 class="inventory-section-title" id="inventory-artifacts-heading">Artifacts</h4>
+<p class="inventory-section-lead">Equip <strong>one</strong> relic for your next Flight. You keep every artifact you buy — switch loadout here before ascending.</p>
+<p class="inventory-equipped-note" id="inventory-equipped-note" hidden></p>
+<p class="inventory-empty" id="inventory-artifacts-empty">No artifacts yet. Visit Cuckoo's Emporium to buy relics.</p>
+<div class="inventory-items-grid" id="inventory-artifacts-grid"></div>
 </section>
 <section class="inventory-subview" id="inventory-view-misc" role="tabpanel" aria-labelledby="inventory-nav-misc" hidden>
 <h4 class="inventory-section-title" id="inventory-misc-heading">Other treasures</h4>
@@ -200,17 +200,12 @@
 <span class="fortune-balance-chip fortune-balance-chip--goose"><span class="fortune-balance-icon">🪿</span> Golden Goose Eggs: <strong id="fortune-balance-goose">0</strong></span>
 </div>
 <div class="fortune-subnav" role="tablist" aria-label="Store sections">
-<button type="button" class="fortune-subnav-btn is-active" id="fortune-nav-hiring" role="tab" aria-selected="true" aria-controls="fortune-view-hiring" data-action="setFortuneSubView:hiring">Hiring Birds</button>
-<button type="button" class="fortune-subnav-btn" id="fortune-nav-mother-goose" role="tab" aria-selected="false" aria-controls="fortune-view-mother-goose" data-action="setFortuneSubView:mother-goose">Mother Goose</button>
+<button type="button" class="fortune-subnav-btn is-active" id="fortune-nav-mother-goose" role="tab" aria-selected="true" aria-controls="fortune-view-mother-goose" data-action="setFortuneSubView:mother-goose">Mother Goose</button>
 <button type="button" class="fortune-subnav-btn" id="fortune-nav-artifacts" role="tab" aria-selected="false" aria-controls="fortune-view-artifacts" data-action="setFortuneSubView:artifacts">Artifacts</button>
 <button type="button" class="fortune-subnav-btn" id="fortune-nav-trade" role="tab" aria-selected="false" aria-controls="fortune-view-trade" data-action="setFortuneSubView:trade">Trade</button>
 </div>
 <div class="fortune-shop-msg" id="fortune-shop-msg" aria-live="polite"></div>
-<div class="fortune-subview is-active" id="fortune-view-hiring" role="tabpanel" aria-labelledby="fortune-nav-hiring">
-<p class="fortune-tab-lead">Spend Saved Eggs to permanently hire locked champions for every future Flight.</p>
-<div class="fortune-hiring-grid" id="fortune-hiring-grid"></div>
-</div>
-<div class="fortune-subview" id="fortune-view-mother-goose" role="tabpanel" aria-labelledby="fortune-nav-mother-goose">
+<div class="fortune-subview is-active" id="fortune-view-mother-goose" role="tabpanel" aria-labelledby="fortune-nav-mother-goose">
 <p class="fortune-tab-lead">Spend Golden Goose Eggs to hatch bird cards. Duplicates become Species Feathers for mutations.</p>
 <div class="mother-goose-pity" id="mother-goose-pity" aria-live="polite"></div>
 <div class="mother-goose-grid" id="mother-goose-grid"></div>
@@ -887,7 +882,7 @@
 <div class="mother-goose-hatch-modal" id="mother-goose-hatch-modal" role="dialog" aria-modal="true" aria-labelledby="mother-goose-hatch-title" aria-hidden="true" data-action="closeMotherGooseHatchModal" data-backdrop="1">
 <div class="mother-goose-hatch-panel">
 <div class="mother-goose-hatch-egg-wrap" id="mother-goose-hatch-egg-wrap">
-<div class="mother-goose-hatch-egg" id="mother-goose-hatch-egg" aria-hidden="false">🥚</div>
+<div class="mother-goose-hatch-egg-grid" id="mother-goose-hatch-egg-grid"></div>
 </div>
 <div class="mother-goose-hatch-reveal" id="mother-goose-hatch-reveal" hidden></div>
 <button type="button" class="mother-goose-hatch-close" id="mother-goose-hatch-close" data-action="closeMotherGooseHatchModal" hidden>Continue</button>

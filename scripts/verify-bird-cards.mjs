@@ -33,6 +33,7 @@ const sandbox = {
     goose: { name: 'Goose', stats: { hp: 120, maxHp: 120, atk: 9, def: 7, spd: 8, acc: 85 }, unlockRequires: null },
     hummingbird: { name: 'Hummingbird', stats: { hp: 80, maxHp: 80, atk: 12, def: 4, spd: 14, acc: 92 }, unlockRequires: 'unlock_hummingbird', class: 'rogue' },
     baldEagle: { name: 'Bald Eagle', stats: { hp: 150, maxHp: 150, atk: 15, def: 8, spd: 8, acc: 88 }, unlockRequires: 'juvenileWin', class: 'knight' },
+    pelican: { name: 'Australian Pelican', stats: { hp: 74, maxHp: 74, atk: 14, def: 20, spd: 6, acc: 77 }, unlockRequires: 'unlock_pelican', class: 'knight' },
   },
   getUnlocks: () => ({ juvenileWin: true }),
   isUnlocked: (id) => id === 'juvenileWin',
@@ -89,6 +90,16 @@ assert(meta.birdCards.owned.sparrow.stars === 0, 'starter sparrow starts at 0 st
 assert(meta.birdCards.owned.crow, 'unlocked crow grey card from migration');
 assert(!meta.birdCards.owned.robin, 'robin not auto-migrated (not a starter)');
 
+console.log('[verify-bird-cards] species rarity labels');
+assert(tiers.SPECIES_RARITY_LABELS.grey === 'Common', 'Common label for grey species');
+assert(tiers.SPECIES_RARITY_LABELS.orange === 'Ancestral', 'Ancestral label for orange species');
+
+console.log('[verify-bird-cards] egg descriptions');
+const crackedDesc = cat.formatEggDescription('cracked');
+const royalDesc = cat.formatEggDescription('royal');
+assert(crackedDesc.includes('100%') && crackedDesc.includes('Common'), 'cracked desc shows Common odds');
+assert(royalDesc.includes('75%') && royalDesc.includes('25%') && royalDesc.includes('Legendary'), 'royal desc shows tier odds');
+
 console.log('[verify-bird-cards] pools');
 const cracked = cat.buildCrackedPool();
 const feathered = cat.buildFeatheredPool();
@@ -101,6 +112,13 @@ assert(
   'cracked pool matches sheet eggPools',
 );
 assert(feathered.includes('crow') && !feathered.includes('dukeBlakiston'), 'feathered excludes orange duke');
+assert(
+  feathered.every((k) => {
+    const st = species.byBirdKey[k] && species.byBirdKey[k].speciesTier;
+    return st === 'grey' || st === 'green';
+  }),
+  'feathered pool only grey/green species',
+);
 sandbox._unlocks.unlock_hummingbird = true;
 const gleamingUnlocked = cat.buildGleamingPool();
 assert(gleamingUnlocked.includes('hummingbird') && !gleamingUnlocked.includes('sparrow'), 'gleaming has green birds not grey sparrow');
@@ -117,15 +135,24 @@ console.log('[verify-bird-cards] gleaming + royal pools (no prior unlock)');
 const gleamingFresh = cat.buildGleamingPool();
 assert(gleamingFresh.length > 0, 'gleaming pool non-empty without unlocks');
 assert(gleamingFresh.includes('hummingbird'), 'gleaming includes hummingbird from sheet');
+assert(
+  gleamingFresh.every((k) => {
+    const st = species.byBirdKey[k] && species.byBirdKey[k].speciesTier;
+    return st === 'blue' || st === 'green';
+  }),
+  'gleaming pool only blue/green species',
+);
 const royalKnight = cat.buildRoyalPool('knight');
 assert(royalKnight.length > 0, 'royal knight pool non-empty');
 assert(
   royalKnight.every((k) => {
     const st = species.byBirdKey[k] && species.byBirdKey[k].speciesTier;
-    return st === 'purple' || st === 'gold';
+    return st === 'purple';
   }),
-  'royal pool only purple/gold species',
+  'royal pool only purple species',
 );
+const royalBlueKnight = cat.buildRoyalBluePool('knight');
+assert(Array.isArray(royalBlueKnight), 'royal blue pool helper exists');
 const ancestralFallback = cat.buildAncestralFallbackPool();
 assert(ancestralFallback.length > 0, 'ancestral fallback pool non-empty');
 assert(!ancestralFallback.includes('dukeBlakiston'), 'ancestral fallback excludes duke');
@@ -176,6 +203,16 @@ console.log('[verify-bird-cards] pity counter');
 const pity = sandbox.getPityState();
 assert(typeof pity.eggsUntilNext === 'number', 'pity progress exposed');
 assert(pity.totalHatches >= 1, 'hatch increments totalHatches');
+
+console.log('[verify-bird-cards] batch hatch');
+const mBatch = sandbox.getFortuneMeta();
+mBatch.goldenGooseEggs = 200;
+sandbox.saveFortuneMeta(mBatch);
+const batch = sandbox.hatchEggsBatch('cracked', 10, {});
+assert(batch.ok && batch.results.length === 10, 'batch hatch returns 10 results');
+assert(batch.totalCost === 100, 'batch hatch spends cost * 10');
+const afterGoose = sandbox.getFortuneMeta().goldenGooseEggs;
+assert(afterGoose === 100, 'batch hatch deducts golden goose eggs');
 
 console.log('\n[verify-bird-cards] ' + passed + ' passed, ' + failed + ' failed');
 process.exit(failed > 0 ? 1 : 0);

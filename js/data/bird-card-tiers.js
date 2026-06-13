@@ -62,6 +62,16 @@
     orange: 'Orange',
   };
 
+  /** Display labels for bird species rarity (sheet species tier). */
+  var SPECIES_RARITY_LABELS = {
+    grey: 'Common',
+    green: 'Uncommon',
+    blue: 'Rare',
+    purple: 'Legendary',
+    gold: 'Exotic',
+    orange: 'Ancestral',
+  };
+
   var TIER_CSS = {
     grey: 'tier-grey',
     green: 'tier-green',
@@ -175,6 +185,7 @@
     STAT_GUARD_MAX_BONUS: STAT_GUARD_MAX_BONUS,
     SCALED_STAT_KEYS: SCALED_STAT_KEYS,
     TIER_LABELS: TIER_LABELS,
+    SPECIES_RARITY_LABELS: SPECIES_RARITY_LABELS,
     TIER_CSS: TIER_CSS,
     normalizeTier: normalizeTier,
     clampStars: clampStars,
