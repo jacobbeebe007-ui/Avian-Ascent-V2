@@ -153,6 +153,7 @@ function parseSheet(xml, sharedStrings) {
       let val = '';
       const vM = /<(?:x:)?v>([\s\S]*?)<\/(?:x:)?v>/.exec(body);
       if (t === 's' && vM) val = sharedStrings[parseInt(vM[1], 10)] || '';
+      else if (t === 'str' && vM) val = decodeEntities(vM[1]);
       else if (t === 'inlineStr') {
         const isM = /<(?:x:)?is>([\s\S]*?)<\/(?:x:)?is>/.exec(body);
         if (isM) val = [...isM[1].matchAll(/<(?:x:)?t[^>]*>([\s\S]*?)<\/(?:x:)?t>/g)].map((x) => decodeEntities(x[1])).join('');
@@ -164,17 +165,17 @@ function parseSheet(xml, sharedStrings) {
     cells.forEach((c) => { if (c.col >= 1) arr[c.col - 1] = c.val; });
     rows[rNum - 1] = arr;
   }
-  return rows.filter(Boolean);
+  return rows;
 }
 function readWorkbook(xlsxPath) {
   const entries = readZipEntries(xlsxPath);
   const wbRels = entries['xl/_rels/workbook.xml.rels'] || '';
   const sharedStrings = entries['xl/sharedStrings.xml'] ? parseSharedStrings(entries['xl/sharedStrings.xml']) : [];
   const relMap = Object.create(null);
-  for (const rm of wbRels.matchAll(/<Relationship\s+([^>]+?)\s*\/>/g)) {
-    const attrs = rm[1];
-    const id = /(?:^|\s)Id="([^"]+)"/.exec(attrs)?.[1];
-    const target = /(?:^|\s)Target="([^"]+)"/.exec(attrs)?.[1];
+  for (const rm of wbRels.matchAll(/<Relationship[^>]+>/g)) {
+    const attrs = rm[0];
+    const id = /Id="([^"]+)"/.exec(attrs)?.[1];
+    const target = /Target="([^"]+)"/.exec(attrs)?.[1];
     if (id && target) relMap[id] = target.replace(/^\/+/, '');
   }
   const sheets = Object.create(null);
@@ -276,6 +277,15 @@ function slugId(prefix, name) {
   return prefix + '-' + base.slice(0, 40);
 }
 
+function getFinal(row, header, statLabel) {
+  const exact = get(row, header, 'Final ' + statLabel);
+  if (exact !== '') return exact;
+  return get(row, header, 'Final ' + statLabel.toUpperCase());
+}
+function getFinalNum(row, header, statLabel) {
+  return asNum(getFinal(row, header, statLabel));
+}
+
 function buildBirds(sheets) {
   const rows = sheets['Bird Stat Rebalance'] || [];
   const { header, dataStart } = sheetLayout('Bird Stat Rebalance', rows, ['Bird Name', 'Final HP']);
@@ -288,12 +298,14 @@ function buildBirds(sheets) {
     if (!name || /^bird name/i.test(name)) continue;
     const key = birdKey(name);
     if (!key) continue;
-    const hp = asNum(getFuzzy(row, header, ['HP', 'Final HP']));
+    const hp = getFinalNum(row, header, 'HP');
     if (hp <= 0) continue;
-    const cls = classId(getFuzzy(row, header, ['Class', 'Suggested Class']));
+    const cls = classId(getFuzzy(row, header, ['Suggested Class', 'Class']));
     const sz = sizeId(getFuzzy(row, header, ['Real Size Tier', 'Size']));
     const passiveName = getFuzzy(row, header, ['Passive Name']);
+    const passiveSummary = getFuzzy(row, header, ['Passive Summary']);
     const classPerk = getFuzzy(row, header, ['Class Perk']);
+    const classPerkSummary = getFuzzy(row, header, ['Class Perk Summary']);
     const passiveId = 'PAS-' + String(passiveIdx++).padStart(3, '0');
     const preserve = BIRD_PRESERVE[key] || {};
     const entry = {
@@ -303,17 +315,22 @@ function buildBirds(sheets) {
       class: cls,
       stats: {
         hp, maxHp: hp,
-        atk: asNum(getFuzzy(row, header, ['ATK', 'Final ATK'])),
-        def: asNum(getFuzzy(row, header, ['DEF', 'Final DEF'])),
-        spd: asNum(getFuzzy(row, header, ['SPD', 'Final SPD'])),
-        dodge: asNum(getFuzzy(row, header, ['Dodge', 'Final Dodge'])),
-        acc: asNum(getFuzzy(row, header, ['ACC', 'Final ACC'])),
-        mdef: asNum(getFuzzy(row, header, ['MDEF', 'Final MDEF'])),
-        matk: asNum(getFuzzy(row, header, ['MATK', 'Final MATK'])),
+        atk: getFinalNum(row, header, 'ATK'),
+        def: getFinalNum(row, header, 'DEF'),
+        spd: getFinalNum(row, header, 'SPD'),
+        dodge: getFinalNum(row, header, 'Dodge'),
+        acc: getFinalNum(row, header, 'ACC'),
+        mdef: getFinalNum(row, header, 'MDEF'),
+        matk: getFinalNum(row, header, 'MATK'),
         critChance: 8,
       },
-      passive: { id: passiveId, name: passiveName || preserve.passiveName || '' },
+      passive: {
+        id: passiveId,
+        name: passiveName || preserve.passiveName || '',
+        desc: passiveSummary || '',
+      },
       classPerk: classPerk || '',
+      classPerkEffect: classPerkSummary || '',
     };
     if (preserve.tagline) entry.tagline = preserve.tagline;
     if (preserve.color) entry.color = preserve.color;
@@ -419,8 +436,9 @@ function buildBirdPassives(sheets, birds) {
     const bird = birds[key];
     if (!bird) continue;
     const passiveId = bird.passive?.id || slugId('PAS', name);
-    const effect = getFuzzy(row, header, ['Simple Passive Effect', 'Passive Summary']);
+    const effect = getFuzzy(row, header, ['Simple Passive Effect', 'Passive Summary']) || bird.passive?.desc || '';
     const trigger = getFuzzy(row, header, ['Trigger', 'Class Perk Trigger']);
+    const classPerkEffect = bird.classPerkEffect || getFuzzy(row, header, ['Class Perk Effect', 'Class Perk Summary']) || '';
     out[passiveId] = {
       id: passiveId,
       birdKey: key,
@@ -436,8 +454,36 @@ function buildBirdPassives(sheets, birds) {
       inspiration: '',
       balanceNote: getFuzzy(row, header, ['Balance Note', 'Timing']) || '',
       tags: [bird.class],
-      classPerk: getFuzzy(row, header, ['Class Perk']),
-      classPerkEffect: getFuzzy(row, header, ['Class Perk Effect']),
+      classPerk: getFuzzy(row, header, ['Class Perk']) || bird.classPerk || '',
+      classPerkEffect,
+    };
+  }
+  for (const key of Object.keys(birds)) {
+    const bird = birds[key];
+    const pid = bird.passive?.id;
+    if (pid && out[pid] && bird.classPerkEffect) out[pid].classPerkEffect = bird.classPerkEffect;
+  }
+  for (const key of Object.keys(birds)) {
+    const bird = birds[key];
+    if (!bird?.passive?.id) continue;
+    if (out[bird.passive.id]) continue;
+    out[bird.passive.id] = {
+      id: bird.passive.id,
+      birdKey: key,
+      birdName: bird.name,
+      class: bird.class,
+      name: bird.passive.name || bird.passive.id,
+      type: 'Passive',
+      target: 'self',
+      trigger: '',
+      effect: bird.passive.desc || '',
+      numerical: bird.passive.desc || '',
+      synergy: '',
+      inspiration: '',
+      balanceNote: '',
+      tags: [bird.class],
+      classPerk: bird.classPerk || '',
+      classPerkEffect: bird.classPerkEffect || '',
     };
   }
   return out;
@@ -525,8 +571,13 @@ function emitBirdsJs(birds) {
     const st = b.stats;
     lines.push(`    stats:{hp:${st.hp},maxHp:${st.maxHp},atk:${st.atk},def:${st.def},spd:${st.spd},dodge:${st.dodge},acc:${st.acc},mdef:${st.mdef},matk:${st.matk},critChance:${st.critChance}},`);
     if (b.color) lines.push(`    color:${JSON.stringify(b.color)},`);
-    if (b.passive) lines.push(`    passive:{id:${JSON.stringify(b.passive.id)},name:${JSON.stringify(b.passive.name)}},`);
+    if (b.passive) {
+      const pd = [`id:${JSON.stringify(b.passive.id)},name:${JSON.stringify(b.passive.name)}`];
+      if (b.passive.desc) pd.push(`desc:${JSON.stringify(b.passive.desc)}`);
+      lines.push(`    passive:{${pd.join(',')}},`);
+    }
     if (b.classPerk) lines.push(`    classPerk:${JSON.stringify(b.classPerk)},`);
+    if (b.classPerkEffect) lines.push(`    classPerkEffect:${JSON.stringify(b.classPerkEffect)},`);
     if (b.abilityPool) lines.push(`    abilityPool:${JSON.stringify(b.abilityPool)},`);
     lines.push('  },');
     return lines.join('\n');

@@ -202,6 +202,8 @@
             desc: passive.effect || '',
             trigger: passive.trigger || '',
           };
+          if (passive.classPerk) bird.classPerk = passive.classPerk;
+          if (passive.classPerkEffect) bird.classPerkEffect = passive.classPerkEffect;
         } else {
           bird.passive = { id: birdKey + '_passive_unset', name: 'No Passive', desc: '' };
         }

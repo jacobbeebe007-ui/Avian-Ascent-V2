@@ -480,14 +480,12 @@ function capPctStatValue(statKey, value) {
   if (statKey === 'armorPen' || statKey === 'magicPen') return Math.max(0, Math.min(95, v));
   return Math.max(0, v);
 }
-const SPD_TO_DODGE_RATE = 0.20;
-function dodgeBonusFromSpeed(spd) {
-  return Math.round(Math.max(0, Number(spd) || 0) * SPD_TO_DODGE_RATE * 100) / 100;
+function dodgeBonusFromSpeed(_spd) {
+  return 0;
 }
 globalThis.dodgeBonusFromSpeed = dodgeBonusFromSpeed;
-function dodgeSpdAttributionNote(player) {
-  const n = dodgeBonusFromSpeed(player?.stats?.spd);
-  return n > 0 ? ` +${formatCombatNumber(n)} from SPD (5 SPD = +1 DODGE)` : '';
+function dodgeSpdAttributionNote(_player) {
+  return '';
 }
 function formatLedgerDelta(n){
   return formatCombatNumber(n);
@@ -541,10 +539,33 @@ function richTooltipCloseBtn(){
   if(!window._isTouchDevice) return '';
   return `<div style="text-align:right;margin-top:8px"><button type="button" onclick="hideTooltip()" style="background:rgba(201,168,76,.2);border:1px solid var(--gold);border-radius:4px;color:var(--gold);padding:2px 10px;cursor:pointer;font-size:.75rem;">✕ Close</button></div>`;
 }
+function getBirdPassiveInfo(birdKey){
+  if(typeof Avian?.passives?.describeFor==='function'){
+    const info=Avian.passives.describeFor(birdKey);
+    if(info) return info;
+  }
+  const bd=birdKey&&BIRDS[birdKey];
+  if(!bd?.passive) return null;
+  return { name: bd.passive.name, desc: bd.passive.desc||'', trigger: bd.passive.trigger||'' };
+}
+
+function getBirdAuthoredClassPerk(birdKey){
+  const bd=birdKey&&BIRDS[birdKey];
+  if(!bd) return null;
+  let effect=bd.classPerkEffect||'';
+  const pid=bd.passive?.id;
+  const packPassive=pid&&Avian?.data?.combatPack?.birdPassives?.[pid];
+  if(!effect&&packPassive) effect=packPassive.classPerkEffect||'';
+  const role=classToRoleId(bd.class);
+  const clsPack=Avian?.data?.combatPack?.classes?.[role];
+  const perkName=bd.classPerk||packPassive?.classPerk||clsPack?.classPerk||'';
+  if(!effect&&clsPack&&(!bd.classPerk||clsPack.classPerk===bd.classPerk)) effect=clsPack.classPerkEffect||'';
+  if(!perkName&&!effect) return null;
+  return { name: perkName, effect };
+}
+
 function buildPassiveTooltipHTML(birdKey){
-  const info = typeof Avian?.passives?.describeFor==='function' ? Avian.passives.describeFor(birdKey) : null;
-  const bd = birdKey && BIRDS[birdKey];
-  const p = info || (bd?.passive ? { name: bd.passive.name, desc: bd.passive.desc, trigger: bd.passive.trigger||'' } : null);
+  const p = getBirdPassiveInfo(birdKey);
   if(!p) return '';
   let html = `<div class="tt-name">★ ${escapeHtmlRoster(p.name)}</div><div class="tt-type">Passive</div>`;
   if(p.trigger) html += `<div class="tt-row"><span class="tt-lbl">Trigger</span><span class="tt-val" style="font-size:.88em">${escapeHtmlRoster(p.trigger)}</span></div>`;
@@ -2454,10 +2475,14 @@ function openNest() {
     ${(s.armorPen||0)>0?`<div class="nest-stat-card" title="Ignores enemy DEF when dealing physical damage"><div class="nest-stat-val">${formatCombatNumber(s.armorPen)}%</div><div class="nest-stat-lbl">Armour Pen</div></div>`:''}
     ${(s.magicPen||0)>0?`<div class="nest-stat-card" title="Ignores enemy MDEF when dealing magical damage"><div class="nest-stat-val">${formatCombatNumber(s.magicPen)}%</div><div class="nest-stat-lbl">Magic Pen</div></div>`:''}
   </div></div>`;
-  // Passive trait
-  const bd=BIRDS[p.birdKey];
-  if(bd&&bd.passive){
-    html+=`<div class="nest-passive"><div class="nest-passive-title">★ PASSIVE: ${bd.passive.name}</div>${bd.passive.desc}</div>`;
+  // Passive trait + authored class perk
+  const passInfo=getBirdPassiveInfo(p.birdKey);
+  if(passInfo){
+    html+=`<div class="nest-passive"><div class="nest-passive-title">★ PASSIVE: ${escapeHtmlRoster(passInfo.name)}</div><div class="nest-passive-desc">${escapeHtmlRoster(passInfo.desc||passInfo.effect||'')}</div></div>`;
+  }
+  const authoredPerk=getBirdAuthoredClassPerk(p.birdKey);
+  if(authoredPerk){
+    html+=`<div class="nest-passive nest-class-perk"><div class="nest-passive-title">🧬 CLASS PERK: ${escapeHtmlRoster(authoredPerk.name)}</div><div class="nest-passive-desc">${escapeHtmlRoster(authoredPerk.effect||'')}</div></div>`;
   }
   const ownedClassPerks=getBirdClassPerks(p.birdKey);
   if(ownedClassPerks.length){
@@ -5291,8 +5316,12 @@ function updateAscentPanel(key) {
         <span class="ascent-stat-chip"><abbr title="Battle start / max momentum (EN)">EN</abbr> <strong>${startEnShow}/${maxEn}</strong></span>
       </div>`;
 
-    const passiveName=escapeHtmlRoster(bird.passive?.name||'—');
-    const passiveDesc=escapeHtmlRoster(bird.passive?.desc||'No passive listed.');
+    const passiveInfo=getBirdPassiveInfo(key);
+    const passiveName=escapeHtmlRoster(passiveInfo?.name||bird.passive?.name||'—');
+    const passiveDesc=escapeHtmlRoster(passiveInfo?.desc||passiveInfo?.effect||bird.passive?.desc||'No passive listed.');
+    const classPerkInfo=getBirdAuthoredClassPerk(key);
+    const classPerkName=escapeHtmlRoster(classPerkInfo?.name||'—');
+    const classPerkDesc=escapeHtmlRoster(classPerkInfo?.effect||'No class perk listed.');
 
     panel.innerHTML = `
       <div class="ascent-strip ascent-strip--filled">
@@ -5312,6 +5341,10 @@ function updateAscentPanel(key) {
             <div class="ascent-hblock ascent-hblock-passive">
               <div class="ascent-hblock-label">Passive</div>
               <div class="ascent-panel-passive ascent-panel-passive--inline"><strong>${passiveName}:</strong> ${passiveDesc}</div>
+            </div>
+            <div class="ascent-hblock ascent-hblock-class-perk">
+              <div class="ascent-hblock-label">Class perk</div>
+              <div class="ascent-panel-passive ascent-panel-passive--inline"><strong>${classPerkName}:</strong> ${classPerkDesc}</div>
             </div>
             <div class="ascent-hblock ascent-hblock-abilities">
               <div class="ascent-hblock-label">Starting skills</div>
@@ -6144,7 +6177,7 @@ function refreshBattleUI() {
      ${statCell('stat-matk','MATK',_effMatk,{title:_bt('matk',p.matk||8,'Magic Attack — improves spell/ailment potency'),trend:_trendTag(_effMatk-(p.matk||8)),statKey:'matk',statRaw:p.matk||8})}
      ${statCell('stat-def','DEF',_effDef,{title:_bt('def',p.def,_statNote('Battle DEF',_effDef-(p.def||0),'Battle Hymn increased DEF.','Debuffs reducing DEF.')),trend:_trendTag(_effDef-p.def),statKey:'def',statRaw:p.def})}
      ${statCell('stat-mdef','MDEF',_effMdef,{title:_bt('mdef',p.mdef||8,'Magic Defence — resists enemy spells and ailments'),trend:_trendTag(_effMdef-(p.mdef||8)),statKey:'mdef',statRaw:p.mdef||8})}
-     ${statCell('stat-dodge','Dodge',_effDodge,{suffix:'%',title:_bt('dodge',p.dodge,`Physical dodge.${dodgeSpdAttributionNote(G.player)} ${_statNote('Display',_effDodge-(p.dodge||0)-dodgeBonusFromSpeed(p.spd),'Evasion buffs active.','Debuffs reduced dodge.')}`),trend:_trendTag(_effDodge-p.dodge-dodgeBonusFromSpeed(p.spd)),statKey:'dodge',statRaw:p.dodge})}
+     ${statCell('stat-dodge','Dodge',_effDodge,{suffix:'%',title:_bt('dodge',p.dodge,`Physical dodge. ${_statNote('Display',_effDodge-(p.dodge||0),'Evasion buffs active.','Debuffs reduced dodge.')}`),trend:_trendTag(_effDodge-p.dodge),statKey:'dodge',statRaw:p.dodge})}
      ${statCell('stat-acc','ACC',_effAcc,{suffix:'%',title:_bt('acc',p.acc,_statNote('Battle ACC',_effAcc-(p.acc||0),'Battle Hymn increased ACC.','Blind/ruffle reduced ACC.')+_accCardBonus),trend:_trendTag(_effAcc-p.acc),statKey:'acc',statRaw:p.acc})}
      ${statCell('stat-spd','SPD',_effSpd,{title:_bt('spd',p.spd,_statNote('Battle SPD',_effSpd-(p.spd||0),'Buff increased SPD.','Slow/clip effects reduced SPD.')),trend:_trendTag(_effSpd-p.spd),statKey:'spd',statRaw:p.spd})}
      ${statCell('stat-cc','CC',_critChance,{suffix:'%',title:_bt('critChance',_ccBaseStore,`Shown value includes battle modifiers (e.g. burn). ${_statNote('vs stored CC',_critChance-_ccBaseStore,'Temporary buffs.','')}`),trend:_trendTag(_critChance-_ccBaseStore),statKey:'critChance',statRaw:_ccBaseStore})}
@@ -6166,8 +6199,8 @@ function refreshBattleUI() {
   };
   const _eCombatHint=buildEnemyCombatStatHint();
   const _eHintRow=_eCombatHint?`<div class="stat-status-hint est-hint" style="grid-column:1/-1">${escAttr(_eCombatHint)}</div>`:'';
-  const _effEnemyDodge=(ep2.dodge||0)+dodgeBonusFromSpeed(ep2.spd);
-  const _enemyDodgeSpdNote=dodgeBonusFromSpeed(ep2.spd)>0?` +${formatCombatNumber(dodgeBonusFromSpeed(ep2.spd))} from SPD (5 SPD = +1 DODGE)`:'';
+  const _effEnemyDodge=(ep2.dodge||0);
+  const _enemyDodgeSpdNote='';
   document.getElementById('enemy-stats-mini').innerHTML =
     `${enemyCell('stat-atk','ATK',ep2.atk,{title:'Physical attack',baseKey:'atk',statKey:'atk',statRaw:ep2.atk})}
      ${enemyCell('stat-matk','MATK',ep2.matk||6,{title:'Magic attack',baseKey:'matk',statKey:'matk',statRaw:ep2.matk||6})}
@@ -7196,7 +7229,7 @@ function getPackRowScaleStatRaw(statKey, stats, isPlayerCombat){
   if(key==='DEF') return Number(s.def||0);
   if(key==='MDEF') return Number(s.mdef||0);
   if(key==='ACC') return Number(s.acc||0);
-  if(key==='DODGE') return Number(s.dodge||0) + dodgeBonusFromSpeed(s.spd);
+  if(key==='DODGE') return Number(s.dodge||0);
   if(key==='ATK'&&isPlayerCombat&&G?.player) return getEffectivePlayerAtkForDamagePreview();
   return Number(s.atk||0);
 }
@@ -8895,7 +8928,7 @@ function getEffectiveDodge(p) {
     + (G.playerStatus.battleHymnDodge&&G.playerStatus.battleHymnDodge.turns>0 ? G.playerStatus.battleHymnDodge.bonus : 0)
     + (G.playerStatus.evading>0&&G.playerStatus.evadeBonus ? G.playerStatus.evadeBonus : 0);
   if(G.playerStatus.sittingDuck) return 0;
-  let dodge = (p.stats.dodge || 0) + dodgeBonusFromSpeed(p.stats.spd) + buffBonus + cardBonus;
+  let dodge = (p.stats.dodge || 0) + buffBonus + cardBonus;
   dodge += (G.playerStatus.passiveDodge || 0);
   dodge -= getWeakenDodgePenalty(getWeakenStacks(G.playerStatus));
   if(typeof Avian?.dispatcher?.modifyDodge==='function') dodge = Avian.dispatcher.modifyDodge(dodge);
@@ -9036,7 +9069,7 @@ function applyWeakenStack(target, addStacks=1){
   status.weaken=w;
 }
 function getEffectiveEnemyDodgeForPlayerHit(){
-  let d = (G.enemy?.stats?.dodge ?? 0) + dodgeBonusFromSpeed(G.enemy?.stats?.spd);
+  let d = (G.enemy?.stats?.dodge ?? 0);
   const pen=getWeakenDodgePenalty(getWeakenStacks(G.enemyStatus));
   return Math.max(0, d - pen);
 }
