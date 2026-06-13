@@ -1713,6 +1713,12 @@ body.build-nest-unlocked .splash-hotspot--forge.is-buildnest-hidden{
 .class-bruiser{background:rgba(60,100,200,.25);color:#90c0ff;border:1px solid rgba(60,100,200,.4);}
 .class-trickster{background:rgba(200,120,20,.25);color:#ffc060;border:1px solid rgba(200,120,20,.4);}
 .class-predator{background:rgba(220,80,160,.25);color:#ff90d0;border:1px solid rgba(220,80,160,.4);}
+.class-knight{background:rgba(20,120,72,.28);color:#70e8a8;border:1px solid rgba(20,140,80,.45);}
+.class-rogue{background:rgba(180,50,30,.28);color:#ff9a7a;border:1px solid rgba(200,70,40,.45);}
+.class-mage{background:rgba(90,50,180,.28);color:#c8a0ff;border:1px solid rgba(110,70,200,.45);}
+.class-siren{background:rgba(40,120,160,.28);color:#90e0ff;border:1px solid rgba(60,150,200,.45);}
+.class-inquisitor{background:rgba(160,120,40,.28);color:#ffe08a;border:1px solid rgba(180,140,50,.45);}
+.class-bard{background:rgba(160,60,140,.28);color:#f0a8e8;border:1px solid rgba(180,80,160,.45);}
 
 
 /* BIRD CARD compact */

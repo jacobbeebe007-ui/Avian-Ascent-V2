@@ -14,7 +14,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, '..');
 const NEW_SHEETS = 'c:\\Users\\JaK_d\\Desktop\\Avian Ascent\\New Sheets';
 const MASTER_XLSX = process.env.AA_MASTER_BIRD_XLSX
-  || path.join(NEW_SHEETS, 'Master Bird List - New Stats - Boss Tiers - Titles - Passives and Perks.xlsx');
+  || path.join(NEW_SHEETS, 'Master Bird List - New Stats - Boss Tiers - Titles - Passives and Perks - Gatcha Tiers.xlsx');
 
 const OUT_BIRDS = path.join(ROOT, 'js', 'data', 'birds.js');
 const OUT_ROSTER = path.join(ROOT, 'js', 'data', 'enemy-roster.js');

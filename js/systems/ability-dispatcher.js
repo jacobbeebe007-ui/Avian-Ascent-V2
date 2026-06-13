@@ -221,7 +221,8 @@
       : (typeof applyGuardedBuff === 'function' ? applyGuardedBuff : null);
     if (!apply) return;
     var pct = resolve ? resolve(row, riderValue, ab) : (Number(riderValue) || 20);
-    apply('player', { physReducPct: pct, turns: 1, sourceAbilityId: row && row.id ? row.id : '' });
+    var turns = Number(riderValue) > 0 ? Math.max(1, Math.floor(Number(riderValue))) : 1;
+    apply('player', { physReducPct: pct, turns: turns, sourceAbilityId: row && row.id ? row.id : '' });
     spawnTrendFloat('player', 'buff');
   }
 

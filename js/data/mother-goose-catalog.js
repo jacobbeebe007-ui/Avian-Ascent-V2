@@ -1,11 +1,9 @@
-/* Mother Goose egg catalog — pools, costs, weights. */
+/* Mother Goose egg catalog — pools, costs, weights (sheet-driven). */
 (function () {
   'use strict';
 
-  var STARTER_BIRD_KEYS = ['sparrow', 'blackbird', 'macaw', 'crow', 'goose', 'robin'];
-
   var ANCESTRAL_EXCLUDE = {
-    dukeBlakiston: true,
+    dukeBlakiston: false,
   };
 
   var EGG_TYPES = {
@@ -14,7 +12,7 @@
       name: 'Cracked Egg',
       cost: 10,
       icon: '🥚',
-      desc: 'Low cost. Hatches starter bird cards only.',
+      desc: 'Low cost. Hatches Grey-tier birds from the starter pool and other Cracked-eligible species.',
       enabled: true,
     },
     feathered: {
@@ -22,7 +20,7 @@
       name: 'Feathered Egg',
       cost: 20,
       icon: '🪶',
-      desc: 'Medium cost. Hatches any bird you have unlocked.',
+      desc: 'Medium cost. Hatches unlocked Grey, Green, and Blue species (excludes Orange-tier boss birds).',
       enabled: true,
     },
     gleaming: {
@@ -30,7 +28,7 @@
       name: 'Gleaming Egg',
       cost: 35,
       icon: '✨',
-      desc: 'Better odds for rarer or less-owned unlocked birds.',
+      desc: 'Better odds for rarer species tiers and birds you own less of.',
       enabled: true,
     },
     royal: {
@@ -38,7 +36,7 @@
       name: 'Royal Egg',
       cost: 50,
       icon: '👑',
-      desc: 'Pick a class, then hatch a bird from that class.',
+      desc: 'Pick a class, then hatch Purple or Gold species from that class.',
       enabled: true,
       requiresClassPick: true,
     },
@@ -47,10 +45,38 @@
       name: 'Ancestral Egg',
       cost: 75,
       icon: '🌙',
-      desc: 'Reserved for boss, event, and legendary birds (coming soon).',
-      enabled: false,
+      desc: 'Boss and event pool. Hatches Ancestral-only species when unlocked.',
+      enabled: true,
     },
   };
+
+  function speciesTiers() {
+    return (globalThis.Avian && globalThis.Avian.data && globalThis.Avian.data.motherGooseSpeciesTiers) || null;
+  }
+
+  function getBirdSpeciesRow(birdKey) {
+    var data = speciesTiers();
+    return data && data.byBirdKey ? data.byBirdKey[birdKey] || null : null;
+  }
+
+  function birdHasEggPool(birdKey, eggId) {
+    var row = getBirdSpeciesRow(birdKey);
+    if (!row || !Array.isArray(row.eggPools)) return false;
+    return row.eggPools.indexOf(eggId) >= 0;
+  }
+
+  function getSpeciesTier(birdKey) {
+    var row = getBirdSpeciesRow(birdKey);
+    return row ? row.speciesTier : 'grey';
+  }
+
+  function starterBirdKeys() {
+    var data = speciesTiers();
+    if (data && Array.isArray(data.starterBirdKeys) && data.starterBirdKeys.length) {
+      return data.starterBirdKeys.slice();
+    }
+    return ['sparrow', 'blackbird', 'macaw', 'crow', 'goose'];
+  }
 
   function isUnlockedBird(bird, birdKey) {
     if (!bird) return false;
@@ -60,62 +86,74 @@
     return false;
   }
 
-  function isAncestralEligible(birdKey) {
-    var birds = globalThis.BIRDS || {};
-    var bird = birds[birdKey];
-    if (!bird) return false;
-    if (ANCESTRAL_EXCLUDE[birdKey]) return false;
-    return !!bird.ancestralEligible;
-  }
-
   function isInNormalPool(birdKey) {
-    if (ANCESTRAL_EXCLUDE[birdKey]) return false;
     var birds = globalThis.BIRDS || {};
     var bird = birds[birdKey];
     if (!bird || !bird.stats) return false;
     return true;
   }
 
-  function buildCrackedPool() {
-    var birds = globalThis.BIRDS || {};
-    return STARTER_BIRD_KEYS.filter(function (key) {
-      return birds[key] && isInNormalPool(key);
-    });
-  }
-
-  function buildFeatheredPool() {
+  function buildPoolForEgg(eggId, opts) {
+    opts = opts || {};
     var birds = globalThis.BIRDS || {};
     var out = [];
     Object.keys(birds).forEach(function (key) {
       var bird = birds[key];
-      if (!bird || !bird.stats || !isInNormalPool(key)) return;
+      if (!bird || !isInNormalPool(key)) return;
+      if (!birdHasEggPool(key, eggId)) return;
+
+      if (eggId === 'cracked') {
+        out.push(key);
+        return;
+      }
+
       if (!isUnlockedBird(bird, key)) return;
+
+      if (eggId === 'feathered' && getSpeciesTier(key) === 'orange') return;
+
+      if (eggId === 'royal') {
+        var cls = String(opts.classFilter || '').toLowerCase();
+        var birdCls =
+          typeof globalThis.classToRoleId === 'function'
+            ? globalThis.classToRoleId(bird.class)
+            : String(bird.class || '').toLowerCase();
+        if (cls && birdCls !== cls) return;
+      }
+
       out.push(key);
     });
     return out;
   }
 
+  function buildCrackedPool() {
+    return buildPoolForEgg('cracked');
+  }
+
+  function buildFeatheredPool() {
+    return buildPoolForEgg('feathered');
+  }
+
+  function buildGleamingPool() {
+    return buildPoolForEgg('gleaming');
+  }
+
   function buildRoyalPool(classId) {
-    var birds = globalThis.BIRDS || {};
-    var cls = String(classId || '').toLowerCase();
-    var out = [];
-    Object.keys(birds).forEach(function (key) {
-      var bird = birds[key];
-      if (!bird || !bird.stats || !isInNormalPool(key)) return;
-      if (!isUnlockedBird(bird, key)) return;
-      var birdCls = typeof globalThis.classToRoleId === 'function' ? globalThis.classToRoleId(bird.class) : String(bird.class || '').toLowerCase();
-      if (birdCls === cls) out.push(key);
-    });
-    return out;
+    return buildPoolForEgg('royal', { classFilter: classId });
   }
 
   function buildAncestralPool() {
-    var birds = globalThis.BIRDS || {};
-    var out = [];
-    Object.keys(birds).forEach(function (key) {
-      if (isAncestralEligible(key) && isUnlockedBird(birds[key], key)) out.push(key);
-    });
-    return out;
+    return buildPoolForEgg('ancestral');
+  }
+
+  function syncAncestralEggEnabled() {
+    var data = speciesTiers();
+    var hasAncestralBird = false;
+    if (data && data.byBirdKey) {
+      Object.keys(data.byBirdKey).forEach(function (key) {
+        if (birdHasEggPool(key, 'ancestral')) hasAncestralBird = true;
+      });
+    }
+    EGG_TYPES.ancestral.enabled = hasAncestralBird;
   }
 
   function getEggPool(eggType, opts) {
@@ -123,22 +161,23 @@
     var id = String(eggType || '').toLowerCase();
     if (id === 'cracked') return buildCrackedPool();
     if (id === 'feathered') return buildFeatheredPool();
-    if (id === 'gleaming') return buildFeatheredPool();
+    if (id === 'gleaming') return buildGleamingPool();
     if (id === 'royal') return buildRoyalPool(opts.classFilter);
     if (id === 'ancestral') return buildAncestralPool();
     return [];
   }
 
   function gleamingWeight(birdKey, ownedCards, speciesFeathers) {
-    var birds = globalThis.BIRDS || {};
-    var bird = birds[birdKey];
-    if (!bird) return 1;
-    var w = 10;
+    var data = speciesTiers();
+    var tier = getSpeciesTier(birdKey);
+    var base =
+      data && data.gleamingWeightBySpeciesTier && data.gleamingWeightBySpeciesTier[tier] != null
+        ? data.gleamingWeightBySpeciesTier[tier]
+        : 5;
+    var w = Math.max(1, base);
     if (!ownedCards || !ownedCards[birdKey]) w += 25;
     var feathers = speciesFeathers && speciesFeathers[birdKey] ? speciesFeathers[birdKey] : 0;
     if (feathers < 12) w += 10;
-    if (bird.unlockRequires) w += 8;
-    if (bird.unlockRequires && bird.unlockRequires.indexOf('unlock_') === 0) w += 5;
     return Math.max(1, w);
   }
 
@@ -172,11 +211,15 @@
   }
 
   function getEggTypeDef(eggType) {
+    syncAncestralEggEnabled();
     return EGG_TYPES[String(eggType || '').toLowerCase()] || null;
   }
 
+  syncAncestralEggEnabled();
+
   var catalog = {
-    STARTER_BIRD_KEYS: STARTER_BIRD_KEYS,
+    starterBirdKeys: starterBirdKeys,
+    STARTER_BIRD_KEYS: starterBirdKeys,
     ANCESTRAL_EXCLUDE: ANCESTRAL_EXCLUDE,
     EGG_TYPES: EGG_TYPES,
     getEggPool: getEggPool,
@@ -185,6 +228,10 @@
     isUnlockedBird: isUnlockedBird,
     buildCrackedPool: buildCrackedPool,
     buildFeatheredPool: buildFeatheredPool,
+    buildGleamingPool: buildGleamingPool,
+    buildAncestralPool: buildAncestralPool,
+    getBirdSpeciesRow: getBirdSpeciesRow,
+    gleamingWeight: gleamingWeight,
   };
 
   var Avian = globalThis.Avian || (globalThis.Avian = {});

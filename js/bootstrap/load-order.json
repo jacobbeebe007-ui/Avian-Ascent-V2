@@ -30,6 +30,7 @@
     "js/data/fortune-catalog.js",
     "js/data/bird-card-tiers.js",
     "js/data/bird-card-passive-scaling.js",
+    "js/data/mother-goose-species-tiers.js",
     "js/data/mother-goose-catalog.js",
     "js/meta/bird-cards.js",
     "js/meta/mother-goose.js",

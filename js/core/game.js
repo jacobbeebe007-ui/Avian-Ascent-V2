@@ -2462,7 +2462,7 @@ function openNest() {
   const _nestCritMultBase=p.goldCritMult||1.8;
   const _nestCritBonusPct=(p.critDamageBonusPct||0)+(_eqMech?.critDamageBonusPct||0);
   const _nestCritMultDisp=_nestCritBonusPct>0?`${formatCombatNumber(_nestCritMultBase)}× <span class="nest-crit-bonus" title="Added to multiplier on critical hits">(+${formatCombatNumber(_nestCritBonusPct)})</span>`:`${formatCombatNumber(_nestCritMultBase)}×`;
-  function _nestStat(val,base,suffix=''){const d=val-base;const col=d>0?'var(--red-light)':d<0?'var(--purple-light)':'var(--gold)';const arr=d>0?' ▲▲':d<0?' ▼▼':'';return `<span style="color:${col}">${formatCombatNumber(val)}${suffix}${arr}</span>`;}
+  function _nestStat(val,base,suffix=''){const d=val-base;const col=d>0?'var(--red-light)':d<0?'var(--purple-light)':'var(--gold)';const arr=d>0?' ▲':d<0?' ▼':'';return `<span style="color:${col}">${formatCombatNumber(val)}${suffix}${arr}</span>`;}
   html+=`<div class="nest-section"><div class="nest-section-title">📊 Stats ${G.turn?'(In Battle)':''}</div>
   <div class="nest-stats-grid">
     <div class="nest-stat-card"><div class="nest-stat-val">${formatCombatNumber(s.hp)}/${formatCombatNumber(s.maxHp)}</div><div class="nest-stat-lbl">HP</div></div>
@@ -6213,7 +6213,7 @@ function refreshBattleUI() {
   const _effMdef=(p.mdef||8);
   const _eqMechCombat=typeof Avian?.mutations?.getMechanicsRollup==='function'?Avian.mutations.getMechanicsRollup(G.player):null;
   const escAttr=(s)=>String(s??'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
-  const _trendTag = (diff) => diff>0 ? '<small class="stat-trend up">▲▲</small>' : (diff<0 ? '<small class="stat-trend down">▼▼</small>' : '');
+  const _trendTag = (diff) => diff>0 ? '<small class="stat-trend up">▲</small>' : (diff<0 ? '<small class="stat-trend down">▼</small>' : '');
   const _atkDiff = G.warcryActive ? Math.max(1,Math.floor((p.atk||0)*(G.warcryATK||0)/100)) : (getWeakenStacks(G.playerStatus)>0 ? -1 : 0);
   const _effAtk=G.warcryActive?(p.atk||0)*(1+G.warcryATK/100):p.atk;
   const _critChance = Math.min(100,(p.critChance||5));
@@ -6254,7 +6254,7 @@ function refreshBattleUI() {
   const ep2=G.enemy.stats;
   const eCritChance=Math.max(0,Math.min(100,(ep2.cc??((ep2.critChance||5)/100))*100));
   const eCritMult=(ep2.cd??ep2.critMult??1.5);
-  const _eTrendTag = (diff) => diff>0 ? '<small class="stat-trend up">▲▲</small>' : (diff<0 ? '<small class="stat-trend down">▼▼</small>' : '');
+  const _eTrendTag = (diff) => diff>0 ? '<small class="stat-trend up">▲</small>' : (diff<0 ? '<small class="stat-trend down">▼</small>' : '');
   const _eBase = G.enemy._battleStatBase || {};
   const enemyCell=(klass,label,val,{suffix='',title='',trend='',baseKey='',statKey='',statRaw=null}={})=>{
     const dataAttr=statKey?` data-stat-key="${statKey}" data-stat-raw="${Number(statRaw ?? val)}"`:'';
@@ -10255,7 +10255,8 @@ function tickDelayedForTarget(side){
   delete status.delayed;
 }
 
-function tickStatuses(who) {
+function tickStatuses(who, opts={}) {
+  const skipGuarded=!!opts.skipGuarded;
   const s=who==='player'?G.playerStatus:G.enemyStatus;
   const keys=Object.keys(s);
   const owner=who==='player'?G.player:G.enemy;
@@ -10270,7 +10271,7 @@ function tickStatuses(who) {
       }
     }
     else if (k==='counterThorns') { /* temporary per defending window */ }
-    else if (k==='guarded' && typeof s[k]==='object') tickGuardedStatus(s);
+    else if (k==='guarded' && typeof s[k]==='object' && !skipGuarded) tickGuardedStatus(s);
     else if (k==='weaken' && typeof s[k]==='object' && s[k].turns!=null) {
       s[k].turns--;
       if(s[k].turns<=0) delete s[k];
@@ -11169,7 +11170,8 @@ function tickTimedBuffsAfterEnemyPhase(){
       delete G.enemyStatus.strikerDodgeMark;
     }
   }
-  tickStatuses('player');
+  tickStatuses('player', {skipGuarded:true});
+  tickGuardedStatus(G.playerStatus);
 }
 
 function endPlayerTurn(force=false) {
@@ -11203,6 +11205,8 @@ function endPlayerTurn(force=false) {
   tickPoisonDamageOnly('enemy');
   tickDelayedForTarget('player');
   if(G.player.stats.hp<=0||G.enemy.stats.hp<=0){if(checkDeath())return;}
+  tickGuardedStatus(G.enemyStatus);
+  tickStatuses('enemy', {skipGuarded:true});
   G.turn='enemy';
   lockActionUI(true);
   refreshBattleUI();
@@ -11923,7 +11927,7 @@ function afterEnemyTurn() {
       delete G.playerStatus.chilled;
     }
   }
-  tickStatuses('enemy');
+  tickStatuses('enemy', {skipGuarded:true});
   if(G.playerStatus.confused&&typeof G.playerStatus.confused==='object'){G.playerStatus.confused.turns--;if(G.playerStatus.confused.turns<=0)delete G.playerStatus.confused;}
   if(G.enemyStatus.confused&&typeof G.enemyStatus.confused==='object'){G.enemyStatus.confused.turns--;if(G.enemyStatus.confused.turns<=0)delete G.enemyStatus.confused;}
   if(G.enemyStatus.enemyBlind>0){G.enemyStatus.enemyBlind--;if(G.enemyStatus.enemyBlind<=0)delete G.enemyStatus.enemyBlind;}

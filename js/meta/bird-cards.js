@@ -63,8 +63,14 @@
   }
 
   function starterBirdKeys() {
+    var data = globalThis.Avian && globalThis.Avian.data && globalThis.Avian.data.motherGooseSpeciesTiers;
+    if (data && Array.isArray(data.starterBirdKeys) && data.starterBirdKeys.length) {
+      return data.starterBirdKeys.slice();
+    }
     var cat = globalThis.Avian && globalThis.Avian.data && globalThis.Avian.data.motherGooseCatalog;
-    return (cat && cat.STARTER_BIRD_KEYS) || ['sparrow', 'blackbird', 'macaw', 'crow', 'goose', 'robin'];
+    if (cat && typeof cat.starterBirdKeys === 'function') return cat.starterBirdKeys();
+    if (cat && Array.isArray(cat.STARTER_BIRD_KEYS)) return cat.STARTER_BIRD_KEYS.slice();
+    return ['sparrow', 'blackbird', 'macaw', 'crow', 'goose'];
   }
 
   function migrateBirdCardsInMeta(meta) {
