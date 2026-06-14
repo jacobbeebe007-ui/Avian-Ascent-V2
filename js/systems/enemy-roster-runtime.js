@@ -46,7 +46,18 @@
     return r && r.byId ? r.byId[enemyId] : null;
   }
 
-  function filterNormalPoolForBand(band, playerBirdKey) {
+  function getBirdSpeciesTier(birdKey) {
+    var tiers = Avian.data && Avian.data.motherGooseSpeciesTiers;
+    var row = tiers && tiers.byBirdKey ? tiers.byBirdKey[birdKey] : null;
+    return row && row.speciesTier ? row.speciesTier : 'grey';
+  }
+
+  function rowMatchesStorySpeciesTier(row, speciesTier) {
+    if (!speciesTier || !row) return true;
+    return getBirdSpeciesTier(row.birdKey) === speciesTier;
+  }
+
+  function filterNormalPoolForBand(band, playerBirdKey, speciesTier) {
     var r = roster();
     if (!r || !r.normalByLevel) return [];
     var playerNorm = normalizeBirdKey(playerBirdKey);
@@ -59,13 +70,14 @@
         var row = getRosterRow(ids[i]);
         if (!row || row.isBoss) continue;
         if (playerNorm && normalizeBirdKey(row.birdKey) === playerNorm) continue;
+        if (!rowMatchesStorySpeciesTier(row, speciesTier)) continue;
         out.push(ids[i]);
       }
     }
     return out;
   }
 
-  function filterBossPoolForLevel(level, playerBirdKey) {
+  function filterBossPoolForLevel(level, playerBirdKey, speciesTier) {
     var r = roster();
     if (!r || !r.bossesByLevel) return [];
     var playerNorm = normalizeBirdKey(playerBirdKey);
@@ -74,14 +86,51 @@
       var row = getRosterRow(id);
       if (!row) return false;
       if (playerNorm && normalizeBirdKey(row.birdKey) === playerNorm) return false;
+      if (!rowMatchesStorySpeciesTier(row, speciesTier)) return false;
       return true;
     });
+  }
+
+  function getStoryEncounterPoolIds(stage, playerBirdKey) {
+    var st = Math.max(1, Math.floor(Number(stage)) || 1);
+    var bandFn = global.getStoryEnemyLevelBand;
+    var band = typeof bandFn === 'function' ? bandFn(st) : { min: 1, max: 2 };
+    var tierFn = global.getStorySpeciesTierForStage;
+    var speciesTier = typeof tierFn === 'function' ? tierFn(st) : null;
+
+    if (band.duke) {
+      var dukeId = typeof global.getStoryDukeRosterId === 'function'
+        ? global.getStoryDukeRosterId()
+        : global.STORY_DUKE_ROSTER_ID;
+      return dukeId ? [dukeId] : [];
+    }
+    if (band.boss) {
+      var bossLv = band.level || 6;
+      var bossPool = filterBossPoolForLevel(bossLv, playerBirdKey, speciesTier);
+      if (!bossPool.length) {
+        bossPool = filterNormalPoolForBand({ min: bossLv, max: bossLv }, playerBirdKey, speciesTier);
+      }
+      return bossPool.slice().sort();
+    }
+
+    var pool = filterNormalPoolForBand(band, playerBirdKey, speciesTier);
+    var seen = {};
+    var out = [];
+    pool.forEach(function (id) {
+      if (!seen[id]) {
+        seen[id] = true;
+        out.push(id);
+      }
+    });
+    return out.sort();
   }
 
   function pickStoryEncounterEnemyIds(stage, playerBirdKey, chainCount) {
     var st = Math.max(1, Math.floor(Number(stage)) || 1);
     var bandFn = global.getStoryEnemyLevelBand;
     var band = typeof bandFn === 'function' ? bandFn(st) : { min: 1, max: 2 };
+    var tierFn = global.getStorySpeciesTierForStage;
+    var speciesTier = typeof tierFn === 'function' ? tierFn(st) : null;
 
     if (band.duke) {
       var dukeId = typeof global.getStoryDukeRosterId === 'function'
@@ -91,18 +140,18 @@
     }
     if (band.boss) {
       var bossLv = band.level || 6;
-      var bossPool = filterBossPoolForLevel(bossLv, playerBirdKey);
+      var bossPool = filterBossPoolForLevel(bossLv, playerBirdKey, speciesTier);
       if (!bossPool.length) {
-        bossPool = filterNormalPoolForBand({ min: bossLv, max: bossLv }, playerBirdKey);
+        bossPool = filterNormalPoolForBand({ min: bossLv, max: bossLv }, playerBirdKey, speciesTier);
       }
       var bossPick = pickRandom(bossPool);
       return bossPick ? [bossPick] : [];
     }
 
     var count = Math.max(1, Math.floor(Number(chainCount)) || 3);
-    var pool = filterNormalPoolForBand(band, playerBirdKey);
+    var pool = filterNormalPoolForBand(band, playerBirdKey, speciesTier);
     if (!pool.length) {
-      console.warn('[EnemyRoster] Empty pool for stage', st, band);
+      console.warn('[EnemyRoster] Empty pool for stage', st, band, 'tier', speciesTier);
       return Array.from({ length: count }, function () { return 'EN-SPARR-HESQ-L01'; });
     }
     var shuffled = shuffle(pool);
@@ -385,10 +434,12 @@
   ns.getRosterRow = getRosterRow;
   ns.isRosterEnemyId = isRosterEnemyId;
   ns.pickStoryEncounterEnemyIds = pickStoryEncounterEnemyIds;
+  ns.getStoryEncounterPoolIds = getStoryEncounterPoolIds;
   ns.pickEndlessRosterEnemyId = pickEndlessRosterEnemyId;
   ns.buildEnemyFromRosterId = buildEnemyFromRosterId;
   ns.resolveOwStageToken = resolveOwStageToken;
   ns.filterNormalPoolForBand = filterNormalPoolForBand;
+  ns.getBirdSpeciesTier = getBirdSpeciesTier;
 
   global.pickRosterIdForBirdAndLevel = pickRosterIdForBirdAndLevel;
   global.pickRandomRosterIdAtLevel = pickRandomRosterIdAtLevel;
@@ -397,6 +448,7 @@
   global.getEnemyRosterRow = getRosterRow;
   global.isRosterEnemyId = isRosterEnemyId;
   global.pickStoryEncounterEnemyIds = pickStoryEncounterEnemyIds;
+  global.getStoryEncounterPoolIds = getStoryEncounterPoolIds;
   global.pickEndlessRosterEnemyId = pickEndlessRosterEnemyId;
   global.buildEnemyFromRosterId = buildEnemyFromRosterId;
   global.resolveOwStageToken = resolveOwStageToken;

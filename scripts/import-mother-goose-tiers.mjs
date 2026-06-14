@@ -13,8 +13,14 @@ import { fileURLToPath } from 'node:url';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, '..');
 const NEW_SHEETS = 'c:\\Users\\JaK_d\\Desktop\\Avian Ascent\\New Sheets';
+const MASTER_XLSX_NAME = 'Master Bird List - New Stats - Boss Tiers - Titles - Passives and Perks - Gatcha Tiers.xlsx';
+const MASTER_XLSX_CANDIDATES = [
+  path.join(NEW_SHEETS, 'Main', MASTER_XLSX_NAME),
+  path.join(NEW_SHEETS, MASTER_XLSX_NAME),
+];
 const MASTER_XLSX = process.env.AA_MASTER_BIRD_XLSX
-  || path.join(NEW_SHEETS, 'Master Bird List - New Stats - Boss Tiers - Titles - Passives and Perks - Gatcha Tiers.xlsx');
+  || MASTER_XLSX_CANDIDATES.find((p) => existsSync(p))
+  || MASTER_XLSX_CANDIDATES[0];
 const OUT = path.join(ROOT, 'js', 'data', 'mother-goose-species-tiers.js');
 
 const BIRD_NAME_TO_KEY = {
@@ -31,6 +37,8 @@ const BIRD_NAME_TO_KEY = {
   'Bush Turkey': 'bushturkey', 'Bushturkey': 'bushturkey', 'Vulture': 'vulture', 'Barn Owl': 'barnowl', 'Barnowl': 'barnowl',
   'Bustard': 'bustard', 'Golden Eagle': 'goldeneagle', 'Australian Pelican': 'pelican', 'Pelican': 'pelican',
   'Marabou Stork': 'marabou', 'Marabou': 'marabou',
+  'Chickadee': 'chickadee', 'Dodo': 'dodo', 'Dove': 'dove', 'Finch': 'finch', 'Kakapo': 'kakapo',
+  'Pigeon': 'pigeon', 'Rock Dove': 'rockDove', 'Rock Pigeon': 'rockPigeon',
 };
 
 const SPECIES_TIER_ORDER = ['grey', 'green', 'blue', 'purple', 'gold', 'orange'];

@@ -1,6 +1,6 @@
 /**
  * Story-mode random encounter generator (enemy roster).
- * Picks authored roster rows by stage level band; excludes player bird.
+ * Picks authored roster rows by stage level band + species tier; excludes player bird.
  */
 (function initEncounterGenerator(global) {
   'use strict';
@@ -60,29 +60,14 @@
 
   /** Candidate enemy roster ids for overworld preview (same pool as picker). */
   function getStoryStageEnemyCandidateIds(stageNumber, playerBirdKey) {
-    var pickFn = global.pickStoryEncounterEnemyIds;
-    if (typeof pickFn !== 'function') return [];
-    var st = Math.max(1, Math.floor(Number(stageNumber)) || 1);
-    if (isBossStage(st)) return pickFn(st, playerBirdKey, 1);
-    var bandFn = global.getStoryEnemyLevelBand;
-    var band = typeof bandFn === 'function' ? bandFn(st) : { min: 1, max: 2 };
-    if (band.boss || band.duke) return pickFn(st, playerBirdKey, 1);
-    var roster = Avian.data && Avian.data.enemyRoster;
-    if (!roster || !roster.normalByLevel) return [];
-    var playerNorm = normalizeBirdKey(playerBirdKey);
-    var out = [];
-    var min = Math.max(1, band.min || 1);
-    var max = Math.max(min, band.max || min);
-    for (var lv = min; lv <= max; lv++) {
-      var ids = roster.normalByLevel[lv] || [];
-      for (var i = 0; i < ids.length; i++) {
-        var row = getRosterRow(ids[i]);
-        if (!row || row.isBoss) continue;
-        if (playerNorm && normalizeBirdKey(row.birdKey) === playerNorm) continue;
-        if (out.indexOf(ids[i]) < 0) out.push(ids[i]);
-      }
+    var rosterNs = Avian.systems.enemyRoster;
+    if (rosterNs && typeof rosterNs.getStoryEncounterPoolIds === 'function') {
+      return rosterNs.getStoryEncounterPoolIds(stageNumber, playerBirdKey);
     }
-    return out.sort();
+    if (typeof global.getStoryEncounterPoolIds === 'function') {
+      return global.getStoryEncounterPoolIds(stageNumber, playerBirdKey);
+    }
+    return [];
   }
 
   /** Candidate birdKeys derived from roster pool (portrait preview). */

@@ -326,13 +326,13 @@
   "dukeBlakiston": {
     "passiveId": "PAS-030",
     "scaling": "percentBonus",
-    "grey": 0.15,
-    "green": 0.16999999999999998,
-    "blue": 0.19,
-    "purple": 0.21,
-    "gold": 0.22999999999999998,
-    "orange": 0.22999999999999998,
-    "effectTemplate": "+{pct}% Magical Ailment chance and +10% Magic damage against Ailmented enemies."
+    "grey": 0.12,
+    "green": 0.13999999999999999,
+    "blue": 0.16,
+    "purple": 0.18,
+    "gold": 0.2,
+    "orange": 0.2,
+    "effectTemplate": "+{pct}% Magic damage and +10% Magical Ailment chance against Ailmented enemies; when below 50% HP, gain +10% Defence and Magic Defence until next turn once per battle."
   },
   "wren": {
     "passiveId": "PAS-031",
@@ -487,6 +487,94 @@
     "gold": 0.58,
     "orange": 0.58,
     "effectTemplate": "Attacks against enemies below +{pct}% HP deal +8% damage."
+  },
+  "pigeon": {
+    "passiveId": "PAS-045",
+    "scaling": "percentBonus",
+    "grey": 0.06,
+    "green": 0.08,
+    "blue": 0.1,
+    "purple": 0.12,
+    "gold": 0.14,
+    "orange": 0.14,
+    "effectTemplate": "After taking damage, Pigeon’s next 1EN Physical attack deals +{pct}% damage."
+  },
+  "rockPigeon": {
+    "passiveId": "PAS-046",
+    "scaling": "percentBonus",
+    "grey": 0.5,
+    "green": 0.52,
+    "blue": 0.54,
+    "purple": 0.56,
+    "gold": 0.58,
+    "orange": 0.58,
+    "effectTemplate": "While above +{pct}% HP, Rock Pigeon gains +5% Defence."
+  },
+  "dove": {
+    "passiveId": "PAS-047",
+    "scaling": "percentBonus",
+    "grey": 0.05,
+    "green": 0.07,
+    "blue": 0.09,
+    "purple": 0.11,
+    "gold": 0.13,
+    "orange": 0.13,
+    "effectTemplate": "After using a Magic attack, Dove gains +{pct}% Magic Defence until next turn."
+  },
+  "rockDove": {
+    "passiveId": "PAS-048",
+    "scaling": "percentBonus",
+    "grey": 0.05,
+    "green": 0.07,
+    "blue": 0.09,
+    "purple": 0.11,
+    "gold": 0.13,
+    "orange": 0.13,
+    "effectTemplate": "Alternating Physical and Magic attacks gives the second attack +{pct}% damage."
+  },
+  "kakapo": {
+    "passiveId": "PAS-049",
+    "scaling": "percentBonus",
+    "grey": 0.5,
+    "green": 0.52,
+    "blue": 0.54,
+    "purple": 0.56,
+    "gold": 0.58,
+    "orange": 0.58,
+    "effectTemplate": "While below +{pct}% HP, Kakapo gains +8% Magic Defence."
+  },
+  "dodo": {
+    "passiveId": "PAS-050",
+    "scaling": "percentBonus",
+    "grey": 0.08,
+    "green": 0.1,
+    "blue": 0.12,
+    "purple": 0.14,
+    "gold": 0.16,
+    "orange": 0.16,
+    "effectTemplate": "The first hit Dodo takes each battle is reduced by +{pct}%."
+  },
+  "chickadee": {
+    "passiveId": "PAS-051",
+    "scaling": "percentBonus",
+    "grey": 0.04,
+    "green": 0.06,
+    "blue": 0.08,
+    "purple": 0.1,
+    "gold": 0.12,
+    "orange": 0.12,
+    "effectTemplate": "If acting before the target, 1EN Physical attacks gain +{pct}% Critical Chance."
+  },
+  "finch": {
+    "passiveId": "PAS-052",
+    "scaling": "percentBonus",
+    "grey": 0.06,
+    "green": 0.08,
+    "blue": 0.1,
+    "purple": 0.12,
+    "gold": 0.14,
+    "orange": 0.14,
+    "effectTemplate": "The first 1EN Physical attack each battle deals +{pct}% damage."
   }
 });
 })();

@@ -405,6 +405,78 @@
         "feathered"
       ],
       "starterBird": false
+    },
+    "pigeon": {
+      "birdName": "Pigeon",
+      "speciesTier": "grey",
+      "eggPools": [
+        "cracked",
+        "feathered"
+      ],
+      "starterBird": false
+    },
+    "rockPigeon": {
+      "birdName": "Rock Pigeon",
+      "speciesTier": "grey",
+      "eggPools": [
+        "cracked",
+        "feathered"
+      ],
+      "starterBird": false
+    },
+    "dove": {
+      "birdName": "Dove",
+      "speciesTier": "grey",
+      "eggPools": [
+        "cracked",
+        "feathered"
+      ],
+      "starterBird": false
+    },
+    "rockDove": {
+      "birdName": "Rock Dove",
+      "speciesTier": "grey",
+      "eggPools": [
+        "cracked",
+        "feathered"
+      ],
+      "starterBird": false
+    },
+    "kakapo": {
+      "birdName": "Kakapo",
+      "speciesTier": "green",
+      "eggPools": [
+        "feathered",
+        "gleaming"
+      ],
+      "starterBird": false
+    },
+    "dodo": {
+      "birdName": "Dodo",
+      "speciesTier": "green",
+      "eggPools": [
+        "feathered",
+        "gleaming"
+      ],
+      "starterBird": false
+    },
+    "chickadee": {
+      "birdName": "Chickadee",
+      "speciesTier": "grey",
+      "eggPools": [
+        "cracked",
+        "feathered"
+      ],
+      "starterBird": false
+    },
+    "finch": {
+      "birdName": "Finch",
+      "speciesTier": "grey",
+      "eggPools": [
+        "cracked",
+        "feathered"
+      ],
+      "starterBird": false
     }
   },
   "starterBirdKeys": [

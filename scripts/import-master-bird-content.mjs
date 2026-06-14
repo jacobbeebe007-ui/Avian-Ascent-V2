@@ -13,8 +13,14 @@ import { fileURLToPath } from 'node:url';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, '..');
 const NEW_SHEETS = 'c:\\Users\\JaK_d\\Desktop\\Avian Ascent\\New Sheets';
+const MASTER_XLSX_NAME = 'Master Bird List - New Stats - Boss Tiers - Titles - Passives and Perks - Gatcha Tiers.xlsx';
+const MASTER_XLSX_CANDIDATES = [
+  path.join(NEW_SHEETS, 'Main', MASTER_XLSX_NAME),
+  path.join(NEW_SHEETS, MASTER_XLSX_NAME),
+];
 const MASTER_XLSX = process.env.AA_MASTER_BIRD_XLSX
-  || path.join(NEW_SHEETS, 'Master Bird List - New Stats - Boss Tiers - Titles - Passives and Perks - Gatcha Tiers.xlsx');
+  || MASTER_XLSX_CANDIDATES.find((p) => existsSync(p))
+  || MASTER_XLSX_CANDIDATES[0];
 
 const OUT_BIRDS = path.join(ROOT, 'js', 'data', 'birds.js');
 const OUT_ROSTER = path.join(ROOT, 'js', 'data', 'enemy-roster.js');
@@ -69,6 +75,14 @@ const BIRD_PRESERVE = {
   goldeneagle: { tagline: 'Imperial hunter. High kill pressure and ruthless finishers.', color: '#c9a020', unlockRequires: 'unlock_goldeneagle', unlockHint: 'Coming soon.' },
   pelican: { tagline: 'Massive bill, massive body. Absorbs hits and refuses to yield.', color: '#a0b8c8', unlockRequires: 'unlock_pelican', unlockHint: 'Coming soon.' },
   marabou: { tagline: 'Corpse-field predator. Grim pressure and towering execution.', color: '#8a8a88', unlockRequires: 'unlock_marabou', unlockHint: 'Coming soon.' },
+  chickadee: { tagline: 'Tiny nerve. Quick pecks and sharper openings.', color: '#8a9a6a', unlockRequires: 'unlock_chickadee', unlockHint: 'Coming soon.' },
+  dodo: { tagline: 'Oblivious bulk. Too stubborn to fall quickly.', color: '#9a8a70', unlockRequires: 'unlock_dodo', unlockHint: 'Coming soon.' },
+  dove: { tagline: 'Gentle chorus. Soft magic, steady support.', color: '#c8c0b0', unlockRequires: 'unlock_dove', unlockHint: 'Coming soon.' },
+  finch: { tagline: 'Quick chirp. First strike, fast finish.', color: '#d8a840', unlockRequires: 'unlock_finch', unlockHint: 'Coming soon.' },
+  kakapo: { tagline: 'Mossy ballad. Night-ground survivor with heavy magic.', color: '#6a8a50', unlockRequires: 'unlock_kakapo', unlockHint: 'Coming soon.' },
+  pigeon: { tagline: 'Street scrapper. Scrappy rhythm, scrappier payoffs.', color: '#8a8a98', unlockRequires: 'unlock_pigeon', unlockHint: 'Coming soon.' },
+  rockDove: { tagline: 'Cobbled rhythm. Alternating beats, rising damage.', color: '#7a8090', unlockRequires: 'unlock_rockdove', unlockHint: 'Coming soon.' },
+  rockPigeon: { tagline: 'Rooftop bulk. Heavy guard above the city line.', color: '#6a7080', unlockRequires: 'unlock_rockpigeon', unlockHint: 'Coming soon.' },
 };
 
 const BIRD_NAME_TO_KEY = {
@@ -85,6 +99,8 @@ const BIRD_NAME_TO_KEY = {
   'Bush Turkey': 'bushturkey', 'Bushturkey': 'bushturkey', 'Vulture': 'vulture', 'Barn Owl': 'barnowl', 'Barnowl': 'barnowl',
   'Bustard': 'bustard', 'Golden Eagle': 'goldeneagle', 'Australian Pelican': 'pelican', 'Pelican': 'pelican',
   'Marabou Stork': 'marabou', 'Marabou': 'marabou',
+  'Chickadee': 'chickadee', 'Dodo': 'dodo', 'Dove': 'dove', 'Finch': 'finch', 'Kakapo': 'kakapo',
+  'Pigeon': 'pigeon', 'Rock Dove': 'rockDove', 'Rock Pigeon': 'rockPigeon',
 };
 
 function readZipEntries(zipPath) {

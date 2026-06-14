@@ -79,7 +79,7 @@ const species = sandbox.Avian.data.motherGooseSpeciesTiers;
 const cat = sandbox.Avian.data.motherGooseCatalog;
 
 console.log('[verify-bird-cards] species tiers data');
-assert(species && Object.keys(species.byBirdKey).length === 44, '44 birds in species tiers');
+assert(species && Object.keys(species.byBirdKey).length === 52, '52 birds in species tiers');
 assert(species.starterBirdKeys.length === 5, '5 starter birds from sheet');
 
 console.log('[verify-bird-cards] meta normalize / migration');

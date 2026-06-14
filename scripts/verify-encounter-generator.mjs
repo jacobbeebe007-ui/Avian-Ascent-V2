@@ -31,6 +31,7 @@ function loadShell() {
   };
   globalThis.localStorage = { getItem: () => null, setItem() {}, removeItem() {} };
 
+  require(path.join(root, 'js/data/mother-goose-species-tiers.js'));
   require(path.join(root, 'js/data/enemy-roster.js'));
   require(path.join(root, 'js/data/birds.js'));
   require(path.join(root, 'js/systems/story-enemy-levels.js'));
@@ -44,6 +45,12 @@ loadShell();
 
 const gen = globalThis.Avian?.systems?.encounterGenerator;
 const roster = globalThis.Avian.data.enemyRoster;
+const tiers = globalThis.Avian.data.motherGooseSpeciesTiers.byBirdKey;
+
+function speciesTierOf(birdKey) {
+  return tiers[birdKey]?.speciesTier || 'grey';
+}
+
 ok('encounterGenerator namespace present', !!gen);
 ok('getEnemyLevelForDifficulty is a function', typeof gen?.getEnemyLevelForDifficulty === 'function');
 ok('pickStoryEncounterEnemyIds is a function', typeof gen?.pickStoryEncounterEnemyIds === 'function');
@@ -56,11 +63,13 @@ ok('Level floor at 1', gen.getEnemyLevelForDifficulty(1, 'fletchling') === 1);
 
 const pool = gen.getStoryStageEnemyCandidateIds(3, 'sparrow');
 ok('Pool excludes player bird roster rows', !pool.some((id) => roster.byId[id]?.birdKey === 'sparrow'));
-ok('Pool has many enemies', pool.length >= 30);
+ok('Stage 3 grey pool non-empty', pool.length >= 20);
+ok('Stage 3 pool grey only', pool.every((id) => speciesTierOf(roster.byId[id]?.birdKey) === 'grey'));
 
 const chain = gen.pickStoryEncounterEnemyIds(3, 'crow');
 ok('Normal stage chain length 3', chain.length === 3);
 ok('Chain returns roster ids', chain.every((id) => String(id).startsWith('EN-') || String(id).startsWith('BO-')));
+ok('Chain picks grey tier only', chain.every((id) => speciesTierOf(roster.byId[id]?.birdKey) === 'grey'));
 const unique = new Set(chain);
 ok('Chain enemies unique when pool large enough', unique.size === chain.length);
 
@@ -69,6 +78,10 @@ ok('Stage 20 returns Duke roster id', stage20[0] === globalThis.getStoryDukeRost
 
 const stage10 = gen.pickStoryEncounterEnemyIds(10, 'sparrow', 1);
 ok('Stage 10 milestone from L6 roster', stage10.length === 1 && roster.byId[stage10[0]]?.storyLevel === 6);
+ok('Stage 10 boss is blue tier', speciesTierOf(roster.byId[stage10[0]]?.birdKey) === 'blue');
+
+const pool10 = gen.getStoryStageEnemyCandidateIds(10, 'sparrow');
+ok('Stage 10 candidate pool blue only', pool10.length > 0 && pool10.every((id) => speciesTierOf(roster.byId[id]?.birdKey) === 'blue'));
 
 if (process.exitCode) {
   console.error('\nEncounter generator verification failed.');
