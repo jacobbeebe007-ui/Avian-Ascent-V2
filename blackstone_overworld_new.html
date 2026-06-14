@@ -423,6 +423,13 @@ function isNodeUnlocked(n){
     if(prev.type==='shop'){ const p2=NODES[n.id-2]; return (OVERWORLD_PROGRESS.completedStage||0) >= Number(p2?.stage||0); }
     return owNodeCleared(prev);
   }
+  if(n.type==='overworld'){
+    const prev=NODES[n.id-1];
+    if(!prev||prev.type==='start') return true;
+    if(isCombatNode(prev)) return (OVERWORLD_PROGRESS.completedStage||0) >= Number(prev.stage||1)-1;
+    if(prev.type==='shop'){ const p2=NODES[n.id-2]; return (OVERWORLD_PROGRESS.completedStage||0) >= Number(p2?.stage||0); }
+    return owNodeCleared(prev);
+  }
   if(n.type==='bonus'){
     if(!canEnterBonusNode||!_USE_CUSTOM) return isNodeUnlocked({type:'shop'});
     const prev=NODES[n.id-1];
@@ -448,6 +455,7 @@ function isActionable(n){
   if(!n || n.type==='start') return false;
   if(n.type==='return') return isNodeUnlocked(n);
   if(n.type==='world') return isNodeUnlocked(n);
+  if(n.type==='overworld') return isNodeUnlocked(n);
   if(n.type==='bonus') return isNodeUnlocked(n);
   if(isCombatNode(n)){
     if(_WORLD_INDEX!=null){
@@ -494,6 +502,7 @@ function getShinyRangeForStage(stage,isBoss){
 function getNodeRewardPreview(n){
   if(!n || n.type==='start') return '';
   if(n.type==='shop') return 'Static stock after first visit. Refreshing rerolls and re-locks the shelf.';
+  if(n.type==='overworld') return 'Travel to the main overworld map.';
   const last=OVERWORLD_PROGRESS.lastSummary;
   if(last && Number(last.stage)===Number(n.stage) && Number(last.shinyGain)>0){
     return `Last Clear: +${Number(last.shinyGain)} shinies across ${Math.max(1,Number(last.enemiesDefeated)||1)} battle${Math.max(1,Number(last.enemiesDefeated)||1)===1?'':'s'}.`;
@@ -511,6 +520,7 @@ function applyNodeActionButton(btn,n){
   btn.className='';
   if(n.type==='shop'){ btn.textContent=ok?'ENTER SHOP ▶':'SHOP LOCKED'; btn.classList.add('is-shop'); return; }
   if(n.type==='world'){ btn.textContent=ok?'ENTER WORLD ▶':'WORLD LOCKED'; return; }
+  if(n.type==='overworld'){ btn.textContent=ok?'ENTER OVERWORLD ▶':'OVERWORLD LOCKED'; return; }
   if(n.type==='bonus'){ btn.textContent=ok?'ENTER BONUS ▶':'BONUS LOCKED'; return; }
   if(n.type==='return'){ btn.textContent=ok?'RETURN TO OVERWORLD ▶':'CLEAR WORLD BOSS FIRST'; return; }
   if(n.type==='boss'||n.final){ btn.textContent=ok?'FACE BOSS ▶':'BOSS LOCKED'; btn.classList.add('is-boss'); return; }
@@ -825,6 +835,7 @@ const NVC={
   world:{ring:'#208878',glow:'rgba(32,136,120,.35)',r:24,lock:'#1a3830'},
   bonus:{ring:'#c89010',glow:'rgba(200,144,16,.35)',r:21,lock:'#2a2818'},
   return:{ring:'#5080a0',glow:'rgba(80,128,160,.32)',r:20,lock:'#283038'},
+  overworld:{ring:'#c8a020',glow:'rgba(200,160,32,.32)',r:23,lock:'#2a2818'},
 };
 const NVC_FINAL={ring:'#7820a0',glow:'rgba(120,32,160,.42)',r:31,lock:'#201020'};
 const nvc=n=>n.final?NVC_FINAL:(NVC[n.type]||NVC.stage);
@@ -875,7 +886,7 @@ NODES.forEach((n,ni)=>{
     n._sh=sh;g.appendChild(sh);
     const tx=mk('text',{x:n.x,y:n.y+1,'text-anchor':'middle','dominant-baseline':'middle','font-family':'Cinzel,serif','font-size':'8',fill:'rgba(100,92,60,.35)'});
     tx.style.pointerEvents='none';
-    const sym={shop:'$',boss:'B',world:'W',bonus:'★',return:'↩',start:'⌂'};
+    const sym={shop:'$',boss:'B',world:'W',bonus:'★',return:'↩',start:'⌂',overworld:'OW'};
     tx.textContent=sym[n.type]||String(n.stage??nodeDisplayLabel(n)??'');
     g.appendChild(tx);
     ns.appendChild(g);return;
@@ -884,7 +895,7 @@ NODES.forEach((n,ni)=>{
   const main=mk('circle',{cx:n.x,cy:n.y,r:vc.r,fill:'rgba(6,12,5,.72)',stroke:vc.ring,'stroke-width':'2'});
   n._sh=main;g.appendChild(main);
   const bk=getNodePortraitBird(n);
-  if(n.type!=='start'&&n.type!=='shop'&&n.type!=='world'&&n.type!=='bonus'&&n.type!=='return'){
+  if(n.type!=='start'&&n.type!=='shop'&&n.type!=='world'&&n.type!=='bonus'&&n.type!=='return'&&n.type!=='overworld'){
     const fontSize=n.type==='boss'||n.final?10:vc.r>24?11:10;
     const numTxt=n.final?'20':nodeDisplayLabel(n);
     const stgNum=mk('text',{x:n.x,y:n.y+1,'text-anchor':'middle','dominant-baseline':'middle',
@@ -894,6 +905,9 @@ NODES.forEach((n,ni)=>{
   } else if(n.type==='shop'){
     const si=mk('text',{x:n.x,y:n.y+2,'text-anchor':'middle','dominant-baseline':'middle','font-family':'Georgia,serif','font-size':'15',fill:'#c89010'});
     si.style.pointerEvents='none';si.textContent='$';g.appendChild(si);
+  } else if(n.type==='overworld'){
+    const ow=mk('text',{x:n.x,y:n.y+1,'text-anchor':'middle','dominant-baseline':'middle','font-family':'Cinzel,serif','font-size':'9','font-weight':'600',fill:vc.ring});
+    ow.style.pointerEvents='none';ow.textContent='OW';g.appendChild(ow);
   } else if(n.type==='start'){
     const ni=mk('svg',{x:String(n.x-14),y:String(n.y-10),width:'28',height:'22',viewBox:'0 0 56 44'});
     ni.innerHTML='<ellipse cx="28" cy="34" rx="22" ry="9" fill="#5a3818"/><ellipse cx="28" cy="32" rx="18" ry="7" fill="#7a5028"/><circle cx="22" cy="24" r="6" fill="#8aaa30"/><circle cx="32" cy="22" r="6" fill="#9abb38"/><circle cx="28" cy="20" r="6" fill="#90b434"/>';
@@ -1356,6 +1370,11 @@ requestAnimationFrame(()=>requestAnimationFrame(()=>{pl.style.transition='left .
       }
       if (n.type === 'return') {
         if (typeof popOwMapStack === 'function') popOwMapStack();
+        if (typeof setOwActiveMapId === 'function') setOwActiveMapId('main');
+        location.reload();
+        return;
+      }
+      if (n.type === 'overworld') {
         if (typeof setOwActiveMapId === 'function') setOwActiveMapId('main');
         location.reload();
         return;

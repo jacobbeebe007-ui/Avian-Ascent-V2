@@ -19,6 +19,7 @@
     world: { ring: '#208878', glow: 'rgba(32,136,120,.35)', r: 24 },
     bonus: { ring: '#c89010', glow: 'rgba(200,144,16,.35)', r: 21 },
     return: { ring: '#5080a0', glow: 'rgba(80,128,160,.32)', r: 20 },
+    overworld: { ring: '#c8a020', glow: 'rgba(200,160,32,.32)', r: 23 },
     label: { ring: '#9a9488', glow: 'rgba(154,148,136,.25)', r: 14 },
   };
   const NVC_FINAL = { ring: '#7820a0', glow: 'rgba(120,32,160,.42)', r: 31 };
@@ -80,7 +81,7 @@
       pathReveal: true,
       maxStage: 0,
       worlds: {},
-      nodes: [{ id: 0, type: 'start', name: 'The Nest', x: 1211, y: 764, stage: 0 }],
+      nodes: [{ id: 0, type: 'start', name: 'Spawn', x: 1211, y: 764, stage: 0 }],
     });
   }
 
@@ -123,7 +124,7 @@
     let combat = 0;
     for (const n of nodes) {
       if (n.type === 'start') n.stage = 0;
-      else if (n.type === 'shop' || n.type === 'world' || n.type === 'bonus' || n.type === 'return' || n.type === 'label') {
+      else if (n.type === 'shop' || n.type === 'world' || n.type === 'bonus' || n.type === 'return' || n.type === 'overworld' || n.type === 'label') {
         delete n.stage; delete n.subStage;
       } else if (n.type === 'stage' || n.type === 'boss') {
         combat += 1;
@@ -231,8 +232,8 @@
   function validateMap(map) {
     const nodes = map?.nodes || [];
     if (!nodes.length) return 'Add at least one node.';
-    if (nodes.filter((n) => n.type === 'start').length !== 1) return 'Exactly one Start node required.';
-    if (nodes[0].type !== 'start') return 'First node must be Start.';
+    if (nodes.filter((n) => n.type === 'start').length !== 1) return 'Exactly one Spawn node required.';
+    if (nodes[0].type !== 'start') return 'First node must be Spawn.';
     if (!nodes.some((n) => n.type === 'stage' || n.type === 'boss')) return 'Add at least one Stage or Boss.';
     if (!map.backgroundDataUrl) return 'Upload a background image first.';
     return null;
@@ -242,7 +243,7 @@
     const out = { id: n.id, type: n.type, name: n.name || '', x: n.x, y: n.y };
     if (n.type === 'start') out.stage = 0;
     else if (n.type === 'world') out.worldId = n.worldId;
-    else if (n.type === 'shop' || n.type === 'return') { /* no stage */ }
+    else if (n.type === 'shop' || n.type === 'return' || n.type === 'overworld') { /* no stage */ }
     else {
       if (worldIndex != null && n.subStage) out.subStage = n.subStage;
       else if (n.stage) out.stage = n.stage;
@@ -620,7 +621,11 @@
       const t = terrain || sel.value;
       const matchPreset = presets.find((p) => p.terrain === t);
       const arenaId = matchPreset?.arenaId || 'forest';
-      preview.src = 'assets/arenas/arena-' + arenaId + '.png';
+      preview.src = 'assets/arenas/arena-' + arenaId + '-desktop.png';
+      preview.onerror = function () {
+        preview.onerror = null;
+        preview.src = 'assets/arenas/arena-' + arenaId + '.png';
+      };
       preview.alt = arenaId;
     }
   }
@@ -1127,7 +1132,8 @@
       label.type = 'button';
       label.className = 'map-forge-node-pick';
       const lbl = nodeLabel(n, wi);
-      label.textContent = '#' + n.id + ' ' + (n.type === 'boss' && n.final ? 'final boss' : n.type) + (lbl ? ' · ' + lbl : '') + (n.name ? ' — ' + n.name : '');
+      const typeLabel = n.type === 'start' ? 'spawn' : (n.type === 'boss' && n.final ? 'final boss' : n.type);
+      label.textContent = '#' + n.id + ' ' + typeLabel + (lbl ? ' · ' + lbl : '') + (n.name ? ' — ' + n.name : '');
       label.onclick = () => {
         _selectedId = n.id;
         _selectedIds = [n.id];
@@ -1261,6 +1267,7 @@
       syncBreadcrumb();
       return;
     }
+    const isOverworld = n.type === 'overworld';
     editor.style.display = '';
     const isLabel = n.type === 'label';
     const nameEl = document.getElementById('map-forge-node-name');
@@ -1274,7 +1281,15 @@
     const portraitEl = document.getElementById('map-forge-portrait-bird');
     const arenaPreview = document.getElementById('map-forge-arena-preview');
     if (nameEl) nameEl.value = n.name || '';
-    if (isLabel) {
+    if (isOverworld) {
+      if (terrainLabel) terrainLabel.style.display = 'none';
+      if (terrainSel) terrainSel.style.display = 'none';
+      if (terrainCustom) terrainCustom.style.display = 'none';
+      if (portraitLabel) portraitLabel.style.display = 'none';
+      if (portraitEl) portraitEl.style.display = 'none';
+      if (arenaPreview) arenaPreview.style.display = 'none';
+      if (finalEl) finalEl.closest('label').style.display = 'none';
+    } else if (isLabel) {
       if (terrainLabel) terrainLabel.style.display = 'none';
       if (terrainSel) terrainSel.style.display = 'none';
       if (terrainCustom) terrainCustom.style.display = 'none';
@@ -1424,7 +1439,7 @@
       txt.setAttribute('font-size', '9');
       txt.setAttribute('fill', vc.ring);
       txt.style.pointerEvents = 'none';
-      const sym = { shop: '$', start: '⌂', world: 'W', bonus: '★', return: '↩' };
+      const sym = { shop: '$', start: '⌂', world: 'W', bonus: '★', return: '↩', overworld: 'OW', label: 'T' };
       txt.textContent = sym[n.type] || nodeLabel(n, slice.worldIndex) || '';
       g.appendChild(txt);
       svg.appendChild(g);
@@ -1518,8 +1533,8 @@
     const slice = getEditingSlice();
     if (!slice) return;
     if (_tool === 'start') {
-      if (slice.nodes.some((n) => n.type === 'start')) { setStatus('Only one Start node allowed.', true); return; }
-      slice.nodes.unshift({ id: 0, type: 'start', name: 'The Nest', x, y, stage: 0 });
+      if (slice.nodes.some((n) => n.type === 'start')) { setStatus('Only one Spawn node allowed.', true); return; }
+      slice.nodes.unshift({ id: 0, type: 'start', name: 'Spawn', x, y, stage: 0 });
     } else if (_tool === 'world' && _editContext === 'main') {
       _worldCounter += 1;
       const wid = 'world' + _worldCounter;
@@ -1539,6 +1554,7 @@
       else if (_tool === 'bonus') slice.nodes.push(Object.assign(base, { type: 'bonus', terrain: 'Bonus Arena', bonusConfig: { powerProgression: true, maxRepeats: 5 }, clearRewards: [{ type: 'shinies', min: 15, max: 30 }] }));
       else if (_tool === 'boss') slice.nodes.push(Object.assign(base, { type: 'boss', terrain: 'Boss Arena' }));
       else if (_tool === 'return') slice.nodes.push(Object.assign(base, { type: 'return' }));
+      else if (_tool === 'overworld') slice.nodes.push(Object.assign(base, { type: 'overworld', name: 'Overworld Gate' }));
       else if (_tool === 'label') {
         const labelCfg = typeof global.defaultLabelConfig === 'function' ? global.defaultLabelConfig() : {
           text: 'Label', mimicType: 'stage', shape: 'rounded', width: 80, height: 36,
@@ -1564,7 +1580,7 @@
     const idx = slice?.nodes?.findIndex((x) => x.id === _selectedId) ?? -1;
     if (idx < 0) { setStatus('Select a node to delete.', true); return; }
     const n = slice.nodes[idx];
-    if (n.type === 'start') { setStatus('Cannot delete Start node.', true); return; }
+    if (n.type === 'start') { setStatus('Cannot delete Spawn node.', true); return; }
     pushHistory();
     slice.nodes.splice(idx, 1);
     if (n.type === 'world' && n.worldId && _map.worlds[n.worldId]) delete _map.worlds[n.worldId];
@@ -1590,7 +1606,7 @@
     const slice = getEditingSlice();
     const n = getSelectedNode();
     if (!n) { setStatus('Select a node to duplicate.', true); return; }
-    if (n.type === 'start') { setStatus('Cannot duplicate Start node.', true); return; }
+    if (n.type === 'start') { setStatus('Cannot duplicate Spawn node.', true); return; }
     pushHistory();
     const copy = JSON.parse(JSON.stringify(n));
     copy.x = Math.min(MAP_W - 40, (n.x || 0) + 40);
@@ -2303,7 +2319,7 @@
       if (!forgeScreen?.classList.contains('active')) return;
       const tag = e.target?.tagName;
       if (tag === 'INPUT' || tag === 'SELECT' || tag === 'TEXTAREA') return;
-      const toolKeys = { '1': 'stage', '2': 'boss', '3': 'bonus', '4': 'world', '5': 'shop', '6': 'return', '7': 'start', '8': 'label' };
+      const toolKeys = { '1': 'stage', '2': 'boss', '3': 'bonus', '4': 'world', '5': 'shop', '6': 'return', '7': 'start', '8': 'label', '9': 'overworld' };
       if (e.key === 'Delete' || e.key === 'Backspace') { e.preventDefault(); deleteSelectedNode(); return; }
       if (e.key === 'Escape') { deselectNode(); return; }
       if (e.key === 's' || e.key === 'S') { setTool('select'); return; }

@@ -4158,6 +4158,7 @@ const BATTLE_ARENA_BY_STAGE = {
 function terrainStringToArenaId(terrain) {
   if (!terrain || typeof terrain !== 'string') return null;
   const t = terrain.toLowerCase();
+  if (t.includes('finch') || t.includes('burrow')) return 'finch-burrow';
   if (t.includes('throne') && t.includes('castle')) return 'castle-throne';
   if (t.includes('inner court') || t.includes('high spire')) return 'castle-interior';
   if (t.includes('rampart') || (t.includes('outer') && t.includes('court'))) return 'castle-interior';
@@ -4185,6 +4186,16 @@ function resolveBattleArenaId(encounterStage, terrain) {
   return BATTLE_ARENA_BY_STAGE[st] || 'forest';
 }
 
+function battleArenaImagePaths(arenaId) {
+  const id = String(arenaId || 'forest');
+  const mobile = typeof document !== 'undefined' && document.body?.classList?.contains('ui-mobile-mode');
+  const variant = mobile ? 'mobile' : 'desktop';
+  return [
+    `assets/arenas/arena-${id}-${variant}.png`,
+    `assets/arenas/arena-${id}.png`,
+  ];
+}
+
 function updateBattleArena() {
   const layer = document.getElementById('battle-arena-layer');
   const bd = document.getElementById('battle-arena-backdrop');
@@ -4193,17 +4204,25 @@ function updateBattleArena() {
   const terrain = G._battleTerrain || null;
   const arenaId = resolveBattleArenaId(stage, terrain);
   layer.dataset.arena = arenaId;
-  const path = `assets/arenas/arena-${arenaId}.png`;
-  const img = new Image();
-  img.onload = () => {
-    bd.style.backgroundImage = `url('${path}')`;
-    layer.classList.add('arena-has-art');
+  const paths = battleArenaImagePaths(arenaId);
+  let pathIdx = 0;
+  const tryNext = () => {
+    if (pathIdx >= paths.length) {
+      bd.style.backgroundImage = '';
+      layer.classList.remove('arena-has-art');
+      return;
+    }
+    const path = paths[pathIdx];
+    pathIdx += 1;
+    const img = new Image();
+    img.onload = () => {
+      bd.style.backgroundImage = `url('${path}')`;
+      layer.classList.add('arena-has-art');
+    };
+    img.onerror = () => tryNext();
+    img.src = path;
   };
-  img.onerror = () => {
-    bd.style.backgroundImage = '';
-    layer.classList.remove('arena-has-art');
-  };
-  img.src = path;
+  tryNext();
 }
 globalThis.updateBattleArena = updateBattleArena;
 
@@ -15639,6 +15658,9 @@ function applyUIStateToDOM(){
   if(main) main.checked=(ui.gameMode==='endless');
   document.body.classList.toggle('ui-mobile-mode', ui.battleLayout==='mobile');
   document.body.classList.toggle('ui-desktop-mode', ui.battleLayout==='desktop');
+  if (document.getElementById('screen-battle')?.classList.contains('active') && typeof updateBattleArena === 'function') {
+    updateBattleArena();
+  }
   const playerDrop=document.getElementById('player-stats-drop');
   const enemyDrop=document.getElementById('enemy-stats-drop');
   if(playerDrop) playerDrop.open=!!ui.combatDropdownOpen.player;

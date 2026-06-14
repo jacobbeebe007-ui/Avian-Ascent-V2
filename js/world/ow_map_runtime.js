@@ -190,6 +190,7 @@
     if (node.type === 'world') return node.name || 'World';
     if (node.type === 'bonus') return node.name || 'Bonus';
     if (node.type === 'return') return node.name || 'Return';
+    if (node.type === 'overworld') return node.name || 'Overworld';
     if (node.type === 'shop') return node.name || 'Shop';
     if (node.type === 'start') return node.name || 'Start';
     if (node.type === 'label') return node.labelConfig?.text || node.name || 'Label';
@@ -360,7 +361,7 @@
       if (n.type === 'start') {
         n.stage = 0;
         delete n.subStage;
-      } else if (n.type === 'shop' || n.type === 'return' || n.type === 'world' || n.type === 'label') {
+      } else if (n.type === 'shop' || n.type === 'return' || n.type === 'world' || n.type === 'overworld' || n.type === 'label') {
         delete n.stage;
         delete n.subStage;
       } else if (n.type === 'stage' || n.type === 'boss' || n.type === 'bonus') {
@@ -507,6 +508,7 @@
   };
 
   global.FORGE_TERRAIN_PRESETS = [
+    { label: 'Finch Burrow', terrain: 'Finch Burrow', arenaId: 'finch-burrow' },
     { label: 'Overgrown Yard', terrain: 'Overgrown Yard', arenaId: 'barn' },
     { label: 'River Ford', terrain: 'River Ford', arenaId: 'river' },
     { label: 'River Rapids', terrain: 'River Rapids', arenaId: 'river' },
@@ -597,8 +599,8 @@
 
     const nodes = map?.nodes || [];
     if (!nodes.length) add('error', 'Add at least one node.');
-    if (nodes.filter((n) => n.type === 'start').length !== 1) add('error', 'Exactly one Start node required.');
-    if (nodes[0] && nodes[0].type !== 'start') add('error', 'First node must be Start.');
+    if (nodes.filter((n) => n.type === 'start').length !== 1) add('error', 'Exactly one Spawn node required.');
+    if (nodes[0] && nodes[0].type !== 'start') add('error', 'First node must be Spawn.');
     if (!nodes.some((n) => n.type === 'stage' || n.type === 'boss')) add('error', 'Add at least one Stage or Boss.');
     if (!map?.backgroundDataUrl) add('error', 'Upload a main map background image.');
 
@@ -608,6 +610,9 @@
     });
 
     if (!nodes.some((n) => n.type === 'boss' && n.final)) add('warning', 'No final boss marked on main map.');
+
+    const owGates = nodes.filter((n) => n.type === 'overworld');
+    if (owGates.length > 1) add('warning', 'Multiple Overworld gates on main map — players may confuse which to use.', 'main', owGates[1]?.id);
 
     let firstCombatIdx = nodes.findIndex((n) => n.type === 'stage' || n.type === 'boss');
     const shopBeforeCombat = nodes.findIndex((n, i) => n.type === 'shop' && (firstCombatIdx < 0 || i < firstCombatIdx));
