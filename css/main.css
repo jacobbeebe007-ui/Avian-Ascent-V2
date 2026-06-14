@@ -2804,9 +2804,15 @@ body.ui-desktop-mode #action-tooltip:not(.is-touch-open) .tt-type{font-size:.66r
 .nest-btn{background:rgba(201,168,76,.1);border:1px solid rgba(201,168,76,.4);border-radius:8px;padding:6px 12px;cursor:pointer;color:var(--gold);font-family:"Cinzel",serif;font-size:.8rem;letter-spacing:.06em;transition:all .2s;}
 .nest-btn:hover{background:rgba(201,168,76,.2);transform:scale(1.05);}
 /* Overworld iframe embed: hide chrome until nest modal opens (script adds class in <head>). */
+html.avian-ow-ui-embed #app > *:not(#nest-modal):not(#settings-modal):not(#ref-guide-modal){display:none!important;}
+html.avian-ow-ui-embed--nest #app > *:not(#nest-modal){display:none!important;}
+html.avian-ow-ui-embed--settings #app > *:not(#settings-modal){display:none!important;}
+html.avian-ow-ui-embed--reference #app > *:not(#ref-guide-modal){display:none!important;}
 html.avian-ow-nest-embed #app > *:not(#nest-modal){display:none!important;}
-html.avian-ow-nest-embed #app{min-height:100vh;background:#0a0c0f;}
-html.avian-ow-nest-embed #action-tooltip{z-index:99999;}
+html.avian-ow-ui-embed #app,html.avian-ow-nest-embed #app{min-height:100vh;background:#0a0c0f;}
+html.avian-ow-ui-embed #action-tooltip,html.avian-ow-nest-embed #action-tooltip{z-index:99999;}
+html.avian-ow-ui-embed--settings #settings-modal.open,
+html.avian-ow-ui-embed--reference #ref-guide-modal.open{display:flex!important;}
 
 #nest-modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.82);z-index:8000;align-items:flex-start;justify-content:center;padding:20px;overflow-y:auto;}
 #nest-modal.open{display:flex;}
@@ -4101,6 +4107,21 @@ body.ui-mobile-mode #screen-select #mobile-select-details-anchor{display:block;o
   color:var(--text-dim);
 }
 .map-forge-encounter-field--wide{grid-column:1/-1;}
+.map-forge-variant-summary{
+  font-size:.62rem;
+  color:var(--gold-dim,var(--gold-light));
+  font-style:italic;
+  margin-top:2px;
+}
+.map-forge-label-ui-hint{margin:2px 0 6px;font-size:.62rem;}
+.map-forge-label-panel{
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+  padding-top:8px;
+  margin-top:6px;
+  border-top:1px solid rgba(201,168,76,.16);
+}
 .map-forge-nest-slots{display:flex;flex-direction:column;gap:4px;width:100%;}
 .map-forge-nest-slot-row{display:flex;align-items:center;gap:6px;font-size:.68rem;}
 .map-forge-nest-slot-label{min-width:3.5em;color:var(--text-dim);}

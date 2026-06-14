@@ -2568,13 +2568,17 @@ function openNest() {
   wireNestMutationTooltips(content);
   modal.classList.add('open');
 }
+function notifyOwUiEmbedClose(){
+  if(!globalThis.__AVIAN_OW_UI_EMBED__ && !globalThis.__AVIAN_OW_NEST_EMBED__) return;
+  if(typeof window === 'undefined' || !window.parent || window.parent === window) return;
+  try{ window.parent.postMessage({ type: 'avianOwUiClose' }, '*'); }catch(_){}
+  try{ window.parent.postMessage({ type: 'avianOwNestClose' }, '*'); }catch(_){}
+}
 function closeNest() {
   document.getElementById('nest-modal').classList.remove('open');
   const content=document.getElementById('nest-content');
   if(content) content.onclick=null;
-  if(globalThis.__AVIAN_OW_NEST_EMBED__ && typeof window !== 'undefined' && window.parent && window.parent !== window){
-    try{ window.parent.postMessage({ type: 'avianOwNestClose' }, '*'); }catch(_){}
-  }
+  notifyOwUiEmbedClose();
 }
 
 function nestTierCssClass(tier){
@@ -2754,7 +2758,38 @@ function bootstrapOwNestEmbed(){
     }catch(_){}
   }
 }
+function bootstrapOwSettingsEmbed(){
+  try{
+    const a=document.getElementById('theme-bgm-audio');
+    if(a){ try{ a.pause(); }catch(_){} }
+  }catch(_){}
+  const save=loadSaveData();
+  if(save?.player){
+    G._continueRunOpenNestOnly=true;
+    try{ continueRun(); }catch(_){ G._continueRunOpenNestOnly=false; G.player=save.player||null; }
+  }
+  openSettingsModal();
+}
+function bootstrapOwReferenceEmbed(){
+  try{
+    const a=document.getElementById('theme-bgm-audio');
+    if(a){ try{ a.pause(); }catch(_){} }
+  }catch(_){}
+  const save=loadSaveData();
+  if(save?.player){
+    G._continueRunOpenNestOnly=true;
+    try{ continueRun(); }catch(_){ G._continueRunOpenNestOnly=false; G.player=save.player||null; }
+  }
+  openRefGuideModal();
+}
+function bootstrapOwUiEmbed(){
+  const mode=String(globalThis.__AVIAN_OW_UI_EMBED__||'nest');
+  if(mode==='settings') bootstrapOwSettingsEmbed();
+  else if(mode==='reference') bootstrapOwReferenceEmbed();
+  else bootstrapOwNestEmbed();
+}
 globalThis.bootstrapOwNestEmbed=bootstrapOwNestEmbed;
+globalThis.bootstrapOwUiEmbed=bootstrapOwUiEmbed;
 
 function codexMark(type, id, field='seen'){
   if(!id) return;
@@ -14128,6 +14163,7 @@ function closeRefGuideModal() {
   m.classList.remove('open');
   m.setAttribute('aria-hidden', 'true');
   document.body.style.overflow = '';
+  notifyOwUiEmbedClose();
 }
 function toggleRefGuide() {
   const m = document.getElementById('ref-guide-modal');
@@ -15868,6 +15904,7 @@ function openSettingsModal(){
 }
 function closeSettingsModal(){
   const m=document.getElementById('settings-modal'); if(m) m.classList.remove('open');
+  notifyOwUiEmbedClose();
 }
 function returnToWarRoomFromSettings(){
   closeSettingsModal();
@@ -16742,7 +16779,9 @@ SPRITE_KEYS_ALL.add('magpie');
   }
 
   try{
-    if(globalThis.__AVIAN_OW_NEST_EMBED__ && typeof globalThis.bootstrapOwNestEmbed === 'function'){
+    if(globalThis.__AVIAN_OW_UI_EMBED__ && typeof globalThis.bootstrapOwUiEmbed === 'function'){
+      globalThis.bootstrapOwUiEmbed();
+    }else if(globalThis.__AVIAN_OW_NEST_EMBED__ && typeof globalThis.bootstrapOwNestEmbed === 'function'){
       globalThis.bootstrapOwNestEmbed();
     }else{
       // Defer until the rest of the bundle finishes loading so that modules

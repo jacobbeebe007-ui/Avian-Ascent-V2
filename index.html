@@ -6,9 +6,15 @@
 <script>
 (function(){
   try{
-    if(new URLSearchParams(location.search).get('avianOwNestEmbed')==='1'){
-      document.documentElement.classList.add('avian-ow-nest-embed');
-      window.__AVIAN_OW_NEST_EMBED__=true;
+    const params=new URLSearchParams(location.search);
+    const uiEmbed=params.get('avianOwUiEmbed');
+    const nestLegacy=params.get('avianOwNestEmbed')==='1';
+    const mode=uiEmbed||(nestLegacy?'nest':'');
+    if(mode){
+      document.documentElement.classList.add('avian-ow-ui-embed');
+      document.documentElement.classList.add('avian-ow-ui-embed--'+mode);
+      window.__AVIAN_OW_UI_EMBED__=mode;
+      if(mode==='nest'||nestLegacy) window.__AVIAN_OW_NEST_EMBED__=true;
     }
   }catch(_){}
 })();
@@ -331,6 +337,7 @@
 <button type="button" class="map-forge-tool-btn" data-forge-tool="shop">Shop</button>
 <button type="button" class="map-forge-tool-btn" data-forge-tool="return">Return</button>
 <button type="button" class="map-forge-tool-btn" data-forge-tool="start">Start</button>
+<button type="button" class="map-forge-tool-btn" data-forge-tool="label">Label</button>
 </div>
 <div class="map-forge-toolbar">
 <span class="map-forge-toolbar-label">Edit</span>
@@ -392,6 +399,52 @@
 <label class="map-forge-field-label" for="map-forge-portrait-bird">Portrait bird</label>
 <select class="map-forge-field-input" id="map-forge-portrait-bird"></select>
 <label class="map-forge-field-check"><input type="checkbox" id="map-forge-node-final"/> Final boss</label>
+<div class="map-forge-label-panel" id="map-forge-label-panel" style="display:none">
+<div class="map-forge-field-label">Label / map button</div>
+<label class="map-forge-field-label" for="map-forge-label-ui-action">Button action</label>
+<select class="map-forge-field-input" id="map-forge-label-ui-action">
+<option value="none">None (decorative or node proxy)</option>
+<option value="nest">Nest</option>
+<option value="settings">Settings</option>
+<option value="reference">Reference</option>
+<option value="openLocation">Open location</option>
+<option value="prevNode">Previous node</option>
+<option value="nextNode">Next node</option>
+</select>
+<p class="map-forge-hint map-forge-label-ui-hint" id="map-forge-label-ui-hint" style="display:none"></p>
+<label class="map-forge-field-label" for="map-forge-label-text">Text</label>
+<input type="text" class="map-forge-field-input" id="map-forge-label-text" maxlength="48"/>
+<div id="map-forge-label-mimic-wrap">
+<label class="map-forge-field-label" for="map-forge-label-mimic">Mimic class</label>
+<select class="map-forge-field-input" id="map-forge-label-mimic">
+<option value="none">None</option>
+<option value="start">Start</option>
+<option value="stage">Stage</option>
+<option value="boss">Boss</option>
+<option value="bonus">Bonus</option>
+<option value="world">World</option>
+<option value="shop">Shop</option>
+<option value="return">Return</option>
+</select>
+</div>
+<label class="map-forge-field-label" for="map-forge-label-shape">Shape</label>
+<select class="map-forge-field-input" id="map-forge-label-shape">
+<option value="rect">Rectangle</option>
+<option value="rounded">Rounded</option>
+<option value="pill">Pill</option>
+<option value="circle">Circle</option>
+</select>
+<label class="map-forge-field-label" for="map-forge-label-width">Width</label>
+<input type="number" class="map-forge-field-input" id="map-forge-label-width" min="16" max="400" value="80"/>
+<label class="map-forge-field-label" for="map-forge-label-height">Height</label>
+<input type="number" class="map-forge-field-input" id="map-forge-label-height" min="12" max="200" value="36"/>
+<label class="map-forge-field-check"><input type="checkbox" id="map-forge-label-show-text" checked/> Show text</label>
+<label class="map-forge-field-check"><input type="checkbox" id="map-forge-label-show-border" checked/> Show border</label>
+<label class="map-forge-field-check"><input type="checkbox" id="map-forge-label-show-fill" checked/> Show fill</label>
+<div id="map-forge-label-acts-wrap">
+<label class="map-forge-field-check"><input type="checkbox" id="map-forge-label-acts-as-node"/> Acts as node (functional proxy)</label>
+</div>
+</div>
 <div class="map-forge-world-rename" id="map-forge-world-rename-wrap" style="display:none">
 <label class="map-forge-field-label" for="map-forge-world-rename">World name</label>
 <input type="text" class="map-forge-field-input" id="map-forge-world-rename" maxlength="48"/>
@@ -456,12 +509,13 @@
 <button type="button" class="map-forge-filter-btn" data-forge-filter="bonus">Bonus</button>
 <button type="button" class="map-forge-filter-btn" data-forge-filter="world">World</button>
 <button type="button" class="map-forge-filter-btn" data-forge-filter="shop">Shop</button>
+<button type="button" class="map-forge-filter-btn" data-forge-filter="label">Label</button>
 </div>
 <div class="map-forge-node-list-wrap">
 <div class="map-forge-node-list-title">Path order</div>
 <div class="map-forge-node-list" id="map-forge-node-list"></div>
 </div>
-<p class="map-forge-hint">S=Select, 1–7=place, arrows=nudge, Shift+arrows=10px, Ctrl+D=duplicate, Ctrl+Z/Y=undo, Del=delete, Esc=deselect. Shift+click multi-select.</p>
+<p class="map-forge-hint">S=Select, 1–8=place, arrows=nudge, Shift+arrows=10px, Ctrl+D=duplicate, Ctrl+Z/Y=undo, Del=delete, Esc=deselect. Shift+click multi-select.</p>
 </aside>
 <div class="map-forge-canvas-wrap" id="map-forge-canvas-wrap">
 <div class="map-forge-canvas-inner" id="map-forge-canvas-inner">

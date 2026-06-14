@@ -217,21 +217,45 @@
       var nb = (birds[b] && birds[b].name) || b;
       return String(na).localeCompare(String(nb));
     });
-    return [{ id: 'random', label: 'Random' }].concat(
+    return [{ id: 'random', label: 'Random species' }].concat(
       keys.map(function (k) {
         return { id: k, label: (birds[k] && birds[k].name) || k };
       })
     );
   }
 
+  function pickRandomRosterIdAtLevel(level, opts) {
+    opts = opts || {};
+    var r = roster();
+    if (!r) return null;
+    var lv = Math.max(1, Math.min(20, Math.floor(Number(level) || 1)));
+    var pool = [];
+    if (opts.isBoss && r.bossesByLevel && r.bossesByLevel[lv]) {
+      pool = pool.concat(r.bossesByLevel[lv]);
+    }
+    if (r.normalByLevel && r.normalByLevel[lv]) {
+      pool = pool.concat(r.normalByLevel[lv]);
+    }
+    if (!pool.length && r.normalByLevel) {
+      var levels = Object.keys(r.normalByLevel).map(Number).filter(function (n) { return n > 0; });
+      if (levels.length) {
+        var nearest = levels.reduce(function (best, n) {
+          return Math.abs(n - lv) < Math.abs(best - lv) ? n : best;
+        }, levels[0]);
+        pool = (r.normalByLevel[nearest] || []).slice();
+      }
+    }
+    return pickRandom(pool);
+  }
+
   function listEnemyVariantsForBird(birdKey, level, opts) {
     opts = opts || {};
     var r = roster();
     var bk = String(birdKey || '').trim();
-    if (!bk || bk === 'random') {
-      return [{ id: '', label: 'Any variant (random)' }];
-    }
     var lv = Math.max(1, Math.min(20, Math.floor(Number(level) || 1)));
+    if (!bk || bk === 'random') {
+      return [{ id: '', label: 'Random species — any roster bird at this level' }];
+    }
     var ids = [];
     if (opts.isBoss && r && r.bossesByBirdLevel && r.bossesByBirdLevel[bk] && r.bossesByBirdLevel[bk][lv]) {
       ids = ids.concat(r.bossesByBirdLevel[bk][lv]);
@@ -240,7 +264,7 @@
       ids = ids.concat(r.byBirdLevel[bk][lv]);
     }
     var seen = {};
-    var out = [{ id: '', label: 'Any variant (random)' }];
+    var out = [{ id: '', label: 'Random variant (this species)' }];
     ids.forEach(function (id) {
       if (!id || seen[id]) return;
       seen[id] = true;
@@ -355,6 +379,7 @@
   }
 
   ns.pickRosterIdForBirdAndLevel = pickRosterIdForBirdAndLevel;
+  ns.pickRandomRosterIdAtLevel = pickRandomRosterIdAtLevel;
   ns.listForgeEnemySpeciesOptions = listForgeEnemySpeciesOptions;
   ns.listEnemyVariantsForBird = listEnemyVariantsForBird;
   ns.getRosterRow = getRosterRow;
@@ -366,6 +391,7 @@
   ns.filterNormalPoolForBand = filterNormalPoolForBand;
 
   global.pickRosterIdForBirdAndLevel = pickRosterIdForBirdAndLevel;
+  global.pickRandomRosterIdAtLevel = pickRandomRosterIdAtLevel;
   global.listForgeEnemySpeciesOptions = listForgeEnemySpeciesOptions;
   global.listEnemyVariantsForBird = listEnemyVariantsForBird;
   global.getEnemyRosterRow = getRosterRow;

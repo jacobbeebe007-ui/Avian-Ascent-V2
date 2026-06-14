@@ -19,6 +19,7 @@
     world: { ring: '#208878', glow: 'rgba(32,136,120,.35)', r: 24 },
     bonus: { ring: '#c89010', glow: 'rgba(200,144,16,.35)', r: 21 },
     return: { ring: '#5080a0', glow: 'rgba(80,128,160,.32)', r: 20 },
+    label: { ring: '#9a9488', glow: 'rgba(154,148,136,.25)', r: 14 },
   };
   const NVC_FINAL = { ring: '#7820a0', glow: 'rgba(120,32,160,.42)', r: 31 };
 
@@ -122,7 +123,7 @@
     let combat = 0;
     for (const n of nodes) {
       if (n.type === 'start') n.stage = 0;
-      else if (n.type === 'shop' || n.type === 'world' || n.type === 'bonus' || n.type === 'return') {
+      else if (n.type === 'shop' || n.type === 'world' || n.type === 'bonus' || n.type === 'return' || n.type === 'label') {
         delete n.stage; delete n.subStage;
       } else if (n.type === 'stage' || n.type === 'boss') {
         combat += 1;
@@ -251,9 +252,8 @@
     if (n.final) out.final = true;
     if (n.encounter) out.encounter = JSON.parse(JSON.stringify(n.encounter));
     if (n.bonusConfig) out.bonusConfig = JSON.parse(JSON.stringify(n.bonusConfig));
-    if (Array.isArray(n.clearRewards) && n.clearRewards.length) {
-      out.clearRewards = JSON.parse(JSON.stringify(n.clearRewards));
-    }
+    if (n.clearRewards) out.clearRewards = JSON.parse(JSON.stringify(n.clearRewards));
+    if (n.type === 'label' && n.labelConfig) out.labelConfig = JSON.parse(JSON.stringify(n.labelConfig));
     return out;
   }
 
@@ -285,7 +285,83 @@
   }
 
   function nvc(n) {
+    if (n.type === 'label') {
+      const ui = global.getOwMapUiAction?.(n.labelConfig);
+      if (ui) return { ring: '#7090b8', glow: 'rgba(112,144,184,.28)', r: 16 };
+      const mt = n.labelConfig?.mimicType;
+      if (mt && mt !== 'none' && NVC[mt]) return NVC[mt];
+      return NVC.label;
+    }
     return n.final ? NVC_FINAL : NVC[n.type] || NVC.stage;
+  }
+
+  const UI_ACTION_ICONS = {
+    nest: '🪺',
+    settings: '⚙',
+    reference: '📖',
+    openLocation: '▶',
+    prevNode: '◀',
+    nextNode: '▶',
+  };
+
+  function formatVariantSummary(enemyId) {
+    const row = (typeof global.getEnemyRosterRow === 'function' ? global.getEnemyRosterRow(enemyId) : null)
+      || (typeof global.getRosterRow === 'function' ? global.getRosterRow(enemyId) : null);
+    if (!row) return '';
+    let t = row.fantasyTitle || row.name || enemyId;
+    if (row.storyLevel) t += ' · Lv.' + row.storyLevel;
+    return t;
+  }
+
+  function appendForgeLabelShape(g, cfg, vc, x, y) {
+    const w = cfg.width || 80;
+    const h = cfg.height || 36;
+    const shape = cfg.shape || 'rounded';
+    if (cfg.showFill || cfg.showBorder) {
+      if (shape === 'circle') {
+        const el = document.createElementNS(SVG_NS, 'ellipse');
+        el.setAttribute('cx', String(x));
+        el.setAttribute('cy', String(y));
+        el.setAttribute('rx', String(w / 2));
+        el.setAttribute('ry', String(h / 2));
+        if (cfg.showFill) el.setAttribute('fill', 'rgba(6,12,5,.72)');
+        else el.setAttribute('fill', 'none');
+        if (cfg.showBorder) {
+          el.setAttribute('stroke', vc.ring);
+          el.setAttribute('stroke-width', '2');
+        }
+        g.appendChild(el);
+      } else {
+        const el = document.createElementNS(SVG_NS, 'rect');
+        el.setAttribute('x', String(x - w / 2));
+        el.setAttribute('y', String(y - h / 2));
+        el.setAttribute('width', String(w));
+        el.setAttribute('height', String(h));
+        if (shape === 'pill' || shape === 'rounded') el.setAttribute('rx', String(shape === 'pill' ? h / 2 : 6));
+        if (cfg.showFill) el.setAttribute('fill', 'rgba(6,12,5,.72)');
+        else el.setAttribute('fill', 'none');
+        if (cfg.showBorder) {
+          el.setAttribute('stroke', vc.ring);
+          el.setAttribute('stroke-width', '2');
+        }
+        g.appendChild(el);
+      }
+    }
+    if (cfg.showText && cfg.text) {
+      const txt = document.createElementNS(SVG_NS, 'text');
+      txt.setAttribute('x', String(x));
+      txt.setAttribute('y', String(y + 1));
+      txt.setAttribute('text-anchor', 'middle');
+      txt.setAttribute('dominant-baseline', 'middle');
+      txt.setAttribute('font-family', 'Cinzel, serif');
+      txt.setAttribute('font-size', '8');
+      txt.setAttribute('fill', vc.ring);
+      txt.style.pointerEvents = 'none';
+      const ui = global.getOwMapUiAction?.(cfg);
+      const icon = ui ? (UI_ACTION_ICONS[ui] || '') : '';
+      txt.textContent = (icon ? icon + ' ' : '') + cfg.text;
+      g.appendChild(txt);
+    }
   }
 
   function nodeLabel(n, worldIndex) {
@@ -883,6 +959,37 @@
         speciesWrap.appendChild(speciesSel);
         grid.appendChild(speciesWrap);
 
+        const variantWrap = document.createElement('label');
+        variantWrap.className = 'map-forge-encounter-field map-forge-encounter-field--wide';
+        variantWrap.textContent = 'Variant';
+        const variantSel = document.createElement('select');
+        variantSel.className = 'map-forge-field-input';
+        const variants = typeof global.listEnemyVariantsForBird === 'function'
+          ? global.listEnemyVariantsForBird(slot.birdKey, slot.enemyLevel || 1, { isBoss: isBossNode })
+          : [{ id: '', label: 'Random variant (this species)' }];
+        variants.forEach((v) => {
+          const o = document.createElement('option');
+          o.value = v.id;
+          o.textContent = v.label;
+          if ((slot.enemyId || '') === v.id) o.selected = true;
+          variantSel.appendChild(o);
+        });
+        variantSel.onchange = () => {
+          const vid = variantSel.value;
+          if (vid) slot.enemyId = vid;
+          else delete slot.enemyId;
+          renderEncounterPanel();
+        };
+        variantWrap.appendChild(variantSel);
+        grid.appendChild(variantWrap);
+
+        if (slot.enemyId) {
+          const summary = document.createElement('div');
+          summary.className = 'map-forge-variant-summary';
+          summary.textContent = formatVariantSummary(slot.enemyId);
+          variantWrap.appendChild(summary);
+        }
+
         const levelWrap = document.createElement('label');
         levelWrap.className = 'map-forge-encounter-field';
         levelWrap.textContent = 'Level';
@@ -896,35 +1003,18 @@
           levelSel.appendChild(o);
         }
         levelSel.onchange = () => {
-          slot.enemyLevel = Math.max(1, Math.min(20, Math.floor(Number(levelSel.value) || 1)));
-          delete slot.enemyId;
+          const newLv = Math.max(1, Math.min(20, Math.floor(Number(levelSel.value) || 1)));
+          const prevId = slot.enemyId;
+          slot.enemyLevel = newLv;
+          if (prevId) {
+            const row = (typeof global.getEnemyRosterRow === 'function' ? global.getEnemyRosterRow(prevId) : null)
+              || (typeof global.getRosterRow === 'function' ? global.getRosterRow(prevId) : null);
+            if (!row || Number(row.storyLevel) !== newLv) delete slot.enemyId;
+          }
           renderEncounterPanel();
         };
         levelWrap.appendChild(levelSel);
         grid.appendChild(levelWrap);
-
-        const variantWrap = document.createElement('label');
-        variantWrap.className = 'map-forge-encounter-field map-forge-encounter-field--wide';
-        variantWrap.textContent = 'Variant';
-        const variantSel = document.createElement('select');
-        variantSel.className = 'map-forge-field-input';
-        const variants = typeof global.listEnemyVariantsForBird === 'function'
-          ? global.listEnemyVariantsForBird(slot.birdKey, slot.enemyLevel || 1, { isBoss: isBossNode })
-          : [{ id: '', label: 'Any variant (random)' }];
-        variants.forEach((v) => {
-          const o = document.createElement('option');
-          o.value = v.id;
-          o.textContent = v.label;
-          if ((slot.enemyId || '') === v.id) o.selected = true;
-          variantSel.appendChild(o);
-        });
-        variantSel.onchange = () => {
-          const vid = variantSel.value;
-          if (vid) slot.enemyId = vid;
-          else delete slot.enemyId;
-        };
-        variantWrap.appendChild(variantSel);
-        grid.appendChild(variantWrap);
 
         const mutWrap = document.createElement('label');
         mutWrap.className = 'map-forge-encounter-field';
@@ -959,6 +1049,12 @@
         grid.appendChild(countWrap);
 
         row.appendChild(grid);
+        if (slot.birdKey === 'random') {
+          const hint = document.createElement('p');
+          hint.className = 'map-forge-hint map-forge-encounter-random-hint';
+          hint.textContent = 'Level and mutations apply when a random roster bird is rolled at runtime.';
+          row.appendChild(hint);
+        }
         rowsEl.appendChild(row);
       });
     }
@@ -1047,12 +1143,110 @@
         btn.type = 'button';
         btn.className = 'map-forge-node-move';
         btn.textContent = sym;
-        btn.disabled = di === 0 ? n.id <= 0 : n.id >= slice.nodes.length - 1;
+        const onPath = typeof global.isOwPathNode === 'function' ? global.isOwPathNode(n) : true;
+        btn.disabled = !onPath || (di === 0 ? n.id <= 0 : n.id >= slice.nodes.length - 1);
         btn.onclick = (ev) => { ev.stopPropagation(); moveNode(n.id, di === 0 ? -1 : 1); };
         row.appendChild(btn);
       });
       list.appendChild(row);
     });
+  }
+
+  function renderLabelEditorPanel(n) {
+    const panel = document.getElementById('map-forge-label-panel');
+    if (!panel) return;
+    const show = n && n.type === 'label';
+    panel.style.display = show ? '' : 'none';
+    if (!show) return;
+    if (global.ensureLabelConfig) global.ensureLabelConfig(n);
+    const cfg = n.labelConfig;
+    const textEl = document.getElementById('map-forge-label-text');
+    const mimicEl = document.getElementById('map-forge-label-mimic');
+    const shapeEl = document.getElementById('map-forge-label-shape');
+    const widthEl = document.getElementById('map-forge-label-width');
+    const heightEl = document.getElementById('map-forge-label-height');
+    const showTextEl = document.getElementById('map-forge-label-show-text');
+    const showBorderEl = document.getElementById('map-forge-label-show-border');
+    const showFillEl = document.getElementById('map-forge-label-show-fill');
+    const actsEl = document.getElementById('map-forge-label-acts-as-node');
+    const uiActionEl = document.getElementById('map-forge-label-ui-action');
+    const mimicWrap = document.getElementById('map-forge-label-mimic-wrap');
+    const actsWrap = document.getElementById('map-forge-label-acts-wrap');
+    const uiHint = document.getElementById('map-forge-label-ui-hint');
+    const hasUi = !!(global.getOwMapUiAction && global.getOwMapUiAction(cfg));
+    if (uiActionEl) {
+      uiActionEl.value = cfg.uiAction || 'none';
+      uiActionEl.onchange = () => {
+        const prev = cfg.uiAction;
+        cfg.uiAction = uiActionEl.value || 'none';
+        if (global.ensureLabelConfig) global.ensureLabelConfig(n);
+        if (cfg.uiAction !== 'none' && cfg.uiAction !== prev) {
+          const labels = global.OW_MAP_UI_ACTION_LABELS || {};
+          if (!cfg.text || cfg.text === 'Label' || cfg.text === labels[prev]) {
+            cfg.text = labels[cfg.uiAction] || cfg.text || 'Button';
+          }
+          if (cfg.shape === 'rounded' || !cfg.shape) cfg.shape = 'pill';
+        }
+        renderLabelEditorPanel(n);
+        renderValidationPanel();
+        renderForgeCanvas();
+      };
+    }
+    if (mimicWrap) mimicWrap.style.display = hasUi ? 'none' : '';
+    if (actsWrap) actsWrap.style.display = hasUi ? 'none' : '';
+    if (uiHint) {
+      uiHint.style.display = hasUi ? '' : 'none';
+      if (hasUi) {
+        const opt = (global.OW_MAP_UI_ACTIONS || []).find((a) => a.id === cfg.uiAction);
+        uiHint.textContent = 'Map button — opens ' + (opt?.label || cfg.uiAction) + ' in playtest/run.';
+      }
+    }
+    if (textEl) {
+      textEl.value = cfg.text || '';
+      textEl.oninput = () => { cfg.text = textEl.value; renderForgeCanvas(); };
+    }
+    if (mimicEl) {
+      mimicEl.value = cfg.mimicType || 'stage';
+      mimicEl.onchange = () => { cfg.mimicType = mimicEl.value; renderForgeCanvas(); };
+    }
+    if (shapeEl) {
+      shapeEl.value = cfg.shape || 'rounded';
+      shapeEl.onchange = () => { cfg.shape = shapeEl.value; renderForgeCanvas(); };
+    }
+    if (widthEl) {
+      widthEl.value = String(cfg.width || 80);
+      widthEl.onchange = () => {
+        cfg.width = Math.max(16, Math.min(400, Math.floor(Number(widthEl.value) || 80)));
+        renderForgeCanvas();
+      };
+    }
+    if (heightEl) {
+      heightEl.value = String(cfg.height || 36);
+      heightEl.onchange = () => {
+        cfg.height = Math.max(12, Math.min(200, Math.floor(Number(heightEl.value) || 36)));
+        renderForgeCanvas();
+      };
+    }
+    if (showTextEl) {
+      showTextEl.checked = !!cfg.showText;
+      showTextEl.onchange = () => { cfg.showText = showTextEl.checked; renderForgeCanvas(); };
+    }
+    if (showBorderEl) {
+      showBorderEl.checked = !!cfg.showBorder;
+      showBorderEl.onchange = () => { cfg.showBorder = showBorderEl.checked; renderForgeCanvas(); };
+    }
+    if (showFillEl) {
+      showFillEl.checked = !!cfg.showFill;
+      showFillEl.onchange = () => { cfg.showFill = showFillEl.checked; renderForgeCanvas(); };
+    }
+    if (actsEl) {
+      actsEl.checked = !!cfg.actsAsNode;
+      actsEl.onchange = () => {
+        cfg.actsAsNode = actsEl.checked;
+        renderValidationPanel();
+        renderForgeCanvas();
+      };
+    }
   }
 
   function syncNodeEditorFields() {
@@ -1062,28 +1256,51 @@
     if (!editor) return;
     if (!n || n.type === 'start' || n.type === 'return') {
       editor.style.display = 'none';
+      renderLabelEditorPanel(null);
       renderEncounterPanel();
       syncBreadcrumb();
       return;
     }
     editor.style.display = '';
+    const isLabel = n.type === 'label';
     const nameEl = document.getElementById('map-forge-node-name');
     const finalEl = document.getElementById('map-forge-node-final');
     const worldRenameWrap = document.getElementById('map-forge-world-rename-wrap');
     const worldRenameEl = document.getElementById('map-forge-world-rename');
-    if (nameEl) nameEl.value = n.name || '';
-    syncTerrainPicker(n);
+    const terrainLabel = document.querySelector('label[for="map-forge-terrain-select"]');
+    const terrainSel = document.getElementById('map-forge-terrain-select');
+    const terrainCustom = document.getElementById('map-forge-terrain-custom');
+    const portraitLabel = document.querySelector('label[for="map-forge-portrait-bird"]');
     const portraitEl = document.getElementById('map-forge-portrait-bird');
-    if (portraitEl) portraitEl.value = n.portraitBird || '';
-    if (finalEl) {
-      finalEl.checked = !!n.final;
-      finalEl.disabled = n.type !== 'boss';
-      finalEl.closest('label').style.display = n.type === 'boss' ? '' : 'none';
+    const arenaPreview = document.getElementById('map-forge-arena-preview');
+    if (nameEl) nameEl.value = n.name || '';
+    if (isLabel) {
+      if (terrainLabel) terrainLabel.style.display = 'none';
+      if (terrainSel) terrainSel.style.display = 'none';
+      if (terrainCustom) terrainCustom.style.display = 'none';
+      if (portraitLabel) portraitLabel.style.display = 'none';
+      if (portraitEl) portraitEl.style.display = 'none';
+      if (arenaPreview) arenaPreview.style.display = 'none';
+      if (finalEl) finalEl.closest('label').style.display = 'none';
+    } else {
+      syncTerrainPicker(n);
+      if (terrainLabel) terrainLabel.style.display = '';
+      if (terrainSel) terrainSel.style.display = '';
+      if (portraitLabel) portraitLabel.style.display = '';
+      if (portraitEl) portraitEl.style.display = '';
+      if (arenaPreview) arenaPreview.style.display = '';
+      if (portraitEl) portraitEl.value = n.portraitBird || '';
+      if (finalEl) {
+        finalEl.checked = !!n.final;
+        finalEl.disabled = n.type !== 'boss';
+        finalEl.closest('label').style.display = n.type === 'boss' ? '' : 'none';
+      }
     }
     if (worldRenameWrap) worldRenameWrap.style.display = _editContext !== 'main' ? '' : 'none';
     if (worldRenameEl && _editContext !== 'main') {
       worldRenameEl.value = _map?.worlds?.[_editContext]?.name || '';
     }
+    renderLabelEditorPanel(n);
     renderEncounterPanel();
     syncBreadcrumb();
   }
@@ -1149,10 +1366,13 @@
       svg.insertBefore(gridG, svg.firstChild);
     }
     const pathG = document.createElementNS(SVG_NS, 'g');
-    for (let i = 0; i < slice.nodes.length - 1; i++) {
-      if (pathReveal && global.isPathSegmentRevealed && !global.isPathSegmentRevealed(slice.nodes, i, fakeProgress, slice.mapId, { worldId: slice.mapId }, true)) continue;
-      const a = slice.nodes[i];
-      const b = slice.nodes[i + 1];
+    const pathIdx = typeof global.getPathNodeIndices === 'function'
+      ? global.getPathNodeIndices(slice.nodes)
+      : slice.nodes.map((_, i) => i);
+    for (let j = 0; j < pathIdx.length - 1; j++) {
+      if (pathReveal && global.isPathSegmentRevealed && !global.isPathSegmentRevealed(slice.nodes, j, fakeProgress, slice.mapId, { worldId: slice.mapId }, true)) continue;
+      const a = slice.nodes[pathIdx[j]];
+      const b = slice.nodes[pathIdx[j + 1]];
       const line = document.createElementNS(SVG_NS, 'line');
       line.setAttribute('x1', String(a.x));
       line.setAttribute('y1', String(a.y));
@@ -1164,6 +1384,7 @@
     }
     svg.appendChild(pathG);
     slice.nodes.forEach((n, ni) => {
+      if (n.type === 'label') return;
       if (pathReveal && global.isNodeVisibleOnMap && !global.isNodeVisibleOnMap(slice.nodes, ni, fakeProgress, slice.mapId, { worldId: slice.mapId }, true)) return;
       const vc = nvc(n);
       const g = document.createElementNS(SVG_NS, 'g');
@@ -1206,6 +1427,31 @@
       const sym = { shop: '$', start: '⌂', world: 'W', bonus: '★', return: '↩' };
       txt.textContent = sym[n.type] || nodeLabel(n, slice.worldIndex) || '';
       g.appendChild(txt);
+      svg.appendChild(g);
+    });
+    slice.nodes.forEach((n) => {
+      if (n.type !== 'label') return;
+      if (global.ensureLabelConfig) global.ensureLabelConfig(n);
+      const cfg = n.labelConfig;
+      const vc = nvc(n);
+      const g = document.createElementNS(SVG_NS, 'g');
+      g.setAttribute('data-node-id', String(n.id));
+      g.style.cursor = 'grab';
+      if (n.id === _selectedId || _selectedIds.includes(n.id)) {
+        const w = cfg.width || 80;
+        const h = cfg.height || 36;
+        const sel = document.createElementNS(SVG_NS, 'rect');
+        sel.setAttribute('x', String(n.x - w / 2 - 4));
+        sel.setAttribute('y', String(n.y - h / 2 - 4));
+        sel.setAttribute('width', String(w + 8));
+        sel.setAttribute('height', String(h + 8));
+        sel.setAttribute('fill', 'none');
+        sel.setAttribute('stroke', '#f0d060');
+        sel.setAttribute('stroke-width', '2');
+        sel.setAttribute('stroke-dasharray', '4 3');
+        g.appendChild(sel);
+      }
+      appendForgeLabelShape(g, cfg, vc, n.x, n.y);
       svg.appendChild(g);
     });
     renderMinimap();
@@ -1293,6 +1539,14 @@
       else if (_tool === 'bonus') slice.nodes.push(Object.assign(base, { type: 'bonus', terrain: 'Bonus Arena', bonusConfig: { powerProgression: true, maxRepeats: 5 }, clearRewards: [{ type: 'shinies', min: 15, max: 30 }] }));
       else if (_tool === 'boss') slice.nodes.push(Object.assign(base, { type: 'boss', terrain: 'Boss Arena' }));
       else if (_tool === 'return') slice.nodes.push(Object.assign(base, { type: 'return' }));
+      else if (_tool === 'label') {
+        const labelCfg = typeof global.defaultLabelConfig === 'function' ? global.defaultLabelConfig() : {
+          text: 'Label', mimicType: 'stage', shape: 'rounded', width: 80, height: 36,
+          showText: true, showBorder: true, showFill: true, actsAsNode: false,
+        };
+        labelCfg.text = 'Label';
+        slice.nodes.push(Object.assign(base, { type: 'label', name: 'Label', labelConfig: labelCfg }));
+      }
       else slice.nodes.push(Object.assign(base, { type: 'stage', terrain: 'Wilds' }));
     }
     _map = normalizeMap(_map);
@@ -1823,7 +2077,7 @@
     chk.onchange = () => {
       slot.useCustomStats = chk.checked;
       if (chk.checked && !slot.customStats) {
-        const prev = global.previewForgeSlotStats?.(slot.birdKey, n.stage || n.subStage || 1, true);
+        const prev = global.previewForgeSlotStats?.(slot.birdKey, n.stage || n.subStage || 1, true, slot);
         slot.customStats = prev ? { ...prev } : { maxHp: 100, atk: 10, def: 5, matk: 10, mdef: 5, spd: 6 };
       }
       renderBossStatsPanel(n);
@@ -1832,12 +2086,14 @@
     useCustom.appendChild(document.createTextNode(' Use custom stats'));
     panel.appendChild(useCustom);
     const stage = n.stage || n.subStage || 1;
-    const preview = global.previewForgeSlotStats?.(slot.birdKey, stage, true);
+    const preview = global.previewForgeSlotStats?.(slot.birdKey, stage, true, slot);
     const stats = slot.useCustomStats && slot.customStats ? slot.customStats : preview;
     if (!stats) {
       const hint = document.createElement('p');
       hint.className = 'map-forge-hint';
-      hint.textContent = 'Pick a specific bird to preview stats.';
+      hint.textContent = slot.birdKey === 'random' && !slot.enemyId
+        ? 'Stats preview unavailable until species or variant is pinned.'
+        : 'Pick a specific bird to preview stats.';
       panel.appendChild(hint);
       return;
     }
@@ -2047,7 +2303,7 @@
       if (!forgeScreen?.classList.contains('active')) return;
       const tag = e.target?.tagName;
       if (tag === 'INPUT' || tag === 'SELECT' || tag === 'TEXTAREA') return;
-      const toolKeys = { '1': 'stage', '2': 'boss', '3': 'bonus', '4': 'world', '5': 'shop', '6': 'return', '7': 'start' };
+      const toolKeys = { '1': 'stage', '2': 'boss', '3': 'bonus', '4': 'world', '5': 'shop', '6': 'return', '7': 'start', '8': 'label' };
       if (e.key === 'Delete' || e.key === 'Backspace') { e.preventDefault(); deleteSelectedNode(); return; }
       if (e.key === 'Escape') { deselectNode(); return; }
       if (e.key === 's' || e.key === 'S') { setTool('select'); return; }

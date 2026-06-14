@@ -42,6 +42,100 @@
     return !!n && (n.type === 'stage' || n.type === 'boss' || n.type === 'bonus' || n.final);
   };
 
+  global.OW_MAP_UI_ACTIONS = [
+    { id: 'none', label: 'None' },
+    { id: 'nest', label: 'Nest' },
+    { id: 'settings', label: 'Settings' },
+    { id: 'reference', label: 'Reference' },
+    { id: 'openLocation', label: 'Open location' },
+    { id: 'prevNode', label: 'Previous node' },
+    { id: 'nextNode', label: 'Next node' },
+  ];
+
+  global.OW_MAP_UI_ACTION_LABELS = {
+    nest: 'Nest',
+    settings: 'Settings',
+    reference: 'Reference',
+    openLocation: 'Open',
+    prevNode: 'Prev',
+    nextNode: 'Next',
+  };
+
+  global.getOwMapUiAction = function (cfg) {
+    const id = String(cfg?.uiAction || 'none').trim();
+    if (!id || id === 'none') return '';
+    const known = (global.OW_MAP_UI_ACTIONS || []).some((a) => a.id === id);
+    return known ? id : '';
+  };
+
+  global.defaultLabelConfig = function () {
+    return {
+      text: '',
+      mimicType: 'stage',
+      shape: 'rounded',
+      width: 80,
+      height: 36,
+      showText: true,
+      showBorder: true,
+      showFill: true,
+      actsAsNode: false,
+      uiAction: 'none',
+    };
+  };
+
+  global.ensureLabelConfig = function (node) {
+    if (!node || node.type !== 'label') return null;
+    const def = global.defaultLabelConfig();
+    const cfg = node.labelConfig && typeof node.labelConfig === 'object' ? node.labelConfig : {};
+    const uiAction = global.getOwMapUiAction({ uiAction: cfg.uiAction }) || 'none';
+    node.labelConfig = {
+      text: String(cfg.text != null ? cfg.text : def.text),
+      mimicType: cfg.mimicType || def.mimicType,
+      shape: cfg.shape || def.shape,
+      width: Math.max(16, Math.min(400, Math.floor(Number(cfg.width) || def.width))),
+      height: Math.max(12, Math.min(200, Math.floor(Number(cfg.height) || def.height))),
+      showText: cfg.showText !== false,
+      showBorder: cfg.showBorder !== false,
+      showFill: cfg.showFill !== false,
+      actsAsNode: uiAction !== 'none' ? false : !!cfg.actsAsNode,
+      uiAction,
+    };
+    return node.labelConfig;
+  };
+
+  global.isOwPathNode = function (n) {
+    if (!n) return false;
+    if (n.type === 'label') {
+      if (global.getOwMapUiAction(n.labelConfig)) return false;
+      return !!(n.labelConfig && n.labelConfig.actsAsNode);
+    }
+    return true;
+  };
+
+  global.getPathNodeIndices = function (nodes) {
+    const arr = nodes || [];
+    const out = [];
+    for (let i = 0; i < arr.length; i++) {
+      if (global.isOwPathNode(arr[i])) out.push(i);
+    }
+    return out;
+  };
+
+  global.getOwEffectiveNodeType = function (n) {
+    if (!n) return '';
+    if (n.type === 'label' && n.labelConfig && n.labelConfig.actsAsNode) {
+      return n.labelConfig.mimicType || 'none';
+    }
+    return n.type || '';
+  };
+
+  global.getOwEffectiveNode = function (n) {
+    if (!n || n.type !== 'label' || !n.labelConfig || !n.labelConfig.actsAsNode) return n;
+    const t = global.getOwEffectiveNodeType(n);
+    if (!t || t === 'none') return n;
+    return Object.assign({}, n, { type: t, _labelProxy: true });
+  };
+
   global.owNodeKey = function (mapId, nodeId) {
     return String(mapId || 'main') + ':' + Math.max(0, Math.floor(Number(nodeId) || 0));
   };
@@ -98,6 +192,7 @@
     if (node.type === 'return') return node.name || 'Return';
     if (node.type === 'shop') return node.name || 'Shop';
     if (node.type === 'start') return node.name || 'Start';
+    if (node.type === 'label') return node.labelConfig?.text || node.name || 'Label';
     if (worldIndex != null && Number(node.subStage) > 0) {
       return String(worldIndex) + '-' + String(node.subStage);
     }
@@ -147,7 +242,14 @@
           out.push(slot.birdKey);
         }
       } else {
-        out.push(pool[Math.floor(Math.random() * pool.length)]);
+        const lv = Math.max(1, Math.min(20, Math.floor(Number(slot.enemyLevel) || st)));
+        if (typeof global.pickRandomRosterIdAtLevel === 'function') {
+          const picked = global.pickRandomRosterIdAtLevel(lv, { isBoss: !!slot.isBoss });
+          if (picked) out.push(picked);
+          else out.push(pool[Math.floor(Math.random() * pool.length)]);
+        } else {
+          out.push(pool[Math.floor(Math.random() * pool.length)]);
+        }
       }
     }
     return out;
@@ -172,9 +274,12 @@
   global.isPathSegmentRevealed = function (nodes, segmentIndex, progress, mapId, mapDef, pathReveal) {
     if (!pathReveal) return true;
     const arr = nodes || [];
+    const pathIdx = global.getPathNodeIndices(arr);
     const i = Math.max(0, Math.floor(Number(segmentIndex) || 0));
     if (i <= 0) return true;
-    const source = arr[i];
+    const nodeIdx = pathIdx[i];
+    if (nodeIdx == null) return true;
+    const source = arr[nodeIdx];
     return global.isOwSegmentSourceCleared(source, progress, mapId, mapDef);
   };
 
@@ -184,9 +289,13 @@
     const idx = Math.max(0, Math.floor(Number(nodeIndex) || 0));
     const node = arr[idx];
     if (!node) return false;
+    if (node.type === 'label' && !(node.labelConfig && node.labelConfig.actsAsNode)) return true;
     if (node.type === 'start') return true;
     if (global.isOwSegmentSourceCleared(node, progress, mapId, mapDef)) return true;
-    return global.isPathSegmentRevealed(arr, idx, progress, mapId, mapDef, pathReveal);
+    const pathIdx = global.getPathNodeIndices(arr);
+    const pathPos = pathIdx.indexOf(idx);
+    if (pathPos < 0) return true;
+    return global.isPathSegmentRevealed(arr, pathPos, progress, mapId, mapDef, pathReveal);
   };
 
   global.upgradeMapToV2 = function (map) {
@@ -213,6 +322,7 @@
         }
       }
       if (global.isForgeCombatNode(n)) global.ensureNodeEncounter(n);
+      if (n.type === 'label' && global.ensureLabelConfig) global.ensureLabelConfig(n);
       if (n.type === 'bonus' && !n.bonusConfig) {
         n.bonusConfig = { powerProgression: true, maxRepeats: 5 };
       }
@@ -228,6 +338,7 @@
       const w = m.worlds[wid];
       if (w?.nodes) {
         w.nodes.forEach((n) => {
+          if (n.type === 'label' && global.ensureLabelConfig) global.ensureLabelConfig(n);
           if (global.isForgeCombatNode(n)) {
             if (!Array.isArray(n.clearRewards) && n.bonusConfig?.rewards?.length) {
               n.clearRewards = JSON.parse(JSON.stringify(n.bonusConfig.rewards));
@@ -249,7 +360,7 @@
       if (n.type === 'start') {
         n.stage = 0;
         delete n.subStage;
-      } else if (n.type === 'shop' || n.type === 'return' || n.type === 'world') {
+      } else if (n.type === 'shop' || n.type === 'return' || n.type === 'world' || n.type === 'label') {
         delete n.stage;
         delete n.subStage;
       } else if (n.type === 'stage' || n.type === 'boss' || n.type === 'bonus') {
@@ -257,6 +368,7 @@
         n.subStage = sub;
         delete n.stage;
         if (global.isForgeCombatNode(n)) global.ensureNodeEncounter(n);
+      if (n.type === 'label' && global.ensureLabelConfig) global.ensureLabelConfig(n);
       }
     });
     return sub;
@@ -502,6 +614,24 @@
     if (shopBeforeCombat >= 0) add('warning', 'Shop appears before first combat node.', 'main', nodes[shopBeforeCombat]?.id);
 
     nodes.forEach((n) => {
+      if (n.type === 'label') {
+        const cfg = n.labelConfig || {};
+        const uiAction = global.getOwMapUiAction(cfg);
+        if (uiAction && cfg.actsAsNode) {
+          add('warning', 'Label cannot use both a UI button action and “Acts as node”.', 'main', n.id);
+        }
+        if (cfg.actsAsNode && (!cfg.mimicType || cfg.mimicType === 'none')) {
+          add('warning', 'Functional label needs a mimic class.', 'main', n.id);
+        }
+        if (cfg.actsAsNode && !cfg.showFill && !cfg.showBorder && !cfg.showText) {
+          const mt = cfg.mimicType;
+          if (!mt || mt === 'none') add('warning', 'Invisible functional label has no action.', 'main', n.id);
+        }
+        if (uiAction && !cfg.showFill && !cfg.showBorder && !cfg.showText) {
+          add('warning', 'Invisible UI button — add text or border so players can find it.', 'main', n.id);
+        }
+        return;
+      }
       if (n.type === 'bonus' && (!Array.isArray(n.clearRewards) || !n.clearRewards.length)) {
         add('warning', 'Bonus node has no clear rewards.', 'main', n.id);
       }
@@ -523,7 +653,25 @@
     return issues;
   };
 
-  global.previewForgeSlotStats = function (birdKey, stage, isBoss) {
+  global.previewForgeSlotStats = function (birdKey, stage, isBoss, extra) {
+    let enemyId = null;
+    if (extra && typeof extra === 'object' && extra.enemyId) enemyId = extra.enemyId;
+    else if (typeof extra === 'string') enemyId = extra;
+    if (enemyId) {
+      const row = (typeof global.getEnemyRosterRow === 'function' ? global.getEnemyRosterRow(enemyId) : null)
+        || (typeof global.getRosterRow === 'function' ? global.getRosterRow(enemyId) : null);
+      if (row && row.stats) {
+        const s = row.stats;
+        return {
+          maxHp: Math.max(1, Math.floor(s.maxHp || s.hp || 30)),
+          atk: Math.max(1, Math.floor(s.atk || 6)),
+          def: Math.max(0, Math.floor(s.def || 2)),
+          matk: Math.max(1, Math.floor(s.matk || 8)),
+          mdef: Math.max(0, Math.floor(s.mdef || 8)),
+          spd: Math.max(1, Math.floor(s.spd || 6)),
+        };
+      }
+    }
     const bd = global.BIRDS?.[birdKey];
     if (!bd || birdKey === 'random') return null;
     const st = Math.max(1, Math.floor(Number(stage) || 1));
