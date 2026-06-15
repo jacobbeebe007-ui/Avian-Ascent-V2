@@ -325,6 +325,80 @@
     saveMeta(m);
   }
 
+  function escUpgradeHtml(s) {
+    return String(s || '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+
+  function renderBirdCardUpgradeHtml(birdKey, opts) {
+    opts = opts || {};
+    var layout = opts.layout === 'inventory' ? 'inventory' : 'panel';
+    if (!birdKey) return '';
+    if (typeof globalThis.ownsBirdCard === 'function' && !globalThis.ownsBirdCard(birdKey)) return '';
+    if (typeof globalThis.getBirdCardProgress !== 'function') return '';
+    var progress = globalThis.getBirdCardProgress(birdKey);
+    if (!progress) return '';
+
+    var t = tiers();
+    var preview = progress.preview || null;
+    var previewTierLabel =
+      preview && t && t.TIER_LABELS
+        ? t.TIER_LABELS[preview.tierAfter] || preview.tierAfter
+        : preview
+        ? preview.tierAfter
+        : null;
+    var speciesFeathers =
+      typeof globalThis.getSpeciesFeathers === 'function' ? globalThis.getSpeciesFeathers(birdKey) : 0;
+    var mutationCost = progress.cost || 0;
+    var ownsCard = typeof globalThis.ownsBirdCard !== 'function' || globalThis.ownsBirdCard(birdKey);
+    var canMutate = !!(progress.canUpgrade && speciesFeathers >= mutationCost && ownsCard);
+    var wrapClass =
+      layout === 'inventory'
+        ? 'bird-card-upgrade-wrap bird-card-upgrade-wrap--inventory'
+        : 'bird-card-upgrade-wrap bird-card-upgrade-wrap--panel';
+    var btnClass =
+      'bird-card-upgrade-btn' +
+      (layout === 'inventory' ? ' bird-card-upgrade-btn--inventory' : ' bird-card-upgrade-btn--panel');
+
+    var inner = '';
+    if (canMutate) {
+      var label =
+        preview && preview.isTierUp ? 'Ascend to ' + previewTierLabel : 'Upgrade star';
+      inner =
+        '<button type="button" class="' +
+        btnClass +
+        '" data-action="mutateBirdCardSelect:' +
+        escUpgradeHtml(birdKey) +
+        '">' +
+        escUpgradeHtml(label) +
+        ' (' +
+        speciesFeathers +
+        '/' +
+        mutationCost +
+        ' 🪶)</button>';
+    } else if (progress.canUpgrade && ownsCard) {
+      var hintTarget =
+        preview && preview.isTierUp
+          ? 'ascending to ' + (previewTierLabel || 'next tier')
+          : 'next star';
+      inner =
+        '<p class="bird-card-upgrade-hint">Species Feathers: ' +
+        speciesFeathers +
+        ' / ' +
+        mutationCost +
+        ' for ' +
+        escUpgradeHtml(hintTarget) +
+        '</p>';
+    } else if (progress.isMax && ownsCard) {
+      inner = '<p class="bird-card-upgrade-hint">Card at maximum tier and stars.</p>';
+    }
+    if (!inner) return '';
+    return '<div class="' + wrapClass + '">' + inner + '</div>';
+  }
+
   var api = {
     migrateBirdCardsInMeta: migrateBirdCardsInMeta,
     normalizeOwnedCards: normalizeOwnedCards,
@@ -347,6 +421,7 @@
     consumePityChoice: consumePityChoice,
     setPityChoicePending: setPityChoicePending,
     resetPityCounterAfterForce: resetPityCounterAfterForce,
+    renderBirdCardUpgradeHtml: renderBirdCardUpgradeHtml,
   };
 
   var Avian = globalThis.Avian || (globalThis.Avian = {});
@@ -367,4 +442,5 @@
   globalThis.recordHatch = recordHatch;
   globalThis.consumePityChoice = consumePityChoice;
   globalThis.grantBirdCard = grantBirdCard;
+  globalThis.renderBirdCardUpgradeHtml = renderBirdCardUpgradeHtml;
 })();

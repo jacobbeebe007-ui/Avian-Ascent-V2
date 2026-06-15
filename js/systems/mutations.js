@@ -569,12 +569,13 @@
       : ['maxHp', 'atk', 'def', 'spd', 'acc', 'dodge', 'matk', 'mdef', 'critChance'];
     var fromLevel = (L && L.fromLevel) ? L.fromLevel : {};
     var fromUpgrades = (L && L.fromUpgrades) ? L.fromUpgrades : {};
+    var fromCardTier = (L && L.fromCardTier) ? L.fromCardTier : {};
     var eqRoll = sumEquippedStats(player);
     if (L) L.fromEquipment = Object.assign({}, eqRoll.stats);
     player._mutationMechanics = eqRoll.mechanics;
     for (var i = 0; i < keys.length; i++) {
       var k = keys[i];
-      var v = (Number(base[k]) || 0) + (Number(fromLevel[k]) || 0) + (Number(fromUpgrades[k]) || 0) + (Number(eqRoll.stats[k]) || 0);
+      var v = (Number(base[k]) || 0) + (Number(fromLevel[k]) || 0) + (Number(fromUpgrades[k]) || 0) + (Number(fromCardTier[k]) || 0) + (Number(eqRoll.stats[k]) || 0);
       player.stats[k] = capTrackedStatValue(k, v);
     }
     if (player.stats.maxHp != null) {

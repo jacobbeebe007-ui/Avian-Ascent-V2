@@ -151,30 +151,10 @@
   }
 
   function buildFeatherMutateBtn(birdKey) {
-    if (typeof globalThis.ownsBirdCard !== 'function' || !globalThis.ownsBirdCard(birdKey)) return '';
-    if (typeof globalThis.getBirdCardProgress !== 'function') return '';
-    var progress = globalThis.getBirdCardProgress(birdKey);
-    if (!progress || !progress.canUpgrade) return '';
-    var feathers =
-      typeof globalThis.getSpeciesFeathers === 'function' ? globalThis.getSpeciesFeathers(birdKey) : 0;
-    var cost = progress.cost || 0;
-    if (feathers < cost) return '';
-    var pack = tierPack();
-    var preview = progress.preview;
-    var label = preview && preview.isTierUp
-      ? 'Ascend to ' + ((pack && pack.TIER_LABELS && pack.TIER_LABELS[preview.tierAfter]) || preview.tierAfter)
-      : 'Upgrade star';
-    return (
-      '<button type="button" class="inventory-feather-mutate-btn" data-action="mutateBirdCardSelect:' +
-      esc(birdKey) +
-      '">' +
-      esc(label) +
-      ' (' +
-      fmt(feathers) +
-      '/' +
-      fmt(cost) +
-      ' 🪶)</button>'
-    );
+    if (typeof globalThis.renderBirdCardUpgradeHtml === 'function') {
+      return globalThis.renderBirdCardUpgradeHtml(birdKey, { layout: 'inventory' });
+    }
+    return '';
   }
 
   function renderInventoryFeatherFilters() {

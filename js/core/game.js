@@ -356,6 +356,7 @@ function ensureStatLedger(player){
       birdBaseline:{},
       fromLevel:{},
       fromUpgrades:{},
+      fromCardTier:{},
       fromEquipment:{},
       mechanicalLines:[],
     };
@@ -363,6 +364,7 @@ function ensureStatLedger(player){
   const L = player._statLedger;
   if(!L.fromLevel || typeof L.fromLevel !== 'object') L.fromLevel = {};
   if(!L.fromUpgrades || typeof L.fromUpgrades !== 'object') L.fromUpgrades = {};
+  if(!L.fromCardTier || typeof L.fromCardTier !== 'object') L.fromCardTier = {};
   if(!L.fromEquipment || typeof L.fromEquipment !== 'object') L.fromEquipment = {};
   if(!Array.isArray(L.mechanicalLines)) L.mechanicalLines = [];
   return L;
@@ -370,7 +372,8 @@ function ensureStatLedger(player){
 function initStatLedgerForNewRun(player){
   const L = ensureStatLedger(player);
   if(!L || !player?.stats) return;
-  L.birdBaseline = cloneStatLedgerSlice(player.stats);
+  const catalogStats = player.birdKey && BIRDS[player.birdKey]?.stats;
+  L.birdBaseline = catalogStats ? cloneStatLedgerSlice(catalogStats) : cloneStatLedgerSlice(player.stats);
   L.fromLevel = {};
   L.fromUpgrades = {};
   L.fromEquipment = {};
@@ -612,6 +615,7 @@ function buildRichStatTooltipHtml(statKey, rawVal, player){
   if(L?.birdBaseline && Object.keys(L.birdBaseline).length){
     const rows = [
       ['Base', Number(L.birdBaseline[statKey]||0)],
+      ['Card', Number(L.fromCardTier?.[statKey]||0)],
       ['Level', Number(L.fromLevel?.[statKey]||0)],
       ['Upgrades', Number(L.fromUpgrades?.[statKey]||0)],
       ['Equipment (total)', Number(L.fromEquipment?.[statKey]||0)],
@@ -624,7 +628,7 @@ function buildRichStatTooltipHtml(statKey, rawVal, player){
       html += `<div class="tt-row"><span class="tt-lbl">${escapeHtmlRoster(src.name)}</span><span class="tt-val">+${formatCombatNumber(src.value)}</span></div>`;
     }
     const cur = Number(rawVal)||0;
-    const rem = cur - Number(L.birdBaseline[statKey]||0) - Number(L.fromLevel?.[statKey]||0) - Number(L.fromUpgrades?.[statKey]||0) - Number(L.fromEquipment?.[statKey]||0);
+    const rem = cur - Number(L.birdBaseline[statKey]||0) - Number(L.fromCardTier?.[statKey]||0) - Number(L.fromLevel?.[statKey]||0) - Number(L.fromUpgrades?.[statKey]||0) - Number(L.fromEquipment?.[statKey]||0);
     if(Math.abs(rem) > 0.05) html += `<div class="tt-row"><span class="tt-lbl">Other</span><span class="tt-val">${rem >= 0 ? '+' : ''}${formatCombatNumber(rem)}</span></div>`;
   }
   for(const line of getDerivedMechanicalBonusLines(player)){
@@ -3309,6 +3313,7 @@ function continueRun() {
   if(!Array.isArray(G.player.endlessRewards)) G.player.endlessRewards=[];
   ensurePassiveEvolutionState(G.player);
   if(typeof Avian?.mutations?.ensurePlayerMutationState==='function') Avian.mutations.ensurePlayerMutationState(G.player);
+  if(typeof applyBirdCardProgression==='function') applyBirdCardProgression(G.player);
   if(typeof Avian?.mutations?.reapplyPlayerStatsFromSources==='function') Avian.mutations.reapplyPlayerStatsFromSources(G.player);
   if(!Array.isArray(G.player.abilityInventory)) G.player.abilityInventory=[];
   G.player.mutatedFeatherCount=Math.max(0, Number(G.player.mutatedFeatherCount)||0);
@@ -5484,11 +5489,9 @@ function updateAscentPanel(key) {
     const rarityLabel=escapeHtmlRoster(rarityMeta.label);
     const progress=typeof getBirdCardProgress==='function'?getBirdCardProgress(key):null;
     const preview=progress?.preview||null;
-    const previewTierLabel=preview?(tierPack?.TIER_LABELS?.[preview.tierAfter]||preview.tierAfter):null;
     const speciesFeathers=typeof getSpeciesFeathers==='function'?getSpeciesFeathers(key):0;
     const mutationCost=progress?.cost??(typeof getBirdCardMutationCost==='function'?getBirdCardMutationCost(cardTier):0);
     const ownsCard=typeof ownsBirdCard==='function'?ownsBirdCard(key):true;
-    const canMutate=!!(progress?.canUpgrade&&speciesFeathers>=mutationCost&&ownsCard);
     const previewTier=preview?(preview.isTierUp?preview.tierAfter:cardTier):cardTier;
     const previewStars=preview?(preview.isTierUp?preview.starsAfter:(preview.starsAfter??cardStars+1)):cardStars;
     const nextPassivePreview=progress?.canUpgrade&&typeof formatPassiveEffectForTier==='function'
@@ -5497,13 +5500,9 @@ function updateAscentPanel(key) {
     const cardHint=!ownsCard
       ? '<p class="ascent-card-hint">No card — hatch at <strong>The Hatchery</strong>.</p>'
       : '';
-    const mutateBtn=canMutate
-      ? (preview?.isTierUp
-        ? `<button type="button" class="ascent-mutate-btn" data-action="mutateBirdCardSelect:${key}">Ascend to ${escapeHtmlRoster(previewTierLabel)} (${speciesFeathers}/${mutationCost} 🪶)</button>`
-        : `<button type="button" class="ascent-mutate-btn" data-action="mutateBirdCardSelect:${key}">Upgrade star (${speciesFeathers}/${mutationCost} 🪶)</button>`)
-      : (progress?.canUpgrade&&ownsCard
-        ? `<p class="ascent-mutate-hint">Species Feathers: ${speciesFeathers} / ${mutationCost} for ${preview?.isTierUp?'ascending to '+escapeHtmlRoster(previewTierLabel||'next tier'):'next star'}</p>`
-        : (progress?.isMax&&ownsCard?'<p class="ascent-mutate-hint">Card at maximum tier and stars.</p>':''));
+    const mutateBtn=typeof renderBirdCardUpgradeHtml==='function'
+      ? renderBirdCardUpgradeHtml(key, { layout: 'panel' })
+      : '';
     const classPerkInfo=getBirdAuthoredClassPerk(key);
     const classPerkName=escapeHtmlRoster(classPerkInfo?.name||'—');
     const classPerkDesc=escapeHtmlRoster(classPerkInfo?.effect||'No class perk listed.');

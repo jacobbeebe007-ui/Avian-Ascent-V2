@@ -904,7 +904,7 @@ body.build-nest-unlocked .splash-hotspot--forge.is-buildnest-hidden{
 }
 .inventory-feathers-grid{
   display:grid;
-  grid-template-columns:repeat(auto-fill,minmax(min(100%,130px),1fr));
+  grid-template-columns:repeat(auto-fill,minmax(min(100%,150px),1fr));
   gap:10px;
 }
 .inventory-feather-card{
@@ -941,18 +941,36 @@ body.build-nest-unlocked .splash-hotspot--forge.is-buildnest-hidden{
   margin-top:2px;
 }
 .inventory-feather-amount-filters{margin-bottom:6px;}
-.inventory-feather-mutate-btn{
-  margin-top:6px;
+.bird-card-upgrade-wrap{
   width:100%;
-  font-size:.62rem;
-  padding:5px 6px;
-  border-radius:6px;
-  border:1px solid rgba(201,168,76,.35);
-  background:rgba(201,168,76,.12);
-  color:var(--gold-light);
-  cursor:pointer;
+  margin-top:6px;
 }
-.inventory-feather-mutate-btn:hover{background:rgba(201,168,76,.22);}
+.bird-card-upgrade-wrap--inventory{margin-top:8px;}
+.bird-card-upgrade-btn{
+  font:inherit;
+  font-size:.68rem;
+  cursor:pointer;
+  padding:6px 10px;
+  border-radius:8px;
+  border:1px solid rgba(120,180,120,.45);
+  background:rgba(30,50,36,.55);
+  color:#b8e8c8;
+}
+.bird-card-upgrade-btn:hover{border-color:rgba(160,220,160,.65);}
+.bird-card-upgrade-btn--inventory{
+  width:100%;
+  font-size:.78rem;
+  padding:10px 12px;
+  min-height:40px;
+  border-radius:10px;
+}
+.bird-card-upgrade-hint{
+  font-size:.72rem;
+  color:rgba(200,198,190,.65);
+  margin:0;
+  line-height:1.35;
+}
+.bird-card-upgrade-wrap--inventory .bird-card-upgrade-hint{font-size:.68rem;}
 .select-hub-panel--hatchery .select-hub-panel-inner--hatchery{max-width:min(920px,96vw);}
 .hatchery-balance-bar{margin-bottom:8px;}
 .mother-goose-hatch-modal{
@@ -1507,7 +1525,8 @@ body.build-nest-unlocked .splash-hotspot--forge.is-buildnest-hidden{
   font-size:.72rem;
   color:rgba(210,204,192,.88);
 }
-.ascent-mutate-btn{
+.ascent-mutate-btn,
+.bird-card-upgrade-btn--panel{
   font:inherit;
   font-size:.68rem;
   cursor:pointer;
@@ -1517,7 +1536,8 @@ body.build-nest-unlocked .splash-hotspot--forge.is-buildnest-hidden{
   background:rgba(30,50,36,.55);
   color:#b8e8c8;
 }
-.ascent-mutate-btn:hover{border-color:rgba(160,220,160,.65);}
+.ascent-mutate-btn:hover,
+.bird-card-upgrade-btn--panel:hover{border-color:rgba(160,220,160,.65);}
 .ascent-passive-next{
   margin-top:6px;
   font-size:.72rem;
@@ -1529,7 +1549,7 @@ body.build-nest-unlocked .splash-hotspot--forge.is-buildnest-hidden{
   font-size:.68rem;
   color:rgba(200,198,190,.7);
 }
-.ascent-card-hint,.ascent-mutate-hint{
+.ascent-card-hint,.ascent-mutate-hint,.bird-card-upgrade-hint{
   font-size:.72rem;
   color:rgba(200,198,190,.65);
   margin:4px 0 6px;
