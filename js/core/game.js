@@ -214,7 +214,7 @@ const ENEMY_ABILITY_POOL = {
     logMsg(`🔥 ${e.name} scorches you!`,'enemy-action');
   }},
   eHeal:    {name:'Preen', desc:'Heal 15% max HP.', dmg:'healing', fn(e,p,G){
-    const heal=scaleHealForBleed('enemy',Math.max(1,Math.floor((e.stats.maxHp||1)*0.15)));
+    const heal=scaleHealForBleed('enemy',roundCombatDamage(Math.max(0.01,(e.stats.maxHp||1)*0.15)));
     e.stats.hp=Math.min(e.stats.maxHp,e.stats.hp+heal);
     spawnFloat('enemy',`+${heal}`,'fn-heal');
     setHpBar('enemy',e.stats.hp,e.stats.maxHp);
@@ -462,6 +462,10 @@ function roundCombatDamage(n) {
   return Math.max(0.01, Math.round(Number(n) * 100) / 100);
 }
 globalThis.roundCombatDamage = roundCombatDamage;
+function roundCombatStat(n, floor=0) {
+  return Math.max(floor, Math.round(Number(n) * 100) / 100);
+}
+globalThis.roundCombatStat = roundCombatStat;
 function rollCombatSpread(lo, hi) {
   const a = Number(lo) || 0;
   const b = Number(hi) || a;
@@ -7687,7 +7691,7 @@ function estimateSkillDamageRange(ab,tmpl,attacker,opts){
         : getMagicalPierceFractionForPreview(ab);
       const rawDef=['physical','ranged'].includes(btnType)?Number(en.def||0):Number(en.mdef??8);
       const effDef=effectiveDefence(rawDef,pierce,{burning:enemyHasBurning()});
-      perHit=Math.max(1, roundCurvedDamage(typeof mitigatedDamage==='function'?mitigatedDamage(perHit,effDef):perHit*curvedDefenceMultiplier(effDef)));
+      perHit=Math.max(0.01, roundCombatDamage(typeof mitigatedDamage==='function'?mitigatedDamage(perHit,effDef):perHit*curvedDefenceMultiplier(effDef)));
     }
     const dmgLow=perHit*hits;
     const dmgHigh=dmgLow;
@@ -8744,7 +8748,7 @@ function shouldApplyPostBattleHealNow(){
 function applyPostBattleHealIfDue(){
   if(!shouldApplyPostBattleHealNow()) return;
   const postHealMult=G.player?.mutHuntersCruelty?0.5:1;
-  const postHeal=Math.max(1, Math.floor(G.player.stats.maxHp * getPostBattleHealPct() * postHealMult));
+  const postHeal=roundCombatDamage(Math.max(0.01, G.player.stats.maxHp * getPostBattleHealPct() * postHealMult));
   G.player.stats.hp=Math.min(G.player.stats.hp + postHeal, G.player.stats.maxHp);
   spawnFloat('player', `+${postHeal} 🩹`, 'fn-heal');
   const flatHeal=(G.player.postBattleFlatHeal || 0);
@@ -8754,7 +8758,7 @@ function applyPostBattleHealIfDue(){
   }
   const bonusPct=(G.player.postBattleHealBonusPct || 0);
   if(bonusPct>0){
-    const extra=Math.max(1, Math.floor(G.player.stats.maxHp * bonusPct));
+    const extra=roundCombatDamage(Math.max(0.01, G.player.stats.maxHp * bonusPct));
     G.player.stats.hp=Math.min(G.player.stats.hp + extra, G.player.stats.maxHp);
     spawnFloat('player', `+${extra} 🩹`, 'fn-heal');
   }
@@ -9380,8 +9384,8 @@ function scaleHealForBleed(who, raw){
   const st = who==='player' ? G.playerStatus : G.enemyStatus;
   const b = st?.bleed;
   const hasBleed = !!(b && ((b.turns||0)>0 || (b.stacks||0)>0));
-  if(!hasBleed) return raw;
-  return Math.max(1, Math.floor(raw * 0.5));
+  if(!hasBleed) return roundCombatDamage(raw);
+  return roundCombatDamage(Math.max(0.01, raw * 0.5));
 }
 function normalizeBurningTurns(v){
   if(v==null) return 3;
@@ -10122,24 +10126,24 @@ function edmg(mult=1) {
   const weak=getWeakenDamageMult(getWeakenStacks(G.enemyStatus));
   const ruffleReduct=G.enemyStatus.featherRuffle&&G.enemyStatus.featherRuffle.turns>0
     ?(1-(G.enemyStatus.featherRuffle.atkReduction||0)/100):1;
-  let out=Math.max(1, Math.floor(atk*(Number(mult)||1)*lull*weak*ruffleReduct));
+  let out=roundCombatDamage(Math.max(0.01, atk*(Number(mult)||1)*lull*weak*ruffleReduct));
   if((G.biomeMod?.lightningBonus||0)>0 && getEnemyKitAbilityIds(G.enemy).includes('eStun')){
-    out=Math.floor(out*(1+G.biomeMod.lightningBonus));
+    out=roundCombatDamage(out*(1+G.biomeMod.lightningBonus));
   }
   if((G.biomeMod?.enemyCritPlus||0)>0 && chance(Math.floor(G.biomeMod.enemyCritPlus*100))){
-    out=Math.floor(out*1.4);
+    out=roundCombatDamage(out*1.4);
   }
   return out;
 }
 
 function rollEnemyCritDamage(baseDamage){
-  const raw=Math.max(1,Math.floor(baseDamage||1));
+  const raw=roundCombatDamage(Math.max(0.01, baseDamage||1));
   const cc=Math.max(0,Math.min(0.95,G.enemy?.stats?.cc??((G.enemy?.stats?.critChance||5)/100)));
   let cd=Math.max(1.1,Number(G.enemy?.stats?.cd??G.enemy?.stats?.critMult??1.5));
   const mutCrit=Number(G.enemy?._mutationMechanics?.critDamageBonusPct)||0;
   if(mutCrit>0) cd+=mutCrit/100;
   const isCrit=chance(Math.round(cc*100));
-  return {amount:isCrit?Math.max(1,Math.floor(raw*cd)):raw,isCrit};
+  return {amount:isCrit?roundCombatDamage(raw*cd):raw,isCrit};
 }
 
 function getPlayerMissChance(ab) {

@@ -56,7 +56,9 @@ function applyMinimumDamage(damage, enCost) {
 }
 
 function roundCurvedDamage(damage) {
-  return Math.max(0, Math.round(Number(damage) || 0));
+  const n = Number(damage) || 0;
+  if (n <= 0) return 0;
+  return Math.max(0.01, Math.round(n * 100) / 100);
 }
 
 let failed = 0;
@@ -65,9 +67,9 @@ function assert(cond, msg) {
   else console.log('OK:', msg);
 }
 
-// Crow example: 16 ATK, 2 EN (1.25x), 6 DEF → ~16 damage
+// Crow example: 16 ATK, 2 EN (1.25x), 6 DEF → ~16.00 damage
 const crowDmg = roundCurvedDamage(calculateCurvedDamage(16, MEDIUM_ATTACK_POWER, 6));
-assert(crowDmg === 16, `Crow 16 ATK 2 EN vs 6 DEF = 16 (got ${crowDmg})`);
+assert(Math.abs(crowDmg - 16) < 0.01, `Crow 16 ATK 2 EN vs 6 DEF ≈ 16.00 (got ${crowDmg})`);
 
 // Minimum damage floors
 const min1 = applyMinimumDamage(roundCurvedDamage(calculateCurvedDamage(1, LIGHT_ATTACK_POWER, 0)), 1);

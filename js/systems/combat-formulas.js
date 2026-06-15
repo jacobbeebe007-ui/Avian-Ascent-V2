@@ -168,10 +168,12 @@
   }
 
   function roundCurvedDamage(damage) {
-    return Math.max(0, Math.round(Number(damage) || 0));
+    var n = Number(damage) || 0;
+    if (n <= 0) return 0;
+    return Math.max(0.01, Math.round(n * 100) / 100);
   }
 
-  /** Self-test: Treasure Ambush — base 5 + 68% ATK + 22% MATK vs DEF 6 → ~14 */
+  /** Self-test: Treasure Ambush — base 5 + 68% ATK + 22% MATK vs DEF 6 → ~14.22 */
   function runDamageFormulaSelfTest() {
     var treasureRow = {
       baseFlat: 5,
@@ -186,7 +188,7 @@
     var mitigated = mitigatedDamage(raw, 6);
     var final = roundCurvedDamage(mitigated);
     var okRaw = Math.abs(raw - 17.64) < 0.01;
-    var okFinal = final === 14;
+    var okFinal = Math.abs(final - 14.22) < 0.01;
     return {
       ok: okRaw && okFinal,
       raw: raw,
