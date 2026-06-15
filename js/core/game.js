@@ -5199,6 +5199,7 @@ function buildBirdCard(key, bird, locked) {
   const cardTier=!locked&&typeof getBirdCardTier==='function'?getBirdCardTier(key):'grey';
   const tierCss=Avian?.data?.birdCardTiers?.TIER_CSS?.[cardTier]||'tier-grey';
   card.className = 'bird-card' + (locked ? ' bird-locked' : ` bird-card--${tierCss}`) + (ui.expandedBird===key?' selected':'');
+  card.dataset.birdKey = key;
   if (!locked) card.onclick = () => selectBird(key, card);
 
   const cls = classToRoleId(bird.class);
@@ -5263,6 +5264,18 @@ function mutateBirdCardSelect(birdKey){
     updateAscentPanel(birdKey);
     if(typeof buildBirdGrid==='function') try{ buildBirdGrid(); }catch(_){}
     if(typeof renderFortuneInventory==='function') try{ renderFortuneInventory(); }catch(_){}
+    if(result.isTierUp){
+      const ui=ensureUIState();
+      requestAnimationFrame(()=>{
+        const card=document.querySelector(`#bird-grid .bird-card[data-bird-key="${birdKey}"]`);
+        if(!card) return;
+        if(ui.expandedBird===birdKey) card.classList.add('selected');
+        card.classList.remove('bird-card--tier-up-flash');
+        void card.offsetWidth;
+        card.classList.add('bird-card--tier-up-flash');
+        card.addEventListener('animationend',()=>card.classList.remove('bird-card--tier-up-flash'),{once:true});
+      });
+    }
   }
 }
 globalThis.mutateBirdCardSelect=mutateBirdCardSelect;

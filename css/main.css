@@ -919,12 +919,12 @@ body.build-nest-unlocked .splash-hotspot--forge.is-buildnest-hidden{
   text-align:center;
   position:relative;
 }
-.inventory-feather-card.tier-grey{border-color:rgba(106,120,144,.55);}
-.inventory-feather-card.tier-green{border-color:rgba(76,138,106,.55);}
-.inventory-feather-card.tier-blue{border-color:rgba(76,106,201,.55);}
-.inventory-feather-card.tier-purple{border-color:rgba(120,76,180,.55);}
-.inventory-feather-card.tier-gold{border-color:rgba(180,140,40,.6);}
-.inventory-feather-card.tier-orange{border-color:rgba(200,100,40,.6);}
+.inventory-feather-card.tier-grey{background:linear-gradient(180deg,rgba(106,120,144,.14),rgba(42,38,32,.9));border-color:rgba(106,120,144,.55);}
+.inventory-feather-card.tier-green{background:linear-gradient(180deg,rgba(76,138,106,.14),rgba(36,44,36,.9));border-color:rgba(76,138,106,.55);}
+.inventory-feather-card.tier-blue{background:linear-gradient(180deg,rgba(76,106,201,.14),rgba(34,38,52,.9));border-color:rgba(76,106,201,.55);}
+.inventory-feather-card.tier-purple{background:linear-gradient(180deg,rgba(120,76,180,.14),rgba(40,34,50,.9));border-color:rgba(120,76,180,.55);}
+.inventory-feather-card.tier-gold{background:linear-gradient(180deg,rgba(180,140,40,.16),rgba(48,40,24,.92));border-color:rgba(180,140,40,.6);}
+.inventory-feather-card.tier-orange{background:linear-gradient(180deg,rgba(200,100,40,.16),rgba(52,36,24,.92));border-color:rgba(200,100,40,.6);}
 .inventory-feather-portrait{display:flex;justify-content:center;min-height:52px;}
 .inventory-feather-icon{font-size:1.4rem;line-height:1;margin-top:-4px;}
 .inventory-feather-name{
@@ -1479,10 +1479,14 @@ body.build-nest-unlocked .splash-hotspot--forge.is-buildnest-hidden{
   letter-spacing:.14em;
 }
 .sfsel__roster .bird-card.selected{
-  border-color:var(--gold-light)!important;
-  box-shadow:0 0 0 2px rgba(232,201,106,.45),0 0 28px rgba(201,168,76,.32)!important;
   transform:translateY(-1px);
 }
+.sfsel__roster .bird-card.bird-card--tier-grey.selected{border-color:#d8dde8!important;box-shadow:0 0 0 2px rgba(216,221,232,.45),0 0 28px rgba(106,120,144,.32)!important;}
+.sfsel__roster .bird-card.bird-card--tier-green.selected{border-color:#b8e8c8!important;box-shadow:0 0 0 2px rgba(184,232,200,.45),0 0 28px rgba(76,138,106,.32)!important;}
+.sfsel__roster .bird-card.bird-card--tier-blue.selected{border-color:#c8d4ff!important;box-shadow:0 0 0 2px rgba(200,212,255,.45),0 0 28px rgba(76,106,201,.32)!important;}
+.sfsel__roster .bird-card.bird-card--tier-purple.selected{border-color:#e0c8ff!important;box-shadow:0 0 0 2px rgba(224,200,255,.45),0 0 28px rgba(120,76,180,.32)!important;}
+.sfsel__roster .bird-card.bird-card--tier-gold.selected{border-color:#ffe8a0!important;box-shadow:0 0 0 2px rgba(255,232,160,.5),0 0 28px rgba(201,168,76,.34)!important;}
+.sfsel__roster .bird-card.bird-card--tier-orange.selected{border-color:#ffd0a8!important;box-shadow:0 0 0 2px rgba(255,208,168,.45),0 0 28px rgba(200,100,40,.32)!important;}
 /* Bird card hover/tap in the sfsel roster */
 .sfsel__roster .bird-card:not(.bird-locked){
   cursor:pointer;
@@ -2195,20 +2199,25 @@ body.build-nest-unlocked .splash-hotspot--forge.is-buildnest-hidden{
 .bird-card.bird-card--tier-purple{background:linear-gradient(180deg,rgba(120,76,180,.14),rgba(40,34,50,.9));border-color:rgba(120,76,180,.55);}
 .bird-card.bird-card--tier-gold{background:linear-gradient(180deg,rgba(180,140,40,.16),rgba(48,40,24,.92));border-color:rgba(180,140,40,.58);}
 .bird-card.bird-card--tier-orange{background:linear-gradient(180deg,rgba(200,100,40,.16),rgba(52,36,24,.92));border-color:rgba(200,100,40,.58);}
-.bird-card:hover{transform:translateY(-2px);border-color:var(--gold);background:rgba(68,52,18,.95);box-shadow:0 4px 18px rgba(201,168,76,.2);}
-.bird-card.bird-card--tier-grey:hover{border-color:var(--tier-grey);box-shadow:0 4px 18px rgba(106,120,144,.28);}
-.bird-card.bird-card--tier-green:hover{border-color:var(--tier-green);box-shadow:0 4px 18px rgba(76,138,106,.28);}
-.bird-card.bird-card--tier-blue:hover{border-color:var(--tier-blue);box-shadow:0 4px 18px rgba(76,106,201,.28);}
-.bird-card.bird-card--tier-purple:hover{border-color:var(--tier-purple);box-shadow:0 4px 18px rgba(120,76,180,.28);}
-.bird-card.bird-card--tier-gold:hover{border-color:var(--tier-gold);box-shadow:0 4px 18px rgba(201,168,76,.32);}
-.bird-card.bird-card--tier-orange:hover{border-color:var(--tier-orange);box-shadow:0 4px 18px rgba(200,100,40,.32);}
-.bird-card.selected{border-color:var(--gold-light);background:rgba(80,60,18,.98);box-shadow:0 0 22px rgba(232,201,106,.35);}
-.bird-card.bird-card--tier-grey.selected{border-color:#d8dde8;box-shadow:0 0 20px rgba(106,120,144,.35);}
-.bird-card.bird-card--tier-green.selected{border-color:#b8e8c8;box-shadow:0 0 20px rgba(76,138,106,.35);}
-.bird-card.bird-card--tier-blue.selected{border-color:#c8d4ff;box-shadow:0 0 20px rgba(76,106,201,.35);}
-.bird-card.bird-card--tier-purple.selected{border-color:#e0c8ff;box-shadow:0 0 20px rgba(120,76,180,.35);}
-.bird-card.bird-card--tier-gold.selected{border-color:#ffe8a0;box-shadow:0 0 22px rgba(201,168,76,.4);}
-.bird-card.bird-card--tier-orange.selected{border-color:#ffd0a8;box-shadow:0 0 22px rgba(200,100,40,.38);}
+.bird-card:hover:not([class*="bird-card--tier-"]){transform:translateY(-2px);border-color:var(--gold);background:rgba(68,52,18,.95);box-shadow:0 4px 18px rgba(201,168,76,.2);}
+.bird-card.bird-card--tier-grey:hover{transform:translateY(-2px);background:linear-gradient(180deg,rgba(106,120,144,.2),rgba(42,38,32,.94));border-color:var(--tier-grey);box-shadow:0 4px 18px rgba(106,120,144,.28);}
+.bird-card.bird-card--tier-green:hover{transform:translateY(-2px);background:linear-gradient(180deg,rgba(76,138,106,.2),rgba(36,44,36,.94));border-color:var(--tier-green);box-shadow:0 4px 18px rgba(76,138,106,.28);}
+.bird-card.bird-card--tier-blue:hover{transform:translateY(-2px);background:linear-gradient(180deg,rgba(76,106,201,.2),rgba(34,38,52,.94));border-color:var(--tier-blue);box-shadow:0 4px 18px rgba(76,106,201,.28);}
+.bird-card.bird-card--tier-purple:hover{transform:translateY(-2px);background:linear-gradient(180deg,rgba(120,76,180,.2),rgba(40,34,50,.94));border-color:var(--tier-purple);box-shadow:0 4px 18px rgba(120,76,180,.28);}
+.bird-card.bird-card--tier-gold:hover{transform:translateY(-2px);background:linear-gradient(180deg,rgba(180,140,40,.22),rgba(48,40,24,.95));border-color:var(--tier-gold);box-shadow:0 4px 18px rgba(201,168,76,.32);}
+.bird-card.bird-card--tier-orange:hover{transform:translateY(-2px);background:linear-gradient(180deg,rgba(200,100,40,.22),rgba(52,36,24,.95));border-color:var(--tier-orange);box-shadow:0 4px 18px rgba(200,100,40,.32);}
+.bird-card.selected:not([class*="bird-card--tier-"]){border-color:var(--gold-light);background:rgba(80,60,18,.98);box-shadow:0 0 22px rgba(232,201,106,.35);}
+.bird-card.bird-card--tier-grey.selected{background:linear-gradient(180deg,rgba(106,120,144,.22),rgba(42,38,32,.95));border-color:#d8dde8;box-shadow:0 0 0 1px rgba(216,221,232,.35) inset,0 0 20px rgba(106,120,144,.35);}
+.bird-card.bird-card--tier-green.selected{background:linear-gradient(180deg,rgba(76,138,106,.22),rgba(36,44,36,.95));border-color:#b8e8c8;box-shadow:0 0 0 1px rgba(184,232,200,.35) inset,0 0 20px rgba(76,138,106,.35);}
+.bird-card.bird-card--tier-blue.selected{background:linear-gradient(180deg,rgba(76,106,201,.22),rgba(34,38,52,.95));border-color:#c8d4ff;box-shadow:0 0 0 1px rgba(200,212,255,.35) inset,0 0 20px rgba(76,106,201,.35);}
+.bird-card.bird-card--tier-purple.selected{background:linear-gradient(180deg,rgba(120,76,180,.22),rgba(40,34,50,.95));border-color:#e0c8ff;box-shadow:0 0 0 1px rgba(224,200,255,.35) inset,0 0 20px rgba(120,76,180,.35);}
+.bird-card.bird-card--tier-gold.selected{background:linear-gradient(180deg,rgba(180,140,40,.24),rgba(48,40,24,.96));border-color:#ffe8a0;box-shadow:0 0 0 1px rgba(255,232,160,.4) inset,0 0 22px rgba(201,168,76,.4);}
+.bird-card.bird-card--tier-orange.selected{background:linear-gradient(180deg,rgba(200,100,40,.24),rgba(52,36,24,.96));border-color:#ffd0a8;box-shadow:0 0 0 1px rgba(255,208,168,.35) inset,0 0 22px rgba(200,100,40,.38);}
+@keyframes bird-card-tier-up-flash{
+  0%,100%{filter:brightness(1);transform:scale(1);}
+  45%{filter:brightness(1.28);transform:scale(1.02);}
+}
+.bird-card.bird-card--tier-up-flash{animation:bird-card-tier-up-flash .6s ease-out;}
 .bird-card.bird-locked{opacity:.65;cursor:not-allowed;border-color:rgba(60,50,35,.4);}
 .bird-card.bird-locked:hover{transform:none;box-shadow:none;border-color:rgba(60,50,35,.4);}
 .bird-card.bird-locked .sprite4{filter:grayscale(1) brightness(0) contrast(1.1) !important; opacity:.92;}
@@ -3845,13 +3854,13 @@ img{image-rendering:pixelated;image-rendering:crisp-edges;}
 
 #bird-grid{flex:1;min-height:0;max-height:none;overflow:auto;padding-right:6px;}
 .size-birds-row{display:grid;grid-template-columns:repeat(auto-fill,minmax(168px,1fr));gap:10px;}
-.bird-card{background:linear-gradient(180deg,rgba(23,27,36,.88),rgba(16,20,28,.82));border:1px solid rgba(160,180,210,.28);}
-.bird-card:hover{border-color:rgba(232,201,106,.65);box-shadow:0 6px 20px rgba(0,0,0,.35),0 0 0 1px rgba(232,201,106,.25) inset;}
-.bird-card.selected{border-color:var(--gold-light);box-shadow:0 0 0 1px rgba(232,201,106,.35) inset,0 0 26px rgba(201,168,76,.24);} 
+.bird-card:not([class*="bird-card--tier-"]){background:linear-gradient(180deg,rgba(23,27,36,.88),rgba(16,20,28,.82));border:1px solid rgba(160,180,210,.28);}
+.bird-card:hover:not([class*="bird-card--tier-"]){border-color:rgba(232,201,106,.65);box-shadow:0 6px 20px rgba(0,0,0,.35),0 0 0 1px rgba(232,201,106,.25) inset;}
+.bird-card.selected:not([class*="bird-card--tier-"]){border-color:var(--gold-light);box-shadow:0 0 0 1px rgba(232,201,106,.35) inset,0 0 26px rgba(201,168,76,.24);}
 .bird-tagline-mini{font-size:.62rem;color:#9eb0c3;line-height:1.25;min-height:32px;margin-top:4px;}
 .bird-card .stat-bars{display:none !important;}
 
-#screen-select .bird-card{background:linear-gradient(180deg,rgba(20,24,32,.55),rgba(14,18,26,.5));}
+#screen-select .bird-card:not([class*="bird-card--tier-"]){background:linear-gradient(180deg,rgba(20,24,32,.55),rgba(14,18,26,.5));}
 .ascent-panel{background:linear-gradient(180deg,rgba(24,20,14,.95),rgba(15,18,26,.95));border:1px solid rgba(232,201,106,.45);box-shadow:0 8px 30px rgba(0,0,0,.45),0 0 0 1px rgba(232,201,106,.16) inset;padding:14px;text-align:left;}
 #screen-select .ascent-panel{background:linear-gradient(180deg,rgba(22,18,14,.52),rgba(14,16,22,.48));backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);box-shadow:0 8px 28px rgba(0,0,0,.28),0 0 0 1px rgba(232,201,106,.22) inset;}
 .showcase-top{display:grid;grid-template-columns:136px 1fr;gap:12px;align-items:center;margin-bottom:10px;}
