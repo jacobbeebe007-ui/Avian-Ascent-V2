@@ -623,7 +623,7 @@
         const cfg = n.labelConfig || {};
         const uiAction = global.getOwMapUiAction(cfg);
         if (uiAction && cfg.actsAsNode) {
-          add('warning', 'Label cannot use both a UI button action and “Acts as node”.', 'main', n.id);
+          add('warning', 'Label cannot use both a UI button and node proxy — pick one role.', 'main', n.id);
         }
         if (cfg.actsAsNode && (!cfg.mimicType || cfg.mimicType === 'none')) {
           add('warning', 'Functional label needs a mimic class.', 'main', n.id);

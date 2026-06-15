@@ -187,6 +187,73 @@
     if (msg) _actionStatusUntil = Date.now() + 3500;
   }
 
+  function reportForgeError(label, err) {
+    const msg = err && err.message ? err.message : String(err || label || 'Unknown error');
+    const stack = err && err.stack ? err.stack : '';
+    try {
+      console.error('[map-forge]', label, err);
+    } catch (_e) { /* noop */ }
+    if (typeof global.pushErrorHUD === 'function') {
+      try {
+        global.pushErrorHUD('MapForge', String(label || 'Error') + ': ' + msg, err instanceof Error ? err : { stack });
+      } catch (_e2) { /* noop */ }
+    }
+    setStatus((label ? label + ': ' : '') + msg, true);
+  }
+
+  function getSelectedLabelNode() {
+    const slice = getEditingSlice();
+    const n = slice?.nodes?.find((x) => x.id === _selectedId);
+    return n && n.type === 'label' ? n : null;
+  }
+
+  function deriveLabelRole(cfg) {
+    if (!cfg) return 'decorative';
+    if (global.getOwMapUiAction && global.getOwMapUiAction(cfg)) return 'uiButton';
+    if (cfg.actsAsNode) return 'nodeProxy';
+    return 'decorative';
+  }
+
+  function applyLabelRole(n, role) {
+    if (!n || n.type !== 'label') return;
+    if (global.ensureLabelConfig) global.ensureLabelConfig(n);
+    const cfg = n.labelConfig;
+    if (role === 'uiButton') {
+      cfg.actsAsNode = false;
+      if (!cfg.uiAction || cfg.uiAction === 'none') cfg.uiAction = 'nest';
+      const labels = global.OW_MAP_UI_ACTION_LABELS || {};
+      if (!cfg.text || cfg.text === 'Label') cfg.text = labels[cfg.uiAction] || 'Button';
+      if (cfg.shape === 'rounded' || !cfg.shape) cfg.shape = 'pill';
+    } else if (role === 'nodeProxy') {
+      cfg.uiAction = 'none';
+      cfg.actsAsNode = true;
+      if (!cfg.mimicType || cfg.mimicType === 'none') cfg.mimicType = 'stage';
+    } else {
+      cfg.uiAction = 'none';
+      cfg.actsAsNode = false;
+    }
+    if (global.ensureLabelConfig) global.ensureLabelConfig(n);
+  }
+
+  function applyLabelDimensions(fromBlur) {
+    const n = getSelectedLabelNode();
+    if (!n) return;
+    const cfg = n.labelConfig;
+    const widthEl = document.getElementById('map-forge-label-width');
+    const heightEl = document.getElementById('map-forge-label-height');
+    if (widthEl) {
+      cfg.width = Math.max(16, Math.min(400, Math.floor(Number(widthEl.value) || 80)));
+      widthEl.value = String(cfg.width);
+    }
+    if (heightEl) {
+      cfg.height = Math.max(12, Math.min(200, Math.floor(Number(heightEl.value) || 36)));
+      heightEl.value = String(cfg.height);
+    }
+    if (global.ensureLabelConfig) global.ensureLabelConfig(n);
+    renderForgeCanvas();
+    if (fromBlur) pushHistory();
+  }
+
   function getValidationIssues() {
     if (!_map || typeof global.collectMapValidationIssues !== 'function') return [];
     return global.collectMapValidationIssues(_map);
@@ -480,8 +547,7 @@
       syncBreadcrumb();
       syncForgeCanvasCursor();
     } catch (err) {
-      console.error('[map-forge] refreshForgeUI failed', err);
-      setStatus('Map Forge UI error. See console for details.', true);
+      reportForgeError('Map Forge UI error', err);
     }
   }
 
@@ -1166,93 +1232,119 @@
     if (!show) return;
     if (global.ensureLabelConfig) global.ensureLabelConfig(n);
     const cfg = n.labelConfig;
-    const textEl = document.getElementById('map-forge-label-text');
+    const role = deriveLabelRole(cfg);
+    const roleEl = document.getElementById('map-forge-label-role');
     const mimicEl = document.getElementById('map-forge-label-mimic');
+    const uiActionEl = document.getElementById('map-forge-label-ui-action');
+    const proxyWrap = document.getElementById('map-forge-label-proxy-wrap');
+    const uiWrap = document.getElementById('map-forge-label-ui-wrap');
+    const uiHint = document.getElementById('map-forge-label-ui-hint');
+    const textEl = document.getElementById('map-forge-label-text');
     const shapeEl = document.getElementById('map-forge-label-shape');
     const widthEl = document.getElementById('map-forge-label-width');
     const heightEl = document.getElementById('map-forge-label-height');
     const showTextEl = document.getElementById('map-forge-label-show-text');
     const showBorderEl = document.getElementById('map-forge-label-show-border');
     const showFillEl = document.getElementById('map-forge-label-show-fill');
-    const actsEl = document.getElementById('map-forge-label-acts-as-node');
-    const uiActionEl = document.getElementById('map-forge-label-ui-action');
-    const mimicWrap = document.getElementById('map-forge-label-mimic-wrap');
-    const actsWrap = document.getElementById('map-forge-label-acts-wrap');
-    const uiHint = document.getElementById('map-forge-label-ui-hint');
-    const hasUi = !!(global.getOwMapUiAction && global.getOwMapUiAction(cfg));
-    if (uiActionEl) {
-      uiActionEl.value = cfg.uiAction || 'none';
-      uiActionEl.onchange = () => {
-        const prev = cfg.uiAction;
-        cfg.uiAction = uiActionEl.value || 'none';
-        if (global.ensureLabelConfig) global.ensureLabelConfig(n);
-        if (cfg.uiAction !== 'none' && cfg.uiAction !== prev) {
-          const labels = global.OW_MAP_UI_ACTION_LABELS || {};
-          if (!cfg.text || cfg.text === 'Label' || cfg.text === labels[prev]) {
-            cfg.text = labels[cfg.uiAction] || cfg.text || 'Button';
-          }
-          if (cfg.shape === 'rounded' || !cfg.shape) cfg.shape = 'pill';
-        }
-        renderLabelEditorPanel(n);
-        renderValidationPanel();
-        renderForgeCanvas();
-      };
-    }
-    if (mimicWrap) mimicWrap.style.display = hasUi ? 'none' : '';
-    if (actsWrap) actsWrap.style.display = hasUi ? 'none' : '';
+
+    if (roleEl) roleEl.value = role;
+    if (proxyWrap) proxyWrap.style.display = role === 'nodeProxy' ? '' : 'none';
+    if (uiWrap) uiWrap.style.display = role === 'uiButton' ? '' : 'none';
+    if (mimicEl) mimicEl.value = cfg.mimicType || 'stage';
+    if (uiActionEl) uiActionEl.value = cfg.uiAction && cfg.uiAction !== 'none' ? cfg.uiAction : 'nest';
     if (uiHint) {
-      uiHint.style.display = hasUi ? '' : 'none';
-      if (hasUi) {
+      if (role === 'uiButton') {
         const opt = (global.OW_MAP_UI_ACTIONS || []).find((a) => a.id === cfg.uiAction);
-        uiHint.textContent = 'Map button — opens ' + (opt?.label || cfg.uiAction) + ' in playtest/run.';
+        uiHint.textContent = 'Opens ' + (opt?.label || cfg.uiAction) + ' in playtest/run.';
+        uiHint.style.display = '';
+      } else {
+        uiHint.style.display = 'none';
       }
     }
-    if (textEl) {
-      textEl.value = cfg.text || '';
-      textEl.oninput = () => { cfg.text = textEl.value; renderForgeCanvas(); };
-    }
-    if (mimicEl) {
-      mimicEl.value = cfg.mimicType || 'stage';
-      mimicEl.onchange = () => { cfg.mimicType = mimicEl.value; renderForgeCanvas(); };
-    }
-    if (shapeEl) {
-      shapeEl.value = cfg.shape || 'rounded';
-      shapeEl.onchange = () => { cfg.shape = shapeEl.value; renderForgeCanvas(); };
-    }
-    if (widthEl) {
-      widthEl.value = String(cfg.width || 80);
-      widthEl.onchange = () => {
-        cfg.width = Math.max(16, Math.min(400, Math.floor(Number(widthEl.value) || 80)));
+    if (textEl) textEl.value = cfg.text || '';
+    if (shapeEl) shapeEl.value = cfg.shape || 'rounded';
+    if (widthEl) widthEl.value = String(cfg.width || 80);
+    if (heightEl) heightEl.value = String(cfg.height || 36);
+    if (showTextEl) showTextEl.checked = !!cfg.showText;
+    if (showBorderEl) showBorderEl.checked = !!cfg.showBorder;
+    if (showFillEl) showFillEl.checked = !!cfg.showFill;
+  }
+
+  function wireLabelEditorControls() {
+    const panel = document.getElementById('map-forge-label-panel');
+    if (!panel || panel.dataset.forgeLabelWired === '1') return;
+    panel.dataset.forgeLabelWired = '1';
+
+    document.getElementById('map-forge-label-role')?.addEventListener('change', (e) => {
+      const n = getSelectedLabelNode();
+      if (!n) return;
+      applyLabelRole(n, e.target.value);
+      renderLabelEditorPanel(n);
+      renderValidationPanel();
+      renderForgeCanvas();
+      pushHistory();
+    });
+
+    document.getElementById('map-forge-label-mimic')?.addEventListener('change', (e) => {
+      const n = getSelectedLabelNode();
+      if (!n?.labelConfig) return;
+      n.labelConfig.mimicType = e.target.value;
+      renderForgeCanvas();
+      pushHistory();
+    });
+
+    document.getElementById('map-forge-label-ui-action')?.addEventListener('change', (e) => {
+      const n = getSelectedLabelNode();
+      if (!n?.labelConfig) return;
+      const cfg = n.labelConfig;
+      const prev = cfg.uiAction;
+      cfg.uiAction = e.target.value || 'nest';
+      if (global.ensureLabelConfig) global.ensureLabelConfig(n);
+      const labels = global.OW_MAP_UI_ACTION_LABELS || {};
+      if (!cfg.text || cfg.text === 'Label' || cfg.text === labels[prev]) {
+        cfg.text = labels[cfg.uiAction] || cfg.text || 'Button';
+      }
+      if (cfg.shape === 'rounded' || !cfg.shape) cfg.shape = 'pill';
+      renderLabelEditorPanel(n);
+      renderValidationPanel();
+      renderForgeCanvas();
+      pushHistory();
+    });
+
+    document.getElementById('map-forge-label-text')?.addEventListener('input', (e) => {
+      const n = getSelectedLabelNode();
+      if (!n?.labelConfig) return;
+      n.labelConfig.text = e.target.value;
+      renderForgeCanvas();
+    });
+
+    document.getElementById('map-forge-label-shape')?.addEventListener('change', (e) => {
+      const n = getSelectedLabelNode();
+      if (!n?.labelConfig) return;
+      n.labelConfig.shape = e.target.value;
+      renderForgeCanvas();
+      pushHistory();
+    });
+
+    const onDimInput = () => applyLabelDimensions(false);
+    const onDimChange = () => applyLabelDimensions(true);
+    const widthEl = document.getElementById('map-forge-label-width');
+    const heightEl = document.getElementById('map-forge-label-height');
+    widthEl?.addEventListener('input', onDimInput);
+    widthEl?.addEventListener('change', onDimChange);
+    heightEl?.addEventListener('input', onDimInput);
+    heightEl?.addEventListener('change', onDimChange);
+
+    ['map-forge-label-show-text', 'map-forge-label-show-border', 'map-forge-label-show-fill'].forEach((id) => {
+      document.getElementById(id)?.addEventListener('change', (e) => {
+        const n = getSelectedLabelNode();
+        if (!n?.labelConfig) return;
+        const key = id === 'map-forge-label-show-text' ? 'showText' : id === 'map-forge-label-show-border' ? 'showBorder' : 'showFill';
+        n.labelConfig[key] = !!e.target.checked;
         renderForgeCanvas();
-      };
-    }
-    if (heightEl) {
-      heightEl.value = String(cfg.height || 36);
-      heightEl.onchange = () => {
-        cfg.height = Math.max(12, Math.min(200, Math.floor(Number(heightEl.value) || 36)));
-        renderForgeCanvas();
-      };
-    }
-    if (showTextEl) {
-      showTextEl.checked = !!cfg.showText;
-      showTextEl.onchange = () => { cfg.showText = showTextEl.checked; renderForgeCanvas(); };
-    }
-    if (showBorderEl) {
-      showBorderEl.checked = !!cfg.showBorder;
-      showBorderEl.onchange = () => { cfg.showBorder = showBorderEl.checked; renderForgeCanvas(); };
-    }
-    if (showFillEl) {
-      showFillEl.checked = !!cfg.showFill;
-      showFillEl.onchange = () => { cfg.showFill = showFillEl.checked; renderForgeCanvas(); };
-    }
-    if (actsEl) {
-      actsEl.checked = !!cfg.actsAsNode;
-      actsEl.onchange = () => {
-        cfg.actsAsNode = actsEl.checked;
-        renderValidationPanel();
-        renderForgeCanvas();
-      };
-    }
+        pushHistory();
+      });
+    });
   }
 
   function syncNodeEditorFields() {
@@ -1706,8 +1798,7 @@
       markSavedFingerprint();
       pushHistory();
     } catch (err) {
-      console.error('[map-forge] loadMap failed', err);
-      setStatus('Map Forge failed to load map. See console for details.', true);
+      reportForgeError('Failed to load map', err);
     }
   }
 
@@ -1825,18 +1916,32 @@
       portraitSel.addEventListener('change', applyNodeFieldChanges);
     }
     document.querySelectorAll('[data-forge-filter]').forEach((btn) => {
+      if (btn.dataset.forgeFilterWired === '1') return;
+      btn.dataset.forgeFilterWired = '1';
       btn.addEventListener('click', () => {
         _nodeListFilter = btn.getAttribute('data-forge-filter') || 'all';
         document.querySelectorAll('[data-forge-filter]').forEach((b) => b.classList.toggle('is-active', b === btn));
         renderNodeList();
       });
     });
-    document.getElementById('map-forge-snap-grid')?.addEventListener('change', (e) => {
-      _snapGrid = !!e.target.checked;
-      renderForgeCanvas();
-    });
-    document.getElementById('map-forge-terrain-custom')?.addEventListener('change', applyNodeFieldChanges);
-    document.getElementById('map-forge-world-rename')?.addEventListener('change', applyWorldRename);
+    const snapEl = document.getElementById('map-forge-snap-grid');
+    if (snapEl && snapEl.dataset.forgeWired !== '1') {
+      snapEl.dataset.forgeWired = '1';
+      snapEl.addEventListener('change', (e) => {
+        _snapGrid = !!e.target.checked;
+        renderForgeCanvas();
+      });
+    }
+    const terrainCustom = document.getElementById('map-forge-terrain-custom');
+    if (terrainCustom && terrainCustom.dataset.forgeWired !== '1') {
+      terrainCustom.dataset.forgeWired = '1';
+      terrainCustom.addEventListener('change', applyNodeFieldChanges);
+    }
+    const worldRename = document.getElementById('map-forge-world-rename');
+    if (worldRename && worldRename.dataset.forgeWired !== '1') {
+      worldRename.dataset.forgeWired = '1';
+      worldRename.addEventListener('change', applyWorldRename);
+    }
   }
 
   function applyWorldRename() {
@@ -2134,6 +2239,7 @@
   function wireMapForge() {
     if (_wired) return;
     _wired = true;
+    wireLabelEditorControls();
     document.querySelectorAll('[data-forge-tool]').forEach((btn) => {
       btn.addEventListener('click', () => setTool(btn.getAttribute('data-forge-tool')));
     });
@@ -2356,7 +2462,12 @@
   }
 
   function openMapForge(opts) {
-    if (global.isBuildNestUnlocked && !global.isBuildNestUnlocked()) return;
+    if (global.isBuildNestUnlocked && !global.isBuildNestUnlocked()) {
+      const msg = 'Build Nest is locked. Enter the unlock code on the war room first.';
+      setStatus(msg, true);
+      if (typeof global.pushErrorHUD === 'function') global.pushErrorHUD('MapForge', msg);
+      return;
+    }
     try {
       if (global.showScreen) global.showScreen('screen-map-forge');
       wireMapForge();
@@ -2367,8 +2478,7 @@
       }
       initMapForge();
     } catch (err) {
-      console.error('[map-forge] openMapForge failed', err);
-      setStatus('Map Forge failed to load. See console for details.', true);
+      reportForgeError('Failed to open Map Forge', err);
     }
   }
 

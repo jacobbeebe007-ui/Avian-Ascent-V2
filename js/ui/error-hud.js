@@ -231,6 +231,7 @@
     global.showErrorHUD = showHUD;
     global.hideErrorHUD = hideHUD;
     global.installErrorHUD = installErrorHUD;
+    globalThis.__errorHudBundledInstall = installErrorHUD;
   }
 
   global.pushErrorHUD = pushErrorHUD;

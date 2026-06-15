@@ -6874,7 +6874,7 @@ window.addEventListener('unhandledrejection', (ev) => {
 // ============================================================
 // ON-SCREEN ERROR HUD (mobile-friendly)
 // ============================================================
-function installErrorHUD(){
+function installLegacyErrorHUD(){
   if (document.getElementById('error-hud')) return;
 
   const hud = document.createElement('div');
@@ -7023,6 +7023,15 @@ function installErrorHUD(){
   });
 
   window.showErrorHUD = ()=> showHUD();
+}
+
+function installErrorHUD(){
+  if (document.getElementById('error-console-overlay') || document.getElementById('error-hud')) return;
+  if (typeof globalThis.__errorHudBundledInstall === 'function') {
+    globalThis.__errorHudBundledInstall();
+    return;
+  }
+  installLegacyErrorHUD();
 }
 
 

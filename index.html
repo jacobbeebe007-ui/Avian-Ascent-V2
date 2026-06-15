@@ -401,21 +401,14 @@
 <select class="map-forge-field-input" id="map-forge-portrait-bird"></select>
 <label class="map-forge-field-check"><input type="checkbox" id="map-forge-node-final"/> Final boss</label>
 <div class="map-forge-label-panel" id="map-forge-label-panel" style="display:none">
-<div class="map-forge-field-label">Label / map button</div>
-<label class="map-forge-field-label" for="map-forge-label-ui-action">Button action</label>
-<select class="map-forge-field-input" id="map-forge-label-ui-action">
-<option value="none">None (decorative or node proxy)</option>
-<option value="nest">Nest</option>
-<option value="settings">Settings</option>
-<option value="reference">Reference</option>
-<option value="openLocation">Open location</option>
-<option value="prevNode">Previous node</option>
-<option value="nextNode">Next node</option>
+<div class="map-forge-field-label">Custom label / button</div>
+<label class="map-forge-field-label" for="map-forge-label-role">Role</label>
+<select class="map-forge-field-input" id="map-forge-label-role">
+<option value="decorative">Decorative (no click action)</option>
+<option value="nodeProxy">Node proxy (acts as another node type)</option>
+<option value="uiButton">UI button (opens nest, settings, etc.)</option>
 </select>
-<p class="map-forge-hint map-forge-label-ui-hint" id="map-forge-label-ui-hint" style="display:none"></p>
-<label class="map-forge-field-label" for="map-forge-label-text">Text</label>
-<input type="text" class="map-forge-field-input" id="map-forge-label-text" maxlength="48"/>
-<div id="map-forge-label-mimic-wrap">
+<div id="map-forge-label-proxy-wrap">
 <label class="map-forge-field-label" for="map-forge-label-mimic">Mimic class</label>
 <select class="map-forge-field-input" id="map-forge-label-mimic">
 <option value="none">None</option>
@@ -428,6 +421,20 @@
 <option value="return">Return</option>
 </select>
 </div>
+<div id="map-forge-label-ui-wrap">
+<label class="map-forge-field-label" for="map-forge-label-ui-action">Button action</label>
+<select class="map-forge-field-input" id="map-forge-label-ui-action">
+<option value="nest">Nest</option>
+<option value="settings">Settings</option>
+<option value="reference">Reference</option>
+<option value="openLocation">Open location</option>
+<option value="prevNode">Previous node</option>
+<option value="nextNode">Next node</option>
+</select>
+<p class="map-forge-hint map-forge-label-ui-hint" id="map-forge-label-ui-hint"></p>
+</div>
+<label class="map-forge-field-label" for="map-forge-label-text">Text</label>
+<input type="text" class="map-forge-field-input" id="map-forge-label-text" maxlength="48"/>
 <label class="map-forge-field-label" for="map-forge-label-shape">Shape</label>
 <select class="map-forge-field-input" id="map-forge-label-shape">
 <option value="rect">Rectangle</option>
@@ -442,9 +449,6 @@
 <label class="map-forge-field-check"><input type="checkbox" id="map-forge-label-show-text" checked/> Show text</label>
 <label class="map-forge-field-check"><input type="checkbox" id="map-forge-label-show-border" checked/> Show border</label>
 <label class="map-forge-field-check"><input type="checkbox" id="map-forge-label-show-fill" checked/> Show fill</label>
-<div id="map-forge-label-acts-wrap">
-<label class="map-forge-field-check"><input type="checkbox" id="map-forge-label-acts-as-node"/> Acts as node (functional proxy)</label>
-</div>
 </div>
 <div class="map-forge-world-rename" id="map-forge-world-rename-wrap" style="display:none">
 <label class="map-forge-field-label" for="map-forge-world-rename">World name</label>

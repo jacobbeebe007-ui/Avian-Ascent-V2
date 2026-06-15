@@ -33,6 +33,9 @@
     } catch (err) {
       try {
         console.warn('[router] ' + label, err);
+        if (typeof globalThis.pushErrorHUD === 'function') {
+          globalThis.pushErrorHUD('Router', label + ': ' + (err && err.message ? err.message : String(err)), err instanceof Error ? err : { stack: err && err.stack ? err.stack : '' });
+        }
       } catch (_e) {
         /* noop */
       }
