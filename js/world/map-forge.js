@@ -98,7 +98,8 @@
   function readDrafts() {
     try {
       const raw = global.localStorage.getItem(DRAFTS_KEY);
-      return Array.isArray(JSON.parse(raw || '[]')) ? JSON.parse(raw) : [];
+      const parsed = JSON.parse(raw || '[]');
+      return Array.isArray(parsed) ? parsed : [];
     } catch (_) { return []; }
   }
 

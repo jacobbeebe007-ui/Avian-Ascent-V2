@@ -2214,8 +2214,8 @@ body.build-nest-unlocked .splash-hotspot--forge.is-buildnest-hidden{
 .bird-card.bird-card--tier-gold.selected{background:linear-gradient(180deg,rgba(180,140,40,.24),rgba(48,40,24,.96));border-color:#ffe8a0;box-shadow:0 0 0 1px rgba(255,232,160,.4) inset,0 0 22px rgba(201,168,76,.4);}
 .bird-card.bird-card--tier-orange.selected{background:linear-gradient(180deg,rgba(200,100,40,.24),rgba(52,36,24,.96));border-color:#ffd0a8;box-shadow:0 0 0 1px rgba(255,208,168,.35) inset,0 0 22px rgba(200,100,40,.38);}
 @keyframes bird-card-tier-up-flash{
-  0%,100%{filter:brightness(1);transform:scale(1);}
-  45%{filter:brightness(1.28);transform:scale(1.02);}
+  0%,100%{filter:brightness(1);box-shadow:0 0 0 rgba(255,255,255,0);}
+  45%{filter:brightness(1.28);box-shadow:0 0 28px rgba(255,255,255,.22);}
 }
 .bird-card.bird-card--tier-up-flash{animation:bird-card-tier-up-flash .6s ease-out;}
 .bird-card.bird-locked{opacity:.65;cursor:not-allowed;border-color:rgba(60,50,35,.4);}

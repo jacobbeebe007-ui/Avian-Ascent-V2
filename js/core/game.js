@@ -5267,13 +5267,15 @@ function mutateBirdCardSelect(birdKey){
     if(result.isTierUp){
       const ui=ensureUIState();
       requestAnimationFrame(()=>{
-        const card=document.querySelector(`#bird-grid .bird-card[data-bird-key="${birdKey}"]`);
-        if(!card) return;
-        if(ui.expandedBird===birdKey) card.classList.add('selected');
-        card.classList.remove('bird-card--tier-up-flash');
-        void card.offsetWidth;
-        card.classList.add('bird-card--tier-up-flash');
-        card.addEventListener('animationend',()=>card.classList.remove('bird-card--tier-up-flash'),{once:true});
+        try{
+          const card=document.querySelector(`#bird-grid .bird-card[data-bird-key="${birdKey}"]`);
+          if(!card) return;
+          if(ui.expandedBird===birdKey) card.classList.add('selected');
+          card.classList.remove('bird-card--tier-up-flash');
+          void card.offsetWidth;
+          card.classList.add('bird-card--tier-up-flash');
+          card.addEventListener('animationend',()=>card.classList.remove('bird-card--tier-up-flash'),{once:true});
+        }catch(_){}
       });
     }
   }
@@ -6823,6 +6825,7 @@ function renderEnemyPlan(){
 }
 
 function renderAllCombatUI(){
+  if(!G.player || !G.enemy) return;
   renderEnergyOrbs();
   renderEnemyPlan();
   renderEnergyOrbs();
@@ -6882,6 +6885,12 @@ async function runActionQueue(){
 // ============================================================
 // FAILSAFE — prevents "stuck UI / no one's turn / dead clicks"
 // ============================================================
+function isActiveBattleContext(){
+  const onBattle=!!document.getElementById('screen-battle')?.classList.contains('active');
+  return !!(onBattle && G.player && G.enemy && !G.battleOver);
+}
+globalThis.isActiveBattleContext=isActiveBattleContext;
+
 function failsafeAdvance(reason='') {
   try {
     G.animLock = false;
@@ -6899,10 +6908,12 @@ function failsafeAdvance(reason='') {
       G.phase = 'PLAYER';
     }
 
-    if (typeof renderAllCombatUI === 'function') renderAllCombatUI();
-    if (typeof refreshBattleUI === 'function') refreshBattleUI();
-    if (typeof renderActions === 'function') renderActions();
-    if (typeof renderEnergyOrbs === 'function') renderEnergyOrbs();
+    if(isActiveBattleContext()){
+      if (typeof renderAllCombatUI === 'function') renderAllCombatUI();
+      if (typeof refreshBattleUI === 'function') refreshBattleUI();
+      if (typeof renderActions === 'function') renderActions();
+      if (typeof renderEnergyOrbs === 'function') renderEnergyOrbs();
+    }
 
     // console.warn('[failsafeAdvance]', reason);
   } catch (e) {
@@ -6915,11 +6926,15 @@ window.addEventListener('error', (ev) => {
   _agentDbgLog('game.js:window.error', 'uncaught error', { msg: String(ev.message || ''), file: String(ev.filename || ''), line: ev.lineno || null, col: ev.colno || null, stack: String(ev.error?.stack || '').slice(0, 800) }, 'H5');
   // #endregion
   try { console.error('[game] uncaught error:', ev.message, ev.error || ev); } catch(_) {}
-  try { failsafeAdvance('window.onerror'); } catch(_) {}
+  if(isActiveBattleContext()){
+    try { failsafeAdvance('window.onerror'); } catch(_) {}
+  }
 });
 window.addEventListener('unhandledrejection', (ev) => {
   try { console.error('[game] unhandled rejection:', ev.reason); } catch(_) {}
-  try { failsafeAdvance('unhandledrejection'); } catch(_) {}
+  if(isActiveBattleContext()){
+    try { failsafeAdvance('unhandledrejection'); } catch(_) {}
+  }
 });
 
 
@@ -7211,17 +7226,18 @@ function renderCombatItems(){
 function renderActions() {
   const grid=document.getElementById('actions-grid');
   if(!grid) return;
-  if(G.player && usesFamilySkillEvolution(G.player)){
+  if(!G.player) return;
+  if(usesFamilySkillEvolution(G.player)){
     syncPlayerAbilitiesFromSkillSlots(G.player);
     ensureMainAttackAndLoadoutRules();
   }
   grid.innerHTML='';
   renderEnergyOrbs();
   renderCombatItems();
-  if(G.player?.abilities?.length) enforceAbilityCosts(G.player);
+  if(G.player.abilities?.length) enforceAbilityCosts(G.player);
   const locked=!canPlayerAct();
   const endTurnBlocked=!!(G.actionBusy||G.turnPhase===TURN.RESOLVING);
-  let allAbilities=[...G.player.abilities];
+  let allAbilities=[...(G.player.abilities||[])];
   const order={physical:0,ranged:1,spell:2,utility:3};
   allAbilities=allAbilities.sort((a,b)=>{
     return (order[a.btnType]??9)-(order[b.btnType]??9);
