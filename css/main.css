@@ -1237,14 +1237,26 @@ body.build-nest-unlocked .splash-hotspot--forge.is-buildnest-hidden{
   background:rgba(4,4,7,.88);
   min-height:0;
 }
+.sfsel__title-block{
+  flex-shrink:0;
+  min-width:0;
+  max-width:min(100%,320px);
+}
 .sfsel__title{
   font-family:'Cinzel',serif;
   font-size:clamp(.95rem,2.2vw,1.3rem);
   color:var(--gold-light);
   margin:0;
   letter-spacing:.08em;
-  flex-shrink:0;
   text-shadow:0 2px 12px rgba(0,0,0,.7);
+}
+.sfsel__subtitle{
+  margin:4px 0 0;
+  font-size:clamp(.62rem,1.4vw,.74rem);
+  color:rgba(200,192,175,.72);
+  letter-spacing:.03em;
+  line-height:1.35;
+  font-style:normal;
 }
 .sfsel__filters{
   display:flex;
@@ -1320,8 +1332,8 @@ body.build-nest-unlocked .splash-hotspot--forge.is-buildnest-hidden{
 }
 /* RIGHT: character detail sidebar */
 .sfsel__detail{
-  flex:0 0 min(390px,38vw);
-  width:min(390px,38vw);
+  flex:0 0 min(420px,40vw);
+  width:min(420px,40vw);
   display:flex;
   flex-direction:column;
   border-left:1px solid rgba(201,168,76,.22);
@@ -1334,12 +1346,20 @@ body.build-nest-unlocked .splash-hotspot--forge.is-buildnest-hidden{
   display:flex;
   align-items:center;
   justify-content:center;
-  color:rgba(180,170,155,.45);
-  font-style:italic;
-  font-size:1.05rem;
+  color:rgba(180,170,155,.55);
+  font-style:normal;
+  font-size:.92rem;
   text-align:center;
   padding:28px 20px;
-  letter-spacing:.05em;
+  letter-spacing:.04em;
+  line-height:1.45;
+}
+.sfsel__detail-empty::before{
+  content:'🐦';
+  display:block;
+  font-size:1.6rem;
+  margin-bottom:10px;
+  opacity:.45;
 }
 /* Hide empty state (toggled by JS via .sfsel__detail-empty--hidden) */
 .sfsel__detail-empty.sfsel__detail-empty--hidden{
@@ -1425,12 +1445,43 @@ body.build-nest-unlocked .splash-hotspot--forge.is-buildnest-hidden{
   border-top:1px solid rgba(201,168,76,.18);
   background:rgba(4,5,8,.88);
 }
+.sfsel__run-summary{
+  display:flex;
+  flex-wrap:wrap;
+  gap:6px;
+  min-height:0;
+}
+.sfsel__run-summary:empty{display:none;}
+.sfsel__run-chip{
+  font-size:.62rem;
+  letter-spacing:.04em;
+  padding:4px 10px;
+  border-radius:999px;
+  border:1px solid rgba(120,100,70,.35);
+  background:rgba(12,14,20,.65);
+  color:rgba(220,214,200,.88);
+}
+.sfsel__run-chip--mode{border-color:rgba(201,168,76,.35);color:var(--gold-light);}
+.sfsel__selected-label{
+  font-family:'Cinzel',serif;
+  font-size:.78rem;
+  color:var(--gold-light);
+  letter-spacing:.06em;
+  text-align:center;
+  padding:2px 4px 0;
+}
+.sfsel__selected-label[hidden]{display:none!important;}
 .sfsel__actions .take-flight-select-btn{
   width:100%;
   font-size:clamp(.85rem,1.8vw,1rem);
   padding:13px 20px;
   min-height:48px;
   letter-spacing:.14em;
+}
+.sfsel__roster .bird-card.selected{
+  border-color:var(--gold-light)!important;
+  box-shadow:0 0 0 2px rgba(232,201,106,.45),0 0 28px rgba(201,168,76,.32)!important;
+  transform:translateY(-1px);
 }
 /* Bird card hover/tap in the sfsel roster */
 .sfsel__roster .bird-card:not(.bird-locked){
@@ -2992,6 +3043,7 @@ html.avian-ow-ui-embed--reference #ref-guide-modal.open{display:flex!important;}
 .ref-filter-bar label{font-size:.72rem;color:var(--text-dim);display:flex;flex-direction:column;gap:3px;}
 .ref-filter-bar select{background:rgba(0,0,0,.3);border:1px solid var(--border);color:var(--text);padding:4px 8px;border-radius:6px;font-size:.78rem;min-width:100px;}
 .ref-tabs{display:flex;flex-wrap:wrap;gap:4px;padding:10px 12px 0;border-bottom:1px solid rgba(255,255,255,.07);}
+.ref-birds-intro{grid-column:1/-1;margin:0 0 10px;padding:0 2px;}
 .ref-tab{font-family:'Cinzel',serif;font-size:.7rem;letter-spacing:.08em;padding:5px 12px;border-radius:6px 6px 0 0;cursor:pointer;border:1px solid transparent;border-bottom:none;color:var(--text-dim);background:transparent;transition:all .18s;}
 .ref-tab:hover{color:var(--text);background:rgba(255,255,255,.04);}
 .ref-tab.active{color:var(--gold);background:rgba(201,168,76,.1);border-color:rgba(201,168,76,.25);}

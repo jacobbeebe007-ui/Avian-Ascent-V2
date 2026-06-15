@@ -171,7 +171,7 @@
         cardHtml +
         '<p class="mother-goose-hatch-msg">Congratulations you have unlocked <strong>' +
         esc(birdName) +
-        '</strong>! This Bird is now unlocked and is playable through the Character Select Screen.</p>'
+        '</strong>! This bird is now unlocked and playable from Character Select.</p>'
       );
     }
 

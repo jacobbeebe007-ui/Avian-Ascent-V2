@@ -99,9 +99,9 @@
 <span class="splash-hotspot-title">The Hatchery</span>
 <span class="splash-hotspot-desc">Mother Goose · Eggs</span>
 </button>
-<button type="button" class="splash-hotspot splash-hotspot--door splash-hotspot--primary" data-action="openSelectHubPanel:door" aria-label="Begin ascent — champion roster">
+<button type="button" class="splash-hotspot splash-hotspot--door splash-hotspot--primary" data-action="openSelectHubPanel:door" aria-label="Begin ascent — bird roster">
 <span class="splash-hotspot-title">Begin Ascent</span>
-<span class="splash-hotspot-desc">Choose your champion</span>
+<span class="splash-hotspot-desc">Choose your bird</span>
 </button>
 <button type="button" class="splash-hotspot splash-hotspot--forge is-buildnest-hidden" id="build-nest-hotspot" data-action="openMapForge" aria-label="Build Nest — overworld map editor">
 <span class="splash-hotspot-title">Build Nest</span>
@@ -133,7 +133,7 @@
 <button type="button" class="supplies-subnav-btn" id="supplies-nav-records" role="tab" aria-selected="false" aria-controls="supplies-view-records" data-action="setSuppliesSubView:records">Runs &amp; highscores</button>
 </div>
 <div class="supplies-subview is-active" id="supplies-view-reference" role="tabpanel" aria-labelledby="supplies-nav-reference">
-<p class="select-hub-lead">Codex and secret unlocks live with the baggage.</p>
+<p class="select-hub-lead">Reference codex — birds, abilities, mechanics, and more. Secret unlock codes live with the baggage.</p>
 <button type="button" class="splash-codex-btn ref-guide-open-btn" id="ref-guide-open-btn">📖 Reference — Codex</button>
 <div class="splash-unlock">
 <label class="splash-unlock-label" for="dev-code-input">Unlock code</label>
@@ -257,13 +257,16 @@
 </div>
 </div>
 <div class="select-hub-panel select-hub-panel--door" id="select-hub-door" role="dialog" aria-modal="true" aria-labelledby="hub-door-title" aria-hidden="true">
-<!-- SSB/SF full-viewport fighter select -->
+<!-- Character Select (full-viewport bird roster) -->
 <div class="sfsel">
   <header class="sfsel__topbar">
-    <h2 class="sfsel__title" id="hub-door-title">Choose Your Fighter</h2>
+    <div class="sfsel__title-block">
+      <h2 class="sfsel__title" id="hub-door-title">Character Select</h2>
+      <p class="sfsel__subtitle">Pick a bird, review stats and card tier, then Take Flight.</p>
+    </div>
     <div class="sfsel__filters">
       <div class="sfsel__filter-wrap">
-        <label class="sfsel__filter-label" for="roster-filter-select">Filter:</label>
+        <label class="sfsel__filter-label" for="roster-filter-select">Filter roster:</label>
         <select class="sfsel__filter-select" id="roster-filter-select" data-change="onRosterFilterChange"></select>
       </div>
       <div id="view-toggle" hidden></div>
@@ -282,15 +285,17 @@
     </div>
     <!-- RIGHT: character detail + Take Flight -->
     <aside class="sfsel__detail" id="sfsel-detail">
-      <div class="sfsel__detail-empty" id="sfsel-detail-empty" aria-live="polite">← Pick your fighter</div>
+      <div class="sfsel__detail-empty" id="sfsel-detail-empty" aria-live="polite">Select a bird from the roster</div>
       <div class="ascent-panel is-empty" id="ascent-panel">
-        <div class="ascent-empty">Select a fighter from the roster.</div>
+        <div class="ascent-empty">Select a bird from the roster.</div>
       </div>
       <div class="sfsel__actions" id="sfsel-actions">
         <div class="sel-continue-run-wrap" id="continue-row" style="display:none">
           <button type="button" class="continue-run-btn" data-action="continueRun">🪺 Continue last run</button>
           <p class="sel-continue-info" id="continue-info"></p>
         </div>
+        <div class="sfsel__run-summary" id="sfsel-run-summary" aria-live="polite"></div>
+        <div class="sfsel__selected-label" id="sfsel-selected-label" hidden></div>
         <button type="button" class="take-flight-select-btn" id="take-flight-select-btn" disabled data-action="startGame" aria-disabled="true">✈ Take Flight</button>
       </div>
     </aside>
@@ -872,7 +877,7 @@
 <option value="custom">Custom</option>
 </select>
 </label>
-<p class="settings-hint" id="setting-combat-arrangement-hint">Original: fighters side by side, then actions and log.</p>
+<p class="settings-hint" id="setting-combat-arrangement-hint">Original: birds side by side, then actions and log.</p>
 <div id="setting-combat-custom-edit-row" class="settings-custom-layout-row" style="display:none">
 <button type="button" class="menu-btn" data-action="openCombatCustomLayoutModal">Customize panels…</button>
 <p class="settings-hint">Reorder panels and hide sections you do not need. Top bar stays visible for menu access.</p>

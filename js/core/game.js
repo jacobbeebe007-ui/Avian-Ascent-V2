@@ -4865,6 +4865,7 @@ function setGameMode(mode,btn){
   ui.gameMode=(mode==='endless')?'endless':'story';
   applyUIStateToDOM();
   buildGameModeToggle();
+  if(typeof syncSfselRunSummary==='function') syncSfselRunSummary();
 }
 
 function classToRoleId(cls,birdKey=''){
@@ -4915,7 +4916,7 @@ function renderStarterFallbackGrid(reason=''){
 
   grid.appendChild(row);
   const label=document.getElementById('bird-count-label');
-  if(label) label.textContent='6/6 available (recovery)';
+  if(label) label.textContent='6/6 birds unlocked (recovery)';
 
   if(BIRDS?.sparrow){
     G.selected='sparrow';
@@ -4999,6 +5000,7 @@ function buildDifficultyPicker() {
 function selectDifficulty(id) {
   G._selectedDifficulty = id;
   buildDifficultyPicker();
+  if(typeof syncSfselRunSummary==='function') syncSfselRunSummary();
 }
 
 function setSelView(view, btn) {
@@ -5138,8 +5140,8 @@ function buildBirdGrid() {
 
   const label = document.getElementById('bird-count-label');
   if(label){
-    const lockTag = lockFilter==='all' ? '' : (lockFilter==='locked' ? ' · Locked' : ' · Unlocked');
-    label.textContent = `${totalUnlocked}/${totalBirds} available${classFilter!=='all' ? ` · ${idToClassLabel(classFilter)}`:''}${lockTag}`;
+    const lockTag = lockFilter==='all' ? '' : (lockFilter==='locked' ? ' · Locked only' : ' · Unlocked only');
+    label.textContent = `${totalUnlocked}/${totalBirds} birds unlocked${classFilter!=='all' ? ` · ${idToClassLabel(classFilter)}`:''}${lockTag}`;
   }
 
   const focusKey=ui.expandedBird||G.selected;
@@ -5160,7 +5162,7 @@ function buildBirdGrid() {
     });
     section.appendChild(row);
     grid.appendChild(section);
-    if(label) label.textContent='6/6 available (fallback)';
+    if(label) label.textContent='6/6 birds unlocked (fallback)';
   }
 }
 
@@ -5324,6 +5326,36 @@ function renderEntityAvatarHTML(entity, context='battle', locked=false){
   const sizeClass = getUISizeClass(entity, context);
   return renderBirdIconHTML(key, sizeClass, locked);
 }
+function syncSfselRunSummary(){
+  const wrap=document.getElementById('sfsel-run-summary');
+  if(!wrap) return;
+  const ui=ensureUIState();
+  const diffId=G._selectedDifficulty||'juvenile';
+  const diff=DIFFICULTIES?.[diffId]||DIFFICULTIES?.juvenile;
+  const modeLabel=(ui.gameMode==='endless')?'♾ Endless':'📖 Story';
+  const diffLabel=diff?(diff.emoji?`${diff.emoji} ${diff.label}`:diff.label):'Difficulty';
+  wrap.innerHTML=`<span class="sfsel__run-chip sfsel__run-chip--mode">${escapeHtmlRoster(modeLabel)}</span><span class="sfsel__run-chip">${escapeHtmlRoster(diffLabel)}</span>`;
+}
+globalThis.syncSfselRunSummary=syncSfselRunSummary;
+
+function syncSfselSelectedLabel(){
+  const el=document.getElementById('sfsel-selected-label');
+  if(!el) return;
+  const key=G.selected;
+  const bird=key&&BIRDS[key]?BIRDS[key]:null;
+  if(!bird){
+    el.hidden=true;
+    el.textContent='';
+    return;
+  }
+  const tierPack=Avian?.data?.birdCardTiers;
+  const cardTier=typeof getBirdCardTier==='function'?getBirdCardTier(key):'grey';
+  const tierLabel=tierPack?.TIER_LABELS?.[cardTier]||cardTier;
+  const tierCss=tierPack?.TIER_CSS?.[cardTier]||'tier-grey';
+  el.hidden=false;
+  el.innerHTML=`Selected: <strong>${escapeHtmlRoster(bird.name)}</strong> <span class="bird-card-tier-badge ${tierCss}">${escapeHtmlRoster(tierLabel)}</span>`;
+}
+
 function syncSelectTakeFlightButton(){
   const btn=document.getElementById('take-flight-select-btn');
   if(!btn) return;
@@ -5331,6 +5363,10 @@ function syncSelectTakeFlightButton(){
   btn.disabled=!ok;
   btn.setAttribute('aria-disabled', ok?'false':'true');
   btn.classList.toggle('take-flight-select-btn--disabled', !ok);
+  const bird=ok?BIRDS[G.selected]:null;
+  btn.textContent=bird?`✈ Take Flight as ${bird.name}`:'✈ Take Flight';
+  syncSfselSelectedLabel();
+  syncSfselRunSummary();
 }
 globalThis.syncSelectTakeFlightButton=syncSelectTakeFlightButton;
 
@@ -5417,7 +5453,7 @@ function updateAscentPanel(key) {
     try{ const u=ensureUIState(); u.expandedBird=null; }catch(_){}
     panel.classList.add('is-empty');
     panel.classList.remove('is-filled');
-    panel.innerHTML='<div class="ascent-empty">Select a fighter from the roster.</div>';
+    panel.innerHTML='<div class="ascent-empty">Select a bird from the roster.</div>';
     _setSfselEmptyState(true);
     syncSelectTakeFlightButton();
     renderPassiveBadge();
@@ -5448,7 +5484,7 @@ function updateAscentPanel(key) {
       trickster:'Debuff-focused trickster',
       predator:'Execute-focused predator',
       singer:'Song-based controller',
-    }[cls]||'Adaptive fighter';
+    }[cls]||'Adaptive bird';
 
     const startAbilityDetails=(kit.abilities.length?kit.abilities:(bird.startAbilities||[]).map(id=>({id,level:1}))).map((ab,idx)=>{
       const id=typeof ab==='string'?ab:(ab&&ab.id);
@@ -5560,7 +5596,7 @@ function updateAscentPanel(key) {
     console.error('updateAscentPanel failed:',key,err);
     panel.classList.add('is-empty');
     panel.classList.remove('is-filled');
-    panel.innerHTML='<div class="ascent-empty">Could not load fighter profile.</div>';
+    panel.innerHTML='<div class="ascent-empty">Could not load bird profile.</div>';
     G.selected=null;
     _setSfselEmptyState(true);
     renderPassiveBadge();
@@ -6194,6 +6230,10 @@ function openSelectHubPanel(which){
   screenEl.classList.add('select-hub-panel-active');
   const panel = document.getElementById('select-hub-'+which);
   if(panel) panel.scrollTop = 0;
+  if(which==='door'){
+    if(typeof syncSfselRunSummary==='function') syncSfselRunSummary();
+    if(typeof syncSelectTakeFlightButton==='function') syncSelectTakeFlightButton();
+  }
 }
 function closeSelectHubPanel(){
   try{ if(typeof closeRosterChampionModal==='function') closeRosterChampionModal(); }catch(_){}
@@ -14230,7 +14270,7 @@ function buildRefGuide() {
   if (!tabs || !panels) return;
 
   const defs=[
-    {k:'birds',label:' Birds'},
+    {k:'birds',label:'🐦 Birds'},
     {k:'abilities',label:'🪶 Abilities'},
     {k:'enemies',label:'☠ Enemies'},
     {k:'statuses',label:'☣ Status Effects'},
@@ -14250,7 +14290,8 @@ function buildRefGuide() {
   const isMatch=(txt)=>!q||String(txt||'').toLowerCase().includes(q);
   const card=(name,desc,unlocked,meta='')=>`<div class="ref-skill-card" style="opacity:${unlocked?1:0.55}"><div class="ref-skill-header"><span class="ref-skill-name">${unlocked?name:'???'}</span>${meta?`<span class="ref-skill-type utility">${meta}</span>`:''}</div><div class="ref-skill-base">${unlocked?desc:'Unlock by encountering this entry in a run.'}</div></div>`;
 
-  const birds=Object.entries(BIRDS||{}).filter(([id,b])=>isMatch(b.name)).map(([id,b])=>{
+  const birdsIntro='<p class="ref-entry-desc ref-birds-intro">Unlock birds through runs, The Hatchery, and secret codes. Entries you have seen in a run appear here with their combat role.</p>';
+  const birds=birdsIntro+Object.entries(BIRDS||{}).filter(([id,b])=>isMatch(b.name)).map(([id,b])=>{
     const u=!!G.codex?.birds?.[id]?.seen;
     if(!u&&!showLocked) return '';
     const roleId=classToRoleId(b.class);
@@ -14352,18 +14393,21 @@ function buildRefGuide() {
   const arts=artsByTier || (showLocked?card('???','Find rewards in runs to fill this section.',false,'locked'):'' );
 
   const mechanics=`<div class="ref-skills-grid">
+    ${card('War Room & Character Select','Mission map sets difficulty and Story vs Endless. Begin Ascent opens Character Select to pick your bird. Inventory holds feathers and artifacts; Supplies holds this Reference codex.',true,'war-room')}
+    ${card('Bird Cards & Tiers','Hatch at The Hatchery. Duplicate hatches grant Species Feathers. Spend feathers in Feather Sack or Character Select to raise stars and ascend tiers — higher tiers boost stats and passive scaling for that species.',true,'bird-cards')}
+    ${card('Species Feathers','Per-bird currency from duplicate hatches at The Hatchery. Fuels card star and tier upgrades in Feather Sack or Character Select. Distinct from Mutated Feathers earned during runs.',true,'species-feathers')}
     ${card('Energy & Cooldowns','Main attacks are free unless spells. Abilities spend energy and many skills have cooldowns.',true,'core')}
     ${card('Post-Battle Recovery','Story: heal 20% max HP after each bird you defeat in a stage (including multi-bird nodes). Endless: heal 33% max HP after each victory. Halved with Hunter\'s Cruelty mutation.',true,'heal')}
-    ${card('Role Taxonomy','Birds are grouped by roles: Striker, Bruiser, Tank, Trickster, Predator, Singer.',true,'roles')}
+    ${card('Role Taxonomy','Birds are grouped by combat roles: Striker, Bruiser, Tank, Trickster, Predator, Singer.',true,'roles')}
     ${card('Mutation Slots','Equip mutations in wing, feet, head, beak, chest, eyes, tail, plumage, and syrinx slots (limits per slot). Manage loadout in the Nest.',true,'mutations')}
     ${card('Nest Inventory','Found mutations go to nest inventory. Equip, compare, and sell extras between battles.',true,'nest')}
     ${card('Stork Shop','Spend Shiny Objects on upgrades, combat heal items, and mutation stock between fights.',true,'shop')}
-    ${card('Mutated Feathers','Rare currency used for mutation-focused rewards and nest progression (when offered).',true,'feathers')}
+    ${card('Mutated Feathers','Rare in-run currency used for mutation-focused rewards and nest progression (when offered).',true,'feathers')}
     ${card('Hit vs Dodge','Accuracy rolls can Miss. If the attack connects, a separate dodge roll may show Dodge — not Miss.',true,'combat')}
     ${card('Weaken (stacks)','Stacks to ×3: −10% outgoing damage and −10 Dodge per stack. Refreshes 3-turn duration.',true,'ailment')}
-    ${card('Passive Evolution (Endless)','In Endless mode, passives evolve at milestones with offensive vs utility choices.',true,'endless')}
+    ${card('Passive Evolution (Endless)','In Endless mode only, passives evolve at milestones with offensive vs utility choices. Story mode uses fixed starter passives.',true,'endless')}
     ${card('Enemy AI Profiles','Enemy personalities (aggressive, tactical, control, tank, predator, etc.) bias action planning.',true,'ai')}
-    ${card('Codex Unlocks','Entries unlock when seen/used during runs. Use search, filters, and Show Locked to browse all.',true,'codex')}
+    ${card('Codex Unlocks','Entries unlock when seen or used during runs. Open Reference from war room Supplies. Use search, filters, and Show Locked to browse all.',true,'codex')}
     ${card('Combat Screen Layout','Settings → Display: pick Original, Compact, Actions First, Log Focus, or Custom. Custom opens a panel editor to reorder sections and hide what you do not need. Size sliders still fine-tune avatars, panels, action tray, and log.',true,'combat-ui')}
     ${card('DEF & MDEF Penetration','DEF Penetration and generic Penetration bonuses ignore physical guard. MDEF Penetration ignores magical guard. Ability pierce stacks on top of equipped mutations.',true,'penetration')}
   </div>`;
@@ -15128,7 +15172,7 @@ function checkDevCode(val) {
     window.__blakistonDebugUnlocked = true;
     const input = document.getElementById('dev-code-input');
     if (input) input.value = '';
-    if (msg) { msg.textContent = '🦉 Duke Blakiston unlocked as a playable champion.'; msg.style.color = 'var(--gold-light)'; }
+    if (msg) { msg.textContent = '🦉 Duke Blakiston unlocked as a playable bird.'; msg.style.color = 'var(--gold-light)'; }
     setTimeout(() => { if (msg) msg.textContent = ''; }, 3200);
     initSelectionSafe();
     return;
@@ -15503,9 +15547,9 @@ function resolveUiMode(cfg){
 const COMBAT_ARRANGEMENTS=['classic','compact','actionsFirst','logFocus','custom'];
 const DEFAULT_COMBAT_ARRANGEMENT='classic';
 const COMBAT_ARRANGEMENT_HINTS={
-  classic:'Original: fighters side by side, then actions and battle log.',
+  classic:'Original: birds side by side, then actions and battle log.',
   compact:'Compact: stacked layout with smaller panels — good for phones or tight screens.',
-  actionsFirst:'Actions First: ability tray above fighters so you can act without scrolling.',
+  actionsFirst:'Actions First: ability tray above birds so you can act without scrolling.',
   logFocus:'Log Focus: tall battle log beside the fight on wide screens; taller log when narrow.',
   custom:'Custom: reorder panels and hide sections via Customize panels… in Settings → Display.',
 };
