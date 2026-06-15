@@ -4358,16 +4358,16 @@ function buildStoryEnemyFromBirdKey(birdKey, stage, opts={}){
   const bd=BIRDS?.[birdKey];
   if(!bd) return null;
   const stats={
-    hp:Math.max(1,Math.floor(bd.stats?.hp||bd.stats?.maxHp||30)),
-    maxHp:Math.max(1,Math.floor(bd.stats?.maxHp||bd.stats?.hp||30)),
-    atk:Math.max(1,Math.floor(bd.stats?.atk||6)),
-    def:Math.max(0,Math.floor(bd.stats?.def||2)),
-    matk:Math.max(1,Math.floor(bd.stats?.matk||8)),
-    mdef:Math.max(0,Math.floor(bd.stats?.mdef||8)),
-    spd:Math.max(1,Math.floor(bd.stats?.spd||6)),
-    acc:Math.max(60,Math.floor(bd.stats?.acc||80)),
-    dodge:Math.max(0,Math.floor(bd.stats?.dodge||10)),
-    critChance:Math.max(0,Math.floor(bd.stats?.critChance||5)),
+    hp:roundCombatStat(bd.stats?.hp||bd.stats?.maxHp||30, 0.01),
+    maxHp:roundCombatStat(bd.stats?.maxHp||bd.stats?.hp||30, 0.01),
+    atk:roundCombatStat(bd.stats?.atk||6, 0.01),
+    def:roundCombatStat(bd.stats?.def||2, 0),
+    matk:roundCombatStat(bd.stats?.matk||8, 0.01),
+    mdef:roundCombatStat(bd.stats?.mdef||8, 0),
+    spd:roundCombatStat(bd.stats?.spd||6, 0.01),
+    acc:roundCombatStat(bd.stats?.acc||80, 60),
+    dodge:roundCombatStat(bd.stats?.dodge||10, 0),
+    critChance:roundCombatStat(bd.stats?.critChance||5, 0),
     critMult:Math.max(1.1,Number(bd.stats?.critMult||1.5)),
   };
   const plv=Math.max(1, Math.floor(G.player?.birdLevel||1));
@@ -4383,16 +4383,17 @@ function buildStoryEnemyFromBirdKey(birdKey, stage, opts={}){
   }
   const evolvedSlots=getStoryEvolvedSlotCount(level);
   const diffMult = DIFFICULTIES[G.difficulty||'juvenile']?.mult || 1;
-  stats.maxHp=Math.max(1,Math.floor(stats.maxHp*diffMult));
+  stats.maxHp=roundCombatStat(Math.max(0.01, stats.maxHp*diffMult), 0.01);
   stats.hp=stats.maxHp;
-  stats.atk=Math.max(1,Math.floor(stats.atk*diffMult));
-  stats.matk=Math.max(1,Math.floor(stats.matk*diffMult));
+  stats.atk=roundCombatStat(Math.max(0.01, stats.atk*diffMult), 0.01);
+  stats.matk=roundCombatStat(Math.max(0.01, stats.matk*diffMult), 0.01);
   if(opts.isBoss){
-    stats.maxHp=Math.max(1,Math.floor(stats.maxHp*STORY_BOSS_STAT_MULT.hp));
+    stats.maxHp=roundCombatStat(Math.max(0.01, stats.maxHp*STORY_BOSS_STAT_MULT.hp), 0.01);
     stats.hp=stats.maxHp;
-    stats.atk=Math.max(1,Math.floor(stats.atk*STORY_BOSS_STAT_MULT.atk));
-    stats.matk=Math.max(1,Math.floor(stats.matk*STORY_BOSS_STAT_MULT.matk));
+    stats.atk=roundCombatStat(Math.max(0.01, stats.atk*STORY_BOSS_STAT_MULT.atk), 0.01);
+    stats.matk=roundCombatStat(Math.max(0.01, stats.matk*STORY_BOSS_STAT_MULT.matk), 0.01);
   }
+  normalizeCombatStats(stats);
   const size=bd.size||'medium';
   const enProf=getEnemyEnergyProfile();
   const aiStyle=(['predator','striker'].includes(cls)?'aggressive':(cls==='tank'?'defensive':(cls==='trickster'?'trickster':'cautious')));
@@ -5857,6 +5858,14 @@ function restoreBattleTempPlayerStats(){
     Avian.mutations.reapplyPlayerStatsFromSources(G.player);
   }
 }
+
+function prepareEnemyCombatLoadout(enemy){
+  if(!enemy) return;
+  if(typeof ensureFamilyEvolutionState==='function') ensureFamilyEvolutionState(enemy);
+  if(typeof syncPlayerAbilitiesFromSkillSlots==='function') syncPlayerAbilitiesFromSkillSlots(enemy);
+  if(enemy.stats) normalizeCombatStats(enemy.stats);
+}
+globalThis.prepareEnemyCombatLoadout=prepareEnemyCombatLoadout;
 
 function preparePlayerCombatLoadout(player){
   if(!player) return;
@@ -11470,13 +11479,8 @@ function endPlayerTurn(force=false) {
 function getEnemyActionEnergyCost(action){
   const frz=(G.enemyStatus?.frozen?.turns||0)>0?1:0;
   if(!action) return 1+frz;
-  if(action.type==='strike') return 1+frz;
-  if(action.type==='heavy') return 2+frz;
-  if(action.type==='defend') return 2+frz;
   if(action.type==='ability'){
     const id=action.abilityId;
-    const map={eHeal:3,eShield:2,eStun:3,eRage:2,eWeaken:2,eFear:2,eBurn:2,eBlind:1,ePoison:2,eVenom:2};
-    if(map[id]!=null) return map[id]+frz;
     const ab=(G.enemy?.abilities||[]).find(a=>a&&a.id===id)||{id,level:1};
     const tmpl=getAbilityTemplateForUI(ab);
     const byLv=Array.isArray(tmpl?.energyByLevel)?tmpl.energyByLevel[Math.min(Math.max(1,ab.level||1),4)-1]:null;
@@ -11498,16 +11502,8 @@ function getEnemyAIMemory(enemy){
   }
   return enemy.aiMemory;
 }
-/** Classify a kit ability id for enemy AI weights (templates + legacy ENEMY_ABILITY_POOL). */
+/** Classify a kit ability id for enemy AI weights (combat-pack templates). */
 function classifyKitAbilityForEnemyAI(abilityId, enemy){
-  if(ENEMY_ABILITY_POOL[abilityId]){
-    const id=String(abilityId||'');
-    if(['eHeal'].includes(id)) return 'heal';
-    if(['eShield'].includes(id)) return 'guard';
-    if(['eRage'].includes(id)) return 'buff';
-    if(['eWeaken','eFear','eBlind','ePoison','eVenom','eStun','eBurn'].includes(id)) return 'control';
-    return 'damage';
-  }
   const ab=(enemy?.abilities||[]).find(a=>a&&a.id===abilityId)||{id:abilityId,level:1};
   const tmpl=getAbilityTemplateForUI(ab);
   if(!tmpl) return 'utility';
@@ -11523,9 +11519,7 @@ function classifyKitAbilityForEnemyAI(abilityId, enemy){
   return 'utility';
 }
 function enemyKitOffersSetupDebuffs(enemy){
-  const debuffPool=new Set(['eWeaken','eFear','eBlind','ePoison','eVenom','eStun']);
   for(const id of getEnemyKitAbilityIds(enemy)){
-    if(debuffPool.has(id)) return true;
     if(classifyKitAbilityForEnemyAI(id,enemy)==='control') return true;
   }
   return false;
@@ -11540,18 +11534,9 @@ function getEnemyMode(e,p){
 }
 function classifyEnemyActionCategory(action){
   if(!action) return 'utility';
-  if(action.type==='strike') return 'damage';
-  if(action.type==='heavy') return 'heavy';
-  if(action.type==='defend') return 'guard';
   if(action.type!=='ability') return 'utility';
-  const id=String(action.abilityId||'');
-  if(['eHeal'].includes(id)) return 'heal';
-  if(['eShield'].includes(id)) return 'guard';
-  if(['eRage'].includes(id)) return 'buff';
-  if(['eWeaken','eFear','eBlind','ePoison','eVenom','eStun','eBurn'].includes(id)) return 'control';
-  if(ENEMY_ABILITY_POOL[id]) return 'damage';
   if(G?.enemy){
-    const k=classifyKitAbilityForEnemyAI(id,G.enemy);
+    const k=classifyKitAbilityForEnemyAI(action.abilityId,G.enemy);
     if(k==='heal') return 'heal';
     if(k==='guard') return 'guard';
     if(k==='buff') return 'buff';
@@ -11565,6 +11550,12 @@ function buildEnemyActionPool(e,mode){
   const ids=getEnemyKitAbilityIds(e);
   const pool=[];
   const push=(a,w=1,meta={})=>{for(let i=0;i<w;i++) pool.push({...a,...meta});};
+  const pushAbility=(id,w=1,meta={})=>{
+    const cat=classifyKitAbilityForEnemyAI(id,e);
+    const icon={heal:'🌿',guard:'🛡',control:'🌀',buff:'⚡',damage:'✦',utility:'✨'}[cat]||'✦';
+    const isUtility=meta.isUtility!=null?meta.isUtility:(cat==='heal'||cat==='guard'||cat==='buff'||cat==='control');
+    push({type:'ability',abilityId:id,icon,label:getEnemyAbilityDisplayLabel(id,e)},w,{isUtility,...meta});
+  };
   const healIds=[], guardIds=[], ctrlIds=[], buffIds=[], damIds=[], utilIds=[];
   for(const id of ids){
     const cat=classifyKitAbilityForEnemyAI(id,e);
@@ -11576,59 +11567,42 @@ function buildEnemyActionPool(e,mode){
     else if(cat==='utility') utilIds.push(id);
   }
   if(mode==='RECOVER'){
-    for(const id of healIds) push({type:'ability',abilityId:id,icon:'🌿',label:getEnemyAbilityDisplayLabel(id,e)},4,{isUtility:true});
-    for(const id of guardIds) push({type:'ability',abilityId:id,icon:'🛡',label:getEnemyAbilityDisplayLabel(id,e)},3,{isUtility:true});
-    push({type:'defend',icon:'🛡',label:'Defend'},2,{isUtility:true});
-    push({type:'strike',icon:'⚔',label:'Attack'},2);
+    for(const id of healIds) pushAbility(id,4,{isUtility:true});
+    for(const id of guardIds) pushAbility(id,3,{isUtility:true});
+    for(const id of damIds) pushAbility(id,2,{isUtility:false});
   }else if(mode==='EXECUTE'){
-    push({type:'heavy',icon:'💢',label:'Heavy Strike',tags:['HEAVY','FINISH']},5);
-    push({type:'strike',icon:'⚔',label:'Attack'},3);
-    for(const id of ids){
-      const cat=classifyKitAbilityForEnemyAI(id,e);
-      const pseudo={type:'ability',abilityId:id};
-      const dmg=projectedEnemyActionDamage(pseudo,e);
-      const executeBias=cat==='buff'||(cat==='control'&&(dmg>0||['ePoison','eBurn','eFear'].includes(id)));
-      if(executeBias)
-        push({type:'ability',abilityId:id,icon:'✦',label:getEnemyAbilityDisplayLabel(id,e)},2,{isUtility:cat==='buff'||id==='eRage'});
-    }
-    for(const id of damIds) push({type:'ability',abilityId:id,icon:'✦',label:getEnemyAbilityDisplayLabel(id,e)},2,{isUtility:false});
+    for(const id of damIds) pushAbility(id,5,{isUtility:false});
+    for(const id of ctrlIds) pushAbility(id,2,{isUtility:true});
+    for(const id of buffIds) pushAbility(id,2,{isUtility:true});
+    for(const id of utilIds) pushAbility(id,2,{isUtility:true});
   }else if(mode==='SETUP'){
-    for(const id of ctrlIds) push({type:'ability',abilityId:id,icon:'🌀',label:getEnemyAbilityDisplayLabel(id,e)},4,{isUtility:true});
-    for(const id of utilIds) push({type:'ability',abilityId:id,icon:'✨',label:getEnemyAbilityDisplayLabel(id,e)},2,{isUtility:true});
-    push({type:'strike',icon:'⚔',label:'Attack'},3);
-    push({type:'defend',icon:'🛡',label:'Defend'},1,{isUtility:true});
+    for(const id of ctrlIds) pushAbility(id,4,{isUtility:true});
+    for(const id of utilIds) pushAbility(id,2,{isUtility:true});
+    for(const id of damIds) pushAbility(id,3,{isUtility:false});
+    for(const id of buffIds) pushAbility(id,2,{isUtility:true});
   }else{
-    push({type:'strike',icon:'⚔',label:'Attack'},5);
-    push({type:'heavy',icon:'💢',label:'Heavy Strike',tags:['HEAVY']},2);
-    for(const id of utilIds) push({type:'ability',abilityId:id,icon:'✨',label:getEnemyAbilityDisplayLabel(id,e)},2,{isUtility:true});
-    for(const id of ids){
-      const cat=classifyKitAbilityForEnemyAI(id,e);
-      if(cat==='damage') push({type:'ability',abilityId:id,icon:'✦',label:getEnemyAbilityDisplayLabel(id,e)},2,{isUtility:false});
-      else if(cat==='buff'||(cat==='control'&&['eWeaken','eFear','eBlind'].includes(id)))
-        push({type:'ability',abilityId:id,icon:'✦',label:getEnemyAbilityDisplayLabel(id,e)},2,{isUtility:cat==='buff'||id==='eRage'});
-    }
+    for(const id of damIds) pushAbility(id,5,{isUtility:false});
+    for(const id of utilIds) pushAbility(id,2,{isUtility:true});
+    for(const id of buffIds) pushAbility(id,2,{isUtility:true});
+    for(const id of ctrlIds) pushAbility(id,2,{isUtility:true});
+  }
+  if(!pool.length){
+    for(const id of ids) pushAbility(id,1,{isUtility:false});
   }
   return pool;
 }
 function projectedEnemyActionDamage(a,e){
-  if(!a) return 0;
-  if(a.type==='strike') return Math.floor((e.stats.atk||8)*1.0);
-  if(a.type==='heavy') return Math.floor((e.stats.atk||8)*1.6);
-  if(a.type==='ability'){
-    const id=a.abilityId;
-    if(id==='eStun') return Math.floor(6+((e.stats.atk||8)*0.95));
-    if(ENEMY_ABILITY_POOL[id]) return 0;
-    const ab=(e.abilities||[]).find(x=>x&&x.id===id)||{id,level:1};
-    const tmpl=getAbilityTemplateForUI(ab);
-    if(!tmpl) return 0;
-    const btn=String(tmpl.btnType||tmpl.type||'').toLowerCase();
-    if(btn==='physical'||btn==='ranged'||btn==='spell'){
-      let mult=(tmpl.baseDmgMult!=null)?(Number(tmpl.baseDmgMult)||0)+0.1*((ab.level||1)-1):0.9;
-      mult=Math.max(0.25,mult);
-      const stat=(btn==='spell')?(e.stats.matk||8):(e.stats.atk||8);
-      return Math.floor(stat*mult);
-    }
-    return 0;
+  if(!a||a.type!=='ability') return 0;
+  const id=a.abilityId;
+  const ab=(e.abilities||[]).find(x=>x&&x.id===id)||{id,level:1};
+  const tmpl=getAbilityTemplateForUI(ab);
+  if(!tmpl) return 0;
+  const btn=String(tmpl.btnType||tmpl.type||'').toLowerCase();
+  if(btn==='physical'||btn==='ranged'||btn==='spell'){
+    let mult=(tmpl.baseDmgMult!=null)?(Number(tmpl.baseDmgMult)||0)+0.1*((ab.level||1)-1):0.9;
+    mult=Math.max(0.25,mult);
+    const stat=(btn==='spell')?(e.stats.matk||8):(e.stats.atk||8);
+    return roundCombatDamage(stat*mult);
   }
   return 0;
 }
@@ -11784,6 +11758,7 @@ function mapAiStyleToType(style){
 }
 function planEnemyAction() {
   const e=G.enemy;
+  if(typeof prepareEnemyCombatLoadout==='function') prepareEnemyCombatLoadout(e);
   const plan=planEnemyTurn(e,G.player);
   const actions=(plan.actions||[]).slice(0,MAX_ENEMY_ACTIONS_PER_TURN);
   G.enemyPlannedActions=actions;
