@@ -2,7 +2,7 @@
 
 /* ===== Duke Blakiston sprite ===== */
 .sprite-dukeblakiston{
-  background-image:url("../assets/sprites/dukeblakiston.png");
+  background-image:url("../assets/sprites/Duke Blakiston.png");
 }
 /* Boss-scale render */
 .sprite4.boss.sprite-dukeblakiston,
@@ -55,7 +55,7 @@
 
 /* ===== Seagull sprite replacement ===== */
 .sprite-seagull {
-  background-image: url("../assets/sprites/seagull.png");
+  background-image: url("../assets/sprites/Seagull.png");
   background-size: 200% 200%;
   background-repeat: no-repeat;
 }

@@ -5298,7 +5298,7 @@ globalThis.mutateBirdCardSelect=mutateBirdCardSelect;
     'peregrine','snowyowl','toucan','dukeblakiston','albatross','harpy',
     'harpyeagle','baldeagle','blackcockatoo','ostrich','cassowary',
     'pigeon','fairywren','barnowl','bluejay','bushturkey','bustard',
-    'finch','firecrest','goldeneagle','dodo','galah','mutatedpigeon','cardinal',
+    'finch','firecrest','goldeneagle','dodo','galah','mutatedpigeon',
   ]);
 })();
 
