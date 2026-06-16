@@ -6139,6 +6139,7 @@ function loadStage() {
   document.getElementById('enemy-panel')?.classList.remove('boss-phase-two');
   const pb=document.getElementById('boss-phase-banner');if(pb){pb.textContent='';pb.classList.remove('visible');}
   preparePlayerCombatLoadout(G.player);
+  prepareEnemyCombatLoadout(G.enemy);
   // Bird passive hooks (onBattleStart) — after loadout so mutation/equipment stats are applied first
   const bd2=BIRDS[G.player.birdKey||'sparrow'];
   if(bd2&&bd2.passive&&bd2.passive.onBattleStart) bd2.passive.onBattleStart(G.player);
@@ -6816,16 +6817,11 @@ function renderEnemyPlan(){
       const parts=(G.enemyNextAction.actions||[]).slice(0,3);
       const blocks=parts.map(a=>{
         if(a.type==='ability') return buildEnemyAbilityTooltipHtml(a.abilityId, G.enemy.stats);
-        if(a.type==='strike'){const lo=Math.max(1,Math.floor((G.enemy.stats.atk||8)*0.8));const hi=Math.max(lo,Math.floor((G.enemy.stats.atk||8)*1.2));return `<div class="tt-name">Basic Attack</div><div class="tt-type">Offensive</div><div class="tt-row"><span class="tt-lbl">Damage</span><span class="tt-val">${lo}–${hi}</span></div>`;}
         return `<div class="tt-name">${escapeEncounterPreviewHtml(a.label||a.type)}</div>`;
       }).filter(Boolean).join('<hr style="border:0;border-top:1px solid var(--border);margin:6px 0">');
       title=(parts.length>1?`<div class="tt-desc" style="margin-bottom:6px;opacity:.9">Planned turn — ${parts.length} actions</div>`:'')+blocks;
     } else if(G.enemyNextAction.type==='ability'){
       title=buildEnemyAbilityTooltipHtml(G.enemyNextAction.abilityId, G.enemy.stats);
-    } else if(G.enemyNextAction.type==='strike'){
-      const low=Math.max(1,Math.floor((G.enemy.stats.atk||8)*0.8));
-      const high=Math.max(low,Math.floor((G.enemy.stats.atk||8)*1.2));
-      title=`<div class="tt-name">Basic Attack</div><div class="tt-type">Offensive</div><div class="tt-row"><span class="tt-lbl">Damage</span><span class="tt-val">${low}–${high}</span></div><div class="tt-desc">Standard physical hit.</div>`;
     }
   }
   host.innerHTML=`<div class="intent-row intent-row--compact"><span class="intent-name">${escapeEncounterPreviewHtml(label)}</span><span class="intent-meta"><span class="intent-ap">EN ${curE}/${maxE}</span></span></div>`;
@@ -9675,7 +9671,7 @@ function applyLifestealFromDamage(dmg, srcAbility){
   if(dmg<=0 || !G.player) return;
   const pct=getAbilityLifestealPct(srcAbility||G._activePlayerAbility);
   if(pct<=0) return;
-  const heal=scaleHealForBleed('player', Math.max(1, Math.floor(dmg * pct / 100)));
+  const heal=scaleHealForBleed('player', roundCombatDamage(Math.max(0.01, dmg * pct / 100)));
   if(heal<=0) return;
   G.player.stats.hp=Math.min(G.player.stats.maxHp||1, (G.player.stats.hp||0)+heal);
   spawnFloat('player', `+${heal} 💉`, 'fn-heal');
@@ -11441,7 +11437,7 @@ function endPlayerTurn(force=false) {
   if(G.playerStatus.regen){
     G.playerStatus.regen--;
     if(G.regenPct>0){
-      const healAmt=scaleHealForBleed('player',Math.max(1,Math.floor(G.player.stats.maxHp*G.regenPct)));
+      const healAmt=scaleHealForBleed('player',roundCombatDamage(Math.max(0.01,G.player.stats.maxHp*G.regenPct)));
       G.player.stats.hp=Math.min(G.player.stats.hp+healAmt,G.player.stats.maxHp);
       spawnFloat('player',`+${healAmt}`,'fn-heal');
       setHpBar('player',G.player.stats.hp,G.player.stats.maxHp);
@@ -11703,11 +11699,11 @@ function selectEnemyIntent(e,p,pool,totalEnergy,mode){
 function filterEnemyActionsByIntent(intent,pool){
   const all=(pool||[]);
   const categories=all.map(a=>({action:a,cat:classifyEnemyActionCategory(a)}));
-  if(intent==='finish') return categories.filter(x=>x.cat==='damage'||x.cat==='heavy').map(x=>x.action);
-  if(intent==='attack') return categories.filter(x=>x.cat==='damage'||x.cat==='heavy').map(x=>x.action);
+  if(intent==='finish') return categories.filter(x=>x.cat==='damage').map(x=>x.action);
+  if(intent==='attack') return categories.filter(x=>x.cat==='damage').map(x=>x.action);
   if(intent==='control') return categories.filter(x=>x.cat==='control').map(x=>x.action);
   if(intent==='buff') return categories.filter(x=>['buff','guard','heal'].includes(x.cat)).map(x=>x.action);
-  if(intent==='pressure') return categories.filter(x=>x.cat==='control'||x.cat==='damage'||x.cat==='heavy').map(x=>x.action);
+  if(intent==='pressure') return categories.filter(x=>x.cat==='control'||x.cat==='damage').map(x=>x.action);
   return all;
 }
 function getEnemyEnergySpendCap(e,p,pool,totalEnergy,intent,canFinish){
@@ -11849,8 +11845,9 @@ async function executeEnemyKitTemplateAbility(enemy, abilityId, totalEnemyMiss){
   const name=tmpl.name||abilityId;
   const cat=classifyKitAbilityForEnemyAI(abilityId,enemy);
   if(cat==='heal'){
-    const heal=Math.max(1,Math.floor((enemy.stats.maxHp||40)*0.14));
-    enemy.stats.hp=Math.min(enemy.stats.maxHp||enemy.stats.hp,(enemy.stats.hp||0)+heal);
+    const heal=roundCombatDamage((enemy.stats.maxHp||40)*0.14);
+    applyFractionalHp(enemy.stats, heal);
+    enemy.stats.hp=Math.min(enemy.stats.maxHp||enemy.stats.hp, enemy.stats.hp);
     await doSpell('enemy',`🌿 ${name}!`);
     setHpBar('enemy',enemy.stats.hp,enemy.stats.maxHp);
     logMsg(`${enemy.name} recovers ${heal} HP.`,'enemy-action');
@@ -11866,7 +11863,7 @@ async function executeEnemyKitTemplateAbility(enemy, abilityId, totalEnemyMiss){
   }
   if(cat==='buff'){
     await doSpell('enemy',`⚡ ${name}!`);
-    G.enemyStatus.atkBuff=Math.max(G.enemyStatus.atkBuff||0,Math.floor((enemy.stats.atk||8)*0.22));
+    G.enemyStatus.atkBuff=Math.max(G.enemyStatus.atkBuff||0,roundCombatDamage((enemy.stats.atk||8)*0.22));
     logMsg(`${enemy.name} surges — ATK up!`,'enemy-action');
     renderStatuses('enemy-status',G.enemyStatus);
     return;
@@ -12005,106 +12002,33 @@ async function enemyTurn() {
     G.enemyLastAction=action||null;
     G._incomingBypassesDeflect=false;
 
-    if(action.type==='strike'||action.type==='heavy'||action.type==='ability'){
-      if(action.type==='ability') G._incomingBypassesDeflect=true;
+    if(action.type==='ability'){
+      if(enemyKitAbilityIsHardCC(action.abilityId,e)) usedHardCCThisTurn=true;
+      const _cAb=G.enemyStatus.confused;
+      if(_cAb&&(_cAb.turns||0)>0&&chance(Number.isFinite(_cAb.selfChance)?_cAb.selfChance:STATUS_CONFUSED_SELF_PCT)){
+        const abRoll=rollEnemyCritDamage(edmg(0.85));
+        const selfD=abRoll.amount;
+        e.stats.hp=Math.max(0,e.stats.hp-selfD);
+        setHpBar('enemy',e.stats.hp,e.stats.maxHp);
+        spawnFloat('enemy',`🌀 -${selfD}`,'fn-dmg');
+        logMsg(`${e.name} fumbles in confusion for ${selfD}!`,'enemy-action');
+        await delay(400);
+        if(selfD>0) turnHadDamage=true;
+        continue;
+      }
       const _stBd=BIRDS[G.player.birdKey];
       if(_stBd&&_stBd.passive&&_stBd.passive.onEnemyAttackCheck&&_stBd.passive.onEnemyAttackCheck(G.player,G)){
         spawnFloat('enemy','👁 Frozen by Dread!','fn-status');
         logMsg(`${e.name} freezes under ${G.player.name}'s prehistoric stare!`,'system');
         continue;
       }
-    }
-
-    if(action.type==='strike'){
-      G._incomingAttackKind='physical';
-      const _cStrike=G.enemyStatus.confused;
-      if(_cStrike&&(_cStrike.turns||0)>0&&chance(Number.isFinite(_cStrike.selfChance)?_cStrike.selfChance:STATUS_CONFUSED_SELF_PCT)){
-        const strikeRoll=rollEnemyCritDamage(edmg());
-        const selfD=strikeRoll.amount;
-        e.stats.hp=Math.max(0,e.stats.hp-selfD);
-        setHpBar('enemy',e.stats.hp,e.stats.maxHp);
-        spawnFloat('enemy',`🌀 -${selfD}`,'fn-dmg');
-        logMsg(`${e.name} hurts itself in confusion for ${selfD}!`,'enemy-action');
-        await delay(400);
-        if(selfD>0) turnHadDamage=true;
-        continue;
-      }
-      if(totalEnemyMiss>0&&chance(totalEnemyMiss)){await doMiss('enemy');logMsg(`${e.name} attack missed!`,'miss');}
-      else{
-        const r=dealDamage('player',edmg());
-        await doAttack('enemy','player',r);
-        setHpBar('player',G.player.stats.hp,G.player.stats.maxHp);
-        if(r.wasDodged)logMsg(`${e.name} attacks — dodged!`,'enemy-action');
-        else logMsg(`${e.name} attacks${r.isCrit?' CRIT':''} for ${r.dmgDealt}!`,'enemy-action');
-        if((r.dmgDealt||0)>0) turnHadDamage=true;
-      }
-    } else if(action.type==='heavy'){
-      G._incomingAttackKind='physical';
-      const _cHeavy=G.enemyStatus.confused;
-      if(_cHeavy&&(_cHeavy.turns||0)>0&&chance(Number.isFinite(_cHeavy.selfChance)?_cHeavy.selfChance:STATUS_CONFUSED_SELF_PCT)){
-        const heavyRoll=rollEnemyCritDamage(edmg(1.6));
-        const selfD=heavyRoll.amount;
-        e.stats.hp=Math.max(0,e.stats.hp-selfD);
-        setHpBar('enemy',e.stats.hp,e.stats.maxHp);
-        spawnFloat('enemy',`🌀 -${selfD}`,'fn-dmg');
-        logMsg(`${e.name} hurts itself in confusion for ${selfD}!`,'enemy-action');
-        await delay(400);
-        if(selfD>0) turnHadDamage=true;
-        continue;
-      }
-      const missTot=20+totalEnemyMiss;
-      if(chance(missTot)){await doMiss('enemy');logMsg(`${e.name} heavy missed!`,'miss');}
-      else{
-        const r=dealDamage('player',edmg(1.6));
-        await doAttack('enemy','player',r);
-        setHpBar('player',G.player.stats.hp,G.player.stats.maxHp);
-        if(r.wasDodged)logMsg(`Heavy — dodged!`,'enemy-action');
-        else logMsg(`💢 ${e.name} heavy${r.isCrit?' CRIT':''} hits for ${r.dmgDealt}!`,'enemy-action');
-        if((r.dmgDealt||0)>0) turnHadDamage=true;
-      }
-    } else if(action.type==='defend'){
-      if(G.enemyStatus.feared>0){logMsg(`${e.name} too afraid to defend!`,'enemy-action');}
-      else{G.enemyStatus.defending=1; await doShield('enemy'); renderStatuses('enemy-status',G.enemyStatus); logMsg(`🛡 ${e.name} defends!`,'enemy-action');}
-    } else if(action.type==='ability'){
-      G._incomingAttackKind='magic';
-      const eab=ENEMY_ABILITY_POOL[action.abilityId];
-      if(enemyKitAbilityIsHardCC(action.abilityId,e)) usedHardCCThisTurn=true;
-      if(eab){
-        const _cAb=G.enemyStatus.confused;
-        if(_cAb&&(_cAb.turns||0)>0&&chance(Number.isFinite(_cAb.selfChance)?_cAb.selfChance:STATUS_CONFUSED_SELF_PCT)){
-          const abRoll=rollEnemyCritDamage(edmg(0.85));
-          const selfD=abRoll.amount;
-          e.stats.hp=Math.max(0,e.stats.hp-selfD);
-          setHpBar('enemy',e.stats.hp,e.stats.maxHp);
-          spawnFloat('enemy',`🌀 -${selfD}`,'fn-dmg');
-          logMsg(`${e.name} fumbles its spell in confusion for ${selfD}!`,'enemy-action');
-          await delay(400);
-          if(selfD>0) turnHadDamage=true;
-          continue;
-        }
-        if(eab.dodgeable){
-          const effDodgeAb = getEffectiveDodge(G.player);
-          const mAccEff = Math.max(0, Math.min(95, (G.enemy.stats.acc||70) - (G.enemyStatus.accDebuff||0)));
-          const mHitPct = Math.max(5, Math.min(95, Math.floor((mAccEff - effDodgeAb + 100) / 2)));
-          if(!chance(mHitPct)){
-            spawnFloat('player','Dodged!','fn-dodge'); playAvatarAnim('player','do-dodge-r',400); SFX.dodge(); await delay(420);
-            logMsg(`✨ ${G.player.name} slips the magic!`, 'system');
-            continue;
-          }
-        }
-        await doSpell('enemy',`✦ ${eab.name}!`);
-        eab.fn(G.enemy,G.player,G);
-        if(projectedEnemyActionDamage(action,e)>0) turnHadDamage=true;
-        const _macBd=BIRDS[G.player.birdKey];
-        if(_macBd&&_macBd.passive&&_macBd.passive.onEnemyAbility) _macBd.passive.onEnemyAbility(G.player,action.abilityId);
-        renderStatuses('player-status',G.playerStatus); renderStatuses('enemy-status',G.enemyStatus);
-      } else {
-        await executeEnemyKitTemplateAbility(e,action.abilityId,totalEnemyMiss);
-        if(projectedEnemyActionDamage(action,e)>0) turnHadDamage=true;
-        const _macBd2=BIRDS[G.player.birdKey];
-        if(_macBd2&&_macBd2.passive&&_macBd2.passive.onEnemyAbility) _macBd2.passive.onEnemyAbility(G.player,action.abilityId);
-        renderStatuses('player-status',G.playerStatus); renderStatuses('enemy-status',G.enemyStatus);
-      }
+      await executeEnemyKitTemplateAbility(e,action.abilityId,totalEnemyMiss);
+      if(projectedEnemyActionDamage(action,e)>0) turnHadDamage=true;
+      const _macBd2=BIRDS[G.player.birdKey];
+      if(_macBd2&&_macBd2.passive&&_macBd2.passive.onEnemyAbility) _macBd2.passive.onEnemyAbility(G.player,action.abilityId);
+      renderStatuses('player-status',G.playerStatus); renderStatuses('enemy-status',G.enemyStatus);
+    } else if(action.type==='strike'||action.type==='heavy'||action.type==='defend'){
+      logMsg(`${e.name} hesitates (legacy action).`,'miss');
     }
 
     aiMem.lastAbilityId=action.abilityId||action.type;

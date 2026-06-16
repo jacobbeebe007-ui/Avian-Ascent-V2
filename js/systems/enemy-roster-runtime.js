@@ -343,18 +343,21 @@
       diffMult = global.DIFFICULTIES[global.G.difficulty || 'juvenile']?.mult || 1;
     }
     if (Number.isFinite(diffMult) && diffMult !== 1) {
-      stats.maxHp = Math.max(1, Math.floor(stats.maxHp * diffMult));
+      var rcs = typeof global.roundCombatStat === 'function' ? global.roundCombatStat : function (n, f) { return Math.max(f || 0, Math.round(Number(n) * 100) / 100); };
+      stats.maxHp = rcs(Math.max(0.01, stats.maxHp * diffMult), 0.01);
       stats.hp = stats.maxHp;
-      stats.atk = Math.max(1, Math.floor((stats.atk || 1) * diffMult));
-      stats.matk = Math.max(1, Math.floor((stats.matk || 1) * diffMult));
+      stats.atk = rcs(Math.max(0.01, (stats.atk || 1) * diffMult), 0.01);
+      stats.matk = rcs(Math.max(0.01, (stats.matk || 1) * diffMult), 0.01);
     }
     if (opts.isBoss && global.STORY_BOSS_STAT_MULT) {
       var mult = global.STORY_BOSS_STAT_MULT;
-      stats.maxHp = Math.max(1, Math.floor(stats.maxHp * (mult.hp || 2)));
+      var rcs2 = typeof global.roundCombatStat === 'function' ? global.roundCombatStat : function (n, f) { return Math.max(f || 0, Math.round(Number(n) * 100) / 100); };
+      stats.maxHp = rcs2(Math.max(0.01, stats.maxHp * (mult.hp || 2)), 0.01);
       stats.hp = stats.maxHp;
-      stats.atk = Math.max(1, Math.floor(stats.atk * (mult.atk || 1.3)));
-      stats.matk = Math.max(1, Math.floor(stats.matk * (mult.matk || 1.3)));
+      stats.atk = rcs2(Math.max(0.01, stats.atk * (mult.atk || 1.3)), 0.01);
+      stats.matk = rcs2(Math.max(0.01, stats.matk * (mult.matk || 1.3)), 0.01);
     }
+    if (typeof global.normalizeCombatStats === 'function') global.normalizeCombatStats(stats);
 
     var size = row.size || 'medium';
     var enProf = typeof global.getEnemyEnergyProfile === 'function'

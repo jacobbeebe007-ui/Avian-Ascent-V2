@@ -67,9 +67,9 @@ function assert(cond, msg) {
   else console.log('OK:', msg);
 }
 
-// Crow example: 16 ATK, 2 EN (1.25x), 6 DEF → ~16.00 damage
+// Crow example: 16 ATK, 2 EN (1.25x), 6 DEF → ~16.13 damage (2dp)
 const crowDmg = roundCurvedDamage(calculateCurvedDamage(16, MEDIUM_ATTACK_POWER, 6));
-assert(Math.abs(crowDmg - 16) < 0.01, `Crow 16 ATK 2 EN vs 6 DEF ≈ 16.00 (got ${crowDmg})`);
+assert(Math.abs(crowDmg - 16.13) < 0.01, `Crow 16 ATK 2 EN vs 6 DEF ≈ 16.13 (got ${crowDmg})`);
 
 // Minimum damage floors
 const min1 = applyMinimumDamage(roundCurvedDamage(calculateCurvedDamage(1, LIGHT_ATTACK_POWER, 0)), 1);

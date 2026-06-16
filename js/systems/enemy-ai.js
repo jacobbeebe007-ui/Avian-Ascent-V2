@@ -197,7 +197,8 @@
         mem.utilityStreak = (mem.utilityStreak || 0) + 1;
       }
       var basicPick = pool.find(function (a) {
-        return (a.type === 'strike' || a.type === 'heavy')
+        return a.type === 'ability'
+          && global.classifyEnemyActionCategory(a) === 'damage'
           && global.getEnemyActionEnergyCost(a) <= energy
           && (spentEnergy + global.getEnemyActionEnergyCost(a) <= energySpendCap);
       });
@@ -243,7 +244,9 @@
 
     if (!turnHadDamage) {
       var fallback = pool.find(function (a) {
-        return (a.type === 'strike' || a.type === 'heavy') && global.getEnemyActionEnergyCost(a) <= (e.energyMax || 3);
+        return a.type === 'ability'
+          && global.classifyEnemyActionCategory(a) === 'damage'
+          && global.getEnemyActionEnergyCost(a) <= (e.energyMax || 3);
       });
       if (fallback && actions.length < maxActions) {
         actions.push(Object.assign({}, fallback, {
