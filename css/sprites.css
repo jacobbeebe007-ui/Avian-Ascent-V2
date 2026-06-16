@@ -108,7 +108,7 @@
 
 /* ===== 08_albatross-sprite-replacement.css ===== */
 
-.sprite-albatross{background-image:url("../assets/sprites/Albatross.png");background-size:200% 200%;background-repeat:no-repeat;}
+.sprite-albatross{background-image:url("../assets/sprites/albatross.png");background-size:200% 200%;background-repeat:no-repeat;}
 .sprite-albatross.frame-0{background-position:0% 0%;}
 .sprite-albatross.frame-1{background-position:100% 0%;}
 .sprite-albatross.frame-2{background-position:0% 100%;}
