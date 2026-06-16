@@ -2,7 +2,11 @@
  * Precaches the prebuilt classic bundle at ./js/avian-game.bundle.js
  * (regenerate with `node scripts/build-bundle.js` or `npm run dev` / `npm run build`). */
 <<<<<<< HEAD
+<<<<<<< HEAD
 const CACHE_VERSION = 'avian-ascent-2b7504eb7fe3';
+=======
+const CACHE_VERSION = 'avian-ascent-d9948d37d9f0';
+>>>>>>> parent of b8c84ae (Normalize sprites, add assets & update sprite logic)
 =======
 const CACHE_VERSION = 'avian-ascent-d9948d37d9f0';
 >>>>>>> parent of b8c84ae (Normalize sprites, add assets & update sprite logic)
