@@ -2,9 +2,15 @@
  * Source order: js/bootstrap/load-order.json
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
  * Bundle hash:  2b7504eb7fe3
  */
 globalThis.__AVIAN_BUNDLE_HASH__ = "2b7504eb7fe3";
+=======
+ * Bundle hash:  d9948d37d9f0
+ */
+globalThis.__AVIAN_BUNDLE_HASH__ = "d9948d37d9f0";
+>>>>>>> parent of b8c84ae (Normalize sprites, add assets & update sprite logic)
 =======
  * Bundle hash:  d9948d37d9f0
  */
@@ -15130,6 +15136,7 @@ globalThis.mutateBirdCardSelect=mutateBirdCardSelect;
 
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 /* ===== Canonical sprite allowlist (all wired 2x2 sheets) ===== */
 (function initSpriteKeysAll(){
   if(globalThis.SPRITE_KEYS_ALL && globalThis.SPRITE_KEYS_ALL.size) return;
@@ -15144,6 +15151,8 @@ globalThis.mutateBirdCardSelect=mutateBirdCardSelect;
   ]);
 })();
 
+=======
+>>>>>>> parent of b8c84ae (Normalize sprites, add assets & update sprite logic)
 =======
 >>>>>>> parent of b8c84ae (Normalize sprites, add assets & update sprite logic)
 =======
