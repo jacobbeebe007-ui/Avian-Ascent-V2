@@ -79,5 +79,3 @@ for (const [prefix, spriteKey] of Object.entries(BATCH_MAP)) {
 
 console.log(`\nInstalled ${ok} sprite(s), ${fail} missing.`);
 if (fail > 0) process.exit(1);
-
-import('./normalize-sprites.mjs');

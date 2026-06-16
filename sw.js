@@ -4,6 +4,7 @@
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 const CACHE_VERSION = 'avian-ascent-2b7504eb7fe3';
 =======
 const CACHE_VERSION = 'avian-ascent-d9948d37d9f0';
@@ -14,6 +15,9 @@ const CACHE_VERSION = 'avian-ascent-d9948d37d9f0';
 =======
 const CACHE_VERSION = 'avian-ascent-d9948d37d9f0';
 >>>>>>> parent of b8c84ae (Normalize sprites, add assets & update sprite logic)
+=======
+const CACHE_VERSION = 'avian-ascent-35ed1012708f';
+>>>>>>> parent of 7e0fca8 (Add new bird sprites and update bundle/hash)
 const PRECACHE = [
   './',
   './index.html',

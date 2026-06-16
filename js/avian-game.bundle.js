@@ -3,6 +3,7 @@
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
  * Bundle hash:  2b7504eb7fe3
  */
 globalThis.__AVIAN_BUNDLE_HASH__ = "2b7504eb7fe3";
@@ -21,6 +22,11 @@ globalThis.__AVIAN_BUNDLE_HASH__ = "d9948d37d9f0";
  */
 globalThis.__AVIAN_BUNDLE_HASH__ = "d9948d37d9f0";
 >>>>>>> parent of b8c84ae (Normalize sprites, add assets & update sprite logic)
+=======
+ * Bundle hash:  35ed1012708f
+ */
+globalThis.__AVIAN_BUNDLE_HASH__ = "35ed1012708f";
+>>>>>>> parent of 7e0fca8 (Add new bird sprites and update bundle/hash)
 
 ;/* === js/bootstrap/_namespace.js === */
 /* Avian Ascent — runtime namespace bootstrap.
@@ -15147,7 +15153,7 @@ globalThis.mutateBirdCardSelect=mutateBirdCardSelect;
     'peregrine','snowyowl','toucan','dukeblakiston','albatross','harpy',
     'harpyeagle','baldeagle','blackcockatoo','ostrich','cassowary',
     'pigeon','fairywren','barnowl','bluejay','bushturkey','bustard',
-    'finch','firecrest','goldeneagle','dodo','galah','mutatedpigeon','cardinal',
+    'finch','firecrest','goldeneagle','dodo','galah','mutatedpigeon',
   ]);
 })();
 
