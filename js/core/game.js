@@ -5288,23 +5288,6 @@ function mutateBirdCardSelect(birdKey){
 globalThis.mutateBirdCardSelect=mutateBirdCardSelect;
 
 
-<<<<<<< HEAD
-=======
-/* ===== Canonical sprite allowlist (all wired 2x2 sheets) ===== */
-(function initSpriteKeysAll(){
-  if(globalThis.SPRITE_KEYS_ALL && globalThis.SPRITE_KEYS_ALL.size) return;
-  globalThis.SPRITE_KEYS_ALL = new Set([
-    'sparrow','goose','blackbird','crow','macaw','hummingbird','shoebill',
-    'secretarybird','secretary','magpie','kookaburra','kiwi','penguin','robin',
-    'dove','flamingo','seagull','swan','emu','bowerbird','raven','lyrebird',
-    'peregrine','snowyowl','toucan','dukeblakiston','albatross','harpy',
-    'harpyeagle','baldeagle','blackcockatoo','ostrich','cassowary',
-    'pigeon','fairywren','barnowl','bluejay','bushturkey','bustard',
-    'finch','firecrest','goldeneagle','dodo','galah','mutatedpigeon',
-  ]);
-})();
-
->>>>>>> parent of d718e9a (Update bird sprite assets)
 /* ===== Sprite/Portrait helper: always prefer sprite when available ===== */
 function __normSpriteKey(k){ return String(k||'').toLowerCase().replace(/[^a-z]/g,''); }
 function __hasSpriteKey(k){
