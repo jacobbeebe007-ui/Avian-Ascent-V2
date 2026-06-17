@@ -15331,13 +15331,16 @@ function updateMusicRoleChoice(role,e){
     tryStartBattleBgmIfNeeded();
   }
 }
+function stopMenuThemeForPreview(){
+  const theme=getThemeBgmAudio();
+  if(theme){ try{ theme.pause(); theme.currentTime=0; }catch(_){} }
+}
 function playMusicMenuPreview(trackId){
   if(!isMusicMenuScreen()) return;
   const api=getBgmApi();
   const track=api?api.getTrack(trackId):null;
   if(!track) return;
-  const theme=getThemeBgmAudio();
-  if(theme){ try{ theme.pause(); }catch(_){} }
+  stopMenuThemeForPreview();
   const el=getMenuPreviewBgmAudio();
   if(!el) return;
   if(api){

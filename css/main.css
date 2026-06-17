@@ -3057,6 +3057,8 @@ html.avian-ow-ui-embed #app,html.avian-ow-nest-embed #app{min-height:100vh;backg
 html.avian-ow-ui-embed #action-tooltip,html.avian-ow-nest-embed #action-tooltip{z-index:99999;}
 html.avian-ow-ui-embed--settings #settings-modal.open,
 html.avian-ow-ui-embed--reference #ref-guide-modal.open{display:flex!important;}
+html.avian-ow-ui-embed--nest .nest-close,
+html.avian-ow-nest-embed .nest-close{display:none!important;}
 
 #nest-modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.82);z-index:8000;align-items:flex-start;justify-content:center;padding:20px;overflow-y:auto;}
 #nest-modal.open{display:flex;}

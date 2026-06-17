@@ -48,7 +48,7 @@ html,body{width:100%;height:100%;overflow:hidden;background:#060d05;}
 #panel-top{display:flex;align-items:stretch;flex:1;min-height:0;}
 #panel-actions{flex-shrink:0;display:flex;flex-direction:row;align-items:center;justify-content:center;flex-wrap:wrap;gap:12px 18px;padding:14px 20px 16px;border-top:1px solid rgba(200,160,32,.16);background:linear-gradient(180deg,rgba(8,12,8,.92),rgba(4,8,4,.88));}
 #panel-actions .nbtn{width:auto;min-width:120px;padding:14px 28px;font-size:13px;letter-spacing:3px;border-radius:10px;font-weight:600;}
-#panel-actions #hdr-nest-btn{padding:14px 32px;font-size:12px;letter-spacing:3px;border-radius:10px;font-weight:600;}
+#panel-actions #hdr-nest-btn,#panel-actions #hdr-settings-btn{padding:14px 32px;font-size:12px;letter-spacing:3px;border-radius:10px;font-weight:600;}
 #panel-actions #hdr-bird-btn{padding:8px 14px;}
 #panel-actions #hdr-bird-btn span{font-size:10px;}
 #panel-actions #hdr-bird-img{width:36px;height:36px;}
@@ -139,14 +139,14 @@ html,body{width:100%;height:100%;overflow:hidden;background:#060d05;}
 #pick-ok:hover{background:rgba(200,160,32,.16);border-color:var(--gold);}
 
 /* ── Nest button ─────────────────────────────────────────────── */
-#hdr-nest-btn{font-family:'Cinzel',serif;font-size:8px;letter-spacing:2px;background:rgba(200,160,32,.06);border:1px solid rgba(200,160,32,.22);color:var(--gold);padding:5px 14px;cursor:pointer;transition:all .2s;white-space:nowrap;}
+#hdr-nest-btn,#hdr-settings-btn{font-family:'Cinzel',serif;font-size:8px;letter-spacing:2px;background:rgba(200,160,32,.06);border:1px solid rgba(200,160,32,.22);color:var(--gold);padding:5px 14px;cursor:pointer;transition:all .2s;white-space:nowrap;}
 #hdr-forge-btn{font-family:'Cinzel',serif;font-size:8px;letter-spacing:2px;background:rgba(96,136,58,.08);border:1px solid rgba(96,136,58,.35);color:#b8e070;padding:5px 14px;cursor:pointer;transition:all .2s;white-space:nowrap;display:none;}
 #hdr-forge-btn:hover{background:rgba(96,136,58,.2);border-color:#90b434;}
 #hdr-forge-btn.is-visible{display:inline-block;}
 #hdr-return-ow-btn{font-family:'Cinzel',serif;font-size:8px;letter-spacing:2px;background:rgba(80,128,160,.08);border:1px solid rgba(80,128,160,.35);color:#90c0e0;padding:5px 14px;cursor:pointer;transition:all .2s;white-space:nowrap;display:none;margin-right:8px;}
 #hdr-return-ow-btn:hover{background:rgba(80,128,160,.2);border-color:#90c0e0;}
 #hdr-return-ow-btn.is-visible{display:inline-block;}
-#hdr-nest-btn:hover{background:rgba(200,160,32,.18);border-color:var(--gold);}
+#hdr-nest-btn:hover,#hdr-settings-btn:hover{background:rgba(200,160,32,.18);border-color:var(--gold);}
 #hdr-shiny-count{font-family:'Cinzel',serif;font-size:9px;color:var(--gold);letter-spacing:1px;background:rgba(200,160,32,.06);border:1px solid rgba(200,160,32,.22);padding:5px 10px;white-space:nowrap;}
 
 /* ── Mobile layout ───────────────────────────────────────────── */
@@ -159,7 +159,7 @@ html,body{width:100%;height:100%;overflow:hidden;background:#060d05;}
   #hdr-hint{display:none;}
   #panel-actions{gap:10px;padding:10px 12px;}
   #panel-actions .nbtn{min-width:100px;padding:12px 16px;font-size:11px;}
-  #panel-actions #hdr-nest-btn{padding:12px 20px;font-size:10px;}
+  #panel-actions #hdr-nest-btn,#panel-actions #hdr-settings-btn{padding:12px 20px;font-size:10px;}
   #panel-actions #hdr-bird-img{width:28px;height:28px;}
   /* Map viewport fills remaining space above bottom nav */
   #vp{flex:1;min-height:0;}
@@ -242,6 +242,7 @@ html,body{width:100%;height:100%;overflow:hidden;background:#060d05;}
       <span id="hdr-shiny-count">&#11088; 0</span>
       <button type="button" class="nbtn" id="btn-prev">&#9664; PREV</button>
       <button type="button" id="hdr-nest-btn">&#x1F3E0; NEST</button>
+      <button type="button" id="hdr-settings-btn">⚙ SETTINGS</button>
       <button type="button" class="nbtn" id="btn-open-node">OPEN LOCATION ▶</button>
       <button type="button" class="nbtn" id="btn-next">NEXT &#9654;</button>
     </div>
@@ -1137,13 +1138,27 @@ vp.addEventListener('wheel',e=>{e.preventDefault();const r=vp.getBoundingClientR
 document.getElementById('zin').addEventListener('click',()=>setZoom(zoom+ZOOM_STEP));
 document.getElementById('zout').addEventListener('click',()=>setZoom(zoom-ZOOM_STEP));
 let _pd=0;
-vp.addEventListener('touchstart',e=>{if(e.touches.length===2){_pd=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY);e.preventDefault();}},{passive:false});
-vp.addEventListener('touchmove',e=>{if(e.touches.length===2&&_pd>0){e.preventDefault();const d=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY);const r=vp.getBoundingClientRect();setZoom(zoom*(d/_pd),(e.touches[0].clientX+e.touches[1].clientX)/2-r.left,(e.touches[0].clientY+e.touches[1].clientY)/2-r.top);_pd=d;}},{passive:false});
-vp.addEventListener('touchend',()=>{_pd=0;});
+let _td=null,_suppressNextClickUntil=0;
+const TOUCH_PAN_THRESHOLD=6;
+function isMapPanExcludedTarget(target){return !!(target&&target.closest&&target.closest('button,.zbtn,#mm-wrap,#panel,#ov,.ow-nest-overlay,#pick,#ov-bird-popup'));}
+function setMapPanTransitions(enabled){document.getElementById('scaler').style.transition=enabled?'transform .5s cubic-bezier(.25,.46,.45,.94)':'none';document.getElementById('mw').style.transition=enabled?'transform .5s cubic-bezier(.25,.46,.45,.94)':'none';}
+function applyDraggedCameraFrom(startX,startY,baseX,baseY,clientX,clientY){const dx=(clientX-startX)/zoom,dy=(clientY-startY)/zoom;const vpEl=document.getElementById('vp'),vw=vpEl.offsetWidth||900,vh=vpEl.offsetHeight||420;_cx=clamp(baseX-dx,0,MAP_W-vw/zoom);_cy=clamp(baseY-dy,0,MAP_H-vh/zoom);document.getElementById('mw').style.transform=`translate(${-_cx}px,${-_cy}px)`;drawMM();}
+function endTouchPan(){if(!_td)return;if(_td.moved)_suppressNextClickUntil=Date.now()+350;_td=null;vp.classList.remove('panning');setMapPanTransitions(true);}
+vp.addEventListener('touchstart',e=>{
+  if(e.touches.length===2){_td=null;_pd=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY);vp.classList.remove('panning');setMapPanTransitions(false);e.preventDefault();return;}
+  if(e.touches.length===1&&!isMapPanExcludedTarget(e.target)){const t=e.touches[0];_td={x:t.clientX,y:t.clientY,cx:_cx,cy:_cy,moved:false};vp.classList.add('panning');setMapPanTransitions(false);}
+},{passive:false});
+vp.addEventListener('touchmove',e=>{
+  if(e.touches.length===2&&_pd>0){_td=null;e.preventDefault();const d=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY);const r=vp.getBoundingClientRect();setZoom(zoom*(d/_pd),(e.touches[0].clientX+e.touches[1].clientX)/2-r.left,(e.touches[0].clientY+e.touches[1].clientY)/2-r.top);_pd=d;return;}
+  if(e.touches.length===1&&_td){const t=e.touches[0];const moved=Math.hypot(t.clientX-_td.x,t.clientY-_td.y);if(moved>TOUCH_PAN_THRESHOLD)_td.moved=true;if(_td.moved){e.preventDefault();applyDraggedCameraFrom(_td.x,_td.y,_td.cx,_td.cy,t.clientX,t.clientY);}}
+},{passive:false});
+vp.addEventListener('touchend',()=>{_pd=0;endTouchPan();});
+vp.addEventListener('touchcancel',()=>{_pd=0;endTouchPan();});
+vp.addEventListener('click',e=>{if(Date.now()<_suppressNextClickUntil){e.preventDefault();e.stopPropagation();}},true);
 let _dr=false,_dsx=0,_dsy=0,_dcx=0,_dcy=0;
-vp.addEventListener('mousedown',e=>{if(e.button!==0)return;if(e.target.closest('button,.zbtn,#mm-wrap'))return;_dr=true;_dsx=e.clientX;_dsy=e.clientY;_dcx=_cx;_dcy=_cy;vp.classList.add('panning');document.getElementById('scaler').style.transition='none';document.getElementById('mw').style.transition='none';e.preventDefault();});
-window.addEventListener('mousemove',e=>{if(!_dr)return;const dx=(e.clientX-_dsx)/zoom,dy=(e.clientY-_dsy)/zoom;const vpEl=document.getElementById('vp'),vw=vpEl.offsetWidth||900,vh=vpEl.offsetHeight||420;_cx=clamp(_dcx-dx,0,MAP_W-vw/zoom);_cy=clamp(_dcy-dy,0,MAP_H-vh/zoom);document.getElementById('mw').style.transform=`translate(${-_cx}px,${-_cy}px)`;drawMM();});
-window.addEventListener('mouseup',()=>{if(!_dr)return;_dr=false;vp.classList.remove('panning');document.getElementById('scaler').style.transition='transform .5s cubic-bezier(.25,.46,.45,.94)';document.getElementById('mw').style.transition='transform .5s cubic-bezier(.25,.46,.45,.94)';});
+vp.addEventListener('mousedown',e=>{if(e.button!==0)return;if(isMapPanExcludedTarget(e.target))return;_dr=true;_dsx=e.clientX;_dsy=e.clientY;_dcx=_cx;_dcy=_cy;vp.classList.add('panning');setMapPanTransitions(false);e.preventDefault();});
+window.addEventListener('mousemove',e=>{if(!_dr)return;applyDraggedCameraFrom(_dsx,_dsy,_dcx,_dcy,e.clientX,e.clientY);});
+window.addEventListener('mouseup',()=>{if(!_dr)return;_dr=false;vp.classList.remove('panning');setMapPanTransitions(true);});
 document.getElementById('root').addEventListener('keydown',e=>{
   if(document.getElementById('pick').classList.contains('on')){if(e.key==='Escape'){document.getElementById('pick').classList.remove('on');document.getElementById('root').focus();}return;}
   if(document.getElementById('ov').classList.contains('on')){
@@ -1196,6 +1211,9 @@ document.getElementById('btn-next').addEventListener('click',()=>{
 
 document.getElementById('hdr-nest-btn').addEventListener('click',()=>{
   openOwNestOverlay();
+});
+document.getElementById('hdr-settings-btn')?.addEventListener('click',()=>{
+  openOwUiOverlay('settings');
 });
 document.getElementById('btn-open-node').addEventListener('click',()=>{
   if(isMoving)return;
