@@ -15243,7 +15243,7 @@ function tryStartBattleBgmIfNeeded(){
     if(Math.abs(Number(el.volume)-target)<0.02) return;
   }
   if(!el.paused && _battleBgmActiveTrackId && !api?.isFadeActive?.(el)) return;
-  const track=api?api.pickRandomBattleTrack():null;
+  const track=api?api.getTrackForRole('battle'):null;
   if(!track) return;
   beginBattleBgmFadeIn(track);
 }
@@ -15256,6 +15256,80 @@ function stopMenuPreviewBgmImmediate(){
 function isMusicMenuScreen(){
   const scr=document.querySelector('.screen.active');
   return !!(scr && scr.id==='screen-select');
+}
+function setAudioElTrack(el, track){
+  if(!el||!track?.src) return;
+  const abs=new URL(track.src, window.location.href).href;
+  if(el.src!==abs){
+    el.src=track.src;
+    try{ el.load(); }catch(_){}
+  }
+}
+function syncMusicMenuControls(){
+  const api=getBgmApi();
+  const overrides=api?.getMusicOverrides?api.getMusicOverrides():{menu:'default',battle:'default',overworld:'default'};
+  const ms=getMusicSettings();
+  const setVal=(id,val)=>{ const el=document.getElementById(id); if(el) el.value=val; };
+  setVal('music-menu-choice', overrides.menu||'default');
+  setVal('music-battle-choice', overrides.battle||'default');
+  setVal('music-overworld-choice', overrides.overworld||'default');
+  const muted=document.getElementById('music-menu-muted');
+  if(muted) muted.checked=!!ms.muted;
+  const vol=document.getElementById('music-menu-volume');
+  if(vol) vol.value=String(ms.volume);
+  const vv=document.getElementById('music-menu-volume-value');
+  if(vv) vv.textContent=`${Math.round(Number(ms.volume)||0)}%`;
+}
+function applyMusicPanelVolumeState(volume, muted){
+  const v=Math.max(0,Math.min(100,Number(volume)||0));
+  const settingVol=document.getElementById('setting-music-volume');
+  const settingMuted=document.getElementById('setting-music-muted');
+  if(settingVol) settingVol.value=String(v);
+  if(settingMuted) settingMuted.checked=!!muted;
+  saveMusicSettings({muted:!!muted, volume:v});
+  try{
+    const prev=getAccessibilitySettings();
+    const cfg=normalizeAccessibilitySettings(Object.assign({}, prev, {
+      audio:Object.assign({}, prev.audio||{}, { music:v }),
+    }));
+    localStorage.setItem(ACCESS_KEY, JSON.stringify(cfg));
+  }catch(_){}
+  applyThemeMusicToAudioEl();
+  syncThemeMusicButtonLabels();
+  syncMusicMenuControls();
+  const active=document.querySelector('.screen.active');
+  if(active&&(active.id==='screen-start'||active.id==='screen-select')) tryPlayThemeBgmForCurrentMenuScreen();
+  else if(active?.id==='screen-battle'&&isDukeStoryBossFight()) tryStartDukeBattleBgmIfNeeded();
+  else if(active?.id==='screen-battle') tryStartBattleBgmIfNeeded();
+}
+function updateMusicPanelVolume(value){
+  const muted=!!document.getElementById('music-menu-muted')?.checked;
+  applyMusicPanelVolumeState(value, muted);
+}
+function updateMusicPanelMuted(value,e){
+  const muted=!!(e?.target?e.target.checked:value);
+  const vol=Number(document.getElementById('music-menu-volume')?.value||getMusicSettings().volume);
+  applyMusicPanelVolumeState(vol, muted);
+}
+function updateMusicRoleChoice(role,e){
+  const api=getBgmApi();
+  if(!api?.setTrackForRole) return;
+  const choice=String(e?.target?.value||'default');
+  api.setTrackForRole(role, choice);
+  syncMusicMenuControls();
+  const active=document.querySelector('.screen.active');
+  if(role==='menu' && active&&(active.id==='screen-start'||active.id==='screen-select')){
+    const preview=getMenuPreviewBgmAudio();
+    if(!preview || preview.paused){
+      const theme=getThemeBgmAudio();
+      const track=api.getTrackForRole('menu');
+      setAudioElTrack(theme, track);
+      tryPlayThemeBgmForCurrentMenuScreen();
+    }
+  }else if(role==='battle' && active?.id==='screen-battle' && !isDukeStoryBossFight()){
+    stopBattleBgmImmediate();
+    tryStartBattleBgmIfNeeded();
+  }
 }
 function playMusicMenuPreview(trackId){
   if(!isMusicMenuScreen()) return;
@@ -15294,7 +15368,8 @@ function stopMusicMenuPreview(){
 function openMusicMenu(){
   if(!isMusicMenuScreen()) return;
   const modal=document.getElementById('music-menu-modal');
-  if(!modal) return;
+  if(!modal){ try{ console.warn('[music] music-menu-modal missing'); }catch(_){} return; }
+  syncMusicMenuControls();
   const theme=getThemeBgmAudio();
   if(theme){ try{ theme.pause(); }catch(_){} }
   modal.hidden=false;
@@ -15510,6 +15585,9 @@ function tryPlayThemeBgmForCurrentMenuScreen(){
   if(!el||getMusicSettings().muted) return;
   const scr=document.querySelector('.screen.active');
   if(!scr||(scr.id!=='screen-start'&&scr.id!=='screen-select')) return;
+  const api=getBgmApi();
+  const track=api?.getTrackForRole?api.getTrackForRole('menu'):null;
+  if(track) setAudioElTrack(el, track);
   primeThemeBgmAudio();
   applyThemeMusicToAudioEl();
   el.play().catch(()=>{});
@@ -15613,6 +15691,7 @@ function updateMusicSettingsFromControls(){
   saveMusicSettings(s);
   applyThemeMusicToAudioEl();
   syncThemeMusicButtonLabels();
+  syncMusicMenuControls();
   const active=document.querySelector('.screen.active');
   if(active&&(active.id==='screen-start'||active.id==='screen-select')){
     tryPlayThemeBgmForCurrentMenuScreen();
@@ -15643,6 +15722,22 @@ globalThis.openMusicMenu=openMusicMenu;
 globalThis.closeMusicMenu=closeMusicMenu;
 globalThis.playMusicMenuPreview=playMusicMenuPreview;
 globalThis.stopMusicMenuPreview=stopMusicMenuPreview;
+globalThis.updateMusicRoleChoice=updateMusicRoleChoice;
+globalThis.updateMusicPanelVolume=updateMusicPanelVolume;
+globalThis.updateMusicPanelMuted=updateMusicPanelMuted;
+try{
+  if(!globalThis.Avian) globalThis.Avian={};
+  if(!globalThis.Avian.actions) globalThis.Avian.actions={};
+  Object.assign(globalThis.Avian.actions, {
+    openMusicMenu,
+    closeMusicMenu,
+    playMusicMenuPreview,
+    stopMusicMenuPreview,
+    updateMusicRoleChoice,
+    updateMusicPanelVolume,
+    updateMusicPanelMuted,
+  });
+}catch(_){}
 
 function detectPreferredUIMode(){
   const narrow=typeof window!=='undefined' && window.matchMedia && window.matchMedia('(max-width: 768px)').matches;
@@ -16156,11 +16251,14 @@ function updateAudioSettingsFromControls(){
   localStorage.setItem(ACCESS_KEY, JSON.stringify(cfg));
   applyThemeMusicToAudioEl();
   syncThemeMusicButtonLabels();
+  syncMusicMenuControls();
   const active=document.querySelector('.screen.active');
   if(active&&(active.id==='screen-start'||active.id==='screen-select')){
     tryPlayThemeBgmForCurrentMenuScreen();
   }else if(active?.id==='screen-battle'&&isDukeStoryBossFight()){
     tryStartDukeBattleBgmIfNeeded();
+  }else if(active?.id==='screen-battle'){
+    tryStartBattleBgmIfNeeded();
   }
 }
 function updateMusicSettingsFromControls(){

@@ -1014,15 +1014,63 @@
 <h2 id="music-menu-title">Music</h2>
 <button type="button" class="music-menu-close" data-action="closeMusicMenu" aria-label="Close music menu">×</button>
 </div>
-<p class="music-menu-hint">Preview tracks from the main menu (war room) only.</p>
+<p class="music-menu-hint">Choose music for each part of the game, or preview tracks from the war room.</p>
+<section class="music-menu-section" aria-label="Music volume">
+<label class="music-menu-check"><input id="music-menu-muted" type="checkbox" data-change="updateMusicPanelMuted"/> Mute music</label>
+<label class="music-menu-range-label" for="music-menu-volume"><span>Music volume</span><strong id="music-menu-volume-value">50%</strong></label>
+<input id="music-menu-volume" class="music-menu-range" type="range" min="0" max="100" step="5" value="50" data-input="updateMusicPanelVolume"/>
+</section>
+<section class="music-menu-section" aria-label="Music overrides">
+<div class="music-role-row">
+<label for="music-menu-choice">Menu music</label>
+<select id="music-menu-choice" data-change="updateMusicRoleChoice:menu">
+<option value="default">Default: Blakiston Theme</option>
+<option value="menu">Blakiston Theme</option>
+<option value="sharp_beak">Sharp Beak Quick Wing</option>
+<option value="brittle_waltz">The Brittle Waltz</option>
+<option value="pigeon_jig">The Pigeon&rsquo;s Desperate Jig</option>
+<option value="last_thermal">The Last Thermal</option>
+<option value="duke">Duke Blakiston Battle</option>
+</select>
+</div>
+<div class="music-role-row">
+<label for="music-battle-choice">Battle music</label>
+<select id="music-battle-choice" data-change="updateMusicRoleChoice:battle">
+<option value="default">Default: Random battle track</option>
+<option value="menu">Blakiston Theme</option>
+<option value="sharp_beak">Sharp Beak Quick Wing</option>
+<option value="brittle_waltz">The Brittle Waltz</option>
+<option value="pigeon_jig">The Pigeon&rsquo;s Desperate Jig</option>
+<option value="last_thermal">The Last Thermal</option>
+<option value="duke">Duke Blakiston Battle</option>
+</select>
+</div>
+<div class="music-role-row">
+<label for="music-overworld-choice">Overworld music</label>
+<select id="music-overworld-choice" data-change="updateMusicRoleChoice:overworld">
+<option value="default">Default: The Last Thermal</option>
+<option value="menu">Blakiston Theme</option>
+<option value="sharp_beak">Sharp Beak Quick Wing</option>
+<option value="brittle_waltz">The Brittle Waltz</option>
+<option value="pigeon_jig">The Pigeon&rsquo;s Desperate Jig</option>
+<option value="last_thermal">The Last Thermal</option>
+<option value="duke">Duke Blakiston Battle</option>
+</select>
+</div>
+<p class="music-menu-note">Duke Blakiston stage 20 always uses Duke Blakiston Battle, regardless of battle music selection.</p>
+</section>
+<section class="music-menu-section" aria-label="Preview tracks">
+<h3 class="music-menu-section-title">Preview</h3>
 <ul class="music-menu-list" id="music-menu-list">
 <li class="music-menu-item"><span class="music-menu-track-title">Blakiston Theme</span><button type="button" class="music-menu-play-btn" data-action="playMusicMenuPreview:menu">Play</button></li>
 <li class="music-menu-item"><span class="music-menu-track-title">Sharp Beak Quick Wing</span><button type="button" class="music-menu-play-btn" data-action="playMusicMenuPreview:sharp_beak">Play</button></li>
 <li class="music-menu-item"><span class="music-menu-track-title">The Brittle Waltz</span><button type="button" class="music-menu-play-btn" data-action="playMusicMenuPreview:brittle_waltz">Play</button></li>
 <li class="music-menu-item"><span class="music-menu-track-title">The Pigeon&rsquo;s Desperate Jig</span><button type="button" class="music-menu-play-btn" data-action="playMusicMenuPreview:pigeon_jig">Play</button></li>
 <li class="music-menu-item"><span class="music-menu-track-title">The Last Thermal</span><button type="button" class="music-menu-play-btn" data-action="playMusicMenuPreview:last_thermal">Play</button></li>
+<li class="music-menu-item"><span class="music-menu-track-title">Duke Blakiston Battle</span><button type="button" class="music-menu-play-btn" data-action="playMusicMenuPreview:duke">Play</button></li>
 </ul>
 <button type="button" class="music-menu-stop-btn" data-action="stopMusicMenuPreview">Stop preview</button>
+</section>
 </div>
 </div>
 

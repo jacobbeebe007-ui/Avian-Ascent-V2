@@ -1423,13 +1423,14 @@ requestAnimationFrame(()=>requestAnimationFrame(()=>{pl.style.transition='left .
   const api = globalThis.BgmShared || globalThis.Avian?.audio;
   const el = document.getElementById('overworld-bgm-audio');
   if(!api || !el) return;
-  const track = api.getTrack('last_thermal');
-  if(!track) return;
+  function getOwTrack(){ return (api.getTrackForRole && api.getTrackForRole('overworld')) || api.getTrack('last_thermal'); }
   function stopOwBgm(){
     api.stopImmediate(el);
   }
   function startOwBgm(){
     if(api.getMusicSettings().muted) return;
+    const track = getOwTrack();
+    if(!track) return;
     api.fadeIn(el, { src: track.src, loop: true, durationMs: 1200 });
   }
   if(document.readyState === 'loading'){

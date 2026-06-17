@@ -2,6 +2,7 @@
 (function initBgmShared(global) {
   const MUSIC_SETTINGS_KEY = 'avian_music_v1';
   const ACCESS_KEY = 'avian_accessibility_v1';
+  const MUSIC_OVERRIDES_KEY = 'avian_music_overrides_v1';
   const DEFAULT_VOLUME_PCT = 50;
   const AUDIO_BASE = './assets/audio/';
 
@@ -44,8 +45,10 @@
     },
   });
 
-  const PREVIEW_TRACK_IDS = ['menu', 'sharp_beak', 'brittle_waltz', 'pigeon_jig', 'last_thermal'];
+  const PREVIEW_TRACK_IDS = ['menu', 'sharp_beak', 'brittle_waltz', 'pigeon_jig', 'last_thermal', 'duke'];
+  const SELECTABLE_TRACK_IDS = ['menu', 'sharp_beak', 'brittle_waltz', 'pigeon_jig', 'last_thermal', 'duke'];
   const BATTLE_TRACK_IDS = ['sharp_beak', 'brittle_waltz', 'pigeon_jig'];
+  const DEFAULT_ROLE_TRACKS = Object.freeze({ menu: 'menu', overworld: 'last_thermal' });
 
   const fadeState = new WeakMap();
 
@@ -80,6 +83,59 @@
     const s = getMusicSettings();
     const mult = getAudioVolumeMultipliers();
     return s.muted ? 0 : Math.max(0, Math.min(1, (s.volume / 100) * mult.masterMusic));
+  }
+
+  function normalizeRole(role) {
+    return role === 'menu' || role === 'battle' || role === 'overworld' ? role : null;
+  }
+
+  function normalizeTrackChoice(choice) {
+    if (!choice || choice === 'default') return 'default';
+    return TRACKS[choice] ? choice : 'default';
+  }
+
+  function getMusicOverrides() {
+    const defaults = { menu: 'default', battle: 'default', overworld: 'default' };
+    try {
+      const raw = JSON.parse(global.localStorage.getItem(MUSIC_OVERRIDES_KEY) || '{}');
+      return {
+        menu: normalizeTrackChoice(raw.menu),
+        battle: normalizeTrackChoice(raw.battle),
+        overworld: normalizeTrackChoice(raw.overworld),
+      };
+    } catch (_) {
+      return defaults;
+    }
+  }
+
+  function saveMusicOverrides(overrides) {
+    const prev = getMusicOverrides();
+    const next = {
+      menu: normalizeTrackChoice(overrides?.menu ?? prev.menu),
+      battle: normalizeTrackChoice(overrides?.battle ?? prev.battle),
+      overworld: normalizeTrackChoice(overrides?.overworld ?? prev.overworld),
+    };
+    try { global.localStorage.setItem(MUSIC_OVERRIDES_KEY, JSON.stringify(next)); } catch (_) { /* noop */ }
+    return next;
+  }
+
+  function setTrackForRole(role, trackIdOrDefault) {
+    const r = normalizeRole(role);
+    if (!r) return getMusicOverrides();
+    return saveMusicOverrides({ [r]: normalizeTrackChoice(trackIdOrDefault) });
+  }
+
+  function getTrackForRole(role) {
+    const r = normalizeRole(role);
+    if (!r) return null;
+    const choice = getMusicOverrides()[r];
+    if (choice && choice !== 'default' && TRACKS[choice]) return TRACKS[choice];
+    if (r === 'battle') return pickRandomBattleTrack();
+    return TRACKS[DEFAULT_ROLE_TRACKS[r]] || null;
+  }
+
+  function listSelectableTracks() {
+    return SELECTABLE_TRACK_IDS.map((id) => TRACKS[id]).filter(Boolean);
   }
 
   function cancelFade(el) {
@@ -207,13 +263,19 @@
   const api = {
     TRACKS,
     PREVIEW_TRACK_IDS,
+    SELECTABLE_TRACK_IDS,
     BATTLE_TRACK_IDS,
     getMusicSettings,
     getAudioVolumeMultipliers,
     getTargetVolume,
+    getMusicOverrides,
+    saveMusicOverrides,
+    setTrackForRole,
+    getTrackForRole,
     pickRandomBattleTrack,
     getTrack,
     listPreviewTracks,
+    listSelectableTracks,
     fadeIn,
     fadeOut,
     stopImmediate,
