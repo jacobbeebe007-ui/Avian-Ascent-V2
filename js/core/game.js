@@ -6289,7 +6289,6 @@ globalThis.openSelectHubPanel = openSelectHubPanel;
 globalThis.closeSelectHubPanel = closeSelectHubPanel;
 
 function takeFlightToSelect(){
-  closeMusicMenu();
   showScreen('screen-select');
   if(typeof initSelectionSafe==='function') initSelectionSafe();
   // Stay on the war-room splash; player opens "Begin Ascent" to reach the roster (avoids skipping the barn menu).
@@ -6305,7 +6304,7 @@ globalThis.scrollToSelectRoster = scrollToSelectRoster;
 
 function showScreen(id) {
   const prev=(document.querySelector('.screen.active')||{}).id;
-  if(prev==='screen-start' && id!=='screen-start') closeMusicMenu();
+  if(prev==='screen-select' && id!=='screen-select') closeMusicMenu();
   closeSelectHubPanel();
   document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
   document.getElementById(id).classList.add('active');
@@ -15254,9 +15253,12 @@ function stopMenuPreviewBgmImmediate(){
   if(api) api.stopImmediate(el);
   else if(el){ try{ el.pause(); el.currentTime=0; }catch(_){} }
 }
-function playMusicMenuPreview(trackId){
+function isMusicMenuScreen(){
   const scr=document.querySelector('.screen.active');
-  if(!scr||scr.id!=='screen-start') return;
+  return !!(scr && scr.id==='screen-select');
+}
+function playMusicMenuPreview(trackId){
+  if(!isMusicMenuScreen()) return;
   const api=getBgmApi();
   const track=api?api.getTrack(trackId):null;
   if(!track) return;
@@ -15290,8 +15292,7 @@ function stopMusicMenuPreview(){
   }
 }
 function openMusicMenu(){
-  const scr=document.querySelector('.screen.active');
-  if(!scr||scr.id!=='screen-start') return;
+  if(!isMusicMenuScreen()) return;
   const modal=document.getElementById('music-menu-modal');
   if(!modal) return;
   const theme=getThemeBgmAudio();
