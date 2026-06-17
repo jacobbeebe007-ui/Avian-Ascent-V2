@@ -3234,7 +3234,7 @@ html.avian-ow-ui-embed--reference #ref-guide-modal.open{display:flex!important;}
 .sprite-emu{background-image:url("../assets/sprites/emu.png");}
 .sprite-ostrich{background-image:url("../assets/sprites/Ostrich.png");}
 .sprite-cassowary{background-image:url("../assets/sprites/Cassowary.png");}
-.sprite-albatross{background-image:url("../assets/sprites/Albatross.png");}
+.sprite-albatross{background-image:url("../assets/sprites/albatross.png");}
 .sprite-raven{background-image:url("../assets/sprites/raven.png");}
 .sprite-lyrebird{background-image:url("../assets/sprites/lyrebird.png");}
 .sprite-bowerbird{background-image:url("../assets/sprites/bowerbird.png");}
@@ -3242,11 +3242,24 @@ html.avian-ow-ui-embed--reference #ref-guide-modal.open{display:flex!important;}
 .sprite-snowyowl{background-image:url("../assets/sprites/snowyowl.png");}
 .sprite-toucan{background-image:url("../assets/sprites/toucan.png");}
 .sprite-shoebillstork{background-image:url("../assets/sprites/Shoebill Stork.png");}
-.sprite-baldeagle{background-image:url("../assets/sprites/Bald Eagle.png");}
-.sprite-harpy{background-image:url("../assets/sprites/Harpy Eagle.png");}
-.sprite-harpyeagle{background-image:url("../assets/sprites/Harpy Eagle.png");}
+.sprite-baldeagle{background-image:url("../assets/sprites/baldeagle.png");}
+.sprite-harpy{background-image:url("../assets/sprites/harpyeagle.png");}
+.sprite-harpyeagle{background-image:url("../assets/sprites/harpyeagle.png");}
 .sprite-blackcockatoo{background-image:url("../assets/sprites/Black Cockatoo.png");}
 .sprite-dukeblakiston{background-image:url("../assets/sprites/Duke Blakiston.png");}
+.sprite-barnowl{background-image:url("../assets/sprites/barnowl.png");}
+.sprite-bluejay{background-image:url("../assets/sprites/bluejay.png");}
+.sprite-bushturkey{background-image:url("../assets/sprites/bushturkey.png");}
+.sprite-bustard{background-image:url("../assets/sprites/bustard.png");}
+.sprite-cardinal{background-image:url("../assets/sprites/cardinal.png");}
+.sprite-dodo{background-image:url("../assets/sprites/dodo.png");}
+.sprite-fairywren{background-image:url("../assets/sprites/fairywren.png");}
+.sprite-finch{background-image:url("../assets/sprites/finch.png");}
+.sprite-firecrest{background-image:url("../assets/sprites/firecrest.png");}
+.sprite-galah{background-image:url("../assets/sprites/galah.png");}
+.sprite-goldeneagle{background-image:url("../assets/sprites/goldeneagle.png");}
+.sprite-pigeon{background-image:url("../assets/sprites/pigeon.png");}
+.sprite-mutatedpigeon{background-image:url("../assets/sprites/mutatedpigeon.png");}
 /* Character Select portrait slot */
 .bird-portrait .sprite4.small{ margin:0 auto; display:block; }
 .bird-portrait .sprite4.locked{ filter: grayscale(1) brightness(0.35); }

@@ -108,7 +108,7 @@
 
 /* ===== 08_albatross-sprite-replacement.css ===== */
 
-.sprite-albatross{background-image:url("../assets/sprites/Albatross.png");background-size:200% 200%;background-repeat:no-repeat;}
+.sprite-albatross{background-image:url("../assets/sprites/albatross.png");background-size:200% 200%;background-repeat:no-repeat;}
 .sprite-albatross.frame-0{background-position:0% 0%;}
 .sprite-albatross.frame-1{background-position:100% 0%;}
 .sprite-albatross.frame-2{background-position:0% 100%;}
@@ -199,6 +199,99 @@
 .sprite-toucan.frame-1{background-position:100% 0% !important;}
 .sprite-toucan.frame-2{background-position:0% 100% !important;}
 .sprite-toucan.frame-3{background-position:100% 100% !important;}
+
+
+/* ===== lowercase sprite batch (2x2 sheets) ===== */
+
+.sprite-baldeagle{background-image:url("../assets/sprites/baldeagle.png");background-size:200% 200%;background-repeat:no-repeat;}
+.sprite-baldeagle.frame-0{background-position:0% 0%;}
+.sprite-baldeagle.frame-1{background-position:100% 0%;}
+.sprite-baldeagle.frame-2{background-position:0% 100%;}
+.sprite-baldeagle.frame-3{background-position:100% 100%;}
+
+.sprite-harpy,.sprite-harpyeagle{background-image:url("../assets/sprites/harpyeagle.png");background-size:200% 200%;background-repeat:no-repeat;}
+.sprite-harpy.frame-0,.sprite-harpyeagle.frame-0{background-position:0% 0%;}
+.sprite-harpy.frame-1,.sprite-harpyeagle.frame-1{background-position:100% 0%;}
+.sprite-harpy.frame-2,.sprite-harpyeagle.frame-2{background-position:0% 100%;}
+.sprite-harpy.frame-3,.sprite-harpyeagle.frame-3{background-position:100% 100%;}
+
+.sprite-barnowl{background-image:url("../assets/sprites/barnowl.png");background-size:200% 200%;background-repeat:no-repeat;}
+.sprite-barnowl.frame-0{background-position:0% 0%;}
+.sprite-barnowl.frame-1{background-position:100% 0%;}
+.sprite-barnowl.frame-2{background-position:0% 100%;}
+.sprite-barnowl.frame-3{background-position:100% 100%;}
+
+.sprite-bluejay{background-image:url("../assets/sprites/bluejay.png");background-size:200% 200%;background-repeat:no-repeat;}
+.sprite-bluejay.frame-0{background-position:0% 0%;}
+.sprite-bluejay.frame-1{background-position:100% 0%;}
+.sprite-bluejay.frame-2{background-position:0% 100%;}
+.sprite-bluejay.frame-3{background-position:100% 100%;}
+
+.sprite-bushturkey{background-image:url("../assets/sprites/bushturkey.png");background-size:200% 200%;background-repeat:no-repeat;}
+.sprite-bushturkey.frame-0{background-position:0% 0%;}
+.sprite-bushturkey.frame-1{background-position:100% 0%;}
+.sprite-bushturkey.frame-2{background-position:0% 100%;}
+.sprite-bushturkey.frame-3{background-position:100% 100%;}
+
+.sprite-bustard{background-image:url("../assets/sprites/bustard.png");background-size:200% 200%;background-repeat:no-repeat;}
+.sprite-bustard.frame-0{background-position:0% 0%;}
+.sprite-bustard.frame-1{background-position:100% 0%;}
+.sprite-bustard.frame-2{background-position:0% 100%;}
+.sprite-bustard.frame-3{background-position:100% 100%;}
+
+.sprite-cardinal{background-image:url("../assets/sprites/cardinal.png");background-size:200% 200%;background-repeat:no-repeat;}
+.sprite-cardinal.frame-0{background-position:0% 0%;}
+.sprite-cardinal.frame-1{background-position:100% 0%;}
+.sprite-cardinal.frame-2{background-position:0% 100%;}
+.sprite-cardinal.frame-3{background-position:100% 100%;}
+
+.sprite-dodo{background-image:url("../assets/sprites/dodo.png");background-size:200% 200%;background-repeat:no-repeat;}
+.sprite-dodo.frame-0{background-position:0% 0%;}
+.sprite-dodo.frame-1{background-position:100% 0%;}
+.sprite-dodo.frame-2{background-position:0% 100%;}
+.sprite-dodo.frame-3{background-position:100% 100%;}
+
+.sprite-fairywren{background-image:url("../assets/sprites/fairywren.png");background-size:200% 200%;background-repeat:no-repeat;}
+.sprite-fairywren.frame-0{background-position:0% 0%;}
+.sprite-fairywren.frame-1{background-position:100% 0%;}
+.sprite-fairywren.frame-2{background-position:0% 100%;}
+.sprite-fairywren.frame-3{background-position:100% 100%;}
+
+.sprite-finch{background-image:url("../assets/sprites/finch.png");background-size:200% 200%;background-repeat:no-repeat;}
+.sprite-finch.frame-0{background-position:0% 0%;}
+.sprite-finch.frame-1{background-position:100% 0%;}
+.sprite-finch.frame-2{background-position:0% 100%;}
+.sprite-finch.frame-3{background-position:100% 100%;}
+
+.sprite-firecrest{background-image:url("../assets/sprites/firecrest.png");background-size:200% 200%;background-repeat:no-repeat;}
+.sprite-firecrest.frame-0{background-position:0% 0%;}
+.sprite-firecrest.frame-1{background-position:100% 0%;}
+.sprite-firecrest.frame-2{background-position:0% 100%;}
+.sprite-firecrest.frame-3{background-position:100% 100%;}
+
+.sprite-galah{background-image:url("../assets/sprites/galah.png");background-size:200% 200%;background-repeat:no-repeat;}
+.sprite-galah.frame-0{background-position:0% 0%;}
+.sprite-galah.frame-1{background-position:100% 0%;}
+.sprite-galah.frame-2{background-position:0% 100%;}
+.sprite-galah.frame-3{background-position:100% 100%;}
+
+.sprite-goldeneagle{background-image:url("../assets/sprites/goldeneagle.png");background-size:200% 200%;background-repeat:no-repeat;}
+.sprite-goldeneagle.frame-0{background-position:0% 0%;}
+.sprite-goldeneagle.frame-1{background-position:100% 0%;}
+.sprite-goldeneagle.frame-2{background-position:0% 100%;}
+.sprite-goldeneagle.frame-3{background-position:100% 100%;}
+
+.sprite-pigeon{background-image:url("../assets/sprites/pigeon.png");background-size:200% 200%;background-repeat:no-repeat;}
+.sprite-pigeon.frame-0{background-position:0% 0%;}
+.sprite-pigeon.frame-1{background-position:100% 0%;}
+.sprite-pigeon.frame-2{background-position:0% 100%;}
+.sprite-pigeon.frame-3{background-position:100% 100%;}
+
+.sprite-mutatedpigeon{background-image:url("../assets/sprites/mutatedpigeon.png");background-size:200% 200%;background-repeat:no-repeat;}
+.sprite-mutatedpigeon.frame-0{background-position:0% 0%;}
+.sprite-mutatedpigeon.frame-1{background-position:100% 0%;}
+.sprite-mutatedpigeon.frame-2{background-position:0% 100%;}
+.sprite-mutatedpigeon.frame-3{background-position:100% 100%;}
 
 
 /* ===== 20_all-sprites-living-motion-patch.css ===== */

@@ -386,7 +386,7 @@
       rosterId: enemyId,
       name: row.name,
       birdKey: row.birdKey,
-      portraitKey: row.birdKey,
+      portraitKey: row.birdKey === 'pigeon' ? 'mutatedpigeon' : row.birdKey,
       fantasyTitle: row.fantasyTitle || '',
       size: size,
       enemyClass: cls,

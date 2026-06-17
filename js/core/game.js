@@ -3906,7 +3906,7 @@ function openEnemyInfoPopup(){
   if(spriteEl){
     let ent=G.enemy;
     if(G.enemy.birdKey&&BIRDS[G.enemy.birdKey]){
-      ent=Object.assign({}, BIRDS[G.enemy.birdKey], G.enemy, { portraitKey: BIRDS[G.enemy.birdKey].portraitKey || G.enemy.portraitKey });
+      ent=Object.assign({}, BIRDS[G.enemy.birdKey], G.enemy, { portraitKey: G.enemy.portraitKey || BIRDS[G.enemy.birdKey].portraitKey });
     }
     spriteEl.innerHTML=renderEntityAvatarHTML(ent,'battle');
   }
@@ -5335,7 +5335,10 @@ function neutralBirdFallbackHTML(sizeClass){
 }
 function renderBirdIconHTML(birdKey, sizeClass, locked){
   const k = normalizeSpriteBirdKey(birdKey);
-  const spriteBirds = /^(sparrow|goose|blackbird|crow|macaw|robin|dove|hummingbird|shoebill|secretarybird|secretary|magpie|kookaburra|kiwi|penguin|flamingo|seagull|swan|emu|bowerbird|raven|lyrebird|peregrine|snowyowl|toucan|dukeblakiston|albatross|harpy|harpyeagle|baldeagle|blackcockatoo|ostrich|cassowary)$/;
+  if(k === 'mutatedpigeon'){
+    return `<div class="sprite4 ${sizeClass||''} sprite-mutatedpigeon frame-0 ${locked?'locked':''}"></div>`;
+  }
+  const spriteBirds = /^(sparrow|goose|blackbird|crow|macaw|robin|dove|hummingbird|shoebill|secretarybird|secretary|magpie|kookaburra|kiwi|penguin|flamingo|seagull|swan|emu|bowerbird|raven|lyrebird|peregrine|snowyowl|toucan|dukeblakiston|albatross|harpy|harpyeagle|baldeagle|blackcockatoo|ostrich|cassowary|barnowl|bluejay|bushturkey|bustard|cardinal|dodo|fairywren|finch|firecrest|galah|goldeneagle|pigeon)$/;
   if(spriteBirds.test(k)){
     return `<div class="sprite4 ${sizeClass||''} sprite-${k} frame-0 ${locked?'locked':''}"></div>`;
   }
@@ -6382,7 +6385,7 @@ function refreshBattleUI() {
   const en = document.getElementById('enemy-name');
   en.className = 'combatant-name' + (G.enemy.isBoss?' boss-name':'');
   if(G.enemy.birdKey&&BIRDS[G.enemy.birdKey]){
-    const enemyBird = Object.assign({}, BIRDS[G.enemy.birdKey], G.enemy, { portraitKey: BIRDS[G.enemy.birdKey].portraitKey || G.enemy.portraitKey });
+    const enemyBird = Object.assign({}, BIRDS[G.enemy.birdKey], G.enemy, { portraitKey: G.enemy.portraitKey || BIRDS[G.enemy.birdKey].portraitKey });
     document.getElementById('enemy-avatar').innerHTML = renderEntityAvatarHTML(enemyBird, 'battle');
     document.getElementById('enemy-avatar').style.fontSize='';
   }else if(G.enemy.portraitKey){
@@ -16019,7 +16022,7 @@ wireThemeBgmAutoplayUnlock();
      3 power/buff
    ============================================================ */
 (function(){
-  const SPRITE_KEYS = new Set(['sparrow','goose','blackbird','crow','macaw','hummingbird','shoebill','secretarybird','secretary','magpie','kookaburra','kiwi','penguin','robin','dove','flamingo','seagull','swan','emu','bowerbird','raven','lyrebird','peregrine','snowyowl','toucan','dukeblakiston','albatross','harpy','harpyeagle','baldeagle','blackcockatoo','ostrich','cassowary']);
+  const SPRITE_KEYS = new Set(['sparrow','goose','blackbird','crow','macaw','hummingbird','shoebill','secretarybird','secretary','magpie','kookaburra','kiwi','penguin','robin','dove','flamingo','seagull','swan','emu','bowerbird','raven','lyrebird','peregrine','snowyowl','toucan','dukeblakiston','albatross','harpy','harpyeagle','baldeagle','blackcockatoo','ostrich','cassowary','barnowl','bluejay','bushturkey','bustard','cardinal','dodo','fairywren','finch','firecrest','galah','goldeneagle','pigeon','mutatedpigeon']);
   const CASTERS = new Set(['singer','trickster']);
 
   function normKey(k){ return String(k||'').toLowerCase().replace(/[^a-z]/g,''); } // secretaryBird -> secretarybird
@@ -16035,7 +16038,7 @@ wireThemeBgmAutoplayUnlock();
   }
 
   function setFrameFor(who, frame, holdMs){
-    const key = who==='player' ? normKey(G?.player?.birdKey) : normKey(G?.enemy?.birdKey);
+    const key = who==='player' ? normKey(G?.player?.birdKey) : normKey(G?.enemy?.portraitKey || G?.enemy?.birdKey);
     const el = whoEl(who);
     const spr = ensureSpriteInEl(el, key, false);
     if(!spr) return;
@@ -16053,7 +16056,7 @@ wireThemeBgmAutoplayUnlock();
     globalThis[flag]=true;
     setInterval(()=>{
       try{
-        const key = who==='player' ? normKey(G?.player?.birdKey) : normKey(G?.enemy?.birdKey);
+        const key = who==='player' ? normKey(G?.player?.birdKey) : normKey(G?.enemy?.portraitKey || G?.enemy?.birdKey);
         if(!SPRITE_KEYS.has(key)) return;
         // blink/cast frame briefly
         setFrameFor(who,1,220);
@@ -16072,7 +16075,7 @@ wireThemeBgmAutoplayUnlock();
           ensureSpriteInEl(whoEl('player'), pk, false);
           startIdleBlink('player');
         }
-        const ek = normKey(G?.enemy?.birdKey);
+        const ek = normKey(G?.enemy?.portraitKey || G?.enemy?.birdKey);
         if(SPRITE_KEYS.has(ek)){
           // don't override if enemy is Duke with its own sprite system (optional)
           if(!(G?.enemy?.id==='dukeBlakiston' || /blakiston/i.test(G?.enemy?.name||''))){
@@ -16108,7 +16111,7 @@ wireThemeBgmAutoplayUnlock();
   if(typeof oldExec==='function'){
     globalThis.executeEnemyAction = async function(act){
       try{
-        const ek = normKey(G?.enemy?.birdKey);
+        const ek = normKey(G?.enemy?.portraitKey || G?.enemy?.birdKey);
         if(SPRITE_KEYS.has(ek) && !(G?.enemy?.id==='dukeBlakiston' || /blakiston/i.test(G?.enemy?.name||''))){
           if(act?.type==='attack') setFrameFor('enemy',2,260);
           else if(act?.type==='ability') setFrameFor('enemy',3,260);
@@ -16155,7 +16158,7 @@ wireThemeBgmAutoplayUnlock();
    - Forces all UI locations using PORTRAITS[...] to show sprites
    ============================================================ */
 (function(){
-  const SPRITE_KEYS = ['sparrow','goose','blackbird','crow','macaw','hummingbird','shoebill','secretarybird','secretary','magpie','kookaburra','robin','kiwi','penguin','dove','flamingo','seagull','swan','emu','bowerbird','raven','lyrebird','peregrine','snowyowl','toucan','dukeblakiston','albatross','harpy','harpyeagle','baldeagle','blackcockatoo','ostrich','cassowary'];
+  const SPRITE_KEYS = ['sparrow','goose','blackbird','crow','macaw','hummingbird','shoebill','secretarybird','secretary','magpie','kookaburra','robin','kiwi','penguin','dove','flamingo','seagull','swan','emu','bowerbird','raven','lyrebird','peregrine','snowyowl','toucan','dukeblakiston','albatross','harpy','harpyeagle','baldeagle','blackcockatoo','ostrich','cassowary','barnowl','bluejay','bushturkey','bustard','cardinal','dodo','fairywren','finch','firecrest','galah','goldeneagle','pigeon','mutatedpigeon'];
   function mk(k, small=true){
     const cls = small ? 'sprite4 small' : 'sprite4';
     return `<div class="${cls} sprite-${k} frame-0"></div>`;
@@ -16299,12 +16302,12 @@ SPRITE_KEYS_ALL.add('magpie');
    - Adds small idle flutter + clearer attack/run/crouch cues
    ============================================================ */
 (function(){
-  const SPRITE_KEYS = new Set(['sparrow','goose','blackbird','crow','macaw','robin','hummingbird','shoebill','secretarybird','secretary','magpie','kookaburra','flamingo','seagull','swan','emu','penguin','bowerbird','raven','lyrebird','peregrine','snowyowl','toucan','dukeblakiston','albatross','harpy','harpyeagle','baldeagle','blackcockatoo','ostrich','cassowary']);
+  const SPRITE_KEYS = new Set(['sparrow','goose','blackbird','crow','macaw','robin','hummingbird','shoebill','secretarybird','secretary','magpie','kookaburra','flamingo','seagull','swan','emu','penguin','bowerbird','raven','lyrebird','peregrine','snowyowl','toucan','dukeblakiston','albatross','harpy','harpyeagle','baldeagle','blackcockatoo','ostrich','cassowary','barnowl','bluejay','bushturkey','bustard','cardinal','dodo','fairywren','finch','firecrest','galah','goldeneagle','pigeon','mutatedpigeon']);
   const CASTERS = new Set(['singer','trickster']);
 
   function normKey(k){ return String(k||'').toLowerCase().replace(/[^a-z]/g,''); }
   function whoEl(who){ return document.getElementById(`${who}-avatar`); }
-  function currentKey(who){ return normKey(who==='player' ? G?.player?.birdKey : G?.enemy?.birdKey); }
+  function currentKey(who){ return normKey(who==='player' ? G?.player?.birdKey : (G?.enemy?.portraitKey || G?.enemy?.birdKey)); }
 
   function ensureSprite(who){
     const key=currentKey(who);
@@ -16695,7 +16698,8 @@ SPRITE_KEYS_ALL.add('magpie');
     'sparrow','goose','blackbird','crow','macaw','robin','dove','hummingbird','shoebill',
     'secretarybird','secretary','magpie','kookaburra','kiwi','penguin','flamingo','seagull',
     'swan','emu','bowerbird','raven','lyrebird','peregrine','snowyowl','toucan','dukeblakiston',
-    'albatross','harpy','harpyeagle','baldeagle','blackcockatoo','ostrich','cassowary'
+    'albatross','harpy','harpyeagle','baldeagle','blackcockatoo','ostrich','cassowary',
+    'barnowl','bluejay','bushturkey','bustard','cardinal','dodo','fairywren','finch','firecrest','galah','goldeneagle','pigeon'
   ]);
   const norm = s => {
     const k = String(s || '').toLowerCase().replace(/[^a-z]/g,'');
