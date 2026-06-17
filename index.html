@@ -67,6 +67,7 @@
 <div class="start-screen-bg" aria-hidden="true"></div>
 <div class="start-screen-vignette" aria-hidden="true"></div>
 <button type="button" class="theme-music-btn theme-music-btn--start" id="theme-music-btn-start" data-action="toggleThemeMusicMuted" title="Menu music" aria-label="Toggle menu music">🔊</button>
+<button type="button" class="theme-music-btn theme-music-btn--jukebox" id="theme-music-btn-jukebox" data-action="openMusicMenu" title="Music jukebox" aria-label="Open music jukebox">🎵</button>
 <div class="start-screen-inner">
 <button type="button" class="take-flight-btn" id="take-flight-btn" data-action="takeFlightToSelect">Take Flight</button>
 </div>
@@ -1003,6 +1004,25 @@
 <audio id="duke-battle-bgm-audio" class="theme-bgm-audio" preload="auto" playsinline loop>
 <source src="./assets/audio/Duke_Blakiston_Battle.mp3" type="audio/mpeg"/>
 </audio>
+<audio id="battle-bgm-audio" class="theme-bgm-audio" preload="auto" playsinline loop></audio>
+<audio id="menu-preview-audio" class="theme-bgm-audio" preload="auto" playsinline loop></audio>
+<div class="music-menu-modal" id="music-menu-modal" role="dialog" aria-modal="true" aria-labelledby="music-menu-title" aria-hidden="true" hidden>
+<div class="music-menu-panel">
+<div class="music-menu-header">
+<h2 id="music-menu-title">Music</h2>
+<button type="button" class="music-menu-close" data-action="closeMusicMenu" aria-label="Close music menu">×</button>
+</div>
+<p class="music-menu-hint">Preview tracks on the start screen only.</p>
+<ul class="music-menu-list" id="music-menu-list">
+<li class="music-menu-item"><span class="music-menu-track-title">Blakiston Theme</span><button type="button" class="music-menu-play-btn" data-action="playMusicMenuPreview:menu">Play</button></li>
+<li class="music-menu-item"><span class="music-menu-track-title">Sharp Beak Quick Wing</span><button type="button" class="music-menu-play-btn" data-action="playMusicMenuPreview:sharp_beak">Play</button></li>
+<li class="music-menu-item"><span class="music-menu-track-title">The Brittle Waltz</span><button type="button" class="music-menu-play-btn" data-action="playMusicMenuPreview:brittle_waltz">Play</button></li>
+<li class="music-menu-item"><span class="music-menu-track-title">The Pigeon&rsquo;s Desperate Jig</span><button type="button" class="music-menu-play-btn" data-action="playMusicMenuPreview:pigeon_jig">Play</button></li>
+<li class="music-menu-item"><span class="music-menu-track-title">The Last Thermal</span><button type="button" class="music-menu-play-btn" data-action="playMusicMenuPreview:last_thermal">Play</button></li>
+</ul>
+<button type="button" class="music-menu-stop-btn" data-action="stopMusicMenuPreview">Stop preview</button>
+</div>
+</div>
 
 
 

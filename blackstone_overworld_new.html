@@ -1416,5 +1416,32 @@ requestAnimationFrame(()=>requestAnimationFrame(()=>{pl.style.transition='left .
 
 })();
 </script>
+<audio id="overworld-bgm-audio" preload="auto" playsinline loop style="position:fixed;width:0;height:0;opacity:0;pointer-events:none;"></audio>
+<script src="./js/audio/bgm-shared.js"></script>
+<script>
+(function initOverworldBgm(){
+  const api = globalThis.BgmShared || globalThis.Avian?.audio;
+  const el = document.getElementById('overworld-bgm-audio');
+  if(!api || !el) return;
+  const track = api.getTrack('last_thermal');
+  if(!track) return;
+  function stopOwBgm(){
+    api.stopImmediate(el);
+  }
+  function startOwBgm(){
+    if(api.getMusicSettings().muted) return;
+    api.fadeIn(el, { src: track.src, loop: true, durationMs: 1200 });
+  }
+  if(document.readyState === 'loading'){
+    document.addEventListener('DOMContentLoaded', startOwBgm);
+  }else{
+    startOwBgm();
+  }
+  window.addEventListener('pagehide', stopOwBgm);
+  document.addEventListener('visibilitychange', function(){
+    if(document.visibilityState === 'hidden') stopOwBgm();
+  });
+})();
+</script>
 </body>
 </html>

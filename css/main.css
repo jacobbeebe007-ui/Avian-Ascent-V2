@@ -189,6 +189,105 @@ header p{color:var(--text-dim);font-style:italic;font-size:1rem;margin-top:4px;}
   bottom:max(16px, env(safe-area-inset-bottom, 0px));
   right:max(16px, env(safe-area-inset-right, 0px));
 }
+.theme-music-btn--jukebox{
+  position:absolute;
+  bottom:max(16px, env(safe-area-inset-bottom, 0px));
+  right:max(64px, calc(16px + env(safe-area-inset-right, 0px)));
+}
+.music-menu-modal{
+  position:fixed;
+  inset:0;
+  z-index:1200;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  background:rgba(4,6,10,.72);
+  padding:20px;
+}
+.music-menu-modal[hidden]{display:none;}
+.music-menu-modal.is-open{display:flex;}
+.music-menu-panel{
+  width:min(420px, 92vw);
+  max-height:min(80vh, 520px);
+  overflow:auto;
+  background:linear-gradient(160deg,#12161f,#0a0c12);
+  border:1px solid rgba(201,168,76,.35);
+  border-radius:14px;
+  padding:18px 20px 20px;
+  box-shadow:0 18px 48px rgba(0,0,0,.55);
+}
+.music-menu-header{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  margin-bottom:8px;
+}
+.music-menu-header h2{
+  margin:0;
+  font-family:'Cinzel',serif;
+  font-size:1.1rem;
+  color:var(--gold-l,#f0d060);
+  letter-spacing:.06em;
+}
+.music-menu-close{
+  background:transparent;
+  border:1px solid rgba(201,168,76,.3);
+  color:var(--gold-l,#f0d060);
+  width:32px;
+  height:32px;
+  border-radius:8px;
+  cursor:pointer;
+  font-size:1.2rem;
+  line-height:1;
+}
+.music-menu-hint{
+  margin:0 0 14px;
+  color:var(--text-dim,#8a9bb5);
+  font-size:.85rem;
+}
+.music-menu-list{
+  list-style:none;
+  margin:0 0 14px;
+  padding:0;
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+}
+.music-menu-item{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  padding:10px 12px;
+  border:1px solid rgba(201,168,76,.18);
+  border-radius:10px;
+  background:rgba(255,255,255,.02);
+}
+.music-menu-track-title{
+  font-size:.92rem;
+  color:var(--text,#d8e0ec);
+}
+.music-menu-play-btn,
+.music-menu-stop-btn{
+  font-family:'Cinzel',serif;
+  font-size:.72rem;
+  letter-spacing:.08em;
+  text-transform:uppercase;
+  background:rgba(201,168,76,.1);
+  border:1px solid rgba(201,168,76,.35);
+  color:var(--gold-l,#f0d060);
+  border-radius:8px;
+  padding:8px 12px;
+  cursor:pointer;
+}
+.music-menu-play-btn.is-playing{
+  background:rgba(201,168,76,.28);
+  border-color:rgba(240,208,96,.65);
+}
+.music-menu-stop-btn{
+  width:100%;
+}
 .theme-music-btn--select{
   position:absolute;
   bottom:max(14px, env(safe-area-inset-bottom, 0px));

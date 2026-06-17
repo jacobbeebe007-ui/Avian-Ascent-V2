@@ -6198,6 +6198,7 @@ function loadStage() {
     scheduleOpeningEnemyTurn();
   }
   tryStartDukeBattleBgmIfNeeded();
+  tryStartBattleBgmIfNeeded();
   // #region agent log
   _agentDbgLog('game.js:loadStage:complete', 'loadStage complete', { turn: G.turn, battleOver: !!G.battleOver }, 'H5');
   // #endregion
@@ -6288,6 +6289,7 @@ globalThis.openSelectHubPanel = openSelectHubPanel;
 globalThis.closeSelectHubPanel = closeSelectHubPanel;
 
 function takeFlightToSelect(){
+  closeMusicMenu();
   showScreen('screen-select');
   if(typeof initSelectionSafe==='function') initSelectionSafe();
   // Stay on the war-room splash; player opens "Begin Ascent" to reach the roster (avoids skipping the barn menu).
@@ -6303,6 +6305,7 @@ globalThis.scrollToSelectRoster = scrollToSelectRoster;
 
 function showScreen(id) {
   const prev=(document.querySelector('.screen.active')||{}).id;
+  if(prev==='screen-start' && id!=='screen-start') closeMusicMenu();
   closeSelectHubPanel();
   document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
   document.getElementById(id).classList.add('active');
@@ -12173,6 +12176,7 @@ function checkDeath() {
     }
     logMsg(`✨ ${G.enemy.name} defeated!`,'crit');
     if(isDukeStoryBossFight()) beginDukeBattleBgmFadeOut();
+    else beginBattleBgmFadeOut();
     setTimeout(postCombat,700);return true;
   }
   if(G.player.stats.hp<=0){
@@ -13671,6 +13675,7 @@ function showVictory(){
   if((G.ui?.gameMode||'story')==='story') startStoryCinematic();
 }
 function showDefeat(){
+  beginBattleBgmFadeOut();
   G._groveAmbushActive=false;
   G._flightSavedEggsAwarded=typeof awardFlightSavedEggs==='function'?awardFlightSavedEggs():0;
   restoreBattleTempPlayerStats();
@@ -15162,6 +15167,148 @@ let _themeBgmFadeActive=false;
 let _dukeBgmFadeRaf=null;
 let _dukeBgmFadeActive=false;
 let _dukeBgmFadeOutActive=false;
+let _battleBgmFadeOutActive=false;
+let _battleBgmActiveTrackId=null;
+const BATTLE_BGM_FADE_IN_MS=1200;
+const BATTLE_BGM_FADE_OUT_MS=1400;
+function getBgmApi(){ return globalThis.BgmShared || globalThis.Avian?.audio || null; }
+function getBattleBgmAudio(){ return document.getElementById('battle-bgm-audio'); }
+function getMenuPreviewBgmAudio(){ return document.getElementById('menu-preview-audio'); }
+function getBattleBgmTargetVolume(){
+  const api=getBgmApi();
+  return api?api.getTargetVolume():getDukeBgmTargetVolume();
+}
+function stopBattleBgmImmediate(){
+  _battleBgmFadeOutActive=false;
+  _battleBgmActiveTrackId=null;
+  const api=getBgmApi();
+  const el=getBattleBgmAudio();
+  if(api) api.stopImmediate(el);
+  else if(el){ try{ el.pause(); el.currentTime=0; }catch(_){} }
+}
+function beginBattleBgmFadeOut(onDone, durationMs=BATTLE_BGM_FADE_OUT_MS){
+  const api=getBgmApi();
+  const el=getBattleBgmAudio();
+  if(!el||el.paused){
+    stopBattleBgmImmediate();
+    if(typeof onDone==='function') onDone();
+    return;
+  }
+  _battleBgmFadeOutActive=true;
+  const done=()=>{
+    _battleBgmFadeOutActive=false;
+    _battleBgmActiveTrackId=null;
+    if(typeof onDone==='function') onDone();
+  };
+  if(api){
+    api.fadeOut(el,{durationMs,onDone:done});
+    return;
+  }
+  stopBattleBgmImmediate();
+  done();
+}
+function beginBattleBgmFadeIn(track){
+  const api=getBgmApi();
+  const el=getBattleBgmAudio();
+  if(!el||!track) return;
+  const target=getBattleBgmTargetVolume();
+  if(target<=0.001){
+    stopBattleBgmImmediate();
+    return;
+  }
+  _battleBgmFadeOutActive=false;
+  _battleBgmActiveTrackId=track.id;
+  duckThemeBgmForBattle();
+  if(api){
+    api.fadeIn(el,{src:track.src,loop:true,durationMs:BATTLE_BGM_FADE_IN_MS,targetVolume:target});
+    return;
+  }
+  el.src=track.src;
+  el.loop=true;
+  try{ el.play().catch(()=>{}); }catch(_){}
+}
+function tryStartBattleBgmIfNeeded(){
+  if(isDukeStoryBossFight()){
+    stopBattleBgmImmediate();
+    return;
+  }
+  const el=getBattleBgmAudio();
+  if(!el||getMusicSettings().muted){
+    stopBattleBgmImmediate();
+    return;
+  }
+  const api=getBgmApi();
+  if(_battleBgmFadeOutActive) return;
+  if(!el.paused && _battleBgmActiveTrackId){
+    const target=getBattleBgmTargetVolume();
+    if(Math.abs(Number(el.volume)-target)<0.02) return;
+  }
+  if(!el.paused && _battleBgmActiveTrackId && !api?.isFadeActive?.(el)) return;
+  const track=api?api.pickRandomBattleTrack():null;
+  if(!track) return;
+  beginBattleBgmFadeIn(track);
+}
+function stopMenuPreviewBgmImmediate(){
+  const api=getBgmApi();
+  const el=getMenuPreviewBgmAudio();
+  if(api) api.stopImmediate(el);
+  else if(el){ try{ el.pause(); el.currentTime=0; }catch(_){} }
+}
+function playMusicMenuPreview(trackId){
+  const scr=document.querySelector('.screen.active');
+  if(!scr||scr.id!=='screen-start') return;
+  const api=getBgmApi();
+  const track=api?api.getTrack(trackId):null;
+  if(!track) return;
+  const theme=getThemeBgmAudio();
+  if(theme){ try{ theme.pause(); }catch(_){} }
+  const el=getMenuPreviewBgmAudio();
+  if(!el) return;
+  if(api){
+    api.stopImmediate(el);
+    api.fadeIn(el,{src:track.src,loop:true,durationMs:BATTLE_BGM_FADE_IN_MS});
+  }else{
+    el.src=track.src;
+    el.loop=true;
+    try{ el.play().catch(()=>{}); }catch(_){}
+  }
+  document.querySelectorAll('.music-menu-play-btn').forEach(b=>{
+    b.classList.toggle('is-playing', b.dataset.action==='playMusicMenuPreview:'+trackId);
+  });
+}
+function stopMusicMenuPreview(){
+  const api=getBgmApi();
+  const el=getMenuPreviewBgmAudio();
+  if(api) api.fadeOut(el,{durationMs:800,onDone:()=>{
+    document.querySelectorAll('.music-menu-play-btn').forEach(b=>b.classList.remove('is-playing'));
+    tryPlayThemeBgmForCurrentMenuScreen();
+  }});
+  else{
+    stopMenuPreviewBgmImmediate();
+    document.querySelectorAll('.music-menu-play-btn').forEach(b=>b.classList.remove('is-playing'));
+    tryPlayThemeBgmForCurrentMenuScreen();
+  }
+}
+function openMusicMenu(){
+  const scr=document.querySelector('.screen.active');
+  if(!scr||scr.id!=='screen-start') return;
+  const modal=document.getElementById('music-menu-modal');
+  if(!modal) return;
+  const theme=getThemeBgmAudio();
+  if(theme){ try{ theme.pause(); }catch(_){} }
+  modal.hidden=false;
+  modal.setAttribute('aria-hidden','false');
+  modal.classList.add('is-open');
+}
+function closeMusicMenu(){
+  const modal=document.getElementById('music-menu-modal');
+  if(modal){
+    modal.hidden=true;
+    modal.setAttribute('aria-hidden','true');
+    modal.classList.remove('is-open');
+  }
+  stopMusicMenuPreview();
+}
 function cancelThemeBgmFade(){
   if(_themeBgmFadeRaf!=null){
     cancelAnimationFrame(_themeBgmFadeRaf);
@@ -15335,6 +15482,7 @@ function tryStartDukeBattleBgmIfNeeded(){
     stopDukeBattleBgmImmediate();
     return;
   }
+  stopBattleBgmImmediate();
   const el=getDukeBattleBgmAudio();
   if(!el||getMusicSettings().muted){
     stopDukeBattleBgmImmediate();
@@ -15381,10 +15529,28 @@ function applyThemeMusicToAudioEl(){
   el.volume=Math.max(0,Math.min(1,s.volume/100*mult.masterMusic));
   el.muted=!!s.muted;
   applyDukeBattleBgmToAudioEl();
+  const battle=getBattleBgmAudio();
+  const preview=getMenuPreviewBgmAudio();
+  const api=getBgmApi();
+  if(api){
+    api.applyVolumeSettings(battle);
+    api.applyVolumeSettings(preview);
+  }else{
+    if(battle){
+      battle.volume=Math.max(0,Math.min(1,s.volume/100*mult.masterMusic));
+      battle.muted=!!s.muted;
+    }
+    if(preview){
+      preview.volume=Math.max(0,Math.min(1,s.volume/100*mult.masterMusic));
+      preview.muted=!!s.muted;
+    }
+  }
 }
 function stopAllGameAudio(){
   cancelThemeBgmFade();
   cancelDukeBgmFade();
+  stopBattleBgmImmediate();
+  stopMenuPreviewBgmImmediate();
   const theme=getThemeBgmAudio();
   const duke=getDukeBattleBgmAudio();
   if(theme){ try{ theme.pause(); theme.currentTime=0; }catch(_){} }
@@ -15407,6 +15573,7 @@ function syncThemeMusicButtonLabels(){
 }
 function syncThemeBgmPlaybackForScreen(screenId){
   if(screenId!=='screen-battle'&&!_dukeBgmFadeOutActive) stopDukeBattleBgmImmediate();
+  if(screenId!=='screen-battle'&&!_battleBgmFadeOutActive) stopBattleBgmImmediate();
   const el=getThemeBgmAudio();
   if(!el) return;
   const onMenu=screenId==='screen-start'||screenId==='screen-select';
@@ -15431,6 +15598,8 @@ function toggleThemeMusicMuted(){
     tryPlayThemeBgmForCurrentMenuScreen();
   }else if(active?.id==='screen-battle'&&isDukeStoryBossFight()){
     tryStartDukeBattleBgmIfNeeded();
+  }else if(active?.id==='screen-battle'){
+    tryStartBattleBgmIfNeeded();
   }
 }
 function updateMusicSettingsFromControls(){
@@ -15448,6 +15617,8 @@ function updateMusicSettingsFromControls(){
     tryPlayThemeBgmForCurrentMenuScreen();
   }else if(active?.id==='screen-battle'&&isDukeStoryBossFight()){
     tryStartDukeBattleBgmIfNeeded();
+  }else if(active?.id==='screen-battle'){
+    tryStartBattleBgmIfNeeded();
   }
 }
 function wireThemeBgmAutoplayUnlock(){
@@ -15467,6 +15638,10 @@ function wireThemeBgmAutoplayUnlock(){
 }
 globalThis.toggleThemeMusicMuted=toggleThemeMusicMuted;
 globalThis.updateMusicSettingsFromControls=updateMusicSettingsFromControls;
+globalThis.openMusicMenu=openMusicMenu;
+globalThis.closeMusicMenu=closeMusicMenu;
+globalThis.playMusicMenuPreview=playMusicMenuPreview;
+globalThis.stopMusicMenuPreview=stopMusicMenuPreview;
 
 function detectPreferredUIMode(){
   const narrow=typeof window!=='undefined' && window.matchMedia && window.matchMedia('(max-width: 768px)').matches;
