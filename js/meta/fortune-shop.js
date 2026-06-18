@@ -6,7 +6,7 @@
   var HATCH_BATCH_SIZE = 10;
   var ROYAL_EGG_CLASS = 'knight';
 
-  var ROYAL_CLASSES = ['knight', 'rogue', 'mage', 'siren', 'inquisitor', 'bard'];
+  var ROYAL_CLASSES = ['knight', 'brute', 'rogue', 'mage', 'siren', 'inquisitor', 'bard'];
 
   function esc(s) {
     return String(s || '')

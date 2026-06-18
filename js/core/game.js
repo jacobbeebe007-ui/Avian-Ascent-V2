@@ -1000,7 +1000,7 @@ function rewardTierMeta(tier){
 }
 
 const CLASS_ROLE_BY_CLASS = {
-  knight:'knight', rogue:'rogue', mage:'mage', siren:'siren', inquisitor:'inquisitor', bard:'bard',
+  knight:'knight', rogue:'rogue', mage:'mage', siren:'siren', inquisitor:'inquisitor', bard:'bard', brute:'brute',
   striker:'rogue', bruiser:'knight', tank:'knight', trickster:'bard', predator:'inquisitor', singer:'mage',
 };
 
@@ -2232,9 +2232,18 @@ function makeMutatedFeatherShopOffer(){
 }
 try{ globalThis.makeMutatedFeatherShopOffer=makeMutatedFeatherShopOffer; }catch(_){}
 
+function isStoryBattleNestEquipLocked(){
+  const mode=(G.ui?.gameMode||'story')==='endless'?'endless':'story';
+  return mode==='story' && !G.endlessMode && typeof isActiveBattleContext==='function' && isActiveBattleContext();
+}
+function notifyStoryBattleNestEquipLocked(){
+  logMsg('Story battle loadouts are locked until victory. Use the Nest from rewards or the overworld to equip.','miss');
+}
+
 function buildNestAbilitySection(player){
   ensureFamilyEvolutionState(player);
   if(typeof Avian?.shop?.ensureAbilityInventory==='function') Avian.shop.ensureAbilityInventory(player);
+  const locked=isStoryBattleNestEquipLocked();
   const featherCt=Math.max(0, Number(player.mutatedFeatherCount)||0);
   const canMutate=featherCt>0;
   const selectedSlot=Number.isFinite(G._nestSelectedAbilitySlot)?G._nestSelectedAbilitySlot:null;
@@ -2247,15 +2256,16 @@ function buildNestAbilitySection(player){
     const isFlex=slot.slotIndex>=2;
     const isSelected=selectedSlot===slot.slotIndex;
     const action=slot.abilityId?resolveSkillSlotEvolutionAction(slot, player):'none';
-    const mutateEnabled=canMutate && action!=='none';
+    const mutateEnabled=!locked && canMutate && action!=='none';
     const tmpl=slot.abilityId?(ABILITY_TEMPLATES[slot.abilityId]||{}):{};
     const desc=tmpl.levels?.[0]?.desc||tmpl.desc||'';
-    equippedHtml+=`<div class="nest-ab-slot-card${isSelected?' selected':''}${!slot.abilityId?' empty':''}" data-nest-ab-slot="${slot.slotIndex}">
-      <div class="nest-ab-slot-head"><span class="nest-ab-slot-idx">Slot ${slot.slotIndex+1}</span>${isFlex && slot.abilityId?`<button type="button" class="nest-ab-unequip-btn" data-nest-ab-unequip="${slot.slotIndex}">Store</button>`:''}</div>
+    const lockAttrs=locked?' aria-disabled="true" title="Story battle loadouts are locked until victory."':'';
+    equippedHtml+=`<div class="nest-ab-slot-card${isSelected?' selected':''}${!slot.abilityId?' empty':''}${locked?' is-locked':''}" data-nest-ab-slot="${slot.slotIndex}"${lockAttrs}>
+      <div class="nest-ab-slot-head"><span class="nest-ab-slot-idx">Slot ${slot.slotIndex+1}</span>${isFlex && slot.abilityId?`<button type="button" class="nest-ab-unequip-btn${locked?' is-locked':''}" data-nest-ab-unequip="${slot.slotIndex}" ${locked?'disabled aria-disabled="true" title="Story battle loadouts are locked until victory."':''}>Store</button>`:''}</div>
       <div class="nest-ab-name">${slot.abilityId?escapeHtmlRoster(label):'<span class="nest-inv-empty">Empty</span>'}</div>
       <div class="nest-ab-lv">${tierLbl}</div>
       ${desc?`<div class="nest-ab-desc">${escapeHtmlRoster(desc)}</div>`:''}
-      ${slot.abilityId?`<button type="button" class="nest-mutate-btn${mutateEnabled?'':' disabled'}" data-nest-ab-mutate="${slot.slotIndex}" ${mutateEnabled?'':'disabled'} title="${mutateEnabled?'Spend 1 Mutated Feather to upgrade this skill':'Need a Mutated Feather in your Nest'}">Mutate Ability</button>`:''}
+      ${slot.abilityId?`<button type="button" class="nest-mutate-btn${mutateEnabled?'':' disabled'}${locked?' is-locked':''}" data-nest-ab-mutate="${slot.slotIndex}" ${mutateEnabled?'':'disabled'} title="${locked?'Story battle loadouts are locked until victory.':(mutateEnabled?'Spend 1 Mutated Feather to upgrade this skill':'Need a Mutated Feather in your Nest')}">Mutate Ability</button>`:''}
     </div>`;
   }
   const inv=player.abilityInventory||[];
@@ -2266,12 +2276,12 @@ function buildNestAbilitySection(player){
     vaultHtml='<div class="nest-ability-vault-grid">';
     inv.forEach((entry, idx)=>{
       const name=entry.name||entry.abilityId||'Ability';
-      vaultHtml+=`<div class="nest-ab-vault-item" data-nest-ab-vault="${idx}" title="Click to equip into selected flex slot (or first empty slot 3–4)"><strong>${escapeHtmlRoster(name)}</strong><br><span class="nest-ab-lv">Tier ${entry.tier||0}</span></div>`;
+      vaultHtml+=`<div class="nest-ab-vault-item${locked?' is-locked':''}" data-nest-ab-vault="${idx}" ${locked?'aria-disabled="true" title="Story battle loadouts are locked until victory."':'title="Click to equip into selected flex slot (or first empty slot 3–4)"'}><strong>${escapeHtmlRoster(name)}</strong><br><span class="nest-ab-lv">Tier ${entry.tier||0}</span></div>`;
     });
     vaultHtml+='</div>';
   }
-  const slotHint=selectedSlot!=null?`Selected slot ${selectedSlot+1} for equip.`:'Click a flex slot (3–4) to select, then click a vault ability to equip.';
-  return `<div class="nest-section nest-ability-section"><div class="nest-section-title">⚔ Abilities · 🪶 Mutated Feathers: ${featherCt}</div><div class="nest-ledger-subtitle">Equipped loadout</div><div class="nest-abilities-grid">${equippedHtml}</div><div class="nest-ledger-subtitle">Ability vault (${inv.length})</div>${vaultHtml}<p class="nest-ledger-note">${slotHint} Starter slots (1–2) mutate with feathers but stay fixed. Flex slots (3–4) hold shop abilities.</p></div>`;
+  const slotHint=locked?'Story battle loadouts are locked until victory. Equip abilities from rewards or the overworld Nest.':(selectedSlot!=null?`Selected slot ${selectedSlot+1} for equip.`:'Click a flex slot (3–4) to select, then click a vault ability to equip.');
+  return `<div class="nest-section nest-ability-section${locked?' nest-equip-locked':''}"><div class="nest-section-title">⚔ Abilities · 🪶 Mutated Feathers: ${featherCt}</div>${locked?'<p class="nest-lock-note">Loadout locked during Story battle.</p>':''}<div class="nest-ledger-subtitle">Equipped loadout</div><div class="nest-abilities-grid">${equippedHtml}</div><div class="nest-ledger-subtitle">Ability vault (${inv.length})</div>${vaultHtml}<p class="nest-ledger-note">${slotHint} Starter slots (1–2) mutate with feathers but stay fixed. Flex slots (3–4) hold shop abilities.</p></div>`;
 }
 
 function setNestMutateConfirmVisible(visible, enabled){
@@ -2299,6 +2309,11 @@ function updateNestMutateSelection(card, selectedId){
 }
 
 function confirmNestMutateChoice(){
+  if(isStoryBattleNestEquipLocked()){
+    notifyStoryBattleNestEquipLocked();
+    cancelNestMutateFlow();
+    return;
+  }
   const slot=getSkillSlotByIndex(G.player, G._nestMutateSlotIndex);
   if(!slot || !G.player) return;
   const action=G._nestMutateAction;
@@ -2390,6 +2405,10 @@ function openNestMutateModal(slot, action){
 }
 
 function beginNestMutateFlow(slotIndex){
+  if(isStoryBattleNestEquipLocked()){
+    notifyStoryBattleNestEquipLocked();
+    return;
+  }
   if(!G.player || (G.player.mutatedFeatherCount||0)<=0){
     logMsg('No Mutated Feather available. Buy one at Stork\'s shop or find one as a rare drop.','miss');
     return;
@@ -2428,6 +2447,10 @@ function handleNestAbilityClick(ev){
   const el=ev.target.closest('[data-nest-ab-slot],[data-nest-ab-vault],[data-nest-ab-mutate],[data-nest-ab-unequip]');
   if(!el || !G.player) return;
   ev.stopPropagation();
+  if(isStoryBattleNestEquipLocked()){
+    notifyStoryBattleNestEquipLocked();
+    return;
+  }
   if(el.dataset.nestAbMutate!=null){
     beginNestMutateFlow(Number(el.dataset.nestAbMutate));
     return;
@@ -2629,22 +2652,23 @@ function _nestInventoryMutStatsHtml(player,itemId,compareMode){
   return `<div class="nest-mut-stats mut-stat-compact-wrap">${statsHtml}</div>`;
 }
 
-function _nestMutationItemHtml(itemId, slotLbl, slotKey, slotIndex){
+function _nestMutationItemHtml(itemId, slotLbl, slotKey, slotIndex, locked=false){
   const icons=getNestSlotIcons();
   const slotBadge=icons[slotKey]?`<span class="nest-slot-badge" title="${escapeHtmlRoster(slotLbl)}">${icons[slotKey]}</span>`:'';
+  const lockAttrs=locked?' aria-disabled="true" title="Story battle loadouts are locked until victory."':'';
   if(!itemId){
-    return `<div class="nest-equip-slot" data-nest-slot="${slotKey}" data-nest-idx="${slotIndex}"><div class="nest-equip-slot-lbl">${slotBadge}${slotLbl}</div><div class="nest-equip-slot-name" style="color:var(--text-dim)">Empty</div></div>`;
+    return `<div class="nest-equip-slot${locked?' is-locked':''}" data-nest-slot="${slotKey}" data-nest-idx="${slotIndex}"${lockAttrs}><div class="nest-equip-slot-lbl">${slotBadge}${slotLbl}</div><div class="nest-equip-slot-name" style="color:var(--text-dim)">Empty</div></div>`;
   }
   const item=typeof Avian?.mutations?.getItem==='function'?Avian.mutations.getItem(itemId):null;
   if(!item){
-    return `<div class="nest-equip-slot" data-nest-slot="${slotKey}" data-nest-idx="${slotIndex}"><div class="nest-equip-slot-lbl">${slotBadge}${slotLbl}</div><div class="nest-equip-slot-name" style="color:var(--text-dim)">Empty</div></div>`;
+    return `<div class="nest-equip-slot${locked?' is-locked':''}" data-nest-slot="${slotKey}" data-nest-idx="${slotIndex}"${lockAttrs}><div class="nest-equip-slot-lbl">${slotBadge}${slotLbl}</div><div class="nest-equip-slot-name" style="color:var(--text-dim)">Empty</div></div>`;
   }
   const tierCss=nestTierCssClass(item.tier);
   const tierMeta=rewardTierMeta(item.tier);
   const tierColor=nestTierColorVar(item.tier);
   const statsBlock=getMutationDescHtml(item,{compact:true});
   const statsHtml=statsBlock?`<div class="nest-mut-stats mut-stat-compact-wrap nest-equip-mut-stats">${statsBlock}</div>`:'';
-  return `<div class="nest-equip-slot filled tier-${item.tier} tier-ui-${tierCss}" data-nest-slot="${slotKey}" data-nest-idx="${slotIndex}" data-nest-item="${itemId}"><div class="nest-equip-slot-lbl">${slotBadge}${slotLbl}</div><div class="nest-tier-label" style="color:${tierColor}">${tierMeta.label}</div><div class="nest-equip-slot-name" style="color:${tierColor}">${escapeHtmlRoster(item.name)}</div>${statsHtml}</div>`;
+  return `<div class="nest-equip-slot filled tier-${item.tier} tier-ui-${tierCss}${locked?' is-locked':''}" data-nest-slot="${slotKey}" data-nest-idx="${slotIndex}" data-nest-item="${itemId}"${lockAttrs}><div class="nest-equip-slot-lbl">${slotBadge}${slotLbl}</div><div class="nest-tier-label" style="color:${tierColor}">${tierMeta.label}</div><div class="nest-equip-slot-name" style="color:${tierColor}">${escapeHtmlRoster(item.name)}</div>${statsHtml}</div>`;
 }
 
 function handleNestEquipClick(ev){
@@ -2659,6 +2683,10 @@ function handleNestEquipClick(ev){
   if(el.dataset.nestFilter){
     G._nestActiveSlotFilter=el.dataset.nestFilter;
     openNest();
+    return;
+  }
+  if(isStoryBattleNestEquipLocked()){
+    notifyStoryBattleNestEquipLocked();
     return;
   }
   if(el.dataset.nestInv){
@@ -2677,6 +2705,7 @@ function handleNestEquipClick(ev){
 function buildNestEquipmentSection(player){
   if(typeof Avian?.mutations?.ensurePlayerMutationState!=='function') return '';
   Avian.mutations.ensurePlayerMutationState(player);
+  const locked=isStoryBattleNestEquipLocked();
   const slotsDef=Avian.data?.mutations?.slots;
   const order=slotsDef?.order||['wing','feet','head','beak','chest','eyes','tail','plumage','syrinx'];
   const limits=slotsDef?.limits||{};
@@ -2699,7 +2728,7 @@ function buildNestEquipmentSection(player){
       const lbl=activeFilter==='all'
         ? (cap>1?`${labels[sk]||sk} ${i+1}`:(labels[sk]||sk))
         : (cap>1?`${labels[sk]||sk} ${i+1}`:(labels[sk]||sk));
-      slotsHtml+=_nestMutationItemHtml(arr[i]||null, lbl, sk, i);
+      slotsHtml+=_nestMutationItemHtml(arr[i]||null, lbl, sk, i, locked);
     }
   }
   const summary=typeof Avian.mutations.getEquippedSummary==='function'?Avian.mutations.getEquippedSummary(player):{lines:[]};
@@ -2732,11 +2761,13 @@ function buildNestEquipmentSection(player){
       const tierColor=nestTierColorVar(item.tier);
       const slotBadge=icons[item.slot]?`<span class="nest-slot-badge">${icons[item.slot]}</span>`:'';
       const statsBlock=_nestInventoryMutStatsHtml(player,id,compareMode);
-      invHtml+=`<div class="nest-inv-item tier-${item.tier} tier-ui-${tierCss}" data-nest-inv="${id}">${slotBadge}<div class="nest-tier-label" style="color:${tierColor}">${tierMeta.label}</div><strong style="color:${tierColor}">${escapeHtmlRoster(item.name)}</strong><br><span style="color:${tierColor}">${escapeHtmlRoster(labels[item.slot]||item.slot)}</span>${statsBlock}</div>`;
+      invHtml+=`<div class="nest-inv-item tier-${item.tier} tier-ui-${tierCss}${locked?' is-locked':''}" data-nest-inv="${id}" ${locked?'aria-disabled="true" title="Story battle loadouts are locked until victory."':''}>${slotBadge}<div class="nest-tier-label" style="color:${tierColor}">${tierMeta.label}</div><strong style="color:${tierColor}">${escapeHtmlRoster(item.name)}</strong><br><span style="color:${tierColor}">${escapeHtmlRoster(labels[item.slot]||item.slot)}</span>${statsBlock}</div>`;
     }
     invHtml+='</div>';
   }
-  return `<div class="nest-section nest-equipment-section"><div class="nest-section-title">🧬 Mutations Equipped</div>${filterHtml}<div class="nest-ledger-subtitle">Equipped · ${escapeHtmlRoster(filterLabel)}</div><div class="nest-equip-grid${activeFilter==='all'?' nest-equip-grid-all':''}">${slotsHtml}</div>${compareToggleHtml}<div class="nest-ledger-subtitle">Bonus from equipped</div><div class="nest-equip-bonus">${bonusHtml}</div><div class="nest-section-title" style="margin-top:14px">🎒 Inventory · ${escapeHtmlRoster(filterLabel)} (${filteredInv.length})</div>${invHtml}<p class="nest-ledger-note">Select a slot type above. Click inventory items to equip. Click equipped items to store in inventory.${compareMode?' Compare mode shows stat changes vs the equipped mutation in the slot you would replace.':''}</p></div>`;
+  const lockNote=locked?'<p class="nest-lock-note">Mutation equipment is locked during Story battle. Equip from rewards or the overworld Nest.</p>':'';
+  const equipHint=locked?'Loadout changes unlock after victory. Filters and compare mode remain available.':'Select a slot type above. Click inventory items to equip. Click equipped items to store in inventory.';
+  return `<div class="nest-section nest-equipment-section${locked?' nest-equip-locked':''}"><div class="nest-section-title">🧬 Mutations Equipped</div>${lockNote}${filterHtml}<div class="nest-ledger-subtitle">Equipped · ${escapeHtmlRoster(filterLabel)}</div><div class="nest-equip-grid${activeFilter==='all'?' nest-equip-grid-all':''}">${slotsHtml}</div>${compareToggleHtml}<div class="nest-ledger-subtitle">Bonus from equipped</div><div class="nest-equip-bonus">${bonusHtml}</div><div class="nest-section-title" style="margin-top:14px">🎒 Inventory · ${escapeHtmlRoster(filterLabel)} (${filteredInv.length})</div>${invHtml}<p class="nest-ledger-note">${equipHint}${compareMode?' Compare mode shows stat changes vs the equipped mutation in the slot you would replace.':''}</p></div>`;
 }
 
 /**
@@ -4755,9 +4786,9 @@ function showNextStagePreview() {
 // ============================================================
 const SIZE_ORDER = ['tiny','small','medium','large','xl'];
 const SIZE_LABELS = {tiny:'Tiny',small:'Small',medium:'Medium',large:'Large',xl:'X-Large'};
-const ROLE_ORDER = ['knight','rogue','mage','siren','inquisitor','bard'];
-const ROLE_LABELS = {knight:'🛡️ Knight',rogue:'🗡️ Rogue',mage:'🔮 Mage',siren:'🎵 Siren',inquisitor:'🦅 Inquisitor',bard:'🎭 Bard',striker:'🗡️ Rogue',bruiser:'🛡️ Knight',tank:'🛡️ Knight',trickster:'🎭 Bard',predator:'🦅 Inquisitor',singer:'🔮 Mage'};
-const ROLE_FLAVOR = {knight:'Armoured defender; absorbs and redirects physical damage.',rogue:'Fast evasive striker; speed, dodge, and penetration.',mage:'Arcane damage and control through spells.',siren:'Song-focused buffs, debuffs, and vocal magic.',inquisitor:'Execution pressure, pierce, and finishing power.',bard:'Utility, feints, and disruptive setups.'};
+const ROLE_ORDER = ['knight','brute','rogue','mage','siren','inquisitor','bard'];
+const ROLE_LABELS = {knight:'🛡️ Knight',brute:'💪 Brute',rogue:'🗡️ Rogue',mage:'🔮 Mage',siren:'🎵 Siren',inquisitor:'🦅 Inquisitor',bard:'🎭 Bard',striker:'🗡️ Rogue',bruiser:'🛡️ Knight',tank:'🛡️ Knight',trickster:'🎭 Bard',predator:'🦅 Inquisitor',singer:'🔮 Mage'};
+const ROLE_FLAVOR = {knight:'Armoured defender; absorbs and redirects physical damage.',brute:'Heavy physical bruiser; wins trades with force and bulk.',rogue:'Fast evasive striker; speed, dodge, and penetration.',mage:'Arcane damage and control through spells.',siren:'Song-focused buffs, debuffs, and vocal magic.',inquisitor:'Execution pressure, pierce, and finishing power.',bard:'Utility, feints, and disruptive setups.'};
 let shopPurchaseMade = false;
 
 function initSelection() {
@@ -15253,6 +15284,10 @@ function stopMenuPreviewBgmImmediate(){
   if(api) api.stopImmediate(el);
   else if(el){ try{ el.pause(); el.currentTime=0; }catch(_){} }
 }
+function isMusicMenuPreviewActive(){
+  const el=getMenuPreviewBgmAudio();
+  return !!(el && !el.paused);
+}
 function isMusicMenuScreen(){
   const scr=document.querySelector('.screen.active');
   return !!(scr && scr.id==='screen-select');
@@ -15332,6 +15367,7 @@ function updateMusicRoleChoice(role,e){
   }
 }
 function stopMenuThemeForPreview(){
+  cancelThemeBgmFade();
   const theme=getThemeBgmAudio();
   if(theme){ try{ theme.pause(); theme.currentTime=0; }catch(_){} }
 }
@@ -15373,8 +15409,6 @@ function openMusicMenu(){
   const modal=document.getElementById('music-menu-modal');
   if(!modal){ try{ console.warn('[music] music-menu-modal missing'); }catch(_){} return; }
   syncMusicMenuControls();
-  const theme=getThemeBgmAudio();
-  if(theme){ try{ theme.pause(); }catch(_){} }
   modal.hidden=false;
   modal.setAttribute('aria-hidden','false');
   modal.classList.add('is-open');
@@ -15588,6 +15622,7 @@ function tryPlayThemeBgmForCurrentMenuScreen(){
   if(!el||getMusicSettings().muted) return;
   const scr=document.querySelector('.screen.active');
   if(!scr||(scr.id!=='screen-start'&&scr.id!=='screen-select')) return;
+  if(scr.id==='screen-select'&&isMusicMenuPreviewActive()) return;
   const api=getBgmApi();
   const track=api?.getTrackForRole?api.getTrackForRole('menu'):null;
   if(track) setAudioElTrack(el, track);
