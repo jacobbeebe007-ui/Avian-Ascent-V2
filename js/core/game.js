@@ -5333,7 +5333,7 @@ function rosterSizeForEntity(entity){
   if(sz) return sz;
   const flat=String(entity?.birdKey||entity?.portraitKey||entity?.id||'').toLowerCase().replace(/[^a-z]/g,'');
   if(!flat) return '';
-  const toCanon={emperorpenguin:'penguin',secretarybird:'secretary',harpyeagle:'harpy',baldeagle:'baldEagle',blackcockatoo:'blackCockatoo',dukeblakiston:'dukeBlakiston'};
+  const toCanon={emperorpenguin:'penguin',secretarybird:'secretary',shoebillstork:'shoebill',harpyeagle:'harpy',baldeagle:'baldEagle',blackcockatoo:'blackCockatoo',dukeblakiston:'dukeBlakiston',williewagtail:'wagtail',chikadee:'chickadee'};
   const canon=toCanon[flat]||flat;
   if(BIRDS[canon]?.size) return String(BIRDS[canon].size).toLowerCase();
   const hit=Object.keys(BIRDS).find(k=>String(k).toLowerCase().replace(/[^a-z]/g,'')===flat);
@@ -5358,6 +5358,9 @@ function normalizeSpriteBirdKey(raw){
   const k = String(raw||'').toLowerCase().replace(/[^a-z]/g,'');
   if(k === 'peregrinefalcon') return 'peregrine';
   if(k === 'snowyowl' || k === 'snowy') return 'snowyowl';
+  if(k === 'shoebillstork') return 'shoebill';
+  if(k === 'williewagtail') return 'wagtail';
+  if(k === 'chikadee') return 'chickadee';
   if(k === 'secretary') return 'secretarybird';
   if(k === 'harpyeagle') return 'harpy';
   return k;
@@ -5594,10 +5597,11 @@ function birdUpgradeReasonText(model){
 }
 
 function birdUpgradeStatRowsHtml(model){
+  const fmtStat=(value)=>Number(value||0).toFixed(2);
   return model.statRows.map(row=>{
     const deltaClass=row.delta>0?' is-positive':row.delta<0?' is-negative':'';
-    const deltaText=row.delta>0?`+${row.delta}`:String(row.delta);
-    return `<div class="bird-upgrade-stat-row"><span>${escapeHtmlRoster(row.label)}</span><strong>${escapeHtmlRoster(row.before)}</strong><i aria-hidden="true">→</i><strong>${escapeHtmlRoster(row.after)}</strong><em class="${deltaClass}">${escapeHtmlRoster(deltaText)}</em></div>`;
+    const deltaText=row.delta>0?`+${fmtStat(row.delta)}`:fmtStat(row.delta);
+    return `<div class="bird-upgrade-stat-row"><span>${escapeHtmlRoster(row.label)}</span><strong>${escapeHtmlRoster(fmtStat(row.before))}</strong><i aria-hidden="true">→</i><strong>${escapeHtmlRoster(fmtStat(row.after))}</strong><em class="${deltaClass}">${escapeHtmlRoster(deltaText)}</em></div>`;
   }).join('');
 }
 
@@ -16597,7 +16601,13 @@ wireThemeBgmAutoplayUnlock();
   const SPRITE_KEYS = new Set(['sparrow','goose','blackbird','crow','macaw','hummingbird','shoebill','secretarybird','secretary','magpie','kookaburra','kiwi','penguin','robin','dove','flamingo','seagull','swan','emu','bowerbird','raven','lyrebird','peregrine','snowyowl','toucan','dukeblakiston','albatross','harpy','harpyeagle','baldeagle','blackcockatoo','ostrich','cassowary','barnowl','bluejay','bushturkey','bustard','cardinal','dodo','fairywren','finch','firecrest','galah','goldeneagle','pigeon','mutatedpigeon']);
   const CASTERS = new Set(['singer','trickster']);
 
-  function normKey(k){ return String(k||'').toLowerCase().replace(/[^a-z]/g,''); } // secretaryBird -> secretarybird
+  function normKey(k){
+    const flat = String(k||'').toLowerCase().replace(/[^a-z]/g,'');
+    if(flat === 'shoebillstork') return 'shoebill';
+    if(flat === 'williewagtail') return 'wagtail';
+    if(flat === 'chikadee') return 'chickadee';
+    return flat;
+  } // secretaryBird -> secretarybird
   function whoEl(who){ return document.getElementById(`${who}-avatar`); }
 
   function ensureSpriteInEl(el, key, locked){
@@ -16746,7 +16756,13 @@ wireThemeBgmAutoplayUnlock();
   // Also make sure buildBirdCard locked branch is not stuck on emoji after render
   const oldBuild = globalThis.buildBirdCard;
   if(typeof oldBuild==='function' && !oldBuild.__spriteWrapped){
-    const norm = (s)=>String(s||'').toLowerCase().replace(/[^a-z]/g,'');
+    const norm = (s)=>{
+      const flat = String(s||'').toLowerCase().replace(/[^a-z]/g,'');
+      if(flat === 'shoebillstork') return 'shoebill';
+      if(flat === 'williewagtail') return 'wagtail';
+      if(flat === 'chikadee') return 'chickadee';
+      return flat;
+    };
     const set = new Set(SPRITE_KEYS);
     const wrapped = function(key, bird, locked, globalMax){
       const card = oldBuild.apply(this, arguments);
@@ -16792,7 +16808,13 @@ wireThemeBgmAutoplayUnlock();
    - player/enemy avatars can use battle-medium if size is medium
    ============================================================ */
 (function(){
-  function normKey(k){ return String(k||'').toLowerCase().replace(/[^a-z]/g,''); }
+  function normKey(k){
+    const flat = String(k||'').toLowerCase().replace(/[^a-z]/g,'');
+    if(flat === 'shoebillstork') return 'shoebill';
+    if(flat === 'williewagtail') return 'wagtail';
+    if(flat === 'chikadee') return 'chickadee';
+    return flat;
+  }
   function sizeClassForBird(b, context='select'){
     return (typeof globalThis.getUISizeClass==='function')
       ? globalThis.getUISizeClass(b, context)
@@ -16877,7 +16899,13 @@ SPRITE_KEYS_ALL.add('magpie');
   const SPRITE_KEYS = new Set(['sparrow','goose','blackbird','crow','macaw','robin','hummingbird','shoebill','secretarybird','secretary','magpie','kookaburra','flamingo','seagull','swan','emu','penguin','bowerbird','raven','lyrebird','peregrine','snowyowl','toucan','dukeblakiston','albatross','harpy','harpyeagle','baldeagle','blackcockatoo','ostrich','cassowary','barnowl','bluejay','bushturkey','bustard','cardinal','dodo','fairywren','finch','firecrest','galah','goldeneagle','pigeon','mutatedpigeon']);
   const CASTERS = new Set(['singer','trickster']);
 
-  function normKey(k){ return String(k||'').toLowerCase().replace(/[^a-z]/g,''); }
+  function normKey(k){
+    const flat = String(k||'').toLowerCase().replace(/[^a-z]/g,'');
+    if(flat === 'shoebillstork') return 'shoebill';
+    if(flat === 'williewagtail') return 'wagtail';
+    if(flat === 'chikadee') return 'chickadee';
+    return flat;
+  }
   function whoEl(who){ return document.getElementById(`${who}-avatar`); }
   function currentKey(who){ return normKey(who==='player' ? G?.player?.birdKey : (G?.enemy?.portraitKey || G?.enemy?.birdKey)); }
 
@@ -17275,6 +17303,9 @@ SPRITE_KEYS_ALL.add('magpie');
   ]);
   const norm = s => {
     const k = String(s || '').toLowerCase().replace(/[^a-z]/g,'');
+    if(k === 'shoebillstork') return 'shoebill';
+    if(k === 'williewagtail') return 'wagtail';
+    if(k === 'chikadee') return 'chickadee';
     if(k === 'secretary') return 'secretarybird';
     if(k === 'harpyeagle') return 'harpy';
     return k;

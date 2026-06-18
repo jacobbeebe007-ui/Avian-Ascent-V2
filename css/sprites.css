@@ -191,6 +191,50 @@
 .sprite-swan.frame-2{background-position:0% 100%;}
 .sprite-swan.frame-3{background-position:100% 100%;}
 
+/* ===== requested bird sprite replacements (2x2 sheets) ===== */
+
+.sprite-emu{background-image:url("../assets/sprites/emu.png");background-size:200% 200%;background-repeat:no-repeat;}
+.sprite-emu.frame-0{background-position:0% 0%;}
+.sprite-emu.frame-1{background-position:100% 0%;}
+.sprite-emu.frame-2{background-position:0% 100%;}
+.sprite-emu.frame-3{background-position:100% 100%;}
+
+.sprite-kookaburra{background-image:url("../assets/sprites/kookaburra.png");background-size:200% 200%;background-repeat:no-repeat;}
+.sprite-kookaburra.frame-0{background-position:0% 0%;}
+.sprite-kookaburra.frame-1{background-position:100% 0%;}
+.sprite-kookaburra.frame-2{background-position:0% 100%;}
+.sprite-kookaburra.frame-3{background-position:100% 100%;}
+
+.sprite-magpie{background-image:url("../assets/sprites/magpie.png");background-size:200% 200%;background-repeat:no-repeat;}
+.sprite-magpie.frame-0{background-position:0% 0%;}
+.sprite-magpie.frame-1{background-position:100% 0%;}
+.sprite-magpie.frame-2{background-position:0% 100%;}
+.sprite-magpie.frame-3{background-position:100% 100%;}
+
+.sprite-ostrich{background-image:url("../assets/sprites/ostrich.png");background-size:200% 200%;background-repeat:no-repeat;}
+.sprite-ostrich.frame-0{background-position:0% 0%;}
+.sprite-ostrich.frame-1{background-position:100% 0%;}
+.sprite-ostrich.frame-2{background-position:0% 100%;}
+.sprite-ostrich.frame-3{background-position:100% 100%;}
+
+.sprite-shoebill,.sprite-shoebillstork{background-image:url("../assets/sprites/shoebill.png");background-size:200% 200%;background-repeat:no-repeat;}
+.sprite-shoebill.frame-0,.sprite-shoebillstork.frame-0{background-position:0% 0%;}
+.sprite-shoebill.frame-1,.sprite-shoebillstork.frame-1{background-position:100% 0%;}
+.sprite-shoebill.frame-2,.sprite-shoebillstork.frame-2{background-position:0% 100%;}
+.sprite-shoebill.frame-3,.sprite-shoebillstork.frame-3{background-position:100% 100%;}
+
+.sprite-blackcockatoo{background-image:url("../assets/sprites/blackcockatoo.png");background-size:200% 200%;background-repeat:no-repeat;}
+.sprite-blackcockatoo.frame-0{background-position:0% 0%;}
+.sprite-blackcockatoo.frame-1{background-position:100% 0%;}
+.sprite-blackcockatoo.frame-2{background-position:0% 100%;}
+.sprite-blackcockatoo.frame-3{background-position:100% 100%;}
+
+.sprite-cassowary{background-image:url("../assets/sprites/cassowary.png");background-size:200% 200%;background-repeat:no-repeat;}
+.sprite-cassowary.frame-0{background-position:0% 0%;}
+.sprite-cassowary.frame-1{background-position:100% 0%;}
+.sprite-cassowary.frame-2{background-position:0% 100%;}
+.sprite-cassowary.frame-3{background-position:100% 100%;}
+
 
 /* ===== 17_toucan-final-authority.css ===== */
 

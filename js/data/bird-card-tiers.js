@@ -6,13 +6,13 @@
 
   var STARS_PER_TIER = 5;
 
-  var TIER_STAT_MULTIPLIER = {
-    grey: 1.0,
-    green: 1.05,
-    blue: 1.1,
-    purple: 1.16,
-    gold: 1.23,
-    orange: 1.3,
+  var STAR_STAT_MULTIPLIER = {
+    grey: 1.1,
+    green: 1.15,
+    blue: 1.2,
+    purple: 1.25,
+    gold: 1.3,
+    orange: 1.35,
   };
 
   /** Species Feathers cost per star upgrade within each card tier. */
@@ -51,7 +51,7 @@
     dodge: { tiny: 0.15, small: 0.12, medium: 0.1, large: 0.06, xl: 0.04 },
   };
 
-  var SCALED_STAT_KEYS = ['maxHp', 'hp', 'atk', 'def', 'spd', 'dodge', 'acc', 'mdef', 'matk'];
+  var SCALED_STAT_KEYS = ['maxHp', 'hp', 'atk', 'def', 'spd', 'dodge', 'mdef', 'matk'];
 
   var TIER_LABELS = {
     grey: 'Grey',
@@ -101,7 +101,7 @@
   }
 
   function getTierStatMultiplier(tier) {
-    return TIER_STAT_MULTIPLIER[normalizeTier(tier)] || 1;
+    return STAR_STAT_MULTIPLIER[normalizeTier(tier)] || 1;
   }
 
   function getMutationCostPerStar(tier) {
@@ -117,10 +117,12 @@
   function getEffectiveStatMultiplier(tier, stars) {
     var t = normalizeTier(tier);
     var s = clampStars(stars);
-    var base = getTierStatMultiplier(t);
-    var nxt = nextTier(t);
-    var nextMult = nxt ? getTierStatMultiplier(nxt) : base;
-    return base + (nextMult - base) * (s / STARS_PER_TIER);
+    var idx = tierIndex(t);
+    var mult = 1;
+    for (var i = 0; i < idx; i++) {
+      mult *= Math.pow(getTierStatMultiplier(TIER_ORDER[i]), STARS_PER_TIER);
+    }
+    return mult * Math.pow(getTierStatMultiplier(t), s);
   }
 
   function canUpgradeBirdCard(tier, stars) {
@@ -160,22 +162,16 @@
     var base = Math.max(0, Number(baseVal) || 0);
     if (!base) return base;
     var mult = getEffectiveStatMultiplier(tier, stars);
-    var bucket = runtimeSizeBucket(size);
-    var guard = STAT_GUARD_MAX_BONUS[statKey];
-    var maxBonusFrac = guard && guard[bucket] != null ? guard[bucket] : null;
     var scaled = base * mult;
-    if (maxBonusFrac != null) {
-      var cap = base * (1 + maxBonusFrac);
-      if (scaled > cap) scaled = cap;
-    }
-    if (statKey === 'dodge' || statKey === 'acc') return Math.round(scaled);
+    if (statKey === 'dodge') return Math.round(scaled);
     return Math.max(1, Math.round(scaled));
   }
 
   var pack = {
     TIER_ORDER: TIER_ORDER,
     STARS_PER_TIER: STARS_PER_TIER,
-    TIER_STAT_MULTIPLIER: TIER_STAT_MULTIPLIER,
+    TIER_STAT_MULTIPLIER: STAR_STAT_MULTIPLIER,
+    STAR_STAT_MULTIPLIER: STAR_STAT_MULTIPLIER,
     MUTATION_COST_PER_STAR: MUTATION_COST_PER_STAR,
     DUPLICATE_FEATHER_YIELD_DEFAULT: DUPLICATE_FEATHER_YIELD_DEFAULT,
     DUPLICATE_FEATHER_YIELD_BY_EGG: DUPLICATE_FEATHER_YIELD_BY_EGG,
