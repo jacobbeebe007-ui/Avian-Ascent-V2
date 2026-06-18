@@ -148,7 +148,7 @@
       return bossPick ? [bossPick] : [];
     }
 
-    var count = Math.max(1, Math.floor(Number(chainCount)) || 3);
+    var count = Math.max(1, Math.floor(Number(chainCount)) || 1);
     var pool = filterNormalPoolForBand(band, playerBirdKey, speciesTier);
     if (!pool.length) {
       console.warn('[EnemyRoster] Empty pool for stage', st, band, 'tier', speciesTier);

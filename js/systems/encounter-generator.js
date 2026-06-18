@@ -32,8 +32,7 @@
     if (typeof global.getStoryEncounterChainCount === 'function') {
       return Math.max(1, global.getStoryEncounterChainCount(stageNumber));
     }
-    var st = Math.max(1, Math.floor(Number(stageNumber)) || 1);
-    return STORY_BOSS_STAGES.has(st) ? 1 : 3;
+    return 1;
   }
 
   function isBossStage(stageNumber) {

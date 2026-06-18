@@ -61,8 +61,8 @@
     return { itemKey: 'freshWater', quantity: 1, tier: 'grey', icon: '💧', name: 'Fresh Water' };
   }
 
-  function rollNestShinyBonus(level, difficulty) {
-    if (Math.random() > 0.20) return null;
+  function rollNestShinyBonus(level, difficulty, force) {
+    if (!force && Math.random() > 0.20) return null;
     var lv = Math.max(1, Math.floor(Number(level) || 1));
     var diff = String(difficulty || 'juvenile').toLowerCase();
     var base = rollInt(2, 5) + Math.floor(lv / 3);
@@ -76,6 +76,36 @@
       name: 'Shiny Objects',
       desc: 'Bonus shinies from the nest!',
     };
+  }
+
+  function rollMutationRewardForBird(bird, difficulty, stage, isBoss, usedMutationIds) {
+    var level = Math.max(1, Math.floor(Number(bird.level) || 1));
+    var tier = rollNestMutationTier(level);
+    var dataTier = tier === 'grey' ? 'white' : tier;
+    var rw = null;
+    if (typeof Avian.mutations !== 'undefined' && typeof Avian.mutations.rollMutationReward === 'function') {
+      var guard = 0;
+      while (guard < 25) {
+        guard++;
+        rw = Avian.mutations.rollMutationReward({ tier: dataTier, stage: stage, isBoss: !!isBoss });
+        if (!rw) continue;
+        if (usedMutationIds.has(rw.id)) continue;
+        usedMutationIds.add(rw.id);
+        break;
+      }
+    }
+    if (!rw) {
+      return {
+        type: 'combat_item',
+        itemKey: 'freshWater',
+        quantity: 1,
+        tier: 'grey',
+        icon: '💧',
+        name: 'Fresh Water',
+        desc: 'Fallback nest reward.',
+      };
+    }
+    return Object.assign({ type: 'mutation' }, rw);
   }
 
   function rollDropForBird(bird, difficulty, stage, isBoss, usedMutationIds) {
@@ -105,32 +135,27 @@
       };
     }
 
-    var tier = rollNestMutationTier(level);
-    var dataTier = tier === 'grey' ? 'white' : tier;
-    var rw = null;
-    if (typeof Avian.mutations !== 'undefined' && typeof Avian.mutations.rollMutationReward === 'function') {
-      var guard = 0;
-      while (guard < 25) {
-        guard++;
-        rw = Avian.mutations.rollMutationReward({ tier: dataTier, stage: stage, isBoss: !!isBoss });
-        if (!rw) continue;
-        if (usedMutationIds.has(rw.id)) continue;
-        usedMutationIds.add(rw.id);
-        break;
-      }
-    }
-    if (!rw) {
-      return {
-        type: 'combat_item',
-        itemKey: 'freshWater',
-        quantity: 1,
-        tier: 'grey',
-        icon: '💧',
-        name: 'Fresh Water',
-        desc: 'Fallback nest reward.',
-      };
-    }
-    return Object.assign({ type: 'mutation' }, rw);
+    return rollMutationRewardForBird(bird, difficulty, stage, isBoss, usedMutationIds);
+  }
+
+  function rollStoryBonusDrop(bird, difficulty) {
+    if (Math.random() > 0.38) return null;
+    var level = Math.max(1, Math.floor(Number(bird && bird.level) || 1));
+    var kind = pickWeighted([
+      { k: 'healing', w: 28 },
+      { k: 'shiny', w: 10 },
+    ]);
+    if (kind === 'shiny') return rollNestShinyBonus(level, difficulty, true);
+    var heal = rollNestHealingDrop(level, difficulty);
+    return {
+      type: 'combat_item',
+      itemKey: heal.itemKey,
+      quantity: heal.quantity,
+      tier: heal.tier,
+      icon: heal.icon,
+      name: heal.name,
+      desc: 'Healing item for battle.',
+    };
   }
 
   function buildEndlessClearRewardDrops(defeatedBirds, opts) {
@@ -190,6 +215,13 @@
     var stage = Math.max(1, Math.floor(Number(opts.stage) || 1));
     var isBoss = !!opts.isBoss;
     var used = new Set();
+    if (opts.storyMode !== false) {
+      var sourceBird = birds[0] || { level: stage, isBoss: isBoss };
+      var drops = [rollMutationRewardForBird(sourceBird, difficulty, stage, isBoss || !!sourceBird.isBoss, used)];
+      var bonus = rollStoryBonusDrop(sourceBird, difficulty);
+      if (bonus) drops.push(bonus);
+      return drops;
+    }
     return birds.map(function (bird) {
       return rollDropForBird(bird, difficulty, stage, isBoss, used);
     });

@@ -4476,7 +4476,7 @@ function generateStoryStageEnemyKeys(stage, playerBirdKey){
   }
   const chainCount=typeof globalThis.getStoryEncounterChainCount==='function'
     ? Math.max(1,globalThis.getStoryEncounterChainCount(st))
-    : 3;
+    : 1;
   return Array.from({length:chainCount},()=>'EN-SPARR-HESQ-L01');
 }
 
@@ -4578,7 +4578,8 @@ function syncStoryEncounterBirdQueue(encounterStage){
     return;
   }
   if(_isOverworldRun() && Array.isArray(G._owStageEnemies) && G._owStageEnemies.length>0){
-    G._owEnemyCount=Math.max(G._owEnemyCount||0,G._owStageEnemies.length);
+    G._owStageEnemies=G._owStageEnemies.slice(0,1);
+    G._owEnemyCount=1;
     commitStoryEncounterMeta(st, G.player?.birdKey, G._owStageEnemies);
     return;
   }
@@ -4689,16 +4690,16 @@ function handleOverworldReturn() {
       const rolled = resolveFn
         ? resolveFn(intent.encounter, pbk, stageNum)
         : generateStoryStageEnemyKeys(stageNum, pbk);
-      G._owStageEnemies = normalizeOwEnemyListForBattle(rolled, stageNum);
+      G._owStageEnemies = normalizeOwEnemyListForBattle(rolled, stageNum).slice(0,1);
       G._owEnemyIndex   = 0;
-      G._owEnemyCount = Math.max(1, G._owStageEnemies?.length || 1);
+      G._owEnemyCount = 1;
       G._owEncounterRollStage = stageNum;
       commitStoryEncounterMeta(stageNum, pbk, G._owStageEnemies);
     } else if(!G.endlessMode && !STORY_BOSS_STAGES.has(stageNum)){
       const rolled=generateStoryStageEnemyKeys(stageNum, pbk);
-      G._owStageEnemies = normalizeOwEnemyListForBattle(rolled, stageNum);
+      G._owStageEnemies = normalizeOwEnemyListForBattle(rolled, stageNum).slice(0,1);
       G._owEnemyIndex   = 0;
-      G._owEnemyCount = Math.max(1, G._owStageEnemies?.length || 1);
+      G._owEnemyCount = 1;
       G._owEncounterRollStage = stageNum;
       commitStoryEncounterMeta(stageNum, pbk, G._owStageEnemies);
     } else {
@@ -6834,6 +6835,45 @@ function setHpBar(who,hp,max) {
   }
 }
 
+const BATTLE_AILMENT_SYMBOLS={
+  poison:{symbol:'☣︎',label:'Toxic poison',className:'toxic'},
+  burning:{symbol:'🔥',label:'Burn',className:'burning'},
+  weaken:{symbol:'🌀',label:'Weakness',className:'weakness'},
+  chilled:{symbol:'❄︎',label:'Chilled',className:'chilled'},
+};
+
+function isBattleAilmentSymbolActive(key, value){
+  if(!value && value!==0) return false;
+  if(key==='poison') return (value?.stacks||0)>0 && (value?.turns||0)>0;
+  if(key==='burning') return typeof value==='number' ? value>0 : (value?.turns||0)>0;
+  if(key==='weaken') return getWeakenStacks({weaken:value})>0 && (typeof value==='number' ? value>0 : (value?.turns||0)>0);
+  if(key==='chilled') return (value?.stacks||0)>0 && (value?.turns||0)>0;
+  return false;
+}
+
+function renderBattleAilmentSymbols(owner, statuses){
+  const wrap=getAvatarWrap(owner);
+  if(!wrap) return;
+  let layer=wrap.querySelector('.battle-ailment-symbol-layer');
+  if(!layer){
+    layer=document.createElement('div');
+    layer.className='battle-ailment-symbol-layer';
+    layer.setAttribute('aria-hidden','true');
+    wrap.insertBefore(layer, wrap.firstChild);
+  }
+  const active=Object.keys(BATTLE_AILMENT_SYMBOLS).filter(key=>isBattleAilmentSymbolActive(key, statuses?.[key]));
+  if(!active.length){
+    layer.innerHTML='';
+    layer.hidden=true;
+    return;
+  }
+  layer.hidden=false;
+  layer.innerHTML=active.map((key,idx)=>{
+    const meta=BATTLE_AILMENT_SYMBOLS[key];
+    return `<span class="battle-ailment-symbol battle-ailment-symbol--${meta.className} battle-ailment-symbol--slot-${idx}" title="${meta.label}">${meta.symbol}</span>`;
+  }).join('');
+}
+
 function renderStatuses(id, statuses) {
   const el=document.getElementById(id); el.innerHTML='';
   const owner = id === 'player-status' ? 'player' : 'enemy';
@@ -6938,6 +6978,7 @@ function renderStatuses(id, statuses) {
     b.addEventListener('mouseleave',hideTooltip);
     el.appendChild(b);
   });
+  renderBattleAilmentSymbols(owner, statuses);
 }
 
 function setEnergyBar(side,cur,max){
@@ -12862,7 +12903,7 @@ function showRewardScreen(hasLevelUp) {
   const drops=useEndlessRewards&&typeof buildEndlessClearRewardDrops==='function'
     ? buildEndlessClearRewardDrops(defeated,{difficulty:G.difficulty,stage:getEncounterStage(),isBoss})
     :(typeof buildNestRewardDrops==='function'
-      ? buildNestRewardDrops(defeated,{difficulty:G.difficulty,stage:getEncounterStage(),isBoss})
+      ? buildNestRewardDrops(defeated,{difficulty:G.difficulty,stage:getEncounterStage(),isBoss,storyMode:!G.endlessMode})
       : []);
 
   G._nestRewardDrops=drops;

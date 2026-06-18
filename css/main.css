@@ -2684,7 +2684,17 @@ body.build-nest-unlocked .splash-hotspot--forge.is-buildnest-hidden{
 .boss-crown{font-size:.8rem;color:var(--gold);margin-left:6px;}
 .avatar-wrap{position:relative;display:flex;justify-content:center;align-items:center;margin:10px 0;height:132px;min-width:120px;}
 .avatar-wrap::after{content:'';position:absolute;bottom:2px;left:20%;right:20%;height:2px;background:radial-gradient(ellipse at center,rgba(200,160,32,.35),transparent);border-radius:50%;}
-.avatar-inner{display:flex;align-items:center;justify-content:center;font-size:3.8rem;line-height:1;animation:sprite-idle 3.2s ease-in-out infinite;}
+.battle-ailment-symbol-layer{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;z-index:0;}
+.battle-ailment-symbol-layer[hidden]{display:none!important;}
+.battle-ailment-symbol{position:absolute;font-size:5.9rem;line-height:1;opacity:.5;filter:blur(.1px) drop-shadow(0 0 12px currentColor);transform:translate(-50%,-50%);left:50%;top:50%;font-family:"Apple Color Emoji","Segoe UI Emoji",serif;}
+.battle-ailment-symbol--slot-1{transform:translate(-50%,-50%) rotate(-10deg) scale(.82);left:36%;top:54%;}
+.battle-ailment-symbol--slot-2{transform:translate(-50%,-50%) rotate(10deg) scale(.82);left:64%;top:54%;}
+.battle-ailment-symbol--slot-3{transform:translate(-50%,-50%) rotate(4deg) scale(.68);left:50%;top:36%;}
+.battle-ailment-symbol--toxic{color:#6ae86a;}
+.battle-ailment-symbol--burning{color:#ff8c40;}
+.battle-ailment-symbol--weakness{color:#b990ff;}
+.battle-ailment-symbol--chilled{color:#9fd0ff;}
+.avatar-inner{display:flex;align-items:center;justify-content:center;font-size:3.8rem;line-height:1;animation:sprite-idle 3.2s ease-in-out infinite;position:relative;z-index:1;}
 .avatar-inner svg{height:96px;width:auto;image-rendering:pixelated;}
 @keyframes sprite-idle{0%,100%{transform:translateY(0)}50%{transform:translateY(-4px)}}
 .do-smash-r .avatar-inner,.do-smash-l .avatar-inner,.do-hit .avatar-inner{animation:none;}

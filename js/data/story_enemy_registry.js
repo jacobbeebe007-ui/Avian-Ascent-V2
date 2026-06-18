@@ -11,11 +11,9 @@
     return STORY_BOSS_STAGES.has(Number(stageNumber));
   }
 
-  /** Battles per non-boss story stage (boss stages use chain length 1). Keep in sync with blackstone getNodeBattleCount. */
+  /** Story stages use a single battle. Keep in sync with blackstone getNodeBattleCount. */
   function getStoryEncounterChainCount(stageNumber) {
-    const st = Math.max(1, Math.floor(Number(stageNumber)) || 1);
-    if (STORY_BOSS_STAGES.has(st)) return 1;
-    return 3;
+    return 1;
   }
 
   function getEnemyLevelBandForStage(stageNumber) {
