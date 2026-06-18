@@ -5483,6 +5483,225 @@ function materializeRosterPreviewKit(birdKey){
   }
   return out;
 }
+
+let BIRD_UPGRADE_PREVIEW_KEY=null;
+let BIRD_UPGRADE_PREVIEW_MODEL=null;
+
+function materializeRosterPreviewKitForCardProgress(birdKey, tier, stars){
+  const out={energyMax:0, stats:null};
+  const stub=buildRosterPreviewStubForBirdKey(birdKey);
+  if(!stub) return out;
+  const prev=G.player;
+  try{
+    G.player=stub;
+    stub.energyMax=computePlayerMaxEnergy();
+    ensureFamilyEvolutionState(stub);
+    stub._birdCardTier=tier;
+    stub._birdCardStars=stars;
+    if(typeof applyBirdCardStats==='function') applyBirdCardStats(stub, tier, stars);
+    out.energyMax=Math.max(0, Number(stub.energyMax)||computePlayerMaxEnergy());
+    out.stats=stub.stats?{...stub.stats}:{};
+  }finally{
+    G.player=prev;
+  }
+  return out;
+}
+
+function birdUpgradeTierMeta(tier){
+  const pack=Avian?.data?.birdCardTiers;
+  return{
+    label:pack?.TIER_LABELS?.[tier]||tier,
+    css:pack?.TIER_CSS?.[tier]||'tier-grey',
+  };
+}
+
+function birdUpgradeStarsHtml(stars){
+  const pack=Avian?.data?.birdCardTiers;
+  return renderBirdCardStarsHtml(stars, pack?.STARS_PER_TIER||5);
+}
+
+function buildBirdUpgradePreviewModel(birdKey){
+  const bird=BIRDS?.[birdKey];
+  if(!bird) return null;
+  const progress=typeof getBirdCardProgress==='function'?getBirdCardProgress(birdKey):null;
+  const ownsCard=typeof ownsBirdCard==='function'?ownsBirdCard(birdKey):true;
+  const feathers=typeof getSpeciesFeathers==='function'?getSpeciesFeathers(birdKey):0;
+  const cost=progress?.cost??0;
+  const preview=progress?.preview||null;
+  const canConfirm=!!(ownsCard&&progress?.canUpgrade&&preview&&feathers>=cost);
+  const tierBefore=progress?.tier||(typeof getBirdCardTier==='function'?getBirdCardTier(birdKey):'grey');
+  const starsBefore=progress?.stars??(typeof getBirdCardStars==='function'?getBirdCardStars(birdKey):0);
+  const tierAfter=preview?.tierAfter||tierBefore;
+  const starsAfter=preview?.starsAfter??starsBefore;
+  const currentKit=materializeRosterPreviewKitForCardProgress(birdKey, tierBefore, starsBefore);
+  const upgradedKit=materializeRosterPreviewKitForCardProgress(birdKey, tierAfter, starsAfter);
+  const passiveInfo=getBirdPassiveInfo(birdKey);
+  const passiveName=passiveInfo?.name||bird.passive?.name||'Passive';
+  const passiveBefore=typeof formatPassiveEffectForTier==='function'
+    ? formatPassiveEffectForTier(birdKey, tierBefore, starsBefore)
+    : (passiveInfo?.desc||passiveInfo?.effect||bird.passive?.desc||'');
+  const passiveAfter=typeof formatPassiveEffectForTier==='function'
+    ? formatPassiveEffectForTier(birdKey, tierAfter, starsAfter)
+    : passiveBefore;
+  const statKeys=[
+    ['hp','HP'],
+    ['atk','ATK'],
+    ['def','DEF'],
+    ['spd','SPD'],
+    ['acc','ACC'],
+    ['dodge','DODGE'],
+    ['matk','MATK'],
+    ['mdef','MDEF'],
+  ];
+  return{
+    birdKey,
+    name:bird.name||birdKey,
+    sizeClass:getUISizeClass(bird, 'select'),
+    feathers,
+    cost,
+    canConfirm,
+    reason:!ownsCard?'no_card':!progress?.canUpgrade?'max_tier':feathers<cost?'feathers':'',
+    tierBefore,
+    starsBefore,
+    tierAfter,
+    starsAfter,
+    tierBeforeMeta:birdUpgradeTierMeta(tierBefore),
+    tierAfterMeta:birdUpgradeTierMeta(tierAfter),
+    isTierUp:!!preview?.isTierUp,
+    statsBefore:currentKit.stats||{},
+    statsAfter:upgradedKit.stats||{},
+    passiveName,
+    passiveBefore,
+    passiveAfter,
+    passiveChanged:String(passiveBefore||'')!==String(passiveAfter||''),
+    statRows:statKeys
+      .filter(([key])=>currentKit.stats?.[key]!=null||upgradedKit.stats?.[key]!=null)
+      .map(([key,label])=>{
+        const before=Number(currentKit.stats?.[key]??0);
+        const after=Number(upgradedKit.stats?.[key]??0);
+        return{key,label,before,after,delta:after-before};
+      }),
+  };
+}
+
+function birdUpgradeReasonText(model){
+  if(!model) return 'Upgrade preview unavailable.';
+  if(model.reason==='no_card') return 'Hatch this bird card before upgrading.';
+  if(model.reason==='max_tier') return 'This bird card is already at maximum tier and stars.';
+  if(model.reason==='feathers') return `Need ${model.cost} Species Feathers; you have ${model.feathers}.`;
+  return '';
+}
+
+function birdUpgradeStatRowsHtml(model){
+  return model.statRows.map(row=>{
+    const deltaClass=row.delta>0?' is-positive':row.delta<0?' is-negative':'';
+    const deltaText=row.delta>0?`+${row.delta}`:String(row.delta);
+    return `<div class="bird-upgrade-stat-row"><span>${escapeHtmlRoster(row.label)}</span><strong>${escapeHtmlRoster(row.before)}</strong><i aria-hidden="true">→</i><strong>${escapeHtmlRoster(row.after)}</strong><em class="${deltaClass}">${escapeHtmlRoster(deltaText)}</em></div>`;
+  }).join('');
+}
+
+function renderBirdUpgradePreviewModal(model, state='preview'){
+  const modal=document.getElementById('bird-upgrade-modal');
+  const content=document.getElementById('bird-upgrade-content');
+  const title=document.getElementById('bird-upgrade-title');
+  const confirm=document.getElementById('bird-upgrade-confirm');
+  const cancel=document.getElementById('bird-upgrade-cancel');
+  if(!modal||!content||!model) return;
+  const isResult=state==='result';
+  const reason=birdUpgradeReasonText(model);
+  const resultBanner=isResult
+    ? `<div class="bird-upgrade-result-banner">${model.isTierUp?'Tier advanced and passive upgraded.':'Upgrade complete.'}</div>`
+    : '';
+  content.innerHTML=`
+    ${resultBanner}
+    <div class="bird-upgrade-summary">
+      <div class="bird-upgrade-portrait" aria-hidden="true">${renderBirdIconHTML(model.birdKey, model.sizeClass, false)}</div>
+      <div class="bird-upgrade-summary-body">
+        <h3>${escapeHtmlRoster(model.name)}</h3>
+        <div class="bird-upgrade-tier-line">
+          <span class="bird-card-tier-badge ${model.tierBeforeMeta.css}">${escapeHtmlRoster(model.tierBeforeMeta.label)}</span>
+          <span class="inventory-feather-stars">${birdUpgradeStarsHtml(model.starsBefore)}</span>
+          <span class="bird-upgrade-arrow" aria-hidden="true">→</span>
+          <span class="bird-card-tier-badge ${model.tierAfterMeta.css}">${escapeHtmlRoster(model.tierAfterMeta.label)}</span>
+          <span class="inventory-feather-stars">${birdUpgradeStarsHtml(model.starsAfter)}</span>
+        </div>
+        <p class="bird-upgrade-cost">Cost: <strong>${escapeHtmlRoster(model.cost)}</strong> Species Feathers · Owned: <strong>${escapeHtmlRoster(model.feathers)}</strong></p>
+      </div>
+    </div>
+    <div class="bird-upgrade-stats">
+      <div class="bird-upgrade-stat-head"><span>Stat</span><strong>Current</strong><i aria-hidden="true">→</i><strong>Upgraded</strong><em>Change</em></div>
+      ${birdUpgradeStatRowsHtml(model)}
+    </div>
+    <div class="bird-upgrade-passive${model.passiveChanged||model.isTierUp?' is-changed':''}">
+      <h4>${escapeHtmlRoster(model.passiveName)}</h4>
+      <div class="bird-upgrade-passive-grid">
+        <p><span>Current</span>${escapeHtmlRoster(model.passiveBefore||'No passive listed.')}</p>
+        <p><span>Upgraded</span>${escapeHtmlRoster(model.passiveAfter||'No passive listed.')}</p>
+      </div>
+      ${model.isTierUp?'<div class="bird-upgrade-passive-note">Tier change: passive scaling advances with the new card tier.</div>':''}
+    </div>
+    ${reason?`<p class="bird-upgrade-warning">${escapeHtmlRoster(reason)}</p>`:''}`;
+  if(title) title.textContent=isResult?'Upgrade Complete':'Upgrade Bird';
+  if(confirm){
+    confirm.hidden=isResult;
+    confirm.disabled=!model.canConfirm||isResult;
+    confirm.textContent=model.isTierUp?'Confirm tier upgrade':'Confirm upgrade';
+  }
+  if(cancel) cancel.textContent=isResult?'Done':'Cancel';
+  modal.hidden=false;
+  modal.setAttribute('aria-hidden','false');
+  modal.classList.add('is-open');
+  modal.classList.toggle('is-result', isResult);
+}
+
+function openBirdUpgradePreview(birdKey){
+  const model=buildBirdUpgradePreviewModel(birdKey);
+  if(!model){ try{ logMsg('Upgrade preview unavailable.','miss'); }catch(_){} return; }
+  BIRD_UPGRADE_PREVIEW_KEY=birdKey;
+  BIRD_UPGRADE_PREVIEW_MODEL=model;
+  renderBirdUpgradePreviewModal(model, 'preview');
+}
+
+function closeBirdUpgradePreview(){
+  const modal=document.getElementById('bird-upgrade-modal');
+  if(modal){
+    modal.hidden=true;
+    modal.setAttribute('aria-hidden','true');
+    modal.classList.remove('is-open','is-result');
+  }
+  BIRD_UPGRADE_PREVIEW_KEY=null;
+  BIRD_UPGRADE_PREVIEW_MODEL=null;
+}
+
+function confirmBirdUpgradePreview(){
+  const before=BIRD_UPGRADE_PREVIEW_MODEL||buildBirdUpgradePreviewModel(BIRD_UPGRADE_PREVIEW_KEY);
+  if(!before||!before.canConfirm){
+    try{ logMsg(birdUpgradeReasonText(before),'miss'); }catch(_){}
+    if(before) renderBirdUpgradePreviewModal(before, 'preview');
+    return;
+  }
+  if(typeof mutateBirdCard!=='function') return;
+  const result=mutateBirdCard(before.birdKey);
+  if(!result?.ok){
+    try{ logMsg(result?.reason==='feathers'?'Not enough Species Feathers.':'Upgrade failed.','miss'); }catch(_){}
+    const fresh=buildBirdUpgradePreviewModel(before.birdKey);
+    BIRD_UPGRADE_PREVIEW_MODEL=fresh;
+    if(fresh) renderBirdUpgradePreviewModal(fresh, 'preview');
+    return;
+  }
+  if(typeof updateAscentPanel==='function') updateAscentPanel(before.birdKey);
+  if(typeof buildBirdGrid==='function') try{ buildBirdGrid(); }catch(_){}
+  if(typeof renderFortuneInventory==='function') try{ renderFortuneInventory(); }catch(_){}
+  const resultModel={...before, feathers:Math.max(0, before.feathers-before.cost), canConfirm:false};
+  BIRD_UPGRADE_PREVIEW_MODEL=resultModel;
+  renderBirdUpgradePreviewModal(resultModel, 'result');
+  try{ logMsg(`${before.name} upgraded.`, result.isTierUp?'hit':'good'); }catch(_){}
+}
+
+globalThis.buildBirdUpgradePreviewModel=buildBirdUpgradePreviewModel;
+globalThis.openBirdUpgradePreview=openBirdUpgradePreview;
+globalThis.closeBirdUpgradePreview=closeBirdUpgradePreview;
+globalThis.confirmBirdUpgradePreview=confirmBirdUpgradePreview;
 // Stubs kept so any call sites or wrapper hooks don't throw
 function openRosterChampionModal(){}
 function closeRosterChampionModal(){}

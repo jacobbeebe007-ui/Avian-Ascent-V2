@@ -1039,6 +1039,33 @@ body.build-nest-unlocked .splash-hotspot--forge.is-buildnest-hidden{
 }
 .inventory-subview{display:block;}
 .inventory-subview[hidden]{display:none!important;}
+.inventory-feather-tabs{
+  display:flex;
+  gap:8px;
+  margin:0 0 12px;
+  padding:4px;
+  border:1px solid rgba(120,100,70,.28);
+  border-radius:12px;
+  background:rgba(8,10,16,.42);
+}
+.inventory-feather-tab-btn{
+  flex:1;
+  font:inherit;
+  font-size:.74rem;
+  font-weight:700;
+  letter-spacing:.04em;
+  cursor:pointer;
+  padding:9px 12px;
+  border-radius:9px;
+  border:1px solid transparent;
+  background:transparent;
+  color:rgba(210,204,192,.78);
+}
+.inventory-feather-tab-btn.is-active{
+  border-color:rgba(232,201,106,.55);
+  background:linear-gradient(180deg,rgba(201,168,76,.18),rgba(90,70,30,.16));
+  color:var(--gold-light);
+}
 .inventory-feather-filters{
   display:flex;
   flex-wrap:wrap;
@@ -1082,6 +1109,13 @@ body.build-nest-unlocked .splash-hotspot--forge.is-buildnest-hidden{
   background:rgba(8,10,16,.58);
   text-align:center;
   position:relative;
+}
+.inventory-feather-card.is-upgradable{
+  box-shadow:0 0 0 1px rgba(120,220,140,.2),0 10px 24px rgba(0,0,0,.18);
+}
+.inventory-feather-card.has-no-feathers{
+  opacity:.72;
+  filter:saturate(.75);
 }
 .inventory-feather-card.tier-grey{background:linear-gradient(180deg,rgba(106,120,144,.14),rgba(42,38,32,.9));border-color:rgba(106,120,144,.55);}
 .inventory-feather-card.tier-green{background:linear-gradient(180deg,rgba(76,138,106,.14),rgba(36,44,36,.9));border-color:rgba(76,138,106,.55);}
@@ -1135,6 +1169,194 @@ body.build-nest-unlocked .splash-hotspot--forge.is-buildnest-hidden{
   line-height:1.35;
 }
 .bird-card-upgrade-wrap--inventory .bird-card-upgrade-hint{font-size:.68rem;}
+.bird-upgrade-modal{
+  display:none;
+  position:fixed;
+  inset:0;
+  z-index:9550;
+  align-items:center;
+  justify-content:center;
+  padding:18px;
+  background:rgba(2,4,8,.72);
+  backdrop-filter:blur(6px);
+}
+.bird-upgrade-modal.is-open{display:flex;}
+.bird-upgrade-panel{
+  width:min(760px,96vw);
+  max-height:min(88vh,760px);
+  overflow:auto;
+  border:1px solid rgba(232,201,106,.38);
+  border-radius:18px;
+  background:linear-gradient(180deg,rgba(30,26,18,.98),rgba(10,12,18,.98));
+  box-shadow:0 24px 70px rgba(0,0,0,.55);
+  padding:16px;
+  color:var(--text);
+}
+.bird-upgrade-head{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  margin-bottom:12px;
+}
+.bird-upgrade-head h2{
+  margin:0;
+  color:var(--gold-light);
+  font-family:'Cinzel',serif;
+}
+.bird-upgrade-close{
+  width:36px;
+  height:36px;
+  border-radius:50%;
+  border:1px solid rgba(232,201,106,.32);
+  background:rgba(0,0,0,.24);
+  color:var(--gold-light);
+  cursor:pointer;
+  font-size:1.25rem;
+}
+.bird-upgrade-summary{
+  display:flex;
+  gap:14px;
+  align-items:center;
+  border:1px solid rgba(120,100,70,.32);
+  border-radius:14px;
+  padding:12px;
+  background:rgba(8,10,16,.46);
+}
+.bird-upgrade-portrait{
+  width:82px;
+  min-width:82px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+.bird-upgrade-summary h3{
+  margin:0 0 8px;
+  font-family:'Cinzel',serif;
+  color:var(--gold-light);
+}
+.bird-upgrade-tier-line{
+  display:flex;
+  flex-wrap:wrap;
+  align-items:center;
+  gap:8px;
+}
+.bird-upgrade-arrow{
+  color:var(--gold-light);
+  font-weight:800;
+}
+.bird-upgrade-cost{
+  margin:8px 0 0;
+  color:rgba(220,214,202,.8);
+  font-size:.86rem;
+}
+.bird-upgrade-stats{
+  margin-top:14px;
+  border:1px solid rgba(120,100,70,.32);
+  border-radius:14px;
+  overflow:hidden;
+}
+.bird-upgrade-stat-head,
+.bird-upgrade-stat-row{
+  display:grid;
+  grid-template-columns:1.1fr .8fr 24px .8fr .7fr;
+  align-items:center;
+  gap:8px;
+  padding:8px 10px;
+}
+.bird-upgrade-stat-head{
+  background:rgba(201,168,76,.12);
+  color:var(--gold-light);
+  font-size:.72rem;
+  text-transform:uppercase;
+  letter-spacing:.05em;
+}
+.bird-upgrade-stat-row{
+  border-top:1px solid rgba(120,100,70,.22);
+  background:rgba(8,10,16,.28);
+}
+.bird-upgrade-stat-row span{font-weight:700;color:rgba(232,224,208,.9);}
+.bird-upgrade-stat-row strong{text-align:right;}
+.bird-upgrade-stat-row i{text-align:center;color:var(--gold-light);font-style:normal;}
+.bird-upgrade-stat-row em{
+  justify-self:end;
+  min-width:44px;
+  padding:3px 7px;
+  border-radius:999px;
+  background:rgba(160,160,160,.12);
+  color:rgba(220,214,202,.78);
+  text-align:center;
+  font-style:normal;
+  font-size:.76rem;
+}
+.bird-upgrade-stat-row em.is-positive{background:rgba(60,170,90,.18);color:#baf0c8;}
+.bird-upgrade-stat-row em.is-negative{background:rgba(180,70,70,.18);color:#ffb8b8;}
+.bird-upgrade-passive{
+  margin-top:14px;
+  border:1px solid rgba(120,100,70,.32);
+  border-radius:14px;
+  padding:12px;
+  background:rgba(8,10,16,.36);
+}
+.bird-upgrade-passive.is-changed{
+  border-color:rgba(232,201,106,.42);
+  background:rgba(201,168,76,.08);
+}
+.bird-upgrade-passive h4{
+  margin:0 0 10px;
+  color:var(--gold-light);
+}
+.bird-upgrade-passive-grid{
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:10px;
+}
+.bird-upgrade-passive-grid p{
+  margin:0;
+  padding:10px;
+  border-radius:10px;
+  background:rgba(0,0,0,.2);
+  color:rgba(232,224,208,.86);
+  line-height:1.4;
+}
+.bird-upgrade-passive-grid span{
+  display:block;
+  margin-bottom:4px;
+  color:rgba(232,201,106,.8);
+  font-size:.7rem;
+  text-transform:uppercase;
+  letter-spacing:.05em;
+}
+.bird-upgrade-passive-note,
+.bird-upgrade-result-banner{
+  margin-top:10px;
+  border:1px solid rgba(120,220,140,.28);
+  border-radius:10px;
+  background:rgba(50,120,70,.16);
+  color:#baf0c8;
+  padding:8px 10px;
+}
+.bird-upgrade-result-banner{margin:0 0 12px;text-align:center;font-weight:800;}
+.bird-upgrade-warning{
+  margin:12px 0 0;
+  border:1px solid rgba(220,100,80,.32);
+  border-radius:10px;
+  background:rgba(120,40,30,.18);
+  color:#ffb8a8;
+  padding:8px 10px;
+}
+.bird-upgrade-actions{
+  display:flex;
+  justify-content:flex-end;
+  gap:10px;
+  margin-top:14px;
+}
+@media (max-width:640px){
+  .bird-upgrade-summary{align-items:flex-start;}
+  .bird-upgrade-passive-grid{grid-template-columns:1fr;}
+  .bird-upgrade-stat-head,
+  .bird-upgrade-stat-row{grid-template-columns:1fr .72fr 18px .72fr .62fr;font-size:.82rem;}
+}
 .select-hub-panel--hatchery .select-hub-panel-inner--hatchery{max-width:min(920px,96vw);}
 .hatchery-balance-bar{margin-bottom:8px;}
 .mother-goose-hatch-modal{

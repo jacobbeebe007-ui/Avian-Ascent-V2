@@ -3,8 +3,13 @@
   'use strict';
 
   var INVENTORY_TAB = 'feathers';
+  var FEATHER_SACK_TAB = 'upgradable';
   var FEATHER_FILTER = 'all';
   var FEATHER_AMOUNT_FILTER = 'all';
+  var FEATHER_SACK_TABS = [
+    { id: 'upgradable', label: 'Upgradable' },
+    { id: 'birds', label: 'Birds' },
+  ];
   var FEATHER_TIERS = ['all', 'grey', 'green', 'blue', 'purple', 'gold', 'orange'];
   var FEATHER_AMOUNT_FILTERS = [
     { id: 'all', label: 'All' },
@@ -117,6 +122,41 @@
     renderInventoryFeathers();
   }
 
+  function setInventoryFeatherSackTab(tab) {
+    FEATHER_SACK_TAB = tab === 'birds' ? 'birds' : 'upgradable';
+    var wrap = document.getElementById('inventory-feather-tabs');
+    if (wrap) {
+      wrap.querySelectorAll('.inventory-feather-tab-btn').forEach(function (btn) {
+        var t = btn.getAttribute('data-feather-sack-tab') || 'upgradable';
+        var active = t === FEATHER_SACK_TAB;
+        btn.classList.toggle('is-active', active);
+        btn.setAttribute('aria-selected', active ? 'true' : 'false');
+      });
+    }
+    renderInventoryFeathers();
+  }
+
+  function renderInventoryFeatherTabs() {
+    var wrap = document.getElementById('inventory-feather-tabs');
+    if (!wrap) return;
+    wrap.innerHTML = FEATHER_SACK_TABS.map(function (row) {
+      var active = row.id === FEATHER_SACK_TAB;
+      return (
+        '<button type="button" class="inventory-feather-tab-btn' +
+        (active ? ' is-active' : '') +
+        '" role="tab" aria-selected="' +
+        (active ? 'true' : 'false') +
+        '" data-feather-sack-tab="' +
+        esc(row.id) +
+        '" data-action="setInventoryFeatherSackTab:' +
+        esc(row.id) +
+        '">' +
+        esc(row.label) +
+        '</button>'
+      );
+    }).join('');
+  }
+
   function renderInventoryFeatherAmountFilters() {
     var wrap = document.getElementById('inventory-feather-amount-filters');
     if (!wrap || wrap.dataset.wired === '1') return;
@@ -150,11 +190,35 @@
     return count >= min;
   }
 
-  function buildFeatherMutateBtn(birdKey) {
-    if (typeof globalThis.renderBirdCardUpgradeHtml === 'function') {
-      return globalThis.renderBirdCardUpgradeHtml(birdKey, { layout: 'inventory' });
+  function buildFeatherMutateBtn(row) {
+    if (!row || !row.ownsCard) return '<p class="bird-card-upgrade-hint">Hatch this bird card to upgrade.</p>';
+    if (!row.progress || row.progress.isMax) return '<p class="bird-card-upgrade-hint">Card at maximum tier and stars.</p>';
+    if (!row.progress.canUpgrade) return '';
+    if (!row.canUpgrade) {
+      return (
+        '<p class="bird-card-upgrade-hint">Species Feathers: ' +
+        fmt(row.count) +
+        ' / ' +
+        fmt(row.cost) +
+        ' for next upgrade.</p>'
+      );
     }
-    return '';
+    var preview = row.progress.preview || {};
+    var pack = tierPack();
+    var nextTierLabel = pack && pack.TIER_LABELS ? pack.TIER_LABELS[preview.tierAfter] || preview.tierAfter : preview.tierAfter;
+    var label = preview.isTierUp ? 'Preview ascend to ' + nextTierLabel : 'Preview upgrade';
+    return (
+      '<div class="bird-card-upgrade-wrap bird-card-upgrade-wrap--inventory">' +
+      '<button type="button" class="bird-card-upgrade-btn bird-card-upgrade-btn--inventory" data-action="openBirdUpgradePreview:' +
+      esc(row.birdKey) +
+      '">' +
+      esc(label) +
+      ' (' +
+      fmt(row.count) +
+      '/' +
+      fmt(row.cost) +
+      ' 🪶)</button></div>'
+    );
   }
 
   function renderInventoryFeatherFilters() {
@@ -262,36 +326,50 @@
   }
 
   function renderInventoryFeathers() {
+    renderInventoryFeatherTabs();
     renderInventoryFeatherAmountFilters();
     renderInventoryFeatherFilters();
     var grid = document.getElementById('inventory-feathers-grid');
     var empty = document.getElementById('inventory-feathers-empty');
+    var amountWrap = document.getElementById('inventory-feather-amount-filters');
+    if (amountWrap) amountWrap.hidden = FEATHER_SACK_TAB !== 'birds';
     if (!grid || !empty) return;
 
     var meta = typeof globalThis.getFortuneMeta === 'function' ? globalThis.getFortuneMeta() : null;
     var store = (meta && meta.speciesFeathers) || {};
     var birds = globalThis.BIRDS || {};
-    var entries = Object.keys(store)
+    var entries = Object.keys(birds)
       .filter(function (key) {
-        return Math.floor(Number(store[key]) || 0) > 0;
+        return birds[key] && birds[key].stats;
       })
       .map(function (key) {
         var count = Math.floor(Number(store[key]) || 0);
         var cardTier =
           typeof globalThis.getBirdCardTier === 'function' ? globalThis.getBirdCardTier(key) : 'grey';
         var bird = birds[key];
+        var ownsCard = typeof globalThis.ownsBirdCard === 'function' ? globalThis.ownsBirdCard(key) : true;
+        var progress = typeof globalThis.getBirdCardProgress === 'function' ? globalThis.getBirdCardProgress(key) : null;
+        var cost = progress && progress.cost ? progress.cost : 0;
+        var canUpgrade = !!(ownsCard && progress && progress.canUpgrade && count >= cost);
         return {
           birdKey: key,
           birdName: bird && bird.name ? bird.name : key,
           count: count,
           cardTier: cardTier,
+          ownsCard: ownsCard,
+          progress: progress,
+          cost: cost,
+          canUpgrade: canUpgrade,
         };
+      })
+      .filter(function (row) {
+        return FEATHER_SACK_TAB === 'birds' || row.canUpgrade;
       })
       .filter(function (row) {
         return FEATHER_FILTER === 'all' || row.cardTier === FEATHER_FILTER;
       })
       .filter(function (row) {
-        return featherPassesAmountFilter(row.birdKey, row.count);
+        return FEATHER_SACK_TAB !== 'birds' || featherPassesAmountFilter(row.birdKey, row.count);
       })
       .sort(function (a, b) {
         if (b.count !== a.count) return b.count - a.count;
@@ -302,10 +380,12 @@
       grid.innerHTML = '';
       empty.hidden = false;
       empty.textContent =
-        FEATHER_AMOUNT_FILTER !== 'all'
+        FEATHER_SACK_TAB === 'upgradable'
+          ? 'No birds are ready to upgrade. Hatch duplicates to collect enough Species Feathers.'
+          : FEATHER_AMOUNT_FILTER !== 'all'
           ? 'No feathers match this amount filter.'
           : FEATHER_FILTER === 'all'
-          ? 'No Species Feathers yet. Hatch duplicates at The Hatchery.'
+          ? 'No birds match this view.'
           : 'No Species Feathers for ' + speciesRarityLabel(FEATHER_FILTER) + ' tier birds.';
       return;
     }
@@ -325,9 +405,11 @@
             (si < cardStars ? '★' : '☆') +
             '</span>';
         }
+        var stateClass = row.canUpgrade ? ' is-upgradable' : row.count > 0 ? ' has-feathers' : ' has-no-feathers';
         return (
           '<div class="inventory-feather-card ' +
           css +
+          stateClass +
           '" title="' +
           esc(row.birdName) +
           ' — ' +
@@ -348,7 +430,7 @@
           '<div class="inventory-feather-count">×' +
           fmt(row.count) +
           '</div>' +
-          buildFeatherMutateBtn(row.birdKey) +
+          buildFeatherMutateBtn(row) +
           '</div>'
         );
       })
@@ -416,6 +498,7 @@
   globalThis.equipFortuneArtifact = equipFortuneArtifact;
   globalThis.unequipFortuneArtifact = unequipFortuneArtifact;
   globalThis.setInventorySubView = setInventorySubView;
+  globalThis.setInventoryFeatherSackTab = setInventoryFeatherSackTab;
   globalThis.setInventoryFeatherFilter = setInventoryFeatherFilter;
   globalThis.setInventoryFeatherAmountFilter = setInventoryFeatherAmountFilter;
 })();

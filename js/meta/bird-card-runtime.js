@@ -140,6 +140,7 @@
 
   var pack = {
     applyBirdCardProgression: applyBirdCardProgression,
+    applyBirdCardStats: applyBirdCardStats,
     getPassiveBonusFraction: getPassiveBonusFraction,
     formatPassiveEffectForTier: formatPassiveEffectForTier,
     getTierAbilityUnlockSummary: getTierAbilityUnlockSummary,
@@ -150,6 +151,7 @@
   Avian.meta.birdCardRuntime = pack;
 
   globalThis.applyBirdCardProgression = applyBirdCardProgression;
+  globalThis.applyBirdCardStats = applyBirdCardStats;
   globalThis.formatPassiveEffectForTier = formatPassiveEffectForTier;
   globalThis.getPassiveBonusFraction = getPassiveBonusFraction;
   globalThis.getTierAbilityUnlockSummary = getTierAbilityUnlockSummary;

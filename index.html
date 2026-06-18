@@ -178,6 +178,7 @@
 <section class="inventory-subview is-active" id="inventory-view-feathers" role="tabpanel" aria-labelledby="inventory-nav-feathers">
 <h4 class="inventory-section-title" id="inventory-feathers-heading">Feather Sack</h4>
 <p class="inventory-section-lead">Duplicates from Mother Goose eggs. Collect feathers to mutate bird cards to higher tiers.</p>
+<div class="inventory-feather-tabs" id="inventory-feather-tabs" role="tablist" aria-label="Feather Sack views"></div>
 <div class="inventory-feather-filters inventory-feather-amount-filters" id="inventory-feather-amount-filters" role="group" aria-label="Filter by feather amount"></div>
 <div class="inventory-feather-filters" id="inventory-feather-filters" role="group" aria-label="Filter by card tier"></div>
 <p class="inventory-empty" id="inventory-feathers-empty">No Species Feathers yet. Hatch duplicates at The Hatchery.</p>
@@ -984,6 +985,20 @@
 </div>
 <div class="mother-goose-hatch-reveal" id="mother-goose-hatch-reveal" hidden></div>
 <button type="button" class="mother-goose-hatch-close" id="mother-goose-hatch-close" data-action="closeMotherGooseHatchModal" hidden>Continue</button>
+</div>
+</div>
+<!-- BIRD CARD UPGRADE PREVIEW MODAL -->
+<div class="bird-upgrade-modal" id="bird-upgrade-modal" role="dialog" aria-modal="true" aria-labelledby="bird-upgrade-title" aria-hidden="true" hidden data-action="closeBirdUpgradePreview" data-backdrop="1">
+<div class="bird-upgrade-panel">
+<div class="bird-upgrade-head">
+<h2 id="bird-upgrade-title">Upgrade Bird</h2>
+<button type="button" class="bird-upgrade-close" data-action="closeBirdUpgradePreview" aria-label="Close upgrade preview">×</button>
+</div>
+<div id="bird-upgrade-content" class="bird-upgrade-content"></div>
+<div class="bird-upgrade-actions">
+<button type="button" class="abandon-cancel-btn" id="bird-upgrade-cancel" data-action="closeBirdUpgradePreview">Close</button>
+<button type="button" class="abandon-confirm-btn" id="bird-upgrade-confirm" data-action="confirmBirdUpgradePreview">Upgrade</button>
+</div>
 </div>
 </div>
 <!-- ABILITY MODIFICATION MODAL -->
