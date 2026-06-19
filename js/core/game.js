@@ -5597,11 +5597,10 @@ function birdUpgradeReasonText(model){
 }
 
 function birdUpgradeStatRowsHtml(model){
-  const fmtStat=(value)=>Number(value||0).toFixed(2);
   return model.statRows.map(row=>{
     const deltaClass=row.delta>0?' is-positive':row.delta<0?' is-negative':'';
-    const deltaText=row.delta>0?`+${fmtStat(row.delta)}`:fmtStat(row.delta);
-    return `<div class="bird-upgrade-stat-row"><span>${escapeHtmlRoster(row.label)}</span><strong>${escapeHtmlRoster(fmtStat(row.before))}</strong><i aria-hidden="true">→</i><strong>${escapeHtmlRoster(fmtStat(row.after))}</strong><em class="${deltaClass}">${escapeHtmlRoster(deltaText)}</em></div>`;
+    const deltaText=row.delta>0?`+${row.delta}`:String(row.delta);
+    return `<div class="bird-upgrade-stat-row"><span>${escapeHtmlRoster(row.label)}</span><strong>${escapeHtmlRoster(row.before)}</strong><i aria-hidden="true">→</i><strong>${escapeHtmlRoster(row.after)}</strong><em class="${deltaClass}">${escapeHtmlRoster(deltaText)}</em></div>`;
   }).join('');
 }
 

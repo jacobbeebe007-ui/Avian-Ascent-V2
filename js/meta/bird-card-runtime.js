@@ -64,6 +64,7 @@
   function statGuardKey(key) {
     if (key === 'maxHp' || key === 'hp') return 'hp';
     if (key === 'dodge') return 'dodge';
+    if (key === 'acc') return 'acc';
     if (key === 'def' || key === 'mdef') return 'def';
     return null;
   }
@@ -89,7 +90,7 @@
       var guard = statGuardKey(key);
       var val = guard
         ? t.applyGuardrailedStatMult(base[key], guard, tier, size, s)
-        : Math.max(key === 'dodge' ? 0 : 1, Math.round(base[key] * mult));
+        : Math.max(key === 'dodge' || key === 'acc' ? 0 : 1, Math.round(base[key] * mult));
       scaled[key] = val;
       fromCard[key] = val - (Number(base[key]) || 0);
     });
