@@ -349,12 +349,21 @@
     }
   }
   function applyConditionalDamageBonus(row, dmg) {
-    if (!row.riders) return dmg;
+    if (!row.riders && !(row.tags && row.tags.length)) return dmg;
     var g = globalThis.G;
     var es = (g && g.enemyStatus) || {};
     var roundDmg = (typeof globalThis.roundCombatDamage === 'function')
       ? globalThis.roundCombatDamage
       : function(n) { return Math.max(0.01, Math.round(Number(n) * 100) / 100); };
+    if (typeof globalThis.consumeMarkedIfPayoff === 'function' && globalThis.consumeMarkedIfPayoff(row, es)) {
+      dmg = roundDmg(dmg * 1.12);
+    }
+    if ((row.tags || []).indexOf('Finisher') >= 0 || /finisher|bloodied/i.test(String(row.riderText || ''))) {
+      if (typeof globalThis.isBloodiedTarget === 'function' && g && g.enemy && globalThis.isBloodiedTarget(g.enemy)) {
+        dmg = roundDmg(dmg * 1.15);
+      }
+    }
+    if (!row.riders) return dmg;
     for (var i = 0; i < row.riders.length; i++) {
       var r = row.riders[i];
       if (r.kind === 'bonusVsAilment' && r.ailment === 'bleed') {
@@ -426,10 +435,7 @@
     if (g) g._activePlayerAbility = src;
     else G._activePlayerAbility = src;
 
-    // Pre-damage riders only for self / no-damage abilities
-    if (row.noDamage || row.target === 'self') {
-      runPreRiders(row, ab);
-    }
+    // Pre-damage riders only for self / no-damage abilities (handled in no-damage branch below)
 
     var anyCrit = false;
     var hitsLanded = 0;
@@ -441,6 +447,11 @@
         g._lastAbilityAnyCrit = false;
         g._lastAbilityAilmentFailed = false;
       }
+      var utilOk = typeof globalThis.applyTagRidersFromRow === 'function'
+        ? globalThis.applyTagRidersFromRow(row, { utilitySucceeded: false })
+        : false;
+      runPreRiders(row, ab);
+      if (g) g._lastAbilityUtilitySucceeded = !!utilOk;
       if (typeof logMsg === 'function') logMsg('🛡 ' + (row.name || ab.id) + (row.riderText ? ' — ' + row.riderText : ''), 'player-action');
       if (typeof refreshBattleUI === 'function') refreshBattleUI();
       return;
@@ -539,6 +550,9 @@
 
     var riderCtx = { hitsLanded: hitsLanded, ailmentsApplied: ailmentsApplied };
     runRiders(row, riderCtx, ab);
+    if (typeof globalThis.applyTagRidersFromRow === 'function') {
+      globalThis.applyTagRidersFromRow(row, riderCtx);
+    }
 
     runPostRiders(row, hitsLanded, hits, anyCrit);
 
@@ -635,6 +649,7 @@
     if (!ps) return base;
     return base + (ps.dispatcherDodge || 0);
   };
+  dispatcher.applyConditionalDamageBonus = applyConditionalDamageBonus;
 
   Avian.systems.dispatcher = dispatcher;
   // Expose at top-level for terse access used by other systems / debug.

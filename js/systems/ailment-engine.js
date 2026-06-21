@@ -310,4 +310,7 @@
   Avian.statuses.register('frozen', {});
   Avian.statuses.register('blinded', {});
   Avian.statuses.register('decreed', {});
+  Avian.statuses.register('marked', {
+    onConsume: function () { return { consumed: true }; },
+  });
 })();

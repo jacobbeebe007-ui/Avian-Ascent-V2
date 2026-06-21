@@ -1,0 +1,7 @@
+﻿/* GENERATED aspect matchup */
+(function () {
+  'use strict';
+  var Avian = globalThis.Avian || (globalThis.Avian = {});
+  Avian.data = Avian.data || Object.create(null);
+  Avian.data.aspects = Object.freeze({"ids":["terra","aeris","tempest","solis","lunae","maris"],"dominantMod":1.2,"neutralMod":1,"resistedMod":0.8,"chart":{"terra":{"terra":"neutral","aeris":"dominant","tempest":"resisted","solis":"dominant","lunae":"neutral","maris":"resisted"},"aeris":{"terra":"dominant","aeris":"neutral","tempest":"resisted","solis":"resisted","lunae":"dominant","maris":"neutral"},"tempest":{"terra":"resisted","aeris":"dominant","tempest":"neutral","solis":"neutral","lunae":"resisted","maris":"dominant"},"solis":{"terra":"resisted","aeris":"dominant","tempest":"neutral","lunae":"dominant","maris":"resisted"},"lunae":{"terra":"neutral","aeris":"resisted","tempest":"dominant","solis":"resisted","lunae":"neutral","maris":"dominant"},"maris":{"terra":"dominant","aeris":"neutral","tempest":"resisted","solis":"dominant","lunae":"resisted","maris":"neutral"}},"themes":{"terra":"Earth / Ground","aeris":"Sky / Wind","tempest":"Storm / Lightning","solis":"Day / Sun","lunae":"Night / Moon","maris":"Water / Sea"}});
+})();

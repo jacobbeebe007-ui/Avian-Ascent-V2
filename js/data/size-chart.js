@@ -1,7 +1,7 @@
-/* GENERATED size chart */
+﻿/* GENERATED size chart */
 (function () {
   'use strict';
   var Avian = globalThis.Avian || (globalThis.Avian = {});
   Avian.data = Avian.data || Object.create(null);
-  Avian.data.sizeChart = Object.freeze({"Tiny":{"tier":"Tiny","runtimeSize":"tiny","hpMod":-6,"defMod":-1,"spdMod":2,"dodgeMod":2,"accMod":2,"hpSoftCap":52},"Small":{"tier":"Small","runtimeSize":"small","hpMod":-3,"defMod":0,"spdMod":1,"dodgeMod":1,"accMod":1,"hpSoftCap":58},"Medium":{"tier":"Medium","runtimeSize":"medium","hpMod":0,"defMod":0,"spdMod":0,"dodgeMod":0,"accMod":0,"hpSoftCap":64},"Large":{"tier":"Large","runtimeSize":"large","hpMod":6,"defMod":1,"spdMod":-1,"dodgeMod":-1,"accMod":-4,"hpSoftCap":70},"Very Large":{"tier":"Very Large","runtimeSize":"large","hpMod":12,"defMod":2,"spdMod":-3,"dodgeMod":-2,"accMod":-7,"hpSoftCap":76},"Giant":{"tier":"Giant","runtimeSize":"xl","hpMod":16,"defMod":3,"spdMod":-4,"dodgeMod":-3,"accMod":-10,"hpSoftCap":78},"Boss Override":{"tier":"Boss Override","runtimeSize":"xl","hpMod":20,"defMod":3,"spdMod":-2,"dodgeMod":-2,"accMod":-5,"hpSoftCap":90},"Topic":{"tier":"Topic","runtimeSize":"medium","hpMod":0,"defMod":0,"spdMod":0,"dodgeMod":0,"accMod":0,"hpSoftCap":0},"Body mass as a core bird size signal":{"tier":"Body mass as a core bird size signal","runtimeSize":"medium","hpMod":0,"defMod":0,"spdMod":0,"dodgeMod":0,"accMod":0,"hpSoftCap":0},"AVONET morphology dataset overview":{"tier":"AVONET morphology dataset overview","runtimeSize":"medium","hpMod":0,"defMod":0,"spdMod":0,"dodgeMod":0,"accMod":0,"hpSoftCap":0},"Cornell size and shape bird ID guidance":{"tier":"Cornell size and shape bird ID guidance","runtimeSize":"medium","hpMod":0,"defMod":0,"spdMod":0,"dodgeMod":0,"accMod":0,"hpSoftCap":0},"Albatross size example":{"tier":"Albatross size example","runtimeSize":"medium","hpMod":0,"defMod":0,"spdMod":0,"dodgeMod":0,"accMod":0,"hpSoftCap":0}});
+  Avian.data.sizeChart = Object.freeze({});
 })();

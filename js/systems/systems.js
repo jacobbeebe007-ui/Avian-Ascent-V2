@@ -24,7 +24,14 @@
     defending: 'Shield: enemy damage reduction while blocking.',
     evading: 'Evade: higher chance to dodge attacks.',
     lullabied: 'Lulled: reduced offense while drowsy.',
-    delayed: 'Resonance: delayed damage will detonate soon.'
+    delayed: 'Resonance: delayed damage will detonate soon.',
+    marked: 'Marked: the next Finisher or Marked payoff ability consumes this for bonus effect.',
+    frozen: 'Frozen: cannot act while frozen.',
+    chilled: 'Chilled: reduced Speed; may escalate to Frozen.',
+    scorched: 'Scorched: burning damage over time based on max HP.',
+    toxic: 'Toxic: stronger poison damage over time.',
+    blinded: 'Blinded: reduced Accuracy.',
+    decreed: 'Decreed: marked for amplified magic damage.',
   };
 
   function showRichTooltip(ev, html){
@@ -43,8 +50,13 @@
   // Status badge tooltips
   function statusTooltipHtml(badge){
     const cls = badge?.dataset?.statusId || [...badge.classList].find(c => STATUS_INFO[c]) || [...badge.classList][1];
-    const detail = badge?.dataset?.statusDetail || STATUS_INFO[cls] || 'Status effect.';
-    return `<div class="tt-name">${badge.textContent}</div><div class="tt-desc" style="margin-top:6px">${detail}</div>`;
+    const ailDef = globalThis.AILMENTS && globalThis.AILMENTS[cls];
+    const detail = badge?.dataset?.statusDetail
+      || (ailDef && ailDef.desc)
+      || STATUS_INFO[cls]
+      || 'Status effect.';
+    const name = ailDef?.name || badge.textContent;
+    return `<div class="tt-name">${name}</div><div class="tt-desc" style="margin-top:6px">${detail}</div>`;
   }
 
   document.addEventListener('mouseover', (ev)=>{

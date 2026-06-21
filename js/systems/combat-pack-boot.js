@@ -93,18 +93,22 @@
       newAilment2: secondaryAil,
       ailChance2: secondaryAil ? ailChance : 0,
     };
-    var apCost = row.apCost || 1;
+    var apCost = row.apCost || row.enCost || 1;
     var isStarterMain = row.starterSlot === 0 && row.level === 1 && row.branch === 'base';
+    var displayDesc = row.displayText ? normalizeEnLabel(String(row.displayText).split('\n').slice(0, 3).join(' · ')) : desc;
     return {
       id: row.id,
       name: row.name || row.id,
       type: btnType,
       btnType: btnType,
-      desc: desc,
+      desc: displayDesc || desc,
       shortDesc: desc,
       energyCost: apCost,
       energy: apCost,
       energyByLevel: [apCost, apCost, apCost, apCost],
+      cooldownByLevel: [Number(row.cooldown) || 0, Number(row.cooldown) || 0, Number(row.cooldown) || 0, Number(row.cooldown) || 0],
+      isUltimate: !!row.isUltimate,
+      tags: row.tags || [],
       isMainAttack: isStarterMain || undefined,
       fixedMainAttackCost: (isStarterMain && apCost >= 2) || undefined,
       pierceDef: row.pierceDef || 0,
@@ -178,12 +182,18 @@
     var alias = packKeyFor(birdKey);
     for (var id in pack.families) {
       var f = pack.families[id];
-      if (f.kind === 'starter' && (f.birdKey === birdKey || f.birdKey === alias) && f.starterSlot === slot) return id;
+      if (f.birdKey !== birdKey && f.birdKey !== alias) continue;
+      var fSlot = f.abilitySlot != null ? f.abilitySlot : f.starterSlot;
+      if (fSlot === slot) return id;
     }
     return null;
   }
   function abilityIdForFamily(familyId) {
-    return familyId + '_L1_BASE';
+    return familyId + '_S1';
+  }
+  function mutationAbilityIdForFamily(familyId, stage) {
+    var s = Math.max(1, Math.min(3, Number(stage) || 1));
+    return familyId + '_S' + s;
   }
   try {
     if (typeof globalThis.BIRDS === 'object' && globalThis.BIRDS) {
@@ -202,6 +212,7 @@
         bird.startAbilities = [starterA, starterB];
         bird.mainAttackId = starterA;
         bird.combatFamilies = [famA, famB];
+        bird.aspect = bird.aspect || (kit && kit.aspect) || (pack.birdKits[birdKey] && pack.birdKits[birdKey].aspect) || '';
         // Locate the passive by birdKey (with alias fallback)
         var passive = null;
         for (var pid in (pack.birdPassives || {})) {
@@ -241,16 +252,19 @@
   }
   function buildFamilyEntry(fam, slotIdx) {
     var paths = { power: { pathId: 'power', displayName: 'Power', abilities: {} }, ailment: { pathId: 'ailment', displayName: 'Ailment', abilities: {} }, utility: { pathId: 'utility', displayName: 'Utility', abilities: {} } };
-    var baseId = null;
+    var baseId = mutationAbilityIdForFamily(fam.id, 1);
     for (var rid in pack.skillTrees) {
       var row = pack.skillTrees[rid];
       if (row.familyId !== fam.id) continue;
-      var tier = levelToTier(row.level);
-      var pathId = branchToPathId(row.branch);
-      if (pathId === null) {
-        baseId = row.id;
-      } else if (paths[pathId]) {
-        paths[pathId].abilities[tier] = row.id;
+      var stageMatch = /_S(\d+)$/.exec(String(row.id || ''));
+      var stage = stageMatch ? Number(stageMatch[1]) : (row.branch === 'base' ? 1 : 0);
+      if (stage === 1) baseId = row.id;
+      else if (stage === 2) paths.power.abilities[1] = row.id;
+      else if (stage === 3) paths.power.abilities[2] = row.id;
+      else {
+        var tier = levelToTier(row.level);
+        var pathId = branchToPathId(row.branch);
+        if (pathId && paths[pathId]) paths[pathId].abilities[tier] = row.id;
       }
     }
     return {
@@ -259,6 +273,10 @@
       baseAbilityId: baseId,
       maxTier: fam.maxTier || 3,
       starterSlot: slotIdx,
+      abilitySlot: fam.abilitySlot != null ? fam.abilitySlot : slotIdx,
+      role: fam.role || '',
+      unlockTier: fam.unlockTier || '',
+      maxMutationStage: 3,
       paths: paths,
     };
   }
@@ -301,29 +319,35 @@
   function buildFamilyForBird(birdKey) {
     if (!pack.families || !pack.skillTrees) return null;
     var alias = packKeyFor(birdKey);
-    var bridKeys = [birdKey, alias];
-    // Collect starter families for this bird, by starterSlot
-    var startersBySlot = Object.create(null);
+    var birdKeys = [birdKey, alias];
+    var famsBySlot = Object.create(null);
     for (var fid in pack.families) {
       var fam = pack.families[fid];
-      if (fam.kind !== 'starter') continue;
-      if (bridKeys.indexOf(fam.birdKey) === -1) continue;
-      startersBySlot[fam.starterSlot] = fam;
+      if (birdKeys.indexOf(fam.birdKey) === -1) continue;
+      var slot = fam.abilitySlot != null ? fam.abilitySlot : fam.starterSlot;
+      if (slot == null || slot < 0) continue;
+      if (!famsBySlot[slot] || fam.kind === 'starter') famsBySlot[slot] = fam;
     }
-    var slot0Fam = startersBySlot[0];
-    var slot1Fam = startersBySlot[1];
-    if (!slot0Fam || !slot1Fam) return null;
-    var famEntry0 = buildFamilyEntry(slot0Fam, 0);
-    var famEntry1 = buildFamilyEntry(slot1Fam, 1);
-    var slotLayout = [
-      { slotIndex: 0, familyId: slot0Fam.id, abilityId: famEntry0.baseAbilityId, isStarterMain: true, type: 'starter' },
-      { slotIndex: 1, familyId: slot1Fam.id, abilityId: famEntry1.baseAbilityId, isStarterMain: false, type: 'starter' },
-      { slotIndex: 2, familyId: null, abilityId: null, type: 'empty' },
-      { slotIndex: 3, familyId: null, abilityId: null, type: 'empty' },
-    ];
+    var slotLayout = [];
     var families = Object.create(null);
-    families[slot0Fam.id] = famEntry0;
-    families[slot1Fam.id] = famEntry1;
+    for (var s = 0; s < 7; s++) {
+      var famSlot = famsBySlot[s];
+      if (!famSlot) {
+        slotLayout.push({ slotIndex: s, familyId: null, abilityId: null, type: 'empty' });
+        continue;
+      }
+      var famEntry = buildFamilyEntry(famSlot, s);
+      families[famSlot.id] = famEntry;
+      slotLayout.push({
+        slotIndex: s,
+        familyId: famSlot.id,
+        abilityId: famEntry.baseAbilityId,
+        isStarterMain: s === 0,
+        type: s < 2 ? 'starter' : 'unlock',
+        role: famSlot.role || '',
+      });
+    }
+    if (!famsBySlot[0] || !famsBySlot[1]) return null;
     var abilityLookup = (typeof globalThis.buildFamilySkillAbilityLookup === 'function')
       ? globalThis.buildFamilySkillAbilityLookup(slotLayout, families)
       : Object.create(null);

@@ -7470,6 +7470,7 @@ function isPlayerAbilityUsable(ab){
   if(G.player?.birdKey==='bowerbird' && BOWERBIRD_LURE_ABILITY_IDS.has(ab.id) && G.bowerbirdLureCooldown>0) return false;
   if(ab.id==='intimidate' && G.intimidateCooldown>0) return false;
   if(getAbilityCooldown(ab.id)>0) return false;
+  if(typeof canUseMasterWorkbookAbility==='function' && !canUseMasterWorkbookAbility(G.player, ab)) return false;
   if(ab.id==='sitAndWait' && G.sitAndWaitUsedThisTurn) return false;
   if(G.autoQueuedAbilityId && ab.id!==G.autoQueuedAbilityId) return false;
   if(G.turnPhase===TURN.PLAYER && !canUseAbility(G.player, ab)) return false;
@@ -7621,6 +7622,13 @@ function renderActions() {
     }
     const genericCd=getAbilityCooldown(ab.id);
     if(genericCd>0){btnCostText=`Cooldown:${genericCd}t`;cdisabled=true;}
+    const _packRow=typeof packRowForAbility==='function'?packRowForAbility(ab):null;
+    if(typeof isUltimateAbility==='function' && isUltimateAbility(ab,_packRow)){
+      const _meter=typeof getUltimateMeter==='function'?getUltimateMeter('player'):0;
+      const _maxMeter=typeof maxUltimateMeter==='function'?maxUltimateMeter():100;
+      if(_meter<_maxMeter){btnCostText=`Ult ${_meter}/${_maxMeter}`;cdisabled=true;}
+      else btnCostText='Ult Ready · 0 EN';
+    }
     if (ab.id==='sitAndWait' && G.sitAndWaitUsedThisTurn) { btnCostText='Used this turn'; cdisabled=true; }
     if (ab.id==='stickLance') {
       if (G.stickLanceStage===1) btnCostText='⚔ Strike now!';
@@ -8421,12 +8429,29 @@ function buildActionTooltipHTML(ab){
   const hitClass=hit===null?'':(hit>=80?'tt-hit-great':hit>=55?'tt-hit-good':'tt-hit-bad');
   const energy=getEnergyCost(ab);
   const cooldown=getTemplateCooldown(ab);
+  const remCd=getAbilityCooldown(ab.id);
+  const packRow=typeof packRowForAbility==='function'?packRowForAbility(ab):null;
   const {isDamaging,dmgLow,dmgHigh,btnType,hybridSplit}=estimateSkillDamageRange(ab,tmpl,G.player,{isPlayerCombatPreview:true});
   const effectList=(ab.ailmentIds||[]).length?ab.ailmentIds.map(a=>a.replace(/_/g,' ')).join(', '):'—';
 
   let html=`<div class="tt-name">${tmpl.name}</div><div class="tt-type">${tmpl.type} · Lv${ab.level}</div>`;
   html+=`<div class="tt-row"><span class="tt-lbl">Energy</span><span class="tt-val">${energy}</span></div>`;
-  html+=`<div class="tt-row"><span class="tt-lbl">Cooldown</span><span class="tt-val">${cooldown>0?cooldown+' turn'+(cooldown>1?'s':''):'None'}</span></div>`;
+  if(typeof isUltimateAbility==='function' && isUltimateAbility(ab,packRow)){
+    const cur=typeof getUltimateMeter==='function'?getUltimateMeter('player'):0;
+    const max=typeof maxUltimateMeter==='function'?maxUltimateMeter():100;
+    html+=`<div class="tt-row"><span class="tt-lbl">Ultimate Meter</span><span class="tt-val">${cur} / ${max}</span></div>`;
+  }
+  html+=`<div class="tt-row"><span class="tt-lbl">Cooldown</span><span class="tt-val">${remCd>0?remCd+' turn'+(remCd>1?'s':'')+' remaining':(cooldown>0?cooldown+' turn'+(cooldown>1?'s':''):'None')}</span></div>`;
+  if(packRow?.tags?.length){
+    html+=`<div class="tt-row"><span class="tt-lbl">Tags</span><span class="tt-val">${packRow.tags.join(', ')}</span></div>`;
+  }
+  if(packRow?.aspectAffinity && !/none|class-neutral|neutral/i.test(String(packRow.aspectAffinity))){
+    html+=`<div class="tt-row"><span class="tt-lbl">Aspect</span><span class="tt-val">${packRow.aspectAffinity}</span></div>`;
+  }else if(typeof getEntityAspect==='function' && G?.player && G?.enemy){
+    const matchup=typeof getAspectMatchupLabel==='function'?getAspectMatchupLabel(G.player,G.enemy):'';
+    const asp=getEntityAspect(G.player);
+    if(asp) html+=`<div class="tt-row"><span class="tt-lbl">Your Aspect</span><span class="tt-val">${asp}${matchup?' · '+matchup:''}</span></div>`;
+  }
   if (hit!==null) html+=`<div class="tt-row"><span class="tt-lbl">Hit</span><span class="tt-val ${hitClass}">${hit}%</span></div>`;
   if (isDamaging) {
     if(hybridSplit){
@@ -8574,6 +8599,9 @@ function getClassCooldownAdjustment(ab, player){
 }
 
 function getTemplateCooldown(ab){
+  const packRow=(typeof packRowForAbility==='function'?packRowForAbility(ab):null)
+    || (Avian?.data?.combatPack?.skillTrees?.[ab?.id]);
+  if(packRow && Number(packRow.cooldown)>0) return Number(packRow.cooldown);
   const t=getAbilityTemplateForUI(ab);
   if(!t||!t.cooldownByLevel) return 0;
   const idx=Math.min((ab.level||1)-1,t.cooldownByLevel.length-1);
@@ -9932,6 +9960,9 @@ function computeMasterOutgoingDamage(isMagic, srcAbility, opts={}){
     hitSucceeded:opts.hitSucceeded!==false,
   });
   let dmg=result.damage;
+  if(typeof Avian?.dispatcher?.applyConditionalDamageBonus==='function'){
+    dmg=Avian.dispatcher.applyConditionalDamageBonus(row,dmg);
+  }
   if(isSpell && G.player?.birdKey==='dukeBlakiston' && (G.enemyStatus?.decreed?.turns||0)>0){
     const ailN=countAilmentCategoriesOnEnemy();
     const decreedBonus=(ailN>1)?(AILMENT_RULES?.decreed?.afflictedBonus||0.18):(AILMENT_RULES?.decreed?.baseBonus||0.12);
@@ -11211,6 +11242,7 @@ async function playerAction(ab,fromQueue=false) {
     logMsg(`🪵 Stick dropped — Stick Lance reset.`,'miss');
   }
   if(getAbilityCooldown(ab.id)>0){logMsg(`${ab.name} on cooldown! (${getAbilityCooldown(ab.id)}t)`,'miss');return;}
+  if(typeof canUseMasterWorkbookAbility==='function' && !canUseMasterWorkbookAbility(G.player,ab)){renderActions();refreshBattleUI();return;}
   if((ab.id==='swoop' || (ab.id==='sonicDash' && G.player?.birdKey!=='hummingbird')) && (G.swoopCooldown||0)>0){logMsg(`${ab.name} on cooldown! (${G.swoopCooldown}t)`,'miss');return;}
   if(HUMMINGBIRD_DASH_ABILITY_IDS.has(ab.id) && (G.hummingbirdDashCooldown||0)>0){logMsg(`${ab.name} on cooldown! (${G.hummingbirdDashCooldown}t)`,'miss');return;}
   if(PEREGRINE_DIVE_ABILITY_IDS.has(ab.id) && (G.peregrineDiveCooldown||0)>0){logMsg(`${ab.name} on cooldown! (${G.peregrineDiveCooldown}t)`,'miss');return;}
@@ -11239,6 +11271,7 @@ async function playerAction(ab,fromQueue=false) {
     if(G.player?.augCounterInstinct) G.playerStatus.counterInstinct=2;
   }
   spendEnergy(G.player,ab);
+  if(typeof spendUltimateForAbility==='function') spendUltimateForAbility(G.player,ab);
   codexMark('abilities',ab.id,'used');
   if(G.enemy?.id==='duke_blakiston') dukeTrackDecree(ab.id);
   G._activePlayerAbility=ab;
@@ -11322,6 +11355,13 @@ async function playerAction(ab,fromQueue=false) {
       ailmentFailed: !!G._lastAbilityAilmentFailed,
       effActKind,
     });
+  }
+  if(typeof computeUltimateMeterAward==='function' && typeof awardUltimateMeter==='function'){
+    const meterGain=computeUltimateMeterAward(ab,{
+      hitsLanded:G._lastAbilityHitsLanded||0,
+      utilitySucceeded:!!G._lastAbilityUtilitySucceeded,
+    });
+    if(meterGain>0) awardUltimateMeter('player', meterGain);
   }
   if(flybyWasCharged) G.actionDamageMult=1;
   delete G._pendingStrikeActionMods;
@@ -11495,6 +11535,10 @@ function getAbilityAttackWeight(ab, player){
 
 function getAbilityEnergyCost(ab, player){
   const p = player || G.player;
+  if(typeof isUltimateAbility==='function'){
+    const row=typeof packRowForAbility==='function'?packRowForAbility(ab):null;
+    if(isUltimateAbility(ab,row)) return 0;
+  }
   const t = getAbilityTemplateForUI(ab);
   let cost = getAbilityAuthoredEnergyCost(ab, p);
 
@@ -11528,6 +11572,7 @@ function canUseAbility(player, ability){
     && (G.playerActionsThisTurn||0)>=MAX_PLAYER_ACTIONS_PER_TURN){
     return false;
   }
+  if(typeof canUseMasterWorkbookAbility==='function' && !canUseMasterWorkbookAbility(player, ability)) return false;
   const cost=getAbilityEnergyCost(ability, player);
   return (player.energy||0) >= cost;
 }
@@ -12080,7 +12125,11 @@ function getEnemyActionEnergyCost(action){
 
 function getAIPersonalityProfile(enemy){
   const profiles=globalThis.AI_PERSONALITY_PROFILES||{};
-  const id=(enemy?.aiPersonality||'tactical').toLowerCase();
+  let id=(enemy?.aiPersonality||'').toLowerCase();
+  if(!id && enemy?.aiProfile && typeof inferAIPersonalityFromRosterProfile==='function'){
+    id=inferAIPersonalityFromRosterProfile(enemy.aiProfile);
+  }
+  if(!id) id='tactical';
   return profiles[id]||profiles.tactical||{damageBias:1.1,heavyBias:1,controlBias:1.1,buffBias:1,guardBias:0.9,healBias:0.8,finisherBias:1.05,repeatBias:0.8};
 }
 function getEnemyAIMemory(enemy){
@@ -12114,7 +12163,8 @@ function enemyKitOffersSetupDebuffs(enemy){
 function getEnemyMode(e,p){
   const hpPct=(e.stats.hp||1)/Math.max(1,e.stats.maxHp||1);
   const pHpPct=(p.stats.hp||1)/Math.max(1,p.stats.maxHp||1);
-  if(hpPct<0.30) return 'RECOVER';
+  const healTh=typeof parseRosterHealingThreshold==='function'?parseRosterHealingThreshold(e?.healingRule):0;
+  if(hpPct<(healTh>0?healTh:0.30)) return 'RECOVER';
   if(pHpPct<0.40) return 'EXECUTE';
   if(enemyKitOffersSetupDebuffs(e)) return 'SETUP';
   return 'PRESSURE';

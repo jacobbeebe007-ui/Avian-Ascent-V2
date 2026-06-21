@@ -365,11 +365,20 @@
       : { maxEN: 6, startEN: 4, regenEN: 3 };
     var cls = row.class || 'rogue';
     var aiStyle = row.aiStyle || 'aggressive';
-    var aiPersonality = typeof global.inferAIPersonalityFromClass === 'function'
-      ? global.inferAIPersonalityFromClass(cls)
-      : (typeof global.inferAIPersonalityFromStyle === 'function'
-        ? global.inferAIPersonalityFromStyle(aiStyle, row.name)
-        : 'tactical');
+    var aiPersonality = typeof global.inferAIPersonalityFromRosterProfile === 'function'
+      ? global.inferAIPersonalityFromRosterProfile(row.aiProfile)
+      : '';
+    if (!aiPersonality) {
+      aiPersonality = typeof global.inferAIPersonalityFromClass === 'function'
+        ? global.inferAIPersonalityFromClass(cls)
+        : (typeof global.inferAIPersonalityFromStyle === 'function'
+          ? global.inferAIPersonalityFromStyle(aiStyle, row.name)
+          : 'tactical');
+    }
+    var aspect = row.aspect || '';
+    if (!aspect && row.birdKey && global.BIRDS && global.BIRDS[row.birdKey]) {
+      aspect = global.BIRDS[row.birdKey].aspect || '';
+    }
 
     var enemyStub = { birdKey: row.birdKey, abilities: [], familyEvolutionState: {} };
     var skillLevel = row.storyLevel || 1;
@@ -393,6 +402,13 @@
       class: cls,
       aiStyle: aiStyle,
       aiPersonality: aiPersonality,
+      aiProfile: row.aiProfile || '',
+      aiPriority: row.aiPriority || '',
+      healingRule: row.healingRule || '',
+      defenceRule: row.defenceRule || '',
+      attackRule: row.attackRule || '',
+      abilityBias: row.abilityBias || '',
+      aspect: aspect,
       abilities: JSON.parse(JSON.stringify(enemyStub.abilities || [])),
       stats: Object.assign({}, stats, { en: enProf.maxEN, cc: cc, cd: cd, critChance: Math.round(cc * 100), critMult: cd }),
       hp: stats.hp,

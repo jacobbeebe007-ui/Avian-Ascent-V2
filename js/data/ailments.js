@@ -110,6 +110,14 @@
       desc: 'Duke mark. Duke next Magic hit gains +12% damage (+18% if target has an ailment).',
     },
 
+    marked: {
+      id: 'marked',
+      name: 'Marked',
+      icon: '🎯',
+      color: '#e8c040',
+      desc: 'Next ability that checks Marked gains its payoff, then consumes Marked.',
+    },
+
     frostGuard: {
       id: 'frostGuard',
       name: 'Frost Guard',

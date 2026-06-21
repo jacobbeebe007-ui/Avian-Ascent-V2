@@ -11,6 +11,81 @@
 
   var G = function () { return global.G; };
 
+  function inferAIPersonalityFromRosterProfile(aiProfile) {
+    var s = String(aiProfile || '').toLowerCase();
+    if (!s) return '';
+    if (/opportunist/.test(s)) return 'opportunistic';
+    if (/control|controller|trickster|seer/.test(s)) return 'control';
+    if (/tank|guardian|bulwark|defender/.test(s)) return 'tank';
+    if (/executioner|reaper|finisher/.test(s)) return 'executioner';
+    if (/predator|hunter|assassin/.test(s)) return 'predator';
+    if (/duelist|aggressive|striker|berserk/.test(s)) return 'aggressive';
+    if (/scavenger/.test(s)) return 'scavenger';
+    if (/tactical|balanced|generalist/.test(s)) return 'tactical';
+    return '';
+  }
+
+  function parseRosterHealingThreshold(healingRule) {
+    var m = String(healingRule || '').match(/(?:<=|≤|below|under|at)\s*(\d+)\s*%/i)
+      || String(healingRule || '').match(/(\d+)\s*%\s*(?:hp|health|or)/i)
+      || String(healingRule || '').match(/(\d+)\s*%/);
+    if (m) return Math.max(0.05, Math.min(0.95, Number(m[1]) / 100));
+    return 0;
+  }
+
+  function rosterAbilityBiasMatches(action, enemy, cat) {
+    var bias = String(enemy && enemy.abilityBias || '').toLowerCase();
+    if (!bias || !action) return 1;
+    var id = String(action.abilityId || '').toLowerCase();
+    var label = typeof global.getEnemyAbilityDisplayLabel === 'function'
+      ? String(global.getEnemyAbilityDisplayLabel(action.abilityId, enemy) || '').toLowerCase()
+      : id;
+    var hay = id + ' ' + label + ' ' + cat;
+    var score = 1;
+    if (/light attack|light combo|quick|peck|jab/.test(bias) && cat === 'damage') score *= 1.15;
+    if (/heavy|slam|crush|ultimate|special/.test(bias) && (cat === 'heavy' || cat === 'damage')) score *= 1.12;
+    if (/bleed/.test(bias) && /bleed/.test(hay)) score *= 1.25;
+    if (/poison|toxic/.test(bias) && /poison|toxic|venom/.test(hay)) score *= 1.25;
+    if (/burn|scorch|ember/.test(bias) && /burn|scorch|ember/.test(hay)) score *= 1.2;
+    if (/dodge|evade|evasion/.test(bias) && /dodge|evade|evasion/.test(hay)) score *= 1.15;
+    if (/defen|guard|shield|brace/.test(bias) && (cat === 'guard' || /guard|shield|brace/.test(hay))) score *= 1.2;
+    if (/heal|recover|mend/.test(bias) && cat === 'heal') score *= 1.25;
+    if (/control|debuff|weaken|fear|paraly|chill|blind/.test(bias) && cat === 'control') score *= 1.2;
+    if (/finisher|execute/.test(bias) && (cat === 'heavy' || cat === 'damage')) score *= 1.15;
+    return score;
+  }
+
+  function rosterRuleWeightAdjust(cand, e, p, ctx, cat) {
+    var w = 1;
+    var eHp = (e.stats.hp || 1) / Math.max(1, e.stats.maxHp || 1);
+    var healTh = parseRosterHealingThreshold(e.healingRule);
+    if (healTh > 0 && eHp <= healTh) {
+      if (cat === 'heal') w *= 2.1;
+      if (cat === 'guard') w *= 1.35;
+    }
+    var defRule = String(e.defenceRule || '').toLowerCase();
+    if (defRule) {
+      if ((ctx.playerDefending || eHp < 0.45) && (cat === 'guard' || cat === 'heal')) w *= 1.35;
+      if (/evade|dodge|retreat/.test(defRule) && cat === 'guard') w *= 1.2;
+    }
+    var atkRule = String(e.attackRule || '').toLowerCase();
+    if (atkRule) {
+      if ((cat === 'damage' || cat === 'heavy') && /attack first|press|strike/.test(atkRule)) w *= 1.18;
+      if ((cat === 'damage' || cat === 'heavy') && /low def|weak target|vulnerable/.test(atkRule)) {
+        var pDef = Math.max(0, p && p.stats ? (p.stats.def || 0) : 0);
+        if (pDef <= ctx.playerDef + 2) w *= 1.12;
+      }
+    }
+    var prio = String(e.aiPriority || '').toLowerCase();
+    if (/survive|retreat|escape/.test(prio) && eHp < 0.5 && (cat === 'heal' || cat === 'guard')) w *= 1.25;
+    if (/finish|execute|kill/.test(prio)) {
+      var pHp = (p.stats.hp || 1) / Math.max(1, p.stats.maxHp || 1);
+      if (pHp < 0.45 && (cat === 'damage' || cat === 'heavy')) w *= 1.3;
+    }
+    w *= rosterAbilityBiasMatches(cand, e, cat);
+    return w;
+  }
+
   function getDiffMod() {
     var diff = String(G().difficulty || 'juvenile').toLowerCase();
     var mods = global.DIFFICULTY_AI_MODIFIERS || {};
@@ -149,6 +224,7 @@
       var combo = global.getEnemyActionComboBonus(e, cand, cat);
       if (combo > 1) w *= combo;
     }
+    w *= rosterRuleWeightAdjust(cand, e, p, ctx, cat);
     return w;
   }
 
@@ -262,6 +338,10 @@
   ns.buildAIContext = buildAIContext;
   ns.projectedActionExpectedValue = projectedActionExpectedValue;
   ns.planEnemyTurn = planEnemyTurn;
+  ns.inferAIPersonalityFromRosterProfile = inferAIPersonalityFromRosterProfile;
+  ns.parseRosterHealingThreshold = parseRosterHealingThreshold;
 
   global.planEnemyTurn = planEnemyTurn;
+  global.inferAIPersonalityFromRosterProfile = inferAIPersonalityFromRosterProfile;
+  global.parseRosterHealingThreshold = parseRosterHealingThreshold;
 })();

@@ -253,6 +253,54 @@
   var STAT_MOD_MIN = 0.90;
   var STAT_MOD_MAX = 1.15;
   var HYBRID_DEF_WEIGHTS = { def: 0.6, mdef: 0.4 };
+  var ASPECT_IDS = ['terra', 'aeris', 'tempest', 'solis', 'lunae', 'maris'];
+
+  function normalizeAspectId(value) {
+    var s = String(value || '').trim().toLowerCase();
+    return ASPECT_IDS.indexOf(s) >= 0 ? s : '';
+  }
+
+  function getAspectChart() {
+    return (globalThis.Avian && Avian.data && Avian.data.aspects) || null;
+  }
+
+  function getEntityAspect(entity) {
+    if (!entity) return '';
+    var direct = normalizeAspectId(entity.aspect || entity.primaryAspect);
+    if (direct) return direct;
+    var bk = entity.birdKey || entity.portraitKey || '';
+    if (bk && globalThis.BIRDS && globalThis.BIRDS[bk]) {
+      return normalizeAspectId(globalThis.BIRDS[bk].aspect);
+    }
+    return '';
+  }
+
+  function getTypeModifier(attackerAspect, targetAspect, abilityRow) {
+    var chart = getAspectChart();
+    if (!chart || !chart.chart) return 1;
+    var atkAsp = normalizeAspectId(attackerAspect);
+    var tgtAsp = normalizeAspectId(targetAspect);
+    if (!atkAsp || !tgtAsp) return chart.neutralMod || 1;
+    var affinity = abilityRow && abilityRow.aspectAffinity ? String(abilityRow.aspectAffinity) : '';
+    if (affinity && !/none|class-neutral|neutral/i.test(affinity)) {
+      var affToken = affinity.split(/[\s/]+/).filter(Boolean)[0];
+      var affAsp = normalizeAspectId(affToken);
+      if (affAsp) atkAsp = affAsp;
+    }
+    var relRow = chart.chart[atkAsp];
+    if (!relRow || !relRow[tgtAsp]) return chart.neutralMod || 1;
+    var rel = relRow[tgtAsp];
+    if (rel === 'dominant') return chart.dominantMod || 1.2;
+    if (rel === 'resisted') return chart.resistedMod || 0.8;
+    return chart.neutralMod || 1;
+  }
+
+  function isBloodiedTarget(target) {
+    if (!target || !target.stats) return false;
+    var hp = Number(target.stats.hp) || 0;
+    var maxHp = Number(target.stats.maxHp) || 1;
+    return hp > 0 && hp <= Math.floor(maxHp * 0.5);
+  }
 
   function clampNum(n, min, max) {
     return Math.max(min, Math.min(max, Number(n) || 0));
@@ -482,6 +530,14 @@
       var maxHp = target && target.stats ? target.stats.maxHp : 1;
       return hp > 0 && hp <= Math.floor(maxHp * 0.35);
     }
+    if (condition === 'targetBloodied' || condition === 'bloodied') {
+      return isBloodiedTarget(target);
+    }
+    if (condition === 'targetMarked') {
+      var esMarked = battleState.enemyStatus || (target && target.status) || {};
+      return !!(esMarked.marked && ((typeof esMarked.marked === 'number' && esMarked.marked > 0)
+        || (typeof esMarked.marked === 'object' && (esMarked.marked.turns || 0) > 0)));
+    }
     return false;
   }
 
@@ -557,7 +613,10 @@
     var bonusCap = getBonusCap(attacker, params);
     var bonusFrac = getTotalDamageBonus(params.bonusFractions, bonusCap);
     var bonusMod = 1 + bonusFrac;
-    var preCrit = enBase * abilityPower * statMod * defMod * bonusMod;
+    var attackerAspect = getEntityAspect(attacker);
+    var targetAspect = getEntityAspect(target);
+    var typeMod = getTypeModifier(attackerAspect, targetAspect, ability);
+    var preCrit = enBase * abilityPower * statMod * defMod * typeMod * bonusMod;
     var damage = preCrit;
     if (params.isCriticalHit) {
       var critAdd = Number(params.critDamageAdd) || 0;
@@ -574,6 +633,7 @@
         abilityPower: abilityPower,
         statMod: statMod,
         defMod: defMod,
+        typeMod: typeMod,
         bonusMod: bonusMod,
         relevantStat: relevantStat,
         defStat: defStat,
@@ -735,6 +795,9 @@
   globalThis.enrichCombatRow = enrichCombatRow;
   globalThis.usesMasterDamage = usesMasterDamage;
   globalThis.describeMasterAbility = describeMasterAbility;
+  globalThis.getTypeModifier = getTypeModifier;
+  globalThis.getEntityAspect = getEntityAspect;
+  globalThis.isBloodiedTarget = isBloodiedTarget;
   globalThis.MASTER_BASE_CRIT_MULT = MASTER_BASE_CRIT_MULT;
   globalThis.MASTER_MAX_CRIT_MULT = MASTER_MAX_CRIT_MULT;
 })();
