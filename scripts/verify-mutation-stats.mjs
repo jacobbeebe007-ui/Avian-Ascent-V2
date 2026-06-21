@@ -105,12 +105,35 @@ else ok('getEquippedSummary includes flat dodge');
 if (!hasLight) fail('getEquippedSummary missing light attack line');
 else ok('getEquippedSummary includes mechanical light attack');
 
+const mechDisplayItems = [
+  { id: 'MT0347', tier: 'white', slot: 'plumage', name: 'Worn Feather Cloak of the Aegis', mechanics: { shieldPowerPct: 10 }, statLine: '+10% Shield Power' },
+  { id: 'MT0049', tier: 'white', slot: 'beak', name: 'Worn War Beakguard', mechanics: { armorPen: 6 }, statLine: '+6% DEF Penetration' },
+];
+for (const item of mechDisplayItems) {
+  const compact = mutations.formatMutationStatCompactHtml(item);
+  const lines = mutations.buildMutationStatLines(item);
+  if (!lines.length) fail(`${item.id} buildMutationStatLines empty`);
+  else ok(`${item.id} has ${lines.length} stat line(s)`);
+  if (item.id === 'MT0347' && !compact.includes('Shield Power')) fail('MT0347 compact html missing Shield Power');
+  else if (item.id === 'MT0347') ok('MT0347 shows Shield Power in nest compact html');
+  if (item.id === 'MT0049' && !compact.includes('Armour Pen')) fail('MT0049 compact html missing Armour Pen');
+  else if (item.id === 'MT0049') ok('MT0049 shows Armour Pen in nest compact html');
+  const map = mutations.getMutationStatNumericMap(item);
+  if (item.id === 'MT0049' && (map.armorPen || 0) !== 6) fail(`MT0049 armorPen rollup expected 6, got ${map.armorPen}`);
+  else if (item.id === 'MT0049') ok('MT0049 mechanics armorPen rolled into stat map');
+}
+
+const emptyStatsItem = { id: 'MT-EMPTY', tier: 'white', slot: 'head', name: 'Empty Test', statLine: '+5% Status Resist' };
+const emptyCompact = mutations.formatMutationStatCompactHtml(emptyStatsItem);
+if (!emptyCompact.includes('Status Resist')) fail('statLine fallback missing in compact html');
+else ok('statLine fallback renders when stat lines empty');
+
 const index = readFileSync(path.join(ROOT, 'js', 'data', 'mutations', 'index.js'), 'utf8');
 if (!index.includes("m.version='2026.06-mutations-v4'")) fail('mutations index version not v4');
 else ok('mutations pack version v4');
 
 const bundle = readFileSync(path.join(ROOT, 'js', 'avian-game.bundle.js'), 'utf8');
-for (const sym of ['buildFamilyEntryFromPackId', 'UNIVERSAL_FAMILY_ABILITY_LOOKUP', 'nest-slot-filter', 'mutation-effects', 'leftWing']) {
+for (const sym of ['buildFamilyEntryFromPackId', 'UNIVERSAL_FAMILY_ABILITY_LOOKUP', 'nest-slot-filter', 'mutation-effects', 'leftWing', 'getFamilyEvolutionBirdDataStore', 'Shield Power', 'formatStatLineFallbackHtml']) {
   if (!bundle.includes(sym)) fail(`bundle missing ${sym}`);
   else ok(`bundle contains ${sym}`);
 }

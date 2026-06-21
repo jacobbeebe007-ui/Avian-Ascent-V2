@@ -866,19 +866,6 @@ const ENDLESS_RELICS = [
   {id:'rel_crown_long_hunt',name:'Crown of the Long Hunt',tier:'gold',type:'relic',desc:'Endless only — After each boss kill, gain a random crown stat boon.',apply:p=>{p.relCrownLongHunt=true;}},
 ];
 
-const ENDLESS_MUTATIONS = [
-  {id:'mut_blood_moon',name:'Blood Moon',tier:'purple',type:'mutation',desc:'Endless only — Bleed you apply deals double damage, but enemies gain +10% ATK.',apply:p=>{p.mutBloodMoon=true;}},
-  {id:'mut_venom_season',name:'Venom Season',tier:'purple',type:'mutation',desc:'Endless only — Poison lasts +1 turn, but Max HP -10%.',apply:p=>{p.mutVenomSeason=true;p.stats.maxHp=Math.max(1,Math.floor(p.stats.maxHp*0.9));p.stats.hp=Math.min(p.stats.hp,p.stats.maxHp);}},
-  {id:'mut_gale_tempo',name:'Gale Exchange',tier:'purple',type:'mutation',desc:'Endless only — SPD bonuses doubled, Dodge bonuses halved.',apply:p=>{p.mutGaleTempo=true;}},
-  {id:'mut_arc_overload',name:'Arc Overload',tier:'purple',type:'mutation',desc:'Endless only — Spells deal +30% damage, but cost +1 Energy.',apply:p=>{p.mutArcOverload=true;}},
-  {id:'mut_hunters_cruelty',name:"Hunter's Cruelty",tier:'purple',type:'mutation',desc:'Endless only — +20% execute damage (<50% HP), but post-battle healing halved.',apply:p=>{p.mutHuntersCruelty=true;}},
-  {id:'mut_iron_sky',name:'Iron Sky',tier:'purple',type:'mutation',desc:'Endless only — +2 DEF and +2 MDEF, but -2 SPD.',apply:p=>{p.mutIronSky=true;p.stats.def+=2;p.stats.mdef=(p.stats.mdef||0)+2;p.stats.spd=Math.max(1,(p.stats.spd||1)-2);}},
-  {id:'mut_sudden_flight',name:'Sudden Flight',tier:'purple',type:'mutation',desc:'Endless only — First action each battle +25% effectiveness.',apply:p=>{p.mutSuddenFlight=true;}},
-  {id:'mut_dark_chorus',name:'Dark Chorus',tier:'purple',type:'mutation',desc:'Endless only — Fear lasts +1 turn, but Crit Chance -8%.',apply:p=>{p.mutDarkChorus=true;p.stats.critChance=Math.max(0,(p.stats.critChance||0)-8);}},
-  {id:'mut_razor_instinct',name:'Razor Instinct',tier:'purple',type:'mutation',desc:'Endless only — Crit damage +40%, but non-crits deal -10%.',apply:p=>{p.mutRazorInstinct=true;}},
-  {id:'mut_long_war',name:'Long War',tier:'gold',type:'mutation',desc:'Endless only — Every 5 endless battles gain +1 random stat, but shop costs +15%.',apply:p=>{p.mutLongWar=true;}},
-];
-
 function isEndlessRunActive(){ return !!(G.endlessMode && (G.stage||0)>20); }
 const PASSIVE_EVOLUTION_MILESTONES = Object.freeze({ evo1:10, evo2:25 });
 const PASSIVE_EVOLUTION_TEMPLATE = Object.freeze({
@@ -940,32 +927,6 @@ function getPassiveDefMdefBonuses(){
   if(id==='passive_penguin_icebound_plating' && hp>mx*0.5) mdef+=4;
   if(id==='passive_bushturkey_scrapper' && hp<=mx*0.5) def+=4;
   return {def,mdef};
-}
-function getEndlessRewardPool(type){
-  if(type==='augment') return ENDLESS_SKILL_AUGMENTS;
-  if(type==='mutation') return ENDLESS_MUTATIONS;
-  return ENDLESS_RELICS;
-}
-function hasEndlessReward(id){
-  const seen=(G.player?.endlessRewards||[]).map(x=>x.id);
-  return seen.includes(id);
-}
-function buildEndlessRewardCard(entry){
-  return {
-    id:entry.id,
-    tier:entry.tier||'blue',
-    icon:entry.type==='mutation'?'🧬':entry.type==='augment'?'🪶':'🗿',
-    name:entry.name,
-    desc:entry.desc,
-    endlessOnly:true,
-    apply:p=>{
-      if(!isEndlessRunActive()) return;
-      if(!p.endlessRewards) p.endlessRewards=[];
-      if(p.endlessRewards.some(x=>x.id===entry.id)) return;
-      p.endlessRewards.push({id:entry.id,type:entry.type,name:entry.name});
-      entry.apply?.(p);
-    }
-  };
 }
 function rollEndlessReward(kind='relic'){
   if(typeof Avian?.mutations?.rollMutationReward!=='function') return null;
@@ -2929,11 +2890,17 @@ function buildFamilySkillAbilityLookup(slotLayout, families){
 function isSkillEvolutionLevel(level){
   return Number.isFinite(level) && level>0 && level % SKILL_EVOLUTION_LEVEL_INTERVAL === 0;
 }
+function getFamilyEvolutionBirdDataStore(){
+  return (typeof globalThis.FAMILY_EVOLUTION_BIRD_DATA === 'object' && globalThis.FAMILY_EVOLUTION_BIRD_DATA)
+    ? globalThis.FAMILY_EVOLUTION_BIRD_DATA
+    : FAMILY_EVOLUTION_BIRD_DATA;
+}
 function getBirdFamilyEvolutionData(birdKey){
+  const store=getFamilyEvolutionBirdDataStore();
   const k = String(birdKey||'');
-  if(k==='secretarybird') return FAMILY_EVOLUTION_BIRD_DATA.secretary || null;
-  if(k==='harpyeagle') return FAMILY_EVOLUTION_BIRD_DATA.harpy || null;
-  return FAMILY_EVOLUTION_BIRD_DATA[k] || null;
+  if(k==='secretarybird') return store.secretary || null;
+  if(k==='harpyeagle') return store.harpy || null;
+  return store[k] || null;
 }
 function getBirdSkillFamilyCatalog(birdKey){
   return getBirdFamilyEvolutionData(birdKey)?.families || null;
@@ -3161,6 +3128,7 @@ function syncPlayerAbilitiesFromSkillSlots(player){
   player.abilities = out;
 }
 globalThis.getSkillSlots=getSkillSlots;
+globalThis.getFamilyEvolutionBirdDataStore=getFamilyEvolutionBirdDataStore;
 globalThis.usesFamilySkillEvolution=usesFamilySkillEvolution;
 globalThis.ensureFamilyEvolutionState=ensureFamilyEvolutionState;
 globalThis.getSkillEvolutionPathOptions=getSkillEvolutionPathOptions;
@@ -3815,7 +3783,6 @@ function mergeScaledStatsIntoEnemy(ed, encounterStage){
   ed.enemyClass=scaled.enemyClass||ed.enemyClass||inferEnemyClassFromStyle(ed.aiStyle);
   ed.combatTier = (scaled && 'tier' in scaled && scaled.tier!=null) ? scaled.tier : (ed.combatTier||ed.enemyTier||null);
   if(Number.isFinite(scaled.effectiveLevel)) ed.effectiveLevel=scaled.effectiveLevel;
-  if(G.player?.mutBloodMoon){ ed.atk=Math.floor(ed.atk*1.10); ed.matk=Math.floor((ed.matk||ed.atk)*1.10); }
   ed.stats = {hp:ed.hp, maxHp:ed.hp, atk:ed.atk, def:ed.def, spd:ed.spd, acc:ed.acc, dodge:ed.dodge, mdef:ed.mdef, matk:ed.matk, cc:ed.cc, cd:ed.cd, critChance:Math.round((ed.cc||0.05)*100), critMult:ed.cd||1.5, en:(scaled.en||0)};
   const prof=getEnemyEnergyProfile();
   ed.energyMax=prof.maxEN;
@@ -5704,7 +5671,6 @@ function buildRosterPreviewStubForBirdKey(birdKey){
     firstAttackFree: false,
     firstSpellFree: false,
     augFirstSpellCostDown: 0,
-    mutArcOverload: false,
     familyEvolutionState: null,
   };
 }
@@ -9475,8 +9441,7 @@ function shouldApplyPostBattleHealNow(){
 
 function applyPostBattleHealIfDue(){
   if(!shouldApplyPostBattleHealNow()) return;
-  const postHealMult=G.player?.mutHuntersCruelty?0.5:1;
-  const postHeal=roundCombatDamage(Math.max(0.01, G.player.stats.maxHp * getPostBattleHealPct() * postHealMult));
+  const postHeal=roundCombatDamage(Math.max(0.01, G.player.stats.maxHp * getPostBattleHealPct()));
   G.player.stats.hp=Math.min(G.player.stats.hp + postHeal, G.player.stats.maxHp);
   spawnFloat('player', `+${postHeal} 🩹`, 'fn-heal');
   const flatHeal=(G.player.postBattleFlatHeal || 0);
@@ -10509,9 +10474,6 @@ function collectOutgoingDamageBonusFractions(ctx){
   if(es.exposedGuard?.pct) fractions.push(es.exposedGuard.pct);
   if(G.playerStatus?.postDefAtkPct){ fractions.push(G.playerStatus.postDefAtkPct); delete G.playerStatus.postDefAtkPct; }
   if(G.playerStatus?.tensionCoil?.turns>0) fractions.push(G.playerStatus.tensionCoil.pct);
-  if(p?.mutSuddenFlight&&!p._mutSuddenFlightUsed){ fractions.push(0.25); p._mutSuddenFlightUsed=true; }
-  if(p?.mutHuntersCruelty&&G.enemy.stats.hp<=Math.floor((G.enemy.stats.maxHp||1)*0.5)) fractions.push(0.20);
-  if(p?.mutRazorInstinct&&!ctx.isCrit) fractions.push(-0.10);
   if(isAttack&&!G.playerTurnFlags?.firstAttackResolved&&(p?.firstAttackEachTurnBonusPct||0)>0){
     fractions.push(p.firstAttackEachTurnBonusPct);
     if(G.playerTurnFlags) G.playerTurnFlags.firstAttackResolved=true;
@@ -11398,8 +11360,7 @@ function applyAilment(target,ailId,stacks=1) {
   } else if (ailId==='decreed') {
     status.decreed={turns:2};
   } else if (ailId==='feared') {
-    const extra=((target==='enemy')&&G.player?.mutDarkChorus)?1:0;
-    const incoming=Math.max(1, Math.floor(Number(stacks)||1)+extra);
+    const incoming=Math.max(1, Math.floor(Number(stacks)||1));
     status.feared=Math.max(status.feared||0, incoming)+debuffDurationBonus;
   } else if (ailId==='confused') {
     const t=Math.max(1, Math.floor(Number(stacks)||2));
@@ -11877,7 +11838,6 @@ function startPlayerTurn(player){
     G.player.stats.spd=Math.max(1,(G.player.stats.spd||1)-1);
     delete G.playerStatus.perkSlipstreamDecay;
   }
-  if(player.mutSuddenFlight) player._mutSuddenFlightUsed=false;
   G._combatHealUsedThisTurn=false;
   if(typeof Avian?.passives?.onPlayerTurnStart==='function') Avian.passives.onPlayerTurnStart(player);
   if(typeof Avian?.dispatcher?.onPlayerTurnStart==='function') Avian.dispatcher.onPlayerTurnStart(player);
@@ -11993,7 +11953,6 @@ function getAbilityEnergyCost(ab, player){
   if(isAttack && !G._firstAttackUsed && p?.firstAttackFree) cost=0;
   if(isSpell && !G._firstSpellUsed && p?.firstSpellFree) cost=0;
   if(isSpell && !G._firstSpellUsed && (p?.augFirstSpellCostDown||0)>0) cost=Math.max(0,cost-p.augFirstSpellCostDown);
-  if(isSpell && p?.mutArcOverload) cost+=1;
 
   if(cost===1 && isMultiHitAbility(ab) && !isMainAttackAbility(ab, p)) cost += 1;
 
@@ -14485,24 +14444,68 @@ function isBossStage(stage){
   return s===STORY_MILESTONE_BOSS_STAGE || s===STORY_DUKE_STAGE;
 }
 
-const GROVE_OUTCOME_POOL = Object.freeze(['egg','ambush','fruit','nest']);
+const GROVE_OUTCOME_POOL = Object.freeze(['egg','goldenGoose','ambush','fruit','nest']);
 
-function grantGroveNestMutation(){
-  const rw=typeof Avian?.mutations?.rollMutationRewardFromDropWeights==='function'
-    ? Avian.mutations.rollMutationRewardFromDropWeights({ stage: G.stage||1 })
-    : null;
+function rollGroveMutationTier(outcomeType, stage){
+  const st=Math.max(1, Math.floor(Number(stage)||1));
+  if(outcomeType==='goldenGoose'){
+    const tiers=st>=18?['purple','gold','orange']:['purple','gold'];
+    return tiers[Math.floor(Math.random()*tiers.length)];
+  }
+  const tiers=st>=12?['green','blue','purple']:['green','blue'];
+  return tiers[Math.floor(Math.random()*tiers.length)];
+}
+
+function grantGroveGearMutation(outcomeType){
+  const stage=G.stage||1;
+  if(outcomeType==='nest'){
+    return typeof Avian?.mutations?.rollMutationRewardFromDropWeights==='function'
+      ? Avian.mutations.rollMutationRewardFromDropWeights({ stage })
+      : null;
+  }
+  if(typeof Avian?.mutations?.rollMutationReward!=='function') return null;
+  const tier=rollGroveMutationTier(outcomeType, stage);
+  return Avian.mutations.rollMutationReward({ tier, stage, filterForPlayer: true });
+}
+
+function applyGroveGearMutation(rw){
   if(!rw) return null;
   if(rw.type==='mutation'){
     const itemId=rw.mutationItemId||rw.id;
     if(typeof Avian?.mutations?.addToInventory==='function') Avian.mutations.addToInventory(G.player, itemId);
     codexMark('mutations', itemId, 'seen');
   } else if(typeof rw.apply==='function'){
-    applyUpgradeWithMaxHpHealing(G.player, ()=>rw.apply(G.player), rw.name||'Grove Nest Reward', {id:rw.id, desc:rw.desc});
+    applyUpgradeWithMaxHpHealing(G.player, ()=>rw.apply(G.player), rw.name||'Grove Reward', {id:rw.id, desc:rw.desc});
+    codexMark('artifacts', rw.id||rw.name, 'seen');
   }
   if(!G.collectedRewards) G.collectedRewards=[];
   G.collectedRewards.push({id:rw.id||rw.name,icon:rw.icon,tier:rw.tier,name:rw.name,desc:rw.desc});
-  if(rw.type!=='mutation') codexMark('artifacts', rw.id||rw.name, 'seen');
   return rw;
+}
+
+function showGroveRewardCard(rw){
+  if(!rw) return;
+  const section=document.getElementById('grove-reward-section');
+  const grid=document.getElementById('grove-reward-grid');
+  const heading=document.getElementById('grove-reward-heading');
+  if(!section||!grid) return;
+  if(heading){
+    heading.textContent='🧬 Gear mutation';
+    heading.style.display='block';
+  }
+  grid.innerHTML=buildNestRewardCardHtml(rw);
+  section.style.display='block';
+  if(rw.type==='mutation'){
+    const mutId=rw.mutationItemId||rw.id;
+    const card=grid.firstElementChild;
+    if(mutId&&card&&typeof bindRichTooltip==='function'){
+      bindRichTooltip(card, ()=>buildMutationTooltipHTML(mutId), {category:'mutations'});
+    }
+  }
+}
+
+function grantGroveNestMutation(){
+  return applyGroveGearMutation(grantGroveGearMutation('nest'));
 }
 
 function startGroveAmbushBattle(){
@@ -14571,7 +14574,7 @@ function showGroveEvent(){
     ? `<em>Your small form lets you slip into tight spaces — but beware larger threats.</em>`
     : `<em>Your size grants power, but agility may be needed here.</em>`;
   document.getElementById('grove-intro-text').innerHTML =
-    `Ancient trees hide secrets — eggs, fruit, nests, or ambush.<br><br>${sizeHint}<br><br><strong>Pick one tree. Risk the grove?</strong>`;
+    `Ancient trees hide secrets — saved eggs, golden goose eggs, fruit, nests, or ambush.<br><br>${sizeHint}<br><br><strong>Pick one tree. Risk the grove?</strong>`;
 
   document.getElementById('grove-optout-btn').onclick = ()=>{
     logMsg('🌳 You leave the grove undisturbed. Onward.','system');
@@ -14630,6 +14633,7 @@ async function resolveGrove(idx){
       const rw=grantGroveNestMutation();
       if(rw){
         msg=`🪹 Nest treasure: ${rw.name} added to your nest inventory!`;
+        showGroveRewardCard(rw);
         SFX.spell(); SFX.exp();
       } else {
         msg='🪹 The nest is empty this time.';
@@ -14670,10 +14674,39 @@ async function resolveGrove(idx){
     }
     case 'egg':{
       chosen.className='grove-tree revealed outcome-egg';
-      const added=typeof addSavedEggs==='function'?addSavedEggs(1):0;
-      chosen.innerHTML=`<span>🥚</span><span class="grove-outcome-label">Saved Egg!</span>`;
-      msg = added ? '🥚 A Saved Egg is tucked safely in your global bank (+1)!' : '🥚 You found an egg, but the bank could not be reached.';
-      flavor = 'Banked immediately — no Flight completion required.';
+      const savedCount=3+Math.floor(Math.random()*4);
+      const added=typeof addSavedEggs==='function'?addSavedEggs(savedCount):0;
+      chosen.innerHTML=`<span>🥚</span><span class="grove-outcome-label">Saved Eggs!</span>`;
+      const rw=applyGroveGearMutation(grantGroveGearMutation('egg'));
+      if(added&&rw){
+        msg=`🥚 +${savedCount} Saved Eggs banked, plus ${rw.name} added to your nest inventory!`;
+        showGroveRewardCard(rw);
+      } else if(added){
+        msg=`🥚 +${savedCount} Saved Eggs tucked safely in your global bank!`;
+      } else {
+        msg='🥚 You found eggs, but the bank could not be reached.';
+      }
+      flavor='Banked immediately — no Flight completion required.';
+      floatClass='fn-heal';
+      SFX.exp();
+      break;
+    }
+    case 'goldenGoose':{
+      chosen.className='grove-tree revealed outcome-goose';
+      const groveStage=G.stage||1;
+      const gooseCount=groveStage>=20?2:1;
+      const added=typeof addGoldenGooseEggs==='function'?addGoldenGooseEggs(gooseCount):0;
+      chosen.innerHTML=`<span>🪿</span><span class="grove-outcome-label">Golden Goose!</span>`;
+      const rw=applyGroveGearMutation(grantGroveGearMutation('goldenGoose'));
+      if(added&&rw){
+        msg=`🪿 +${gooseCount} Golden Goose Egg${gooseCount>1?'s':''} banked, plus ${rw.name} added to your nest inventory!`;
+        showGroveRewardCard(rw);
+      } else if(added){
+        msg=`🪿 +${gooseCount} Golden Goose Egg${gooseCount>1?'s':''} tucked safely in your global bank!`;
+      } else {
+        msg='🪿 You found a golden goose egg, but the bank could not be reached.';
+      }
+      flavor='Rare grove fortune — eggs and gear for your class.';
       floatClass='fn-heal';
       SFX.exp();
       break;
@@ -15595,7 +15628,6 @@ function clearShopSelection(){
 function getShopItemBaseCost(item){
   if(!item) return 0;
   let baseCost=(typeof item.costOverride==='number')?item.costOverride:(SHOP_COSTS[item.tier]||1);
-  if(G.player?.mutLongWar) baseCost=Math.ceil(baseCost*1.15);
   return baseCost;
 }
 

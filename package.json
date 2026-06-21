@@ -18,7 +18,7 @@
     "skills-master": "node scripts/skills-master.js",
     "upgrade-inventory": "node scripts/upgrade-inventory.js",
     "gen:ability-tree": "node scripts/build-ability-family-tree.js",
-    "import-mutations": "node scripts/import-mutations-content.mjs",
+    "import-mutations": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/import-mutation-gear-workbook.ps1",
     "import-master-bird": "node scripts/import-master-bird-content.mjs",
     "verify-roster": "node scripts/verify-enemy-roster.mjs && node scripts/verify-story-level-bands.mjs && node scripts/verify-encounter-generator.mjs"
   },

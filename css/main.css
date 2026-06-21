@@ -3437,11 +3437,13 @@ html.avian-ow-nest-embed .nest-close{display:none!important;}
 .grove-tree.outcome-ambush{border-color:rgba(201,76,76,.6);background:linear-gradient(135deg,rgba(201,76,76,.2),rgba(201,76,76,.05));}
 .grove-tree.outcome-fruit{border-color:rgba(76,138,106,.7);background:linear-gradient(135deg,rgba(76,138,106,.2),rgba(76,138,106,.05));}
 .grove-tree.outcome-egg{border-color:rgba(201,168,76,.5);background:linear-gradient(135deg,rgba(201,168,76,.15),rgba(201,168,76,.04));}
+.grove-tree.outcome-goose{border-color:rgba(232,120,48,.65);background:linear-gradient(135deg,rgba(232,120,48,.18),rgba(201,168,76,.06));box-shadow:0 0 24px rgba(232,120,48,.28);}
 .grove-outcome-label{font-size:.72rem;font-family:'Cinzel',serif;letter-spacing:.06em;margin-top:4px;}
 .outcome-nest .grove-outcome-label{color:var(--gold);}
 .outcome-ambush .grove-outcome-label{color:var(--red-light);}
 .outcome-fruit .grove-outcome-label{color:#6ae86a;}
 .outcome-egg .grove-outcome-label{color:var(--gold-light);}
+.outcome-goose .grove-outcome-label{color:#ffd0a8;}
 #grove-result-msg{min-height:40px;margin:14px 0;font-size:.92rem;font-weight:600;color:var(--text);}
 .grove-other-trees{opacity:.35;transform:scale(.95);}
 #grove-reward-section{display:none;margin-top:18px;}

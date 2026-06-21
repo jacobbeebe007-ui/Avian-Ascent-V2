@@ -54,7 +54,14 @@
   var MUT_STAT_DISPLAY = {
     maxHp: 'HP', atk: 'ATK', def: 'DEF', spd: 'SPD', acc: 'ACC', dodge: 'DODGE',
     matk: 'MATK', mdef: 'MDEF', critChance: 'CRIT', armorPen: 'Armour Pen', magicPen: 'Magic Pen',
+    shieldPowerPct: 'Shield Power', lifestealPct: 'Lifesteal', healingDonePct: 'Healing Done',
+    healingReceivedPct: 'Healing Received', statusResistPct: 'Status Resist',
+    heavyAccPenaltyReductionPct: 'Heavy ACC', ultimateMeterGainPct: 'Ult Meter',
   };
+  var MUT_MECH_DISPLAY_KEYS = [
+    'shieldPowerPct', 'lifestealPct', 'healingDonePct', 'healingReceivedPct',
+    'statusResistPct', 'heavyAccPenaltyReductionPct', 'ultimateMeterGainPct',
+  ];
   var MUT_STAT_COLOR = {
     atk: 'mut-stat-atk', matk: 'mut-stat-matk', def: 'mut-stat-def', mdef: 'mut-stat-mdef',
     spd: 'mut-stat-spd', acc: 'mut-stat-acc', dodge: 'mut-stat-dodge', critChance: 'mut-stat-crit',
@@ -62,6 +69,10 @@
     lightDmg: 'mut-stat-atk', mediumDmg: 'mut-stat-atk', heavyDmg: 'mut-stat-atk',
     multiHitDmg: 'mut-stat-atk', critDmg: 'mut-stat-crit',
     physAil: 'mut-stat-ail', magAil: 'mut-stat-ail', delayedDmg: 'mut-stat-atk',
+    shieldPowerPct: 'mut-stat-def', lifestealPct: 'mut-stat-hp', healingDonePct: 'mut-stat-hp',
+    healingReceivedPct: 'mut-stat-hp', statusResistPct: 'mut-stat-mdef',
+    heavyAccPenaltyReductionPct: 'mut-stat-acc', ultimateMeterGainPct: 'mut-stat-misc',
+    bonus: 'mut-stat-misc', statLine: 'mut-stat-misc',
   };
 
   function mutStatColorClass(key) {
@@ -114,8 +125,17 @@
     if (mech.multiHitDmgPct) lines.push({ key: 'multiHitDmg', label: 'Multi-hit', value: '+' + mech.multiHitDmgPct + '%', colorClass: mutStatColorClass('multiHitDmg') });
     if (mech.critDamageBonusPct) lines.push({ key: 'critDmg', label: 'Crit Damage', value: '+' + mech.critDamageBonusPct + '%', colorClass: mutStatColorClass('critDmg') });
     if (mech.delayedDmgPct) lines.push({ key: 'delayedDmg', label: 'Delayed', value: '+' + mech.delayedDmgPct + '% dmg', colorClass: mutStatColorClass('delayedDmg') });
+    for (var mi = 0; mi < MUT_MECH_DISPLAY_KEYS.length; mi++) {
+      var mk = MUT_MECH_DISPLAY_KEYS[mi];
+      var mv = Number(mech[mk]) || 0;
+      if (!mv) continue;
+      lines.push({ key: mk, label: MUT_STAT_DISPLAY[mk] || mk, value: '+' + mv + '%', colorClass: mutStatColorClass(mk) });
+    }
     var m = item.mechanics || {};
+    var hasPhysAilLine = false;
+    var hasMagAilLine = false;
     if (m.physicalAilment && m.physicalAilment.chance) {
+      hasPhysAilLine = true;
       lines.push({
         key: 'physAil',
         label: 'Phys ailment',
@@ -123,9 +143,23 @@
         colorClass: mutStatColorClass('physAil'),
       });
     } else if (mech.physicalAilmentChance) {
+      hasPhysAilLine = true;
       lines.push({ key: 'physAil', label: 'Phys ailment', value: '+' + mech.physicalAilmentChance + '%', colorClass: mutStatColorClass('physAil') });
     }
+    if (mech.physicalAilments && mech.physicalAilments.length && !hasPhysAilLine) {
+      for (var pai = 0; pai < mech.physicalAilments.length; pai++) {
+        var pa = mech.physicalAilments[pai];
+        if (!pa || !pa.chance) continue;
+        lines.push({
+          key: 'physAil_' + pai,
+          label: String(pa.id || 'Phys ailment'),
+          value: '+' + pa.chance + '%',
+          colorClass: mutStatColorClass('physAil'),
+        });
+      }
+    }
     if (m.magicAilment && m.magicAilment.chance) {
+      hasMagAilLine = true;
       lines.push({
         key: 'magAil',
         label: 'Magic ailment',
@@ -133,9 +167,45 @@
         colorClass: mutStatColorClass('magAil'),
       });
     } else if (mech.magicAilmentChance) {
+      hasMagAilLine = true;
       lines.push({ key: 'magAil', label: 'Magic ailment', value: '+' + mech.magicAilmentChance + '%', colorClass: mutStatColorClass('magAil') });
     }
+    if (mech.magicAilments && mech.magicAilments.length && !hasMagAilLine) {
+      for (var mai = 0; mai < mech.magicAilments.length; mai++) {
+        var ma = mech.magicAilments[mai];
+        if (!ma || !ma.chance) continue;
+        lines.push({
+          key: 'magAil_' + mai,
+          label: String(ma.id || 'Magic ailment'),
+          value: '+' + ma.chance + '%',
+          colorClass: mutStatColorClass('magAil'),
+        });
+      }
+    }
+    if (item.bonuses && Array.isArray(item.bonuses)) {
+      for (var bi = 0; bi < item.bonuses.length; bi++) {
+        var b = item.bonuses[bi];
+        if (!b || !b.name) continue;
+        var bval = Number(b.value) || 0;
+        lines.push({
+          key: 'bonus_' + bi,
+          label: b.name,
+          value: bval ? ('(' + bval + ')') : '',
+          colorClass: mutStatColorClass('bonus'),
+        });
+      }
+    }
     return lines;
+  }
+
+  function formatStatLineFallbackHtml(item) {
+    if (!item || !item.statLine) return '';
+    return '<span class="mut-stat-chip mut-stat-misc">' + escapeMutHtml(item.statLine) + '</span>';
+  }
+
+  function formatStatLineFallbackBlock(item) {
+    if (!item || !item.statLine) return '';
+    return '<div class="mut-stat-line"><span class="mut-stat-misc">' + escapeMutHtml(item.statLine) + '</span></div>';
   }
 
   function escapeMutHtml(s) {
@@ -144,7 +214,7 @@
 
   function formatMutationDescHtml(item) {
     var lines = buildMutationStatLines(item);
-    if (!lines.length) return '';
+    if (!lines.length) return formatStatLineFallbackBlock(item);
     return lines.map(function (ln) {
       return '<div class="mut-stat-line"><span class="' + ln.colorClass + '">' + escapeMutHtml(ln.label) + ' ' + escapeMutHtml(ln.value) + '</span></div>';
     }).join('');
@@ -152,7 +222,7 @@
 
   function formatMutationStatCompactHtml(item) {
     var lines = buildMutationStatLines(item);
-    if (!lines.length) return '';
+    if (!lines.length) return formatStatLineFallbackHtml(item);
     return lines.map(function (ln) {
       return '<span class="mut-stat-chip ' + ln.colorClass + '">' + escapeMutHtml(ln.label) + ' ' + escapeMutHtml(ln.value) + '</span>';
     }).join(' · ');
@@ -161,7 +231,7 @@
   function formatMutationDesc(item) {
     if (!item) return '';
     var lines = buildMutationStatLines(item);
-    if (!lines.length) return item.name || '';
+    if (!lines.length) return item.statLine || item.name || '';
     return lines.map(function (ln) { return ln.label + ' ' + ln.value; }).join('\n');
   }
 
@@ -452,6 +522,16 @@
     if (m.piercePct) addArmorPenStat(stats, m.piercePct);
     if (m.defPenPct) addArmorPenStat(stats, m.defPenPct);
     if (m.mdefPenPct) addMagicPenStat(stats, m.mdefPenPct);
+    if (m.armorPen) addArmorPenStat(stats, m.armorPen);
+    if (m.magicPen) addMagicPenStat(stats, m.magicPen);
+    for (var mk in m) {
+      if (!Object.prototype.hasOwnProperty.call(m, mk)) continue;
+      if (mk === 'piercePct' || mk === 'defPenPct' || mk === 'mdefPenPct' || mk === 'armorPen' || mk === 'magicPen') continue;
+      if (mk === 'damageBonus' || mk === 'physicalAilment' || mk === 'magicAilment' || mk === 'ailmentChances') continue;
+      if (MECHANICAL_STAT_KEYS.indexOf(mk) >= 0) {
+        mech[mk] = (mech[mk] || 0) + (Number(m[mk]) || 0);
+      }
+    }
     if (m.damageBonus) {
       mech.damageBonuses = mech.damageBonuses || [];
       mech.damageBonuses.push(m.damageBonus);

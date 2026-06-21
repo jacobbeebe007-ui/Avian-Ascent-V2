@@ -27,6 +27,16 @@ Test-Check 'save schema v8' ($b.Contains('var TARGET = 8'))
 Test-Check 'no legacy AA-1-0001' (-not $b.Contains('AA-1-0001'))
 Test-Check 'tryMutationOnHitAilments' ($b.Contains('function tryMutationOnHitAilments'))
 Test-Check 'getHeavyAccPenaltyReduction' ($b.Contains('getHeavyAccPenaltyReduction'))
+Test-Check 'no legacy mut_blood_moon' (-not $b.Contains('mut_blood_moon'))
+Test-Check 'no ENDLESS_MUTATIONS' (-not $b.Contains('ENDLESS_MUTATIONS'))
+Test-Check 'grove goldenGoose outcome' ($b.Contains("'goldenGoose'"))
+Test-Check 'grantGroveGearMutation helper' ($b.Contains('function grantGroveGearMutation'))
+Test-Check 'rollGroveMutationTier helper' ($b.Contains('function rollGroveMutationTier'))
+Test-Check 'getFamilyEvolutionBirdDataStore' ($b.Contains('getFamilyEvolutionBirdDataStore'))
+Test-Check 'Shield Power display label' ($b.Contains('Shield Power'))
+Test-Check 'statLine fallback helper' ($b.Contains('formatStatLineFallbackHtml'))
+Test-Check 'MT0347 in catalog' ($b.Contains('MT0347'))
+Test-Check 'mechanics armorPen rollup' ($b.Contains('m.armorPen'))
 
 Write-Host "[verify] MT id matches: $mtCount"
 if ($failed -gt 0) { exit 1 }
