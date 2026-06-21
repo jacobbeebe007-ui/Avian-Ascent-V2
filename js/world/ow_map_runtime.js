@@ -145,9 +145,32 @@
     const count = isBoss ? 1 : 3;
     const slots = [];
     for (let i = 0; i < count; i++) {
-      slots.push({ birdKey: 'random', enemyLevel: 1, mutationBand: 'green', maxMutations: isBoss ? 2 : 1 });
+      slots.push({ birdKey: 'random', enemyTier: 'grey', enemyStars: 0, mutationBand: 'green', maxMutations: isBoss ? 2 : 1 });
     }
     return { enemyCount: count, slots };
+  };
+
+  function normalizeForgeSlotTier(tier) {
+    if (typeof global.normalizeBirdCardTier === 'function') return global.normalizeBirdCardTier(tier);
+    const order = global.BIRD_CARD_TIER_ORDER || ['grey', 'green', 'blue', 'purple', 'gold', 'orange'];
+    const t = String(tier || 'grey').toLowerCase();
+    return order.indexOf(t) >= 0 ? t : 'grey';
+  }
+
+  function clampForgeSlotStars(stars) {
+    if (typeof global.clampBirdCardStars === 'function') return global.clampBirdCardStars(stars);
+    return Math.max(0, Math.min(5, Math.floor(Number(stars) || 0)));
+  }
+
+  global.pickRandomForgeBirdKey = function () {
+    const birds = global.BIRDS || {};
+    let keys = Object.keys(birds).filter((k) => k && birds[k]);
+    if (typeof global.listForgeEnemySpeciesOptions === 'function') {
+      const opts = global.listForgeEnemySpeciesOptions().filter((o) => o.id && o.id !== 'random');
+      if (opts.length) keys = opts.map((o) => o.id);
+    }
+    if (!keys.length) return 'sparrow';
+    return keys[Math.floor(Math.random() * keys.length)];
   };
 
   global.ensureNodeEncounter = function (node) {
@@ -158,12 +181,13 @@
     const enc = node.encounter;
     enc.enemyCount = Math.max(1, Math.min(5, Math.floor(Number(enc.enemyCount) || enc.slots.length || 1)));
     while (enc.slots.length < enc.enemyCount) {
-      enc.slots.push({ birdKey: 'random', enemyLevel: 1, mutationBand: 'green', maxMutations: 1 });
+      enc.slots.push({ birdKey: 'random', enemyTier: 'grey', enemyStars: 0, mutationBand: 'green', maxMutations: 1 });
     }
     enc.slots = enc.slots.slice(0, enc.enemyCount).map((s) => {
       const slot = {
         birdKey: s.birdKey || 'random',
-        enemyLevel: Math.max(1, Math.min(20, Math.floor(Number(s.enemyLevel) || 1))),
+        enemyTier: normalizeForgeSlotTier(s.enemyTier || 'grey'),
+        enemyStars: clampForgeSlotStars(s.enemyStars != null ? s.enemyStars : 0),
         mutationBand: s.mutationBand || 'green',
         maxMutations: Math.max(0, Math.min(11, Math.floor(Number(s.maxMutations) || 0))),
       };
@@ -209,7 +233,7 @@
   };
 
   global.resolveForgeEncounterBirdKeys = function (encounter, playerBirdKey, scalingStage) {
-    const enc = encounter || { enemyCount: 1, slots: [{ birdKey: 'random', enemyLevel: 1, mutationBand: 'green', maxMutations: 1 }] };
+    const enc = encounter || { enemyCount: 1, slots: [{ birdKey: 'random', enemyTier: 'grey', enemyStars: 0, mutationBand: 'green', maxMutations: 1 }] };
     const st = Math.max(1, Math.floor(Number(scalingStage) || 1));
     const pbk = String(playerBirdKey || '').trim();
     let pool = [];
@@ -224,27 +248,16 @@
     const out = [];
     const slots = enc.slots || [];
     for (let i = 0; i < enc.enemyCount; i++) {
-      const slot = slots[i] || { birdKey: 'random' };
+      const slot = slots[i] || { birdKey: 'random', enemyTier: 'grey', enemyStars: 0 };
       if (slot.enemyId && typeof global.isRosterEnemyId === 'function' && global.isRosterEnemyId(slot.enemyId)) {
         out.push(slot.enemyId);
       } else if (slot.birdKey && slot.birdKey !== 'random') {
-        const lv = slot.enemyLevel || st;
-        if (typeof global.pickRosterIdForBirdAndLevel === 'function') {
-          const picked = global.pickRosterIdForBirdAndLevel(slot.birdKey, lv, { isBoss: !!slot.isBoss });
-          if (picked) out.push(picked);
-          else if (typeof global.resolveOwStageToken === 'function') {
-            out.push(global.resolveOwStageToken(slot.birdKey, lv, { isBoss: !!slot.isBoss }));
-          } else {
-            out.push(slot.birdKey);
-          }
-        } else if (typeof global.resolveOwStageToken === 'function') {
-          out.push(global.resolveOwStageToken(slot.birdKey, lv, { isBoss: !!slot.isBoss }));
-        } else {
-          out.push(slot.birdKey);
-        }
+        out.push(slot.birdKey);
       } else {
-        const lv = Math.max(1, Math.min(20, Math.floor(Number(slot.enemyLevel) || st)));
-        if (typeof global.pickRandomRosterIdAtLevel === 'function') {
+        if (typeof global.pickRandomForgeBirdKey === 'function') {
+          out.push(global.pickRandomForgeBirdKey());
+        } else if (typeof global.pickRandomRosterIdAtLevel === 'function') {
+          const lv = Math.max(1, Math.min(20, Math.floor(Number(slot.enemyLevel) || st)));
           const picked = global.pickRandomRosterIdAtLevel(lv, { isBoss: !!slot.isBoss });
           if (picked) out.push(picked);
           else out.push(pool[Math.floor(Math.random() * pool.length)]);
@@ -538,21 +551,21 @@
     standardStage: {
       enemyCount: 3,
       slots: [
-        { birdKey: 'random', enemyLevel: 1, mutationBand: 'green', maxMutations: 1 },
-        { birdKey: 'random', enemyLevel: 1, mutationBand: 'green', maxMutations: 1 },
-        { birdKey: 'random', enemyLevel: 1, mutationBand: 'green', maxMutations: 1 },
+        { birdKey: 'random', enemyTier: 'grey', enemyStars: 0, mutationBand: 'green', maxMutations: 1 },
+        { birdKey: 'random', enemyTier: 'grey', enemyStars: 0, mutationBand: 'green', maxMutations: 1 },
+        { birdKey: 'random', enemyTier: 'grey', enemyStars: 0, mutationBand: 'green', maxMutations: 1 },
       ],
     },
     miniBoss: {
       enemyCount: 2,
       slots: [
-        { birdKey: 'random', enemyLevel: 5, mutationBand: 'blue', maxMutations: 2 },
-        { birdKey: 'random', enemyLevel: 5, mutationBand: 'blue', maxMutations: 2 },
+        { birdKey: 'random', enemyTier: 'blue', enemyStars: 0, mutationBand: 'blue', maxMutations: 2 },
+        { birdKey: 'random', enemyTier: 'blue', enemyStars: 0, mutationBand: 'blue', maxMutations: 2 },
       ],
     },
     hardBoss: {
       enemyCount: 1,
-      slots: [{ birdKey: 'random', enemyLevel: 10, mutationBand: 'purple', maxMutations: 3 }],
+      slots: [{ birdKey: 'random', enemyTier: 'purple', enemyStars: 0, mutationBand: 'purple', maxMutations: 3 }],
     },
   };
 

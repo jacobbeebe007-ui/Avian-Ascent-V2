@@ -35,11 +35,12 @@ function assert(cond, msg) {
   console.error('FAIL:', msg);
 }
 
-const node = { type: 'stage', encounter: { enemyCount: 1, slots: [{ birdKey: 'sparrow', enemyLevel: 3, mutationBand: 'blue', maxMutations: 2 }] } };
+const node = { type: 'stage', encounter: { enemyCount: 1, slots: [{ birdKey: 'sparrow', enemyTier: 'blue', enemyStars: 3, mutationBand: 'blue', maxMutations: 2 }] } };
 g.ensureNodeEncounter(node);
 const slot = node.encounter.slots[0];
 assert(slot.birdKey === 'sparrow', 'birdKey preserved');
-assert(slot.enemyLevel === 3, 'enemyLevel normalized');
+assert(slot.enemyTier === 'blue', 'enemyTier normalized');
+assert(slot.enemyStars === 3, 'enemyStars normalized');
 assert(slot.mutationBand === 'blue', 'mutationBand preserved');
 assert(slot.maxMutations === 2, 'maxMutations preserved');
 
@@ -50,6 +51,10 @@ assert(node.encounter.slots[0].enemyId === 'EN-SPARR-HESQ-L03', 'enemyId preserv
 const ids = g.resolveForgeEncounterBirdKeys(node.encounter, 'goose', 5);
 assert(Array.isArray(ids) && ids.length === 1, 'resolve returns one id');
 assert(ids[0] === 'EN-SPARR-HESQ-L03', 'prefers explicit enemyId');
+
+const speciesOnly = { enemyCount: 1, slots: [{ birdKey: 'sparrow', enemyTier: 'green', enemyStars: 2 }] };
+const speciesIds = g.resolveForgeEncounterBirdKeys(speciesOnly, 'goose', 5);
+assert(speciesIds[0] === 'sparrow', 'species slot emits birdKey token');
 
 const rewards = [
   { type: 'savedEggs', count: 2 },

@@ -18,6 +18,30 @@
     return 7;
   }
 
+  /** Bird-card tier -> unlocked skill slot count (grey=2 .. orange=7). */
+  function getEnemyUnlockedSlotCountForTier(tier) {
+    var order = global.BIRD_CARD_TIER_ORDER
+      || (global.Avian && global.Avian.data && global.Avian.data.birdCardTiers && global.Avian.data.birdCardTiers.TIER_ORDER)
+      || ['grey', 'green', 'blue', 'purple', 'gold', 'orange'];
+    var norm = typeof global.normalizeBirdCardTier === 'function'
+      ? global.normalizeBirdCardTier(tier)
+      : String(tier || 'grey').toLowerCase();
+    var idx = order.indexOf(norm);
+    if (idx < 0) idx = 0;
+    return Math.max(2, Math.min(7, idx + 2));
+  }
+
+  /** Bird-card tier (+ stars for clamping) -> mutation stage 1-3. */
+  function mutationStageForTierStar(tier, stars) {
+    void stars;
+    var norm = typeof global.normalizeBirdCardTier === 'function'
+      ? global.normalizeBirdCardTier(tier)
+      : String(tier || 'grey').toLowerCase();
+    if (norm === 'gold' || norm === 'orange') return 3;
+    if (norm === 'blue' || norm === 'purple') return 2;
+    return 1;
+  }
+
   function slotBiasScore(slotIndex, family, rosterRow) {
     var bias = String((rosterRow && rosterRow.abilityBias) || '').toLowerCase();
     var pack = String((rosterRow && rosterRow.suggestedAbilityPack) || '').toLowerCase();
@@ -47,7 +71,8 @@
     return Math.max(1, Math.min(3, base));
   }
 
-  function materializeEnemySkillsFromWorkbookKit(enemy, birdKey, enemyLevel, enemyClass, rosterRow) {
+  function materializeEnemySkillsFromWorkbookKit(enemy, birdKey, enemyLevel, enemyClass, rosterRow, kitOpts) {
+    kitOpts = kitOpts || {};
     if (!enemy || !birdKey) return false;
     if (typeof global.usesFamilySkillEvolution !== 'function' || !global.usesFamilySkillEvolution({ birdKey: birdKey })) {
       return false;
@@ -61,7 +86,12 @@
       enemy.familyEvolutionState = {};
     }
 
-    var unlockedCount = getEnemyUnlockedSlotCount(enemyLevel);
+    var unlockedCount = Number.isFinite(Number(kitOpts.unlockSlots))
+      ? Math.max(0, Math.min(7, Math.floor(Number(kitOpts.unlockSlots))))
+      : getEnemyUnlockedSlotCount(enemyLevel);
+    var forcedMutationStage = Number.isFinite(Number(kitOpts.mutationStage))
+      ? Math.max(1, Math.min(3, Math.floor(Number(kitOpts.mutationStage))))
+      : null;
     var slots = baseSlots.map(function (base, idx) {
       var slot = typeof global.normalizeSkillSlotState === 'function'
         ? global.normalizeSkillSlotState(JSON.parse(JSON.stringify(base)), base, birdKey)
@@ -74,7 +104,12 @@
       var fam = typeof global.getSkillSlotFamilyDef === 'function'
         ? global.getSkillSlotFamilyDef(slot, birdKey)
         : null;
-      var stage = mutationStageForEnemySlot(enemyLevel, idx, fam, rosterRow);
+      var stage = forcedMutationStage != null
+        ? forcedMutationStage
+        : mutationStageForEnemySlot(enemyLevel, idx, fam, rosterRow);
+      if (fam && fam.maxMutationStage != null) {
+        stage = Math.max(1, Math.min(Number(fam.maxMutationStage) || 3, stage));
+      }
       if (fam && fam.mutations) {
         var abId = fam.mutations[String(stage)] || fam.baseAbilityId || slot.abilityId;
         slot.pathId = 'mutation';
@@ -111,11 +146,15 @@
   }
 
   ns.getEnemyUnlockedSlotCount = getEnemyUnlockedSlotCount;
+  ns.getEnemyUnlockedSlotCountForTier = getEnemyUnlockedSlotCountForTier;
+  ns.mutationStageForTierStar = mutationStageForTierStar;
   ns.materializeEnemySkillsFromWorkbookKit = materializeEnemySkillsFromWorkbookKit;
   ns.materializeEnemySkillsFromPlayerMirror = materializeEnemySkillsFromPlayerMirror;
   ns.inferAIPersonalityFromClass = inferAIPersonalityFromClass;
 
   global.getEnemyUnlockedSlotCount = getEnemyUnlockedSlotCount;
+  global.getEnemyUnlockedSlotCountForTier = getEnemyUnlockedSlotCountForTier;
+  global.mutationStageForTierStar = mutationStageForTierStar;
   global.materializeEnemySkillsFromWorkbookKit = materializeEnemySkillsFromWorkbookKit;
   global.materializeEnemySkillsFromPlayerMirror = materializeEnemySkillsFromPlayerMirror;
   global.inferAIPersonalityFromClass = inferAIPersonalityFromClass;

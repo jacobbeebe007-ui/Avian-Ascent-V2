@@ -3421,6 +3421,8 @@ function continueRun() {
   }
   G.collectedRewards=save.collectedRewards||[];
   G.player=save.player;
+  const forgeMirror=G._owForgeNavMeta?.isForgeTest&&G._forgeMirrorTarget?.birdKey?G._forgeMirrorTarget:null;
+  if(forgeMirror) G.player.birdKey=forgeMirror.birdKey;
   if(G.player?.birdKey && BIRDS[G.player.birdKey]?.size) G.player.size=BIRDS[G.player.birdKey].size;
   G.player.class = resolveFinalClass(G.player?.class, G.player?.birdKey);
   ensureFamilyEvolutionState(G.player);
@@ -3731,19 +3733,21 @@ function ensureOwEncounterDrafts(encounterStage){
   }
   const plv = Math.max(1, Math.floor(G.player?.birdLevel || 1));
   const diffId = G.difficulty || 'juvenile';
-  const sig = `${encounterStage}|${(G._owStageEnemies || []).join(',')}|lv${plv}|d${diffId}`;
+  const forgeSig=(G._owForgeEncounter?.slots||[]).map(s=>`${s.birdKey||'random'}:${s.enemyTier||'grey'}:${s.enemyStars??0}`).join('|');
+  const sig = `${encounterStage}|${(G._owStageEnemies || []).join(',')}|${forgeSig}|lv${plv}|d${diffId}`;
   if(G._owEncounterDraftsSig === sig && Array.isArray(G._owEncounterDrafts) && G._owEncounterDrafts.length === G._owStageEnemies.length) return;
   G._owEncounterDraftsSig = sig;
-  G._owEncounterDrafts = G._owStageEnemies.map(bk=>{
-    const d = buildOwEnemyDraftFromBirdKey(bk, encounterStage);
+  G._owEncounterDrafts = G._owStageEnemies.map((bk, idx)=>{
+    const d = buildOwEnemyDraftFromBirdKey(bk, encounterStage, idx);
     return d ? JSON.parse(JSON.stringify(d)) : null;
   });
 }
 
 /** One overworld slot: roster enemy draft before mergeScaledStatsIntoEnemy. */
-function buildOwEnemyDraftFromBirdKey(bk, encounterStage){
+function buildOwEnemyDraftFromBirdKey(bk, encounterStage, slotIdx){
   const tok=String(bk||'').trim();
   const tokNorm=tok.toLowerCase().replace(/\s+/g,'');
+  const forgeSlot=getForgeEncounterSlot(slotIdx);
   if((tokNorm==='duke_blakiston'||tokNorm==='dukeblakiston'||tok===getStoryDukeRosterId?.()) && encounterStage>=STORY_DUKE_STAGE){
     return makeDukeBlakiston();
   }
@@ -3751,12 +3755,21 @@ function buildOwEnemyDraftFromBirdKey(bk, encounterStage){
   const isForgeBoss = !!(G._owForgeNavMeta?.forgeNodeIsBoss || G._owForgeNavMeta?.isForgeTest && G._owForgeNavMeta?.forgeNodeIsBoss);
   const isBoss = isMilestoneBoss || isForgeBoss;
   const bossTitle = isBoss ? (isMilestoneBoss ? bossTitleForStageMilestone(encounterStage) : 'Boss') : '';
+  const resolvedBirdKey=(BIRDS&&BIRDS[tok])?tok:(BIRDS&&BIRDS[tokNorm]?tokNorm:null);
+  if(shouldBuildForgeTierStarEnemy(forgeSlot, tok) && resolvedBirdKey){
+    const {tier,stars}=normalizeForgeSlotTierStar(forgeSlot);
+    return buildTierStarEnemyFromBirdKey(resolvedBirdKey,{tier,stars,isBoss,bossTitle,stage:encounterStage});
+  }
   if(typeof isRosterEnemyId==='function'&&isRosterEnemyId(tok)&&typeof buildEnemyFromRosterId==='function'){
     return buildEnemyFromRosterId(tok,{isBoss,bossTitle});
   }
   const resolved=typeof resolveOwStageToken==='function'?resolveOwStageToken(tok,encounterStage,{isBoss}):tok;
   if(typeof isRosterEnemyId==='function'&&isRosterEnemyId(resolved)&&typeof buildEnemyFromRosterId==='function'){
     return buildEnemyFromRosterId(resolved,{isBoss,bossTitle});
+  }
+  if(shouldBuildForgeTierStarEnemy(forgeSlot, resolved) && BIRDS?.[resolved]){
+    const {tier,stars}=normalizeForgeSlotTierStar(forgeSlot);
+    return buildTierStarEnemyFromBirdKey(resolved,{tier,stars,isBoss,bossTitle,stage:encounterStage});
   }
   return buildStoryEnemyFromBirdKey(resolved, encounterStage, {isBoss,bossTitle});
 }
@@ -4477,6 +4490,108 @@ function classGrowthWeightsForStory(cls){
   if(c==='siren') return [{k:'matk',w:4},{k:'mdef',w:3},{k:'maxHp',w:3},{k:'spd',w:2},{k:'dodge',w:2},{k:'atk',w:1},{k:'def',w:1}];
   return [{k:'matk',w:4},{k:'mdef',w:3},{k:'maxHp',w:3},{k:'spd',w:2},{k:'dodge',w:2},{k:'atk',w:1},{k:'def',w:1}]; // mage
 }
+function storyLevelFromTierStar(tier, stars){
+  const order=BIRD_CARD_TIER_ORDER||['grey','green','blue','purple','gold','orange'];
+  const norm=typeof normalizeBirdCardTier==='function'?normalizeBirdCardTier(tier):String(tier||'grey').toLowerCase();
+  const idx=order.indexOf(norm);
+  const ti=idx>=0?idx:0;
+  const s=typeof clampBirdCardStars==='function'?clampBirdCardStars(stars):Math.max(0,Math.min(5,Math.floor(Number(stars)||0)));
+  return Math.max(1, ti*5+s+1);
+}
+function normalizeForgeSlotTierStar(slot){
+  const tier=typeof normalizeBirdCardTier==='function'?normalizeBirdCardTier(slot?.enemyTier||'grey'):String(slot?.enemyTier||'grey').toLowerCase();
+  const stars=typeof clampBirdCardStars==='function'?clampBirdCardStars(slot?.enemyStars??0):Math.max(0,Math.min(5,Math.floor(Number(slot?.enemyStars)||0)));
+  return{tier,stars};
+}
+function getForgeEncounterSlot(slotIdx){
+  const idx=Number.isFinite(Number(slotIdx))?Math.floor(Number(slotIdx)):Math.max(0,G._owEnemyIndex||0);
+  return G._owForgeEncounter?.slots?.[idx]||null;
+}
+function shouldBuildForgeTierStarEnemy(slot, tok){
+  if(!G._owForgeEncounter||!slot) return false;
+  if(slot.enemyId&&typeof isRosterEnemyId==='function'&&isRosterEnemyId(String(slot.enemyId))) return false;
+  if(typeof isRosterEnemyId==='function'&&isRosterEnemyId(String(tok||''))) return false;
+  return true;
+}
+function buildTierStarEnemyFromBirdKey(birdKey, opts={}){
+  const bd=BIRDS?.[birdKey];
+  if(!bd) return null;
+  const {tier,stars}=normalizeForgeSlotTierStar({enemyTier:opts.tier,enemyStars:opts.stars});
+  const mult=typeof getEffectiveBirdCardStatMultiplier==='function'?getEffectiveBirdCardStatMultiplier(tier,stars):1;
+  const tierPack=Avian?.data?.birdCardTiers;
+  const scaledKeys=tierPack?.SCALED_STAT_KEYS||['maxHp','hp','atk','def','spd','dodge','mdef','matk'];
+  const stats={
+    hp:roundCombatStat(bd.stats?.hp||bd.stats?.maxHp||30, 0.01),
+    maxHp:roundCombatStat(bd.stats?.maxHp||bd.stats?.hp||30, 0.01),
+    atk:roundCombatStat(bd.stats?.atk||6, 0.01),
+    def:roundCombatStat(bd.stats?.def||2, 0),
+    matk:roundCombatStat(bd.stats?.matk||8, 0.01),
+    mdef:roundCombatStat(bd.stats?.mdef||8, 0),
+    spd:roundCombatStat(bd.stats?.spd||6, 0.01),
+    acc:roundCombatStat(bd.stats?.acc||80, 60),
+    dodge:roundCombatStat(bd.stats?.dodge||10, 0),
+    critChance:roundCombatStat(bd.stats?.critChance||5, 0),
+    critMult:Math.max(1.1,Number(bd.stats?.critMult||1.5)),
+  };
+  scaledKeys.forEach(key=>{
+    if(stats[key]==null) return;
+    const floor=(key==='dodge'||key==='def'||key==='mdef')?0:0.01;
+    stats[key]=roundCombatStat(Math.max(floor, stats[key]*mult), floor);
+  });
+  if(stats.maxHp!=null&&bd.stats?.maxHp>0){
+    const hpRatio=(Number(bd.stats.hp??bd.stats.maxHp)||stats.maxHp)/Number(bd.stats.maxHp||stats.maxHp);
+    stats.hp=Math.max(1, Math.round(stats.maxHp*hpRatio));
+  }
+  const cls=String(bd.class||'striker').toLowerCase();
+  const storyLevel=storyLevelFromTierStar(tier,stars);
+  const unlockSlots=typeof getEnemyUnlockedSlotCountForTier==='function'?getEnemyUnlockedSlotCountForTier(tier):2;
+  const mutationStage=typeof mutationStageForTierStar==='function'?mutationStageForTierStar(tier,stars):1;
+  const enemyStub={birdKey, abilities:[], familyEvolutionState:{}};
+  if(typeof materializeEnemySkillsFromWorkbookKit==='function'){
+    materializeEnemySkillsFromWorkbookKit(enemyStub,birdKey,storyLevel,cls,null,{unlockSlots,mutationStage});
+  }else if(typeof materializeEnemySkillsFromPlayerMirror==='function'){
+    materializeEnemySkillsFromPlayerMirror(enemyStub,birdKey,storyLevel,null,cls);
+  }
+  const diffMult=DIFFICULTIES[G.difficulty||'juvenile']?.mult||1;
+  stats.maxHp=roundCombatStat(Math.max(0.01, stats.maxHp*diffMult), 0.01);
+  stats.hp=stats.maxHp;
+  stats.atk=roundCombatStat(Math.max(0.01, stats.atk*diffMult), 0.01);
+  stats.matk=roundCombatStat(Math.max(0.01, stats.matk*diffMult), 0.01);
+  if(opts.isBoss){
+    stats.maxHp=roundCombatStat(Math.max(0.01, stats.maxHp*STORY_BOSS_STAT_MULT.hp), 0.01);
+    stats.hp=stats.maxHp;
+    stats.atk=roundCombatStat(Math.max(0.01, stats.atk*STORY_BOSS_STAT_MULT.atk), 0.01);
+    stats.matk=roundCombatStat(Math.max(0.01, stats.matk*STORY_BOSS_STAT_MULT.matk), 0.01);
+  }
+  normalizeCombatStats(stats);
+  const size=bd.size||'medium';
+  const enProf=getEnemyEnergyProfile();
+  const aiStyle=(['predator','striker'].includes(cls)?'aggressive':(cls==='tank'?'defensive':(cls==='trickster'?'trickster':'cautious')));
+  const aiPersonality=typeof inferAIPersonalityFromClass==='function'?inferAIPersonalityFromClass(cls):inferAIPersonalityFromStyle(aiStyle,bd.name);
+  const stage=Math.max(1,Math.floor(Number(opts.stage)||1));
+  return{
+    id:`forge_${birdKey}_${tier}_${stars}_${stage}_${Math.floor(Math.random()*1e6)}`,
+    name:bd.name,
+    birdKey,
+    portraitKey:bd.portraitKey||birdKey,
+    size,
+    enemyClass:cls,
+    aiStyle,
+    aiPersonality,
+    abilities:JSON.parse(JSON.stringify(enemyStub.abilities||[])),
+    stats:{...stats,en:enProf.maxEN},
+    hp:stats.hp,maxHp:stats.maxHp,atk:stats.atk,def:stats.def,spd:stats.spd,acc:stats.acc,dodge:stats.dodge,mdef:stats.mdef,matk:stats.matk,
+    cc:Math.max(0.05,Math.min(0.95,(stats.critChance||5)/100)), cd:stats.critMult||1.5,
+    energyMax:enProf.maxEN,energy:enProf.startEN,energyRegen:enProf.regenEN,
+    isBoss:!!opts.isBoss,
+    bossTitle:opts.bossTitle||'',
+    storyLevel,
+    enemyTier:tier,
+    enemyStars:stars,
+    storyEvolvedSlots:unlockSlots,
+    _storyDirectStats:true,
+  };
+}
 function buildStoryEnemyFromBirdKey(birdKey, stage, opts={}){
   const bd=BIRDS?.[birdKey];
   if(!bd) return null;
@@ -4741,6 +4856,27 @@ function handleOverworldReturn() {
     G._owEnemyIndex = 0;
     G._owEnemyCount = Math.max(1, G._owStageEnemies?.length || 1);
     G._owEncounterRollStage = stageNum;
+    const s0 = intent.encounter?.slots?.[0];
+    if (s0) {
+      let mirrorBirdKey = null;
+      if (s0.birdKey && s0.birdKey !== 'random' && BIRDS?.[s0.birdKey]) {
+        mirrorBirdKey = s0.birdKey;
+      } else {
+        const resolved0 = String(G._owStageEnemies?.[0] || '').trim();
+        if (resolved0 && BIRDS?.[resolved0] && !(typeof isRosterEnemyId === 'function' && isRosterEnemyId(resolved0))) {
+          mirrorBirdKey = resolved0;
+        }
+      }
+      if (mirrorBirdKey) {
+        const tier = typeof normalizeBirdCardTier === 'function'
+          ? normalizeBirdCardTier(s0.enemyTier || 'grey')
+          : String(s0.enemyTier || 'grey').toLowerCase();
+        const stars = typeof clampBirdCardStars === 'function'
+          ? clampBirdCardStars(s0.enemyStars != null ? s0.enemyStars : 0)
+          : Math.max(0, Math.min(5, Math.floor(Number(s0.enemyStars) || 0)));
+        G._forgeMirrorTarget = { birdKey: mirrorBirdKey, tier, stars };
+      }
+    }
     try {
       continueRun();
     } catch (err) {
@@ -5715,7 +5851,7 @@ function renderBirdUpgradePreviewModal(model, state='preview'){
   const reason=birdUpgradeReasonText(model);
   const resultBanner=isResult
     ? `<div class="bird-upgrade-result-banner">${model.isTierUp?'Tier advanced and passive upgraded.':'Upgrade complete.'}</div>`
-    : '';
+    : (model.upgradeBanner ? `<div class="bird-upgrade-result-banner">${escapeHtmlRoster(model.upgradeBanner)}</div>` : '');
   content.innerHTML=`
     ${resultBanner}
     <div class="bird-upgrade-summary">
@@ -5796,6 +5932,15 @@ function confirmBirdUpgradePreview(){
   if(typeof updateAscentPanel==='function') updateAscentPanel(before.birdKey);
   if(typeof buildBirdGrid==='function') try{ buildBirdGrid(); }catch(_){}
   if(typeof renderFortuneInventory==='function') try{ renderFortuneInventory(); }catch(_){}
+  const fresh=buildBirdUpgradePreviewModel(before.birdKey);
+  if(fresh?.canConfirm){
+    const tierMeta=birdUpgradeTierMeta(fresh.tierBefore);
+    fresh.upgradeBanner=`Upgraded to ${tierMeta.label} · ${fresh.starsBefore} star${fresh.starsBefore===1?'':'s'}. Confirm again to keep upgrading.`;
+    BIRD_UPGRADE_PREVIEW_MODEL=fresh;
+    renderBirdUpgradePreviewModal(fresh, 'preview');
+    try{ logMsg(`${before.name} upgraded.`, result.isTierUp?'hit':'good'); }catch(_){}
+    return;
+  }
   const resultModel={...before, feathers:Math.max(0, before.feathers-before.cost), canConfirm:false};
   BIRD_UPGRADE_PREVIEW_MODEL=resultModel;
   renderBirdUpgradePreviewModal(resultModel, 'result');
@@ -6428,7 +6573,7 @@ function loadStage() {
       skipEnemyScalarMerge = true;
     } else {
       const bk = G._owStageEnemies[idx];
-      ed = buildOwEnemyDraftFromBirdKey(bk, encounterStage);
+      ed = buildOwEnemyDraftFromBirdKey(bk, encounterStage, idx);
     }
   }
   const diffMult = DIFFICULTIES[G.difficulty||'juvenile'].mult;
@@ -6452,7 +6597,7 @@ function loadStage() {
       }
     } else if (!G.endlessMode) {
       const bk = G._owStageEnemies?.[G._owEnemyIndex || 0];
-      if (bk) ed = buildOwEnemyDraftFromBirdKey(bk, stage);
+      if (bk) ed = buildOwEnemyDraftFromBirdKey(bk, stage, G._owEnemyIndex || 0);
     } else {
       ed = pickRandomBirdEnemyDraftForStage(stage, { isBoss: false });
     }

@@ -1031,62 +1031,56 @@
         speciesWrap.appendChild(speciesSel);
         grid.appendChild(speciesWrap);
 
-        const variantWrap = document.createElement('label');
-        variantWrap.className = 'map-forge-encounter-field map-forge-encounter-field--wide';
-        variantWrap.textContent = 'Variant';
-        const variantSel = document.createElement('select');
-        variantSel.className = 'map-forge-field-input';
-        const variants = typeof global.listEnemyVariantsForBird === 'function'
-          ? global.listEnemyVariantsForBird(slot.birdKey, slot.enemyLevel || 1, { isBoss: isBossNode })
-          : [{ id: '', label: 'Random variant (this species)' }];
-        variants.forEach((v) => {
+        const tierWrap = document.createElement('label');
+        tierWrap.className = 'map-forge-encounter-field';
+        tierWrap.textContent = 'Tier';
+        const tierSel = document.createElement('select');
+        tierSel.className = 'map-forge-field-input';
+        const tierOrder = global.BIRD_CARD_TIER_ORDER || ['grey', 'green', 'blue', 'purple', 'gold', 'orange'];
+        const tierLabels = (global.Avian && global.Avian.data && global.Avian.data.birdCardTiers && global.Avian.data.birdCardTiers.TIER_LABELS) || {
+          grey: 'Grey', green: 'Green', blue: 'Blue', purple: 'Purple', gold: 'Gold', orange: 'Orange',
+        };
+        const slotTier = (typeof global.normalizeBirdCardTier === 'function'
+          ? global.normalizeBirdCardTier(slot.enemyTier || 'grey')
+          : String(slot.enemyTier || 'grey').toLowerCase());
+        tierOrder.forEach((tierId) => {
           const o = document.createElement('option');
-          o.value = v.id;
-          o.textContent = v.label;
-          if ((slot.enemyId || '') === v.id) o.selected = true;
-          variantSel.appendChild(o);
+          o.value = tierId;
+          o.textContent = tierLabels[tierId] || tierId;
+          if (slotTier === tierId) o.selected = true;
+          tierSel.appendChild(o);
         });
-        variantSel.onchange = () => {
-          const vid = variantSel.value;
-          if (vid) slot.enemyId = vid;
-          else delete slot.enemyId;
+        tierSel.onchange = () => {
+          slot.enemyTier = tierSel.value;
+          delete slot.enemyId;
           renderEncounterPanel();
         };
-        variantWrap.appendChild(variantSel);
-        grid.appendChild(variantWrap);
+        tierWrap.appendChild(tierSel);
+        grid.appendChild(tierWrap);
 
-        if (slot.enemyId) {
-          const summary = document.createElement('div');
-          summary.className = 'map-forge-variant-summary';
-          summary.textContent = formatVariantSummary(slot.enemyId);
-          variantWrap.appendChild(summary);
-        }
-
-        const levelWrap = document.createElement('label');
-        levelWrap.className = 'map-forge-encounter-field';
-        levelWrap.textContent = 'Level';
-        const levelSel = document.createElement('select');
-        levelSel.className = 'map-forge-field-input';
-        for (let lv = 1; lv <= 20; lv++) {
+        const starsWrap = document.createElement('label');
+        starsWrap.className = 'map-forge-encounter-field';
+        starsWrap.textContent = 'Stars';
+        const starsSel = document.createElement('select');
+        starsSel.className = 'map-forge-field-input';
+        const starsPerTier = global.BIRD_CARD_STARS_PER_TIER || 5;
+        const slotStars = typeof global.clampBirdCardStars === 'function'
+          ? global.clampBirdCardStars(slot.enemyStars != null ? slot.enemyStars : 0)
+          : Math.max(0, Math.min(starsPerTier, Math.floor(Number(slot.enemyStars) || 0)));
+        for (let s = 0; s <= starsPerTier; s++) {
           const o = document.createElement('option');
-          o.value = String(lv);
-          o.textContent = 'Lv ' + lv;
-          if ((slot.enemyLevel || 1) === lv) o.selected = true;
-          levelSel.appendChild(o);
+          o.value = String(s);
+          o.textContent = s === 0 ? '0 stars' : s + ' star' + (s === 1 ? '' : 's');
+          if (slotStars === s) o.selected = true;
+          starsSel.appendChild(o);
         }
-        levelSel.onchange = () => {
-          const newLv = Math.max(1, Math.min(20, Math.floor(Number(levelSel.value) || 1)));
-          const prevId = slot.enemyId;
-          slot.enemyLevel = newLv;
-          if (prevId) {
-            const row = (typeof global.getEnemyRosterRow === 'function' ? global.getEnemyRosterRow(prevId) : null)
-              || (typeof global.getRosterRow === 'function' ? global.getRosterRow(prevId) : null);
-            if (!row || Number(row.storyLevel) !== newLv) delete slot.enemyId;
-          }
+        starsSel.onchange = () => {
+          slot.enemyStars = Math.max(0, Math.min(starsPerTier, Math.floor(Number(starsSel.value) || 0)));
+          delete slot.enemyId;
           renderEncounterPanel();
         };
-        levelWrap.appendChild(levelSel);
-        grid.appendChild(levelWrap);
+        starsWrap.appendChild(starsSel);
+        grid.appendChild(starsWrap);
 
         const mutWrap = document.createElement('label');
         mutWrap.className = 'map-forge-encounter-field';
@@ -1124,7 +1118,7 @@
         if (slot.birdKey === 'random') {
           const hint = document.createElement('p');
           hint.className = 'map-forge-hint map-forge-encounter-random-hint';
-          hint.textContent = 'Level and mutations apply when a random roster bird is rolled at runtime.';
+          hint.textContent = 'Tier and stars apply when a random species is rolled at runtime.';
           row.appendChild(hint);
         }
         rowsEl.appendChild(row);
