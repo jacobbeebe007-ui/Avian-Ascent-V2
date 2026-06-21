@@ -26,6 +26,11 @@ function near(a, b, eps = 0.02) {
 }
 
 check('calculateDamage exported', typeof c.calculateDamage === 'function');
+check('clampCritChancePct exported', typeof c.clampCritChancePct === 'function');
+check('clampCritDamageMult exported', typeof c.clampCritDamageMult === 'function');
+check('MIN_HIT_CHANCE is 15', c.MIN_HIT_CHANCE === 15, `got=${c.MIN_HIT_CHANCE}`);
+check('MASTER_BASE_CRIT_MULT is 1.5', c.MASTER_BASE_CRIT_MULT === 1.5, `got=${c.MASTER_BASE_CRIT_MULT}`);
+check('MASTER_MAX_CRIT_MULT is 2.0', c.MASTER_MAX_CRIT_MULT === 2, `got=${c.MASTER_MAX_CRIT_MULT}`);
 check('enrichCombatRow exported', typeof c.enrichCombatRow === 'function');
 check('usesMasterDamage exported', typeof c.usesMasterDamage === 'function');
 

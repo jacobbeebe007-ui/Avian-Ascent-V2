@@ -19,12 +19,17 @@
   var MIN_DAMAGE_1_EN = 1;
   var MIN_DAMAGE_2_EN = 3;
   var MIN_DAMAGE_3_EN = 5;
+  /** @deprecated EN-cost accuracy penalties removed; use power-tier penalty via calculateAbilityAccuracyPenalty. */
   var ACCURACY_PENALTY_1_EN = 0;
-  var ACCURACY_PENALTY_2_EN = 5;
-  var ACCURACY_PENALTY_3_EN = 10;
-  var MIN_HIT_CHANCE = 40;
+  var ACCURACY_PENALTY_2_EN = 0;
+  var ACCURACY_PENALTY_3_EN = 0;
+  var MIN_HIT_CHANCE = 15;
   var MAX_HIT_CHANCE = 95;
+  var MIN_CRIT_CHANCE = 0;
+  var MAX_CRIT_CHANCE = 50;
+  var MIN_CRIT_DAMAGE_MULT = 1.25;
   var BASE_CRIT_DAMAGE = 1.5;
+  var MAX_CRIT_DAMAGE_MULT = 2.0;
   var PIERCE_CAP = 0.95;
   var BURNING_DEF_MULT = 0.8;
 
@@ -74,13 +79,9 @@
     return base + primary + secondary;
   }
 
-  function getAccuracyPenaltyForEnCost(enCost) {
-    var cost = Math.floor(Number(enCost) || 0);
-    if (cost === 1) return ACCURACY_PENALTY_1_EN;
-    if (cost === 2) return ACCURACY_PENALTY_2_EN;
-    if (cost === 3) return ACCURACY_PENALTY_3_EN;
-    if (cost >= 4) return ACCURACY_PENALTY_3_EN;
-    return ACCURACY_PENALTY_1_EN;
+  /** @deprecated Always returns 0 — accuracy penalties use power-tier only. */
+  function getAccuracyPenaltyForEnCost(_enCost) {
+    return 0;
   }
 
   /** @deprecated Not used for pack ability damage. */
@@ -101,10 +102,21 @@
     return HEAVY_ATTACK_POWER;
   }
 
-  function applyBurningDefModifier(rawDef, burning) {
+  function applyBurningDefModifier(rawDef, burningState) {
     var d = Math.max(0, Number(rawDef) || 0);
-    if (burning) d = Math.floor(d * BURNING_DEF_MULT);
-    return d;
+    if (!burningState) return d;
+    var mult = 1;
+    if (typeof globalThis.getBurningDefMult === 'function') {
+      if (typeof burningState === 'object' && burningState !== null) {
+        if (burningState.scorched) mult = globalThis.getBurningDefMult(0, true);
+        else if (burningState.stacks || burningState.burning) mult = globalThis.getBurningDefMult(burningState.stacks || 1, false);
+      } else if (burningState === true) {
+        mult = globalThis.getBurningDefMult(1, false);
+      }
+    } else if (burningState) {
+      mult = BURNING_DEF_MULT;
+    }
+    return Math.floor(d * mult);
   }
 
   function effectiveDefence(rawDef, penFraction, opts) {
@@ -136,10 +148,18 @@
     return Math.max(MIN_HIT_CHANCE, Math.min(MAX_HIT_CHANCE, Number(pct) || 0));
   }
 
-  function calculateAbilityHitChancePct(attackerAcc, targetDodge, enCost) {
+  function clampCritChancePct(pct) {
+    return Math.max(MIN_CRIT_CHANCE, Math.min(MAX_CRIT_CHANCE, Number(pct) || 0));
+  }
+
+  function clampCritDamageMult(mult) {
+    return Math.max(MIN_CRIT_DAMAGE_MULT, Math.min(MAX_CRIT_DAMAGE_MULT, Number(mult) || BASE_CRIT_DAMAGE));
+  }
+
+  function calculateAbilityHitChancePct(attackerAcc, targetDodge, accuracyPenalty) {
     var acc = Math.max(0, Number(attackerAcc) || 0);
     var dodge = Math.max(0, Number(targetDodge) || 0);
-    var penalty = getAccuracyPenaltyForEnCost(enCost);
+    var penalty = Math.max(0, Number(accuracyPenalty) || 0);
     return clampHitChancePct(acc - dodge - penalty);
   }
 
@@ -228,8 +248,8 @@
   var BONUS_CAP_NORMAL = 0.30;
   var BONUS_CAP_MUT_EQ = 0.45;
   var BONUS_CAP_BOSS = 0.50;
-  var MASTER_BASE_CRIT_MULT = 1.35;
-  var MASTER_MAX_CRIT_MULT = 1.50;
+  var MASTER_BASE_CRIT_MULT = BASE_CRIT_DAMAGE;
+  var MASTER_MAX_CRIT_MULT = MAX_CRIT_DAMAGE_MULT;
   var STAT_MOD_MIN = 0.90;
   var STAT_MOD_MAX = 1.15;
   var HYBRID_DEF_WEIGHTS = { def: 0.6, mdef: 0.4 };
@@ -325,9 +345,8 @@
 
   function inferHeavyAccuracyPenalty(row) {
     if (row && row.heavyAccuracyPenalty != null) return Number(row.heavyAccuracyPenalty) || 0;
-    var en = Math.max(1, Number(row.enCost || row.apCost) || 1);
-    if (en < 3) return 0;
     var power = inferAbilityPower(row);
+    if (power < 1.0) return 0;
     if (power >= 1.31) return 15;
     if (power >= 1.21) return 12;
     if (power >= 1.11) return 8;
@@ -428,7 +447,7 @@
     opts = opts || {};
     if (String(damageType || 'Physical') === 'True') return 1;
     var def = Math.max(0, Number(relevantDefence) || 0);
-    if (opts.burning) def = Math.floor(def * BURNING_DEF_MULT);
+    if (opts.burning) def = applyBurningDefModifier(def, opts.burning);
     var pierce = clampPen(piercePercent);
     def = Math.max(0, def * (1 - pierce));
     return 100 / (100 + def * 3);
@@ -481,6 +500,10 @@
     return Number(ability.heavyAccuracyPenalty) || 0;
   }
 
+  function calculateAbilityAccuracyPenalty(ability) {
+    return calculateHeavyAccuracyPenalty(ability);
+  }
+
   function calculateRecoilDamage(finalDamage, ability) {
     enrichCombatRow(ability || {});
     var pct = Number(ability.recoilPercent) || 0;
@@ -525,7 +548,11 @@
     var defStat = getRelevantDefenceStat(target, ability);
     var pierce = resolvePierceFraction(ability, String(ability.damageType) === 'Magic');
     var defMod = getDefenceModifier(defStat, ability.damageType, pierce, {
-      burning: !!(battleState.enemyHasBurning || params.targetBurning),
+      burning: (function () {
+        if (battleState.enemyHasBurning && typeof battleState.enemyHasBurning === 'object') return battleState.enemyHasBurning;
+        if (params.targetBurning && typeof globalThis.enemyHasBurningStacks === 'function') return globalThis.enemyHasBurningStacks();
+        return !!(battleState.enemyHasBurning || params.targetBurning);
+      })(),
     });
     var bonusCap = getBonusCap(attacker, params);
     var bonusFrac = getTotalDamageBonus(params.bonusFractions, bonusCap);
@@ -534,7 +561,7 @@
     var damage = preCrit;
     if (params.isCriticalHit) {
       var critAdd = Number(params.critDamageAdd) || 0;
-      var critMult = clampNum((Number(params.critMultiplier) || MASTER_BASE_CRIT_MULT) + critAdd, 1, MASTER_MAX_CRIT_MULT);
+      var critMult = clampCritDamageMult((Number(params.critMultiplier) || MASTER_BASE_CRIT_MULT) + critAdd);
       damage *= critMult;
     }
     damage = Math.max(1, Math.round(damage));
@@ -597,6 +624,10 @@
     HEAVY_ACCURACY_PENALTY: HEAVY_ACCURACY_PENALTY,
     MIN_HIT_CHANCE: MIN_HIT_CHANCE,
     MAX_HIT_CHANCE: MAX_HIT_CHANCE,
+    MIN_CRIT_CHANCE: MIN_CRIT_CHANCE,
+    MAX_CRIT_CHANCE: MAX_CRIT_CHANCE,
+    MIN_CRIT_DAMAGE_MULT: MIN_CRIT_DAMAGE_MULT,
+    MAX_CRIT_DAMAGE_MULT: MAX_CRIT_DAMAGE_MULT,
     BASE_CRIT_DAMAGE: BASE_CRIT_DAMAGE,
     PIERCE_CAP: PIERCE_CAP,
     BURNING_DEF_MULT: BURNING_DEF_MULT,
@@ -613,7 +644,10 @@
     curvedDefenceMultiplier: curvedDefenceMultiplier,
     calculateCurvedDamage: calculateCurvedDamage,
     clampHitChancePct: clampHitChancePct,
+    clampCritChancePct: clampCritChancePct,
+    clampCritDamageMult: clampCritDamageMult,
     calculateAbilityHitChancePct: calculateAbilityHitChancePct,
+    calculateAbilityAccuracyPenalty: calculateAbilityAccuracyPenalty,
     applyMinimumDamage: applyMinimumDamage,
     roundCurvedDamage: roundCurvedDamage,
     applyBurningDefModifier: applyBurningDefModifier,
@@ -663,7 +697,14 @@
   globalThis.HEAVY_ACCURACY_PENALTY = HEAVY_ACCURACY_PENALTY;
   globalThis.MIN_HIT_CHANCE = MIN_HIT_CHANCE;
   globalThis.MAX_HIT_CHANCE = MAX_HIT_CHANCE;
+  globalThis.MIN_CRIT_CHANCE = MIN_CRIT_CHANCE;
+  globalThis.MAX_CRIT_CHANCE = MAX_CRIT_CHANCE;
+  globalThis.MIN_CRIT_DAMAGE_MULT = MIN_CRIT_DAMAGE_MULT;
+  globalThis.MAX_CRIT_DAMAGE_MULT = MAX_CRIT_DAMAGE_MULT;
   globalThis.BASE_CRIT_DAMAGE = BASE_CRIT_DAMAGE;
+  globalThis.clampCritChancePct = clampCritChancePct;
+  globalThis.clampCritDamageMult = clampCritDamageMult;
+  globalThis.calculateAbilityAccuracyPenalty = calculateAbilityAccuracyPenalty;
   globalThis.computeAbilityRawDamage = computeAbilityRawDamage;
   globalThis.mitigatedDamage = mitigatedDamage;
   globalThis.sumAdditiveDamageBonus = sumAdditiveDamageBonus;

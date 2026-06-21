@@ -153,6 +153,10 @@ const BIRDS = sandbox.BIRDS;
 check('Avian namespace present', !!Avian);
 check('Avian.data.combatPack.skillTrees present', !!(Avian?.data?.combatPack?.skillTrees));
 check('calculateDamage exported on globalThis', typeof sandbox.calculateDamage === 'function');
+check('clampCritChancePct exported on globalThis', typeof sandbox.clampCritChancePct === 'function');
+check('MIN_HIT_CHANCE is 15', sandbox.MIN_HIT_CHANCE === 15, `got=${sandbox.MIN_HIT_CHANCE}`);
+check('miss path returns zero damage', sandbox.calculateDamage({ hitSucceeded: false, attacker: {}, target: {}, ability: { apCost: 1 } }).damage === 0);
+check('Crow hit preview 60%', sandbox.calculateAbilityHitChancePct(78, 18, 0) === 60, `got=${sandbox.calculateAbilityHitChancePct(78, 18, 0)}`);
 check('computeMasterOutgoingDamage exported', typeof sandbox.computeMasterOutgoingDamage === 'function');
 
 const starterRow = Avian?.data?.combatPack?.skillTrees?.SPARROW_F1_L1_BASE
@@ -205,10 +209,25 @@ if (typeof sandbox.computePlayerEnergyRegenThisTurn === 'function') {
   const base = sandbox.computePlayerEnergyRegen(chilledPlayer);
   const chilledRegen = sandbox.computePlayerEnergyRegenThisTurn(chilledPlayer, { chilled: { stacks: 2, turns: 2 } });
   check('chilled stacks reduce EN regen by 1 per stack', chilledRegen === Math.max(0, base - 2), `base=${base} got=${chilledRegen}`);
-  const frozenRegen = sandbox.computePlayerEnergyRegenThisTurn(chilledPlayer, { frozen: { turns: 1 } });
+  const frozenRegen = sandbox.computePlayerEnergyRegenThisTurn(chilledPlayer, { frozen: { pendingSkip: true } });
   check('frozen blocks EN regen', frozenRegen === 0);
   const paraRegen = sandbox.computePlayerEnergyRegenThisTurn(chilledPlayer, { paralyzed: 2 });
   check('paralyzed blocks EN regen', paraRegen === 0);
+}
+
+check('AILMENT_RULES exported', !!sandbox.AILMENT_RULES);
+check('tickEndOfTurnAilments exported', typeof sandbox.tickEndOfTurnAilments === 'function');
+check('tickStartOfTurnControl exported', typeof sandbox.tickStartOfTurnControl === 'function');
+check('consumeFrozenSkip exported', typeof sandbox.consumeFrozenSkip === 'function');
+check('applyAilmentDamage exported', typeof sandbox.applyAilmentDamage === 'function');
+check('resolveAilmentChance exported', typeof sandbox.resolveAilmentChance === 'function');
+
+if (typeof sandbox.getAbilityEnergyCost === 'function' && sandbox.G) {
+  const ab = { id: 'test', level: 1, btnType: 'physical' };
+  sandbox.G.playerStatus = { frozen: { pendingSkip: true } };
+  sandbox.G.player = sandbox.G.player || { stats: {} };
+  const cost = sandbox.getAbilityEnergyCost(ab, sandbox.G.player);
+  check('frozen no longer adds +1 EN cost', cost <= 2, `got=${cost}`);
 }
 
 check('globalThis.G is exported for cross-module combat', !!sandbox.G);

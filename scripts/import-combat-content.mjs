@@ -393,6 +393,27 @@ function parseRiderWhen(text) {
   return null;
 }
 
+/** Standard buff/debuff magnitudes — mirrors js/data/combat-stat-magnitudes.js */
+const STAT_MAGNITUDES = {
+  accUp: { minor: 6, major: 10, grand: 15, epic: 20, legendary: 25 },
+  accDown: { minor: 6, major: 10, severe: 15, critical: 20, lethal: 25 },
+  dodgeUp: { minor: 3, major: 5, grand: 8, epic: 10, legendary: 12 },
+  dodgeDown: { minor: 3, major: 5, severe: 8, critical: 10, lethal: 12 },
+  critChanceUp: { minor: 5, major: 8, grand: 12, epic: 16, legendary: 20 },
+  critChanceDown: { minor: 5, major: 8, severe: 12, critical: 16, lethal: 20 },
+  critDamageUp: { minor: 0.10, major: 0.15, grand: 0.25, epic: 0.35, legendary: 0.50 },
+  critDamageDown: { minor: 0.10, major: 0.15, severe: 0.25, critical: 0.35, lethal: 0.50 },
+};
+
+function resolveStatMagnitude(statKey, direction, tierLabel) {
+  const tier = String(tierLabel || '').toLowerCase().replace(/[^a-z]/g, '');
+  const mapKey = statKey + (direction === 'down' ? 'Down' : 'Up');
+  const table = STAT_MAGNITUDES[mapKey];
+  if (!table || table[tier] == null) return null;
+  const val = table[tier];
+  return statKey.startsWith('critDamage') ? Math.round(val * 100) : val;
+}
+
 function parseRiders(riderText, codeTags) {
   const riders = [];
   const text = (riderText || '').trim();
@@ -403,10 +424,32 @@ function parseRiders(riderText, codeTags) {
   let m;
 
   // Self gain riders
+  for (const gm of text.matchAll(/\+?\s*(\d+(?:\.\d+)?)\s*%\s*(?:ACC|Accuracy)/gi)) addSelf('gainAcc', Number(gm[1]));
   for (const gm of text.matchAll(/\+?\s*(\d+(?:\.\d+)?)\s*%\s*Dodge/gi)) addSelf('gainDodge', Number(gm[1]));
   for (const gm of text.matchAll(/\+?\s*(\d+(?:\.\d+)?)\s*%\s*Speed/gi)) addSelf('gainSpeed', Number(gm[1]));
   for (const gm of text.matchAll(/\+?\s*(\d+(?:\.\d+)?)\s*%\s*Crit\s*Chance/gi)) addSelf('gainCritChance', Number(gm[1]));
   for (const gm of text.matchAll(/\+?\s*(\d+(?:\.\d+)?)\s*%\s*Crit\s*Damage/gi)) addSelf('gainCritDamage', Number(gm[1]));
+
+  // Named magnitude tiers (Minor ACC Up, Major Dodge Down, etc.)
+  for (const gm of text.matchAll(/\b(Minor|Major|Grand|Epic|Legendary)\s+ACC\s+Up\b/gi)) {
+    const n = resolveStatMagnitude('acc', 'up', gm[1]); if (n != null) addSelf('gainAcc', n);
+  }
+  for (const gm of text.matchAll(/\b(Minor|Major|Severe|Critical|Lethal)\s+ACC\s+Down\b/gi)) {
+    const n = resolveStatMagnitude('acc', 'down', gm[1]); if (n != null) addEnemy('reduceEnemyAcc', n);
+  }
+  for (const gm of text.matchAll(/\b(Minor|Major|Grand|Epic|Legendary)\s+Dodge\s+Up\b/gi)) {
+    const n = resolveStatMagnitude('dodge', 'up', gm[1]); if (n != null) addSelf('gainDodge', n);
+  }
+  for (const gm of text.matchAll(/\b(Minor|Major|Severe|Critical|Lethal)\s+Dodge\s+Down\b/gi)) {
+    const n = resolveStatMagnitude('dodge', 'down', gm[1]); if (n != null) addEnemy('reduceEnemyDodge', n);
+  }
+  for (const gm of text.matchAll(/\b(Minor|Major|Grand|Epic|Legendary)\s+Crit\s+Chance\s+Up\b/gi)) {
+    const n = resolveStatMagnitude('critChance', 'up', gm[1]); if (n != null) addSelf('gainCritChance', n);
+  }
+  for (const gm of text.matchAll(/\b(Minor|Major|Grand|Epic|Legendary)\s+Crit\s+Damage\s+Up\b/gi)) {
+    const n = resolveStatMagnitude('critDamage', 'up', gm[1]); if (n != null) addSelf('gainCritDamage', n);
+  }
+
   for (const gm of text.matchAll(/gain\s+\+?\s*(\d+(?:\.\d+)?)\s*%\s*Magic\s*Attack/gi)) addSelf('gainMatk', Number(gm[1]));
   for (const gm of text.matchAll(/(?:gain\s+\+?|\bor\s+\+?\s*)(\d+(?:\.\d+)?)\s*%\s*Magic\s*Defen[cs]e/gi)) addSelf('gainMdef', Number(gm[1]));
   for (const gm of text.matchAll(/(?:gain\s+\+?|\bor\s+\+?\s*)(\d+(?:\.\d+)?)\s*%\s*Defen[cs]e(?!\s*and)/gi)) {
@@ -417,6 +460,7 @@ function parseRiders(riderText, codeTags) {
   }
 
   // Enemy debuff riders
+  for (const gm of text.matchAll(/(?:enemy\s+loses|reduce\s+enemy\s+(?:acc|accuracy)\s+by)\s+(\d+(?:\.\d+)?)\s*%\s*(?:ACC|Accuracy)/gi)) addEnemy('reduceEnemyAcc', Number(gm[1]));
   for (const gm of text.matchAll(/(?:enemy\s+loses|reduce\s+enemy\s+dodge\s+by)\s+(\d+(?:\.\d+)?)\s*%\s*Dodge/gi)) addEnemy('reduceEnemyDodge', Number(gm[1]));
   for (const gm of text.matchAll(/enemy\s+loses\s+(\d+(?:\.\d+)?)\s*%\s*Attack(?!\s*and)/gi)) {
     if (!/Magic\s*Attack/i.test(gm[0])) addEnemy('reduceEnemyAtk', Number(gm[1]));

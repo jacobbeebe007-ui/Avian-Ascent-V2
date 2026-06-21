@@ -29,7 +29,7 @@
  * ------------------------
  * The "Base Passive Effect" string is parsed into a small list of riders
  * mirroring the dispatcher's rider taxonomy:
- *   gainDodge, gainSpeed, gainCritChance, gainCritDamage, gainAtk, gainMatk,
+ *   gainAcc, gainDodge, gainSpeed, gainCritChance, gainCritDamage, gainAtk, gainMatk,
  *   ailmentChanceBonus, bonusVsAilment, executeOverHpThreshold.
  *
  * Anything we cannot pattern-match silently no-ops. The aim is graceful
@@ -72,7 +72,7 @@
     var ratio = passiveTierScaleRatio(birdKey, tier);
     if (!ratio || ratio === 1) return effects;
     var scaledKinds = {
-      gainDodge: 1, gainSpeed: 1, gainCritChance: 1, gainCritDamage: 1, gainAtk: 1, gainMatk: 1,
+      gainAcc: 1, gainDodge: 1, gainSpeed: 1, gainCritChance: 1, gainCritDamage: 1, gainAtk: 1, gainMatk: 1,
       flatDamageBonus: 1, bonusVsAilment: 1, ailmentChanceBonus: 1, armorPenetration: 1,
     };
     return effects.map(function (eff) {
@@ -187,6 +187,7 @@
     var s = String(text || '');
     var out = [];
     var m;
+    if ((m = s.match(/\+(\d+(?:\.\d+)?)\s*%\s*(?:ACC|Accuracy)/i))) out.push({ kind: 'gainAcc', value: Number(m[1]) });
     if ((m = s.match(/\+(\d+(?:\.\d+)?)\s*%\s*Dodge/i))) out.push({ kind: 'gainDodge', value: Number(m[1]) });
     if ((m = s.match(/\+(\d+(?:\.\d+)?)\s*%\s*Speed/i))) out.push({ kind: 'gainSpeed', value: Number(m[1]) });
     if ((m = s.match(/\+(\d+(?:\.\d+)?)\s*%\s*Crit\s*Chance/i))) out.push({ kind: 'gainCritChance', value: Number(m[1]) });

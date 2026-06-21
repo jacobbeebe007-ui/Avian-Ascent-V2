@@ -486,7 +486,9 @@ function normalizeCombatStats(stats) {
 }
 function capPctStatValue(statKey, value) {
   const v = Number(value) || 0;
-  if (statKey === 'critChance') return Math.max(0, Math.min(100, v));
+  if (statKey === 'critChance') {
+    return typeof clampCritChancePct === 'function' ? clampCritChancePct(v) : Math.max(0, Math.min(50, v));
+  }
   if (statKey === 'armorPen' || statKey === 'magicPen') return Math.max(0, Math.min(95, v));
   return Math.max(0, v);
 }
@@ -1326,7 +1328,7 @@ Object.assign(ABILITY_TEMPLATES, SPARROW_EVOLUTION_TEMPLATES);
 /** Balance caps: max one major rider evolution per tier beyond baseline; hard CC heavily gated (see inner logic). */
 function enforceAbilityBalanceSpec(){
   const HARD_CC=new Set(['paralyzed','stunned','confused']);
-  const MAJOR_AIL=new Set(['paralyzed','confused','burning','poison','weaken','delayed','feared','slow','mud','chilled','frozen']);
+  const MAJOR_AIL=new Set(['paralyzed','confused','burning','scorched','poison','toxic','weaken','delayed','feared','slow','mud','chilled','frozen','blinded','decreed']);
   for(const tmpl of Object.values(ABILITY_TEMPLATES)){
     if(!tmpl||!Array.isArray(tmpl.levels)) continue;
     if(!tmpl.balanceSpec){
@@ -1873,8 +1875,8 @@ function computePlayerEnergyRegenThisTurn(player, status){
   let r=computePlayerEnergyRegen(player);
   const ps=status||G.playerStatus||{};
   const _fz=ps.frozen;
-  const frzTurns=(typeof _fz==='object'&&_fz)?(_fz.turns||0):(typeof _fz==='number'?_fz:0);
-  if(frzTurns>0) return 0;
+  const frzActive=!!(_fz && ((typeof _fz==='object' && (_fz.pendingSkip || (_fz.turns||0)>0)) || (typeof _fz==='number' && _fz>0)));
+  if(frzActive) return 0;
   if((ps.paralyzed||0)>0) return 0;
   const chillStacks=ps.chilled?.stacks||0;
   if(chillStacks>0) r=Math.max(0, r-chillStacks);
@@ -6889,13 +6891,17 @@ function renderStatuses(id, statuses) {
   const ownerStats = owner === 'player' ? G?.player?.stats : G?.enemy?.stats;
   const poisonCap = G?.player ? (G.player.poisonCap||5) : 5;
   const poisonBoundaryDamage = stacks=>{
-    const mult=owner==='player'?(G?.player?.poisonTickMult||1):1;
-    const flat=owner==='enemy'?((G?.player?.poisonFlatBonus||0)+(G?.player?.perkPoisonTickBonus||0)+(G?.player?.relVenomLedger?1:0)):0;
-    return Math.max(1,Math.floor(2*(stacks||0)*mult)+flat);
+    if(typeof calcPoisonTickDmg==='function'){
+      const mult=owner==='enemy'?(G?.player?.poisonTickMult||1):1;
+      const base=calcPoisonTickDmg(stacks,mult);
+      const flat=owner==='enemy'?((G?.player?.poisonFlatBonus||0)+(G?.player?.perkPoisonTickBonus||0)+(G?.player?.relVenomLedger?1:0)):0;
+      return Math.max(1, base+flat);
+    }
+    return Math.max(1,(stacks||0));
   };
   const nextTickInfo = (key, value) => {
     if(key==='poison' && value?.stacks>0) {
-      return `Each end-of-turn boundary: ${poisonBoundaryDamage(value.stacks)} poison (player turn end + enemy turn end).`;
+      return `End of turn: ${poisonBoundaryDamage(value.stacks)} poison damage.`;
     }
     if(key==='bleed' && ((value?.turns||0)>0 || (value?.stacks||0)>0)){
       return 'Healing received and heal effects −50%.';
@@ -6925,8 +6931,9 @@ function renderStatuses(id, statuses) {
     const b=document.createElement('span');
     b.className=`status-badge ${k}`;
     let tooltipSummary='';
-    if (k==='poison') { const per=poisonBoundaryDamage(v.stacks); b.textContent=`☣ Poison×${v.stacks}/${poisonCap}(${v.turns}t, ${per}/boundary)`; tooltipSummary='Stacks to 5. 2 damage per stack; ticks at end of player turn and enemy turn.'; }
-    else if (k==='bleed') { b.className='status-badge bleed'; b.textContent=`🩸 Bleed(${v.turns||0}t, heal −50%)`; tooltipSummary='Non-stacking. Healing received/effects reduced by 50%. Refresh only.'; }
+    if (k==='poison') { const per=poisonBoundaryDamage(v.stacks); b.textContent=`☣ Poison×${v.stacks}/${poisonCap}(${v.turns}t, ${per}/tick)`; tooltipSummary=(AILMENTS?.poison?.desc)||'Stacks to 5. 1 damage per stack at end of turn.'; }
+    else if (k==='toxic') { b.className='status-badge poison'; b.textContent=`☠ Toxic(${v.turns||0}t, 8% Max HP)`; tooltipSummary=(AILMENTS?.toxic?.desc)||''; }
+    else if (k==='bleed') { const st=v.stacks||0; b.className='status-badge bleed'; b.textContent=`🩸 Bleed×${st}(${v.turns||0}t, −${st*15}% heal)`; tooltipSummary=(AILMENTS?.bleed?.desc)||''; }
     else if (k==='weaken') {
       const st=getWeakenStacks(statuses);
       const turns=typeof v==='number'?v:(v?.turns||0);
@@ -6935,8 +6942,9 @@ function renderStatuses(id, statuses) {
       b.textContent=`🐔 Weaken×${st}(${turns}t, −${dmgPct}% dmg, −${dodgePen} dodge)`;
       tooltipSummary=(AILMENTS?.weaken?.desc)||'Stacks to 3. −10% outgoing damage and −10 dodge per stack. Refreshes duration.';
     }
-    else if (k==='paralyzed') { b.textContent=`⚡ Para(${v}t, 20% skip)`; }
-    else if (k==='burning') { const bt=typeof v==='number'?v:(v.turns||0); b.textContent=`🔥 Burn(${bt}t, 7@enemy end, −20% DEF/MDEF)`; tooltipSummary='Non-stacking. 7 flat damage end of enemy turn; −20% DEF and MDEF while burning.'; }
+    else if (k==='paralyzed') { b.textContent=`⚡ Para(${v}t, 20% skip)`; tooltipSummary=(AILMENTS?.paralyzed?.desc)||''; }
+    else if (k==='burning') { const st=v.stacks||0; const bt=v.turns||0; b.textContent=`🔥 Burn×${st}(${bt}t, ${st*3}/tick, −${st*4}% DEF)`; tooltipSummary=(AILMENTS?.burning?.desc)||''; }
+    else if (k==='scorched') { b.className='status-badge burning'; b.textContent=`🔥 Scorched(${v.turns||0}t, 8/tick)`; tooltipSummary=(AILMENTS?.scorched?.desc)||''; }
     else if (k==='delayed') { b.textContent=`🎵 Delayed(${v.dmg}dmg)`; tooltipSummary='Non-stacking. Stored damage detonates end of target next turn; reapply refreshes/replaces.'; }
     else if (k==='confused') { b.className='status-badge confused'; const sc=v.selfChance!=null?v.selfChance:(v.skipChance!=null?v.skipChance:STATUS_CONFUSED_SELF_PCT); b.textContent=`🌀 Confused(${v.turns}t,${sc}% self-hit)`; tooltipSummary='Non-stacking. 30% chance to hit yourself with your own attack.'; }
     else if (k==='tookie') { b.className='status-badge stunned'; b.textContent=`🦜 Tookie(+${v.atkBonus}%atk,${v.turns}t)`; }
@@ -6946,8 +6954,13 @@ function renderStatuses(id, statuses) {
     else if (k==='stunned') { b.className='status-badge stunned'; b.textContent=`😵 Stunned(${v}t)`; }
     else if (k==='mud') { b.className='status-badge delayed'; b.textContent=`🟤 Slowed(${v.turns}t)`; }
     else if (k==='slow') { const t=(typeof v==='number'?v:(v.turns||0)); const sp=(typeof v==='number'?2:(v.spdPenalty??0)); const dg=(typeof v==='number'?8:(v.dodgePenalty??0)); b.className='status-badge slow'; b.textContent=`🐌 Slow(${t}t,-${sp} SPD,-${dg}% DODGE)`; }
-    else if (k==='chilled') { const st=v.stacks||0; const t=v.turns||0; b.className='status-badge slow'; b.textContent=`❄ Chill×${st}/${5}(${t}t, −${st*8}% SPD)`; tooltipSummary='Stacks to 5. −8% SPD per stack. At 5 stacks becomes Frozen.'; }
-    else if (k==='frozen') { const ft=v.turns||0; b.className='status-badge slow'; b.textContent=`🧊 Frozen(${ft}t,+1 EN skills)`; tooltipSummary='Refresh only. Active skills cost +1 EN. After Frozen ends, Chilled resets to 0.'; }
+    else if (k==='chilled') { const st=v.stacks||0; const t=v.turns||0; b.className='status-badge slow'; b.textContent=`❄ Chill×${st}/${5}(${t}t, −${st*6}% SPD)`; tooltipSummary=(AILMENTS?.chilled?.desc)||''; }
+    else if (k==='frozen') { b.className='status-badge slow'; b.textContent=`🧊 Frozen(skip next action)`; tooltipSummary=(AILMENTS?.frozen?.desc)||''; }
+    else if (k==='blinded') { b.className='status-badge feared'; b.textContent=`👁 Blinded(${v.turns||0}t, −12 ACC)`; tooltipSummary=(AILMENTS?.blinded?.desc)||''; }
+    else if (k==='decreed') { b.className='status-badge feared'; b.textContent=`📜 Decreed(${v.turns||0}t)`; tooltipSummary=(AILMENTS?.decreed?.desc)||''; }
+    else if (k==='frostGuard') { b.className='status-badge guarded'; b.textContent=`🛡 Frost Guard(${typeof v==='number'?v:(v.turns||0)}t)`; }
+    else if (k==='emberGuard') { b.className='status-badge guarded'; b.textContent=`🛡 Ember Guard(${typeof v==='number'?v:(v.turns||0)}t)`; }
+    else if (k==='toxicResistance') { b.className='status-badge guarded'; b.textContent=`🛡 Toxic Resist(${typeof v==='number'?v:(v.turns||0)}t)`; }
     else if (k==='feared') { b.className='status-badge feared'; b.textContent=`😨 Feared(${v}t,30% skip)`; tooltipSummary='Refresh only. 30% chance to skip turn.'; }
     else if (k==='lullabied') { b.className='status-badge lullabied'; b.textContent=`💤 Lulled(${v}t)`; tooltipSummary='Debuff: chance to skip actions while lulled.'; }
     else if (k==='evading') { b.className='status-badge evading'; b.textContent=`💨 Evade(${v}t)`; }
@@ -8013,7 +8026,7 @@ function estimateSkillDamageRange(ab,tmpl,attacker,opts){
         ? getPhysicalPierceFractionForPreview(ab)
         : getMagicalPierceFractionForPreview(ab);
       const rawDef=['physical','ranged'].includes(btnType)?Number(en.def||0):Number(en.mdef??8);
-      const effDef=effectiveDefence(rawDef,pierce,{burning:enemyHasBurning()});
+      const effDef=effectiveDefence(rawDef,pierce,{burning:typeof enemyHasBurningStacks==='function'?enemyHasBurningStacks():enemyHasBurning()});
       perHit=Math.max(0.01, roundCombatDamage(typeof mitigatedDamage==='function'?mitigatedDamage(perHit,effDef):perHit*curvedDefenceMultiplier(effDef)));
     }
     const dmgLow=perHit*hits;
@@ -9050,7 +9063,9 @@ function getPlayerAccMod(){
   return mod;
 }
 function getPlayerEffectiveAcc(){
-  return Math.max(0,getPlayerBaseAcc()+getPlayerAccMod());
+  let acc = Math.max(0, getPlayerBaseAcc() + getPlayerAccMod());
+  if (typeof Avian?.dispatcher?.modifyAcc === 'function') acc = Avian.dispatcher.modifyAcc(acc);
+  return acc;
 }
 
 function clamp01(v){return Math.max(0,Math.min(1,v));}
@@ -9088,7 +9103,7 @@ function applyPostBattleHealIfDue(){
 }
 const COMBAT_GUARD_DEF_MULT = 0.80;
 const COMBAT_GUARD_MDEF_MULT = 0.80;
-const HIT_CHANCE_PCT_CLAMP = {min: MIN_HIT_CHANCE || 40, max: MAX_HIT_CHANCE || 95};
+const HIT_CHANCE_PCT_CLAMP = {min: MIN_HIT_CHANCE || 15, max: MAX_HIT_CHANCE || 95};
 
 /** Soft-cap main stats for formulas (bands 25–30 / 40–50; hard 99). */
 function softenMainStatForCombat(n){
@@ -9682,11 +9697,13 @@ function getWeakenStacks(statusObj){
   return Math.min(WEAKEN_MAX_STACKS, Math.max(0, Math.floor(Number(w.stacks)||0)));
 }
 function getWeakenDamageMult(stacks){
+  if(typeof globalThis.getWeakenDamageMultFromRules==='function') return globalThis.getWeakenDamageMultFromRules(stacks);
   const n=Math.max(0, Math.min(WEAKEN_MAX_STACKS, Number(stacks)||0));
-  return Math.max(0.7, 1 - 0.1 * n);
+  return Math.max(0.7, 1 - 0.08 * n);
 }
 function getWeakenDodgePenalty(stacks){
-  return 10 * Math.max(0, Math.min(WEAKEN_MAX_STACKS, Number(stacks)||0));
+  if(typeof globalThis.getWeakenDodgePenaltyFromRules==='function') return globalThis.getWeakenDodgePenaltyFromRules(stacks);
+  return 4 * Math.max(0, Math.min(WEAKEN_MAX_STACKS, Number(stacks)||0));
 }
 function applyWeakenStack(target, addStacks=1){
   const status=target==='player'?G.playerStatus:G.enemyStatus;
@@ -9706,9 +9723,10 @@ function getEffectiveEnemyDodgeForPlayerHit(){
 function scaleHealForBleed(who, raw){
   const st = who==='player' ? G.playerStatus : G.enemyStatus;
   const b = st?.bleed;
-  const hasBleed = !!(b && ((b.turns||0)>0 || (b.stacks||0)>0));
-  if(!hasBleed) return roundCombatDamage(raw);
-  return roundCombatDamage(Math.max(0.01, raw * 0.5));
+  const stacks = (b && (b.stacks||0)>0 && (b.turns||0)>0) ? Math.min(3, b.stacks||0) : 0;
+  if(!stacks) return roundCombatDamage(raw);
+  const mult = typeof getBleedHealMult==='function' ? getBleedHealMult(stacks) : Math.max(0.01, 1 - 0.15 * stacks);
+  return roundCombatDamage(Math.max(0.01, raw * mult));
 }
 function normalizeBurningTurns(v){
   if(v==null) return 3;
@@ -9717,33 +9735,44 @@ function normalizeBurningTurns(v){
   return 3;
 }
 function enemyHasBurning(){
+  const es = typeof enemyHasBurningStacks==='function' ? enemyHasBurningStacks() : null;
+  if(es) return es.burning || es.scorched;
   const b = G.enemyStatus?.burning;
-  return !!b && ((typeof b==='number'&&b>0) || (typeof b==='object'&&(b.turns||0)>0));
+  const sc = G.enemyStatus?.scorched;
+  return !!(sc && (sc.turns||0)>0) || !!(b && b.stacks>0 && (b.turns||0)>0);
 }
 function playerHasBurning(){
+  const ps = typeof playerHasBurningStacks==='function' ? playerHasBurningStacks() : null;
+  if(ps) return ps.burning || ps.scorched;
   const b = G.playerStatus?.burning;
-  return !!b && ((typeof b==='number'&&b>0) || (typeof b==='object'&&(b.turns||0)>0));
+  const sc = G.playerStatus?.scorched;
+  return !!(sc && (sc.turns||0)>0) || !!(b && b.stacks>0 && (b.turns||0)>0);
 }
-function applyChilledStacksToEnemy(addStacks){
-  const status = G.enemyStatus;
+function applyChilledStacksToTarget(target, addStacks){
+  if(typeof hasAilmentGuard==='function' && hasAilmentGuard(target==='player'?G.playerStatus:G.enemyStatus, 'frostGuard')) return false;
+  const status = target==='player'?G.playerStatus:G.enemyStatus;
+  const owner = target==='player'?G.player:G.enemy;
+  if(!status || !owner) return false;
   if(!status.chilled) status.chilled={stacks:0,turns:0,baseSpd:null};
-  const cap = 5;
-  const baseTurns = 2;
-  const extraTurns = (G.player?.chillExtraTurns||0);
-  if(status.chilled.baseSpd==null) status.chilled.baseSpd = Math.max(1, Number(G.enemy?.stats?.spd)||1);
+  const cap = (AILMENT_RULES?.chilled?.maxStacks) || 5;
+  const baseTurns = (AILMENT_RULES?.chilled?.duration) || 3;
+  const extraTurns = (target==='enemy' && G.player?.chillExtraTurns) ? G.player.chillExtraTurns : 0;
+  if(status.chilled.baseSpd==null) status.chilled.baseSpd = Math.max(1, Number(owner.stats?.spd)||1);
   const prev = Math.min(cap, status.chilled.stacks||0);
   const next = Math.min(cap, prev + Math.max(1, Math.floor(Number(addStacks)||1)));
   status.chilled.stacks = next;
   status.chilled.turns = Math.max(status.chilled.turns||0, baseTurns+extraTurns);
-  const base = status.chilled.baseSpd;
-  G.enemy.stats.spd = Math.max(1, Math.floor(base * (1 - 0.08 * next)));
+  const spdMult = typeof getChilledSpdMult==='function' ? getChilledSpdMult(next) : (1 - 0.06 * next);
+  owner.stats.spd = Math.max(1, Math.floor(status.chilled.baseSpd * spdMult));
   if(next>=cap){
     const bs=status.chilled.baseSpd;
-    delete status.chilled;
-    status.frozen={turns:1,baseSpd:bs};
-    logMsg(`❄ ${G.enemy.name} is Frozen!`,'system');
+    if(typeof applyFrozenToTarget==='function') applyFrozenToTarget(target, bs);
+    else { delete status.chilled; status.frozen={pendingSkip:true,baseSpd:bs}; logMsg(`❄ ${owner.name} is Frozen!`,'system'); }
   }
   return true;
+}
+function applyChilledStacksToEnemy(addStacks){
+  return applyChilledStacksToTarget('enemy', addStacks);
 }
 function rollStunChance(v){return chance(Math.min(50,Math.max(0,v||0)));}
 function applyEnemySlow(spdPenalty,dodgePenalty,turns){
@@ -9886,7 +9915,7 @@ function computeMasterOutgoingDamage(isMagic, srcAbility, opts={}){
   });
   const battleState={
     enemyStatus:G.enemyStatus,
-    enemyHasBurning:typeof enemyHasBurning==='function'?enemyHasBurning():false,
+    enemyHasBurning:typeof enemyHasBurningStacks==='function'?enemyHasBurningStacks():enemyHasBurning(),
     hasMutationEquipmentBonus:detectMutationEquipmentBonus(G.player),
   };
   const result=calculateDamage({
@@ -9897,10 +9926,19 @@ function computeMasterOutgoingDamage(isMagic, srcAbility, opts={}){
     bonusFractions,
     isCriticalHit:!!isCrit,
     critDamageAdd:computePlayerCritDamageAdd(activeAb),
-    critMultiplier:G.player?.goldCritMult||globalThis.MASTER_BASE_CRIT_MULT||BASE_CRIT_DAMAGE||1.35,
+    critMultiplier:typeof clampCritDamageMult==='function'
+      ? clampCritDamageMult(G.player?.goldCritMult||globalThis.MASTER_BASE_CRIT_MULT||BASE_CRIT_DAMAGE||1.5)
+      : (G.player?.goldCritMult||globalThis.MASTER_BASE_CRIT_MULT||BASE_CRIT_DAMAGE||1.5),
     hitSucceeded:opts.hitSucceeded!==false,
   });
   let dmg=result.damage;
+  if(isSpell && G.player?.birdKey==='dukeBlakiston' && (G.enemyStatus?.decreed?.turns||0)>0){
+    const ailN=countAilmentCategoriesOnEnemy();
+    const decreedBonus=(ailN>1)?(AILMENT_RULES?.decreed?.afflictedBonus||0.18):(AILMENT_RULES?.decreed?.baseBonus||0.12);
+    dmg=roundCombatDamage(dmg*(1+decreedBonus));
+    delete G.enemyStatus.decreed;
+    logMsg(`📜 Royal Decree — +${Math.round(decreedBonus*100)}% magic damage!`,'system');
+  }
   if(esAff.bleed?.stacks>0){
     dmg+=(G.player?.vsBleedFlatBonus||0);
     if((G.player?.vsBleedPctBonus||0)>0) dmg=roundCombatDamage(dmg*(1+G.player.vsBleedPctBonus));
@@ -9952,7 +9990,7 @@ function computeOutgoingDamageBase(isMagic, srcAbility, legacyAmount=0){
   let pierce=isMagic?getMagicalPierceFractionForDamage(activeAb):getPhysicalPierceFractionForDamage(activeAb);
   if(G.playerStatus?.openingStrikePierce) pierce=Math.max(pierce,0.45);
   const rawDef=isMagic?(G.enemy.stats.mdef||0):(G.enemy.stats.def||0);
-  const effDef=effectiveDefence(rawDef,pierce,{burning:enemyHasBurning()});
+  const effDef=effectiveDefence(rawDef,pierce,{burning:typeof enemyHasBurningStacks==='function'?enemyHasBurningStacks():enemyHasBurning()});
   const mitigated=typeof mitigatedDamage==='function'
     ? mitigatedDamage(rawDamage, effDef)
     : rawDamage*curvedDefenceMultiplier(effDef);
@@ -10127,7 +10165,7 @@ function applyCurvedMitigationToPlayer(preMit,isMagic,srcAbility){
   } else if(srcAbility){
     pen=getPhysicalPierceFractionForDamage(srcAbility);
   }
-  const effDef=effectiveDefence(rawDef,pen,{burning:playerHasBurning()});
+  const effDef=effectiveDefence(rawDef,pen,{burning:typeof playerHasBurningStacks==='function'?playerHasBurningStacks():playerHasBurning()});
   return Math.max(0, preMit*curvedDefenceMultiplier(effDef));
 }
 
@@ -10159,6 +10197,7 @@ function computePlayerCritDamageAdd(activeAb){
   const en=Number(tmpl.energy ?? tmpl.energyCost ?? activeAb?.energy ?? 1);
   if(_pid==='passive_bustard_heavy_steps' && en>=2) critDmgAdd+=0.10;
   if(_pid==='passive_shoebill_silent_stance' && !G.player._shoebillHadUtilityPriorTurn) critDmgAdd+=0.10;
+  if((G.playerStatus.dispatcherCritDmg||0)>0) critDmgAdd+=Math.max(0,G.playerStatus.dispatcherCritDmg)/100;
   return critDmgAdd;
 }
 
@@ -10232,7 +10271,10 @@ function dealDamage(target,amount,isCrit=false,isMagic=false,srcAbility=null,opt
     if(!isCrit && typeof getPlayerCritChance==='function' && chance(getPlayerCritChance(activeAb))) isCrit=true;
     if(isCrit){
       const critDmgAdd=computePlayerCritDamageAdd(activeAb);
-      const critMult=(G.player.goldCritMult||BASE_CRIT_DAMAGE||1.5)+critDmgAdd;
+      const baseMult=G.player.goldCritMult||BASE_CRIT_DAMAGE||1.5;
+      const critMult=typeof clampCritDamageMult==='function'
+        ? clampCritDamageMult(baseMult+critDmgAdd)
+        : Math.max(1.25,Math.min(2,baseMult+critDmgAdd));
       dmg=roundCombatDamage(dmg*critMult);
       if(_passId==='passive_magpie_shiny_opportunist' && isAttack && !(G.player._magpieCritSpdThisTurn)){
         G.player._magpieCritSpdThisTurn=true;
@@ -10264,10 +10306,12 @@ function dealDamage(target,amount,isCrit=false,isMagic=false,srcAbility=null,opt
     if (def>0){dmg=roundCombatDamage(dmg*blockPct);wasBlocked=true;}
   }
   if (target==='player') {
-    const enemyEnCost=getEnemyAbilityAuthoredEnCost(activeAb);
+    const enemyRow=resolveAbilityCombatRow(activeAb);
     const playerDodge = getEffectiveDodge(G.player);
     const enemyBaseAcc=Math.max(0, (G.enemy.stats.acc||70) - (G.enemyStatus.accDebuff||0) - (G.enemyStatus.enemyBlind>0?15:0));
-    const hitPct=calculateAbilityHitChancePct(enemyBaseAcc, playerDodge, enemyEnCost);
+    const accPenalty=(typeof calculateAbilityAccuracyPenalty==='function'&&enemyRow)
+      ? calculateAbilityAccuracyPenalty(enemyRow) : 0;
+    const hitPct=calculateAbilityHitChancePct(enemyBaseAcc, playerDodge, accPenalty);
     if (Math.random()*100>=hitPct){
       G._currentPiercePct=0;
       const _pbd=BIRDS[G.player.birdKey]; if(_pbd&&_pbd.passive&&_pbd.passive.onDodge)_pbd.passive.onDodge(G.player);
@@ -10494,13 +10538,17 @@ function countAilmentCategoriesOnEnemy(){
   const s=G.enemyStatus||{};
   let n=0;
   if((s.poison?.stacks||0)>0) n++;
+  if((s.toxic?.turns||0)>0) n++;
   if((s.bleed?.stacks||0)>0) n++;
   if((s.feared||0)>0) n++;
   if(getWeakenStacks(s)>0) n++;
   if((s.paralyzed||0)>0) n++;
   if(s.confused && ((typeof s.confused==='object'&&(s.confused.turns||0)>0))) n++;
-  if(s.burning && ((typeof s.burning==='number'&&s.burning>0)||(typeof s.burning==='object'&&(s.burning.turns||0)>0))) n++;
+  if((s.burning?.stacks||0)>0 && (s.burning.turns||0)>0) n++;
+  if((s.scorched?.turns||0)>0) n++;
   if((s.chilled?.stacks||0)>0) n++;
+  if((s.blinded?.turns||0)>0) n++;
+  if((s.decreed?.turns||0)>0) n++;
   if(s.slow && ((typeof s.slow==='object'&&(s.slow.turns||0)>0)||(typeof s.slow==='number'&&s.slow>0))) n++;
   if((s.accDebuff||0)>0) n++;
   if((s.exposedGuard?.pct||0)>0) n++;
@@ -10649,16 +10697,19 @@ function getPlayerMissChance(ab) {
   return Math.max(floor, reduced - accBonus + tookiePenalty - (G.playerStatus.accDebuff||0) + classAdj + sizeAdj - missReduce - extra - getPlayerHitBonus(ab));
 }
 
-/** Hit % = attacker ACC − target DODGE − EN-tier accuracy penalty; clamped 40–95. */
+/** Hit % = attacker ACC − target DODGE − ability accuracy penalty; clamped 15–95. */
 function getPlayerHitPercentForAttack(ab){
-  const enCost=getAbilityAuthoredEnergyCost(ab,G.player);
   const dodge=getEffectiveEnemyDodgeForPlayerHit();
   let acc=getPlayerEffectiveAcc();
   const t=ABILITY_TEMPLATES?.[ab?.id]||ABILITY_TEMPLATES_EXTRA?.[ab?.id]||ab||{};
   const kind=String(t.btnType||t.type||ab?.btnType||ab?.type||'').toLowerCase();
   const isAttack=(kind==='physical'||kind==='ranged');
   if(isAttack && !G._firstAttackUsed) acc+=Number(G.player?.firstAttackAccBonus||0);
-  return calculateAbilityHitChancePct(acc, dodge, enCost);
+  acc+=getPlayerHitBonus(ab);
+  const row=resolveAbilityCombatRow(ab);
+  const accPenalty=(typeof calculateAbilityAccuracyPenalty==='function'&&row)
+    ? calculateAbilityAccuracyPenalty(row) : 0;
+  return calculateAbilityHitChancePct(acc, dodge, accPenalty);
 }
 
 function getPlayerAccuracy() {
@@ -10726,15 +10777,14 @@ function getAilChance(ab,ailId) {
 function tryApplyAilment(target,ailId,ab) {
   const c=getAilChance(ab,ailId);
   if (!c) return false;
-  // Magic stat competition: attacker matk vs target mdef shifts probability
   const attackerMatk = target==='enemy' ? (G.player.stats.matk||8) : (G.enemy.stats.matk||8);
   const targetMdef   = target==='enemy' ? (G.enemy.stats.mdef||8)  : (G.player.stats.mdef||8);
-  const magicShift   = (attackerMatk - targetMdef) * 1.5; // ±1.5% per point difference
-  const adjusted     = Math.max(5, Math.min(95, c + magicShift));
-  // Boss status resistance: 50% reduction
+  const magicShift   = (attackerMatk - targetMdef) * 1.5;
   const controlBoost=(target==='enemy') ? Math.floor((getPassiveEvolutionBonuses(G.player).controlPct||0)*100) : 0;
-  const finalAdj=Math.max(5, Math.min(95, adjusted + controlBoost));
-  const rollPct = (target==='enemy'&&G.enemy.isBoss) ? Math.max(5,Math.floor(finalAdj*0.5)) : finalAdj;
+  const passiveAilBonus = (target==='enemy' && G.player) ? (G.player.passiveAilmentBonus || 0) : 0;
+  const rollPct = typeof resolveAilmentChance==='function'
+    ? resolveAilmentChance(c + magicShift + controlBoost + passiveAilBonus, target, G, {})
+    : (target==='enemy'&&G.enemy.isBoss ? Math.max(5,Math.floor(Math.max(5, Math.min(95, c + magicShift + controlBoost + passiveAilBonus))*0.5)) : Math.max(5, Math.min(95, c + magicShift + controlBoost + passiveAilBonus)));
   if(!chance(rollPct)) return false;
   const stacks = (ailId==='poison' && G.player && G.player.poisonStacksPerHit)
     ? G.player.poisonStacksPerHit : 1;
@@ -10749,20 +10799,31 @@ function getDelayedDmgBoostPct() {
   return Number(eqM?.delayedDmgPct) || 0;
 }
 
-function applyDelayedDamage(target, hitDmg) {
+function applyDelayedDamage(target, hitDmg, opts={}) {
   if (!hitDmg || Number(hitDmg) <= 0) return false;
   const status = target === 'player' ? G.playerStatus : G.enemyStatus;
-  let pct = 0;
-  if (target === 'enemy' && G.player) pct = getDelayedDmgBoostPct();
-  const stored = Math.max(1, Math.floor(Number(hitDmg) * (1 + pct / 100)));
-  status.delayed = { dmg: stored };
+  let pct = 1;
+  if (typeof getDelayedStoragePct === 'function') {
+    const weight = opts.attackWeight || (G._activePlayerAbility && typeof getAbilityAttackWeight === 'function'
+      ? getAbilityAttackWeight(G._activePlayerAbility, G.player) : null);
+    const enCost = opts.enCost || (G._activePlayerAbility ? getAbilityAuthoredEnergyCost(G._activePlayerAbility, G.player) : 2);
+    pct = getDelayedStoragePct(weight, enCost);
+  }
+  let boostPct = 0;
+  if (target === 'enemy' && G.player) boostPct = getDelayedDmgBoostPct();
+  const stored = Math.max(1, Math.floor(Number(hitDmg) * pct * (1 + boostPct / 100)));
+  if (status.delayed && status.delayed.dmg != null) {
+    status.delayed.dmg = Math.max(Number(status.delayed.dmg) || 0, stored);
+  } else {
+    status.delayed = { dmg: stored };
+  }
   codexMark('statuses', 'delayed', 'seen');
   if (typeof renderStatuses === 'function') {
     renderStatuses(target === 'player' ? 'player-status' : 'enemy-status', status);
   }
-  spawnFloat(target === 'player' ? 'player' : 'enemy', `🎵 Delayed(${stored})`, 'fn-status');
+  spawnFloat(target === 'player' ? 'player' : 'enemy', `🎵 Delayed(${status.delayed.dmg})`, 'fn-status');
   const who = target === 'player' ? (G.player?.name || 'you') : (G.enemy?.name || 'enemy');
-  logMsg(`🎵 Delayed stores ${stored} damage — detonates end of ${who}'s next turn!`, 'system');
+  logMsg(`🎵 Delayed stores ${status.delayed.dmg} damage — detonates end of ${who}'s next turn!`, 'system');
   return true;
 }
 
@@ -10798,29 +10859,87 @@ function applyAilment(target,ailId,stacks=1) {
     if(ailId==='confused'&& p&&p.immuneConfused){ spawnFloat('player','🛡 Confuse Immune!','fn-status'); return false; }
     if(ailId==='paralyzed'&&(p&&p.immuneStun||G.player.immuneParalyze))   { spawnFloat('player','🛡 Stun Immune!','fn-status'); return false; }
   }
+  const poisonCap = G.player && target==='enemy' ? (G.player.poisonCap||5) : (AILMENT_RULES?.poison?.maxStacks||5);
+  const poisonDur = (AILMENT_RULES?.poison?.duration)||3;
+  const bleedCap = (AILMENT_RULES?.bleed?.maxStacks)||3;
+  const bleedDur = (AILMENT_RULES?.bleed?.duration)||3;
+  const burnCap = (AILMENT_RULES?.burning?.maxStacks)||3;
+  const burnDur = (AILMENT_RULES?.burning?.duration)||3;
+  const toxicDur = (AILMENT_RULES?.toxic?.duration)||2;
+  const scorchDur = (AILMENT_RULES?.scorched?.duration)||2;
+  const blindDur = (AILMENT_RULES?.blinded?.duration)||2;
+  const paraDur = (AILMENT_RULES?.paralyzed?.duration)||2;
+
   if (ailId==='poison') {
-    if (!status.poison) status.poison={stacks:0,turns:3};
-    const cap = G.player ? (G.player.poisonCap||5) : 5;
+    if(typeof hasAilmentGuard==='function' && hasAilmentGuard(status,'toxicResistance') && (status.toxic?.turns||0)>0) { /* poison ok while toxic resistance only blocks toxic */ }
+    if (!status.poison) status.poison={stacks:0,turns:poisonDur};
     const biomeBonus=(target==='player' && (G.biomeMod?.enemyPoisonPlus||0)>0)?G.biomeMod.enemyPoisonPlus:0;
     const fromPlayer=(target==='enemy');
-    status.poison.stacks=Math.min((status.poison.stacks||0)+stacks+biomeBonus, cap);
-    const extraTurns=(fromPlayer)?(G.player?.poisonExtraTurns||0):0;
-    status.poison.turns=3+extraTurns;
+    const nextStacks=Math.min((status.poison.stacks||0)+stacks+biomeBonus, poisonCap);
+    if(nextStacks>=poisonCap){
+      if(typeof hasAilmentGuard==='function' && hasAilmentGuard(status,'toxicResistance')){
+        status.poison.stacks=poisonCap;
+        const extraTurns=(fromPlayer)?(G.player?.poisonExtraTurns||0):0;
+        status.poison.turns=poisonDur+extraTurns;
+      }else{
+        delete status.poison;
+        status.toxic={turns:toxicDur};
+        spawnFloat(target==='player'?'player':'enemy','☠ Toxic!','fn-poison');
+        logMsg(`☠ ${target==='player'?G.player.name:G.enemy.name} becomes Toxic!`,'system');
+      }
+    } else {
+      status.poison.stacks=nextStacks;
+      const extraTurns=(fromPlayer)?(G.player?.poisonExtraTurns||0):0;
+      status.poison.turns=poisonDur+extraTurns;
+    }
+  } else if (ailId==='toxic') {
+    if(typeof hasAilmentGuard==='function' && hasAilmentGuard(status,'toxicResistance')) return false;
+    if(status.toxic && (status.toxic.turns||0)>0) return false;
+    delete status.poison;
+    status.toxic={turns:toxicDur};
   } else if (ailId==='bleed') {
     const fromPlayer=(target==='enemy');
     const bonusTurns=fromPlayer?Math.min(2, Math.floor(Number(G.player?.bleedBonusStacks)||0)):0;
-    status.bleed={stacks:1,turns:3+bonusTurns};
+    let b=status.bleed;
+    if(!b || typeof b!=='object') b={stacks:0,turns:0};
+    b.stacks=Math.min(bleedCap, (b.stacks||0)+Math.max(1, Math.floor(Number(stacks)||1)));
+    b.turns=bleedDur+bonusTurns;
+    status.bleed=b;
   } else if (ailId==='weaken') {
     applyWeakenStack(target, stacks);
     return true;
   } else if (ailId==='paralyzed') {
-    status.paralyzed=3;
+    status.paralyzed=paraDur;
   } else if (ailId==='burning') {
-    const t = Math.max(1, Math.floor(Number(stacks)||3));
-    status.burning={turns:t};
+    if(typeof hasAilmentGuard==='function' && hasAilmentGuard(status,'emberGuard')) { /* burning still applies */ }
+    let b=status.burning;
+    if(!b || typeof b!=='object' || b.stacks==null) b={stacks:0,turns:burnDur};
+    const nextStacks=Math.min(burnCap, (b.stacks||0)+Math.max(1, Math.floor(Number(stacks)||1)));
+    if(nextStacks>=burnCap){
+      if(typeof hasAilmentGuard==='function' && hasAilmentGuard(status,'emberGuard')){
+        status.burning={stacks:burnCap,turns:burnDur};
+      }else{
+        delete status.burning;
+        status.scorched={turns:scorchDur};
+        spawnFloat(target==='player'?'player':'enemy','🔥 Scorched!','fn-burn');
+        logMsg(`🔥 ${target==='player'?G.player.name:G.enemy.name} is Scorched!`,'system');
+      }
+    } else {
+      b.stacks=nextStacks;
+      b.turns=burnDur;
+      status.burning=b;
+    }
+  } else if (ailId==='scorched') {
+    if(typeof hasAilmentGuard==='function' && hasAilmentGuard(status,'emberGuard')) return false;
+    if(status.scorched && (status.scorched.turns||0)>0) return false;
+    delete status.burning;
+    status.scorched={turns:scorchDur};
   } else if (ailId==='chilled') {
-    if(target!=='enemy') return false;
-    return applyChilledStacksToEnemy(stacks);
+    return applyChilledStacksToTarget(target, stacks);
+  } else if (ailId==='blinded') {
+    status.blinded={turns:blindDur};
+  } else if (ailId==='decreed') {
+    status.decreed={turns:2};
   } else if (ailId==='feared') {
     const extra=((target==='enemy')&&G.player?.mutDarkChorus)?1:0;
     const incoming=Math.max(1, Math.floor(Number(stacks)||1)+extra);
@@ -10951,13 +11070,18 @@ function tickBurningEndEnemyPhase(){
 }
 function tickDelayedForTarget(side){
   const status=side==='player'?G.playerStatus:G.enemyStatus;
-  const stats=side==='player'?G.player.stats:G.enemy.stats;
-  if(!status.delayed||status.delayed.dmg==null||Number(status.delayed.dmg)<=0) return;
+  if(!status?.delayed||status.delayed.dmg==null||Number(status.delayed.dmg)<=0) return;
   const dmg=Math.max(1,Math.floor(Number(status.delayed.dmg)));
-  stats.hp-=dmg;
-  spawnFloat(side,`🎵 -${dmg}`,'fn-status');
-  setHpBar(side,stats.hp,stats.maxHp);
-  logMsg(`🎵 Resonance detonates! ${dmg} damage!`,'system');
+  if(typeof applyAilmentDamage==='function'){
+    applyAilmentDamage(side, dmg, { ailmentId:'delayed', icon:'🎵', floatClass:'fn-status', logText:'🎵 Resonance detonates! {dmg} damage!', logKind:'system' });
+  }else{
+    const stats=side==='player'?G.player.stats:G.enemy.stats;
+    stats.hp-=dmg;
+    spawnFloat(side,`🎵 -${dmg}`,'fn-status');
+    setHpBar(side,stats.hp,stats.maxHp);
+    logMsg(`🎵 Resonance detonates! ${dmg} damage!`,'system');
+    if(side==='enemy') BS.dmgDealt+=dmg;
+  }
   delete status.delayed;
 }
 
@@ -11067,9 +11191,11 @@ async function playerAction(ab,fromQueue=false) {
   const _pcl=G.playerStatus.confused;
   const _dmgEarly=effActKind==='physical'||effActKind==='ranged'||effActKind==='spell';
   G._playerConfusesSelfThisAction=!!(_pcl&&(_pcl.turns||0)>0&&_dmgEarly&&chance(Number.isFinite(_pcl.selfChance)?_pcl.selfChance:STATUS_CONFUSED_SELF_PCT));
-  if(G.playerStatus.paralyzed>0&&!G.player.immuneParalyze&&chance(AILMENTS.paralyzed.skipChance||20)){
-    spawnFloat('player','⚡ Para!','fn-status');await delay(400);
-    logMsg(`⚡ Paralyzed — cannot act!`,'miss');renderActions();refreshBattleUI();return;
+  if(typeof consumeFrozenSkip==='function' && consumeFrozenSkip('player')){
+    spawnFloat('player','🧊 Frozen!','fn-status');await delay(400);
+    logMsg('🧊 Frozen — you skip this action!','miss');renderActions();refreshBattleUI();
+    if((G.player.energy||0)<=0) endPlayerTurn(true);
+    return;
   }
   if(G.playerStatus.feared>0&&!G.player.humImmuneToFear&&!G.player.bulwarkFearImmune){
     if(effActKind==='utility'&&ab.id!=='crowDefend'){/* utility ok */}
@@ -11171,6 +11297,9 @@ async function playerAction(ab,fromQueue=false) {
   }
   if(effActKind==='physical'||effActKind==='ranged') G._firstAttackUsed=true;
   if(effActKind==='spell'){ G._firstSpellUsed=true; G._spellCastCount=(G._spellCastCount||0)+1; }
+  if(effActKind==='spell' && G.player?.birdKey==='dukeBlakiston' && (G._spellCastCount||0)>0 && (G._spellCastCount%3)===0 && G.enemy?.stats?.hp>0){
+    if(applyAilment('enemy','decreed',1)) spawnFloat('enemy','📜 Decreed!','fn-status');
+  }
   G._lastPlayerAbility = ab.id;
   if(effActKind==='utility'){
     G.utilityUsedThisTurn = G.utilityUsedThisTurn || {};
@@ -11268,6 +11397,15 @@ function startPlayerTurn(player){
   G._combatHealUsedThisTurn=false;
   if(typeof Avian?.passives?.onPlayerTurnStart==='function') Avian.passives.onPlayerTurnStart(player);
   if(typeof Avian?.dispatcher?.onPlayerTurnStart==='function') Avian.dispatcher.onPlayerTurnStart(player);
+  if(typeof tickStartOfTurnControl==='function' && tickStartOfTurnControl('player')==='paralyzed'){
+    spawnFloat('player','⚡ Para!','fn-status');
+    logMsg('⚡ Paralyzed — cannot act!','miss');
+    G.turn='player';
+    G.turnPhase=TURN.PLAYER;
+    G.phase='PLAYER';
+    setTimeout(()=>endPlayerTurn(true), 400);
+    return;
+  }
   G.turn='player';
   G.turnPhase=TURN.PLAYER;
   G.phase='PLAYER';
@@ -11373,9 +11511,6 @@ function getAbilityEnergyCost(ab, player){
 
   const maxE = p?.energyMax ?? 99;
   cost = Math.min(cost, maxE);
-  const _fz=G?.playerStatus?.frozen;
-  const frzTurns=(typeof _fz==='object'&&_fz)?(_fz.turns||0):(typeof _fz==='number'?_fz:0);
-  if(frzTurns>0 && ab?.id!=='skipTurn' && t?.id!=='skipTurn') cost += 1;
 
   return Math.max(0, cost);
 }
@@ -11598,8 +11733,9 @@ Object.assign(ACTIONS, {
     const isBurned=enemyHasBurning();
     const rawDmg=matk([1.0,1.2,1.4,1.65][lv-1]);
     const burnCritBonus=(isBurned&&lv>=3)?15:0;
-    const isCrit=chance(Math.min(95,getPlayerCritChance(ab)+burnCritBonus));
-    const dmg=isCrit?roundCombatDamage(rawDmg*(G.player.goldCritMult||1.5)):rawDmg;
+    const isCrit=chance(typeof clampCritChancePct==='function'?clampCritChancePct(getPlayerCritChance(ab)+burnCritBonus):Math.min(50,getPlayerCritChance(ab)+burnCritBonus));
+    const critMult=typeof clampCritDamageMult==='function'?clampCritDamageMult(G.player.goldCritMult||1.5):(G.player.goldCritMult||1.5);
+    const dmg=isCrit?roundCombatDamage(rawDmg*critMult):rawDmg;
     applyFractionalHp(G.enemy.stats, -dmg);
     setHpBar('enemy',G.enemy.stats.hp,G.enemy.stats.maxHp);
     spawnFloat('enemy',`🔥 -${formatCombatNumber(dmg)}${isCrit?' CRIT':''}!`,'fn-burn');
@@ -11907,8 +12043,7 @@ function endPlayerTurn(force=false) {
     G.player._rageCharge=0;
   }
   G._lastPlayerAbility=null;
-  tickPoisonDamageOnly('player');
-  tickPoisonDamageOnly('enemy');
+  tickEndOfTurnAilments('player');
   tickDelayedForTarget('player');
   if(G.player.stats.hp<=0||G.enemy.stats.hp<=0){if(checkDeath())return;}
   tickGuardedStatus(G.enemyStatus);
@@ -11930,18 +12065,17 @@ function endPlayerTurn(force=false) {
 //  ENEMY AI
 // ============================================================
 function getEnemyActionEnergyCost(action){
-  const frz=(G.enemyStatus?.frozen?.turns||0)>0?1:0;
-  if(!action) return 1+frz;
+  if(!action) return 1;
   if(action.type==='ability'){
     const id=action.abilityId;
     const ab=(G.enemy?.abilities||[]).find(a=>a&&a.id===id)||{id,level:1};
     const tmpl=getAbilityTemplateForUI(ab);
     const byLv=Array.isArray(tmpl?.energyByLevel)?tmpl.energyByLevel[Math.min(Math.max(1,ab.level||1),4)-1]:null;
-    if(Number.isFinite(byLv)) return Math.max(1,Math.min(5,byLv))+frz;
-    if(Number.isFinite(tmpl?.energyCost)) return Math.max(1,Math.min(5,tmpl.energyCost))+frz;
-    return 2+frz;
+    if(Number.isFinite(byLv)) return Math.max(1,Math.min(5,byLv));
+    if(Number.isFinite(tmpl?.energyCost)) return Math.max(1,Math.min(5,tmpl.energyCost));
+    return 2;
   }
-  return 1+frz;
+  return 1;
 }
 
 function getAIPersonalityProfile(enemy){
@@ -12409,14 +12543,11 @@ async function enemyTurn() {
       logMsg(`${G.enemy.name} shook off Slow.`,'system');
     }
   }
-  if(G.enemyStatus.chilled && (G.enemyStatus.chilled.turns||0)>0){
-    G.enemyStatus.chilled.turns--;
-    if(G.enemyStatus.chilled.turns<=0){
-      const base=G.enemyStatus.chilled.baseSpd;
-      if(base!=null) G.enemy.stats.spd=Math.max(1, base);
-      delete G.enemyStatus.chilled;
-      logMsg(`${G.enemy.name} shook off Chill.`,'system');
-    }
+  if(G.enemyStatus.chilled && (G.enemyStatus.chilled.turns||0)>0){ /* chilled duration: tickEndOfTurnAilments */ }
+  if(typeof tickStartOfTurnControl==='function' && tickStartOfTurnControl('enemy')==='paralyzed'){
+    spawnFloat('enemy','⚡ Para!','fn-status');await delay(400);
+    logMsg(`${e.name} paralyzed — cannot act!`,'enemy-action');
+    G.animLock=false;afterEnemyTurn();return;
   }
   if(G.enemyStatus.feared>0&&chance(STATUS_FEAR_SKIP_PCT)){
     spawnFloat('enemy','😨 Panic!','fn-status');await delay(400);
@@ -12435,7 +12566,11 @@ async function enemyTurn() {
     G.animLock=false;afterEnemyTurn();return;
   }
   if(G.enemyStatus.stunned>0){spawnFloat('enemy','😵 Stunned!','fn-status');await delay(400);logMsg(`${e.name} is stunned!`,'enemy-action');G.animLock=false;afterEnemyTurn();return;}
-  if(G.enemyStatus.paralyzed>0&&chance(AILMENTS.paralyzed.skipChance||20)){spawnFloat('enemy','⚡ Para!','fn-status');await delay(400);logMsg(`${e.name} paralyzed — cannot act!`,'enemy-action');G.animLock=false;afterEnemyTurn();return;}
+  if(typeof consumeFrozenSkip==='function' && consumeFrozenSkip('enemy')){
+    spawnFloat('enemy','🧊 Frozen!','fn-status');await delay(400);
+    logMsg(`${e.name} is frozen — cannot act!`,'enemy-action');
+    G.animLock=false;afterEnemyTurn();return;
+  }
 
   if(G.playerStatus.counterInstinct&&G.playerStatus.counterInstinct>0){
     applyAilment('enemy','bleed',1);
@@ -12446,7 +12581,7 @@ async function enemyTurn() {
   const rawPlan=(G.enemyNextAction&&G.enemyNextAction.actions&&G.enemyNextAction.actions.length)?G.enemyNextAction.actions:planEnemyTurn(e,G.player).actions;
   const plan=rawPlan.slice(0,MAX_ENEMY_ACTIONS_PER_TURN);
   G.enemyLastPlan=plan;
-  const blindPenalty=(G.enemyStatus.enemyBlind>0)?15:0;
+  const blindPenalty=typeof getEffectiveBlindAccPenalty==='function'?getEffectiveBlindAccPenalty(G.enemyStatus):((G.enemyStatus.enemyBlind>0)?15:0);
   const totalEnemyMiss=blindPenalty;
 
   G.enemyActionsThisTurn=0;
@@ -12507,29 +12642,9 @@ async function enemyTurn() {
 
 function afterEnemyTurn() {
   G._incomingAttackKind=null;
-  tickPoisonDamageOnly('player');
-  tickPoisonDamageOnly('enemy');
-  tickPoisonDurationEndRound();
-  tickBurningEndEnemyPhase();
+  tickEndOfTurnAilments('enemy');
   tickDelayedForTarget('enemy');
   if(G.player.stats.hp<=0||G.enemy.stats.hp<=0){if(checkDeath())return;}
-  if(G.enemyStatus.frozen&&(G.enemyStatus.frozen.turns||0)>0){
-    G.enemyStatus.frozen.turns--;
-    if(G.enemyStatus.frozen.turns<=0){
-      const fbs=G.enemyStatus.frozen.baseSpd;
-      if(fbs!=null) G.enemy.stats.spd=Math.max(1,fbs);
-      delete G.enemyStatus.frozen;
-      delete G.enemyStatus.chilled;
-      if(G.enemy?.name) logMsg(`${G.enemy.name} thaws — chill cleared.`,'system');
-    }
-  }
-  if(G.playerStatus.frozen&&(G.playerStatus.frozen.turns||0)>0){
-    G.playerStatus.frozen.turns--;
-    if(G.playerStatus.frozen.turns<=0){
-      delete G.playerStatus.frozen;
-      delete G.playerStatus.chilled;
-    }
-  }
   tickStatuses('enemy', {skipGuarded:true});
   if(G.playerStatus.confused&&typeof G.playerStatus.confused==='object'){G.playerStatus.confused.turns--;if(G.playerStatus.confused.turns<=0)delete G.playerStatus.confused;}
   if(G.enemyStatus.confused&&typeof G.enemyStatus.confused==='object'){G.enemyStatus.confused.turns--;if(G.enemyStatus.confused.turns<=0)delete G.enemyStatus.confused;}
@@ -14799,7 +14914,7 @@ function buildRefGuide() {
     ${card('Stork Shop','Spend Shiny Objects on upgrades, combat heal items, and mutation stock between fights.',true,'shop')}
     ${card('Mutated Feathers','Rare in-run currency used for mutation-focused rewards and nest progression (when offered).',true,'feathers')}
     ${card('Hit vs Dodge','Accuracy rolls can Miss. If the attack connects, a separate dodge roll may show Dodge — not Miss.',true,'combat')}
-    ${card('Weaken (stacks)','Stacks to ×3: −10% outgoing damage and −10 Dodge per stack. Refreshes 3-turn duration.',true,'ailment')}
+    ${card('Weaken (stacks)','Stacks to ×3: −8% outgoing damage and −4 Dodge per stack. Refreshes 3-turn duration.',true,'ailment')}
     ${card('Passive Evolution (Endless)','In Endless mode only, passives evolve at milestones with offensive vs utility choices. Story mode uses fixed starter passives.',true,'endless')}
     ${card('Enemy AI Profiles','Enemy personalities (aggressive, tactical, control, tank, predator, etc.) bias action planning.',true,'ai')}
     ${card('Codex Unlocks','Entries unlock when seen or used during runs. Open Reference from war room Supplies. Use search, filters, and Show Locked to browse all.',true,'codex')}

@@ -164,6 +164,7 @@
     ps.dispatcherDodge = 0;
     ps.dispatcherCrit = 0;
     ps.dispatcherCritDmg = 0;
+    ps.dispatcherAcc = 0;
     var slots = ps._dispatcherDisplaySlots;
     if (!slots) return;
     for (var k in slots) {
@@ -172,6 +173,7 @@
       if (s.kind === 'gainDodge') ps.dispatcherDodge = Math.max(ps.dispatcherDodge || 0, s.value || 0);
       if (s.kind === 'gainCritChance') ps.dispatcherCrit = Math.max(ps.dispatcherCrit || 0, s.value || 0);
       if (s.kind === 'gainCritDamage') ps.dispatcherCritDmg = Math.max(ps.dispatcherCritDmg || 0, s.value || 0);
+      if (s.kind === 'gainAcc') ps.dispatcherAcc = Math.max(ps.dispatcherAcc || 0, s.value || 0);
     }
   }
 
@@ -261,6 +263,7 @@
   function makeStatRiderHandlers(sourceId, row, ab) {
     return {
       gainDodge: function (n, ps) { applyDispatcherDisplaySlot(ps, sourceId, 'gainDodge', n); spawnTrendFloat('player', 'buff'); },
+      gainAcc: function (n, ps) { applyDispatcherDisplaySlot(ps, sourceId, 'gainAcc', n); spawnTrendFloat('player', 'buff'); },
       gainSpeed: function (n, ps, p) { applyDispatcherStatLoanPct(ps, p, 'spd', sourceId, n); spawnTrendFloat('player', 'buff'); },
       gainCritChance: function (n, ps) { applyDispatcherDisplaySlot(ps, sourceId, 'gainCritChance', n); spawnTrendFloat('player', 'buff'); },
       gainCritDamage: function (n, ps) { applyDispatcherDisplaySlot(ps, sourceId, 'gainCritDamage', n); spawnTrendFloat('player', 'buff'); },
@@ -278,6 +281,7 @@
       gainCounter: function (_n, ps) { ps.counterInstinct = Math.max(ps.counterInstinct || 0, 1); spawnTrendFloat('player', 'buff'); },
       gainTaunt: function (_n, ps) { ps.dispatcherTaunt = 1; ps.dispatcherTauntT = 1; spawnTrendFloat('player', 'buff'); },
       reduceEnemyDodge: function (n) { applyEnemyStatDebuff('dodge', n, sourceId); },
+      reduceEnemyAcc: function (n) { applyEnemyStatDebuff('acc', n, sourceId); },
       reduceEnemyAtk: function (n) { applyEnemyStatDebuff('atk', n, sourceId); },
       reduceEnemyMatk: function (n) { applyEnemyStatDebuff('matk', n, sourceId); },
       reduceEnemySpd: function (n) { applyEnemyStatDebuff('spd', n, sourceId); },
@@ -450,30 +454,18 @@
     var enemyDodge = (typeof getEffectiveEnemyDodgeForPlayerHit === 'function')
       ? getEffectiveEnemyDodgeForPlayerHit()
       : ((g && g.enemy && g.enemy.stats) ? (g.enemy.stats.dodge || 0) : 0);
-    var playerAcc = (typeof getPlayerEffectiveAcc === 'function') ? getPlayerEffectiveAcc() : 80;
-    var enCost = row.enCost || row.apCost || 1;
-    var heavyPenalty = (typeof globalThis.calculateHeavyAccuracyPenalty === 'function')
-      ? globalThis.calculateHeavyAccuracyPenalty(row) : 0;
-    var hitPct = (typeof calculateAbilityHitChancePct === 'function')
-      ? calculateAbilityHitChancePct(playerAcc, enemyDodge, enCost) - heavyPenalty
-      : 85;
-    if (typeof globalThis.clampHitChancePct === 'function') hitPct = globalThis.clampHitChancePct(hitPct);
+    var hitPct = (typeof getPlayerHitPercentForAttack === 'function')
+      ? getPlayerHitPercentForAttack(ab)
+      : (function () {
+        var playerAcc = (typeof getPlayerEffectiveAcc === 'function') ? getPlayerEffectiveAcc() : 80;
+        var accPenalty = (typeof globalThis.calculateAbilityAccuracyPenalty === 'function')
+          ? globalThis.calculateAbilityAccuracyPenalty(row) : 0;
+        return (typeof calculateAbilityHitChancePct === 'function')
+          ? calculateAbilityHitChancePct(playerAcc, enemyDodge, accPenalty) : 85;
+      })();
     var baseHitFrac = hitPct / 100;
 
     var usesMaster = typeof globalThis.usesMasterDamage === 'function' && globalThis.usesMasterDamage(row);
-    var masterHitAmounts = null;
-    var masterCrit = false;
-    if (usesMaster && typeof globalThis.computeMasterOutgoingDamage === 'function') {
-      var masterResult = globalThis.computeMasterOutgoingDamage(isMagic, src, { hitSucceeded: true });
-      if (masterResult) {
-        masterCrit = masterResult.isCrit;
-        if (typeof globalThis.calculateMultiHitDamage === 'function') {
-          masterHitAmounts = globalThis.calculateMultiHitDamage(masterResult.damage, hits);
-        } else {
-          masterHitAmounts = [masterResult.damage];
-        }
-      }
-    }
 
     for (var i = 0; i < hits; i++) {
       if (Math.random() >= baseHitFrac) {
@@ -490,11 +482,14 @@
       }
       var dealFn = resolveDealDamage();
       var dealOpts = null;
-      if (masterHitAmounts && masterHitAmounts[i] != null) {
-        dealOpts = { precomputedDamage: masterHitAmounts[i], isCrit: masterCrit };
+      if (usesMaster && typeof globalThis.computeMasterOutgoingDamage === 'function') {
+        var masterResult = globalThis.computeMasterOutgoingDamage(isMagic, src, { hitSucceeded: true });
+        if (masterResult) {
+          dealOpts = { precomputedDamage: masterResult.damage, isCrit: masterResult.isCrit };
+        }
       }
       var res = dealFn
-        ? dealFn('enemy', 0, masterCrit, isMagic, src, dealOpts)
+        ? dealFn('enemy', 0, dealOpts ? dealOpts.isCrit : false, isMagic, src, dealOpts)
         : { dmgDealt: 0, wasDodged: false, wasBlocked: false, isCrit: false };
       if (g) g._dispatcherCombatRow = null;
       else G._dispatcherCombatRow = null;
@@ -519,10 +514,18 @@
           if (isMagic) ailCh += (Number(eqM.magicAilmentChance) || 0);
           else ailCh += (Number(eqM.physicalAilmentChance) || 0);
         }
-        if (typeof chance === 'function' && chance(ailCh)) {
+        var passiveAilBonus = (g && g.player) ? (Number(g.player.passiveAilmentBonus) || 0) : 0;
+        var controlBoost = (g && g.player && typeof getPassiveEvolutionBonuses === 'function')
+          ? Math.floor((getPassiveEvolutionBonuses(g.player).controlPct || 0) * 100) : 0;
+        var rollPct = typeof resolveAilmentChance === 'function'
+          ? resolveAilmentChance(ailCh + controlBoost + passiveAilBonus, 'enemy', g, {})
+          : Math.max(5, ailCh + controlBoost + passiveAilBonus);
+        if (typeof chance === 'function' && chance(rollPct)) {
           var applied = false;
           if (aid === 'delayed' && typeof applyDelayedDamage === 'function') {
-            applied = applyDelayedDamage('enemy', totalDmg);
+            var atkWeight = typeof getAbilityAttackWeight === 'function' ? getAbilityAttackWeight(ab, g.player) : null;
+            var enCost = row.enCost || row.apCost || 1;
+            applied = applyDelayedDamage('enemy', totalDmg, { attackWeight: atkWeight, enCost: enCost });
           } else if (typeof applyAilment === 'function') {
             applied = applyAilment('enemy', aid, 1);
           }
@@ -621,6 +624,11 @@
     var ps = (globalThis.G && globalThis.G.playerStatus) || null;
     if (!ps) return base;
     return base + (ps.dispatcherCrit || 0);
+  };
+  dispatcher.modifyAcc = function modifyAcc(base) {
+    var ps = (globalThis.G && globalThis.G.playerStatus) || null;
+    if (!ps) return base;
+    return base + (ps.dispatcherAcc || 0);
   };
   dispatcher.modifyDodge = function modifyDodge(base) {
     var ps = (globalThis.G && globalThis.G.playerStatus) || null;

@@ -258,6 +258,21 @@
     const Avian = globalThis.Avian;
     if(!Avian || !Avian.statuses) return;
 
+    const _origApply = globalThis.applyAilment;
+    if(typeof _origApply === 'function'){
+      globalThis.applyAilment = function(target, ailId, stacks){
+        const applied = _origApply.apply(this, arguments);
+        if(applied){
+          const status = Avian.statuses[ailId];
+          if(status && typeof status.onApply === 'function'){
+            try { status.onApply(target, { id: ailId, stacks: stacks }); }
+            catch(err){ try { console.warn('[Avian] status.onApply ' + ailId, err); } catch(_e){} }
+          }
+        }
+        return applied;
+      };
+    }
+
     const _origTryApply = globalThis.tryApplyAilment;
     if(typeof _origTryApply === 'function'){
       globalThis.tryApplyAilment = function(target, ailId, ab){
