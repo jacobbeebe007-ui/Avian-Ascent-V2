@@ -990,6 +990,7 @@ const REWARD_TIERS = {
   blue:{label:'Rare', color:'blue'},
   purple:{label:'Epic', color:'purple'},
   gold:{label:'Legendary', color:'gold'},
+  orange:{label:'Ancestral', color:'orange'},
 };
 function normalizeRewardTier(tier){
   const t=String(tier||'grey').toLowerCase();
@@ -2622,7 +2623,7 @@ function nestTierCssClass(tier){
 }
 function nestTierColorVar(tier){
   const key=nestTierCssClass(tier);
-  return {grey:'var(--tier-grey)',green:'var(--tier-green)',blue:'var(--tier-blue)',purple:'var(--tier-purple)',gold:'var(--gold)'}[key]||'var(--gold)';
+  return {grey:'var(--tier-grey)',green:'var(--tier-green)',blue:'var(--tier-blue)',purple:'var(--tier-purple)',gold:'var(--gold)',orange:'var(--tier-orange)'}[key]||'var(--gold)';
 }
 function getNestSlotIcons(){
   return Avian?.mutations?.SLOT_ICONS||{};
@@ -2696,6 +2697,10 @@ function handleNestEquipClick(ev){
   }
   if(el.dataset.nestInv){
     const itemId=el.dataset.nestInv;
+    if(typeof Avian?.mutations?.canPlayerEquipItem==='function' && !Avian.mutations.canPlayerEquipItem(G.player, itemId)){
+      if(typeof logMsg==='function') logMsg('This mutation requires a matching bird class.', 'system');
+      return;
+    }
     if(typeof Avian?.mutations?.equipAuto==='function') Avian.mutations.equipAuto(G.player, itemId);
     saveRun(); openNest(); return;
   }
@@ -2712,7 +2717,7 @@ function buildNestEquipmentSection(player){
   Avian.mutations.ensurePlayerMutationState(player);
   const locked=isStoryBattleNestEquipLocked();
   const slotsDef=Avian.data?.mutations?.slots;
-  const order=slotsDef?.order||['wing','feet','head','beak','chest','eyes','tail','plumage','syrinx'];
+  const order=slotsDef?.order||['leftWing','rightWing','leftFoot','rightFoot','beak','syrinx','chest','plumage','eyes','head','tail'];
   const limits=slotsDef?.limits||{};
   const labels=Avian.mutations.SLOT_LABELS||{};
   const icons=getNestSlotIcons();
@@ -2766,7 +2771,9 @@ function buildNestEquipmentSection(player){
       const tierColor=nestTierColorVar(item.tier);
       const slotBadge=icons[item.slot]?`<span class="nest-slot-badge">${icons[item.slot]}</span>`:'';
       const statsBlock=_nestInventoryMutStatsHtml(player,id,compareMode);
-      invHtml+=`<div class="nest-inv-item tier-${item.tier} tier-ui-${tierCss}${locked?' is-locked':''}" data-nest-inv="${id}" ${locked?'aria-disabled="true" title="Story battle loadouts are locked until victory."':''}>${slotBadge}<div class="nest-tier-label" style="color:${tierColor}">${tierMeta.label}</div><strong style="color:${tierColor}">${escapeHtmlRoster(item.name)}</strong><br><span style="color:${tierColor}">${escapeHtmlRoster(labels[item.slot]||item.slot)}</span>${statsBlock}</div>`;
+      const canEquip=typeof Avian?.mutations?.canPlayerEquipItem==='function'?Avian.mutations.canPlayerEquipItem(player,id):true;
+      const classTag=item.classRequired?`<span class="nest-class-tag">${escapeHtmlRoster(String(item.classRequired))}</span>`:'';
+      invHtml+=`<div class="nest-inv-item tier-${item.tier} tier-ui-${tierCss}${locked?' is-locked':''}${canEquip?'':' nest-inv-ineligible'}" data-nest-inv="${id}" ${(!canEquip||locked)?'aria-disabled="true"':''} title="${canEquip?'':('Class only: '+String(item.classRequired))}">${slotBadge}<div class="nest-tier-label" style="color:${tierColor}">${tierMeta.label}</div><strong style="color:${tierColor}">${escapeHtmlRoster(item.name)}</strong>${classTag}<br><span style="color:${tierColor}">${escapeHtmlRoster(labels[item.slot]||item.slot)}</span>${statsBlock}</div>`;
     }
     invHtml+='</div>';
   }
@@ -6657,6 +6664,7 @@ function loadStage() {
   const bd2=BIRDS[G.player.birdKey||'sparrow'];
   if(bd2&&bd2.passive&&bd2.passive.onBattleStart) bd2.passive.onBattleStart(G.player);
   if(typeof Avian?.passives?.onBattleStart==='function') Avian.passives.onBattleStart();
+  if(typeof Avian?.mutationEffects?.onBattleStart==='function') Avian.mutationEffects.onBattleStart(G.player);
   if((G.player?.openingEnemyFear||0)>0){
     G.enemyStatus.feared=Math.max(G.enemyStatus.feared||0, G.player.openingEnemyFear);
   }
@@ -9405,6 +9413,7 @@ async function doHeal(who,amt) {
   if(who==='player'&&G.player){
     const _phbd=BIRDS[G.player.birdKey];
     if(_phbd&&_phbd.passive&&_phbd.passive.onHeal) _phbd.passive.onHeal(G.player,amt);
+    if(typeof Avian?.mutationEffects?.onHeal==='function') Avian.mutationEffects.onHeal('player', amt);
     setHpBar('player',G.player.stats.hp,G.player.stats.maxHp);
   }
   await delay(400);
@@ -9724,13 +9733,16 @@ function getEndlessEffectiveBattleNumber(stage){
   return Math.max(0,s-ENDLESS_STORY_END_STAGE);
 }
 
-const ENDLESS_RANDOM_MUTATION_TIERS = Object.freeze(['white', 'green', 'blue', 'purple', 'gold']);
+const ENDLESS_RANDOM_MUTATION_TIERS = Object.freeze(['white', 'green', 'blue', 'purple', 'gold', 'orange']);
 const ENDLESS_BOSS_MUTATION_REWARD_TIERS = Object.freeze({
   10: ['green', 'green', 'green'],
   20: ['blue', 'blue', 'green'],
   30: ['blue', 'blue', 'blue'],
   40: ['purple', 'blue', 'blue'],
   50: ['purple', 'purple', 'blue'],
+  60: ['purple', 'purple', 'gold'],
+  80: ['gold', 'gold', 'purple'],
+  100: ['orange', 'gold', 'gold'],
 });
 
 function getEndlessNormalFightTier(eb){
@@ -9758,7 +9770,8 @@ function getStoryMutationRewardTiers(stage, isBoss){
   if(st<=9) return ['green','green','green'];
   if(st<=16) return ['blue','blue','blue'];
   if(st<=19) return ['purple','purple','purple'];
-  return ['purple','purple','purple'];
+  if(st<=24) return ['gold','gold','purple'];
+  return ['orange','gold','gold'];
 }
 
 function resolveMutationRewardTiers({ stage, isBoss }={}){
@@ -9980,9 +9993,13 @@ function getGuardedPhysReducPct(status){
 function applyGuardedBuff(side, opts={}){
   const status=side==='enemy'?G.enemyStatus:G.playerStatus;
   if(!status) return;
-  const pct=Math.max(0, Math.min(90, Math.floor(Number(opts.physReducPct)||0)));
-  const turns=Math.max(1, Math.floor(Number(opts.turns)||1));
+  let pct=Math.max(0, Math.min(90, Math.floor(Number(opts.physReducPct)||0)));
   const sourceAbilityId=opts.sourceAbilityId?String(opts.sourceAbilityId):'';
+  if(side==='player' && sourceAbilityId!=='mutation_shield' && typeof Avian?.mutations?.getMechanicsRollup==='function'){
+    const mech=Avian.mutations.getMechanicsRollup(G.player);
+    if(mech?.shieldPowerPct) pct=Math.round(pct*(1+(Number(mech.shieldPowerPct)||0)/100));
+  }
+  const turns=Math.max(1, Math.floor(Number(opts.turns)||1));
   const cur=status.guarded;
   if(cur&&typeof cur==='object'){
     status.guarded={
@@ -10105,9 +10122,14 @@ function scaleHealForBleed(who, raw){
   const st = who==='player' ? G.playerStatus : G.enemyStatus;
   const b = st?.bleed;
   const stacks = (b && (b.stacks||0)>0 && (b.turns||0)>0) ? Math.min(3, b.stacks||0) : 0;
-  if(!stacks) return roundCombatDamage(raw);
-  const mult = typeof getBleedHealMult==='function' ? getBleedHealMult(stacks) : Math.max(0.01, 1 - 0.15 * stacks);
-  return roundCombatDamage(Math.max(0.01, raw * mult));
+  let scaled = !stacks ? raw : raw * (typeof getBleedHealMult==='function' ? getBleedHealMult(stacks) : Math.max(0.01, 1 - 0.15 * stacks));
+  if(who==='player' && typeof Avian?.mutationEffects?.getHealingReceivedMultiplier==='function'){
+    scaled *= Avian.mutationEffects.getHealingReceivedMultiplier();
+  }
+  if(who!=='player' && typeof Avian?.mutationEffects?.getHealingDoneMultiplier==='function'){
+    scaled *= Avian.mutationEffects.getHealingDoneMultiplier();
+  }
+  return roundCombatDamage(Math.max(0.01, scaled));
 }
 function normalizeBurningTurns(v){
   if(v==null) return 3;
@@ -10436,6 +10458,20 @@ function collectOutgoingDamageBonusFractions(ctx){
       }
     }
   }
+  if(typeof Avian?.mutationEffects?.getOutgoingDamageBonusFractions==='function'){
+    const _attackWeight=activeAb?getAbilityAttackWeight(activeAb,p):null;
+    const _mf=Avian.mutationEffects.getOutgoingDamageBonusFractions({
+      attackWeight:_attackWeight,
+      isMagic:!!isMagic,
+      isCrit:!!ctx.isCrit,
+      afterDefend:!!(G.playerStatus?.postDefAtkPct||G._mutationEffectState?.pendingFlags?.afterDefend),
+      afterDodge:false,
+      afterUtility:false,
+      isCounter:false,
+      isTelegraphedDecree:false,
+    });
+    if(_mf&&_mf.length) _mf.forEach(f=>{ if(f>0) fractions.push(f); });
+  }
   if(isSpell&&!G._firstSpellUsed&&(p?.firstSpellBattleBonusPct||0)>0) fractions.push(p.firstSpellBattleBonusPct);
   if(isSpell&&(p?.everyFourthSpellBonusPct||0)>0&&(((G._spellCastCount||0)+1)%4===0)) fractions.push(p.everyFourthSpellBonusPct);
   if(isSpell&&(p?.augFourthSpellEcho||0)>0&&(((G._spellCastCount||0)+1)%4===0)) fractions.push(p.augFourthSpellEcho);
@@ -10504,7 +10540,8 @@ function collectOutgoingDamageBonusFractions(ctx){
 
 function applyLifestealFromDamage(dmg, srcAbility){
   if(dmg<=0 || !G.player) return;
-  const pct=getAbilityLifestealPct(srcAbility||G._activePlayerAbility);
+  let pct=getAbilityLifestealPct(srcAbility||G._activePlayerAbility);
+  if(typeof Avian?.mutationEffects?.getLifestealPct==='function') pct+=Avian.mutationEffects.getLifestealPct();
   if(pct<=0) return;
   const heal=scaleHealForBleed('player', roundCombatDamage(Math.max(0.01, dmg * pct / 100)));
   if(heal<=0) return;
@@ -10689,6 +10726,7 @@ function dealDamage(target,amount,isCrit=false,isMagic=false,srcAbility=null,opt
         G.player._magpieCritSpdThisTurn=true;
         G.playerStatus.magpieSpdNext=4;
       }
+      if(typeof Avian?.mutationEffects?.onPlayerCrit==='function') Avian.mutationEffects.onPlayerCrit();
     }
     if(typeof globalThis.avianApplySynergyConsumeDamage==='function'){
       dmg=globalThis.avianApplySynergyConsumeDamage('enemy',isCrit,isMagic,dmg);
@@ -10724,6 +10762,7 @@ function dealDamage(target,amount,isCrit=false,isMagic=false,srcAbility=null,opt
     if (Math.random()*100>=hitPct){
       G._currentPiercePct=0;
       const _pbd=BIRDS[G.player.birdKey]; if(_pbd&&_pbd.passive&&_pbd.passive.onDodge)_pbd.passive.onDodge(G.player);
+      if(typeof Avian?.mutationEffects?.onPlayerDodge==='function') Avian.mutationEffects.onPlayerDodge();
       if((G.player?.healOnDodge||0)>0){
         const heal=scaleHealForBleed('player',Math.max(0,G.player.healOnDodge||0));
         G.player.stats.hp=Math.min(G.player.stats.maxHp,G.player.stats.hp+heal);
@@ -11119,7 +11158,9 @@ function getPlayerHitPercentForAttack(ab){
   const row=resolveAbilityCombatRow(ab);
   const accPenalty=(typeof calculateAbilityAccuracyPenalty==='function'&&row)
     ? calculateAbilityAccuracyPenalty(row) : 0;
-  return calculateAbilityHitChancePct(acc, dodge, accPenalty);
+  const heavyRed=(typeof Avian?.mutationEffects?.getHeavyAccPenaltyReduction==='function')
+    ? Avian.mutationEffects.getHeavyAccPenaltyReduction() : 0;
+  return calculateAbilityHitChancePct(acc, dodge, Math.max(0, accPenalty - heavyRed));
 }
 
 function getPlayerAccuracy() {
@@ -11270,6 +11311,10 @@ function applyAilment(target,ailId,stacks=1) {
     if(ailId==='feared'  && (p&&p.immuneFear||G.player.stats.immuneFear))  { spawnFloat('player','🛡 Fear Immune!','fn-status'); return false; }
     if(ailId==='confused'&& p&&p.immuneConfused){ spawnFloat('player','🛡 Confuse Immune!','fn-status'); return false; }
     if(ailId==='paralyzed'&&(p&&p.immuneStun||G.player.immuneParalyze))   { spawnFloat('player','🛡 Stun Immune!','fn-status'); return false; }
+    if(typeof Avian?.mutationEffects?.getStatusResistPct==='function'){
+      const resist=Avian.mutationEffects.getStatusResistPct();
+      if(resist>0 && Math.random()*100<resist){ spawnFloat('player','🛡 Resisted!','fn-status'); return false; }
+    }
   }
   const poisonCap = G.player && target==='enemy' ? (G.player.poisonCap||5) : (AILMENT_RULES?.poison?.maxStacks||5);
   const poisonDur = (AILMENT_RULES?.poison?.duration)||3;
@@ -11364,6 +11409,7 @@ function applyAilment(target,ailId,stacks=1) {
   }
   if(target==='enemy' && G.player){
     if(typeof Avian?.passives?.onAilmentAppliedByPlayer==='function') Avian.passives.onAilmentAppliedByPlayer(ailId);
+    if(typeof Avian?.mutationEffects?.onAilmentApplied==='function') Avian.mutationEffects.onAilmentApplied(ailId, target);
     const pid=BIRDS[G.player.birdKey]?.passive?.id;
     if(pid==='passive_crow_murder_mind' && !G.player._crowMurderMindUsed){
       const debKeys=new Set(['poison','bleed','weaken','paralyzed','feared','burning','chilled','confused','slow']);
@@ -11656,6 +11702,7 @@ async function playerAction(ab,fromQueue=false) {
     if(G.player?.augIronResolve && !G.player._augIronResolveUsed){ G.playerStatus.ironResolve={turns:1}; G.player._augIronResolveUsed=true; }
     if(G.player?.augDefSkillRefund && chance(G.player.augDefSkillRefund)) gainEnergy(G.player,1);
     if(G.player?.augCounterInstinct) G.playerStatus.counterInstinct=2;
+    if(typeof Avian?.mutationEffects?.onPlayerGuard==='function') Avian.mutationEffects.onPlayerGuard();
   }
   spendEnergy(G.player,ab);
   if(typeof spendUltimateForAbility==='function') spendUltimateForAbility(G.player,ab);
@@ -11750,10 +11797,13 @@ async function playerAction(ab,fromQueue=false) {
     });
   }
   if(typeof computeUltimateMeterAward==='function' && typeof awardUltimateMeter==='function'){
-    const meterGain=computeUltimateMeterAward(ab,{
+    let meterGain=computeUltimateMeterAward(ab,{
       hitsLanded:G._lastAbilityHitsLanded||0,
       utilitySucceeded:!!G._lastAbilityUtilitySucceeded,
     });
+    if(typeof Avian?.mutationEffects?.getUltimateMeterMultiplier==='function'){
+      meterGain=Math.round(meterGain * Avian.mutationEffects.getUltimateMeterMultiplier());
+    }
     if(meterGain>0) awardUltimateMeter('player', meterGain);
   }
   if(flybyWasCharged) G.actionDamageMult=1;
@@ -11769,6 +11819,7 @@ async function playerAction(ab,fromQueue=false) {
 
 
 function startPlayerTurn(player){
+  if(typeof Avian?.mutationEffects?.onPlayerTurnStart==='function') Avian.mutationEffects.onPlayerTurnStart();
   G._playerTurnSerial=(G._playerTurnSerial|0)+1;
   player.energyMax = computePlayerMaxEnergy();
   player.energyRegen = computePlayerEnergyRegen(player);
@@ -15143,6 +15194,7 @@ function buildRefFilterBarHtml(activeTab) {
 <option value="blue"${tier === 'blue' ? ' selected' : ''}>Blue</option>
 <option value="purple"${tier === 'purple' ? ' selected' : ''}>Purple</option>
 <option value="gold"${tier === 'gold' ? ' selected' : ''}>Gold</option>
+<option value="orange"${tier === 'orange' ? ' selected' : ''}>Orange</option>
 </select></label>
 <label>Slot<select id="ref-filter-mut-slot" data-ref-filter="mutSlot">
 <option value=""${slot === '' ? ' selected' : ''}>All</option>
@@ -15379,7 +15431,7 @@ function buildRefGuide() {
       <div class="ref-skill-base">Each bird and damaging ability has an Aspect. Strong hits deal ${(Avian?.data?.aspects?.dominantMod||1.2).toFixed(2)}× damage; weak hits deal ${(Avian?.data?.aspects?.resistedMod||0.8).toFixed(2)}×. Arrows show strong (dominant) matchups.</div>
       ${typeof buildAspectChartSvg==='function'?buildAspectChartSvg():''}
     </div>
-    ${card('Mutation Slots','Equip mutations in wing, feet, head, beak, chest, eyes, tail, plumage, and syrinx slots (limits per slot). Manage loadout in the Nest.',true,'mutations')}
+    ${card('Mutation Slots','Equip mutations in left/right wing, left/right foot, beak, syrinx, chest, plumage, eyes, head, and tail slots (one item per slot). Class-only gear requires a matching bird class. Manage loadout in the Nest.',true,'mutations')}
     ${card('Nest Inventory','Found mutations go to nest inventory. Equip, compare, and sell extras between battles.',true,'nest')}
     ${card('Stork Shop','Spend Shiny Objects on upgrades, combat heal items, and mutation stock between fights.',true,'shop')}
     ${card('Mutated Feathers','Rare in-run currency used for mutation-focused rewards and nest progression (when offered).',true,'feathers')}

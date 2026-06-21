@@ -177,7 +177,12 @@
     }
     if (tags.indexOf('Purge') >= 0 || /purge/.test(text)) {
       var p = purgePositiveStatuses(g.enemyStatus);
-      if (p > 0) utilitySucceeded = true;
+      if (p > 0) {
+        utilitySucceeded = true;
+        if (typeof Avian !== 'undefined' && Avian.mutationEffects && typeof Avian.mutationEffects.onPurge === 'function') {
+          Avian.mutationEffects.onPurge();
+        }
+      }
     }
     if (tags.indexOf('Marked') >= 0 || /\bapply marked\b/.test(text)) {
       if (applyMarked(g.enemyStatus)) utilitySucceeded = true;

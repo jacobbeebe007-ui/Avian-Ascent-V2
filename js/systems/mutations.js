@@ -9,20 +9,21 @@
   Avian.systems = Avian.systems || Object.create(null);
   var mutations = Avian.mutations || Object.create(null);
 
-  var TIER_ICONS = { white: '🤍', green: '💚', blue: '💙', purple: '💜', gold: '👑' };
+  var TIER_ICONS = { white: '🤍', green: '💚', blue: '💙', purple: '💜', gold: '👑', orange: '🧡' };
   var SLOT_ICONS = {
-    wing: '🪽', feet: '🦶', head: '🪖', beak: '🦅', chest: '🛡',
-    eyes: '👁', tail: '🪶', plumage: '✨', syrinx: '🎵',
+    leftWing: '🪽', rightWing: '🪽', leftFoot: '🦶', rightFoot: '🦶',
+    head: '🪖', beak: '🦅', chest: '🛡', eyes: '👁', tail: '🪶', plumage: '✨', syrinx: '🎵',
   };
-  var MUTATION_SHOP_COSTS = { white: 16, green: 28, blue: 44, purple: 64, gold: 96 };
+  var MUTATION_SHOP_COSTS = { white: 16, green: 28, blue: 44, purple: 64, gold: 96, orange: 140 };
   var SLOT_LABELS = {
-    wing: 'Wing', feet: 'Feet', head: 'Head', beak: 'Beak', chest: 'Chest',
-    eyes: 'Eyes', tail: 'Tail', plumage: 'Plumage', syrinx: 'Syrinx',
+    leftWing: 'Left Wing', rightWing: 'Right Wing', leftFoot: 'Left Foot', rightFoot: 'Right Foot',
+    head: 'Head', beak: 'Beak', chest: 'Chest', eyes: 'Eyes', tail: 'Tail', plumage: 'Plumage', syrinx: 'Syrinx',
   };
   var SLOT_DISPLAY_TAGS = {
-    feet: 'foot', wing: 'wing', head: 'head', beak: 'beak', chest: 'chest',
-    eyes: 'eyes', tail: 'tail', plumage: 'plumage', syrinx: 'syrinx',
+    leftFoot: 'left foot', rightFoot: 'right foot', leftWing: 'left wing', rightWing: 'right wing',
+    head: 'head', beak: 'beak', chest: 'chest', eyes: 'eyes', tail: 'tail', plumage: 'plumage', syrinx: 'syrinx',
   };
+  var ALL_TIERS = ['white', 'green', 'blue', 'purple', 'gold', 'orange'];
 
   function formatSlotTag(slot) {
     if (!slot) return '';
@@ -278,8 +279,32 @@
     return arr[idx] || null;
   }
 
+  function getPlayerClassId(player) {
+    if (!player) return null;
+    if (player.class) return String(player.class).toLowerCase();
+    var bk = player.birdKey;
+    if (bk && typeof BIRDS !== 'undefined' && BIRDS[bk] && BIRDS[bk].class) {
+      return String(BIRDS[bk].class).toLowerCase();
+    }
+    return null;
+  }
+
+  function itemAllowedForPlayer(item, classIdOptional) {
+    if (!item) return false;
+    var req = item.classRequired;
+    if (!req) return true;
+    var cls = classIdOptional != null ? String(classIdOptional).toLowerCase() : getPlayerClassId(globalThis.G && G.player);
+    return !!cls && String(req).toLowerCase() === cls;
+  }
+
   function pack() { return (Avian.data && Avian.data.mutations) || null; }
   function slotsDef() { var p = pack(); return (p && p.slots) || { limits: {}, order: [] }; }
+
+  function canPlayerEquipItem(player, itemId) {
+    var item = getItem(itemId);
+    if (!item || !player) return false;
+    return itemAllowedForPlayer(item, getPlayerClassId(player));
+  }
 
   function getItem(id) {
     var p = pack();
@@ -372,6 +397,7 @@
     var item = getItem(itemId);
     if (!item || !player) return false;
     ensurePlayerMutationState(player);
+    if (!canPlayerEquipItem(player, itemId)) return false;
     if (findEquippedSlot(player, itemId)) return false;
     if (findInventoryIndex(player, itemId) < 0) return false;
     var sk = slotKey || item.slot;
@@ -387,7 +413,8 @@
   var MECHANICAL_STAT_KEYS = [
     'lightAttackDmgPct', 'mediumAttackDmgPct', 'heavyAttackDmgPct',
     'multiHitDmgPct', 'critDamageBonusPct', 'physicalAilmentChance', 'magicAilmentChance',
-    'delayedDmgPct',
+    'delayedDmgPct', 'heavyAccPenaltyReductionPct', 'lifestealPct', 'healingDonePct',
+    'healingReceivedPct', 'shieldPowerPct', 'statusResistPct', 'ultimateMeterGainPct',
   ];
   var LEGACY_ARMOR_PEN_KEYS = ['defPenPct', 'piercePct'];
   var LEGACY_MAGIC_PEN_KEYS = ['mdefPenPct'];
@@ -438,6 +465,27 @@
       mech.magicAilmentChance = (mech.magicAilmentChance || 0) + Number(m.magicAilment.chance || 0);
       mech.magicAilments = mech.magicAilments || [];
       pushAilmentEntry(mech.magicAilments, m.magicAilment);
+    }
+    if (m.ailmentChances && Array.isArray(m.ailmentChances)) {
+      for (var ai = 0; ai < m.ailmentChances.length; ai++) {
+        var ac = m.ailmentChances[ai];
+        if (!ac || !ac.id) continue;
+        if (ac.school === 'magic') {
+          mech.magicAilmentChance = (mech.magicAilmentChance || 0) + Number(ac.chance || 0);
+          mech.magicAilments = mech.magicAilments || [];
+          pushAilmentEntry(mech.magicAilments, { id: ac.id, chance: ac.chance });
+        } else {
+          mech.physicalAilmentChance = (mech.physicalAilmentChance || 0) + Number(ac.chance || 0);
+          mech.physicalAilments = mech.physicalAilments || [];
+          pushAilmentEntry(mech.physicalAilments, { id: ac.id, chance: ac.chance });
+        }
+      }
+    }
+    if (item.bonuses && Array.isArray(item.bonuses)) {
+      mech.itemBonuses = mech.itemBonuses || [];
+      for (var bi = 0; bi < item.bonuses.length; bi++) {
+        mech.itemBonuses.push(Object.assign({}, item.bonuses[bi], { sourceItemId: item.id, setName: item.setName || null }));
+      }
     }
   }
 
@@ -494,9 +542,10 @@
     if (max <= 0) return [];
     var used = new Set();
     var ids = [];
+    var enemyOpts = { filterForPlayer: false };
     for (var i = 0; i < max; i++) {
       var tier = rollTierFromBand(opts.mutationBand);
-      var drop = rollUniqueFromTier(tier, used);
+      var drop = rollUniqueFromTier(tier, used, enemyOpts);
       if (drop && drop.id) ids.push(drop.id);
     }
     return ids;
@@ -510,9 +559,10 @@
     var count = enemyMutationCount(stage, isBoss);
     var used = new Set();
     var ids = [];
+    var enemyOpts = { filterForPlayer: false };
     for (var i = 0; i < count; i++) {
       var tier = rollTierForContext({ stage: stage, isBoss: isBoss, endless: endless });
-      var drop = rollUniqueFromTier(tier, used);
+      var drop = rollUniqueFromTier(tier, used, enemyOpts);
       if (drop && drop.id) ids.push(drop.id);
     }
     return ids;
@@ -599,6 +649,7 @@
   function equip(player, itemId, slotKey, slotIndex) {
     var item = getItem(itemId);
     if (!item || !player) return false;
+    if (!canPlayerEquipItem(player, itemId)) return false;
     ensurePlayerMutationState(player);
     var sk = slotKey || item.slot;
     if (sk !== item.slot) return false;
@@ -652,8 +703,8 @@
 
   function rollTierFromDropWeights() {
     var p = pack();
-    var dw = (p && p.dropWeights) || { white: 52, green: 25, blue: 14, purple: 7, gold: 2 };
-    var tiers = ['white', 'green', 'blue', 'purple', 'gold'];
+    var dw = (p && p.dropWeights) || { white: 40, green: 24, blue: 16, purple: 10, gold: 6, orange: 4 };
+    var tiers = ALL_TIERS.slice();
     var weights = tiers.map(function (t) { return Math.max(0, Number(dw[t]) || 0); });
     return chanceWeighted(tiers, weights);
   }
@@ -696,6 +747,7 @@
     var playerTiers = getPlayerEquippedMutationTiers(player);
     var used = new Set();
     var ids = [];
+    var enemyOpts = { filterForPlayer: false };
     for (var i = 0; i < count; i++) {
       var tier;
       if (playerTiers.length) {
@@ -706,7 +758,7 @@
         tier = (typeof ebFn === 'function' && eb) ? ebFn(eb) : null;
         if (!tier) tier = rollTierFromDropWeights();
       }
-      var drop = rollUniqueFromTier(tier, used);
+      var drop = rollUniqueFromTier(tier, used, enemyOpts);
       if (drop && drop.id) ids.push(drop.id);
     }
     return ids;
@@ -717,11 +769,12 @@
     var stage = opts.stage || (globalThis.G && G.stage) || 1;
     var isBoss = !!opts.isBoss;
     var endless = !!(globalThis.G && G.endlessMode);
-    if (isBoss && stage >= 20) return endless ? 'purple' : 'blue';
-    if (isBoss) return stage >= 10 ? 'purple' : 'blue';
-    if (stage >= 15) return chanceWeighted(['white', 'green', 'blue', 'purple'], [20, 30, 35, 15]);
-    if (stage >= 8) return chanceWeighted(['white', 'green', 'blue'], [35, 40, 25]);
-    if (stage >= 4) return chanceWeighted(['white', 'green'], [55, 45]);
+    if (isBoss && stage >= 20) return endless ? chanceWeighted(['purple', 'gold', 'orange'], [35, 40, 25]) : 'gold';
+    if (isBoss) return stage >= 10 ? chanceWeighted(['blue', 'purple', 'gold'], [25, 45, 30]) : 'blue';
+    if (stage >= 18) return chanceWeighted(['white', 'green', 'blue', 'purple', 'gold', 'orange'], [10, 15, 25, 25, 15, 10]);
+    if (stage >= 15) return chanceWeighted(['white', 'green', 'blue', 'purple', 'gold'], [15, 25, 30, 20, 10]);
+    if (stage >= 8) return chanceWeighted(['white', 'green', 'blue'], [30, 40, 30]);
+    if (stage >= 4) return chanceWeighted(['white', 'green'], [50, 50]);
     return 'white';
   }
 
@@ -745,10 +798,17 @@
     var ids = Object.keys(pool);
     if (!ids.length) return null;
     opts = opts || {};
+    var classId = opts.classId;
+    if (classId == null && opts.filterForPlayer !== false && globalThis.G && G.player) {
+      classId = getPlayerClassId(G.player);
+    }
     if (opts.slot) {
       ids = ids.filter(function (id) { return pool[id].slot === opts.slot; });
-      if (!ids.length) return null;
     }
+    if (opts.filterForPlayer !== false && classId != null) {
+      ids = ids.filter(function (id) { return itemAllowedForPlayer(pool[id], classId); });
+    }
+    if (!ids.length) return null;
     return pool[ids[Math.floor(Math.random() * ids.length)]];
   }
 
@@ -756,8 +816,8 @@
     if (!item) return null;
     var tier = item.tier || 'white';
     var uiTier = tier === 'white' ? 'grey' : tier;
-    var tierLabels = { grey: 'Common', green: 'Uncommon', blue: 'Rare', purple: 'Epic', gold: 'Legendary' };
-    return {
+    var tierLabels = { grey: 'Common', green: 'Uncommon', blue: 'Rare', purple: 'Epic', gold: 'Legendary', orange: 'Ancestral' };
+    var card = {
       id: item.id,
       tier: uiTier,
       tierLabel: tierLabels[uiTier] || 'Common',
@@ -766,12 +826,16 @@
       name: item.name,
       desc: formatMutationDesc(item),
       mutationItemId: item.id,
+      slot: item.slot,
+      classRequired: item.classRequired || null,
       apply: function (p) {
         if (typeof Avian.mutations.addToInventory === 'function') {
           Avian.mutations.addToInventory(p, item.id);
         }
       },
     };
+    if (item.classRequired) card.classTag = String(item.classRequired);
+    return card;
   }
 
   function toShopOffer(item) {
@@ -787,38 +851,41 @@
     return item ? toShopOffer(item) : null;
   }
 
-  function rollUniqueFromTier(tier, used) {
+  function rollUniqueFromTier(tier, used, opts) {
+    opts = opts || {};
     var attempts = 50;
     while (attempts-- > 0) {
-      var drop = rollDrop(tier);
+      var drop = rollDrop(tier, opts);
       if (!drop) return null;
       if (used.has(drop.id)) continue;
       used.add(drop.id);
       return drop;
     }
-    var fallback = rollDrop(tier);
+    var fallback = rollDrop(tier, opts);
     if (fallback) used.add(fallback.id);
     return fallback;
   }
 
   function rollMutationShopTier(stage) {
     stage = Math.max(1, Number(stage) || 1);
-    if (stage >= 15) return chanceWeighted(['white', 'green', 'blue', 'purple'], [20, 30, 35, 15]);
-    if (stage >= 8) return chanceWeighted(['white', 'green', 'blue'], [35, 40, 25]);
-    if (stage >= 4) return chanceWeighted(['white', 'green'], [55, 45]);
+    if (stage >= 18) return chanceWeighted(['white', 'green', 'blue', 'purple', 'gold', 'orange'], [10, 15, 25, 25, 15, 10]);
+    if (stage >= 15) return chanceWeighted(['white', 'green', 'blue', 'purple', 'gold'], [15, 25, 30, 20, 10]);
+    if (stage >= 8) return chanceWeighted(['white', 'green', 'blue'], [30, 40, 30]);
+    if (stage >= 4) return chanceWeighted(['white', 'green'], [50, 50]);
     return 'white';
   }
 
-  function rollMutationStock(count, stage, used) {
+  function rollMutationStock(count, stage, used, opts) {
     used = used || new Set();
+    opts = Object.assign({ filterForPlayer: true }, opts || {});
     var offers = [];
-    var fallbackTiers = ['white', 'green', 'blue', 'purple', 'gold'];
+    var fallbackTiers = ALL_TIERS.slice();
     for (var i = 0; i < count; i++) {
       var tier = rollMutationShopTier(stage);
-      var picked = rollUniqueFromTier(tier, used);
+      var picked = rollUniqueFromTier(tier, used, opts);
       if (!picked) {
         for (var j = 0; j < fallbackTiers.length; j++) {
-          picked = rollUniqueFromTier(fallbackTiers[j], used);
+          picked = rollUniqueFromTier(fallbackTiers[j], used, opts);
           if (picked) break;
         }
       }
@@ -832,14 +899,15 @@
     return offers;
   }
 
-  function rollShopMutations(spec, used) {
+  function rollShopMutations(spec, used, opts) {
     used = used || new Set();
+    opts = Object.assign({ filterForPlayer: true }, opts || {});
     var offers = [];
     if (!spec) return offers;
     if (spec.tiers && spec.count) {
       for (var i = 0; i < spec.count; i++) {
         var tier = spec.tiers[Math.floor(Math.random() * spec.tiers.length)];
-        var picked = rollUniqueFromTier(tier, used);
+        var picked = rollUniqueFromTier(tier, used, opts);
         if (picked) offers.push(toShopOffer(picked));
       }
       return offers;
@@ -848,7 +916,7 @@
       if (tierKey === 'tiers' || tierKey === 'count') continue;
       var n = spec[tierKey];
       for (var j = 0; j < n; j++) {
-        var item = rollUniqueFromTier(tierKey, used);
+        var item = rollUniqueFromTier(tierKey, used, opts);
         if (item) offers.push(toShopOffer(item));
       }
     }
@@ -856,17 +924,23 @@
   }
 
   function rollMutationReward(opts) {
-    var tier = (opts && opts.tier) || rollTierForContext(opts || {});
-    var item = rollDrop(tier, opts || {});
+    opts = Object.assign({ filterForPlayer: true }, opts || {});
+    var tier = opts.tier || rollTierForContext(opts);
+    var item = rollDrop(tier, opts);
     return buildRewardCard(item);
   }
 
   function rollMutationRewardFromDropWeights(opts) {
+    opts = Object.assign({ filterForPlayer: true }, opts || {});
     var tier = rollTierFromDropWeights();
-    var item = rollDrop(tier, opts || {});
+    var item = rollDrop(tier, opts);
     return buildRewardCard(item);
   }
 
+  mutations.getPlayerClassId = getPlayerClassId;
+  mutations.itemAllowedForPlayer = itemAllowedForPlayer;
+  mutations.canPlayerEquipItem = canPlayerEquipItem;
+  mutations.ALL_TIERS = ALL_TIERS;
   mutations.getCatalog = getCatalog;
   mutations.getItem = getItem;
   mutations.createEmptyEquipped = createEmptyEquipped;

@@ -33,7 +33,8 @@
     if (lv === 6) return ['green', 'blue'];
     if (lv <= 8) return ['blue'];
     if (lv <= 11) return ['purple'];
-    return ['purple', 'gold'];
+    if (lv <= 14) return ['purple', 'gold'];
+    return ['purple', 'gold', 'orange'];
   }
 
   function rollNestMutationTier(level) {

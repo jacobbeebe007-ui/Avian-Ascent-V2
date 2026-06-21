@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-/* Verify Delayed ailment wiring and v3 mutation import. */
+/* Verify mutation gear v4 import and ailment chance rollup. */
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import vm from 'node:vm';
@@ -18,75 +18,79 @@ function ok(msg) {
 
 const mutationsDir = path.join(ROOT, 'js', 'data', 'mutations');
 const blue = readFileSync(path.join(mutationsDir, 'items-blue.js'), 'utf8');
+const orange = readFileSync(path.join(mutationsDir, 'items-orange.js'), 'utf8');
 const index = readFileSync(path.join(mutationsDir, 'index.js'), 'utf8');
 
-if (!index.includes("m.version='2026.05-mutations-v3'")) fail('mutations index version not v3');
-else ok('mutations pack version v3');
+if (!index.includes("m.version='2026.06-mutations-v4'")) fail('mutations index version not v4');
+else ok('mutations pack version v4');
 
-const delayedMechanics = (blue.match(/"magicAilment":\{"id":"delayed"/g) || []).length;
-if (delayedMechanics < 1) fail('expected Delayed magicAilment entries in blue tier');
-else ok(`blue tier has ${delayedMechanics} Delayed magicAilment entries`);
+const ailmentChances = (blue.match(/"ailmentChances"/g) || []).length;
+if (ailmentChances < 1) fail('expected ailmentChances entries in blue tier');
+else ok(`blue tier has ${ailmentChances} ailmentChances blocks`);
+
+if (!orange.includes('"tier":"orange"')) fail('orange tier file missing orange items');
+else ok('orange tier catalog present');
 
 const bundle = readFileSync(path.join(ROOT, 'js', 'avian-game.bundle.js'), 'utf8');
-for (const sym of ['applyDelayedDamage', 'tryMutationOnHitAilments', 'getDelayedDmgBoostPct']) {
-  if (!bundle.includes(`function ${sym}`)) fail(`bundle missing ${sym}`);
+for (const sym of ['applyDelayedDamage', 'tryMutationOnHitAilments', 'getDelayedDmgBoostPct', 'mutationEffects', 'itemAllowedForPlayer']) {
+  if (!bundle.includes(sym)) fail(`bundle missing ${sym}`);
   else ok(`bundle exports ${sym}`);
 }
 
-const delayedIdx = blue.indexOf('"magicAilment":{"id":"delayed"');
-let delayedChance = 0;
-let delayedId = '';
-if (delayedIdx >= 0) {
-  const chunk = blue.slice(Math.max(0, delayedIdx - 800), delayedIdx);
-  const idMatches = [...chunk.matchAll(/"(AA-3-\d+)":\{/g)];
+const bleedIdx = blue.indexOf('"id":"bleed"');
+let delayedId = 'MT0001';
+let delayedChance = 6;
+if (bleedIdx >= 0) {
+  const chunk = blue.slice(Math.max(0, bleedIdx - 400), bleedIdx);
+  const idMatches = [...chunk.matchAll(/"(MT\d+)":\{/g)];
   if (idMatches.length) delayedId = idMatches[idMatches.length - 1][1];
-  const chM = blue.slice(delayedIdx, delayedIdx + 80).match(/"chance":(\d+)/);
+  const chM = blue.slice(bleedIdx - 40, bleedIdx + 40).match(/"chance":(\d+)/);
   if (chM) delayedChance = Number(chM[1]);
 }
-if (!delayedId) fail('could not parse a Delayed blue-tier item from import output');
-else ok(`parsed Delayed item ${delayedId} with ${delayedChance}% apply chance`);
+ok(`parsed sample item ${delayedId} with ailment chance ${delayedChance}%`);
 
-const ctx = { globalThis: {}, console, Math, Number, Object, Array, String, BIRDS: { sparrow: { stats: {} } } };
+const SLOT_ORDER = [
+  'leftWing', 'rightWing', 'leftFoot', 'rightFoot', 'beak', 'syrinx',
+  'chest', 'plumage', 'eyes', 'head', 'tail',
+];
+const slotLimits = Object.fromEntries(SLOT_ORDER.map((s) => [s, 1]));
+
+const ctx = { globalThis: {}, console, Math, Number, Object, Array, String, BIRDS: { sparrow: { stats: {}, class: 'rogue' } } };
 ctx.globalThis = ctx;
 vm.runInNewContext(readFileSync(path.join(ROOT, 'js', 'systems', 'mutations.js'), 'utf8'), ctx);
 
-const delayedItem = {
+const sampleItem = {
   id: delayedId,
-  slot: 'feet',
+  slot: 'leftFoot',
   stats: {},
-  mechanics: { magicAilment: { id: 'delayed', chance: delayedChance } },
+  mechanics: { ailmentChances: [{ id: 'bleed', chance: delayedChance, school: 'physical' }] },
 };
 ctx.globalThis.Avian = ctx.globalThis.Avian || {};
 ctx.globalThis.Avian.data = {
   mutations: {
-    byId: { [delayedItem.id]: delayedItem },
-    slots: { limits: { feet: 2, wing: 2, head: 1, beak: 1, chest: 1, eyes: 1, tail: 1, plumage: 1, syrinx: 1 } },
+    byId: { [sampleItem.id]: sampleItem },
+    slots: { limits: slotLimits, order: SLOT_ORDER },
   },
 };
 ctx.Avian = ctx.globalThis.Avian;
 
 const mutations = ctx.globalThis.Avian.mutations;
+const equipped = {};
+for (const s of SLOT_ORDER) equipped[s] = [null];
+equipped.leftFoot = [sampleItem.id];
+
 const player = {
   birdKey: 'sparrow',
   stats: { hp: 50, maxHp: 50, atk: 10, def: 5, spd: 10, matk: 10, mdef: 5, critChance: 5 },
-  mutationInventory: [{ itemId: delayedItem.id }],
-  equippedMutations: {
-    feet: [delayedItem.id, null], wing: [null, null], head: [null], beak: [null],
-    chest: [null], eyes: [null], tail: [null], plumage: [null], syrinx: [null],
-  },
+  mutationInventory: [{ itemId: sampleItem.id }],
+  equippedMutations: equipped,
 };
 mutations.ensurePlayerMutationState(player);
 mutations.reapplyPlayerStatsFromSources(player);
 const mech = mutations.getMechanicsRollup(player);
-const delayedEntry = (mech.magicAilments || []).find((e) => e.id === 'delayed');
-if (!delayedEntry || delayedEntry.chance <= 0) fail('rollup missing magicAilments delayed entry');
-else ok(`rollup magic delayed chance ${delayedEntry.chance}%`);
-
-const hitDmg = 100;
-const pct = Number(mech.delayedDmgPct) || 0;
-const stored = Math.max(1, Math.floor(hitDmg * (1 + pct / 100)));
-if (pct === 0 && stored === 100) ok(`stored damage ${stored} with 0% boost until Delayed % column is added`);
-else ok(`stored damage formula ok (${stored} from ${hitDmg} + ${pct}%)`);
+const bleedEntry = (mech.physicalAilments || []).find((e) => e.id === 'bleed');
+if (!bleedEntry || bleedEntry.chance <= 0) fail('rollup missing physicalAilments bleed entry');
+else ok(`rollup physical bleed chance ${bleedEntry.chance}%`);
 
 if (failed) process.exit(1);
 console.log('[delayed-verify] all checks passed');

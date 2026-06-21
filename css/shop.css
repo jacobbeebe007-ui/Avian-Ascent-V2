@@ -31,6 +31,11 @@
   box-shadow: 0 0 18px rgba(201,168,76,.28), inset 0 0 12px rgba(201,168,76,.10);
   background: linear-gradient(180deg, rgba(201,168,76,.12), var(--surface));
 }
+#shop-items-grid .shop-item.tier-orange,
+#shop-items-grid .reward-card.tier-orange{
+  box-shadow: 0 0 20px rgba(232,120,48,.30), inset 0 0 12px rgba(232,120,48,.10);
+  background: linear-gradient(180deg, rgba(232,120,48,.14), var(--surface));
+}
 #shop-items-grid .shop-item:hover,
 #shop-items-grid .reward-card:hover{
   transform: translateY(-2px);

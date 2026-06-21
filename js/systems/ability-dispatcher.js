@@ -456,6 +456,9 @@
         : false;
       runPreRiders(row, ab);
       if (g) g._lastAbilityUtilitySucceeded = !!utilOk;
+      if (typeof Avian !== 'undefined' && Avian.mutationEffects && typeof Avian.mutationEffects.onUtilityUsed === 'function') {
+        Avian.mutationEffects.onUtilityUsed(!!utilOk);
+      }
       if (typeof logMsg === 'function') logMsg('🛡 ' + (row.name || ab.id) + (row.riderText ? ' — ' + row.riderText : ''), 'player-action');
       if (typeof refreshBattleUI === 'function') refreshBattleUI();
       return;
@@ -574,6 +577,16 @@
       g._lastAbilityHitsLanded = hitsLanded;
       g._lastAbilityAnyCrit = anyCrit;
       g._lastAbilityAilmentFailed = ailmentAttempted && !Object.keys(ailmentsApplied).length;
+    }
+
+    if (typeof Avian !== 'undefined' && Avian.mutationEffects) {
+      if (isMagic && typeof Avian.mutationEffects.onSongOrCall === 'function') {
+        Avian.mutationEffects.onSongOrCall(hitsLanded > 0);
+      }
+      if (typeof Avian.mutationEffects.onAfterPlayerAttack === 'function') {
+        var atkWeight = typeof getAbilityAttackWeight === 'function' ? getAbilityAttackWeight(ab, g && g.player) : null;
+        Avian.mutationEffects.onAfterPlayerAttack({ attackWeight: atkWeight, isMagic: isMagic, hitsLanded: hitsLanded, anyCrit: anyCrit });
+      }
     }
 
     if (typeof logMsg === 'function') {

@@ -92,3 +92,9 @@ Avian.systems.SAVE_SCHEMA_VERSION
 - Initializes `player.mutationInventory` and `player.equippedMutations` for the slot-based mutations/equipment system.
 - Clears legacy Endless run-modifier flags (`mutBloodMoon`, etc.) and `endlessRewards`.
 - Stamps `mutationsPackVersion` on the save blob.
+
+## v8 migration
+
+- Wipes `player.mutationInventory` and `player.equippedMutations` when upgrading from schema v7.
+- Required because the mutation gear overhaul replaces all item IDs, splits wing/feet into left/right slots, and bumps `mutationsPackVersion` to `2026.06-mutations-v4`.
+- Players keep their run progress; only equipped gear and stored mutation inventory are reset.

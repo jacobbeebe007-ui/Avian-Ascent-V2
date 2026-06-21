@@ -19,7 +19,7 @@
     blue: ['blue'],
     purple: ['purple'],
     gold: ['gold'],
-    orange: ['gold'],
+    orange: ['orange'],
     grey_green: ['white', 'green'],
     green_blue: ['green', 'blue'],
     blue_purple: ['blue', 'purple'],
@@ -36,6 +36,7 @@
     { id: 'purple', label: 'Purple' },
     { id: 'purple_gold', label: 'Purple & Gold' },
     { id: 'gold', label: 'Gold' },
+    { id: 'orange', label: 'Orange' },
   ];
 
   global.isForgeCombatNode = function (n) {
@@ -564,7 +565,7 @@
     },
   };
 
-  const MUT_BAND_WEIGHT = { grey: 1, grey_green: 2, green: 3, green_blue: 4, blue: 5, blue_purple: 6, purple: 7, purple_gold: 8, gold: 9 };
+  const MUT_BAND_WEIGHT = { grey: 1, grey_green: 2, green: 3, green_blue: 4, blue: 5, blue_purple: 6, purple: 7, purple_gold: 8, gold: 9, orange: 10 };
 
   global.summarizeMapSlice = function (slice, mapDef) {
     if (!slice?.nodes) return { combat: 0, worlds: 0, bonus: 0, shop: 0, avgMutTier: 0, bonusPower: [] };
