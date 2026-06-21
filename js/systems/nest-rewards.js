@@ -276,6 +276,26 @@
       g.collectedRewards.push({ id: drop.itemKey, icon: drop.icon, tier: drop.tier, name: drop.name, desc: drop.desc || '' });
       return true;
     }
+    if (drop.type === 'savedEggs') {
+      var eggCount = Math.max(1, Math.floor(Number(drop.count) || 1));
+      if (typeof global.addSavedEggs === 'function') global.addSavedEggs(eggCount);
+      if (typeof global.logMsg === 'function') {
+        global.logMsg('🥚 +' + eggCount + ' Saved Egg' + (eggCount > 1 ? 's' : '') + '!', 'exp-gain');
+      }
+      if (!g.collectedRewards) g.collectedRewards = [];
+      g.collectedRewards.push({ id: 'savedEggs', icon: drop.icon || '🥚', tier: drop.tier, name: drop.name, desc: drop.desc || '' });
+      return true;
+    }
+    if (drop.type === 'goldenGoose') {
+      var gooseCount = Math.max(1, Math.floor(Number(drop.count) || 1));
+      if (typeof global.addGoldenGooseEggs === 'function') global.addGoldenGooseEggs(gooseCount);
+      if (typeof global.logMsg === 'function') {
+        global.logMsg('🪿 +' + gooseCount + ' Golden Goose Egg' + (gooseCount > 1 ? 's' : '') + '!', 'exp-gain');
+      }
+      if (!g.collectedRewards) g.collectedRewards = [];
+      g.collectedRewards.push({ id: 'goldenGoose', icon: drop.icon || '🪿', tier: drop.tier, name: drop.name, desc: drop.desc || '' });
+      return true;
+    }
     return false;
   }
 
