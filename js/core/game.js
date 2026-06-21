@@ -5621,7 +5621,7 @@ function renderBirdIconHTML(birdKey, sizeClass, locked){
   if(k === 'mutatedpigeon'){
     return `<div class="sprite4 ${sizeClass||''} sprite-mutatedpigeon frame-0 ${locked?'locked':''}"></div>`;
   }
-  const spriteBirds = /^(sparrow|goose|blackbird|crow|macaw|robin|dove|hummingbird|shoebill|secretarybird|secretary|magpie|kookaburra|kiwi|penguin|flamingo|seagull|swan|emu|bowerbird|raven|lyrebird|peregrine|snowyowl|toucan|dukeblakiston|albatross|harpy|harpyeagle|baldeagle|blackcockatoo|ostrich|cassowary|barnowl|bluejay|bushturkey|bustard|cardinal|dodo|fairywren|finch|firecrest|galah|goldeneagle|pigeon)$/;
+  const spriteBirds = /^(sparrow|goose|blackbird|crow|macaw|robin|dove|hummingbird|shoebill|secretarybird|secretary|magpie|kookaburra|kiwi|penguin|flamingo|seagull|swan|emu|bowerbird|raven|lyrebird|peregrine|snowyowl|toucan|dukeblakiston|albatross|harpy|harpyeagle|baldeagle|blackcockatoo|ostrich|cassowary|barnowl|bluejay|bushturkey|bustard|cardinal|dodo|fairywren|finch|firecrest|galah|goldeneagle|pigeon|wagtail|chickadee)$/;
   if(spriteBirds.test(k)){
     return `<div class="sprite4 ${sizeClass||''} sprite-${k} frame-0 ${locked?'locked':''}"></div>`;
   }
@@ -17396,7 +17396,7 @@ wireThemeBgmAutoplayUnlock();
      3 power/buff
    ============================================================ */
 (function(){
-  const SPRITE_KEYS = new Set(['sparrow','goose','blackbird','crow','macaw','hummingbird','shoebill','secretarybird','secretary','magpie','kookaburra','kiwi','penguin','robin','dove','flamingo','seagull','swan','emu','bowerbird','raven','lyrebird','peregrine','snowyowl','toucan','dukeblakiston','albatross','harpy','harpyeagle','baldeagle','blackcockatoo','ostrich','cassowary','barnowl','bluejay','bushturkey','bustard','cardinal','dodo','fairywren','finch','firecrest','galah','goldeneagle','pigeon','mutatedpigeon']);
+  const SPRITE_KEYS = new Set(['sparrow','goose','blackbird','crow','macaw','hummingbird','shoebill','secretarybird','secretary','magpie','kookaburra','kiwi','penguin','robin','dove','flamingo','seagull','swan','emu','bowerbird','raven','lyrebird','peregrine','snowyowl','toucan','dukeblakiston','albatross','harpy','harpyeagle','baldeagle','blackcockatoo','ostrich','cassowary','barnowl','bluejay','bushturkey','bustard','cardinal','dodo','fairywren','finch','firecrest','galah','goldeneagle','pigeon','mutatedpigeon','wagtail','chickadee']);
   const CASTERS = new Set(['singer','trickster']);
 
   function normKey(k){
@@ -17538,7 +17538,7 @@ wireThemeBgmAutoplayUnlock();
    - Forces all UI locations using PORTRAITS[...] to show sprites
    ============================================================ */
 (function(){
-  const SPRITE_KEYS = ['sparrow','goose','blackbird','crow','macaw','hummingbird','shoebill','secretarybird','secretary','magpie','kookaburra','robin','kiwi','penguin','dove','flamingo','seagull','swan','emu','bowerbird','raven','lyrebird','peregrine','snowyowl','toucan','dukeblakiston','albatross','harpy','harpyeagle','baldeagle','blackcockatoo','ostrich','cassowary','barnowl','bluejay','bushturkey','bustard','cardinal','dodo','fairywren','finch','firecrest','galah','goldeneagle','pigeon','mutatedpigeon'];
+  const SPRITE_KEYS = ['sparrow','goose','blackbird','crow','macaw','hummingbird','shoebill','secretarybird','secretary','magpie','kookaburra','robin','kiwi','penguin','dove','flamingo','seagull','swan','emu','bowerbird','raven','lyrebird','peregrine','snowyowl','toucan','dukeblakiston','albatross','harpy','harpyeagle','baldeagle','blackcockatoo','ostrich','cassowary','barnowl','bluejay','bushturkey','bustard','cardinal','dodo','fairywren','finch','firecrest','galah','goldeneagle','pigeon','mutatedpigeon','wagtail','chickadee'];
   function mk(k, small=true){
     const cls = small ? 'sprite4 small' : 'sprite4';
     return `<div class="${cls} sprite-${k} frame-0"></div>`;
@@ -17680,6 +17680,8 @@ SPRITE_KEYS_ALL.add('magpie');
       SPRITE_KEYS_ALL.add('flamingo');
       SPRITE_KEYS_ALL.add('seagull');
       SPRITE_KEYS_ALL.add('bowerbird');
+      SPRITE_KEYS_ALL.add('wagtail');
+      SPRITE_KEYS_ALL.add('chickadee');
     }
   }catch(_){}
 })();
@@ -17694,7 +17696,7 @@ SPRITE_KEYS_ALL.add('magpie');
    - Adds small idle flutter + clearer attack/run/crouch cues
    ============================================================ */
 (function(){
-  const SPRITE_KEYS = new Set(['sparrow','goose','blackbird','crow','macaw','robin','hummingbird','shoebill','secretarybird','secretary','magpie','kookaburra','flamingo','seagull','swan','emu','penguin','bowerbird','raven','lyrebird','peregrine','snowyowl','toucan','dukeblakiston','albatross','harpy','harpyeagle','baldeagle','blackcockatoo','ostrich','cassowary','barnowl','bluejay','bushturkey','bustard','cardinal','dodo','fairywren','finch','firecrest','galah','goldeneagle','pigeon','mutatedpigeon']);
+  const SPRITE_KEYS = new Set(['sparrow','goose','blackbird','crow','macaw','robin','hummingbird','shoebill','secretarybird','secretary','magpie','kookaburra','flamingo','seagull','swan','emu','penguin','bowerbird','raven','lyrebird','peregrine','snowyowl','toucan','dukeblakiston','albatross','harpy','harpyeagle','baldeagle','blackcockatoo','ostrich','cassowary','barnowl','bluejay','bushturkey','bustard','cardinal','dodo','fairywren','finch','firecrest','galah','goldeneagle','pigeon','mutatedpigeon','wagtail','chickadee']);
   const CASTERS = new Set(['singer','trickster']);
 
   function normKey(k){
@@ -18097,7 +18099,8 @@ SPRITE_KEYS_ALL.add('magpie');
     'secretarybird','secretary','magpie','kookaburra','kiwi','penguin','flamingo','seagull',
     'swan','emu','bowerbird','raven','lyrebird','peregrine','snowyowl','toucan','dukeblakiston',
     'albatross','harpy','harpyeagle','baldeagle','blackcockatoo','ostrich','cassowary',
-    'barnowl','bluejay','bushturkey','bustard','cardinal','dodo','fairywren','finch','firecrest','galah','goldeneagle','pigeon'
+    'barnowl','bluejay','bushturkey','bustard','cardinal','dodo','fairywren','finch','firecrest','galah','goldeneagle','pigeon',
+    'wagtail','chickadee'
   ]);
   const norm = s => {
     const k = String(s || '').toLowerCase().replace(/[^a-z]/g,'');

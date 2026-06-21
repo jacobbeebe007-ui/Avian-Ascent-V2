@@ -3642,7 +3642,7 @@ html.avian-ow-nest-embed .nest-close{display:none!important;}
 .sprite-kookaburra{background-image:url("../assets/sprites/kookaburra.png");}
 .sprite-penguin{background-image:url("../assets/sprites/Emperor Penguin.png");}
 .sprite-emperorpenguin{background-image:url("../assets/sprites/Emperor Penguin.png");}
-.sprite-flamingo{background-image:url("../assets/sprites/Flamingo.png");}
+.sprite-flamingo{background-image:url("../assets/sprites/flamingo.png");}
 .sprite-seagull{background-image:url("../assets/sprites/Seagull.png");}
 .sprite-swan{background-image:url("../assets/sprites/swan.png");}
 .sprite-emu{background-image:url("../assets/sprites/emu.png");}
@@ -3674,6 +3674,10 @@ html.avian-ow-nest-embed .nest-close{display:none!important;}
 .sprite-goldeneagle{background-image:url("../assets/sprites/goldeneagle.png");}
 .sprite-pigeon{background-image:url("../assets/sprites/pigeon.png");}
 .sprite-mutatedpigeon{background-image:url("../assets/sprites/mutatedpigeon.png");}
+.sprite-wagtail{background-image:url("../assets/sprites/williewagtail.png");}
+.sprite-williewagtail{background-image:url("../assets/sprites/williewagtail.png");}
+.sprite-chickadee{background-image:url("../assets/sprites/chikadee.png");}
+.sprite-chikadee{background-image:url("../assets/sprites/chikadee.png");}
 /* Character Select portrait slot */
 .bird-portrait .sprite4.small{ margin:0 auto; display:block; }
 .bird-portrait .sprite4.locked{ filter: grayscale(1) brightness(0.35); }
