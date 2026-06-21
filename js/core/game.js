@@ -3438,6 +3438,10 @@ function continueRun() {
   ensurePassiveEvolutionState(G.player);
   if(typeof Avian?.mutations?.ensurePlayerMutationState==='function') Avian.mutations.ensurePlayerMutationState(G.player);
   if(typeof applyBirdCardProgression==='function') applyBirdCardProgression(G.player);
+  if(forgeMirror&&typeof applyBirdCardStats==='function'){
+    applyBirdCardStats(G.player, forgeMirror.tier, forgeMirror.stars);
+    G._forgeMirrorTarget=null;
+  }
   if(typeof Avian?.mutations?.reapplyPlayerStatsFromSources==='function') Avian.mutations.reapplyPlayerStatsFromSources(G.player);
   if(!Array.isArray(G.player.abilityInventory)) G.player.abilityInventory=[];
   G.player.mutatedFeatherCount=Math.max(0, Number(G.player.mutatedFeatherCount)||0);
@@ -13618,6 +13622,26 @@ function showRewardScreen(hasLevelUp) {
     :(typeof buildNestRewardDrops==='function'
       ? buildNestRewardDrops(defeated,{difficulty:G.difficulty,stage:getEncounterStage(),isBoss,storyMode:!G.endlessMode})
       : []);
+
+  if(!G._owForgeReturnToForge){
+    const savedEggCount=1+Math.floor(Math.random()*5);
+    drops.push({
+      type:'savedEggs',
+      count:savedEggCount,
+      tier:'gold',
+      icon:'🥚',
+      name:'Saved Eggs',
+      desc:`+${savedEggCount} added to your Fortune stash.`,
+    });
+    drops.push({
+      type:'goldenGoose',
+      count:1,
+      tier:'gold',
+      icon:'🪿',
+      name:'Golden Goose Egg',
+      desc:'+1 added to your Fortune stash.',
+    });
+  }
 
   G._nestRewardDrops=drops;
   G._defeatedEncounterBirds=[];
