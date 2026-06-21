@@ -373,15 +373,6 @@
     nextNode: '▶',
   };
 
-  function formatVariantSummary(enemyId) {
-    const row = (typeof global.getEnemyRosterRow === 'function' ? global.getEnemyRosterRow(enemyId) : null)
-      || (typeof global.getRosterRow === 'function' ? global.getRosterRow(enemyId) : null);
-    if (!row) return '';
-    let t = row.fantasyTitle || row.name || enemyId;
-    if (row.storyLevel) t += ' · Lv.' + row.storyLevel;
-    return t;
-  }
-
   function appendForgeLabelShape(g, cfg, vc, x, y) {
     const w = cfg.width || 80;
     const h = cfg.height || 36;
@@ -1745,9 +1736,6 @@
     renderClearRewardsList(n);
   }
 
-  function addShinyReward() { addClearReward(); }
-  function addMutReward() { addClearReward(); }
-
   function editWorldMap() {
     const n = _map?.nodes?.find((x) => x.id === _selectedId);
     if (!n || n.type !== 'world' || !n.worldId) return;
@@ -2207,9 +2195,9 @@
     if (!stats) {
       const hint = document.createElement('p');
       hint.className = 'map-forge-hint';
-      hint.textContent = slot.birdKey === 'random' && !slot.enemyId
-        ? 'Stats preview unavailable until species or variant is pinned.'
-        : 'Pick a specific bird to preview stats.';
+      hint.textContent = slot.birdKey === 'random'
+        ? 'Stats preview unavailable until a species is chosen (not Random).'
+        : 'Pick a species and tier/stars to preview stats.';
       panel.appendChild(hint);
       return;
     }
@@ -2507,8 +2495,6 @@
   global.exitWorldEditor = exitWorldEditor;
   global.deselectMapForgeNode = deselectNode;
   global.duplicateMapForgeNode = duplicateSelectedNode;
-  global.addMapForgeShinyReward = addShinyReward;
-  global.addMapForgeMutReward = addMutReward;
   global.undoMapForge = undoMapForge;
   global.redoMapForge = redoMapForge;
   global.playtestFromSelectedNode = playtestFromSelectedNode;
@@ -2543,7 +2529,6 @@
       playtestMapForge, activateMapForNextRun, deleteMapForgeNode: deleteSelectedNode,
       newMapForge, editWorldMap, exitWorldEditor,
       deselectMapForgeNode: deselectNode, duplicateMapForgeNode: duplicateSelectedNode,
-      addMapForgeShinyReward: addShinyReward, addMapForgeMutReward: addMutReward,
       undoMapForge, redoMapForge, playtestFromSelectedNode, fightMapForgeNode,
       confirmMapForgeDiscard, cancelMapForgeDiscard,
       copyMapForgeConfig, pasteMapForgeConfig, applyEncounterPreset,

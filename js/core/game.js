@@ -3422,7 +3422,14 @@ function continueRun() {
   G.collectedRewards=save.collectedRewards||[];
   G.player=save.player;
   const forgeMirror=G._owForgeNavMeta?.isForgeTest&&G._forgeMirrorTarget?.birdKey?G._forgeMirrorTarget:null;
-  if(forgeMirror) G.player.birdKey=forgeMirror.birdKey;
+  if(forgeMirror){
+    if(forgeMirror.birdKey!==save.player?.birdKey){
+      delete G.player.familyEvolutionState;
+      G.player.abilities=[];
+      G.player._appliedClassPerkIds=Object.fromEntries(getBirdClassPerks(forgeMirror.birdKey).map(id=>[id,true]));
+    }
+    G.player.birdKey=forgeMirror.birdKey;
+  }
   if(G.player?.birdKey && BIRDS[G.player.birdKey]?.size) G.player.size=BIRDS[G.player.birdKey].size;
   G.player.class = resolveFinalClass(G.player?.class, G.player?.birdKey);
   ensureFamilyEvolutionState(G.player);

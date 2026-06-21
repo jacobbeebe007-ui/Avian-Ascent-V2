@@ -256,11 +256,6 @@
       } else {
         if (typeof global.pickRandomForgeBirdKey === 'function') {
           out.push(global.pickRandomForgeBirdKey());
-        } else if (typeof global.pickRandomRosterIdAtLevel === 'function') {
-          const lv = Math.max(1, Math.min(20, Math.floor(Number(slot.enemyLevel) || st)));
-          const picked = global.pickRandomRosterIdAtLevel(lv, { isBoss: !!slot.isBoss });
-          if (picked) out.push(picked);
-          else out.push(pool[Math.floor(Math.random() * pool.length)]);
         } else {
           out.push(pool[Math.floor(Math.random() * pool.length)]);
         }
