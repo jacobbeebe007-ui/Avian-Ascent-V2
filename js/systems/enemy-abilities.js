@@ -1,5 +1,5 @@
 /**
- * Enemy skill evolution: base starters only unless player has mirrored mutations.
+ * Enemy skill materialization from workbook bird kits (7-slot / Stage 1-3).
  */
 (function initEnemyAbilities() {
   'use strict';
@@ -9,93 +9,45 @@
   Avian.systems = Avian.systems || {};
   var ns = Avian.systems.enemyAbilities = Avian.systems.enemyAbilities || {};
 
-  function getEnemyMutatedAbilityBudget(enemyLevel) {
-    var lv = Math.max(1, Math.floor(Number(enemyLevel) || 1));
-    if (lv <= 2) return { slots: 0, tiers: [] };
-    if (lv === 3) return { slots: 1, tiers: [1] };
-    if (lv <= 5) return { slots: 1, tiers: [1] };
-    if (lv === 6) return { slots: 2, tiers: [1, 1] };
-    if (lv <= 8) return { slots: 2, tiers: [1, 1] };
-    if (lv <= 11) return { slots: 2, tiers: [2, 1] };
-    return { slots: 2, tiers: [2, 2] };
+  function getEnemyUnlockedSlotCount(storyLevel) {
+    var lv = Math.max(1, Math.floor(Number(storyLevel) || 1));
+    if (lv <= 2) return 2;
+    if (lv <= 5) return 3;
+    if (lv <= 8) return 4;
+    if (lv <= 11) return 6;
+    return 7;
   }
 
-  function getPathBranchFromSlot(slot, birdKey) {
-    if (!slot || !slot.pathId) return null;
-    var pid = String(slot.pathId).toLowerCase();
-    if (pid === 'power' || pid === 'ailment' || pid === 'utility') return pid;
-    var pathDef = typeof global.getSkillSlotPathDef === 'function'
-      ? global.getSkillSlotPathDef(slot, birdKey)
-      : null;
-    if (pathDef && pathDef.pathId) return String(pathDef.pathId).toLowerCase();
-    return pid;
+  function slotBiasScore(slotIndex, family, rosterRow) {
+    var bias = String((rosterRow && rosterRow.abilityBias) || '').toLowerCase();
+    var pack = String((rosterRow && rosterRow.suggestedAbilityPack) || '').toLowerCase();
+    var hay = bias + ' ' + pack;
+    if (!hay.trim()) return 0;
+    var fam = family || {};
+    var role = String(fam.role || '').toLowerCase();
+    var score = 0;
+    if (/light|quick|peck|jab/.test(hay) && slotIndex < 2) score += 2;
+    if (/heavy|slam|ultimate|special/.test(hay) && slotIndex >= 4) score += 2;
+    if (/bleed/.test(hay) && /bleed|cut|slash|skewer/.test(role)) score += 2;
+    if (/poison|toxic/.test(hay) && /poison|toxic|venom/.test(role)) score += 2;
+    if (/burn|scorch|ember/.test(hay) && /burn|ember|fire/.test(role)) score += 2;
+    if (/control|debuff|weaken|fear/.test(hay) && /purple|utility|aspect|class/.test(role)) score += 1;
+    if (/finisher|execute/.test(hay) && slotIndex >= 4) score += 1;
+    return score;
   }
 
-  function chooseEquivalentPathForSlot(slot, branch, birdKey, cls) {
-    if (!slot || !branch) return null;
-    var family = typeof global.getSkillSlotFamilyDef === 'function'
-      ? global.getSkillSlotFamilyDef(slot, birdKey)
-      : null;
-    if (family && family.paths && family.paths[branch]) return branch;
-    var options = typeof global.getSkillEvolutionPathOptions === 'function'
-      ? global.getSkillEvolutionPathOptions(slot, birdKey) || []
-      : [];
-    for (var i = 0; i < options.length; i++) {
-      if (String(options[i].pathId).toLowerCase() === branch) return options[i].pathId;
-    }
-    if (typeof global.chooseStoryPathForSlot === 'function') {
-      return global.chooseStoryPathForSlot(slot, birdKey, cls || 'striker');
-    }
-    return options[0] ? options[0].pathId : null;
+  function mutationStageForEnemySlot(storyLevel, slotIndex, family, rosterRow) {
+    var lv = Math.max(1, Math.floor(Number(storyLevel) || 1));
+    var base = 1;
+    if (lv >= 12) base = 3;
+    else if (lv >= 6) base = 2;
+    var bias = slotBiasScore(slotIndex, family, rosterRow);
+    if (bias >= 2 && lv >= 9 && base < 3) base = 3;
+    else if (bias >= 1 && lv >= 4 && base < 2) base = 2;
+    return Math.max(1, Math.min(3, base));
   }
 
-  function getPlayerMutatedSlots(player) {
-    if (!player) return [];
-    var slots = typeof global.getSkillSlots === 'function' ? global.getSkillSlots(player) : [];
-    return slots
-      .filter(function (slot) { return !!(slot && slot.pathId); })
-      .sort(function (a, b) { return (a.slotIndex || 0) - (b.slotIndex || 0); });
-  }
-
-  function mirrorPlayerMutationsToEnemy(enemy, player, budget, enemyBirdKey, enemyClass) {
-    if (!enemy || !player || !budget || budget.slots <= 0) return false;
-    var mutated = getPlayerMutatedSlots(player);
-    if (!mutated.length) return false;
-
-    var birdKey = String(enemyBirdKey || enemy.birdKey || 'sparrow');
-    var cls = String(enemyClass || enemy.enemyClass || 'striker').toLowerCase();
-    var slots = enemy.familyEvolutionState && enemy.familyEvolutionState.skillSlots;
-    if (!Array.isArray(slots) || !slots.length) return false;
-
-    var count = Math.min(mutated.length, budget.slots, slots.length);
-    var playerBirdKey = player.birdKey || 'sparrow';
-
-    for (var i = 0; i < count; i++) {
-      var playerSlot = mutated[i];
-      var enemySlot = slots.find(function (s) { return s.slotIndex === playerSlot.slotIndex; })
-        || slots[i];
-      if (!enemySlot) continue;
-
-      var branch = getPathBranchFromSlot(playerSlot, playerBirdKey);
-      if (!branch) continue;
-
-      var pathId = chooseEquivalentPathForSlot(enemySlot, branch, birdKey, cls);
-      if (!pathId || typeof global.applySkillPathSelection !== 'function') continue;
-
-      global.applySkillPathSelection(enemySlot, pathId, enemy);
-
-      var targetTier = Math.max(1, Math.floor(Number(budget.tiers[i]) || 1));
-      while ((enemySlot.tier || 0) < targetTier) {
-        if (typeof global.slotCanTierUp === 'function' && !global.slotCanTierUp(enemySlot, birdKey)) break;
-        if (typeof global.autoUpgradeSkillSlotTier !== 'function') break;
-        var upgraded = global.autoUpgradeSkillSlotTier(enemySlot, enemy);
-        if (!upgraded) break;
-      }
-    }
-    return true;
-  }
-
-  function materializeEnemySkillsFromPlayerMirror(enemy, birdKey, enemyLevel, player, enemyClass) {
+  function materializeEnemySkillsFromWorkbookKit(enemy, birdKey, enemyLevel, enemyClass, rosterRow) {
     if (!enemy || !birdKey) return false;
     if (typeof global.usesFamilySkillEvolution !== 'function' || !global.usesFamilySkillEvolution({ birdKey: birdKey })) {
       return false;
@@ -108,43 +60,63 @@
     if (!enemy.familyEvolutionState || typeof enemy.familyEvolutionState !== 'object') {
       enemy.familyEvolutionState = {};
     }
-    enemy.familyEvolutionState.skillSlots = baseSlots.map(function (b) {
-      return typeof global.normalizeSkillSlotState === 'function'
-        ? global.normalizeSkillSlotState(JSON.parse(JSON.stringify(b)), b, birdKey)
-        : b;
+
+    var unlockedCount = getEnemyUnlockedSlotCount(enemyLevel);
+    var slots = baseSlots.map(function (base, idx) {
+      var slot = typeof global.normalizeSkillSlotState === 'function'
+        ? global.normalizeSkillSlotState(JSON.parse(JSON.stringify(base)), base, birdKey)
+        : base;
+      if (idx >= unlockedCount) {
+        return typeof global.createSkillSlotState === 'function'
+          ? global.createSkillSlotState(slot.slotIndex, slot.familyId, 'mutation', 0, '', 0, [])
+          : slot;
+      }
+      var fam = typeof global.getSkillSlotFamilyDef === 'function'
+        ? global.getSkillSlotFamilyDef(slot, birdKey)
+        : null;
+      var stage = mutationStageForEnemySlot(enemyLevel, idx, fam, rosterRow);
+      if (fam && fam.mutations) {
+        var abId = fam.mutations[String(stage)] || fam.baseAbilityId || slot.abilityId;
+        slot.pathId = 'mutation';
+        slot.mutationStage = stage;
+        slot.tier = Math.max(0, stage - 1);
+        slot.abilityId = abId;
+      } else if (fam && fam.baseAbilityId) {
+        slot.abilityId = fam.baseAbilityId;
+        slot.pathId = 'mutation';
+      }
+      return slot;
     });
 
-    var budget = getEnemyMutatedAbilityBudget(enemyLevel);
-    if (budget.slots > 0 && player) {
-      mirrorPlayerMutationsToEnemy(enemy, player, budget, birdKey, enemyClass);
-    }
-
+    enemy.familyEvolutionState.skillSlots = slots;
     if (typeof global.syncPlayerAbilitiesFromSkillSlots === 'function') {
       global.syncPlayerAbilitiesFromSkillSlots(enemy);
     }
     return true;
   }
 
+  function materializeEnemySkillsFromPlayerMirror(enemy, birdKey, enemyLevel, player, enemyClass) {
+    return materializeEnemySkillsFromWorkbookKit(enemy, birdKey, enemyLevel, enemyClass, null);
+  }
+
   function inferAIPersonalityFromClass(cls) {
     var c = String(cls || 'striker').toLowerCase();
-    if (c === 'striker') return 'aggressive';
-    if (c === 'singer') return 'seer';
-    if (c === 'trickster') return 'control';
-    if (c === 'tank') return 'tank';
-    if (c === 'predator') return 'predator';
-    if (c === 'bruiser') return 'tactical';
+    if (c === 'striker' || c === 'rogue') return 'aggressive';
+    if (c === 'singer' || c === 'siren' || c === 'mage') return 'seer';
+    if (c === 'trickster' || c === 'bard') return 'control';
+    if (c === 'tank' || c === 'knight') return 'tank';
+    if (c === 'predator' || c === 'inquisitor') return 'predator';
+    if (c === 'bruiser' || c === 'brute') return 'tactical';
     return 'tactical';
   }
 
-  ns.getEnemyMutatedAbilityBudget = getEnemyMutatedAbilityBudget;
-  ns.getPathBranchFromSlot = getPathBranchFromSlot;
-  ns.chooseEquivalentPathForSlot = chooseEquivalentPathForSlot;
-  ns.mirrorPlayerMutationsToEnemy = mirrorPlayerMutationsToEnemy;
+  ns.getEnemyUnlockedSlotCount = getEnemyUnlockedSlotCount;
+  ns.materializeEnemySkillsFromWorkbookKit = materializeEnemySkillsFromWorkbookKit;
   ns.materializeEnemySkillsFromPlayerMirror = materializeEnemySkillsFromPlayerMirror;
   ns.inferAIPersonalityFromClass = inferAIPersonalityFromClass;
 
-  global.getEnemyMutatedAbilityBudget = getEnemyMutatedAbilityBudget;
-  global.mirrorPlayerMutationsToEnemy = mirrorPlayerMutationsToEnemy;
+  global.getEnemyUnlockedSlotCount = getEnemyUnlockedSlotCount;
+  global.materializeEnemySkillsFromWorkbookKit = materializeEnemySkillsFromWorkbookKit;
   global.materializeEnemySkillsFromPlayerMirror = materializeEnemySkillsFromPlayerMirror;
   global.inferAIPersonalityFromClass = inferAIPersonalityFromClass;
 })();

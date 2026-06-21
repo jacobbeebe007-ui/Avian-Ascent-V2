@@ -1120,6 +1120,9 @@ function applyClassPerksToStats(birdKey, player=G.player){
 }
 
 function applyClassPerksToCombatContext(birdKey, context={}){
+  if(typeof Avian?.classPerks?.getClassPerkCombatContext==='function'){
+    return Avian.classPerks.getClassPerkCombatContext(birdKey);
+  }
   const owned=new Set(getBirdClassPerks(birdKey));
   const out={...context};
   out.piercingTempo = owned.has('piercingTempo');
@@ -2259,7 +2262,7 @@ function buildNestAbilitySection(player){
     const isSelected=selectedSlot===slot.slotIndex;
     const action=slot.abilityId?resolveSkillSlotEvolutionAction(slot, player):'none';
     const mutateEnabled=!locked && canMutate && action!=='none';
-    const tmpl=slot.abilityId?(ABILITY_TEMPLATES[slot.abilityId]||{}):{};
+    const tmpl=slot.abilityId?(getAbilityTemplateForUI(slot.abilityId)||{}):{};
     const desc=tmpl.levels?.[0]?.desc||tmpl.desc||'';
     const lockAttrs=locked?' aria-disabled="true" title="Story battle loadouts are locked until victory."':'';
     equippedHtml+=`<div class="nest-ab-slot-card${isSelected?' selected':''}${!slot.abilityId?' empty':''}${locked?' is-locked':''}" data-nest-ab-slot="${slot.slotIndex}"${lockAttrs}>
@@ -2282,8 +2285,8 @@ function buildNestAbilitySection(player){
     });
     vaultHtml+='</div>';
   }
-  const slotHint=locked?'Story battle loadouts are locked until victory. Equip abilities from rewards or the overworld Nest.':(selectedSlot!=null?`Selected slot ${selectedSlot+1} for equip.`:'Click a flex slot (3–4) to select, then click a vault ability to equip.');
-  return `<div class="nest-section nest-ability-section${locked?' nest-equip-locked':''}"><div class="nest-section-title">⚔ Abilities · 🪶 Mutated Feathers: ${featherCt}</div>${locked?'<p class="nest-lock-note">Loadout locked during Story battle.</p>':''}<div class="nest-ledger-subtitle">Equipped loadout</div><div class="nest-abilities-grid">${equippedHtml}</div><div class="nest-ledger-subtitle">Ability vault (${inv.length})</div>${vaultHtml}<p class="nest-ledger-note">${slotHint} Starter slots (1–2) mutate with feathers but stay fixed. Flex slots (3–4) hold shop abilities.</p></div>`;
+  const slotHint=locked?'Story battle loadouts are locked until victory. Equip abilities from rewards or the overworld Nest.':(selectedSlot!=null?`Selected slot ${selectedSlot+1} for equip.`:'Slots 1-2 are starters. Green-Orange slots unlock as you advance (stage 3/6/9/12/15). Use Mutated Feathers to advance S1-S3 mutations.');
+  return `<div class="nest-section nest-ability-section${locked?' nest-equip-locked':''}"><div class="nest-section-title">⚔ Abilities · 🪶 Mutated Feathers: ${featherCt}</div>${locked?'<p class="nest-lock-note">Loadout locked during Story battle.</p>':''}<div class="nest-ledger-subtitle">Equipped loadout</div><div class="nest-abilities-grid">${equippedHtml}</div><div class="nest-ledger-subtitle">Ability vault (${inv.length})</div>${vaultHtml}<p class="nest-ledger-note">${slotHint} Starter slots (1-2) mutate with feathers through Stage 1-3. Unlock slots 3-7 by reaching higher stages.</p></div>`;
 }
 
 function setNestMutateConfirmVisible(visible, enabled){
@@ -2847,6 +2850,48 @@ const SKILL_EVOLUTION_LEVEL_INTERVAL = 3;
 const FAMILY_EVOLUTION_STATE_VERSION = 13; /* bumped for combat rewrite: wipes legacy family-evolution state */
 /* Combat rewrite: all legacy *_SKILL_SLOT_LAYOUT / *_SKILL_FAMILIES consts and FAMILY_EVOLUTION_BIRD_DATA literal removed. js/systems/combat-pack-boot.js rebuilds FAMILY_EVOLUTION_BIRD_DATA from Avian.data.combatPack at startup. */
 const FAMILY_EVOLUTION_BIRD_DATA = Object.create(null);
+const WORKBOOK_UNLOCK_TIER_STAGES = Object.freeze({
+  'Starter': 1,
+  'Green Aspect': 3,
+  'Blue Class': 6,
+  'Purple Utility': 9,
+  'Gold Special': 12,
+  'Orange Ultimate': 15,
+});
+function normalizeWorkbookUnlockTier(tier){
+  const t=String(tier||'Starter').trim();
+  if(WORKBOOK_UNLOCK_TIER_STAGES[t]!=null) return t;
+  const low=t.toLowerCase();
+  if(low.includes('starter')||low.includes('basic')) return 'Starter';
+  if(low.includes('green')||low.includes('aspect')) return 'Green Aspect';
+  if(low.includes('blue')||low.includes('class')) return 'Blue Class';
+  if(low.includes('purple')||low.includes('utility')) return 'Purple Utility';
+  if(low.includes('gold')||low.includes('special')) return 'Gold Special';
+  if(low.includes('orange')||low.includes('ultimate')) return 'Orange Ultimate';
+  return 'Starter';
+}
+function getUnlockStageForWorkbookTier(tier){
+  return WORKBOOK_UNLOCK_TIER_STAGES[normalizeWorkbookUnlockTier(tier)]||1;
+}
+function getMutationStageFromAbilityId(abilityId, family){
+  const m=/_S(\d+)$/.exec(String(abilityId||''));
+  if(m) return Number(m[1])||1;
+  const muts=family?.mutations;
+  if(muts){
+    for(const [stage,id] of Object.entries(muts)){
+      if(id===abilityId) return Number(stage)||1;
+    }
+  }
+  return 1;
+}
+function isSkillSlotUnlocked(slot, player){
+  if(!slot) return false;
+  const fam=getSkillSlotFamilyDef(slot, player?.birdKey||G.player?.birdKey);
+  const tier=fam?.unlockTier||'Starter';
+  const needStage=getUnlockStageForWorkbookTier(tier);
+  const curStage=Math.max(1, Number(G?.stage)||1, Number(player?.birdLevel)||1);
+  return curStage>=needStage;
+}
 function buildFamilySkillAbilityLookup(slotLayout, families){
   const out = Object.create(null);
   if (Array.isArray(slotLayout)){
@@ -2864,6 +2909,11 @@ function buildFamilySkillAbilityLookup(slotLayout, families){
           if(prev && prev.pathId===null && prev.tier===0 && tier>=1) continue;
           out[abilityId] = {familyId:family.familyId, pathId:path.pathId, tier, abilityId};
         }
+      }
+      for(const [stageKey, abilityId] of Object.entries(family.mutations||{})){
+        if(!abilityId) continue;
+        const stage=Number(stageKey)||1;
+        out[abilityId] = {familyId:family.familyId, pathId:'mutation', tier:Math.max(0,stage-1), mutationStage:stage, abilityId};
       }
     }
   }
@@ -2986,10 +3036,16 @@ function getSkillEvolutionPathOptions(slot, birdKey='sparrow'){
   });
 }
 function slotNeedsPathChoice(slot){
+  const fam=getSkillSlotFamilyDef(slot, G.player?.birdKey);
+  if(fam?.mutations) return false;
   return !!(slot && slot.familyId && !slot.pathId);
 }
 function slotCanTierUp(slot, birdKey='sparrow'){
   const family = getSkillSlotFamilyDef(slot, birdKey);
+  if(family?.mutations){
+    const stage=getMutationStageFromAbilityId(slot?.abilityId, family);
+    return stage < (family.maxMutationStage||3);
+  }
   return !!(slot && family && slot.pathId && (slot.tier||0) < (family.maxTier||3));
 }
 function isSkillSlotMaxTier(slot, birdKey='sparrow'){
@@ -3004,6 +3060,14 @@ function resolveSkillSlotEvolutionAction(slot, player=G.player){
 }
 function applySkillPathSelection(slot, pathId, player=G.player){
   if(!slot || !player) return null;
+  const family=getSkillSlotFamilyDef(slot, player.birdKey);
+  if(family?.mutations){
+    slot.pathId='mutation';
+    slot.tier=0;
+    slot.mutationStage=1;
+    slot.abilityId=family.mutations['1']||family.baseAbilityId||slot.abilityId;
+    return slot;
+  }
   const path = getSkillSlotFamilyDef(slot, player.birdKey)?.paths?.[pathId];
   if(!path) return null;
   slot.pathId = pathId;
@@ -3013,6 +3077,17 @@ function applySkillPathSelection(slot, pathId, player=G.player){
 }
 function autoUpgradeSkillSlotTier(slot, player=G.player){
   if(!slot || !slotCanTierUp(slot, player?.birdKey)) return null;
+  const family=getSkillSlotFamilyDef(slot, player?.birdKey);
+  if(family?.mutations){
+    const curStage=getMutationStageFromAbilityId(slot.abilityId, family);
+    const nextStage=Math.min(family.maxMutationStage||3, curStage+1);
+    const nextId=family.mutations[String(nextStage)]||(`${family.familyId}_S${nextStage}`);
+    slot.pathId='mutation';
+    slot.mutationStage=nextStage;
+    slot.tier=Math.max(0, nextStage-1);
+    slot.abilityId=nextId;
+    return slot;
+  }
   const nextTier = (slot.tier||0) + 1;
   const path = getSkillSlotPathDef(slot, player?.birdKey);
   if(!path?.abilities?.[nextTier]) return null;
@@ -3034,7 +3109,8 @@ function applySkillSlotMastery(slot, masteryId, player=G.player){
   return pick;
 }
 function ensureAbilityObjectFromTemplate(id, existing=null, slotIndex=null, energyCostPlayer=null){
-  const tmpl = ABILITY_TEMPLATES?.[id] || {};
+  const canon=(typeof resolveAbilityAliasSourceId==='function')?resolveAbilityAliasSourceId(id):id;
+  const tmpl = ABILITY_TEMPLATES?.[canon] || ABILITY_TEMPLATES?.[id] || {};
   const level = Math.max(1, Number(existing?.level || 1));
   const idChanged = existing?.id && existing.id !== id;
   const preserved = idChanged ? { level: existing.level } : existing;
@@ -3064,6 +3140,7 @@ function syncPlayerAbilitiesFromSkillSlots(player){
   const out=[];
   for(const slot of slots){
     if(!slot.abilityId) continue;
+    if(!isSkillSlotUnlocked(slot, player)) continue;
     if(seenAbilityIds.has(slot.abilityId)){
       try{ console.warn('[abilities] duplicate skill slot abilityId='+slot.abilityId+' slot='+slot.slotIndex); }catch(_){}
       continue;
@@ -3120,7 +3197,15 @@ function ensureFamilyEvolutionState(player){
           }
           return slot;
         });
-    state.skillSlots = baseSlots.map((baseSlot, idx)=>normalizeSkillSlotState(rawSlots[idx], baseSlot, birdKey));
+    state.skillSlots = baseSlots.map((baseSlot, idx)=>{
+      const normalized=normalizeSkillSlotState(rawSlots[idx], baseSlot, birdKey);
+      const fam=getSkillSlotFamilyDef(normalized, birdKey);
+      if(fam?.mutations && !normalized.pathId) normalized.pathId='mutation';
+      if(!isSkillSlotUnlocked(normalized, player)){
+        return createSkillSlotState(normalized.slotIndex, normalized.familyId, fam?.mutations?'mutation':null, 0, '', 0, []);
+      }
+      return normalized;
+    });
     (player.abilities||[]).forEach((ab, idx)=>{
       if(!ab?.id) return;
       const slot = state.skillSlots[idx];
@@ -4358,14 +4443,19 @@ function getOwEnemySkillDepthFromTierBand(band){
   return{evolvedSlots:budget.slots||0,upgrades:0,levelHint};
 }
 /**
- * Fill enemy.abilities from base starters + player-mirrored mutations (when player has evolved slots).
+ * Fill enemy.abilities from workbook bird kit (scaled by story level + roster bias).
  */
 function materializeEnemyFamilySkillSlots(enemy, birdKey, enemyClass, evolvedSlotCount, upgradeCount){
   void upgradeCount;
+  void evolvedSlotCount;
   const level=Number.isFinite(enemy?.storyLevel)?enemy.storyLevel
-    :(Number.isFinite(enemy?.effectiveLevel)?enemy.effectiveLevel:Math.max(1,Math.floor(Number(evolvedSlotCount)||1)*3));
+    :(Number.isFinite(enemy?.effectiveLevel)?enemy.effectiveLevel:Math.max(1,Math.floor(Number(G?.stage)||1)));
+  const rosterRow=enemy?.rosterId&&typeof getRosterRow==='function'?getRosterRow(enemy.rosterId):null;
+  if(typeof materializeEnemySkillsFromWorkbookKit==='function'){
+    return materializeEnemySkillsFromWorkbookKit(enemy,birdKey,level,enemyClass||enemy?.enemyClass,rosterRow||enemy);
+  }
   if(typeof materializeEnemySkillsFromPlayerMirror==='function'){
-    return materializeEnemySkillsFromPlayerMirror(enemy,birdKey,level,G.player,enemyClass||enemy?.enemyClass);
+    return materializeEnemySkillsFromPlayerMirror(enemy,birdKey,level,null,enemyClass||enemy?.enemyClass);
   }
   return false;
 }
@@ -4411,8 +4501,10 @@ function buildStoryEnemyFromBirdKey(birdKey, stage, opts={}){
   const featherTotal=3*level;
   for(let i=0;i<featherTotal;i++) applyEnemyFeatherFromPlayerMirror(stats,cls);
   const enemyStub={birdKey, abilities:[], familyEvolutionState:{}};
-  if(typeof materializeEnemySkillsFromPlayerMirror==='function'){
-    materializeEnemySkillsFromPlayerMirror(enemyStub,birdKey,level,G.player,cls);
+  if(typeof materializeEnemySkillsFromWorkbookKit==='function'){
+    materializeEnemySkillsFromWorkbookKit(enemyStub,birdKey,level,cls,null);
+  } else if(typeof materializeEnemySkillsFromPlayerMirror==='function'){
+    materializeEnemySkillsFromPlayerMirror(enemyStub,birdKey,level,null,cls);
   }
   const evolvedSlots=getStoryEvolvedSlotCount(level);
   const diffMult = DIFFICULTIES[G.difficulty||'juvenile']?.mult || 1;
@@ -7761,7 +7853,8 @@ function getAbilityTemplateForUI(abOrId){
   const isObj=abOrId&&typeof abOrId==='object';
   const id=isObj?String(abOrId.id||''):String(abOrId||'');
   if(!id) return null;
-  const t=ABILITY_TEMPLATES?.[id];
+  const canon=typeof resolveAbilityAliasSourceId==='function'?resolveAbilityAliasSourceId(id):id;
+  const t=ABILITY_TEMPLATES?.[canon]||ABILITY_TEMPLATES?.[id];
   if(t) return t;
   if(isObj&&(abOrId.name||abOrId.desc||Array.isArray(abOrId.levels))){
     return {
@@ -8445,12 +8538,20 @@ function buildActionTooltipHTML(ab){
   if(packRow?.tags?.length){
     html+=`<div class="tt-row"><span class="tt-lbl">Tags</span><span class="tt-val">${packRow.tags.join(', ')}</span></div>`;
   }
-  if(packRow?.aspectAffinity && !/none|class-neutral|neutral/i.test(String(packRow.aspectAffinity))){
-    html+=`<div class="tt-row"><span class="tt-lbl">Aspect</span><span class="tt-val">${packRow.aspectAffinity}</span></div>`;
-  }else if(typeof getEntityAspect==='function' && G?.player && G?.enemy){
-    const matchup=typeof getAspectMatchupLabel==='function'?getAspectMatchupLabel(G.player,G.enemy):'';
-    const asp=getEntityAspect(G.player);
-    if(asp) html+=`<div class="tt-row"><span class="tt-lbl">Your Aspect</span><span class="tt-val">${asp}${matchup?' · '+matchup:''}</span></div>`;
+  if (isDamaging) {
+    const abilityAsp = resolveAbilityAspectForDisplay(ab, G?.player);
+    if (abilityAsp) {
+      const aspLabel = formatAspectDisplayName(abilityAsp);
+      let matchupHint = '';
+      if (G?.enemy && typeof getAspectRelationship === 'function') {
+        const rel = getAspectRelationship(getEntityAspect(G.player), getEntityAspect(G.enemy), packRow);
+        if (rel === 'Strong') matchupHint = ' · Strong vs enemy';
+        else if (rel === 'Weak') matchupHint = ' · Weak vs enemy';
+      }
+      html += `<div class="tt-row"><span class="tt-lbl">Aspect</span><span class="tt-val">${aspLabel}${matchupHint}</span></div>`;
+    }
+  } else if (packRow?.aspectAffinity && !/none|class-neutral|neutral/i.test(String(packRow.aspectAffinity))) {
+    html += `<div class="tt-row"><span class="tt-lbl">Aspect Affinity</span><span class="tt-val">${packRow.aspectAffinity}</span></div>`;
   }
   if (hit!==null) html+=`<div class="tt-row"><span class="tt-lbl">Hit</span><span class="tt-val ${hitClass}">${hit}%</span></div>`;
   if (isDamaging) {
@@ -8908,6 +9009,102 @@ function getCrowDefendCooldown(ab) {
   if (ab.level>=4) return 0;
   if (ab.level>=2) return 1;
   return 2;
+}
+
+function logAspectMatchupFeedback(components) {
+  if (!components) return;
+  const rel = components.aspectRelationship || '';
+  if (rel === 'Strong') logMsg('It was Aspect-strong! Damage increased.', 'system');
+  else if (rel === 'Weak') logMsg('It was Aspect-weak. Damage reduced.', 'system');
+  else if ((rel === 'Neutral' || rel === 'Same') && globalThis.Avian?.debug?.enabled) {
+    logMsg(`Aspect matchup: ${rel}.`, 'system');
+  }
+}
+
+function getAspectDefinition(aspectId) {
+  const id = String(aspectId || '').trim().toLowerCase();
+  if (!id) return null;
+  const defs = globalThis.Avian?.data?.aspects?.definitions;
+  return defs && defs[id] ? defs[id] : null;
+}
+
+function formatAspectDisplayName(aspectId) {
+  const def = getAspectDefinition(aspectId);
+  if (def?.name) return def.name;
+  const id = String(aspectId || '').trim();
+  if (!id) return '';
+  return id.charAt(0).toUpperCase() + id.slice(1);
+}
+
+function buildAspectTooltipHTML(aspectId) {
+  const id = String(aspectId || '').trim().toLowerCase();
+  if (!id) return '';
+  const def = getAspectDefinition(id);
+  if (!def) return '';
+  const strong = (def.strongAgainst || []).map(formatAspectDisplayName).join(', ') || '—';
+  const weak = (def.weakAgainst || []).map(formatAspectDisplayName).join(', ') || '—';
+  let html = `<div class="tt-name">${escapeHtmlRoster(def.name || id)}</div>`;
+  html += `<div class="tt-desc">${escapeHtmlRoster(def.description || def.theme || '')}</div>`;
+  html += `<div class="tt-row"><span class="tt-lbl">Strong against</span><span class="tt-val">${escapeHtmlRoster(strong)}</span></div>`;
+  html += `<div class="tt-row"><span class="tt-lbl">Weak against</span><span class="tt-val">${escapeHtmlRoster(weak)}</span></div>`;
+  if (window._isTouchDevice) html += richTooltipCloseBtn();
+  return html;
+}
+
+function resolveAbilityAspectForDisplay(ability, attacker) {
+  const row = ability ? (resolveAbilityCombatRow(ability) || ability) : null;
+  if (row && typeof resolveAttackAspect === 'function' && typeof getEntityAspect === 'function') {
+    return resolveAttackAspect(getEntityAspect(attacker), row);
+  }
+  if (row?.aspect) return String(row.aspect).toLowerCase();
+  return typeof getEntityAspect === 'function' ? getEntityAspect(attacker) : '';
+}
+
+function buildAspectChartSvg() {
+  const aspects = globalThis.Avian?.data?.aspects;
+  if (!aspects?.chart || !aspects.ids?.length) return '';
+  const ids = aspects.ids;
+  const n = ids.length;
+  const cx = 160; const cy = 160; const r = 100;
+  const nodes = ids.map((id, i) => {
+    const ang = (-Math.PI / 2) + (i * 2 * Math.PI / n);
+    return {
+      id,
+      x: cx + r * Math.cos(ang),
+      y: cy + r * Math.sin(ang),
+      def: aspects.definitions?.[id] || {},
+    };
+  });
+  const byId = Object.fromEntries(nodes.map((nd) => [nd.id, nd]));
+  let svg = `<svg class="aspect-chart-svg" viewBox="0 0 320 320" role="img" aria-label="Aspect matchup chart">`;
+  svg += `<defs><marker id="aspect-arrowhead" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6 Z" fill="#ccc"/></marker></defs>`;
+  ids.forEach((atkId) => {
+    const atk = byId[atkId];
+    const row = aspects.chart[atkId] || {};
+    ids.forEach((tgtId) => {
+      if (row[tgtId] !== 'dominant') return;
+      const tgt = byId[tgtId];
+      const mx = (atk.x + tgt.x) / 2;
+      const my = (atk.y + tgt.y) / 2;
+      const dx = tgt.x - atk.x; const dy = tgt.y - atk.y;
+      const len = Math.hypot(dx, dy) || 1;
+      const nx = -dy / len; const ny = dx / len;
+      const cpx = mx + nx * 18; const cpy = my + ny * 18;
+      const col = atk.def.color || '#888';
+      svg += `<path class="aspect-chart-arrow" d="M ${atk.x} ${atk.y} Q ${cpx} ${cpy} ${tgt.x} ${tgt.y}" stroke="${col}" fill="none" marker-end="url(#aspect-arrowhead)"/>`;
+    });
+  });
+  nodes.forEach((nd) => {
+    const label = nd.def.name || formatAspectDisplayName(nd.id);
+    const col = nd.def.color || '#888';
+    svg += `<circle class="aspect-chart-node" cx="${nd.x}" cy="${nd.y}" r="22" fill="${col}" stroke="#fff" stroke-width="2"/>`;
+    svg += `<text class="aspect-chart-label" x="${nd.x}" y="${nd.y + 4}" text-anchor="middle">${label}</text>`;
+  });
+  svg += '</svg>';
+  const dom = Number(aspects.dominantMod) || 1.2;
+  const neu = Number(aspects.neutralMod) || 1;
+  const res = Number(aspects.resistedMod) || 0.8;
+  return `<div class="aspect-chart-wrap">${svg}<div class="aspect-chart-legend">Strong ${dom.toFixed(2)}× · Neutral ${neu.toFixed(2)}× · Weak ${res.toFixed(2)}×</div></div>`;
 }
 
 function logMsg(msg,cls='') {
@@ -10129,6 +10326,12 @@ function collectOutgoingDamageBonusFractions(ctx){
   }
   if(isAttack&&!G._firstAttackUsed&&(p?.firstAttackEachBattleBonusPct||0)>0) fractions.push(p.firstAttackEachBattleBonusPct);
   if((passiveEvoBonus.damagePct||0)>0) fractions.push(passiveEvoBonus.damagePct);
+  if(typeof Avian?.classPerks?.collectOutgoingDamageBonusFractions==='function'){
+    fractions.push(...Avian.classPerks.collectOutgoingDamageBonusFractions(activeAb, ctx));
+  }
+  if(typeof Avian?.workbookEffects?.collectDamageBonusFractions==='function'){
+    fractions.push(...Avian.workbookEffects.collectDamageBonusFractions(activeAb, ctx));
+  }
   if(G._dispatcherCombatRow){
     const dRow=G._dispatcherCombatRow;
     if(!(dRow.condition&&dRow.conditionalAbilityPower!=null)){
@@ -10176,8 +10379,10 @@ function computeEntityAbilityRawDamage(entity, ab, tmpl, isMagic){
       bonusFractions:[],
       hitSucceeded:true,
     });
+    G._lastAspectComponents=result.components||null;
     return Math.max(1, result.damage);
   }
+  G._lastAspectComponents=null;
   if(row&&typeof computeAbilityRawDamage==='function'){
     return Math.max(1, Math.round(computeAbilityRawDamage(row, stats)));
   }
@@ -10192,12 +10397,19 @@ function applyCurvedMitigationToPlayer(preMit,isMagic,srcAbility){
     : ((G.player.stats.def||0)+_aura.def);
   let pen=0;
   if(isMagic){
-    pen=Math.min(0.95, (Number(srcAbility?.pierceMdef)||0)/100 + (Number(G._currentPiercePct)||0)/100);
+    pen=Math.min(0.95, (Number(srcAbility?.pierceMdef)||0)/100 + (Number(G._currentPiercePct)||0)/100 + (typeof Avian?.classPerks?.getExtraMdefPierce==='function'?Avian.classPerks.getExtraMdefPierce(srcAbility||G._activePlayerAbility||{}):0));
   } else if(srcAbility){
     pen=getPhysicalPierceFractionForDamage(srcAbility);
   }
   const effDef=effectiveDefence(rawDef,pen,{burning:typeof playerHasBurningStacks==='function'?playerHasBurningStacks():playerHasBurning()});
-  return Math.max(0, preMit*curvedDefenceMultiplier(effDef));
+  let mitigated=Math.max(0, preMit*curvedDefenceMultiplier(effDef));
+  if(typeof Avian?.classPerks?.getIncomingDamageMultiplier==='function'){
+    mitigated*=Avian.classPerks.getIncomingDamageMultiplier();
+  }
+  if(G.player?._workbookPhysicalDr && !isMagic){
+    mitigated*=Math.max(0, 1-(G.player._workbookPhysicalDr||0));
+  }
+  return mitigated;
 }
 
 function computePlayerCritDamageAdd(activeAb){
@@ -10233,6 +10445,12 @@ function computePlayerCritDamageAdd(activeAb){
 }
 
 globalThis.computeMasterOutgoingDamage = computeMasterOutgoingDamage;
+globalThis.buildAspectTooltipHTML = buildAspectTooltipHTML;
+globalThis.formatAspectDisplayName = formatAspectDisplayName;
+globalThis.buildAspectChartSvg = buildAspectChartSvg;
+globalThis.resolveAbilityAspectForDisplay = resolveAbilityAspectForDisplay;
+globalThis.logAspectMatchupFeedback = logAspectMatchupFeedback;
+globalThis.getAspectDefinition = getAspectDefinition;
 
 function dealDamage(target,amount,isCrit=false,isMagic=false,srcAbility=null,opts=null) {
   opts=opts||{};
@@ -10258,8 +10476,9 @@ function dealDamage(target,amount,isCrit=false,isMagic=false,srcAbility=null,opt
       if(master){
         dmg=master.damage;
         isCrit=master.isCrit;
-        damageMeta={ row:master.row, enCost:master.enCost, mitigated:master.damage, rawDamage:master.components?(master.components.enBase*master.components.abilityPower*master.components.statMod):master.damage };
+        damageMeta={ row:master.row, enCost:master.enCost, mitigated:master.damage, rawDamage:master.components?(master.components.enBase*master.components.abilityPower*master.components.statMod):master.damage, components:master.components };
         usedMasterPath=true;
+        logAspectMatchupFeedback(master.components);
       }else{
         damageMeta=computeOutgoingDamageBase(isMagic,activeAb,legacyAmount);
         dmg=roundCombatDamage(Math.max(0.01, damageMeta.mitigated));
@@ -10272,6 +10491,9 @@ function dealDamage(target,amount,isCrit=false,isMagic=false,srcAbility=null,opt
     if(!usedMasterPath) isCrit=false;
   } else {
     dmg=roundCombatDamage(Math.max(0.01, amount));
+    if (opts.masterFullyResolved && G._lastAspectComponents) {
+      logAspectMatchupFeedback(G._lastAspectComponents);
+    }
   }
   if(target==='enemy'&&!usedMasterPath){
     const esAff=G.enemyStatus||{};
@@ -10409,6 +10631,7 @@ function dealDamage(target,amount,isCrit=false,isMagic=false,srcAbility=null,opt
       dmg=roundCombatDamage(dmg*(1-passiveEvoBonus.drPct));
     }
     applyFractionalHp(G.player.stats, -dmg);
+    if(typeof Avian?.passives?.onPlayerDamaged==='function') Avian.passives.onPlayerDamaged(dmg, isMagic);
     if(BIRDS[G.player?.birdKey]?.passive?.id==='passive_bluejay_territorial_fury' && dmg>0) G.player._blueJayRecentHit=true;
     if((G.player?.lowHpSpdBonus||0)>0 && !G.player._lowHpSpdApplied && G.player.stats.hp<=Math.floor((G.player.stats.maxHp||1)*0.5)){
       G.player.stats.spd=(G.player.stats.spd||0)+G.player.lowHpSpdBonus;
@@ -10879,6 +11102,8 @@ function tryMutationOnHitAilments(dmg, isMagic, isPhysical) {
 
 function applyAilment(target,ailId,stacks=1) {
   const status=target==='player'?G.playerStatus:G.enemyStatus;
+  const debuffDurationBonus=(target==='enemy'&&G.player&&typeof Avian?.classPerks?.adjustDebuffDuration==='function')
+    ?Math.max(0, Avian.classPerks.adjustDebuffDuration(1)-1):0;
   codexMark('statuses',ailId,'seen');
   // Check passive immunities when applying to player
   if(target==='player'&&G.player){
@@ -10911,7 +11136,7 @@ function applyAilment(target,ailId,stacks=1) {
       if(typeof hasAilmentGuard==='function' && hasAilmentGuard(status,'toxicResistance')){
         status.poison.stacks=poisonCap;
         const extraTurns=(fromPlayer)?(G.player?.poisonExtraTurns||0):0;
-        status.poison.turns=poisonDur+extraTurns;
+        status.poison.turns=poisonDur+extraTurns+debuffDurationBonus;
       }else{
         delete status.poison;
         status.toxic={turns:toxicDur};
@@ -10934,13 +11159,13 @@ function applyAilment(target,ailId,stacks=1) {
     let b=status.bleed;
     if(!b || typeof b!=='object') b={stacks:0,turns:0};
     b.stacks=Math.min(bleedCap, (b.stacks||0)+Math.max(1, Math.floor(Number(stacks)||1)));
-    b.turns=bleedDur+bonusTurns;
+    b.turns=bleedDur+bonusTurns+debuffDurationBonus;
     status.bleed=b;
   } else if (ailId==='weaken') {
     applyWeakenStack(target, stacks);
     return true;
   } else if (ailId==='paralyzed') {
-    status.paralyzed=paraDur;
+    status.paralyzed=paraDur+debuffDurationBonus;
   } else if (ailId==='burning') {
     if(typeof hasAilmentGuard==='function' && hasAilmentGuard(status,'emberGuard')) { /* burning still applies */ }
     let b=status.burning;
@@ -10968,13 +11193,13 @@ function applyAilment(target,ailId,stacks=1) {
   } else if (ailId==='chilled') {
     return applyChilledStacksToTarget(target, stacks);
   } else if (ailId==='blinded') {
-    status.blinded={turns:blindDur};
+    status.blinded={turns:blindDur+debuffDurationBonus};
   } else if (ailId==='decreed') {
     status.decreed={turns:2};
   } else if (ailId==='feared') {
     const extra=((target==='enemy')&&G.player?.mutDarkChorus)?1:0;
     const incoming=Math.max(1, Math.floor(Number(stacks)||1)+extra);
-    status.feared=Math.max(status.feared||0, incoming);
+    status.feared=Math.max(status.feared||0, incoming)+debuffDurationBonus;
   } else if (ailId==='confused') {
     const t=Math.max(1, Math.floor(Number(stacks)||2));
     status.confused={turns:t,selfChance:STATUS_CONFUSED_SELF_PCT};
@@ -10982,6 +11207,7 @@ function applyAilment(target,ailId,stacks=1) {
     return false;
   }
   if(target==='enemy' && G.player){
+    if(typeof Avian?.passives?.onAilmentAppliedByPlayer==='function') Avian.passives.onAilmentAppliedByPlayer(ailId);
     const pid=BIRDS[G.player.birdKey]?.passive?.id;
     if(pid==='passive_crow_murder_mind' && !G.player._crowMurderMindUsed){
       const debKeys=new Set(['poison','bleed','weaken','paralyzed','feared','burning','chilled','confused','slow']);
@@ -11155,7 +11381,12 @@ function tickStatuses(who, opts={}) {
 /* Combat rewrite: legacy ACTIONS literal + every *_SKILL_ACTION_OVERRIDES block + per-bird mastery helpers + ability alias registrations removed. The live ACTIONS map is populated at boot by js/systems/combat-pack-boot.js with dispatcher proxies. */
 const ACTIONS = Object.create(null);
 const ABILITY_ALIAS_TO_SOURCE_ID = Object.create(null);
-function resolveAbilityAliasSourceId(id){ return String(id || ''); }
+function resolveAbilityAliasSourceId(id){
+  const raw=String(id||'');
+  const aliases=globalThis.ABILITY_ID_ALIASES||Avian?.data?.combatPack?.abilityAliases;
+  if(aliases&&aliases[raw]) return aliases[raw];
+  return raw;
+}
 function registerAbilityAlias(){ /* legacy alias registration disabled — combat-pack ids are canonical */ }
 function registerStrikePreviewForBird(){ /* no-op; legacy strike preview disabled */ }
 
@@ -11347,6 +11578,11 @@ async function playerAction(ab,fromQueue=false) {
   if(_flBd&&_flBd.passive&&_flBd.passive.onAbilityUse) _flBd.passive.onAbilityUse(G.player,ab);
   if(effActKind==='utility' && _flBd&&_flBd.passive&&_flBd.passive.onUtilityUse) _flBd.passive.onUtilityUse(G.player,ab);
   if(typeof Avian?.passives?.onPlayerAbilityUse==='function'){
+    const row=typeof resolveAbilityCombatRow==='function'?resolveAbilityCombatRow(ab):null;
+    const enCost=Number(row?.enCost??row?.apCost??ab?.energy??ab?.energyCost??1);
+    if(enCost===1) G._workbookOneEnCount=(G._workbookOneEnCount||0)+1;
+    if((effActKind==='physical'||effActKind==='ranged') && !G._workbookFirstPhysicalUsed) G._workbookFirstPhysicalUsed=true;
+    if((effActKind==='utility'||effActKind==='spell') && !G._workbookFirstSupportUsed && /support|heal|guard|song|call/i.test(String(ab?.name||''))) G._workbookFirstSupportUsed=true;
     Avian.passives.onPlayerAbilityUse(ab, {
       hitsLanded: G._lastAbilityHitsLanded || 0,
       firstHitLanded: (G._lastAbilityHitsLanded || 0) > 0,
@@ -11354,6 +11590,7 @@ async function playerAction(ab,fromQueue=false) {
       crit: !!G._lastAbilityAnyCrit,
       ailmentFailed: !!G._lastAbilityAilmentFailed,
       effActKind,
+      oneEnCountThisTurn: G._workbookOneEnCount||0,
     });
   }
   if(typeof computeUltimateMeterAward==='function' && typeof awardUltimateMeter==='function'){
@@ -12795,6 +13032,7 @@ function checkDeath() {
       if(_bossBd&&_bossBd.passive&&_bossBd.passive.onBossKill) _bossBd.passive.onBossKill(G.player);
     }
     logMsg(`✨ ${G.enemy.name} defeated!`,'crit');
+    if(typeof Avian?.classPerks?.onEnemyDefeated==='function') Avian.classPerks.onEnemyDefeated();
     if(isDukeStoryBossFight()) beginDukeBattleBgmFadeOut();
     else beginBattleBgmFadeOut();
     setTimeout(postCombat,700);return true;
@@ -14856,7 +15094,8 @@ function buildRefGuide() {
     if(!u&&!showLocked) return '';
     const roleId=classToRoleId(b.class);
     const roleLabel=idToClassLabel(roleId).toUpperCase();
-    return card(b.name, `${b.tagline||''} · Role: ${roleLabel}`,u,roleId||'bird');
+    const aspLine=b.aspectTheme?` · Aspect: ${b.aspectTheme}`:'';
+    return card(b.name, `${b.tagline||''} · Role: ${roleLabel}${aspLine}`,u,roleId||'bird');
   }).join('');
 
   const packAbilityDefs = G.dataPacks?.abilityPassiveUpgrade?.ABILITY_DEFS || {};
@@ -14959,6 +15198,11 @@ function buildRefGuide() {
     ${card('Energy & Cooldowns','Main attacks are free unless spells. Abilities spend energy and many skills have cooldowns.',true,'core')}
     ${card('Post-Battle Recovery','Story: heal 20% max HP after each bird you defeat in a stage (including multi-bird nodes). Endless: heal 33% max HP after each victory. Halved with Hunter\'s Cruelty mutation.',true,'heal')}
     ${card('Role Taxonomy','Birds are grouped by combat roles: Striker, Bruiser, Tank, Trickster, Predator, Singer.',true,'roles')}
+    <div class="ref-skill-card ref-aspect-chart-card" style="grid-column:1/-1">
+      <div class="ref-skill-header"><span class="ref-skill-name">Aspect Chart</span><span class="ref-skill-type utility">matchups</span></div>
+      <div class="ref-skill-base">Each bird and damaging ability has an Aspect. Strong hits deal ${(Avian?.data?.aspects?.dominantMod||1.2).toFixed(2)}× damage; weak hits deal ${(Avian?.data?.aspects?.resistedMod||0.8).toFixed(2)}×. Arrows show strong (dominant) matchups.</div>
+      ${typeof buildAspectChartSvg==='function'?buildAspectChartSvg():''}
+    </div>
     ${card('Mutation Slots','Equip mutations in wing, feet, head, beak, chest, eyes, tail, plumage, and syrinx slots (limits per slot). Manage loadout in the Nest.',true,'mutations')}
     ${card('Nest Inventory','Found mutations go to nest inventory. Equip, compare, and sell extras between battles.',true,'nest')}
     ${card('Stork Shop','Spend Shiny Objects on upgrades, combat heal items, and mutation stock between fights.',true,'shop')}

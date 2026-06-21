@@ -37,7 +37,11 @@
   }
   function rowFor(abId) {
     var p = pack();
-    var row = p && p.skillTrees ? p.skillTrees[abId] : null;
+    var id = String(abId || '');
+    if (typeof globalThis.resolveAbilityAliasSourceId === 'function') {
+      id = globalThis.resolveAbilityAliasSourceId(id);
+    }
+    var row = p && p.skillTrees ? p.skillTrees[id] : null;
     if (row && typeof globalThis.enrichCombatRow === 'function') globalThis.enrichCombatRow(row);
     return row;
   }

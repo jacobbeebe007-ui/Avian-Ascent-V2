@@ -275,24 +275,45 @@
     return '';
   }
 
-  function getTypeModifier(attackerAspect, targetAspect, abilityRow) {
-    var chart = getAspectChart();
-    if (!chart || !chart.chart) return 1;
-    var atkAsp = normalizeAspectId(attackerAspect);
-    var tgtAsp = normalizeAspectId(targetAspect);
-    if (!atkAsp || !tgtAsp) return chart.neutralMod || 1;
-    var affinity = abilityRow && abilityRow.aspectAffinity ? String(abilityRow.aspectAffinity) : '';
+  function resolveAttackAspect(attackerAspect, abilityRow) {
+    var row = abilityRow || {};
+    var asp = normalizeAspectId(row.aspect);
+    if (asp) return asp;
+    var affinity = row.aspectAffinity ? String(row.aspectAffinity) : '';
     if (affinity && !/none|class-neutral|neutral/i.test(affinity)) {
       var affToken = affinity.split(/[\s/]+/).filter(Boolean)[0];
       var affAsp = normalizeAspectId(affToken);
-      if (affAsp) atkAsp = affAsp;
+      if (affAsp) return affAsp;
     }
+    return normalizeAspectId(attackerAspect);
+  }
+
+  function getAspectRelationship(attackAspect, defenderAspect, abilityRow) {
+    var chart = getAspectChart();
+    if (!chart || !chart.chart) return 'Invalid';
+    var atkAsp = resolveAttackAspect(attackAspect, abilityRow);
+    var defAsp = normalizeAspectId(defenderAspect);
+    if (!atkAsp || !defAsp) return 'Invalid';
+    if (atkAsp === defAsp) return 'Same';
     var relRow = chart.chart[atkAsp];
-    if (!relRow || !relRow[tgtAsp]) return chart.neutralMod || 1;
-    var rel = relRow[tgtAsp];
-    if (rel === 'dominant') return chart.dominantMod || 1.2;
-    if (rel === 'resisted') return chart.resistedMod || 0.8;
-    return chart.neutralMod || 1;
+    if (!relRow || !relRow[defAsp]) return 'Neutral';
+    var rel = String(relRow[defAsp]).toLowerCase();
+    if (rel === 'dominant') return 'Strong';
+    if (rel === 'resisted') return 'Weak';
+    return 'Neutral';
+  }
+
+  function getAspectMultiplier(attackAspect, defenderAspect, abilityRow) {
+    var chart = getAspectChart();
+    if (!chart || !chart.chart) return 1;
+    var rel = getAspectRelationship(attackAspect, defenderAspect, abilityRow);
+    if (rel === 'Strong') return Number(chart.dominantMod) || 1.2;
+    if (rel === 'Weak') return Number(chart.resistedMod) || 0.8;
+    return Number(chart.neutralMod) || 1;
+  }
+
+  function getTypeModifier(attackerAspect, targetAspect, abilityRow) {
+    return getAspectMultiplier(attackerAspect, targetAspect, abilityRow);
   }
 
   function isBloodiedTarget(target) {
@@ -615,7 +636,9 @@
     var bonusMod = 1 + bonusFrac;
     var attackerAspect = getEntityAspect(attacker);
     var targetAspect = getEntityAspect(target);
-    var typeMod = getTypeModifier(attackerAspect, targetAspect, ability);
+    var aspectRelationship = getAspectRelationship(attackerAspect, targetAspect, ability);
+    var aspectMod = getAspectMultiplier(attackerAspect, targetAspect, ability);
+    var typeMod = aspectMod;
     var preCrit = enBase * abilityPower * statMod * defMod * typeMod * bonusMod;
     var damage = preCrit;
     if (params.isCriticalHit) {
@@ -634,6 +657,10 @@
         statMod: statMod,
         defMod: defMod,
         typeMod: typeMod,
+        aspectMod: aspectMod,
+        aspectRelationship: aspectRelationship,
+        attackAspect: resolveAttackAspect(attackerAspect, ability),
+        defenderAspect: targetAspect,
         bonusMod: bonusMod,
         relevantStat: relevantStat,
         defStat: defStat,
@@ -796,6 +823,9 @@
   globalThis.usesMasterDamage = usesMasterDamage;
   globalThis.describeMasterAbility = describeMasterAbility;
   globalThis.getTypeModifier = getTypeModifier;
+  globalThis.getAspectMultiplier = getAspectMultiplier;
+  globalThis.getAspectRelationship = getAspectRelationship;
+  globalThis.resolveAttackAspect = resolveAttackAspect;
   globalThis.getEntityAspect = getEntityAspect;
   globalThis.isBloodiedTarget = isBloodiedTarget;
   globalThis.MASTER_BASE_CRIT_MULT = MASTER_BASE_CRIT_MULT;

@@ -203,7 +203,12 @@
         var alias = packKeyFor(birdKey);
         var kit = pack.birdKits && (pack.birdKits[birdKey] || pack.birdKits[alias]);
         if (!kit) continue;
-        // Resolve the two starter family ids
+        // Resolve all 7 workbook family ids + starter ability ids
+        var allFamIds = [];
+        for (var si = 0; si < 7; si++) {
+          var famAt = familyIdFor(birdKey, si);
+          if (famAt) allFamIds.push(famAt);
+        }
         var famA = familyIdFor(birdKey, 0);
         var famB = familyIdFor(birdKey, 1);
         if (!famA || !famB) continue;
@@ -211,7 +216,7 @@
         var starterB = abilityIdForFamily(famB);
         bird.startAbilities = [starterA, starterB];
         bird.mainAttackId = starterA;
-        bird.combatFamilies = [famA, famB];
+        bird.combatFamilies = allFamIds.length ? allFamIds : [famA, famB];
         bird.aspect = bird.aspect || (kit && kit.aspect) || (pack.birdKits[birdKey] && pack.birdKits[birdKey].aspect) || '';
         // Locate the passive by birdKey (with alias fallback)
         var passive = null;
@@ -251,17 +256,31 @@
     return b; // 'power' | 'ailment' | 'utility'
   }
   function buildFamilyEntry(fam, slotIdx) {
-    var paths = { power: { pathId: 'power', displayName: 'Power', abilities: {} }, ailment: { pathId: 'ailment', displayName: 'Ailment', abilities: {} }, utility: { pathId: 'utility', displayName: 'Utility', abilities: {} } };
-    var baseId = mutationAbilityIdForFamily(fam.id, 1);
+    var paths = { power: { pathId: 'power', displayName: 'Power', abilities: {} }, ailment: { pathId: 'ailment', displayName: 'Ailment', abilities: {} }, utility: { pathId: 'utility', displayName: 'Utility', abilities: {} }, mutation: { pathId: 'mutation', displayName: 'Mutation', abilities: {} } };
+    var mutations = fam.mutations || {};
+    if (!mutations['1']) {
+      mutations = {
+        1: mutationAbilityIdForFamily(fam.id, 1),
+        2: mutationAbilityIdForFamily(fam.id, 2),
+        3: mutationAbilityIdForFamily(fam.id, 3),
+      };
+    }
+    var baseId = mutations['1'] || mutationAbilityIdForFamily(fam.id, 1);
     for (var rid in pack.skillTrees) {
       var row = pack.skillTrees[rid];
       if (row.familyId !== fam.id) continue;
       var stageMatch = /_S(\d+)$/.exec(String(row.id || ''));
       var stage = stageMatch ? Number(stageMatch[1]) : (row.branch === 'base' ? 1 : 0);
       if (stage === 1) baseId = row.id;
-      else if (stage === 2) paths.power.abilities[1] = row.id;
-      else if (stage === 3) paths.power.abilities[2] = row.id;
-      else {
+      else if (stage === 2) {
+        paths.power.abilities[1] = row.id;
+        paths.mutation.abilities[1] = row.id;
+        mutations['2'] = row.id;
+      } else if (stage === 3) {
+        paths.power.abilities[2] = row.id;
+        paths.mutation.abilities[2] = row.id;
+        mutations['3'] = row.id;
+      } else {
         var tier = levelToTier(row.level);
         var pathId = branchToPathId(row.branch);
         if (pathId && paths[pathId]) paths[pathId].abilities[tier] = row.id;
@@ -275,8 +294,9 @@
       starterSlot: slotIdx,
       abilitySlot: fam.abilitySlot != null ? fam.abilitySlot : slotIdx,
       role: fam.role || '',
-      unlockTier: fam.unlockTier || '',
-      maxMutationStage: 3,
+      unlockTier: fam.unlockTier || 'Starter',
+      maxMutationStage: fam.maxMutationStage || 3,
+      mutations: mutations,
       paths: paths,
     };
   }
@@ -310,11 +330,27 @@
     if (ufEntry.baseAbilityId) {
       globalThis.UNIVERSAL_FAMILY_ABILITY_LOOKUP[ufEntry.baseAbilityId] = {
         familyId: ufEntry.familyId,
-        pathId: null,
+        pathId: 'mutation',
         tier: 0,
+        mutationStage: 1,
         abilityId: ufEntry.baseAbilityId,
       };
     }
+    var muts = ufEntry.mutations || {};
+    for (var ms in muts) {
+      var mid = muts[ms];
+      if (!mid) continue;
+      globalThis.UNIVERSAL_FAMILY_ABILITY_LOOKUP[mid] = {
+        familyId: ufEntry.familyId,
+        pathId: 'mutation',
+        tier: Math.max(0, Number(ms) - 1),
+        mutationStage: Number(ms) || 1,
+        abilityId: mid,
+      };
+    }
+  }
+  if (pack.abilityAliases) {
+    globalThis.ABILITY_ID_ALIASES = pack.abilityAliases;
   }
   function buildFamilyForBird(birdKey) {
     if (!pack.families || !pack.skillTrees) return null;

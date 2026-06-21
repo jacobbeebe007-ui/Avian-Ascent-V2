@@ -21,6 +21,10 @@ Each file is frozen (`Object.freeze`) and assembled into `Avian.data.combatPack`
 at startup. Re-run `node scripts/import-combat-content.mjs` to regenerate after
 editing the spreadsheets.
 
+**Aspect data** (`js/data/aspects.js`, bird `aspect` fields, ability `aspect` /
+`aspectAffinity`) is authored in the Master Workbook and imported via
+`scripts/import-master-workbook.ps1` — not the Node combat-content importer.
+
 ## Row shapes
 
 ### `classes.js`

@@ -130,31 +130,18 @@
   }
 
   Avian.passives.applyClassPerkAtBattleStart = function applyClassPerkAtBattleStart() {
-    if (!globalThis.G || !G.player) return;
-    var perk = classPerkForBird(G.player.birdKey);
-    if (!perk || !perk.classPerkEffect) return;
-    var effects = classifyEffect(perk.classPerkEffect);
-    for (var i = 0; i < effects.length; i++) applyEffect('classPerk:' + (perk.classPerk || 'perk'), effects[i]);
-    var s = String(perk.classPerkEffect || '');
-    var m;
-    if ((m = s.match(/\+(\d+(?:\.\d+)?)\s*%\s*Max\s*HP/i))) {
-      var pct = Number(m[1]) / 100;
-      var maxHp = Math.max(1, Math.floor((G.player.stats.maxHp || 1) * (1 + pct)));
-      G.player.stats.maxHp = maxHp;
-      G.player.stats.hp = Math.min(G.player.stats.hp || maxHp, maxHp);
-    }
-    if ((m = s.match(/\+(\d+(?:\.\d+)?)\s*%\s*Defen[cs]e/i))) {
-      var defPct = Number(m[1]) / 100;
-      G.player.stats.def = Math.floor((G.player.stats.def || 0) * (1 + defPct));
-    }
-    if ((m = s.match(/\+(\d+(?:\.\d+)?)\s*%\s*Armou?r\s*Penetration/i))) {
-      G.player.classPerkPenetration = Math.max(G.player.classPerkPenetration || 0, Number(m[1]));
+    if (typeof Avian.classPerks !== 'undefined' && typeof Avian.classPerks.onBattleStart === 'function') {
+      Avian.classPerks.onBattleStart();
     }
   };
 
   function rowFor(abId) {
     var p = pack();
-    return p && p.skillTrees ? p.skillTrees[abId] : null;
+    var id = String(abId || '');
+    if (typeof globalThis.resolveAbilityAliasSourceId === 'function') {
+      id = globalThis.resolveAbilityAliasSourceId(id);
+    }
+    return p && p.skillTrees ? p.skillTrees[id] : null;
   }
 
   // ---- trigger matchers -------------------------------------------------
@@ -358,18 +345,47 @@
     return false;
   }
 
+  function workbook() { return Avian.workbookEffects || null; }
+
+  function firePassive(perk, ab, context) {
+    if (!perk || !globalThis.G || !G.player) return;
+    var bird = G.player.birdKey;
+    var we = workbook();
+    var trigger = we ? we.parseTrigger(perk.trigger) : classifyTrigger(perk.trigger);
+    var ctx = Object.assign({ actingFirst: G.player && G.enemy && (G.player.stats.spd || 0) >= (G.enemy.stats.spd || 0) }, context || {});
+    var matched = we ? we.matchTrigger(trigger, ab, ctx) : matchTrigger(trigger, ab, ctx);
+    if (!matched) return;
+    if (trigger.cap && !gate(bird, perk.id, trigger.cap)) return;
+    var clauses = we ? we.parseEffectClauses(perk.effect) : [];
+    if (clauses.length) {
+      for (var i = 0; i < clauses.length; i++) we.applyClause(perk.id, clauses[i], ctx);
+    } else {
+      var effects = scalePassiveEffects(classifyEffect(perk.effect), bird, currentPassiveTier());
+      for (var j = 0; j < effects.length; j++) {
+        var eff = effects[j];
+        if (eff.kind === 'bonusVsAilment' || eff.kind === 'flatDamageBonus') continue;
+        applyEffect(perk.id, eff);
+      }
+    }
+  }
+
   Avian.passives.applyDamageBonus = function applyDamageBonus(dmg, ab, ctx) {
     if (!globalThis.G || !G.player || !ab) return dmg;
+    var we = workbook();
+    if (we) {
+      var fracs = we.collectDamageBonusFractions(ab, ctx || {});
+      for (var i = 0; i < fracs.length; i++) dmg = Math.floor(dmg * (1 + fracs[i]));
+    }
     var perk = passiveFor(G.player.birdKey);
     if (!perk) return dmg;
-    var trigger = classifyTrigger(perk.trigger);
+    var trigger = we ? we.parseTrigger(perk.trigger) : classifyTrigger(perk.trigger);
     var row = rowFor(ab.id);
     if (!row) return dmg;
     if (!triggerMatchesForDamage(trigger, row, ctx || {})) return dmg;
     var effects = scalePassiveEffects(classifyEffect(perk.effect), G.player.birdKey, currentPassiveTier());
     var es = G.enemyStatus || {};
-    for (var i = 0; i < effects.length; i++) {
-      var eff = effects[i];
+    for (var k = 0; k < effects.length; k++) {
+      var eff = effects[k];
       if (eff.kind === 'bonusVsAilment') {
         if (eff.ailment === 'bleed' && !enemyHasAilmentCategory(es, 'bleed')) continue;
         if (!damageTypeMatches(row, eff.dmgType, ctx)) continue;
@@ -439,14 +455,56 @@
     if (!bird) return;
     var perk = passiveFor(bird);
     if (!perk) return;
-    var trigger = classifyTrigger(perk.trigger);
-    if (!matchTrigger(trigger, ab, context || {})) return;
-    if (trigger.cap && !gate(bird, perk.id, trigger.cap)) return;
-    var effects = scalePassiveEffects(classifyEffect(perk.effect), bird, currentPassiveTier());
-    for (var i = 0; i < effects.length; i++) {
-      var eff = effects[i];
-      if (eff.kind === 'bonusVsAilment' || eff.kind === 'flatDamageBonus') continue;
-      applyEffect(perk.id, eff);
+    firePassive(perk, ab, context || {});
+    if (typeof Avian.classPerks !== 'undefined' && typeof Avian.classPerks.onPlayerAbilityUse === 'function') {
+      Avian.classPerks.onPlayerAbilityUse(ab, context || {});
+    }
+  };
+
+  Avian.passives.onPlayerDamaged = function onPlayerDamaged(damage, isMagic, ctx) {
+    if (!globalThis.G || !G.player) return;
+    var perk = passiveFor(G.player.birdKey);
+    if (perk) firePassive(perk, null, Object.assign({ damage: damage, isPhysical: !isMagic }, ctx || {}));
+    if (typeof Avian.classPerks !== 'undefined' && typeof Avian.classPerks.onPlayerDamaged === 'function') {
+      Avian.classPerks.onPlayerDamaged(damage, isMagic);
+    }
+  };
+
+  Avian.passives.onPlayerDodged = function onPlayerDodged(ctx) {
+    if (!globalThis.G || !G.player) return;
+    var perk = passiveFor(G.player.birdKey);
+    if (perk) firePassive(perk, null, Object.assign({ dodged: true }, ctx || {}));
+  };
+
+  Avian.passives.onAilmentAppliedByPlayer = function onAilmentAppliedByPlayer(ailmentId) {
+    if (!globalThis.G || !G.player) return;
+    var perk = passiveFor(G.player.birdKey);
+    if (!perk) return;
+    var debuffs = { poison: 1, bleed: 1, weaken: 1, feared: 1, paralyzed: 1, burning: 1, chilled: 1, blinded: 1, accDebuff: 1 };
+    firePassive(perk, null, {
+      appliedAilment: ailmentId,
+      appliedDebuff: !!debuffs[ailmentId],
+    });
+  };
+
+  Avian.passives.onPlayerTurnStartPassive = function onPlayerTurnStartPassive(player) {
+    if (!globalThis.G || !player) return;
+    var perk = passiveFor(player.birdKey);
+    if (!perk) return;
+    var we = workbook();
+    var ctx = {
+      firstPhysicalUsed: !!G._workbookFirstPhysicalUsed,
+      firstSupportUsed: !!G._workbookFirstSupportUsed,
+      turnStart: true,
+      dummyAb: { id: '', type: 'physical' },
+    };
+    if (we && typeof we.onTurnStart === 'function') we.onTurnStart(perk, ctx);
+    var trigger = we ? we.parseTrigger(perk.trigger) : classifyTrigger(perk.trigger);
+    if (trigger.kind === 'turnStart') firePassive(perk, null, { turnStart: true });
+    G._workbookFirstPhysicalUsed = false;
+    G._workbookFirstSupportUsed = false;
+    if (typeof Avian.classPerks !== 'undefined' && typeof Avian.classPerks.onPlayerTurnStart === 'function') {
+      Avian.classPerks.onPlayerTurnStart();
     }
   };
 
@@ -460,6 +518,10 @@
   Avian.passives.onPlayerTurnStart = function onPlayerTurnStart(player) {
     if (G.passiveState) {
       for (var k in G.passiveState) G.passiveState[k].firedThisTurn = false;
+    }
+    G._workbookOneEnCount = 0;
+    if (typeof Avian.passives.onPlayerTurnStartPassive === 'function') {
+      Avian.passives.onPlayerTurnStartPassive(player);
     }
   };
 

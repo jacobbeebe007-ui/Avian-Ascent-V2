@@ -186,6 +186,8 @@ function Get-SheetLayout {
         'Mother Goose Tiers' = @{ headerRow = 3; dataStart = 4 }
         'Bird Ability List' = @{ headerRow = 0; dataStart = 1 }
         'Ability Mutation Trees' = @{ headerRow = 0; dataStart = 1 }
+        'Ability Tag Glossary' = @{ headerRow = 0; dataStart = 1 }
+        'Bird Ability Summary' = @{ headerRow = 0; dataStart = 1 }
     }
     if ($layouts.ContainsKey($SheetName)) {
         $l = $layouts[$SheetName]
@@ -273,6 +275,126 @@ function Get-AspectId {
     return ''
 }
 
+$script:ASPECT_COLORS = @{
+    terra = '#8a7860'
+    aeris = '#6a8ae8'
+    tempest = '#9a6ae8'
+    solis = '#e8c020'
+    lunae = '#6030d0'
+    maris = '#3a5878'
+}
+
+function Parse-AspectNameList {
+    param([string]$Text)
+    if (-not $Text) { return @() }
+    $out = @()
+    foreach ($part in ($Text -split '[,;/]')) {
+        $id = Get-AspectId $part.Trim()
+        if ($id -and ($out -notcontains $id)) { $out += $id }
+    }
+    return $out
+}
+
+function Parse-AspectModValue {
+    param([string]$Text, [double]$Fallback)
+    if ($Text -match '([\d.]+)') { return [double]$matches[1] }
+    return $Fallback
+}
+
+function Normalize-MatrixRelation {
+    param([string]$Cell)
+    $v = ([string]$Cell).Trim().ToLower()
+    if ($v -eq 'dominant') { return 'dominant' }
+    if ($v -eq 'resisted') { return 'resisted' }
+    if ($v -eq 'neutral') { return 'neutral' }
+    return ''
+}
+
+function Build-AspectsFromSheet {
+    param($Rows)
+    if (-not $Rows -or $Rows.Count -lt 18) {
+        throw '[master-workbook] Master Aspects sheet missing or incomplete (need rows through matrix).'
+    }
+    $defHeader = New-HeaderMap $Rows[3]
+    if (-not $defHeader.ContainsKey('Aspect')) {
+        throw '[master-workbook] Master Aspects definitions header row not found.'
+    }
+    $ids = @()
+    $definitions = [ordered]@{}
+    $themes = [ordered]@{}
+    for ($i = 4; $i -le 9; $i++) {
+        $row = $Rows[$i]
+        $displayName = Get-CellFuzzy $row $defHeader @('Aspect')
+        if (-not $displayName) { continue }
+        $id = Get-AspectId $displayName
+        if (-not $id) { continue }
+        $theme = Get-CellFuzzy $row $defHeader @('Theme')
+        $strongRaw = Get-CellFuzzy $row $defHeader @('Strong Against')
+        $weakRaw = Get-CellFuzzy $row $defHeader @('Weak Against')
+        $habitat = Get-CellFuzzy $row $defHeader @('Habitat / Design Rule')
+        $strongIds = Parse-AspectNameList $strongRaw
+        $weakIds = Parse-AspectNameList $weakRaw
+        $desc = if ($theme) { "$theme-aligned aspect." } else { "$displayName aspect." }
+        $ids += $id
+        $themes[$id] = $theme
+        $definitions[$id] = [ordered]@{
+            name = $displayName
+            theme = $theme
+            description = $desc
+            strongAgainst = $strongIds
+            weakAgainst = $weakIds
+            habitatRule = $habitat
+            color = $script:ASPECT_COLORS[$id]
+        }
+    }
+    if ($ids.Count -lt 6) {
+        throw "[master-workbook] Expected 6 aspect definitions, found $($ids.Count)."
+    }
+    $matrixHeader = $Rows[12]
+    $targetIds = @()
+    for ($c = 6; $c -lt $matrixHeader.Count; $c++) {
+        $tid = Get-AspectId $matrixHeader[$c]
+        if ($tid) { $targetIds += $tid }
+    }
+    if ($targetIds.Count -lt 6) {
+        throw '[master-workbook] Master Aspects matrix header missing target columns.'
+    }
+    $dominantMod = 1.20
+    $neutralMod = 1.00
+    $resistedMod = 0.80
+    if ($Rows[13][1]) { $dominantMod = Parse-AspectModValue $Rows[13][1] 1.20 }
+    if ($Rows[14][1]) { $neutralMod = Parse-AspectModValue $Rows[14][1] 1.00 }
+    if ($Rows[15][1]) { $resistedMod = Parse-AspectModValue $Rows[15][1] 0.80 }
+    $chart = [ordered]@{}
+    for ($r = 13; $r -le 18; $r++) {
+        $row = $Rows[$r]
+        $attackerName = $row[5]
+        if (-not $attackerName) { continue }
+        $attId = Get-AspectId $attackerName
+        if (-not $attId) { continue }
+        $relRow = [ordered]@{}
+        for ($ti = 0; $ti -lt $targetIds.Count; $ti++) {
+            $col = 6 + $ti
+            if ($col -ge $row.Count) { break }
+            $rel = Normalize-MatrixRelation $row[$col]
+            if ($rel) { $relRow[$targetIds[$ti]] = $rel }
+        }
+        if ($relRow.Count -ge 6) { $chart[$attId] = $relRow }
+    }
+    if ($chart.Count -lt 6) {
+        throw "[master-workbook] Master Aspects matrix incomplete (got $($chart.Count) attacker rows)."
+    }
+    return [ordered]@{
+        ids = $ids
+        dominantMod = $dominantMod
+        neutralMod = $neutralMod
+        resistedMod = $resistedMod
+        chart = $chart
+        themes = $themes
+        definitions = $definitions
+    }
+}
+
 function ConvertTo-JsString {
     param($Value)
     if ($null -eq $Value) { return 'null' }
@@ -353,6 +475,32 @@ function Get-NormalizedAilment {
     return $null
 }
 
+function Get-NormalizedUnlockTier {
+    param([string]$S)
+    $x = ([string]$S).Trim().ToLower()
+    if (-not $x) { return 'Starter' }
+    if ($x -match 'starter|basic') { return 'Starter' }
+    if ($x -match 'green|aspect') { return 'Green Aspect' }
+    if ($x -match 'blue|class') { return 'Blue Class' }
+    if ($x -match 'purple|utility') { return 'Purple Utility' }
+    if ($x -match 'gold|special') { return 'Gold Special' }
+    if ($x -match 'orange|ultimate') { return 'Orange Ultimate' }
+    return (Get-Culture).TextInfo.ToTitleCase($x)
+}
+
+function Get-UnlockTierSlotIndex {
+    param([string]$Tier)
+    switch -Regex (([string]$Tier).ToLower()) {
+        'starter|basic' { return @(0, 1) }
+        'green|aspect' { return @(2) }
+        'blue|class' { return @(3) }
+        'purple|utility' { return @(4) }
+        'gold|special' { return @(5) }
+        'orange|ultimate' { return @(6) }
+        default { return @() }
+    }
+}
+
 function Get-AbilityTagsFromRow {
     param($Row, $Header)
     $tags = New-Object System.Collections.Generic.List[string]
@@ -391,7 +539,13 @@ function Build-AbilityRowEntry {
     $scaleStat = (Get-CellFuzzy $Row $Header @('Scaling Stat')).ToUpper()
     if (-not $scaleStat) { $scaleStat = 'ATK' }
     $dmgType = Get-CellFuzzy $Row $Header @('Damage Type')
-    $category = if ($dmgType -match 'magic|song') { 'magic' } elseif ($dmgType -match 'true') { 'true' } else { 'physical' }
+    $role = Get-CellFuzzy $Row $Header @('Role')
+    $roleLower = ([string]$role).ToLower()
+    $isHybrid = $dmgType -match 'hybrid'
+    if ($isHybrid) {
+        $scaleStat = 'HYBRID'
+    }
+    $category = if ($dmgType -match 'magic|song') { 'magic' } elseif ($dmgType -match 'true') { 'true' } elseif ($isHybrid) { 'hybrid' } else { 'physical' }
     $ailRaw = Get-CellFuzzy $Row $Header @('Ailment / Rider','Ailment')
     $ail = Get-NormalizedAilment $ailRaw
     $ailChance = Get-Num (Get-CellFuzzy $Row $Header @('Ailment Chance'))
@@ -405,9 +559,22 @@ function Build-AbilityRowEntry {
     $aspectAffinity = Get-CellFuzzy $Row $Header @('Aspect Affinity')
     $birdName = Get-CellFuzzy $Row $Header @('Bird')
     $birdKey = Get-BirdKey $birdName
-    $role = Get-CellFuzzy $Row $Header @('Role')
     $isUltimate = ($role -match 'Ultimate') -or ($en -ge 6)
     $isSpecial = ($role -match 'Special') -or ($en -eq 4)
+    $unlockTierNorm = Get-NormalizedUnlockTier (Get-CellFuzzy $Row $Header @('Unlock Tier'))
+    if (-not $unlockTierNorm -and $role -match 'Basic 1|Basic 2') { $unlockTierNorm = 'Starter' }
+    if (-not $unlockTierNorm -and $role -match 'Green') { $unlockTierNorm = 'Green Aspect' }
+    if (-not $unlockTierNorm -and $role -match 'Blue') { $unlockTierNorm = 'Blue Class' }
+    if (-not $unlockTierNorm -and $role -match 'Purple') { $unlockTierNorm = 'Purple Utility' }
+    if (-not $unlockTierNorm -and $role -match 'Gold') { $unlockTierNorm = 'Gold Special' }
+    if (-not $unlockTierNorm -and $role -match 'Orange|Ultimate') { $unlockTierNorm = 'Orange Ultimate' }
+    $utilityLower = ([string]$utility).ToLower()
+    $isUtilityRole = $roleLower -match 'utility|guard|heal|aspect|class|special|ultimate|basic' -and ($utility -or $ap -le 0 -or $dmgType -match 'none')
+    $noDamage = ($ap -le 0 -and ($utility -or $isUtilityRole -or $dmgType -match 'none'))
+    if ($utilityLower -match 'guard|heal|cleanse|purge|shield|dodge|acc|mdef|lifesteal|marked|none' -and $ap -le 0.01) {
+        $noDamage = $true
+    }
+    if ($dmgType -match '^none$' -and $utility) { $noDamage = $true }
     return @{
         id = $Id
         familyId = $FamilyId
@@ -431,7 +598,7 @@ function Build-AbilityRowEntry {
         baseFlat = 0
         scaleStat = $scaleStat
         scalePct = 0
-        damageStat = $scaleStat
+        damageStat = if ($isHybrid) { 'HYBRID' } else { $scaleStat }
         damageType = $dmgType
         abilityPower = $ap
         heavyAccuracyPenalty = $heavyAcc
@@ -450,9 +617,10 @@ function Build-AbilityRowEntry {
         displayText = $display
         designNote = Get-CellFuzzy $Row $Header @('Design Check','Mutation Improvement')
         aspectAffinity = $aspectAffinity
-        unlockTier = Get-CellFuzzy $Row $Header @('Unlock Tier')
+        unlockTier = $unlockTierNorm
+        mutationStage = if ($Branch -eq 'base') { 1 } elseif ($Level -eq 3) { 2 } elseif ($Level -eq 6) { 3 } else { 0 }
         isUltimate = $isUltimate
         isSpecial = $isSpecial
-        noDamage = ($ap -le 0 -and $category -eq 'utility')
+        noDamage = $noDamage
     }
 }

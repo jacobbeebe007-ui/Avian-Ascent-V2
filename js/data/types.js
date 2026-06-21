@@ -29,6 +29,8 @@
  * @property {string} name
  * @property {string} [emoji]
  * @property {string} [class]
+ * @property {string} [aspect] - Primary aspect id (terra|aeris|tempest|solis|lunae|maris)
+ * @property {string} [aspectTheme] - Display theme from workbook
  * @property {string} [role]
  * @property {StatBlock} stats
  * @property {string[]} [abilities]

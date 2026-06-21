@@ -47,8 +47,12 @@
 
   function packRowForAbility(ab) {
     if (!ab || !ab.id) return null;
+    var id = String(ab.id);
+    if (typeof globalThis.resolveAbilityAliasSourceId === 'function') {
+      id = globalThis.resolveAbilityAliasSourceId(id);
+    }
     var row = Avian.data && Avian.data.combatPack && Avian.data.combatPack.skillTrees
-      ? Avian.data.combatPack.skillTrees[ab.id] : null;
+      ? Avian.data.combatPack.skillTrees[id] : null;
     if (row && typeof globalThis.enrichCombatRow === 'function') globalThis.enrichCombatRow(row);
     return row;
   }
@@ -184,14 +188,15 @@
     return utilitySucceeded || !!ctx.utilitySucceeded;
   }
 
-  function getAspectMatchupLabel(attacker, target) {
-    if (typeof globalThis.getEntityAspect !== 'function' || typeof globalThis.getTypeModifier !== 'function') return '';
-    var atkAsp = globalThis.getEntityAspect(attacker);
-    var tgtAsp = globalThis.getEntityAspect(target);
+  function getAspectMatchupLabel(attacker, target, abilityRow) {
+    if (typeof globalThis.getAspectRelationship !== 'function') return '';
+    var atkAsp = typeof globalThis.getEntityAspect === 'function' ? globalThis.getEntityAspect(attacker) : '';
+    var tgtAsp = typeof globalThis.getEntityAspect === 'function' ? globalThis.getEntityAspect(target) : '';
     if (!atkAsp || !tgtAsp) return '';
-    var mod = globalThis.getTypeModifier(atkAsp, tgtAsp, null);
-    if (mod >= 1.19) return 'Dominant';
-    if (mod <= 0.81) return 'Resisted';
+    var rel = globalThis.getAspectRelationship(atkAsp, tgtAsp, abilityRow || null);
+    if (rel === 'Strong') return 'Strong';
+    if (rel === 'Weak') return 'Weak';
+    if (rel === 'Same') return 'Same';
     return 'Neutral';
   }
 
@@ -229,7 +234,12 @@
       var pn = document.getElementById('player-class-label');
       if (pn && pn.parentNode) pn.parentNode.insertBefore(pel, pn.nextSibling);
     }
-    if (pel) pel.textContent = pAsp ? ('Aspect: ' + String(pAsp).charAt(0).toUpperCase() + String(pAsp).slice(1)) : '';
+    if (pel) {
+      var pName = typeof globalThis.formatAspectDisplayName === 'function'
+        ? globalThis.formatAspectDisplayName(pAsp) : (pAsp ? String(pAsp).charAt(0).toUpperCase() + String(pAsp).slice(1) : '');
+      pel.textContent = pAsp ? ('Aspect: ' + pName) : '';
+      pel.dataset.aspectId = pAsp || '';
+    }
     var eel = document.getElementById('enemy-aspect-label');
     if (!eel) {
       eel = document.createElement('div');
@@ -239,11 +249,28 @@
       if (en && en.parentNode) en.parentNode.insertBefore(eel, en.nextSibling);
     }
     if (eel) {
+      var eName = typeof globalThis.formatAspectDisplayName === 'function'
+        ? globalThis.formatAspectDisplayName(eAsp) : (eAsp ? String(eAsp).charAt(0).toUpperCase() + String(eAsp).slice(1) : '');
       var matchup = getAspectMatchupLabel(g.player, g.enemy);
       eel.textContent = eAsp
-        ? ('Aspect: ' + String(eAsp).charAt(0).toUpperCase() + String(eAsp).slice(1) + (matchup ? ' · ' + matchup : ''))
+        ? ('Aspect: ' + eName + (matchup && matchup !== 'Neutral' ? ' · ' + matchup : ''))
         : '';
+      eel.dataset.aspectId = eAsp || '';
     }
+    bindAspectLabelTooltips();
+  }
+
+  function bindAspectLabelTooltips() {
+    if (typeof globalThis.bindRichTooltip !== 'function' || typeof globalThis.buildAspectTooltipHTML !== 'function') return;
+    ['player-aspect-label', 'enemy-aspect-label'].forEach(function (id) {
+      var el = document.getElementById(id);
+      if (!el || el._aspectTooltipBound) return;
+      el._aspectTooltipBound = true;
+      globalThis.bindRichTooltip(el, function () {
+        var aspId = el.dataset.aspectId || '';
+        return aspId ? globalThis.buildAspectTooltipHTML(aspId) : '';
+      }, { category: 'abilities' });
+    });
   }
 
   Avian.systems.masterWorkbook = {

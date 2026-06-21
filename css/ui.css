@@ -168,3 +168,46 @@
 }
 .error-console-badge.is-visible{display:block;}
 
+.aspect-label{
+  font-size:.72rem;
+  letter-spacing:.04em;
+  opacity:.88;
+  margin-top:2px;
+  cursor:help;
+}
+.aspect-chart-wrap{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:8px;
+  margin-top:10px;
+}
+.aspect-chart-svg{
+  width:min(100%,320px);
+  height:auto;
+  overflow:visible;
+}
+.aspect-chart-arrow{
+  stroke-width:1.5;
+  opacity:.75;
+  pointer-events:none;
+}
+.aspect-chart-node{
+  pointer-events:none;
+}
+.aspect-chart-label{
+  fill:#fff;
+  font-size:9px;
+  font-family:'Cinzel',serif;
+  pointer-events:none;
+  paint-order:stroke fill;
+  stroke:#1a1a2e;
+  stroke-width:2px;
+}
+.aspect-chart-legend{
+  font-size:.78rem;
+  opacity:.85;
+  text-align:center;
+}
+.ref-aspect-chart-card .aspect-chart-wrap{margin-bottom:4px}
+

@@ -324,6 +324,7 @@ try {
 
     $families = [ordered]@{}
     $skillTrees = [ordered]@{}
+    $abilityAliases = [ordered]@{}
     $birdKits = [ordered]@{}
 
     $stageBranchLevel = @{ 1 = @{ branch='base'; level=1 }; 2 = @{ branch='power'; level=3 }; 3 = @{ branch='power'; level=6 } }
@@ -341,9 +342,15 @@ try {
         if (-not $map) { $map = @{ branch='power'; level=9 } }
         $abId = "$famId`_S$stage"
         $entry = Build-AbilityRowEntry $row $mutLayout.header $abId $famId $map.branch $map.level 'bird'
+        $entry.mutationStage = $stage
         $skillTrees[$abId] = $entry
         if (-not $families.Contains($famId)) {
             $kind = if ($slotNum -in 1,2) { 'starter' } else { 'unlock' }
+            $unlockFromRow = Get-NormalizedUnlockTier (Get-CellFuzzy $row $mutLayout.header @('Unlock Tier'))
+            if (-not $unlockFromRow) {
+                $roleHint = Get-CellFuzzy $row $mutLayout.header @('Role')
+                if ($roleHint -match 'Basic') { $unlockFromRow = 'Starter' }
+            }
             $families[$famId] = [ordered]@{
                 id = $famId
                 kind = $kind
@@ -362,7 +369,44 @@ try {
                 role = Get-CellFuzzy $row $mutLayout.header @('Role')
                 notes = Get-CellFuzzy $row $mutLayout.header @('Mutation Improvement')
                 maxTier = 3
-                unlockTier = Get-CellFuzzy $row $mutLayout.header @('Unlock Tier')
+                maxMutationStage = 3
+                unlockTier = $unlockFromRow
+                mutations = [ordered]@{ '1' = "$famId`_S1"; '2' = "$famId`_S2"; '3' = "$famId`_S3" }
+            }
+        }
+    }
+
+    # Merge family metadata from Bird Ability List (unlock tiers, roles)
+    for ($i = $ablLayout.dataStart; $i -lt $ablRows.Count; $i++) {
+        $row = $ablRows[$i]
+        $birdName = Get-CellFuzzy $row $ablLayout.header @('Bird')
+        $birdKey = Get-BirdKey $birdName
+        if (-not $birdKey) { continue }
+        $slotNum = Get-Num (Get-CellFuzzy $row $ablLayout.header @('Ability Slot'))
+        if ($slotNum -le 0) { continue }
+        $abName = Get-CellFuzzy $row $ablLayout.header @('Ability Name')
+        $role = Get-CellFuzzy $row $ablLayout.header @('Role')
+        $unlockTier = Get-NormalizedUnlockTier (Get-CellFuzzy $row $ablLayout.header @('Unlock Tier'))
+        if (-not $unlockTier -and $role) {
+            if ($role -match 'Basic 1|Basic 2') { $unlockTier = 'Starter' }
+            elseif ($role -match 'Green') { $unlockTier = 'Green Aspect' }
+            elseif ($role -match 'Blue') { $unlockTier = 'Blue Class' }
+            elseif ($role -match 'Purple') { $unlockTier = 'Purple Utility' }
+            elseif ($role -match 'Gold') { $unlockTier = 'Gold Special' }
+            elseif ($role -match 'Orange|Ultimate') { $unlockTier = 'Orange Ultimate' }
+        }
+        $famId = ($families.Keys | Where-Object {
+            $families[$_].birdKey -eq $birdKey -and $families[$_].abilitySlot -eq ($slotNum - 1)
+        } | Select-Object -First 1)
+        if ($famId -and $families[$famId]) {
+            if ($role) { $families[$famId].role = $role }
+            if ($unlockTier) { $families[$famId].unlockTier = $unlockTier }
+        }
+        if ($abName) {
+            $slug = ($abName -replace '[^a-zA-Z0-9]+','_').ToUpper().Trim('_')
+            $listId = "${birdKey}_S${slotNum}_$slug"
+            if ($famId) {
+                $abilityAliases[$listId] = "$famId`_S1"
             }
         }
     }
@@ -408,39 +452,43 @@ try {
     }
 
     # Canonical ability list rows also in skillTrees (slot unlock reference)
-    for ($i = $ablLayout.dataStart; $i -lt $ablRows.Count; $i++) {
-        $row = $ablRows[$i]
-        $birdName = Get-CellFuzzy $row $ablLayout.header @('Bird')
-        $slotNum = Get-Num (Get-CellFuzzy $row $ablLayout.header @('Ability Slot'))
-        $abName = Get-CellFuzzy $row $ablLayout.header @('Ability Name')
-        if (-not $abName) { continue }
-        $slug = ($abName -replace '[^a-zA-Z0-9]+','_').ToUpper().Trim('_')
-        $listId = "$(Get-BirdKey $birdName)_S${slotNum}_$slug"
-        $famId = ($families.Keys | Where-Object { $families[$_].birdKey -eq (Get-BirdKey $birdName) -and $families[$_].abilitySlot -eq ($slotNum - 1) } | Select-Object -First 1)
-        if (-not $famId) { $famId = $listId + '_FAMILY' }
-        $entry = Build-AbilityRowEntry $row $ablLayout.header $listId $famId 'base' 1 'bird'
-        if (-not $skillTrees.Contains($listId)) { $skillTrees[$listId] = $entry }
+    # (Removed duplicate list IDs - canonical IDs are FamilyId_S1/S2/S3 only; aliases in abilityAliases)
+
+    # --- Ability Tag Glossary ---
+    $tagRows = $sheets['Ability Tag Glossary']
+    $tagLayout = Get-SheetLayout 'Ability Tag Glossary' $tagRows @('Tag','Allowed')
+    $abilityTagGlossary = [ordered]@{}
+    for ($i = $tagLayout.dataStart; $i -lt $tagRows.Count; $i++) {
+        $row = $tagRows[$i]
+        $tagName = Get-CellFuzzy $row $tagLayout.header @('Tag')
+        if (-not $tagName -or $tagName -eq 'Tag') { continue }
+        $allowed = (Get-CellFuzzy $row $tagLayout.header @('Allowed')).ToLower()
+        $use = Get-CellFuzzy $row $tagLayout.header @('Use')
+        $notes = Get-CellFuzzy $row $tagLayout.header @('Notes')
+        $rejected = ($allowed -match '^(no|n|false|reject|deprecated|legacy)$')
+        $abilityTagGlossary[$tagName] = [ordered]@{
+            id = $tagName
+            label = if ($use) { $use } else { $tagName }
+            notes = $notes
+            rejected = $rejected
+        }
     }
 
-    # --- Aspects data ---
-    $aspects = [ordered]@{
-        ids = @('terra','aeris','tempest','solis','lunae','maris')
-        dominantMod = 1.20
-        neutralMod = 1.00
-        resistedMod = 0.80
-        chart = [ordered]@{
-            terra = [ordered]@{ terra='neutral'; aeris='dominant'; tempest='resisted'; solis='dominant'; lunae='neutral'; maris='resisted' }
-            aeris = [ordered]@{ terra='dominant'; aeris='neutral'; tempest='resisted'; solis='resisted'; lunae='dominant'; maris='neutral' }
-            tempest = [ordered]@{ terra='resisted'; aeris='dominant'; tempest='neutral'; solis='neutral'; lunae='resisted'; maris='dominant' }
-            solis = [ordered]@{ terra='resisted'; aeris='dominant'; tempest='neutral'; lunae='dominant'; maris='resisted' }
-            lunae = [ordered]@{ terra='neutral'; aeris='resisted'; tempest='dominant'; solis='resisted'; lunae='neutral'; maris='dominant' }
-            maris = [ordered]@{ terra='dominant'; aeris='neutral'; tempest='resisted'; solis='dominant'; lunae='resisted'; maris='neutral' }
+    # Ensure every family has mutations map
+    foreach ($fid in @($families.Keys)) {
+        if (-not $families[$fid].mutations) {
+            $families[$fid].mutations = [ordered]@{ '1' = "$fid`_S1"; '2' = "$fid`_S2"; '3' = "$fid`_S3" }
         }
-        themes = [ordered]@{
-            terra='Earth / Ground'; aeris='Sky / Wind'; tempest='Storm / Lightning'
-            solis='Day / Sun'; lunae='Night / Moon'; maris='Water / Sea'
-        }
+        if (-not $families[$fid].maxMutationStage) { $families[$fid].maxMutationStage = 3 }
     }
+
+    # --- Aspects data (parsed from Master Aspects sheet) ---
+    $aspectRows = $sheets['Master Aspects']
+    if (-not $aspectRows -or $aspectRows.Count -lt 18) {
+        Write-Error '[master-workbook] missing Master Aspects sheet'
+        exit 1
+    }
+    $aspects = Build-AspectsFromSheet $aspectRows
 
     # --- Effect tiers (subset from workbook) ---
     $effectTiers = [ordered]@{
@@ -490,6 +538,8 @@ try {
     Write-AvianDataFile (Join-Path $Root 'js\data\combat-pack\birds-kits.js') '/* GENERATED bird kits */' 'birdKits' $birdKits 'combatPack'
     Write-AvianDataFile (Join-Path $Root 'js\data\combat-pack\families.js') '/* GENERATED ability families */' 'families' $families 'combatPack'
     Write-AvianDataFile (Join-Path $Root 'js\data\combat-pack\skill-trees.js') '/* GENERATED skill trees */' 'skillTrees' $skillTrees 'combatPack'
+    Write-AvianDataFile (Join-Path $Root 'js\data\combat-pack\ability-aliases.js') '/* GENERATED ability ID aliases */' 'abilityAliases' $abilityAliases 'combatPack'
+    Write-AvianDataFile (Join-Path $Root 'js\data\ability-tag-glossary.js') '/* GENERATED ability tag glossary */' 'abilityTagGlossary' $abilityTagGlossary 'data'
     Write-AvianDataFile (Join-Path $Root 'js\data\aspects.js') '/* GENERATED aspect matchup */' 'aspects' $aspects 'data'
     Write-AvianDataFile (Join-Path $Root 'js\data\effect-tiers.js') '/* GENERATED effect tiers */' 'effectTiers' $effectTiers 'data'
     Write-AvianDataFile (Join-Path $Root 'js\data\ultimate-meter-rules.js') '/* GENERATED ultimate meter rules */' 'ultimateMeterRules' $ultimateMeterRules 'data'
@@ -504,9 +554,28 @@ try {
     Write-Host "[master-workbook] enemy roster rows: $enemyCount"
     Write-Host "[master-workbook] families: $($families.Count)"
     Write-Host "[master-workbook] skill trees: $($skillTrees.Count)"
+    Write-Host "[master-workbook] ability aliases: $($abilityAliases.Count)"
+    Write-Host "[master-workbook] tag glossary: $($abilityTagGlossary.Count)"
 
     if ($Verify) {
-        $fail = ($birds.Count -lt 50) -or ($enemyCount -lt 500) -or ($skillTrees.Count -lt 300)
+        $expectedTrees = $families.Count * 3
+        $slotsOk = $true
+        foreach ($bk in $birds.Keys) {
+            $slotCount = @($families.Values | Where-Object { $_.birdKey -eq $bk }).Count
+            if ($slotCount -ne 7) { $slotsOk = $false; break }
+        }
+        $mutOk = $true
+        foreach ($fid in $families.Keys) {
+            foreach ($st in 1..3) {
+                if (-not $skillTrees.Contains("$fid`_S$st")) { $mutOk = $false; break }
+            }
+            if (-not $mutOk) { break }
+        }
+        $fail = ($birds.Count -lt 50) -or ($enemyCount -lt 500) -or ($families.Count -lt 350) `
+            -or ($skillTrees.Count -ne $expectedTrees) -or (-not $slotsOk) -or (-not $mutOk)
+        if ($fail) {
+            Write-Host "[master-workbook] VERIFY FAIL birds=$($birds.Count) families=$($families.Count) trees=$($skillTrees.Count) expected=$expectedTrees slotsOk=$slotsOk mutOk=$mutOk"
+        }
         exit $(if ($fail) { 2 } else { 0 })
     }
 }
