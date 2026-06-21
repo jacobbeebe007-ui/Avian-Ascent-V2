@@ -5596,11 +5596,17 @@ function birdUpgradeReasonText(model){
   return '';
 }
 
+function formatBirdUpgradeStatValue(value){
+  const n=Number(value);
+  if(!Number.isFinite(n)) return '0.00';
+  return n.toFixed(2);
+}
+
 function birdUpgradeStatRowsHtml(model){
   return model.statRows.map(row=>{
     const deltaClass=row.delta>0?' is-positive':row.delta<0?' is-negative':'';
-    const deltaText=row.delta>0?`+${row.delta}`:String(row.delta);
-    return `<div class="bird-upgrade-stat-row"><span>${escapeHtmlRoster(row.label)}</span><strong>${escapeHtmlRoster(row.before)}</strong><i aria-hidden="true">→</i><strong>${escapeHtmlRoster(row.after)}</strong><em class="${deltaClass}">${escapeHtmlRoster(deltaText)}</em></div>`;
+    const deltaText=row.delta>0?`+${formatBirdUpgradeStatValue(row.delta)}`:formatBirdUpgradeStatValue(row.delta);
+    return `<div class="bird-upgrade-stat-row"><span>${escapeHtmlRoster(row.label)}</span><strong>${escapeHtmlRoster(formatBirdUpgradeStatValue(row.before))}</strong><i aria-hidden="true">→</i><strong>${escapeHtmlRoster(formatBirdUpgradeStatValue(row.after))}</strong><em class="${deltaClass}">${escapeHtmlRoster(deltaText)}</em></div>`;
   }).join('');
 }
 
@@ -7974,6 +7980,19 @@ function estimateSkillDamageRange(ab,tmpl,attacker,opts){
   const packRow=tmpl._combatPackRow;
   if(packRow&&!packRow.noDamage){
     const previewStats=isPlayerCombat&&G?.player?G.player.stats:stats;
+    if(typeof enrichCombatRow==='function') enrichCombatRow(packRow);
+    if(typeof calculateDamage==='function'&&typeof usesMasterDamage==='function'&&usesMasterDamage(packRow)&&isPlayerCombat&&G?.enemy){
+      const masterPreview=calculateDamage({
+        attacker:G.player,
+        target:G.enemy,
+        ability:packRow,
+        battleState:{ enemyStatus:G.enemyStatus, enemyHasBurning:typeof enemyHasBurning==='function'?enemyHasBurning():false },
+        bonusFractions:[],
+        hitSucceeded:true,
+      });
+      const previewTotal=Math.max(1, masterPreview.damage||1);
+      return {isDamaging,dmgLow:previewTotal,dmgHigh:previewTotal,btnType,lv,lvData,hybridSplit:null};
+    }
     let raw=typeof computeAbilityRawDamage==='function'
       ? computeAbilityRawDamage(packRow, previewStats)
       : (Number(packRow.baseFlat)||0)+packRowScaleContribution(packRow.scaleStat,packRow.scalePct,previewStats,isPlayerCombat)
@@ -9830,7 +9849,79 @@ function resolveAbilityCombatRow(srcAbility){
   const ab=srcAbility||G._activePlayerAbility||null;
   if(!ab) return null;
   const tmpl=getAbilityTemplateForUI(ab);
-  return tmpl?._combatPackRow||ab?._dispatcherRow||null;
+  const row=tmpl?._combatPackRow||ab?._dispatcherRow||null;
+  if(row&&typeof enrichCombatRow==='function') enrichCombatRow(row);
+  return row;
+}
+
+function detectMutationEquipmentBonus(player){
+  if(!player||typeof Avian?.mutations?.getMechanicsRollup!=='function') return false;
+  const eqM=Avian.mutations.getMechanicsRollup(player);
+  if((eqM.lightAttackDmgPct||0)>0||(eqM.mediumAttackDmgPct||0)>0||(eqM.heavyAttackDmgPct||0)>0) return true;
+  if((eqM.multiHitDmgPct||0)>0) return true;
+  if(eqM.damageBonuses&&eqM.damageBonuses.length) return true;
+  return false;
+}
+
+function computeMasterOutgoingDamage(isMagic, srcAbility, opts={}){
+  const activeAb=srcAbility||G._activePlayerAbility||null;
+  const row=resolveAbilityCombatRow(activeAb);
+  if(!row||typeof calculateDamage!=='function'||typeof usesMasterDamage!=='function'||!usesMasterDamage(row)) return null;
+  const activeType=String(activeAb?.btnType||activeAb?.type||ABILITY_TEMPLATES?.[activeAb?.id]?.btnType||ABILITY_TEMPLATES?.[activeAb?.id]?.type||'').toLowerCase();
+  const isAttack=(activeType==='physical'||activeType==='ranged');
+  const isSpell=(activeType==='spell');
+  const passiveEvoBonus=getPassiveEvolutionBonuses(G.player);
+  const classPerkCtx=applyClassPerksToCombatContext(G.player?.birdKey,{});
+  const esAff=G.enemyStatus||{};
+  const hasPoison=(esAff.poison?.stacks||0)>0;
+  const hasChill=(esAff.chilled?.stacks||0)>0;
+  const ailCount=countAilmentCategoriesOnEnemy();
+  let isCrit=opts.isCrit;
+  if(isCrit==null){
+    if(!isMagic&&classPerkCtx.predatorRhythm&&(G.playerActionsThisTurn||0)===2&&chance(10)) isCrit=true;
+    if(!isCrit&&typeof getPlayerCritChance==='function'&&chance(getPlayerCritChance(activeAb))) isCrit=true;
+  }
+  const bonusFractions=opts.bonusFractions||collectOutgoingDamageBonusFractions({
+    isAttack,isSpell,isMagic,activeAb,classPerkCtx,passiveEvoBonus,ailCount,hasPoison,hasChill,isCrit,
+  });
+  const battleState={
+    enemyStatus:G.enemyStatus,
+    enemyHasBurning:typeof enemyHasBurning==='function'?enemyHasBurning():false,
+    hasMutationEquipmentBonus:detectMutationEquipmentBonus(G.player),
+  };
+  const result=calculateDamage({
+    attacker:G.player,
+    target:G.enemy,
+    ability:row,
+    battleState,
+    bonusFractions,
+    isCriticalHit:!!isCrit,
+    critDamageAdd:computePlayerCritDamageAdd(activeAb),
+    critMultiplier:G.player?.goldCritMult||globalThis.MASTER_BASE_CRIT_MULT||BASE_CRIT_DAMAGE||1.35,
+    hitSucceeded:opts.hitSucceeded!==false,
+  });
+  let dmg=result.damage;
+  if(esAff.bleed?.stacks>0){
+    dmg+=(G.player?.vsBleedFlatBonus||0);
+    if((G.player?.vsBleedPctBonus||0)>0) dmg=roundCombatDamage(dmg*(1+G.player.vsBleedPctBonus));
+  }
+  if(typeof Avian?.passives?.applyDamageBonus==='function'){
+    dmg=Avian.passives.applyDamageBonus(dmg,activeAb,{isAttack,isSpell,isMagic});
+  }
+  if(typeof Avian?.dispatcher?.applyDispatcherHitMods==='function'){
+    dmg=Avian.dispatcher.applyDispatcherHitMods(dmg);
+  }
+  if(typeof globalThis.avianApplySynergyConsumeDamage==='function'){
+    dmg=globalThis.avianApplySynergyConsumeDamage('enemy',!!isCrit,isMagic,dmg);
+  }
+  dmg=roundCombatDamage(Math.max(1,dmg));
+  return {
+    damage:dmg,
+    isCrit:!!isCrit,
+    components:result.components,
+    row,
+    enCost:row.enCost||row.apCost||1,
+  };
 }
 
 /** Row-based raw damage → curved defence. No EN power tier multiplier. */
@@ -9838,6 +9929,18 @@ function computeOutgoingDamageBase(isMagic, srcAbility, legacyAmount=0){
   const activeAb=srcAbility||G._activePlayerAbility||null;
   const row=resolveAbilityCombatRow(activeAb);
   const enCost=activeAb?getAbilityAuthoredEnergyCost(activeAb,G.player):1;
+  if(row&&typeof usesMasterDamage==='function'&&usesMasterDamage(row)&&typeof calculateDamage==='function'){
+    const master=computeMasterOutgoingDamage(isMagic, activeAb, { hitSucceeded:true, isCrit:false });
+    if(master){
+      return {
+        rawDamage:master.components?(master.components.enBase*master.components.abilityPower*master.components.statMod):master.damage,
+        mitigated:master.damage,
+        enCost,
+        effectiveDef:master.components?master.components.defStat:0,
+        row,
+      };
+    }
+  }
   let rawDamage=0;
   if(row&&typeof computeAbilityRawDamage==='function'){
     rawDamage=computeAbilityRawDamage(row, G.player.stats);
@@ -9957,7 +10060,12 @@ function collectOutgoingDamageBonusFractions(ctx){
   }
   if(isAttack&&!G._firstAttackUsed&&(p?.firstAttackEachBattleBonusPct||0)>0) fractions.push(p.firstAttackEachBattleBonusPct);
   if((passiveEvoBonus.damagePct||0)>0) fractions.push(passiveEvoBonus.damagePct);
-  if(G._dispatcherCombatRow) fractions.push(...collectDispatcherConditionalBonusFractions(G._dispatcherCombatRow));
+  if(G._dispatcherCombatRow){
+    const dRow=G._dispatcherCombatRow;
+    if(!(dRow.condition&&dRow.conditionalAbilityPower!=null)){
+      fractions.push(...collectDispatcherConditionalBonusFractions(dRow));
+    }
+  }
   if((G.playerStatus?.holdTheLineBoost||0)>0&&isAttack) delete G.playerStatus.holdTheLineBoost;
   if(_passId==='passive_raven_grim_opportunity'&&(isAttack||isSpell)){
     const deb=(es.poison?.stacks||0)>0||(es.bleed?.stacks||0)>0||(es.feared||0)>0||getWeakenStacks(es)>0||(es.paralyzed||0)>0||!!es.confused||_burningNow||(es.chilled?.stacks||0)>0||(es.accDebuff||0)>0;
@@ -9985,6 +10093,22 @@ function getEnemyAbilityAuthoredEnCost(ab){
 function computeEntityAbilityRawDamage(entity, ab, tmpl, isMagic){
   const row=tmpl?._combatPackRow||ab?._dispatcherRow||null;
   const stats=entity?.stats||entity||{};
+  if(row&&typeof enrichCombatRow==='function') enrichCombatRow(row);
+  if(row&&typeof calculateDamage==='function'&&typeof usesMasterDamage==='function'&&usesMasterDamage(row)){
+    const battleState={
+      enemyStatus:G.playerStatus,
+      enemyHasBurning:typeof playerHasBurning==='function'?playerHasBurning():false,
+    };
+    const result=calculateDamage({
+      attacker:entity,
+      target:G.player,
+      ability:row,
+      battleState,
+      bonusFractions:[],
+      hitSucceeded:true,
+    });
+    return Math.max(1, result.damage);
+  }
   if(row&&typeof computeAbilityRawDamage==='function'){
     return Math.max(1, Math.round(computeAbilityRawDamage(row, stats)));
   }
@@ -10038,7 +10162,10 @@ function computePlayerCritDamageAdd(activeAb){
   return critDmgAdd;
 }
 
-function dealDamage(target,amount,isCrit=false,isMagic=false,srcAbility=null) {
+globalThis.computeMasterOutgoingDamage = computeMasterOutgoingDamage;
+
+function dealDamage(target,amount,isCrit=false,isMagic=false,srcAbility=null,opts=null) {
+  opts=opts||{};
   const passiveEvoBonus=getPassiveEvolutionBonuses(G.player);
   const classPerkCtx=applyClassPerksToCombatContext(G.player?.birdKey,{});
   const activeAb=srcAbility||G._activePlayerAbility||null;
@@ -10047,16 +10174,36 @@ function dealDamage(target,amount,isCrit=false,isMagic=false,srcAbility=null) {
   const isSpell=(activeType==='spell');
   let damageMeta=null;
   let dmg;
+  let usedMasterPath=false;
   if(target==='enemy'){
-    const legacyAmount=(amount>0&&!resolveAbilityCombatRow(activeAb))?amount:0;
-    damageMeta=computeOutgoingDamageBase(isMagic,activeAb,legacyAmount);
-    dmg=roundCombatDamage(Math.max(0.01, damageMeta.mitigated));
+    const row=resolveAbilityCombatRow(activeAb);
+    const legacyAmount=(amount>0&&!row)?amount:0;
+    if(opts.precomputedDamage!=null){
+      dmg=roundCombatDamage(Math.max(0.01, Number(opts.precomputedDamage)||0));
+      isCrit=!!opts.isCrit;
+      damageMeta={ row, enCost:row?(row.enCost||row.apCost||1):1, mitigated:dmg };
+      usedMasterPath=true;
+    }else if(row&&typeof usesMasterDamage==='function'&&usesMasterDamage(row)){
+      const master=computeMasterOutgoingDamage(isMagic, activeAb, { isCrit:opts.forceCrit });
+      if(master){
+        dmg=master.damage;
+        isCrit=master.isCrit;
+        damageMeta={ row:master.row, enCost:master.enCost, mitigated:master.damage, rawDamage:master.components?(master.components.enBase*master.components.abilityPower*master.components.statMod):master.damage };
+        usedMasterPath=true;
+      }else{
+        damageMeta=computeOutgoingDamageBase(isMagic,activeAb,legacyAmount);
+        dmg=roundCombatDamage(Math.max(0.01, damageMeta.mitigated));
+      }
+    }else{
+      damageMeta=computeOutgoingDamageBase(isMagic,activeAb,legacyAmount);
+      dmg=roundCombatDamage(Math.max(0.01, damageMeta.mitigated));
+    }
     G._lastCurvedDamageMeta=damageMeta;
-    isCrit=false;
+    if(!usedMasterPath) isCrit=false;
   } else {
     dmg=roundCombatDamage(Math.max(0.01, amount));
   }
-  if(target==='enemy'){
+  if(target==='enemy'&&!usedMasterPath){
     const esAff=G.enemyStatus||{};
     const hasPoison=(esAff.poison?.stacks||0)>0;
     const hasChill=(esAff.chilled?.stacks||0)>0;
@@ -10095,8 +10242,15 @@ function dealDamage(target,amount,isCrit=false,isMagic=false,srcAbility=null) {
     if(typeof globalThis.avianApplySynergyConsumeDamage==='function'){
       dmg=globalThis.avianApplySynergyConsumeDamage('enemy',isCrit,isMagic,dmg);
     }
-    if(damageMeta){
+    if(damageMeta&&!usedMasterPath){
       dmg=applyMinimumDamage(roundCurvedDamage(dmg),damageMeta.enCost);
+    }else if(usedMasterPath){
+      dmg=roundCombatDamage(Math.max(1,dmg));
+      const _passIdMaster=BIRDS[G.player?.birdKey]?.passive?.id;
+      if(isCrit&&_passIdMaster==='passive_magpie_shiny_opportunist'&&isAttack&&!(G.player._magpieCritSpdThisTurn)){
+        G.player._magpieCritSpdThisTurn=true;
+        G.playerStatus.magpieSpdNext=4;
+      }
     }
   }
   let wasBlocked=false;
@@ -10127,7 +10281,9 @@ function dealDamage(target,amount,isCrit=false,isMagic=false,srcAbility=null) {
       }
       return {dmgDealt:0,wasDodged:true,wasBlocked:false,isCrit,isMagic};
     }
-    dmg=roundCombatDamage(applyCurvedMitigationToPlayer(dmg,isMagic,activeAb));
+    dmg=opts.masterFullyResolved
+      ? roundCombatDamage(Math.max(1,dmg))
+      : roundCombatDamage(applyCurvedMitigationToPlayer(dmg,isMagic,activeAb));
     G._currentPiercePct=0;
     if((G.enemyStatus?.feared||0)>0 && G.player?.relTerrorLedger) dmg=roundCombatDamage(dmg*0.90);
     if(G.playerStatus?.ironResolve && G.playerStatus.ironResolve.turns>0) dmg=roundCombatDamage(dmg*0.80);
@@ -10149,7 +10305,9 @@ function dealDamage(target,amount,isCrit=false,isMagic=false,srcAbility=null) {
       dmg=rr.amount;
       isCrit=rr.isCrit;
     }
-    dmg=applyMinimumDamage(roundCurvedDamage(dmg), enemyEnCost);
+    dmg=opts.masterFullyResolved
+      ? Math.max(1, Math.round(dmg))
+      : applyMinimumDamage(roundCurvedDamage(dmg), enemyEnCost);
     const bypassDeflect=!!G._incomingBypassesDeflect;
     if(G.playerStatus.parry&&G.playerStatus.parry>0){
       const isParryValid=(G._incomingAttackKind==='physical'||G._incomingAttackKind==='ranged')&&!bypassDeflect;
@@ -12176,8 +12334,10 @@ async function executeEnemyKitTemplateAbility(enemy, abilityId, totalEnemyMiss){
       return;
     }
     const tmplRow=getAbilityTemplateForUI(ab);
+    const _combatRow=tmplRow?._combatPackRow||null;
+    const _masterResolved=_combatRow&&typeof usesMasterDamage==='function'&&usesMasterDamage(_combatRow);
     const raw=computeEntityAbilityRawDamage(enemy, ab, tmplRow, false);
-    const r=dealDamage('player',raw,false,false,ab);
+    const r=dealDamage('player',raw,false,false,ab,{ masterFullyResolved: _masterResolved });
     await doAttack('enemy','player',r);
     setHpBar('player',G.player.stats.hp,G.player.stats.maxHp);
     if(r.wasDodged) logMsg(`${name} — dodged!`,'miss');
@@ -12188,8 +12348,10 @@ async function executeEnemyKitTemplateAbility(enemy, abilityId, totalEnemyMiss){
     G._incomingAttackKind='magic';
     G._incomingBypassesDeflect=true;
     const tmplRow2=getAbilityTemplateForUI(ab);
+    const _combatRow2=tmplRow2?._combatPackRow||null;
+    const _masterResolved2=_combatRow2&&typeof usesMasterDamage==='function'&&usesMasterDamage(_combatRow2);
     const raw=computeEntityAbilityRawDamage(enemy, ab, tmplRow2, true);
-    const r=dealDamage('player',raw,false,true,ab);
+    const r=dealDamage('player',raw,false,true,ab,{ masterFullyResolved: _masterResolved2 });
     if(r.wasDodged){
       spawnFloat('player','Dodged!','fn-dodge'); playAvatarAnim('player','do-dodge-r',400); SFX.dodge(); await delay(420);
       logMsg(`✨ ${G.player.name} slips the spell!`,'system');

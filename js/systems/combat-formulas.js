@@ -220,6 +220,367 @@
     };
   }
 
+  // ===== Master Damage System =================================================
+  var EN_BASE_DAMAGE = { 1: 5, 2: 11, 3: 17 };
+  var CLASS_BASELINES = {
+    knight: 13, rogue: 10, mage: 22, siren: 15, inquisitor: 11, bard: 10, brute: 14, duke: 24,
+  };
+  var BONUS_CAP_NORMAL = 0.30;
+  var BONUS_CAP_MUT_EQ = 0.45;
+  var BONUS_CAP_BOSS = 0.50;
+  var MASTER_BASE_CRIT_MULT = 1.35;
+  var MASTER_MAX_CRIT_MULT = 1.50;
+  var STAT_MOD_MIN = 0.90;
+  var STAT_MOD_MAX = 1.15;
+  var HYBRID_DEF_WEIGHTS = { def: 0.6, mdef: 0.4 };
+
+  function clampNum(n, min, max) {
+    return Math.max(min, Math.min(max, Number(n) || 0));
+  }
+
+  function normalizeClassKey(className) {
+    var raw = String(className || 'rogue').toLowerCase().replace(/[^a-z]/g, '');
+    if (raw === 'dukeblakiston') return 'duke';
+    return CLASS_BASELINES[raw] != null ? raw : 'rogue';
+  }
+
+  function getENBaseDamage(enCost) {
+    var cost = Math.max(1, Math.min(3, Math.floor(Number(enCost) || 1)));
+    return EN_BASE_DAMAGE[cost] || EN_BASE_DAMAGE[1];
+  }
+
+  function getClassBaseline(className) {
+    return CLASS_BASELINES[normalizeClassKey(className)] || CLASS_BASELINES.rogue;
+  }
+
+  function statFromEntity(entity, key) {
+    var stats = entity && entity.stats ? entity.stats : entity || {};
+    var k = String(key || 'ATK').toUpperCase();
+    if (k === 'HP' || k === 'MAXHP') return Math.max(0, Number(stats.maxHp || stats.hp) || 0);
+    if (k === 'MATK' || k === 'MATT') return Math.max(0, Number(stats.matk) || 0);
+    if (k === 'SPD') return Math.max(0, Number(stats.spd) || 0);
+    if (k === 'DEF') return Math.max(0, Number(stats.def) || 0);
+    if (k === 'MDEF') return Math.max(0, Number(stats.mdef) || 0);
+    if (k === 'ACC') return Math.max(0, Number(stats.acc) || 0);
+    if (k === 'DODGE') return Math.max(0, Number(stats.dodge) || 0);
+    return Math.max(0, Number(stats.atk) || 0);
+  }
+
+  function inferDamageType(row) {
+    if (!row) return 'Physical';
+    if (row.damageType) return String(row.damageType);
+    if (/true/i.test(String(row.category || '')) || (row.tags || []).some(function (t) { return /true/i.test(t); })) return 'True';
+    if (/magic|song|spell/i.test(String(row.category || ''))) return 'Magic';
+    if (String(row.damageStat || row.scaleStat || '').toUpperCase() === 'HYBRID') return 'Hybrid';
+    if (row.secondaryScaleStat && (row.secondaryScalePct || 0) > 0) return 'Hybrid';
+    if ((row.pierceDef || 0) > 0 && (row.pierceMdef || 0) > 0) return 'Hybrid';
+    if ((row.pierceMdef || 0) > 0 && !(row.pierceDef || 0)) return 'Magic';
+    return 'Physical';
+  }
+
+  function inferDamageStat(row) {
+    if (!row) return 'ATK';
+    if (row.damageStat) return String(row.damageStat).toUpperCase();
+    if (row.secondaryScaleStat && (row.secondaryScalePct || 0) > 0) return 'HYBRID';
+    return String(row.scaleStat || 'ATK').toUpperCase();
+  }
+
+  function buildHybridScaling(row) {
+    if (row && row.hybridScaling && typeof row.hybridScaling === 'object') return row.hybridScaling;
+    var primary = String(row.scaleStat || 'ATK').toUpperCase();
+    var secondary = String(row.secondaryScaleStat || '').toUpperCase();
+    var pPct = Math.max(0, Number(row.scalePct) || 0);
+    var sPct = Math.max(0, Number(row.secondaryScalePct) || 0);
+    var total = pPct + sPct;
+    if (!secondary || total <= 0) return null;
+    var out = {};
+    out[primary] = pPct / total;
+    out[secondary] = sPct / total;
+    return out;
+  }
+
+  function inferAbilityPower(row) {
+    if (!row || row.noDamage) return 0;
+    if (row.abilityPower != null && Number.isFinite(Number(row.abilityPower))) return Number(row.abilityPower);
+    var power = 1.0;
+    var en = Math.max(1, Number(row.enCost || row.apCost) || 1);
+    if (en <= 1) power = 0.95;
+    else if (en === 2) power = 1.0;
+    else power = 1.15;
+    var ail = Number(row.ailmentChance) || 0;
+    if (ail >= 30) power -= 0.20;
+    else if (ail >= 15) power -= 0.12;
+    else if (ail >= 5) power -= 0.05;
+    if ((Number(row.lifestealPct) || 0) > 0) power -= 0.10;
+    if ((row.pierceDef || 0) >= 25 || (row.pierceMdef || 0) >= 25) power -= 0.15;
+    else if ((row.pierceDef || 0) > 0 || (row.pierceMdef || 0) > 0) power -= 0.08;
+    if (row.riderText && row.riderText !== 'None') power -= 0.08;
+    if ((row.hits || 1) > 1) power -= 0.05;
+    var budget = (Number(row.baseFlat) || 0) + (Number(row.scalePct) || 0) * 0.01 + (Number(row.secondaryScalePct) || 0) * 0.01;
+    if (budget >= 80) power += 0.10;
+    else if (budget >= 55) power += 0.05;
+    else if (budget <= 25) power -= 0.08;
+    return clampNum(power, 0.65, 1.50);
+  }
+
+  function inferHeavyAccuracyPenalty(row) {
+    if (row && row.heavyAccuracyPenalty != null) return Number(row.heavyAccuracyPenalty) || 0;
+    var en = Math.max(1, Number(row.enCost || row.apCost) || 1);
+    if (en < 3) return 0;
+    var power = inferAbilityPower(row);
+    if (power >= 1.31) return 15;
+    if (power >= 1.21) return 12;
+    if (power >= 1.11) return 8;
+    return 5;
+  }
+
+  function inferRecoilPercent(row) {
+    if (row && row.recoilPercent != null) return Number(row.recoilPercent) || 0;
+    var power = inferAbilityPower(row);
+    if (power >= 1.31) return 0.20;
+    if (power >= 1.21) return 0.15;
+    return 0;
+  }
+
+  function mapLegacyRowToMasterDamage(row) {
+    if (!row || typeof row !== 'object') return row;
+    var damageType = inferDamageType(row);
+    var damageStat = inferDamageStat(row);
+    var hybridScaling = buildHybridScaling(row);
+    var hybridDefenceScaling = row.hybridDefenceScaling || (damageType === 'Hybrid' ? HYBRID_DEF_WEIGHTS : null);
+    var abilityPower = inferAbilityPower(row);
+    var conditionalAbilityPower = row.conditionalAbilityPower != null ? Number(row.conditionalAbilityPower) : null;
+    var condition = row.condition || null;
+    if (!condition && row.riders && row.riders.length) {
+      for (var i = 0; i < row.riders.length; i++) {
+        var r = row.riders[i];
+        if (r.kind === 'bonusVsAilment' && r.ailment === 'bleed') {
+          condition = 'targetBleeding';
+          conditionalAbilityPower = 1 + (Number(r.value) || 0) / 100;
+        } else if (r.kind === 'bonusVsLowHp') {
+          condition = 'targetLowHp';
+          conditionalAbilityPower = 1 + (Number(r.value) || 0) / 100;
+        }
+      }
+    }
+    return Object.assign({}, row, {
+      enCost: row.enCost != null ? row.enCost : (row.apCost || 1),
+      damageType: damageType,
+      damageStat: damageStat,
+      hybridScaling: hybridScaling,
+      hybridDefenceScaling: hybridDefenceScaling,
+      abilityPower: abilityPower,
+      conditionalAbilityPower: conditionalAbilityPower,
+      condition: condition,
+      heavyAccuracyPenalty: inferHeavyAccuracyPenalty(row),
+      recoilPercent: inferRecoilPercent(row),
+      piercePercent: row.piercePercent != null ? row.piercePercent : Math.max(Number(row.pierceDef) || 0, Number(row.pierceMdef) || 0) / 100,
+      hitCount: row.hitCount != null ? row.hitCount : (row.hits || 1),
+      canCrit: row.canCrit != null ? !!row.canCrit : !row.noDamage,
+    });
+  }
+
+  function enrichCombatRow(row) {
+    if (!row || row._masterDamageEnriched) return row;
+    var mapped = mapLegacyRowToMasterDamage(row);
+    Object.keys(mapped).forEach(function (k) { row[k] = mapped[k]; });
+    row._masterDamageEnriched = true;
+    return row;
+  }
+
+  function getRelevantAttackStat(attacker, ability) {
+    var row = ability || {};
+    enrichCombatRow(row);
+    var statKey = String(row.damageStat || 'ATK').toUpperCase();
+    if (statKey === 'TRUE') return 1;
+    if (statKey === 'HYBRID' && row.hybridScaling) {
+      var total = 0;
+      for (var k in row.hybridScaling) {
+        if (!Object.prototype.hasOwnProperty.call(row.hybridScaling, k)) continue;
+        total += statFromEntity(attacker, k) * (Number(row.hybridScaling[k]) || 0);
+      }
+      return total;
+    }
+    return statFromEntity(attacker, statKey);
+  }
+
+  function getStatModifier(relevantStat, classBaseline) {
+    var stat = Number(relevantStat) || 0;
+    var base = Number(classBaseline) || CLASS_BASELINES.rogue;
+    return clampNum(1 + (stat - base) / 100, STAT_MOD_MIN, STAT_MOD_MAX);
+  }
+
+  function getRelevantDefenceStat(target, ability) {
+    var row = ability || {};
+    enrichCombatRow(row);
+    var damageType = String(row.damageType || 'Physical');
+    if (damageType === 'True') return 0;
+    if (damageType === 'Magic') return statFromEntity(target, 'MDEF');
+    if (damageType === 'Hybrid') {
+      var weights = row.hybridDefenceScaling || HYBRID_DEF_WEIGHTS;
+      return (statFromEntity(target, 'DEF') * (Number(weights.def) || 0.6))
+        + (statFromEntity(target, 'MDEF') * (Number(weights.mdef) || 0.4));
+    }
+    return statFromEntity(target, 'DEF');
+  }
+
+  function getDefenceModifier(relevantDefence, damageType, piercePercent, opts) {
+    opts = opts || {};
+    if (String(damageType || 'Physical') === 'True') return 1;
+    var def = Math.max(0, Number(relevantDefence) || 0);
+    if (opts.burning) def = Math.floor(def * BURNING_DEF_MULT);
+    var pierce = clampPen(piercePercent);
+    def = Math.max(0, def * (1 - pierce));
+    return 100 / (100 + def * 3);
+  }
+
+  function getBonusCap(attacker, battleState) {
+    battleState = battleState || {};
+    if (attacker && (attacker.isBoss || attacker.enemyTier === 'boss')) return BONUS_CAP_BOSS;
+    if (battleState.hasMutationEquipmentBonus) return BONUS_CAP_MUT_EQ;
+    return BONUS_CAP_NORMAL;
+  }
+
+  function getTotalDamageBonus(bonusFractions, cap) {
+    var total = 0;
+    if (Array.isArray(bonusFractions)) {
+      for (var i = 0; i < bonusFractions.length; i++) total += Number(bonusFractions[i]) || 0;
+    }
+    return Math.min(Math.max(0, cap), Math.max(0, total));
+  }
+
+  function conditionMet(condition, attacker, target, battleState) {
+    if (!condition) return false;
+    battleState = battleState || {};
+    var es = battleState.enemyStatus || (target && target.status) || {};
+    if (condition === 'targetBleeding') return (es.bleed && (es.bleed.stacks || 0) > 0);
+    if (condition === 'targetBurning') {
+      return !!(es.burning && ((typeof es.burning === 'number' && es.burning > 0)
+        || (typeof es.burning === 'object' && (es.burning.turns || 0) > 0)));
+    }
+    if (condition === 'targetLowHp') {
+      var hp = target && target.stats ? target.stats.hp : 0;
+      var maxHp = target && target.stats ? target.stats.maxHp : 1;
+      return hp > 0 && hp <= Math.floor(maxHp * 0.35);
+    }
+    return false;
+  }
+
+  function getAbilityPower(ability, attacker, target, battleState) {
+    var row = ability || {};
+    enrichCombatRow(row);
+    var power = Number(row.abilityPower) || 0;
+    if (row.condition && row.conditionalAbilityPower != null && conditionMet(row.condition, attacker, target, battleState)) {
+      power *= Number(row.conditionalAbilityPower) || 1;
+    }
+    return Math.max(0, power);
+  }
+
+  function calculateHeavyAccuracyPenalty(ability) {
+    enrichCombatRow(ability || {});
+    return Number(ability.heavyAccuracyPenalty) || 0;
+  }
+
+  function calculateRecoilDamage(finalDamage, ability) {
+    enrichCombatRow(ability || {});
+    var pct = Number(ability.recoilPercent) || 0;
+    if (pct <= 0) return 0;
+    return Math.max(1, Math.round(Math.max(0, Number(finalDamage) || 0) * pct));
+  }
+
+  function calculateMultiHitDamage(totalDamage, hitCount) {
+    var total = Math.max(0, Math.round(Number(totalDamage) || 0));
+    var hits = Math.max(1, Math.floor(Number(hitCount) || 1));
+    var per = Math.floor(total / hits);
+    var rem = total - per * hits;
+    var out = [];
+    for (var i = 0; i < hits; i++) out.push(per + (i < rem ? 1 : 0));
+    return out;
+  }
+
+  function resolvePierceFraction(ability, isMagic) {
+    enrichCombatRow(ability || {});
+    if (ability.piercePercent != null) return clampPen(ability.piercePercent);
+    if (isMagic) return clampPen((Number(ability.pierceMdef) || 0) / 100);
+    return clampPen((Number(ability.pierceDef) || 0) / 100);
+  }
+
+  function calculateDamage(params) {
+    params = params || {};
+    if (params.hitSucceeded === false) return { damage: 0, preMitigation: 0, components: {} };
+    var attacker = params.attacker || {};
+    var target = params.target || {};
+    var ability = params.ability || {};
+    var battleState = params.battleState || {};
+    enrichCombatRow(ability);
+    if (ability.noDamage || getAbilityPower(ability, attacker, target, battleState) <= 0) {
+      return { damage: 0, preMitigation: 0, components: {} };
+    }
+    var enCost = ability.enCost != null ? ability.enCost : (ability.apCost || 1);
+    var enBase = getENBaseDamage(enCost);
+    var abilityPower = getAbilityPower(ability, attacker, target, battleState);
+    var relevantStat = getRelevantAttackStat(attacker, ability);
+    var className = attacker.class || attacker.enemyClass || attacker.birdClass || 'rogue';
+    var statMod = getStatModifier(relevantStat, getClassBaseline(className));
+    var defStat = getRelevantDefenceStat(target, ability);
+    var pierce = resolvePierceFraction(ability, String(ability.damageType) === 'Magic');
+    var defMod = getDefenceModifier(defStat, ability.damageType, pierce, {
+      burning: !!(battleState.enemyHasBurning || params.targetBurning),
+    });
+    var bonusCap = getBonusCap(attacker, params);
+    var bonusFrac = getTotalDamageBonus(params.bonusFractions, bonusCap);
+    var bonusMod = 1 + bonusFrac;
+    var preCrit = enBase * abilityPower * statMod * defMod * bonusMod;
+    var damage = preCrit;
+    if (params.isCriticalHit) {
+      var critAdd = Number(params.critDamageAdd) || 0;
+      var critMult = clampNum((Number(params.critMultiplier) || MASTER_BASE_CRIT_MULT) + critAdd, 1, MASTER_MAX_CRIT_MULT);
+      damage *= critMult;
+    }
+    damage = Math.max(1, Math.round(damage));
+    return {
+      damage: damage,
+      preMitigation: enBase * abilityPower * statMod,
+      effectiveDef: defStat,
+      components: {
+        enBase: enBase,
+        abilityPower: abilityPower,
+        statMod: statMod,
+        defMod: defMod,
+        bonusMod: bonusMod,
+        relevantStat: relevantStat,
+        defStat: defStat,
+      },
+    };
+  }
+
+  function usesMasterDamage(row) {
+    if (!row) return false;
+    enrichCombatRow(row);
+    return !row.noDamage && (row.abilityPower != null || row.damageStat != null);
+  }
+
+  function describeMasterAbility(row) {
+    enrichCombatRow(row || {});
+    if (!row || row.noDamage) return 'Utility ability.';
+    var en = row.enCost || row.apCost || 1;
+    var weight = en === 1 ? 'Light' : (en === 2 ? 'Medium' : 'Heavy');
+    var dtype = String(row.damageType || 'Physical');
+    var stat = String(row.damageStat || 'ATK');
+    var bits = [
+      'Deals ' + weight + ' ' + dtype + ' damage.',
+      'Uses ' + stat + '.',
+      'Ability Power: ' + (Number(row.abilityPower) || 0).toFixed(2) + '.',
+    ];
+    if ((row.heavyAccuracyPenalty || 0) > 0) bits.push('Heavy accuracy penalty: -' + row.heavyAccuracyPenalty + '.');
+    if ((row.recoilPercent || 0) > 0) bits.push('Recoil: ' + Math.round(row.recoilPercent * 100) + '% of damage dealt.');
+    if (row.ailment) {
+      var aid = Array.isArray(row.ailment) ? row.ailment.join('/') : row.ailment;
+      bits.push(String(aid) + ' ' + (row.ailmentChance || 0) + '%');
+    }
+    return bits.join(' ');
+  }
+
   var combat = {
     DEFENCE_CURVE_VALUE: DEFENCE_CURVE_VALUE,
     MIN_DAMAGE_1_EN: MIN_DAMAGE_1_EN,
@@ -258,6 +619,30 @@
     applyBurningDefModifier: applyBurningDefModifier,
     runDamageFormulaSelfTest: runDamageFormulaSelfTest,
     runBowerLureSelfTest: runBowerLureSelfTest,
+    EN_BASE_DAMAGE: EN_BASE_DAMAGE,
+    CLASS_BASELINES: CLASS_BASELINES,
+    BONUS_CAP_NORMAL: BONUS_CAP_NORMAL,
+    BONUS_CAP_MUT_EQ: BONUS_CAP_MUT_EQ,
+    BONUS_CAP_BOSS: BONUS_CAP_BOSS,
+    MASTER_BASE_CRIT_MULT: MASTER_BASE_CRIT_MULT,
+    MASTER_MAX_CRIT_MULT: MASTER_MAX_CRIT_MULT,
+    getENBaseDamage: getENBaseDamage,
+    getClassBaseline: getClassBaseline,
+    getRelevantAttackStat: getRelevantAttackStat,
+    getStatModifier: getStatModifier,
+    getRelevantDefenceStat: getRelevantDefenceStat,
+    getDefenceModifier: getDefenceModifier,
+    getTotalDamageBonus: getTotalDamageBonus,
+    getBonusCap: getBonusCap,
+    getAbilityPower: getAbilityPower,
+    calculateHeavyAccuracyPenalty: calculateHeavyAccuracyPenalty,
+    calculateRecoilDamage: calculateRecoilDamage,
+    calculateMultiHitDamage: calculateMultiHitDamage,
+    calculateDamage: calculateDamage,
+    mapLegacyRowToMasterDamage: mapLegacyRowToMasterDamage,
+    enrichCombatRow: enrichCombatRow,
+    usesMasterDamage: usesMasterDamage,
+    describeMasterAbility: describeMasterAbility,
   };
 
   var Avian = globalThis.Avian || (globalThis.Avian = {});
@@ -292,4 +677,23 @@
   globalThis.calculateAbilityHitChancePct = calculateAbilityHitChancePct;
   globalThis.applyMinimumDamage = applyMinimumDamage;
   globalThis.roundCurvedDamage = roundCurvedDamage;
+  globalThis.getENBaseDamage = getENBaseDamage;
+  globalThis.getClassBaseline = getClassBaseline;
+  globalThis.getRelevantAttackStat = getRelevantAttackStat;
+  globalThis.getStatModifier = getStatModifier;
+  globalThis.getRelevantDefenceStat = getRelevantDefenceStat;
+  globalThis.getDefenceModifier = getDefenceModifier;
+  globalThis.getTotalDamageBonus = getTotalDamageBonus;
+  globalThis.getBonusCap = getBonusCap;
+  globalThis.getAbilityPower = getAbilityPower;
+  globalThis.calculateHeavyAccuracyPenalty = calculateHeavyAccuracyPenalty;
+  globalThis.calculateRecoilDamage = calculateRecoilDamage;
+  globalThis.calculateMultiHitDamage = calculateMultiHitDamage;
+  globalThis.calculateDamage = calculateDamage;
+  globalThis.mapLegacyRowToMasterDamage = mapLegacyRowToMasterDamage;
+  globalThis.enrichCombatRow = enrichCombatRow;
+  globalThis.usesMasterDamage = usesMasterDamage;
+  globalThis.describeMasterAbility = describeMasterAbility;
+  globalThis.MASTER_BASE_CRIT_MULT = MASTER_BASE_CRIT_MULT;
+  globalThis.MASTER_MAX_CRIT_MULT = MASTER_MAX_CRIT_MULT;
 })();

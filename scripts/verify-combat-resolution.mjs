@@ -152,6 +152,18 @@ const BIRDS = sandbox.BIRDS;
 
 check('Avian namespace present', !!Avian);
 check('Avian.data.combatPack.skillTrees present', !!(Avian?.data?.combatPack?.skillTrees));
+check('calculateDamage exported on globalThis', typeof sandbox.calculateDamage === 'function');
+check('computeMasterOutgoingDamage exported', typeof sandbox.computeMasterOutgoingDamage === 'function');
+
+const starterRow = Avian?.data?.combatPack?.skillTrees?.SPARROW_F1_L1_BASE
+  || (Avian?.data?.combatPack?.skillTrees && Avian.data.combatPack.skillTrees[Object.keys(Avian.data.combatPack.skillTrees).find((k) => /SPARROW.*L1.*BASE/i.test(k))]);
+if (starterRow) {
+  if (typeof sandbox.enrichCombatRow === 'function') sandbox.enrichCombatRow(starterRow);
+  check('starter row has abilityPower', starterRow.abilityPower != null, `power=${starterRow.abilityPower}`);
+  check('starter row has damageStat', !!starterRow.damageStat, `stat=${starterRow.damageStat}`);
+  check('starter row has enCost', starterRow.enCost != null || starterRow.apCost != null, `en=${starterRow.enCost || starterRow.apCost}`);
+}
+
 check('Avian.dispatcher.execute is a function', typeof Avian?.dispatcher?.execute === 'function');
 check('ABILITY_TEMPLATES is populated', !!(ABILITY_TEMPLATES && Object.keys(ABILITY_TEMPLATES).length > 0), `count=${ABILITY_TEMPLATES ? Object.keys(ABILITY_TEMPLATES).length : 0}`);
 check('ACTIONS map is populated', !!(ACTIONS && Object.keys(ACTIONS).length > 0), `count=${ACTIONS ? Object.keys(ACTIONS).length : 0}`);

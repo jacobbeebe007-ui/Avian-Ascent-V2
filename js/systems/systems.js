@@ -141,8 +141,8 @@
       }
     } catch (_) {}
 
-    globalThis.dealDamage = function(target, amount, isCrit=false, isMagic=false, srcAbility=null){
-      const out = _innerDealDamage.call(this, target, amount, isCrit, isMagic, srcAbility);
+    globalThis.dealDamage = function(target, amount, isCrit=false, isMagic=false, srcAbility=null, opts=null){
+      const out = _innerDealDamage.call(this, target, amount, isCrit, isMagic, srcAbility, opts);
       /* Phase 5: damage breakdown plumbing (B.6 partial). UI tooltips read
        * from Avian.debug.lastDamage to show curved formula breakdown. */
       try{

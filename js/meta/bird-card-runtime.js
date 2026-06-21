@@ -61,12 +61,21 @@
     return (bd && bd.passive && (bd.passive.desc || bd.passive.effect)) || '';
   }
 
-  function statGuardKey(key) {
-    if (key === 'maxHp' || key === 'hp') return 'hp';
-    if (key === 'dodge') return 'dodge';
-    if (key === 'acc') return 'acc';
-    if (key === 'def' || key === 'mdef') return 'def';
-    return null;
+  function excludedStarScalingKeys() {
+    var t = tiers();
+    if (t && Array.isArray(t.STAR_SCALING_EXCLUDED_STAT_KEYS)) return t.STAR_SCALING_EXCLUDED_STAT_KEYS;
+    return ['acc', 'critChance', 'critMult', 'cc', 'cd'];
+  }
+
+  function scaleBirdCardStatValue(baseVal, key, mult) {
+    if (excludedStarScalingKeys().indexOf(key) >= 0) {
+      return Number(baseVal) || 0;
+    }
+    var base = Math.max(0, Number(baseVal) || 0);
+    if (!base) return base;
+    var scaled = base * mult;
+    if (key === 'dodge') return Math.max(0, Math.round(scaled));
+    return Math.max(1, Math.round(scaled));
   }
 
   function applyBirdCardStats(player, tier, stars) {
@@ -76,7 +85,6 @@
     var bd = birds[player.birdKey];
     if (!bd || !bd.stats) return;
 
-    var size = player.size || bd.size || 'medium';
     var base = bd.stats;
     var fromCard = {};
     var scaled = {};
@@ -87,12 +95,15 @@
 
     t.SCALED_STAT_KEYS.forEach(function (key) {
       if (base[key] == null) return;
-      var guard = statGuardKey(key);
-      var val = guard
-        ? t.applyGuardrailedStatMult(base[key], guard, tier, size, s)
-        : Math.max(key === 'dodge' || key === 'acc' ? 0 : 1, Math.round(base[key] * mult));
+      var val = scaleBirdCardStatValue(base[key], key, mult);
       scaled[key] = val;
       fromCard[key] = val - (Number(base[key]) || 0);
+    });
+
+    excludedStarScalingKeys().forEach(function (key) {
+      if (base[key] == null) return;
+      scaled[key] = Number(base[key]) || 0;
+      fromCard[key] = 0;
     });
 
     Object.keys(scaled).forEach(function (key) {

@@ -77,6 +77,9 @@
     var secondaryAil = ailmentList[1] || null;
     var ailChance = row.ailmentChance || 0;
     var desc = normalizeEnLabel(String(row.shortDesc || '').trim());
+    if (!desc && typeof globalThis.describeMasterAbility === 'function') {
+      desc = normalizeEnLabel(globalThis.describeMasterAbility(row));
+    }
     if (!desc) {
       desc = normalizeEnLabel(row.riderText && row.designNote && row.riderText !== row.designNote
         ? row.designNote + ' — ' + row.riderText
@@ -124,6 +127,9 @@
       // Wipe legacy entries first
       for (var ai in globalThis.ABILITY_TEMPLATES) delete globalThis.ABILITY_TEMPLATES[ai];
       for (var id in pack.skillTrees) {
+        if (typeof globalThis.enrichCombatRow === 'function') {
+          globalThis.enrichCombatRow(pack.skillTrees[id]);
+        }
         globalThis.ABILITY_TEMPLATES[id] = rowToTemplate(pack.skillTrees[id]);
       }
     }

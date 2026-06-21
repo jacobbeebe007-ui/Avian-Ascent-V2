@@ -92,6 +92,8 @@ ctx.globalThis.getBirdCardTier = () => 'orange';
 ctx.globalThis.getBirdCardStars = () => 0;
 
 const baseAtk = ctx.BIRDS.sparrow.stats.atk;
+const baseAcc = ctx.BIRDS.sparrow.stats.acc;
+const baseCrit = ctx.BIRDS.sparrow.stats.critChance;
 const player = {
   birdKey: 'sparrow',
   size: 'small',
@@ -113,6 +115,18 @@ if (atkAfterCard <= baseAtk) {
 const fromCardAtk = Number(player._statLedger?.fromCardTier?.atk) || 0;
 if (fromCardAtk <= 0) fail(`expected fromCardTier.atk > 0, got ${fromCardAtk}`);
 else ok(`fromCardTier.atk = ${fromCardAtk}`);
+
+if (player.stats.acc !== baseAcc) {
+  fail(`expected acc unchanged by star scaling (${baseAcc}), got ${player.stats.acc}`);
+} else {
+  ok(`acc unchanged at ${baseAcc}`);
+}
+
+if (player.stats.critChance !== baseCrit) {
+  fail(`expected critChance unchanged by star scaling (${baseCrit}), got ${player.stats.critChance}`);
+} else {
+  ok(`critChance unchanged at ${baseCrit}`);
+}
 
 ctx.globalThis.Avian.mutations.reapplyPlayerStatsFromSources(player);
 

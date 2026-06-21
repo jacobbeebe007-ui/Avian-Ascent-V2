@@ -171,6 +171,18 @@ if (hatch1.isNew) {
 console.log('[verify-bird-cards] star mutation costs');
 assert(tiers.getDuplicateFeatherYield('cracked') === 4, 'duplicate feather default is 4');
 assert(
+  Math.abs(tiers.getEffectiveStatMultiplier('grey', 0) - 1) < 0.0001,
+  'grey 0 stars = 1x cumulative multiplier',
+);
+assert(
+  Math.abs(tiers.getEffectiveStatMultiplier('grey', 1) - 1.10) < 0.0001,
+  'grey 1 star = 1.10x cumulative multiplier',
+);
+assert(
+  Math.abs(tiers.getEffectiveStatMultiplier('green', 0) - Math.pow(1.10, 5)) < 0.0001,
+  'green 0 stars includes five completed grey star multipliers',
+);
+assert(
   tiers.getEffectiveStatMultiplier('grey', 1) > tiers.getEffectiveStatMultiplier('grey', 0),
   'grey 1 star has higher stat mult than 0 stars',
 );

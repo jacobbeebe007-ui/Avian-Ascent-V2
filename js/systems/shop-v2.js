@@ -120,11 +120,11 @@
     if (!row) return entry.name || '';
     var shortDesc = normalizeEnLabel(String(row.shortDesc || '').trim());
     if (shortDesc) return shortDesc;
+    if (typeof globalThis.enrichCombatRow === 'function') globalThis.enrichCombatRow(row);
     var bits = [];
-    bits.push((row.apCost || 1) + ' EN · ' + (row.target === 'self' ? 'Self' : row.target === 'self_and_enemy' ? 'Self+Enemy' : 'Enemy'));
-    if (!row.noDamage) {
-      var damage = (row.hits > 1 ? row.hits + '× ' : '') + 'Base ' + (row.baseFlat || 0) + ' + ' + (row.scalePct || 0) + '% ' + (row.scaleStat || 'ATK');
-      bits.push(damage);
+    bits.push((row.apCost || row.enCost || 1) + ' EN · ' + (row.target === 'self' ? 'Self' : row.target === 'self_and_enemy' ? 'Self+Enemy' : 'Enemy'));
+    if (!row.noDamage && typeof globalThis.describeMasterAbility === 'function') {
+      bits.push(normalizeEnLabel(globalThis.describeMasterAbility(row)));
     }
     if (row.ailment) {
       var aid = Array.isArray(row.ailment) ? row.ailment.join('/') : row.ailment;

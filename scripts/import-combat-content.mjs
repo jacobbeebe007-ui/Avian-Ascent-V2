@@ -671,7 +671,7 @@ function buildSkillTrees(perksSheets, shopSheets) {
     const shortDesc = pickShortDescription(r, h);
     const category = (get(r, h, 'Ability Category') || 'Physical').toLowerCase();
     const hits = formula.hits;
-    return {
+    const entry = {
       id,
       familyId,
       source,
@@ -706,6 +706,76 @@ function buildSkillTrees(perksSheets, shopSheets) {
       shortDesc,
       designNote: get(r, h, 'Design Note') || get(r, h, 'Balance Notes') || '',
       tier: get(r, h, 'Purchase Tier') || '',
+    };
+    return mapLegacyRowToMasterDamage(entry);
+  }
+
+  function mapLegacyRowToMasterDamage(row) {
+    if (!row || typeof row !== 'object') return row;
+    const damageType = (() => {
+      if (row.damageType) return row.damageType;
+      if (/true/i.test(String(row.category || ''))) return 'True';
+      if (/magic|song|spell/i.test(String(row.category || ''))) return 'Magic';
+      if (row.secondaryScaleStat && (row.secondaryScalePct || 0) > 0) return 'Hybrid';
+      if ((row.pierceDef || 0) > 0 && (row.pierceMdef || 0) > 0) return 'Hybrid';
+      if ((row.pierceMdef || 0) > 0 && !(row.pierceDef || 0)) return 'Magic';
+      return 'Physical';
+    })();
+    const damageStat = row.damageStat
+      || ((row.secondaryScaleStat && (row.secondaryScalePct || 0) > 0) ? 'HYBRID' : String(row.scaleStat || 'ATK').toUpperCase());
+    const pPct = Math.max(0, Number(row.scalePct) || 0);
+    const sPct = Math.max(0, Number(row.secondaryScalePct) || 0);
+    const hybridScaling = row.hybridScaling || ((row.secondaryScaleStat && (pPct + sPct) > 0)
+      ? {
+        [String(row.scaleStat || 'ATK').toUpperCase()]: pPct / (pPct + sPct),
+        [String(row.secondaryScaleStat).toUpperCase()]: sPct / (pPct + sPct),
+      }
+      : null);
+    let abilityPower = row.abilityPower;
+    if (abilityPower == null) {
+      abilityPower = 1.0;
+      const en = Math.max(1, Number(row.apCost) || 1);
+      if (en <= 1) abilityPower = 0.95;
+      else if (en === 2) abilityPower = 1.0;
+      else abilityPower = 1.15;
+      const ail = Number(row.ailmentChance) || 0;
+      if (ail >= 30) abilityPower -= 0.20;
+      else if (ail >= 15) abilityPower -= 0.12;
+      else if (ail >= 5) abilityPower -= 0.05;
+      if ((Number(row.lifestealPct) || 0) > 0) abilityPower -= 0.10;
+      if ((row.pierceDef || 0) >= 25 || (row.pierceMdef || 0) >= 25) abilityPower -= 0.15;
+      else if ((row.pierceDef || 0) > 0 || (row.pierceMdef || 0) > 0) abilityPower -= 0.08;
+      if (row.riderText && row.riderText !== 'None') abilityPower -= 0.08;
+      if ((row.hits || 1) > 1) abilityPower -= 0.05;
+      abilityPower = Math.max(0.65, Math.min(1.5, abilityPower));
+    }
+    let heavyAccuracyPenalty = row.heavyAccuracyPenalty;
+    if (heavyAccuracyPenalty == null) {
+      const en = Math.max(1, Number(row.apCost) || 1);
+      if (en >= 3) {
+        if (abilityPower >= 1.31) heavyAccuracyPenalty = 15;
+        else if (abilityPower >= 1.21) heavyAccuracyPenalty = 12;
+        else if (abilityPower >= 1.11) heavyAccuracyPenalty = 8;
+        else heavyAccuracyPenalty = 5;
+      } else heavyAccuracyPenalty = 0;
+    }
+    let recoilPercent = row.recoilPercent;
+    if (recoilPercent == null) {
+      recoilPercent = abilityPower >= 1.31 ? 0.20 : (abilityPower >= 1.21 ? 0.15 : 0);
+    }
+    return {
+      ...row,
+      enCost: row.enCost != null ? row.enCost : (row.apCost || 1),
+      damageType,
+      damageStat,
+      hybridScaling,
+      hybridDefenceScaling: row.hybridDefenceScaling || (damageType === 'Hybrid' ? { def: 0.6, mdef: 0.4 } : null),
+      abilityPower,
+      heavyAccuracyPenalty,
+      recoilPercent,
+      piercePercent: row.piercePercent != null ? row.piercePercent : Math.max(Number(row.pierceDef) || 0, Number(row.pierceMdef) || 0) / 100,
+      hitCount: row.hitCount != null ? row.hitCount : (row.hits || 1),
+      canCrit: row.canCrit != null ? !!row.canCrit : !row.noDamage,
     };
   }
 
