@@ -95,11 +95,146 @@
     if (n > 0 && n <= 1) return Math.round(n * 100);
     return n;
   }
+
+  var TIER_LABELS_UP = [
+    ['minor', 'Minor'], ['major', 'Major'], ['grand', 'Grand'], ['epic', 'Epic'], ['legendary', 'Legendary'],
+  ];
+  var TIER_LABELS_DOWN = [
+    ['minor', 'Minor'], ['major', 'Major'], ['severe', 'Severe'], ['critical', 'Critical'], ['lethal', 'Lethal'],
+  ];
+  var RIDER_STAT_LABELS = {
+    acc: 'ACC', dodge: 'Dodge', critChance: 'Crit Chance', critDamage: 'Crit Damage',
+  };
+
+  function magnitudeTable(stat, direction) {
+    var mags = globalThis.Avian && globalThis.Avian.combatStatMagnitudes && globalThis.Avian.combatStatMagnitudes.MAGNITUDES;
+    if (!mags) return null;
+    var key = String(stat || '') + (direction === 'down' ? 'Down' : 'Up');
+    return mags[key] || null;
+  }
+
+  function tierLabelForStatValue(stat, direction, value) {
+    var table = magnitudeTable(stat, direction);
+    if (!table) return null;
+    var tiers = direction === 'down' ? TIER_LABELS_DOWN : TIER_LABELS_UP;
+    var v = Number(value) || 0;
+    var isCritDmg = stat === 'critDamage';
+    var compare = isCritDmg ? (v > 0 && v <= 1 ? v : v / 100) : v;
+    for (var i = 0; i < tiers.length; i++) {
+      var tierVal = table[tiers[i][0]];
+      if (tierVal == null) continue;
+      if (Math.abs(compare - tierVal) < 0.001) {
+        var statLabel = RIDER_STAT_LABELS[stat] || stat;
+        return tiers[i][1] + ' ' + statLabel + ' ' + (direction === 'down' ? 'Down' : 'Up');
+      }
+    }
+    return null;
+  }
+
+  function tierLabelForRider(r) {
+    if (!r || r.kind === 'gainDodgeFlat' || r.kind === 'gainAccFlat') return null;
+    var map = {
+      gainAcc: ['acc', 'up', 'acc'],
+      gainDodge: ['dodge', 'up', 'dodge'],
+      gainCritChance: ['critChance', 'up', 'cc'],
+      gainCritDamage: ['critDamage', 'up', 'cd'],
+      reduceEnemyAcc: ['acc', 'down', 'acc'],
+      reduceEnemyDodge: ['dodge', 'down', 'dodge'],
+      reduceEnemyCrit: ['critChance', 'down', 'cc'],
+    };
+    var entry = map[r.kind];
+    if (!entry) return null;
+    var label = tierLabelForStatValue(entry[0], entry[1], r.value);
+    if (!label) return null;
+    if (entry[1] === 'down') return 'Apply ' + label + ' to enemy';
+    return 'Apply ' + label;
+  }
+
+  function isCoreBriefLine(line) {
+    var s = String(line || '').trim();
+    if (!s) return true;
+    return /^\d+\s*EN\b/i.test(s)
+      || /^Uses /i.test(s)
+      || /^Normal Ability Power:/i.test(s)
+      || /^Ability Power:/i.test(s)
+      || /^Hits \d+/i.test(s)
+      || /^\d+-turn cooldown/i.test(s)
+      || /^Heavy accuracy penalty:/i.test(s)
+      || /^Recoil:/i.test(s)
+      || (/ Affinity\.?$/i.test(s) && !/chance to apply/i.test(s));
+  }
+
+  function isEffectSentence(sentence) {
+    var t = String(sentence || '').trim();
+    if (!t || isFluffLine(t) || isCoreBriefLine(t)) return false;
+    return /^If /i.test(t)
+      || /Has a \d+% chance to apply/i.test(t)
+      || /\b(Minor|Major|Grand|Epic|Severe|Critical|Lethal|Legendary)\s+\w+\s+(Up|Down)\b/i.test(t)
+      || /\b(gain|apply|remove|cleanse|purge|heal|guard|shield|counter|taunt|marked|bloodied|lifesteal|brace)\b/i.test(t);
+  }
+
+  function sentencesFromLine(line) {
+    var s = String(line || '').trim();
+    if (!s) return [];
+    return s.split(/(?<=\.)\s+/).map(function (part) { return part.trim(); }).filter(Boolean);
+  }
+
+  function effectLinesFromDisplayText(displayText, skipName) {
+    var lines = linesFromDisplayText(displayText, skipName);
+    var out = [];
+    var seen = Object.create(null);
+    for (var i = 0; i < lines.length; i++) {
+      var sentences = sentencesFromLine(lines[i]);
+      for (var j = 0; j < sentences.length; j++) {
+        var sentence = sentences[j];
+        if (!isEffectSentence(sentence)) continue;
+        var key = sentence.toLowerCase();
+        if (seen[key]) continue;
+        seen[key] = 1;
+        out.push({ text: sentence, color: null, source: 'displayText' });
+      }
+    }
+    return out;
+  }
+
+  function displayTextCoversAilment(row) {
+    if (!row || !row.ailment) return false;
+    var text = String(row.displayText || '').toLowerCase();
+    if (/has a \d+% chance to apply/i.test(text)) return true;
+    var ids = Array.isArray(row.ailment) ? row.ailment : [row.ailment];
+    for (var i = 0; i < ids.length; i++) {
+      var id = String(ids[i] || '').toLowerCase();
+      if (id && text.indexOf(id) >= 0) return true;
+      var name = ailmentName(ids[i]).toLowerCase();
+      if (name && text.indexOf(name) >= 0) return true;
+    }
+    return false;
+  }
+
+  function displayTextCoversRiders(row) {
+    var effects = effectLinesFromDisplayText(row.displayText, true);
+    if (!effects.length) return false;
+    return effects.some(function (s) {
+      return /^If /i.test(s.text)
+        || /\bgain\b/i.test(s.text)
+        || /\bapply\b/i.test(s.text)
+        || /\b(Minor|Major|Grand|Epic|Severe|Critical|Lethal|Legendary)\s+\w+\s+(Up|Down)\b/i.test(s.text);
+    });
+  }
+
   function riderSegment(r) {
     if (!r) return null;
     var v = Number(r.value) || 0;
     var w = whenSuffix(r.when);
     function seg(text, statKey) { return { text: text, color: statKey ? STAT_COLORS[statKey] : null }; }
+    var tierLabel = tierLabelForRider(r);
+    if (tierLabel) {
+      var tierStat = {
+        gainAcc: 'acc', gainDodge: 'dodge', gainCritChance: 'cc', gainCritDamage: 'cd',
+        reduceEnemyAcc: 'acc', reduceEnemyDodge: 'dodge', reduceEnemyCrit: 'cc',
+      }[r.kind];
+      return seg(tierLabel + w, tierStat || null);
+    }
     switch (r.kind) {
       case 'gainDodge': return seg('+' + v + '% Dodge' + w, 'dodge');
       case 'gainDodgeFlat': return seg('+' + v + ' Dodge' + w, 'dodge');
@@ -137,7 +272,10 @@
     var chance = row.ailmentChance || 0;
     var out = [];
     ids.filter(Boolean).forEach(function (id) {
-      out.push({ text: ailmentName(id) + ' ' + chance + '%', color: ailmentColor(id) });
+      out.push({
+        text: 'Has a ' + chance + '% chance to apply ' + ailmentName(id) + '.',
+        color: null,
+      });
     });
     return out;
   }
@@ -157,9 +295,11 @@
     return typeof globalThis.escapeHtmlRoster === 'function' ? globalThis.escapeHtmlRoster(s) : String(s);
   }
   function segToHtml(seg) {
-    var t = escHtml(seg.text);
-    if (seg.color) return '<div class="btn-desc-line"><span style="color:' + seg.color + '">' + t + '</span></div>';
-    return '<div class="btn-desc-line">' + t + '</div>';
+    if (seg.color) {
+      var tinted = escHtml(seg.text);
+      return '<div class="btn-desc-line"><span style="color:' + seg.color + '">' + tinted + '</span></div>';
+    }
+    return '<div class="btn-desc-line">' + colorizeEffectKeywords(escHtml(seg.text)) + '</div>';
   }
   /** Wrap known ailment + buff/debuff phrases in coloured spans (escaped input). */
   function colorizeEffectKeywords(escaped) {
@@ -244,16 +384,14 @@
   function briefLinesToHtml(lines) {
     if (!lines || !lines.length) return '';
     return lines.map(function (line) {
-      return '<div class="btn-desc-line">' + (typeof globalThis.escapeHtmlRoster === 'function'
-        ? globalThis.escapeHtmlRoster(line) : line) + '</div>';
+      return '<div class="btn-desc-line">' + colorizeEffectKeywords(escHtml(line)) + '</div>';
     }).join('');
   }
 
   function briefTextToHtml(text) {
     if (!text) return '';
     return text.split('\n').map(function (line) {
-      return '<div class="btn-desc-line">' + (typeof globalThis.escapeHtmlRoster === 'function'
-        ? globalThis.escapeHtmlRoster(line) : line) + '</div>';
+      return '<div class="btn-desc-line">' + colorizeEffectKeywords(escHtml(line)) + '</div>';
     }).join('');
   }
 
@@ -263,7 +401,7 @@
     return lines.filter(function (line) { return !isFluffLine(line); });
   }
 
-  function generatedBriefSegments(row) {
+  function coreBriefSegments(row) {
     if (!row) return [];
     enrichRow(row);
     var segs = [];
@@ -277,7 +415,6 @@
     }
     var condLine = formatConditionalPowerLine(row);
     if (condLine) add(condLine);
-    ailmentSegments(row).forEach(function (s) { segs.push(s); });
     if ((row.heavyAccuracyPenalty || 0) > 0) add('Heavy accuracy penalty: -' + row.heavyAccuracyPenalty + '.');
     if ((row.recoilPercent || 0) > 0) add('Recoil: ' + Math.round(row.recoilPercent * 100) + '% of damage dealt.');
     if (row.hybridScaling) {
@@ -288,7 +425,13 @@
       }
       if (parts.length) add('Uses ' + parts.join(' and ') + '.');
     }
-    riderSegments(row).forEach(function (s) { segs.push(s); });
+    return segs;
+  }
+
+  function generatedBriefSegments(row) {
+    var segs = coreBriefSegments(row);
+    if (!displayTextCoversAilment(row)) ailmentSegments(row).forEach(function (s) { segs.push(s); });
+    if (!displayTextCoversRiders(row)) riderSegments(row).forEach(function (s) { segs.push(s); });
     return segs;
   }
 
@@ -299,11 +442,14 @@
   function buildAbilityCombatSegments(ab, row) {
     row = enrichRow(resolveRow(ab, row));
     if (!row) return [];
-    var generated = generatedBriefSegments(row);
-    if (generated.length >= 2) return generated.slice(0, 8);
+    var segs = coreBriefSegments(row);
+    effectLinesFromDisplayText(row.displayText, true).forEach(function (s) { segs.push(s); });
+    if (!displayTextCoversAilment(row)) ailmentSegments(row).forEach(function (s) { segs.push(s); });
+    if (!displayTextCoversRiders(row)) riderSegments(row).forEach(function (s) { segs.push(s); });
+    if (segs.length >= 2) return segs.slice(0, 8);
     var mechanical = mechanicalLinesFromDisplayText(row.displayText, true).map(function (l) { return { text: l, color: null }; });
     if (mechanical.length >= 2) return mechanical.slice(0, 8);
-    if (generated.length) return generated;
+    if (segs.length) return segs;
     return mechanical;
   }
 
