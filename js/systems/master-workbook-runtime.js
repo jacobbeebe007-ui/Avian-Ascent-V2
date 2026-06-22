@@ -226,45 +226,44 @@
     if (txt) txt.textContent = cur + ' / ' + max;
   }
 
+  function updateAspectChip(chipId, aspectId) {
+    var chip = document.getElementById(chipId);
+    if (!chip) return null;
+    if (aspectId) {
+      var name = typeof globalThis.formatAspectDisplayName === 'function'
+        ? globalThis.formatAspectDisplayName(aspectId)
+        : String(aspectId).charAt(0).toUpperCase() + String(aspectId).slice(1);
+      chip.textContent = name;
+      chip.dataset.aspectId = aspectId;
+      chip.hidden = false;
+      chip.style.display = '';
+    } else {
+      chip.textContent = '';
+      chip.dataset.aspectId = '';
+      chip.hidden = true;
+      chip.style.display = 'none';
+    }
+    chip._aspectTooltipBound = false;
+    return chip;
+  }
+
   function renderAspectLabels() {
     var g = globalThis.G;
     if (!g) return;
 
-    function ensureAspectChip(hostId, chipId, aspectId) {
-      var host = document.getElementById(hostId);
-      if (!host) return null;
-      var chip = document.getElementById(chipId);
-      if (!chip) {
-        chip = document.createElement('span');
-        chip.id = chipId;
-        chip.className = 'aspect-chip';
-        host.appendChild(document.createTextNode(' '));
-        host.appendChild(chip);
-      }
-      if (aspectId) {
-        var name = typeof globalThis.formatAspectDisplayName === 'function'
-          ? globalThis.formatAspectDisplayName(aspectId)
-          : String(aspectId).charAt(0).toUpperCase() + String(aspectId).slice(1);
-        chip.textContent = name;
-        chip.dataset.aspectId = aspectId;
-        chip.style.display = '';
-      } else {
-        chip.textContent = '';
-        chip.dataset.aspectId = '';
-        chip.style.display = 'none';
-      }
-      return chip;
-    }
-
     var pAsp = typeof globalThis.getEntityAspect === 'function' ? globalThis.getEntityAspect(g.player) : (g.player && g.player.aspect);
     var eAsp = typeof globalThis.getEntityAspect === 'function' ? globalThis.getEntityAspect(g.enemy) : (g.enemy && g.enemy.aspect);
-    ensureAspectChip('player-class-label', 'player-aspect-label', pAsp || '');
-    ensureAspectChip('enemy-class-label', 'enemy-aspect-label', eAsp || '');
+    updateAspectChip('player-aspect-label', pAsp || '');
+    updateAspectChip('enemy-aspect-label', eAsp || '');
 
     var oldPel = document.querySelector('.combatant-meta > .aspect-label');
     if (oldPel) oldPel.remove();
-    var oldEel = document.querySelectorAll('.combatant-meta > .aspect-label');
-    oldEel.forEach(function (el) { el.remove(); });
+    document.querySelectorAll('.combatant-meta > .aspect-label').forEach(function (el) { el.remove(); });
+    ['player-class-label', 'enemy-class-label'].forEach(function (hostId) {
+      var host = document.getElementById(hostId);
+      if (!host) return;
+      host.querySelectorAll('.aspect-chip').forEach(function (chip) { chip.remove(); });
+    });
 
     bindAspectLabelTooltips();
   }
@@ -273,7 +272,9 @@
     if (typeof globalThis.bindRichTooltip !== 'function') return;
     ['player-aspect-label', 'enemy-aspect-label'].forEach(function (id) {
       var el = document.getElementById(id);
-      if (!el || el._aspectTooltipBound) return;
+      if (!el || !el.dataset.aspectId) return;
+      el._aspectTooltipBound = false;
+      if (el._richTooltipBound) el._richTooltipBound = false;
       el._aspectTooltipBound = true;
       globalThis.bindRichTooltip(el, function () {
         var aspId = el.dataset.aspectId || '';

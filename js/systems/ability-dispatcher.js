@@ -367,37 +367,11 @@
       applyGuardedFromRow(row, 0, ab);
     }
   }
+  // NOTE: Conditional dispatcher damage bonuses (marked +12%, finisher/bloodied +15%,
+  // bonusVsAilment, bonusVsLowHp) are now folded into the single capped Bonus_Mod via
+  // game.js collectDispatcherConditionalBonusFractions(). This helper is retained as a
+  // no-op for backward compatibility so it never double-applies an uncapped multiplier.
   function applyConditionalDamageBonus(row, dmg) {
-    if (!row.riders && !(row.tags && row.tags.length)) return dmg;
-    var g = globalThis.G;
-    var es = (g && g.enemyStatus) || {};
-    var roundDmg = (typeof globalThis.roundCombatDamage === 'function')
-      ? globalThis.roundCombatDamage
-      : function(n) { return Math.max(0.01, Math.round(Number(n) * 100) / 100); };
-    if (typeof globalThis.consumeMarkedIfPayoff === 'function' && globalThis.consumeMarkedIfPayoff(row, es)) {
-      dmg = roundDmg(dmg * 1.12);
-    }
-    if ((row.tags || []).indexOf('Finisher') >= 0 || /finisher|bloodied/i.test(String(row.riderText || ''))) {
-      if (typeof globalThis.isBloodiedTarget === 'function' && g && g.enemy && globalThis.isBloodiedTarget(g.enemy)) {
-        dmg = roundDmg(dmg * 1.15);
-      }
-    }
-    if (!row.riders) return dmg;
-    for (var i = 0; i < row.riders.length; i++) {
-      var r = row.riders[i];
-      if (r.kind === 'bonusVsAilment' && r.ailment === 'bleed') {
-        if ((es.bleed && es.bleed.stacks > 0) && r.value > 0) dmg = roundDmg(dmg * (1 + r.value / 100));
-      } else if (r.kind === 'bonusVsAilment' && r.ailment === 'burning') {
-        var burning = es.burning && ((typeof es.burning === 'number' && es.burning > 0)
-          || (typeof es.burning === 'object' && ((es.burning.stacks || 0) > 0 || (es.burning.turns || 0) > 0)));
-        if (burning && r.value > 0) dmg = roundDmg(dmg * (1 + r.value / 100));
-      } else if (r.kind === 'bonusVsLowHp') {
-        var enemy = (g && g.enemy && g.enemy.stats) || null;
-        if (enemy && enemy.hp && enemy.maxHp && enemy.hp <= Math.floor(enemy.maxHp * (r.threshold || 0.35))) {
-          if (r.value > 0) dmg = roundDmg(dmg * (1 + r.value / 100));
-        }
-      }
-    }
     return dmg;
   }
 
@@ -504,12 +478,36 @@
 
     var usesMaster = typeof globalThis.usesMasterDamage === 'function' && globalThis.usesMasterDamage(row);
 
+    // Master multi-hit (spec section 14): compute the full damage budget ONCE and
+    // split it across hits via calculateMultiHitDamage, rather than dealing full
+    // damage per hit. Crit is rolled once for the whole ability so the total stays
+    // controlled. Each hit still rolls its own miss; a missed hit forfeits its chunk.
+    var masterSplit = null;
+    var masterIsCrit = false;
+    if (usesMaster && typeof globalThis.computeMasterOutgoingDamage === 'function') {
+      if (g) {
+        g._currentPiercePct = isMagic ? (row.pierceMdef || 0) : (row.pierceDef || 0);
+        g._dispatcherCombatRow = row;
+      } else {
+        G._currentPiercePct = isMagic ? (row.pierceMdef || 0) : (row.pierceDef || 0);
+        G._dispatcherCombatRow = row;
+      }
+      var masterTotal = globalThis.computeMasterOutgoingDamage(isMagic, src, { hitSucceeded: true });
+      if (g) g._dispatcherCombatRow = null; else G._dispatcherCombatRow = null;
+      if (masterTotal) {
+        masterIsCrit = !!masterTotal.isCrit;
+        masterSplit = (hits > 1 && typeof globalThis.calculateMultiHitDamage === 'function')
+          ? globalThis.calculateMultiHitDamage(masterTotal.damage, hits)
+          : [masterTotal.damage];
+      }
+    }
+
     for (var i = 0; i < hits; i++) {
       if (Math.random() >= baseHitFrac) {
         if (typeof doMiss === 'function') await doMiss('player');
         continue;
       }
-      // Pierce: feed the % so dealDamage will use it
+      // Pierce: feed the % so the legacy dealDamage fallback path can use it.
       if (g) {
         g._currentPiercePct = isMagic ? (row.pierceMdef || 0) : (row.pierceDef || 0);
         g._dispatcherCombatRow = row;
@@ -519,11 +517,8 @@
       }
       var dealFn = resolveDealDamage();
       var dealOpts = null;
-      if (usesMaster && typeof globalThis.computeMasterOutgoingDamage === 'function') {
-        var masterResult = globalThis.computeMasterOutgoingDamage(isMagic, src, { hitSucceeded: true });
-        if (masterResult) {
-          dealOpts = { precomputedDamage: masterResult.damage, isCrit: masterResult.isCrit };
-        }
+      if (masterSplit) {
+        dealOpts = { precomputedDamage: masterSplit[i] || 0, isCrit: masterIsCrit };
       }
       var res = dealFn
         ? dealFn('enemy', 0, dealOpts ? dealOpts.isCrit : false, isMagic, src, dealOpts)

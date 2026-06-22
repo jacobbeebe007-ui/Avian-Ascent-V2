@@ -4319,6 +4319,9 @@ img{image-rendering:pixelated;image-rendering:crisp-edges;}
 .ascent-ability-en{color:#e8c96a;font-weight:700;}
 .ascent-ability-tags{font-size:.6rem;color:#93a8bf;letter-spacing:.05em;margin-top:2px;}
 .ascent-ability-desc{font-size:.66rem;color:var(--text-dim);margin-top:3px;line-height:1.25;}
+.ascent-ability-desc.btn-desc-lines{display:flex;flex-direction:column;gap:1px;margin-top:3px;}
+.ascent-ability-desc.btn-desc-lines .btn-desc-line{font-size:.62rem;color:var(--text-dim);line-height:1.25;}
+.ascent-aspect-chip{margin-left:4px;}
 .showcase-stats-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;}
 .showcase-stats-grid>div{display:flex;justify-content:space-between;gap:8px;padding:5px 6px;border:1px solid rgba(120,140,170,.2);border-radius:7px;background:rgba(10,16,24,.6);font-size:.68rem;}
 .showcase-stats-grid span{color:#9db1c8;}

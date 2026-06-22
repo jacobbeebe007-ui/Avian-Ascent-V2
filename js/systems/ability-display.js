@@ -51,7 +51,55 @@
   }
 
   function isFluffLine(line) {
-    return /^(Mutation:|Sparrow keeps|design note|currently equipped)/i.test(String(line || '').trim());
+    var s = String(line || '').trim();
+    if (!s) return true;
+    if (/^Mutation:/i.test(s)) return true;
+    if (/mutated-feather version currently equipped/i.test(s)) return true;
+    if (/ keeps a /i.test(s) && !/^If /i.test(s)) return true;
+    return false;
+  }
+
+  function isMechanicalBriefLine(line) {
+    var s = String(line || '').trim();
+    if (!s || isFluffLine(s)) return false;
+    return /^\d+\s*EN\b/i.test(s)
+      || /^Uses /i.test(s)
+      || /Ability Power:/i.test(s)
+      || /^If target is /i.test(s)
+      || /^If used after /i.test(s)
+      || /^If faster than /i.test(s)
+      || /^Normal Ability Power:/i.test(s)
+      || /^(bleed|burning|weaken|chilled|poison|delayed|paralyzed)\b/i.test(s)
+      || /^Heavy accuracy penalty:/i.test(s)
+      || /^Recoil:/i.test(s);
+  }
+
+  function mechanicalLinesFromDisplayText(displayText, skipName) {
+    var lines = linesFromDisplayText(displayText, skipName);
+    var out = [];
+    for (var i = 0; i < lines.length; i++) {
+      var line = lines[i];
+      if (isFluffLine(line)) break;
+      if (isMechanicalBriefLine(line)) out.push(line);
+      else if (/^If /i.test(line)) out.push(line);
+    }
+    return out;
+  }
+
+  function briefLinesToHtml(lines) {
+    if (!lines || !lines.length) return '';
+    return lines.map(function (line) {
+      return '<div class="btn-desc-line">' + (typeof globalThis.escapeHtmlRoster === 'function'
+        ? globalThis.escapeHtmlRoster(line) : line) + '</div>';
+    }).join('');
+  }
+
+  function briefTextToHtml(text) {
+    if (!text) return '';
+    return text.split('\n').map(function (line) {
+      return '<div class="btn-desc-line">' + (typeof globalThis.escapeHtmlRoster === 'function'
+        ? globalThis.escapeHtmlRoster(line) : line) + '</div>';
+    }).join('');
   }
 
   function linesFromDisplayText(displayText, skipName) {
@@ -93,20 +141,35 @@
   function buildAbilityCombatBrief(ab, row) {
     row = enrichRow(resolveRow(ab, row));
     if (!row) return '';
-    var displayLines = linesFromDisplayText(row.displayText, true);
-    if (displayLines.length >= 2) {
-      return displayLines.slice(0, 5).join('\n');
-    }
-    return generatedBriefLines(row).join('\n');
+    var generated = generatedBriefLines(row);
+    if (generated.length >= 2) return generated.slice(0, 6).join('\n');
+    var mechanical = mechanicalLinesFromDisplayText(row.displayText, true);
+    if (mechanical.length >= 2) return mechanical.slice(0, 6).join('\n');
+    if (generated.length) return generated.join('\n');
+    return mechanical.join('\n');
   }
 
   function buildAbilityCombatBriefHtml(ab, row) {
-    var text = buildAbilityCombatBrief(ab, row);
-    if (!text) return '';
-    return text.split('\n').map(function (line) {
-      return '<div class="btn-desc-line">' + (typeof globalThis.escapeHtmlRoster === 'function'
-        ? globalThis.escapeHtmlRoster(line) : line) + '</div>';
-    }).join('');
+    return briefTextToHtml(buildAbilityCombatBrief(ab, row));
+  }
+
+  function formatTemplateCombatBriefHtml(tmpl) {
+    if (!tmpl) return '';
+    var text = normalizeEnLabel(String(tmpl.combatBrief || '').trim());
+    if (text) return briefTextToHtml(text);
+    return '';
+  }
+
+  function formatAbilityBlurbHtml(ab, tmpl, row) {
+    row = row || resolveRow(ab, null);
+    tmpl = tmpl || null;
+    var fromRow = buildAbilityCombatBriefHtml(ab, row);
+    if (fromRow) return fromRow;
+    var fromTmpl = formatTemplateCombatBriefHtml(tmpl);
+    if (fromTmpl) return fromTmpl;
+    var generated = generatedBriefLines(enrichRow(resolveRow(ab, row)));
+    if (generated.length) return briefLinesToHtml(generated.slice(0, 6));
+    return '';
   }
 
   function familyLabel(row) {
@@ -166,6 +229,8 @@
   var api = {
     buildAbilityCombatBrief: buildAbilityCombatBrief,
     buildAbilityCombatBriefHtml: buildAbilityCombatBriefHtml,
+    formatTemplateCombatBriefHtml: formatTemplateCombatBriefHtml,
+    formatAbilityBlurbHtml: formatAbilityBlurbHtml,
     buildAbilityTooltipDetail: buildAbilityTooltipDetail,
     buildAbilityTooltipDetailHtml: buildAbilityTooltipDetailHtml,
   };
@@ -175,6 +240,8 @@
   Avian.systems.abilityDisplay = api;
   globalThis.buildAbilityCombatBrief = buildAbilityCombatBrief;
   globalThis.buildAbilityCombatBriefHtml = buildAbilityCombatBriefHtml;
+  globalThis.formatTemplateCombatBriefHtml = formatTemplateCombatBriefHtml;
+  globalThis.formatAbilityBlurbHtml = formatAbilityBlurbHtml;
   globalThis.buildAbilityTooltipDetail = buildAbilityTooltipDetail;
   globalThis.buildAbilityTooltipDetailHtml = buildAbilityTooltipDetailHtml;
 })();

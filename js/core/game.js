@@ -2297,9 +2297,9 @@ function buildNestAbilitySection(player){
     const mutateEnabled=!locked && canMutate && action!=='none';
     const tmpl=slot.abilityId?(getAbilityTemplateForUI(slot.abilityId)||{}):{};
     const packRow=slot.abilityId&&typeof packRowForAbility==='function'?packRowForAbility({id:slot.abilityId}):null;
-    const brief=typeof buildAbilityCombatBriefHtml==='function'
-      ? buildAbilityCombatBriefHtml({id:slot.abilityId}, packRow)
-      : (tmpl.combatBrief||tmpl.levels?.[0]?.desc||tmpl.desc||'');
+    const brief=typeof formatAbilityBlurbHtml==='function'
+      ? formatAbilityBlurbHtml({id:slot.abilityId}, tmpl, packRow)
+      : (typeof buildAbilityCombatBriefHtml==='function'?buildAbilityCombatBriefHtml({id:slot.abilityId}, packRow):'');
     const lockAttrs=locked?' aria-disabled="true" title="Story battle loadouts are locked until victory."':'';
     equippedHtml+=`<div class="nest-ab-slot-card${isSelected?' selected':''}${!slot.abilityId?' empty':''}${locked?' is-locked':''}" data-nest-ab-slot="${slot.slotIndex}"${lockAttrs}>
       <div class="nest-ab-slot-head"><span class="nest-ab-slot-idx">Slot ${slot.slotIndex+1}</span>${isFlex && slot.abilityId?`<button type="button" class="nest-ab-unequip-btn${locked?' is-locked':''}" data-nest-ab-unequip="${slot.slotIndex}" ${locked?'disabled aria-disabled="true" title="Story battle loadouts are locked until victory."':''}>Store</button>`:''}</div>
@@ -2407,7 +2407,7 @@ function renderNestMutatePathChoices(slot){
     const tmpl=option.abilityTemplate||{};
     const card=document.createElement('div');
     card.className='skill-upgrade-card';
-    card.innerHTML=`<div class="su-name">${option.displayName}</div><div class="su-lv">Tier 1 · ${tmpl.name||option.abilityId}</div><div class="su-effect">${tmpl.levels?.[0]?.desc||tmpl.desc||'No description available.'}</div>`;
+    card.innerHTML=`<div class="su-name">${option.displayName}</div><div class="su-lv">Tier 1 · ${tmpl.name||option.abilityId}</div><div class="su-effect btn-desc-lines">${abilityBlurbForTemplate(tmpl, option.abilityId)}</div>`;
     attachNestMutateCardTooltip(card, option.abilityId);
     card.onclick=()=>updateNestMutateSelection(card, option.pathId);
     grid.appendChild(card);
@@ -2427,7 +2427,7 @@ function renderNestMutateTierPreview(slot){
   const nextTmpl=ABILITY_TEMPLATES?.[nextId]||{};
   if(title) title.textContent='🧬 Preview Tier Upgrade';
   if(sub) sub.textContent=`${currentTmpl.name||slot.abilityId} will evolve into ${nextTmpl.name||nextId}.`;
-  grid.innerHTML=`<div class="skill-upgrade-card selected"><div class="su-name">${currentTmpl.name||slot.abilityId} → ${nextTmpl.name||nextId}</div><div class="su-lv">Tier ${slot.tier||0} → Tier ${nextTier}</div><div class="su-effect">${nextTmpl.levels?.[0]?.desc||nextTmpl.desc||'No description available.'}</div></div>`;
+  grid.innerHTML=`<div class="skill-upgrade-card selected"><div class="su-name">${currentTmpl.name||slot.abilityId} → ${nextTmpl.name||nextId}</div><div class="su-lv">Tier ${slot.tier||0} → Tier ${nextTier}</div><div class="su-effect btn-desc-lines">${abilityBlurbForTemplate(nextTmpl, nextId)}</div></div>`;
   attachNestMutateCardTooltip(grid.querySelector('.skill-upgrade-card'), nextId);
   if(confirm) confirm.textContent='✓ Confirm Mutation';
   setNestMutateConfirmVisible(true, true);
@@ -5760,10 +5760,27 @@ function escapeHtmlRoster(s){
     .replace(/>/g,'&gt;')
     .replace(/"/g,'&quot;');
 }
-function rosterAbilityBlurb(t){
-  const raw=(t.levels&&t.levels[0]&&t.levels[0].desc!=null)?t.levels[0].desc:(t.desc!=null?t.desc:'No description');
+function rosterAbilityBlurb(t, abId){
+  const id=abId||(t&&t.id)||'';
+  const ab={id, level:1};
+  const packRow=typeof packRowForAbility==='function'?packRowForAbility(ab):null;
+  if(typeof formatAbilityBlurbHtml==='function'){
+    const html=formatAbilityBlurbHtml(ab, t, packRow);
+    if(html) return html;
+  }
+  const raw=(t&&t.levels&&t.levels[0]&&t.levels[0].desc!=null)?t.levels[0].desc:(t&&t.desc!=null?t.desc:'No description');
   const text=typeof globalThis.normalizeCombatEnLabel==='function'?globalThis.normalizeCombatEnLabel(String(raw).trim()):String(raw).trim();
   return escapeHtmlRoster(text);
+}
+function abilityBlurbForTemplate(tmpl, abId){
+  const id=abId||(tmpl&&tmpl.id)||'';
+  const ab={id, level:1};
+  const packRow=typeof packRowForAbility==='function'?packRowForAbility(ab):null;
+  if(typeof formatAbilityBlurbHtml==='function'){
+    const html=formatAbilityBlurbHtml(ab, tmpl, packRow);
+    if(html) return html;
+  }
+  return escapeHtmlRoster(String(tmpl?.levels?.[0]?.desc||tmpl?.desc||'No description available.'));
 }
 /** Same skill slot → ability pipeline as a new run (family evolution + ABILITY_TEMPLATES), for roster UI only. */
 function buildRosterPreviewStubForBirdKey(birdKey){
@@ -6108,9 +6125,9 @@ function updateAscentPanel(key) {
       const en=Number.isFinite(ab?.energyCost)?ab.energyCost:(Array.isArray(t.energyByLevel)?(t.energyByLevel[0]??t.energyCost??0):(t.energyCost??0));
       const type=String(t.btnType||t.type||ab?.btnType||ab?.type||'utility').toUpperCase();
       const slotTag=escapeHtmlRoster((kit.slotTags&&kit.slotTags[idx])||(['CORE','LINE 2','LINE 3','LINE 4'][idx]||'SKILL'));
-      const short=rosterAbilityBlurb(t);
+      const short=rosterAbilityBlurb(t, id);
       const nm=escapeHtmlRoster(t.name||ab?.name||id);
-      return `<div class="ascent-ability-card"><div class="ascent-ability-top"><span class="ascent-ability-name">${nm}</span><span class="ascent-ability-en">${en} EN</span></div><div class="ascent-ability-tags">${slotTag} · ${type}</div><div class="ascent-ability-desc">${short}</div></div>`;
+      return `<div class="ascent-ability-card"><div class="ascent-ability-top"><span class="ascent-ability-name">${nm}</span><span class="ascent-ability-en">${en} EN</span></div><div class="ascent-ability-tags">${slotTag} · ${type}</div><div class="ascent-ability-desc btn-desc-lines">${short||'<div class="btn-desc-line">No description</div>'}</div></div>`;
     }).join('');
 
     const statsStrip=`
@@ -6158,6 +6175,8 @@ function updateAscentPanel(key) {
     const classPerkInfo=getBirdAuthoredClassPerk(key);
     const classPerkName=escapeHtmlRoster(classPerkInfo?.name||'—');
     const classPerkDesc=escapeHtmlRoster(classPerkInfo?.effect||'No class perk listed.');
+    const birdAsp=typeof getEntityAspect==='function'?getEntityAspect({birdKey:key,aspect:bird.aspect}):(bird.aspect||'');
+    const aspectChipHtml=birdAsp?`<span class="aspect-chip ascent-aspect-chip" id="ascent-aspect-chip" data-aspect-id="${escapeHtmlRoster(birdAsp)}">${escapeHtmlRoster(typeof formatAspectDisplayName==='function'?formatAspectDisplayName(birdAsp):birdAsp)}</span>`:'';
 
     panel.innerHTML = `
       <div class="ascent-strip ascent-strip--filled ascent-strip--${tierCss}">
@@ -6166,6 +6185,7 @@ function updateAscentPanel(key) {
           <div class="ascent-strip-title-row">
             <span class="ascent-panel-name">${escapeHtmlRoster(bird.name)}</span>
             <span class="class-badge class-${cls}">${escapeHtmlRoster(classLabel.toUpperCase())}</span>
+            ${aspectChipHtml}
             <span class="bird-size-chip">${escapeHtmlRoster(sizeLabel)}</span>
             <span class="bird-card-tier-badge ${tierCss}">${tierLabel}</span>
             <span class="bird-card-rarity-badge ${rarityMeta.css}">${rarityLabel} species</span>
@@ -6207,6 +6227,14 @@ function updateAscentPanel(key) {
     panel.classList.remove('is-empty');
     panel.classList.add('is-filled');
     _setSfselEmptyState(false);
+    if(birdAsp && typeof bindRichTooltip==='function'){
+      const chip=document.getElementById('ascent-aspect-chip');
+      if(chip){
+        chip._aspectTooltipBound=false;
+        if(chip._richTooltipBound) chip._richTooltipBound=false;
+        bindRichTooltip(chip, ()=>buildEntityAspectTooltipHtml(birdAsp), { category: 'abilities' });
+      }
+    }
     renderPassiveBadge();
   }catch(err){
     console.error('updateAscentPanel failed:',key,err);
@@ -7985,7 +8013,8 @@ function renderActions() {
       if(G.playerStatus?.battleHymn) mods.push('⬆ Hymn buff');
       if(mods.length) modTxt=`<span class=\"btn-mod\" title=\"${mods.join(' | ')}\">${mods.join(' · ')}</span>`;
     }
-    const briefHtml=typeof buildAbilityCombatBriefHtml==='function'?buildAbilityCombatBriefHtml(ab,_packRow):'';
+    const briefHtml=(typeof buildAbilityCombatBriefHtml==='function'?buildAbilityCombatBriefHtml(ab,_packRow):'')
+      ||(typeof formatTemplateCombatBriefHtml==='function'?formatTemplateCombatBriefHtml(_tmplUI):'');
     const fallbackDesc=((getAbDesc(ab)||'')+getAbilityDamageScalingHintForUI(ab)).replace(/<[^>]+>/g,'').trim();
     const _dmgEst=estimateSkillDamageRange(ab,_tmplUI,G.player,{isPlayerCombatPreview:true});
     let dmgRow='';
@@ -10413,10 +10442,11 @@ function computeMasterOutgoingDamage(isMagic, srcAbility, opts={}){
       : (G.player?.goldCritMult||globalThis.MASTER_BASE_CRIT_MULT||BASE_CRIT_DAMAGE||1.5),
     hitSucceeded:opts.hitSucceeded!==false,
   });
+  // Conditional dispatcher bonuses (marked, finisher, bonusVsAilment, bonusVsLowHp) are
+  // folded into the capped Bonus_Mod via collectDispatcherConditionalBonusFractions
+  // (see collectOutgoingDamageBonusFractions), so they are no longer applied as an
+  // uncapped post-formula multiplier here.
   let dmg=result.damage;
-  if(typeof Avian?.dispatcher?.applyConditionalDamageBonus==='function'){
-    dmg=Avian.dispatcher.applyConditionalDamageBonus(row,dmg);
-  }
   if(isSpell && G.player?.birdKey==='dukeBlakiston' && (G.enemyStatus?.decreed?.turns||0)>0){
     const ailN=countAilmentCategoriesOnEnemy();
     const decreedBonus=(ailN>1)?(AILMENT_RULES?.decreed?.afflictedBonus||0.18):(AILMENT_RULES?.decreed?.baseBonus||0.12);
@@ -10484,11 +10514,24 @@ function computeOutgoingDamageBase(isMagic, srcAbility, legacyAmount=0){
 
 function collectDispatcherConditionalBonusFractions(row){
   const fractions=[];
-  if(!row?.riders) return fractions;
+  if(!row) return fractions;
   const es=G.enemyStatus||{};
+  // Marked payoff: consume the Marked tag for a +12% bonus, folded into the capped Bonus_Mod.
+  if(typeof consumeMarkedIfPayoff==='function'&&consumeMarkedIfPayoff(row,es)){
+    fractions.push(0.12);
+  }
+  // Finisher / Bloodied: +15% versus a target at or below 50% HP.
+  const isFinisher=(row.tags||[]).indexOf('Finisher')>=0||/finisher|bloodied/i.test(String(row.riderText||''));
+  if(isFinisher&&typeof isBloodiedTarget==='function'&&isBloodiedTarget(G.enemy)){
+    fractions.push(0.15);
+  }
+  if(!row.riders) return fractions;
   for(const r of row.riders){
     if(r.kind==='bonusVsAilment'&&r.ailment==='bleed'&&(es.bleed?.stacks||0)>0&&(r.value||0)>0){
       fractions.push(Number(r.value)/100);
+    }else if(r.kind==='bonusVsAilment'&&r.ailment==='burning'&&(r.value||0)>0){
+      const burning=es.burning&&((typeof es.burning==='number'&&es.burning>0)||(typeof es.burning==='object'&&((es.burning.stacks||0)>0||(es.burning.turns||0)>0)));
+      if(burning) fractions.push(Number(r.value)/100);
     }else if(r.kind==='bonusVsLowHp'){
       const enemy=G.enemy?.stats;
       if(enemy&&enemy.hp&&enemy.maxHp&&enemy.hp<=Math.floor(enemy.maxHp*(r.threshold||0.35))&&(r.value||0)>0){
@@ -11177,6 +11220,7 @@ function rollEnemyCritDamage(baseDamage){
   let cd=Math.max(1.1,Number(G.enemy?.stats?.cd??G.enemy?.stats?.critMult??1.5));
   const mutCrit=Number(G.enemy?._mutationMechanics?.critDamageBonusPct)||0;
   if(mutCrit>0) cd+=mutCrit/100;
+  if(typeof clampCritDamageMult==='function') cd=clampCritDamageMult(cd);
   const isCrit=chance(Math.round(cc*100));
   return {amount:isCrit?roundCombatDamage(raw*cd):raw,isCrit};
 }
@@ -14218,7 +14262,7 @@ function renderSkillEvolutionSlotSelection(){
     const action = resolveSkillSlotEvolutionAction(slot, G.player);
     const card=document.createElement('div');
     card.className='skill-upgrade-card';
-    card.innerHTML=`<div class="su-name">${tmpl.name || slot.abilityId}</div><div class="su-lv">${family?.displayName||slot.familyId||'Family'} · Tier ${slot.tier||0}${slot.pathId?` · ${slot.pathId.replace(/_/g,' ')}`:''}</div><div class="su-effect">${(tmpl.levels?.[0]?.desc||tmpl.desc||'No description')}<br><span style="color:var(--gold-light)">${action==='choose_path'?'Choose a branch path.':action==='tier_up'?'Preview the next tier in this path.':'Fully evolved — no further upgrades.'}</span></div>`;
+    card.innerHTML=`<div class="su-name">${tmpl.name || slot.abilityId}</div><div class="su-lv">${family?.displayName||slot.familyId||'Family'} · Tier ${slot.tier||0}${slot.pathId?` · ${slot.pathId.replace(/_/g,' ')}`:''}</div><div class="su-effect btn-desc-lines">${abilityBlurbForTemplate(tmpl, slot.abilityId)}<br><span style="color:var(--gold-light)">${action==='choose_path'?'Choose a branch path.':action==='tier_up'?'Preview the next tier in this path.':'Fully evolved — no further upgrades.'}</span></div>`;
     if(action==='none'){
       card.style.opacity='.55';
       card.style.cursor='default';
@@ -14244,7 +14288,7 @@ function renderSkillEvolutionPathSelection(slot){
     const tmpl = option.abilityTemplate || {};
     const card=document.createElement('div');
     card.className='skill-upgrade-card';
-    card.innerHTML=`<div class="su-name">${option.displayName}</div><div class="su-lv">Tier 1 · ${tmpl.name || option.abilityId}</div><div class="su-effect">${tmpl.levels?.[0]?.desc || tmpl.desc || 'No description available.'}</div>`;
+    card.innerHTML=`<div class="su-name">${option.displayName}</div><div class="su-lv">Tier 1 · ${tmpl.name || option.abilityId}</div><div class="su-effect btn-desc-lines">${abilityBlurbForTemplate(tmpl, option.abilityId)}</div>`;
     card.onclick=()=>{ updateSkillEvolutionSelection(card, option.pathId); configureLevelUpConfirm('✓ Evolve Skill', confirmSkillEvolutionChoice, true); };
     grid.appendChild(card);
   });
@@ -14263,7 +14307,7 @@ function renderSkillEvolutionTierPreview(slot){
   document.getElementById('lu-sub').textContent=`${currentTmpl.name || slot.abilityId} will evolve into ${nextTmpl.name || nextId}.`;
   configureLevelUpConfirm('✓ Apply Tier Upgrade', confirmSkillEvolutionChoice, true);
   configureLevelUpSecondary(G._nestMutateFlow?'✕ Cancel':'⟨ Back', G._nestMutateFlow?cancelNestMutateFlow:renderSkillEvolutionSlotSelection, true);
-  grid.innerHTML=`<div class="skill-upgrade-card selected"><div class="su-name">${currentTmpl.name || slot.abilityId} → ${nextTmpl.name || nextId}</div><div class="su-lv">Tier ${slot.tier||0} → Tier ${nextTier}</div><div class="su-effect">${nextTmpl.levels?.[0]?.desc || nextTmpl.desc || 'No description available.'}</div></div>`;
+  grid.innerHTML=`<div class="skill-upgrade-card selected"><div class="su-name">${currentTmpl.name || slot.abilityId} → ${nextTmpl.name || nextId}</div><div class="su-lv">Tier ${slot.tier||0} → Tier ${nextTier}</div><div class="su-effect btn-desc-lines">${abilityBlurbForTemplate(nextTmpl, nextId)}</div></div>`;
 }
 function renderSkillEvolutionMasterySelection(slot){
   const grid=document.getElementById('lu-skill-grid');
