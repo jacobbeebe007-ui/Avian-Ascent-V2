@@ -567,33 +567,9 @@
 </div>
 </div>
 <div class="topbar-right">
-<div class="shiny-topbar">✨ Shinies: <strong id="battle-shiny-count">0</strong></div>
 <button class="menu-btn" data-action="goMainMenu">⏸ Menu</button>
 <button class="sound-btn" id="sound-toggle-btn" data-action="toggleSound" title="Toggle Sound">🔊</button>
 </div>
-</div>
-
-<div class="stage-progress-wrap" id="stage-progress-wrap" data-combat-panel="stageProgress" style="display:none">
-<span style="font-size:.72rem;color:var(--text-dim);white-space:nowrap">Stage</span>
-<div class="stage-progress-bg">
-<div class="stage-progress-fill" id="stage-progress-fill" style="width:0%"></div>
-<div class="stage-progress-bosses" id="stage-progress-bosses"></div>
-</div>
-<span id="stage-progress-txt" style="font-size:.72rem;color:var(--text-dim);white-space:nowrap">1/20</span>
-</div>
-<div class="encounter-preview-wrap" id="encounter-preview-wrap" data-combat-panel="encounterPreview" style="display:none" aria-label="Encounter preview">
-<div class="encounter-preview-header">
-<span class="encounter-preview-title">Level</span>
-<button class="encounter-preview-toggle" id="encounter-preview-toggle" type="button" aria-expanded="true" aria-controls="encounter-preview-body" title="Toggle encounter preview"></button>
-</div>
-<div class="encounter-preview-body" id="encounter-preview-body">
-<div class="encounter-preview-inner"></div>
-</div>
-</div>
-<div class="exp-row tactical-exp-row" data-combat-panel="exp">
-<span class="exp-label">EXP</span>
-<div class="exp-bg"><div class="exp-fill" id="exp-bar" style="width:0%"></div></div>
-<span class="exp-txt" id="exp-txt">0 / 100</span>
 </div>
 
 <div class="combatants tactical-battlefield" data-combat-panel="combatants">
@@ -610,8 +586,12 @@
 <div class="hp-label"><span>EN</span><span id="player-en-text">—</span></div>
 <div class="hp-bar-bg en-bar-bg"><div class="hp-bar-fill en-bar-fill" id="player-en-bar"></div></div>
 </div>
+<div class="hp-bar-wrap ultimate-meter-wrap" id="player-ult-wrap" style="display:none">
+<div class="hp-label"><span>ULT</span><span id="ultimate-meter-text">0 / 100</span></div>
+<div class="hp-bar-bg ultimate-meter-bar"><div class="hp-bar-fill ultimate-meter-fill" id="ultimate-meter-fill"></div></div>
+</div>
 <div class="status-effects" id="player-status"></div>
-<details class="combat-stats-dropdown" id="player-stats-drop" open>
+<details class="combat-stats-dropdown" id="player-stats-drop">
 <summary>Player Stats</summary>
 <div class="stats-mini" id="player-stats-mini"></div>
 </details>
@@ -633,7 +613,7 @@
 <div class="phase-banner" id="boss-phase-banner"></div>
 <div class="status-effects" id="enemy-status"></div>
 <div class="enemy-intent enemy-plan" id="enemy-intent-panel">🤔 Thinking...</div>
-<details class="combat-stats-dropdown" id="enemy-stats-drop" open>
+<details class="combat-stats-dropdown" id="enemy-stats-drop">
 <summary>Enemy Stats</summary>
 <div class="enemy-stats-mini" id="enemy-stats-mini"></div>
 </details>

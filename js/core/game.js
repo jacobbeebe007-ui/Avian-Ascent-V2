@@ -2451,8 +2451,8 @@ function buildNestAbilitySection(player){
     });
     vaultHtml+='</div>';
   }
-  const slotHint=locked?'Story battle loadouts are locked until victory. Equip abilities from rewards or the overworld Nest.':(selectedSlot!=null?`Selected slot ${selectedSlot+1} for equip.`:'Slots 1-2 are starters. Green-Orange slots unlock as you advance (stage 3/6/9/12/15). Use Mutated Feathers to advance S1-S3 mutations.');
-  return `<div class="nest-section nest-ability-section${locked?' nest-equip-locked':''}"><div class="nest-section-title">⚔ Abilities · 🪶 Mutated Feathers: ${featherCt}</div>${locked?'<p class="nest-lock-note">Loadout locked during Story battle.</p>':''}<div class="nest-ledger-subtitle">Equipped loadout</div><div class="nest-abilities-grid">${equippedHtml}</div><div class="nest-ledger-subtitle">Ability vault (${inv.length})</div>${vaultHtml}<p class="nest-ledger-note">${slotHint} Starter slots (1-2) mutate with feathers through Stage 1-3. Unlock slots 3-7 by reaching higher stages.</p></div>`;
+  const slotHint=locked?'Story battle loadouts are locked until victory. Equip abilities from rewards or the overworld Nest.':(selectedSlot!=null?`Selected slot ${selectedSlot+1} for equip.`:'Your bird-card tier sets how many ability slots unlock (grey 2, green 3, blue 4, purple 5, gold 6, orange 7). Use Mutated Feathers to advance S1-S3 mutations.');
+  return `<div class="nest-section nest-ability-section${locked?' nest-equip-locked':''}"><div class="nest-section-title">⚔ Abilities · 🪶 Mutated Feathers: ${featherCt}</div>${locked?'<p class="nest-lock-note">Loadout locked during Story battle.</p>':''}<div class="nest-ledger-subtitle">Equipped loadout</div><div class="nest-abilities-grid">${equippedHtml}</div><div class="nest-ledger-subtitle">Ability vault (${inv.length})</div>${vaultHtml}<p class="nest-ledger-note">${slotHint} Starter slots (1-2) mutate with feathers through Stage 1-3. Higher card tiers unlock additional ability slots.</p></div>`;
 }
 
 function setNestMutateConfirmVisible(visible, enabled){
@@ -2656,7 +2656,7 @@ function openNest() {
   if(typeof Avian?.mutations?.reapplyPlayerStatsFromSources==='function') Avian.mutations.reapplyPlayerStatsFromSources(p);
   const pAsp=typeof getEntityAspect==='function'?getEntityAspect(p):(p.aspect||'');
   const aspectChip=pAsp?`<span class="aspect-chip nest-aspect-chip" id="nest-aspect-chip" data-aspect-id="${escapeHtmlRoster(pAsp)}">${escapeHtmlRoster(formatAspectDisplayName(pAsp))}</span>`:'';
-  sub.innerHTML=`${escapeHtmlRoster(p.name)} · Stage ${G.stage} · Lv.${p.birdLevel} · 🪶 ${Math.max(0, Number(p.mutatedFeatherCount)||0)} ${aspectChip}`;
+  sub.innerHTML=`${escapeHtmlRoster(p.name)} · Stage ${G.stage} · Lv.${p.birdLevel} · 🪶 ${Math.max(0, Number(p.mutatedFeatherCount)||0)} · ✨ ${Math.max(0, Number(G.shinyObjects)||0)} ${aspectChip}`;
   if(pAsp && typeof bindRichTooltip==='function'){
     const chip=document.getElementById('nest-aspect-chip');
     if(chip){
@@ -2693,6 +2693,17 @@ function openNest() {
     ${(s.armorPen||0)>0?`<div class="nest-stat-card" title="Ignores enemy DEF when dealing physical damage"><div class="nest-stat-val">${formatCombatNumber(s.armorPen)}%</div><div class="nest-stat-lbl">Armour Pen</div></div>`:''}
     ${(s.magicPen||0)>0?`<div class="nest-stat-card" title="Ignores enemy MDEF when dealing magical damage"><div class="nest-stat-val">${formatCombatNumber(s.magicPen)}%</div><div class="nest-stat-lbl">Magic Pen</div></div>`:''}
   </div></div>`;
+  // EXP / level progress (moved here from the combat screen)
+  {
+    const _expNeeded=expForLevel(p.birdLevel+1);
+    const _expCur=Math.max(0, Number(p.exp)||0);
+    const _expPct=_expNeeded>0?Math.min(100,_expCur/_expNeeded*100):0;
+    html+=`<div class="nest-section nest-exp-section"><div class="nest-section-title">✦ Experience · Lv.${p.birdLevel}</div>
+    <div class="nest-exp-row">
+      <div class="nest-exp-bg"><div class="nest-exp-fill" style="width:${_expPct}%"></div></div>
+      <span class="nest-exp-txt">${formatCombatNumber(_expCur)} / ${formatCombatNumber(_expNeeded)} EXP</span>
+    </div></div>`;
+  }
   // Passive trait + authored class perk
   const passInfo=getBirdPassiveInfo(p.birdKey);
   if(passInfo){
@@ -5970,8 +5981,11 @@ function materializeRosterPreviewKit(birdKey){
   try{
     G.player=stub;
     stub.energyMax=computePlayerMaxEnergy();
-    ensureFamilyEvolutionState(stub);
+    // Resolve the card tier first so slot seeding unlocks the right number of
+    // abilities (green => 3, blue => 4) in the character-select preview.
     if(typeof applyBirdCardProgression==='function') applyBirdCardProgression(stub);
+    ensureFamilyEvolutionState(stub);
+    syncPlayerAbilitiesFromSkillSlots(stub);
     out.abilities=Array.isArray(stub.abilities)?stub.abilities.slice():[];
     out.energyMax=Math.max(0, Number(stub.energyMax)||computePlayerMaxEnergy());
     out.stats=stub.stats?{...stub.stats}:{};
@@ -6550,6 +6564,10 @@ function startGame() {
   enforceAbilityCosts(G.player);
   initStatLedgerForNewRun(G.player);
   if(typeof applyBirdCardProgression==='function') applyBirdCardProgression(G.player);
+  // Re-seed slots now that _birdCardTier is set, so card-tier slot unlocks
+  // (green => 3rd ability, blue => 4th) are reflected from the first stage.
+  ensureFamilyEvolutionState(G.player);
+  syncPlayerAbilitiesFromSkillSlots(G.player);
   G.stage = 1;
   G.endlessBattle = 0;
   G.autoQueuedAbilityId=null;
@@ -7103,6 +7121,7 @@ function showScreen(id) {
     const _accCfg=getAccessibilitySettings();
     applyCombatLayoutSettings(_accCfg);
     applyCombatArrangement(_accCfg);
+    if(typeof syncSoundStateFromSettings==='function') syncSoundStateFromSettings();
   }
 }
 globalThis.showScreen = showScreen;
@@ -7184,11 +7203,15 @@ function refreshBattleUI() {
   document.getElementById('bird-lv-label').textContent = `Lv.${G.player.birdLevel}`;
   const shinyEl=document.getElementById('battle-shiny-count'); if(shinyEl) shinyEl.textContent=String(G.shinyObjects||0);
 
-  // EXP bar
-  const needed = expForLevel(G.player.birdLevel+1);
-  const pct = Math.min(G.player.exp/needed*100,100);
-  document.getElementById('exp-bar').style.width = pct+'%';
-  document.getElementById('exp-txt').textContent = `${G.player.exp} / ${needed}`;
+  // EXP bar (combat copy removed — EXP now lives in the Nest)
+  const _expBar=document.getElementById('exp-bar');
+  if(_expBar){
+    const needed = expForLevel(G.player.birdLevel+1);
+    const pct = Math.min(G.player.exp/needed*100,100);
+    _expBar.style.width = pct+'%';
+    const _expTxt=document.getElementById('exp-txt');
+    if(_expTxt) _expTxt.textContent = `${G.player.exp} / ${needed}`;
+  }
 
   // Stats
   // Compute effective stats with buffs for display
@@ -15225,10 +15248,35 @@ function primeAudioIfNeeded() {
   try { ctx.resume().catch(() => {}); } catch (_) {}
 }
 globalThis.primeAudioIfNeeded = primeAudioIfNeeded;
+function syncSoundButtonLabel() {
+  const btn=document.getElementById('sound-toggle-btn');
+  if(btn){
+    btn.textContent = _soundEnabled ? '🔊' : '🔇';
+    btn.setAttribute('aria-pressed', _soundEnabled ? 'false' : 'true');
+  }
+}
+globalThis.syncSoundButtonLabel = syncSoundButtonLabel;
+/** Sync the combat SFX flag + button to the saved music mute state (call on battle entry). */
+function syncSoundStateFromSettings() {
+  try { _soundEnabled = !getMusicSettings().muted; } catch (_) {}
+  syncSoundButtonLabel();
+}
+globalThis.syncSoundStateFromSettings = syncSoundStateFromSettings;
 function toggleSound() {
   _soundEnabled = !_soundEnabled;
-  const btn=document.getElementById('sound-toggle-btn');
-  if(btn) btn.textContent = _soundEnabled ? '🔊' : '🔇';
+  const muted = !_soundEnabled;
+  // Unified mute: the combat sound button controls BOTH SFX and music, and
+  // stays in sync with the Settings → Audio mute control.
+  try {
+    const s = getMusicSettings();
+    s.muted = muted;
+    saveMusicSettings(s);
+    if (typeof applyThemeMusicToAudioEl === 'function') applyThemeMusicToAudioEl();
+    if (typeof syncThemeMusicButtonLabels === 'function') syncThemeMusicButtonLabels();
+    const mm = document.getElementById('setting-music-muted');
+    if (mm) mm.checked = muted;
+  } catch (_) {}
+  syncSoundButtonLabel();
 }
 function playTone(freq, type='square', dur=0.12, vol=0.18, delay=0, freqEnd=null) {
   if (!_soundEnabled) return;
@@ -17097,6 +17145,7 @@ function syncThemeMusicButtonLabels(){
     b.setAttribute('aria-label',s.muted?'Unmute menu music':'Mute menu music');
     b.title=s.muted?'Menu music (muted)':'Menu music';
   });
+  if(typeof syncSoundStateFromSettings==='function') syncSoundStateFromSettings();
 }
 function syncThemeBgmPlaybackForScreen(screenId){
   if(screenId!=='screen-battle'&&!_dukeBgmFadeOutActive) stopDukeBattleBgmImmediate();
@@ -17209,9 +17258,6 @@ const COMBAT_ARRANGEMENT_HINTS={
 };
 const COMBAT_PANEL_DEFS=[
   {id:'topbar', label:'Top bar (menu & stage)'},
-  {id:'stageProgress', label:'Stage progress bar'},
-  {id:'encounterPreview', label:'Encounter preview'},
-  {id:'exp', label:'EXP bar'},
   {id:'player', label:'Your bird'},
   {id:'enemy', label:'Enemy'},
   {id:'actions', label:'Actions'},
@@ -17700,6 +17746,7 @@ function updateAudioSettingsFromControls(){
   applyThemeMusicToAudioEl();
   syncThemeMusicButtonLabels();
   syncMusicMenuControls();
+  if(typeof syncSoundStateFromSettings==='function') syncSoundStateFromSettings();
   const active=document.querySelector('.screen.active');
   if(active&&(active.id==='screen-start'||active.id==='screen-select')){
     tryPlayThemeBgmForCurrentMenuScreen();

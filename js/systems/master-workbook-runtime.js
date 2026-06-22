@@ -205,24 +205,34 @@
     return 'Neutral';
   }
 
+  function playerHasUltimateUnlocked() {
+    var g = globalThis.G;
+    if (!g || !g.player || !Array.isArray(g.player.abilities)) return false;
+    for (var i = 0; i < g.player.abilities.length; i++) {
+      var ab = g.player.abilities[i];
+      if (ab && isUltimateAbility(ab)) return true;
+    }
+    return false;
+  }
+
   function renderUltimateMeterUI() {
     var g = globalThis.G;
-    if (!g || !g.player) return;
-    var el = document.getElementById('ultimate-meter-wrap');
-    if (!el) {
-      var host = document.getElementById('player-panel') || document.getElementById('player-energy-wrap');
-      if (!host) return;
-      el = document.createElement('div');
-      el.id = 'ultimate-meter-wrap';
-      el.className = 'ultimate-meter-wrap';
-      el.innerHTML = '<div class="ultimate-meter-label">Ultimate</div><div class="ultimate-meter-bar"><div id="ultimate-meter-fill"></div></div><div id="ultimate-meter-text"></div>';
-      host.appendChild(el);
+    var wrap = document.getElementById('player-ult-wrap');
+    if (!wrap) return;
+    if (!g || !g.player || !playerHasUltimateUnlocked()) {
+      wrap.style.display = 'none';
+      return;
     }
+    wrap.style.display = '';
     var fill = document.getElementById('ultimate-meter-fill');
     var txt = document.getElementById('ultimate-meter-text');
     var cur = getUltimateMeter('player');
     var max = maxUltimateMeter();
-    if (fill) fill.style.width = Math.min(100, (cur / max) * 100) + '%';
+    if (fill) {
+      var pct = max > 0 ? Math.min(100, (cur / max) * 100) : 0;
+      fill.style.width = pct + '%';
+      fill.classList.toggle('ult-ready', cur >= max);
+    }
     if (txt) txt.textContent = cur + ' / ' + max;
   }
 
