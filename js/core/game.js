@@ -8973,7 +8973,12 @@ function buildActionTooltipHTML(ab){
   const remCd=getAbilityCooldown(ab.id);
   const packRow=typeof packRowForAbility==='function'?packRowForAbility(ab):null;
   const {isDamaging,dmgLow,dmgHigh,btnType,hybridSplit}=estimateSkillDamageRange(ab,tmpl,G.player,{isPlayerCombatPreview:true});
-  const effectList=(ab.ailmentIds||[]).length?ab.ailmentIds.map(a=>a.replace(/_/g,' ')).join(', '):'—';
+  const effectList=(ab.ailmentIds||[]).length?ab.ailmentIds.map(a=>{
+    const id=String(a||'');
+    const name=(typeof Avian?.systems?.abilityDisplay?.ailmentName==='function')?Avian.systems.abilityDisplay.ailmentName(id):id.replace(/_/g,' ');
+    const color=(typeof Avian?.systems?.abilityDisplay?.ailmentColor==='function')?Avian.systems.abilityDisplay.ailmentColor(id):null;
+    return color?`<span style="color:${color}">${name}</span>`:name;
+  }).join(', '):'—';
 
   let html=`<div class="tt-name">${tmpl.name}</div><div class="tt-type">${tmpl.type} · Lv${ab.level}</div>`;
   html+=`<div class="tt-row"><span class="tt-lbl">Energy</span><span class="tt-val">${energy}</span></div>`;

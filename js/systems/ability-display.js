@@ -263,49 +263,58 @@
     return lines.filter(function (line) { return !isFluffLine(line); });
   }
 
-  function generatedBriefLines(row) {
+  function generatedBriefSegments(row) {
     if (!row) return [];
     enrichRow(row);
-    var lines = [];
+    var segs = [];
+    function add(text, color) { segs.push({ text: text, color: color || null }); }
     if (row.noDamage) {
-      lines.push((row.enCost || row.apCost || 1) + ' EN Utility');
+      add((row.enCost || row.apCost || 1) + ' EN Utility');
     } else {
-      lines.push((row.enCost || row.apCost || 1) + ' EN ' + String(row.damageType || 'Physical'));
-      lines.push('Uses ' + String(row.damageStat || row.scaleStat || 'ATK') + '.');
-      lines.push('Normal Ability Power: ' + (Number(row.abilityPower) || 0).toFixed(2));
+      add((row.enCost || row.apCost || 1) + ' EN ' + String(row.damageType || 'Physical'));
+      add('Uses ' + String(row.damageStat || row.scaleStat || 'ATK') + '.');
+      add('Normal Ability Power: ' + (Number(row.abilityPower) || 0).toFixed(2));
     }
     var condLine = formatConditionalPowerLine(row);
-    if (condLine) lines.push(condLine);
-    if (row.ailment) {
-      var aid = Array.isArray(row.ailment) ? row.ailment.join('/') : row.ailment;
-      lines.push(String(aid) + ' ' + (row.ailmentChance || 0) + '%');
-    }
-    if ((row.heavyAccuracyPenalty || 0) > 0) lines.push('Heavy accuracy penalty: -' + row.heavyAccuracyPenalty + '.');
-    if ((row.recoilPercent || 0) > 0) lines.push('Recoil: ' + Math.round(row.recoilPercent * 100) + '% of damage dealt.');
+    if (condLine) add(condLine);
+    ailmentSegments(row).forEach(function (s) { segs.push(s); });
+    if ((row.heavyAccuracyPenalty || 0) > 0) add('Heavy accuracy penalty: -' + row.heavyAccuracyPenalty + '.');
+    if ((row.recoilPercent || 0) > 0) add('Recoil: ' + Math.round(row.recoilPercent * 100) + '% of damage dealt.');
     if (row.hybridScaling) {
       var parts = [];
       for (var k in row.hybridScaling) {
         if (!Object.prototype.hasOwnProperty.call(row.hybridScaling, k)) continue;
         parts.push(Math.round((Number(row.hybridScaling[k]) || 0) * 100) + '% ' + k);
       }
-      if (parts.length) lines.push('Uses ' + parts.join(' and ') + '.');
+      if (parts.length) add('Uses ' + parts.join(' and ') + '.');
     }
-    return lines;
+    riderSegments(row).forEach(function (s) { segs.push(s); });
+    return segs;
+  }
+
+  function generatedBriefLines(row) {
+    return generatedBriefSegments(row).map(function (s) { return s.text; });
+  }
+
+  function buildAbilityCombatSegments(ab, row) {
+    row = enrichRow(resolveRow(ab, row));
+    if (!row) return [];
+    var generated = generatedBriefSegments(row);
+    if (generated.length >= 2) return generated.slice(0, 8);
+    var mechanical = mechanicalLinesFromDisplayText(row.displayText, true).map(function (l) { return { text: l, color: null }; });
+    if (mechanical.length >= 2) return mechanical.slice(0, 8);
+    if (generated.length) return generated;
+    return mechanical;
   }
 
   function buildAbilityCombatBrief(ab, row) {
-    row = enrichRow(resolveRow(ab, row));
-    if (!row) return '';
-    var generated = generatedBriefLines(row);
-    if (generated.length >= 2) return generated.slice(0, 6).join('\n');
-    var mechanical = mechanicalLinesFromDisplayText(row.displayText, true);
-    if (mechanical.length >= 2) return mechanical.slice(0, 6).join('\n');
-    if (generated.length) return generated.join('\n');
-    return mechanical.join('\n');
+    return buildAbilityCombatSegments(ab, row).map(function (s) { return s.text; }).join('\n');
   }
 
   function buildAbilityCombatBriefHtml(ab, row) {
-    return briefTextToHtml(buildAbilityCombatBrief(ab, row));
+    var segs = buildAbilityCombatSegments(ab, row);
+    if (!segs.length) return '';
+    return segs.map(segToHtml).join('');
   }
 
   function formatTemplateCombatBriefHtml(tmpl) {
@@ -375,9 +384,8 @@
   function buildAbilityTooltipDetailHtml(ab, tmpl, row) {
     var text = buildAbilityTooltipDetail(ab, tmpl, row);
     if (!text) return '';
-    var esc = typeof globalThis.escapeHtmlRoster === 'function' ? globalThis.escapeHtmlRoster : function (s) { return s; };
     return text.split('\n').map(function (line) {
-      return esc(line);
+      return colorizeEffectKeywords(escHtml(line));
     }).join('<br>');
   }
 
@@ -388,6 +396,9 @@
     formatAbilityBlurbHtml: formatAbilityBlurbHtml,
     buildAbilityTooltipDetail: buildAbilityTooltipDetail,
     buildAbilityTooltipDetailHtml: buildAbilityTooltipDetailHtml,
+    colorizeEffectKeywords: colorizeEffectKeywords,
+    ailmentColor: ailmentColor,
+    ailmentName: ailmentName,
   };
 
   var Avian = globalThis.Avian || (globalThis.Avian = {});
