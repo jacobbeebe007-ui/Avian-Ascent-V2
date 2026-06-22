@@ -415,6 +415,27 @@ if (tacticalPrism) {
   check('Tactical Prism Squawk keeps gainMdef rider', (tacticalPrism.riders || []).some((r) => r.kind === 'gainMdef'));
 }
 
+// Ability briefs: displayText effect phrasing in combat previews
+if (typeof sandbox.buildAbilityCombatBrief === 'function' && typeof sandbox.enrichCombatRow === 'function') {
+  const rapidPeck = allSkillTrees['SPARROW_S1_RAPID_PECK_FAMILY_S1'];
+  const hedgerowWrit = allSkillTrees['SPARROW_S3_WRIT_FAMILY_S1'];
+  if (rapidPeck) {
+    sandbox.enrichCombatRow(rapidPeck);
+    const rapidBrief = sandbox.buildAbilityCombatBrief({ id: rapidPeck.id }, rapidPeck);
+    check('Rapid Peck brief includes authored dodge rider line', /gain \+8 Dodge/i.test(rapidBrief), rapidBrief);
+    check('Rapid Peck brief avoids shorthand dodge rider', !/^\+\d+ Dodge if faster/m.test(rapidBrief.split('\n').pop() || ''), rapidBrief);
+  }
+  if (hedgerowWrit) {
+    sandbox.enrichCombatRow(hedgerowWrit);
+    const writBrief = sandbox.buildAbilityCombatBrief({ id: hedgerowWrit.id }, hedgerowWrit);
+    const writHtml = typeof sandbox.buildAbilityCombatBriefHtml === 'function'
+      ? sandbox.buildAbilityCombatBriefHtml({ id: hedgerowWrit.id }, hedgerowWrit)
+      : '';
+    check('Hedgerow Writ brief uses chance-to-apply ailment phrasing', /Has a 20% chance to apply Blinded/i.test(writBrief), writBrief);
+    check('Hedgerow Writ brief HTML colorizes Blinded', writHtml.includes('<span') && /Blinded/i.test(writHtml), writHtml.slice(0, 120));
+  }
+}
+
 const failed = checks.filter(c => !c.ok);
 for (const c of checks) {
   console.log(`${c.ok ? '[ok]  ' : '[FAIL]'} ${c.name}${c.detail ? ` -- ${c.detail}` : ''}`);

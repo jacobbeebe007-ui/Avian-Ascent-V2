@@ -121,14 +121,14 @@
     var shortDesc = normalizeEnLabel(String(row.shortDesc || '').trim());
     if (shortDesc) return shortDesc;
     if (typeof globalThis.enrichCombatRow === 'function') globalThis.enrichCombatRow(row);
+    if (typeof globalThis.buildAbilityCombatBrief === 'function') {
+      var brief = normalizeEnLabel(globalThis.buildAbilityCombatBrief({ id: row.id || entry.baseAbilityId }, row));
+      if (brief) return brief.replace(/\n+/g, ' · ');
+    }
     var bits = [];
     bits.push((row.apCost || row.enCost || 1) + ' EN · ' + (row.target === 'self' ? 'Self' : row.target === 'self_and_enemy' ? 'Self+Enemy' : 'Enemy'));
     if (!row.noDamage && typeof globalThis.describeMasterAbility === 'function') {
       bits.push(normalizeEnLabel(globalThis.describeMasterAbility(row)));
-    }
-    if (row.ailment) {
-      var aid = Array.isArray(row.ailment) ? row.ailment.join('/') : row.ailment;
-      bits.push(aid + ' ' + (row.ailmentChance || 0) + '%');
     }
     if (row.pierceDef > 0) bits.push(row.pierceDef + '% DEF ign');
     if (row.pierceMdef > 0) bits.push(row.pierceMdef + '% MDEF ign');

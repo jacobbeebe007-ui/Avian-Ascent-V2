@@ -627,6 +627,20 @@
     return !row.noDamage && (row.abilityPower != null || row.damageStat != null);
   }
 
+  function formatAilmentChanceLine(row) {
+    if (!row || !row.ailment) return '';
+    var ids = Array.isArray(row.ailment) ? row.ailment : [row.ailment];
+    var chance = row.ailmentChance || 0;
+    var names = ids.filter(Boolean).map(function (id) {
+      var key = String(id || '').toLowerCase();
+      var A = globalThis.AILMENTS;
+      if (A && A[key] && A[key].name) return A[key].name;
+      return key ? key.charAt(0).toUpperCase() + key.slice(1) : '';
+    }).filter(Boolean);
+    if (!names.length) return '';
+    return 'Has a ' + chance + '% chance to apply ' + names.join('/') + '.';
+  }
+
   function describeMasterAbility(row) {
     enrichCombatRow(row || {});
     if (!row || row.noDamage) return 'Utility ability.';
@@ -641,10 +655,8 @@
     ];
     if ((row.heavyAccuracyPenalty || 0) > 0) bits.push('Heavy accuracy penalty: -' + row.heavyAccuracyPenalty + '.');
     if ((row.recoilPercent || 0) > 0) bits.push('Recoil: ' + Math.round(row.recoilPercent * 100) + '% of damage dealt.');
-    if (row.ailment) {
-      var aid = Array.isArray(row.ailment) ? row.ailment.join('/') : row.ailment;
-      bits.push(String(aid) + ' ' + (row.ailmentChance || 0) + '%');
-    }
+    var ailmentLine = formatAilmentChanceLine(row);
+    if (ailmentLine) bits.push(ailmentLine);
     return bits.join(' ');
   }
 
