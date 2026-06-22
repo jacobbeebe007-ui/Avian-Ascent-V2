@@ -4368,6 +4368,7 @@ img{image-rendering:pixelated;image-rendering:crisp-edges;}
 
 .tactical-battlefield{grid-template-columns:1fr 1fr;align-items:stretch;direction:ltr;gap:10px;}
 .combatant-meta{font-size:.7rem;color:var(--text-dim);letter-spacing:.08em;text-transform:uppercase;margin-bottom:2px;}
+#player-class-label,#enemy-class-label{cursor:help;}
 .tactical-center{display:none;}
 .center-banner{font-family:'Cinzel',serif;color:var(--gold-light);font-size:.76rem;letter-spacing:.12em;text-transform:uppercase;border:1px solid rgba(201,168,76,.3);border-radius:999px;padding:5px 12px;background:rgba(201,168,76,.08);}
 .tactical-exp-row{width:100%;padding:8px 10px;}

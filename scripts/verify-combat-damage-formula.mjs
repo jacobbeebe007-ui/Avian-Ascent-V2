@@ -116,6 +116,15 @@ function dmg(params) {
   check('8 — hybrid defence blends DEF/MDEF', hybridDef > 0 && hybridDef !== pureDef, `hybrid=${hybridDef} pure=${pureDef}`);
 }
 
+// 8b — Hybrid row with no explicit split defaults to an even ATK/MATK blend
+{
+  const ability = c.enrichCombatRow({ apCost: 2, category: 'hybrid', damageType: 'Hybrid', damageStat: 'HYBRID' });
+  check('8b — implicit hybrid gets default scaling', !!ability.hybridScaling, JSON.stringify(ability.hybridScaling));
+  const hybridAttacker = { class: 'bard', stats: { atk: 20, matk: 10 } };
+  const blended = c.getRelevantAttackStat(hybridAttacker, ability);
+  check('8b — implicit hybrid blends ATK+MATK (not ATK only)', near(blended, 20 * 0.5 + 10 * 0.5) && blended !== 20, `blended=${blended}`);
+}
+
 // 9 — True Damage attack ignoring defence
 {
   const ability = c.enrichCombatRow({ apCost: 2, scaleStat: 'ATK', scalePct: 50, category: 'true', damageType: 'True', damageStat: 'TRUE' });

@@ -302,7 +302,16 @@
     var pPct = Math.max(0, Number(row.scalePct) || 0);
     var sPct = Math.max(0, Number(row.secondaryScalePct) || 0);
     var total = pPct + sPct;
-    if (!secondary || total <= 0) return null;
+    if (!secondary || total <= 0) {
+      // Hybrid abilities in the live data carry no secondary scale split, so
+      // default them to an even ATK/MATK blend instead of silently scaling off
+      // ATK alone. Non-hybrid rows keep their single-stat behaviour (null).
+      var isHybrid = String(row.damageStat || '').toUpperCase() === 'HYBRID'
+        || primary === 'HYBRID'
+        || String(row.damageType || '').toUpperCase() === 'HYBRID';
+      if (isHybrid) return { ATK: 0.5, MATK: 0.5 };
+      return null;
+    }
     var out = {};
     out[primary] = pPct / total;
     out[secondary] = sPct / total;

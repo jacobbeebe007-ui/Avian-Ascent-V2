@@ -229,6 +229,8 @@
   function updateAspectChip(chipId, aspectId) {
     var chip = document.getElementById(chipId);
     if (!chip) return null;
+    var prevId = chip.dataset.aspectId || '';
+    var nextId = aspectId || '';
     if (aspectId) {
       var name = typeof globalThis.formatAspectDisplayName === 'function'
         ? globalThis.formatAspectDisplayName(aspectId)
@@ -243,7 +245,10 @@
       chip.hidden = true;
       chip.style.display = 'none';
     }
-    chip._aspectTooltipBound = false;
+    if (prevId !== nextId) {
+      chip._aspectTooltipBound = false;
+      chip._richTooltipBound = false;
+    }
     return chip;
   }
 
@@ -273,8 +278,7 @@
     ['player-aspect-label', 'enemy-aspect-label'].forEach(function (id) {
       var el = document.getElementById(id);
       if (!el || !el.dataset.aspectId) return;
-      el._aspectTooltipBound = false;
-      if (el._richTooltipBound) el._richTooltipBound = false;
+      if (el._aspectTooltipBound) return;
       el._aspectTooltipBound = true;
       globalThis.bindRichTooltip(el, function () {
         var aspId = el.dataset.aspectId || '';

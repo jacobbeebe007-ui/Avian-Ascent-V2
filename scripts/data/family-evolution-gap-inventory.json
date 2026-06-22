@@ -1,6 +1,6 @@
 {
   "generatedAt": "2026-05-11T10:49:32.827Z",
-  "note": "Gap birds now carry authored catalogs in js/data/family-evolution-gap-birds.js",
+  "note": "Historical snapshot only. Family-evolution catalogs are now built at boot from js/data/combat-pack/families.js via js/systems/combat-pack-boot.js; the old js/data/family-evolution-gap-birds.js file no longer exists.",
   "birds": {
     "baldEagle": {
       "birdKey": "baldEagle",
