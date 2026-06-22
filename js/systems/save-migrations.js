@@ -25,12 +25,12 @@
   'use strict';
 
   /** Bump when adding a migration. */
-  var TARGET = 8;
+  var TARGET = 9;
 
   /** Combat-pack version stamp surfaced on the save blob. Wipes attached when
    *  this changes so legacy ability/perk/family state never bleeds into a run. */
   var COMBAT_PACK_VERSION = '2026.05-combat-rewrite';
-  var MUTATIONS_PACK_VERSION = '2026.06-mutations-v4';
+  var MUTATIONS_PACK_VERSION = '2026.06-mutations-v5';
 
   /** @type {Array<{from:number,to:number,fn:(save:any)=>any,note?:string}>} */
   var migrations = [
@@ -153,6 +153,18 @@
       from: 7,
       to: 8,
       note: 'mutation gear v4: wipe inventory/equipped loadouts; new split slots and MT catalog',
+      fn: function (save) {
+        if (!save || !save.player) return save;
+        save.player.mutationInventory = [];
+        save.player.equippedMutations = null;
+        save.mutationsPackVersion = '2026.06-mutations-v4';
+        return save;
+      },
+    },
+    {
+      from: 8,
+      to: 9,
+      note: 'mutation gear v5: new MUT catalog for grey–gold tiers; wipe equipped/inventory loadouts',
       fn: function (save) {
         if (!save || !save.player) return save;
         save.player.mutationInventory = [];

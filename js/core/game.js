@@ -479,6 +479,7 @@ globalThis.rollCombatSpread = rollCombatSpread;
 function applyFractionalHp(stats, delta) {
   stats.hp = Math.max(0, Math.round((Number(stats.hp) + delta) * 100) / 100);
 }
+globalThis.applyFractionalHp = applyFractionalHp;
 function normalizeCombatStats(stats) {
   if (!stats) return;
   for (const k of ['hp', 'maxHp', 'atk', 'def', 'matk', 'mdef', 'spd', 'acc', 'dodge', 'critChance', 'armorPen', 'magicPen']) {
@@ -8554,7 +8555,7 @@ function estimateSkillDamageRange(ab,tmpl,attacker,opts){
       : (Number(packRow.baseFlat)||0)+packRowScaleContribution(packRow.scaleStat,packRow.scalePct,previewStats,isPlayerCombat)
         +(packRow.secondaryScaleStat?packRowScaleContribution(packRow.secondaryScaleStat,packRow.secondaryScalePct,previewStats,isPlayerCombat):0);
     const hits=Math.max(1,Number(packRow.hits)||1);
-    let perHit=Math.max(1, Math.round(raw));
+    let perHit=roundCombatDamage(Math.max(0.01, raw));
     if(isPlayerCombat&&G?._pendingStrikeActionMods){
       const add=Number(G._pendingStrikeActionMods.multAdd)||0;
       if(add>0) perHit=roundCombatDamage(perHit*(1+add));
@@ -10817,6 +10818,8 @@ function collectOutgoingDamageBonusFractions(ctx){
     if(attackWeight==='medium'&&(_eqM.mediumAttackDmgPct||0)>0) fractions.push(_eqM.mediumAttackDmgPct/100);
     if(attackWeight==='heavy'&&(_eqM.heavyAttackDmgPct||0)>0) fractions.push(_eqM.heavyAttackDmgPct/100);
     if(isMultiHitAbility(activeAb)&&(_eqM.multiHitDmgPct||0)>0) fractions.push(_eqM.multiHitDmgPct/100);
+    if(isAttack&&!isMagic&&(_eqM.physicalDamageUpPct||0)>0) fractions.push(_eqM.physicalDamageUpPct/100);
+    if(isMagic&&(_eqM.magicDamageUpPct||0)>0) fractions.push(_eqM.magicDamageUpPct/100);
     if(_eqM.damageBonuses&&_eqM.damageBonuses.length){
       for(const db of _eqM.damageBonuses){
         if(!db||!db.pct) continue;
@@ -10940,14 +10943,14 @@ function computeEntityAbilityRawDamage(entity, ab, tmpl, isMagic){
       hitSucceeded:true,
     });
     G._lastAspectComponents=result.components||null;
-    return Math.max(1, result.damage);
+    return roundCombatDamage(Math.max(0.01, result.damage));
   }
   G._lastAspectComponents=null;
   if(row&&typeof computeAbilityRawDamage==='function'){
-    return Math.max(1, Math.round(computeAbilityRawDamage(row, stats)));
+    return roundCombatDamage(Math.max(0.01, computeAbilityRawDamage(row, stats)));
   }
-  if(isMagic) return Math.max(1, Math.floor(Number(stats.matk||8)));
-  return Math.max(1, Math.floor(Number(stats.atk||8)));
+  if(isMagic) return roundCombatDamage(Math.max(0.01, Number(stats.matk||8)));
+  return roundCombatDamage(Math.max(0.01, Number(stats.atk||8)));
 }
 
 function applyCurvedMitigationToPlayer(preMit,isMagic,srcAbility){
@@ -11165,7 +11168,7 @@ function dealDamage(target,amount,isCrit=false,isMagic=false,srcAbility=null,opt
       isCrit=rr.isCrit;
     }
     dmg=opts.masterFullyResolved
-      ? Math.max(1, Math.round(dmg))
+      ? roundCombatDamage(Math.max(0.01, dmg))
       : applyMinimumDamage(roundCurvedDamage(dmg), enemyEnCost);
     dmg=applyDamageThroughShield(G.player.stats, G.playerStatus, dmg);
     const bypassDeflect=!!G._incomingBypassesDeflect;
@@ -11173,11 +11176,11 @@ function dealDamage(target,amount,isCrit=false,isMagic=false,srcAbility=null,opt
       const isParryValid=(G._incomingAttackKind==='physical'||G._incomingAttackKind==='ranged')&&!bypassDeflect;
       const preParryDamage=dmg;
       if(isParryValid){
-        const refl=Math.max(1,Math.floor(preParryDamage*(G.playerStatus.parryMult||2)));
+        const refl=roundCombatDamage(Math.max(0.01, preParryDamage*(G.playerStatus.parryMult||2)));
         G.enemy.stats.hp-=refl; setHpBar('enemy',G.enemy.stats.hp,G.enemy.stats.maxHp);
-        spawnFloat('enemy',`🗡-${refl}`,'fn-dmg');
-        logMsg(`🗡 Parry reflected ${refl} damage!`,'system');
-        dmg=Math.max(0,Math.floor(preParryDamage*(G.playerStatus.parryTakenMult??0.5)));
+        spawnFloat('enemy',`🗡-${formatCombatNumber(refl)}`,'fn-dmg');
+        logMsg(`🗡 Parry reflected ${formatCombatNumber(refl)} damage!`,'system');
+        dmg=roundCombatDamage(Math.max(0, preParryDamage*(G.playerStatus.parryTakenMult??0.5)));
       } else {
         logMsg('🗡 Parry failed — enemy used magic/song.','miss');
       }
@@ -11306,9 +11309,9 @@ function dealDamage(target,amount,isCrit=false,isMagic=false,srcAbility=null,opt
 
 function pdmg(mult=1,ab=null,opts={}) {
   let b=G.player.stats.atk;
-  if (G.warcryActive) b=Math.floor(b*(1+G.warcryATK/100));
-  if (G.sitAndWaitActive) b=Math.floor(b*1.25);
-  if (G.tookieActive && G.playerStatus.tookie) b=Math.floor(b*(1+G.playerStatus.tookie.atkBonus/100));
+  if (G.warcryActive) b=roundCombatStat(b*(1+G.warcryATK/100));
+  if (G.sitAndWaitActive) b=roundCombatStat(b*1.25);
+  if (G.tookieActive && G.playerStatus.tookie) b=roundCombatStat(b*(1+G.playerStatus.tookie.atkBonus/100));
   const effCore=softenMainStatForCombat(b)*COMBAT_OFFENSIVE_STAT_MULT;
   const __adm=(G.actionDamageHitsRemaining&&G.actionDamageHitsRemaining>0)?(G.actionDamageMult||1):1;
   let strikeAdd=0;
@@ -11407,7 +11410,7 @@ function applyConditionalPhysicalDamageMultipliers(subtotal, conditionalBonuses)
     }
     if(c.type==='while_guarding' && playerIsGuarding(G.playerStatus)) m+=Number(c.damageBonus)||0;
   }
-  return Math.max(1, Math.floor(subtotal*m));
+  return roundCombatDamage(Math.max(0.01, subtotal*m));
 }
 /** Optional ATT-primary physical damage with secondary stat / conditional bonuses (see ability.damageScaling). */
 function pdmgWithAlternateScaling(mult=1, ab=null){
@@ -11631,9 +11634,9 @@ function applyDelayedDamage(target, hitDmg, opts={}) {
   }
   let boostPct = 0;
   if (target === 'enemy' && G.player) boostPct = getDelayedDmgBoostPct();
-  const stored = Math.max(1, Math.floor(Number(hitDmg) * pct * (1 + boostPct / 100)));
+  const stored = roundCombatDamage(Math.max(0.01, Number(hitDmg) * pct * (1 + boostPct / 100)));
   if (status.delayed && status.delayed.dmg != null) {
-    status.delayed.dmg = Math.max(Number(status.delayed.dmg) || 0, stored);
+    status.delayed.dmg = roundCombatDamage(Math.max(Number(status.delayed.dmg) || 0, stored));
   } else {
     status.delayed = { dmg: stored };
   }
@@ -11882,9 +11885,9 @@ function tickPoisonDamageOnly(side){
   const ownerBonus=side==='enemy';
   const tickMult=ownerBonus?(G.player?.poisonTickMult||1):1;
   const flatBonus=ownerBonus?((G.player?.poisonFlatBonus||0)+(G.player?.perkPoisonTickBonus||0)+(G.player?.relVenomLedger?1:0)):0;
-  const dmg=Math.max(1,Math.floor(2*status.poison.stacks*tickMult)+flatBonus);
-  stats.hp-=dmg;
-  spawnFloat(side,`☣ -${dmg}`,'fn-poison');
+  const dmg=roundCombatDamage(Math.max(0.01, 2*status.poison.stacks*tickMult+flatBonus));
+  applyFractionalHp(stats, -dmg);
+  spawnFloat(side,`☣ -${formatCombatNumber(dmg)}`,'fn-poison');
   setHpBar(side,stats.hp,stats.maxHp);
   logMsg(`☣ Poison deals ${dmg} to ${side==='player'?G.player.name:G.enemy.name}!`,'poison-tick');
   if(side==='enemy') BS.dmgDealt+=dmg;
@@ -11909,8 +11912,8 @@ function tickBurningEndEnemyPhase(){
     if(!turns||turns<=0){ delete status.burning; continue; }
     const burnMult=side==='enemy'?(G.player?.burnBonus||1):1;
     const dmg=roundCombatDamage(7*burnMult);
-    stats.hp-=dmg;
-    spawnFloat(side,`🔥 -${dmg}`,'fn-burn');
+    applyFractionalHp(stats, -dmg);
+    spawnFloat(side,`🔥 -${formatCombatNumber(dmg)}`,'fn-burn');
     setHpBar(side,stats.hp,stats.maxHp);
     logMsg(`🔥 Burn deals ${dmg} to ${side==='player'?G.player.name:G.enemy.name}!`,'burn-tick');
     if(side==='enemy') BS.dmgDealt+=dmg;
@@ -11922,7 +11925,7 @@ function tickBurningEndEnemyPhase(){
 function tickDelayedForTarget(side){
   const status=side==='player'?G.playerStatus:G.enemyStatus;
   if(!status?.delayed||status.delayed.dmg==null||Number(status.delayed.dmg)<=0) return;
-  const dmg=Math.max(1,Math.floor(Number(status.delayed.dmg)));
+  const dmg=roundCombatDamage(Math.max(0.01, Number(status.delayed.dmg)));
   if(typeof applyAilmentDamage==='function'){
     applyAilmentDamage(side, dmg, { ailmentId:'delayed', icon:'🎵', floatClass:'fn-status', logText:'🎵 Resonance detonates! {dmg} damage!', logKind:'system' });
   }else{
@@ -15943,7 +15946,7 @@ function buildRefGuide() {
 
   const mechanics=`<div class="ref-skills-grid">
     ${card('War Room & Character Select','Mission map sets difficulty and Story vs Endless. Begin Ascent opens Character Select to pick your bird. Inventory holds feathers and artifacts; Supplies holds this Reference codex.',true,'war-room')}
-    ${card('Bird Cards & Tiers','Hatch at The Hatchery. Duplicate hatches grant Species Feathers. Spend feathers in Feather Sack or Character Select to raise stars and ascend tiers — higher tiers boost stats and passive scaling for that species.',true,'bird-cards')}
+    ${card('Bird Cards & Tiers','Hatch at The Hatchery. Duplicate hatches grant Species Feathers. Spend feathers in Feather Sack or Character Select to raise stars and ascend tiers — higher tiers boost stats for that species. Passives and class perks stay fixed.',true,'bird-cards')}
     ${card('Species Feathers','Per-bird currency from duplicate hatches at The Hatchery. Fuels card star and tier upgrades in Feather Sack or Character Select. Distinct from Mutated Feathers earned during runs.',true,'species-feathers')}
     ${card('Energy & Cooldowns','Main attacks are free unless spells. Abilities spend energy and many skills have cooldowns.',true,'core')}
     ${card('Post-Battle Recovery','Story: heal 20% max HP after each bird you defeat in a stage (including multi-bird nodes). Endless: heal 33% max HP after each victory. Halved with Hunter\'s Cruelty mutation.',true,'heal')}

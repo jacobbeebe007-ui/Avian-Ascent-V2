@@ -35,16 +35,6 @@
     return '';
   }
 
-  /** @deprecated Passives no longer scale with tier or stars. */
-  function getPassiveBonusFraction() {
-    return null;
-  }
-
-  /** @deprecated Passives no longer scale with tier or stars. */
-  function formatPassiveEffectForTier(birdKey) {
-    return getFixedPassiveEffectText(birdKey);
-  }
-
   function excludedStarScalingKeys() {
     var t = tiers();
     if (t && Array.isArray(t.STAR_SCALING_EXCLUDED_STAT_KEYS)) return t.STAR_SCALING_EXCLUDED_STAT_KEYS;
@@ -137,8 +127,6 @@
     applyBirdCardProgression: applyBirdCardProgression,
     applyBirdCardStats: applyBirdCardStats,
     getFixedPassiveEffectText: getFixedPassiveEffectText,
-    getPassiveBonusFraction: getPassiveBonusFraction,
-    formatPassiveEffectForTier: formatPassiveEffectForTier,
     getTierAbilityUnlockSummary: getTierAbilityUnlockSummary,
   };
 
@@ -148,7 +136,6 @@
 
   globalThis.applyBirdCardProgression = applyBirdCardProgression;
   globalThis.applyBirdCardStats = applyBirdCardStats;
-  globalThis.formatPassiveEffectForTier = formatPassiveEffectForTier;
-  globalThis.getPassiveBonusFraction = getPassiveBonusFraction;
+  globalThis.getFixedPassiveEffectText = getFixedPassiveEffectText;
   globalThis.getTierAbilityUnlockSummary = getTierAbilityUnlockSummary;
 })();

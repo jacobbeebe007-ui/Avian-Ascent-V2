@@ -57,10 +57,12 @@
     shieldPowerPct: 'Shield Power', lifestealPct: 'Lifesteal', healingDonePct: 'Healing Done',
     healingReceivedPct: 'Healing Received', statusResistPct: 'Status Resist',
     heavyAccPenaltyReductionPct: 'Heavy ACC', ultimateMeterGainPct: 'Ult Meter',
+    physicalDamageUpPct: 'Physical Damage', magicDamageUpPct: 'Magic Damage',
   };
   var MUT_MECH_DISPLAY_KEYS = [
     'shieldPowerPct', 'lifestealPct', 'healingDonePct', 'healingReceivedPct',
     'statusResistPct', 'heavyAccPenaltyReductionPct', 'ultimateMeterGainPct',
+    'physicalDamageUpPct', 'magicDamageUpPct',
   ];
   var MUT_STAT_COLOR = {
     atk: 'mut-stat-atk', matk: 'mut-stat-matk', def: 'mut-stat-def', mdef: 'mut-stat-mdef',
@@ -109,14 +111,17 @@
     if (!item) return [];
     var stats = Object.create(null);
     var mech = Object.create(null);
-    rollupMutationItem(item, stats, mech);
+    var statsPct = Object.create(null);
+    rollupMutationItem(item, stats, mech, statsPct);
     var lines = [];
     var order = ['atk', 'matk', 'def', 'mdef', 'spd', 'acc', 'dodge', 'critChance', 'armorPen', 'magicPen', 'maxHp'];
     for (var i = 0; i < order.length; i++) {
       var k = order[i];
       var v = Number(stats[k]) || 0;
-      if (!v) continue;
-      var disp = formatStatLineValue(k, v);
+      var pct = Number(statsPct[k]) || 0;
+      if (!v && !pct) continue;
+      var disp = v ? formatStatLineValue(k, v) : '';
+      if (pct) disp = (disp ? disp + ' ' : '') + '+' + pct + '%';
       lines.push({ key: k, label: MUT_STAT_DISPLAY[k] || k.toUpperCase(), value: disp, colorClass: mutStatColorClass(k) });
     }
     if (mech.lightAttackDmgPct) lines.push({ key: 'lightDmg', label: 'Light Attack', value: '+' + mech.lightAttackDmgPct + '%', colorClass: mutStatColorClass('lightDmg') });
@@ -239,13 +244,15 @@
     if (!item) return Object.create(null);
     var stats = Object.create(null);
     var mech = Object.create(null);
-    rollupMutationItem(item, stats, mech);
+    var statsPct = Object.create(null);
+    rollupMutationItem(item, stats, mech, statsPct);
     var map = Object.create(null);
     var order = ['atk', 'matk', 'def', 'mdef', 'spd', 'acc', 'dodge', 'critChance', 'armorPen', 'magicPen', 'maxHp'];
     for (var i = 0; i < order.length; i++) {
       var k = order[i];
       var v = Number(stats[k]) || 0;
       if (v) map[k] = v;
+      if (statsPct[k]) map[k + 'Pct'] = Number(statsPct[k]);
     }
     if (mech.lightAttackDmgPct) map.lightDmg = Number(mech.lightAttackDmgPct);
     if (mech.mediumAttackDmgPct) map.mediumDmg = Number(mech.mediumAttackDmgPct);
@@ -485,6 +492,7 @@
     'multiHitDmgPct', 'critDamageBonusPct', 'physicalAilmentChance', 'magicAilmentChance',
     'delayedDmgPct', 'heavyAccPenaltyReductionPct', 'lifestealPct', 'healingDonePct',
     'healingReceivedPct', 'shieldPowerPct', 'statusResistPct', 'ultimateMeterGainPct',
+    'physicalDamageUpPct', 'magicDamageUpPct',
   ];
   var LEGACY_ARMOR_PEN_KEYS = ['defPenPct', 'piercePct'];
   var LEGACY_MAGIC_PEN_KEYS = ['mdefPenPct'];
@@ -500,7 +508,7 @@
     list.push({ id: entry.id, chance: Number(entry.chance) });
   }
 
-  function rollupMutationItem(item, stats, mech) {
+  function rollupMutationItem(item, stats, mech, statsPct) {
     if (!item) return;
     var s = item.stats || {};
     for (var k in s) {
@@ -516,6 +524,13 @@
         mech[k] = (mech[k] || 0) + (Number(s[k]) || 0);
       } else {
         stats[k] = (stats[k] || 0) + (Number(s[k]) || 0);
+      }
+    }
+    if (item.statsPct && statsPct) {
+      var sp = item.statsPct;
+      for (var pk in sp) {
+        if (!Object.prototype.hasOwnProperty.call(sp, pk)) continue;
+        statsPct[pk] = (statsPct[pk] || 0) + (Number(sp[pk]) || 0);
       }
     }
     var m = item.mechanics || {};
@@ -572,25 +587,27 @@
   function sumMutationIds(ids) {
     var stats = Object.create(null);
     var mech = Object.create(null);
-    if (!Array.isArray(ids)) return { stats: stats, mechanics: mech };
+    var statsPct = Object.create(null);
+    if (!Array.isArray(ids)) return { stats: stats, mechanics: mech, statsPct: statsPct };
     for (var i = 0; i < ids.length; i++) {
-      rollupMutationItem(getItem(ids[i]), stats, mech);
+      rollupMutationItem(getItem(ids[i]), stats, mech, statsPct);
     }
-    return { stats: stats, mechanics: mech };
+    return { stats: stats, mechanics: mech, statsPct: statsPct };
   }
 
   function sumEquippedStats(player) {
     var stats = Object.create(null);
     var mech = Object.create(null);
+    var statsPct = Object.create(null);
     ensurePlayerMutationState(player);
     var eq = player.equippedMutations;
     for (var slot in eq) {
       if (!Array.isArray(eq[slot])) continue;
       for (var i = 0; i < eq[slot].length; i++) {
-        rollupMutationItem(getItem(eq[slot][i]), stats, mech);
+        rollupMutationItem(getItem(eq[slot][i]), stats, mech, statsPct);
       }
     }
-    return { stats: stats, mechanics: mech };
+    return { stats: stats, mechanics: mech, statsPct: statsPct };
   }
 
   function enemyMutationCount(stage, isBoss) {
@@ -703,9 +720,13 @@
     var eqRoll = sumEquippedStats(player);
     if (L) L.fromEquipment = Object.assign({}, eqRoll.stats);
     player._mutationMechanics = eqRoll.mechanics;
+    player._mutationStatsPct = eqRoll.statsPct || Object.create(null);
+    var pctRoll = player._mutationStatsPct;
     for (var i = 0; i < keys.length; i++) {
       var k = keys[i];
-      var v = (Number(base[k]) || 0) + (Number(fromLevel[k]) || 0) + (Number(fromUpgrades[k]) || 0) + (Number(fromCardTier[k]) || 0) + (Number(eqRoll.stats[k]) || 0);
+      var flat = (Number(fromLevel[k]) || 0) + (Number(fromUpgrades[k]) || 0) + (Number(fromCardTier[k]) || 0) + (Number(eqRoll.stats[k]) || 0);
+      var pctBonus = pctRoll[k] ? Math.round((Number(base[k]) || 0) * (Number(pctRoll[k]) || 0) / 100) : 0;
+      var v = (Number(base[k]) || 0) + flat + pctBonus;
       player.stats[k] = capTrackedStatValue(k, v);
     }
     if (player.stats.maxHp != null) {
@@ -1052,6 +1073,7 @@
   mutations.rollMutationStock = rollMutationStock;
   mutations.formatMutationDesc = formatMutationDesc;
   mutations.buildMutationStatLines = buildMutationStatLines;
+  mutations.getMutationStatNumericMap = getMutationStatNumericMap;
   mutations.formatMutationDescHtml = formatMutationDescHtml;
   mutations.formatMutationStatCompactHtml = formatMutationStatCompactHtml;
   mutations.buildMutationCompareLines = buildMutationCompareLines;

@@ -72,35 +72,40 @@
     return Math.max(RULES.MIN_AILMENT_CHANCE, adjusted - resist);
   }
 
+  function roundAilmentDmg(n) {
+    if (typeof globalThis.roundCombatDamage === 'function') return globalThis.roundCombatDamage(n);
+    return Math.max(0.01, Math.round(Number(n) * 100) / 100);
+  }
+
   function capAilmentDamage(dmg, g, side) {
-    return Math.max(1, Math.floor(Number(dmg) || 0));
+    return roundAilmentDmg(Math.max(0.01, Number(dmg) || 0));
   }
 
   function calcPoisonTickDmg(stacks, bonusMult) {
     bonusMult = bonusMult || 1;
-    return Math.max(1, Math.floor((RULES.poison.dmgPerStack * Math.max(0, stacks || 0)) * bonusMult));
+    return roundAilmentDmg(Math.max(0.01, (RULES.poison.dmgPerStack * Math.max(0, stacks || 0)) * bonusMult));
   }
 
   function calcToxicTickDmg(maxHp, g, side) {
-    var raw = Math.floor(Math.max(1, maxHp || 1) * RULES.toxic.maxHpPct);
+    var raw = roundAilmentDmg(Math.max(0.01, maxHp || 1) * RULES.toxic.maxHpPct);
     var cap = isBossTarget(g, side) ? RULES.toxic.capBoss : RULES.toxic.capNormal;
-    return Math.max(1, Math.min(cap, raw));
+    return roundAilmentDmg(Math.max(0.01, Math.min(cap, raw)));
   }
 
   function calcBleedTickDmg(maxHp, stacks, g, side) {
-    var raw = Math.floor(Math.max(1, maxHp || 1) * RULES.bleed.maxHpPctPerStack * Math.max(0, stacks || 0));
+    var raw = roundAilmentDmg(Math.max(0.01, maxHp || 1) * RULES.bleed.maxHpPctPerStack * Math.max(0, stacks || 0));
     var cap = isBossTarget(g, side) ? RULES.bleed.capBoss : RULES.bleed.capNormal;
-    return Math.max(1, Math.min(cap, raw));
+    return roundAilmentDmg(Math.max(0.01, Math.min(cap, raw)));
   }
 
   function calcBurningTickDmg(stacks, bonusMult) {
     bonusMult = bonusMult || 1;
-    return Math.max(1, Math.floor(RULES.burning.flatPerStack * Math.max(0, stacks || 0) * bonusMult));
+    return roundAilmentDmg(Math.max(0.01, RULES.burning.flatPerStack * Math.max(0, stacks || 0) * bonusMult));
   }
 
   function calcScorchedTickDmg(bonusMult) {
     bonusMult = bonusMult || 1;
-    return Math.max(1, Math.floor(RULES.scorched.flatDmg * bonusMult));
+    return roundAilmentDmg(Math.max(0.01, RULES.scorched.flatDmg * bonusMult));
   }
 
   function getBleedHealMult(stacks) {
@@ -152,7 +157,7 @@
 
   function applyAilmentDamageBonus(baseDmg, bonusFraction) {
     var frac = Math.min(RULES.AILMENT_DAMAGE_BONUS_CAP, Math.max(0, Number(bonusFraction) || 0));
-    return Math.floor(baseDmg * (1 + frac));
+    return roundAilmentDmg(baseDmg * (1 + frac));
   }
 
   globalThis.AILMENT_RULES = RULES;

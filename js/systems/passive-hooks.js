@@ -342,10 +342,13 @@
 
   Avian.passives.applyDamageBonus = function applyDamageBonus(dmg, ab, ctx) {
     if (!globalThis.G || !G.player || !ab) return dmg;
+    var roundDmg = (typeof globalThis.roundCombatDamage === 'function')
+      ? globalThis.roundCombatDamage
+      : function(n) { return Math.max(0.01, Math.round(Number(n) * 100) / 100); };
     var we = workbook();
     if (we) {
       var fracs = we.collectDamageBonusFractions(ab, ctx || {});
-      for (var i = 0; i < fracs.length; i++) dmg = Math.floor(dmg * (1 + fracs[i]));
+      for (var i = 0; i < fracs.length; i++) dmg = roundDmg(dmg * (1 + fracs[i]));
     }
     var perk = passiveFor(G.player.birdKey);
     if (!perk) return dmg;
@@ -360,10 +363,10 @@
       if (eff.kind === 'bonusVsAilment') {
         if (eff.ailment === 'bleed' && !enemyHasAilmentCategory(es, 'bleed')) continue;
         if (!damageTypeMatches(row, eff.dmgType, ctx)) continue;
-        if (eff.value > 0) dmg = Math.floor(dmg * (1 + eff.value / 100));
+        if (eff.value > 0) dmg = roundDmg(dmg * (1 + eff.value / 100));
       } else if (eff.kind === 'flatDamageBonus') {
         if (!damageTypeMatches(row, eff.dmgType, ctx)) continue;
-        if (eff.value > 0) dmg = Math.floor(dmg * (1 + eff.value / 100));
+        if (eff.value > 0) dmg = roundDmg(dmg * (1 + eff.value / 100));
       }
     }
     return dmg;
@@ -509,8 +512,8 @@
     var perk = passiveFor(birdKey);
     if (!perk) return null;
     var effectText = perk.effect;
-    if (typeof globalThis.formatPassiveEffectForTier === 'function') {
-      effectText = globalThis.formatPassiveEffectForTier(birdKey) || perk.effect;
+    if (typeof globalThis.getFixedPassiveEffectText === 'function') {
+      effectText = globalThis.getFixedPassiveEffectText(birdKey) || perk.effect;
     }
     return { id: perk.id, name: perk.name, desc: effectText, effect: effectText, trigger: perk.trigger, balance: perk.balanceNote };
   };

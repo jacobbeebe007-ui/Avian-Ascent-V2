@@ -37,13 +37,23 @@
       if (opts.ailmentId === 'bleed') bonusFrac += Math.min(R.AILMENT_DAMAGE_BONUS_CAP, (globalThis.G.player.bleedTickBonusPct || 0) / 100);
     }
     bonusFrac = Math.min(R.AILMENT_DAMAGE_BONUS_CAP, bonusFrac);
+    var roundDmg = (typeof globalThis.roundCombatDamage === 'function')
+      ? globalThis.roundCombatDamage
+      : function(n) { return Math.max(0.01, Math.round(Number(n) * 100) / 100); };
     var finalDmg = typeof globalThis.applyAilmentDamageBonus === 'function'
       ? globalThis.applyAilmentDamageBonus(dmg, bonusFrac)
-      : Math.max(1, Math.floor(dmg * (1 + bonusFrac)));
-    finalDmg = Math.max(1, Math.floor(finalDmg));
-    stats.hp = Math.max(0, stats.hp - finalDmg);
+      : roundDmg(Math.max(0.01, dmg * (1 + bonusFrac)));
+    finalDmg = roundDmg(Math.max(0.01, finalDmg));
+    if (typeof globalThis.applyFractionalHp === 'function') {
+      globalThis.applyFractionalHp(stats, -finalDmg);
+    } else {
+      stats.hp = Math.max(0, Math.round((Number(stats.hp) - finalDmg) * 100) / 100);
+    }
+    var dmgDisp = (typeof globalThis.formatCombatNumber === 'function')
+      ? globalThis.formatCombatNumber(finalDmg)
+      : finalDmg;
     if (typeof globalThis.spawnFloat === 'function') {
-      globalThis.spawnFloat(side, (opts.icon || '💥') + ' -' + finalDmg, opts.floatClass || 'fn-dmg');
+      globalThis.spawnFloat(side, (opts.icon || '💥') + ' -' + dmgDisp, opts.floatClass || 'fn-dmg');
     }
     if (typeof globalThis.setHpBar === 'function') {
       globalThis.setHpBar(side, stats.hp, stats.maxHp);

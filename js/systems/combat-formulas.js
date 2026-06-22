@@ -538,16 +538,17 @@
     enrichCombatRow(ability || {});
     var pct = Number(ability.recoilPercent) || 0;
     if (pct <= 0) return 0;
-    return Math.max(1, Math.round(Math.max(0, Number(finalDamage) || 0) * pct));
+    return applyMinimumDamage(roundCurvedDamage(Math.max(0, Number(finalDamage) || 0) * pct), 1);
   }
 
   function calculateMultiHitDamage(totalDamage, hitCount) {
-    var total = Math.max(0, Math.round(Number(totalDamage) || 0));
+    var total = roundCurvedDamage(Math.max(0, Number(totalDamage) || 0));
     var hits = Math.max(1, Math.floor(Number(hitCount) || 1));
-    var per = Math.floor(total / hits);
-    var rem = total - per * hits;
+    var cents = Math.round(total * 100);
+    var perCents = Math.floor(cents / hits);
+    var rem = cents - perCents * hits;
     var out = [];
-    for (var i = 0; i < hits; i++) out.push(per + (i < rem ? 1 : 0));
+    for (var i = 0; i < hits; i++) out.push((perCents + (i < rem ? 1 : 0)) / 100);
     return out;
   }
 
@@ -599,7 +600,7 @@
       var critMult = clampCritDamageMult((Number(params.critMultiplier) || MASTER_BASE_CRIT_MULT) + critAdd);
       damage *= critMult;
     }
-    damage = Math.max(1, Math.round(damage));
+    damage = applyMinimumDamage(roundCurvedDamage(damage), enCost);
     return {
       damage: damage,
       preMitigation: enBase * abilityPower * statMod,
@@ -640,13 +641,13 @@
     var total = 0;
     var row = rowOpt || {};
     if (typeof totalOrParams === 'number') {
-      total = Math.max(0, Math.round(Number(totalOrParams) || 0));
+      total = roundCurvedDamage(Math.max(0, Number(totalOrParams) || 0));
       row = rowOpt || {};
     } else if (totalOrParams && typeof totalOrParams === 'object') {
       row = totalOrParams.ability || totalOrParams.row || rowOpt || {};
       enrichCombatRow(row);
       if (typeof calculateDamage === 'function') {
-        total = Math.max(0, Math.round((calculateDamage(totalOrParams).damage) || 0));
+        total = roundCurvedDamage(Math.max(0, (calculateDamage(totalOrParams).damage) || 0));
       }
     }
     enrichCombatRow(row);
@@ -660,8 +661,8 @@
     if (total <= 0) {
       return { total: 0, physical: 0, magic: 0, weights: { ATK: wAtk, MATK: wMatk } };
     }
-    var physical = Math.max(0, Math.round(total * wAtk));
-    var magic = Math.max(0, total - physical);
+    var physical = roundCurvedDamage(Math.max(0, total * wAtk));
+    var magic = roundCurvedDamage(Math.max(0, total - physical));
     return { total: total, physical: physical, magic: magic, weights: { ATK: wAtk, MATK: wMatk } };
   }
 

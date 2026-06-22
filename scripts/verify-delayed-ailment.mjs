@@ -21,8 +21,8 @@ const blue = readFileSync(path.join(mutationsDir, 'items-blue.js'), 'utf8');
 const orange = readFileSync(path.join(mutationsDir, 'items-orange.js'), 'utf8');
 const index = readFileSync(path.join(mutationsDir, 'index.js'), 'utf8');
 
-if (!index.includes("m.version='2026.06-mutations-v4'")) fail('mutations index version not v4');
-else ok('mutations pack version v4');
+if (!index.includes("m.version='2026.06-mutations-v5'")) fail('mutations index version not v5');
+else ok('mutations pack version v5');
 
 const ailmentChances = (blue.match(/"ailmentChances"/g) || []).length;
 if (ailmentChances < 1) fail('expected ailmentChances entries in blue tier');

@@ -148,7 +148,10 @@
       }
       if(mult === 1) return baseAmount;
       try { Avian.debug = Avian.debug || {}; Avian.debug.lastSynergyMult = mult; } catch(_){}
-      return Math.max(1, Math.floor((Number(baseAmount)||1) * mult));
+      const roundDmg = (typeof globalThis.roundCombatDamage === 'function')
+        ? globalThis.roundCombatDamage
+        : (n) => Math.max(0.01, Math.round(Number(n) * 100) / 100);
+      return roundDmg(Math.max(0.01, (Number(baseAmount)||1) * mult));
     }
 
     globalThis.avianApplySynergyConsumeDamage = applySynergyConsume;
@@ -443,18 +446,21 @@
 
   const _innerEdmg = globalThis.edmg;
   if(typeof _innerEdmg === 'function'){
+    const roundDmg = (typeof globalThis.roundCombatDamage === 'function')
+      ? globalThis.roundCombatDamage
+      : (n) => Math.max(0.01, Math.round(Number(n) * 100) / 100);
     globalThis.edmg = function(mult=1){
       let out = _innerEdmg.apply(this, arguments);
       try{
         if((G.enemyStatus?.rageBuff||0) > 0){
-          out = Math.max(1, Math.floor(out * 1.25));
+          out = roundDmg(Math.max(0.01, out * 1.25));
         }
         if(G?.enemy?._trait?.id === 'predator' && (G.playerStatus?.weaken||0) > 0){
-          out = Math.floor(out * 1.25);
+          out = roundDmg(out * 1.25);
         }
         if(G?.enemy?._trait?.id === 'duelist' && !G.enemy._duelistUsed){
           G.enemy._duelistUsed = true;
-          out = Math.floor(out * 1.5);
+          out = roundDmg(out * 1.5);
         }
       }catch(_){}
       return out;
@@ -602,14 +608,19 @@
 (function(){
   // Replace magic damage scaling so MATK matters directly and does not piggyback on ATK.
   globalThis.matk = function(mult=1){
+    const roundDmg = (typeof globalThis.roundCombatDamage === 'function')
+      ? globalThis.roundCombatDamage
+      : (n) => Math.max(0.01, Math.round(Number(n) * 100) / 100);
     const base = Math.max(1, G?.player?.stats?.matk || 8);
     const enemyMdef = Math.max(0, G?.enemy?.stats?.mdef || 0);
-    const low = Math.floor(base * 0.85);
-    const high = Math.floor(base * 1.15);
-    const rolled = (typeof roll === 'function') ? roll(low, high) : Math.floor((low + high) / 2);
+    const low = base * 0.85;
+    const high = base * 1.15;
+    const rolled = (typeof rollCombatSpread === 'function')
+      ? rollCombatSpread(low, high)
+      : roundDmg((low + high) / 2);
     const statDelta = base - enemyMdef;
     const scaling = 1 + (statDelta * 0.02); // stronger feeling MATK scaling
-    return Math.max(1, Math.floor(rolled * mult * Math.max(0.55, scaling)));
+    return roundDmg(Math.max(0.01, rolled * mult * Math.max(0.55, scaling)));
   };
 
   // Make spell ailment rolls respect MATK more clearly as well.
@@ -755,9 +766,19 @@
     if(!status || !stats) return;
 
     const applyTick = async (icon, cls, dmg, logText) => {
-      dmg = Math.max(1, Math.floor(dmg));
-      stats.hp = Math.max(0, stats.hp - dmg);
-      spawnFloat(who, `${icon} -${dmg}`, cls);
+      const roundDmg = (typeof globalThis.roundCombatDamage === 'function')
+        ? globalThis.roundCombatDamage
+        : (n) => Math.max(0.01, Math.round(Number(n) * 100) / 100);
+      dmg = roundDmg(Math.max(0.01, dmg));
+      if (typeof globalThis.applyFractionalHp === 'function') {
+        globalThis.applyFractionalHp(stats, -dmg);
+      } else {
+        stats.hp = Math.max(0, Math.round((Number(stats.hp) - dmg) * 100) / 100);
+      }
+      const dmgDisp = (typeof globalThis.formatCombatNumber === 'function')
+        ? globalThis.formatCombatNumber(dmg)
+        : dmg;
+      spawnFloat(who, `${icon} -${dmgDisp}`, cls);
       if(typeof setHpBar === 'function') setHpBar(who, stats.hp, stats.maxHp);
       if(typeof logMsg === 'function') logMsg(logText.replace('{dmg}', dmg).replace('{name}', name), 'poison-tick');
       if(who === 'enemy' && globalThis.BS) BS.dmgDealt = (BS.dmgDealt||0) + dmg;

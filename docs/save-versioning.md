@@ -98,3 +98,9 @@ Avian.systems.SAVE_SCHEMA_VERSION
 - Wipes `player.mutationInventory` and `player.equippedMutations` when upgrading from schema v7.
 - Required because the mutation gear overhaul replaces all item IDs, splits wing/feet into left/right slots, and bumps `mutationsPackVersion` to `2026.06-mutations-v4`.
 - Players keep their run progress; only equipped gear and stored mutation inventory are reset.
+
+## v9 migration
+
+- Wipes `player.mutationInventory` and `player.equippedMutations` when upgrading from schema v8.
+- Required because Grey–Gold mutation IDs change from `MT####` to `MUT-####` in `2026.06-mutations-v5` (Orange `MT####` items are retained).
+- Players keep run progress; only mutation inventory and equipped loadouts reset.

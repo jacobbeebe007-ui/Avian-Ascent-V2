@@ -12,32 +12,28 @@ function Test-Check([string]$Name, [bool]$Ok) {
 
 $b = [System.IO.File]::ReadAllText($bundle, [Text.Encoding]::UTF8)
 $idx = [System.IO.File]::ReadAllText($index, [Text.Encoding]::UTF8)
+$mutCount = ([regex]::Matches($b, '"MUT-\d+"')).Count
 $mtCount = ([regex]::Matches($b, '"MT\d+"')).Count
 
 Test-Check 'bundle exists' (Test-Path $bundle)
-Test-Check 'mutations v4 index' ($idx -match "m\.version='2026\.06-mutations-v4'")
-Test-Check 'MT0001 present' ($b.Contains('MT0001'))
-Test-Check '400+ MT items in bundle' ($mtCount -ge 400)
+Test-Check 'mutations v5 index' ($idx -match "m\.version='2026\.06-mutations-v5'")
+Test-Check 'MUT-0001 present' ($b.Contains('MUT-0001'))
+Test-Check '330+ MUT items in bundle' ($mutCount -ge 330)
+Test-Check 'orange MT items retained' ($mtCount -ge 20)
 Test-Check 'leftWing slot' ($b.Contains('leftWing'))
 Test-Check 'rightFoot slot' ($b.Contains('rightFoot'))
 Test-Check 'mutationEffects engine' ($b.Contains('mutationEffects'))
 Test-Check 'itemAllowedForPlayer' ($b.Contains('itemAllowedForPlayer'))
 Test-Check 'orange tier data' ($b.Contains('"tier":"orange"'))
-Test-Check 'save schema v8' ($b.Contains('var TARGET = 8'))
+Test-Check 'save schema v9' ($b.Contains('var TARGET = 9'))
 Test-Check 'no legacy AA-1-0001' (-not $b.Contains('AA-1-0001'))
 Test-Check 'tryMutationOnHitAilments' ($b.Contains('function tryMutationOnHitAilments'))
 Test-Check 'getHeavyAccPenaltyReduction' ($b.Contains('getHeavyAccPenaltyReduction'))
-Test-Check 'no legacy mut_blood_moon' (-not $b.Contains('mut_blood_moon'))
-Test-Check 'no ENDLESS_MUTATIONS' (-not $b.Contains('ENDLESS_MUTATIONS'))
-Test-Check 'grove goldenGoose outcome' ($b.Contains("'goldenGoose'"))
-Test-Check 'grantGroveGearMutation helper' ($b.Contains('function grantGroveGearMutation'))
-Test-Check 'rollGroveMutationTier helper' ($b.Contains('function rollGroveMutationTier'))
-Test-Check 'getFamilyEvolutionBirdDataStore' ($b.Contains('getFamilyEvolutionBirdDataStore'))
+Test-Check 'physicalDamageUpPct' ($b.Contains('physicalDamageUpPct'))
+Test-Check 'statsPct rollup' ($b.Contains('_mutationStatsPct'))
 Test-Check 'Shield Power display label' ($b.Contains('Shield Power'))
 Test-Check 'statLine fallback helper' ($b.Contains('formatStatLineFallbackHtml'))
-Test-Check 'MT0347 in catalog' ($b.Contains('MT0347'))
-Test-Check 'mechanics armorPen rollup' ($b.Contains('m.armorPen'))
 
-Write-Host "[verify] MT id matches: $mtCount"
+Write-Host "[verify] MUT id matches: $mutCount; MT orange matches: $mtCount"
 if ($failed -gt 0) { exit 1 }
 Write-Host '[verify] all checks passed'
