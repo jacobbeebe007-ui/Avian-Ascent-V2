@@ -286,6 +286,13 @@
   var Avian = globalThis.Avian;
   if (!Avian || typeof Avian.statuses.register !== 'function') return;
 
+  function refreshStatusPanel(target) {
+    if (typeof globalThis.renderStatuses !== 'function' || !globalThis.G) return;
+    var side = target === 'player' ? 'player-status' : 'enemy-status';
+    var bag = target === 'player' ? globalThis.G.playerStatus : globalThis.G.enemyStatus;
+    if (bag) globalThis.renderStatuses(side, bag);
+  }
+
   Avian.statuses.register('delayed', {
     onConsume: function (_target, value) {
       if (!value || typeof value !== 'object') return null;
@@ -300,16 +307,36 @@
     },
   });
 
-  Avian.statuses.register('poison', {});
-  Avian.statuses.register('toxic', {});
-  Avian.statuses.register('burning', {});
-  Avian.statuses.register('scorched', {});
-  Avian.statuses.register('weaken', {});
-  Avian.statuses.register('paralyzed', {});
-  Avian.statuses.register('chilled', {});
-  Avian.statuses.register('frozen', {});
-  Avian.statuses.register('blinded', {});
-  Avian.statuses.register('decreed', {});
+  Avian.statuses.register('poison', {
+    onApply: function (target) { refreshStatusPanel(target); },
+  });
+  Avian.statuses.register('toxic', {
+    onApply: function (target) { refreshStatusPanel(target); },
+  });
+  Avian.statuses.register('burning', {
+    onApply: function (target) { refreshStatusPanel(target); },
+  });
+  Avian.statuses.register('scorched', {
+    onApply: function (target) { refreshStatusPanel(target); },
+  });
+  Avian.statuses.register('weaken', {
+    onApply: function (target) { refreshStatusPanel(target); },
+  });
+  Avian.statuses.register('paralyzed', {
+    onApply: function (target) { refreshStatusPanel(target); },
+  });
+  Avian.statuses.register('chilled', {
+    onApply: function (target) { refreshStatusPanel(target); },
+  });
+  Avian.statuses.register('frozen', {
+    onApply: function (target) { refreshStatusPanel(target); },
+  });
+  Avian.statuses.register('blinded', {
+    onApply: function (target) { refreshStatusPanel(target); },
+  });
+  Avian.statuses.register('decreed', {
+    onApply: function (target) { refreshStatusPanel(target); },
+  });
   Avian.statuses.register('marked', {
     onConsume: function () { return { consumed: true }; },
   });

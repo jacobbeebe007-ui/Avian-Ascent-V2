@@ -212,6 +212,7 @@
   }
 
   function displayTextCoversRiders(row) {
+    if (!row) return false;
     var effects = effectLinesFromDisplayText(row.displayText, true);
     if (!effects.length) return false;
     return effects.some(function (s) {
@@ -477,7 +478,9 @@
     if (fromRow) return fromRow;
     var fromTmpl = formatTemplateCombatBriefHtml(tmpl);
     if (fromTmpl) return fromTmpl;
-    var generated = generatedBriefLines(enrichRow(resolveRow(ab, row)));
+    var resolved = enrichRow(resolveRow(ab, row));
+    if (!resolved) return '';
+    var generated = generatedBriefLines(resolved);
     if (generated.length) return briefLinesToHtml(generated.slice(0, 6));
     return '';
   }

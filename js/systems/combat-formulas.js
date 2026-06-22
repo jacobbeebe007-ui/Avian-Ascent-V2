@@ -627,6 +627,44 @@
     return !row.noDamage && (row.abilityPower != null || row.damageStat != null);
   }
 
+  function isHybridDamage(row) {
+    if (!row) return false;
+    enrichCombatRow(row);
+    return String(row.damageType) === 'Hybrid'
+      || String(row.category || '').toLowerCase() === 'hybrid'
+      || String(row.damageStat || row.scaleStat || '').toUpperCase() === 'HYBRID';
+  }
+
+  /** Split blended hybrid total into red (ATK) / purple (MATK) display portions. */
+  function calculateHybridDisplaySplit(totalOrParams, rowOpt) {
+    var total = 0;
+    var row = rowOpt || {};
+    if (typeof totalOrParams === 'number') {
+      total = Math.max(0, Math.round(Number(totalOrParams) || 0));
+      row = rowOpt || {};
+    } else if (totalOrParams && typeof totalOrParams === 'object') {
+      row = totalOrParams.ability || totalOrParams.row || rowOpt || {};
+      enrichCombatRow(row);
+      if (typeof calculateDamage === 'function') {
+        total = Math.max(0, Math.round((calculateDamage(totalOrParams).damage) || 0));
+      }
+    }
+    enrichCombatRow(row);
+    var scaling = row.hybridScaling || buildHybridScaling(row) || { ATK: 0.5, MATK: 0.5 };
+    var wAtk = Number(scaling.ATK) || 0;
+    var wMatk = Number(scaling.MATK) || 0;
+    var wSum = wAtk + wMatk;
+    if (wSum <= 0) { wAtk = 0.5; wMatk = 0.5; wSum = 1; }
+    wAtk /= wSum;
+    wMatk /= wSum;
+    if (total <= 0) {
+      return { total: 0, physical: 0, magic: 0, weights: { ATK: wAtk, MATK: wMatk } };
+    }
+    var physical = Math.max(0, Math.round(total * wAtk));
+    var magic = Math.max(0, total - physical);
+    return { total: total, physical: physical, magic: magic, weights: { ATK: wAtk, MATK: wMatk } };
+  }
+
   function formatAilmentChanceLine(row) {
     if (!row || !row.ailment) return '';
     var ids = Array.isArray(row.ailment) ? row.ailment : [row.ailment];
@@ -717,6 +755,8 @@
     mapLegacyRowToMasterDamage: mapLegacyRowToMasterDamage,
     enrichCombatRow: enrichCombatRow,
     usesMasterDamage: usesMasterDamage,
+    isHybridDamage: isHybridDamage,
+    calculateHybridDisplaySplit: calculateHybridDisplaySplit,
     describeMasterAbility: describeMasterAbility,
   };
 
@@ -766,6 +806,8 @@
   globalThis.mapLegacyRowToMasterDamage = mapLegacyRowToMasterDamage;
   globalThis.enrichCombatRow = enrichCombatRow;
   globalThis.usesMasterDamage = usesMasterDamage;
+  globalThis.isHybridDamage = isHybridDamage;
+  globalThis.calculateHybridDisplaySplit = calculateHybridDisplaySplit;
   globalThis.describeMasterAbility = describeMasterAbility;
   globalThis.getTypeModifier = getTypeModifier;
   globalThis.getAspectMultiplier = getAspectMultiplier;

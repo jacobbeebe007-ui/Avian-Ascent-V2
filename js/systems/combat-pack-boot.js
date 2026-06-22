@@ -61,6 +61,7 @@
   function resolveCombatRowBtnType(row) {
     if (!row) return 'utility';
     if (/magic|song|spell/i.test(row.category || '')) return 'spell';
+    if (typeof globalThis.isHybridDamage === 'function' && globalThis.isHybridDamage(row)) return 'hybrid';
     if (String(row.scaleStat || '').toUpperCase() === 'MATK') return 'spell';
     if (Number(row.pierceMdef) > 0 && !Number(row.pierceDef)) return 'spell';
     if (row.branch === 'utility' && (row.noDamage || row.target === 'self')) return 'utility';

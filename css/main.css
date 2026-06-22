@@ -3019,6 +3019,9 @@ body.build-nest-unlocked .splash-hotspot--forge.is-buildnest-hidden{
 .btn-type-chip--spell{color:var(--purple-light);border-color:rgba(201,160,255,.35);}
 .btn-type-chip--ranged{color:var(--orange-light);border-color:rgba(255,180,100,.35);}
 .btn-type-chip--utility{color:var(--green-light);border-color:rgba(120,200,120,.35);}
+.btn-type-chip--hybrid{color:#e8a0ff;border-color:rgba(255,140,112,.28);background:linear-gradient(135deg,rgba(255,140,112,.12),rgba(201,160,255,.12));}
+.float-offset-left{margin-left:-18px;}
+.float-offset-right{margin-left:18px;}
 .btn-en-chip{font-size:.68rem;color:var(--gold);font-weight:600;white-space:nowrap;}
 .btn-dmg-row{width:100%;margin-top:2px;}
 .btn-desc-full{font-size:.68rem;color:#b8c7d8;line-height:1.35;margin:4px 0 0;width:100%;display:block;}

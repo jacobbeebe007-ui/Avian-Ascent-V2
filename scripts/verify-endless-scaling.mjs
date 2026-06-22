@@ -21,10 +21,13 @@ loadScript('js/data/enemy-roster.js');
 loadScript('js/systems/enemy-roster-runtime.js');
 loadScript('js/systems/nest-rewards.js');
 
+loadScript('js/systems/combat-formulas.js');
+
 // Inline utility classifier (same rules as combat-pack-boot.js)
 g.resolveCombatRowBtnType = function resolveCombatRowBtnType(row) {
   if (!row) return 'utility';
   if (/magic|song|spell/i.test(row.category || '')) return 'spell';
+  if (typeof g.isHybridDamage === 'function' && g.isHybridDamage(row)) return 'hybrid';
   if (String(row.scaleStat || '').toUpperCase() === 'MATK') return 'spell';
   if (Number(row.pierceMdef) > 0 && !Number(row.pierceDef)) return 'spell';
   if (row.branch === 'utility' && (row.noDamage || row.target === 'self')) return 'utility';
@@ -105,15 +108,20 @@ const utilRow = {
 };
 const hybridRow = {
   branch: 'utility',
-  category: 'control',
+  category: 'hybrid',
+  damageType: 'Hybrid',
+  damageStat: 'HYBRID',
   target: 'self_and_enemy',
   noDamage: false,
-  scaleStat: 'ATK',
+  scaleStat: 'HYBRID',
   pierceDef: 10,
   pierceMdef: 0,
 };
 assert(g.resolveCombatRowBtnType(utilRow) === 'utility', 'pure self utility');
-assert(g.resolveCombatRowBtnType(hybridRow) === 'physical', 'hybrid utility with damage is physical');
+assert(g.resolveCombatRowBtnType(hybridRow) === 'hybrid', 'hybrid utility with damage is hybrid');
+
+const split = g.calculateHybridDisplaySplit(10, hybridRow);
+assert(split.physical + split.magic === split.total && split.total === 10, 'hybrid display split sums to total');
 
 // getEndlessNormalFightTier wiring
 assert(g.getEndlessNormalFightTier(5) === 'white', 'early endless tier white');

@@ -338,6 +338,9 @@
   function damageTypeMatches(row, dmgType, ctx) {
     if (!dmgType || dmgType === 'any') return true;
     if (dmgType === 'mixed') return true;
+    if (typeof globalThis.isHybridDamage === 'function' && globalThis.isHybridDamage(row)) {
+      return dmgType === 'physical' || dmgType === 'magic' || dmgType === 'mixed';
+    }
     if (dmgType === 'physical') return row.category === 'physical';
     if (dmgType === 'magic') return /magic|song|spell/i.test(row.category || '');
     if (ctx && ctx.isAttack && dmgType === 'physical') return true;

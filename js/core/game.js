@@ -3095,6 +3095,18 @@ function getCardTierSlotCount(player){
   }
   return 2;
 }
+/** Seed player skill slots from bird-card tier (slot unlocks + mutation stage S1–S3). */
+function applyPlayerSkillsFromCardTier(player, tierOverride, starsOverride){
+  if(!player?.birdKey) return;
+  if(typeof materializeEnemySkillsFromWorkbookKit!=='function') return;
+  const tier=tierOverride??player._birdCardTier??(typeof getBirdCardTier==='function'?getBirdCardTier(player.birdKey):'grey');
+  const stars=starsOverride??player._birdCardStars??(typeof getBirdCardStars==='function'?getBirdCardStars(player.birdKey):0);
+  materializeEnemySkillsFromWorkbookKit(player, player.birdKey, 1, player.class, null, {
+    unlockSlots:typeof getEnemyUnlockedSlotCountForTier==='function'?getEnemyUnlockedSlotCountForTier(tier):2,
+    mutationStage:typeof mutationStageForTierStar==='function'?mutationStageForTierStar(tier, stars):1,
+  });
+}
+globalThis.applyPlayerSkillsFromCardTier=applyPlayerSkillsFromCardTier;
 function isSkillSlotUnlocked(slot, player){
   if(!slot) return false;
   const pl = player || G.player;
@@ -3656,6 +3668,7 @@ function continueRun() {
   }
   if(G.player?.birdKey && BIRDS[G.player.birdKey]?.size) G.player.size=BIRDS[G.player.birdKey].size;
   G.player.class = resolveFinalClass(G.player?.class, G.player?.birdKey);
+  if(typeof applyBirdCardProgression==='function') applyBirdCardProgression(G.player);
   ensureFamilyEvolutionState(G.player);
   syncPlayerAbilitiesFromSkillSlots(G.player);
   G.classPerks = JSON.parse(JSON.stringify(save.classPerks||save.classPerksByBird||{}));
@@ -3668,7 +3681,6 @@ function continueRun() {
   if(!Array.isArray(G.player.endlessRewards)) G.player.endlessRewards=[];
   ensurePassiveEvolutionState(G.player);
   if(typeof Avian?.mutations?.ensurePlayerMutationState==='function') Avian.mutations.ensurePlayerMutationState(G.player);
-  if(typeof applyBirdCardProgression==='function') applyBirdCardProgression(G.player);
   if(forgeMirror&&typeof applyBirdCardStats==='function'){
     applyBirdCardStats(G.player, forgeMirror.tier, forgeMirror.stars);
     G._forgeMirrorTarget=null;
@@ -5984,7 +5996,7 @@ function materializeRosterPreviewKit(birdKey){
     // Resolve the card tier first so slot seeding unlocks the right number of
     // abilities (green => 3, blue => 4) in the character-select preview.
     if(typeof applyBirdCardProgression==='function') applyBirdCardProgression(stub);
-    ensureFamilyEvolutionState(stub);
+    applyPlayerSkillsFromCardTier(stub);
     syncPlayerAbilitiesFromSkillSlots(stub);
     out.abilities=Array.isArray(stub.abilities)?stub.abilities.slice():[];
     out.energyMax=Math.max(0, Number(stub.energyMax)||computePlayerMaxEnergy());
@@ -6000,17 +6012,20 @@ let BIRD_UPGRADE_PREVIEW_KEY=null;
 let BIRD_UPGRADE_PREVIEW_MODEL=null;
 
 function materializeRosterPreviewKitForCardProgress(birdKey, tier, stars){
-  const out={energyMax:0, stats:null};
+  const out={energyMax:0, stats:null, abilities:[], slotTags:[]};
   const stub=buildRosterPreviewStubForBirdKey(birdKey);
   if(!stub) return out;
   const prev=G.player;
   try{
     G.player=stub;
     stub.energyMax=computePlayerMaxEnergy();
-    ensureFamilyEvolutionState(stub);
     stub._birdCardTier=tier;
     stub._birdCardStars=stars;
     if(typeof applyBirdCardStats==='function') applyBirdCardStats(stub, tier, stars);
+    applyPlayerSkillsFromCardTier(stub, tier, stars);
+    syncPlayerAbilitiesFromSkillSlots(stub);
+    out.abilities=Array.isArray(stub.abilities)?stub.abilities.slice():[];
+    out.slotTags=out.abilities.map((ab, i)=>rosterPreviewSlotTag(birdKey, stub, ab, i));
     out.energyMax=Math.max(0, Number(stub.energyMax)||computePlayerMaxEnergy());
     out.stats=stub.stats?{...stub.stats}:{};
   }finally{
@@ -6047,6 +6062,10 @@ function buildBirdUpgradePreviewModel(birdKey){
   const starsAfter=preview?.starsAfter??starsBefore;
   const currentKit=materializeRosterPreviewKitForCardProgress(birdKey, tierBefore, starsBefore);
   const upgradedKit=materializeRosterPreviewKitForCardProgress(birdKey, tierAfter, starsAfter);
+  const abilitiesBefore=currentKit.abilities||[];
+  const abilitiesAfter=upgradedKit.abilities||[];
+  const abilitiesChanged=abilitiesBefore.length!==abilitiesAfter.length
+    ||abilitiesBefore.some((ab, i)=>String(ab?.id||'')!==String(abilitiesAfter[i]?.id||''));
   const passiveInfo=getBirdPassiveInfo(birdKey);
   const passiveName=passiveInfo?.name||bird.passive?.name||'Passive';
   const passiveBefore=typeof formatPassiveEffectForTier==='function'
@@ -6086,6 +6105,9 @@ function buildBirdUpgradePreviewModel(birdKey){
     passiveBefore,
     passiveAfter,
     passiveChanged:String(passiveBefore||'')!==String(passiveAfter||''),
+    abilitiesBefore,
+    abilitiesAfter,
+    abilitiesChanged,
     statRows:statKeys
       .filter(([key])=>currentKit.stats?.[key]!=null||upgradedKit.stats?.[key]!=null)
       .map(([key,label])=>{
@@ -6116,6 +6138,30 @@ function birdUpgradeStatRowsHtml(model){
     const deltaText=row.delta>0?`+${formatBirdUpgradeStatValue(row.delta)}`:formatBirdUpgradeStatValue(row.delta);
     return `<div class="bird-upgrade-stat-row"><span>${escapeHtmlRoster(row.label)}</span><strong>${escapeHtmlRoster(formatBirdUpgradeStatValue(row.before))}</strong><i aria-hidden="true">→</i><strong>${escapeHtmlRoster(formatBirdUpgradeStatValue(row.after))}</strong><em class="${deltaClass}">${escapeHtmlRoster(deltaText)}</em></div>`;
   }).join('');
+}
+
+function birdUpgradeAbilityLabel(ab){
+  const id=typeof ab==='string'?ab:(ab&&ab.id);
+  const t=getAbilityTemplateForUI(ab)||getAbilityTemplateForUI({id,level:1})||{};
+  return t.name||id||'Skill';
+}
+
+function birdUpgradeAbilitiesHtml(model){
+  if(!model.abilitiesChanged) return '';
+  const before=model.abilitiesBefore||[];
+  const after=model.abilitiesAfter||[];
+  if(!before.length&&!after.length) return '';
+  const maxLen=Math.max(before.length, after.length);
+  let rows='';
+  for(let i=0;i<maxLen;i++){
+    const b=before[i];
+    const a=after[i];
+    const bName=b?birdUpgradeAbilityLabel(b):'—';
+    const aName=a?birdUpgradeAbilityLabel(a):'—';
+    const changed=String(b?.id||'')!==String(a?.id||'');
+    rows+=`<div class="bird-upgrade-stat-row${changed?' is-changed':''}"><span>Slot ${i+1}</span><strong>${escapeHtmlRoster(bName)}</strong><i aria-hidden="true">→</i><strong>${escapeHtmlRoster(aName)}</strong></div>`;
+  }
+  return `<div class="bird-upgrade-abilities is-changed"><h4>Starting skills</h4><div class="bird-upgrade-stat-head"><span>Slot</span><strong>Current</strong><i aria-hidden="true">→</i><strong>Upgraded</strong><em></em></div>${rows}</div>`;
 }
 
 function renderBirdUpgradePreviewModal(model, state='preview'){
@@ -6158,6 +6204,7 @@ function renderBirdUpgradePreviewModal(model, state='preview'){
       </div>
       ${model.isTierUp?'<div class="bird-upgrade-passive-note">Tier change: passive scaling advances with the new card tier.</div>':''}
     </div>
+    ${birdUpgradeAbilitiesHtml(model)}
     ${reason?`<p class="bird-upgrade-warning">${escapeHtmlRoster(reason)}</p>`:''}`;
   if(title) title.textContent=isResult?'Upgrade Complete':'Upgrade Bird';
   if(confirm){
@@ -6564,9 +6611,8 @@ function startGame() {
   enforceAbilityCosts(G.player);
   initStatLedgerForNewRun(G.player);
   if(typeof applyBirdCardProgression==='function') applyBirdCardProgression(G.player);
-  // Re-seed slots now that _birdCardTier is set, so card-tier slot unlocks
-  // (green => 3rd ability, blue => 4th) are reflected from the first stage.
-  ensureFamilyEvolutionState(G.player);
+  // Re-seed slots from card tier (unlock count + mutation stage S1–S3).
+  applyPlayerSkillsFromCardTier(G.player);
   syncPlayerAbilitiesFromSkillSlots(G.player);
   G.stage = 1;
   G.endlessBattle = 0;
@@ -7180,16 +7226,19 @@ function refreshBattleUI() {
   ep.className = 'combatant-panel enemy' + (G.enemy.isBoss?' boss-panel':'');
   const en = document.getElementById('enemy-name');
   en.className = 'combatant-name' + (G.enemy.isBoss?' boss-name':'');
-  if(G.enemy.birdKey&&BIRDS[G.enemy.birdKey]){
-    const enemyBird = Object.assign({}, BIRDS[G.enemy.birdKey], G.enemy, { portraitKey: G.enemy.portraitKey || BIRDS[G.enemy.birdKey].portraitKey });
-    document.getElementById('enemy-avatar').innerHTML = renderEntityAvatarHTML(enemyBird, 'battle', false, true);
-    document.getElementById('enemy-avatar').style.fontSize='';
-  }else if(G.enemy.portraitKey){
-    document.getElementById('enemy-avatar').innerHTML = renderEntityAvatarHTML(G.enemy, 'battle', false, true);
-    document.getElementById('enemy-avatar').style.fontSize='';
-  }else{
-    document.getElementById('enemy-avatar').textContent = G.enemy.emoji;
-    document.getElementById('enemy-avatar').style.fontSize='3.8rem';
+  const enemyAvatarEl=document.getElementById('enemy-avatar');
+  if(enemyAvatarEl){
+    if(G.enemy.birdKey&&BIRDS[G.enemy.birdKey]){
+      const enemyBird = Object.assign({}, BIRDS[G.enemy.birdKey], G.enemy, { portraitKey: G.enemy.portraitKey || BIRDS[G.enemy.birdKey].portraitKey });
+      enemyAvatarEl.innerHTML = renderEntityAvatarHTML(enemyBird, 'battle', false, true);
+      enemyAvatarEl.style.fontSize='';
+    }else if(G.enemy.portraitKey){
+      enemyAvatarEl.innerHTML = renderEntityAvatarHTML(G.enemy, 'battle', false, true);
+      enemyAvatarEl.style.fontSize='';
+    }else{
+      enemyAvatarEl.textContent = G.enemy.emoji;
+      enemyAvatarEl.style.fontSize='3.8rem';
+    }
   }
   setHpBar('enemy', G.enemy.stats.hp, G.enemy.stats.maxHp);
   setEnergyBar('enemy', G.enemy.energy, G.enemy.energyMax||3);
@@ -7991,7 +8040,7 @@ function getAbilityDisplayTags(ab){
   return ABILITY_DISPLAY_TAGS[id] || [String((ab?.type||ab?.btnType||'utility')).toUpperCase()];
 }
 function abilityTypeChipLabel(btnType){
-  const map={physical:'Physical',ranged:'Ranged',spell:'Spell',utility:'Utility'};
+  const map={physical:'Physical',ranged:'Ranged',spell:'Spell',utility:'Utility',hybrid:'Hybrid'};
   return map[String(btnType||'utility').toLowerCase()]||'Utility';
 }
 
@@ -9592,12 +9641,12 @@ function playAvatarAnim(who,cls,dur=600) {
   });
 }
 
-function spawnFloat(who,text,cls) {
+function spawnFloat(who,text,cls,extraCls) {
   const wrap=getAvatarWrap(who);
   if(!wrap) return;
   const raw=String(text||'').trim();
   const el=document.createElement('div');
-  el.className=`float-number ${cls}`;
+  el.className=`float-number ${cls}${extraCls?' '+extraCls:''}`;
 
   const lower=raw.toLowerCase();
   const isDamage = cls==='fn-dmg' || cls==='fn-crit' || cls==='fn-magic' || /^[-−]/.test(raw) || lower.includes(' dmg');
@@ -9666,6 +9715,12 @@ async function doAttack(attacker,target,result) {
       SFX.crit(urgency);
       if(dmgPct>=0.25) doScreenShake(dmgPct>=0.50);
       if(target==='enemy'){ BS.crits++; G.runCrits++; }
+    } else if (result.hybridSplit && (result.hybridSplit.physical > 0 || result.hybridSplit.magic > 0)) {
+      const hs=result.hybridSplit;
+      if (hs.physical > 0) spawnFloat(target, `-${formatCombatNumber(hs.physical)}`, 'fn-dmg', 'float-offset-left');
+      if (hs.magic > 0) spawnFloat(target, `-${formatCombatNumber(hs.magic)}`, 'fn-magic', 'float-offset-right');
+      SFX.hit(urgency);
+      if(dmgPct>=0.25) doScreenShake(dmgPct>=0.50);
     } else if (result.isMagic) {
       spawnFloat(target,`-${dmgDisp}`,'fn-magic');
       SFX.hit(urgency);
@@ -11600,6 +11655,20 @@ function tryMutationOnHitAilments(dmg, isMagic, isPhysical) {
   }
 }
 
+function notifyAilmentApplied(target, ailId) {
+  if (!ailId) return;
+  const meta = AILMENTS?.[ailId];
+  const name = meta?.name || ailId;
+  const icon = meta?.icon || '⚡';
+  const whoName = target === 'player' ? (G.player?.name || 'You') : (G.enemy?.name || 'Enemy');
+  spawnFloat(target, `${icon} ${name}!`, 'fn-status');
+  logMsg(`${icon} ${whoName} afflicted with ${name}!`, 'system');
+  if (typeof renderStatuses === 'function') {
+    renderStatuses(target === 'player' ? 'player-status' : 'enemy-status',
+      target === 'player' ? G.playerStatus : G.enemyStatus);
+  }
+}
+
 function applyAilment(target,ailId,stacks=1) {
   const status=target==='player'?G.playerStatus:G.enemyStatus;
   const debuffDurationBonus=(target==='enemy'&&G.player&&typeof Avian?.classPerks?.adjustDebuffDuration==='function')
@@ -11629,6 +11698,7 @@ function applyAilment(target,ailId,stacks=1) {
   const scorchDur = (AILMENT_RULES?.scorched?.duration)||2;
   const blindDur = (AILMENT_RULES?.blinded?.duration)||2;
   const paraDur = (AILMENT_RULES?.paralyzed?.duration)||2;
+  let appliedAs = ailId;
 
   if (ailId==='poison') {
     if(typeof hasAilmentGuard==='function' && hasAilmentGuard(status,'toxicResistance') && (status.toxic?.turns||0)>0) { /* poison ok while toxic resistance only blocks toxic */ }
@@ -11644,6 +11714,7 @@ function applyAilment(target,ailId,stacks=1) {
       }else{
         delete status.poison;
         status.toxic={turns:toxicDur};
+        appliedAs = 'toxic';
         spawnFloat(target==='player'?'player':'enemy','☠ Toxic!','fn-poison');
         logMsg(`☠ ${target==='player'?G.player.name:G.enemy.name} becomes Toxic!`,'system');
       }
@@ -11667,7 +11738,6 @@ function applyAilment(target,ailId,stacks=1) {
     status.bleed=b;
   } else if (ailId==='weaken') {
     applyWeakenStack(target, stacks);
-    return true;
   } else if (ailId==='paralyzed') {
     status.paralyzed=paraDur+debuffDurationBonus;
   } else if (ailId==='burning') {
@@ -11681,6 +11751,7 @@ function applyAilment(target,ailId,stacks=1) {
       }else{
         delete status.burning;
         status.scorched={turns:scorchDur};
+        appliedAs = 'scorched';
         spawnFloat(target==='player'?'player':'enemy','🔥 Scorched!','fn-burn');
         logMsg(`🔥 ${target==='player'?G.player.name:G.enemy.name} is Scorched!`,'system');
       }
@@ -11695,7 +11766,7 @@ function applyAilment(target,ailId,stacks=1) {
     delete status.burning;
     status.scorched={turns:scorchDur};
   } else if (ailId==='chilled') {
-    return applyChilledStacksToTarget(target, stacks);
+    if (!applyChilledStacksToTarget(target, stacks)) return false;
   } else if (ailId==='blinded') {
     status.blinded={turns:blindDur+debuffDurationBonus};
   } else if (ailId==='decreed') {
@@ -11736,6 +11807,14 @@ function applyAilment(target,ailId,stacks=1) {
       G.player.stats.atk=(G.player.stats.atk||0)+4;
       G.player.stats.matk=(G.player.stats.matk||0)+4;
     }
+  }
+  if (appliedAs !== ailId) {
+    if (typeof renderStatuses === 'function') {
+      renderStatuses(target === 'player' ? 'player-status' : 'enemy-status',
+        target === 'player' ? G.playerStatus : G.enemyStatus);
+    }
+  } else {
+    notifyAilmentApplied(target, appliedAs);
   }
   return true;
 }
@@ -13222,6 +13301,37 @@ function enemyKitAbilityIsHardCC(abilityId, enemy){
   return deriveAbilityAilments(ab,tmpl).includes('paralyzed');
 }
 
+function rollEnemyCombatRowAilment(ab, tmpl, totalDmg, hitsLanded) {
+  const row = tmpl?._combatPackRow;
+  if (!row || hitsLanded <= 0 || !(row.ailmentChance > 0) || !row.ailment) return false;
+  const aids = Array.isArray(row.ailment) ? row.ailment.filter(Boolean) : [row.ailment];
+  if (!aids.length) return false;
+  const aid = aids[Math.floor(Math.random() * aids.length)];
+  const btn = String(tmpl.btnType || tmpl.type || '').toLowerCase();
+  const isMagic = btn === 'spell';
+  const isHybrid = typeof isHybridDamage === 'function' && isHybridDamage(row);
+  let ailCh = row.ailmentChance;
+  let magicShift = 0;
+  if (isMagic || isHybrid) {
+    magicShift = ((G.enemy?.stats?.matk || 8) - (G.player?.stats?.mdef || 8)) * 1.5;
+  }
+  const rollPct = typeof resolveAilmentChance === 'function'
+    ? resolveAilmentChance(ailCh + magicShift, 'player', G, {})
+    : Math.max(5, ailCh + magicShift);
+  if (!chance(rollPct)) return false;
+  let applied = false;
+  if (aid === 'delayed' && typeof applyDelayedDamage === 'function') {
+    applied = applyDelayedDamage('player', totalDmg, { enCost: row.enCost || row.apCost || 1 });
+  } else if (typeof applyAilment === 'function') {
+    applied = applyAilment('player', aid, 1);
+  }
+  if (applied && aid === 'delayed' && typeof logMsg === 'function') {
+    const meta = AILMENTS?.[aid];
+    logMsg((meta?.icon ? meta.icon + ' ' : '') + 'Applied ' + (meta?.name || aid) + '!', 'system');
+  }
+  return applied;
+}
+
 async function executeEnemyKitTemplateAbility(enemy, abilityId, totalEnemyMiss){
   const ab=(enemy.abilities||[]).find(a=>a&&a.id===abilityId)||{id:abilityId,level:Math.max(1,Math.min(4,enemy.storyLevel||1))};
   const tmpl=getAbilityTemplateForUI(ab);
@@ -13256,8 +13366,8 @@ async function executeEnemyKitTemplateAbility(enemy, abilityId, totalEnemyMiss){
     renderStatuses('enemy-status',G.enemyStatus);
     return;
   }
-  if(btn==='physical'||btn==='ranged'){
-    G._incomingAttackKind=btn==='ranged'?'ranged':'physical';
+  if(btn==='physical'||btn==='ranged'||btn==='hybrid'){
+    G._incomingAttackKind=btn==='ranged'?'ranged':(btn==='hybrid'?'hybrid':'physical');
     G._incomingBypassesDeflect=false;
     if(totalEnemyMiss>0&&chance(totalEnemyMiss)){
       await doMiss('enemy');
@@ -13269,10 +13379,17 @@ async function executeEnemyKitTemplateAbility(enemy, abilityId, totalEnemyMiss){
     const _masterResolved=_combatRow&&typeof usesMasterDamage==='function'&&usesMasterDamage(_combatRow);
     const raw=computeEntityAbilityRawDamage(enemy, ab, tmplRow, false);
     const r=dealDamage('player',raw,false,false,ab,{ masterFullyResolved: _masterResolved });
+    if (btn==='hybrid' && r && !r.wasDodged && _combatRow && typeof calculateHybridDisplaySplit==='function') {
+      const split=calculateHybridDisplaySplit(r.dmgDealt||0, _combatRow);
+      r.hybridSplit={ physical: split.physical, magic: split.magic };
+    }
     await doAttack('enemy','player',r);
     setHpBar('player',G.player.stats.hp,G.player.stats.maxHp);
     if(r.wasDodged) logMsg(`${name} — dodged!`,'miss');
-    else logMsg(`${enemy.name} — ${name}${r.isCrit?' CRIT':''} for ${r.dmgDealt}!`,'enemy-action');
+    else {
+      logMsg(`${enemy.name} — ${name}${r.isCrit?' CRIT':''} for ${r.dmgDealt}!`,'enemy-action');
+      rollEnemyCombatRowAilment(ab, tmpl, r.dmgDealt||0, 1);
+    }
     return;
   }
   if(btn==='spell'){
@@ -13292,10 +13409,12 @@ async function executeEnemyKitTemplateAbility(enemy, abilityId, totalEnemyMiss){
     await doAttack('enemy','player',r);
     setHpBar('player',G.player.stats.hp,G.player.stats.maxHp);
     if(r.wasDodged) logMsg(`${name} — dodged!`,'miss');
-    else logMsg(`${enemy.name} — ${name}${r.isCrit?' CRIT':''} for ${r.dmgDealt}!`,'enemy-action');
+    else {
+      logMsg(`${enemy.name} — ${name}${r.isCrit?' CRIT':''} for ${r.dmgDealt}!`,'enemy-action');
+      rollEnemyCombatRowAilment(ab, tmpl, r.dmgDealt||0, 1);
+    }
     return;
   }
-  await doSpell('enemy',`✦ ${name}!`);
   const ailments=deriveAbilityAilments(ab,tmpl);
   let any=false;
   for(const ail of ailments){
@@ -15374,8 +15493,10 @@ function updateStageProgress() {
   wrap.style.display='flex';
   const total=getStoryMaxStage();
   const cur=Math.min(curStage,total);
-  document.getElementById('stage-progress-fill').style.width=(cur/total*100)+'%';
-  document.getElementById('stage-progress-txt').textContent=`${cur}/${total}`;
+  const fillEl=document.getElementById('stage-progress-fill');
+  if(fillEl) fillEl.style.width=(cur/total*100)+'%';
+  const txtEl=document.getElementById('stage-progress-txt');
+  if(txtEl) txtEl.textContent=`${cur}/${total}`;
   // Mark boss stages
   const bossEl=document.getElementById('stage-progress-bosses');
   if(bossEl&&!bossEl.children.length){

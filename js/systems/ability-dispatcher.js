@@ -97,6 +97,63 @@
     return /magic|song|spell/i.test(String(category || ''));
   }
 
+  function isHybridRow(row) {
+    return typeof globalThis.isHybridDamage === 'function' && globalThis.isHybridDamage(row);
+  }
+
+  /** Roll row ailment chance and apply. Returns map of applied ailment ids. */
+  function tryRollRowAilment(row, targetSide, opts) {
+    opts = opts || {};
+    var g = globalThis.G;
+    var hitsLanded = opts.hitsLanded != null ? opts.hitsLanded : 1;
+    var totalDmg = opts.totalDmg || 0;
+    var ab = opts.ab || null;
+    if (opts.requireHit !== false && hitsLanded <= 0) return {};
+    if (!row || !(row.ailmentChance > 0) || !ailmentIdsFromRow(row).length) return {};
+    var isMagic = isMagicCategory(row.category);
+    var isHybrid = isHybridRow(row);
+    var aids = ailmentIdsFromRow(row);
+    var aid = aids[Math.floor(Math.random() * aids.length)];
+    var ailCh = row.ailmentChance;
+    if (g && g.player && targetSide === 'enemy' && typeof Avian !== 'undefined'
+        && Avian.mutations && typeof Avian.mutations.getMechanicsRollup === 'function') {
+      var eqM = Avian.mutations.getMechanicsRollup(g.player);
+      if (isMagic || isHybrid) ailCh += (Number(eqM.magicAilmentChance) || 0);
+      if (!isMagic || isHybrid) ailCh += (Number(eqM.physicalAilmentChance) || 0);
+    }
+    var magicShift = 0;
+    if (targetSide === 'enemy' && g && g.player && (isMagic || isHybrid)) {
+      var attackerMatk = g.player.stats.matk || 8;
+      var targetMdef = (g.enemy && g.enemy.stats) ? (g.enemy.stats.mdef || 8) : 8;
+      magicShift = (attackerMatk - targetMdef) * 1.5;
+    } else if (targetSide === 'player' && g && g.enemy && isMagic) {
+      magicShift = ((g.enemy.stats.matk || 8) - (g.player.stats.mdef || 8)) * 1.5;
+    }
+    var passiveAilBonus = (targetSide === 'enemy' && g && g.player) ? (Number(g.player.passiveAilmentBonus) || 0) : 0;
+    var controlBoost = (targetSide === 'enemy' && g && g.player && typeof getPassiveEvolutionBonuses === 'function')
+      ? Math.floor((getPassiveEvolutionBonuses(g.player).controlPct || 0) * 100) : 0;
+    var rollPct = typeof resolveAilmentChance === 'function'
+      ? resolveAilmentChance(ailCh + magicShift + controlBoost + passiveAilBonus, targetSide, g, {})
+      : Math.max(5, ailCh + magicShift + controlBoost + passiveAilBonus);
+    var ailmentsApplied = {};
+    if (typeof chance === 'function' && chance(rollPct)) {
+      var applied = false;
+      if (aid === 'delayed' && typeof applyDelayedDamage === 'function') {
+        var atkWeight = ab && typeof getAbilityAttackWeight === 'function' ? getAbilityAttackWeight(ab, g.player) : null;
+        var enCost = row.enCost || row.apCost || 1;
+        applied = applyDelayedDamage(targetSide, totalDmg, { attackWeight: atkWeight, enCost: enCost });
+      } else if (typeof applyAilment === 'function') {
+        applied = applyAilment(targetSide, aid, 1);
+      }
+      if (applied) {
+        ailmentsApplied[aid] = true;
+      }
+    }
+    return ailmentsApplied;
+  }
+
+  globalThis.tryRollRowAilment = tryRollRowAilment;
+
   function syntheticSrcAbility(row, ab) {
     // Provide a shape that legacy helpers (`dealDamage`, `getPlayerCritChance`)
     // can interrogate without crashing.
@@ -448,6 +505,9 @@
         ? globalThis.applyTagRidersFromRow(row, { utilitySucceeded: false })
         : false;
       runPreRiders(row, ab);
+      var utilAilments = tryRollRowAilment(row, 'enemy', { hitsLanded: 1, totalDmg: 0, ab: ab, requireHit: false });
+      if (g) g._lastAbilityAilmentFailed = (row.ailmentChance > 0 && ailmentIdsFromRow(row).length > 0)
+        && !Object.keys(utilAilments).length;
       if (g) g._lastAbilityUtilitySucceeded = !!utilOk;
       if (typeof Avian !== 'undefined' && Avian.mutationEffects && typeof Avian.mutationEffects.onUtilityUsed === 'function') {
         Avian.mutationEffects.onUtilityUsed(!!utilOk);
@@ -459,6 +519,7 @@
 
     var hits = Math.max(1, row.hits || row.hitCount || 1);
     var isMagic = isMagicCategory(row.category);
+    var isHybrid = isHybridRow(row);
 
     if (typeof globalThis.enrichCombatRow === 'function') globalThis.enrichCombatRow(row);
 
@@ -525,6 +586,10 @@
         : { dmgDealt: 0, wasDodged: false, wasBlocked: false, isCrit: false };
       if (g) g._dispatcherCombatRow = null;
       else G._dispatcherCombatRow = null;
+      if (res && !res.wasDodged && isHybrid && typeof globalThis.calculateHybridDisplaySplit === 'function') {
+        var hitSplit = globalThis.calculateHybridDisplaySplit((res.dmgDealt) || 0, row);
+        res.hybridSplit = { physical: hitSplit.physical, magic: hitSplit.magic };
+      }
       if (res && res.isCrit) anyCrit = true;
       if (typeof doAttack === 'function') await doAttack('player', 'enemy', res);
       if (typeof setHpBar === 'function' && g && g.enemy && g.enemy.stats) setHpBar('enemy', g.enemy.stats.hp, g.enemy.stats.maxHp);
@@ -537,36 +602,7 @@
     var ailmentsApplied = {};
     var ailmentAttempted = hitsLanded > 0 && row.ailmentChance > 0 && ailmentIdsFromRow(row).length > 0;
     if (ailmentAttempted) {
-      var aids = ailmentIdsFromRow(row);
-      if (aids.length) {
-        var aid = aids[Math.floor(Math.random() * aids.length)];
-        var ailCh = row.ailmentChance;
-        if (g && g.player && typeof Avian !== 'undefined' && Avian.mutations && typeof Avian.mutations.getMechanicsRollup === 'function') {
-          var eqM = Avian.mutations.getMechanicsRollup(g.player);
-          if (isMagic) ailCh += (Number(eqM.magicAilmentChance) || 0);
-          else ailCh += (Number(eqM.physicalAilmentChance) || 0);
-        }
-        var passiveAilBonus = (g && g.player) ? (Number(g.player.passiveAilmentBonus) || 0) : 0;
-        var controlBoost = (g && g.player && typeof getPassiveEvolutionBonuses === 'function')
-          ? Math.floor((getPassiveEvolutionBonuses(g.player).controlPct || 0) * 100) : 0;
-        var rollPct = typeof resolveAilmentChance === 'function'
-          ? resolveAilmentChance(ailCh + controlBoost + passiveAilBonus, 'enemy', g, {})
-          : Math.max(5, ailCh + controlBoost + passiveAilBonus);
-        if (typeof chance === 'function' && chance(rollPct)) {
-          var applied = false;
-          if (aid === 'delayed' && typeof applyDelayedDamage === 'function') {
-            var atkWeight = typeof getAbilityAttackWeight === 'function' ? getAbilityAttackWeight(ab, g.player) : null;
-            var enCost = row.enCost || row.apCost || 1;
-            applied = applyDelayedDamage('enemy', totalDmg, { attackWeight: atkWeight, enCost: enCost });
-          } else if (typeof applyAilment === 'function') {
-            applied = applyAilment('enemy', aid, 1);
-          }
-          if (applied) {
-            ailmentsApplied[aid] = true;
-            if (typeof renderStatuses === 'function' && g && g.enemyStatus) renderStatuses('enemy-status', g.enemyStatus);
-          }
-        }
-      }
+      ailmentsApplied = tryRollRowAilment(row, 'enemy', { hitsLanded: hitsLanded, totalDmg: totalDmg, ab: ab });
     }
 
     var riderCtx = { hitsLanded: hitsLanded, ailmentsApplied: ailmentsApplied };
@@ -598,13 +634,16 @@
         Avian.mutationEffects.onSongOrCall(hitsLanded > 0);
       }
       if (typeof Avian.mutationEffects.onAfterPlayerAttack === 'function') {
-        var atkWeight = typeof getAbilityAttackWeight === 'function' ? getAbilityAttackWeight(ab, g && g.player) : null;
-        Avian.mutationEffects.onAfterPlayerAttack({ attackWeight: atkWeight, isMagic: isMagic, hitsLanded: hitsLanded, anyCrit: anyCrit });
+        var atkWeight2 = typeof getAbilityAttackWeight === 'function' ? getAbilityAttackWeight(ab, g && g.player) : null;
+        Avian.mutationEffects.onAfterPlayerAttack({
+          attackWeight: atkWeight2, isMagic: isMagic, isHybrid: isHybrid,
+          hitsLanded: hitsLanded, anyCrit: anyCrit,
+        });
       }
     }
 
     if (typeof logMsg === 'function') {
-      var label = isMagic ? '🎶' : '⚔';
+      var label = isHybrid ? '⚔🎶' : (isMagic ? '🎶' : '⚔');
       logMsg(label + ' ' + (row.name || ab.id) + ': ' + totalDmg + ' damage' + (anyCrit ? ' (CRIT)' : '') + '.', 'player-action');
     }
     if (typeof refreshBattleUI === 'function') refreshBattleUI();
