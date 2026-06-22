@@ -581,9 +581,10 @@
 <div class="combatant-name" id="player-name">—</div>
 <div class="combatant-meta"><span id="player-class-label">—</span><span id="player-aspect-label" class="aspect-chip" hidden></span></div>
 <div class="avatar-wrap" id="player-avatar-wrap"><div class="avatar-inner" id="player-avatar"></div></div>
+<div class="status-effects" id="player-status"></div>
 <div class="hp-bar-wrap">
 <div class="hp-label"><span>HP</span><span id="player-hp-text">—</span></div>
-<div class="hp-bar-bg"><div class="hp-bar-fill" id="player-hp-bar"></div></div>
+<div class="hp-bar-bg"><div class="hp-bar-fill" id="player-hp-bar"></div><div class="hp-bar-shield" id="player-shield-segment" aria-hidden="true"></div></div>
 </div>
 <div class="hp-bar-wrap en-bar-wrap">
 <div class="hp-label"><span>EN</span><span id="player-en-text">—</span></div>
@@ -593,7 +594,6 @@
 <div class="hp-label"><span>ULT</span><span id="ultimate-meter-text">0 / 100</span></div>
 <div class="hp-bar-bg ultimate-meter-bar"><div class="hp-bar-fill ultimate-meter-fill" id="ultimate-meter-fill"></div></div>
 </div>
-<div class="status-effects" id="player-status"></div>
 <details class="combat-stats-dropdown" id="player-stats-drop">
 <summary>Player Stats</summary>
 <div class="stats-mini" id="player-stats-mini"></div>
@@ -605,16 +605,16 @@
 <div class="combatant-name" id="enemy-name">—</div>
 <div class="combatant-meta"><span id="enemy-class-label">—</span><span id="enemy-aspect-label" class="aspect-chip" hidden></span></div>
 <div class="avatar-wrap" id="enemy-avatar-wrap"><div class="avatar-inner" id="enemy-avatar"></div></div>
+<div class="status-effects" id="enemy-status"></div>
 <div class="hp-bar-wrap">
 <div class="hp-label"><span>HP</span><span id="enemy-hp-text">—</span></div>
-<div class="hp-bar-bg"><div class="hp-bar-fill" id="enemy-hp-bar"></div></div>
+<div class="hp-bar-bg"><div class="hp-bar-fill" id="enemy-hp-bar"></div><div class="hp-bar-shield" id="enemy-shield-segment" aria-hidden="true"></div></div>
 </div>
 <div class="hp-bar-wrap en-bar-wrap">
 <div class="hp-label"><span>EN</span><span id="enemy-en-text">—</span></div>
 <div class="hp-bar-bg en-bar-bg"><div class="hp-bar-fill en-bar-fill" id="enemy-en-bar"></div></div>
 </div>
 <div class="phase-banner" id="boss-phase-banner"></div>
-<div class="status-effects" id="enemy-status"></div>
 <div class="enemy-intent enemy-plan" id="enemy-intent-panel">🤔 Thinking...</div>
 <details class="combat-stats-dropdown" id="enemy-stats-drop">
 <summary>Enemy Stats</summary>

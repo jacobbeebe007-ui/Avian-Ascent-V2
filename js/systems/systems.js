@@ -32,6 +32,11 @@
     toxic: 'Toxic: stronger poison damage over time.',
     blinded: 'Blinded: reduced Accuracy.',
     decreed: 'Decreed: marked for amplified magic damage.',
+    guarded: 'Guarded: physical attack damage reduction for a short time.',
+    shield: 'Shield: temporary HP that absorbs damage before real HP.',
+    shieldHp: 'Shield: temporary HP that absorbs damage before real HP.',
+    accDebuff: 'Accuracy reduced — attacks are harder to land.',
+    rageBuff: 'Rage: increased outgoing damage.',
   };
 
   function showRichTooltip(ev, html){

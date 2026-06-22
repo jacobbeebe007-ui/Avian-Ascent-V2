@@ -6,7 +6,7 @@
 
   var STARS_PER_TIER = 5;
 
-  /** Per-star stat multiplier applied when earning a star at each card tier color. */
+  /** @deprecated Compound per-tier multipliers replaced by feather-growth-profiles major/minor/trace bands. */
   var STAR_STAT_MULTIPLIER = {
     grey: 1.10,
     green: 1.15,
@@ -16,8 +16,12 @@
     orange: 1.35,
   };
 
-  /** @deprecated Legacy tier-end multipliers; use STAR_STAT_MULTIPLIER + getEffectiveStatMultiplier. */
+  /** @deprecated Legacy tier-end multipliers; use feather growth profiles. */
   var TIER_STAT_MULTIPLIER = STAR_STAT_MULTIPLIER;
+
+  function growthPack() {
+    return globalThis.Avian && globalThis.Avian.data && globalThis.Avian.data.featherGrowthProfiles;
+  }
 
   /** Species Feathers cost per star upgrade within each card tier. */
   var MUTATION_COST_PER_STAR = {
@@ -125,19 +129,19 @@
     return getMutationCostPerStar(currentTier);
   }
 
-  function getEffectiveStatMultiplier(tier, stars) {
-    var t = normalizeTier(tier);
-    var s = clampStars(stars);
-    var idx = tierIndex(t);
-    if (idx < 0) idx = 0;
-    var mult = 1;
-    for (var i = 0; i < idx; i++) {
-      var prevTier = TIER_ORDER[i];
-      var prevStarMult = getStarStatMultiplier(prevTier);
-      mult *= Math.pow(prevStarMult, STARS_PER_TIER);
+  /** @deprecated Returns major-band growth ratio (1 + stars×1%) for transitional callers without bird context. */
+  function getEffectiveStatMultiplier(tier, stars, birdKey, statKey) {
+    var gp = growthPack();
+    if (gp) {
+      if (birdKey && statKey && typeof gp.getEffectiveStatRatioForStat === 'function') {
+        return gp.getEffectiveStatRatioForStat(statKey, birdKey, tier, stars);
+      }
+      if (typeof gp.getTotalFeatherStars === 'function') {
+        var totalStars = gp.getTotalFeatherStars(tier, stars);
+        return 1 + totalStars * (gp.GROWTH_RATES && gp.GROWTH_RATES.major != null ? gp.GROWTH_RATES.major : 0.010);
+      }
     }
-    mult *= Math.pow(getStarStatMultiplier(t), s);
-    return mult;
+    return 1;
   }
 
   function canUpgradeBirdCard(tier, stars) {
@@ -173,13 +177,21 @@
     return 'medium';
   }
 
-  function applyGuardrailedStatMult(baseVal, statKey, tier, _size, stars) {
+  function applyGuardrailedStatMult(baseVal, statKey, tier, size, stars, birdKey) {
     var base = Math.max(0, Number(baseVal) || 0);
     if (!base) return base;
-    var mult = getEffectiveStatMultiplier(tier, stars);
-    var scaled = base * mult;
-    if (statKey === 'dodge') return Math.max(0, Math.round(scaled));
-    return Math.max(1, Math.round(scaled));
+    var gp = growthPack();
+    var scaled = base;
+    if (gp && typeof gp.applyFeatherGrowthToStat === 'function' && birdKey) {
+      var profile = typeof gp.getGrowthProfileForBird === 'function' ? gp.getGrowthProfileForBird(birdKey) : null;
+      var totalStars = typeof gp.getTotalFeatherStars === 'function' ? gp.getTotalFeatherStars(tier, stars) : 0;
+      scaled = gp.applyFeatherGrowthToStat(base, statKey, profile, totalStars);
+    } else {
+      scaled = base * getEffectiveStatMultiplier(tier, stars, birdKey, statKey);
+      if (statKey === 'dodge') scaled = Math.max(0, Math.round(scaled));
+      else scaled = Math.max(1, Math.round(scaled));
+    }
+    return scaled;
   }
 
   var pack = {

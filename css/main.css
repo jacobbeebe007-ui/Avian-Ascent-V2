@@ -2731,13 +2731,16 @@ body.build-nest-unlocked .splash-hotspot--forge.is-buildnest-hidden{
 .hp-label .hp-delta-down{color:var(--red-light);text-shadow:0 0 10px rgba(201,76,76,.28);}
 .hp-label .hp-delta-up{color:var(--green-light);text-shadow:0 0 10px rgba(76,180,76,.28);}
 .hp-bar-bg{height:12px;background:linear-gradient(180deg,rgba(8,12,20,.92),rgba(20,26,40,.82));border-radius:8px;overflow:hidden;border:1px solid rgba(201,168,76,.22);position:relative;box-shadow:inset 0 0 8px rgba(0,0,0,.45);}
+.hp-bar-shield{position:absolute;top:0;height:100%;border-radius:0 8px 8px 0;background:linear-gradient(90deg,rgba(220,225,235,.88),rgba(255,255,255,.95));box-shadow:0 0 8px rgba(255,255,255,.3);width:0;left:0;transition:width .35s ease,left .35s ease;pointer-events:none;z-index:2;opacity:0;}
+.hp-bar-shield.active{opacity:1;}
+.status-badge.shield{background:rgba(240,240,245,.12);border-color:rgba(255,255,255,.45);color:#f0f0f5;}
 .hp-bar-bg::after{content:"";position:absolute;inset:1px;border-radius:6px;pointer-events:none;background:linear-gradient(180deg,rgba(255,255,255,.12),rgba(255,255,255,0));}
 .hp-bar-fill{height:100%;border-radius:8px;transition:width .35s ease, filter .3s ease;background:linear-gradient(90deg,#2f9e56,var(--green-light));box-shadow:0 0 12px rgba(76,180,76,.25);}
 .hp-bar-fill.low{background:linear-gradient(90deg,#b53a3a,var(--red-light));box-shadow:0 0 12px rgba(201,76,76,.35);}
 .hp-bar-fill.mid{background:linear-gradient(90deg,#c97a2a,#e8a040);box-shadow:0 0 10px rgba(232,160,64,.28);}
 .hp-bar-fill.recent-hit{filter:brightness(1.18) saturate(1.25);}
 .hp-bar-fill.recent-heal{filter:brightness(1.15) saturate(1.2);}
-.status-effects{display:flex;flex-wrap:wrap;gap:3px;min-height:24px;margin-top:6px;}
+.status-effects{display:flex;flex-wrap:wrap;gap:3px;min-height:24px;margin-bottom:6px;margin-top:0;}
 .status-badge{padding:1px 7px;border-radius:20px;font-size:.72rem;border:1px solid;display:inline-flex;align-items:center;gap:4px;}
 .status-badge::before{font-size:.64rem;opacity:.9;letter-spacing:.03em;color:currentColor;}
 .status-badge.poison::before{content:'PSN';}
@@ -2792,6 +2795,8 @@ body.build-nest-unlocked .splash-hotspot--forge.is-buildnest-hidden{
 .stat-trend{font-size:.9rem;margin-left:3px;font-weight:900;line-height:1;vertical-align:middle;}
 .stat-trend.up{color:var(--red-light);}
 .stat-trend.down{color:var(--purple-light);}
+.stat-trend.beneficial{color:#8ee889;}
+.stat-trend.harmful{color:#e87878;}
 .stat-atk .stat-k,.stat-atk .stat-v{color:#ff6e6e;}
 .stat-def .stat-k,.stat-def .stat-v{color:#7db4ff;}
 .stat-dodge .stat-k,.stat-dodge .stat-v{color:#8fe8ff;}

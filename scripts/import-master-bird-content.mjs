@@ -13,13 +13,21 @@ import { fileURLToPath } from 'node:url';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, '..');
 const NEW_SHEETS = 'c:\\Users\\JaK_d\\Desktop\\Avian Ascent\\New Sheets';
+const DOWNLOADS_MASTER = path.join(
+  process.env.HOME || '',
+  'Downloads',
+  'Avian Music bites',
+  'Avian Workbooks',
+  'Master workbook Avian_Ascent_Workbook_Master list of birds, abilities, passives, perks, Aspects etc.xlsx',
+);
 const MASTER_XLSX_NAME = 'Master Bird List - New Stats - Boss Tiers - Titles - Passives and Perks - Gatcha Tiers.xlsx';
 const MASTER_XLSX_CANDIDATES = [
+  process.env.AA_MASTER_BIRD_XLSX,
+  DOWNLOADS_MASTER,
   path.join(NEW_SHEETS, 'Main', MASTER_XLSX_NAME),
   path.join(NEW_SHEETS, MASTER_XLSX_NAME),
-];
-const MASTER_XLSX = process.env.AA_MASTER_BIRD_XLSX
-  || MASTER_XLSX_CANDIDATES.find((p) => existsSync(p))
+].filter(Boolean);
+const MASTER_XLSX = MASTER_XLSX_CANDIDATES.find((p) => existsSync(p))
   || MASTER_XLSX_CANDIDATES[0];
 
 const OUT_BIRDS = path.join(ROOT, 'js', 'data', 'birds.js');

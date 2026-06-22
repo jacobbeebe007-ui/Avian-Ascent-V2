@@ -688,6 +688,16 @@ runAbilityMetadataParityCheck();
 runAbilityFamilyTreeParityCheck();
 runAbilityInventoryAndWiringReport();
 
+const { spawnSync } = require('child_process');
+for (const script of ['verify-map-forge-encounter.mjs', 'verify-workbook-abilities.mjs']) {
+  const scriptPath = path.join(__dirname, script);
+  if (!fs.existsSync(scriptPath)) continue;
+  const r = spawnSync(process.execPath, [scriptPath], { stdio: 'inherit', cwd: path.join(__dirname, '..') });
+  if (r.status !== 0) {
+    fail(`verify script failed: ${script}`);
+  }
+}
+
 if(process.exitCode){
   process.exit(process.exitCode);
 }

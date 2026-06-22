@@ -163,13 +163,15 @@
     return Math.max(0, Math.min(5, Math.floor(Number(stars) || 0)));
   }
 
-  global.pickRandomForgeBirdKey = function () {
+  global.pickRandomForgeBirdKey = function (scalingStage) {
+    const st = Math.max(1, Math.floor(Number(scalingStage) || 1));
     const birds = global.BIRDS || {};
     let keys = Object.keys(birds).filter((k) => k && birds[k]);
     if (typeof global.listForgeEnemySpeciesOptions === 'function') {
-      const opts = global.listForgeEnemySpeciesOptions().filter((o) => o.id && o.id !== 'random');
+      const opts = global.listForgeEnemySpeciesOptions(st).filter((o) => o.id && o.id !== 'random');
       if (opts.length) keys = opts.map((o) => o.id);
     }
+    if (st !== 20) keys = keys.filter((k) => k !== 'dukeBlakiston');
     if (!keys.length) return 'sparrow';
     return keys[Math.floor(Math.random() * keys.length)];
   };
@@ -253,13 +255,16 @@
       if (slot.enemyId && typeof global.isRosterEnemyId === 'function' && global.isRosterEnemyId(slot.enemyId)) {
         out.push(slot.enemyId);
       } else if (slot.birdKey && slot.birdKey !== 'random') {
-        out.push(slot.birdKey);
-      } else {
-        if (typeof global.pickRandomForgeBirdKey === 'function') {
-          out.push(global.pickRandomForgeBirdKey());
-        } else {
+        const bk = String(slot.birdKey || '').trim();
+        const bkNorm = bk.toLowerCase().replace(/\s+/g, '');
+        const isDuke = bk === 'dukeBlakiston' || bkNorm === 'dukeblakiston' || bkNorm === 'duke_blakiston';
+        if (isDuke && st !== 20) {
           out.push(pool[Math.floor(Math.random() * pool.length)]);
+        } else {
+          out.push(bk);
         }
+      } else {
+        out.push(pool[Math.floor(Math.random() * pool.length)]);
       }
     }
     return out;

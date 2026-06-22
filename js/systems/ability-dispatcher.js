@@ -298,8 +298,40 @@
         if (gr.duration === 'untilEndOfEnemyTurn' || gr.duration === 'enemyTurn') { turns = 1; break; }
       }
     }
-    apply('player', { physReducPct: pct, turns: turns, sourceAbilityId: row && row.id ? row.id : '' });
+    apply('player', { physReducPct: pct, turns: turns, sourceAbilityId: row && row.id ? row.id : '', sourceKind: 'ability' });
     spawnTrendFloat('player', 'buff');
+  }
+
+  function applyShieldFromRow(row, riderValue, ab) {
+    var apply = (typeof globalThis.applyShieldHp === 'function') ? globalThis.applyShieldHp : null;
+    if (!apply) return;
+    var pct = Number(riderValue) || 0;
+    if (pct <= 0 && row && row.riders) {
+      for (var si = 0; si < row.riders.length; si++) {
+        var sr = row.riders[si];
+        if (sr && sr.kind === 'gainShield' && sr.value) { pct = Number(sr.value) || pct; break; }
+      }
+    }
+    var turns = 1;
+    if (row && row.riders) {
+      for (var ti = 0; ti < row.riders.length; ti++) {
+        var tr = row.riders[ti];
+        if (tr && tr.kind === 'gainShield' && tr.turns != null) { turns = Math.max(1, Math.floor(Number(tr.turns) || 1)); break; }
+      }
+    }
+    var tier = null;
+    var text = String(row && (row.riderText || row.shortDesc) || '');
+    var tm = text.match(/\b(minor|major|grand|epic|legendary)\b/i);
+    if (tm) tier = tm[1].toLowerCase();
+    apply('player', {
+      pct: pct > 0 ? pct : undefined,
+      tier: tier,
+      turns: turns,
+      sourceId: row && row.id ? row.id : (ab && ab.id) || '',
+      sourceKind: 'ability',
+    });
+    spawnTrendFloat('player', 'buff');
+    if (typeof refreshBattleUI === 'function') refreshBattleUI();
   }
 
   function rowGrantsGuardedViaRider(row) {
@@ -341,6 +373,7 @@
       },
       gainGuarded: function (n) { applyGuardedFromRow(row, n, ab); },
       gainBrace: function (n) { applyGuardedFromRow(row, n, ab); },
+      gainShield: function (n) { applyShieldFromRow(row, n, ab); },
       gainCounter: function (_n, ps) { ps.counterInstinct = Math.max(ps.counterInstinct || 0, 1); spawnTrendFloat('player', 'buff'); },
       gainTaunt: function (_n, ps) { ps.dispatcherTaunt = 1; ps.dispatcherTauntT = 1; spawnTrendFloat('player', 'buff'); },
       reduceEnemyDodge: function (n) { applyEnemyStatDebuff('dodge', n, sourceId); },
@@ -724,4 +757,5 @@
   Avian.systems.dispatcher = dispatcher;
   // Expose at top-level for terse access used by other systems / debug.
   Avian.dispatcher = dispatcher;
+  globalThis.spawnTrendFloat = spawnTrendFloat;
 })();

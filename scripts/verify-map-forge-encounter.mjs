@@ -16,10 +16,13 @@ function loadScript(relPath) {
 }
 
 const g = globalThis;
-g.BIRDS = { sparrow: { name: 'Sparrow' } };
+g.BIRDS = { sparrow: { name: 'Sparrow' }, dukeBlakiston: { name: 'Duke Blakiston' } };
 g.Avian = { data: { enemyRoster: null }, mutations: { rollEnemyMutationsFromForgeSlot: () => [] } };
+g.STORY_DUKE_ROSTER_ID = 'BO-DUKEB-STORY-L10';
+g.getStoryDukeRosterId = () => 'BO-DUKEB-STORY-L10';
 
 loadScript('js/data/enemy-roster.js');
+loadScript('js/systems/story-enemy-levels.js');
 loadScript('js/systems/enemy-roster-runtime.js');
 loadScript('js/world/ow_map_runtime.js');
 
@@ -65,6 +68,28 @@ g.addGoldenGooseEggs = (n) => n;
 const granted = g.grantForgeClearRewards({}, rewards, { shinyObjects: 0 });
 assert(granted.savedEggs === 2, 'savedEggs granted');
 assert(granted.goldenGoose === 1, 'goldenGoose granted');
+
+const randomEnc = { enemyCount: 1, slots: [{ birdKey: 'random', enemyTier: 'grey', enemyStars: 0 }] };
+let dukeHits = 0;
+for (let i = 0; i < 5000; i++) {
+  const rolled = g.resolveForgeEncounterBirdKeys(randomEnc, 'sparrow', 4);
+  const tok = String(rolled[0] || '').toLowerCase();
+  if (tok.includes('duke') || tok === 'dukeblakiston') dukeHits++;
+}
+assert(dukeHits === 0, 'stage 4 random forge never rolls Duke (' + dukeHits + ' hits)');
+
+const dukeSlot = { enemyCount: 1, slots: [{ birdKey: 'dukeBlakiston', enemyTier: 'orange', enemyStars: 0 }] };
+const dukeStage4 = g.resolveForgeEncounterBirdKeys(dukeSlot, 'sparrow', 4);
+assert(!String(dukeStage4[0] || '').toLowerCase().includes('duke'), 'explicit duke slot on stage 4 is rerolled');
+
+const stage20 = g.resolveForgeEncounterBirdKeys({ enemyCount: 1, slots: [{ birdKey: 'random' }] }, 'sparrow', 20);
+assert(String(stage20[0] || '').indexOf('DUKEB') >= 0, 'stage 20 random resolves to Duke roster id');
+
+const dukeTok = g.resolveOwStageToken('dukeBlakiston', 4, {});
+assert(!String(dukeTok || '').toLowerCase().includes('duke'), 'resolveOwStageToken rejects Duke below stage 20');
+
+const forgeOpts = g.listForgeEnemySpeciesOptions(4);
+assert(!forgeOpts.some((o) => o.id === 'dukeBlakiston'), 'forge species list excludes Duke on stage 4');
 
 console.log(`verify-map-forge-encounter: ${passed} passed, ${failed} failed`);
 process.exit(failed > 0 ? 1 : 0);

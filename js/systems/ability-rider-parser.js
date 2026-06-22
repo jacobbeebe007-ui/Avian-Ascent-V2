@@ -171,6 +171,12 @@
     var drM = t.match(/(\d+(?:\.\d+)?)\s*%\s*damage\s*reduction/i);
     if (drM) addSelf('gainGuarded', Number(drM[1]));
     else if (/brace|damage reduction/i.test(t)) addSelf('gainGuarded', 0);
+    if (/\bshield\b/i.test(t) && /temp|temporary|max\s*hp|max\s*health|health/i.test(t)) {
+      var shM = t.match(/(\d+(?:\.\d+)?)\s*%\s*(?:max\s*)?(?:hp|health)/i);
+      addSelf('gainShield', shM ? Number(shM[1]) : 0);
+    } else if (/\b(minor|major|grand|epic|legendary)\s+shield\b/i.test(t)) {
+      addSelf('gainShield', 0);
+    } else if (/\bgain\s+shield\b/i.test(t)) addSelf('gainShield', 0);
     if (/counter\s*chance|small counter/i.test(t)) addSelf('gainCounter', 1);
     if (/taunt/i.test(t)) addSelf('gainTaunt', 1);
 

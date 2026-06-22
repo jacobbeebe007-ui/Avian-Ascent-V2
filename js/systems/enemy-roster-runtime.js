@@ -252,13 +252,16 @@
     return pickRandom(pool);
   }
 
-  function listForgeEnemySpeciesOptions() {
+  function listForgeEnemySpeciesOptions(scalingStage) {
+    var st = Math.max(1, Math.floor(Number(scalingStage) || 0));
     var r = roster();
     var birds = global.BIRDS || {};
     var keys = [];
     if (r && r.byBirdLevel) {
       keys = Object.keys(r.byBirdLevel).filter(function (k) {
-        return k && (birds[k] || getRosterRow(k));
+        if (!k || !(birds[k] || getRosterRow(k))) return false;
+        if (st !== 20 && k === 'dukeBlakiston') return false;
+        return true;
       });
     }
     keys.sort(function (a, b) {
@@ -435,15 +438,47 @@
     };
   }
 
+  function isDukeStageToken(tok) {
+    var s = String(tok || '').trim();
+    if (!s) return false;
+    var low = s.toLowerCase().replace(/\s+/g, '');
+    if (low === 'dukeblakiston' || low === 'duke_blakiston') return true;
+    var dukeId = typeof global.getStoryDukeRosterId === 'function'
+      ? global.getStoryDukeRosterId()
+      : 'BO-DUKEB-STORY-L10';
+    return s === dukeId || s.indexOf('DUKEB') >= 0;
+  }
+
+  function pickRandomFromStagePool(stage, playerBirdKey) {
+    var st = Math.max(1, Math.floor(Number(stage) || 1));
+    var pbk = String(playerBirdKey || '').trim();
+    var pool = [];
+    if (typeof global.getStoryStageEnemyCandidateIds === 'function') {
+      pool = global.getStoryStageEnemyCandidateIds(st, pbk).slice();
+    } else if (typeof pickStoryEncounterEnemyIds === 'function') {
+      pool = pickStoryEncounterEnemyIds(st, pbk, 1).slice();
+    }
+    if (!pool.length) pool = ['EN-SPARR-HESQ-L01'];
+    return pool[Math.floor(Math.random() * pool.length)];
+  }
+
   function resolveOwStageToken(tok, stage, opts) {
     var s = String(tok || '').trim();
     if (!s) return null;
-    if (isRosterEnemyId(s)) return s;
-    var low = s.toLowerCase().replace(/\s+/g, '');
-    if (low === 'dukeblakiston' || low === 'duke_blakiston') {
-      return typeof global.getStoryDukeRosterId === 'function'
-        ? global.getStoryDukeRosterId()
-        : 'BO-DUKEB-STORY-L10';
+    var st = Math.max(1, Math.floor(Number(stage) || 1));
+    if (isRosterEnemyId(s)) {
+      if (isDukeStageToken(s) && st !== 20) {
+        return pickRandomFromStagePool(st, opts && opts.playerBirdKey);
+      }
+      return s;
+    }
+    if (isDukeStageToken(s)) {
+      if (st === 20) {
+        return typeof global.getStoryDukeRosterId === 'function'
+          ? global.getStoryDukeRosterId()
+          : 'BO-DUKEB-STORY-L10';
+      }
+      return pickRandomFromStagePool(st, opts && opts.playerBirdKey);
     }
     return pickRosterIdForBirdAndStage(s, stage, opts) || s;
   }

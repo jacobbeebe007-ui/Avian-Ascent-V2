@@ -26,15 +26,25 @@ const __dirname = path.dirname(__filename);
 const ROOT = path.resolve(__dirname, '..');
 
 const NEW_SHEETS = 'c:\\Users\\JaK_d\\Desktop\\Avian Ascent\\New Sheets';
-const SHOP_XLSX = process.env.AA_SHOP_XLSX || path.join(NEW_SHEETS, 'New - avian_ascent_shop_learnable_abilities.xlsx');
-const PERKS_XLSX = process.env.AA_PERKS_XLSX || path.join(NEW_SHEETS, 'avian_ascent_passive_perks.xlsx');
+const DOWNLOADS_MASTER = path.join(
+  process.env.HOME || '',
+  'Downloads',
+  'Avian Music bites',
+  'Avian Workbooks',
+  'Master workbook Avian_Ascent_Workbook_Master list of birds, abilities, passives, perks, Aspects etc.xlsx',
+);
 const ABILITY_XLSX_CANDIDATES = [
+  process.env.AA_ABILITY_XLSX,
+  DOWNLOADS_MASTER,
   'avian_ascent_ability_skill_trees_en_balanced_v2_updated.xlsx',
   'avian_ascent_ability_skill_trees_unique_starter_kits.xlsx',
-];
-const ABILITY_XLSX = process.env.AA_ABILITY_XLSX
-  || ABILITY_XLSX_CANDIDATES.map((f) => path.join(NEW_SHEETS, f)).find((p) => existsSync(p))
-  || path.join(NEW_SHEETS, ABILITY_XLSX_CANDIDATES[0]);
+].filter(Boolean).flatMap((f) => (path.isAbsolute(f) ? [f] : [
+  path.join(NEW_SHEETS, f),
+]));
+const ABILITY_XLSX = ABILITY_XLSX_CANDIDATES.find((p) => existsSync(p))
+  || path.join(NEW_SHEETS, 'avian_ascent_ability_skill_trees_en_balanced_v2_updated.xlsx');
+const SHOP_XLSX = process.env.AA_SHOP_XLSX || path.join(NEW_SHEETS, 'New - avian_ascent_shop_learnable_abilities.xlsx');
+const PERKS_XLSX = process.env.AA_PERKS_XLSX || path.join(NEW_SHEETS, 'avian_ascent_passive_perks.xlsx');
 const ABILITY_SHEET_NAMES = ['Class Rules', 'Level 1 Kits', 'Ability Families', 'Skill Trees'];
 const OUTPUT_DIR = path.join(ROOT, 'js', 'data', 'combat-pack');
 

@@ -1,4 +1,4 @@
-/* Bird card tier progression — stats, passives at run/preview time. */
+/* Bird card tier progression — stats at run/preview time (feather growth profiles). */
 (function () {
   'use strict';
 
@@ -6,8 +6,8 @@
     return globalThis.Avian && globalThis.Avian.data && globalThis.Avian.data.birdCardTiers;
   }
 
-  function scalingData() {
-    return globalThis.Avian && globalThis.Avian.data && globalThis.Avian.data.birdCardPassiveScaling;
+  function growth() {
+    return globalThis.Avian && globalThis.Avian.data && globalThis.Avian.data.featherGrowthProfiles;
   }
 
   function normalizeTier(t) {
@@ -20,45 +20,29 @@
     return pack && typeof pack.clampStars === 'function' ? pack.clampStars(stars) : Math.max(0, Math.min(5, Math.floor(Number(stars) || 0)));
   }
 
-  function getPassiveBonusAtTier(birdKey, tier) {
-    var data = scalingData();
-    if (!data || !data[birdKey]) return null;
-    var row = data[birdKey];
-    var t = normalizeTier(tier);
-    if (t === 'orange' && row.orange && typeof row.orange === 'object') return row.orange.bonus;
-    if (row[t] != null) return Number(row[t]);
-    return row.grey != null ? Number(row.grey) : null;
-  }
-
-  function getPassiveBonusFraction(birdKey, tier, stars) {
-    var t = tiers();
-    var tierNorm = normalizeTier(tier);
-    var s = clampStars(stars);
-    var base = getPassiveBonusAtTier(birdKey, tierNorm);
-    if (base == null) return null;
-    if (!t || typeof t.nextTier !== 'function' || typeof t.STARS_PER_TIER !== 'number') return base;
-    var nxt = t.nextTier(tierNorm);
-    if (!nxt) return base;
-    var nextBonus = getPassiveBonusAtTier(birdKey, nxt);
-    if (nextBonus == null) return base;
-    return base + (nextBonus - base) * (s / t.STARS_PER_TIER);
-  }
-
-  function formatPassiveEffectForTier(birdKey, tier, stars) {
-    var data = scalingData();
+  function getFixedPassiveEffectText(birdKey) {
     var birds = globalThis.BIRDS || {};
-    var starVal = stars != null ? stars : (typeof globalThis.getBirdCardStars === 'function' ? globalThis.getBirdCardStars(birdKey) : 0);
-    var frac = getPassiveBonusFraction(birdKey, tier, starVal);
-    if (data && data[birdKey] && data[birdKey].effectTemplate && frac != null) {
-      var pct = (frac * 100).toFixed(frac * 100 % 1 === 0 ? 0 : 1);
-      return String(data[birdKey].effectTemplate).replace('{pct}', pct);
-    }
-    if (typeof globalThis.getBirdPassiveInfo === 'function') {
-      var info = globalThis.getBirdPassiveInfo(birdKey);
-      if (info) return info.desc || info.effect || '';
-    }
     var bd = birds[birdKey];
-    return (bd && bd.passive && (bd.passive.desc || bd.passive.effect)) || '';
+    if (bd && bd.passive && (bd.passive.desc || bd.passive.effect)) {
+      return bd.passive.desc || bd.passive.effect;
+    }
+    var p = globalThis.Avian && Avian.data && Avian.data.combatPack && Avian.data.combatPack.birdPassives;
+    if (p) {
+      for (var id in p) {
+        if (p[id].birdKey === birdKey) return p[id].effect || '';
+      }
+    }
+    return '';
+  }
+
+  /** @deprecated Passives no longer scale with tier or stars. */
+  function getPassiveBonusFraction() {
+    return null;
+  }
+
+  /** @deprecated Passives no longer scale with tier or stars. */
+  function formatPassiveEffectForTier(birdKey) {
+    return getFixedPassiveEffectText(birdKey);
   }
 
   function excludedStarScalingKeys() {
@@ -67,15 +51,17 @@
     return ['acc', 'critChance', 'critMult', 'cc', 'cd'];
   }
 
-  function scaleBirdCardStatValue(baseVal, key, mult) {
+  function scaleBirdCardStatValue(baseVal, key, birdKey, tier, stars) {
     if (excludedStarScalingKeys().indexOf(key) >= 0) {
       return Number(baseVal) || 0;
     }
-    var base = Math.max(0, Number(baseVal) || 0);
-    if (!base) return base;
-    var scaled = base * mult;
-    if (key === 'dodge') return Math.max(0, Math.round(scaled));
-    return Math.max(1, Math.round(scaled));
+    var gp = growth();
+    if (!gp || typeof gp.applyFeatherGrowthToStat !== 'function') {
+      return Number(baseVal) || 0;
+    }
+    var profile = typeof gp.getGrowthProfileForBird === 'function' ? gp.getGrowthProfileForBird(birdKey) : null;
+    var totalStars = typeof gp.getTotalFeatherStars === 'function' ? gp.getTotalFeatherStars(tier, stars) : 0;
+    return gp.applyFeatherGrowthToStat(baseVal, key, profile, totalStars);
   }
 
   function applyBirdCardStats(player, tier, stars) {
@@ -89,13 +75,11 @@
     var fromCard = {};
     var scaled = {};
     var s = clampStars(stars);
-    var mult = typeof t.getEffectiveStatMultiplier === 'function'
-      ? t.getEffectiveStatMultiplier(tier, s)
-      : t.getTierStatMultiplier(tier);
+    var tierNorm = normalizeTier(tier);
 
     t.SCALED_STAT_KEYS.forEach(function (key) {
       if (base[key] == null) return;
-      var val = scaleBirdCardStatValue(base[key], key, mult);
+      var val = scaleBirdCardStatValue(base[key], key, player.birdKey, tierNorm, s);
       scaled[key] = val;
       fromCard[key] = val - (Number(base[key]) || 0);
     });
@@ -152,6 +136,7 @@
   var pack = {
     applyBirdCardProgression: applyBirdCardProgression,
     applyBirdCardStats: applyBirdCardStats,
+    getFixedPassiveEffectText: getFixedPassiveEffectText,
     getPassiveBonusFraction: getPassiveBonusFraction,
     formatPassiveEffectForTier: formatPassiveEffectForTier,
     getTierAbilityUnlockSummary: getTierAbilityUnlockSummary,
