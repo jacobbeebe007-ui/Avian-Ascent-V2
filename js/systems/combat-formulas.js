@@ -438,6 +438,7 @@
     var hybridDefenceScaling = row.hybridDefenceScaling || (damageType === 'Hybrid' ? HYBRID_DEF_WEIGHTS : null);
     var abilityPower = inferAbilityPower(row);
     var conditionalAbilityPower = row.conditionalAbilityPower != null ? Number(row.conditionalAbilityPower) : null;
+    var conditionalAbilityPowerMode = row.conditionalAbilityPowerMode || null;
     var condition = row.condition || null;
     if (!condition && row.riders && row.riders.length) {
       for (var i = 0; i < row.riders.length; i++) {
@@ -445,9 +446,15 @@
         if (r.kind === 'bonusVsAilment' && r.ailment === 'bleed') {
           condition = 'targetBleeding';
           conditionalAbilityPower = 1 + (Number(r.value) || 0) / 100;
+          conditionalAbilityPowerMode = conditionalAbilityPowerMode || 'multiply';
+        } else if (r.kind === 'bonusVsAilment' && r.ailment === 'burning') {
+          condition = 'targetBurning';
+          conditionalAbilityPower = 1 + (Number(r.value) || 0) / 100;
+          conditionalAbilityPowerMode = conditionalAbilityPowerMode || 'multiply';
         } else if (r.kind === 'bonusVsLowHp') {
           condition = 'targetLowHp';
           conditionalAbilityPower = 1 + (Number(r.value) || 0) / 100;
+          conditionalAbilityPowerMode = conditionalAbilityPowerMode || 'multiply';
         }
       }
     }
@@ -459,6 +466,7 @@
       hybridDefenceScaling: hybridDefenceScaling,
       abilityPower: abilityPower,
       conditionalAbilityPower: conditionalAbilityPower,
+      conditionalAbilityPowerMode: conditionalAbilityPowerMode,
       condition: condition,
       heavyAccuracyPenalty: inferHeavyAccuracyPenalty(row),
       recoilPercent: inferRecoilPercent(row),
@@ -470,6 +478,9 @@
 
   function enrichCombatRow(row) {
     if (!row || row._masterDamageEnriched) return row;
+    if (typeof globalThis.applyAbilityTextEnrichment === 'function') {
+      globalThis.applyAbilityTextEnrichment(row);
+    }
     var mapped = mapLegacyRowToMasterDamage(row);
     Object.keys(mapped).forEach(function (k) { row[k] = mapped[k]; });
     row._masterDamageEnriched = true;
@@ -546,6 +557,14 @@
       return !!(es.burning && ((typeof es.burning === 'number' && es.burning > 0)
         || (typeof es.burning === 'object' && (es.burning.turns || 0) > 0)));
     }
+    if (condition === 'targetWeakened') {
+      return typeof globalThis.getWeakenStacks === 'function'
+        ? globalThis.getWeakenStacks(es) > 0
+        : (es.weaken || 0) > 0;
+    }
+    if (condition === 'targetChilled') {
+      return !!(es.chilled && ((es.chilled.stacks || 0) > 0 || (es.chilled.turns || 0) > 0));
+    }
     if (condition === 'targetLowHp') {
       var hp = target && target.stats ? target.stats.hp : 0;
       var maxHp = target && target.stats ? target.stats.maxHp : 1;
@@ -567,7 +586,11 @@
     enrichCombatRow(row);
     var power = Number(row.abilityPower) || 0;
     if (row.condition && row.conditionalAbilityPower != null && conditionMet(row.condition, attacker, target, battleState)) {
-      power *= Number(row.conditionalAbilityPower) || 1;
+      if (row.conditionalAbilityPowerMode === 'replace') {
+        power = Number(row.conditionalAbilityPower) || power;
+      } else {
+        power *= Number(row.conditionalAbilityPower) || 1;
+      }
     }
     return Math.max(0, power);
   }

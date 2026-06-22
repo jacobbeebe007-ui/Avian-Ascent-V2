@@ -229,51 +229,65 @@
   function renderAspectLabels() {
     var g = globalThis.G;
     if (!g) return;
+
+    function ensureAspectChip(hostId, chipId, aspectId) {
+      var host = document.getElementById(hostId);
+      if (!host) return null;
+      var chip = document.getElementById(chipId);
+      if (!chip) {
+        chip = document.createElement('span');
+        chip.id = chipId;
+        chip.className = 'aspect-chip';
+        host.appendChild(document.createTextNode(' '));
+        host.appendChild(chip);
+      }
+      if (aspectId) {
+        var name = typeof globalThis.formatAspectDisplayName === 'function'
+          ? globalThis.formatAspectDisplayName(aspectId)
+          : String(aspectId).charAt(0).toUpperCase() + String(aspectId).slice(1);
+        chip.textContent = name;
+        chip.dataset.aspectId = aspectId;
+        chip.style.display = '';
+      } else {
+        chip.textContent = '';
+        chip.dataset.aspectId = '';
+        chip.style.display = 'none';
+      }
+      return chip;
+    }
+
     var pAsp = typeof globalThis.getEntityAspect === 'function' ? globalThis.getEntityAspect(g.player) : (g.player && g.player.aspect);
     var eAsp = typeof globalThis.getEntityAspect === 'function' ? globalThis.getEntityAspect(g.enemy) : (g.enemy && g.enemy.aspect);
-    var pel = document.getElementById('player-aspect-label');
-    if (!pel) {
-      pel = document.createElement('div');
-      pel.id = 'player-aspect-label';
-      pel.className = 'aspect-label';
-      var pn = document.getElementById('player-class-label');
-      if (pn && pn.parentNode) pn.parentNode.insertBefore(pel, pn.nextSibling);
-    }
-    if (pel) {
-      var pName = typeof globalThis.formatAspectDisplayName === 'function'
-        ? globalThis.formatAspectDisplayName(pAsp) : (pAsp ? String(pAsp).charAt(0).toUpperCase() + String(pAsp).slice(1) : '');
-      pel.textContent = pAsp ? ('Aspect: ' + pName) : '';
-      pel.dataset.aspectId = pAsp || '';
-    }
-    var eel = document.getElementById('enemy-aspect-label');
-    if (!eel) {
-      eel = document.createElement('div');
-      eel.id = 'enemy-aspect-label';
-      eel.className = 'aspect-label';
-      var en = document.getElementById('enemy-class-label');
-      if (en && en.parentNode) en.parentNode.insertBefore(eel, en.nextSibling);
-    }
-    if (eel) {
-      var eName = typeof globalThis.formatAspectDisplayName === 'function'
-        ? globalThis.formatAspectDisplayName(eAsp) : (eAsp ? String(eAsp).charAt(0).toUpperCase() + String(eAsp).slice(1) : '');
-      var matchup = getAspectMatchupLabel(g.player, g.enemy);
-      eel.textContent = eAsp
-        ? ('Aspect: ' + eName + (matchup && matchup !== 'Neutral' ? ' · ' + matchup : ''))
-        : '';
-      eel.dataset.aspectId = eAsp || '';
-    }
+    ensureAspectChip('player-class-label', 'player-aspect-label', pAsp || '');
+    ensureAspectChip('enemy-class-label', 'enemy-aspect-label', eAsp || '');
+
+    var oldPel = document.querySelector('.combatant-meta > .aspect-label');
+    if (oldPel) oldPel.remove();
+    var oldEel = document.querySelectorAll('.combatant-meta > .aspect-label');
+    oldEel.forEach(function (el) { el.remove(); });
+
     bindAspectLabelTooltips();
   }
 
   function bindAspectLabelTooltips() {
-    if (typeof globalThis.bindRichTooltip !== 'function' || typeof globalThis.buildAspectTooltipHTML !== 'function') return;
+    if (typeof globalThis.bindRichTooltip !== 'function') return;
     ['player-aspect-label', 'enemy-aspect-label'].forEach(function (id) {
       var el = document.getElementById(id);
       if (!el || el._aspectTooltipBound) return;
       el._aspectTooltipBound = true;
       globalThis.bindRichTooltip(el, function () {
         var aspId = el.dataset.aspectId || '';
-        return aspId ? globalThis.buildAspectTooltipHTML(aspId) : '';
+        if (!aspId) return '';
+        if (typeof globalThis.buildEntityAspectTooltipHtml === 'function') {
+          var vsAsp = '';
+          if (id === 'enemy-aspect-label' && globalThis.G && globalThis.G.player && typeof globalThis.getEntityAspect === 'function') {
+            vsAsp = globalThis.getEntityAspect(globalThis.G.player) || '';
+          } else if (id === 'player-aspect-label' && globalThis.G && globalThis.G.enemy && typeof globalThis.getEntityAspect === 'function') {
+            vsAsp = globalThis.getEntityAspect(globalThis.G.enemy) || '';
+          }
+          return globalThis.buildEntityAspectTooltipHtml(aspId, { vsAspect: vsAsp });
+        }
+        return typeof globalThis.buildAspectTooltipHTML === 'function' ? globalThis.buildAspectTooltipHTML(aspId) : '';
       }, { category: 'abilities' });
     });
   }

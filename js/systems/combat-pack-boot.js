@@ -95,14 +95,19 @@
     };
     var apCost = row.apCost || row.enCost || 1;
     var isStarterMain = row.starterSlot === 0 && row.level === 1 && row.branch === 'base';
-    var displayDesc = row.displayText ? normalizeEnLabel(String(row.displayText).split('\n').slice(0, 3).join(' · ')) : desc;
+    var tooltipDesc = normalizeEnLabel(String(row.displayText || row.shortDesc || desc).trim());
+    var combatBrief = typeof globalThis.buildAbilityCombatBrief === 'function'
+      ? globalThis.buildAbilityCombatBrief({ id: row.id }, row)
+      : (row.displayText ? normalizeEnLabel(String(row.displayText).split('\n').slice(1, 5).join('\n')) : desc);
     return {
       id: row.id,
       name: row.name || row.id,
       type: btnType,
       btnType: btnType,
-      desc: displayDesc || desc,
+      desc: normalizeEnLabel(String(row.shortDesc || desc).trim()),
       shortDesc: desc,
+      combatBrief: combatBrief,
+      tooltipDesc: tooltipDesc,
       energyCost: apCost,
       energy: apCost,
       energyByLevel: [apCost, apCost, apCost, apCost],

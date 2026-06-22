@@ -175,6 +175,21 @@
   margin-top:2px;
   cursor:help;
 }
+.aspect-chip{
+  display:inline-block;
+  font-size:.62rem;
+  letter-spacing:.08em;
+  text-transform:uppercase;
+  opacity:.85;
+  padding:1px 6px;
+  border-radius:999px;
+  border:1px solid rgba(201,168,76,.25);
+  margin-left:6px;
+  vertical-align:middle;
+  cursor:help;
+  color:var(--gold-light);
+}
+.nest-aspect-chip{margin-left:8px;}
 .aspect-chart-wrap{
   display:flex;
   flex-direction:column;

@@ -5,10 +5,11 @@
   // Extend sprite renderer with Dove support.
   const _oldRenderBirdIconHTML = globalThis.renderBirdIconHTML;
   if (typeof _oldRenderBirdIconHTML === 'function') {
-    globalThis.renderBirdIconHTML = function(birdKey, sizeClass, locked) {
+    globalThis.renderBirdIconHTML = function(birdKey, sizeClass, locked, faceLeft) {
       const k = String(birdKey || '').toLowerCase().replace(/[^a-z]/g, '');
       if (k === 'dove') {
-        return `<div class="sprite4 ${sizeClass||''} sprite-dove frame-0 ${locked?'locked':''}"></div>`;
+        const html = `<div class="sprite4 ${sizeClass||''} sprite-dove frame-0 ${locked?'locked':''}"></div>`;
+        return faceLeft ? wrapSpriteFaceLeft(html) : html;
       }
       return _oldRenderBirdIconHTML.apply(this, arguments);
     };
@@ -659,11 +660,62 @@ function getEnemyMutationStatSources(enemy, statKey){
   }
   return lines;
 }
+function buildEntityAspectTooltipHtml(aspectId, opts={}){
+  const id=String(aspectId||'').trim().toLowerCase();
+  if(!id) return '';
+  const def=getAspectDefinition(id);
+  if(!def) return '';
+  const strong=(def.strongAgainst||[]).map(formatAspectDisplayName).join(', ')||'—';
+  const weak=(def.weakAgainst||[]).map(formatAspectDisplayName).join(', ')||'—';
+  let html=`<div class="tt-name">${escapeHtmlRoster(def.name||id)}</div>`;
+  html+=`<div class="tt-desc">${escapeHtmlRoster(def.description||def.theme||'')}</div>`;
+  html+=`<div class="tt-row"><span class="tt-lbl">Strong against</span><span class="tt-val">${escapeHtmlRoster(strong)}</span></div>`;
+  html+=`<div class="tt-row"><span class="tt-lbl">Weak against</span><span class="tt-val">${escapeHtmlRoster(weak)}</span></div>`;
+  const vsId=String(opts.vsAspect||'').trim().toLowerCase();
+  if(vsId && typeof getAspectRelationship==='function'){
+    const rel=getAspectRelationship(id, vsId, null);
+    const vsName=formatAspectDisplayName(vsId);
+    if(rel && rel!=='Neutral'){
+      html+=`<div class="tt-row"><span class="tt-lbl">Vs ${escapeHtmlRoster(vsName)}</span><span class="tt-val">${escapeHtmlRoster(rel)}</span></div>`;
+    }
+  }
+  if(window._isTouchDevice) html+=richTooltipCloseBtn();
+  return html;
+}
+
 function buildEnemyMutationsTooltipHtml(enemy){
   if (!enemy) return '';
   const ids = enemy.mutationIds || [];
-  if (!ids.length) return '';
+  const bk=enemy.birdKey||enemy.templateKey;
+  const bird=bk&&BIRDS[bk]?BIRDS[bk]:null;
+  const passive=bird?.passive;
+  const eAsp=typeof getEntityAspect==='function'?getEntityAspect(enemy):(enemy.aspect||'');
   let html = `<div class="tt-name">${escapeHtmlRoster(enemy.name || 'Enemy')}</div>`;
+  if(eAsp){
+    html += `<div class="tt-type">Aspect · ${escapeHtmlRoster(formatAspectDisplayName(eAsp))}</div>`;
+    const def=getAspectDefinition(eAsp);
+    if(def){
+      const strong=(def.strongAgainst||[]).map(formatAspectDisplayName).join(', ')||'—';
+      const weak=(def.weakAgainst||[]).map(formatAspectDisplayName).join(', ')||'—';
+      html += `<div class="tt-row"><span class="tt-lbl">Strong against</span><span class="tt-val">${escapeHtmlRoster(strong)}</span></div>`;
+      html += `<div class="tt-row"><span class="tt-lbl">Weak against</span><span class="tt-val">${escapeHtmlRoster(weak)}</span></div>`;
+    }
+    if(G?.player && typeof getEntityAspect==='function' && typeof getAspectRelationship==='function'){
+      const pAsp=getEntityAspect(G.player);
+      const rel=getAspectRelationship(pAsp, eAsp, null);
+      if(rel && rel!=='Neutral'){
+        html += `<div class="tt-row"><span class="tt-lbl">Vs you</span><span class="tt-val">${escapeHtmlRoster(rel)}</span></div>`;
+      }
+    }
+  }
+  if(passive){
+    html += `<div class="tt-row"><span class="tt-lbl">Passive</span><span class="tt-val" style="font-size:.88em">${escapeHtmlRoster(passive.name)}</span></div>`;
+  }
+  if (!ids.length){
+    html += `<div class="tt-desc">${passive?escapeHtmlRoster(passive.desc||passive.effect||''):'No mutations.'}</div>`;
+    html += richTooltipCloseBtn();
+    return html;
+  }
   html += `<div class="tt-type">Mutations</div>`;
   for (const id of ids) {
     const item = typeof Avian?.mutations?.getItem === 'function' ? Avian.mutations.getItem(id) : null;
@@ -739,6 +791,25 @@ function wireNestMutationTooltips(root){
     const id = el.dataset.nestItem || el.dataset.nestInv;
     if(!id) return;
     bindRichTooltip(el, () => buildMutationTooltipHTML(id), { category: 'mutations' });
+  });
+}
+function wireNestAbilityTooltips(root){
+  if(!root || typeof bindRichTooltip!=='function' || !tooltipsEnabled('abilities')) return;
+  const p=G.player;
+  if(!p) return;
+  root.querySelectorAll('.nest-ab-slot-card[data-nest-ab-slot]').forEach(card=>{
+    const slotIdx=Number(card.getAttribute('data-nest-ab-slot'));
+    const slots=getSkillSlots(p);
+    const slot=slots.find(s=>s.slotIndex===slotIdx);
+    if(!slot?.abilityId) return;
+    card._richTooltipBound=false;
+    bindRichTooltip(card, ()=>{
+      const ab={id:slot.abilityId, level:Math.max(1, slot.tier||1)};
+      const tmpl=getAbilityTemplateForUI(ab);
+      const packRow=typeof packRowForAbility==='function'?packRowForAbility(ab):null;
+      const detail=typeof buildAbilityTooltipDetailHtml==='function'?buildAbilityTooltipDetailHtml(ab,tmpl,packRow):'';
+      return `<div class="tt-name">${escapeHtmlRoster(tmpl?.name||slot.abilityId)}</div><div class="tt-desc">${detail}</div>${richTooltipCloseBtn()}`;
+    }, {category:'abilities'});
   });
 }
 function wireCombatStatTooltips(){
@@ -2225,13 +2296,16 @@ function buildNestAbilitySection(player){
     const action=slot.abilityId?resolveSkillSlotEvolutionAction(slot, player):'none';
     const mutateEnabled=!locked && canMutate && action!=='none';
     const tmpl=slot.abilityId?(getAbilityTemplateForUI(slot.abilityId)||{}):{};
-    const desc=tmpl.levels?.[0]?.desc||tmpl.desc||'';
+    const packRow=slot.abilityId&&typeof packRowForAbility==='function'?packRowForAbility({id:slot.abilityId}):null;
+    const brief=typeof buildAbilityCombatBriefHtml==='function'
+      ? buildAbilityCombatBriefHtml({id:slot.abilityId}, packRow)
+      : (tmpl.combatBrief||tmpl.levels?.[0]?.desc||tmpl.desc||'');
     const lockAttrs=locked?' aria-disabled="true" title="Story battle loadouts are locked until victory."':'';
     equippedHtml+=`<div class="nest-ab-slot-card${isSelected?' selected':''}${!slot.abilityId?' empty':''}${locked?' is-locked':''}" data-nest-ab-slot="${slot.slotIndex}"${lockAttrs}>
       <div class="nest-ab-slot-head"><span class="nest-ab-slot-idx">Slot ${slot.slotIndex+1}</span>${isFlex && slot.abilityId?`<button type="button" class="nest-ab-unequip-btn${locked?' is-locked':''}" data-nest-ab-unequip="${slot.slotIndex}" ${locked?'disabled aria-disabled="true" title="Story battle loadouts are locked until victory."':''}>Store</button>`:''}</div>
       <div class="nest-ab-name">${slot.abilityId?escapeHtmlRoster(label):'<span class="nest-inv-empty">Empty</span>'}</div>
       <div class="nest-ab-lv">${tierLbl}</div>
-      ${desc?`<div class="nest-ab-desc">${escapeHtmlRoster(desc)}</div>`:''}
+      ${brief?`<div class="nest-ab-desc btn-desc-lines">${brief}</div>`:''}
       ${slot.abilityId?`<button type="button" class="nest-mutate-btn${mutateEnabled?'':' disabled'}${locked?' is-locked':''}" data-nest-ab-mutate="${slot.slotIndex}" ${mutateEnabled?'':'disabled'} title="${locked?'Story battle loadouts are locked until victory.':(mutateEnabled?'Spend 1 Mutated Feather to upgrade this skill':'Need a Mutated Feather in your Nest')}">Mutate Ability</button>`:''}
     </div>`;
   }
@@ -2450,7 +2524,17 @@ function openNest() {
   const p=G.player;
   if(!p){content.innerHTML='<p style="color:var(--text-dim);text-align:center">No active run.</p>';modal.classList.add('open');return;}
   if(typeof Avian?.mutations?.reapplyPlayerStatsFromSources==='function') Avian.mutations.reapplyPlayerStatsFromSources(p);
-  sub.textContent=`${p.name} · Stage ${G.stage} · Lv.${p.birdLevel} · 🪶 ${Math.max(0, Number(p.mutatedFeatherCount)||0)}`;
+  const pAsp=typeof getEntityAspect==='function'?getEntityAspect(p):(p.aspect||'');
+  const aspectChip=pAsp?`<span class="aspect-chip nest-aspect-chip" id="nest-aspect-chip" data-aspect-id="${escapeHtmlRoster(pAsp)}">${escapeHtmlRoster(formatAspectDisplayName(pAsp))}</span>`:'';
+  sub.innerHTML=`${escapeHtmlRoster(p.name)} · Stage ${G.stage} · Lv.${p.birdLevel} · 🪶 ${Math.max(0, Number(p.mutatedFeatherCount)||0)} ${aspectChip}`;
+  if(pAsp && typeof bindRichTooltip==='function'){
+    const chip=document.getElementById('nest-aspect-chip');
+    if(chip){
+      chip._richTooltipBound=false;
+      const vsAsp=G?.enemy&&typeof getEntityAspect==='function'?getEntityAspect(G.enemy):'';
+      bindRichTooltip(chip, ()=>buildEntityAspectTooltipHtml(pAsp, { vsAspect: vsAsp }), { category: 'abilities' });
+    }
+  }
   let html='';
   // Stats (top of Nest)
   const s=p.stats;
@@ -2564,6 +2648,7 @@ function openNest() {
     handleNestEquipClick(ev);
   };
   wireNestMutationTooltips(content);
+  wireNestAbilityTooltips(content);
   modal.classList.add('open');
 }
 function notifyOwUiEmbedClose(){
@@ -4024,7 +4109,7 @@ function openEnemyInfoPopup(){
     if(G.enemy.birdKey&&BIRDS[G.enemy.birdKey]){
       ent=Object.assign({}, BIRDS[G.enemy.birdKey], G.enemy, { portraitKey: G.enemy.portraitKey || BIRDS[G.enemy.birdKey].portraitKey });
     }
-    spriteEl.innerHTML=renderEntityAvatarHTML(ent,'battle');
+    spriteEl.innerHTML=renderEntityAvatarHTML(ent,'battle', false, true);
   }
   const nm=escapeEncounterPreviewHtml(String(G.enemy.name||'Enemy'));
   const hdr=document.getElementById('enemy-info-popup-header');
@@ -4036,7 +4121,19 @@ function openEnemyInfoPopup(){
   const sz=escapeEncounterPreviewHtml(szRaw);
   const thr=getEnemyPreviewLevelLine(G.enemy);
   const meta=document.getElementById('enemy-info-popup-meta');
-  if(meta) meta.innerHTML=`Class: ${escapeEncounterPreviewHtml(cls)} · Size: ${sz}<br/>LVL ${lv} · ${escapeEncounterPreviewHtml(thr.detail)}`;
+  const eAsp=typeof getEntityAspect==='function'?getEntityAspect(G.enemy):(G.enemy.aspect||'');
+  let aspMeta='';
+  if(eAsp){
+    const def=getAspectDefinition(eAsp);
+    const strong=(def?.strongAgainst||[]).map(formatAspectDisplayName).join(', ')||'—';
+    const weak=(def?.weakAgainst||[]).map(formatAspectDisplayName).join(', ')||'—';
+    aspMeta=`<br/>Aspect: ${escapeHtmlRoster(formatAspectDisplayName(eAsp))}<br/>Strong vs: ${escapeHtmlRoster(strong)} · Weak vs: ${escapeHtmlRoster(weak)}`;
+    if(G?.player && typeof getEntityAspect==='function' && typeof getAspectRelationship==='function'){
+      const rel=getAspectRelationship(getEntityAspect(G.player), eAsp, null);
+      if(rel && rel!=='Neutral') aspMeta+=`<br/>Vs your aspect: ${escapeHtmlRoster(rel)}`;
+    }
+  }
+  if(meta) meta.innerHTML=`Class: ${escapeEncounterPreviewHtml(cls)} · Size: ${sz}${aspMeta}<br/>LVL ${lv} · ${escapeEncounterPreviewHtml(thr.detail)}`;
   const mutEl=document.getElementById('enemy-info-popup-mutations');
   if(mutEl) mutEl.innerHTML=buildEnemyInfoPopupMutationsHtml(G.enemy);
   const passEl=document.getElementById('enemy-info-popup-passive');
@@ -4145,9 +4242,11 @@ function buildEnemyAbilityTooltipHtml(abKey, enemyStats, enemyCtx=null){
   let html=`<div class="tt-name">${nm}</div><div class="tt-type">${typeLbl} · Lv${lv}</div>`;
   if(hit!==null) html+=`<div class="tt-row"><span class="tt-lbl">Hit</span><span class="tt-val ${hitClass}">${hit}%</span></div>`;
   if(isDamaging&&dmgLow!=null) html+=`<div class="tt-row"><span class="tt-lbl">Damage (est.)</span><span class="tt-val">${dmgLow}–${dmgHigh}</span></div>`;
-  const lvData=Array.isArray(tmpl.levels)?tmpl.levels[lv-1]:null;
-  const desc=escapeEncounterPreviewHtml(String(lvData?.desc||tmpl.desc||''));
-  html+=`<div class="tt-desc">${desc}</div>`;
+  const packRow=typeof packRowForAbility==='function'?packRowForAbility(ab):null;
+  const detailHtml=typeof buildAbilityTooltipDetailHtml==='function'
+    ? buildAbilityTooltipDetailHtml(ab, tmpl, packRow)
+    : escapeEncounterPreviewHtml(String((Array.isArray(tmpl.levels)?tmpl.levels[lv-1]?.desc:null)||tmpl.tooltipDesc||tmpl.desc||''));
+  html+=`<div class="tt-desc">${detailHtml}</div>`;
   return html;
 }
 
@@ -4159,7 +4258,7 @@ function buildEncounterPreviewTooltipHtml(enemy){
   const lv=getEnemyPreviewLevel(enemy);
   const thr=getEnemyPreviewLevelLine(enemy);
   const mini=enemy.portraitKey||enemy.birdKey||'';
-  const icon=(PORTRAITS[mini]||PORTRAITS[String(mini).toLowerCase()]||enemy.emoji||'🪶');
+  const icon=wrapEnemySpriteIfNeeded(PORTRAITS[mini]||PORTRAITS[String(mini).toLowerCase()]||enemy.emoji||'🪶');
   const keys=getEnemyPreviewSkillKeys(enemy);
   const names=getEnemyPreviewSkillNames(enemy);
   const eStats=enemy.stats||{atk:enemy.atk||8,maxHp:enemy.maxHp||enemy.hp||40};
@@ -4239,7 +4338,7 @@ function renderEncounterPreview(){
   inner.classList.toggle('encounter-preview--single', rows.length===1);
   inner.innerHTML=rows.map(({enemy,isCurrent},i)=>{
     const pk=enemy.portraitKey||enemy.birdKey||'';
-    const sprite=(PORTRAITS[pk]||PORTRAITS[String(pk).toLowerCase()]||`<span class="enc-preview-emoji">${enemy.emoji||'🪶'}</span>`);
+    const sprite=wrapEnemySpriteIfNeeded(PORTRAITS[pk]||PORTRAITS[String(pk).toLowerCase()]||`<span class="enc-preview-emoji">${enemy.emoji||'🪶'}</span>`);
     const nm=escapeEncounterPreviewHtml(enemy.name||'—');
     const lv=getEnemyPreviewLevel(enemy);
     const thr=getEnemyPreviewLevelLine(enemy);
@@ -4991,7 +5090,7 @@ function showNextStagePreview() {
     enemy=buildEdFromBirdEnemyTemplate(previewId,{isBoss,bossTitle:isBoss?bossTitleForStageMilestone(nextStage):''});
     if(enemy) mergeScaledStatsIntoEnemy(enemy, nextStage);
     const sizeLabel={tiny:'Tiny',small:'Small',medium:'Medium',large:'Large',xl:'Extra Large'}[enemy.size]||'?';
-    const nspSprite=enemy.portraitKey?renderBirdIconHTML(enemy.portraitKey,'small',false):`<span class="nsp-emoji">${enemy.emoji||'⚔'}</span>`;
+    const nspSprite=enemy.portraitKey?renderBirdIconHTML(enemy.portraitKey,'small',false,true):`<span class="nsp-emoji">${enemy.emoji||'⚔'}</span>`;
     el.innerHTML=`<div class="nsp-title">⟩ Next Stage ${nextStage}</div><div class="nsp-enemy">${nspSprite}</div><div class="nsp-name">${enemy.isBoss?`👑 ${enemy.bossTitle}: `:''} ${enemy.name}</div><div class="nsp-stats">HP ${enemy.hp} · ATK ${enemy.atk} · ${sizeLabel}${enemy.isBoss?' · <span class="rage-badge">BOSS</span>':''}</div>`;
   }
   el.style.display='block';
@@ -5583,21 +5682,32 @@ function normalizeSpriteBirdKey(raw){
 function neutralBirdFallbackHTML(sizeClass){
   return `<svg class="bird-fallback-svg ${sizeClass||''}" viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M18 50c10-20 24-31 44-30-6 7-10 13-12 19 8 1 14 5 18 11-12-1-21 1-28 7-6 5-11 8-18 7 3-4 4-8 4-14-4 0-6 0-8 0z" fill="#c9a84c" opacity=".9"/><path d="M37 27c7 6 9 12 7 18" stroke="#0a0c0f" stroke-width="2" fill="none" opacity=".5"/></svg>`;
 }
-function renderBirdIconHTML(birdKey, sizeClass, locked){
-  const k = normalizeSpriteBirdKey(birdKey);
-  if(k === 'mutatedpigeon'){
-    return `<div class="sprite4 ${sizeClass||''} sprite-mutatedpigeon frame-0 ${locked?'locked':''}"></div>`;
-  }
-  const spriteBirds = /^(sparrow|goose|blackbird|crow|macaw|robin|dove|hummingbird|shoebill|secretarybird|secretary|magpie|kookaburra|kiwi|penguin|flamingo|seagull|swan|emu|bowerbird|raven|lyrebird|peregrine|snowyowl|toucan|dukeblakiston|albatross|harpy|harpyeagle|baldeagle|blackcockatoo|ostrich|cassowary|barnowl|bluejay|bushturkey|bustard|cardinal|dodo|fairywren|finch|firecrest|galah|goldeneagle|pigeon|wagtail|chickadee)$/;
-  if(spriteBirds.test(k)){
-    return `<div class="sprite4 ${sizeClass||''} sprite-${k} frame-0 ${locked?'locked':''}"></div>`;
-  }
-  return neutralBirdFallbackHTML(sizeClass);
+function wrapSpriteFaceLeft(html){
+  return `<div class="sprite-face-left">${html}</div>`;
 }
-function renderEntityAvatarHTML(entity, context='battle', locked=false){
+function wrapEnemySpriteIfNeeded(html){
+  if(!html || typeof html!=='string') return html;
+  return /sprite4|bird-fallback-svg/.test(html) ? wrapSpriteFaceLeft(html) : html;
+}
+function renderBirdIconHTML(birdKey, sizeClass, locked, faceLeft=false){
+  const k = normalizeSpriteBirdKey(birdKey);
+  let html;
+  if(k === 'mutatedpigeon'){
+    html = `<div class="sprite4 ${sizeClass||''} sprite-mutatedpigeon frame-0 ${locked?'locked':''}"></div>`;
+  } else {
+    const spriteBirds = /^(sparrow|goose|blackbird|crow|macaw|robin|dove|hummingbird|shoebill|secretarybird|secretary|magpie|kookaburra|kiwi|penguin|flamingo|seagull|swan|emu|bowerbird|raven|lyrebird|peregrine|snowyowl|toucan|dukeblakiston|albatross|harpy|harpyeagle|baldeagle|blackcockatoo|ostrich|cassowary|barnowl|bluejay|bushturkey|bustard|cardinal|dodo|fairywren|finch|firecrest|galah|goldeneagle|pigeon|wagtail|chickadee)$/;
+    if(spriteBirds.test(k)){
+      html = `<div class="sprite4 ${sizeClass||''} sprite-${k} frame-0 ${locked?'locked':''}"></div>`;
+    } else {
+      html = neutralBirdFallbackHTML(sizeClass);
+    }
+  }
+  return faceLeft ? wrapSpriteFaceLeft(html) : html;
+}
+function renderEntityAvatarHTML(entity, context='battle', locked=false, faceLeft=false){
   const key = normalizeSpriteBirdKey(entity?.portraitKey || entity?.birdKey || entity?.id || '');
   const sizeClass = getUISizeClass(entity, context);
-  return renderBirdIconHTML(key, sizeClass, locked);
+  return renderBirdIconHTML(key, sizeClass, locked, faceLeft);
 }
 function syncSfselRunSummary(){
   const wrap=document.getElementById('sfsel-run-summary');
@@ -6872,10 +6982,10 @@ function refreshBattleUI() {
   en.className = 'combatant-name' + (G.enemy.isBoss?' boss-name':'');
   if(G.enemy.birdKey&&BIRDS[G.enemy.birdKey]){
     const enemyBird = Object.assign({}, BIRDS[G.enemy.birdKey], G.enemy, { portraitKey: G.enemy.portraitKey || BIRDS[G.enemy.birdKey].portraitKey });
-    document.getElementById('enemy-avatar').innerHTML = renderEntityAvatarHTML(enemyBird, 'battle');
+    document.getElementById('enemy-avatar').innerHTML = renderEntityAvatarHTML(enemyBird, 'battle', false, true);
     document.getElementById('enemy-avatar').style.fontSize='';
   }else if(G.enemy.portraitKey){
-    document.getElementById('enemy-avatar').innerHTML = renderEntityAvatarHTML(G.enemy, 'battle');
+    document.getElementById('enemy-avatar').innerHTML = renderEntityAvatarHTML(G.enemy, 'battle', false, true);
     document.getElementById('enemy-avatar').style.fontSize='';
   }else{
     document.getElementById('enemy-avatar').textContent = G.enemy.emoji;
@@ -7875,7 +7985,8 @@ function renderActions() {
       if(G.playerStatus?.battleHymn) mods.push('⬆ Hymn buff');
       if(mods.length) modTxt=`<span class=\"btn-mod\" title=\"${mods.join(' | ')}\">${mods.join(' · ')}</span>`;
     }
-    const fullDesc=((getAbDesc(ab)||'')+getAbilityDamageScalingHintForUI(ab)).replace(/<[^>]+>/g,'').trim();
+    const briefHtml=typeof buildAbilityCombatBriefHtml==='function'?buildAbilityCombatBriefHtml(ab,_packRow):'';
+    const fallbackDesc=((getAbDesc(ab)||'')+getAbilityDamageScalingHintForUI(ab)).replace(/<[^>]+>/g,'').trim();
     const _dmgEst=estimateSkillDamageRange(ab,_tmplUI,G.player,{isPlayerCombatPreview:true});
     let dmgRow='';
     if(_dmgEst.isDamaging&&_dmgEst.dmgLow!=null){
@@ -7900,7 +8011,7 @@ function renderActions() {
         </span>
       </div>
       ${dmgRow}
-      ${fullDesc?`<p class="btn-desc-full">${_escMini(fullDesc)}</p>`:''}
+      ${(briefHtml||fallbackDesc)?`<div class="btn-desc-lines btn-desc-full">${briefHtml||`<p>${_escMini(fallbackDesc)}</p>`}</div>`:''}
       ${statPrevChip}
       ${modTxt}
       ${ab.level>1?`<span class="ab-lv-badge">Lv${ab.level}</span>`:''}
@@ -8710,7 +8821,10 @@ function buildActionTooltipHTML(ab){
     if(bits.length) html+=`<div class="tt-row"><span class="tt-lbl">Queued</span><span class="tt-val" style="font-size:.88em">${bits.join(' · ')}</span></div>`;
   }
   const scaleNote=tmpl.damageScaling?.scalingNote;
-  html+=`<div class="tt-desc">${lvData.desc}${scaleNote?`<div class="tt-scaling" style="opacity:.92;margin-top:6px;font-size:.9em;border-top:1px solid rgba(255,255,255,.12);padding-top:6px">${scaleNote}</div>`:''}</div>`;
+  const detailHtml=typeof buildAbilityTooltipDetailHtml==='function'
+    ? buildAbilityTooltipDetailHtml(ab, tmpl, packRow)
+    : escapeHtmlRoster(String(lvData.desc||''));
+  html+=`<div class="tt-desc">${detailHtml}${scaleNote?`<div class="tt-scaling" style="opacity:.92;margin-top:6px;font-size:.9em;border-top:1px solid rgba(255,255,255,.12);padding-top:6px">${scaleNote}</div>`:''}</div>`;
   html+=`<div class="tt-note" style="opacity:.75;margin-top:6px;font-size:.78em">Damage estimate uses your current stats, skill tier mults, DEF/M.DEF mitigation, and common buffs — combat rolls can vary.</div>`;
   if(window._isTouchDevice) html+=richTooltipCloseBtn();
   return html;
@@ -9251,7 +9365,7 @@ function logMsg(msg,cls='') {
 //  ANIMATION ENGINE
 // ============================================================
 function playAvatarAnim(who,cls,dur=600) {
-  const animCls=['do-smash-r','do-smash-l','do-hit','do-dodge-r','do-dodge-l','do-miss-r','do-miss-l','do-shield'];
+  const animCls=['do-smash-r','do-smash-l','do-hit','do-dodge-r','do-dodge-r-flat','do-dodge-l','do-miss-r','do-miss-l','do-shield'];
   return new Promise(res=>{
     const wrap=getAvatarWrap(who);
     const inner=getAvatar(who);
@@ -9317,7 +9431,7 @@ function flashPanel(who,color) {
 
 async function doAttack(attacker,target,result) {
   const smash=attacker==='player'?'do-smash-r':'do-smash-l';
-  const dodge_=target==='player'?'do-dodge-l':'do-dodge-r';
+  const dodge_=target==='player'?'do-dodge-l':'do-dodge-r-flat';
   const attackP=playAvatarAnim(attacker,smash,520);
   await delay(250);
   if (result.wasDodged) {
@@ -11729,6 +11843,8 @@ async function playerAction(ab,fromQueue=false) {
     if(applyAilment('enemy','decreed',1)) spawnFloat('enemy','📜 Decreed!','fn-status');
   }
   G._lastPlayerAbility = ab.id;
+  G._lastPlayerAbilityCategory = effActKind === 'spell' ? 'magic'
+    : (effActKind === 'physical' || effActKind === 'ranged') ? 'physical' : 'utility';
   if(effActKind==='utility'){
     G.utilityUsedThisTurn = G.utilityUsedThisTurn || {};
     G.utilityUsedThisTurn[ab.id] = true;
@@ -11803,6 +11919,7 @@ function startPlayerTurn(player){
   G.playerActionsThisTurn=0;
   G.playerTurnFlags={energyGainedThisTurn:0,onHitTriggered:false,firstAttackResolved:false};
   G.utilityUsedThisTurn={};
+  G._lastPlayerAbilityCategory=null;
   G.player._blueJayHitLastTurn=!!G.player._blueJayRecentHit;
   G.player._blueJayRecentHit=false;
   G.player._shoebillHadUtilityPriorTurn=!!G.playerStatus.shoebillUsedUtility;
@@ -17444,7 +17561,8 @@ wireThemeBgmAutoplayUnlock();
     if(!el || !SPRITE_KEYS.has(key)) return null;
     let spr = el.querySelector('.sprite4');
     if(spr) return spr;
-    el.innerHTML = `<div class="sprite4 ${locked?'locked':''} sprite-${key} frame-0" id="${el.id}-sprite"></div>`;
+    const spriteHtml = `<div class="sprite4 ${locked?'locked':''} sprite-${key} frame-0" id="${el.id}-sprite"></div>`;
+    el.innerHTML = el.id === 'enemy-avatar' ? wrapSpriteFaceLeft(spriteHtml) : spriteHtml;
     el.style.fontSize='';
     return el.querySelector('.sprite4');
   }
@@ -17747,7 +17865,8 @@ SPRITE_KEYS_ALL.add('magpie');
     if(!el || !SPRITE_KEYS.has(key)) return null;
     let spr=el.querySelector('.sprite4');
     if(!spr){
-      el.innerHTML = `<div class="sprite4 sprite-${key} frame-0" id="${who}-avatar-sprite"></div>`;
+      const spriteHtml = `<div class="sprite4 sprite-${key} frame-0" id="${who}-avatar-sprite"></div>`;
+      el.innerHTML = who === 'enemy' ? wrapSpriteFaceLeft(spriteHtml) : spriteHtml;
       spr=el.querySelector('.sprite4');
     }
     return spr;
@@ -18159,18 +18278,21 @@ SPRITE_KEYS_ALL.add('magpie');
     return 'medium';
   };
 
-  globalThis.renderBirdIconHTML = function(birdKey, sizeOrEntity, locked){
+  globalThis.renderBirdIconHTML = function(birdKey, sizeOrEntity, locked, faceLeft){
     const key = norm(birdKey);
     const entity = (sizeOrEntity && typeof sizeOrEntity === 'object') ? sizeOrEntity : { size: String(sizeOrEntity || 'medium') };
     let sizeClass = (typeof sizeOrEntity === 'string') ? sizeOrEntity : globalThis.getUISizeClass(entity, 'general');
     if(key === 'penguin') sizeClass = 'xl';
     if(key === 'seagull') sizeClass = 'medium';
     if(key === 'robin') sizeClass = 'small';
+    let html;
     if(spriteBirds.has(key)){
-      return '<div class="sprite4 ' + sizeClass + ' sprite-' + key + ' frame-0 ' + (locked ? 'locked' : '') + '"></div>';
+      html = '<div class="sprite4 ' + sizeClass + ' sprite-' + key + ' frame-0 ' + (locked ? 'locked' : '') + '"></div>';
+    } else {
+      const emo = (globalThis.PORTRAITS && (PORTRAITS[birdKey] || PORTRAITS[key])) || '';
+      html = '<div class="bird-emo">' + emo + '</div>';
     }
-    const emo = (globalThis.PORTRAITS && (PORTRAITS[birdKey] || PORTRAITS[key])) || '';
-    return '<div class="bird-emo">' + emo + '</div>';
+    return faceLeft ? wrapSpriteFaceLeft(html) : html;
   };
 
   if(globalThis.PORTRAITS){
@@ -18195,17 +18317,19 @@ SPRITE_KEYS_ALL.add('magpie');
   }
 
   if(typeof globalThis.renderEntityAvatarHTML === 'function'){
-    globalThis.renderEntityAvatarHTML = function(entity, context='battle', locked=false){
+    globalThis.renderEntityAvatarHTML = function(entity, context='battle', locked=false, faceLeft=false){
       const key = entity?.portraitKey || entity?.birdKey || entity?.id || '';
       const sizeClass = globalThis.getUISizeClass(entity, context);
       const k = norm(key);
+      let html;
       if(spriteBirds.has(k)){
-        return '<div class="sprite4 ' + sizeClass + ' sprite-' + k + ' frame-0 ' + (locked ? 'locked' : '') + '"></div>';
+        html = '<div class="sprite4 ' + sizeClass + ' sprite-' + k + ' frame-0 ' + (locked ? 'locked' : '') + '"></div>';
+      } else if(globalThis.PORTRAITS && (PORTRAITS[key] || PORTRAITS[norm(key)])){
+        html = (PORTRAITS[key] || PORTRAITS[norm(key)]);
+      } else {
+        html = '<div class="bird-emo">' + (entity?.emoji || '') + '</div>';
       }
-      if(globalThis.PORTRAITS && (PORTRAITS[key] || PORTRAITS[norm(key)])){
-        return (PORTRAITS[key] || PORTRAITS[norm(key)]);
-      }
-      return '<div class="bird-emo">' + (entity?.emoji || '') + '</div>';
+      return faceLeft ? wrapSpriteFaceLeft(html) : html;
     };
   }
 

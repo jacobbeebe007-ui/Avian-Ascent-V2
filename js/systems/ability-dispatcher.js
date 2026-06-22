@@ -267,6 +267,8 @@
   function makeStatRiderHandlers(sourceId, row, ab) {
     return {
       gainDodge: function (n, ps) { applyDispatcherDisplaySlot(ps, sourceId, 'gainDodge', n); spawnTrendFloat('player', 'buff'); },
+      gainAccFlat: function (n, ps) { applyDispatcherDisplaySlot(ps, sourceId, 'gainAcc', n); spawnTrendFloat('player', 'buff'); },
+      gainDodgeFlat: function (n, ps) { applyDispatcherDisplaySlot(ps, sourceId, 'gainDodge', n); spawnTrendFloat('player', 'buff'); },
       gainAcc: function (n, ps) { applyDispatcherDisplaySlot(ps, sourceId, 'gainAcc', n); spawnTrendFloat('player', 'buff'); },
       gainSpeed: function (n, ps, p) { applyDispatcherStatLoanPct(ps, p, 'spd', sourceId, n); spawnTrendFloat('player', 'buff'); },
       gainCritChance: function (n, ps) { applyDispatcherDisplaySlot(ps, sourceId, 'gainCritChance', n); spawnTrendFloat('player', 'buff'); },
@@ -313,10 +315,23 @@
     raw: function () { /* unresolved free-text; safe no-op */ },
   };
 
+  function playerActingFirst() {
+    var g = globalThis.G;
+    if (!g || !g.player || !g.enemy) return false;
+    return (g.player.stats.spd || 0) >= (g.enemy.stats.spd || 0);
+  }
+
+  function playerUsedMagicThisTurn() {
+    var g = globalThis.G;
+    return !!(g && g._lastPlayerAbilityCategory === 'magic');
+  }
+
   function riderWhenMatches(r, ctx) {
     var w = r.when;
     if (!w) return true;
     if (w === 'onHit') return ctx.hitsLanded > 0;
+    if (w === 'actingFirst') return playerActingFirst();
+    if (w === 'afterMagicThisTurn') return playerUsedMagicThisTurn();
     if (w.indexOf('onAilment:') === 0) {
       var aid = w.slice('onAilment:'.length);
       return ctx.ailmentsApplied && ctx.ailmentsApplied[aid];
@@ -372,6 +387,10 @@
       var r = row.riders[i];
       if (r.kind === 'bonusVsAilment' && r.ailment === 'bleed') {
         if ((es.bleed && es.bleed.stacks > 0) && r.value > 0) dmg = roundDmg(dmg * (1 + r.value / 100));
+      } else if (r.kind === 'bonusVsAilment' && r.ailment === 'burning') {
+        var burning = es.burning && ((typeof es.burning === 'number' && es.burning > 0)
+          || (typeof es.burning === 'object' && ((es.burning.stacks || 0) > 0 || (es.burning.turns || 0) > 0)));
+        if (burning && r.value > 0) dmg = roundDmg(dmg * (1 + r.value / 100));
       } else if (r.kind === 'bonusVsLowHp') {
         var enemy = (g && g.enemy && g.enemy.stats) || null;
         if (enemy && enemy.hp && enemy.maxHp && enemy.hp <= Math.floor(enemy.maxHp * (r.threshold || 0.35))) {

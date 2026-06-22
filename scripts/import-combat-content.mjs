@@ -380,8 +380,12 @@ function normaliseAilmentId(s) {
 }
 
 // Rider parser — emit a small structured list driven by tags + numeric regexes
-function parseRiderWhen(text) {
-  if (/after\s+attack/i.test(text)) return 'onHit';
+function parseRiderWhen(text, localSlice) {
+  const combined = `${localSlice || ''}\n${text || ''}`;
+  if (/faster than the target|acting before the target|act before the target|if you act before/i.test(combined)) return 'actingFirst';
+  if (/after a magic ability|used after a magic|after using a magic ability|after a magic attack/i.test(combined)) return 'afterMagicThisTurn';
+  const slice = localSlice || text || '';
+  if (/after\s+attack/i.test(slice)) return 'onHit';
   if (/if\s+(?:this\s+)?hits?|if\s+at\s+least\s+\d+\s+hits?\s+land/i.test(text)) return 'onHit';
   if (/if\s+weaken\s+applies?|when\s+weaken\s+applies?|target\s+is\s+weakened/i.test(text)) return 'onAilment:weaken';
   if (/if\s+bleed\s+applies?|when\s+bleed\s+applies?|if\s+bleeding\s+applies?|enemy\s+is\s+already\s+bleeding/i.test(text)) return 'onAilment:bleed';
@@ -391,6 +395,28 @@ function parseRiderWhen(text) {
   if (/if\s+paralys/i.test(text)) return 'onAilment:paralyzed';
   if (/if\s+delayed\s+applies?/i.test(text)) return 'onAilment:delayed';
   return null;
+}
+
+function parseConditionalAbilityFromText(text) {
+  const t = String(text || '');
+  const m = t.match(/if\s+target\s+is\s+(Bleeding|Burning|Weakened|Bloodied|Chilled)[^.\n]*Ability\s+Power\s+becomes\s+(\d+(?:\.\d+)?)/i);
+  if (!m) return null;
+  const condMap = {
+    bleeding: 'targetBleeding',
+    burning: 'targetBurning',
+    weakened: 'targetWeakened',
+    bloodied: 'targetBloodied',
+    chilled: 'targetChilled',
+  };
+  return {
+    condition: condMap[String(m[1]).toLowerCase()] || null,
+    conditionalAbilityPower: Number(m[2]),
+    conditionalAbilityPowerMode: 'replace',
+  };
+}
+
+function mergeAbilityTextParts(riderText, shortDesc, displayText) {
+  return [riderText, shortDesc, displayText].filter((s) => s && String(s).trim() && !/^none$/i.test(String(s).trim())).join('\n');
 }
 
 /** Standard buff/debuff magnitudes — mirrors js/data/combat-stat-magnitudes.js */
@@ -414,18 +440,26 @@ function resolveStatMagnitude(statKey, direction, tierLabel) {
   return statKey.startsWith('critDamage') ? Math.round(val * 100) : val;
 }
 
-function parseRiders(riderText, codeTags) {
+function parseRiders(riderText, codeTags, extraText = '') {
   const riders = [];
-  const text = (riderText || '').trim();
+  const text = mergeAbilityTextParts(riderText, extraText, '').trim();
   if (!text || /^none$/i.test(text)) return riders;
   const when = parseRiderWhen(text);
-  const addSelf = (kind, n, extra = {}) => riders.push({ kind, value: n, scope: 'self', duration: 'untilNextTurn', when, ...extra });
-  const addEnemy = (kind, n, extra = {}) => riders.push({ kind, value: n, scope: 'enemy', duration: 'untilNextTurn', when: when || 'onHit', ...extra });
+  const addSelf = (kind, n, extra = {}) => riders.push({ kind, value: n, scope: 'self', duration: 'untilNextTurn', when: extra.when != null ? extra.when : when, ...extra });
+  const addEnemy = (kind, n, extra = {}) => riders.push({ kind, value: n, scope: 'enemy', duration: 'untilNextTurn', when: extra.when != null ? extra.when : (when || 'onHit'), ...extra });
   let m;
 
+  // Flat stat gains (e.g. gain +8 Dodge)
+  for (const gm of text.matchAll(/gain\s+\+?\s*(\d+(?:\.\d+)?)\s+(?:ACC|Accuracy)(?!\s*%)/gi)) {
+    addSelf('gainAccFlat', Number(gm[1]), { when: parseRiderWhen(text, gm[0]) });
+  }
+  for (const gm of text.matchAll(/gain\s+\+?\s*(\d+(?:\.\d+)?)\s+Dodge(?!\s*%)/gi)) {
+    addSelf('gainDodgeFlat', Number(gm[1]), { when: parseRiderWhen(text, gm[0]) });
+  }
+
   // Self gain riders
-  for (const gm of text.matchAll(/\+?\s*(\d+(?:\.\d+)?)\s*%\s*(?:ACC|Accuracy)/gi)) addSelf('gainAcc', Number(gm[1]));
-  for (const gm of text.matchAll(/\+?\s*(\d+(?:\.\d+)?)\s*%\s*Dodge/gi)) addSelf('gainDodge', Number(gm[1]));
+  for (const gm of text.matchAll(/\+?\s*(\d+(?:\.\d+)?)\s*%\s*(?:ACC|Accuracy)/gi)) addSelf('gainAcc', Number(gm[1]), { when: parseRiderWhen(text, gm[0]) });
+  for (const gm of text.matchAll(/\+?\s*(\d+(?:\.\d+)?)\s*%\s*Dodge/gi)) addSelf('gainDodge', Number(gm[1]), { when: parseRiderWhen(text, gm[0]) });
   for (const gm of text.matchAll(/\+?\s*(\d+(?:\.\d+)?)\s*%\s*Speed/gi)) addSelf('gainSpeed', Number(gm[1]));
   for (const gm of text.matchAll(/\+?\s*(\d+(?:\.\d+)?)\s*%\s*Crit\s*Chance/gi)) addSelf('gainCritChance', Number(gm[1]));
   for (const gm of text.matchAll(/\+?\s*(\d+(?:\.\d+)?)\s*%\s*Crit\s*Damage/gi)) addSelf('gainCritDamage', Number(gm[1]));
@@ -497,10 +531,15 @@ function parseRiders(riderText, codeTags) {
   if ((m = text.match(/\+?\s*(\d+)\s*(?:AP|EN)\s*recovery\s*(?:next\s*turn|on\s*next\s*turn)/i))) riders.push({ kind: 'gainApNextTurn', value: Number(m[1]) });
 
   // Conditional damage
-  if (/against\s+bleeding|vs\s+bleeding|enemy\s+is\s+bleeding|bleeding\s+enemies?/i.test(text)) {
+  if (/against\s+bleeding|vs\s+bleeding|enemy\s+is\s+bleeding|bleeding\s+enemies?|target\s+is\s+bleeding/i.test(text)) {
     const pm = text.match(/\+?\s*(\d+(?:\.\d+)?)\s*%/);
     if (pm) riders.push({ kind: 'bonusVsAilment', ailment: 'bleed', value: Number(pm[1]) });
     else riders.push({ kind: 'bonusVsAilment', ailment: 'bleed', value: 0 });
+  }
+  if (/against\s+burning|vs\s+burning|enemy\s+is\s+burning|burning\s+enemies?|target\s+is\s+burning/i.test(text)) {
+    const pm = text.match(/\+?\s*(\d+(?:\.\d+)?)\s*%/);
+    if (pm) riders.push({ kind: 'bonusVsAilment', ailment: 'burning', value: Number(pm[1]) });
+    else riders.push({ kind: 'bonusVsAilment', ailment: 'burning', value: 0 });
   }
   if (/low\s*HP|below\s+\d+%\s+Health|low-Health/i.test(text)) {
     const pm = text.match(/below\s+(\d+(?:\.\d+)?)\s*%/i);
@@ -682,6 +721,22 @@ function pickShortDescription(r, h) {
   return '';
 }
 
+function pickDisplayText(r, h) {
+  const candidates = [
+    'Full Description',
+    'Tooltip Long Description',
+    'Display Text',
+    'Ability Display Text',
+    'Tooltip Full Description',
+    'Long Description',
+  ];
+  for (const name of candidates) {
+    const val = get(r, h, name);
+    if (val) return normalizeShortDesc(val);
+  }
+  return '';
+}
+
 function normalizeShortDesc(text) {
   return String(text || '')
     .replace(/\bAP\/EN\b/gi, 'EN')
@@ -713,6 +768,8 @@ function buildSkillTrees(perksSheets, shopSheets) {
     const replaces = get(r, h, 'Replaces / Upgrades') || get(r, h, 'Prerequisite') || '';
     const name = get(r, h, 'Ability Name') || id;
     const shortDesc = pickShortDescription(r, h);
+    const displayText = pickDisplayText(r, h) || shortDesc;
+    const mergedRiderText = mergeAbilityTextParts(riderText, shortDesc, displayText);
     const category = (get(r, h, 'Ability Category') || 'Physical').toLowerCase();
     const hits = formula.hits;
     const entry = {
@@ -744,10 +801,11 @@ function buildSkillTrees(perksSheets, shopSheets) {
       ailmentChance,
       cooldown,
       riderText,
-      riders: parseRiders(riderText, codeTags),
+      riders: parseRiders(riderText, codeTags, mergeAbilityTextParts('', shortDesc, displayText)),
       tags: codeTags.split(/[;,]/).map((t) => t.trim()).filter(Boolean),
       replaces,
       shortDesc,
+      displayText,
       designNote: get(r, h, 'Design Note') || get(r, h, 'Balance Notes') || '',
       tier: get(r, h, 'Purchase Tier') || '',
     };
@@ -807,6 +865,32 @@ function buildSkillTrees(perksSheets, shopSheets) {
     if (recoilPercent == null) {
       recoilPercent = abilityPower >= 1.31 ? 0.20 : (abilityPower >= 1.21 ? 0.15 : 0);
     }
+    let condition = row.condition || null;
+    let conditionalAbilityPower = row.conditionalAbilityPower != null ? Number(row.conditionalAbilityPower) : null;
+    let conditionalAbilityPowerMode = row.conditionalAbilityPowerMode || null;
+    const mergedText = mergeAbilityTextParts(row.riderText, row.shortDesc, row.displayText);
+    const parsedCond = parseConditionalAbilityFromText(mergedText);
+    if (parsedCond && parsedCond.condition) {
+      condition = parsedCond.condition;
+      conditionalAbilityPower = parsedCond.conditionalAbilityPower;
+      conditionalAbilityPowerMode = parsedCond.conditionalAbilityPowerMode;
+    } else if (!condition && row.riders && row.riders.length) {
+      for (const r of row.riders) {
+        if (r.kind === 'bonusVsAilment' && r.ailment === 'bleed') {
+          condition = 'targetBleeding';
+          conditionalAbilityPower = 1 + (Number(r.value) || 0) / 100;
+          conditionalAbilityPowerMode = conditionalAbilityPowerMode || 'multiply';
+        } else if (r.kind === 'bonusVsAilment' && r.ailment === 'burning') {
+          condition = 'targetBurning';
+          conditionalAbilityPower = 1 + (Number(r.value) || 0) / 100;
+          conditionalAbilityPowerMode = conditionalAbilityPowerMode || 'multiply';
+        } else if (r.kind === 'bonusVsLowHp') {
+          condition = 'targetLowHp';
+          conditionalAbilityPower = 1 + (Number(r.value) || 0) / 100;
+          conditionalAbilityPowerMode = conditionalAbilityPowerMode || 'multiply';
+        }
+      }
+    }
     return {
       ...row,
       enCost: row.enCost != null ? row.enCost : (row.apCost || 1),
@@ -815,6 +899,9 @@ function buildSkillTrees(perksSheets, shopSheets) {
       hybridScaling,
       hybridDefenceScaling: row.hybridDefenceScaling || (damageType === 'Hybrid' ? { def: 0.6, mdef: 0.4 } : null),
       abilityPower,
+      condition,
+      conditionalAbilityPower,
+      conditionalAbilityPowerMode,
       heavyAccuracyPenalty,
       recoilPercent,
       piercePercent: row.piercePercent != null ? row.piercePercent : Math.max(Number(row.pierceDef) || 0, Number(row.pierceMdef) || 0) / 100,
