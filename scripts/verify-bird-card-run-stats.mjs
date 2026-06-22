@@ -59,6 +59,12 @@ function initStatLedgerForNewRun(player) {
   L.mechanicalLines = [];
 }
 
+function preparePlayerCombatLoadout(player) {
+  if (!player) return;
+  ctx.globalThis.applyBirdCardProgression(player);
+  ctx.globalThis.Avian.mutations.reapplyPlayerStatsFromSources(player);
+}
+
 const ctx = {
   globalThis: {},
   console,
@@ -69,6 +75,7 @@ const ctx = {
   String,
   BIRDS: {
     sparrow: {
+      class: 'rogue',
       size: 'small',
       stats: { hp: 20, maxHp: 20, atk: 5, def: 3, spd: 8, acc: 90, dodge: 5, matk: 8, mdef: 5, critChance: 5 },
     },
@@ -85,6 +92,7 @@ function load(rel) {
 
 load('js/bootstrap/_namespace.js');
 load('js/data/bird-card-tiers.js');
+load('js/data/feather-growth-profiles.js');
 load('js/meta/bird-card-runtime.js');
 vm.runInNewContext(readFileSync(path.join(ROOT, 'js', 'systems', 'mutations.js'), 'utf8'), ctx);
 
@@ -92,6 +100,7 @@ ctx.globalThis.getBirdCardTier = () => 'orange';
 ctx.globalThis.getBirdCardStars = () => 0;
 
 const baseAtk = ctx.BIRDS.sparrow.stats.atk;
+const baseSpd = ctx.BIRDS.sparrow.stats.spd;
 const baseAcc = ctx.BIRDS.sparrow.stats.acc;
 const baseCrit = ctx.BIRDS.sparrow.stats.critChance;
 const player = {
@@ -105,11 +114,21 @@ const player = {
 initStatLedgerForNewRun(player);
 ctx.globalThis.applyBirdCardProgression(player);
 
+// orange 0★ = 25 total stars; rogue ATK is minor (+0.6%/star), SPD is major (+1%/star)
+const expectedAtk = Math.max(1, Math.round(baseAtk * (1 + 25 * 0.006)));
+const expectedSpd = Math.max(1, Math.round(baseSpd * (1 + 25 * 0.010)));
+
 const atkAfterCard = player.stats.atk;
-if (atkAfterCard <= baseAtk) {
-  fail(`expected atk > base after card progression (${baseAtk}), got ${atkAfterCard}`);
+if (atkAfterCard !== expectedAtk) {
+  fail(`expected atk ${expectedAtk} after card progression (base ${baseAtk}), got ${atkAfterCard}`);
 } else {
-  ok(`card progression raised atk from ${baseAtk} to ${atkAfterCard}`);
+  ok(`card progression raised atk from ${baseAtk} to ${atkAfterCard} (minor band)`);
+}
+
+if (player.stats.spd !== expectedSpd) {
+  fail(`expected spd ${expectedSpd} after card progression (base ${baseSpd}), got ${player.stats.spd}`);
+} else {
+  ok(`card progression raised spd from ${baseSpd} to ${player.stats.spd} (major band)`);
 }
 
 const fromCardAtk = Number(player._statLedger?.fromCardTier?.atk) || 0;
@@ -134,6 +153,24 @@ if (player.stats.atk !== atkAfterCard) {
   fail(`reapply wiped card atk: expected ${atkAfterCard}, got ${player.stats.atk}`);
 } else {
   ok('reapplyPlayerStatsFromSources preserves card tier atk bonus');
+}
+
+// Combat prep path: stale empty fromCardTier ledger refreshed by applyBirdCardProgression
+const stalePlayer = {
+  birdKey: 'sparrow',
+  size: 'small',
+  stats: { ...ctx.BIRDS.sparrow.stats },
+  equippedMutations: null,
+  mutationInventory: [],
+};
+initStatLedgerForNewRun(stalePlayer);
+stalePlayer._statLedger.fromCardTier = {};
+preparePlayerCombatLoadout(stalePlayer);
+
+if (stalePlayer.stats.atk !== expectedAtk) {
+  fail(`combat prep sync expected atk ${expectedAtk}, got ${stalePlayer.stats.atk}`);
+} else {
+  ok('preparePlayerCombatLoadout refreshes stale fromCardTier via applyBirdCardProgression');
 }
 
 if (failed) process.exit(1);

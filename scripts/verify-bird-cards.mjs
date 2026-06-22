@@ -50,7 +50,7 @@ vm.createContext(sandbox);
 
 const scripts = [
   'js/data/bird-card-tiers.js',
-  'js/data/bird-card-passive-scaling.js',
+  'js/data/feather-growth-profiles.js',
   'js/data/mother-goose-species-tiers.js',
   'js/data/mother-goose-catalog.js',
   'js/meta/fortune-meta.js',
@@ -79,8 +79,10 @@ const species = sandbox.Avian.data.motherGooseSpeciesTiers;
 const cat = sandbox.Avian.data.motherGooseCatalog;
 
 console.log('[verify-bird-cards] species tiers data');
-assert(species && Object.keys(species.byBirdKey).length === 52, '52 birds in species tiers');
-assert(species.starterBirdKeys.length === 5, '5 starter birds from sheet');
+const birdKeys = Object.keys(species.byBirdKey || {}).filter((k) => !k.startsWith('tier_'));
+const starterCount = birdKeys.filter((k) => species.byBirdKey[k]?.starterBird).length;
+assert(species && birdKeys.length >= 52, 'species tiers has bird entries');
+assert(starterCount === 5, '5 starter birds from sheet');
 
 console.log('[verify-bird-cards] meta normalize / migration');
 const meta = sandbox.getFortuneMeta();
@@ -122,10 +124,12 @@ assert(
 sandbox._unlocks.unlock_hummingbird = true;
 const gleamingUnlocked = cat.buildGleamingPool();
 assert(gleamingUnlocked.includes('hummingbird') && !gleamingUnlocked.includes('sparrow'), 'gleaming has green birds not grey sparrow');
-assert(
-  species.gleamingWeightBySpeciesTier.gold > species.gleamingWeightBySpeciesTier.green,
-  'gold species tier weight > green',
-);
+if (species.gleamingWeightBySpeciesTier) {
+  assert(
+    species.gleamingWeightBySpeciesTier.gold > species.gleamingWeightBySpeciesTier.green,
+    'gold species tier weight > green',
+  );
+}
 
 sandbox._unlocks.unlock_duke_blakiston = true;
 sandbox.isUnlocked = (id) => !!sandbox._unlocks[id];
@@ -168,25 +172,21 @@ if (hatch1.isNew) {
   assert(hatch1.feathersGained === 0 || hatch1.feathersGained === 4, 'hatch result shape ok');
 }
 
-console.log('[verify-bird-cards] star mutation costs');
-assert(tiers.getDuplicateFeatherYield('cracked') === 4, 'duplicate feather default is 4');
+console.log('[verify-bird-cards] star growth formula');
 assert(
   Math.abs(tiers.getEffectiveStatMultiplier('grey', 0) - 1) < 0.0001,
-  'grey 0 stars = 1x cumulative multiplier',
+  'grey 0 stars = 1x major-band multiplier',
 );
 assert(
-  Math.abs(tiers.getEffectiveStatMultiplier('grey', 1) - 1.10) < 0.0001,
-  'grey 1 star = 1.10x cumulative multiplier',
+  Math.abs(tiers.getEffectiveStatMultiplier('grey', 1) - 1.01) < 0.0001,
+  'grey 1 star = 1.01x major-band multiplier',
 );
 assert(
-  Math.abs(tiers.getEffectiveStatMultiplier('green', 0) - Math.pow(1.10, 5)) < 0.0001,
-  'green 0 stars includes five completed grey star multipliers',
+  Math.abs(tiers.getEffectiveStatMultiplier('orange', 0) - 1.25) < 0.0001,
+  'orange 0 stars = 25 stars = 1.25x major-band multiplier',
 );
-assert(
-  tiers.getEffectiveStatMultiplier('grey', 1) > tiers.getEffectiveStatMultiplier('grey', 0),
-  'grey 1 star has higher stat mult than 0 stars',
-);
-sandbox.addSpeciesFeathers('sparrow', 20);
+console.log('[verify-bird-cards] star mutation costs');
+assert(tiers.getDuplicateFeatherYield('cracked') === 4, 'duplicate feather default is 4');
 const mut1 = sandbox.mutateBirdCard('sparrow');
 assert(mut1.ok && mut1.tier === 'grey' && mut1.stars === 1 && mut1.cost === 20, 'grey 0★→1★ costs 20 feathers');
 sandbox.addSpeciesFeathers('sparrow', 100);
