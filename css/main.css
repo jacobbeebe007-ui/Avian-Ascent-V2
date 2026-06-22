@@ -393,8 +393,10 @@ header p{color:var(--text-dim);font-style:italic;font-size:1rem;margin-top:4px;}
   pointer-events:none;
 }
 .select-screen-content .splash-top,
+.select-screen-content .splash-menu-left,
 .select-screen-content .splash-menu-actions,
 .select-screen-content .splash-settings-btn,
+.select-screen-content .splash-discord-link,
 .select-screen-content .splash-roster-hint{
   pointer-events:auto;
 }
@@ -421,6 +423,16 @@ header p{color:var(--text-dim);font-style:italic;font-size:1rem;margin-top:4px;}
   justify-content:space-between;
   gap:12px 16px;
   padding:4px 2px 8px;
+}
+.splash-menu-left{
+  position:relative;
+  z-index:5;
+  display:flex;
+  flex-shrink:0;
+  flex-wrap:wrap;
+  gap:8px;
+  justify-content:flex-start;
+  pointer-events:auto;
 }
 .splash-menu-actions{
   position:relative;
@@ -468,6 +480,21 @@ header p{color:var(--text-dim);font-style:italic;font-size:1rem;margin-top:4px;}
 .splash-settings-btn:focus-visible{
   outline:2px solid var(--gold);
   outline-offset:3px;
+}
+a.splash-settings-btn{
+  display:inline-flex;
+  align-items:center;
+  text-decoration:none;
+  padding:6px 12px;
+  font-family:'Cinzel',serif;
+  font-size:.8rem;
+  letter-spacing:.06em;
+  cursor:pointer;
+  transition:border-color .15s ease,background .15s ease,color .15s ease,box-shadow .15s ease;
+}
+.splash-discord-link:hover{
+  border-color:rgba(114,137,218,.72);
+  color:#eef2ff;
 }
 .splash-hotspot{
   appearance:none;
