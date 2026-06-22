@@ -50,10 +50,10 @@ function check(name, ok, detail) {
 
 // 5 — Crit damage clamps and example
 {
-  const mult = c.clampCritDamageMult(1.5);
-  check('Base crit damage 1.50x', mult === 1.5, `got=${mult}`);
-  check('Crit damage cap 2.00x', c.clampCritDamageMult(2.5) === 2);
-  check('Crit damage floor 1.25x', c.clampCritDamageMult(1.0) === 1.25);
+  const mult = c.clampCritDamageMult(1.35);
+  check('Base crit damage 1.35x', mult === 1.35, `got=${mult}`);
+  check('Crit damage cap 1.50x', c.clampCritDamageMult(2.5) === 1.5, `got=${c.clampCritDamageMult(2.5)}`);
+  check('Crit damage floor 1.35x', c.clampCritDamageMult(1.0) === 1.35, `got=${c.clampCritDamageMult(1.0)}`);
   const dmg = Math.round(20 * c.clampCritDamageMult(1.5));
   check('20 dmg × 1.50 crit = 30', dmg === 30, `got=${dmg}`);
 }

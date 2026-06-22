@@ -41,7 +41,7 @@ assert(typeof c.getAspectRelationship === 'function', 'getAspectRelationship exp
 
 assert(c.getAspectMultiplier('aeris', 'terra') === DOM, `Strong → ${DOM}x (aeris vs terra)`);
 assert(c.getAspectMultiplier('terra', 'aeris') === RES, `Weak → ${RES}x (terra vs aeris)`);
-assert(c.getAspectMultiplier('aeris', 'tempest') === NEU, `Neutral → ${NEU}x`);
+assert(c.getAspectMultiplier('aeris', 'maris') === NEU, `Neutral → ${NEU}x (aeris vs maris)`);
 assert(c.getAspectMultiplier('maris', 'maris') === NEU, `Same aspect → ${NEU}x`);
 assert(c.getAspectMultiplier('invalid', 'terra') === NEU, 'Invalid aspect → neutral, no crash');
 assert(c.getAspectRelationship('aeris', 'terra') === 'Strong', 'relationship Strong');
