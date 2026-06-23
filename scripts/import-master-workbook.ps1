@@ -4,7 +4,7 @@
 param(
     [switch]$Verify,
     [switch]$InspectHeaders,
-    [string]$WorkbookPath = $env:AA_MASTER_WORKBOOK
+    [string]$WorkbookPath = $(if ($env:AA_MASTER_WORKBOOK) { $env:AA_MASTER_WORKBOOK } elseif ($env:AA_MASTER_WORKBOOK_XLSX) { $env:AA_MASTER_WORKBOOK_XLSX } else { $null })
 )
 
 $ErrorActionPreference = 'Stop'

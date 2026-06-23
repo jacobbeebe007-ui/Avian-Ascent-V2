@@ -26,6 +26,13 @@ const __dirname = path.dirname(__filename);
 const ROOT = path.resolve(__dirname, '..');
 
 const NEW_SHEETS = 'c:\\Users\\JaK_d\\Desktop\\Avian Ascent\\New Sheets';
+const DOCUMENTS_MASTER = path.join(
+  process.env.HOME || '',
+  'Documents',
+  'Avian Ascent',
+  'Avian Workbooks',
+  'Master workbook Avian_Ascent_Workbook_Master list of birds, abilities, passives, perks, Aspects etc.xlsx',
+);
 const DOWNLOADS_MASTER = path.join(
   process.env.HOME || '',
   'Downloads',
@@ -35,6 +42,7 @@ const DOWNLOADS_MASTER = path.join(
 );
 const ABILITY_XLSX_CANDIDATES = [
   process.env.AA_ABILITY_XLSX,
+  DOCUMENTS_MASTER,
   DOWNLOADS_MASTER,
   'avian_ascent_ability_skill_trees_en_balanced_v2_updated.xlsx',
   'avian_ascent_ability_skill_trees_unique_starter_kits.xlsx',
@@ -441,6 +449,23 @@ const STAT_MAGNITUDES = {
   critDamageDown: { minor: 0.10, major: 0.15, severe: 0.25, critical: 0.35, lethal: 0.50 },
 };
 
+const BUFF_TIER_PCT = { minor: 6, major: 8, grand: 12, epic: 18, legendary: 25 };
+const DEBUFF_TIER_PCT = { minor: 6, major: 8, severe: 12, critical: 18, lethal: 25, crippling: 12, ruinous: 18, fatal: 25 };
+
+function tierBuffPct(tier) {
+  return BUFF_TIER_PCT[String(tier || '').toLowerCase().replace(/[^a-z]/g, '')] ?? null;
+}
+
+function tierDebuffPct(tier) {
+  return DEBUFF_TIER_PCT[String(tier || '').toLowerCase().replace(/[^a-z]/g, '')] ?? null;
+}
+
+function parseHybridScalingFromImportText(text) {
+  const m = String(text || '').match(/Uses\s+(\d+(?:\.\d+)?)\s*%\s*ATK\s+and\s+(\d+(?:\.\d+)?)\s*%\s*MATK/i);
+  if (!m) return null;
+  return { ATK: Number(m[1]) / 100, MATK: Number(m[2]) / 100 };
+}
+
 function resolveStatMagnitude(statKey, direction, tierLabel) {
   const tier = String(tierLabel || '').toLowerCase().replace(/[^a-z]/g, '');
   const mapKey = statKey + (direction === 'down' ? 'Down' : 'Up');
@@ -470,7 +495,7 @@ function parseRiders(riderText, codeTags, extraText = '') {
   // Self gain riders
   for (const gm of text.matchAll(/\+?\s*(\d+(?:\.\d+)?)\s*%\s*(?:ACC|Accuracy)/gi)) addSelf('gainAcc', Number(gm[1]), { when: parseRiderWhen(text, gm[0]) });
   for (const gm of text.matchAll(/\+?\s*(\d+(?:\.\d+)?)\s*%\s*Dodge/gi)) addSelf('gainDodge', Number(gm[1]), { when: parseRiderWhen(text, gm[0]) });
-  for (const gm of text.matchAll(/\+?\s*(\d+(?:\.\d+)?)\s*%\s*Speed/gi)) addSelf('gainSpeed', Number(gm[1]));
+  for (const gm of text.matchAll(/\+?\s*(\d+(?:\.\d+)?)\s*%\s*(?:Speed|SPD)\b/gi)) addSelf('gainSpeed', Number(gm[1]));
   for (const gm of text.matchAll(/\+?\s*(\d+(?:\.\d+)?)\s*%\s*Crit\s*Chance/gi)) addSelf('gainCritChance', Number(gm[1]));
   for (const gm of text.matchAll(/\+?\s*(\d+(?:\.\d+)?)\s*%\s*Crit\s*Damage/gi)) addSelf('gainCritDamage', Number(gm[1]));
 
@@ -493,6 +518,32 @@ function parseRiders(riderText, codeTags, extraText = '') {
   for (const gm of text.matchAll(/\b(Minor|Major|Grand|Epic|Legendary)\s+Crit\s+Damage\s+Up\b/gi)) {
     const n = resolveStatMagnitude('critDamage', 'up', gm[1]); if (n != null) addSelf('gainCritDamage', n);
   }
+
+  for (const gm of text.matchAll(/\b(?:Gain|gains?)\s+(Minor|Major|Grand|Epic|Legendary)\s+(?:Physical\s+)?ATK\s+Up\b/gi)) {
+    const n = tierBuffPct(gm[1]); if (n != null) addSelf('gainAtk', n, { when: parseRiderWhen(text, gm[0]) });
+  }
+  for (const gm of text.matchAll(/\b(?:Gain|gains?)\s+(Minor|Major|Grand|Epic|Legendary)\s+(?:Magic\s+)?MATK\s+Up\b/gi)) {
+    const n = tierBuffPct(gm[1]); if (n != null) addSelf('gainMatk', n, { when: parseRiderWhen(text, gm[0]) });
+  }
+  for (const gm of text.matchAll(/\b(?:Gain|gains?)\s+(Minor|Major|Grand|Epic|Legendary)\s+DEF\s+Up\b/gi)) {
+    const n = tierBuffPct(gm[1]); if (n != null) addSelf('gainDef', n);
+  }
+  for (const gm of text.matchAll(/\b(?:Gain|gains?)\s+(Minor|Major|Grand|Epic|Legendary)\s+MDEF\s+Up\b/gi)) {
+    const n = tierBuffPct(gm[1]); if (n != null) addSelf('gainMdef', n);
+  }
+  for (const gm of text.matchAll(/\b(?:Apply|apply)\s+(Minor|Major|Crippling|Ruinous|Fatal|Severe|Critical|Lethal)\s+MDEF\s+Down\b/gi)) {
+    const n = tierDebuffPct(gm[1]); if (n != null) addEnemy('reduceEnemyMdef', n);
+  }
+  for (const gm of text.matchAll(/\b(?:Apply|apply)\s+(Minor|Major|Crippling|Ruinous|Fatal|Severe|Critical|Lethal)\s+DEF\s+Down\b/gi)) {
+    const n = tierDebuffPct(gm[1]); if (n != null) addEnemy('reduceEnemyDef', n);
+  }
+  for (const gm of text.matchAll(/\b(?:Apply|apply)\s+(Minor|Major|Crippling|Ruinous|Fatal|Severe|Critical|Lethal)\s+Damage\s+Down\b/gi)) {
+    const n = tierDebuffPct(gm[1]); if (n != null) addEnemy('reduceEnemyAtk', n);
+  }
+  for (const gm of text.matchAll(/\b(?:Apply|apply)\s+(Minor|Major|Crippling|Ruinous|Fatal|Severe|Critical|Lethal)\s+ACC\s+Down\b/gi)) {
+    const n = tierDebuffPct(gm[1]); if (n != null) addEnemy('reduceEnemyAcc', n);
+  }
+  for (const gm of text.matchAll(/reduce\s+MDEF\s+by\s+(\d+(?:\.\d+)?)\s*%/gi)) addEnemy('reduceEnemyMdef', Number(gm[1]));
 
   for (const gm of text.matchAll(/gain\s+\+?\s*(\d+(?:\.\d+)?)\s*%\s*Magic\s*Attack/gi)) addSelf('gainMatk', Number(gm[1]));
   for (const gm of text.matchAll(/(?:gain\s+\+?|\bor\s+\+?\s*)(\d+(?:\.\d+)?)\s*%\s*Magic\s*Defen[cs]e/gi)) addSelf('gainMdef', Number(gm[1]));
@@ -837,12 +888,21 @@ function buildSkillTrees(perksSheets, shopSheets) {
       || ((row.secondaryScaleStat && (row.secondaryScalePct || 0) > 0) ? 'HYBRID' : String(row.scaleStat || 'ATK').toUpperCase());
     const pPct = Math.max(0, Number(row.scalePct) || 0);
     const sPct = Math.max(0, Number(row.secondaryScalePct) || 0);
-    const hybridScaling = row.hybridScaling || ((row.secondaryScaleStat && (pPct + sPct) > 0)
+    const mergedTextEarly = mergeAbilityTextParts(row.riderText, row.shortDesc, row.displayText);
+    const hybridScaling = row.hybridScaling
+      || parseHybridScalingFromImportText(mergedTextEarly)
+      || ((row.secondaryScaleStat && (pPct + sPct) > 0)
       ? {
         [String(row.scaleStat || 'ATK').toUpperCase()]: pPct / (pPct + sPct),
         [String(row.secondaryScaleStat).toUpperCase()]: sPct / (pPct + sPct),
       }
       : null);
+    const hybridPerHit = row.hybridPerHit || /First hit uses ATK,\s*second uses MATK/i.test(mergedTextEarly);
+    let lifestealPct = Number(row.lifestealPct) || 0;
+    if (!lifestealPct) {
+      const lsM = mergedTextEarly.match(/(?:Heal for |)(Minor|Major|Grand|Epic|Legendary)\s+Lifesteal/i);
+      if (lsM) lifestealPct = tierBuffPct(lsM[1]) || 0;
+    }
     let abilityPower = row.abilityPower;
     if (abilityPower == null) {
       abilityPower = 1.0;
@@ -907,6 +967,8 @@ function buildSkillTrees(perksSheets, shopSheets) {
       damageType,
       damageStat,
       hybridScaling,
+      hybridPerHit,
+      lifestealPct,
       hybridDefenceScaling: row.hybridDefenceScaling || (damageType === 'Hybrid' ? { def: 0.6, mdef: 0.4 } : null),
       abilityPower,
       condition,

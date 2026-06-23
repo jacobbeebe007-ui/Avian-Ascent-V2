@@ -11,6 +11,8 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, '..');
 const MASTER_CANDIDATES = [
   process.env.AA_MASTER_WORKBOOK_XLSX,
+  path.join(process.env.HOME || '', 'Documents', 'Avian Ascent', 'Avian Workbooks',
+    'Master workbook Avian_Ascent_Workbook_Master list of birds, abilities, passives, perks, Aspects etc.xlsx'),
   path.join(process.env.HOME || '', 'Downloads', 'Avian Music bites', 'Avian Workbooks',
     'Master workbook Avian_Ascent_Workbook_Master list of birds, abilities, passives, perks, Aspects etc.xlsx'),
 ].filter(Boolean);
@@ -63,9 +65,12 @@ function loadSheet(xlsxPath, sheetName) {
   for (const m of rels.matchAll(/<Relationship\b[^>]*\bId="([^"]+)"[^>]*\bTarget="([^"]+)"/g)) {
     ridMap[m[1]] = m[2].replace(/^\//, '');
   }
+  for (const m of rels.matchAll(/<Relationship\b[^>]*\bTarget="([^"]+)"[^>]*\bId="([^"]+)"/g)) {
+    ridMap[m[2]] = m[1].replace(/^\//, '');
+  }
   let target = null;
   for (const m of wb.matchAll(/<(?:x:)?sheet\b[^>]*\bname="([^"]+)"[^>]*\br:id="([^"]+)"/g)) {
-    if (m[1] === sheetName) target = 'xl/' + ridMap[m[2]];
+    if (m[1] === sheetName) target = 'xl/' + ridMap[m[2]].replace(/^xl\//, '');
   }
   if (!target || !entries[target]) throw new Error('Sheet not found: ' + sheetName);
   const rows = [];

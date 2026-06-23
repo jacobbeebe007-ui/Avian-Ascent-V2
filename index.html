@@ -630,6 +630,7 @@
 </div>
 </div>
 
+<div class="battle-below-combatants">
 <div class="action-panel tactical-action-tray" data-combat-panel="actions">
 <h3>⚔ Action Tray</h3>
 <div class="energy-orbs" id="energy-orbs"></div><div class="energy-text" id="energy-text"></div>
@@ -641,6 +642,7 @@
 <div class="battle-log-section" id="battle-log-section">
 <button type="button" class="battle-log-toggle" id="battle-log-toggle" aria-expanded="true" aria-controls="battle-log">Battle log</button>
 <div class="battle-log" id="battle-log" role="log" aria-live="polite"></div>
+</div>
 </div>
 </div>
 </div>
@@ -891,6 +893,10 @@
 <input id="setting-sticky-combatants" type="checkbox" checked data-change="updateAccessibilitySettings"/>
 </label>
 <p class="settings-hint">Pins both combatants (birds, HP, and EN bars) while you scroll the action tray.</p>
+<label class="settings-row">Auto-shrink UI for many abilities
+<input id="setting-auto-combat-density" type="checkbox" checked data-change="updateAccessibilitySettings"/>
+</label>
+<p class="settings-hint">Slightly reduces avatar and action tray size when 5+ abilities are unlocked.</p>
 <button type="button" class="menu-btn settings-reset-btn" data-action="resetCombatLayoutSettings">Reset combat layout</button>
 </div>
 </div>

@@ -13,6 +13,12 @@
     var combined = String(localSlice || '') + '\n' + String(text || '');
     if (/faster than the target|acting before the target|act before the target|if you act before/i.test(combined)) return 'actingFirst';
     if (/after a magic ability|used after a magic|after using a magic ability|after a magic attack/i.test(combined)) return 'afterMagicThisTurn';
+    if (/if both hit|both hits land|if both hits land/i.test(combined)) return 'allHitsLanded';
+    if (/target is already delayed|already delayed/i.test(combined)) return 'targetDelayed';
+    if (/target is weakened|target has weaken/i.test(combined)) return 'targetWeakened';
+    if (/target has an ailment|the target has an ailment/i.test(combined)) return 'targetHasAilment';
+    if (/if it fails|when it fails|if the ailment fails/i.test(combined)) return 'onAilmentFail';
+    if (/alternating attack type|alternated attack type/i.test(combined)) return 'alternatingAttackType';
     var slice = localSlice || text || '';
     if (/after\s+attack/i.test(slice)) return 'onHit';
     if (/if\s+(?:this\s+)?hits?|if\s+at\s+least\s+\d+\s+hits?\s+land/i.test(slice)) return 'onHit';
@@ -67,6 +73,45 @@
     return null;
   }
 
+  var BUFF_TIER_PCT = { minor: 6, major: 8, grand: 12, epic: 18, legendary: 25 };
+  var DEBUFF_TIER_PCT = { minor: 6, major: 8, severe: 12, critical: 18, lethal: 25, crippling: 12, ruinous: 18, fatal: 25 };
+
+  function normalizeTierLabel(tier) {
+    return String(tier || '').toLowerCase().replace(/[^a-z]/g, '');
+  }
+
+  function tierBuffPct(tier) {
+    return BUFF_TIER_PCT[normalizeTierLabel(tier)] != null ? BUFF_TIER_PCT[normalizeTierLabel(tier)] : null;
+  }
+
+  function tierDebuffPct(tier) {
+    return DEBUFF_TIER_PCT[normalizeTierLabel(tier)] != null ? DEBUFF_TIER_PCT[normalizeTierLabel(tier)] : null;
+  }
+
+  function parseHybridFieldsFromText(row, text) {
+    if (!row || !text) return;
+    if (!row.hybridScaling) {
+      var hsM = text.match(/Uses\s+(\d+(?:\.\d+)?)\s*%\s*ATK\s+and\s+(\d+(?:\.\d+)?)\s*%\s*MATK/i);
+      if (hsM) {
+        row.hybridScaling = { ATK: Number(hsM[1]) / 100, MATK: Number(hsM[2]) / 100 };
+      }
+    }
+    if (!row.hybridPerHit && /First hit uses ATK,\s*second uses MATK/i.test(text)) {
+      row.hybridPerHit = true;
+    }
+    if (!row.lifestealPct) {
+      var lsM = text.match(/(?:Heal for |)(Minor|Major|Grand|Epic|Legendary)\s+Lifesteal/i);
+      if (lsM) {
+        var lp = tierBuffPct(lsM[1]);
+        if (lp != null) row.lifestealPct = lp;
+      }
+      if (!row.lifestealPct) {
+        var lsDm = text.match(/Heal for\s+(\d+(?:\.\d+)?)\s*%\s*of damage dealt/i);
+        if (lsDm) row.lifestealPct = Number(lsDm[1]);
+      }
+    }
+  }
+
   function parseSupplementalRiders(text) {
     var riders = [];
     var t = String(text || '').trim();
@@ -101,6 +146,9 @@
     for (var gd of t.matchAll(/gain\s+\+?\s*(\d+(?:\.\d+)?)\s+Dodge(?!\s*%)/gi)) {
       addSelf('gainDodgeFlat', Number(gd[1]), { when: parseRiderWhen(t, gd[0]) });
     }
+    for (var gd2 of t.matchAll(/\band\s+\+?\s*(\d+(?:\.\d+)?)\s+Dodge(?!\s*%)/gi)) {
+      addSelf('gainDodgeFlat', Number(gd2[1]), { when: parseRiderWhen(t, gd2[0]) });
+    }
 
     // Percentage self gains. Skip matches that sit inside an enemy-debuff
     // clause ("Enemy loses 8% Speed") so the player isn't buffed by mistake.
@@ -110,7 +158,7 @@
     }
     for (var gm2 of t.matchAll(/\+?\s*(\d+(?:\.\d+)?)\s*%\s*(?:ACC|Accuracy)/gi)) { if (!inEnemyLossClause(gm2.index)) addSelf('gainAcc', Number(gm2[1]), { when: parseRiderWhen(t, gm2[0]) }); }
     for (var gm3 of t.matchAll(/\+?\s*(\d+(?:\.\d+)?)\s*%\s*Dodge/gi)) { if (!inEnemyLossClause(gm3.index)) addSelf('gainDodge', Number(gm3[1]), { when: parseRiderWhen(t, gm3[0]) }); }
-    for (var gm4 of t.matchAll(/\+?\s*(\d+(?:\.\d+)?)\s*%\s*Speed/gi)) { if (!inEnemyLossClause(gm4.index)) addSelf('gainSpeed', Number(gm4[1])); }
+    for (var gm4 of t.matchAll(/\+?\s*(\d+(?:\.\d+)?)\s*%\s*(?:Speed|SPD)\b/gi)) { if (!inEnemyLossClause(gm4.index)) addSelf('gainSpeed', Number(gm4[1])); }
     for (var gm5 of t.matchAll(/\+?\s*(\d+(?:\.\d+)?)\s*%\s*Crit\s*Chance/gi)) { if (!inEnemyLossClause(gm5.index)) addSelf('gainCritChance', Number(gm5[1])); }
     for (var gm6 of t.matchAll(/\+?\s*(\d+(?:\.\d+)?)\s*%\s*Crit\s*Damage/gi)) { if (!inEnemyLossClause(gm6.index)) addSelf('gainCritDamage', Number(gm6[1])); }
 
@@ -133,6 +181,41 @@
     for (var nm6 of t.matchAll(/\b(Minor|Major|Grand|Epic|Legendary)\s+Crit\s+Damage\s+Up\b/gi)) {
       var n6 = resolveMagnitude('critDamage', 'up', nm6[1]); if (n6 != null) addSelf('gainCritDamage', n6);
     }
+
+    // Tier-based ATK / MATK / DEF / MDEF buffs (Gain Major ATK Up, etc.)
+    for (var atkUp of t.matchAll(/\b(?:Gain|gains?)\s+(Minor|Major|Grand|Epic|Legendary)\s+(?:Physical\s+)?ATK\s+Up\b/gi)) {
+      var atkV = tierBuffPct(atkUp[1]); if (atkV != null) addSelf('gainAtk', atkV, { when: parseRiderWhen(t, atkUp[0]) });
+    }
+    for (var matkUp of t.matchAll(/\b(?:Gain|gains?)\s+(Minor|Major|Grand|Epic|Legendary)\s+(?:Magic\s+)?MATK\s+Up\b/gi)) {
+      var matkV = tierBuffPct(matkUp[1]); if (matkV != null) addSelf('gainMatk', matkV, { when: parseRiderWhen(t, matkUp[0]) });
+    }
+    for (var defUp of t.matchAll(/\b(?:Gain|gains?)\s+(Minor|Major|Grand|Epic|Legendary)\s+DEF\s+Up\b/gi)) {
+      var defV = tierBuffPct(defUp[1]); if (defV != null) addSelf('gainDef', defV);
+    }
+    for (var mdefUp of t.matchAll(/\b(?:Gain|gains?)\s+(Minor|Major|Grand|Epic|Legendary)\s+MDEF\s+Up\b/gi)) {
+      var mdefV = tierBuffPct(mdefUp[1]); if (mdefV != null) addSelf('gainMdef', mdefV);
+    }
+    for (var dmgUp of t.matchAll(/\b(?:Gain|gains?)\s+(Minor|Major|Grand|Epic|Legendary)\s+Damage\s+Up\b/gi)) {
+      var dmgV = tierBuffPct(dmgUp[1]); if (dmgV != null) addSelf('gainAtk', dmgV);
+    }
+
+    // Tier-based debuffs (Apply Major MDEF Down, Crippling Damage Down, etc.)
+    for (var mdefDn of t.matchAll(/\b(?:Apply|apply)\s+(Minor|Major|Crippling|Ruinous|Fatal|Severe|Critical|Lethal)\s+MDEF\s+Down\b/gi)) {
+      var mdefDv = tierDebuffPct(mdefDn[1]); if (mdefDv != null) addEnemy('reduceEnemyMdef', mdefDv);
+    }
+    for (var defDn of t.matchAll(/\b(?:Apply|apply)\s+(Minor|Major|Crippling|Ruinous|Fatal|Severe|Critical|Lethal)\s+DEF\s+Down\b/gi)) {
+      var defDv = tierDebuffPct(defDn[1]); if (defDv != null) addEnemy('reduceEnemyDef', defDv);
+    }
+    for (var dmgDn of t.matchAll(/\b(?:Apply|apply)\s+(Minor|Major|Crippling|Ruinous|Fatal|Severe|Critical|Lethal)\s+Damage\s+Down\b/gi)) {
+      var dmgDv = tierDebuffPct(dmgDn[1]); if (dmgDv != null) addEnemy('reduceEnemyAtk', dmgDv);
+    }
+    for (var accDn of t.matchAll(/\b(?:Apply|apply)\s+(Minor|Major|Crippling|Ruinous|Fatal|Severe|Critical|Lethal)\s+ACC\s+Down\b/gi)) {
+      var accDv = tierDebuffPct(accDn[1]); if (accDv != null) addEnemy('reduceEnemyAcc', accDv);
+    }
+
+    // "reduce MDEF by 8%" style clauses
+    for (var redMdef of t.matchAll(/reduce\s+MDEF\s+by\s+(\d+(?:\.\d+)?)\s*%/gi)) addEnemy('reduceEnemyMdef', Number(redMdef[1]));
+    for (var redDef of t.matchAll(/reduce\s+DEF\s+by\s+(\d+(?:\.\d+)?)\s*%/gi)) addEnemy('reduceEnemyDef', Number(redDef[1]));
 
     for (var gm7 of t.matchAll(/gain\s+\+?\s*(\d+(?:\.\d+)?)\s*%\s*Magic\s*Attack/gi)) addSelf('gainMatk', Number(gm7[1]));
     for (var gm8 of t.matchAll(/(?:gain\s+\+?|\bor\s+\+?\s*)(\d+(?:\.\d+)?)\s*%\s*Magic\s*Defen[cs]e/gi)) addSelf('gainMdef', Number(gm8[1]));
@@ -175,6 +258,8 @@
       var shM = t.match(/(\d+(?:\.\d+)?)\s*%\s*(?:max\s*)?(?:hp|health)/i);
       addSelf('gainShield', shM ? Number(shM[1]) : 0);
     } else if (/\b(minor|major|grand|epic|legendary)\s+shield\b/i.test(t)) {
+      addSelf('gainShield', 0);
+    } else if (/\b(?:gain|gains?)\s+(minor|major|grand|epic|legendary)\s+shield\b/i.test(t)) {
       addSelf('gainShield', 0);
     } else if (/\bgain\s+shield\b/i.test(t)) addSelf('gainShield', 0);
     if (/counter\s*chance|small counter/i.test(t)) addSelf('gainCounter', 1);
@@ -225,6 +310,7 @@
   function applyTextEnrichment(row) {
     if (!row || row._textEnriched) return row;
     var text = mergeAbilityText(row);
+    parseHybridFieldsFromText(row, text);
     var cond = parseConditionalAbilityFromText(text);
     if (cond && cond.condition) {
       row.condition = cond.condition;

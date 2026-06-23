@@ -320,7 +320,7 @@
       }
     }
     var tier = null;
-    var text = String(row && (row.riderText || row.shortDesc) || '');
+    var text = String(row && (row.displayText || row.shortDesc || row.riderText) || '');
     var tm = text.match(/\b(minor|major|grand|epic|legendary)\b/i);
     if (tm) tier = tm[1].toLowerCase();
     apply('player', {
@@ -578,7 +578,24 @@
     // controlled. Each hit still rolls its own miss; a missed hit forfeits its chunk.
     var masterSplit = null;
     var masterIsCrit = false;
-    if (usesMaster && typeof globalThis.computeMasterOutgoingDamage === 'function') {
+    if (usesMaster && row.hybridPerHit && typeof globalThis.computeMasterOutgoingDamage === 'function') {
+      masterSplit = [];
+      for (var hi = 0; hi < hits; hi++) {
+        row._hybridHitStat = hi === 0 ? 'ATK' : 'MATK';
+        if (g) {
+          g._currentPiercePct = isMagic ? (row.pierceMdef || 0) : (row.pierceDef || 0);
+          g._dispatcherCombatRow = row;
+        } else {
+          G._currentPiercePct = isMagic ? (row.pierceMdef || 0) : (row.pierceDef || 0);
+          G._dispatcherCombatRow = row;
+        }
+        var perHitTotal = globalThis.computeMasterOutgoingDamage(isMagic, src, { hitSucceeded: true });
+        if (g) g._dispatcherCombatRow = null; else G._dispatcherCombatRow = null;
+        masterSplit.push(perHitTotal ? perHitTotal.damage : 0);
+        if (perHitTotal && perHitTotal.isCrit) masterIsCrit = true;
+      }
+      delete row._hybridHitStat;
+    } else if (usesMaster && typeof globalThis.computeMasterOutgoingDamage === 'function') {
       if (g) {
         g._currentPiercePct = isMagic ? (row.pierceMdef || 0) : (row.pierceDef || 0);
         g._dispatcherCombatRow = row;
@@ -620,7 +637,8 @@
       if (g) g._dispatcherCombatRow = null;
       else G._dispatcherCombatRow = null;
       if (res && !res.wasDodged && isHybrid && typeof globalThis.calculateHybridDisplaySplit === 'function') {
-        var hitSplit = globalThis.calculateHybridDisplaySplit((res.dmgDealt) || 0, row);
+        var splitRow = Object.assign({}, row, { hitIndex: row.hybridPerHit ? i : null });
+        var hitSplit = globalThis.calculateHybridDisplaySplit((res.dmgDealt) || 0, splitRow);
         res.hybridSplit = { physical: hitSplit.physical, magic: hitSplit.magic };
       }
       if (res && res.isCrit) anyCrit = true;

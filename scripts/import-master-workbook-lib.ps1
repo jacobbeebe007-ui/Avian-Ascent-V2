@@ -1,7 +1,15 @@
 # Shared xlsx + normalization helpers for import-master-workbook.ps1
 # Dot-source: . "$PSScriptRoot\import-master-workbook-lib.ps1"
 
-$script:MasterWorkbookDefault = 'C:\Users\JaK_d\Desktop\Avian Ascent\New Sheets\Main\Master workbook Avian_Ascent_Workbook_Master list of birds, abilities, passives, perks, Aspects etc.xlsx'
+$script:MasterWorkbookDefault = @(
+    $env:AA_MASTER_WORKBOOK_XLSX
+    (Join-Path $env:HOME 'Documents/Avian Ascent/Avian Workbooks/Master workbook Avian_Ascent_Workbook_Master list of birds, abilities, passives, perks, Aspects etc.xlsx')
+    (Join-Path $env:HOME 'Downloads/Avian Music bites/Avian Workbooks/Master workbook Avian_Ascent_Workbook_Master list of birds, abilities, passives, perks, Aspects etc.xlsx')
+    'C:\Users\JaK_d\Desktop\Avian Ascent\New Sheets\Main\Master workbook Avian_Ascent_Workbook_Master list of birds, abilities, passives, perks, Aspects etc.xlsx'
+) | Where-Object { $_ -and (Test-Path $_) } | Select-Object -First 1
+if (-not $script:MasterWorkbookDefault) {
+    $script:MasterWorkbookDefault = (Join-Path $env:HOME 'Documents/Avian Ascent/Avian Workbooks/Master workbook Avian_Ascent_Workbook_Master list of birds, abilities, passives, perks, Aspects etc.xlsx')
+}
 
 $script:BIRD_NAME_TO_KEY = @{
     'Sparrow'='sparrow'; 'Goose'='goose'; 'Blackbird'='blackbird'; 'Crow'='crow'; 'Magpie'='magpie'
@@ -526,6 +534,38 @@ function Get-AbilityTagsFromRow {
     return $tags.ToArray()
 }
 
+function Get-LifestealTierPct {
+    param([string]$Tier)
+    $map = @{ minor = 6; major = 8; grand = 12; epic = 18; legendary = 25 }
+    $k = ([string]$Tier).ToLower().Trim()
+    if ($map.ContainsKey($k)) { return $map[$k] }
+    return 0
+}
+
+function Parse-HybridScalingFromText {
+    param([string]$Text)
+    if ([string]$Text -match 'Uses\s+(\d+)%\s+ATK\s+and\s+(\d+)%\s+MATK') {
+        return [ordered]@{
+            ATK = [double]$Matches[1] / 100.0
+            MATK = [double]$Matches[2] / 100.0
+        }
+    }
+    return $null
+}
+
+function Parse-HybridPerHitFromText {
+    param([string]$Text)
+    return [bool]([string]$Text -match 'First hit uses ATK,\s*second uses MATK')
+}
+
+function Parse-LifestealPctFromText {
+    param([string]$Text)
+    if ([string]$Text -match '(Minor|Major|Grand|Epic|Legendary)\s+Lifesteal') {
+        return Get-LifestealTierPct $Matches[1]
+    }
+    return 0
+}
+
 function Build-AbilityRowEntry {
     param($Row, $Header, [string]$Id, [string]$FamilyId, [string]$Branch, [int]$Level, [string]$Source = 'bird')
     $en = Get-Num (Get-CellFuzzy $Row $Header @('EN Cost'))
@@ -575,6 +615,10 @@ function Build-AbilityRowEntry {
         $noDamage = $true
     }
     if ($dmgType -match '^none$' -and $utility) { $noDamage = $true }
+    $mergedText = "$display $utility"
+    $hybridScaling = Parse-HybridScalingFromText $mergedText
+    $hybridPerHit = Parse-HybridPerHitFromText $mergedText
+    $lifestealPct = Parse-LifestealPctFromText $mergedText
     return @{
         id = $Id
         familyId = $FamilyId
@@ -622,5 +666,8 @@ function Build-AbilityRowEntry {
         isUltimate = $isUltimate
         isSpecial = $isSpecial
         noDamage = $noDamage
+        hybridScaling = $hybridScaling
+        hybridPerHit = $hybridPerHit
+        lifestealPct = if ($lifestealPct -gt 0) { $lifestealPct } else { 0 }
     }
 }

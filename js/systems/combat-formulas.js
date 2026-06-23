@@ -295,8 +295,24 @@
     return String(row.scaleStat || 'ATK').toUpperCase();
   }
 
+  function mergeAbilityTextForHybrid(row) {
+    if (!row) return '';
+    return [row.riderText, row.shortDesc, row.displayText].filter(function (s) {
+      return s && String(s).trim() && !/^none$/i.test(String(s).trim());
+    }).join('\n');
+  }
+
+  function parseHybridScalingFromText(text) {
+    var t = String(text || '');
+    var m = t.match(/Uses\s+(\d+(?:\.\d+)?)\s*%\s*ATK\s+and\s+(\d+(?:\.\d+)?)\s*%\s*MATK/i);
+    if (!m) return null;
+    return { ATK: Number(m[1]) / 100, MATK: Number(m[2]) / 100 };
+  }
+
   function buildHybridScaling(row) {
     if (row && row.hybridScaling && typeof row.hybridScaling === 'object') return row.hybridScaling;
+    var textScaling = parseHybridScalingFromText(mergeAbilityTextForHybrid(row));
+    if (textScaling) return textScaling;
     var primary = String(row.scaleStat || 'ATK').toUpperCase();
     var secondary = String(row.secondaryScaleStat || '').toUpperCase();
     var pPct = Math.max(0, Number(row.scalePct) || 0);
@@ -417,9 +433,12 @@
     return row;
   }
 
-  function getRelevantAttackStat(attacker, ability) {
+  function getRelevantAttackStat(attacker, ability, opts) {
+    opts = opts || {};
     var row = ability || {};
     enrichCombatRow(row);
+    var hitStat = opts.hybridHitStat || row._hybridHitStat;
+    if (hitStat) return statFromEntity(attacker, String(hitStat).toUpperCase());
     var statKey = String(row.damageStat || 'ATK').toUpperCase();
     if (statKey === 'TRUE') return 1;
     if (statKey === 'HYBRID' && row.hybridScaling) {
@@ -573,7 +592,9 @@
     var enCost = ability.enCost != null ? ability.enCost : (ability.apCost || 1);
     var enBase = getENBaseDamage(enCost);
     var abilityPower = getAbilityPower(ability, attacker, target, battleState);
-    var relevantStat = getRelevantAttackStat(attacker, ability);
+    var relevantStat = getRelevantAttackStat(attacker, ability, {
+      hybridHitStat: params.hybridHitStat || (ability && ability._hybridHitStat),
+    });
     var className = attacker.class || attacker.enemyClass || attacker.birdClass || 'rogue';
     var statMod = getStatModifier(relevantStat, getClassBaseline(className));
     var defStat = getRelevantDefenceStat(target, ability);
@@ -640,17 +661,25 @@
   function calculateHybridDisplaySplit(totalOrParams, rowOpt) {
     var total = 0;
     var row = rowOpt || {};
+    var hitIndex = rowOpt && rowOpt.hitIndex != null ? Number(rowOpt.hitIndex) : null;
     if (typeof totalOrParams === 'number') {
       total = roundCurvedDamage(Math.max(0, Number(totalOrParams) || 0));
       row = rowOpt || {};
+      hitIndex = rowOpt && rowOpt.hitIndex != null ? Number(rowOpt.hitIndex) : hitIndex;
     } else if (totalOrParams && typeof totalOrParams === 'object') {
       row = totalOrParams.ability || totalOrParams.row || rowOpt || {};
+      hitIndex = totalOrParams.hitIndex != null ? Number(totalOrParams.hitIndex) : hitIndex;
       enrichCombatRow(row);
       if (typeof calculateDamage === 'function') {
         total = roundCurvedDamage(Math.max(0, (calculateDamage(totalOrParams).damage) || 0));
       }
     }
     enrichCombatRow(row);
+    if (row.hybridPerHit && hitIndex != null && !isNaN(hitIndex)) {
+      if (total <= 0) return { total: 0, physical: 0, magic: 0, weights: { ATK: hitIndex === 0 ? 1 : 0, MATK: hitIndex === 0 ? 0 : 1 } };
+      if (hitIndex === 0) return { total: total, physical: total, magic: 0, weights: { ATK: 1, MATK: 0 } };
+      return { total: total, physical: 0, magic: total, weights: { ATK: 0, MATK: 1 } };
+    }
     var scaling = row.hybridScaling || buildHybridScaling(row) || { ATK: 0.5, MATK: 0.5 };
     var wAtk = Number(scaling.ATK) || 0;
     var wMatk = Number(scaling.MATK) || 0;

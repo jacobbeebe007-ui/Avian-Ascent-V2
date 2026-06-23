@@ -4644,29 +4644,31 @@ function updateBattleArena() {
 globalThis.updateBattleArena = updateBattleArena;
 
 let _battleLogDrawerBound = false;
+function syncBattleLogDrawerCollapse(){
+  const btn=document.getElementById('battle-log-toggle');
+  const sec=document.getElementById('battle-log-section');
+  if(!btn||!sec) return;
+  const mobile=document.body.classList.contains('ui-mobile-mode');
+  if(mobile){
+    sec.classList.add('collapsed');
+    btn.setAttribute('aria-expanded','false');
+  }else{
+    sec.classList.remove('collapsed');
+    btn.setAttribute('aria-expanded','true');
+  }
+}
 function initBattleLogDrawer() {
   if (_battleLogDrawerBound) return;
   const btn = document.getElementById('battle-log-toggle');
   const sec = document.getElementById('battle-log-section');
   if (!btn || !sec) return;
   _battleLogDrawerBound = true;
-  const mq = window.matchMedia('(max-width: 900px)');
-  const applyMq = () => {
-    if (mq.matches) {
-      sec.classList.add('collapsed');
-      btn.setAttribute('aria-expanded', 'false');
-    } else {
-      sec.classList.remove('collapsed');
-      btn.setAttribute('aria-expanded', 'true');
-    }
-  };
   btn.addEventListener('click', () => {
-    if (!mq.matches) return;
+    if (!document.body.classList.contains('ui-mobile-mode')) return;
     sec.classList.toggle('collapsed');
     btn.setAttribute('aria-expanded', sec.classList.contains('collapsed') ? 'false' : 'true');
   });
-  mq.addEventListener('change', applyMq);
-  applyMq();
+  syncBattleLogDrawerCollapse();
 }
 
 /** True whenever the current run was launched via the overworld map. */
@@ -8301,6 +8303,8 @@ function renderActions() {
   endBtn.onclick=()=>endPlayerTurn();
   endWrap.appendChild(endBtn);
   grid.appendChild(endWrap);
+
+  applyEffectiveCombatScales(getAccessibilitySettings(), allAbilities.length);
 
   if(!G.battleOver&&G.turn==='player'&&G.turnPhase===TURN.PLAYER&&G.phase==='PLAYER'&&!G.actionBusy
     &&!hasPlayableAction&&canPlayerAct()
@@ -17466,6 +17470,7 @@ function normalizeCombatArrangement(raw){
   return COMBAT_ARRANGEMENTS.includes(id)?id:DEFAULT_COMBAT_ARRANGEMENT;
 }
 const DEFAULT_COMBAT_LAYOUT={avatarScale:100,combatantsScale:100,actionTrayScale:100,battleLogScale:100};
+const MOBILE_DEFAULT_COMBAT_LAYOUT={avatarScale:80,combatantsScale:85,actionTrayScale:80,battleLogScale:85};
 function normalizeCombatLayout(raw){
   const d=DEFAULT_COMBAT_LAYOUT;
   const r=raw&&typeof raw==='object'?raw:{};
@@ -17497,6 +17502,7 @@ function normalizeAccessibilitySettings(raw){
     combatArrangement:normalizeCombatArrangement(raw.combatArrangement),
     combatCustomLayout:normalizeCombatCustomLayout(raw.combatCustomLayout),
     stickyCombatants:raw.stickyCombatants!==false,
+    autoCombatDensity:raw.autoCombatDensity!==false,
     audio,
     tooltips:{...DEFAULT_TOOLTIP_SETTINGS, ...(raw.tooltips||{})},
   };
@@ -17518,6 +17524,10 @@ function bootstrapAccessibilityDefaults(){
       uiMode,
       uiAutoDetect:true,
       fontSize:uiMode==='mobile'?115:100,
+      combatArrangement:uiMode==='mobile'?'compact':'classic',
+      stickyCombatants:true,
+      autoCombatDensity:true,
+      combatLayout:uiMode==='mobile'?MOBILE_DEFAULT_COMBAT_LAYOUT:DEFAULT_COMBAT_LAYOUT,
     });
     localStorage.setItem(ACCESS_KEY, JSON.stringify(cfg));
     return;
@@ -17573,6 +17583,7 @@ function applyUIStateToDOM(){
   if(main) main.checked=(ui.gameMode==='endless');
   document.body.classList.toggle('ui-mobile-mode', ui.battleLayout==='mobile');
   document.body.classList.toggle('ui-desktop-mode', ui.battleLayout==='desktop');
+  syncBattleLogDrawerCollapse();
   if (document.getElementById('screen-battle')?.classList.contains('active') && typeof updateBattleArena === 'function') {
     updateBattleArena();
   }
@@ -17597,14 +17608,35 @@ function wireCombatDropdownStateSync(){
     el.addEventListener('toggle', ()=>syncCombatDropdownUIState());
   });
 }
-function applyCombatLayoutSettings(cfg){
+function getAutoCombatDensityReduction(abilityCount){
+  const n=Math.max(0,Math.floor(Number(abilityCount)||0));
+  if(n>=7) return 15;
+  if(n>=6) return 10;
+  if(n>=5) return 5;
+  return 0;
+}
+function applyEffectiveCombatScales(cfg, abilityCount){
   const cl=normalizeCombatLayout(cfg?.combatLayout);
   const battle=document.getElementById('screen-battle');
   if(!battle) return;
-  battle.style.setProperty('--combat-avatar-scale', String(cl.avatarScale));
-  battle.style.setProperty('--combat-combatants-scale', String(cl.combatantsScale));
-  battle.style.setProperty('--combat-action-scale', String(cl.actionTrayScale));
-  battle.style.setProperty('--combat-log-scale', String(cl.battleLogScale));
+  const count=Math.max(0,Math.floor(Number(abilityCount)||0));
+  battle.setAttribute('data-ability-count',String(Math.min(7,count)));
+  let avatarScale=cl.avatarScale;
+  let actionTrayScale=cl.actionTrayScale;
+  const autoOn=cfg?.autoCombatDensity!==false&&cfg?.stickyCombatants!==false;
+  if(autoOn){
+    const cut=getAutoCombatDensityReduction(count);
+    avatarScale=Math.max(70,avatarScale-cut);
+    actionTrayScale=Math.max(70,actionTrayScale-cut);
+  }
+  battle.style.setProperty('--combat-avatar-scale',String(avatarScale));
+  battle.style.setProperty('--combat-combatants-scale',String(cl.combatantsScale));
+  battle.style.setProperty('--combat-action-scale',String(actionTrayScale));
+  battle.style.setProperty('--combat-log-scale',String(cl.battleLogScale));
+}
+function applyCombatLayoutSettings(cfg){
+  const abilityCount=G?.player?.abilities?.length||0;
+  applyEffectiveCombatScales(cfg||getAccessibilitySettings(),abilityCount);
 }
 function clearCombatCustomPanelStyles(){
   const battle=document.getElementById('screen-battle');
@@ -17821,6 +17853,8 @@ function openSettingsModal(){
   setRange('setting-combat-log-scale',cl.battleLogScale);
   const stickyCombatants=document.getElementById('setting-sticky-combatants');
   if(stickyCombatants) stickyCombatants.checked=cfg.stickyCombatants!==false;
+  const autoDensity=document.getElementById('setting-auto-combat-density');
+  if(autoDensity) autoDensity.checked=cfg.autoCombatDensity!==false;
   const ms=getMusicSettings();
   const a=cfg.audio||{};
   const master=document.getElementById('setting-master-volume');
@@ -17857,6 +17891,7 @@ function resetCombatLayoutSettings(){
   const cfg=Object.assign({}, prev, {
     combatLayout:Object.assign({}, DEFAULT_COMBAT_LAYOUT),
     stickyCombatants:true,
+    autoCombatDensity:true,
   });
   localStorage.setItem(ACCESS_KEY, JSON.stringify(normalizeAccessibilitySettings(cfg)));
   applyAccessibilitySettings(cfg);
@@ -17885,6 +17920,9 @@ function updateAccessibilitySettings(){
     stickyCombatants:document.getElementById('setting-sticky-combatants')
       ? !!document.getElementById('setting-sticky-combatants').checked
       : prev.stickyCombatants!==false,
+    autoCombatDensity:document.getElementById('setting-auto-combat-density')
+      ? !!document.getElementById('setting-auto-combat-density').checked
+      : prev.autoCombatDensity!==false,
     audio:Object.assign({}, prev.audio, {
       master:Number(document.getElementById('setting-master-volume')?.value??prev.audio?.master??100),
       music:Number(document.getElementById('setting-music-volume')?.value??prev.audio?.music??THEME_BGM_DEFAULT_VOLUME_PCT),

@@ -4437,6 +4437,20 @@ img{image-rendering:pixelated;image-rendering:crisp-edges;}
 #screen-battle .actions-grid-footer{border-top-color:rgba(200,160,32,.2);}
 #screen-battle .actions-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;}
 .action-btn{min-height:120px;min-width:0;padding:9px 10px;border-radius:10px;gap:4px;align-items:stretch;}
+#screen-battle.combat-arr--compact .action-btn,
+body.ui-mobile-mode #screen-battle .action-btn{
+  min-height:calc(88px * var(--combat-action-scale) / 100);
+}
+#screen-battle.combat-arr--compact .btn-desc,
+body.ui-mobile-mode #screen-battle .btn-desc{
+  min-height:20px;
+}
+@media (max-width:520px){
+  #screen-battle[data-ability-count="6"] .actions-grid,
+  #screen-battle[data-ability-count="7"] .actions-grid{
+    grid-template-columns:repeat(3,minmax(0,1fr));
+  }
+}
 #screen-battle .action-btn.endturn-mini{min-height:auto;align-self:center;}
 .btn-name{font-size:.83rem;line-height:1.2;}
 .btn-type{font-size:.62rem;opacity:.95;}
@@ -5250,16 +5264,22 @@ body.combat-sticky-combatants #screen-battle .combatants{
   background:linear-gradient(180deg,rgba(7,12,7,.98) 0%,rgba(7,12,7,.92) 72%,rgba(7,12,7,0) 100%);
   box-shadow:0 8px 18px rgba(0,0,0,.28);
 }
-body.combat-sticky-combatants #screen-battle .action-panel{
+body.combat-sticky-combatants #screen-battle .battle-below-combatants{
   flex:1 1 auto;
   min-height:0;
   overflow-y:auto;
   overflow-x:hidden;
   -webkit-overflow-scrolling:touch;
   overscroll-behavior:contain;
+  display:flex;
+  flex-direction:column;
+  gap:8px;
 }
+body.combat-sticky-combatants #screen-battle .action-panel,
 body.combat-sticky-combatants #screen-battle .battle-support-area{
   flex-shrink:0;
+  overflow:visible;
+  min-height:auto;
 }
 body.combat-sticky-combatants #screen-battle #actions-grid{
   max-height:none !important;
@@ -5277,12 +5297,27 @@ body.combat-sticky-combatants #screen-battle.combat-arr--actionsFirst .battle-la
   overflow-y:auto;
   -webkit-overflow-scrolling:touch;
 }
+body.combat-sticky-combatants #screen-battle.combat-arr--actionsFirst .battle-below-combatants{
+  flex:0 1 auto;
+  overflow:visible;
+  min-height:auto;
+}
 body.combat-sticky-combatants #screen-battle.combat-arr--actionsFirst .action-panel{
   flex:0 1 auto;
   overflow:visible;
   min-height:auto;
 }
 /* Custom arrangement: player/enemy panels are direct flex children */
+body.combat-sticky-combatants #screen-battle.combat-arr--custom .battle-below-combatants{
+  display:contents !important;
+}
+body.combat-sticky-combatants #screen-battle.combat-arr--custom .action-panel{
+  flex:1 1 auto;
+  min-height:0;
+  overflow-y:auto;
+  overflow-x:hidden;
+  -webkit-overflow-scrolling:touch;
+}
 body.combat-sticky-combatants #screen-battle.combat-arr--custom .combatants{
   display:contents !important;
   background:transparent;
@@ -5308,6 +5343,9 @@ body.combat-sticky-combatants #screen-battle.combat-arr--custom #enemy-panel{
   body.combat-sticky-combatants #screen-battle.combat-arr--logFocus .combatants{
     grid-column:1;
     grid-row:3;
+  }
+  body.combat-sticky-combatants #screen-battle.combat-arr--logFocus .battle-below-combatants{
+    display:contents;
   }
   body.combat-sticky-combatants #screen-battle.combat-arr--logFocus .action-panel{
     grid-column:1;

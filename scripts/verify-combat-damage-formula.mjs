@@ -4,8 +4,12 @@ import vm from 'node:vm';
 import path from 'node:path';
 
 const aspectsPath = path.resolve('js/data/aspects.js');
+const magnitudesPath = path.resolve('js/data/combat-stat-magnitudes.js');
+const riderParserPath = path.resolve('js/systems/ability-rider-parser.js');
 const formulasPath = path.resolve('js/systems/combat-formulas.js');
 const aspectsSrc = readFileSync(aspectsPath, 'utf8');
+const magnitudesSrc = readFileSync(magnitudesPath, 'utf8');
+const riderParserSrc = readFileSync(riderParserPath, 'utf8');
 const formulasSrc = readFileSync(formulasPath, 'utf8');
 
 const sandbox = {
@@ -17,6 +21,8 @@ sandbox.globalThis = sandbox;
 vm.createContext(sandbox);
 // Aspect chart must load first so getAspectMultiplier can read Avian.data.aspects.
 vm.runInContext(aspectsSrc, sandbox, { filename: 'aspects.js', timeout: 5000 });
+vm.runInContext(magnitudesSrc, sandbox, { filename: 'combat-stat-magnitudes.js', timeout: 5000 });
+vm.runInContext(riderParserSrc, sandbox, { filename: 'ability-rider-parser.js', timeout: 5000 });
 vm.runInContext(formulasSrc, sandbox, { filename: 'combat-formulas.js', timeout: 5000 });
 
 const c = sandbox;
@@ -123,6 +129,34 @@ function dmg(params) {
   const hybridAttacker = { class: 'bard', stats: { atk: 20, matk: 10 } };
   const blended = c.getRelevantAttackStat(hybridAttacker, ability);
   check('8b — implicit hybrid blends ATK+MATK (not ATK only)', near(blended, 20 * 0.5 + 10 * 0.5) && blended !== 20, `blended=${blended}`);
+}
+
+// 8c — Hybrid text split 60/40 from Display Text
+{
+  const ability = c.enrichCombatRow({
+    apCost: 2,
+    category: 'hybrid',
+    damageType: 'Hybrid',
+    damageStat: 'HYBRID',
+    displayText: 'Uses 60% ATK and 40% MATK.',
+  });
+  check('8c — 60/40 hybrid from text', near(ability.hybridScaling.ATK, 0.6) && near(ability.hybridScaling.MATK, 0.4), JSON.stringify(ability.hybridScaling));
+}
+
+// 8d — Per-hit hybrid flag from text
+{
+  const ability = c.enrichCombatRow({
+    apCost: 2,
+    category: 'hybrid',
+    damageType: 'Hybrid',
+    damageStat: 'HYBRID',
+    displayText: 'Hits twice. First hit uses ATK, second uses MATK; if both hit, gain Major ACC Up.',
+  });
+  check('8d — hybridPerHit from text', !!ability.hybridPerHit, `hybridPerHit=${ability.hybridPerHit}`);
+  const split0 = c.calculateHybridDisplaySplit(10, Object.assign({}, ability, { hitIndex: 0 }));
+  const split1 = c.calculateHybridDisplaySplit(10, Object.assign({}, ability, { hitIndex: 1 }));
+  check('8d — per-hit display split hit0 physical', split0.physical === 10 && split0.magic === 0, JSON.stringify(split0));
+  check('8d — per-hit display split hit1 magic', split1.magic === 10 && split1.physical === 0, JSON.stringify(split1));
 }
 
 // 9 — True Damage attack ignoring defence
