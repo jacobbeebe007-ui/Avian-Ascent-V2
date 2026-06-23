@@ -4,5 +4,6 @@
  */
 (function () {
   'use strict';
-  globalThis.ENEMIES = Object.freeze([]);
+  const enemies = Object.freeze([]);
+  globalThis.ENEMIES = enemies;
 })();

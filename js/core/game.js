@@ -240,17 +240,6 @@ const ENEMY_ABILITY_POOL = {
     applyAilment('player','poison',3);
     logMsg(`☣ ${e.name} infects you with plague!`,'enemy-action');
   }},
-  eShield:  {name:'Iron Feathers', desc:'Gain Block for 2 turns.', dmg:'0 direct', fn(e,p,G){
-    if((G.enemyStatus.defending||0)>0){
-      const r=dealDamage('player',edmg(0.9));
-      spawnFloat('player',`-${r.dmgDealt}`,'fn-dmg');
-      logMsg(`🛡 ${e.name} is already guarded and strikes instead!`,'enemy-action');
-      return;
-    }
-    G.enemyStatus.defending=2;
-    doShield('enemy');
-    logMsg(`🛡 ${e.name} hardens its feathers for 2 turns!`,'enemy-action');
-  }},
 };
 
 // ENEMIES table lives in js/data/enemies.js (assigns globalThis.ENEMIES,
@@ -3090,17 +3079,33 @@ function getCardTierSlotCount(player){
   }
   return 2;
 }
-/** Seed player skill slots from bird-card tier (slot unlocks + mutation stage S1–S3). */
+/** Seed player skill slots from bird-card tier. Card tier unlocks slots; Mutated Feathers advance S1–S3. */
 function applyPlayerSkillsFromCardTier(player, tierOverride, starsOverride){
   if(!player?.birdKey) return;
   if(typeof materializeEnemySkillsFromWorkbookKit!=='function') return;
   const tier=tierOverride??player._birdCardTier??(typeof getBirdCardTier==='function'?getBirdCardTier(player.birdKey):'grey');
-  const stars=starsOverride??player._birdCardStars??(typeof getBirdCardStars==='function'?getBirdCardStars(player.birdKey):0);
+  const priorSlots=Array.isArray(player.familyEvolutionState?.skillSlots)
+    ? player.familyEvolutionState.skillSlots.map(slot=>slot?JSON.parse(JSON.stringify(slot)):slot)
+    : [];
   materializeEnemySkillsFromWorkbookKit(player, player.birdKey, 1, player.class, null, {
     forPlayer:true,
     unlockSlots:typeof getEnemyUnlockedSlotCountForTier==='function'?getEnemyUnlockedSlotCountForTier(tier):2,
-    mutationStage:typeof mutationStageForTierStar==='function'?mutationStageForTierStar(tier, stars):1,
+    mutationStage:1,
   });
+  if(priorSlots.length && Array.isArray(player.familyEvolutionState?.skillSlots)){
+    const priorByIndex=new Map(priorSlots.filter(Boolean).map(slot=>[Number(slot.slotIndex)||0, slot]));
+    player.familyEvolutionState.skillSlots.forEach(slot=>{
+      if(!slot || !isSkillSlotUnlocked(slot, player)) return;
+      const prior=priorByIndex.get(Number(slot.slotIndex)||0);
+      if(!prior?.abilityId || !prior.familyId) return;
+      const info=typeof getFamilyEvolutionAbilityStateFromId==='function'
+        ? getFamilyEvolutionAbilityStateFromId(player.birdKey, prior.abilityId)
+        : null;
+      if(info ? info.familyId!==prior.familyId : prior.familyId!==slot.familyId) return;
+      Object.assign(slot, prior, { slotIndex:slot.slotIndex });
+    });
+  }
+  if(typeof syncPlayerAbilitiesFromSkillSlots==='function') syncPlayerAbilitiesFromSkillSlots(player);
 }
 globalThis.applyPlayerSkillsFromCardTier=applyPlayerSkillsFromCardTier;
 function isSkillSlotUnlocked(slot, player){
@@ -4196,8 +4201,8 @@ function getEnemyKitAbilityIds(enemy){
   const abs=enemy.abilities||[];
   const ids=[];
   for(const x of abs){
-    if(typeof x==='string'&&x) ids.push(x);
-    else if(x&&typeof x==='object'&&x.id) ids.push(x.id);
+    const id=typeof x==='string'?x:(x&&typeof x==='object'?x.id:'');
+    if(id&&id!=='eShield') ids.push(id);
   }
   return ids;
 }
@@ -4427,7 +4432,7 @@ function buildEnemyAbilityTooltipHtml(abKey, enemyStats, enemyCtx=null){
     let category='Ability';
     if(dmgRaw==='healing') category='Heal';
     else if(dmgRaw==='buff') category='Buff';
-    else if(abKey==='eShield'||/defend|shield/i.test(desc)) category='Shield';
+    else if(/defend|shield/i.test(desc)) category='Shield';
     else if(dmgRaw==='0 direct') category='Debuff';
     else category='Offensive';
     let dmgLine='';
@@ -13243,6 +13248,8 @@ function endPlayerTurn(force=false) {
   tickDelayedForTarget('player');
   if(G.player.stats.hp<=0||G.enemy.stats.hp<=0){if(checkDeath())return;}
   tickGuardedStatus(G.enemyStatus);
+  tickShieldHpStatus('enemy');
+  if(typeof Avian?.dispatcher?.onAfterPlayerTurn==='function') Avian.dispatcher.onAfterPlayerTurn(G.enemy);
   G.turn='enemy';
   lockActionUI(true);
   refreshBattleUI();
@@ -13529,7 +13536,7 @@ function getEnemyActionComboBonus(enemy,action,cat){
   if(['duelist','executioner'].includes(p) && ['eWeaken','eFear','eBlind'].includes(prev) && (cat==='heavy'||cat==='damage')) return 1.30;
   if(['seer','control'].includes(p) && prev==='eBlind' && cat==='damage') return 1.25;
   if(['reaper','scavenger'].includes(p) && ['ePoison','eVenom'].includes(prev) && (cat==='damage'||cat==='heavy')) return 1.25;
-  if(p==='predator' && ['eShield','eRage','eWeaken','eFear'].includes(prev) && (cat==='heavy'||cat==='damage')) return 1.35;
+  if(p==='predator' && ['eRage','eWeaken','eFear'].includes(prev) && (cat==='heavy'||cat==='damage')) return 1.35;
   return 1;
 }
 /* planEnemyTurn — implemented in js/systems/enemy-ai.js (enhanced EV planner). */
@@ -13667,6 +13674,11 @@ async function executeEnemyKitTemplateAbility(enemy, abilityId, totalEnemyMiss){
   const btn=String(tmpl.btnType||tmpl.type||'').toLowerCase();
   const name=tmpl.name||abilityId;
   const cat=classifyKitAbilityForEnemyAI(abilityId,enemy);
+  const combatRow=tmpl?._combatPackRow||ab?._dispatcherRow||null;
+  const applyEnemySelfRiders=(ctx={})=>{
+    if(!combatRow || typeof Avian?.dispatcher?.applySelfRiders!=='function') return false;
+    return Avian.dispatcher.applySelfRiders('enemy', combatRow, ab, ctx);
+  };
   if(cat==='heal'){
     const heal=roundCombatDamage((enemy.stats.maxHp||40)*0.14);
     applyFractionalHp(enemy.stats, heal);
@@ -13678,7 +13690,11 @@ async function executeEnemyKitTemplateAbility(enemy, abilityId, totalEnemyMiss){
   }
   if(cat==='guard'){
     await doSpell('enemy',`🛡 ${name}!`);
-    refreshStatus(G.enemyStatus,'defending',1,999);
+    const applied=applyEnemySelfRiders({ utilitySucceeded: true });
+    if(!applied && typeof applyGuardedBuff==='function'){
+      const pct=typeof resolveGuardedReductionPct==='function' ? resolveGuardedReductionPct(combatRow, 0, ab) : 25;
+      applyGuardedBuff('enemy', { physReducPct: pct, turns: 1, sourceAbilityId: abilityId, sourceKind: 'ability' });
+    }
     await doShield('enemy');
     renderStatuses('enemy-status',G.enemyStatus);
     logMsg(`${enemy.name} braces!`,'enemy-action');
@@ -13686,8 +13702,11 @@ async function executeEnemyKitTemplateAbility(enemy, abilityId, totalEnemyMiss){
   }
   if(cat==='buff'){
     await doSpell('enemy',`⚡ ${name}!`);
-    G.enemyStatus.atkBuff=Math.max(G.enemyStatus.atkBuff||0,roundCombatDamage((enemy.stats.atk||8)*0.22));
-    logMsg(`${enemy.name} surges — ATK up!`,'enemy-action');
+    const applied=applyEnemySelfRiders({ utilitySucceeded: true });
+    if(!applied && typeof applySourceStatLoanPct==='function'){
+      applySourceStatLoanPct(G.enemyStatus, enemy, '_dispatcherStatLoans', 'atk', abilityId + ':fallbackBuff', 22, 1);
+    }
+    logMsg(`${enemy.name} surges!`,'enemy-action');
     renderStatuses('enemy-status',G.enemyStatus);
     return;
   }
@@ -13738,6 +13757,13 @@ async function executeEnemyKitTemplateAbility(enemy, abilityId, totalEnemyMiss){
       logMsg(`${enemy.name} — ${name}${r.isCrit?' CRIT':''} for ${r.dmgDealt}!`,'enemy-action');
       rollEnemyCombatRowAilment(ab, tmpl, r.dmgDealt||0, 1);
     }
+    return;
+  }
+  if(btn==='utility' && combatRow && (combatRow.target==='self' || combatRow.noDamage)){
+    await doSpell('enemy',`✨ ${name}!`);
+    applyEnemySelfRiders({ utilitySucceeded: true });
+    renderStatuses('enemy-status',G.enemyStatus);
+    logMsg(`${enemy.name} uses ${name}.`,'enemy-action');
     return;
   }
   const ailments=deriveAbilityAilments(ab,tmpl);

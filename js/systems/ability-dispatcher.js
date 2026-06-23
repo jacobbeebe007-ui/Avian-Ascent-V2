@@ -334,7 +334,8 @@
     return applyDispatcherStatLoan(ps, player, statKey, sourceId, pct);
   }
 
-  function applyGuardedFromRow(row, riderValue, ab) {
+  function applyGuardedFromRow(row, riderValue, ab, side) {
+    side = side || 'player';
     var resolve = (typeof globalThis.resolveGuardedReductionPct === 'function')
       ? globalThis.resolveGuardedReductionPct
       : (typeof resolveGuardedReductionPct === 'function' ? resolveGuardedReductionPct : null);
@@ -353,11 +354,12 @@
         if (gr.duration === 'untilEndOfEnemyTurn' || gr.duration === 'enemyTurn') { turns = 1; break; }
       }
     }
-    apply('player', { physReducPct: pct, turns: turns, sourceAbilityId: row && row.id ? row.id : '', sourceKind: 'ability' });
-    spawnTrendFloat('player', 'buff');
+    apply(side, { physReducPct: pct, turns: turns, sourceAbilityId: row && row.id ? row.id : '', sourceKind: 'ability' });
+    spawnTrendFloat(side, 'buff');
   }
 
-  function applyShieldFromRow(row, riderValue, ab) {
+  function applyShieldFromRow(row, riderValue, ab, side) {
+    side = side || 'player';
     var apply = (typeof globalThis.applyShieldHp === 'function') ? globalThis.applyShieldHp : null;
     if (!apply) return;
     var pct = Number(riderValue) || 0;
@@ -378,14 +380,14 @@
     var text = String(row && (row.displayText || row.shortDesc || row.riderText) || '');
     var tm = text.match(/\b(minor|major|grand|epic|legendary)\b/i);
     if (tm) tier = tm[1].toLowerCase();
-    apply('player', {
+    apply(side, {
       pct: pct > 0 ? pct : undefined,
       tier: tier,
       turns: turns,
       sourceId: row && row.id ? row.id : (ab && ab.id) || '',
       sourceKind: 'ability',
     });
-    spawnTrendFloat('player', 'buff');
+    spawnTrendFloat(side, 'buff');
     if (typeof refreshBattleUI === 'function') refreshBattleUI();
   }
 
@@ -408,40 +410,49 @@
   }
 
   // ---- riders -----------------------------------------------------------
-  function makeStatRiderHandlers(sourceId, row, ab) {
+  function makeStatRiderHandlers(sourceId, row, ab, owner) {
+    owner = owner || {};
+    var side = owner.side || 'player';
+    var floatSide = side;
+    var shouldLoanDisplayStat = side === 'enemy';
+    function applyDisplayOrStat(ps, entity, kind, statKey, value) {
+      applyDispatcherDisplaySlot(ps, sourceId, kind, value);
+      if (shouldLoanDisplayStat && statKey) applyDispatcherStatLoan(ps, entity, statKey, sourceId + ':' + kind, value);
+      spawnTrendFloat(floatSide, 'buff');
+    }
     return {
-      gainDodge: function (n, ps) { applyDispatcherDisplaySlot(ps, sourceId, 'gainDodge', n); spawnTrendFloat('player', 'buff'); },
-      gainAccFlat: function (n, ps) { applyDispatcherDisplaySlot(ps, sourceId, 'gainAcc', n); spawnTrendFloat('player', 'buff'); },
-      gainDodgeFlat: function (n, ps) { applyDispatcherDisplaySlot(ps, sourceId, 'gainDodge', n); spawnTrendFloat('player', 'buff'); },
-      gainAcc: function (n, ps) { applyDispatcherDisplaySlot(ps, sourceId, 'gainAcc', n); spawnTrendFloat('player', 'buff'); },
-      gainSpeed: function (n, ps, p) { applyDispatcherStatLoanPct(ps, p, 'spd', sourceId, n); spawnTrendFloat('player', 'buff'); },
-      gainCritChance: function (n, ps) { applyDispatcherDisplaySlot(ps, sourceId, 'gainCritChance', n); spawnTrendFloat('player', 'buff'); },
-      gainCritDamage: function (n, ps) { applyDispatcherDisplaySlot(ps, sourceId, 'gainCritDamage', n); spawnTrendFloat('player', 'buff'); },
-      gainAtk: function (n, ps, p) { applyDispatcherStatLoanPct(ps, p, 'atk', sourceId, n); spawnTrendFloat('player', 'buff'); },
-      gainMatk: function (n, ps, p) { applyDispatcherStatLoanPct(ps, p, 'matk', sourceId, n); spawnTrendFloat('player', 'buff'); },
-      gainDef: function (n, ps, p) { applyDispatcherStatLoanPct(ps, p, 'def', sourceId, n); spawnTrendFloat('player', 'buff'); },
-      gainMdef: function (n, ps, p) { applyDispatcherStatLoanPct(ps, p, 'mdef', sourceId, n); spawnTrendFloat('player', 'buff'); },
+      gainDodge: function (n, ps, p) { applyDisplayOrStat(ps, p, 'gainDodge', 'dodge', n); },
+      gainAccFlat: function (n, ps, p) { applyDisplayOrStat(ps, p, 'gainAcc', 'acc', n); },
+      gainDodgeFlat: function (n, ps, p) { applyDisplayOrStat(ps, p, 'gainDodge', 'dodge', n); },
+      gainAcc: function (n, ps, p) { applyDisplayOrStat(ps, p, 'gainAcc', 'acc', n); },
+      gainSpeed: function (n, ps, p) { applyDispatcherStatLoanPct(ps, p, 'spd', sourceId, n); spawnTrendFloat(floatSide, 'buff'); },
+      gainCritChance: function (n, ps, p) { applyDisplayOrStat(ps, p, 'gainCritChance', 'critChance', n); },
+      gainCritDamage: function (n, ps) { applyDispatcherDisplaySlot(ps, sourceId, 'gainCritDamage', n); spawnTrendFloat(floatSide, 'buff'); },
+      gainAtk: function (n, ps, p) { applyDispatcherStatLoanPct(ps, p, 'atk', sourceId, n); spawnTrendFloat(floatSide, 'buff'); },
+      gainMatk: function (n, ps, p) { applyDispatcherStatLoanPct(ps, p, 'matk', sourceId, n); spawnTrendFloat(floatSide, 'buff'); },
+      gainDef: function (n, ps, p) { applyDispatcherStatLoanPct(ps, p, 'def', sourceId, n); spawnTrendFloat(floatSide, 'buff'); },
+      gainMdef: function (n, ps, p) { applyDispatcherStatLoanPct(ps, p, 'mdef', sourceId, n); spawnTrendFloat(floatSide, 'buff'); },
       gainGuard: function (n, ps, p) {
         var pct = Number(n) || 8;
         applyDispatcherStatLoanPct(ps, p, 'def', sourceId, pct);
-        spawnTrendFloat('player', 'buff');
+        spawnTrendFloat(floatSide, 'buff');
       },
-      gainGuarded: function (n) { applyGuardedFromRow(row, n, ab); },
-      gainBrace: function (n) { applyGuardedFromRow(row, n, ab); },
-      gainShield: function (n) { applyShieldFromRow(row, n, ab); },
+      gainGuarded: function (n) { applyGuardedFromRow(row, n, ab, side); },
+      gainBrace: function (n) { applyGuardedFromRow(row, n, ab, side); },
+      gainShield: function (n) { applyShieldFromRow(row, n, ab, side); },
       gainShieldFromDamage: function (n, _ps, _p, _r, ctx) {
         var dmg = (ctx && ctx.totalDmg) || 0;
         if (dmg <= 0) return;
         var apply = (typeof globalThis.applyShieldHp === 'function') ? globalThis.applyShieldHp : null;
         if (!apply) return;
         var amount = Math.max(1, Math.floor(dmg * (Number(n) || 0) / 100));
-        apply('player', {
+        apply(side, {
           amount: amount,
           turns: 1,
           sourceId: row && row.id ? row.id : (ab && ab.id) || '',
           sourceKind: 'ability',
         });
-        spawnTrendFloat('player', 'buff');
+        spawnTrendFloat(floatSide, 'buff');
         if (typeof refreshBattleUI === 'function') refreshBattleUI();
       },
       purgeEnemyMinorBuff: function () {
@@ -452,8 +463,8 @@
           globalThis.applyTagRidersFromRow(purgeRow, {});
         }
       },
-      gainCounter: function (_n, ps) { ps.counterInstinct = Math.max(ps.counterInstinct || 0, 1); spawnTrendFloat('player', 'buff'); },
-      gainTaunt: function (_n, ps) { ps.dispatcherTaunt = 1; ps.dispatcherTauntT = 1; spawnTrendFloat('player', 'buff'); },
+      gainCounter: function (_n, ps) { ps.counterInstinct = Math.max(ps.counterInstinct || 0, 1); spawnTrendFloat(floatSide, 'buff'); },
+      gainTaunt: function (_n, ps) { ps.dispatcherTaunt = 1; ps.dispatcherTauntT = 1; spawnTrendFloat(floatSide, 'buff'); },
       reduceEnemyDodge: function (n) { applyEnemyStatDebuff('dodge', n, sourceId); },
       reduceEnemyAcc: function (n) { applyEnemyStatDebuff('acc', n, sourceId); },
       reduceEnemyAtk: function (n) { applyEnemyStatDebuff('atk', n, sourceId); },
@@ -464,25 +475,26 @@
       reduceEnemyMdef: function (n) { applyEnemyStatDebuff('mdef', n, sourceId); },
       gainMagicAilmentChance: function (n, ps) {
         ps.magicAilmentChanceBuff = Math.max(ps.magicAilmentChanceBuff || 0, Number(n) || 0);
-        spawnTrendFloat('player', 'buff');
+        spawnTrendFloat(floatSide, 'buff');
       },
       gainPhysicalAilmentChance: function (n, ps) {
         ps.physicalAilmentChanceBuff = Math.max(ps.physicalAilmentChanceBuff || 0, Number(n) || 0);
-        spawnTrendFloat('player', 'buff');
+        spawnTrendFloat(floatSide, 'buff');
       },
       reduceEnemyAccFlat: function (n) { applyEnemyFlatDebuff('acc', n, sourceId); },
     };
   }
 
   var riderHandlers = {
-    healMaxHpPct: function (n, _ps, p) {
+    healMaxHpPct: function (n, _ps, p, _r, ctx) {
       if (!p || !p.stats) return;
+      var side = (ctx && ctx.ownerSide) || 'player';
       var heal = Math.round((Number(p.stats.maxHp) || 0) * (Number(n) || 0) / 100 * 100) / 100;
       if (heal <= 0) return;
       p.stats.hp = Math.min(Number(p.stats.maxHp) || 0, Math.round(((Number(p.stats.hp) || 0) + heal) * 100) / 100);
-      if (typeof setHpBar === 'function') setHpBar('player', p.stats.hp, p.stats.maxHp);
-      if (typeof spawnFloat === 'function') spawnFloat('player', '+' + heal, 'fn-heal');
-      spawnTrendFloat('player', 'buff');
+      if (typeof setHpBar === 'function') setHpBar(side, p.stats.hp, p.stats.maxHp);
+      if (typeof spawnFloat === 'function') spawnFloat(side, '+' + heal, 'fn-heal');
+      spawnTrendFloat(side, 'buff');
     },
     gainAccNextHit: function (n, ps, _p, r) {
       if (r && r.when === 'onEnemyMissBeforeTurn') {
@@ -554,14 +566,19 @@
     return false;
   }
 
-  function runRiders(row, ctx, ab) {
+  function runRidersForSide(side, row, ctx, ab) {
     var g = globalThis.G;
-    if (!g || !g.player || !row.riders) return;
-    var ps = g.playerStatus = g.playerStatus || {};
-    var p = g.player;
+    if (!g || !row || !row.riders) return 0;
+    side = side === 'enemy' ? 'enemy' : 'player';
+    var ps = side === 'enemy' ? (g.enemyStatus = g.enemyStatus || {}) : (g.playerStatus = g.playerStatus || {});
+    var p = side === 'enemy' ? g.enemy : g.player;
+    if (!p) return 0;
     var sourceId = row.id || (ctx && ctx.sourceAbilityId) || 'unknown';
-    var statHandlers = makeStatRiderHandlers(sourceId, row, ab);
+    var statHandlers = makeStatRiderHandlers(sourceId, row, ab, { side: side });
+    ctx = ctx || {};
+    ctx.ownerSide = side;
     ctx.applied = ctx.applied || Object.create(null);
+    var appliedCount = 0;
     for (var i = 0; i < row.riders.length; i++) {
       var r = row.riders[i];
       if (r.kind === 'refundApOnCrit' || r.kind === 'gainApNextTurn' || r.kind === 'bonusVsAilment' || r.kind === 'bonusVsLowHp' || r.kind === 'tagFlag' || r.kind === 'raw') continue;
@@ -572,8 +589,14 @@
       if (fn) {
         fn(r.value, ps, p, r, ctx);
         ctx.applied[rKey] = true;
+        appliedCount++;
       }
     }
+    return appliedCount;
+  }
+
+  function runRiders(row, ctx, ab) {
+    return runRidersForSide('player', row, ctx, ab);
   }
 
   function runPreRiders(row, ab) {
@@ -842,6 +865,20 @@
     return applyDispatcherHitMods(dmg);
   };
 
+  dispatcher.applySelfRiders = function applySelfRiders(side, row, ab, ctx) {
+    side = side === 'enemy' ? 'enemy' : 'player';
+    if (!row) return false;
+    var riderCtx = Object.assign({ hitsLanded: 1, hitsAttempted: 1, totalDmg: 0, ailmentsApplied: {} }, ctx || {});
+    var appliedCount = runRidersForSide(side, row, riderCtx, ab);
+    var autoGuarded = false;
+    if (shouldAutoApplyGuarded(row) && !rowGrantsGuardedViaRider(row)) {
+      applyGuardedFromRow(row, 0, ab, side);
+      autoGuarded = true;
+    }
+    if (typeof refreshBattleUI === 'function') refreshBattleUI();
+    return appliedCount > 0 || autoGuarded;
+  };
+
   dispatcher.registerActions = function registerActions(target) {
     var p = pack();
     if (!p || !p.skillTrees) return 0;
@@ -916,6 +953,19 @@
     delete ps._dispatcherAccNextHitWatch;
     if ((ps.dispatcherTauntT || 0) > 0) { ps.dispatcherTauntT--; if (ps.dispatcherTauntT <= 0) { delete ps.dispatcherTaunt; delete ps.dispatcherTauntT; } }
     revertEnemyDispatcherDebuffs();
+  };
+
+  dispatcher.onAfterPlayerTurn = function onAfterPlayerTurn(enemy) {
+    if (!enemy || !enemy.stats) return;
+    var g = globalThis.G;
+    var es = (g && g.enemyStatus) || null;
+    if (!es) return;
+    if (typeof globalThis.decaySourceStatLoans === 'function') {
+      globalThis.decaySourceStatLoans(es, enemy, '_dispatcherStatLoans');
+    }
+    decayDispatcherDisplaySlots(es);
+    delete es._dispatcherAccNextHitWatch;
+    if ((es.dispatcherTauntT || 0) > 0) { es.dispatcherTauntT--; if (es.dispatcherTauntT <= 0) { delete es.dispatcherTaunt; delete es.dispatcherTauntT; } }
   };
 
   // Crit / dodge surface read by combat helpers via legacy aug fields.
