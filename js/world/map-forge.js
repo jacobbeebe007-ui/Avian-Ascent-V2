@@ -268,6 +268,25 @@
     return combat.length === 0;
   }
 
+  function cloneMapPayload(map) {
+    if (!map || typeof map !== 'object') return null;
+    if (typeof global.cloneStoryMap === 'function') return global.cloneStoryMap(map);
+    return JSON.parse(JSON.stringify(map));
+  }
+
+  function getCurrentStoryMapForForge() {
+    const active = typeof global.loadCustomOverworldMap === 'function'
+      ? global.loadCustomOverworldMap()
+      : null;
+    if (active) {
+      return { source: 'active', map: cloneMapPayload(active) };
+    }
+    const builtIn = typeof global.cloneDefaultStoryMap === 'function'
+      ? global.cloneDefaultStoryMap()
+      : cloneMapPayload(global.AVIAN_STORY_MAP_DEFAULT);
+    return builtIn ? { source: 'built-in', map: builtIn } : null;
+  }
+
   function syncForgeValidationStatus(issues) {
     if (Date.now() < _actionStatusUntil) return;
     const list = Array.isArray(issues) ? issues : getValidationIssues();
@@ -2481,6 +2500,26 @@
     });
   }
 
+  function loadCurrentStoryMapIntoForge() {
+    confirmDirtyThen(() => {
+      const picked = getCurrentStoryMapForForge();
+      if (!picked?.map) {
+        setStatus('No story map is available to load.', true);
+        return;
+      }
+      const map = picked.map;
+      const originalName = map.name || 'Story Map';
+      map.id = mkId();
+      map.createdAt = new Date().toISOString();
+      map.name = originalName + ' Edit';
+      setCurrentDraftId('');
+      loadMap(map);
+      renderDraftSelect();
+      setStatus((picked.source === 'active' ? 'Active' : 'Built-in') + ' story map loaded as a new Forge draft.');
+      mapForgeZoomFit();
+    });
+  }
+
   global.initMapForge = initMapForge;
   global.openMapForge = openMapForge;
   global.closeMapForge = closeMapForge;
@@ -2490,6 +2529,7 @@
   global.activateMapForNextRun = activateMapForNextRun;
   global.deleteMapForgeNode = deleteSelectedNode;
   global.newMapForge = newMapForge;
+  global.loadCurrentStoryMapIntoForge = loadCurrentStoryMapIntoForge;
   global.setMapForgeTool = setTool;
   global.editWorldMap = editWorldMap;
   global.exitWorldEditor = exitWorldEditor;
@@ -2527,7 +2567,7 @@
     Object.assign(global.Avian.actions, {
       openMapForge, closeMapForge, saveMapForgeDraft, exportMapForge,
       playtestMapForge, activateMapForNextRun, deleteMapForgeNode: deleteSelectedNode,
-      newMapForge, editWorldMap, exitWorldEditor,
+      newMapForge, loadCurrentStoryMapIntoForge, editWorldMap, exitWorldEditor,
       deselectMapForgeNode: deselectNode, duplicateMapForgeNode: duplicateSelectedNode,
       undoMapForge, redoMapForge, playtestFromSelectedNode, fightMapForgeNode,
       confirmMapForgeDiscard, cancelMapForgeDiscard,

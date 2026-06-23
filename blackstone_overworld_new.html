@@ -285,6 +285,7 @@ html,body{width:100%;height:100%;overflow:hidden;background:#060d05;}
   </div>
 </div>
 <script src="js/world/overworld_bridge.js"></script>
+<script src="js/data/story-map.js"></script>
 <script src="js/world/ow_map_runtime.js"></script>
 <script>
 const SVG_NS='http://www.w3.org/2000/svg';
@@ -293,12 +294,15 @@ const _IS_PLAYTEST=_URL_PARAMS.get('playtest')==='1';
 const _CUSTOM_MAP_RAW=typeof loadCustomOverworldMap==='function'?loadCustomOverworldMap():null;
 const _CUSTOM_MAP=_CUSTOM_MAP_RAW&&typeof upgradeMapToV2==='function'?upgradeMapToV2(_CUSTOM_MAP_RAW):_CUSTOM_MAP_RAW;
 const _USE_CUSTOM=!!(_CUSTOM_MAP&&(typeof isCustomOverworldActive==='function'?isCustomOverworldActive():false));
+const _STORY_MAP_RAW=typeof cloneDefaultStoryMap==='function'?cloneDefaultStoryMap():null;
+const _STORY_MAP=_STORY_MAP_RAW&&typeof upgradeMapToV2==='function'?upgradeMapToV2(_STORY_MAP_RAW):_STORY_MAP_RAW;
+const _ACTIVE_MAP=_USE_CUSTOM?_CUSTOM_MAP:_STORY_MAP;
 const _OW_PROGRESS=typeof readOwCustomProgress==='function'?readOwCustomProgress():{nodeClears:{},worldsCompleted:{},bonusRepeats:{},activeMapId:'main'};
 const _ACTIVE_MAP_ID=typeof getOwActiveMapId==='function'?getOwActiveMapId():'main';
-const _MAP_SLICE=_USE_CUSTOM&&typeof resolveOwActiveMapSlice==='function'?resolveOwActiveMapSlice(_CUSTOM_MAP,_ACTIVE_MAP_ID):null;
-const MAP_W=_MAP_SLICE?.backgroundDataUrl?_CUSTOM_MAP?.mapWidth||1536:(_CUSTOM_MAP?.mapWidth||1536),MAP_H=_CUSTOM_MAP?.mapHeight||1024;
-let MAP_MAX_STAGE=20;
-let _PATH_REVEAL=_USE_CUSTOM&&_CUSTOM_MAP?.pathReveal!==false;
+const _MAP_SLICE=_ACTIVE_MAP&&typeof resolveOwActiveMapSlice==='function'?resolveOwActiveMapSlice(_ACTIVE_MAP,_USE_CUSTOM?_ACTIVE_MAP_ID:'main'):null;
+const MAP_W=_ACTIVE_MAP?.mapWidth||1536,MAP_H=_ACTIVE_MAP?.mapHeight||1024;
+let MAP_MAX_STAGE=_ACTIVE_MAP?.maxStage||20;
+let _PATH_REVEAL=_USE_CUSTOM&&_ACTIVE_MAP?.pathReveal!==false;
 let _CURRENT_MAP_ID=_MAP_SLICE?.mapId||'main';
 let _WORLD_INDEX=_MAP_SLICE?.worldIndex??null;
 
@@ -764,47 +768,20 @@ const BIRDS=[
   {k:'secretary',n:'Secretary Bird'},{k:'peregrine',n:'Peregrine'},{k:'bowerbird',n:'Bowerbird'},{k:'albatross',n:'Albatross'},{k:'ostrich',n:'Ostrich'},{k:'emu',n:'Emu'},
 ];
 
-// Nodes matched to Blackstone image landmarks (1536x1024)
-const DEFAULT_NODES=[
-  {id:0,  type:'start', name:'The Barn',           x:1211, y:764,  stage:0, terrain:'Old Farmstead'},
-  {id:1,  type:'stage', name:'Barn Gate',           x:1086, y:825,  stage:1, terrain:'Overgrown Yard', portraitBird:'sparrow'},
-  {id:2,  type:'stage', name:'Riverside Crossing',  x:922,  y:853,  stage:2, terrain:'River Ford', portraitBird:'crow'},
-  {id:3,  type:'stage', name:'Whitewater Rocks',    x:750,  y:861,  stage:3, terrain:'River Rapids', portraitBird:'magpie'},
-  {id:4,  type:'stage', name:'The Crags',           x:601,  y:835,  stage:4, terrain:'Rocky Outcrop', portraitBird:'goose'},
-  {id:5,  type:'shop',  name:'Stork Emporium',      x:500,  y:812},
-  {id:6,  type:'stage', name:'Ruined Mill',          x:409,  y:791,  stage:5, terrain:'Collapsed Mill', portraitBird:'kookaburra'},
-  {id:7,  type:'stage', name:'Forest Road',          x:429,  y:671,  stage:6, terrain:'Darkwood Path', portraitBird:'flamingo'},
-  {id:8,  type:'stage', name:'Mossy Track',          x:578,  y:656,  stage:7, terrain:'Ancient Trail', portraitBird:'snowyOwl'},
-  {id:9,  type:'stage', name:'The Stone Bridge',     x:738,  y:617,  stage:8, terrain:'Stone Bridge', portraitBird:'baldEagle'},
-  {id:10, type:'stage', name:'Far Bank',             x:924,  y:600,  stage:9, terrain:'Bridge Crossing', portraitBird:'raven'},
-  {id:11, type:'boss',  name:'Forest Keep',          x:1171, y:469,  stage:10, terrain:'Abandoned Keep'},
-  {id:12, type:'shop',  name:'Stork Emporium',       x:1078, y:448},
-  {id:13, type:'stage', name:'Ashwood Glen',         x:851,  y:476,  stage:11, terrain:'Ashen Forest', portraitBird:'cassowary'},
-  {id:14, type:'stage', name:'Ridgeline Path',       x:603,  y:486,  stage:12, terrain:'Highland Ridge', portraitBird:'swan'},
-  {id:15, type:'stage', name:'Dark Hollow',          x:439,  y:415,  stage:13, terrain:'Shadow Hollow', portraitBird:'shoebill'},
-  {id:16, type:'shop',  name:'Stork Emporium',       x:353,  y:337},
-  {id:17, type:'stage', name:'Fog Pass',             x:564,  y:361,  stage:14, terrain:'Mountain Pass', portraitBird:'kiwi'},
-  {id:18, type:'stage', name:'Cathedral Approach',   x:677,  y:319,  stage:15, terrain:'Castle Road', portraitBird:'hummingbird'},
-  {id:19, type:'stage', name:'Outer Ramparts',       x:806,  y:337,  stage:16, terrain:'Castle Walls', portraitBird:'harpyEagle'},
-  {id:20, type:'stage', name:'Inner Court',          x:782,  y:265,  stage:17, terrain:'Outer Courtyard', portraitBird:'raven'},
-  {id:21, type:'stage', name:'High Spire',           x:701,  y:233,  stage:18, terrain:'Castle Spire', portraitBird:'snowyOwl'},
-  {id:22, type:'stage', name:'Throne Gate',          x:766,  y:184,  stage:19, terrain:'Throne Approach', portraitBird:'baldEagle'},
-  {id:23, type:'boss',  name:"Blakiston's Court",    x:792,  y:82,   stage:20, terrain:'Castle Throne', final:true},
-];
-let NODES=_USE_CUSTOM&&_MAP_SLICE
+let NODES=_MAP_SLICE
   ? (typeof normalizeOwMapNodes==='function'?normalizeOwMapNodes(_MAP_SLICE.nodes):(_MAP_SLICE.nodes||[]).map((n,i)=>Object.assign({},n,{id:i})))
-  : DEFAULT_NODES.map(n=>Object.assign({},n));
+  : [];
 let UNLOCKED=NODES.length-1;
-if(_USE_CUSTOM&&_MAP_SLICE){
+if(_MAP_SLICE){
   MAP_MAX_STAGE=_WORLD_INDEX!=null
     ? (NODES.filter(n=>isCombatNode(n)).length||1)
-    : (_CUSTOM_MAP.maxStage||(typeof getMaxStageFromOwNodes==='function'?getMaxStageFromOwNodes(NODES):20));
+    : (_ACTIVE_MAP.maxStage||(typeof getMaxStageFromOwNodes==='function'?getMaxStageFromOwNodes(NODES):20));
   if(_MAP_SLICE.backgroundDataUrl){
     const _bgEl=document.getElementById('bg-img');
     if(_bgEl) _bgEl.src=_MAP_SLICE.backgroundDataUrl;
   }
   const _hdrTitle=document.querySelector('#hdr h1');
-  if(_hdrTitle) _hdrTitle.textContent=String(_MAP_SLICE.name||_CUSTOM_MAP.name||'Custom Map').toUpperCase();
+  if(_hdrTitle) _hdrTitle.textContent=String(_MAP_SLICE.name||_ACTIVE_MAP.name||'Story Map').toUpperCase();
 }
 if(_IS_PLAYTEST&&_USE_CUSTOM){
   const _forgeBtn=document.getElementById('hdr-forge-btn');
@@ -1266,7 +1243,7 @@ requestAnimationFrame(()=>requestAnimationFrame(()=>{pl.style.transition='left .
     owState,
     saveStage: save?.stage,
     nodes: NODES,
-    maxStage: _USE_CUSTOM ? MAP_MAX_STAGE : 20,
+    maxStage: MAP_MAX_STAGE,
   });
   const activeBirdKey  = save?.player?.birdKey || owState?.birdKey || null;
   const currentStage   = Math.max(1, overworldProgress.completedStage + 1);

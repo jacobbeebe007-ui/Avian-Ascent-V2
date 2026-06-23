@@ -43,6 +43,7 @@ function loadShell() {
   };
   globalThis.Avian = { data: Object.create(null), systems: Object.create(null), actions: Object.create(null) };
   require(path.join(root, 'js/bootstrap/_namespace.js'));
+  require(path.join(root, 'js/data/story-map.js'));
   require(path.join(root, 'js/world/ow_map_runtime.js'));
   require(path.join(root, 'js/world/map-forge.js'));
 }
