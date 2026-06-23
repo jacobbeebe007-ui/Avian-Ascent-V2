@@ -48,6 +48,7 @@ function hasExecutableEffect(row) {
   const riders = (row.riders || []).filter((r) => r.kind !== 'raw');
   if (riders.length > 0) return true;
   if ((Number(row.lifestealPct) || 0) > 0) return true;
+  if (row.ailment && (Number(row.ailmentChance) || 0) > 0) return true;
   const tags = row.tags || [];
   for (const t of tags) {
     if (TAG_UTILITY.has(t)) return true;

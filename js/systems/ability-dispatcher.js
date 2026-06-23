@@ -121,6 +121,10 @@
       if (isMagic || isHybrid) ailCh += (Number(eqM.magicAilmentChance) || 0);
       if (!isMagic || isHybrid) ailCh += (Number(eqM.physicalAilmentChance) || 0);
     }
+    if (g && g.playerStatus && targetSide === 'enemy') {
+      if (isMagic || isHybrid) ailCh += (Number(g.playerStatus.magicAilmentChanceBuff) || 0);
+      if (!isMagic || isHybrid) ailCh += (Number(g.playerStatus.physicalAilmentChanceBuff) || 0);
+    }
     var magicShift = 0;
     if (targetSide === 'enemy' && g && g.player && (isMagic || isHybrid)) {
       var attackerMatk = g.player.stats.matk || 8;
@@ -180,6 +184,26 @@
     if (typeof spawnFloat !== 'function') return;
     if (kind === 'buff') spawnFloat(who, '▲▲', 'fn-buff-trend');
     else if (kind === 'debuff') spawnFloat(who, '▼▼', 'fn-debuff-trend');
+  }
+
+  function applyEnemyFlatDebuff(statKey, flatAmt, sourceId) {
+    var g = globalThis.G;
+    if (!g || !g.enemy || !g.enemy.stats) return false;
+    var es = g.enemyStatus = g.enemyStatus || {};
+    var stats = g.enemy.stats;
+    if (!es._dispatcherDebuffBySource) es._dispatcherDebuffBySource = Object.create(null);
+    var slotKey = statKey + ':flat:' + String(sourceId || 'unknown');
+    var prev = es._dispatcherDebuffBySource[slotKey];
+    if (prev && prev.amt) {
+      stats[statKey] = Math.round(((Number(stats[statKey]) || 0) + (prev.amt || 0)) * 100) / 100;
+    }
+    var cur = Number(stats[statKey]) || 0;
+    var amt = Math.max(0, Number(flatAmt) || 0);
+    if (amt <= 0) return false;
+    stats[statKey] = Math.max(0, Math.round((cur - amt) * 100) / 100);
+    es._dispatcherDebuffBySource[slotKey] = { statKey: statKey, amt: amt, turns: 1, sourceId: String(sourceId || ''), flat: true };
+    spawnTrendFloat('enemy', 'debuff');
+    return true;
   }
 
   function applyEnemyStatDebuff(statKey, pct, sourceId) {
@@ -374,6 +398,29 @@
       gainGuarded: function (n) { applyGuardedFromRow(row, n, ab); },
       gainBrace: function (n) { applyGuardedFromRow(row, n, ab); },
       gainShield: function (n) { applyShieldFromRow(row, n, ab); },
+      gainShieldFromDamage: function (n, _ps, _p, _r, ctx) {
+        var dmg = (ctx && ctx.totalDmg) || 0;
+        if (dmg <= 0) return;
+        var apply = (typeof globalThis.applyShieldHp === 'function') ? globalThis.applyShieldHp : null;
+        if (!apply) return;
+        var amount = Math.max(1, Math.floor(dmg * (Number(n) || 0) / 100));
+        apply('player', {
+          amount: amount,
+          turns: 1,
+          sourceId: row && row.id ? row.id : (ab && ab.id) || '',
+          sourceKind: 'ability',
+        });
+        spawnTrendFloat('player', 'buff');
+        if (typeof refreshBattleUI === 'function') refreshBattleUI();
+      },
+      purgeEnemyMinorBuff: function () {
+        var g = globalThis.G;
+        if (!g || !g.enemyStatus) return;
+        if (typeof globalThis.applyTagRidersFromRow === 'function') {
+          var purgeRow = { tags: ['Purge'], riderText: 'purge', shortDesc: 'purge' };
+          globalThis.applyTagRidersFromRow(purgeRow, {});
+        }
+      },
       gainCounter: function (_n, ps) { ps.counterInstinct = Math.max(ps.counterInstinct || 0, 1); spawnTrendFloat('player', 'buff'); },
       gainTaunt: function (_n, ps) { ps.dispatcherTaunt = 1; ps.dispatcherTauntT = 1; spawnTrendFloat('player', 'buff'); },
       reduceEnemyDodge: function (n) { applyEnemyStatDebuff('dodge', n, sourceId); },
@@ -384,6 +431,15 @@
       reduceEnemyCrit: function (n) { applyEnemyStatDebuff('critChance', n, sourceId); },
       reduceEnemyDef: function (n) { applyEnemyStatDebuff('def', n, sourceId); },
       reduceEnemyMdef: function (n) { applyEnemyStatDebuff('mdef', n, sourceId); },
+      gainMagicAilmentChance: function (n, ps) {
+        ps.magicAilmentChanceBuff = Math.max(ps.magicAilmentChanceBuff || 0, Number(n) || 0);
+        spawnTrendFloat('player', 'buff');
+      },
+      gainPhysicalAilmentChance: function (n, ps) {
+        ps.physicalAilmentChanceBuff = Math.max(ps.physicalAilmentChanceBuff || 0, Number(n) || 0);
+        spawnTrendFloat('player', 'buff');
+      },
+      reduceEnemyAccFlat: function (n) { applyEnemyFlatDebuff('acc', n, sourceId); },
     };
   }
 
@@ -397,11 +453,13 @@
       if (typeof spawnFloat === 'function') spawnFloat('player', '+' + heal, 'fn-heal');
       spawnTrendFloat('player', 'buff');
     },
+    gainAccNextHit: function (n, ps) { ps._dispatcherAccNextHit = Math.max(ps._dispatcherAccNextHit || 0, Number(n) || 0); },
     refundApOnCrit: function (_n, ps) { ps._dispatcherRefundApOnCrit = 1; },
     gainApNextTurn: function (n, ps) { ps._dispatcherApNextTurn = (ps._dispatcherApNextTurn || 0) + n; },
     bonusVsAilment: function () { /* read by applyConditionalDamageBonus */ },
     bonusVsLowHp: function () { /* handled in conditional bonus */ },
     tagFlag: function () { /* tags don't mutate state directly */ },
+    guardBreak: function (_n, ps) { ps._dispatcherGuardBreak = 1; },
     raw: function () { /* unresolved free-text; safe no-op */ },
   };
 
@@ -416,12 +474,41 @@
     return !!(g && g._lastPlayerAbilityCategory === 'magic');
   }
 
+  function enemyHasAnyAilment() {
+    var g = globalThis.G;
+    if (!g || !g.enemyStatus) return false;
+    var es = g.enemyStatus;
+    return (es.poison && es.poison.stacks > 0) ||
+      (es.bleed && es.bleed.stacks > 0) ||
+      (es.chilled && es.chilled.stacks > 0) ||
+      (es.burning && es.burning.stacks > 0) ||
+      (es.delayed && (es.delayed.stacks > 0 || es.delayed > 0)) ||
+      (typeof globalThis.getWeakenStacks === 'function' && globalThis.getWeakenStacks(es) > 0) ||
+      (es.paralyzed > 0) || !!es.confused || (es.accDebuff > 0);
+  }
+
   function riderWhenMatches(r, ctx) {
     var w = r.when;
     if (!w) return true;
     if (w === 'onHit') return ctx.hitsLanded > 0;
     if (w === 'actingFirst') return playerActingFirst();
     if (w === 'afterMagicThisTurn') return playerUsedMagicThisTurn();
+    if (w === 'allHitsLanded') return (ctx.hitsAttempted || 0) > 1 && ctx.hitsLanded === ctx.hitsAttempted;
+    if (w === 'targetHasAilment') return enemyHasAnyAilment();
+    if (w === 'targetWeakened') {
+      var g = globalThis.G;
+      return g && g.enemyStatus && typeof globalThis.getWeakenStacks === 'function' && globalThis.getWeakenStacks(g.enemyStatus) > 0;
+    }
+    if (w === 'targetDelayed') {
+      var g2 = globalThis.G;
+      var es = g2 && g2.enemyStatus;
+      return !!(es && es.delayed && (es.delayed.stacks > 0 || es.delayed > 0));
+    }
+    if (w === 'onAilmentFail') return ctx.ailmentFailed === true;
+    if (w === 'alternatingAttackType') {
+      var g3 = globalThis.G;
+      return !!(g3 && g3._playerAlternatedAttackTypeThisTurn);
+    }
     if (w.indexOf('onAilment:') === 0) {
       var aid = w.slice('onAilment:'.length);
       return ctx.ailmentsApplied && ctx.ailmentsApplied[aid];
@@ -439,13 +526,13 @@
     ctx.applied = ctx.applied || Object.create(null);
     for (var i = 0; i < row.riders.length; i++) {
       var r = row.riders[i];
-      if (r.kind === 'refundApOnCrit' || r.kind === 'gainApNextTurn' || r.kind === 'bonusVsAilment' || r.kind === 'bonusVsLowHp' || r.kind === 'tagFlag' || r.kind === 'raw') continue;
+      if (r.kind === 'refundApOnCrit' || r.kind === 'gainApNextTurn' || r.kind === 'bonusVsAilment' || r.kind === 'bonusVsLowHp' || r.kind === 'tagFlag' || r.kind === 'gainAccNextHit' || r.kind === 'raw') continue;
       if (!riderWhenMatches(r, ctx)) continue;
       var rKey = sourceId + '|' + r.kind + '|' + (r.when || '') + '|' + (r.value || '');
       if (ctx.applied[rKey]) continue;
       var fn = statHandlers[r.kind] || riderHandlers[r.kind];
       if (fn) {
-        fn(r.value, ps, p, r);
+        fn(r.value, ps, p, r, ctx);
         ctx.applied[rKey] = true;
       }
     }
@@ -656,7 +743,8 @@
       ailmentsApplied = tryRollRowAilment(row, 'enemy', { hitsLanded: hitsLanded, totalDmg: totalDmg, ab: ab });
     }
 
-    var riderCtx = { hitsLanded: hitsLanded, ailmentsApplied: ailmentsApplied };
+    var ailmentFailed = ailmentAttempted && !Object.keys(ailmentsApplied).length;
+    var riderCtx = { hitsLanded: hitsLanded, hitsAttempted: hits, totalDmg: totalDmg, ailmentsApplied: ailmentsApplied, ailmentFailed: ailmentFailed };
     runRiders(row, riderCtx, ab);
     if (typeof globalThis.applyTagRidersFromRow === 'function') {
       globalThis.applyTagRidersFromRow(row, riderCtx);

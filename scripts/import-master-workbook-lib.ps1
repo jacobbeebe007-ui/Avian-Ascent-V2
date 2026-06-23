@@ -563,6 +563,9 @@ function Parse-LifestealPctFromText {
     if ([string]$Text -match '(Minor|Major|Grand|Epic|Legendary)\s+Lifesteal') {
         return Get-LifestealTierPct $Matches[1]
     }
+    if ([string]$Text -match 'Heal for\s+(\d+(?:\.\d+)?)\s*%\s*of damage dealt') {
+        return [double]$Matches[1]
+    }
     return 0
 }
 

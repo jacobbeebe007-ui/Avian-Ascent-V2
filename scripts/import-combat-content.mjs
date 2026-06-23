@@ -402,6 +402,12 @@ function parseRiderWhen(text, localSlice) {
   const combined = `${localSlice || ''}\n${text || ''}`;
   if (/faster than the target|acting before the target|act before the target|if you act before/i.test(combined)) return 'actingFirst';
   if (/after a magic ability|used after a magic|after using a magic ability|after a magic attack/i.test(combined)) return 'afterMagicThisTurn';
+  if (/if both hit|both hits land|if both hits land/i.test(combined)) return 'allHitsLanded';
+  if (/target is already delayed|already delayed/i.test(combined)) return 'targetDelayed';
+  if (/target is weakened|target has weaken/i.test(combined)) return 'targetWeakened';
+  if (/target has an ailment|the target has an ailment/i.test(combined)) return 'targetHasAilment';
+  if (/if it fails|when it fails|if the ailment fails/i.test(combined)) return 'onAilmentFail';
+  if (/alternating attack type|alternated attack type/i.test(combined)) return 'alternatingAttackType';
   const slice = localSlice || text || '';
   if (/after\s+attack/i.test(slice)) return 'onHit';
   if (/if\s+(?:this\s+)?hits?|if\s+at\s+least\s+\d+\s+hits?\s+land/i.test(text)) return 'onHit';
@@ -491,6 +497,9 @@ function parseRiders(riderText, codeTags, extraText = '') {
   for (const gm of text.matchAll(/gain\s+\+?\s*(\d+(?:\.\d+)?)\s+Dodge(?!\s*%)/gi)) {
     addSelf('gainDodgeFlat', Number(gm[1]), { when: parseRiderWhen(text, gm[0]) });
   }
+  for (const gm of text.matchAll(/\band\s+\+?\s*(\d+(?:\.\d+)?)\s+Dodge(?!\s*%)/gi)) {
+    addSelf('gainDodgeFlat', Number(gm[1]), { when: parseRiderWhen(text, gm[0]) });
+  }
 
   // Self gain riders
   for (const gm of text.matchAll(/\+?\s*(\d+(?:\.\d+)?)\s*%\s*(?:ACC|Accuracy)/gi)) addSelf('gainAcc', Number(gm[1]), { when: parseRiderWhen(text, gm[0]) });
@@ -531,6 +540,27 @@ function parseRiders(riderText, codeTags, extraText = '') {
   for (const gm of text.matchAll(/\b(?:Gain|gains?)\s+(Minor|Major|Grand|Epic|Legendary)\s+MDEF\s+Up\b/gi)) {
     const n = tierBuffPct(gm[1]); if (n != null) addSelf('gainMdef', n);
   }
+  for (const gm of text.matchAll(/\b(Minor|Major|Grand|Epic|Legendary)\s+(?:Physical\s+)?ATK\s+Up\b/gi)) {
+    const n = tierBuffPct(gm[1]); if (n != null) addSelf('gainAtk', n, { when: parseRiderWhen(text, gm[0]) });
+  }
+  for (const gm of text.matchAll(/\b(Minor|Major|Grand|Epic|Legendary)\s+(?:Magic\s+)?MATK\s+Up\b/gi)) {
+    const n = tierBuffPct(gm[1]); if (n != null) addSelf('gainMatk', n, { when: parseRiderWhen(text, gm[0]) });
+  }
+  for (const gm of text.matchAll(/(?:gain|grants?)\s+\+?\s*(\d+(?:\.\d+)?)\s*%\s*ATK\s*(?:and|\/)?\s*MATK/gi)) {
+    const n = Number(gm[1]);
+    const w = parseRiderWhen(text, gm[0]);
+    addSelf('gainAtk', n, { when: w });
+    addSelf('gainMatk', n, { when: w });
+  }
+  for (const gm of text.matchAll(/\band\s+\+?\s*(\d+(?:\.\d+)?)\s+(?:ACC|Accuracy)(?!\s*%)/gi)) {
+    addSelf('gainAccFlat', Number(gm[1]), { when: parseRiderWhen(text, gm[0]) });
+  }
+  for (const gm of text.matchAll(/if the target has an ailment,\s*gain\s+\+?\s*(\d+(?:\.\d+)?)\s*%\s*MATK/gi)) {
+    addSelf('gainMatk', Number(gm[1]), { when: 'targetHasAilment' });
+  }
+  for (const gm of text.matchAll(/if the target has an ailment,\s*gain\s+\+?\s*(\d+(?:\.\d+)?)\s*%\s*ATK/gi)) {
+    addSelf('gainAtk', Number(gm[1]), { when: 'targetHasAilment' });
+  }
   for (const gm of text.matchAll(/\b(?:Apply|apply)\s+(Minor|Major|Crippling|Ruinous|Fatal|Severe|Critical|Lethal)\s+MDEF\s+Down\b/gi)) {
     const n = tierDebuffPct(gm[1]); if (n != null) addEnemy('reduceEnemyMdef', n);
   }
@@ -543,7 +573,15 @@ function parseRiders(riderText, codeTags, extraText = '') {
   for (const gm of text.matchAll(/\b(?:Apply|apply)\s+(Minor|Major|Crippling|Ruinous|Fatal|Severe|Critical|Lethal)\s+ACC\s+Down\b/gi)) {
     const n = tierDebuffPct(gm[1]); if (n != null) addEnemy('reduceEnemyAcc', n);
   }
-  for (const gm of text.matchAll(/reduce\s+MDEF\s+by\s+(\d+(?:\.\d+)?)\s*%/gi)) addEnemy('reduceEnemyMdef', Number(gm[1]));
+  for (const gm of text.matchAll(/reduce\s+(?:enemy\s+)?MDEF\s+by\s+(\d+(?:\.\d+)?)\s*%/gi)) {
+    addEnemy('reduceEnemyMdef', Number(gm[1]), { when: parseRiderWhen(text, gm[0]) });
+  }
+  for (const gm of text.matchAll(/reduce\s+(?:enemy\s+)?DEF\s+by\s+(\d+(?:\.\d+)?)\s*%/gi)) {
+    addEnemy('reduceEnemyDef', Number(gm[1]), { when: parseRiderWhen(text, gm[0]) });
+  }
+  for (const gm of text.matchAll(/reduces?\s+MDEF\s+by\s+(\d+(?:\.\d+)?)\s*%/gi)) {
+    addEnemy('reduceEnemyMdef', Number(gm[1]), { when: parseRiderWhen(text, gm[0]) });
+  }
 
   for (const gm of text.matchAll(/gain\s+\+?\s*(\d+(?:\.\d+)?)\s*%\s*Magic\s*Attack/gi)) addSelf('gainMatk', Number(gm[1]));
   for (const gm of text.matchAll(/(?:gain\s+\+?|\bor\s+\+?\s*)(\d+(?:\.\d+)?)\s*%\s*Magic\s*Defen[cs]e/gi)) addSelf('gainMdef', Number(gm[1]));
@@ -576,6 +614,20 @@ function parseRiders(riderText, codeTags, extraText = '') {
   // Heal % max HP
   if ((m = text.match(/heal\s+(\d+(?:\.\d+)?)\s*%\s*Max\s*Health/i))) {
     riders.push({ kind: 'healMaxHpPct', value: Number(m[1]), scope: 'self', when });
+  }
+
+  for (const gm of text.matchAll(/gain a Shield equal to (\d+(?:\.\d+)?)\s*%\s*of damage dealt/gi)) {
+    addSelf('gainShieldFromDamage', Number(gm[1]), { when: parseRiderWhen(text, gm[0]) });
+  }
+  if (/if the target has a minor buff,\s*remove it/i.test(text)) {
+    riders.push({ kind: 'purgeEnemyMinorBuff', scope: 'enemy', when: when || 'onHit' });
+  }
+
+  for (const gm of text.matchAll(/gain\s+\+?\s*(\d+(?:\.\d+)?)\s*%\s*(?:Magical|Magic(?:al)?)\s+Ailment\s+chance/gi)) {
+    addSelf('gainMagicAilmentChance', Number(gm[1]), { when: parseRiderWhen(text, gm[0]) });
+  }
+  for (const gm of text.matchAll(/reduce\s+enemy\s+ACC\s+by\s+(\d+(?:\.\d+)?)(?!\s*%)/gi)) {
+    addEnemy('reduceEnemyAccFlat', Number(gm[1]), { when: parseRiderWhen(text, gm[0]) });
   }
 
   if (/\bguard\b/i.test(text) && /defence|defense|gain/i.test(text)) addSelf('gainGuard', 1);

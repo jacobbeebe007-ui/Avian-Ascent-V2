@@ -182,6 +182,17 @@
       var n6 = resolveMagnitude('critDamage', 'up', nm6[1]); if (n6 != null) addSelf('gainCritDamage', n6);
     }
 
+    // Combined ATK + MATK gains (+8% ATK and MATK, +12% ATK/MATK)
+    for (var atkMatk of t.matchAll(/(?:gain|grants?)\s+\+?\s*(\d+(?:\.\d+)?)\s*%\s*ATK\s*(?:and|\/)?\s*MATK/gi)) {
+      var amV = Number(atkMatk[1]);
+      var amWhen = parseRiderWhen(t, atkMatk[0]);
+      addSelf('gainAtk', amV, { when: amWhen });
+      addSelf('gainMatk', amV, { when: amWhen });
+    }
+    for (var accAnd of t.matchAll(/\band\s+\+?\s*(\d+(?:\.\d+)?)\s+(?:ACC|Accuracy)(?!\s*%)/gi)) {
+      addSelf('gainAccFlat', Number(accAnd[1]), { when: parseRiderWhen(t, accAnd[0]) });
+    }
+
     // Tier-based ATK / MATK / DEF / MDEF buffs (Gain Major ATK Up, etc.)
     for (var atkUp of t.matchAll(/\b(?:Gain|gains?)\s+(Minor|Major|Grand|Epic|Legendary)\s+(?:Physical\s+)?ATK\s+Up\b/gi)) {
       var atkV = tierBuffPct(atkUp[1]); if (atkV != null) addSelf('gainAtk', atkV, { when: parseRiderWhen(t, atkUp[0]) });
@@ -194,6 +205,26 @@
     }
     for (var mdefUp of t.matchAll(/\b(?:Gain|gains?)\s+(Minor|Major|Grand|Epic|Legendary)\s+MDEF\s+Up\b/gi)) {
       var mdefV = tierBuffPct(mdefUp[1]); if (mdefV != null) addSelf('gainMdef', mdefV);
+    }
+    for (var atkUp2 of t.matchAll(/\b(Minor|Major|Grand|Epic|Legendary)\s+(?:Physical\s+)?ATK\s+Up\b/gi)) {
+      var atkV2 = tierBuffPct(atkUp2[1]); if (atkV2 != null) addSelf('gainAtk', atkV2, { when: parseRiderWhen(t, atkUp2[0]) });
+    }
+    for (var matkUp2 of t.matchAll(/\b(Minor|Major|Grand|Epic|Legendary)\s+(?:Magic\s+)?MATK\s+Up\b/gi)) {
+      var matkV2 = tierBuffPct(matkUp2[1]); if (matkV2 != null) addSelf('gainMatk', matkV2, { when: parseRiderWhen(t, matkUp2[0]) });
+    }
+    for (var defUp2 of t.matchAll(/\b(Minor|Major|Grand|Epic|Legendary)\s+DEF\s+Up\b/gi)) {
+      var defV2 = tierBuffPct(defUp2[1]); if (defV2 != null) addSelf('gainDef', defV2);
+    }
+    for (var mdefUp2 of t.matchAll(/\b(Minor|Major|Grand|Epic|Legendary)\s+MDEF\s+Up\b/gi)) {
+      var mdefV2 = tierBuffPct(mdefUp2[1]); if (mdefV2 != null) addSelf('gainMdef', mdefV2);
+    }
+
+    // Conditional ailment-based self buffs
+    for (var ailMatk of t.matchAll(/if the target has an ailment,\s*gain\s+\+?\s*(\d+(?:\.\d+)?)\s*%\s*MATK/gi)) {
+      addSelf('gainMatk', Number(ailMatk[1]), { when: 'targetHasAilment' });
+    }
+    for (var ailAtk of t.matchAll(/if the target has an ailment,\s*gain\s+\+?\s*(\d+(?:\.\d+)?)\s*%\s*ATK/gi)) {
+      addSelf('gainAtk', Number(ailAtk[1]), { when: 'targetHasAilment' });
     }
     for (var dmgUp of t.matchAll(/\b(?:Gain|gains?)\s+(Minor|Major|Grand|Epic|Legendary)\s+Damage\s+Up\b/gi)) {
       var dmgV = tierBuffPct(dmgUp[1]); if (dmgV != null) addSelf('gainAtk', dmgV);
@@ -214,8 +245,15 @@
     }
 
     // "reduce MDEF by 8%" style clauses
-    for (var redMdef of t.matchAll(/reduce\s+MDEF\s+by\s+(\d+(?:\.\d+)?)\s*%/gi)) addEnemy('reduceEnemyMdef', Number(redMdef[1]));
-    for (var redDef of t.matchAll(/reduce\s+DEF\s+by\s+(\d+(?:\.\d+)?)\s*%/gi)) addEnemy('reduceEnemyDef', Number(redDef[1]));
+    for (var redMdef of t.matchAll(/reduce\s+(?:enemy\s+)?MDEF\s+by\s+(\d+(?:\.\d+)?)\s*%/gi)) {
+      addEnemy('reduceEnemyMdef', Number(redMdef[1]), { when: parseRiderWhen(t, redMdef[0]) });
+    }
+    for (var redDef of t.matchAll(/reduce\s+(?:enemy\s+)?DEF\s+by\s+(\d+(?:\.\d+)?)\s*%/gi)) {
+      addEnemy('reduceEnemyDef', Number(redDef[1]), { when: parseRiderWhen(t, redDef[0]) });
+    }
+    for (var redMdef2 of t.matchAll(/reduces?\s+MDEF\s+by\s+(\d+(?:\.\d+)?)\s*%/gi)) {
+      addEnemy('reduceEnemyMdef', Number(redMdef2[1]), { when: parseRiderWhen(t, redMdef2[0]) });
+    }
 
     for (var gm7 of t.matchAll(/gain\s+\+?\s*(\d+(?:\.\d+)?)\s*%\s*Magic\s*Attack/gi)) addSelf('gainMatk', Number(gm7[1]));
     for (var gm8 of t.matchAll(/(?:gain\s+\+?|\bor\s+\+?\s*)(\d+(?:\.\d+)?)\s*%\s*Magic\s*Defen[cs]e/gi)) addSelf('gainMdef', Number(gm8[1]));
@@ -224,6 +262,27 @@
     }
     for (var gm10 of t.matchAll(/gain\s+\+?\s*(\d+(?:\.\d+)?)\s*%\s*(?:Physical\s*)?Attack(?!\s*Damage)/gi)) {
       if (!/Magic\s*Attack/i.test(gm10[0])) addSelf('gainAtk', Number(gm10[1]));
+    }
+    for (var gAtk of t.matchAll(/gain\s+\+?\s*(\d+(?:\.\d+)?)\s*%\s*ATK\b/gi)) {
+      addSelf('gainAtk', Number(gAtk[1]), { when: parseRiderWhen(t, gAtk[0]) });
+    }
+    for (var gMatk of t.matchAll(/gain\s+\+?\s*(\d+(?:\.\d+)?)\s*%\s*MATK\b/gi)) {
+      addSelf('gainMatk', Number(gMatk[1]), { when: parseRiderWhen(t, gMatk[0]) });
+    }
+    for (var gDef of t.matchAll(/gain\s+\+?\s*(\d+(?:\.\d+)?)\s*%\s*DEF\b/gi)) {
+      addSelf('gainDef', Number(gDef[1]), { when: parseRiderWhen(t, gDef[0]) });
+    }
+    for (var gMdef of t.matchAll(/gain\s+\+?\s*(\d+(?:\.\d+)?)\s*%\s*MDEF\b/gi)) {
+      addSelf('gainMdef', Number(gMdef[1]), { when: parseRiderWhen(t, gMdef[0]) });
+    }
+    for (var redEAtk of t.matchAll(/reduce\s+enemy\s+ATK\s+by\s+(\d+(?:\.\d+)?)\s*%/gi)) {
+      addEnemy('reduceEnemyAtk', Number(redEAtk[1]), { when: parseRiderWhen(t, redEAtk[0]) });
+    }
+    for (var redEMatk of t.matchAll(/reduce\s+enemy\s+MATK\s+by\s+(\d+(?:\.\d+)?)\s*%/gi)) {
+      addEnemy('reduceEnemyMatk', Number(redEMatk[1]), { when: parseRiderWhen(t, redEMatk[0]) });
+    }
+    if (/guard break|reduce it by one strength level/i.test(t)) {
+      riders.push({ kind: 'guardBreak', scope: 'enemy', when: when || 'onHit' });
     }
 
     // Enemy debuff riders
@@ -249,19 +308,51 @@
     var healM = t.match(/heal\s+(\d+(?:\.\d+)?)\s*%\s*Max\s*Health/i);
     if (healM) riders.push({ kind: 'healMaxHpPct', value: Number(healM[1]), scope: 'self', when: when });
 
+    for (var ailMag of t.matchAll(/gain\s+\+?\s*(\d+(?:\.\d+)?)\s*%\s*(?:Magical|Magic(?:al)?)\s+Ailment\s+chance/gi)) {
+      addSelf('gainMagicAilmentChance', Number(ailMag[1]), { when: parseRiderWhen(t, ailMag[0]) });
+    }
+    for (var ailPhys of t.matchAll(/gain\s+\+?\s*(\d+(?:\.\d+)?)\s*%\s*Physical\s+Ailment\s+chance/gi)) {
+      addSelf('gainPhysicalAilmentChance', Number(ailPhys[1]), { when: parseRiderWhen(t, ailPhys[0]) });
+    }
+    for (var reAccFlat of t.matchAll(/reduce\s+enemy\s+ACC\s+by\s+(\d+(?:\.\d+)?)(?!\s*%)/gi)) {
+      addEnemy('reduceEnemyAccFlat', Number(reAccFlat[1]), { when: parseRiderWhen(t, reAccFlat[0]) });
+    }
+    for (var suffAcc of t.matchAll(/suffer\s+-?\s*(\d+(?:\.\d+)?)\s+ACC/gi)) {
+      addEnemy('reduceEnemyAccFlat', Number(suffAcc[1]));
+    }
+
+    for (var suffCombo of t.matchAll(/suffer\s+-?\s*(\d+(?:\.\d+)?)\s*%\s*MDEF\s+and\s+-?\s*(\d+(?:\.\d+)?)\s*(?:%\s*)?ACC/gi)) {
+      addEnemy('reduceEnemyMdef', Number(suffCombo[1]));
+      var accVal = Number(suffCombo[2]);
+      if (/%/.test(suffCombo[0].slice(suffCombo[0].indexOf('ACC') - 5))) addEnemy('reduceEnemyAcc', accVal);
+      else addEnemy('reduceEnemyAccFlat', accVal);
+    }
+    for (var nextAcc of t.matchAll(/next\s+(?:Physical|Magic|Heavy)\s+hit\s+gains?\s+\+?\s*(\d+(?:\.\d+)?)\s+(?:ACC|Accuracy)/gi)) {
+      riders.push({ kind: 'gainAccNextHit', value: Number(nextAcc[1]), scope: 'self', when: parseRiderWhen(t, nextAcc[0]) });
+    }
+
     // Guard / brace / counter / taunt
     if (/\bguard\b/i.test(t) && /defence|defense|gain/i.test(t)) addSelf('gainGuard', 1);
     var drM = t.match(/(\d+(?:\.\d+)?)\s*%\s*damage\s*reduction/i);
     if (drM) addSelf('gainGuarded', Number(drM[1]));
     else if (/brace|damage reduction/i.test(t)) addSelf('gainGuarded', 0);
+    for (var shDmg of t.matchAll(/gain a Shield equal to (\d+(?:\.\d+)?)\s*%\s*of damage dealt/gi)) {
+      addSelf('gainShieldFromDamage', Number(shDmg[1]), { when: parseRiderWhen(t, shDmg[0]) });
+    }
     if (/\bshield\b/i.test(t) && /temp|temporary|max\s*hp|max\s*health|health/i.test(t)) {
       var shM = t.match(/(\d+(?:\.\d+)?)\s*%\s*(?:max\s*)?(?:hp|health)/i);
       addSelf('gainShield', shM ? Number(shM[1]) : 0);
-    } else if (/\b(minor|major|grand|epic|legendary)\s+shield\b/i.test(t)) {
+    } else if (/\b(?:gain a |gain )\s*(minor|major|grand|epic|legendary|moderate)\s+shield\b/i.test(t)) {
+      addSelf('gainShield', 0);
+    } else if (/\b(minor|major|grand|epic|legendary|moderate)\s+shield\b/i.test(t)) {
       addSelf('gainShield', 0);
     } else if (/\b(?:gain|gains?)\s+(minor|major|grand|epic|legendary)\s+shield\b/i.test(t)) {
       addSelf('gainShield', 0);
     } else if (/\bgain\s+shield\b/i.test(t)) addSelf('gainShield', 0);
+
+    if (/if the target has a minor buff,\s*remove it/i.test(t)) {
+      riders.push({ kind: 'purgeEnemyMinorBuff', scope: 'enemy', when: when || 'onHit' });
+    }
     if (/counter\s*chance|small counter/i.test(t)) addSelf('gainCounter', 1);
     if (/taunt/i.test(t)) addSelf('gainTaunt', 1);
 
