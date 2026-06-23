@@ -18112,7 +18112,7 @@ function resetCombatLayoutSettings(){
   const prev=getAccessibilitySettings();
   const cfg=Object.assign({}, prev, {
     combatLayout:Object.assign({}, DEFAULT_COMBAT_LAYOUT),
-    stickyCombatants:true,
+    stickyCombatants:false,
     autoCombatDensity:true,
   });
   localStorage.setItem(ACCESS_KEY, JSON.stringify(normalizeAccessibilitySettings(cfg)));
