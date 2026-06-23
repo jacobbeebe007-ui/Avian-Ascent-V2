@@ -44,20 +44,45 @@
     };
   };
 
-  function state() {
+  ns.getClassPerkForEntity = function getClassPerkForEntity(entity) {
+    if (!entity) return null;
+    if (entity._classPerk && entity._classPerk.def) return entity._classPerk;
+    return ns.getClassPerkForBird(entity.birdKey);
+  };
+
+  ns.applyClassPerkMetadata = function applyClassPerkMetadata(entity) {
+    if (!entity) return entity;
+    var perk = ns.getClassPerkForEntity(entity);
+    if (!perk) return entity;
+    entity._classPerk = perk;
+    entity.classPerk = perk.name;
+    entity.classPerkEffect = perk.effect;
+    entity._classPerkMdefPen = perk.def.id === 'arcanePressure' ? (perk.def.mdefPen || 0.10) : 0;
+    if (entity.stats) {
+      entity.stats.classPerk = perk.name;
+      entity.stats.classPerkEffect = perk.effect;
+    }
+    return entity;
+  };
+
+  function state(side) {
     var g = globalThis.G;
     if (!g) return null;
-    g.playerStatus = g.playerStatus || {};
-    if (!g.playerStatus._classPerkState) g.playerStatus._classPerkState = Object.create(null);
-    return g.playerStatus._classPerkState;
+    var status = side === 'enemy' ? (g.enemyStatus = g.enemyStatus || {}) : (g.playerStatus = g.playerStatus || {});
+    if (!status._classPerkState) status._classPerkState = Object.create(null);
+    return status._classPerkState;
   }
 
   ns.onBattleStart = function onBattleStart() {
     var g = globalThis.G;
     if (!g || !g.player) return;
-    var st = state();
+    var st = state('player');
     if (st) {
       for (var k in st) delete st[k];
+    }
+    var est = state('enemy');
+    if (est) {
+      for (var ek in est) delete est[ek];
     }
     g.player._classPerkMdefPen = 0;
     g.player._classPerkDukeStacks = 0;
@@ -65,6 +90,7 @@
     if (perk && perk.def.id === 'arcanePressure') {
       g.player._classPerkMdefPen = perk.def.mdefPen || 0.10;
     }
+    if (g.enemy) ns.applyClassPerkMetadata(g.enemy);
   };
 
   function abIsPhysical(ab) {
@@ -91,7 +117,7 @@
     if (!g || !g.player || !ab) return;
     var perk = ns.getClassPerkForBird(g.player.birdKey);
     if (!perk) return;
-    var st = state();
+    var st = state('player');
     if (perk.def.id === 'verseAndChorus' && abIsPhysical(ab)) {
       st.verseChorusPending = true;
     }
@@ -103,17 +129,18 @@
     var perk = ns.getClassPerkForBird(g.player.birdKey);
     if (!perk || perk.def.id !== 'retaliatingHide') return;
     if (isMagic) {
-      var st = state();
+      var st = state('player');
       st.retaliatingHidePending = true;
     }
   };
 
-  ns.collectOutgoingDamageBonusFractions = function collectOutgoingDamageBonusFractions(ab, ctx) {
+  ns.collectOutgoingDamageBonusFractionsForEntity = function collectOutgoingDamageBonusFractionsForEntity(entity, ab, ctx) {
     var g = globalThis.G;
-    if (!g || !g.player || !ab) return [];
-    var perk = ns.getClassPerkForBird(g.player.birdKey);
+    if (!g || !entity || !ab) return [];
+    var side = entity === g.enemy ? 'enemy' : 'player';
+    var perk = ns.getClassPerkForEntity(entity);
     if (!perk) return [];
-    var st = state() || {};
+    var st = state(side) || {};
     var out = [];
     var isPhys = abIsPhysical(ab);
     var isMag = abIsMagic(ab);
@@ -130,36 +157,53 @@
       out.push(perk.def.nextPhysicalBonus || 0.10);
       st.retaliatingHidePending = false;
     }
-    if (perk.def.id === 'dukeAscension' && (g.player._classPerkDukeStacks || 0) > 0) {
-      out.push((g.player._classPerkDukeStacks || 0) * (perk.def.killDamageBonus || 0.05));
+    if (perk.def.id === 'dukeAscension' && (entity._classPerkDukeStacks || 0) > 0) {
+      out.push((entity._classPerkDukeStacks || 0) * (perk.def.killDamageBonus || 0.05));
     }
     return out;
   };
 
-  ns.getIncomingDamageMultiplier = function getIncomingDamageMultiplier() {
+  ns.collectOutgoingDamageBonusFractions = function collectOutgoingDamageBonusFractions(ab, ctx) {
     var g = globalThis.G;
-    if (!g || !g.player) return 1;
-    var perk = ns.getClassPerkForBird(g.player.birdKey);
+    return ns.collectOutgoingDamageBonusFractionsForEntity(g && g.player, ab, ctx);
+  };
+
+  ns.getIncomingDamageMultiplierForEntity = function getIncomingDamageMultiplierForEntity(entity) {
+    if (!entity || !entity.stats) return 1;
+    var perk = ns.getClassPerkForEntity(entity);
     if (!perk || perk.def.id !== 'bulwarkOath') return 1;
-    var hp = g.player.stats.hp || 0;
-    var maxHp = g.player.stats.maxHp || 1;
+    var hp = entity.stats.hp || 0;
+    var maxHp = entity.stats.maxHp || 1;
     if (hp > maxHp * 0.5) return 1 - (perk.def.damageReduction || 0.10);
     return 1;
   };
 
+  ns.getIncomingDamageMultiplier = function getIncomingDamageMultiplier() {
+    var g = globalThis.G;
+    return ns.getIncomingDamageMultiplierForEntity(g && g.player);
+  };
+
+  ns.getExtraMdefPierceForEntity = function getExtraMdefPierceForEntity(entity, ab) {
+    if (!entity || !ab) return 0;
+    if (!abIsMagic(ab)) return 0;
+    return Number(entity._classPerkMdefPen) || 0;
+  };
+
   ns.getExtraMdefPierce = function getExtraMdefPierce(ab) {
     var g = globalThis.G;
-    if (!g || !g.player || !ab) return 0;
-    if (!abIsMagic(ab)) return 0;
-    return Number(g.player._classPerkMdefPen) || 0;
+    return ns.getExtraMdefPierceForEntity(g && g.player, ab);
+  };
+
+  ns.adjustDebuffDurationForEntity = function adjustDebuffDurationForEntity(entity, baseTurns) {
+    if (!entity) return baseTurns;
+    var perk = ns.getClassPerkForEntity(entity);
+    if (!perk || perk.def.id !== 'cursedCall') return baseTurns;
+    return baseTurns + (perk.def.debuffTurnBonus || 1);
   };
 
   ns.adjustDebuffDuration = function adjustDebuffDuration(baseTurns) {
     var g = globalThis.G;
-    if (!g || !g.player) return baseTurns;
-    var perk = ns.getClassPerkForBird(g.player.birdKey);
-    if (!perk || perk.def.id !== 'cursedCall') return baseTurns;
-    return baseTurns + (perk.def.debuffTurnBonus || 1);
+    return ns.adjustDebuffDurationForEntity(g && g.player, baseTurns);
   };
 
   ns.onEnemyDefeated = function onEnemyDefeated() {
@@ -181,7 +225,13 @@
   };
 
   ns.onPlayerTurnStart = function onPlayerTurnStart() {
-    var st = state();
+    var st = state('player');
+    if (!st) return;
+    st.rogueTempoUsed = false;
+  };
+
+  ns.onEnemyTurnStart = function onEnemyTurnStart() {
+    var st = state('enemy');
     if (!st) return;
     st.rogueTempoUsed = false;
   };

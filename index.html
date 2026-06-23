@@ -59,7 +59,15 @@
 <div id="app">
 <header>
 <h1>⚔ AVIAN ASCENT ⚔</h1>
-<div style="text-align:center;margin-top:8px;"><button class="menu-btn" data-action="openSettingsModal">⚙ Settings</button></div>
+<div class="page-header-controls">
+<div class="battle-header-controls" aria-label="Battle controls">
+<div class="level-badge" id="level-label">STAGE 1</div>
+<span class="bird-lv" id="bird-lv-label">Lv.1</span>
+<button type="button" class="nest-btn" data-action="openNest">🪺 Nest</button>
+<button class="sound-btn" id="sound-toggle-btn" data-action="toggleSound" title="Toggle Sound" aria-label="Toggle sound">🔊</button>
+</div>
+<button class="menu-btn" data-action="openSettingsModal">⚙ Settings</button>
+</div>
 </header>
 <!-- START -->
 <div class="screen screen-start active" id="screen-start">
@@ -555,15 +563,7 @@
 </div>
 <div class="battle-layout">
 <div class="battle-top tactical-topbar" data-combat-panel="topbar">
-<div class="topbar-left">
-<div class="level-badge" id="level-label">STAGE 1</div>
-<span class="bird-lv" id="bird-lv-label">Lv.1</span>
-<button class="sound-btn" id="sound-toggle-btn" data-action="toggleSound" title="Toggle Sound" aria-label="Toggle sound">🔊</button>
-</div>
-<div class="topbar-center">
 <div class="battle-caption" id="battle-caption" aria-live="polite"></div>
-<button type="button" class="nest-btn" data-action="openNest">🪺 Nest</button>
-</div>
 </div>
 
 <div class="combatants tactical-battlefield" data-combat-panel="combatants">

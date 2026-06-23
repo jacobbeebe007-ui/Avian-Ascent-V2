@@ -52,7 +52,9 @@ body::before{content:'';position:fixed;inset:0;background-image:radial-gradient(
 #app:has(#screen-select.active) > header{display:none !important;}
 #app:has(#screen-battle.active) > header{padding:10px 0 8px;margin-bottom:10px;}
 #app:has(#screen-battle.active) > header h1{font-size:1.55rem;}
-#app:has(#screen-battle.active) > header .menu-btn{font-size:.78rem;padding:4px 12px;}
+#app:has(#screen-battle.active) > header .menu-btn,
+#app:has(#screen-battle.active) > header .nest-btn{font-size:.78rem;padding:4px 12px;margin:0;}
+#app:has(#screen-battle.active) > header .sound-btn{font-size:.7rem;padding:4px 8px;}
 #app:has(#screen-map-forge.active){
   max-width:none;
   width:100%;
@@ -64,6 +66,9 @@ body::before{content:'';position:fixed;inset:0;background-image:radial-gradient(
 header{text-align:center;padding:24px 0 16px;border-bottom:1px solid rgba(201,168,76,.25);margin-bottom:24px;}
 header h1{font-family:'Cinzel',serif;font-size:2.6rem;font-weight:900;letter-spacing:.1em;background:linear-gradient(135deg,var(--gold) 0%,var(--gold-light) 50%,var(--gold) 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
 header p{color:var(--text-dim);font-style:italic;font-size:1rem;margin-top:4px;}
+.page-header-controls{display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap;margin-top:8px;}
+.battle-header-controls{display:none;align-items:center;justify-content:center;gap:8px;flex-wrap:wrap;}
+#app:has(#screen-battle.active) > header .battle-header-controls{display:flex;}
 .screen{display:none;}.screen.active{display:block;}
 
 /* ---- Title / start (place art at assets/ui/start-screen.png) ---- */
@@ -4443,7 +4448,7 @@ img{image-rendering:pixelated;image-rendering:crisp-edges;}
 #screen-battle #player-avatar .sprite4,#screen-battle #enemy-avatar .sprite4{border-radius:0;}
 .battle-arena-vignette{position:absolute;inset:0;background:radial-gradient(ellipse 95% 75% at 50% 42%, transparent 18%, rgba(4,8,4,.78) 72%, rgba(0,0,0,.88) 100%);box-shadow:inset 0 0 100px rgba(0,0,0,.5);}
 .battle-arena-floor{position:absolute;left:0;right:0;bottom:0;height:32%;background:linear-gradient(180deg,transparent,rgba(0,0,0,.42));pointer-events:none;}
-.tactical-topbar{display:grid;grid-template-columns:1fr auto;align-items:center;gap:12px;padding:10px 14px;}
+.tactical-topbar{display:flex;align-items:center;justify-content:center;gap:12px;padding:0 14px;min-height:0;}
 .topbar-left{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
 .topbar-left .sound-btn{margin-left:2px;}
 .topbar-center{text-align:center;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;min-width:0;}
@@ -4514,7 +4519,7 @@ body.ui-mobile-mode #screen-battle .btn-desc{
 #screen-battle .enemy-plan .intent-name{font-size:.9rem;}
 
 @media (max-width: 1100px){
-  .tactical-topbar{grid-template-columns:1fr;}
+  .tactical-topbar{flex-wrap:wrap;}
   .topbar-left{justify-content:center;flex-wrap:wrap;}
   .tactical-battlefield{grid-template-columns:1fr;}
   .tactical-center{order:2;}

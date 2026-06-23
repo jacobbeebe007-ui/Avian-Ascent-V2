@@ -705,6 +705,10 @@
   function reapplyPlayerStatsFromSources(player) {
     if (!player || !player.stats) return;
     ensurePlayerMutationState(player);
+    var prevMaxHp = Math.max(1, Number(player.stats.maxHp) || Number(player.stats.hp) || 1);
+    var prevHp = Math.max(0, Number(player.stats.hp) || prevMaxHp);
+    var hpRatio = prevMaxHp > 0 ? Math.max(0, Math.min(1, prevHp / prevMaxHp)) : 1;
+    var wasFullHp = prevHp >= prevMaxHp;
     var L = (typeof ensureStatLedger === 'function') ? ensureStatLedger(player) : null;
     var base = (L && L.birdBaseline) ? L.birdBaseline : null;
     if (!base || !Object.keys(base).length) {
@@ -718,19 +722,25 @@
     var fromUpgrades = (L && L.fromUpgrades) ? L.fromUpgrades : {};
     var fromCardTier = (L && L.fromCardTier) ? L.fromCardTier : {};
     var eqRoll = sumEquippedStats(player);
-    if (L) L.fromEquipment = Object.assign({}, eqRoll.stats);
     player._mutationMechanics = eqRoll.mechanics;
     player._mutationStatsPct = eqRoll.statsPct || Object.create(null);
     var pctRoll = player._mutationStatsPct;
+    var fromEquipment = Object.assign({}, eqRoll.stats);
     for (var i = 0; i < keys.length; i++) {
       var k = keys[i];
       var flat = (Number(fromLevel[k]) || 0) + (Number(fromUpgrades[k]) || 0) + (Number(fromCardTier[k]) || 0) + (Number(eqRoll.stats[k]) || 0);
       var pctBonus = pctRoll[k] ? Math.round((Number(base[k]) || 0) * (Number(pctRoll[k]) || 0) / 100) : 0;
+      if (pctBonus) fromEquipment[k] = (Number(fromEquipment[k]) || 0) + pctBonus;
       var v = (Number(base[k]) || 0) + flat + pctBonus;
       player.stats[k] = capTrackedStatValue(k, v);
     }
+    if (L) {
+      L.fromEquipment = fromEquipment;
+      L.fromEquipmentPct = Object.assign({}, pctRoll);
+    }
     if (player.stats.maxHp != null) {
-      player.stats.hp = Math.min(player.stats.hp || player.stats.maxHp, player.stats.maxHp);
+      var nextMaxHp = Math.max(1, Number(player.stats.maxHp) || 1);
+      player.stats.hp = wasFullHp ? nextMaxHp : Math.max(1, Math.min(nextMaxHp, Math.round(nextMaxHp * hpRatio)));
     }
     if (typeof normalizeCombatStats === 'function') normalizeCombatStats(player.stats);
   }
@@ -780,10 +790,15 @@
     var lines = [];
     var s = roll.stats;
     var m = roll.mechanics;
+    var sp = roll.statsPct || {};
     var labels = (typeof STAT_LEDGER_LABELS !== 'undefined') ? STAT_LEDGER_LABELS : {};
     for (var k in s) {
       if (!s[k]) continue;
       lines.push({ key: k, label: labels[k] || k, value: s[k] });
+    }
+    for (var pk in sp) {
+      if (!sp[pk]) continue;
+      lines.push({ key: pk + 'Pct', label: labels[pk] || pk, value: '+' + sp[pk] + '%' });
     }
     if (m.lightAttackDmgPct) lines.push({ key: 'lightDmg', label: 'Light Attack', value: '+' + m.lightAttackDmgPct + '%' });
     if (m.mediumAttackDmgPct) lines.push({ key: 'mediumDmg', label: 'Medium Attack', value: '+' + m.mediumAttackDmgPct + '%' });
@@ -798,7 +813,9 @@
 
   function getMechanicsRollup(player) {
     ensurePlayerMutationState(player);
-    if (!player._mutationMechanics) reapplyPlayerStatsFromSources(player);
+    var roll = sumEquippedStats(player);
+    player._mutationMechanics = roll.mechanics;
+    player._mutationStatsPct = roll.statsPct || Object.create(null);
     return player._mutationMechanics || Object.create(null);
   }
 

@@ -395,6 +395,9 @@
       : Object.create(null);
     return { birdKey: birdKey, slotLayout: slotLayout, families: families, abilityLookup: abilityLookup };
   }
+  Avian.systems = Avian.systems || Object.create(null);
+  Avian.systems.combatPackBoot = Avian.systems.combatPackBoot || Object.create(null);
+  Avian.systems.combatPackBoot.buildFamilyForBird = buildFamilyForBird;
   try {
     if (typeof globalThis.FAMILY_EVOLUTION_BIRD_DATA === 'object' && globalThis.FAMILY_EVOLUTION_BIRD_DATA) {
       for (var fkk in globalThis.FAMILY_EVOLUTION_BIRD_DATA) delete globalThis.FAMILY_EVOLUTION_BIRD_DATA[fkk];

@@ -527,9 +527,15 @@ function getEquippedStatSources(player, statKey){
     for(const id of arr){
       if(!id) continue;
       const item = typeof Avian?.mutations?.getItem==='function' ? Avian.mutations.getItem(id) : null;
+      if(!item) continue;
       const val = Number(item?.stats?.[statKey]) || 0;
-      if(!item || Math.abs(val) < 0.0001) continue;
-      lines.push({ name: item.name, value: val });
+      if(Math.abs(val) >= 0.0001) lines.push({ name: item.name, value: val });
+      const pct = Number(item?.statsPct?.[statKey]) || 0;
+      if(Math.abs(pct) >= 0.0001){
+        const base = Number(player?._statLedger?.birdBaseline?.[statKey]) || Number(BIRDS?.[player?.birdKey]?.stats?.[statKey]) || 0;
+        const pctVal = Math.round(base * pct / 100);
+        if(Math.abs(pctVal) >= 0.0001) lines.push({ name: `${item.name} (${pct}%)`, value: pctVal });
+      }
     }
   }
   return lines;
@@ -3158,9 +3164,19 @@ function getFamilyEvolutionBirdDataStore(){
 function getBirdFamilyEvolutionData(birdKey){
   const store=getFamilyEvolutionBirdDataStore();
   const k = String(birdKey||'');
-  if(k==='secretarybird') return store.secretary || null;
-  if(k==='harpyeagle') return store.harpy || null;
-  return store[k] || null;
+  const aliases={secretarybird:'secretary',harpyeagle:'harpy'};
+  const lookupKey=aliases[k]||k;
+  if(store[lookupKey]) return store[lookupKey];
+  const packBuilder=Avian?.systems?.combatPackBoot?.buildFamilyForBird;
+  if(typeof packBuilder==='function'){
+    const rebuilt=packBuilder(lookupKey);
+    if(rebuilt){
+      store[lookupKey]=rebuilt;
+      if(lookupKey!==k) store[k]=rebuilt;
+      return rebuilt;
+    }
+  }
+  return null;
 }
 function getBirdSkillFamilyCatalog(birdKey){
   return getBirdFamilyEvolutionData(birdKey)?.families || null;
@@ -4147,6 +4163,9 @@ function mergeScaledStatsIntoEnemy(ed, encounterStage){
     }
     ed._mutationsApplied = true;
   }
+  if(typeof Avian?.classPerks?.applyClassPerkMetadata==='function'){
+    Avian.classPerks.applyClassPerkMetadata(ed);
+  }
   return ed;
 }
 
@@ -4336,9 +4355,13 @@ function openEnemyInfoPopup(){
     const bk=G.enemy.birdKey||G.enemy.templateKey;
     const bird=bk&&BIRDS[bk]?BIRDS[bk]:null;
     const passive=bird?.passive;
-    passEl.innerHTML=passive
-      ? `<div class="enemy-info-passive-name">★ ${escapeHtmlRoster(passive.name)}</div><div class="enemy-info-passive-desc">${escapeHtmlRoster(passive.desc||passive.effect||'')}</div>`
-      : '<p class="enemy-info-empty">None</p>';
+    const classPerk=typeof Avian?.classPerks?.getClassPerkForEntity==='function'
+      ? Avian.classPerks.getClassPerkForEntity(G.enemy)
+      : getBirdAuthoredClassPerk(bk);
+    const parts=[];
+    if(passive) parts.push(`<div class="enemy-info-passive-name">★ ${escapeHtmlRoster(passive.name)}</div><div class="enemy-info-passive-desc">${escapeHtmlRoster(passive.desc||passive.effect||'')}</div>`);
+    if(classPerk) parts.push(`<div class="enemy-info-passive-name">Class Perk: ${escapeHtmlRoster(classPerk.name)}</div><div class="enemy-info-passive-desc">${escapeHtmlRoster(classPerk.effect||'')}</div>`);
+    passEl.innerHTML=parts.length?parts.join(''):'<p class="enemy-info-empty">None</p>';
   }
   const ab=document.getElementById('enemy-info-popup-abilities');
   if(ab) ab.innerHTML=buildEnemyInfoPopupAbilitiesHtml(G.enemy);
@@ -7445,8 +7468,16 @@ function buildCombatPerkSection(side){
   const bk=G.enemy?.birdKey||G.enemy?.templateKey;
   const bird=bk&&BIRDS[bk]?BIRDS[bk]:null;
   const passive=bird?.passive;
-  if(!passive) return '<p class="combat-details-empty">No passive.</p>';
-  return `<div class="combat-details-perk"><div class="combat-details-perk-name">★ ${combatEscAttr(passive.name)} <span class="combat-details-perk-type">Passive</span></div><div class="combat-details-perk-desc">${combatEscAttr(passive.desc||passive.effect||'')}</div></div>`;
+  const classPerk=typeof Avian?.classPerks?.getClassPerkForEntity==='function'
+    ? Avian.classPerks.getClassPerkForEntity(G.enemy)
+    : getBirdAuthoredClassPerk(bk);
+  let html='';
+  if(passive) html+=`<div class="combat-details-perk"><div class="combat-details-perk-name">★ ${combatEscAttr(passive.name)} <span class="combat-details-perk-type">Passive</span></div><div class="combat-details-perk-desc">${combatEscAttr(passive.desc||passive.effect||'')}</div></div>`;
+  if(classPerk){
+    html+=`<div class="combat-details-perk"><div class="combat-details-perk-name">${combatEscAttr(classPerk.name)} <span class="combat-details-perk-type">Class Perk</span></div>`;
+    html+=`<div class="combat-details-perk-desc">${combatEscAttr(classPerk.effect||'')}</div></div>`;
+  }
+  return html||'<p class="combat-details-empty">No passive.</p>';
 }
 function buildCombatStatusDetailsSection(side){
   const statuses=side==='player'?G.playerStatus:G.enemyStatus;
@@ -7946,7 +7977,7 @@ function renderEnemyPlan(){
   const host=document.getElementById('enemy-intent-panel');
   if(!host || !G.enemy) return;
   const maxE=Math.max(0,G.enemy.energyMax||3);
-  const curE=(G.turnPhase===TURN.ENEMY) ? Math.max(0,G.enemy.energy||0) : maxE;
+  const curE=Math.min(maxE, Math.max(0, Number(G.enemy.energy)||0));
   let label='🤔 Thinking...';
   let title='';
   if(G.enemyNextAction){
@@ -11183,6 +11214,12 @@ function getEnemyAbilityAuthoredEnCost(ab){
 function computeEntityAbilityRawDamage(entity, ab, tmpl, isMagic){
   const row=tmpl?._combatPackRow||ab?._dispatcherRow||null;
   const stats=entity?.stats||entity||{};
+  const classBonusFractions = typeof Avian?.classPerks?.collectOutgoingDamageBonusFractionsForEntity==='function'
+    ? Avian.classPerks.collectOutgoingDamageBonusFractionsForEntity(entity, ab, { target:G.player, isMagic })
+    : [];
+  const classBonusMult = typeof sumAdditiveDamageBonus==='function'
+    ? sumAdditiveDamageBonus(classBonusFractions)
+    : (1+classBonusFractions.reduce((a,b)=>a+(Number(b)||0),0));
   if(row&&typeof enrichCombatRow==='function') enrichCombatRow(row);
   if(row&&typeof calculateDamage==='function'&&typeof usesMasterDamage==='function'&&usesMasterDamage(row)){
     const battleState={
@@ -11194,7 +11231,7 @@ function computeEntityAbilityRawDamage(entity, ab, tmpl, isMagic){
       target:G.player,
       ability:row,
       battleState,
-      bonusFractions:[],
+      bonusFractions:classBonusFractions,
       hitSucceeded:true,
     });
     G._lastAspectComponents=result.components||null;
@@ -11202,10 +11239,10 @@ function computeEntityAbilityRawDamage(entity, ab, tmpl, isMagic){
   }
   G._lastAspectComponents=null;
   if(row&&typeof computeAbilityRawDamage==='function'){
-    return roundCombatDamage(Math.max(0.01, computeAbilityRawDamage(row, stats)));
+    return roundCombatDamage(Math.max(0.01, computeAbilityRawDamage(row, stats) * classBonusMult));
   }
-  if(isMagic) return roundCombatDamage(Math.max(0.01, Number(stats.matk||8)));
-  return roundCombatDamage(Math.max(0.01, Number(stats.atk||8)));
+  if(isMagic) return roundCombatDamage(Math.max(0.01, Number(stats.matk||8) * classBonusMult));
+  return roundCombatDamage(Math.max(0.01, Number(stats.atk||8) * classBonusMult));
 }
 
 function applyCurvedMitigationToPlayer(preMit,isMagic,srcAbility){
@@ -11215,7 +11252,9 @@ function applyCurvedMitigationToPlayer(preMit,isMagic,srcAbility){
     : ((G.player.stats.def||0)+_aura.def);
   let pen=0;
   if(isMagic){
-    pen=Math.min(0.95, (Number(srcAbility?.pierceMdef)||0)/100 + (Number(G._currentPiercePct)||0)/100 + (typeof Avian?.classPerks?.getExtraMdefPierce==='function'?Avian.classPerks.getExtraMdefPierce(srcAbility||G._activePlayerAbility||{}):0));
+    const enemyClassPen = typeof Avian?.classPerks?.getExtraMdefPierceForEntity==='function'
+      ? Avian.classPerks.getExtraMdefPierceForEntity(G.enemy, srcAbility||{}) : 0;
+    pen=Math.min(0.95, (Number(srcAbility?.pierceMdef)||0)/100 + (Number(G._currentPiercePct)||0)/100 + enemyClassPen);
   } else if(srcAbility){
     pen=getPhysicalPierceFractionForDamage(srcAbility);
   }
@@ -11378,6 +11417,9 @@ function dealDamage(target,amount,isCrit=false,isMagic=false,srcAbility=null,opt
     const def=G.enemyStatus.defending;
     const blockPct=0.4;
     if (def>0){dmg=roundCombatDamage(dmg*blockPct);wasBlocked=true;}
+    if(typeof Avian?.classPerks?.getIncomingDamageMultiplierForEntity==='function'){
+      dmg=roundCombatDamage(dmg*Avian.classPerks.getIncomingDamageMultiplierForEntity(G.enemy));
+    }
   }
   if (target==='player') {
     const enemyRow=resolveAbilityCombatRow(activeAb);
@@ -11947,8 +11989,10 @@ function notifyAilmentApplied(target, ailId) {
 
 function applyAilment(target,ailId,stacks=1) {
   const status=target==='player'?G.playerStatus:G.enemyStatus;
-  const debuffDurationBonus=(target==='enemy'&&G.player&&typeof Avian?.classPerks?.adjustDebuffDuration==='function')
-    ?Math.max(0, Avian.classPerks.adjustDebuffDuration(1)-1):0;
+  const debuffSource=target==='enemy'?G.player:G.enemy;
+  const debuffDurationBonus=(debuffSource&&typeof Avian?.classPerks?.adjustDebuffDurationForEntity==='function')
+    ?Math.max(0, Avian.classPerks.adjustDebuffDurationForEntity(debuffSource,1)-1)
+    :((target==='enemy'&&G.player&&typeof Avian?.classPerks?.adjustDebuffDuration==='function')?Math.max(0, Avian.classPerks.adjustDebuffDuration(1)-1):0);
   codexMark('statuses',ailId,'seen');
   // Check passive immunities when applying to player
   if(target==='player'&&G.player){
@@ -11997,7 +12041,7 @@ function applyAilment(target,ailId,stacks=1) {
     } else {
       status.poison.stacks=nextStacks;
       const extraTurns=(fromPlayer)?(G.player?.poisonExtraTurns||0):0;
-      status.poison.turns=poisonDur+extraTurns;
+      status.poison.turns=poisonDur+extraTurns+debuffDurationBonus;
     }
   } else if (ailId==='toxic') {
     if(typeof hasAilmentGuard==='function' && hasAilmentGuard(status,'toxicResistance')) return false;
@@ -12581,7 +12625,10 @@ function startEnemyTurn(enemy){
     const r = enemy.energyRegen || prof.regenEN;
     enemy.energy = Math.min(maxEn, Math.max(0, (enemy.energy||0) + r));
   }
+  if(typeof Avian?.classPerks?.onEnemyTurnStart==='function') Avian.classPerks.onEnemyTurnStart();
   G.phase='ENEMY';
+  if(typeof setEnergyBar==='function') setEnergyBar('enemy', enemy.energy, enemy.energyMax||maxEn);
+  if(typeof renderEnemyPlan==='function') renderEnemyPlan();
 }
 function isSpellAbilityId(id){
   const t = ABILITY_TEMPLATES?.[id];
