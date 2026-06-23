@@ -2,10 +2,10 @@
  *
  * Shop offer composition (per visit):
  *   - 3 healing items (from game.js SHOP_HEALING_ITEMS).
- *   - 6 ability-learning offers rolled from combat pack shop pool.
+ *   - Mutation stock (Avian.mutations.rollMutationStock).
  *   - 1 pinned Mutated Feather (game.js).
  *
- * Purchased abilities go to player.abilityInventory; equip from the Nest.
+ * Ability families are not sold at shops — slots unlock via Species Feather upgrades.
  */
 (function () {
   'use strict';

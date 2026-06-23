@@ -2741,6 +2741,17 @@ body.build-nest-unlocked .splash-hotspot--forge.is-buildnest-hidden{
 .hp-bar-fill.recent-hit{filter:brightness(1.18) saturate(1.25);}
 .hp-bar-fill.recent-heal{filter:brightness(1.15) saturate(1.2);}
 .status-effects{display:flex;flex-wrap:wrap;gap:3px;min-height:24px;margin-bottom:6px;margin-top:0;}
+.combat-status-stack{display:flex;flex-direction:column;gap:4px;min-height:24px;margin-bottom:6px;margin-top:0;}
+.combat-status-section{display:flex;flex-wrap:wrap;gap:3px;align-items:center;min-height:0;}
+.combat-status-section:empty{display:none;}
+.combat-status-ailments{order:1;}
+.combat-status-modifiers{order:2;}
+.status-badge--ailment{border-color:rgba(120,200,120,.55);}
+.status-badge--buff,.status-badge.buffed,.status-badge.crit{background:rgba(232,201,106,.15);border-color:rgba(232,201,106,.55);color:#e8c96a;}
+.status-badge--debuff{background:rgba(120,174,232,.12);border-color:rgba(120,174,232,.5);color:#78aee8;}
+.status-badge--ailment:not(.poison):not(.burning):not(.bleed):not(.paralyzed):not(.confused):not(.slow){background:rgba(120,200,120,.12);border-color:rgba(120,200,120,.45);color:#78c878;}
+.status-badge.crit::before{content:'CRT';}
+.status-badge.buffed::before{content:'BUF';}
 .status-badge{padding:1px 7px;border-radius:20px;font-size:.72rem;border:1px solid;display:inline-flex;align-items:center;gap:4px;}
 .status-badge::before{font-size:.64rem;opacity:.9;letter-spacing:.03em;color:currentColor;}
 .status-badge.poison::before{content:'PSN';}

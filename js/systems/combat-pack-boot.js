@@ -495,8 +495,6 @@
         }
 
         var items = buildCombatItemOffers();
-        var abilityOffers = Avian.shop.rollStockForMode(mode);
-        items.push.apply(items, abilityOffers);
         if (Avian.mutations && typeof Avian.mutations.rollMutationStock === 'function') {
           var mutCount = mode === 'endless-boss' ? 1 : 9;
           var mutOffers = Avian.mutations.rollMutationStock(mutCount, currentShopStage(), new Set());

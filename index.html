@@ -581,7 +581,10 @@
 <div class="combatant-name" id="player-name">—</div>
 <div class="combatant-meta"><span id="player-class-label">—</span><span id="player-aspect-label" class="aspect-chip" hidden></span></div>
 <div class="avatar-wrap" id="player-avatar-wrap"><div class="avatar-inner" id="player-avatar"></div></div>
-<div class="status-effects" id="player-status"></div>
+<div class="combat-status-stack status-effects" id="player-status">
+<div class="combat-status-section combat-status-ailments" id="player-status-ailments" aria-label="Ailments"></div>
+<div class="combat-status-section combat-status-modifiers" id="player-status-modifiers" aria-label="Buffs and debuffs"></div>
+</div>
 <div class="hp-bar-wrap">
 <div class="hp-label"><span>HP</span><span id="player-hp-text">—</span></div>
 <div class="hp-bar-bg"><div class="hp-bar-fill" id="player-hp-bar"></div><div class="hp-bar-shield" id="player-shield-segment" aria-hidden="true"></div></div>
@@ -605,7 +608,10 @@
 <div class="combatant-name" id="enemy-name">—</div>
 <div class="combatant-meta"><span id="enemy-class-label">—</span><span id="enemy-aspect-label" class="aspect-chip" hidden></span></div>
 <div class="avatar-wrap" id="enemy-avatar-wrap"><div class="avatar-inner" id="enemy-avatar"></div></div>
-<div class="status-effects" id="enemy-status"></div>
+<div class="combat-status-stack status-effects" id="enemy-status">
+<div class="combat-status-section combat-status-ailments" id="enemy-status-ailments" aria-label="Ailments"></div>
+<div class="combat-status-section combat-status-modifiers" id="enemy-status-modifiers" aria-label="Buffs and debuffs"></div>
+</div>
 <div class="hp-bar-wrap">
 <div class="hp-label"><span>HP</span><span id="enemy-hp-text">—</span></div>
 <div class="hp-bar-bg"><div class="hp-bar-fill" id="enemy-hp-bar"></div><div class="hp-bar-shield" id="enemy-shield-segment" aria-hidden="true"></div></div>

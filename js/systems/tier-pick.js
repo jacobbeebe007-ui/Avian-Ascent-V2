@@ -22,8 +22,8 @@
   Avian.systems = Avian.systems || Object.create(null);
   Avian.flags = Avian.flags || Object.create(null);
 
-  /** Stages that grant a tier pick. Mutable for tuning. */
-  var DEFAULT_PICK_STAGES = [4, 8, 14];
+  /** Stages that grant a tier pick. Empty — ability evolution is feather-driven only. */
+  var DEFAULT_PICK_STAGES = [];
 
   var api = Avian.systems.tierPick = Object.create(null);
   api.pickStages = DEFAULT_PICK_STAGES.slice();

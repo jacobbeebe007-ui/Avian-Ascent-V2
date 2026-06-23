@@ -2443,7 +2443,7 @@ function buildNestAbilitySection(player){
   const inv=player.abilityInventory||[];
   let vaultHtml='';
   if(!inv.length){
-    vaultHtml=`<div class="nest-inv-empty">No shop abilities in vault. Buy abilities at Stork's Emporium.</div>`;
+    vaultHtml=`<div class="nest-inv-empty">No spare abilities in vault.</div>`;
   } else {
     vaultHtml='<div class="nest-ability-vault-grid">';
     inv.forEach((entry, idx)=>{
@@ -2452,8 +2452,8 @@ function buildNestAbilitySection(player){
     });
     vaultHtml+='</div>';
   }
-  const slotHint=locked?'Story battle loadouts are locked until victory. Equip abilities from rewards or the overworld Nest.':(selectedSlot!=null?`Selected slot ${selectedSlot+1} for equip.`:'Your bird-card tier sets how many ability slots unlock (grey 2, green 3, blue 4, purple 5, gold 6, orange 7). Use Mutated Feathers to advance S1-S3 mutations.');
-  return `<div class="nest-section nest-ability-section${locked?' nest-equip-locked':''}"><div class="nest-section-title">⚔ Abilities · 🪶 Mutated Feathers: ${featherCt}</div>${locked?'<p class="nest-lock-note">Loadout locked during Story battle.</p>':''}<div class="nest-ledger-subtitle">Equipped loadout</div><div class="nest-abilities-grid">${equippedHtml}</div><div class="nest-ledger-subtitle">Ability vault (${inv.length})</div>${vaultHtml}<p class="nest-ledger-note">${slotHint} Starter slots (1-2) mutate with feathers through Stage 1-3. Higher card tiers unlock additional ability slots.</p></div>`;
+  const slotHint=locked?'Story battle loadouts are locked until victory. Equip abilities from the overworld Nest.':(selectedSlot!=null?`Selected slot ${selectedSlot+1} for equip.`:'Upgrade your bird with Species Feathers to unlock ability slots (grey 2, green 3, blue 4, purple 5, gold 6, orange 7). Use Mutated Feathers in the Nest to advance S1–S3 mutations.');
+  return `<div class="nest-section nest-ability-section${locked?' nest-equip-locked':''}"><div class="nest-section-title">⚔ Abilities · 🪶 Mutated Feathers: ${featherCt}</div>${locked?'<p class="nest-lock-note">Loadout locked during Story battle.</p>':''}<div class="nest-ledger-subtitle">Equipped loadout</div><div class="nest-abilities-grid">${equippedHtml}</div><div class="nest-ledger-subtitle">Ability vault (${inv.length})</div>${vaultHtml}<p class="nest-ledger-note">${slotHint}</p></div>`;
 }
 
 function setNestMutateConfirmVisible(visible, enabled){
@@ -3045,29 +3045,6 @@ const SKILL_EVOLUTION_LEVEL_INTERVAL = 3;
 const FAMILY_EVOLUTION_STATE_VERSION = 13; /* bumped for combat rewrite: wipes legacy family-evolution state */
 /* Combat rewrite: all legacy *_SKILL_SLOT_LAYOUT / *_SKILL_FAMILIES consts and FAMILY_EVOLUTION_BIRD_DATA literal removed. js/systems/combat-pack-boot.js rebuilds FAMILY_EVOLUTION_BIRD_DATA from Avian.data.combatPack at startup. */
 const FAMILY_EVOLUTION_BIRD_DATA = Object.create(null);
-const WORKBOOK_UNLOCK_TIER_STAGES = Object.freeze({
-  'Starter': 1,
-  'Green Aspect': 3,
-  'Blue Class': 6,
-  'Purple Utility': 9,
-  'Gold Special': 12,
-  'Orange Ultimate': 15,
-});
-function normalizeWorkbookUnlockTier(tier){
-  const t=String(tier||'Starter').trim();
-  if(WORKBOOK_UNLOCK_TIER_STAGES[t]!=null) return t;
-  const low=t.toLowerCase();
-  if(low.includes('starter')||low.includes('basic')) return 'Starter';
-  if(low.includes('green')||low.includes('aspect')) return 'Green Aspect';
-  if(low.includes('blue')||low.includes('class')) return 'Blue Class';
-  if(low.includes('purple')||low.includes('utility')) return 'Purple Utility';
-  if(low.includes('gold')||low.includes('special')) return 'Gold Special';
-  if(low.includes('orange')||low.includes('ultimate')) return 'Orange Ultimate';
-  return 'Starter';
-}
-function getUnlockStageForWorkbookTier(tier){
-  return WORKBOOK_UNLOCK_TIER_STAGES[normalizeWorkbookUnlockTier(tier)]||1;
-}
 function getMutationStageFromAbilityId(abilityId, family){
   const m=/_S(\d+)$/.exec(String(abilityId||''));
   if(m) return Number(m[1])||1;
@@ -3111,16 +3088,8 @@ globalThis.applyPlayerSkillsFromCardTier=applyPlayerSkillsFromCardTier;
 function isSkillSlotUnlocked(slot, player){
   if(!slot) return false;
   const pl = player || G.player;
-  // Bird-card tier guarantees a minimum number of unlocked slots from character
-  // select onward (green => 3rd ability, blue => 4th, etc). Stage-based family
-  // unlocks can open additional slots later in a run.
   const idx = Number(slot.slotIndex)||0;
-  if(idx < getCardTierSlotCount(pl)) return true;
-  const fam=getSkillSlotFamilyDef(slot, pl?.birdKey||G.player?.birdKey);
-  const tier=fam?.unlockTier||'Starter';
-  const needStage=getUnlockStageForWorkbookTier(tier);
-  const curStage=Math.max(1, Number(G?.stage)||1, Number(pl?.birdLevel)||1);
-  return curStage>=needStage;
+  return idx < getCardTierSlotCount(pl);
 }
 function buildFamilySkillAbilityLookup(slotLayout, families){
   const out = Object.create(null);
@@ -3670,6 +3639,7 @@ function continueRun() {
   if(G.player?.birdKey && BIRDS[G.player.birdKey]?.size) G.player.size=BIRDS[G.player.birdKey].size;
   G.player.class = resolveFinalClass(G.player?.class, G.player?.birdKey);
   if(typeof applyBirdCardProgression==='function') applyBirdCardProgression(G.player);
+  applyPlayerSkillsFromCardTier(G.player);
   ensureFamilyEvolutionState(G.player);
   syncPlayerAbilitiesFromSkillSlots(G.player);
   G.classPerks = JSON.parse(JSON.stringify(save.classPerks||save.classPerksByBird||{}));
@@ -6277,6 +6247,13 @@ function confirmBirdUpgradePreview(){
   if(G.player?.birdKey===before.birdKey){
     if(typeof applyBirdCardProgression==='function') applyBirdCardProgression(G.player);
     if(typeof Avian?.mutations?.reapplyPlayerStatsFromSources==='function') Avian.mutations.reapplyPlayerStatsFromSources(G.player);
+    ensureFamilyEvolutionState(G.player);
+    applyPlayerSkillsFromCardTier(G.player);
+    syncPlayerAbilitiesFromSkillSlots(G.player);
+    if(G.phase==='PLAYER'||G.phase==='ENEMY'){
+      if(typeof renderActions==='function') renderActions();
+      if(typeof refreshBattleUI==='function') refreshBattleUI();
+    }
   }
   const fresh=buildBirdUpgradePreviewModel(before.birdKey);
   if(fresh?.canConfirm){
@@ -7526,8 +7503,34 @@ function renderBattleAilmentSymbols(owner, statuses){
   }).join('');
 }
 
+function ensureCombatStatusSections(id){
+  const root=document.getElementById(id);
+  if(!root) return null;
+  let ailments=root.querySelector('.combat-status-ailments')||document.getElementById(`${id}-ailments`);
+  let modifiers=root.querySelector('.combat-status-modifiers')||document.getElementById(`${id}-modifiers`);
+  if(!ailments||!modifiers){
+    root.innerHTML='';
+    root.classList.add('combat-status-stack');
+    ailments=document.createElement('div');
+    ailments.className='combat-status-section combat-status-ailments';
+    ailments.id=`${id}-ailments`;
+    ailments.setAttribute('aria-label','Ailments');
+    modifiers=document.createElement('div');
+    modifiers.className='combat-status-section combat-status-modifiers';
+    modifiers.id=`${id}-modifiers`;
+    modifiers.setAttribute('aria-label','Buffs and debuffs');
+    root.appendChild(ailments);
+    root.appendChild(modifiers);
+  }
+  ailments.innerHTML='';
+  modifiers.innerHTML='';
+  return { root, ailments, modifiers };
+}
+
 function renderStatuses(id, statuses) {
-  const el=document.getElementById(id); el.innerHTML='';
+  const sections=ensureCombatStatusSections(id);
+  if(!sections) return;
+  const { ailments, modifiers }=sections;
   const owner = id === 'player-status' ? 'player' : 'enemy';
   const ownerStats = owner === 'player' ? G?.player?.stats : G?.enemy?.stats;
   const poisonCap = G?.player ? (G.player.poisonCap||5) : 5;
@@ -7558,8 +7561,11 @@ function renderStatuses(id, statuses) {
   entries.forEach(entry=>{
     const badge=resolveFn(entry, ctx);
     if(!badge||!badge.text) return;
+    const cat=badge.category||'system';
+    const host=cat==='ailment'?ailments:modifiers;
     const b=document.createElement('span');
-    b.className=badge.className||('status-badge '+entry.id);
+    const catClass=cat==='ailment'?'status-badge--ailment':cat==='buff'?'status-badge--buff':cat==='debuff'?'status-badge--debuff':'';
+    b.className=[badge.className||('status-badge '+entry.id), catClass].filter(Boolean).join(' ');
     b.textContent=badge.text;
     b.title=badge.text.replace(/\s+/g,' ').trim();
     b.dataset.statusId = entry.id.split(':')[0];
@@ -7567,11 +7573,11 @@ function renderStatuses(id, statuses) {
     if(badge.source) detailParts.push('Source: '+badge.source+'.');
     if(typeof detailFn==='function') detailParts.push(detailFn(entry.id, entry.value, badge.summary, ctx));
     b.dataset.statusDetail = detailParts.filter(Boolean).join(' ');
-    b.dataset.statusCategory = badge.category||'system';
+    b.dataset.statusCategory = cat;
     b.addEventListener('mouseenter',e=>showTooltip(e,`${b.title}\n${b.dataset.statusDetail||''}`,e.clientX+12,e.clientY+12));
     b.addEventListener('mousemove',e=>moveTooltip(e.clientX+12,e.clientY+12));
     b.addEventListener('mouseleave',hideTooltip);
-    el.appendChild(b);
+    host.appendChild(b);
   });
   renderBattleAilmentSymbols(owner, statuses);
 }
