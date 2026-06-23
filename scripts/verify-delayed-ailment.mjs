@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-/* Verify mutation gear v4 import and ailment chance rollup. */
+/* Verify mutation gear v6 import and ailment chance rollup. */
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import vm from 'node:vm';
@@ -21,15 +21,18 @@ const blue = readFileSync(path.join(mutationsDir, 'items-blue.js'), 'utf8');
 const orange = readFileSync(path.join(mutationsDir, 'items-orange.js'), 'utf8');
 const index = readFileSync(path.join(mutationsDir, 'index.js'), 'utf8');
 
-if (!index.includes("m.version='2026.06-mutations-v5'")) fail('mutations index version not v5');
-else ok('mutations pack version v5');
+if (!index.includes("m.version='2026.06-mutations-v6'")) fail('mutations index version not v6');
+else ok('mutations pack version v6');
 
 const ailmentChances = (blue.match(/"ailmentChances"/g) || []).length;
 if (ailmentChances < 1) fail('expected ailmentChances entries in blue tier');
 else ok(`blue tier has ${ailmentChances} ailmentChances blocks`);
 
-if (!orange.includes('"tier":"orange"')) fail('orange tier file missing orange items');
-else ok('orange tier catalog present');
+if (!orange.includes('MUT-LW-028')) fail('orange tier missing workbook orange items');
+else ok('workbook orange tier catalog present');
+
+if (orange.includes('MT0011')) fail('legacy MT orange ids should be removed');
+else ok('no legacy MT orange ids');
 
 const bundle = readFileSync(path.join(ROOT, 'js', 'avian-game.bundle.js'), 'utf8');
 for (const sym of ['applyDelayedDamage', 'tryMutationOnHitAilments', 'getDelayedDmgBoostPct', 'mutationEffects', 'itemAllowedForPlayer']) {
@@ -37,17 +40,15 @@ for (const sym of ['applyDelayedDamage', 'tryMutationOnHitAilments', 'getDelayed
   else ok(`bundle exports ${sym}`);
 }
 
-const bleedIdx = blue.indexOf('"id":"bleed"');
-let delayedId = 'MT0001';
-let delayedChance = 6;
-if (bleedIdx >= 0) {
-  const chunk = blue.slice(Math.max(0, bleedIdx - 400), bleedIdx);
-  const idMatches = [...chunk.matchAll(/"(MT\d+)":\{/g)];
-  if (idMatches.length) delayedId = idMatches[idMatches.length - 1][1];
-  const chM = blue.slice(bleedIdx - 40, bleedIdx + 40).match(/"chance":(\d+)/);
+const delayedId = 'MUT-RF-013';
+let delayedChance = 10;
+const itemChunk = blue.match(new RegExp(`"${delayedId}"[^}]+`));
+if (!itemChunk) fail(`sample item ${delayedId} not found in blue tier`);
+else {
+  const chM = itemChunk[0].match(/"id":"delayed"[^}]*"chance":(\d+)/);
   if (chM) delayedChance = Number(chM[1]);
+  ok(`parsed sample item ${delayedId} with delayed chance ${delayedChance}%`);
 }
-ok(`parsed sample item ${delayedId} with ailment chance ${delayedChance}%`);
 
 const SLOT_ORDER = [
   'leftWing', 'rightWing', 'leftFoot', 'rightFoot', 'beak', 'syrinx',
@@ -61,9 +62,9 @@ vm.runInNewContext(readFileSync(path.join(ROOT, 'js', 'systems', 'mutations.js')
 
 const sampleItem = {
   id: delayedId,
-  slot: 'leftFoot',
+  slot: 'rightFoot',
   stats: {},
-  mechanics: { ailmentChances: [{ id: 'bleed', chance: delayedChance, school: 'physical' }] },
+  mechanics: { ailmentChances: [{ id: 'delayed', chance: delayedChance, school: 'physical' }] },
 };
 ctx.globalThis.Avian = ctx.globalThis.Avian || {};
 ctx.globalThis.Avian.data = {
@@ -77,7 +78,7 @@ ctx.Avian = ctx.globalThis.Avian;
 const mutations = ctx.globalThis.Avian.mutations;
 const equipped = {};
 for (const s of SLOT_ORDER) equipped[s] = [null];
-equipped.leftFoot = [sampleItem.id];
+equipped.rightFoot = [sampleItem.id];
 
 const player = {
   birdKey: 'sparrow',
@@ -88,9 +89,9 @@ const player = {
 mutations.ensurePlayerMutationState(player);
 mutations.reapplyPlayerStatsFromSources(player);
 const mech = mutations.getMechanicsRollup(player);
-const bleedEntry = (mech.physicalAilments || []).find((e) => e.id === 'bleed');
-if (!bleedEntry || bleedEntry.chance <= 0) fail('rollup missing physicalAilments bleed entry');
-else ok(`rollup physical bleed chance ${bleedEntry.chance}%`);
+const delayedEntry = (mech.physicalAilments || []).find((e) => e.id === 'delayed');
+if (!delayedEntry || delayedEntry.chance <= 0) fail('rollup missing physicalAilments delayed entry');
+else ok(`rollup physical delayed chance ${delayedEntry.chance}%`);
 
 if (failed) process.exit(1);
 console.log('[delayed-verify] all checks passed');

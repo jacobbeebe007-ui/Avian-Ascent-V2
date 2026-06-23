@@ -588,10 +588,7 @@
 <div class="hp-label"><span>ULT</span><span id="ultimate-meter-text">0 / 100</span></div>
 <div class="hp-bar-bg ultimate-meter-bar"><div class="hp-bar-fill ultimate-meter-fill" id="ultimate-meter-fill"></div></div>
 </div>
-<details class="combat-stats-dropdown" id="player-stats-drop">
-<summary>Player Stats</summary>
-<div class="stats-mini" id="player-stats-mini"></div>
-</details>
+<button type="button" class="combat-stats-btn" data-action="openCombatStatsModal:player">Stats &amp; Details</button>
 </div>
 
 <div class="combatant-panel enemy" id="enemy-panel" data-combat-panel="enemy">
@@ -613,10 +610,7 @@
 </div>
 <div class="phase-banner" id="boss-phase-banner"></div>
 <div class="enemy-intent enemy-plan" id="enemy-intent-panel">🤔 Thinking...</div>
-<details class="combat-stats-dropdown" id="enemy-stats-drop">
-<summary>Enemy Stats</summary>
-<div class="enemy-stats-mini" id="enemy-stats-mini"></div>
-</details>
+<button type="button" class="combat-stats-btn" data-action="openCombatStatsModal:enemy">Stats &amp; Details</button>
 <div class="enemy-abilities-list" id="enemy-abilities-list"></div>
 </div>
 </div>
@@ -650,6 +644,13 @@
 <div class="enemy-info-popup-passive" id="enemy-info-popup-passive"></div>
 <div class="enemy-info-popup-section-h">Skills</div>
 <div class="enemy-info-popup-abilities" id="enemy-info-popup-abilities"></div>
+</div>
+</div>
+<div id="combat-stats-modal" class="combat-stats-modal" role="dialog" aria-modal="true" aria-labelledby="combat-stats-modal-body" style="display:none">
+<div class="combat-stats-modal-backdrop" data-action="closeCombatStatsModal" data-backdrop="1" aria-hidden="true"></div>
+<div class="combat-stats-modal-panel">
+<button type="button" class="combat-stats-modal-close" data-action="closeCombatStatsModal" aria-label="Close">&times;</button>
+<div id="combat-stats-modal-body"></div>
 </div>
 </div>
 </div>
@@ -881,7 +882,7 @@
 <input id="setting-combat-log-scale" type="range" min="70" max="150" value="100" data-change="updateAccessibilitySettings" data-input="updateAccessibilitySettings"/>
 </label>
 <label class="settings-row">Keep birds visible while scrolling
-<input id="setting-sticky-combatants" type="checkbox" checked data-change="updateAccessibilitySettings"/>
+<input id="setting-sticky-combatants" type="checkbox" data-change="updateAccessibilitySettings"/>
 </label>
 <p class="settings-hint">Pins both combatants (birds, HP, and EN bars) while you scroll the action tray.</p>
 <label class="settings-row">Auto-shrink UI for many abilities

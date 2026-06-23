@@ -16,16 +16,17 @@ $mutCount = ([regex]::Matches($b, '"MUT-\d+"')).Count
 $mtCount = ([regex]::Matches($b, '"MT\d+"')).Count
 
 Test-Check 'bundle exists' (Test-Path $bundle)
-Test-Check 'mutations v5 index' ($idx -match "m\.version='2026\.06-mutations-v5'")
-Test-Check 'MUT-0001 present' ($b.Contains('MUT-0001'))
+Test-Check 'mutations v6 index' ($idx -match "m\.version='2026\.06-mutations-v6'")
+Test-Check 'MUT-LW-001 present' ($b.Contains('MUT-LW-001'))
 Test-Check '330+ MUT items in bundle' ($mutCount -ge 330)
-Test-Check 'orange MT items retained' ($mtCount -ge 20)
+Test-Check 'no legacy MT orange ids' (-not ($b -match '"MT\d+"'))
+Test-Check 'workbook orange tier' ($b.Contains('MUT-LW-028'))
 Test-Check 'leftWing slot' ($b.Contains('leftWing'))
 Test-Check 'rightFoot slot' ($b.Contains('rightFoot'))
 Test-Check 'mutationEffects engine' ($b.Contains('mutationEffects'))
 Test-Check 'itemAllowedForPlayer' ($b.Contains('itemAllowedForPlayer'))
 Test-Check 'orange tier data' ($b.Contains('"tier":"orange"'))
-Test-Check 'save schema v9' ($b.Contains('var TARGET = 9'))
+Test-Check 'save schema v10' ($b.Contains('var TARGET = 10'))
 Test-Check 'no legacy AA-1-0001' (-not $b.Contains('AA-1-0001'))
 Test-Check 'tryMutationOnHitAilments' ($b.Contains('function tryMutationOnHitAilments'))
 Test-Check 'getHeavyAccPenaltyReduction' ($b.Contains('getHeavyAccPenaltyReduction'))
@@ -34,6 +35,6 @@ Test-Check 'statsPct rollup' ($b.Contains('_mutationStatsPct'))
 Test-Check 'Shield Power display label' ($b.Contains('Shield Power'))
 Test-Check 'statLine fallback helper' ($b.Contains('formatStatLineFallbackHtml'))
 
-Write-Host "[verify] MUT id matches: $mutCount; MT orange matches: $mtCount"
+Write-Host "[verify] MUT id matches: $mutCount; MT legacy matches: $mtCount"
 if ($failed -gt 0) { exit 1 }
 Write-Host '[verify] all checks passed'

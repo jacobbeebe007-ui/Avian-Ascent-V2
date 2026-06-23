@@ -19,11 +19,13 @@ const DEFAULT_WORKBOOK = path.join(
 );
 const WORKBOOK = process.env.AA_MUTATION_GEAR_WORKBOOK || DEFAULT_WORKBOOK;
 const OUT_DIR = path.join(ROOT, 'js', 'data', 'mutations');
-const MUTATIONS_VERSION = '2026.06-mutations-v5';
+const MUTATIONS_VERSION = '2026.06-mutations-v6';
 
 const TIER_MAP = { Grey: 'white', Green: 'green', Blue: 'blue', Purple: 'purple', Gold: 'gold', Orange: 'orange' };
-const TIER_KEYS = ['white', 'green', 'blue', 'purple', 'gold'];
+const TIER_KEYS = ['white', 'green', 'blue', 'purple', 'gold', 'orange'];
 const DROP_WEIGHTS = { white: 40, green: 24, blue: 16, purple: 10, gold: 6, orange: 4 };
+
+const TIER_PREFIXES = ['Minor', 'Major', 'Grand', 'Epic', 'Legendary', 'Crippling', 'Ruinous', 'Fatal'];
 
 const SLOT_MAP = {
   'Left Wing': 'leftWing', 'Right Wing': 'rightWing', 'Left Foot': 'leftFoot', 'Right Foot': 'rightFoot',
@@ -40,17 +42,14 @@ const CLASS_MAP = {
   Inquisitor: 'inquisitor', Bard: 'bard', Brute: 'brute', Duke: 'duke',
 };
 
-const AILMENT_MAP = {
-  'Poison Chance Up': { id: 'poison', school: 'physical' },
-  'Burning Chance Up': { id: 'burning', school: 'magic' },
-  'Chilled Chance Up': { id: 'chilled', school: 'magic' },
-  'Bleed Chance Up': { id: 'bleed', school: 'physical' },
-  'Weaken Chance Up': { id: 'weaken', school: 'magic' },
-  'Paralysed Chance Up': { id: 'paralyzed', school: 'physical' },
+const AILMENT_SCHOOL = {
+  poison: 'physical', bleed: 'physical', paralyzed: 'physical', delayed: 'physical',
+  chilled: 'magic', weaken: 'magic', burning: 'magic', blinded: 'magic', marked: 'magic',
 };
 
 const STAT_PCT_ATTRS = {
-  'HP Up': 'maxHp', 'ATK Up': 'atk', 'MATK Up': 'matk', 'DEF Up': 'def', 'MDEF Up': 'mdef', 'SPD Up': 'spd',
+  'HP Up': 'maxHp', 'Max HP Up': 'maxHp', 'ATK Up': 'atk', 'MATK Up': 'matk',
+  'DEF Up': 'def', 'MDEF Up': 'mdef', 'SPD Up': 'spd',
 };
 
 const SLOT_ORDER = [
@@ -193,28 +192,104 @@ function parseNumFromBackend(raw) {
   return 0;
 }
 
+function splitTierPrefixed(full) {
+  const s = String(full || '').trim();
+  if (!s) return null;
+
+  const applyMatch = s.match(/^Apply\s+(Minor|Major|Grand|Epic|Legendary|Crippling|Ruinous|Fatal)\s+(.+)$/i);
+  if (applyMatch) {
+    return { tier: applyMatch[1], effect: applyMatch[2], kind: 'applyDown' };
+  }
+
+  const chanceMatch = s.match(/^(Minor|Major|Grand|Epic|Legendary|Crippling|Ruinous|Fatal)\s+chance to apply\s+(.+)$/i);
+  if (chanceMatch) {
+    return { tier: chanceMatch[1], effect: `${chanceMatch[2]}`, kind: 'ailmentChance', ailment: chanceMatch[2] };
+  }
+
+  const gainShield = s.match(/^(Minor|Major|Grand|Epic|Legendary)\s+Shield$/i);
+  if (gainShield) {
+    return { tier: gainShield[1], effect: 'Shield', kind: 'shield' };
+  }
+
+  for (const t of TIER_PREFIXES) {
+    if (s.startsWith(t + ' ')) {
+      return { tier: t, effect: s.slice(t.length + 1), kind: 'attribute' };
+    }
+  }
+  return { tier: 'Minor', effect: s, kind: 'attribute' };
+}
+
+function findCatalogRows(sheets) {
+  const candidates = ['Mutation Catalog', 'Rarity Rules'];
+  for (const name of candidates) {
+    const rows = sheets[name];
+    if (!rows?.length) continue;
+    if (rows.some((r) => String(r[0] || '').startsWith('MUT-'))) return rows;
+  }
+  for (const name of Object.keys(sheets)) {
+    const rows = sheets[name];
+    if (rows.length > 1 && headerIndex(rows[0], 'Item ID') >= 0) {
+      if (rows.some((r) => String(r[0] || '').startsWith('MUT-'))) return rows;
+    }
+  }
+  return [];
+}
+
+function findEffectMatrixRows(sheets) {
+  const candidates = ['Effect Cost Matrix', 'Player-Facing Tiers'];
+  for (const name of candidates) {
+    const rows = sheets[name];
+    if (rows?.length && String(rows[0][0] || '').trim() === 'Effect Name') return rows;
+  }
+  for (const name of Object.keys(sheets)) {
+    const rows = sheets[name];
+    if (rows?.length && String(rows[0][0] || '').trim() === 'Effect Name') return rows;
+  }
+  return [];
+}
+
+function findSetRulesRows(sheets) {
+  for (const name of ['Set Bonus Examples', 'Slot Rules']) {
+    const rows = sheets[name];
+    if (!rows?.length) continue;
+    const header = rows[0];
+    if (headerIndex(header, 'Set Name') >= 0 && headerIndex(header, 'Pieces Required') >= 0) return rows;
+  }
+  for (const name of Object.keys(sheets)) {
+    const rows = sheets[name];
+    if (!rows?.length) continue;
+    const header = rows[0];
+    if (headerIndex(header, 'Set Name') >= 0 && headerIndex(header, 'Pieces Required') >= 0) return rows;
+  }
+  return [];
+}
+
 function buildEffectMatrix(rows) {
   const lookup = Object.create(null);
   const bonusLib = Object.create(null);
   for (let i = 1; i < rows.length; i++) {
     const row = rows[i];
-    const key = String(row[0] || '').trim();
-    if (!key || key === 'Key') continue;
-    const category = String(row[6] || row[7] || '').trim();
-    const backend = String(row[4] || '').trim();
-    const tierPart = key.includes('|') ? key.split('|').pop().trim() : String(row[2] || '').trim();
-    lookup[key] = { category, backend, tier: tierPart, cost: Number(row[3]) || 0 };
-    const effectName = key.split('|')[0].trim();
-    const id = toSnakeId(effectName);
+    const fullName = String(row[0] || '').trim();
+    if (!fullName || fullName === 'Effect Name') continue;
+    const category = String(row[1] || '').trim();
+    const tier = String(row[2] || '').trim();
+    const backend = String(row[3] || '').trim();
+    const cost = Number(row[4]) || 0;
+    const notes = String(row[9] || row[5] || '').trim();
+
+    lookup[fullName] = { category, backend, tier, cost };
+    const split = splitTierPrefixed(fullName);
+    const baseEffect = split ? split.effect : fullName;
+    const id = toSnakeId(baseEffect);
     if (!bonusLib[id]) {
       bonusLib[id] = {
         id,
-        name: effectName,
+        name: baseEffect,
         category,
-        baseCost: Number(row[3]) || 0,
+        baseCost: cost,
         minRarity: 'blue',
         allowedClasses: [],
-        notes: String(row[5] || '').trim(),
+        notes,
       };
     }
   }
@@ -222,128 +297,223 @@ function buildEffectMatrix(rows) {
 }
 
 function tierNumericValue(category, tier, backend, lookup, effectName) {
-  const refKey = `${effectName}|${tier}`;
-  const ref = lookup[refKey];
-  if (ref && ref.backend && !/^(minor|major|grand|epic)$/i.test(ref.backend)) {
+  const fullKey = `${tier} ${effectName}`.replace(/\s+/g, ' ').trim();
+  const ref = lookup[fullKey] || lookup[`Apply ${fullKey}`];
+  if (ref?.backend && !/^(minor|major|grand|epic|legendary|crippling|ruinous|fatal)$/i.test(ref.backend)) {
     return parseNumFromBackend(ref.backend);
   }
+  if (backend) return parseNumFromBackend(backend);
+
   const t = String(tier || 'Minor').toLowerCase();
-  const isMajor = t === 'major';
-  if (/dodge up/i.test(category)) return isMajor ? 5 : 3;
-  if (/ailment chance/i.test(category)) return isMajor ? 15 : 10;
-  if (/lifesteal/i.test(category)) return isMajor ? 18 : 10;
-  if (/shield/i.test(category) && /shield strength/i.test(effectName)) return isMajor ? 8 : 6;
-  if (/shield/i.test(category)) return isMajor ? 8 : 6;
-  if (/pierce/i.test(category)) return isMajor ? 15 : 10;
-  if (/crit chance/i.test(category)) return isMajor ? 8 : 5;
-  if (/crit damage/i.test(category)) return isMajor ? 15 : 10;
-  return isMajor ? 8 : 6;
+  const tierScale = {
+    minor: 1, major: 1.33, grand: 2, epic: 3, legendary: 4.17,
+    crippling: 1.67, ruinous: 2.5, fatal: 3.33,
+  };
+  const scale = tierScale[t] || 1;
+  const isMajor = t === 'major' || scale > 1.2;
+
+  if (/dodge down/i.test(effectName) || /dodge down/i.test(category)) {
+    if (t === 'fatal') return -12;
+    if (t === 'ruinous') return -10;
+    if (t === 'crippling') return -8;
+    return isMajor ? -5 : -3;
+  }
+  if (/dodge up/i.test(category) || /dodge up/i.test(effectName)) {
+    if (t === 'legendary') return 12;
+    if (t === 'epic') return 10;
+    if (t === 'grand') return 8;
+    return isMajor ? 5 : 3;
+  }
+  if (/ailment chance/i.test(category) || /chance to apply/i.test(effectName)) {
+    if (t === 'fatal') return 45;
+    if (t === 'ruinous') return 30;
+    if (t === 'crippling') return 20;
+    return isMajor ? 15 : 10;
+  }
+  if (/lifesteal/i.test(category) || /lifesteal/i.test(effectName)) {
+    if (t === 'legendary') return 35;
+    if (t === 'epic') return 30;
+    if (t === 'grand') return 25;
+    return isMajor ? 18 : 10;
+  }
+  if (/shield/i.test(category) || effectName === 'Shield') {
+    if (t === 'legendary') return 25;
+    if (t === 'epic') return 18;
+    if (t === 'grand') return 12;
+    return isMajor ? 8 : 6;
+  }
+  if (/pierce/i.test(category) || /pierce/i.test(effectName)) {
+    if (t === 'legendary') return 40;
+    if (t === 'epic') return 25;
+    if (t === 'grand') return 20;
+    return isMajor ? 15 : 10;
+  }
+  if (/crit chance/i.test(category) || /crit chance/i.test(effectName)) {
+    if (t === 'legendary') return 20;
+    if (t === 'epic') return 16;
+    if (t === 'grand') return 12;
+    return isMajor ? 8 : 5;
+  }
+  if (/crit damage/i.test(category) || /crit damage/i.test(effectName)) {
+    if (t === 'legendary') return 50;
+    if (t === 'epic') return 35;
+    if (t === 'grand') return 25;
+    return isMajor ? 15 : 10;
+  }
+  if (/down/i.test(effectName)) return Math.round(6 * scale);
+  return Math.round(6 * scale);
 }
 
-function applyAttribute(item, attrName, tier, lookup) {
-  if (!attrName) return;
-  const key = `${attrName}|${tier}`;
-  const row = lookup[key];
-  const backend = row ? row.backend : '';
-  const category = row ? row.category : '';
-  const val = tierNumericValue(category, tier, backend, lookup, attrName);
+function pushAilmentChance(item, ailmentName, tier, lookup) {
+  const ailId = toSnakeId(ailmentName);
+  const school = AILMENT_SCHOOL[ailId] || 'physical';
+  const category = 'Ailment Chance';
+  const val = tierNumericValue(category, tier, '', lookup, `${ailmentName} Chance Up`);
+  item.mechanics = item.mechanics || {};
+  item.mechanics.ailmentChances = item.mechanics.ailmentChances || [];
+  item.mechanics.ailmentChances.push({ id: ailId, chance: val, school });
+}
 
-  if (STAT_PCT_ATTRS[attrName]) {
+function applyStatEffect(item, effectName, tier, lookup) {
+  const row = lookup[`${tier} ${effectName}`];
+  const category = row?.category || '';
+  const backend = row?.backend || '';
+  const val = tierNumericValue(category, tier, backend, lookup, effectName);
+
+  if (STAT_PCT_ATTRS[effectName]) {
     item.statsPct = item.statsPct || {};
-    item.statsPct[STAT_PCT_ATTRS[attrName]] = (item.statsPct[STAT_PCT_ATTRS[attrName]] || 0) + val;
+    item.statsPct[STAT_PCT_ATTRS[effectName]] = (item.statsPct[STAT_PCT_ATTRS[effectName]] || 0) + val;
     return;
   }
-  if (attrName === 'Dodge Up') {
+  if (effectName === 'Dodge Up') {
     item.stats = item.stats || {};
     item.stats.dodge = (item.stats.dodge || 0) + val;
     return;
   }
-  if (attrName === 'Crit Chance Up') {
+  if (effectName === 'Dodge Down') {
+    item.stats = item.stats || {};
+    item.stats.dodge = (item.stats.dodge || 0) + val;
+    return;
+  }
+  if (effectName === 'Crit Chance Up') {
     item.stats = item.stats || {};
     item.stats.critChance = (item.stats.critChance || 0) + val;
     return;
   }
-  if (attrName === 'Crit Damage Up') {
+  if (effectName === 'Crit Damage Up') {
     item.mechanics = item.mechanics || {};
     item.mechanics.critDamageBonusPct = (item.mechanics.critDamageBonusPct || 0) + val;
     return;
   }
-  if (attrName === 'Light Attack Up') {
+  if (effectName === 'Light Attack Up') {
     item.mechanics = item.mechanics || {};
     item.mechanics.lightAttackDmgPct = (item.mechanics.lightAttackDmgPct || 0) + val;
     return;
   }
-  if (attrName === 'Medium Attack Up') {
+  if (effectName === 'Medium Attack Up') {
     item.mechanics = item.mechanics || {};
     item.mechanics.mediumAttackDmgPct = (item.mechanics.mediumAttackDmgPct || 0) + val;
     return;
   }
-  if (attrName === 'Heavy Attack Up') {
+  if (effectName === 'Heavy Attack Up') {
     item.mechanics = item.mechanics || {};
     item.mechanics.heavyAttackDmgPct = (item.mechanics.heavyAttackDmgPct || 0) + val;
     return;
   }
-  if (attrName === 'Physical Damage Up') {
+  if (effectName === 'Physical Damage Up') {
     item.mechanics = item.mechanics || {};
     item.mechanics.physicalDamageUpPct = (item.mechanics.physicalDamageUpPct || 0) + val;
     return;
   }
-  if (attrName === 'Magic Damage Up') {
+  if (effectName === 'Magic Damage Up') {
     item.mechanics = item.mechanics || {};
     item.mechanics.magicDamageUpPct = (item.mechanics.magicDamageUpPct || 0) + val;
     return;
   }
-  if (attrName === 'Physical Pierce') {
+  if (effectName === 'Physical Pierce' || effectName === 'DEF Pierce') {
     item.mechanics = item.mechanics || {};
     item.mechanics.armorPen = (item.mechanics.armorPen || 0) + val;
     return;
   }
-  if (attrName === 'Magic Pierce') {
+  if (effectName === 'Magic Pierce' || effectName === 'MDEF Pierce') {
     item.mechanics = item.mechanics || {};
     item.mechanics.magicPen = (item.mechanics.magicPen || 0) + val;
     return;
   }
-  if (attrName === 'Shield Strength Up') {
+  if (effectName === 'Shield Strength Up') {
     item.mechanics = item.mechanics || {};
     item.mechanics.shieldPowerPct = (item.mechanics.shieldPowerPct || 0) + val;
     return;
   }
-  if (attrName === 'Lifesteal Up') {
+  if (effectName === 'Lifesteal' || effectName === 'Lifesteal Up') {
     item.mechanics = item.mechanics || {};
     item.mechanics.lifestealPct = (item.mechanics.lifestealPct || 0) + val;
     return;
   }
-  if (attrName === 'Healing Received Up') {
+  if (effectName === 'Healing Received Up') {
     item.mechanics = item.mechanics || {};
     item.mechanics.healingReceivedPct = (item.mechanics.healingReceivedPct || 0) + val;
     return;
   }
-  if (attrName === 'Ultimate Meter Gain Up') {
+  if (effectName === 'Ultimate Meter Gain Up') {
     item.mechanics = item.mechanics || {};
     item.mechanics.ultimateMeterGainPct = (item.mechanics.ultimateMeterGainPct || 0) + val;
     return;
   }
-  if (AILMENT_MAP[attrName]) {
-    const info = AILMENT_MAP[attrName];
-    item.mechanics = item.mechanics || {};
-    item.mechanics.ailmentChances = item.mechanics.ailmentChances || [];
-    item.mechanics.ailmentChances.push({ id: info.id, chance: val, school: info.school });
-  }
 }
 
-function applyBonus(item, bonusName, tier, lookup) {
-  if (!bonusName) return;
-  const row = lookup[`${bonusName}|${tier}`];
-  const category = row ? row.category : '';
-  const val = tierNumericValue(category, tier, row?.backend, lookup, bonusName);
+function pushBonus(item, id, name, tier, val) {
   item.bonuses = item.bonuses || [];
-  item.bonuses.push({ id: toSnakeId(bonusName), name: bonusName, value: val, tier: tier });
+  item.bonuses.push({ id, name, value: val, tier });
+}
+
+function applyEffectLine(item, rawText, lookup, isBonusLine) {
+  const text = String(rawText || '').trim();
+  if (!text) return;
+
+  const split = splitTierPrefixed(text);
+  if (!split) return;
+
+  const { tier, effect, kind } = split;
+
+  if (kind === 'ailmentChance') {
+    pushAilmentChance(item, split.ailment, tier, lookup);
+    return;
+  }
+
+  if (kind === 'shield' || (isBonusLine && effect === 'Shield')) {
+    const val = tierNumericValue('Shield', tier, '', lookup, 'Shield');
+    pushBonus(item, toSnakeId(`${tier} Shield`), `${tier} Shield`, tier, val);
+    return;
+  }
+
+  if (kind === 'applyDown' || (isBonusLine && / down$/i.test(effect))) {
+    const bonusId = toSnakeId(`apply_${tier}_${effect}`);
+    const val = tierNumericValue('Debuff / Negative %', tier, '', lookup, effect);
+    pushBonus(item, bonusId, `Apply ${tier} ${effect}`, tier, val);
+    return;
+  }
+
+  if (isBonusLine && effect === 'Dodge Down') {
+    const val = tierNumericValue('Dodge Down', tier, '', lookup, 'Dodge Down');
+    pushBonus(item, toSnakeId(`${tier}_dodge_down`), `${tier} Dodge Down`, tier, val);
+    return;
+  }
+
+  if (isBonusLine && (effect === 'Lifesteal' || effect === 'Lifesteal Up')) {
+    const val = tierNumericValue('Lifesteal', tier, '', lookup, 'Lifesteal');
+    item.mechanics = item.mechanics || {};
+    item.mechanics.lifestealPct = (item.mechanics.lifestealPct || 0) + val;
+    return;
+  }
+
+  applyStatEffect(item, effect, tier, lookup);
 }
 
 function parseCatalogRow(row, header, lookup) {
   const idIdx = headerIndex(header, 'Item ID', 'ID');
   const id = String(row[idIdx] || '').trim();
-  if (!id || id === 'Item ID') return null;
+  if (!id || id === 'Item ID' || !id.startsWith('MUT-')) return null;
 
   const item = {
     id,
@@ -359,11 +529,26 @@ function parseCatalogRow(row, header, lookup) {
     })(),
   };
 
+  const tierCol = headerIndex(header, 'Tier 1') >= 0;
   for (let n = 1; n <= 4; n++) {
-    applyAttribute(item, String(row[headerIndex(header, `Attribute ${n}`)] || '').trim(), String(row[headerIndex(header, `Tier ${n}`)] || '').trim(), lookup);
+    const attr = String(row[headerIndex(header, `Attribute ${n}`)] || '').trim();
+    if (!attr) continue;
+    if (tierCol) {
+      const t = String(row[headerIndex(header, `Tier ${n}`)] || 'Minor').trim();
+      applyEffectLine(item, `${t} ${attr}`.trim(), lookup, false);
+    } else {
+      applyEffectLine(item, attr, lookup, false);
+    }
   }
   for (let n = 1; n <= 2; n++) {
-    applyBonus(item, String(row[headerIndex(header, `Bonus ${n}`)] || '').trim(), String(row[headerIndex(header, `Bonus Tier ${n}`)] || '').trim(), lookup);
+    const bonus = String(row[headerIndex(header, `Bonus ${n}`)] || '').trim();
+    if (!bonus) continue;
+    if (tierCol) {
+      const t = String(row[headerIndex(header, `Bonus Tier ${n}`)] || 'Minor').trim();
+      applyEffectLine(item, `${t} ${bonus}`.trim(), lookup, true);
+    } else {
+      applyEffectLine(item, bonus, lookup, true);
+    }
   }
 
   const text = String(row[headerIndex(header, 'Player-Facing Text')] || '').trim();
@@ -377,9 +562,18 @@ function parseCatalogRow(row, header, lookup) {
   return item;
 }
 
-function parseSetExamples(rows) {
+function inferSetCondition(text) {
+  const s = String(text || '').toLowerCase();
+  if (s.includes('bloodied')) return 'bloodied';
+  if (s.includes('hp is above') || s.includes('hp above')) return 'hpAbove50';
+  if (s.includes('start of combat') || s.includes('battle start')) return 'battleStart';
+  if (s.includes('attacks have')) return 'onAttack';
+  return 'passive';
+}
+
+function parseSlotRules(rows) {
   const sets = Object.create(null);
-  if (!rows.length) return sets;
+  if (!rows?.length) return sets;
   const header = rows[0];
   for (let i = 1; i < rows.length; i++) {
     const row = rows[i];
@@ -391,18 +585,34 @@ function parseSetExamples(rows) {
         id,
         name: setName,
         theme: '',
+        thresholds: [],
+        bonuses: {},
         piece2: '',
         piece4: '',
         piece6: '',
         recommendedClasses: [],
-        notes: 'Imported from Set Bonus Examples sheet.',
+        notes: 'Imported from Slot Rules sheet.',
       };
     }
     const pieces = Number(row[headerIndex(header, 'Pieces Required')]) || 0;
-    const text = String(row[headerIndex(header, 'Set Bonus Text')] || '').trim();
+    const bonusTier = String(row[headerIndex(header, 'Set Bonus Tier', 'Bonus Tier')] || '').trim();
+    const text = String(row[headerIndex(header, 'Player-Facing Set Bonus', 'Set Bonus Text')] || '').trim();
+    const backend = String(row[headerIndex(header, 'Backend Value')] || '').trim();
+    if (!pieces) continue;
+    if (!sets[id].thresholds.includes(pieces)) sets[id].thresholds.push(pieces);
+    sets[id].bonuses[pieces] = {
+      tier: bonusTier,
+      text,
+      backend,
+      condition: inferSetCondition(text),
+    };
     if (pieces === 2) sets[id].piece2 = text;
     else if (pieces === 4) sets[id].piece4 = text;
     else if (pieces === 6) sets[id].piece6 = text;
+    else if (!sets[id].piece2) sets[id].piece2 = text;
+  }
+  for (const id in sets) {
+    sets[id].thresholds.sort((a, b) => a - b);
   }
   return sets;
 }
@@ -427,25 +637,25 @@ function main() {
   }
 
   const sheets = loadWorkbookSheets(WORKBOOK);
-  const catalogRows = sheets['Mutation Catalog'];
-  const matrixRows = sheets['Effect Cost Matrix'];
-  const setRows = sheets['Set Bonus Examples'] || [];
+  const catalogRows = findCatalogRows(sheets);
+  const matrixRows = findEffectMatrixRows(sheets);
+  const setRows = findSetRulesRows(sheets);
 
-  if (!catalogRows?.length) {
-    console.error('[mutation-gear] Mutation Catalog sheet not found');
+  if (!catalogRows.length) {
+    console.error('[mutation-gear] catalog sheet not found (expected Rarity Rules with MUT- rows)');
     process.exit(1);
   }
-  if (!matrixRows?.length) {
-    console.error('[mutation-gear] Effect Cost Matrix sheet not found');
+  if (!matrixRows.length) {
+    console.error('[mutation-gear] Player-Facing Tiers sheet not found');
     process.exit(1);
   }
 
   const { lookup, bonusLib } = buildEffectMatrix(matrixRows);
-  const header = catalogRows[0];
+  const header = catalogRows.find((r) => headerIndex(r, 'Item ID') >= 0) || catalogRows[0];
   const byTier = Object.fromEntries(TIER_KEYS.map((t) => [t, {}]));
   let count = 0;
 
-  for (let i = 1; i < catalogRows.length; i++) {
+  for (let i = 0; i < catalogRows.length; i++) {
     const item = parseCatalogRow(catalogRows[i], header, lookup);
     if (!item) continue;
     byTier[item.tier][item.id] = item;
@@ -481,7 +691,7 @@ function main() {
     path.join(OUT_DIR, 'sets.js'),
     '/* GENERATED set bonuses */',
     'sets',
-    parseSetExamples(setRows),
+    parseSlotRules(setRows),
   );
 
   const indexLines = [
@@ -494,7 +704,7 @@ function main() {
     'var m=Avian.data.mutations=Avian.data.mutations||Object.create(null);',
     'var byId=Object.create(null);',
   ];
-  for (const tier of [...TIER_KEYS, 'orange']) {
+  for (const tier of TIER_KEYS) {
     indexLines.push(`if(m.items_${tier}){for(var k in m.items_${tier})byId[k]=m.items_${tier}[k];}`);
   }
   indexLines.push('m.byId=Object.freeze(byId);');
@@ -504,10 +714,9 @@ function main() {
   indexLines.push('');
   writeFileSync(path.join(OUT_DIR, 'index.js'), indexLines.join('\n'), 'utf8');
 
-  console.log(`[mutation-gear] total new catalog items: ${count}`);
+  console.log(`[mutation-gear] total catalog items: ${count}`);
   console.log(`[mutation-gear] bonus library entries: ${Object.keys(bonusLib).length}`);
   console.log(`[mutation-gear] version: ${MUTATIONS_VERSION}`);
-  console.log('[mutation-gear] items-orange.js preserved (not regenerated)');
 }
 
 main();

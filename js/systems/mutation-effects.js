@@ -60,11 +60,76 @@
     return out;
   }
 
-  function setTier(count) {
-    if (count >= 6) return 6;
-    if (count >= 4) return 4;
-    if (count >= 2) return 2;
-    return 0;
+  function setActiveThreshold(count, setDef) {
+    if (!setDef || !Array.isArray(setDef.thresholds) || !setDef.thresholds.length) {
+      if (count >= 6) return 6;
+      if (count >= 4) return 4;
+      if (count >= 2) return 2;
+      return 0;
+    }
+    var active = 0;
+    for (var ti = 0; ti < setDef.thresholds.length; ti++) {
+      if (count >= setDef.thresholds[ti]) active = setDef.thresholds[ti];
+    }
+    return active;
+  }
+
+  function playerHpAboveHalf() {
+    var p = G() && G().player;
+    if (!p || !p.stats) return false;
+    var maxHp = Number(p.stats.maxHp) || 1;
+    return (Number(p.stats.hp) || 0) > maxHp * 0.5;
+  }
+
+  function parseBackendPct(raw, fallback) {
+    var m = String(raw || '').match(/(\d+(?:\.\d+)?)\s*%/);
+    return m ? Number(m[1]) : (fallback || 0);
+  }
+
+  function parseBackendDodge(raw, fallback) {
+    var m = String(raw || '').match(/([+-]?\d+(?:\.\d+)?)\s*dodge/i);
+    return m ? Number(m[1]) : (fallback || 0);
+  }
+
+  function applyStatDownFromBonus(target, statKey, val) {
+    var entity = target === 'enemy' ? G().enemy : G().player;
+    if (!entity || !entity.stats) return;
+    var down = Math.abs(Number(val) || 6);
+    if (statKey === 'damage') return applyMinorDamageDown(target);
+    if (statKey === 'atk') entity.stats.atk = Math.max(0, (Number(entity.stats.atk) || 0) - down);
+    else if (statKey === 'matk') entity.stats.matk = Math.max(0, (Number(entity.stats.matk) || 0) - down);
+    else if (statKey === 'def') entity.stats.def = Math.max(0, (Number(entity.stats.def) || 0) - down);
+    else if (statKey === 'mdef') entity.stats.mdef = Math.max(0, (Number(entity.stats.mdef) || 0) - down);
+    else if (statKey === 'spd') entity.stats.spd = Math.max(0, (Number(entity.stats.spd) || 0) - down);
+    else if (statKey === 'dodge') entity.stats.dodge = Math.max(0, (Number(entity.stats.dodge) || 0) - down);
+  }
+
+  function applyWorkbookBattleStartBonuses(player, bonuses) {
+    var minorShield = maxBonusValue(bonuses, 'minor_shield');
+    var majorShield = maxBonusValue(bonuses, 'major_shield');
+    if (minorShield || majorShield) applyMinorShield('player', majorShield || minorShield || 6);
+
+    var dodgeDownTotal = 0;
+    for (var i = 0; i < bonuses.length; i++) {
+      var bid = bonuses[i].id || '';
+      if (bid === 'minor_dodge_down' || bid === 'apply_minor_dodge_down') dodgeDownTotal += Number(bonuses[i].value) || -3;
+      if (bid === 'major_dodge_down' || bid === 'apply_major_dodge_down') dodgeDownTotal += Number(bonuses[i].value) || -5;
+    }
+    if (dodgeDownTotal && player && player.stats) {
+      player.stats.dodge = Math.max(0, (Number(player.stats.dodge) || 0) + dodgeDownTotal);
+    }
+  }
+
+  function processGenericOnHitBonuses(bonuses) {
+    for (var i = 0; i < bonuses.length; i++) {
+      var id = bonuses[i].id || '';
+      var m = id.match(/^apply_(?:minor|major|grand|epic|legendary|crippling|ruinous|fatal)_(.+)_down$/);
+      if (!m) continue;
+      var stat = m[1];
+      if (stat === 'dodge') continue;
+      if (stat === 'damage') applyMinorDamageDown('enemy');
+      else applyStatDownFromBonus('enemy', stat, bonuses[i].value);
+    }
   }
 
   function collectBonuses(player) {
@@ -220,8 +285,9 @@
     st.setActive = Object.create(null);
     var catalog = getSetsCatalog();
     for (var sid in counts) {
-      st.setActive[sid] = setTier(counts[sid]);
-      if (catalog[sid]) st.setActive[sid + '_def'] = catalog[sid];
+      var setDef = catalog[sid];
+      st.setActive[sid] = setActiveThreshold(counts[sid], setDef);
+      if (setDef) st.setActive[sid + '_def'] = setDef;
     }
   }
 
@@ -231,37 +297,20 @@
     if (!st) return;
     var p = player || (G() && G().player);
     if (!p || !p.stats) return;
-    if (st.setActive.hollowshade_leathers >= 6) {
-      p.stats.spd = (Number(p.stats.spd) || 0) + 6;
+    var catalog = getSetsCatalog();
+
+    if (st.setActive.dragonbone_guard >= 4) {
+      var dgDef = catalog.dragonbone_guard && catalog.dragonbone_guard.bonuses && catalog.dragonbone_guard.bonuses[4];
+      var defPct = parseBackendPct(dgDef && dgDef.backend, 18);
+      if (defPct > 0) {
+        p.stats.def = Math.round((Number(p.stats.def) || 0) * (1 + defPct / 100));
+      }
     }
-    if (st.setActive.finch_burrow_relics >= 2) {
-      p.stats.acc = (Number(p.stats.acc) || 0) + 3;
-    }
-    if (st.setActive.thistle_knight_regalia >= 2) {
-      p.stats.def = (Number(p.stats.def) || 0) + 5;
-    }
-    if (st.setActive.hollowshade_leathers >= 2) {
-      p.stats.dodge = (Number(p.stats.dodge) || 0) + 4;
-    }
-    if (st.setActive.starfeather_conclave >= 2) {
-      p.stats.matk = (Number(p.stats.matk) || 0) + 5;
-    }
-    if (st.setActive.ashen_inquisition >= 2) {
-      p.stats.mdef = (Number(p.stats.mdef) || 0) + 5;
-    }
-    if (st.setActive.minstrel_s_dawn >= 2) {
-      p.stats.acc = (Number(p.stats.acc) || 0) + 4;
-    }
-    if (st.setActive.brute_s_iron_roost >= 2) {
-      p.stats.maxHp = (Number(p.stats.maxHp) || 0) + 5;
-      p.stats.hp = Math.min(Number(p.stats.hp) || 0, Number(p.stats.maxHp) || 0);
-      p.stats.atk = (Number(p.stats.atk) || 0) + 2;
-    }
-    if (st.setActive.storm_cracked_panoply >= 2) {
-      p.stats.spd = (Number(p.stats.spd) || 0) + 4;
-    }
-    if (st.setActive.blakiston_s_court_vestments >= 2) {
-      p.stats.matk = (Number(p.stats.matk) || 0) + 5;
+
+    if (st.setActive.thornbound_aerie >= 2 && playerHpAboveHalf()) {
+      var taDef = catalog.thornbound_aerie && catalog.thornbound_aerie.bonuses && catalog.thornbound_aerie.bonuses[2];
+      var dodgeBonus = parseBackendDodge(taDef && taDef.backend, 8);
+      if (dodgeBonus > 0) p.stats.dodge = (Number(p.stats.dodge) || 0) + dodgeBonus;
     }
   }
 
@@ -272,6 +321,7 @@
     if (!st) return;
     applySetBattleStart(player);
     var bonuses = collectBonuses(player);
+    applyWorkbookBattleStartBonuses(player, bonuses);
     if (hasBonusId(bonuses, 'start_battle_minor_shield') || hasBonusId(bonuses, 'opening_guard_minor_def_up')) {
       var shieldVal = maxBonusValue(bonuses, 'start_battle_minor_shield') || maxBonusValue(bonuses, 'battle_start_shield');
       applyShieldFromBonusTier(shieldVal || 12);
@@ -291,6 +341,23 @@
       }
       if (hasBonusId(bonuses, 'opening_crit_chance_up') && G().player && G().player.stats) {
         G().player.stats.critChance = (Number(G().player.stats.critChance) || 0) + maxBonusValue(bonuses, 'opening_crit_chance_up');
+      }
+    }
+    if (st && st.setActive && st.setActive.thornbound_aerie >= 2 && G().player && G().player.stats) {
+      if (playerHpAboveHalf()) {
+        if (!st._thornboundDodgeApplied) {
+          st._thornboundDodgeApplied = true;
+          var taDef = getSetsCatalog().thornbound_aerie;
+          var bonus = taDef && taDef.bonuses && taDef.bonuses[2];
+          var dodgeBonus = parseBackendDodge(bonus && bonus.backend, 8);
+          if (dodgeBonus > 0) G().player.stats.dodge = (Number(G().player.stats.dodge) || 0) + dodgeBonus;
+        }
+      } else if (st._thornboundDodgeApplied) {
+        var taDef2 = getSetsCatalog().thornbound_aerie;
+        var bonus2 = taDef2 && taDef2.bonuses && taDef2.bonuses[2];
+        var dodgeRemove = parseBackendDodge(bonus2 && bonus2.backend, 8);
+        if (dodgeRemove > 0) G().player.stats.dodge = Math.max(0, (Number(G().player.stats.dodge) || 0) - dodgeRemove);
+        st._thornboundDodgeApplied = false;
       }
     }
   };
@@ -362,36 +429,6 @@
       }
     }
 
-    if (st && st.setActive) {
-      if (st.setActive.finch_burrow_relics >= 6 && weight === 'medium' && pending && pending.afterLightMedium) {
-        fractions.push(0.06);
-        delete pending.afterLightMedium;
-      }
-      if (st.setActive.thistle_knight_regalia >= 6 && (weight === 'heavy' || ctx.isCounter)) {
-        fractions.push(0.08);
-      }
-      if (st.setActive.starfeather_conclave >= 4 && isMagic) {
-        if (G().player && G().player.stats) {
-          /* MDEF pen handled via temp stat bump once per attack */
-        }
-        fractions.push(0.05);
-      }
-      if (st.setActive.minstrel_s_dawn >= 4 && st.altPhysMagic === (isMagic ? 'magic' : 'phys')) {
-        fractions.push(0.06);
-      }
-      if (st.setActive.storm_cracked_panoply >= 6 && G().player && G().enemy) {
-        var ps = Number(G().player.stats.spd) || 0;
-        var es = Number(G().enemy.stats.spd) || 0;
-        if (ps > es && G().player.stats) {
-          G().player.stats.critChance = (Number(G().player.stats.critChance) || 0) + 5;
-        }
-      }
-    }
-
-    if (st && st.setActive && st.setActive.blakiston_s_court_vestments >= 6 && ctx.isTelegraphedDecree) {
-      fractions.push(0.10);
-    }
-
     return fractions.filter(function (f) { return f > 0; });
   };
 
@@ -425,31 +462,19 @@
       G().player._mutationNextHitLifesteal = Math.max(G().player._mutationNextHitLifesteal || 0, sumBonusValue(bonuses, 'next_hit_lifesteal'));
     }
 
-    if (ctx.attackWeight === 'light' && st.setActive && st.setActive.finch_burrow_relics >= 6) {
-      st.pendingAttackBonus.medium = (st.pendingAttackBonus.medium || 0) + 6;
-      st.pendingAttackBonus.afterLightMedium = true;
-    }
-    if (ctx.attackWeight === 'heavy' && st.setActive && st.setActive.brute_s_iron_roost >= 6) {
-      applyMinorDamageDown('enemy');
-    }
-    if (isMagic && st.setActive && st.setActive.starfeather_conclave >= 6 && st.magicUses >= 3 && st.magicUses % 3 === 0) {
-      applyMinorShield('player');
-    }
-    if (isMagic && st.setActive && st.setActive.blakiston_s_court_vestments >= 4 && st.magicUses % 3 === 0) {
-      applyMinorMdefDown('enemy');
+    processGenericOnHitBonuses(bonuses);
+
+    if (st && st.setActive && st.setActive.embermarked_choir >= 3) {
+      var ecDef = getSetsCatalog().embermarked_choir;
+      var ecBonus = ecDef && ecDef.bonuses && ecDef.bonuses[3];
+      var burnChance = parseBackendPct(ecBonus && ecBonus.backend, 20);
+      if (burnChance > 0) tryBonusAilment('burning', burnChance);
     }
   };
 
   ns.onPlayerDodge = function onPlayerDodge() {
     var st = state();
     var bonuses = collectBonuses(G() && G().player);
-    if (st && st.setActive && st.setActive.hollowshade_leathers >= 4) {
-      st.pendingAttackBonus.light = (st.pendingAttackBonus.light || 0) + 8;
-    }
-    if (st && st.setActive && st.setActive.storm_cracked_panoply >= 4 && !st.firstDodgeMeterUsed) {
-      st.firstDodgeMeterUsed = true;
-      if (typeof globalThis.awardUltimateMeter === 'function') globalThis.awardUltimateMeter('player', 8);
-    }
     if (sumBonusValue(bonuses, 'after_dodge_next_light_up')) {
       st.pendingAttackBonus.light = (st.pendingAttackBonus.light || 0) + sumBonusValue(bonuses, 'after_dodge_next_light_up');
     }
@@ -469,9 +494,6 @@
   ns.onPlayerGuard = function onPlayerGuard() {
     var st = state();
     var bonuses = collectBonuses(G() && G().player);
-    if (st && st.setActive && st.setActive.thistle_knight_regalia >= 4 && G().player && G().player.stats) {
-      G().player.stats.mdef = (Number(G().player.stats.mdef) || 0) + 4;
-    }
     if (sumBonusValue(bonuses, 'after_defend_next_physical_up')) {
       st.pendingFlags.afterDefend = true;
     }
@@ -488,7 +510,6 @@
     if (target !== 'enemy') return;
     var bonuses = collectBonuses(G() && G().player);
     var st = state();
-    if (st && st.setActive && st.setActive.siren_s_reef_choir >= 4) applyMinorAccDown('enemy');
     if (sumBonusValue(bonuses, 'on_ailment_apply_minor_damage_down')) applyMinorDamageDown('enemy');
     if (ailId === 'burning' && sumBonusValue(bonuses, 'on_burn_apply_minor_def_down')) applyMinorDefDown('enemy');
     if (ailId === 'chilled' && sumBonusValue(bonuses, 'on_chilled_apply_minor_spd_down')) applyMinorSpdDown('enemy');
@@ -507,19 +528,12 @@
     if (success && sumBonusValue(bonuses, 'song_skill_matk_up') && G().player && G().player.stats) {
       G().player.stats.matk = (Number(G().player.stats.matk) || 0) + Math.max(2, Math.round(sumBonusValue(bonuses, 'song_skill_matk_up') * 0.5));
     }
-    if (st && st.setActive && st.setActive.siren_s_reef_choir >= 6 && !st.firstSongMarkedUsed) {
-      st.firstSongMarkedUsed = true;
-      if (typeof globalThis.applyMarked === 'function') globalThis.applyMarked(G().enemyStatus);
-    }
   };
 
   ns.onUtilityUsed = function onUtilityUsed(success) {
     var bonuses = collectBonuses(G() && G().player);
     if (success && sumBonusValue(bonuses, 'first_utility_minor_meter_up') && typeof globalThis.awardUltimateMeter === 'function') {
       globalThis.awardUltimateMeter('player', 6);
-    }
-    if (success && state() && state().setActive && state().setActive.minstrel_s_dawn >= 6) {
-      applyMinorDodgeUp('player');
     }
     if (success && sumBonusValue(bonuses, 'movement_skill_dodge_up')) {
       applyDodgeFromBonusTier(sumBonusValue(bonuses, 'movement_skill_dodge_up'));
@@ -538,7 +552,6 @@
   ns.onPurge = function onPurge() {
     var bonuses = collectBonuses(G() && G().player);
     if (sumBonusValue(bonuses, 'purge_grants_shield')) applyMinorShield('player', 10 + sumBonusValue(bonuses, 'purge_grants_shield'));
-    if (state() && state().setActive && state().setActive.ashen_inquisition >= 6) applyMinorShield('player', 14);
   };
 
   ns.getLifestealPct = function getLifestealPct() {
@@ -552,7 +565,6 @@
     if (typeof globalThis.isBloodiedTarget === 'function' && G().player && globalThis.isBloodiedTarget(G().player)) {
       if (sumBonusValue(bonuses, 'low_hp_lifesteal')) pct += sumBonusValue(bonuses, 'low_hp_lifesteal');
     }
-    if (enemyHasAilmentOrMarked() && state() && state().setActive && state().setActive.ashen_inquisition >= 4) pct += 5;
     var mech = (G() && G().player && typeof Avian.mutations.getMechanicsRollup === 'function')
       ? Avian.mutations.getMechanicsRollup(G().player) : null;
     if (mech && mech.lifestealPct) pct += mech.lifestealPct;
@@ -566,7 +578,6 @@
     if (sumBonusValue(collectBonuses(G() && G().player), 'heavy_penalty_reduced_this_turn')) {
       red += sumBonusValue(collectBonuses(G() && G().player), 'heavy_penalty_reduced_this_turn');
     }
-    if (state() && state().setActive && state().setActive.brute_s_iron_roost >= 4) red += 5;
     return red;
   };
 
@@ -604,9 +615,12 @@
   ns.onBloodiedSelf = function onBloodiedSelf() {
     var st = state();
     var bonuses = collectBonuses(G() && G().player);
-    if (st && st.setActive && st.setActive.finch_burrow_relics >= 4 && !st.bloodiedShieldUsed) {
-      st.bloodiedShieldUsed = true;
-      applyMinorShield('player');
+    if (st && st.setActive && st.setActive.phoenix_oath >= 5 && !st.phoenixOathShieldUsed) {
+      st.phoenixOathShieldUsed = true;
+      var poDef = getSetsCatalog().phoenix_oath;
+      var poBonus = poDef && poDef.bonuses && poDef.bonuses[5];
+      var shieldPct = parseBackendPct(poBonus && poBonus.backend, 25);
+      applyMinorShield('player', shieldPct || 25);
     }
     if (sumBonusValue(bonuses, 'bloodied_self_shield')) applyShieldFromBonusTier(sumBonusValue(bonuses, 'bloodied_self_shield'));
     if (sumBonusValue(bonuses, 'bloodied_self_minor_mdef_up') && G().player && G().player.stats) {

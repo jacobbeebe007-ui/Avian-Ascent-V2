@@ -147,11 +147,11 @@ if (!emptyCompact.includes('Status Resist')) fail('statLine fallback missing in 
 else ok('statLine fallback renders when stat lines empty');
 
 const index = readFileSync(path.join(ROOT, 'js', 'data', 'mutations', 'index.js'), 'utf8');
-if (!index.includes("m.version='2026.06-mutations-v5'")) fail('mutations index version not v5');
-else ok('mutations pack version v5');
+if (!index.includes("m.version='2026.06-mutations-v6'")) fail('mutations index version not v6');
+else ok('mutations pack version v6');
 
 const bundle = readFileSync(path.join(ROOT, 'js', 'avian-game.bundle.js'), 'utf8');
-for (const sym of ['buildFamilyEntryFromPackId', 'UNIVERSAL_FAMILY_ABILITY_LOOKUP', 'nest-slot-filter', 'mutationEffects', 'leftWing', 'getFamilyEvolutionBirdDataStore', 'Shield Power', 'formatStatLineFallbackHtml', 'physicalDamageUpPct', 'MUT-0001']) {
+for (const sym of ['buildFamilyEntryFromPackId', 'UNIVERSAL_FAMILY_ABILITY_LOOKUP', 'nest-slot-filter', 'mutationEffects', 'leftWing', 'getFamilyEvolutionBirdDataStore', 'Shield Power', 'formatStatLineFallbackHtml', 'physicalDamageUpPct', 'MUT-LW-001']) {
   if (!bundle.includes(sym)) fail(`bundle missing ${sym}`);
   else ok(`bundle contains ${sym}`);
 }

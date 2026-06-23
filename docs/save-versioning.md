@@ -104,3 +104,9 @@ Avian.systems.SAVE_SCHEMA_VERSION
 - Wipes `player.mutationInventory` and `player.equippedMutations` when upgrading from schema v8.
 - Required because Grey–Gold mutation IDs change from `MT####` to `MUT-####` in `2026.06-mutations-v5` (Orange `MT####` items are retained).
 - Players keep run progress; only mutation inventory and equipped loadouts reset.
+
+## v10 migration
+
+- Wipes `player.mutationInventory` and `player.equippedMutations` when upgrading from schema v9.
+- Required because the mutation catalog moves to slot-coded `MUT-LW-001` IDs, includes 33 workbook Orange items, and bumps `mutationsPackVersion` to `2026.06-mutations-v6` (legacy `MT####` orange items removed).
+- Players keep run progress; only mutation inventory and equipped loadouts reset.

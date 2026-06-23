@@ -658,6 +658,9 @@ function buildRichStatTooltipHtml(statKey, rawVal, player){
   for(const line of getBattleStatModifierLines(statKey)){
     html += `<div class="tt-row"><span class="tt-lbl">Battle</span><span class="tt-val" style="font-size:.88em">${escapeHtmlRoster(line)}</span></div>`;
   }
+  for(const line of getPassivePerkModifierLines(statKey)){
+    html += `<div class="tt-row"><span class="tt-lbl">Passive/Perk</span><span class="tt-val" style="font-size:.88em">${escapeHtmlRoster(line)}</span></div>`;
+  }
   html += richTooltipCloseBtn();
   return html;
 }
@@ -6817,6 +6820,7 @@ function resetForNewBattle(){
   if(G.player){
     G.player._mimicStored=null;
     G.player._firstHitReducedUsed=false;
+    G._mutationBloodiedSelfFired=false;
     G.player._lowHpSpdApplied=false;
     G.player._lowHpDefApplied=false;
     G.player._survivorMoltUsed=false;
@@ -10090,7 +10094,6 @@ function getPlayerMagicPenPct(player=G.player){
   let pct=Number(player?.stats?.magicPen)||0;
   if(player?.augSpellPiercePct) pct+=player.augSpellPiercePct*100;
   if(player?._workbookMdefPenPct) pct+=Number(player._workbookMdefPenPct)||0;
-  if(player?._classPerkMdefPen) pct+=(Number(player._classPerkMdefPen)||0)*100;
   return Math.min(95, Math.max(0, pct));
 }
 globalThis.getPlayerArmorPenPct=getPlayerArmorPenPct;
@@ -10112,8 +10115,7 @@ function getMagicalPierceFractionForDamage(ab){
   const eqPct = getPlayerMagicPenPct();
   const classPen = (typeof Avian?.classPerks?.getExtraMdefPierce==='function')
     ? (Avian.classPerks.getExtraMdefPierce(ab||G._activePlayerAbility||{})||0) : 0;
-  const wbPen = (Number(G.player?._workbookMdefPenPct)||0)/100;
-  return Math.min(0.95, fromAb + pts / 100 + eqPct / 100 + classPen + wbPen);
+  return Math.min(0.95, fromAb + pts / 100 + eqPct / 100 + classPen);
 }
 
 /** UI / preview: template pierce without relying on G._currentPiercePct from pdmg. */
@@ -11258,6 +11260,7 @@ function computePlayerCritDamageAdd(activeAb){
   if(_pid==='passive_shoebill_silent_stance' && !G.player._shoebillHadUtilityPriorTurn) critDmgAdd+=0.10;
   if((G.playerStatus.dispatcherCritDmg||0)>0) critDmgAdd+=Math.max(0,G.playerStatus.dispatcherCritDmg)/100;
   if((G.playerStatus?.passiveCritDmg||0)>0) critDmgAdd+=Math.max(0,G.playerStatus.passiveCritDmg)/100;
+  if((G.player?._mutationCritDamageBonus||0)>0) critDmgAdd+=G.player._mutationCritDamageBonus;
   return critDmgAdd;
 }
 
@@ -11452,6 +11455,10 @@ function dealDamage(target,amount,isCrit=false,isMagic=false,srcAbility=null,opt
       dmg=roundCombatDamage(dmg*(1-passiveEvoBonus.drPct));
     }
     applyFractionalHp(G.player.stats, -dmg);
+    if(typeof isBloodiedTarget==='function' && isBloodiedTarget(G.player) && !G._mutationBloodiedSelfFired){
+      G._mutationBloodiedSelfFired=true;
+      if(typeof Avian?.mutationEffects?.onBloodiedSelf==='function') Avian.mutationEffects.onBloodiedSelf();
+    }
     if(typeof Avian?.passives?.onPlayerDamaged==='function') Avian.passives.onPlayerDamaged(dmg, isMagic);
     if(BIRDS[G.player?.birdKey]?.passive?.id==='passive_bluejay_territorial_fury' && dmg>0) G.player._blueJayRecentHit=true;
     if((G.player?.lowHpSpdBonus||0)>0 && !G.player._lowHpSpdApplied && G.player.stats.hp<=Math.floor((G.player.stats.maxHp||1)*0.5)){
@@ -15811,8 +15818,10 @@ document.addEventListener('keydown', e => {
         if(btn&&!btn.disabled) { btn.click(); return; }
       }
     }
-    // Escape: close enemy info popup first, else nest menu
+    // Escape: close modals first, else nest menu
     if(e.key==='Escape') {
+      const csm=document.getElementById('combat-stats-modal');
+      if(csm && csm.classList.contains('combat-stats-modal--open')){ closeCombatStatsModal(); return; }
       const eip=document.getElementById('enemy-info-popup');
       if(eip && eip.classList.contains('enemy-info-popup--open')){ closeEnemyInfoPopup(); return; }
       if(!G.animLock) document.getElementById('nest-modal')?.classList.toggle('open');
@@ -17724,7 +17733,7 @@ function normalizeAccessibilitySettings(raw){
     combatLayout:normalizeCombatLayout(raw.combatLayout),
     combatArrangement:normalizeCombatArrangement(raw.combatArrangement),
     combatCustomLayout:normalizeCombatCustomLayout(raw.combatCustomLayout),
-    stickyCombatants:raw.stickyCombatants!==false,
+    stickyCombatants:raw.stickyCombatants===true,
     autoCombatDensity:raw.autoCombatDensity!==false,
     audio,
     tooltips:{...DEFAULT_TOOLTIP_SETTINGS, ...(raw.tooltips||{})},
@@ -17748,7 +17757,7 @@ function bootstrapAccessibilityDefaults(){
       uiAutoDetect:true,
       fontSize:uiMode==='mobile'?115:100,
       combatArrangement:uiMode==='mobile'?'compact':'classic',
-      stickyCombatants:true,
+      stickyCombatants:false,
       autoCombatDensity:true,
       combatLayout:uiMode==='mobile'?MOBILE_DEFAULT_COMBAT_LAYOUT:DEFAULT_COMBAT_LAYOUT,
     });
@@ -17810,26 +17819,6 @@ function applyUIStateToDOM(){
   if (document.getElementById('screen-battle')?.classList.contains('active') && typeof updateBattleArena === 'function') {
     updateBattleArena();
   }
-  const playerDrop=document.getElementById('player-stats-drop');
-  const enemyDrop=document.getElementById('enemy-stats-drop');
-  if(playerDrop) playerDrop.open=!!ui.combatDropdownOpen.player;
-  if(enemyDrop) enemyDrop.open=!!ui.combatDropdownOpen.enemy;
-}
-function syncCombatDropdownUIState(){
-  const ui=ensureUIState();
-  const playerDrop=document.getElementById('player-stats-drop');
-  const enemyDrop=document.getElementById('enemy-stats-drop');
-  if(playerDrop) ui.combatDropdownOpen.player=!!playerDrop.open;
-  if(enemyDrop) ui.combatDropdownOpen.enemy=!!enemyDrop.open;
-}
-
-function wireCombatDropdownStateSync(){
-  ['player-stats-drop','enemy-stats-drop'].forEach(id=>{
-    const el=document.getElementById(id);
-    if(!el || el.dataset.uiStateWired==='1') return;
-    el.dataset.uiStateWired='1';
-    el.addEventListener('toggle', ()=>syncCombatDropdownUIState());
-  });
 }
 function getAutoCombatDensityReduction(abilityCount){
   const n=Math.max(0,Math.floor(Number(abilityCount)||0));
@@ -17846,7 +17835,7 @@ function applyEffectiveCombatScales(cfg, abilityCount){
   battle.setAttribute('data-ability-count',String(Math.min(7,count)));
   let avatarScale=cl.avatarScale;
   let actionTrayScale=cl.actionTrayScale;
-  const autoOn=cfg?.autoCombatDensity!==false&&cfg?.stickyCombatants!==false;
+  const autoOn=cfg?.autoCombatDensity!==false&&cfg?.stickyCombatants===true;
   if(autoOn){
     const cut=getAutoCombatDensityReduction(count);
     avatarScale=Math.max(70,avatarScale-cut);
@@ -18037,7 +18026,7 @@ function applyAccessibilitySettings(s){
   document.documentElement.style.fontSize=`${Math.max(85,Math.min(140,Number(cfg.fontSize)||100))}%`;
   document.body.classList.toggle('reduce-motion', !!cfg.reduceMotion);
   document.body.classList.toggle('high-contrast', !!cfg.highContrast);
-  document.body.classList.toggle('combat-sticky-combatants', cfg.stickyCombatants!==false);
+  document.body.classList.toggle('combat-sticky-combatants', cfg.stickyCombatants===true);
   ['cb-protanopia','cb-deuteranopia','cb-tritanopia'].forEach(c=>document.body.classList.remove(c));
   if(cfg.colorBlind==='protanopia') document.body.classList.add('cb-protanopia');
   if(cfg.colorBlind==='deuteranopia') document.body.classList.add('cb-deuteranopia');
@@ -18075,7 +18064,7 @@ function openSettingsModal(){
   setRange('setting-combat-action-scale',cl.actionTrayScale);
   setRange('setting-combat-log-scale',cl.battleLogScale);
   const stickyCombatants=document.getElementById('setting-sticky-combatants');
-  if(stickyCombatants) stickyCombatants.checked=cfg.stickyCombatants!==false;
+  if(stickyCombatants) stickyCombatants.checked=cfg.stickyCombatants===true;
   const autoDensity=document.getElementById('setting-auto-combat-density');
   if(autoDensity) autoDensity.checked=cfg.autoCombatDensity!==false;
   const ms=getMusicSettings();
@@ -18152,7 +18141,7 @@ function updateAccessibilitySettings(){
     combatCustomLayout:prev.combatCustomLayout,
     stickyCombatants:document.getElementById('setting-sticky-combatants')
       ? !!document.getElementById('setting-sticky-combatants').checked
-      : prev.stickyCombatants!==false,
+      : prev.stickyCombatants===true,
     autoCombatDensity:document.getElementById('setting-auto-combat-density')
       ? !!document.getElementById('setting-auto-combat-density').checked
       : prev.autoCombatDensity!==false,
@@ -18214,7 +18203,6 @@ if(typeof window!=='undefined'){
     if(document.visibilityState==='hidden') stopAllGameAudio();
   });
 }
-wireCombatDropdownStateSync();
 applyUIStateToDOM();
 applyThemeMusicToAudioEl();
 syncThemeMusicButtonLabels();
