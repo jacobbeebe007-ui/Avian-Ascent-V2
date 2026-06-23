@@ -59,7 +59,6 @@
 <div id="app">
 <header>
 <h1>⚔ AVIAN ASCENT ⚔</h1>
-<p>A Roguelike of Feathers &amp; Fortune</p>
 <div style="text-align:center;margin-top:8px;"><button class="menu-btn" data-action="openSettingsModal">⚙ Settings</button></div>
 </header>
 <!-- START -->
@@ -559,19 +558,11 @@
 <div class="topbar-left">
 <div class="level-badge" id="level-label">STAGE 1</div>
 <span class="bird-lv" id="bird-lv-label">Lv.1</span>
-<span class="passive-badge" id="passive-badge" title="Passive Trait"></span>
+<button class="sound-btn" id="sound-toggle-btn" data-action="toggleSound" title="Toggle Sound" aria-label="Toggle sound">🔊</button>
 </div>
 <div class="topbar-center">
 <div class="battle-caption" id="battle-caption" aria-live="polite"></div>
-<div class="topbar-battle-btns">
 <button type="button" class="nest-btn" data-action="openNest">🪺 Nest</button>
-<button type="button" class="menu-btn" data-action="openSettingsModal">⚙ Settings</button>
-<button type="button" class="menu-btn battle-abandon-btn" data-action="openAbandonModal">⟨ Abandon</button>
-</div>
-</div>
-<div class="topbar-right">
-<button class="menu-btn" data-action="goMainMenu">⏸ Menu</button>
-<button class="sound-btn" id="sound-toggle-btn" data-action="toggleSound" title="Toggle Sound">🔊</button>
 </div>
 </div>
 
@@ -875,7 +866,7 @@
 <p class="settings-hint" id="setting-combat-arrangement-hint">Original: birds side by side, then actions and log.</p>
 <div id="setting-combat-custom-edit-row" class="settings-custom-layout-row" style="display:none">
 <button type="button" class="menu-btn" data-action="openCombatCustomLayoutModal">Customize panels…</button>
-<p class="settings-hint">Reorder panels and hide sections you do not need. Top bar stays visible for menu access.</p>
+<p class="settings-hint">Reorder panels and hide sections you do not need. Use Settings under the page title for menu and abandon.</p>
 </div>
 <label class="settings-row">Avatar size <span id="setting-combat-avatar-val">100%</span>
 <input id="setting-combat-avatar-scale" type="range" min="70" max="130" value="100" data-change="updateAccessibilitySettings" data-input="updateAccessibilitySettings"/>
@@ -957,7 +948,8 @@
 <button class="menu-btn" data-action="openConsoleHud">🖥 Open Console</button>
 </div>
 <div style="display:flex;flex-wrap:wrap;gap:10px;justify-content:space-between;align-items:center;margin-top:16px;">
-<button type="button" class="menu-btn" data-action="returnToWarRoomFromSettings">🏕 Return to war room</button>
+<button type="button" class="menu-btn battle-abandon-btn" data-action="openAbandonFromSettings">⟨ Abandon</button>
+<button type="button" class="menu-btn" data-action="goMainMenuFromSettings">⏸ Menu</button>
 <button class="abandon-cancel-btn" data-action="closeSettingsModal">Close</button>
 </div>
 </div>
@@ -966,7 +958,7 @@
 <div class="abandon-modal" id="combat-custom-layout-modal" data-action="closeCombatCustomLayoutModal" data-backdrop="1">
 <div class="abandon-inner settings-modal-inner" style="max-width:480px;text-align:left;">
 <h3>Customize combat panels</h3>
-<p class="settings-hint">Move sections up or down. Uncheck Show to hide a panel. The top bar always stays visible for menu access.</p>
+<p class="settings-hint">Move sections up or down. Uncheck Show to hide a panel. Use Settings under the page title for menu and abandon.</p>
 <div id="combat-custom-panel-list" class="combat-custom-panel-list" role="list"></div>
 <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:14px;justify-content:flex-end;">
 <button type="button" class="menu-btn" data-action="resetCombatCustomLayoutDraft">Reset to default</button>

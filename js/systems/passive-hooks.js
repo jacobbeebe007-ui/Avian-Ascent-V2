@@ -223,6 +223,9 @@
     var slotId = String(perkId || 'passive') + ':' + effect.kind;
 
     switch (effect.kind) {
+      case 'gainAcc':
+        applyPassiveDisplaySlot(ps, perkId, 'gainAcc', effect.value);
+        break;
       case 'gainDodge':
         applyPassiveDisplaySlot(ps, perkId, 'gainDodge', effect.value);
         break;

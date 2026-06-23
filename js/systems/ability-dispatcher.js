@@ -133,7 +133,7 @@
     } else if (targetSide === 'player' && g && g.enemy && isMagic) {
       magicShift = ((g.enemy.stats.matk || 8) - (g.player.stats.mdef || 8)) * 1.5;
     }
-    var passiveAilBonus = (targetSide === 'enemy' && g && g.player) ? (Number(g.player.passiveAilmentBonus) || 0) : 0;
+    var passiveAilBonus = (targetSide === 'enemy' && g && g.playerStatus) ? (Number(g.playerStatus.passiveAilmentBonus) || 0) : 0;
     var controlBoost = (targetSide === 'enemy' && g && g.player && typeof getPassiveEvolutionBonuses === 'function')
       ? Math.floor((getPassiveEvolutionBonuses(g.player).controlPct || 0) * 100) : 0;
     var rollPct = typeof resolveAilmentChance === 'function'

@@ -909,8 +909,10 @@ function wireNestAbilityTooltips(root){
     }, {category:'abilities'});
   });
 }
-function wireCombatStatTooltips(){
-  const grid = document.getElementById('player-stats-mini');
+function wireCombatStatTooltips(container){
+  const root=container||document.getElementById('combat-stats-modal-body');
+  if(!root) return;
+  const grid=root.querySelector('.stats-mini');
   if(!grid) return;
   grid.querySelectorAll('[data-stat-key]').forEach(el=>{
     const key = el.dataset.statKey;
@@ -937,8 +939,10 @@ function wireCombatClassLabelTooltips(){
     }, { category: 'passives' });
   }
 }
-function wireCombatEnemyStatTooltips(){
-  const grid = document.getElementById('enemy-stats-mini');
+function wireCombatEnemyStatTooltips(container){
+  const root=container||document.getElementById('combat-stats-modal-body');
+  if(!root) return;
+  const grid=root.querySelector('.enemy-stats-mini, .stats-mini');
   if(!grid) return;
   grid.querySelectorAll('[data-stat-key]').forEach(el=>{
     const key = el.dataset.statKey;
@@ -2188,7 +2192,6 @@ let G = {
     battleLayout:'mobile',
     selectionView:'size',
     expandedBird:null,
-    combatDropdownOpen:{player:true,enemy:true},
   },
 };
 globalThis.G = G;
@@ -2214,7 +2217,6 @@ const DEFAULT_UI_STATE = Object.freeze({
   selectionView:'all',
   lockFilter:'unlocked',
   expandedBird:null,
-  combatDropdownOpen:{player:true,enemy:true},
 });
 
 function ensureUIState(){
@@ -2224,9 +2226,6 @@ function ensureUIState(){
   G.ui.selectionView = String(G.ui.selectionView || DEFAULT_UI_STATE.selectionView);
   G.ui.lockFilter = ['all','unlocked','locked'].includes(G.ui.lockFilter) ? G.ui.lockFilter : DEFAULT_UI_STATE.lockFilter;
   G.ui.expandedBird = G.ui.expandedBird ? String(G.ui.expandedBird) : null;
-  if(!G.ui.combatDropdownOpen || typeof G.ui.combatDropdownOpen!=='object') G.ui.combatDropdownOpen={};
-  G.ui.combatDropdownOpen.player = !!G.ui.combatDropdownOpen.player;
-  G.ui.combatDropdownOpen.enemy = !!G.ui.combatDropdownOpen.enemy;
   return G.ui;
 }
 
@@ -7185,7 +7184,7 @@ function showScreen(id) {
   document.getElementById(id).classList.add('active');
   if(prev==='screen-battle' && id!=='screen-battle') stopAllGameAudio();
   if(prev==='screen-gameover' && (id==='screen-select'||id==='screen-start')) stopAllGameAudio();
-  if(id==='screen-stork-shop' || id==='screen-grove' || id==='screen-map-forge'){
+  if(id==='screen-stork-shop' || id==='screen-grove' || id==='screen-map-forge' || id==='screen-reward' || id==='screen-gameover'){
     const el=document.getElementById(id);
     if(el){
       el.scrollTop=0;
@@ -7241,6 +7240,301 @@ function buildEnemyCombatStatHint(){
   if((s.exposedGuard?.pct||0)>0) parts.push('Guard exposed');
   return parts.join(' · ');
 }
+
+function combatEscAttr(s){ return String(s??'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;'); }
+function combatTrendTag(effective, baseline){
+  const diff = effective - (Number(baseline)||0);
+  if(diff>0) return '<small class="stat-trend up beneficial">▲</small>';
+  if(diff<0) return '<small class="stat-trend down harmful">▼</small>';
+  return '';
+}
+function resolvePassiveSourceLabel(sourceId){
+  const raw=String(sourceId||'');
+  const pasMatch=raw.match(/(PAS-[A-Za-z0-9_-]+)/);
+  if(pasMatch){
+    const row=Avian?.data?.combatPack?.birdPassives?.[pasMatch[1]];
+    if(row?.name) return row.name;
+  }
+  const passiveId=BIRDS[G.player?.birdKey]?.passive?.id;
+  if(passiveId && raw.includes(passiveId)){
+    const info=getBirdPassiveInfo(G.player?.birdKey);
+    if(info?.name) return info.name;
+  }
+  return raw.split(':')[0] || 'Passive';
+}
+function getPassivePerkModifierLines(statKey){
+  const lines=[];
+  if(statKey==='dodge' && (G.playerStatus?.passiveDodge||0)>0) lines.push(`Passive: +${G.playerStatus.passiveDodge}% dodge`);
+  if(statKey==='critChance' && (G.playerStatus?.passiveCrit||0)>0) lines.push(`Passive: +${G.playerStatus.passiveCrit}% crit chance`);
+  if(statKey==='acc' && (G.playerStatus?.passiveAcc||0)>0) lines.push(`Passive: +${G.playerStatus.passiveAcc}% ACC`);
+  if(statKey==='critMult' && (G.playerStatus?.passiveCritDmg||0)>0) lines.push(`Passive: +${G.playerStatus.passiveCritDmg}% crit damage`);
+  const bag=G.playerStatus?._passiveStatLoans;
+  if(bag){
+    for(const k in bag){
+      const entry=bag[k];
+      if(!entry || entry.statKey!==statKey) continue;
+      lines.push(`Passive (${resolvePassiveSourceLabel(entry.sourceId||k)}): +${formatCombatNumber(entry.amt)} (${entry.turns||1}t)`);
+    }
+  }
+  if(statKey==='magicPen'){
+    if((G.player?._classPerkMdefPen||0)>0){
+      const perk=Avian?.classPerks?.getClassPerkForBird?.(G.player?.birdKey);
+      lines.push(`${perk?.name||'Class perk'}: +${Math.round(G.player._classPerkMdefPen*100)}% MDEF pen`);
+    }
+    if((G.player?._workbookMdefPenPct||0)>0) lines.push(`Passive: +${G.player._workbookMdefPenPct}% MDEF pen`);
+  }
+  if(statKey==='armorPen' && (G._workbookPassiveDefPen||0)>0) lines.push(`Passive: +${G._workbookPassiveDefPen}% DEF ignore (pending hit)`);
+  return lines;
+}
+function getActiveDamageModifierLines(side){
+  const lines=[];
+  if(side==='enemy'){
+    const es=G.enemyStatus||{};
+    if(getWeakenStacks(es)>0) lines.push(`Weaken ×${getWeakenStacks(es)}: reduced damage output`);
+    if((es.exposedGuard?.pct||0)>0) lines.push(`Guard exposed: +${Math.round(es.exposedGuard.pct*100)}% damage taken`);
+    return lines;
+  }
+  const ps=G.playerStatus||{};
+  const cpState=ps._classPerkState||{};
+  if(G.warcryActive) lines.push(`Warcry: +${G.warcryATK||0}% ATK`);
+  if(G.sitAndWaitActive) lines.push('Sit and Wait: +25% ATK');
+  if(getWeakenStacks(ps)>0) lines.push(`Weaken ×${getWeakenStacks(ps)}: −${Math.round((1-getWeakenDamageMult(getWeakenStacks(ps)))*100)}% damage`);
+  if(Number(ps.huntersMarkBonusPct)>0) lines.push(`Hunter's Mark: +${Math.round(ps.huntersMarkBonusPct*100)}% next hit`);
+  if((G.player?._classPerkDukeStacks||0)>0) lines.push(`Duke Ascension: +${G.player._classPerkDukeStacks*5}% all damage`);
+  const perk=Avian?.classPerks?.getClassPerkForBird?.(G.player?.birdKey);
+  if(perk){
+    if(perk.def?.id==='rogueTempo' && !cpState.rogueTempoUsed) lines.push(`${perk.name}: +10% on first 1 EN physical (pending)`);
+    if(perk.def?.id==='verseAndChorus' && cpState.verseChorusPending) lines.push(`${perk.name}: +10% next magic hit`);
+    if(perk.def?.id==='retaliatingHide' && cpState.retaliatingHidePending) lines.push(`${perk.name}: +10% next physical hit`);
+    if(perk.def?.id==='bulwarkOath'){
+      const hp=G.player?.stats?.hp||1, maxHp=G.player?.stats?.maxHp||1;
+      lines.push(hp>maxHp*0.5 ? `${perk.name}: −10% incoming damage (active)` : `${perk.name}: inactive below 50% HP`);
+    }
+    if(perk.def?.id==='arcanePressure') lines.push(`${perk.name}: +10% MDEF penetration on magic`);
+    if(perk.def?.id==='cursedCall') lines.push(`${perk.name}: +1 debuff duration on applied ailments`);
+  }
+  const evo=getPassiveEvolutionBonuses(G.player);
+  if(evo.damagePct) lines.push(`Passive evolution: +${Math.round(evo.damagePct*100)}% damage`);
+  if((ps.passiveAilmentBonus||0)>0) lines.push(`Passive: +${ps.passiveAilmentBonus}% ailment chance`);
+  if((G.player?._workbookPermanentDmgBonus||0)>0) lines.push(`Passive: +${Math.round(G.player._workbookPermanentDmgBonus*100)}% permanent damage`);
+  if((ps.tensionCoil?.turns||0)>0) lines.push(`Tension Coil: +${Math.round((ps.tensionCoil.pct||0)*100)}% damage`);
+  if((ps.postDefAtkPct||0)>0) lines.push(`Post-defend: +${Math.round(ps.postDefAtkPct*100)}% next attack`);
+  return lines;
+}
+function buildPlayerStatsGridHtml(){
+  const p=G.player.stats;
+  const _pBase=G.player._battleStatBase||{};
+  const _defBoostAmt=(G.playerStatus?.defBoost?.turns>0)?(G.playerStatus.defBoost.amt||0):0;
+  const _effDef=Math.floor((p.def+_defBoostAmt+(G.battleHymnActive?G.battleHymnDEF:0))*(playerHasBurning()?0.8:1));
+  const _effAcc=Math.min(100, typeof getPlayerEffectiveAcc==='function'?getPlayerEffectiveAcc():p.acc);
+  const _effDodge=getEffectiveDodge(G.player);
+  const _effSpd=(p.spd||0)+((G.playerStatus?.slow?.spdPenalty)?-(G.playerStatus.slow.spdPenalty||0):0);
+  const _effMatk=(p.matk||8);
+  const _effMdef=Math.floor((p.mdef||8)*(playerHasBurning()?0.8:1));
+  const _eqMechCombat=typeof Avian?.mutations?.getMechanicsRollup==='function'?Avian.mutations.getMechanicsRollup(G.player):null;
+  const _effAtk=G.warcryActive?(p.atk||0)*(1+G.warcryATK/100):p.atk;
+  let _critChance=Math.min(100,(p.critChance||5));
+  if(typeof Avian?.dispatcher?.modifyCritChance==='function') _critChance=Math.min(100, Avian.dispatcher.modifyCritChance(_critChance));
+  const _critBaseStore=Number(_pBase.critChance??p.critChance??5);
+  const _critBase=G.player.goldCritMult||1.5;
+  const _critBonusPct=(G.player.critDamageBonusPct||0)+(_eqMechCombat?.critDamageBonusPct||0);
+  const _critMultHtml=_critBonusPct>0?`${formatCombatNumber(_critBase)}×<small class="stat-cd-bonus">+${formatCombatNumber(_critBonusPct)}</small>`:`${formatCombatNumber(_critBase)}×`;
+  const _statNote=(label,diff,srcUp='',srcDown='')=>`${label} ${diff>=0?'+':''}${diff}. ${diff>0?srcUp:(diff<0?srcDown:'No active modifier.')}`;
+  const _atkNote=(G.warcryActive?`Warcry +${G.warcryATK}% ATK.`:'')+(getWeakenStacks(G.playerStatus)>0?' Weaken reducing output.':'');
+  const _accCardBonus=(G.player.firstAttackAccBonus||0)>0?` Shop/card hit bonus +${G.player.firstAttackAccBonus}% (applies to all attacks).`:'';
+  const statCell=(klass,label,val,{suffix='',title='',trend='',statKey='',statRaw=null}={})=>{
+    const dataAttr=statKey?` data-stat-key="${statKey}" data-stat-raw="${Number(statRaw??val)}"`:'';
+    return `<div class="stat-mini ${klass}"${dataAttr} title="${combatEscAttr(title)}"><span class="stat-k">${label}</span><span class="stat-v">${formatCombatNumber(val)}${suffix}${trend}</span></div>`;
+  };
+  const _bt=(key,raw,extra='')=>{ const b=buildStatBreakdownTitle(key,raw,G.player); return [b,extra].filter(Boolean).join(' | '); };
+  const _pCombatHint=buildPlayerCombatStatHint();
+  const _pHintRow=_pCombatHint?`<div class="stat-status-hint" style="grid-column:1/-1">${combatEscAttr(_pCombatHint)}</div>`:'';
+  const _effArmorPen=getPlayerArmorPenPct(G.player);
+  const _effMagicPen=getPlayerMagicPenPct(G.player);
+  const _penCells=`${(_effArmorPen>0)?statCell('stat-armor-pen','Armour Pen',_effArmorPen,{suffix:'%',title:_bt('armorPen',p.armorPen||0,'Ignores enemy DEF on physical hits.'),statKey:'armorPen',statRaw:p.armorPen||0}):''}${(_effMagicPen>0)?statCell('stat-magic-pen','Magic Pen',_effMagicPen,{suffix:'%',title:_bt('magicPen',p.magicPen||0,'Ignores enemy MDEF on magical hits.'),statKey:'magicPen',statRaw:p.magicPen||0}):''}`;
+  return `${statCell('stat-atk','ATK',_effAtk,{title:_bt('atk',_pBase.atk??p.atk,_statNote('Battle ATK',_effAtk-(_pBase.atk||0),_atkNote,'Debuffs reducing ATK effect.')),trend:combatTrendTag(_effAtk,_pBase.atk),statKey:'atk',statRaw:_pBase.atk??p.atk})}
+     ${statCell('stat-matk','MATK',_effMatk,{title:_bt('matk',(_pBase.matk??p.matk)||8,'Magic Attack — improves spell/ailment potency'),trend:combatTrendTag(_effMatk,_pBase.matk??8),statKey:'matk',statRaw:(_pBase.matk??p.matk)||8})}
+     ${statCell('stat-def','DEF',_effDef,{title:_bt('def',_pBase.def??p.def,_statNote('Battle DEF',_effDef-(_pBase.def||0),'Battle Hymn increased DEF.','Debuffs reducing DEF.')),trend:combatTrendTag(_effDef,_pBase.def),statKey:'def',statRaw:_pBase.def??p.def})}
+     ${statCell('stat-mdef','MDEF',_effMdef,{title:_bt('mdef',(_pBase.mdef??p.mdef)||8,'Magic Defence — resists enemy spells and ailments'),trend:combatTrendTag(_effMdef,_pBase.mdef??8),statKey:'mdef',statRaw:(_pBase.mdef??p.mdef)||8})}
+     ${statCell('stat-dodge','Dodge',_effDodge,{suffix:'%',title:_bt('dodge',_pBase.dodge??p.dodge,`Physical dodge. ${_statNote('Display',_effDodge-(_pBase.dodge||0),'Evasion buffs active.','Debuffs reduced dodge.')}`),trend:combatTrendTag(_effDodge,_pBase.dodge),statKey:'dodge',statRaw:_pBase.dodge??p.dodge})}
+     ${statCell('stat-acc','ACC',_effAcc,{suffix:'%',title:_bt('acc',_pBase.acc??p.acc,_statNote('Battle ACC',_effAcc-(_pBase.acc||0),'Battle Hymn increased ACC.','Blind/ruffle reduced ACC.')+_accCardBonus),trend:combatTrendTag(_effAcc,_pBase.acc),statKey:'acc',statRaw:_pBase.acc??p.acc})}
+     ${statCell('stat-spd','SPD',_effSpd,{title:_bt('spd',_pBase.spd??p.spd,_statNote('Battle SPD',_effSpd-(_pBase.spd||0),'Buff increased SPD.','Slow/clip effects reduced SPD.')),trend:combatTrendTag(_effSpd,_pBase.spd),statKey:'spd',statRaw:_pBase.spd??p.spd})}
+     ${statCell('stat-cc','CC',_critChance,{suffix:'%',title:_bt('critChance',_critBaseStore,`Shown value includes battle modifiers (e.g. burn). ${_statNote('vs battle start',_critChance-_critBaseStore,'Temporary buffs.','Debuffs reduced crit.')}`),trend:combatTrendTag(_critChance,_critBaseStore),statKey:'critChance',statRaw:_critBaseStore})}
+     <div class="stat-mini stat-cd" data-stat-key="critMult" data-stat-raw="${_critBase}" title="${combatEscAttr(`Base crit multiplier ${formatCombatNumber(_critBase)}×. On critical hits, +${formatCombatNumber(_critBonusPct)} is added to the multiplier.`)}"><span class="stat-k">CD</span><span class="stat-v">${_critMultHtml}</span></div>
+     ${_penCells}
+     ${_pHintRow}`;
+}
+function buildEnemyStatsGridHtml(){
+  const ep2=G.enemy.stats;
+  const eCritChance=Math.max(0,Math.min(100,(ep2.cc??((ep2.critChance||5)/100))*100));
+  const eCritMult=(ep2.cd??ep2.critMult??1.5);
+  const _eBase=G.enemy._battleStatBase||{};
+  const enemyCell=(klass,label,val,{suffix='',title='',trend='',baseKey='',statKey='',statRaw=null}={})=>{
+    const dataAttr=statKey?` data-stat-key="${statKey}" data-stat-raw="${Number(statRaw??val)}"`:'';
+    const baseVal=baseKey?(Number(_eBase[baseKey])||Number(statRaw??val)):null;
+    const autoTrend=trend||(baseVal!=null?combatTrendTag(val,baseVal):'');
+    return `<div class="est ${klass}"${dataAttr} title="${combatEscAttr(title)}"><span class="stat-k">${label}</span><span class="stat-v">${formatCombatNumber(val)}${suffix}${autoTrend}</span></div>`;
+  };
+  const _eCombatHint=buildEnemyCombatStatHint();
+  const _eHintRow=_eCombatHint?`<div class="stat-status-hint est-hint" style="grid-column:1/-1">${combatEscAttr(_eCombatHint)}</div>`:'';
+  const _effEnemyDef=Math.floor((ep2.def||0)*(enemyHasBurning()?0.8:1));
+  const _effEnemyMdef=Math.floor((ep2.mdef||8)*(enemyHasBurning()?0.8:1));
+  const _effEnemyDodge=(ep2.dodge||0);
+  const _enemyDodgeSpdNote=enemyHasBurning()?' — Burning: −20% DEF/MDEF':'';
+  return `${enemyCell('stat-atk','ATK',ep2.atk,{title:'Physical attack',baseKey:'atk',statKey:'atk',statRaw:ep2.atk})}
+     ${enemyCell('stat-matk','MATK',ep2.matk||6,{title:'Magic attack',baseKey:'matk',statKey:'matk',statRaw:ep2.matk||6})}
+     ${enemyCell('stat-def','DEF',_effEnemyDef,{title:'Physical defence'+_enemyDodgeSpdNote,baseKey:'def',statKey:'def',statRaw:ep2.def,trend:combatTrendTag(_effEnemyDef,_eBase.def??ep2.def)})}
+     ${enemyCell('stat-mdef','MDEF',_effEnemyMdef,{title:'Magic defence'+_enemyDodgeSpdNote,baseKey:'mdef',statKey:'mdef',statRaw:ep2.mdef||8,trend:combatTrendTag(_effEnemyMdef,(_eBase.mdef??ep2.mdef)||8)})}
+     ${enemyCell('stat-dodge','Dodge',_effEnemyDodge,{suffix:'%',title:`Dodge${_enemyDodgeSpdNote}`,baseKey:'dodge',statKey:'dodge',statRaw:ep2.dodge||0})}
+     ${enemyCell('stat-acc','ACC',ep2.acc||70,{suffix:'%',title:'Accuracy',baseKey:'acc',statKey:'acc',statRaw:ep2.acc||70})}
+     ${enemyCell('stat-spd','SPD',ep2.spd||0,{title:'Speed',baseKey:'spd',statKey:'spd',statRaw:ep2.spd||0})}
+     ${enemyCell('stat-cc','CC',eCritChance,{suffix:'%',title:'Crit chance',statKey:'critChance',statRaw:eCritChance})}
+     ${enemyCell('stat-cd','CD',Number(eCritMult),{suffix:'×',title:'Crit damage'})}
+     ${_eHintRow}`;
+}
+function buildCombatStatBreakdownSection(side){
+  const statKeys=side==='player'
+    ? ['atk','matk','def','mdef','dodge','acc','spd','critChance','critMult','armorPen','magicPen']
+    : ['atk','matk','def','mdef','dodge','acc','spd','critChance'];
+  const player=side==='player'?G.player:null;
+  const enemy=side==='enemy'?G.enemy:null;
+  let html='';
+  for(const key of statKeys){
+    const lines=[];
+    if(side==='player'){
+      for(const line of getPassivePerkModifierLines(key)) lines.push(line);
+      for(const line of getBattleStatModifierLines(key)) lines.push(line);
+      for(const line of getDerivedMechanicalBonusLines(player)){
+        const showAtk=key==='atk'&&/attack damage|pierce/i.test(line);
+        const showCrit=key==='critChance'&&/crit/i.test(line);
+        if(showAtk||showCrit) lines.push(line);
+      }
+      const L=player?._statLedger;
+      if(L?.birdBaseline && Object.keys(L.birdBaseline).length){
+        for(const src of getEquippedStatSources(player,key)) lines.push(`${src.name}: +${formatCombatNumber(src.value)}`);
+      }
+    } else if(enemy){
+      for(const src of getEnemyMutationStatSources(enemy,key)) lines.push(`${src.name}: +${formatCombatNumber(src.value)}`);
+    }
+    if(!lines.length) continue;
+    const label=(STAT_LEDGER_LABELS[key]||key).toUpperCase();
+    html+=`<div class="combat-details-stat-block"><div class="combat-details-stat-name">${combatEscAttr(label)}</div><ul class="combat-details-mod-list">${lines.map(l=>`<li>${combatEscAttr(l)}</li>`).join('')}</ul></div>`;
+  }
+  return html||'<p class="combat-details-empty">No active stat modifiers.</p>';
+}
+function buildCombatPerkSection(side){
+  if(side==='player'){
+    const passive=getBirdPassiveInfo(G.player?.birdKey);
+    const classPerk=getBirdAuthoredClassPerk(G.player?.birdKey);
+    let html='';
+    if(passive){
+      html+=`<div class="combat-details-perk"><div class="combat-details-perk-name">★ ${combatEscAttr(passive.name)} <span class="combat-details-perk-type">Passive</span></div>`;
+      if(passive.trigger) html+=`<div class="combat-details-perk-trigger">${combatEscAttr(passive.trigger)}</div>`;
+      html+=`<div class="combat-details-perk-desc">${combatEscAttr(passive.desc||passive.effect||'')}</div></div>`;
+    } else html+='<p class="combat-details-empty">No passive.</p>';
+    if(classPerk){
+      html+=`<div class="combat-details-perk"><div class="combat-details-perk-name">${combatEscAttr(classPerk.name)} <span class="combat-details-perk-type">Class Perk</span></div>`;
+      html+=`<div class="combat-details-perk-desc">${combatEscAttr(classPerk.effect||'')}</div></div>`;
+    }
+    return html;
+  }
+  const bk=G.enemy?.birdKey||G.enemy?.templateKey;
+  const bird=bk&&BIRDS[bk]?BIRDS[bk]:null;
+  const passive=bird?.passive;
+  if(!passive) return '<p class="combat-details-empty">No passive.</p>';
+  return `<div class="combat-details-perk"><div class="combat-details-perk-name">★ ${combatEscAttr(passive.name)} <span class="combat-details-perk-type">Passive</span></div><div class="combat-details-perk-desc">${combatEscAttr(passive.desc||passive.effect||'')}</div></div>`;
+}
+function buildCombatStatusDetailsSection(side){
+  const statuses=side==='player'?G.playerStatus:G.enemyStatus;
+  const ownerStats=side==='player'?G?.player?.stats:G?.enemy?.stats;
+  const poisonCap=G?.player?(G.player.poisonCap||5):5;
+  const poisonBoundaryDamage=stacks=>{
+    if(typeof calcPoisonTickDmg==='function'){
+      const mult=side==='enemy'?(G?.player?.poisonTickMult||1):1;
+      const base=calcPoisonTickDmg(stacks,mult);
+      const flat=side==='enemy'?((G?.player?.poisonFlatBonus||0)+(G?.player?.perkPoisonTickBonus||0)+(G?.player?.relVenomLedger?1:0)):0;
+      return Math.max(1, base+flat);
+    }
+    return Math.max(1,(stacks||0));
+  };
+  const ctx={owner:side,statuses,poisonCap,poisonBoundaryDamage,getWeakenStacks,getWeakenDamageMult,getWeakenDodgePenalty,confusedSelfPct:STATUS_CONFUSED_SELF_PCT};
+  const collectFn=typeof collectCombatStatusEntries==='function'?collectCombatStatusEntries:Avian?.statusDefs?.collectCombatStatusEntries;
+  const resolveFn=typeof resolveCombatStatusBadge==='function'?resolveCombatStatusBadge:Avian?.statusDefs?.resolveStatusBadge;
+  const detailFn=Avian?.statusDefs?.buildStatusDetail;
+  if(!collectFn||!resolveFn) return '<p class="combat-details-empty">No status data.</p>';
+  const entries=collectFn(statuses,ownerStats);
+  const groups={ailment:[],buff:[],debuff:[]};
+  entries.forEach(entry=>{
+    const badge=resolveFn(entry,ctx);
+    if(!badge||!badge.text) return;
+    const cat=badge.category||'system';
+    const bucket=cat==='ailment'?'ailment':cat==='buff'?'buff':'debuff';
+    const detailParts=[badge.summary||''];
+    if(badge.source) detailParts.push('Source: '+badge.source+'.');
+    if(typeof detailFn==='function') detailParts.push(detailFn(entry.id,entry.value,badge.summary,ctx));
+    groups[bucket].push({text:badge.text,detail:detailParts.filter(Boolean).join(' ')});
+  });
+  const renderGroup=(title,items)=>{
+    if(!items.length) return '';
+    return `<div class="combat-details-status-group"><div class="combat-details-status-cat">${combatEscAttr(title)}</div><ul class="combat-details-status-list">${items.map(it=>`<li><span class="combat-details-status-name">${combatEscAttr(it.text)}</span><span class="combat-details-status-detail">${combatEscAttr(it.detail)}</span></li>`).join('')}</ul></div>`;
+  };
+  const html=renderGroup('Ailments',groups.ailment)+renderGroup('Buffs',groups.buff)+renderGroup('Debuffs',groups.debuff);
+  return html||'<p class="combat-details-empty">No active status effects.</p>';
+}
+function buildCombatDetailsModalHtml(side){
+  const isPlayer=side==='player';
+  const name=isPlayer?G.player?.name:G.enemy?.name;
+  const gridClass=isPlayer?'stats-mini':'enemy-stats-mini stats-mini';
+  const gridHtml=isPlayer?buildPlayerStatsGridHtml():buildEnemyStatsGridHtml();
+  const dmgLines=getActiveDamageModifierLines(side);
+  const dmgHtml=dmgLines.length
+    ? `<ul class="combat-details-mod-list">${dmgLines.map(l=>`<li>${combatEscAttr(l)}</li>`).join('')}</ul>`
+    : '<p class="combat-details-empty">No active damage modifiers.</p>';
+  return `<div class="combat-stats-modal-content">
+    <h3 class="combat-stats-modal-title">${combatEscAttr(name||'Combatant')} — Stats &amp; Details</h3>
+    <section class="combat-details-section"><h4 class="combat-details-section-h">Stats</h4><div class="${gridClass}">${gridHtml}</div></section>
+    <section class="combat-details-section"><h4 class="combat-details-section-h">Stat Breakdown</h4>${buildCombatStatBreakdownSection(side)}</section>
+    <section class="combat-details-section"><h4 class="combat-details-section-h">Passive &amp; Class Perk</h4>${buildCombatPerkSection(side)}</section>
+    <section class="combat-details-section"><h4 class="combat-details-section-h">Damage Modifiers</h4>${dmgHtml}</section>
+    <section class="combat-details-section"><h4 class="combat-details-section-h">Status Effects</h4>${buildCombatStatusDetailsSection(side)}</section>
+  </div>`;
+}
+let _combatStatsModalSide=null;
+function closeCombatStatsModal(){
+  _combatStatsModalSide=null;
+  const modal=document.getElementById('combat-stats-modal');
+  if(!modal) return;
+  modal.style.display='none';
+  modal.classList.remove('combat-stats-modal--open');
+}
+function openCombatStatsModal(side){
+  _combatStatsModalSide=side==='enemy'?'enemy':'player';
+  const modal=document.getElementById('combat-stats-modal');
+  const body=document.getElementById('combat-stats-modal-body');
+  if(!modal||!body) return;
+  wireCombatStatsModalOnce();
+  body.innerHTML=buildCombatDetailsModalHtml(_combatStatsModalSide);
+  modal.style.display='flex';
+  modal.classList.add('combat-stats-modal--open');
+  wireCombatStatTooltips(body);
+  wireCombatEnemyStatTooltips(body);
+}
+function refreshCombatStatsModalIfOpen(){
+  if(!_combatStatsModalSide) return;
+  const body=document.getElementById('combat-stats-modal-body');
+  if(!body) return;
+  body.innerHTML=buildCombatDetailsModalHtml(_combatStatsModalSide);
+  wireCombatStatTooltips(body);
+  wireCombatEnemyStatTooltips(body);
+}
+function wireCombatStatsModalOnce(){
+  const root=document.getElementById('combat-stats-modal');
+  if(!root||root.dataset.wired==='1') return;
+  root.dataset.wired='1';
+}
+globalThis.openCombatStatsModal=openCombatStatsModal;
+globalThis.closeCombatStatsModal=closeCombatStatsModal;
+
 function getAvatar(who)     { return document.getElementById(`${who}-avatar`); }
 function getAvatarWrap(who) { return document.getElementById(`${who}-avatar-wrap`); }
 function getPanel(who)      { return document.getElementById(`${who}-panel`); }
@@ -7298,96 +7592,11 @@ function refreshBattleUI() {
     if(_expTxt) _expTxt.textContent = `${G.player.exp} / ${needed}`;
   }
 
-  // Stats
-  // Compute effective stats with buffs for display
-  const _pBase = G.player._battleStatBase || {};
-  const _defBoostAmt=(G.playerStatus?.defBoost?.turns>0)?(G.playerStatus.defBoost.amt||0):0;
-  const _effDef=Math.floor((p.def+_defBoostAmt+(G.battleHymnActive?G.battleHymnDEF:0))*(playerHasBurning()?0.8:1));
-  const _effAcc=Math.min(100, typeof getPlayerEffectiveAcc==='function'?getPlayerEffectiveAcc():p.acc);
-  const _effDodge=getEffectiveDodge(G.player);
-  const _effSpd=(p.spd||0) + ((G.playerStatus?.slow?.spdPenalty)?-(G.playerStatus.slow.spdPenalty||0):0);
-  const _effMatk=(p.matk||8);
-  const _effMdef=Math.floor((p.mdef||8)*(playerHasBurning()?0.8:1));
-  const _eqMechCombat=typeof Avian?.mutations?.getMechanicsRollup==='function'?Avian.mutations.getMechanicsRollup(G.player):null;
-  const escAttr=(s)=>String(s??'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
-  const _trendTag = (effective, baseline) => {
-    const diff = effective - (Number(baseline)||0);
-    if(diff>0) return '<small class="stat-trend up beneficial">▲</small>';
-    if(diff<0) return '<small class="stat-trend down harmful">▼</small>';
-    return '';
-  };
-  const _effAtk=G.warcryActive?(p.atk||0)*(1+G.warcryATK/100):p.atk;
-  let _critChance = Math.min(100,(p.critChance||5));
-  if(typeof Avian?.dispatcher?.modifyCritChance==='function') _critChance=Math.min(100, Avian.dispatcher.modifyCritChance(_critChance));
-  const _critBaseStore=Number(_pBase.critChance ?? p.critChance ?? 5);
-  const _critBase=G.player.goldCritMult||1.5;
-  const _critBonusPct=(G.player.critDamageBonusPct||0)+(_eqMechCombat?.critDamageBonusPct||0);
-  const _critMultHtml=_critBonusPct>0?`${formatCombatNumber(_critBase)}×<small class="stat-cd-bonus">+${formatCombatNumber(_critBonusPct)}</small>`:`${formatCombatNumber(_critBase)}×`;
-  const _statNote=(label,diff,srcUp='',srcDown='')=>`${label} ${diff>=0?'+':''}${diff}. ${diff>0?srcUp:(diff<0?srcDown:'No active modifier.')}`;
-  const _atkNote=(G.warcryActive?`Warcry +${G.warcryATK}% ATK.`:'') + (getWeakenStacks(G.playerStatus)>0?' Weaken reducing output.':'');
-  const _accCardBonus=(G.player.firstAttackAccBonus||0)>0?` Shop/card hit bonus +${G.player.firstAttackAccBonus}% (applies to all attacks).`:'';
-  const statCell=(klass,label,val,{suffix='',title='',trend='',statKey='',statRaw=null}={})=>{
-    const dataAttr=statKey?` data-stat-key="${statKey}" data-stat-raw="${Number(statRaw ?? val)}"`:'';
-    return `<div class="stat-mini ${klass}"${dataAttr} title="${escAttr(title)}"><span class="stat-k">${label}</span><span class="stat-v">${formatCombatNumber(val)}${suffix}${trend}</span></div>`;
-  };
-  const _bt=(key,raw,extra='')=>{ const b=buildStatBreakdownTitle(key,raw,G.player); return [b,extra].filter(Boolean).join(' | '); };
-  const _pCombatHint=buildPlayerCombatStatHint();
-  const _pHintRow=_pCombatHint?`<div class="stat-status-hint" style="grid-column:1/-1">${escAttr(_pCombatHint)}</div>`:'';
-  const _effArmorPen=getPlayerArmorPenPct(G.player);
-  const _effMagicPen=getPlayerMagicPenPct(G.player);
-  const _penCells=`${(_effArmorPen>0)?statCell('stat-armor-pen','Armour Pen',_effArmorPen,{suffix:'%',title:_bt('armorPen',p.armorPen||0,'Ignores enemy DEF on physical hits.'),statKey:'armorPen',statRaw:p.armorPen||0}):''}${(_effMagicPen>0)?statCell('stat-magic-pen','Magic Pen',_effMagicPen,{suffix:'%',title:_bt('magicPen',p.magicPen||0,'Ignores enemy MDEF on magical hits.'),statKey:'magicPen',statRaw:p.magicPen||0}):''}`;
-
-  document.getElementById('player-stats-mini').innerHTML =
-    `${statCell('stat-atk','ATK',_effAtk,{title:_bt('atk',_pBase.atk??p.atk,_statNote('Battle ATK',_effAtk-(_pBase.atk||0),_atkNote,'Debuffs reducing ATK effect.')),trend:_trendTag(_effAtk,_pBase.atk),statKey:'atk',statRaw:_pBase.atk??p.atk})}
-     ${statCell('stat-matk','MATK',_effMatk,{title:_bt('matk',(_pBase.matk??p.matk)||8,'Magic Attack — improves spell/ailment potency'),trend:_trendTag(_effMatk,_pBase.matk??8),statKey:'matk',statRaw:(_pBase.matk??p.matk)||8})}
-     ${statCell('stat-def','DEF',_effDef,{title:_bt('def',_pBase.def??p.def,_statNote('Battle DEF',_effDef-(_pBase.def||0),'Battle Hymn increased DEF.','Debuffs reducing DEF.')),trend:_trendTag(_effDef,_pBase.def),statKey:'def',statRaw:_pBase.def??p.def})}
-     ${statCell('stat-mdef','MDEF',_effMdef,{title:_bt('mdef',(_pBase.mdef??p.mdef)||8,'Magic Defence — resists enemy spells and ailments'),trend:_trendTag(_effMdef,_pBase.mdef??8),statKey:'mdef',statRaw:(_pBase.mdef??p.mdef)||8})}
-     ${statCell('stat-dodge','Dodge',_effDodge,{suffix:'%',title:_bt('dodge',_pBase.dodge??p.dodge,`Physical dodge. ${_statNote('Display',_effDodge-(_pBase.dodge||0),'Evasion buffs active.','Debuffs reduced dodge.')}`),trend:_trendTag(_effDodge,_pBase.dodge),statKey:'dodge',statRaw:_pBase.dodge??p.dodge})}
-     ${statCell('stat-acc','ACC',_effAcc,{suffix:'%',title:_bt('acc',_pBase.acc??p.acc,_statNote('Battle ACC',_effAcc-(_pBase.acc||0),'Battle Hymn increased ACC.','Blind/ruffle reduced ACC.')+_accCardBonus),trend:_trendTag(_effAcc,_pBase.acc),statKey:'acc',statRaw:_pBase.acc??p.acc})}
-     ${statCell('stat-spd','SPD',_effSpd,{title:_bt('spd',_pBase.spd??p.spd,_statNote('Battle SPD',_effSpd-(_pBase.spd||0),'Buff increased SPD.','Slow/clip effects reduced SPD.')),trend:_trendTag(_effSpd,_pBase.spd),statKey:'spd',statRaw:_pBase.spd??p.spd})}
-     ${statCell('stat-cc','CC',_critChance,{suffix:'%',title:_bt('critChance',_critBaseStore,`Shown value includes battle modifiers (e.g. burn). ${_statNote('vs battle start',_critChance-_critBaseStore,'Temporary buffs.','Debuffs reduced crit.')}`),trend:_trendTag(_critChance,_critBaseStore),statKey:'critChance',statRaw:_critBaseStore})}
-     <div class="stat-mini stat-cd" data-stat-key="critMult" data-stat-raw="${_critBase}" title="${escAttr(`Base crit multiplier ${formatCombatNumber(_critBase)}×. On critical hits, +${formatCombatNumber(_critBonusPct)} is added to the multiplier (e.g. Execution Beak). Shown value is base; small +number is the crit-only add.`)}"><span class="stat-k">CD</span><span class="stat-v">${_critMultHtml}</span></div>
-     ${_penCells}
-     ${_pHintRow}`;
-  wireCombatStatTooltips();
+  // Stats rendered in combat stats modal (Stats & Details button)
   wireCombatClassLabelTooltips();
+  refreshCombatStatsModalIfOpen();
 
-  // Enemy stats display
   const eal=document.getElementById('enemy-abilities-list');
-  const ep2=G.enemy.stats;
-  const eCritChance=Math.max(0,Math.min(100,(ep2.cc??((ep2.critChance||5)/100))*100));
-  const eCritMult=(ep2.cd??ep2.critMult??1.5);
-  const _eTrendTag = (effective, baseline) => {
-    const diff = effective - (Number(baseline)||0);
-    if(diff>0) return '<small class="stat-trend up beneficial">▲</small>';
-    if(diff<0) return '<small class="stat-trend down harmful">▼</small>';
-    return '';
-  };
-  const _eBase = G.enemy._battleStatBase || {};
-  const enemyCell=(klass,label,val,{suffix='',title='',trend='',baseKey='',statKey='',statRaw=null}={})=>{
-    const dataAttr=statKey?` data-stat-key="${statKey}" data-stat-raw="${Number(statRaw ?? val)}"`:'';
-    const baseVal = baseKey ? (Number(_eBase[baseKey])||Number(statRaw ?? val)) : null;
-    const autoTrend = trend || (baseVal!=null ? _eTrendTag(val, baseVal) : '');
-    return `<div class="est ${klass}"${dataAttr} title="${escAttr(title)}"><span class="stat-k">${label}</span><span class="stat-v">${formatCombatNumber(val)}${suffix}${autoTrend}</span></div>`;
-  };
-  const _eCombatHint=buildEnemyCombatStatHint();
-  const _eHintRow=_eCombatHint?`<div class="stat-status-hint est-hint" style="grid-column:1/-1">${escAttr(_eCombatHint)}</div>`:'';
-  const _effEnemyDef=Math.floor((ep2.def||0)*(enemyHasBurning()?0.8:1));
-  const _effEnemyMdef=Math.floor((ep2.mdef||8)*(enemyHasBurning()?0.8:1));
-  const _effEnemyDodge=(ep2.dodge||0);
-  const _enemyDodgeSpdNote=enemyHasBurning()?' — Burning: −20% DEF/MDEF':'';
-  document.getElementById('enemy-stats-mini').innerHTML =
-    `${enemyCell('stat-atk','ATK',ep2.atk,{title:'Physical attack',baseKey:'atk',statKey:'atk',statRaw:ep2.atk})}
-     ${enemyCell('stat-matk','MATK',ep2.matk||6,{title:'Magic attack',baseKey:'matk',statKey:'matk',statRaw:ep2.matk||6})}
-     ${enemyCell('stat-def','DEF',_effEnemyDef,{title:'Physical defence'+_enemyDodgeSpdNote,baseKey:'def',statKey:'def',statRaw:ep2.def,trend:_eTrendTag(_effEnemyDef,_eBase.def??ep2.def)})}
-     ${enemyCell('stat-mdef','MDEF',_effEnemyMdef,{title:'Magic defence'+_enemyDodgeSpdNote,baseKey:'mdef',statKey:'mdef',statRaw:ep2.mdef||8,trend:_eTrendTag(_effEnemyMdef,(_eBase.mdef??ep2.mdef)||8)})}
-     ${enemyCell('stat-dodge','Dodge',_effEnemyDodge,{suffix:'%',title:`Dodge${_enemyDodgeSpdNote}`,baseKey:'dodge',statKey:'dodge',statRaw:ep2.dodge||0})}
-     ${enemyCell('stat-acc','ACC',ep2.acc||70,{suffix:'%',title:'Accuracy',baseKey:'acc',statKey:'acc',statRaw:ep2.acc||70})}
-     ${enemyCell('stat-spd','SPD',ep2.spd||0,{title:'Speed',baseKey:'spd',statKey:'spd',statRaw:ep2.spd||0})}
-     ${enemyCell('stat-cc','CC',eCritChance,{suffix:'%',title:'Crit chance',statKey:'critChance',statRaw:eCritChance})}
-     ${enemyCell('stat-cd','CD',Number(eCritMult),{suffix:'×',title:'Crit damage'})}
-     ${_eHintRow}`;
-  wireCombatEnemyStatTooltips();
   wireEnemyMutationTooltips();
   wirePlayerAvatarInteractionOnce();
   if(eal){
@@ -7431,7 +7640,6 @@ function refreshBattleUI() {
   document.getElementById('enemy-shield-overlay').className='shield-overlay'+(G.enemyStatus.defending>0||getGuardedPhysReducPct(G.enemyStatus)>0||(G.enemy?.stats?.shieldHp||0)>0?' active':'');
 
   renderEnemyPlan();
-  wireCombatDropdownStateSync();
   applyUIStateToDOM();
   renderActions();
   wireEnemyInfoPopupOnce();
@@ -9781,6 +9989,7 @@ function getPlayerAccMod(){
   if(G.battleHymnActive) mod+=Math.floor((G.battleHymnACC||0)*0.5);
   if(G.humMissBonus>0) mod+=Math.floor((G.humMissBonus||0)*0.5);
   mod-=(G.playerStatus?.accDebuff||0);
+  mod+=(G.playerStatus?.passiveAcc||0);
   return mod;
 }
 function getPlayerEffectiveAcc(){
@@ -9880,6 +10089,8 @@ function getPlayerArmorPenPct(player=G.player){
 function getPlayerMagicPenPct(player=G.player){
   let pct=Number(player?.stats?.magicPen)||0;
   if(player?.augSpellPiercePct) pct+=player.augSpellPiercePct*100;
+  if(player?._workbookMdefPenPct) pct+=Number(player._workbookMdefPenPct)||0;
+  if(player?._classPerkMdefPen) pct+=(Number(player._classPerkMdefPen)||0)*100;
   return Math.min(95, Math.max(0, pct));
 }
 globalThis.getPlayerArmorPenPct=getPlayerArmorPenPct;
@@ -9890,7 +10101,8 @@ function getPhysicalPierceFractionForDamage(ab){
   const fromAb = ab ? (getPlayerPiercePctForAbility(ab) || 0) : 0;
   const pts = Number(G._currentPiercePct) || 0;
   const eqPct = getPlayerArmorPenPct();
-  return Math.min(0.95, fromAb + pts / 100 + eqPct / 100);
+  const wbDefPen = (Number(G._workbookPassiveDefPen) || 0) / 100;
+  return Math.min(0.95, fromAb + pts / 100 + eqPct / 100 + wbDefPen);
 }
 
 function getMagicalPierceFractionForDamage(ab){
@@ -9898,7 +10110,10 @@ function getMagicalPierceFractionForDamage(ab){
   let fromAb = 0;
   if(ab?.pierceMdef) fromAb = Number(ab.pierceMdef) / 100;
   const eqPct = getPlayerMagicPenPct();
-  return Math.min(0.95, fromAb + pts / 100 + eqPct / 100);
+  const classPen = (typeof Avian?.classPerks?.getExtraMdefPierce==='function')
+    ? (Avian.classPerks.getExtraMdefPierce(ab||G._activePlayerAbility||{})||0) : 0;
+  const wbPen = (Number(G.player?._workbookMdefPenPct)||0)/100;
+  return Math.min(0.95, fromAb + pts / 100 + eqPct / 100 + classPen + wbPen);
 }
 
 /** UI / preview: template pierce without relying on G._currentPiercePct from pdmg. */
@@ -11042,6 +11257,7 @@ function computePlayerCritDamageAdd(activeAb){
   if(_pid==='passive_bustard_heavy_steps' && en>=2) critDmgAdd+=0.10;
   if(_pid==='passive_shoebill_silent_stance' && !G.player._shoebillHadUtilityPriorTurn) critDmgAdd+=0.10;
   if((G.playerStatus.dispatcherCritDmg||0)>0) critDmgAdd+=Math.max(0,G.playerStatus.dispatcherCritDmg)/100;
+  if((G.playerStatus?.passiveCritDmg||0)>0) critDmgAdd+=Math.max(0,G.playerStatus.passiveCritDmg)/100;
   return critDmgAdd;
 }
 
@@ -11643,7 +11859,7 @@ function tryApplyAilment(target,ailId,ab) {
   const targetMdef   = target==='enemy' ? (G.enemy.stats.mdef||8)  : (G.player.stats.mdef||8);
   const magicShift   = (attackerMatk - targetMdef) * 1.5;
   const controlBoost=(target==='enemy') ? Math.floor((getPassiveEvolutionBonuses(G.player).controlPct||0)*100) : 0;
-  const passiveAilBonus = (target==='enemy' && G.player) ? (G.player.passiveAilmentBonus || 0) : 0;
+  const passiveAilBonus = (target==='enemy' && G.playerStatus) ? (G.playerStatus.passiveAilmentBonus || 0) : 0;
   const rollPct = typeof resolveAilmentChance==='function'
     ? resolveAilmentChance(c + magicShift + controlBoost + passiveAilBonus, target, G, {})
     : (target==='enemy'&&G.enemy.isBoss ? Math.max(5,Math.floor(Math.max(5, Math.min(95, c + magicShift + controlBoost + passiveAilBonus))*0.5)) : Math.max(5, Math.min(95, c + magicShift + controlBoost + passiveAilBonus)));
@@ -17893,6 +18109,16 @@ function returnToWarRoomFromSettings(){
   if(typeof initSelectionSafe==='function') initSelectionSafe();
 }
 globalThis.returnToWarRoomFromSettings = returnToWarRoomFromSettings;
+function openAbandonFromSettings(){
+  closeSettingsModal();
+  openAbandonModal();
+}
+globalThis.openAbandonFromSettings = openAbandonFromSettings;
+function goMainMenuFromSettings(){
+  closeSettingsModal();
+  goMainMenu();
+}
+globalThis.goMainMenuFromSettings = goMainMenuFromSettings;
 function resetCombatLayoutSettings(){
   const prev=getAccessibilitySettings();
   const cfg=Object.assign({}, prev, {
