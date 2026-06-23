@@ -18,8 +18,12 @@
     gainCritDamage: { icon: '💥', label: 'Crit Dmg Up', cls: 'crit', cat: 'buff' },
     gainAcc: { icon: '👁', label: 'ACC Up', cls: 'evading', cat: 'buff' },
     gainAtk: { icon: '⚔', label: 'ATK Up', cls: 'buffed', cat: 'buff' },
+    gainMatk: { icon: '🎶', label: 'MATK Up', cls: 'buffed', cat: 'buff' },
     gainDef: { icon: '🛡', label: 'DEF Up', cls: 'defending', cat: 'buff' },
+    gainMdef: { icon: '🔮', label: 'MDEF Up', cls: 'defending', cat: 'buff' },
     gainSpd: { icon: '⚡', label: 'SPD Up', cls: 'buffed', cat: 'buff' },
+    gainMagicAilmentChance: { icon: '✨', label: 'Mag Ailment Up', cls: 'buffed', cat: 'buff' },
+    gainPhysicalAilmentChance: { icon: '✨', label: 'Phys Ailment Up', cls: 'buffed', cat: 'buff' },
   };
 
   function resolveSourceLabel(sourceId, sourceKind) {
@@ -67,6 +71,30 @@
         value: { amount: shieldHp, max: Number(ownerStats.maxShieldHp) || shieldHp, turns: s.shieldHpTurns || 1,
           sourceId: s.shieldHpSourceId, sourceKind: s.shieldHpSourceKind },
         synthetic: true,
+      });
+    }
+    if ((s.magicAilmentChanceBuff || 0) > 0) {
+      entries.push({
+        id: 'magicAilmentChanceBuff',
+        value: { value: s.magicAilmentChanceBuff, turns: 1 },
+        synthetic: true,
+        displayKind: 'gainMagicAilmentChance',
+      });
+    }
+    if ((s.physicalAilmentChanceBuff || 0) > 0) {
+      entries.push({
+        id: 'physicalAilmentChanceBuff',
+        value: { value: s.physicalAilmentChanceBuff, turns: 1 },
+        synthetic: true,
+        displayKind: 'gainPhysicalAilmentChance',
+      });
+    }
+    if ((s._dispatcherAccNextHit || 0) > 0) {
+      entries.push({
+        id: '_dispatcherAccNextHit',
+        value: { value: s._dispatcherAccNextHit, turns: 1 },
+        synthetic: true,
+        displayKind: 'gainAcc',
       });
     }
     ['_passiveDisplaySlots', '_dispatcherDisplaySlots'].forEach(function (bagKey) {

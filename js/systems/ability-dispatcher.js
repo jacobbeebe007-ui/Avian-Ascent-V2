@@ -227,6 +227,37 @@
     return true;
   }
 
+  function rowHasGuardBreak(row) {
+    var riders = row && row.riders;
+    if (!riders) return false;
+    for (var i = 0; i < riders.length; i++) {
+      if (riders[i] && riders[i].kind === 'guardBreak') return true;
+    }
+    return false;
+  }
+
+  function applyGuardBreakToEnemy() {
+    var g = globalThis.G;
+    if (!g || !g.enemy || !g.enemy.stats) return;
+    var stats = g.enemy.stats;
+    var es = g.enemyStatus = g.enemyStatus || {};
+    var shield = Number(stats.shieldHp) || 0;
+    if (shield > 0) {
+      var cut = Math.max(1, Math.floor((Number(stats.maxHp) || 1) * 8 / 100));
+      stats.shieldHp = Math.max(0, Math.round((shield - cut) * 100) / 100);
+      if (stats.shieldHp <= 0) {
+        stats.shieldHp = 0;
+        stats.maxShieldHp = 0;
+        delete es.shieldHpTurns;
+        delete es.shieldHpSourceId;
+        delete es.shieldHpSourceKind;
+      }
+    }
+    if (es.guarded) delete es.guarded;
+    if ((es.defending || 0) > 0) es.defending = Math.max(0, es.defending - 1);
+    spawnTrendFloat('enemy', 'debuff');
+  }
+
   function revertEnemyDispatcherDebuffs() {
     var g = globalThis.G;
     if (!g || !g.enemy || !g.enemy.stats || !g.enemyStatus || !g.enemyStatus._dispatcherDebuffBySource) return;
@@ -453,13 +484,19 @@
       if (typeof spawnFloat === 'function') spawnFloat('player', '+' + heal, 'fn-heal');
       spawnTrendFloat('player', 'buff');
     },
-    gainAccNextHit: function (n, ps) { ps._dispatcherAccNextHit = Math.max(ps._dispatcherAccNextHit || 0, Number(n) || 0); },
+    gainAccNextHit: function (n, ps, _p, r) {
+      if (r && r.when === 'onEnemyMissBeforeTurn') {
+        ps._dispatcherAccNextHitWatch = Math.max(ps._dispatcherAccNextHitWatch || 0, Number(n) || 0);
+      } else {
+        ps._dispatcherAccNextHit = Math.max(ps._dispatcherAccNextHit || 0, Number(n) || 0);
+      }
+    },
     refundApOnCrit: function (_n, ps) { ps._dispatcherRefundApOnCrit = 1; },
     gainApNextTurn: function (n, ps) { ps._dispatcherApNextTurn = (ps._dispatcherApNextTurn || 0) + n; },
     bonusVsAilment: function () { /* read by applyConditionalDamageBonus */ },
     bonusVsLowHp: function () { /* handled in conditional bonus */ },
     tagFlag: function () { /* tags don't mutate state directly */ },
-    guardBreak: function (_n, ps) { ps._dispatcherGuardBreak = 1; },
+    guardBreak: function () { applyGuardBreakToEnemy(); },
     raw: function () { /* unresolved free-text; safe no-op */ },
   };
 
@@ -505,6 +542,7 @@
       return !!(es && es.delayed && (es.delayed.stacks > 0 || es.delayed > 0));
     }
     if (w === 'onAilmentFail') return ctx.ailmentFailed === true;
+    if (w === 'onEnemyMissBeforeTurn') return true;
     if (w === 'alternatingAttackType') {
       var g3 = globalThis.G;
       return !!(g3 && g3._playerAlternatedAttackTypeThisTurn);
@@ -526,7 +564,7 @@
     ctx.applied = ctx.applied || Object.create(null);
     for (var i = 0; i < row.riders.length; i++) {
       var r = row.riders[i];
-      if (r.kind === 'refundApOnCrit' || r.kind === 'gainApNextTurn' || r.kind === 'bonusVsAilment' || r.kind === 'bonusVsLowHp' || r.kind === 'tagFlag' || r.kind === 'gainAccNextHit' || r.kind === 'raw') continue;
+      if (r.kind === 'refundApOnCrit' || r.kind === 'gainApNextTurn' || r.kind === 'bonusVsAilment' || r.kind === 'bonusVsLowHp' || r.kind === 'tagFlag' || r.kind === 'raw') continue;
       if (!riderWhenMatches(r, ctx)) continue;
       var rKey = sourceId + '|' + r.kind + '|' + (r.when || '') + '|' + (r.value || '');
       if (ctx.applied[rKey]) continue;
@@ -642,6 +680,8 @@
     var isHybrid = isHybridRow(row);
 
     if (typeof globalThis.enrichCombatRow === 'function') globalThis.enrichCombatRow(row);
+
+    if (rowHasGuardBreak(row)) applyGuardBreakToEnemy();
 
     var enemyDodge = (typeof getEffectiveEnemyDodgeForPlayerHit === 'function')
       ? getEffectiveEnemyDodgeForPlayerHit()
@@ -766,6 +806,9 @@
       g._lastAbilityHitsLanded = hitsLanded;
       g._lastAbilityAnyCrit = anyCrit;
       g._lastAbilityAilmentFailed = ailmentAttempted && !Object.keys(ailmentsApplied).length;
+      if (hitsLanded > 0 && g.playerStatus && g.playerStatus._dispatcherAccNextHit) {
+        delete g.playerStatus._dispatcherAccNextHit;
+      }
     }
 
     if (typeof Avian !== 'undefined' && Avian.mutationEffects) {
@@ -827,6 +870,38 @@
       g._dispatcherApNextTurnPending = 0;
     }
     g._dispatcherRefundedThisTurn = false;
+    g._playerLastAttackCategoryThisTurn = null;
+    g._playerAlternatedAttackTypeThisTurn = false;
+    var ps = g.playerStatus;
+    if (ps) {
+      delete ps.magicAilmentChanceBuff;
+      delete ps.physicalAilmentChanceBuff;
+      delete ps._dispatcherAccNextHitWatch;
+      delete ps._dispatcherAccNextHit;
+    }
+  };
+
+  dispatcher.trackAlternatingAttackCategory = function trackAlternatingAttackCategory(effActKind, row) {
+    var g = globalThis.G;
+    if (!g) return;
+    var cat = effActKind === 'spell' ? 'magic'
+      : (effActKind === 'physical' || effActKind === 'ranged') ? 'physical' : null;
+    if (!cat && row && String(row.category || '').toLowerCase() === 'hybrid') cat = 'hybrid';
+    if (!cat) return;
+    var last = g._playerLastAttackCategoryThisTurn;
+    if (cat === 'physical' && last === 'magic') g._playerAlternatedAttackTypeThisTurn = true;
+    else if (cat === 'magic' && last === 'physical') g._playerAlternatedAttackTypeThisTurn = true;
+    else if (cat === 'hybrid' && (last === 'physical' || last === 'magic')) g._playerAlternatedAttackTypeThisTurn = true;
+    if (cat === 'physical' || cat === 'magic') g._playerLastAttackCategoryThisTurn = cat;
+  };
+
+  dispatcher.onEnemyMissedPlayer = function onEnemyMissedPlayer() {
+    var g = globalThis.G;
+    var ps = g && g.playerStatus;
+    if (!ps || !(ps._dispatcherAccNextHitWatch > 0)) return;
+    ps._dispatcherAccNextHit = Math.max(ps._dispatcherAccNextHit || 0, ps._dispatcherAccNextHitWatch);
+    delete ps._dispatcherAccNextHitWatch;
+    spawnTrendFloat('player', 'buff');
   };
 
   dispatcher.onAfterEnemyTurn = function onAfterEnemyTurn(player) {
@@ -838,6 +913,7 @@
       globalThis.decaySourceStatLoans(ps, player, '_dispatcherStatLoans');
     }
     decayDispatcherDisplaySlots(ps);
+    delete ps._dispatcherAccNextHitWatch;
     if ((ps.dispatcherTauntT || 0) > 0) { ps.dispatcherTauntT--; if (ps.dispatcherTauntT <= 0) { delete ps.dispatcherTaunt; delete ps.dispatcherTauntT; } }
     revertEnemyDispatcherDebuffs();
   };
@@ -851,7 +927,9 @@
   dispatcher.modifyAcc = function modifyAcc(base) {
     var ps = (globalThis.G && globalThis.G.playerStatus) || null;
     if (!ps) return base;
-    return base + (ps.dispatcherAcc || 0);
+    var acc = base + (ps.dispatcherAcc || 0);
+    if (ps._dispatcherAccNextHit > 0) acc += ps._dispatcherAccNextHit;
+    return acc;
   };
   dispatcher.modifyDodge = function modifyDodge(base) {
     var ps = (globalThis.G && globalThis.G.playerStatus) || null;

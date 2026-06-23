@@ -19,6 +19,7 @@
     if (/target has an ailment|the target has an ailment/i.test(combined)) return 'targetHasAilment';
     if (/if it fails|when it fails|if the ailment fails/i.test(combined)) return 'onAilmentFail';
     if (/alternating attack type|alternated attack type/i.test(combined)) return 'alternatingAttackType';
+    if (/target misses before your next turn|if the target misses before/i.test(combined)) return 'onEnemyMissBeforeTurn';
     var slice = localSlice || text || '';
     if (/after\s+attack/i.test(slice)) return 'onHit';
     if (/if\s+(?:this\s+)?hits?|if\s+at\s+least\s+\d+\s+hits?\s+land/i.test(slice)) return 'onHit';
@@ -192,6 +193,11 @@
     for (var accAnd of t.matchAll(/\band\s+\+?\s*(\d+(?:\.\d+)?)\s+(?:ACC|Accuracy)(?!\s*%)/gi)) {
       addSelf('gainAccFlat', Number(accAnd[1]), { when: parseRiderWhen(t, accAnd[0]) });
     }
+    for (var statAnd of t.matchAll(/\band\s+\+?\s*(\d+(?:\.\d+)?)\s*%\s*(ATK|MATK|DEF|MDEF)\b/gi)) {
+      var statMap = { ATK: 'gainAtk', MATK: 'gainMatk', DEF: 'gainDef', MDEF: 'gainMdef' };
+      var sk = statMap[String(statAnd[2]).toUpperCase()];
+      if (sk) addSelf(sk, Number(statAnd[1]), { when: parseRiderWhen(t, statAnd[0]) });
+    }
 
     // Tier-based ATK / MATK / DEF / MDEF buffs (Gain Major ATK Up, etc.)
     for (var atkUp of t.matchAll(/\b(?:Gain|gains?)\s+(Minor|Major|Grand|Epic|Legendary)\s+(?:Physical\s+)?ATK\s+Up\b/gi)) {
@@ -328,7 +334,7 @@
       else addEnemy('reduceEnemyAccFlat', accVal);
     }
     for (var nextAcc of t.matchAll(/next\s+(?:Physical|Magic|Heavy)\s+hit\s+gains?\s+\+?\s*(\d+(?:\.\d+)?)\s+(?:ACC|Accuracy)/gi)) {
-      riders.push({ kind: 'gainAccNextHit', value: Number(nextAcc[1]), scope: 'self', when: parseRiderWhen(t, nextAcc[0]) });
+      riders.push({ kind: 'gainAccNextHit', value: Number(nextAcc[1]), scope: 'self', when: parseRiderWhen(t) });
     }
 
     // Guard / brace / counter / taunt

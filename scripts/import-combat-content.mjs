@@ -408,6 +408,7 @@ function parseRiderWhen(text, localSlice) {
   if (/target has an ailment|the target has an ailment/i.test(combined)) return 'targetHasAilment';
   if (/if it fails|when it fails|if the ailment fails/i.test(combined)) return 'onAilmentFail';
   if (/alternating attack type|alternated attack type/i.test(combined)) return 'alternatingAttackType';
+  if (/target misses before your next turn|if the target misses before/i.test(combined)) return 'onEnemyMissBeforeTurn';
   const slice = localSlice || text || '';
   if (/after\s+attack/i.test(slice)) return 'onHit';
   if (/if\s+(?:this\s+)?hits?|if\s+at\s+least\s+\d+\s+hits?\s+land/i.test(text)) return 'onHit';

@@ -84,6 +84,13 @@
     if (!when || when === 'onHit') return '';
     if (when === 'actingFirst') return ' if faster';
     if (when === 'afterMagicThisTurn') return ' after a Song';
+    if (when === 'allHitsLanded') return ' if both hit';
+    if (when === 'targetHasAilment') return ' if target has ailment';
+    if (when === 'targetDelayed') return ' if target is Delayed';
+    if (when === 'targetWeakened') return ' if target is Weakened';
+    if (when === 'alternatingAttackType') return ' if alternating attack type';
+    if (when === 'onAilmentFail') return ' if ailment fails';
+    if (when === 'onEnemyMissBeforeTurn') return ' if target misses before next turn';
     if (String(when).indexOf('onAilment:') === 0) {
       var aid = String(when).slice('onAilment:'.length);
       return ' if ' + ailmentName(aid) + ' applies';
@@ -261,6 +268,14 @@
       case 'reduceEnemyCrit': return seg('Enemy -' + v + '% Crit Chance' + w, 'cc');
       case 'reduceEnemyDef': return seg('Enemy -' + v + '% Defence' + w, 'def');
       case 'reduceEnemyMdef': return seg('Enemy -' + v + '% Magic Defence' + w, 'mdef');
+      case 'gainShield': return seg('Shield' + w, 'def');
+      case 'gainShieldFromDamage': return seg('Shield = ' + v + '% of damage dealt' + w, 'def');
+      case 'gainMagicAilmentChance': return seg('+' + v + '% Magical Ailment chance' + w, null);
+      case 'gainPhysicalAilmentChance': return seg('+' + v + '% Physical Ailment chance' + w, null);
+      case 'reduceEnemyAccFlat': return seg('Enemy -' + v + ' ACC' + w, 'acc');
+      case 'purgeEnemyMinorBuff': return seg('Remove Minor enemy buff' + w, null);
+      case 'guardBreak': return seg('Guard Break' + w, 'def');
+      case 'gainAccNextHit': return seg('+' + v + ' ACC on next hit' + w, 'acc');
       case 'healMaxHpPct': return seg('Heal ' + v + '% Max HP' + w, 'hp');
       case 'gainApNextTurn': return seg('+' + v + ' EN next turn' + w, null);
       case 'refundApOnCrit': return seg('Refund 1 EN on crit', null);
@@ -548,6 +563,7 @@
     colorizeEffectKeywords: colorizeEffectKeywords,
     ailmentColor: ailmentColor,
     ailmentName: ailmentName,
+    riderSegment: riderSegment,
   };
 
   var Avian = globalThis.Avian || (globalThis.Avian = {});

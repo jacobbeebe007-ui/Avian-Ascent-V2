@@ -10344,7 +10344,7 @@ function applyGuardedBuff(side, opts={}){
   }
 }
 
-const SHIELD_TIER_PCT={minor:6,major:8,grand:12,epic:18,legendary:25};
+const SHIELD_TIER_PCT={minor:6,moderate:8,major:8,grand:12,epic:18,legendary:25};
 
 function resolveShieldAmountFromOpts(opts, maxHp){
   const cap=Math.max(1, Number(maxHp)||1);
@@ -11179,6 +11179,7 @@ function dealDamage(target,amount,isCrit=false,isMagic=false,srcAbility=null,opt
       if(classPerkCtx.slipstream){
         G.playerStatus.perkSlipstream=1;
       }
+      if(typeof Avian?.dispatcher?.onEnemyMissedPlayer==='function') Avian.dispatcher.onEnemyMissedPlayer();
       return {dmgDealt:0,wasDodged:true,wasBlocked:false,isCrit,isMagic};
     }
     dmg=opts.masterFullyResolved
@@ -12167,6 +12168,10 @@ async function playerAction(ab,fromQueue=false) {
   // Temporarily double ATK for flyby
   if(flybyWasCharged) G.player.stats.atk*=2;
   if(['physical','ranged','spell'].includes(effActKind)) promotePendingStrikeBuffToActive();
+  if (typeof Avian?.dispatcher?.trackAlternatingAttackCategory === 'function') {
+    const _altRow = typeof resolveAbilityCombatRow === 'function' ? resolveAbilityCombatRow(ab) : null;
+    Avian.dispatcher.trackAlternatingAttackCategory(effActKind, _altRow);
+  }
   if (typeof Avian?.dispatcher?.execute === 'function') {
     await Avian.dispatcher.execute(ab);
     if(chargedDouble && !G.battleOver && G.enemy.stats.hp>0){ await Avian.dispatcher.execute(ab); }
@@ -12274,6 +12279,8 @@ function startPlayerTurn(player){
   G.playerTurnFlags={energyGainedThisTurn:0,onHitTriggered:false,firstAttackResolved:false};
   G.utilityUsedThisTurn={};
   G._lastPlayerAbilityCategory=null;
+  G._playerLastAttackCategoryThisTurn=null;
+  G._playerAlternatedAttackTypeThisTurn=false;
   G.player._blueJayHitLastTurn=!!G.player._blueJayRecentHit;
   G.player._blueJayRecentHit=false;
   G.player._shoebillHadUtilityPriorTurn=!!G.playerStatus.shoebillUsedUtility;
