@@ -4509,6 +4509,8 @@ body.ui-mobile-mode #screen-select #mobile-select-details-anchor{display:block;o
 .nest-ab-slot-card{background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px;transition:border-color .15s;}
 .nest-ab-slot-card.selected{border-color:var(--gold);box-shadow:0 0 0 1px rgba(201,168,76,.35);}
 .nest-ab-slot-card.empty{opacity:.85;border-style:dashed;}
+.nest-ab-slot-card.is-tier-locked{opacity:.55;border-style:dashed;border-color:rgba(120,130,150,.35);background:rgba(8,12,18,.5);}
+.nest-ab-lock-tag{font-size:.62rem;color:var(--text-dim);letter-spacing:.05em;text-transform:uppercase;border:1px solid rgba(120,130,150,.35);border-radius:4px;padding:1px 6px;}
 .nest-ab-slot-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;}
 .nest-ab-slot-idx{font-size:.68rem;color:var(--text-dim);letter-spacing:.06em;text-transform:uppercase;}
 .nest-ab-unequip-btn{font-size:.65rem;padding:2px 8px;border-radius:6px;border:1px solid rgba(201,168,76,.4);background:rgba(201,168,76,.08);color:var(--gold);cursor:pointer;}
@@ -5204,3 +5206,124 @@ body.ui-mobile-mode #screen-battle .battle-log{
 /* Penguin keeps its wider-than-tall proportions in battle */
 #screen-battle #player-avatar .sprite4.sprite-penguin,
 #screen-battle #enemy-avatar .sprite4.sprite-penguin{width:128px !important;height:96px !important;}
+
+/* ============================================================
+   Sticky combatants while scrolling (Display setting)
+   ============================================================ */
+body.combat-sticky-combatants #app:has(#screen-battle.active){
+  padding-top:8px;
+  padding-bottom:8px;
+}
+body.combat-sticky-combatants #screen-battle{
+  display:flex;
+  flex-direction:column;
+  max-height:calc(100dvh - 16px);
+  overflow:hidden;
+}
+body.combat-sticky-combatants #screen-battle .battle-screen-inner{
+  flex:1 1 auto;
+  min-height:0;
+  display:flex;
+  flex-direction:column;
+  overflow:hidden;
+}
+body.combat-sticky-combatants #screen-battle .battle-layout{
+  flex:1 1 auto;
+  min-height:0;
+  display:flex !important;
+  flex-direction:column !important;
+  gap:8px;
+  overflow:hidden;
+  grid-template-rows:unset !important;
+}
+body.combat-sticky-combatants #screen-battle .tactical-topbar,
+body.combat-sticky-combatants #screen-battle .stage-progress-wrap,
+body.combat-sticky-combatants #screen-battle .encounter-preview-wrap,
+body.combat-sticky-combatants #screen-battle .tactical-exp-row{
+  flex-shrink:0;
+}
+body.combat-sticky-combatants #screen-battle .combatants{
+  flex-shrink:0;
+  z-index:4;
+  position:relative;
+  padding-bottom:4px;
+  background:linear-gradient(180deg,rgba(7,12,7,.98) 0%,rgba(7,12,7,.92) 72%,rgba(7,12,7,0) 100%);
+  box-shadow:0 8px 18px rgba(0,0,0,.28);
+}
+body.combat-sticky-combatants #screen-battle .action-panel{
+  flex:1 1 auto;
+  min-height:0;
+  overflow-y:auto;
+  overflow-x:hidden;
+  -webkit-overflow-scrolling:touch;
+  overscroll-behavior:contain;
+}
+body.combat-sticky-combatants #screen-battle .battle-support-area{
+  flex-shrink:0;
+}
+body.combat-sticky-combatants #screen-battle #actions-grid{
+  max-height:none !important;
+  overflow:visible !important;
+}
+/* Actions First: birds sit below the tray — only pin the top bar */
+body.combat-sticky-combatants #screen-battle.combat-arr--actionsFirst .combatants{
+  flex-shrink:1;
+  z-index:auto;
+  background:transparent;
+  box-shadow:none;
+  padding-bottom:0;
+}
+body.combat-sticky-combatants #screen-battle.combat-arr--actionsFirst .battle-layout{
+  overflow-y:auto;
+  -webkit-overflow-scrolling:touch;
+}
+body.combat-sticky-combatants #screen-battle.combat-arr--actionsFirst .action-panel{
+  flex:0 1 auto;
+  overflow:visible;
+  min-height:auto;
+}
+/* Custom arrangement: player/enemy panels are direct flex children */
+body.combat-sticky-combatants #screen-battle.combat-arr--custom .combatants{
+  display:contents !important;
+  background:transparent;
+  box-shadow:none;
+  padding-bottom:0;
+}
+body.combat-sticky-combatants #screen-battle.combat-arr--custom #player-panel,
+body.combat-sticky-combatants #screen-battle.combat-arr--custom #enemy-panel{
+  flex-shrink:0;
+  z-index:4;
+  position:relative;
+}
+/* Log Focus (desktop): pin combatants; scroll actions + log column */
+@media (min-width:768px){
+  body.combat-sticky-combatants #screen-battle.combat-arr--logFocus .battle-layout{
+    display:grid !important;
+    grid-template-columns:minmax(0,1fr) minmax(220px,34%);
+    grid-template-rows:auto auto minmax(0,1fr) auto;
+    gap:10px 12px;
+    align-items:start;
+    overflow:hidden;
+  }
+  body.combat-sticky-combatants #screen-battle.combat-arr--logFocus .combatants{
+    grid-column:1;
+    grid-row:3;
+  }
+  body.combat-sticky-combatants #screen-battle.combat-arr--logFocus .action-panel{
+    grid-column:1;
+    grid-row:4;
+    flex:none;
+    overflow-y:auto;
+    min-height:0;
+    max-height:100%;
+  }
+  body.combat-sticky-combatants #screen-battle.combat-arr--logFocus .battle-support-area{
+    grid-column:2;
+    grid-row:3 / span 2;
+    display:flex;
+    flex-direction:column;
+    min-height:0;
+    overflow-y:auto;
+    align-self:stretch;
+  }
+}

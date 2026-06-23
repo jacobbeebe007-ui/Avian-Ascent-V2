@@ -86,9 +86,18 @@
       enemy.familyEvolutionState = {};
     }
 
-    var unlockedCount = Number.isFinite(Number(kitOpts.unlockSlots))
-      ? Math.max(0, Math.min(7, Math.floor(Number(kitOpts.unlockSlots))))
-      : getEnemyUnlockedSlotCount(enemyLevel);
+    var isPlayer = kitOpts.forPlayer === true
+      || (global.G && global.G.player && enemy === global.G.player);
+    var unlockedCount;
+    if (isPlayer) {
+      unlockedCount = typeof global.getCardTierSlotCount === 'function'
+        ? global.getCardTierSlotCount(enemy)
+        : 2;
+    } else if (Number.isFinite(Number(kitOpts.unlockSlots))) {
+      unlockedCount = Math.max(0, Math.min(7, Math.floor(Number(kitOpts.unlockSlots))));
+    } else {
+      unlockedCount = getEnemyUnlockedSlotCount(enemyLevel);
+    }
     var forcedMutationStage = Number.isFinite(Number(kitOpts.mutationStage))
       ? Math.max(1, Math.min(3, Math.floor(Number(kitOpts.mutationStage))))
       : null;

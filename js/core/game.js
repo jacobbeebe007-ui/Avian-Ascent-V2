@@ -2419,6 +2419,15 @@ function buildNestAbilitySection(player){
   const slots=getSkillSlots(player).slice().sort((a,b)=>a.slotIndex-b.slotIndex);
   let equippedHtml='';
   for(const slot of slots){
+    const slotUnlocked=isSkillSlotUnlocked(slot, player);
+    if(!slotUnlocked){
+      equippedHtml+=`<div class="nest-ab-slot-card empty is-tier-locked" data-nest-ab-slot="${slot.slotIndex}" title="Upgrade this bird with Species Feathers to unlock slot ${slot.slotIndex+1}.">
+      <div class="nest-ab-slot-head"><span class="nest-ab-slot-idx">Slot ${slot.slotIndex+1}</span><span class="nest-ab-lock-tag">Locked</span></div>
+      <div class="nest-ab-name"><span class="nest-inv-empty">Species Feather upgrade required</span></div>
+      <div class="nest-ab-lv">—</div>
+    </div>`;
+      continue;
+    }
     const label=getSkillSlotDisplayLabel(slot);
     const pathLbl=slot.pathId?` · ${slot.pathId.replace(/_/g,' ')}`:'';
     const tierLbl=slot.abilityId?`Tier ${slot.tier||0}${pathLbl}`:'Empty';
@@ -3080,6 +3089,7 @@ function applyPlayerSkillsFromCardTier(player, tierOverride, starsOverride){
   const tier=tierOverride??player._birdCardTier??(typeof getBirdCardTier==='function'?getBirdCardTier(player.birdKey):'grey');
   const stars=starsOverride??player._birdCardStars??(typeof getBirdCardStars==='function'?getBirdCardStars(player.birdKey):0);
   materializeEnemySkillsFromWorkbookKit(player, player.birdKey, 1, player.class, null, {
+    forPlayer:true,
     unlockSlots:typeof getEnemyUnlockedSlotCountForTier==='function'?getEnemyUnlockedSlotCountForTier(tier):2,
     mutationStage:typeof mutationStageForTierStar==='function'?mutationStageForTierStar(tier, stars):1,
   });
@@ -3091,6 +3101,23 @@ function isSkillSlotUnlocked(slot, player){
   const idx = Number(slot.slotIndex)||0;
   return idx < getCardTierSlotCount(pl);
 }
+/** Clear ability data on skill slots above the player's card-tier unlock count. */
+function clampLockedSkillSlots(player){
+  if(!player?.familyEvolutionState?.skillSlots) return;
+  const birdKey=String(player.birdKey||'');
+  player.familyEvolutionState.skillSlots.forEach(slot=>{
+    if(!slot || isSkillSlotUnlocked(slot, player)) return;
+    const fam=getSkillSlotFamilyDef(slot, birdKey);
+    slot.abilityId='';
+    slot.pathId=fam?.mutations?'mutation':null;
+    slot.tier=0;
+    slot.mutationStage=0;
+    slot.masteries=[];
+    slot.masteryCount=0;
+  });
+}
+globalThis.getCardTierSlotCount=getCardTierSlotCount;
+globalThis.clampLockedSkillSlots=clampLockedSkillSlots;
 function buildFamilySkillAbilityLookup(slotLayout, families){
   const out = Object.create(null);
   if (Array.isArray(slotLayout)){
@@ -3414,20 +3441,22 @@ function ensureFamilyEvolutionState(player){
     });
     (player.abilities||[]).forEach((ab, idx)=>{
       if(!ab?.id) return;
-      const slot = state.skillSlots[idx];
-      if(!slot) return;
+      const slotIdx=Number.isFinite(ab?.slotIndex)?Number(ab.slotIndex):idx;
+      const slot=state.skillSlots.find(s=>s&&Number(s.slotIndex)===slotIdx)||state.skillSlots[slotIdx];
+      if(!slot || !isSkillSlotUnlocked(slot, player)) return;
       const famId = ab.familyId || slot.familyId;
       if(!famId && !getFamilyEvolutionAbilityStateFromId(birdKey, ab.id)) return;
       const resolvedFam = famId || getFamilyEvolutionAbilityStateFromId(birdKey, ab.id)?.familyId;
       if(resolvedFam) slot.familyId = resolvedFam;
       slot.abilityId = ab.id;
-      slot.slotIndex = idx;
+      slot.slotIndex = slotIdx;
       const info = getFamilyEvolutionAbilityStateFromId(birdKey, ab.id);
       if(info && info.familyId===slot.familyId){
         slot.pathId = slot.pathId || info.pathId || null;
         slot.tier = Math.max(slot.tier||0, info.tier||0);
       }
     });
+    clampLockedSkillSlots(player);
     syncPlayerAbilitiesFromSkillSlots(player);
   }else{
     try{
@@ -6587,10 +6616,12 @@ function startGame() {
   };
   normalizeCombatStats(G.player.stats);
   if(typeof Avian?.mutations?.ensurePlayerMutationState==='function') Avian.mutations.ensurePlayerMutationState(G.player);
-  ensureFamilyEvolutionState(G.player);
-  syncPlayerAbilitiesFromSkillSlots(G.player);
   G.player.class = bd.class;
   G.player.size = bd.size||'medium';
+  if(typeof applyBirdCardProgression==='function') applyBirdCardProgression(G.player);
+  applyPlayerSkillsFromCardTier(G.player);
+  ensureFamilyEvolutionState(G.player);
+  syncPlayerAbilitiesFromSkillSlots(G.player);
   if(typeof applyOwnedFortuneArtifacts==='function') applyOwnedFortuneArtifacts(G.player);
   G.player.energyMax = computePlayerMaxEnergy();
   G.player.energy = computePlayerStartEnergy(G.player);
@@ -6602,10 +6633,6 @@ function startGame() {
   normalizeAbilityCooldownsForPlayer(G.player);
   enforceAbilityCosts(G.player);
   initStatLedgerForNewRun(G.player);
-  if(typeof applyBirdCardProgression==='function') applyBirdCardProgression(G.player);
-  // Re-seed slots from card tier (unlock count + mutation stage S1–S3).
-  applyPlayerSkillsFromCardTier(G.player);
-  syncPlayerAbilitiesFromSkillSlots(G.player);
   G.stage = 1;
   G.endlessBattle = 0;
   G.autoQueuedAbilityId=null;
@@ -6718,6 +6745,7 @@ function preparePlayerCombatLoadout(player){
   if(typeof Avian?.mutations?.reapplyPlayerStatsFromSources==='function'){
     Avian.mutations.reapplyPlayerStatsFromSources(player);
   }
+  applyPlayerSkillsFromCardTier(player);
   ensureFamilyEvolutionState(player);
   syncPlayerAbilitiesFromSkillSlots(player);
   ensureMainAttackAndLoadoutRules();
@@ -17468,6 +17496,7 @@ function normalizeAccessibilitySettings(raw){
     combatLayout:normalizeCombatLayout(raw.combatLayout),
     combatArrangement:normalizeCombatArrangement(raw.combatArrangement),
     combatCustomLayout:normalizeCombatCustomLayout(raw.combatCustomLayout),
+    stickyCombatants:raw.stickyCombatants!==false,
     audio,
     tooltips:{...DEFAULT_TOOLTIP_SETTINGS, ...(raw.tooltips||{})},
   };
@@ -17753,6 +17782,7 @@ function applyAccessibilitySettings(s){
   document.documentElement.style.fontSize=`${Math.max(85,Math.min(140,Number(cfg.fontSize)||100))}%`;
   document.body.classList.toggle('reduce-motion', !!cfg.reduceMotion);
   document.body.classList.toggle('high-contrast', !!cfg.highContrast);
+  document.body.classList.toggle('combat-sticky-combatants', cfg.stickyCombatants!==false);
   ['cb-protanopia','cb-deuteranopia','cb-tritanopia'].forEach(c=>document.body.classList.remove(c));
   if(cfg.colorBlind==='protanopia') document.body.classList.add('cb-protanopia');
   if(cfg.colorBlind==='deuteranopia') document.body.classList.add('cb-deuteranopia');
@@ -17789,6 +17819,8 @@ function openSettingsModal(){
   setRange('setting-combat-combatants-scale',cl.combatantsScale);
   setRange('setting-combat-action-scale',cl.actionTrayScale);
   setRange('setting-combat-log-scale',cl.battleLogScale);
+  const stickyCombatants=document.getElementById('setting-sticky-combatants');
+  if(stickyCombatants) stickyCombatants.checked=cfg.stickyCombatants!==false;
   const ms=getMusicSettings();
   const a=cfg.audio||{};
   const master=document.getElementById('setting-master-volume');
@@ -17822,8 +17854,11 @@ function returnToWarRoomFromSettings(){
 globalThis.returnToWarRoomFromSettings = returnToWarRoomFromSettings;
 function resetCombatLayoutSettings(){
   const prev=getAccessibilitySettings();
-  const cfg=Object.assign({}, prev, {combatLayout:Object.assign({}, DEFAULT_COMBAT_LAYOUT)});
-  localStorage.setItem(ACCESS_KEY, JSON.stringify(cfg));
+  const cfg=Object.assign({}, prev, {
+    combatLayout:Object.assign({}, DEFAULT_COMBAT_LAYOUT),
+    stickyCombatants:true,
+  });
+  localStorage.setItem(ACCESS_KEY, JSON.stringify(normalizeAccessibilitySettings(cfg)));
   applyAccessibilitySettings(cfg);
   openSettingsModal();
 }
@@ -17847,6 +17882,9 @@ function updateAccessibilitySettings(){
     }),
     combatArrangement:normalizeCombatArrangement(document.getElementById('setting-combat-arrangement')?.value),
     combatCustomLayout:prev.combatCustomLayout,
+    stickyCombatants:document.getElementById('setting-sticky-combatants')
+      ? !!document.getElementById('setting-sticky-combatants').checked
+      : prev.stickyCombatants!==false,
     audio:Object.assign({}, prev.audio, {
       master:Number(document.getElementById('setting-master-volume')?.value??prev.audio?.master??100),
       music:Number(document.getElementById('setting-music-volume')?.value??prev.audio?.music??THEME_BGM_DEFAULT_VOLUME_PCT),
