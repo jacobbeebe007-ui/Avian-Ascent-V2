@@ -25,11 +25,11 @@
   'use strict';
 
   /** Bump when adding a migration. */
-  var TARGET = 10;
+  var TARGET = 11;
 
   /** Combat-pack version stamp surfaced on the save blob. Wipes attached when
    *  this changes so legacy ability/perk/family state never bleeds into a run. */
-  var COMBAT_PACK_VERSION = '2026.05-combat-rewrite';
+  var COMBAT_PACK_VERSION = '2026.07-flat-abilities';
   var MUTATIONS_PACK_VERSION = '2026.06-mutations-v6';
 
   /** @type {Array<{from:number,to:number,fn:(save:any)=>any,note?:string}>} */
@@ -182,6 +182,20 @@
         save.player.mutationInventory = [];
         save.player.equippedMutations = null;
         save.mutationsPackVersion = MUTATIONS_PACK_VERSION;
+        return save;
+      },
+    },
+    {
+      from: 10,
+      to: 11,
+      note: 'flat abilities: remove mutated feathers, ability vault, and family evolution upgrades',
+      fn: function (save) {
+        if (!save || !save.player) return save;
+        var p = save.player;
+        delete p.mutatedFeatherCount;
+        delete p.abilityInventory;
+        delete p.familyEvolutionState;
+        save.combatPackVersion = COMBAT_PACK_VERSION;
         return save;
       },
     },

@@ -348,25 +348,23 @@ if (typeof sandbox.hasMultiEnemyChainPending === 'function' && sandbox.G) {
   if (prevSave) sandbox.saveRun = prevSave;
 }
 
-const starterId = 'SPARROW_F1_L1_BASE';
-check(`ABILITY_TEMPLATES[${starterId}] exists`, !!ABILITY_TEMPLATES?.[starterId]);
-check(`ACTIONS[${starterId}] is a function`, typeof ACTIONS?.[starterId] === 'function');
-
-check('FAMILY_EVOLUTION_BIRD_DATA.sparrow built from combat pack', !!FAMILY_EVOLUTION_BIRD_DATA?.sparrow);
-if (FAMILY_EVOLUTION_BIRD_DATA?.sparrow) {
-  const sl = FAMILY_EVOLUTION_BIRD_DATA.sparrow.slotLayout || [];
-  check('sparrow slotLayout length=4', sl.length === 4);
-  check('sparrow slot[0].abilityId is the starter id', sl[0]?.abilityId === starterId, `got=${sl[0]?.abilityId}`);
+const sparrowData = FAMILY_EVOLUTION_BIRD_DATA?.sparrow;
+const starterId = sparrowData?.slotLayout?.[0]?.abilityId || '';
+check('FAMILY_EVOLUTION_BIRD_DATA.sparrow built from combat pack', !!sparrowData);
+check(`sparrow starter ability in ABILITY_TEMPLATES`, !!starterId && !!ABILITY_TEMPLATES?.[starterId], `starter=${starterId}`);
+check(`ACTIONS[sparrow starter] is a function`, !!starterId && typeof ACTIONS?.[starterId] === 'function');
+if (sparrowData) {
+  const sl = sparrowData.slotLayout || [];
+  check('sparrow slotLayout length=7', sl.length === 7);
+  check('sparrow slot[0].abilityId is set', !!sl[0]?.abilityId, `got=${sl[0]?.abilityId}`);
   check('sparrow slot[0].isStarterMain=true', sl[0]?.isStarterMain === true);
-  check('sparrow has families entry', !!FAMILY_EVOLUTION_BIRD_DATA.sparrow.families?.SPARROW_F1);
-  const paths = FAMILY_EVOLUTION_BIRD_DATA.sparrow.families?.SPARROW_F1?.paths || {};
-  check('sparrow F1 has Power path tier 1', paths.power?.abilities?.[1] === 'SPARROW_F1_L3_POWER');
-  check('sparrow F1 has Ailment path tier 1', paths.ailment?.abilities?.[1] === 'SPARROW_F1_L3_AILMENT');
-  check('sparrow F1 has Utility path tier 1', paths.utility?.abilities?.[1] === 'SPARROW_F1_L3_UTILITY');
+  const famId = sl[0]?.familyId;
+  const fam = famId ? sparrowData.families?.[famId] : null;
+  check('sparrow slot0 family has baseAbilityId', fam?.baseAbilityId === sl[0]?.abilityId, `got=${fam?.baseAbilityId}`);
+  check('sparrow families omit upgrade paths', !fam?.paths && !fam?.mutations);
 }
 
-check('BIRDS.sparrow.startAbilities[0] = starter id', BIRDS?.sparrow?.startAbilities?.[0] === starterId, `got=${BIRDS?.sparrow?.startAbilities?.[0]}`);
-check('BIRDS.sparrow.mainAttackId = starter id', BIRDS?.sparrow?.mainAttackId === starterId, `got=${BIRDS?.sparrow?.mainAttackId}`);
+check('BIRDS.sparrow.mainAttackId matches slot0 starter', BIRDS?.sparrow?.mainAttackId === starterId, `got=${BIRDS?.sparrow?.mainAttackId}`);
 check('BIRDS.sparrow.passive is set', !!BIRDS?.sparrow?.passive?.id);
 
 // Sanity: no remaining legacy ability ids in BIRDS

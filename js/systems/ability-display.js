@@ -513,11 +513,6 @@
     return cat;
   }
 
-  function mutationNote(row) {
-    if (!row || !row.mutationStage) return '';
-    return 'Mutation: Stage ' + row.mutationStage + ' mutated-feather version currently equipped.';
-  }
-
   function buildAbilityTooltipDetail(ab, tmpl, row) {
     row = enrichRow(resolveRow(ab, row));
     tmpl = tmpl || null;
@@ -534,8 +529,6 @@
       var brief = buildAbilityCombatBrief(ab, row);
       if (brief) parts.push(brief);
       if (row && row.designNote) parts.push(row.designNote);
-      var mut = mutationNote(row);
-      if (mut) parts.push(mut);
     }
 
     if (row && row.riderText && row.displayText && !String(row.displayText).includes(row.riderText)) {

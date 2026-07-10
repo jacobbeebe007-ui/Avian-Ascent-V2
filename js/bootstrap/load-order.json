@@ -75,7 +75,6 @@
     "js/systems/mutations.js",
     "js/systems/mutation-effects.js",
     "js/systems/combat-pack-boot.js",
-    "js/systems/tier-pick.js",
     "js/systems/endless-bands.js",
     "js/systems/qol.js",
     "js/data/content.js",

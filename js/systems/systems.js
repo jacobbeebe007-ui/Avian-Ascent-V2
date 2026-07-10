@@ -239,31 +239,6 @@
   })();
 
   /* ============================================================
-   * Phase 9 — tier-pick stage trigger (B.1).
-   * Wraps `applyBiomeModifiers` (called once per stage transition) and
-   * fires Avian.systems.tierPick.maybeOpen(stage). The pick API is
-   * detection-only by default; UI overrides plug in via
-   * Avian.systems.tierPick.onPickRequested.
-   * ========================================================== */
-  (function attachTierPickStageTrigger(){
-    const Avian = globalThis.Avian;
-    if(!Avian || !Avian.systems || !Avian.systems.tierPick) return;
-    const orig = globalThis.applyBiomeModifiers;
-    if(typeof orig !== 'function') return;
-    if(orig.__avianTierPick) return;
-    const wrapped = function applyBiomeModifiersTierPick(){
-      const out = orig.apply(this, arguments);
-      try {
-        const stage = globalThis.G && globalThis.G.stage;
-        if(typeof stage === 'number') Avian.systems.tierPick.maybeOpen(stage);
-      } catch(err) { try { console.warn('[Avian] tierPick stage hook', err); } catch(_e){} }
-      return out;
-    };
-    wrapped.__avianTierPick = true;
-    globalThis.applyBiomeModifiers = wrapped;
-  })();
-
-  /* ============================================================
    * Phase 7 — status verb dispatcher (B.2).
    *
    * Purely additive: legacy flag-style ailment math in game.js is

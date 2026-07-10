@@ -249,61 +249,23 @@
   }
 
   // 3b. ── Build FAMILY_EVOLUTION_BIRD_DATA from combatPack ----------------
-  function levelToTier(level) {
-    if (level === 1) return 0;
-    if (level === 3) return 1;
-    if (level === 6) return 2;
-    if (level === 9) return 3;
-    return 0;
-  }
-  function branchToPathId(branch) {
-    var b = String(branch || '').toLowerCase();
-    if (b === 'base') return null;
-    return b; // 'power' | 'ailment' | 'utility'
-  }
   function buildFamilyEntry(fam, slotIdx) {
-    var paths = { power: { pathId: 'power', displayName: 'Power', abilities: {} }, ailment: { pathId: 'ailment', displayName: 'Ailment', abilities: {} }, utility: { pathId: 'utility', displayName: 'Utility', abilities: {} }, mutation: { pathId: 'mutation', displayName: 'Mutation', abilities: {} } };
-    var mutations = fam.mutations || {};
-    if (!mutations['1']) {
-      mutations = {
-        1: mutationAbilityIdForFamily(fam.id, 1),
-        2: mutationAbilityIdForFamily(fam.id, 2),
-        3: mutationAbilityIdForFamily(fam.id, 3),
-      };
-    }
-    var baseId = mutations['1'] || mutationAbilityIdForFamily(fam.id, 1);
+    var baseId = mutationAbilityIdForFamily(fam.id, 1);
     for (var rid in pack.skillTrees) {
       var row = pack.skillTrees[rid];
       if (row.familyId !== fam.id) continue;
       var stageMatch = /_S(\d+)$/.exec(String(row.id || ''));
       var stage = stageMatch ? Number(stageMatch[1]) : (row.branch === 'base' ? 1 : 0);
-      if (stage === 1) baseId = row.id;
-      else if (stage === 2) {
-        paths.power.abilities[1] = row.id;
-        paths.mutation.abilities[1] = row.id;
-        mutations['2'] = row.id;
-      } else if (stage === 3) {
-        paths.power.abilities[2] = row.id;
-        paths.mutation.abilities[2] = row.id;
-        mutations['3'] = row.id;
-      } else {
-        var tier = levelToTier(row.level);
-        var pathId = branchToPathId(row.branch);
-        if (pathId && paths[pathId]) paths[pathId].abilities[tier] = row.id;
-      }
+      if (stage === 1 || (row.branch === 'base' && row.level === 1)) baseId = row.id;
     }
     return {
       familyId: fam.id,
       displayName: fam.name || fam.id,
       baseAbilityId: baseId,
-      maxTier: fam.maxTier || 3,
       starterSlot: slotIdx,
       abilitySlot: fam.abilitySlot != null ? fam.abilitySlot : slotIdx,
       role: fam.role || '',
       unlockTier: fam.unlockTier || 'Starter',
-      maxMutationStage: fam.maxMutationStage || 3,
-      mutations: mutations,
-      paths: paths,
     };
   }
   var UNIVERSAL_FAMILY_CACHE = Object.create(null);
@@ -319,41 +281,11 @@
   globalThis.UNIVERSAL_FAMILY_ABILITY_LOOKUP = Object.create(null);
   for (var ufId in (pack.families || {})) {
     var ufEntry = globalThis.buildFamilyEntryFromPackId(ufId);
-    if (!ufEntry) continue;
-    for (var ufPathKey in (ufEntry.paths || {})) {
-      var ufPath = ufEntry.paths[ufPathKey];
-      for (var ufTierKey in (ufPath.abilities || {})) {
-        var ufAbId = ufPath.abilities[ufTierKey];
-        var ufTier = Number(ufTierKey) || 0;
-        globalThis.UNIVERSAL_FAMILY_ABILITY_LOOKUP[ufAbId] = {
-          familyId: ufEntry.familyId,
-          pathId: ufPath.pathId,
-          tier: ufTier,
-          abilityId: ufAbId,
-        };
-      }
-    }
-    if (ufEntry.baseAbilityId) {
-      globalThis.UNIVERSAL_FAMILY_ABILITY_LOOKUP[ufEntry.baseAbilityId] = {
-        familyId: ufEntry.familyId,
-        pathId: 'mutation',
-        tier: 0,
-        mutationStage: 1,
-        abilityId: ufEntry.baseAbilityId,
-      };
-    }
-    var muts = ufEntry.mutations || {};
-    for (var ms in muts) {
-      var mid = muts[ms];
-      if (!mid) continue;
-      globalThis.UNIVERSAL_FAMILY_ABILITY_LOOKUP[mid] = {
-        familyId: ufEntry.familyId,
-        pathId: 'mutation',
-        tier: Math.max(0, Number(ms) - 1),
-        mutationStage: Number(ms) || 1,
-        abilityId: mid,
-      };
-    }
+    if (!ufEntry || !ufEntry.baseAbilityId) continue;
+    globalThis.UNIVERSAL_FAMILY_ABILITY_LOOKUP[ufEntry.baseAbilityId] = {
+      familyId: ufEntry.familyId,
+      abilityId: ufEntry.baseAbilityId,
+    };
   }
   if (pack.abilityAliases) {
     globalThis.ABILITY_ID_ALIASES = pack.abilityAliases;
@@ -458,19 +390,6 @@
         return Avian.shop.findById(id);
       }
 
-      function appendPinnedFeather(items) {
-        var SHOP_STATE = globalThis.SHOP_STATE;
-        if (!SHOP_STATE || SHOP_STATE.featherBoughtThisVisit) return items;
-        if (!SHOP_STATE.pinnedFeatherOffer && typeof globalThis.makeMutatedFeatherShopOffer === 'function') {
-          SHOP_STATE.pinnedFeatherOffer = globalThis.makeMutatedFeatherShopOffer();
-        }
-        if (SHOP_STATE.pinnedFeatherOffer) {
-          SHOP_STATE.pinnedFeatherOffer.shopCategory = 'misc';
-          items.push(SHOP_STATE.pinnedFeatherOffer);
-        }
-        return items;
-      }
-
       function currentShopStage() {
         if (!globalThis.G) return 1;
         return Math.max(1, Number(globalThis.G.stage) || 1);
@@ -483,15 +402,10 @@
         if (nodeId != null && globalThis.G && globalThis.G._shopSnapshots && globalThis.G._shopSnapshots[nodeId]) {
           var snap = globalThis.G._shopSnapshots[nodeId];
           var bought = new Set(snap.boughtIds || []);
-          var SHOP_STATE = globalThis.SHOP_STATE;
-          if (SHOP_STATE) {
-            SHOP_STATE.featherBoughtThisVisit = bought.has('shop_mutated_feather');
-          }
           var restored = (snap.itemIds || [])
             .filter(function (id) { return !bought.has(id); })
             .map(restoreShopItemById)
             .filter(Boolean);
-          if (!bought.has('shop_mutated_feather')) appendPinnedFeather(restored);
           setShopItems(restored);
           if (typeof globalThis.renderShopItems === 'function') globalThis.renderShopItems();
           return;
@@ -503,8 +417,6 @@
           var mutOffers = Avian.mutations.rollMutationStock(mutCount, currentShopStage(), new Set());
           items.push.apply(items, mutOffers);
         }
-        appendPinnedFeather(items);
-
         setShopItems(items);
 
         if (nodeId != null) {
