@@ -5273,6 +5273,12 @@ body.ui-mobile-mode .combat-stats-btn{font-size:.68rem;padding:5px 8px;}
 }
 #screen-battle #player-avatar .bird-fallback-svg,
 #screen-battle #enemy-avatar .bird-fallback-svg{filter:drop-shadow(0 6px 10px rgba(0,0,0,.45));}
+/* Fallback flip when render path omits .sprite-face-left wrapper (wrapper path uses global .sprite-face-left rule). */
+#screen-battle #enemy-avatar > .sprite4,
+#screen-battle #enemy-avatar > .bird-fallback-svg{
+  transform:scaleX(-1);
+  transform-origin:center bottom;
+}
 
 /* --- Authoritative battle-avatar sizing (each size class distinct) --- */
 #screen-battle #player-avatar .sprite4.tiny,#screen-battle #enemy-avatar .sprite4.tiny{width:84px !important;height:84px !important;}

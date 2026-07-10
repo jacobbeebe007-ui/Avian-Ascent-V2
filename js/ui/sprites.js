@@ -320,31 +320,37 @@
 
   const oldRenderBirdIconHTML = globalThis.renderBirdIconHTML;
   if(typeof oldRenderBirdIconHTML === 'function'){
-    globalThis.renderBirdIconHTML = function(birdKey, sizeClass, locked){
+    globalThis.renderBirdIconHTML = function(birdKey, sizeClass, locked, faceLeft){
+      const wrap = globalThis.wrapSpriteFaceLeft;
       const k = String(birdKey || '').toLowerCase().replace(/[^a-z]/g,'');
+      let html;
       if(k === 'peregrine' || k === 'peregrinefalcon'){
-        return `<div class="sprite4 ${sizeClass||''} sprite-peregrine frame-0 ${locked?'locked':''}"></div>`;
+        html = `<div class="sprite4 ${sizeClass||''} sprite-peregrine frame-0 ${locked?'locked':''}"></div>`;
+      } else if(k === 'snowyowl' || k === 'snowy'){
+        html = `<div class="sprite4 ${sizeClass||''} sprite-snowyowl frame-0 ${locked?'locked':''}"></div>`;
+      } else {
+        return oldRenderBirdIconHTML.apply(this, arguments);
       }
-      if(k === 'snowyowl' || k === 'snowy'){
-        return `<div class="sprite4 ${sizeClass||''} sprite-snowyowl frame-0 ${locked?'locked':''}"></div>`;
-      }
-      return oldRenderBirdIconHTML.apply(this, arguments);
+      return faceLeft && wrap ? wrap(html) : html;
     };
   }
 
   const oldRenderEntityAvatarHTML = globalThis.renderEntityAvatarHTML;
   if(typeof oldRenderEntityAvatarHTML === 'function'){
-    globalThis.renderEntityAvatarHTML = function(entity, context='battle', locked=false){
+    globalThis.renderEntityAvatarHTML = function(entity, context='battle', locked=false, faceLeft=false){
       normalizeBirdEntity(entity);
+      const wrap = globalThis.wrapSpriteFaceLeft;
       const k = String(entity?.portraitKey || entity?.birdKey || entity?.id || '').toLowerCase().replace(/[^a-z]/g,'');
       const sizeClass = (typeof getUISizeClass === 'function') ? getUISizeClass(entity, context) : '';
+      let html;
       if(k === 'peregrine' || k === 'peregrinefalcon'){
-        return `<div class="sprite4 ${sizeClass||''} sprite-peregrine frame-0 ${locked?'locked':''}"></div>`;
+        html = `<div class="sprite4 ${sizeClass||''} sprite-peregrine frame-0 ${locked?'locked':''}"></div>`;
+      } else if(k === 'snowyowl' || k === 'snowy'){
+        html = `<div class="sprite4 ${sizeClass||''} sprite-snowyowl frame-0 ${locked?'locked':''}"></div>`;
+      } else {
+        return oldRenderEntityAvatarHTML.apply(this, arguments);
       }
-      if(k === 'snowyowl' || k === 'snowy'){
-        return `<div class="sprite4 ${sizeClass||''} sprite-snowyowl frame-0 ${locked?'locked':''}"></div>`;
-      }
-      return oldRenderEntityAvatarHTML.apply(this, arguments);
+      return faceLeft && wrap ? wrap(html) : html;
     };
   }
 

@@ -4224,6 +4224,9 @@ function updateBattleArena() {
   const arenaId = resolveBattleArenaId(stage, terrain);
   layer.dataset.arena = arenaId;
   const paths = battleArenaImagePaths(arenaId);
+  if (arenaId !== 'finch-burrow') {
+    paths.push(...battleArenaImagePaths('finch-burrow'));
+  }
   let pathIdx = 0;
   const tryNext = () => {
     if (pathIdx >= paths.length) {
@@ -5461,6 +5464,16 @@ function wrapEnemySpriteIfNeeded(html){
   if(!html || typeof html!=='string') return html;
   return /sprite4|bird-fallback-svg/.test(html) ? wrapSpriteFaceLeft(html) : html;
 }
+globalThis.wrapSpriteFaceLeft = wrapSpriteFaceLeft;
+globalThis.wrapEnemySpriteIfNeeded = wrapEnemySpriteIfNeeded;
+function ensureBattleEnemyFacing(hostEl){
+  if(!hostEl || hostEl.querySelector('.sprite-face-left')) return;
+  const html = hostEl.innerHTML;
+  if(/sprite4|bird-fallback-svg/.test(html)){
+    hostEl.innerHTML = wrapSpriteFaceLeft(html);
+  }
+}
+globalThis.ensureBattleEnemyFacing = ensureBattleEnemyFacing;
 function renderBirdIconHTML(birdKey, sizeClass, locked, faceLeft=false){
   const k = normalizeSpriteBirdKey(birdKey);
   let html;
@@ -7155,6 +7168,7 @@ function refreshBattleUI() {
       enemyAvatarEl.textContent = G.enemy.emoji;
       enemyAvatarEl.style.fontSize='3.8rem';
     }
+    ensureBattleEnemyFacing(enemyAvatarEl);
   }
   setHpBar('enemy', G.enemy.stats.hp, G.enemy.stats.maxHp);
   setEnergyBar('enemy', G.enemy.energy, G.enemy.energyMax||3);

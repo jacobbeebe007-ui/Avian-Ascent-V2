@@ -4,10 +4,12 @@
 (function(){
   const _origRenderBirdIconHTML = globalThis.renderBirdIconHTML;
   if(typeof _origRenderBirdIconHTML === 'function'){
-    globalThis.renderBirdIconHTML = function(birdKey, sizeClass, locked){
+    globalThis.renderBirdIconHTML = function(birdKey, sizeClass, locked, faceLeft){
       const k = String(birdKey||'').toLowerCase().replace(/[^a-z]/g,'');
+      const wrap = globalThis.wrapSpriteFaceLeft;
       if(k === 'dukeblakiston'){
-        return `<div class="sprite4 ${sizeClass||'boss'} sprite-dukeblakiston frame-0 ${locked?'locked':''}"></div>`;
+        const html = `<div class="sprite4 ${sizeClass||'boss'} sprite-dukeblakiston frame-0 ${locked?'locked':''}"></div>`;
+        return faceLeft && wrap ? wrap(html) : html;
       }
       return _origRenderBirdIconHTML.apply(this, arguments);
     };
