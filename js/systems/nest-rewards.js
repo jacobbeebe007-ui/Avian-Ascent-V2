@@ -277,24 +277,32 @@
       g.collectedRewards.push({ id: drop.itemKey, icon: drop.icon, tier: drop.tier, name: drop.name, desc: drop.desc || '' });
       return true;
     }
-    if (drop.type === 'savedEggs') {
-      var eggCount = Math.max(1, Math.floor(Number(drop.count) || 1));
-      if (typeof global.addSavedEggs === 'function') global.addSavedEggs(eggCount);
+    if (drop.type === 'rescuedNest') {
+      var nestEggId = String(drop.eggId || 'cracked').toLowerCase();
+      var nestCount = Math.max(1, Math.floor(Number(drop.count) || 1));
+      if (typeof global.addRescuedNest === 'function') global.addRescuedNest(nestEggId, nestCount);
+      if (global.G) {
+        if (!Array.isArray(global.G._flightRescuedNestsAwarded)) global.G._flightRescuedNestsAwarded = [];
+        global.G._flightRescuedNestsAwarded.push({
+          eggId: nestEggId,
+          count: nestCount,
+          name: drop.name || 'Rescued Nest',
+        });
+      }
       if (typeof global.logMsg === 'function') {
-        global.logMsg('🥚 +' + eggCount + ' Saved Egg' + (eggCount > 1 ? 's' : '') + '!', 'exp-gain');
+        global.logMsg(
+          '🪺 +' + nestCount + ' ' + (drop.name || 'Rescued Nest') + ' sent to your Inventory!',
+          'exp-gain',
+        );
       }
       if (!g.collectedRewards) g.collectedRewards = [];
-      g.collectedRewards.push({ id: 'savedEggs', icon: drop.icon || '🥚', tier: drop.tier, name: drop.name, desc: drop.desc || '' });
-      return true;
-    }
-    if (drop.type === 'goldenGoose') {
-      var gooseCount = Math.max(1, Math.floor(Number(drop.count) || 1));
-      if (typeof global.addGoldenGooseEggs === 'function') global.addGoldenGooseEggs(gooseCount);
-      if (typeof global.logMsg === 'function') {
-        global.logMsg('🪿 +' + gooseCount + ' Golden Goose Egg' + (gooseCount > 1 ? 's' : '') + '!', 'exp-gain');
-      }
-      if (!g.collectedRewards) g.collectedRewards = [];
-      g.collectedRewards.push({ id: 'goldenGoose', icon: drop.icon || '🪿', tier: drop.tier, name: drop.name, desc: drop.desc || '' });
+      g.collectedRewards.push({
+        id: 'rescuedNest_' + nestEggId,
+        icon: drop.icon || '🪺',
+        tier: drop.tier,
+        name: drop.name,
+        desc: drop.desc || '',
+      });
       return true;
     }
     return false;

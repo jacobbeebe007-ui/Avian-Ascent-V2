@@ -12,7 +12,7 @@
     penguin: 1, emu: 1, swan: 1, flamingo: 1, seagull: 1, albatross: 1,
   };
 
-  function savedEggCostForBird(birdKey) {
+  function goldenGooseEggCostForBird(birdKey) {
     if (STAGE10_BIRDS[birdKey]) return 8;
     if (STAGE20_BIRDS[birdKey]) return 15;
     if (ENDLESS_BIRDS[birdKey]) return 25;
@@ -32,12 +32,12 @@
       rows.push({
         birdKey: birdKey,
         unlockId: unlockId,
-        savedEggCost: savedEggCostForBird(birdKey),
+        goldenGooseEggCost: goldenGooseEggCostForBird(birdKey),
         unlockHint: bird.unlockHint || '',
       });
     });
     rows.sort(function (a, b) {
-      if (a.savedEggCost !== b.savedEggCost) return a.savedEggCost - b.savedEggCost;
+      if (a.goldenGooseEggCost !== b.goldenGooseEggCost) return a.goldenGooseEggCost - b.goldenGooseEggCost;
       var na = (birds[a.birdKey] && birds[a.birdKey].name) || a.birdKey;
       var nb = (birds[b.birdKey] && birds[b.birdKey].name) || b.birdKey;
       return na.localeCompare(nb);
@@ -95,15 +95,6 @@
 
   var FORTUNE_TRADE_OFFERS = [
     {
-      id: 'trade_goldenGoose',
-      icon: '🪿',
-      name: 'Golden Goose Egg',
-      desc: 'Exchange Saved Eggs for one Golden Goose Egg.',
-      baseCost: 10,
-      costStep: 0,
-      maxPurchases: null,
-    },
-    {
       id: 'trade_freshWaterCap',
       itemKey: 'freshWater',
       icon: '💧',
@@ -146,6 +137,24 @@
       return a.id === id;
     });
     if (art) return { kind: 'artifact', id: art.id, icon: art.icon, name: art.name, desc: art.desc };
+    if (String(id).indexOf('rescuedNest_') === 0 && typeof globalThis.getRescuedNestDef === 'function') {
+      var eggId =
+        typeof globalThis.eggIdFromRescuedNestMisc === 'function'
+          ? globalThis.eggIdFromRescuedNestMisc(id)
+          : id.slice('rescuedNest_'.length);
+      var nestDef = globalThis.getRescuedNestDef(eggId);
+      if (nestDef) {
+        return {
+          kind: 'misc',
+          id: nestDef.id,
+          icon: nestDef.icon,
+          name: nestDef.name,
+          desc: nestDef.desc,
+          openable: true,
+          eggId: nestDef.eggId,
+        };
+      }
+    }
     var misc = FORTUNE_MISC_STUBS.find(function (m) {
       return m.id === id;
     });
@@ -161,11 +170,16 @@
 
   function getOwnedInventoryRows(meta) {
     meta = meta || (typeof globalThis.getFortuneMeta === 'function' ? globalThis.getFortuneMeta() : null);
-    if (!meta) meta = { savedEggs: 0, goldenGooseEggs: 0, ownedArtifacts: {}, ownedMisc: {} };
+    if (!meta) meta = { goldenGooseEggs: 0, ownedArtifacts: {}, ownedMisc: {} };
 
     var currency = [
-      { kind: 'currency', id: 'savedEggs', icon: '🥚', name: 'Saved Eggs', count: Math.max(0, Math.floor(Number(meta.savedEggs) || 0)) },
-      { kind: 'currency', id: 'goldenGooseEggs', icon: '🪿', name: 'Golden Goose Eggs', count: Math.max(0, Math.floor(Number(meta.goldenGooseEggs) || 0)) },
+      {
+        kind: 'currency',
+        id: 'goldenGooseEggs',
+        icon: '🪿',
+        name: 'Golden Goose Eggs',
+        count: Math.max(0, Math.floor(Number(meta.goldenGooseEggs) || 0)),
+      },
     ];
 
     var artifacts = [];

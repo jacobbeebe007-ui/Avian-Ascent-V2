@@ -6160,6 +6160,7 @@ function startGame() {
   G.difficulty = G._selectedDifficulty || 'juvenile';
   const bd = BIRDS[G.selected];
   G.collectedRewards=[];
+  G._flightRescuedNestsAwarded=[];
   G.player = {
     name: bd.name, portraitKey: bd.portraitKey, birdKey: G.selected,
     size: bd.size||'medium',
@@ -13983,23 +13984,8 @@ function showRewardScreen(hasLevelUp) {
       : []);
 
   if(!G._owForgeReturnToForge){
-    const savedEggCount=1+Math.floor(Math.random()*5);
-    drops.push({
-      type:'savedEggs',
-      count:savedEggCount,
-      tier:'gold',
-      icon:'🥚',
-      name:'Saved Eggs',
-      desc:`+${savedEggCount} added to your Fortune stash.`,
-    });
-    drops.push({
-      type:'goldenGoose',
-      count:1,
-      tier:'gold',
-      icon:'🪿',
-      name:'Golden Goose Egg',
-      desc:'+1 added to your Fortune stash.',
-    });
+    const nestDrop=typeof buildRescuedNestDrop==='function'?buildRescuedNestDrop(defeated):null;
+    if(nestDrop) drops.push(nestDrop);
   }
 
   G._nestRewardDrops=drops;
@@ -14851,19 +14837,19 @@ async function resolveGrove(idx){
     }
     case 'egg':{
       chosen.className='grove-tree revealed outcome-egg';
-      const savedCount=3+Math.floor(Math.random()*4);
-      const added=typeof addSavedEggs==='function'?addSavedEggs(savedCount):0;
-      chosen.innerHTML=`<span>🥚</span><span class="grove-outcome-label">Saved Eggs!</span>`;
+      const groveDefeated=typeof getDefeatedBirdsForReward==='function'?getDefeatedBirdsForReward():[{birdKey:G.enemy?.birdKey}];
+      const groveNest=typeof buildRescuedNestDrop==='function'?buildRescuedNestDrop(groveDefeated):{eggId:'cracked',name:'Cracked Rescued Nest',icon:'🪺'};
+      const nestEggId=groveNest.eggId||'cracked';
+      if(typeof addRescuedNest==='function') addRescuedNest(nestEggId,1);
+      chosen.innerHTML=`<span>🪺</span><span class="grove-outcome-label">Rescued Nest!</span>`;
       const rw=applyGroveGearMutation(grantGroveGearMutation('egg'));
-      if(added&&rw){
-        msg=`🥚 +${savedCount} Saved Eggs banked, plus ${rw.name} added to your nest inventory!`;
+      if(rw){
+        msg=`🪺 ${groveNest.name||'Rescued Nest'} sent to Inventory, plus ${rw.name} added to your nest inventory!`;
         showGroveRewardCard(rw);
-      } else if(added){
-        msg=`🥚 +${savedCount} Saved Eggs tucked safely in your global bank!`;
       } else {
-        msg='🥚 You found eggs, but the bank could not be reached.';
+        msg=`🪺 ${groveNest.name||'Rescued Nest'} tucked safely in your Inventory!`;
       }
-      flavor='Banked immediately — no Flight completion required.';
+      flavor='Open from Inventory for Golden Goose Eggs and a bird hatch.';
       floatClass='fn-heal';
       SFX.exp();
       break;
@@ -14913,7 +14899,7 @@ function showVictory(){
   if(!G.endlessMode){
     try { localStorage.removeItem(_OW_STATE_KEY); localStorage.removeItem(_OW_NAV_KEY); } catch(_) {}
   }
-  G._flightSavedEggsAwarded=0;
+  G._flightRescuedNestsAwarded=[];
   // HARD RESET COMBAT STATE
   G.animLock = false;
   G.turnPhase = null;
@@ -14960,8 +14946,6 @@ function showVictory(){
     advanceStage();
     return;
   }
-  G._flightSavedEggsAwarded=typeof awardFlightSavedEggs==='function'?awardFlightSavedEggs():0;
-  if(G._flightSavedEggsAwarded>0) showRunStats();
   renderUnlockPopupsOnGameover();
   const endEvt={won:true, bird:G.player?.birdKey||'unknown', stageReached:G.stage||20, deathCause:'victory', endless:!!G.endlessMode};
   AvianEvents.emit('run:end', endEvt);
@@ -14972,7 +14956,6 @@ function showVictory(){
 function showDefeat(){
   beginBattleBgmFadeOut();
   G._groveAmbushActive=false;
-  G._flightSavedEggsAwarded=typeof awardFlightSavedEggs==='function'?awardFlightSavedEggs():0;
   restoreBattleTempPlayerStats();
   G.phase='REWARD';
   G.playerStatus = {};
@@ -14999,6 +14982,11 @@ function showDefeat(){
   renderUnlockPopupsOnGameover();
   showScreen('screen-gameover');
 }
+function flightRescuedNestCount(){
+  const arr=G._flightRescuedNestsAwarded;
+  if(!Array.isArray(arr)) return 0;
+  return arr.reduce((sum,row)=>sum+(Math.max(0,Math.floor(Number(row?.count)||1))),0);
+}
 function showRunStats(){
   const el=document.getElementById('run-stats'); if(!el) return;
   const stages=G.endlessMode?`${G.stage}+`:`${Math.min(G.stage,20)}/20`;
@@ -15015,7 +15003,7 @@ function showRunStats(){
     <div class="vstat"><div class="vstat-val">${G.runCrits||0}</div><div class="vstat-lbl">Critical Hits</div></div>
     <div class="vstat"><div class="vstat-val">${G.collectedRewards.length}</div><div class="vstat-lbl">Rewards</div></div>
     <div class="vstat"><div class="vstat-val">${G.shinyObjects||0}</div><div class="vstat-lbl">Shiny Objects</div></div>
-    ${G._flightSavedEggsAwarded>0?`<div class="vstat"><div class="vstat-val">+${G._flightSavedEggsAwarded} 🥚</div><div class="vstat-lbl">Saved Eggs</div></div>`:''}
+    ${flightRescuedNestCount()>0?`<div class="vstat"><div class="vstat-val">+${flightRescuedNestCount()} 🪺</div><div class="vstat-lbl">Rescued Nests</div></div>`:''}
     <div class="vstat"><div class="vstat-val">${G.player.stats.atk}</div><div class="vstat-lbl">Final ATK</div></div>
     <div class="vstat"><div class="vstat-val">${G.player.stats.hp}/${G.player.stats.maxHp}</div><div class="vstat-lbl">HP Left</div></div>`;
   el.style.display='grid';
@@ -16508,12 +16496,16 @@ function checkDevCode(val) {
     return;
   }
   if (code === 'goldengoose') {
-    if (typeof addSavedEggs === 'function') addSavedEggs(9999);
     if (typeof addGoldenGooseEggs === 'function') addGoldenGooseEggs(9000);
+    if (typeof addRescuedNest === 'function') {
+      addRescuedNest('cracked', 5);
+      addRescuedNest('feathered', 3);
+      addRescuedNest('gleaming', 2);
+    }
     const input = document.getElementById('dev-code-input');
     if (input) input.value = '';
     if (msg) {
-      msg.textContent = '🪿 GoldenGoose: +9999 Saved Eggs and +9000 Golden Goose Eggs!';
+      msg.textContent = '🪿 GoldenGoose: +9000 Golden Goose Eggs and sample Rescued Nests!';
       msg.style.color = 'var(--gold-light)';
     }
     setTimeout(() => { if (msg) msg.textContent = ''; }, 3200);

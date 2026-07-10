@@ -100,7 +100,7 @@
 <button type="button" class="splash-hotspot splash-hotspot--fortune" data-action="openSelectHubPanel:fortune" aria-label="Cuckoo's Feathers and Fortune Emporium — global store">
 <span class="splash-hotspot-title">Cuckoo's Feathers &amp; Fortune Emporium</span>
 <span class="splash-hotspot-desc">Trade · Relics</span>
-<span class="fortune-egg-badge" id="fortune-egg-badge" hidden aria-label="Saved Eggs balance"></span>
+<span class="fortune-egg-badge" id="fortune-egg-badge" hidden aria-label="Golden Goose Eggs balance"></span>
 </button>
 <button type="button" class="splash-hotspot splash-hotspot--hatchery" data-action="openSelectHubPanel:hatchery" aria-label="The Hatchery — hatch bird cards">
 <span class="splash-hotspot-title">The Hatchery</span>
@@ -175,9 +175,8 @@
 <h3 class="select-hub-panel-title" id="hub-inventory-title">Inventory</h3>
 <button type="button" class="select-hub-return-btn" data-action="closeSelectHubPanel">← Return to war room</button>
 </header>
-<p class="select-hub-lead">Your global vault across Flights — Saved Eggs banked at victory or defeat, plus treasures bought at Cuckoo's Feathers &amp; Fortune Emporium.</p>
+<p class="select-hub-lead">Your global vault across Flights — Golden Goose Eggs, Rescued Nests, and treasures from Cuckoo's Feathers &amp; Fortune Emporium.</p>
 <div class="fortune-balance-bar inventory-balance-bar" aria-label="Global currency">
-<span class="fortune-balance-chip"><span class="fortune-balance-icon">🥚</span> Saved Eggs: <strong id="inventory-balance-saved">0</strong></span>
 <span class="fortune-balance-chip fortune-balance-chip--goose"><span class="fortune-balance-icon">🪿</span> Golden Goose Eggs: <strong id="inventory-balance-goose">0</strong></span>
 </div>
 <div class="inventory-subnav" role="tablist" aria-label="Inventory sections">
@@ -219,9 +218,8 @@
 </header>
 <p class="fortune-welcome">Welcome to Cuckoo's Feathers &amp; Fortune Emporium</p>
 <p class="fortune-owner-note">Cuckoo (Owner of the Fortune and Feather shop — married to the Mother Goose)</p>
-<p class="select-hub-lead">Global treasures earned across Flights. Saved Eggs are banked when a Flight ends in victory or defeat (1 per stage completed). Golden Goose Eggs are rare finds for Artifacts.</p>
+<p class="select-hub-lead">Global treasures earned across Flights. Rescued Nests drop after stage victories — open them in Inventory for Golden Goose Eggs and bird hatches.</p>
 <div class="fortune-balance-bar" aria-label="Global currency">
-<span class="fortune-balance-chip"><span class="fortune-balance-icon">🥚</span> Saved Eggs: <strong id="fortune-balance-saved">0</strong></span>
 <span class="fortune-balance-chip fortune-balance-chip--goose"><span class="fortune-balance-icon">🪿</span> Golden Goose Eggs: <strong id="fortune-balance-goose">0</strong></span>
 </div>
 <div class="fortune-subnav" role="tablist" aria-label="Store sections">
@@ -230,7 +228,7 @@
 </div>
 <div class="fortune-shop-msg" id="fortune-shop-msg" aria-live="polite"></div>
 <div class="fortune-subview is-active" id="fortune-view-trade" role="tabpanel" aria-labelledby="fortune-nav-trade">
-<p class="fortune-tab-lead">Exchange Saved Eggs for Golden Goose Eggs and expanded heal-item carry limits.</p>
+<p class="fortune-tab-lead">Spend Golden Goose Eggs on expanded heal-item carry limits.</p>
 <div class="fortune-trade-grid" id="fortune-trade-grid"></div>
 </div>
 <div class="fortune-subview" id="fortune-view-artifacts" role="tabpanel" aria-labelledby="fortune-nav-artifacts">
@@ -247,7 +245,6 @@
 </header>
 <p class="select-hub-lead">Spend Golden Goose Eggs to hatch bird cards. Duplicates become Species Feathers for mutations.</p>
 <div class="fortune-balance-bar hatchery-balance-bar" aria-label="Global currency">
-<span class="fortune-balance-chip"><span class="fortune-balance-icon">🥚</span> Saved Eggs: <strong id="hatchery-balance-saved">0</strong></span>
 <span class="fortune-balance-chip fortune-balance-chip--goose"><span class="fortune-balance-icon">🪿</span> Golden Goose Eggs: <strong id="hatchery-balance-goose">0</strong></span>
 </div>
 <div class="mother-goose-pity" id="mother-goose-pity" aria-live="polite"></div>
@@ -509,7 +506,7 @@
 <option value="mutation">Mutation</option>
 <option value="nest">Reward Nest</option>
 <option value="item">Heal item</option>
-<option value="savedEggs">Saved Eggs</option>
+<option value="rescuedNest">Rescued Nest</option>
 <option value="goldenGoose">Golden Goose Egg</option>
 <option value="speciesFeathers">Species Feather</option>
 </select>

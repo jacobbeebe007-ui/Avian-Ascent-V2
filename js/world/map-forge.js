@@ -905,10 +905,10 @@
         row.appendChild(minIn);
         row.appendChild(dash);
         row.appendChild(maxIn);
-      } else if (r.type === 'savedEggs' || r.type === 'goldenGoose') {
+      } else if (r.type === 'rescuedNest' || r.type === 'goldenGoose') {
         const lbl = document.createElement('span');
         lbl.className = 'map-forge-reward-type-label';
-        lbl.textContent = r.type === 'savedEggs' ? 'Saved Eggs' : 'Golden Goose Egg';
+        lbl.textContent = r.type === 'rescuedNest' ? 'Rescued Nest' : 'Golden Goose Egg';
         const countIn = document.createElement('input');
         countIn.type = 'number';
         countIn.className = 'map-forge-reward-num';
@@ -917,6 +917,19 @@
         countIn.onchange = () => { r.count = Math.max(0, Math.floor(Number(countIn.value) || 0)); };
         row.appendChild(lbl);
         row.appendChild(countIn);
+        if (r.type === 'rescuedNest') {
+          const tierSel = document.createElement('select');
+          tierSel.className = 'map-forge-field-input';
+          ['cracked', 'feathered', 'gleaming', 'royal', 'ancestral'].forEach((tier) => {
+            const o = document.createElement('option');
+            o.value = tier;
+            o.textContent = tier;
+            if ((r.eggId || 'cracked') === tier) o.selected = true;
+            tierSel.appendChild(o);
+          });
+          tierSel.onchange = () => { r.eggId = tierSel.value; };
+          row.appendChild(tierSel);
+        }
       } else if (r.type === 'speciesFeathers') {
         const lbl = document.createElement('span');
         lbl.className = 'map-forge-reward-type-label';
@@ -1749,7 +1762,7 @@
     else if (type === 'mutation') n.clearRewards.push({ type: 'mutation', tierBand: 'blue', count: 1 });
     else if (type === 'nest') n.clearRewards.push({ type: 'nest', slots: [{ tier: 'blue' }] });
     else if (type === 'item') n.clearRewards.push({ type: 'item', itemKey: 'freshWater', min: 1, max: 1 });
-    else if (type === 'savedEggs') n.clearRewards.push({ type: 'savedEggs', count: 1 });
+    else if (type === 'rescuedNest') n.clearRewards.push({ type: 'rescuedNest', eggId: 'cracked', count: 1 });
     else if (type === 'goldenGoose') n.clearRewards.push({ type: 'goldenGoose', count: 1 });
     else if (type === 'speciesFeathers') n.clearRewards.push({ type: 'speciesFeathers', birdKey: 'random', count: 1 });
     renderClearRewardsList(n);

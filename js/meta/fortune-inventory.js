@@ -264,15 +264,11 @@
   }
 
   function renderInventoryCurrency(rows) {
-    var savedEl = document.getElementById('inventory-balance-saved');
     var gooseEl = document.getElementById('inventory-balance-goose');
-    var saved = 0;
     var goose = 0;
     (rows.currency || []).forEach(function (row) {
-      if (row.id === 'savedEggs') saved = row.count;
       if (row.id === 'goldenGooseEggs') goose = row.count;
     });
-    if (savedEl) savedEl.textContent = fmt(saved);
     if (gooseEl) gooseEl.textContent = fmt(goose);
   }
 
@@ -450,6 +446,20 @@
     grid.innerHTML = misc
       .map(function (item) {
         var countBadge = item.count > 1 ? '<span class="inventory-item-qty">×' + fmt(item.count) + '</span>' : '';
+        var def =
+          typeof globalThis.getFortuneItemDef === 'function' ? globalThis.getFortuneItemDef(item.id) : null;
+        var eggId =
+          def && def.eggId
+            ? def.eggId
+            : typeof globalThis.eggIdFromRescuedNestMisc === 'function'
+            ? globalThis.eggIdFromRescuedNestMisc(item.id)
+            : null;
+        var openBtn =
+          eggId && item.count > 0
+            ? '<button type="button" class="fortune-buy-btn inventory-open-btn" data-action="openRescuedNest:' +
+              esc(eggId) +
+              '">Open</button>'
+            : '';
         return (
           '<div class="inventory-item-card inventory-item-card--misc">' +
           '<div class="inventory-item-icon">' +
@@ -461,7 +471,9 @@
           '</div>' +
           '<p class="inventory-item-desc">' +
           esc(item.desc) +
-          '</p></div>'
+          '</p>' +
+          openBtn +
+          '</div>'
         );
       })
       .join('');

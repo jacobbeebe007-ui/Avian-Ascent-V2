@@ -184,14 +184,21 @@
     return 'Locked';
   }
 
+  function roundGrowthStat(n, floor) {
+    if (typeof globalThis.roundCombatStat === 'function') {
+      return globalThis.roundCombatStat(n, floor);
+    }
+    return Math.max(floor, Math.round(Number(n) * 100) / 100);
+  }
+
   function applyFeatherGrowthToStat(baseVal, statKey, profile, totalStars) {
     var key = normalizeStatKeyForGrowth(statKey);
     var base = Math.max(0, Number(baseVal) || 0);
     if (!base) return base;
     var bonus = getGrowthBonusForStat(key, profile, totalStars);
     var scaled = base * (1 + bonus);
-    if (key === 'dodge') return Math.max(0, Math.round(scaled));
-    return Math.max(1, Math.round(scaled));
+    if (key === 'dodge') return roundGrowthStat(scaled, 0);
+    return roundGrowthStat(scaled, 1);
   }
 
   function getEffectiveStatRatioForStat(statKey, birdKey, tier, stars) {

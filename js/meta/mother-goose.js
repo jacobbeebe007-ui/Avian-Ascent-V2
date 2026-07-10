@@ -195,5 +195,6 @@
 
   globalThis.hatchEgg = hatchEgg;
   globalThis.hatchEggsBatch = hatchEggsBatch;
+  globalThis.hatchOne = hatchOne;
   globalThis.resolvePityChoice = resolvePityChoice;
 })();

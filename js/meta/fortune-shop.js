@@ -287,24 +287,17 @@
   }
 
   function syncFortuneBalances() {
-    var saved = typeof getSavedEggBalance === 'function' ? getSavedEggBalance() : 0;
     var goose = typeof getGoldenGooseEggBalance === 'function' ? getGoldenGooseEggBalance() : 0;
-    var savedEl = document.getElementById('fortune-balance-saved');
     var gooseEl = document.getElementById('fortune-balance-goose');
-    if (savedEl) savedEl.textContent = fmt(saved);
     if (gooseEl) gooseEl.textContent = fmt(goose);
-    var invSavedEl = document.getElementById('inventory-balance-saved');
     var invGooseEl = document.getElementById('inventory-balance-goose');
-    if (invSavedEl) invSavedEl.textContent = fmt(saved);
     if (invGooseEl) invGooseEl.textContent = fmt(goose);
-    var hatchSavedEl = document.getElementById('hatchery-balance-saved');
     var hatchGooseEl = document.getElementById('hatchery-balance-goose');
-    if (hatchSavedEl) hatchSavedEl.textContent = fmt(saved);
     if (hatchGooseEl) hatchGooseEl.textContent = fmt(goose);
     var badge = document.getElementById('fortune-egg-badge');
     if (badge) {
-      badge.textContent = saved > 0 ? fmt(saved) : '';
-      badge.hidden = !(saved > 0);
+      badge.textContent = goose > 0 ? fmt(goose) : '';
+      badge.hidden = !(goose > 0);
     }
     if (typeof globalThis.syncInventoryHotspotBadge === 'function') globalThis.syncInventoryHotspotBadge();
   }
@@ -354,7 +347,7 @@
     var grid = document.getElementById('fortune-trade-grid');
     if (!grid) return;
     var offers = globalThis.FORTUNE_TRADE_OFFERS || [];
-    var saved = typeof getSavedEggBalance === 'function' ? getSavedEggBalance() : 0;
+    var goose = typeof getGoldenGooseEggBalance === 'function' ? getGoldenGooseEggBalance() : 0;
     if (!offers.length) {
       grid.innerHTML = '<p class="fortune-empty">No trade offers available yet.</p>';
       return;
@@ -368,9 +361,9 @@
         typeof globalThis.getTradeOfferCost === 'function'
           ? globalThis.getTradeOfferCost(offer, purchases)
           : Math.max(0, Math.floor(Number(offer.baseCost) || 0));
-      var canAfford = saved >= cost;
+      var canAfford = goose >= cost;
       var stateClass = maxed ? ' is-owned' : canAfford ? ' is-affordable' : ' is-locked';
-      var btnLabel = maxed ? 'Maxed' : canAfford ? 'Trade · ' + fmt(cost) + ' 🥚' : 'Need more eggs';
+      var btnLabel = maxed ? 'Maxed' : canAfford ? 'Trade · ' + fmt(cost) + ' 🪿' : 'Need more eggs';
       var btnDisabled = maxed || !canAfford;
       var progress =
         offer.maxPurchases != null
@@ -379,25 +372,6 @@
             (offer.capLabel ? ' · ' + esc(offer.capLabel) : '') +
             '</p>'
           : '';
-      var bulkBtns = '';
-      if (offer.id === 'trade_goldenGoose' && !maxed) {
-        [1, 10, 100].forEach(function (qty) {
-          var bulkCost = cost * qty;
-          var canBulk = saved >= bulkCost;
-          bulkBtns +=
-            '<button type="button" class="fortune-buy-btn fortune-buy-btn--bulk" data-action="purchaseFortuneTrade:' +
-            esc(offer.id) +
-            ':' +
-            qty +
-            '" ' +
-            (canBulk ? '' : 'disabled') +
-            '>Buy ×' +
-            qty +
-            ' · ' +
-            fmt(bulkCost) +
-            ' 🥚</button>';
-        });
-      }
       html +=
         '<div class="fortune-artifact-card fortune-trade-card' +
         stateClass +
@@ -412,16 +386,13 @@
         esc(offer.desc) +
         '</p>' +
         progress +
-        (offer.id === 'trade_goldenGoose' && bulkBtns
-          ? '<div class="fortune-trade-bulk-btns">' + bulkBtns + '</div>'
-          : '<button type="button" class="fortune-buy-btn" data-action="purchaseFortuneTrade:' +
-            esc(offer.id) +
-            '" ' +
-            (btnDisabled ? 'disabled' : '') +
-            '>' +
-            esc(btnLabel) +
-            '</button>') +
-        '</div>';
+        '<button type="button" class="fortune-buy-btn" data-action="purchaseFortuneTrade:' +
+        esc(offer.id) +
+        '" ' +
+        (btnDisabled ? 'disabled' : '') +
+        '>' +
+        esc(btnLabel) +
+        '</button></div>';
     });
     grid.innerHTML = html;
   }
@@ -656,7 +627,7 @@
     if (!result || !result.ok) {
       if (msg) {
         if (result && result.reason === 'maxed') msg.textContent = 'This trade is maxed out.';
-        else if (result && result.reason === 'funds') msg.textContent = 'Not enough Saved Eggs.';
+        else if (result && result.reason === 'funds') msg.textContent = 'Not enough Golden Goose Eggs.';
         else msg.textContent = 'Trade unavailable.';
         msg.style.color = 'var(--text-dim)';
       }
@@ -679,15 +650,6 @@
     return Math.max(0, stage - 1);
   }
 
-  /** Award Saved Eggs at end of Flight: 1 per stage completed (victory or defeat only). */
-  function awardFlightSavedEggs() {
-    var n = getCompletedStagesForFlight();
-    if (!n || typeof globalThis.addSavedEggs !== 'function') return 0;
-    globalThis.addSavedEggs(n);
-    if (typeof globalThis.syncFortuneBalances === 'function') globalThis.syncFortuneBalances();
-    return n;
-  }
-
   globalThis.setFortuneSubView = setFortuneSubView;
   globalThis.renderFortuneShop = renderFortuneShop;
   globalThis.renderHatchery = renderHatchery;
@@ -702,5 +664,6 @@
   globalThis.resolvePityChoiceAction = resolvePityChoiceAction;
   globalThis.closeMotherGooseHatchModal = closeMotherGooseHatchModal;
   globalThis.getCompletedStagesForFlight = getCompletedStagesForFlight;
-  globalThis.awardFlightSavedEggs = awardFlightSavedEggs;
+  globalThis.showMotherGooseHatchModal = showMotherGooseHatchModal;
+  globalThis.showMotherGooseHatchModalBatch = showMotherGooseHatchModalBatch;
 })();

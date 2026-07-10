@@ -447,7 +447,7 @@
   };
 
   global.grantForgeClearRewards = function (player, rewards, G) {
-    const empty = { shinies: 0, mutations: [], items: [], nests: 0, savedEggs: 0, goldenGoose: 0, feathers: [] };
+    const empty = { shinies: 0, mutations: [], items: [], nests: 0, rescuedNests: 0, goldenGoose: 0, feathers: [] };
     if (!Array.isArray(rewards) || !rewards.length) return empty;
     const granted = Object.assign({}, empty, { mutations: [], items: [], feathers: [] });
     const rollForgeMutation = (band) => {
@@ -490,10 +490,11 @@
         const qty = lo + Math.floor(Math.random() * (hi - lo + 1));
         if (typeof global.addCombatItem === 'function') global.addCombatItem(player, r.itemKey, qty);
         granted.items.push({ itemKey: r.itemKey, quantity: qty });
-      } else if (r.type === 'savedEggs') {
-        const n = Math.max(0, Math.floor(Number(r.count) || 0));
-        if (n && typeof global.addSavedEggs === 'function') global.addSavedEggs(n);
-        granted.savedEggs += n;
+      } else if (r.type === 'rescuedNest') {
+        const eggId = String(r.eggId || 'cracked').toLowerCase();
+        const n = Math.max(1, Math.floor(Number(r.count) || 1));
+        if (typeof global.addRescuedNest === 'function') global.addRescuedNest(eggId, n);
+        granted.rescuedNests += n;
       } else if (r.type === 'goldenGoose') {
         const n = Math.max(0, Math.floor(Number(r.count) || 0));
         if (n && typeof global.addGoldenGooseEggs === 'function') global.addGoldenGooseEggs(n);

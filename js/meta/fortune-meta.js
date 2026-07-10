@@ -1,11 +1,11 @@
-/* Avian Ascent — global meta currency (Saved Eggs, Golden Goose Eggs) across Flights. */
+/* Avian Ascent — global meta currency (Golden Goose Eggs) across Flights. */
 (function () {
   'use strict';
 
   var META_KEY = 'avianAscent_meta_v1';
+  var META_SCHEMA_VERSION = 4;
 
   var DEFAULT_TRADE_PURCHASES = {
-    trade_goldenGoose: 0,
     trade_freshWaterCap: 0,
     trade_sugarWaterCap: 0,
     trade_honeyWaterCap: 0,
@@ -13,8 +13,7 @@
 
   function emptyMeta() {
     return {
-      metaSchemaVersion: 3,
-      savedEggs: 0,
+      metaSchemaVersion: META_SCHEMA_VERSION,
       goldenGooseEggs: 0,
       ownedArtifacts: {},
       ownedMisc: {},
@@ -107,13 +106,26 @@
     return base;
   }
 
+  function migrateSavedEggsToGolden(out) {
+    if (out.metaSchemaVersion >= META_SCHEMA_VERSION) return;
+    var legacy = Math.max(0, Math.floor(Number(out.savedEggs) || 0));
+    if (legacy > 0) {
+      out.goldenGooseEggs = Math.max(0, Math.floor(Number(out.goldenGooseEggs) || 0)) + legacy;
+    }
+    delete out.savedEggs;
+    out.metaSchemaVersion = META_SCHEMA_VERSION;
+  }
+
   function normalizeMeta(raw) {
     var m = raw && typeof raw === 'object' ? raw : emptyMeta();
     var ownedArtifacts = m.ownedArtifacts && typeof m.ownedArtifacts === 'object' ? m.ownedArtifacts : {};
+    var goldenGooseEggs = Math.max(0, Math.floor(Number(m.goldenGooseEggs) || 0));
+    if (m.savedEggs != null) {
+      goldenGooseEggs += Math.max(0, Math.floor(Number(m.savedEggs) || 0));
+    }
     var out = {
       metaSchemaVersion: Math.max(1, Math.floor(Number(m.metaSchemaVersion) || 1)),
-      savedEggs: Math.max(0, Math.floor(Number(m.savedEggs) || 0)),
-      goldenGooseEggs: Math.max(0, Math.floor(Number(m.goldenGooseEggs) || 0)),
+      goldenGooseEggs: goldenGooseEggs,
       ownedArtifacts: ownedArtifacts,
       ownedMisc: normalizeOwnedMisc(m.ownedMisc),
       equippedArtifactId: normalizeEquippedArtifactId(m.equippedArtifactId, ownedArtifacts),
@@ -126,9 +138,8 @@
     };
     if (typeof globalThis.migrateBirdCardsInMeta === 'function') {
       globalThis.migrateBirdCardsInMeta(out);
-    } else {
-      out.metaSchemaVersion = 3;
     }
+    migrateSavedEggsToGolden(out);
     return out;
   }
 
@@ -146,21 +157,12 @@
     } catch (_) { /* noop */ }
   }
 
-  function getSavedEggBalance() {
-    return getFortuneMeta().savedEggs;
-  }
-
   function getGoldenGooseEggBalance() {
     return getFortuneMeta().goldenGooseEggs;
   }
 
-  function addSavedEggs(n) {
-    var amt = Math.max(0, Math.floor(Number(n) || 0));
-    if (!amt) return getSavedEggBalance();
-    var m = getFortuneMeta();
-    m.savedEggs += amt;
-    saveFortuneMeta(m);
-    return m.savedEggs;
+  function getSavedEggBalance() {
+    return getGoldenGooseEggBalance();
   }
 
   function addGoldenGooseEggs(n) {
@@ -172,14 +174,8 @@
     return m.goldenGooseEggs;
   }
 
-  function spendSavedEggs(n) {
-    var cost = Math.max(0, Math.floor(Number(n) || 0));
-    if (!cost) return true;
-    var m = getFortuneMeta();
-    if (m.savedEggs < cost) return false;
-    m.savedEggs -= cost;
-    saveFortuneMeta(m);
-    return true;
+  function addSavedEggs(n) {
+    return addGoldenGooseEggs(n);
   }
 
   function spendGoldenGooseEggs(n) {
@@ -190,6 +186,10 @@
     m.goldenGooseEggs -= cost;
     saveFortuneMeta(m);
     return true;
+  }
+
+  function spendSavedEggs(n) {
+    return spendGoldenGooseEggs(n);
   }
 
   function ownsArtifact(id) {
@@ -255,6 +255,20 @@
     return m.ownedMisc[id];
   }
 
+  function spendOwnedMisc(id, n) {
+    if (!id) return false;
+    var cost = Math.max(0, Math.floor(Number(n) || 0));
+    if (!cost) return true;
+    var m = getFortuneMeta();
+    var have = getOwnedMiscCount(id);
+    if (have < cost) return false;
+    var left = have - cost;
+    if (left > 0) m.ownedMisc[id] = left;
+    else delete m.ownedMisc[id];
+    saveFortuneMeta(m);
+    return true;
+  }
+
   function getTradePurchaseCount(tradeId) {
     if (!tradeId) return 0;
     var purchases = getFortuneMeta().tradePurchases || {};
@@ -288,15 +302,13 @@
         ? globalThis.getTradeOfferCost(offer, purchasesSoFar)
         : Math.max(0, Math.floor(Number(offer.baseCost) || 0));
     var totalCost = unitCost * batch;
-    if (!spendSavedEggs(totalCost)) return { ok: false, reason: 'funds' };
+    if (!spendGoldenGooseEggs(totalCost)) return { ok: false, reason: 'funds' };
 
     var m = getFortuneMeta();
     m.tradePurchases = normalizeTradePurchases(m.tradePurchases);
     m.tradePurchases[tradeId] = purchasesSoFar + batch;
 
-    if (tradeId === 'trade_goldenGoose') {
-      m.goldenGooseEggs += batch;
-    } else if (offer.itemKey) {
+    if (offer.itemKey) {
       m.combatItemCapBonus = normalizeCombatItemCapBonus(m.combatItemCapBonus);
       m.combatItemCapBonus[offer.itemKey] = (m.combatItemCapBonus[offer.itemKey] || 0) + batch;
     }
@@ -322,6 +334,7 @@
   globalThis.getOwnedMiscCount = getOwnedMiscCount;
   globalThis.getAllOwnedMisc = getAllOwnedMisc;
   globalThis.addOwnedMisc = addOwnedMisc;
+  globalThis.spendOwnedMisc = spendOwnedMisc;
   globalThis.getTradePurchaseCount = getTradePurchaseCount;
   globalThis.commitFortuneTradePurchase = commitFortuneTradePurchase;
 })();
