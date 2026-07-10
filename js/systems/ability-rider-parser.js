@@ -54,7 +54,7 @@
   }
 
   function riderKey(r) {
-    return [r.kind, r.when || '', r.value || '', r.ailment || '', r.scope || ''].join('|');
+    return [r.kind, r.when || '', r.value || '', r.ailment || '', r.scope || '', r.guardTier || ''].join('|');
   }
 
   function hasRiderKind(riders, kind, when) {
@@ -87,6 +87,10 @@
 
   function tierDebuffPct(tier) {
     return DEBUFF_TIER_PCT[normalizeTierLabel(tier)] != null ? DEBUFF_TIER_PCT[normalizeTierLabel(tier)] : null;
+  }
+
+  function isTierGuardPhrase(slice) {
+    return /(minor|moderate|major|grand|epic|legendary)\s+guard\b/i.test(String(slice || ''));
   }
 
   function parseHybridFieldsFromText(row, text) {
@@ -337,11 +341,25 @@
       riders.push({ kind: 'gainAccNextHit', value: Number(nextAcc[1]), scope: 'self', when: parseRiderWhen(t) });
     }
 
-    // Guard / brace / counter / taunt
-    if (/\bguard\b/i.test(t) && /defence|defense|gain/i.test(t)) addSelf('gainGuard', 1);
+    // Guard / brace / counter / taunt — tier Guard uses gainGuarded(0); % resolved via AP/level in resolveGuardedReductionPct
+    for (var tg of t.matchAll(/\b(?:gain|gains?)\s+(Minor|Moderate|Major|Grand|Epic|Legendary)\s+Guard\b/gi)) {
+      addSelf('gainGuarded', 0, { guardTier: normalizeTierLabel(tg[1]), when: parseRiderWhen(t, tg[0]) });
+    }
+    if (!hasRiderKind(riders, 'gainGuarded')) {
+      for (var tg2 of t.matchAll(/\b(Minor|Moderate|Major|Grand|Epic|Legendary)\s+Guard\b/gi)) {
+        addSelf('gainGuarded', 0, { guardTier: normalizeTierLabel(tg2[1]), when: parseRiderWhen(t, tg2[0]) });
+        break;
+      }
+    }
+    if (/\bguard\b/i.test(t) && /defen[cs]e/i.test(t) && !isTierGuardPhrase(t)) addSelf('gainGuard', 1);
     var drM = t.match(/(\d+(?:\.\d+)?)\s*%\s*damage\s*reduction/i);
     if (drM) addSelf('gainGuarded', Number(drM[1]));
-    else if (/brace|damage reduction/i.test(t)) addSelf('gainGuarded', 0);
+    else if (/brace|damage reduction/i.test(t) && !isTierGuardPhrase(t)) addSelf('gainGuarded', 0);
+    for (var exg of t.matchAll(/\bexpose(?:s|d)?\s+(?:the\s+)?(?:enemy(?:'?s)?\s+)?guard\b|\bguard\s+exposed\b|\bexpose\s+guard\b/gi)) {
+      var exPctM = t.match(/(?:take|deal|deals?|takes?)\s+\+?\s*(\d+(?:\.\d+)?)\s*%\s*(?:more\s+)?damage/i)
+        || t.match(/\+?\s*(\d+(?:\.\d+)?)\s*%\s*damage(?:\s+taken)?/i);
+      addEnemy('exposeGuard', exPctM ? Number(exPctM[1]) : 18, { when: parseRiderWhen(t, exg[0]) || 'onHit' });
+    }
     for (var shDmg of t.matchAll(/gain a Shield equal to (\d+(?:\.\d+)?)\s*%\s*of damage dealt/gi)) {
       addSelf('gainShieldFromDamage', Number(shDmg[1]), { when: parseRiderWhen(t, shDmg[0]) });
     }
@@ -436,6 +454,15 @@
     }
 
     mapBonusVsAilmentToCondition(row);
+    if (row.noDamage && /^guard$/i.test(String(row.riderText || '').trim()) && !hasRiderKind(row.riders, 'gainGuarded')) {
+      var tierGuardM = text.match(/\b(Minor|Moderate|Major|Grand|Epic|Legendary)\s+Guard\b/i);
+      row.riders.push({
+        kind: 'gainGuarded',
+        value: 0,
+        scope: 'self',
+        guardTier: tierGuardM ? normalizeTierLabel(tierGuardM[1]) : 'minor',
+      });
+    }
     row._textEnriched = true;
     return row;
   }

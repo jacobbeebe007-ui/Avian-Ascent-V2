@@ -257,7 +257,12 @@
       case 'gainMdef': return seg('+' + v + '% Magic Defence' + w, 'mdef');
       case 'gainGuard': return seg('Guard' + w, 'def');
       case 'gainGuarded':
-      case 'gainBrace': return v > 0 ? seg(v + '% Damage Reduction' + w, 'def') : seg('Brace' + w, 'def');
+      case 'gainBrace':
+        if (r.guardTier) {
+          var gt = String(r.guardTier).charAt(0).toUpperCase() + String(r.guardTier).slice(1);
+          return seg('Gain ' + gt + ' Guard' + w, 'def');
+        }
+        return v > 0 ? seg(v + '% Damage Reduction' + w, 'def') : seg('Brace' + w, 'def');
       case 'gainCounter': return seg('Counter' + w, null);
       case 'gainTaunt': return seg('Taunt' + w, null);
       case 'reduceEnemyDodge': return seg('Enemy -' + v + '% Dodge' + w, 'dodge');
@@ -275,6 +280,7 @@
       case 'reduceEnemyAccFlat': return seg('Enemy -' + v + ' ACC' + w, 'acc');
       case 'purgeEnemyMinorBuff': return seg('Remove Minor enemy buff' + w, null);
       case 'guardBreak': return seg('Guard Break' + w, 'def');
+      case 'exposeGuard': return v > 1 ? seg('Expose Guard (+' + v + '% damage taken)' + w, 'def') : seg('Expose Guard (+' + Math.round(v * 100) + '% damage taken)' + w, 'def');
       case 'gainAccNextHit': return seg('+' + v + ' ACC on next hit' + w, 'acc');
       case 'healMaxHpPct': return seg('Heal ' + v + '% Max HP' + w, 'hp');
       case 'gainApNextTurn': return seg('+' + v + ' EN next turn' + w, null);

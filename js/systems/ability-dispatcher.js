@@ -402,8 +402,7 @@
 
   function shouldAutoApplyGuarded(row) {
     if (!row || !row.noDamage) return false;
-    if (row.target !== 'self' && row.target !== 'self_and_enemy') return false;
-    var text = String(row.riderText || row.shortDesc || '');
+    var text = String(row.riderText || row.shortDesc || row.displayText || '');
     if (/guard|brace|damage reduction/i.test(text)) return true;
     if (/guard/i.test(String(row.category || ''))) return true;
     return rowGrantsGuardedViaRider(row);
@@ -482,6 +481,16 @@
         spawnTrendFloat(floatSide, 'buff');
       },
       reduceEnemyAccFlat: function (n) { applyEnemyFlatDebuff('acc', n, sourceId); },
+      exposeGuard: function (n, _ps, _p, r) {
+        var g = globalThis.G;
+        if (!g || !g.enemyStatus) return;
+        var pct = Number(n) || 0;
+        if (pct <= 0) pct = 18;
+        if (pct > 1) pct = pct / 100;
+        var turns = (r && r.turns) || 2;
+        g.enemyStatus.exposedGuard = { pct: pct, turns: Math.max(1, Math.floor(Number(turns) || 2)) };
+        spawnTrendFloat('enemy', 'debuff');
+      },
     };
   }
 
@@ -596,7 +605,24 @@
   }
 
   function runRiders(row, ctx, ab) {
-    return runRidersForSide('player', row, ctx, ab);
+    if (!row || !row.riders || !row.riders.length) return 0;
+    var selfRiders = [];
+    var enemyRiders = [];
+    for (var ri = 0; ri < row.riders.length; ri++) {
+      var rr = row.riders[ri];
+      if (rr && rr.scope === 'enemy') enemyRiders.push(rr);
+      else selfRiders.push(rr);
+    }
+    ctx = ctx || {};
+    ctx.applied = ctx.applied || Object.create(null);
+    var count = 0;
+    if (selfRiders.length) {
+      count += runRidersForSide('player', Object.assign({}, row, { riders: selfRiders }), ctx, ab);
+    }
+    if (enemyRiders.length) {
+      count += runRidersForSide('player', Object.assign({}, row, { riders: enemyRiders }), ctx, ab);
+    }
+    return count;
   }
 
   function runPreRiders(row, ab) {
@@ -962,6 +988,9 @@
     if (!es) return;
     if (typeof globalThis.decaySourceStatLoans === 'function') {
       globalThis.decaySourceStatLoans(es, enemy, '_dispatcherStatLoans');
+    }
+    if (typeof globalThis.decayWorkbookDebuffLoans === 'function') {
+      globalThis.decayWorkbookDebuffLoans(enemy);
     }
     decayDispatcherDisplaySlots(es);
     delete es._dispatcherAccNextHitWatch;

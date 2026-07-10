@@ -491,5 +491,25 @@
     }
   };
 
+  function decayWorkbookDebuffLoans(enemy) {
+    var g = globalThis.G;
+    if (!g || !enemy || !enemy.stats || !g.enemyStatus || !g.enemyStatus._workbookDebuffLoans) return;
+    var bag = g.enemyStatus._workbookDebuffLoans;
+    for (var k in bag) {
+      var entry = bag[k];
+      if (!entry) continue;
+      entry.turns = (entry.turns || 1) - 1;
+      if (entry.turns <= 0) {
+        var sk = entry.statKey || String(k).split(':')[0];
+        enemy.stats[sk] = Math.round(((Number(enemy.stats[sk]) || 0) + (entry.amt || 0)) * 100) / 100;
+        delete bag[k];
+      }
+    }
+    if (!Object.keys(bag).length) delete g.enemyStatus._workbookDebuffLoans;
+  }
+
+  ns.decayWorkbookDebuffLoans = decayWorkbookDebuffLoans;
+  globalThis.decayWorkbookDebuffLoans = decayWorkbookDebuffLoans;
+
   globalThis.Avian = Avian;
 })();

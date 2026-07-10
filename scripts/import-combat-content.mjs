@@ -467,6 +467,14 @@ function tierDebuffPct(tier) {
   return DEBUFF_TIER_PCT[String(tier || '').toLowerCase().replace(/[^a-z]/g, '')] ?? null;
 }
 
+function isTierGuardPhrase(slice) {
+  return /(minor|moderate|major|grand|epic|legendary)\s+guard\b/i.test(String(slice || ''));
+}
+
+function normalizeGuardTier(tier) {
+  return String(tier || '').toLowerCase().replace(/[^a-z]/g, '');
+}
+
 function parseHybridScalingFromImportText(text) {
   const m = String(text || '').match(/Uses\s+(\d+(?:\.\d+)?)\s*%\s*ATK\s+and\s+(\d+(?:\.\d+)?)\s*%\s*MATK/i);
   if (!m) return null;
@@ -631,11 +639,25 @@ function parseRiders(riderText, codeTags, extraText = '') {
     addEnemy('reduceEnemyAccFlat', Number(gm[1]), { when: parseRiderWhen(text, gm[0]) });
   }
 
-  if (/\bguard\b/i.test(text) && /defence|defense|gain/i.test(text)) addSelf('gainGuard', 1);
+  for (const tg of text.matchAll(/\b(?:gain|gains?)\s+(Minor|Moderate|Major|Grand|Epic|Legendary)\s+Guard\b/gi)) {
+    addSelf('gainGuarded', 0, { guardTier: normalizeGuardTier(tg[1]), when: parseRiderWhen(text, tg[0]) });
+  }
+  if (!riders.some((r) => r.kind === 'gainGuarded')) {
+    for (const tg2 of text.matchAll(/\b(Minor|Moderate|Major|Grand|Epic|Legendary)\s+Guard\b/gi)) {
+      addSelf('gainGuarded', 0, { guardTier: normalizeGuardTier(tg2[1]), when: parseRiderWhen(text, tg2[0]) });
+      break;
+    }
+  }
+  if (/\bguard\b/i.test(text) && /defen[cs]e/i.test(text) && !isTierGuardPhrase(text)) addSelf('gainGuard', 1);
   if ((m = text.match(/(\d+(?:\.\d+)?)\s*%\s*damage\s*reduction/i))) {
     addSelf('gainGuarded', Number(m[1]));
-  } else if (/brace|damage reduction/i.test(text)) {
+  } else if (/brace|damage reduction/i.test(text) && !isTierGuardPhrase(text)) {
     addSelf('gainGuarded', 0);
+  }
+  for (const exg of text.matchAll(/\bexpose(?:s|d)?\s+(?:the\s+)?(?:enemy(?:'?s)?\s+)?guard\b|\bguard\s+exposed\b|\bexpose\s+guard\b/gi)) {
+    const exPctM = text.match(/(?:take|deal|deals?|takes?)\s+\+?\s*(\d+(?:\.\d+)?)\s*%\s*(?:more\s+)?damage/i)
+      || text.match(/\+?\s*(\d+(?:\.\d+)?)\s*%\s*damage(?:\s+taken)?/i);
+    addEnemy('exposeGuard', exPctM ? Number(exPctM[1]) : 18, { when: parseRiderWhen(text, exg[0]) || 'onHit' });
   }
   if (/counter\s*chance|small counter/i.test(text)) addSelf('gainCounter', 1);
   if (/taunt/i.test(text)) addSelf('gainTaunt', 1);

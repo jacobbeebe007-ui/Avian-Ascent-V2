@@ -9003,25 +9003,7 @@ function getTemplateCooldown(ab){
   const t=getAbilityTemplateForUI(ab);
   if(!t||!t.cooldownByLevel) return 0;
   const idx=Math.min((ab.level||1)-1,t.cooldownByLevel.length-1);
-  let cd=Math.max(0,t.cooldownByLevel[idx]||0);
-
-  const isSpell = (t.type==='spell' || t.btnType==='spell' || ab.type==='spell' || ab.btnType==='spell');
-  const isUlt = !!(ab.isUltimate) || /ultimate|verdict|cataclysm|apex/i.test(t.name||ab.name||'');
-
-  if(isSpell){
-    // Normal spells: 1–3 turns. Ult spells: 3–5 turns.
-    cd = isUlt ? clamp(cd,3,5) : clamp(cd,1,3);
-  }
-
-  // Class-specific pacing
-  cd += getClassCooldownAdjustment(ab, G.player);
-
-  // Never below 1 turn if the ability uses cooldowns
-  if(t.cooldownByLevel && (t.cooldownByLevel[idx]||0) > 0){
-    cd = Math.max(1, cd);
-  }
-
-  return cd;
+  return Math.max(0, t.cooldownByLevel[idx]||0);
 }
 function setAbilityCooldown(ab){
   const cd=getTemplateCooldown(ab);
@@ -9054,18 +9036,9 @@ function normalizeAbilityCooldownsForPlayer(p){
   p.abilities.forEach(ab=>{
     if(!ab||!ab.id) return;
     if(ab.id==='skipTurn'||ab.id==='sittingDuck'||ab.id==='endTurn') return;
-    const isMagic=(ab.type==='magic'||ab.btnType==='magic'||/spell|hex|curse|arcane|shadow|storm/i.test(ab.name||''));
-    const isUlt=/ultimate|verdict|cataclysm|apex/i.test(ab.name||'')||ab.isUltimate;
-    const cd=(ab.cooldownMax??ab.cooldown??ab.baseCooldown??0);
-    if(isMagic){
-      const target=isUlt?clamp(cd||4,3,5):clamp(cd||2,1,3);
-      ab.cooldownMax=target;
-      if(ab.cooldown==null) ab.cooldown=0;
-    } else {
-      const target=isUlt?clamp(cd||3,2,5):clamp(cd||1,0,3);
-      ab.cooldownMax=target;
-      if(ab.cooldown==null) ab.cooldown=0;
-    }
+    const target=getTemplateCooldown(ab);
+    ab.cooldownMax=target;
+    if(ab.cooldown==null) ab.cooldown=0;
   });
 }
 
@@ -10219,6 +10192,11 @@ function tickShieldHpStatus(side){
 }
 globalThis.applyShieldHp=applyShieldHp;
 globalThis.applyDamageThroughShield=applyDamageThroughShield;
+globalThis.applyGuardedBuff=applyGuardedBuff;
+globalThis.resolveGuardedReductionPct=resolveGuardedReductionPct;
+globalThis.applySourceStatLoan=applySourceStatLoan;
+globalThis.applySourceStatLoanPct=applySourceStatLoanPct;
+globalThis.decaySourceStatLoans=decaySourceStatLoans;
 
 function tickGuardedStatus(status){
   if(!status?.guarded||typeof status.guarded!=='object') return;
@@ -10235,11 +10213,11 @@ function playerIsGuarding(playerStatus){
 function resolveGuardedReductionPct(row, riderValue=0, ab=null){
   const explicit=Number(riderValue)||0;
   if(explicit>0) return Math.min(90, explicit);
-  const text=String(row?.riderText||row?.shortDesc||'');
-  const m=text.match(/(\d+(?:\.\d+)?)\s*%\s*damage\s*reduction/i);
+  const text=[row?.riderText, row?.shortDesc, row?.displayText].filter(Boolean).join('\n');
+  const m=String(text).match(/(\d+(?:\.\d+)?)\s*%\s*damage\s*reduction/i);
   if(m) return Math.min(90, Number(m[1]));
   const level=Math.max(1, Math.floor(Number(ab?.level)||Number(row?.level)||1));
-  const ap=Math.max(1, Math.floor(Number(row?.apCost)||1));
+  const ap=Math.max(1, Math.floor(Number(row?.apCost)||Number(row?.enCost)||1));
   let base=15, step=5;
   if(ap===2){ base=22; step=6; }
   else if(ap>=3){ base=30; step=7; }
@@ -15668,7 +15646,7 @@ function buildRefGuide() {
     ${card('War Room & Character Select','Mission map sets difficulty and Story vs Endless. Begin Ascent opens Character Select to pick your bird. Inventory holds feathers and artifacts; Supplies holds this Reference codex.',true,'war-room')}
     ${card('Bird Cards & Tiers','Hatch at The Hatchery. Duplicate hatches grant Species Feathers. Spend feathers in Feather Sack or Character Select to raise stars and ascend tiers — higher tiers boost stats for that species. Passives and class perks stay fixed.',true,'bird-cards')}
     ${card('Species Feathers','Per-bird currency from duplicate hatches at The Hatchery. Fuels card star and tier upgrades in Feather Sack or Character Select.',true,'species-feathers')}
-    ${card('Energy & Cooldowns','Main attacks are free unless spells. Abilities spend energy and many skills have cooldowns.',true,'core')}
+    ${card('Energy & Cooldowns','Main attacks are free unless spells. Abilities spend energy; multi-turn cooldowns only apply when set on a specific skill.',true,'core')}
     ${card('Post-Battle Recovery','Story: heal 20% max HP after each bird you defeat in a stage (including multi-bird nodes). Endless: heal 33% max HP after each victory. Halved with Hunter\'s Cruelty mutation.',true,'heal')}
     ${card('Role Taxonomy','Birds are grouped by combat roles: Striker, Bruiser, Tank, Trickster, Predator, Singer.',true,'roles')}
     <div class="ref-skill-card ref-aspect-chart-card" style="grid-column:1/-1">

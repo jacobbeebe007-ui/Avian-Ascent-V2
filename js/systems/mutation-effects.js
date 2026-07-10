@@ -227,7 +227,7 @@
   function applyMinorAccDown(target) {
     var status = target === 'enemy' ? G().enemyStatus : G().playerStatus;
     if (!status) return;
-    status.accDown = (status.accDown || 0) + 8;
+    status.accDebuff = (status.accDebuff || 0) + 8;
   }
 
   function applyMinorDefDown(target) {
