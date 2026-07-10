@@ -367,6 +367,48 @@ if (sparrowData) {
 check('BIRDS.sparrow.mainAttackId matches slot0 starter', BIRDS?.sparrow?.mainAttackId === starterId, `got=${BIRDS?.sparrow?.mainAttackId}`);
 check('BIRDS.sparrow.passive is set', !!BIRDS?.sparrow?.passive?.id);
 
+const birdKeys = BIRDS && typeof BIRDS === 'object' ? Object.keys(BIRDS) : [];
+const missingFamilyCatalogBirds = [];
+const familyCatalogSlotIssues = [];
+for (const birdKey of birdKeys) {
+  const birdData = FAMILY_EVOLUTION_BIRD_DATA?.[birdKey];
+  if (!birdData) {
+    missingFamilyCatalogBirds.push(birdKey);
+    continue;
+  }
+  const slotLayout = birdData.slotLayout || [];
+  if (slotLayout.length !== 7) {
+    familyCatalogSlotIssues.push(`${birdKey}:slotLayout=${slotLayout.length}`);
+    continue;
+  }
+  if (!slotLayout[0]?.abilityId || !slotLayout[1]?.abilityId) {
+    familyCatalogSlotIssues.push(`${birdKey}:starterIds=${slotLayout[0]?.abilityId || ''}|${slotLayout[1]?.abilityId || ''}`);
+  }
+}
+check('FAMILY_EVOLUTION_BIRD_DATA covers every BIRDS key', missingFamilyCatalogBirds.length === 0, missingFamilyCatalogBirds.join(', ') || 'none');
+check('every bird family catalog has 7 slots with starter abilities', familyCatalogSlotIssues.length === 0, familyCatalogSlotIssues.join(', ') || 'none');
+
+if (typeof sandbox.ensureFamilyEvolutionState === 'function') {
+  const familyEvolutionWarnBirds = [];
+  const prevWarn = console.warn;
+  console.warn = (...args) => {
+    const msg = args.map((a) => String(a)).join(' ');
+    if (msg.includes('[family-evolution]')) {
+      const match = msg.match(/birdKey=([^;]+)/);
+      if (match) familyEvolutionWarnBirds.push(match[1]);
+    }
+    prevWarn(...args);
+  };
+  try {
+    for (const birdKey of birdKeys) {
+      sandbox.ensureFamilyEvolutionState({ birdKey, abilities: [] });
+    }
+    check('ensureFamilyEvolutionState emits no family-evolution warnings for any bird', familyEvolutionWarnBirds.length === 0, familyEvolutionWarnBirds.join(', ') || 'none');
+  } finally {
+    console.warn = prevWarn;
+  }
+}
+
 // Sanity: no remaining legacy ability ids in BIRDS
 const legacyIds = ['rapidPeck', 'beak_jab', 'multiPeck', 'dart', 'windFeint', 'trackPrey'];
 const legacyMain = legacyIds.includes(String(BIRDS?.sparrow?.mainAttackId || ''));

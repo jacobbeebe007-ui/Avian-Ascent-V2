@@ -3055,7 +3055,11 @@ function ensureFamilyEvolutionState(player){
   }else{
     try{
       if(birdKey && BIRDS?.[birdKey]){
-        console.warn('[family-evolution] No combat-pack catalog for birdKey='+birdKey+'; falling back to flat ability slots. Rebuild the bundle (npm run bundle) if this persists.');
+        const packLoaded = !!(Avian?.data?.combatPack?.families && Avian?.data?.combatPack?.skillTrees);
+        const warnDetail = packLoaded
+          ? 'falling back to flat ability slots.'
+          : 'combat pack did not load; rebuild the bundle (npm run bundle) and hard-refresh to clear the service worker cache.';
+        console.warn('[family-evolution] No combat-pack catalog for birdKey='+birdKey+'; '+warnDetail);
       }
     }catch(_e){}
     const mirrored = Array.isArray(player.abilities)

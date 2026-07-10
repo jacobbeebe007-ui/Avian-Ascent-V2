@@ -27,7 +27,7 @@
   'use strict';
   var Avian = globalThis.Avian || (globalThis.Avian = {});
   if (!Avian.data || !Avian.data.combatPack) {
-    console.warn('[combat-pack-boot] missing Avian.data.combatPack — skipping bind.');
+    console.warn('[combat-pack-boot] missing Avian.data.combatPack — skipping bind. All birds will fall back to flat ability slots until the bundle is rebuilt (npm run bundle) and the page is hard-refreshed to clear the service worker cache.');
     return;
   }
   var pack = Avian.data.combatPack;
@@ -334,9 +334,17 @@
     if (typeof globalThis.FAMILY_EVOLUTION_BIRD_DATA === 'object' && globalThis.FAMILY_EVOLUTION_BIRD_DATA) {
       for (var fkk in globalThis.FAMILY_EVOLUTION_BIRD_DATA) delete globalThis.FAMILY_EVOLUTION_BIRD_DATA[fkk];
       if (typeof globalThis.BIRDS === 'object' && globalThis.BIRDS) {
+        var missingFamilyCatalogs = [];
         for (var bk2 in globalThis.BIRDS) {
           var entry = buildFamilyForBird(bk2);
-          if (entry) globalThis.FAMILY_EVOLUTION_BIRD_DATA[bk2] = entry;
+          if (entry) {
+            globalThis.FAMILY_EVOLUTION_BIRD_DATA[bk2] = entry;
+          } else {
+            missingFamilyCatalogs.push(bk2);
+          }
+        }
+        if (missingFamilyCatalogs.length) {
+          console.warn('[combat-pack-boot] missing family catalog for: ' + missingFamilyCatalogs.join(', '));
         }
       }
     }
