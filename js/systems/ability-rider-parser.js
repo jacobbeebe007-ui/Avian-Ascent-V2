@@ -30,6 +30,10 @@
     if (/if\s+poison\s+applies?|when\s+poison\s+applies?/i.test(slice)) return 'onAilment:poison';
     if (/if\s+paralys/i.test(slice)) return 'onAilment:paralyzed';
     if (/if\s+delayed\s+applies?/i.test(slice)) return 'onAilment:delayed';
+    if (/guard\s+is\s+(?:already\s+)?active|already\s+guarded|while\s+guard(?:ing)?|if\s+(?:you\s+)?(?:are\s+)?(?:already\s+)?guard(?:ing)?|while\s+guarded/i.test(combined)) return 'guardActive';
+    if (/guard\s+is\s+not\s+active|(?:if|when)\s+(?:you\s+)?(?:do\s+not|don't|are\s+not)\s+(?:have\s+)?guard|(?:otherwise|instead|else)\s+gain\s+(?:a\s+)?(?:minor|major|grand|epic|legendary|moderate\s+)?guard/i.test(combined)) return 'guardInactive';
+    if (/(?:have|has|with)\s+(?:a\s+)?(?:active\s+)?shield|shield\s+is\s+(?:already\s+)?active|while\s+shielded/i.test(combined)) return 'shieldActive';
+    if (/shield\s+is\s+not\s+active|(?:if|when)\s+(?:you\s+)?(?:do\s+not|don't|have\s+no)\s+(?:have\s+)?(?:a\s+)?shield/i.test(combined)) return 'shieldInactive';
     return null;
   }
 
@@ -74,19 +78,34 @@
     return null;
   }
 
-  var BUFF_TIER_PCT = { minor: 6, major: 8, grand: 12, epic: 18, legendary: 25 };
-  var DEBUFF_TIER_PCT = { minor: 6, major: 8, severe: 12, critical: 18, lethal: 25, crippling: 12, ruinous: 18, fatal: 25 };
-
   function normalizeTierLabel(tier) {
     return String(tier || '').toLowerCase().replace(/[^a-z]/g, '');
   }
 
+  function tierBuffPctValue(tier) {
+    var buff = (globalThis.Avian && globalThis.Avian.data && globalThis.Avian.data.effectTiers && globalThis.Avian.data.effectTiers.buff)
+      || { minor: 6, major: 8, grand: 12, epic: 18, legendary: 25 };
+    var key = normalizeTierLabel(tier);
+    return buff[key] != null ? buff[key] : null;
+  }
+
+  function tierDebuffPctValue(tier) {
+    var debuff = (globalThis.Avian && globalThis.Avian.data && globalThis.Avian.data.effectTiers && globalThis.Avian.data.effectTiers.debuff)
+      || { minor: 6, major: 8, crippling: 12, ruinous: 18, fatal: 25 };
+    var key = normalizeTierLabel(tier);
+    return debuff[key] != null ? debuff[key] : null;
+  }
+
   function tierBuffPct(tier) {
-    return BUFF_TIER_PCT[normalizeTierLabel(tier)] != null ? BUFF_TIER_PCT[normalizeTierLabel(tier)] : null;
+    return tierBuffPctValue(tier);
   }
 
   function tierDebuffPct(tier) {
-    return DEBUFF_TIER_PCT[normalizeTierLabel(tier)] != null ? DEBUFF_TIER_PCT[normalizeTierLabel(tier)] : null;
+    var v = tierDebuffPctValue(tier);
+    if (v != null) return v;
+    var alias = { severe: 'crippling', critical: 'ruinous', lethal: 'fatal' };
+    var mapped = alias[normalizeTierLabel(tier)];
+    return mapped ? tierDebuffPctValue(mapped) : null;
   }
 
   function isTierGuardPhrase(slice) {
@@ -365,14 +384,20 @@
     }
     if (/\bshield\b/i.test(t) && /temp|temporary|max\s*hp|max\s*health|health/i.test(t)) {
       var shM = t.match(/(\d+(?:\.\d+)?)\s*%\s*(?:max\s*)?(?:hp|health)/i);
-      addSelf('gainShield', shM ? Number(shM[1]) : 0);
+      addSelf('gainShield', shM ? Number(shM[1]) : 0, { when: parseRiderWhen(t, shM ? shM[0] : t) });
     } else if (/\b(?:gain a |gain )\s*(minor|major|grand|epic|legendary|moderate)\s+shield\b/i.test(t)) {
-      addSelf('gainShield', 0);
+      var shTierM = t.match(/\b(?:gain a |gain )\s*(minor|major|grand|epic|legendary|moderate)\s+shield\b/i);
+      addSelf('gainShield', 0, { when: parseRiderWhen(t, shTierM ? shTierM[0] : t) });
     } else if (/\b(minor|major|grand|epic|legendary|moderate)\s+shield\b/i.test(t)) {
-      addSelf('gainShield', 0);
+      var shTierM2 = t.match(/\b(minor|major|grand|epic|legendary|moderate)\s+shield\b/i);
+      addSelf('gainShield', 0, { when: parseRiderWhen(t, shTierM2 ? shTierM2[0] : t) });
     } else if (/\b(?:gain|gains?)\s+(minor|major|grand|epic|legendary)\s+shield\b/i.test(t)) {
-      addSelf('gainShield', 0);
-    } else if (/\bgain\s+shield\b/i.test(t)) addSelf('gainShield', 0);
+      var shTierM3 = t.match(/\b(?:gain|gains?)\s+(minor|major|grand|epic|legendary)\s+shield\b/i);
+      addSelf('gainShield', 0, { when: parseRiderWhen(t, shTierM3 ? shTierM3[0] : t) });
+    } else if (/\bgain\s+shield\b/i.test(t)) {
+      var shPlainM = t.match(/\bgain\s+shield\b/i);
+      addSelf('gainShield', 0, { when: parseRiderWhen(t, shPlainM ? shPlainM[0] : t) });
+    }
 
     if (/if the target has a minor buff,\s*remove it/i.test(t)) {
       riders.push({ kind: 'purgeEnemyMinorBuff', scope: 'enemy', when: when || 'onHit' });
@@ -398,10 +423,25 @@
     }
     if (/low\s*HP|below\s+\d+%\s+Health|low-Health/i.test(t)) {
       var lowM = t.match(/below\s+(\d+(?:\.\d+)?)\s*%/i);
-      riders.push({ kind: 'bonusVsLowHp', threshold: lowM ? Number(lowM[1]) / 100 : 0.35, value: 0 });
+      var lowPctM = t.match(/\+?\s*(\d+(?:\.\d+)?)\s*%/);
+      riders.push({
+        kind: 'bonusVsLowHp',
+        threshold: lowM ? Number(lowM[1]) / 100 : 0.35,
+        value: lowPctM ? Number(lowPctM[1]) : 15,
+      });
     }
 
+    applyGuardShieldBranchWhen(riders, t);
     return riders;
+  }
+
+  function applyGuardShieldBranchWhen(riders, text) {
+    if (!Array.isArray(riders) || !/if\s+guard[\s\S]{0,120}(?:otherwise|instead|else)[\s\S]{0,120}shield/i.test(String(text || ''))) return;
+    riders.forEach(function (r) {
+      if (!r || r.when) return;
+      if (r.kind === 'gainGuarded' || r.kind === 'gainGuard') r.when = 'guardInactive';
+      else if (r.kind === 'gainShield' || r.kind === 'gainShieldFromDamage') r.when = 'guardActive';
+    });
   }
 
   function mapBonusVsAilmentToCondition(row) {
@@ -419,6 +459,20 @@
         row.conditionalAbilityPower = 1 + (Number(r.value) || 0) / 100;
         row.conditionalAbilityPowerMode = row.conditionalAbilityPowerMode || 'multiply';
       }
+    }
+    mapBonusVsLowHpToCondition(row);
+  }
+
+  function mapBonusVsLowHpToCondition(row) {
+    if (!row || row.condition) return;
+    if (!row.riders || !row.riders.length) return;
+    for (var j = 0; j < row.riders.length; j++) {
+      var lr = row.riders[j];
+      if (lr.kind !== 'bonusVsLowHp') continue;
+      row.condition = 'targetLowHp';
+      row.conditionalAbilityPower = 1 + (Number(lr.value) || 15) / 100;
+      row.conditionalAbilityPowerMode = row.conditionalAbilityPowerMode || 'multiply';
+      break;
     }
   }
 

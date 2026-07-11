@@ -2,13 +2,26 @@
 (function () {
   'use strict';
 
+  function tierBuffTable() {
+    return (globalThis.Avian && globalThis.Avian.data && globalThis.Avian.data.effectTiers && globalThis.Avian.data.effectTiers.buff)
+      || { minor: 6, major: 8, grand: 12, epic: 18, legendary: 25 };
+  }
+
+  function tierDebuffTable() {
+    return (globalThis.Avian && globalThis.Avian.data && globalThis.Avian.data.effectTiers && globalThis.Avian.data.effectTiers.debuff)
+      || { minor: 6, major: 8, crippling: 12, ruinous: 18, fatal: 25 };
+  }
+
+  var buff = tierBuffTable();
+  var debuff = tierDebuffTable();
+
   var MAGNITUDES = {
-    accUp: { minor: 6, major: 10, grand: 15, epic: 20, legendary: 25 },
-    accDown: { minor: 6, major: 10, severe: 15, critical: 20, lethal: 25 },
-    dodgeUp: { minor: 3, major: 5, grand: 8, epic: 10, legendary: 12 },
-    dodgeDown: { minor: 3, major: 5, severe: 8, critical: 10, lethal: 12 },
-    critChanceUp: { minor: 5, major: 8, grand: 12, epic: 16, legendary: 20 },
-    critChanceDown: { minor: 5, major: 8, severe: 12, critical: 16, lethal: 20 },
+    accUp: { minor: buff.minor, major: buff.major, grand: buff.grand, epic: buff.epic, legendary: buff.legendary },
+    accDown: { minor: debuff.minor, major: debuff.major, severe: debuff.crippling, critical: debuff.ruinous, lethal: debuff.fatal },
+    dodgeUp: { minor: buff.minor, major: buff.major, grand: buff.grand, epic: buff.epic, legendary: buff.legendary },
+    dodgeDown: { minor: debuff.minor, major: debuff.major, severe: debuff.crippling, critical: debuff.ruinous, lethal: debuff.fatal },
+    critChanceUp: { minor: buff.minor, major: buff.major, grand: buff.grand, epic: buff.epic, legendary: buff.legendary },
+    critChanceDown: { minor: debuff.minor, major: debuff.major, severe: debuff.crippling, critical: debuff.ruinous, lethal: debuff.fatal },
     critDamageUp: { minor: 0.10, major: 0.15, grand: 0.25, epic: 0.35, legendary: 0.50 },
     critDamageDown: { minor: 0.10, major: 0.15, severe: 0.25, critical: 0.35, lethal: 0.50 },
   };

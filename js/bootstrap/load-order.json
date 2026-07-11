@@ -19,6 +19,7 @@
     "js/data/combat-pack/families.js",
     "js/data/combat-pack/skill-trees.js",
     "js/data/combat-pack/ability-aliases.js",
+    "js/data/combat-pack/legacy-ability-aliases.js",
     "js/data/combat-pack/bird-passives.js",
     "js/data/combat-pack/endless-passives.js",
     "js/data/combat-pack/shop-pool.js",

@@ -545,6 +545,28 @@
       (es.paralyzed > 0) || !!es.confused || (es.accDebuff > 0);
   }
 
+  function resolveRiderOwnerSide(ctx) {
+    return ctx && ctx.ownerSide === 'enemy' ? 'enemy' : 'player';
+  }
+
+  function sideIsGuarding(side) {
+    var g = globalThis.G;
+    if (!g) return false;
+    var ps = side === 'enemy' ? g.enemyStatus : g.playerStatus;
+    if (side === 'player' && typeof globalThis.playerIsGuarding === 'function') {
+      return globalThis.playerIsGuarding(ps);
+    }
+    if ((ps && ps.defending) > 0) return true;
+    return typeof globalThis.getGuardedPhysReducPct === 'function' && globalThis.getGuardedPhysReducPct(ps) > 0;
+  }
+
+  function sideHasShield(side) {
+    var g = globalThis.G;
+    if (!g) return false;
+    var entity = side === 'enemy' ? g.enemy : g.player;
+    return (entity && entity.stats && Number(entity.stats.shieldHp) > 0);
+  }
+
   function riderWhenMatches(r, ctx) {
     var w = r.when;
     if (!w) return true;
@@ -572,6 +594,10 @@
       var aid = w.slice('onAilment:'.length);
       return ctx.ailmentsApplied && ctx.ailmentsApplied[aid];
     }
+    if (w === 'guardActive') return sideIsGuarding(resolveRiderOwnerSide(ctx));
+    if (w === 'guardInactive') return !sideIsGuarding(resolveRiderOwnerSide(ctx));
+    if (w === 'shieldActive') return sideHasShield(resolveRiderOwnerSide(ctx));
+    if (w === 'shieldInactive') return !sideHasShield(resolveRiderOwnerSide(ctx));
     return false;
   }
 
@@ -626,7 +652,7 @@
   }
 
   function runPreRiders(row, ab) {
-    runRiders(row, { hitsLanded: 1, ailmentsApplied: {} }, ab);
+    runRiders(row, { hitsLanded: 0, hitsAttempted: 0, ailmentsApplied: {} }, ab);
     if (shouldAutoApplyGuarded(row) && !rowGrantsGuardedViaRider(row)) {
       applyGuardedFromRow(row, 0, ab);
     }

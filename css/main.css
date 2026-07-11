@@ -4592,6 +4592,9 @@ body.ui-mobile-mode #screen-select #mobile-select-details-anchor{display:block;o
 .nest-ab-slot-card.selected{border-color:var(--gold);box-shadow:0 0 0 1px rgba(201,168,76,.35);}
 .nest-ab-slot-card.empty{opacity:.85;border-style:dashed;}
 .nest-ab-slot-card.is-tier-locked{opacity:.55;border-style:dashed;border-color:rgba(120,130,150,.35);background:rgba(8,12,18,.5);}
+.nest-ab-slot-card.nest-ab-slot-missing{border-color:rgba(220,120,80,.55);box-shadow:0 0 0 1px rgba(220,120,80,.2);}
+.nest-ab-warn{font-size:.72rem;color:#e8a060;line-height:1.35;margin-top:4px;}
+.nest-ab-warn code{font-size:.68rem;color:#f0c090;}
 .nest-ab-lock-tag{font-size:.62rem;color:var(--text-dim);letter-spacing:.05em;text-transform:uppercase;border:1px solid rgba(120,130,150,.35);border-radius:4px;padding:1px 6px;}
 .nest-ab-slot-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;}
 .nest-ab-slot-idx{font-size:.68rem;color:var(--text-dim);letter-spacing:.06em;text-transform:uppercase;}

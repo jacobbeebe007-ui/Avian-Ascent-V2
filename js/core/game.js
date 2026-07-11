@@ -2402,12 +2402,16 @@ function buildNestAbilitySection(player){
       continue;
     }
     const label=getSkillSlotDisplayLabel(slot);
-    const tmpl=slot.abilityId?(getAbilityTemplateForUI(slot.abilityId)||{}):{};
-    const packRow=slot.abilityId&&typeof packRowForAbility==='function'?packRowForAbility({id:slot.abilityId}):null;
-    const brief=typeof formatAbilityBlurbHtml==='function'
-      ? formatAbilityBlurbHtml({id:slot.abilityId}, tmpl, packRow)
-      : (typeof buildAbilityCombatBriefHtml==='function'?buildAbilityCombatBriefHtml({id:slot.abilityId}, packRow):'');
-    equippedHtml+=`<div class="nest-ab-slot-card${!slot.abilityId?' empty':''}" data-nest-ab-slot="${slot.slotIndex}">
+    const canonId=slot.abilityId&&typeof resolveAbilityAliasSourceId==='function'?resolveAbilityAliasSourceId(slot.abilityId):slot.abilityId;
+    const tmpl=slot.abilityId?(getAbilityTemplateForUI(canonId)||getAbilityTemplateForUI(slot.abilityId)||{}):{};
+    const packRow=slot.abilityId&&typeof packRowForAbility==='function'?packRowForAbility({id:canonId||slot.abilityId}):null;
+    const missingTemplate=!!(slot.abilityId && !tmpl?.id && !tmpl?.name);
+    const brief=missingTemplate
+      ? `<p class="nest-ab-warn">Ability data missing for <code>${escapeHtmlRoster(slot.abilityId)}</code>. Hard-refresh after rebuilding the bundle.</p>`
+      : (typeof formatAbilityBlurbHtml==='function'
+      ? formatAbilityBlurbHtml({id:canonId||slot.abilityId}, tmpl, packRow)
+      : (typeof buildAbilityCombatBriefHtml==='function'?buildAbilityCombatBriefHtml({id:canonId||slot.abilityId}, packRow):''));
+    equippedHtml+=`<div class="nest-ab-slot-card${!slot.abilityId?' empty':''}${missingTemplate?' nest-ab-slot-missing':''}" data-nest-ab-slot="${slot.slotIndex}">
       <div class="nest-ab-slot-head"><span class="nest-ab-slot-idx">Slot ${slot.slotIndex+1}</span></div>
       <div class="nest-ab-name">${slot.abilityId?escapeHtmlRoster(label):'<span class="nest-inv-empty">Empty</span>'}</div>
       ${brief?`<div class="nest-ab-desc btn-desc-lines">${brief}</div>`:''}
@@ -6326,6 +6330,15 @@ function prepareEnemyCombatLoadout(enemy){
   if(typeof ensureFamilyEvolutionState==='function') ensureFamilyEvolutionState(enemy);
   if(typeof syncPlayerAbilitiesFromSkillSlots==='function') syncPlayerAbilitiesFromSkillSlots(enemy);
   if(enemy.stats) normalizeCombatStats(enemy.stats);
+  const abs=enemy.abilities||[];
+  if(abs.length<1 && enemy.birdKey && typeof materializeEnemySkillsFromWorkbookKit==='function'){
+    const lv=Math.max(1, Number(enemy.storyLevel||enemy.effectiveLevel)||1);
+    const cls=enemy.enemyClass||inferEnemyClassFromStyle(enemy.aiStyle)||'predator';
+    materializeEnemySkillsFromWorkbookKit(enemy, enemy.birdKey, lv, cls);
+  }
+  if(!(enemy.abilities||[]).length){
+    console.warn('[combat] empty enemy abilities after loadout sync', enemy.birdKey||enemy.name, enemy.id);
+  }
 }
 globalThis.prepareEnemyCombatLoadout=prepareEnemyCombatLoadout;
 
@@ -6428,6 +6441,12 @@ function resetForNewBattle(){
     delete G.player._ostrichSpdLoan;
     delete G.player._albatrossSpdLoan;
     delete G.player._ravenGrimSpdLoan;
+  }
+  if(G.enemy){
+    const enProf=getEnemyEnergyProfile();
+    G.enemy.energyMax=enProf.maxEN;
+    G.enemy.energy=enProf.startEN;
+    G.enemy.energyRegen=enProf.regenEN;
   }
 }
 
@@ -6629,6 +6648,7 @@ function loadStage() {
   G.turnPhase = G.turn==='player'?TURN.PLAYER:TURN.ENEMY;
   G.phase = G.turn==='player' ? 'PLAYER' : 'ENEMY';
   if(G.turn==='player') startPlayerTurn(G.player);
+  else if(G.enemy) syncEnemyEnergyForBattleDisplay(G.enemy);
   // #region agent log
   _agentDbgLog('game.js:loadStage:afterStartPlayerTurn', 'after turn init', { turn: G.turn, playerEnergy: G.player?.energy, enemyHp: G.enemy?.stats?.hp }, 'H5');
   // #endregion
@@ -8996,14 +9016,34 @@ function getClassCooldownAdjustment(ab, player){
   return 0;
 }
 
+function isDirectHealingAbility(ab){
+  if(!ab?.id) return false;
+  const row=(typeof packRowForAbility==='function'?packRowForAbility(ab):null)
+    || (Avian?.data?.combatPack?.skillTrees?.[ab.id]);
+  if(row){
+    const riders=Array.isArray(row.riders)?row.riders:[];
+    if(riders.some(r=>r&&r.kind==='healMaxHpPct')) return true;
+  }
+  const patch=ABILITY_ENERGY_PATCH[ab.id];
+  if(patch?.role?.includes('heal')) return true;
+  const tags=ABILITY_DISPLAY_TAGS[ab.id];
+  if(tags?.includes('HEAL') && !tags.includes('SPELL') && !tags.includes('BASIC') && !tags.includes('HEAVY')) return true;
+  return false;
+}
+
 function getTemplateCooldown(ab){
   const packRow=(typeof packRowForAbility==='function'?packRowForAbility(ab):null)
     || (Avian?.data?.combatPack?.skillTrees?.[ab?.id]);
-  if(packRow && Number(packRow.cooldown)>0) return Number(packRow.cooldown);
-  const t=getAbilityTemplateForUI(ab);
-  if(!t||!t.cooldownByLevel) return 0;
-  const idx=Math.min((ab.level||1)-1,t.cooldownByLevel.length-1);
-  return Math.max(0, t.cooldownByLevel[idx]||0);
+  let base=0;
+  if(packRow && Number(packRow.cooldown)>0) base=Number(packRow.cooldown);
+  else {
+    const t=getAbilityTemplateForUI(ab);
+    if(t?.cooldownByLevel){
+      const idx=Math.min((ab.level||1)-1,t.cooldownByLevel.length-1);
+      base=Math.max(0, t.cooldownByLevel[idx]||0);
+    }
+  }
+  return isDirectHealingAbility(ab)?Math.max(base,1):base;
 }
 function setAbilityCooldown(ab){
   const cd=getTemplateCooldown(ab);
@@ -10130,14 +10170,18 @@ function applyGuardedBuff(side, opts={}){
   }
 }
 
-const SHIELD_TIER_PCT={minor:6,moderate:8,major:8,grand:12,epic:18,legendary:25};
+function getTierBuffPct(tier){
+  const buff=Avian?.data?.effectTiers?.buff||{minor:6,major:8,grand:12,epic:18,legendary:25};
+  const key=String(tier||'').toLowerCase().replace(/[^a-z]/g,'');
+  return buff[key]!=null?buff[key]:8;
+}
 
 function resolveShieldAmountFromOpts(opts, maxHp){
   const cap=Math.max(1, Number(maxHp)||1);
   let amount=Math.max(0, Number(opts?.amount)||0);
   if(amount<=0 && opts?.maxHpPct) amount=Math.max(1, Math.floor(cap*Number(opts.maxHpPct)/100));
   if(amount<=0 && opts?.tier){
-    const pct=SHIELD_TIER_PCT[String(opts.tier).toLowerCase()]||8;
+    const pct=getTierBuffPct(opts.tier);
     amount=Math.max(1, Math.floor(cap*pct/100));
   }
   if(amount<=0 && opts?.pct) amount=Math.max(1, Math.floor(cap*Number(opts.pct)/100));
@@ -12154,6 +12198,13 @@ function startPlayerTurn(player){
     }
   }
 }
+function syncEnemyEnergyForBattleDisplay(enemy){
+  if(!enemy) return;
+  const prof=getEnemyEnergyProfile();
+  enemy.energyMax=prof.maxEN;
+  enemy.energyRegen=Number.isFinite(enemy.energyRegen)?enemy.energyRegen:prof.regenEN;
+  enemy.energy=Math.min(prof.maxEN, Math.max(0, prof.startEN));
+}
 function startEnemyTurn(enemy){
   const prof=getEnemyEnergyProfile();
   const maxEn=prof.maxEN;
@@ -12162,8 +12213,7 @@ function startEnemyTurn(enemy){
   const ete = (G._enemyEnergyTurnIndex|0);
   if(ete === 0){
     G._enemyEnergyTurnIndex = 1;
-    const cur = Number.isFinite(enemy.energy) ? enemy.energy : prof.startEN;
-    enemy.energy = Math.min(maxEn, Math.max(0, cur));
+    enemy.energy = Math.min(maxEn, Math.max(0, prof.startEN));
   }else{
     const r = enemy.energyRegen || prof.regenEN;
     enemy.energy = Math.min(maxEn, Math.max(0, (enemy.energy||0) + r));
@@ -13143,7 +13193,11 @@ function dukeSummonCourt(){
   logMsg('🛡️ The Court gathers—wardens at his wings.','boss');
 }
 function dukeTurnAI(){
-  const e=G.enemy; const d=e.duke;
+  const e=G.enemy;
+  if(!e.duke){
+    e.duke={phase:1,nightfallTurns:0,decreeKey:null,decreeStacks:0,riverCd:0,summonCd:0,verdictCd:0};
+  }
+  const d=e.duke;
   const mem=getEnemyAIMemory(e);
   const enraged=isBossEnrageAllowed() && e.stats.hp<=Math.floor(e.stats.maxHp*0.35);
   if(enraged) setStatusMax(G.enemyStatus,'enraged',2);
@@ -13202,12 +13256,21 @@ function rollEnemyCombatRowAilment(ab, tmpl, totalDmg, hitsLanded) {
   return applied;
 }
 
+function refundEnemyActionEnergy(enemy, cost){
+  if(!enemy || cost<=0) return;
+  const maxEn=enemy.energyMax||getEnemyEnergyProfile().maxEN;
+  enemy.energy=Math.min(maxEn, Math.max(0, (enemy.energy||0)+cost));
+  if(typeof renderEnemyPlan==='function') renderEnemyPlan();
+}
+
 async function executeEnemyKitTemplateAbility(enemy, abilityId, totalEnemyMiss){
   const ab=(enemy.abilities||[]).find(a=>a&&a.id===abilityId)||{id:abilityId,level:Math.max(1,Math.min(4,enemy.storyLevel||1))};
   const tmpl=getAbilityTemplateForUI(ab);
   if(!tmpl){
+    const canon=typeof resolveAbilityAliasSourceId==='function'?resolveAbilityAliasSourceId(abilityId):abilityId;
+    console.warn('[combat] enemy ability missing template', { abilityId, canon, enemy: enemy.name, birdKey: enemy.birdKey });
     logMsg(`${enemy.name} hesitates.`,'miss');
-    return;
+    return false;
   }
   const btn=String(tmpl.btnType||tmpl.type||'').toLowerCase();
   const name=tmpl.name||abilityId;
@@ -13224,7 +13287,7 @@ async function executeEnemyKitTemplateAbility(enemy, abilityId, totalEnemyMiss){
     await doSpell('enemy',`🌿 ${name}!`);
     setHpBar('enemy',enemy.stats.hp,enemy.stats.maxHp);
     logMsg(`${enemy.name} recovers ${heal} HP.`,'enemy-action');
-    return;
+    return true;
   }
   if(cat==='guard'){
     await doSpell('enemy',`🛡 ${name}!`);
@@ -13236,7 +13299,7 @@ async function executeEnemyKitTemplateAbility(enemy, abilityId, totalEnemyMiss){
     await doShield('enemy');
     renderStatuses('enemy-status',G.enemyStatus);
     logMsg(`${enemy.name} braces!`,'enemy-action');
-    return;
+    return true;
   }
   if(cat==='buff'){
     await doSpell('enemy',`⚡ ${name}!`);
@@ -13246,7 +13309,7 @@ async function executeEnemyKitTemplateAbility(enemy, abilityId, totalEnemyMiss){
     }
     logMsg(`${enemy.name} surges!`,'enemy-action');
     renderStatuses('enemy-status',G.enemyStatus);
-    return;
+    return true;
   }
   if(btn==='physical'||btn==='ranged'||btn==='hybrid'){
     G._incomingAttackKind=btn==='ranged'?'ranged':(btn==='hybrid'?'hybrid':'physical');
@@ -13254,7 +13317,7 @@ async function executeEnemyKitTemplateAbility(enemy, abilityId, totalEnemyMiss){
     if(totalEnemyMiss>0&&chance(totalEnemyMiss)){
       await doMiss('enemy');
       logMsg(`${enemy.name} fumbles!`,'miss');
-      return;
+      return true;
     }
     const tmplRow=getAbilityTemplateForUI(ab);
     const _combatRow=tmplRow?._combatPackRow||null;
@@ -13272,7 +13335,7 @@ async function executeEnemyKitTemplateAbility(enemy, abilityId, totalEnemyMiss){
       logMsg(`${enemy.name} — ${name}${r.isCrit?' CRIT':''} for ${r.dmgDealt}!`,'enemy-action');
       rollEnemyCombatRowAilment(ab, tmpl, r.dmgDealt||0, 1);
     }
-    return;
+    return true;
   }
   if(btn==='spell'){
     G._incomingAttackKind='magic';
@@ -13285,7 +13348,7 @@ async function executeEnemyKitTemplateAbility(enemy, abilityId, totalEnemyMiss){
     if(r.wasDodged){
       spawnFloat('player','Dodged!','fn-dodge'); playAvatarAnim('player','do-dodge-r',400); SFX.dodge(); await delay(420);
       logMsg(`✨ ${G.player.name} slips the spell!`,'system');
-      return;
+      return true;
     }
     await doSpell('enemy',`✦ ${name}!`);
     await doAttack('enemy','player',r);
@@ -13295,14 +13358,14 @@ async function executeEnemyKitTemplateAbility(enemy, abilityId, totalEnemyMiss){
       logMsg(`${enemy.name} — ${name}${r.isCrit?' CRIT':''} for ${r.dmgDealt}!`,'enemy-action');
       rollEnemyCombatRowAilment(ab, tmpl, r.dmgDealt||0, 1);
     }
-    return;
+    return true;
   }
   if(btn==='utility' && combatRow && (combatRow.target==='self' || combatRow.noDamage)){
     await doSpell('enemy',`✨ ${name}!`);
     applyEnemySelfRiders({ utilitySucceeded: true });
     renderStatuses('enemy-status',G.enemyStatus);
     logMsg(`${enemy.name} uses ${name}.`,'enemy-action');
-    return;
+    return true;
   }
   const ailments=deriveAbilityAilments(ab,tmpl);
   let any=false;
@@ -13314,6 +13377,7 @@ async function executeEnemyKitTemplateAbility(enemy, abilityId, totalEnemyMiss){
   }
   if(any) logMsg(`${enemy.name} — ${name}!`,'enemy-action');
   else logMsg(`${enemy.name} uses ${name}.`,'enemy-action');
+  return true;
 }
 
 async function enemyTurn() {
@@ -13415,15 +13479,24 @@ async function enemyTurn() {
         logMsg(`${e.name} fumbles in confusion for ${selfD}!`,'enemy-action');
         await delay(400);
         if(selfD>0) turnHadDamage=true;
+        refundEnemyActionEnergy(e, cost);
+        G.enemyActionsThisTurn--;
         continue;
       }
       const _stBd=BIRDS[G.player.birdKey];
       if(_stBd&&_stBd.passive&&_stBd.passive.onEnemyAttackCheck&&_stBd.passive.onEnemyAttackCheck(G.player,G)){
         spawnFloat('enemy','👁 Frozen by Dread!','fn-status');
         logMsg(`${e.name} freezes under ${G.player.name}'s prehistoric stare!`,'system');
+        refundEnemyActionEnergy(e, cost);
+        G.enemyActionsThisTurn--;
         continue;
       }
-      await executeEnemyKitTemplateAbility(e,action.abilityId,totalEnemyMiss);
+      const executed=await executeEnemyKitTemplateAbility(e,action.abilityId,totalEnemyMiss);
+      if(!executed){
+        refundEnemyActionEnergy(e, cost);
+        G.enemyActionsThisTurn--;
+        continue;
+      }
       if(projectedEnemyActionDamage(action,e)>0) turnHadDamage=true;
       const _macBd2=BIRDS[G.player.birdKey];
       if(_macBd2&&_macBd2.passive&&_macBd2.passive.onEnemyAbility) _macBd2.passive.onEnemyAbility(G.player,action.abilityId);

@@ -159,8 +159,11 @@ check('miss path returns zero damage', sandbox.calculateDamage({ hitSucceeded: f
 check('Crow hit preview 60%', sandbox.calculateAbilityHitChancePct(78, 18, 0) === 60, `got=${sandbox.calculateAbilityHitChancePct(78, 18, 0)}`);
 check('computeMasterOutgoingDamage exported', typeof sandbox.computeMasterOutgoingDamage === 'function');
 
-const starterRow = Avian?.data?.combatPack?.skillTrees?.SPARROW_F1_L1_BASE
-  || (Avian?.data?.combatPack?.skillTrees && Avian.data.combatPack.skillTrees[Object.keys(Avian.data.combatPack.skillTrees).find((k) => /SPARROW.*L1.*BASE/i.test(k))]);
+const sparrowStarterId = Avian?.data?.combatPack?.abilityAliases?.SPARROW_F1_L1_BASE
+  || (typeof sandbox.getBaseSkillSlotsForBird === 'function' ? sandbox.getBaseSkillSlotsForBird('sparrow')?.[0]?.abilityId : null)
+  || 'SPARROW_S1_RAPID_PECK_FAMILY_S1';
+check('legacy SPARROW_F1_L1_BASE aliases to canonical starter', Avian?.data?.combatPack?.abilityAliases?.SPARROW_F1_L1_BASE === sparrowStarterId);
+const starterRow = Avian?.data?.combatPack?.skillTrees?.[sparrowStarterId];
 if (starterRow) {
   if (typeof sandbox.enrichCombatRow === 'function') sandbox.enrichCombatRow(starterRow);
   check('starter row has abilityPower', starterRow.abilityPower != null, `power=${starterRow.abilityPower}`);
@@ -415,10 +418,12 @@ const legacyMain = legacyIds.includes(String(BIRDS?.sparrow?.mainAttackId || '')
 check('sparrow mainAttackId is NOT a legacy id', !legacyMain);
 
 const snowyTrees = Avian?.data?.combatPack?.skillTrees;
-const snowyF1 = snowyTrees?.['SNOWY_OWL_F1_L1_BASE'];
-const snowyF2 = snowyTrees?.['SNOWY_OWL_F2_L1_BASE'];
-check('Snowy Owl F1 starter row exists', !!snowyF1);
-check('Snowy Owl F2 starter row exists', !!snowyF2);
+const snowyCanon1 = Avian?.data?.combatPack?.abilityAliases?.SNOWY_OWL_F1_L1_BASE;
+const snowyCanon2 = Avian?.data?.combatPack?.abilityAliases?.SNOWY_OWL_F2_L1_BASE;
+const snowyF1 = snowyCanon1 && snowyTrees?.[snowyCanon1];
+const snowyF2 = snowyCanon2 && snowyTrees?.[snowyCanon2];
+check('Snowy Owl legacy F1 alias resolves', !!snowyCanon1 && !!snowyF1);
+check('Snowy Owl legacy F2 alias resolves', !!snowyCanon2 && !!snowyF2);
 if (snowyF1 && snowyF2) {
   check('Snowy Owl starters registered in ABILITY_TEMPLATES', !!ABILITY_TEMPLATES?.[snowyF1.id] && !!ABILITY_TEMPLATES?.[snowyF2.id]);
   check('Snowy Owl starters have shortDesc in combat pack', !!snowyF1.shortDesc && !!snowyF2.shortDesc);
@@ -443,7 +448,8 @@ for (const id in allSkillTrees) {
 }
 check('no spurious gainMatk/gainAtk from enemy loses rider text', riderMisparseCount === 0, `count=${riderMisparseCount}`);
 
-const prismSquawk = allSkillTrees['MACAW_F1_L1_BASE'];
+const macawStarterId = Avian?.data?.combatPack?.abilityAliases?.MACAW_F1_L1_BASE || 'MACAW_S1_BEAK_FAMILY_S1';
+const prismSquawk = allSkillTrees[macawStarterId];
 if (prismSquawk) {
   check('Prism Squawk baseFlat is 5 (damage base, not stat buff)', prismSquawk.baseFlat === 5, `got=${prismSquawk.baseFlat}`);
   check('Prism Squawk has no gainMatk rider', !(prismSquawk.riders || []).some((r) => r.kind === 'gainMatk'));
@@ -453,6 +459,19 @@ const tacticalPrism = allSkillTrees['MACAW_F1_L3_UTILITY'];
 if (tacticalPrism) {
   check('Tactical Prism Squawk keeps gainMatk rider', (tacticalPrism.riders || []).some((r) => r.kind === 'gainMatk'));
   check('Tactical Prism Squawk keeps gainMdef rider', (tacticalPrism.riders || []).some((r) => r.kind === 'gainMdef'));
+}
+
+if (typeof sandbox.getEnemyEnergyProfile === 'function') {
+  const enProf = sandbox.getEnemyEnergyProfile();
+  check('enemy energy max is 6', enProf.maxEN === 6, `got=${enProf.maxEN}`);
+  check('enemy energy start is 4', enProf.startEN === 4, `got=${enProf.startEN}`);
+  check('enemy energy regen is 3', enProf.regenEN === 3, `got=${enProf.regenEN}`);
+}
+
+if (typeof globalThis.getCombatStatMagnitude === 'function') {
+  check('Minor Dodge Up is 6', globalThis.getCombatStatMagnitude('dodge', 'up', 'minor') === 6);
+  check('Major Dodge Up is 8', globalThis.getCombatStatMagnitude('dodge', 'up', 'major') === 8);
+  check('Grand Dodge Up is 12', globalThis.getCombatStatMagnitude('dodge', 'up', 'grand') === 12);
 }
 
 // Ability briefs: displayText effect phrasing in combat previews

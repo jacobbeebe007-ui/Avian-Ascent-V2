@@ -419,6 +419,10 @@ function parseRiderWhen(text, localSlice) {
   if (/if\s+poison\s+applies?|when\s+poison\s+applies?/i.test(text)) return 'onAilment:poison';
   if (/if\s+paralys/i.test(text)) return 'onAilment:paralyzed';
   if (/if\s+delayed\s+applies?/i.test(text)) return 'onAilment:delayed';
+  if (/guard\s+is\s+(?:already\s+)?active|already\s+guarded|while\s+guard(?:ing)?|if\s+(?:you\s+)?(?:are\s+)?(?:already\s+)?guard(?:ing)?|while\s+guarded/i.test(combined)) return 'guardActive';
+  if (/guard\s+is\s+not\s+active|(?:if|when)\s+(?:you\s+)?(?:do\s+not|don't|are\s+not)\s+(?:have\s+)?guard|(?:otherwise|instead|else)\s+gain\s+(?:a\s+)?(?:minor|major|grand|epic|legendary|moderate\s+)?guard/i.test(combined)) return 'guardInactive';
+  if (/(?:have|has|with)\s+(?:a\s+)?(?:active\s+)?shield|shield\s+is\s+(?:already\s+)?active|while\s+shielded/i.test(combined)) return 'shieldActive';
+  if (/shield\s+is\s+not\s+active|(?:if|when)\s+(?:you\s+)?(?:do\s+not|don't|have\s+no)\s+(?:have\s+)?(?:a\s+)?shield/i.test(combined)) return 'shieldInactive';
   return null;
 }
 
@@ -659,6 +663,22 @@ function parseRiders(riderText, codeTags, extraText = '') {
       || text.match(/\+?\s*(\d+(?:\.\d+)?)\s*%\s*damage(?:\s+taken)?/i);
     addEnemy('exposeGuard', exPctM ? Number(exPctM[1]) : 18, { when: parseRiderWhen(text, exg[0]) || 'onHit' });
   }
+  if (/\bshield\b/i.test(text) && /temp|temporary|max\s*hp|max\s*health|health/i.test(text)) {
+    const shM = text.match(/(\d+(?:\.\d+)?)\s*%\s*(?:max\s*)?(?:hp|health)/i);
+    addSelf('gainShield', shM ? Number(shM[1]) : 0, { when: parseRiderWhen(text, shM ? shM[0] : text) });
+  } else if (/\b(?:gain a |gain )\s*(minor|major|grand|epic|legendary|moderate)\s+shield\b/i.test(text)) {
+    const shTierM = text.match(/\b(?:gain a |gain )\s*(minor|major|grand|epic|legendary|moderate)\s+shield\b/i);
+    addSelf('gainShield', 0, { when: parseRiderWhen(text, shTierM ? shTierM[0] : text) });
+  } else if (/\b(minor|major|grand|epic|legendary|moderate)\s+shield\b/i.test(text)) {
+    const shTierM2 = text.match(/\b(minor|major|grand|epic|legendary|moderate)\s+shield\b/i);
+    addSelf('gainShield', 0, { when: parseRiderWhen(text, shTierM2 ? shTierM2[0] : text) });
+  } else if (/\b(?:gain|gains?)\s+(minor|major|grand|epic|legendary)\s+shield\b/i.test(text)) {
+    const shTierM3 = text.match(/\b(?:gain|gains?)\s+(minor|major|grand|epic|legendary)\s+shield\b/i);
+    addSelf('gainShield', 0, { when: parseRiderWhen(text, shTierM3 ? shTierM3[0] : text) });
+  } else if (/\bgain\s+shield\b/i.test(text)) {
+    const shPlainM = text.match(/\bgain\s+shield\b/i);
+    addSelf('gainShield', 0, { when: parseRiderWhen(text, shPlainM ? shPlainM[0] : text) });
+  }
   if (/counter\s*chance|small counter/i.test(text)) addSelf('gainCounter', 1);
   if (/taunt/i.test(text)) addSelf('gainTaunt', 1);
 
@@ -679,7 +699,16 @@ function parseRiders(riderText, codeTags, extraText = '') {
   }
   if (/low\s*HP|below\s+\d+%\s+Health|low-Health/i.test(text)) {
     const pm = text.match(/below\s+(\d+(?:\.\d+)?)\s*%/i);
-    riders.push({ kind: 'bonusVsLowHp', threshold: pm ? Number(pm[1]) / 100 : 0.35, value: 0 });
+    const pctM = text.match(/\+?\s*(\d+(?:\.\d+)?)\s*%/);
+    riders.push({ kind: 'bonusVsLowHp', threshold: pm ? Number(pm[1]) / 100 : 0.35, value: pctM ? Number(pctM[1]) : 15 });
+  }
+
+  if (/if\s+guard[\s\S]{0,120}(?:otherwise|instead|else)[\s\S]{0,120}shield/i.test(text)) {
+    riders.forEach((r) => {
+      if (!r || r.when) return;
+      if (r.kind === 'gainGuarded' || r.kind === 'gainGuard') r.when = 'guardInactive';
+      else if (r.kind === 'gainShield' || r.kind === 'gainShieldFromDamage') r.when = 'guardActive';
+    });
   }
 
   // Tag-driven fallthroughs
@@ -1031,7 +1060,7 @@ function buildSkillTrees(perksSheets, shopSheets) {
           conditionalAbilityPowerMode = conditionalAbilityPowerMode || 'multiply';
         } else if (r.kind === 'bonusVsLowHp') {
           condition = 'targetLowHp';
-          conditionalAbilityPower = 1 + (Number(r.value) || 0) / 100;
+          conditionalAbilityPower = 1 + (Number(r.value) || 15) / 100;
           conditionalAbilityPowerMode = conditionalAbilityPowerMode || 'multiply';
         }
       }

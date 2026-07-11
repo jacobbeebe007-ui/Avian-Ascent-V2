@@ -25,7 +25,7 @@
   'use strict';
 
   /** Bump when adding a migration. */
-  var TARGET = 11;
+  var TARGET = 12;
 
   /** Combat-pack version stamp surfaced on the save blob. Wipes attached when
    *  this changes so legacy ability/perk/family state never bleeds into a run. */
@@ -196,6 +196,35 @@
         delete p.abilityInventory;
         delete p.familyEvolutionState;
         save.combatPackVersion = COMBAT_PACK_VERSION;
+        return save;
+      },
+    },
+    {
+      from: 11,
+      to: 12,
+      note: 'remap legacy *_F{n}_L1_BASE ability ids to combat-pack canonical ids',
+      fn: function (save) {
+        if (!save || !save.player) return save;
+        var aliases = (globalThis.Avian && globalThis.Avian.data && globalThis.Avian.data.combatPack && globalThis.Avian.data.combatPack.abilityAliases) || {};
+        function remapId(id) {
+          var s = String(id || '');
+          return aliases[s] || s;
+        }
+        var p = save.player;
+        if (p.mainAttackId) p.mainAttackId = remapId(p.mainAttackId);
+        if (Array.isArray(p.abilities)) {
+          p.abilities.forEach(function (ab) {
+            if (ab && ab.id) ab.id = remapId(ab.id);
+          });
+        }
+        var fes = p.familyEvolutionState;
+        if (fes && Array.isArray(fes.skillSlots)) {
+          fes.skillSlots.forEach(function (slot) {
+            if (!slot) return;
+            if (slot.abilityId) slot.abilityId = remapId(slot.abilityId);
+            if (slot.familyId) slot.familyId = remapId(slot.familyId);
+          });
+        }
         return save;
       },
     },

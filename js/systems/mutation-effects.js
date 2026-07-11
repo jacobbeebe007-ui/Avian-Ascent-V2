@@ -112,8 +112,14 @@
     var dodgeDownTotal = 0;
     for (var i = 0; i < bonuses.length; i++) {
       var bid = bonuses[i].id || '';
-      if (bid === 'minor_dodge_down' || bid === 'apply_minor_dodge_down') dodgeDownTotal += Number(bonuses[i].value) || -3;
-      if (bid === 'major_dodge_down' || bid === 'apply_major_dodge_down') dodgeDownTotal += Number(bonuses[i].value) || -5;
+      if (bid === 'minor_dodge_down' || bid === 'apply_minor_dodge_down') {
+        dodgeDownTotal += Number(bonuses[i].value) || -(typeof globalThis.getCombatStatMagnitude === 'function'
+          ? (globalThis.getCombatStatMagnitude('dodge', 'down', 'minor') || 6) : 6);
+      }
+      if (bid === 'major_dodge_down' || bid === 'apply_major_dodge_down') {
+        dodgeDownTotal += Number(bonuses[i].value) || -(typeof globalThis.getCombatStatMagnitude === 'function'
+          ? (globalThis.getCombatStatMagnitude('dodge', 'down', 'major') || 8) : 8);
+      }
     }
     if (dodgeDownTotal && player && player.stats) {
       player.stats.dodge = Math.max(0, (Number(player.stats.dodge) || 0) + dodgeDownTotal);
@@ -202,10 +208,15 @@
   }
 
   function applyDodgeFromBonusTier(val) {
-    applyMinorDodgeUp('player');
-    if (G().player && G().player.stats && val > 6) {
-      G().player.stats.dodge = (Number(G().player.stats.dodge) || 0) + Math.floor((Number(val) - 6) / 2);
+    var entity = G().player;
+    if (!entity || !entity.stats) return;
+    var amt = Number(val);
+    if (!Number.isFinite(amt) || amt <= 0) {
+      amt = typeof globalThis.getCombatStatMagnitude === 'function'
+        ? (globalThis.getCombatStatMagnitude('dodge', 'up', 'minor') || 6)
+        : 6;
     }
+    entity.stats.dodge = (Number(entity.stats.dodge) || 0) + amt;
   }
 
   function tryBonusAilment(ailId, chancePct) {
@@ -251,7 +262,10 @@
   function applyMinorDodgeUp(side) {
     var entity = side === 'player' ? G().player : G().enemy;
     if (!entity || !entity.stats) return;
-    entity.stats.dodge = (Number(entity.stats.dodge) || 0) + 6;
+    var amt = typeof globalThis.getCombatStatMagnitude === 'function'
+      ? (globalThis.getCombatStatMagnitude('dodge', 'up', 'minor') || 6)
+      : 6;
+    entity.stats.dodge = (Number(entity.stats.dodge) || 0) + amt;
   }
 
   function applyMinorAccUp(side) {
