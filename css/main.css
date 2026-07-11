@@ -5282,6 +5282,9 @@ body.ui-mobile-mode .combat-stats-modal-panel{max-width:96vw;max-height:90vh;pad
 body.ui-mobile-mode .combat-stats-btn{font-size:.68rem;padding:5px 8px;}
 
 /* --- Remove the box/frame around the battling birds --- */
+#screen-battle .shield-overlay{display:none;}
+#screen-battle #player-avatar-wrap:focus,
+#screen-battle #enemy-avatar-wrap:focus{outline:none;}
 #screen-battle #player-avatar .sprite4,
 #screen-battle #enemy-avatar .sprite4{
   border:none !important;

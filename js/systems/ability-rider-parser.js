@@ -371,6 +371,9 @@
       }
     }
     if (/\bguard\b/i.test(t) && /defen[cs]e/i.test(t) && !isTierGuardPhrase(t)) addSelf('gainGuard', 1);
+    if (/^guard$/i.test(t.trim()) && !hasRiderKind(riders, 'gainGuarded') && !hasRiderKind(riders, 'gainGuard')) {
+      addSelf('gainGuarded', 0, { guardTier: 'minor', when: when || 'onHit' });
+    }
     var drM = t.match(/(\d+(?:\.\d+)?)\s*%\s*damage\s*reduction/i);
     if (drM) addSelf('gainGuarded', Number(drM[1]));
     else if (/brace|damage reduction/i.test(t) && !isTierGuardPhrase(t)) addSelf('gainGuarded', 0);
@@ -508,13 +511,14 @@
     }
 
     mapBonusVsAilmentToCondition(row);
-    if (row.noDamage && /^guard$/i.test(String(row.riderText || '').trim()) && !hasRiderKind(row.riders, 'gainGuarded')) {
-      var tierGuardM = text.match(/\b(Minor|Moderate|Major|Grand|Epic|Legendary)\s+Guard\b/i);
+    if (/^guard$/i.test(String(row.riderText || '').trim()) && !hasRiderKind(row.riders, 'gainGuarded') && !hasRiderKind(row.riders, 'gainGuard')) {
+      var tierGuardOnly = text.match(/\b(Minor|Moderate|Major|Grand|Epic|Legendary)\s+Guard\b/i);
       row.riders.push({
         kind: 'gainGuarded',
         value: 0,
         scope: 'self',
-        guardTier: tierGuardM ? normalizeTierLabel(tierGuardM[1]) : 'minor',
+        guardTier: tierGuardOnly ? normalizeTierLabel(tierGuardOnly[1]) : 'minor',
+        when: row.noDamage ? null : 'onHit',
       });
     }
     row._textEnriched = true;

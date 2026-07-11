@@ -64,13 +64,23 @@
           const d = G.enemy.duke || {};
           const enraged = !!(globalThis.isBossEnrageAllowed?.() && G.enemy.stats?.hp <= Math.floor((G.enemy.stats?.maxHp||1)*0.35));
           if((d.phase||1) === 1 && G.enemy.stats?.hp <= Math.floor((G.enemy.stats?.maxHp||1)*0.75)) label = '🌑 Nightfall';
+          else if((d.phase||1) >= 3 && (d.decreeStacks||0) > 0 && (d.decreeCd||0) === 0) label = '📜 Royal Decree';
           else if((d.verdictCd||0)===0 && ((G.player?.stats?.hp||0) <= Math.floor((G.player?.stats?.maxHp||1)*0.40) || enraged)) label = "🦉 Owl's Verdict";
           else if((d.summonCd||0)===0 && !(G.enemyStatus?.wardens>0) && (((d.phase||1) >= 3) || ((G.enemy.stats?.hp||1) <= Math.floor((G.enemy.stats?.maxHp||1)*0.55)))) label = '🛡️ Summon Court';
           else if((d.riverCd||0)===0 && !(G.playerStatus?.rooted>0) && !(G.playerStatus?.slow>0) && (d.phase||1)>=2) label = '🌊 River Grip';
+          const dukeIntentEn = {
+            '🌑 Nightfall': 1,
+            '📜 Royal Decree': 3,
+            "🦉 Owl's Verdict": 4,
+            '🛡️ Summon Court': 2,
+            '🌊 River Grip': 2,
+            '🦉 Talons': 1,
+          };
+          const intentEn = dukeIntentEn[label] != null ? dukeIntentEn[label] : 1;
           G.enemyNextAction = {
             label,
             type:'plan',
-            actions:[{type:'plan', label:label.replace(/^.[ ]?/,''), icon:label.split(' ')[0] || '🦉', energyCost:1}]
+            actions:[{type:'plan', label:label.replace(/^.[ ]?/,''), icon:label.split(' ')[0] || '🦉', energyCost:intentEn}]
           };
         }
       }

@@ -689,10 +689,12 @@ runAbilityFamilyTreeParityCheck();
 runAbilityInventoryAndWiringReport();
 
 const { spawnSync } = require('child_process');
-for (const script of ['verify-map-forge-encounter.mjs', 'verify-workbook-abilities.mjs', 'audit-ability-riders.mjs', 'audit-rider-handlers.mjs']) {
+for (const script of ['verify-map-forge-encounter.mjs', 'verify-workbook-abilities.mjs', 'verify-bird-abilities.mjs', 'audit-ability-riders.mjs', 'audit-rider-handlers.mjs']) {
   const scriptPath = path.join(__dirname, script);
   if (!fs.existsSync(scriptPath)) continue;
-  const r = spawnSync(process.execPath, [scriptPath], { stdio: 'inherit', cwd: path.join(__dirname, '..') });
+  const args = [scriptPath];
+  if (script.startsWith('audit-') || script === 'verify-bird-abilities.mjs') args.push('--strict');
+  const r = spawnSync(process.execPath, args, { stdio: 'inherit', cwd: path.join(__dirname, '..') });
   if (r.status !== 0) {
     fail(`verify script failed: ${script}`);
   }

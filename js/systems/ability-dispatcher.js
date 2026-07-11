@@ -227,6 +227,47 @@
     return true;
   }
 
+  function applyPlayerStatDebuff(statKey, pct, sourceId) {
+    var g = globalThis.G;
+    if (!g || !g.player || !g.player.stats) return false;
+    var ps = g.playerStatus = g.playerStatus || {};
+    var stats = g.player.stats;
+    if (!ps._dispatcherDebuffBySource) ps._dispatcherDebuffBySource = Object.create(null);
+    var slotKey = statKey + ':' + String(sourceId || 'unknown');
+    var prev = ps._dispatcherDebuffBySource[slotKey];
+    if (prev && prev.amt) {
+      stats[statKey] = Math.round(((Number(stats[statKey]) || 0) + (prev.amt || 0)) * 100) / 100;
+    }
+    var cur = Number(stats[statKey]) || 0;
+    var amt = Math.round(cur * (Number(pct) || 0) / 100 * 100) / 100;
+    if (amt <= 0) return false;
+    amt = Math.max(prev ? (prev.amt || 0) : 0, amt);
+    stats[statKey] = Math.max(0, Math.round((cur - amt) * 100) / 100);
+    ps._dispatcherDebuffBySource[slotKey] = { statKey: statKey, amt: amt, turns: 1, sourceId: String(sourceId || '') };
+    spawnTrendFloat('player', 'debuff');
+    return true;
+  }
+
+  function applyPlayerFlatDebuff(statKey, flatAmt, sourceId) {
+    var g = globalThis.G;
+    if (!g || !g.player || !g.player.stats) return false;
+    var ps = g.playerStatus = g.playerStatus || {};
+    var stats = g.player.stats;
+    if (!ps._dispatcherDebuffBySource) ps._dispatcherDebuffBySource = Object.create(null);
+    var slotKey = statKey + ':flat:' + String(sourceId || 'unknown');
+    var prev = ps._dispatcherDebuffBySource[slotKey];
+    if (prev && prev.amt) {
+      stats[statKey] = Math.round(((Number(stats[statKey]) || 0) + (prev.amt || 0)) * 100) / 100;
+    }
+    var cur = Number(stats[statKey]) || 0;
+    var amt = Math.max(0, Number(flatAmt) || 0);
+    if (amt <= 0) return false;
+    stats[statKey] = Math.max(0, Math.round((cur - amt) * 100) / 100);
+    ps._dispatcherDebuffBySource[slotKey] = { statKey: statKey, amt: amt, turns: 1, sourceId: String(sourceId || ''), flat: true };
+    spawnTrendFloat('player', 'debuff');
+    return true;
+  }
+
   function rowHasGuardBreak(row) {
     var riders = row && row.riders;
     if (!riders) return false;
@@ -414,6 +455,14 @@
     var side = owner.side || 'player';
     var floatSide = side;
     var shouldLoanDisplayStat = side === 'enemy';
+    function debuffOpponentStat(statKey, pct) {
+      if (side === 'enemy') applyPlayerStatDebuff(statKey, pct, sourceId);
+      else applyEnemyStatDebuff(statKey, pct, sourceId);
+    }
+    function debuffOpponentFlat(statKey, flatAmt) {
+      if (side === 'enemy') applyPlayerFlatDebuff(statKey, flatAmt, sourceId);
+      else applyEnemyFlatDebuff(statKey, flatAmt, sourceId);
+    }
     function applyDisplayOrStat(ps, entity, kind, statKey, value) {
       applyDispatcherDisplaySlot(ps, sourceId, kind, value);
       if (shouldLoanDisplayStat && statKey) applyDispatcherStatLoan(ps, entity, statKey, sourceId + ':' + kind, value);
@@ -464,14 +513,14 @@
       },
       gainCounter: function (_n, ps) { ps.counterInstinct = Math.max(ps.counterInstinct || 0, 1); spawnTrendFloat(floatSide, 'buff'); },
       gainTaunt: function (_n, ps) { ps.dispatcherTaunt = 1; ps.dispatcherTauntT = 1; spawnTrendFloat(floatSide, 'buff'); },
-      reduceEnemyDodge: function (n) { applyEnemyStatDebuff('dodge', n, sourceId); },
-      reduceEnemyAcc: function (n) { applyEnemyStatDebuff('acc', n, sourceId); },
-      reduceEnemyAtk: function (n) { applyEnemyStatDebuff('atk', n, sourceId); },
-      reduceEnemyMatk: function (n) { applyEnemyStatDebuff('matk', n, sourceId); },
-      reduceEnemySpd: function (n) { applyEnemyStatDebuff('spd', n, sourceId); },
-      reduceEnemyCrit: function (n) { applyEnemyStatDebuff('critChance', n, sourceId); },
-      reduceEnemyDef: function (n) { applyEnemyStatDebuff('def', n, sourceId); },
-      reduceEnemyMdef: function (n) { applyEnemyStatDebuff('mdef', n, sourceId); },
+      reduceEnemyDodge: function (n) { debuffOpponentStat('dodge', n); },
+      reduceEnemyAcc: function (n) { debuffOpponentStat('acc', n); },
+      reduceEnemyAtk: function (n) { debuffOpponentStat('atk', n); },
+      reduceEnemyMatk: function (n) { debuffOpponentStat('matk', n); },
+      reduceEnemySpd: function (n) { debuffOpponentStat('spd', n); },
+      reduceEnemyCrit: function (n) { debuffOpponentStat('critChance', n); },
+      reduceEnemyDef: function (n) { debuffOpponentStat('def', n); },
+      reduceEnemyMdef: function (n) { debuffOpponentStat('mdef', n); },
       gainMagicAilmentChance: function (n, ps) {
         ps.magicAilmentChanceBuff = Math.max(ps.magicAilmentChanceBuff || 0, Number(n) || 0);
         spawnTrendFloat(floatSide, 'buff');
@@ -480,16 +529,17 @@
         ps.physicalAilmentChanceBuff = Math.max(ps.physicalAilmentChanceBuff || 0, Number(n) || 0);
         spawnTrendFloat(floatSide, 'buff');
       },
-      reduceEnemyAccFlat: function (n) { applyEnemyFlatDebuff('acc', n, sourceId); },
+      reduceEnemyAccFlat: function (n) { debuffOpponentFlat('acc', n); },
       exposeGuard: function (n, _ps, _p, r) {
         var g = globalThis.G;
-        if (!g || !g.enemyStatus) return;
+        var targetStatus = side === 'enemy' ? (g && g.playerStatus) : (g && g.enemyStatus);
+        if (!targetStatus) return;
         var pct = Number(n) || 0;
         if (pct <= 0) pct = 18;
         if (pct > 1) pct = pct / 100;
         var turns = (r && r.turns) || 2;
-        g.enemyStatus.exposedGuard = { pct: pct, turns: Math.max(1, Math.floor(Number(turns) || 2)) };
-        spawnTrendFloat('enemy', 'debuff');
+        targetStatus.exposedGuard = { pct: pct, turns: Math.max(1, Math.floor(Number(turns) || 2)) };
+        spawnTrendFloat(side === 'enemy' ? 'player' : 'enemy', 'debuff');
       },
     };
   }
@@ -647,6 +697,30 @@
     }
     if (enemyRiders.length) {
       count += runRidersForSide('player', Object.assign({}, row, { riders: enemyRiders }), ctx, ab);
+    }
+    return count;
+  }
+
+  function runAttackRiders(attackerSide, row, ctx, ab) {
+    if (!row || !row.riders || !row.riders.length) return 0;
+    attackerSide = attackerSide === 'enemy' ? 'enemy' : 'player';
+    var selfRiders = [];
+    var oppRiders = [];
+    for (var ri = 0; ri < row.riders.length; ri++) {
+      var rr = row.riders[ri];
+      if (rr && rr.scope === 'enemy') oppRiders.push(rr);
+      else selfRiders.push(rr);
+    }
+    ctx = ctx || {};
+    ctx.attackerSide = attackerSide;
+    ctx.applied = ctx.applied || Object.create(null);
+    var count = 0;
+    if (selfRiders.length) {
+      count += runRidersForSide(attackerSide, Object.assign({}, row, { riders: selfRiders }), ctx, ab);
+    }
+    if (oppRiders.length) {
+      var defenderSide = attackerSide === 'enemy' ? 'player' : 'enemy';
+      count += runRidersForSide(defenderSide, Object.assign({}, row, { riders: oppRiders }), ctx, ab);
     }
     return count;
   }
@@ -929,6 +1003,10 @@
     }
     if (typeof refreshBattleUI === 'function') refreshBattleUI();
     return appliedCount > 0 || autoGuarded;
+  };
+
+  dispatcher.runAttackRiders = function (attackerSide, row, ctx, ab) {
+    return runAttackRiders(attackerSide, row, ctx, ab);
   };
 
   dispatcher.registerActions = function registerActions(target) {

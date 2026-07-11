@@ -154,6 +154,25 @@ function makeEnemy(name, emoji, hp, atk, def, spd, style, isBoss=false, bossTitl
 }
 
 /** Stage-20 story boss: stats from roster L10 row + Duke command kit. */
+const DUKE_ABILITY_EN_COST = Object.freeze({
+  dukeNightfall: 1,
+  dukeRiverGrip: 2,
+  dukeDecree: 3,
+  dukeWardens: 2,
+  dukeOwlsVerdict: 4,
+  dukeTalons: 1,
+});
+const DUKE_ABILITY_LABELS = Object.freeze({
+  dukeRiverGrip: 'River Grip',
+  dukeDecree: 'Royal Decree',
+  dukeWardens: 'Court Wardens',
+  dukeOwlsVerdict: "Owl's Verdict",
+  dukeNightfall: 'Nightfall',
+  dukeTalons: 'Talons',
+});
+function getDukeAbilityEnCost(abilityId){
+  return DUKE_ABILITY_EN_COST[abilityId]!=null ? DUKE_ABILITY_EN_COST[abilityId] : 1;
+}
 function buildDukeStoryBossEnemy(){
   const rosterId=typeof getStoryDukeRosterId==='function'?getStoryDukeRosterId():'BO-DUKEB-STORY-L10';
   const base=typeof buildEnemyFromRosterId==='function'
@@ -165,7 +184,7 @@ function buildDukeStoryBossEnemy(){
       id:'duke_blakiston', name:'Duke Blakiston', portraitKey:'duke_blakiston', birdKey:'dukeBlakiston',
       isBoss:true, size:'xl', aiType:'boss_duke', aiPersonality:'inquisitor', enemyClass:'inquisitor',
       bossTitle:'🌩 Stage Boss', storyLevel:10, abilities:dukeAbilities, _storyDirectStats:true,
-      duke:{phase:1,nightfallTurns:0,decreeKey:null,decreeStacks:0,riverCd:0,summonCd:0,verdictCd:0},
+      duke:{phase:1,nightfallTurns:0,decreeKey:null,decreeStacks:0,riverCd:0,summonCd:0,verdictCd:0,decreeCd:0},
     };
   }
   base.id='duke_blakiston';
@@ -178,7 +197,7 @@ function buildDukeStoryBossEnemy(){
   base.class='inquisitor';
   base.enemyTier='boss';
   base.abilities=dukeAbilities;
-  base.duke={phase:1,nightfallTurns:0,decreeKey:null,decreeStacks:0,riverCd:0,summonCd:0,verdictCd:0};
+  base.duke={phase:1,nightfallTurns:0,decreeKey:null,decreeStacks:0,riverCd:0,summonCd:0,verdictCd:0,decreeCd:0};
   return base;
 }
 function makeDukeBlakiston(){
@@ -3784,6 +3803,7 @@ function getEnemyKitAbilityIds(enemy){
 }
 
 function getEnemyAbilityDisplayLabel(abilityId, enemy){
+  if(DUKE_ABILITY_LABELS[abilityId]) return DUKE_ABILITY_LABELS[abilityId];
   const eab=ENEMY_ABILITY_POOL[abilityId];
   if(eab?.name) return eab.name;
   const slot=(enemy?.abilities||[]).find(a=>a&&a.id===abilityId);
@@ -3841,10 +3861,10 @@ function buildEnemyInfoPopupAbilitiesHtml(enemy){
   if(!enemy) return '<em>No special abilities</em>';
   if(enemy.id==='duke_blakiston'){
     const lines=[
-      ['River Grip','Physical pressure and control.'],
-      ['Royal Decree','Shifts the flow of battle.'],
-      ['Court Wardens','Summons aid.'],
-      ["Owl's Verdict",'Devastating finisher phases.'],
+      ['River Grip','Physical pressure and control. (2 EN)'],
+      ['Royal Decree','Shifts the flow of battle. (3 EN)'],
+      ['Court Wardens','Summons aid. (2 EN)'],
+      ["Owl's Verdict",'Devastating finisher phases. (4 EN)'],
     ];
     return '<ul>'+lines.map(([n,d])=>`<li><strong>${escapeEncounterPreviewHtml(n)}</strong> — ${escapeEncounterPreviewHtml(d)}</li>`).join('')+'</ul>';
   }
@@ -11010,6 +11030,9 @@ function dealDamage(target,amount,isCrit=false,isMagic=false,srcAbility=null,opt
   }
   if (target==='player') {
     const enemyRow=resolveAbilityCombatRow(activeAb);
+    const enemyEnCost=enemyRow
+      ? Math.max(1, Number(enemyRow.enCost ?? enemyRow.apCost ?? 1))
+      : Math.max(1, Number(getAbilityAuthoredEnergyCost(activeAb, G.enemy) || 1));
     const playerDodge = getEffectiveDodge(G.player);
     const enemyBaseAcc=Math.max(0, (G.enemy.stats.acc||70) - (G.enemyStatus.accDebuff||0) - (G.enemyStatus.enemyBlind>0?15:0));
     const accPenalty=(typeof calculateAbilityAccuracyPenalty==='function'&&enemyRow)
@@ -13159,7 +13182,6 @@ function dukeNightfall(){
   const d=G.enemy.duke; d.phase=2; d.nightfallTurns=2;
   setStatusMax(G.enemyStatus,'nightfall',2);
   setStatusMax(G.playerStatus,'blind',Math.max(G.playerStatus.blind||0,1));
-  refreshStatus(G.enemyStatus,'defending',10,999);
   logMsg('🦉 Nightfall descends. The marsh swallows light.','boss');
 }
 function dukeRiverGrip(){
@@ -13180,6 +13202,11 @@ function dukeApplyDecreePunish(){
   spawnFloat('player',`📜 Decree(${st})`,'fn-status');
   logMsg(`📜 Court Decree punishes repetition (${st}).`,'boss');
 }
+function dukeRoyalDecree(){
+  dukeApplyDecreePunish();
+  spawnFloat('player','📜 Royal Decree!','fn-status');
+  logMsg('📜 Royal Decree echoes through the court.','boss');
+}
 function dukeOwlsVerdict(){
   const p=G.player.stats; const missing=1-(p.hp/p.maxHp); const mult=1.15+missing*0.95;
   const r=dealDamage('player',edmg(1.35*mult));
@@ -13187,15 +13214,19 @@ function dukeOwlsVerdict(){
   logMsg('🦉 Owl’s Verdict!','boss');
 }
 function dukeSummonCourt(){
-  refreshStatus(G.enemyStatus,'defending',18,999);
+  const pct=typeof resolveGuardedReductionPct==='function' ? resolveGuardedReductionPct(null, 25, { id: 'dukeWardens', level: 4 }) : 25;
+  if(typeof applyGuardedBuff==='function'){
+    applyGuardedBuff('enemy', { physReducPct: pct, turns: 2, sourceAbilityId: 'dukeWardens', sourceKind: 'ability' });
+  }
   refreshStatus(G.enemyStatus,'wardens',2,4);
   spawnFloat('enemy','🛡️ Court Guards!','fn-status');
   logMsg('🛡️ The Court gathers—wardens at his wings.','boss');
 }
+/** Returns EN cost of the action taken, or 0 if no action. */
 function dukeTurnAI(){
   const e=G.enemy;
   if(!e.duke){
-    e.duke={phase:1,nightfallTurns:0,decreeKey:null,decreeStacks:0,riverCd:0,summonCd:0,verdictCd:0};
+    e.duke={phase:1,nightfallTurns:0,decreeKey:null,decreeStacks:0,riverCd:0,summonCd:0,verdictCd:0,decreeCd:0};
   }
   const d=e.duke;
   const mem=getEnemyAIMemory(e);
@@ -13204,17 +13235,43 @@ function dukeTurnAI(){
   d.riverCd=Math.max(0,(d.riverCd||0)-1);
   d.summonCd=Math.max(0,(d.summonCd||0)-1);
   d.verdictCd=Math.max(0,(d.verdictCd||0)-1);
-  if(d.phase>=3) dukeApplyDecreePunish();
-  if(d.phase===1 && e.stats.hp<=Math.floor(e.stats.maxHp*0.75)){ mem.utilityStreak=(mem.utilityStreak||0)+1; mem.lastTurnHadDamage=false; mem.lastAbilityId='dukeNightfall'; mem.lastActionCategory='control'; dukeNightfall(); return; }
+  d.decreeCd=Math.max(0,(d.decreeCd||0)-1);
+  if(d.phase===1 && e.stats.hp<=Math.floor(e.stats.maxHp*0.75)){
+    mem.utilityStreak=(mem.utilityStreak||0)+1; mem.lastTurnHadDamage=false; mem.lastAbilityId='dukeNightfall'; mem.lastActionCategory='control';
+    dukeNightfall();
+    return getDukeAbilityEnCost('dukeNightfall');
+  }
   if(d.phase===2){ d.nightfallTurns--; if(d.nightfallTurns<=0){ d.phase=3; logMsg('📜 The Court speaks in decree.','boss'); } }
-  if(d.summonCd===0){ d.summonCd=4; mem.utilityStreak=(mem.utilityStreak||0)+1; mem.lastTurnHadDamage=false; mem.lastAbilityId='dukeSummonCourt'; mem.lastActionCategory='guard'; dukeSummonCourt(); return; }
-  if(d.riverCd===0){ d.riverCd=3; mem.utilityStreak=(mem.utilityStreak||0)+1; mem.lastTurnHadDamage=false; mem.lastAbilityId='dukeRiverGrip'; mem.lastActionCategory='control'; dukeRiverGrip(); return; }
+  if(d.phase>=3 && (d.decreeStacks||0)>0 && (d.decreeCd||0)===0){
+    d.decreeCd=3;
+    mem.utilityStreak=(mem.utilityStreak||0)+1; mem.lastTurnHadDamage=false; mem.lastAbilityId='dukeDecree'; mem.lastActionCategory='control';
+    dukeRoyalDecree();
+    return getDukeAbilityEnCost('dukeDecree');
+  }
+  if(d.summonCd===0){
+    d.summonCd=4;
+    mem.utilityStreak=(mem.utilityStreak||0)+1; mem.lastTurnHadDamage=false; mem.lastAbilityId='dukeWardens'; mem.lastActionCategory='guard';
+    dukeSummonCourt();
+    return getDukeAbilityEnCost('dukeWardens');
+  }
+  if(d.riverCd===0){
+    d.riverCd=3;
+    mem.utilityStreak=(mem.utilityStreak||0)+1; mem.lastTurnHadDamage=false; mem.lastAbilityId='dukeRiverGrip'; mem.lastActionCategory='control';
+    dukeRiverGrip();
+    return getDukeAbilityEnCost('dukeRiverGrip');
+  }
   const p=G.player.stats;
-  if(d.verdictCd===0 && (p.hp<=Math.floor(p.maxHp*0.5) || (G.enemyStatus.enraged||0)>0)){ d.verdictCd=3; mem.utilityStreak=0; mem.lastAbilityId='dukeOwlsVerdict'; mem.lastActionCategory='heavy'; mem.lastTurnHadDamage=true; dukeOwlsVerdict(); return; }
+  if(d.verdictCd===0 && (p.hp<=Math.floor(p.maxHp*0.5) || (G.enemyStatus.enraged||0)>0)){
+    d.verdictCd=3;
+    mem.utilityStreak=0; mem.lastAbilityId='dukeOwlsVerdict'; mem.lastActionCategory='heavy'; mem.lastTurnHadDamage=true;
+    dukeOwlsVerdict();
+    return getDukeAbilityEnCost('dukeOwlsVerdict');
+  }
   const r=dealDamage('player',edmg(1.0));
   mem.utilityStreak=0; mem.lastAbilityId='dukeTalons'; mem.lastActionCategory='damage'; mem.lastTurnHadDamage=(r.dmgDealt||0)>0;
   spawnFloat('player',`-${r.dmgDealt}`,'fn-dmg');
   logMsg('🦉 Talons in the dark.','boss');
+  return getDukeAbilityEnCost('dukeTalons');
 }
 
 function enemyKitAbilityIsHardCC(abilityId, enemy){
@@ -13261,6 +13318,21 @@ function refundEnemyActionEnergy(enemy, cost){
   const maxEn=enemy.energyMax||getEnemyEnergyProfile().maxEN;
   enemy.energy=Math.min(maxEn, Math.max(0, (enemy.energy||0)+cost));
   if(typeof renderEnemyPlan==='function') renderEnemyPlan();
+}
+
+function applyEnemyAttackRiders(enemy, ab, tmpl, hitsLanded, totalDmg, ailmentsApplied, ailmentFailed){
+  const combatRow=tmpl?._combatPackRow||ab?._dispatcherRow||null;
+  if(!combatRow || typeof Avian?.dispatcher?.runAttackRiders!=='function') return;
+  if(typeof enrichCombatRow==='function') enrichCombatRow(combatRow);
+  Avian.dispatcher.runAttackRiders('enemy', combatRow, {
+    hitsLanded: hitsLanded||0,
+    hitsAttempted: Math.max(hitsLanded||0, 1),
+    totalDmg: totalDmg||0,
+    ailmentsApplied: ailmentsApplied||{},
+    ailmentFailed: !!ailmentFailed,
+  }, ab);
+  renderStatuses('enemy-status', G.enemyStatus);
+  renderStatuses('player-status', G.playerStatus);
 }
 
 async function executeEnemyKitTemplateAbility(enemy, abilityId, totalEnemyMiss){
@@ -13333,7 +13405,10 @@ async function executeEnemyKitTemplateAbility(enemy, abilityId, totalEnemyMiss){
     if(r.wasDodged) logMsg(`${name} — dodged!`,'miss');
     else {
       logMsg(`${enemy.name} — ${name}${r.isCrit?' CRIT':''} for ${r.dmgDealt}!`,'enemy-action');
-      rollEnemyCombatRowAilment(ab, tmpl, r.dmgDealt||0, 1);
+      const ailmentsApplied={};
+      const ailmentAttempted=(r.dmgDealt||0)>0 && rollEnemyCombatRowAilment(ab, tmpl, r.dmgDealt||0, 1);
+      if(ailmentAttempted) ailmentsApplied[combatRow?.ailment||'ailment']=1;
+      applyEnemyAttackRiders(enemy, ab, tmpl, (r.dmgDealt||0)>0?1:0, r.dmgDealt||0, ailmentsApplied, false);
     }
     return true;
   }
@@ -13356,7 +13431,10 @@ async function executeEnemyKitTemplateAbility(enemy, abilityId, totalEnemyMiss){
     if(r.wasDodged) logMsg(`${name} — dodged!`,'miss');
     else {
       logMsg(`${enemy.name} — ${name}${r.isCrit?' CRIT':''} for ${r.dmgDealt}!`,'enemy-action');
-      rollEnemyCombatRowAilment(ab, tmpl, r.dmgDealt||0, 1);
+      const ailmentsApplied={};
+      const ailmentAttempted=(r.dmgDealt||0)>0 && rollEnemyCombatRowAilment(ab, tmpl, r.dmgDealt||0, 1);
+      if(ailmentAttempted) ailmentsApplied[_combatRow2?.ailment||'ailment']=1;
+      applyEnemyAttackRiders(enemy, ab, tmpl, (r.dmgDealt||0)>0?1:0, r.dmgDealt||0, ailmentsApplied, false);
     }
     return true;
   }
@@ -13388,8 +13466,10 @@ async function enemyTurn() {
   if(G.enemy?.aiType==='boss_duke'){
     let dukeActions=0;
     while((e.energy||0)>0 && dukeActions<MAX_ENEMY_ACTIONS_PER_TURN){
-      dukeTurnAI();
-      e.energy=Math.max(0,(e.energy||0)-1);
+      const enCost=dukeTurnAI();
+      if(!enCost || enCost<=0) break;
+      if((e.energy||0)<enCost) break;
+      e.energy=Math.max(0,(e.energy||0)-enCost);
       dukeActions++;
       if(G.player.stats.hp<=0||G.enemy.stats.hp<=0){if(checkDeath())return;}
       await delay(220);

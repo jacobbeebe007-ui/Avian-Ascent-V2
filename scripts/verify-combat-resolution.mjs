@@ -474,6 +474,36 @@ if (typeof globalThis.getCombatStatMagnitude === 'function') {
   check('Grand Dodge Up is 12', globalThis.getCombatStatMagnitude('dodge', 'up', 'grand') === 12);
 }
 
+if (typeof sandbox.dealDamage === 'function' && sandbox.G) {
+  const G = sandbox.G;
+  const enemyAbId = sparrowStarterId;
+  const enemyAb = { id: enemyAbId, level: 1, btnType: 'physical', type: 'physical' };
+  G.player = {
+    birdKey: 'sparrow',
+    stats: { hp: 40, maxHp: 40, dodge: 10, def: 8, mdef: 8 },
+    energy: 4,
+    energyMax: 6,
+  };
+  G.playerStatus = {};
+  G.enemy = {
+    name: 'Test Enemy',
+    stats: { hp: 30, maxHp: 30, atk: 12, acc: 80, matk: 10 },
+    abilities: [enemyAb],
+  };
+  G.enemyStatus = {};
+  G._activePlayerAbility = enemyAb;
+  G._incomingAttackKind = 'physical';
+  let enemyHitOk = false;
+  let enemyHitErr = null;
+  try {
+    const hit = sandbox.dealDamage('player', 12, false, false, enemyAb);
+    enemyHitOk = !!(hit && typeof hit.dmgDealt === 'number');
+  } catch (err) {
+    enemyHitErr = err;
+  }
+  check('dealDamage player target does not throw (enemyEnCost defined)', enemyHitOk && !enemyHitErr, enemyHitErr ? String(enemyHitErr) : `dmg=${enemyHitOk}`);
+}
+
 // Ability briefs: displayText effect phrasing in combat previews
 if (typeof sandbox.buildAbilityCombatBrief === 'function' && typeof sandbox.enrichCombatRow === 'function') {
   const rapidPeck = allSkillTrees['SPARROW_S1_RAPID_PECK_FAMILY_S1'];
