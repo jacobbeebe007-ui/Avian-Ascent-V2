@@ -320,7 +320,7 @@
 <div class="map-forge-inner">
 <header class="map-forge-head">
 <div class="map-forge-head-left">
-<h2 class="map-forge-title">Build Nest — Map Forge</h2>
+<h2 class="map-forge-title">Build Nest - Map Forge</h2>
 <p class="map-forge-breadcrumb" id="map-forge-breadcrumb">Main Map</p>
 <label class="map-forge-name-label" for="map-forge-name">Map name</label>
 <input type="text" class="map-forge-name-input" id="map-forge-name" maxlength="64" placeholder="Untitled Map"/>
@@ -486,7 +486,7 @@
 <div class="map-forge-validation-panel" id="map-forge-validation-panel"></div>
 </div>
 <div class="map-forge-encounter-panel" id="map-forge-encounter-panel" style="display:none">
-<div class="map-forge-field-label">Encounter — enemies in chain</div>
+<div class="map-forge-field-label">Encounter - enemies in chain</div>
 <label class="map-forge-field-label" for="map-forge-combat-stat-mult">Combat stats ×</label>
 <input type="number" class="map-forge-field-input" id="map-forge-combat-stat-mult" min="0.1" max="5" step="0.1" value="1"/>
 <label class="map-forge-field-label" for="map-forge-health-damage-mult">Health / damage ×</label>
@@ -1123,6 +1123,7 @@
     document.documentElement.style.pointerEvents = 'none';
     var s = document.createElement('script');
     s.defer = true;
+    s.charset = 'utf-8';
     s.src = './js/avian-game.bundle.js';
     s.onload = function () { document.documentElement.style.pointerEvents = ''; };
     s.onerror = function () {

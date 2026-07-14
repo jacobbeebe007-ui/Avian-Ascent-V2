@@ -139,7 +139,7 @@
 
   function writeDrafts(list) {
     try { global.localStorage.setItem(DRAFTS_KEY, JSON.stringify(list)); return true; }
-    catch (_) { setStatus('Could not save draft — storage may be full.', true); return false; }
+    catch (_) { setStatus('Could not save draft - storage may be full.', true); return false; }
   }
 
   function getCurrentDraftId() {
@@ -331,10 +331,10 @@
     const el = document.getElementById('map-forge-status');
     if (!el) return;
     if (errors.length) {
-      const hint = isEmptyDraft(_map) ? 'New map — upload a background, then place Stage nodes. ' : '';
+      const hint = isEmptyDraft(_map) ? 'New map - upload a background, then place Stage nodes. ' : '';
       const first = errors[0].message || '';
       const extra = errors.length > 1 ? ' (+' + (errors.length - 1) + ' more)' : '';
-      el.textContent = hint + errors.length + (errors.length === 1 ? ' issue: ' : ' issues — ') + first + extra;
+      el.textContent = hint + errors.length + (errors.length === 1 ? ' issue: ' : ' issues - ') + first + extra;
       el.classList.remove('map-forge-status--warn');
       el.style.color = 'var(--red-light, #ff9090)';
       return;
@@ -342,7 +342,7 @@
     if (warnings.length) {
       const first = warnings[0].message || '';
       const extra = warnings.length > 1 ? ' (+' + (warnings.length - 1) + ' more)' : '';
-      el.textContent = warnings.length + (warnings.length === 1 ? ' warning: ' : ' warnings — ') + first + extra;
+      el.textContent = warnings.length + (warnings.length === 1 ? ' warning: ' : ' warnings - ') + first + extra;
       el.classList.add('map-forge-status--warn');
       el.style.color = '#e8c060';
       return;
@@ -977,7 +977,7 @@
         mutSel.title = 'Specific mutation (optional)';
         const anyOpt = document.createElement('option');
         anyOpt.value = '';
-        anyOpt.textContent = '— Roll by tier —';
+        anyOpt.textContent = '- Roll by tier -';
         mutSel.appendChild(anyOpt);
         mutOpts.forEach((m) => {
           const o = document.createElement('option');
@@ -1162,7 +1162,7 @@
     const sel = document.getElementById('map-forge-draft-select');
     if (!sel) return;
     const cur = getCurrentDraftId();
-    sel.innerHTML = '<option value="">— New map —</option>';
+    sel.innerHTML = '<option value="">- New map -</option>';
     readDrafts().forEach((d) => {
       const opt = document.createElement('option');
       opt.value = d.id;
@@ -1411,7 +1411,7 @@
       label.className = 'map-forge-node-pick';
       const lbl = nodeLabel(n, wi);
       const typeLabel = n.type === 'start' ? 'spawn' : (n.type === 'boss' && n.final ? 'final boss' : n.type);
-      label.textContent = '#' + n.id + ' ' + typeLabel + (lbl ? ' · ' + lbl : '') + (n.name ? ' — ' + n.name : '');
+      label.textContent = '#' + n.id + ' ' + typeLabel + (lbl ? ' · ' + lbl : '') + (n.name ? ' - ' + n.name : '');
       label.onclick = () => {
         _selectedId = n.id;
         _selectedIds = [n.id];
@@ -2164,7 +2164,7 @@
     const portraitSel = document.getElementById('map-forge-portrait-bird');
     if (portraitSel && !portraitSel.dataset.populated) {
       portraitSel.dataset.populated = '1';
-      portraitSel.innerHTML = '<option value="">— Default —</option>';
+      portraitSel.innerHTML = '<option value="">- Default -</option>';
       (global.getForgeBirdOptions ? global.getForgeBirdOptions() : []).forEach((b) => {
         if (b.id === 'random') return;
         const o = document.createElement('option');

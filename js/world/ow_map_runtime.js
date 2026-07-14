@@ -664,7 +664,7 @@
       worlds: slice.mapId === 'main' ? worlds : 0,
       bonus,
       shop,
-      avgMutTier: mutCount ? (mutSum / mutCount).toFixed(1) : '—',
+      avgMutTier: mutCount ? (mutSum / mutCount).toFixed(1) : '-',
       bonusPower,
       mapId: slice.mapId,
     };
@@ -695,7 +695,7 @@
     if (!nodes.some((n) => n.type === 'boss' && n.final)) add('warning', 'No final boss marked on main map.');
 
     const owGates = nodes.filter((n) => n.type === 'overworld');
-    if (owGates.length > 1) add('warning', 'Multiple Overworld gates on main map — players may confuse which to use.', 'main', owGates[1]?.id);
+    if (owGates.length > 1) add('warning', 'Multiple Overworld gates on main map - players may confuse which to use.', 'main', owGates[1]?.id);
 
     let firstCombatIdx = nodes.findIndex((n) => n.type === 'stage' || n.type === 'boss');
     const shopBeforeCombat = nodes.findIndex((n, i) => n.type === 'shop' && (firstCombatIdx < 0 || i < firstCombatIdx));
@@ -706,7 +706,7 @@
         const cfg = n.labelConfig || {};
         const uiAction = global.getOwMapUiAction(cfg);
         if (uiAction && cfg.actsAsNode) {
-          add('warning', 'Label cannot use both a UI button and node proxy — pick one role.', 'main', n.id);
+          add('warning', 'Label cannot use both a UI button and node proxy - pick one role.', 'main', n.id);
         }
         if (cfg.actsAsNode && (!cfg.mimicType || cfg.mimicType === 'none')) {
           add('warning', 'Functional label needs a mimic class.', 'main', n.id);
@@ -716,7 +716,7 @@
           if (!mt || mt === 'none') add('warning', 'Invisible functional label has no action.', 'main', n.id);
         }
         if (uiAction && !cfg.showFill && !cfg.showBorder && !cfg.showText) {
-          add('warning', 'Invisible UI button — add text or border so players can find it.', 'main', n.id);
+          add('warning', 'Invisible UI button - add text or border so players can find it.', 'main', n.id);
         }
         return;
       }

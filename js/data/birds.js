@@ -499,7 +499,7 @@
   },
   seagull:{
     name:"Seagull", portraitKey:"seagull",
-    tagline:"Coastal pest. Harrying swoops, noisy cries, scavengerâ€™s payoff.",
+    tagline:"Coastal pest. Harrying swoops, noisy cries, scavenger's payoff.",
     size:"medium", class:"rogue", aspect:"maris", aspectTheme:"Water / Sea",
     unlockRequires:"unlock_seagull",
     unlockHint:"Reach level 21 in Endless mode with any Trickster.",
