@@ -3729,6 +3729,20 @@ function mergeScaledStatsIntoEnemy(ed, encounterStage){
         maxHp: Number(ed.stats.maxHp) || 0,
       };
     }
+    if (typeof globalThis.applyForgeEncounterStatMults === 'function' && forgeEnc) {
+      globalThis.applyForgeEncounterStatMults(ed, forgeEnc);
+      ed._statBaseBeforeMutations = {
+        atk: Number(ed.stats.atk) || 0,
+        matk: Number(ed.stats.matk) || 0,
+        def: Number(ed.stats.def) || 0,
+        mdef: Number(ed.stats.mdef) || 0,
+        dodge: Number(ed.stats.dodge) || 0,
+        acc: Number(ed.stats.acc) || 0,
+        spd: Number(ed.stats.spd) || 0,
+        critChance: Number(ed.stats.critChance) || 0,
+        maxHp: Number(ed.stats.maxHp) || 0,
+      };
+    }
     if (typeof Avian?.mutations?.rollEnemyMutationsFromForgeSlot === 'function' && forgeSlot) {
       ed.mutationIds = Avian.mutations.rollEnemyMutationsFromForgeSlot({
         mutationBand: forgeSlot.mutationBand,
@@ -6278,7 +6292,28 @@ function startGame() {
       if (mode === 'playtest' && typeof globalThis.clearCustomOverworldMode === 'function') {
         globalThis.clearCustomOverworldMode();
       }
-      localStorage.setItem(_OW_STATE_KEY, JSON.stringify({nodeId:0, birdKey:G.selected}));
+      let owMap = null;
+      if (typeof globalThis.isCustomOverworldActive === 'function' && globalThis.isCustomOverworldActive()
+          && typeof globalThis.loadCustomOverworldMap === 'function') {
+        owMap = globalThis.loadCustomOverworldMap();
+      }
+      if (!owMap && typeof globalThis.cloneDefaultStoryMap === 'function') {
+        owMap = globalThis.cloneDefaultStoryMap();
+      }
+      if (owMap && typeof globalThis.seedOwRunToStartMap === 'function') {
+        const seeded = globalThis.seedOwRunToStartMap(owMap);
+        localStorage.setItem(_OW_STATE_KEY, JSON.stringify({
+          nodeId: seeded?.spawnIdx ?? 0,
+          birdKey: G.selected,
+        }));
+      } else {
+        if (typeof globalThis.resetOwCustomProgress === 'function') globalThis.resetOwCustomProgress();
+        if (typeof globalThis.clearOwMapStack === 'function') globalThis.clearOwMapStack();
+        const startId = (typeof globalThis.resolveMapStartMapId === 'function' && owMap)
+          ? globalThis.resolveMapStartMapId(owMap) : 'main';
+        if (typeof globalThis.setOwActiveMapId === 'function') globalThis.setOwActiveMapId(startId);
+        localStorage.setItem(_OW_STATE_KEY, JSON.stringify({ nodeId: 0, birdKey: G.selected }));
+      }
       localStorage.removeItem(_OW_NAV_KEY);
       window.location.href = 'blackstone_overworld_new.html';
       return;

@@ -47,8 +47,15 @@ html,body{width:100%;height:100%;overflow:hidden;background:#060d05;}
 #panel{flex-shrink:0;min-height:154px;z-index:10;position:relative;background:linear-gradient(180deg,#040804,#080d06);border-top:1px solid var(--gold-d);display:flex;flex-direction:column;align-items:stretch;overflow:hidden;}
 #panel-top{display:flex;align-items:stretch;flex:1;min-height:0;}
 #panel-actions{flex-shrink:0;display:flex;flex-direction:row;align-items:center;justify-content:center;flex-wrap:wrap;gap:12px 18px;padding:14px 20px 16px;border-top:1px solid rgba(200,160,32,.16);background:linear-gradient(180deg,rgba(8,12,8,.92),rgba(4,8,4,.88));}
-#panel-actions .nbtn{width:auto;min-width:120px;padding:14px 28px;font-size:13px;letter-spacing:3px;border-radius:10px;font-weight:600;}
-#panel-actions #hdr-nest-btn,#panel-actions #hdr-settings-btn{padding:14px 32px;font-size:12px;letter-spacing:3px;border-radius:10px;font-weight:600;}
+#panel-actions .nbtn{width:auto;min-width:100px;padding:14px 24px;font-size:13px;letter-spacing:2px;border-radius:10px;font-weight:600;}
+#panel-actions #hdr-nest-btn{padding:12px 22px;font-size:12px;letter-spacing:2px;border-radius:10px;font-weight:600;}
+#panel-actions #hdr-settings-btn.ow-settings-cog,
+#panel-actions .ow-settings-cog{
+  width:36px;min-width:36px;height:36px;padding:0;font-size:16px;letter-spacing:0;
+  border-radius:50%;display:inline-flex;align-items:center;justify-content:center;
+  background:rgba(200,160,32,.06);border:1px solid rgba(200,160,32,.22);color:var(--gold);cursor:pointer;
+}
+#panel-actions #hdr-settings-btn.ow-settings-cog:hover{background:rgba(200,160,32,.18);border-color:var(--gold);}
 #panel-actions #hdr-bird-btn{padding:8px 14px;}
 #panel-actions #hdr-bird-btn span{font-size:10px;}
 #panel-actions #hdr-bird-img{width:36px;height:36px;}
@@ -158,8 +165,9 @@ html,body{width:100%;height:100%;overflow:hidden;background:#060d05;}
   .orn{margin:0 4px;font-size:12px;}
   #hdr-hint{display:none;}
   #panel-actions{gap:10px;padding:10px 12px;}
-  #panel-actions .nbtn{min-width:100px;padding:12px 16px;font-size:11px;}
-  #panel-actions #hdr-nest-btn,#panel-actions #hdr-settings-btn{padding:12px 20px;font-size:10px;}
+  #panel-actions .nbtn{min-width:72px;padding:12px 14px;font-size:11px;}
+  #panel-actions #hdr-nest-btn{padding:10px 14px;font-size:10px;}
+  #panel-actions #hdr-settings-btn.ow-settings-cog{width:32px;min-width:32px;height:32px;font-size:14px;}
   #panel-actions #hdr-bird-img{width:28px;height:28px;}
   /* Map viewport fills remaining space above bottom nav */
   #vp{flex:1;min-height:0;}
@@ -196,7 +204,7 @@ html,body{width:100%;height:100%;overflow:hidden;background:#060d05;}
     <div class="hdr-title-wrap">
       <span class="orn">&#10022;</span><h1>BLACKSTONE FOREST</h1><span class="orn">&#10022;</span>
     </div>
-    <span id="hdr-hint">Tap map nodes &middot; OPEN LOCATION or Enter opens panel &middot; B = Bird &middot; Zoom / Pan map</span>
+    <span id="hdr-hint">Tap map nodes · Enter opens panel · B = Bird · Zoom / Pan map</span>
     <div class="hdr-spacer">
       <button type="button" id="hdr-return-ow-btn">← Overworld</button>
       <button type="button" id="hdr-forge-btn">← Map Forge</button>
@@ -240,11 +248,11 @@ html,body{width:100%;height:100%;overflow:hidden;background:#060d05;}
         <span id="hdr-bird-name">SPARROW</span>
       </div>
       <span id="hdr-shiny-count">&#11088; 0</span>
-      <button type="button" class="nbtn" id="btn-prev">&#9664; PREV</button>
-      <button type="button" id="hdr-nest-btn">&#x1F3E0; NEST</button>
-      <button type="button" id="hdr-settings-btn">⚙ SETTINGS</button>
-      <button type="button" class="nbtn" id="btn-open-node">OPEN LOCATION ▶</button>
-      <button type="button" class="nbtn" id="btn-next">NEXT &#9654;</button>
+      <button type="button" class="nbtn" id="btn-prev">Back</button>
+      <button type="button" id="hdr-nest-btn">Nest</button>
+      <button type="button" id="hdr-settings-btn" class="ow-settings-cog" aria-label="Settings" title="Settings">&#9881;</button>
+      <button type="button" class="nbtn" id="btn-open-node">Enter</button>
+      <button type="button" class="nbtn" id="btn-next">Next</button>
     </div>
   </div>
   <div id="ov">
@@ -298,11 +306,27 @@ const _STORY_MAP_RAW=typeof cloneDefaultStoryMap==='function'?cloneDefaultStoryM
 const _STORY_MAP=_STORY_MAP_RAW&&typeof upgradeMapToV2==='function'?upgradeMapToV2(_STORY_MAP_RAW):_STORY_MAP_RAW;
 const _ACTIVE_MAP=_USE_CUSTOM?_CUSTOM_MAP:_STORY_MAP;
 const _OW_PROGRESS=typeof readOwCustomProgress==='function'?readOwCustomProgress():{nodeClears:{},worldsCompleted:{},bonusRepeats:{},activeMapId:'main'};
-const _ACTIVE_MAP_ID=typeof getOwActiveMapId==='function'?getOwActiveMapId():'main';
-const _MAP_SLICE=_ACTIVE_MAP&&typeof resolveOwActiveMapSlice==='function'?resolveOwActiveMapSlice(_ACTIVE_MAP,_USE_CUSTOM?_ACTIVE_MAP_ID:'main'):null;
+let _ACTIVE_MAP_ID=typeof getOwActiveMapId==='function'?getOwActiveMapId():'main';
+// Resolve startMapId when progress still points at main on a fresh/built-in run
+(function reconcileStartMapId(){
+  const mapStart = _ACTIVE_MAP && typeof resolveMapStartMapId==='function'
+    ? resolveMapStartMapId(_ACTIVE_MAP)
+    : (_ACTIVE_MAP?.startMapId||'main');
+  const clears = _OW_PROGRESS?.nodeClears||{};
+  const fresh = !Object.keys(clears).length && !(_OW_PROGRESS?.worldsCompleted && Object.keys(_OW_PROGRESS.worldsCompleted).length);
+  if (fresh && mapStart && mapStart!=='main' && (_ACTIVE_MAP_ID==='main' || !_ACTIVE_MAP_ID)) {
+    _ACTIVE_MAP_ID = mapStart;
+    if (typeof setOwActiveMapId==='function') setOwActiveMapId(mapStart);
+  }
+  if (_ACTIVE_MAP_ID!=='main' && _ACTIVE_MAP && !_ACTIVE_MAP.worlds?.[_ACTIVE_MAP_ID]) {
+    _ACTIVE_MAP_ID = 'main';
+    if (typeof setOwActiveMapId==='function') setOwActiveMapId('main');
+  }
+})();
+const _MAP_SLICE=_ACTIVE_MAP&&typeof resolveOwActiveMapSlice==='function'?resolveOwActiveMapSlice(_ACTIVE_MAP,_ACTIVE_MAP_ID):null;
 const MAP_W=_ACTIVE_MAP?.mapWidth||1536,MAP_H=_ACTIVE_MAP?.mapHeight||1024;
 let MAP_MAX_STAGE=_ACTIVE_MAP?.maxStage||20;
-let _PATH_REVEAL=_USE_CUSTOM&&_ACTIVE_MAP?.pathReveal!==false;
+let _PATH_REVEAL=(_USE_CUSTOM||(_ACTIVE_MAP_ID&&_ACTIVE_MAP_ID!=='main'))&&(_MAP_SLICE?.pathReveal!==false)&&(_ACTIVE_MAP?.pathReveal!==false);
 let _CURRENT_MAP_ID=_MAP_SLICE?.mapId||'main';
 let _WORLD_INDEX=_MAP_SLICE?.worldIndex??null;
 
@@ -386,16 +410,18 @@ function owLabelClickHandler(n,cfg){
 }
 function owNodeVisible(idx){
   if(_IS_PLAYTEST&&_USE_CUSTOM) return true;
-  if(!_PATH_REVEAL||!_USE_CUSTOM) return true;
+  if(!_PATH_REVEAL||(!_USE_CUSTOM&&_CURRENT_MAP_ID==='main')) return true;
   return typeof isNodeVisibleOnMap==='function'?isNodeVisibleOnMap(NODES,idx,_OW_PROGRESS,_CURRENT_MAP_ID,{worldId:_CURRENT_MAP_ID},true):true;
 }
 function owPathVisible(segIdx){
   if(_IS_PLAYTEST&&_USE_CUSTOM) return true;
-  if(!_PATH_REVEAL||!_USE_CUSTOM) return true;
+  if(!_PATH_REVEAL||(!_USE_CUSTOM&&_CURRENT_MAP_ID==='main')) return true;
   return typeof isPathSegmentRevealed==='function'?isPathSegmentRevealed(NODES,segIdx,_OW_PROGRESS,_CURRENT_MAP_ID,{worldId:_CURRENT_MAP_ID},true):true;
 }
 function owNodeCleared(n){
-  if(!n||!_USE_CUSTOM) return false;
+  if(!n) return false;
+  // Built-in main map still uses completedStage; worlds + custom maps use nodeClears
+  if(!_USE_CUSTOM && _CURRENT_MAP_ID==='main') return false;
   return typeof isOwNodeCleared==='function'?isOwNodeCleared(_CURRENT_MAP_ID,n.id,_OW_PROGRESS):false;
 }
 function nodeDisplayLabel(n){
@@ -431,6 +457,7 @@ function isNodeUnlocked(n){
   if(n.type==='overworld'){
     const prev=NODES[n.id-1];
     if(!prev||prev.type==='start') return true;
+    if(_WORLD_INDEX!=null || _CURRENT_MAP_ID!=='main') return owNodeCleared(prev);
     if(isCombatNode(prev)) return (OVERWORLD_PROGRESS.completedStage||0) >= Number(prev.stage||1)-1;
     if(prev.type==='shop'){ const p2=NODES[n.id-2]; return (OVERWORLD_PROGRESS.completedStage||0) >= Number(p2?.stage||0); }
     return owNodeCleared(prev);
@@ -793,7 +820,7 @@ if(_IS_PLAYTEST&&_USE_CUSTOM){
     });
   }
 }
-if(_USE_CUSTOM&&_ACTIVE_MAP_ID!=='main'){
+if(_ACTIVE_MAP_ID!=='main'){
   const _retBtn=document.getElementById('hdr-return-ow-btn');
   if(_retBtn){
     _retBtn.classList.add('is-visible');

@@ -48,17 +48,17 @@
     { id: 'nest', label: 'Nest' },
     { id: 'settings', label: 'Settings' },
     { id: 'reference', label: 'Reference' },
-    { id: 'openLocation', label: 'Open location' },
-    { id: 'prevNode', label: 'Previous node' },
-    { id: 'nextNode', label: 'Next node' },
+    { id: 'openLocation', label: 'Enter' },
+    { id: 'prevNode', label: 'Back' },
+    { id: 'nextNode', label: 'Next' },
   ];
 
   global.OW_MAP_UI_ACTION_LABELS = {
     nest: 'Nest',
     settings: 'Settings',
     reference: 'Reference',
-    openLocation: 'Open',
-    prevNode: 'Prev',
+    openLocation: 'Enter',
+    prevNode: 'Back',
     nextNode: 'Next',
   };
 
@@ -148,8 +148,14 @@
     for (let i = 0; i < count; i++) {
       slots.push({ birdKey: 'random', enemyTier: 'grey', enemyStars: 0, mutationBand: 'green', maxMutations: isBoss ? 2 : 1 });
     }
-    return { enemyCount: count, slots };
+    return { enemyCount: count, slots, combatStatMult: 1, healthDamageMult: 1 };
   };
+
+  function clampForgeEncounterMult(v) {
+    const n = Number(v);
+    if (!Number.isFinite(n)) return 1;
+    return Math.max(0.1, Math.min(5, Math.round(n * 10) / 10));
+  }
 
   function normalizeForgeSlotTier(tier) {
     if (typeof global.normalizeBirdCardTier === 'function') return global.normalizeBirdCardTier(tier);
@@ -183,6 +189,8 @@
     }
     const enc = node.encounter;
     enc.enemyCount = Math.max(1, Math.min(5, Math.floor(Number(enc.enemyCount) || enc.slots.length || 1)));
+    enc.combatStatMult = clampForgeEncounterMult(enc.combatStatMult);
+    enc.healthDamageMult = clampForgeEncounterMult(enc.healthDamageMult);
     while (enc.slots.length < enc.enemyCount) {
       enc.slots.push({ birdKey: 'random', enemyTier: 'grey', enemyStars: 0, mutationBand: 'green', maxMutations: 1 });
     }
@@ -313,12 +321,27 @@
     return global.isPathSegmentRevealed(arr, pathPos, progress, mapId, mapDef, pathReveal);
   };
 
+  global.resolveMapStartMapId = function (map) {
+    const id = String(map?.startMapId || 'main');
+    if (id === 'main') return 'main';
+    if (map?.worlds && map.worlds[id]) return id;
+    return 'main';
+  };
+
+  global.findOwSpawnNodeIndex = function (nodes) {
+    if (!Array.isArray(nodes)) return 0;
+    const i = nodes.findIndex((n) => n && n.type === 'start');
+    return i >= 0 ? i : 0;
+  };
+
   global.upgradeMapToV2 = function (map) {
     const m = Object.assign({}, map || {});
     m.schemaVersion = 2;
     m.pathReveal = m.pathReveal !== false;
     m.worlds = m.worlds && typeof m.worlds === 'object' ? m.worlds : {};
     m.nodes = Array.isArray(m.nodes) ? m.nodes : [];
+    const sm = String(m.startMapId || 'main');
+    m.startMapId = (sm === 'main' || (m.worlds && m.worlds[sm])) ? sm : 'main';
     let worldCount = 0;
     m.nodes.forEach((n) => {
       if (n.type === 'world') {
@@ -446,6 +469,39 @@
     return ed;
   };
 
+  /** Build Nest encounter multipliers: combatStatMult (all combat) then healthDamageMult (HP/ATK/MATK). */
+  global.applyForgeEncounterStatMults = function (ed, encounter) {
+    if (!ed || !encounter) return ed;
+    const combatMult = clampForgeEncounterMult(encounter.combatStatMult);
+    const hdMult = clampForgeEncounterMult(encounter.healthDamageMult);
+    if (combatMult === 1 && hdMult === 1) return ed;
+    const floorStat = (v, mult) => Math.max(1, Math.floor((Number(v) || 0) * mult));
+    const floorOpt = (v, mult) => Math.max(0, Math.floor((Number(v) || 0) * mult));
+    const combatThenHd = combatMult * hdMult;
+    const setPair = (key, value) => {
+      if (ed.stats) ed.stats[key] = value;
+      if (key in ed || key === 'maxHp') ed[key] = value;
+    };
+    const maxHp = floorStat(ed.stats?.maxHp ?? ed.maxHp, combatThenHd);
+    setPair('maxHp', maxHp);
+    if (ed.stats) ed.stats.hp = maxHp;
+    ed.hp = maxHp;
+    setPair('atk', floorStat(ed.stats?.atk ?? ed.atk, combatThenHd));
+    setPair('matk', floorStat(ed.stats?.matk ?? ed.matk, combatThenHd));
+    setPair('def', floorOpt(ed.stats?.def ?? ed.def, combatMult));
+    setPair('mdef', floorOpt(ed.stats?.mdef ?? ed.mdef, combatMult));
+    setPair('spd', floorStat(ed.stats?.spd ?? ed.spd, combatMult));
+    if (ed.stats && ('acc' in ed.stats || ed.acc != null)) {
+      const acc = Math.max(1, Math.min(99, floorStat(ed.stats?.acc ?? ed.acc, combatMult)));
+      setPair('acc', acc);
+    }
+    if (ed.stats && ('dodge' in ed.stats || ed.dodge != null)) {
+      const dodge = Math.max(0, Math.min(99, floorOpt(ed.stats?.dodge ?? ed.dodge, combatMult)));
+      setPair('dodge', dodge);
+    }
+    return ed;
+  };
+
   global.grantForgeClearRewards = function (player, rewards, G) {
     const empty = { shinies: 0, mutations: [], items: [], nests: 0, rescuedNests: 0, goldenGoose: 0, feathers: [] };
     if (!Array.isArray(rewards) || !rewards.length) return empty;
@@ -469,6 +525,8 @@
     };
     rewards.forEach((r) => {
       if (!r) return;
+      const chance = r.chance != null ? Math.max(0, Math.min(100, Number(r.chance))) : 100;
+      if (chance < 100 && Math.random() * 100 >= chance) return;
       if (r.type === 'shinies') {
         const lo = Math.max(0, Math.floor(Number(r.min) || 0));
         const hi = Math.max(lo, Math.floor(Number(r.max) || lo));
@@ -476,9 +534,13 @@
         granted.shinies += gain;
         if (G) G.shinyObjects = (G.shinyObjects || 0) + gain;
       } else if (r.type === 'mutation') {
-        const count = Math.max(1, Math.floor(Number(r.count) || 1));
-        const band = r.tierBand || r.tier || 'blue';
-        for (let i = 0; i < count; i++) grantMutationIds(rollForgeMutation(band));
+        if (r.mutationId) {
+          grantMutationIds([String(r.mutationId)]);
+        } else {
+          const count = Math.max(1, Math.floor(Number(r.count) || 1));
+          const band = r.tierBand || r.tier || 'blue';
+          for (let i = 0; i < count; i++) grantMutationIds(rollForgeMutation(band));
+        }
       } else if (r.type === 'nest' && Array.isArray(r.slots)) {
         r.slots.forEach((slot) => {
           grantMutationIds(rollForgeMutation(slot?.tier || 'blue'));
@@ -620,9 +682,15 @@
     if (!map?.backgroundDataUrl) add('error', 'Upload a main map background image.');
 
     const worldIdsUsed = new Set(nodes.filter((n) => n.type === 'world' && n.worldId).map((n) => n.worldId));
+    const startMapId = String(map?.startMapId || 'main');
     Object.keys(map?.worlds || {}).forEach((wid) => {
-      if (!worldIdsUsed.has(wid)) add('error', 'Orphaned world data: ' + wid, 'main', null);
+      if (!worldIdsUsed.has(wid) && wid !== startMapId) add('error', 'Orphaned world data: ' + wid, 'main', null);
     });
+    if (startMapId !== 'main') {
+      const wn = map?.worlds?.[startMapId]?.nodes || [];
+      if (!map?.worlds?.[startMapId]) add('error', 'startMapId "' + startMapId + '" does not exist.');
+      else if (!wn.some((n) => n.type === 'start')) add('error', 'Start map needs a Spawn node.', startMapId, null);
+    }
 
     if (!nodes.some((n) => n.type === 'boss' && n.final)) add('warning', 'No final boss marked on main map.');
 

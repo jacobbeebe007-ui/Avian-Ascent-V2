@@ -61,6 +61,36 @@
     global.writeOwCustomProgress(p);
   };
 
+  global.seedOwRunToStartMap = function (map) {
+    const resolveStart = typeof global.resolveMapStartMapId === 'function'
+      ? global.resolveMapStartMapId
+      : (m) => {
+        const id = String(m?.startMapId || 'main');
+        if (id === 'main') return 'main';
+        return (m?.worlds && m.worlds[id]) ? id : 'main';
+      };
+    const findSpawn = typeof global.findOwSpawnNodeIndex === 'function'
+      ? global.findOwSpawnNodeIndex
+      : (nodes) => {
+        if (!Array.isArray(nodes)) return 0;
+        const i = nodes.findIndex((n) => n && n.type === 'start');
+        return i >= 0 ? i : 0;
+      };
+    const startId = resolveStart(map);
+    global.resetOwCustomProgress();
+    global.clearOwMapStack();
+    global.setOwActiveMapId(startId);
+    const slice = startId === 'main'
+      ? (map?.nodes || [])
+      : (map?.worlds?.[startId]?.nodes || []);
+    const spawnIdx = findSpawn(slice);
+    try {
+      global.localStorage.setItem(global.AVIAN_OW_KEYS.STATE, JSON.stringify({ nodeId: spawnIdx }));
+      global.localStorage.removeItem(global.AVIAN_OW_KEYS.NAV);
+    } catch (_) {}
+    return { startId, spawnIdx };
+  };
+
   global.readOwMapStack = function () {
     try {
       const raw = global.localStorage.getItem(global.AVIAN_OW_KEYS.MAP_STACK);

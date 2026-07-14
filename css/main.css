@@ -4743,6 +4743,15 @@ body.ui-mobile-mode #screen-select #mobile-select-details-anchor{display:block;o
 .map-forge-node-move:disabled{opacity:.35;cursor:not-allowed;}
 .map-forge-breadcrumb{font-size:.72rem;color:var(--gold-dim,var(--text-dim));margin:0 0 4px;font-family:'Cinzel',serif;letter-spacing:.06em;}
 .map-forge-encounter-panel,.map-forge-bonus-panel,.map-forge-clear-rewards-panel{display:flex;flex-direction:column;gap:6px;padding-top:8px;border-top:1px solid rgba(201,168,76,.16);}
+.map-forge-panel-tabs{display:flex;gap:4px;margin:8px 0 6px;border-bottom:1px solid rgba(201,168,76,.2);padding-bottom:4px;}
+.map-forge-panel-tab{flex:1;padding:6px 10px;border:1px solid rgba(201,168,76,.22);border-radius:6px;background:rgba(8,12,8,.4);color:var(--muted,#a8a090);font-family:'Cinzel',serif;font-size:.75rem;letter-spacing:.06em;cursor:pointer;}
+.map-forge-panel-tab.is-active{background:rgba(201,168,76,.14);border-color:var(--gold,#c9a84c);color:var(--gold,#c9a84c);}
+.map-forge-panel-pane{display:none;flex-direction:column;gap:6px;}
+.map-forge-panel-pane.is-active{display:flex;}
+.map-forge-clear-reward-card{flex-wrap:wrap;align-items:center;gap:6px;padding:8px;border:1px solid rgba(201,168,76,.14);border-radius:8px;background:rgba(0,0,0,.18);}
+.map-forge-reward-chance{display:inline-flex;align-items:center;gap:2px;font-size:.7rem;color:var(--muted,#a8a090);}
+.map-forge-reward-chance .map-forge-reward-num{width:3.2em;}
+.map-forge-reward-mutation-id{min-width:8em;flex:1;}
 .map-forge-advanced{
   padding:6px 0;
   border-top:1px solid rgba(201,168,76,.12);

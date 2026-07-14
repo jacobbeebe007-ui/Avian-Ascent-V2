@@ -326,6 +326,9 @@
 <input type="text" class="map-forge-name-input" id="map-forge-name" maxlength="64" placeholder="Untitled Map"/>
 <label class="map-forge-name-label" for="map-forge-draft-select">Draft</label>
 <select class="map-forge-draft-select" id="map-forge-draft-select"></select>
+<label class="map-forge-name-label" for="map-forge-start-map">Run starts on</label>
+<select class="map-forge-draft-select" id="map-forge-start-map" title="Map loaded when a story run begins"></select>
+<button type="button" class="menu-btn" id="map-forge-edit-start-map" data-action="editStartMap" style="display:none">Edit start map</button>
 </div>
 <div class="map-forge-head-actions">
 <button type="button" class="menu-btn" data-action="newMapForge">New</button>
@@ -366,7 +369,6 @@
 </div>
 <div class="map-forge-toolbar">
 <span class="map-forge-toolbar-label">View</span>
-<button type="button" class="map-forge-tool-btn" data-forge-tool="pan" title="Drag canvas to pan (H). Hold Space for temporary pan.">Grab</button>
 <button type="button" class="menu-btn map-forge-tool-btn" data-action="mapForgeZoomFit">Fit</button>
 <button type="button" class="menu-btn map-forge-tool-btn" data-action="mapForgeZoom100">100%</button>
 <button type="button" class="menu-btn map-forge-tool-btn" data-action="mapForgeZoom200">200%</button>
@@ -407,6 +409,11 @@
 <span class="menu-btn">Import JSON</span>
 <input type="file" id="map-forge-import" accept="application/json,.json" hidden/>
 </label>
+<div class="map-forge-panel-tabs" role="tablist" aria-label="Forge sidebar panels">
+<button type="button" class="map-forge-panel-tab is-active" data-forge-panel-tab="node" role="tab" aria-selected="true">Node</button>
+<button type="button" class="map-forge-panel-tab" data-forge-panel-tab="rewards" role="tab" aria-selected="false">Rewards</button>
+</div>
+<div class="map-forge-panel-pane is-active" id="map-forge-panel-node" data-forge-panel="node" role="tabpanel">
 <div class="map-forge-node-editor" id="map-forge-node-editor">
 <label class="map-forge-field-label" for="map-forge-node-name">Node name</label>
 <input type="text" class="map-forge-field-input" id="map-forge-node-name" maxlength="48"/>
@@ -444,9 +451,9 @@
 <option value="nest">Nest</option>
 <option value="settings">Settings</option>
 <option value="reference">Reference</option>
-<option value="openLocation">Open location</option>
-<option value="prevNode">Previous node</option>
-<option value="nextNode">Next node</option>
+<option value="openLocation">Enter</option>
+<option value="prevNode">Back</option>
+<option value="nextNode">Next</option>
 </select>
 <p class="map-forge-hint map-forge-label-ui-hint" id="map-forge-label-ui-hint"></p>
 </div>
@@ -480,6 +487,10 @@
 </div>
 <div class="map-forge-encounter-panel" id="map-forge-encounter-panel" style="display:none">
 <div class="map-forge-field-label">Encounter — enemies in chain</div>
+<label class="map-forge-field-label" for="map-forge-combat-stat-mult">Combat stats ×</label>
+<input type="number" class="map-forge-field-input" id="map-forge-combat-stat-mult" min="0.1" max="5" step="0.1" value="1"/>
+<label class="map-forge-field-label" for="map-forge-health-damage-mult">Health / damage ×</label>
+<input type="number" class="map-forge-field-input" id="map-forge-health-damage-mult" min="0.1" max="5" step="0.1" value="1"/>
 <select class="map-forge-field-input" id="map-forge-enemy-count">
 <option value="1">1 enemy</option>
 <option value="2">2 enemies</option>
@@ -497,8 +508,21 @@
 <button type="button" class="menu-btn" id="map-forge-apply-preset">Apply preset</button>
 </div>
 <div class="map-forge-boss-stats-panel" id="map-forge-boss-stats-panel" style="display:none"></div>
-<div class="map-forge-clear-rewards-panel" id="map-forge-clear-rewards-panel" style="display:none">
+<div class="map-forge-bonus-panel" id="map-forge-bonus-panel" style="display:none">
+<div class="map-forge-field-label">Bonus stage options</div>
+<label class="map-forge-field-check"><input type="checkbox" id="map-forge-bonus-power" checked/> Power progression (+10% per clear)</label>
+<label class="map-forge-field-label" for="map-forge-bonus-repeats">Max repeats</label>
+<select class="map-forge-field-input" id="map-forge-bonus-repeats">
+<option value="1">1</option><option value="3">3</option><option value="5" selected>5</option><option value="10">10</option><option value="20">20</option>
+</select>
+</div>
+</div>
+</div>
+<div class="map-forge-panel-pane" id="map-forge-panel-rewards" data-forge-panel="rewards" role="tabpanel" hidden>
+<div class="map-forge-clear-rewards-panel" id="map-forge-clear-rewards-panel">
 <div class="map-forge-field-label">Stage rewards</div>
+<p class="map-forge-hint" id="map-forge-rewards-empty">Select a stage, boss, or bonus node to edit clear rewards.</p>
+<div id="map-forge-rewards-editor" style="display:none">
 <div id="map-forge-clear-reward-list"></div>
 <div class="map-forge-clear-rewards-add">
 <select class="map-forge-field-input" id="map-forge-reward-add-type">
@@ -513,13 +537,6 @@
 <button type="button" class="menu-btn" id="map-forge-add-reward">Add reward</button>
 </div>
 </div>
-<div class="map-forge-bonus-panel" id="map-forge-bonus-panel" style="display:none">
-<div class="map-forge-field-label">Bonus stage options</div>
-<label class="map-forge-field-check"><input type="checkbox" id="map-forge-bonus-power" checked/> Power progression (+10% per clear)</label>
-<label class="map-forge-field-label" for="map-forge-bonus-repeats">Max repeats</label>
-<select class="map-forge-field-input" id="map-forge-bonus-repeats">
-<option value="1">1</option><option value="3">3</option><option value="5" selected>5</option><option value="10">10</option><option value="20">20</option>
-</select>
 </div>
 </div>
 <label class="map-forge-field-check"><input type="checkbox" id="map-forge-path-reveal" checked/> Hidden paths until cleared</label>
@@ -538,7 +555,7 @@
 <div class="map-forge-node-list-title">Path order</div>
 <div class="map-forge-node-list" id="map-forge-node-list"></div>
 </div>
-<p class="map-forge-hint">S=Select, 1–9=place (7=Spawn), arrows=nudge, Shift+arrows=10px, Ctrl+D=duplicate, Ctrl+Z/Y=undo, Del=delete, Esc=deselect. Shift+click multi-select.</p>
+<p class="map-forge-hint">S=Select (drag empty canvas to pan), 1–9=place (7=Spawn), arrows=nudge, Shift+arrows=10px, Ctrl+D=duplicate, Ctrl+Z/Y=undo, Del=delete, Esc=deselect. Shift+click multi-select. Space or middle-click also pans.</p>
 </aside>
 <div class="map-forge-canvas-wrap" id="map-forge-canvas-wrap">
 <div class="map-forge-canvas-inner" id="map-forge-canvas-inner">

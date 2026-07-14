@@ -1,5 +1,6 @@
 /**
  * Built-in story overworld map used by Blackstone Forest and Map Forge.
+ * Runs begin on the intro world (startMapId), then enter the main navigator.
  */
 (function (global) {
   'use strict';
@@ -14,7 +15,46 @@
     backgroundDataUrl: 'assets/overworld_map.png',
     pathReveal: true,
     maxStage: 20,
-    worlds: {},
+    startMapId: 'intro',
+    worlds: {
+      intro: {
+        name: 'Leaving the Nest',
+        worldIndex: 0,
+        backgroundDataUrl: 'assets/overworld_map.png',
+        nodes: [
+          { id: 0, type: 'start', name: 'Nest Edge', x: 768, y: 860, stage: 0, terrain: 'Nest Periphery' },
+          {
+            id: 1,
+            type: 'stage',
+            name: 'First Flight',
+            x: 768,
+            y: 700,
+            subStage: 1,
+            terrain: 'Old Farmstead',
+            portraitBird: 'sparrow',
+            clearRewards: [{ type: 'shinies', min: 5, max: 12, chance: 100 }],
+          },
+          {
+            id: 2,
+            type: 'stage',
+            name: 'Yard Bound',
+            x: 768,
+            y: 540,
+            subStage: 2,
+            terrain: 'Overgrown Yard',
+            portraitBird: 'crow',
+            clearRewards: [{ type: 'shinies', min: 8, max: 16, chance: 100 }],
+          },
+          {
+            id: 3,
+            type: 'overworld',
+            name: 'Path to Blackstone',
+            x: 768,
+            y: 360,
+          },
+        ],
+      },
+    },
     nodes: [
       { id: 0, type: 'start', name: 'The Barn', x: 1211, y: 764, stage: 0, terrain: 'Old Farmstead' },
       { id: 1, type: 'stage', name: 'Barn Gate', x: 1086, y: 825, stage: 1, terrain: 'Overgrown Yard', portraitBird: 'sparrow' },

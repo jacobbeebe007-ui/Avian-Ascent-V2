@@ -49,6 +49,7 @@
   let _configClipboard = null;
   let _pendingDirtyAction = null;
   let _actionStatusUntil = 0;
+  let _sidebarPanel = 'node'; // 'node' | 'rewards'
 
   function upgradeMapSafe(raw) {
     if (typeof global.upgradeMapToV2 === 'function') return global.upgradeMapToV2(raw);
@@ -81,8 +82,41 @@
       pathReveal: true,
       maxStage: 0,
       worlds: {},
+      startMapId: 'main',
       nodes: [{ id: 0, type: 'start', name: 'Spawn', x: 1211, y: 764, stage: 0 }],
     });
+  }
+
+  function resolveMapStartMapId(map) {
+    const id = String(map?.startMapId || 'main');
+    if (id === 'main') return 'main';
+    if (map?.worlds && map.worlds[id]) return id;
+    return 'main';
+  }
+
+  function findSpawnNodeIndex(nodes) {
+    if (!Array.isArray(nodes)) return 0;
+    const i = nodes.findIndex((n) => n.type === 'start');
+    return i >= 0 ? i : 0;
+  }
+
+  function seedRunProgressToStart(map) {
+    if (typeof global.seedOwRunToStartMap === 'function') {
+      return global.seedOwRunToStartMap(map);
+    }
+    const startId = resolveMapStartMapId(map);
+    if (global.resetOwCustomProgress) global.resetOwCustomProgress();
+    if (global.clearOwMapStack) global.clearOwMapStack();
+    if (global.setOwActiveMapId) global.setOwActiveMapId(startId);
+    const slice = startId === 'main'
+      ? (map?.nodes || [])
+      : (map?.worlds?.[startId]?.nodes || []);
+    const spawnIdx = findSpawnNodeIndex(slice);
+    try {
+      global.localStorage.setItem(KEYS.STATE || 'avianAscent_overworld', JSON.stringify({ nodeId: spawnIdx }));
+      global.localStorage.removeItem(KEYS.NAV || 'avianAscent_nav');
+    } catch (_) {}
+    return { startId, spawnIdx };
   }
 
   function getEditingSlice() {
@@ -143,6 +177,8 @@
     copy.mapHeight = MAP_H;
     copy.pathReveal = copy.pathReveal !== false;
     copy.worlds = copy.worlds || {};
+    const sm = String(copy.startMapId || 'main');
+    copy.startMapId = (sm === 'main' || (copy.worlds && copy.worlds[sm])) ? sm : 'main';
     copy.nodes = typeof global.normalizeOwMapNodes === 'function'
       ? global.normalizeOwMapNodes(copy.nodes || [])
       : (copy.nodes || []).map((n, i) => Object.assign({}, n, { id: i }));
@@ -323,6 +359,11 @@
     if (nodes[0].type !== 'start') return 'First node must be Spawn.';
     if (!nodes.some((n) => n.type === 'stage' || n.type === 'boss')) return 'Add at least one Stage or Boss.';
     if (!map.backgroundDataUrl) return 'Upload a background image first.';
+    const startId = resolveMapStartMapId(map);
+    if (startId !== 'main') {
+      const wn = map.worlds?.[startId]?.nodes || [];
+      if (!wn.some((n) => n.type === 'start')) return 'Start map "' + startId + '" needs a Spawn node.';
+    }
     return null;
   }
 
@@ -367,6 +408,7 @@
       pathReveal: normalized.pathReveal !== false,
       backgroundDataUrl: normalized.backgroundDataUrl || '',
       maxStage: normalized.maxStage,
+      startMapId: resolveMapStartMapId(normalized),
       nodes: normalized.nodes.map((n) => serializeNode(n, null)),
       worlds,
     };
@@ -547,6 +589,7 @@
 
   function refreshForgeUI() {
     try {
+      populateStartMapSelect();
       renderNodeList();
       renderForgeCanvas();
       syncNodeEditorFields();
@@ -738,6 +781,49 @@
     return best;
   }
 
+  function getForgeCombatItemOptions() {
+    const catalog = global.COMBAT_ITEM_CATALOG || globalThis.COMBAT_ITEM_CATALOG;
+    if (catalog && typeof catalog === 'object') {
+      return Object.keys(catalog).map((k) => ({
+        id: k,
+        label: catalog[k]?.name || k,
+      }));
+    }
+    return [
+      { id: 'freshWater', label: 'Fresh Water' },
+      { id: 'sugarWater', label: 'Bird Seed' },
+      { id: 'honeyWater', label: 'Honey Water' },
+    ];
+  }
+
+  function getForgeMutationOptions() {
+    const byId = (global.Avian && global.Avian.data && global.Avian.data.mutations && global.Avian.data.mutations.byId) || {};
+    const keys = Object.keys(byId);
+    if (!keys.length) return [];
+    return keys
+      .map((id) => {
+        const item = byId[id];
+        return { id, label: (item?.name || id) + (item?.tier ? ' (' + item.tier + ')' : '') };
+      })
+      .sort((a, b) => a.label.localeCompare(b.label));
+  }
+
+  function setSidebarPanel(panel) {
+    _sidebarPanel = panel === 'rewards' ? 'rewards' : 'node';
+    document.querySelectorAll('[data-forge-panel-tab]').forEach((btn) => {
+      const on = btn.getAttribute('data-forge-panel-tab') === _sidebarPanel;
+      btn.classList.toggle('is-active', on);
+      btn.setAttribute('aria-selected', on ? 'true' : 'false');
+    });
+    document.querySelectorAll('[data-forge-panel]').forEach((pane) => {
+      const on = pane.getAttribute('data-forge-panel') === _sidebarPanel;
+      pane.classList.toggle('is-active', on);
+      if (on) pane.removeAttribute('hidden');
+      else pane.setAttribute('hidden', '');
+    });
+    if (_sidebarPanel === 'rewards') syncRewardsPanel();
+  }
+
   function ensureNodeClearRewards(n) {
     if (!n || !global.isForgeCombatNode || !global.isForgeCombatNode(n)) return;
     if (!Array.isArray(n.clearRewards) && n.bonusConfig?.rewards?.length) {
@@ -747,27 +833,91 @@
     if (!Array.isArray(n.clearRewards)) n.clearRewards = [];
   }
 
+  function syncRewardsPanel() {
+    const emptyEl = document.getElementById('map-forge-rewards-empty');
+    const editorEl = document.getElementById('map-forge-rewards-editor');
+    const slice = getEditingSlice();
+    const n = slice?.nodes?.find((x) => x.id === _selectedId);
+    const isCombat = n && global.isForgeCombatNode && global.isForgeCombatNode(n);
+    if (!isCombat) {
+      if (emptyEl) emptyEl.style.display = '';
+      if (editorEl) editorEl.style.display = 'none';
+      return;
+    }
+    if (emptyEl) emptyEl.style.display = 'none';
+    if (editorEl) editorEl.style.display = '';
+    renderClearRewardsList(n);
+  }
+
+  function moveClearReward(n, index, dir) {
+    if (!n?.clearRewards) return;
+    const j = index + dir;
+    if (j < 0 || j >= n.clearRewards.length) return;
+    const tmp = n.clearRewards[index];
+    n.clearRewards[index] = n.clearRewards[j];
+    n.clearRewards[j] = tmp;
+    renderClearRewardsList(n);
+  }
+
+  function appendChanceControl(row, r, n) {
+    const wrap = document.createElement('label');
+    wrap.className = 'map-forge-reward-chance';
+    wrap.title = 'Chance to grant this reward (0–100%)';
+    const lbl = document.createElement('span');
+    lbl.textContent = '%';
+    const inp = document.createElement('input');
+    inp.type = 'number';
+    inp.className = 'map-forge-reward-num';
+    inp.min = '0';
+    inp.max = '100';
+    inp.value = String(r.chance != null ? r.chance : 100);
+    inp.onchange = () => {
+      r.chance = Math.max(0, Math.min(100, Math.floor(Number(inp.value) || 100)));
+      inp.value = String(r.chance);
+    };
+    wrap.appendChild(inp);
+    wrap.appendChild(lbl);
+    row.appendChild(wrap);
+  }
+
   function renderClearRewardsList(n) {
     const list = document.getElementById('map-forge-clear-reward-list');
     if (!list) return;
     ensureNodeClearRewards(n);
     list.innerHTML = '';
     const cardTiers = global.OW_CARD_TIER_MUTATION_OPTIONS || [];
-    const itemKeys = ['freshWater', 'sugarWater', 'honeyWater'];
-    const itemLabels = { freshWater: 'Fresh Water', sugarWater: 'Bird Seed', honeyWater: 'Honey Water' };
+    const itemOpts = getForgeCombatItemOptions();
+    const mutOpts = getForgeMutationOptions();
     const birdOpts = global.getForgeBirdOptions ? global.getForgeBirdOptions() : [{ id: 'random', label: 'Random' }];
-    const appendRemove = (row, i) => {
+    const appendControls = (row, i) => {
+      const up = document.createElement('button');
+      up.type = 'button';
+      up.textContent = '↑';
+      up.className = 'map-forge-node-move';
+      up.title = 'Move up';
+      up.disabled = i === 0;
+      up.onclick = () => moveClearReward(n, i, -1);
+      const down = document.createElement('button');
+      down.type = 'button';
+      down.textContent = '↓';
+      down.className = 'map-forge-node-move';
+      down.title = 'Move down';
+      down.disabled = i >= (n.clearRewards.length - 1);
+      down.onclick = () => moveClearReward(n, i, 1);
       const rm = document.createElement('button');
       rm.type = 'button';
       rm.textContent = '×';
       rm.className = 'map-forge-node-move';
+      rm.title = 'Remove';
       rm.onclick = () => { n.clearRewards.splice(i, 1); renderClearRewardsList(n); };
+      row.appendChild(up);
+      row.appendChild(down);
       row.appendChild(rm);
       list.appendChild(row);
     };
     (n.clearRewards || []).forEach((r, i) => {
       const row = document.createElement('div');
-      row.className = 'map-forge-clear-reward-row';
+      row.className = 'map-forge-clear-reward-row map-forge-clear-reward-card';
       if (r.type === 'shinies') {
         const lbl = document.createElement('span');
         lbl.className = 'map-forge-reward-type-label';
@@ -804,6 +954,7 @@
         lbl.textContent = 'Mutation';
         const tierSel = document.createElement('select');
         tierSel.className = 'map-forge-field-input map-forge-reward-tier';
+        tierSel.disabled = !!(r.mutationId);
         cardTiers.forEach((b) => {
           const o = document.createElement('option');
           o.value = b.id;
@@ -819,10 +970,31 @@
         countIn.max = '11';
         countIn.value = String(r.count ?? 1);
         countIn.title = 'Count';
+        countIn.disabled = !!(r.mutationId);
         countIn.onchange = () => { r.count = Math.max(1, Math.min(11, Math.floor(Number(countIn.value) || 1))); };
+        const mutSel = document.createElement('select');
+        mutSel.className = 'map-forge-field-input map-forge-reward-mutation-id';
+        mutSel.title = 'Specific mutation (optional)';
+        const anyOpt = document.createElement('option');
+        anyOpt.value = '';
+        anyOpt.textContent = '— Roll by tier —';
+        mutSel.appendChild(anyOpt);
+        mutOpts.forEach((m) => {
+          const o = document.createElement('option');
+          o.value = m.id;
+          o.textContent = m.label;
+          if ((r.mutationId || '') === m.id) o.selected = true;
+          mutSel.appendChild(o);
+        });
+        mutSel.onchange = () => {
+          r.mutationId = mutSel.value || undefined;
+          if (!r.mutationId) delete r.mutationId;
+          renderClearRewardsList(n);
+        };
         row.appendChild(lbl);
         row.appendChild(tierSel);
         row.appendChild(countIn);
+        row.appendChild(mutSel);
       } else if (r.type === 'nest') {
         if (!Array.isArray(r.slots)) r.slots = [{ tier: 'blue' }];
         const lbl = document.createElement('span');
@@ -874,11 +1046,11 @@
         lbl.textContent = 'Item';
         const itemSel = document.createElement('select');
         itemSel.className = 'map-forge-field-input';
-        itemKeys.forEach((k) => {
+        itemOpts.forEach((it) => {
           const o = document.createElement('option');
-          o.value = k;
-          o.textContent = itemLabels[k] || k;
-          if ((r.itemKey || 'freshWater') === k) o.selected = true;
+          o.value = it.id;
+          o.textContent = it.label;
+          if ((r.itemKey || 'freshWater') === it.id) o.selected = true;
           itemSel.appendChild(o);
         });
         itemSel.onchange = () => { r.itemKey = itemSel.value; };
@@ -953,8 +1125,14 @@
         row.appendChild(lbl);
         row.appendChild(birdSel);
         row.appendChild(countIn);
+      } else {
+        const lbl = document.createElement('span');
+        lbl.className = 'map-forge-reward-type-label';
+        lbl.textContent = String(r.type || 'Unknown');
+        row.appendChild(lbl);
       }
-      appendRemove(row, i);
+      appendChanceControl(row, r, n);
+      appendControls(row, i);
     });
   }
 
@@ -1000,17 +1178,36 @@
     const slice = getEditingSlice();
     const n = slice?.nodes?.find((x) => x.id === _selectedId);
     const isCombat = n && global.isForgeCombatNode && global.isForgeCombatNode(n);
-    const rewardsPanel = document.getElementById('map-forge-clear-rewards-panel');
     if (!isCombat) {
       panel.style.display = 'none';
-      if (rewardsPanel) rewardsPanel.style.display = 'none';
+      syncRewardsPanel();
+      const fightBtn = document.getElementById('map-forge-fight-btn');
+      if (fightBtn) fightBtn.disabled = true;
       return;
     }
     panel.style.display = '';
     if (global.ensureNodeEncounter) global.ensureNodeEncounter(n);
     const countEl = document.getElementById('map-forge-enemy-count');
+    const combatMultEl = document.getElementById('map-forge-combat-stat-mult');
+    const hdMultEl = document.getElementById('map-forge-health-damage-mult');
     const rowsEl = document.getElementById('map-forge-encounter-rows');
     const bonusEl = document.getElementById('map-forge-bonus-panel');
+    if (combatMultEl) {
+      combatMultEl.value = String(n.encounter.combatStatMult ?? 1);
+      combatMultEl.onchange = () => {
+        n.encounter.combatStatMult = Number(combatMultEl.value);
+        global.ensureNodeEncounter(n);
+        combatMultEl.value = String(n.encounter.combatStatMult);
+      };
+    }
+    if (hdMultEl) {
+      hdMultEl.value = String(n.encounter.healthDamageMult ?? 1);
+      hdMultEl.onchange = () => {
+        n.encounter.healthDamageMult = Number(hdMultEl.value);
+        global.ensureNodeEncounter(n);
+        hdMultEl.value = String(n.encounter.healthDamageMult);
+      };
+    }
     if (countEl) {
       countEl.value = String(n.encounter.enemyCount);
       countEl.onchange = () => {
@@ -1164,10 +1361,7 @@
         }
       }
     }
-    if (rewardsPanel) {
-      rewardsPanel.style.display = '';
-      renderClearRewardsList(n);
-    }
+    syncRewardsPanel();
     renderBossStatsPanel(n);
     const fightBtn = document.getElementById('map-forge-fight-btn');
     if (fightBtn) fightBtn.disabled = !isCombat;
@@ -1616,8 +1810,9 @@
   function syncForgeCanvasCursor() {
     const wrap = document.getElementById('map-forge-canvas-wrap');
     if (!wrap) return;
-    wrap.classList.toggle('is-grab-tool', _tool === 'pan');
-    if (_tool !== 'pan') wrap.classList.remove('is-panning');
+    // Select tool pans on empty drag — no exclusive grab mode.
+    wrap.classList.remove('is-grab-tool');
+    if (!_panDrag) wrap.classList.remove('is-panning');
   }
 
   function beginPanDrag(clientX, clientY) {
@@ -1631,6 +1826,8 @@
   }
 
   function setTool(tool) {
+    // Pan is no longer a separate tool — fold into select.
+    if (tool === 'pan') tool = 'select';
     _tool = tool;
     document.querySelectorAll('[data-forge-tool]').forEach((btn) => {
       btn.classList.toggle('is-active', btn.getAttribute('data-forge-tool') === tool);
@@ -1758,14 +1955,67 @@
     ensureNodeClearRewards(n);
     const typeEl = document.getElementById('map-forge-reward-add-type');
     const type = typeEl?.value || 'shinies';
-    if (type === 'shinies') n.clearRewards.push({ type: 'shinies', min: 10, max: 25 });
-    else if (type === 'mutation') n.clearRewards.push({ type: 'mutation', tierBand: 'blue', count: 1 });
-    else if (type === 'nest') n.clearRewards.push({ type: 'nest', slots: [{ tier: 'blue' }] });
-    else if (type === 'item') n.clearRewards.push({ type: 'item', itemKey: 'freshWater', min: 1, max: 1 });
-    else if (type === 'rescuedNest') n.clearRewards.push({ type: 'rescuedNest', eggId: 'cracked', count: 1 });
-    else if (type === 'goldenGoose') n.clearRewards.push({ type: 'goldenGoose', count: 1 });
-    else if (type === 'speciesFeathers') n.clearRewards.push({ type: 'speciesFeathers', birdKey: 'random', count: 1 });
+    if (type === 'shinies') n.clearRewards.push({ type: 'shinies', min: 10, max: 25, chance: 100 });
+    else if (type === 'mutation') n.clearRewards.push({ type: 'mutation', tierBand: 'blue', count: 1, chance: 100 });
+    else if (type === 'nest') n.clearRewards.push({ type: 'nest', slots: [{ tier: 'blue' }], chance: 100 });
+    else if (type === 'item') n.clearRewards.push({ type: 'item', itemKey: 'freshWater', min: 1, max: 1, chance: 100 });
+    else if (type === 'rescuedNest') n.clearRewards.push({ type: 'rescuedNest', eggId: 'cracked', count: 1, chance: 100 });
+    else if (type === 'goldenGoose') n.clearRewards.push({ type: 'goldenGoose', count: 1, chance: 100 });
+    else if (type === 'speciesFeathers') n.clearRewards.push({ type: 'speciesFeathers', birdKey: 'random', count: 1, chance: 100 });
     renderClearRewardsList(n);
+  }
+
+  function populateStartMapSelect() {
+    const sel = document.getElementById('map-forge-start-map');
+    if (!sel || !_map) return;
+    const cur = resolveMapStartMapId(_map);
+    sel.innerHTML = '';
+    const mainOpt = document.createElement('option');
+    mainOpt.value = 'main';
+    mainOpt.textContent = 'Main Map';
+    sel.appendChild(mainOpt);
+    Object.keys(_map.worlds || {}).forEach((wid) => {
+      const w = _map.worlds[wid];
+      const o = document.createElement('option');
+      o.value = wid;
+      o.textContent = (w?.name || wid) + ' (world)';
+      sel.appendChild(o);
+    });
+    sel.value = cur;
+    const editBtn = document.getElementById('map-forge-edit-start-map');
+    if (editBtn) editBtn.style.display = cur !== 'main' ? '' : 'none';
+  }
+
+  function applyStartMapChange() {
+    const sel = document.getElementById('map-forge-start-map');
+    if (!sel || !_map) return;
+    const val = sel.value || 'main';
+    if (val !== 'main' && !_map.worlds?.[val]) {
+      sel.value = 'main';
+      _map.startMapId = 'main';
+      setStatus('Start map world missing.', true);
+      return;
+    }
+    _map.startMapId = val;
+    populateStartMapSelect();
+  }
+
+  function editStartMap() {
+    if (!_map) return;
+    const startId = resolveMapStartMapId(_map);
+    if (startId === 'main' || !_map.worlds?.[startId]) {
+      setStatus('Select a world as the run start first.', true);
+      return;
+    }
+    pushHistory();
+    _editContext = startId;
+    _selectedId = null;
+    _selectedIds = [];
+    syncBreadcrumb();
+    renderNodeList();
+    renderForgeCanvas();
+    syncNodeEditorFields();
+    setStatus('Editing start map ' + (_map.worlds[startId]?.name || startId));
   }
 
   function editWorldMap() {
@@ -1871,12 +2121,7 @@
     const payload = buildExportPayload(_map);
     if (!global.persistCustomOverworldMap(payload)) { setStatus('Could not store map for playtest.', true); return; }
     if (global.setCustomOverworldMode) global.setCustomOverworldMode('playtest');
-    if (global.resetOwCustomProgress) global.resetOwCustomProgress();
-    if (global.clearOwMapStack) global.clearOwMapStack();
-    try {
-      global.localStorage.setItem(KEYS.STATE || 'avianAscent_overworld', JSON.stringify({ nodeId: 0 }));
-      global.localStorage.removeItem(KEYS.NAV || 'avianAscent_nav');
-    } catch (_) {}
+    seedRunProgressToStart(payload);
     global.location.href = 'blackstone_overworld_new.html?playtest=1';
   }
 
@@ -1889,9 +2134,8 @@
     const payload = buildExportPayload(_map);
     if (!global.persistCustomOverworldMap(payload)) { setStatus('Could not activate map.', true); return false; }
     if (global.setCustomOverworldMode) global.setCustomOverworldMode('run');
-    if (global.resetOwCustomProgress) global.resetOwCustomProgress();
-    if (global.clearOwMapStack) global.clearOwMapStack();
-    setStatus('Map active for your next story run.');
+    seedRunProgressToStart(payload);
+    setStatus('Map active for your next story run (starts on ' + resolveMapStartMapId(payload) + ').');
     return true;
   }
 
@@ -2259,6 +2503,9 @@
       btn.addEventListener('click', () => setTool(btn.getAttribute('data-forge-tool')));
     });
     document.getElementById('map-forge-add-reward')?.addEventListener('click', addClearReward);
+    document.querySelectorAll('[data-forge-panel-tab]').forEach((btn) => {
+      btn.addEventListener('click', () => setSidebarPanel(btn.getAttribute('data-forge-panel-tab')));
+    });
     document.getElementById('map-forge-apply-preset')?.addEventListener('click', () => {
       const sel = document.getElementById('map-forge-encounter-preset');
       applyEncounterPreset(sel?.value || 'standardStage');
@@ -2273,11 +2520,6 @@
     const svg = document.getElementById('map-forge-svg');
     if (svg) {
       svg.addEventListener('mousedown', (e) => {
-        if (_tool === 'pan' && e.button === 0) {
-          e.preventDefault();
-          beginPanDrag(e.clientX, e.clientY);
-          return;
-        }
         const g = e.target.closest('[data-node-id]');
         if (g) {
           const nid = Number(g.getAttribute('data-node-id'));
@@ -2296,13 +2538,28 @@
           e.preventDefault();
           return;
         }
-        if (_tool === 'select') {
-          const picked = pickNodeAtPoint(svg, e);
-          _selectedId = picked ? picked.id : null;
-          _selectedIds = picked ? [picked.id] : [];
-          renderNodeList();
-          renderForgeCanvas();
-          syncNodeEditorFields();
+        if (_tool === 'select' || e.button === 1 || _spacePan) {
+          const picked = e.button === 0 && !_spacePan ? pickNodeAtPoint(svg, e) : null;
+          if (picked && e.button === 0 && !_spacePan) {
+            _selectedId = picked.id;
+            _selectedIds = [picked.id];
+            renderNodeList();
+            renderForgeCanvas();
+            syncNodeEditorFields();
+            return;
+          }
+          // Empty canvas (or Space/middle): pan instead of switching tools
+          if (e.button === 0 || e.button === 1) {
+            e.preventDefault();
+            beginPanDrag(e.clientX, e.clientY);
+          }
+          if (_tool === 'select' && e.button === 0 && !_spacePan && !picked) {
+            _selectedId = null;
+            _selectedIds = [];
+            renderNodeList();
+            renderForgeCanvas();
+            syncNodeEditorFields();
+          }
           return;
         }
         if (e.button === 0) {
@@ -2341,7 +2598,10 @@
     const canvasWrap = document.getElementById('map-forge-canvas-wrap');
     canvasWrap?.addEventListener('mousedown', (e) => {
       if (!document.getElementById('screen-map-forge')?.classList.contains('active')) return;
-      if (e.button === 1 || (_spacePan && e.button === 0) || (_tool === 'pan' && e.button === 0)) {
+      // Middle-click, Space+LMB, or empty-canvas select drag handled via svg; wrap catches bg/padding
+      if (e.button === 1 || (_spacePan && e.button === 0) || (_tool === 'select' && e.button === 0 && !e.target.closest('[data-node-id]'))) {
+        // Avoid double-start when svg already began pan; only pan from wrap non-svg hits
+        if (e.target.closest('#map-forge-svg') && !_spacePan && e.button === 0) return;
         e.preventDefault();
         beginPanDrag(e.clientX, e.clientY);
       }
@@ -2429,6 +2689,7 @@
     document.getElementById('map-forge-name')?.addEventListener('change', function () {
       if (_map) _map.name = this.value.trim() || 'Untitled Map';
     });
+    document.getElementById('map-forge-start-map')?.addEventListener('change', applyStartMapChange);
     if (!_autoSaveTimer) {
       _autoSaveTimer = global.setInterval(() => {
         if (!document.getElementById('screen-map-forge')?.classList.contains('active')) return;
@@ -2444,7 +2705,6 @@
       if (e.key === 'Delete' || e.key === 'Backspace') { e.preventDefault(); deleteSelectedNode(); return; }
       if (e.key === 'Escape') { deselectNode(); return; }
       if (e.key === 's' || e.key === 'S') { setTool('select'); return; }
-      if (e.key === 'h' || e.key === 'H') { setTool('pan'); return; }
       if (toolKeys[e.key]) { setTool(toolKeys[e.key]); return; }
       if (e.ctrlKey && e.key === 'd') { e.preventDefault(); duplicateSelectedNode(); return; }
       if (e.ctrlKey && e.key === 'z') { e.preventDefault(); undoMapForge(); return; }
@@ -2545,6 +2805,8 @@
   global.loadCurrentStoryMapIntoForge = loadCurrentStoryMapIntoForge;
   global.setMapForgeTool = setTool;
   global.editWorldMap = editWorldMap;
+  global.editStartMap = editStartMap;
+  global.resolveMapStartMapId = resolveMapStartMapId;
   global.exitWorldEditor = exitWorldEditor;
   global.deselectMapForgeNode = deselectNode;
   global.duplicateMapForgeNode = duplicateSelectedNode;
@@ -2580,7 +2842,7 @@
     Object.assign(global.Avian.actions, {
       openMapForge, closeMapForge, saveMapForgeDraft, exportMapForge,
       playtestMapForge, activateMapForNextRun, deleteMapForgeNode: deleteSelectedNode,
-      newMapForge, loadCurrentStoryMapIntoForge, editWorldMap, exitWorldEditor,
+      newMapForge, loadCurrentStoryMapIntoForge, editWorldMap, editStartMap, exitWorldEditor,
       deselectMapForgeNode: deselectNode, duplicateMapForgeNode: duplicateSelectedNode,
       undoMapForge, redoMapForge, playtestFromSelectedNode, fightMapForgeNode,
       confirmMapForgeDiscard, cancelMapForgeDiscard,
