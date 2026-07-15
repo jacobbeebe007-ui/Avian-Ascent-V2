@@ -362,6 +362,10 @@ function prevPathNodeId(fromId){
   for(let i=fromId-1;i>=0;i--){ if(owPathNode(NODES[i])) return i; }
   return null;
 }
+function prevPathNode(fromId){
+  const pid=prevPathNodeId(fromId);
+  return pid==null?null:NODES[pid];
+}
 function owLabelVc(cfg){
   const ui=owLabelUiAction(cfg);
   if(ui) return {ring:'#7090b8',glow:'rgba(112,144,184,.28)',r:14,lock:'#283038'};
@@ -440,7 +444,7 @@ function isNodeCompleted(n){
   if(!n) return false;
   if(isCombatNode(n)) return Number(n.stage||0) <= OVERWORLD_PROGRESS.completedStage;
   if(n.type==='shop'){
-    const prev=NODES[n.id-1];
+    const prev=prevPathNode(n.id);
     return Number(prev?.stage||0) <= OVERWORLD_PROGRESS.completedStage;
   }
   return n.type==='start';
@@ -450,23 +454,29 @@ function isNodeUnlocked(n){
   if(_IS_PLAYTEST&&_USE_CUSTOM&&n&&n.type!=='start') return true;
   if(!n||n.type==='start') return true;
   if(n.type==='world'){
-    const prev=NODES[n.id-1];
+    const prev=prevPathNode(n.id);
     if(!prev||prev.type==='start') return true;
     if(isCombatNode(prev)) return (OVERWORLD_PROGRESS.completedStage||0) >= Number(prev.stage||1)-1;
-    if(prev.type==='shop'){ const p2=NODES[n.id-2]; return (OVERWORLD_PROGRESS.completedStage||0) >= Number(p2?.stage||0); }
+    if(prev.type==='shop'){
+      const p2=prevPathNode(prev.id);
+      return (OVERWORLD_PROGRESS.completedStage||0) >= Number(p2?.stage||0);
+    }
     return owNodeCleared(prev);
   }
   if(n.type==='overworld'){
-    const prev=NODES[n.id-1];
+    const prev=prevPathNode(n.id);
     if(!prev||prev.type==='start') return true;
     if(_WORLD_INDEX!=null || _CURRENT_MAP_ID!=='main') return owNodeCleared(prev);
     if(isCombatNode(prev)) return (OVERWORLD_PROGRESS.completedStage||0) >= Number(prev.stage||1)-1;
-    if(prev.type==='shop'){ const p2=NODES[n.id-2]; return (OVERWORLD_PROGRESS.completedStage||0) >= Number(p2?.stage||0); }
+    if(prev.type==='shop'){
+      const p2=prevPathNode(prev.id);
+      return (OVERWORLD_PROGRESS.completedStage||0) >= Number(p2?.stage||0);
+    }
     return owNodeCleared(prev);
   }
   if(n.type==='bonus'){
     if(!canEnterBonusNode||!_USE_CUSTOM) return isNodeUnlocked({type:'shop'});
-    const prev=NODES[n.id-1];
+    const prev=prevPathNode(n.id);
     const prevOk=prev&&(isCombatNode(prev)?(OVERWORLD_PROGRESS.completedStage||0)>=Number(prev.stage||1)-1:owNodeCleared(prev));
     return prevOk && canEnterBonusNode(_CURRENT_MAP_ID,n.id,n.bonusConfig,_OW_PROGRESS);
   }
@@ -474,11 +484,14 @@ function isNodeUnlocked(n){
     return typeof isOwWorldCompleted==='function'&&isOwWorldCompleted(_CURRENT_MAP_ID,_OW_PROGRESS);
   }
   if(n.type==='shop'){
-    const prev=NODES[n.id-1];
+    const prev=prevPathNode(n.id);
     return (OVERWORLD_PROGRESS.completedStage||0) >= Number(prev?.stage||0)||owNodeCleared(prev);
   }
   if(isCombatNode(n)){
-    if(_WORLD_INDEX!=null) return owNodeCleared(NODES[n.id-1])||n.id===1;
+    if(_WORLD_INDEX!=null){
+      const prev=prevPathNode(n.id);
+      return !prev||prev.type==='start'||owNodeCleared(prev);
+    }
     return (OVERWORLD_PROGRESS.completedStage||0) >= Number(n.stage||1)-1;
   }
   return false;
@@ -493,13 +506,13 @@ function isActionable(n){
   if(n.type==='bonus') return isNodeUnlocked(n);
   if(isCombatNode(n)){
     if(_WORLD_INDEX!=null){
-      const prev=NODES[n.id-1];
+      const prev=prevPathNode(n.id);
       return isNodeUnlocked(n)&&(!prev||prev.type==='start'||owNodeCleared(prev));
     }
     return Number(n.stage||0) === getCurrentActionableStage();
   }
   if(n.type==='shop'){
-    const prev=NODES[n.id-1];
+    const prev=prevPathNode(n.id);
     return OVERWORLD_PROGRESS.completedStage >= Number(prev?.stage||0);
   }
   return false;
@@ -519,7 +532,7 @@ function getNodeLockReason(n){
   if(isNodeCompleted(n)) return 'Cleared';
   if(isCombatNode(n)) return `Clear Stage ${Math.max(1,(Number(n.stage)||1)-1)} first`;
   if(n.type==='shop'){
-    const prev=NODES[n.id-1];
+    const prev=prevPathNode(n.id);
     return `Clear Stage ${Math.max(1,Number(prev?.stage||1))} first`;
   }
   return '';
@@ -1228,13 +1241,20 @@ document.getElementById('btn-open-node').addEventListener('click',()=>{
 
 applyBird();
 const pl=document.getElementById('player');pl.style.transition='none';
-pl.style.left=(NODES[0].x-26)+'px';pl.style.top=(NODES[0].y-60)+'px';
-setHL(0,true);updateInfo();
-const vpInit=document.getElementById('vp');
-const viw=vpInit.offsetWidth||900,vih=vpInit.offsetHeight||420;
-_cx=clamp(NODES[0].x-viw/zoom/2,0,Math.max(0,MAP_W-viw/zoom));
-_cy=clamp(NODES[0].y-vih/zoom/2,0,Math.max(0,MAP_H-vih/zoom));
-applyCamera(false);
+(function initPlayerAtSpawn(){
+  const spawnIdx=typeof findOwSpawnNodeIndex==='function'?findOwSpawnNodeIndex(NODES):NODES.findIndex(n=>n&&n.type==='start');
+  const startIdx=spawnIdx>=0?spawnIdx:0;
+  const sn=NODES[startIdx]||NODES[0];
+  if(!sn) return;
+  curPos=startIdx;
+  pl.style.left=(sn.x-26)+'px';pl.style.top=(sn.y-60)+'px';
+  setHL(startIdx,true);updateInfo();
+  const vpInit=document.getElementById('vp');
+  const viw=vpInit.offsetWidth||900,vih=vpInit.offsetHeight||420;
+  _cx=clamp(sn.x-viw/zoom/2,0,Math.max(0,MAP_W-viw/zoom));
+  _cy=clamp(sn.y-vih/zoom/2,0,Math.max(0,MAP_H-vih/zoom));
+  applyCamera(false);
+})();
 window.addEventListener('resize',()=>applyCamera(false));
 requestAnimationFrame(()=>requestAnimationFrame(()=>{pl.style.transition='left .5s cubic-bezier(.25,.46,.45,.94),top .5s cubic-bezier(.25,.46,.45,.94)';document.getElementById('root').focus();}));
 </script>
@@ -1389,6 +1409,11 @@ requestAnimationFrame(()=>requestAnimationFrame(()=>{pl.style.transition='left .
       if (n.type === 'world' && n.worldId) {
         if (typeof pushOwMapStack === 'function') pushOwMapStack({ parentMapId: 'main', returnNodeId: curPos, worldId: n.worldId });
         if (typeof setOwActiveMapId === 'function') setOwActiveMapId(n.worldId);
+        try {
+          const wn = _ACTIVE_MAP?.worlds?.[n.worldId]?.nodes || [];
+          const spawnIdx = typeof findOwSpawnNodeIndex === 'function' ? findOwSpawnNodeIndex(wn) : wn.findIndex((x) => x && x.type === 'start');
+          localStorage.setItem((typeof AVIAN_OW_KEYS !== 'undefined' && AVIAN_OW_KEYS.STATE) || 'avianAscent_overworld', JSON.stringify({ nodeId: Math.max(0, spawnIdx) }));
+        } catch (_) {}
         location.reload();
         return;
       }

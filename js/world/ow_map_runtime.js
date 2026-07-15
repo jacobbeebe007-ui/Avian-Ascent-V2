@@ -352,10 +352,7 @@
             name: n.name || 'World ' + worldCount,
             worldIndex: worldCount,
             backgroundDataUrl: '',
-            nodes: [
-              { id: 0, type: 'start', name: 'World Start', x: 768, y: 800, stage: 0 },
-              { id: 1, type: 'return', name: 'Return Gate', x: 768, y: 200 },
-            ],
+            nodes: [],
           };
         }
       }
@@ -676,8 +673,9 @@
 
     const nodes = map?.nodes || [];
     if (!nodes.length) add('error', 'Add at least one node.');
-    if (nodes.filter((n) => n.type === 'start').length !== 1) add('error', 'Exactly one Spawn node required.');
-    if (nodes[0] && nodes[0].type !== 'start') add('error', 'First node must be Spawn.');
+    const mainSpawns = nodes.filter((n) => n.type === 'start').length;
+    if (mainSpawns === 0) add('error', 'Add a Spawn node (place a Label, then set Node type to Spawn).');
+    else if (mainSpawns > 1) add('error', 'Exactly one Spawn node required on the main map.');
     if (!nodes.some((n) => n.type === 'stage' || n.type === 'boss')) add('error', 'Add at least one Stage or Boss.');
     if (!map?.backgroundDataUrl) add('error', 'Upload a main map background image.');
 
@@ -729,6 +727,7 @@
       const w = map.worlds[wid];
       const wn = w?.nodes || [];
       if (!w?.backgroundDataUrl) add('warning', 'World "' + (w.name || wid) + '" has no background.', wid, null);
+      if (!wn.some((n) => n.type === 'start')) add('warning', 'World "' + (w.name || wid) + '" missing Spawn node.', wid, null);
       if (!wn.some((n) => n.type === 'return')) add('warning', 'World "' + (w.name || wid) + '" missing return gate.', wid, null);
       if (!wn.some((n) => n.type === 'boss')) add('warning', 'World "' + (w.name || wid) + '" missing boss.', wid, null);
       const bossIdx = wn.findIndex((n) => n.type === 'boss');

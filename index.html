@@ -350,19 +350,12 @@
 <aside class="map-forge-sidebar">
 <div class="map-forge-toolbar">
 <span class="map-forge-toolbar-label">Place</span>
-<button type="button" class="map-forge-tool-btn" data-forge-tool="stage">Stage</button>
-<button type="button" class="map-forge-tool-btn" data-forge-tool="boss">Boss</button>
-<button type="button" class="map-forge-tool-btn" data-forge-tool="bonus">Bonus</button>
-<button type="button" class="map-forge-tool-btn" data-forge-tool="world">World</button>
-<button type="button" class="map-forge-tool-btn" data-forge-tool="shop">Shop</button>
-<button type="button" class="map-forge-tool-btn" data-forge-tool="return">Return</button>
-<button type="button" class="map-forge-tool-btn" data-forge-tool="start">Spawn</button>
 <button type="button" class="map-forge-tool-btn" data-forge-tool="label">Label</button>
-<button type="button" class="map-forge-tool-btn" data-forge-tool="overworld">Overworld</button>
 </div>
 <div class="map-forge-toolbar">
 <span class="map-forge-toolbar-label">Edit</span>
 <button type="button" class="map-forge-tool-btn" data-forge-tool="select">Select</button>
+<button type="button" class="map-forge-tool-btn" data-forge-tool="multi">Multi-select</button>
 <button type="button" class="menu-btn map-forge-tool-btn" data-action="duplicateMapForgeNode">Duplicate</button>
 <button type="button" class="menu-btn map-forge-tool-btn" data-action="deselectMapForgeNode">Deselect</button>
 <button type="button" class="map-forge-tool-btn map-forge-tool-danger" data-action="deleteMapForgeNode">Delete</button>
@@ -376,17 +369,6 @@
 </div>
 <details class="map-forge-advanced">
 <summary class="map-forge-toolbar-label">Advanced</summary>
-<div class="map-forge-toolbar">
-<span class="map-forge-toolbar-label">Align</span>
-<button type="button" class="menu-btn map-forge-tool-btn" data-action="alignMapForgeLeft">Left</button>
-<button type="button" class="menu-btn map-forge-tool-btn" data-action="alignMapForgeCenterH">Center H</button>
-<button type="button" class="menu-btn map-forge-tool-btn" data-action="alignMapForgeRight">Right</button>
-<button type="button" class="menu-btn map-forge-tool-btn" data-action="alignMapForgeTop">Top</button>
-<button type="button" class="menu-btn map-forge-tool-btn" data-action="alignMapForgeCenterV">Center V</button>
-<button type="button" class="menu-btn map-forge-tool-btn" data-action="alignMapForgeBottom">Bottom</button>
-<button type="button" class="menu-btn map-forge-tool-btn" data-action="distributeMapForgeH">Dist H</button>
-<button type="button" class="menu-btn map-forge-tool-btn" data-action="distributeMapForgeV">Dist V</button>
-</div>
 <div class="map-forge-toolbar">
 <span class="map-forge-toolbar-label">Bulk</span>
 <button type="button" class="menu-btn" data-action="bulkSelectAllStages">Select all stages</button>
@@ -415,6 +397,19 @@
 </div>
 <div class="map-forge-panel-pane is-active" id="map-forge-panel-node" data-forge-panel="node" role="tabpanel">
 <div class="map-forge-node-editor" id="map-forge-node-editor">
+<label class="map-forge-field-label" for="map-forge-node-type">Node type</label>
+<select class="map-forge-field-input" id="map-forge-node-type">
+<option value="label">Label (decorative)</option>
+<option value="labelUi">Label (UI button)</option>
+<option value="stage">Stage</option>
+<option value="boss">Boss</option>
+<option value="bonus">Bonus</option>
+<option value="world">World</option>
+<option value="shop">Shop</option>
+<option value="return">Return</option>
+<option value="start">Spawn</option>
+<option value="overworld">Overworld</option>
+</select>
 <label class="map-forge-field-label" for="map-forge-node-name">Node name</label>
 <input type="text" class="map-forge-field-input" id="map-forge-node-name" maxlength="48"/>
 <label class="map-forge-field-label" for="map-forge-node-terrain">Terrain</label>
@@ -425,26 +420,7 @@
 <select class="map-forge-field-input" id="map-forge-portrait-bird"></select>
 <label class="map-forge-field-check"><input type="checkbox" id="map-forge-node-final"/> Final boss</label>
 <div class="map-forge-label-panel" id="map-forge-label-panel" style="display:none">
-<div class="map-forge-field-label">Custom label / button</div>
-<label class="map-forge-field-label" for="map-forge-label-role">Role</label>
-<select class="map-forge-field-input" id="map-forge-label-role">
-<option value="decorative">Decorative (no click action)</option>
-<option value="nodeProxy">Node proxy (acts as another node type)</option>
-<option value="uiButton">UI button (opens nest, settings, etc.)</option>
-</select>
-<div id="map-forge-label-proxy-wrap">
-<label class="map-forge-field-label" for="map-forge-label-mimic">Mimic class</label>
-<select class="map-forge-field-input" id="map-forge-label-mimic">
-<option value="none">None</option>
-<option value="start">Start</option>
-<option value="stage">Stage</option>
-<option value="boss">Boss</option>
-<option value="bonus">Bonus</option>
-<option value="world">World</option>
-<option value="shop">Shop</option>
-<option value="return">Return</option>
-</select>
-</div>
+<div class="map-forge-field-label">Label appearance</div>
 <div id="map-forge-label-ui-wrap">
 <label class="map-forge-field-label" for="map-forge-label-ui-action">Button action</label>
 <select class="map-forge-field-input" id="map-forge-label-ui-action">
@@ -555,7 +531,7 @@
 <div class="map-forge-node-list-title">Path order</div>
 <div class="map-forge-node-list" id="map-forge-node-list"></div>
 </div>
-<p class="map-forge-hint">S=Select (drag empty canvas to pan), 1–9=place (7=Spawn), arrows=nudge, Shift+arrows=10px, Ctrl+D=duplicate, Ctrl+Z/Y=undo, Del=delete, Esc=deselect. Shift+click multi-select. Space or middle-click also pans.</p>
+<p class="map-forge-hint">S=Select, M=Multi-select, L=Label. Place a Label then set Node type in the Node panel. Arrows=nudge, Shift+arrows=10px, Ctrl+D=duplicate, Ctrl+Z/Y=undo, Del=delete, Esc=deselect. Shift+click also multi-selects. Space or middle-click pans.</p>
 </aside>
 <div class="map-forge-canvas-wrap" id="map-forge-canvas-wrap">
 <div class="map-forge-canvas-inner" id="map-forge-canvas-inner">
