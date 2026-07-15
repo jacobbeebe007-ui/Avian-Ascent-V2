@@ -307,16 +307,18 @@ const _STORY_MAP=_STORY_MAP_RAW&&typeof upgradeMapToV2==='function'?upgradeMapTo
 const _ACTIVE_MAP=_USE_CUSTOM?_CUSTOM_MAP:_STORY_MAP;
 const _OW_PROGRESS=typeof readOwCustomProgress==='function'?readOwCustomProgress():{nodeClears:{},worldsCompleted:{},bonusRepeats:{},activeMapId:'main'};
 let _ACTIVE_MAP_ID=typeof getOwActiveMapId==='function'?getOwActiveMapId():'main';
-// Resolve startMapId when progress still points at main on a fresh/built-in run
+// Resolve startMapId for Forge/custom maps when progress still points at main on a fresh run
 (function reconcileStartMapId(){
-  const mapStart = _ACTIVE_MAP && typeof resolveMapStartMapId==='function'
-    ? resolveMapStartMapId(_ACTIVE_MAP)
-    : (_ACTIVE_MAP?.startMapId||'main');
-  const clears = _OW_PROGRESS?.nodeClears||{};
-  const fresh = !Object.keys(clears).length && !(_OW_PROGRESS?.worldsCompleted && Object.keys(_OW_PROGRESS.worldsCompleted).length);
-  if (fresh && mapStart && mapStart!=='main' && (_ACTIVE_MAP_ID==='main' || !_ACTIVE_MAP_ID)) {
-    _ACTIVE_MAP_ID = mapStart;
-    if (typeof setOwActiveMapId==='function') setOwActiveMapId(mapStart);
+  if (_USE_CUSTOM) {
+    const mapStart = _ACTIVE_MAP && typeof resolveMapStartMapId==='function'
+      ? resolveMapStartMapId(_ACTIVE_MAP)
+      : (_ACTIVE_MAP?.startMapId||'main');
+    const clears = _OW_PROGRESS?.nodeClears||{};
+    const fresh = !Object.keys(clears).length && !(_OW_PROGRESS?.worldsCompleted && Object.keys(_OW_PROGRESS.worldsCompleted).length);
+    if (fresh && mapStart && mapStart!=='main' && (_ACTIVE_MAP_ID==='main' || !_ACTIVE_MAP_ID)) {
+      _ACTIVE_MAP_ID = mapStart;
+      if (typeof setOwActiveMapId==='function') setOwActiveMapId(mapStart);
+    }
   }
   if (_ACTIVE_MAP_ID!=='main' && _ACTIVE_MAP && !_ACTIVE_MAP.worlds?.[_ACTIVE_MAP_ID]) {
     _ACTIVE_MAP_ID = 'main';

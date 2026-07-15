@@ -6292,15 +6292,16 @@ function startGame() {
       if (mode === 'playtest' && typeof globalThis.clearCustomOverworldMode === 'function') {
         globalThis.clearCustomOverworldMode();
       }
+      const useCustom = typeof globalThis.isCustomOverworldActive === 'function'
+        && globalThis.isCustomOverworldActive();
       let owMap = null;
-      if (typeof globalThis.isCustomOverworldActive === 'function' && globalThis.isCustomOverworldActive()
-          && typeof globalThis.loadCustomOverworldMap === 'function') {
+      if (useCustom && typeof globalThis.loadCustomOverworldMap === 'function') {
         owMap = globalThis.loadCustomOverworldMap();
       }
       if (!owMap && typeof globalThis.cloneDefaultStoryMap === 'function') {
         owMap = globalThis.cloneDefaultStoryMap();
       }
-      if (owMap && typeof globalThis.seedOwRunToStartMap === 'function') {
+      if (useCustom && owMap && typeof globalThis.seedOwRunToStartMap === 'function') {
         const seeded = globalThis.seedOwRunToStartMap(owMap);
         localStorage.setItem(_OW_STATE_KEY, JSON.stringify({
           nodeId: seeded?.spawnIdx ?? 0,
@@ -6309,9 +6310,7 @@ function startGame() {
       } else {
         if (typeof globalThis.resetOwCustomProgress === 'function') globalThis.resetOwCustomProgress();
         if (typeof globalThis.clearOwMapStack === 'function') globalThis.clearOwMapStack();
-        const startId = (typeof globalThis.resolveMapStartMapId === 'function' && owMap)
-          ? globalThis.resolveMapStartMapId(owMap) : 'main';
-        if (typeof globalThis.setOwActiveMapId === 'function') globalThis.setOwActiveMapId(startId);
+        if (typeof globalThis.setOwActiveMapId === 'function') globalThis.setOwActiveMapId('main');
         localStorage.setItem(_OW_STATE_KEY, JSON.stringify({ nodeId: 0, birdKey: G.selected }));
       }
       localStorage.removeItem(_OW_NAV_KEY);

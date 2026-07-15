@@ -45,6 +45,8 @@ for (const node of map?.nodes || []) {
 }
 ok('Story map has combat stages', expectedStage > 1);
 ok('maxStage matches combat stages', Math.floor(Number(map?.maxStage) || 0) === expectedStage - 1);
+ok('Story map has no nested worlds', !map?.worlds || Object.keys(map.worlds).length === 0);
+ok('Story map startMapId is main', !map?.startMapId || map.startMapId === 'main');
 
 const overworldHtml = readFileSync(path.join(root, 'blackstone_overworld_new.html'), 'utf8');
 ok('Overworld page loads shared story map script', overworldHtml.includes('js/data/story-map.js'));

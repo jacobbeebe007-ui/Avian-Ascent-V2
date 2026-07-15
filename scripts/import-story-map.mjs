@@ -72,10 +72,8 @@ function normalizeStoryMap(raw) {
   if (!Array.isArray(raw.nodes)) fail('Input JSON must include a nodes array.');
 
   const nodes = normalizeNodes(raw.nodes);
-  const worlds = raw.worlds && typeof raw.worlds === 'object' ? clone(raw.worlds) : {};
-  Object.values(worlds).forEach((world) => {
-    if (Array.isArray(world.nodes)) world.nodes = normalizeNodes(world.nodes);
-  });
+  // Story mode is always a flat main map — ignore nested Forge worlds / startMapId.
+  const worlds = {};
 
   const maxStage = validateLinearStoryNodes(nodes);
   validateWorlds(worlds);
