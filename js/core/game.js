@@ -2829,8 +2829,8 @@ function codexMark(type, id, field='seen'){
   }
 }
 
-const FAMILY_EVOLUTION_STATE_VERSION = 14; /* flat base abilities only — no mutation trees */
-/* Combat rewrite: all legacy *_SKILL_SLOT_LAYOUT / *_SKILL_FAMILIES consts and FAMILY_EVOLUTION_BIRD_DATA literal removed. js/systems/combat-pack-boot.js rebuilds FAMILY_EVOLUTION_BIRD_DATA from Avian.data.combatPack at startup. */
+const FAMILY_EVOLUTION_STATE_VERSION = 14; /* flat base abilities only — family evolution retired */
+/* Family evolution catalogs are not loaded. Bird kits use BIRDS[key].startAbilities / slotAbilities from combat-pack-boot. */
 const FAMILY_EVOLUTION_BIRD_DATA = Object.create(null);
 /**
  * Number of ability slots guaranteed unlocked by the bird's CARD tier, chosen
@@ -2899,28 +2899,15 @@ function getFamilyEvolutionBirdDataStore(){
     ? globalThis.FAMILY_EVOLUTION_BIRD_DATA
     : FAMILY_EVOLUTION_BIRD_DATA;
 }
-function getBirdFamilyEvolutionData(birdKey){
-  const store=getFamilyEvolutionBirdDataStore();
-  const k = String(birdKey||'');
-  const aliases={secretarybird:'secretary',harpyeagle:'harpy'};
-  const lookupKey=aliases[k]||k;
-  if(store[lookupKey]) return store[lookupKey];
-  const packBuilder=Avian?.systems?.combatPackBoot?.buildFamilyForBird;
-  if(typeof packBuilder==='function'){
-    const rebuilt=packBuilder(lookupKey);
-    if(rebuilt){
-      store[lookupKey]=rebuilt;
-      if(lookupKey!==k) store[k]=rebuilt;
-      return rebuilt;
-    }
-  }
+/** Family evolution is retired — catalogs are not loaded. Flat startAbilities only. */
+function getBirdFamilyEvolutionData(_birdKey){
   return null;
 }
-function getBirdSkillFamilyCatalog(birdKey){
-  return getBirdFamilyEvolutionData(birdKey)?.families || null;
+function getBirdSkillFamilyCatalog(_birdKey){
+  return null;
 }
-function usesFamilySkillEvolution(player){
-  return !!getBirdSkillFamilyCatalog(player?.birdKey);
+function usesFamilySkillEvolution(_player){
+  return false;
 }
 function createSkillSlotState(slotIndex, familyId, abilityId){
   return {
@@ -2930,9 +2917,16 @@ function createSkillSlotState(slotIndex, familyId, abilityId){
   };
 }
 function getBaseSkillSlotsForBird(birdKey){
-  const data = getBirdFamilyEvolutionData(birdKey);
-  if(!data) return [];
-  return data.slotLayout.map(slot=>createSkillSlotState(slot.slotIndex, slot.familyId, slot.abilityId));
+  const bd = BIRDS?.[birdKey] || BIRDS?.[String(birdKey || '')];
+  const ids = Array.isArray(bd?.slotAbilities) && bd.slotAbilities.length
+    ? bd.slotAbilities
+    : (Array.isArray(bd?.startAbilities) ? bd.startAbilities : []);
+  const out = [];
+  for (let i = 0; i < 7; i++) {
+    const id = ids[i] ? String(ids[i]) : '';
+    out.push(createSkillSlotState(i, null, id));
+  }
+  return out;
 }
 function getFamilyEvolutionAbilityStateFromId(birdKey, abilityId){
   const raw = String(abilityId || '');
@@ -3006,7 +3000,7 @@ function ensureAbilityObjectFromTemplate(id, existing=null, slotIndex=null, ener
   return out;
 }
 function syncPlayerAbilitiesFromSkillSlots(player){
-  if(!player || !usesFamilySkillEvolution(player)) return;
+  if(!player) return;
   const slots = getSkillSlots(player).slice().sort((a,b)=>a.slotIndex-b.slotIndex);
   if(!slots.length) return;
   const seenAbilityIds=new Set();
@@ -3015,7 +3009,7 @@ function syncPlayerAbilitiesFromSkillSlots(player){
   const out=[];
   for(const slot of slots){
     if(!slot.abilityId) continue;
-    if(!isSkillSlotUnlocked(slot, player)) continue;
+    if(typeof isSkillSlotUnlocked==='function' && !isSkillSlotUnlocked(slot, player)) continue;
     if(seenAbilityIds.has(slot.abilityId)){
       try{ console.warn('[abilities] duplicate skill slot abilityId='+slot.abilityId+' slot='+slot.slotIndex); }catch(_){}
       continue;
@@ -3033,6 +3027,9 @@ globalThis.getFamilyEvolutionBirdDataStore=getFamilyEvolutionBirdDataStore;
 globalThis.usesFamilySkillEvolution=usesFamilySkillEvolution;
 globalThis.ensureFamilyEvolutionState=ensureFamilyEvolutionState;
 globalThis.syncPlayerAbilitiesFromSkillSlots=syncPlayerAbilitiesFromSkillSlots;
+globalThis.getBaseSkillSlotsForBird=getBaseSkillSlotsForBird;
+globalThis.createSkillSlotState=createSkillSlotState;
+globalThis.ensureAbilityObjectFromTemplate=ensureAbilityObjectFromTemplate;
 
 // ============================================================
 //  SAVE / LOAD SYSTEM (localStorage)
@@ -3049,8 +3046,6 @@ const RUN_SAVE_SCHEMA_VERSION = (typeof globalThis.Avian?.systems?.SAVE_SCHEMA_V
 function ensureFamilyEvolutionState(player){
   if(!player || typeof player!=='object') return null;
   const birdKey = String(player.birdKey || '');
-  const catalog = getBirdSkillFamilyCatalog(birdKey);
-  const baseSlots = getBaseSkillSlotsForBird(birdKey);
   if(!player.familyEvolutionState || typeof player.familyEvolutionState!=='object'){
     player.familyEvolutionState = {};
   }
@@ -3058,38 +3053,15 @@ function ensureFamilyEvolutionState(player){
   state.version = FAMILY_EVOLUTION_STATE_VERSION;
   state.birdKey = birdKey;
   state.rootTemplate = String(state.rootTemplate || birdKey);
-  if(catalog){
-    const rawSlots = Array.isArray(state.skillSlots) && state.skillSlots.length
-      ? state.skillSlots
-      : baseSlots;
-    if(state.version !== FAMILY_EVOLUTION_STATE_VERSION){
-      state.skillSlots = baseSlots.map(slot=>createSkillSlotState(slot.slotIndex, slot.familyId, slot.abilityId));
-    } else {
-      state.skillSlots = baseSlots.map((baseSlot, idx)=>{
-        const normalized=normalizeSkillSlotState(rawSlots[idx], baseSlot, birdKey);
-        if(!isSkillSlotUnlocked(normalized, player)){
-          return createSkillSlotState(normalized.slotIndex, normalized.familyId, '');
-        }
-        return normalized;
-      });
-    }
-    clampLockedSkillSlots(player);
-    syncPlayerAbilitiesFromSkillSlots(player);
-  }else{
-    try{
-      if(birdKey && BIRDS?.[birdKey]){
-        const packLoaded = !!(Avian?.data?.combatPack?.families && Avian?.data?.combatPack?.skillTrees);
-        const warnDetail = packLoaded
-          ? 'falling back to flat ability slots.'
-          : 'combat pack did not load; rebuild the bundle (npm run bundle) and hard-refresh to clear the service worker cache.';
-        console.warn('[family-evolution] No combat-pack catalog for birdKey='+birdKey+'; '+warnDetail);
-      }
-    }catch(_e){}
-    const mirrored = Array.isArray(player.abilities)
-      ? player.abilities.slice(0,4).map((ab, idx)=>createSkillSlotState(idx, null, ab?.id || ''))
-      : [];
-    state.skillSlots = mirrored;
+  // Flat abilities only — mirror player.abilities into skillSlots for leftover readers.
+  // Do not load family-evolution catalogs or warn when missing.
+  const mirrored = Array.isArray(player.abilities)
+    ? player.abilities.slice(0, 7).map((ab, idx)=>createSkillSlotState(idx, null, ab?.id || ''))
+    : [];
+  while (mirrored.length < 7) {
+    mirrored.push(createSkillSlotState(mirrored.length, null, ''));
   }
+  state.skillSlots = mirrored;
   return state;
 }
 /** Must match js/world/ow_enemy_population.js pack count (10). */

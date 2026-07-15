@@ -1,13 +1,12 @@
 /* Runtime verification: boot the bundle in a Node vm sandbox and assert that
  * player ability resolution works end-to-end after the legacy combat excision.
  *
- *   - Sparrow's slot 0 starter resolves to SPARROW_F1_L1_BASE
- *   - ABILITY_TEMPLATES[SPARROW_F1_L1_BASE] is a populated row from the
- *     combat data pack
- *   - ACTIONS[SPARROW_F1_L1_BASE] is a function (dispatcher proxy)
+ *   - Sparrow's startAbilities / slotAbilities resolve from the combat pack
+ *   - ABILITY_TEMPLATES[starter] is a populated row from the combat data pack
+ *   - ACTIONS[starter] is a function (dispatcher proxy)
  *   - Avian.dispatcher.execute resolves the ability without throwing
- *   - FAMILY_EVOLUTION_BIRD_DATA.sparrow exists with proper slotLayout
- *   - getBaseSkillSlotsForBird('sparrow') returns 4 slots, slot 0 marked isStarterMain
+ *   - FAMILY_EVOLUTION_BIRD_DATA stays empty (family evolution retired)
+ *   - ensureFamilyEvolutionState emits no [family-evolution] warnings
  */
 import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
@@ -351,45 +350,37 @@ if (typeof sandbox.hasMultiEnemyChainPending === 'function' && sandbox.G) {
   if (prevSave) sandbox.saveRun = prevSave;
 }
 
-const sparrowData = FAMILY_EVOLUTION_BIRD_DATA?.sparrow;
-const starterId = sparrowData?.slotLayout?.[0]?.abilityId || '';
-check('FAMILY_EVOLUTION_BIRD_DATA.sparrow built from combat pack', !!sparrowData);
+const starterId = BIRDS?.sparrow?.mainAttackId || BIRDS?.sparrow?.startAbilities?.[0] || '';
+check('BIRDS.sparrow.startAbilities set from combat pack', Array.isArray(BIRDS?.sparrow?.startAbilities) && BIRDS.sparrow.startAbilities.length >= 2);
+check('BIRDS.sparrow.slotAbilities has 7 entries', Array.isArray(BIRDS?.sparrow?.slotAbilities) && BIRDS.sparrow.slotAbilities.length === 7);
 check(`sparrow starter ability in ABILITY_TEMPLATES`, !!starterId && !!ABILITY_TEMPLATES?.[starterId], `starter=${starterId}`);
 check(`ACTIONS[sparrow starter] is a function`, !!starterId && typeof ACTIONS?.[starterId] === 'function');
-if (sparrowData) {
-  const sl = sparrowData.slotLayout || [];
-  check('sparrow slotLayout length=7', sl.length === 7);
-  check('sparrow slot[0].abilityId is set', !!sl[0]?.abilityId, `got=${sl[0]?.abilityId}`);
-  check('sparrow slot[0].isStarterMain=true', sl[0]?.isStarterMain === true);
-  const famId = sl[0]?.familyId;
-  const fam = famId ? sparrowData.families?.[famId] : null;
-  check('sparrow slot0 family has baseAbilityId', fam?.baseAbilityId === sl[0]?.abilityId, `got=${fam?.baseAbilityId}`);
-  check('sparrow families omit upgrade paths', !fam?.paths && !fam?.mutations);
-}
+check('FAMILY_EVOLUTION_BIRD_DATA is empty (family evolution retired)', !FAMILY_EVOLUTION_BIRD_DATA || Object.keys(FAMILY_EVOLUTION_BIRD_DATA).length === 0);
 
-check('BIRDS.sparrow.mainAttackId matches slot0 starter', BIRDS?.sparrow?.mainAttackId === starterId, `got=${BIRDS?.sparrow?.mainAttackId}`);
+check('BIRDS.sparrow.mainAttackId matches startAbilities[0]', BIRDS?.sparrow?.mainAttackId === BIRDS?.sparrow?.startAbilities?.[0], `got=${BIRDS?.sparrow?.mainAttackId}`);
 check('BIRDS.sparrow.passive is set', !!BIRDS?.sparrow?.passive?.id);
 
 const birdKeys = BIRDS && typeof BIRDS === 'object' ? Object.keys(BIRDS) : [];
-const missingFamilyCatalogBirds = [];
-const familyCatalogSlotIssues = [];
+const missingSlotAbilityBirds = [];
+const slotAbilityIssues = [];
 for (const birdKey of birdKeys) {
-  const birdData = FAMILY_EVOLUTION_BIRD_DATA?.[birdKey];
-  if (!birdData) {
-    missingFamilyCatalogBirds.push(birdKey);
+  const bd = BIRDS[birdKey];
+  const slots = bd?.slotAbilities;
+  const start = bd?.startAbilities;
+  if (!Array.isArray(start) || start.length < 2 || !start[0] || !start[1]) {
+    missingSlotAbilityBirds.push(birdKey);
     continue;
   }
-  const slotLayout = birdData.slotLayout || [];
-  if (slotLayout.length !== 7) {
-    familyCatalogSlotIssues.push(`${birdKey}:slotLayout=${slotLayout.length}`);
+  if (!Array.isArray(slots) || slots.length !== 7) {
+    slotAbilityIssues.push(`${birdKey}:slotAbilities=${slots?.length ?? 0}`);
     continue;
   }
-  if (!slotLayout[0]?.abilityId || !slotLayout[1]?.abilityId) {
-    familyCatalogSlotIssues.push(`${birdKey}:starterIds=${slotLayout[0]?.abilityId || ''}|${slotLayout[1]?.abilityId || ''}`);
+  if (!slots[0] || !slots[1]) {
+    slotAbilityIssues.push(`${birdKey}:starterIds=${slots[0] || ''}|${slots[1] || ''}`);
   }
 }
-check('FAMILY_EVOLUTION_BIRD_DATA covers every BIRDS key', missingFamilyCatalogBirds.length === 0, missingFamilyCatalogBirds.join(', ') || 'none');
-check('every bird family catalog has 7 slots with starter abilities', familyCatalogSlotIssues.length === 0, familyCatalogSlotIssues.join(', ') || 'none');
+check('every BIRDS key has startAbilities (2 starters)', missingSlotAbilityBirds.length === 0, missingSlotAbilityBirds.join(', ') || 'none');
+check('every bird slotAbilities has 7 entries with starters', slotAbilityIssues.length === 0, slotAbilityIssues.join(', ') || 'none');
 
 if (typeof sandbox.ensureFamilyEvolutionState === 'function') {
   const familyEvolutionWarnBirds = [];
@@ -410,6 +401,16 @@ if (typeof sandbox.ensureFamilyEvolutionState === 'function') {
   } finally {
     console.warn = prevWarn;
   }
+}
+
+if (typeof sandbox.usesFamilySkillEvolution === 'function') {
+  check('usesFamilySkillEvolution is always false', sandbox.usesFamilySkillEvolution({ birdKey: 'sparrow' }) === false);
+}
+
+if (typeof sandbox.materializeEnemySkillsFromWorkbookKit === 'function') {
+  const stub = { birdKey: 'sparrow', abilities: [] };
+  const ok = sandbox.materializeEnemySkillsFromWorkbookKit(stub, 'sparrow', 1, 'striker', null, { unlockSlots: 2 });
+  check('materializeEnemySkillsFromWorkbookKit works from slotAbilities', ok === true && Array.isArray(stub.abilities) && stub.abilities.length === 2);
 }
 
 // Sanity: no remaining legacy ability ids in BIRDS

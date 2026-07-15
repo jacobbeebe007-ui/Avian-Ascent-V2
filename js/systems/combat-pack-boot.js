@@ -10,18 +10,15 @@
  *        - sets `startAbilities` to the 4-slot layout (2 starters + 2 empties)
  *        - sets `passive` to `{id,name,desc}` from `combatPack.birdPassives`
  *        - sets `mainAttackId` to the slot-0 starter's ability id
- *        - exposes `combatFamilies` so the family-evolution UI can show the
- *          per-bird Power/Ailment/Utility branches
+ *        - sets `slotAbilities` (up to 7 base ability ids) for card-tier unlocks
  *   2. Populates `ABILITY_TEMPLATES` from `combatPack.skillTrees` so legacy
  *      lookups like `ABILITY_TEMPLATES[id]?.btnType` keep resolving.
  *   3. Registers dispatcher proxies in `ACTIONS` for every ability id.
  *   4. Monkey-patches `generateShopItems` so the existing shop UI sells
  *      ability families from `combatPack.shopPool` instead of stat cards.
  *
- * Anything that the old combat layer used to wire is replaced or no-op'd
- * (CLASS_PERK_DEFS, PASSIVE_EVOLUTION_DEFS, UPGRADE_CARDS_REWORK,
- * _SHOP_UTILS_REGULAR/_BOSS, FAMILY_EVOLUTION_BIRD_DATA gap birds) so the
- * legacy code paths starve of content but the helpers still run.
+ * Family-evolution catalogs (`FAMILY_EVOLUTION_BIRD_DATA`) are not built —
+ * flat startAbilities / slotAbilities are the source of truth.
  */
 (function () {
   'use strict';
@@ -197,10 +194,6 @@
   function abilityIdForFamily(familyId) {
     return familyId + '_S1';
   }
-  function mutationAbilityIdForFamily(familyId, stage) {
-    var s = Math.max(1, Math.min(3, Number(stage) || 1));
-    return familyId + '_S' + s;
-  }
   try {
     if (typeof globalThis.BIRDS === 'object' && globalThis.BIRDS) {
       for (var birdKey in globalThis.BIRDS) {
@@ -209,12 +202,6 @@
         var alias = packKeyFor(birdKey);
         var kit = pack.birdKits && (pack.birdKits[birdKey] || pack.birdKits[alias]);
         if (!kit) continue;
-        // Resolve all 7 workbook family ids + starter ability ids
-        var allFamIds = [];
-        for (var si = 0; si < 7; si++) {
-          var famAt = familyIdFor(birdKey, si);
-          if (famAt) allFamIds.push(famAt);
-        }
         var famA = familyIdFor(birdKey, 0);
         var famB = familyIdFor(birdKey, 1);
         if (!famA || !famB) continue;
@@ -222,7 +209,13 @@
         var starterB = abilityIdForFamily(famB);
         bird.startAbilities = [starterA, starterB];
         bird.mainAttackId = starterA;
-        bird.combatFamilies = allFamIds.length ? allFamIds : [famA, famB];
+        // Flat slot ability ids for card-tier unlocks (no family-evolution catalog).
+        bird.slotAbilities = [];
+        for (var sSlot = 0; sSlot < 7; sSlot++) {
+          var famSlotId = familyIdFor(birdKey, sSlot);
+          bird.slotAbilities.push(famSlotId ? abilityIdForFamily(famSlotId) : null);
+        }
+        if (bird.combatFamilies) delete bird.combatFamilies;
         bird.aspect = bird.aspect || (kit && kit.aspect) || (pack.birdKits[birdKey] && pack.birdKits[birdKey].aspect) || '';
         // Locate the passive by birdKey (with alias fallback)
         var passive = null;
@@ -248,109 +241,20 @@
     console.warn('[combat-pack-boot] failed to join BIRDS with combat pack:', e);
   }
 
-  // 3b. ── Build FAMILY_EVOLUTION_BIRD_DATA from combatPack ----------------
-  function buildFamilyEntry(fam, slotIdx) {
-    var baseId = mutationAbilityIdForFamily(fam.id, 1);
-    for (var rid in pack.skillTrees) {
-      var row = pack.skillTrees[rid];
-      if (row.familyId !== fam.id) continue;
-      var stageMatch = /_S(\d+)$/.exec(String(row.id || ''));
-      var stage = stageMatch ? Number(stageMatch[1]) : (row.branch === 'base' ? 1 : 0);
-      if (stage === 1 || (row.branch === 'base' && row.level === 1)) baseId = row.id;
-    }
-    return {
-      familyId: fam.id,
-      displayName: fam.name || fam.id,
-      baseAbilityId: baseId,
-      starterSlot: slotIdx,
-      abilitySlot: fam.abilitySlot != null ? fam.abilitySlot : slotIdx,
-      role: fam.role || '',
-      unlockTier: fam.unlockTier || 'Starter',
-    };
-  }
-  var UNIVERSAL_FAMILY_CACHE = Object.create(null);
-  globalThis.buildFamilyEntryFromPackId = function buildFamilyEntryFromPackId(familyId) {
-    if (!familyId) return null;
-    if (UNIVERSAL_FAMILY_CACHE[familyId]) return UNIVERSAL_FAMILY_CACHE[familyId];
-    var fam = pack.families && pack.families[familyId];
-    if (!fam) return null;
-    var entry = buildFamilyEntry(fam, fam.starterSlot != null ? fam.starterSlot : -1);
-    UNIVERSAL_FAMILY_CACHE[familyId] = entry;
-    return entry;
-  };
-  globalThis.UNIVERSAL_FAMILY_ABILITY_LOOKUP = Object.create(null);
-  for (var ufId in (pack.families || {})) {
-    var ufEntry = globalThis.buildFamilyEntryFromPackId(ufId);
-    if (!ufEntry || !ufEntry.baseAbilityId) continue;
-    globalThis.UNIVERSAL_FAMILY_ABILITY_LOOKUP[ufEntry.baseAbilityId] = {
-      familyId: ufEntry.familyId,
-      abilityId: ufEntry.baseAbilityId,
-    };
-  }
+  // 3b. ── Ability aliases + optional pack helpers (no family-evolution catalogs)
   if (pack.abilityAliases) {
     globalThis.ABILITY_ID_ALIASES = pack.abilityAliases;
   }
-  function buildFamilyForBird(birdKey) {
-    if (!pack.families || !pack.skillTrees) return null;
-    var alias = packKeyFor(birdKey);
-    var birdKeys = [birdKey, alias];
-    var famsBySlot = Object.create(null);
-    for (var fid in pack.families) {
-      var fam = pack.families[fid];
-      if (birdKeys.indexOf(fam.birdKey) === -1) continue;
-      var slot = fam.abilitySlot != null ? fam.abilitySlot : fam.starterSlot;
-      if (slot == null || slot < 0) continue;
-      if (!famsBySlot[slot] || fam.kind === 'starter') famsBySlot[slot] = fam;
-    }
-    var slotLayout = [];
-    var families = Object.create(null);
-    for (var s = 0; s < 7; s++) {
-      var famSlot = famsBySlot[s];
-      if (!famSlot) {
-        slotLayout.push({ slotIndex: s, familyId: null, abilityId: null, type: 'empty' });
-        continue;
-      }
-      var famEntry = buildFamilyEntry(famSlot, s);
-      families[famSlot.id] = famEntry;
-      slotLayout.push({
-        slotIndex: s,
-        familyId: famSlot.id,
-        abilityId: famEntry.baseAbilityId,
-        isStarterMain: s === 0,
-        type: s < 2 ? 'starter' : 'unlock',
-        role: famSlot.role || '',
-      });
-    }
-    if (!famsBySlot[0] || !famsBySlot[1]) return null;
-    var abilityLookup = (typeof globalThis.buildFamilySkillAbilityLookup === 'function')
-      ? globalThis.buildFamilySkillAbilityLookup(slotLayout, families)
-      : Object.create(null);
-    return { birdKey: birdKey, slotLayout: slotLayout, families: families, abilityLookup: abilityLookup };
-  }
+  globalThis.buildFamilyEntryFromPackId = function buildFamilyEntryFromPackId() { return null; };
+  globalThis.UNIVERSAL_FAMILY_ABILITY_LOOKUP = Object.create(null);
   Avian.systems = Avian.systems || Object.create(null);
   Avian.systems.combatPackBoot = Avian.systems.combatPackBoot || Object.create(null);
-  Avian.systems.combatPackBoot.buildFamilyForBird = buildFamilyForBird;
+  Avian.systems.combatPackBoot.buildFamilyForBird = function () { return null; };
   try {
     if (typeof globalThis.FAMILY_EVOLUTION_BIRD_DATA === 'object' && globalThis.FAMILY_EVOLUTION_BIRD_DATA) {
       for (var fkk in globalThis.FAMILY_EVOLUTION_BIRD_DATA) delete globalThis.FAMILY_EVOLUTION_BIRD_DATA[fkk];
-      if (typeof globalThis.BIRDS === 'object' && globalThis.BIRDS) {
-        var missingFamilyCatalogs = [];
-        for (var bk2 in globalThis.BIRDS) {
-          var entry = buildFamilyForBird(bk2);
-          if (entry) {
-            globalThis.FAMILY_EVOLUTION_BIRD_DATA[bk2] = entry;
-          } else {
-            missingFamilyCatalogs.push(bk2);
-          }
-        }
-        if (missingFamilyCatalogs.length) {
-          console.warn('[combat-pack-boot] missing family catalog for: ' + missingFamilyCatalogs.join(', '));
-        }
-      }
     }
-  } catch (e) {
-    console.warn('[combat-pack-boot] failed to build FAMILY_EVOLUTION_BIRD_DATA:', e);
-  }
+  } catch (_clearFes) { /* noop */ }
 
   // 4. ── Register dispatcher proxies for ACTIONS ---------------------------
   try {

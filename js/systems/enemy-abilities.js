@@ -1,5 +1,6 @@
 /**
- * Enemy skill materialization from workbook bird kits (7-slot, base abilities only).
+ * Enemy / player skill materialization from bird startAbilities / slotAbilities.
+ * Family-evolution catalogs are not used.
  */
 (function initEnemyAbilities() {
   'use strict';
@@ -31,20 +32,25 @@
     return Math.max(2, Math.min(7, idx + 2));
   }
 
+  function slotAbilityIdsForBird(birdKey) {
+    var birds = global.BIRDS || {};
+    var bd = birds[birdKey] || birds[String(birdKey || '')];
+    if (!bd) return [];
+    if (Array.isArray(bd.slotAbilities) && bd.slotAbilities.length) {
+      return bd.slotAbilities.map(function (id) { return id ? String(id) : ''; });
+    }
+    if (Array.isArray(bd.startAbilities)) {
+      return bd.startAbilities.map(function (id) { return id ? String(id) : ''; });
+    }
+    return [];
+  }
+
   function materializeEnemySkillsFromWorkbookKit(enemy, birdKey, enemyLevel, enemyClass, rosterRow, kitOpts) {
     kitOpts = kitOpts || {};
     if (!enemy || !birdKey) return false;
-    if (typeof global.usesFamilySkillEvolution !== 'function' || !global.usesFamilySkillEvolution({ birdKey: birdKey })) {
-      return false;
-    }
-    var baseSlots = typeof global.getBaseSkillSlotsForBird === 'function'
-      ? global.getBaseSkillSlotsForBird(birdKey)
-      : [];
-    if (!baseSlots.length) return false;
 
-    if (!enemy.familyEvolutionState || typeof enemy.familyEvolutionState !== 'object') {
-      enemy.familyEvolutionState = {};
-    }
+    var ids = slotAbilityIdsForBird(birdKey);
+    if (!ids.length) return false;
 
     var isPlayer = kitOpts.forPlayer === true
       || (global.G && global.G.player && enemy === global.G.player);
@@ -59,28 +65,40 @@
       unlockedCount = getEnemyUnlockedSlotCount(enemyLevel);
     }
 
-    var slots = baseSlots.map(function (base, idx) {
-      var slot = typeof global.normalizeSkillSlotState === 'function'
-        ? global.normalizeSkillSlotState(JSON.parse(JSON.stringify(base)), base, birdKey)
-        : base;
-      if (idx >= unlockedCount) {
-        return typeof global.createSkillSlotState === 'function'
-          ? global.createSkillSlotState(slot.slotIndex, slot.familyId, '')
-          : slot;
+    if (!enemy.familyEvolutionState || typeof enemy.familyEvolutionState !== 'object') {
+      enemy.familyEvolutionState = {};
+    }
+
+    var slots = [];
+    var abilities = [];
+    var makeSlot = typeof global.createSkillSlotState === 'function'
+      ? global.createSkillSlotState
+      : function (slotIndex, familyId, abilityId) {
+        return { slotIndex: slotIndex, familyId: familyId || null, abilityId: String(abilityId || '') };
+      };
+    var ensureAb = typeof global.ensureAbilityObjectFromTemplate === 'function'
+      ? global.ensureAbilityObjectFromTemplate
+      : null;
+
+    for (var i = 0; i < 7; i++) {
+      var abilityId = (i < unlockedCount && ids[i]) ? String(ids[i]) : '';
+      var slot = makeSlot(i, null, abilityId);
+      slots.push(slot);
+      if (!abilityId) continue;
+      var prior = (enemy.abilities || []).find(function (ab) {
+        return ab && (ab.id === abilityId || ab.slotIndex === i);
+      }) || null;
+      if (ensureAb) {
+        var ab = ensureAb(abilityId, prior, i, enemy);
+        if (i === 0) ab.fixedMainAttackCost = true;
+        abilities.push(ab);
+      } else {
+        abilities.push({ id: abilityId, level: 1, slotIndex: i });
       }
-      var fam = typeof global.getSkillSlotFamilyDef === 'function'
-        ? global.getSkillSlotFamilyDef(slot, birdKey)
-        : null;
-      if (fam && fam.baseAbilityId) {
-        slot.abilityId = fam.baseAbilityId;
-      }
-      return slot;
-    });
+    }
 
     enemy.familyEvolutionState.skillSlots = slots;
-    if (typeof global.syncPlayerAbilitiesFromSkillSlots === 'function') {
-      global.syncPlayerAbilitiesFromSkillSlots(enemy);
-    }
+    enemy.abilities = abilities;
     return true;
   }
 
