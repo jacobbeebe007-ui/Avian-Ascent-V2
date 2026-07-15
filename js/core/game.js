@@ -1089,7 +1089,7 @@ const ENDLESS_RELICS = [
   {id:'rel_crown_long_hunt',name:'Crown of the Long Hunt',tier:'gold',type:'relic',desc:'Endless only — After each boss kill, gain a random crown stat boon.',apply:p=>{p.relCrownLongHunt=true;}},
 ];
 
-function isEndlessRunActive(){ return !!(G.endlessMode && (G.stage||0)>20); }
+function isEndlessRunActive(){ return !!(G.endlessMode && ((G.stage||0)>20 || isEndlessMapActive())); }
 const PASSIVE_EVOLUTION_MILESTONES = Object.freeze({ evo1:10, evo2:25 });
 const PASSIVE_EVOLUTION_TEMPLATE = Object.freeze({
   stage1: {
@@ -3138,6 +3138,10 @@ function saveRun() {
       } : null,
       savedAt: Date.now(),
       shinyObjects: Math.max(0, Math.floor(Number(G.shinyObjects) || 0)),
+      runSeed: G.runSeed || null,
+      endlessMap: (G.endlessMode && G.endlessMap && typeof EndlessMap?.serializeEndlessMap === 'function')
+        ? EndlessMap.serializeEndlessMap(G.endlessMap)
+        : (G.endlessMode && G.endlessMap ? JSON.parse(JSON.stringify(G.endlessMap)) : null),
       owEncounterChain: (!G.endlessMode && Array.isArray(G._owStageEnemies) && G._owStageEnemies.length) ? {
         owStageEnemies: G._owStageEnemies.slice(),
         owEnemyIndex: G._owEnemyIndex || 0,
@@ -3271,6 +3275,14 @@ function continueRun() {
   G.endlessBattle=save.endlessBattle||0;
   G.bossKills=save.bossKills||0;
   G.stage=Math.max(1,Math.floor(Number(save.stage)||1));
+  G.runSeed = save.runSeed || G.runSeed || null;
+  if(G.endlessMode && save.endlessMap && typeof EndlessMap?.restoreEndlessMap === 'function'){
+    G.endlessMap = EndlessMap.restoreEndlessMap(save.endlessMap);
+  } else if(G.endlessMode && save.endlessMap){
+    G.endlessMap = save.endlessMap;
+  } else {
+    G.endlessMap = null;
+  }
   G._overworldProgress = normalizeOverworldProgress(save.overworldProgress||null, G.stage);
   if(!G.endlessMode && _isOverworldRun()){
     G.stage = Math.max(1, (G._overworldProgress?.completedStage||0) + 1);
@@ -3431,6 +3443,14 @@ function continueRun() {
   // #region agent log
   fetch('http://127.0.0.1:7940/ingest/a2f9b3c2-6614-4231-b7d9-0c870302a25c',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'5e515f'},body:JSON.stringify({sessionId:'5e515f',location:'game.js:continueRun:preLoadStage',message:'continueRun calling loadStage',data:{stage:G.stage,pendingStage:G._owPendingBattleStage,owEnemies:G._owStageEnemies,inBattle:!!save?.inBattle},timestamp:Date.now(),hypothesisId:'H4'})}).catch(()=>{});
   // #endregion
+  if(isEndlessMapActive()){
+    if(G.endlessMap?.pendingCombatKind && G.endlessMap?.activeNodeId){
+      loadStage();
+      return;
+    }
+    showEndlessMap();
+    return;
+  }
   loadStage();
 }
 function goMainMenu() {
@@ -3452,6 +3472,8 @@ function flyAgain() {
   G.enemy = null;
   G.phase = null;
   G.battleOver = true;
+  G.endlessMap = null;
+  G._endlessMapCombatKind = null;
   takeFlightToSelect();
 }
 globalThis.flyAgain = flyAgain;
@@ -3661,10 +3683,11 @@ function mergeScaledStatsIntoEnemy(ed, encounterStage){
   if(!ed) return ed;
   const diffMult = DIFFICULTIES[G.difficulty||'juvenile'].mult;
   const scaleOpts={
-    isEndless:(G.endlessMode && encounterStage>20),
+    isEndless:(G.endlessMode && (encounterStage>20 || isEndlessMapActive())),
     isStory:!G.endlessMode,
     diffMult,
     playerBirdLevel:Math.max(1, Math.floor(G.player?.birdLevel||1)),
+    forceElite: !!(ed.isElite || G._endlessMapCombatKind==='elite' || G.endlessMap?.pendingCombatKind==='elite'),
   };
   const scaled=ed._storyDirectStats ? {
     hp:ed.hp,maxHp:ed.maxHp,atk:ed.atk,def:ed.def,spd:ed.spd,acc:ed.acc,dodge:ed.dodge,mdef:ed.mdef,matk:ed.matk,cc:ed.cc||0.05,cd:ed.cd||1.5,en:ed.energyMax||ed.stats?.en||getEnergyProfile(normalizeBirdSizeForEnergy(ed.size)).maxEN,enemyClass:ed.enemyClass,effectiveLevel:ed.storyLevel||0,
@@ -6284,7 +6307,12 @@ function startGame() {
   const runStartEvt = {birdKey:G.player.birdKey, difficulty:G.difficulty, endless:!!G.endlessMode};
   AvianEvents.emit('run:start', runStartEvt);
   runModuleHook('onRunStart', runStartEvt);
-  // Launch the overworld map between stages (endless mode goes straight to battle)
+  if (typeof Avian?.systems?.replaySeed?.start === 'function') {
+    Avian.systems.replaySeed.start();
+  } else if (!G.runSeed) {
+    G.runSeed = 'local-' + Math.floor(Math.random() * 0xffffffff).toString(16);
+  }
+  // Launch the overworld map between stages (endless mode opens the node map)
   if (!G.endlessMode) {
     try {
       const mode = typeof globalThis.getCustomOverworldMode === 'function'
@@ -6318,6 +6346,13 @@ function startGame() {
       return;
     } catch(_) {}
   }
+  if (G.endlessMode && typeof EndlessMap?.createEndlessMapState === 'function') {
+    G.endlessMap = EndlessMap.createEndlessMapState(G.runSeed || 'endless', 0);
+    G.endlessMap.lastMessage = 'Choose a path to begin.';
+    saveRun();
+    showEndlessMap();
+    return;
+  }
   loadStage();
 }
 
@@ -6325,19 +6360,202 @@ function startGame() {
 function makeEndlessEnemy(stage) {
   const st=Math.max(1,Number(stage)||1);
   const endlessBattle=getEndlessEffectiveBattleNumber(st);
-  const isBoss=endlessBattle>0 ? (endlessBattle%ENDLESS_BOSS_CADENCE===0) : (st%10===0);
+  const mapKind = isEndlessMapActive() ? (G.endlessMap?.pendingCombatKind || G._endlessMapCombatKind || null) : null;
+  const isBoss = mapKind
+    ? mapKind === 'boss'
+    : (endlessBattle>0 ? (endlessBattle%ENDLESS_BOSS_CADENCE===0) : (st%10===0));
+  const isElite = mapKind === 'elite';
   const playerLv=Math.max(1,Math.floor(G.player?.birdLevel||1));
   const rosterId=typeof pickEndlessRosterEnemyId==='function'
     ? pickEndlessRosterEnemyId(st,isBoss,playerLv)
     : 'EN-SPARR-HESQ-L01';
   const bossTitle=isBoss
-    ? (st>20?'💀 Endless Titan':bossTitleForStageMilestone(st))
+    ? (st>20 || isEndlessMapActive()?'💀 Endless Titan':bossTitleForStageMilestone(st))
     : '';
   const ed=typeof buildEnemyFromRosterId==='function'
     ? buildEnemyFromRosterId(rosterId,{isBoss,bossTitle})
     : null;
-  if(ed&&isBoss&&st>20) ed.name='Corrupted '+ed.name;
+  if(ed&&isBoss&&(st>20||isEndlessMapActive())) ed.name='Corrupted '+ed.name;
+  if(ed&&isElite){
+    ed.isElite=true;
+    ed.tier='elite';
+  }
   return ed;
+}
+
+function isEndlessMapActive(){
+  if(typeof EndlessMap?.isEndlessMapActive==='function') return EndlessMap.isEndlessMapActive(G);
+  return !!(G.endlessMode && G.endlessMap && Array.isArray(G.endlessMap.nodes));
+}
+
+function showEndlessMap(){
+  if(!isEndlessMapActive()){
+    if(G.endlessMode && typeof EndlessMap?.createEndlessMapState==='function'){
+      G.endlessMap = EndlessMap.createEndlessMapState(G.runSeed || 'endless', 0);
+    } else {
+      loadStage();
+      return;
+    }
+  }
+  G.phase = 'PLAYER';
+  G._endlessMapCombatKind = null;
+  if(G.endlessMap){
+    G.endlessMap.pendingCombatKind = null;
+    G.endlessMap.activeNodeId = null;
+  }
+  const root = document.getElementById('endless-map-root');
+  if(root && typeof EndlessMap?.renderEndlessMapInto === 'function'){
+    EndlessMap.renderEndlessMapInto(root, G.endlessMap, {
+      birdName: G.player?.name || 'Bird',
+      hp: Math.ceil(G.player?.stats?.hp || 0),
+      maxHp: Math.ceil(G.player?.stats?.maxHp || 0),
+      shinies: Math.max(0, Math.floor(Number(G.shinyObjects) || 0)),
+    });
+  }
+  showScreen('screen-endless-map');
+  saveRun();
+}
+globalThis.showEndlessMap = showEndlessMap;
+globalThis.endlessMapSelectNode = endlessMapSelectNode;
+if(typeof Avian !== 'undefined'){
+  Avian.actions = Avian.actions || Object.create(null);
+  Avian.actions.showEndlessMap = showEndlessMap;
+  Avian.actions.endlessMapSelectNode = endlessMapSelectNode;
+}
+
+function endlessMapSelectNode(nodeId){
+  if(!isEndlessMapActive() || !nodeId) return;
+  const map = G.endlessMap;
+  const available = typeof EndlessMap.getAvailableNodeIds === 'function'
+    ? EndlessMap.getAvailableNodeIds(map)
+    : [];
+  if(available.indexOf(nodeId) < 0) return;
+  const node = EndlessMap.getNode(map, nodeId);
+  if(!node) return;
+
+  let roomType = node.type;
+  if(roomType === 'unknown'){
+    const rng = typeof EndlessMap.mulberry32 === 'function'
+      ? EndlessMap.mulberry32(((EndlessMap.hashSeedString?.(map.runSeed) || 1) ^ (map.segmentIndex * 97) ^ (node.id.length * 13)) >>> 0)
+      : Math.random;
+    roomType = EndlessMap.resolveUnknown(map, rng);
+    map.lastMessage = 'Unknown became ' + (EndlessMap.ROOM_LABELS?.[roomType] || roomType) + '.';
+  }
+
+  map.activeNodeId = nodeId;
+
+  if(roomType === 'rest'){
+    const pct = EndlessMap.ENDLESS_REST_SHIELD_PCT || 0.30;
+    map.pendingRestShieldPct = pct;
+    EndlessMap.markVisited(map, nodeId);
+    map.lastMessage = 'Rested — next fight starts with a ' + Math.round(pct * 100) + '% Max HP shield.';
+    map.activeNodeId = null;
+    saveRun();
+    showEndlessMap();
+    return;
+  }
+
+  if(roomType === 'merchant'){
+    map.fromMapMerchant = true;
+    EndlessMap.markVisited(map, nodeId);
+    saveRun();
+    showStorkShop('grey');
+    return;
+  }
+
+  if(roomType === 'treasure'){
+    grantEndlessMapTreasure();
+    EndlessMap.markVisited(map, nodeId);
+    map.activeNodeId = null;
+    saveRun();
+    showEndlessMap();
+    return;
+  }
+
+  if(roomType === 'event'){
+    map.fromMapGrove = true;
+    EndlessMap.markVisited(map, nodeId);
+    saveRun();
+    showGroveEvent();
+    return;
+  }
+
+  // combat / elite / boss
+  const kind = roomType === 'boss' ? 'boss' : (roomType === 'elite' ? 'elite' : 'combat');
+  map.pendingCombatKind = kind;
+  G._endlessMapCombatKind = kind;
+  saveRun();
+  loadStage();
+}
+globalThis.endlessMapSelectNode = endlessMapSelectNode;
+
+function grantEndlessMapTreasure(){
+  const shinyGain = 18 + Math.floor(Math.random() * 13);
+  G.shinyObjects = Math.max(0, Math.floor(Number(G.shinyObjects) || 0)) + shinyGain;
+  let mutLabel = '';
+  if(typeof Avian?.mutations?.rollMutationReward === 'function'){
+    const rw = Avian.mutations.rollMutationReward({ stage: G.stage, filterForPlayer: true });
+    const itemId = rw?.itemId || rw?.id;
+    if(itemId && typeof Avian.mutations.addToInventory === 'function'){
+      Avian.mutations.addToInventory(G.player, itemId);
+      mutLabel = rw?.name ? (' + ' + rw.name) : ' + mutation';
+    }
+  }
+  if(G.endlessMap){
+    G.endlessMap.lastMessage = 'Treasure: +' + shinyGain + ' 🌟' + mutLabel + '.';
+  }
+}
+
+function finishEndlessMapAfterCombat(){
+  if(!isEndlessMapActive()){
+    advanceStage();
+    return;
+  }
+  const map = G.endlessMap;
+  // Idempotent: if combat already finalized (e.g. after passive-evo overlay), just show the map.
+  const needsFinalize = !!(map.activeNodeId || map.pendingCombatKind);
+  if(needsFinalize){
+    const nodeId = map.activeNodeId || map.currentNodeId;
+    const wasBoss = (map.pendingCombatKind === 'boss') || !!(G.enemy && G.enemy.isBoss);
+    if(nodeId && typeof EndlessMap.markVisited === 'function'){
+      EndlessMap.markVisited(map, nodeId);
+    }
+    G.stage = Math.max(1, Math.floor(Number(G.stage) || 1) + 1);
+    G.endlessBattle = Math.max(0, Math.floor(Number(G.endlessBattle) || 0) + 1);
+    if(isEndlessRunActive() || isEndlessMapActive()) applyEndlessProgressionMilestones();
+    if(G.endlessMode && G.endlessBattle >= 20 && !isUnlocked('stage40')){
+      grantUnlock('stage40');
+      logMsg('🔓 Legendary birds unlocked: Shoebill Stork & Harpy Eagle!','boss');
+    }
+    map.pendingCombatKind = null;
+    map.activeNodeId = null;
+    G._endlessMapCombatKind = null;
+    if(wasBoss){
+      G.bossKills = (G.bossKills || 0) + 1;
+      G.endlessMap = EndlessMap.advanceToNextSegment(map, G.runSeed || map.runSeed);
+      G.endlessMap.lastMessage = 'Segment cleared. A new path opens ahead.';
+    } else {
+      map.lastMessage = 'Path cleared. Choose your next route.';
+    }
+    saveRun();
+  }
+  if(!hasMultiEnemyChainPending() && maybeOfferPassiveEvolutionChoice()) return;
+  if(!hasMultiEnemyChainPending() && maybeOfferClassPerkChoice()) return;
+  showEndlessMap();
+}
+
+function returnToEndlessMapFromSideRoom(){
+  if(!isEndlessMapActive()){
+    advanceStage();
+    return;
+  }
+  if(G.endlessMap){
+    G.endlessMap.fromMapGrove = false;
+    G.endlessMap.fromMapMerchant = false;
+    G.endlessMap.activeNodeId = null;
+  }
+  saveRun();
+  showEndlessMap();
 }
 
 /** Stats that may be temporarily modified during combat — snapshotted at battle start and restored when combat ends. */
@@ -6616,8 +6834,12 @@ function loadStage() {
   }
   const diffMult = DIFFICULTIES[G.difficulty||'juvenile'].mult;
 
-  if (G.endlessMode && encounterStage > ENDLESS_STORY_END_STAGE) {
-    G.endlessBattle = getEndlessEffectiveBattleNumber(encounterStage);
+  if (G.endlessMode && (isEndlessMapActive() || encounterStage > ENDLESS_STORY_END_STAGE)) {
+    if (isEndlessMapActive()) {
+      G.endlessBattle = Math.max(0, Math.floor(Number(G.endlessBattle) || 0));
+    } else {
+      G.endlessBattle = getEndlessEffectiveBattleNumber(encounterStage);
+    }
     ed = makeEndlessEnemy(encounterStage);
   } else if (!ed) {
     const stage = encounterStage;
@@ -6669,6 +6891,22 @@ function loadStage() {
   applyBiomeModifiers();
   // Remove stat bonuses before resetting flags (avoid accumulating across battles)
   resetForNewBattle();
+  if(isEndlessMapActive() && G.endlessMap?.pendingRestShieldPct > 0){
+    const pct = Number(G.endlessMap.pendingRestShieldPct) || 0;
+    if(pct > 0 && typeof applyShieldHp === 'function'){
+      applyShieldHp('player', {
+        maxHpPct: Math.round(pct * 100),
+        turns: 99,
+        sourceId: 'endless-rest',
+        sourceKind: 'rest',
+      });
+      if(typeof spawnFloat === 'function'){
+        spawnFloat('player', `🛡 ${Math.round(pct * 100)}%`, 'fn-heal');
+      }
+      logMsg(`Rest shield armed (${Math.round(pct * 100)}% Max HP).`, 'system');
+    }
+    G.endlessMap.pendingRestShieldPct = 0;
+  }
   recomputeClassPerkEffects();
   // Reset Goose bruise accumulator per battle
   if(G.player._bruiseAcc!==undefined) G.player._bruiseAcc=0;
@@ -9166,18 +9404,27 @@ function getClassPerkTriggerForCurrentStage(){
 }
 
 function resumeAfterGrove(){
+  if(isEndlessMapActive() && G.endlessMap?.fromMapGrove){
+    returnToEndlessMapFromSideRoom();
+    return;
+  }
   G._skipGroveRoll = true;
   continueStageTransitionAfterRewards();
   G._skipGroveRoll = false;
 }
 
 function continueStageTransitionAfterRewards(){
+  if (isEndlessMapActive()) {
+    finishEndlessMapAfterCombat();
+    return;
+  }
   if(!hasMultiEnemyChainPending() && maybeOfferPassiveEvolutionChoice()) return;
   if(!hasMultiEnemyChainPending() && maybeOfferClassPerkChoice()) return;
 
   const lastEnemyWasBoss = G.enemy && G.enemy.isBoss;
   const safeHP = G.player.stats.hp > G.player.stats.maxHp * 0.2;
   const multiEnemyChainPending = hasMultiEnemyChainPending();
+  // Random Grove is Story / non-map Endless only — map Unknown rooms open Grove intentionally.
   if(!G._skipGroveRoll && !lastEnemyWasBoss && safeHP && Math.random() < 0.1 && !multiEnemyChainPending){
     setTimeout(()=>showGroveEvent(), 350);
     return;
@@ -9677,7 +9924,10 @@ function getPostBattleHealPct(){
 }
 
 function shouldApplyPostBattleHealNow(){
-  return !!G.player;
+  if(!G.player) return false;
+  // Endless node-map runs: heal comes from Rest (shield) / items, not free post-fight heal.
+  if(isEndlessMapActive()) return false;
+  return true;
 }
 
 function applyPostBattleHealIfDue(){
@@ -10052,7 +10302,12 @@ function combatResolveEnemyTier(enemyBase, stage, opts, templateTier){
   if(templateTier==='boss') return 'boss';
   if(templateTier==='lieutenant') return 'lieutenant';
   if(enemyBase?.isBoss) return 'boss';
-  if(templateTier==='elite') return 'normal';
+  if(templateTier==='elite' || enemyBase?.isElite || opts?.forceElite){
+    if(isEndlessMapActive() && (G.endlessMap?.pendingCombatKind==='elite' || G._endlessMapCombatKind==='elite' || opts?.forceElite || enemyBase?.isElite)){
+      return 'elite';
+    }
+    return 'normal';
+  }
   return 'normal';
 }
 
@@ -13757,6 +14012,8 @@ function isGreyShopStage(stage){
 
 function isShopDueAfterBattle({ stage, endlessMode, endlessBattle, lastEnemyWasBoss } = {}){
   if(endlessMode){
+    // Map merchants replace cadence shops while the endless node map is active.
+    if(isEndlessMapActive()) return false;
     const eb = Math.max(0, Math.floor(Number(endlessBattle) || 0));
     return eb > 0 && eb % ENDLESS_SHOP_CADENCE === 0;
   }
@@ -14002,7 +14259,8 @@ function finishRewardScreenFlow() {
   const failsafeAdvance = () => {
     setTimeout(() => {
       if (!G.turnPhase && !document.querySelector('.screen.active')) {
-        advanceStage();
+        if(isEndlessMapActive()) showEndlessMap();
+        else advanceStage();
       }
     }, 50);
   };
@@ -14035,7 +14293,7 @@ function finishRewardScreenFlow() {
   }
 
   if (shopDue) showStorkShop(shopMode);
-  else if (_isOverworldRun()) continueStageTransitionAfterRewards();
+  else if (_isOverworldRun() || isEndlessMapActive()) continueStageTransitionAfterRewards();
   else advanceStage();
 
   failsafeAdvance('confirmReward after shop/advance');
@@ -14755,11 +15013,12 @@ function onExitLevelUpRequested(){
 
 function afterLevelUp() {
   // After level-up: go to Stork shop if it was a boss (non-overworld only), otherwise advance
-  if(G._pendingStorkShop && !_isOverworldRun()){
+  if(G._pendingStorkShop && !_isOverworldRun() && !isEndlessMapActive()){
     const m=G._pendingShopMode||'boss'; G._pendingStorkShop=false; G._pendingShopMode=null; showStorkShop(m);
   } else {
     G._pendingStorkShop=false; G._pendingShopMode=null;
-    advanceStage();
+    if(isEndlessMapActive()) continueStageTransitionAfterRewards();
+    else advanceStage();
   }
 }
 
@@ -16564,6 +16823,10 @@ function exitStorkShop() {
         globalThis.persistOwMapSnapshot(nid, G.player?.birdKey||null);
     }catch(_){}
     try { window.location.href = 'blackstone_overworld_new.html'; return; } catch(_) {}
+  }
+  if (isEndlessMapActive()) {
+    returnToEndlessMapFromSideRoom();
+    return;
   }
   advanceStage();
 }

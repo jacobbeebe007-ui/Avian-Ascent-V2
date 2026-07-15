@@ -79,6 +79,7 @@
     "js/systems/mutation-effects.js",
     "js/systems/combat-pack-boot.js",
     "js/systems/endless-bands.js",
+    "js/systems/endless-map.js",
     "js/systems/qol.js",
     "js/data/content.js",
     "js/systems/systems.js",

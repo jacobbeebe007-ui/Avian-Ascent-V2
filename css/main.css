@@ -5482,3 +5482,128 @@ body.combat-sticky-combatants #screen-battle.combat-arr--custom #enemy-panel{
     align-self:stretch;
   }
 }
+
+/* ========== Endless STS node map ========== */
+#app:has(#screen-endless-map.active) > header{display:none !important;}
+#screen-endless-map{
+  display:none;
+  min-height:100vh;
+  background:#000;
+  padding:0;
+  margin:0;
+}
+#screen-endless-map.active{display:block;}
+.em-map-shell{
+  min-height:100vh;
+  background:#050505;
+  color:#d6c28a;
+  display:flex;
+  flex-direction:column;
+  padding:16px 18px 28px;
+  box-sizing:border-box;
+}
+.em-map-hud{
+  display:flex;
+  justify-content:space-between;
+  gap:16px;
+  flex-wrap:wrap;
+  align-items:baseline;
+  margin-bottom:10px;
+  font-family:'Cinzel',serif;
+}
+.em-map-hud-left,.em-map-hud-right{display:flex;gap:14px;align-items:baseline;flex-wrap:wrap;}
+.em-map-title{font-size:1.35rem;letter-spacing:.12em;color:#e8d39a;text-transform:uppercase;}
+.em-map-meta,.em-map-hud-right{font-size:.82rem;color:#9a8a5c;}
+.em-map-msg{
+  margin:0 0 10px;
+  padding:8px 12px;
+  border:1px solid rgba(201,168,76,.28);
+  background:rgba(20,16,8,.7);
+  color:#cfc09a;
+  font-family:'Crimson Pro',Georgia,serif;
+  font-size:.95rem;
+}
+.em-map-canvas{
+  position:relative;
+  flex:1;
+  min-height:min(70vh,720px);
+  border:1px solid rgba(201,168,76,.2);
+  background:
+    radial-gradient(ellipse at 50% 0%, rgba(40,32,18,.35), transparent 55%),
+    #000;
+  overflow:hidden;
+}
+.em-map-edges{
+  position:absolute;
+  inset:0;
+  width:100%;
+  height:100%;
+  pointer-events:none;
+  z-index:1;
+}
+.em-map-edges line{
+  stroke:rgba(180,150,70,.35);
+  stroke-width:.35;
+}
+.em-node{
+  position:absolute;
+  transform:translate(-50%,-50%);
+  z-index:2;
+  width:64px;
+  height:64px;
+  border-radius:50%;
+  border:2px solid rgba(201,168,76,.45);
+  background:#0c0c0c;
+  color:#d6c28a;
+  cursor:default;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap:2px;
+  font-family:'Cinzel',serif;
+  padding:0;
+  transition:box-shadow .2s, border-color .2s, transform .15s, opacity .2s;
+}
+.em-node-icon{font-size:1.15rem;line-height:1;}
+.em-node-label{font-size:.55rem;letter-spacing:.04em;text-transform:uppercase;opacity:.85;}
+.em-node.is-locked{opacity:.28;filter:grayscale(.4);}
+.em-node.is-visited{opacity:.55;border-color:rgba(120,110,80,.4);}
+.em-node.is-current{
+  border-color:#e8d39a;
+  box-shadow:0 0 0 2px rgba(232,211,154,.25), 0 0 18px rgba(201,168,76,.35);
+}
+.em-node.is-available{
+  cursor:pointer;
+  border-color:#f0d78a;
+  box-shadow:0 0 16px rgba(240,215,138,.45);
+  animation:em-node-pulse 1.8s ease-in-out infinite;
+}
+.em-node.is-available:hover{
+  transform:translate(-50%,-50%) scale(1.08);
+  box-shadow:0 0 22px rgba(240,215,138,.65);
+}
+.em-node-boss.is-available,.em-node-boss.is-current{
+  border-color:#c45c4a;
+  box-shadow:0 0 18px rgba(196,92,74,.45);
+}
+.em-node-elite{border-color:rgba(180,70,70,.55);}
+.em-node-rest{border-color:rgba(90,140,110,.55);}
+.em-node-merchant{border-color:rgba(180,150,60,.55);}
+.em-node-unknown{border-color:rgba(120,120,160,.55);}
+.em-map-hint{
+  margin:12px 0 0;
+  text-align:center;
+  color:#7a6e4e;
+  font-family:'Crimson Pro',Georgia,serif;
+  font-size:.9rem;
+}
+@keyframes em-node-pulse{
+  0%,100%{box-shadow:0 0 12px rgba(240,215,138,.35);}
+  50%{box-shadow:0 0 22px rgba(240,215,138,.6);}
+}
+@media (max-width:700px){
+  .em-node{width:52px;height:52px;}
+  .em-node-label{font-size:.48rem;}
+  .em-map-canvas{min-height:62vh;}
+}
