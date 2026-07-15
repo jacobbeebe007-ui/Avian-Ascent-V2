@@ -3428,8 +3428,43 @@ function continueRun() {
 function goMainMenu() {
   if(G.player) saveRun();
   try { localStorage.removeItem('avianAscent_overworld'); localStorage.removeItem('avianAscent_nav'); } catch(_) {}
+  if(isOwUiEmbedMode()){
+    navigateTopToMainMenu();
+    return;
+  }
   showScreen('screen-select');initSelectionSafe();
 }
+
+function isOwUiEmbedMode(){
+  return !!(globalThis.__AVIAN_OW_UI_EMBED__ || globalThis.__AVIAN_OW_NEST_EMBED__);
+}
+
+function clearOwTransientKeys(){
+  const keys = globalThis.AVIAN_OW_KEYS || {};
+  try {
+    localStorage.removeItem(keys.STATE || 'avianAscent_overworld');
+    localStorage.removeItem(keys.NAV || 'avianAscent_nav');
+  } catch(_) {}
+}
+
+/** Leave overworld settings/nest iframe and return the top window to the war-room menu. */
+function navigateTopToMainMenu(){
+  try{
+    if(typeof window !== 'undefined' && window.parent && window.parent !== window){
+      try{ window.parent.postMessage({ type: 'avianOwExitToMenu' }, '*'); }catch(_pm){}
+    }
+  }catch(_){}
+  try{
+    const topWin = (typeof window !== 'undefined' && window.top) ? window.top : window;
+    if(topWin && topWin.location){
+      topWin.location.href = 'index.html';
+      return;
+    }
+  }catch(_){}
+  try{ location.href = 'index.html'; }catch(_e){}
+}
+globalThis.isOwUiEmbedMode = isOwUiEmbedMode;
+globalThis.navigateTopToMainMenu = navigateTopToMainMenu;
 
 // ============================================================
 //  OVERWORLD BRIDGE
@@ -16817,9 +16852,25 @@ function confirmAbandon() {
   checkRunUnlocks();
   deleteSave();
   stopAllGameAudio();
+  clearOwTransientKeys();
+  if(isOwUiEmbedMode()){
+    navigateTopToMainMenu();
+    return;
+  }
   showScreen('screen-select');initSelectionSafe();
   renderRunHistory();
 }
+globalThis.openAbandonModal = openAbandonModal;
+globalThis.closeAbandonModal = closeAbandonModal;
+globalThis.confirmAbandon = confirmAbandon;
+try{
+  if(globalThis.Avian?.actions){
+    Object.assign(globalThis.Avian.actions, {
+      openAbandonModal, closeAbandonModal, confirmAbandon,
+      openAbandonFromSettings, goMainMenuFromSettings, goMainMenu,
+    });
+  }
+}catch(_){}
 
 
 function unlockAllCodexEntries(){
@@ -18000,6 +18051,12 @@ function openAbandonFromSettings(){
 globalThis.openAbandonFromSettings = openAbandonFromSettings;
 function goMainMenuFromSettings(){
   closeSettingsModal();
+  if(isOwUiEmbedMode()){
+    if(G.player) saveRun();
+    clearOwTransientKeys();
+    navigateTopToMainMenu();
+    return;
+  }
   goMainMenu();
 }
 globalThis.goMainMenuFromSettings = goMainMenuFromSettings;

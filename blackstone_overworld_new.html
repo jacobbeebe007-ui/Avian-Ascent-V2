@@ -1026,7 +1026,12 @@ function openOwUiOverlay(mode){
 function openOwNestOverlay(){ openOwUiOverlay('nest'); }
 window.addEventListener('message',function(ev){
   try{
-    if(ev.data&&(ev.data.type==='avianOwUiClose'||ev.data.type==='avianOwNestClose')) closeOwUiOverlay();
+    if(!ev.data) return;
+    if(ev.data.type==='avianOwUiClose'||ev.data.type==='avianOwNestClose') closeOwUiOverlay();
+    if(ev.data.type==='avianOwExitToMenu'){
+      closeOwUiOverlay();
+      location.href='index.html';
+    }
   }catch(_){}
 });
 document.getElementById('ow-ui-overlay-close')?.addEventListener('click',closeOwUiOverlay);
