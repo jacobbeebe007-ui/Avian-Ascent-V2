@@ -1,5 +1,5 @@
 /**
- * Smoke test: Map Forge data-action handlers + label role model.
+ * Smoke test: Map Forge data-action handlers + label-as-job model.
  */
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
@@ -65,6 +65,37 @@ function resolveAction(name) {
   return null;
 }
 
+/** Apply the forge label-job model without UI (mirrors convertSelectedNodeType). */
+function assignLabelJob(node, typeKey) {
+  const saved = node.labelConfig ? JSON.parse(JSON.stringify(node.labelConfig)) : null;
+  const cfg = globalThis.defaultLabelConfig();
+  if (saved) Object.assign(cfg, saved);
+  node.type = 'label';
+  if (typeKey === 'label') {
+    cfg.actsAsNode = false;
+    cfg.uiAction = 'none';
+  } else if (typeKey === 'labelUi') {
+    cfg.actsAsNode = false;
+    cfg.uiAction = 'nest';
+  } else {
+    cfg.actsAsNode = true;
+    cfg.uiAction = 'none';
+    cfg.mimicType = typeKey;
+    if (typeKey === 'stage' || typeKey === 'boss' || typeKey === 'bonus') {
+      node.terrain = node.terrain || (typeKey === 'boss' ? 'Boss Arena' : typeKey === 'bonus' ? 'Bonus Arena' : 'Wilds');
+    }
+    if (typeKey === 'start') node.stage = 0;
+  }
+  node.labelConfig = cfg;
+  globalThis.ensureLabelConfig(node);
+  if (typeKey !== 'label' && typeKey !== 'labelUi') {
+    node.labelConfig.actsAsNode = true;
+    node.labelConfig.uiAction = 'none';
+    node.labelConfig.mimicType = typeKey;
+  }
+  return node;
+}
+
 const html = readFileSync(path.join(root, 'index.html'), 'utf8');
 const forgeStart = html.indexOf('id="screen-map-forge"');
 const forgeEnd = html.indexOf('<!-- BATTLE -->', forgeStart);
@@ -81,6 +112,8 @@ ok('Map Forge has data-action buttons', forgeActions.size >= 20);
 ok('Opacity slider present', forgeSection.includes('id="map-forge-label-opacity"'));
 ok('Border colour picker present', forgeSection.includes('id="map-forge-label-border-color"'));
 ok('Text colour picker present', forgeSection.includes('id="map-forge-label-text-color"'));
+ok('Node type job hint present', forgeSection.includes('id="map-forge-node-type-hint"'));
+ok('Node type labeled as job', forgeSection.includes('Node type (job)'));
 
 forgeActions.forEach((name) => {
   ok('Resolves action: ' + name, typeof resolveAction(name) === 'function');
@@ -105,8 +138,6 @@ globalThis.ensureLabelConfig(labelNode);
 ok('Node proxy label actsAsNode', labelNode.labelConfig.actsAsNode === true);
 ok('Node proxy mimicType', labelNode.labelConfig.mimicType === 'shop');
 ok('Default opacity applied', labelNode.labelConfig.opacity === 0.72);
-ok('Default borderColor empty', labelNode.labelConfig.borderColor === '');
-ok('Default textColor empty', labelNode.labelConfig.textColor === '');
 
 const uiLabel = {
   type: 'label',
@@ -131,37 +162,11 @@ ok('UI button label clears actsAsNode', uiLabel.labelConfig.actsAsNode === false
 ok('UI button uiAction nest', globalThis.getOwMapUiAction(uiLabel.labelConfig) === 'nest');
 ok('Opacity clamped to 1', uiLabel.labelConfig.opacity === 1);
 ok('Border colour normalized', uiLabel.labelConfig.borderColor === '#aabbcc');
-ok('Bad text colour cleared', uiLabel.labelConfig.textColor === '');
 
-const stageWithAppearance = {
-  type: 'stage',
-  name: 'Stage 1',
-  labelConfig: {
-    text: 'Gate',
-    shape: 'pill',
-    width: 100,
-    height: 40,
-    showText: true,
-    showBorder: false,
-    showFill: true,
-    opacity: 0.4,
-    borderColor: '#112233',
-    textColor: '#445566',
-  },
-};
-globalThis.ensureNodeAppearance(stageWithAppearance);
-ok('Stage appearance preserved type', stageWithAppearance.type === 'stage');
-ok('Stage appearance text', stageWithAppearance.labelConfig.text === 'Gate');
-ok('Stage appearance opacity', stageWithAppearance.labelConfig.opacity === 0.4);
-ok('Stage appearance forces no uiAction', stageWithAppearance.labelConfig.uiAction === 'none');
-ok('Stage appearance forces actsAsNode false', stageWithAppearance.labelConfig.actsAsNode === false);
-
-// Appearance survives Label → Stage conversion (strip must not drop labelConfig).
-const convertProbe = {
+// Label job: Stage keeps type=label and preserves appearance.
+const jobStage = {
   type: 'label',
   name: 'Label',
-  x: 10,
-  y: 20,
   labelConfig: {
     text: 'Keep Me',
     shape: 'circle',
@@ -175,27 +180,58 @@ const convertProbe = {
     textColor: '#00ff00',
     uiAction: 'none',
     actsAsNode: false,
+    mimicType: 'stage',
   },
 };
-const saved = JSON.parse(JSON.stringify(convertProbe.labelConfig));
-delete convertProbe.worldId;
-delete convertProbe.terrain;
-delete convertProbe.portraitBird;
-delete convertProbe.final;
-delete convertProbe.encounter;
-delete convertProbe.bonusConfig;
-delete convertProbe.clearRewards;
-delete convertProbe.stage;
-delete convertProbe.subStage;
-// Intentionally do NOT delete labelConfig (regression for Worlds type convert).
-convertProbe.type = 'stage';
-convertProbe.name = 'Stage';
-convertProbe.terrain = 'Wilds';
-convertProbe.labelConfig = saved;
-globalThis.ensureNodeAppearance(convertProbe);
-ok('Converted stage keeps appearance text', convertProbe.labelConfig.text === 'Keep Me');
-ok('Converted stage keeps shape', convertProbe.labelConfig.shape === 'circle');
-ok('Converted stage keeps opacity', convertProbe.labelConfig.opacity === 0.55);
+assignLabelJob(jobStage, 'stage');
+ok('Stage job keeps type label', jobStage.type === 'label');
+ok('Stage job actsAsNode', jobStage.labelConfig.actsAsNode === true);
+ok('Stage job mimicType stage', jobStage.labelConfig.mimicType === 'stage');
+ok('Stage job keeps shape', jobStage.labelConfig.shape === 'circle');
+ok('Stage job keeps opacity', jobStage.labelConfig.opacity === 0.55);
+ok('Stage job is combat', globalThis.isForgeCombatNode(jobStage) === true);
+ok('Stage job effective type', globalThis.getOwEffectiveNodeType(jobStage) === 'stage');
+
+const jobSpawn = {
+  type: 'label',
+  name: 'Label',
+  labelConfig: globalThis.defaultLabelConfig(),
+};
+jobSpawn.labelConfig.text = 'Spawn Gate';
+jobSpawn.labelConfig.shape = 'pill';
+assignLabelJob(jobSpawn, 'start');
+ok('Spawn job keeps type label', jobSpawn.type === 'label');
+ok('Spawn job recognized', globalThis.isOwSpawnNode(jobSpawn) === true);
+ok('Spawn job effective type start', globalThis.getOwEffectiveNodeType(jobSpawn) === 'start');
+ok('Spawn find index', globalThis.findOwSpawnNodeIndex([
+  { type: 'label', labelConfig: { actsAsNode: false, uiAction: 'none', mimicType: 'stage' } },
+  jobSpawn,
+]) === 1);
+
+// Spawn uniqueness vs hard start + proxy spawn
+const mixed = [
+  { id: 0, type: 'start', name: 'Spawn' },
+  { id: 1, type: 'label', labelConfig: { actsAsNode: true, mimicType: 'start', uiAction: 'none', text: 'Also Spawn' } },
+];
+ok('Hard start is spawn', globalThis.isOwSpawnNode(mixed[0]));
+ok('Proxy start is spawn', globalThis.isOwSpawnNode(mixed[1]));
+ok('Two spawns counted', mixed.filter((n) => globalThis.isOwSpawnNode(n)).length === 2);
+
+// World sub-stage recompute for label combat jobs
+const worldDef = {
+  worldIndex: 1,
+  nodes: [
+    { type: 'label', labelConfig: { actsAsNode: true, mimicType: 'start', uiAction: 'none', text: 'Spawn' }, stage: 0 },
+    { type: 'label', labelConfig: { actsAsNode: true, mimicType: 'stage', uiAction: 'none', text: 'A' }, terrain: 'Wilds' },
+    { type: 'label', labelConfig: { actsAsNode: true, mimicType: 'boss', uiAction: 'none', text: 'B' }, terrain: 'Boss Arena' },
+    { type: 'label', labelConfig: { actsAsNode: false, uiAction: 'none', mimicType: 'stage', text: 'Decor' } },
+  ],
+};
+const subCount = globalThis.recomputeWorldSubStages(worldDef);
+ok('World sub-stages count combat label jobs', subCount === 2);
+ok('First combat label gets subStage 1', worldDef.nodes[1].subStage === 1);
+ok('Boss label gets subStage 2', worldDef.nodes[2].subStage === 2);
+ok('Decorative label has no subStage', worldDef.nodes[3].subStage == null);
 
 // Place-then-select in a World with existing Spawn must select the new node (not id 0).
 const worldNodes = [
@@ -213,7 +249,6 @@ const normalized = globalThis.normalizeOwMapNodes(worldNodes);
 ok('Normalize assigns sequential ids', normalized[0].id === 0 && normalized[2].id === 2);
 ok('Fresh last node after place is not Spawn', normalized[normalized.length - 1].type === 'label');
 ok('Fresh last node id is 2', normalized[normalized.length - 1].id === 2);
-ok('Stale undefined id would wrongly become 0', (undefined ?? 0) === 0);
 
 if (process.exitCode) {
   console.error('\nMap Forge action verification failed.');

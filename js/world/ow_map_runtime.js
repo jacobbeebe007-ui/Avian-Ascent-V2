@@ -40,7 +40,27 @@
   ];
 
   global.isForgeCombatNode = function (n) {
-    return !!n && (n.type === 'stage' || n.type === 'boss' || n.type === 'bonus' || n.final);
+    if (!n) return false;
+    const t = typeof global.getOwEffectiveNodeType === 'function'
+      ? global.getOwEffectiveNodeType(n)
+      : n.type;
+    return t === 'stage' || t === 'boss' || t === 'bonus' || !!n.final;
+  };
+
+  global.isOwSpawnNode = function (n) {
+    if (!n) return false;
+    if (n.type === 'start') return true;
+    return n.type === 'label'
+      && !!(n.labelConfig && n.labelConfig.actsAsNode)
+      && n.labelConfig.mimicType === 'start';
+  };
+
+  global.nodeHasJobType = function (n, job) {
+    if (!n || !job) return false;
+    const t = typeof global.getOwEffectiveNodeType === 'function'
+      ? global.getOwEffectiveNodeType(n)
+      : n.type;
+    return t === job;
   };
 
   global.OW_MAP_UI_ACTIONS = [
@@ -187,7 +207,10 @@
   };
 
   global.defaultForgeEncounter = function (node) {
-    const isBoss = node?.type === 'boss';
+    const eff = typeof global.getOwEffectiveNodeType === 'function'
+      ? global.getOwEffectiveNodeType(node)
+      : node?.type;
+    const isBoss = eff === 'boss' || !!node?.final;
     const count = isBoss ? 1 : 3;
     const slots = [];
     for (let i = 0; i < count; i++) {
@@ -325,7 +348,7 @@
 
   global.isOwSegmentSourceCleared = function (node, progress, mapId, mapDef) {
     if (!node) return false;
-    if (node.type === 'start') return true;
+    if (global.isOwSpawnNode(node)) return true;
     const prog = progress || {};
     const key = global.owNodeKey(mapId, node.id);
     if (prog.nodeClears && prog.nodeClears[key]) return true;
@@ -375,7 +398,7 @@
 
   global.findOwSpawnNodeIndex = function (nodes) {
     if (!Array.isArray(nodes)) return 0;
-    const i = nodes.findIndex((n) => n && n.type === 'start');
+    const i = nodes.findIndex((n) => global.isOwSpawnNode(n));
     return i >= 0 ? i : 0;
   };
 
@@ -389,7 +412,9 @@
     m.startMapId = (sm === 'main' || (m.worlds && m.worlds[sm])) ? sm : 'main';
     let worldCount = 0;
     m.nodes.forEach((n) => {
-      if (n.type === 'world') {
+      const isWorldJob = n.type === 'world'
+        || (n.type === 'label' && n.labelConfig?.actsAsNode && n.labelConfig?.mimicType === 'world');
+      if (isWorldJob) {
         worldCount += 1;
         if (!n.worldId) n.worldId = 'world' + worldCount;
         if (!m.worlds[n.worldId]) {
@@ -439,13 +464,15 @@
     if (!worldDef || !Array.isArray(worldDef.nodes)) return 0;
     let sub = 0;
     worldDef.nodes.forEach((n) => {
-      if (n.type === 'start') {
+      const eff = global.getOwEffectiveNodeType(n) || n.type;
+      if (eff === 'start' || global.isOwSpawnNode(n)) {
         n.stage = 0;
         delete n.subStage;
-      } else if (n.type === 'shop' || n.type === 'return' || n.type === 'world' || n.type === 'overworld' || n.type === 'label') {
+      } else if (eff === 'shop' || eff === 'return' || eff === 'world' || eff === 'overworld'
+        || (n.type === 'label' && !(n.labelConfig && n.labelConfig.actsAsNode))) {
         delete n.stage;
         delete n.subStage;
-      } else if (n.type === 'stage' || n.type === 'boss' || n.type === 'bonus') {
+      } else if (eff === 'stage' || eff === 'boss' || eff === 'bonus') {
         sub += 1;
         n.subStage = sub;
         delete n.stage;
@@ -720,14 +747,20 @@
     const add = (severity, message, mapId, nodeId) => issues.push({ severity, message, mapId: mapId || 'main', nodeId: nodeId ?? null });
 
     const nodes = map?.nodes || [];
+    const effType = (n) => (global.getOwEffectiveNodeType ? global.getOwEffectiveNodeType(n) : n?.type) || '';
     if (!nodes.length) add('error', 'Add at least one node.');
-    const mainSpawns = nodes.filter((n) => n.type === 'start').length;
+    const mainSpawns = nodes.filter((n) => global.isOwSpawnNode(n)).length;
     if (mainSpawns === 0) add('error', 'Add a Spawn node (place a Label, then set Node type to Spawn).');
     else if (mainSpawns > 1) add('error', 'Exactly one Spawn node required on the main map.');
-    if (!nodes.some((n) => n.type === 'stage' || n.type === 'boss')) add('error', 'Add at least one Stage or Boss.');
+    if (!nodes.some((n) => {
+      const t = effType(n);
+      return t === 'stage' || t === 'boss';
+    })) add('error', 'Add at least one Stage or Boss.');
     if (!map?.backgroundDataUrl) add('error', 'Upload a main map background image.');
 
-    const worldIdsUsed = new Set(nodes.filter((n) => n.type === 'world' && n.worldId).map((n) => n.worldId));
+    const worldIdsUsed = new Set(
+      nodes.filter((n) => effType(n) === 'world' && n.worldId).map((n) => n.worldId)
+    );
     const startMapId = String(map?.startMapId || 'main');
     Object.keys(map?.worlds || {}).forEach((wid) => {
       if (!worldIdsUsed.has(wid) && wid !== startMapId) add('error', 'Orphaned world data: ' + wid, 'main', null);
@@ -735,16 +768,19 @@
     if (startMapId !== 'main') {
       const wn = map?.worlds?.[startMapId]?.nodes || [];
       if (!map?.worlds?.[startMapId]) add('error', 'startMapId "' + startMapId + '" does not exist.');
-      else if (!wn.some((n) => n.type === 'start')) add('error', 'Start map needs a Spawn node.', startMapId, null);
+      else if (!wn.some((n) => global.isOwSpawnNode(n))) add('error', 'Start map needs a Spawn node.', startMapId, null);
     }
 
-    if (!nodes.some((n) => n.type === 'boss' && n.final)) add('warning', 'No final boss marked on main map.');
+    if (!nodes.some((n) => effType(n) === 'boss' && n.final)) add('warning', 'No final boss marked on main map.');
 
-    const owGates = nodes.filter((n) => n.type === 'overworld');
+    const owGates = nodes.filter((n) => effType(n) === 'overworld');
     if (owGates.length > 1) add('warning', 'Multiple Overworld gates on main map - players may confuse which to use.', 'main', owGates[1]?.id);
 
-    let firstCombatIdx = nodes.findIndex((n) => n.type === 'stage' || n.type === 'boss');
-    const shopBeforeCombat = nodes.findIndex((n, i) => n.type === 'shop' && (firstCombatIdx < 0 || i < firstCombatIdx));
+    let firstCombatIdx = nodes.findIndex((n) => {
+      const t = effType(n);
+      return t === 'stage' || t === 'boss';
+    });
+    const shopBeforeCombat = nodes.findIndex((n, i) => effType(n) === 'shop' && (firstCombatIdx < 0 || i < firstCombatIdx));
     if (shopBeforeCombat >= 0) add('warning', 'Shop appears before first combat node.', 'main', nodes[shopBeforeCombat]?.id);
 
     nodes.forEach((n) => {
@@ -764,6 +800,9 @@
         if (uiAction && !cfg.showFill && !cfg.showBorder && !cfg.showText) {
           add('warning', 'Invisible UI button - add text or border so players can find it.', 'main', n.id);
         }
+        if (cfg.actsAsNode && cfg.mimicType === 'bonus' && (!Array.isArray(n.clearRewards) || !n.clearRewards.length)) {
+          add('warning', 'Bonus label has no clear rewards.', 'main', n.id);
+        }
         return;
       }
       if (n.type === 'bonus' && (!Array.isArray(n.clearRewards) || !n.clearRewards.length)) {
@@ -775,11 +814,11 @@
       const w = map.worlds[wid];
       const wn = w?.nodes || [];
       if (!w?.backgroundDataUrl) add('warning', 'World "' + (w.name || wid) + '" has no background.', wid, null);
-      if (!wn.some((n) => n.type === 'start')) add('warning', 'World "' + (w.name || wid) + '" missing Spawn node.', wid, null);
-      if (!wn.some((n) => n.type === 'return')) add('warning', 'World "' + (w.name || wid) + '" missing return gate.', wid, null);
-      if (!wn.some((n) => n.type === 'boss')) add('warning', 'World "' + (w.name || wid) + '" missing boss.', wid, null);
-      const bossIdx = wn.findIndex((n) => n.type === 'boss');
-      const retIdx = wn.findIndex((n) => n.type === 'return');
+      if (!wn.some((n) => global.isOwSpawnNode(n))) add('warning', 'World "' + (w.name || wid) + '" missing Spawn node.', wid, null);
+      if (!wn.some((n) => effType(n) === 'return')) add('warning', 'World "' + (w.name || wid) + '" missing return gate.', wid, null);
+      if (!wn.some((n) => effType(n) === 'boss')) add('warning', 'World "' + (w.name || wid) + '" missing boss.', wid, null);
+      const bossIdx = wn.findIndex((n) => effType(n) === 'boss');
+      const retIdx = wn.findIndex((n) => effType(n) === 'return');
       if (bossIdx >= 0 && retIdx >= 0 && retIdx <= bossIdx) {
         add('warning', 'Return gate should come after boss in path order.', wid, wn[retIdx]?.id);
       }

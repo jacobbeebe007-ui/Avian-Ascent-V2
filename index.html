@@ -397,10 +397,10 @@
 </div>
 <div class="map-forge-panel-pane is-active" id="map-forge-panel-node" data-forge-panel="node" role="tabpanel">
 <div class="map-forge-node-editor" id="map-forge-node-editor">
-<label class="map-forge-field-label" for="map-forge-node-type">Node type</label>
+<label class="map-forge-field-label" for="map-forge-node-type">Node type (job)</label>
 <select class="map-forge-field-input" id="map-forge-node-type">
-<option value="label">Label (decorative)</option>
-<option value="labelUi">Label (UI button)</option>
+<option value="label">Decorative</option>
+<option value="labelUi">UI button</option>
 <option value="stage">Stage</option>
 <option value="boss">Boss</option>
 <option value="bonus">Bonus</option>
@@ -410,6 +410,7 @@
 <option value="start">Spawn</option>
 <option value="overworld">Overworld</option>
 </select>
+<p class="map-forge-hint" id="map-forge-node-type-hint">Sets what this label does. Shape, size, and colours stay editable.</p>
 <label class="map-forge-field-label" for="map-forge-node-name">Node name</label>
 <input type="text" class="map-forge-field-input" id="map-forge-node-name" maxlength="48"/>
 <label class="map-forge-field-label" for="map-forge-node-terrain">Terrain</label>
