@@ -73,7 +73,10 @@
       ? global.findOwSpawnNodeIndex
       : (nodes) => {
         if (!Array.isArray(nodes)) return 0;
-        const i = nodes.findIndex((n) => n && n.type === 'start');
+        const i = nodes.findIndex((n) => n && (
+          n.type === 'start'
+          || (n.type === 'label' && n.labelConfig?.actsAsNode && n.labelConfig?.mimicType === 'start')
+        ));
         return i >= 0 ? i : 0;
       };
     const startId = resolveStart(map);
@@ -207,8 +210,18 @@
 
   global.isOwCombatNode = function (n) {
     if (typeof global.isForgeCombatNode === 'function') return global.isForgeCombatNode(n);
-    return !!n && (n.type === 'stage' || n.type === 'boss' || n.final);
+    if (!n) return false;
+    const t = typeof global.getOwEffectiveNodeType === 'function'
+      ? global.getOwEffectiveNodeType(n)
+      : n.type;
+    return t === 'stage' || t === 'boss' || t === 'bonus' || !!n.final;
   };
+
+  function owBridgeEffectiveType(n) {
+    if (!n) return '';
+    if (typeof global.getOwEffectiveNodeType === 'function') return global.getOwEffectiveNodeType(n) || n.type || '';
+    return n.type || '';
+  }
 
   /** @param {Array} nodes overworld NODES array (id aligns with index) */
   global.inferOwCompletedStageFromNodeId = function (nodeId, nodes) {
@@ -216,7 +229,7 @@
     const n = arr[Math.max(0, Math.floor(Number(nodeId) || 0))];
     if (!n) return 0;
     if (global.isOwCombatNode(n)) return Math.max(0, Number(n.stage || 1) - 1);
-    if (n.type === 'shop') return Math.max(0, Number(arr[n.id - 1]?.stage || 0));
+    if (owBridgeEffectiveType(n) === 'shop') return Math.max(0, Number(arr[n.id - 1]?.stage || 0));
     return 0;
   };
 
@@ -225,7 +238,9 @@
     const arr = nodes || [];
     let max = 0;
     for (const n of arr) {
-      if (!n || n.type === 'bonus' || n.type === 'world' || n.type === 'return') continue;
+      if (!n) continue;
+      const eff = owBridgeEffectiveType(n);
+      if (eff === 'bonus' || eff === 'world' || eff === 'return') continue;
       if (!global.isOwCombatNode(n)) continue;
       max = Math.max(max, Math.floor(Number(n.stage || n.subStage) || 0));
     }

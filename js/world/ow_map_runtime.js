@@ -381,7 +381,7 @@
     const node = arr[idx];
     if (!node) return false;
     if (node.type === 'label' && !(node.labelConfig && node.labelConfig.actsAsNode)) return true;
-    if (node.type === 'start') return true;
+    if (global.isOwSpawnNode(node)) return true;
     if (global.isOwSegmentSourceCleared(node, progress, mapId, mapDef)) return true;
     const pathIdx = global.getPathNodeIndices(arr);
     const pathPos = pathIdx.indexOf(idx);
@@ -438,7 +438,8 @@
       if (global.isForgeCombatNode(n)) global.ensureNodeEncounter(n);
       if (n.type === 'label' && global.ensureLabelConfig) global.ensureLabelConfig(n);
       else if (n.labelConfig && global.ensureNodeAppearance) global.ensureNodeAppearance(n);
-      if (n.type === 'bonus' && !n.bonusConfig) {
+      const effMain = global.getOwEffectiveNodeType(n) || n.type;
+      if ((n.type === 'bonus' || effMain === 'bonus') && !n.bonusConfig) {
         n.bonusConfig = { powerProgression: true, maxRepeats: 5 };
       }
       if (global.isForgeCombatNode(n)) {
@@ -455,6 +456,10 @@
         w.nodes.forEach((n) => {
           if (n.type === 'label' && global.ensureLabelConfig) global.ensureLabelConfig(n);
           else if (n.labelConfig && global.ensureNodeAppearance) global.ensureNodeAppearance(n);
+          const effW = global.getOwEffectiveNodeType(n) || n.type;
+          if ((n.type === 'bonus' || effW === 'bonus') && !n.bonusConfig) {
+            n.bonusConfig = { powerProgression: true, maxRepeats: 5 };
+          }
           if (global.isForgeCombatNode(n)) {
             if (!Array.isArray(n.clearRewards) && n.bonusConfig?.rewards?.length) {
               n.clearRewards = JSON.parse(JSON.stringify(n.bonusConfig.rewards));
@@ -727,12 +732,13 @@
     let mutCount = 0;
     const bonusPower = [];
     nodes.forEach((n) => {
-      if (n.type === 'world') worlds += 1;
-      else if (n.type === 'bonus') {
+      const eff = global.getOwEffectiveNodeType(n) || n.type;
+      if (eff === 'world') worlds += 1;
+      else if (eff === 'bonus') {
         bonus += 1;
         if (n.bonusConfig?.powerProgression) bonusPower.push(n.bonusConfig.maxRepeats || 5);
-      } else if (n.type === 'shop') shop += 1;
-      else if (n.type === 'stage' || n.type === 'boss') combat += 1;
+      } else if (eff === 'shop') shop += 1;
+      else if (eff === 'stage' || eff === 'boss') combat += 1;
       if (global.isForgeCombatNode(n) && n.encounter?.slots) {
         n.encounter.slots.forEach((s) => {
           mutSum += MUT_BAND_WEIGHT[s.mutationBand] || 3;
@@ -814,8 +820,11 @@
         }
         return;
       }
-      if (n.type === 'bonus' && (!Array.isArray(n.clearRewards) || !n.clearRewards.length)) {
-        add('warning', 'Bonus node has no clear rewards.', 'main', n.id);
+      {
+        const effBonus = effType(n);
+        if (effBonus === 'bonus' && (!Array.isArray(n.clearRewards) || !n.clearRewards.length)) {
+          add('warning', 'Bonus node has no clear rewards.', 'main', n.id);
+        }
       }
     });
 

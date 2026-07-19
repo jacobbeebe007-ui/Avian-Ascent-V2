@@ -118,6 +118,30 @@
     return effectiveNodeType(n) === 'world' && !!n?.worldId;
   }
 
+  function isBossLike(n) {
+    return effectiveNodeType(n) === 'boss' || !!n?.final;
+  }
+
+  function isBonusLike(n) {
+    return effectiveNodeType(n) === 'bonus';
+  }
+
+  function isShopLike(n) {
+    return effectiveNodeType(n) === 'shop';
+  }
+
+  /** Sync World option visibility: World jobs are main-map only. */
+  function syncNodeTypeOptions() {
+    const typeEl = document.getElementById('map-forge-node-type');
+    if (!typeEl) return;
+    const worldOpt = typeEl.querySelector('option[value="world"]');
+    if (worldOpt) worldOpt.hidden = _editContext !== 'main';
+    if (_editContext !== 'main' && typeEl.value === 'world') {
+      const n = getSelectedNode();
+      typeEl.value = getNodeTypeSelectValue(n);
+    }
+  }
+
   function seedRunProgressToStart(map) {
     if (typeof global.seedOwRunToStartMap === 'function') {
       return global.seedOwRunToStartMap(map);
@@ -514,7 +538,11 @@
     if (!map) return true;
     if (map.backgroundDataUrl) return false;
     const nodes = map.nodes || [];
-    const combat = nodes.filter((n) => n.type === 'stage' || n.type === 'boss');
+    const combat = nodes.filter((n) => {
+      if (global.isForgeCombatNode && global.isForgeCombatNode(n)) return true;
+      const t = effectiveNodeType(n);
+      return t === 'stage' || t === 'boss' || t === 'bonus';
+    });
     return combat.length === 0;
   }
 
@@ -1399,6 +1427,7 @@
     if (editBtn) editBtn.style.display = showEnter ? '' : 'none';
     if (sidebarEnter) sidebarEnter.style.display = showEnter ? '' : 'none';
     if (sidebarExit) sidebarExit.style.display = _editContext !== 'main' ? '' : 'none';
+    syncNodeTypeOptions();
   }
 
   function renderDraftSelect() {
@@ -1463,7 +1492,7 @@
       rowsEl.innerHTML = '';
       const speciesOpts = global.getForgeBirdOptions ? global.getForgeBirdOptions() : [{ id: 'random', label: 'Random' }];
       const mutTiers = global.OW_CARD_TIER_MUTATION_OPTIONS || [];
-      const isBossNode = n.type === 'boss' || !!n.final;
+      const isBossNode = isBossLike(n);
       n.encounter.slots.forEach((slot, idx) => {
         const row = document.createElement('div');
         row.className = 'map-forge-encounter-row';
@@ -1588,7 +1617,7 @@
       });
     }
     if (bonusEl) {
-      const showBonus = n.type === 'bonus';
+      const showBonus = isBonusLike(n);
       bonusEl.style.display = showBonus ? '' : 'none';
       if (showBonus) {
         if (!n.bonusConfig) {
@@ -1617,7 +1646,15 @@
     list.innerHTML = '';
     const wi = slice.worldIndex;
     slice.nodes.forEach((n) => {
-      if (_nodeListFilter !== 'all' && n.type !== _nodeListFilter) return;
+      if (_nodeListFilter !== 'all') {
+        const job = getNodeTypeSelectValue(n);
+        // "Label" filter includes decorative + UI-button jobs (no separate UI filter).
+        if (_nodeListFilter === 'label') {
+          if (job !== 'label' && job !== 'labelUi') return;
+        } else if (job !== _nodeListFilter) {
+          return;
+        }
+      }
       const row = document.createElement('div');
       row.className = 'map-forge-node-row' + ((n.id === _selectedId || _selectedIds.includes(n.id)) ? ' is-selected' : '');
       row.draggable = true;
@@ -1864,6 +1901,7 @@
     const portraitLabel = document.querySelector('label[for="map-forge-portrait-bird"]');
     const portraitEl = document.getElementById('map-forge-portrait-bird');
     const arenaPreview = document.getElementById('map-forge-arena-preview');
+    syncNodeTypeOptions();
     if (typeEl) typeEl.value = getNodeTypeSelectValue(n);
     if (nameEl) nameEl.value = n.name || '';
     if (!isCombatJob) {
@@ -2083,7 +2121,7 @@
     const portraitEl = document.getElementById('map-forge-portrait-bird');
     const finalEl = document.getElementById('map-forge-node-final');
     if (nameEl) n.name = nameEl.value.trim() || n.name;
-    if (n.type !== 'shop') {
+    if (!isShopLike(n)) {
       if (terrainSel?.value === '__custom__' && terrainCustom) n.terrain = terrainCustom.value.trim();
       else if (terrainSel?.value) n.terrain = terrainSel.value;
     }
@@ -2091,9 +2129,9 @@
       if (portraitEl.value) n.portraitBird = portraitEl.value;
       else delete n.portraitBird;
     }
-    if (finalEl && n.type === 'boss') {
+    if (finalEl && isBossLike(n)) {
       if (finalEl.checked) {
-        slice.nodes.forEach((x) => { if (x.type === 'boss') delete x.final; });
+        slice.nodes.forEach((x) => { if (isBossLike(x) && x.id !== n.id) delete x.final; });
         n.final = true;
       } else delete n.final;
     }
@@ -2544,8 +2582,8 @@
     pushHistory();
     if (_configClipboard.encounter && global.isForgeCombatNode(n)) n.encounter = JSON.parse(JSON.stringify(_configClipboard.encounter));
     if (_configClipboard.clearRewards && global.isForgeCombatNode(n)) n.clearRewards = JSON.parse(JSON.stringify(_configClipboard.clearRewards));
-    if (_configClipboard.bonusConfig && n.type === 'bonus') n.bonusConfig = JSON.parse(JSON.stringify(_configClipboard.bonusConfig));
-    if (_configClipboard.terrain && n.type !== 'shop') n.terrain = _configClipboard.terrain;
+    if (_configClipboard.bonusConfig && isBonusLike(n)) n.bonusConfig = JSON.parse(JSON.stringify(_configClipboard.bonusConfig));
+    if (_configClipboard.terrain && !isShopLike(n)) n.terrain = _configClipboard.terrain;
     if (_configClipboard.portraitBird) n.portraitBird = _configClipboard.portraitBird;
     syncNodeEditorFields();
     setStatus('Config pasted.');
@@ -2565,7 +2603,11 @@
   function bulkSelectAllStages() {
     const slice = getEditingSlice();
     if (!slice) return;
-    _bulkChecked = new Set(slice.nodes.filter((n) => n.type === 'stage' || n.type === 'boss' || n.type === 'bonus').map((n) => n.id));
+    _bulkChecked = new Set(slice.nodes.filter((n) => {
+      if (global.isForgeCombatNode && global.isForgeCombatNode(n)) return true;
+      const t = effectiveNodeType(n);
+      return t === 'stage' || t === 'boss' || t === 'bonus';
+    }).map((n) => n.id));
     renderNodeList();
   }
 
@@ -2600,6 +2642,32 @@
     setStatus('Rewards copied to checked nodes.');
   }
 
+  function makeLabelJobNode(job, name, x, y, extra) {
+    const labelCfg = typeof global.defaultLabelConfig === 'function'
+      ? global.defaultLabelConfig()
+      : {
+        text: name, mimicType: 'stage', shape: 'rounded', width: 80, height: 36,
+        showText: true, showBorder: true, showFill: true, actsAsNode: false, uiAction: 'none',
+        opacity: 0.72, borderColor: '', textColor: '',
+      };
+    labelCfg.text = name;
+    labelCfg.uiAction = 'none';
+    labelCfg.actsAsNode = true;
+    labelCfg.mimicType = job;
+    const node = Object.assign({
+      x, y, type: 'label', name, labelConfig: labelCfg,
+    }, extra || {});
+    if (global.ensureLabelConfig) global.ensureLabelConfig(node);
+    node.labelConfig.actsAsNode = true;
+    node.labelConfig.uiAction = 'none';
+    node.labelConfig.mimicType = job;
+    node.labelConfig.text = name;
+    if ((job === 'stage' || job === 'boss' || job === 'bonus') && global.ensureNodeEncounter) {
+      global.ensureNodeEncounter(node);
+    }
+    return node;
+  }
+
   function addWorldTemplate() {
     if (_editContext === 'main') return;
     const slice = getEditingSlice();
@@ -2607,17 +2675,18 @@
     pushHistory();
     slice.nodes.length = 0;
     slice.nodes.push(
-      { type: 'stage', name: 'Stage 1', x: 768, y: 720, terrain: 'Wilds' },
-      { type: 'stage', name: 'Stage 2', x: 768, y: 590, terrain: 'Wilds' },
-      { type: 'stage', name: 'Stage 3', x: 768, y: 460, terrain: 'Wilds' },
-      { type: 'boss', name: 'World Boss', x: 768, y: 330, terrain: 'Boss Arena' },
-      { type: 'return', name: 'Return Gate', x: 768, y: 200 },
+      makeLabelJobNode('start', 'Spawn', 768, 850, { stage: 0 }),
+      makeLabelJobNode('stage', 'Stage 1', 768, 720, { terrain: 'Wilds' }),
+      makeLabelJobNode('stage', 'Stage 2', 768, 590, { terrain: 'Wilds' }),
+      makeLabelJobNode('stage', 'Stage 3', 768, 460, { terrain: 'Wilds' }),
+      makeLabelJobNode('boss', 'World Boss', 768, 330, { terrain: 'Boss Arena' }),
+      makeLabelJobNode('return', 'Return Gate', 768, 200),
     );
     _map = normalizeMap(_map);
     _selectedId = null;
     _selectedIds = [];
     refreshForgeUI();
-    setStatus('World template added — place a Spawn via Label → Spawn before save.');
+    setStatus('World template added (Spawn + stages + boss + return as label jobs).');
   }
 
   function seedPlaytestProgress(nodeIndex, mapId) {
@@ -2673,7 +2742,7 @@
         stage: scaleStage,
         mapId: slice?.mapId || 'main',
         nodeId: n.id,
-        isBoss: n.type === 'boss',
+        isBoss: isBossLike(n),
         returnTo: 'forge',
       });
     }
@@ -2697,7 +2766,7 @@
   function renderBossStatsPanel(n) {
     const panel = document.getElementById('map-forge-boss-stats-panel');
     if (!panel) return;
-    const show = n && (n.type === 'boss' || n.final);
+    const show = n && isBossLike(n);
     panel.style.display = show ? '' : 'none';
     if (!show) return;
     if (global.ensureNodeEncounter) global.ensureNodeEncounter(n);
@@ -3074,6 +3143,7 @@
       _editContext = id || 'main';
       _selectedId = null;
       _selectedIds = [];
+      syncBreadcrumb();
     },
     setTool,
     placeNodeAt(x, y) {
@@ -3083,6 +3153,15 @@
     convertSelected(typeKey) { return convertSelectedNodeType(typeKey); },
     deleteSelected() { deleteSelectedNode(); },
     getSelected() { return getSelectedNode(); },
+    bulkSelectAllStages,
+    addWorldTemplate,
+    getNodeJob(n) { return getNodeTypeSelectValue(n); },
+    filterMatches(n, filter) {
+      const job = getNodeTypeSelectValue(n);
+      if (filter === 'all') return true;
+      if (filter === 'label') return job === 'label' || job === 'labelUi';
+      return job === filter;
+    },
     getState() {
       const slice = getEditingSlice();
       return {
@@ -3091,6 +3170,15 @@
         selectedIds: _selectedIds.slice(),
         tool: _tool,
         nodeCount: slice?.nodes?.length || 0,
+        bulkChecked: Array.from(_bulkChecked),
+        worldJobsAllowed: _editContext === 'main',
+        worldOptionHidden: (() => {
+          const typeEl = document.getElementById('map-forge-node-type');
+          const worldOpt = typeEl && typeof typeEl.querySelector === 'function'
+            ? typeEl.querySelector('option[value="world"]')
+            : null;
+          return !!(worldOpt && worldOpt.hidden);
+        })(),
         nodes: (slice?.nodes || []).map((n) => ({
           id: n.id,
           type: n.type,
@@ -3098,6 +3186,11 @@
           job: getNodeTypeSelectValue(n),
           actsAsNode: !!(n.labelConfig && n.labelConfig.actsAsNode),
           mimicType: n.labelConfig?.mimicType || null,
+          final: !!n.final,
+          hasBonusConfig: !!n.bonusConfig,
+          isBossLike: isBossLike(n),
+          isBonusLike: isBonusLike(n),
+          isCombat: !!(global.isForgeCombatNode && global.isForgeCombatNode(n)),
         })),
       };
     },
