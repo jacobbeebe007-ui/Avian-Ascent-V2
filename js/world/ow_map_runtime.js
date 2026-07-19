@@ -406,8 +406,17 @@
     const m = Object.assign({}, map || {});
     m.schemaVersion = 2;
     m.pathReveal = m.pathReveal !== false;
-    m.worlds = m.worlds && typeof m.worlds === 'object' ? m.worlds : {};
-    m.nodes = Array.isArray(m.nodes) ? m.nodes : [];
+    // Shallow-clone worlds so callers (e.g. history snapshots) do not share
+    // world objects/node arrays with the live editor map.
+    const srcWorlds = m.worlds && typeof m.worlds === 'object' ? m.worlds : {};
+    m.worlds = {};
+    Object.keys(srcWorlds).forEach((wid) => {
+      const src = srcWorlds[wid] || {};
+      m.worlds[wid] = Object.assign({}, src, {
+        nodes: Array.isArray(src.nodes) ? src.nodes.slice() : [],
+      });
+    });
+    m.nodes = Array.isArray(m.nodes) ? m.nodes.slice() : [];
     const sm = String(m.startMapId || 'main');
     m.startMapId = (sm === 'main' || (m.worlds && m.worlds[sm])) ? sm : 'main';
     let worldCount = 0;

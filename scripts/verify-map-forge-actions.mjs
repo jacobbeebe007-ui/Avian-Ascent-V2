@@ -250,6 +250,93 @@ ok('Normalize assigns sequential ids', normalized[0].id === 0 && normalized[2].i
 ok('Fresh last node after place is not Spawn', normalized[normalized.length - 1].type === 'label');
 ok('Fresh last node id is 2', normalized[normalized.length - 1].id === 2);
 
+// Documents the stale-slice bug: normalize replaces the nodes array, so the pre-normalize
+// reference's last node has no id and `?? 0` incorrectly selects Spawn.
+{
+  let live = globalThis.normalizeOwMapNodes([
+    { type: 'start', name: 'Spawn', x: 100, y: 100 },
+    { type: 'stage', name: 'Stage 1', x: 100, y: 200, terrain: 'Wilds' },
+  ]);
+  const staleRef = live;
+  staleRef.push({
+    x: 300, y: 300, type: 'label', name: 'Label',
+    labelConfig: globalThis.defaultLabelConfig(),
+  });
+  live = globalThis.normalizeOwMapNodes(staleRef);
+  const buggyId = staleRef[staleRef.length - 1]?.id ?? 0;
+  const freshId = live[live.length - 1]?.id;
+  ok('Stale slice after normalize falls back to Spawn id 0', buggyId === 0);
+  ok('Fresh slice after normalize selects new label id', freshId === 2 && live[2].type === 'label');
+}
+
+// Live Forge API: place → job change → delete inside a World (not main).
+const api = globalThis.__mapForgeTestApi;
+ok('Map Forge test API exported', !!(api && typeof api.placeNodeAt === 'function'));
+if (api) {
+  api.loadMap({
+    schemaVersion: 2,
+    name: 'Worlds regression',
+    nodes: [{
+      x: 200, y: 200, type: 'label', name: 'World Gate', worldId: 'world1',
+      labelConfig: Object.assign(globalThis.defaultLabelConfig(), {
+        text: 'World Gate', actsAsNode: true, mimicType: 'world', uiAction: 'none',
+      }),
+    }],
+    worlds: {
+      world1: {
+        name: 'World 1',
+        worldIndex: 1,
+        backgroundDataUrl: '',
+        nodes: [
+          { x: 100, y: 100, type: 'start', name: 'Spawn' },
+          { x: 100, y: 220, type: 'stage', name: 'Stage 1', terrain: 'Wilds' },
+        ],
+      },
+    },
+  });
+  api.setEditContext('world1');
+  const before = api.getState();
+  ok('Edit context is world1', before.editContext === 'world1');
+  ok('World starts with 2 nodes', before.nodeCount === 2);
+
+  api.placeNodeAt(400, 400);
+  const afterPlace = api.getState();
+  const placed = api.getSelected();
+  ok('After place, tool is select', afterPlace.tool === 'select');
+  ok('After place, selected id is not Spawn', afterPlace.selectedId === 2);
+  ok('After place, selected node is the new label', !!(placed && placed.type === 'label' && placed.name === 'Label'));
+  ok('After place, world has 3 nodes', afterPlace.nodeCount === 3);
+
+  ok('Convert placed label to Stage job', api.convertSelected('stage') === true);
+  const afterJob = api.getState();
+  const staged = api.getSelected();
+  ok('Stage job keeps type label', staged?.type === 'label');
+  ok('Stage job actsAsNode', staged?.labelConfig?.actsAsNode === true);
+  ok('Stage job mimicType stage', staged?.labelConfig?.mimicType === 'stage');
+  ok('Stage job appears in path list', afterJob.nodes.some((n) => n.id === 2 && n.job === 'stage' && n.actsAsNode));
+  ok('Selected remains the placed node after job change', afterJob.selectedId === 2);
+
+  // pushHistory must not detach the live world nodes array (Worlds-only regression).
+  const liveWorldNodes = api.getState().nodes.map((n) => n.id);
+  ok('World node ids stable before delete', liveWorldNodes.join(',') === '0,1,2');
+
+  const countBeforeDelete = afterJob.nodeCount;
+  api.deleteSelected();
+  const afterDelete = api.getState();
+  ok('Delete removed the placed node', afterDelete.nodeCount === countBeforeDelete - 1);
+  ok('Delete cleared selection', afterDelete.selectedId == null);
+  ok('Spawn still present after deleting placed node', afterDelete.nodes.some((n) => n.job === 'start' || n.type === 'start'));
+  ok('Deleted label id is gone', !afterDelete.nodes.some((n) => n.id === 2 && n.name === 'Stage'));
+}
+
+// Bundle must include the fresh-select fix — index.html loads avian-game.bundle.js.
+const bundle = readFileSync(path.join(root, 'js/avian-game.bundle.js'), 'utf8');
+ok('Bundle calls selectFreshLastNode after place', /selectFreshLastNode\(\)/.test(bundle));
+ok('Bundle place status mentions job', bundle.includes('set Node type (job)'));
+ok('Bundle exports __mapForgeTestApi', bundle.includes('__mapForgeTestApi'));
+ok('Bundle does not use stale slice id fallback after place',
+  !/slice\.nodes\[slice\.nodes\.length - 1\]\?\.id \?\? 0/.test(bundle));
+
 if (process.exitCode) {
   console.error('\nMap Forge action verification failed.');
   process.exit(process.exitCode);

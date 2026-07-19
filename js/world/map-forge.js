@@ -204,7 +204,17 @@
     copy.mapWidth = MAP_W;
     copy.mapHeight = MAP_H;
     copy.pathReveal = copy.pathReveal !== false;
-    copy.worlds = copy.worlds || {};
+    // Clone worlds container + each world so we never replace nodes arrays on the
+    // caller's live map. pushHistory → buildExportPayload → normalizeMap used to
+    // detach World node arrays mid-edit, breaking type changes and delete.
+    const srcWorlds = copy.worlds && typeof copy.worlds === 'object' ? copy.worlds : {};
+    copy.worlds = {};
+    Object.keys(srcWorlds).forEach((wid) => {
+      const src = srcWorlds[wid] || {};
+      copy.worlds[wid] = Object.assign({}, src, {
+        nodes: Array.isArray(src.nodes) ? src.nodes.slice() : [],
+      });
+    });
     const sm = String(copy.startMapId || 'main');
     copy.startMapId = (sm === 'main' || (copy.worlds && copy.worlds[sm])) ? sm : 'main';
     copy.nodes = typeof global.normalizeOwMapNodes === 'function'
@@ -353,15 +363,12 @@
 
   /** Node type dropdown assigns a job to a label; the node stays type "label". */
   function convertSelectedNodeType(typeKey) {
-    const slice = getEditingSlice();
-    const n = slice?.nodes?.find((x) => x.id === _selectedId);
+    const selectedId = _selectedId;
+    let slice = getEditingSlice();
+    let n = slice?.nodes?.find((x) => x.id === selectedId);
     if (!n || !slice) return false;
 
     if (getNodeTypeSelectValue(n) === typeKey) return true;
-
-    const prevWorldId = n.worldId;
-    const wasWorld = isWorldLike(n) || n.type === 'world';
-    const savedAppearance = n.labelConfig ? JSON.parse(JSON.stringify(n.labelConfig)) : null;
 
     if (typeKey === 'world' && _editContext !== 'main') {
       setStatus('World jobs can only be set on the main map.', true);
@@ -376,6 +383,14 @@
     }
 
     pushHistory();
+    // Re-resolve after history snapshot — normalize must not detach live world nodes.
+    slice = getEditingSlice();
+    n = slice?.nodes?.find((x) => x.id === selectedId);
+    if (!n || !slice) return false;
+
+    const prevWorldId = n.worldId;
+    const wasWorld = isWorldLike(n) || n.type === 'world';
+    const savedAppearance = n.labelConfig ? JSON.parse(JSON.stringify(n.labelConfig)) : null;
 
     if (wasWorld && prevWorldId && typeKey !== 'world' && _map.worlds?.[prevWorldId]) {
       delete _map.worlds[prevWorldId];
@@ -2144,12 +2159,17 @@
   }
 
   function deleteSelectedNode() {
-    const slice = getEditingSlice();
     if (_selectedId == null) { setStatus('Select a node to delete.', true); return; }
-    const idx = slice?.nodes?.findIndex((x) => x.id === _selectedId) ?? -1;
+    const selectedId = _selectedId;
+    let slice = getEditingSlice();
+    let idx = slice?.nodes?.findIndex((x) => x.id === selectedId) ?? -1;
     if (idx < 0) { setStatus('Select a node to delete.', true); return; }
-    const n = slice.nodes[idx];
     pushHistory();
+    // Re-resolve after history snapshot so splice hits the live world nodes array.
+    slice = getEditingSlice();
+    idx = slice?.nodes?.findIndex((x) => x.id === selectedId) ?? -1;
+    if (idx < 0 || !slice) { setStatus('Select a node to delete.', true); return; }
+    const n = slice.nodes[idx];
     slice.nodes.splice(idx, 1);
     if (n.worldId && _map.worlds[n.worldId] && (n.type === 'world' || isWorldLike(n))) {
       delete _map.worlds[n.worldId];
@@ -3046,6 +3066,42 @@
       mapForgeZoomFit();
     });
   }
+
+  /** Test/debug harness for Map Forge placement + job edits (used by verify scripts). */
+  global.__mapForgeTestApi = {
+    loadMap(map) { loadMap(map); },
+    setEditContext(id) {
+      _editContext = id || 'main';
+      _selectedId = null;
+      _selectedIds = [];
+    },
+    setTool,
+    placeNodeAt(x, y) {
+      _tool = 'label';
+      placeNode(x, y);
+    },
+    convertSelected(typeKey) { return convertSelectedNodeType(typeKey); },
+    deleteSelected() { deleteSelectedNode(); },
+    getSelected() { return getSelectedNode(); },
+    getState() {
+      const slice = getEditingSlice();
+      return {
+        editContext: _editContext,
+        selectedId: _selectedId,
+        selectedIds: _selectedIds.slice(),
+        tool: _tool,
+        nodeCount: slice?.nodes?.length || 0,
+        nodes: (slice?.nodes || []).map((n) => ({
+          id: n.id,
+          type: n.type,
+          name: n.name,
+          job: getNodeTypeSelectValue(n),
+          actsAsNode: !!(n.labelConfig && n.labelConfig.actsAsNode),
+          mimicType: n.labelConfig?.mimicType || null,
+        })),
+      };
+    },
+  };
 
   global.initMapForge = initMapForge;
   global.openMapForge = openMapForge;
