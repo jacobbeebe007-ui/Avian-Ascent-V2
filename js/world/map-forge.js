@@ -95,9 +95,27 @@
   }
 
   function findSpawnNodeIndex(nodes) {
+    if (typeof global.findOwSpawnNodeIndex === 'function') return global.findOwSpawnNodeIndex(nodes);
     if (!Array.isArray(nodes)) return 0;
-    const i = nodes.findIndex((n) => n.type === 'start');
+    const i = nodes.findIndex((n) => n && (n.type === 'start'
+      || (n.type === 'label' && n.labelConfig?.actsAsNode && n.labelConfig?.mimicType === 'start')));
     return i >= 0 ? i : 0;
+  }
+
+  function isSpawnLike(n) {
+    if (typeof global.isOwSpawnNode === 'function') return global.isOwSpawnNode(n);
+    if (!n) return false;
+    if (n.type === 'start') return true;
+    return n.type === 'label' && !!n.labelConfig?.actsAsNode && n.labelConfig?.mimicType === 'start';
+  }
+
+  function effectiveNodeType(n) {
+    if (typeof global.getOwEffectiveNodeType === 'function') return global.getOwEffectiveNodeType(n) || n?.type || '';
+    return n?.type || '';
+  }
+
+  function isWorldLike(n) {
+    return effectiveNodeType(n) === 'world' && !!n?.worldId;
   }
 
   function seedRunProgressToStart(map) {
@@ -158,12 +176,22 @@
     }
     let combat = 0;
     for (const n of nodes) {
-      if (n.type === 'start') n.stage = 0;
-      else if (n.type === 'shop' || n.type === 'world' || n.type === 'bonus' || n.type === 'return' || n.type === 'overworld' || n.type === 'label') {
-        delete n.stage; delete n.subStage;
-      } else if (n.type === 'stage' || n.type === 'boss') {
+      const eff = effectiveNodeType(n);
+      if (eff === 'start' || isSpawnLike(n)) {
+        n.stage = 0;
+        delete n.subStage;
+      } else if (eff === 'shop' || eff === 'world' || eff === 'return' || eff === 'overworld'
+        || (n.type === 'label' && !(n.labelConfig && n.labelConfig.actsAsNode))) {
+        delete n.stage;
+        delete n.subStage;
+      } else if (eff === 'stage' || eff === 'boss') {
         combat += 1;
         n.stage = combat;
+        delete n.subStage;
+        if (global.ensureNodeEncounter) global.ensureNodeEncounter(n);
+      } else if (eff === 'bonus') {
+        delete n.stage;
+        delete n.subStage;
         if (global.ensureNodeEncounter) global.ensureNodeEncounter(n);
       }
     }
@@ -176,7 +204,17 @@
     copy.mapWidth = MAP_W;
     copy.mapHeight = MAP_H;
     copy.pathReveal = copy.pathReveal !== false;
-    copy.worlds = copy.worlds || {};
+    // Clone worlds container + each world so we never replace nodes arrays on the
+    // caller's live map. pushHistory → buildExportPayload → normalizeMap used to
+    // detach World node arrays mid-edit, breaking type changes and delete.
+    const srcWorlds = copy.worlds && typeof copy.worlds === 'object' ? copy.worlds : {};
+    copy.worlds = {};
+    Object.keys(srcWorlds).forEach((wid) => {
+      const src = srcWorlds[wid] || {};
+      copy.worlds[wid] = Object.assign({}, src, {
+        nodes: Array.isArray(src.nodes) ? src.nodes.slice() : [],
+      });
+    });
     const sm = String(copy.startMapId || 'main');
     copy.startMapId = (sm === 'main' || (copy.worlds && copy.worlds[sm])) ? sm : 'main';
     copy.nodes = typeof global.normalizeOwMapNodes === 'function'
@@ -184,7 +222,9 @@
       : (copy.nodes || []).map((n, i) => Object.assign({}, n, { id: i }));
     _worldCounter = 0;
     copy.nodes.forEach((n) => {
-      if (n.type === 'world') {
+      const isWorldJob = n.type === 'world'
+        || (n.type === 'label' && n.labelConfig?.actsAsNode && n.labelConfig?.mimicType === 'world');
+      if (isWorldJob) {
         _worldCounter += 1;
         if (!n.worldId) n.worldId = 'world' + _worldCounter;
         if (!copy.worlds[n.worldId]) {
@@ -256,6 +296,9 @@
     if (!n) return 'label';
     if (n.type === 'label') {
       if (global.getOwMapUiAction && global.getOwMapUiAction(n.labelConfig)) return 'labelUi';
+      if (n.labelConfig?.actsAsNode && n.labelConfig.mimicType && n.labelConfig.mimicType !== 'none') {
+        return n.labelConfig.mimicType;
+      }
       return 'label';
     }
     return n.type;
@@ -271,13 +314,13 @@
     delete n.clearRewards;
     delete n.stage;
     delete n.subStage;
-    // Keep labelConfig so appearance survives type conversion.
+    // Keep labelConfig so appearance survives job changes.
   }
 
   function ensureSelectedAppearance(n) {
     if (!n) return null;
-    if (typeof global.ensureNodeAppearance === 'function') return global.ensureNodeAppearance(n);
     if (n.type === 'label' && global.ensureLabelConfig) return global.ensureLabelConfig(n);
+    if (typeof global.ensureNodeAppearance === 'function') return global.ensureNodeAppearance(n);
     return n.labelConfig || null;
   }
 
@@ -306,23 +349,33 @@
     _selectedIds = [_selectedId];
   }
 
+  function baseLabelConfig(savedAppearance) {
+    const labelCfg = typeof global.defaultLabelConfig === 'function' ? global.defaultLabelConfig() : {
+      text: 'Label', mimicType: 'stage', shape: 'rounded', width: 80, height: 36,
+      showText: true, showBorder: true, showFill: true, actsAsNode: false, uiAction: 'none',
+      opacity: 0.72, borderColor: '', textColor: '',
+    };
+    if (savedAppearance) {
+      Object.assign(labelCfg, savedAppearance);
+    }
+    return labelCfg;
+  }
+
+  /** Node type dropdown assigns a job to a label; the node stays type "label". */
   function convertSelectedNodeType(typeKey) {
-    const slice = getEditingSlice();
-    const n = slice?.nodes?.find((x) => x.id === _selectedId);
+    const selectedId = _selectedId;
+    let slice = getEditingSlice();
+    let n = slice?.nodes?.find((x) => x.id === selectedId);
     if (!n || !slice) return false;
 
     if (getNodeTypeSelectValue(n) === typeKey) return true;
 
-    const prevType = n.type;
-    const prevWorldId = n.worldId;
-    const savedAppearance = n.labelConfig ? JSON.parse(JSON.stringify(n.labelConfig)) : null;
-
     if (typeKey === 'world' && _editContext !== 'main') {
-      setStatus('World nodes can only be placed on the main map.', true);
+      setStatus('World jobs can only be set on the main map.', true);
       return false;
     }
     if (typeKey === 'start') {
-      const otherSpawn = slice.nodes.some((x) => x.id !== n.id && x.type === 'start');
+      const otherSpawn = slice.nodes.some((x) => x.id !== n.id && isSpawnLike(x));
       if (otherSpawn) {
         setStatus('Only one Spawn node allowed on this map.', true);
         return false;
@@ -330,124 +383,105 @@
     }
 
     pushHistory();
+    // Re-resolve after history snapshot — normalize must not detach live world nodes.
+    slice = getEditingSlice();
+    n = slice?.nodes?.find((x) => x.id === selectedId);
+    if (!n || !slice) return false;
 
-    if (prevType === 'world' && prevWorldId && typeKey !== 'world' && _map.worlds?.[prevWorldId]) {
+    const prevWorldId = n.worldId;
+    const wasWorld = isWorldLike(n) || n.type === 'world';
+    const savedAppearance = n.labelConfig ? JSON.parse(JSON.stringify(n.labelConfig)) : null;
+
+    if (wasWorld && prevWorldId && typeKey !== 'world' && _map.worlds?.[prevWorldId]) {
       delete _map.worlds[prevWorldId];
     }
 
-    if (typeKey === 'label' || typeKey === 'labelUi') {
-      stripTypedNodeFields(n);
-      n.type = 'label';
-      n.name = n.name || 'Label';
-      const labelCfg = typeof global.defaultLabelConfig === 'function' ? global.defaultLabelConfig() : {
-        text: 'Label', mimicType: 'stage', shape: 'rounded', width: 80, height: 36,
-        showText: true, showBorder: true, showFill: true, actsAsNode: false, uiAction: 'none',
-        opacity: 0.72, borderColor: '', textColor: '',
-      };
-      if (savedAppearance) Object.assign(labelCfg, savedAppearance);
+    stripTypedNodeFields(n);
+    n.type = 'label';
+    const labelCfg = baseLabelConfig(savedAppearance);
+
+    if (typeKey === 'label') {
       labelCfg.actsAsNode = false;
-      if (typeKey === 'labelUi') {
-        labelCfg.uiAction = 'nest';
-        labelCfg.shape = labelCfg.shape || 'pill';
-        if (labelCfg.shape === 'rounded') labelCfg.shape = 'pill';
-        const labels = global.OW_MAP_UI_ACTION_LABELS || {};
-        if (!labelCfg.text || labelCfg.text === 'Label') labelCfg.text = labels.nest || 'Nest';
-        n.name = labelCfg.text;
-      } else {
-        labelCfg.uiAction = 'none';
-        if (!labelCfg.text) labelCfg.text = 'Label';
-      }
-      n.labelConfig = labelCfg;
-      if (global.ensureLabelConfig) global.ensureLabelConfig(n);
-    } else if (typeKey === 'start') {
-      stripTypedNodeFields(n);
-      n.type = 'start';
-      n.name = 'Spawn';
-      n.stage = 0;
-      if (savedAppearance) {
-        n.labelConfig = savedAppearance;
-        ensureSelectedAppearance(n);
-      }
-    } else if (typeKey === 'shop') {
-      stripTypedNodeFields(n);
-      n.type = 'shop';
-      n.name = n.name && n.name !== 'Label' ? n.name : 'Stork Emporium';
-      if (savedAppearance) {
-        n.labelConfig = savedAppearance;
-        ensureSelectedAppearance(n);
-      }
-    } else if (typeKey === 'return') {
-      stripTypedNodeFields(n);
-      n.type = 'return';
-      n.name = n.name && n.name !== 'Label' ? n.name : 'Return Gate';
-      if (savedAppearance) {
-        n.labelConfig = savedAppearance;
-        ensureSelectedAppearance(n);
-      }
-    } else if (typeKey === 'overworld') {
-      stripTypedNodeFields(n);
-      n.type = 'overworld';
-      n.name = n.name && n.name !== 'Label' ? n.name : 'Overworld Gate';
-      if (savedAppearance) {
-        n.labelConfig = savedAppearance;
-        ensureSelectedAppearance(n);
-      }
-    } else if (typeKey === 'bonus') {
-      stripTypedNodeFields(n);
-      n.type = 'bonus';
-      n.name = n.name && n.name !== 'Label' ? n.name : 'Bonus Stage';
-      n.terrain = 'Bonus Arena';
-      n.bonusConfig = { powerProgression: true, maxRepeats: 5 };
-      n.clearRewards = [{ type: 'shinies', min: 15, max: 30 }];
-      if (global.ensureNodeEncounter) global.ensureNodeEncounter(n);
-      if (savedAppearance) {
-        n.labelConfig = savedAppearance;
-        ensureSelectedAppearance(n);
-      }
-    } else if (typeKey === 'boss') {
-      stripTypedNodeFields(n);
-      n.type = 'boss';
-      n.name = n.name && n.name !== 'Label' ? n.name : 'Boss Stage';
-      n.terrain = 'Boss Arena';
-      if (global.ensureNodeEncounter) global.ensureNodeEncounter(n);
-      if (savedAppearance) {
-        n.labelConfig = savedAppearance;
-        ensureSelectedAppearance(n);
-      }
-    } else if (typeKey === 'world') {
-      stripTypedNodeFields(n);
-      _worldCounter += 1;
-      const wid = 'world' + _worldCounter;
-      n.type = 'world';
-      n.name = n.name && n.name !== 'Label' ? n.name : ('World ' + _worldCounter);
-      n.worldId = wid;
-      _map.worlds[wid] = {
-        name: n.name,
-        worldIndex: _worldCounter,
-        backgroundDataUrl: '',
-        nodes: [],
-      };
-      if (savedAppearance) {
-        n.labelConfig = savedAppearance;
-        ensureSelectedAppearance(n);
-      }
+      labelCfg.uiAction = 'none';
+      if (!labelCfg.mimicType || labelCfg.mimicType === 'none') labelCfg.mimicType = 'stage';
+      if (!labelCfg.text) labelCfg.text = 'Label';
+      n.name = n.name && n.name !== 'Spawn' ? n.name : (labelCfg.text || 'Label');
+    } else if (typeKey === 'labelUi') {
+      labelCfg.actsAsNode = false;
+      labelCfg.uiAction = (labelCfg.uiAction && labelCfg.uiAction !== 'none') ? labelCfg.uiAction : 'nest';
+      if (labelCfg.shape === 'rounded' || !labelCfg.shape) labelCfg.shape = 'pill';
+      const labels = global.OW_MAP_UI_ACTION_LABELS || {};
+      if (!labelCfg.text || labelCfg.text === 'Label') labelCfg.text = labels[labelCfg.uiAction] || 'Nest';
+      n.name = labelCfg.text;
     } else {
-      stripTypedNodeFields(n);
-      n.type = 'stage';
-      n.name = n.name && n.name !== 'Label' ? n.name : 'Stage';
-      n.terrain = 'Wilds';
-      if (global.ensureNodeEncounter) global.ensureNodeEncounter(n);
-      if (savedAppearance) {
-        n.labelConfig = savedAppearance;
-        ensureSelectedAppearance(n);
+      labelCfg.actsAsNode = true;
+      labelCfg.uiAction = 'none';
+      labelCfg.mimicType = typeKey;
+
+      if (typeKey === 'start') {
+        n.name = 'Spawn';
+        n.stage = 0;
+        if (!labelCfg.text || labelCfg.text === 'Label') labelCfg.text = 'Spawn';
+      } else if (typeKey === 'shop') {
+        n.name = n.name && n.name !== 'Label' && n.name !== 'Spawn' ? n.name : 'Stork Emporium';
+        if (!labelCfg.text || labelCfg.text === 'Label') labelCfg.text = n.name;
+      } else if (typeKey === 'return') {
+        n.name = n.name && n.name !== 'Label' && n.name !== 'Spawn' ? n.name : 'Return Gate';
+        if (!labelCfg.text || labelCfg.text === 'Label') labelCfg.text = n.name;
+      } else if (typeKey === 'overworld') {
+        n.name = n.name && n.name !== 'Label' && n.name !== 'Spawn' ? n.name : 'Overworld Gate';
+        if (!labelCfg.text || labelCfg.text === 'Label') labelCfg.text = n.name;
+      } else if (typeKey === 'bonus') {
+        n.name = n.name && n.name !== 'Label' && n.name !== 'Spawn' ? n.name : 'Bonus Stage';
+        n.terrain = 'Bonus Arena';
+        n.bonusConfig = { powerProgression: true, maxRepeats: 5 };
+        n.clearRewards = [{ type: 'shinies', min: 15, max: 30 }];
+        if (!labelCfg.text || labelCfg.text === 'Label') labelCfg.text = n.name;
+      } else if (typeKey === 'boss') {
+        n.name = n.name && n.name !== 'Label' && n.name !== 'Spawn' ? n.name : 'Boss Stage';
+        n.terrain = 'Boss Arena';
+        if (!labelCfg.text || labelCfg.text === 'Label') labelCfg.text = n.name;
+      } else if (typeKey === 'world') {
+        _worldCounter += 1;
+        const wid = 'world' + _worldCounter;
+        n.name = n.name && n.name !== 'Label' && n.name !== 'Spawn' ? n.name : ('World ' + _worldCounter);
+        n.worldId = wid;
+        _map.worlds[wid] = {
+          name: n.name,
+          worldIndex: _worldCounter,
+          backgroundDataUrl: '',
+          nodes: [],
+        };
+        if (!labelCfg.text || labelCfg.text === 'Label') labelCfg.text = n.name;
+      } else {
+        // stage (default gameplay job)
+        labelCfg.mimicType = 'stage';
+        n.name = n.name && n.name !== 'Label' && n.name !== 'Spawn' ? n.name : 'Stage';
+        n.terrain = n.terrain || 'Wilds';
+        if (!labelCfg.text || labelCfg.text === 'Label') labelCfg.text = n.name;
       }
+    }
+
+    n.labelConfig = labelCfg;
+    if (global.ensureLabelConfig) global.ensureLabelConfig(n);
+
+    // Re-assert job flags after normalize helpers (uiAction none keeps actsAsNode).
+    if (typeKey !== 'label' && typeKey !== 'labelUi') {
+      n.labelConfig.actsAsNode = true;
+      n.labelConfig.uiAction = 'none';
+      n.labelConfig.mimicType = typeKey === 'stage' ? 'stage' : typeKey;
+    }
+
+    if (typeKey === 'stage' || typeKey === 'boss' || typeKey === 'bonus') {
+      if (global.ensureNodeEncounter) global.ensureNodeEncounter(n);
     }
 
     _map = normalizeMap(_map);
     renderNodeList();
     renderForgeCanvas();
     syncNodeEditorFields();
-    setStatus('Node type set to ' + (typeKey === 'start' ? 'Spawn' : typeKey === 'labelUi' ? 'Label (UI button)' : typeKey) + '.');
+    const jobLabel = typeKey === 'start' ? 'Spawn' : typeKey === 'labelUi' ? 'UI button' : typeKey === 'label' ? 'decorative' : typeKey;
+    setStatus('Job set to ' + jobLabel + '. Appearance stays editable.');
     return true;
   }
 
@@ -535,29 +569,44 @@
   function validateMap(map) {
     const nodes = map?.nodes || [];
     if (!nodes.length) return 'Add at least one node.';
-    const mainSpawns = nodes.filter((n) => n.type === 'start').length;
+    const mainSpawns = nodes.filter((n) => isSpawnLike(n)).length;
     if (mainSpawns === 0) return 'Add a Spawn node (place a Label, then set Node type to Spawn).';
     if (mainSpawns > 1) return 'Exactly one Spawn node required on the main map.';
-    if (!nodes.some((n) => n.type === 'stage' || n.type === 'boss')) return 'Add at least one Stage or Boss.';
+    if (!nodes.some((n) => {
+      const t = effectiveNodeType(n);
+      return t === 'stage' || t === 'boss';
+    })) return 'Add at least one Stage or Boss.';
     if (!map.backgroundDataUrl) return 'Upload a background image first.';
     const startId = resolveMapStartMapId(map);
     if (startId !== 'main') {
       const wn = map.worlds?.[startId]?.nodes || [];
-      if (!wn.some((n) => n.type === 'start')) return 'Start map "' + startId + '" needs a Spawn node.';
+      if (!wn.some((n) => isSpawnLike(n))) return 'Start map "' + startId + '" needs a Spawn node.';
     }
     return null;
   }
 
   function serializeNode(n, worldIndex) {
     const out = { id: n.id, type: n.type, name: n.name || '', x: n.x, y: n.y };
-    if (n.type === 'start') out.stage = 0;
-    else if (n.type === 'world') out.worldId = n.worldId;
-    else if (n.type === 'shop' || n.type === 'return' || n.type === 'overworld') { /* no stage */ }
-    else {
+    const eff = effectiveNodeType(n);
+    if (eff === 'start' || isSpawnLike(n)) out.stage = 0;
+    if (n.worldId) out.worldId = n.worldId;
+    if (eff === 'shop' || eff === 'return' || eff === 'overworld' || eff === 'world') {
+      /* path utility jobs */
+    } else if (eff === 'stage' || eff === 'boss' || eff === 'bonus') {
       if (worldIndex != null && n.subStage) out.subStage = n.subStage;
       else if (n.stage) out.stage = n.stage;
       if (n.terrain) out.terrain = n.terrain;
       if (n.portraitBird) out.portraitBird = n.portraitBird;
+    } else if (n.type !== 'label') {
+      if (worldIndex != null && n.subStage) out.subStage = n.subStage;
+      else if (n.stage) out.stage = n.stage;
+      if (n.terrain) out.terrain = n.terrain;
+      if (n.portraitBird) out.portraitBird = n.portraitBird;
+    } else {
+      if (n.terrain) out.terrain = n.terrain;
+      if (n.portraitBird) out.portraitBird = n.portraitBird;
+      if (worldIndex != null && n.subStage) out.subStage = n.subStage;
+      else if (n.stage != null) out.stage = n.stage;
     }
     if (n.final) out.final = true;
     if (n.encounter) out.encounter = JSON.parse(JSON.stringify(n.encounter));
@@ -1346,7 +1395,7 @@
     const sidebarEnter = document.getElementById('map-forge-sidebar-enter-world');
     const sidebarExit = document.getElementById('map-forge-sidebar-exit-world');
     const n = _map?.nodes?.find((x) => x.id === _selectedId);
-    const showEnter = _editContext === 'main' && n?.type === 'world';
+    const showEnter = _editContext === 'main' && isWorldLike(n);
     if (editBtn) editBtn.style.display = showEnter ? '' : 'none';
     if (sidebarEnter) sidebarEnter.style.display = showEnter ? '' : 'none';
     if (sidebarExit) sidebarExit.style.display = _editContext !== 'main' ? '' : 'none';
@@ -1604,7 +1653,11 @@
       label.type = 'button';
       label.className = 'map-forge-node-pick';
       const lbl = nodeLabel(n, wi);
-      const typeLabel = n.type === 'start' ? 'spawn' : (n.type === 'boss' && n.final ? 'final boss' : n.type);
+      const job = getNodeTypeSelectValue(n);
+      const typeLabel = job === 'start' ? 'spawn'
+        : job === 'labelUi' ? 'ui button'
+          : job === 'label' ? 'decorative'
+            : (job === 'boss' && n.final ? 'final boss' : job);
       label.textContent = '#' + n.id + ' ' + typeLabel + (lbl ? ' · ' + lbl : '') + (n.name ? ' - ' + n.name : '');
       label.onclick = () => {
         _selectedId = n.id;
@@ -1796,13 +1849,9 @@
       syncBreadcrumb();
       return;
     }
-    const isOverworld = n.type === 'overworld';
-    const isShop = n.type === 'shop';
-    const isReturn = n.type === 'return';
-    const isStart = n.type === 'start';
-    const isWorld = n.type === 'world';
-    const isLabel = n.type === 'label';
-    const hideCombatFields = isOverworld || isLabel || isShop || isReturn || isStart || isWorld;
+    const eff = effectiveNodeType(n);
+    const isCombatJob = eff === 'stage' || eff === 'boss' || eff === 'bonus';
+    const isBossJob = eff === 'boss';
     editor.style.display = '';
     const typeEl = document.getElementById('map-forge-node-type');
     const nameEl = document.getElementById('map-forge-node-name');
@@ -1817,7 +1866,7 @@
     const arenaPreview = document.getElementById('map-forge-arena-preview');
     if (typeEl) typeEl.value = getNodeTypeSelectValue(n);
     if (nameEl) nameEl.value = n.name || '';
-    if (hideCombatFields) {
+    if (!isCombatJob) {
       if (terrainLabel) terrainLabel.style.display = 'none';
       if (terrainSel) terrainSel.style.display = 'none';
       if (terrainCustom) terrainCustom.style.display = 'none';
@@ -1835,8 +1884,8 @@
       if (portraitEl) portraitEl.value = n.portraitBird || '';
       if (finalEl) {
         finalEl.checked = !!n.final;
-        finalEl.disabled = n.type !== 'boss';
-        finalEl.closest('label').style.display = n.type === 'boss' ? '' : 'none';
+        finalEl.disabled = !isBossJob;
+        finalEl.closest('label').style.display = isBossJob ? '' : 'none';
       }
     }
     if (worldRenameWrap) worldRenameWrap.style.display = _editContext !== 'main' ? '' : 'none';
@@ -2102,28 +2151,36 @@
     slice.nodes.push({ x, y, type: 'label', name: 'Label', labelConfig: labelCfg });
     _map = normalizeMap(_map);
     selectFreshLastNode();
+    setTool('select');
     renderNodeList();
     renderForgeCanvas();
     syncNodeEditorFields();
-    setStatus('Label placed — set Node type in the Node panel.');
+    setStatus('Label placed — set Node type (job). Shape and style stay editable.');
   }
 
   function deleteSelectedNode() {
-    const slice = getEditingSlice();
     if (_selectedId == null) { setStatus('Select a node to delete.', true); return; }
-    const idx = slice?.nodes?.findIndex((x) => x.id === _selectedId) ?? -1;
+    const selectedId = _selectedId;
+    let slice = getEditingSlice();
+    let idx = slice?.nodes?.findIndex((x) => x.id === selectedId) ?? -1;
     if (idx < 0) { setStatus('Select a node to delete.', true); return; }
-    const n = slice.nodes[idx];
     pushHistory();
+    // Re-resolve after history snapshot so splice hits the live world nodes array.
+    slice = getEditingSlice();
+    idx = slice?.nodes?.findIndex((x) => x.id === selectedId) ?? -1;
+    if (idx < 0 || !slice) { setStatus('Select a node to delete.', true); return; }
+    const n = slice.nodes[idx];
     slice.nodes.splice(idx, 1);
-    if (n.type === 'world' && n.worldId && _map.worlds[n.worldId]) delete _map.worlds[n.worldId];
+    if (n.worldId && _map.worlds[n.worldId] && (n.type === 'world' || isWorldLike(n))) {
+      delete _map.worlds[n.worldId];
+    }
     _map = normalizeMap(_map);
     _selectedId = null;
     _selectedIds = [];
     renderNodeList();
     renderForgeCanvas();
     syncNodeEditorFields();
-    setStatus(n.type === 'start' ? 'Spawn deleted — add a Spawn before save/export.' : 'Node deleted.');
+    setStatus(isSpawnLike(n) ? 'Spawn deleted — add a Spawn before save/export.' : 'Node deleted.');
   }
 
   function deselectNode() {
@@ -2139,18 +2196,24 @@
     const slice = getEditingSlice();
     const n = getSelectedNode();
     if (!n) { setStatus('Select a node to duplicate.', true); return; }
-    if (n.type === 'start') { setStatus('Cannot duplicate Spawn node.', true); return; }
+    if (isSpawnLike(n)) { setStatus('Cannot duplicate Spawn node.', true); return; }
     pushHistory();
     const copy = JSON.parse(JSON.stringify(n));
     copy.x = Math.min(MAP_W - 40, (n.x || 0) + 40);
     copy.y = Math.min(MAP_H - 40, (n.y || 0) + 40);
     delete copy.id;
-    if (copy.type === 'world' && copy.worldId) {
+    if (copy.worldId && (copy.type === 'world' || isWorldLike(copy))) {
       _worldCounter += 1;
       const wid = 'world' + _worldCounter;
       const srcWorld = _map.worlds[n.worldId];
       copy.worldId = wid;
       copy.name = (n.name || 'World') + ' Copy';
+      if (copy.labelConfig) {
+        copy.labelConfig.actsAsNode = true;
+        copy.labelConfig.mimicType = 'world';
+        copy.labelConfig.uiAction = 'none';
+        if (!copy.labelConfig.text || copy.labelConfig.text === n.name) copy.labelConfig.text = copy.name;
+      }
       _map.worlds[wid] = srcWorld
         ? JSON.parse(JSON.stringify(srcWorld))
         : {
@@ -2242,7 +2305,7 @@
 
   function editWorldMap() {
     const n = _map?.nodes?.find((x) => x.id === _selectedId);
-    if (!n || n.type !== 'world' || !n.worldId) return;
+    if (!isWorldLike(n)) return;
     pushHistory();
     _editContext = n.worldId;
     _selectedId = null;
@@ -2433,8 +2496,13 @@
     if (!el || !w) return;
     const name = el.value.trim() || w.name;
     w.name = name;
-    const worldNode = _map.nodes.find((n) => n.type === 'world' && n.worldId === _editContext);
-    if (worldNode) worldNode.name = name;
+    const worldNode = _map.nodes.find((n) => n.worldId === _editContext && isWorldLike(n));
+    if (worldNode) {
+      worldNode.name = name;
+      if (worldNode.labelConfig && (!worldNode.labelConfig.text || worldNode.labelConfig.text === w.name)) {
+        worldNode.labelConfig.text = name;
+      }
+    }
     syncBreadcrumb();
   }
 
@@ -2998,6 +3066,42 @@
       mapForgeZoomFit();
     });
   }
+
+  /** Test/debug harness for Map Forge placement + job edits (used by verify scripts). */
+  global.__mapForgeTestApi = {
+    loadMap(map) { loadMap(map); },
+    setEditContext(id) {
+      _editContext = id || 'main';
+      _selectedId = null;
+      _selectedIds = [];
+    },
+    setTool,
+    placeNodeAt(x, y) {
+      _tool = 'label';
+      placeNode(x, y);
+    },
+    convertSelected(typeKey) { return convertSelectedNodeType(typeKey); },
+    deleteSelected() { deleteSelectedNode(); },
+    getSelected() { return getSelectedNode(); },
+    getState() {
+      const slice = getEditingSlice();
+      return {
+        editContext: _editContext,
+        selectedId: _selectedId,
+        selectedIds: _selectedIds.slice(),
+        tool: _tool,
+        nodeCount: slice?.nodes?.length || 0,
+        nodes: (slice?.nodes || []).map((n) => ({
+          id: n.id,
+          type: n.type,
+          name: n.name,
+          job: getNodeTypeSelectValue(n),
+          actsAsNode: !!(n.labelConfig && n.labelConfig.actsAsNode),
+          mimicType: n.labelConfig?.mimicType || null,
+        })),
+      };
+    },
+  };
 
   global.initMapForge = initMapForge;
   global.openMapForge = openMapForge;

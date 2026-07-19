@@ -458,7 +458,7 @@ function isNodeUnlocked(n){
   if(_IS_PLAYTEST&&_USE_CUSTOM&&n&&n.type!=='start') return true;
   if(!n||n.type==='start') return true;
   if(n.type==='world'){
-    const prev=prevPathNode(n.id);
+    const prev=owEffectiveNode(prevPathNode(n.id));
     if(!prev||prev.type==='start') return true;
     if(isCombatNode(prev)) return (OVERWORLD_PROGRESS.completedStage||0) >= Number(prev.stage||1)-1;
     if(prev.type==='shop'){
@@ -1422,17 +1422,18 @@ requestAnimationFrame(()=>requestAnimationFrame(()=>{pl.style.transition='left .
   if (confirmBtn) {
     confirmBtn.addEventListener('click', function(e) {
       e.stopPropagation(); // don't dismiss the overlay backdrop
-      const n = NODES[curPos];
-      if (!n || n.type === 'start' || !isActionable(n)) return;
+      const raw = NODES[curPos];
+      const n = owEffectiveNode(raw);
+      if (!raw || !n || n.type === 'start' || !isActionable(raw)) return;
 
       persistOwMapSnapshot(curPos, activeBirdKey);
 
-      if (n.type === 'world' && n.worldId) {
-        if (typeof pushOwMapStack === 'function') pushOwMapStack({ parentMapId: 'main', returnNodeId: curPos, worldId: n.worldId });
-        if (typeof setOwActiveMapId === 'function') setOwActiveMapId(n.worldId);
+      if (n.type === 'world' && raw.worldId) {
+        if (typeof pushOwMapStack === 'function') pushOwMapStack({ parentMapId: 'main', returnNodeId: curPos, worldId: raw.worldId });
+        if (typeof setOwActiveMapId === 'function') setOwActiveMapId(raw.worldId);
         try {
-          const wn = _ACTIVE_MAP?.worlds?.[n.worldId]?.nodes || [];
-          const spawnIdx = typeof findOwSpawnNodeIndex === 'function' ? findOwSpawnNodeIndex(wn) : wn.findIndex((x) => x && x.type === 'start');
+          const wn = _ACTIVE_MAP?.worlds?.[raw.worldId]?.nodes || [];
+          const spawnIdx = typeof findOwSpawnNodeIndex === 'function' ? findOwSpawnNodeIndex(wn) : wn.findIndex((x) => x && (x.type === 'start' || (typeof isOwSpawnNode === 'function' && isOwSpawnNode(x))));
           localStorage.setItem((typeof AVIAN_OW_KEYS !== 'undefined' && AVIAN_OW_KEYS.STATE) || 'avianAscent_overworld', JSON.stringify({ nodeId: Math.max(0, spawnIdx) }));
         } catch (_) {}
         location.reload();
