@@ -22,8 +22,60 @@ function ok(label, cond) {
 
 function loadShell() {
   globalThis.window = globalThis;
+  const forgeEls = new Map();
+  function makeEl(id) {
+    if (forgeEls.has(id)) return forgeEls.get(id);
+    const children = [];
+    const el = {
+      id,
+      style: {},
+      value: '',
+      checked: false,
+      disabled: false,
+      hidden: false,
+      textContent: '',
+      innerHTML: '',
+      width: 160,
+      height: 107,
+      classList: { add() {}, remove() {}, toggle() {}, contains() { return false; } },
+      dataset: {},
+      children,
+      firstChild: null,
+      appendChild(c) { children.push(c); this.firstChild = this.firstChild || c; return c; },
+      removeChild() { this.firstChild = null; children.length = 0; },
+      setAttribute() {},
+      getAttribute() { return null; },
+      addEventListener() {},
+      getBoundingClientRect() {
+        return { left: 0, top: 0, right: 160, bottom: 107, width: 160, height: 107, x: 0, y: 0 };
+      },
+      getContext() {
+        return {
+          clearRect() {}, fillRect() {}, beginPath() {}, arc() {}, fill() {}, stroke() {},
+          moveTo() {}, lineTo() {}, strokeRect() {}, setTransform() {}, scale() {},
+          fillStyle: '', strokeStyle: '', lineWidth: 1, globalAlpha: 1, font: '',
+          fillText() {}, measureText() { return { width: 0 }; },
+        };
+      },
+      querySelector(sel) {
+        if (id === 'map-forge-node-type' && sel === 'option[value="world"]') {
+          if (!el._worldOpt) el._worldOpt = { value: 'world', hidden: false };
+          return el._worldOpt;
+        }
+        return null;
+      },
+      querySelectorAll() { return []; },
+      closest() {
+        return { style: {}, appendChild() {}, classList: { add() {}, remove() {}, toggle() {} } };
+      },
+    };
+    forgeEls.set(id, el);
+    return el;
+  }
+  // Prefetch node-type select so World-option sync can run in tests.
+  makeEl('map-forge-node-type');
   globalThis.document = {
-    getElementById: () => null,
+    getElementById: (id) => (id ? makeEl(id) : null),
     querySelector: () => null,
     querySelectorAll: () => [],
     createElement: () => ({
@@ -329,11 +381,98 @@ if (api) {
   ok('Deleted label id is gone', !afterDelete.nodes.some((n) => n.id === 2 && n.name === 'Stage'));
 }
 
+// Summary counts label jobs via effective type.
+{
+  const summarySlice = {
+    mapId: 'main',
+    nodes: [
+      { type: 'label', labelConfig: { actsAsNode: true, mimicType: 'stage', uiAction: 'none', text: 'A' } },
+      { type: 'label', labelConfig: { actsAsNode: true, mimicType: 'boss', uiAction: 'none', text: 'B' } },
+      { type: 'label', labelConfig: { actsAsNode: true, mimicType: 'bonus', uiAction: 'none', text: 'C' }, bonusConfig: { powerProgression: true, maxRepeats: 3 } },
+      { type: 'label', labelConfig: { actsAsNode: true, mimicType: 'shop', uiAction: 'none', text: 'Shop' } },
+      { type: 'label', labelConfig: { actsAsNode: true, mimicType: 'world', uiAction: 'none', text: 'W' }, worldId: 'world9' },
+      { type: 'label', labelConfig: { actsAsNode: false, mimicType: 'stage', uiAction: 'none', text: 'Decor' } },
+    ],
+  };
+  const sum = globalThis.summarizeMapSlice(summarySlice);
+  ok('Summary counts stage+boss jobs as combat', sum.combat === 2);
+  ok('Summary counts bonus jobs', sum.bonus === 1);
+  ok('Summary counts shop jobs', sum.shop === 1);
+  ok('Summary counts world jobs', sum.worlds === 1);
+}
+
+// Filter / bulk / world template / boss-bonus job helpers via Forge API.
+if (api) {
+  api.loadMap({
+    schemaVersion: 2,
+    name: 'Unify jobs',
+    nodes: [{
+      x: 200, y: 200, type: 'label', name: 'World Gate', worldId: 'world1',
+      labelConfig: Object.assign(globalThis.defaultLabelConfig(), {
+        text: 'World Gate', actsAsNode: true, mimicType: 'world', uiAction: 'none',
+      }),
+    }],
+    worlds: {
+      world1: {
+        name: 'World 1',
+        worldIndex: 1,
+        backgroundDataUrl: '',
+        nodes: [],
+      },
+    },
+  });
+  api.setEditContext('world1');
+  api.addWorldTemplate();
+  const templated = api.getState();
+  ok('World template creates 6 nodes', templated.nodeCount === 6);
+  ok('World template nodes are labels', templated.nodes.every((n) => n.type === 'label'));
+  ok('World template includes Spawn job', templated.nodes.some((n) => n.job === 'start'));
+  ok('World template includes Stage jobs', templated.nodes.filter((n) => n.job === 'stage').length === 3);
+  ok('World template includes Boss job', templated.nodes.some((n) => n.job === 'boss'));
+  ok('World template includes Return job', templated.nodes.some((n) => n.job === 'return'));
+  ok('World jobs disallowed inside world', templated.worldJobsAllowed === false);
+  ok('World option hidden inside world', templated.worldOptionHidden === true);
+
+  const stageJob = templated.nodes.find((n) => n.job === 'stage');
+  const bossJob = templated.nodes.find((n) => n.job === 'boss');
+  const spawnJob = templated.nodes.find((n) => n.job === 'start');
+  ok('Filter stage matches stage job', api.filterMatches(
+    { type: 'label', labelConfig: { actsAsNode: true, mimicType: 'stage', uiAction: 'none' } },
+    'stage',
+  ));
+  ok('Filter label skips stage job', !api.filterMatches(
+    { type: 'label', labelConfig: { actsAsNode: true, mimicType: 'stage', uiAction: 'none' } },
+    'label',
+  ));
+  ok('Filter label matches decorative', api.filterMatches(
+    { type: 'label', labelConfig: { actsAsNode: false, mimicType: 'stage', uiAction: 'none' } },
+    'label',
+  ));
+  ok('Boss job is boss-like', !!bossJob?.isBossLike);
+  ok('Stage job is combat', !!stageJob?.isCombat);
+  ok('Spawn job is not combat', !spawnJob?.isCombat);
+
+  api.bulkSelectAllStages();
+  const bulk = api.getState();
+  ok('Bulk select checks combat label jobs', bulk.bulkChecked.length === 4);
+  ok('Bulk select includes boss job', bulk.bulkChecked.includes(bossJob.id));
+  ok('Bulk select excludes spawn', !bulk.bulkChecked.includes(spawnJob.id));
+
+  // Bonus job gets bonusConfig from upgrade/normalize.
+  api.setEditContext('main');
+  api.placeNodeAt(500, 500);
+  ok('Convert to bonus job', api.convertSelected('bonus') === true);
+  const bonusNode = api.getSelected();
+  ok('Bonus job has bonusConfig', !!(bonusNode?.bonusConfig));
+  ok('Bonus job is bonus-like in state', api.getState().nodes.some((n) => n.id === bonusNode.id && n.isBonusLike));
+}
+
 // Bundle must include the fresh-select fix — index.html loads avian-game.bundle.js.
 const bundle = readFileSync(path.join(root, 'js/avian-game.bundle.js'), 'utf8');
 ok('Bundle calls selectFreshLastNode after place', /selectFreshLastNode\(\)/.test(bundle));
 ok('Bundle place status mentions job', bundle.includes('set Node type (job)'));
 ok('Bundle exports __mapForgeTestApi', bundle.includes('__mapForgeTestApi'));
+ok('Bundle has isBossLike helper', bundle.includes('function isBossLike'));
 ok('Bundle does not use stale slice id fallback after place',
   !/slice\.nodes\[slice\.nodes\.length - 1\]\?\.id \?\? 0/.test(bundle));
 

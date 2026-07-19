@@ -523,7 +523,9 @@ function isActionable(n){
 }
 function syncNodeVisualState(){
   NODES.forEach(n=>{
-    if(!n._g||n.type==='start') return;
+    if(!n._g) return;
+    const eff=owEffectiveNode(n);
+    if((eff&&eff.type==='start')||(typeof isOwSpawnNode==='function'&&isOwSpawnNode(n))) return;
     n._g.classList.remove('node-locked','node-available');
     if(!isNodeUnlocked(n)) n._g.classList.add('node-locked');
     else if(isActionable(n)) n._g.classList.add('node-available');
@@ -862,7 +864,11 @@ const NVC={
   overworld:{ring:'#c8a020',glow:'rgba(200,160,32,.32)',r:23,lock:'#2a2818'},
 };
 const NVC_FINAL={ring:'#7820a0',glow:'rgba(120,32,160,.42)',r:31,lock:'#201020'};
-const nvc=n=>n.final?NVC_FINAL:(NVC[n.type]||NVC.stage);
+const nvc=n=>{
+  const e=owEffectiveNode(n)||n;
+  if(e.final||n.final) return NVC_FINAL;
+  return NVC[e.type]||NVC.stage;
+};
 
 const mk=(t,a={})=>{const e=document.createElementNS(SVG_NS,t);for(const[k,v]of Object.entries(a))e.setAttribute(k,String(v));return e;};
 function setHTML(el,h){while(el.firstChild)el.removeChild(el.firstChild);if(h)el.insertAdjacentHTML('beforeend',h);}
@@ -1013,7 +1019,14 @@ function drawMM(){
     mc2.beginPath();mc2.moveTo(mmx(n.x),mmy(n.y));mc2.lineTo(mmx(nx2.x),mmy(nx2.y));
     mc2.strokeStyle=lit?'#887018':'#383828';mc2.lineWidth=lit?1.5:.6;mc2.globalAlpha=lit?.68:.25;mc2.stroke();mc2.globalAlpha=1;
   }
-  NODES.forEach(n=>{const vc2=nvc(n),r2=n.final?4.5:n.type==='boss'?4:n.type==='shop'?3.5:3;mc2.beginPath();mc2.arc(mmx(n.x),mmy(n.y),r2,0,Math.PI*2);mc2.fillStyle=n.id<=UNLOCKED?vc2.ring:'#383828';mc2.globalAlpha=n.id<=UNLOCKED?.82:.28;mc2.fill();mc2.globalAlpha=1;});
+  NODES.forEach(n=>{
+    const e=owEffectiveNode(n)||n;
+    const vc2=nvc(n);
+    const r2=(n.final||e.final)?4.5:e.type==='boss'?4:e.type==='shop'?3.5:e.type==='label'?2.5:3;
+    mc2.beginPath();mc2.arc(mmx(n.x),mmy(n.y),r2,0,Math.PI*2);
+    mc2.fillStyle=n.id<=UNLOCKED?vc2.ring:'#383828';
+    mc2.globalAlpha=n.id<=UNLOCKED?.82:.28;mc2.fill();mc2.globalAlpha=1;
+  });
   const vp=document.getElementById('vp'),vw=vp.offsetWidth||900,vh=vp.offsetHeight||420;
   mc2.strokeStyle='rgba(200,160,32,.32)';mc2.lineWidth=.8;mc2.strokeRect(mmx(_cx),mmy(_cy),mmx(vw/zoom),mmy(vh/zoom));
   const cn=NODES[curPos];mc2.beginPath();mc2.arc(mmx(cn.x),mmy(cn.y),5,0,Math.PI*2);mc2.fillStyle='#e0d030';mc2.fill();
