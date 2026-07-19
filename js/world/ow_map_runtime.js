@@ -81,27 +81,72 @@
       showFill: true,
       actsAsNode: false,
       uiAction: 'none',
+      opacity: 0.72,
+      borderColor: '',
+      textColor: '',
+    };
+  };
+
+  function clampLabelOpacity(v, fallback) {
+    const n = Number(v);
+    if (!Number.isFinite(n)) return fallback;
+    return Math.max(0, Math.min(1, n));
+  }
+
+  function normalizeLabelHexColor(v) {
+    const s = String(v == null ? '' : v).trim();
+    if (!s) return '';
+    const m = s.match(/^#?([0-9a-fA-F]{6})$/);
+    return m ? ('#' + m[1].toLowerCase()) : '';
+  }
+
+  global.normalizeLabelConfigFields = function (cfg, opts) {
+    const def = global.defaultLabelConfig();
+    const src = cfg && typeof cfg === 'object' ? cfg : {};
+    const asLabel = !opts || opts.asLabel !== false;
+    const uiAction = asLabel
+      ? (global.getOwMapUiAction({ uiAction: src.uiAction }) || 'none')
+      : 'none';
+    return {
+      text: String(src.text != null ? src.text : def.text),
+      mimicType: src.mimicType || def.mimicType,
+      shape: src.shape || def.shape,
+      width: Math.max(16, Math.min(400, Math.floor(Number(src.width) || def.width))),
+      height: Math.max(12, Math.min(200, Math.floor(Number(src.height) || def.height))),
+      showText: src.showText !== false,
+      showBorder: src.showBorder !== false,
+      showFill: src.showFill !== false,
+      actsAsNode: uiAction !== 'none' ? false : (asLabel ? !!src.actsAsNode : false),
+      uiAction,
+      opacity: clampLabelOpacity(src.opacity, def.opacity),
+      borderColor: normalizeLabelHexColor(src.borderColor),
+      textColor: normalizeLabelHexColor(src.textColor),
     };
   };
 
   global.ensureLabelConfig = function (node) {
     if (!node || node.type !== 'label') return null;
-    const def = global.defaultLabelConfig();
-    const cfg = node.labelConfig && typeof node.labelConfig === 'object' ? node.labelConfig : {};
-    const uiAction = global.getOwMapUiAction({ uiAction: cfg.uiAction }) || 'none';
-    node.labelConfig = {
-      text: String(cfg.text != null ? cfg.text : def.text),
-      mimicType: cfg.mimicType || def.mimicType,
-      shape: cfg.shape || def.shape,
-      width: Math.max(16, Math.min(400, Math.floor(Number(cfg.width) || def.width))),
-      height: Math.max(12, Math.min(200, Math.floor(Number(cfg.height) || def.height))),
-      showText: cfg.showText !== false,
-      showBorder: cfg.showBorder !== false,
-      showFill: cfg.showFill !== false,
-      actsAsNode: uiAction !== 'none' ? false : !!cfg.actsAsNode,
-      uiAction,
-    };
+    node.labelConfig = global.normalizeLabelConfigFields(node.labelConfig, { asLabel: true });
     return node.labelConfig;
+  };
+
+  /** Appearance styling for any node type (preserves Stage/Boss/etc. gameplay type). */
+  global.ensureNodeAppearance = function (node) {
+    if (!node) return null;
+    if (node.type === 'label') return global.ensureLabelConfig(node);
+    const src = node.labelConfig && typeof node.labelConfig === 'object' ? node.labelConfig : {};
+    const textFallback = src.text != null && String(src.text) !== ''
+      ? src.text
+      : (node.name || '');
+    node.labelConfig = global.normalizeLabelConfigFields(
+      Object.assign({}, src, { text: textFallback, uiAction: 'none', actsAsNode: false }),
+      { asLabel: false }
+    );
+    return node.labelConfig;
+  };
+
+  global.nodeUsesLabelAppearance = function (node) {
+    return !!(node && node.labelConfig && typeof node.labelConfig === 'object');
   };
 
   global.isOwPathNode = function (n) {
@@ -358,6 +403,7 @@
       }
       if (global.isForgeCombatNode(n)) global.ensureNodeEncounter(n);
       if (n.type === 'label' && global.ensureLabelConfig) global.ensureLabelConfig(n);
+      else if (n.labelConfig && global.ensureNodeAppearance) global.ensureNodeAppearance(n);
       if (n.type === 'bonus' && !n.bonusConfig) {
         n.bonusConfig = { powerProgression: true, maxRepeats: 5 };
       }
@@ -374,6 +420,7 @@
       if (w?.nodes) {
         w.nodes.forEach((n) => {
           if (n.type === 'label' && global.ensureLabelConfig) global.ensureLabelConfig(n);
+          else if (n.labelConfig && global.ensureNodeAppearance) global.ensureNodeAppearance(n);
           if (global.isForgeCombatNode(n)) {
             if (!Array.isArray(n.clearRewards) && n.bonusConfig?.rewards?.length) {
               n.clearRewards = JSON.parse(JSON.stringify(n.bonusConfig.rewards));
@@ -403,8 +450,9 @@
         n.subStage = sub;
         delete n.stage;
         if (global.isForgeCombatNode(n)) global.ensureNodeEncounter(n);
-      if (n.type === 'label' && global.ensureLabelConfig) global.ensureLabelConfig(n);
       }
+      if (n.type === 'label' && global.ensureLabelConfig) global.ensureLabelConfig(n);
+      else if (n.labelConfig && global.ensureNodeAppearance) global.ensureNodeAppearance(n);
     });
     return sub;
   };

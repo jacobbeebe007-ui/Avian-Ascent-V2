@@ -235,9 +235,13 @@
     setStatus((label ? label + ': ' : '') + msg, true);
   }
 
-  function getSelectedLabelNode() {
+  function getSelectedAppearanceNode() {
     const slice = getEditingSlice();
-    const n = slice?.nodes?.find((x) => x.id === _selectedId);
+    return slice?.nodes?.find((x) => x.id === _selectedId) || null;
+  }
+
+  function getSelectedLabelNode() {
+    const n = getSelectedAppearanceNode();
     return n && n.type === 'label' ? n : null;
   }
 
@@ -267,7 +271,39 @@
     delete n.clearRewards;
     delete n.stage;
     delete n.subStage;
-    delete n.labelConfig;
+    // Keep labelConfig so appearance survives type conversion.
+  }
+
+  function ensureSelectedAppearance(n) {
+    if (!n) return null;
+    if (typeof global.ensureNodeAppearance === 'function') return global.ensureNodeAppearance(n);
+    if (n.type === 'label' && global.ensureLabelConfig) return global.ensureLabelConfig(n);
+    return n.labelConfig || null;
+  }
+
+  function peekAppearance(n) {
+    if (!n) return null;
+    if (n.type === 'label' || n.labelConfig) return ensureSelectedAppearance(n);
+    const def = typeof global.defaultLabelConfig === 'function'
+      ? global.defaultLabelConfig()
+      : {
+        text: '', shape: 'rounded', width: 80, height: 36,
+        showText: true, showBorder: true, showFill: true,
+        opacity: 0.72, borderColor: '', textColor: '', uiAction: 'none', actsAsNode: false,
+      };
+    return Object.assign({}, def, { text: n.name || def.text || '' });
+  }
+
+  function selectFreshLastNode() {
+    const fresh = getEditingSlice();
+    if (!fresh?.nodes?.length) {
+      _selectedId = null;
+      _selectedIds = [];
+      return;
+    }
+    const last = fresh.nodes[fresh.nodes.length - 1];
+    _selectedId = last.id;
+    _selectedIds = [_selectedId];
   }
 
   function convertSelectedNodeType(typeKey) {
@@ -279,6 +315,7 @@
 
     const prevType = n.type;
     const prevWorldId = n.worldId;
+    const savedAppearance = n.labelConfig ? JSON.parse(JSON.stringify(n.labelConfig)) : null;
 
     if (typeKey === 'world' && _editContext !== 'main') {
       setStatus('World nodes can only be placed on the main map.', true);
@@ -305,17 +342,20 @@
       const labelCfg = typeof global.defaultLabelConfig === 'function' ? global.defaultLabelConfig() : {
         text: 'Label', mimicType: 'stage', shape: 'rounded', width: 80, height: 36,
         showText: true, showBorder: true, showFill: true, actsAsNode: false, uiAction: 'none',
+        opacity: 0.72, borderColor: '', textColor: '',
       };
+      if (savedAppearance) Object.assign(labelCfg, savedAppearance);
       labelCfg.actsAsNode = false;
       if (typeKey === 'labelUi') {
         labelCfg.uiAction = 'nest';
-        labelCfg.shape = 'pill';
+        labelCfg.shape = labelCfg.shape || 'pill';
+        if (labelCfg.shape === 'rounded') labelCfg.shape = 'pill';
         const labels = global.OW_MAP_UI_ACTION_LABELS || {};
-        labelCfg.text = labels.nest || 'Nest';
+        if (!labelCfg.text || labelCfg.text === 'Label') labelCfg.text = labels.nest || 'Nest';
         n.name = labelCfg.text;
       } else {
         labelCfg.uiAction = 'none';
-        labelCfg.text = 'Label';
+        if (!labelCfg.text) labelCfg.text = 'Label';
       }
       n.labelConfig = labelCfg;
       if (global.ensureLabelConfig) global.ensureLabelConfig(n);
@@ -324,18 +364,34 @@
       n.type = 'start';
       n.name = 'Spawn';
       n.stage = 0;
+      if (savedAppearance) {
+        n.labelConfig = savedAppearance;
+        ensureSelectedAppearance(n);
+      }
     } else if (typeKey === 'shop') {
       stripTypedNodeFields(n);
       n.type = 'shop';
       n.name = n.name && n.name !== 'Label' ? n.name : 'Stork Emporium';
+      if (savedAppearance) {
+        n.labelConfig = savedAppearance;
+        ensureSelectedAppearance(n);
+      }
     } else if (typeKey === 'return') {
       stripTypedNodeFields(n);
       n.type = 'return';
       n.name = n.name && n.name !== 'Label' ? n.name : 'Return Gate';
+      if (savedAppearance) {
+        n.labelConfig = savedAppearance;
+        ensureSelectedAppearance(n);
+      }
     } else if (typeKey === 'overworld') {
       stripTypedNodeFields(n);
       n.type = 'overworld';
       n.name = n.name && n.name !== 'Label' ? n.name : 'Overworld Gate';
+      if (savedAppearance) {
+        n.labelConfig = savedAppearance;
+        ensureSelectedAppearance(n);
+      }
     } else if (typeKey === 'bonus') {
       stripTypedNodeFields(n);
       n.type = 'bonus';
@@ -344,12 +400,20 @@
       n.bonusConfig = { powerProgression: true, maxRepeats: 5 };
       n.clearRewards = [{ type: 'shinies', min: 15, max: 30 }];
       if (global.ensureNodeEncounter) global.ensureNodeEncounter(n);
+      if (savedAppearance) {
+        n.labelConfig = savedAppearance;
+        ensureSelectedAppearance(n);
+      }
     } else if (typeKey === 'boss') {
       stripTypedNodeFields(n);
       n.type = 'boss';
       n.name = n.name && n.name !== 'Label' ? n.name : 'Boss Stage';
       n.terrain = 'Boss Arena';
       if (global.ensureNodeEncounter) global.ensureNodeEncounter(n);
+      if (savedAppearance) {
+        n.labelConfig = savedAppearance;
+        ensureSelectedAppearance(n);
+      }
     } else if (typeKey === 'world') {
       stripTypedNodeFields(n);
       _worldCounter += 1;
@@ -363,12 +427,20 @@
         backgroundDataUrl: '',
         nodes: [],
       };
+      if (savedAppearance) {
+        n.labelConfig = savedAppearance;
+        ensureSelectedAppearance(n);
+      }
     } else {
       stripTypedNodeFields(n);
       n.type = 'stage';
       n.name = n.name && n.name !== 'Label' ? n.name : 'Stage';
       n.terrain = 'Wilds';
       if (global.ensureNodeEncounter) global.ensureNodeEncounter(n);
+      if (savedAppearance) {
+        n.labelConfig = savedAppearance;
+        ensureSelectedAppearance(n);
+      }
     }
 
     _map = normalizeMap(_map);
@@ -380,9 +452,10 @@
   }
 
   function applyLabelDimensions(fromBlur) {
-    const n = getSelectedLabelNode();
+    const n = getSelectedAppearanceNode();
     if (!n) return;
-    const cfg = n.labelConfig;
+    const cfg = ensureSelectedAppearance(n);
+    if (!cfg) return;
     const widthEl = document.getElementById('map-forge-label-width');
     const heightEl = document.getElementById('map-forge-label-height');
     if (widthEl) {
@@ -393,7 +466,7 @@
       cfg.height = Math.max(12, Math.min(200, Math.floor(Number(heightEl.value) || 36)));
       heightEl.value = String(cfg.height);
     }
-    if (global.ensureLabelConfig) global.ensureLabelConfig(n);
+    ensureSelectedAppearance(n);
     renderForgeCanvas();
     if (fromBlur) pushHistory();
   }
@@ -490,7 +563,7 @@
     if (n.encounter) out.encounter = JSON.parse(JSON.stringify(n.encounter));
     if (n.bonusConfig) out.bonusConfig = JSON.parse(JSON.stringify(n.bonusConfig));
     if (n.clearRewards) out.clearRewards = JSON.parse(JSON.stringify(n.clearRewards));
-    if (n.type === 'label' && n.labelConfig) out.labelConfig = JSON.parse(JSON.stringify(n.labelConfig));
+    if (n.labelConfig) out.labelConfig = JSON.parse(JSON.stringify(n.labelConfig));
     return out;
   }
 
@@ -546,6 +619,10 @@
     const w = cfg.width || 80;
     const h = cfg.height || 36;
     const shape = cfg.shape || 'rounded';
+    const opacity = Math.max(0, Math.min(1, Number(cfg.opacity != null ? cfg.opacity : 0.72)));
+    const borderColor = (cfg.borderColor && String(cfg.borderColor).trim()) || vc.ring;
+    const textColor = (cfg.textColor && String(cfg.textColor).trim()) || vc.ring;
+    const fillColor = 'rgba(6,12,5,' + opacity + ')';
     if (cfg.showFill || cfg.showBorder) {
       if (shape === 'circle') {
         const el = document.createElementNS(SVG_NS, 'ellipse');
@@ -553,10 +630,10 @@
         el.setAttribute('cy', String(y));
         el.setAttribute('rx', String(w / 2));
         el.setAttribute('ry', String(h / 2));
-        if (cfg.showFill) el.setAttribute('fill', 'rgba(6,12,5,.72)');
+        if (cfg.showFill) el.setAttribute('fill', fillColor);
         else el.setAttribute('fill', 'none');
         if (cfg.showBorder) {
-          el.setAttribute('stroke', vc.ring);
+          el.setAttribute('stroke', borderColor);
           el.setAttribute('stroke-width', '2');
         }
         g.appendChild(el);
@@ -567,10 +644,10 @@
         el.setAttribute('width', String(w));
         el.setAttribute('height', String(h));
         if (shape === 'pill' || shape === 'rounded') el.setAttribute('rx', String(shape === 'pill' ? h / 2 : 6));
-        if (cfg.showFill) el.setAttribute('fill', 'rgba(6,12,5,.72)');
+        if (cfg.showFill) el.setAttribute('fill', fillColor);
         else el.setAttribute('fill', 'none');
         if (cfg.showBorder) {
-          el.setAttribute('stroke', vc.ring);
+          el.setAttribute('stroke', borderColor);
           el.setAttribute('stroke-width', '2');
         }
         g.appendChild(el);
@@ -584,7 +661,7 @@
       txt.setAttribute('dominant-baseline', 'middle');
       txt.setAttribute('font-family', 'Cinzel, serif');
       txt.setAttribute('font-size', '8');
-      txt.setAttribute('fill', vc.ring);
+      txt.setAttribute('fill', textColor);
       txt.style.pointerEvents = 'none';
       const ui = global.getOwMapUiAction?.(cfg);
       const icon = ui ? (UI_ACTION_ICONS[ui] || '') : '';
@@ -877,11 +954,20 @@
     let best = null;
     let bestDist = Infinity;
     slice.nodes.forEach((n) => {
-      const vc = nvc(n);
       const dx = pt.x - n.x;
       const dy = pt.y - n.y;
       const dist = Math.sqrt(dx * dx + dy * dy);
-      if (dist <= vc.r + 8 && dist < bestDist) {
+      let hit = false;
+      if (n.type === 'label' || (n.labelConfig && typeof n.labelConfig === 'object')) {
+        const cfg = n.labelConfig || {};
+        const hw = (cfg.width || 80) / 2 + 4;
+        const hh = (cfg.height || 36) / 2 + 4;
+        hit = Math.abs(dx) <= hw && Math.abs(dy) <= hh;
+      } else {
+        const vc = nvc(n);
+        hit = dist <= vc.r + 8;
+      }
+      if (hit && dist < bestDist) {
         bestDist = dist;
         best = n;
       }
@@ -1547,12 +1633,14 @@
   function renderLabelEditorPanel(n) {
     const panel = document.getElementById('map-forge-label-panel');
     if (!panel) return;
-    const show = n && n.type === 'label';
+    const show = !!n;
     panel.style.display = show ? '' : 'none';
     if (!show) return;
-    if (global.ensureLabelConfig) global.ensureLabelConfig(n);
-    const cfg = n.labelConfig;
-    const role = deriveLabelRole(cfg);
+    // Labels always normalize; other types only persist appearance once edited.
+    if (n.type === 'label') ensureSelectedAppearance(n);
+    const cfg = peekAppearance(n);
+    if (!cfg) return;
+    const role = n.type === 'label' ? deriveLabelRole(n.labelConfig || cfg) : 'decorative';
     const uiActionEl = document.getElementById('map-forge-label-ui-action');
     const uiWrap = document.getElementById('map-forge-label-ui-wrap');
     const uiHint = document.getElementById('map-forge-label-ui-hint');
@@ -1563,11 +1651,17 @@
     const showTextEl = document.getElementById('map-forge-label-show-text');
     const showBorderEl = document.getElementById('map-forge-label-show-border');
     const showFillEl = document.getElementById('map-forge-label-show-fill');
+    const opacityEl = document.getElementById('map-forge-label-opacity');
+    const opacityValEl = document.getElementById('map-forge-label-opacity-val');
+    const borderColorEl = document.getElementById('map-forge-label-border-color');
+    const textColorEl = document.getElementById('map-forge-label-text-color');
+    const vc = nvc(n);
+    const defaultRing = vc.ring || '#9a9488';
 
-    if (uiWrap) uiWrap.style.display = role === 'uiButton' ? '' : 'none';
+    if (uiWrap) uiWrap.style.display = n.type === 'label' && role === 'uiButton' ? '' : 'none';
     if (uiActionEl) uiActionEl.value = cfg.uiAction && cfg.uiAction !== 'none' ? cfg.uiAction : 'nest';
     if (uiHint) {
-      if (role === 'uiButton') {
+      if (n.type === 'label' && role === 'uiButton') {
         const opt = (global.OW_MAP_UI_ACTIONS || []).find((a) => a.id === cfg.uiAction);
         uiHint.textContent = 'Opens ' + (opt?.label || cfg.uiAction) + ' in playtest/run.';
         uiHint.style.display = '';
@@ -1582,6 +1676,11 @@
     if (showTextEl) showTextEl.checked = !!cfg.showText;
     if (showBorderEl) showBorderEl.checked = !!cfg.showBorder;
     if (showFillEl) showFillEl.checked = !!cfg.showFill;
+    const opacityPct = Math.round((cfg.opacity != null ? cfg.opacity : 0.72) * 100);
+    if (opacityEl) opacityEl.value = String(opacityPct);
+    if (opacityValEl) opacityValEl.textContent = opacityPct + '%';
+    if (borderColorEl) borderColorEl.value = cfg.borderColor || defaultRing;
+    if (textColorEl) textColorEl.value = cfg.textColor || defaultRing;
   }
 
   function wireLabelEditorControls() {
@@ -1591,8 +1690,9 @@
 
     document.getElementById('map-forge-label-ui-action')?.addEventListener('change', (e) => {
       const n = getSelectedLabelNode();
-      if (!n?.labelConfig) return;
-      const cfg = n.labelConfig;
+      if (!n) return;
+      const cfg = ensureSelectedAppearance(n);
+      if (!cfg) return;
       const prev = cfg.uiAction;
       cfg.uiAction = e.target.value || 'nest';
       cfg.actsAsNode = false;
@@ -1609,16 +1709,21 @@
     });
 
     document.getElementById('map-forge-label-text')?.addEventListener('input', (e) => {
-      const n = getSelectedLabelNode();
-      if (!n?.labelConfig) return;
-      n.labelConfig.text = e.target.value;
+      const n = getSelectedAppearanceNode();
+      if (!n) return;
+      const cfg = ensureSelectedAppearance(n);
+      if (!cfg) return;
+      cfg.text = e.target.value;
+      if (n.type === 'label') n.name = cfg.text || n.name;
       renderForgeCanvas();
     });
 
     document.getElementById('map-forge-label-shape')?.addEventListener('change', (e) => {
-      const n = getSelectedLabelNode();
-      if (!n?.labelConfig) return;
-      n.labelConfig.shape = e.target.value;
+      const n = getSelectedAppearanceNode();
+      if (!n) return;
+      const cfg = ensureSelectedAppearance(n);
+      if (!cfg) return;
+      cfg.shape = e.target.value;
       renderForgeCanvas();
       pushHistory();
     });
@@ -1634,14 +1739,49 @@
 
     ['map-forge-label-show-text', 'map-forge-label-show-border', 'map-forge-label-show-fill'].forEach((id) => {
       document.getElementById(id)?.addEventListener('change', (e) => {
-        const n = getSelectedLabelNode();
-        if (!n?.labelConfig) return;
+        const n = getSelectedAppearanceNode();
+        if (!n) return;
+        const cfg = ensureSelectedAppearance(n);
+        if (!cfg) return;
         const key = id === 'map-forge-label-show-text' ? 'showText' : id === 'map-forge-label-show-border' ? 'showBorder' : 'showFill';
-        n.labelConfig[key] = !!e.target.checked;
+        cfg[key] = !!e.target.checked;
         renderForgeCanvas();
         pushHistory();
       });
     });
+
+    const opacityEl = document.getElementById('map-forge-label-opacity');
+    const opacityValEl = document.getElementById('map-forge-label-opacity-val');
+    opacityEl?.addEventListener('input', (e) => {
+      const n = getSelectedAppearanceNode();
+      if (!n) return;
+      const cfg = ensureSelectedAppearance(n);
+      if (!cfg) return;
+      const pct = Math.max(0, Math.min(100, Math.round(Number(e.target.value) || 0)));
+      cfg.opacity = pct / 100;
+      if (opacityValEl) opacityValEl.textContent = pct + '%';
+      renderForgeCanvas();
+    });
+    opacityEl?.addEventListener('change', () => pushHistory());
+
+    const onColorChange = (key, elId) => {
+      document.getElementById(elId)?.addEventListener('input', (e) => {
+        const n = getSelectedAppearanceNode();
+        if (!n) return;
+        const cfg = ensureSelectedAppearance(n);
+        if (!cfg) return;
+        cfg[key] = e.target.value;
+        renderForgeCanvas();
+      });
+      document.getElementById(elId)?.addEventListener('change', () => {
+        const n = getSelectedAppearanceNode();
+        if (!n) return;
+        ensureSelectedAppearance(n);
+        pushHistory();
+      });
+    };
+    onColorChange('borderColor', 'map-forge-label-border-color');
+    onColorChange('textColor', 'map-forge-label-text-color');
   }
 
   function syncNodeEditorFields() {
@@ -1793,6 +1933,30 @@
       const g = document.createElementNS(SVG_NS, 'g');
       g.setAttribute('data-node-id', String(n.id));
       g.style.cursor = 'grab';
+      const useAppearance = !!(n.labelConfig && typeof n.labelConfig === 'object');
+      if (useAppearance) {
+        if (global.ensureNodeAppearance) global.ensureNodeAppearance(n);
+        const cfg = n.labelConfig;
+        if (n.id === _selectedId || _selectedIds.includes(n.id)) {
+          const w = cfg.width || 80;
+          const h = cfg.height || 36;
+          const sel = document.createElementNS(SVG_NS, 'rect');
+          sel.setAttribute('x', String(n.x - w / 2 - 4));
+          sel.setAttribute('y', String(n.y - h / 2 - 4));
+          sel.setAttribute('width', String(w + 8));
+          sel.setAttribute('height', String(h + 8));
+          sel.setAttribute('fill', 'none');
+          sel.setAttribute('stroke', '#f0d060');
+          sel.setAttribute('stroke-width', '2');
+          sel.setAttribute('stroke-dasharray', '4 3');
+          g.appendChild(sel);
+        }
+        const drawCfg = Object.assign({}, cfg);
+        if (!drawCfg.text) drawCfg.text = nodeLabel(n, slice.worldIndex) || n.name || '';
+        appendForgeLabelShape(g, drawCfg, vc, n.x, n.y);
+        svg.appendChild(g);
+        return;
+      }
       if (n.id === _selectedId || _selectedIds.includes(n.id)) {
         const sel = document.createElementNS(SVG_NS, 'circle');
         sel.setAttribute('cx', String(n.x));
@@ -1930,14 +2094,14 @@
     const labelCfg = typeof global.defaultLabelConfig === 'function' ? global.defaultLabelConfig() : {
       text: 'Label', mimicType: 'stage', shape: 'rounded', width: 80, height: 36,
       showText: true, showBorder: true, showFill: true, actsAsNode: false, uiAction: 'none',
+      opacity: 0.72, borderColor: '', textColor: '',
     };
     labelCfg.text = 'Label';
     labelCfg.actsAsNode = false;
     labelCfg.uiAction = 'none';
     slice.nodes.push({ x, y, type: 'label', name: 'Label', labelConfig: labelCfg });
     _map = normalizeMap(_map);
-    _selectedId = slice.nodes[slice.nodes.length - 1]?.id ?? 0;
-    _selectedIds = [_selectedId];
+    selectFreshLastNode();
     renderNodeList();
     renderForgeCanvas();
     syncNodeEditorFields();
@@ -2000,8 +2164,7 @@
     }
     slice.nodes.push(copy);
     _map = normalizeMap(_map);
-    _selectedId = slice.nodes[slice.nodes.length - 1]?.id ?? null;
-    _selectedIds = [_selectedId];
+    selectFreshLastNode();
     renderNodeList();
     renderForgeCanvas();
     syncNodeEditorFields();

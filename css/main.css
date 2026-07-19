@@ -4811,6 +4811,20 @@ body.ui-mobile-mode #screen-select #mobile-select-details-anchor{display:block;o
   margin-top:6px;
   border-top:1px solid rgba(201,168,76,.16);
 }
+.map-forge-field-range{
+  width:100%;
+  accent-color:var(--gold,#c9a84c);
+  cursor:pointer;
+}
+.map-forge-field-color{
+  width:100%;
+  height:32px;
+  padding:2px;
+  border:1px solid rgba(201,168,76,.28);
+  border-radius:4px;
+  background:rgba(0,0,0,.35);
+  cursor:pointer;
+}
 .map-forge-nest-slots{display:flex;flex-direction:column;gap:4px;width:100%;}
 .map-forge-nest-slot-row{display:flex;align-items:center;gap:6px;font-size:.68rem;}
 .map-forge-nest-slot-label{min-width:3.5em;color:var(--text-dim);}

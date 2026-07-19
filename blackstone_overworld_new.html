@@ -375,24 +375,28 @@ function owLabelVc(cfg){
 }
 function appendOwLabelShape(g,cfg,vc,x,y){
   const w=cfg.width||80,h=cfg.height||36,shape=cfg.shape||'rounded';
+  const opacity=Math.max(0,Math.min(1,Number(cfg.opacity!=null?cfg.opacity:0.72)));
+  const borderColor=(cfg.borderColor&&String(cfg.borderColor).trim())||vc.ring;
+  const textColor=(cfg.textColor&&String(cfg.textColor).trim())||vc.ring;
+  const fillColor='rgba(6,12,5,'+opacity+')';
   if(cfg.showFill||cfg.showBorder){
     if(shape==='circle'){
       const el=mk('ellipse',{cx:x,cy:y,rx:w/2,ry:h/2});
-      if(cfg.showFill) el.setAttribute('fill','rgba(6,12,5,.72)'); else el.setAttribute('fill','none');
-      if(cfg.showBorder){el.setAttribute('stroke',vc.ring);el.setAttribute('stroke-width','2');}
+      if(cfg.showFill) el.setAttribute('fill',fillColor); else el.setAttribute('fill','none');
+      if(cfg.showBorder){el.setAttribute('stroke',borderColor);el.setAttribute('stroke-width','2');}
       g.appendChild(el);
     }else{
       const el=mk('rect',{x:x-w/2,y:y-h/2,width:w,height:h});
       if(shape==='pill'||shape==='rounded') el.setAttribute('rx',shape==='pill'?h/2:6);
-      if(cfg.showFill) el.setAttribute('fill','rgba(6,12,5,.72)'); else el.setAttribute('fill','none');
-      if(cfg.showBorder){el.setAttribute('stroke',vc.ring);el.setAttribute('stroke-width','2');}
+      if(cfg.showFill) el.setAttribute('fill',fillColor); else el.setAttribute('fill','none');
+      if(cfg.showBorder){el.setAttribute('stroke',borderColor);el.setAttribute('stroke-width','2');}
       g.appendChild(el);
     }
   }
   if(cfg.showText&&cfg.text){
     const ui=typeof getOwMapUiAction==='function'?getOwMapUiAction(cfg):'';
     const icons={nest:'🪺',settings:'⚙',reference:'📖',openLocation:'▶',prevNode:'◀',nextNode:'▶'};
-    const tx=mk('text',{x,y:y+1,'text-anchor':'middle','dominant-baseline':'middle','font-family':'Cinzel,serif','font-size':'8',fill:vc.ring});
+    const tx=mk('text',{x,y:y+1,'text-anchor':'middle','dominant-baseline':'middle','font-family':'Cinzel,serif','font-size':'8',fill:textColor});
     tx.style.pointerEvents='none';
     tx.textContent=(ui&&icons[ui]?icons[ui]+' ':'')+cfg.text;
     g.appendChild(tx);
@@ -901,6 +905,18 @@ NODES.forEach((n,ni)=>{
   g.style.cursor=(reach&&n.id>0)?'pointer':'default';
   if(reach&&n.id>0)g.addEventListener('click',()=>setPos(n.id));
   n._g=g;n._vc=vc;
+  if(n.labelConfig&&typeof n.labelConfig==='object'){
+    if(typeof ensureNodeAppearance==='function') ensureNodeAppearance(n);
+    const cfg=Object.assign({},n.labelConfig);
+    if(!cfg.text) cfg.text=n.name||nodeDisplayLabel(n)||'';
+    if(!reach){
+      const dim=Object.assign({},cfg,{opacity:Math.min(cfg.opacity!=null?cfg.opacity:0.72,0.28)});
+      appendOwLabelShape(g,dim,{ring:vc.lock||'#383828'},n.x,n.y);
+      ns.appendChild(g);return;
+    }
+    appendOwLabelShape(g,cfg,vc,n.x,n.y);
+    ns.appendChild(g);return;
+  }
   if(!reach){
     const sh=mk('circle',{cx:n.x,cy:n.y,r:vc.r,fill:'rgba(18,18,12,.65)',stroke:vc.lock,'stroke-width':'1.2',opacity:'.38'});
     n._sh=sh;g.appendChild(sh);
