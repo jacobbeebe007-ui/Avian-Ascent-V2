@@ -93,10 +93,11 @@ function loadShell() {
     }),
     body: { appendChild() {} },
   };
+  const _ls = new Map();
   globalThis.localStorage = {
-    getItem: () => null,
-    setItem() {},
-    removeItem() {},
+    getItem: (k) => (_ls.has(k) ? _ls.get(k) : null),
+    setItem(k, v) { _ls.set(String(k), String(v)); },
+    removeItem(k) { _ls.delete(k); },
   };
   globalThis.Avian = { data: Object.create(null), systems: Object.create(null), actions: Object.create(null) };
   require(path.join(root, 'js/bootstrap/_namespace.js'));
@@ -467,6 +468,86 @@ if (api) {
   ok('Bonus job is bonus-like in state', api.getState().nodes.some((n) => n.id === bonusNode.id && n.isBonusLike));
 }
 
+// Soft guidelines: incomplete maps still save; validation is advisory.
+ok('Shop forge tab present', forgeSection.includes('data-forge-panel-tab="shop"'));
+ok('On path checkbox present', forgeSection.includes('id="map-forge-node-on-path"'));
+ok('Must complete checkbox present', forgeSection.includes('id="map-forge-node-must-complete"'));
+ok('Path order field present', forgeSection.includes('id="map-forge-node-path-order"'));
+
+{
+  const incomplete = {
+    schemaVersion: 2,
+    id: 'soft-save-map',
+    name: 'Soft Save',
+    nodes: [],
+    worlds: {},
+    backgroundDataUrl: '',
+  };
+  api.loadMap(incomplete);
+  const hard = api.validateMap(incomplete);
+  ok('validateMap only blocks corrupt payloads', hard == null);
+  const issues = globalThis.collectMapValidationIssues(incomplete);
+  ok('Guidelines report warnings for empty map', issues.some((i) => /node/i.test(i.message)));
+  ok('Guidelines are warnings not errors', issues.every((i) => i.severity === 'warning'));
+  const drafts = api.saveDraft();
+  ok('Soft save writes draft without spawn/background', Array.isArray(drafts) && drafts.some((d) => d.id === 'soft-save-map' || d.name === 'Soft Save'));
+}
+
+// pathOrder ties produce split edges.
+{
+  const branchNodes = [
+    { id: 0, type: 'label', name: 'Spawn', x: 100, y: 500, pathOrder: 0, onPath: true,
+      labelConfig: Object.assign(globalThis.defaultLabelConfig(), { actsAsNode: true, mimicType: 'start', uiAction: 'none', text: 'Spawn' }) },
+    { id: 1, type: 'label', name: 'Left', x: 40, y: 300, pathOrder: 1, onPath: true,
+      labelConfig: Object.assign(globalThis.defaultLabelConfig(), { actsAsNode: true, mimicType: 'stage', uiAction: 'none', text: 'Left' }), terrain: 'Wilds' },
+    { id: 2, type: 'label', name: 'Right', x: 160, y: 300, pathOrder: 1, onPath: true,
+      labelConfig: Object.assign(globalThis.defaultLabelConfig(), { actsAsNode: true, mimicType: 'stage', uiAction: 'none', text: 'Right' }), terrain: 'Wilds' },
+    { id: 3, type: 'label', name: 'Boss', x: 100, y: 100, pathOrder: 2, onPath: true, mustComplete: true,
+      labelConfig: Object.assign(globalThis.defaultLabelConfig(), { actsAsNode: true, mimicType: 'boss', uiAction: 'none', text: 'Boss' }), terrain: 'Boss Arena' },
+    { id: 4, type: 'label', name: 'Return', x: 100, y: 20, pathOrder: 3, onPath: true,
+      labelConfig: Object.assign(globalThis.defaultLabelConfig(), { actsAsNode: true, mimicType: 'return', uiAction: 'none', text: 'Return' }) },
+    { id: 5, type: 'label', name: 'Side', x: 300, y: 300, pathOrder: 1, onPath: false,
+      labelConfig: Object.assign(globalThis.defaultLabelConfig(), { actsAsNode: true, mimicType: 'shop', uiAction: 'none', text: 'Side' }) },
+  ];
+  globalThis.ensureOwPathOrders(branchNodes);
+  const edges = globalThis.buildOwPathEdges(branchNodes);
+  ok('Branch map builds edges', edges.length >= 3);
+  ok('Spawn fans out to both order-1 stages', edges.filter((e) => e.from === 0).length >= 2);
+  ok('Off-path shop excluded from path nodes', !globalThis.isOwPathNode(branchNodes[5]));
+  ok('Return hidden until must-complete cleared', globalThis.isOwReturnGateVisible(branchNodes, 'main', { nodeClears: {} }) === false);
+  const cleared = { nodeClears: { 'main:3': true } };
+  ok('Return visible after must-complete clear', globalThis.isOwReturnGateVisible(branchNodes, 'main', cleared) === true);
+}
+
+// shopConfig serializes on export.
+if (api) {
+  api.loadMap({
+    schemaVersion: 2,
+    id: 'shop-cfg-map',
+    name: 'Shop Cfg',
+    backgroundDataUrl: 'data:image/png;base64,aa',
+    nodes: [],
+    worlds: {},
+  });
+  api.setEditContext('main');
+  api.placeNodeAt(200, 200);
+  ok('Convert to shop job', api.convertSelected('shop') === true);
+  const shopSel = api.getSelected();
+  shopSel.shopConfig = {
+    useCustomStock: true,
+    offers: [{ id: 'shop_item_fresh_water', qty: 2, kind: 'item' }],
+  };
+  shopSel.mustComplete = true;
+  shopSel.pathOrder = 2;
+  shopSel.onPath = true;
+  const payload = api.buildExport();
+  const exported = (payload.nodes || []).find((n) => n.id === shopSel.id);
+  ok('Exported shopConfig useCustomStock', !!(exported?.shopConfig?.useCustomStock));
+  ok('Exported shopConfig offers', Array.isArray(exported?.shopConfig?.offers) && exported.shopConfig.offers.length === 1);
+  ok('Exported mustComplete', exported?.mustComplete === true);
+  ok('Exported pathOrder', exported?.pathOrder === 2);
+}
+
 // Bundle must include the fresh-select fix — index.html loads avian-game.bundle.js.
 const bundle = readFileSync(path.join(root, 'js/avian-game.bundle.js'), 'utf8');
 ok('Bundle calls selectFreshLastNode after place', /selectFreshLastNode\(\)/.test(bundle));
@@ -475,6 +556,8 @@ ok('Bundle exports __mapForgeTestApi', bundle.includes('__mapForgeTestApi'));
 ok('Bundle has isBossLike helper', bundle.includes('function isBossLike'));
 ok('Bundle does not use stale slice id fallback after place',
   !/slice\.nodes\[slice\.nodes\.length - 1\]\?\.id \?\? 0/.test(bundle));
+ok('Bundle has buildOwPathEdges', bundle.includes('buildOwPathEdges'));
+ok('Bundle has areOwMustCompleteNodesCleared', bundle.includes('areOwMustCompleteNodesCleared'));
 
 if (process.exitCode) {
   console.error('\nMap Forge action verification failed.');

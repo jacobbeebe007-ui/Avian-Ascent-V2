@@ -349,22 +349,80 @@ function syncOverworldProgress(progress={}){
 
 function getCurrentActionableStage(){ return Math.max(1, OVERWORLD_PROGRESS.completedStage + 1); }
 function isCombatNode(n){ const eff=owEffectiveNode(n); return typeof isForgeCombatNode==='function'?isForgeCombatNode(eff):isOwCombatNode(eff); }
-function owPathNode(n){ return typeof isOwPathNode==='function'?isOwPathNode(n):!!n&&n.type!=='label'; }
+function owPathNode(n){ return typeof isOwPathNode==='function'?isOwPathNode(n):!!n&&n.type!=='label'&&n.onPath!==false; }
 function owEffectiveNode(n){ return typeof getOwEffectiveNode==='function'?getOwEffectiveNode(n):n; }
 function owPathNodeIndices(){
   return typeof getPathNodeIndices==='function'?getPathNodeIndices(NODES):NODES.map((_,i)=>i);
 }
-function nextPathNodeId(fromId){
+function owPathEdges(){
+  return typeof buildOwPathEdges==='function'?buildOwPathEdges(NODES):[];
+}
+function owPathChildIds(fromId){
+  if(typeof getOwPathChildIds==='function') return getOwPathChildIds(NODES, fromId);
+  const next=nextPathNodeIdLinear(fromId);
+  return next==null?[]:[next];
+}
+function owPathParentIds(toId){
+  if(typeof getOwPathParentIds==='function') return getOwPathParentIds(NODES, toId);
+  const prev=prevPathNodeIdLinear(toId);
+  return prev==null?[]:[prev];
+}
+function nextPathNodeIdLinear(fromId){
   for(let i=fromId+1;i<NODES.length;i++){ if(owPathNode(NODES[i])) return i; }
   return null;
 }
-function prevPathNodeId(fromId){
+function prevPathNodeIdLinear(fromId){
   for(let i=fromId-1;i>=0;i--){ if(owPathNode(NODES[i])) return i; }
   return null;
+}
+function nextPathNodeId(fromId){
+  const kids=owPathChildIds(fromId);
+  if(kids.length) return kids[0];
+  return nextPathNodeIdLinear(fromId);
+}
+function prevPathNodeId(fromId){
+  const parents=owPathParentIds(fromId);
+  if(parents.length) return parents[0];
+  return prevPathNodeIdLinear(fromId);
 }
 function prevPathNode(fromId){
   const pid=prevPathNodeId(fromId);
   return pid==null?null:NODES[pid];
+}
+function anyPathParentCleared(fromId){
+  const parents=owPathParentIds(fromId);
+  if(!parents.length){
+    const prev=prevPathNode(fromId);
+    if(!prev) return true;
+    return parentNodeAllowsTravel(prev);
+  }
+  return parents.some((pid)=>{
+    const p=NODES.find(n=>n&&n.id===pid)||NODES[pid];
+    return parentNodeAllowsTravel(p);
+  });
+}
+function parentNodeAllowsTravel(prev){
+  const p=owEffectiveNode(prev);
+  if(!p||p.type==='start'||(typeof isOwSpawnNode==='function'&&isOwSpawnNode(prev))) return true;
+  if(isCombatNode(p)){
+    if(_WORLD_INDEX!=null || _CURRENT_MAP_ID!=='main') return owNodeCleared(prev);
+    return (OVERWORLD_PROGRESS.completedStage||0) >= Number(p.stage||1)-1;
+  }
+  if(p.type==='shop'){
+    if(_WORLD_INDEX!=null || _CURRENT_MAP_ID!=='main') return true;
+    const p2=prevPathNode(prev.id);
+    return (OVERWORLD_PROGRESS.completedStage||0) >= Number(p2?.stage||0) || owNodeCleared(prev);
+  }
+  return owNodeCleared(prev);
+}
+function owReturnGateReady(){
+  if(typeof isOwReturnGateVisible==='function'){
+    return isOwReturnGateVisible(NODES, _CURRENT_MAP_ID, _OW_PROGRESS);
+  }
+  if(typeof areOwMustCompleteNodesCleared==='function'){
+    return areOwMustCompleteNodesCleared(NODES, _CURRENT_MAP_ID, _OW_PROGRESS);
+  }
+  return true;
 }
 function owLabelVc(cfg){
   const ui=owLabelUiAction(cfg);
@@ -419,6 +477,9 @@ function owLabelClickHandler(n,cfg){
   if(cfg.actsAsNode) setPos(n.id);
 }
 function owNodeVisible(idx){
+  const n=NODES[idx];
+  const eff=owEffectiveNode(n);
+  if(eff&&eff.type==='return'&&!owReturnGateReady()) return false;
   if(_IS_PLAYTEST&&_USE_CUSTOM) return true;
   if(!_PATH_REVEAL||(!_USE_CUSTOM&&_CURRENT_MAP_ID==='main')) return true;
   return typeof isNodeVisibleOnMap==='function'?isNodeVisibleOnMap(NODES,idx,_OW_PROGRESS,_CURRENT_MAP_ID,{worldId:_CURRENT_MAP_ID},true):true;
@@ -427,6 +488,14 @@ function owPathVisible(segIdx){
   if(_IS_PLAYTEST&&_USE_CUSTOM) return true;
   if(!_PATH_REVEAL||(!_USE_CUSTOM&&_CURRENT_MAP_ID==='main')) return true;
   return typeof isPathSegmentRevealed==='function'?isPathSegmentRevealed(NODES,segIdx,_OW_PROGRESS,_CURRENT_MAP_ID,{worldId:_CURRENT_MAP_ID},true):true;
+}
+function owPathEdgeVisible(edge, edgeIdx){
+  if(_IS_PLAYTEST&&_USE_CUSTOM) return true;
+  if(!_PATH_REVEAL||(!_USE_CUSTOM&&_CURRENT_MAP_ID==='main')) return true;
+  if(typeof isOwPathEdgeRevealed==='function'){
+    return isOwPathEdgeRevealed(NODES, edge, _OW_PROGRESS, _CURRENT_MAP_ID, {worldId:_CURRENT_MAP_ID}, true);
+  }
+  return owPathVisible(edgeIdx);
 }
 function owNodeCleared(n){
   if(!n) return false;
@@ -458,43 +527,25 @@ function isNodeUnlocked(n){
   if(_IS_PLAYTEST&&_USE_CUSTOM&&n&&n.type!=='start') return true;
   if(!n||n.type==='start') return true;
   if(n.type==='world'){
-    const prev=owEffectiveNode(prevPathNode(n.id));
-    if(!prev||prev.type==='start') return true;
-    if(isCombatNode(prev)) return (OVERWORLD_PROGRESS.completedStage||0) >= Number(prev.stage||1)-1;
-    if(prev.type==='shop'){
-      const p2=prevPathNode(prev.id);
-      return (OVERWORLD_PROGRESS.completedStage||0) >= Number(p2?.stage||0);
-    }
-    return owNodeCleared(prev);
+    return anyPathParentCleared(n.id);
   }
   if(n.type==='overworld'){
-    const prev=prevPathNode(n.id);
-    if(!prev||prev.type==='start') return true;
-    if(_WORLD_INDEX!=null || _CURRENT_MAP_ID!=='main') return owNodeCleared(prev);
-    if(isCombatNode(prev)) return (OVERWORLD_PROGRESS.completedStage||0) >= Number(prev.stage||1)-1;
-    if(prev.type==='shop'){
-      const p2=prevPathNode(prev.id);
-      return (OVERWORLD_PROGRESS.completedStage||0) >= Number(p2?.stage||0);
-    }
-    return owNodeCleared(prev);
+    return anyPathParentCleared(n.id);
   }
   if(n.type==='bonus'){
     if(!canEnterBonusNode||!_USE_CUSTOM) return isNodeUnlocked({type:'shop'});
-    const prev=prevPathNode(n.id);
-    const prevOk=prev&&(isCombatNode(prev)?(OVERWORLD_PROGRESS.completedStage||0)>=Number(prev.stage||1)-1:owNodeCleared(prev));
-    return prevOk && canEnterBonusNode(_CURRENT_MAP_ID,n.id,n.bonusConfig,_OW_PROGRESS);
+    return anyPathParentCleared(n.id) && canEnterBonusNode(_CURRENT_MAP_ID,n.id,n.bonusConfig,_OW_PROGRESS);
   }
   if(n.type==='return'){
+    if(!owReturnGateReady()) return false;
     return typeof isOwWorldCompleted==='function'&&isOwWorldCompleted(_CURRENT_MAP_ID,_OW_PROGRESS);
   }
   if(n.type==='shop'){
-    const prev=prevPathNode(n.id);
-    return (OVERWORLD_PROGRESS.completedStage||0) >= Number(prev?.stage||0)||owNodeCleared(prev);
+    return anyPathParentCleared(n.id);
   }
   if(isCombatNode(n)){
-    if(_WORLD_INDEX!=null){
-      const prev=prevPathNode(n.id);
-      return !prev||prev.type==='start'||owNodeCleared(prev);
+    if(_WORLD_INDEX!=null || _USE_CUSTOM){
+      return anyPathParentCleared(n.id);
     }
     return (OVERWORLD_PROGRESS.completedStage||0) >= Number(n.stage||1)-1;
   }
@@ -575,7 +626,11 @@ function applyNodeActionButton(btn,n){
   if(n.type==='world'){ btn.textContent=ok?'ENTER WORLD ▶':'WORLD LOCKED'; return; }
   if(n.type==='overworld'){ btn.textContent=ok?'ENTER OVERWORLD ▶':'OVERWORLD LOCKED'; return; }
   if(n.type==='bonus'){ btn.textContent=ok?'ENTER BONUS ▶':'BONUS LOCKED'; return; }
-  if(n.type==='return'){ btn.textContent=ok?'RETURN TO OVERWORLD ▶':'CLEAR WORLD BOSS FIRST'; return; }
+  if(n.type==='return'){
+    if(!owReturnGateReady()){ btn.textContent='COMPLETE REQUIRED NODES FIRST'; return; }
+    btn.textContent=ok?'RETURN TO OVERWORLD ▶':'CLEAR WORLD BOSS FIRST';
+    return;
+  }
   if(n.type==='boss'||n.final){ btn.textContent=ok?'FACE BOSS ▶':'BOSS LOCKED'; btn.classList.add('is-boss'); return; }
   const lbl=nodeDisplayLabel(n);
   btn.textContent=ok?('ENTER STAGE '+lbl+' ▶'):('LOCKED · STAGE '+lbl);
@@ -890,15 +945,32 @@ NODES.forEach(n=>{
 ns.appendChild(ndefs);
 
 const pathG=mk('g');
-const _pathIdx=owPathNodeIndices();
-for(let j=0;j<_pathIdx.length-1;j++){
-  if(!owPathVisible(j)) continue;
-  const n=NODES[_pathIdx[j]],nx=NODES[_pathIdx[j+1]],lit=_pathIdx[j]<UNLOCKED;
-  if(lit){
-    pathG.appendChild(mk('line',{x1:n.x,y1:n.y,x2:nx.x,y2:nx.y,stroke:'#2a2a26','stroke-width':'3','stroke-linecap':'round',opacity:'.85'}));
-    pathG.appendChild(mk('line',{x1:n.x,y1:n.y,x2:nx.x,y2:nx.y,stroke:'#484440','stroke-width':'1.2','stroke-linecap':'round',opacity:'.6'}));
-  } else {
-    pathG.appendChild(mk('line',{x1:n.x,y1:n.y,x2:nx.x,y2:nx.y,stroke:'#282824','stroke-width':'1.5','stroke-dasharray':'4 10','stroke-linecap':'round',opacity:'.3'}));
+const _pathEdges=owPathEdges();
+if(_pathEdges.length){
+  _pathEdges.forEach((edge,j)=>{
+    if(!owPathEdgeVisible(edge,j)) return;
+    const n=NODES.find(x=>x&&x.id===edge.from)||NODES[edge.from];
+    const nx=NODES.find(x=>x&&x.id===edge.to)||NODES[edge.to];
+    if(!n||!nx) return;
+    const lit=(n.id<=UNLOCKED)||owNodeCleared(n)||(typeof isOwSpawnNode==='function'&&isOwSpawnNode(n));
+    if(lit){
+      pathG.appendChild(mk('line',{x1:n.x,y1:n.y,x2:nx.x,y2:nx.y,stroke:'#2a2a26','stroke-width':'3','stroke-linecap':'round',opacity:'.85'}));
+      pathG.appendChild(mk('line',{x1:n.x,y1:n.y,x2:nx.x,y2:nx.y,stroke:'#484440','stroke-width':'1.2','stroke-linecap':'round',opacity:'.6'}));
+    } else {
+      pathG.appendChild(mk('line',{x1:n.x,y1:n.y,x2:nx.x,y2:nx.y,stroke:'#282824','stroke-width':'1.5','stroke-dasharray':'4 10','stroke-linecap':'round',opacity:'.3'}));
+    }
+  });
+} else {
+  const _pathIdx=owPathNodeIndices();
+  for(let j=0;j<_pathIdx.length-1;j++){
+    if(!owPathVisible(j)) continue;
+    const n=NODES[_pathIdx[j]],nx=NODES[_pathIdx[j+1]],lit=_pathIdx[j]<UNLOCKED;
+    if(lit){
+      pathG.appendChild(mk('line',{x1:n.x,y1:n.y,x2:nx.x,y2:nx.y,stroke:'#2a2a26','stroke-width':'3','stroke-linecap':'round',opacity:'.85'}));
+      pathG.appendChild(mk('line',{x1:n.x,y1:n.y,x2:nx.x,y2:nx.y,stroke:'#484440','stroke-width':'1.2','stroke-linecap':'round',opacity:'.6'}));
+    } else {
+      pathG.appendChild(mk('line',{x1:n.x,y1:n.y,x2:nx.x,y2:nx.y,stroke:'#282824','stroke-width':'1.5','stroke-dasharray':'4 10','stroke-linecap':'round',opacity:'.3'}));
+    }
   }
 }
 ns.appendChild(pathG);
@@ -963,8 +1035,9 @@ NODES.forEach((n,ni)=>{
   ns.appendChild(g);
 });
 
-NODES.forEach((n)=>{
+NODES.forEach((n,ni)=>{
   if(n.type!=='label') return;
+  if(!owNodeVisible(ni)) return;
   const cfg=n.labelConfig||{};
   const ui=owLabelUiAction(cfg);
   const vc=owLabelVc(cfg);
@@ -1013,13 +1086,26 @@ let _cx=0,_cy=0,zoom=0.65,ZOOM_MIN=0.25,ZOOM_MAX=1.8,ZOOM_STEP=0.1;
 
 function drawMM(){
   mc2.clearRect(0,0,MM_W,MM_H);mc2.fillStyle='#020402';mc2.fillRect(0,0,MM_W,MM_H);
-  const mmPathIdx=owPathNodeIndices();
-  for(let j=0;j<mmPathIdx.length-1;j++){
-    const n=NODES[mmPathIdx[j]],nx2=NODES[mmPathIdx[j+1]],lit=mmPathIdx[j]<UNLOCKED;
-    mc2.beginPath();mc2.moveTo(mmx(n.x),mmy(n.y));mc2.lineTo(mmx(nx2.x),mmy(nx2.y));
-    mc2.strokeStyle=lit?'#887018':'#383828';mc2.lineWidth=lit?1.5:.6;mc2.globalAlpha=lit?.68:.25;mc2.stroke();mc2.globalAlpha=1;
+  const mmEdges=owPathEdges();
+  if(mmEdges.length){
+    mmEdges.forEach((edge)=>{
+      const n=NODES.find(x=>x&&x.id===edge.from)||NODES[edge.from];
+      const nx2=NODES.find(x=>x&&x.id===edge.to)||NODES[edge.to];
+      if(!n||!nx2) return;
+      const lit=n.id<=UNLOCKED||owNodeCleared(n);
+      mc2.beginPath();mc2.moveTo(mmx(n.x),mmy(n.y));mc2.lineTo(mmx(nx2.x),mmy(nx2.y));
+      mc2.strokeStyle=lit?'#887018':'#383828';mc2.lineWidth=lit?1.5:.6;mc2.globalAlpha=lit?.68:.25;mc2.stroke();mc2.globalAlpha=1;
+    });
+  } else {
+    const mmPathIdx=owPathNodeIndices();
+    for(let j=0;j<mmPathIdx.length-1;j++){
+      const n=NODES[mmPathIdx[j]],nx2=NODES[mmPathIdx[j+1]],lit=mmPathIdx[j]<UNLOCKED;
+      mc2.beginPath();mc2.moveTo(mmx(n.x),mmy(n.y));mc2.lineTo(mmx(nx2.x),mmy(nx2.y));
+      mc2.strokeStyle=lit?'#887018':'#383828';mc2.lineWidth=lit?1.5:.6;mc2.globalAlpha=lit?.68:.25;mc2.stroke();mc2.globalAlpha=1;
+    }
   }
-  NODES.forEach(n=>{
+  NODES.forEach((n,ni)=>{
+    if(!owNodeVisible(ni)) return;
     const e=owEffectiveNode(n)||n;
     const vc2=nvc(n);
     const r2=(n.final||e.final)?4.5:e.type==='boss'?4:e.type==='shop'?3.5:e.type==='label'?2.5:3;
@@ -1228,9 +1314,9 @@ document.getElementById('root').addEventListener('keydown',e=>{
   if((e.key==='Enter'||e.key===' ')&&!isMoving){e.preventDefault();_openNodeOv();return;}
   const dirs=['ArrowLeft','ArrowRight','ArrowUp','ArrowDown'];
   if(!dirs.includes(e.key))return;e.preventDefault();if(isMoving)return;
-  const cn=NODES[curPos],cands=[];
-  if(curPos>0)cands.push(NODES[curPos-1]);if(curPos<UNLOCKED)cands.push(NODES[curPos+1]);
-  const openCands=cands.filter(c=>c&&c.id>0&&c.id<=UNLOCKED);
+  const cn=NODES[curPos];
+  const neighIds=[].concat(owPathParentIds(curPos), owPathChildIds(curPos));
+  const openCands=neighIds.map(id=>NODES.find(n=>n&&n.id===id)||NODES[id]).filter(c=>c&&c.id!==curPos&&(c.id<=UNLOCKED||isNodeUnlocked(c)));
   if(!openCands.length)return;let best=null,bs=-Infinity;
   for(const c of openCands){const dx=c.x-cn.x,dy=c.y-cn.y;const sc=e.key==='ArrowRight'?dx-Math.abs(dy)*.4:e.key==='ArrowLeft'?-dx-Math.abs(dy)*.4:e.key==='ArrowUp'?-dy-Math.abs(dx)*.4:dy-Math.abs(dx)*.4;if(sc>bs){bs=sc;best=c.id;}}
   if(best!==null)setPos(best);
@@ -1246,9 +1332,15 @@ function nodeBlocksAdvance(n){
 
 document.getElementById('btn-prev').addEventListener('click',()=>{const p=prevPathNodeId(curPos);if(p!=null&&!isMoving)setPos(p);});
 document.getElementById('btn-next').addEventListener('click',()=>{
-  if(isMoving||curPos>=UNLOCKED) return;
-  const nextId=nextPathNodeId(curPos);
-  const next=nextId!=null?NODES[nextId]:null;
+  if(isMoving) return;
+  const kids=owPathChildIds(curPos);
+  let nextId=null;
+  for(let i=0;i<kids.length;i++){
+    const cand=NODES.find(n=>n&&n.id===kids[i])||NODES[kids[i]];
+    if(cand&&isNodeUnlocked(cand)){ nextId=cand.id; break; }
+  }
+  if(nextId==null) nextId=nextPathNodeId(curPos);
+  const next=nextId!=null?(NODES.find(n=>n&&n.id===nextId)||NODES[nextId]):null;
   if(!next||!isNodeUnlocked(next)){
     const act=document.getElementById('panel-actions');
     if(act){act.style.boxShadow='inset 0 0 0 2px rgba(200,160,64,.35)';setTimeout(()=>{act.style.boxShadow='';},650);}

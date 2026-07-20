@@ -49,7 +49,8 @@
   let _configClipboard = null;
   let _pendingDirtyAction = null;
   let _actionStatusUntil = 0;
-  let _sidebarPanel = 'node'; // 'node' | 'rewards'
+  let _sidebarPanel = 'node'; // 'node' | 'rewards' | 'shop'
+  let _forgeShopCategoryTab = 'all'; // 'all' | 'items' | 'mutations'
 
   function upgradeMapSafe(raw) {
     if (typeof global.upgradeMapToV2 === 'function') return global.upgradeMapToV2(raw);
@@ -338,7 +339,8 @@
     delete n.clearRewards;
     delete n.stage;
     delete n.subStage;
-    // Keep labelConfig so appearance survives job changes.
+    delete n.shopConfig;
+    // Keep labelConfig / pathOrder / onPath / mustComplete across job changes.
   }
 
   function ensureSelectedAppearance(n) {
@@ -500,12 +502,25 @@
       if (global.ensureNodeEncounter) global.ensureNodeEncounter(n);
     }
 
+    if (typeKey === 'label' || typeKey === 'labelUi') {
+      n.onPath = false;
+    } else {
+      if (n.onPath == null) n.onPath = true;
+      if (n.pathOrder == null || !Number.isFinite(Number(n.pathOrder))) {
+        n.pathOrder = nextPathOrderForSlice(slice);
+      }
+    }
+    if (typeKey === 'shop' && (!n.shopConfig || typeof n.shopConfig !== 'object')) {
+      n.shopConfig = { useCustomStock: false, offers: [] };
+    }
+
     _map = normalizeMap(_map);
     renderNodeList();
     renderForgeCanvas();
     syncNodeEditorFields();
+    renderValidationPanel();
     const jobLabel = typeKey === 'start' ? 'Spawn' : typeKey === 'labelUi' ? 'UI button' : typeKey === 'label' ? 'decorative' : typeKey;
-    setStatus('Job set to ' + jobLabel + '. Appearance stays editable.');
+    setStatus('Recognised as ' + jobLabel + '. Guidelines stay advisory — you can save anytime.');
     return true;
   }
 
@@ -568,23 +583,14 @@
   function syncForgeValidationStatus(issues) {
     if (Date.now() < _actionStatusUntil) return;
     const list = Array.isArray(issues) ? issues : getValidationIssues();
-    const errors = list.filter((i) => i.severity === 'error');
-    const warnings = list.filter((i) => i.severity === 'warning');
+    const warnings = list.filter((i) => i.severity === 'warning' || i.severity === 'error');
     const el = document.getElementById('map-forge-status');
     if (!el) return;
-    if (errors.length) {
-      const hint = isEmptyDraft(_map) ? 'New map - upload a background, then place Stage nodes. ' : '';
-      const first = errors[0].message || '';
-      const extra = errors.length > 1 ? ' (+' + (errors.length - 1) + ' more)' : '';
-      el.textContent = hint + errors.length + (errors.length === 1 ? ' issue: ' : ' issues - ') + first + extra;
-      el.classList.remove('map-forge-status--warn');
-      el.style.color = 'var(--red-light, #ff9090)';
-      return;
-    }
     if (warnings.length) {
+      const hint = isEmptyDraft(_map) ? 'Guidelines: ' : '';
       const first = warnings[0].message || '';
       const extra = warnings.length > 1 ? ' (+' + (warnings.length - 1) + ' more)' : '';
-      el.textContent = warnings.length + (warnings.length === 1 ? ' warning: ' : ' warnings - ') + first + extra;
+      el.textContent = hint + warnings.length + (warnings.length === 1 ? ' guideline: ' : ' guidelines - ') + first + extra;
       el.classList.add('map-forge-status--warn');
       el.style.color = '#e8c060';
       return;
@@ -594,23 +600,22 @@
     el.style.color = 'var(--text-dim, #9a9488)';
   }
 
+  /** Only refuse corrupt payloads — placement guidelines never block save. */
   function validateMap(map) {
-    const nodes = map?.nodes || [];
-    if (!nodes.length) return 'Add at least one node.';
-    const mainSpawns = nodes.filter((n) => isSpawnLike(n)).length;
-    if (mainSpawns === 0) return 'Add a Spawn node (place a Label, then set Node type to Spawn).';
-    if (mainSpawns > 1) return 'Exactly one Spawn node required on the main map.';
-    if (!nodes.some((n) => {
-      const t = effectiveNodeType(n);
-      return t === 'stage' || t === 'boss';
-    })) return 'Add at least one Stage or Boss.';
-    if (!map.backgroundDataUrl) return 'Upload a background image first.';
-    const startId = resolveMapStartMapId(map);
-    if (startId !== 'main') {
-      const wn = map.worlds?.[startId]?.nodes || [];
-      if (!wn.some((n) => isSpawnLike(n))) return 'Start map "' + startId + '" needs a Spawn node.';
-    }
+    if (!map || typeof map !== 'object') return 'Map data is missing.';
+    if (!Array.isArray(map.nodes)) return 'Map nodes are invalid.';
     return null;
+  }
+
+  function nextPathOrderForSlice(slice) {
+    const nodes = slice?.nodes || [];
+    let max = -1;
+    nodes.forEach((n) => {
+      if (!n || (typeof global.isOwPathNode === 'function' ? !global.isOwPathNode(n) : false)) return;
+      const o = Math.floor(Number(n.pathOrder));
+      if (Number.isFinite(o)) max = Math.max(max, o);
+    });
+    return max + 1;
   }
 
   function serializeNode(n, worldIndex) {
@@ -618,6 +623,9 @@
     const eff = effectiveNodeType(n);
     if (eff === 'start' || isSpawnLike(n)) out.stage = 0;
     if (n.worldId) out.worldId = n.worldId;
+    if (n.pathOrder != null && Number.isFinite(Number(n.pathOrder))) out.pathOrder = Math.floor(Number(n.pathOrder));
+    if (n.onPath === false) out.onPath = false;
+    if (n.mustComplete) out.mustComplete = true;
     if (eff === 'shop' || eff === 'return' || eff === 'overworld' || eff === 'world') {
       /* path utility jobs */
     } else if (eff === 'stage' || eff === 'boss' || eff === 'bonus') {
@@ -641,6 +649,9 @@
     if (n.bonusConfig) out.bonusConfig = JSON.parse(JSON.stringify(n.bonusConfig));
     if (n.clearRewards) out.clearRewards = JSON.parse(JSON.stringify(n.clearRewards));
     if (n.labelConfig) out.labelConfig = JSON.parse(JSON.stringify(n.labelConfig));
+    if (n.shopConfig && typeof n.shopConfig === 'object') {
+      out.shopConfig = JSON.parse(JSON.stringify(n.shopConfig));
+    }
     return out;
   }
 
@@ -883,8 +894,8 @@
     issues.forEach((iss) => {
       const row = document.createElement('button');
       row.type = 'button';
-      row.className = 'map-forge-validation-row map-forge-validation-' + iss.severity;
-      row.textContent = (iss.severity === 'error' ? '✕ ' : '⚠ ') + iss.message;
+      row.className = 'map-forge-validation-row map-forge-validation-warning';
+      row.textContent = '⚠ ' + iss.message;
       row.onclick = () => {
         if (iss.mapId && iss.mapId !== 'main' && iss.mapId !== _editContext) {
           _editContext = iss.mapId;
@@ -1080,7 +1091,7 @@
   }
 
   function setSidebarPanel(panel) {
-    _sidebarPanel = panel === 'rewards' ? 'rewards' : 'node';
+    _sidebarPanel = panel === 'rewards' || panel === 'shop' ? panel : 'node';
     document.querySelectorAll('[data-forge-panel-tab]').forEach((btn) => {
       const on = btn.getAttribute('data-forge-panel-tab') === _sidebarPanel;
       btn.classList.toggle('is-active', on);
@@ -1093,6 +1104,124 @@
       else pane.setAttribute('hidden', '');
     });
     if (_sidebarPanel === 'rewards') syncRewardsPanel();
+    if (_sidebarPanel === 'shop') syncShopPanel();
+  }
+
+  function ensureShopConfig(n) {
+    if (!n) return null;
+    if (!n.shopConfig || typeof n.shopConfig !== 'object') {
+      n.shopConfig = { useCustomStock: false, offers: [] };
+    }
+    if (!Array.isArray(n.shopConfig.offers)) n.shopConfig.offers = [];
+    return n.shopConfig;
+  }
+
+  function getForgeShopCatalogEntries() {
+    const items = [];
+    const combat = global.SHOP_COMBAT_ITEMS || globalThis.SHOP_COMBAT_ITEMS || [];
+    (Array.isArray(combat) ? combat : []).forEach((it) => {
+      if (!it || !it.id) return;
+      items.push({
+        id: it.id,
+        kind: 'item',
+        label: (it.icon ? it.icon + ' ' : '') + (it.name || it.id),
+        category: 'items',
+      });
+    });
+    if (!items.length) {
+      getForgeCombatItemOptions().forEach((opt) => {
+        const catalog = global.COMBAT_ITEM_CATALOG || {};
+        const def = catalog[opt.id];
+        items.push({
+          id: def?.shopId || opt.id,
+          kind: 'item',
+          label: opt.label,
+          category: 'items',
+          itemKey: opt.id,
+        });
+      });
+    }
+    const muts = getForgeMutationOptions().map((opt) => ({
+      id: opt.id,
+      kind: 'mutation',
+      label: opt.label,
+      category: 'mutations',
+    }));
+    return { items, mutations: muts, all: items.concat(muts) };
+  }
+
+  function syncShopPanel() {
+    const emptyEl = document.getElementById('map-forge-shop-empty');
+    const editorEl = document.getElementById('map-forge-shop-editor');
+    const listEl = document.getElementById('map-forge-shop-stock-list');
+    const customEl = document.getElementById('map-forge-shop-use-custom');
+    const n = getSelectedNode();
+    const isShop = n && isShopLike(n);
+    if (!isShop) {
+      if (emptyEl) emptyEl.style.display = '';
+      if (editorEl) editorEl.style.display = 'none';
+      return;
+    }
+    if (emptyEl) emptyEl.style.display = 'none';
+    if (editorEl) editorEl.style.display = '';
+    const cfg = ensureShopConfig(n);
+    if (customEl) customEl.checked = !!cfg.useCustomStock;
+    document.querySelectorAll('[data-forge-shop-tab]').forEach((btn) => {
+      const on = btn.getAttribute('data-forge-shop-tab') === _forgeShopCategoryTab;
+      btn.classList.toggle('is-active', on);
+      btn.classList.toggle('active', on);
+    });
+    if (!listEl) return;
+    listEl.innerHTML = '';
+    const catalog = getForgeShopCatalogEntries();
+    const rows = _forgeShopCategoryTab === 'items'
+      ? catalog.items
+      : _forgeShopCategoryTab === 'mutations'
+        ? catalog.mutations
+        : catalog.all;
+    const offerMap = new Map((cfg.offers || []).map((o) => [String(o.id), o]));
+    rows.forEach((entry) => {
+      const row = document.createElement('div');
+      row.className = 'map-forge-shop-stock-row';
+      const offer = offerMap.get(String(entry.id));
+      const chk = document.createElement('input');
+      chk.type = 'checkbox';
+      chk.checked = !!offer;
+      chk.disabled = !cfg.useCustomStock;
+      const qty = document.createElement('input');
+      qty.type = 'number';
+      qty.className = 'map-forge-field-input map-forge-reward-num';
+      qty.min = '1';
+      qty.max = '20';
+      qty.value = String(offer?.qty || 1);
+      qty.disabled = !cfg.useCustomStock || !chk.checked;
+      const label = document.createElement('span');
+      label.textContent = entry.label;
+      const syncOffer = () => {
+        pushHistory();
+        const live = ensureShopConfig(getSelectedNode() || n);
+        live.offers = (live.offers || []).filter((o) => String(o.id) !== String(entry.id));
+        if (chk.checked) {
+          live.offers.push({
+            id: entry.id,
+            qty: Math.max(1, Math.min(20, Math.floor(Number(qty.value) || 1))),
+            kind: entry.kind,
+          });
+        }
+        qty.disabled = !live.useCustomStock || !chk.checked;
+        renderForgeCanvas();
+        renderValidationPanel();
+      };
+      chk.addEventListener('change', syncOffer);
+      qty.addEventListener('change', () => {
+        if (!chk.checked) return;
+        syncOffer();
+      });
+      row.appendChild(chk);
+      row.appendChild(label);
+      row.appendChild(qty);
+      listEl.appendChild(row);
+    });
   }
 
   function ensureNodeClearRewards(n) {
@@ -1645,7 +1774,14 @@
     if (!list || !slice) return;
     list.innerHTML = '';
     const wi = slice.worldIndex;
-    slice.nodes.forEach((n) => {
+    if (typeof global.ensureOwPathOrders === 'function') global.ensureOwPathOrders(slice.nodes);
+    const sorted = slice.nodes.slice().sort((a, b) => {
+      const ao = typeof global.getOwNodePathOrder === 'function' ? global.getOwNodePathOrder(a) : (a.pathOrder || 0);
+      const bo = typeof global.getOwNodePathOrder === 'function' ? global.getOwNodePathOrder(b) : (b.pathOrder || 0);
+      if (ao !== bo) return ao - bo;
+      return (a.id || 0) - (b.id || 0);
+    });
+    sorted.forEach((n) => {
       if (_nodeListFilter !== 'all') {
         const job = getNodeTypeSelectValue(n);
         // "Label" filter includes decorative + UI-button jobs (no separate UI filter).
@@ -1667,11 +1803,13 @@
         const toId = n.id;
         if (fromId === toId) return;
         pushHistory();
-        const fromIdx = slice.nodes.findIndex((x) => x.id === fromId);
-        const toIdx = slice.nodes.findIndex((x) => x.id === toId);
-        if (fromIdx < 0 || toIdx < 0) return;
-        const [item] = slice.nodes.splice(fromIdx, 1);
-        slice.nodes.splice(toIdx, 0, item);
+        const fromNode = slice.nodes.find((x) => x.id === fromId);
+        const toNode = slice.nodes.find((x) => x.id === toId);
+        if (!fromNode || !toNode) return;
+        const fromOrder = typeof global.getOwNodePathOrder === 'function' ? global.getOwNodePathOrder(fromNode) : (fromNode.pathOrder || 0);
+        const toOrder = typeof global.getOwNodePathOrder === 'function' ? global.getOwNodePathOrder(toNode) : (toNode.pathOrder || 0);
+        fromNode.pathOrder = toOrder;
+        toNode.pathOrder = fromOrder;
         if (_editContext === 'main') _map = normalizeMap(_map);
         else if (_map.worlds[_editContext]) global.recomputeWorldSubStages(_map.worlds[_editContext]);
         renderNodeList();
@@ -1695,7 +1833,10 @@
         : job === 'labelUi' ? 'ui button'
           : job === 'label' ? 'decorative'
             : (job === 'boss' && n.final ? 'final boss' : job);
-      label.textContent = '#' + n.id + ' ' + typeLabel + (lbl ? ' · ' + lbl : '') + (n.name ? ' - ' + n.name : '');
+      const order = typeof global.getOwNodePathOrder === 'function' ? global.getOwNodePathOrder(n) : (n.pathOrder || 0);
+      const onPath = typeof global.isOwPathNode === 'function' ? global.isOwPathNode(n) : true;
+      const flags = (n.mustComplete ? ' ★' : '') + (onPath ? '' : ' (off path)');
+      label.textContent = 'o' + order + ' #' + n.id + ' ' + typeLabel + (lbl ? ' · ' + lbl : '') + (n.name ? ' - ' + n.name : '') + flags;
       label.onclick = () => {
         _selectedId = n.id;
         _selectedIds = [n.id];
@@ -1703,6 +1844,7 @@
         renderForgeCanvas();
         syncNodeEditorFields();
         renderEncounterPanel();
+        if (_sidebarPanel === 'shop') syncShopPanel();
         centerViewOnNode(n);
       };
       row.appendChild(label);
@@ -1711,8 +1853,8 @@
         btn.type = 'button';
         btn.className = 'map-forge-node-move';
         btn.textContent = sym;
-        const onPath = typeof global.isOwPathNode === 'function' ? global.isOwPathNode(n) : true;
-        btn.disabled = !onPath || (di === 0 ? n.id <= 0 : n.id >= slice.nodes.length - 1);
+        btn.disabled = !onPath;
+        btn.title = di === 0 ? 'Decrease path order (tie allowed)' : 'Increase path order (tie allowed)';
         btn.onclick = (ev) => { ev.stopPropagation(); moveNode(n.id, di === 0 ? -1 : 1); };
         row.appendChild(btn);
       });
@@ -1893,6 +2035,9 @@
     const typeEl = document.getElementById('map-forge-node-type');
     const nameEl = document.getElementById('map-forge-node-name');
     const finalEl = document.getElementById('map-forge-node-final');
+    const onPathEl = document.getElementById('map-forge-node-on-path');
+    const mustEl = document.getElementById('map-forge-node-must-complete');
+    const pathOrderEl = document.getElementById('map-forge-node-path-order');
     const worldRenameWrap = document.getElementById('map-forge-world-rename-wrap');
     const worldRenameEl = document.getElementById('map-forge-world-rename');
     const terrainLabel = document.querySelector('label[for="map-forge-terrain-select"]');
@@ -1904,6 +2049,26 @@
     syncNodeTypeOptions();
     if (typeEl) typeEl.value = getNodeTypeSelectValue(n);
     if (nameEl) nameEl.value = n.name || '';
+    const job = getNodeTypeSelectValue(n);
+    const gameplayJob = job !== 'label' && job !== 'labelUi';
+    if (onPathEl) {
+      onPathEl.checked = n.onPath !== false && gameplayJob;
+      onPathEl.disabled = !gameplayJob;
+      const wrap = onPathEl.closest('label');
+      if (wrap) wrap.style.display = gameplayJob ? '' : 'none';
+    }
+    if (mustEl) {
+      mustEl.checked = !!n.mustComplete;
+      mustEl.disabled = !gameplayJob || job === 'start' || job === 'return';
+      const wrap = mustEl.closest('label');
+      if (wrap) wrap.style.display = gameplayJob && job !== 'start' && job !== 'return' ? '' : 'none';
+    }
+    if (pathOrderEl) {
+      pathOrderEl.value = String(typeof global.getOwNodePathOrder === 'function' ? global.getOwNodePathOrder(n) : (n.pathOrder || 0));
+      pathOrderEl.disabled = !gameplayJob;
+      const wrap = pathOrderEl.closest('.map-forge-path-order-field') || pathOrderEl.parentElement;
+      if (wrap && wrap.style) wrap.style.display = gameplayJob ? '' : 'none';
+    }
     if (!isCombatJob) {
       if (terrainLabel) terrainLabel.style.display = 'none';
       if (terrainSel) terrainSel.style.display = 'none';
@@ -1932,24 +2097,25 @@
     }
     renderLabelEditorPanel(n);
     renderEncounterPanel();
+    if (_sidebarPanel === 'shop') syncShopPanel();
     syncBreadcrumb();
   }
 
   function moveNode(id, dir) {
     const slice = getEditingSlice();
     if (!slice) return;
-    const idx = slice.nodes.findIndex((n) => n.id === id);
-    const next = idx + dir;
-    if (idx < 0 || next < 0 || next >= slice.nodes.length) return;
+    const n = slice.nodes.find((x) => x.id === id);
+    if (!n) return;
+    if (typeof global.isOwPathNode === 'function' && !global.isOwPathNode(n)) return;
     pushHistory();
-    const tmp = slice.nodes[idx];
-    slice.nodes[idx] = slice.nodes[next];
-    slice.nodes[next] = tmp;
+    const cur = typeof global.getOwNodePathOrder === 'function' ? global.getOwNodePathOrder(n) : Math.floor(Number(n.pathOrder) || 0);
+    n.pathOrder = Math.max(0, cur + (dir < 0 ? -1 : 1));
     if (_editContext === 'main') _map = normalizeMap(_map);
     else if (_map.worlds[_editContext]) {
       global.recomputeWorldSubStages(_map.worlds[_editContext]);
+      if (typeof global.ensureOwPathOrders === 'function') global.ensureOwPathOrders(_map.worlds[_editContext].nodes);
     }
-    _selectedId = slice.nodes[next].id;
+    _selectedId = n.id;
     renderNodeList();
     renderForgeCanvas();
     syncNodeEditorFields();
@@ -1996,21 +2162,43 @@
       svg.insertBefore(gridG, svg.firstChild);
     }
     const pathG = document.createElementNS(SVG_NS, 'g');
-    const pathIdx = typeof global.getPathNodeIndices === 'function'
-      ? global.getPathNodeIndices(slice.nodes)
-      : slice.nodes.map((_, i) => i);
-    for (let j = 0; j < pathIdx.length - 1; j++) {
-      if (pathReveal && global.isPathSegmentRevealed && !global.isPathSegmentRevealed(slice.nodes, j, fakeProgress, slice.mapId, { worldId: slice.mapId }, true)) continue;
-      const a = slice.nodes[pathIdx[j]];
-      const b = slice.nodes[pathIdx[j + 1]];
-      const line = document.createElementNS(SVG_NS, 'line');
-      line.setAttribute('x1', String(a.x));
-      line.setAttribute('y1', String(a.y));
-      line.setAttribute('x2', String(b.x));
-      line.setAttribute('y2', String(b.y));
-      line.setAttribute('stroke', '#887018');
-      line.setAttribute('stroke-width', '3');
-      pathG.appendChild(line);
+    const edges = typeof global.buildOwPathEdges === 'function'
+      ? global.buildOwPathEdges(slice.nodes)
+      : [];
+    if (edges.length) {
+      edges.forEach((edge, ei) => {
+        if (pathReveal && global.isOwPathEdgeRevealed
+          && !global.isOwPathEdgeRevealed(slice.nodes, edge, fakeProgress, slice.mapId, { worldId: slice.mapId }, true)) return;
+        const a = slice.nodes.find((x) => x.id === edge.from) || slice.nodes[edge.from];
+        const b = slice.nodes.find((x) => x.id === edge.to) || slice.nodes[edge.to];
+        if (!a || !b) return;
+        const line = document.createElementNS(SVG_NS, 'line');
+        line.setAttribute('x1', String(a.x));
+        line.setAttribute('y1', String(a.y));
+        line.setAttribute('x2', String(b.x));
+        line.setAttribute('y2', String(b.y));
+        line.setAttribute('stroke', '#887018');
+        line.setAttribute('stroke-width', '3');
+        line.setAttribute('data-edge-i', String(ei));
+        pathG.appendChild(line);
+      });
+    } else {
+      const pathIdx = typeof global.getPathNodeIndices === 'function'
+        ? global.getPathNodeIndices(slice.nodes)
+        : slice.nodes.map((_, i) => i);
+      for (let j = 0; j < pathIdx.length - 1; j++) {
+        if (pathReveal && global.isPathSegmentRevealed && !global.isPathSegmentRevealed(slice.nodes, j, fakeProgress, slice.mapId, { worldId: slice.mapId }, true)) continue;
+        const a = slice.nodes[pathIdx[j]];
+        const b = slice.nodes[pathIdx[j + 1]];
+        const line = document.createElementNS(SVG_NS, 'line');
+        line.setAttribute('x1', String(a.x));
+        line.setAttribute('y1', String(a.y));
+        line.setAttribute('x2', String(b.x));
+        line.setAttribute('y2', String(b.y));
+        line.setAttribute('stroke', '#887018');
+        line.setAttribute('stroke-width', '3');
+        pathG.appendChild(line);
+      }
     }
     svg.appendChild(pathG);
     slice.nodes.forEach((n, ni) => {
@@ -2120,6 +2308,9 @@
     const terrainCustom = document.getElementById('map-forge-terrain-custom');
     const portraitEl = document.getElementById('map-forge-portrait-bird');
     const finalEl = document.getElementById('map-forge-node-final');
+    const onPathEl = document.getElementById('map-forge-node-on-path');
+    const mustEl = document.getElementById('map-forge-node-must-complete');
+    const pathOrderEl = document.getElementById('map-forge-node-path-order');
     if (nameEl) n.name = nameEl.value.trim() || n.name;
     if (!isShopLike(n)) {
       if (terrainSel?.value === '__custom__' && terrainCustom) n.terrain = terrainCustom.value.trim();
@@ -2135,11 +2326,24 @@
         n.final = true;
       } else delete n.final;
     }
+    const job = getNodeTypeSelectValue(n);
+    const gameplayJob = job !== 'label' && job !== 'labelUi';
+    if (onPathEl && gameplayJob) {
+      n.onPath = !!onPathEl.checked;
+    }
+    if (mustEl && gameplayJob && job !== 'start' && job !== 'return') {
+      if (mustEl.checked) n.mustComplete = true;
+      else delete n.mustComplete;
+    }
+    if (pathOrderEl && gameplayJob) {
+      n.pathOrder = Math.max(0, Math.floor(Number(pathOrderEl.value) || 0));
+    }
     _map = normalizeMap(_map);
     renderNodeList();
     renderForgeCanvas();
     renderValidationPanel();
     renderMapSummary();
+    if (_sidebarPanel === 'shop') syncShopPanel();
   }
 
   function syncForgeCanvasCursor() {
@@ -2406,7 +2610,8 @@
     _map = payload;
     renderDraftSelect();
     markSavedFingerprint();
-    setStatus('Draft saved.');
+    const warns = getValidationIssues().length;
+    setStatus(warns ? ('Draft saved (' + warns + ' guideline' + (warns === 1 ? '' : 's') + ').') : 'Draft saved.');
   }
 
   function exportMapForge() {
@@ -2655,16 +2860,18 @@
     labelCfg.actsAsNode = true;
     labelCfg.mimicType = job;
     const node = Object.assign({
-      x, y, type: 'label', name, labelConfig: labelCfg,
+      x, y, type: 'label', name, labelConfig: labelCfg, onPath: true,
     }, extra || {});
     if (global.ensureLabelConfig) global.ensureLabelConfig(node);
     node.labelConfig.actsAsNode = true;
     node.labelConfig.uiAction = 'none';
     node.labelConfig.mimicType = job;
     node.labelConfig.text = name;
+    if (node.onPath == null) node.onPath = true;
     if ((job === 'stage' || job === 'boss' || job === 'bonus') && global.ensureNodeEncounter) {
       global.ensureNodeEncounter(node);
     }
+    if (job === 'shop' && !node.shopConfig) node.shopConfig = { useCustomStock: false, offers: [] };
     return node;
   }
 
@@ -2675,12 +2882,12 @@
     pushHistory();
     slice.nodes.length = 0;
     slice.nodes.push(
-      makeLabelJobNode('start', 'Spawn', 768, 850, { stage: 0 }),
-      makeLabelJobNode('stage', 'Stage 1', 768, 720, { terrain: 'Wilds' }),
-      makeLabelJobNode('stage', 'Stage 2', 768, 590, { terrain: 'Wilds' }),
-      makeLabelJobNode('stage', 'Stage 3', 768, 460, { terrain: 'Wilds' }),
-      makeLabelJobNode('boss', 'World Boss', 768, 330, { terrain: 'Boss Arena' }),
-      makeLabelJobNode('return', 'Return Gate', 768, 200),
+      makeLabelJobNode('start', 'Spawn', 768, 850, { stage: 0, pathOrder: 0 }),
+      makeLabelJobNode('stage', 'Stage 1', 768, 720, { terrain: 'Wilds', pathOrder: 1 }),
+      makeLabelJobNode('stage', 'Stage 2', 768, 590, { terrain: 'Wilds', pathOrder: 2 }),
+      makeLabelJobNode('stage', 'Stage 3', 768, 460, { terrain: 'Wilds', pathOrder: 3 }),
+      makeLabelJobNode('boss', 'World Boss', 768, 330, { terrain: 'Boss Arena', pathOrder: 4, mustComplete: true }),
+      makeLabelJobNode('return', 'Return Gate', 768, 200, { pathOrder: 5 }),
     );
     _map = normalizeMap(_map);
     _selectedId = null;
@@ -3024,13 +3231,28 @@
         e.target.value = getNodeTypeSelectValue(n);
       }
     });
-    ['map-forge-node-name', 'map-forge-node-final'].forEach((id) => {
+    ['map-forge-node-name', 'map-forge-node-final', 'map-forge-node-on-path', 'map-forge-node-must-complete', 'map-forge-node-path-order'].forEach((id) => {
       document.getElementById(id)?.addEventListener('change', applyNodeFieldChanges);
     });
     document.getElementById('map-forge-name')?.addEventListener('change', function () {
       if (_map) _map.name = this.value.trim() || 'Untitled Map';
     });
     document.getElementById('map-forge-start-map')?.addEventListener('change', applyStartMapChange);
+    document.getElementById('map-forge-shop-use-custom')?.addEventListener('change', function () {
+      const n = getSelectedNode();
+      if (!n || !isShopLike(n)) return;
+      pushHistory();
+      const cfg = ensureShopConfig(n);
+      cfg.useCustomStock = !!this.checked;
+      syncShopPanel();
+      renderValidationPanel();
+    });
+    document.querySelectorAll('[data-forge-shop-tab]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        _forgeShopCategoryTab = btn.getAttribute('data-forge-shop-tab') || 'all';
+        syncShopPanel();
+      });
+    });
     if (!_autoSaveTimer) {
       _autoSaveTimer = global.setInterval(() => {
         if (!document.getElementById('screen-map-forge')?.classList.contains('active')) return;
@@ -3156,6 +3378,11 @@
     bulkSelectAllStages,
     addWorldTemplate,
     getNodeJob(n) { return getNodeTypeSelectValue(n); },
+    validateMap,
+    saveDraft() { saveMapForgeDraft(); return readDrafts(); },
+    buildExport() { return buildExportPayload(_map); },
+    getValidationIssues,
+    movePathOrder(id, dir) { moveNode(id, dir); },
     filterMatches(n, filter) {
       const job = getNodeTypeSelectValue(n);
       if (filter === 'all') return true;
@@ -3187,6 +3414,10 @@
           actsAsNode: !!(n.labelConfig && n.labelConfig.actsAsNode),
           mimicType: n.labelConfig?.mimicType || null,
           final: !!n.final,
+          pathOrder: n.pathOrder,
+          onPath: n.onPath !== false,
+          mustComplete: !!n.mustComplete,
+          shopConfig: n.shopConfig || null,
           hasBonusConfig: !!n.bonusConfig,
           isBossLike: isBossLike(n),
           isBonusLike: isBonusLike(n),

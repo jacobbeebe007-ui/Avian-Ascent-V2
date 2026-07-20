@@ -420,13 +420,22 @@
 
   global.normalizeOwMapNodes = function (nodes) {
     const list = Array.isArray(nodes) ? nodes.slice() : [];
-    return list.map((n, i) => {
+    const out = list.map((n, i) => {
       const copy = Object.assign({}, n);
       copy.id = i;
       copy.x = Math.round(Number(copy.x) || 0);
       copy.y = Math.round(Number(copy.y) || 0);
       if (copy.type === 'start') copy.stage = 0;
+      if (copy.onPath === false) copy.onPath = false;
+      else if (copy.onPath != null) copy.onPath = !!copy.onPath;
+      if (copy.mustComplete) copy.mustComplete = true;
+      else delete copy.mustComplete;
+      if (copy.shopConfig && typeof copy.shopConfig === 'object') {
+        copy.shopConfig = JSON.parse(JSON.stringify(copy.shopConfig));
+      }
       return copy;
     });
+    if (typeof global.ensureOwPathOrders === 'function') global.ensureOwPathOrders(out);
+    return out;
   };
 })(typeof window !== 'undefined' ? window : globalThis);
