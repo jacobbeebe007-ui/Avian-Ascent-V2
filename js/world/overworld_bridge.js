@@ -16,6 +16,43 @@
     FORGE_CURRENT_ID: 'avian_map_forge_current_id',
     CUSTOM_PROGRESS: 'avian_ow_custom_progress',
     MAP_STACK: 'avian_ow_map_stack',
+    MISSION_MAP_VARIANT: 'avian_mission_map_variant',
+  };
+
+  /** Finch-Burrow Test Map JSON (Mission Map → Test tab). */
+  global.AVIAN_MISSION_TEST_MAP_URL = 'js/data/Finch-Burrow%20Test%20Map.json';
+
+  global.getMissionMapVariant = function () {
+    try {
+      const raw = global.localStorage.getItem(global.AVIAN_OW_KEYS.MISSION_MAP_VARIANT);
+      return raw === 'test' ? 'test' : 'demo';
+    } catch (_) {
+      return 'demo';
+    }
+  };
+
+  global.setMissionMapVariant = function (which) {
+    const v = which === 'test' ? 'test' : 'demo';
+    try {
+      global.localStorage.setItem(global.AVIAN_OW_KEYS.MISSION_MAP_VARIANT, v);
+    } catch (_) {}
+    return v;
+  };
+
+  /**
+   * Fetch the Mission Map Test JSON. Returns a map def or null on failure.
+   * @returns {Promise<object|null>}
+   */
+  global.fetchMissionTestMap = async function () {
+    try {
+      const res = await global.fetch(global.AVIAN_MISSION_TEST_MAP_URL, { cache: 'force-cache' });
+      if (!res.ok) return null;
+      const parsed = await res.json();
+      if (!parsed || !Array.isArray(parsed.nodes) || !parsed.nodes.length) return null;
+      return parsed;
+    } catch (_) {
+      return null;
+    }
   };
 
   function emptyCustomProgress() {

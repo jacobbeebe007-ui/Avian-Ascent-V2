@@ -10,6 +10,8 @@
 :root{--gold:#c8a020;--gold-l:#f0d060;--gold-d:#8a6010;--parch:#d4c090;--mist:#8aaa98;}
 html,body{width:100%;height:100%;overflow:hidden;background:#060d05;}
 #root{width:100vw;height:100vh;display:flex;flex-direction:column;overflow:hidden;outline:none;}
+#ow-map-loading{position:fixed;inset:0;z-index:200;display:flex;align-items:center;justify-content:center;background:#060d05;font-family:'Cinzel',serif;font-size:12px;letter-spacing:3px;color:var(--gold);text-transform:uppercase;}
+#ow-map-loading[hidden]{display:none!important;}
 #hdr{flex-shrink:0;height:52px;z-index:10;position:relative;background:linear-gradient(180deg,#020402,#080c06);border-bottom:1px solid var(--gold-d);display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:12px;padding:0 20px;}
 .hdr-title-wrap{display:flex;align-items:center;justify-self:start;}
 #hdr-hint{justify-self:center;text-align:center;}
@@ -199,6 +201,7 @@ html,body{width:100%;height:100%;overflow:hidden;background:#060d05;}
 </style>
 </head>
 <body>
+<div id="ow-map-loading" hidden>Loading map…</div>
 <div id="root" tabindex="0">
   <header id="hdr">
     <div class="hdr-title-wrap">
@@ -295,19 +298,36 @@ html,body{width:100%;height:100%;overflow:hidden;background:#060d05;}
 <script src="js/world/overworld_bridge.js"></script>
 <script src="js/data/story-map.js"></script>
 <script src="js/world/ow_map_runtime.js"></script>
-<script>
+<script src="js/data/birds.js"></script><script src="js/data/story_enemy_registry.js"></script><script src="js/data/story_milestone_boss_pool.js"></script><script src="js/systems/encounter-generator.js"></script><script src="js/world/ow_enemy_population.js"></script>
+<script type="module">
 const SVG_NS='http://www.w3.org/2000/svg';
 const _URL_PARAMS=new URLSearchParams(location.search);
 const _IS_PLAYTEST=_URL_PARAMS.get('playtest')==='1';
 const _CUSTOM_MAP_RAW=typeof loadCustomOverworldMap==='function'?loadCustomOverworldMap():null;
 const _CUSTOM_MAP=_CUSTOM_MAP_RAW&&typeof upgradeMapToV2==='function'?upgradeMapToV2(_CUSTOM_MAP_RAW):_CUSTOM_MAP_RAW;
-const _USE_CUSTOM=!!(_CUSTOM_MAP&&(typeof isCustomOverworldActive==='function'?isCustomOverworldActive():false));
+const _FORGE_CUSTOM=!!(_CUSTOM_MAP&&(typeof isCustomOverworldActive==='function'?isCustomOverworldActive():false));
 const _STORY_MAP_RAW=typeof cloneDefaultStoryMap==='function'?cloneDefaultStoryMap():null;
 const _STORY_MAP=_STORY_MAP_RAW&&typeof upgradeMapToV2==='function'?upgradeMapToV2(_STORY_MAP_RAW):_STORY_MAP_RAW;
-const _ACTIVE_MAP=_USE_CUSTOM?_CUSTOM_MAP:_STORY_MAP;
+const _MISSION_VARIANT=typeof getMissionMapVariant==='function'?getMissionMapVariant():'demo';
+const _loadEl=document.getElementById('ow-map-loading');
+let _USE_CUSTOM=_FORGE_CUSTOM;
+let _ACTIVE_MAP=_USE_CUSTOM?_CUSTOM_MAP:_STORY_MAP;
+if(!_FORGE_CUSTOM && _MISSION_VARIANT==='test'){
+  if(_loadEl) _loadEl.hidden=false;
+  const testRaw=typeof fetchMissionTestMap==='function'?await fetchMissionTestMap():null;
+  if(_loadEl) _loadEl.hidden=true;
+  if(testRaw){
+    _ACTIVE_MAP=typeof upgradeMapToV2==='function'?upgradeMapToV2(testRaw):testRaw;
+    _USE_CUSTOM=true; // multi-world / path-reveal rules (same as Forge custom)
+  }else{
+    console.error('[overworld] Failed to load Mission Map Test; falling back to Demo.');
+    _ACTIVE_MAP=_STORY_MAP;
+    _USE_CUSTOM=false;
+  }
+}
 const _OW_PROGRESS=typeof readOwCustomProgress==='function'?readOwCustomProgress():{nodeClears:{},worldsCompleted:{},bonusRepeats:{},activeMapId:'main'};
 let _ACTIVE_MAP_ID=typeof getOwActiveMapId==='function'?getOwActiveMapId():'main';
-// Resolve startMapId for Forge/custom maps when progress still points at main on a fresh run
+// Resolve startMapId for Forge/custom/test maps when progress still points at main on a fresh run
 (function reconcileStartMapId(){
   if (_USE_CUSTOM) {
     const mapStart = _ACTIVE_MAP && typeof resolveMapStartMapId==='function'
@@ -1383,9 +1403,7 @@ const pl=document.getElementById('player');pl.style.transition='none';
 })();
 window.addEventListener('resize',()=>applyCamera(false));
 requestAnimationFrame(()=>requestAnimationFrame(()=>{pl.style.transition='left .5s cubic-bezier(.25,.46,.45,.94),top .5s cubic-bezier(.25,.46,.45,.94)';document.getElementById('root').focus();}));
-</script>
-<script src="js/data/birds.js"></script><script src="js/data/story_enemy_registry.js"></script><script src="js/data/story_milestone_boss_pool.js"></script><script src="js/systems/encounter-generator.js"></script><script src="js/world/ow_enemy_population.js"></script>
-<script>
+
 // ── Avian Ascent · Overworld Integration Bootstrap ───────────────────────────
 (function(){
   let save = readOwSaveParsed();

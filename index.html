@@ -258,7 +258,11 @@
 <h3 class="select-hub-panel-title" id="hub-map-title">Mission map</h3>
 <button type="button" class="select-hub-return-btn" data-action="closeSelectHubPanel">← Return to war room</button>
 </header>
-<p class="select-hub-lead">Set difficulty and run mode before you deploy.</p>
+<div class="supplies-subnav" role="tablist" aria-label="Mission map">
+<button type="button" class="supplies-subnav-btn is-active" id="mission-map-nav-demo" role="tab" aria-selected="true" data-action="setMissionMapVariant:demo">Demo</button>
+<button type="button" class="supplies-subnav-btn" id="mission-map-nav-test" role="tab" aria-selected="false" data-action="setMissionMapVariant:test">Test</button>
+</div>
+<p class="select-hub-lead">Choose Demo or Test map, then set difficulty and run mode before you deploy.</p>
 <div class="diff-picker" id="diff-picker"></div>
 <p class="diff-desc" id="diff-desc">Choose your difficulty to begin.</p>
 <div class="endless-row splash-mode-row">

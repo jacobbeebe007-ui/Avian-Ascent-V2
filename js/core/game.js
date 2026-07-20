@@ -6345,6 +6345,8 @@ function startGame() {
           birdKey: G.selected,
         }));
       } else {
+        // Demo + Test (startMapId main): reset world progress and spawn on main node 0.
+        // Test map body is fetched in blackstone_overworld_new.html via mission map variant.
         if (typeof globalThis.resetOwCustomProgress === 'function') globalThis.resetOwCustomProgress();
         if (typeof globalThis.clearOwMapStack === 'function') globalThis.clearOwMapStack();
         if (typeof globalThis.setOwActiveMapId === 'function') globalThis.setOwActiveMapId('main');
@@ -7016,6 +7018,37 @@ function setSuppliesSubView(which){
 }
 globalThis.setSuppliesSubView = setSuppliesSubView;
 
+function syncMissionMapVariantTabs(which){
+  const isTest = which === 'test';
+  const bDemo = document.getElementById('mission-map-nav-demo');
+  const bTest = document.getElementById('mission-map-nav-test');
+  if(bDemo){
+    bDemo.classList.toggle('is-active', !isTest);
+    bDemo.setAttribute('aria-selected', String(!isTest));
+  }
+  if(bTest){
+    bTest.classList.toggle('is-active', isTest);
+    bTest.setAttribute('aria-selected', String(isTest));
+  }
+}
+
+// Bridge defines setMissionMapVariant for persistence; wrap it for Mission Map UI tabs.
+const _bridgePersistMissionMapVariant = typeof globalThis.setMissionMapVariant === 'function'
+  ? globalThis.setMissionMapVariant
+  : null;
+function setMissionMapVariant(which){
+  const v = which === 'test' ? 'test' : 'demo';
+  if(_bridgePersistMissionMapVariant) _bridgePersistMissionMapVariant(v);
+  else {
+    try{ localStorage.setItem('avian_mission_map_variant', v); }catch(_){}
+  }
+  if(typeof globalThis.clearCustomOverworldMode === 'function'){
+    globalThis.clearCustomOverworldMode();
+  }
+  syncMissionMapVariantTabs(v);
+}
+globalThis.setMissionMapVariant = setMissionMapVariant;
+
 function openSelectHubPanel(which){
   const allowed = {supplies:1,map:1,door:1,fortune:1,inventory:1,hatchery:1};
   if(!allowed[which]) return;
@@ -7023,6 +7056,12 @@ function openSelectHubPanel(which){
   const screenEl = document.getElementById('screen-select');
   if(!root || !screenEl) return;
   if(which === 'supplies') setSuppliesSubView('reference');
+  if(which === 'map'){
+    const variant = typeof globalThis.getMissionMapVariant === 'function'
+      ? globalThis.getMissionMapVariant()
+      : 'demo';
+    syncMissionMapVariantTabs(variant);
+  }
   if(which === 'fortune'){
     const msg=document.getElementById('fortune-shop-msg');
     if(msg) msg.textContent='';
