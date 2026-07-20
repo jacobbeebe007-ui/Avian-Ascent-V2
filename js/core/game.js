@@ -7032,11 +7032,13 @@ function syncMissionMapVariantTabs(which){
   }
 }
 
-// Bridge defines setMissionMapVariant for persistence; wrap it for Mission Map UI tabs.
+// Capture bridge persist BEFORE assigning the UI handler.
+// Do not use `function setMissionMapVariant` — classic-script hoisting would
+// overwrite the bridge on globalThis before this const runs (infinite recurse).
 const _bridgePersistMissionMapVariant = typeof globalThis.setMissionMapVariant === 'function'
   ? globalThis.setMissionMapVariant
   : null;
-function setMissionMapVariant(which){
+globalThis.setMissionMapVariant = function setMissionMapVariantUI(which){
   const v = which === 'test' ? 'test' : 'demo';
   if(_bridgePersistMissionMapVariant) _bridgePersistMissionMapVariant(v);
   else {
@@ -7046,8 +7048,7 @@ function setMissionMapVariant(which){
     globalThis.clearCustomOverworldMode();
   }
   syncMissionMapVariantTabs(v);
-}
-globalThis.setMissionMapVariant = setMissionMapVariant;
+};
 
 function openSelectHubPanel(which){
   const allowed = {supplies:1,map:1,door:1,fortune:1,inventory:1,hatchery:1};
