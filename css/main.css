@@ -4749,6 +4749,12 @@ body.ui-mobile-mode #screen-select #mobile-select-details-anchor{display:block;o
 .map-forge-panel-tab.is-active{background:rgba(201,168,76,.14);border-color:var(--gold,#c9a84c);color:var(--gold,#c9a84c);}
 .map-forge-panel-pane{display:none;flex-direction:column;gap:6px;}
 .map-forge-panel-pane.is-active{display:flex;}
+.map-forge-shop-panel{display:flex;flex-direction:column;gap:6px;padding-top:8px;border-top:1px solid rgba(201,168,76,.16);}
+.map-forge-shop-tab-row{justify-content:flex-start;margin:4px 0 8px;}
+.map-forge-shop-stock-list{display:flex;flex-direction:column;gap:4px;max-height:240px;overflow:auto;}
+.map-forge-shop-stock-row{display:flex;align-items:center;gap:8px;font-size:.72rem;color:var(--text-dim);padding:4px 0;}
+.map-forge-shop-stock-row span{flex:1;min-width:0;}
+.map-forge-path-order-field{display:flex;flex-direction:column;gap:4px;}
 .map-forge-clear-reward-card{flex-wrap:wrap;align-items:center;gap:6px;padding:8px;border:1px solid rgba(201,168,76,.14);border-radius:8px;background:rgba(0,0,0,.18);}
 .map-forge-reward-chance{display:inline-flex;align-items:center;gap:2px;font-size:.7rem;color:var(--muted,#a8a090);}
 .map-forge-reward-chance .map-forge-reward-num{width:3.2em;}

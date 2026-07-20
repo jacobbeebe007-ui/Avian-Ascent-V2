@@ -307,6 +307,41 @@
         return Math.max(1, Number(globalThis.G.stage) || 1);
       }
 
+      function resolveCustomShopNode(nodeId) {
+        if (nodeId == null) return null;
+        var map = typeof globalThis.loadCustomOverworldMap === 'function'
+          ? globalThis.loadCustomOverworldMap()
+          : null;
+        if (!map) return null;
+        var mapId = (globalThis.G && globalThis.G._currentShopMapId) || 'main';
+        var nodes = mapId === 'main'
+          ? (map.nodes || [])
+          : ((map.worlds && map.worlds[mapId] && map.worlds[mapId].nodes) || []);
+        return nodes.find(function (n) { return n && Number(n.id) === Number(nodeId); }) || null;
+      }
+
+      function buildCustomShopOffers(shopConfig) {
+        var offers = (shopConfig && Array.isArray(shopConfig.offers)) ? shopConfig.offers : [];
+        var out = [];
+        offers.forEach(function (offer) {
+          if (!offer || offer.id == null) return;
+          var qty = Math.max(1, Math.min(20, Math.floor(Number(offer.qty) || 1)));
+          var base = restoreShopItemById(offer.id);
+          if (!base && offer.itemKey) {
+            var catalog = globalThis.COMBAT_ITEM_CATALOG || {};
+            var def = catalog[offer.itemKey];
+            if (def && typeof globalThis.buildCombatItemShopOffer === 'function') {
+              base = globalThis.buildCombatItemShopOffer(def);
+            }
+          }
+          if (!base) return;
+          for (var i = 0; i < qty; i++) {
+            out.push(Object.assign({}, base));
+          }
+        });
+        return out;
+      }
+
       globalThis.__avianPatchedGenerateShopItems = function () {
         var nodeId = (globalThis.G && globalThis.G._currentShopNodeId) != null ? globalThis.G._currentShopNodeId : null;
         var mode = (globalThis.G && globalThis.G._shopMode) || 'boss';
@@ -323,11 +358,18 @@
           return;
         }
 
-        var items = buildCombatItemOffers();
-        if (Avian.mutations && typeof Avian.mutations.rollMutationStock === 'function') {
-          var mutCount = mode === 'endless-boss' ? 1 : 9;
-          var mutOffers = Avian.mutations.rollMutationStock(mutCount, currentShopStage(), new Set());
-          items.push.apply(items, mutOffers);
+        var items = [];
+        var shopNode = resolveCustomShopNode(nodeId);
+        var shopConfig = shopNode && shopNode.shopConfig;
+        if (shopConfig && shopConfig.useCustomStock) {
+          items = buildCustomShopOffers(shopConfig);
+        } else {
+          items = buildCombatItemOffers();
+          if (Avian.mutations && typeof Avian.mutations.rollMutationStock === 'function') {
+            var mutCount = mode === 'endless-boss' ? 1 : 9;
+            var mutOffers = Avian.mutations.rollMutationStock(mutCount, currentShopStage(), new Set());
+            items.push.apply(items, mutOffers);
+          }
         }
         setShopItems(items);
 

@@ -4882,6 +4882,7 @@ function handleOverworldReturn() {
   }
   if (intent.action === 'shop') {
     G._currentShopNodeId = intent.nodeId ?? null; // persist shop snapshot by node
+    G._currentShopMapId = intent.mapId || 'main';
     setOverworldCurrentNode(intent.nodeId);
     G._pendingOverworldShop = true; // loadStage() will detect this and open shop instead
     try{
@@ -4891,6 +4892,7 @@ function handleOverworldReturn() {
       console.error('handleOverworldReturn shop failed', err);
       G._pendingOverworldShop = false;
       G._currentShopNodeId = null;
+      G._currentShopMapId = null;
       try{ localStorage.setItem(_OW_NAV_KEY, JSON.stringify(intent)); }catch(_){}
       return false;
     }
@@ -16808,8 +16810,20 @@ function shopRefresh() {
 }
 function exitStorkShop() {
   const returningShopNodeId = G._currentShopNodeId;
+  const returningShopMapId = G._currentShopMapId || 'main';
   if (returningShopNodeId != null) setOverworldCurrentNode(returningShopNodeId);
+  if (returningShopNodeId != null && typeof globalThis.markOwNodeCleared === 'function') {
+    try {
+      const map = typeof globalThis.loadCustomOverworldMap === 'function' ? globalThis.loadCustomOverworldMap() : null;
+      const nodes = returningShopMapId === 'main'
+        ? (map?.nodes || [])
+        : (map?.worlds?.[returningShopMapId]?.nodes || []);
+      const shopNode = nodes.find((n) => n && Number(n.id) === Number(returningShopNodeId));
+      if (shopNode?.mustComplete) globalThis.markOwNodeCleared(returningShopMapId, returningShopNodeId);
+    } catch (_) { /* noop */ }
+  }
   G._currentShopNodeId = null;
+  G._currentShopMapId = null;
   // Return to overworld after shopping (story/overworld mode only)
   if (!G.endlessMode && _isOverworldRun()) {
     // Safety net: if stage was never finalized (e.g. boss shop shown mid-overworld), do it now

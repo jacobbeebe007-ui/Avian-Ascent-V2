@@ -171,6 +171,7 @@
 
   global.isOwPathNode = function (n) {
     if (!n) return false;
+    if (n.onPath === false) return false;
     if (n.type === 'label') {
       if (global.getOwMapUiAction(n.labelConfig)) return false;
       return !!(n.labelConfig && n.labelConfig.actsAsNode);
@@ -185,6 +186,161 @@
       if (global.isOwPathNode(arr[i])) out.push(i);
     }
     return out;
+  };
+
+  /** Assign missing pathOrder values from path-node array order (legacy linear maps). */
+  global.ensureOwPathOrders = function (nodes) {
+    const arr = nodes || [];
+    let seq = 0;
+    let maxAssigned = -1;
+    for (let i = 0; i < arr.length; i++) {
+      const n = arr[i];
+      if (!n || !global.isOwPathNode(n)) continue;
+      if (n.pathOrder != null && Number.isFinite(Number(n.pathOrder))) {
+        maxAssigned = Math.max(maxAssigned, Math.floor(Number(n.pathOrder)));
+      }
+    }
+    for (let i = 0; i < arr.length; i++) {
+      const n = arr[i];
+      if (!n) continue;
+      if (!global.isOwPathNode(n)) {
+        if (n.pathOrder == null) n.pathOrder = 0;
+        continue;
+      }
+      if (n.pathOrder == null || !Number.isFinite(Number(n.pathOrder))) {
+        maxAssigned += 1;
+        n.pathOrder = maxAssigned;
+      } else {
+        n.pathOrder = Math.floor(Number(n.pathOrder));
+      }
+      seq = Math.max(seq, n.pathOrder);
+    }
+    return seq;
+  };
+
+  global.getOwNodePathOrder = function (n) {
+    if (!n) return 0;
+    const v = Math.floor(Number(n.pathOrder));
+    return Number.isFinite(v) ? v : 0;
+  };
+
+  /**
+   * Build proximity edges between consecutive pathOrder layers.
+   * Returns [{ from, to }] using node ids.
+   */
+  global.buildOwPathEdges = function (nodes) {
+    const arr = nodes || [];
+    global.ensureOwPathOrders(arr);
+    const byOrder = new Map();
+    for (let i = 0; i < arr.length; i++) {
+      const n = arr[i];
+      if (!global.isOwPathNode(n)) continue;
+      const ord = global.getOwNodePathOrder(n);
+      if (!byOrder.has(ord)) byOrder.set(ord, []);
+      byOrder.get(ord).push(n);
+    }
+    const orders = Array.from(byOrder.keys()).sort((a, b) => a - b);
+    const edges = [];
+    const edgeKey = (a, b) => String(a) + '>' + String(b);
+    const seen = new Set();
+
+    function addEdge(fromId, toId) {
+      const k = edgeKey(fromId, toId);
+      if (seen.has(k)) return;
+      seen.add(k);
+      edges.push({ from: fromId, to: toId });
+    }
+
+    function dist2(a, b) {
+      const dx = (Number(a.x) || 0) - (Number(b.x) || 0);
+      const dy = (Number(a.y) || 0) - (Number(b.y) || 0);
+      return dx * dx + dy * dy;
+    }
+
+    for (let oi = 0; oi < orders.length - 1; oi++) {
+      const parents = byOrder.get(orders[oi]) || [];
+      const children = byOrder.get(orders[oi + 1]) || [];
+      if (!parents.length || !children.length) continue;
+
+      const childHasParent = children.map(() => false);
+      for (let p = 0; p < parents.length; p++) {
+        const parent = parents[p];
+        let best = 0;
+        let bestD = Infinity;
+        for (let c = 0; c < children.length; c++) {
+          const d = dist2(parent, children[c]);
+          if (d < bestD) { bestD = d; best = c; }
+        }
+        addEdge(parent.id, children[best].id);
+        childHasParent[best] = true;
+        if (children.length > 1) {
+          let second = -1;
+          let secondD = Infinity;
+          for (let c = 0; c < children.length; c++) {
+            if (c === best) continue;
+            const d = dist2(parent, children[c]);
+            if (d < secondD) { secondD = d; second = c; }
+          }
+          if (second >= 0 && secondD <= bestD * 2.25) {
+            addEdge(parent.id, children[second].id);
+            childHasParent[second] = true;
+          }
+        }
+      }
+      for (let c = 0; c < children.length; c++) {
+        if (childHasParent[c]) continue;
+        let nearest = 0;
+        let nearestD = Infinity;
+        for (let p = 0; p < parents.length; p++) {
+          const d = dist2(parents[p], children[c]);
+          if (d < nearestD) { nearestD = d; nearest = p; }
+        }
+        addEdge(parents[nearest].id, children[c].id);
+      }
+    }
+    return edges;
+  };
+
+  global.getOwPathParentIds = function (nodes, nodeId) {
+    const edges = global.buildOwPathEdges(nodes);
+    const id = Math.max(0, Math.floor(Number(nodeId) || 0));
+    return edges.filter((e) => e.to === id).map((e) => e.from);
+  };
+
+  global.getOwPathChildIds = function (nodes, nodeId) {
+    const edges = global.buildOwPathEdges(nodes);
+    const id = Math.max(0, Math.floor(Number(nodeId) || 0));
+    return edges.filter((e) => e.from === id).map((e) => e.to);
+  };
+
+  global.isOwPathEdgeRevealed = function (nodes, edge, progress, mapId, mapDef, pathReveal) {
+    if (!pathReveal) return true;
+    if (!edge) return true;
+    const arr = nodes || [];
+    const from = arr.find((n) => n && n.id === edge.from) || arr[edge.from];
+    if (!from) return true;
+    return global.isOwSegmentSourceCleared(from, progress, mapId, mapDef);
+  };
+
+  /** True when every mustComplete node on the slice is cleared (or none marked). */
+  global.areOwMustCompleteNodesCleared = function (nodes, mapId, progress) {
+    const arr = nodes || [];
+    const required = arr.filter((n) => n && n.mustComplete);
+    if (!required.length) return true;
+    const prog = progress || {};
+    return required.every((n) => {
+      const eff = global.getOwEffectiveNodeType(n) || n.type;
+      if (global.isOwSpawnNode(n) || eff === 'start') return true;
+      const key = global.owNodeKey(mapId, n.id);
+      if (prog.nodeClears && prog.nodeClears[key]) return true;
+      if (eff === 'world' && n.worldId && prog.worldsCompleted && prog.worldsCompleted[n.worldId]) return true;
+      return false;
+    });
+  };
+
+  /** Return gate is hidden until must-complete nodes are done. */
+  global.isOwReturnGateVisible = function (nodes, mapId, progress) {
+    return global.areOwMustCompleteNodesCleared(nodes, mapId, progress);
   };
 
   global.getOwEffectiveNodeType = function (n) {
@@ -352,10 +508,11 @@
     const prog = progress || {};
     const key = global.owNodeKey(mapId, node.id);
     if (prog.nodeClears && prog.nodeClears[key]) return true;
-    if (node.type === 'world' && node.worldId && prog.worldsCompleted && prog.worldsCompleted[node.worldId]) {
+    const eff = global.getOwEffectiveNodeType(node) || node.type;
+    if (eff === 'world' && node.worldId && prog.worldsCompleted && prog.worldsCompleted[node.worldId]) {
       return true;
     }
-    if (node.type === 'return') {
+    if (eff === 'return') {
       const wid = mapDef?.worldId || mapId;
       return !!(prog.worldsCompleted && prog.worldsCompleted[wid]);
     }
@@ -365,13 +522,18 @@
   global.isPathSegmentRevealed = function (nodes, segmentIndex, progress, mapId, mapDef, pathReveal) {
     if (!pathReveal) return true;
     const arr = nodes || [];
-    const pathIdx = global.getPathNodeIndices(arr);
+    const edges = global.buildOwPathEdges(arr);
     const i = Math.max(0, Math.floor(Number(segmentIndex) || 0));
-    if (i <= 0) return true;
-    const nodeIdx = pathIdx[i];
-    if (nodeIdx == null) return true;
-    const source = arr[nodeIdx];
-    return global.isOwSegmentSourceCleared(source, progress, mapId, mapDef);
+    if (!edges.length) {
+      const pathIdx = global.getPathNodeIndices(arr);
+      if (i <= 0) return true;
+      const nodeIdx = pathIdx[i];
+      if (nodeIdx == null) return true;
+      return global.isOwSegmentSourceCleared(arr[nodeIdx], progress, mapId, mapDef);
+    }
+    const edge = edges[i];
+    if (!edge) return true;
+    return global.isOwPathEdgeRevealed(arr, edge, progress, mapId, mapDef, pathReveal);
   };
 
   global.isNodeVisibleOnMap = function (nodes, nodeIndex, progress, mapId, mapDef, pathReveal) {
@@ -380,13 +542,18 @@
     const idx = Math.max(0, Math.floor(Number(nodeIndex) || 0));
     const node = arr[idx];
     if (!node) return false;
+    const eff = global.getOwEffectiveNodeType(node) || node.type;
+    if (eff === 'return' && !global.isOwReturnGateVisible(arr, mapId, progress)) return false;
     if (node.type === 'label' && !(node.labelConfig && node.labelConfig.actsAsNode)) return true;
     if (global.isOwSpawnNode(node)) return true;
     if (global.isOwSegmentSourceCleared(node, progress, mapId, mapDef)) return true;
-    const pathIdx = global.getPathNodeIndices(arr);
-    const pathPos = pathIdx.indexOf(idx);
-    if (pathPos < 0) return true;
-    return global.isPathSegmentRevealed(arr, pathPos, progress, mapId, mapDef, pathReveal);
+    if (!global.isOwPathNode(node)) return true;
+    const parents = global.getOwPathParentIds(arr, node.id);
+    if (!parents.length) return true;
+    return parents.some((pid) => {
+      const parent = arr.find((n) => n && n.id === pid) || arr[pid];
+      return global.isOwSegmentSourceCleared(parent, progress, mapId, mapDef);
+    });
   };
 
   global.resolveMapStartMapId = function (map) {
@@ -450,6 +617,7 @@
         if (!Array.isArray(n.clearRewards)) n.clearRewards = [];
       }
     });
+    global.ensureOwPathOrders(m.nodes);
     Object.keys(m.worlds).forEach((wid) => {
       const w = m.worlds[wid];
       if (w?.nodes) {
@@ -468,6 +636,7 @@
             if (!Array.isArray(n.clearRewards)) n.clearRewards = [];
           }
         });
+        global.ensureOwPathOrders(w.nodes);
       }
       global.recomputeWorldSubStages(w);
     });
@@ -759,31 +928,37 @@
 
   global.collectMapValidationIssues = function (map) {
     const issues = [];
-    const add = (severity, message, mapId, nodeId) => issues.push({ severity, message, mapId: mapId || 'main', nodeId: nodeId ?? null });
+    // Guidelines only — nothing here blocks save/export/playtest.
+    const add = (severity, message, mapId, nodeId) => issues.push({
+      severity: severity === 'error' ? 'warning' : severity,
+      message,
+      mapId: mapId || 'main',
+      nodeId: nodeId ?? null,
+    });
 
     const nodes = map?.nodes || [];
     const effType = (n) => (global.getOwEffectiveNodeType ? global.getOwEffectiveNodeType(n) : n?.type) || '';
-    if (!nodes.length) add('error', 'Add at least one node.');
+    if (!nodes.length) add('warning', 'Add at least one node.');
     const mainSpawns = nodes.filter((n) => global.isOwSpawnNode(n)).length;
-    if (mainSpawns === 0) add('error', 'Add a Spawn node (place a Label, then set Node type to Spawn).');
-    else if (mainSpawns > 1) add('error', 'Exactly one Spawn node required on the main map.');
+    if (mainSpawns === 0) add('warning', 'Add a Spawn node (place a Label, then set Node type to Spawn).');
+    else if (mainSpawns > 1) add('warning', 'Exactly one Spawn node recommended on the main map.');
     if (!nodes.some((n) => {
       const t = effType(n);
       return t === 'stage' || t === 'boss';
-    })) add('error', 'Add at least one Stage or Boss.');
-    if (!map?.backgroundDataUrl) add('error', 'Upload a main map background image.');
+    })) add('warning', 'Add at least one Stage or Boss.');
+    if (!map?.backgroundDataUrl) add('warning', 'Upload a main map background image.');
 
     const worldIdsUsed = new Set(
       nodes.filter((n) => effType(n) === 'world' && n.worldId).map((n) => n.worldId)
     );
     const startMapId = String(map?.startMapId || 'main');
     Object.keys(map?.worlds || {}).forEach((wid) => {
-      if (!worldIdsUsed.has(wid) && wid !== startMapId) add('error', 'Orphaned world data: ' + wid, 'main', null);
+      if (!worldIdsUsed.has(wid) && wid !== startMapId) add('warning', 'Orphaned world data: ' + wid, 'main', null);
     });
     if (startMapId !== 'main') {
       const wn = map?.worlds?.[startMapId]?.nodes || [];
-      if (!map?.worlds?.[startMapId]) add('error', 'startMapId "' + startMapId + '" does not exist.');
-      else if (!wn.some((n) => global.isOwSpawnNode(n))) add('error', 'Start map needs a Spawn node.', startMapId, null);
+      if (!map?.worlds?.[startMapId]) add('warning', 'startMapId "' + startMapId + '" does not exist.');
+      else if (!wn.some((n) => global.isOwSpawnNode(n))) add('warning', 'Start map needs a Spawn node.', startMapId, null);
     }
 
     if (!nodes.some((n) => effType(n) === 'boss' && n.final)) add('warning', 'No final boss marked on main map.');
@@ -835,10 +1010,17 @@
       if (!wn.some((n) => global.isOwSpawnNode(n))) add('warning', 'World "' + (w.name || wid) + '" missing Spawn node.', wid, null);
       if (!wn.some((n) => effType(n) === 'return')) add('warning', 'World "' + (w.name || wid) + '" missing return gate.', wid, null);
       if (!wn.some((n) => effType(n) === 'boss')) add('warning', 'World "' + (w.name || wid) + '" missing boss.', wid, null);
-      const bossIdx = wn.findIndex((n) => effType(n) === 'boss');
-      const retIdx = wn.findIndex((n) => effType(n) === 'return');
-      if (bossIdx >= 0 && retIdx >= 0 && retIdx <= bossIdx) {
-        add('warning', 'Return gate should come after boss in path order.', wid, wn[retIdx]?.id);
+      const hasReturn = wn.some((n) => effType(n) === 'return');
+      const hasMust = wn.some((n) => n && n.mustComplete);
+      const hasBoss = wn.some((n) => effType(n) === 'boss');
+      if (hasReturn && !hasMust && !hasBoss) {
+        add('warning', 'World "' + (w.name || wid) + '" has a Return Gate with no Must-complete nodes or boss.', wid, null);
+      }
+      const bossOrders = wn.filter((n) => effType(n) === 'boss').map((n) => global.getOwNodePathOrder(n));
+      const retOrders = wn.filter((n) => effType(n) === 'return').map((n) => global.getOwNodePathOrder(n));
+      if (bossOrders.length && retOrders.length && Math.min(...retOrders) <= Math.min(...bossOrders)) {
+        const retNode = wn.find((n) => effType(n) === 'return');
+        add('warning', 'Return gate should come after boss in path order.', wid, retNode?.id);
       }
     });
 

@@ -394,6 +394,7 @@
 <div class="map-forge-panel-tabs" role="tablist" aria-label="Forge sidebar panels">
 <button type="button" class="map-forge-panel-tab is-active" data-forge-panel-tab="node" role="tab" aria-selected="true">Node</button>
 <button type="button" class="map-forge-panel-tab" data-forge-panel-tab="rewards" role="tab" aria-selected="false">Rewards</button>
+<button type="button" class="map-forge-panel-tab" data-forge-panel-tab="shop" role="tab" aria-selected="false">Shop</button>
 </div>
 <div class="map-forge-panel-pane is-active" id="map-forge-panel-node" data-forge-panel="node" role="tabpanel">
 <div class="map-forge-node-editor" id="map-forge-node-editor">
@@ -420,6 +421,12 @@
 <label class="map-forge-field-label" for="map-forge-portrait-bird">Portrait bird</label>
 <select class="map-forge-field-input" id="map-forge-portrait-bird"></select>
 <label class="map-forge-field-check"><input type="checkbox" id="map-forge-node-final"/> Final boss</label>
+<label class="map-forge-field-check"><input type="checkbox" id="map-forge-node-on-path" checked/> On path</label>
+<label class="map-forge-field-check"><input type="checkbox" id="map-forge-node-must-complete"/> Must complete (blocks Return Gate)</label>
+<div class="map-forge-path-order-field">
+<label class="map-forge-field-label" for="map-forge-node-path-order">Path order (same order = split)</label>
+<input type="number" class="map-forge-field-input" id="map-forge-node-path-order" min="0" max="999" step="1" value="0"/>
+</div>
 <div class="map-forge-label-panel" id="map-forge-label-panel" style="display:none">
 <div class="map-forge-field-label">Label appearance</div>
 <div id="map-forge-label-ui-wrap">
@@ -519,6 +526,21 @@
 </select>
 <button type="button" class="menu-btn" id="map-forge-add-reward">Add reward</button>
 </div>
+</div>
+</div>
+</div>
+<div class="map-forge-panel-pane" id="map-forge-panel-shop" data-forge-panel="shop" role="tabpanel" hidden>
+<div class="map-forge-shop-panel" id="map-forge-shop-panel">
+<div class="map-forge-field-label">Shop stock</div>
+<p class="map-forge-hint" id="map-forge-shop-empty">Select a Shop node to choose what is sold and how many.</p>
+<div id="map-forge-shop-editor" style="display:none">
+<label class="map-forge-field-check"><input type="checkbox" id="map-forge-shop-use-custom"/> Use custom stock (otherwise random)</label>
+<div class="map-forge-shop-tab-row shop-tab-row" role="tablist" aria-label="Shop stock categories">
+<button type="button" class="map-forge-shop-tab shop-tab active is-active" data-forge-shop-tab="all">All</button>
+<button type="button" class="map-forge-shop-tab shop-tab" data-forge-shop-tab="items">Items</button>
+<button type="button" class="map-forge-shop-tab shop-tab" data-forge-shop-tab="mutations">Mutations</button>
+</div>
+<div id="map-forge-shop-stock-list" class="map-forge-shop-stock-list"></div>
 </div>
 </div>
 </div>
