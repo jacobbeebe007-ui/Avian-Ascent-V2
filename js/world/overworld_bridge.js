@@ -17,10 +17,15 @@
     CUSTOM_PROGRESS: 'avian_ow_custom_progress',
     MAP_STACK: 'avian_ow_map_stack',
     MISSION_MAP_VARIANT: 'avian_mission_map_variant',
+    MISSION_TEST_MAP_ID: 'avian_mission_test_map_id',
   };
 
-  /** Finch-Burrow Test Map JSON (Mission Map → Test tab). */
-  global.AVIAN_MISSION_TEST_MAP_URL = 'js/data/Finch-Burrow%20Test%20Map.json';
+  /** Mission Map test catalog manifest (Mission Map → Test tab). */
+  global.AVIAN_MISSION_TEST_MAP_MANIFEST_URL = 'js/data/maps/manifest.json';
+  global.AVIAN_MISSION_TEST_MAP_BASE_URL = 'js/data/maps/';
+
+  /** @type {Array<{id:string,name:string,file:string}>|null} */
+  let _missionTestCatalogCache = null;
 
   global.getMissionMapVariant = function () {
     try {
@@ -39,13 +44,64 @@
     return v;
   };
 
+  global.getMissionTestMapId = function () {
+    try {
+      const raw = global.localStorage.getItem(global.AVIAN_OW_KEYS.MISSION_TEST_MAP_ID);
+      return raw ? String(raw) : '';
+    } catch (_) {
+      return '';
+    }
+  };
+
+  global.setMissionTestMapId = function (id) {
+    const v = String(id || '').trim();
+    try {
+      if (v) global.localStorage.setItem(global.AVIAN_OW_KEYS.MISSION_TEST_MAP_ID, v);
+      else global.localStorage.removeItem(global.AVIAN_OW_KEYS.MISSION_TEST_MAP_ID);
+    } catch (_) {}
+    return v;
+  };
+
   /**
-   * Fetch the Mission Map Test JSON. Returns a map def or null on failure.
+   * Fetch the Mission Map test catalog manifest.
+   * @returns {Promise<Array<{id:string,name:string,file:string}>>}
+   */
+  global.fetchMissionTestMapCatalog = async function () {
+    if (_missionTestCatalogCache) return _missionTestCatalogCache.slice();
+    try {
+      const res = await global.fetch(global.AVIAN_MISSION_TEST_MAP_MANIFEST_URL, { cache: 'no-store' });
+      if (!res.ok) return [];
+      const parsed = await res.json();
+      const list = Array.isArray(parsed) ? parsed.filter((e) => e && e.id && e.file) : [];
+      _missionTestCatalogCache = list;
+      return list.slice();
+    } catch (_) {
+      return [];
+    }
+  };
+
+  global.resolveMissionTestMapEntry = function (catalog, mapId) {
+    const list = Array.isArray(catalog) ? catalog : [];
+    const id = String(mapId || global.getMissionTestMapId() || '').trim();
+    if (id) {
+      const hit = list.find((e) => e && e.id === id);
+      if (hit) return hit;
+    }
+    return list[0] || null;
+  };
+
+  /**
+   * Fetch the selected Mission Map Test JSON. Returns a map def or null on failure.
    * @returns {Promise<object|null>}
    */
   global.fetchMissionTestMap = async function () {
     try {
-      const res = await global.fetch(global.AVIAN_MISSION_TEST_MAP_URL, { cache: 'force-cache' });
+      const catalog = await global.fetchMissionTestMapCatalog();
+      const entry = global.resolveMissionTestMapEntry(catalog);
+      if (!entry) return null;
+      if (!global.getMissionTestMapId()) global.setMissionTestMapId(entry.id);
+      const url = global.AVIAN_MISSION_TEST_MAP_BASE_URL + encodeURIComponent(entry.file).replace(/%2F/g, '/');
+      const res = await global.fetch(url, { cache: 'no-store' });
       if (!res.ok) return null;
       const parsed = await res.json();
       if (!parsed || !Array.isArray(parsed.nodes) || !parsed.nodes.length) return null;
@@ -297,11 +353,13 @@
   };
 
   global.loadCustomOverworldMap = function () {
+    if (global.__AVIAN_CUSTOM_MAP_CACHE) return global.__AVIAN_CUSTOM_MAP_CACHE;
     try {
       const raw = global.localStorage.getItem(global.AVIAN_OW_KEYS.CUSTOM_MAP);
       if (!raw) return null;
       const parsed = JSON.parse(raw);
       if (!parsed || !Array.isArray(parsed.nodes) || !parsed.nodes.length) return null;
+      global.__AVIAN_CUSTOM_MAP_CACHE = parsed;
       return parsed;
     } catch (_) {
       return null;
@@ -332,11 +390,16 @@
   };
 
   global.persistCustomOverworldMap = function (mapDef) {
+    if (!mapDef || !Array.isArray(mapDef.nodes) || !mapDef.nodes.length) return false;
+    global.__AVIAN_CUSTOM_MAP_CACHE = mapDef;
+    if (typeof global.persistCustomOverworldMapAsync === 'function') {
+      global.persistCustomOverworldMapAsync(mapDef).catch(function () {});
+    }
     try {
       global.localStorage.setItem(global.AVIAN_OW_KEYS.CUSTOM_MAP, JSON.stringify(mapDef));
       return true;
     } catch (_) {
-      return false;
+      return !!global.__AVIAN_CUSTOM_MAP_CACHE;
     }
   };
 

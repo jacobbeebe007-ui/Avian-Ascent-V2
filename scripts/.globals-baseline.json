@@ -23,6 +23,7 @@
   "doAttack",
   "enemyTurn",
   "executeEnemyAction",
+  "onMissionTestMapChange",
   "playerAction",
   "refreshShopUI",
   "shopBuySelected",

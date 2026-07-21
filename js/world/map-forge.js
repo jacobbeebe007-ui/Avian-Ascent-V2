@@ -10,6 +10,8 @@
   const DRAFTS_KEY = KEYS.FORGE_DRAFTS || 'avian_map_forge_drafts';
   const CURRENT_ID_KEY = KEYS.FORGE_CURRENT_ID || 'avian_map_forge_current_id';
   const SVG_NS = 'http://www.w3.org/2000/svg';
+  /** @type {Array<object>|null} */
+  let _draftsCache = null;
 
   const NVC = {
     start: { ring: '#60883a', glow: 'rgba(96,136,58,.3)', r: 22 },
@@ -172,7 +174,7 @@
     return { mapId: _editContext, nodes: w.nodes, backgroundDataUrl: w.backgroundDataUrl, worldIndex: w.worldIndex };
   }
 
-  function readDrafts() {
+  function readDraftsLegacy() {
     try {
       const raw = global.localStorage.getItem(DRAFTS_KEY);
       const parsed = JSON.parse(raw || '[]');
@@ -180,9 +182,54 @@
     } catch (_) { return []; }
   }
 
-  function writeDrafts(list) {
+  function readDrafts() {
+    if (Array.isArray(_draftsCache)) return _draftsCache;
+    return readDraftsLegacy();
+  }
+
+  async function hydrateDraftsCache() {
+    if (typeof global.migrateMapForgeStorageAsync === 'function') {
+      await global.migrateMapForgeStorageAsync();
+    }
+    if (typeof global.readForgeDraftsAsync === 'function') {
+      _draftsCache = await global.readForgeDraftsAsync();
+    } else {
+      _draftsCache = readDraftsLegacy();
+    }
+    return _draftsCache;
+  }
+
+  function writeDraftsLegacy(list) {
     try { global.localStorage.setItem(DRAFTS_KEY, JSON.stringify(list)); return true; }
     catch (_) { setStatus('Could not save draft - storage may be full.', true); return false; }
+  }
+
+  async function persistDraftPayload(payload) {
+    if (typeof global.writeForgeDraftAsync === 'function') {
+      const ok = await global.writeForgeDraftAsync(payload);
+      if (!ok) {
+        setStatus('Could not save draft - storage may be full.', true);
+        return false;
+      }
+      const drafts = readDrafts().slice();
+      const idx = drafts.findIndex((d) => d.id === payload.id);
+      if (idx >= 0) drafts[idx] = payload; else drafts.push(payload);
+      _draftsCache = drafts;
+      return true;
+    }
+    const drafts = readDrafts().slice();
+    const idx = drafts.findIndex((d) => d.id === payload.id);
+    if (idx >= 0) drafts[idx] = payload; else drafts.push(payload);
+    if (!writeDraftsLegacy(drafts)) return false;
+    _draftsCache = drafts;
+    return true;
+  }
+
+  async function persistCustomMapForRun(payload) {
+    if (typeof global.persistCustomOverworldMapAsync === 'function') {
+      return global.persistCustomOverworldMapAsync(payload);
+    }
+    return !!global.persistCustomOverworldMap && global.persistCustomOverworldMap(payload);
   }
 
   function getCurrentDraftId() {
@@ -2594,7 +2641,7 @@
     }
   }
 
-  function saveMapForgeDraft() {
+  async function saveMapForgeDraft() {
     if (!_map) return;
     applyNodeFieldChanges();
     const nameEl = document.getElementById('map-forge-name');
@@ -2602,10 +2649,7 @@
     const err = validateMap(_map);
     if (err) { setStatus('Cannot save: ' + err, true); return; }
     const payload = buildExportPayload(_map);
-    const drafts = readDrafts();
-    const idx = drafts.findIndex((d) => d.id === payload.id);
-    if (idx >= 0) drafts[idx] = payload; else drafts.push(payload);
-    if (!writeDrafts(drafts)) return;
+    if (!(await persistDraftPayload(payload))) return;
     setCurrentDraftId(payload.id);
     _map = payload;
     renderDraftSelect();
@@ -2641,27 +2685,27 @@
     reader.readAsText(file);
   }
 
-  function playtestMapForge() {
+  async function playtestMapForge() {
     applyNodeFieldChanges();
     const nameEl = document.getElementById('map-forge-name');
     if (nameEl) _map.name = nameEl.value.trim() || 'Untitled Map';
     const err = validateMap(_map);
     if (err) { setStatus(err, true); return; }
     const payload = buildExportPayload(_map);
-    if (!global.persistCustomOverworldMap(payload)) { setStatus('Could not store map for playtest.', true); return; }
+    if (!(await persistCustomMapForRun(payload))) { setStatus('Could not store map for playtest.', true); return; }
     if (global.setCustomOverworldMode) global.setCustomOverworldMode('playtest');
     seedRunProgressToStart(payload);
     global.location.href = 'blackstone_overworld_new.html?playtest=1';
   }
 
-  function activateMapForNextRun() {
+  async function activateMapForNextRun() {
     applyNodeFieldChanges();
     const nameEl = document.getElementById('map-forge-name');
     if (nameEl) _map.name = nameEl.value.trim() || 'Untitled Map';
     const err = validateMap(_map);
     if (err) { setStatus(err, true); return false; }
     const payload = buildExportPayload(_map);
-    if (!global.persistCustomOverworldMap(payload)) { setStatus('Could not activate map.', true); return false; }
+    if (!(await persistCustomMapForRun(payload))) { setStatus('Could not activate map.', true); return false; }
     if (global.setCustomOverworldMode) global.setCustomOverworldMode('run');
     seedRunProgressToStart(payload);
     setStatus('Map active for your next story run (starts on ' + resolveMapStartMapId(payload) + ').');
@@ -2911,7 +2955,7 @@
     } catch (_) {}
   }
 
-  function playtestFromSelectedNode() {
+  async function playtestFromSelectedNode() {
     if (_selectedId == null) { setStatus('Select a node to playtest from.', true); return; }
     applyNodeFieldChanges();
     const slice = getEditingSlice();
@@ -2922,7 +2966,7 @@
     const err = validateMap(_map);
     if (err) { setStatus(err, true); return; }
     const payload = buildExportPayload(_map);
-    if (!global.persistCustomOverworldMap(payload)) { setStatus('Could not store map.', true); return; }
+    if (!(await persistCustomMapForRun(payload))) { setStatus('Could not store map.', true); return; }
     if (global.setCustomOverworldMode) global.setCustomOverworldMode('playtest');
     if (global.clearOwMapStack) global.clearOwMapStack();
     seedPlaytestProgress(idx, slice.mapId);
@@ -2931,7 +2975,7 @@
     global.location.href = 'blackstone_overworld_new.html?playtest=1';
   }
 
-  function fightMapForgeNode() {
+  async function fightMapForgeNode() {
     const n = getSelectedNode();
     if (!n || !global.isForgeCombatNode(n)) { setStatus('Select a combat node.', true); return; }
     applyNodeFieldChanges();
@@ -2954,7 +2998,7 @@
       });
     }
     markSavedFingerprint();
-    saveMapForgeDraft();
+    await saveMapForgeDraft();
     global.location.href = 'index.html';
   }
 
@@ -3290,18 +3334,20 @@
   function mapForgeZoom100() { _zoom = 1; _panX = 0; _panY = 0; applyCanvasTransform(); renderMinimap(); }
   function mapForgeZoom200() { _zoom = 2; applyCanvasTransform(); renderMinimap(); }
 
-  function initMapForge() {
+  async function initMapForge() {
     wireMapForge();
     populateForgeSelects();
+    await hydrateDraftsCache();
     const curId = getCurrentDraftId();
     const draft = curId ? readDrafts().find((d) => d.id === curId) : null;
     loadMap(draft || createEmptyMap());
     if (curId && draft) setCurrentDraftId(curId);
     setTool('select');
     mapForgeZoomFit();
+    renderDraftSelect();
   }
 
-  function openMapForge(opts) {
+  async function openMapForge(opts) {
     if (global.isBuildNestUnlocked && !global.isBuildNestUnlocked()) {
       const msg = 'Build Nest is locked. Enter the unlock code on the war room first.';
       setStatus(msg, true);
@@ -3316,7 +3362,7 @@
         refreshForgeUI();
         return;
       }
-      initMapForge();
+      await initMapForge();
     } catch (err) {
       reportForgeError('Failed to open Map Forge', err);
     }

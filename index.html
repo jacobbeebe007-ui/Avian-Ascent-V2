@@ -262,6 +262,10 @@
 <button type="button" class="supplies-subnav-btn is-active" id="mission-map-nav-demo" role="tab" aria-selected="true" data-action="setMissionMapVariant:demo">Demo</button>
 <button type="button" class="supplies-subnav-btn" id="mission-map-nav-test" role="tab" aria-selected="false" data-action="setMissionMapVariant:test">Test</button>
 </div>
+<div class="mission-test-map-wrap" id="mission-test-map-wrap" hidden>
+<label class="mission-test-map-label" for="mission-test-map-select">Test map</label>
+<select class="mission-test-map-select map-forge-draft-select" id="mission-test-map-select" data-change="onMissionTestMapChange"></select>
+</div>
 <p class="select-hub-lead">Choose Demo or Test map, then set difficulty and run mode before you deploy.</p>
 <div class="diff-picker" id="diff-picker"></div>
 <p class="diff-desc" id="diff-desc">Choose your difficulty to begin.</p>
@@ -278,6 +282,7 @@
     <div class="sfsel__title-block">
       <h2 class="sfsel__title" id="hub-door-title">Character Select</h2>
       <p class="sfsel__subtitle">Pick a bird, review stats and card tier, then Take Flight.</p>
+      <span class="mission-test-map-readout" id="mission-test-map-label" hidden></span>
     </div>
     <div class="sfsel__filters">
       <div class="sfsel__filter-wrap">

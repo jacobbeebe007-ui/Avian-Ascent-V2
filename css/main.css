@@ -4647,6 +4647,21 @@ body.ui-mobile-mode #screen-select #mobile-select-details-anchor{display:block;o
   width:100%;
 }
 .map-forge-name-label{font-size:.72rem;color:var(--text-dim);}
+.mission-test-map-wrap{
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+  margin:0 0 12px;
+}
+.mission-test-map-label{font-size:.72rem;color:var(--text-dim);}
+.mission-test-map-select{max-width:320px;}
+.mission-test-map-readout{
+  display:block;
+  margin-top:4px;
+  font-size:.78rem;
+  color:var(--gold-light,#c9a84c);
+  letter-spacing:.03em;
+}
 .map-forge-name-input,.map-forge-draft-select{
   background:rgba(8,10,14,.85);
   border:1px solid rgba(201,168,76,.35);

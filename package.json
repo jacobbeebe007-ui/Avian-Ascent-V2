@@ -20,6 +20,7 @@
     "gen:ability-tree": "node scripts/build-ability-family-tree.js",
     "import-mutations": "node scripts/import-mutation-gear-workbook.mjs",
     "import-master-bird": "node scripts/import-master-bird-content.mjs",
+    "import-test-map": "node scripts/import-test-map.mjs",
     "verify-roster": "node scripts/verify-enemy-roster.mjs && node scripts/verify-story-level-bands.mjs && node scripts/verify-encounter-generator.mjs"
   },
   "devDependencies": {

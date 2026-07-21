@@ -6233,6 +6233,47 @@ function buildCombatItemShopOffer(def){
 // ============================================================
 //  GAME FLOW
 // ============================================================
+async function launchStoryOverworld(){
+  try {
+    const mode = typeof globalThis.getCustomOverworldMode === 'function'
+      ? globalThis.getCustomOverworldMode() : null;
+    if (mode === 'playtest' && typeof globalThis.clearCustomOverworldMode === 'function') {
+      globalThis.clearCustomOverworldMode();
+    }
+    const useCustom = typeof globalThis.isCustomOverworldActive === 'function'
+      && globalThis.isCustomOverworldActive();
+    let owMap = null;
+    if (useCustom) {
+      owMap = globalThis.__AVIAN_CUSTOM_MAP_CACHE || null;
+      if (!owMap && typeof globalThis.loadCustomOverworldMap === 'function') {
+        owMap = globalThis.loadCustomOverworldMap();
+      }
+      if (!owMap && typeof globalThis.loadCustomOverworldMapAsync === 'function') {
+        owMap = await globalThis.loadCustomOverworldMapAsync();
+      }
+    }
+    if (!owMap && typeof globalThis.cloneDefaultStoryMap === 'function') {
+      owMap = globalThis.cloneDefaultStoryMap();
+    }
+    if (useCustom && owMap && typeof globalThis.seedOwRunToStartMap === 'function') {
+      const seeded = globalThis.seedOwRunToStartMap(owMap);
+      localStorage.setItem(_OW_STATE_KEY, JSON.stringify({
+        nodeId: seeded?.spawnIdx ?? 0,
+        birdKey: G.selected,
+      }));
+    } else {
+      // Demo + Test (startMapId main): reset world progress and spawn on main node 0.
+      // Test map body is fetched in blackstone_overworld_new.html via mission map variant.
+      if (typeof globalThis.resetOwCustomProgress === 'function') globalThis.resetOwCustomProgress();
+      if (typeof globalThis.clearOwMapStack === 'function') globalThis.clearOwMapStack();
+      if (typeof globalThis.setOwActiveMapId === 'function') globalThis.setOwActiveMapId('main');
+      localStorage.setItem(_OW_STATE_KEY, JSON.stringify({ nodeId: 0, birdKey: G.selected }));
+    }
+    localStorage.removeItem(_OW_NAV_KEY);
+    window.location.href = 'blackstone_overworld_new.html';
+  } catch(_) {}
+}
+
 function startGame() {
   if(!G.selected) return;
   primeAudioIfNeeded();
@@ -6323,39 +6364,8 @@ function startGame() {
   }
   // Launch the overworld map between stages (endless mode opens the node map)
   if (!G.endlessMode) {
-    try {
-      const mode = typeof globalThis.getCustomOverworldMode === 'function'
-        ? globalThis.getCustomOverworldMode() : null;
-      if (mode === 'playtest' && typeof globalThis.clearCustomOverworldMode === 'function') {
-        globalThis.clearCustomOverworldMode();
-      }
-      const useCustom = typeof globalThis.isCustomOverworldActive === 'function'
-        && globalThis.isCustomOverworldActive();
-      let owMap = null;
-      if (useCustom && typeof globalThis.loadCustomOverworldMap === 'function') {
-        owMap = globalThis.loadCustomOverworldMap();
-      }
-      if (!owMap && typeof globalThis.cloneDefaultStoryMap === 'function') {
-        owMap = globalThis.cloneDefaultStoryMap();
-      }
-      if (useCustom && owMap && typeof globalThis.seedOwRunToStartMap === 'function') {
-        const seeded = globalThis.seedOwRunToStartMap(owMap);
-        localStorage.setItem(_OW_STATE_KEY, JSON.stringify({
-          nodeId: seeded?.spawnIdx ?? 0,
-          birdKey: G.selected,
-        }));
-      } else {
-        // Demo + Test (startMapId main): reset world progress and spawn on main node 0.
-        // Test map body is fetched in blackstone_overworld_new.html via mission map variant.
-        if (typeof globalThis.resetOwCustomProgress === 'function') globalThis.resetOwCustomProgress();
-        if (typeof globalThis.clearOwMapStack === 'function') globalThis.clearOwMapStack();
-        if (typeof globalThis.setOwActiveMapId === 'function') globalThis.setOwActiveMapId('main');
-        localStorage.setItem(_OW_STATE_KEY, JSON.stringify({ nodeId: 0, birdKey: G.selected }));
-      }
-      localStorage.removeItem(_OW_NAV_KEY);
-      window.location.href = 'blackstone_overworld_new.html';
-      return;
-    } catch(_) {}
+    launchStoryOverworld();
+    return;
   }
   if (G.endlessMode && typeof EndlessMap?.createEndlessMapState === 'function') {
     G.endlessMap = EndlessMap.createEndlessMapState(G.runSeed || 'endless', 0);
@@ -7030,7 +7040,85 @@ function syncMissionMapVariantTabs(which){
     bTest.classList.toggle('is-active', isTest);
     bTest.setAttribute('aria-selected', String(isTest));
   }
+  syncMissionTestMapPickerVisibility(which);
 }
+
+/** @type {Array<{id:string,name:string,file:string}>|null} */
+let _missionTestCatalogEntries = null;
+
+function syncMissionTestMapPickerVisibility(variant){
+  const wrap = document.getElementById('mission-test-map-wrap');
+  if(wrap) wrap.hidden = variant !== 'test';
+}
+
+function syncMissionTestMapLabel(){
+  const label = document.getElementById('mission-test-map-label');
+  if(!label) return;
+  const variant = typeof globalThis.getMissionMapVariant === 'function'
+    ? globalThis.getMissionMapVariant()
+    : 'demo';
+  if(variant !== 'test'){
+    label.hidden = true;
+    label.textContent = '';
+    return;
+  }
+  const catalog = _missionTestCatalogEntries || [];
+  const entry = typeof globalThis.resolveMissionTestMapEntry === 'function'
+    ? globalThis.resolveMissionTestMapEntry(catalog)
+    : (catalog[0] || null);
+  if(!entry){
+    label.hidden = true;
+    label.textContent = '';
+    return;
+  }
+  label.hidden = false;
+  label.textContent = 'Test map: ' + (entry.name || entry.id);
+}
+
+async function refreshMissionTestMapSelect(){
+  const sel = document.getElementById('mission-test-map-select');
+  const variant = typeof globalThis.getMissionMapVariant === 'function'
+    ? globalThis.getMissionMapVariant()
+    : 'demo';
+  syncMissionTestMapPickerVisibility(variant);
+  if(!sel || variant !== 'test'){
+    syncMissionTestMapLabel();
+    return;
+  }
+  const catalog = typeof globalThis.fetchMissionTestMapCatalog === 'function'
+    ? await globalThis.fetchMissionTestMapCatalog()
+    : [];
+  _missionTestCatalogEntries = catalog;
+  const cur = typeof globalThis.getMissionTestMapId === 'function'
+    ? globalThis.getMissionTestMapId()
+    : '';
+  sel.innerHTML = '';
+  catalog.forEach((entry)=>{
+    const opt = document.createElement('option');
+    opt.value = entry.id;
+    opt.textContent = entry.name || entry.id;
+    sel.appendChild(opt);
+  });
+  if(catalog.length){
+    const pick = typeof globalThis.resolveMissionTestMapEntry === 'function'
+      ? globalThis.resolveMissionTestMapEntry(catalog, cur)
+      : catalog[0];
+    if(pick){
+      sel.value = pick.id;
+      if(!cur && typeof globalThis.setMissionTestMapId === 'function'){
+        globalThis.setMissionTestMapId(pick.id);
+      }
+    }
+  }
+  syncMissionTestMapLabel();
+}
+
+globalThis.onMissionTestMapChange = function onMissionTestMapChange(mapId){
+  if(typeof globalThis.setMissionTestMapId === 'function'){
+    globalThis.setMissionTestMapId(mapId);
+  }
+  syncMissionTestMapLabel();
+};
 
 // Capture bridge persist BEFORE assigning the UI handler.
 // Do not use `function setMissionMapVariant` — classic-script hoisting would
@@ -7048,6 +7136,7 @@ globalThis.setMissionMapVariant = function setMissionMapVariantUI(which){
     globalThis.clearCustomOverworldMode();
   }
   syncMissionMapVariantTabs(v);
+  refreshMissionTestMapSelect();
 };
 
 function openSelectHubPanel(which){
@@ -7062,6 +7151,10 @@ function openSelectHubPanel(which){
       ? globalThis.getMissionMapVariant()
       : 'demo';
     syncMissionMapVariantTabs(variant);
+    refreshMissionTestMapSelect();
+  }
+  if(which === 'door'){
+    refreshMissionTestMapSelect();
   }
   if(which === 'fortune'){
     const msg=document.getElementById('fortune-shop-msg');

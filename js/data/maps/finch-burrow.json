@@ -1,0 +1,1124 @@
+﻿{
+    "schemaVersion":  2,
+    "id":  "map-mrsjn5rj-0z3qtz",
+    "name":  "Blakstone Forest 2",
+    "createdAt":  "2026-07-20T01:26:19.375Z",
+    "mapWidth":  1536,
+    "mapHeight":  1024,
+    "pathReveal":  false,
+    "backgroundDataUrl":  "assets/maps/finch-burrow-main.png",
+    "maxStage":  0,
+    "startMapId":  "main",
+    "nodes":  [
+                  {
+                      "id":  0,
+                      "type":  "label",
+                      "name":  "Finch-Burrow",
+                      "x":  1265,
+                      "y":  921,
+                      "worldId":  "world1",
+                      "pathOrder":  0,
+                      "labelConfig":  {
+                                          "text":  "World 1",
+                                          "mimicType":  "world",
+                                          "shape":  "rounded",
+                                          "width":  98,
+                                          "height":  36,
+                                          "showText":  false,
+                                          "showBorder":  true,
+                                          "showFill":  false,
+                                          "actsAsNode":  true,
+                                          "uiAction":  "none",
+                                          "opacity":  0.72,
+                                          "borderColor":  "#654e32",
+                                          "textColor":  ""
+                                      }
+                  }
+              ],
+    "worlds":  {
+                   "world1":  {
+                                  "name":  "Finch-Burrow",
+                                  "worldIndex":  1,
+                                  "backgroundDataUrl":  "assets/maps/finch-burrow-world1.png",
+                                  "nodes":  [
+                                                {
+                                                    "id":  0,
+                                                    "type":  "label",
+                                                    "name":  "Barn Spawn",
+                                                    "x":  355,
+                                                    "y":  204,
+                                                    "stage":  0,
+                                                    "pathOrder":  0,
+                                                    "onPath":  false,
+                                                    "terrain":  "Finch Burrow",
+                                                    "portraitBird":  "goose",
+                                                    "labelConfig":  {
+                                                                        "text":  "Spawn",
+                                                                        "mimicType":  "start",
+                                                                        "shape":  "rounded",
+                                                                        "width":  110,
+                                                                        "height":  33,
+                                                                        "showText":  false,
+                                                                        "showBorder":  true,
+                                                                        "showFill":  false,
+                                                                        "actsAsNode":  true,
+                                                                        "uiAction":  "none",
+                                                                        "opacity":  0.72,
+                                                                        "borderColor":  "#3f321d",
+                                                                        "textColor":  ""
+                                                                    }
+                                                },
+                                                {
+                                                    "id":  1,
+                                                    "type":  "label",
+                                                    "name":  "Stage 1-1",
+                                                    "x":  509,
+                                                    "y":  371,
+                                                    "pathOrder":  1,
+                                                    "onPath":  false,
+                                                    "mustComplete":  true,
+                                                    "subStage":  1,
+                                                    "terrain":  "Finch Burrow",
+                                                    "portraitBird":  "pigeon",
+                                                    "encounter":  {
+                                                                      "enemyCount":  1,
+                                                                      "slots":  [
+                                                                                    {
+                                                                                        "birdKey":  "pigeon",
+                                                                                        "enemyTier":  "grey",
+                                                                                        "enemyStars":  0,
+                                                                                        "mutationBand":  "grey",
+                                                                                        "maxMutations":  1
+                                                                                    }
+                                                                                ],
+                                                                      "combatStatMult":  0.5,
+                                                                      "healthDamageMult":  0.5
+                                                                  },
+                                                    "clearRewards":  [
+                                                                         {
+                                                                             "type":  "shinies",
+                                                                             "min":  10,
+                                                                             "max":  25,
+                                                                             "chance":  100
+                                                                         },
+                                                                         {
+                                                                             "type":  "nest",
+                                                                             "slots":  [
+                                                                                           {
+                                                                                               "tier":  "grey"
+                                                                                           }
+                                                                                       ],
+                                                                             "chance":  100
+                                                                         }
+                                                                     ],
+                                                    "labelConfig":  {
+                                                                        "text":  "Stage 1-1",
+                                                                        "mimicType":  "stage",
+                                                                        "shape":  "circle",
+                                                                        "width":  46,
+                                                                        "height":  42,
+                                                                        "showText":  true,
+                                                                        "showBorder":  true,
+                                                                        "showFill":  true,
+                                                                        "actsAsNode":  true,
+                                                                        "uiAction":  "none",
+                                                                        "opacity":  0.72,
+                                                                        "borderColor":  "",
+                                                                        "textColor":  ""
+                                                                    }
+                                                },
+                                                {
+                                                    "id":  2,
+                                                    "type":  "label",
+                                                    "name":  "Stage 1-2",
+                                                    "x":  385,
+                                                    "y":  560,
+                                                    "pathOrder":  2,
+                                                    "onPath":  false,
+                                                    "mustComplete":  true,
+                                                    "subStage":  2,
+                                                    "terrain":  "Finch Burrow",
+                                                    "portraitBird":  "pigeon",
+                                                    "encounter":  {
+                                                                      "enemyCount":  1,
+                                                                      "slots":  [
+                                                                                    {
+                                                                                        "birdKey":  "pigeon",
+                                                                                        "enemyTier":  "grey",
+                                                                                        "enemyStars":  0,
+                                                                                        "mutationBand":  "grey",
+                                                                                        "maxMutations":  1
+                                                                                    }
+                                                                                ],
+                                                                      "combatStatMult":  0.8,
+                                                                      "healthDamageMult":  0.8
+                                                                  },
+                                                    "clearRewards":  [
+                                                                         {
+                                                                             "type":  "shinies",
+                                                                             "min":  10,
+                                                                             "max":  25,
+                                                                             "chance":  100
+                                                                         },
+                                                                         {
+                                                                             "type":  "nest",
+                                                                             "slots":  [
+                                                                                           {
+                                                                                               "tier":  "grey"
+                                                                                           }
+                                                                                       ],
+                                                                             "chance":  100
+                                                                         },
+                                                                         {
+                                                                             "type":  "item",
+                                                                             "itemKey":  "freshWater",
+                                                                             "min":  1,
+                                                                             "max":  1,
+                                                                             "chance":  100
+                                                                         }
+                                                                     ],
+                                                    "labelConfig":  {
+                                                                        "text":  "Stage 1-2",
+                                                                        "mimicType":  "stage",
+                                                                        "shape":  "circle",
+                                                                        "width":  46,
+                                                                        "height":  42,
+                                                                        "showText":  true,
+                                                                        "showBorder":  true,
+                                                                        "showFill":  true,
+                                                                        "actsAsNode":  true,
+                                                                        "uiAction":  "none",
+                                                                        "opacity":  0.72,
+                                                                        "borderColor":  "",
+                                                                        "textColor":  ""
+                                                                    }
+                                                },
+                                                {
+                                                    "id":  3,
+                                                    "type":  "label",
+                                                    "name":  "Stage 1-3",
+                                                    "x":  559,
+                                                    "y":  684,
+                                                    "pathOrder":  3,
+                                                    "onPath":  false,
+                                                    "mustComplete":  true,
+                                                    "subStage":  3,
+                                                    "terrain":  "Finch Burrow",
+                                                    "portraitBird":  "pigeon",
+                                                    "encounter":  {
+                                                                      "enemyCount":  1,
+                                                                      "slots":  [
+                                                                                    {
+                                                                                        "birdKey":  "pigeon",
+                                                                                        "enemyTier":  "grey",
+                                                                                        "enemyStars":  0,
+                                                                                        "mutationBand":  "grey",
+                                                                                        "maxMutations":  1
+                                                                                    }
+                                                                                ],
+                                                                      "combatStatMult":  0.8,
+                                                                      "healthDamageMult":  0.8
+                                                                  },
+                                                    "clearRewards":  [
+                                                                         {
+                                                                             "type":  "shinies",
+                                                                             "min":  10,
+                                                                             "max":  25,
+                                                                             "chance":  100
+                                                                         },
+                                                                         {
+                                                                             "type":  "nest",
+                                                                             "slots":  [
+                                                                                           {
+                                                                                               "tier":  "grey"
+                                                                                           }
+                                                                                       ],
+                                                                             "chance":  100
+                                                                         }
+                                                                     ],
+                                                    "labelConfig":  {
+                                                                        "text":  "Stage 1-3",
+                                                                        "mimicType":  "stage",
+                                                                        "shape":  "circle",
+                                                                        "width":  46,
+                                                                        "height":  42,
+                                                                        "showText":  true,
+                                                                        "showBorder":  true,
+                                                                        "showFill":  true,
+                                                                        "actsAsNode":  true,
+                                                                        "uiAction":  "none",
+                                                                        "opacity":  0.72,
+                                                                        "borderColor":  "",
+                                                                        "textColor":  ""
+                                                                    }
+                                                },
+                                                {
+                                                    "id":  4,
+                                                    "type":  "label",
+                                                    "name":  "Stage 1-4",
+                                                    "x":  516,
+                                                    "y":  773,
+                                                    "pathOrder":  4,
+                                                    "onPath":  false,
+                                                    "mustComplete":  true,
+                                                    "subStage":  4,
+                                                    "terrain":  "Finch Burrow",
+                                                    "portraitBird":  "pigeon",
+                                                    "encounter":  {
+                                                                      "enemyCount":  2,
+                                                                      "slots":  [
+                                                                                    {
+                                                                                        "birdKey":  "pigeon",
+                                                                                        "enemyTier":  "grey",
+                                                                                        "enemyStars":  0,
+                                                                                        "mutationBand":  "grey",
+                                                                                        "maxMutations":  1
+                                                                                    },
+                                                                                    {
+                                                                                        "birdKey":  "pigeon",
+                                                                                        "enemyTier":  "grey",
+                                                                                        "enemyStars":  0,
+                                                                                        "mutationBand":  "green",
+                                                                                        "maxMutations":  1
+                                                                                    }
+                                                                                ],
+                                                                      "combatStatMult":  0.8,
+                                                                      "healthDamageMult":  0.8
+                                                                  },
+                                                    "clearRewards":  [
+                                                                         {
+                                                                             "type":  "shinies",
+                                                                             "min":  10,
+                                                                             "max":  25,
+                                                                             "chance":  100
+                                                                         },
+                                                                         {
+                                                                             "type":  "nest",
+                                                                             "slots":  [
+                                                                                           {
+                                                                                               "tier":  "grey"
+                                                                                           },
+                                                                                           {
+                                                                                               "tier":  "grey"
+                                                                                           }
+                                                                                       ],
+                                                                             "chance":  100
+                                                                         },
+                                                                         {
+                                                                             "type":  "item",
+                                                                             "itemKey":  "freshWater",
+                                                                             "min":  1,
+                                                                             "max":  1,
+                                                                             "chance":  100
+                                                                         }
+                                                                     ],
+                                                    "labelConfig":  {
+                                                                        "text":  "Stage 1-4",
+                                                                        "mimicType":  "stage",
+                                                                        "shape":  "circle",
+                                                                        "width":  46,
+                                                                        "height":  42,
+                                                                        "showText":  true,
+                                                                        "showBorder":  true,
+                                                                        "showFill":  true,
+                                                                        "actsAsNode":  true,
+                                                                        "uiAction":  "none",
+                                                                        "opacity":  0.72,
+                                                                        "borderColor":  "",
+                                                                        "textColor":  ""
+                                                                    }
+                                                },
+                                                {
+                                                    "id":  5,
+                                                    "type":  "label",
+                                                    "name":  "Mini Boss",
+                                                    "x":  386,
+                                                    "y":  867,
+                                                    "pathOrder":  5,
+                                                    "onPath":  false,
+                                                    "mustComplete":  true,
+                                                    "subStage":  5,
+                                                    "terrain":  "Finch Burrow",
+                                                    "portraitBird":  "crow",
+                                                    "encounter":  {
+                                                                      "enemyCount":  1,
+                                                                      "slots":  [
+                                                                                    {
+                                                                                        "birdKey":  "crow",
+                                                                                        "enemyTier":  "grey",
+                                                                                        "enemyStars":  0,
+                                                                                        "mutationBand":  "grey",
+                                                                                        "maxMutations":  1
+                                                                                    }
+                                                                                ],
+                                                                      "combatStatMult":  1,
+                                                                      "healthDamageMult":  1
+                                                                  },
+                                                    "clearRewards":  [
+                                                                         {
+                                                                             "type":  "item",
+                                                                             "itemKey":  "sugarWater",
+                                                                             "min":  1,
+                                                                             "max":  1,
+                                                                             "chance":  100
+                                                                         },
+                                                                         {
+                                                                             "type":  "nest",
+                                                                             "slots":  [
+                                                                                           {
+                                                                                               "tier":  "green"
+                                                                                           }
+                                                                                       ],
+                                                                             "chance":  100
+                                                                         },
+                                                                         {
+                                                                             "type":  "shinies",
+                                                                             "min":  10,
+                                                                             "max":  25,
+                                                                             "chance":  100
+                                                                         },
+                                                                         {
+                                                                             "type":  "rescuedNest",
+                                                                             "eggId":  "cracked",
+                                                                             "count":  1,
+                                                                             "chance":  100
+                                                                         }
+                                                                     ],
+                                                    "labelConfig":  {
+                                                                        "text":  "Mini Boss",
+                                                                        "mimicType":  "stage",
+                                                                        "shape":  "rounded",
+                                                                        "width":  62,
+                                                                        "height":  32,
+                                                                        "showText":  true,
+                                                                        "showBorder":  true,
+                                                                        "showFill":  true,
+                                                                        "actsAsNode":  true,
+                                                                        "uiAction":  "none",
+                                                                        "opacity":  0.72,
+                                                                        "borderColor":  "#883030",
+                                                                        "textColor":  "#883030"
+                                                                    }
+                                                },
+                                                {
+                                                    "id":  6,
+                                                    "type":  "label",
+                                                    "name":  "Stage 1-5",
+                                                    "x":  762,
+                                                    "y":  931,
+                                                    "pathOrder":  5,
+                                                    "onPath":  false,
+                                                    "mustComplete":  true,
+                                                    "subStage":  6,
+                                                    "terrain":  "Finch Burrow",
+                                                    "portraitBird":  "pigeon",
+                                                    "encounter":  {
+                                                                      "enemyCount":  2,
+                                                                      "slots":  [
+                                                                                    {
+                                                                                        "birdKey":  "pigeon",
+                                                                                        "enemyTier":  "grey",
+                                                                                        "enemyStars":  0,
+                                                                                        "mutationBand":  "grey",
+                                                                                        "maxMutations":  1
+                                                                                    },
+                                                                                    {
+                                                                                        "birdKey":  "pigeon",
+                                                                                        "enemyTier":  "grey",
+                                                                                        "enemyStars":  0,
+                                                                                        "mutationBand":  "green",
+                                                                                        "maxMutations":  1
+                                                                                    }
+                                                                                ],
+                                                                      "combatStatMult":  0.8,
+                                                                      "healthDamageMult":  0.8
+                                                                  },
+                                                    "clearRewards":  [
+                                                                         {
+                                                                             "type":  "shinies",
+                                                                             "min":  10,
+                                                                             "max":  25,
+                                                                             "chance":  100
+                                                                         },
+                                                                         {
+                                                                             "type":  "nest",
+                                                                             "slots":  [
+                                                                                           {
+                                                                                               "tier":  "grey"
+                                                                                           },
+                                                                                           {
+                                                                                               "tier":  "grey"
+                                                                                           }
+                                                                                       ],
+                                                                             "chance":  100
+                                                                         },
+                                                                         {
+                                                                             "type":  "item",
+                                                                             "itemKey":  "freshWater",
+                                                                             "min":  1,
+                                                                             "max":  1,
+                                                                             "chance":  100
+                                                                         }
+                                                                     ],
+                                                    "labelConfig":  {
+                                                                        "text":  "Stage 1-5",
+                                                                        "mimicType":  "stage",
+                                                                        "shape":  "circle",
+                                                                        "width":  46,
+                                                                        "height":  42,
+                                                                        "showText":  true,
+                                                                        "showBorder":  true,
+                                                                        "showFill":  true,
+                                                                        "actsAsNode":  true,
+                                                                        "uiAction":  "none",
+                                                                        "opacity":  0.72,
+                                                                        "borderColor":  "",
+                                                                        "textColor":  ""
+                                                                    }
+                                                },
+                                                {
+                                                    "id":  7,
+                                                    "type":  "label",
+                                                    "name":  "Stage 1-6",
+                                                    "x":  1165,
+                                                    "y":  721,
+                                                    "pathOrder":  6,
+                                                    "onPath":  false,
+                                                    "mustComplete":  true,
+                                                    "subStage":  7,
+                                                    "terrain":  "Finch Burrow",
+                                                    "portraitBird":  "pigeon",
+                                                    "encounter":  {
+                                                                      "enemyCount":  2,
+                                                                      "slots":  [
+                                                                                    {
+                                                                                        "birdKey":  "pigeon",
+                                                                                        "enemyTier":  "grey",
+                                                                                        "enemyStars":  0,
+                                                                                        "mutationBand":  "grey",
+                                                                                        "maxMutations":  1
+                                                                                    },
+                                                                                    {
+                                                                                        "birdKey":  "pigeon",
+                                                                                        "enemyTier":  "grey",
+                                                                                        "enemyStars":  0,
+                                                                                        "mutationBand":  "green",
+                                                                                        "maxMutations":  1
+                                                                                    }
+                                                                                ],
+                                                                      "combatStatMult":  0.8,
+                                                                      "healthDamageMult":  0.8
+                                                                  },
+                                                    "clearRewards":  [
+                                                                         {
+                                                                             "type":  "shinies",
+                                                                             "min":  10,
+                                                                             "max":  25,
+                                                                             "chance":  100
+                                                                         },
+                                                                         {
+                                                                             "type":  "nest",
+                                                                             "slots":  [
+                                                                                           {
+                                                                                               "tier":  "grey"
+                                                                                           },
+                                                                                           {
+                                                                                               "tier":  "grey"
+                                                                                           }
+                                                                                       ],
+                                                                             "chance":  100
+                                                                         },
+                                                                         {
+                                                                             "type":  "item",
+                                                                             "itemKey":  "sugarWater",
+                                                                             "min":  1,
+                                                                             "max":  2,
+                                                                             "chance":  75
+                                                                         },
+                                                                         {
+                                                                             "type":  "rescuedNest",
+                                                                             "eggId":  "cracked",
+                                                                             "count":  1,
+                                                                             "chance":  100
+                                                                         }
+                                                                     ],
+                                                    "labelConfig":  {
+                                                                        "text":  "Stage 1-6",
+                                                                        "mimicType":  "stage",
+                                                                        "shape":  "circle",
+                                                                        "width":  46,
+                                                                        "height":  42,
+                                                                        "showText":  true,
+                                                                        "showBorder":  true,
+                                                                        "showFill":  true,
+                                                                        "actsAsNode":  true,
+                                                                        "uiAction":  "none",
+                                                                        "opacity":  0.72,
+                                                                        "borderColor":  "",
+                                                                        "textColor":  ""
+                                                                    }
+                                                },
+                                                {
+                                                    "id":  8,
+                                                    "type":  "label",
+                                                    "name":  "Investigate",
+                                                    "x":  900,
+                                                    "y":  778,
+                                                    "pathOrder":  7,
+                                                    "onPath":  false,
+                                                    "subStage":  8,
+                                                    "terrain":  "Finch Burrow",
+                                                    "portraitBird":  "goose",
+                                                    "encounter":  {
+                                                                      "enemyCount":  3,
+                                                                      "slots":  [
+                                                                                    {
+                                                                                        "birdKey":  "random",
+                                                                                        "enemyTier":  "grey",
+                                                                                        "enemyStars":  0,
+                                                                                        "mutationBand":  "green",
+                                                                                        "maxMutations":  1
+                                                                                    },
+                                                                                    {
+                                                                                        "birdKey":  "random",
+                                                                                        "enemyTier":  "grey",
+                                                                                        "enemyStars":  0,
+                                                                                        "mutationBand":  "green",
+                                                                                        "maxMutations":  1
+                                                                                    },
+                                                                                    {
+                                                                                        "birdKey":  "random",
+                                                                                        "enemyTier":  "grey",
+                                                                                        "enemyStars":  0,
+                                                                                        "mutationBand":  "green",
+                                                                                        "maxMutations":  1
+                                                                                    }
+                                                                                ],
+                                                                      "combatStatMult":  1,
+                                                                      "healthDamageMult":  1
+                                                                  },
+                                                    "bonusConfig":  {
+                                                                        "powerProgression":  true,
+                                                                        "maxRepeats":  5
+                                                                    },
+                                                    "clearRewards":  [
+                                                                         {
+                                                                             "type":  "shinies",
+                                                                             "min":  15,
+                                                                             "max":  30
+                                                                         },
+                                                                         {
+                                                                             "type":  "speciesFeathers",
+                                                                             "birdKey":  "goose",
+                                                                             "count":  1,
+                                                                             "chance":  100
+                                                                         },
+                                                                         {
+                                                                             "type":  "speciesFeathers",
+                                                                             "birdKey":  "random",
+                                                                             "count":  1,
+                                                                             "chance":  100
+                                                                         },
+                                                                         {
+                                                                             "type":  "item",
+                                                                             "itemKey":  "freshWater",
+                                                                             "min":  1,
+                                                                             "max":  1,
+                                                                             "chance":  100
+                                                                         }
+                                                                     ],
+                                                    "labelConfig":  {
+                                                                        "text":  "Investigate",
+                                                                        "mimicType":  "bonus",
+                                                                        "shape":  "rounded",
+                                                                        "width":  70,
+                                                                        "height":  36,
+                                                                        "showText":  true,
+                                                                        "showBorder":  true,
+                                                                        "showFill":  true,
+                                                                        "actsAsNode":  true,
+                                                                        "uiAction":  "none",
+                                                                        "opacity":  0.72,
+                                                                        "borderColor":  "",
+                                                                        "textColor":  ""
+                                                                    }
+                                                },
+                                                {
+                                                    "id":  9,
+                                                    "type":  "label",
+                                                    "name":  "Stage 1-7",
+                                                    "x":  833,
+                                                    "y":  575,
+                                                    "pathOrder":  7,
+                                                    "onPath":  false,
+                                                    "mustComplete":  true,
+                                                    "subStage":  9,
+                                                    "terrain":  "Finch Burrow",
+                                                    "portraitBird":  "pigeon",
+                                                    "encounter":  {
+                                                                      "enemyCount":  1,
+                                                                      "slots":  [
+                                                                                    {
+                                                                                        "birdKey":  "pigeon",
+                                                                                        "enemyTier":  "grey",
+                                                                                        "enemyStars":  0,
+                                                                                        "mutationBand":  "grey",
+                                                                                        "maxMutations":  1
+                                                                                    }
+                                                                                ],
+                                                                      "combatStatMult":  1,
+                                                                      "healthDamageMult":  1
+                                                                  },
+                                                    "clearRewards":  [
+                                                                         {
+                                                                             "type":  "shinies",
+                                                                             "min":  10,
+                                                                             "max":  25,
+                                                                             "chance":  100
+                                                                         },
+                                                                         {
+                                                                             "type":  "nest",
+                                                                             "slots":  [
+                                                                                           {
+                                                                                               "tier":  "grey"
+                                                                                           }
+                                                                                       ],
+                                                                             "chance":  100
+                                                                         },
+                                                                         {
+                                                                             "type":  "rescuedNest",
+                                                                             "eggId":  "cracked",
+                                                                             "count":  1,
+                                                                             "chance":  100
+                                                                         }
+                                                                     ],
+                                                    "labelConfig":  {
+                                                                        "text":  "Stage 1-7",
+                                                                        "mimicType":  "stage",
+                                                                        "shape":  "circle",
+                                                                        "width":  46,
+                                                                        "height":  42,
+                                                                        "showText":  true,
+                                                                        "showBorder":  true,
+                                                                        "showFill":  true,
+                                                                        "actsAsNode":  true,
+                                                                        "uiAction":  "none",
+                                                                        "opacity":  0.72,
+                                                                        "borderColor":  "",
+                                                                        "textColor":  ""
+                                                                    }
+                                                },
+                                                {
+                                                    "id":  10,
+                                                    "type":  "label",
+                                                    "name":  "Stork Emporium",
+                                                    "x":  993,
+                                                    "y":  506,
+                                                    "pathOrder":  8,
+                                                    "onPath":  false,
+                                                    "labelConfig":  {
+                                                                        "text":  "Stork Emporium",
+                                                                        "mimicType":  "shop",
+                                                                        "shape":  "rounded",
+                                                                        "width":  80,
+                                                                        "height":  36,
+                                                                        "showText":  true,
+                                                                        "showBorder":  true,
+                                                                        "showFill":  true,
+                                                                        "actsAsNode":  true,
+                                                                        "uiAction":  "none",
+                                                                        "opacity":  0.72,
+                                                                        "borderColor":  "",
+                                                                        "textColor":  ""
+                                                                    },
+                                                    "shopConfig":  {
+                                                                       "useCustomStock":  false,
+                                                                       "offers":  [
+                                                                                      {
+                                                                                          "id":  "shop_item_sugar_water",
+                                                                                          "qty":  1,
+                                                                                          "kind":  "item"
+                                                                                      },
+                                                                                      {
+                                                                                          "id":  "shop_item_fresh_water",
+                                                                                          "qty":  1,
+                                                                                          "kind":  "item"
+                                                                                      },
+                                                                                      {
+                                                                                          "id":  "shop_item_honey_water",
+                                                                                          "qty":  1,
+                                                                                          "kind":  "item"
+                                                                                      },
+                                                                                      {
+                                                                                          "id":  "MUT-BK-002",
+                                                                                          "qty":  1,
+                                                                                          "kind":  "mutation"
+                                                                                      },
+                                                                                      {
+                                                                                          "id":  "MUT-LF-002",
+                                                                                          "qty":  1,
+                                                                                          "kind":  "mutation"
+                                                                                      },
+                                                                                      {
+                                                                                          "id":  "MUT-LW-002",
+                                                                                          "qty":  1,
+                                                                                          "kind":  "mutation"
+                                                                                      },
+                                                                                      {
+                                                                                          "id":  "MUT-PL-005",
+                                                                                          "qty":  1,
+                                                                                          "kind":  "mutation"
+                                                                                      },
+                                                                                      {
+                                                                                          "id":  "MUT-RW-005",
+                                                                                          "qty":  1,
+                                                                                          "kind":  "mutation"
+                                                                                      },
+                                                                                      {
+                                                                                          "id":  "MUT-RF-007",
+                                                                                          "qty":  1,
+                                                                                          "kind":  "mutation"
+                                                                                      }
+                                                                                  ]
+                                                                   }
+                                                },
+                                                {
+                                                    "id":  11,
+                                                    "type":  "label",
+                                                    "name":  "Stage 1-8",
+                                                    "x":  835,
+                                                    "y":  401,
+                                                    "pathOrder":  8,
+                                                    "onPath":  false,
+                                                    "mustComplete":  true,
+                                                    "subStage":  10,
+                                                    "terrain":  "Finch Burrow",
+                                                    "portraitBird":  "pigeon",
+                                                    "encounter":  {
+                                                                      "enemyCount":  3,
+                                                                      "slots":  [
+                                                                                    {
+                                                                                        "birdKey":  "pigeon",
+                                                                                        "enemyTier":  "grey",
+                                                                                        "enemyStars":  0,
+                                                                                        "mutationBand":  "grey",
+                                                                                        "maxMutations":  1
+                                                                                    },
+                                                                                    {
+                                                                                        "birdKey":  "rockDove",
+                                                                                        "enemyTier":  "grey",
+                                                                                        "enemyStars":  0,
+                                                                                        "mutationBand":  "green",
+                                                                                        "maxMutations":  1
+                                                                                    },
+                                                                                    {
+                                                                                        "birdKey":  "pigeon",
+                                                                                        "enemyTier":  "grey",
+                                                                                        "enemyStars":  0,
+                                                                                        "mutationBand":  "green",
+                                                                                        "maxMutations":  1
+                                                                                    }
+                                                                                ],
+                                                                      "combatStatMult":  0.7,
+                                                                      "healthDamageMult":  0.7
+                                                                  },
+                                                    "clearRewards":  [
+                                                                         {
+                                                                             "type":  "shinies",
+                                                                             "min":  10,
+                                                                             "max":  25,
+                                                                             "chance":  100
+                                                                         },
+                                                                         {
+                                                                             "type":  "nest",
+                                                                             "slots":  [
+                                                                                           {
+                                                                                               "tier":  "grey"
+                                                                                           },
+                                                                                           {
+                                                                                               "tier":  "grey"
+                                                                                           },
+                                                                                           {
+                                                                                               "tier":  "grey"
+                                                                                           }
+                                                                                       ],
+                                                                             "chance":  100
+                                                                         },
+                                                                         {
+                                                                             "type":  "rescuedNest",
+                                                                             "eggId":  "cracked",
+                                                                             "count":  1,
+                                                                             "chance":  100
+                                                                         }
+                                                                     ],
+                                                    "labelConfig":  {
+                                                                        "text":  "Stage 1-8",
+                                                                        "mimicType":  "stage",
+                                                                        "shape":  "circle",
+                                                                        "width":  46,
+                                                                        "height":  42,
+                                                                        "showText":  true,
+                                                                        "showBorder":  true,
+                                                                        "showFill":  true,
+                                                                        "actsAsNode":  true,
+                                                                        "uiAction":  "none",
+                                                                        "opacity":  0.72,
+                                                                        "borderColor":  "",
+                                                                        "textColor":  ""
+                                                                    }
+                                                },
+                                                {
+                                                    "id":  12,
+                                                    "type":  "label",
+                                                    "name":  "Mini Boss",
+                                                    "x":  1010,
+                                                    "y":  193,
+                                                    "pathOrder":  9,
+                                                    "onPath":  false,
+                                                    "mustComplete":  true,
+                                                    "subStage":  11,
+                                                    "terrain":  "Finch Burrow",
+                                                    "portraitBird":  "macaw",
+                                                    "encounter":  {
+                                                                      "enemyCount":  1,
+                                                                      "slots":  [
+                                                                                    {
+                                                                                        "birdKey":  "macaw",
+                                                                                        "enemyTier":  "grey",
+                                                                                        "enemyStars":  0,
+                                                                                        "mutationBand":  "grey",
+                                                                                        "maxMutations":  3
+                                                                                    }
+                                                                                ],
+                                                                      "combatStatMult":  1,
+                                                                      "healthDamageMult":  1
+                                                                  },
+                                                    "clearRewards":  [
+                                                                         {
+                                                                             "type":  "item",
+                                                                             "itemKey":  "sugarWater",
+                                                                             "min":  1,
+                                                                             "max":  1,
+                                                                             "chance":  100
+                                                                         },
+                                                                         {
+                                                                             "type":  "nest",
+                                                                             "slots":  [
+                                                                                           {
+                                                                                               "tier":  "green"
+                                                                                           }
+                                                                                       ],
+                                                                             "chance":  100
+                                                                         },
+                                                                         {
+                                                                             "type":  "shinies",
+                                                                             "min":  10,
+                                                                             "max":  25,
+                                                                             "chance":  100
+                                                                         },
+                                                                         {
+                                                                             "type":  "rescuedNest",
+                                                                             "eggId":  "cracked",
+                                                                             "count":  1,
+                                                                             "chance":  100
+                                                                         },
+                                                                         {
+                                                                             "type":  "speciesFeathers",
+                                                                             "birdKey":  "macaw",
+                                                                             "count":  1,
+                                                                             "chance":  100
+                                                                         }
+                                                                     ],
+                                                    "labelConfig":  {
+                                                                        "text":  "Mini Boss",
+                                                                        "mimicType":  "stage",
+                                                                        "shape":  "rounded",
+                                                                        "width":  62,
+                                                                        "height":  32,
+                                                                        "showText":  true,
+                                                                        "showBorder":  true,
+                                                                        "showFill":  true,
+                                                                        "actsAsNode":  true,
+                                                                        "uiAction":  "none",
+                                                                        "opacity":  0.72,
+                                                                        "borderColor":  "#883030",
+                                                                        "textColor":  "#883030"
+                                                                    }
+                                                },
+                                                {
+                                                    "id":  13,
+                                                    "type":  "label",
+                                                    "name":  "Stage 1-9",
+                                                    "x":  729,
+                                                    "y":  279,
+                                                    "pathOrder":  9,
+                                                    "onPath":  false,
+                                                    "mustComplete":  true,
+                                                    "subStage":  12,
+                                                    "terrain":  "Finch Burrow",
+                                                    "portraitBird":  "pigeon",
+                                                    "encounter":  {
+                                                                      "enemyCount":  1,
+                                                                      "slots":  [
+                                                                                    {
+                                                                                        "birdKey":  "pigeon",
+                                                                                        "enemyTier":  "green",
+                                                                                        "enemyStars":  1,
+                                                                                        "mutationBand":  "green",
+                                                                                        "maxMutations":  1
+                                                                                    }
+                                                                                ],
+                                                                      "combatStatMult":  1,
+                                                                      "healthDamageMult":  1
+                                                                  },
+                                                    "clearRewards":  [
+                                                                         {
+                                                                             "type":  "shinies",
+                                                                             "min":  10,
+                                                                             "max":  25,
+                                                                             "chance":  100
+                                                                         },
+                                                                         {
+                                                                             "type":  "nest",
+                                                                             "slots":  [
+                                                                                           {
+                                                                                               "tier":  "grey"
+                                                                                           },
+                                                                                           {
+                                                                                               "tier":  "grey"
+                                                                                           },
+                                                                                           {
+                                                                                               "tier":  "grey"
+                                                                                           }
+                                                                                       ],
+                                                                             "chance":  100
+                                                                         },
+                                                                         {
+                                                                             "type":  "rescuedNest",
+                                                                             "eggId":  "cracked",
+                                                                             "count":  1,
+                                                                             "chance":  100
+                                                                         }
+                                                                     ],
+                                                    "labelConfig":  {
+                                                                        "text":  "Stage 1-9",
+                                                                        "mimicType":  "stage",
+                                                                        "shape":  "circle",
+                                                                        "width":  46,
+                                                                        "height":  42,
+                                                                        "showText":  true,
+                                                                        "showBorder":  true,
+                                                                        "showFill":  true,
+                                                                        "actsAsNode":  true,
+                                                                        "uiAction":  "none",
+                                                                        "opacity":  0.72,
+                                                                        "borderColor":  "",
+                                                                        "textColor":  ""
+                                                                    }
+                                                },
+                                                {
+                                                    "id":  14,
+                                                    "type":  "label",
+                                                    "name":  "Finch-Burrow Boss",
+                                                    "x":  717,
+                                                    "y":  153,
+                                                    "pathOrder":  10,
+                                                    "onPath":  false,
+                                                    "mustComplete":  true,
+                                                    "subStage":  13,
+                                                    "terrain":  "Finch Burrow",
+                                                    "portraitBird":  "pigeon",
+                                                    "encounter":  {
+                                                                      "enemyCount":  1,
+                                                                      "slots":  [
+                                                                                    {
+                                                                                        "birdKey":  "pigeon",
+                                                                                        "enemyTier":  "grey",
+                                                                                        "enemyStars":  3,
+                                                                                        "mutationBand":  "grey",
+                                                                                        "maxMutations":  5
+                                                                                    }
+                                                                                ],
+                                                                      "combatStatMult":  1.2,
+                                                                      "healthDamageMult":  1.2
+                                                                  },
+                                                    "clearRewards":  [
+                                                                         {
+                                                                             "type":  "item",
+                                                                             "itemKey":  "sugarWater",
+                                                                             "min":  1,
+                                                                             "max":  1,
+                                                                             "chance":  100
+                                                                         },
+                                                                         {
+                                                                             "type":  "nest",
+                                                                             "slots":  [
+                                                                                           {
+                                                                                               "tier":  "green"
+                                                                                           }
+                                                                                       ],
+                                                                             "chance":  100
+                                                                         },
+                                                                         {
+                                                                             "type":  "shinies",
+                                                                             "min":  10,
+                                                                             "max":  25,
+                                                                             "chance":  100
+                                                                         },
+                                                                         {
+                                                                             "type":  "rescuedNest",
+                                                                             "eggId":  "feathered",
+                                                                             "count":  1,
+                                                                             "chance":  100
+                                                                         },
+                                                                         {
+                                                                             "type":  "speciesFeathers",
+                                                                             "birdKey":  "pigeon",
+                                                                             "count":  1,
+                                                                             "chance":  100
+                                                                         }
+                                                                     ],
+                                                    "labelConfig":  {
+                                                                        "text":  "Pigeon Boss",
+                                                                        "mimicType":  "stage",
+                                                                        "shape":  "rounded",
+                                                                        "width":  62,
+                                                                        "height":  32,
+                                                                        "showText":  true,
+                                                                        "showBorder":  true,
+                                                                        "showFill":  true,
+                                                                        "actsAsNode":  true,
+                                                                        "uiAction":  "none",
+                                                                        "opacity":  0.72,
+                                                                        "borderColor":  "#883030",
+                                                                        "textColor":  "#883030"
+                                                                    }
+                                                },
+                                                {
+                                                    "id":  15,
+                                                    "type":  "label",
+                                                    "name":  "Return Gate",
+                                                    "x":  730,
+                                                    "y":  66,
+                                                    "pathOrder":  11,
+                                                    "onPath":  false,
+                                                    "labelConfig":  {
+                                                                        "text":  "Return Gate",
+                                                                        "mimicType":  "return",
+                                                                        "shape":  "rounded",
+                                                                        "width":  150,
+                                                                        "height":  50,
+                                                                        "showText":  false,
+                                                                        "showBorder":  true,
+                                                                        "showFill":  false,
+                                                                        "actsAsNode":  true,
+                                                                        "uiAction":  "none",
+                                                                        "opacity":  0.72,
+                                                                        "borderColor":  "#1e130c",
+                                                                        "textColor":  ""
+                                                                    }
+                                                }
+                                            ]
+                              }
+               }
+}
