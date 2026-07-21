@@ -108,6 +108,35 @@
     return pickWeighted(rng, weights) || 'combat';
   }
 
+  function countNodesOnFloor(map, floor) {
+    if (!map || !Array.isArray(map.nodes)) return 1;
+    var count = 0;
+    for (var i = 0; i < map.nodes.length; i++) {
+      if (map.nodes[i].floor === floor) count++;
+    }
+    return Math.max(1, count);
+  }
+
+  function getNodeDisplayPosition(node, map) {
+    var depth = Math.max(1, map && map.depth ? map.depth : SEGMENT_CONTENT_FLOORS + 1);
+    var floor = Math.max(0, Math.floor(Number(node.floor) || 0));
+    var slot = Math.max(0, Math.floor(Number(node.slot) || 0));
+    var countOnFloor = countNodesOnFloor(map, floor);
+    return {
+      x: countOnFloor <= 1 ? 0.5 : (slot + 1) / (countOnFloor + 1),
+      y: floor / depth,
+    };
+  }
+
+  function recomputeNodePositions(map) {
+    if (!map || !Array.isArray(map.nodes)) return;
+    map.nodes.forEach(function (n) {
+      var pos = getNodeDisplayPosition(n, map);
+      n.x = pos.x;
+      n.y = pos.y;
+    });
+  }
+
   function ensureSoftRequirements(nodes, rng) {
     var hasRest = nodes.some(function (n) { return n.type === 'rest'; });
     var hasMerchant = nodes.some(function (n) { return n.type === 'merchant'; });
@@ -140,8 +169,8 @@
         floor: floor,
         slot: slot,
         type: type,
-        x: floor / depth,
-        y: countOnFloor <= 1 ? 0.5 : (slot + 1) / (countOnFloor + 1),
+        x: countOnFloor <= 1 ? 0.5 : (slot + 1) / (countOnFloor + 1),
+        y: floor / depth,
       };
       nodes.push(node);
       return node;
@@ -292,7 +321,7 @@
   function restoreEndlessMap(raw) {
     if (!raw || typeof raw !== 'object') return null;
     if (!Array.isArray(raw.nodes) || !Array.isArray(raw.edges)) return null;
-    return {
+    var map = {
       version: 1,
       runSeed: String(raw.runSeed || ''),
       segmentIndex: Math.max(0, Math.floor(Number(raw.segmentIndex) || 0)),
@@ -311,6 +340,8 @@
       fromMapMerchant: !!raw.fromMapMerchant,
       lastMessage: String(raw.lastMessage || ''),
     };
+    recomputeNodePositions(map);
+    return map;
   }
 
   function advanceToNextSegment(map, runSeed) {
@@ -336,10 +367,12 @@
       var a = getNode(map, e.from);
       var b = getNode(map, e.to);
       if (!a || !b) return;
-      var x1 = a.x * 100;
-      var y1 = a.y * 100;
-      var x2 = b.x * 100;
-      var y2 = b.y * 100;
+      var posA = getNodeDisplayPosition(a, map);
+      var posB = getNodeDisplayPosition(b, map);
+      var x1 = posA.x * 100;
+      var y1 = posA.y * 100;
+      var x2 = posB.x * 100;
+      var y2 = posB.y * 100;
       edgesSvg += '<line x1="' + x1 + '" y1="' + y1 + '" x2="' + x2 + '" y2="' + y2 + '" />';
     });
     edgesSvg += '</svg>';
@@ -358,8 +391,9 @@
       var icon = ROOM_ICONS[n.type] || '•';
       var disabled = isAvail ? '' : ' disabled';
       var action = isAvail ? ' data-action="endlessMapSelectNode:' + n.id + '"' : '';
+      var pos = getNodeDisplayPosition(n, map);
       nodesHtml +=
-        '<button type="button" class="' + cls + '" style="left:' + (n.x * 100) + '%;top:' + (n.y * 100) + '%;"' +
+        '<button type="button" class="' + cls + '" style="left:' + (pos.x * 100) + '%;top:' + (pos.y * 100) + '%;"' +
         action + disabled + ' title="' + escapeHtml(label) + '" aria-label="' + escapeHtml(label) + '">' +
         '<span class="em-node-icon">' + icon + '</span>' +
         '<span class="em-node-label">' + escapeHtml(label) + '</span>' +

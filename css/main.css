@@ -5562,7 +5562,7 @@ body.combat-sticky-combatants #screen-battle.combat-arr--custom #enemy-panel{
 .em-map-canvas{
   position:relative;
   flex:1;
-  min-height:min(70vh,720px);
+  min-height:min(78vh,820px);
   border:1px solid rgba(201,168,76,.2);
   background:
     radial-gradient(ellipse at 50% 0%, rgba(40,32,18,.35), transparent 55%),
@@ -5641,5 +5641,5 @@ body.combat-sticky-combatants #screen-battle.combat-arr--custom #enemy-panel{
 @media (max-width:700px){
   .em-node{width:52px;height:52px;}
   .em-node-label{font-size:.48rem;}
-  .em-map-canvas{min-height:62vh;}
+  .em-map-canvas{min-height:70vh;}
 }
