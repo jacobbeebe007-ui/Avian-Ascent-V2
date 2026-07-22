@@ -59,7 +59,9 @@ function dmg(params) {
 {
   const ability = c.enrichCombatRow({ apCost: 1, scaleStat: 'ATK', scalePct: 50, category: 'physical' });
   const d = dmg({ attacker: player, target: enemy, ability, bonusFractions: [], hitSucceeded: true });
-  const expected = Math.max(1, Math.round(5 * ability.abilityPower * c.getStatModifier(16, c.getClassBaseline('rogue')) * c.getDefenceModifier(12, 'Physical', 0, {})));
+  // Curved damage keeps two decimals (roundCurvedDamage), floored at the EN minimum.
+  const raw = 5 * ability.abilityPower * c.getStatModifier(16, c.getClassBaseline('rogue')) * c.getDefenceModifier(12, 'Physical', 0, {});
+  const expected = Math.max(1, Math.round(raw * 100) / 100);
   check('1 — 1 EN Light ATK', d === expected, `got=${d} expected=${expected}`);
 }
 
@@ -85,7 +87,7 @@ function dmg(params) {
   const ability = c.enrichCombatRow({ apCost: 3, scaleStat: 'ATK', scalePct: 90, category: 'physical', abilityPower: 1.25 });
   check('4 — recoil percent is 15%', near(ability.recoilPercent, 0.15), `recoil%=${ability.recoilPercent}`);
   const recoil = c.calculateRecoilDamage(30, ability);
-  check('4 — recoil = round(30 * 0.15) = 5', recoil === 5, `recoil=${recoil}`);
+  check('4 — recoil = 30 * 0.15 = 4.5 (curved two-decimal)', recoil === 4.5, `recoil=${recoil}`);
 }
 
 // 5 — Brute ability using DEF as damage stat

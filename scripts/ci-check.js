@@ -662,6 +662,12 @@ function collectFunctionNames(){
       if(m[1]) names.add(m[1]);
       if(m[2]) names.add(m[2]);
     }
+    // Bulk registrations: Object.assign(<...>Avian.actions, { key: fn, ... })
+    const r4 = /Object\.assign\(\s*(?:global(?:This)?\.)?Avian(?:\?)?\.actions\s*,\s*\{/g;
+    while((m = r4.exec(src))){
+      const sub = extractObjectLiteralAfterMarker(src.slice(m.index + m[0].length - 1), '');
+      if(sub) extractTopLevelObjectKeys(sub).forEach(k => names.add(k));
+    }
   }
   return names;
 }
