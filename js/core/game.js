@@ -6389,15 +6389,20 @@ function startGame() {
   const baseStats=(Avian.flags?.equipmentV2&&typeof Avian.buildCombatStatsFromBirdDef==='function'&&birdDef)
     ? Avian.buildCombatStatsFromBirdDef(birdDef, birdDef.class||bd.class)
     : {...bd.stats};
+  const legacyStartIds=[
+    ...(Array.isArray(bd.startAbilities)?bd.startAbilities:[]),
+    ...(Array.isArray(bd.extraAbilities)?bd.extraAbilities:[]),
+  ];
   G.player = {
     name: bd.name, portraitKey: bd.portraitKey, birdKey: G.selected,
     size: bd.size||'medium',
     stats: {...baseStats},
-    abilities: [...bd.startAbilities,...(bd.extraAbilities||[])].map(id=>({
-      ...ABILITY_TEMPLATES[id],
+    abilities: legacyStartIds.map(id=>({
+      ...(ABILITY_TEMPLATES?.[id]||{id, name:id}),
+      id,
       level: 1,
       ailmentIds: [],
-      energyCost: Number.isFinite(ABILITY_TEMPLATES[id]?.energyCost)?ABILITY_TEMPLATES[id].energyCost:0,
+      energyCost: Number.isFinite(ABILITY_TEMPLATES?.[id]?.energyCost)?ABILITY_TEMPLATES[id].energyCost:0,
     })),
     exp: 0, birdLevel: 1,
     goldCritMult: birdDef?.critDamage||bd.critDamage||1.5,
@@ -6427,7 +6432,9 @@ function startGame() {
   if(typeof applyBirdCardProgression==='function') applyBirdCardProgression(G.player);
   applyPlayerSkillsFromCardTier(G.player);
   ensureFamilyEvolutionState(G.player);
-  if(!(typeof Avian?.equipmentActions?.syncEntityAbilities==='function')){
+  if(typeof Avian?.equipmentActions?.syncEntityAbilities==='function'){
+    Avian.equipmentActions.syncEntityAbilities(G.player);
+  }else{
     syncPlayerAbilitiesFromSkillSlots(G.player);
   }
   if(typeof applyOwnedFortuneArtifacts==='function') applyOwnedFortuneArtifacts(G.player);
