@@ -4,7 +4,7 @@
 (function (global) {
   'use strict';
 
-  global.OW_CARD_TIER_MUTATION_OPTIONS = [
+  global.OW_CARD_TIER_EQUIPMENT_OPTIONS = [
     { id: 'grey', label: 'Grey' },
     { id: 'green', label: 'Green' },
     { id: 'blue', label: 'Blue' },
@@ -13,31 +13,18 @@
     { id: 'orange', label: 'Orange' },
   ];
 
-  global.OW_MUTATION_BANDS = {
-    grey: ['white'],
+  global.OW_EQUIPMENT_BANDS = {
+    grey: ['grey'],
     green: ['green'],
     blue: ['blue'],
     purple: ['purple'],
     gold: ['gold'],
     orange: ['orange'],
-    grey_green: ['white', 'green'],
+    grey_green: ['grey', 'green'],
     green_blue: ['green', 'blue'],
     blue_purple: ['blue', 'purple'],
     purple_gold: ['purple', 'gold'],
   };
-
-  global.OW_MUTATION_BAND_OPTIONS = [
-    { id: 'grey', label: 'Grey' },
-    { id: 'grey_green', label: 'Grey & Green' },
-    { id: 'green', label: 'Green' },
-    { id: 'green_blue', label: 'Green & Blue' },
-    { id: 'blue', label: 'Blue' },
-    { id: 'blue_purple', label: 'Blue & Purple' },
-    { id: 'purple', label: 'Purple' },
-    { id: 'purple_gold', label: 'Purple & Gold' },
-    { id: 'gold', label: 'Gold' },
-    { id: 'orange', label: 'Orange' },
-  ];
 
   global.isForgeCombatNode = function (n) {
     if (!n) return false;
@@ -758,25 +745,28 @@
   };
 
   global.grantForgeClearRewards = function (player, rewards, G) {
-    const empty = { shinies: 0, mutations: [], items: [], nests: 0, rescuedNests: 0, goldenGoose: 0, feathers: [] };
+    const empty = { shinies: 0, mutations: [], equipment: [], items: [], nests: 0, rescuedNests: 0, savedEggs: 0, goldenGoose: 0, feathers: [] };
     if (!Array.isArray(rewards) || !rewards.length) return empty;
-    const granted = Object.assign({}, empty, { mutations: [], items: [], feathers: [] });
-    const rollForgeMutation = (band) => {
-      if (typeof global.Avian?.mutations?.rollEnemyMutationsFromForgeSlot !== 'function') return [];
-      return global.Avian.mutations.rollEnemyMutationsFromForgeSlot({
-        mutationBand: band || 'blue',
-        maxMutations: 1,
+    const granted = Object.assign({}, empty, { mutations: [], equipment: [], items: [], feathers: [] });
+    const rollForgeEquipment = (band) => {
+      if (typeof global.Avian?.equipmentLoot?.rollEquipmentDrop !== 'function') return null;
+      return global.Avian.equipmentLoot.rollEquipmentDrop({
+        band: band || 'blue',
         stage: G?.stage || 1,
-        isBoss: false,
+        filterForPlayer: true,
       });
     };
-    const grantMutationIds = (ids) => {
-      ids.forEach((id) => {
-        if (id && typeof global.Avian?.mutations?.addToInventory === 'function') {
-          global.Avian.mutations.addToInventory(player, id);
-          granted.mutations.push(id);
-        }
-      });
+    const grantEquipmentId = (id) => {
+      if (!id || typeof global.Avian?.equipment?.addToInventory !== 'function') return;
+      global.Avian.equipment.addToInventory(player, id);
+      granted.equipment.push(id);
+      if (typeof global.Avian?.equipmentLoot?.registerOrangeAcquired === 'function') {
+        global.Avian.equipmentLoot.registerOrangeAcquired(global.Avian.equipmentLoot.getItem(id));
+      }
+    };
+    const grantGearFromBand = (band) => {
+      const eqId = rollForgeEquipment(band);
+      if (eqId) grantEquipmentId(eqId);
     };
     rewards.forEach((r) => {
       if (!r) return;
@@ -789,16 +779,16 @@
         granted.shinies += gain;
         if (G) G.shinyObjects = (G.shinyObjects || 0) + gain;
       } else if (r.type === 'mutation') {
-        if (r.mutationId) {
-          grantMutationIds([String(r.mutationId)]);
+        if (r.equipmentId) {
+          grantEquipmentId(String(r.equipmentId));
         } else {
           const count = Math.max(1, Math.floor(Number(r.count) || 1));
           const band = r.tierBand || r.tier || 'blue';
-          for (let i = 0; i < count; i++) grantMutationIds(rollForgeMutation(band));
+          for (let i = 0; i < count; i++) grantGearFromBand(band);
         }
       } else if (r.type === 'nest' && Array.isArray(r.slots)) {
         r.slots.forEach((slot) => {
-          grantMutationIds(rollForgeMutation(slot?.tier || 'blue'));
+          grantGearFromBand(slot?.tier || slot?.tierBand || 'blue');
           granted.nests += 1;
         });
       } else if (r.type === 'item' && r.itemKey) {
@@ -812,6 +802,10 @@
         const n = Math.max(1, Math.floor(Number(r.count) || 1));
         if (typeof global.addRescuedNest === 'function') global.addRescuedNest(eggId, n);
         granted.rescuedNests += n;
+      } else if (r.type === 'savedEggs') {
+        const n = Math.max(0, Math.floor(Number(r.count) || 0));
+        if (n && typeof global.addSavedEggs === 'function') global.addSavedEggs(n);
+        granted.savedEggs += n;
       } else if (r.type === 'goldenGoose') {
         const n = Math.max(0, Math.floor(Number(r.count) || 0));
         if (n && typeof global.addGoldenGooseEggs === 'function') global.addGoldenGooseEggs(n);

@@ -5,7 +5,22 @@
   var Avian = globalThis.Avian || (globalThis.Avian = {});
   Avian.systems = Avian.systems || Object.create(null);
 
+  function isEquipmentV2() {
+    if (typeof Avian.isEquipmentV2 === 'function') return Avian.isEquipmentV2();
+    return !!(Avian.flags && Avian.flags.equipmentV2);
+  }
+
   function meterRules() {
+    if (isEquipmentV2()) {
+      var cfg = Avian.data && Avian.data.combatConfig;
+      if (cfg && cfg.ultimateMeter) {
+        return {
+          maxMeter: Number(cfg.ultimateMeter.max) || 100,
+          damageAwards: cfg.ultimateMeter.damageAwards || {},
+          utilityAwards: cfg.ultimateMeter.utilityAwards || {},
+        };
+      }
+    }
     return (Avian.data && Avian.data.ultimateMeterRules) || {
       maxMeter: 100,
       damageAwards: { 1: 8, 2: 12, 3: 16, 4: 22 },
@@ -47,17 +62,28 @@
 
   function packRowForAbility(ab) {
     if (!ab || !ab.id) return null;
+    if (ab._dispatcherRow) {
+      var embedded = ab._dispatcherRow;
+      if (typeof globalThis.enrichCombatRow === 'function') globalThis.enrichCombatRow(embedded);
+      return embedded;
+    }
     var id = String(ab.id);
     if (typeof globalThis.resolveAbilityAliasSourceId === 'function') {
       id = globalThis.resolveAbilityAliasSourceId(id);
     }
-    var row = Avian.data && Avian.data.combatPack && Avian.data.combatPack.skillTrees
-      ? Avian.data.combatPack.skillTrees[id] : null;
+    var row = null;
+    if (Avian.equipmentActions && typeof Avian.equipmentActions.skillToAbilityRow === 'function') {
+      row = Avian.equipmentActions.skillToAbilityRow(id, null, 'grey');
+    } else {
+      var skills = Avian.data && Avian.data.equipment && Avian.data.equipment.skills;
+      row = skills && skills[id] ? skills[id] : null;
+    }
     if (row && typeof globalThis.enrichCombatRow === 'function') globalThis.enrichCombatRow(row);
     return row;
   }
 
   function isUltimateAbility(ab, row) {
+    if (ab && ab.isUltimate) return true;
     row = row || packRowForAbility(ab);
     if (row && row.isUltimate) return true;
     if (row && (row.role || '').toLowerCase().indexOf('ultimate') >= 0) return true;
@@ -78,7 +104,8 @@
     if (!row) return 0;
     if (isUltimateAbility(ab, row)) return 0;
     var rules = meterRules();
-    var en = Math.max(1, Math.min(4, Number(row.enCost || row.apCost || ab.energy || ab.energyCost || 1)));
+    var enMax = isEquipmentV2() ? 6 : 4;
+    var en = Math.max(1, Math.min(enMax, Number(row.enCost || row.apCost || ab.energy || ab.energyCost || 1)));
     var landed = (ctx.hitsLanded || 0) > 0;
     var utilityOk = !!ctx.utilitySucceeded;
     if (row.noDamage || row.target === 'self') {
@@ -179,8 +206,8 @@
       var p = purgePositiveStatuses(g.enemyStatus);
       if (p > 0) {
         utilitySucceeded = true;
-        if (typeof Avian !== 'undefined' && Avian.mutationEffects && typeof Avian.mutationEffects.onPurge === 'function') {
-          Avian.mutationEffects.onPurge();
+        if (typeof Avian !== 'undefined' && Avian.equipmentEffects && typeof Avian.equipmentEffects.onPurge === 'function') {
+          Avian.equipmentEffects.onPurge();
         }
       }
     }

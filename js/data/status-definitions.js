@@ -31,8 +31,9 @@
     var id = String(sourceId).split(':')[0];
     var kind = sourceKind || 'ability';
     var pack = Avian.data && Avian.data.combatPack;
-    if (kind === 'ability' && pack && pack.skillTrees && pack.skillTrees[id]) {
-      return pack.skillTrees[id].name || id;
+    if (kind === 'ability') {
+      var skills = Avian.data && Avian.data.equipment && Avian.data.equipment.skills;
+      if (skills && skills[id]) return skills[id].name || id;
     }
     if (kind === 'passive' && pack && pack.birdPassives && pack.birdPassives[id]) {
       return pack.birdPassives[id].name || id;

@@ -16,10 +16,13 @@
   }
 
   function rowFor(abId) {
-    var p = Avian.data && Avian.data.combatPack;
     var id = String(abId || '');
     if (typeof globalThis.resolveAbilityAliasSourceId === 'function') id = globalThis.resolveAbilityAliasSourceId(id);
-    return p && p.skillTrees ? p.skillTrees[id] : null;
+    if (Avian.equipmentActions && typeof Avian.equipmentActions.skillToAbilityRow === 'function') {
+      return Avian.equipmentActions.skillToAbilityRow(id, null, 'grey');
+    }
+    var skills = Avian.data && Avian.data.equipment && Avian.data.equipment.skills;
+    return skills && skills[id] ? skills[id] : null;
   }
 
   function abMeta(ab) {

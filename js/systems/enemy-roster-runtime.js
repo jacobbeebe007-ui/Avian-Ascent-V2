@@ -385,10 +385,12 @@
 
     var enemyStub = { birdKey: row.birdKey, abilities: [], familyEvolutionState: {} };
     var skillLevel = row.storyLevel || 1;
-    if (typeof global.materializeEnemySkillsFromWorkbookKit === 'function') {
-      global.materializeEnemySkillsFromWorkbookKit(enemyStub, row.birdKey, skillLevel, cls, row);
-    } else if (typeof global.materializeEnemySkillsFromPlayerMirror === 'function') {
-      global.materializeEnemySkillsFromPlayerMirror(enemyStub, row.birdKey, skillLevel, null, cls);
+    if (!(Avian.flags && Avian.flags.equipmentV2)) {
+      if (typeof global.materializeEnemySkillsFromWorkbookKit === 'function') {
+        global.materializeEnemySkillsFromWorkbookKit(enemyStub, row.birdKey, skillLevel, cls, row);
+      } else if (typeof global.materializeEnemySkillsFromPlayerMirror === 'function') {
+        global.materializeEnemySkillsFromPlayerMirror(enemyStub, row.birdKey, skillLevel, null, cls);
+      }
     }
 
     var cc = Math.max(0.05, Math.min(0.95, ((stats.critChance || 5) / 100)));

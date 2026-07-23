@@ -37,7 +37,7 @@ const checks = [
   { label: 'ABILITY_TEMPLATES table',   re: /\bABILITY_TEMPLATES\s*=/ },
   { label: 'BIRDS table',               re: /globalThis\.BIRDS\s*=\s*birds\b/ },
   { label: 'ENEMIES table',             re: /globalThis\.ENEMIES\s*=\s*enemies\b/ },
-  { label: 'Combat pack data', re: /Avian\.data\.combatPack\.skillTrees\s*=\s*Object\.freeze/ },
+  { label: 'Equipment skills data', re: /Avian\.data\.equipment\.skills\s*=\s*Object\.freeze/ },
   { label: 'Ability dispatcher', re: /Avian\.dispatcher\s*=\s*dispatcher/ },
   { label: 'Combat pack boot',   re: /combat-pack-boot\.js/ },
   { label: 'ACTIONS handler map',       re: /Object\.assign\(\s*ACTIONS\s*,/ },

@@ -34,8 +34,25 @@
   var PIERCE_CAP = 0.95;
   var BURNING_DEF_MULT = 0.8;
 
+  function isEquipmentV2() {
+    if (typeof Avian.isEquipmentV2 === 'function') return Avian.isEquipmentV2();
+    return !!(Avian.flags && Avian.flags.equipmentV2);
+  }
+
+  function getCombatConfig() {
+    return (Avian.data && Avian.data.combatConfig) || null;
+  }
+
+  function getPierceCap() {
+    if (isEquipmentV2()) {
+      var cfg = getCombatConfig();
+      if (cfg && cfg.penetration) return Number(cfg.penetration.cap) || 0.4;
+    }
+    return PIERCE_CAP;
+  }
+
   function clampPen(pen) {
-    return Math.min(PIERCE_CAP, Math.max(0, Number(pen) || 0));
+    return Math.min(getPierceCap(), Math.max(0, Number(pen) || 0));
   }
 
   function scaleStatKey(scaleStat) {
@@ -120,8 +137,23 @@
     return Math.max(MIN_CRIT_CHANCE, Math.min(MAX_CRIT_CHANCE, Number(pct) || 0));
   }
 
+  function getCritDamageCaps() {
+    if (isEquipmentV2()) {
+      var cfg = getCombatConfig();
+      if (cfg && cfg.crit) {
+        return {
+          min: Number(cfg.crit.damageFloorMult) || MIN_CRIT_DAMAGE_MULT,
+          max: Number(cfg.crit.damageCapMult) || 2.0,
+          base: Number(cfg.crit.damageFloorMult) || BASE_CRIT_DAMAGE,
+        };
+      }
+    }
+    return { min: MIN_CRIT_DAMAGE_MULT, max: MAX_CRIT_DAMAGE_MULT, base: BASE_CRIT_DAMAGE };
+  }
+
   function clampCritDamageMult(mult) {
-    return Math.max(MIN_CRIT_DAMAGE_MULT, Math.min(MAX_CRIT_DAMAGE_MULT, Number(mult) || BASE_CRIT_DAMAGE));
+    var caps = getCritDamageCaps();
+    return Math.max(caps.min, Math.min(caps.max, Number(mult) || caps.base));
   }
 
   function calculateAbilityHitChancePct(attackerAcc, targetDodge, accuracyPenalty) {
@@ -255,12 +287,38 @@
   }
 
   function getENBaseDamage(enCost) {
-    var cost = Math.max(1, Math.min(3, Math.floor(Number(enCost) || 1)));
+    var cost = Math.floor(Number(enCost) || 1);
+    if (isEquipmentV2()) {
+      var cfg = getCombatConfig();
+      var map = (cfg && cfg.enBaseDamage) || null;
+      if (map) {
+        if (map[cost] != null) return map[cost];
+        if (cost >= 6 && map[6] != null) return map[6];
+        if (cost >= 4 && map[4] != null) return map[4];
+      }
+      cost = Math.max(1, Math.min(3, cost));
+      return (map && map[cost] != null) ? map[cost] : (EN_BASE_DAMAGE[cost] || EN_BASE_DAMAGE[1]);
+    }
+    cost = Math.max(1, Math.min(3, cost));
     return EN_BASE_DAMAGE[cost] || EN_BASE_DAMAGE[1];
   }
 
-  function getClassBaseline(className) {
-    return CLASS_BASELINES[normalizeClassKey(className)] || CLASS_BASELINES.rogue;
+  function getClassBaseline(className, scaleStat) {
+    var key = normalizeClassKey(className);
+    if (isEquipmentV2()) {
+      var statKey = scaleStatKey(scaleStat || 'ATK');
+      var classes = Avian.data && Avian.data.combatPack && Avian.data.combatPack.classes;
+      if (classes && classes[key] && classes[key].reference
+        && classes[key].reference[statKey] != null) {
+        return classes[key].reference[statKey];
+      }
+      var cfg = getCombatConfig();
+      if (cfg && cfg.statMod && cfg.statMod.classReferences
+        && cfg.statMod.classReferences[key] != null) {
+        return cfg.statMod.classReferences[key];
+      }
+    }
+    return CLASS_BASELINES[key] || CLASS_BASELINES.rogue;
   }
 
   function statFromEntity(entity, key) {
@@ -452,10 +510,27 @@
     return statFromEntity(attacker, statKey);
   }
 
+  function getStatModParams() {
+    if (isEquipmentV2()) {
+      var cfg = getCombatConfig();
+      if (cfg && cfg.statMod) {
+        return {
+          divisor: Number(cfg.statMod.divisor) || 50,
+          min: Number(cfg.statMod.min) || 0.8,
+          max: Number(cfg.statMod.max) || 1.6,
+        };
+      }
+      return { divisor: 50, min: 0.8, max: 1.6 };
+    }
+    return { divisor: 100, min: STAT_MOD_MIN, max: STAT_MOD_MAX };
+  }
+
   function getStatModifier(relevantStat, classBaseline) {
+    var params = getStatModParams();
     var stat = Number(relevantStat) || 0;
-    var base = Number(classBaseline) || CLASS_BASELINES.rogue;
-    return clampNum(1 + (stat - base) / 100, STAT_MOD_MIN, STAT_MOD_MAX);
+    var base = Number(classBaseline);
+    if (!Number.isFinite(base)) base = CLASS_BASELINES.rogue;
+    return clampNum(1 + (stat - base) / params.divisor, params.min, params.max);
   }
 
   function getRelevantDefenceStat(target, ability) {
@@ -596,7 +671,7 @@
       hybridHitStat: params.hybridHitStat || (ability && ability._hybridHitStat),
     });
     var className = attacker.class || attacker.enemyClass || attacker.birdClass || 'rogue';
-    var statMod = getStatModifier(relevantStat, getClassBaseline(className));
+    var statMod = getStatModifier(relevantStat, getClassBaseline(className, ability.damageStat || ability.scaleStat));
     var defStat = getRelevantDefenceStat(target, ability);
     var pierce = resolvePierceFraction(ability, String(ability.damageType) === 'Magic');
     var defMod = getDefenceModifier(defStat, ability.damageType, pierce, {
@@ -788,6 +863,8 @@
     isHybridDamage: isHybridDamage,
     calculateHybridDisplaySplit: calculateHybridDisplaySplit,
     describeMasterAbility: describeMasterAbility,
+    clampPen: clampPen,
+    getPierceCap: getPierceCap,
   };
 
   var Avian = globalThis.Avian || (globalThis.Avian = {});

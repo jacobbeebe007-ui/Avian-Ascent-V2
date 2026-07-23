@@ -13,8 +13,12 @@
     if (typeof globalThis.packRowForAbility === 'function') return globalThis.packRowForAbility(ab);
     if (typeof globalThis.resolveAbilityCombatRow === 'function') return globalThis.resolveAbilityCombatRow(ab);
     var id = ab.id || ab;
-    var p = globalThis.Avian && globalThis.Avian.data && globalThis.Avian.data.combatPack;
-    return p && p.skillTrees ? p.skillTrees[id] : null;
+    if (ab._dispatcherRow) return ab._dispatcherRow;
+    if (typeof Avian !== 'undefined' && Avian.equipmentActions && typeof Avian.equipmentActions.skillToAbilityRow === 'function') {
+      return Avian.equipmentActions.skillToAbilityRow(id, null, 'grey');
+    }
+    var skills = globalThis.Avian && globalThis.Avian.data && globalThis.Avian.data.equipment && globalThis.Avian.data.equipment.skills;
+    return skills && skills[id] ? skills[id] : null;
   }
 
   function enrichRow(row) {

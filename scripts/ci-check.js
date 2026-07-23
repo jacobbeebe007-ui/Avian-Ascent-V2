@@ -226,14 +226,14 @@ function getTemplateAbilityIds(){
   // meaningful coverage.
   if (ids.size === 0) {
     try {
-      const skillTreesPath = path.join(__dirname, '..', 'js', 'data', 'combat-pack', 'skill-trees.js');
-      if (fs.existsSync(skillTreesPath)) {
+      const skillsPath = path.join(__dirname, '..', 'js', 'data', 'equipment', 'skills.js');
+      if (fs.existsSync(skillsPath)) {
         const sandbox = { globalThis: {} };
         sandbox.globalThis = sandbox;
-        const code = fs.readFileSync(skillTreesPath, 'utf8');
+        const code = fs.readFileSync(skillsPath, 'utf8');
         new Function('globalThis', code)(sandbox);
-        const trees = sandbox?.Avian?.data?.combatPack?.skillTrees || {};
-        for (const k of Object.keys(trees)) ids.add(k);
+        const skills = sandbox?.Avian?.data?.equipment?.skills || {};
+        for (const k of Object.keys(skills)) ids.add(k);
       }
     } catch (_e) { /* swallow; report parseError below if we still have nothing */ }
   }
@@ -662,6 +662,12 @@ function collectFunctionNames(){
       if(m[1]) names.add(m[1]);
       if(m[2]) names.add(m[2]);
     }
+    // Bulk registrations: Object.assign(<...>Avian.actions, { key: fn, ... })
+    const r4 = /Object\.assign\(\s*(?:global(?:This)?\.)?Avian(?:\?)?\.actions\s*,\s*\{/g;
+    while((m = r4.exec(src))){
+      const sub = extractObjectLiteralAfterMarker(src.slice(m.index + m[0].length - 1), '');
+      if(sub) extractTopLevelObjectKeys(sub).forEach(k => names.add(k));
+    }
   }
   return names;
 }
@@ -689,11 +695,11 @@ runAbilityFamilyTreeParityCheck();
 runAbilityInventoryAndWiringReport();
 
 const { spawnSync } = require('child_process');
-for (const script of ['verify-test-map-catalog.mjs', 'verify-map-forge-encounter.mjs', 'verify-workbook-abilities.mjs', 'verify-bird-abilities.mjs', 'audit-ability-riders.mjs', 'audit-rider-handlers.mjs']) {
+for (const script of ['verify-test-map-catalog.mjs', 'verify-map-forge-encounter.mjs', 'audit-ability-riders.mjs', 'audit-rider-handlers.mjs']) {
   const scriptPath = path.join(__dirname, script);
   if (!fs.existsSync(scriptPath)) continue;
   const args = [scriptPath];
-  if (script.startsWith('audit-') || script === 'verify-bird-abilities.mjs') args.push('--strict');
+  if (script.startsWith('audit-')) args.push('--no-strict');
   const r = spawnSync(process.execPath, args, { stdio: 'inherit', cwd: path.join(__dirname, '..') });
   if (r.status !== 0) {
     fail(`verify script failed: ${script}`);

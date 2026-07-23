@@ -16,8 +16,9 @@
  *
  * Keyboard
  *   In-battle: `1`-`4` / `Q`/`W`/`E`/`R` invoke `Avian.actions.fireAbilitySlot`
- *   with the slot index (0-3) when present. The action is registered later
- *   from the existing battle UI; absence is a silent no-op.
+ *   with the slot index (0-3) when present. When `equipmentV2` is on, `1`-`6`
+ *   map to the six action sources (0-5). The action is registered later from
+ *   the existing battle UI; absence is a silent no-op.
  */
 (function () {
   'use strict';
@@ -120,12 +121,24 @@
     }
   }
 
+  function isEquipmentV2On() {
+    try {
+      if (typeof Avian.isEquipmentV2 === 'function') return Avian.isEquipmentV2();
+      return !!(Avian.flags && Avian.flags.equipmentV2);
+    } catch (_e) {
+      return false;
+    }
+  }
+
   function onKeyDown(e) {
     if (e.repeat || e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return;
     if (!isBattleScreenActive()) return;
     const tag = e.target && e.target.tagName;
     if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
-    const slotMap = { '1': 0, '2': 1, '3': 2, '4': 3, q: 0, w: 1, e: 2, r: 3 };
+    const eqV2 = isEquipmentV2On();
+    const slotMap = eqV2
+      ? { '1': 0, '2': 1, '3': 2, '4': 3, '5': 4, '6': 5 }
+      : { '1': 0, '2': 1, '3': 2, '4': 3, q: 0, w: 1, e: 2, r: 3 };
     const slot = slotMap[e.key.toLowerCase()];
     if (slot === undefined) return;
     const fn = resolveAction('fireAbilitySlot');
@@ -148,19 +161,36 @@
     if (typeof globalThis.showErrorHUD === 'function') globalThis.showErrorHUD();
   };
 
-  /* Stub — the legacy `exportCombatTelemetry` was removed during the aggressive
-   * legacy pruning. The settings button still exists; click logs a notice
-   * so the action resolves (Phase 4 ci-check requires every data-action to
-   * resolve to a known function). Replace with a real exporter when telemetry
-   * is reintroduced, or remove the corresponding button in index.html. */
-  Avian.actions.exportCombatTelemetry = function exportCombatTelemetryStub() {
+  Avian.actions.exportCombatTelemetry = function exportCombatTelemetry() {
     try {
-      console.info('[Avian] exportCombatTelemetry: feature was removed during pruning; this is a stub.');
-      if (typeof globalThis.alert === 'function') {
-        globalThis.alert('Combat telemetry export was removed during legacy pruning. Re-add a real exporter to enable this button.');
+      var tel = Avian.systems && Avian.systems.combatTelemetry;
+      if (!tel || typeof tel.exportJson !== 'function') {
+        console.info('[Avian] exportCombatTelemetry: telemetry module not loaded.');
+        if (typeof globalThis.alert === 'function') {
+          globalThis.alert('Combat telemetry is unavailable — reload after the game bundle finishes loading.');
+        }
+        return;
       }
-    } catch (_e) {
-      /* noop */
+      var json = tel.exportJson(true);
+      var done = function () {
+        try {
+          if (typeof globalThis.alert === 'function') {
+            globalThis.alert('Combat telemetry copied to clipboard (' + tel.hits + ' hits, ' + tel.misses + ' misses).');
+          }
+        } catch (_x) { /* noop */ }
+      };
+      try {
+        if (navigator && navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+          navigator.clipboard.writeText(json).then(done, function () {
+            fallbackCopy(json, done);
+          });
+          return;
+        }
+      } catch (_x) { /* fall through */ }
+      fallbackCopy(json, done);
+      try { console.info('[Avian] combat telemetry export:\n' + json); } catch (_x) { /* noop */ }
+    } catch (err) {
+      try { console.warn('[router] exportCombatTelemetry', err); } catch (_x) { /* noop */ }
     }
   };
 
