@@ -110,3 +110,15 @@ Avian.systems.SAVE_SCHEMA_VERSION
 - Wipes `player.mutationInventory` and `player.equippedMutations` when upgrading from schema v9.
 - Required because the mutation catalog moves to slot-coded `MUT-LW-001` IDs, includes 33 workbook Orange items, and bumps `mutationsPackVersion` to `2026.06-mutations-v6` (legacy `MT####` orange items removed).
 - Players keep run progress; only mutation inventory and equipped loadouts reset.
+
+## v13 migration (equipment v0.3 — Phase 10)
+
+- **Labelled pre-release reset** for mutation-era runs (`mutationsPackVersion` present, no `equipmentPackVersion` / `equipmentV2`).
+- Does **not** map mutations → equipment. The run ends gracefully; meta stores are untouched.
+- Before reset: one-time backup of the pre-migration blob to `avianAscent_save_v2_backup_pre_v13`.
+- Compensation: Shiny Objects equal to the sell value of wiped mutation inventory (half `MUTATION_SHOP_COSTS` per tier) plus a starter stipend (`EQUIPMENT_V2_STARTER_STIPEND`, currently 30). Recorded on `avianAscent_meta_v1.equipmentV2Migration` for the next Flight.
+- Saves that already carry `equipmentV2: true` + `equipmentPackVersion` migrate forward without a reset.
+- New saves stamp `equipmentV2` (from the runtime flag) and `equipmentPackVersion: '2026.07-equipment-v0.3'` when the flag is on.
+- When `equipmentV2` is on at load, `ensurePlayerEquipmentState` + `sanitizeEquipmentLoadout` validate the loadout: unknown item ids are removed with compensation; wrong-slot items are unequipped to inventory; 2H main + offHand conflicts clear offHand.
+
+Verification: `node scripts/verify-save-migration.mjs`

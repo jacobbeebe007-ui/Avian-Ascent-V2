@@ -1,0 +1,45 @@
+{
+  "schemaVersion": 12,
+  "mutationsPackVersion": "2026.06-mutations-v6",
+  "combatPackVersion": "2026.07-flat-abilities",
+  "stage": 4,
+  "bossKills": 0,
+  "endlessMode": false,
+  "shinyObjects": 12,
+  "player": {
+    "birdKey": "crow",
+    "class": "knight",
+    "birdLevel": 3,
+    "stats": {
+      "hp": 60,
+      "maxHp": 60,
+      "atk": 12,
+      "def": 17,
+      "spd": 9,
+      "acc": 84,
+      "dodge": 4,
+      "matk": 0,
+      "mdef": 8,
+      "critChance": 8
+    },
+    "abilities": [],
+    "mutationInventory": [
+      { "itemId": "MUT-LW-001" },
+      { "itemId": "MUT-BK-002" }
+    ],
+    "equippedMutations": {
+      "leftWing": [null],
+      "rightWing": [null],
+      "leftFoot": [null],
+      "rightFoot": [null],
+      "beak": [null],
+      "syrinx": [null],
+      "chest": ["MUT-CH-003"],
+      "plumage": [null],
+      "eyes": [null],
+      "head": [null],
+      "tail": [null]
+    }
+  },
+  "savedAt": 1750000000000
+}

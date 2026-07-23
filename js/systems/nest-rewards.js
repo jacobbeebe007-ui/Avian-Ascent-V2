@@ -79,19 +79,28 @@
     };
   }
 
-  function rollMutationRewardForBird(bird, difficulty, stage, isBoss, usedMutationIds) {
+  function isEquipmentV2() {
+    return !!(Avian.flags && Avian.flags.equipmentV2);
+  }
+
+  function rollEquipmentRewardForBird(bird, difficulty, stage, isBoss, usedIds) {
     var level = Math.max(1, Math.floor(Number(bird.level) || 1));
-    var tier = rollNestMutationTier(level);
-    var dataTier = tier === 'grey' ? 'white' : tier;
+    var rarity = rollNestMutationTier(level);
     var rw = null;
-    if (typeof Avian.mutations !== 'undefined' && typeof Avian.mutations.rollMutationReward === 'function') {
+    if (Avian.equipmentLoot && typeof Avian.equipmentLoot.rollEquipmentReward === 'function') {
       var guard = 0;
       while (guard < 25) {
         guard++;
-        rw = Avian.mutations.rollMutationReward({ tier: dataTier, stage: stage, isBoss: !!isBoss });
+        rw = Avian.equipmentLoot.rollEquipmentReward({
+          rarity: rarity,
+          stage: stage,
+          isBoss: !!isBoss,
+          usedIds: usedIds,
+          filterForPlayer: true,
+        });
         if (!rw) continue;
-        if (usedMutationIds.has(rw.id)) continue;
-        usedMutationIds.add(rw.id);
+        if (usedIds.has(rw.equipmentItemId || rw.id)) continue;
+        usedIds.add(rw.equipmentItemId || rw.id);
         break;
       }
     }
@@ -106,13 +115,18 @@
         desc: 'Fallback nest reward.',
       };
     }
-    return Object.assign({ type: 'mutation' }, rw);
+    return rw;
+  }
+
+  function rollMutationRewardForBird(bird, difficulty, stage, isBoss, usedMutationIds) {
+    return rollEquipmentRewardForBird(bird, difficulty, stage, isBoss, usedMutationIds);
   }
 
   function rollDropForBird(bird, difficulty, stage, isBoss, usedMutationIds) {
     var level = Math.max(1, Math.floor(Number(bird.level) || 1));
+    var gearKind = isEquipmentV2() ? 'equipment' : 'mutation';
     var kind = pickWeighted([
-      { k: 'mutation', w: 62 },
+      { k: gearKind, w: 62 },
       { k: 'healing', w: 28 },
       { k: 'shiny', w: 10 },
     ]);
@@ -120,7 +134,7 @@
     if (kind === 'shiny') {
       var shiny = rollNestShinyBonus(level, difficulty);
       if (shiny) return shiny;
-      kind = 'mutation';
+      kind = isEquipmentV2() ? 'equipment' : 'mutation';
     }
 
     if (kind === 'healing') {
@@ -178,33 +192,8 @@
         name: heal.name,
         desc: 'Healing item for battle.',
       });
-      var tier = rollNestMutationTier(level);
-      var dataTier = tier === 'grey' ? 'white' : tier;
-      var rw = null;
-      if (typeof Avian.mutations !== 'undefined' && typeof Avian.mutations.rollMutationReward === 'function') {
-        var guard = 0;
-        while (guard < 25) {
-          guard++;
-          rw = Avian.mutations.rollMutationReward({ tier: dataTier, stage: stage, isBoss: !!bird.isBoss });
-          if (!rw) continue;
-          if (used.has(rw.id)) continue;
-          used.add(rw.id);
-          break;
-        }
-      }
-      if (!rw) {
-        drops.push({
-          type: 'combat_item',
-          itemKey: 'freshWater',
-          quantity: 1,
-          tier: 'grey',
-          icon: '💧',
-          name: 'Fresh Water',
-          desc: 'Fallback endless reward.',
-        });
-      } else {
-        drops.push(Object.assign({ type: 'mutation' }, rw));
-      }
+      var eqRw = rollEquipmentRewardForBird(bird, difficulty, stage, !!bird.isBoss, used);
+      drops.push(eqRw);
     });
     return drops;
   }
@@ -244,13 +233,28 @@
   function grantNestDrop(drop) {
     if (!drop || !global.G || !global.G.player) return false;
     var g = global.G;
+    if (drop.type === 'equipment') {
+      var eqId = drop.equipmentItemId || drop.id;
+      if (eqId && Avian.equipment && typeof Avian.equipment.addToInventory === 'function') {
+        Avian.equipment.addToInventory(g.player, eqId);
+      }
+      if (Avian.equipmentLoot && typeof Avian.equipmentLoot.registerOrangeAcquired === 'function') {
+        Avian.equipmentLoot.registerOrangeAcquired(Avian.equipmentLoot.getItem(eqId));
+      }
+      if (typeof global.logMsg === 'function') {
+        global.logMsg('🪺 Nest drop: ' + (drop.name || 'Equipment') + '!', 'system');
+      }
+      if (!g.collectedRewards) g.collectedRewards = [];
+      g.collectedRewards.push({ id: eqId, icon: drop.icon, tier: drop.tier, name: drop.name, desc: drop.desc || '' });
+      return true;
+    }
     if (drop.type === 'mutation') {
       if (typeof global.applySingleReward === 'function') {
         global.applySingleReward(drop);
       } else {
         var itemId = drop.mutationItemId || drop.id;
-        if (itemId && typeof Avian.mutations !== 'undefined' && typeof Avian.mutations.addToInventory === 'function') {
-          Avian.mutations.addToInventory(g.player, itemId);
+        if (itemId && typeof Avian.equipment !== 'undefined' && typeof Avian.equipment.addToInventory === 'function') {
+          Avian.equipment.addToInventory(g.player, itemId);
         }
       }
       return true;

@@ -25,12 +25,150 @@
   'use strict';
 
   /** Bump when adding a migration. */
-  var TARGET = 12;
+  var TARGET = 13;
 
   /** Combat-pack version stamp surfaced on the save blob. Wipes attached when
    *  this changes so legacy ability/perk/family state never bleeds into a run. */
   var COMBAT_PACK_VERSION = '2026.07-flat-abilities';
   var MUTATIONS_PACK_VERSION = '2026.06-mutations-v6';
+  var EQUIPMENT_PACK_VERSION = '2026.07-equipment-v0.3';
+  var SAVE_BACKUP_KEY_PRE_V13 = 'avianAscent_save_v2_backup_pre_v13';
+  var EQUIPMENT_V2_STARTER_STIPEND = 30;
+  var MUTATION_SELL_COSTS = { white: 16, green: 28, blue: 44, purple: 64, gold: 96, orange: 140 };
+
+  function mutationSellPrice(tier) {
+    var raw = String(tier || 'white').toLowerCase();
+    var key = raw === 'grey' ? 'white' : raw;
+    return Math.max(1, Math.floor((MUTATION_SELL_COSTS[key] || MUTATION_SELL_COSTS[raw] || 20) / 2));
+  }
+
+  function lookupMutationItem(itemId) {
+    if (!itemId) return null;
+    var id = String(itemId);
+    var tierMatch = id.match(/-(white|green|blue|purple|gold|orange|grey)$/i);
+    if (tierMatch) return { tier: tierMatch[1].toLowerCase() };
+    if (/^MUT-/i.test(id)) return { tier: 'green' };
+    return { tier: 'white' };
+  }
+
+  function needsEquipmentV2PreReleaseReset(save) {
+    if (!save || typeof save !== 'object') return false;
+    if (save.equipmentV2 === true && save.equipmentPackVersion) return false;
+    if (save.mutationsPackVersion && !save.equipmentPackVersion) return true;
+    if (!save.equipmentV2 && save.mutationsPackVersion) return true;
+    var p = save.player;
+    if (!p || typeof p !== 'object') return false;
+    if (save.equipmentV2 === true) return false;
+    if (Array.isArray(p.mutationInventory) && p.mutationInventory.length) return true;
+    var eq = p.equippedMutations;
+    if (eq && typeof eq === 'object') {
+      for (var slot in eq) {
+        if (!Object.prototype.hasOwnProperty.call(eq, slot)) continue;
+        var arr = eq[slot];
+        if (!Array.isArray(arr)) continue;
+        for (var i = 0; i < arr.length; i++) {
+          if (arr[i]) return true;
+        }
+      }
+    }
+    if (p.mutationInventory !== undefined || p.equippedMutations !== undefined) return true;
+    return !save.equipmentPackVersion;
+  }
+
+  function computeMutationEraCompensation(save) {
+    var total = 0;
+    var p = save && save.player;
+    if (!p) return 0;
+    var seen = Object.create(null);
+    function addItemId(id) {
+      if (!id || seen[id]) return;
+      seen[id] = true;
+      var item = lookupMutationItem(id);
+      if (item) total += mutationSellPrice(item.tier);
+    }
+    var inv = p.mutationInventory || [];
+    for (var i = 0; i < inv.length; i++) {
+      var entry = inv[i];
+      addItemId(typeof entry === 'string' ? entry : (entry && entry.itemId));
+    }
+    var eq = p.equippedMutations || {};
+    for (var slot in eq) {
+      if (!Object.prototype.hasOwnProperty.call(eq, slot)) continue;
+      var arr = eq[slot];
+      if (!Array.isArray(arr)) continue;
+      for (var j = 0; j < arr.length; j++) addItemId(arr[j]);
+    }
+    return total;
+  }
+
+  function writePreV13BackupOnce(rawJson) {
+    try {
+      var ls = globalThis.localStorage;
+      if (!ls || typeof ls.getItem !== 'function' || typeof ls.setItem !== 'function') return false;
+      if (ls.getItem(SAVE_BACKUP_KEY_PRE_V13)) return false;
+      ls.setItem(SAVE_BACKUP_KEY_PRE_V13, rawJson);
+      return true;
+    } catch (_e) {
+      return false;
+    }
+  }
+
+  function grantEquipmentV2MigrationCompensation(compensation, migrationResult) {
+    var amt = Math.max(0, Math.floor(Number(compensation) || 0));
+    try {
+      var key = globalThis.FORTUNE_META_KEY || 'avianAscent_meta_v1';
+      var ls = globalThis.localStorage;
+      if (!ls || typeof ls.getItem !== 'function' || typeof ls.setItem !== 'function') return amt;
+      var meta = {};
+      try { meta = JSON.parse(ls.getItem(key) || '{}'); } catch (_e2) { meta = {}; }
+      if (!meta || typeof meta !== 'object') meta = {};
+      meta.equipmentV2Migration = {
+        pendingShinyCompensation: amt,
+        inventorySellValue: Math.max(0, Math.floor(Number(migrationResult && migrationResult.inventorySellValue) || 0)),
+        stipend: Math.max(0, Math.floor(Number(migrationResult && migrationResult.stipend) || 0)),
+        note: String((migrationResult && migrationResult.note) || ''),
+        migratedAt: Date.now(),
+        schemaVersion: TARGET,
+        packVersion: EQUIPMENT_PACK_VERSION,
+      };
+      ls.setItem(key, JSON.stringify(meta));
+    } catch (_e3) { /* noop */ }
+    return amt;
+  }
+
+  function buildPreReleaseResetTombstone(save) {
+    var sellValue = computeMutationEraCompensation(save);
+    var stipend = EQUIPMENT_V2_STARTER_STIPEND;
+    var compensation = sellValue + stipend;
+    var note = 'Your mutation-era run was ended for the Equipment v0.3 pre-release update. '
+      + 'Meta progress was kept. Shiny Object compensation (' + compensation + '🌟) is saved for your next Flight.';
+    var migrationResult = {
+      reset: true,
+      inventorySellValue: sellValue,
+      stipend: stipend,
+      compensation: compensation,
+      note: note,
+    };
+    grantEquipmentV2MigrationCompensation(compensation, migrationResult);
+    return {
+      schemaVersion: TARGET,
+      equipmentV2: false,
+      _equipmentV2PreReleaseReset: true,
+      _equipmentV2MigrationResult: migrationResult,
+    };
+  }
+
+  function stampEquipmentSaveFields(save) {
+    if (!save || typeof save !== 'object') return save;
+    var flagOn = !!(globalThis.Avian && globalThis.Avian.flags && globalThis.Avian.flags.equipmentV2);
+    save.equipmentV2 = !!flagOn;
+    if (flagOn) {
+      save.equipmentPackVersion = EQUIPMENT_PACK_VERSION;
+    } else {
+      delete save.equipmentPackVersion;
+    }
+    return save;
+  }
 
   /** @type {Array<{from:number,to:number,fn:(save:any)=>any,note?:string}>} */
   var migrations = [
@@ -228,6 +366,18 @@
         return save;
       },
     },
+    {
+      from: 12,
+      to: 13,
+      note: 'equipment v0.3: labelled pre-release reset for mutation-era runs; stamp equipmentV2/equipmentPackVersion',
+      fn: function (save) {
+        if (!save) return save;
+        if (needsEquipmentV2PreReleaseReset(save)) {
+          return buildPreReleaseResetTombstone(save);
+        }
+        return stampEquipmentSaveFields(save);
+      },
+    },
   ];
 
   var Avian = globalThis.Avian || (globalThis.Avian = { systems: {}, debug: {} });
@@ -236,6 +386,23 @@
   Avian.systems.SAVE_SCHEMA_VERSION = TARGET;
   Avian.systems.COMBAT_PACK_VERSION = COMBAT_PACK_VERSION;
   Avian.systems.MUTATIONS_PACK_VERSION = MUTATIONS_PACK_VERSION;
+  Avian.systems.EQUIPMENT_PACK_VERSION = EQUIPMENT_PACK_VERSION;
+  Avian.systems.SAVE_BACKUP_KEY_PRE_V13 = SAVE_BACKUP_KEY_PRE_V13;
+  Avian.systems.EQUIPMENT_V2_STARTER_STIPEND = EQUIPMENT_V2_STARTER_STIPEND;
+  Avian.systems.needsEquipmentV2PreReleaseReset = needsEquipmentV2PreReleaseReset;
+  Avian.systems.computeMutationEraCompensation = computeMutationEraCompensation;
+  Avian.systems.writePreV13BackupOnce = writePreV13BackupOnce;
+  Avian.systems.grantEquipmentV2MigrationCompensation = grantEquipmentV2MigrationCompensation;
+  Avian.systems.stampEquipmentSaveFields = stampEquipmentSaveFields;
+
+  Avian.systems.maybeBackupPreV13Save = function maybeBackupPreV13Save(rawJson, parsed) {
+    if (!parsed || typeof parsed !== 'object') return false;
+    var v = Number(parsed.schemaVersion);
+    if (!Number.isFinite(v) || v < 0) v = 0;
+    if (v >= TARGET) return false;
+    if (!needsEquipmentV2PreReleaseReset(parsed)) return false;
+    return writePreV13BackupOnce(rawJson);
+  };
 
   /**
    * Apply ordered migrations until the save is at the current schema version.

@@ -32,14 +32,25 @@
     debug: Object.create(null),
   };
 
+  Avian.flags = Avian.flags || Object.create(null);
+
   let debugFlag = false;
+  let searchParams = null;
   try {
     const search = (globalThis.location && globalThis.location.search) || '';
-    debugFlag = new URLSearchParams(search).get('debug') === '1';
+    searchParams = new URLSearchParams(search);
+    debugFlag = searchParams.get('debug') === '1';
   } catch (_e) {
     /* file:// in some browsers throws on URLSearchParams of an empty query */
   }
   Avian.debug.enabled = debugFlag;
+
+  /* Phase 13: equipment is always on; legacy mutation/kit paths removed. */
+  Avian.flags.equipmentV2 = true;
+
+  Avian.isEquipmentV2 = function isEquipmentV2() {
+    return true;
+  };
 
   Avian.debug.safe = function safe(label, fn, fallback) {
     if (typeof fn !== 'function') return fallback;

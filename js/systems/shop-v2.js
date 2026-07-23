@@ -2,7 +2,7 @@
  *
  * Shop offer composition (per visit):
  *   - 3 healing items (from game.js SHOP_HEALING_ITEMS).
- *   - Mutation stock (Avian.mutations.rollMutationStock).
+ *   - Equipment stock (Avian.equipmentLoot).
  */
 (function () {
   'use strict';

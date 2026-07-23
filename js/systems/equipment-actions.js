@@ -1,0 +1,507 @@
+/* Avian Ascent — Equipment v0.3 action sources (Phases 4a/4b/5)
+ *
+ * Derives six action sources from the 8-slot loadout into dispatcher-compatible abilities.
+ * Gated by Avian.flags.equipmentV2.
+ */
+(function () {
+  'use strict';
+  var Avian = globalThis.Avian || (globalThis.Avian = {});
+  Avian.systems = Avian.systems || Object.create(null);
+  var ns = Avian.equipmentActions = Object.create(null);
+
+  var SOURCE_ORDER = ['basic', 'utility', 'weaponA', 'weaponB', 'armour', 'ultimate'];
+  var ULTIMATE_RARITIES = { gold: true, orange: true };
+
+  function isEquipmentV2() {
+    if (typeof Avian.isEquipmentV2 === 'function') return Avian.isEquipmentV2();
+    return !!(Avian.flags && Avian.flags.equipmentV2);
+  }
+
+  function combatConfig() {
+    return (Avian.data && Avian.data.combatConfig) || null;
+  }
+
+  function skillsCatalog() {
+    return (Avian.data && Avian.data.equipment && Avian.data.equipment.skills) || null;
+  }
+
+  function getSkill(skillId) {
+    var cat = skillsCatalog();
+    return cat && skillId ? cat[skillId] || null : null;
+  }
+
+  function getItem(itemId) {
+    if (typeof Avian.equipment !== 'undefined' && typeof Avian.equipment.getItem === 'function') {
+      return Avian.equipment.getItem(itemId);
+    }
+    var items = Avian.data && Avian.data.equipment && Avian.data.equipment.items;
+    return items && itemId ? items[itemId] || null : null;
+  }
+
+  function equippedItemId(entity, slotKey) {
+    if (!entity || !entity.equipment) return null;
+    var id = entity.equipment[slotKey];
+    return id || null;
+  }
+
+  function equippedItem(entity, slotKey) {
+    return getItem(equippedItemId(entity, slotKey));
+  }
+
+  function normalizeRarity(raw) {
+    var r = String(raw || 'grey').toLowerCase();
+    if (r === 'grand' || r === 'epic') return 'gold';
+    if (r === 'legendary') return 'orange';
+    return r;
+  }
+
+  function tierPct(tier, dir) {
+    var tiers = Avian.data && Avian.data.effectTiers;
+    var bucket = dir === 'down' ? 'debuff' : 'buff';
+    var map = tiers && tiers[bucket];
+    var t = String(tier || 'minor').toLowerCase();
+    if (map && map[t] != null) return Number(map[t]);
+    var cfg = combatConfig();
+    if (cfg && cfg.effectTiers && cfg.effectTiers[t] != null) return Number(cfg.effectTiers[t]);
+    return t === 'major' ? 50 : (t === 'moderate' ? 25 : 10);
+  }
+
+  function statToRiderKind(stat, dir, target) {
+    var s = String(stat || '').toLowerCase();
+    var down = dir === 'down';
+    var enemy = String(target || 'self').toLowerCase() === 'enemy';
+    if (s === 'atk') return down ? (enemy ? 'reduceEnemyAtk' : 'gainAtk') : 'gainAtk';
+    if (s === 'matk') return down ? (enemy ? 'reduceEnemyMatk' : 'gainMatk') : 'gainMatk';
+    if (s === 'def') return down ? (enemy ? 'reduceEnemyDef' : 'gainDef') : 'gainDef';
+    if (s === 'mdef') return down ? (enemy ? 'reduceEnemyMdef' : 'gainMdef') : 'gainMdef';
+    if (s === 'spd') return down ? (enemy ? 'reduceEnemySpd' : 'gainSpeed') : 'gainSpeed';
+    if (s === 'dodge') return down ? (enemy ? 'reduceEnemyDodge' : 'gainDodge') : 'gainDodge';
+    if (s === 'acc') return down ? (enemy ? 'reduceEnemyAcc' : 'gainAcc') : 'gainAcc';
+    if (s === 'critchance' || s === 'crit') return down ? (enemy ? 'reduceEnemyCrit' : 'gainCritChance') : 'gainCritChance';
+    if (s === 'physicaldamage' || s === 'magicdamage' || s === 'damage') return 'flatDamageBonus';
+    return null;
+  }
+
+  function riderWhenFromParsed(parsed) {
+    if (!parsed || !parsed.trigger) return null;
+    var kind = parsed.trigger.kind;
+    if (kind === 'onUse') return null;
+    if (kind === 'vsTargetHpBelow') return 'onHit';
+    if (kind === 'vsTargetState') return 'onHit';
+    if (kind === 'skillModifier') return null;
+    return null;
+  }
+
+  function convertParsedRiderToRows(parsed, skillId) {
+    var riders = [];
+    if (!parsed) return riders;
+    var when = riderWhenFromParsed(parsed);
+    var effects = parsed.effects || [];
+    for (var i = 0; i < effects.length; i++) {
+      var eff = effects[i];
+      if (!eff || eff.kind !== 'tierStat') continue;
+      var kind = statToRiderKind(eff.stat, eff.dir, eff.target);
+      if (!kind) continue;
+      var val = tierPct(eff.tier, eff.dir);
+      if (kind === 'gainSpeed' || kind.indexOf('gain') === 0 && kind !== 'gainDodge' && kind !== 'gainAcc' && kind !== 'gainCritChance') {
+        riders.push({ kind: kind, value: val, when: when, scope: eff.target === 'enemy' ? 'enemy' : 'self' });
+      } else {
+        riders.push({ kind: kind, value: val, when: when, scope: eff.target === 'enemy' ? 'enemy' : 'self' });
+      }
+    }
+    var specials = parsed.specials || [];
+    for (var si = 0; si < specials.length; si++) {
+      var sp = specials[si];
+      if (!sp || !sp.id) continue;
+      if (sp.id === 'shield') riders.push({ kind: 'gainShield', value: Number(sp.maxHpPct) || 15, when: null });
+      if (sp.id === 'healMaxHp') riders.push({ kind: 'healMaxHpPct', value: Number(sp.pct) || 10, when: null });
+      if (sp.id === 'cleanse') {
+        /* handled via applyTagRidersFromRow Cleanse tag */
+      }
+      if (sp.id === 'applyAilment') {
+        /* ailment handled separately if wired on row */
+      }
+    }
+    if (specials.some(function (s) { return s && s.id === 'cleanse'; })) {
+      riders.push({ kind: 'tagFlag', value: 0, tags: ['Cleanse'] });
+    }
+    return riders;
+  }
+
+  function resolveStructuredRider(skill) {
+    if (!skill) return null;
+    if (skill.rider && typeof skill.rider === 'object') return skill.rider;
+    if (!skill.riderText) return null;
+    if (typeof Avian.workbookEffects !== 'undefined' && typeof Avian.workbookEffects.parseTrigger === 'function') {
+      return {
+        text: skill.riderText,
+        trigger: Avian.workbookEffects.parseTrigger(skill.riderText),
+        effects: [],
+        specials: [],
+      };
+    }
+    return null;
+  }
+
+  function resolveItemAspect(item, skill) {
+    if (item && item.aspect && item.aspect !== 'neutral') return item.aspect;
+    if (skill && skill.aspectRule && skill.aspectRule !== 'None' && skill.aspectRule !== 'Item Aspect') {
+      return String(skill.aspectRule);
+    }
+    return item && item.aspect ? item.aspect : null;
+  }
+
+  function categoryForSkill(skill) {
+    if (!skill) return 'physical';
+    if (String(skill.damageType).toLowerCase() === 'utility' || String(skill.skillType).toLowerCase() === 'utility') {
+      return 'utility';
+    }
+    if (String(skill.damageType).toLowerCase() === 'magic') return 'magic';
+    return 'physical';
+  }
+
+  function btnTypeForRow(row) {
+    if (typeof globalThis.resolveCombatRowBtnType === 'function') {
+      return globalThis.resolveCombatRowBtnType(row);
+    }
+    var cat = String(row.category || '').toLowerCase();
+    if (cat === 'magic' || cat === 'spell') return 'spell';
+    if (row.noDamage || cat === 'utility') return 'utility';
+    return 'physical';
+  }
+
+  function buildTags(skill, item, row) {
+    var tags = ['Equipment'];
+    if (row.isUltimate) tags.push('Ultimate');
+    if (item && item.family) tags.push(String(item.family));
+    if (skill && skill.skillType) tags.push(String(skill.skillType));
+    if (row.noDamage) tags.push('Utility');
+    return tags;
+  }
+
+  ns.skillToAbilityRow = function skillToAbilityRow(skillId, item, rarityOptional) {
+    var skill = getSkill(skillId);
+    if (!skill) return null;
+    var rarity = normalizeRarity(rarityOptional || (item && item.rarity) || 'grey');
+    var apMap = skill.ap || {};
+    var apVal = apMap[rarity];
+    if (apVal == null && rowIsUltimate(skill)) {
+      apVal = apMap.gold != null ? apMap.gold : apMap.orange;
+    }
+    if (apVal == null && !rowIsUltimate(skill)) apVal = apMap.grey != null ? apMap.grey : 1;
+    var pen = Number(skill.intrinsicPenPct) || 0;
+    var dmgType = String(skill.damageType || 'Physical');
+    var isUtil = dmgType.toLowerCase() === 'utility' || (Number(skill.hits) || 0) === 0;
+    var structured = resolveStructuredRider(skill);
+    var riders = convertParsedRiderToRows(structured, skillId);
+    var row = {
+      id: skill.id,
+      name: skill.name,
+      enCost: Number(skill.en) || 0,
+      apCost: Number(skill.en) || 0,
+      cooldown: Number(skill.cooldown) || 0,
+      damageType: dmgType,
+      scaleStat: skill.scalingStat || null,
+      damageStat: skill.scalingStat || null,
+      abilityPower: apVal != null ? Number(apVal) : null,
+      hits: Math.max(0, Number(skill.hits) || 0),
+      hitCount: Math.max(0, Number(skill.hits) || 0),
+      aspect: resolveItemAspect(item, skill),
+      isUltimate: rowIsUltimate(skill),
+      piercePercent: pen / 100,
+      pierceDef: dmgType === 'Magic' ? 0 : pen,
+      pierceMdef: dmgType === 'Magic' ? pen : 0,
+      tags: [],
+      source: 'equipment',
+      equipmentSkillId: skillId,
+      equipmentItemId: item && item.id ? item.id : null,
+      riderText: skill.riderText || (structured && structured.text) || '',
+      structuredRider: structured,
+      category: categoryForSkill(skill),
+      target: String(skill.target || 'Enemy').toLowerCase() === 'self' ? 'self' : 'enemy',
+      noDamage: isUtil,
+      riders: riders,
+    };
+    row.tags = buildTags(skill, item, row);
+    if (typeof globalThis.applyAbilityTextEnrichment === 'function') {
+      globalThis.applyAbilityTextEnrichment(row);
+    }
+    if (typeof globalThis.enrichCombatRow === 'function') {
+      globalThis.enrichCombatRow(row);
+    }
+    if (apVal != null) row.abilityPower = Number(apVal);
+    return row;
+  };
+
+  function rowIsUltimate(skill) {
+    if (!skill) return false;
+    if (skill.meter === 'full' || skill.meter === 'ultimate') return true;
+    return String(skill.barSlot || '').toLowerCase().indexOf('ultimate') >= 0;
+  }
+
+  function abilityFromRow(row, opts) {
+    opts = opts || {};
+    if (!row) return null;
+    var btnType = btnTypeForRow(row);
+    var ab = {
+      id: row.id,
+      name: row.name,
+      type: btnType,
+      btnType: btnType,
+      level: 1,
+      energyCost: Number(row.enCost) || 0,
+      energy: Number(row.enCost) || 0,
+      cooldown: Number(row.cooldown) || 0,
+      isUltimate: !!row.isUltimate,
+      isMainAttack: !!opts.isMainAttack,
+      source: 'equipment',
+      equipmentSkillId: row.equipmentSkillId,
+      equipmentItemId: row.equipmentItemId,
+      actionSource: opts.actionSource || null,
+      _dispatcherRow: row,
+    };
+    if (opts.nameOverride) ab.name = opts.nameOverride;
+    return ab;
+  }
+
+  function emptyPlaceholder(actionSource, reason) {
+    return {
+      empty: true,
+      reason: reason || 'Unavailable',
+      id: '__empty_' + actionSource,
+      name: '—',
+      type: 'utility',
+      btnType: 'utility',
+      level: 1,
+      energyCost: 99,
+      disabled: true,
+      actionSource: actionSource,
+    };
+  }
+
+  function weaponItemHands(item) {
+    if (!item || item.slot !== 'Weapon') return 0;
+    return Number(item.hands) || 0;
+  }
+
+  function isWeaponItem(item) {
+    return !!(item && item.slot === 'Weapon');
+  }
+
+  ns.resolveBasicAttack = function resolveBasicAttack(entity) {
+    var cfg = combatConfig();
+    var basicCfg = cfg && cfg.basicAttack ? cfg.basicAttack : {};
+    var main = equippedItem(entity, 'mainHand');
+    if (!main || !isWeaponItem(main)) {
+      var physId = basicCfg.physicalId || 'BASIC_PHYSICAL';
+      var row = ns.skillToAbilityRow(physId, null, 'grey');
+      if (!row) return null;
+      return abilityFromRow(row, {
+        isMainAttack: true,
+        actionSource: 'basic',
+        nameOverride: basicCfg.naturalStrikeName || 'Natural Strike',
+      });
+    }
+    var mainSkill = getSkill(main.skill1);
+    var magic = mainSkill && String(mainSkill.damageType).toLowerCase() === 'magic';
+    var basicId = magic ? (basicCfg.magicId || 'BASIC_MAGIC') : (basicCfg.physicalId || 'BASIC_PHYSICAL');
+    var basicRow = ns.skillToAbilityRow(basicId, main, normalizeRarity(main.rarity));
+    if (!basicRow) return null;
+    return abilityFromRow(basicRow, { isMainAttack: true, actionSource: 'basic' });
+  };
+
+  ns.resolveWeaponSkills = function resolveWeaponSkills(entity) {
+    var out = { weaponA: null, weaponB: null };
+    var main = equippedItem(entity, 'mainHand');
+    if (!main || !isWeaponItem(main)) return out;
+    var off = equippedItem(entity, 'offHand');
+    var offWeapon = off && isWeaponItem(off) ? off : null;
+    var hands = weaponItemHands(main);
+    var rarityMain = normalizeRarity(main.rarity);
+
+    if (hands === 2) {
+      if (main.skill1) {
+        var r1 = ns.skillToAbilityRow(main.skill1, main, rarityMain);
+        out.weaponA = r1 ? abilityFromRow(r1, { actionSource: 'weaponA' }) : null;
+      }
+      if (main.skill2) {
+        var r2 = ns.skillToAbilityRow(main.skill2, main, rarityMain);
+        out.weaponB = r2 ? abilityFromRow(r2, { actionSource: 'weaponB' }) : null;
+      }
+      return out;
+    }
+
+    if (main.skill1) {
+      var ra = ns.skillToAbilityRow(main.skill1, main, rarityMain);
+      out.weaponA = ra ? abilityFromRow(ra, { actionSource: 'weaponA' }) : null;
+    }
+
+    if (offWeapon && main.family && offWeapon.family === main.family && main.pairedSkill) {
+      var rp = ns.skillToAbilityRow(main.pairedSkill, main, rarityMain);
+      out.weaponB = rp ? abilityFromRow(rp, { actionSource: 'weaponB' }) : null;
+    } else if (offWeapon && offWeapon.skill1) {
+      var rb = ns.skillToAbilityRow(offWeapon.skill1, offWeapon, normalizeRarity(offWeapon.rarity));
+      out.weaponB = rb ? abilityFromRow(rb, { actionSource: 'weaponB' }) : null;
+    }
+    return out;
+  };
+
+  ns.resolveArmourTechnique = function resolveArmourTechnique(entity) {
+    var armour = equippedItem(entity, 'armour');
+    if (!armour || !armour.skill1) return null;
+    var row = ns.skillToAbilityRow(armour.skill1, armour, normalizeRarity(armour.rarity));
+    return row ? abilityFromRow(row, { actionSource: 'armour' }) : null;
+  };
+
+  function collectUltimateCandidates(entity) {
+    var list = [];
+    if (!entity || !entity.equipment) return list;
+    var order = (typeof Avian.equipment !== 'undefined' && typeof Avian.equipment.getSlotOrder === 'function')
+      ? Avian.equipment.getSlotOrder()
+      : ['helmet', 'armour', 'mainHand', 'offHand', 'shield', 'ankletL', 'ankletR', 'necklace'];
+    for (var i = 0; i < order.length; i++) {
+      var item = equippedItem(entity, order[i]);
+      if (!item || !item.ultimate) continue;
+      var rarity = normalizeRarity(item.rarity);
+      if (!ULTIMATE_RARITIES[rarity]) continue;
+      list.push({ item: item, skillId: item.ultimate, rarity: rarity });
+    }
+    return list;
+  }
+
+  ns.resolveUltimate = function resolveUltimate(entity) {
+    var candidates = collectUltimateCandidates(entity);
+    if (!candidates.length) return null;
+
+    var chosen = null;
+    if (entity.ultimateSourceItemId) {
+      for (var i = 0; i < candidates.length; i++) {
+        if (candidates[i].item.id === entity.ultimateSourceItemId) {
+          chosen = candidates[i];
+          break;
+        }
+      }
+    } else if (candidates.length === 1) {
+      chosen = candidates[0];
+    } else if (entity.autoPickUltimate || entity.isEnemy) {
+      chosen = candidates[0];
+    } else {
+      return null;
+    }
+
+    if (!chosen) return null;
+    var row = ns.skillToAbilityRow(chosen.skillId, chosen.item, chosen.rarity);
+    if (!row) return null;
+    var cfg = combatConfig();
+    var ultCfg = cfg && cfg.ultimateMeter ? cfg.ultimateMeter : {};
+    if (ultCfg.ultimateEnCost != null && Number(ultCfg.ultimateEnCost) > 0) {
+      row.enCost = Number(ultCfg.ultimateEnCost);
+      row.apCost = Number(ultCfg.ultimateEnCost);
+    }
+    return abilityFromRow(row, { actionSource: 'ultimate' });
+  };
+
+  ns.resolveInnateUtility = function resolveInnateUtility(entity) {
+    var birdKey = entity && entity.birdKey;
+    if (!birdKey) return null;
+    var utils = Avian.data && Avian.data.combatPack && Avian.data.combatPack.innateUtilities;
+    var util = utils && utils[birdKey];
+    if (!util) return null;
+    var target = String(util.target || 'Self').toLowerCase() === 'self' ? 'self' : 'enemy';
+    var row = {
+      id: 'innate_' + birdKey,
+      name: util.name || 'Innate Utility',
+      enCost: Number(util.en) || 1,
+      apCost: Number(util.en) || 1,
+      cooldown: Number(util.cooldown) || 0,
+      damageType: 'Utility',
+      category: 'utility',
+      noDamage: true,
+      target: target,
+      hits: 0,
+      riderText: util.effect || '',
+      structuredRider: util.parsed || null,
+      tags: ['Innate', 'Utility', 'Equipment'],
+      source: 'equipment',
+      equipmentSkillId: null,
+      equipmentItemId: null,
+      riders: convertParsedRiderToRows(util.parsed, 'innate_' + birdKey),
+    };
+    if (typeof globalThis.applyAbilityTextEnrichment === 'function') {
+      globalThis.applyAbilityTextEnrichment(row);
+    }
+    if (typeof globalThis.enrichCombatRow === 'function') {
+      globalThis.enrichCombatRow(row);
+    }
+    return abilityFromRow(row, { actionSource: 'utility' });
+  };
+
+  ns.buildActionSources = function buildActionSources(entity) {
+    if (!entity) {
+      return { basic: null, utility: null, weaponA: null, weaponB: null, armour: null, ultimate: null };
+    }
+    var weapons = ns.resolveWeaponSkills(entity);
+    return {
+      basic: ns.resolveBasicAttack(entity),
+      utility: ns.resolveInnateUtility(entity),
+      weaponA: weapons.weaponA,
+      weaponB: weapons.weaponB,
+      armour: ns.resolveArmourTechnique(entity),
+      ultimate: ns.resolveUltimate(entity),
+    };
+  };
+
+  var EMPTY_REASONS = {
+    utility: 'No innate utility',
+    weaponA: 'No weapon skill',
+    weaponB: 'No secondary weapon skill',
+    armour: 'No armour technique',
+    ultimate: 'No qualifying ultimate',
+  };
+
+  ns.buildAbilitiesArray = function buildAbilitiesArray(entity) {
+    var src = ns.buildActionSources(entity);
+    var out = [];
+    for (var i = 0; i < SOURCE_ORDER.length; i++) {
+      var key = SOURCE_ORDER[i];
+      var ab = src[key];
+      if (ab) out.push(ab);
+      else if (key === 'basic') out.push(emptyPlaceholder(key, 'Basic attack unavailable'));
+      else out.push(emptyPlaceholder(key, EMPTY_REASONS[key] || 'Empty slot'));
+    }
+    return out;
+  };
+
+  ns.syncEntityAbilities = function syncEntityAbilities(entity) {
+    if (!entity || !isEquipmentV2()) return entity;
+    entity.abilities = ns.buildAbilitiesArray(entity);
+    var basic = entity.abilities[0];
+    if (basic && !basic.empty) {
+      entity.mainAttackId = basic.id;
+      entity.abilities.forEach(function (ab) {
+        if (ab) ab.isMainAttack = ab.id === basic.id;
+      });
+    }
+    return entity;
+  };
+
+  ns.getSourceOrder = function getSourceOrder() {
+    return SOURCE_ORDER.slice();
+  };
+
+  ns.collectUltimateCandidates = collectUltimateCandidates;
+
+  ns.getActionSourceLabel = function getActionSourceLabel(sourceKey) {
+    var labels = {
+      basic: 'Basic',
+      utility: 'Utility',
+      weaponA: 'Weapon A',
+      weaponB: 'Weapon B',
+      armour: 'Armour',
+      ultimate: 'Ultimate',
+    };
+    return labels[sourceKey] || sourceKey || '';
+  };
+
+  Avian.systems.equipmentActions = ns;
+})();

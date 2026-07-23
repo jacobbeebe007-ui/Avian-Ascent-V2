@@ -4519,6 +4519,79 @@ body.ui-mobile-mode #screen-battle .btn-desc{
     grid-template-columns:repeat(3,minmax(0,1fr));
   }
 }
+
+/* Equipment v0.3 — six action sources (Phase 9) */
+#screen-battle.equipment-v2-mode .actions-grid,
+.actions-grid--equipment-v2{
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:8px;
+}
+#screen-battle.equipment-v2-mode .action-btn--empty{
+  opacity:.62;
+  border-style:dashed;
+  cursor:not-allowed;
+}
+#screen-battle.equipment-v2-mode .btn-source-chip{
+  font-size:.56rem;
+  letter-spacing:.04em;
+  text-transform:uppercase;
+  color:var(--gold-light);
+  border:1px solid rgba(201,168,76,.35);
+  border-radius:999px;
+  padding:0 5px;
+  line-height:1.35;
+}
+.nest-equip-grid--v2{
+  grid-template-columns:repeat(4,minmax(0,1fr));
+}
+@media (max-width:720px){
+  .nest-equip-grid--v2{grid-template-columns:repeat(2,minmax(0,1fr));}
+}
+.nest-hand-badge{
+  display:inline-block;
+  margin-left:4px;
+  font-size:.62rem;
+  font-family:'Cinzel',serif;
+  color:var(--gold-light);
+  border:1px solid rgba(201,168,76,.35);
+  border-radius:999px;
+  padding:0 5px;
+  vertical-align:middle;
+}
+.nest-ultimate-options{
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+  margin-top:8px;
+}
+.nest-ult-pick-btn{
+  font-family:'Cinzel',serif;
+  font-size:.72rem;
+  color:var(--text);
+  background:rgba(20,24,32,.75);
+  border:1px solid rgba(201,168,76,.35);
+  border-radius:8px;
+  padding:8px 10px;
+  cursor:pointer;
+}
+.nest-ult-pick-btn.active,
+.nest-ult-pick-btn:hover{
+  border-color:var(--gold);
+  background:rgba(201,168,76,.12);
+}
+@media (min-width:900px){
+  #screen-battle.equipment-v2-mode .actions-grid,
+  .actions-grid--equipment-v2{
+    grid-template-columns:repeat(6,minmax(0,1fr));
+  }
+}
+@media (max-width:520px){
+  #screen-battle.equipment-v2-mode .actions-grid,
+  .actions-grid--equipment-v2{
+    grid-template-columns:repeat(2,minmax(0,1fr));
+  }
+}
 #screen-battle .action-btn.endturn-mini{min-height:unset;padding:2px 14px;min-width:unset;font-size:.54rem;line-height:1;border-width:1px;border-radius:999px;background:rgba(40,45,58,.65);align-self:center;}
 #screen-battle .actions-grid-footer .end-turn-bar__btn{padding:2px 14px;font-size:.54rem;line-height:1;}
 .btn-name{font-size:.83rem;line-height:1.2;}

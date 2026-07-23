@@ -1332,7 +1332,7 @@
     if (!list) return;
     ensureNodeClearRewards(n);
     list.innerHTML = '';
-    const cardTiers = global.OW_CARD_TIER_MUTATION_OPTIONS || [];
+    const cardTiers = global.OW_CARD_TIER_EQUIPMENT_OPTIONS || global.OW_CARD_TIER_MUTATION_OPTIONS || [];
     const itemOpts = getForgeCombatItemOptions();
     const mutOpts = getForgeMutationOptions();
     const birdOpts = global.getForgeBirdOptions ? global.getForgeBirdOptions() : [{ id: 'random', label: 'Random' }];
@@ -1667,7 +1667,7 @@
     if (rowsEl) {
       rowsEl.innerHTML = '';
       const speciesOpts = global.getForgeBirdOptions ? global.getForgeBirdOptions() : [{ id: 'random', label: 'Random' }];
-      const mutTiers = global.OW_CARD_TIER_MUTATION_OPTIONS || [];
+      const mutTiers = global.OW_CARD_TIER_EQUIPMENT_OPTIONS || global.OW_CARD_TIER_MUTATION_OPTIONS || [];
       const isBossNode = isBossLike(n);
       n.encounter.slots.forEach((slot, idx) => {
         const row = document.createElement('div');

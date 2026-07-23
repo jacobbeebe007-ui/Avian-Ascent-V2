@@ -1,10 +1,10 @@
 /* Avian Ascent — Ability Dispatcher (combat rewrite).
  *
  * Replaces the legacy `ACTIONS[id]` hand-coded handlers. Every ability id in the
- * combat data pack (js/data/combat-pack/skill-trees.js) is routed through
+ * combat data pack (equipment skills via js/data/equipment/skills.js) is routed through
  * `Avian.dispatcher.execute(ab)` which:
  *
- *   1. Looks up the normalised row in `Avian.data.combatPack.skillTrees`.
+ *   1. Looks up the normalised row from the ability's `_dispatcherRow` or equipment skills.
  *   2. Pays Energy via `spendEnergy` (already done by `playerAction`).
  *   3. Resolves target side (Self / Enemy / Self and Enemy).
  *   4. For each hit:
@@ -36,14 +36,29 @@
     return (Avian.data && Avian.data.combatPack) || null;
   }
   function rowFor(abId) {
-    var p = pack();
     var id = String(abId || '');
     if (typeof globalThis.resolveAbilityAliasSourceId === 'function') {
       id = globalThis.resolveAbilityAliasSourceId(id);
     }
-    var row = p && p.skillTrees ? p.skillTrees[id] : null;
-    if (row && typeof globalThis.enrichCombatRow === 'function') globalThis.enrichCombatRow(row);
-    return row;
+    if (Avian.equipmentActions && typeof Avian.equipmentActions.skillToAbilityRow === 'function') {
+      var eqRow = Avian.equipmentActions.skillToAbilityRow(id, null, 'grey');
+      if (eqRow) {
+        if (typeof globalThis.enrichCombatRow === 'function') globalThis.enrichCombatRow(eqRow);
+        return eqRow;
+      }
+    }
+    var skills = Avian.data && Avian.data.equipment && Avian.data.equipment.skills;
+    if (skills && skills[id]) {
+      var raw = skills[id];
+      if (Avian.equipmentActions && typeof Avian.equipmentActions.skillToAbilityRow === 'function') {
+        var built = Avian.equipmentActions.skillToAbilityRow(id, null, 'grey');
+        if (built) {
+          if (typeof globalThis.enrichCombatRow === 'function') globalThis.enrichCombatRow(built);
+          return built;
+        }
+      }
+    }
+    return null;
   }
   function statBase(scaleStat) {
     var g = globalThis.G;
@@ -116,8 +131,8 @@
     var aid = aids[Math.floor(Math.random() * aids.length)];
     var ailCh = row.ailmentChance;
     if (g && g.player && targetSide === 'enemy' && typeof Avian !== 'undefined'
-        && Avian.mutations && typeof Avian.mutations.getMechanicsRollup === 'function') {
-      var eqM = Avian.mutations.getMechanicsRollup(g.player);
+        && Avian.equipment && typeof Avian.equipment.getMechanicsRollup === 'function') {
+      var eqM = Avian.equipment.getMechanicsRollup(g.player);
       if (isMagic || isHybrid) ailCh += (Number(eqM.magicAilmentChance) || 0);
       if (!isMagic || isHybrid) ailCh += (Number(eqM.physicalAilmentChance) || 0);
     }
@@ -786,7 +801,7 @@
   // ---- core execute -----------------------------------------------------
   dispatcher.execute = async function execute(ab) {
     if (!ab || !ab.id) return;
-    var row = rowFor(ab.id);
+    var row = (ab && ab._dispatcherRow) || rowFor(ab.id);
     if (!row) {
       if (typeof logMsg === 'function') logMsg('Dispatcher: no row for ' + ab.id, 'miss');
       return;
@@ -816,8 +831,8 @@
       if (g) g._lastAbilityAilmentFailed = (row.ailmentChance > 0 && ailmentIdsFromRow(row).length > 0)
         && !Object.keys(utilAilments).length;
       if (g) g._lastAbilityUtilitySucceeded = !!utilOk;
-      if (typeof Avian !== 'undefined' && Avian.mutationEffects && typeof Avian.mutationEffects.onUtilityUsed === 'function') {
-        Avian.mutationEffects.onUtilityUsed(!!utilOk);
+      if (typeof Avian !== 'undefined' && Avian.equipmentEffects && typeof Avian.equipmentEffects.onUtilityUsed === 'function') {
+        Avian.equipmentEffects.onUtilityUsed(!!utilOk);
       }
       if (typeof logMsg === 'function') logMsg('🛡 ' + (row.name || ab.id) + (row.riderText ? ' — ' + row.riderText : ''), 'player-action');
       if (typeof refreshBattleUI === 'function') refreshBattleUI();
@@ -960,13 +975,13 @@
       }
     }
 
-    if (typeof Avian !== 'undefined' && Avian.mutationEffects) {
-      if (isMagic && typeof Avian.mutationEffects.onSongOrCall === 'function') {
-        Avian.mutationEffects.onSongOrCall(hitsLanded > 0);
+    if (typeof Avian !== 'undefined' && Avian.equipmentEffects) {
+      if (isMagic && typeof Avian.equipmentEffects.onSongOrCall === 'function') {
+        Avian.equipmentEffects.onSongOrCall(hitsLanded > 0);
       }
-      if (typeof Avian.mutationEffects.onAfterPlayerAttack === 'function') {
+      if (typeof Avian.equipmentEffects.onAfterPlayerAttack === 'function') {
         var atkWeight2 = typeof getAbilityAttackWeight === 'function' ? getAbilityAttackWeight(ab, g && g.player) : null;
-        Avian.mutationEffects.onAfterPlayerAttack({
+        Avian.equipmentEffects.onAfterPlayerAttack({
           attackWeight: atkWeight2, isMagic: isMagic, isHybrid: isHybrid,
           hitsLanded: hitsLanded, anyCrit: anyCrit,
         });
@@ -1010,12 +1025,12 @@
   };
 
   dispatcher.registerActions = function registerActions(target) {
-    var p = pack();
-    if (!p || !p.skillTrees) return 0;
+    var skills = Avian.data && Avian.data.equipment && Avian.data.equipment.skills;
+    if (!skills) return 0;
     var table = target || globalThis.ACTIONS;
     if (!table) return 0;
     var count = 0;
-    for (var id in p.skillTrees) {
+    for (var id in skills) {
       if (!table[id]) {
         table[id] = (function (boundId) {
           return function (ab) {
