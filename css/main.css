@@ -2330,49 +2330,6 @@ body.build-nest-unlocked .splash-hotspot--forge.is-buildnest-hidden{
   color:var(--text-dim);
   margin:0;
 }
-.ascent-hblock-starting-kit{min-width:min(200px, 55vw);max-width:320px;}
-.ascent-starting-kit{
-  display:flex;
-  flex-direction:column;
-  gap:4px;
-}
-.ascent-starting-kit-row{
-  display:grid;
-  grid-template-columns:auto 1fr auto;
-  gap:6px;
-  align-items:baseline;
-  font-size:.65rem;
-  color:var(--text-dim);
-}
-.ascent-starting-kit-slot{
-  text-transform:uppercase;
-  letter-spacing:.06em;
-  font-size:.55rem;
-  color:rgba(232,201,106,.7);
-}
-.ascent-starting-kit-row strong{
-  color:var(--text);
-  font-weight:650;
-  overflow:hidden;
-  text-overflow:ellipsis;
-  white-space:nowrap;
-}
-.ascent-starting-kit-tier{
-  font-style:normal;
-  font-size:.55rem;
-  color:rgba(180,185,195,.75);
-  border:1px solid rgba(140,150,165,.28);
-  border-radius:4px;
-  padding:0 4px;
-}
-.bird-starting-kit{
-  margin-top:4px;
-  font-size:.58rem;
-  line-height:1.25;
-  color:rgba(190,195,205,.82);
-  text-align:center;
-  padding:0 4px;
-}
 .ascent-hblock-abilities{min-width:min(260px, 90vw);max-width:none;}
 .ascent-abilities-row{
   display:flex;

@@ -376,62 +376,6 @@
     return null;
   }
 
-  /**
-   * Class-appropriate grey starting kit from workbook Reference Loadouts:
-   * one Weapon (mainHand) + one Armour. Used at run start and character select.
-   */
-  function getClassStartingKit(classId) {
-    var cls = String(classId || '').toLowerCase().replace(/[^a-z]/g, '');
-    if (cls === 'dukeblakiston') cls = 'duke';
-    var ref = findReferenceLoadout(cls, 'grey');
-    if (!ref || !ref.equipment) return null;
-    var weaponId = ref.equipment.mainHand || null;
-    var armourId = ref.equipment.armour || null;
-    if (!weaponId && !armourId) return null;
-    var weaponItem = weaponId ? getItem(weaponId) : null;
-    var armourItem = armourId ? getItem(armourId) : null;
-    return {
-      classId: cls,
-      rarity: 'grey',
-      weaponId: weaponId,
-      armourId: armourId,
-      weaponName: (weaponItem && weaponItem.name) || weaponId || '—',
-      armourName: (armourItem && armourItem.name) || armourId || '—',
-      weaponItem: weaponItem,
-      armourItem: armourItem,
-    };
-  }
-
-  /** Equip grey Weapon + Armour only (starting kit). No-op if inventory already has gear. */
-  function seedGreyStartingKit(player) {
-    if (!player) return false;
-    ensurePlayerEquipmentState(player);
-    if (player.equipmentInventory.length > 0) return false;
-    var hasEquipped = false;
-    var eq = player.equipment || createEmptyLoadout();
-    var order = getSlotOrder();
-    for (var i = 0; i < order.length; i++) {
-      if (eq[order[i]]) { hasEquipped = true; break; }
-    }
-    if (hasEquipped) return false;
-    var kit = getClassStartingKit(getPlayerClassId(player));
-    if (!kit) return false;
-    if (kit.weaponId) {
-      addToInventory(player, kit.weaponId);
-      equip(player, kit.weaponId, 'mainHand');
-    }
-    if (kit.armourId) {
-      addToInventory(player, kit.armourId);
-      equip(player, kit.armourId, 'armour');
-    }
-    return !!(player.equipment.mainHand || player.equipment.armour);
-  }
-
-  /** @deprecated Prefer seedGreyStartingKit — kept as alias for call-site compatibility. */
-  function seedGreyReferenceLoadout(player) {
-    return seedGreyStartingKit(player);
-  }
-
   function reapplyPlayerStatsFromSources(player) {
     if (!isEquipmentV2()) return;
     if (!player || !player.stats) return;
@@ -701,9 +645,6 @@
   equipment.rollupEquipmentStats = rollupEquipmentStats;
   equipment.sumEquippedEquipment = sumEquippedEquipment;
   equipment.reapplyPlayerStatsFromSources = reapplyPlayerStatsFromSources;
-  equipment.getClassStartingKit = getClassStartingKit;
-  equipment.seedGreyStartingKit = seedGreyStartingKit;
-  equipment.seedGreyReferenceLoadout = seedGreyReferenceLoadout;
   equipment.findReferenceLoadout = findReferenceLoadout;
   equipment.slotAcceptsItem = slotAcceptsItem;
   equipment.getEnemyClassId = getEnemyClassId;

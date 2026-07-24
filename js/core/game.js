@@ -5500,12 +5500,6 @@ function buildBirdCard(key, bird, locked) {
     const rarityBadge=`<span class="bird-card-rarity-badge ${rarityMeta.css}" title="Species rarity">${escapeHtmlRoster(rarityMeta.label)} species</span>`;
     const feathers=typeof getSpeciesFeathers==='function'?getSpeciesFeathers(key):0;
     const featherChip=feathers>0?`<span class="bird-feather-chip" title="Species Feathers">🪶 ${feathers}</span>`:'';
-    const startKit=(typeof Avian?.equipment?.getClassStartingKit==='function')
-      ? Avian.equipment.getClassStartingKit(bird.class||cls)
-      : null;
-    const startKitLine=startKit
-      ? `<div class="bird-starting-kit" title="Grey starting Weapon and Armour">Starting kit: ${escapeHtmlRoster(startKit.weaponName)} · ${escapeHtmlRoster(startKit.armourName)}</div>`
-      : '';
     card.innerHTML = `
       <div class="bird-card-head">
         <span class="class-badge class-${cls}">${idToClassLabel(cls).toUpperCase()}</span>
@@ -5517,8 +5511,7 @@ function buildBirdCard(key, bird, locked) {
       ${starsHtml}
       <div style="display:flex;justify-content:center;margin:4px auto 8px;">${renderBirdIconHTML(key,sizeClass,false)}</div>
       <div class="bird-nm">${bird.name}</div>
-      <div class="bird-tagline-mini">${bird.tagline||''}</div>
-      ${startKitLine}`;
+      <div class="bird-tagline-mini">${bird.tagline||''}</div>`;
   }
   return card;
 }
@@ -6158,18 +6151,6 @@ function updateAscentPanel(key) {
     const classPerkDesc=escapeHtmlRoster(classPerkInfo?.effect||'No class perk listed.');
     const birdAsp=typeof getEntityAspect==='function'?getEntityAspect({birdKey:key,aspect:bird.aspect}):(bird.aspect||'');
     const aspectChipHtml=birdAsp?`<span class="aspect-chip ascent-aspect-chip" id="ascent-aspect-chip" data-aspect-id="${escapeHtmlRoster(birdAsp)}">${escapeHtmlRoster(typeof formatAspectDisplayName==='function'?formatAspectDisplayName(birdAsp):birdAsp)}</span>`:'';
-    const startingKit=(typeof Avian?.equipment?.getClassStartingKit==='function')
-      ? Avian.equipment.getClassStartingKit(bird.class||cls)
-      : null;
-    const startingKitHtml=startingKit
-      ? `<div class="ascent-hblock ascent-hblock-starting-kit">
-              <div class="ascent-hblock-label">Starting kit</div>
-              <div class="ascent-starting-kit">
-                <div class="ascent-starting-kit-row"><span class="ascent-starting-kit-slot">Weapon</span><strong>${escapeHtmlRoster(startingKit.weaponName)}</strong><em class="ascent-starting-kit-tier">Grey</em></div>
-                <div class="ascent-starting-kit-row"><span class="ascent-starting-kit-slot">Armour</span><strong>${escapeHtmlRoster(startingKit.armourName)}</strong><em class="ascent-starting-kit-tier">Grey</em></div>
-              </div>
-            </div>`
-      : '';
 
     panel.innerHTML = `
       <div class="ascent-strip ascent-strip--filled ascent-strip--${tierCss}">
@@ -6205,7 +6186,6 @@ function updateAscentPanel(key) {
               <div class="ascent-hblock-label">Class perk</div>
               <div class="ascent-panel-passive ascent-panel-passive--inline"><strong>${classPerkName}:</strong> ${classPerkDesc}</div>
             </div>
-            ${startingKitHtml}
             <div class="ascent-hblock ascent-hblock-abilities">
               <div class="ascent-hblock-label">Starting skills</div>
               <div class="ascent-abilities-row">${startAbilityDetails}</div>
@@ -6426,8 +6406,6 @@ function startGame() {
   G.player.size = bd.size||'medium';
   if(typeof Avian?.equipment?.ensurePlayerEquipmentState==='function'){
     Avian.equipment.ensurePlayerEquipmentState(G.player);
-    if(typeof Avian.equipment.seedGreyStartingKit==='function') Avian.equipment.seedGreyStartingKit(G.player);
-    else if(typeof Avian.equipment.seedGreyReferenceLoadout==='function') Avian.equipment.seedGreyReferenceLoadout(G.player);
   }
   if(typeof applyBirdCardProgression==='function') applyBirdCardProgression(G.player);
   applyPlayerSkillsFromCardTier(G.player);

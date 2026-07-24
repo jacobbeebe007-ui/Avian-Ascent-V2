@@ -225,62 +225,6 @@ if (!unequipPlayer.equipment.helmet && unequipPlayer.equipmentInventory.length =
   fail('unequip did not return item to inventory');
 }
 
-// --- Class starting kits (grey Weapon + Armour from Reference Loadouts) ---
-const expectedKits = {
-  knight: { weaponId: 'EQ-LN-GRY', armourId: 'EQ-AM-GRY', weaponName: 'Militia Lance', armourName: 'Riveted Flight Harness' },
-  rogue: { weaponId: 'EQ-TB-GRY', armourId: 'EQ-AL-GRY', weaponName: 'Worn Talon Blade', armourName: 'Patchwork Flight Leathers' },
-  mage: { weaponId: 'EQ-ST-GRY', armourId: 'EQ-AX-GRY', weaponName: 'Pine Staff', armourName: 'Linen Rune Plumage' },
-  siren: { weaponId: 'EQ-ST-GRY', armourId: 'EQ-AX-GRY', weaponName: 'Pine Staff', armourName: 'Linen Rune Plumage' },
-  inquisitor: { weaponId: 'EQ-SC-GRY', armourId: 'EQ-AM-GRY', weaponName: 'Bone Sceptre', armourName: 'Riveted Flight Harness' },
-  bard: { weaponId: 'EQ-BS-GRY', armourId: 'EQ-AL-GRY', weaponName: 'March of Small Wings', armourName: 'Patchwork Flight Leathers' },
-  brute: { weaponId: 'EQ-GB-GRY', armourId: 'EQ-AH-GRY', weaponName: 'Rusted Greatblade', armourName: 'Scrap-Iron Plumage' },
-};
-for (const [cls, exp] of Object.entries(expectedKits)) {
-  const kit = equipment.getClassStartingKit(cls);
-  if (kit && kit.weaponId === exp.weaponId && kit.armourId === exp.armourId
-    && kit.weaponName === exp.weaponName && kit.armourName === exp.armourName) {
-    ok(`starting kit ${cls}: ${kit.weaponName} + ${kit.armourName}`);
-  } else {
-    fail(`starting kit ${cls} mismatch: ${JSON.stringify(kit)}`);
-  }
-}
-
-// --- Crow grey starting kit seed (weapon + armour only) ---
-const crowPlayer = freshPlayer('crow');
-crowPlayer._statLedger.birdBaseline = {
-  maxHp: 60, atk: 12, def: 17, spd: 9, acc: 84, dodge: 4, matk: 0, mdef: 8, critChance: 8,
-};
-if (equipment.seedGreyStartingKit(crowPlayer)) ok('seeded knight grey starting kit');
-else fail('seedGreyStartingKit failed for crow/knight');
-
-if (crowPlayer.equipment.mainHand === 'EQ-LN-GRY' && crowPlayer.equipment.armour === 'EQ-AM-GRY') {
-  ok('starting kit equips Militia Lance + Riveted Flight Harness');
-} else {
-  fail(`unexpected equipped slots: main=${crowPlayer.equipment.mainHand} armour=${crowPlayer.equipment.armour}`);
-}
-if (!crowPlayer.equipment.helmet && !crowPlayer.equipment.shield && !crowPlayer.equipment.necklace) {
-  ok('starting kit does not seed accessories/shield');
-} else {
-  fail('starting kit seeded extra slots beyond weapon/armour');
-}
-
-equipment.reapplyPlayerStatsFromSources(crowPlayer);
-const ledger = crowPlayer._statLedger.fromEquipment || {};
-
-function near(a, b, tol, label) {
-  const da = Number(a) || 0;
-  const db = Number(b) || 0;
-  if (Math.abs(da - db) <= tol) {
-    ok(`${label}: ${da} ≈ ${db}`);
-    return true;
-  }
-  fail(`${label}: expected ~${db}, got ${da}`);
-  return false;
-}
-
-near(ledger.atk, 6, 0.01, 'starting kit ATK rollup (lance)');
-near(ledger.def, 5, 0.01, 'starting kit DEF rollup (armour)');
-
 if (failed) {
   console.error(`\n[equipment-equip] ${failed} failure(s)`);
   process.exit(1);
