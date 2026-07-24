@@ -10979,10 +10979,12 @@ function playerHasBurning(){
   return !!(sc && (sc.turns||0)>0) || !!(b && b.stacks>0 && (b.turns||0)>0);
 }
 function applyChilledStacksToTarget(target, addStacks){
-  if(typeof hasAilmentGuard==='function' && hasAilmentGuard(target==='player'?G.playerStatus:G.enemyStatus, 'frostGuard')) return false;
   const status = target==='player'?G.playerStatus:G.enemyStatus;
+  if(typeof hasAilmentGuard==='function' && hasAilmentGuard(status, 'controlResistance')) return false;
+  if(typeof hasAilmentGuard==='function' && hasAilmentGuard(status, 'frostGuard')) return false;
   const owner = target==='player'?G.player:G.enemy;
   if(!status || !owner) return false;
+  if(status.frozen) return false;
   if(!status.chilled) status.chilled={stacks:0,turns:0,baseSpd:null};
   const cap = (AILMENT_RULES?.chilled?.maxStacks) || 5;
   const baseTurns = (AILMENT_RULES?.chilled?.duration) || 3;
@@ -10992,7 +10994,7 @@ function applyChilledStacksToTarget(target, addStacks){
   const next = Math.min(cap, prev + Math.max(1, Math.floor(Number(addStacks)||1)));
   status.chilled.stacks = next;
   status.chilled.turns = Math.max(status.chilled.turns||0, baseTurns+extraTurns);
-  const spdMult = typeof getChilledSpdMult==='function' ? getChilledSpdMult(next) : (1 - 0.06 * next);
+  const spdMult = typeof getChilledSpdMult==='function' ? getChilledSpdMult(next) : (1 - 0.03 * next);
   owner.stats.spd = Math.max(1, Math.floor(status.chilled.baseSpd * spdMult));
   if(next>=cap){
     const bs=status.chilled.baseSpd;
@@ -12178,6 +12180,9 @@ function applyAilment(target,ailId,stacks=1) {
     ?Math.max(0, Avian.classPerks.adjustDebuffDurationForEntity(debuffSource,1,ailId)-1)
     :((target==='enemy'&&G.player&&typeof Avian?.classPerks?.adjustDebuffDuration==='function')?Math.max(0, Avian.classPerks.adjustDebuffDuration(1,ailId)-1):0);
   codexMark('statuses',ailId,'seen');
+  if (typeof globalThis.syncAilmentRulesFromCombatConfig === 'function') {
+    globalThis.syncAilmentRulesFromCombatConfig();
+  }
   // Check passive immunities when applying to player
   if(target==='player'&&G.player){
     const _bd=BIRDS[G.player.birdKey];
@@ -12186,49 +12191,82 @@ function applyAilment(target,ailId,stacks=1) {
     if(ailId==='weaken'  && p&&p.immuneWeaken)  { spawnFloat('player','🛡 Weaken Immune!','fn-status'); return false; }
     if(ailId==='feared'  && (p&&p.immuneFear||G.player.stats.immuneFear))  { spawnFloat('player','🛡 Fear Immune!','fn-status'); return false; }
     if(ailId==='confused'&& p&&p.immuneConfused){ spawnFloat('player','🛡 Confuse Immune!','fn-status'); return false; }
-    if(ailId==='paralyzed'&&(p&&p.immuneStun||G.player.immuneParalyze))   { spawnFloat('player','🛡 Stun Immune!','fn-status'); return false; }
+    if((ailId==='paralyzed'||ailId==='paralysed')&&(p&&p.immuneStun||G.player.immuneParalyze))   { spawnFloat('player','🛡 Stun Immune!','fn-status'); return false; }
     if(typeof Avian?.equipmentEffects?.getStatusResistPct==='function'){
       const resist=Avian.equipmentEffects.getStatusResistPct();
       if(resist>0 && Math.random()*100<resist){ spawnFloat('player','🛡 Resisted!','fn-status'); return false; }
     }
   }
+
+  /* Control Resistance blocks new Chilled / Shock. */
+  if ((ailId === 'chilled' || ailId === 'shock')
+    && typeof hasAilmentGuard === 'function'
+    && hasAilmentGuard(status, 'controlResistance')) {
+    spawnFloat(target, '🛡 Control Resistance!', 'fn-status');
+    return false;
+  }
+
+  /* Resolved-state lockouts: base stacks cannot apply while resolved is active. */
+  if (ailId === 'burning' && status.incinerating) return false;
+  if (ailId === 'burning' && status.scorched) return false;
+  if (ailId === 'poison' && status.toxic) return false;
+  if (ailId === 'chilled' && status.frozen) return false;
+  if (ailId === 'shock' && (status.paralyzed || status.paralysed)) return false;
+
+  const app = AILMENT_RULES?.application || {};
+  const perActionCap = app.perActionCap != null ? app.perActionCap : 2;
+  const perTurnCap = app.perTurnCap != null ? app.perTurnCap : 4;
+  const actorKey = target === 'enemy' ? 'player' : 'enemy';
+  if (!G._ailmentApplyCounts) G._ailmentApplyCounts = { action: Object.create(null), turn: Object.create(null) };
+  const actionBucket = G._ailmentApplyCounts.action;
+  const turnBucket = G._ailmentApplyCounts.turn;
+  const countKey = actorKey + ':' + ailId;
+  const wantStacks = Math.max(1, Math.floor(Number(stacks) || 1));
+  const usedAction = Number(actionBucket[countKey]) || 0;
+  const usedTurn = Number(turnBucket[countKey]) || 0;
+  const remainAction = Math.max(0, perActionCap - usedAction);
+  const remainTurn = Math.max(0, perTurnCap - usedTurn);
+  const allowedStacks = Math.min(wantStacks, remainAction, remainTurn);
+  if (allowedStacks <= 0 && ['poison','burning','bleed','chilled','shock'].indexOf(ailId) >= 0) {
+    return false;
+  }
+  const applyStacks = ['poison','burning','bleed','chilled','shock'].indexOf(ailId) >= 0 ? allowedStacks : wantStacks;
+  if (['poison','burning','bleed','chilled','shock'].indexOf(ailId) >= 0) {
+    actionBucket[countKey] = usedAction + applyStacks;
+    turnBucket[countKey] = usedTurn + applyStacks;
+  }
+
   const poisonCap = G.player && target==='enemy' ? (G.player.poisonCap||5) : (AILMENT_RULES?.poison?.maxStacks||5);
   const poisonDur = (AILMENT_RULES?.poison?.duration)||3;
   const bleedCap = (AILMENT_RULES?.bleed?.maxStacks)||3;
   const bleedDur = (AILMENT_RULES?.bleed?.duration)||3;
-  const burnCap = (AILMENT_RULES?.burning?.maxStacks)||3;
+  const burnCap = (AILMENT_RULES?.burning?.maxStacks)||5;
   const burnDur = (AILMENT_RULES?.burning?.duration)||3;
+  const shockCap = (AILMENT_RULES?.shock?.maxStacks)||5;
+  const shockDur = (AILMENT_RULES?.shock?.duration)||3;
   const toxicDur = (AILMENT_RULES?.toxic?.duration)||2;
-  const scorchDur = (AILMENT_RULES?.scorched?.duration)||2;
+  const incineratingDur = (AILMENT_RULES?.incinerating?.duration)||1;
+  const scorchDur = (AILMENT_RULES?.scorched?.duration)||1;
   const blindDur = (AILMENT_RULES?.blinded?.duration)||2;
-  const paraDur = (AILMENT_RULES?.paralyzed?.duration)||2;
   let appliedAs = ailId;
 
   if (ailId==='poison') {
-    if(typeof hasAilmentGuard==='function' && hasAilmentGuard(status,'toxicResistance') && (status.toxic?.turns||0)>0) { /* poison ok while toxic resistance only blocks toxic */ }
     if (!status.poison) status.poison={stacks:0,turns:poisonDur};
     const biomeBonus=(target==='player' && (G.biomeMod?.enemyPoisonPlus||0)>0)?G.biomeMod.enemyPoisonPlus:0;
     const fromPlayer=(target==='enemy');
-    const nextStacks=Math.min((status.poison.stacks||0)+stacks+biomeBonus, poisonCap);
+    const nextStacks=Math.min((status.poison.stacks||0)+applyStacks+biomeBonus, poisonCap);
     if(nextStacks>=poisonCap){
-      if(typeof hasAilmentGuard==='function' && hasAilmentGuard(status,'toxicResistance')){
-        status.poison.stacks=poisonCap;
-        const extraTurns=(fromPlayer)?(G.player?.poisonExtraTurns||0):0;
-        status.poison.turns=poisonDur+extraTurns+debuffDurationBonus;
-      }else{
-        delete status.poison;
-        status.toxic={turns:toxicDur};
-        appliedAs = 'toxic';
-        spawnFloat(target==='player'?'player':'enemy','☠ Toxic!','fn-poison');
-        logMsg(`☠ ${target==='player'?G.player.name:G.enemy.name} becomes Toxic!`,'system');
-      }
+      delete status.poison;
+      status.toxic={turns:toxicDur};
+      appliedAs = 'toxic';
+      spawnFloat(target==='player'?'player':'enemy','☠ Toxic!','fn-poison');
+      logMsg(`☠ ${target==='player'?G.player.name:G.enemy.name} becomes Toxic!`,'system');
     } else {
       status.poison.stacks=nextStacks;
       const extraTurns=(fromPlayer)?(G.player?.poisonExtraTurns||0):0;
       status.poison.turns=poisonDur+extraTurns+debuffDurationBonus;
     }
   } else if (ailId==='toxic') {
-    if(typeof hasAilmentGuard==='function' && hasAilmentGuard(status,'toxicResistance')) return false;
     if(status.toxic && (status.toxic.turns||0)>0) return false;
     delete status.poison;
     status.toxic={turns:toxicDur};
@@ -12237,47 +12275,64 @@ function applyAilment(target,ailId,stacks=1) {
     const bonusTurns=fromPlayer?Math.min(2, Math.floor(Number(G.player?.bleedBonusStacks)||0)):0;
     let b=status.bleed;
     if(!b || typeof b!=='object') b={stacks:0,turns:0};
-    b.stacks=Math.min(bleedCap, (b.stacks||0)+Math.max(1, Math.floor(Number(stacks)||1)));
+    b.stacks=Math.min(bleedCap, (b.stacks||0)+applyStacks);
     b.turns=bleedDur+bonusTurns+debuffDurationBonus;
     status.bleed=b;
   } else if (ailId==='weaken') {
-    applyWeakenStack(target, stacks);
-  } else if (ailId==='paralyzed') {
-    status.paralyzed=paraDur+debuffDurationBonus;
+    applyWeakenStack(target, applyStacks);
+  } else if (ailId==='paralyzed' || ailId==='paralysed') {
+    status.paralyzed={ enCapAfterRecovery: (AILMENT_RULES?.paralyzed?.enCapAfterRecovery)||2, pending: true };
+    appliedAs = 'paralyzed';
+  } else if (ailId==='shock') {
+    if (!status.shock) status.shock={stacks:0,turns:shockDur};
+    const nextStacks=Math.min((status.shock.stacks||0)+applyStacks, shockCap);
+    if (nextStacks >= shockCap) {
+      delete status.shock;
+      status.paralyzed={ enCapAfterRecovery: (AILMENT_RULES?.paralyzed?.enCapAfterRecovery)||2, pending: true };
+      appliedAs = 'paralyzed';
+      spawnFloat(target,'⚡ Paralysed!','fn-status');
+      logMsg(`⚡ ${target==='player'?G.player.name:G.enemy.name} is Paralysed!`,'system');
+    } else {
+      status.shock.stacks=nextStacks;
+      status.shock.turns=shockDur+debuffDurationBonus;
+    }
   } else if (ailId==='burning') {
-    if(typeof hasAilmentGuard==='function' && hasAilmentGuard(status,'emberGuard')) { /* burning still applies */ }
     let b=status.burning;
     if(!b || typeof b!=='object' || b.stacks==null) b={stacks:0,turns:burnDur};
-    const nextStacks=Math.min(burnCap, (b.stacks||0)+Math.max(1, Math.floor(Number(stacks)||1)));
+    const nextStacks=Math.min(burnCap, (b.stacks||0)+applyStacks);
     if(nextStacks>=burnCap){
-      if(typeof hasAilmentGuard==='function' && hasAilmentGuard(status,'emberGuard')){
-        status.burning={stacks:burnCap,turns:burnDur};
-      }else{
-        delete status.burning;
-        status.scorched={turns:scorchDur};
-        appliedAs = 'scorched';
-        spawnFloat(target==='player'?'player':'enemy','🔥 Scorched!','fn-burn');
-        logMsg(`🔥 ${target==='player'?G.player.name:G.enemy.name} is Scorched!`,'system');
-      }
+      delete status.burning;
+      status.incinerating={turns:incineratingDur};
+      appliedAs = 'incinerating';
+      spawnFloat(target==='player'?'player':'enemy','🔥 Incinerating!','fn-burn');
+      logMsg(`🔥 ${target==='player'?G.player.name:G.enemy.name} is Incinerating!`,'system');
     } else {
       b.stacks=nextStacks;
       b.turns=burnDur;
       status.burning=b;
     }
-  } else if (ailId==='scorched') {
-    if(typeof hasAilmentGuard==='function' && hasAilmentGuard(status,'emberGuard')) return false;
-    if(status.scorched && (status.scorched.turns||0)>0) return false;
+  } else if (ailId==='incinerating') {
+    if (status.incinerating && (status.incinerating.turns||0)>0) return false;
     delete status.burning;
+    status.incinerating={turns:incineratingDur};
+  } else if (ailId==='scorched') {
+    if(status.scorched && (status.scorched.turns||0)>0) {
+      status.scorched.turns = scorchDur; /* refresh */
+      return true;
+    }
+    delete status.burning;
+    delete status.incinerating;
     status.scorched={turns:scorchDur};
   } else if (ailId==='chilled') {
-    if (!applyChilledStacksToTarget(target, stacks)) return false;
+    if (!applyChilledStacksToTarget(target, applyStacks)) return false;
   } else if (ailId==='blinded') {
     status.blinded={turns:blindDur+debuffDurationBonus};
   } else if (ailId==='decreed') {
     status.decreed={turns:2};
-  } else if (ailId==='feared') {
+  } else if (ailId==='feared' || ailId==='fear') {
     const incoming=Math.max(1, Math.floor(Number(stacks)||1));
     status.feared=Math.max(status.feared||0, incoming)+debuffDurationBonus;
+    appliedAs = 'feared';
   } else if (ailId==='confused') {
     const t=Math.max(1, Math.floor(Number(stacks)||2));
     status.confused={turns:t,selfChance:STATUS_CONFUSED_SELF_PCT};
@@ -12289,13 +12344,13 @@ function applyAilment(target,ailId,stacks=1) {
     if(typeof Avian?.equipmentEffects?.onAilmentApplied==='function') Avian.equipmentEffects.onAilmentApplied(ailId, target);
     const pid=BIRDS[G.player.birdKey]?.passive?.id;
     if(pid==='passive_crow_murder_mind' && !G.player._crowMurderMindUsed){
-      const debKeys=new Set(['poison','bleed','weaken','paralyzed','feared','burning','chilled','confused','slow']);
+      const debKeys=new Set(['poison','bleed','weaken','paralyzed','feared','burning','chilled','confused','slow','shock']);
       if(debKeys.has(ailId) || ailId==='mud'){
         G.player._crowMurderMindUsed=true;
         if(ailId==='poison' && status.poison) status.poison.turns=(status.poison.turns||0)+1;
         if(ailId==='bleed' && status.bleed) status.bleed.turns=(status.bleed.turns||0)+1;
         if(ailId==='weaken') applyWeakenStack(target, 1);
-        if(ailId==='paralyzed') status.paralyzed=(status.paralyzed||0)+1;
+        if(ailId==='shock' && status.shock) status.shock.turns=(status.shock.turns||0)+1;
         if(ailId==='feared') status.feared=(status.feared||0)+1;
         if(ailId==='burning'){
           if(typeof status.burning==='number') status.burning+=1;
@@ -12569,6 +12624,15 @@ async function playerAction(ab,fromQueue=false) {
     logMsg(`${ab.name} already used this turn!`,'miss');
     return;
   }
+  const enRoles = Avian?.data?.combatConfig?.enRoles;
+  if(enRoles?.oncePerTurnActionUse){
+    G.actionUsedThisTurn = G.actionUsedThisTurn || {};
+    const actionKey = ab.actionSource || ab.id;
+    if(actionKey && G.actionUsedThisTurn[actionKey]){
+      logMsg(`${ab.name} already used this turn!`,'miss');
+      return;
+    }
+  }
   const _defSkill=(effActKind==='utility' || ab?.id==='crowDefend');
   if(_defSkill){
     if((G.player?.augDefSkillDef||0)>0) G.player.stats.def=(G.player.stats.def||0)+G.player.augDefSkillDef;
@@ -12660,6 +12724,11 @@ async function playerAction(ab,fromQueue=false) {
     G.utilityUsedThisTurn = G.utilityUsedThisTurn || {};
     G.utilityUsedThisTurn[ab.id] = true;
   }
+  if(Avian?.data?.combatConfig?.enRoles?.oncePerTurnActionUse){
+    G.actionUsedThisTurn = G.actionUsedThisTurn || {};
+    const actionKey = ab.actionSource || ab.id;
+    if(actionKey) G.actionUsedThisTurn[actionKey] = true;
+  }
   setAbilityCooldown(ab);
   if(effActKind==='spell'){
     reduceOtherSpellCooldownsOnCast(ab.id);
@@ -12730,6 +12799,9 @@ function startPlayerTurn(player){
   G.playerActionsThisTurn=0;
   G.playerTurnFlags={energyGainedThisTurn:0,onHitTriggered:false,firstAttackResolved:false};
   G.utilityUsedThisTurn={};
+  G.actionUsedThisTurn={};
+  G._ailmentApplyCounts = G._ailmentApplyCounts || { action: Object.create(null), turn: Object.create(null) };
+  G._ailmentApplyCounts.action = Object.create(null);
   G._lastPlayerAbilityCategory=null;
   G._playerLastAttackCategoryThisTurn=null;
   G._playerAlternatedAttackTypeThisTurn=false;
@@ -12771,14 +12843,18 @@ function startPlayerTurn(player){
   G._combatHealUsedThisTurn=false;
   if(typeof Avian?.passives?.onPlayerTurnStart==='function') Avian.passives.onPlayerTurnStart(player);
   if(typeof Avian?.dispatcher?.onPlayerTurnStart==='function') Avian.dispatcher.onPlayerTurnStart(player);
-  if(typeof tickStartOfTurnControl==='function' && tickStartOfTurnControl('player')==='paralyzed'){
-    spawnFloat('player','⚡ Para!','fn-status');
-    logMsg('⚡ Paralyzed — cannot act!','miss');
-    G.turn='player';
-    G.turnPhase=TURN.PLAYER;
-    G.phase='PLAYER';
-    setTimeout(()=>endPlayerTurn(true), 400);
-    return;
+  /* v0.6: Paralysed caps EN after recovery; no longer skips the full turn. */
+  if(typeof tickStartOfTurnControl==='function'){
+    const ctrl = tickStartOfTurnControl('player');
+    if(ctrl === 'paralyzed'){
+      spawnFloat('player','⚡ Para!','fn-status');
+      logMsg('⚡ Paralyzed — cannot act!','miss');
+      G.turn='player';
+      G.turnPhase=TURN.PLAYER;
+      G.phase='PLAYER';
+      setTimeout(()=>endPlayerTurn(true), 400);
+      return;
+    }
   }
   G.turn='player';
   G.turnPhase=TURN.PLAYER;
@@ -12938,7 +13014,11 @@ function gainEnergy(player, amount){
   const applied=Math.max(0,Math.min(amount||0,canGain));
   if(!applied) return 0;
   if(G.playerTurnFlags) G.playerTurnFlags.energyGainedThisTurn=gained+applied;
-  player.energy=Math.min(player.energyMax||0,(player.energy||0)+applied);
+  const cfg = Avian?.data?.combatConfig?.energy;
+  const carryCap = cfg && cfg.carryoverCap != null ? Number(cfg.carryoverCap) : null;
+  const hardMax = player.energyMax || 0;
+  const max = carryCap != null ? Math.min(hardMax, carryCap) : hardMax;
+  player.energy=Math.min(max,(player.energy||0)+applied);
   return applied;
 }
 

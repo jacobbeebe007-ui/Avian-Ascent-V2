@@ -121,4 +121,11 @@ Avian.systems.SAVE_SCHEMA_VERSION
 - New saves stamp `equipmentV2` (from the runtime flag) and `equipmentPackVersion: '2026.07-equipment-v0.3'` when the flag is on.
 - When `equipmentV2` is on at load, `ensurePlayerEquipmentState` + `sanitizeEquipmentLoadout` validate the loadout: unknown item ids are removed with compensation; wrong-slot items are unequipped to inventory; 2H main + offHand conflicts clear offHand.
 
+## v14 migration (Affinity Arsenal v0.6)
+
+- Soft migration: stamps `affinityArsenalV06`, `affinityArsenalPackVersion`, and updated `equipmentPackVersion: '2026.07-affinity-arsenal-v0.6'`.
+- Normalizes bird/player Aspect ids through Affinity aliases when `normalizeAffinityId` is available.
+- Does **not** wipe equipment loadouts (pre-release reset was v13 only).
+- Working Draft combat knobs live in `js/data/combat-config.js`.
+
 Verification: `node scripts/verify-save-migration.mjs`

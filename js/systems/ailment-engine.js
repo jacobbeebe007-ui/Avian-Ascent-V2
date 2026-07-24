@@ -67,7 +67,7 @@
 
   function tickGuardDurations(status) {
     if (!status) return;
-    ['frostGuard', 'emberGuard', 'toxicResistance'].forEach(function (key) {
+    ['frostGuard', 'emberGuard', 'toxicResistance', 'controlResistance'].forEach(function (key) {
       var g = status[key];
       if (typeof g === 'number' && g > 0) {
         status[key] = g - 1;
@@ -160,7 +160,7 @@
       : 0;
 
     if (status.poison && status.poison.stacks > 0 && (status.poison.turns || 0) > 0) {
-      var pDmg = globalThis.calcPoisonTickDmg(status.poison.stacks, ownerBonus) + flatPoisonBonus;
+      var pDmg = globalThis.calcPoisonTickDmg(status.poison.stacks, stats.maxHp, ownerBonus) + flatPoisonBonus;
       globalThis.applyAilmentDamage(side, pDmg, {
         ailmentId: 'poison', icon: '☣', floatClass: 'fn-poison',
         logText: '☣ Poison deals {dmg} to {name}!', logKind: 'poison-tick',
@@ -186,52 +186,68 @@
 
     if (status.burning && status.burning.stacks > 0 && (status.burning.turns || 0) > 0) {
       var burnMult = side === 'enemy' ? (g.player?.burnBonus || 1) : 1;
-      var brDmg = globalThis.calcBurningTickDmg(status.burning.stacks, burnMult);
+      var brDmg = globalThis.calcBurningTickDmg(status.burning.stacks, stats.maxHp, burnMult);
       globalThis.applyAilmentDamage(side, brDmg, {
         ailmentId: 'burning', icon: '🔥', floatClass: 'fn-burn',
         logText: '🔥 Burn deals {dmg} to {name}!', logKind: 'burn-tick',
       });
     }
 
-    if (status.scorched && (status.scorched.turns || 0) > 0) {
-      var scMult = side === 'enemy' ? (g.player?.burnBonus || 1) : 1;
-      var scDmg = globalThis.calcScorchedTickDmg(scMult);
-      globalThis.applyAilmentDamage(side, scDmg, {
-        ailmentId: 'scorched', icon: '🔥', floatClass: 'fn-burn',
-        logText: '🔥 Scorched deals {dmg} to {name}!', logKind: 'burn-tick',
+    if (status.incinerating && (status.incinerating.turns || 0) > 0) {
+      var incDmg = globalThis.calcIncineratingTickDmg
+        ? globalThis.calcIncineratingTickDmg(stats.maxHp)
+        : Math.max(0.01, (stats.maxHp || 1) * 0.06);
+      globalThis.applyAilmentDamage(side, incDmg, {
+        ailmentId: 'incinerating', icon: '🔥', floatClass: 'fn-burn',
+        logText: '🔥 Incinerating deals {dmg} to {name}!', logKind: 'burn-tick',
       });
+      delete status.incinerating;
+      status.scorched = { turns: (R.scorched && R.scorched.duration) || 1 };
+      if (typeof globalThis.logMsg === 'function') {
+        globalThis.logMsg('🔥 ' + sideName(side) + ' becomes Scorched!', 'system');
+      }
+    }
+
+    if (status.scorched && (status.scorched.turns || 0) > 0) {
+      /* Scorched applies Minor Guard/Resolve Down via status flag; no DoT. */
     }
 
     R.tickOrder.forEach(function () { /* damage phase done above */ });
-    ['poison', 'toxic', 'bleed', 'burning', 'scorched'].forEach(function (key) {
+    ['poison', 'toxic', 'bleed', 'burning', 'scorched', 'shock', 'chilled'].forEach(function (key) {
       if (status[key]) decrementAilmentDuration(status, key);
     });
-    if (status.chilled) decrementAilmentDuration(status, 'chilled');
     tickGuardDurations(status);
+    /* Reset per-action ailment caps at end of turn for this side's actor. */
+    if (g._ailmentApplyCounts && g._ailmentApplyCounts.action) {
+      var actor = side === 'player' ? 'player' : 'enemy';
+      Object.keys(g._ailmentApplyCounts.action).forEach(function (k) {
+        if (k.indexOf(actor + ':') === 0) delete g._ailmentApplyCounts.action[k];
+      });
+    }
   };
 
-  /** Start-of-turn control: Paralysed roll. Returns 'paralyzed' if turn should be skipped (enemy) or first action blocked. */
+  /** Start-of-turn control: Paralysed EN cap (v0.6). Returns false (never skips full turn). */
   globalThis.tickStartOfTurnControl = function tickStartOfTurnControl(side) {
     var g = globalThis.G;
     var status = sideStatus(side);
     if (!g || !status) return false;
 
-    var skipChance = (globalThis.AILMENTS?.paralyzed?.skipChance) || R.paralyzed.skipChance;
-    if (status.paralyzed) {
-      var paraTurns = typeof status.paralyzed === 'number' ? status.paralyzed : (status.paralyzed.turns || 0);
-      if (paraTurns > 0) {
-        var immune = side === 'player' && (g.player?.immuneParalyze || globalThis.BIRDS?.[g.player?.birdKey]?.passive?.immuneStun);
-        if (!immune && typeof globalThis.chance === 'function' && globalThis.chance(skipChance)) {
-          delete status.paralyzed;
-          return 'paralyzed';
-        }
-        if (typeof status.paralyzed === 'number') status.paralyzed = paraTurns - 1;
-        else status.paralyzed.turns = paraTurns - 1;
-        if ((typeof status.paralyzed === 'number' && status.paralyzed <= 0) ||
-            (typeof status.paralyzed === 'object' && status.paralyzed.turns <= 0)) {
-          delete status.paralyzed;
-        }
+    if (status.paralyzed && typeof status.paralyzed === 'object' && status.paralyzed.pending) {
+      var entity = side === 'player' ? g.player : g.enemy;
+      var cap = Number(status.paralyzed.enCapAfterRecovery) || 2;
+      if (entity) {
+        var cur = Number(entity.energy) || 0;
+        if (cur > cap) entity.energy = cap;
       }
+      delete status.paralyzed;
+      status.controlResistance = { turns: GUARD_DURATION };
+      if (typeof globalThis.logMsg === 'function') {
+        globalThis.logMsg('⚡ ' + sideName(side) + ' is Paralysed (EN capped at ' + cap + ')!', 'system');
+      }
+    } else if (typeof status.paralyzed === 'number' && status.paralyzed > 0) {
+      /* Legacy numeric Paralysed — convert to EN-cap behaviour once. */
+      status.paralyzed = { enCapAfterRecovery: (R.paralyzed && R.paralyzed.enCapAfterRecovery) || 2, pending: true };
+      return globalThis.tickStartOfTurnControl(side);
     }
     return false;
   };
@@ -243,7 +259,7 @@
     if (!g || !status?.frozen?.pendingSkip) return false;
     var fbs = status.frozen.baseSpd;
     delete status.frozen;
-    status.frostGuard = { turns: GUARD_DURATION };
+    status.controlResistance = { turns: GUARD_DURATION };
     if (status.chilled) {
       if (fbs != null && side === 'enemy' && g.enemy?.stats) g.enemy.stats.spd = Math.max(1, fbs);
       if (fbs != null && side === 'player' && g.player?.stats) g.player.stats.spd = Math.max(1, fbs);

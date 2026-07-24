@@ -41,9 +41,39 @@
     var t = String(tier || 'minor').toLowerCase();
     if (map && map[t] != null) return Number(map[t]);
     var cfg = Avian.data && Avian.data.combatConfig;
-    if (cfg && cfg.effectTiers && cfg.effectTiers[t] != null) return Number(cfg.effectTiers[t]);
-    return t === 'major' ? 50 : (t === 'moderate' ? 25 : 10);
+    if (cfg && cfg.effectTiers) {
+      if (cfg.effectTiers.core && cfg.effectTiers.core[t] != null) return Number(cfg.effectTiers.core[t]);
+      if (cfg.effectTiers[t] != null) return Number(cfg.effectTiers[t]);
+    }
+    return t === 'major' ? 12 : (t === 'moderate' ? 8 : 6);
   }
+
+  function braceMagnitude(tier) {
+    var tiers = Avian.data && Avian.data.effectTiers;
+    var t = String(tier || 'minor').toLowerCase();
+    if (tiers && tiers.brace && tiers.brace[t] != null) return Number(tiers.brace[t]);
+    var cfg = Avian.data && Avian.data.combatConfig;
+    if (cfg && cfg.brace && cfg.brace[t] != null) return Number(cfg.brace[t]);
+    return tierMagnitude(tier, 'up');
+  }
+
+  ns.applyBrace = function applyBrace(side, tier, turns) {
+    var g = G();
+    if (!g) return false;
+    var status = side === 'enemy' ? g.enemyStatus : g.playerStatus;
+    if (!status) return false;
+    var pct = braceMagnitude(tier) / 100;
+    var cap = 0.12;
+    if (Avian.data && Avian.data.combatConfig && Avian.data.combatConfig.brace
+      && Avian.data.combatConfig.brace.capPct != null) {
+      cap = Number(Avian.data.combatConfig.brace.capPct) / 100;
+    }
+    pct = Math.min(cap, pct);
+    var existing = status.brace;
+    if (existing && Number(existing.pct) > pct) return false;
+    status.brace = { pct: pct, turns: turns || 1, tier: String(tier || 'minor') };
+    return true;
+  };
 
   function tierRank(tier) {
     var t = String(tier || 'minor').toLowerCase();

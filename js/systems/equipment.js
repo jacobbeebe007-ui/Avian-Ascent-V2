@@ -94,11 +94,34 @@
 
   function itemAllowedForPlayer(item, classIdOptional) {
     if (!item) return false;
-    var req = item.classRestriction;
-    if (!req || req === 'Any') return true;
     var cls = classIdOptional != null
       ? String(classIdOptional).toLowerCase()
       : getPlayerClassId(typeof G !== 'undefined' ? G.player : null);
+    var familyName = item.family || null;
+    if (familyName === 'Talon Dagger') familyName = 'Dagger Pinion';
+
+    /* v0.6 weapon-access table overrides catalogue classRestriction where present. */
+    var access = Avian.data && Avian.data.equipment && Avian.data.equipment.weaponAccess;
+    if (access && familyName && access[familyName] && access[familyName].classAccess) {
+      var allowed = access[familyName].classAccess;
+      if (Array.isArray(allowed) && allowed.indexOf('any') < 0) {
+        if (!cls) return false;
+        return allowed.indexOf(cls) >= 0;
+      }
+    }
+
+    var families = Avian.data && Avian.data.equipment && Avian.data.equipment.families;
+    var fam = families && familyName ? families[familyName] || families[item.family] : null;
+    if (fam && fam.classAccess && fam.classAccess !== 'Any') {
+      var famParts = parseClassRestriction(fam.classAccess);
+      if (famParts && famParts.length) {
+        if (!cls) return false;
+        return famParts.indexOf(cls) >= 0;
+      }
+    }
+
+    var req = item.classRestriction;
+    if (!req || req === 'Any') return true;
     if (!cls) return false;
     var parts = parseClassRestriction(req);
     return parts.indexOf(cls) >= 0;
@@ -402,12 +425,72 @@
     var eqRoll = sumEquippedEquipment(player);
     player._equipmentMechanics = eqRoll.mechanics;
     var fromEquipment = Object.assign({}, eqRoll.stats);
-    for (var i = 0; i < keys.length; i++) {
-      var k = keys[i];
-      var flat = (Number(fromLevel[k]) || 0) + (Number(fromUpgrades[k]) || 0)
-        + (Number(fromCardTier[k]) || 0) + (Number(eqRoll.stats[k]) || 0);
-      var v = (Number(base[k]) || 0) + flat;
-      player.stats[k] = capTrackedStatValue(k, v);
+    var cfg = combatConfig();
+    var useProg = !!(cfg && cfg.affinityArsenalV06 && Avian.birdProgression
+      && typeof Avian.birdProgression.computeFinalStats === 'function');
+
+    if (useProg) {
+      var className = getPlayerClassId(player) || player.class || 'rogue';
+      var level = Math.max(1, Number(player.level) || Number(player.birdLevel) || 1);
+      var totalStars = Math.max(0, Number(player.totalStars) || Number(player.stars) || Number(player.cardStars) || 0);
+      var tier = player.progressionTier || player.cardTier || player.equipmentTier || 'grey';
+      var developedBase = {
+        hp: (Number(base.maxHp) || Number(base.hp) || 0)
+          + (Number(fromLevel.maxHp) || 0) + (Number(fromUpgrades.maxHp) || 0)
+          + (Number(fromCardTier.maxHp) || 0) + (Number(eqRoll.stats.maxHp) || 0),
+        atk: (Number(base.atk) || 0) + (Number(fromLevel.atk) || 0) + (Number(fromUpgrades.atk) || 0)
+          + (Number(fromCardTier.atk) || 0) + (Number(eqRoll.stats.atk) || 0),
+        def: (Number(base.def) || 0) + (Number(fromLevel.def) || 0) + (Number(fromUpgrades.def) || 0)
+          + (Number(fromCardTier.def) || 0) + (Number(eqRoll.stats.def) || 0),
+        matk: (Number(base.matk) || 0) + (Number(fromLevel.matk) || 0) + (Number(fromUpgrades.matk) || 0)
+          + (Number(fromCardTier.matk) || 0) + (Number(eqRoll.stats.matk) || 0),
+        mdef: (Number(base.mdef) || 0) + (Number(fromLevel.mdef) || 0) + (Number(fromUpgrades.mdef) || 0)
+          + (Number(fromCardTier.mdef) || 0) + (Number(eqRoll.stats.mdef) || 0),
+        spd: (Number(base.spd) || 0) + (Number(fromLevel.spd) || 0) + (Number(fromUpgrades.spd) || 0)
+          + (Number(fromCardTier.spd) || 0) + (Number(eqRoll.stats.spd) || 0),
+      };
+      /* Flats already folded into developedBase; pass zeros for level/star tables to avoid double-count
+       * when fromLevel already mirrors legacy growth. Prefer workbook tables when fromLevel empty. */
+      var hasLegacyLevel = Object.keys(fromLevel).some(function (k) { return Number(fromLevel[k]) > 0; });
+      var result = Avian.birdProgression.computeFinalStats({
+        base: hasLegacyLevel ? developedBase : {
+          hp: (Number(base.maxHp) || Number(base.hp) || 0) + (Number(eqRoll.stats.maxHp) || 0),
+          atk: (Number(base.atk) || 0) + (Number(eqRoll.stats.atk) || 0),
+          def: (Number(base.def) || 0) + (Number(eqRoll.stats.def) || 0),
+          matk: (Number(base.matk) || 0) + (Number(eqRoll.stats.matk) || 0),
+          mdef: (Number(base.mdef) || 0) + (Number(eqRoll.stats.mdef) || 0),
+          spd: (Number(base.spd) || 0) + (Number(eqRoll.stats.spd) || 0),
+        },
+        className: className,
+        level: hasLegacyLevel ? 1 : level,
+        totalStars: hasLegacyLevel ? 0 : totalStars,
+        tier: tier,
+        equipmentPct: eqRoll.pct || {},
+      });
+      var ledger = result.ledger || {};
+      player.stats.maxHp = capTrackedStatValue('maxHp', ledger.hp || ledger.maxHp || player.stats.maxHp);
+      player.stats.atk = capTrackedStatValue('atk', ledger.atk != null ? ledger.atk : player.stats.atk);
+      player.stats.def = capTrackedStatValue('def', ledger.def != null ? ledger.def : player.stats.def);
+      player.stats.matk = capTrackedStatValue('matk', ledger.matk != null ? ledger.matk : player.stats.matk);
+      player.stats.mdef = capTrackedStatValue('mdef', ledger.mdef != null ? ledger.mdef : player.stats.mdef);
+      player.stats.spd = capTrackedStatValue('spd', ledger.spd != null ? ledger.spd : player.stats.spd);
+      /* Preserve chance stats from flat path. */
+      ['acc', 'dodge', 'critChance', 'armorPen', 'magicPen'].forEach(function (ck) {
+        var flat = (Number(fromLevel[ck]) || 0) + (Number(fromUpgrades[ck]) || 0)
+          + (Number(fromCardTier[ck]) || 0) + (Number(eqRoll.stats[ck]) || 0);
+        player.stats[ck] = capTrackedStatValue(ck, (Number(base[ck]) || 0) + flat);
+      });
+      /* Evasion permanent cap 20%. */
+      var evaCap = (cfg.evasion && cfg.evasion.permanentCapPct != null) ? Number(cfg.evasion.permanentCapPct) : 20;
+      if (player.stats.dodge != null) player.stats.dodge = Math.min(evaCap, Number(player.stats.dodge) || 0);
+    } else {
+      for (var i = 0; i < keys.length; i++) {
+        var k = keys[i];
+        var flat = (Number(fromLevel[k]) || 0) + (Number(fromUpgrades[k]) || 0)
+          + (Number(fromCardTier[k]) || 0) + (Number(eqRoll.stats[k]) || 0);
+        var v = (Number(base[k]) || 0) + flat;
+        player.stats[k] = capTrackedStatValue(k, v);
+      }
     }
     if (L) {
       L.fromEquipment = fromEquipment;

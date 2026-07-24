@@ -1,11 +1,10 @@
 /* Avian Ascent — combat / equipment Working Draft config.
  *
- * Hand-authored (not generated). Every Working Draft / Open Decision numeric
- * from the v0.3 workbook lives here so tuning never requires system-code edits.
- * Consumed only when Avian.flags.equipmentV2 is on (Phases 2–12); Phase 13
- * deletes the flag and this becomes the sole source of truth.
+ * Hand-authored (not generated). Working Draft / Open Decision numerics from
+ * Affinity Arsenal v0.6 live here so tuning never requires system-code edits.
+ * Confirmed structure rules may also appear for a single source of truth.
  *
- * See docs/equipment-v2-migration.md Decision Log for D1–D13 status.
+ * See docs/affinity-arsenal-v06-migration.md.
  */
 (function () {
   'use strict';
@@ -14,16 +13,18 @@
   Avian.data = Avian.data || Object.create(null);
 
   Avian.data.combatConfig = Object.freeze({
-    packVersion: '2026.07-equipment-v0.3',
+    packVersion: '2026.07-affinity-arsenal-v0.6',
+    affinityArsenalV06: true,
 
-    /* R-EN-001 — equipment never changes these. */
+    /* R-EN-001 — equipment never changes these. Carryover cap is WD (OD-025). */
     energy: Object.freeze({
       start: 4,
       regen: 3,
       max: 10,
+      carryoverCap: 6,
     }),
 
-    /* R-DMG-001 Scaling Model EN Base bands (includes 4 EN and 6 EN Ultimate). */
+    /* Legacy EN×AP path retained for fixtures; v0.6 damage uses directScaling. */
     enBaseDamage: Object.freeze({
       1: 5,
       2: 11,
@@ -32,12 +33,25 @@
       6: 35,
     }),
 
-    /* D13 — /50 StatMod curve (Working Draft). Flag-off keeps /100 + 0.90–1.15. */
+    /* v0.6 direct damage: BaseDamage + FinalStat × coefficient (WD). */
+    directScaling: Object.freeze({
+      enabled: true,
+      baseDamagePerEn: 2,
+      /* EN → reference coefficient / Precision (Skill & EN Rules WD). */
+      enAttackBands: Object.freeze({
+        1: Object.freeze({ coeff: 0.6, precision: 1.0 }),
+        2: Object.freeze({ coeff: 1.0, precision: 0.98 }),
+        3: Object.freeze({ coeff: 1.32, precision: 0.94 }),
+        4: Object.freeze({ coeff: 1.75, precision: 0.89 }),
+        6: Object.freeze({ coeff: 3.3, precision: 0.92 }),
+      }),
+    }),
+
+    /* Legacy StatMod kept for non-v0.6 fallbacks; unused when directScaling.enabled. */
     statMod: Object.freeze({
       divisor: 50,
       min: 0.8,
       max: 1.6,
-      /* Class reference stats for StatMod (primary scaling stat). */
       classReferences: Object.freeze({
         knight: 12,
         rogue: 8,
@@ -56,14 +70,13 @@
       bands: Object.freeze({ light: 0.15, medium: 0.25, heavy: 0.4 }),
     }),
 
-    /* R-DMG-001 crit caps; per-bird critDamage comes from birds-v2. */
+    /* Crit / Ferocity */
     crit: Object.freeze({
       chanceCapPct: 50,
       damageCapMult: 2.0,
       damageFloorMult: 1.35,
     }),
 
-    /* R-DMG-001 hit clamp + bonus caps. */
     hit: Object.freeze({
       minPct: 15,
       maxPct: 95,
@@ -74,91 +87,154 @@
       boss: 0.5,
     }),
 
+    /* Defence Mod = C / (C + EffDef). WD default C=100. */
     defence: Object.freeze({
-      /* Defence Mod = 100 / (100 + k × EffDef). */
+      constant: 100,
       curveK: 3,
+      formula: 'constantOverSum',
       minLandedDamage: 1,
     }),
 
-    /* R-ULT-001 — damaging hits only. Utilities award 0 when equipmentV2 on (D8). */
     ultimateMeter: Object.freeze({
       max: 100,
       damageAwards: Object.freeze({ 1: 8, 2: 12, 3: 16, 4: 22, 6: 0 }),
       utilityAwards: Object.freeze({ 1: 0, 2: 0, 3: 0, 4: 0, 6: 0 }),
-      /* Ultimate costs 0 EN in code today; workbook allows optional 6 EN gate. */
       ultimateEnCost: 0,
       requireFullMeter: true,
+      oncePerLandedAction: true,
     }),
 
-    /* R-EFF-001 */
+    /* R-EFF-001 — core % and point tiers. */
     effectTiers: Object.freeze({
-      minor: 10,
-      moderate: 25,
-      major: 50,
+      minor: 6,
+      moderate: 8,
+      major: 12,
+      core: Object.freeze({ minor: 6, moderate: 8, major: 12 }),
+      points: Object.freeze({ minor: 3, moderate: 5, major: 8 }),
+      coreTempCapPct: 20,
+      precisionTempCapPoints: 12,
     }),
 
-    /* D11 */
-    orangeUniqueness: 'perRun', /* 'none' | 'perRun' | 'perInventory' */
+    evasion: Object.freeze({
+      permanentCapPct: 20,
+      totalCapPct: 35,
+    }),
 
-    /* Phase 7 — equipment loot tables live in js/data/equipment/loot-tables.js */
+    orangeUniqueness: 'perRun',
+
     loot: Object.freeze({
       source: 'js/data/equipment/loot-tables.js',
     }),
 
-    /* D12 */
-    classRestrictionMode: 'hard', /* 'hard' | 'soft' | 'off' */
+    classRestrictionMode: 'hard',
 
-    /* D5 — Guard PLAYTEST placeholder until workbook signs off. */
+    /* Guard = Martial DEF; Brace = temporary DR. */
     guard: Object.freeze({
-      mode: 'PLAYTEST',
-      /* Keep current gainGuarded semantics; magnitude is status-driven. */
-      useLegacyGuarded: true,
+      mode: 'BRACE_V06',
+      useLegacyGuarded: false,
+      braceIsDamageReduction: true,
     }),
 
-    /* D6 — keep frost/ember/toxic post-upgrade windows until playtest. */
+    brace: Object.freeze({
+      minor: 6,
+      moderate: 8,
+      major: 12,
+      capPct: 12,
+    }),
+
+    recovery: Object.freeze({
+      barrierCapMaxHpPct: 0.35,
+      lifestealTriggerCapMaxHpPct: 0.1,
+      directHealMaxPerCastMaxHpPct: 0.35,
+      healingPowerAppliesToLifesteal: false,
+      braceCapPct: 0.12,
+    }),
+
+    vitalityRebase: 20,
+    levelCap: 30,
+
+    equipmentCaps: Object.freeze({
+      vitalityPct: 0.6,
+      corePct: 0.5,
+      agilityPct: 0.3,
+    }),
+
+    progressionTier: Object.freeze({
+      grey: 1.0,
+      green: 1.04,
+      blue: 1.08,
+      purple: 1.12,
+      gold: 1.16,
+      orange: 1.2,
+    }),
+
     postUpgradeWindows: Object.freeze({
-      frostGuard: true,
-      emberGuard: true,
-      toxicResistance: true,
+      frostGuard: false,
+      emberGuard: false,
+      toxicResistance: false,
+      controlResistance: true,
     }),
 
-    /* D7 — Chilled reduces SPD only when equipmentV2 on (no EN-regen cut). */
     chilled: Object.freeze({
       removeEnRegenPenalty: true,
       stacksToFrozen: 5,
     }),
 
     ailments: Object.freeze({
-      burnToScorchedStacks: 5,
+      burnMaxStacks: 5,
+      burnToIncineratingStacks: 5,
       poisonToToxicStacks: 5,
       chilledToFrozenStacks: 5,
+      shockToParalysedStacks: 5,
+      bleedMaxStacks: 3,
+      sharedDurationTurns: 3,
+      stacksPerActionCap: 2,
+      stacksPerTurnCap: 4,
+      multiHitRiderOnce: true,
+      deterministicOnLand: true,
+      paralysedEnCapAfterRecovery: 2,
+      incineratingMaxHpPct: 0.06,
+      scorchedUsesMinorDefenceDown: true,
+      toxicMaxHpPct: 0.05,
+      toxicDurationTurns: 2,
+      burnPerStackMaxHpPct: 0.01,
+      poisonPerStackMaxHpPct: 0.0075,
+      bleedPerStackMaxHpPct: 0.01,
+      bleedHealingDownPerStack: 0.1,
+      chilledAgilityPerStack: -0.03,
+      shockPrecisionPointsPerStack: -2,
     }),
 
-    /* D2 — ultimate source selection. */
+    enRoles: Object.freeze({
+      basicEn: 1,
+      utilityEn: 1,
+      equipmentMinEn: 2,
+      heavyEn: 4,
+      combinationEn: 3,
+      focusPulseEn: 2,
+      oncePerTurnActionUse: true,
+    }),
+
     ultimateSelection: Object.freeze({
       autoWhenUnique: true,
       allowPreCombatPicker: true,
     }),
 
-    /* D4 — choose-at-use auto-rules until choice UI ships. */
     chooseAtUse: Object.freeze({
-      openingVerse: 'higherStat', /* ATK vs MATK */
+      openingVerse: 'higherStat',
       convergenceOfSix: 'mainHandAspect',
     }),
 
-    /* Target combat pacing (warn-only in sims). */
     pacing: Object.freeze({
       targetTurnsMin: 2,
       targetTurnsMax: 4,
     }),
 
-    /* Passive / utility power budgets (importer also validates). */
     budgets: Object.freeze({
       passiveMaxScore: 1.5,
       utilityByEn: Object.freeze({ 1: 2, 2: 4, 3: 2.5 }),
     }),
 
-    /* Basic Attack inheritance. */
     basicAttack: Object.freeze({
       physicalId: 'BASIC_PHYSICAL',
       magicId: 'BASIC_MAGIC',
@@ -187,4 +263,8 @@
       'necklace',
     ]),
   });
+
+  if (typeof globalThis.syncAilmentRulesFromCombatConfig === 'function') {
+    globalThis.syncAilmentRulesFromCombatConfig();
+  }
 })();

@@ -248,45 +248,45 @@
       return seg(tierLabel + w, tierStat || null);
     }
     switch (r.kind) {
-      case 'gainDodge': return seg('+' + v + '% Dodge' + w, 'dodge');
-      case 'gainDodgeFlat': return seg('+' + v + ' Dodge' + w, 'dodge');
-      case 'gainAcc': return seg('+' + v + '% ACC' + w, 'acc');
-      case 'gainAccFlat': return seg('+' + v + ' ACC' + w, 'acc');
-      case 'gainSpeed': return seg('+' + v + '% Speed' + w, 'spd');
-      case 'gainCritChance': return seg('+' + v + '% Crit Chance' + w, 'cc');
-      case 'gainCritDamage': return seg('+' + pctOf(v) + '% Crit Damage' + w, 'cd');
-      case 'gainAtk': return seg('+' + v + '% Attack' + w, 'atk');
-      case 'gainMatk': return seg('+' + v + '% Magic Attack' + w, 'matk');
-      case 'gainDef': return seg('+' + v + '% Defence' + w, 'def');
-      case 'gainMdef': return seg('+' + v + '% Magic Defence' + w, 'mdef');
+      case 'gainAtk': return seg('+' + v + '% Might' + w, 'atk');
+      case 'gainMatk': return seg('+' + v + '% Focus' + w, 'matk');
+      case 'gainDef': return seg('+' + v + '% Guard' + w, 'def');
+      case 'gainMdef': return seg('+' + v + '% Resolve' + w, 'mdef');
       case 'gainGuard': return seg('Guard' + w, 'def');
       case 'gainGuarded':
       case 'gainBrace':
         if (r.guardTier) {
           var gt = String(r.guardTier).charAt(0).toUpperCase() + String(r.guardTier).slice(1);
-          return seg('Gain ' + gt + ' Guard' + w, 'def');
+          return seg('Gain ' + gt + ' Brace' + w, 'def');
         }
-        return v > 0 ? seg(v + '% Damage Reduction' + w, 'def') : seg('Brace' + w, 'def');
+        return v > 0 ? seg(v + '% Brace' + w, 'def') : seg('Brace' + w, 'def');
       case 'gainCounter': return seg('Counter' + w, null);
       case 'gainTaunt': return seg('Taunt' + w, null);
-      case 'reduceEnemyDodge': return seg('Enemy -' + v + '% Dodge' + w, 'dodge');
-      case 'reduceEnemyAcc': return seg('Enemy -' + v + '% ACC' + w, 'acc');
-      case 'reduceEnemyAtk': return seg('Enemy -' + v + '% Attack' + w, 'atk');
-      case 'reduceEnemyMatk': return seg('Enemy -' + v + '% Magic Attack' + w, 'matk');
-      case 'reduceEnemySpd': return seg('Enemy -' + v + '% Speed' + w, 'spd');
-      case 'reduceEnemyCrit': return seg('Enemy -' + v + '% Crit Chance' + w, 'cc');
-      case 'reduceEnemyDef': return seg('Enemy -' + v + '% Defence' + w, 'def');
-      case 'reduceEnemyMdef': return seg('Enemy -' + v + '% Magic Defence' + w, 'mdef');
-      case 'gainShield': return seg('Shield' + w, 'def');
-      case 'gainShieldFromDamage': return seg('Shield = ' + v + '% of damage dealt' + w, 'def');
+      case 'reduceEnemyDodge': return seg('Enemy -' + v + '% Evasion' + w, 'dodge');
+      case 'reduceEnemyAcc': return seg('Enemy -' + v + '% Precision' + w, 'acc');
+      case 'reduceEnemyAtk': return seg('Enemy -' + v + '% Might' + w, 'atk');
+      case 'reduceEnemyMatk': return seg('Enemy -' + v + '% Focus' + w, 'matk');
+      case 'reduceEnemySpd': return seg('Enemy -' + v + '% Agility' + w, 'spd');
+      case 'reduceEnemyCrit': return seg('Enemy -' + v + '% Critical' + w, 'cc');
+      case 'reduceEnemyDef': return seg('Enemy -' + v + '% Guard' + w, 'def');
+      case 'reduceEnemyMdef': return seg('Enemy -' + v + '% Resolve' + w, 'mdef');
+      case 'gainShield': return seg('Barrier' + w, 'def');
+      case 'gainShieldFromDamage': return seg('Barrier = ' + v + '% of damage dealt' + w, 'def');
       case 'gainMagicAilmentChance': return seg('+' + v + '% Magical Ailment chance' + w, null);
-      case 'gainPhysicalAilmentChance': return seg('+' + v + '% Physical Ailment chance' + w, null);
-      case 'reduceEnemyAccFlat': return seg('Enemy -' + v + ' ACC' + w, 'acc');
+      case 'gainPhysicalAilmentChance': return seg('+' + v + '% Martial Ailment chance' + w, null);
+      case 'reduceEnemyAccFlat': return seg('Enemy -' + v + ' Precision' + w, 'acc');
       case 'purgeEnemyMinorBuff': return seg('Remove Minor enemy buff' + w, null);
       case 'guardBreak': return seg('Guard Break' + w, 'def');
       case 'exposeGuard': return v > 1 ? seg('Expose Guard (+' + v + '% damage taken)' + w, 'def') : seg('Expose Guard (+' + Math.round(v * 100) + '% damage taken)' + w, 'def');
-      case 'gainAccNextHit': return seg('+' + v + ' ACC on next hit' + w, 'acc');
-      case 'healMaxHpPct': return seg('Heal ' + v + '% Max HP' + w, 'hp');
+      case 'gainAccNextHit': return seg('+' + v + ' Precision on next hit' + w, 'acc');
+      case 'healMaxHpPct': return seg('Heal ' + v + '% Max Vitality' + w, 'hp');
+      case 'gainDodge': return seg('+' + v + '% Evasion' + w, 'dodge');
+      case 'gainDodgeFlat': return seg('+' + v + ' Evasion' + w, 'dodge');
+      case 'gainAcc': return seg('+' + v + '% Precision' + w, 'acc');
+      case 'gainAccFlat': return seg('+' + v + ' Precision' + w, 'acc');
+      case 'gainSpeed': return seg('+' + v + '% Agility' + w, 'spd');
+      case 'gainCritChance': return seg('+' + v + '% Critical' + w, 'cc');
+      case 'gainCritDamage': return seg('+' + pctOf(v) + '% Ferocity' + w, 'cd');
       case 'gainApNextTurn': return seg('+' + v + ' EN next turn' + w, null);
       case 'refundApOnCrit': return seg('Refund 1 EN on crit', null);
       default: return null;

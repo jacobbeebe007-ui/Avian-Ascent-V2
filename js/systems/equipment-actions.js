@@ -62,8 +62,66 @@
     var t = String(tier || 'minor').toLowerCase();
     if (map && map[t] != null) return Number(map[t]);
     var cfg = combatConfig();
-    if (cfg && cfg.effectTiers && cfg.effectTiers[t] != null) return Number(cfg.effectTiers[t]);
-    return t === 'major' ? 50 : (t === 'moderate' ? 25 : 10);
+    if (cfg && cfg.effectTiers) {
+      if (cfg.effectTiers.core && cfg.effectTiers.core[t] != null) return Number(cfg.effectTiers.core[t]);
+      if (cfg.effectTiers[t] != null) return Number(cfg.effectTiers[t]);
+    }
+    return t === 'major' ? 12 : (t === 'moderate' ? 8 : 6);
+  }
+
+  function pointTierPct(tier) {
+    var tiers = Avian.data && Avian.data.effectTiers;
+    var t = String(tier || 'minor').toLowerCase();
+    if (tiers && tiers.points && tiers.points[t] != null) return Number(tiers.points[t]);
+    var cfg = combatConfig();
+    if (cfg && cfg.effectTiers && cfg.effectTiers.points && cfg.effectTiers.points[t] != null) {
+      return Number(cfg.effectTiers.points[t]);
+    }
+    return t === 'major' ? 8 : (t === 'moderate' ? 5 : 3);
+  }
+
+  function normalizeFamilyName(name) {
+    var n = String(name || '');
+    if (n === 'Talon Dagger') return 'Dagger Pinion';
+    var g = Avian.data && Avian.data.displayGlossary && Avian.data.displayGlossary.familyAliases;
+    if (g && g[n]) return g[n];
+    return n;
+  }
+
+  function combinationsCatalog() {
+    return (Avian.data && Avian.data.equipment && Avian.data.equipment.combinationTechniques) || null;
+  }
+
+  function orbFocusesCatalog() {
+    return (Avian.data && Avian.data.equipment && Avian.data.equipment.orbFocuses) || null;
+  }
+
+  function findCombinationSkillId(mainFamily, offItem) {
+    var combos = combinationsCatalog();
+    if (!combos || !mainFamily || !offItem) return null;
+    var mainTag = normalizeFamilyName(mainFamily);
+    var focusId = offItem.orbFocus || null;
+    if (!focusId && offItem.family === 'Focus Orb') {
+      /* Infer from item name / aspect if focus not stamped. */
+      var orbs = orbFocusesCatalog() || {};
+      var aspect = offItem.aspect;
+      for (var oid in orbs) {
+        if (!Object.prototype.hasOwnProperty.call(orbs, oid)) continue;
+        if (orbs[oid].affinity === aspect || orbs[oid].exemplarItemId === offItem.id) {
+          focusId = oid;
+          break;
+        }
+      }
+    }
+    if (!focusId) return null;
+    var orbLabel = (orbFocusesCatalog() && orbFocusesCatalog()[focusId] && orbFocusesCatalog()[focusId].label) || null;
+    if (!orbLabel) return null;
+    var pairKey = mainTag + '|' + orbLabel;
+    for (var sid in combos) {
+      if (!Object.prototype.hasOwnProperty.call(combos, sid)) continue;
+      if (combos[sid].pairKey === pairKey) return sid;
+    }
+    return null;
   }
 
   function statToRiderKind(stat, dir, target) {
@@ -184,16 +242,33 @@
     if (!skill) return null;
     var rarity = normalizeRarity(rarityOptional || (item && item.rarity) || 'grey');
     var apMap = skill.ap || {};
-    var apVal = apMap[rarity];
+    var apVal = skill.fixedCoefficient != null ? Number(skill.fixedCoefficient) : apMap[rarity];
     if (apVal == null && rowIsUltimate(skill)) {
       apVal = apMap.gold != null ? apMap.gold : apMap.orange;
     }
-    if (apVal == null && !rowIsUltimate(skill)) apVal = apMap.grey != null ? apMap.grey : 1;
+    if (apVal == null && !rowIsUltimate(skill) && apMap && typeof apMap === 'object') {
+      apVal = apMap.grey != null ? apMap.grey : 1;
+    }
     var pen = Number(skill.intrinsicPenPct) || 0;
     var dmgType = String(skill.damageType || 'Physical');
     var isUtil = dmgType.toLowerCase() === 'utility' || (Number(skill.hits) || 0) === 0;
     var structured = resolveStructuredRider(skill);
     var riders = convertParsedRiderToRows(structured, skillId);
+    if (skill.rider && skill.rider.kind === 'applyAilment') {
+      riders.push({
+        kind: 'applyAilment',
+        ailment: skill.rider.ailment,
+        stacks: Number(skill.rider.stacks) || 1,
+        when: 'onHit',
+      });
+    }
+    var aspect = resolveItemAspect(item, skill);
+    if (skill.aspectRule === 'OffHandOrbAffinity' && item && item.aspect) {
+      aspect = item.aspect;
+    }
+    if (Avian.affinity && typeof Avian.affinity.normalize === 'function' && aspect) {
+      aspect = Avian.affinity.normalize(aspect) || aspect;
+    }
     var row = {
       id: skill.id,
       name: skill.name,
@@ -204,15 +279,19 @@
       scaleStat: skill.scalingStat || null,
       damageStat: skill.scalingStat || null,
       abilityPower: apVal != null ? Number(apVal) : null,
+      fixedCoefficient: skill.fixedCoefficient != null ? Number(skill.fixedCoefficient) : (apVal != null ? Number(apVal) : null),
+      baseDamage: skill.baseDamage != null ? Number(skill.baseDamage) : null,
+      scaling: skill.scaling || null,
+      precision: skill.precision != null ? Number(skill.precision) : null,
       hits: Math.max(0, Number(skill.hits) || 0),
       hitCount: Math.max(0, Number(skill.hits) || 0),
-      aspect: resolveItemAspect(item, skill),
+      aspect: aspect,
       isUltimate: rowIsUltimate(skill),
       piercePercent: pen / 100,
       pierceDef: dmgType === 'Magic' ? 0 : pen,
       pierceMdef: dmgType === 'Magic' ? pen : 0,
       tags: [],
-      source: 'equipment',
+      source: skill.source === 'Combination' ? 'combination' : 'equipment',
       equipmentSkillId: skillId,
       equipmentItemId: item && item.id ? item.id : null,
       riderText: skill.riderText || (structured && structured.text) || '',
@@ -221,8 +300,11 @@
       target: String(skill.target || 'Enemy').toLowerCase() === 'self' ? 'self' : 'enemy',
       noDamage: isUtil,
       riders: riders,
+      coefficientFixed: !!skill.coefficientFixed,
+      useDirectScaling: !!(skill.baseDamage != null || (Array.isArray(skill.scaling) && skill.scaling.length)),
     };
     row.tags = buildTags(skill, item, row);
+    if (skill.source === 'Combination') row.tags.push('Combination');
     if (typeof globalThis.applyAbilityTextEnrichment === 'function') {
       globalThis.applyAbilityTextEnrichment(row);
     }
@@ -230,6 +312,7 @@
       globalThis.enrichCombatRow(row);
     }
     if (apVal != null) row.abilityPower = Number(apVal);
+    if (row.precision != null) row.hitChanceOverride = row.precision;
     return row;
   };
 
@@ -336,12 +419,54 @@
       out.weaponA = ra ? abilityFromRow(ra, { actionSource: 'weaponA' }) : null;
     }
 
-    if (offWeapon && main.family && offWeapon.family === main.family && main.pairedSkill) {
+    var mainFamily = normalizeFamilyName(main.family);
+    var offFamily = offWeapon ? normalizeFamilyName(offWeapon.family) : null;
+
+    /* Dual-wield resolution: 2H already returned; matching Paired → curated Combination → unlinked normals. */
+    if (offWeapon && mainFamily && offFamily === mainFamily && main.pairedSkill) {
       var rp = ns.skillToAbilityRow(main.pairedSkill, main, rarityMain);
       out.weaponB = rp ? abilityFromRow(rp, { actionSource: 'weaponB' }) : null;
-    } else if (offWeapon && offWeapon.skill1) {
+      return out;
+    }
+
+    if (offWeapon && offFamily === 'Focus Orb') {
+      var comboId = findCombinationSkillId(mainFamily, offWeapon);
+      if (comboId) {
+        var rc = ns.skillToAbilityRow(comboId, offWeapon, normalizeRarity(offWeapon.rarity));
+        out.weaponB = rc ? abilityFromRow(rc, { actionSource: 'weaponB' }) : null;
+        return out;
+      }
+    }
+
+    if (offWeapon && offWeapon.skill1) {
       var rb = ns.skillToAbilityRow(offWeapon.skill1, offWeapon, normalizeRarity(offWeapon.rarity));
-      out.weaponB = rb ? abilityFromRow(rb, { actionSource: 'weaponB' }) : null;
+      /* Focus Pulse rename / focus rider stamp */
+      if (offFamily === 'Focus Orb' && rb && rb._dispatcherRow) {
+        var focuses = orbFocusesCatalog();
+        var focus = null;
+        if (focuses) {
+          for (var fid in focuses) {
+            if (!Object.prototype.hasOwnProperty.call(focuses, fid)) continue;
+            if (focuses[fid].exemplarItemId === offWeapon.id || focuses[fid].affinity === offWeapon.aspect) {
+              focus = focuses[fid];
+              break;
+            }
+          }
+        }
+        if (focus) {
+          rb.name = focus.techniqueName || rb.name;
+          rb._dispatcherRow.name = rb.name;
+          if (focus.onHit && focus.onHit.kind === 'applyAilment') {
+            rb._dispatcherRow.riders = (rb._dispatcherRow.riders || []).concat([{
+              kind: 'applyAilment',
+              ailment: focus.onHit.ailment,
+              stacks: Number(focus.onHit.stacks) || 1,
+              when: 'onHit',
+            }]);
+          }
+        }
+      }
+      out.weaponB = rb;
     }
     return out;
   };

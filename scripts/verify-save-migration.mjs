@@ -238,6 +238,13 @@ function testEquipmentV2SaveStamp() {
 
   if (migrated.equipmentPackVersion !== systems.EQUIPMENT_PACK_VERSION) fail('equipmentPackVersion missing');
   else ok('equipmentPackVersion stamped');
+
+  if (Number(migrated.schemaVersion) !== 14) fail('schemaVersion should be 14 after migration');
+  else ok('schemaVersion is 14');
+
+  if (migrated.affinityArsenalPackVersion !== systems.AFFINITY_ARSENAL_PACK_VERSION) {
+    fail('affinityArsenalPackVersion missing');
+  } else ok('affinityArsenalPackVersion stamped');
 }
 
 function equipmentEmpty(ctx) {

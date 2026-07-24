@@ -547,14 +547,78 @@
     return statFromEntity(target, 'DEF');
   }
 
+  function getDefenceConstant() {
+    var cfg = getCombatConfig();
+    if (cfg && cfg.defence && cfg.defence.constant != null) return Number(cfg.defence.constant) || 100;
+    return 100;
+  }
+
+  function usesDirectScaling(ability) {
+    var cfg = getCombatConfig();
+    if (!(cfg && cfg.directScaling && cfg.directScaling.enabled !== false && cfg.affinityArsenalV06)) {
+      return false;
+    }
+    var row = ability || {};
+    /* Prefer direct path for authored v0.6 rows; keep EN×AP×StatMod for legacy abilityPower fixtures. */
+    if (row.baseDamage != null || (Array.isArray(row.scaling) && row.scaling.length) || row.useDirectScaling) {
+      return true;
+    }
+    if (row.coefficientFixed && row.fixedCoefficient != null && row.abilityPower == null) return true;
+    return false;
+  }
+
   function getDefenceModifier(relevantDefence, damageType, piercePercent, opts) {
     opts = opts || {};
     if (String(damageType || 'Physical') === 'True') return 1;
     var def = Math.max(0, Number(relevantDefence) || 0);
     if (opts.burning) def = applyBurningDefModifier(def, opts.burning);
+    if (opts.scorched) def = applyBurningDefModifier(def, { scorched: true });
     var pierce = clampPen(piercePercent);
     def = Math.max(0, def * (1 - pierce));
-    return 100 / (100 + def * 3);
+    if (opts.useConstantDefence || (opts.ability && usesDirectScaling(opts.ability))) {
+      var C = getDefenceConstant();
+      return C / (C + def);
+    }
+    var k = 3;
+    var cfg = getCombatConfig();
+    if (cfg && cfg.defence && cfg.defence.curveK != null) k = Number(cfg.defence.curveK) || 3;
+    return 100 / (100 + def * k);
+  }
+
+  function getDirectBaseDamage(enCost) {
+    var cfg = getCombatConfig();
+    var per = (cfg && cfg.directScaling && cfg.directScaling.baseDamagePerEn != null)
+      ? Number(cfg.directScaling.baseDamagePerEn) : 2;
+    return per * Math.max(1, Math.floor(Number(enCost) || 1));
+  }
+
+  function getFixedTechniqueCoefficient(ability, enCost) {
+    var row = ability || {};
+    if (row.fixedCoefficient != null) return Number(row.fixedCoefficient);
+    if (row.abilityPower != null) return Number(row.abilityPower);
+    if (Array.isArray(row.scaling) && row.scaling.length) return null;
+    var cfg = getCombatConfig();
+    var bands = cfg && cfg.directScaling && cfg.directScaling.enAttackBands;
+    var cost = Math.floor(Number(enCost) || 1);
+    if (bands && bands[cost] && bands[cost].coeff != null) return Number(bands[cost].coeff);
+    return 1;
+  }
+
+  function sumDirectStatCoefficients(attacker, ability) {
+    var row = ability || {};
+    if (Array.isArray(row.scaling) && row.scaling.length) {
+      var total = 0;
+      for (var i = 0; i < row.scaling.length; i++) {
+        var s = row.scaling[i];
+        if (!s) continue;
+        var key = s.ledgerKey || s.stat;
+        total += statFromEntity(attacker, key) * (Number(s.coeff) || 0);
+      }
+      return total;
+    }
+    var coeff = getFixedTechniqueCoefficient(row, row.enCost != null ? row.enCost : row.apCost);
+    var relevant = getRelevantAttackStat(attacker, row, {});
+    return relevant * (Number(coeff) || 0);
   }
 
   function getBonusCap(attacker, battleState) {
@@ -661,35 +725,75 @@
     var ability = params.ability || {};
     var battleState = params.battleState || {};
     enrichCombatRow(ability);
-    if (ability.noDamage || getAbilityPower(ability, attacker, target, battleState) <= 0) {
+    if (ability.noDamage) {
       return { damage: 0, preMitigation: 0, components: {} };
     }
     var enCost = ability.enCost != null ? ability.enCost : (ability.apCost || 1);
-    var enBase = getENBaseDamage(enCost);
-    var abilityPower = getAbilityPower(ability, attacker, target, battleState);
-    var relevantStat = getRelevantAttackStat(attacker, ability, {
-      hybridHitStat: params.hybridHitStat || (ability && ability._hybridHitStat),
-    });
-    var className = attacker.class || attacker.enemyClass || attacker.birdClass || 'rogue';
-    var statMod = getStatModifier(relevantStat, getClassBaseline(className, ability.damageStat || ability.scaleStat));
     var defStat = getRelevantDefenceStat(target, ability);
     var pierce = resolvePierceFraction(ability, String(ability.damageType) === 'Magic');
+    var burnState = (function () {
+      if (battleState.enemyHasBurning && typeof battleState.enemyHasBurning === 'object') return battleState.enemyHasBurning;
+      if (params.targetBurning && typeof globalThis.enemyHasBurningStacks === 'function') return globalThis.enemyHasBurningStacks();
+      return !!(battleState.enemyHasBurning || params.targetBurning);
+    })();
+    var scorched = !!(battleState.targetScorched || params.targetScorched
+      || (target && target.status && target.status.scorched));
     var defMod = getDefenceModifier(defStat, ability.damageType, pierce, {
-      burning: (function () {
-        if (battleState.enemyHasBurning && typeof battleState.enemyHasBurning === 'object') return battleState.enemyHasBurning;
-        if (params.targetBurning && typeof globalThis.enemyHasBurningStacks === 'function') return globalThis.enemyHasBurningStacks();
-        return !!(battleState.enemyHasBurning || params.targetBurning);
-      })(),
+      burning: burnState,
+      scorched: scorched,
+      ability: ability,
+      useConstantDefence: usesDirectScaling(ability),
     });
     var bonusCap = getBonusCap(attacker, params);
     var bonusFrac = getTotalDamageBonus(params.bonusFractions, bonusCap);
     var bonusMod = 1 + bonusFrac;
     var attackerAspect = getEntityAspect(attacker);
     var targetAspect = getEntityAspect(target);
+    if (typeof Avian.affinity !== 'undefined' && typeof Avian.affinity.normalize === 'function') {
+      attackerAspect = Avian.affinity.normalize(attackerAspect) || attackerAspect;
+      targetAspect = Avian.affinity.normalize(targetAspect) || targetAspect;
+    }
     var aspectRelationship = getAspectRelationship(attackerAspect, targetAspect, ability);
     var aspectMod = getAspectMultiplier(attackerAspect, targetAspect, ability);
     var typeMod = aspectMod;
-    var preCrit = enBase * abilityPower * statMod * defMod * typeMod * bonusMod;
+    var braceMult = 1;
+    if (params.bracePct != null) braceMult = Math.max(0, 1 - Math.min(0.12, Number(params.bracePct) || 0));
+    else if (target && target.status && target.status.brace && target.status.brace.pct != null) {
+      braceMult = Math.max(0, 1 - Math.min(0.12, Number(target.status.brace.pct) || 0));
+    }
+
+    var enBase;
+    var abilityPower;
+    var relevantStat;
+    var statMod;
+    var preCrit;
+    var preMitigation;
+
+    if (usesDirectScaling(ability)) {
+      enBase = ability.baseDamage != null ? Number(ability.baseDamage) : getDirectBaseDamage(enCost);
+      abilityPower = 1;
+      relevantStat = getRelevantAttackStat(attacker, ability, {
+        hybridHitStat: params.hybridHitStat || (ability && ability._hybridHitStat),
+      });
+      statMod = 1;
+      var statTerm = sumDirectStatCoefficients(attacker, ability);
+      preMitigation = enBase + statTerm;
+      preCrit = preMitigation * defMod * typeMod * bonusMod * braceMult;
+    } else {
+      if (getAbilityPower(ability, attacker, target, battleState) <= 0) {
+        return { damage: 0, preMitigation: 0, components: {} };
+      }
+      enBase = getENBaseDamage(enCost);
+      abilityPower = getAbilityPower(ability, attacker, target, battleState);
+      relevantStat = getRelevantAttackStat(attacker, ability, {
+        hybridHitStat: params.hybridHitStat || (ability && ability._hybridHitStat),
+      });
+      var className = attacker.class || attacker.enemyClass || attacker.birdClass || 'rogue';
+      statMod = getStatModifier(relevantStat, getClassBaseline(className, ability.damageStat || ability.scaleStat));
+      preMitigation = enBase * abilityPower * statMod;
+      preCrit = preMitigation * defMod * typeMod * bonusMod * braceMult;
+    }
+
     var damage = preCrit;
     if (params.isCriticalHit) {
       var critAdd = Number(params.critDamageAdd) || 0;
@@ -699,7 +803,7 @@
     damage = applyMinimumDamage(roundCurvedDamage(damage), enCost);
     return {
       damage: damage,
-      preMitigation: enBase * abilityPower * statMod,
+      preMitigation: preMitigation,
       effectiveDef: defStat,
       components: {
         enBase: enBase,
@@ -712,8 +816,10 @@
         attackAspect: resolveAttackAspect(attackerAspect, ability),
         defenderAspect: targetAspect,
         bonusMod: bonusMod,
+        braceMult: braceMult,
         relevantStat: relevantStat,
         defStat: defStat,
+        directScaling: usesDirectScaling(ability),
       },
     };
   }

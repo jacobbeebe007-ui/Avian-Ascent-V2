@@ -47,8 +47,17 @@
 
   /* Phase 13: equipment is always on; legacy mutation/kit paths removed. */
   Avian.flags.equipmentV2 = true;
+  /* Affinity Arsenal v0.6 combat path is default-on via combatConfig.affinityArsenalV06. */
+  Avian.flags.affinityArsenalV06 = true;
 
   Avian.isEquipmentV2 = function isEquipmentV2() {
+    return true;
+  };
+
+  Avian.isAffinityArsenalV06 = function isAffinityArsenalV06() {
+    if (Avian.flags && Avian.flags.affinityArsenalV06 === false) return false;
+    var cfg = Avian.data && Avian.data.combatConfig;
+    if (cfg && cfg.affinityArsenalV06 === false) return false;
     return true;
   };
 

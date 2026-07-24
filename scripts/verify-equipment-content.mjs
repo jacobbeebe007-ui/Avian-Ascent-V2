@@ -67,14 +67,15 @@ if (!slots || !slots.slotOrder || slots.slotOrder.length !== 8) {
 }
 
 const skillIds = skills ? Object.keys(skills) : [];
-if (skillIds.length !== 64) fail('expected 64 skills (incl BASIC_*), got ' + skillIds.length);
+if (skillIds.length !== 82) fail('expected 82 skills (64 base + 18 COMBO_*), got ' + skillIds.length);
 if (!skills.BASIC_PHYSICAL || !skills.BASIC_MAGIC) fail('missing BASIC_PHYSICAL / BASIC_MAGIC');
 
 const itemIds = items ? Object.keys(items) : [];
 if (itemIds.length !== 240) fail('expected 240 items, got ' + itemIds.length);
 
 const familyIds = families ? Object.keys(families) : [];
-if (familyIds.length !== 40) fail('expected 40 families, got ' + familyIds.length);
+/* 40 catalogue + Dagger Pinion alias + Bow/Hand Crossbow stubs */
+if (familyIds.length < 40) fail('expected ≥40 families, got ' + familyIds.length);
 
 const birdIds = birds ? Object.keys(birds) : [];
 if (birdIds.length !== 52) fail('expected 52 birds, got ' + birdIds.length);
@@ -83,17 +84,17 @@ if (!classes || Object.keys(classes).length < 8) fail('expected ≥8 classes');
 if (!passives || Object.keys(passives).length !== 52) fail('expected 52 bird passives v2');
 if (!utilities || Object.keys(utilities).length !== 52) fail('expected 52 innate utilities');
 
-if (!tiers || !tiers.buff || tiers.buff.minor !== 10 || tiers.buff.moderate !== 25 || tiers.buff.major !== 50) {
-  fail('effectTiers must be Minor=10 / Moderate=25 / Major=50');
+if (!tiers || !tiers.buff || tiers.buff.minor !== 6 || tiers.buff.moderate !== 8 || tiers.buff.major !== 12) {
+  fail('effectTiers must be Minor=6 / Moderate=8 / Major=12 (v0.6)');
 }
 if (tiers.buff.grand != null || tiers.buff.epic != null || tiers.buff.legendary != null) {
   fail('legacy grand/epic/legendary tiers must not appear in effectTiers');
 }
 
-if (!cfg || !cfg.enBaseDamage || cfg.enBaseDamage[6] !== 35) {
-  fail('combatConfig.enBaseDamage[6] must be 35');
+if (!cfg || cfg.packVersion !== '2026.07-affinity-arsenal-v0.6') {
+  fail('combatConfig.packVersion must be affinity-arsenal-v0.6');
 }
-if (!cfg.statMod || cfg.statMod.divisor !== 50) fail('combatConfig.statMod.divisor must be 50');
+if (!cfg.directScaling || !cfg.directScaling.enabled) fail('combatConfig.directScaling.enabled expected');
 if (!cfg.penetration || cfg.penetration.cap !== 0.4) fail('combatConfig.penetration.cap must be 0.4');
 if (!cfg.ultimateMeter || cfg.ultimateMeter.utilityAwards[1] !== 0) {
   fail('combatConfig utility meter awards must be 0 (R-ULT-001)');
