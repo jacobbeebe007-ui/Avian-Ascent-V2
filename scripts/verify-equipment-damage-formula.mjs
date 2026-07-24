@@ -1,4 +1,4 @@
-/* Equipment v0.3 damage + ultimate meter verification (equipment always on). */
+/* Equipment v0.6 direct-scaling damage + ultimate meter verification. */
 import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
 import path from 'node:path';
@@ -43,17 +43,13 @@ function near(a, b, eps = 0.02) {
 check('Avian.isEquipmentV2', typeof c.Avian.isEquipmentV2 === 'function' && c.Avian.isEquipmentV2());
 check('combatConfig loaded', !!c.Avian.data.combatConfig);
 check('classes loaded', !!c.Avian.data.combatPack.classes);
+check('directScaling enabled', !!(c.Avian.data.combatConfig.directScaling && c.Avian.data.combatConfig.directScaling.enabled));
 
-check('EN 4 base from config', c.getENBaseDamage(4) === 23, `got=${c.getENBaseDamage(4)}`);
-check('EN 6 base from config', c.getENBaseDamage(6) === 35, `got=${c.getENBaseDamage(6)}`);
-check('StatMod /50 knight atk', near(c.getStatModifier(18, c.getClassBaseline('knight', 'ATK')), 1.12), `got=${c.getStatModifier(18, c.getClassBaseline('knight', 'ATK'))}`);
-check('StatMod floor 0.8', c.getStatModifier(0, 100) === 0.8, `got=${c.getStatModifier(0, 100)}`);
-check('StatMod ceiling 1.6', c.getStatModifier(200, 0) === 1.6, `got=${c.getStatModifier(200, 0)}`);
-check('pen cap 0.40', near(c.getDefenceModifier(100, 'Physical', 0.95, {}), c.getDefenceModifier(100, 'Physical', 0.4, {})), 'pen capped');
+check('pen cap 0.40', near(c.getDefenceModifier(100, 'Physical', 0.95, { useConstantDefence: true }), c.getDefenceModifier(100, 'Physical', 0.4, { useConstantDefence: true })), 'pen capped');
 check('crit damage cap 2.0', c.clampCritDamageMult(5) === 2.0, `got=${c.clampCritDamageMult(5)}`);
 
 function isMagicSkill(skillId) {
-  return skillId === 'BASIC_MAGIC' || /STAFF|SCEPTRE/i.test(skillId);
+  return skillId === 'BASIC_MAGIC' || /STAFF|SCEPTRE|WAND|ORB|HEX|GRIMOIRE|SCYTHE|LAMENT|SONG/i.test(skillId);
 }
 
 for (const fx of fixturesJson.fixtures) {
@@ -79,16 +75,22 @@ for (const fx of fixturesJson.fixtures) {
     category: magic ? 'magic' : 'physical',
     damageType: magic ? 'Magic' : 'Physical',
     damageStat: magic ? 'MATK' : 'ATK',
+    baseDamage: fx.baseDamage,
+    fixedCoefficient: fx.ap,
+    coefficientFixed: true,
+    useDirectScaling: true,
+    piercePercent: fx.penPct / 100,
   };
   c.enrichCombatRow(ability);
-  ability.abilityPower = fx.ap;
-  ability.piercePercent = fx.penPct / 100;
 
   const result = c.calculateDamage({ attacker, target, ability, hitSucceeded: true });
   const label = `${fx.class}/${fx.rarity}/${fx.skillId}`;
   const roundedDamage = Math.round(result.damage);
   check(`fixture ${label}`, roundedDamage === fx.expectedDamage, `got=${result.damage} rounded=${roundedDamage} expected=${fx.expectedDamage}`);
-  check(`fixture statMod ${label}`, near(result.components.statMod, fx.statMod, 0.01), `got=${result.components.statMod} expected=${fx.statMod}`);
+  check(`fixture directScaling ${label}`, !!result.components.directScaling, 'expected directScaling path');
+  if (fx.defenceMod != null) {
+    check(`fixture defMod ${label}`, near(result.components.defMod, fx.defenceMod, 0.02), `got=${result.components.defMod} expected=${fx.defenceMod}`);
+  }
 }
 
 check('utility meter award is 0 (equipment)', c.computeUltimateMeterAward(

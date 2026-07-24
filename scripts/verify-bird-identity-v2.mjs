@@ -117,7 +117,7 @@ for (const key of keys) {
 const duke = birdsV2.dukeBlakiston;
 if (!duke?.bossOverride) failures.push('dukeBlakiston: bossOverride missing');
 if (duke) {
-  const expected = { hp: 82, maxHp: 82, atk: 4, def: 12, matk: 21, mdef: 14, spd: 16, dodge: 7, acc: 90, critChance: 10 };
+  const expected = { hp: 102, maxHp: 102, atk: 4, def: 12, matk: 21, mdef: 14, spd: 16, dodge: 7, acc: 0, critChance: 10 };
   for (const [k, v] of Object.entries(expected)) {
     if (Number(duke.stats?.[k]) !== v) failures.push(`dukeBlakiston: stats.${k}=${duke.stats?.[k]} expected ${v}`);
   }

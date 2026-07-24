@@ -282,7 +282,10 @@
       fixedCoefficient: skill.fixedCoefficient != null ? Number(skill.fixedCoefficient) : (apVal != null ? Number(apVal) : null),
       baseDamage: skill.baseDamage != null ? Number(skill.baseDamage) : null,
       scaling: skill.scaling || null,
-      precision: skill.precision != null ? Number(skill.precision) : null,
+      precision: skill.precision != null ? Number(skill.precision)
+        : (skill.basePrecision != null ? Number(skill.basePrecision) : null),
+      coefficientFixed: !!skill.coefficientFixed,
+      useDirectScaling: !!(skill.baseDamage != null || skill.coefficientFixed || (skill.scaling && skill.scaling.length)),
       hits: Math.max(0, Number(skill.hits) || 0),
       hitCount: Math.max(0, Number(skill.hits) || 0),
       aspect: aspect,

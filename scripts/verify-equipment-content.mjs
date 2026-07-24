@@ -154,7 +154,7 @@ if (badFamilyCounts.length) {
   fail('families without exactly 6 rarities: ' + badFamilyCounts.slice(0, 8).join(', '));
 }
 
-/* ACC floors */
+/* ACC floors retired — Precision is action-owned (v0.5+). */
 const classMinAcc = Object.create(null);
 for (const ck of Object.keys(classes || {})) {
   classMinAcc[ck] = Number(classes[ck].minAcc) || 0;
@@ -162,18 +162,27 @@ for (const ck of Object.keys(classes || {})) {
 let accFloorFails = 0;
 for (const bk of birdIds) {
   const b = birds[bk];
-  const cls = String(b.class || '').toLowerCase();
-  const floor = classMinAcc[cls];
-  if (floor && Number(b.stats && b.stats.acc) < floor) {
-    accFloorFails++;
-    if (accFloorFails <= 5) fail(bk + ' ACC ' + b.stats.acc + ' < class floor ' + floor);
-  }
   if (!passives[bk]) fail('missing passive for ' + bk);
   if (!utilities[bk]) fail('missing utility for ' + bk);
+  /* Spot-check Vitality rebase (+20 from v0.3 baselines is already in pack). */
+  if (bk === 'sparrow' && Number(b.stats && b.stats.hp) < 50) {
+    fail('sparrow HP should include v0.4 +20 Vitality rebase, got ' + (b.stats && b.stats.hp));
+  }
 }
+if (accFloorFails) fail(accFloorFails + ' ACC floor fails');
 if (!birds.dukeBlakiston || !birds.dukeBlakiston.bossOverride) {
   fail('Duke Blakiston must be present with bossOverride=true');
 }
+
+/* Core item stats must be percentage keys in v0.6 */
+let flatCoreHits = 0;
+for (const id of itemIds.slice(0, 50)) {
+  const st = items[id].stats || {};
+  if (st.atk != null || st.hp != null || st.def != null) flatCoreHits++;
+}
+if (flatCoreHits) fail(flatCoreHits + ' sample items still use flat core stats (expected *Pct)');
+const sample = items['EQ-TB-GRY'];
+if (!sample || sample.stats.atkPct == null) fail('EQ-TB-GRY missing atkPct');
 
 if (!loadouts || !Array.isArray(loadouts.rows || loadouts) && typeof loadouts !== 'object') {
   fail('reference-loadouts missing');

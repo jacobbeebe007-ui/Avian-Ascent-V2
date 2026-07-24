@@ -39,12 +39,8 @@
     return (globalThis.BIRDS && globalThis.BIRDS[key]) || null;
   };
 
-  Avian.enforceClassMinAcc = function enforceClassMinAcc(stats, classId) {
-    if (!stats) return stats;
-    var cls = Avian.getClassV2(classId);
-    if (!cls) return stats;
-    var minAcc = Number(cls.minAcc) || 0;
-    if (minAcc > 0 && (Number(stats.acc) || 0) < minAcc) stats.acc = minAcc;
+  Avian.enforceClassMinAcc = function enforceClassMinAcc(stats) {
+    /* v0.5+: Precision is action-owned; class minAcc floors are retired. */
     return stats;
   };
 
@@ -53,13 +49,12 @@
     return !!(v2 && v2.bossOverride);
   };
 
-  Avian.buildCombatStatsFromBirdDef = function buildCombatStatsFromBirdDef(birdDef, classId) {
+  Avian.buildCombatStatsFromBirdDef = function buildCombatStatsFromBirdDef(birdDef) {
     if (!birdDef || !birdDef.stats) return null;
     var stats = Object.assign({}, birdDef.stats);
     if (birdDef.stats.critChance != null && stats.critChance == null) {
       stats.critChance = birdDef.stats.critChance;
     }
-    Avian.enforceClassMinAcc(stats, classId || birdDef.class);
     return stats;
   };
 

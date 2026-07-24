@@ -14,16 +14,20 @@
   ];
 
   var FLAT_STAT_MAP = {
-    hp: 'maxHp',
-    atk: 'atk',
-    def: 'def',
-    matk: 'matk',
-    mdef: 'mdef',
-    spd: 'spd',
     dodgePct: 'dodge',
     critChancePct: 'critChance',
     physicalPenPct: 'armorPen',
     magicPenPct: 'magicPen',
+  };
+
+  /* Core item mods are percentage of developed stats (v0.6). Values stored as percent numbers. */
+  var CORE_PCT_TO_LEDGER = {
+    hpPct: 'hp',
+    atkPct: 'atk',
+    defPct: 'def',
+    matkPct: 'matk',
+    mdefPct: 'mdef',
+    spdPct: 'spd',
   };
 
   var ITEM_PCT_TO_LEDGER = {
@@ -36,6 +40,7 @@
   };
 
   var EQUIPMENT_PCT_KEYS = [
+    'hp', 'atk', 'def', 'matk', 'mdef', 'spd',
     'physDamagePct', 'magicDamagePct', 'aspectDamagePct', 'critDamagePct',
     'healingPowerPct', 'shieldStrengthPct',
   ];
@@ -206,6 +211,12 @@
       if (!Object.prototype.hasOwnProperty.call(s, rawKey)) continue;
       var val = Number(s[rawKey]) || 0;
       if (!val) continue;
+      var coreLedger = CORE_PCT_TO_LEDGER[rawKey];
+      if (coreLedger) {
+        /* Item stores percent numbers (4.09 → +4.09%); progression expects fractions. */
+        pctOut[coreLedger] = (pctOut[coreLedger] || 0) + val / 100;
+        continue;
+      }
       var ledgerKey = FLAT_STAT_MAP[rawKey];
       if (ledgerKey) {
         flatOut[ledgerKey] = (flatOut[ledgerKey] || 0) + val;
@@ -434,32 +445,33 @@
       var level = Math.max(1, Number(player.level) || Number(player.birdLevel) || 1);
       var totalStars = Math.max(0, Number(player.totalStars) || Number(player.stars) || Number(player.cardStars) || 0);
       var tier = player.progressionTier || player.cardTier || player.equipmentTier || 'grey';
+      /* Core equipment is percentage-only; do not fold flat eqRoll.stats into developed base. */
       var developedBase = {
         hp: (Number(base.maxHp) || Number(base.hp) || 0)
           + (Number(fromLevel.maxHp) || 0) + (Number(fromUpgrades.maxHp) || 0)
-          + (Number(fromCardTier.maxHp) || 0) + (Number(eqRoll.stats.maxHp) || 0),
+          + (Number(fromCardTier.maxHp) || 0),
         atk: (Number(base.atk) || 0) + (Number(fromLevel.atk) || 0) + (Number(fromUpgrades.atk) || 0)
-          + (Number(fromCardTier.atk) || 0) + (Number(eqRoll.stats.atk) || 0),
+          + (Number(fromCardTier.atk) || 0),
         def: (Number(base.def) || 0) + (Number(fromLevel.def) || 0) + (Number(fromUpgrades.def) || 0)
-          + (Number(fromCardTier.def) || 0) + (Number(eqRoll.stats.def) || 0),
+          + (Number(fromCardTier.def) || 0),
         matk: (Number(base.matk) || 0) + (Number(fromLevel.matk) || 0) + (Number(fromUpgrades.matk) || 0)
-          + (Number(fromCardTier.matk) || 0) + (Number(eqRoll.stats.matk) || 0),
+          + (Number(fromCardTier.matk) || 0),
         mdef: (Number(base.mdef) || 0) + (Number(fromLevel.mdef) || 0) + (Number(fromUpgrades.mdef) || 0)
-          + (Number(fromCardTier.mdef) || 0) + (Number(eqRoll.stats.mdef) || 0),
+          + (Number(fromCardTier.mdef) || 0),
         spd: (Number(base.spd) || 0) + (Number(fromLevel.spd) || 0) + (Number(fromUpgrades.spd) || 0)
-          + (Number(fromCardTier.spd) || 0) + (Number(eqRoll.stats.spd) || 0),
+          + (Number(fromCardTier.spd) || 0),
       };
       /* Flats already folded into developedBase; pass zeros for level/star tables to avoid double-count
        * when fromLevel already mirrors legacy growth. Prefer workbook tables when fromLevel empty. */
       var hasLegacyLevel = Object.keys(fromLevel).some(function (k) { return Number(fromLevel[k]) > 0; });
       var result = Avian.birdProgression.computeFinalStats({
         base: hasLegacyLevel ? developedBase : {
-          hp: (Number(base.maxHp) || Number(base.hp) || 0) + (Number(eqRoll.stats.maxHp) || 0),
-          atk: (Number(base.atk) || 0) + (Number(eqRoll.stats.atk) || 0),
-          def: (Number(base.def) || 0) + (Number(eqRoll.stats.def) || 0),
-          matk: (Number(base.matk) || 0) + (Number(eqRoll.stats.matk) || 0),
-          mdef: (Number(base.mdef) || 0) + (Number(eqRoll.stats.mdef) || 0),
-          spd: (Number(base.spd) || 0) + (Number(eqRoll.stats.spd) || 0),
+          hp: (Number(base.maxHp) || Number(base.hp) || 0),
+          atk: (Number(base.atk) || 0),
+          def: (Number(base.def) || 0),
+          matk: (Number(base.matk) || 0),
+          mdef: (Number(base.mdef) || 0),
+          spd: (Number(base.spd) || 0),
         },
         className: className,
         level: hasLegacyLevel ? 1 : level,
@@ -474,8 +486,8 @@
       player.stats.matk = capTrackedStatValue('matk', ledger.matk != null ? ledger.matk : player.stats.matk);
       player.stats.mdef = capTrackedStatValue('mdef', ledger.mdef != null ? ledger.mdef : player.stats.mdef);
       player.stats.spd = capTrackedStatValue('spd', ledger.spd != null ? ledger.spd : player.stats.spd);
-      /* Preserve chance stats from flat path. */
-      ['acc', 'dodge', 'critChance', 'armorPen', 'magicPen'].forEach(function (ck) {
+      /* Preserve chance stats from flat path (Evasion / Critical / pens). Precision is action-owned. */
+      ['dodge', 'critChance', 'armorPen', 'magicPen'].forEach(function (ck) {
         var flat = (Number(fromLevel[ck]) || 0) + (Number(fromUpgrades[ck]) || 0)
           + (Number(fromCardTier[ck]) || 0) + (Number(eqRoll.stats[ck]) || 0);
         player.stats[ck] = capTrackedStatValue(ck, (Number(base[ck]) || 0) + flat);
@@ -829,6 +841,7 @@
       ? STAT_LEDGER_TRACKED_KEYS
       : ['maxHp', 'atk', 'def', 'spd', 'acc', 'dodge', 'matk', 'mdef', 'critChance', 'armorPen', 'magicPen'];
     var prevMaxHp = Number(entity.stats.maxHp) || Number(entity.stats.hp) || 0;
+    /* Chance / pen flats */
     for (var i = 0; i < keys.length; i++) {
       var k = keys[i];
       var add = Number(roll.stats[k]) || 0;
@@ -836,9 +849,20 @@
       var cur = Number(entity.stats[k]) || 0;
       entity.stats[k] = capTrackedStatValue(k, cur + add);
     }
-    if (roll.stats.maxHp) {
-      var delta = (Number(entity.stats.maxHp) || 0) - prevMaxHp;
-      entity.stats.hp = Math.max(1, (Number(entity.stats.hp) || prevMaxHp) + delta);
+    /* Core percentage mods on current developed stats */
+    var coreMap = { hp: 'maxHp', atk: 'atk', def: 'def', matk: 'matk', mdef: 'mdef', spd: 'spd' };
+    Object.keys(coreMap).forEach(function (pctKey) {
+      var frac = Number(roll.pct[pctKey]) || 0;
+      if (!frac) return;
+      var sk = coreMap[pctKey];
+      var base = Number(entity.stats[sk]) || 0;
+      entity.stats[sk] = capTrackedStatValue(sk, Math.round(base * (1 + frac)));
+    });
+    if (entity.stats.maxHp != null) {
+      var nextMax = Number(entity.stats.maxHp) || 0;
+      var delta = nextMax - prevMaxHp;
+      if (delta) entity.stats.hp = Math.max(1, (Number(entity.stats.hp) || prevMaxHp) + delta);
+      else entity.stats.hp = Math.max(1, Math.min(nextMax, Number(entity.stats.hp) || nextMax));
     }
     syncEntityTopLevelStats(entity);
     if (typeof normalizeCombatStats === 'function') normalizeCombatStats(entity.stats);

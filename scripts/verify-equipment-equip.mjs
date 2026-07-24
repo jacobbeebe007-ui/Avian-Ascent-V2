@@ -202,7 +202,7 @@ if (!classCheck.ok && classCheck.reason === 'class_restricted') {
   fail(`expected class_restricted for knight + wand, got ${JSON.stringify(classCheck)}`);
 }
 
-// --- dual-wield double-counts ATK ---
+// --- dual-wield stacks Might % ---
 const atkPlayer = freshPlayer('sparrow');
 equipment.addToInventory(atkPlayer, 'EQ-TB-GRY');
 equipment.addToInventory(atkPlayer, 'EQ-TB-GRY');
@@ -210,8 +210,13 @@ equipment.equip(atkPlayer, 'EQ-TB-GRY', 'mainHand');
 equipment.equip(atkPlayer, 'EQ-TB-GRY', 'offHand');
 equipment.reapplyPlayerStatsFromSources(atkPlayer);
 const roll = equipment.rollupEquipmentStats(atkPlayer);
-if ((roll.stats.atk || 0) === 6) ok('dual-wield double-counts ATK (+6 from two blades)');
-else fail(`expected equipment atk rollup 6, got ${roll.stats.atk}`);
+const atkPct = Number(roll.pct && roll.pct.atk) || 0;
+const expectedPct = ((items['EQ-TB-GRY'].stats.atkPct || 0) * 2) / 100;
+if (Math.abs(atkPct - expectedPct) < 1e-6) {
+  ok(`dual-wield stacks Might % (${(atkPct * 100).toFixed(2)}% from two blades)`);
+} else {
+  fail(`expected equipment atk pct ${expectedPct}, got ${atkPct}`);
+}
 
 // --- unequip returns to inventory ---
 const unequipPlayer = freshPlayer('crow');
