@@ -213,6 +213,8 @@
       combinationEn: 3,
       focusPulseEn: 2,
       oncePerTurnActionUse: true,
+      /* Basic / Natural Strike is exempt and may be used every action. */
+      basicExemptFromOncePerTurn: true,
     }),
 
     ultimateSelection: Object.freeze({

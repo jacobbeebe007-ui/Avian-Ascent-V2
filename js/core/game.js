@@ -12625,7 +12625,12 @@ async function playerAction(ab,fromQueue=false) {
     return;
   }
   const enRoles = Avian?.data?.combatConfig?.enRoles;
-  if(enRoles?.oncePerTurnActionUse){
+  const isBasicAlwaysAllowed = ab?.actionSource === 'basic'
+    || ab?.isMainAttack
+    || ab?.id === 'BASIC_PHYSICAL'
+    || ab?.id === 'BASIC_MAGIC'
+    || (typeof isMainAttackAbility === 'function' && isMainAttackAbility(ab, G.player));
+  if(enRoles?.oncePerTurnActionUse && !isBasicAlwaysAllowed){
     G.actionUsedThisTurn = G.actionUsedThisTurn || {};
     const actionKey = ab.actionSource || ab.id;
     if(actionKey && G.actionUsedThisTurn[actionKey]){
@@ -12726,8 +12731,13 @@ async function playerAction(ab,fromQueue=false) {
   }
   if(Avian?.data?.combatConfig?.enRoles?.oncePerTurnActionUse){
     G.actionUsedThisTurn = G.actionUsedThisTurn || {};
+    const isBasicAlwaysAllowed = ab?.actionSource === 'basic'
+      || ab?.isMainAttack
+      || ab?.id === 'BASIC_PHYSICAL'
+      || ab?.id === 'BASIC_MAGIC'
+      || (typeof isMainAttackAbility === 'function' && isMainAttackAbility(ab, G.player));
     const actionKey = ab.actionSource || ab.id;
-    if(actionKey) G.actionUsedThisTurn[actionKey] = true;
+    if(actionKey && !isBasicAlwaysAllowed) G.actionUsedThisTurn[actionKey] = true;
   }
   setAbilityCooldown(ab);
   if(effActKind==='spell'){
