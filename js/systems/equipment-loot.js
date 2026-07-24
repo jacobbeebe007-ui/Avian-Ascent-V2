@@ -304,18 +304,49 @@
     return null;
   }
 
-  function formatEquipmentDesc(item) {
-    if (!item) return '';
+  function formatEquipmentStatLabel(statKey) {
+    var key = String(statKey || '');
+    var bare = key.replace(/Pct$/i, '');
     var sd = slotsDef();
     var names = (sd && sd.statDisplayNames) || {};
+    if (names[key]) return names[key];
+    if (names[bare]) return names[bare];
+    if (Avian.display && typeof Avian.display.statName === 'function') {
+      var gloss = Avian.display.statName(bare === 'hp' ? 'hp' : bare);
+      if (gloss && gloss.toLowerCase() !== bare.toLowerCase()) return gloss;
+    }
+    var fallback = {
+      hp: 'Vitality', atk: 'Might', def: 'Guard', matk: 'Focus', mdef: 'Resolve',
+      spd: 'Agility', dodge: 'Evasion', acc: 'Precision',
+      critChance: 'Critical', critDamage: 'Ferocity',
+      physicalPen: 'Martial Penetration', magicPen: 'Magic Penetration',
+      physicalDamage: 'Martial Damage', magicDamage: 'Magic Damage',
+      aspectDamage: 'Affinity Damage', healingPower: 'Healing Power',
+      shieldStrength: 'Barrier Power',
+    };
+    return fallback[bare] || bare || key;
+  }
+
+  function formatEquipmentStatLine(statKey, val) {
+    var n = Number(val) || 0;
+    if (!n) return '';
+    var label = formatEquipmentStatLabel(statKey);
+    var isPct = /Pct$/i.test(String(statKey || '')) || String(label).indexOf('%') >= 0;
+    if (isPct) {
+      var clean = String(label).replace(/\s*%\s*$/, '');
+      return '+' + n + '% ' + clean;
+    }
+    return '+' + n + ' ' + label;
+  }
+
+  function formatEquipmentDesc(item) {
+    if (!item) return '';
     var parts = [];
     var stats = item.stats || {};
     for (var key in stats) {
       if (!Object.prototype.hasOwnProperty.call(stats, key)) continue;
-      var val = Number(stats[key]) || 0;
-      if (!val) continue;
-      var label = names[key] || key;
-      parts.push('+' + val + (String(label).indexOf('%') >= 0 ? '' : ' ') + label);
+      var line = formatEquipmentStatLine(key, stats[key]);
+      if (line) parts.push(line);
     }
     if (item.family) parts.unshift(item.family);
     return parts.join(' · ') || item.slot || 'Equipment';
@@ -394,6 +425,101 @@
     return offers;
   }
 
+  function collectRunEquipmentRarities(player, g) {
+    var found = Object.create(null);
+    function note(rar) {
+      var r = String(rar || '').toLowerCase();
+      if (r === 'white') r = 'grey';
+      if (RARITIES.indexOf(r) >= 0) found[r] = true;
+    }
+    var p = player || (g && g.player) || null;
+    if (p) {
+      if (Array.isArray(p.equipmentInventory)) {
+        p.equipmentInventory.forEach(function (id) {
+          var it = getItem(id);
+          if (it) note(it.rarity);
+        });
+      }
+      if (p.equipment && typeof p.equipment === 'object') {
+        Object.keys(p.equipment).forEach(function (sk) {
+          var id = p.equipment[sk];
+          if (!id) return;
+          var it = getItem(id);
+          if (it) note(it.rarity);
+        });
+      }
+    }
+    if (g && Array.isArray(g.collectedRewards)) {
+      g.collectedRewards.forEach(function (rw) {
+        if (!rw) return;
+        if (rw.type === 'equipment' || rw.equipmentItemId) {
+          note(rw.tier || rw.rarity);
+          var it = getItem(rw.equipmentItemId || rw.id);
+          if (it) note(it.rarity);
+        } else if (rw.tier || rw.rarity) {
+          /* Legacy reward cards may only carry tier. */
+          note(rw.tier || rw.rarity);
+        }
+      });
+    }
+    if (g && g.runUnlockedEquipmentRarities instanceof Set) {
+      g.runUnlockedEquipmentRarities.forEach(function (r) { note(r); });
+    } else if (g && Array.isArray(g.runUnlockedEquipmentRarities)) {
+      g.runUnlockedEquipmentRarities.forEach(function (r) { note(r); });
+    }
+    return found;
+  }
+
+  function getRunUnlockedEquipmentRarities(player, g) {
+    var found = collectRunEquipmentRarities(player, g);
+    found.grey = true;
+    var out = [];
+    for (var i = 0; i < RARITIES.length; i++) {
+      if (found[RARITIES[i]]) out.push(RARITIES[i]);
+    }
+    return out;
+  }
+
+  function markRunUnlockedEquipmentRarity(g, rarity) {
+    if (!g) return;
+    var r = String(rarity || '').toLowerCase();
+    if (r === 'white') r = 'grey';
+    if (RARITIES.indexOf(r) < 0) return;
+    if (!(g.runUnlockedEquipmentRarities instanceof Set)) {
+      g.runUnlockedEquipmentRarities = new Set(
+        Array.isArray(g.runUnlockedEquipmentRarities) ? g.runUnlockedEquipmentRarities : ['grey']
+      );
+    }
+    g.runUnlockedEquipmentRarities.add('grey');
+    g.runUnlockedEquipmentRarities.add(r);
+  }
+
+  function rollUnlockedTierShopStock(opts) {
+    opts = opts || {};
+    var used = opts.usedIds || new Set();
+    var perTier = Math.max(1, Math.floor(Number(opts.perTier) || 4));
+    var unlocked = Array.isArray(opts.unlockedRarities) && opts.unlockedRarities.length
+      ? opts.unlockedRarities.slice()
+      : getRunUnlockedEquipmentRarities(opts.player, opts.g || globalThis.G);
+    var offers = [];
+    for (var i = 0; i < unlocked.length; i++) {
+      var rarity = unlocked[i];
+      for (var n = 0; n < perTier; n++) {
+        var id = rollEquipmentDrop({
+          rarity: rarity,
+          usedIds: used,
+          filterForPlayer: opts.filterForPlayer !== false,
+          player: opts.player,
+          stage: opts.stage,
+        });
+        if (!id) continue;
+        var offer = toShopOffer(id);
+        if (offer) offers.push(offer);
+      }
+    }
+    return offers;
+  }
+
   function rollEquipmentReward(opts) {
     opts = Object.assign({ filterForPlayer: true }, opts || {});
     var id = rollEquipmentDrop(opts);
@@ -416,10 +542,15 @@
   loot.toShopOffer = toShopOffer;
   loot.reconstructShopOffer = reconstructShopOffer;
   loot.rollEquipmentStock = rollEquipmentStock;
+  loot.rollUnlockedTierShopStock = rollUnlockedTierShopStock;
+  loot.getRunUnlockedEquipmentRarities = getRunUnlockedEquipmentRarities;
+  loot.markRunUnlockedEquipmentRarity = markRunUnlockedEquipmentRarity;
   loot.rollEquipmentReward = rollEquipmentReward;
   loot.getShopCost = getShopCost;
   loot.getSellPrice = getSellPrice;
   loot.formatEquipmentDesc = formatEquipmentDesc;
+  loot.formatEquipmentStatLabel = formatEquipmentStatLabel;
+  loot.formatEquipmentStatLine = formatEquipmentStatLine;
   loot.registerOrangeAcquired = registerOrangeAcquired;
   loot.isOrangeBlocked = isOrangeBlocked;
   loot.rollTierFromBand = rollTierFromBand;

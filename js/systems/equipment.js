@@ -185,8 +185,12 @@
 
   function addToInventory(player, itemId) {
     ensurePlayerEquipmentState(player);
-    if (!itemId || !getItem(itemId)) return false;
+    var item = getItem(itemId);
+    if (!itemId || !item) return false;
     player.equipmentInventory.push(itemId);
+    if (Avian.equipmentLoot && typeof Avian.equipmentLoot.markRunUnlockedEquipmentRarity === 'function') {
+      Avian.equipmentLoot.markRunUnlockedEquipmentRarity(globalThis.G, item.rarity);
+    }
     return true;
   }
 

@@ -260,10 +260,24 @@
           items = buildCustomShopOffers(shopConfig);
         } else {
           items = buildCombatItemOffers();
-          if (Avian.equipmentLoot && typeof Avian.equipmentLoot.rollEquipmentStock === 'function') {
-            var eqCount = mode === 'endless-boss' ? 1 : 9;
-            var eqOffers = Avian.equipmentLoot.rollEquipmentStock(eqCount, currentShopStage(), new Set());
+          if (Avian.equipmentLoot && typeof Avian.equipmentLoot.rollUnlockedTierShopStock === 'function') {
+            var unlocked = typeof Avian.equipmentLoot.getRunUnlockedEquipmentRarities === 'function'
+              ? Avian.equipmentLoot.getRunUnlockedEquipmentRarities(globalThis.G && globalThis.G.player, globalThis.G)
+              : ['grey'];
+            var eqOffers = Avian.equipmentLoot.rollUnlockedTierShopStock({
+              unlockedRarities: unlocked,
+              perTier: 4,
+              usedIds: new Set(),
+              filterForPlayer: true,
+              player: globalThis.G && globalThis.G.player,
+              stage: currentShopStage(),
+              g: globalThis.G,
+            });
             items.push.apply(items, eqOffers);
+          } else if (Avian.equipmentLoot && typeof Avian.equipmentLoot.rollEquipmentStock === 'function') {
+            var eqCount = mode === 'endless-boss' ? 4 : 4;
+            var eqOffersLegacy = Avian.equipmentLoot.rollEquipmentStock(eqCount, currentShopStage(), new Set());
+            items.push.apply(items, eqOffersLegacy);
           }
         }
         setShopItems(items);

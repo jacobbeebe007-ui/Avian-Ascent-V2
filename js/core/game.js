@@ -647,12 +647,13 @@ function getEquipmentSkill(skillId){
 }
 function formatEquipmentStatsHtml(item){
   if(!item?.stats) return '';
-  const names=Avian.data?.equipment?.slots?.statDisplayNames||{};
   let html='';
   for(const [rawKey, val] of Object.entries(item.stats)){
     const n=Number(val)||0;
     if(!n) continue;
-    const lbl=names[rawKey]||rawKey;
+    const lbl=(typeof Avian?.equipmentLoot?.formatEquipmentStatLabel==='function')
+      ? Avian.equipmentLoot.formatEquipmentStatLabel(rawKey)
+      : (Avian.data?.equipment?.slots?.statDisplayNames?.[rawKey]||rawKey);
     const disp=String(rawKey).includes('Pct')?`+${formatCombatNumber(n)}%`:`+${formatCombatNumber(n)}`;
     html+=`<div class="tt-row"><span class="tt-lbl">${escapeHtmlRoster(lbl)}</span><span class="tt-val">${escapeHtmlRoster(disp)}</span></div>`;
   }
@@ -2161,6 +2162,7 @@ let G = {
   enemyUsedHardCCLastTurn:false,
   // Collected rewards list (for Nest display)
   collectedRewards:[],
+  runUnlockedEquipmentRarities:new Set(['grey']),
   _goldReplaceMode:false,
   // Run unlock tracking
   runCrits:0, runBuffs:0, runDebuffs:0,
@@ -2631,18 +2633,18 @@ function openNest() {
   function _nestStat(val,base,suffix=''){const d=val-base;const col=d>0?'var(--red-light)':d<0?'var(--purple-light)':'var(--gold)';const arr=d>0?' ▲':d<0?' ▼':'';return `<span style="color:${col}">${formatCombatNumber(val)}${suffix}${arr}</span>`;}
   html+=`<div class="nest-section"><div class="nest-section-title">📊 Stats ${G.turn?'(In Battle)':''}</div>
   <div class="nest-stats-grid">
-    <div class="nest-stat-card"><div class="nest-stat-val">${formatCombatNumber(s.hp)}/${formatCombatNumber(s.maxHp)}</div><div class="nest-stat-lbl">HP</div></div>
-    <div class="nest-stat-card"><div class="nest-stat-val">${_nestStat(_nestWarcry,s.atk)}</div><div class="nest-stat-lbl">ATK</div></div>
-    <div class="nest-stat-card"><div class="nest-stat-val">${_nestStat(_nestDef,s.def)}</div><div class="nest-stat-lbl">DEF</div></div>
-    <div class="nest-stat-card"><div class="nest-stat-val">${formatCombatNumber(s.spd)}</div><div class="nest-stat-lbl">SPD</div></div>
-    <div class="nest-stat-card"><div class="nest-stat-val">${_nestStat(_nestDodge,s.dodge,'%')}</div><div class="nest-stat-lbl">DODGE</div></div>
-    <div class="nest-stat-card"><div class="nest-stat-val">${_nestStat(_nestAcc,s.acc,'%')}</div><div class="nest-stat-lbl">ACC</div></div>
-    <div class="nest-stat-card"><div class="nest-stat-val" style="color:${_nestCrit>5?'#e8c96a':'var(--gold)'}">${formatCombatNumber(_nestCrit)}%</div><div class="nest-stat-lbl">🎯 Crit %</div></div>
-    <div class="nest-stat-card"><div class="nest-stat-val" style="color:${_nestCritMultBase>1.5||_nestCritBonusPct>0?'#e8c96a':'var(--gold)'}">${_nestCritMultDisp}</div><div class="nest-stat-lbl">💥 Crit Dmg</div></div>
-    <div class="nest-stat-card" title="Magic Attack — improves spell and ailment potency"><div class="nest-stat-val" style="color:#6ae8e8">${formatCombatNumber(s.matk||8)}</div><div class="nest-stat-lbl" style="color:#4ab8c0">✦ M.ATK</div></div>
-    <div class="nest-stat-card" title="Magic Defence — resists enemy spells and ailments"><div class="nest-stat-val" style="color:#6ae8e8">${formatCombatNumber(s.mdef||8)}</div><div class="nest-stat-lbl" style="color:#4ab8c0">✦ M.DEF</div></div>
-    ${(s.armorPen||0)>0?`<div class="nest-stat-card" title="Ignores enemy DEF when dealing physical damage"><div class="nest-stat-val">${formatCombatNumber(s.armorPen)}%</div><div class="nest-stat-lbl">Armour Pen</div></div>`:''}
-    ${(s.magicPen||0)>0?`<div class="nest-stat-card" title="Ignores enemy MDEF when dealing magical damage"><div class="nest-stat-val">${formatCombatNumber(s.magicPen)}%</div><div class="nest-stat-lbl">Magic Pen</div></div>`:''}
+    <div class="nest-stat-card"><div class="nest-stat-val">${formatCombatNumber(s.hp)}/${formatCombatNumber(s.maxHp)}</div><div class="nest-stat-lbl">${ledgerStatLabel('hp',{short:true})}</div></div>
+    <div class="nest-stat-card"><div class="nest-stat-val">${_nestStat(_nestWarcry,s.atk)}</div><div class="nest-stat-lbl">${ledgerStatLabel('atk',{short:true})}</div></div>
+    <div class="nest-stat-card"><div class="nest-stat-val">${_nestStat(_nestDef,s.def)}</div><div class="nest-stat-lbl">${ledgerStatLabel('def',{short:true})}</div></div>
+    <div class="nest-stat-card"><div class="nest-stat-val">${formatCombatNumber(s.spd)}</div><div class="nest-stat-lbl">${ledgerStatLabel('spd',{short:true})}</div></div>
+    <div class="nest-stat-card"><div class="nest-stat-val">${_nestStat(_nestDodge,s.dodge,'%')}</div><div class="nest-stat-lbl">${ledgerStatLabel('dodge',{short:true})}</div></div>
+    <div class="nest-stat-card"><div class="nest-stat-val">${_nestStat(_nestAcc,s.acc,'%')}</div><div class="nest-stat-lbl">${ledgerStatLabel('acc',{short:true})}</div></div>
+    <div class="nest-stat-card"><div class="nest-stat-val" style="color:${_nestCrit>5?'#e8c96a':'var(--gold)'}">${formatCombatNumber(_nestCrit)}%</div><div class="nest-stat-lbl">${ledgerStatLabel('critChance',{short:true})}</div></div>
+    <div class="nest-stat-card"><div class="nest-stat-val" style="color:${_nestCritMultBase>1.5||_nestCritBonusPct>0?'#e8c96a':'var(--gold)'}">${_nestCritMultDisp}</div><div class="nest-stat-lbl">${ledgerStatLabel('critMult',{short:true})}</div></div>
+    <div class="nest-stat-card" title="Focus — improves spell and ailment potency"><div class="nest-stat-val" style="color:#6ae8e8">${formatCombatNumber(s.matk||8)}</div><div class="nest-stat-lbl" style="color:#4ab8c0">${ledgerStatLabel('matk',{short:true})}</div></div>
+    <div class="nest-stat-card" title="Resolve — resists enemy spells and ailments"><div class="nest-stat-val" style="color:#6ae8e8">${formatCombatNumber(s.mdef||8)}</div><div class="nest-stat-lbl" style="color:#4ab8c0">${ledgerStatLabel('mdef',{short:true})}</div></div>
+    ${(s.armorPen||0)>0?`<div class="nest-stat-card" title="Ignores enemy Guard when dealing martial damage"><div class="nest-stat-val">${formatCombatNumber(s.armorPen)}%</div><div class="nest-stat-lbl">${ledgerStatLabel('armorPen',{short:true})}</div></div>`:''}
+    ${(s.magicPen||0)>0?`<div class="nest-stat-card" title="Ignores enemy Resolve when dealing magical damage"><div class="nest-stat-val">${formatCombatNumber(s.magicPen)}%</div><div class="nest-stat-lbl">${ledgerStatLabel('magicPen',{short:true})}</div></div>`:''}
   </div></div>`;
   // EXP / level progress (moved here from the combat screen)
   {
@@ -3205,6 +3207,9 @@ function saveRun() {
       endlessMode: G.endlessMode, endlessBattle: G.endlessBattle,
       overworldEnemySeedPack,
       collectedRewards: G.collectedRewards||[],
+      runUnlockedEquipmentRarities: [...(G.runUnlockedEquipmentRarities instanceof Set
+        ? G.runUnlockedEquipmentRarities
+        : (G.runUnlockedEquipmentRarities||['grey']))],
       classPerks: JSON.parse(JSON.stringify((G.classPerks||{}))),
       runClassPerks: JSON.parse(JSON.stringify((G.runClassPerks||[]))),
       runUpgradesPurchased: [...(G.runUpgradesPurchased||new Set())],
@@ -3391,6 +3396,12 @@ function continueRun() {
     G.stage = Math.max(1, (G._overworldProgress?.completedStage||0) + 1);
   }
   G.collectedRewards=save.collectedRewards||[];
+  G.runUnlockedEquipmentRarities=new Set(
+    Array.isArray(save.runUnlockedEquipmentRarities) && save.runUnlockedEquipmentRarities.length
+      ? save.runUnlockedEquipmentRarities
+      : ['grey']
+  );
+  G.runUnlockedEquipmentRarities.add('grey');
   G.player=save.player;
   const forgeMirror=G._owForgeNavMeta?.isForgeTest&&G._forgeMirrorTarget?.birdKey?G._forgeMirrorTarget:null;
   if(forgeMirror){
@@ -6146,15 +6157,15 @@ function updateAscentPanel(key) {
 
     const statsStrip=`
       <div class="ascent-stats-strip">
-        <span class="ascent-stat-chip"><abbr title="Hit Points">HP</abbr> <strong>${dispStats.hp}</strong></span>
-        <span class="ascent-stat-chip"><abbr title="Attack">ATK</abbr> <strong>${dispStats.atk}</strong></span>
-        <span class="ascent-stat-chip"><abbr title="Defense">DEF</abbr> <strong>${dispStats.def}</strong></span>
-        <span class="ascent-stat-chip"><abbr title="Speed">SPD</abbr> <strong>${dispStats.spd}</strong></span>
-        <span class="ascent-stat-chip"><abbr title="Accuracy">ACC</abbr> <strong>${dispStats.acc}%</strong></span>
-        <span class="ascent-stat-chip">MATK <strong>${dispStats.matk||0}</strong></span>
-        <span class="ascent-stat-chip">MDEF <strong>${dispStats.mdef||0}</strong></span>
-        <span class="ascent-stat-chip">CC <strong>${cc}%</strong></span>
-        <span class="ascent-stat-chip">CD <strong>${cd.toFixed(1)}×</strong></span>
+        <span class="ascent-stat-chip"><abbr title="${ledgerStatLabel('hp')}">${ledgerStatLabel('hp',{short:true})}</abbr> <strong>${dispStats.hp}</strong></span>
+        <span class="ascent-stat-chip"><abbr title="${ledgerStatLabel('atk')}">${ledgerStatLabel('atk',{short:true})}</abbr> <strong>${dispStats.atk}</strong></span>
+        <span class="ascent-stat-chip"><abbr title="${ledgerStatLabel('def')}">${ledgerStatLabel('def',{short:true})}</abbr> <strong>${dispStats.def}</strong></span>
+        <span class="ascent-stat-chip"><abbr title="${ledgerStatLabel('spd')}">${ledgerStatLabel('spd',{short:true})}</abbr> <strong>${dispStats.spd}</strong></span>
+        <span class="ascent-stat-chip"><abbr title="${ledgerStatLabel('acc')}">${ledgerStatLabel('acc',{short:true})}</abbr> <strong>${dispStats.acc}%</strong></span>
+        <span class="ascent-stat-chip"><abbr title="${ledgerStatLabel('matk')}">${ledgerStatLabel('matk',{short:true})}</abbr> <strong>${dispStats.matk||0}</strong></span>
+        <span class="ascent-stat-chip"><abbr title="${ledgerStatLabel('mdef')}">${ledgerStatLabel('mdef',{short:true})}</abbr> <strong>${dispStats.mdef||0}</strong></span>
+        <span class="ascent-stat-chip"><abbr title="${ledgerStatLabel('critChance')}">${ledgerStatLabel('critChance',{short:true})}</abbr> <strong>${cc}%</strong></span>
+        <span class="ascent-stat-chip"><abbr title="${ledgerStatLabel('critMult')}">${ledgerStatLabel('critMult',{short:true})}</abbr> <strong>${cd.toFixed(1)}×</strong></span>
         <span class="ascent-stat-chip"><abbr title="Battle start / max momentum (EN)">EN</abbr> <strong>${startEnShow}/${maxEn}</strong></span>
       </div>`;
 
@@ -6399,6 +6410,7 @@ function startGame() {
   G.difficulty = G._selectedDifficulty || 'juvenile';
   const bd = BIRDS[G.selected];
   G.collectedRewards=[];
+  G.runUnlockedEquipmentRarities=new Set(['grey']);
   G._flightRescuedNestsAwarded=[];
   const birdDef=(Avian.flags?.equipmentV2&&typeof Avian.getBirdDef==='function')?Avian.getBirdDef(G.selected):bd;
   const baseStats=(Avian.flags?.equipmentV2&&typeof Avian.buildCombatStatsFromBirdDef==='function'&&birdDef)
@@ -14675,6 +14687,10 @@ function applySingleReward(rw) {
     if (typeof Avian?.equipmentLoot?.registerOrangeAcquired === 'function') {
       Avian.equipmentLoot.registerOrangeAcquired(Avian.equipmentLoot.getItem(itemId));
     }
+    if (typeof Avian?.equipmentLoot?.markRunUnlockedEquipmentRarity === 'function') {
+      const it = Avian.equipmentLoot.getItem(itemId);
+      Avian.equipmentLoot.markRunUnlockedEquipmentRarity(G, (it && it.rarity) || rw.tier);
+    }
     reapplyPlayerGearStats(G.player);
   } else if (rw.type === 'mutation') {
     const itemId = rw.mutationItemId || rw.id;
@@ -16823,11 +16839,20 @@ function resolveShopItemCategory(item){
   return null;
 }
 
+function shopGearCategoryTitle(){
+  return 'Equipment';
+}
+
 function shopItemMatchesCategory(item, category){
   if(!item) return false;
   if(category==='all') return resolveShopItemCategory(item)!==null;
   if(category==='items') return !!item.isCombatItem || item.shopCategory==='items' || !!item.isHealingShopItem;
-  if(category==='mutations') return item.type==='mutation' || item.shopCategory==='mutation';
+  if(category==='mutations'){
+    return item.type==='mutation'
+      || item.shopCategory==='mutation'
+      || item.type==='equipment'
+      || item.shopCategory==='equipment';
+  }
   return true;
 }
 

@@ -278,6 +278,51 @@ for (const rarity of ['grey', 'green', 'blue', 'purple']) {
 if (rarityMismatch) fail(`${rarityMismatch} forced-rarity reward cards mismatched catalogue rarity`);
 else ok('forced rarity rolls return matching catalogue rarity (3 unique × 4 tiers)');
 
+// --- equipment desc uses Might not atkPct ---
+const talon = nestCtx.Avian.equipment.getItem('EQ-TB-GRY');
+const desc = nestCtx.Avian.equipmentLoot.formatEquipmentDesc(talon);
+if (!desc || /atkPct/i.test(desc)) fail(`EQ-TB-GRY desc still shows atkPct: ${desc}`);
+else if (!/Might/i.test(desc)) fail(`EQ-TB-GRY desc missing Might: ${desc}`);
+else ok(`EQ-TB-GRY desc uses Might (${desc})`);
+
+// --- unlocked-tier shop stock: grey always 4; green unlocks add 4 green ---
+nestCtx.G.player = freshPlayer('sparrow', nestCtx);
+nestCtx.G.runUnlockedEquipmentRarities = new Set(['grey']);
+nestCtx.G.collectedRewards = [];
+const greyOnly = nestCtx.Avian.equipmentLoot.rollUnlockedTierShopStock({
+  player: nestCtx.G.player,
+  g: nestCtx.G,
+  perTier: 4,
+  usedIds: new Set(),
+});
+const greyTiers = greyOnly.map((o) => String(o.tier || '').toLowerCase());
+if (greyOnly.length !== 4 || greyTiers.some((t) => t !== 'grey')) {
+  fail(`fresh unlock stock expected 4 grey, got ${greyOnly.length} [${greyTiers.join(',')}]`);
+} else ok('fresh run shop stock is 4 grey');
+
+const greenItem = Object.values(nestCtx.Avian.data.equipment.items).find((it) => it && it.rarity === 'green');
+if (!greenItem) fail('no green item for unlock test');
+else {
+  nestCtx.Avian.equipment.addToInventory(nestCtx.G.player, greenItem.id);
+  const unlocked = nestCtx.Avian.equipmentLoot.getRunUnlockedEquipmentRarities(nestCtx.G.player, nestCtx.G);
+  if (!unlocked.includes('green')) fail(`green not unlocked after receive: ${unlocked.join(',')}`);
+  const mixed = nestCtx.Avian.equipmentLoot.rollUnlockedTierShopStock({
+    unlockedRarities: unlocked,
+    perTier: 4,
+    usedIds: new Set(),
+    player: nestCtx.G.player,
+    g: nestCtx.G,
+  });
+  const byTier = {};
+  mixed.forEach((o) => {
+    const t = String(o.tier || '').toLowerCase();
+    byTier[t] = (byTier[t] || 0) + 1;
+  });
+  if ((byTier.grey || 0) !== 4 || (byTier.green || 0) !== 4) {
+    fail(`after green unlock expected 4 grey + 4 green, got ${JSON.stringify(byTier)}`);
+  } else ok('after green receive shop stocks 4 grey + 4 green');
+}
+
 if (failed) {
   console.error(`\n[equipment-loot] ${failed} failure(s)`);
   process.exit(1);

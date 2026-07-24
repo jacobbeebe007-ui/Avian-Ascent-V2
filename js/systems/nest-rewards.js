@@ -275,11 +275,15 @@
       if (Avian.equipmentLoot && typeof Avian.equipmentLoot.registerOrangeAcquired === 'function') {
         Avian.equipmentLoot.registerOrangeAcquired(Avian.equipmentLoot.getItem(eqId));
       }
+      if (Avian.equipmentLoot && typeof Avian.equipmentLoot.markRunUnlockedEquipmentRarity === 'function') {
+        var unlockedItem = Avian.equipmentLoot.getItem(eqId);
+        Avian.equipmentLoot.markRunUnlockedEquipmentRarity(g, (unlockedItem && unlockedItem.rarity) || drop.tier);
+      }
       if (typeof global.logMsg === 'function') {
         global.logMsg('🪺 Nest drop: ' + (drop.name || 'Equipment') + '!', 'system');
       }
       if (!g.collectedRewards) g.collectedRewards = [];
-      g.collectedRewards.push({ id: eqId, icon: drop.icon, tier: drop.tier, name: drop.name, desc: drop.desc || '' });
+      g.collectedRewards.push({ id: eqId, icon: drop.icon, tier: drop.tier, name: drop.name, desc: drop.desc || '', type: 'equipment', equipmentItemId: eqId });
       return true;
     }
     if (drop.type === 'mutation') {
