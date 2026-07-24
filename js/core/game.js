@@ -6711,8 +6711,12 @@ function prepareEnemyCombatLoadout(enemy){
   if(!enemy) return;
   if(typeof Avian?.equipment?.assignEnemyEquipmentLoadout==='function'){
     if(!enemy._equipmentApplied){
+      const stage=Math.max(1, Math.floor(Number(G && G.stage) || 1));
+      const endless=!!(G && G.endlessMode);
+      const useStoryRecipe=!endless && stage<=20;
       Avian.equipment.assignEnemyEquipmentLoadout(enemy, {
         tier: enemy.combatTier || enemy.enemyTier || (enemy.isBoss ? 'boss' : (enemy.isElite ? 'elite' : 'normal')),
+        stage: useStoryRecipe ? stage : undefined,
       });
     }else if(typeof Avian?.equipmentActions?.syncEntityAbilities==='function'){
       Avian.equipmentActions.syncEntityAbilities(enemy);

@@ -617,8 +617,173 @@
     ].join('|'));
   }
 
+  /** Prefer combat pieces first when filling a partial kit. */
+  var STORY_FILL_SLOT_PRIORITY = [
+    'mainHand', 'armour', 'helmet', 'necklace', 'shield', 'offHand', 'ankletL', 'ankletR',
+  ];
+
+  var RARITY_RANK = {
+    grey: 1, green: 2, blue: 3, purple: 4, gold: 5, orange: 6,
+  };
+
+  function shuffleInPlace(arr, rng) {
+    for (var i = arr.length - 1; i > 0; i--) {
+      var j = Math.floor(rng() * (i + 1));
+      var tmp = arr[i];
+      arr[i] = arr[j];
+      arr[j] = tmp;
+    }
+    return arr;
+  }
+
+  function resolveStoryEquipmentRecipe(opts) {
+    opts = opts || {};
+    if (opts.recipe && typeof opts.recipe === 'object') return opts.recipe;
+    if (opts.stage == null) return null;
+    if (typeof globalThis.getStoryEnemyEquipmentRecipe === 'function') {
+      return globalThis.getStoryEnemyEquipmentRecipe(opts.stage);
+    }
+    return null;
+  }
+
+  function buildStoryRarityBag(recipe, rng) {
+    if (!recipe) return [];
+    if (Array.isArray(recipe.bag)) return recipe.bag.slice();
+    var count = Math.max(0, Math.floor(Number(recipe.count)) || 0);
+    var bag = [];
+    var remaining = count;
+    var fixed = recipe.fixed || null;
+    if (fixed) {
+      Object.keys(fixed).forEach(function (rar) {
+        var n = Math.max(0, Math.floor(Number(fixed[rar])) || 0);
+        for (var i = 0; i < n; i++) bag.push(normalizeEquipmentRarity(rar));
+        remaining -= n;
+      });
+    }
+    var mix = Array.isArray(recipe.mix) && recipe.mix.length
+      ? recipe.mix.map(normalizeEquipmentRarity)
+      : ['grey'];
+    /* Guarantee each mix rarity appears at least once when the pool is large enough. */
+    for (var m = 0; m < mix.length && remaining > 0; m++) {
+      bag.push(mix[m]);
+      remaining--;
+    }
+    while (remaining > 0) {
+      bag.push(mix[Math.floor(rng() * mix.length)]);
+      remaining--;
+    }
+    return bag;
+  }
+
+  function dominantRarityFromBag(bag) {
+    if (!bag || !bag.length) return 'grey';
+    var best = bag[0];
+    var bestRank = RARITY_RANK[best] || 0;
+    for (var i = 1; i < bag.length; i++) {
+      var r = bag[i];
+      var rank = RARITY_RANK[r] || 0;
+      if (rank > bestRank) {
+        best = r;
+        bestRank = rank;
+      }
+    }
+    return best;
+  }
+
+  function pickReferenceItemForSlot(classId, slotKey, rarity) {
+    var rar = normalizeEquipmentRarity(rarity);
+    var ref = findReferenceLoadout(classId, rar);
+    if (ref && ref.equipment && ref.equipment[slotKey]) return ref.equipment[slotKey];
+    var fallbacks = ['grey', 'green', 'blue', 'purple'];
+    for (var i = 0; i < fallbacks.length; i++) {
+      if (fallbacks[i] === rar) continue;
+      ref = findReferenceLoadout(classId, fallbacks[i]);
+      if (!ref || !ref.equipment || !ref.equipment[slotKey]) continue;
+      var id = ref.equipment[slotKey];
+      var item = getItem(id);
+      if (item && normalizeEquipmentRarity(item.rarity) === rar) return id;
+    }
+    var cat = itemsCatalog();
+    if (!cat) return null;
+    var meta = slotMeta(slotKey);
+    if (!meta) return null;
+    for (var itemId in cat) {
+      if (!Object.prototype.hasOwnProperty.call(cat, itemId)) continue;
+      var it = cat[itemId];
+      if (!it || it.slot !== meta.accepts) continue;
+      if (normalizeEquipmentRarity(it.rarity) !== rar) continue;
+      if (!itemAllowedForPlayer(it, classId)) continue;
+      if (!slotAcceptsItem(slotKey, it)) continue;
+      return itemId;
+    }
+    return null;
+  }
+
+  function rollStoryRecipeLoadout(enemy, opts, recipe) {
+    var classId = getEnemyClassId(enemy);
+    var seed = computeLoadoutSeed(enemy, Object.assign({}, opts, {
+      rarity: 'story',
+      tier: 'story',
+    }));
+    var rng = mulberry32(seed);
+    var bag = buildStoryRarityBag(recipe, rng);
+    shuffleInPlace(bag, rng);
+    var eq = createEmptyLoadout();
+    if (!bag.length) {
+      return {
+        equipment: eq,
+        rarity: 'grey',
+        referenceClass: classId,
+        totals: null,
+        seed: seed,
+        recipe: recipe,
+        filledCount: 0,
+      };
+    }
+    var bagIdx = 0;
+    for (var i = 0; i < STORY_FILL_SLOT_PRIORITY.length && bagIdx < bag.length; i++) {
+      var slotKey = STORY_FILL_SLOT_PRIORITY[i];
+      if (slotKey === 'offHand') {
+        var mainId = eq.mainHand;
+        var mainItem = mainId ? getItem(mainId) : null;
+        if (mainItem && (Number(mainItem.hands) || 0) === 2) continue;
+      }
+      var rarity = bag[bagIdx];
+      var itemId = pickReferenceItemForSlot(classId, slotKey, rarity);
+      if (!itemId) continue;
+      eq[slotKey] = itemId;
+      bagIdx++;
+    }
+    var filledCount = 0;
+    for (var sk in eq) {
+      if (Object.prototype.hasOwnProperty.call(eq, sk) && eq[sk]) filledCount++;
+    }
+    var rarityOut = dominantRarityFromBag(bag);
+    var mixed = false;
+    for (var b = 1; b < bag.length; b++) {
+      if (bag[b] !== bag[0]) { mixed = true; break; }
+    }
+    if (!mixed && opts.variance !== false) {
+      eq = applyLoadoutVariance(eq, rarityOut, { seed: seed + 17, variance: true });
+    }
+    var ref = findReferenceLoadout(classId, rarityOut);
+    return {
+      equipment: eq,
+      rarity: rarityOut,
+      referenceClass: classId,
+      totals: ref && ref.totals ? ref.totals : null,
+      seed: seed,
+      recipe: recipe,
+      filledCount: filledCount,
+    };
+  }
+
   function rollEnemyEquipmentLoadout(enemy, opts) {
     opts = opts || {};
+    var storyRecipe = resolveStoryEquipmentRecipe(opts);
+    if (storyRecipe) {
+      return rollStoryRecipeLoadout(enemy, opts, storyRecipe);
+    }
     var classId = getEnemyClassId(enemy);
     var seed = computeLoadoutSeed(enemy, opts);
     var rng = mulberry32(seed);
@@ -738,6 +903,8 @@
   equipment.assignEnemyEquipmentLoadout = assignEnemyEquipmentLoadout;
   equipment.computeLoadoutSeed = computeLoadoutSeed;
   equipment.hashSeedString = hashSeedString;
+  equipment.resolveStoryEquipmentRecipe = resolveStoryEquipmentRecipe;
+  equipment.buildStoryRarityBag = buildStoryRarityBag;
 
   function findEquipSlotForItem(player, itemId) {
     if (!player || !itemId) return null;

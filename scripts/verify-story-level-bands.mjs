@@ -86,6 +86,19 @@ ok('Stage 10 boss is blue tier', row10 && speciesTierOf(row10.birdKey) === 'blue
 const stage20 = gen.pickStoryEncounterEnemyIds(20, 'sparrow', 1);
 ok('Stage 20 returns Duke roster id', stage20[0] === globalThis.getStoryDukeRosterId());
 
+const recipe = globalThis.getStoryEnemyEquipmentRecipe;
+ok('Stage 1–3: no equipment', recipe(1).count === 0 && recipe(3).count === 0);
+ok('Stage 4–6: 4 grey', recipe(5).count === 4 && recipe(5).bag.every((r) => r === 'grey'));
+ok('Stage 7–9: 4 grey/green mix', recipe(8).count === 4 && recipe(8).mix.join() === 'grey,green');
+ok('Stage 10: 1 blue + 5 grey/green', recipe(10).count === 6 && recipe(10).fixed.blue === 1 && recipe(10).mix.join() === 'grey,green');
+ok('Stage 11–13: 5 green/blue', recipe(12).count === 5 && recipe(12).mix.join() === 'green,blue');
+ok('Stage 14–16: 7 blue', recipe(15).count === 7 && recipe(15).bag.every((r) => r === 'blue'));
+ok('Stage 17–19: 3 purple + 5 blue', recipe(18).count === 8
+  && recipe(18).bag.filter((r) => r === 'purple').length === 3
+  && recipe(18).bag.filter((r) => r === 'blue').length === 5);
+ok('Stage 20: 8 purple', recipe(20).count === 8 && recipe(20).bag.every((r) => r === 'purple'));
+ok('Stage 21+: no story recipe', recipe(21) === null);
+
 if (process.exitCode) {
   console.error('\nStory level band verification failed.');
   process.exit(process.exitCode);

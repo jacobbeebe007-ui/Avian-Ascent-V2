@@ -208,6 +208,70 @@ const pickedDamage = (plan.actions || []).some((a) => sandbox.classifyEnemyActio
 if (!pickedDamage) fail('planEnemyTurn did not pick a damaging action against lethal target');
 else ok('planEnemyTurn picks damaging action when target is lethal');
 
+function countFilled(eq) {
+  return Object.values(eq || {}).filter(Boolean).length;
+}
+
+function raritiesOf(eq) {
+  const cat = sandbox.Avian.data.equipment.items;
+  return Object.values(eq || {}).filter(Boolean).map((id) => String(cat[id]?.rarity || '').toLowerCase());
+}
+
+function assertStoryStage(stage, expect) {
+  const enemy = makeEnemy('rogue', 'grey', { id: `story-stage-${stage}`, birdKey: 'sparrow' });
+  equipment.assignEnemyEquipmentLoadout(enemy, { stage, variance: false, seed: 1000 + stage });
+  const filled = countFilled(enemy.equipment);
+  const rares = raritiesOf(enemy.equipment);
+  if (expect.count === 0) {
+    if (filled !== 0) fail(`stage ${stage}: expected empty kit, got ${filled}`);
+    else ok(`stage ${stage}: empty kit`);
+    return;
+  }
+  if (filled !== expect.count && !(expect.minCount != null && filled >= expect.minCount && filled <= expect.count)) {
+    fail(`stage ${stage}: expected ${expect.count} pieces, got ${filled} [${rares.join(',')}]`);
+    return;
+  }
+  if (expect.only) {
+    if (!rares.every((r) => expect.only.includes(r))) {
+      fail(`stage ${stage}: expected only ${expect.only}, got ${rares.join(',')}`);
+      return;
+    }
+  }
+  if (expect.require) {
+    for (const rar of expect.require) {
+      if (!rares.includes(rar)) {
+        fail(`stage ${stage}: missing required rarity ${rar} in ${rares.join(',')}`);
+        return;
+      }
+    }
+  }
+  if (expect.minOf) {
+    for (const [rar, n] of Object.entries(expect.minOf)) {
+      const got = rares.filter((r) => r === rar).length;
+      if (got < n) {
+        fail(`stage ${stage}: expected >=${n} ${rar}, got ${got}`);
+        return;
+      }
+    }
+  }
+  ok(`stage ${stage}: ${filled} pieces (${[...new Set(rares)].join('+') || 'none'})`);
+}
+
+assertStoryStage(2, { count: 0 });
+assertStoryStage(5, { count: 4, only: ['grey'] });
+assertStoryStage(8, { count: 4, only: ['grey', 'green'], require: ['grey', 'green'] });
+assertStoryStage(10, { count: 6, only: ['grey', 'green', 'blue'], minOf: { blue: 1 } });
+assertStoryStage(12, { count: 5, only: ['green', 'blue'], require: ['green', 'blue'] });
+assertStoryStage(15, { count: 7, only: ['blue'] });
+assertStoryStage(18, { count: 8, only: ['purple', 'blue'], minOf: { purple: 3, blue: 5 } });
+assertStoryStage(20, { count: 8, only: ['purple'] });
+
+const explicitRarity = makeEnemy('rogue', 'blue', { id: 'explicit-rarity-no-stage' });
+equipment.assignEnemyEquipmentLoadout(explicitRarity, { rarity: 'blue', variance: false, seed: 55 });
+if (countFilled(explicitRarity.equipment) < 7) {
+  fail('explicit rarity path should still roll full reference kit');
+} else ok('explicit rarity path ignores story recipe when stage omitted');
+
 if (failed) {
   console.error(`\n[enemy-equipment-ai] ${failed} failure(s)`);
   process.exit(1);
