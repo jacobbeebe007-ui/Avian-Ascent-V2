@@ -27,14 +27,36 @@
 
   function getNestMutationTiersForBirdLevel(level) {
     var lv = Math.max(1, Math.floor(Number(level) || 1));
-    if (lv <= 2) return ['white'];
-    if (lv === 3) return ['white', 'green'];
+    if (lv <= 2) return ['grey'];
+    if (lv === 3) return ['grey', 'green'];
     if (lv <= 5) return ['green'];
     if (lv === 6) return ['green', 'blue'];
     if (lv <= 8) return ['blue'];
     if (lv <= 11) return ['purple'];
     if (lv <= 14) return ['purple', 'gold'];
     return ['purple', 'gold', 'orange'];
+  }
+
+  function getStoryNestRarityForStage(stage) {
+    var st = Math.max(1, Math.floor(Number(stage) || 1));
+    if (st >= 20) return null;
+    var rows = Avian.data && Avian.data.equipment && Avian.data.equipment.loot
+      && Avian.data.equipment.loot.storyNestRarityByStage;
+    if (!rows || !rows.length) {
+      if (st <= 5) return 'grey';
+      if (st <= 9) return 'green';
+      if (st <= 15) return 'blue';
+      if (st <= 19) return 'purple';
+      return null;
+    }
+    var rarity = null;
+    for (var i = 0; i < rows.length; i++) {
+      if (st <= Number(rows[i].maxStage)) {
+        rarity = rows[i].rarity;
+        break;
+      }
+    }
+    return rarity || null;
   }
 
   function rollNestMutationTier(level) {
@@ -86,6 +108,8 @@
   function rollEquipmentRewardForBird(bird, difficulty, stage, isBoss, usedIds) {
     var level = Math.max(1, Math.floor(Number(bird.level) || 1));
     var rarity = rollNestMutationTier(level);
+    rarity = String(rarity || 'grey').toLowerCase();
+    if (rarity === 'white') rarity = 'grey';
     var rw = null;
     if (Avian.equipmentLoot && typeof Avian.equipmentLoot.rollEquipmentReward === 'function') {
       var guard = 0;
@@ -98,10 +122,7 @@
           usedIds: usedIds,
           filterForPlayer: true,
         });
-        if (!rw) continue;
-        if (usedIds.has(rw.equipmentItemId || rw.id)) continue;
-        usedIds.add(rw.equipmentItemId || rw.id);
-        break;
+        if (rw) break;
       }
     }
     if (!rw) {
@@ -177,9 +198,8 @@
     opts = opts || {};
     var birds = Array.isArray(defeatedBirds) ? defeatedBirds : [];
     var difficulty = opts.difficulty || 'juvenile';
-    var stage = Math.max(1, Math.floor(Number(opts.stage) || 1));
-    var used = new Set();
     var drops = [];
+    /* Equipment is a choose-1-of-3 pick in game.js; nest only rolls healing bonuses. */
     birds.forEach(function (bird) {
       var level = Math.max(1, Math.floor(Number(bird.level) || 1));
       var heal = rollNestHealingDrop(level, difficulty);
@@ -192,8 +212,6 @@
         name: heal.name,
         desc: 'Healing item for battle.',
       });
-      var eqRw = rollEquipmentRewardForBird(bird, difficulty, stage, !!bird.isBoss, used);
-      drops.push(eqRw);
     });
     return drops;
   }
@@ -204,17 +222,33 @@
     var difficulty = opts.difficulty || 'juvenile';
     var stage = Math.max(1, Math.floor(Number(opts.stage) || 1));
     var isBoss = !!opts.isBoss;
-    var used = new Set();
     if (opts.storyMode !== false) {
+      /* Story equipment is a choose-1-of-3 pick in game.js; nest only rolls optional bonus. */
+      if (stage >= 20) return [];
       var sourceBird = birds[0] || { level: stage, isBoss: isBoss };
-      var drops = [rollMutationRewardForBird(sourceBird, difficulty, stage, isBoss || !!sourceBird.isBoss, used)];
+      var drops = [];
       var bonus = rollStoryBonusDrop(sourceBird, difficulty);
       if (bonus) drops.push(bonus);
       return drops;
     }
-    return birds.map(function (bird) {
-      return rollDropForBird(bird, difficulty, stage, isBoss, used);
+    /* Endless: heal/shiny only — equipment comes from choose-1-of-3 pick. */
+    var out = [];
+    birds.forEach(function (bird) {
+      var level = Math.max(1, Math.floor(Number(bird.level) || 1));
+      var heal = rollNestHealingDrop(level, difficulty);
+      out.push({
+        type: 'combat_item',
+        itemKey: heal.itemKey,
+        quantity: heal.quantity,
+        tier: heal.tier,
+        icon: heal.icon,
+        name: heal.name,
+        desc: 'Healing item for battle.',
+      });
+      var shiny = rollNestShinyBonus(level, difficulty, false);
+      if (shiny) out.push(shiny);
     });
+    return out;
   }
 
   function getDefeatedBirdsForReward() {
@@ -313,11 +347,13 @@
   }
 
   ns.getNestMutationTiersForBirdLevel = getNestMutationTiersForBirdLevel;
+  ns.getStoryNestRarityForStage = getStoryNestRarityForStage;
   ns.buildNestRewardDrops = buildNestRewardDrops;
   ns.buildEndlessClearRewardDrops = buildEndlessClearRewardDrops;
   ns.getDefeatedBirdsForReward = getDefeatedBirdsForReward;
   ns.grantNestDrop = grantNestDrop;
 
+  global.getStoryNestRarityForStage = getStoryNestRarityForStage;
   global.buildNestRewardDrops = buildNestRewardDrops;
   global.buildEndlessClearRewardDrops = buildEndlessClearRewardDrops;
   global.getDefeatedBirdsForReward = getDefeatedBirdsForReward;

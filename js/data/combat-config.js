@@ -33,7 +33,9 @@
       6: 35,
     }),
 
-    /* v0.6 direct damage: BaseDamage + FinalStat × coefficient (WD). */
+    /* v0.6 direct damage: BaseDamage + FinalStat × coefficient (WD).
+     * Scaling Model: Base Damage = 2 × EN; Defence Mod = 100/(100+EffDef);
+     * Affinity 1.20/1.00/0.80; Bonus cap +45%; Crit chance 50% / Ferocity ×2. */
     directScaling: Object.freeze({
       enabled: true,
       baseDamagePerEn: 2,

@@ -124,7 +124,8 @@
     var countOnFloor = countNodesOnFloor(map, floor);
     return {
       x: countOnFloor <= 1 ? 0.5 : (slot + 1) / (countOnFloor + 1),
-      y: floor / depth,
+      /* Climb bottom → top: start (floor 0) at bottom, boss at top. */
+      y: 1 - (floor / depth),
     };
   }
 
@@ -170,7 +171,7 @@
         slot: slot,
         type: type,
         x: countOnFloor <= 1 ? 0.5 : (slot + 1) / (countOnFloor + 1),
-        y: floor / depth,
+        y: 1 - (floor / depth),
       };
       nodes.push(node);
       return node;
@@ -433,6 +434,7 @@
     createEndlessMapState: createEndlessMapState,
     isEndlessMapActive: isEndlessMapActive,
     getNode: getNode,
+    getNodeDisplayPosition: getNodeDisplayPosition,
     getAvailableNodeIds: getAvailableNodeIds,
     markVisited: markVisited,
     resolveUnknown: resolveUnknown,

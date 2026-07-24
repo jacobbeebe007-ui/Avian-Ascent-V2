@@ -348,7 +348,42 @@ function getUpgradePool(){ return UPGRADE_CARDS_REWORK.slice(); }
 
 // ---- Stat ledger: bird baseline vs level-up feathers vs card upgrades (Nest + combat tooltips) ----
 const STAT_LEDGER_TRACKED_KEYS = ['maxHp','atk','def','spd','acc','dodge','matk','mdef','critChance','armorPen','magicPen'];
-const STAT_LEDGER_LABELS = {maxHp:'HP (max)',atk:'ATT',def:'DEF',spd:'SPD',acc:'ACC',dodge:'DODGE',matk:'MATK',mdef:'MDEF',critChance:'CRIT %',critMult:'CRIT DMG',armorPen:'ARMOUR PEN %',magicPen:'MAGIC PEN %'};
+function ledgerStatLabel(statKey, { short=false }={}){
+  const k=String(statKey||'');
+  const glossKey=k==='maxHp'?'hp':k;
+  if(short && typeof Avian?.display?.statShort==='function'){
+    const s=Avian.display.statShort(glossKey);
+    if(s && s.toLowerCase()!==glossKey.toLowerCase()) return s;
+  }
+  if(typeof Avian?.display?.statName==='function'){
+    const d=Avian.display.statName(glossKey);
+    if(d && d.toLowerCase()!==glossKey.toLowerCase()){
+      if(k==='maxHp') return d+' (max)';
+      if(k==='critChance' || k==='armorPen' || k==='magicPen') return d.includes('%')?d:`${d} %`;
+      return d;
+    }
+  }
+  const fallback={
+    maxHp:'Vitality (max)',atk:'Might',def:'Guard',spd:'Agility',acc:'Precision',dodge:'Evasion',
+    matk:'Focus',mdef:'Resolve',critChance:'Critical %',critMult:'Ferocity',
+    armorPen:'Martial Penetration %',magicPen:'Magic Penetration %',
+  };
+  return fallback[k]||k;
+}
+const STAT_LEDGER_LABELS = {
+  get maxHp(){ return ledgerStatLabel('maxHp'); },
+  get atk(){ return ledgerStatLabel('atk'); },
+  get def(){ return ledgerStatLabel('def'); },
+  get spd(){ return ledgerStatLabel('spd'); },
+  get acc(){ return ledgerStatLabel('acc'); },
+  get dodge(){ return ledgerStatLabel('dodge'); },
+  get matk(){ return ledgerStatLabel('matk'); },
+  get mdef(){ return ledgerStatLabel('mdef'); },
+  get critChance(){ return ledgerStatLabel('critChance'); },
+  get critMult(){ return ledgerStatLabel('critMult'); },
+  get armorPen(){ return ledgerStatLabel('armorPen'); },
+  get magicPen(){ return ledgerStatLabel('magicPen'); },
+};
 function cloneStatLedgerSlice(stats){
   const s = stats || {};
   const out = {};
@@ -5827,14 +5862,14 @@ function buildBirdUpgradePreviewModel(birdKey){
   const growthPack=Avian?.data?.featherGrowthProfiles;
   const growthProfile=typeof growthPack?.getGrowthProfileForBird==='function'?growthPack.getGrowthProfileForBird(birdKey):null;
   const statKeys=[
-    ['hp','HP'],
-    ['atk','ATK'],
-    ['def','DEF'],
-    ['spd','SPD'],
-    ['acc','ACC'],
-    ['dodge','DODGE'],
-    ['matk','MATK'],
-    ['mdef','MDEF'],
+    ['hp', ledgerStatLabel('hp',{short:true})],
+    ['atk', ledgerStatLabel('atk',{short:true})],
+    ['def', ledgerStatLabel('def',{short:true})],
+    ['spd', ledgerStatLabel('spd',{short:true})],
+    ['acc', ledgerStatLabel('acc',{short:true})],
+    ['dodge', ledgerStatLabel('dodge',{short:true})],
+    ['matk', ledgerStatLabel('matk',{short:true})],
+    ['mdef', ledgerStatLabel('mdef',{short:true})],
   ];
   return{
     birdKey,
@@ -6714,9 +6749,12 @@ function prepareEnemyCombatLoadout(enemy){
       const stage=Math.max(1, Math.floor(Number(G && G.stage) || 1));
       const endless=!!(G && G.endlessMode);
       const useStoryRecipe=!endless && stage<=20;
+      const tier=enemy.combatTier || enemy.enemyTier || (enemy.isBoss ? 'boss' : (enemy.isElite ? 'elite' : 'normal'));
       Avian.equipment.assignEnemyEquipmentLoadout(enemy, {
-        tier: enemy.combatTier || enemy.enemyTier || (enemy.isBoss ? 'boss' : (enemy.isElite ? 'elite' : 'normal')),
+        tier,
         stage: useStoryRecipe ? stage : undefined,
+        mirrorPlayerEquipment: !!endless,
+        player: G && G.player,
       });
     }else if(typeof Avian?.equipmentActions?.syncEntityAbilities==='function'){
       Avian.equipmentActions.syncEntityAbilities(enemy);
@@ -7497,7 +7535,7 @@ function buildPlayerStatsGridHtml(){
   const _critBonusPct=(G.player.critDamageBonusPct||0)+(_eqMechCombat?.critDamageBonusPct||0);
   const _critMultHtml=_critBonusPct>0?`${formatCombatNumber(_critBase)}×<small class="stat-cd-bonus">+${formatCombatNumber(_critBonusPct)}</small>`:`${formatCombatNumber(_critBase)}×`;
   const _statNote=(label,diff,srcUp='',srcDown='')=>`${label} ${diff>=0?'+':''}${diff}. ${diff>0?srcUp:(diff<0?srcDown:'No active modifier.')}`;
-  const _atkNote=(G.warcryActive?`Warcry +${G.warcryATK}% ATK.`:'')+(getWeakenStacks(G.playerStatus)>0?' Weaken reducing output.':'');
+  const _atkNote=(G.warcryActive?`Warcry +${G.warcryATK}% Might.`:'')+(getWeakenStacks(G.playerStatus)>0?' Weaken reducing output.':'');
   const _accCardBonus=(G.player.firstAttackAccBonus||0)>0?` Shop/card hit bonus +${G.player.firstAttackAccBonus}% (applies to all attacks).`:'';
   const statCell=(klass,label,val,{suffix='',title='',trend='',statKey='',statRaw=null}={})=>{
     const dataAttr=statKey?` data-stat-key="${statKey}" data-stat-raw="${Number(statRaw??val)}"`:'';
@@ -7508,16 +7546,16 @@ function buildPlayerStatsGridHtml(){
   const _pHintRow=_pCombatHint?`<div class="stat-status-hint" style="grid-column:1/-1">${combatEscAttr(_pCombatHint)}</div>`:'';
   const _effArmorPen=getPlayerArmorPenPct(G.player);
   const _effMagicPen=getPlayerMagicPenPct(G.player);
-  const _penCells=`${(_effArmorPen>0)?statCell('stat-armor-pen','Armour Pen',_effArmorPen,{suffix:'%',title:_bt('armorPen',p.armorPen||0,'Ignores enemy DEF on physical hits.'),statKey:'armorPen',statRaw:p.armorPen||0}):''}${(_effMagicPen>0)?statCell('stat-magic-pen','Magic Pen',_effMagicPen,{suffix:'%',title:_bt('magicPen',p.magicPen||0,'Ignores enemy MDEF on magical hits.'),statKey:'magicPen',statRaw:p.magicPen||0}):''}`;
-  return `${statCell('stat-atk','ATK',_effAtk,{title:_bt('atk',_pBase.atk??p.atk,_statNote('Battle ATK',_effAtk-(_pBase.atk||0),_atkNote,'Debuffs reducing ATK effect.')),trend:combatTrendTag(_effAtk,_pBase.atk),statKey:'atk',statRaw:_pBase.atk??p.atk})}
-     ${statCell('stat-matk','MATK',_effMatk,{title:_bt('matk',(_pBase.matk??p.matk)||8,'Magic Attack — improves spell/ailment potency'),trend:combatTrendTag(_effMatk,_pBase.matk??8),statKey:'matk',statRaw:(_pBase.matk??p.matk)||8})}
-     ${statCell('stat-def','DEF',_effDef,{title:_bt('def',_pBase.def??p.def,_statNote('Battle DEF',_effDef-(_pBase.def||0),'Battle Hymn increased DEF.','Debuffs reducing DEF.')),trend:combatTrendTag(_effDef,_pBase.def),statKey:'def',statRaw:_pBase.def??p.def})}
-     ${statCell('stat-mdef','MDEF',_effMdef,{title:_bt('mdef',(_pBase.mdef??p.mdef)||8,'Magic Defence — resists enemy spells and ailments'),trend:combatTrendTag(_effMdef,_pBase.mdef??8),statKey:'mdef',statRaw:(_pBase.mdef??p.mdef)||8})}
-     ${statCell('stat-dodge','Dodge',_effDodge,{suffix:'%',title:_bt('dodge',_pBase.dodge??p.dodge,`Physical dodge. ${_statNote('Display',_effDodge-(_pBase.dodge||0),'Evasion buffs active.','Debuffs reduced dodge.')}`),trend:combatTrendTag(_effDodge,_pBase.dodge),statKey:'dodge',statRaw:_pBase.dodge??p.dodge})}
-     ${statCell('stat-acc','ACC',_effAcc,{suffix:'%',title:_bt('acc',_pBase.acc??p.acc,_statNote('Battle ACC',_effAcc-(_pBase.acc||0),'Battle Hymn increased ACC.','Blind/ruffle reduced ACC.')+_accCardBonus),trend:combatTrendTag(_effAcc,_pBase.acc),statKey:'acc',statRaw:_pBase.acc??p.acc})}
-     ${statCell('stat-spd','SPD',_effSpd,{title:_bt('spd',_pBase.spd??p.spd,_statNote('Battle SPD',_effSpd-(_pBase.spd||0),'Buff increased SPD.','Slow/clip effects reduced SPD.')),trend:combatTrendTag(_effSpd,_pBase.spd),statKey:'spd',statRaw:_pBase.spd??p.spd})}
-     ${statCell('stat-cc','CC',_critChance,{suffix:'%',title:_bt('critChance',_critBaseStore,`Shown value includes battle modifiers (e.g. burn). ${_statNote('vs battle start',_critChance-_critBaseStore,'Temporary buffs.','Debuffs reduced crit.')}`),trend:combatTrendTag(_critChance,_critBaseStore),statKey:'critChance',statRaw:_critBaseStore})}
-     <div class="stat-mini stat-cd" data-stat-key="critMult" data-stat-raw="${_critBase}" title="${combatEscAttr(`Base crit multiplier ${formatCombatNumber(_critBase)}×. On critical hits, +${formatCombatNumber(_critBonusPct)} is added to the multiplier.`)}"><span class="stat-k">CD</span><span class="stat-v">${_critMultHtml}</span></div>
+  const _penCells=`${(_effArmorPen>0)?statCell('stat-armor-pen',ledgerStatLabel('armorPen',{short:true}),_effArmorPen,{suffix:'%',title:_bt('armorPen',p.armorPen||0,'Ignores enemy Guard on martial hits.'),statKey:'armorPen',statRaw:p.armorPen||0}):''}${(_effMagicPen>0)?statCell('stat-magic-pen',ledgerStatLabel('magicPen',{short:true}),_effMagicPen,{suffix:'%',title:_bt('magicPen',p.magicPen||0,'Ignores enemy Resolve on magical hits.'),statKey:'magicPen',statRaw:p.magicPen||0}):''}`;
+  return `${statCell('stat-atk',ledgerStatLabel('atk',{short:true}),_effAtk,{title:_bt('atk',_pBase.atk??p.atk,_statNote('Battle Might',_effAtk-(_pBase.atk||0),_atkNote,'Debuffs reducing Might effect.')),trend:combatTrendTag(_effAtk,_pBase.atk),statKey:'atk',statRaw:_pBase.atk??p.atk})}
+     ${statCell('stat-matk',ledgerStatLabel('matk',{short:true}),_effMatk,{title:_bt('matk',(_pBase.matk??p.matk)||8,'Focus — improves spell/ailment potency'),trend:combatTrendTag(_effMatk,_pBase.matk??8),statKey:'matk',statRaw:(_pBase.matk??p.matk)||8})}
+     ${statCell('stat-def',ledgerStatLabel('def',{short:true}),_effDef,{title:_bt('def',_pBase.def??p.def,_statNote('Battle Guard',_effDef-(_pBase.def||0),'Battle Hymn increased Guard.','Debuffs reducing Guard.')),trend:combatTrendTag(_effDef,_pBase.def),statKey:'def',statRaw:_pBase.def??p.def})}
+     ${statCell('stat-mdef',ledgerStatLabel('mdef',{short:true}),_effMdef,{title:_bt('mdef',(_pBase.mdef??p.mdef)||8,'Resolve — resists enemy spells and ailments'),trend:combatTrendTag(_effMdef,_pBase.mdef??8),statKey:'mdef',statRaw:(_pBase.mdef??p.mdef)||8})}
+     ${statCell('stat-dodge',ledgerStatLabel('dodge',{short:true}),_effDodge,{suffix:'%',title:_bt('dodge',_pBase.dodge??p.dodge,`Evasion chance. ${_statNote('Display',_effDodge-(_pBase.dodge||0),'Evasion buffs active.','Debuffs reduced Evasion.')}`),trend:combatTrendTag(_effDodge,_pBase.dodge),statKey:'dodge',statRaw:_pBase.dodge??p.dodge})}
+     ${statCell('stat-acc',ledgerStatLabel('acc',{short:true}),_effAcc,{suffix:'%',title:_bt('acc',_pBase.acc??p.acc,_statNote('Battle Precision',_effAcc-(_pBase.acc||0),'Battle Hymn increased Precision.','Blind/ruffle reduced Precision.')+_accCardBonus),trend:combatTrendTag(_effAcc,_pBase.acc),statKey:'acc',statRaw:_pBase.acc??p.acc})}
+     ${statCell('stat-spd',ledgerStatLabel('spd',{short:true}),_effSpd,{title:_bt('spd',_pBase.spd??p.spd,_statNote('Battle Agility',_effSpd-(_pBase.spd||0),'Buff increased Agility.','Slow/clip effects reduced Agility.')),trend:combatTrendTag(_effSpd,_pBase.spd),statKey:'spd',statRaw:_pBase.spd??p.spd})}
+     ${statCell('stat-cc',ledgerStatLabel('critChance',{short:true}),_critChance,{suffix:'%',title:_bt('critChance',_critBaseStore,`Shown value includes battle modifiers (e.g. burn). ${_statNote('vs battle start',_critChance-_critBaseStore,'Temporary buffs.','Debuffs reduced Critical.')}`),trend:combatTrendTag(_critChance,_critBaseStore),statKey:'critChance',statRaw:_critBaseStore})}
+     <div class="stat-mini stat-cd" data-stat-key="critMult" data-stat-raw="${_critBase}" title="${combatEscAttr(`Base Ferocity ${formatCombatNumber(_critBase)}×. On critical hits, +${formatCombatNumber(_critBonusPct)} is added to the multiplier.`)}"><span class="stat-k">${ledgerStatLabel('critMult',{short:true})}</span><span class="stat-v">${_critMultHtml}</span></div>
      ${_penCells}
      ${_pHintRow}`;
 }
@@ -7537,16 +7575,16 @@ function buildEnemyStatsGridHtml(){
   const _effEnemyDef=Math.floor((ep2.def||0)*(enemyHasBurning()?0.8:1));
   const _effEnemyMdef=Math.floor((ep2.mdef||8)*(enemyHasBurning()?0.8:1));
   const _effEnemyDodge=(ep2.dodge||0);
-  const _enemyDodgeSpdNote=enemyHasBurning()?' — Burning: −20% DEF/MDEF':'';
-  return `${enemyCell('stat-atk','ATK',ep2.atk,{title:'Physical attack',baseKey:'atk',statKey:'atk',statRaw:ep2.atk})}
-     ${enemyCell('stat-matk','MATK',ep2.matk||6,{title:'Magic attack',baseKey:'matk',statKey:'matk',statRaw:ep2.matk||6})}
-     ${enemyCell('stat-def','DEF',_effEnemyDef,{title:'Physical defence'+_enemyDodgeSpdNote,baseKey:'def',statKey:'def',statRaw:ep2.def,trend:combatTrendTag(_effEnemyDef,_eBase.def??ep2.def)})}
-     ${enemyCell('stat-mdef','MDEF',_effEnemyMdef,{title:'Magic defence'+_enemyDodgeSpdNote,baseKey:'mdef',statKey:'mdef',statRaw:ep2.mdef||8,trend:combatTrendTag(_effEnemyMdef,(_eBase.mdef??ep2.mdef)||8)})}
-     ${enemyCell('stat-dodge','Dodge',_effEnemyDodge,{suffix:'%',title:`Dodge${_enemyDodgeSpdNote}`,baseKey:'dodge',statKey:'dodge',statRaw:ep2.dodge||0})}
-     ${enemyCell('stat-acc','ACC',ep2.acc||70,{suffix:'%',title:'Accuracy',baseKey:'acc',statKey:'acc',statRaw:ep2.acc||70})}
-     ${enemyCell('stat-spd','SPD',ep2.spd||0,{title:'Speed',baseKey:'spd',statKey:'spd',statRaw:ep2.spd||0})}
-     ${enemyCell('stat-cc','CC',eCritChance,{suffix:'%',title:'Crit chance',statKey:'critChance',statRaw:eCritChance})}
-     ${enemyCell('stat-cd','CD',Number(eCritMult),{suffix:'×',title:'Crit damage'})}
+  const _enemyDodgeSpdNote=enemyHasBurning()?' — Burning: −20% Guard/Resolve':'';
+  return `${enemyCell('stat-atk',ledgerStatLabel('atk',{short:true}),ep2.atk,{title:'Martial attack',baseKey:'atk',statKey:'atk',statRaw:ep2.atk})}
+     ${enemyCell('stat-matk',ledgerStatLabel('matk',{short:true}),ep2.matk||6,{title:'Focus (magic attack)',baseKey:'matk',statKey:'matk',statRaw:ep2.matk||6})}
+     ${enemyCell('stat-def',ledgerStatLabel('def',{short:true}),_effEnemyDef,{title:'Guard (martial defence)'+_enemyDodgeSpdNote,baseKey:'def',statKey:'def',statRaw:ep2.def,trend:combatTrendTag(_effEnemyDef,_eBase.def??ep2.def)})}
+     ${enemyCell('stat-mdef',ledgerStatLabel('mdef',{short:true}),_effEnemyMdef,{title:'Resolve (magic defence)'+_enemyDodgeSpdNote,baseKey:'mdef',statKey:'mdef',statRaw:ep2.mdef||8,trend:combatTrendTag(_effEnemyMdef,(_eBase.mdef??ep2.mdef)||8)})}
+     ${enemyCell('stat-dodge',ledgerStatLabel('dodge',{short:true}),_effEnemyDodge,{suffix:'%',title:`Evasion${_enemyDodgeSpdNote}`,baseKey:'dodge',statKey:'dodge',statRaw:ep2.dodge||0})}
+     ${enemyCell('stat-acc',ledgerStatLabel('acc',{short:true}),ep2.acc||70,{suffix:'%',title:'Precision',baseKey:'acc',statKey:'acc',statRaw:ep2.acc||70})}
+     ${enemyCell('stat-spd',ledgerStatLabel('spd',{short:true}),ep2.spd||0,{title:'Agility',baseKey:'spd',statKey:'spd',statRaw:ep2.spd||0})}
+     ${enemyCell('stat-cc',ledgerStatLabel('critChance',{short:true}),eCritChance,{suffix:'%',title:'Critical chance',statKey:'critChance',statRaw:eCritChance})}
+     ${enemyCell('stat-cd',ledgerStatLabel('critMult',{short:true}),Number(eCritMult),{suffix:'×',title:'Ferocity'})}
      ${_eHintRow}`;
 }
 function buildCombatStatBreakdownSection(side){
@@ -10516,34 +10554,54 @@ function rollRandomAnyMutationTiers(count){
 
 function getStoryMutationRewardTiers(stage, isBoss){
   const st=Math.max(1,Math.floor(Number(stage)||1));
-  if(isBoss && st===STORY_MILESTONE_BOSS_STAGE) return ['blue','blue','purple'];
-  if(isBoss && st===STORY_DUKE_STAGE) return ['purple','purple','purple'];
-  if(st<=4) return ['white','white','white'];
-  if(st<=9) return ['green','green','green'];
-  if(st<=16) return ['blue','blue','blue'];
-  if(st<=19) return ['purple','purple','purple'];
-  if(st<=24) return ['gold','gold','purple'];
-  return ['orange','gold','gold'];
+  if(st>=20) return [];
+  let rarity=null;
+  if(typeof getStoryNestRarityForStage==='function'){
+    rarity=getStoryNestRarityForStage(st);
+  }else{
+    const rows=Avian?.data?.equipment?.loot?.storyNestRarityByStage;
+    if(Array.isArray(rows)){
+      for(const row of rows){
+        if(st<=Number(row.maxStage)){ rarity=row.rarity; break; }
+      }
+    }
+  }
+  if(!rarity){
+    if(st<=5) rarity='grey';
+    else if(st<=9) rarity='green';
+    else if(st<=15) rarity='blue';
+    else if(st<=19) rarity='purple';
+  }
+  if(!rarity) return [];
+  return [rarity, rarity, rarity];
 }
 
 function resolveMutationRewardTiers({ stage, isBoss }={}){
   const st=Math.max(1,Math.floor(Number(stage)||1));
   if(isEndlessRunActive()){
-    const eb=getEndlessEffectiveBattleNumber(st);
-    if(eb>=51 && eb<=100) return rollRandomAnyMutationTiers(3);
-    if(eb>0 && eb%ENDLESS_BOSS_CADENCE===0){
-      const bossTiers=ENDLESS_BOSS_MUTATION_REWARD_TIERS[eb];
-      return bossTiers ? [...bossTiers] : [];
+    const mapActive=typeof isEndlessMapActive==='function' && isEndlessMapActive();
+    const eb=mapActive
+      ? Math.max(1, Math.floor(Number(G.endlessBattle)||1))
+      : getEndlessEffectiveBattleNumber(st);
+    const bossFight=!!isBoss || (!mapActive && eb>0 && eb%ENDLESS_BOSS_CADENCE===0);
+    if(bossFight){
+      const keyed=ENDLESS_BOSS_MUTATION_REWARD_TIERS[eb]
+        || ENDLESS_BOSS_MUTATION_REWARD_TIERS[Math.floor(eb/10)*10]
+        || ENDLESS_BOSS_MUTATION_REWARD_TIERS[ENDLESS_BOSS_CADENCE];
+      if(keyed) return [...keyed];
+      return ['purple','purple','blue'];
     }
-    if(eb>0 && eb%ENDLESS_BOSS_CADENCE!==0) return rollRandomAnyMutationTiers(3);
-    return [];
+    const normalTier=getEndlessNormalFightTier(eb);
+    if(normalTier) return [normalTier, normalTier, normalTier];
+    if(eb>=51) return rollRandomAnyMutationTiers(3);
+    return rollRandomAnyMutationTiers(3);
   }
   return getStoryMutationRewardTiers(st, !!isBoss);
 }
 
 function normalizeMutationDataTier(tier){
-  const t=String(tier||'white').toLowerCase();
-  return t==='grey' ? 'white' : t;
+  const t=String(tier||'grey').toLowerCase();
+  return t==='white' ? 'grey' : t;
 }
 
 function pickUniqueMutationReward(tier, used, isBoss){
@@ -10552,17 +10610,22 @@ function pickUniqueMutationReward(tier, used, isBoss){
   let guard=0;
   while(guard<25){
     guard++;
-    const rw=Avian.equipmentLoot.rollEquipmentReward({ tier: dataTier, stage: G.stage, isBoss: !!isBoss });
-    if(!rw || used.has(rw.id)) continue;
-    used.add(rw.id);
-    return rw;
+    const rw=Avian.equipmentLoot.rollEquipmentReward({
+      rarity: dataTier,
+      stage: typeof getEncounterStage==='function' ? getEncounterStage() : G.stage,
+      isBoss: !!isBoss,
+      usedIds: used,
+      filterForPlayer: true,
+    });
+    if(rw) return rw;
   }
   return null;
 }
 
 function buildMutationRewardPool(){
   const isBoss=!!(G.enemy && G.enemy.isBoss);
-  const tiers=resolveMutationRewardTiers({ stage: G.stage, isBoss });
+  const stage=typeof getEncounterStage==='function'?getEncounterStage():G.stage;
+  const tiers=resolveMutationRewardTiers({ stage, isBoss });
   const used=new Set();
   return tiers.map(tier=>pickUniqueMutationReward(tier, used, isBoss)).filter(Boolean);
 }
@@ -14766,12 +14829,59 @@ function finishNestRewardReveal(){
   G._nestShaken=true;
 }
 
-function revealAllNestDrops(){
-  const drops=G._nestRewardDrops||[];
-  if(!drops.length){
+function showStoryEquipmentPick(pool){
+  const offers=Array.isArray(pool)?pool.filter(Boolean):[];
+  if(!offers.length){
     finishNestRewardReveal();
     return;
   }
+  G._rewardScreenMode='story-equipment-pick';
+  G._pendingReward=null;
+  G._rewardsAlreadyGranted=false;
+  G._nestShaken=true;
+
+  const nest=document.getElementById('reward-nest');
+  if(nest){
+    nest.classList.remove('nest-shakeable');
+    nest.onclick=null;
+  }
+  const hint=document.getElementById('nest-shake-hint');
+  if(hint) hint.textContent='Choose 1 equipment';
+  const footnote=document.getElementById('nest-reward-footnote');
+  if(footnote) footnote.style.display='none';
+  document.getElementById('reward-sub').textContent='Pick one piece of equipment from the nest.';
+
+  const confirmBtn=document.getElementById('reward-confirm-btn');
+  confirmBtn.textContent='✓ Take This Equipment';
+  confirmBtn.className='confirm-btn';
+
+  const grid=document.getElementById('reward-grid');
+  if(!grid) return;
+  grid.style.display='';
+  grid.setAttribute('aria-hidden','false');
+  grid.innerHTML='';
+  offers.forEach(rw=>{
+    const tierCss=normalizeRewardTier(rw.tier||'grey');
+    const tierMeta=rewardTierMeta(rw.tier);
+    const c=document.createElement('div');
+    c.className=`reward-card tier-${tierCss}`;
+    c.innerHTML=`
+      <div class="reward-tier-label">${tierMeta.label||rw.tierLabel||''}</div>
+      <span class="reward-icon">${rw.icon||'⚔'}</span>
+      <div class="reward-name">${escapeHtmlRoster(rw.name||'Equipment')}</div>
+      <div class="reward-desc">${escapeHtmlRoster(rw.desc||'')}</div>`;
+    c.onclick=()=>{
+      document.querySelectorAll('#reward-grid .reward-card').forEach(x=>x.classList.remove('selected'));
+      c.classList.add('selected');
+      G._pendingReward=rw;
+      confirmBtn.className='confirm-btn visible';
+    };
+    grid.appendChild(c);
+  });
+}
+
+function revealAllNestDrops(){
+  const drops=G._nestRewardDrops||[];
   if(!G._nestRewardsCollected) G._nestRewardsCollected=[];
   const start=G._nestRewardDropIndex||0;
   for(let i=start;i<drops.length;i++){
@@ -14781,6 +14891,12 @@ function revealAllNestDrops(){
   }
   G._nestRewardDropIndex=drops.length;
   renderNestRewardCollectedTray();
+
+  const pickPool=G._storyEquipmentPickPool || G._equipmentPickPool;
+  if(Array.isArray(pickPool) && pickPool.length){
+    showStoryEquipmentPick(pickPool);
+    return;
+  }
   finishNestRewardReveal();
 }
 
@@ -14806,6 +14922,8 @@ function showRewardScreen(hasLevelUp) {
   G._pendingReward=null;
   G._pendingRewardQueue=null;
   G._pendingEndlessMutationPick=null;
+  G._storyEquipmentPickPool=null;
+  G._equipmentPickPool=null;
   G._rewardsAlreadyGranted=false;
   G._nestRewardDropIndex=0;
   G._nestRewardsCollected=[];
@@ -14813,11 +14931,11 @@ function showRewardScreen(hasLevelUp) {
 
   const defeated=typeof getDefeatedBirdsForReward==='function'?getDefeatedBirdsForReward():[];
   const isBoss=defeated.some(b=>b.isBoss)||!!G.enemy?.isBoss;
-  const useEndlessRewards=G.endlessMode&&getEncounterStage()>20;
-  const drops=useEndlessRewards&&typeof buildEndlessClearRewardDrops==='function'
+  const endlessActive=!!G.endlessMode || (typeof isEndlessRunActive==='function' && isEndlessRunActive());
+  const drops=endlessActive&&typeof buildEndlessClearRewardDrops==='function'
     ? buildEndlessClearRewardDrops(defeated,{difficulty:G.difficulty,stage:getEncounterStage(),isBoss})
     :(typeof buildNestRewardDrops==='function'
-      ? buildNestRewardDrops(defeated,{difficulty:G.difficulty,stage:getEncounterStage(),isBoss,storyMode:!G.endlessMode})
+      ? buildNestRewardDrops(defeated,{difficulty:G.difficulty,stage:getEncounterStage(),isBoss,storyMode:!endlessActive})
       : []);
 
   if(!G._owForgeReturnToForge){
@@ -14828,11 +14946,32 @@ function showRewardScreen(hasLevelUp) {
   G._nestRewardDrops=drops;
   G._defeatedEncounterBirds=[];
 
+  let equipmentPickPool=[];
+  if(typeof buildMutationRewardPool==='function'){
+    equipmentPickPool=buildMutationRewardPool();
+  }
+  G._storyEquipmentPickPool=equipmentPickPool;
+  G._equipmentPickPool=equipmentPickPool;
+
+  const grid=document.getElementById('reward-grid');
+  if(grid){
+    grid.innerHTML='';
+    grid.style.display='none';
+    grid.setAttribute('aria-hidden','true');
+  }
+
   document.getElementById('reward-title').textContent=isBoss?'👑 Boss Defeated!':'✦ Victory! ✦';
   const dropCount=drops.length;
-  document.getElementById('reward-sub').textContent=dropCount>1
-    ?`Tap the nest once — ${dropCount} rewards will fall out!`
-    :(dropCount===1?'Tap the nest once for your reward!':'No nest rewards — continue onward.');
+  const pickCount=equipmentPickPool.length;
+  if(pickCount>0){
+    document.getElementById('reward-sub').textContent=dropCount
+      ?`Tap the nest — then choose 1 of ${pickCount} equipment offers!`
+      :`Tap the nest — choose 1 of ${pickCount} equipment offers!`;
+  }else{
+    document.getElementById('reward-sub').textContent=dropCount>1
+      ?`Tap the nest once — ${dropCount} rewards will fall out!`
+      :(dropCount===1?'Tap the nest once for your reward!':'No nest rewards — continue onward.');
+  }
 
   const footnote=document.getElementById('nest-reward-footnote');
   if(footnote) footnote.style.display='none';
@@ -14844,7 +14983,7 @@ function showRewardScreen(hasLevelUp) {
   confirmBtn.textContent='Continue →';
   confirmBtn.className='confirm-btn';
 
-  if(!dropCount){
+  if(!dropCount && !pickCount){
     const hint=document.getElementById('nest-shake-hint');
     if(hint) hint.textContent='No rewards this time.';
     if(nest) nest.classList.remove('nest-shakeable');
@@ -14883,6 +15022,34 @@ function confirmReward() {
 
   if(G._rewardScreenMode==='nest' && !G._rewardsAlreadyGranted && !G._nestShaken){
     logMsg('Shake the nest to collect your rewards first.','miss');
+    return;
+  }
+
+  if(G._rewardScreenMode==='story-equipment-pick'){
+    if(!G._pendingReward){
+      logMsg('Choose an equipment first.','miss');
+      return;
+    }
+    const rw=G._pendingReward;
+    if(rw.tier==='gold'&&getGoldCardCount()>=getGoldCardLimit()&&!G._goldReplaceMode){
+      showGoldReplaceUI(rw);
+      return;
+    }
+    applySingleReward(rw);
+    G._pendingReward=null;
+    G._storyEquipmentPickPool=null;
+    G._equipmentPickPool=null;
+    G._rewardScreenMode='nest';
+    G._rewardsAlreadyGranted=true;
+    const grid=document.getElementById('reward-grid');
+    if(grid){
+      grid.style.display='none';
+      grid.setAttribute('aria-hidden','true');
+    }
+    const footnote=document.getElementById('nest-reward-footnote');
+    if(footnote) footnote.style.display='block';
+    document.getElementById('reward-confirm-btn').textContent='Continue →';
+    document.getElementById('reward-confirm-btn').className='confirm-btn visible';
     return;
   }
 
@@ -15254,9 +15421,15 @@ function showLevelUpScreen() {
   document.getElementById('lu-sub').textContent=`Lv.${G.player.birdLevel} reached! You have ${feathers} Feather${feathers===1?'':'s'} — spend each one on the stats below, then confirm once.`;
   const now=G.player.stats||{};
   const pairs=[
-    ['HP','maxHp','stat'],['ATK','atk','stat'],['DEF','def','stat'],['SPD','spd','stat'],
-    ['MATK','matk','stat'],['MDEF','mdef','stat'],['ACC','acc','stat'],
-    ['Dodge','dodge','stat'],['Max EN','energyMax','en'],
+    [ledgerStatLabel('hp',{short:true}),'maxHp','stat'],
+    [ledgerStatLabel('atk',{short:true}),'atk','stat'],
+    [ledgerStatLabel('def',{short:true}),'def','stat'],
+    [ledgerStatLabel('spd',{short:true}),'spd','stat'],
+    [ledgerStatLabel('matk',{short:true}),'matk','stat'],
+    [ledgerStatLabel('mdef',{short:true}),'mdef','stat'],
+    [ledgerStatLabel('acc',{short:true}),'acc','stat'],
+    [ledgerStatLabel('dodge',{short:true}),'dodge','stat'],
+    ['Max EN','energyMax','en'],
   ];
   const prevWrap=document.getElementById('lu-stat-preview');
   if(prevWrap){

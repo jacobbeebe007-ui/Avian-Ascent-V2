@@ -60,6 +60,14 @@
       Object.freeze({ maxStage: 999, weights: Object.freeze({ green: 0.1, blue: 0.15, purple: 0.25, gold: 0.35, orange: 0.15 }) }),
     ]),
 
+    /* Story nest choose-1-of-3: fixed rarity per stage band. Stage 20+ → no equipment. */
+    storyNestRarityByStage: Object.freeze([
+      Object.freeze({ maxStage: 5, rarity: 'grey' }),
+      Object.freeze({ maxStage: 9, rarity: 'green' }),
+      Object.freeze({ maxStage: 15, rarity: 'blue' }),
+      Object.freeze({ maxStage: 19, rarity: 'purple' }),
+    ]),
+
     /* Grove outcome overrides (outcomeType → weights). */
     groveWeights: Object.freeze({
       nest: Object.freeze({ green: 0.35, blue: 0.4, purple: 0.25 }),

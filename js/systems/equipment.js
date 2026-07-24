@@ -790,11 +790,169 @@
     };
   }
 
+  var RARITY_ORDER = ['grey', 'green', 'blue', 'purple', 'gold', 'orange'];
+
+  function countEquippedPieces(player) {
+    if (!player || !player.equipment || typeof player.equipment !== 'object') return 0;
+    var order = getSlotOrder();
+    var n = 0;
+    for (var i = 0; i < order.length; i++) {
+      if (player.equipment[order[i]]) n++;
+    }
+    return n;
+  }
+
+  function modalEquippedRarity(player) {
+    if (!player || !player.equipment) return 'grey';
+    var order = getSlotOrder();
+    var counts = Object.create(null);
+    var total = 0;
+    for (var i = 0; i < order.length; i++) {
+      var id = player.equipment[order[i]];
+      if (!id) continue;
+      var item = getItem(id);
+      if (!item) continue;
+      var rar = normalizeEquipmentRarity(item.rarity);
+      counts[rar] = (counts[rar] || 0) + 1;
+      total++;
+    }
+    if (!total) return 'grey';
+    var best = 'grey';
+    var bestN = -1;
+    var bestRank = -1;
+    for (var r = 0; r < RARITY_ORDER.length; r++) {
+      var key = RARITY_ORDER[r];
+      var c = counts[key] || 0;
+      if (c > bestN || (c === bestN && (RARITY_RANK[key] || 0) > bestRank)) {
+        best = key;
+        bestN = c;
+        bestRank = RARITY_RANK[key] || 0;
+      }
+    }
+    return best;
+  }
+
+  function bumpRarity(rarity, steps) {
+    var rar = normalizeEquipmentRarity(rarity);
+    var idx = RARITY_ORDER.indexOf(rar);
+    if (idx < 0) idx = 0;
+    var next = idx + (Math.floor(Number(steps)) || 0);
+    if (next < 0) next = 0;
+    if (next >= RARITY_ORDER.length) next = RARITY_ORDER.length - 1;
+    return RARITY_ORDER[next];
+  }
+
+  function upgradeCountForEnemyTier(tier) {
+    var t = String(tier || 'normal').toLowerCase();
+    if (t === 'boss' || t === 'lieutenant') return 2;
+    if (t === 'elite' || t === 'strong') return 1;
+    return 0;
+  }
+
+  function buildEndlessMirrorRarityBag(opts) {
+    opts = opts || {};
+    var count = Math.max(0, Math.floor(Number(opts.count)) || 0);
+    var base = normalizeEquipmentRarity(opts.baseRarity || 'grey');
+    var upgradeCount = Math.max(0, Math.floor(Number(opts.upgradeCount)) || 0);
+    upgradeCount = Math.min(upgradeCount, count);
+    var rng = opts.rng || Math.random;
+    var bag = [];
+    for (var i = 0; i < count; i++) bag.push(base);
+    if (upgradeCount > 0 && count > 0) {
+      var idxs = [];
+      for (var j = 0; j < count; j++) idxs.push(j);
+      shuffleInPlace(idxs, rng);
+      for (var u = 0; u < upgradeCount; u++) {
+        bag[idxs[u]] = bumpRarity(base, 1);
+      }
+    }
+    return bag;
+  }
+
+  function fillLoadoutFromRarityBag(classId, bag) {
+    var eq = createEmptyLoadout();
+    if (!bag || !bag.length) {
+      return { equipment: eq, filledCount: 0, rarity: 'grey' };
+    }
+    var bagIdx = 0;
+    for (var i = 0; i < STORY_FILL_SLOT_PRIORITY.length && bagIdx < bag.length; i++) {
+      var slotKey = STORY_FILL_SLOT_PRIORITY[i];
+      if (slotKey === 'offHand') {
+        var mainId = eq.mainHand;
+        var mainItem = mainId ? getItem(mainId) : null;
+        if (mainItem && (Number(mainItem.hands) || 0) === 2) continue;
+      }
+      var rarity = bag[bagIdx];
+      var itemId = pickReferenceItemForSlot(classId, slotKey, rarity);
+      if (!itemId) continue;
+      eq[slotKey] = itemId;
+      bagIdx++;
+    }
+    var filledCount = 0;
+    for (var sk in eq) {
+      if (Object.prototype.hasOwnProperty.call(eq, sk) && eq[sk]) filledCount++;
+    }
+    return {
+      equipment: eq,
+      filledCount: filledCount,
+      rarity: dominantRarityFromBag(bag),
+    };
+  }
+
+  function rollMirroredPieceLoadout(enemy, opts) {
+    opts = opts || {};
+    var classId = getEnemyClassId(enemy);
+    var player = opts.player || (globalThis.G && globalThis.G.player) || null;
+    var count = opts.pieceCount != null
+      ? Math.max(0, Math.floor(Number(opts.pieceCount)) || 0)
+      : countEquippedPieces(player);
+    var baseRarity = opts.baseRarity
+      ? normalizeEquipmentRarity(opts.baseRarity)
+      : modalEquippedRarity(player);
+    var tier = opts.tier || enemy.combatTier || enemy.enemyTier || (enemy.isBoss ? 'boss' : (enemy.isElite ? 'elite' : 'normal'));
+    var upgradeCount = opts.upgradeCount != null
+      ? Math.max(0, Math.floor(Number(opts.upgradeCount)) || 0)
+      : upgradeCountForEnemyTier(tier);
+    upgradeCount = Math.min(upgradeCount, count);
+    var seed = computeLoadoutSeed(enemy, Object.assign({}, opts, {
+      rarity: 'mirror',
+      tier: tier,
+      pieceCount: count,
+    }));
+    var rng = mulberry32(seed);
+    var bag = buildEndlessMirrorRarityBag({
+      count: count,
+      baseRarity: baseRarity,
+      upgradeCount: upgradeCount,
+      rng: rng,
+    });
+    shuffleInPlace(bag, rng);
+    var filled = fillLoadoutFromRarityBag(classId, bag);
+    var ref = findReferenceLoadout(classId, filled.rarity);
+    return {
+      equipment: filled.equipment,
+      rarity: filled.rarity,
+      referenceClass: classId,
+      totals: ref && ref.totals ? ref.totals : null,
+      seed: seed,
+      filledCount: filled.filledCount,
+      mirror: {
+        pieceCount: count,
+        baseRarity: baseRarity,
+        upgradeCount: upgradeCount,
+        bag: bag.slice(),
+      },
+    };
+  }
+
   function rollEnemyEquipmentLoadout(enemy, opts) {
     opts = opts || {};
     var storyRecipe = resolveStoryEquipmentRecipe(opts);
     if (storyRecipe) {
       return rollStoryRecipeLoadout(enemy, opts, storyRecipe);
+    }
+    if (opts.mirrorPlayerEquipment || opts.endlessMirror) {
+      return rollMirroredPieceLoadout(enemy, opts);
     }
     var classId = getEnemyClassId(enemy);
     var seed = computeLoadoutSeed(enemy, opts);
@@ -922,6 +1080,12 @@
   equipment.getEnemyClassId = getEnemyClassId;
   equipment.normalizeEquipmentRarity = normalizeEquipmentRarity;
   equipment.mapEnemyTierToRarityBand = mapEnemyTierToRarityBand;
+  equipment.countEquippedPieces = countEquippedPieces;
+  equipment.modalEquippedRarity = modalEquippedRarity;
+  equipment.bumpRarity = bumpRarity;
+  equipment.upgradeCountForEnemyTier = upgradeCountForEnemyTier;
+  equipment.buildEndlessMirrorRarityBag = buildEndlessMirrorRarityBag;
+  equipment.rollMirroredPieceLoadout = rollMirroredPieceLoadout;
   equipment.rollEnemyEquipmentLoadout = rollEnemyEquipmentLoadout;
   equipment.applyEquipmentStatsToEntity = applyEquipmentStatsToEntity;
   equipment.assignEnemyEquipmentLoadout = assignEnemyEquipmentLoadout;

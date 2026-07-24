@@ -181,6 +181,103 @@ else {
   } else ok('sell restores inventory count after round-trip');
 }
 
+// --- story nest stage → fixed rarity bands + stage 20 empty ---
+const storyBands = ctx.Avian.data.equipment.loot.storyNestRarityByStage;
+if (!Array.isArray(storyBands) || !storyBands.length) fail('missing storyNestRarityByStage');
+else {
+  const expect = [
+    [1, 'grey'], [5, 'grey'],
+    [6, 'green'], [9, 'green'],
+    [10, 'blue'], [15, 'blue'],
+    [16, 'purple'], [19, 'purple'],
+  ];
+  function rarityForStage(stage) {
+    for (const row of storyBands) {
+      if (stage <= Number(row.maxStage)) return row.rarity;
+    }
+    return null;
+  }
+  let bandFails = 0;
+  for (const [st, want] of expect) {
+    const got = rarityForStage(st);
+    if (got !== want) {
+      fail(`story nest stage ${st} rarity ${got}, expected ${want}`);
+      bandFails++;
+    }
+  }
+  if (rarityForStage(20) != null) fail('stage 20 should have no story nest rarity');
+  else if (!bandFails) ok('story nest stage rarity bands (1-5 grey … 16-19 purple; 20 none)');
+}
+
+const nestCtx = loadSandbox([
+  'js/data/display-glossary.js',
+  'js/systems/affinity.js',
+  'js/systems/nest-rewards.js',
+]);
+nestCtx.G.player = freshPlayer('sparrow', nestCtx);
+nestCtx.Avian.flags = { equipmentV2: true };
+const nest = nestCtx.Avian.systems.nestRewards;
+if (!nest || typeof nest.getStoryNestRarityForStage !== 'function') {
+  fail('getStoryNestRarityForStage missing from nest-rewards');
+} else {
+  if (nest.getStoryNestRarityForStage(3) !== 'grey') fail('nest helper stage 3 !== grey');
+  else if (nest.getStoryNestRarityForStage(12) !== 'blue') fail('nest helper stage 12 !== blue');
+  else if (nest.getStoryNestRarityForStage(20) != null) fail('nest helper stage 20 should be null');
+  else ok('nest-rewards getStoryNestRarityForStage matches bands');
+
+  const storyDrops = nest.buildNestRewardDrops([{ level: 4 }], { storyMode: true, stage: 4, difficulty: 'juvenile' });
+  const hasEquipment = (storyDrops || []).some((d) => d && (d.type === 'equipment' || d.equipmentItemId));
+  if (hasEquipment) fail('story nest drops still auto-grant equipment (should be choose-1-of-3 only)');
+  else ok('story nest drops omit equipment (bonus-only)');
+
+  const endDrops = nest.buildNestRewardDrops([{ level: 20, isBoss: true }], { storyMode: true, stage: 20, isBoss: true });
+  if ((endDrops || []).length) fail('stage 20 story nest should return no drops');
+  else ok('stage 20 story nest returns empty drops');
+}
+
+// --- display glossary labels for core stats ---
+const gloss = nestCtx.Avian.data.displayGlossary;
+const wantLabels = { hp: 'Vitality', atk: 'Might', def: 'Guard', matk: 'Focus', mdef: 'Resolve', spd: 'Agility', dodge: 'Evasion', acc: 'Precision' };
+let glossFails = 0;
+for (const [k, want] of Object.entries(wantLabels)) {
+  const got = gloss?.stats?.[k]?.display;
+  if (got !== want) {
+    fail(`glossary ${k}=${got}, expected ${want}`);
+    glossFails++;
+  }
+}
+if (typeof nestCtx.Avian.display?.statName === 'function') {
+  if (nestCtx.Avian.display.statName('atk') !== 'Might') {
+    fail('Avian.display.statName(atk) !== Might');
+    glossFails++;
+  }
+  if (nestCtx.Avian.display.statShort('def') !== 'GRD') {
+    fail('Avian.display.statShort(def) !== GRD');
+    glossFails++;
+  }
+}
+if (!glossFails) ok('display glossary Vitality/Might/Guard/… labels + short forms');
+
+// --- forced rarity rolls return matching item rarity ---
+nestCtx.G.player = freshPlayer('sparrow', nestCtx);
+let rarityMismatch = 0;
+for (const rarity of ['grey', 'green', 'blue', 'purple']) {
+  const used = new Set();
+  for (let i = 0; i < 3; i++) {
+    const card = nestCtx.Avian.equipmentLoot.rollEquipmentReward({
+      rarity,
+      stage: 8,
+      usedIds: used,
+      filterForPlayer: true,
+    });
+    if (!card) continue;
+    const item = nestCtx.Avian.equipment.getItem(card.equipmentItemId || card.id);
+    if (!item || String(item.rarity).toLowerCase() !== rarity) rarityMismatch++;
+  }
+}
+if (rarityMismatch) fail(`${rarityMismatch} forced-rarity reward cards mismatched catalogue rarity`);
+else ok('forced rarity rolls return matching catalogue rarity (3 unique × 4 tiers)');
+
 if (failed) {
   console.error(`\n[equipment-loot] ${failed} failure(s)`);
   process.exit(1);

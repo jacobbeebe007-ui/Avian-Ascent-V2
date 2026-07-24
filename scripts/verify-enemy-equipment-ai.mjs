@@ -272,6 +272,81 @@ if (countFilled(explicitRarity.equipment) < 7) {
   fail('explicit rarity path should still roll full reference kit');
 } else ok('explicit rarity path ignores story recipe when stage omitted');
 
+/* Endless mirror: piece count matches player; elite +1 / boss +2 rarity upgrades. */
+function assertMirror(label, opts, expect) {
+  const enemy = makeEnemy('rogue', 'grey', {
+    id: `mirror-${label}`,
+    isElite: opts.tier === 'elite',
+    isBoss: opts.tier === 'boss',
+  });
+  const rolled = equipment.rollMirroredPieceLoadout(enemy, {
+    pieceCount: opts.pieceCount,
+    baseRarity: opts.baseRarity || 'grey',
+    tier: opts.tier || 'normal',
+    seed: opts.seed || 4242,
+  });
+  const filled = rolled.filledCount ?? countFilled(rolled.equipment);
+  const rares = raritiesOf(rolled.equipment);
+  if (filled !== expect.count && !(expect.minCount != null && filled >= expect.minCount)) {
+    fail(`${label}: expected ${expect.count} pieces, got ${filled} [${rares.join(',')}]`);
+    return;
+  }
+  if (expect.baseOnly && rares.length && !rares.every((r) => r === expect.baseOnly || r === expect.upgraded)) {
+    fail(`${label}: unexpected rarities ${rares.join(',')}`);
+    return;
+  }
+  if (expect.upgradedCount != null) {
+    const up = rares.filter((r) => r === expect.upgraded).length;
+    if (up !== expect.upgradedCount) {
+      fail(`${label}: expected ${expect.upgradedCount} ${expect.upgraded}, got ${up} in ${rares.join(',')}`);
+      return;
+    }
+  }
+  ok(`${label}: ${filled} pieces (${rares.join('+') || 'none'})`);
+}
+
+assertMirror('empty', { pieceCount: 0, tier: 'boss' }, { count: 0, upgradedCount: 0, upgraded: 'green' });
+assertMirror('normal-3', { pieceCount: 3, baseRarity: 'grey', tier: 'normal' }, {
+  count: 3, baseOnly: 'grey', upgraded: 'green', upgradedCount: 0,
+});
+assertMirror('elite-3', { pieceCount: 3, baseRarity: 'grey', tier: 'elite' }, {
+  count: 3, upgraded: 'green', upgradedCount: 1,
+});
+assertMirror('boss-4', { pieceCount: 4, baseRarity: 'grey', tier: 'boss' }, {
+  count: 4, upgraded: 'green', upgradedCount: 2,
+});
+assertMirror('elite-1', { pieceCount: 1, baseRarity: 'blue', tier: 'elite' }, {
+  count: 1, upgraded: 'purple', upgradedCount: 1,
+});
+
+if (typeof equipment.countEquippedPieces === 'function') {
+  const p = {
+    equipment: equipment.createEmptyLoadout(),
+  };
+  const order = equipment.getSlotOrder();
+  const greyItem = Object.values(Avian.data.equipment.items).find((it) => it && it.rarity === 'grey' && it.slot === 'Weapon');
+  if (greyItem && order.includes('mainHand')) {
+    p.equipment.mainHand = greyItem.id;
+    p.equipment.armour = Object.values(Avian.data.equipment.items).find((it) => it && it.rarity === 'grey' && it.slot === 'Armour')?.id || null;
+    p.equipment.helmet = Object.values(Avian.data.equipment.items).find((it) => it && it.rarity === 'grey' && it.slot === 'Helmet')?.id || null;
+    const n = equipment.countEquippedPieces(p);
+    const enemy = makeEnemy('rogue', 'grey', { id: 'mirror-from-player' });
+    equipment.assignEnemyEquipmentLoadout(enemy, {
+      mirrorPlayerEquipment: true,
+      player: p,
+      tier: 'normal',
+      seed: 99,
+    });
+    const filled = countFilled(enemy.equipment);
+    if (filled !== n) fail(`player mirror count: expected ${n}, got ${filled}`);
+    else ok(`player mirror count matches equipped (${n})`);
+  } else {
+    ok('player mirror count skipped (no grey sample items)');
+  }
+} else {
+  fail('countEquippedPieces not exported');
+}
+
 if (failed) {
   console.error(`\n[enemy-equipment-ai] ${failed} failure(s)`);
   process.exit(1);

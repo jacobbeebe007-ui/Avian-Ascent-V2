@@ -86,15 +86,31 @@ const bossPick = g.pickEndlessRosterEnemyId(40, true, 15);
 const bossRow = g.getEnemyRosterRow(bossPick);
 assert(bossRow && bossRow.isBoss, 'boss pick is boss');
 
-// Endless reward drops: 2 per defeated bird
-g.Avian.mutations.rollMutationReward = () => ({ id: 'mut-test', name: 'Test Mut', tier: 'green' });
+// Endless reward drops: heal-only per bird (equipment is choose-1-of-3 in UI)
+g.Avian.flags = { equipmentV2: true };
+g.Avian.equipmentLoot = {
+  rollEquipmentReward: () => ({ id: 'eq-test', type: 'equipment', name: 'Test Eq', tier: 'green' }),
+};
 const drops = g.buildEndlessClearRewardDrops(
   [{ level: 12, isBoss: false }, { level: 14, isBoss: true }],
   { difficulty: 'juvenile', stage: 32 }
 );
-assert(drops.length === 4, 'two birds => four drops (heal+mutation each)');
-assert(drops.filter((d) => d.type === 'combat_item').length === 2, 'two heals');
-assert(drops.filter((d) => d.type === 'mutation').length === 2, 'two mutations');
+assert(drops.length === 2, 'two birds => two heal drops (equipment via pick UI)');
+assert(drops.every((d) => d.type === 'combat_item'), 'endless clear drops are heals only');
+assert(!drops.some((d) => d.type === 'equipment' || d.type === 'mutation'), 'endless clear omits equipment/mutation');
+
+const endlessNest = g.buildNestRewardDrops([{ level: 8 }], { storyMode: false, stage: 8, difficulty: 'juvenile' });
+assert(!endlessNest.some((d) => d.type === 'equipment' || d.equipmentItemId), 'endless nest branch omits equipment');
+
+loadScript('js/systems/endless-map.js');
+const map = g.EndlessMap.createEndlessMapState('verify-seed', 0);
+const start = map.nodes.find((n) => n.type === 'start');
+const boss = map.nodes.find((n) => n.type === 'boss');
+assert(start && boss, 'map has start and boss');
+assert(start.y > boss.y, 'start is below boss (bottom-to-top climb)');
+const posStart = g.EndlessMap.getNodeDisplayPosition(start, map);
+const posBoss = g.EndlessMap.getNodeDisplayPosition(boss, map);
+assert(posStart.y > posBoss.y, 'display Y places start below boss');
 
 // Utility classification
 const utilRow = {

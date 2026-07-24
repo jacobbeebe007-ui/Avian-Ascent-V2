@@ -20,6 +20,7 @@ Endless mode opens a branching black node map (`#screen-endless-map`) instead of
 `choose path → (fight → nest reward) | rest | merchant | unknown → choose path`, forever.
 
 - **Segments:** ~12 content floors + start + boss. After the segment boss reward, a new segment generates. No act end.
+- **Layout:** Start at the **bottom**, boss at the **top** (climb upward).
 - **Room weights (non-boss):** Normal 53%, Elite 8%, Rest 12%, Merchant 5%, Unknown 22%.
 - **Rest:** Grants a **30% Max HP shield** for the next combat (not HP heal). Stored as `pendingRestShieldPct`, applied after `resetForNewBattle`.
 - **Merchant:** Opens Stork shop; exiting returns to the map.
@@ -52,16 +53,20 @@ If Endless somehow runs without a map state:
 
 With the map active, bosses are segment-end nodes and shops are Merchant (or Unknown→Merchant) nodes.
 
-## Enemy roster & mutations (endless)
+## Enemy roster & equipment (endless)
 
 - Normal endless enemies are picked from `normalByLevel` at the player's bird level (±1 for variety), clamped 1–20.
 - Boss endless enemies use `bossesByLevel` at the nearest boss tier (10 / 20 / 30) with effective level at player level or player level + 1.
-- Map elites use elite tier stats; enemy mutations still mirror the player's equipped mutation **count** and tiers.
+- Enemy **equipment piece count** mirrors the player's currently equipped slot count when the fight starts.
+- Base rarity is the player's modal equipped rarity (`grey` fallback).
+- **Elite:** same count; **1** piece is +1 rarity tier above that base.
+- **Boss:** same count; **2** pieces are +1 rarity tier above that base (capped at orange).
 
-## Rewards (endless map / stage 21+)
+## Rewards (endless map)
 
-- Each defeated enemy grants **1 heal** and **1 mutation** (2 drops per bird), via `buildEndlessClearRewardDrops`, when endless run rewards are active.
-- Treasure rooms grant shinies + a mutation, then return to the map (no combat).
+- Nest auto-grants optional **healing** (and sometimes shinies); equipment is a **choose 1 of 3** pick (same UX as Story).
+- Pick rarities follow endless battle/boss reward tier tables.
+- Treasure rooms grant shinies + equipment, then return to the map (no combat).
 
 ## Stage 20 semantics
 

@@ -56,12 +56,34 @@
     return Number(asp.neutralMod) || 1;
   }
 
-  function displayStatName(ledgerKey) {
+  function glossaryStatEntry(ledgerKey) {
     var g = Avian.data && Avian.data.displayGlossary;
     var stats = g && g.stats;
+    if (!stats) return null;
     var k = String(ledgerKey || '').toLowerCase();
-    if (stats && stats[k] && stats[k].display) return stats[k].display;
+    if (k === 'maxhp' || k === 'hp') return stats.hp || null;
+    if (k === 'critmult' || k === 'critdamage') return stats.critDamage || null;
+    if (k === 'critchance') return stats.critChance || null;
+    if (stats[k]) return stats[k];
+    return null;
+  }
+
+  function displayStatName(ledgerKey) {
+    var entry = glossaryStatEntry(ledgerKey);
+    if (entry && entry.display) return entry.display;
+    var k = String(ledgerKey || '').toLowerCase();
+    if (k === 'armorpen' || k === 'physicalpen') return 'Martial Penetration';
+    if (k === 'magicpen') return 'Magic Penetration';
     return String(ledgerKey || '');
+  }
+
+  function displayStatShort(ledgerKey) {
+    var entry = glossaryStatEntry(ledgerKey);
+    if (entry && entry.short) return entry.short;
+    var k = String(ledgerKey || '').toLowerCase();
+    if (k === 'armorpen' || k === 'physicalpen') return 'MPen';
+    if (k === 'magicpen') return 'MgPen';
+    return displayStatName(ledgerKey);
   }
 
   function displayDamageChannel(raw) {
@@ -97,6 +119,7 @@
   };
   Avian.display = {
     statName: displayStatName,
+    statShort: displayStatShort,
     damageChannel: displayDamageChannel,
     familyName: displayFamilyName,
     concept: conceptLabel,
