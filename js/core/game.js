@@ -3670,14 +3670,35 @@ const _OW_STATE_KEY = globalThis.AVIAN_OW_KEYS?.STATE ?? 'avianAscent_overworld'
 const _OW_NAV_KEY = globalThis.AVIAN_OW_KEYS?.NAV ?? 'avianAscent_nav';
 
 function flyAgain() {
+  const birdKey = G.player?.birdKey || G.selected;
+  const storyRetry = !G.endlessMode && !!birdKey && !!(typeof BIRDS !== 'undefined' && BIRDS[birdKey]);
+  const keptDifficulty = G.difficulty || G._selectedDifficulty || 'juvenile';
+
   deleteSave();
   try { localStorage.removeItem(_OW_STATE_KEY); localStorage.removeItem(_OW_NAV_KEY); } catch (_) {}
-  G.player = null;
   G.enemy = null;
   G.phase = null;
   G.battleOver = true;
   G.endlessMap = null;
   G._endlessMapCombatKind = null;
+
+  /* Story defeat → Try Again: same bird at Lv.1 on the story map spawn. */
+  if (storyRetry) {
+    G.selected = birdKey;
+    G.endlessMode = false;
+    G._selectedDifficulty = keptDifficulty;
+    G.difficulty = keptDifficulty;
+    if (typeof ensureUIState === 'function') {
+      const ui = ensureUIState();
+      if (ui) ui.gameMode = 'story';
+    }
+    if (typeof startGame === 'function') {
+      startGame();
+      return;
+    }
+  }
+
+  G.player = null;
   takeFlightToSelect();
 }
 globalThis.flyAgain = flyAgain;
@@ -6662,19 +6683,22 @@ async function launchStoryOverworld(){
     if (!owMap && typeof globalThis.cloneDefaultStoryMap === 'function') {
       owMap = globalThis.cloneDefaultStoryMap();
     }
-    if (useCustom && owMap && typeof globalThis.seedOwRunToStartMap === 'function') {
+    if (owMap && typeof globalThis.seedOwRunToStartMap === 'function') {
       const seeded = globalThis.seedOwRunToStartMap(owMap);
       localStorage.setItem(_OW_STATE_KEY, JSON.stringify({
         nodeId: seeded?.spawnIdx ?? 0,
         birdKey: G.selected,
       }));
     } else {
-      // Demo + Test (startMapId main): reset world progress and spawn on main node 0.
-      // Test map body is fetched in blackstone_overworld_new.html via mission map variant.
+      // Fallback when map seed helper unavailable: reset progress and land on spawn/start node.
       if (typeof globalThis.resetOwCustomProgress === 'function') globalThis.resetOwCustomProgress();
       if (typeof globalThis.clearOwMapStack === 'function') globalThis.clearOwMapStack();
       if (typeof globalThis.setOwActiveMapId === 'function') globalThis.setOwActiveMapId('main');
-      localStorage.setItem(_OW_STATE_KEY, JSON.stringify({ nodeId: 0, birdKey: G.selected }));
+      let spawnIdx = 0;
+      if (owMap && typeof globalThis.findOwSpawnNodeIndex === 'function') {
+        spawnIdx = globalThis.findOwSpawnNodeIndex(owMap.nodes || []) || 0;
+      }
+      localStorage.setItem(_OW_STATE_KEY, JSON.stringify({ nodeId: spawnIdx, birdKey: G.selected }));
     }
     localStorage.removeItem(_OW_NAV_KEY);
     window.location.href = 'blackstone_overworld_new.html';
@@ -16298,7 +16322,10 @@ function showDefeat(){
   const stageLabel=G.endlessMode&&G.stage>20?`Endless Battle ${G.endlessBattle}`:`Stage ${G.stage}`;
   document.getElementById('gameover-msg').textContent=`${G.player.name} fell at ${stageLabel}. Lv.${G.player.birdLevel}. Rise again.`;
   const flyAgainBtn=document.getElementById('fly-again-btn');
-  if(flyAgainBtn) flyAgainBtn.style.display='inline-block';
+  if(flyAgainBtn){
+    flyAgainBtn.style.display='inline-block';
+    flyAgainBtn.textContent=G.endlessMode?'Fly Again':'Try Again';
+  }
   hideStoryCinematic();
   const endEvt={won:false, bird:G.player?.birdKey||'unknown', stageReached:G.stage||1, deathCause:G._lastDeathCause||'hp_zero', endless:!!G.endlessMode};
   AvianEvents.emit('run:end', endEvt);
