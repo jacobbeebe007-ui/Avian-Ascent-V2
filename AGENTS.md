@@ -1,0 +1,20 @@
+# AGENTS.md
+
+## Cursor Cloud specific instructions
+
+### What this is
+Avian Ascent — Blakiston's Court is a **fully static, client-side browser game**. There is **no backend, API, or database**. Source JS under `js/` is concatenated (no bundler/IIFE) so top-level functions stay on `window` for inline `onclick` handlers in `index.html`. See `README.txt` for the authoritative structure/workflow.
+
+### Bundle (non-obvious gotcha)
+`js/avian-game.bundle.js` is **gitignored and generated** — `index.html` loads it. After pulling or editing any source file in `js/`, rebuild it with `node scripts/build-bundle.js` (zero-deps, ~instant). If it's missing you'll get an alert: "js/avian-game.bundle.js is missing".
+- `npm run dev` (Vite) regenerates the bundle in-memory on **every request** via middleware, so no manual rebuild is needed while using the dev server.
+- `file://`, `npm run preview:static`, and the Playwright smoke test all require the bundle to be built first.
+
+### Run (dev)
+- `npm run dev -- --host 0.0.0.0` → Vite dev server on port **5173** (open `/index.html`). This is the recommended dev workflow (auto-reload).
+- Player entry flow: title "TAKE FLIGHT" → hub "BEGIN ASCENT" → pick a bird → "TAKE FLIGHT" → Mission Map → encounter → combat.
+
+### Test / lint
+- `npm test` runs the full CI chain (`build-bundle` → `ci-check` → many `verify-*.mjs` → `test-aspects` → Playwright `smoke`). It builds the bundle itself, so no separate build step is needed first.
+- The `smoke` step uses Playwright and needs the Chromium browser binary (installed by the startup update script via `npx playwright install chromium`).
+- There is **no separate linter/formatter** configured; `npm test` is the validation gate (JS parse checks + CSS sprite-path existence).
