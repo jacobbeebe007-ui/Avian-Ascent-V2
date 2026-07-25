@@ -101,6 +101,46 @@ if (/ENEMY_ENERGY_START = 4/.test(gameSrc) && /ENEMY_ENERGY_REGEN = 3/.test(game
 if (/ed\.stats\.en=prof\.startEN/.test(gameSrc)) ok('OW enemy stats.en uses startEN');
 else fail('OW enemy stats.en still not startEN');
 
+if (!/function applyEnemyStatsFromPlayerProgression/.test(gameSrc)) {
+  fail('applyEnemyStatsFromPlayerProgression missing');
+} else {
+  ok('enemy progression parity helper present');
+}
+if (!/sumPlayerProgressionFlat/.test(gameSrc) || !/_fromPlayerProgression/.test(gameSrc)) {
+  fail('enemy player-stat mirror wiring incomplete');
+} else {
+  ok('enemy mirrors player vitality/stat progression');
+}
+
+/* Runtime: sparrow L1 via progression should be near birds-v2 base (~57), not old roster (~37). */
+try {
+  for (const rel of [
+    'js/data/birds-v2.js',
+    'js/data/progression/level-growth.js',
+    'js/data/progression/star-growth.js',
+    'js/data/progression/rules.js',
+    'js/data/enemy-scaling-profiles.js',
+    'js/data/combat-config.js',
+    'js/systems/bird-progression.js',
+  ]) {
+    vm.runInContext(load(rel), ctx, { filename: rel });
+  }
+  const base = ctx.Avian.data.birdsV2?.sparrow?.stats || ctx.Avian.data.birds?.sparrow?.stats;
+  const hpBase = Number(base?.maxHp ?? base?.hp) || 0;
+  const grown = ctx.Avian.birdProgression.computeFinalStats({
+    base: { hp: hpBase, atk: base.atk, def: base.def, matk: base.matk, mdef: base.mdef, spd: base.spd },
+    className: 'rogue',
+    level: 1,
+    totalStars: 0,
+    tier: 'grey',
+  });
+  const grownHp = Number(grown.ledger?.maxHp ?? grown.ledger?.hp) || 0;
+  if (hpBase >= 50 && grownHp >= 50) ok(`player-parity vitality base/grown ${hpBase}/${grownHp} (roster was ~37)`);
+  else fail(`expected v0.6 vitality ≥50, got base=${hpBase} grown=${grownHp}`);
+} catch (err) {
+  fail('progression vitality check threw: ' + err.message);
+}
+
 if (failed) {
   console.error(`\n[wb-ui-sync] ${failed} failure(s)`);
   process.exit(1);

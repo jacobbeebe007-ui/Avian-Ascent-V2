@@ -3882,6 +3882,201 @@ function buildOwEnemyDraftFromBirdKey(bk, encounterStage, slotIdx){
   return buildStoryEnemyFromBirdKey(resolved, encounterStage, {isBoss,bossTitle});
 }
 
+/**
+ * Rebuild enemy core stats with the same v0.6 vitality + level growth the player uses
+ * (birds-v2 base → birdProgression.computeFinalStats). Roster rows keep identity/AI;
+ * their baked HP was pre-rebase and did not track player progression.
+ */
+function resolveEnemyProgressionProfileId(ed, opts={}){
+  if(ed?.isBoss || opts.isBoss) return 'boss';
+  if(ed?.isElite || opts.forceElite) return 'elite';
+  if(opts.isEndless) return 'standard';
+  return 'standard';
+}
+
+function resolveEnemyProgressionTier(ed, level){
+  const rarity=String(ed?.equipmentRarity||ed?.combatTier||'').toLowerCase();
+  if(['grey','green','blue','purple','gold','orange'].includes(rarity)) return rarity;
+  const milestones=Avian?.data?.enemyScalingProfiles?.milestones||{};
+  let best='grey';
+  let bestLv=-1;
+  for(const [tier, row] of Object.entries(milestones)){
+    const ref=Number(row?.referenceLevel)||0;
+    if(ref<=level && ref>=bestLv){ best=tier; bestLv=ref; }
+  }
+  return best;
+}
+
+function sumPlayerProgressionFlat(statKey){
+  const L=G?.player?._statLedger;
+  if(!L) return 0;
+  const buckets=[L.fromLevel, L.fromCardTier, L.fromUpgrades];
+  let sum=0;
+  for(const b of buckets){
+    if(!b) continue;
+    sum+=Number(b[statKey])||0;
+  }
+  return sum;
+}
+
+function playerHasManualProgressionFlats(){
+  const L=G?.player?._statLedger;
+  if(!L) return false;
+  for(const bag of [L.fromLevel, L.fromCardTier, L.fromUpgrades]){
+    if(!bag) continue;
+    for(const k of Object.keys(bag)){
+      if((Number(bag[k])||0)!==0) return true;
+    }
+  }
+  return false;
+}
+
+function applyEnemyStatsFromPlayerProgression(ed, opts={}){
+  if(!ed) return null;
+  const birdKey=ed.birdKey||ed.templateKey;
+  const bd=(birdKey && typeof BIRDS!=='undefined' && BIRDS[birdKey]) ? BIRDS[birdKey] : null;
+  const v2=(typeof Avian?.getBirdV2==='function'?Avian.getBirdV2(birdKey):null)
+    ||(Avian?.data?.birdsV2&&birdKey?Avian.data.birdsV2[birdKey]:null);
+  const baseSrc=v2?.stats||bd?.stats||null;
+  if(!baseSrc) return null;
+
+  const playerLv=Math.max(1, Math.floor(Number(opts.playerBirdLevel)||G?.player?.birdLevel||1));
+  const storyLv=Math.max(1, Math.floor(Number(ed.storyLevel||ed.effectiveLevel)||1));
+  /* Match player power: at least the player's bird level; never below authored roster level. */
+  let level=Math.max(storyLv, playerLv);
+  const profileId=resolveEnemyProgressionProfileId(ed, opts);
+  const profiles=Avian?.data?.enemyScalingProfiles?.profiles||{};
+  const profile=profiles[profileId]||profiles.standard||null;
+  if(profile && Number.isFinite(profile.levelOffset)){
+    level=Math.max(1, Math.min(30, level+Number(profile.levelOffset)));
+  }
+
+  const cls=String(ed.enemyClass||ed.class||bd.class||'rogue').toLowerCase();
+  const tier=resolveEnemyProgressionTier(ed, level);
+  const milestone=Avian?.data?.enemyScalingProfiles?.milestones?.[tier];
+  const starsInTier=Number(profile?.starsInTier);
+  const totalStars=Number.isFinite(starsInTier)
+    ? starsInTier
+    : Math.max(0, Number(milestone?.totalStars)||0);
+
+  const baseHp=Number(baseSrc.maxHp??baseSrc.hp)||30;
+  const base={
+    hp:baseHp,
+    maxHp:baseHp,
+    atk:Number(baseSrc.atk)||0,
+    def:Number(baseSrc.def)||0,
+    matk:Number(baseSrc.matk)||0,
+    mdef:Number(baseSrc.mdef)||0,
+    spd:Number(baseSrc.spd)||0,
+    dodge:Number(baseSrc.dodge??ed.dodge??ed.stats?.dodge)||0,
+    acc:Number(baseSrc.acc??ed.acc??ed.stats?.acc)||0,
+    critChance:Number(baseSrc.critChance??ed.stats?.critChance)||5,
+    critMult:Math.max(1.1, Number(baseSrc.critMult??ed.cd??ed.stats?.critMult)||1.5),
+  };
+
+  let core={
+    maxHp:base.maxHp,
+    atk:base.atk,
+    def:base.def,
+    matk:base.matk,
+    mdef:base.mdef,
+    spd:base.spd,
+  };
+
+  if(playerHasManualProgressionFlats()){
+    /* Same vitality/stat increases the player spent via feathers / card / upgrades. */
+    core.maxHp+=sumPlayerProgressionFlat('maxHp');
+    core.atk+=sumPlayerProgressionFlat('atk');
+    core.def+=sumPlayerProgressionFlat('def');
+    core.matk+=sumPlayerProgressionFlat('matk');
+    core.mdef+=sumPlayerProgressionFlat('mdef');
+    core.spd+=sumPlayerProgressionFlat('spd');
+    core.dodge=(base.dodge||0)+sumPlayerProgressionFlat('dodge');
+  } else if(typeof Avian?.birdProgression?.computeFinalStats==='function'){
+    /* Workbook level/star/tier growth (same pipeline as unequipped player). */
+    const result=Avian.birdProgression.computeFinalStats({
+      base:{hp:base.hp,atk:base.atk,def:base.def,matk:base.matk,mdef:base.mdef,spd:base.spd},
+      className:cls,
+      level,
+      totalStars,
+      tier,
+      equipmentPct:{},
+    });
+    let ledger=result?.ledger||{};
+    if(typeof Avian.birdProgression.applyEnemyProfile==='function'){
+      ledger=Avian.birdProgression.applyEnemyProfile(ledger, profileId)||ledger;
+    }
+    core={
+      maxHp:Number(ledger.maxHp??ledger.hp)||base.maxHp,
+      atk:Number(ledger.atk)||base.atk,
+      def:Number(ledger.def)||base.def,
+      matk:Number(ledger.matk)||base.matk,
+      mdef:Number(ledger.mdef)||base.mdef,
+      spd:Number(ledger.spd)||base.spd,
+      dodge:base.dodge,
+    };
+  } else {
+    /* Fallback: class-weighted feathers at 1× per player level (not the legacy 3×). */
+    const featherStats={...base, hp:base.maxHp};
+    for(let i=0;i<Math.max(0,playerLv-1);i++) applyEnemyFeatherFromPlayerMirror(featherStats, cls);
+    core={
+      maxHp:featherStats.maxHp,
+      atk:featherStats.atk,
+      def:featherStats.def,
+      matk:featherStats.matk,
+      mdef:featherStats.mdef,
+      spd:featherStats.spd,
+      dodge:featherStats.dodge,
+    };
+  }
+
+  if(typeof Avian?.birdProgression?.applyEnemyProfile==='function' && playerHasManualProgressionFlats()){
+    const profiled=Avian.birdProgression.applyEnemyProfile({
+      hp:core.maxHp, maxHp:core.maxHp, atk:core.atk, def:core.def, matk:core.matk, mdef:core.mdef, spd:core.spd,
+    }, profileId);
+    if(profiled){
+      core.maxHp=Number(profiled.maxHp??profiled.hp)||core.maxHp;
+      core.atk=Number(profiled.atk)||core.atk;
+      core.def=Number(profiled.def)||core.def;
+      core.matk=Number(profiled.matk)||core.matk;
+      core.mdef=Number(profiled.mdef)||core.mdef;
+      core.spd=Number(profiled.spd)||core.spd;
+    }
+  }
+
+  const diffMult=Number(opts.diffMult);
+  const mult=Number.isFinite(diffMult)&&diffMult>0?diffMult:1;
+  const hp=roundCombatStat(Math.max(0.01, core.maxHp*mult),0.01);
+  const atk=roundCombatStat(Math.max(0.01, core.atk*mult),0.01);
+  const def=roundCombatStat(Math.max(0, core.def*mult),0);
+  const matk=roundCombatStat(Math.max(0, core.matk*mult),0.01);
+  const mdef=roundCombatStat(Math.max(0, core.mdef*mult),0);
+  const spd=roundCombatStat(Math.max(0.01, core.spd*mult),0.01);
+  const dodge=roundCombatStat(Math.max(0,(core.dodge!=null?core.dodge:base.dodge)),0);
+  const acc=roundCombatStat(base.acc,0);
+  const critChance=roundCombatStat(base.critChance,0);
+  const enProf=getEnemyEnergyProfile();
+
+  return {
+    hp,
+    maxHp:hp,
+    atk,
+    def,
+    matk,
+    mdef,
+    spd,
+    dodge,
+    acc,
+    cc:Math.max(0.05, Math.min(0.95,(critChance||5)/100)),
+    cd:base.critMult,
+    en:enProf.startEN,
+    enemyClass:cls,
+    effectiveLevel:level,
+    tier,
+    _fromPlayerProgression:true,
+  };
+}
+
 /** Apply the same scaling merge loadStage uses; mutates ed in place. */
 function mergeScaledStatsIntoEnemy(ed, encounterStage){
   if(!ed) return ed;
@@ -3892,12 +4087,19 @@ function mergeScaledStatsIntoEnemy(ed, encounterStage){
     diffMult,
     playerBirdLevel:Math.max(1, Math.floor(G.player?.birdLevel||1)),
     forceElite: !!(ed.isElite || G._endlessMapCombatKind==='elite' || G.endlessMap?.pendingCombatKind==='elite'),
+    isBoss:!!ed.isBoss,
   };
-  const scaled=ed._storyDirectStats ? {
-    hp:ed.hp,maxHp:ed.maxHp,atk:ed.atk,def:ed.def,spd:ed.spd,acc:ed.acc,dodge:ed.dodge,mdef:ed.mdef,matk:ed.matk,cc:ed.cc||0.05,cd:ed.cd||1.5,en:ed.energyMax||ed.stats?.en||getEnergyProfile(normalizeBirdSizeForEnergy(ed.size)).maxEN,enemyClass:ed.enemyClass,effectiveLevel:ed.storyLevel||0,
-  } : (ed.isBoss
-    ? buildScaledBoss(ed, encounterStage, scaleOpts)
-    : buildScaledEnemy(ed, encounterStage, scaleOpts));
+  let scaled=null;
+  if(ed._storyDirectStats){
+    scaled=applyEnemyStatsFromPlayerProgression(ed, scaleOpts);
+  }
+  if(!scaled){
+    scaled=ed._storyDirectStats ? {
+      hp:ed.hp,maxHp:ed.maxHp,atk:ed.atk,def:ed.def,spd:ed.spd,acc:ed.acc,dodge:ed.dodge,mdef:ed.mdef,matk:ed.matk,cc:ed.cc||0.05,cd:ed.cd||1.5,en:getEnemyEnergyProfile().startEN,enemyClass:ed.enemyClass,effectiveLevel:ed.storyLevel||0,
+    } : (ed.isBoss
+      ? buildScaledBoss(ed, encounterStage, scaleOpts)
+      : buildScaledEnemy(ed, encounterStage, scaleOpts));
+  }
   ed.hp=scaled.hp; ed.maxHp=scaled.maxHp;
   ed.atk=scaled.atk; ed.def=scaled.def; ed.spd=scaled.spd;
   ed.acc=scaled.acc; ed.dodge=scaled.dodge;
@@ -3912,6 +4114,7 @@ function mergeScaledStatsIntoEnemy(ed, encounterStage){
   ed.energyRegen=prof.regenEN;
   ed.energy=prof.startEN;
   ed.stats.en=prof.startEN;
+  if(scaled._fromPlayerProgression) ed._progressionParityApplied=true;
   if (!ed._mutationsApplied) {
     ed._statBaseBeforeMutations = {
       atk: Number(ed.stats.atk) || 0,
@@ -4739,8 +4942,6 @@ function buildStoryEnemyFromBirdKey(birdKey, stage, opts={}){
     ? getEnemyLevelForDifficulty(plv, G.difficulty||'juvenile')
     : plv;
   const cls=String(bd.class||'striker').toLowerCase();
-  const featherTotal=3*level;
-  for(let i=0;i<featherTotal;i++) applyEnemyFeatherFromPlayerMirror(stats,cls);
   const enemyStub={birdKey, abilities:[], familyEvolutionState:{}};
   if(typeof materializeEnemySkillsFromWorkbookKit==='function'){
     materializeEnemySkillsFromWorkbookKit(enemyStub,birdKey,level,cls,null);
@@ -4749,22 +4950,11 @@ function buildStoryEnemyFromBirdKey(birdKey, stage, opts={}){
   }
   const evolvedSlots=getStoryEvolvedSlotCount(level);
   const diffMult = DIFFICULTIES[G.difficulty||'juvenile']?.mult || 1;
-  stats.maxHp=roundCombatStat(Math.max(0.01, stats.maxHp*diffMult), 0.01);
-  stats.hp=stats.maxHp;
-  stats.atk=roundCombatStat(Math.max(0.01, stats.atk*diffMult), 0.01);
-  stats.matk=roundCombatStat(Math.max(0.01, stats.matk*diffMult), 0.01);
-  if(opts.isBoss){
-    stats.maxHp=roundCombatStat(Math.max(0.01, stats.maxHp*STORY_BOSS_STAT_MULT.hp), 0.01);
-    stats.hp=stats.maxHp;
-    stats.atk=roundCombatStat(Math.max(0.01, stats.atk*STORY_BOSS_STAT_MULT.atk), 0.01);
-    stats.matk=roundCombatStat(Math.max(0.01, stats.matk*STORY_BOSS_STAT_MULT.matk), 0.01);
-  }
-  normalizeCombatStats(stats);
   const size=bd.size||'medium';
   const enProf=getEnemyEnergyProfile();
   const aiStyle=(['predator','striker'].includes(cls)?'aggressive':(cls==='tank'?'defensive':(cls==='trickster'?'trickster':'cautious')));
   const aiPersonality=typeof inferAIPersonalityFromClass==='function'?inferAIPersonalityFromClass(cls):inferAIPersonalityFromStyle(aiStyle,bd.name);
-  return {
+  const draft={
     id:`story_${birdKey}_${stage}_${Math.floor(Math.random()*1e6)}`,
     name:bd.name,
     birdKey,
@@ -4774,7 +4964,7 @@ function buildStoryEnemyFromBirdKey(birdKey, stage, opts={}){
     aiStyle,
     aiPersonality,
     abilities:JSON.parse(JSON.stringify(enemyStub.abilities||[])),
-    stats:{...stats,en:enProf.maxEN},
+    stats:{...stats,en:enProf.startEN},
     hp:stats.hp,maxHp:stats.maxHp,atk:stats.atk,def:stats.def,spd:stats.spd,acc:stats.acc,dodge:stats.dodge,mdef:stats.mdef,matk:stats.matk,
     cc:Math.max(0.05,Math.min(0.95,(stats.critChance||5)/100)), cd:stats.critMult||1.5,
     energyMax:enProf.maxEN,energy:enProf.startEN,energyRegen:enProf.regenEN,
@@ -4783,6 +4973,48 @@ function buildStoryEnemyFromBirdKey(birdKey, stage, opts={}){
     storyLevel:level, storyEvolvedSlots:evolvedSlots,
     _storyDirectStats:true,
   };
+  const progressed=applyEnemyStatsFromPlayerProgression(draft,{
+    playerBirdLevel:plv,
+    diffMult,
+    isBoss:!!opts.isBoss,
+    isEndless:false,
+  });
+  if(progressed){
+    draft.hp=progressed.hp; draft.maxHp=progressed.maxHp;
+    draft.atk=progressed.atk; draft.def=progressed.def;
+    draft.matk=progressed.matk; draft.mdef=progressed.mdef;
+    draft.spd=progressed.spd; draft.dodge=progressed.dodge; draft.acc=progressed.acc;
+    draft.cc=progressed.cc; draft.cd=progressed.cd;
+    draft.effectiveLevel=progressed.effectiveLevel;
+    draft.stats={
+      hp:draft.hp,maxHp:draft.maxHp,atk:draft.atk,def:draft.def,spd:draft.spd,
+      acc:draft.acc,dodge:draft.dodge,mdef:draft.mdef,matk:draft.matk,
+      cc:draft.cc,cd:draft.cd,critChance:Math.round((draft.cc||0.05)*100),critMult:draft.cd,
+      en:enProf.startEN,
+    };
+    /* Boss vitality/offence already applied via enemy-scaling-profiles.boss. */
+    draft._progressionParityApplied=true;
+  } else {
+    /* Legacy fallback if progression unavailable */
+    for(let i=0;i<Math.max(0,level-1);i++) applyEnemyFeatherFromPlayerMirror(stats,cls);
+    stats.maxHp=roundCombatStat(Math.max(0.01, stats.maxHp*diffMult), 0.01);
+    stats.hp=stats.maxHp;
+    stats.atk=roundCombatStat(Math.max(0.01, stats.atk*diffMult), 0.01);
+    stats.matk=roundCombatStat(Math.max(0.01, stats.matk*diffMult), 0.01);
+    if(opts.isBoss){
+      stats.maxHp=roundCombatStat(Math.max(0.01, stats.maxHp*STORY_BOSS_STAT_MULT.hp), 0.01);
+      stats.hp=stats.maxHp;
+      stats.atk=roundCombatStat(Math.max(0.01, stats.atk*STORY_BOSS_STAT_MULT.atk), 0.01);
+      stats.matk=roundCombatStat(Math.max(0.01, stats.matk*STORY_BOSS_STAT_MULT.matk), 0.01);
+    }
+    normalizeCombatStats(stats);
+    draft.hp=stats.hp; draft.maxHp=stats.maxHp;
+    draft.atk=stats.atk; draft.def=stats.def; draft.spd=stats.spd;
+    draft.acc=stats.acc; draft.dodge=stats.dodge; draft.mdef=stats.mdef; draft.matk=stats.matk;
+    draft.stats={...stats,en:enProf.startEN};
+  }
+  normalizeCombatStats(draft.stats);
+  return draft;
 }
 
 function generateStoryStageEnemyKeys(stage, playerBirdKey){
