@@ -326,7 +326,31 @@
     row = row || resolveCombatRow(ab);
     try {
       if (typeof calculateAbilityHitChancePct === 'function') {
-        var playerAcc = typeof getPlayerEffectiveAcc === 'function' ? getPlayerEffectiveAcc() : 85;
+        var playerAcc;
+        var prec = row && (row.hitChanceOverride != null
+          ? row.hitChanceOverride
+          : (row.precision != null ? row.precision : row.basePrecision));
+        if (prec == null && typeof resolveActionPrecisionPct === 'function') {
+          prec = resolveActionPrecisionPct(ab);
+          if (prec != null) {
+            /* resolveActionPrecisionPct already returns percent */
+            playerAcc = prec;
+            prec = null;
+          }
+        }
+        if (playerAcc == null) {
+          if (prec != null && Number.isFinite(Number(prec))) {
+            var n = Number(prec);
+            playerAcc = n <= 1.5 ? n * 100 : n;
+          } else if (typeof getPlayerEffectiveAcc === 'function') {
+            playerAcc = getPlayerEffectiveAcc();
+          } else {
+            playerAcc = 85;
+          }
+        }
+        if (typeof getPlayerAccMod === 'function' && prec != null) {
+          playerAcc += getPlayerAccMod();
+        }
         var enemyDodge = typeof getEffectiveEnemyDodgeForPlayerHit === 'function'
           ? getEffectiveEnemyDodgeForPlayerHit()
           : ((globalThis.G && G.enemy && G.enemy.stats) ? (G.enemy.stats.dodge || 0) : 0);

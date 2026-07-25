@@ -874,7 +874,14 @@
     var hitPct = (typeof getPlayerHitPercentForAttack === 'function')
       ? getPlayerHitPercentForAttack(ab)
       : (function () {
-        var playerAcc = (typeof getPlayerEffectiveAcc === 'function') ? getPlayerEffectiveAcc() : 80;
+        var playerAcc;
+        var prec = row && (row.hitChanceOverride != null ? row.hitChanceOverride : row.precision);
+        if (prec != null && Number.isFinite(Number(prec))) {
+          var pn = Number(prec);
+          playerAcc = pn <= 1.5 ? pn * 100 : pn;
+        } else {
+          playerAcc = (typeof getPlayerEffectiveAcc === 'function') ? getPlayerEffectiveAcc() : 80;
+        }
         var accPenalty = (typeof globalThis.calculateAbilityAccuracyPenalty === 'function')
           ? globalThis.calculateAbilityAccuracyPenalty(row) : 0;
         return (typeof calculateAbilityHitChancePct === 'function')

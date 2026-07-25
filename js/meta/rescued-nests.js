@@ -145,7 +145,7 @@
   function showRescuedNestOpenResult(result) {
     if (!result || !result.ok) return;
     var batch = Array.isArray(result.results) && result.results.length > 1;
-    var title = document.getElementById('mother-goose-hatch-title');
+    var title = typeof document !== 'undefined' ? document.getElementById('mother-goose-hatch-title') : null;
     if (title) {
       var nestLabel = result.nestName || 'Rescued Nest';
       if (batch) {
