@@ -586,7 +586,7 @@
     const roundDmg = (typeof globalThis.roundCombatDamage === 'function')
       ? globalThis.roundCombatDamage
       : (n) => Math.max(0.01, Math.round(Number(n) * 100) / 100);
-    const base = Math.max(1, G?.player?.stats?.matk || 8);
+    const base = Math.max(0, Number(G?.player?.stats?.matk) || 0);
     const enemyMdef = Math.max(0, G?.enemy?.stats?.mdef || 0);
     const low = base * 0.85;
     const high = base * 1.15;
@@ -600,8 +600,8 @@
 
   // Make spell ailment rolls respect MATK more clearly as well.
   globalThis.spellAilmentRoll = function(baseChance, isMultiHit=false){
-    const matk = Math.max(1, G?.player?.stats?.matk || 8);
-    const mdef = Math.max(0, G?.enemy?.stats?.mdef || 8);
+    const matk = Math.max(0, Number(G?.player?.stats?.matk) || 0);
+    const mdef = Math.max(0, Number(G?.enemy?.stats?.mdef) || 0);
     const statShift = (matk - mdef) * 2.5;
     const multiAdj = isMultiHit ? -0.45 : 0.2;
     const final = Math.max(3, Math.min(92, Math.floor((baseChance + statShift) * (1 + multiAdj))));

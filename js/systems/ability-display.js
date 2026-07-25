@@ -8,7 +8,20 @@
   }
 
   function resolveRow(ab, row) {
-    if (row) return row;
+    /* UI template stubs embed the real combat row on _dispatcherRow — unwrap them. */
+    if (row && row._dispatcherRow && typeof row._dispatcherRow === 'object') {
+      row = row._dispatcherRow;
+    }
+    /* Templates with energyCost but no combat fields are not usable combat rows. */
+    if (row && row.enCost == null && row.apCost == null && row.damageType == null
+      && row.scaleStat == null && row.displayText == null && row.riderText == null
+      && row.energyCost != null) {
+      row = null;
+    }
+    if (row && (row.enCost != null || row.apCost != null || row.damageType || row.scaleStat
+      || row.displayText || row.riderText || row.noDamage || Array.isArray(row.riders))) {
+      return row;
+    }
     if (!ab) return null;
     if (typeof globalThis.packRowForAbility === 'function') return globalThis.packRowForAbility(ab);
     if (typeof globalThis.resolveAbilityCombatRow === 'function') return globalThis.resolveAbilityCombatRow(ab);
@@ -469,7 +482,17 @@
     row = enrichRow(resolveRow(ab, row));
     if (!row) return [];
     var segs = coreBriefSegments(row);
+    /* Prefer authored prose (displayText / riderText / utility effect) on the tile. */
     effectLinesFromDisplayText(row.displayText, true).forEach(function (s) { segs.push(s); });
+    var prose = String(row.riderText || row.shortDesc || '').trim();
+    if (prose && !/^none$/i.test(prose)) {
+      var hasProse = segs.some(function (s) {
+        return s && s.text && String(s.text).indexOf(prose) >= 0;
+      });
+      if (!hasProse && !(row.displayText && String(row.displayText).indexOf(prose) >= 0)) {
+        segs.push({ text: normalizeEnLabel(prose), color: null, source: 'riderText' });
+      }
+    }
     if (!displayTextCoversAilment(row)) ailmentSegments(row).forEach(function (s) { segs.push(s); });
     if (!displayTextCoversRiders(row)) riderSegments(row).forEach(function (s) { segs.push(s); });
     if (segs.length >= 2) return segs.slice(0, 8);
@@ -541,8 +564,12 @@
       if (row && row.designNote) parts.push(row.designNote);
     }
 
-    if (row && row.riderText && row.displayText && !String(row.displayText).includes(row.riderText)) {
-      parts.push('Rider: ' + normalizeEnLabel(row.riderText));
+    var rider = row && String(row.riderText || '').trim();
+    if (rider && !/^none$/i.test(rider)) {
+      var joined = parts.join('\n');
+      if (joined.indexOf(rider) < 0) {
+        parts.push(normalizeEnLabel(rider));
+      }
     }
 
     return normalizeEnLabel(parts.filter(Boolean).join('\n'));

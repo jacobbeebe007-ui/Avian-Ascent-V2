@@ -309,8 +309,9 @@
     var bare = key.replace(/Pct$/i, '');
     var sd = slotsDef();
     var names = (sd && sd.statDisplayNames) || {};
-    if (names[key]) return names[key];
+    if (names[key]) return String(names[key]).replace(/\s*%\s*$/, '');
     if (names[bare]) return names[bare];
+    if (names[bare + 'Pct']) return String(names[bare + 'Pct']).replace(/\s*%\s*$/, '');
     if (Avian.display && typeof Avian.display.statName === 'function') {
       var gloss = Avian.display.statName(bare === 'hp' ? 'hp' : bare);
       if (gloss && gloss.toLowerCase() !== bare.toLowerCase()) return gloss;
@@ -323,6 +324,7 @@
       physicalDamage: 'Martial Damage', magicDamage: 'Magic Damage',
       aspectDamage: 'Affinity Damage', healingPower: 'Healing Power',
       shieldStrength: 'Barrier Power',
+      physDamage: 'Martial Damage',
     };
     return fallback[bare] || bare || key;
   }

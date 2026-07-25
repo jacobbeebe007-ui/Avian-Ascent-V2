@@ -509,12 +509,13 @@
           break;
         }
       }
-    } else if (candidates.length === 1) {
+    }
+    /* Default to first equipped ultimate; extras stay in the Nest skill bank. */
+    if (!chosen) {
       chosen = candidates[0];
-    } else if (entity.autoPickUltimate || entity.isEnemy) {
-      chosen = candidates[0];
-    } else {
-      return null;
+      if (entity && !entity.isEnemy && candidates[0] && candidates[0].item) {
+        entity.ultimateSourceItemId = candidates[0].item.id;
+      }
     }
 
     if (!chosen) return null;
