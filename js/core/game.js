@@ -2469,7 +2469,7 @@ function notifyStoryBattleNestEquipLocked(){
 }
 
 const EQUIPMENT_NEST_SLOT_ICONS={
-  helmet:'⛑', armour:'🛡', mainHand:'⚔', offHand:'🗡', shield:'🔰', ankletL:'🦶', ankletR:'🦶', necklace:'📿',
+  helmet:'⛑', armour:'🛡', mainHand:'⚔', offHand:'🗡', ankletL:'🦶', ankletR:'🦶', necklace:'📿',
 };
 function getEquipmentNestSlotLabel(slotKey){
   const meta=Avian.data?.equipment?.slots?.slots?.[slotKey];
@@ -2542,6 +2542,7 @@ function buildNestUltimatePickerHtml(player){
 }
 function equipmentSlotIconForItem(item){
   if(!item) return '⚙';
+  if(String(item.slot||'')==='Shield') return '🔰';
   const slots=Avian.data?.equipment?.slots?.slots||{};
   for(const sk of Object.keys(slots)){
     if(slots[sk]?.accepts===item.slot) return EQUIPMENT_NEST_SLOT_ICONS[sk]||'⚙';
@@ -2607,6 +2608,9 @@ function buildNestEquipmentSectionV2(player){
     const item=getEquipmentItem(id);
     if(!item) return false;
     if(activeFilter==='all') return true;
+    if(typeof Avian?.equipment?.slotAcceptsItem==='function'){
+      return Avian.equipment.slotAcceptsItem(activeFilter, item);
+    }
     const meta=Avian.data?.equipment?.slots?.slots?.[activeFilter];
     return meta && item.slot===meta.accepts;
   });
@@ -3982,34 +3986,110 @@ function resolveEnemyProgressionProfileId(ed, opts={}){
   return 'standard';
 }
 
-function resolveEnemyProgressionTier(ed, level){
-  const rarity=String(ed?.equipmentRarity||ed?.combatTier||ed?.enemyTier||'').toLowerCase();
-  if(['grey','green','blue','purple','gold','orange'].includes(rarity)) return rarity;
-  const milestones=Avian?.data?.enemyScalingProfiles?.milestones||{};
-  let best='grey';
-  let bestLv=-1;
-  for(const [tier, row] of Object.entries(milestones)){
-    const ref=Number(row?.referenceLevel)||0;
-    if(ref<=level && ref>=bestLv){ best=tier; bestLv=ref; }
+const ENEMY_PROGRESSION_TIER_ORDER=['grey','green','blue','purple','gold','orange'];
+
+function shiftEnemyProgressionTier(tier, offset){
+  const norm=String(tier||'grey').toLowerCase();
+  let idx=ENEMY_PROGRESSION_TIER_ORDER.indexOf(norm);
+  if(idx<0) idx=0;
+  idx=Math.max(0, Math.min(ENEMY_PROGRESSION_TIER_ORDER.length-1, idx+Math.floor(Number(offset)||0)));
+  return ENEMY_PROGRESSION_TIER_ORDER[idx];
+}
+
+function resolveStoryLevelFromStage(stage){
+  const st=Math.max(1, Math.floor(Number(stage)||1));
+  if(typeof globalThis.getStoryEnemyLevelBand==='function'){
+    const band=globalThis.getStoryEnemyLevelBand(st);
+    if(band?.boss || band?.duke) return Math.max(1, Number(band.level)||1);
+    const min=Math.max(1, Number(band?.min)||1);
+    const max=Math.max(min, Number(band?.max)||min);
+    return Math.floor((min+max)/2);
   }
-  return best;
+  if(typeof getStoryEnemyLevelBand==='function'){
+    const pair=getStoryEnemyLevelBand(st);
+    if(Array.isArray(pair) && pair.length>=2){
+      return Math.floor((Math.max(1,pair[0])+Math.max(1,pair[1]))/2);
+    }
+  }
+  return Math.max(1, Math.min(10, st));
+}
+
+function resolveEnemyProgressionTier(ed, level, opts={}){
+  const rarity=String(ed?.equipmentRarity||ed?.combatTier||ed?.enemyTier||'').toLowerCase();
+  let tier;
+  let fromExplicit=false;
+  if(['grey','green','blue','purple','gold','orange'].includes(rarity)){
+    tier=rarity;
+    fromExplicit=true;
+  } else if(opts.isStory && typeof globalThis.getStorySpeciesTierForStage==='function'){
+    const stageTier=globalThis.getStorySpeciesTierForStage(opts.stage);
+    if(stageTier && ['grey','green','blue','purple','gold','orange'].includes(String(stageTier).toLowerCase())){
+      tier=String(stageTier).toLowerCase();
+    }
+  }
+  if(!tier){
+    const milestones=Avian?.data?.enemyScalingProfiles?.milestones||{};
+    let best='grey';
+    let bestLv=-1;
+    for(const [t, row] of Object.entries(milestones)){
+      const ref=Number(row?.referenceLevel)||0;
+      if(ref<=level && ref>=bestLv){ best=t; bestLv=ref; }
+    }
+    tier=best;
+  }
+  /* Profile tierOffset softens milestone/species tiers; keep authored combat/enemy tiers intact. */
+  if(!fromExplicit){
+    const profileId=resolveEnemyProgressionProfileId(ed, opts);
+    const profiles=Avian?.data?.enemyScalingProfiles?.profiles||{};
+    const profile=profiles[profileId]||profiles.standard||null;
+    if(profile && Number.isFinite(profile.tierOffset)){
+      tier=shiftEnemyProgressionTier(tier, profile.tierOffset);
+    }
+  }
+  return tier;
 }
 
 function resolveEnemyWorkbookLevel(ed, opts={}){
   const playerLv=Math.max(1, Math.floor(Number(opts.playerBirdLevel)||G?.player?.birdLevel||1));
-  const storyLv=Math.max(1, Math.floor(Number(ed?.storyLevel||ed?.effectiveLevel)||1));
-  let level=Math.max(storyLv, playerLv);
-  if(opts.isEndless && typeof computeEnemyEffectiveLevel==='function'){
-    const stage=Math.max(1, Math.floor(Number(opts.stage)||G?.stage||1));
-    level=Math.max(level, computeEnemyEffectiveLevel(stage, playerLv, true));
-  }
+  const stage=Math.max(1, Math.floor(Number(opts.stage)||G?.stage||1));
   const profileId=resolveEnemyProgressionProfileId(ed, opts);
   const profiles=Avian?.data?.enemyScalingProfiles?.profiles||{};
   const profile=profiles[profileId]||profiles.standard||null;
+  let level;
+  if(opts.isStory && !opts.isEndless){
+    /* Story stages scale from authored roster/story bands — not max(player). */
+    const fromEnemy=Number(ed?.storyLevel??ed?.effectiveLevel);
+    level=Number.isFinite(fromEnemy)&&fromEnemy>0
+      ? Math.floor(fromEnemy)
+      : resolveStoryLevelFromStage(stage);
+  } else if(opts.isEndless){
+    const storyLv=Math.max(1, Math.floor(Number(ed?.storyLevel||ed?.effectiveLevel)||1));
+    level=Math.max(storyLv, playerLv);
+    if(typeof computeEnemyEffectiveLevel==='function'){
+      level=Math.max(level, computeEnemyEffectiveLevel(stage, playerLv, true));
+    }
+  } else {
+    const storyLv=Math.max(1, Math.floor(Number(ed?.storyLevel||ed?.effectiveLevel)||1));
+    level=Math.max(storyLv, playerLv);
+  }
   if(profile && Number.isFinite(profile.levelOffset)){
     level=level+Number(profile.levelOffset);
   }
   return Math.max(1, Math.floor(level));
+}
+
+function resolveEnemyTotalStars(tier, profile, milestone){
+  const starsInTierRaw=Number(profile?.starsInTier);
+  const starsInTier=Number.isFinite(starsInTierRaw)
+    ? Math.max(0, Math.min(5, starsInTierRaw))
+    : Math.max(0, Math.min(5, Number(milestone?.standardStarsInTier)||0));
+  if(typeof getTotalFeatherStars==='function'){
+    return getTotalFeatherStars(tier, starsInTier);
+  }
+  if(Number.isFinite(Number(milestone?.totalStars))){
+    return Math.max(0, Number(milestone.totalStars));
+  }
+  return starsInTier;
 }
 
 function applyEnemyStatsFromPlayerProgression(ed, opts={}){
@@ -4029,12 +4109,11 @@ function applyEnemyStatsFromPlayerProgression(ed, opts={}){
   const profile=profiles[profileId]||profiles.standard||null;
 
   const cls=String(ed.enemyClass||ed.class||bd?.class||'rogue').toLowerCase();
-  const tier=resolveEnemyProgressionTier(ed, workbookLevel);
-  const milestone=Avian?.data?.enemyScalingProfiles?.milestones?.[tier];
-  const starsInTier=Number(profile?.starsInTier);
-  const totalStars=Number.isFinite(starsInTier)
-    ? starsInTier
-    : Math.max(0, Number(milestone?.totalStars)||0);
+  const tier=resolveEnemyProgressionTier(ed, workbookLevel, opts);
+  const milestone=Avian?.data?.enemyScalingProfiles?.milestones?.[tier]
+    ||Avian?.data?.enemyScalingProfiles?.milestones?.grey
+    ||null;
+  const totalStars=resolveEnemyTotalStars(tier, profile, milestone);
 
   const baseHp=Number(baseSrc.maxHp??baseSrc.hp)||30;
   const base={
@@ -5024,9 +5103,12 @@ function buildStoryEnemyFromBirdKey(birdKey, stage, opts={}){
     critMult:Math.max(1.1,Number(bd.stats?.critMult||1.5)),
   };
   const plv=Math.max(1, Math.floor(G.player?.birdLevel||1));
-  const level=typeof getEnemyLevelForDifficulty==='function'
-    ? getEnemyLevelForDifficulty(plv, G.difficulty||'juvenile')
-    : plv;
+  const stageNum=Math.max(1, Math.floor(Number(stage)||1));
+  const level=opts.isEndless
+    ? (typeof getEnemyLevelForDifficulty==='function'
+      ? getEnemyLevelForDifficulty(plv, G.difficulty||'juvenile')
+      : plv)
+    : resolveStoryLevelFromStage(stageNum);
   const cls=String(bd.class||'striker').toLowerCase();
   const enemyStub={birdKey, abilities:[], familyEvolutionState:{}};
   if(typeof materializeEnemySkillsFromWorkbookKit==='function'){

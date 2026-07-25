@@ -25,7 +25,7 @@
   'use strict';
 
   /** Bump when adding a migration. */
-  var TARGET = 14;
+  var TARGET = 15;
 
   /** Combat-pack version stamp surfaced on the save blob. Wipes attached when
    *  this changes so legacy ability/perk/family state never bleeds into a run. */
@@ -401,6 +401,30 @@
         if (!save) return save;
         stampEquipmentSaveFields(save);
         return stampAffinityArsenalFields(save);
+      },
+    },
+    {
+      from: 14,
+      to: 15,
+      note: 'merge legacy equipment.shield into offHand; drop dedicated shield slot',
+      fn: function (save) {
+        if (!save || typeof save !== 'object') return save;
+        var p = save.player;
+        if (!p || typeof p !== 'object') return save;
+        if (!p.equipment || typeof p.equipment !== 'object') return save;
+        var eq = p.equipment;
+        if (!Object.prototype.hasOwnProperty.call(eq, 'shield')) return save;
+        var shieldId = eq.shield;
+        delete eq.shield;
+        if (shieldId) {
+          if (!eq.offHand) {
+            eq.offHand = shieldId;
+          } else {
+            if (!Array.isArray(p.equipmentInventory)) p.equipmentInventory = [];
+            p.equipmentInventory.push(shieldId);
+          }
+        }
+        return save;
       },
     },
   ];

@@ -93,10 +93,13 @@ ok('Stage 7–9: 4 grey/green mix', recipe(8).count === 4 && recipe(8).mix.join(
 ok('Stage 10: 1 blue + 5 grey/green', recipe(10).count === 6 && recipe(10).fixed.blue === 1 && recipe(10).mix.join() === 'grey,green');
 ok('Stage 11–13: 5 green/blue', recipe(12).count === 5 && recipe(12).mix.join() === 'green,blue');
 ok('Stage 14–16: 7 blue', recipe(15).count === 7 && recipe(15).bag.every((r) => r === 'blue'));
-ok('Stage 17–19: 3 purple + 5 blue', recipe(18).count === 8
+ok('Stage 17–19: 3 purple + 4 blue', recipe(18).count === 7
   && recipe(18).bag.filter((r) => r === 'purple').length === 3
-  && recipe(18).bag.filter((r) => r === 'blue').length === 5);
-ok('Stage 20: 8 purple', recipe(20).count === 8 && recipe(20).bag.every((r) => r === 'purple'));
+  && recipe(18).bag.filter((r) => r === 'blue').length === 4);
+ok('Stage 20: 5 gold + 1 orange + 1 purple', recipe(20).count === 7
+  && recipe(20).bag.filter((r) => r === 'gold').length === 5
+  && recipe(20).bag.filter((r) => r === 'orange').length === 1
+  && recipe(20).bag.filter((r) => r === 'purple').length === 1);
 ok('Stage 21+: no story recipe', recipe(21) === null);
 
 if (process.exitCode) {

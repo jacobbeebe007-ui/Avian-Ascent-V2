@@ -145,8 +145,7 @@ const knightGreyExpected = {
   helmet: 'EQ-HP-GRY',
   armour: 'EQ-AM-GRY',
   mainHand: 'EQ-LN-GRY',
-  offHand: null,
-  shield: 'EQ-SM-GRY',
+  offHand: 'EQ-SM-GRY',
   ankletL: 'EQ-AI-GRY',
   ankletR: 'EQ-AI-GRY',
   necklace: 'EQ-NH-GRY',
@@ -263,8 +262,8 @@ assertStoryStage(8, { count: 4, only: ['grey', 'green'], require: ['grey', 'gree
 assertStoryStage(10, { count: 6, only: ['grey', 'green', 'blue'], minOf: { blue: 1 } });
 assertStoryStage(12, { count: 5, only: ['green', 'blue'], require: ['green', 'blue'] });
 assertStoryStage(15, { count: 7, only: ['blue'] });
-assertStoryStage(18, { count: 8, only: ['purple', 'blue'], minOf: { purple: 3, blue: 5 } });
-assertStoryStage(20, { count: 8, only: ['purple'] });
+assertStoryStage(18, { count: 7, only: ['purple', 'blue'], minOf: { purple: 3, blue: 4 } });
+assertStoryStage(20, { count: 7, only: ['gold', 'orange', 'purple'], minOf: { gold: 5, orange: 1, purple: 1 } });
 
 const explicitRarity = makeEnemy('rogue', 'blue', { id: 'explicit-rarity-no-stage' });
 equipment.assignEnemyEquipmentLoadout(explicitRarity, { rarity: 'blue', variance: false, seed: 55 });

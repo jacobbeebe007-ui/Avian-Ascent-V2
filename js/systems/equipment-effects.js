@@ -152,7 +152,7 @@
     if (!player || !player.equipment) return list;
     var order = (typeof Avian.equipment !== 'undefined' && typeof Avian.equipment.getSlotOrder === 'function')
       ? Avian.equipment.getSlotOrder()
-      : ['helmet', 'armour', 'mainHand', 'offHand', 'shield', 'ankletL', 'ankletR', 'necklace'];
+      : ['helmet', 'armour', 'mainHand', 'offHand', 'ankletL', 'ankletR', 'necklace'];
     for (var i = 0; i < order.length; i++) {
       var id = player.equipment[order[i]];
       if (!id) continue;
