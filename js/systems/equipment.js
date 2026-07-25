@@ -20,7 +20,7 @@
     magicPenPct: 'magicPen',
   };
 
-  /* Core item mods are percentage of developed stats (v0.6). Values stored as percent numbers. */
+  /* Core item mods: v0.7 hybrid flat + percentage. Pct values stored as percent numbers. */
   var CORE_PCT_TO_LEDGER = {
     hpPct: 'hp',
     atkPct: 'atk',
@@ -28,6 +28,14 @@
     matkPct: 'matk',
     mdefPct: 'mdef',
     spdPct: 'spd',
+  };
+  var CORE_FLAT_TO_LEDGER = {
+    hpFlat: 'hp',
+    atkFlat: 'atk',
+    defFlat: 'def',
+    matkFlat: 'matk',
+    mdefFlat: 'mdef',
+    spdFlat: 'spd',
   };
 
   var ITEM_PCT_TO_LEDGER = {
@@ -215,6 +223,11 @@
       if (!Object.prototype.hasOwnProperty.call(s, rawKey)) continue;
       var val = Number(s[rawKey]) || 0;
       if (!val) continue;
+      var coreFlatLedger = CORE_FLAT_TO_LEDGER[rawKey];
+      if (coreFlatLedger) {
+        flatOut[coreFlatLedger] = (flatOut[coreFlatLedger] || 0) + val;
+        continue;
+      }
       var coreLedger = CORE_PCT_TO_LEDGER[rawKey];
       if (coreLedger) {
         /* Item stores percent numbers (4.09 → +4.09%); progression expects fractions. */
@@ -449,7 +462,7 @@
       var level = Math.max(1, Number(player.level) || Number(player.birdLevel) || 1);
       var totalStars = Math.max(0, Number(player.totalStars) || Number(player.stars) || Number(player.cardStars) || 0);
       var tier = player.progressionTier || player.cardTier || player.equipmentTier || 'grey';
-      /* Core equipment is percentage-only; do not fold flat eqRoll.stats into developed base. */
+      /* Core equipment: flat after tier, then % (R-PROG-005). Chance/pen flats stay on eqRoll.stats. */
       var developedBase = {
         hp: (Number(base.maxHp) || Number(base.hp) || 0)
           + (Number(fromLevel.maxHp) || 0) + (Number(fromUpgrades.maxHp) || 0)
@@ -464,6 +477,14 @@
           + (Number(fromCardTier.mdef) || 0),
         spd: (Number(base.spd) || 0) + (Number(fromLevel.spd) || 0) + (Number(fromUpgrades.spd) || 0)
           + (Number(fromCardTier.spd) || 0),
+      };
+      var equipmentFlat = {
+        hp: Number(eqRoll.stats.hp) || 0,
+        atk: Number(eqRoll.stats.atk) || 0,
+        def: Number(eqRoll.stats.def) || 0,
+        matk: Number(eqRoll.stats.matk) || 0,
+        mdef: Number(eqRoll.stats.mdef) || 0,
+        spd: Number(eqRoll.stats.spd) || 0,
       };
       /* Flats already folded into developedBase; pass zeros for level/star tables to avoid double-count
        * when fromLevel already mirrors legacy growth. Prefer workbook tables when fromLevel empty. */
@@ -481,6 +502,7 @@
         level: hasLegacyLevel ? 1 : level,
         totalStars: hasLegacyLevel ? 0 : totalStars,
         tier: tier,
+        equipmentFlat: equipmentFlat,
         equipmentPct: eqRoll.pct || {},
       });
       var ledger = result.ledger || {};

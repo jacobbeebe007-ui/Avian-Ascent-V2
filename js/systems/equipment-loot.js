@@ -306,7 +306,7 @@
 
   function formatEquipmentStatLabel(statKey) {
     var key = String(statKey || '');
-    var bare = key.replace(/Pct$/i, '');
+    var bare = key.replace(/(Pct|Flat)$/i, '');
     var sd = slotsDef();
     var names = (sd && sd.statDisplayNames) || {};
     if (names[key]) return names[key];

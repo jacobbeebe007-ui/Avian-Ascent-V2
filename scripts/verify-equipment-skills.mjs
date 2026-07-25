@@ -79,10 +79,10 @@ const effects = ctx.Avian.equipmentEffects;
 const rarities = ['grey', 'orange'];
 
 const skillIds = Object.keys(skills);
-if (skillIds.length !== 82) {
-  fail(`expected 82 skills, got ${skillIds.length}`);
+if (skillIds.length !== 96) {
+  fail(`expected 96 skills, got ${skillIds.length}`);
 } else {
-  ok('82 equipment skill templates present (64+18)');
+  ok('96 equipment skill templates present (v0.7 library)');
 }
 
 for (const tier of ['minor', 'moderate', 'major']) {

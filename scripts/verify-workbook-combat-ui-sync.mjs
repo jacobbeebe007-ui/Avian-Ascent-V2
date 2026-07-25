@@ -74,8 +74,8 @@ if (tiers?.buff?.minor === 6 && tiers?.buff?.moderate === 8 && tiers?.buff?.majo
 } else fail('effect tiers unexpected: ' + JSON.stringify(tiers?.buff));
 
 const skillCount = Object.keys(ctx.Avian.data.equipment.skills || {}).length;
-if (skillCount === 82) ok('skill library has 82 skills');
-else fail(`expected 82 skills, got ${skillCount}`);
+if (skillCount === 96) ok('skill library has 96 skills');
+else fail(`expected 96 skills, got ${skillCount}`);
 
 const names = ctx.Avian.data.equipment.slots.statDisplayNames || {};
 if (names.atk === 'Might') ok('statDisplayNames atk → Might');

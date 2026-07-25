@@ -1,10 +1,10 @@
 /* Avian Ascent — combat / equipment Working Draft config.
  *
  * Hand-authored (not generated). Working Draft / Open Decision numerics from
- * Affinity Arsenal v0.6 live here so tuning never requires system-code edits.
+ * Equipment Loot v0.7 live here so tuning never requires system-code edits.
  * Confirmed structure rules may also appear for a single source of truth.
  *
- * See docs/affinity-arsenal-v06-migration.md.
+ * See docs/equipment-loot-v07-migration.md.
  */
 (function () {
   'use strict';
@@ -13,8 +13,9 @@
   Avian.data = Avian.data || Object.create(null);
 
   Avian.data.combatConfig = Object.freeze({
-    packVersion: '2026.07-affinity-arsenal-v0.6',
+    packVersion: '2026.07-equipment-loot-v0.7',
     affinityArsenalV06: true,
+    equipmentLootV07: true,
 
     /* R-EN-001 — equipment never changes these. Carryover cap is WD (OD-025). */
     energy: Object.freeze({
@@ -33,20 +34,23 @@
       6: 35,
     }),
 
-    /* v0.6 direct damage: BaseDamage + FinalStat × coefficient (WD).
+    /* v0.7 direct damage: BaseDamage + FinalStat × coefficient (R-EN-005 bands).
      * Scaling Model: Base Damage = 2 × EN; Defence Mod = 100/(100+EffDef);
      * Affinity 1.20/1.00/0.80; Bonus cap +45%; Crit chance 50% / Ferocity ×2. */
     directScaling: Object.freeze({
       enabled: true,
       baseDamagePerEn: 2,
-      /* EN → reference coefficient / Precision (Skill & EN Rules WD). */
+      /* EN → reference coefficient mid-band / Precision (R-EN-005). */
       enAttackBands: Object.freeze({
-        1: Object.freeze({ coeff: 0.6, precision: 1.0 }),
-        2: Object.freeze({ coeff: 1.0, precision: 0.98 }),
-        3: Object.freeze({ coeff: 1.32, precision: 0.94 }),
-        4: Object.freeze({ coeff: 1.75, precision: 0.89 }),
-        6: Object.freeze({ coeff: 3.3, precision: 0.92 }),
+        1: Object.freeze({ coeff: 0.8, precision: 1.0, min: 0.70, max: 0.90 }),
+        2: Object.freeze({ coeff: 1.1, precision: 0.98, min: 1.00, max: 1.20 }),
+        3: Object.freeze({ coeff: 1.4, precision: 0.94, min: 1.30, max: 1.50 }),
+        4: Object.freeze({ coeff: 1.75, precision: 0.89, min: 1.60, max: 1.90 }),
+        5: Object.freeze({ coeff: 2.1, precision: 0.9, min: 1.95, max: 2.25 }),
+        6: Object.freeze({ coeff: 2.55, precision: 0.92, min: 2.35, max: 2.80 }),
       }),
+      /* R-CD-001 */
+      enCooldown: Object.freeze({ 1: 0, 2: 0, 3: 1, 4: 2, 5: 3, 6: 0 }),
     }),
 
     /* Legacy StatMod kept for non-v0.6 fallbacks; unused when directScaling.enabled. */

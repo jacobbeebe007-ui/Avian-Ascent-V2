@@ -128,4 +128,10 @@ Avian.systems.SAVE_SCHEMA_VERSION
 - Does **not** wipe equipment loadouts (pre-release reset was v13 only).
 - Working Draft combat knobs live in `js/data/combat-config.js`.
 
+## v15 migration (Equipment Loot v0.7)
+
+- Soft migration: stamps `equipmentLootV07`, `equipmentLootPackVersion: '2026.07-equipment-loot-v0.7'`, and bumps equipment/affinity pack stamps to the same v0.7 id.
+- Does **not** wipe equipment loadouts.
+- Runtime now applies equipment flat after tier and before additive equipment % (`R-PROG-005`).
+
 Verification: `node scripts/verify-save-migration.mjs`

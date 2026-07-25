@@ -86,6 +86,7 @@
    * @param {number} opts.level 1–30
    * @param {number} opts.totalStars 0–30 completed stars
    * @param {string} opts.tier grey…orange
+   * @param {object} [opts.equipmentFlat] flat equipment after tier (ledger or progression keys)
    * @param {object} [opts.equipmentPct] additive % by ledger or progression key
    * @param {object} [opts.tempUp] temporary % ups
    * @param {object} [opts.tempDown] temporary % downs
@@ -103,6 +104,7 @@
     var levelFlat = lookupLevelFlat(opts.className, opts.level) || {};
     var starFlat = lookupStarFlat(opts.className, opts.totalStars) || {};
     var mult = tierMultiplier(opts.tier);
+    var equipFlat = opts.equipmentFlat || {};
     var equipPct = opts.equipmentPct || {};
     var tempUp = opts.tempUp || {};
     var tempDown = opts.tempDown || {};
@@ -111,6 +113,7 @@
 
     var developed = {};
     var tiered = {};
+    var afterFlat = {};
     var equipped = {};
     var finalStats = {};
     var ledgerOut = {};
@@ -122,14 +125,19 @@
       var lf = Number(levelFlat[k]) || 0;
       var sf = Number(starFlat[k]) || 0;
       developed[k] = b + lf + sf;
+      /* R-PROG-005 / R-RND-001: round after tier, then add equipment flat, then % , round again. */
       tiered[k] = Math.round(developed[k] * mult);
+      var flat = 0;
+      if (equipFlat[k] != null) flat += Number(equipFlat[k]) || 0;
+      if (equipFlat[ledger] != null) flat += Number(equipFlat[ledger]) || 0;
+      afterFlat[k] = tiered[k] + flat;
 
       var pct = 0;
       if (equipPct[k] != null) pct += Number(equipPct[k]) || 0;
       if (equipPct[ledger] != null) pct += Number(equipPct[ledger]) || 0;
       var cap = equipmentCapFor(k);
       pct = Math.max(-cap, Math.min(cap, pct));
-      equipped[k] = tiered[k] * (1 + pct);
+      equipped[k] = afterFlat[k] * (1 + pct);
 
       var up = 0;
       var down = 0;
@@ -148,6 +156,7 @@
     return {
       developed: developed,
       tiered: tiered,
+      afterEquipmentFlat: afterFlat,
       equipped: equipped,
       final: finalStats,
       ledger: ledgerOut,

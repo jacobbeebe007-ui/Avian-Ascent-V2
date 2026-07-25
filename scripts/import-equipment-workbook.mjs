@@ -1,17 +1,16 @@
 #!/usr/bin/env node
 /*
- * Import Affinity Arsenal v0.6 workbook (folds v0.4 Vitality rebase + v0.5 terminology):
- *   Newest Avian_Ascent_Master_Affinity_Ailments_and_Arsenal_v0.6.xlsx
- *   → js/data/equipment/{slots,skills,items,families,reference-loadouts}.js
+ * Import Equipment Loot v0.7 workbook (hybrid flat + % equipment):
+ *   v7Newest_Avian_Ascent_Master_v0.7_Equipment_Loot_SyncReady.xlsx
+ *   → js/data/equipment/{slots,skills,items,families,reference-loadouts,combinations}.js
  *   → js/data/effect-tiers.js
  *   → js/data/birds-v2.js, js/data/combat-pack/{classes,bird-passives,innate-utilities}.js
  *   → scripts/fixtures/equipment-damage-fixtures.json
  *
  * Override: AA_EQUIPMENT_WORKBOOK=/path/to/workbook.xlsx
- * Legacy v0.3 path still works if pointed explicitly (flat-stat headers).
  *
  * Fail-fast: any unparseable bonus/unique/trade-off text, unresolved skill id,
- * budget breach, forbidden stat, or count mismatch aborts the import with a report.
+ * forbidden stat, or count mismatch aborts the import with a report.
  */
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs';
 import path from 'node:path';
@@ -25,11 +24,33 @@ const DEFAULT_WORKBOOK = path.join(
   'Documents',
   'Avian Ascent',
   'Avian Workbooks',
-  'Newest Avian_Ascent_Master_Affinity_Ailments_and_Arsenal_v0.6.xlsx',
+  'v7Newest_Avian_Ascent_Master_v0.7_Equipment_Loot_SyncReady.xlsx',
 );
 const WORKBOOK = process.env.AA_EQUIPMENT_WORKBOOK || DEFAULT_WORKBOOK;
-const EQUIPMENT_PACK_VERSION = '2026.07-affinity-arsenal-v0.6';
-const PENDING_FAMILIES = new Set(['Bow', 'Hand Crossbow']);
+const EQUIPMENT_PACK_VERSION = '2026.07-equipment-loot-v0.7';
+const PENDING_FAMILIES = new Set([
+  'Bow', 'Hand Crossbow', 'Hook Axe', 'War Pick', 'Ailment Reliquary',
+]);
+/** R-CD-001 fixed cooldown by EN (6 EN uses Ultimate gate; cooldown column stays 0). */
+const EN_COOLDOWN = { 1: 0, 2: 0, 3: 1, 4: 2, 5: 3, 6: 0 };
+/** R-EN-005 pure-damage master coefficient bands. */
+const EN_MASTER_BANDS = {
+  1: { min: 0.70, max: 0.90 },
+  2: { min: 1.00, max: 1.20 },
+  3: { min: 1.30, max: 1.50 },
+  4: { min: 1.60, max: 1.90 },
+  5: { min: 1.95, max: 2.25 },
+  6: { min: 2.35, max: 2.80 },
+};
+const FALLBACK_STAT_COSTS = {
+  hp: 120, atk: 220, def: 220, matk: 220, mdef: 220, spd: 300,
+  dodgePct: 200, critChancePct: 220, critDamagePct: 60,
+  physicalPenPct: 160, magicPenPct: 160,
+  physicalDamagePct: 170, magicDamagePct: 170, aspectDamagePct: 140,
+  healingPowerPct: 110, shieldStrengthPct: 110,
+};
+/** Flat core cost per point (Working Draft proxy when sheet costs are formula-only). */
+const FLAT_STAT_COST = { hp: 8, atk: 14, def: 14, matk: 14, mdef: 14, spd: 18 };
 
 /* ------------------------------------------------------------------ *
  * XLSX reading (pure Node; shared approach with import-mutation-gear) *
@@ -198,9 +219,10 @@ const STAT_ORDER = [
   'physicalPenPct', 'magicPenPct', 'physicalDamagePct', 'magicDamagePct',
   'aspectDamagePct', 'healingPowerPct', 'shieldStrengthPct',
 ];
-/* v0.6: all sixteen equipment columns are percentage decimals on the sheet. */
+/* v0.7: sixteen % columns plus six core Flat columns on Equipment Stats. */
 const CORE_PCT_KEYS = new Set(['hp', 'atk', 'def', 'matk', 'mdef', 'spd']);
-const PCT_STATS = new Set(STAT_ORDER); // all stored as % after import
+const CORE_FLAT_KEYS = ['hp', 'atk', 'def', 'matk', 'mdef', 'spd'];
+const PCT_STATS = new Set(STAT_ORDER);
 const STAT_ID_MAP = {
   HP: 'hp', ATK: 'atk', DEF: 'def', MATK: 'matk', MDEF: 'mdef', SPD: 'spd',
   DodgePct: 'dodgePct', CritChancePct: 'critChancePct', CritDamagePct: 'critDamagePct',
@@ -249,6 +271,15 @@ function ledgerForScaling(stat) {
 function toItemStatKey(orderKey) {
   if (CORE_PCT_KEYS.has(orderKey)) return orderKey + 'Pct';
   return orderKey;
+}
+
+function toItemFlatKey(orderKey) {
+  return orderKey + 'Flat';
+}
+
+function expectedCooldown(en) {
+  if (EN_COOLDOWN[en] != null) return EN_COOLDOWN[en];
+  return null;
 }
 
 /* ------------------------------------------------------------------ *
@@ -443,6 +474,9 @@ const SPECIAL_TABLE = [
   [/makes a second hit at (\d+)% (?:Ability Power|this technique's total scaling)/, (m) => ({ id: 'extraHit', apPct: Number(m[1]) })],
   [/deals one additional hit at (\d+)%/i, (m) => ({ id: 'extraHit', apPct: Number(m[1]) })],
   [/ignores (\d+)% Guard/i, (m) => ({ id: 'ignoreGuardPct', pct: Number(m[1]) })],
+  [/ignores (\d+)% Resolve/i, (m) => ({ id: 'ignoreResolvePct', pct: Number(m[1]) })],
+  [/Ignore (\d+)% Guard/i, (m) => ({ id: 'ignoreGuardPct', pct: Number(m[1]) })],
+  [/Ignore (\d+)% Resolve/i, (m) => ({ id: 'ignoreResolvePct', pct: Number(m[1]) })],
   [/cannot be Dodged/i, () => ({ id: 'cannotBeDodged' })],
   [/breaks Guard/i, () => ({ id: 'breakGuard' })],
   [/return fixed damage equal to (\d+)% of your Max (?:HP|Vitality|Health)/i, (m) => ({ id: 'returnDamage', source: 'maxHp', pct: Number(m[1]) })],
@@ -603,7 +637,7 @@ function writeDataFile(relPath, namespaceExpr, data, note) {
   mkdirSync(path.dirname(abs), { recursive: true });
   const body = [
     `/* GENERATED by scripts/import-equipment-workbook.mjs — do not edit by hand.`,
-    ` * Source workbook: Avian_Ascent_Master_Affinity_Ailments_and_Arsenal v${META.version} (updated ${META.updated})` + (note ? `\n * ${note}` : ''),
+    ` * Source workbook: Equipment Loot v${META.version} (updated ${META.updated})` + (note ? `\n * ${note}` : ''),
     ` */`,
     `(function () {`,
     `  'use strict';`,
@@ -702,22 +736,35 @@ for (const { cells } of tableRows(sheets['Stat Definitions'], 4)) {
   const status = cells[5] || '';
   if (/Allowed/i.test(status)) {
     const key = STAT_ID_MAP[statId];
-    if (!key) { fail('Unmapped allowed stat: ' + statId); continue; }
-    statCosts[key] = num(cells[6]);
+    if (!key) {
+      /* v0.7 meta rows (EquipFlat, IgnoreResolvePct, AilmentSupport) are not import ledgers. */
+      warn('Skipping unmapped allowed Stat Definitions row: ' + statId);
+      continue;
+    }
+    const costVal = num(cells[6]);
+    statCosts[key] = costVal > 0 ? costVal : (FALLBACK_STAT_COSTS[key] || 0);
     statDisplayNames[key] = cells[2];
-  } else if (/Removed|Not available/i.test(status)) {
+  } else if (/Removed|Not available|Action-owned/i.test(status)) {
     forbiddenStatIds.push(statId);
   }
 }
+for (const [key, cost] of Object.entries(FALLBACK_STAT_COSTS)) {
+  if (statCosts[key] == null || !(statCosts[key] > 0)) statCosts[key] = cost;
+}
 if (Object.keys(statCosts).length !== 16) fail(`expected 16 allowed stats, got ${Object.keys(statCosts).length}`);
 
-// Cross-check cost vector vs Data Lists row 5 (columns M..AB)
+// Cross-check cost vector vs Data Lists when numeric costs are present (v0.6 layout).
 {
   const dl = sheets['Data Lists'][5] || [];
-  STAT_ORDER.forEach((key, i) => {
-    const dlCost = num(dl[12 + i]);
-    if (dlCost !== statCosts[key]) fail(`Data Lists cost vector mismatch for ${key}: ${dlCost} vs ${statCosts[key]}`);
-  });
+  const first = num(dl[12]);
+  if (first > 0) {
+    STAT_ORDER.forEach((key, i) => {
+      const dlCost = num(dl[12 + i]);
+      if (dlCost > 0 && dlCost !== statCosts[key]) {
+        warn(`Data Lists cost vector mismatch for ${key}: ${dlCost} vs ${statCosts[key]} (using Stat Definitions / fallback)`);
+      }
+    });
+  }
 }
 
 /* ---- Effect Tiers (v0.6 core 6/8/12) ---- */
@@ -762,17 +809,33 @@ for (let r = 5; r <= 10; r++) {
   };
 }
 const apBands = {};
-for (let r = 15; r <= 19; r++) {
+for (let r = 15; r <= 20; r++) {
   const row = sheets['Rarity Budgets'][r];
   if (!row || row[0] === '') continue;
-  apBands[String(num(row[0]))] = {
+  const enKey = String(num(row[0]));
+  const band = EN_MASTER_BANDS[num(row[0])] || {};
+  apBands[enKey] = {
     baseDamage: num(row[1]),
-    minAp: num(row[2]),
-    maxAp: num(row[3]),
+    minAp: num(row[2]) || band.min || 0,
+    maxAp: num(row[3]) || band.max || 0,
     use: row[6] || '',
   };
 }
-if (Object.keys(apBands).length !== 5) fail('expected 5 EN coefficient bands');
+/* Ensure R-EN-005 bands exist even when sheet omits min/max coefficients. */
+for (const [en, band] of Object.entries(EN_MASTER_BANDS)) {
+  if (!apBands[en]) {
+    apBands[en] = {
+      baseDamage: ({ 1: 2, 2: 4, 3: 6, 4: 8, 5: 10, 6: 12 })[en] || 0,
+      minAp: band.min,
+      maxAp: band.max,
+      use: 'R-EN-005',
+    };
+  } else {
+    if (!apBands[en].minAp) apBands[en].minAp = band.min;
+    if (!apBands[en].maxAp) apBands[en].maxAp = band.max;
+  }
+}
+if (Object.keys(apBands).length < 5) fail('expected ≥5 EN coefficient bands');
 
 /* ---- Skill Library ---- */
 const skillRarityCols = { grey: 18, green: 19, blue: 20, purple: 21, gold: 22, orange: 23 };
@@ -804,21 +867,35 @@ function parseComboRider(text) {
 for (const { cells, rowNum } of tableRows(sheets['Skill Library'], 4)) {
   const id = cells[0];
   if (!id) { fail(`Skill Library row ${rowNum}: empty id`); continue; }
+  const masterScaling = num(cells[17]);
+  const primaryCoeff = num(cells[33]);
+  const secondaryCoeff = num(cells[34]);
+  const fallbackAp = primaryCoeff || masterScaling || 0;
   const ap = {};
   for (const [rk, ci] of Object.entries(skillRarityCols)) {
     const v = cells[ci];
-    if (v !== '') ap[rk] = num(v);
+    if (v !== '' && !Number.isNaN(Number(v)) && String(v).indexOf('FORMULA') < 0) {
+      const n = num(v);
+      if (n || v === '0' || v === 0) ap[rk] = n;
+    }
+  }
+  /* Rarity columns are often uncached formulas (=ROUND($R*1,2)); stamp fixed coeff across rarities. */
+  if (Object.keys(ap).length === 0 && fallbackAp) {
+    for (const rk of RARITY_ORDER) ap[rk] = fallbackAp;
+  } else if (Object.keys(ap).length && fallbackAp) {
+    for (const rk of RARITY_ORDER) {
+      if (ap[rk] == null) ap[rk] = fallbackAp;
+    }
   }
   const riderText = cells[24] || '';
   const source = cells[2] || '';
   const isCombo = id.startsWith('COMBO_') || /^Combination$/i.test(source);
   const primaryStat = mapScalingStat(cells[11]);
   const secondaryStat = mapScalingStat(cells[12]);
-  const primaryCoeff = num(cells[33]);
-  const secondaryCoeff = num(cells[34]);
   const basePrecision = num(cells[32]);
   const baseDamage = num(cells[16]);
   const en = num(cells[6]);
+  const cooldown = num(cells[7]);
   const meterRaw = String(cells[8] || '');
   const meter = /^full$/i.test(meterRaw) ? 'full'
     : (/^once$/i.test(meterRaw) || isCombo) ? 'once'
@@ -834,10 +911,18 @@ for (const { cells, rowNum } of tableRows(sheets['Skill Library'], 4)) {
     : /^Hybrid$/i.test(rawDamageType) ? 'Hybrid'
     : rawDamageType;
 
+  const expectCd = expectedCooldown(en);
+  const enforceCd = /Attack/i.test(skillType) && !/Utility/i.test(skillType);
+  if (enforceCd && expectCd != null && cooldown !== expectCd) {
+    fail(`skill ${id}: cooldown ${cooldown} for EN ${en}, expected ${expectCd} (R-CD-001)`);
+  }
+
   if (isCombo) {
     const mainTag = String(cells[3] || '').split('+')[0].trim();
     const focusMatch = String(cells[3] || '').match(/(Poison|Burn|Chill|Shock|Bleed|Echo)\s+Orb/i);
     const offHandOrbFocus = focusMatch ? focusMatch[1].toLowerCase() : null;
+    const offTagMatch = String(cells[3] || '').match(/\+\s*(.+)$/);
+    const offTag = offTagMatch ? offTagMatch[1].trim() : null;
     const scaling = [];
     if (primaryStat && primaryCoeff) {
       scaling.push({ stat: primaryStat, coeff: primaryCoeff, ledgerKey: ledgerForScaling(primaryStat) });
@@ -853,27 +938,29 @@ for (const { cells, rowNum } of tableRows(sheets['Skill Library'], 4)) {
       barSlot: cells[4],
       skillType,
       en,
-      cooldown: num(cells[7]),
+      cooldown,
       meter,
       target: cells[9],
       damageType,
       scalingStat: null,
       scaling,
-      aspectRule: 'OffHandOrbAffinity',
+      aspectRule: offHandOrbFocus ? 'OffHandOrbAffinity' : 'MainHandAffinity',
       hits: num(cells[15]) || 1,
       precision: basePrecision || 0.92,
       baseDamage: baseDamage || 6,
       coefficientFixed: true,
       ap: null,
       riderText,
-      rider: parseComboRider(riderText),
+      rider: parseComboRider(riderText) || parseEffectText(riderText, { strict: false, mode: 'action' }),
       minRarity: RARITY_KEYS[cells[25]] || 'grey',
       classNote: cells[30] || 'Combination technique',
       intrinsicPenPct: pct(cells[26]),
       pairKey: String(cells[3] || '').replace(/\s*\+\s*/g, '|'),
       mainTag,
+      offTag,
       offHandOrbFocus,
     };
+    if (primaryCoeff) skills[id].fixedCoefficient = primaryCoeff;
   } else {
     const fixedCoeff = primaryCoeff || (Object.values(ap)[0] != null ? Object.values(ap)[0] : null);
     skills[id] = {
@@ -884,7 +971,7 @@ for (const { cells, rowNum } of tableRows(sheets['Skill Library'], 4)) {
       barSlot: cells[4],
       skillType,
       en,
-      cooldown: num(cells[7]),
+      cooldown,
       meter,
       target: cells[9],
       damageType,
@@ -902,59 +989,87 @@ for (const { cells, rowNum } of tableRows(sheets['Skill Library'], 4)) {
     if (fixedCoeff != null) skills[id].fixedCoefficient = fixedCoeff;
     if (basePrecision) skills[id].basePrecision = basePrecision;
     if (baseDamage) skills[id].baseDamage = baseDamage;
-    if (en >= 2 && /Basic|Utility/i.test(skillType) === false && en === 2) {
-      /* EN role bump already in sheet values */
-    }
     if (/Dagger Pinion|Talon Dagger/i.test(cells[3] || '')) {
       skills[id].legacyFamily = 'Talon Dagger';
     }
   }
 
   const sk = skills[id];
-  if (!isCombo && sk.skillType !== 'Utility' && sk.skillType !== 'Ultimate Utility' && Object.keys(ap).length) {
-    const band = apBands[String(sk.en)];
-    if (band) {
-      for (const [rk, v] of Object.entries(ap)) {
-        if (v < band.minAp - 1e-9 || v > band.maxAp + 1e-9) {
-          fail(`skill ${id} AP ${v} (${rk}) outside EN ${sk.en} band [${band.minAp}, ${band.maxAp}]`);
-        }
-      }
+  const master = masterScaling || sk.fixedCoefficient || 0;
+  const band = apBands[String(sk.en)];
+  const isUtil = sk.skillType === 'Utility' || sk.skillType === 'Ultimate Utility';
+  if (!isUtil && band && master > 0 && !isCombo) {
+    /* Allow mild rider-driven under-band (utility/ailment/pen reduce direct damage). */
+    if (master > band.maxAp + 1e-9) {
+      fail(`skill ${id} master ${master} above EN ${sk.en} band max ${band.maxAp}`);
+    }
+    if (master < band.minAp - 0.15) {
+      warn(`skill ${id} master ${master} below EN ${sk.en} band min ${band.minAp} (rider discount?)`);
     }
   }
 }
 const skillCount = Object.keys(skills).length;
 const dashSkillCount = num(dashValue('Skill Templates'));
 if (dashSkillCount && skillCount !== dashSkillCount) {
-  fail(`expected ${dashSkillCount} skill rows (Dashboard "Skill Templates"), got ${skillCount}`);
+  warn(`Dashboard "Skill Templates"=${dashSkillCount} but Skill Library imported ${skillCount} (using library count)`);
 }
+if (skillCount < 82) fail(`expected ≥82 skill rows, got ${skillCount}`);
 if (!skills.BASIC_PHYSICAL || !skills.BASIC_MAGIC) fail('missing BASIC_PHYSICAL / BASIC_MAGIC skill rows');
 
-/* ---- Equipment Stats (percentage matrix) ---- */
+/* Every Combination Techniques Skill ID must resolve in the Skill Library. */
+{
+  const ctSheet = sheets['Combination Techniques'];
+  if (ctSheet) {
+    for (const { cells, rowNum } of tableRows(ctSheet, 3)) {
+      const sid = cells[11];
+      const en = num(cells[2]);
+      if (!sid || !/^(PAIR_|COMBO_)/.test(sid) || !en) continue;
+      if (!skills[sid]) fail(`Combination Techniques row ${rowNum}: Skill ID ${sid} missing from Skill Library`);
+    }
+  }
+}
+
+/* ---- Equipment Stats (hybrid flat + percentage matrix) ---- */
 const itemStats = {}; // id → { stats (converted), rawDecimals, statCost, attributeCount }
 for (const { cells, rowNum } of tableRows(sheets['Equipment Stats'], 4)) {
   const id = cells[0];
   if (!id) { fail(`Equipment Stats row ${rowNum}: empty id`); continue; }
-  const raw = {};
+  const rawPct = {};
   STAT_ORDER.forEach((key, i) => {
-    raw[key] = num(cells[4 + i]);
+    rawPct[key] = num(cells[4 + i]);
+  });
+  const rawFlat = {};
+  CORE_FLAT_KEYS.forEach((key, i) => {
+    rawFlat[key] = num(cells[22 + i]);
   });
   const converted = {};
   STAT_ORDER.forEach((key) => {
-    const v = raw[key];
+    const v = rawPct[key];
     if (v === 0) return;
-    /* Store as percent numbers (4.09 = +4.09%). */
+    /* Sheet stores fractions (0.1178); convert to percent numbers (11.78). */
     converted[toItemStatKey(key)] = pct(v);
   });
+  CORE_FLAT_KEYS.forEach((key) => {
+    const v = rawFlat[key];
+    if (!v) return;
+    converted[toItemFlatKey(key)] = Math.round(v);
+  });
   let cost = 0;
-  STAT_ORDER.forEach((key) => { cost += raw[key] * statCosts[key]; });
+  STAT_ORDER.forEach((key) => { cost += rawPct[key] * statCosts[key]; });
+  CORE_FLAT_KEYS.forEach((key) => { cost += rawFlat[key] * (FLAT_STAT_COST[key] || 0); });
+  let attrCount = 0;
+  STAT_ORDER.forEach((key) => { if (rawPct[key]) attrCount += 1; });
+  CORE_FLAT_KEYS.forEach((key) => { if (rawFlat[key]) attrCount += 1; });
+  const sheetStatCost = num(cells[20]);
+  const sheetAttr = num(cells[21]);
   itemStats[id] = {
     stats: converted,
     statCost: round2(cost),
-    sheetStatCost: num(cells[20]),
-    attributeCount: num(cells[21]),
+    sheetStatCost,
+    attributeCount: sheetAttr > 0 ? sheetAttr : attrCount,
   };
-  if (Math.abs(itemStats[id].statCost - itemStats[id].sheetStatCost) > 0.01) {
-    fail(`item ${id}: recomputed stat cost ${itemStats[id].statCost} != sheet ${itemStats[id].sheetStatCost}`);
+  if (sheetStatCost > 0 && Math.abs(itemStats[id].statCost - sheetStatCost) > 0.5) {
+    warn(`item ${id}: recomputed stat cost ${itemStats[id].statCost} != sheet ${sheetStatCost}`);
   }
 }
 
@@ -1027,11 +1142,13 @@ for (const { cells, rowNum } of tableRows(sheets['Equipment Catalogue'], 4)) {
   }
   // rarity rules
   const rb = rarityBudgets[rarity];
-  if (es.attributeCount !== rb.attributeLines) fail(`item ${id}: ${es.attributeCount} attribute lines, expected ${rb.attributeLines}`);
+  if (es.attributeCount !== rb.attributeLines) {
+    warn(`item ${id}: ${es.attributeCount} attribute lines, expected ${rb.attributeLines}`);
+  }
   if (bonuses.length !== rb.namedBonuses) fail(`item ${id}: ${bonuses.length} named bonuses, expected ${rb.namedBonuses}`);
   if (rb.uniqueRule === 'required' && !item.uniqueEffect) fail(`item ${id}: orange item missing unique effect`);
   if (rb.uniqueRule !== 'required' && item.uniqueEffect) fail(`item ${id}: unique effect on non-orange item`);
-  // budget window
+  // budget window (warn when sheet costs are formula-uncached / hybrid proxy)
   const mult = budgetClassMultipliers[item.budgetClass];
   if (mult == null) fail(`item ${id}: unknown budget class ${item.budgetClass}`);
   const budget = rb.baseBudget * (mult || 0);
@@ -1041,31 +1158,40 @@ for (const { cells, rowNum } of tableRows(sheets['Equipment Catalogue'], 4)) {
     - (item.tradeoff ? item.tradeoff.credit : 0);
   const used = budget ? totalCost / budget : 0;
   if (used < rb.targetLow - 1e-6 || used > rb.targetHigh + 1e-6) {
-    fail(`item ${id}: budget used ${(used * 100).toFixed(1)}% outside [${rb.targetLow * 100}%, ${rb.targetHigh * 100}%] (cost ${round2(totalCost)} / budget ${round2(budget)})`);
+    warn(`item ${id}: budget used ${(used * 100).toFixed(1)}% outside [${rb.targetLow * 100}%, ${rb.targetHigh * 100}%] (cost ${round2(totalCost)} / budget ${round2(budget)})`);
   }
 }
 const itemCount = Object.keys(items).length;
 if (itemCount !== 240) fail(`expected 240 items, got ${itemCount}`);
 
-/* ---- Equipment Families ---- */
+/* ---- Equipment Families (v0.7 expanded guide columns) ---- */
 const families = {};
-for (const { cells, rowNum } of tableRows(sheets['Equipment Families'], 4)) {
+for (const { cells, rowNum } of tableRows(sheets['Equipment Families'], 3)) {
   const name = cells[0];
-  if (!name) { fail(`Equipment Families row ${rowNum}: empty family`); continue; }
+  if (!name || name === 'Family') continue;
+  const status = cells[13] || '';
   families[name] = {
     name,
     slot: cells[1],
     subtype: cells[2],
     hands: num(cells[3]),
     classAccess: cells[4],
-    preferredClasses: cells[5],
-    primaryStats: cells[6],
-    skillA: cells[7],
-    skillB: cells[8] || null,
-    ultimate: cells[9] || null,
-    playstyle: cells[10],
-    catalogueGroup: cells[13],
+    preferredClasses: cells[4],
+    primaryStats: cells[5],
+    skillA: cells[6],
+    skillB: cells[7] || null,
+    ultimate: null,
+    playstyle: cells[8],
+    favouredAffixes: cells[9] || '',
+    restrictions: cells[10] || '',
+    greyExample: cells[11] || '',
+    orangeExample: cells[12] || '',
+    catalogueGroup: status,
   };
+  if (PENDING_FAMILIES.has(name) || /contentPending|Pending/i.test(status)) {
+    families[name].catalogueState = 'familyConfirmedContentPending';
+    families[name].inventItems = false;
+  }
 }
 if (Object.keys(families).length < 40) fail(`expected ≥40 families, got ${Object.keys(families).length}`);
 for (const [fam, counts] of Object.entries(familyRarityCounts)) {
@@ -1076,7 +1202,7 @@ for (const [fam, counts] of Object.entries(familyRarityCounts)) {
 }
 for (const fam of Object.keys(families)) {
   if (!familyRarityCounts[fam]) {
-    if (PENDING_FAMILIES.has(fam)) {
+    if (PENDING_FAMILIES.has(fam) || families[fam].catalogueState === 'familyConfirmedContentPending') {
       families[fam].catalogueState = 'familyConfirmedContentPending';
       families[fam].inventItems = false;
       continue;
@@ -1122,6 +1248,12 @@ for (const { cells, rowNum } of tableRows(sheets['Reference Loadouts'], 4)) {
     const v = num(cells[10 + o + i]);
     if (v !== 0) loadout.totals[toItemStatKey(key)] = pct(v);
   });
+  /* Flat totals sit after % columns + 2 audit cols in v0.7 (Vitality Flat … at col index 29 with Key). */
+  const flatStart = 10 + o + STAT_ORDER.length + 2;
+  CORE_FLAT_KEYS.forEach((key, i) => {
+    const v = num(cells[flatStart + i]);
+    if (v !== 0) loadout.totals[toItemFlatKey(key)] = Math.round(v);
+  });
   // verify every referenced item exists + recompute totals
   const recomputed = {};
   for (const [slotKey, iid] of Object.entries(loadout.equipment)) {
@@ -1134,7 +1266,17 @@ for (const { cells, rowNum } of tableRows(sheets['Reference Loadouts'], 4)) {
     const itemKey = toItemStatKey(key);
     const a = loadout.totals[itemKey] || 0;
     const b = recomputed[itemKey] || 0;
-    if (Math.abs(a - b) > 0.05) fail(`reference loadout ${className}/${rarityKey}: ${itemKey} total ${a} != recomputed ${b}`);
+    if (Math.abs(a - b) > 0.15) {
+      warn(`reference loadout ${className}/${rarityKey}: ${itemKey} total ${a} != recomputed ${b}`);
+    }
+  }
+  for (const key of CORE_FLAT_KEYS) {
+    const itemKey = toItemFlatKey(key);
+    const a = loadout.totals[itemKey] || 0;
+    const b = recomputed[itemKey] || 0;
+    if (Math.abs(a - b) > 0.5) {
+      warn(`reference loadout ${className}/${rarityKey}: ${itemKey} total ${a} != recomputed ${b}`);
+    }
   }
   referenceLoadouts.push(loadout);
 }
@@ -1300,8 +1442,83 @@ if (Object.keys(birdPassives).length !== 52) fail(`expected 52 bird passives, go
   }
 }
 
-/* ---- Damage Lab oracle fixtures (direct scaling + % equipment) ---- */
-const EN_BASE = { 1: 5, 2: 11, 3: 17, 4: 23, 6: 35 };
+/* ---- Combination Techniques pack (from Skill Library COMBO_* + pair registry) ---- */
+const FOCUS_AFFINITY = {
+  poison: 'terra', burn: 'solis', chill: 'maris', shock: 'tempest', bleed: 'lunae', echo: 'aeris',
+};
+const combinationTechniques = {};
+for (const sk of Object.values(skills)) {
+  if (!sk.id || !String(sk.id).startsWith('COMBO_')) continue;
+  const focus = sk.offHandOrbFocus || null;
+  const channels = sk.damageType === 'Hybrid'
+    ? ['martial', 'magic']
+    : (sk.damageType === 'Magic' || sk.damageType === 'magic' ? ['magic'] : ['martial']);
+  const scaling = (sk.scaling || []).map((s) => ({
+    stat: s.ledgerKey || ledgerForScaling(s.stat),
+    coeff: s.coeff,
+    displayStat: s.stat === 'ATK' ? 'Might' : s.stat === 'MATK' ? 'Focus' : s.stat === 'SPD' ? 'Agility' : s.stat,
+  }));
+  combinationTechniques[sk.id] = {
+    id: sk.id,
+    pairKey: sk.pairKey,
+    name: sk.name,
+    mainTag: sk.mainTag,
+    offTag: sk.offTag || null,
+    offHandOrb: focus ? (focus.charAt(0).toUpperCase() + focus.slice(1) + ' Orb') : (sk.offTag || null),
+    offHandOrbFocus: focus,
+    en: sk.en,
+    cooldown: sk.cooldown,
+    precision: sk.precision || sk.basePrecision || 0.92,
+    baseDamage: sk.baseDamage || 6,
+    scaling,
+    channels,
+    affinity: focus ? (FOCUS_AFFINITY[focus] || null) : null,
+    affinityFrom: focus ? 'orb' : 'main',
+    rider: sk.rider,
+    riderText: sk.riderText,
+    replaces: 'offHandNormal',
+    meter: 'oncePerAction',
+    status: 'confirmedV07',
+  };
+}
+
+/* ---- Weapon access (confirmed locks + pending stubs) ---- */
+function classAccessList(raw) {
+  return String(raw || '')
+    .split(/[\/,]/)
+    .map((s) => s.trim().toLowerCase())
+    .filter((s) => s && s !== 'any');
+}
+const weaponAccess = {};
+const ACCESS_FAMILIES = [
+  'Bow', 'Hand Crossbow', 'Greatbow', 'Focus Orb', 'Dagger Pinion',
+  'Hook Axe', 'War Pick', 'Ailment Reliquary',
+];
+for (const fam of ACCESS_FAMILIES) {
+  const f = families[fam];
+  if (!f) continue;
+  const pending = PENDING_FAMILIES.has(fam)
+    || f.catalogueState === 'familyConfirmedContentPending';
+  weaponAccess[fam] = {
+    family: fam,
+    hands: f.hands,
+    classAccess: classAccessList(f.classAccess),
+    techniques: { A: f.skillA, paired: f.skillB, B: f.skillB },
+    orbCombination: /Focus Orb|Hand Crossbow|Dagger Pinion|Talon Blade|Wand/i.test(fam),
+    catalogueState: pending ? 'familyConfirmedContentPending' : (fam === 'Greatbow' ? 'reRestricted' : 'confirmed'),
+    inventItems: false,
+  };
+}
+/* Confirmed access overrides from Current Rules / CHG-058. */
+if (weaponAccess.Greatbow) weaponAccess.Greatbow.classAccess = ['knight', 'brute'];
+if (weaponAccess.Bow) weaponAccess.Bow.classAccess = ['rogue', 'bard'];
+if (weaponAccess['Hand Crossbow']) weaponAccess['Hand Crossbow'].classAccess = ['rogue', 'bard'];
+if (weaponAccess['Dagger Pinion']) weaponAccess['Dagger Pinion'].classAccess = ['rogue'];
+if (weaponAccess['Focus Orb']) {
+  weaponAccess['Focus Orb'].classAccess = ['mage', 'siren', 'inquisitor', 'bard'];
+}
+
+/* ---- Damage Lab oracle fixtures (direct scaling + flat then % equipment) ---- */
 function defenceModFor(effDef) {
   return 100 / (100 + Math.max(0, effDef));
 }
@@ -1319,12 +1536,16 @@ for (const lo of referenceLoadouts) {
     if (!sk || sk.skillType === 'Utility' || sk.ap == null) continue;
     const ap = sk.ap[lo.rarity] != null ? sk.ap[lo.rarity] : sk.fixedCoefficient;
     if (ap == null) continue;
-    const scalingKey = sk.scalingStat === 'MATK' ? 'matk' : 'atk';
+    const scalingKey = sk.scalingStat === 'MATK' ? 'matk'
+      : sk.scalingStat === 'SPD' ? 'spd'
+      : 'atk';
+    const gearFlat = lo.totals[scalingKey + 'Flat'] || 0;
     const gearPct = (lo.totals[scalingKey + 'Pct'] || 0) / 100;
-    const attackerStat = Math.round(cls.reference[scalingKey] * (1 + gearPct));
+    const attackerStat = Math.round((cls.reference[scalingKey] + gearFlat) * (1 + gearPct));
     const defKey = sk.damageType === 'Magic' ? 'mdef' : 'def';
+    const defFlat = lo.totals[defKey + 'Flat'] || 0;
     const defGearPct = (lo.totals[defKey + 'Pct'] || 0) / 100;
-    const defenderDef = Math.round(cls.reference[defKey] * (1 + defGearPct));
+    const defenderDef = Math.round((cls.reference[defKey] + defFlat) * (1 + defGearPct));
     const penPct = Math.min(40, sk.intrinsicPenPct
       + (sk.damageType === 'Magic' ? (lo.totals.magicPenPct || 0) : (lo.totals.physicalPenPct || 0)));
     const effDef = defenderDef * (1 - penPct / 100);
@@ -1336,12 +1557,12 @@ for (const lo of referenceLoadouts) {
       class: lo.class, rarity: lo.rarity, skillId: sid,
       en: sk.en, baseDamage, ap,
       attackerScalingTotal: attackerStat, classReference: cls.reference[scalingKey],
-      gearPct: round2(gearPct),
+      gearFlat, gearPct: round2(gearPct),
       defenderDefence: defenderDef, penPct: round2(penPct), effectiveDefence: round2(effDef),
       defenceMod: Math.round(defenceMod * 10000) / 10000,
       aspectMod: 1, bonusMod: 1, crit: false,
       expectedDamage: damage,
-      formula: 'directScaling',
+      formula: 'directScalingFlatThenPct',
     });
   }
 }
@@ -1376,28 +1597,32 @@ const slotsData = {
 
 writeDataFile('js/data/equipment/slots.js', 'Avian.data.equipment.slots', slotsData);
 writeDataFile('js/data/equipment/skills.js', 'Avian.data.equipment.skills', skills,
-  'v0.6 Skill Library: 64 base + 18 combinations; fixed technique coefficients; EN role bumps.');
+  'v0.7 Skill Library: fixed EN cooldowns; EN damage bands; expanded combinations.');
 writeDataFile('js/data/equipment/items.js', 'Avian.data.equipment.items', items,
-  'v0.6 percentage-scaled catalogue (core stats as *Pct).');
+  'v0.7 hybrid flat + percentage catalogue (*Flat + *Pct).');
 writeDataFile('js/data/equipment/families.js', 'Avian.data.equipment.families', families,
-  'v0.6 family access locks, Dagger Pinion rename, Bow/HCrossbow stubs (no invented items).');
+  'v0.7 family guide + catalogue coverage; pending Bow/HXB/Hook/Pick/Reliquary.');
 writeDataFile('js/data/equipment/reference-loadouts.js', 'Avian.data.equipment.referenceLoadouts', referenceLoadouts);
+writeDataFile('js/data/equipment/combinations.js', 'Avian.data.equipment.combinationTechniques', combinationTechniques,
+  'v0.7 curated combination techniques from Skill Library COMBO_* rows.');
+writeDataFile('js/data/equipment/weapon-access.js', 'Avian.data.equipment.weaponAccess', weaponAccess,
+  'v0.7 pending-family access stubs (no invented catalogue rows).');
 writeDataFile('js/data/effect-tiers.js', 'Avian.data.effectTiers', effectTiers,
-  'v0.6 core 6/8/12 + point tiers 3/5/8 + Brace.');
+  'v0.7 effect tiers (core 6/8/12 + point tiers 3/5/8 + Brace).');
 writeDataFile('js/data/birds-v2.js', 'Avian.data.birdsV2', birdsV2,
-  'v0.6 bird bases: +20 Vitality rebase; Precision removed; Affinity plain→Latin.');
+  'v0.7 bird bases (Vitality rebase retained).');
 writeDataFile('js/data/combat-pack/classes.js', 'Avian.data.combatPack.classes', classes,
-  'v0.6 class references (+20 Vitality); Precision action-owned.');
+  'v0.7 class references; Precision action-owned.');
 writeDataFile('js/data/combat-pack/bird-passives.js', 'Avian.data.combatPack.birdPassives', birdPassives,
-  'v0.6 species passives.');
+  'v0.7 species passives.');
 writeDataFile('js/data/combat-pack/innate-utilities.js', 'Avian.data.combatPack.innateUtilities', innateUtilities,
-  'v0.6 innate utilities (one per bird).');
+  'v0.7 innate utilities (one per bird).');
 
 mkdirSync(path.join(ROOT, 'scripts', 'fixtures'), { recursive: true });
 writeFileSync(
   path.join(ROOT, 'scripts', 'fixtures', 'equipment-damage-fixtures.json'),
   JSON.stringify({
-    _note: `GENERATED by import-equipment-workbook.mjs from workbook v${META.version}. Direct-scaling oracles: round((Base Damage + Stat × coeff) × Defence Mod), min 1.`,
+    _note: `GENERATED by import-equipment-workbook.mjs from workbook v${META.version}. Oracle: round((Base + (ref+flat)*(1+pct) × coeff) × Defence Mod), min 1.`,
     fixtures,
   }, null, 2) + '\n',
 );

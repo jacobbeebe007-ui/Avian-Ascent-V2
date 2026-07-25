@@ -66,14 +66,14 @@ const families = data.ailmentFamilies;
 
 const skillIds = skills ? Object.keys(skills) : [];
 const comboIds = skillIds.filter((id) => id.startsWith('COMBO_'));
-if (skillIds.length !== 82) fail('expected 82 skills, got ' + skillIds.length);
-if (comboIds.length !== 18) fail('expected 18 COMBO_* skills, got ' + comboIds.length);
+if (skillIds.length !== 96) fail('expected 96 skills, got ' + skillIds.length);
+if (comboIds.length !== 25) fail('expected 25 COMBO_* skills, got ' + comboIds.length);
 
 if (!orbs || Object.keys(orbs).length !== 6) {
   fail('expected 6 orb focuses, got ' + (orbs ? Object.keys(orbs).length : 0));
 }
-if (!combos || Object.keys(combos).length !== 18) {
-  fail('expected 18 combinationTechniques, got ' + (combos ? Object.keys(combos).length : 0));
+if (!combos || Object.keys(combos).length !== 25) {
+  fail('expected 25 combinationTechniques, got ' + (combos ? Object.keys(combos).length : 0));
 }
 
 for (const id of Object.keys(combos || {})) {
@@ -110,8 +110,8 @@ for (const [atk, row] of Object.entries(expected)) {
   }
 }
 
-if (!cfg || cfg.packVersion !== '2026.07-affinity-arsenal-v0.6') {
-  fail('combatConfig.packVersion mismatch');
+if (!cfg || cfg.packVersion !== '2026.07-equipment-loot-v0.7') {
+  fail('combatConfig.packVersion mismatch (expected equipment-loot-v0.7)');
 }
 if (!cfg.affinityArsenalV06) fail('combatConfig.affinityArsenalV06 should be true');
 if (!cfg.directScaling || !cfg.directScaling.enabled) fail('directScaling.enabled expected');
@@ -148,5 +148,5 @@ const stamped = fo.filter((it) => it.orbFocus);
 if (stamped.length < 6) fail('expected at least 6 Focus Orb items with orbFocus, got ' + stamped.length);
 
 if (!process.exitCode) {
-  console.log('OK affinity-arsenal content: 82 skills, 18 combos, 6 orbs, tiers 6/8/12, aliases, progression.');
+  console.log('OK affinity-arsenal content: 96 skills, 25 combos, 6 orbs, tiers 6/8/12, aliases, progression.');
 }

@@ -281,7 +281,7 @@ else ok('forced rarity rolls return matching catalogue rarity (3 unique × 4 tie
 // --- equipment desc uses Might not atkPct ---
 const talon = nestCtx.Avian.equipment.getItem('EQ-TB-GRY');
 const desc = nestCtx.Avian.equipmentLoot.formatEquipmentDesc(talon);
-if (!desc || /atkPct/i.test(desc)) fail(`EQ-TB-GRY desc still shows atkPct: ${desc}`);
+if (!desc || /atkPct|atkFlat/i.test(desc)) fail(`EQ-TB-GRY desc still shows raw key: ${desc}`);
 else if (!/Might/i.test(desc)) fail(`EQ-TB-GRY desc missing Might: ${desc}`);
 else ok(`EQ-TB-GRY desc uses Might (${desc})`);
 

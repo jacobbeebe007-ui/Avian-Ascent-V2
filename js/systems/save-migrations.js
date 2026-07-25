@@ -25,14 +25,15 @@
   'use strict';
 
   /** Bump when adding a migration. */
-  var TARGET = 14;
+  var TARGET = 15;
 
   /** Combat-pack version stamp surfaced on the save blob. Wipes attached when
    *  this changes so legacy ability/perk/family state never bleeds into a run. */
   var COMBAT_PACK_VERSION = '2026.07-flat-abilities';
   var MUTATIONS_PACK_VERSION = '2026.06-mutations-v6';
-  var EQUIPMENT_PACK_VERSION = '2026.07-affinity-arsenal-v0.6';
-  var AFFINITY_ARSENAL_PACK_VERSION = '2026.07-affinity-arsenal-v0.6';
+  var EQUIPMENT_PACK_VERSION = '2026.07-equipment-loot-v0.7';
+  var AFFINITY_ARSENAL_PACK_VERSION = '2026.07-equipment-loot-v0.7';
+  var EQUIPMENT_LOOT_PACK_VERSION = '2026.07-equipment-loot-v0.7';
   var SAVE_BACKUP_KEY_PRE_V13 = 'avianAscent_save_v2_backup_pre_v13';
   var EQUIPMENT_V2_STARTER_STIPEND = 30;
   var MUTATION_SELL_COSTS = { white: 16, green: 28, blue: 44, purple: 64, gold: 96, orange: 140 };
@@ -176,12 +177,22 @@
   function stampAffinityArsenalFields(save) {
     if (!save || typeof save !== 'object') return save;
     save.affinityArsenalV06 = true;
+    save.equipmentLootV07 = true;
     save.affinityArsenalPackVersion = AFFINITY_ARSENAL_PACK_VERSION;
     save.equipmentPackVersion = EQUIPMENT_PACK_VERSION;
+    save.equipmentLootPackVersion = EQUIPMENT_LOOT_PACK_VERSION;
     /* Soft-migrate aspect display aliases; keep legacy ids on birds. */
     if (save.player && save.player.aspect && Avian.affinity && typeof Avian.affinity.normalize === 'function') {
       save.player.aspect = Avian.affinity.normalize(save.player.aspect) || save.player.aspect;
     }
+    return save;
+  }
+
+  function stampEquipmentLootV07Fields(save) {
+    if (!save || typeof save !== 'object') return save;
+    stampAffinityArsenalFields(save);
+    save.equipmentLootV07 = true;
+    save.equipmentLootPackVersion = EQUIPMENT_LOOT_PACK_VERSION;
     return save;
   }
 
@@ -403,6 +414,16 @@
         return stampAffinityArsenalFields(save);
       },
     },
+    {
+      from: 14,
+      to: 15,
+      note: 'equipment loot v0.7: hybrid flat+% equipment; stamp equipmentLootPackVersion',
+      fn: function (save) {
+        if (!save) return save;
+        stampEquipmentSaveFields(save);
+        return stampEquipmentLootV07Fields(save);
+      },
+    },
   ];
 
   var Avian = globalThis.Avian || (globalThis.Avian = { systems: {}, debug: {} });
@@ -413,6 +434,7 @@
   Avian.systems.MUTATIONS_PACK_VERSION = MUTATIONS_PACK_VERSION;
   Avian.systems.EQUIPMENT_PACK_VERSION = EQUIPMENT_PACK_VERSION;
   Avian.systems.AFFINITY_ARSENAL_PACK_VERSION = AFFINITY_ARSENAL_PACK_VERSION;
+  Avian.systems.EQUIPMENT_LOOT_PACK_VERSION = EQUIPMENT_LOOT_PACK_VERSION;
   Avian.systems.SAVE_BACKUP_KEY_PRE_V13 = SAVE_BACKUP_KEY_PRE_V13;
   Avian.systems.EQUIPMENT_V2_STARTER_STIPEND = EQUIPMENT_V2_STARTER_STIPEND;
   Avian.systems.needsEquipmentV2PreReleaseReset = needsEquipmentV2PreReleaseReset;
@@ -421,6 +443,7 @@
   Avian.systems.grantEquipmentV2MigrationCompensation = grantEquipmentV2MigrationCompensation;
   Avian.systems.stampEquipmentSaveFields = stampEquipmentSaveFields;
   Avian.systems.stampAffinityArsenalFields = stampAffinityArsenalFields;
+  Avian.systems.stampEquipmentLootV07Fields = stampEquipmentLootV07Fields;
 
   Avian.systems.maybeBackupPreV13Save = function maybeBackupPreV13Save(rawJson, parsed) {
     if (!parsed || typeof parsed !== 'object') return false;

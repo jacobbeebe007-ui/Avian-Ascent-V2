@@ -67,7 +67,7 @@ if (!slots || !slots.slotOrder || slots.slotOrder.length !== 8) {
 }
 
 const skillIds = skills ? Object.keys(skills) : [];
-if (skillIds.length !== 82) fail('expected 82 skills (64 base + 18 COMBO_*), got ' + skillIds.length);
+if (skillIds.length !== 96) fail('expected 96 skills (expanded v0.7 library + COMBO_*), got ' + skillIds.length);
 if (!skills.BASIC_PHYSICAL || !skills.BASIC_MAGIC) fail('missing BASIC_PHYSICAL / BASIC_MAGIC');
 
 const itemIds = items ? Object.keys(items) : [];
@@ -91,8 +91,8 @@ if (tiers.buff.grand != null || tiers.buff.epic != null || tiers.buff.legendary 
   fail('legacy grand/epic/legendary tiers must not appear in effectTiers');
 }
 
-if (!cfg || cfg.packVersion !== '2026.07-affinity-arsenal-v0.6') {
-  fail('combatConfig.packVersion must be affinity-arsenal-v0.6');
+if (!cfg || cfg.packVersion !== '2026.07-equipment-loot-v0.7') {
+  fail('combatConfig.packVersion must be equipment-loot-v0.7');
 }
 if (!cfg.directScaling || !cfg.directScaling.enabled) fail('combatConfig.directScaling.enabled expected');
 if (!cfg.penetration || cfg.penetration.cap !== 0.4) fail('combatConfig.penetration.cap must be 0.4');
@@ -174,15 +174,20 @@ if (!birds.dukeBlakiston || !birds.dukeBlakiston.bossOverride) {
   fail('Duke Blakiston must be present with bossOverride=true');
 }
 
-/* Core item stats must be percentage keys in v0.6 */
-let flatCoreHits = 0;
+/* Core item stats use *Flat / *Pct keys in v0.7 (not bare atk/hp). */
+let bareCoreHits = 0;
+let hybridHits = 0;
 for (const id of itemIds.slice(0, 50)) {
   const st = items[id].stats || {};
-  if (st.atk != null || st.hp != null || st.def != null) flatCoreHits++;
+  if (st.atk != null || st.hp != null || st.def != null) bareCoreHits++;
+  if (st.atkFlat != null || st.atkPct != null || st.hpFlat != null || st.hpPct != null) hybridHits++;
 }
-if (flatCoreHits) fail(flatCoreHits + ' sample items still use flat core stats (expected *Pct)');
+if (bareCoreHits) fail(bareCoreHits + ' sample items still use bare core stats (expected *Flat/*Pct)');
+if (!hybridHits) fail('expected hybrid *Flat/*Pct core stats on sample items');
 const sample = items['EQ-TB-GRY'];
-if (!sample || sample.stats.atkPct == null) fail('EQ-TB-GRY missing atkPct');
+if (!sample || (sample.stats.atkFlat == null && sample.stats.atkPct == null)) {
+  fail('EQ-TB-GRY missing atkFlat/atkPct');
+}
 
 if (!loadouts || !Array.isArray(loadouts.rows || loadouts) && typeof loadouts !== 'object') {
   fail('reference-loadouts missing');

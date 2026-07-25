@@ -96,32 +96,53 @@
     return (Avian.data && Avian.data.equipment && Avian.data.equipment.orbFocuses) || null;
   }
 
+  function inferOrbFocusId(item) {
+    if (!item) return null;
+    if (item.orbFocus) return String(item.orbFocus).toLowerCase();
+    if (item.family !== 'Focus Orb') return null;
+    var orbs = orbFocusesCatalog() || {};
+    var aspect = item.aspect;
+    for (var oid in orbs) {
+      if (!Object.prototype.hasOwnProperty.call(orbs, oid)) continue;
+      if (orbs[oid].affinity === aspect || orbs[oid].exemplarItemId === item.id) return oid;
+    }
+    var nameMatch = String(item.name || '').match(/\b(Poison|Burn|Chill|Shock|Bleed|Echo)\b/i);
+    return nameMatch ? nameMatch[1].toLowerCase() : null;
+  }
+
   function findCombinationSkillId(mainFamily, offItem) {
     var combos = combinationsCatalog();
     if (!combos || !mainFamily || !offItem) return null;
     var mainTag = normalizeFamilyName(mainFamily);
-    var focusId = offItem.orbFocus || null;
-    if (!focusId && offItem.family === 'Focus Orb') {
-      /* Infer from item name / aspect if focus not stamped. */
-      var orbs = orbFocusesCatalog() || {};
-      var aspect = offItem.aspect;
-      for (var oid in orbs) {
-        if (!Object.prototype.hasOwnProperty.call(orbs, oid)) continue;
-        if (orbs[oid].affinity === aspect || orbs[oid].exemplarItemId === offItem.id) {
-          focusId = oid;
-          break;
-        }
+    var focusId = inferOrbFocusId(offItem);
+    var candidates = [];
+    if (focusId) {
+      var orbLabel = (orbFocusesCatalog() && orbFocusesCatalog()[focusId] && orbFocusesCatalog()[focusId].label)
+        || (focusId.charAt(0).toUpperCase() + focusId.slice(1) + ' Orb');
+      candidates.push(mainTag + '|' + orbLabel);
+      candidates.push(mainTag + '|' + focusId.charAt(0).toUpperCase() + focusId.slice(1) + ' Orb');
+    }
+    var offFamily = normalizeFamilyName(offItem.family);
+    if (offFamily && offFamily !== 'Focus Orb') {
+      candidates.push(mainTag + '|' + offFamily);
+    }
+    for (var i = 0; i < candidates.length; i++) {
+      var pairKey = candidates[i];
+      for (var sid in combos) {
+        if (!Object.prototype.hasOwnProperty.call(combos, sid)) continue;
+        if (combos[sid].pairKey === pairKey) return sid;
       }
     }
-    if (!focusId) return null;
-    var orbLabel = (orbFocusesCatalog() && orbFocusesCatalog()[focusId] && orbFocusesCatalog()[focusId].label) || null;
-    if (!orbLabel) return null;
-    var pairKey = mainTag + '|' + orbLabel;
-    for (var sid in combos) {
-      if (!Object.prototype.hasOwnProperty.call(combos, sid)) continue;
-      if (combos[sid].pairKey === pairKey) return sid;
-    }
     return null;
+  }
+
+  function matchingFocusPairSkillId(mainItem, offItem) {
+    var mainFocus = inferOrbFocusId(mainItem);
+    var offFocus = inferOrbFocusId(offItem);
+    if (!mainFocus || !offFocus || mainFocus !== offFocus) return null;
+    var id = 'PAIR_FOCUS_' + String(mainFocus).toUpperCase();
+    var pack = (Avian.data && Avian.data.equipment && Avian.data.equipment.skills) || null;
+    return pack && pack[id] ? id : null;
   }
 
   function statToRiderKind(stat, dir, target) {
@@ -425,14 +446,24 @@
     var mainFamily = normalizeFamilyName(main.family);
     var offFamily = offWeapon ? normalizeFamilyName(offWeapon.family) : null;
 
-    /* Dual-wield resolution: 2H already returned; matching Paired → curated Combination → unlinked normals. */
+    /* Dual-wield: matching Focus → matching Paired → curated Combination → unlinked normals. */
+    if (offWeapon && mainFamily === 'Focus Orb' && offFamily === 'Focus Orb') {
+      var focusPairId = matchingFocusPairSkillId(main, offWeapon);
+      if (focusPairId) {
+        var rfp = ns.skillToAbilityRow(focusPairId, main, rarityMain);
+        out.weaponB = rfp ? abilityFromRow(rfp, { actionSource: 'weaponB' }) : null;
+        return out;
+      }
+    }
+
     if (offWeapon && mainFamily && offFamily === mainFamily && main.pairedSkill) {
       var rp = ns.skillToAbilityRow(main.pairedSkill, main, rarityMain);
       out.weaponB = rp ? abilityFromRow(rp, { actionSource: 'weaponB' }) : null;
       return out;
     }
 
-    if (offWeapon && offFamily === 'Focus Orb') {
+    if (offWeapon && (offFamily === 'Focus Orb' || mainFamily === 'Wand' || mainFamily === 'Talon Blade'
+      || mainFamily === 'Duel Sabre' || mainFamily === 'War Pick')) {
       var comboId = findCombinationSkillId(mainFamily, offWeapon);
       if (comboId) {
         var rc = ns.skillToAbilityRow(comboId, offWeapon, normalizeRarity(offWeapon.rarity));

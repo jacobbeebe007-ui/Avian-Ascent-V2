@@ -149,8 +149,8 @@ console.log(result.stdout);
 
 const cfgPath = path.join(ROOT, 'js/data/combat-config.js');
 const cfgText = readFileSync(cfgPath, 'utf8');
-if (!cfgText.includes("packVersion: '2026.07-affinity-arsenal-v0.6'")) {
-  fail('js/data/combat-config.js must be hand-updated to packVersion 2026.07-affinity-arsenal-v0.6');
+if (!cfgText.includes("packVersion: '2026.07-equipment-loot-v0.7'")) {
+  fail('js/data/combat-config.js must be hand-updated to packVersion 2026.07-equipment-loot-v0.7');
 }
 
 console.log('Import complete. Run: npm run verify-affinity-arsenal');
