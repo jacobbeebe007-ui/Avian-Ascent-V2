@@ -144,6 +144,11 @@
         });
       });
     }
+    ['identityPassive', 'identityClassPerk', 'identityTrait'].forEach(function (idKey) {
+      var iv = s[idKey];
+      if (!iv || !iv.name) return;
+      entries.push({ id: idKey, value: iv, synthetic: true, identityBadge: true });
+    });
     return entries;
   }
 
@@ -160,6 +165,20 @@
     var AILMENTS = globalThis.AILMENTS || {};
     var STATUS_CONFUSED_SELF_PCT = ctx.confusedSelfPct || 30;
     var out = { id: k, className: 'status-badge ' + k, text: '', summary: '', source: '', category: 'system' };
+
+    if (entry.synthetic && entry.identityBadge) {
+      var idMeta = {
+        identityPassive: { icon: '🪶', label: 'Passive', cls: 'buffed' },
+        identityClassPerk: { icon: '♔', label: 'Class Perk', cls: 'buffed' },
+        identityTrait: { icon: '🏷', label: 'Trait', cls: 'buffed' },
+      }[k] || { icon: '✦', label: 'Info', cls: 'buffed' };
+      out.className = 'status-badge ' + idMeta.cls + ' status-badge--identity';
+      out.text = idMeta.icon + ' ' + (v.name || idMeta.label);
+      out.summary = (v.effect || v.desc || (idMeta.label + ': ' + (v.name || '')));
+      out.source = v.name || '';
+      out.category = 'buff';
+      return out;
+    }
 
     if (entry.synthetic && entry.displayKind) {
       var meta = DISPLAY_KIND_LABELS[entry.displayKind] || { icon: '✦', label: entry.displayKind, cls: 'buffed', cat: 'buff' };

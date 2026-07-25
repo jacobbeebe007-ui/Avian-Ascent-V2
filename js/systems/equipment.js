@@ -331,8 +331,8 @@
     if (sk === 'offHand') {
       var mainId = eq.mainHand;
       var mainItem = mainId ? getItem(mainId) : null;
-      /* 2H main blocks off-hand weapons, but Shields may stay equipped. */
-      if (mainItem && (Number(mainItem.hands) || 0) === 2 && !isShieldItem(item)) {
+      /* 2H main blocks all off-hand items, including Shields. */
+      if (mainItem && (Number(mainItem.hands) || 0) === 2) {
         return { ok: false, reason: 'two_handed_main' };
       }
     }
@@ -360,8 +360,7 @@
     var sk = slotKey;
     var item = getItem(itemId);
     if (sk === 'mainHand' && item && (Number(item.hands) || 0) === 2 && eq.offHand) {
-      var offItem = getItem(eq.offHand);
-      if (!isShieldItem(offItem)) unequip(player, 'offHand');
+      unequip(player, 'offHand');
     }
     var displaced = eq[sk];
     removeFromInventory(player, itemId);
@@ -394,13 +393,10 @@
     }
     var mainItem = eq.mainHand ? getItem(eq.mainHand) : null;
     if (mainItem && (Number(mainItem.hands) || 0) === 2 && eq.offHand) {
-      var offItem = getItem(eq.offHand);
-      if (!isShieldItem(offItem)) {
-        var offId = eq.offHand;
-        eq.offHand = null;
-        addToInventory(player, offId);
-        issues.push({ slot: 'offHand', action: 'unequip_two_handed_conflict', itemId: offId });
-      }
+      var offId = eq.offHand;
+      eq.offHand = null;
+      addToInventory(player, offId);
+      issues.push({ slot: 'offHand', action: 'unequip_two_handed_conflict', itemId: offId });
     }
     return issues;
   }
@@ -705,36 +701,13 @@
   function shouldSkipOffHandFill(eq) {
     var mainId = eq && eq.mainHand;
     var mainItem = mainId ? getItem(mainId) : null;
-    /* Only skip when 2H main would block weapons; Shields still fill offHand. */
+    /* 2H main blocks all offHand fills, including Shields. */
     return !!(mainItem && (Number(mainItem.hands) || 0) === 2);
   }
 
   function pickReferenceItemForSlotAllowingShieldWith2H(classId, slotKey, rarity, eq) {
-    if (slotKey !== 'offHand' || !shouldSkipOffHandFill(eq)) {
-      return pickReferenceItemForSlot(classId, slotKey, rarity);
-    }
-    /* Prefer a Shield of this rarity when mainHand is two-handed. */
-    var rar = normalizeEquipmentRarity(rarity);
-    var ref = findReferenceLoadout(classId, rar);
-    if (ref && ref.equipment) {
-      var cand = ref.equipment.offHand || ref.equipment.shield || null;
-      var candItem = cand ? getItem(cand) : null;
-      if (candItem && isShieldItem(candItem) && normalizeEquipmentRarity(candItem.rarity) === rar) {
-        return cand;
-      }
-    }
-    var cat = itemsCatalog();
-    if (!cat) return null;
-    for (var itemId in cat) {
-      if (!Object.prototype.hasOwnProperty.call(cat, itemId)) continue;
-      var it = cat[itemId];
-      if (!it || !isShieldItem(it)) continue;
-      if (normalizeEquipmentRarity(it.rarity) !== rar) continue;
-      if (!itemAllowedForPlayer(it, classId)) continue;
-      if (!slotAcceptsItem('offHand', it)) continue;
-      return itemId;
-    }
-    return null;
+    if (slotKey === 'offHand' && shouldSkipOffHandFill(eq)) return null;
+    return pickReferenceItemForSlot(classId, slotKey, rarity);
   }
 
   var RARITY_RANK = {

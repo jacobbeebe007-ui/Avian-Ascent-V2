@@ -115,17 +115,10 @@ if (JSON.stringify(first) !== JSON.stringify(second)) {
 }
 
 const SNAPSHOT = Object.freeze({
-<<<<<<< HEAD
   turns: 4,
   winner: 'attacker',
-  damageDealt: 91.35,
-  damageTaken: 36.44,
-=======
-  turns: 7,
-  winner: 'attacker',
-  damageDealt: 90.34,
-  damageTaken: 33.27,
->>>>>>> e43a4fbc4c3600e16f84c259b0a67192a6b2540c
+  damageDealt: 86.88,
+  damageTaken: 29.16,
   seed: SEED,
 });
 function near(a, b, eps = 0.05) {

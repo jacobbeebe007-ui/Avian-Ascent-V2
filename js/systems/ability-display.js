@@ -7,6 +7,13 @@
     return String(s || '').replace(/\b(\d+)\s*AP\b/g, '$1 EN').replace(/\bAP\s*·/g, 'EN ·');
   }
 
+  /** Natural Strike / empty rider filler — keep in data, hide from combat UI. */
+  function isFillerRiderProse(text) {
+    var t = String(text || '').trim();
+    if (!t || /^none$/i.test(t)) return true;
+    return /reliable fallback|no automatic rider/i.test(t);
+  }
+
   function resolveRow(ab, row) {
     /* UI template stubs embed the real combat row on _dispatcherRow — unwrap them. */
     if (row && row._dispatcherRow && typeof row._dispatcherRow === 'object') {
@@ -485,7 +492,7 @@
     /* Prefer authored prose (displayText / riderText / utility effect) on the tile. */
     effectLinesFromDisplayText(row.displayText, true).forEach(function (s) { segs.push(s); });
     var prose = String(row.riderText || row.shortDesc || '').trim();
-    if (prose && !/^none$/i.test(prose)) {
+    if (prose && !isFillerRiderProse(prose)) {
       var hasProse = segs.some(function (s) {
         return s && s.text && String(s.text).indexOf(prose) >= 0;
       });
@@ -565,7 +572,7 @@
     }
 
     var rider = row && String(row.riderText || '').trim();
-    if (rider && !/^none$/i.test(rider)) {
+    if (rider && !isFillerRiderProse(rider)) {
       var joined = parts.join('\n');
       if (joined.indexOf(rider) < 0) {
         parts.push(normalizeEnLabel(rider));

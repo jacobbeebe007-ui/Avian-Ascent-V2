@@ -34,12 +34,14 @@
       6: 35,
     }),
 
-    /* v0.7 direct damage: BaseDamage + FinalStat × coefficient (R-EN-005 bands).
-     * Scaling Model: Base Damage = 2 × EN; Defence Mod = 100/(100+EffDef);
+    /* v0.7 direct damage: BaseDamage + FinalStat × coefficient × scale (R-EN-005 bands).
+     * Scaling Model: Base Damage = 2 × EN; Defence Mod = 150/(150+EffDef);
      * Affinity 1.20/1.00/0.80; Bonus cap +45%; Crit chance 50% / Ferocity ×2. */
     directScaling: Object.freeze({
       enabled: true,
       baseDamagePerEn: 2,
+      /* Softens gear+level linear contribution for early 2–4 turn pacing. */
+      statContributionScale: 0.75,
       /* EN → reference coefficient mid-band / Precision (R-EN-005). */
       enAttackBands: Object.freeze({
         1: Object.freeze({ coeff: 0.8, precision: 1.0, min: 0.70, max: 0.90 }),
@@ -93,9 +95,9 @@
       boss: 0.5,
     }),
 
-    /* Defence Mod = C / (C + EffDef). WD default C=100. */
+    /* Defence Mod = C / (C + EffDef). Combat retune: C=150. */
     defence: Object.freeze({
-      constant: 100,
+      constant: 150,
       curveK: 3,
       formula: 'constantOverSum',
       minLandedDamage: 1,

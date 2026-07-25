@@ -8444,7 +8444,35 @@ function ensureCombatStatusSections(id){
   return { root, ailments, modifiers };
 }
 
+function syncEnemyIdentityStatusBadges(){
+  if(!G?.enemy || !G.enemyStatus) return;
+  const birdKey=G.enemy.birdKey||G.enemy.portraitKey||'';
+  const passive=typeof Avian?.getBirdPassiveV2==='function'?Avian.getBirdPassiveV2(birdKey):null;
+  if(passive&&passive.name){
+    G.enemyStatus.identityPassive={ name:passive.name, effect:passive.effect||'', persistent:true };
+  }else{
+    delete G.enemyStatus.identityPassive;
+  }
+  const perk=typeof Avian?.classPerks?.getClassPerkForEntity==='function'
+    ? Avian.classPerks.getClassPerkForEntity(G.enemy)
+    : null;
+  if(perk&&perk.name){
+    G.enemyStatus.identityClassPerk={ name:perk.name, effect:perk.effect||'', persistent:true };
+  }else if(G.enemy.classPerk){
+    G.enemyStatus.identityClassPerk={ name:G.enemy.classPerk, effect:G.enemy.classPerkEffect||'', persistent:true };
+  }else{
+    delete G.enemyStatus.identityClassPerk;
+  }
+  const trait=G.enemy._trait||(typeof enemyTraitFor==='function'?enemyTraitFor(G.enemy):null);
+  if(trait&&trait.name){
+    G.enemyStatus.identityTrait={ name:trait.name, effect:trait.desc||'', persistent:true };
+  }else{
+    delete G.enemyStatus.identityTrait;
+  }
+}
+
 function renderStatuses(id, statuses) {
+  if(id==='enemy-status') syncEnemyIdentityStatusBadges();
   const sections=ensureCombatStatusSections(id);
   if(!sections) return;
   const { ailments, modifiers }=sections;
@@ -9129,7 +9157,9 @@ function renderActions() {
       : '')
       ||(!isEmptySlot && typeof buildAbilityCombatBriefHtml==='function'?buildAbilityCombatBriefHtml(ab, _packRowUI||_tmplUI):'')
       ||(!isEmptySlot && typeof formatTemplateCombatBriefHtml==='function'?formatTemplateCombatBriefHtml(_tmplUI):'');
-    const fallbackDesc=isEmptySlot?'':(((getAbDesc(ab)||_tmplUI?.desc||ab.desc||_packRowUI?.riderText||'')+getAbilityDamageScalingHintForUI(ab)).replace(/<[^>]+>/g,'').trim());
+    let _rawFallback=isEmptySlot?'':(getAbDesc(ab)||_tmplUI?.desc||ab.desc||_packRowUI?.riderText||'');
+    if(/reliable fallback|no automatic rider/i.test(String(_rawFallback))) _rawFallback='';
+    const fallbackDesc=isEmptySlot?'':((_rawFallback+getAbilityDamageScalingHintForUI(ab)).replace(/<[^>]+>/g,'').trim());
     const _dmgEst=(!isEmptySlot?estimateSkillDamageRange(ab,_tmplUI,G.player,{isPlayerCombatPreview:true}):{isDamaging:false});
     let dmgRow='';
     if(_dmgEst.isDamaging&&_dmgEst.dmgLow!=null){
@@ -11785,6 +11815,8 @@ function computeOutgoingDamageBase(isMagic, srcAbility, legacyAmount=0){
   }
   let pierce=isMagic?getMagicalPierceFractionForDamage(activeAb):getPhysicalPierceFractionForDamage(activeAb);
   if(G.playerStatus?.openingStrikePierce) pierce=Math.max(pierce,0.45);
+  if(!isMagic) G._workbookPassiveDefPen=0;
+  else G._workbookPassiveMdefPen=0;
   const rawDef=isMagic?(G.enemy.stats.mdef||0):(G.enemy.stats.def||0);
   const effDef=effectiveDefence(rawDef,pierce,{burning:typeof enemyHasBurningStacks==='function'?enemyHasBurningStacks():enemyHasBurning()});
   const mitigated=typeof mitigatedDamage==='function'
@@ -11919,6 +11951,9 @@ function collectOutgoingDamageBonusFractions(ctx){
   if(typeof Avian?.classPerks?.collectOutgoingDamageBonusFractions==='function'){
     fractions.push(...Avian.classPerks.collectOutgoingDamageBonusFractions(activeAb, ctx));
   }
+  if(typeof Avian?.passives?.collectPendingDamageBonusFractions==='function'){
+    fractions.push(...Avian.passives.collectPendingDamageBonusFractions('player', activeAb, ctx));
+  }
   if(typeof Avian?.workbookEffects?.collectDamageBonusFractions==='function'){
     fractions.push(...Avian.workbookEffects.collectDamageBonusFractions(activeAb, ctx));
   }
@@ -11959,9 +11994,13 @@ function computeEntityAbilityRawDamage(entity, ab, tmpl, isMagic){
   const classBonusFractions = typeof Avian?.classPerks?.collectOutgoingDamageBonusFractionsForEntity==='function'
     ? Avian.classPerks.collectOutgoingDamageBonusFractionsForEntity(entity, ab, { target:G.player, isMagic })
     : [];
+  const passiveBonusFractions = (entity===G.enemy && typeof Avian?.passives?.collectPendingDamageBonusFractions==='function')
+    ? Avian.passives.collectPendingDamageBonusFractions('enemy', ab, { isMagic, isAttack:!isMagic })
+    : [];
+  const bonusFractions=[...classBonusFractions, ...passiveBonusFractions];
   const classBonusMult = typeof sumAdditiveDamageBonus==='function'
-    ? sumAdditiveDamageBonus(classBonusFractions)
-    : (1+classBonusFractions.reduce((a,b)=>a+(Number(b)||0),0));
+    ? sumAdditiveDamageBonus(bonusFractions)
+    : (1+bonusFractions.reduce((a,b)=>a+(Number(b)||0),0));
   if(row&&typeof enrichCombatRow==='function') enrichCombatRow(row);
   if(row&&typeof calculateDamage==='function'&&typeof usesMasterDamage==='function'&&usesMasterDamage(row)){
     const battleState={
@@ -11973,7 +12012,7 @@ function computeEntityAbilityRawDamage(entity, ab, tmpl, isMagic){
       target:G.player,
       ability:row,
       battleState,
-      bonusFractions:classBonusFractions,
+      bonusFractions,
       hitSucceeded:true,
     });
     G._lastAspectComponents=result.components||null;
@@ -12162,7 +12201,14 @@ function dealDamage(target,amount,isCrit=false,isMagic=false,srcAbility=null,opt
     const blockPct=0.4;
     if (def>0){dmg=roundCombatDamage(dmg*blockPct);wasBlocked=true;}
     if(typeof Avian?.classPerks?.getIncomingDamageMultiplierForEntity==='function'){
-      dmg=roundCombatDamage(dmg*Avian.classPerks.getIncomingDamageMultiplierForEntity(G.enemy));
+      const _enemyBulwark=Avian.classPerks.getIncomingDamageMultiplierForEntity(G.enemy);
+      if(_enemyBulwark<1 && typeof Avian?.classPerks?.markBulwarkOathConsumed==='function'){
+        Avian.classPerks.markBulwarkOathConsumed(G.enemy);
+      }
+      dmg=roundCombatDamage(dmg*_enemyBulwark);
+    }
+    if(G.enemy?._workbookPhysicalDr && !isMagic){
+      dmg=roundCombatDamage(dmg*Math.max(0, 1-(G.enemy._workbookPhysicalDr||0)));
     }
   }
   if (target==='player') {
@@ -12178,6 +12224,7 @@ function dealDamage(target,amount,isCrit=false,isMagic=false,srcAbility=null,opt
     if (Math.random()*100>=hitPct){
       G._currentPiercePct=0;
       const _pbd=BIRDS[G.player.birdKey]; if(_pbd&&_pbd.passive&&_pbd.passive.onDodge)_pbd.passive.onDodge(G.player);
+      if(typeof Avian?.passives?.onPlayerDodged==='function') Avian.passives.onPlayerDodged({});
       if(typeof Avian?.equipmentEffects?.onPlayerDodge==='function') Avian.equipmentEffects.onPlayerDodge();
       if((G.player?.healOnDodge||0)>0){
         const heal=scaleHealForBleed('player',Math.max(0,G.player.healOnDodge||0));
@@ -12300,6 +12347,7 @@ function dealDamage(target,amount,isCrit=false,isMagic=false,srcAbility=null,opt
       return {dmgDealt:dmg,wasDodged:false,wasBlocked:false,isCrit,isMagic};
     }
     G.enemy.stats.hp = Math.max(0, Math.round((Number(G.enemy.stats.hp) - applyDamageThroughShield(G.enemy.stats, G.enemyStatus, dmg)) * 100) / 100);
+    if(dmg>0 && typeof Avian?.passives?.onEnemyDamaged==='function') Avian.passives.onEnemyDamaged(dmg, isMagic);
     if(dmg>0) applyLifestealFromDamage(dmg, srcAbility||G._activePlayerAbility);
     const _atkKind=String(srcAbility?.btnType||srcAbility?.type||G._activePlayerAbility?.btnType||G._activePlayerAbility?.type||'').toLowerCase();
     if((_atkKind==='physical'||_atkKind==='ranged') && dmg>0){
@@ -14815,6 +14863,10 @@ async function enemyTurn() {
       if(projectedEnemyActionDamage(action,e)>0) turnHadDamage=true;
       const _macBd2=BIRDS[G.player.birdKey];
       if(_macBd2&&_macBd2.passive&&_macBd2.passive.onEnemyAbility) _macBd2.passive.onEnemyAbility(G.player,action.abilityId);
+      if(typeof Avian?.passives?.onEnemyAbilityUse==='function'){
+        const _enemyAb=action.ability||{id:action.abilityId,name:action.abilityId,btnType:action.type};
+        Avian.passives.onEnemyAbilityUse(_enemyAb, { hitsLanded: projectedEnemyActionDamage(action,e)>0 ? 1 : 0 });
+      }
       renderStatuses('player-status',G.playerStatus); renderStatuses('enemy-status',G.enemyStatus);
     } else if(action.type==='strike'||action.type==='heavy'||action.type==='defend'){
       logMsg(`${e.name} hesitates (legacy action).`,'miss');

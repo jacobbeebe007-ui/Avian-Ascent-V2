@@ -382,12 +382,13 @@
 
   // Enemy trait system
   function enemyTraitFor(e){
-    const key = String(e?.id || e?.name || '').toLowerCase();
+    const key = String(e?.id || e?.name || e?.birdKey || '').toLowerCase();
     if(key.includes('harpy')) return {id:'predator', name:'Predator', desc:'+25% damage vs Weakened targets.'};
     if(key.includes('secretary')) return {id:'duelist', name:'Duelist', desc:'First attack each battle always crits.'};
-    if(key.includes('barn_owl') || key.includes('barn owl')) return {id:'nightHunter', name:'Night Hunter', desc:'+20% dodge during the first 2 turns.'};
+    if(key.includes('barn_owl') || key.includes('barn owl') || key.includes('barnowl')) return {id:'nightHunter', name:'Night Hunter', desc:'+20% dodge during the first 2 turns.'};
     return null;
   }
+  globalThis.enemyTraitFor = enemyTraitFor;
 
   const _oldRefreshBattleUIPolish = globalThis.refreshBattleUI;
   if(typeof _oldRefreshBattleUIPolish === 'function'){

@@ -127,11 +127,18 @@
     }
     g.player._classPerkMdefPen = 0;
     g.player._classPerkDukeStacks = 0;
+    ns.applyClassPerkMetadata(g.player);
     var perk = ns.getClassPerkForBird(g.player.birdKey);
     if (perk && perk.def.id === 'arcanePressure') {
       g.player._classPerkMdefPen = perk.def.mdefPen || 0.10;
     }
-    if (g.enemy) ns.applyClassPerkMetadata(g.enemy);
+    if (g.enemy) {
+      ns.applyClassPerkMetadata(g.enemy);
+      var ePerk = ns.getClassPerkForEntity(g.enemy);
+      if (ePerk && ePerk.def.id === 'arcanePressure') {
+        g.enemy._classPerkMdefPen = ePerk.def.mdefPen || 0.10;
+      }
+    }
   };
 
   function abIsPhysical(ab) {
@@ -156,10 +163,16 @@
     return Math.max(1, Math.min(enMax, Number(row && (row.enCost != null ? row.enCost : row.apCost) != null ? (row.enCost != null ? row.enCost : row.apCost) : (ab && (ab.energy || ab.energyCost)) || 1)));
   }
 
+  function entityActingFirst(entity) {
+    var g = globalThis.G;
+    if (!g || !g.player || !g.enemy || !entity) return false;
+    var foe = entity === g.enemy ? g.player : g.enemy;
+    return ((entity.stats && entity.stats.spd) || 0) >= ((foe.stats && foe.stats.spd) || 0);
+  }
+
   function playerActingFirst() {
     var g = globalThis.G;
-    if (!g || !g.player || !g.enemy) return false;
-    return (g.player.stats.spd || 0) >= (g.enemy.stats.spd || 0);
+    return entityActingFirst(g && g.player);
   }
 
   function enemyHasAnyDebuff() {
@@ -171,38 +184,39 @@
       || (es.chilled && es.chilled.stacks > 0) || (es.accDebuff || 0) > 0;
   }
 
-  ns.onPlayerAbilityUse = function onPlayerAbilityUse(ab, ctx) {
+  function onEntityAbilityUse(entity, side, ab, ctx) {
     var g = globalThis.G;
-    if (!g || !g.player || !ab) return;
-    var perk = ns.getClassPerkForBird(g.player.birdKey);
+    if (!g || !entity || !ab) return;
+    var perk = ns.getClassPerkForEntity(entity);
     if (!perk) return;
-    var st = state('player');
+    var st = state(side);
     ctx = ctx || {};
 
     if (perk.def.id === 'verseAndChorus' && abIsPhysical(ab)) {
       st.verseChorusPending = true;
+      ctx.classPerkTriggered = 'verseAndChorus';
     }
 
-    if (perk.def.id === 'judgementLeech' && isV2() && (ctx.hitsLanded || 0) > 0 && enemyHasAnyDebuff()) {
+    if (perk.def.id === 'judgementLeech' && isV2() && (ctx.hitsLanded || 0) > 0 && side === 'player' && enemyHasAnyDebuff()) {
       var cd = st.judgementLeechCd || 0;
       if (cd <= 0) {
         var healPct = perk.def.onHitHealPct || 0.05;
-        var heal = Math.max(1, Math.floor((g.player.stats.maxHp || 1) * healPct));
-        g.player.stats.hp = Math.min(g.player.stats.maxHp || 1, (g.player.stats.hp || 0) + heal);
+        var heal = Math.max(1, Math.floor((entity.stats.maxHp || 1) * healPct));
+        entity.stats.hp = Math.min(entity.stats.maxHp || 1, (entity.stats.hp || 0) + heal);
         st.judgementLeechCd = perk.def.hitHealCooldown || 2;
-        if (typeof setHpBar === 'function') setHpBar('player', g.player.stats.hp, g.player.stats.maxHp);
-        if (typeof spawnFloat === 'function') spawnFloat('player', '+' + heal, 'fn-heal');
-        if (typeof logMsg === 'function') logMsg(perk.name + ': restored ' + heal + ' HP.', 'player-action');
+        if (typeof setHpBar === 'function') setHpBar(side, entity.stats.hp, entity.stats.maxHp);
+        if (typeof spawnFloat === 'function') spawnFloat(side, '+' + heal, 'fn-heal');
+        if (typeof logMsg === 'function') logMsg(perk.name + ': restored ' + heal + ' HP.', side === 'player' ? 'player-action' : 'enemy-action');
       }
     }
-  };
+  }
 
-  ns.onPlayerDamaged = function onPlayerDamaged(damage, isMagic) {
+  function onEntityDamaged(entity, side, damage, isMagic) {
     var g = globalThis.G;
-    if (!g || !g.player || damage <= 0) return;
-    var perk = ns.getClassPerkForBird(g.player.birdKey);
+    if (!g || !entity || damage <= 0) return;
+    var perk = ns.getClassPerkForEntity(entity);
     if (!perk) return;
-    var st = state('player');
+    var st = state(side);
     if (perk.def.id === 'retaliatingHide' && isMagic) {
       st.retaliatingHidePending = true;
     }
@@ -212,6 +226,26 @@
     if (perk.def.id === 'bulwarkOath' && isV2() && perk.def.firstHitPerTurn && !st.bulwarkOathUsed) {
       st.bulwarkOathTriggered = true;
     }
+  }
+
+  ns.onPlayerAbilityUse = function onPlayerAbilityUse(ab, ctx) {
+    var g = globalThis.G;
+    onEntityAbilityUse(g && g.player, 'player', ab, ctx);
+  };
+
+  ns.onEnemyAbilityUse = function onEnemyAbilityUse(ab, ctx) {
+    var g = globalThis.G;
+    onEntityAbilityUse(g && g.enemy, 'enemy', ab, ctx);
+  };
+
+  ns.onPlayerDamaged = function onPlayerDamaged(damage, isMagic) {
+    var g = globalThis.G;
+    onEntityDamaged(g && g.player, 'player', damage, isMagic);
+  };
+
+  ns.onEnemyDamaged = function onEnemyDamaged(damage, isMagic) {
+    var g = globalThis.G;
+    onEntityDamaged(g && g.enemy, 'enemy', damage, isMagic);
   };
 
   ns.collectOutgoingDamageBonusFractionsForEntity = function collectOutgoingDamageBonusFractionsForEntity(entity, ab, ctx) {
@@ -226,7 +260,7 @@
     var isMag = abIsMagic(ab);
 
     if (perk.def.id === 'rogueTempo' && !st.rogueTempoUsed && isPhys && abEnCost(ab) === 1) {
-      if (!perk.def.needsActingFirst || playerActingFirst()) {
+      if (!perk.def.needsActingFirst || entityActingFirst(entity)) {
         out.push(perk.def.dmgBonus || 0.10);
         st.rogueTempoUsed = true;
       }
@@ -234,6 +268,9 @@
     if (perk.def.id === 'verseAndChorus' && st.verseChorusPending && isMag) {
       out.push(perk.def.nextMagicBonus || 0.10);
       st.verseChorusPending = false;
+      if (typeof Avian.passives !== 'undefined' && typeof Avian.passives.onClassPerkTriggered === 'function') {
+        Avian.passives.onClassPerkTriggered('verseAndChorus', ab, side);
+      }
     }
     if (perk.def.id === 'retaliatingHide' && st.retaliatingHidePending && isPhys) {
       out.push(perk.def.nextPhysicalBonus || 0.10);

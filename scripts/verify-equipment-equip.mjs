@@ -197,21 +197,19 @@ if (autoEq.ok && ankAuto.equipment.ankletL === 'EQ-AI-GRY' && ankAuto.equipment.
   fail('equipAuto did not fill both anklet feet');
 }
 
-// --- shield allowed in offHand alongside 2H main ---
+// --- 2H main blocks Shields in offHand ---
 const shieldPlayer = freshPlayer('crow');
 equipment.addToInventory(shieldPlayer, 'EQ-LN-GRY');
 equipment.addToInventory(shieldPlayer, 'EQ-SM-GRY');
 equipment.equip(shieldPlayer, 'EQ-LN-GRY', 'mainHand');
 const shieldCheck = equipment.canEquip(shieldPlayer, 'EQ-SM-GRY', 'offHand');
-if (shieldCheck.ok) ok('shield allowed in offHand with 2H weapon');
-else fail('shield should equip in offHand alongside 2H mainHand');
-if (equipment.equip(shieldPlayer, 'EQ-SM-GRY', 'offHand') && shieldPlayer.equipment.offHand === 'EQ-SM-GRY') {
-  ok('2H main + shield offHand equip succeeds');
+if (!shieldCheck.ok && shieldCheck.reason === 'two_handed_main') {
+  ok('shield blocked in offHand with 2H weapon');
 } else {
-  fail('failed to equip shield into offHand with 2H main');
+  fail('shield should be blocked with 2H mainHand, got ' + JSON.stringify(shieldCheck));
 }
 
-// --- 2H main still clears offHand weapons (not shields) ---
+// --- 2H main clears offHand weapons and Shields ---
 const weaponOff = freshPlayer('crow');
 equipment.addToInventory(weaponOff, 'EQ-LN-GRY');
 equipment.addToInventory(weaponOff, 'EQ-TB-GRY');
@@ -219,6 +217,26 @@ equipment.equip(weaponOff, 'EQ-TB-GRY', 'offHand');
 equipment.equip(weaponOff, 'EQ-LN-GRY', 'mainHand');
 if (!weaponOff.equipment.offHand) ok('2H main clears offHand weapon');
 else fail('offHand weapon should clear when equipping 2H mainHand');
+
+const clearShield = freshPlayer('crow');
+equipment.addToInventory(clearShield, 'EQ-SM-GRY');
+equipment.addToInventory(clearShield, 'EQ-LN-GRY');
+equipment.equip(clearShield, 'EQ-SM-GRY', 'offHand');
+equipment.equip(clearShield, 'EQ-LN-GRY', 'mainHand');
+if (!clearShield.equipment.offHand) ok('2H main clears offHand Shield');
+else fail('offHand Shield should clear when equipping 2H mainHand');
+
+const validateShield = freshPlayer('crow');
+equipment.addToInventory(validateShield, 'EQ-LN-GRY');
+equipment.addToInventory(validateShield, 'EQ-SM-GRY');
+equipment.equip(validateShield, 'EQ-LN-GRY', 'mainHand');
+validateShield.equipment.offHand = 'EQ-SM-GRY';
+const issues = equipment.validateLoadout(validateShield);
+if (!validateShield.equipment.offHand && issues.some((x) => x.action === 'unequip_two_handed_conflict')) {
+  ok('validateLoadout unequips Shield with 2H main');
+} else {
+  fail('validateLoadout should clear Shield with 2H main');
+}
 
 // --- class hard restriction ---
 const mageWand = 'EQ-WD-GRY';

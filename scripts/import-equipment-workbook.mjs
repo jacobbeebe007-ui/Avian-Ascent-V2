@@ -381,6 +381,7 @@ const TRIGGER_TABLE_RAW = [
   [/^After landing a (?:Physical|Martial) skill/, () => ({ kind: 'afterPhysicalHit' })],
   [/^After taking reduced damage/, () => ({ kind: 'afterReducedDamage' })],
   [/^After using two different staff skills/, () => ({ kind: 'afterTwoDifferentStaffSkills' })],
+  [/^After using two different 1 EN actions in one turn/, () => ({ kind: 'afterTwoDifferent1En' })],
   [/^After using both Grimoire attacks/, () => ({ kind: 'afterBothGrimoireAttacks' })],
   [/^After using a Magic skill/, () => ({ kind: 'afterMagicSkill' })],
   [/^After using an Armour Technique/, () => ({ kind: 'afterArmourTechnique' })],
@@ -391,6 +392,18 @@ const TRIGGER_TABLE_RAW = [
   [/after taking Magic damage/, () => ({ kind: 'afterTakeMagicDamage' })],
   [/^After your Armour Technique absorbs a hit/, () => ({ kind: 'afterArmourAbsorb' })],
   [/when an Armour Technique reduces damage/, () => ({ kind: 'afterArmourAbsorb' })],
+  [/^When Verse and Chorus triggers/, () => ({ kind: 'onClassPerk', perk: 'verseAndChorus' })],
+  [/^If acting before the target, your first 2\+ EN Martial weapon attack/, () => ({ kind: 'actingFirstMartial', minEn: 2 })],
+  [/^If acting before the target, your first Night Magic attack/, () => ({ kind: 'actingFirst', aspect: 'night', category: 'magic' })],
+  [/^When Brace reduces damage or a Barrier absorbs damage/, () => ({ kind: 'afterReducedDamage' })],
+  [/^The first time each battle a song grants Might Up or Focus Up/, () => ({ kind: 'afterSongBuff', stats: ['atk', 'matk'] })],
+  [/^The first time each turn you take damage while above (\d+)% (?:HP|Vitality|Health)/, (m) => ({ kind: 'onDamagedHighHp', pct: Number(m[1]) })],
+  [/^If you did not use a damaging action last turn/, () => ({ kind: 'noDamageActionLastTurn' })],
+  [/^Your first Martial attack after using ([A-Za-z' -]+?) ignores/, (m) => ({ kind: 'afterSkillUse', skill: m[1], nextMartialPen: true })],
+  [/^The first time each turn you damage a debuffed target with Storm/, () => ({ kind: 'vsTargetState', state: 'debuffed', aspect: 'storm' })],
+  [/^While the target is below (\d+)% (?:HP|Vitality|Health)/, (m) => ({ kind: 'vsTargetHpBelow', pct: Number(m[1]) })],
+  [/^While below (\d+)% (?:HP|Vitality|Health), the first song you use/, (m) => ({ kind: 'whileHpBelow', pct: Number(m[1]), skillClass: 'song' })],
+  [/^While below (\d+)% (?:HP|Vitality|Health), take/, (m) => ({ kind: 'whileHpBelow', pct: Number(m[1]) })],
   [/^After using ([A-Za-z' -]+?),/, (m) => ({ kind: 'afterSkillUse', skill: m[1] })],
   [/^After ([A-Za-z' -]+?) (lands|hits|cleanses a debuff|absorbs damage),/, (m) => ({ kind: 'afterSkillEvent', skill: m[1], event: m[2] })],
   [/^After ([A-Za-z' -]+?),/, (m) => ({ kind: 'afterSkillUse', skill: m[1] })],
@@ -410,6 +423,7 @@ const TRIGGER_TABLE_RAW = [
   [/^Shields created while ([A-Za-z' -]+?) is active/, (m) => ({ kind: 'shieldsWhileSkillActive', skill: m[1] })],
   [/while ([A-Za-z' -]+?) is active/, (m) => ({ kind: 'whileSkillActive', skill: m[1] })],
   [/^While protected by a (?:Shield|Barrier)/, () => ({ kind: 'whileShielded' })],
+  [/^While below (\d+)% (?:HP|Vitality|Health)/, (m) => ({ kind: 'whileHpBelow', pct: Number(m[1]) })],
   [/^The first (?:Aspect|Affinity) weakness hit each turn/, () => ({ kind: 'firstAspectWeaknessHit' })],
   [/^The first damaging attack that would hit after ([A-Za-z' -]+)/, (m) => ({ kind: 'firstIncomingHitAfterSkill', skill: m[1] })],
   [/^The first damaging hit received after an Armour Technique/, () => ({ kind: 'firstHitReceivedAfterArmourTechnique' })],
@@ -460,6 +474,8 @@ const SPECIAL_TABLE = [
   [/appl(?:y|ies) (\d+) Poison stacks?/i, (m) => ({ id: 'applyAilment', ailment: 'poison', stacks: Number(m[1]) })],
   [/applies Bleed\b/, () => ({ id: 'applyAilment', ailment: 'bleed', stacks: 1 })],
   [/Heal (\d+)% Max (?:HP|Vitality|Health)/i, (m) => ({ id: 'healMaxHp', pct: Number(m[1]) })],
+  [/heals? (\d+)% Max (?:HP|Vitality|Health)/i, (m) => ({ id: 'healMaxHp', pct: Number(m[1]) })],
+  [/take (\d+)% less Martial damage/i, (m) => ({ id: 'damageReduction', tier: 'minor', dmgType: 'physical', pct: Number(m[1]) })],
   [/(Minor|Moderate|Major) (?:Damage Reduction|Brace(?: Down)?)/i, (m) => ({ id: 'damageReduction', tier: m[1].toLowerCase() })],
   [/appl(?:y|ies) (\d+) (?:additional )?(?:stacks? of (?:its|the wand's|an) aligned ailment|aligned ailment stacks?|aligned base stacks?)/,
     (m) => ({ id: 'applyAlignedAilment', stacks: Number(m[1]) })],
@@ -1275,7 +1291,7 @@ for (const { cells, rowNum } of tableRows(sheets['Reference Loadouts'], 4)) {
     const itemKey = toItemStatKey(key);
     const a = loadout.totals[itemKey] || 0;
     const b = recomputed[itemKey] || 0;
-    if (Math.abs(a - b) > 0.15) {
+    if (a !== 0 && Math.abs(a - b) > 0.15) {
       warn(`reference loadout ${className}/${rarityKey}: ${itemKey} total ${a} != recomputed ${b}`);
     }
   }
@@ -1283,9 +1299,30 @@ for (const { cells, rowNum } of tableRows(sheets['Reference Loadouts'], 4)) {
     const itemKey = toItemFlatKey(key);
     const a = loadout.totals[itemKey] || 0;
     const b = recomputed[itemKey] || 0;
-    if (Math.abs(a - b) > 0.5) {
+    if (a !== 0 && Math.abs(a - b) > 0.5) {
       warn(`reference loadout ${className}/${rarityKey}: ${itemKey} total ${a} != recomputed ${b}`);
     }
+  }
+  /* Prefer catalogue recomputed flats/% when the sheet audit columns are blank. */
+  if (Object.keys(loadout.totals).length === 0) {
+    loadout.totals = recomputed;
+  } else {
+    for (const [sk, sv] of Object.entries(recomputed)) {
+      if (loadout.totals[sk] == null) loadout.totals[sk] = sv;
+    }
+  }
+  /* 2H main clears offHand (including Shields) to match runtime equip rules. */
+  const mainIt = loadout.equipment.mainHand ? items[loadout.equipment.mainHand] : null;
+  if (mainIt && (Number(mainIt.hands) || 0) === 2 && loadout.equipment.offHand) {
+    loadout.equipment.offHand = null;
+    const refreshed = {};
+    for (const [slotKey, iid] of Object.entries(loadout.equipment)) {
+      if (!iid) continue;
+      const it = items[iid];
+      if (!it) continue;
+      for (const [sk, sv] of Object.entries(it.stats)) refreshed[sk] = round2((refreshed[sk] || 0) + sv);
+    }
+    loadout.totals = refreshed;
   }
   referenceLoadouts.push(loadout);
 }
@@ -1379,6 +1416,12 @@ for (const { cells, rowNum } of tableRows(sheets['Bird Abilities'], 4)) {
   const utilCd = num(cells[11]);
   const utilScore = num(cells[14]);
   const utilBudget = num(cells[15]);
+  const passiveParsed = parseEffectText(cells[4], { strict: false });
+  if (passiveParsed && !passiveParsed.limit) {
+    const lim = String(cells[5] || '');
+    if (/once per combat|once per battle/i.test(lim)) passiveParsed.limit = 'oncePerCombat';
+    else if (/once per turn/i.test(lim)) passiveParsed.limit = 'oncePerTurn';
+  }
   birdPassives[key] = {
     bird: name,
     name: cells[3],
@@ -1386,7 +1429,7 @@ for (const { cells, rowNum } of tableRows(sheets['Bird Abilities'], 4)) {
     triggerLimit: cells[5],
     score: passiveScore,
     budget: passiveBudget,
-    parsed: parseEffectText(cells[4], { strict: false }),
+    parsed: passiveParsed,
     equipmentSynergy: cells[19] || '',
   };
   innateUtilities[key] = {
@@ -1405,6 +1448,16 @@ for (const { cells, rowNum } of tableRows(sheets['Bird Abilities'], 4)) {
   const expectedBudget = utilityBudgetFor(utilEn, utilCd);
   if (Math.abs(expectedBudget - utilBudget) > 1e-9) {
     warn(`bird ${name}: utility budget ${utilBudget} != formula value ${expectedBudget} (EN ${utilEn}, CD ${utilCd})`);
+  }
+  if (!birdPassives[key].parsed && key === 'lyrebird') {
+    birdPassives[key].parsed = {
+      text: cells[4],
+      trigger: { kind: 'afterSongBuff', stats: ['atk', 'matk'] },
+      limit: /once per combat|once per battle/i.test(String(cells[5] || '')) ? 'oncePerCombat' : 'oncePerTurn',
+      duration: null,
+      effects: [],
+      specials: [{ id: 'copyMightFocus' }],
+    };
   }
   if (!birdPassives[key].parsed) warn(`bird passive not fully parsed (kept raw): ${name} — "${cells[4]}"`);
   if (!innateUtilities[key].parsed) warn(`innate utility not fully parsed (kept raw): ${name} — "${cells[13]}"`);
@@ -1528,8 +1581,10 @@ if (weaponAccess['Focus Orb']) {
 }
 
 /* ---- Damage Lab oracle fixtures (direct scaling + flat then % equipment) ---- */
+const DEFENCE_CONSTANT = 150;
+const STAT_CONTRIBUTION_SCALE = 0.75;
 function defenceModFor(effDef) {
-  return 100 / (100 + Math.max(0, effDef));
+  return DEFENCE_CONSTANT / (DEFENCE_CONSTANT + Math.max(0, effDef));
 }
 const fixtures = [];
 for (const lo of referenceLoadouts) {
@@ -1560,7 +1615,7 @@ for (const lo of referenceLoadouts) {
     const effDef = defenderDef * (1 - penPct / 100);
     const baseDamage = (apBands[String(sk.en)] && apBands[String(sk.en)].baseDamage) || 0;
     const defenceMod = defenceModFor(effDef);
-    const raw = (baseDamage + attackerStat * ap) * defenceMod;
+    const raw = (baseDamage + attackerStat * ap * STAT_CONTRIBUTION_SCALE) * defenceMod;
     const damage = Math.max(1, Math.round(raw));
     fixtures.push({
       class: lo.class, rarity: lo.rarity, skillId: sid,
@@ -1569,9 +1624,11 @@ for (const lo of referenceLoadouts) {
       gearFlat, gearPct: round2(gearPct),
       defenderDefence: defenderDef, penPct: round2(penPct), effectiveDefence: round2(effDef),
       defenceMod: Math.round(defenceMod * 10000) / 10000,
+      defenceConstant: DEFENCE_CONSTANT,
+      statContributionScale: STAT_CONTRIBUTION_SCALE,
       aspectMod: 1, bonusMod: 1, crit: false,
       expectedDamage: damage,
-      formula: 'directScalingFlatThenPct',
+      formula: 'directScalingFlatThenPctScaled',
     });
   }
 }
@@ -1631,7 +1688,7 @@ mkdirSync(path.join(ROOT, 'scripts', 'fixtures'), { recursive: true });
 writeFileSync(
   path.join(ROOT, 'scripts', 'fixtures', 'equipment-damage-fixtures.json'),
   JSON.stringify({
-    _note: `GENERATED by import-equipment-workbook.mjs from workbook v${META.version}. Oracle: round((Base + (ref+flat)*(1+pct) × coeff) × Defence Mod), min 1.`,
+    _note: `GENERATED by import-equipment-workbook.mjs from workbook v${META.version}. Oracle: round((Base + (ref+flat)*(1+pct) × coeff × ${STAT_CONTRIBUTION_SCALE}) × (${DEFENCE_CONSTANT}/(${DEFENCE_CONSTANT}+EffDef))), min 1.`,
     fixtures,
   }, null, 2) + '\n',
 );

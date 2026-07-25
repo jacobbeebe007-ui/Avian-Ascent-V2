@@ -145,7 +145,7 @@ const knightGreyExpected = {
   helmet: 'EQ-HP-GRY',
   armour: 'EQ-AM-GRY',
   mainHand: 'EQ-LN-GRY',
-  offHand: 'EQ-SM-GRY',
+  offHand: null, /* 2H Lance clears offHand (including Shields) */
   ankletL: 'EQ-AI-GRY',
   ankletR: 'EQ-AI-GRY',
   necklace: 'EQ-NH-GRY',

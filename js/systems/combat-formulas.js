@@ -549,8 +549,8 @@
 
   function getDefenceConstant() {
     var cfg = getCombatConfig();
-    if (cfg && cfg.defence && cfg.defence.constant != null) return Number(cfg.defence.constant) || 100;
-    return 100;
+    if (cfg && cfg.defence && cfg.defence.constant != null) return Number(cfg.defence.constant) || 150;
+    return 150;
   }
 
   function usesDirectScaling(ability) {
@@ -604,8 +604,16 @@
     return 1;
   }
 
+  function getDirectStatContributionScale() {
+    var cfg = getCombatConfig();
+    var scale = cfg && cfg.directScaling && cfg.directScaling.statContributionScale;
+    if (scale == null || !Number.isFinite(Number(scale))) return 1;
+    return Math.max(0, Number(scale));
+  }
+
   function sumDirectStatCoefficients(attacker, ability) {
     var row = ability || {};
+    var scale = getDirectStatContributionScale();
     if (Array.isArray(row.scaling) && row.scaling.length) {
       var total = 0;
       for (var i = 0; i < row.scaling.length; i++) {
@@ -614,11 +622,11 @@
         var key = s.ledgerKey || s.stat;
         total += statFromEntity(attacker, key) * (Number(s.coeff) || 0);
       }
-      return total;
+      return total * scale;
     }
     var coeff = getFixedTechniqueCoefficient(row, row.enCost != null ? row.enCost : row.apCost);
     var relevant = getRelevantAttackStat(attacker, row, {});
-    return relevant * (Number(coeff) || 0);
+    return relevant * (Number(coeff) || 0) * scale;
   }
 
   function getBonusCap(attacker, battleState) {
