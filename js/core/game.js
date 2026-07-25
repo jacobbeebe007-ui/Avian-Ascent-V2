@@ -2694,8 +2694,8 @@ function openNest() {
     <div class="nest-stat-card"><div class="nest-stat-val">${_nestStat(_nestAcc,s.acc,'%')}</div><div class="nest-stat-lbl">${ledgerStatLabel('acc',{short:true})}</div></div>
     <div class="nest-stat-card"><div class="nest-stat-val" style="color:${_nestCrit>5?'#e8c96a':'var(--gold)'}">${formatCombatNumber(_nestCrit)}%</div><div class="nest-stat-lbl">${ledgerStatLabel('critChance',{short:true})}</div></div>
     <div class="nest-stat-card"><div class="nest-stat-val" style="color:${_nestCritMultBase>1.5||_nestCritBonusPct>0?'#e8c96a':'var(--gold)'}">${_nestCritMultDisp}</div><div class="nest-stat-lbl">${ledgerStatLabel('critMult',{short:true})}</div></div>
-    <div class="nest-stat-card" title="Focus — improves spell and ailment potency"><div class="nest-stat-val" style="color:#6ae8e8">${formatCombatNumber(s.matk||8)}</div><div class="nest-stat-lbl" style="color:#4ab8c0">${ledgerStatLabel('matk',{short:true})}</div></div>
-    <div class="nest-stat-card" title="Resolve — resists enemy spells and ailments"><div class="nest-stat-val" style="color:#6ae8e8">${formatCombatNumber(s.mdef||8)}</div><div class="nest-stat-lbl" style="color:#4ab8c0">${ledgerStatLabel('mdef',{short:true})}</div></div>
+    <div class="nest-stat-card" title="Focus — improves spell and ailment potency"><div class="nest-stat-val" style="color:#6ae8e8">${formatCombatNumber(Number(s.matk)||0)}</div><div class="nest-stat-lbl" style="color:#4ab8c0">${ledgerStatLabel('matk',{short:true})}</div></div>
+    <div class="nest-stat-card" title="Resolve — resists enemy spells and ailments"><div class="nest-stat-val" style="color:#6ae8e8">${formatCombatNumber(Number(s.mdef)||0)}</div><div class="nest-stat-lbl" style="color:#4ab8c0">${ledgerStatLabel('mdef',{short:true})}</div></div>
     ${(s.armorPen||0)>0?`<div class="nest-stat-card" title="Ignores enemy Guard when dealing martial damage"><div class="nest-stat-val">${formatCombatNumber(s.armorPen)}%</div><div class="nest-stat-lbl">${ledgerStatLabel('armorPen',{short:true})}</div></div>`:''}
     ${(s.magicPen||0)>0?`<div class="nest-stat-card" title="Ignores enemy Resolve when dealing magical damage"><div class="nest-stat-val">${formatCombatNumber(s.magicPen)}%</div><div class="nest-stat-lbl">${ledgerStatLabel('magicPen',{short:true})}</div></div>`:''}
   </div></div>`;
@@ -3904,19 +3904,21 @@ function buildOwEnemyDraftFromBirdKey(bk, encounterStage, slotIdx){
 }
 
 /**
- * Rebuild enemy core stats with the same v0.6 vitality + level growth the player uses
- * (birds-v2 base → birdProgression.computeFinalStats). Roster rows keep identity/AI;
- * their baked HP was pre-rebase and did not track player progression.
+ * Rebuild enemy core stats with Affinity Arsenal v0.6 workbook progression (levels 1–30).
+ * Uses birds-v2 base → birdProgression.computeFinalStats → enemy-scaling-profiles.
+ * Endless levels above 30 keep L30 workbook flats and add the endless ramp on top.
  */
 function resolveEnemyProgressionProfileId(ed, opts={}){
   if(ed?.isBoss || opts.isBoss) return 'boss';
   if(ed?.isElite || opts.forceElite) return 'elite';
   if(opts.isEndless) return 'standard';
+  /* Story uses the softer workbook "story" profile for normal encounters. */
+  if(opts.isStory) return 'story';
   return 'standard';
 }
 
 function resolveEnemyProgressionTier(ed, level){
-  const rarity=String(ed?.equipmentRarity||ed?.combatTier||'').toLowerCase();
+  const rarity=String(ed?.equipmentRarity||ed?.combatTier||ed?.enemyTier||'').toLowerCase();
   if(['grey','green','blue','purple','gold','orange'].includes(rarity)) return rarity;
   const milestones=Avian?.data?.enemyScalingProfiles?.milestones||{};
   let best='grey';
@@ -3928,28 +3930,21 @@ function resolveEnemyProgressionTier(ed, level){
   return best;
 }
 
-function sumPlayerProgressionFlat(statKey){
-  const L=G?.player?._statLedger;
-  if(!L) return 0;
-  const buckets=[L.fromLevel, L.fromCardTier, L.fromUpgrades];
-  let sum=0;
-  for(const b of buckets){
-    if(!b) continue;
-    sum+=Number(b[statKey])||0;
+function resolveEnemyWorkbookLevel(ed, opts={}){
+  const playerLv=Math.max(1, Math.floor(Number(opts.playerBirdLevel)||G?.player?.birdLevel||1));
+  const storyLv=Math.max(1, Math.floor(Number(ed?.storyLevel||ed?.effectiveLevel)||1));
+  let level=Math.max(storyLv, playerLv);
+  if(opts.isEndless && typeof computeEnemyEffectiveLevel==='function'){
+    const stage=Math.max(1, Math.floor(Number(opts.stage)||G?.stage||1));
+    level=Math.max(level, computeEnemyEffectiveLevel(stage, playerLv, true));
   }
-  return sum;
-}
-
-function playerHasManualProgressionFlats(){
-  const L=G?.player?._statLedger;
-  if(!L) return false;
-  for(const bag of [L.fromLevel, L.fromCardTier, L.fromUpgrades]){
-    if(!bag) continue;
-    for(const k of Object.keys(bag)){
-      if((Number(bag[k])||0)!==0) return true;
-    }
+  const profileId=resolveEnemyProgressionProfileId(ed, opts);
+  const profiles=Avian?.data?.enemyScalingProfiles?.profiles||{};
+  const profile=profiles[profileId]||profiles.standard||null;
+  if(profile && Number.isFinite(profile.levelOffset)){
+    level=level+Number(profile.levelOffset);
   }
-  return false;
+  return Math.max(1, Math.floor(level));
 }
 
 function applyEnemyStatsFromPlayerProgression(ed, opts={}){
@@ -3961,19 +3956,15 @@ function applyEnemyStatsFromPlayerProgression(ed, opts={}){
   const baseSrc=v2?.stats||bd?.stats||null;
   if(!baseSrc) return null;
 
-  const playerLv=Math.max(1, Math.floor(Number(opts.playerBirdLevel)||G?.player?.birdLevel||1));
-  const storyLv=Math.max(1, Math.floor(Number(ed.storyLevel||ed.effectiveLevel)||1));
-  /* Match player power: at least the player's bird level; never below authored roster level. */
-  let level=Math.max(storyLv, playerLv);
+  const rawLevel=resolveEnemyWorkbookLevel(ed, opts);
+  /* Workbook growth tables cover levels 1–30; excess is handled via endless ramp. */
+  const workbookLevel=Math.max(1, Math.min(30, rawLevel));
   const profileId=resolveEnemyProgressionProfileId(ed, opts);
   const profiles=Avian?.data?.enemyScalingProfiles?.profiles||{};
   const profile=profiles[profileId]||profiles.standard||null;
-  if(profile && Number.isFinite(profile.levelOffset)){
-    level=Math.max(1, Math.min(30, level+Number(profile.levelOffset)));
-  }
 
-  const cls=String(ed.enemyClass||ed.class||bd.class||'rogue').toLowerCase();
-  const tier=resolveEnemyProgressionTier(ed, level);
+  const cls=String(ed.enemyClass||ed.class||bd?.class||'rogue').toLowerCase();
+  const tier=resolveEnemyProgressionTier(ed, workbookLevel);
   const milestone=Avian?.data?.enemyScalingProfiles?.milestones?.[tier];
   const starsInTier=Number(profile?.starsInTier);
   const totalStars=Number.isFinite(starsInTier)
@@ -4002,23 +3993,14 @@ function applyEnemyStatsFromPlayerProgression(ed, opts={}){
     matk:base.matk,
     mdef:base.mdef,
     spd:base.spd,
+    dodge:base.dodge,
   };
 
-  if(playerHasManualProgressionFlats()){
-    /* Same vitality/stat increases the player spent via feathers / card / upgrades. */
-    core.maxHp+=sumPlayerProgressionFlat('maxHp');
-    core.atk+=sumPlayerProgressionFlat('atk');
-    core.def+=sumPlayerProgressionFlat('def');
-    core.matk+=sumPlayerProgressionFlat('matk');
-    core.mdef+=sumPlayerProgressionFlat('mdef');
-    core.spd+=sumPlayerProgressionFlat('spd');
-    core.dodge=(base.dodge||0)+sumPlayerProgressionFlat('dodge');
-  } else if(typeof Avian?.birdProgression?.computeFinalStats==='function'){
-    /* Workbook level/star/tier growth (same pipeline as unequipped player). */
+  if(typeof Avian?.birdProgression?.computeFinalStats==='function'){
     const result=Avian.birdProgression.computeFinalStats({
       base:{hp:base.hp,atk:base.atk,def:base.def,matk:base.matk,mdef:base.mdef,spd:base.spd},
       className:cls,
-      level,
+      level:workbookLevel,
       totalStars,
       tier,
       equipmentPct:{},
@@ -4037,9 +4019,9 @@ function applyEnemyStatsFromPlayerProgression(ed, opts={}){
       dodge:base.dodge,
     };
   } else {
-    /* Fallback: class-weighted feathers at 1× per player level (not the legacy 3×). */
+    /* Fallback: class-weighted feathers at 1× per workbook level. */
     const featherStats={...base, hp:base.maxHp};
-    for(let i=0;i<Math.max(0,playerLv-1);i++) applyEnemyFeatherFromPlayerMirror(featherStats, cls);
+    for(let i=0;i<Math.max(0,workbookLevel-1);i++) applyEnemyFeatherFromPlayerMirror(featherStats, cls);
     core={
       maxHp:featherStats.maxHp,
       atk:featherStats.atk,
@@ -4049,24 +4031,41 @@ function applyEnemyStatsFromPlayerProgression(ed, opts={}){
       spd:featherStats.spd,
       dodge:featherStats.dodge,
     };
-  }
-
-  if(typeof Avian?.birdProgression?.applyEnemyProfile==='function' && playerHasManualProgressionFlats()){
-    const profiled=Avian.birdProgression.applyEnemyProfile({
-      hp:core.maxHp, maxHp:core.maxHp, atk:core.atk, def:core.def, matk:core.matk, mdef:core.mdef, spd:core.spd,
-    }, profileId);
-    if(profiled){
-      core.maxHp=Number(profiled.maxHp??profiled.hp)||core.maxHp;
-      core.atk=Number(profiled.atk)||core.atk;
-      core.def=Number(profiled.def)||core.def;
-      core.matk=Number(profiled.matk)||core.matk;
-      core.mdef=Number(profiled.mdef)||core.mdef;
-      core.spd=Number(profiled.spd)||core.spd;
+    if(typeof Avian?.birdProgression?.applyEnemyProfile==='function'){
+      const profiled=Avian.birdProgression.applyEnemyProfile({
+        hp:core.maxHp, maxHp:core.maxHp, atk:core.atk, def:core.def, matk:core.matk, mdef:core.mdef, spd:core.spd,
+      }, profileId);
+      if(profiled){
+        core.maxHp=Number(profiled.maxHp??profiled.hp)||core.maxHp;
+        core.atk=Number(profiled.atk)||core.atk;
+        core.def=Number(profiled.def)||core.def;
+        core.matk=Number(profiled.matk)||core.matk;
+        core.mdef=Number(profiled.mdef)||core.mdef;
+        core.spd=Number(profiled.spd)||core.spd;
+      }
     }
   }
 
   const diffMult=Number(opts.diffMult);
-  const mult=Number.isFinite(diffMult)&&diffMult>0?diffMult:1;
+  let mult=Number.isFinite(diffMult)&&diffMult>0?diffMult:1;
+
+  /* Endless post-L20 ramp (docs/endless-mode-scaling.md): +5% every 3 battles once both ≥20. */
+  if(opts.isEndless){
+    const stage=Math.max(1, Math.floor(Number(opts.stage)||G?.stage||1));
+    const endlessBattle=typeof getEndlessEffectiveBattleNumber==='function'
+      ? getEndlessEffectiveBattleNumber(stage)
+      : Math.max(0, stage-20);
+    const pl=Math.max(1, Math.floor(Number(opts.playerBirdLevel)||G?.player?.birdLevel||1));
+    if(endlessBattle>0 && pl>=20 && rawLevel>=20){
+      const rampSteps=Math.floor(endlessBattle/3);
+      mult*=(1+rampSteps*0.05);
+    }
+    /* Levels above workbook cap: +4% core stats per level past 30. */
+    if(rawLevel>30){
+      mult*=(1+(rawLevel-30)*0.04);
+    }
+  }
+
   const hp=roundCombatStat(Math.max(0.01, core.maxHp*mult),0.01);
   const atk=roundCombatStat(Math.max(0.01, core.atk*mult),0.01);
   const def=roundCombatStat(Math.max(0, core.def*mult),0);
@@ -4092,7 +4091,8 @@ function applyEnemyStatsFromPlayerProgression(ed, opts={}){
     cd:base.critMult,
     en:enProf.startEN,
     enemyClass:cls,
-    effectiveLevel:level,
+    effectiveLevel:rawLevel,
+    workbookLevel,
     tier,
     _fromPlayerProgression:true,
   };
@@ -4109,11 +4109,10 @@ function mergeScaledStatsIntoEnemy(ed, encounterStage){
     playerBirdLevel:Math.max(1, Math.floor(G.player?.birdLevel||1)),
     forceElite: !!(ed.isElite || G._endlessMapCombatKind==='elite' || G.endlessMap?.pendingCombatKind==='elite'),
     isBoss:!!ed.isBoss,
+    stage:Math.max(1, Math.floor(Number(encounterStage)||G.stage||1)),
   };
-  let scaled=null;
-  if(ed._storyDirectStats){
-    scaled=applyEnemyStatsFromPlayerProgression(ed, scaleOpts);
-  }
+  /* Prefer Affinity Arsenal v0.6 workbook progression whenever a bird identity exists. */
+  let scaled=applyEnemyStatsFromPlayerProgression(ed, scaleOpts);
   if(!scaled){
     scaled=ed._storyDirectStats ? {
       hp:ed.hp,maxHp:ed.maxHp,atk:ed.atk,def:ed.def,spd:ed.spd,acc:ed.acc,dodge:ed.dodge,mdef:ed.mdef,matk:ed.matk,cc:ed.cc||0.05,cd:ed.cd||1.5,en:getEnemyEnergyProfile().startEN,enemyClass:ed.enemyClass,effectiveLevel:ed.storyLevel||0,
@@ -4129,6 +4128,7 @@ function mergeScaledStatsIntoEnemy(ed, encounterStage){
   ed.enemyClass=scaled.enemyClass||ed.enemyClass||inferEnemyClassFromStyle(ed.aiStyle);
   ed.combatTier = (scaled && 'tier' in scaled && scaled.tier!=null) ? scaled.tier : (ed.combatTier||ed.enemyTier||null);
   if(Number.isFinite(scaled.effectiveLevel)) ed.effectiveLevel=scaled.effectiveLevel;
+  if(Number.isFinite(scaled.workbookLevel)) ed.workbookLevel=scaled.workbookLevel;
   ed.stats = {hp:ed.hp, maxHp:ed.hp, atk:ed.atk, def:ed.def, spd:ed.spd, acc:ed.acc, dodge:ed.dodge, mdef:ed.mdef, matk:ed.matk, cc:ed.cc, cd:ed.cd, critChance:Math.round((ed.cc||0.05)*100), critMult:ed.cd||1.5, en:(scaled.en||0)};
   const prof=getEnemyEnergyProfile();
   ed.energyMax=prof.maxEN;
@@ -4876,17 +4876,17 @@ function buildTierStarEnemyFromBirdKey(birdKey, opts={}){
     maxHp:roundCombatStat(bd.stats?.maxHp||bd.stats?.hp||30, 0.01),
     atk:roundCombatStat(bd.stats?.atk||6, 0.01),
     def:roundCombatStat(bd.stats?.def||2, 0),
-    matk:roundCombatStat(bd.stats?.matk||8, 0.01),
-    mdef:roundCombatStat(bd.stats?.mdef||8, 0),
+    matk:roundCombatStat(Number(bd.stats?.matk)||0, 0.01),
+    mdef:roundCombatStat(Number(bd.stats?.mdef)||0, 0),
     spd:roundCombatStat(bd.stats?.spd||6, 0.01),
-    acc:roundCombatStat(bd.stats?.acc||80, 60),
+    acc:roundCombatStat(Number(bd.stats?.acc)||0, 0),
     dodge:roundCombatStat(bd.stats?.dodge||10, 0),
     critChance:roundCombatStat(bd.stats?.critChance||5, 0),
     critMult:Math.max(1.1,Number(bd.stats?.critMult||1.5)),
   };
   scaledKeys.forEach(key=>{
     if(stats[key]==null) return;
-    const floor=(key==='dodge'||key==='def'||key==='mdef')?0:0.01;
+    const floor=(key==='dodge'||key==='def'||key==='mdef'||key==='matk'||key==='acc')?0:0.01;
     stats[key]=roundCombatStat(Math.max(floor, stats[key]*mult), floor);
   });
   if(stats.maxHp!=null&&bd.stats?.maxHp>0){
@@ -4950,10 +4950,10 @@ function buildStoryEnemyFromBirdKey(birdKey, stage, opts={}){
     maxHp:roundCombatStat(bd.stats?.maxHp||bd.stats?.hp||30, 0.01),
     atk:roundCombatStat(bd.stats?.atk||6, 0.01),
     def:roundCombatStat(bd.stats?.def||2, 0),
-    matk:roundCombatStat(bd.stats?.matk||8, 0.01),
-    mdef:roundCombatStat(bd.stats?.mdef||8, 0),
+    matk:roundCombatStat(Number(bd.stats?.matk)||0, 0.01),
+    mdef:roundCombatStat(Number(bd.stats?.mdef)||0, 0),
     spd:roundCombatStat(bd.stats?.spd||6, 0.01),
-    acc:roundCombatStat(bd.stats?.acc||80, 60),
+    acc:roundCombatStat(Number(bd.stats?.acc)||0, 0),
     dodge:roundCombatStat(bd.stats?.dodge||10, 0),
     critChance:roundCombatStat(bd.stats?.critChance||5, 0),
     critMult:Math.max(1.1,Number(bd.stats?.critMult||1.5)),
@@ -4998,7 +4998,9 @@ function buildStoryEnemyFromBirdKey(birdKey, stage, opts={}){
     playerBirdLevel:plv,
     diffMult,
     isBoss:!!opts.isBoss,
-    isEndless:false,
+    isEndless:!!opts.isEndless,
+    isStory:!opts.isEndless,
+    stage:Math.max(1, Math.floor(Number(stage)||1)),
   });
   if(progressed){
     draft.hp=progressed.hp; draft.maxHp=progressed.maxHp;
@@ -5095,9 +5097,9 @@ function applyEnemyFeatherFromPlayerMirror(stats, cls){
       stats.hp=stats.maxHp;
       break;
     case 'atk': stats.atk=(stats.atk||0)+2; break;
-    case 'matk': stats.matk=(stats.matk||8)+2; break;
+    case 'matk': stats.matk=(Number(stats.matk)||0)+2; break;
     case 'def': stats.def=(stats.def||0)+2; break;
-    case 'mdef': stats.mdef=(stats.mdef||8)+2; break;
+    case 'mdef': stats.mdef=(Number(stats.mdef)||0)+2; break;
     case 'spd': stats.spd=(stats.spd||1)+2; break;
     case 'dodge':
       stats.dodge=Math.min(95,(stats.dodge||0)+2);
@@ -5109,9 +5111,9 @@ function applyStoryEnemyGrowth(stats,key){
   switch(key){
     case 'maxHp': stats.maxHp+=4; stats.hp=stats.maxHp; break;
     case 'atk': stats.atk+=2; break;
-    case 'matk': stats.matk=(stats.matk||8)+2; break;
+    case 'matk': stats.matk=(Number(stats.matk)||0)+2; break;
     case 'def': stats.def+=2; break;
-    case 'mdef': stats.mdef=(stats.mdef||8)+2; break;
+    case 'mdef': stats.mdef=(Number(stats.mdef)||0)+2; break;
     case 'spd': stats.spd+=2; break;
     case 'dodge': stats.dodge=Math.min(95,(stats.dodge||0)+2); break;
   }
@@ -6467,9 +6469,9 @@ function updateAscentPanel(key) {
         <span class="ascent-stat-chip"><abbr title="${ledgerStatLabel('atk')}">${ledgerStatLabel('atk',{short:true})}</abbr> <strong>${dispStats.atk}</strong></span>
         <span class="ascent-stat-chip"><abbr title="${ledgerStatLabel('def')}">${ledgerStatLabel('def',{short:true})}</abbr> <strong>${dispStats.def}</strong></span>
         <span class="ascent-stat-chip"><abbr title="${ledgerStatLabel('spd')}">${ledgerStatLabel('spd',{short:true})}</abbr> <strong>${dispStats.spd}</strong></span>
-        <span class="ascent-stat-chip"><abbr title="${ledgerStatLabel('acc')}">${ledgerStatLabel('acc',{short:true})}</abbr> <strong>${dispStats.acc}%</strong></span>
-        <span class="ascent-stat-chip"><abbr title="${ledgerStatLabel('matk')}">${ledgerStatLabel('matk',{short:true})}</abbr> <strong>${dispStats.matk||0}</strong></span>
-        <span class="ascent-stat-chip"><abbr title="${ledgerStatLabel('mdef')}">${ledgerStatLabel('mdef',{short:true})}</abbr> <strong>${dispStats.mdef||0}</strong></span>
+        <span class="ascent-stat-chip"><abbr title="${ledgerStatLabel('acc')}">${ledgerStatLabel('acc',{short:true})}</abbr> <strong>${Number(dispStats.acc)||0}%</strong></span>
+        <span class="ascent-stat-chip"><abbr title="${ledgerStatLabel('matk')}">${ledgerStatLabel('matk',{short:true})}</abbr> <strong>${Number(dispStats.matk)||0}</strong></span>
+        <span class="ascent-stat-chip"><abbr title="${ledgerStatLabel('mdef')}">${ledgerStatLabel('mdef',{short:true})}</abbr> <strong>${Number(dispStats.mdef)||0}</strong></span>
         <span class="ascent-stat-chip"><abbr title="${ledgerStatLabel('critChance')}">${ledgerStatLabel('critChance',{short:true})}</abbr> <strong>${cc}%</strong></span>
         <span class="ascent-stat-chip"><abbr title="${ledgerStatLabel('critMult')}">${ledgerStatLabel('critMult',{short:true})}</abbr> <strong>${cd.toFixed(1)}×</strong></span>
         <span class="ascent-stat-chip"><abbr title="Battle start / max momentum (EN)">EN</abbr> <strong>${startEnShow}/${maxEn}</strong></span>
@@ -7040,11 +7042,12 @@ function captureBattleTempPlayerStats(){
   const p = G.player.stats;
   G.player._battleStatBase = {
     atk: Number(p.atk) || 0,
-    matk: Number(p.matk) || 8,
+    matk: Number(p.matk) || 0,
     def: Number(p.def) || 0,
-    mdef: Number(p.mdef) || 8,
+    mdef: Number(p.mdef) || 0,
     dodge: Number(p.dodge) || 0,
-    acc: Number(p.acc) || (typeof getPlayerBaseAcc === 'function' ? getPlayerBaseAcc() : 80),
+    /* v0.6: Precision is character-stored (often 0); do not invent class ACC. */
+    acc: Number.isFinite(Number(p.acc)) ? Number(p.acc) : 0,
     spd: Number(p.spd) || 0,
     critChance: Number(p.critChance) || 5,
   };
@@ -7842,11 +7845,11 @@ function buildPlayerStatsGridHtml(){
   const _pBase=G.player._battleStatBase||{};
   const _defBoostAmt=(G.playerStatus?.defBoost?.turns>0)?(G.playerStatus.defBoost.amt||0):0;
   const _effDef=Math.floor((p.def+_defBoostAmt+(G.battleHymnActive?G.battleHymnDEF:0))*(playerHasBurning()?0.8:1));
-  const _effAcc=Math.min(100, typeof getPlayerEffectiveAcc==='function'?getPlayerEffectiveAcc():p.acc);
+  const _effAcc=Math.min(100, typeof getPlayerEffectiveAcc==='function'?getPlayerEffectiveAcc():(Number(p.acc)||0));
   const _effDodge=getEffectiveDodge(G.player);
   const _effSpd=(p.spd||0)+((G.playerStatus?.slow?.spdPenalty)?-(G.playerStatus.slow.spdPenalty||0):0);
-  const _effMatk=(p.matk||8);
-  const _effMdef=Math.floor((p.mdef||8)*(playerHasBurning()?0.8:1));
+  const _effMatk=(Number(p.matk)||0);
+  const _effMdef=Math.floor((Number(p.mdef)||0)*(playerHasBurning()?0.8:1));
   const _eqMechCombat=typeof Avian?.equipment?.getMechanicsRollup==='function'?Avian.equipment.getMechanicsRollup(G.player):null;
   const _effAtk=G.warcryActive?(p.atk||0)*(1+G.warcryATK/100):p.atk;
   let _critChance=Math.min(100,(p.critChance||5));
@@ -7869,11 +7872,11 @@ function buildPlayerStatsGridHtml(){
   const _effMagicPen=getPlayerMagicPenPct(G.player);
   const _penCells=`${(_effArmorPen>0)?statCell('stat-armor-pen',ledgerStatLabel('armorPen',{short:true}),_effArmorPen,{suffix:'%',title:_bt('armorPen',p.armorPen||0,'Ignores enemy Guard on martial hits.'),statKey:'armorPen',statRaw:p.armorPen||0}):''}${(_effMagicPen>0)?statCell('stat-magic-pen',ledgerStatLabel('magicPen',{short:true}),_effMagicPen,{suffix:'%',title:_bt('magicPen',p.magicPen||0,'Ignores enemy Resolve on magical hits.'),statKey:'magicPen',statRaw:p.magicPen||0}):''}`;
   return `${statCell('stat-atk',ledgerStatLabel('atk',{short:true}),_effAtk,{title:_bt('atk',_pBase.atk??p.atk,_statNote('Battle Might',_effAtk-(_pBase.atk||0),_atkNote,'Debuffs reducing Might effect.')),trend:combatTrendTag(_effAtk,_pBase.atk),statKey:'atk',statRaw:_pBase.atk??p.atk})}
-     ${statCell('stat-matk',ledgerStatLabel('matk',{short:true}),_effMatk,{title:_bt('matk',(_pBase.matk??p.matk)||8,'Focus — improves spell/ailment potency'),trend:combatTrendTag(_effMatk,_pBase.matk??8),statKey:'matk',statRaw:(_pBase.matk??p.matk)||8})}
+     ${statCell('stat-matk',ledgerStatLabel('matk',{short:true}),_effMatk,{title:_bt('matk',(_pBase.matk??p.matk)||0,'Focus — improves spell/ailment potency'),trend:combatTrendTag(_effMatk,_pBase.matk??0),statKey:'matk',statRaw:(_pBase.matk??p.matk)||0})}
      ${statCell('stat-def',ledgerStatLabel('def',{short:true}),_effDef,{title:_bt('def',_pBase.def??p.def,_statNote('Battle Guard',_effDef-(_pBase.def||0),'Battle Hymn increased Guard.','Debuffs reducing Guard.')),trend:combatTrendTag(_effDef,_pBase.def),statKey:'def',statRaw:_pBase.def??p.def})}
-     ${statCell('stat-mdef',ledgerStatLabel('mdef',{short:true}),_effMdef,{title:_bt('mdef',(_pBase.mdef??p.mdef)||8,'Resolve — resists enemy spells and ailments'),trend:combatTrendTag(_effMdef,_pBase.mdef??8),statKey:'mdef',statRaw:(_pBase.mdef??p.mdef)||8})}
+     ${statCell('stat-mdef',ledgerStatLabel('mdef',{short:true}),_effMdef,{title:_bt('mdef',(_pBase.mdef??p.mdef)||0,'Resolve — resists enemy spells and ailments'),trend:combatTrendTag(_effMdef,_pBase.mdef??0),statKey:'mdef',statRaw:(_pBase.mdef??p.mdef)||0})}
      ${statCell('stat-dodge',ledgerStatLabel('dodge',{short:true}),_effDodge,{suffix:'%',title:_bt('dodge',_pBase.dodge??p.dodge,`Evasion chance. ${_statNote('Display',_effDodge-(_pBase.dodge||0),'Evasion buffs active.','Debuffs reduced Evasion.')}`),trend:combatTrendTag(_effDodge,_pBase.dodge),statKey:'dodge',statRaw:_pBase.dodge??p.dodge})}
-     ${statCell('stat-acc',ledgerStatLabel('acc',{short:true}),_effAcc,{suffix:'%',title:_bt('acc',_pBase.acc??p.acc,_statNote('Battle Precision',_effAcc-(_pBase.acc||0),'Battle Hymn increased Precision.','Blind/ruffle reduced Precision.')+_accCardBonus),trend:combatTrendTag(_effAcc,_pBase.acc),statKey:'acc',statRaw:_pBase.acc??p.acc})}
+     ${statCell('stat-acc',ledgerStatLabel('acc',{short:true}),_effAcc,{suffix:'%',title:_bt('acc',_pBase.acc??p.acc,_statNote('Battle Precision',_effAcc-(_pBase.acc||0),'Battle Hymn increased Precision.','Blind/ruffle reduced Precision.')+' Character Precision is often 0 in v0.6 — actions use Skill Library Precision.'+_accCardBonus),trend:combatTrendTag(_effAcc,_pBase.acc),statKey:'acc',statRaw:_pBase.acc??p.acc})}
      ${statCell('stat-spd',ledgerStatLabel('spd',{short:true}),_effSpd,{title:_bt('spd',_pBase.spd??p.spd,_statNote('Battle Agility',_effSpd-(_pBase.spd||0),'Buff increased Agility.','Slow/clip effects reduced Agility.')),trend:combatTrendTag(_effSpd,_pBase.spd),statKey:'spd',statRaw:_pBase.spd??p.spd})}
      ${statCell('stat-cc',ledgerStatLabel('critChance',{short:true}),_critChance,{suffix:'%',title:_bt('critChance',_critBaseStore,`Shown value includes battle modifiers (e.g. burn). ${_statNote('vs battle start',_critChance-_critBaseStore,'Temporary buffs.','Debuffs reduced Critical.')}`),trend:combatTrendTag(_critChance,_critBaseStore),statKey:'critChance',statRaw:_critBaseStore})}
      <div class="stat-mini stat-cd" data-stat-key="critMult" data-stat-raw="${_critBase}" title="${combatEscAttr(`Base Ferocity ${formatCombatNumber(_critBase)}×. On critical hits, +${formatCombatNumber(_critBonusPct)} is added to the multiplier.`)}"><span class="stat-k">${ledgerStatLabel('critMult',{short:true})}</span><span class="stat-v">${_critMultHtml}</span></div>
@@ -7894,15 +7897,15 @@ function buildEnemyStatsGridHtml(){
   const _eCombatHint=buildEnemyCombatStatHint();
   const _eHintRow=_eCombatHint?`<div class="stat-status-hint est-hint" style="grid-column:1/-1">${combatEscAttr(_eCombatHint)}</div>`:'';
   const _effEnemyDef=Math.floor((ep2.def||0)*(enemyHasBurning()?0.8:1));
-  const _effEnemyMdef=Math.floor((ep2.mdef||8)*(enemyHasBurning()?0.8:1));
+  const _effEnemyMdef=Math.floor((Number(ep2.mdef)||0)*(enemyHasBurning()?0.8:1));
   const _effEnemyDodge=(ep2.dodge||0);
   const _enemyDodgeSpdNote=enemyHasBurning()?' — Burning: −20% Guard/Resolve':'';
   return `${enemyCell('stat-atk',ledgerStatLabel('atk',{short:true}),ep2.atk,{title:'Martial attack',baseKey:'atk',statKey:'atk',statRaw:ep2.atk})}
-     ${enemyCell('stat-matk',ledgerStatLabel('matk',{short:true}),ep2.matk||6,{title:'Focus (magic attack)',baseKey:'matk',statKey:'matk',statRaw:ep2.matk||6})}
+     ${enemyCell('stat-matk',ledgerStatLabel('matk',{short:true}),Number(ep2.matk)||0,{title:'Focus (magic attack)',baseKey:'matk',statKey:'matk',statRaw:Number(ep2.matk)||0})}
      ${enemyCell('stat-def',ledgerStatLabel('def',{short:true}),_effEnemyDef,{title:'Guard (martial defence)'+_enemyDodgeSpdNote,baseKey:'def',statKey:'def',statRaw:ep2.def,trend:combatTrendTag(_effEnemyDef,_eBase.def??ep2.def)})}
-     ${enemyCell('stat-mdef',ledgerStatLabel('mdef',{short:true}),_effEnemyMdef,{title:'Resolve (magic defence)'+_enemyDodgeSpdNote,baseKey:'mdef',statKey:'mdef',statRaw:ep2.mdef||8,trend:combatTrendTag(_effEnemyMdef,(_eBase.mdef??ep2.mdef)||8)})}
+     ${enemyCell('stat-mdef',ledgerStatLabel('mdef',{short:true}),_effEnemyMdef,{title:'Resolve (magic defence)'+_enemyDodgeSpdNote,baseKey:'mdef',statKey:'mdef',statRaw:Number(ep2.mdef)||0,trend:combatTrendTag(_effEnemyMdef,(_eBase.mdef??ep2.mdef)||0)})}
      ${enemyCell('stat-dodge',ledgerStatLabel('dodge',{short:true}),_effEnemyDodge,{suffix:'%',title:`Evasion${_enemyDodgeSpdNote}`,baseKey:'dodge',statKey:'dodge',statRaw:ep2.dodge||0})}
-     ${enemyCell('stat-acc',ledgerStatLabel('acc',{short:true}),ep2.acc||70,{suffix:'%',title:'Precision',baseKey:'acc',statKey:'acc',statRaw:ep2.acc||70})}
+     ${enemyCell('stat-acc',ledgerStatLabel('acc',{short:true}),Number(ep2.acc)||0,{suffix:'%',title:'Precision (character; actions use Skill Library precision)',baseKey:'acc',statKey:'acc',statRaw:Number(ep2.acc)||0})}
      ${enemyCell('stat-spd',ledgerStatLabel('spd',{short:true}),ep2.spd||0,{title:'Agility',baseKey:'spd',statKey:'spd',statRaw:ep2.spd||0})}
      ${enemyCell('stat-cc',ledgerStatLabel('critChance',{short:true}),eCritChance,{suffix:'%',title:'Critical chance',statKey:'critChance',statRaw:eCritChance})}
      ${enemyCell('stat-cd',ledgerStatLabel('critMult',{short:true}),Number(eCritMult),{suffix:'×',title:'Ferocity'})}
@@ -9177,20 +9180,20 @@ function getEffectivePlayerOffensiveAtkForPreview(){
   return softenMainStatForCombat(getEffectivePlayerAtkForDamagePreview())*COMBAT_OFFENSIVE_STAT_MULT;
 }
 function getEffectivePlayerOffensiveMatkForPreview(){
-  const m=Number(G?.player?.stats?.matk||8);
+  const m=Number(G?.player?.stats?.matk)||0;
   return softenMainStatForCombat(m)*COMBAT_OFFENSIVE_STAT_MULT;
 }
 function getPackRowScaleStatRaw(statKey, stats, isPlayerCombat){
   const key=String(statKey||'ATK').toUpperCase();
   const s=stats||(isPlayerCombat&&G?.player?.stats)||{};
-  if(key==='MATK') return Number(s.matk||8);
-  if(key==='SPD') return Number(s.spd||0);
-  if(key==='DEF') return Number(s.def||0);
-  if(key==='MDEF') return Number(s.mdef||0);
-  if(key==='ACC') return Number(s.acc||0);
-  if(key==='DODGE') return Number(s.dodge||0);
+  if(key==='MATK') return Number(s.matk)||0;
+  if(key==='SPD') return Number(s.spd)||0;
+  if(key==='DEF') return Number(s.def)||0;
+  if(key==='MDEF') return Number(s.mdef)||0;
+  if(key==='ACC') return Number(s.acc)||0;
+  if(key==='DODGE') return Number(s.dodge)||0;
   if(key==='ATK'&&isPlayerCombat&&G?.player) return getEffectivePlayerAtkForDamagePreview();
-  return Number(s.atk||0);
+  return Number(s.atk)||0;
 }
 function packRowScaleContribution(scaleStat, scalePct, stats, isPlayerCombat){
   const pct=Number(scalePct)||0;
@@ -9327,10 +9330,10 @@ function estimateSkillDamageRange(ab,tmpl,attacker,opts){
   const p=attacker||G?.player;
   const stats=p&&(p.stats||p)||{};
   let pAtk=Number(stats.atk||0);
-  let pMatk=Number(stats.matk||8);
+  let pMatk=Number(stats.matk)||0;
   if(isPlayerCombat&&G?.player){
     pAtk=getEffectivePlayerAtkForDamagePreview();
-    pMatk=Number(G.player.stats?.matk||8);
+    pMatk=Number(G.player.stats?.matk)||0;
   }
   if(!tmpl) return {isDamaging:false,dmgLow:null,dmgHigh:null,btnType:'',hybridSplit:null,lv:1,lvData:null};
   const btnType=getEffectiveAbilityBtnType(ab,tmpl);
@@ -10535,18 +10538,22 @@ function roll(a,b){return Math.floor(Math.random()*(b-a+1))+a;}
 // ============================================================
 
 
-// Accuracy is fixed by bird traits (class + size), not level growth.
+// Accuracy: v0.6 stores character Precision on stats.acc (often 0 — action-owned via Skill Library).
+// Legacy class/size tables remain only as a last-resort fallback when ACC is missing entirely.
 const BASE_ACC_BY_CLASS = {
   striker:86, bruiser:80, tank:74, trickster:84, predator:82, singer:80,
+  knight:74, rogue:84, mage:80, siren:80, inquisitor:82, bard:84, brute:80,
 };
 const BASE_ACC_BY_SIZE = {tiny:2, small:1, medium:0, large:-1, xl:-2};
 
 function getPlayerBaseAcc(){
+  const pAcc=G.player?.stats?.acc;
+  if(pAcc!=null && Number.isFinite(Number(pAcc))) return Number(pAcc);
   const bd=BIRDS[G.player?.birdKey]||{};
-  const cls=bd.class||'bruiser';
+  const cls=bd.class||G.player?.class||'bruiser';
   const size=G.player?.size||bd.size||'medium';
   const base=(BASE_ACC_BY_CLASS[cls]??80)+(BASE_ACC_BY_SIZE[size]??0);
-  return Math.max(65,Math.min(90,base));
+  return Math.max(0,Math.min(90,base));
 }
 function getPlayerAccMod(){
   let mod=0;
@@ -10561,6 +10568,17 @@ function getPlayerEffectiveAcc(){
   let acc = Math.max(0, getPlayerBaseAcc() + getPlayerAccMod());
   if (typeof Avian?.dispatcher?.modifyAcc === 'function') acc = Avian.dispatcher.modifyAcc(acc);
   return acc;
+}
+
+/** Resolve action Precision % from Skill Library (fraction 0–1 or already percent). */
+function resolveActionPrecisionPct(ab){
+  const row=typeof resolveAbilityCombatRow==='function'?resolveAbilityCombatRow(ab):null;
+  const raw=row?.hitChanceOverride??row?.precision??ab?.precision??ab?.basePrecision??ab?.hitChanceOverride;
+  if(raw==null || !Number.isFinite(Number(raw))) return null;
+  const n=Number(raw);
+  if(n<=0) return 0;
+  /* Skill Library stores basePrecision as 0.98; combat ACC is percent. */
+  return n<=1.5 ? n*100 : n;
 }
 
 function clamp01(v){return Math.max(0,Math.min(1,v));}
@@ -11814,8 +11832,8 @@ function computeEntityAbilityRawDamage(entity, ab, tmpl, isMagic){
   if(row&&typeof computeAbilityRawDamage==='function'){
     return roundCombatDamage(Math.max(0.01, computeAbilityRawDamage(row, stats) * classBonusMult));
   }
-  if(isMagic) return roundCombatDamage(Math.max(0.01, Number(stats.matk||8) * classBonusMult));
-  return roundCombatDamage(Math.max(0.01, Number(stats.atk||8) * classBonusMult));
+  if(isMagic) return roundCombatDamage(Math.max(0.01, (Number(stats.matk)||0) * classBonusMult));
+  return roundCombatDamage(Math.max(0.01, (Number(stats.atk)||0) * classBonusMult));
 }
 
 function applyCurvedMitigationToPlayer(preMit,isMagic,srcAbility){
@@ -12400,10 +12418,14 @@ function getPlayerMissChance(ab) {
   return Math.max(floor, reduced - accBonus + tookiePenalty - (G.playerStatus.accDebuff||0) + classAdj + sizeAdj - missReduce - extra - getPlayerHitBonus(ab));
 }
 
-/** Hit % = attacker ACC − target DODGE − ability accuracy penalty; clamped 15–95. */
+/** Hit % = attacker ACC − target DODGE − ability accuracy penalty; clamped 15–95.
+ *  v0.6: prefer Skill Library action Precision when present; character ACC is often 0. */
 function getPlayerHitPercentForAttack(ab){
   const dodge=getEffectiveEnemyDodgeForPlayerHit();
-  let acc=getPlayerEffectiveAcc();
+  const actionPrec=resolveActionPrecisionPct(ab);
+  let acc=actionPrec!=null ? actionPrec : getPlayerEffectiveAcc();
+  /* Battle Precision mods still apply on top of action or character ACC. */
+  if(actionPrec!=null) acc+=getPlayerAccMod();
   const t=ABILITY_TEMPLATES?.[ab?.id]||ABILITY_TEMPLATES_EXTRA?.[ab?.id]||ab||{};
   const kind=String(t.btnType||t.type||ab?.btnType||ab?.type||'').toLowerCase();
   const isAttack=(kind==='physical'||kind==='ranged');
@@ -12418,7 +12440,7 @@ function getPlayerHitPercentForAttack(ab){
 }
 
 function getPlayerAccuracy() {
-  let acc = G.player.stats.acc||80;
+  let acc = Number.isFinite(Number(G.player.stats.acc)) ? Number(G.player.stats.acc) : getPlayerBaseAcc();
   if (G.sitAndWaitActive) acc+=25;
   if (G.battleHymnActive) acc+=G.battleHymnACC;
   // accDebuff
@@ -12482,8 +12504,8 @@ function getAilChance(ab,ailId) {
 function tryApplyAilment(target,ailId,ab) {
   const c=getAilChance(ab,ailId);
   if (!c) return false;
-  const attackerMatk = target==='enemy' ? (G.player.stats.matk||8) : (G.enemy.stats.matk||8);
-  const targetMdef   = target==='enemy' ? (G.enemy.stats.mdef||8)  : (G.player.stats.mdef||8);
+  const attackerMatk = target==='enemy' ? (Number(G.player.stats.matk)||0) : (Number(G.enemy.stats.matk)||0);
+  const targetMdef   = target==='enemy' ? (Number(G.enemy.stats.mdef)||0)  : (Number(G.player.stats.mdef)||0);
   const magicShift   = (attackerMatk - targetMdef) * 1.5;
   const controlBoost=(target==='enemy') ? Math.floor((getPassiveEvolutionBonuses(G.player).controlPct||0)*100) : 0;
   const passiveAilBonus = (target==='enemy' && G.playerStatus) ? (G.playerStatus.passiveAilmentBonus || 0) : 0;
@@ -13447,7 +13469,7 @@ function summonHitLands(){
 }
 
 function spellAilmentRoll(baseChance,isMultiHit=false){
-  const matk=(G.player.stats.matk||8), mdef=(G.enemy.stats.mdef||8);
+  const matk=(Number(G.player.stats.matk)||0), mdef=(Number(G.enemy.stats.mdef)||0);
   const statShift=(matk-mdef)*2;
   const multiAdj=isMultiHit?-0.45:0.2;
   const final=Math.max(3,Math.min(92,Math.floor((baseChance+statShift)*(1+multiAdj))));
@@ -13455,7 +13477,7 @@ function spellAilmentRoll(baseChance,isMultiHit=false){
 }
 
 function matk(mult=1) {
-  const b=G.player.stats.matk||8;
+  const b=Number(G.player.stats.matk)||0;
   const soft=softenMainStatForCombat(b)*COMBAT_OFFENSIVE_STAT_MULT;
   const strikeAdd=(G._pendingStrikeActionMods?.matkMultAdd!=null?G._pendingStrikeActionMods.matkMultAdd:G._pendingStrikeActionMods?.multAdd)||0;
   const __adm=(G.actionDamageHitsRemaining&&G.actionDamageHitsRemaining>0)?(G.actionDamageMult||1):1;
@@ -13562,11 +13584,11 @@ Object.assign(ACTIONS, {
 
 Object.assign(ACTIONS, {
   async thunderScreech(ab) {
-    if(spellMisses()){await doMiss('player');logMsg(`Thunder Screech missed! (MATK ${G.player.stats.matk||8} vs MDEF ${G.enemy.stats.mdef||8})`,'miss');return;}
+    if(spellMisses()){await doMiss('player');logMsg(`Thunder Screech missed! (MATK ${(Number(G.player.stats.matk)||0)} vs MDEF ${(Number(G.enemy.stats.mdef)||0)})`,'miss');return;}
     const lv=ab.level;
     const ignoreMDEF=lv>=3?0.3:0;
-    const effectiveMDEF=(G.enemy.stats.mdef||8)*(1-ignoreMDEF);
-    const matkBase=G.player.stats.matk||8;
+    const effectiveMDEF=((Number(G.enemy.stats.mdef)||0))*(1-ignoreMDEF);
+    const matkBase=(Number(G.player.stats.matk)||0);
     const dmg=roundCombatDamage(Math.max(0.01, pdmg(1)*([.9,1.1,1.3,1.55][lv-1])*(matkBase/(effectiveMDEF||1))*0.88));
     applyFractionalHp(G.enemy.stats, -dmg); setHpBar('enemy',G.enemy.stats.hp,G.enemy.stats.maxHp);
     spawnFloat('enemy',`🔊 -${formatCombatNumber(dmg)}`,'fn-dmg');
@@ -13581,7 +13603,7 @@ Object.assign(ACTIONS, {
     triggerBlackbirdSpellPassive();
   },
   async stormChorus(ab) {
-    if(spellMisses()){await doMiss('player');logMsg(`Storm Chorus missed! (MATK ${G.player.stats.matk||8} vs MDEF ${G.enemy.stats.mdef||8})`,'miss');return;}
+    if(spellMisses()){await doMiss('player');logMsg(`Storm Chorus missed! (MATK ${(Number(G.player.stats.matk)||0)} vs MDEF ${(Number(G.enemy.stats.mdef)||0)})`,'miss');return;}
     const lv=ab.level;
     const dmg=matk([.7,.9,1.1,1.3][lv-1]);
     applyFractionalHp(G.enemy.stats, -dmg); setHpBar('enemy',G.enemy.stats.hp,G.enemy.stats.maxHp);
@@ -13596,7 +13618,7 @@ Object.assign(ACTIONS, {
     triggerBlackbirdSpellPassive();
   },
   async shriekwave(ab) {
-    if(spellMisses()){await doMiss('player');logMsg(`Shriekwave missed! (MATK ${G.player.stats.matk||8} vs MDEF ${G.enemy.stats.mdef||8})`,'miss');return;}
+    if(spellMisses()){await doMiss('player');logMsg(`Shriekwave missed! (MATK ${(Number(G.player.stats.matk)||0)} vs MDEF ${(Number(G.enemy.stats.mdef)||0)})`,'miss');return;}
     const lv=ab.level;
     const isBurned=enemyHasBurning();
     const rawDmg=matk([1.0,1.2,1.4,1.65][lv-1]);
@@ -14069,7 +14091,7 @@ function projectedEnemyActionDamage(a,e){
     }
     if(mult==null) mult=0.9;
     mult=Math.max(0.25,mult);
-    const stat=(btn==='spell')?(e.stats.matk||8):(e.stats.atk||8);
+    const stat=(btn==='spell')?(Number(e.stats.matk)||0):(Number(e.stats.atk)||0);
     return roundCombatDamage(stat*mult);
   }
   return 0;
