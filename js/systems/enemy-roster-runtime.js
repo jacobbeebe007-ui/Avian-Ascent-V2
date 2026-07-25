@@ -417,7 +417,7 @@
       abilityBias: row.abilityBias || '',
       aspect: aspect,
       abilities: JSON.parse(JSON.stringify(enemyStub.abilities || [])),
-      stats: Object.assign({}, stats, { en: enProf.maxEN, cc: cc, cd: cd, critChance: Math.round(cc * 100), critMult: cd }),
+      stats: Object.assign({}, stats, { en: enProf.startEN, cc: cc, cd: cd, critChance: Math.round(cc * 100), critMult: cd }),
       hp: stats.hp,
       maxHp: stats.maxHp,
       atk: stats.atk,

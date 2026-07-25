@@ -13,17 +13,31 @@
   };
 
   var DISPLAY_KIND_LABELS = {
-    gainDodge: { icon: '💨', label: 'Dodge Up', cls: 'evading', cat: 'buff' },
-    gainCritChance: { icon: '🎯', label: 'Crit Up', cls: 'crit', cat: 'buff' },
-    gainCritDamage: { icon: '💥', label: 'Crit Dmg Up', cls: 'crit', cat: 'buff' },
-    gainAcc: { icon: '👁', label: 'ACC Up', cls: 'evading', cat: 'buff' },
-    gainAtk: { icon: '⚔', label: 'ATK Up', cls: 'buffed', cat: 'buff' },
-    gainMatk: { icon: '🎶', label: 'MATK Up', cls: 'buffed', cat: 'buff' },
-    gainDef: { icon: '🛡', label: 'DEF Up', cls: 'defending', cat: 'buff' },
-    gainMdef: { icon: '🔮', label: 'MDEF Up', cls: 'defending', cat: 'buff' },
-    gainSpd: { icon: '⚡', label: 'SPD Up', cls: 'buffed', cat: 'buff' },
+    gainDodge: { icon: '💨', label: 'Evasion Up', cls: 'evading', cat: 'buff' },
+    gainCritChance: { icon: '🎯', label: 'Critical Up', cls: 'crit', cat: 'buff' },
+    gainCritDamage: { icon: '💥', label: 'Ferocity Up', cls: 'crit', cat: 'buff' },
+    gainAcc: { icon: '👁', label: 'Precision Up', cls: 'evading', cat: 'buff' },
+    gainAtk: { icon: '⚔', label: 'Might Up', cls: 'buffed', cat: 'buff' },
+    gainMatk: { icon: '🎶', label: 'Focus Up', cls: 'buffed', cat: 'buff' },
+    gainDef: { icon: '🛡', label: 'Guard Up', cls: 'defending', cat: 'buff' },
+    gainMdef: { icon: '🔮', label: 'Resolve Up', cls: 'defending', cat: 'buff' },
+    gainSpd: { icon: '⚡', label: 'Agility Up', cls: 'buffed', cat: 'buff' },
+    gainSpeed: { icon: '⚡', label: 'Agility Up', cls: 'buffed', cat: 'buff' },
     gainMagicAilmentChance: { icon: '✨', label: 'Mag Ailment Up', cls: 'buffed', cat: 'buff' },
     gainPhysicalAilmentChance: { icon: '✨', label: 'Phys Ailment Up', cls: 'buffed', cat: 'buff' },
+    reduceAtk: { icon: '⚔', label: 'Might Down', cls: 'weaken', cat: 'debuff' },
+    reduceMatk: { icon: '🎶', label: 'Focus Down', cls: 'weaken', cat: 'debuff' },
+    reduceDef: { icon: '🛡', label: 'Guard Down', cls: 'weaken', cat: 'debuff' },
+    reduceMdef: { icon: '🔮', label: 'Resolve Down', cls: 'weaken', cat: 'debuff' },
+    reduceSpd: { icon: '⚡', label: 'Agility Down', cls: 'weaken', cat: 'debuff' },
+    reduceDodge: { icon: '💨', label: 'Evasion Down', cls: 'weaken', cat: 'debuff' },
+    reduceAcc: { icon: '👁', label: 'Precision Down', cls: 'weaken', cat: 'debuff' },
+    reduceCritChance: { icon: '🎯', label: 'Critical Down', cls: 'weaken', cat: 'debuff' },
+  };
+
+  var DEBUFF_STAT_TO_KIND = {
+    atk: 'reduceAtk', matk: 'reduceMatk', def: 'reduceDef', mdef: 'reduceMdef',
+    spd: 'reduceSpd', dodge: 'reduceDodge', acc: 'reduceAcc', critChance: 'reduceCritChance',
   };
 
   function resolveSourceLabel(sourceId, sourceKind) {
@@ -46,7 +60,10 @@
   function isActiveStatusValue(v) {
     if (!v && v !== 0) return false;
     if (v === 0) return false;
-    if (typeof v === 'object' && v.turns == null && v.stacks == null && (v.dmg == null || v.dmg === '')) return false;
+    if (typeof v === 'object') {
+      if (v.pendingSkip) return true;
+      if (v.turns == null && v.stacks == null && (v.dmg == null || v.dmg === '') && v.amt == null && v.pct == null) return false;
+    }
     return true;
   }
 
@@ -113,6 +130,20 @@
         });
       });
     });
+    if (s._dispatcherDebuffBySource) {
+      Object.keys(s._dispatcherDebuffBySource).forEach(function (slotKey) {
+        var d = s._dispatcherDebuffBySource[slotKey];
+        if (!d || (d.turns || 0) <= 0) return;
+        var kind = DEBUFF_STAT_TO_KIND[d.statKey] || ('reduce' + String(d.statKey || ''));
+        entries.push({
+          id: '_dispatcherDebuffBySource:' + slotKey,
+          value: { value: d.flat ? d.amt : d.amt, turns: d.turns, kind: kind, statKey: d.statKey },
+          synthetic: true,
+          displayBag: '_dispatcherDebuffBySource',
+          displayKind: kind,
+        });
+      });
+    }
     return entries;
   }
 
@@ -135,7 +166,8 @@
       var srcKind = entry.displayBag === '_passiveDisplaySlots' ? 'passive' : 'ability';
       var srcId = String(k).split(':')[1] || '';
       out.className = 'status-badge ' + meta.cls;
-      out.text = meta.icon + ' ' + meta.label + ' +' + (v.value || 0) + '(' + (v.turns || 1) + 't)';
+      var sign = meta.cat === 'debuff' ? '−' : '+';
+      out.text = meta.icon + ' ' + meta.label + ' ' + sign + (v.value || 0) + '(' + (v.turns || 1) + 't)';
       out.summary = meta.label + ' from ' + (srcKind === 'passive' ? 'passive' : 'ability') + '.';
       out.source = resolveSourceLabel(srcId.split(':')[0], srcKind);
       out.category = meta.cat;

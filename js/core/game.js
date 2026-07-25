@@ -567,28 +567,38 @@ function buildStatBreakdownTitle(statKey, rawVal, player){
   if(statKey === 'dodge') t += dodgeSpdAttributionNote(player);
   return t;
 }
+function equipmentPctLedgerKey(statKey){
+  if(statKey==='maxHp' || statKey==='hp') return 'hp';
+  return statKey;
+}
 function getEquippedStatSources(player, statKey){
   const lines = [];
   if(!player?.equipment) return lines;
   const L = player._statLedger;
   const fromEq = Number(L?.fromEquipment?.[statKey]) || 0;
   if(Math.abs(fromEq) >= 0.0001) lines.push({ name: 'Equipment', value: fromEq });
+  const pctKey = equipmentPctLedgerKey(statKey);
+  const fromPct = Number(L?.fromEquipmentPct?.[pctKey]) || 0;
+  if(Math.abs(fromPct) >= 0.0001){
+    const pctNum = Math.abs(fromPct) <= 1.5 ? fromPct * 100 : fromPct;
+    lines.push({ name: 'Equipment %', value: pctNum, isPct: true });
+  }
   return lines;
 }
 function getBattleStatModifierLines(statKey){
   const lines = [];
-  if(statKey==='atk' && G?.warcryActive) lines.push(`Warcry: +${G.warcryATK||0}% ATK`);
-  if(statKey==='atk' && G?.sitAndWaitActive) lines.push('Sit and Wait: +25% ATK');
-  if(statKey==='atk' && G?.playerStatus?.tookie?.turns>0) lines.push(`Tookie Tookie: +${G.playerStatus.tookie.atkBonus||0}% ATK`);
-  if(statKey==='def' && G?.battleHymnActive) lines.push('Battle Hymn: +DEF');
-  if(statKey==='acc' && G?.battleHymnActive) lines.push('Battle Hymn: +ACC');
+  if(statKey==='atk' && G?.warcryActive) lines.push(`Warcry: +${G.warcryATK||0}% Might`);
+  if(statKey==='atk' && G?.sitAndWaitActive) lines.push('Sit and Wait: +25% Might');
+  if(statKey==='atk' && G?.playerStatus?.tookie?.turns>0) lines.push(`Tookie Tookie: +${G.playerStatus.tookie.atkBonus||0}% Might`);
+  if(statKey==='def' && G?.battleHymnActive) lines.push('Battle Hymn: +Guard');
+  if(statKey==='acc' && G?.battleHymnActive) lines.push('Battle Hymn: +Precision');
   if(statKey==='atk' && getWeakenStacks(G?.playerStatus)>0) lines.push('Weaken: reduced output');
-  if(statKey==='def' && getWeakenStacks(G?.playerStatus)>0) lines.push('Weaken: reduced DEF');
-  if(statKey==='dodge' && G?.playerStatus?.slow) lines.push('Slow: reduced dodge');
-  if(statKey==='spd' && G?.playerStatus?.slow) lines.push('Slow: reduced SPD');
-  if(statKey==='acc' && (G?.playerStatus?.blind||G?.playerStatus?.dustDevil)) lines.push('Blind: reduced ACC');
+  if(statKey==='def' && getWeakenStacks(G?.playerStatus)>0) lines.push('Weaken: reduced Guard');
+  if(statKey==='dodge' && G?.playerStatus?.slow) lines.push('Slow: reduced Evasion');
+  if(statKey==='spd' && G?.playerStatus?.slow) lines.push('Slow: reduced Agility');
+  if(statKey==='acc' && (G?.playerStatus?.blind||G?.playerStatus?.dustDevil)) lines.push('Blind: reduced Precision');
   if(statKey==='critChance' && playerHasBurning()) lines.push('Burning: crit penalty');
-  if((statKey==='def' || statKey==='mdef') && playerHasBurning()) lines.push('Burning: −20% DEF/MDEF');
+  if((statKey==='def' || statKey==='mdef') && playerHasBurning()) lines.push('Burning: −20% Guard/Resolve');
   return lines;
 }
 function richTooltipCloseBtn(){
@@ -738,7 +748,8 @@ function buildRichStatTooltipHtml(statKey, rawVal, player){
       html += `<div class="tt-row"><span class="tt-lbl">${lbl}</span><span class="tt-val">${val >= 0 && lbl !== 'Base' ? '+' : ''}${formatCombatNumber(val)}</span></div>`;
     }
     for(const src of getEquippedStatSources(player, statKey)){
-      html += `<div class="tt-row"><span class="tt-lbl">${escapeHtmlRoster(src.name)}</span><span class="tt-val">+${formatCombatNumber(src.value)}</span></div>`;
+      const disp=src.isPct?`+${formatCombatNumber(src.value)}%`:`+${formatCombatNumber(src.value)}`;
+      html += `<div class="tt-row"><span class="tt-lbl">${escapeHtmlRoster(src.name)}</span><span class="tt-val">${escapeHtmlRoster(disp)}</span></div>`;
     }
     const cur = Number(rawVal)||0;
     const rem = cur - Number(L.birdBaseline[statKey]||0) - Number(L.fromCardTier?.[statKey]||0) - Number(L.fromLevel?.[statKey]||0) - Number(L.fromUpgrades?.[statKey]||0) - Number(L.fromEquipment?.[statKey]||0);
@@ -758,7 +769,20 @@ function buildRichStatTooltipHtml(statKey, rawVal, player){
   html += richTooltipCloseBtn();
   return html;
 }
-function getEnemyMutationStatSources(){ return []; }
+function getEnemyMutationStatSources(enemy, statKey){
+  const lines = [];
+  if(!enemy?.equipment || typeof Avian?.equipment?.sumEquippedEquipment!=='function') return lines;
+  const roll = Avian.equipment.sumEquippedEquipment(enemy);
+  const flat = Number(roll?.stats?.[statKey]) || 0;
+  if(Math.abs(flat) >= 0.0001) lines.push({ name: 'Equipment', value: flat });
+  const pctKey = equipmentPctLedgerKey(statKey);
+  const pct = Number(roll?.pct?.[pctKey]) || 0;
+  if(Math.abs(pct) >= 0.0001){
+    const pctNum = Math.abs(pct) <= 1.5 ? pct * 100 : pct;
+    lines.push({ name: 'Equipment %', value: pctNum, isPct: true });
+  }
+  return lines;
+}
 function buildEntityAspectTooltipHtml(aspectId, opts={}){
   const id=String(aspectId||'').trim().toLowerCase();
   if(!id) return '';
@@ -790,6 +814,10 @@ function buildPlayerBirdTooltipHtml(player){
   const bird=bk&&BIRDS[bk]?BIRDS[bk]:null;
   const passiveInfo=getBirdPassiveInfo(bk);
   const classPerk=getBirdAuthoredClassPerk(bk);
+  const name=bird?.name||player.name||bk||'Bird';
+  let html=`<div class="tt-name">${escapeHtmlRoster(name)}</div>`;
+  if(passiveInfo?.name) html+=`<div class="tt-type">★ ${escapeHtmlRoster(passiveInfo.name)}</div>`;
+  else if(classPerk?.name) html+=`<div class="tt-type">Class perk: ${escapeHtmlRoster(classPerk.name)}</div>`;
   const desc=passiveInfo?(passiveInfo.desc||passiveInfo.effect||''):(classPerk?(classPerk.effect||''):'');
   if(desc) html+=`<div class="tt-desc">${escapeHtmlRoster(desc)}</div>`;
   html+=`<div class="tt-note" style="opacity:.75;margin-top:6px;font-size:.78em">Click to open Nest</div>`;
@@ -814,7 +842,26 @@ function buildClassLabelTooltipHtml(classId, birdKey){
 
 function buildEnemyMutationsTooltipHtml(enemy){
   if(!enemy) return '';
-  return buildEnemyRichStatTooltipHtml('hp', enemy.stats?.hp||0, enemy);
+  const name=enemy.name||enemy.birdKey||'Enemy';
+  let html=`<div class="tt-name">${escapeHtmlRoster(name)}</div><div class="tt-type">Loadout</div>`;
+  if(enemy.equipment && typeof Avian?.equipment?.getSlotOrder==='function'){
+    const order=Avian.equipment.getSlotOrder();
+    let any=false;
+    for(const sk of order){
+      const id=enemy.equipment[sk];
+      if(!id) continue;
+      const item=typeof Avian.equipment.getItem==='function'?Avian.equipment.getItem(id):null;
+      if(!item) continue;
+      any=true;
+      html+=`<div class="tt-row"><span class="tt-lbl">${escapeHtmlRoster(getEquipmentNestSlotLabel(sk)||sk)}</span><span class="tt-val" style="font-size:.88em">${escapeHtmlRoster(item.name)}</span></div>`;
+    }
+    if(!any) html+=`<div class="tt-desc">No equipment equipped.</div>`;
+  } else {
+    html+=`<div class="tt-desc">No equipment equipped.</div>`;
+  }
+  html+=`<div class="tt-note" style="opacity:.75;margin-top:6px;font-size:.78em">Click for full details</div>`;
+  html+=richTooltipCloseBtn();
+  return html;
 }
 function buildEnemyRichStatTooltipHtml(statKey, rawVal, enemy){
   const label = (STAT_LEDGER_LABELS[statKey] || statKey).toUpperCase();
@@ -825,7 +872,8 @@ function buildEnemyRichStatTooltipHtml(statKey, rawVal, enemy){
     const bVal = Number(base[statKey]) || 0;
     html += `<div class="tt-row"><span class="tt-lbl">Scaled base</span><span class="tt-val">${formatCombatNumber(bVal)}</span></div>`;
     for (const src of getEnemyMutationStatSources(enemy, statKey)) {
-      html += `<div class="tt-row"><span class="tt-lbl">${escapeHtmlRoster(src.name)}</span><span class="tt-val">+${formatCombatNumber(src.value)}</span></div>`;
+      const disp=src.isPct?`+${formatCombatNumber(src.value)}%`:`+${formatCombatNumber(src.value)}`;
+      html += `<div class="tt-row"><span class="tt-lbl">${escapeHtmlRoster(src.name)}</span><span class="tt-val">${escapeHtmlRoster(disp)}</span></div>`;
     }
   }
   if (statKey === 'critChance' && (enemy?._mutationMechanics?.critDamageBonusPct || 0) > 0) {
@@ -2001,12 +2049,9 @@ function normalizeBirdSizeForEnergy(sz){
  * @param {string} size
  * @returns {{maxEN:number,startEN:number,regenEN:number}}
  */
-function getEnergyProfile(size){
-  const k=normalizeBirdSizeForEnergy(size);
-  if(k==='tiny'||k==='small') return {maxEN:5,startEN:4,regenEN:3};
-  if(k==='medium') return {maxEN:4,startEN:3,regenEN:2};
-  if(k==='large'||k==='xl') return {maxEN:3,startEN:2,regenEN:2};
-  return {maxEN:4,startEN:3,regenEN:2};
+function getEnergyProfile(_size){
+  /* v0.6: unified EN rules for all sizes (size only gates bonus-stack cap). */
+  return {maxEN:PLAYER_ENERGY_MAX,startEN:PLAYER_ENERGY_START,regenEN:PLAYER_ENERGY_REGEN};
 }
 function getEnemyEnergyProfile(){
   return {maxEN:ENEMY_ENERGY_MAX,startEN:ENEMY_ENERGY_START,regenEN:ENEMY_ENERGY_REGEN};
@@ -2487,15 +2532,23 @@ function buildNestEquipmentSectionV2(player){
   for(const sk of slotKeys){
     slotsHtml+=_nestEquipmentItemHtml(eq[sk]||null, sk, locked);
   }
-  const roll=typeof Avian.equipment.sumEquippedEquipment==='function'?Avian.equipment.sumEquippedEquipment(player):{stats:{}};
+  const roll=typeof Avian.equipment.sumEquippedEquipment==='function'?Avian.equipment.sumEquippedEquipment(player):{stats:{},pct:{}};
   const statNames=Avian.data?.equipment?.slots?.statDisplayNames||{};
-  const bonusHtml=Object.keys(roll.stats||{}).map(k=>{
+  const flatChips=Object.keys(roll.stats||{}).map(k=>{
     const v=Number(roll.stats[k])||0;
     if(!v) return '';
     const disp=String(k).includes('Pen')||String(statNames[k]||'').includes('%')?`${formatCombatNumber(v)}%`:formatCombatNumber(v);
-    const lbl=(typeof STAT_LEDGER_LABELS!=='undefined'&&STAT_LEDGER_LABELS[k])||statNames[k]||k;
-    return `<span class="nest-equip-bonus-chip">${escapeHtmlRoster(lbl)} ${escapeHtmlRoster(disp)}</span>`;
-  }).filter(Boolean).join('')||'<span class="nest-inv-empty">No equipment stat bonuses yet.</span>';
+    const lbl=(typeof STAT_LEDGER_LABELS!=='undefined'&&STAT_LEDGER_LABELS[k])||statNames[k]||ledgerStatLabel(k)||k;
+    return `<span class="nest-equip-bonus-chip">${escapeHtmlRoster(lbl)} +${escapeHtmlRoster(disp)}</span>`;
+  }).filter(Boolean);
+  const pctChips=Object.keys(roll.pct||{}).map(k=>{
+    const raw=Number(roll.pct[k])||0;
+    if(!raw) return '';
+    const pctNum=Math.abs(raw)<=1.5?raw*100:raw;
+    const lbl=ledgerStatLabel(k==='hp'?'maxHp':k)||statNames[k+'Pct']||statNames[k]||k;
+    return `<span class="nest-equip-bonus-chip">${escapeHtmlRoster(lbl)} +${escapeHtmlRoster(formatCombatNumber(pctNum))}%</span>`;
+  }).filter(Boolean);
+  const bonusHtml=[...flatChips,...pctChips].join('')||'<span class="nest-inv-empty">No equipment stat bonuses yet.</span>';
   const inv=player.equipmentInventory||[];
   const filteredInv=inv.filter(id=>{
     const item=getEquipmentItem(id);
@@ -3858,7 +3911,7 @@ function mergeScaledStatsIntoEnemy(ed, encounterStage){
   ed.energyMax=prof.maxEN;
   ed.energyRegen=prof.regenEN;
   ed.energy=prof.startEN;
-  ed.stats.en=prof.maxEN;
+  ed.stats.en=prof.startEN;
   if (!ed._mutationsApplied) {
     ed._statBaseBeforeMutations = {
       atk: Number(ed.stats.atk) || 0,
@@ -7618,10 +7671,14 @@ function buildCombatStatBreakdownSection(side){
       }
       const L=player?._statLedger;
       if(L?.birdBaseline && Object.keys(L.birdBaseline).length){
-        for(const src of getEquippedStatSources(player,key)) lines.push(`${src.name}: +${formatCombatNumber(src.value)}`);
+        for(const src of getEquippedStatSources(player,key)){
+          lines.push(src.isPct?`${src.name}: +${formatCombatNumber(src.value)}%`:`${src.name}: +${formatCombatNumber(src.value)}`);
+        }
       }
     } else if(enemy){
-      for(const src of getEnemyMutationStatSources(enemy,key)) lines.push(`${src.name}: +${formatCombatNumber(src.value)}`);
+      for(const src of getEnemyMutationStatSources(enemy,key)){
+        lines.push(src.isPct?`${src.name}: +${formatCombatNumber(src.value)}%`:`${src.name}: +${formatCombatNumber(src.value)}`);
+      }
     }
     if(!lines.length) continue;
     const label=(STAT_LEDGER_LABELS[key]||key).toUpperCase();
@@ -12873,8 +12930,7 @@ function startPlayerTurn(player){
   const pte = (G._playerEnergyTurnIndex|0);
   if(pte === 0){
     G._playerEnergyTurnIndex = 1;
-    const cur = Number.isFinite(player.energy) ? player.energy : computePlayerStartEnergy(player);
-    player.energy = Math.min(maxEn, Math.max(0, cur));
+    player.energy = Math.min(maxEn, Math.max(0, computePlayerStartEnergy(player)));
   }else{
     const r=computePlayerEnergyRegenThisTurn(player, G.playerStatus);
     player.energy=Math.min(maxEn, Math.max(0, (player.energy||0)+r));
@@ -15189,20 +15245,33 @@ function getGoldCardLimit(){
 //  LEVEL-UP SCREEN — select then confirm
 // ============================================================
 let _luSelectedStatChoiceId=null;
+function levelUpChoiceLabel(statKey, amount, { rare=false }={}){
+  const glossKey=statKey==='maxHp'?'hp':statKey;
+  let short='';
+  if(typeof Avian?.display?.statShort==='function'){
+    short=Avian.display.statShort(glossKey)||'';
+  }
+  if(!short || String(short).toLowerCase()===String(glossKey).toLowerCase()){
+    short=ledgerStatLabel(statKey,{short:true});
+  }
+  if(statKey==='maxHp') short='VIT';
+  const base=`+${amount} ${short}`;
+  return rare?`${base} (rare)`:base;
+}
 const LEVELUP_STAT_POOL = [
-  {id:'vit4', label:'+4 Max HP', stat:'maxHp', amount:4, apply(){ G.player.stats.maxHp=(G.player.stats.maxHp||1)+4; G.player.stats.hp=Math.min((G.player.stats.hp||1)+4,G.player.stats.maxHp||1); }},
-  {id:'atk2', label:'+2 ATK', stat:'atk', amount:2, apply(){ G.player.stats.atk=(G.player.stats.atk||0)+2; }},
-  {id:'matk2', label:'+2 MATK', stat:'matk', amount:2, apply(){ G.player.stats.matk=(G.player.stats.matk||0)+2; }},
-  {id:'def2', label:'+2 DEF', stat:'def', amount:2, apply(){ G.player.stats.def=(G.player.stats.def||0)+2; }},
-  {id:'mdef2', label:'+2 MDEF', stat:'mdef', amount:2, apply(){ G.player.stats.mdef=(G.player.stats.mdef||0)+2; }},
-  {id:'spd2', label:'+2 SPD', stat:'spd', amount:2, apply(){ G.player.stats.spd=(G.player.stats.spd||0)+2; }},
-  {id:'dod2', label:'+2 Dodge', stat:'dodge', amount:2, apply(){ G.player.stats.dodge=Math.min(95,(G.player.stats.dodge||0)+2); }},
+  {id:'vit4', get label(){ return levelUpChoiceLabel('maxHp',4); }, stat:'maxHp', amount:4, apply(){ G.player.stats.maxHp=(G.player.stats.maxHp||1)+4; G.player.stats.hp=Math.min((G.player.stats.hp||1)+4,G.player.stats.maxHp||1); }},
+  {id:'atk2', get label(){ return levelUpChoiceLabel('atk',2); }, stat:'atk', amount:2, apply(){ G.player.stats.atk=(G.player.stats.atk||0)+2; }},
+  {id:'matk2', get label(){ return levelUpChoiceLabel('matk',2); }, stat:'matk', amount:2, apply(){ G.player.stats.matk=(G.player.stats.matk||0)+2; }},
+  {id:'def2', get label(){ return levelUpChoiceLabel('def',2); }, stat:'def', amount:2, apply(){ G.player.stats.def=(G.player.stats.def||0)+2; }},
+  {id:'mdef2', get label(){ return levelUpChoiceLabel('mdef',2); }, stat:'mdef', amount:2, apply(){ G.player.stats.mdef=(G.player.stats.mdef||0)+2; }},
+  {id:'spd2', get label(){ return levelUpChoiceLabel('spd',2); }, stat:'spd', amount:2, apply(){ G.player.stats.spd=(G.player.stats.spd||0)+2; }},
+  {id:'dod2', get label(){ return levelUpChoiceLabel('dodge',2); }, stat:'dodge', amount:2, apply(){ G.player.stats.dodge=Math.min(95,(G.player.stats.dodge||0)+2); }},
 ];
 const LEVELUP_FEATHER_POOL = LEVELUP_STAT_POOL;
 const ENDLESS_RARE_LEVELUP_CHOICES = [
-  {id:'vit8', label:'+8 Max HP (rare)', stat:'maxHp', amount:8, apply(){ G.player.stats.maxHp=(G.player.stats.maxHp||1)+8; G.player.stats.hp=Math.min((G.player.stats.hp||1)+8,G.player.stats.maxHp||1); }},
-  {id:'atk4r', label:'+4 ATK (rare)', stat:'atk', amount:4, apply(){ G.player.stats.atk=(G.player.stats.atk||0)+4; }},
-  {id:'spd4r', label:'+4 SPD (rare)', stat:'spd', amount:4, apply(){ G.player.stats.spd=(G.player.stats.spd||0)+4; }},
+  {id:'vit8', get label(){ return levelUpChoiceLabel('maxHp',8,{rare:true}); }, stat:'maxHp', amount:8, apply(){ G.player.stats.maxHp=(G.player.stats.maxHp||1)+8; G.player.stats.hp=Math.min((G.player.stats.hp||1)+8,G.player.stats.maxHp||1); }},
+  {id:'atk4r', get label(){ return levelUpChoiceLabel('atk',4,{rare:true}); }, stat:'atk', amount:4, apply(){ G.player.stats.atk=(G.player.stats.atk||0)+4; }},
+  {id:'spd4r', get label(){ return levelUpChoiceLabel('spd',4,{rare:true}); }, stat:'spd', amount:4, apply(){ G.player.stats.spd=(G.player.stats.spd||0)+4; }},
 ];
 
 function isMainAttackAbility(ab, ownerPlayer=null){
@@ -15325,10 +15394,10 @@ function buildFeatherStatPanel(){
 }
 
 function getLevelUpStatEffectDesc(opt){
-  if(opt.stat==='goldCritMult') return `Increase crit damage multiplier by ${opt.amount}.`;
-  if(opt.stat==='dodge') return `Increase dodge by ${opt.amount}%.`;
-  if(opt.stat==='critChance') return `Increase crit chance by ${opt.amount}%.`;
-  return `Improve ${String(opt.stat).toUpperCase()} by ${opt.amount}.`;
+  if(opt.stat==='goldCritMult') return `Increase Ferocity multiplier by ${opt.amount}.`;
+  if(opt.stat==='dodge') return `Increase ${ledgerStatLabel('dodge')} by ${opt.amount}%.`;
+  if(opt.stat==='critChance') return `Increase ${ledgerStatLabel('critChance')} by ${opt.amount}%.`;
+  return `Improve ${ledgerStatLabel(opt.stat)} by ${opt.amount}.`;
 }
 
 function ensureMainAttackAndLoadoutRules(){
@@ -16422,41 +16491,10 @@ function buildRefFilterBarHtml(activeTab) {
 </select></label>
 <label>Type<select id="ref-filter-ab-type" data-ref-filter="abType">
 <option value=""${ty === '' ? ' selected' : ''}>All</option>
-<option value="physical"${ty === 'physical' ? ' selected' : ''}>Physical</option>
+<option value="physical"${ty === 'physical' ? ' selected' : ''}>Martial</option>
 <option value="ranged"${ty === 'ranged' ? ' selected' : ''}>Ranged</option>
 <option value="spell"${ty === 'spell' ? ' selected' : ''}>Spell</option>
 <option value="utility"${ty === 'utility' ? ' selected' : ''}>Utility</option>
-</select></label>
-</div>`;
-  }
-  if (activeTab === 5) {
-    const tier = _refFilters.mutTier || '';
-    const slot = _refFilters.mutSlot || '';
-    const cat = _refFilters.mutCategory || '';
-    const slotLabels = {};
-    const slotOpts = Object.keys(slotLabels).map((sk) => {
-      const sel = slot === sk ? ' selected' : '';
-      return `<option value="${sk}"${sel}>${slotLabels[sk]}</option>`;
-    }).join('');
-    return `<div class="ref-filter-bar">
-<label>Tier<select id="ref-filter-mut-tier" data-ref-filter="mutTier">
-<option value=""${tier === '' ? ' selected' : ''}>All</option>
-<option value="white"${tier === 'white' ? ' selected' : ''}>White</option>
-<option value="green"${tier === 'green' ? ' selected' : ''}>Green</option>
-<option value="blue"${tier === 'blue' ? ' selected' : ''}>Blue</option>
-<option value="purple"${tier === 'purple' ? ' selected' : ''}>Purple</option>
-<option value="gold"${tier === 'gold' ? ' selected' : ''}>Gold</option>
-<option value="orange"${tier === 'orange' ? ' selected' : ''}>Orange</option>
-</select></label>
-<label>Slot<select id="ref-filter-mut-slot" data-ref-filter="mutSlot">
-<option value=""${slot === '' ? ' selected' : ''}>All</option>
-${slotOpts}
-</select></label>
-<label>Category<select id="ref-filter-mut-category" data-ref-filter="mutCategory">
-<option value=""${cat === '' ? ' selected' : ''}>All</option>
-<option value="hybrid"${cat === 'hybrid' ? ' selected' : ''}>Hybrid</option>
-<option value="offensive"${cat === 'offensive' ? ' selected' : ''}>Offensive</option>
-<option value="defensive"${cat === 'defensive' ? ' selected' : ''}>Defensive</option>
 </select></label>
 </div>`;
   }
@@ -16542,6 +16580,13 @@ function skillCard(id) {
   </div>`;
 }
 
+function refSkillScalingLabel(raw){
+  const k=String(raw||'').toLowerCase();
+  const map={atk:'atk',matk:'matk',def:'def',mdef:'mdef',spd:'spd',hp:'maxHp',might:'atk',focus:'matk',guard:'def',resolve:'mdef',agility:'spd',vitality:'maxHp'};
+  const key=map[k]||k;
+  return ledgerStatLabel(key);
+}
+
 function buildRefGuide() {
   const tabs = document.getElementById('ref-tabs');
   const panels = document.getElementById('ref-panels');
@@ -16550,10 +16595,12 @@ function buildRefGuide() {
   const defs=[
     {k:'birds',label:'🐦 Birds'},
     {k:'abilities',label:'🪶 Abilities'},
+    {k:'skills',label:'⚔ Skills'},
     {k:'enemies',label:'☠ Enemies'},
     {k:'statuses',label:'☣ Status Effects'},
     {k:'artifacts',label:'💎 Artefacts'},
-    {k:'mutations',label:'🧬 Mutations'},
+    {k:'stats',label:'📊 Stats'},
+    {k:'tiers',label:'📶 Effect Tiers'},
     {k:'items',label:'💧 Items'},
     {k:'mechanics',label:'⚙ Mechanics'},
   ];
@@ -16606,6 +16653,20 @@ function buildRefGuide() {
     return card(packDef?.name||t.name, desc,u,meta);
   }).join('');
 
+  const skills=Object.values(Avian?.data?.equipment?.skills||{}).filter(sk=>{
+    if(!sk) return false;
+    return isMatch(sk.name)||isMatch(sk.id)||isMatch(sk.riderText)||isMatch(sk.family)||isMatch(sk.barSlot)||isMatch(sk.scalingStat);
+  }).map(sk=>{
+    const en=Number(sk.en)||0;
+    const cd=Number(sk.cooldown)||0;
+    const scale=sk.scalingStat?refSkillScalingLabel(sk.scalingStat):'—';
+    const meta=`${en} EN · CD ${cd} · ${sk.barSlot||sk.skillType||'skill'}`;
+    const rarity=sk.minRarity?`Min rarity: ${sk.minRarity}. `:'';
+    const rider=sk.riderText?`<br>${escapeHtmlRoster(sk.riderText)}`:'';
+    const desc=`${rarity}Scales with ${escapeHtmlRoster(scale)}. Family: ${escapeHtmlRoster(sk.family||'—')}.${rider}`;
+    return card(sk.name||sk.id, desc, true, meta);
+  }).join('');
+
   const rosterRows=Avian?.data?.enemyRoster?.byId||{};
   const enemies=Object.values(rosterRows).filter(e=>isMatch(e.name||e.fantasyTitle||'')).slice(0,120).map(e=>{
     const id=e.id||e.birdKey||e.name;
@@ -16613,7 +16674,7 @@ function buildRefGuide() {
     if(!u&&!showLocked) return '';
     const ai=mapAiStyleToType(e.aiStyle||'aggressive');
     const st=e.stats||{};
-    return card(e.name, `HP ${st.hp||0} · ATK ${st.atk||0} · L${e.storyLevel||'?'} · AI: ${ai}`,u,ai);
+    return card(e.name, `${ledgerStatLabel('maxHp')} ${st.hp||0} · ${ledgerStatLabel('atk')} ${st.atk||0} · L${e.storyLevel||'?'} · AI: ${ai}`,u,ai);
   }).join('');
 
   const packStatusGlossary = G.dataPacks?.abilityPassiveUpgrade?.STATUS_GLOSSARY || {};
@@ -16626,8 +16687,6 @@ function buildRefGuide() {
     const label=ail?.name||(id[0].toUpperCase()+id.slice(1));
     return card(label,d,u,'status');
   }).join('');
-
-  const mutations='';
 
   const combatItems=Object.values(COMBAT_ITEM_CATALOG||{}).filter(def=>isMatch(def.name)||isMatch(def.combatHint)).map(def=>{
     const u=!!G.codex?.items?.[def.itemKey]?.seen;
@@ -16653,37 +16712,64 @@ function buildRefGuide() {
   }).join('');
   const arts=artsByTier || (showLocked?card('???','Find rewards in runs to fill this section.',false,'locked'):'' );
 
+  const slotsPack=Avian?.data?.equipment?.slots||{};
+  const statNames=slotsPack.statDisplayNames||{};
+  const statCosts=slotsPack.statCosts||{};
+  const statsHtml=Object.keys(statNames).filter(k=>isMatch(statNames[k])||isMatch(k)||isMatch(String(statCosts[k]||''))).map(k=>{
+    const glossKey=k.replace(/Pct$/,'');
+    const display=ledgerStatLabel(glossKey==='hp'?'maxHp':glossKey)||statNames[k];
+    const short=(typeof Avian?.display?.statShort==='function' && Avian.display.statShort(glossKey==='hp'?'hp':glossKey))||'';
+    const cost=statCosts[k]!=null?`Budget cost ${statCosts[k]}.`:'';
+    const abbr=short&&String(short).toLowerCase()!==String(glossKey).toLowerCase()?`Abbreviation: ${short}. `:'';
+    return card(display, `${abbr}${statNames[k]!==display?statNames[k]+'. ':''}${cost||'Core or equipment stat from Stat Definitions.'}`,true,k);
+  }).join('');
+
+  const tiersPack=Avian?.data?.effectTiers||{};
+  const buffT=tiersPack.buff||{};
+  const debuffT=tiersPack.debuff||{};
+  const pointsT=tiersPack.points||{};
+  const braceT=tiersPack.brace||{};
+  const stackingT=tiersPack.stacking||{};
+  const effectTiersHtml=['minor','moderate','major'].filter(t=>isMatch(t)||isMatch('effect')||isMatch('tier')||!q).map(t=>{
+    return card(t[0].toUpperCase()+t.slice(1),
+      `Buff/Debuff ±${buffT[t]!=null?buffT[t]:'—'}% · Point tiers ±${pointsT[t]!=null?pointsT[t]:'—'} · Brace ${braceT[t]!=null?braceT[t]:'—'}% · Debuff table ${debuffT[t]!=null?debuffT[t]:'—'}%`,
+      true,'tier');
+  }).join('')+(isMatch('stack')||isMatch('cap')||!q?card('Stacking rules',
+    `Mode: ${stackingT.mode||'strongestPerDirection'}. Core temp cap ${stackingT.coreTempCapPct!=null?stackingT.coreTempCapPct+'%':'—'}. Precision temp cap ${stackingT.precisionTempCapPoints!=null?stackingT.precisionTempCapPoints+' points':'—'}.`,
+    true,'stacking'):'');
+
   const mechanics=`<div class="ref-skills-grid">
     ${card('War Room & Character Select','Mission map sets difficulty and Story vs Endless. Begin Ascent opens Character Select to pick your bird. Inventory holds feathers and artifacts; Supplies holds this Reference codex.',true,'war-room')}
     ${card('Bird Cards & Tiers','Hatch at The Hatchery. Duplicate hatches grant Species Feathers. Spend feathers in Feather Sack or Character Select to raise stars and ascend tiers — higher tiers boost stats for that species. Passives and class perks stay fixed.',true,'bird-cards')}
     ${card('Species Feathers','Per-bird currency from duplicate hatches at The Hatchery. Fuels card star and tier upgrades in Feather Sack or Character Select.',true,'species-feathers')}
-    ${card('Energy & Cooldowns','Main attacks are free unless spells. Abilities spend energy; multi-turn cooldowns only apply when set on a specific skill.',true,'core')}
-    ${card('Post-Battle Recovery','Story: heal 20% max HP after each bird you defeat in a stage (including multi-bird nodes). Endless: heal 33% max HP after each victory. Halved with Hunter\'s Cruelty mutation.',true,'heal')}
+    ${card('Energy & Cooldowns',`Start with ${PLAYER_ENERGY_START} EN (max ${PLAYER_ENERGY_MAX}). Recover ${PLAYER_ENERGY_REGEN} EN at the start of each turn after the first. Skills spend EN; cooldowns apply when set on a skill.`,true,'core')}
+    ${card('Post-Battle Recovery','Story: heal 20% max HP after each bird you defeat in a stage (including multi-bird nodes). Endless: heal 33% max HP after each victory.',true,'heal')}
     ${card('Role Taxonomy','Birds are grouped by combat roles: Striker, Bruiser, Tank, Trickster, Predator, Singer.',true,'roles')}
     <div class="ref-skill-card ref-aspect-chart-card" style="grid-column:1/-1">
-      <div class="ref-skill-header"><span class="ref-skill-name">Aspect Chart</span><span class="ref-skill-type utility">matchups</span></div>
-      <div class="ref-skill-base">Each bird and damaging ability has an Aspect. Strong hits deal ${(Avian?.data?.aspects?.dominantMod||1.2).toFixed(2)}× damage; weak hits deal ${(Avian?.data?.aspects?.resistedMod||0.8).toFixed(2)}×. Arrows show strong (dominant) matchups.</div>
+      <div class="ref-skill-header"><span class="ref-skill-name">Affinity Chart</span><span class="ref-skill-type utility">matchups</span></div>
+      <div class="ref-skill-base">Each bird and damaging ability has an Affinity. Strong hits deal ${(Avian?.data?.aspects?.dominantMod||1.2).toFixed(2)}× damage; weak hits deal ${(Avian?.data?.aspects?.resistedMod||0.8).toFixed(2)}×. Arrows show strong (dominant) matchups.</div>
       ${typeof buildAspectChartSvg==='function'?buildAspectChartSvg():''}
     </div>
-    ${card('Mutation Slots','Equip mutations in left/right wing, left/right foot, beak, syrinx, chest, plumage, eyes, head, and tail slots (one item per slot). Class-only gear requires a matching bird class. Manage loadout in the Nest.',true,'mutations')}
-    ${card('Nest Inventory','Found mutations go to nest inventory. Equip, compare, and sell extras between battles.',true,'nest')}
-    ${card('Stork Shop','Spend Shiny Objects on combat heal items and mutation stock between fights.',true,'shop')}
-    ${card('Hit vs Dodge','Accuracy rolls can Miss. If the attack connects, a separate dodge roll may show Dodge — not Miss.',true,'combat')}
-    ${card('Weaken (stacks)','Stacks to ×3: −8% outgoing damage and −4 Dodge per stack. Refreshes 3-turn duration.',true,'ailment')}
+    ${card('Equipment Slots','Equip gear in Helmet, Armour, Main Weapon, Off Weapon, Shield, Left/Right Anklet, and Necklace. Anklets may fill either foot. Class-only gear requires a matching bird class. Manage loadout in the Nest.',true,'equipment')}
+    ${card('Nest Inventory','Found equipment goes to nest inventory. Equip, compare, and sell extras between battles.',true,'nest')}
+    ${card('Stork Shop','Spend Shiny Objects on combat heal items and equipment stock between fights.',true,'shop')}
+    ${card('Hit vs Evasion','Precision rolls can Miss. If the attack connects, a separate Evasion roll may show Dodge — not Miss.',true,'combat')}
+    ${card('Weaken (stacks)','Stacks to ×3: −8% outgoing damage and −4 Evasion per stack. Refreshes 3-turn duration.',true,'ailment')}
     ${card('Passive Evolution (Endless)','In Endless mode only, passives evolve at milestones with offensive vs utility choices. Story mode uses fixed starter passives.',true,'endless')}
     ${card('Enemy AI Profiles','Enemy personalities (aggressive, tactical, control, tank, predator, etc.) bias action planning.',true,'ai')}
-    ${card('Codex Unlocks','Entries unlock when seen or used during runs. Open Reference from war room Supplies. Use search, filters, and Show Locked to browse all.',true,'codex')}
+    ${card('Codex Unlocks','Entries unlock when seen or used during runs. Stats, Effect Tiers, and Skill Library are always available. Open Reference from war room Supplies.',true,'codex')}
     ${card('Combat Screen Layout','Settings → Display: pick Original, Compact, Actions First, Log Focus, or Custom. Custom opens a panel editor to reorder sections and hide what you do not need. Size sliders still fine-tune avatars, panels, action tray, and log.',true,'combat-ui')}
-    ${card('DEF & MDEF Penetration','DEF Penetration and generic Penetration bonuses ignore physical guard. MDEF Penetration ignores magical guard. Ability pierce stacks on top of equipped mutations.',true,'penetration')}
+    ${card('Guard & Resolve Penetration','Martial Penetration ignores Guard. Magic Penetration ignores Resolve. Ability pierce stacks on top of equipped gear.',true,'penetration')}
   </div>`;
 
-  const panelBodies=[birds,abilities,enemies,statuses,arts,mutations,combatItems];
-  const panelFallback=['No matching birds.','No matching abilities.','No matching enemies.','No matching statuses.','No matching artefacts.','No matching mutations.','No matching items.'];
+  /* 0 Birds, 1 Abilities, 2 Skills, 3 Enemies, 4 Statuses, 5 Artefacts, 6 Stats, 7 Effect Tiers, 8 Items, 9 Mechanics */
+  const panelBodies=[birds,abilities,skills,enemies,statuses,arts,statsHtml,effectTiersHtml,combatItems];
+  const panelFallback=['No matching birds.','No matching abilities.','No matching skills.','No matching enemies.','No matching statuses.','No matching artefacts.','No matching stats.','No matching effect tiers.','No matching items.'];
   panels.innerHTML=panelBodies.map((html,i)=>{
     const inner=html||`<div class="ref-entry-desc">${panelFallback[i]}</div>`;
-    const wrap=i===4?inner:`<div class="ref-skills-grid">${inner}</div>`;
+    const wrap=i===5?inner:`<div class="ref-skills-grid">${inner}</div>`;
     return `<div class="ref-panel ${_refActiveTab===i?'active':''}" id="ref-panel-${i}">${wrap}</div>`;
-  }).join('')+`<div class="ref-panel ${_refActiveTab===7?'active':''}" id="ref-panel-7">${mechanics}</div>`;
+  }).join('')+`<div class="ref-panel ${_refActiveTab===9?'active':''}" id="ref-panel-9">${mechanics}</div>`;
   const qEl=document.getElementById('ref-search-input');
   const lEl=document.getElementById('ref-show-locked');
   if(qEl){ qEl.value=prevQ; qEl.oninput=()=>buildRefGuide(); }

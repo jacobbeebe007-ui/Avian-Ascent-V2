@@ -1100,11 +1100,20 @@
 
   function findEquipSlotForItem(player, itemId) {
     if (!player || !itemId) return null;
+    ensurePlayerEquipmentState(player);
     var order = getSlotOrder();
+    var emptyMatch = null;
+    var occupiedMatch = null;
     for (var i = 0; i < order.length; i++) {
-      if (canEquip(player, itemId, order[i]).ok) return order[i];
+      var sk = order[i];
+      if (!canEquip(player, itemId, sk).ok) continue;
+      if (!player.equipment[sk]) {
+        if (!emptyMatch) emptyMatch = sk;
+      } else if (!occupiedMatch) {
+        occupiedMatch = sk;
+      }
     }
-    return null;
+    return emptyMatch || occupiedMatch;
   }
 
   function equipAuto(player, itemId) {

@@ -7,9 +7,11 @@
  *   AA_AFFINITY_ARSENAL_WORKBOOK=/path/to/v0.6.xlsx
  *
  * Canonical outputs only (no -v2 siblings):
- *   aspects, affinities, effect-tiers, ailment-families, orb-focuses,
+ *   aspects, affinities, ailment-families, orb-focuses,
  *   combinations, weapon-access, progression/*, enemy-scaling-profiles,
  *   display-glossary.
+ *
+ * effect-tiers.js is owned by import-equipment-workbook.mjs (Effect Tiers sheet).
  *
  * Skills/families/items receive v0.6 overlays (COMBO_* merge, EN roles,
  * Dagger Pinion rename, Greatbow locks, orbFocus stamps).
@@ -133,8 +135,8 @@ definitions = {lat:{'name':DISPLAY[lat],'legacyName':{'terra':'Terra','aeris':'A
 aspects = {'packVersion':PACK,'ids':LATIN,'displayIds':PLAIN,'displayNames':DISPLAY,'plainNames':LATIN_TO_PLAIN,'aliases':aliases,'dominantMod':1.2,'neutralMod':1,'resistedMod':0.8,'chart':chart,'alignedStatus':aligned,'themes':{k:DISPLAY[k] for k in LATIN},'definitions':definitions,'affinityIds':PLAIN}
 write_js('js/data/aspects.js','Avian.data.aspects',aspects,'Affinity chart with legacy Aspect aliases.')
 write_js('js/data/affinities.js','Avian.data.affinities',{'packVersion':PACK,'ids':PLAIN,'legacyIds':LATIN,'toLegacy':PLAIN_TO_LATIN,'toPlain':LATIN_TO_PLAIN,'displayNames':{p:p.title() for p in PLAIN},'dominantMod':1.2,'neutralMod':1,'resistedMod':0.8,'chartPlain':matrix_plain,'aliases':aliases},'Player-facing Affinity ids + alias map.')
-write_js('js/data/effect-tiers.js','Avian.data.effectTiers',{'packVersion':PACK,'buff':{'minor':6,'moderate':8,'major':12},'debuff':{'minor':6,'moderate':8,'major':12},'points':{'minor':3,'moderate':5,'major':8},'brace':{'minor':6,'moderate':8,'major':12},'stacking':{'mode':'strongestPerDirection','coreTempCapPct':20,'precisionTempCapPoints':12}},'v0.6 core 6/8/12 + point tiers 3/5/8 + Brace.')
-print('core packs refreshed')
+# effect-tiers.js is owned by import-equipment-workbook.mjs — do not overwrite here.
+print('core packs refreshed (effect-tiers left to equipment importer)')
 `;
 
 const result = spawnSync('python3', ['-c', py], { cwd: ROOT, encoding: 'utf8' });

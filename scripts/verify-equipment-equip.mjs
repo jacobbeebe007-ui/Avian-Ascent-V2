@@ -182,6 +182,21 @@ if (ank.equipment.ankletL === 'EQ-AI-GRY' && ank.equipment.ankletR === 'EQ-AI-GR
   fail('duplicate anklet equip failed');
 }
 
+// --- auto-slot prefers empty anklet foot ---
+const ankAuto = freshPlayer('crow');
+equipment.addToInventory(ankAuto, 'EQ-AI-GRY');
+equipment.addToInventory(ankAuto, 'EQ-AI-GRY');
+equipment.equip(ankAuto, 'EQ-AI-GRY', 'ankletL');
+const autoSlot = equipment.findEquipSlotForItem(ankAuto, 'EQ-AI-GRY');
+if (autoSlot === 'ankletR') ok('findEquipSlotForItem prefers empty ankletR when L filled');
+else fail(`expected ankletR for second anklet, got ${autoSlot}`);
+const autoEq = equipment.equipAuto(ankAuto, 'EQ-AI-GRY');
+if (autoEq.ok && ankAuto.equipment.ankletL === 'EQ-AI-GRY' && ankAuto.equipment.ankletR === 'EQ-AI-GRY') {
+  ok('equipAuto fills both anklet feet');
+} else {
+  fail('equipAuto did not fill both anklet feet');
+}
+
 // --- shield independent of hands ---
 const shieldPlayer = freshPlayer('crow');
 equipment.addToInventory(shieldPlayer, 'EQ-LN-GRY');

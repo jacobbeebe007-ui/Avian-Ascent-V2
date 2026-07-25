@@ -488,15 +488,36 @@
       gainAccFlat: function (n, ps, p) { applyDisplayOrStat(ps, p, 'gainAcc', 'acc', n); },
       gainDodgeFlat: function (n, ps, p) { applyDisplayOrStat(ps, p, 'gainDodge', 'dodge', n); },
       gainAcc: function (n, ps, p) { applyDisplayOrStat(ps, p, 'gainAcc', 'acc', n); },
-      gainSpeed: function (n, ps, p) { applyDispatcherStatLoanPct(ps, p, 'spd', sourceId, n); spawnTrendFloat(floatSide, 'buff'); },
+      gainSpeed: function (n, ps, p) {
+        applyDispatcherDisplaySlot(ps, sourceId, 'gainSpeed', n);
+        applyDispatcherStatLoanPct(ps, p, 'spd', sourceId, n);
+        spawnTrendFloat(floatSide, 'buff');
+      },
       gainCritChance: function (n, ps, p) { applyDisplayOrStat(ps, p, 'gainCritChance', 'critChance', n); },
       gainCritDamage: function (n, ps) { applyDispatcherDisplaySlot(ps, sourceId, 'gainCritDamage', n); spawnTrendFloat(floatSide, 'buff'); },
-      gainAtk: function (n, ps, p) { applyDispatcherStatLoanPct(ps, p, 'atk', sourceId, n); spawnTrendFloat(floatSide, 'buff'); },
-      gainMatk: function (n, ps, p) { applyDispatcherStatLoanPct(ps, p, 'matk', sourceId, n); spawnTrendFloat(floatSide, 'buff'); },
-      gainDef: function (n, ps, p) { applyDispatcherStatLoanPct(ps, p, 'def', sourceId, n); spawnTrendFloat(floatSide, 'buff'); },
-      gainMdef: function (n, ps, p) { applyDispatcherStatLoanPct(ps, p, 'mdef', sourceId, n); spawnTrendFloat(floatSide, 'buff'); },
+      gainAtk: function (n, ps, p) {
+        applyDispatcherDisplaySlot(ps, sourceId, 'gainAtk', n);
+        applyDispatcherStatLoanPct(ps, p, 'atk', sourceId, n);
+        spawnTrendFloat(floatSide, 'buff');
+      },
+      gainMatk: function (n, ps, p) {
+        applyDispatcherDisplaySlot(ps, sourceId, 'gainMatk', n);
+        applyDispatcherStatLoanPct(ps, p, 'matk', sourceId, n);
+        spawnTrendFloat(floatSide, 'buff');
+      },
+      gainDef: function (n, ps, p) {
+        applyDispatcherDisplaySlot(ps, sourceId, 'gainDef', n);
+        applyDispatcherStatLoanPct(ps, p, 'def', sourceId, n);
+        spawnTrendFloat(floatSide, 'buff');
+      },
+      gainMdef: function (n, ps, p) {
+        applyDispatcherDisplaySlot(ps, sourceId, 'gainMdef', n);
+        applyDispatcherStatLoanPct(ps, p, 'mdef', sourceId, n);
+        spawnTrendFloat(floatSide, 'buff');
+      },
       gainGuard: function (n, ps, p) {
         var pct = Number(n) || 8;
+        applyDispatcherDisplaySlot(ps, sourceId, 'gainDef', pct);
         applyDispatcherStatLoanPct(ps, p, 'def', sourceId, pct);
         spawnTrendFloat(floatSide, 'buff');
       },

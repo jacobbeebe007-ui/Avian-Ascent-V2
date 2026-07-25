@@ -82,18 +82,32 @@
     return String(tier || '').toLowerCase().replace(/[^a-z]/g, '');
   }
 
+  var V06_TIER_FALLBACK = { minor: 6, moderate: 8, major: 12 };
+  var LEGACY_TIER_ALIAS = {
+    grand: 'major', epic: 'major', legendary: 'major',
+    crippling: 'major', ruinous: 'major', fatal: 'major',
+    severe: 'major', critical: 'major', lethal: 'major'
+  };
+
+  function resolveTierKey(tier) {
+    var key = normalizeTierLabel(tier);
+    if (!key) return 'minor';
+    if (V06_TIER_FALLBACK[key] != null) return key;
+    return LEGACY_TIER_ALIAS[key] || key;
+  }
+
   function tierBuffPctValue(tier) {
     var buff = (globalThis.Avian && globalThis.Avian.data && globalThis.Avian.data.effectTiers && globalThis.Avian.data.effectTiers.buff)
-      || { minor: 6, major: 8, grand: 12, epic: 18, legendary: 25 };
-    var key = normalizeTierLabel(tier);
-    return buff[key] != null ? buff[key] : null;
+      || V06_TIER_FALLBACK;
+    var key = resolveTierKey(tier);
+    return buff[key] != null ? buff[key] : (V06_TIER_FALLBACK[key] != null ? V06_TIER_FALLBACK[key] : null);
   }
 
   function tierDebuffPctValue(tier) {
     var debuff = (globalThis.Avian && globalThis.Avian.data && globalThis.Avian.data.effectTiers && globalThis.Avian.data.effectTiers.debuff)
-      || { minor: 6, major: 8, crippling: 12, ruinous: 18, fatal: 25 };
-    var key = normalizeTierLabel(tier);
-    return debuff[key] != null ? debuff[key] : null;
+      || V06_TIER_FALLBACK;
+    var key = resolveTierKey(tier);
+    return debuff[key] != null ? debuff[key] : (V06_TIER_FALLBACK[key] != null ? V06_TIER_FALLBACK[key] : null);
   }
 
   function tierBuffPct(tier) {
@@ -101,11 +115,7 @@
   }
 
   function tierDebuffPct(tier) {
-    var v = tierDebuffPctValue(tier);
-    if (v != null) return v;
-    var alias = { severe: 'crippling', critical: 'ruinous', lethal: 'fatal' };
-    var mapped = alias[normalizeTierLabel(tier)];
-    return mapped ? tierDebuffPctValue(mapped) : null;
+    return tierDebuffPctValue(tier);
   }
 
   function isTierGuardPhrase(slice) {
@@ -186,24 +196,22 @@
     for (var gm5 of t.matchAll(/\+?\s*(\d+(?:\.\d+)?)\s*%\s*Crit\s*Chance/gi)) { if (!inEnemyLossClause(gm5.index)) addSelf('gainCritChance', Number(gm5[1])); }
     for (var gm6 of t.matchAll(/\+?\s*(\d+(?:\.\d+)?)\s*%\s*Crit\s*Damage/gi)) { if (!inEnemyLossClause(gm6.index)) addSelf('gainCritDamage', Number(gm6[1])); }
 
-    // Named magnitude tiers (Minor ACC Up, Major Dodge Down, etc.)
-    for (var nm1 of t.matchAll(/\b(Minor|Major|Grand|Epic|Legendary)\s+ACC\s+Up\b/gi)) {
+    // Named magnitude tiers (point stats: Precision / Evasion / Crit)
+    for (var nm1 of t.matchAll(/\b(Minor|Moderate|Major|Grand|Epic|Legendary)\s+(?:ACC|Precision)\s+Up\b/gi)) {
       var n1 = resolveMagnitude('acc', 'up', nm1[1]); if (n1 != null) addSelf('gainAcc', n1);
+      else { var n1b = tierBuffPct(nm1[1]); if (n1b != null) addSelf('gainAcc', n1b); }
     }
-    for (var nm2 of t.matchAll(/\b(Minor|Major|Severe|Critical|Lethal)\s+ACC\s+Down\b/gi)) {
-      var n2 = resolveMagnitude('acc', 'down', nm2[1]); if (n2 != null) addEnemy('reduceEnemyAcc', n2);
-    }
-    for (var nm3 of t.matchAll(/\b(Minor|Major|Grand|Epic|Legendary)\s+Dodge\s+Up\b/gi)) {
+    for (var nm3 of t.matchAll(/\b(Minor|Moderate|Major|Grand|Epic|Legendary)\s+(?:Dodge|Evasion)\s+Up\b/gi)) {
       var n3 = resolveMagnitude('dodge', 'up', nm3[1]); if (n3 != null) addSelf('gainDodge', n3);
+      else { var n3b = tierBuffPct(nm3[1]); if (n3b != null) addSelf('gainDodge', n3b); }
     }
-    for (var nm4 of t.matchAll(/\b(Minor|Major|Severe|Critical|Lethal)\s+Dodge\s+Down\b/gi)) {
-      var n4 = resolveMagnitude('dodge', 'down', nm4[1]); if (n4 != null) addEnemy('reduceEnemyDodge', n4);
-    }
-    for (var nm5 of t.matchAll(/\b(Minor|Major|Grand|Epic|Legendary)\s+Crit\s+Chance\s+Up\b/gi)) {
+    for (var nm5 of t.matchAll(/\b(Minor|Moderate|Major|Grand|Epic|Legendary)\s+Crit\s+Chance\s+Up\b/gi)) {
       var n5 = resolveMagnitude('critChance', 'up', nm5[1]); if (n5 != null) addSelf('gainCritChance', n5);
+      else { var n5b = tierBuffPct(nm5[1]); if (n5b != null) addSelf('gainCritChance', n5b); }
     }
-    for (var nm6 of t.matchAll(/\b(Minor|Major|Grand|Epic|Legendary)\s+Crit\s+Damage\s+Up\b/gi)) {
+    for (var nm6 of t.matchAll(/\b(Minor|Moderate|Major|Grand|Epic|Legendary)\s+Crit\s+Damage\s+Up\b/gi)) {
       var n6 = resolveMagnitude('critDamage', 'up', nm6[1]); if (n6 != null) addSelf('gainCritDamage', n6);
+      else { var n6b = tierBuffPct(nm6[1]); if (n6b != null) addSelf('gainCritDamage', n6b); }
     }
 
     // Combined ATK + MATK gains (+8% ATK and MATK, +12% ATK/MATK)
@@ -222,30 +230,22 @@
       if (sk) addSelf(sk, Number(statAnd[1]), { when: parseRiderWhen(t, statAnd[0]) });
     }
 
-    // Tier-based ATK / MATK / DEF / MDEF buffs (Gain Major ATK Up, etc.)
-    for (var atkUp of t.matchAll(/\b(?:Gain|gains?)\s+(Minor|Major|Grand|Epic|Legendary)\s+(?:Physical\s+)?ATK\s+Up\b/gi)) {
-      var atkV = tierBuffPct(atkUp[1]); if (atkV != null) addSelf('gainAtk', atkV, { when: parseRiderWhen(t, atkUp[0]) });
-    }
-    for (var matkUp of t.matchAll(/\b(?:Gain|gains?)\s+(Minor|Major|Grand|Epic|Legendary)\s+(?:Magic\s+)?MATK\s+Up\b/gi)) {
-      var matkV = tierBuffPct(matkUp[1]); if (matkV != null) addSelf('gainMatk', matkV, { when: parseRiderWhen(t, matkUp[0]) });
-    }
-    for (var defUp of t.matchAll(/\b(?:Gain|gains?)\s+(Minor|Major|Grand|Epic|Legendary)\s+DEF\s+Up\b/gi)) {
-      var defV = tierBuffPct(defUp[1]); if (defV != null) addSelf('gainDef', defV);
-    }
-    for (var mdefUp of t.matchAll(/\b(?:Gain|gains?)\s+(Minor|Major|Grand|Epic|Legendary)\s+MDEF\s+Up\b/gi)) {
-      var mdefV = tierBuffPct(mdefUp[1]); if (mdefV != null) addSelf('gainMdef', mdefV);
-    }
-    for (var atkUp2 of t.matchAll(/\b(Minor|Major|Grand|Epic|Legendary)\s+(?:Physical\s+)?ATK\s+Up\b/gi)) {
-      var atkV2 = tierBuffPct(atkUp2[1]); if (atkV2 != null) addSelf('gainAtk', atkV2, { when: parseRiderWhen(t, atkUp2[0]) });
-    }
-    for (var matkUp2 of t.matchAll(/\b(Minor|Major|Grand|Epic|Legendary)\s+(?:Magic\s+)?MATK\s+Up\b/gi)) {
-      var matkV2 = tierBuffPct(matkUp2[1]); if (matkV2 != null) addSelf('gainMatk', matkV2, { when: parseRiderWhen(t, matkUp2[0]) });
-    }
-    for (var defUp2 of t.matchAll(/\b(Minor|Major|Grand|Epic|Legendary)\s+DEF\s+Up\b/gi)) {
-      var defV2 = tierBuffPct(defUp2[1]); if (defV2 != null) addSelf('gainDef', defV2);
-    }
-    for (var mdefUp2 of t.matchAll(/\b(Minor|Major|Grand|Epic|Legendary)\s+MDEF\s+Up\b/gi)) {
-      var mdefV2 = tierBuffPct(mdefUp2[1]); if (mdefV2 != null) addSelf('gainMdef', mdefV2);
+    // Tier-based buffs: legacy ATK/MATK/DEF/MDEF + v0.6 Might/Focus/Guard/Resolve/Agility/Evasion
+    var tierWord = '(Minor|Moderate|Major|Grand|Epic|Legendary)';
+    var statBuffMap = [
+      { re: new RegExp('\\b' + tierWord + '\\s+(?:Physical\\s+)?(?:ATK|Might)\\s+Up\\b', 'gi'), kind: 'gainAtk' },
+      { re: new RegExp('\\b' + tierWord + '\\s+(?:Magic\\s+)?(?:MATK|Focus)\\s+Up\\b', 'gi'), kind: 'gainMatk' },
+      { re: new RegExp('\\b' + tierWord + '\\s+(?:DEF|Guard)\\s+Up\\b', 'gi'), kind: 'gainDef' },
+      { re: new RegExp('\\b' + tierWord + '\\s+(?:MDEF|Resolve)\\s+Up\\b', 'gi'), kind: 'gainMdef' },
+      { re: new RegExp('\\b' + tierWord + '\\s+(?:SPD|Agility)\\s+Up\\b', 'gi'), kind: 'gainSpeed' },
+      { re: new RegExp('\\b' + tierWord + '\\s+(?:Martial\\s+)?Damage\\s+Up\\b', 'gi'), kind: 'gainAtk' },
+    ];
+    for (var sbi = 0; sbi < statBuffMap.length; sbi++) {
+      var sb = statBuffMap[sbi];
+      for (var sbm of t.matchAll(sb.re)) {
+        var sbV = tierBuffPct(sbm[1]);
+        if (sbV != null) addSelf(sb.kind, sbV, { when: parseRiderWhen(t, sbm[0]) });
+      }
     }
 
     // Conditional ailment-based self buffs
@@ -255,22 +255,23 @@
     for (var ailAtk of t.matchAll(/if the target has an ailment,\s*gain\s+\+?\s*(\d+(?:\.\d+)?)\s*%\s*ATK/gi)) {
       addSelf('gainAtk', Number(ailAtk[1]), { when: 'targetHasAilment' });
     }
-    for (var dmgUp of t.matchAll(/\b(?:Gain|gains?)\s+(Minor|Major|Grand|Epic|Legendary)\s+Damage\s+Up\b/gi)) {
-      var dmgV = tierBuffPct(dmgUp[1]); if (dmgV != null) addSelf('gainAtk', dmgV);
-    }
-
-    // Tier-based debuffs (Apply Major MDEF Down, Crippling Damage Down, etc.)
-    for (var mdefDn of t.matchAll(/\b(?:Apply|apply)\s+(Minor|Major|Crippling|Ruinous|Fatal|Severe|Critical|Lethal)\s+MDEF\s+Down\b/gi)) {
-      var mdefDv = tierDebuffPct(mdefDn[1]); if (mdefDv != null) addEnemy('reduceEnemyMdef', mdefDv);
-    }
-    for (var defDn of t.matchAll(/\b(?:Apply|apply)\s+(Minor|Major|Crippling|Ruinous|Fatal|Severe|Critical|Lethal)\s+DEF\s+Down\b/gi)) {
-      var defDv = tierDebuffPct(defDn[1]); if (defDv != null) addEnemy('reduceEnemyDef', defDv);
-    }
-    for (var dmgDn of t.matchAll(/\b(?:Apply|apply)\s+(Minor|Major|Crippling|Ruinous|Fatal|Severe|Critical|Lethal)\s+Damage\s+Down\b/gi)) {
-      var dmgDv = tierDebuffPct(dmgDn[1]); if (dmgDv != null) addEnemy('reduceEnemyAtk', dmgDv);
-    }
-    for (var accDn of t.matchAll(/\b(?:Apply|apply)\s+(Minor|Major|Crippling|Ruinous|Fatal|Severe|Critical|Lethal)\s+ACC\s+Down\b/gi)) {
-      var accDv = tierDebuffPct(accDn[1]); if (accDv != null) addEnemy('reduceEnemyAcc', accDv);
+    // Tier-based debuffs (legacy + v0.6 Resolve/Guard/Might/Focus Down)
+    var debuffWord = '(Minor|Moderate|Major|Crippling|Ruinous|Fatal|Severe|Critical|Lethal|Grand|Epic|Legendary)';
+    var statDebuffMap = [
+      { re: new RegExp('\\b(?:Apply|apply)?\\s*' + debuffWord + '\\s+(?:MDEF|Resolve)\\s+Down\\b', 'gi'), kind: 'reduceEnemyMdef' },
+      { re: new RegExp('\\b(?:Apply|apply)?\\s*' + debuffWord + '\\s+(?:DEF|Guard)\\s+Down\\b', 'gi'), kind: 'reduceEnemyDef' },
+      { re: new RegExp('\\b(?:Apply|apply)?\\s*' + debuffWord + '\\s+(?:ATK|Might|Damage)\\s+Down\\b', 'gi'), kind: 'reduceEnemyAtk' },
+      { re: new RegExp('\\b(?:Apply|apply)?\\s*' + debuffWord + '\\s+(?:MATK|Focus)\\s+Down\\b', 'gi'), kind: 'reduceEnemyMatk' },
+      { re: new RegExp('\\b(?:Apply|apply)?\\s*' + debuffWord + '\\s+(?:SPD|Agility)\\s+Down\\b', 'gi'), kind: 'reduceEnemySpd' },
+      { re: new RegExp('\\b(?:Apply|apply)?\\s*' + debuffWord + '\\s+(?:ACC|Precision)\\s+Down\\b', 'gi'), kind: 'reduceEnemyAcc' },
+      { re: new RegExp('\\b(?:Apply|apply)?\\s*' + debuffWord + '\\s+(?:Dodge|Evasion)\\s+Down\\b', 'gi'), kind: 'reduceEnemyDodge' },
+    ];
+    for (var sdi = 0; sdi < statDebuffMap.length; sdi++) {
+      var sd = statDebuffMap[sdi];
+      for (var sdm of t.matchAll(sd.re)) {
+        var sdV = tierDebuffPct(sdm[1]);
+        if (sdV != null) addEnemy(sd.kind, sdV, { when: parseRiderWhen(t, sdm[0]) });
+      }
     }
 
     // "reduce MDEF by 8%" style clauses
