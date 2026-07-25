@@ -1,7 +1,7 @@
 # Equipment & Bird Balance v0.3 Migration (equipmentV2)
 
 Working doc for the migration from the 11-slot Mutation system + 364-row bespoke bird
-kits to the workbook v0.3 fantasy equipment system (8 slots, 240 items, 40 families,
+kits to the workbook v0.3 fantasy equipment system (7 slots, 240 items, 40 families,
 64 shared skill templates, six action sources), plus the full 52-bird rebalance.
 
 Source of truth: `Newest Avian_Ascent_Master_Equipment_and_Bird_Balance_v0.3.xlsx`
@@ -22,13 +22,13 @@ Working-Draft decision log, and the Phase-13 legacy-identifier kill list.
 | 0 | — | Freeze & inventory: baseline `npm test`, tag `pre-equipment-v2-migration`, this doc | done |
 | 1 | PR-1 | `import-equipment-workbook.mjs` + inert `js/data/equipment/*` + `combat-config.js` + `verify-equipment-content.mjs` | done |
 | 2 | PR-2 | `Avian.flags.equipmentV2` + config-driven formulas (/50 StatMod, EN 4/6 bands, 40% pen cap, crit caps, damaging-hit-only meter) | done |
-| 3 | PR-3 | `js/systems/equipment.js`: 8-slot loadout, hand/class validation, inventory, ledger rollup | done |
+| 3 | PR-3 | `js/systems/equipment.js`: 7-slot loadout (offHand holds 1H/Shield), hand/class validation, inventory, ledger rollup | done |
 | 4a | PR-4a | Equipment actions/effects runtime — Core v0.2 families | done |
 | 4b | PR-4b | Expanded v0.3 families + Minor/Moderate/Major tier engine + strongest-applies stacking | done |
 | 5 | PR-5 | Six action sources, Basic Attack inheritance + Natural Strike, paired techniques, 2H A/B, ultimate gating | done |
 | 6 | PR-6 | v0.3 bird stats/passives/innate utilities/class perks (Duke boss-override preserved) | done |
 | 7 | PR-7 | Equipment drops in nest/shop/grove/forge, rarity tables, orange-uniqueness config | done |
-| 8 | PR-8 | Enemy 8-slot loadouts from Reference Loadouts + AI action selection | done |
+| 8 | PR-8 | Enemy 7-slot loadouts from Reference Loadouts + AI action selection | done |
 | 9 | PR-9 | Six-slot action bar, equipment Nest UI, tooltips, hotkeys 1–6 | done |
 | 10 | PR-10 | Save schema v13, pre-release reset shim, backup key, load-time loadout validation | done |
 | 11 | PR-11 | `Avian.debug.simulateDuel/simulateRun`, run-balance matrix, telemetry export | done |

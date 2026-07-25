@@ -454,12 +454,46 @@
             : typeof globalThis.eggIdFromRescuedNestMisc === 'function'
             ? globalThis.eggIdFromRescuedNestMisc(item.id)
             : null;
-        var openBtn =
-          eggId && item.count > 0
-            ? '<button type="button" class="fortune-buy-btn inventory-open-btn" data-action="openRescuedNest:' +
-              esc(eggId) +
-              '">Open</button>'
-            : '';
+        var openControls = '';
+        if (eggId && item.count > 0) {
+          var qty =
+            typeof globalThis.getRescuedNestOpenQty === 'function'
+              ? globalThis.getRescuedNestOpenQty(eggId)
+              : 1;
+          qty = Math.max(1, Math.min(item.count, Math.floor(Number(qty) || 1)));
+          var canDec = qty > 1;
+          var canInc = qty < item.count;
+          openControls =
+            '<div class="inventory-nest-open">' +
+            '<div class="inventory-nest-stepper" role="group" aria-label="Open quantity">' +
+            '<button type="button" class="inventory-nest-qty-btn" data-action="adjustRescuedNestOpenQty:' +
+            esc(eggId) +
+            ':-1"' +
+            (canDec ? '' : ' disabled') +
+            ' aria-label="Fewer">−</button>' +
+            '<span class="inventory-nest-qty" aria-live="polite">' +
+            fmt(qty) +
+            '</span>' +
+            '<button type="button" class="inventory-nest-qty-btn" data-action="adjustRescuedNestOpenQty:' +
+            esc(eggId) +
+            ':1"' +
+            (canInc ? '' : ' disabled') +
+            ' aria-label="More">+</button>' +
+            '<button type="button" class="inventory-nest-all-btn" data-action="adjustRescuedNestOpenQty:' +
+            esc(eggId) +
+            ':all"' +
+            (item.count > 1 ? '' : ' disabled') +
+            '>All</button>' +
+            '</div>' +
+            '<button type="button" class="fortune-buy-btn inventory-open-btn" data-action="openRescuedNest:' +
+            esc(eggId) +
+            ':' +
+            qty +
+            '">Open ×' +
+            fmt(qty) +
+            '</button>' +
+            '</div>';
+        }
         return (
           '<div class="inventory-item-card inventory-item-card--misc">' +
           '<div class="inventory-item-icon">' +
@@ -472,7 +506,7 @@
           '<p class="inventory-item-desc">' +
           esc(item.desc) +
           '</p>' +
-          openBtn +
+          openControls +
           '</div>'
         );
       })

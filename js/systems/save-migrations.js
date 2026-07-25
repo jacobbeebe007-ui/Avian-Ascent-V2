@@ -417,11 +417,33 @@
     {
       from: 14,
       to: 15,
+<<<<<<< HEAD
       note: 'equipment loot v0.7: hybrid flat+% equipment; stamp equipmentLootPackVersion',
       fn: function (save) {
         if (!save) return save;
         stampEquipmentSaveFields(save);
         return stampEquipmentLootV07Fields(save);
+=======
+      note: 'merge legacy equipment.shield into offHand; drop dedicated shield slot',
+      fn: function (save) {
+        if (!save || typeof save !== 'object') return save;
+        var p = save.player;
+        if (!p || typeof p !== 'object') return save;
+        if (!p.equipment || typeof p.equipment !== 'object') return save;
+        var eq = p.equipment;
+        if (!Object.prototype.hasOwnProperty.call(eq, 'shield')) return save;
+        var shieldId = eq.shield;
+        delete eq.shield;
+        if (shieldId) {
+          if (!eq.offHand) {
+            eq.offHand = shieldId;
+          } else {
+            if (!Array.isArray(p.equipmentInventory)) p.equipmentInventory = [];
+            p.equipmentInventory.push(shieldId);
+          }
+        }
+        return save;
+>>>>>>> e43a4fbc4c3600e16f84c259b0a67192a6b2540c
       },
     },
   ];

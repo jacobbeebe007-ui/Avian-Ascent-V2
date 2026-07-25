@@ -265,7 +265,6 @@
       'armour',
       'mainHand',
       'offHand',
-      'shield',
       'ankletL',
       'ankletR',
       'necklace',

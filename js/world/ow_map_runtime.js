@@ -1034,7 +1034,7 @@
           maxHp: Math.max(1, Math.floor(s.maxHp || s.hp || 30)),
           atk: Math.max(1, Math.floor(s.atk || 6)),
           def: Math.max(0, Math.floor(s.def || 2)),
-          matk: Math.max(1, Math.floor(s.matk || 8)),
+          matk: Math.max(0, Math.floor(Number(s.matk) || 0)),
           mdef: Math.max(0, Math.floor(s.mdef || 8)),
           spd: Math.max(1, Math.floor(s.spd || 6)),
         };
@@ -1046,7 +1046,7 @@
     let maxHp = Math.max(1, Math.floor(bd.stats?.maxHp || bd.stats?.hp || 30));
     let atk = Math.max(1, Math.floor(bd.stats?.atk || 6));
     let def = Math.max(0, Math.floor(bd.stats?.def || 2));
-    let matk = Math.max(1, Math.floor(bd.stats?.matk || 8));
+    let matk = Math.max(0, Math.floor(Number(bd.stats?.matk) || 0));
     let mdef = Math.max(0, Math.floor(bd.stats?.mdef || 8));
     let spd = Math.max(1, Math.floor(bd.stats?.spd || 6));
     if (isBoss) {

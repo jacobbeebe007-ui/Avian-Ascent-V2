@@ -1,6 +1,6 @@
 /* Avian Ascent — Equipment v0.3 Runtime (Phase 3)
  *
- * 8-slot loadout, inventory, validation, stat ledger rollup.
+ * 7-slot loadout (offHand holds 1H weapons or Shields), inventory, validation, stat ledger rollup.
  * Gated by Avian.flags.equipmentV2; mutations keep owning stats when flag is off.
  */
 (function () {
@@ -10,7 +10,7 @@
   var equipment = Avian.equipment || Object.create(null);
 
   var SLOT_ORDER = [
-    'helmet', 'armour', 'mainHand', 'offHand', 'shield', 'ankletL', 'ankletR', 'necklace',
+    'helmet', 'armour', 'mainHand', 'offHand', 'ankletL', 'ankletR', 'necklace',
   ];
 
   var FLAT_STAT_MAP = {
@@ -151,13 +151,43 @@
     return (sd && sd.slots && sd.slots[slotKey]) || null;
   }
 
+  function isShieldItem(item) {
+    return !!(item && String(item.slot || '') === 'Shield');
+  }
+
+  function isOneHandedWeaponItem(item) {
+    return !!(item && String(item.slot || '') === 'Weapon' && (Number(item.hands) || 0) === 1);
+  }
+
   function slotAcceptsItem(slotKey, item) {
     if (!item || !slotKey) return false;
     var meta = slotMeta(slotKey);
     if (!meta) return false;
+    /* Off-hand absorbs Shields and any 1H weapon; dedicated shield slot removed. */
+    if (slotKey === 'offHand') {
+      if (isShieldItem(item) && (Number(item.hands) || 0) === 0) return true;
+      if (isOneHandedWeaponItem(item)) return true;
+      return false;
+    }
     if (item.slot !== meta.accepts) return false;
-    if (slotKey === 'offHand' && (Number(item.hands) || 0) !== 1) return false;
-    if (slotKey === 'shield' && (Number(item.hands) || 0) !== 0) return false;
+    return true;
+  }
+
+  /** Migrate legacy `equipment.shield` into offHand (or inventory if occupied). */
+  function migrateLegacyShieldSlot(player) {
+    if (!player || !player.equipment || typeof player.equipment !== 'object') return false;
+    var eq = player.equipment;
+    if (!Object.prototype.hasOwnProperty.call(eq, 'shield')) return false;
+    var shieldId = eq.shield;
+    delete eq.shield;
+    if (!shieldId) return true;
+    if (!eq.offHand) {
+      eq.offHand = shieldId;
+    } else if (Array.isArray(player.equipmentInventory)) {
+      player.equipmentInventory.push(shieldId);
+    } else {
+      player.equipmentInventory = [shieldId];
+    }
     return true;
   }
 
@@ -171,11 +201,15 @@
     if (!player.equipment || typeof player.equipment !== 'object') {
       player.equipment = createEmptyLoadout();
     } else {
+      migrateLegacyShieldSlot(player);
       var order = getSlotOrder();
       for (var i = 0; i < order.length; i++) {
         if (!Object.prototype.hasOwnProperty.call(player.equipment, order[i])) {
           player.equipment[order[i]] = null;
         }
+      }
+      if (Object.prototype.hasOwnProperty.call(player.equipment, 'shield')) {
+        delete player.equipment.shield;
       }
     }
     if (!Array.isArray(player.equipmentInventory)) player.equipmentInventory = [];
@@ -297,7 +331,8 @@
     if (sk === 'offHand') {
       var mainId = eq.mainHand;
       var mainItem = mainId ? getItem(mainId) : null;
-      if (mainItem && (Number(mainItem.hands) || 0) === 2) {
+      /* 2H main blocks off-hand weapons, but Shields may stay equipped. */
+      if (mainItem && (Number(mainItem.hands) || 0) === 2 && !isShieldItem(item)) {
         return { ok: false, reason: 'two_handed_main' };
       }
     }
@@ -325,7 +360,8 @@
     var sk = slotKey;
     var item = getItem(itemId);
     if (sk === 'mainHand' && item && (Number(item.hands) || 0) === 2 && eq.offHand) {
-      unequip(player, 'offHand');
+      var offItem = getItem(eq.offHand);
+      if (!isShieldItem(offItem)) unequip(player, 'offHand');
     }
     var displaced = eq[sk];
     removeFromInventory(player, itemId);
@@ -358,10 +394,13 @@
     }
     var mainItem = eq.mainHand ? getItem(eq.mainHand) : null;
     if (mainItem && (Number(mainItem.hands) || 0) === 2 && eq.offHand) {
-      var offId = eq.offHand;
-      eq.offHand = null;
-      addToInventory(player, offId);
-      issues.push({ slot: 'offHand', action: 'unequip_two_handed_conflict', itemId: offId });
+      var offItem = getItem(eq.offHand);
+      if (!isShieldItem(offItem)) {
+        var offId = eq.offHand;
+        eq.offHand = null;
+        addToInventory(player, offId);
+        issues.push({ slot: 'offHand', action: 'unequip_two_handed_conflict', itemId: offId });
+      }
     }
     return issues;
   }
@@ -541,7 +580,7 @@
     if (typeof normalizeCombatStats === 'function') normalizeCombatStats(player.stats);
   }
 
-  var ACCESSORY_SLOTS = ['helmet', 'shield', 'ankletL', 'ankletR', 'necklace'];
+  var ACCESSORY_SLOTS = ['helmet', 'ankletL', 'ankletR', 'necklace'];
 
   function mulberry32(a) {
     return function () {
@@ -601,8 +640,11 @@
     if (!ref || !ref.equipment) return out;
     for (var sk in ref.equipment) {
       if (!Object.prototype.hasOwnProperty.call(ref.equipment, sk)) continue;
+      if (sk === 'shield') continue;
       out[sk] = ref.equipment[sk] || null;
     }
+    /* Legacy workbook rows stored Shields under `shield`; fold into offHand. */
+    if (!out.offHand && ref.equipment.shield) out.offHand = ref.equipment.shield;
     return out;
   }
 
@@ -610,14 +652,14 @@
     var cat = itemsCatalog();
     if (!cat) return [];
     var meta = slotMeta(slotKey);
-    if (!meta) return [];
-    var accepts = meta.accepts;
+    if (!meta && slotKey !== 'offHand') return [];
     var rar = normalizeEquipmentRarity(rarity);
     var out = [];
     for (var id in cat) {
       if (!Object.prototype.hasOwnProperty.call(cat, id)) continue;
       var item = cat[id];
-      if (!item || item.slot !== accepts) continue;
+      if (!item) continue;
+      if (!slotAcceptsItem(slotKey, item)) continue;
       if (normalizeEquipmentRarity(item.rarity) !== rar) continue;
       if (id === currentItemId) continue;
       out.push(id);
@@ -657,8 +699,43 @@
 
   /** Prefer combat pieces first when filling a partial kit. */
   var STORY_FILL_SLOT_PRIORITY = [
-    'mainHand', 'armour', 'helmet', 'necklace', 'shield', 'offHand', 'ankletL', 'ankletR',
+    'mainHand', 'armour', 'helmet', 'necklace', 'offHand', 'ankletL', 'ankletR',
   ];
+
+  function shouldSkipOffHandFill(eq) {
+    var mainId = eq && eq.mainHand;
+    var mainItem = mainId ? getItem(mainId) : null;
+    /* Only skip when 2H main would block weapons; Shields still fill offHand. */
+    return !!(mainItem && (Number(mainItem.hands) || 0) === 2);
+  }
+
+  function pickReferenceItemForSlotAllowingShieldWith2H(classId, slotKey, rarity, eq) {
+    if (slotKey !== 'offHand' || !shouldSkipOffHandFill(eq)) {
+      return pickReferenceItemForSlot(classId, slotKey, rarity);
+    }
+    /* Prefer a Shield of this rarity when mainHand is two-handed. */
+    var rar = normalizeEquipmentRarity(rarity);
+    var ref = findReferenceLoadout(classId, rar);
+    if (ref && ref.equipment) {
+      var cand = ref.equipment.offHand || ref.equipment.shield || null;
+      var candItem = cand ? getItem(cand) : null;
+      if (candItem && isShieldItem(candItem) && normalizeEquipmentRarity(candItem.rarity) === rar) {
+        return cand;
+      }
+    }
+    var cat = itemsCatalog();
+    if (!cat) return null;
+    for (var itemId in cat) {
+      if (!Object.prototype.hasOwnProperty.call(cat, itemId)) continue;
+      var it = cat[itemId];
+      if (!it || !isShieldItem(it)) continue;
+      if (normalizeEquipmentRarity(it.rarity) !== rar) continue;
+      if (!itemAllowedForPlayer(it, classId)) continue;
+      if (!slotAcceptsItem('offHand', it)) continue;
+      return itemId;
+    }
+    return null;
+  }
 
   var RARITY_RANK = {
     grey: 1, green: 2, blue: 3, purple: 4, gold: 5, orange: 6,
@@ -686,7 +763,9 @@
 
   function buildStoryRarityBag(recipe, rng) {
     if (!recipe) return [];
-    if (Array.isArray(recipe.bag)) return recipe.bag.slice();
+    if (Array.isArray(recipe.bag)) {
+      return recipe.bag.map(normalizeEquipmentRarity);
+    }
     var count = Math.max(0, Math.floor(Number(recipe.count)) || 0);
     var bag = [];
     var remaining = count;
@@ -731,24 +810,29 @@
   function pickReferenceItemForSlot(classId, slotKey, rarity) {
     var rar = normalizeEquipmentRarity(rarity);
     var ref = findReferenceLoadout(classId, rar);
-    if (ref && ref.equipment && ref.equipment[slotKey]) return ref.equipment[slotKey];
-    var fallbacks = ['grey', 'green', 'blue', 'purple'];
+    if (ref && ref.equipment) {
+      var fromRef = ref.equipment[slotKey] || (slotKey === 'offHand' ? ref.equipment.shield : null);
+      if (fromRef) {
+        var refItem = getItem(fromRef);
+        if (refItem && slotAcceptsItem(slotKey, refItem)) return fromRef;
+      }
+    }
+    var fallbacks = ['grey', 'green', 'blue', 'purple', 'gold', 'orange'];
     for (var i = 0; i < fallbacks.length; i++) {
       if (fallbacks[i] === rar) continue;
       ref = findReferenceLoadout(classId, fallbacks[i]);
-      if (!ref || !ref.equipment || !ref.equipment[slotKey]) continue;
-      var id = ref.equipment[slotKey];
+      if (!ref || !ref.equipment) continue;
+      var id = ref.equipment[slotKey] || (slotKey === 'offHand' ? ref.equipment.shield : null);
+      if (!id) continue;
       var item = getItem(id);
-      if (item && normalizeEquipmentRarity(item.rarity) === rar) return id;
+      if (item && normalizeEquipmentRarity(item.rarity) === rar && slotAcceptsItem(slotKey, item)) return id;
     }
     var cat = itemsCatalog();
     if (!cat) return null;
-    var meta = slotMeta(slotKey);
-    if (!meta) return null;
     for (var itemId in cat) {
       if (!Object.prototype.hasOwnProperty.call(cat, itemId)) continue;
       var it = cat[itemId];
-      if (!it || it.slot !== meta.accepts) continue;
+      if (!it) continue;
       if (normalizeEquipmentRarity(it.rarity) !== rar) continue;
       if (!itemAllowedForPlayer(it, classId)) continue;
       if (!slotAcceptsItem(slotKey, it)) continue;
@@ -781,13 +865,8 @@
     var bagIdx = 0;
     for (var i = 0; i < STORY_FILL_SLOT_PRIORITY.length && bagIdx < bag.length; i++) {
       var slotKey = STORY_FILL_SLOT_PRIORITY[i];
-      if (slotKey === 'offHand') {
-        var mainId = eq.mainHand;
-        var mainItem = mainId ? getItem(mainId) : null;
-        if (mainItem && (Number(mainItem.hands) || 0) === 2) continue;
-      }
       var rarity = bag[bagIdx];
-      var itemId = pickReferenceItemForSlot(classId, slotKey, rarity);
+      var itemId = pickReferenceItemForSlotAllowingShieldWith2H(classId, slotKey, rarity, eq);
       if (!itemId) continue;
       eq[slotKey] = itemId;
       bagIdx++;
@@ -903,13 +982,8 @@
     var bagIdx = 0;
     for (var i = 0; i < STORY_FILL_SLOT_PRIORITY.length && bagIdx < bag.length; i++) {
       var slotKey = STORY_FILL_SLOT_PRIORITY[i];
-      if (slotKey === 'offHand') {
-        var mainId = eq.mainHand;
-        var mainItem = mainId ? getItem(mainId) : null;
-        if (mainItem && (Number(mainItem.hands) || 0) === 2) continue;
-      }
       var rarity = bag[bagIdx];
-      var itemId = pickReferenceItemForSlot(classId, slotKey, rarity);
+      var itemId = pickReferenceItemForSlotAllowingShieldWith2H(classId, slotKey, rarity, eq);
       if (!itemId) continue;
       eq[slotKey] = itemId;
       bagIdx++;

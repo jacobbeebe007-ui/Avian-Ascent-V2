@@ -62,9 +62,11 @@ const utilities = data.combatPack && data.combatPack.innateUtilities;
 const tiers = data.effectTiers;
 const cfg = data.combatConfig;
 
-if (!slots || !slots.slotOrder || slots.slotOrder.length !== 8) {
-  fail('expected 8 equipment slots, got ' + (slots && slots.slotOrder && slots.slotOrder.length));
+if (!slots || !slots.slotOrder || slots.slotOrder.length !== 7) {
+  fail('expected 7 equipment slots, got ' + (slots && slots.slotOrder && slots.slotOrder.length));
 }
+if (slots.slots && slots.slots.shield) fail('dedicated shield slot should be removed');
+if (!slots.slots || !slots.slots.offHand) fail('offHand slot missing');
 
 const skillIds = skills ? Object.keys(skills) : [];
 if (skillIds.length !== 96) fail('expected 96 skills (expanded v0.7 library + COMBO_*), got ' + skillIds.length);

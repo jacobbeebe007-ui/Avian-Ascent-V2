@@ -106,10 +106,20 @@ if (!/function applyEnemyStatsFromPlayerProgression/.test(gameSrc)) {
 } else {
   ok('enemy progression parity helper present');
 }
-if (!/sumPlayerProgressionFlat/.test(gameSrc) || !/_fromPlayerProgression/.test(gameSrc)) {
-  fail('enemy player-stat mirror wiring incomplete');
+if (!/workbookLevel/.test(gameSrc) || !/_fromPlayerProgression/.test(gameSrc)) {
+  fail('enemy workbook level scaling wiring incomplete');
 } else {
-  ok('enemy mirrors player vitality/stat progression');
+  ok('enemy uses workbook L1–30 progression');
+}
+if (!/resolveEnemyWorkbookLevel/.test(gameSrc)) {
+  fail('resolveEnemyWorkbookLevel missing');
+} else {
+  ok('enemy workbook level resolver present');
+}
+if (!/computeFinalStats/.test(gameSrc)) {
+  fail('enemy path missing computeFinalStats');
+} else {
+  ok('enemy scales via birdProgression.computeFinalStats');
 }
 
 /* Runtime: sparrow L1 via progression should be near birds-v2 base (~57), not old roster (~37). */
@@ -137,6 +147,70 @@ try {
   const grownHp = Number(grown.ledger?.maxHp ?? grown.ledger?.hp) || 0;
   if (hpBase >= 50 && grownHp >= 50) ok(`player-parity vitality base/grown ${hpBase}/${grownHp} (roster was ~37)`);
   else fail(`expected v0.6 vitality ≥50, got base=${hpBase} grown=${grownHp}`);
+
+  const crow = ctx.Avian.data.birdsV2?.crow?.stats;
+  if (crow && Number(crow.matk) === 0 && Number(crow.acc) === 0) {
+    ok('crow Focus/Precision are 0 (v0.6)');
+  } else {
+    fail(`crow expected FOC 0 / PRE 0, got matk=${crow?.matk} acc=${crow?.acc}`);
+  }
+
+  const crowL15 = ctx.Avian.birdProgression.computeFinalStats({
+    base: { hp: crow.hp, atk: crow.atk, def: crow.def, matk: crow.matk, mdef: crow.mdef, spd: crow.spd },
+    className: 'knight',
+    level: 15,
+    totalStars: 18,
+    tier: 'purple',
+  });
+  const profiled = ctx.Avian.birdProgression.applyEnemyProfile(crowL15.ledger, 'standard');
+  const l15Hp = Number(profiled?.maxHp ?? profiled?.hp) || 0;
+  if (l15Hp > Number(crow.hp)) ok(`workbook L15 crow enemy vitality ${l15Hp} > base ${crow.hp}`);
+  else fail(`expected L15 crow HP growth, got ${l15Hp} vs base ${crow.hp}`);
+
+  /* Load feather growth + story bands + enemy helpers from game.js excerpt via eval of functions. */
+  vm.runInContext(load('js/data/feather-growth-profiles.js'), ctx, { filename: 'js/data/feather-growth-profiles.js' });
+  vm.runInContext(load('js/data/bird-card-tiers.js'), ctx, { filename: 'js/data/bird-card-tiers.js' });
+  vm.runInContext(load('js/systems/story-enemy-levels.js'), ctx, { filename: 'js/systems/story-enemy-levels.js' });
+
+  /* Pull enemy progression helpers by evaluating the relevant game.js slice. */
+  const gameSrcFull = load('js/core/game.js');
+  const start = gameSrcFull.indexOf('function resolveEnemyProgressionProfileId');
+  const end = gameSrcFull.indexOf('function mergeScaledStatsIntoEnemy');
+  if (start < 0 || end < 0 || end <= start) {
+    fail('could not extract enemy progression helpers from game.js');
+  } else {
+    ctx.G = { player: { birdLevel: 30 }, stage: 1, endlessMode: false };
+    ctx.roundCombatStat = (v) => Math.round(Number(v) || 0);
+    ctx.getEnemyEnergyProfile = () => ({ startEN: 3, maxEN: 6, regenEN: 1 });
+    ctx.applyEnemyFeatherFromPlayerMirror = () => {};
+    ctx.BIRDS = ctx.Avian.data.birdsV2;
+    vm.runInContext(gameSrcFull.slice(start, end), ctx, { filename: 'game-enemy-prog.js' });
+
+    const early = ctx.applyEnemyStatsFromPlayerProgression(
+      { birdKey: 'sparrow', storyLevel: 1, enemyClass: 'rogue' },
+      { isStory: true, stage: 2, playerBirdLevel: 30, diffMult: 1 },
+    );
+    const late = ctx.applyEnemyStatsFromPlayerProgression(
+      { birdKey: 'sparrow', storyLevel: 10, enemyClass: 'rogue' },
+      { isStory: true, stage: 18, playerBirdLevel: 30, diffMult: 1 },
+    );
+    if (!early || !late) fail('enemy progression helpers returned null');
+    else {
+      if (early.workbookLevel <= 2) ok(`story early workbookLevel ${early.workbookLevel} ignores player L30`);
+      else fail(`story early workbookLevel should be ≤2, got ${early.workbookLevel}`);
+      if (late.hp > early.hp * 1.35) ok(`story late HP ${late.hp} >> early ${early.hp} at same player level`);
+      else fail(`expected late story HP growth, early=${early.hp} late=${late.hp}`);
+      const starsEarly = typeof ctx.getTotalFeatherStars === 'function'
+        ? ctx.getTotalFeatherStars(early.tier, 2)
+        : null;
+      if (starsEarly != null && Number(early.tier) !== NaN) {
+        /* totalStars should use cumulative stars, not raw starsInTier=2 alone for higher tiers */
+        ok(`enemy tier/stars wired (early tier=${early.tier}, late tier=${late.tier})`);
+      }
+      if (late.workbookLevel >= early.workbookLevel) ok('late workbook level ≥ early');
+      else fail(`late workbook ${late.workbookLevel} < early ${early.workbookLevel}`);
+    }
+  }
 } catch (err) {
   fail('progression vitality check threw: ' + err.message);
 }

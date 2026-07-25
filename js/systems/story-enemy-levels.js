@@ -4,7 +4,8 @@
  * Level bands: 1–4 → L1–2, 5–9 → L3–5, 10 → boss L6, 11–14 → L6–8, 15–19 → L9–10, 20 → Duke L10.
  * Species tiers: 1–4 grey (Common), 5–9 green (Uncommon), 10–14 blue (Rare), 15–19 purple (Legendary), 20 none.
  * Equipment pieces: 1–3 none; 4–6 ×4 grey; 7–9 ×4 grey/green; 10 ×1 blue + ×5 grey/green;
- * 11–13 ×5 green/blue; 14–16 ×7 blue; 17–19 ×3 purple + ×5 blue; 20 Duke ×8 purple.
+ * 11–13 ×5 green/blue; 14–16 ×7 blue; 17–19 ×3 purple + ×4 blue;
+ * 20 Duke ×5 gold (Legendary) + ×1 orange (Ancestral/legendary) + ×1 purple (Epic).
  */
 (function initStoryEnemyLevels(global) {
   'use strict';
@@ -49,11 +50,15 @@
     if (s <= 16) return { count: 7, bag: ['blue', 'blue', 'blue', 'blue', 'blue', 'blue', 'blue'] };
     if (s <= 19) {
       return {
-        count: 8,
-        bag: ['purple', 'purple', 'purple', 'blue', 'blue', 'blue', 'blue', 'blue'],
+        count: 7,
+        bag: ['purple', 'purple', 'purple', 'blue', 'blue', 'blue', 'blue'],
       };
     }
-    return { count: 8, bag: ['purple', 'purple', 'purple', 'purple', 'purple', 'purple', 'purple', 'purple'] };
+    /* Duke: 5 gold + 1 legendary (orange) + 1 epic (purple). */
+    return {
+      count: 7,
+      bag: ['gold', 'gold', 'gold', 'gold', 'gold', 'orange', 'purple'],
+    };
   }
 
   function getStoryDukeRosterId() {

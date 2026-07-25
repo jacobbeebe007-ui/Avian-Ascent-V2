@@ -1,6 +1,6 @@
 /* Avian Ascent — Equipment v0.3 action sources (Phases 4a/4b/5)
  *
- * Derives six action sources from the 8-slot loadout into dispatcher-compatible abilities.
+ * Derives six action sources from the 7-slot loadout into dispatcher-compatible abilities.
  * Gated by Avian.flags.equipmentV2.
  */
 (function () {
@@ -517,7 +517,7 @@
     if (!entity || !entity.equipment) return list;
     var order = (typeof Avian.equipment !== 'undefined' && typeof Avian.equipment.getSlotOrder === 'function')
       ? Avian.equipment.getSlotOrder()
-      : ['helmet', 'armour', 'mainHand', 'offHand', 'shield', 'ankletL', 'ankletR', 'necklace'];
+      : ['helmet', 'armour', 'mainHand', 'offHand', 'ankletL', 'ankletR', 'necklace'];
     for (var i = 0; i < order.length; i++) {
       var item = equippedItem(entity, order[i]);
       if (!item || !item.ultimate) continue;
@@ -540,12 +540,13 @@
           break;
         }
       }
-    } else if (candidates.length === 1) {
+    }
+    /* Default to first equipped ultimate; extras stay in the Nest skill bank. */
+    if (!chosen) {
       chosen = candidates[0];
-    } else if (entity.autoPickUltimate || entity.isEnemy) {
-      chosen = candidates[0];
-    } else {
-      return null;
+      if (entity && !entity.isEnemy && candidates[0] && candidates[0].item) {
+        entity.ultimateSourceItemId = candidates[0].item.id;
+      }
     }
 
     if (!chosen) return null;

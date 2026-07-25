@@ -128,7 +128,7 @@ equipment.addToInventory(knight, 'EQ-TB-GRY');
 assertEquip(knight, 'EQ-HP-GRY', 'helmet', true, 'helmet accepts Helmet item');
 assertEquip(knight, 'EQ-AM-GRY', 'armour', true, 'armour accepts Armour item');
 assertEquip(knight, 'EQ-LN-GRY', 'mainHand', true, 'mainHand accepts Weapon item');
-assertEquip(knight, 'EQ-SM-GRY', 'shield', true, 'shield accepts Shield item');
+assertEquip(knight, 'EQ-SM-GRY', 'offHand', true, 'offHand accepts Shield item');
 assertEquip(knight, 'EQ-NH-GRY', 'necklace', true, 'necklace accepts Necklace item');
 assertEquip(knight, 'EQ-HP-GRY', 'armour', false, 'helmet item rejected in armour slot');
 assertEquip(knight, 'EQ-AM-GRY', 'mainHand', false, 'armour item rejected in mainHand slot');
@@ -197,14 +197,28 @@ if (autoEq.ok && ankAuto.equipment.ankletL === 'EQ-AI-GRY' && ankAuto.equipment.
   fail('equipAuto did not fill both anklet feet');
 }
 
-// --- shield independent of hands ---
+// --- shield allowed in offHand alongside 2H main ---
 const shieldPlayer = freshPlayer('crow');
 equipment.addToInventory(shieldPlayer, 'EQ-LN-GRY');
 equipment.addToInventory(shieldPlayer, 'EQ-SM-GRY');
 equipment.equip(shieldPlayer, 'EQ-LN-GRY', 'mainHand');
-const shieldCheck = equipment.canEquip(shieldPlayer, 'EQ-SM-GRY', 'shield');
-if (shieldCheck.ok) ok('shield independent of 2H weapon hands');
-else fail('shield should equip alongside 2H mainHand');
+const shieldCheck = equipment.canEquip(shieldPlayer, 'EQ-SM-GRY', 'offHand');
+if (shieldCheck.ok) ok('shield allowed in offHand with 2H weapon');
+else fail('shield should equip in offHand alongside 2H mainHand');
+if (equipment.equip(shieldPlayer, 'EQ-SM-GRY', 'offHand') && shieldPlayer.equipment.offHand === 'EQ-SM-GRY') {
+  ok('2H main + shield offHand equip succeeds');
+} else {
+  fail('failed to equip shield into offHand with 2H main');
+}
+
+// --- 2H main still clears offHand weapons (not shields) ---
+const weaponOff = freshPlayer('crow');
+equipment.addToInventory(weaponOff, 'EQ-LN-GRY');
+equipment.addToInventory(weaponOff, 'EQ-TB-GRY');
+equipment.equip(weaponOff, 'EQ-TB-GRY', 'offHand');
+equipment.equip(weaponOff, 'EQ-LN-GRY', 'mainHand');
+if (!weaponOff.equipment.offHand) ok('2H main clears offHand weapon');
+else fail('offHand weapon should clear when equipping 2H mainHand');
 
 // --- class hard restriction ---
 const mageWand = 'EQ-WD-GRY';
