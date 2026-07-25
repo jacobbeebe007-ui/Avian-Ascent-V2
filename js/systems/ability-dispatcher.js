@@ -142,11 +142,11 @@
     }
     var magicShift = 0;
     if (targetSide === 'enemy' && g && g.player && (isMagic || isHybrid)) {
-      var attackerMatk = g.player.stats.matk || 8;
-      var targetMdef = (g.enemy && g.enemy.stats) ? (g.enemy.stats.mdef || 8) : 8;
+      var attackerMatk = Number(g.player.stats.matk) || 0;
+      var targetMdef = (g.enemy && g.enemy.stats) ? (Number(g.enemy.stats.mdef) || 0) : 0;
       magicShift = (attackerMatk - targetMdef) * 1.5;
     } else if (targetSide === 'player' && g && g.enemy && isMagic) {
-      magicShift = ((g.enemy.stats.matk || 8) - (g.player.stats.mdef || 8)) * 1.5;
+      magicShift = ((Number(g.enemy.stats.matk) || 0) - (Number(g.player.stats.mdef) || 0)) * 1.5;
     }
     var passiveAilBonus = (targetSide === 'enemy' && g && g.playerStatus) ? (Number(g.playerStatus.passiveAilmentBonus) || 0) : 0;
     var controlBoost = (targetSide === 'enemy' && g && g.player && typeof getPassiveEvolutionBonuses === 'function')

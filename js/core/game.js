@@ -136,12 +136,12 @@ function inferEnemyClassFromStyle(style='tactical'){
 }
 
 function makeEnemy(name, emoji, hp, atk, def, spd, style, isBoss=false, bossTitle='', opts={}) {
-  const acc = opts.acc||72;
+  const acc = Number.isFinite(opts.acc) ? opts.acc : 0;
   const dodge = opts.dodge||5;
   const size = opts.size||'medium';
   const abilities = opts.abilities||[];
-  const mdef = opts.mdef||8;
-  const matk = opts.matk||6;
+  const mdef = Number.isFinite(opts.mdef) ? opts.mdef : 0;
+  const matk = Number.isFinite(opts.matk) ? opts.matk : 0;
   const _enProf=getEnergyProfile(normalizeBirdSizeForEnergy(size));
   const baseEn = Number.isFinite(opts.baseEn) ? opts.baseEn : _enProf.maxEN;
   const enemyClass = opts.enemyClass || inferEnemyClassFromStyle(style);
@@ -349,26 +349,35 @@ function getUpgradePool(){ return UPGRADE_CARDS_REWORK.slice(); }
 // ---- Stat ledger: bird baseline vs level-up feathers vs card upgrades (Nest + combat tooltips) ----
 const STAT_LEDGER_TRACKED_KEYS = ['maxHp','atk','def','spd','acc','dodge','matk','mdef','critChance','armorPen','magicPen'];
 function ledgerStatLabel(statKey, { short=false }={}){
-  const k=String(statKey||'');
-  const glossKey=k==='maxHp'?'hp':k;
+  const raw=String(statKey||'');
+  const isPct=/Pct$/i.test(raw);
+  const bare=raw.replace(/Pct$/i,'');
+  const k=bare==='physDamage'?'physDamagePct':bare;
+  const glossKey=k==='maxHp'?'hp':(k==='physDamagePct'?'physicalDamage':k);
   if(short && typeof Avian?.display?.statShort==='function'){
-    const s=Avian.display.statShort(glossKey);
-    if(s && s.toLowerCase()!==glossKey.toLowerCase()) return s;
+    const s=Avian.display.statShort(glossKey==='physicalDamage'?'atk':glossKey);
+    if(s && s.toLowerCase()!==String(glossKey).toLowerCase()) return s;
+  }
+  if(typeof Avian?.equipmentLoot?.formatEquipmentStatLabel==='function' && (isPct || /Damage|Pen|Power|Strength/i.test(raw))){
+    const loot=Avian.equipmentLoot.formatEquipmentStatLabel(isPct?raw:raw);
+    if(loot && loot.toLowerCase()!==raw.toLowerCase()) return loot;
   }
   if(typeof Avian?.display?.statName==='function'){
-    const d=Avian.display.statName(glossKey);
-    if(d && d.toLowerCase()!==glossKey.toLowerCase()){
-      if(k==='maxHp') return d+' (max)';
-      if(k==='critChance' || k==='armorPen' || k==='magicPen') return d.includes('%')?d:`${d} %`;
+    const d=Avian.display.statName(glossKey==='physicalDamage'?'atk':(glossKey==='hp'?'hp':glossKey));
+    if(d && d.toLowerCase()!==String(glossKey).toLowerCase()){
+      if(bare==='maxHp'||raw==='maxHp') return d+' (max)';
+      if(k==='critChance' || k==='armorPen' || k==='magicPen' || isPct) return d.includes('%')?d:`${d}`;
       return d;
     }
   }
   const fallback={
     maxHp:'Vitality (max)',atk:'Might',def:'Guard',spd:'Agility',acc:'Precision',dodge:'Evasion',
-    matk:'Focus',mdef:'Resolve',critChance:'Critical %',critMult:'Ferocity',
-    armorPen:'Martial Penetration %',magicPen:'Magic Penetration %',
+    matk:'Focus',mdef:'Resolve',critChance:'Critical',critMult:'Ferocity',
+    armorPen:'Martial Penetration',magicPen:'Magic Penetration',
+    physDamagePct:'Martial Damage',magicDamagePct:'Magic Damage',aspectDamagePct:'Affinity Damage',
+    healingPowerPct:'Healing Power',shieldStrengthPct:'Barrier Power',critDamagePct:'Ferocity',
   };
-  return fallback[k]||k;
+  return fallback[raw]||fallback[bare]||fallback[k]||bare||raw;
 }
 const STAT_LEDGER_LABELS = {
   get maxHp(){ return ledgerStatLabel('maxHp'); },
@@ -661,13 +670,36 @@ function formatEquipmentStatsHtml(item){
   for(const [rawKey, val] of Object.entries(item.stats)){
     const n=Number(val)||0;
     if(!n) continue;
-    const lbl=(typeof Avian?.equipmentLoot?.formatEquipmentStatLabel==='function')
-      ? Avian.equipmentLoot.formatEquipmentStatLabel(rawKey)
-      : (Avian.data?.equipment?.slots?.statDisplayNames?.[rawKey]||rawKey);
-    const disp=String(rawKey).includes('Pct')?`+${formatCombatNumber(n)}%`:`+${formatCombatNumber(n)}`;
-    html+=`<div class="tt-row"><span class="tt-lbl">${escapeHtmlRoster(lbl)}</span><span class="tt-val">${escapeHtmlRoster(disp)}</span></div>`;
+    const lbl=formatAnyStatLabel(rawKey);
+    const disp=String(rawKey).includes('Pct')||/Pct$/i.test(rawKey)?`+${formatCombatNumber(n)}%`:`+${formatCombatNumber(n)}`;
+    html+=`<div class="tt-row mut-stat-line"><span class="tt-lbl">${escapeHtmlRoster(lbl)}</span><span class="tt-val">${escapeHtmlRoster(disp)}</span></div>`;
   }
   return html;
+}
+/** Gloss any ledger / equipment key (atk, atkPct, spdPct, physDamagePct, …) to a display name. */
+function formatAnyStatLabel(statKey){
+  const key=String(statKey||'');
+  if(typeof Avian?.equipmentLoot?.formatEquipmentStatLabel==='function'){
+    const fromLoot=Avian.equipmentLoot.formatEquipmentStatLabel(key);
+    if(fromLoot && fromLoot!==key && fromLoot.toLowerCase()!==key.toLowerCase()) return fromLoot;
+  }
+  const bare=key.replace(/Pct$/i,'');
+  const names=Avian.data?.equipment?.slots?.statDisplayNames||{};
+  if(names[key]) return names[key];
+  if(names[bare]) return names[bare];
+  if(names[bare+'Pct']) return String(names[bare+'Pct']).replace(/\s*%\s*$/,'');
+  if(typeof ledgerStatLabel==='function'){
+    const gloss=ledgerStatLabel(bare==='hp'?'maxHp':bare);
+    if(gloss && gloss.toLowerCase()!==bare.toLowerCase() && gloss!==bare) return gloss.replace(/\s*\(max\)\s*$/,'');
+  }
+  const fallback={
+    hp:'Vitality', maxHp:'Vitality', atk:'Might', def:'Guard', matk:'Focus', mdef:'Resolve',
+    spd:'Agility', dodge:'Evasion', acc:'Precision', critChance:'Critical', critDamage:'Ferocity',
+    critMult:'Ferocity', physicalPen:'Martial Penetration', magicPen:'Magic Penetration',
+    armorPen:'Martial Penetration', physDamagePct:'Martial Damage', magicDamagePct:'Magic Damage',
+    aspectDamagePct:'Affinity Damage', healingPowerPct:'Healing Power', shieldStrengthPct:'Barrier Power',
+  };
+  return fallback[bare]||fallback[key]||bare||key;
 }
 function formatEquipmentSkillsHtml(item){
   if(!item) return '';
@@ -2455,13 +2487,13 @@ function formatEquipmentCompactStatsHtml(item){
 }
 function needsUltimateSourcePick(player){
   if(!Avian.flags?.equipmentV2 || !player) return false;
-  if(player.ultimateSourceItemId) return false;
   const cands=typeof Avian?.equipmentActions?.collectUltimateCandidates==='function'
     ? Avian.equipmentActions.collectUltimateCandidates(player) : [];
   return cands.length>1;
 }
 function setPlayerUltimateSourceItemId(itemId){
   if(!G.player || !itemId) return;
+  if(isStoryBattleNestEquipLocked() && G.turn) return;
   G.player.ultimateSourceItemId=String(itemId);
   if(typeof Avian?.equipmentActions?.syncEntityAbilities==='function') Avian.equipmentActions.syncEntityAbilities(G.player);
   if(typeof saveRun==='function') saveRun();
@@ -2474,6 +2506,40 @@ if(typeof Avian?.actions?.register==='function'){
     if(typeof openNest==='function') openNest();
   });
 }
+function buildNestUltimateBankHtml(player){
+  if(!Avian.flags?.equipmentV2 || !player) return '';
+  if(typeof Avian?.equipmentActions?.collectUltimateCandidates!=='function') return '';
+  const cands=Avian.equipmentActions.collectUltimateCandidates(player);
+  if(cands.length<=1) return '';
+  const locked=isStoryBattleNestEquipLocked() && !!G.turn;
+  const activeId=player.ultimateSourceItemId || (cands[0] && cands[0].item && cands[0].item.id) || '';
+  const cards=cands.map(c=>{
+    const item=c.item;
+    const sk=getEquipmentSkill(c.skillId);
+    const tierMeta=rewardTierMeta(item.rarity||'gold');
+    const tierColor=nestTierColorVar(item.rarity);
+    const selected=String(activeId)===String(item.id);
+    const banked=!selected;
+    const brief=typeof formatAbilityBlurbHtml==='function'
+      ? formatAbilityBlurbHtml({id:c.skillId, name:sk?.name||c.skillId}, null, typeof packRowForAbility==='function'?packRowForAbility({id:c.skillId}):null)
+      : '';
+    const btn=locked
+      ? ''
+      : `<button type="button" class="nest-ult-pick-btn${selected?' active':''}" data-nest-ult-pick="${escapeHtmlRoster(item.id)}">${selected?'Active ultimate':'Equip from bank'}</button>`;
+    return `<div class="nest-ult-bank-card${selected?' is-active':''}${banked?' is-banked':''}">
+      <div class="nest-tier-label" style="color:${tierColor}">${tierMeta.label}${selected?' · Active':' · Banked'}</div>
+      <div class="nest-ab-name">${escapeHtmlRoster(sk?.name||item.name)}</div>
+      <div class="nest-ult-bank-src" style="color:${tierColor}">${escapeHtmlRoster(item.name)}</div>
+      ${brief?`<div class="nest-ab-desc btn-desc-lines">${brief}</div>`:''}
+      ${btn}
+    </div>`;
+  }).join('');
+  return `<div class="nest-section nest-ultimate-bank"><div class="nest-section-title">⚡ Ultimate Skill Bank</div><p class="nest-ledger-note">${locked?'Ultimates are locked during Story battle.':'Multiple Gold/Orange ultimates equipped — one is active; banked ultimates can be swapped here outside battle.'}</p><div class="nest-ultimate-bank-grid">${cards}</div></div>`;
+}
+function buildNestUltimatePickerHtml(player){
+  /* Prefer the richer ultimate skill bank when multiple ultimates are equipped. */
+  return buildNestUltimateBankHtml(player);
+}
 function equipmentSlotIconForItem(item){
   if(!item) return '⚙';
   const slots=Avian.data?.equipment?.slots?.slots||{};
@@ -2481,18 +2547,6 @@ function equipmentSlotIconForItem(item){
     if(slots[sk]?.accepts===item.slot) return EQUIPMENT_NEST_SLOT_ICONS[sk]||'⚙';
   }
   return '⚙';
-}
-function buildNestUltimatePickerHtml(player){
-  if(!needsUltimateSourcePick(player)) return '';
-  const cands=Avian.equipmentActions.collectUltimateCandidates(player);
-  const opts=cands.map(c=>{
-    const item=c.item;
-    const tierMeta=rewardTierMeta(item.rarity||'gold');
-    const tierColor=nestTierColorVar(item.rarity);
-    const selected=player.ultimateSourceItemId===item.id;
-    return `<button type="button" class="nest-ult-pick-btn${selected?' active':''}" data-nest-ult-pick="${escapeHtmlRoster(item.id)}"><span class="nest-tier-label" style="color:${tierColor}">${tierMeta.label}</span> ${escapeHtmlRoster(item.name)}</button>`;
-  }).join('');
-  return `<div class="nest-section nest-ultimate-picker"><div class="nest-section-title">⚡ Ultimate Source</div><p class="nest-ledger-note">Multiple Gold/Orange ultimates equipped — choose which powers your Ultimate action slot.</p><div class="nest-ultimate-options">${opts}</div></div>`;
 }
 function _nestEquipmentItemHtml(itemId, slotKey, locked=false){
   const icons=EQUIPMENT_NEST_SLOT_ICONS;
@@ -2533,19 +2587,18 @@ function buildNestEquipmentSectionV2(player){
     slotsHtml+=_nestEquipmentItemHtml(eq[sk]||null, sk, locked);
   }
   const roll=typeof Avian.equipment.sumEquippedEquipment==='function'?Avian.equipment.sumEquippedEquipment(player):{stats:{},pct:{}};
-  const statNames=Avian.data?.equipment?.slots?.statDisplayNames||{};
   const flatChips=Object.keys(roll.stats||{}).map(k=>{
     const v=Number(roll.stats[k])||0;
     if(!v) return '';
-    const disp=String(k).includes('Pen')||String(statNames[k]||'').includes('%')?`${formatCombatNumber(v)}%`:formatCombatNumber(v);
-    const lbl=(typeof STAT_LEDGER_LABELS!=='undefined'&&STAT_LEDGER_LABELS[k])||statNames[k]||ledgerStatLabel(k)||k;
+    const disp=String(k).includes('Pen')||/Pct$/i.test(k)?`${formatCombatNumber(v)}%`:formatCombatNumber(v);
+    const lbl=formatAnyStatLabel(k);
     return `<span class="nest-equip-bonus-chip">${escapeHtmlRoster(lbl)} +${escapeHtmlRoster(disp)}</span>`;
   }).filter(Boolean);
   const pctChips=Object.keys(roll.pct||{}).map(k=>{
     const raw=Number(roll.pct[k])||0;
     if(!raw) return '';
     const pctNum=Math.abs(raw)<=1.5?raw*100:raw;
-    const lbl=ledgerStatLabel(k==='hp'?'maxHp':k)||statNames[k+'Pct']||statNames[k]||k;
+    const lbl=formatAnyStatLabel(/Pct$/i.test(k)?k:k+'Pct');
     return `<span class="nest-equip-bonus-chip">${escapeHtmlRoster(lbl)} +${escapeHtmlRoster(formatCombatNumber(pctNum))}%</span>`;
   }).filter(Boolean);
   const bonusHtml=[...flatChips,...pctChips].join('')||'<span class="nest-inv-empty">No equipment stat bonuses yet.</span>';
@@ -2580,7 +2633,7 @@ function buildNestEquipmentSectionV2(player){
   }
   const lockNote=locked?'<p class="nest-lock-note">Equipment is locked during Story battle. Equip from rewards or the overworld Nest.</p>':'';
   const equipHint=locked?'Loadout changes unlock after victory. Slot filters remain available.':'Click inventory items to equip. Click equipped items to store in inventory.';
-  return `${buildNestUltimatePickerHtml(player)}<div class="nest-section nest-equipment-section nest-equipment-section--v2${locked?' nest-equip-locked':''}"><div class="nest-section-title">⚙ Equipment</div>${lockNote}${filterHtml}<div class="nest-ledger-subtitle">Equipped · ${escapeHtmlRoster(filterLabel)}</div><div class="nest-equip-grid nest-equip-grid--v2${activeFilter==='all'?' nest-equip-grid-all':''}">${slotsHtml}</div><div class="nest-ledger-subtitle">Bonus from equipped</div><div class="nest-equip-bonus">${bonusHtml}</div><div class="nest-section-title" style="margin-top:14px">🎒 Inventory · ${escapeHtmlRoster(filterLabel)} (${filteredInv.length})</div>${invHtml}<p class="nest-ledger-note">${equipHint}</p></div>`;
+  return `<div class="nest-section nest-equipment-section nest-equipment-section--v2${locked?' nest-equip-locked':''}"><div class="nest-section-title">⚙ Equipment</div>${lockNote}${filterHtml}<div class="nest-ledger-subtitle">Equipped · ${escapeHtmlRoster(filterLabel)}</div><div class="nest-equip-grid nest-equip-grid--v2${activeFilter==='all'?' nest-equip-grid-all':''}">${slotsHtml}</div><div class="nest-ledger-subtitle">Bonus from equipped</div><div class="nest-equip-bonus">${bonusHtml}</div><div class="nest-section-title" style="margin-top:14px">🎒 Inventory · ${escapeHtmlRoster(filterLabel)} (${filteredInv.length})</div>${invHtml}<p class="nest-ledger-note">${equipHint}</p></div>`;
 }
 function handleNestEquipmentClick(ev){
   const ultPick=ev.target.closest('[data-nest-ult-pick]');
@@ -2620,37 +2673,49 @@ function handleNestEquipmentClick(ev){
 }
 
 function buildNestAbilitySection(player){
-  ensureFamilyEvolutionState(player);
+  if(!player) return '';
   const locked=isStoryBattleNestEquipLocked();
-  const slots=getSkillSlots(player).slice().sort((a,b)=>a.slotIndex-b.slotIndex);
+  /* Equipment / innate utility / ultimate populate the action bar — no card-tier unlocks. */
+  if(Avian.flags?.equipmentV2 && typeof Avian?.equipmentActions?.syncEntityAbilities==='function'){
+    Avian.equipmentActions.syncEntityAbilities(player);
+  }
+  const abilities=(player.abilities||[]).slice(0, 6);
+  const sourceOrder=(typeof Avian?.equipmentActions?.getSourceOrder==='function')
+    ? Avian.equipmentActions.getSourceOrder()
+    : ['basic','utility','weaponA','weaponB','armour','ultimate'];
   let equippedHtml='';
-  for(const slot of slots){
-    const slotUnlocked=isSkillSlotUnlocked(slot, player);
-    if(!slotUnlocked){
-      equippedHtml+=`<div class="nest-ab-slot-card empty is-tier-locked" data-nest-ab-slot="${slot.slotIndex}" title="Upgrade this bird with Species Feathers to unlock slot ${slot.slotIndex+1}.">
-      <div class="nest-ab-slot-head"><span class="nest-ab-slot-idx">Slot ${slot.slotIndex+1}</span><span class="nest-ab-lock-tag">Locked</span></div>
-      <div class="nest-ab-name"><span class="nest-inv-empty">Species Feather upgrade required</span></div>
+  const count=Math.max(abilities.length, sourceOrder.length);
+  for(let i=0;i<count;i++){
+    const ab=abilities[i]||null;
+    const sourceKey=(ab && ab.actionSource) || sourceOrder[i] || ('slot'+i);
+    const sourceLbl=(typeof Avian?.equipmentActions?.getActionSourceLabel==='function')
+      ? Avian.equipmentActions.getActionSourceLabel(sourceKey)
+      : sourceKey;
+    const isEmpty=!(ab && !ab.empty && ab.id);
+    if(isEmpty){
+      const reason=(ab && ab.reason) || 'Empty — equip gear to fill this slot';
+      equippedHtml+=`<div class="nest-ab-slot-card empty" data-nest-ab-source="${escapeHtmlRoster(sourceKey)}">
+      <div class="nest-ab-slot-head"><span class="nest-ab-slot-idx">${escapeHtmlRoster(sourceLbl)}</span></div>
+      <div class="nest-ab-name"><span class="nest-inv-empty">${escapeHtmlRoster(reason)}</span></div>
     </div>`;
       continue;
     }
-    const label=getSkillSlotDisplayLabel(slot);
-    const canonId=slot.abilityId&&typeof resolveAbilityAliasSourceId==='function'?resolveAbilityAliasSourceId(slot.abilityId):slot.abilityId;
-    const tmpl=slot.abilityId?(getAbilityTemplateForUI(canonId)||getAbilityTemplateForUI(slot.abilityId)||{}):{};
-    const packRow=slot.abilityId&&typeof packRowForAbility==='function'?packRowForAbility({id:canonId||slot.abilityId}):null;
-    const missingTemplate=!!(slot.abilityId && !tmpl?.id && !tmpl?.name);
-    const brief=missingTemplate
-      ? `<p class="nest-ab-warn">Ability data missing for <code>${escapeHtmlRoster(slot.abilityId)}</code>. Hard-refresh after rebuilding the bundle.</p>`
-      : (typeof formatAbilityBlurbHtml==='function'
-      ? formatAbilityBlurbHtml({id:canonId||slot.abilityId}, tmpl, packRow)
-      : (typeof buildAbilityCombatBriefHtml==='function'?buildAbilityCombatBriefHtml({id:canonId||slot.abilityId}, packRow):''));
-    equippedHtml+=`<div class="nest-ab-slot-card${!slot.abilityId?' empty':''}${missingTemplate?' nest-ab-slot-missing':''}" data-nest-ab-slot="${slot.slotIndex}">
-      <div class="nest-ab-slot-head"><span class="nest-ab-slot-idx">Slot ${slot.slotIndex+1}</span></div>
-      <div class="nest-ab-name">${slot.abilityId?escapeHtmlRoster(label):'<span class="nest-inv-empty">Empty</span>'}</div>
+    const packRow=typeof packRowForAbility==='function'?packRowForAbility(ab):null;
+    const tmpl=getAbilityTemplateForUI(ab)||{};
+    const brief=(typeof formatAbilityBlurbHtml==='function'
+      ? formatAbilityBlurbHtml(ab, tmpl, packRow)
+      : (typeof buildAbilityCombatBriefHtml==='function'?buildAbilityCombatBriefHtml(ab, packRow):''));
+    equippedHtml+=`<div class="nest-ab-slot-card" data-nest-ab-source="${escapeHtmlRoster(sourceKey)}" data-nest-ab-id="${escapeHtmlRoster(ab.id)}">
+      <div class="nest-ab-slot-head"><span class="nest-ab-slot-idx">${escapeHtmlRoster(sourceLbl)}</span></div>
+      <div class="nest-ab-name">${escapeHtmlRoster(ab.name||ab.id)}</div>
       ${brief?`<div class="nest-ab-desc btn-desc-lines">${brief}</div>`:''}
     </div>`;
   }
-  const slotHint=locked?'Story battle loadouts are locked until victory.':'Upgrade your bird with Species Feathers to unlock ability slots (grey 2, green 3, blue 4, purple 5, gold 6, orange 7).';
-  return `<div class="nest-section nest-ability-section${locked?' nest-equip-locked':''}"><div class="nest-section-title">⚔ Abilities</div>${locked?'<p class="nest-lock-note">Loadout locked during Story battle.</p>':''}<div class="nest-ledger-subtitle">Equipped loadout</div><div class="nest-abilities-grid">${equippedHtml}</div><p class="nest-ledger-note">${slotHint}</p></div>`;
+  const slotHint=locked
+    ? 'Story battle loadouts are locked until victory.'
+    : 'Action slots come from equipment, innate utility, and ultimates — no Species Feather unlocks required.';
+  const bankHtml=buildNestUltimateBankHtml(player);
+  return `${bankHtml}<div class="nest-section nest-ability-section${locked?' nest-equip-locked':''}"><div class="nest-section-title">⚔ Abilities</div>${locked?'<p class="nest-lock-note">Loadout locked during Story battle.</p>':''}<div class="nest-ledger-subtitle">Equipped loadout</div><div class="nest-abilities-grid">${equippedHtml}</div><p class="nest-ledger-note">${slotHint}</p></div>`;
 }
 
 function openNest() {
@@ -8976,9 +9041,13 @@ function renderActions() {
       if(G.playerStatus?.battleHymn) mods.push('⬆ Hymn buff');
       if(mods.length) modTxt=`<span class=\"btn-mod\" title=\"${mods.join(' | ')}\">${mods.join(' · ')}</span>`;
     }
-    const briefHtml=(!isEmptySlot && typeof buildAbilityCombatBriefHtml==='function'?buildAbilityCombatBriefHtml(ab,_tmplUI):'')
+    const _packRowUI=(!isEmptySlot && typeof packRowForAbility==='function')?packRowForAbility(ab):null;
+    const briefHtml=(!isEmptySlot && typeof formatAbilityBlurbHtml==='function'
+      ? formatAbilityBlurbHtml(ab, _tmplUI, _packRowUI)
+      : '')
+      ||(!isEmptySlot && typeof buildAbilityCombatBriefHtml==='function'?buildAbilityCombatBriefHtml(ab, _packRowUI||_tmplUI):'')
       ||(!isEmptySlot && typeof formatTemplateCombatBriefHtml==='function'?formatTemplateCombatBriefHtml(_tmplUI):'');
-    const fallbackDesc=isEmptySlot?'':(((getAbDesc(ab)||'')+getAbilityDamageScalingHintForUI(ab)).replace(/<[^>]+>/g,'').trim());
+    const fallbackDesc=isEmptySlot?'':(((getAbDesc(ab)||_tmplUI?.desc||ab.desc||_packRowUI?.riderText||'')+getAbilityDamageScalingHintForUI(ab)).replace(/<[^>]+>/g,'').trim());
     const _dmgEst=(!isEmptySlot?estimateSkillDamageRange(ab,_tmplUI,G.player,{isPlayerCombatPreview:true}):{isDamaging:false});
     let dmgRow='';
     if(_dmgEst.isDamaging&&_dmgEst.dmgLow!=null){
@@ -12020,7 +12089,7 @@ function dealDamage(target,amount,isCrit=false,isMagic=false,srcAbility=null,opt
       ? Math.max(1, Number(enemyRow.enCost ?? enemyRow.apCost ?? 1))
       : Math.max(1, Number(getAbilityAuthoredEnergyCost(activeAb, G.enemy) || 1));
     const playerDodge = getEffectiveDodge(G.player);
-    const enemyBaseAcc=Math.max(0, (G.enemy.stats.acc||70) - (G.enemyStatus.accDebuff||0) - (G.enemyStatus.enemyBlind>0?15:0));
+    const enemyBaseAcc=Math.max(0, (Number(G.enemy.stats.acc)||0) - (G.enemyStatus.accDebuff||0) - (G.enemyStatus.enemyBlind>0?15:0));
     const accPenalty=(typeof calculateAbilityAccuracyPenalty==='function'&&enemyRow)
       ? calculateAbilityAccuracyPenalty(enemyRow) : 0;
     const hitPct=calculateAbilityHitChancePct(enemyBaseAcc, playerDodge, accPenalty);
@@ -13452,8 +13521,8 @@ function gainEnergy(player, amount){
 // diff = playerMATK - enemyMDEF
 // base miss 18%, ±3% per point difference, clamped 3%–40%
 function spellMissChance() {
-  const matk = G.player.stats.matk || 8;
-  const mdef = G.enemy.stats.mdef || 8;
+  const matk = Number(G.player.stats.matk)||0;
+  const mdef = Number(G.enemy.stats.mdef)||0;
   const diff = matk - mdef;
   const hb=G._pendingStrikeActionMods?.hitBonus||0;
   return Math.max(3, Math.min(40, 18 - diff * 3) - hb);
@@ -14378,7 +14447,7 @@ function rollEnemyCombatRowAilment(ab, tmpl, totalDmg, hitsLanded) {
   let ailCh = row.ailmentChance;
   let magicShift = 0;
   if (isMagic || isHybrid) {
-    magicShift = ((G.enemy?.stats?.matk || 8) - (G.player?.stats?.mdef || 8)) * 1.5;
+    magicShift = ((Number(G.enemy?.stats?.matk)||0) - (Number(G.player?.stats?.mdef)||0)) * 1.5;
   }
   const rollPct = typeof resolveAilmentChance === 'function'
     ? resolveAilmentChance(ailCh + magicShift, 'player', G, {})

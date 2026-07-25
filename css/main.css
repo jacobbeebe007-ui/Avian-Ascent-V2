@@ -4570,6 +4570,42 @@ body.ui-mobile-mode #screen-battle .btn-desc{
   padding:0 5px;
   line-height:1.35;
 }
+.nest-ultimate-bank{margin-bottom:12px;}
+.nest-ultimate-bank-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fill,minmax(min(100%,200px),1fr));
+  gap:10px;
+}
+.nest-ult-bank-card{
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+  padding:12px;
+  border-radius:12px;
+  border:1px solid rgba(201,168,76,.28);
+  background:rgba(12,10,6,.55);
+}
+.nest-ult-bank-card.is-active{
+  border-color:rgba(232,201,106,.65);
+  box-shadow:0 0 0 1px rgba(232,201,106,.15) inset;
+}
+.nest-ult-bank-card.is-banked{opacity:.92;}
+.nest-ult-bank-src{font-size:.68rem;line-height:1.3;}
+.nest-ult-pick-btn{
+  margin-top:4px;
+  width:100%;
+  padding:8px 10px;
+  border-radius:8px;
+  border:1px solid rgba(201,168,76,.45);
+  background:linear-gradient(145deg,rgba(55,48,32,.95),rgba(35,30,22,.98));
+  color:var(--gold-light);
+  font-family:'Cinzel',serif;
+  font-size:.72rem;
+  letter-spacing:.04em;
+  cursor:pointer;
+}
+.nest-ult-pick-btn.active,
+.nest-ult-pick-btn:hover{border-color:var(--gold);color:#fff4d0;}
 .nest-equip-grid--v2{
   grid-template-columns:repeat(4,minmax(0,1fr));
 }

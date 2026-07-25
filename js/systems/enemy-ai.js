@@ -107,7 +107,7 @@
       playerDodge: (typeof global.getEffectiveDodge === 'function' && p)
         ? Math.max(0, global.getEffectiveDodge(p))
         : Math.max(0, p && p.stats ? (p.stats.dodge || 0) : 0),
-      playerAcc: Math.max(60, p && p.stats ? (p.stats.acc || 80) : 80),
+      playerAcc: Math.max(0, p && p.stats ? (Number.isFinite(Number(p.stats.acc)) ? Number(p.stats.acc) : 0) : 0),
       playerDefending: !!(g.playerStatus && (
         g.playerStatus.defending ||
         (typeof global.playerIsGuarding === 'function' && global.playerIsGuarding(g.playerStatus)) ||
@@ -118,7 +118,7 @@
   }
 
   function estimateHitChance(ctx, e) {
-    var acc = Math.max(60, e && e.stats ? (e.stats.acc || 80) : 80);
+    var acc = Math.max(0, e && e.stats ? (Number.isFinite(Number(e.stats.acc)) ? Number(e.stats.acc) : 0) : 0);
     var dodge = ctx.playerDodge;
     if (ctx.playerDefending) dodge = Math.min(95, dodge + 15);
     var hit = Math.max(0.15, Math.min(0.98, (acc - dodge * 0.65) / 100));
