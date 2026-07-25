@@ -661,7 +661,8 @@ META.updated = excelSerialToIso(dashValue('Last Updated'));
 /* ---- Slot Rules ---- */
 const SLOT_KEY_MAP = {
   Helmet: 'helmet', 'Armour/Plumage': 'armour', 'Main Weapon': 'mainHand', 'Off Weapon': 'offHand',
-  Shield: 'shield', 'Left Anklet': 'ankletL', 'Right Anklet': 'ankletR', Necklace: 'necklace',
+  /* Workbook still lists Shield; runtime folds it into offHand. */
+  Shield: 'offHand', 'Left Anklet': 'ankletL', 'Right Anklet': 'ankletR', Necklace: 'necklace',
 };
 const slotRows = [];
 for (let r = 5; r <= 12; r++) {
@@ -673,17 +674,26 @@ const slots = {};
 for (const row of slotRows) {
   const key = SLOT_KEY_MAP[row[0]];
   if (!key) { fail('Unknown loadout slot: ' + row[0]); continue; }
+  if (row[0] === 'Shield') {
+    /* Skip dedicated Shield loadout key — content stays catalogue slot "Shield". */
+    continue;
+  }
+  if (key === 'offHand' && slots.offHand) continue;
   slots[key] = {
-    label: row[0],
+    label: row[0] === 'Off Weapon' ? 'Off Hand' : row[0],
     accepts: row[2],
     handCapacity: num(row[3]),
-    activeContribution: row[4] || 'None',
+    activeContribution: row[0] === 'Off Weapon'
+      ? 'Off-hand Skill, paired technique, or Shield modifiers'
+      : (row[4] || 'None'),
     duplicateAllowed: /yes/i.test(row[7] || ''),
     budgetClass: row[8],
-    notes: row[9] || '',
+    notes: row[0] === 'Off Weapon'
+      ? 'Accepts one-handed weapons or Shields. Must be empty of weapons when the main weapon is two-handed; Shields remain allowed with two-handed mains.'
+      : (row[9] || ''),
   };
 }
-if (Object.keys(slots).length !== 8) fail(`expected 8 loadout slots, got ${Object.keys(slots).length}`);
+if (Object.keys(slots).length !== 7) fail(`expected 7 loadout slots, got ${Object.keys(slots).length}`);
 
 const budgetClassMultipliers = {};
 for (let r = 16; r <= 22; r++) {
@@ -1110,8 +1120,7 @@ for (const { cells, rowNum } of tableRows(sheets['Reference Loadouts'], 4)) {
       helmet: cells[2 + o] || null,
       armour: cells[3 + o] || null,
       mainHand: cells[4 + o] || null,
-      offHand: cells[5 + o] || null,
-      shield: cells[6 + o] || null,
+      offHand: cells[5 + o] || cells[6 + o] || null, /* off weapon, else Shield column */
       ankletL: cells[7 + o] || null,
       ankletR: cells[8 + o] || null,
       necklace: cells[9 + o] || null,
@@ -1364,7 +1373,7 @@ if (errors.length) {
 const slotsData = {
   packVersion: EQUIPMENT_PACK_VERSION,
   slots,
-  slotOrder: ['helmet', 'armour', 'mainHand', 'offHand', 'shield', 'ankletL', 'ankletR', 'necklace'],
+  slotOrder: ['helmet', 'armour', 'mainHand', 'offHand', 'ankletL', 'ankletR', 'necklace'],
   budgetClassMultipliers,
   rarityBudgets,
   rarityOrder: RARITY_ORDER,

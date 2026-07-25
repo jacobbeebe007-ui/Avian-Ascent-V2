@@ -128,4 +128,10 @@ Avian.systems.SAVE_SCHEMA_VERSION
 - Does **not** wipe equipment loadouts (pre-release reset was v13 only).
 - Working Draft combat knobs live in `js/data/combat-config.js`.
 
+## v15 migration (off-hand absorbs Shields)
+
+- Moves legacy `player.equipment.shield` into `offHand` when empty; otherwise into `equipmentInventory`.
+- Deletes the dedicated `shield` loadout key (7-slot loadout: helmet, armour, mainHand, offHand, anklets, necklace).
+- Off-hand accepts Shields and any 1H weapon; Shields may remain equipped with a two-handed main.
+
 Verification: `node scripts/verify-save-migration.mjs`

@@ -239,12 +239,70 @@ function testEquipmentV2SaveStamp() {
   if (migrated.equipmentPackVersion !== systems.EQUIPMENT_PACK_VERSION) fail('equipmentPackVersion missing');
   else ok('equipmentPackVersion stamped');
 
-  if (Number(migrated.schemaVersion) !== 14) fail('schemaVersion should be 14 after migration');
-  else ok('schemaVersion is 14');
+  if (Number(migrated.schemaVersion) !== 15) fail('schemaVersion should be 15 after migration');
+  else ok('schemaVersion is 15');
 
   if (migrated.affinityArsenalPackVersion !== systems.AFFINITY_ARSENAL_PACK_VERSION) {
     fail('affinityArsenalPackVersion missing');
   } else ok('affinityArsenalPackVersion stamped');
+}
+
+function testShieldSlotMigration() {
+  const ctx = loadSandbox([], { equipmentV2: true });
+  const systems = ctx.Avian.systems;
+  const save = {
+    schemaVersion: 14,
+    equipmentV2: true,
+    equipmentPackVersion: systems.EQUIPMENT_PACK_VERSION,
+    player: {
+      birdKey: 'crow',
+      equipment: {
+        helmet: null,
+        armour: null,
+        mainHand: 'EQ-LN-GRY',
+        offHand: null,
+        shield: 'EQ-SM-GRY',
+        ankletL: null,
+        ankletR: null,
+        necklace: null,
+      },
+      equipmentInventory: [],
+    },
+  };
+  const migrated = systems.runSaveMigrations(save);
+  if (Number(migrated.schemaVersion) !== 15) fail('shield migration should reach schema 15');
+  else ok('shield migration reaches schema 15');
+  if (migrated.player.equipment.shield != null) fail('legacy shield key should be removed');
+  else ok('legacy shield key removed');
+  if (migrated.player.equipment.offHand !== 'EQ-SM-GRY') {
+    fail('shield should move into empty offHand, got ' + migrated.player.equipment.offHand);
+  } else ok('shield migrated into offHand');
+
+  const saveOccupied = {
+    schemaVersion: 14,
+    equipmentV2: true,
+    equipmentPackVersion: systems.EQUIPMENT_PACK_VERSION,
+    player: {
+      birdKey: 'sparrow',
+      equipment: {
+        helmet: null,
+        armour: null,
+        mainHand: 'EQ-TB-GRY',
+        offHand: 'EQ-TB-GRY',
+        shield: 'EQ-SM-GRY',
+        ankletL: null,
+        ankletR: null,
+        necklace: null,
+      },
+      equipmentInventory: [],
+    },
+  };
+  const m2 = systems.runSaveMigrations(saveOccupied);
+  if (m2.player.equipment.offHand !== 'EQ-TB-GRY') fail('occupied offHand should be preserved');
+  else ok('occupied offHand preserved during shield migrate');
+  if (!Array.isArray(m2.player.equipmentInventory) || !m2.player.equipmentInventory.includes('EQ-SM-GRY')) {
+    fail('displaced shield should go to inventory');
+  } else ok('displaced shield moved to inventory');
 }
 
 function equipmentEmpty(ctx) {
@@ -269,6 +327,7 @@ function testFlagOffSchema13() {
 testV12MutationReset();
 testCorruptedLoadoutSanitization();
 testEquipmentV2SaveStamp();
+testShieldSlotMigration();
 testFlagOffSchema13();
 
 if (failed) {

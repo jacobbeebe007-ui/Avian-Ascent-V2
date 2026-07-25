@@ -1,6 +1,6 @@
 /* Avian Ascent — Equipment v0.3 action sources (Phases 4a/4b/5)
  *
- * Derives six action sources from the 8-slot loadout into dispatcher-compatible abilities.
+ * Derives six action sources from the 7-slot loadout into dispatcher-compatible abilities.
  * Gated by Avian.flags.equipmentV2.
  */
 (function () {
@@ -486,7 +486,7 @@
     if (!entity || !entity.equipment) return list;
     var order = (typeof Avian.equipment !== 'undefined' && typeof Avian.equipment.getSlotOrder === 'function')
       ? Avian.equipment.getSlotOrder()
-      : ['helmet', 'armour', 'mainHand', 'offHand', 'shield', 'ankletL', 'ankletR', 'necklace'];
+      : ['helmet', 'armour', 'mainHand', 'offHand', 'ankletL', 'ankletR', 'necklace'];
     for (var i = 0; i < order.length; i++) {
       var item = equippedItem(entity, order[i]);
       if (!item || !item.ultimate) continue;
