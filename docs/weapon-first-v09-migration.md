@@ -39,6 +39,7 @@ Default path for `npm run import-equipment` is the v0.9 Implemented workbook abo
 - Runtime: `combat-formulas.js`, `bird-progression.js`, `equipment.js`, `equipment-actions.js`, `equipment-effects.js`
 - Save: `js/systems/save-migrations.js` (schema 16)
 - Verify: `scripts/verify-equipment-*.mjs`, `scripts/fixtures/equipment-damage-fixtures.json`
+- UI: Nest/loot tooltips surface weapon **min–max** damage (`formatEquipmentStatsHtml` / `formatEquipmentDesc`); ability briefs show Skill Power % + weapon range (not legacy Ability Power)
 
 ## Open decisions (locked for this ship)
 

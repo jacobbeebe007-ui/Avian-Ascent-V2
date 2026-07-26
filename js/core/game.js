@@ -671,14 +671,31 @@ function getEquipmentSkill(skillId){
   return skillId && cat ? (cat[skillId]||null) : null;
 }
 function formatEquipmentStatsHtml(item){
-  if(!item?.stats) return '';
+  if(!item) return '';
   let html='';
-  for(const [rawKey, val] of Object.entries(item.stats)){
-    const n=Number(val)||0;
-    if(!n) continue;
-    const lbl=formatAnyStatLabel(rawKey);
-    const disp=String(rawKey).includes('Pct')||/Pct$/i.test(rawKey)?`+${formatCombatNumber(n)}%`:`+${formatCombatNumber(n)}`;
-    html+=`<div class="tt-row mut-stat-line"><span class="tt-lbl">${escapeHtmlRoster(lbl)}</span><span class="tt-val">${escapeHtmlRoster(disp)}</span></div>`;
+  const minD=item.minDamage!=null?Number(item.minDamage):null;
+  const maxD=item.maxDamage!=null?Number(item.maxDamage):null;
+  const hasWeaponRange=(item.slot==='Weapon'||minD!=null||maxD!=null)
+    &&(Number.isFinite(minD)||Number.isFinite(maxD));
+  if(hasWeaponRange){
+    const lo=Number.isFinite(minD)?minD:(Number.isFinite(maxD)?maxD:0);
+    const hi=Number.isFinite(maxD)?maxD:lo;
+    html+=`<div class="tt-row mut-stat-line"><span class="tt-lbl">Damage</span><span class="tt-val">${escapeHtmlRoster(`${formatCombatNumber(lo)}–${formatCombatNumber(hi)}`)}</span></div>`;
+  }
+  if(item.scalingStat){
+    html+=`<div class="tt-row mut-stat-line"><span class="tt-lbl">Scales</span><span class="tt-val">${escapeHtmlRoster(formatAnyStatLabel(item.scalingStat))}</span></div>`;
+  }
+  if(item.damageType){
+    html+=`<div class="tt-row mut-stat-line"><span class="tt-lbl">Type</span><span class="tt-val">${escapeHtmlRoster(String(item.damageType))}</span></div>`;
+  }
+  if(item.stats){
+    for(const [rawKey, val] of Object.entries(item.stats)){
+      const n=Number(val)||0;
+      if(!n) continue;
+      const lbl=formatAnyStatLabel(rawKey);
+      const disp=String(rawKey).includes('Pct')||/Pct$/i.test(rawKey)?`+${formatCombatNumber(n)}%`:`+${formatCombatNumber(n)}`;
+      html+=`<div class="tt-row mut-stat-line"><span class="tt-lbl">${escapeHtmlRoster(lbl)}</span><span class="tt-val">${escapeHtmlRoster(disp)}</span></div>`;
+    }
   }
   return html;
 }
@@ -9282,6 +9299,9 @@ function getAbilityTemplateForUI(abOrId){
   if(isObj&&abOrId._dispatcherRow){
     const row=abOrId._dispatcherRow;
     const btn=typeof resolveCombatRowBtnType==='function'?resolveCombatRowBtnType(row):String(row.category||'physical');
+    const weaponFirst=typeof weaponFirstEnabled==='function'
+      ? weaponFirstEnabled()
+      : !!(Avian?.data?.combatConfig?.weaponFirstV09);
     return {
       id,
       name:row.name||abOrId.name||id,
@@ -9289,8 +9309,13 @@ function getAbilityTemplateForUI(abOrId){
       btnType:btn,
       desc:row.riderText||abOrId.desc||'',
       energyCost:Number(row.enCost ?? abOrId.energyCost ?? 0),
-      baseDmgMult:row.abilityPower!=null?Math.max(0.25, Number(row.abilityPower)/100):0.9,
+      /* Weapon-first uses Skill Power % × weapon range — do not invent legacy baseDmgMult. */
+      baseDmgMult:weaponFirst?null:(row.abilityPower!=null?Math.max(0.25, Number(row.abilityPower)/100):0.9),
+      minDamage:row.minDamage,
+      maxDamage:row.maxDamage,
+      skillPowerPct:row.skillPowerPct,
       _dispatcherRow:row,
+      _combatPackRow:row,
     };
   }
   if(isObj&&(abOrId.name||abOrId.desc||Array.isArray(abOrId.levels))){
@@ -9531,21 +9556,75 @@ function estimateSkillDamageRange(ab,tmpl,attacker,opts){
   if(!isDamaging){
     return {isDamaging:false,dmgLow:null,dmgHigh:null,btnType,lv,lvData,hybridSplit:null};
   }
-  const packRow=tmpl._combatPackRow;
+  const packRow=(ab&&ab._dispatcherRow)
+    ||(typeof packRowForAbility==='function'?packRowForAbility(ab):null)
+    ||tmpl._combatPackRow
+    ||tmpl._dispatcherRow
+    ||null;
   if(packRow&&!packRow.noDamage){
     const previewStats=isPlayerCombat&&G?.player?G.player.stats:stats;
     if(typeof enrichCombatRow==='function') enrichCombatRow(packRow);
-    if(typeof calculateDamage==='function'&&typeof usesMasterDamage==='function'&&usesMasterDamage(packRow)&&isPlayerCombat&&G?.enemy){
-      const masterPreview=calculateDamage({
-        attacker:G.player,
-        target:G.enemy,
-        ability:packRow,
-        battleState:{ enemyStatus:G.enemyStatus, enemyHasBurning:typeof enemyHasBurning==='function'?enemyHasBurning():false },
-        bonusFractions:[],
-        hitSucceeded:true,
-      });
-      const previewTotal=Math.max(1, masterPreview.damage||1);
+    const attackerEnt=isPlayerCombat&&G?.player?G.player:(p||{stats:previewStats});
+    const applyMit=opts.applyMitigation!==false&&!!(isPlayerCombat&&G?.enemy);
+    const mitTarget=applyMit?G.enemy:{stats:{def:0,mdef:0}};
+    const battleState={
+      enemyStatus:isPlayerCombat?G?.enemyStatus:null,
+      enemyHasBurning:isPlayerCombat&&typeof enemyHasBurning==='function'?enemyHasBurning():false,
+    };
+    const weaponFirstPreview=typeof usesWeaponFirst==='function'&&usesWeaponFirst(packRow);
+    if(typeof calculateDamage==='function'&&(weaponFirstPreview||(typeof usesMasterDamage==='function'&&usesMasterDamage(packRow)))){
+      const resolvePreviewWeaponBounds=()=>{
+        let lo=packRow.minDamage!=null?Number(packRow.minDamage):null;
+        let hi=packRow.maxDamage!=null?Number(packRow.maxDamage):null;
+        if((!Number.isFinite(lo)||!Number.isFinite(hi))&&attackerEnt){
+          const loadout=attackerEnt.loadout||attackerEnt.equipment?.loadout;
+          const wpnId=loadout&&(loadout.mainHand||loadout.weapon);
+          const wpn=wpnId&&Avian?.data?.equipment?.items?.[wpnId];
+          if(wpn){
+            if(!Number.isFinite(lo)&&wpn.minDamage!=null) lo=Number(wpn.minDamage);
+            if(!Number.isFinite(hi)&&wpn.maxDamage!=null) hi=Number(wpn.maxDamage);
+          }
+        }
+        if(!Number.isFinite(lo)&&!Number.isFinite(hi)) return null;
+        if(!Number.isFinite(lo)) lo=hi;
+        if(!Number.isFinite(hi)) hi=lo;
+        return {lo,hi};
+      };
+      const previewAtWeapon=(weaponDamage)=>{
+        const params={
+          attacker:attackerEnt,
+          target:mitTarget,
+          ability:packRow,
+          battleState,
+          bonusFractions:[],
+          hitSucceeded:true,
+        };
+        if(weaponDamage!=null) params.weaponDamage=weaponDamage;
+        const masterPreview=calculateDamage(params);
+        let total=Math.max(1, masterPreview.damage||1);
+        if(isPlayerCombat&&G?._pendingStrikeActionMods){
+          const add=Number(G._pendingStrikeActionMods.multAdd)||0;
+          if(add>0) total=Math.max(1, roundCombatDamage(total*(1+add)));
+        }
+        if(isPlayerCombat&&getWeakenStacks(G?.playerStatus)>0){
+          total=Math.max(1, roundCombatDamage(total*getWeakenDamageMult(getWeakenStacks(G.playerStatus))));
+        }
+        return total;
+      };
+      if(weaponFirstPreview){
+        const bounds=resolvePreviewWeaponBounds();
+        if(bounds){
+          const dmgLow=previewAtWeapon(bounds.lo);
+          const dmgHigh=Math.max(dmgLow, previewAtWeapon(bounds.hi));
+          return {isDamaging,dmgLow,dmgHigh,btnType,lv,lvData,hybridSplit:null};
+        }
+      }
+      const previewTotal=previewAtWeapon(null);
       return {isDamaging,dmgLow:previewTotal,dmgHigh:previewTotal,btnType,lv,lvData,hybridSplit:null};
+    }
+    /* Legacy EN-base preview — only when weapon-first / master path unavailable. */
+    if(typeof weaponFirstEnabled==='function'&&weaponFirstEnabled()){
+      return {isDamaging:true,dmgLow:null,dmgHigh:null,btnType,lv,lvData,hybridSplit:null};
     }
     let raw=typeof computeAbilityRawDamage==='function'
       ? computeAbilityRawDamage(packRow, previewStats)
@@ -9560,8 +9639,7 @@ function estimateSkillDamageRange(ab,tmpl,attacker,opts){
     if(isPlayerCombat&&getWeakenStacks(G?.playerStatus)>0){
       perHit=roundCombatDamage(perHit*getWeakenDamageMult(getWeakenStacks(G.playerStatus)));
     }
-    const applyMit=opts.applyMitigation!==false;
-    if(applyMit&&isPlayerCombat&&G?.enemy){
+    if(applyMit){
       const en=G.enemy.stats||G.enemy;
       const pierce=['physical','ranged'].includes(btnType)
         ? getPhysicalPierceFractionForPreview(ab)
@@ -9573,6 +9651,10 @@ function estimateSkillDamageRange(ab,tmpl,attacker,opts){
     const dmgLow=perHit*hits;
     const dmgHigh=dmgLow;
     return {isDamaging,dmgLow,dmgHigh,btnType,lv,lvData,hybridSplit:null};
+  }
+  /* Weapon-first: never invent damage from legacy baseDmgMult × stat. */
+  if(typeof weaponFirstEnabled==='function'&&weaponFirstEnabled()){
+    return {isDamaging:true,dmgLow:null,dmgHigh:null,btnType,lv,lvData,hybridSplit:null};
   }
   const scaleStat=(btnType==='spell')
     ? (isPlayerCombat&&G?.player ? getEffectivePlayerOffensiveMatkForPreview() : softenMainStatForCombat(pMatk)*COMBAT_OFFENSIVE_STAT_MULT)
@@ -11816,7 +11898,20 @@ function computeOutgoingDamageBase(isMagic, srcAbility, legacyAmount=0){
     }
   }
   let rawDamage=0;
-  if(row&&typeof computeAbilityRawDamage==='function'){
+  if(row&&typeof calculateDamage==='function'
+    &&((typeof usesWeaponFirst==='function'&&usesWeaponFirst(row))
+      ||(typeof usesMasterDamage==='function'&&usesMasterDamage(row)))){
+    const master=calculateDamage({
+      attacker:G.player,
+      target:G.enemy||{stats:{def:0,mdef:0}},
+      ability:row,
+      battleState:{ enemyStatus:G.enemyStatus, enemyHasBurning:typeof enemyHasBurning==='function'?enemyHasBurning():false },
+      bonusFractions:[],
+      hitSucceeded:true,
+    });
+    rawDamage=master.preMitigation!=null?master.preMitigation:master.damage;
+  }else if(row&&typeof computeAbilityRawDamage==='function'
+    &&!(typeof weaponFirstEnabled==='function'&&weaponFirstEnabled())){
     rawDamage=computeAbilityRawDamage(row, G.player.stats);
   }else if(legacyAmount>0){
     rawDamage=legacyAmount;
@@ -12029,8 +12124,12 @@ function computeEntityAbilityRawDamage(entity, ab, tmpl, isMagic){
     return roundCombatDamage(Math.max(0.01, result.damage));
   }
   G._lastAspectComponents=null;
-  if(row&&typeof computeAbilityRawDamage==='function'){
+  if(row&&typeof computeAbilityRawDamage==='function'
+    &&!(typeof weaponFirstEnabled==='function'&&weaponFirstEnabled())){
     return roundCombatDamage(Math.max(0.01, computeAbilityRawDamage(row, stats) * classBonusMult));
+  }
+  if(typeof weaponFirstEnabled==='function'&&weaponFirstEnabled()){
+    return 0;
   }
   if(isMagic) return roundCombatDamage(Math.max(0.01, (Number(stats.matk)||0) * classBonusMult));
   return roundCombatDamage(Math.max(0.01, (Number(stats.atk)||0) * classBonusMult));
@@ -14292,6 +14391,28 @@ function projectedEnemyActionDamage(a,e){
   const ab=(e.abilities||[]).find(x=>x&&x.id===id)||{id,level:1};
   const tmpl=getAbilityTemplateForUI(ab);
   if(!tmpl && !ab._dispatcherRow) return 0;
+  const row=ab._dispatcherRow
+    ||(typeof packRowForAbility==='function'?packRowForAbility(ab):null)
+    ||tmpl?._combatPackRow
+    ||null;
+  if(row&&!row.noDamage&&typeof calculateDamage==='function'
+    &&((typeof usesWeaponFirst==='function'&&usesWeaponFirst(row))
+      ||(typeof usesMasterDamage==='function'&&usesMasterDamage(row)))){
+    if(typeof enrichCombatRow==='function') enrichCombatRow(row);
+    const result=calculateDamage({
+      attacker:e,
+      target:G?.player||{stats:{def:0,mdef:0,hp:999}},
+      ability:row,
+      battleState:{
+        enemyStatus:G?.playerStatus,
+        enemyHasBurning:typeof playerHasBurning==='function'?playerHasBurning():false,
+      },
+      bonusFractions:[],
+      hitSucceeded:true,
+    });
+    return roundCombatDamage(Math.max(0, result.damage||0));
+  }
+  if(typeof weaponFirstEnabled==='function'&&weaponFirstEnabled()) return 0;
   const btn=ab._dispatcherRow && typeof resolveCombatRowBtnType==='function'
     ? String(resolveCombatRowBtnType(ab._dispatcherRow)||'').toLowerCase()
     : String(tmpl?.btnType||tmpl?.type||'').toLowerCase();

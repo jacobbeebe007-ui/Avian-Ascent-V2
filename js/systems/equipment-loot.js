@@ -344,6 +344,14 @@
   function formatEquipmentDesc(item) {
     if (!item) return '';
     var parts = [];
+    var minD = item.minDamage != null ? Number(item.minDamage) : null;
+    var maxD = item.maxDamage != null ? Number(item.maxDamage) : null;
+    if ((item.slot === 'Weapon' || minD != null || maxD != null)
+      && (Number.isFinite(minD) || Number.isFinite(maxD))) {
+      var lo = Number.isFinite(minD) ? minD : maxD;
+      var hi = Number.isFinite(maxD) ? maxD : lo;
+      parts.push('Damage ' + lo + '–' + hi);
+    }
     var stats = item.stats || {};
     for (var key in stats) {
       if (!Object.prototype.hasOwnProperty.call(stats, key)) continue;

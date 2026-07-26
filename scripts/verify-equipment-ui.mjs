@@ -30,6 +30,7 @@ const staticChecks = [
   ['wireNestEquipmentTooltips', /function wireNestEquipmentTooltips\b/],
   ['setUltimateSource action', /Avian\.actions\.register\('setUltimateSource'/],
   ['event-router 1-6 comment', /When `equipmentV2` is on, `1`-`6`/],
+  ['formatEquipmentStatsHtml weapon damage', /function formatEquipmentStatsHtml[\s\S]*?minDamage[\s\S]*?maxDamage/],
 ];
 
 for (const [label, re] of staticChecks) {
@@ -62,6 +63,7 @@ function loadSandbox() {
     'js/data/equipment/items.js',
     'js/systems/equipment.js',
     'js/systems/equipment-actions.js',
+    'js/systems/equipment-loot.js',
   ];
   for (const rel of files) {
     const full = path.join(ROOT, rel);
@@ -90,6 +92,19 @@ if (ctx) {
     ok('collectUltimateCandidates exported');
   } else {
     fail('collectUltimateCandidates not exported');
+  }
+
+  const sampleWpn = ctx.Avian.data?.equipment?.items?.['EQ-TB-GRY'];
+  const descFn = ctx.Avian.equipmentLoot?.formatEquipmentDesc;
+  if (sampleWpn && typeof descFn === 'function') {
+    const desc = descFn(sampleWpn);
+    if (/Damage\s+3–4/.test(desc) || /Damage\s+3-4/.test(desc)) {
+      ok('loot desc shows weapon damage range');
+    } else {
+      fail('loot desc missing weapon damage range: ' + desc);
+    }
+  } else {
+    fail('could not format sample weapon desc');
   }
 }
 

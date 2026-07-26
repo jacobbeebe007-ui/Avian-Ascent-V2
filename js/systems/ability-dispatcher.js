@@ -89,6 +89,10 @@
 
   function computeRawHitDamage(row, stats) {
     if (row.noDamage) return 0;
+    if (typeof globalThis.weaponFirstEnabled === 'function' && globalThis.weaponFirstEnabled()
+      && typeof globalThis.usesWeaponFirst === 'function' && globalThis.usesWeaponFirst(row)) {
+      return 0;
+    }
     if (typeof globalThis.computeAbilityRawDamage === 'function') {
       return globalThis.computeAbilityRawDamage(row, stats || (globalThis.G && G.player && G.player.stats) || {});
     }

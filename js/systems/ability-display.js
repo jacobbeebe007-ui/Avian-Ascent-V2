@@ -461,6 +461,25 @@
     return lines.filter(function (line) { return !isFluffLine(line); });
   }
 
+  function resolveBriefWeaponRange(row) {
+    var min = row && row.minDamage != null ? Number(row.minDamage) : null;
+    var max = row && row.maxDamage != null ? Number(row.maxDamage) : null;
+    if ((!Number.isFinite(min) || !Number.isFinite(max)) && typeof globalThis.G !== 'undefined' && G.player) {
+      var loadout = G.player.loadout || (G.player.equipment && G.player.equipment.loadout);
+      var wpnId = loadout && (loadout.mainHand || loadout.weapon);
+      var items = (typeof Avian !== 'undefined' && Avian.data && Avian.data.equipment && Avian.data.equipment.items) || {};
+      var wpn = wpnId ? items[wpnId] : null;
+      if (wpn) {
+        if (!Number.isFinite(min) && wpn.minDamage != null) min = Number(wpn.minDamage);
+        if (!Number.isFinite(max) && wpn.maxDamage != null) max = Number(wpn.maxDamage);
+      }
+    }
+    if (!Number.isFinite(min) && !Number.isFinite(max)) return null;
+    if (!Number.isFinite(min)) min = max;
+    if (!Number.isFinite(max)) max = min;
+    return { min: min, max: max };
+  }
+
   function coreBriefSegments(row) {
     if (!row) return [];
     enrichRow(row);
@@ -470,8 +489,20 @@
       add((row.enCost || row.apCost || 1) + ' EN Utility');
     } else {
       add((row.enCost || row.apCost || 1) + ' EN ' + String(row.damageType || 'Physical'));
-      add('Uses ' + String(row.damageStat || row.scaleStat || 'ATK') + '.');
-      add('Normal Ability Power: ' + (Number(row.abilityPower) || 0).toFixed(2));
+      add('Uses ' + String(row.damageStat || row.scalingStat || row.scaleStat || 'ATK') + '.');
+      var weaponFirst = (typeof globalThis.usesWeaponFirst === 'function' && globalThis.usesWeaponFirst(row))
+        || !!(typeof Avian !== 'undefined' && Avian.data && Avian.data.combatConfig && Avian.data.combatConfig.weaponFirstV09);
+      if (weaponFirst) {
+        var sp = typeof globalThis.getSkillPowerPct === 'function'
+          ? globalThis.getSkillPowerPct(row)
+          : (row.skillPowerPct != null ? Number(row.skillPowerPct)
+            : (row.skillPower != null ? Math.round(Number(row.skillPower) * (Number(row.skillPower) <= 10 ? 100 : 1)) : 0));
+        add('Skill Power: ' + (Number(sp) || 0) + '%.');
+        var range = resolveBriefWeaponRange(row);
+        if (range) add('Weapon: ' + range.min + '–' + range.max + '.');
+      } else {
+        add('Normal Ability Power: ' + (Number(row.abilityPower) || 0).toFixed(2));
+      }
     }
     var condLine = formatConditionalPowerLine(row);
     if (condLine) add(condLine);

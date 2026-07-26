@@ -250,8 +250,14 @@ for (const [n, atk, def, expected] of aspectCases) {
 }
 
 check('describeMasterAbility format', (() => {
-  const row = c.enrichCombatRow({ apCost: 2, scaleStat: 'ATK', scalePct: 50, category: 'physical' });
+  const row = c.enrichCombatRow({
+    apCost: 2, scaleStat: 'ATK', skillPowerPct: 100, minDamage: 3, maxDamage: 4, category: 'physical',
+  });
   const text = c.describeMasterAbility(row);
+  const weaponFirst = typeof c.weaponFirstEnabled === 'function' ? c.weaponFirstEnabled() : true;
+  if (weaponFirst) {
+    return text.includes('Skill Power:') && text.includes('Weapon: 3–4') && text.includes('Uses ATK') && !text.includes('Ability Power:');
+  }
   return text.includes('Ability Power:') && text.includes('Uses ATK') && !text.includes('Base ');
 })(), 'desc');
 

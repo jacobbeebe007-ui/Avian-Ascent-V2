@@ -75,9 +75,13 @@
     return Math.max(0, Number(stats[k]) || 0);
   }
 
-  /** Raw damage from ability row: Base + primary stat% + secondary stat%. Percentages are decimals (/100). */
+  /** Raw damage from ability row: Base + primary stat% + secondary stat%. Percentages are decimals (/100).
+   *  Weapon-first rows must use calculateDamage — this path is a legacy fallback only. */
   function computeAbilityRawDamage(row, stats) {
     if (!row) return 0;
+    if (weaponFirstEnabled() && (usesWeaponFirst(row) || row.skillPowerPct != null || row.minDamage != null)) {
+      return 0;
+    }
     var base = Number(row.baseFlat) || 0;
     var primary = 0;
     var secondary = 0;
@@ -1169,12 +1173,23 @@
     var en = row.enCost || row.apCost || 1;
     var weight = en === 1 ? 'Light' : (en === 2 ? 'Medium' : 'Heavy');
     var dtype = String(row.damageType || 'Physical');
-    var stat = String(row.damageStat || 'ATK');
+    var stat = String(row.damageStat || row.scalingStat || row.scaleStat || 'ATK');
     var bits = [
       'Deals ' + weight + ' ' + dtype + ' damage.',
       'Uses ' + stat + '.',
-      'Ability Power: ' + (Number(row.abilityPower) || 0).toFixed(2) + '.',
     ];
+    if (weaponFirstEnabled()) {
+      bits.push('Skill Power: ' + (getSkillPowerPct(row) || 0) + '%.');
+      var wMin = row.minDamage != null ? Number(row.minDamage) : null;
+      var wMax = row.maxDamage != null ? Number(row.maxDamage) : null;
+      if (Number.isFinite(wMin) || Number.isFinite(wMax)) {
+        if (!Number.isFinite(wMin)) wMin = wMax;
+        if (!Number.isFinite(wMax)) wMax = wMin;
+        bits.push('Weapon: ' + wMin + '–' + wMax + '.');
+      }
+    } else {
+      bits.push('Ability Power: ' + (Number(row.abilityPower) || 0).toFixed(2) + '.');
+    }
     if ((row.heavyAccuracyPenalty || 0) > 0) bits.push('Heavy accuracy penalty: -' + row.heavyAccuracyPenalty + '.');
     if ((row.recoilPercent || 0) > 0) bits.push('Recoil: ' + Math.round(row.recoilPercent * 100) + '% of damage dealt.');
     var ailmentLine = formatAilmentChanceLine(row);
@@ -1242,6 +1257,8 @@
     usesMasterDamage: usesMasterDamage,
     usesWeaponFirst: usesWeaponFirst,
     usesDirectScaling: usesDirectScaling,
+    getSkillPowerPct: getSkillPowerPct,
+    weaponFirstEnabled: weaponFirstEnabled,
     getMitigationFraction: getMitigationFraction,
     isHybridDamage: isHybridDamage,
     calculateHybridDisplaySplit: calculateHybridDisplaySplit,
@@ -1298,6 +1315,8 @@
   globalThis.usesMasterDamage = usesMasterDamage;
   globalThis.usesWeaponFirst = usesWeaponFirst;
   globalThis.usesDirectScaling = usesDirectScaling;
+  globalThis.getSkillPowerPct = getSkillPowerPct;
+  globalThis.weaponFirstEnabled = weaponFirstEnabled;
   globalThis.getMitigationFraction = getMitigationFraction;
   globalThis.isHybridDamage = isHybridDamage;
   globalThis.calculateHybridDisplaySplit = calculateHybridDisplaySplit;
