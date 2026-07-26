@@ -1,10 +1,9 @@
 /* Avian Ascent — combat / equipment Working Draft config.
  *
- * Hand-authored (not generated). Working Draft / Open Decision numerics from
- * Equipment Loot v0.7 live here so tuning never requires system-code edits.
- * Confirmed structure rules may also appear for a single source of truth.
+ * Hand-authored (not generated). Weapon-first v0.9 numerics live here so
+ * tuning never requires system-code edits.
  *
- * See docs/equipment-loot-v07-migration.md.
+ * See docs/weapon-first-v09-migration.md.
  */
 (function () {
   'use strict';
@@ -13,9 +12,10 @@
   Avian.data = Avian.data || Object.create(null);
 
   Avian.data.combatConfig = Object.freeze({
-    packVersion: '2026.07-equipment-loot-v0.7',
+    packVersion: '2026.07-weapon-first-v0.9',
     affinityArsenalV06: true,
-    equipmentLootV07: true,
+    equipmentLootV07: false,
+    weaponFirstV09: true,
 
     /* R-EN-001 — equipment never changes these. Carryover cap is WD (OD-025). */
     energy: Object.freeze({
@@ -25,7 +25,7 @@
       carryoverCap: 6,
     }),
 
-    /* Legacy EN×AP path retained for fixtures; v0.6 damage uses directScaling. */
+    /* Legacy EN×AP path retained for older fixtures; disabled when weaponFirst is on. */
     enBaseDamage: Object.freeze({
       1: 5,
       2: 11,
@@ -34,28 +34,48 @@
       6: 35,
     }),
 
-    /* v0.7 direct damage: BaseDamage + FinalStat × coefficient × scale (R-EN-005 bands).
-     * Scaling Model: Base Damage = 2 × EN; Defence Mod = 150/(150+EffDef);
-     * Affinity 1.20/1.00/0.80; Bonus cap +45%; Crit chance 50% / Ferocity ×2. */
-    directScaling: Object.freeze({
+    /* v0.9 weapon-first: Weapon × ((SkillPowerPct + Stat×2.5) ÷ 100). */
+    weaponFirst: Object.freeze({
       enabled: true,
+      offencePctPerStat: 2.5,
+      vitalityBaseHealthPct: 0.05,
+      agilityDodgePctPerPoint: 0.5,
+      dodgeCapPct: 50,
+      /* Natural Strike / Beak Jab / Tail Wand: flat 1–2 only (never scales with weapon). */
+      naturalStrike: Object.freeze({
+        skillPowerPct: 0,
+        flatMin: 1,
+        flatMax: 2,
+      }),
+    }),
+
+    /* Legacy directScaling kept disabled; verify scripts may still read bands. */
+    directScaling: Object.freeze({
+      enabled: false,
       baseDamagePerEn: 2,
-      /* Softens gear+level linear contribution for early 2–4 turn pacing. */
       statContributionScale: 0.75,
-      /* EN → reference coefficient mid-band / Precision (R-EN-005). */
       enAttackBands: Object.freeze({
         1: Object.freeze({ coeff: 0.8, precision: 1.0, min: 0.70, max: 0.90 }),
         2: Object.freeze({ coeff: 1.1, precision: 0.98, min: 1.00, max: 1.20 }),
         3: Object.freeze({ coeff: 1.4, precision: 0.94, min: 1.30, max: 1.50 }),
         4: Object.freeze({ coeff: 1.75, precision: 0.89, min: 1.60, max: 1.90 }),
-        5: Object.freeze({ coeff: 2.1, precision: 0.9, min: 1.95, max: 2.25 }),
-        6: Object.freeze({ coeff: 2.55, precision: 0.92, min: 2.35, max: 2.80 }),
+        5: Object.freeze({ coeff: 2.1, precision: 0.9, min: 2.00, max: 2.35 }),
+        6: Object.freeze({ coeff: 2.55, precision: 0.92, min: 2.45, max: 2.90 }),
       }),
-      /* R-CD-001 */
       enCooldown: Object.freeze({ 1: 0, 2: 0, 3: 1, 4: 2, 5: 3, 6: 0 }),
     }),
 
-    /* Legacy StatMod kept for non-v0.6 fallbacks; unused when directScaling.enabled. */
+    /* Skill Power bands by EN (weapon % multipliers). */
+    skillPowerBands: Object.freeze({
+      1: Object.freeze({ min: 70, max: 90 }),
+      2: Object.freeze({ min: 100, max: 120 }),
+      3: Object.freeze({ min: 130, max: 150 }),
+      4: Object.freeze({ min: 160, max: 190 }),
+      5: Object.freeze({ min: 200, max: 235 }),
+      6: Object.freeze({ min: 245, max: 290 }),
+    }),
+
+    /* Legacy StatMod unused when weaponFirst.enabled. */
     statMod: Object.freeze({
       divisor: 50,
       min: 0.8,
@@ -72,13 +92,12 @@
       }),
     }),
 
-    /* R-PEN-001 */
+    /* R-PEN-001 — % pen after flat; shared 40% cap on percentage pen. */
     penetration: Object.freeze({
       cap: 0.4,
       bands: Object.freeze({ light: 0.15, medium: 0.25, heavy: 0.4 }),
     }),
 
-    /* Crit / Ferocity */
     crit: Object.freeze({
       chanceCapPct: 50,
       damageCapMult: 2.0,
@@ -95,11 +114,15 @@
       boss: 0.5,
     }),
 
-    /* Defence Mod = C / (C + EffDef). Combat retune: C=150. */
+    /* Mitigation: rating = EffDef × 2.5; mit% = rating/(100+rating), cap 75%. */
     defence: Object.freeze({
+      formula: 'ratingOverSum',
+      ratingScale: 2.5,
+      mitigationBase: 100,
+      mitigationCap: 0.75,
+      /* Legacy C=150 path disabled. */
       constant: 150,
       curveK: 3,
-      formula: 'constantOverSum',
       minLandedDamage: 1,
     }),
 
@@ -112,20 +135,23 @@
       oncePerLandedAction: true,
     }),
 
-    /* R-EFF-001 — core % and point tiers. */
+    /* R-EFF-001 — flat tiers ±4 / ±10 / ±20. */
     effectTiers: Object.freeze({
-      minor: 6,
-      moderate: 8,
-      major: 12,
-      core: Object.freeze({ minor: 6, moderate: 8, major: 12 }),
-      points: Object.freeze({ minor: 3, moderate: 5, major: 8 }),
+      minor: 4,
+      moderate: 10,
+      major: 20,
+      core: Object.freeze({ minor: 4, moderate: 10, major: 20 }),
+      points: Object.freeze({ minor: 4, moderate: 10, major: 20 }),
+      flatStat: true,
       coreTempCapPct: 20,
       precisionTempCapPoints: 12,
     }),
 
+    /* Dodge is derived from Agility; permanent separate Evasion core removed. */
     evasion: Object.freeze({
-      permanentCapPct: 20,
-      totalCapPct: 35,
+      permanentCapPct: 50,
+      totalCapPct: 50,
+      derivedFromAgility: true,
     }),
 
     orangeUniqueness: 'perRun',
@@ -136,7 +162,6 @@
 
     classRestrictionMode: 'hard',
 
-    /* Guard = Martial DEF; Brace = temporary DR. */
     guard: Object.freeze({
       mode: 'BRACE_V06',
       useLegacyGuarded: false,
@@ -144,9 +169,9 @@
     }),
 
     brace: Object.freeze({
-      minor: 6,
-      moderate: 8,
-      major: 12,
+      minor: 4,
+      moderate: 10,
+      major: 20,
       capPct: 12,
     }),
 
@@ -158,13 +183,14 @@
       braceCapPct: 0.12,
     }),
 
-    vitalityRebase: 20,
+    /* Universal +20 Health removed; Max HP from Base Health × (1 + Vit × 0.05). */
+    vitalityRebase: 0,
     levelCap: 30,
 
     equipmentCaps: Object.freeze({
-      vitalityPct: 0.6,
-      corePct: 0.5,
-      agilityPct: 0.3,
+      vitalityPct: 0,
+      corePct: 0,
+      agilityPct: 0,
     }),
 
     progressionTier: Object.freeze({
@@ -221,7 +247,6 @@
       combinationEn: 3,
       focusPulseEn: 2,
       oncePerTurnActionUse: true,
-      /* Basic / Natural Strike is exempt and may be used every action. */
       basicExemptFromOncePerTurn: true,
     }),
 
@@ -248,9 +273,15 @@
     basicAttack: Object.freeze({
       physicalId: 'BASIC_PHYSICAL',
       magicId: 'BASIC_MAGIC',
-      naturalStrikeName: 'Natural Strike',
+      beakJabName: 'Beak Jab',
+      tailWandName: 'Tail Wand',
+      /** @deprecated use beakJabName */
+      naturalStrikeName: 'Beak Jab',
+      tailWandClasses: Object.freeze(['mage', 'siren']),
       enCost: 1,
-      ap: 0.8,
+      skillPowerPct: 0,
+      flatMin: 1,
+      flatMax: 2,
     }),
 
     actionSources: Object.freeze([

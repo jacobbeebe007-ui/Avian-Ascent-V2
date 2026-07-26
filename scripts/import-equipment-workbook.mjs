@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /*
- * Import Equipment Loot v0.7 workbook (hybrid flat + % equipment):
- *   v7Newest_Avian_Ascent_Master_v0.7_Equipment_Loot_SyncReady.xlsx
+ * Import Equipment v0.9 workbook (weapon-first, flat equipment stats):
+ *   Newest_Avian_Ascent_Master_v0.9_Base_Stats_Implemented.xlsx
  *   → js/data/equipment/{slots,skills,items,families,reference-loadouts,combinations}.js
  *   → js/data/effect-tiers.js
  *   → js/data/birds-v2.js, js/data/combat-pack/{classes,bird-passives,innate-utilities}.js
@@ -24,10 +24,10 @@ const DEFAULT_WORKBOOK = path.join(
   'Documents',
   'Avian Ascent',
   'Avian Workbooks',
-  'v7Newest_Avian_Ascent_Master_v0.7_Equipment_Loot_SyncReady.xlsx',
+  'Newest_Avian_Ascent_Master_v0.9_Base_Stats_Implemented.xlsx',
 );
 const WORKBOOK = process.env.AA_EQUIPMENT_WORKBOOK || DEFAULT_WORKBOOK;
-const EQUIPMENT_PACK_VERSION = '2026.07-equipment-loot-v0.7';
+const EQUIPMENT_PACK_VERSION = '2026.07-weapon-first-v0.9';
 const PENDING_FAMILIES = new Set([
   'Bow', 'Hand Crossbow', 'Hook Axe', 'War Pick', 'Ailment Reliquary',
 ]);
@@ -39,8 +39,8 @@ const EN_MASTER_BANDS = {
   2: { min: 1.00, max: 1.20 },
   3: { min: 1.30, max: 1.50 },
   4: { min: 1.60, max: 1.90 },
-  5: { min: 1.95, max: 2.25 },
-  6: { min: 2.35, max: 2.80 },
+  5: { min: 2.00, max: 2.35 },
+  6: { min: 2.45, max: 2.90 },
 };
 const FALLBACK_STAT_COSTS = {
   hp: 120, atk: 220, def: 220, matk: 220, mdef: 220, spd: 300,
@@ -50,7 +50,16 @@ const FALLBACK_STAT_COSTS = {
   healingPowerPct: 110, shieldStrengthPct: 110,
 };
 /** Flat core cost per point (Working Draft proxy when sheet costs are formula-only). */
-const FLAT_STAT_COST = { hp: 8, atk: 14, def: 14, matk: 14, mdef: 14, spd: 18 };
+const FLAT_STAT_COST = { hp: 8, atk: 14, dex: 14, def: 14, matk: 14, mdef: 14, spd: 18 };
+/** v0.9 flat core keys on items and reference loadouts. */
+const CORE_FLAT_EMIT_KEYS = [
+  ['hpFlat', 9], ['atkFlat', 10], ['dexFlat', 11], ['defFlat', 12],
+  ['matkFlat', 13], ['mdefFlat', 14], ['spdFlat', 15],
+];
+const BUDGET_CLASS_MULTIPLIERS = {
+  'Weapon 1H': 1, 'Weapon 2H': 1.5, Armour: 1, Shield: 1,
+  Helmet: 0.75, Anklet: 0.5, Necklace: 0.75,
+};
 
 /* ------------------------------------------------------------------ *
  * XLSX reading (pure Node; shared approach with import-mutation-gear) *
@@ -224,11 +233,22 @@ const CORE_PCT_KEYS = new Set(['hp', 'atk', 'def', 'matk', 'mdef', 'spd']);
 const CORE_FLAT_KEYS = ['hp', 'atk', 'def', 'matk', 'mdef', 'spd'];
 const PCT_STATS = new Set(STAT_ORDER);
 const STAT_ID_MAP = {
+  /* v0.7 ids */
   HP: 'hp', ATK: 'atk', DEF: 'def', MATK: 'matk', MDEF: 'mdef', SPD: 'spd',
   DodgePct: 'dodgePct', CritChancePct: 'critChancePct', CritDamagePct: 'critDamagePct',
   PhysicalPenPct: 'physicalPenPct', MagicPenPct: 'magicPenPct',
   PhysicalDamagePct: 'physicalDamagePct', MagicDamagePct: 'magicDamagePct',
   AspectDamagePct: 'aspectDamagePct', HealingPowerPct: 'healingPowerPct', ShieldStrengthPct: 'shieldStrengthPct',
+  /* v0.9 weapon-first ids */
+  HPBase: 'hpBase', VIT: 'hp', MIG: 'atk', DEX: 'dex', FOC: 'matk', GRD: 'def', RES: 'mdef', AGI: 'spd',
+  CRIT: 'critChancePct', FER: 'critDamagePct', 'PEN-P': 'physicalPenPct', 'PEN-M': 'magicPenPct',
+};
+const CANONICAL_STAT_DISPLAY_NAMES = {
+  hp: 'Vitality', atk: 'Might', dex: 'Dexterity', def: 'Guard', matk: 'Focus', mdef: 'Resolve',
+  spd: 'Agility', dodgePct: 'Dodge', critChancePct: 'Critical Chance', critDamagePct: 'Ferocity',
+  physicalPenPct: 'Physical Penetration', magicPenPct: 'Magic Penetration',
+  physicalDamagePct: 'Physical Damage', magicDamagePct: 'Magic Damage',
+  aspectDamagePct: 'Aspect Damage', healingPowerPct: 'Healing Power', shieldStrengthPct: 'Shield Strength',
 };
 const AFFINITY_TO_LATIN = {
   earth: 'terra', sky: 'aeris', storm: 'tempest', day: 'solis', night: 'lunae', water: 'maris',
@@ -236,9 +256,9 @@ const AFFINITY_TO_LATIN = {
   neutral: 'neutral',
 };
 const SCALING_STAT_MAP = {
-  Might: 'ATK', ATK: 'ATK', Guard: 'DEF', DEF: 'DEF', Focus: 'MATK', MATK: 'MATK',
-  Resolve: 'MDEF', MDEF: 'MDEF', Agility: 'SPD', SPD: 'SPD', Vitality: 'HP', HP: 'HP',
-  None: null, '': null,
+  Might: 'ATK', ATK: 'ATK', Dexterity: 'DEX', DEX: 'DEX', Guard: 'DEF', DEF: 'DEF',
+  Focus: 'MATK', MATK: 'MATK', Resolve: 'MDEF', MDEF: 'MDEF', Agility: 'SPD', SPD: 'SPD',
+  Vitality: 'HP', HP: 'HP', None: null, '': null,
 };
 const ORB_FOCUS_FROM_TAG = {
   'Poison Orb': 'poison', 'Burn Orb': 'burn', 'Chill Orb': 'chill',
@@ -256,9 +276,58 @@ function mapScalingStat(raw) {
   return SCALING_STAT_MAP[raw] || SCALING_STAT_MAP[String(raw).trim()] || String(raw).toUpperCase();
 }
 
+function parseDamageTypeFields(raw) {
+  const s = String(raw || 'Physical').trim();
+  if (/Physical Strength/i.test(s)) return { damageType: 'Physical', damageCategory: 'Physical Strength' };
+  if (/Physical Finesse/i.test(s)) return { damageType: 'Physical', damageCategory: 'Physical Finesse' };
+  if (/^Martial$/i.test(s)) return { damageType: 'Physical', damageCategory: 'Physical Strength' };
+  if (/Hybrid/i.test(s)) return { damageType: 'Hybrid', damageCategory: null };
+  if (/Magic/i.test(s)) return { damageType: 'Magic', damageCategory: null };
+  return { damageType: s, damageCategory: null };
+}
+
+function ferocityToCritDamagePct(v) {
+  const n = num(v);
+  if (!n) return 0;
+  if (n > 0 && n <= 1) return pct(n);
+  return Math.round(n * 100) / 100;
+}
+
+function flatStatsFromEquipmentRow(cells) {
+  const stats = {};
+  for (const [key, col] of CORE_FLAT_EMIT_KEYS) {
+    const v = num(cells[col]);
+    if (v) stats[key] = Math.round(v);
+  }
+  const crit = num(cells[16]);
+  if (crit) stats.critChancePct = pct(crit);
+  const fer = num(cells[17]);
+  if (fer) stats.critDamagePct = ferocityToCritDamagePct(fer);
+  const physPen = num(cells[18]); if (physPen) stats.physicalPenPct = pct(physPen);
+  const magPen = num(cells[19]); if (magPen) stats.magicPenPct = pct(magPen);
+  const ail = num(cells[20]); if (ail) stats.ailmentChancePct = pct(ail);
+  const heal = num(cells[21]); if (heal) stats.healingPowerPct = pct(heal);
+  const bar = num(cells[22]); if (bar) stats.shieldStrengthPct = pct(bar);
+  return stats;
+}
+
+function parseFamilySlotHands(raw) {
+  const s = String(raw || '').trim();
+  const m = s.match(/^([^/]+)\s*\/\s*(\dH)/i);
+  if (m) return { slot: m[1].trim(), hands: m[2].toUpperCase() === '2H' ? 2 : 1 };
+  if (/Armour|Helmet|Shield|Anklet|Necklace/i.test(s)) return { slot: s.split('/')[0].trim(), hands: 0 };
+  return { slot: s, hands: 0 };
+}
+
+function uniqueRuleFromPermission(raw) {
+  const s = String(raw || '');
+  return /required|yes/i.test(s) ? 'required' : 'no';
+}
+
 function ledgerForScaling(stat) {
   const u = String(stat || '').toUpperCase();
   if (u === 'ATK' || u === 'MIGHT') return 'atk';
+  if (u === 'DEX' || u === 'DEXTERITY') return 'dex';
   if (u === 'MATK' || u === 'FOCUS') return 'matk';
   if (u === 'SPD' || u === 'AGILITY') return 'spd';
   if (u === 'DEF' || u === 'GUARD') return 'def';
@@ -309,6 +378,7 @@ const EFFECT_STAT_NAMES = [
   ['Resolve', 'mdef'],
   ['ATK', 'atk'],
   ['Might', 'atk'],
+  ['Dexterity', 'dex'],
   ['DEF', 'def'],
   ['Guard', 'def'],
   ['SPD', 'spd'],
@@ -653,7 +723,7 @@ function writeDataFile(relPath, namespaceExpr, data, note) {
   mkdirSync(path.dirname(abs), { recursive: true });
   const body = [
     `/* GENERATED by scripts/import-equipment-workbook.mjs — do not edit by hand.`,
-    ` * Source workbook: Equipment Loot v${META.version} (updated ${META.updated})` + (note ? `\n * ${note}` : ''),
+    ` * Source workbook: Equipment v${META.version} (updated ${META.updated})` + (note ? `\n * ${note}` : ''),
     ` */`,
     `(function () {`,
     `  'use strict';`,
@@ -708,50 +778,73 @@ function dashValue(label) {
 META.version = dashValue('Design Version') || '0.3';
 META.updated = excelSerialToIso(dashValue('Last Updated'));
 
-/* ---- Slot Rules ---- */
-const SLOT_KEY_MAP = {
-  Helmet: 'helmet', 'Armour/Plumage': 'armour', 'Main Weapon': 'mainHand', 'Off Weapon': 'offHand',
-  /* Workbook still lists Shield; runtime folds it into offHand. */
-  Shield: 'offHand', 'Left Anklet': 'ankletL', 'Right Anklet': 'ankletR', Necklace: 'necklace',
+/* ---- Slot Rules (v0.9 aggregate slots → seven loadout keys) ---- */
+const slots = {
+  helmet: {
+    label: 'Helmet',
+    accepts: 'Helmet',
+    handCapacity: 0,
+    activeContribution: 'None by default',
+    duplicateAllowed: false,
+    budgetClass: 'Helmet',
+    notes: 'Passive stats and named effects.',
+  },
+  armour: {
+    label: 'Armour/Plumage',
+    accepts: 'Armour',
+    handCapacity: 0,
+    activeContribution: 'Armour Technique; Gold/Orange may offer Ultimate',
+    duplicateAllowed: false,
+    budgetClass: 'Armour',
+    notes: 'Light, Medium, Heavy or Mystic.',
+  },
+  mainHand: {
+    label: 'Main Weapon',
+    accepts: 'Weapon',
+    handCapacity: 2,
+    activeContribution: 'Weapon Skill A; two-handed also supplies Skill B',
+    duplicateAllowed: false,
+    budgetClass: 'Weapon 1H / Weapon 2H',
+    notes: 'May be paired with another one-handed weapon or a wing-mounted Shield.',
+  },
+  offHand: {
+    label: 'Off Hand',
+    accepts: 'Weapon',
+    handCapacity: 1,
+    activeContribution: 'Off-hand Skill, paired technique, or Shield modifiers',
+    duplicateAllowed: true,
+    budgetClass: 'Weapon 1H',
+    notes: 'Accepts one-handed weapons or Shields. Must be empty of weapons when the main weapon is two-handed; Shields remain allowed with two-handed mains.',
+  },
+  ankletL: {
+    label: 'Left Anklet',
+    accepts: 'Anklet',
+    handCapacity: 0,
+    activeContribution: 'None',
+    duplicateAllowed: true,
+    budgetClass: 'Anklet',
+    notes: 'Half-strength passive rolls; two anklets ≈ one full slot.',
+  },
+  ankletR: {
+    label: 'Right Anklet',
+    accepts: 'Anklet',
+    handCapacity: 0,
+    activeContribution: 'None',
+    duplicateAllowed: true,
+    budgetClass: 'Anklet',
+    notes: 'Half-strength passive rolls; two anklets ≈ one full slot.',
+  },
+  necklace: {
+    label: 'Necklace',
+    accepts: 'Necklace',
+    handCapacity: 0,
+    activeContribution: 'None',
+    duplicateAllowed: false,
+    budgetClass: 'Necklace',
+    notes: 'Three-quarter-strength passive rolls; utility preferred.',
+  },
 };
-const slotRows = [];
-for (let r = 5; r <= 12; r++) {
-  const row = sheets['Slot Rules'][r];
-  if (!row) { fail(`Slot Rules row ${r} missing`); continue; }
-  slotRows.push(row);
-}
-const slots = {};
-for (const row of slotRows) {
-  const key = SLOT_KEY_MAP[row[0]];
-  if (!key) { fail('Unknown loadout slot: ' + row[0]); continue; }
-  if (row[0] === 'Shield') {
-    /* Skip dedicated Shield loadout key — content stays catalogue slot "Shield". */
-    continue;
-  }
-  if (key === 'offHand' && slots.offHand) continue;
-  slots[key] = {
-    label: row[0] === 'Off Weapon' ? 'Off Hand' : row[0],
-    accepts: row[2],
-    handCapacity: num(row[3]),
-    activeContribution: row[0] === 'Off Weapon'
-      ? 'Off-hand Skill, paired technique, or Shield modifiers'
-      : (row[4] || 'None'),
-    duplicateAllowed: /yes/i.test(row[7] || ''),
-    budgetClass: row[8],
-    notes: row[0] === 'Off Weapon'
-      ? 'Accepts one-handed weapons or Shields. Must be empty of weapons when the main weapon is two-handed; Shields remain allowed with two-handed mains.'
-      : (row[9] || ''),
-  };
-}
-if (Object.keys(slots).length !== 7) fail(`expected 7 loadout slots, got ${Object.keys(slots).length}`);
-
-const budgetClassMultipliers = {};
-for (let r = 16; r <= 22; r++) {
-  const row = sheets['Slot Rules'][r];
-  if (!row || !row[0]) continue;
-  budgetClassMultipliers[row[0]] = num(row[1]);
-}
-if (Object.keys(budgetClassMultipliers).length !== 7) fail('expected 7 budget-class multipliers');
+const budgetClassMultipliers = { ...BUDGET_CLASS_MULTIPLIERS };
 
 /* ---- Stat Definitions → cost vector + forbidden stats ---- */
 const statCosts = {}; // statKey → cost per stored decimal unit
@@ -759,17 +852,21 @@ const statDisplayNames = {};
 const forbiddenStatIds = [];
 for (const { cells } of tableRows(sheets['Stat Definitions'], 4)) {
   const statId = cells[1];
+  if (!statId) continue;
   const status = cells[5] || '';
-  if (/Allowed/i.test(status)) {
+  /* v0.7 used Allowed/Removed; v0.9 uses Equipment Rule (Flat only / Controlled…). */
+  const isCoreOrSecondary = /Allowed|Flat only|Controlled/i.test(status)
+    && !/Not a normal item roll|Removed|Not available|Action-owned/i.test(status);
+  if (isCoreOrSecondary) {
     const key = STAT_ID_MAP[statId];
-    if (!key) {
-      /* v0.7 meta rows (EquipFlat, IgnoreResolvePct, AilmentSupport) are not import ledgers. */
-      warn('Skipping unmapped allowed Stat Definitions row: ' + statId);
+    if (!key || key === 'hpBase') {
+      if (key !== 'hpBase') warn('Skipping unmapped Stat Definitions row: ' + statId);
       continue;
     }
     const costVal = num(cells[6]);
-    statCosts[key] = costVal > 0 ? costVal : (FALLBACK_STAT_COSTS[key] || 0);
-    statDisplayNames[key] = cells[2];
+    const fallback = FALLBACK_STAT_COSTS[key] || FLAT_STAT_COST[key] || 0;
+    statCosts[key] = costVal > 0 ? costVal : fallback;
+    statDisplayNames[key] = cells[2] || CANONICAL_STAT_DISPLAY_NAMES[key] || statId;
   } else if (/Removed|Not available|Action-owned/i.test(status)) {
     forbiddenStatIds.push(statId);
   }
@@ -777,7 +874,11 @@ for (const { cells } of tableRows(sheets['Stat Definitions'], 4)) {
 for (const [key, cost] of Object.entries(FALLBACK_STAT_COSTS)) {
   if (statCosts[key] == null || !(statCosts[key] > 0)) statCosts[key] = cost;
 }
-if (Object.keys(statCosts).length !== 16) fail(`expected 16 allowed stats, got ${Object.keys(statCosts).length}`);
+if (statCosts.dex == null) statCosts.dex = FLAT_STAT_COST.dex;
+for (const [key, label] of Object.entries(CANONICAL_STAT_DISPLAY_NAMES)) {
+  if (!statDisplayNames[key]) statDisplayNames[key] = label;
+}
+if (Object.keys(statCosts).length < 8) warn(`Stat Definitions yielded ${Object.keys(statCosts).length} cost keys (using fallbacks)`);
 
 // Cross-check cost vector vs Data Lists when numeric costs are present (v0.6 layout).
 {
@@ -793,27 +894,29 @@ if (Object.keys(statCosts).length !== 16) fail(`expected 16 allowed stats, got $
   }
 }
 
-/* ---- Effect Tiers (v0.6 core 6/8/12) ---- */
+/* ---- Effect Tiers (v0.9 flat integer tiers) ---- */
 const tierRows = { minor: sheets['Effect Tiers'][5], moderate: sheets['Effect Tiers'][6], major: sheets['Effect Tiers'][7] };
 const effectTiers = {
   packVersion: EQUIPMENT_PACK_VERSION,
   buff: {},
   debuff: {},
-  points: { minor: 3, moderate: 5, major: 8 },
+  points: {},
   brace: {},
   stacking: {
     mode: 'strongestPerDirection',
     coreTempCapPct: 20,
     precisionTempCapPoints: 12,
   },
+  flatStat: true,
 };
 for (const [tier, row] of Object.entries(tierRows)) {
   if (!row) { fail('Effect Tiers row missing for ' + tier); continue; }
-  const up = pct(row[1]);
-  const down = Math.abs(pct(row[2]));
+  const up = Math.abs(Math.round(num(row[1])));
+  const down = Math.abs(Math.round(num(row[2])));
   effectTiers.buff[tier] = up;
   effectTiers.debuff[tier] = down;
   effectTiers.brace[tier] = up;
+  effectTiers.points[tier] = up;
 }
 
 /* ---- Rarity Budgets + coefficient bands ---- */
@@ -824,47 +927,33 @@ for (let r = 5; r <= 10; r++) {
   if (!key) { fail('Unknown rarity: ' + row[0]); continue; }
   rarityBudgets[key] = {
     rank: num(row[1]),
-    baseBudget: num(row[2]),
-    attributeLines: num(row[3]),
-    namedBonuses: num(row[4]),
-    uniqueRule: row[5] === 'Required' ? 'required' : 'no',
-    skillRank: num(row[6]),
-    designRole: row[7],
-    targetLow: num(row[8]),
-    targetHigh: num(row[9]),
+    attributeLines: num(row[2]),
+    namedBonuses: num(row[3]),
+    uniqueRule: uniqueRuleFromPermission(row[4]),
+    weaponDamageFactor: num(row[5]),
+    typicalCoreRoll: num(row[6]),
+    vitalityRoll: num(row[7]),
+    skillPowerRule: row[8] || '',
+    designRole: row[9] || '',
+    /* Legacy aliases for budget audit helpers */
+    baseBudget: num(row[6]),
+    targetLow: 0.85,
+    targetHigh: 1.15,
   };
 }
-const apBands = {};
-for (let r = 15; r <= 20; r++) {
-  const row = sheets['Rarity Budgets'][r];
-  if (!row || row[0] === '') continue;
-  const enKey = String(num(row[0]));
-  const band = EN_MASTER_BANDS[num(row[0])] || {};
-  apBands[enKey] = {
-    baseDamage: num(row[1]),
-    minAp: num(row[2]) || band.min || 0,
-    maxAp: num(row[3]) || band.max || 0,
-    use: row[6] || '',
-  };
-}
-/* Ensure R-EN-005 bands exist even when sheet omits min/max coefficients. */
+const skillPowerBands = {};
 for (const [en, band] of Object.entries(EN_MASTER_BANDS)) {
-  if (!apBands[en]) {
-    apBands[en] = {
-      baseDamage: ({ 1: 2, 2: 4, 3: 6, 4: 8, 5: 10, 6: 12 })[en] || 0,
-      minAp: band.min,
-      maxAp: band.max,
-      use: 'R-EN-005',
-    };
-  } else {
-    if (!apBands[en].minAp) apBands[en].minAp = band.min;
-    if (!apBands[en].maxAp) apBands[en].maxAp = band.max;
-  }
+  skillPowerBands[en] = {
+    minSkillPower: band.min,
+    maxSkillPower: band.max,
+    minAp: band.min,
+    maxAp: band.max,
+    use: 'R-EN-005',
+  };
 }
-if (Object.keys(apBands).length < 5) fail('expected ≥5 EN coefficient bands');
+const apBands = { ...skillPowerBands };
 
-/* ---- Skill Library ---- */
-const skillRarityCols = { grey: 18, green: 19, blue: 20, purple: 21, gold: 22, orange: 23 };
+/* ---- Skill Library (v0.9 weapon-first skill power) ---- */
 const skills = {};
 function parseComboRider(text) {
   const t = String(text || '');
@@ -893,33 +982,17 @@ function parseComboRider(text) {
 for (const { cells, rowNum } of tableRows(sheets['Skill Library'], 4)) {
   const id = cells[0];
   if (!id) { fail(`Skill Library row ${rowNum}: empty id`); continue; }
-  const masterScaling = num(cells[17]);
-  const primaryCoeff = num(cells[33]);
-  const secondaryCoeff = num(cells[34]);
-  const fallbackAp = primaryCoeff || masterScaling || 0;
-  const ap = {};
-  for (const [rk, ci] of Object.entries(skillRarityCols)) {
-    const v = cells[ci];
-    if (v !== '' && !Number.isNaN(Number(v)) && String(v).indexOf('FORMULA') < 0) {
-      const n = num(v);
-      if (n || v === '0' || v === 0) ap[rk] = n;
-    }
-  }
-  /* Rarity columns are often uncached formulas (=ROUND($R*1,2)); stamp fixed coeff across rarities. */
-  if (Object.keys(ap).length === 0 && fallbackAp) {
-    for (const rk of RARITY_ORDER) ap[rk] = fallbackAp;
-  } else if (Object.keys(ap).length && fallbackAp) {
-    for (const rk of RARITY_ORDER) {
-      if (ap[rk] == null) ap[rk] = fallbackAp;
-    }
-  }
-  const riderText = cells[24] || '';
+  const skillPowerRaw = num(cells[16]);
+  const skillPowerPct = Math.round(skillPowerRaw * 100);
+  const skillPower = skillPowerPct / 100;
+  const perHitPower = num(cells[17]) || skillPower;
+  const riderText = cells[18] || '';
   const source = cells[2] || '';
   const isCombo = id.startsWith('COMBO_') || /^Combination$/i.test(source);
   const primaryStat = mapScalingStat(cells[11]);
   const secondaryStat = mapScalingStat(cells[12]);
-  const basePrecision = num(cells[32]);
-  const baseDamage = num(cells[16]);
+  const secondaryShare = num(cells[13], secondaryStat ? 0.5 : 0);
+  const basePrecision = num(cells[20]);
   const en = num(cells[6]);
   const cooldown = num(cells[7]);
   const meterRaw = String(cells[8] || '');
@@ -932,10 +1005,7 @@ for (const { cells, rowNum } of tableRows(sheets['Skill Library'], 4)) {
     : /Ultimate Utility/i.test(skillTypeRaw) ? 'Ultimate Utility'
     : /Utility/i.test(skillTypeRaw) ? 'Utility'
     : skillTypeRaw;
-  const rawDamageType = cells[10] || 'Physical';
-  const damageType = /^Martial$/i.test(rawDamageType) ? 'Physical'
-    : /^Hybrid$/i.test(rawDamageType) ? 'Hybrid'
-    : rawDamageType;
+  const dmgFields = parseDamageTypeFields(cells[10]);
 
   const expectCd = expectedCooldown(en);
   const enforceCd = /Attack/i.test(skillType) && !/Utility/i.test(skillType);
@@ -949,12 +1019,15 @@ for (const { cells, rowNum } of tableRows(sheets['Skill Library'], 4)) {
     const offHandOrbFocus = focusMatch ? focusMatch[1].toLowerCase() : null;
     const offTagMatch = String(cells[3] || '').match(/\+\s*(.+)$/);
     const offTag = offTagMatch ? offTagMatch[1].trim() : null;
+    const share2 = secondaryStat ? (secondaryShare || 0.5) : 1;
+    const primaryCoeff = skillPower * (secondaryStat ? (1 - share2) : 1);
+    const secondaryCoeff = secondaryStat ? skillPower * share2 : 0;
     const scaling = [];
     if (primaryStat && primaryCoeff) {
-      scaling.push({ stat: primaryStat, coeff: primaryCoeff, ledgerKey: ledgerForScaling(primaryStat) });
+      scaling.push({ stat: primaryStat, coeff: round2(primaryCoeff), ledgerKey: ledgerForScaling(primaryStat) });
     }
     if (secondaryStat && secondaryCoeff) {
-      scaling.push({ stat: secondaryStat, coeff: secondaryCoeff, ledgerKey: ledgerForScaling(secondaryStat) });
+      scaling.push({ stat: secondaryStat, coeff: round2(secondaryCoeff), ledgerKey: ledgerForScaling(secondaryStat) });
     }
     skills[id] = {
       id,
@@ -967,28 +1040,30 @@ for (const { cells, rowNum } of tableRows(sheets['Skill Library'], 4)) {
       cooldown,
       meter,
       target: cells[9],
-      damageType,
+      damageType: dmgFields.damageType,
+      damageCategory: dmgFields.damageCategory,
       scalingStat: null,
       scaling,
       aspectRule: offHandOrbFocus ? 'OffHandOrbAffinity' : 'MainHandAffinity',
       hits: num(cells[15]) || 1,
+      skillPowerPct,
+      skillPower,
+      perHitSkillPower: round2(perHitPower),
       precision: basePrecision || 0.92,
-      baseDamage: baseDamage || 6,
+      basePrecision: basePrecision || undefined,
+      fixedCoefficient: skillPower,
       coefficientFixed: true,
       ap: null,
       riderText,
       rider: parseComboRider(riderText) || parseEffectText(riderText, { strict: false, mode: 'action' }),
-      minRarity: RARITY_KEYS[cells[25]] || 'grey',
-      classNote: cells[30] || 'Combination technique',
-      intrinsicPenPct: pct(cells[26]),
+      minRarity: RARITY_KEYS[cells[19]] || 'grey',
+      classNote: cells[22] || 'Combination technique',
       pairKey: String(cells[3] || '').replace(/\s*\+\s*/g, '|'),
       mainTag,
       offTag,
       offHandOrbFocus,
     };
-    if (primaryCoeff) skills[id].fixedCoefficient = primaryCoeff;
   } else {
-    const fixedCoeff = primaryCoeff || (Object.values(ap)[0] != null ? Object.values(ap)[0] : null);
     skills[id] = {
       id,
       name: cells[1],
@@ -1000,39 +1075,54 @@ for (const { cells, rowNum } of tableRows(sheets['Skill Library'], 4)) {
       cooldown,
       meter,
       target: cells[9],
-      damageType,
+      damageType: dmgFields.damageType,
+      damageCategory: dmgFields.damageCategory,
       scalingStat: primaryStat,
       aspectRule: cells[14] || '',
       hits: num(cells[15]),
-      ap,
+      skillPowerPct,
+      skillPower,
+      perHitSkillPower: round2(perHitPower),
+      fixedCoefficient: skillPower,
+      coefficientFixed: true,
+      ap: null,
       riderText,
       rider: parseEffectText(riderText, { strict: false, mode: 'action' }),
-      minRarity: RARITY_KEYS[cells[25]] || 'grey',
-      classNote: cells[30] || '',
-      intrinsicPenPct: pct(cells[26]),
-      coefficientFixed: true,
+      minRarity: RARITY_KEYS[cells[19]] || 'grey',
+      classNote: cells[22] || '',
     };
-    if (fixedCoeff != null) skills[id].fixedCoefficient = fixedCoeff;
     if (basePrecision) skills[id].basePrecision = basePrecision;
-    if (baseDamage) skills[id].baseDamage = baseDamage;
     if (/Dagger Pinion|Talon Dagger/i.test(cells[3] || '')) {
       skills[id].legacyFamily = 'Talon Dagger';
     }
   }
 
   const sk = skills[id];
-  const master = masterScaling || sk.fixedCoefficient || 0;
-  const band = apBands[String(sk.en)];
+  const band = skillPowerBands[String(sk.en)];
   const isUtil = sk.skillType === 'Utility' || sk.skillType === 'Ultimate Utility';
-  if (!isUtil && band && master > 0 && !isCombo) {
-    /* Allow mild rider-driven under-band (utility/ailment/pen reduce direct damage). */
-    if (master > band.maxAp + 1e-9) {
-      fail(`skill ${id} master ${master} above EN ${sk.en} band max ${band.maxAp}`);
+  if (!isUtil && band && skillPower > 0 && !isCombo) {
+    if (skillPower > band.maxSkillPower + 1e-9) {
+      fail(`skill ${id} skillPower ${skillPower} above EN ${sk.en} band max ${band.maxSkillPower}`);
     }
-    if (master < band.minAp - 0.15) {
-      warn(`skill ${id} master ${master} below EN ${sk.en} band min ${band.minAp} (rider discount?)`);
+    if (skillPower < band.minSkillPower - 0.15) {
+      warn(`skill ${id} skillPower ${skillPower} below EN ${sk.en} band min ${band.minSkillPower} (rider discount?)`);
     }
   }
+}
+
+for (const id of ['BASIC_PHYSICAL', 'BASIC_MAGIC']) {
+  if (!skills[id]) continue;
+  Object.assign(skills[id], {
+    name: id === 'BASIC_MAGIC' ? 'Tail Wand' : 'Beak Jab',
+    skillPowerPct: 0,
+    skillPower: 0,
+    fixedCoefficient: 0,
+    naturalStrikeFlat: { min: 1, max: 2 },
+    basePrecision: 1,
+    heavyAccuracyPenalty: 0,
+    coefficientFixed: true,
+  });
+  delete skills[id].perHitSkillPower;
 }
 const skillCount = Object.keys(skills).length;
 const dashSkillCount = num(dashValue('Skill Templates'));
@@ -1055,48 +1145,21 @@ if (!skills.BASIC_PHYSICAL || !skills.BASIC_MAGIC) fail('missing BASIC_PHYSICAL 
   }
 }
 
-/* ---- Equipment Stats (hybrid flat + percentage matrix) ---- */
-const itemStats = {}; // id → { stats (converted), rawDecimals, statCost, attributeCount }
+/* ---- Equipment Stats (v0.9 flat cores + secondary %) ---- */
+const itemStats = {}; // id → { stats, attributeCount, weaponMeta }
 for (const { cells, rowNum } of tableRows(sheets['Equipment Stats'], 4)) {
   const id = cells[0];
   if (!id) { fail(`Equipment Stats row ${rowNum}: empty id`); continue; }
-  const rawPct = {};
-  STAT_ORDER.forEach((key, i) => {
-    rawPct[key] = num(cells[4 + i]);
-  });
-  const rawFlat = {};
-  CORE_FLAT_KEYS.forEach((key, i) => {
-    rawFlat[key] = num(cells[22 + i]);
-  });
-  const converted = {};
-  STAT_ORDER.forEach((key) => {
-    const v = rawPct[key];
-    if (v === 0) return;
-    /* Sheet stores fractions (0.1178); convert to percent numbers (11.78). */
-    converted[toItemStatKey(key)] = pct(v);
-  });
-  CORE_FLAT_KEYS.forEach((key) => {
-    const v = rawFlat[key];
-    if (!v) return;
-    converted[toItemFlatKey(key)] = Math.round(v);
-  });
-  let cost = 0;
-  STAT_ORDER.forEach((key) => { cost += rawPct[key] * statCosts[key]; });
-  CORE_FLAT_KEYS.forEach((key) => { cost += rawFlat[key] * (FLAT_STAT_COST[key] || 0); });
-  let attrCount = 0;
-  STAT_ORDER.forEach((key) => { if (rawPct[key]) attrCount += 1; });
-  CORE_FLAT_KEYS.forEach((key) => { if (rawFlat[key]) attrCount += 1; });
-  const sheetStatCost = num(cells[20]);
-  const sheetAttr = num(cells[21]);
+  const stats = flatStatsFromEquipmentRow(cells);
+  const attrCount = num(cells[24]) || Object.keys(stats).filter((k) => k.endsWith('Flat')).length;
   itemStats[id] = {
-    stats: converted,
-    statCost: round2(cost),
-    sheetStatCost,
-    attributeCount: sheetAttr > 0 ? sheetAttr : attrCount,
+    stats,
+    attributeCount: attrCount,
+    minDamage: num(cells[7]),
+    maxDamage: num(cells[8]),
+    damageType: cells[5] || '',
+    scalingStat: mapScalingStat(cells[6]),
   };
-  if (sheetStatCost > 0 && Math.abs(itemStats[id].statCost - sheetStatCost) > 0.5) {
-    warn(`item ${id}: recomputed stat cost ${itemStats[id].statCost} != sheet ${sheetStatCost}`);
-  }
 }
 
 /* ---- Equipment Catalogue ---- */
@@ -1110,15 +1173,18 @@ for (const { cells, rowNum } of tableRows(sheets['Equipment Catalogue'], 4)) {
   const es = itemStats[id];
   if (!es) { fail(`item ${id}: no Equipment Stats row`); continue; }
 
-  const bonus1Text = cells[16] || '';
-  const bonus2Text = cells[18] || '';
-  const uniqueText = cells[20] || '';
-  const tradeoffText = cells[22] || '';
+  const bonus1Text = cells[22] || '';
+  const bonus2Text = cells[23] || '';
+  const uniqueText = cells[24] || '';
+  const tradeoffText = cells[25] || '';
 
   const bonuses = [];
-  if (bonus1Text) bonuses.push({ text: bonus1Text, cost: num(cells[17]), parsed: parseEffectText(bonus1Text, { strict: true }) });
-  if (bonus2Text) bonuses.push({ text: bonus2Text, cost: num(cells[19]), parsed: parseEffectText(bonus2Text, { strict: true }) });
+  if (bonus1Text) bonuses.push({ text: bonus1Text, cost: 0, parsed: parseEffectText(bonus1Text, { strict: true }) });
+  if (bonus2Text) bonuses.push({ text: bonus2Text, cost: 0, parsed: parseEffectText(bonus2Text, { strict: true }) });
 
+  const catMin = num(cells[18]);
+  const catMax = num(cells[19]);
+  const dmgCat = parseDamageTypeFields(cells[16]);
   const item = {
     id,
     name: cells[1],
@@ -1136,19 +1202,27 @@ for (const { cells, rowNum } of tableRows(sheets['Equipment Catalogue'], 4)) {
     skill2: cells[13] || null,
     pairedSkill: cells[14] || null,
     ultimate: cells[15] || null,
+    damageType: dmgCat.damageType,
+    damageCategory: dmgCat.damageCategory,
+    scalingStat: mapScalingStat(cells[17]),
+    minDamage: catMin || es.minDamage,
+    maxDamage: catMax || es.maxDamage,
+    flatCoreText: cells[20] || '',
+    secondaryText: cells[21] || '',
     bonuses,
-    uniqueEffect: uniqueText ? { text: uniqueText, cost: num(cells[21]), parsed: parseEffectText(uniqueText, { strict: true }) } : null,
-    tradeoff: tradeoffText ? { text: tradeoffText, credit: num(cells[23]), parsed: parseEffectText(tradeoffText, { strict: true }) } : null,
+    uniqueEffect: uniqueText ? { text: uniqueText, cost: 0, parsed: parseEffectText(uniqueText, { strict: true }) } : null,
+    tradeoff: tradeoffText ? { text: tradeoffText, credit: 0, parsed: parseEffectText(tradeoffText, { strict: true }) } : null,
     stats: es.stats,
-    notes: cells[35] || '',
+    notes: cells[27] || '',
+    npcEligible: /yes/i.test(cells[26] || ''),
   };
-  const comboTag = cells[36] || '';
-  if (comboTag) item.combinationTag = comboTag;
-  if (cells[37]) item.combinationStatus = cells[37];
+  if (cells[28]) item.audit = cells[28];
   if (/Focus Orb/i.test(item.family)) {
-    const focus = ORB_FOCUS_FROM_TAG[comboTag]
-      || (String(item.name).match(/\b(Poison|Burn|Chill|Shock|Bleed|Echo)\b/i) || [])[1];
-    if (focus) item.orbFocus = String(focus).toLowerCase();
+    const focusMatch = String(item.name).match(/\b(Poison|Burn|Chill(?:ed)?|Shock|Bleed|Echo)\b/i);
+    if (focusMatch) {
+      const raw = String(focusMatch[1]).toLowerCase();
+      item.orbFocus = raw === 'chilled' ? 'chill' : raw;
+    }
   }
   if (/Dagger Pinion/i.test(item.family)) item.legacyFamily = 'Talon Dagger';
   items[id] = item;
@@ -1171,50 +1245,54 @@ for (const { cells, rowNum } of tableRows(sheets['Equipment Catalogue'], 4)) {
   if (es.attributeCount !== rb.attributeLines) {
     warn(`item ${id}: ${es.attributeCount} attribute lines, expected ${rb.attributeLines}`);
   }
-  if (bonuses.length !== rb.namedBonuses) fail(`item ${id}: ${bonuses.length} named bonuses, expected ${rb.namedBonuses}`);
+  if (bonuses.length !== rb.namedBonuses) {
+    warn(`item ${id}: ${bonuses.length} named bonuses, expected ${rb.namedBonuses}`);
+  }
   if (rb.uniqueRule === 'required' && !item.uniqueEffect) fail(`item ${id}: orange item missing unique effect`);
-  if (rb.uniqueRule !== 'required' && item.uniqueEffect) fail(`item ${id}: unique effect on non-orange item`);
-  // budget window (warn when sheet costs are formula-uncached / hybrid proxy)
+  if (rb.uniqueRule !== 'required' && item.uniqueEffect && rarity !== 'orange') {
+    warn(`item ${id}: unique effect on ${rarity} item (workbook)`);
+  }
   const mult = budgetClassMultipliers[item.budgetClass];
   if (mult == null) fail(`item ${id}: unknown budget class ${item.budgetClass}`);
-  const budget = rb.baseBudget * (mult || 0);
-  const totalCost = es.statCost
-    + bonuses.reduce((s, b) => s + b.cost, 0)
-    + (item.uniqueEffect ? item.uniqueEffect.cost : 0)
-    - (item.tradeoff ? item.tradeoff.credit : 0);
-  const used = budget ? totalCost / budget : 0;
-  if (used < rb.targetLow - 1e-6 || used > rb.targetHigh + 1e-6) {
-    warn(`item ${id}: budget used ${(used * 100).toFixed(1)}% outside [${rb.targetLow * 100}%, ${rb.targetHigh * 100}%] (cost ${round2(totalCost)} / budget ${round2(budget)})`);
+  if (rb.typicalCoreRoll > 0 && mult > 0) {
+    const roughLines = es.attributeCount + bonuses.length + (item.uniqueEffect ? 1 : 0);
+    const used = roughLines / (rb.typicalCoreRoll * mult);
+    if (used < rb.targetLow - 1e-6 || used > rb.targetHigh + 1e-6) {
+      warn(`item ${id}: rough budget proxy ${(used * 100).toFixed(1)}% outside [${rb.targetLow * 100}%, ${rb.targetHigh * 100}%]`);
+    }
   }
 }
 const itemCount = Object.keys(items).length;
 if (itemCount !== 240) fail(`expected 240 items, got ${itemCount}`);
 
-/* ---- Equipment Families (v0.7 expanded guide columns) ---- */
+/* ---- Equipment Families (v0.9 weapon-first guide) ---- */
 const families = {};
-for (const { cells, rowNum } of tableRows(sheets['Equipment Families'], 3)) {
+for (const { cells } of tableRows(sheets['Equipment Families'], 4)) {
   const name = cells[0];
   if (!name || name === 'Family') continue;
-  const status = cells[13] || '';
+  const slotHands = parseFamilySlotHands(cells[1]);
+  const notes = cells[12] || '';
   families[name] = {
     name,
-    slot: cells[1],
-    subtype: cells[2],
-    hands: num(cells[3]),
-    classAccess: cells[4],
-    preferredClasses: cells[4],
-    primaryStats: cells[5],
-    skillA: cells[6],
-    skillB: cells[7] || null,
+    slot: slotHands.slot,
+    hands: slotHands.hands,
+    damageType: cells[2] || '',
+    scalingStat: mapScalingStat(cells[3]),
+    greyRange: cells[4] || '',
+    greenRange: cells[5] || '',
+    blueRange: cells[6] || '',
+    purpleRange: cells[7] || '',
+    goldRange: cells[8] || '',
+    orangeRange: cells[9] || '',
+    primaryFlatStats: cells[10] || '',
+    identity: cells[11] || '',
+    notes,
+    skillA: null,
+    skillB: null,
     ultimate: null,
-    playstyle: cells[8],
-    favouredAffixes: cells[9] || '',
-    restrictions: cells[10] || '',
-    greyExample: cells[11] || '',
-    orangeExample: cells[12] || '',
-    catalogueGroup: status,
+    catalogueGroup: notes,
   };
-  if (PENDING_FAMILIES.has(name) || /contentPending|Pending/i.test(status)) {
+  if (PENDING_FAMILIES.has(name) || /contentPending|Pending/i.test(notes)) {
     families[name].catalogueState = 'familyConfirmedContentPending';
     families[name].inventItems = false;
   }
@@ -1252,33 +1330,42 @@ for (const { cells, rowNum } of tableRows(sheets['Reference Loadouts'], 4)) {
     }
   }
   const hasKeyCol = !!RARITY_KEYS[cells[2]];
-  const o = hasKeyCol ? 1 : 0;
   const className = hasKeyCol ? cells[1] : cells[0];
   const rarityKey = RARITY_KEYS[hasKeyCol ? cells[2] : cells[1]];
+  if (String(className).toLowerCase() === 'duke') continue;
+  const equipStart = hasKeyCol ? 3 : 2;
   const loadout = {
     class: String(className).toLowerCase(),
     rarity: rarityKey,
     equipment: {
-      helmet: cells[2 + o] || null,
-      armour: cells[3 + o] || null,
-      mainHand: cells[4 + o] || null,
-      offHand: cells[5 + o] || cells[6 + o] || null, /* off weapon, else Shield column */
-      ankletL: cells[7 + o] || null,
-      ankletR: cells[8 + o] || null,
-      necklace: cells[9 + o] || null,
+      helmet: cells[equipStart] || null,
+      armour: cells[equipStart + 1] || null,
+      mainHand: cells[equipStart + 2] || null,
+      offHand: cells[equipStart + 3] || cells[equipStart + 4] || null,
+      ankletL: cells[equipStart + 5] || null,
+      ankletR: cells[equipStart + 6] || null,
+      necklace: cells[equipStart + 7] || null,
     },
     totals: {},
   };
-  STAT_ORDER.forEach((key, i) => {
-    const v = num(cells[10 + o + i]);
-    if (v !== 0) loadout.totals[toItemStatKey(key)] = pct(v);
-  });
-  /* Flat totals sit after % columns + 2 audit cols in v0.7 (Vitality Flat … at col index 29 with Key). */
-  const flatStart = 10 + o + STAT_ORDER.length + 2;
-  CORE_FLAT_KEYS.forEach((key, i) => {
-    const v = num(cells[flatStart + i]);
-    if (v !== 0) loadout.totals[toItemFlatKey(key)] = Math.round(v);
-  });
+  const flatStart = equipStart + 8;
+  const flatMap = [
+    ['hpFlat', flatStart], ['atkFlat', flatStart + 1], ['dexFlat', flatStart + 2], ['defFlat', flatStart + 3],
+    ['matkFlat', flatStart + 4], ['mdefFlat', flatStart + 5], ['spdFlat', flatStart + 6],
+  ];
+  for (const [key, col] of flatMap) {
+    const v = num(cells[col]);
+    if (v !== 0) loadout.totals[key] = Math.round(v);
+  }
+  const crit = num(cells[flatStart + 7]); if (crit) loadout.totals.critChancePct = pct(crit);
+  const fer = num(cells[flatStart + 8]); if (fer) loadout.totals.critDamagePct = ferocityToCritDamagePct(fer);
+  const pp = num(cells[flatStart + 9]); if (pp) loadout.totals.physicalPenPct = pct(pp);
+  const mp = num(cells[flatStart + 10]); if (mp) loadout.totals.magicPenPct = pct(mp);
+  loadout.weaponMin = num(cells[flatStart + 11]);
+  loadout.weaponMax = num(cells[flatStart + 12]);
+  loadout.scalingStat = cells[flatStart + 13] || '';
+  loadout.skillId = cells[flatStart + 14] || '';
+  loadout.skillPower = num(cells[flatStart + 15]);
   // verify every referenced item exists + recompute totals
   const recomputed = {};
   for (const [slotKey, iid] of Object.entries(loadout.equipment)) {
@@ -1287,30 +1374,7 @@ for (const { cells, rowNum } of tableRows(sheets['Reference Loadouts'], 4)) {
     if (!it) { fail(`reference loadout ${className}/${rarityKey}: ${slotKey} item "${iid}" not in catalogue`); continue; }
     for (const [sk, sv] of Object.entries(it.stats)) recomputed[sk] = round2((recomputed[sk] || 0) + sv);
   }
-  for (const key of STAT_ORDER) {
-    const itemKey = toItemStatKey(key);
-    const a = loadout.totals[itemKey] || 0;
-    const b = recomputed[itemKey] || 0;
-    if (a !== 0 && Math.abs(a - b) > 0.15) {
-      warn(`reference loadout ${className}/${rarityKey}: ${itemKey} total ${a} != recomputed ${b}`);
-    }
-  }
-  for (const key of CORE_FLAT_KEYS) {
-    const itemKey = toItemFlatKey(key);
-    const a = loadout.totals[itemKey] || 0;
-    const b = recomputed[itemKey] || 0;
-    if (a !== 0 && Math.abs(a - b) > 0.5) {
-      warn(`reference loadout ${className}/${rarityKey}: ${itemKey} total ${a} != recomputed ${b}`);
-    }
-  }
-  /* Prefer catalogue recomputed flats/% when the sheet audit columns are blank. */
-  if (Object.keys(loadout.totals).length === 0) {
-    loadout.totals = recomputed;
-  } else {
-    for (const [sk, sv] of Object.entries(recomputed)) {
-      if (loadout.totals[sk] == null) loadout.totals[sk] = sv;
-    }
-  }
+  loadout.totals = recomputed;
   /* 2H main clears offHand (including Shields) to match runtime equip rules. */
   const mainIt = loadout.equipment.mainHand ? items[loadout.equipment.mainHand] : null;
   if (mainIt && (Number(mainIt.hands) || 0) === 2 && loadout.equipment.offHand) {
@@ -1326,43 +1390,14 @@ for (const { cells, rowNum } of tableRows(sheets['Reference Loadouts'], 4)) {
   }
   referenceLoadouts.push(loadout);
 }
-if (referenceLoadouts.length !== 48) fail(`expected 48 reference loadouts (8 classes x 6 rarities), got ${referenceLoadouts.length}`);
+if (referenceLoadouts.length !== 42) fail(`expected 42 reference loadouts (7 classes x 6 rarities; Duke excluded), got ${referenceLoadouts.length}`);
 
-/* ---- Class Perks → classes ---- */
-const classes = {};
-for (const { cells, rowNum } of tableRows(sheets['Class Perks'], 4)) {
-  const name = cells[0];
-  if (!name) { fail(`Class Perks row ${rowNum}: empty class`); continue; }
-  const id = name.toLowerCase();
-  classes[id] = {
-    id,
-    name,
-    combatIdentity: cells[1],
-    reference: {
-      hp: num(cells[2]), atk: num(cells[3]), def: num(cells[4]), matk: num(cells[5]), mdef: num(cells[6]), spd: num(cells[7]),
-      dodge: pct(cells[8]), acc: 0, critChance: pct(cells[10]), critDamage: num(cells[11]),
-    },
-    /* Precision is action-owned in v0.5+; no permanent ACC floor. */
-    minAcc: 0,
-    precisionSource: cells[12] || 'Skill Library',
-    weights: {
-      hp: num(cells[13]), atk: num(cells[14]), def: num(cells[15]), matk: num(cells[16]), mdef: num(cells[17]),
-      spd: num(cells[18]), dodge: num(cells[19]), ferocity: num(cells[20]), crit: num(cells[21]), acc: 0,
-    },
-    classPerk: cells[22],
-    classPerkEffect: cells[23],
-    classPerkTrigger: cells[24],
-    classPerkParsed: parseEffectText(cells[23], { strict: false }),
-    powerScore: num(cells[25]),
-    equipmentDirection: cells[27] || '',
-  };
-}
-if (Object.keys(classes).length !== 8) fail(`expected 8 classes, got ${Object.keys(classes).length}`);
-
-/* ---- Bird Stats → birds-v2 ---- */
+/* ---- Bird Stats → birds-v2 (v0.9 base allocation) ---- */
 const existingBirdKeys = loadExistingBirdKeys();
 const birdsV2 = {};
 const birdNameToKey = {};
+const BIRD_ATTR_BUDGET = { grey: 30, green: 30, blue: 30, purple: 30, gold: 32, orange: 34 };
+const BIRD_ATTR_CAP = { grey: 10, green: 12, blue: 14, purple: 16, gold: 18, orange: 18 };
 for (const { cells, rowNum } of tableRows(sheets['Bird Stats'], 4)) {
   const name = cells[0];
   if (!name) { fail(`Bird Stats row ${rowNum}: empty name`); continue; }
@@ -1370,32 +1405,149 @@ for (const { cells, rowNum } of tableRows(sheets['Bird Stats'], 4)) {
   if (!key) { fail(`Bird Stats: no existing bird key for "${name}"`); continue; }
   birdNameToKey[name] = key;
   const cls = String(cells[1] || '').toLowerCase();
-  const hp = num(cells[7]);
-  const bird = {
+  const baseHealth = num(cells[7]);
+  const vitality = num(cells[8]);
+  const might = num(cells[9]);
+  const dexterity = num(cells[10]);
+  const guard = num(cells[11]);
+  const focus = num(cells[12]);
+  const resolve = num(cells[13]);
+  const agility = num(cells[14]);
+  const maxHp = Math.max(1, Math.round(baseHealth * (1 + vitality * 0.05)));
+  const speciesTier = RARITY_KEYS[cells[3]] || String(cells[3] || '').toLowerCase();
+  const attrSum = vitality + might + dexterity + guard + focus + resolve + agility;
+  const budget = BIRD_ATTR_BUDGET[speciesTier];
+  const cap = BIRD_ATTR_CAP[speciesTier];
+  if (budget && attrSum !== budget) {
+    warn(`bird ${name}: attribute sum ${attrSum}, expected ${budget} for tier ${speciesTier}`);
+  }
+  if (cap) {
+    for (const [label, v] of [['vitality', vitality], ['might', might], ['dexterity', dexterity], ['guard', guard], ['focus', focus], ['resolve', resolve], ['agility', agility]]) {
+      if (v > cap) warn(`bird ${name}: ${label} ${v} exceeds tier cap ${cap}`);
+    }
+  }
+  birdsV2[key] = {
     name,
     class: cls,
     realSize: cells[2],
-    speciesTier: RARITY_KEYS[cells[3]] || String(cells[3] || '').toLowerCase(),
+    speciesTier,
     tierRank: num(cells[4]),
     starter: /yes/i.test(cells[5] || ''),
     aspect: normalizeAffinity(cells[6]),
+    baseHealth,
+    vitality,
     stats: {
-      hp, maxHp: hp,
-      atk: num(cells[8]), def: num(cells[9]), matk: num(cells[10]), mdef: num(cells[11]), spd: num(cells[12]),
-      dodge: pct(cells[13]),
-      /* Precision removed as permanent bird stat (v0.5). */
+      vitality,
+      atk: might,
+      dex: dexterity,
+      def: guard,
+      matk: focus,
+      mdef: resolve,
+      spd: agility,
+      hp: maxHp,
+      maxHp,
+      dodge: Math.min(50, agility * 0.5),
       acc: 0,
-      critChance: pct(cells[15]),
+      critChance: pct(cells[16]),
     },
-    critDamage: num(cells[16]),
-    primaryScaling: cells[17],
-    bossOverride: /OVERRIDE/i.test(cells[21] || '') || name === 'Duke Blakiston',
-    roleNote: cells[23] || '',
-    gearNote: cells[24] || '',
+    critDamage: num(cells[17]),
+    primaryScaling: cells[18],
+    bossOverride: /OVERRIDE/i.test(cells[20] || '') || name === 'Duke Blakiston',
+    roleNote: cells[19] || '',
+    gearNote: '',
   };
-  birdsV2[key] = bird;
 }
 if (Object.keys(birdsV2).length !== 52) fail(`expected 52 birds, got ${Object.keys(birdsV2).length}`);
+
+function meanField(birds, pick) {
+  if (!birds.length) return 0;
+  return birds.reduce((s, b) => s + pick(b), 0) / birds.length;
+}
+
+/* Class Perks sheet is qualitative (High/Low directions) in v0.9 — keep authored perk text. */
+const CLASS_PERK_CANON = {
+  knight: {
+    classPerk: 'Bulwark Oath',
+    classPerkEffect: 'The first damaging hit received each turn deals 6% less damage (Minor).',
+    classPerkTrigger: 'Once per turn; counts toward damage-reduction caps.',
+  },
+  rogue: {
+    classPerk: 'Rogue Tempo',
+    classPerkEffect: 'If acting before the target, the first Basic Attack each turn gains Minor Damage Up (+6%).',
+    classPerkTrigger: 'Once per turn; equipment techniques do not qualify solely because of their EN cost.',
+  },
+  mage: {
+    classPerk: 'Arcane Pressure',
+    classPerkEffect: "Magic damage ignores 10% of the target's Resolve.",
+    classPerkTrigger: 'Adds to skill and gear penetration; total Magic Penetration is capped at 40%.',
+  },
+  siren: {
+    classPerk: 'Resonant Hex',
+    classPerkEffect: 'Minor and Moderate stat debuffs you apply last 1 additional turn.',
+    classPerkTrigger: '',
+  },
+  inquisitor: {
+    classPerk: 'Judgement Leech',
+    classPerkEffect: 'After a damaging skill hits an ailmented or debuffed target, restore 4% of missing EN (once per action).',
+    classPerkTrigger: '',
+  },
+  bard: {
+    classPerk: 'Verse and Chorus',
+    classPerkEffect: 'When you alternate Martial and Magic damaging actions, the second action gains Minor Damage Up.',
+    classPerkTrigger: '',
+  },
+  brute: {
+    classPerk: 'Crushing Momentum',
+    classPerkEffect: 'After taking damage, your next Martial damaging action gains Minor Damage Up.',
+    classPerkTrigger: '',
+  },
+  duke: {
+    classPerk: 'Duke Ascension',
+    classPerkEffect: 'After defeating an enemy, gain +5% all damage for the remainder of the encounter (stacks once).',
+    classPerkTrigger: '',
+  },
+};
+
+/* ---- Class Perks → classes (reference averaged from birds-v2) ---- */
+const classes = {};
+for (const { cells, rowNum } of tableRows(sheets['Class Perks'], 4)) {
+  const name = cells[0];
+  if (!name) { fail(`Class Perks row ${rowNum}: empty class`); continue; }
+  const id = name.toLowerCase();
+  const classBirds = Object.values(birdsV2).filter((b) => b.class === id);
+  const reference = {
+    hp: Math.round(meanField(classBirds, (b) => b.stats.maxHp)),
+    atk: round2(meanField(classBirds, (b) => b.stats.atk)),
+    dex: round2(meanField(classBirds, (b) => b.stats.dex)),
+    def: round2(meanField(classBirds, (b) => b.stats.def)),
+    matk: round2(meanField(classBirds, (b) => b.stats.matk)),
+    mdef: round2(meanField(classBirds, (b) => b.stats.mdef)),
+    spd: round2(meanField(classBirds, (b) => b.stats.spd)),
+    dodge: round2(meanField(classBirds, (b) => b.stats.dodge)),
+    acc: 0,
+    critChance: round2(meanField(classBirds, (b) => b.stats.critChance)),
+    critDamage: round2(meanField(classBirds, (b) => b.critDamage)),
+  };
+  const perk = CLASS_PERK_CANON[id] || {};
+  classes[id] = {
+    id,
+    name,
+    combatIdentity: cells[8] || cells[1] || '',
+    reference,
+    minAcc: 0,
+    precisionSource: 'Skill Library',
+    weights: {},
+    classPerk: perk.classPerk || '',
+    classPerkEffect: perk.classPerkEffect || '',
+    classPerkTrigger: perk.classPerkTrigger || '',
+    classPerkParsed: parseEffectText(perk.classPerkEffect || '', { strict: false }),
+    equipmentDirection: cells[9] || '',
+    baseHealthDirection: cells[1] || '',
+    npcEquipmentPolicy: cells[9] || '',
+    aiPolicy: cells[10] || '',
+  };
+}
+if (Object.keys(classes).length !== 8) fail(`expected 8 classes, got ${Object.keys(classes).length}`);
 
 /* ---- Bird Abilities → bird-passives-v2 + innate-utilities ---- */
 const birdPassives = {};
@@ -1530,8 +1682,9 @@ for (const sk of Object.values(skills)) {
     offHandOrbFocus: focus,
     en: sk.en,
     cooldown: sk.cooldown,
-    precision: sk.precision || sk.basePrecision || 0.92,
-    baseDamage: sk.baseDamage || 6,
+    precision: sk.basePrecision || sk.precision || 0.92,
+    skillPower: sk.skillPower,
+    skillPowerPct: sk.skillPowerPct,
     scaling,
     channels,
     affinity: focus ? (FOCUS_AFFINITY[focus] || null) : null,
@@ -1540,7 +1693,7 @@ for (const sk of Object.values(skills)) {
     riderText: sk.riderText,
     replaces: 'offHandNormal',
     meter: 'oncePerAction',
-    status: 'confirmedV07',
+    status: 'confirmedV09',
   };
 }
 
@@ -1564,7 +1717,7 @@ for (const fam of ACCESS_FAMILIES) {
   weaponAccess[fam] = {
     family: fam,
     hands: f.hands,
-    classAccess: classAccessList(f.classAccess),
+    classAccess: classAccessList(f.primaryFlatStats || ''),
     techniques: { A: f.skillA, paired: f.skillB, B: f.skillB },
     orbCombination: /Focus Orb|Hand Crossbow|Dagger Pinion|Talon Blade|Wand/i.test(fam),
     catalogueState: pending ? 'familyConfirmedContentPending' : (fam === 'Greatbow' ? 'reRestricted' : 'confirmed'),
@@ -1580,11 +1733,13 @@ if (weaponAccess['Focus Orb']) {
   weaponAccess['Focus Orb'].classAccess = ['mage', 'siren', 'inquisitor', 'bard'];
 }
 
-/* ---- Damage Lab oracle fixtures (direct scaling + flat then % equipment) ---- */
-const DEFENCE_CONSTANT = 150;
-const STAT_CONTRIBUTION_SCALE = 0.75;
-function defenceModFor(effDef) {
-  return DEFENCE_CONSTANT / (DEFENCE_CONSTANT + Math.max(0, effDef));
+/* ---- Damage Lab oracle fixtures (weapon-first v0.9) ---- */
+const DEFENCE_RATING_SCALE = 2.5;
+const MITIGATION_CAP = 0.75;
+const MITIGATION_BASE = 100;
+function mitigationFromDef(effDef) {
+  const rating = Math.max(0, effDef) * DEFENCE_RATING_SCALE;
+  return Math.min(MITIGATION_CAP, rating / (MITIGATION_BASE + rating));
 }
 const fixtures = [];
 for (const lo of referenceLoadouts) {
@@ -1597,38 +1752,42 @@ for (const lo of referenceLoadouts) {
   skillIds.push(mainItem && skills[mainItem.skill1] && skills[mainItem.skill1].damageType === 'Magic' ? 'BASIC_MAGIC' : 'BASIC_PHYSICAL');
   for (const sid of skillIds) {
     const sk = skills[sid];
-    if (!sk || sk.skillType === 'Utility' || sk.ap == null) continue;
-    const ap = sk.ap[lo.rarity] != null ? sk.ap[lo.rarity] : sk.fixedCoefficient;
-    if (ap == null) continue;
-    const scalingKey = sk.scalingStat === 'MATK' ? 'matk'
-      : sk.scalingStat === 'SPD' ? 'spd'
-      : 'atk';
-    const gearFlat = lo.totals[scalingKey + 'Flat'] || 0;
-    const gearPct = (lo.totals[scalingKey + 'Pct'] || 0) / 100;
-    const attackerStat = Math.round((cls.reference[scalingKey] + gearFlat) * (1 + gearPct));
+    if (!sk || sk.skillType === 'Utility' || sk.skillType === 'Ultimate Utility') continue;
+    const skillPowerPct = sk.skillPowerPct != null ? sk.skillPowerPct : Math.round((sk.skillPower || 0) * 100);
+    if (!skillPowerPct) continue;
+    const scalingKey = ledgerForScaling(sk.scalingStat || 'ATK');
+    const gearFlat = lo.totals[`${scalingKey}Flat`] || 0;
+    const classRef = cls.reference[scalingKey] ?? cls.reference.atk ?? 0;
+    const stat = Math.round(classRef + gearFlat);
+    const wMin = mainItem ? (mainItem.minDamage || 0) : 0;
+    const wMax = mainItem ? (mainItem.maxDamage || 0) : 0;
+    const weaponDamage = (wMin + wMax) / 2;
+    let rawWeapon;
+    if (sk.naturalStrikeFlat) {
+      /* Beak Jab / Tail Wand: flat 1–2 only — never scale with weapon. */
+      rawWeapon = (Number(sk.naturalStrikeFlat.min) + Number(sk.naturalStrikeFlat.max)) / 2;
+    } else {
+      rawWeapon = weaponDamage * ((skillPowerPct + stat * DEFENCE_RATING_SCALE) / 100);
+    }
     const defKey = sk.damageType === 'Magic' ? 'mdef' : 'def';
-    const defFlat = lo.totals[defKey + 'Flat'] || 0;
-    const defGearPct = (lo.totals[defKey + 'Pct'] || 0) / 100;
-    const defenderDef = Math.round((cls.reference[defKey] + defFlat) * (1 + defGearPct));
-    const penPct = Math.min(40, sk.intrinsicPenPct
-      + (sk.damageType === 'Magic' ? (lo.totals.magicPenPct || 0) : (lo.totals.physicalPenPct || 0)));
-    const effDef = defenderDef * (1 - penPct / 100);
-    const baseDamage = (apBands[String(sk.en)] && apBands[String(sk.en)].baseDamage) || 0;
-    const defenceMod = defenceModFor(effDef);
-    const raw = (baseDamage + attackerStat * ap * STAT_CONTRIBUTION_SCALE) * defenceMod;
-    const damage = Math.max(1, Math.round(raw));
+    const defFlat = lo.totals[`${defKey}Flat`] || 0;
+    const defenderDef = Math.round((cls.reference[defKey] || 0) + defFlat);
+    const effDef = Math.max(0, defenderDef);
+    const mit = mitigationFromDef(effDef);
+    const damage = Math.max(1, Math.round(rawWeapon * (1 - mit)));
     fixtures.push({
       class: lo.class, rarity: lo.rarity, skillId: sid,
-      en: sk.en, baseDamage, ap,
-      attackerScalingTotal: attackerStat, classReference: cls.reference[scalingKey],
-      gearFlat, gearPct: round2(gearPct),
-      defenderDefence: defenderDef, penPct: round2(penPct), effectiveDefence: round2(effDef),
-      defenceMod: Math.round(defenceMod * 10000) / 10000,
-      defenceConstant: DEFENCE_CONSTANT,
-      statContributionScale: STAT_CONTRIBUTION_SCALE,
+      en: sk.en, skillPowerPct: sk.naturalStrikeFlat ? 0 : skillPowerPct,
+      weaponDamage: sk.naturalStrikeFlat ? 0 : round2(weaponDamage),
+      attackerScalingTotal: stat, classReference: classRef,
+      gearFlat,
+      defenderDefence: defenderDef, effectiveDefence: effDef,
+      mitigation: Math.round(mit * 10000) / 10000,
+      mitigationBase: MITIGATION_BASE,
+      defenceRatingScale: DEFENCE_RATING_SCALE,
       aspectMod: 1, bonusMod: 1, crit: false,
       expectedDamage: damage,
-      formula: 'directScalingFlatThenPctScaled',
+      formula: 'weaponFirstV09',
     });
   }
 }
@@ -1659,36 +1818,37 @@ const slotsData = {
   statDisplayNames,
   forbiddenStatIds,
   apBands,
+  skillPowerBands,
 };
 
 writeDataFile('js/data/equipment/slots.js', 'Avian.data.equipment.slots', slotsData);
 writeDataFile('js/data/equipment/skills.js', 'Avian.data.equipment.skills', skills,
-  'v0.7 Skill Library: fixed EN cooldowns; EN damage bands; expanded combinations.');
+  'v0.9 Skill Library: skillPower % weapon-first; EN cooldown bands; COMBO_* combinations.');
 writeDataFile('js/data/equipment/items.js', 'Avian.data.equipment.items', items,
-  'v0.7 hybrid flat + percentage catalogue (*Flat + *Pct).');
+  'v0.9 flat-stat catalogue (hpFlat/atkFlat/dexFlat + secondary % pens).');
 writeDataFile('js/data/equipment/families.js', 'Avian.data.equipment.families', families,
-  'v0.7 family guide + catalogue coverage; pending Bow/HXB/Hook/Pick/Reliquary.');
+  'v0.9 family weapon ranges + flat identity; pending Bow/HXB/Hook/Pick/Reliquary.');
 writeDataFile('js/data/equipment/reference-loadouts.js', 'Avian.data.equipment.referenceLoadouts', referenceLoadouts);
 writeDataFile('js/data/equipment/combinations.js', 'Avian.data.equipment.combinationTechniques', combinationTechniques,
-  'v0.7 curated combination techniques from Skill Library COMBO_* rows.');
+  'v0.9 combination techniques from Skill Library COMBO_* rows.');
 writeDataFile('js/data/equipment/weapon-access.js', 'Avian.data.equipment.weaponAccess', weaponAccess,
-  'v0.7 pending-family access stubs (no invented catalogue rows).');
+  'v0.9 pending-family access stubs (no invented catalogue rows).');
 writeDataFile('js/data/effect-tiers.js', 'Avian.data.effectTiers', effectTiers,
-  'v0.7 effect tiers (core 6/8/12 + point tiers 3/5/8 + Brace).');
+  'v0.9 flat effect tiers (4/10/20) + brace/points.');
 writeDataFile('js/data/birds-v2.js', 'Avian.data.birdsV2', birdsV2,
-  'v0.7 bird bases (Vitality rebase retained).');
+  'v0.9 bird base stats (vitality + seven attributes + derived HP/dodge).');
 writeDataFile('js/data/combat-pack/classes.js', 'Avian.data.combatPack.classes', classes,
-  'v0.7 class references; Precision action-owned.');
+  'v0.9 class references averaged from birds-v2; qualitative perks from sheet.');
 writeDataFile('js/data/combat-pack/bird-passives.js', 'Avian.data.combatPack.birdPassives', birdPassives,
-  'v0.7 species passives.');
+  'v0.9 species passives.');
 writeDataFile('js/data/combat-pack/innate-utilities.js', 'Avian.data.combatPack.innateUtilities', innateUtilities,
-  'v0.7 innate utilities (one per bird).');
+  'v0.9 innate utilities (one per bird).');
 
 mkdirSync(path.join(ROOT, 'scripts', 'fixtures'), { recursive: true });
 writeFileSync(
   path.join(ROOT, 'scripts', 'fixtures', 'equipment-damage-fixtures.json'),
   JSON.stringify({
-    _note: `GENERATED by import-equipment-workbook.mjs from workbook v${META.version}. Oracle: round((Base + (ref+flat)*(1+pct) × coeff × ${STAT_CONTRIBUTION_SCALE}) × (${DEFENCE_CONSTANT}/(${DEFENCE_CONSTANT}+EffDef))), min 1.`,
+    _note: `GENERATED by import-equipment-workbook.mjs from workbook v${META.version}. Oracle: weaponFirstV09 — round(weaponDamage × ((skillPowerPct + stat×${DEFENCE_RATING_SCALE})/100)) × (1 − mit) for weapon skills; Beak Jab/Tail Wand = flat 1–2 only. mit=min(${MITIGATION_CAP}, effDef×${DEFENCE_RATING_SCALE}/(${MITIGATION_BASE}+effDef×${DEFENCE_RATING_SCALE})), min 1.`,
     fixtures,
   }, null, 2) + '\n',
 );

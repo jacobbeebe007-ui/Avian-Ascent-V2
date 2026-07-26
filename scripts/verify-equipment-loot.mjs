@@ -278,12 +278,12 @@ for (const rarity of ['grey', 'green', 'blue', 'purple']) {
 if (rarityMismatch) fail(`${rarityMismatch} forced-rarity reward cards mismatched catalogue rarity`);
 else ok('forced rarity rolls return matching catalogue rarity (3 unique × 4 tiers)');
 
-// --- equipment desc uses Might not atkPct ---
+// --- equipment desc uses Dexterity not dexFlat ---
 const talon = nestCtx.Avian.equipment.getItem('EQ-TB-GRY');
 const desc = nestCtx.Avian.equipmentLoot.formatEquipmentDesc(talon);
-if (!desc || /atkPct|atkFlat/i.test(desc)) fail(`EQ-TB-GRY desc still shows raw key: ${desc}`);
-else if (!/Might/i.test(desc)) fail(`EQ-TB-GRY desc missing Might: ${desc}`);
-else ok(`EQ-TB-GRY desc uses Might (${desc})`);
+if (!desc || /atkPct|dexFlat|atkFlat/i.test(desc)) fail(`EQ-TB-GRY desc still shows raw key: ${desc}`);
+else if (!/Dexterity|Dex\b/i.test(desc)) fail(`EQ-TB-GRY desc missing Dexterity: ${desc}`);
+else ok(`EQ-TB-GRY desc uses Dexterity (${desc})`);
 
 // --- unlocked-tier shop stock: grey always 4; green unlocks add 4 green ---
 nestCtx.G.player = freshPlayer('sparrow', nestCtx);

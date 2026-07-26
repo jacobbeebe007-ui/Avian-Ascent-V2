@@ -137,4 +137,12 @@ Avian.systems.SAVE_SCHEMA_VERSION
 - Runtime applies equipment flat after tier and before additive equipment % (`R-PROG-005`).
 - Two-handed main blocks all off-hand items including Shields.
 
+## v16 migration (Weapon-First v0.9)
+
+- Wipes `player.equipment` loadout and `equipmentInventory` (hybrid flat+% gear is incompatible).
+- Stamps `weaponFirstV09`, `weaponFirstPackVersion: '2026.07-weapon-first-v0.9'`, and bumps equipment/affinity pack stamps to the same id.
+- Clears `equipmentLootV07` flag (superseded).
+- Players keep run progress; equipment must be re-looted / starter kits reapplied.
+- Combat: weapon min–max × ((Skill Power + Stat×2.5)÷100); Vitality→Max HP from Base Health; Agility→Dodge; Guard/Resolve rating mitigation.
+
 Verification: `node scripts/verify-save-migration.mjs`

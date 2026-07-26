@@ -25,15 +25,16 @@
   'use strict';
 
   /** Bump when adding a migration. */
-  var TARGET = 15;
+  var TARGET = 16;
 
   /** Combat-pack version stamp surfaced on the save blob. Wipes attached when
    *  this changes so legacy ability/perk/family state never bleeds into a run. */
   var COMBAT_PACK_VERSION = '2026.07-flat-abilities';
   var MUTATIONS_PACK_VERSION = '2026.06-mutations-v6';
-  var EQUIPMENT_PACK_VERSION = '2026.07-equipment-loot-v0.7';
-  var AFFINITY_ARSENAL_PACK_VERSION = '2026.07-equipment-loot-v0.7';
-  var EQUIPMENT_LOOT_PACK_VERSION = '2026.07-equipment-loot-v0.7';
+  var EQUIPMENT_PACK_VERSION = '2026.07-weapon-first-v0.9';
+  var AFFINITY_ARSENAL_PACK_VERSION = '2026.07-weapon-first-v0.9';
+  var EQUIPMENT_LOOT_PACK_VERSION = '2026.07-weapon-first-v0.9';
+  var WEAPON_FIRST_PACK_VERSION = '2026.07-weapon-first-v0.9';
   var SAVE_BACKUP_KEY_PRE_V13 = 'avianAscent_save_v2_backup_pre_v13';
   var EQUIPMENT_V2_STARTER_STIPEND = 30;
   var MUTATION_SELL_COSTS = { white: 16, green: 28, blue: 44, purple: 64, gold: 96, orange: 140 };
@@ -193,6 +194,38 @@
     stampAffinityArsenalFields(save);
     save.equipmentLootV07 = true;
     save.equipmentLootPackVersion = EQUIPMENT_LOOT_PACK_VERSION;
+    return save;
+  }
+
+  function stampWeaponFirstV09Fields(save) {
+    if (!save || typeof save !== 'object') return save;
+    stampEquipmentSaveFields(save);
+    save.affinityArsenalV06 = true;
+    save.equipmentLootV07 = false;
+    save.weaponFirstV09 = true;
+    save.affinityArsenalPackVersion = AFFINITY_ARSENAL_PACK_VERSION;
+    save.equipmentPackVersion = EQUIPMENT_PACK_VERSION;
+    save.equipmentLootPackVersion = EQUIPMENT_LOOT_PACK_VERSION;
+    save.weaponFirstPackVersion = WEAPON_FIRST_PACK_VERSION;
+    return save;
+  }
+
+  function wipePlayerEquipmentLoadout(save) {
+    var p = save && save.player;
+    if (!p || typeof p !== 'object') return save;
+    p.equipmentInventory = [];
+    p.equipment = {
+      helmet: null,
+      armour: null,
+      mainHand: null,
+      offHand: null,
+      ankletL: null,
+      ankletR: null,
+      necklace: null,
+    };
+    delete p.ultimateSourceItemId;
+    delete p._equipmentMechanics;
+    delete p._equipmentPct;
     return save;
   }
 
@@ -441,6 +474,17 @@
         return save;
       },
     },
+    {
+      from: 15,
+      to: 16,
+      note: 'weapon-first v0.9: wipe hybrid % equipment; stamp weaponFirst pack; species Base Health + Dexterity',
+      fn: function (save) {
+        if (!save || typeof save !== 'object') return save;
+        wipePlayerEquipmentLoadout(save);
+        stampWeaponFirstV09Fields(save);
+        return save;
+      },
+    },
   ];
 
   var Avian = globalThis.Avian || (globalThis.Avian = { systems: {}, debug: {} });
@@ -452,6 +496,7 @@
   Avian.systems.EQUIPMENT_PACK_VERSION = EQUIPMENT_PACK_VERSION;
   Avian.systems.AFFINITY_ARSENAL_PACK_VERSION = AFFINITY_ARSENAL_PACK_VERSION;
   Avian.systems.EQUIPMENT_LOOT_PACK_VERSION = EQUIPMENT_LOOT_PACK_VERSION;
+  Avian.systems.WEAPON_FIRST_PACK_VERSION = WEAPON_FIRST_PACK_VERSION;
   Avian.systems.SAVE_BACKUP_KEY_PRE_V13 = SAVE_BACKUP_KEY_PRE_V13;
   Avian.systems.EQUIPMENT_V2_STARTER_STIPEND = EQUIPMENT_V2_STARTER_STIPEND;
   Avian.systems.needsEquipmentV2PreReleaseReset = needsEquipmentV2PreReleaseReset;
@@ -461,6 +506,7 @@
   Avian.systems.stampEquipmentSaveFields = stampEquipmentSaveFields;
   Avian.systems.stampAffinityArsenalFields = stampAffinityArsenalFields;
   Avian.systems.stampEquipmentLootV07Fields = stampEquipmentLootV07Fields;
+  Avian.systems.stampWeaponFirstV09Fields = stampWeaponFirstV09Fields;
 
   Avian.systems.maybeBackupPreV13Save = function maybeBackupPreV13Save(rawJson, parsed) {
     if (!parsed || typeof parsed !== 'object') return false;

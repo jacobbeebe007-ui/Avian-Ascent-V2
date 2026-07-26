@@ -182,11 +182,17 @@
       var kind = statToRiderKind(eff.stat, eff.dir, eff.target);
       if (!kind) continue;
       var val = tierPct(eff.tier, eff.dir);
-      if (kind === 'gainSpeed' || kind.indexOf('gain') === 0 && kind !== 'gainDodge' && kind !== 'gainAcc' && kind !== 'gainCritChance') {
-        riders.push({ kind: kind, value: val, when: when, scope: eff.target === 'enemy' ? 'enemy' : 'self' });
-      } else {
-        riders.push({ kind: kind, value: val, when: when, scope: eff.target === 'enemy' ? 'enemy' : 'self' });
-      }
+      var flatCore = !!(Avian.data && Avian.data.effectTiers && Avian.data.effectTiers.flatStat);
+      var coreStat = /^(atk|matk|def|mdef|spd|dex|vitality|hp)$/i.test(String(eff.stat || ''));
+      var chanceKind = kind === 'gainDodge' || kind === 'gainAcc' || kind === 'gainCritChance'
+        || kind === 'reduceEnemyDodge' || kind === 'reduceEnemyAcc' || kind === 'reduceEnemyCrit';
+      riders.push({
+        kind: kind,
+        value: val,
+        when: when,
+        scope: eff.target === 'enemy' ? 'enemy' : 'self',
+        valueUnit: (flatCore && coreStat && !chanceKind) ? 'flat' : 'pct',
+      });
     }
     var specials = parsed.specials || [];
     for (var si = 0; si < specials.length; si++) {
@@ -290,6 +296,16 @@
     if (Avian.affinity && typeof Avian.affinity.normalize === 'function' && aspect) {
       aspect = Avian.affinity.normalize(aspect) || aspect;
     }
+    var cfgWf = combatConfig();
+    var weaponFirst = !!(cfgWf && cfgWf.weaponFirstV09 && cfgWf.weaponFirst && cfgWf.weaponFirst.enabled !== false);
+    var skillPowerPct = skill.skillPowerPct != null ? Number(skill.skillPowerPct)
+      : (apVal != null ? Math.round(Number(apVal) * (Number(apVal) <= 10 ? 100 : 1)) : null);
+    var isBasic = skill.id === 'BASIC_PHYSICAL' || skill.id === 'BASIC_MAGIC' || !!skill.naturalStrikeFlat;
+    /* Basics (Beak Jab / Tail Wand) are always flat 1–2 — never copy weapon min/max or scaling. */
+    var minDmg = (!isBasic && item && item.minDamage != null) ? Number(item.minDamage) : null;
+    var maxDmg = (!isBasic && item && item.maxDamage != null) ? Number(item.maxDamage) : null;
+    var scalingStat = skill.scalingStat || null;
+    if (!isBasic && !scalingStat && item && item.scalingStat) scalingStat = item.scalingStat;
     var row = {
       id: skill.id,
       name: skill.name,
@@ -297,16 +313,24 @@
       apCost: Number(skill.en) || 0,
       cooldown: Number(skill.cooldown) || 0,
       damageType: dmgType,
-      scaleStat: skill.scalingStat || null,
-      damageStat: skill.scalingStat || null,
+      damageCategory: skill.damageCategory || (item && item.damageCategory) || null,
+      scaleStat: scalingStat,
+      damageStat: scalingStat,
+      scalingStat: scalingStat,
       abilityPower: apVal != null ? Number(apVal) : null,
       fixedCoefficient: skill.fixedCoefficient != null ? Number(skill.fixedCoefficient) : (apVal != null ? Number(apVal) : null),
+      skillPowerPct: isBasic ? 0 : skillPowerPct,
+      skillPower: isBasic ? 0 : (skill.skillPower != null ? Number(skill.skillPower) : (skillPowerPct != null ? skillPowerPct / 100 : null)),
+      naturalStrikeFlat: skill.naturalStrikeFlat || (isBasic ? { min: 1, max: 2 } : null),
+      minDamage: minDmg,
+      maxDamage: maxDmg,
       baseDamage: skill.baseDamage != null ? Number(skill.baseDamage) : null,
       scaling: skill.scaling || null,
       precision: skill.precision != null ? Number(skill.precision)
         : (skill.basePrecision != null ? Number(skill.basePrecision) : null),
       coefficientFixed: !!skill.coefficientFixed,
-      useDirectScaling: !!(skill.baseDamage != null || skill.coefficientFixed || (skill.scaling && skill.scaling.length)),
+      useDirectScaling: weaponFirst ? false : !!(skill.baseDamage != null || skill.coefficientFixed || (skill.scaling && skill.scaling.length)),
+      useWeaponFirst: weaponFirst && !isUtil,
       hits: Math.max(0, Number(skill.hits) || 0),
       hitCount: Math.max(0, Number(skill.hits) || 0),
       aspect: aspect,
@@ -324,8 +348,6 @@
       target: String(skill.target || 'Enemy').toLowerCase() === 'self' ? 'self' : 'enemy',
       noDamage: isUtil,
       riders: riders,
-      coefficientFixed: !!skill.coefficientFixed,
-      useDirectScaling: !!(skill.baseDamage != null || (Array.isArray(skill.scaling) && skill.scaling.length)),
     };
     row.tags = buildTags(skill, item, row);
     if (skill.source === 'Combination') row.tags.push('Combination');
@@ -395,26 +417,76 @@
     return !!(item && item.slot === 'Weapon');
   }
 
+  function entityClassId(entity) {
+    var cls = entity && (entity.class || entity.className || entity.birdClass);
+    if (!cls && entity && entity.birdKey && typeof Avian.getBirdV2 === 'function') {
+      var bird = Avian.getBirdV2(entity.birdKey);
+      cls = bird && bird.class;
+    }
+    if (!cls && entity && entity.key && typeof Avian.getBirdV2 === 'function') {
+      var bird2 = Avian.getBirdV2(entity.key);
+      cls = bird2 && bird2.class;
+    }
+    return String(cls || '').toLowerCase();
+  }
+
+  function usesTailWandBasic(entity, basicCfg) {
+    var cls = entityClassId(entity);
+    var list = (basicCfg && basicCfg.tailWandClasses) || ['mage', 'siren'];
+    for (var i = 0; i < list.length; i++) {
+      if (String(list[i]).toLowerCase() === cls) return true;
+    }
+    return false;
+  }
+
+  function basicDisplayName(entity, basicCfg, magic) {
+    if (usesTailWandBasic(entity, basicCfg) || magic) {
+      if (usesTailWandBasic(entity, basicCfg)) return basicCfg.tailWandName || 'Tail Wand';
+    }
+    return basicCfg.beakJabName || basicCfg.naturalStrikeName || 'Beak Jab';
+  }
+
   ns.resolveBasicAttack = function resolveBasicAttack(entity) {
     var cfg = combatConfig();
     var basicCfg = cfg && cfg.basicAttack ? cfg.basicAttack : {};
+    var tailWand = usesTailWandBasic(entity, basicCfg);
     var main = equippedItem(entity, 'mainHand');
     if (!main || !isWeaponItem(main)) {
-      var physId = basicCfg.physicalId || 'BASIC_PHYSICAL';
-      var row = ns.skillToAbilityRow(physId, null, 'grey');
-      if (!row) return null;
-      return abilityFromRow(row, {
+      var bareId = tailWand
+        ? (basicCfg.magicId || 'BASIC_MAGIC')
+        : (basicCfg.physicalId || 'BASIC_PHYSICAL');
+      var bareRow = ns.skillToAbilityRow(bareId, null, 'grey');
+      if (!bareRow) return null;
+      bareRow.heavyAccuracyPenalty = 0;
+      if (tailWand) {
+        bareRow.damageType = 'Magic';
+        bareRow.scaleStat = 'Focus';
+        bareRow.damageStat = 'Focus';
+        bareRow.scalingStat = 'Focus';
+      }
+      return abilityFromRow(bareRow, {
         isMainAttack: true,
         actionSource: 'basic',
-        nameOverride: basicCfg.naturalStrikeName || 'Natural Strike',
+        nameOverride: basicDisplayName(entity, basicCfg, tailWand),
       });
     }
     var mainSkill = getSkill(main.skill1);
-    var magic = mainSkill && String(mainSkill.damageType).toLowerCase() === 'magic';
+    var magic = tailWand || (mainSkill && String(mainSkill.damageType).toLowerCase() === 'magic');
     var basicId = magic ? (basicCfg.magicId || 'BASIC_MAGIC') : (basicCfg.physicalId || 'BASIC_PHYSICAL');
     var basicRow = ns.skillToAbilityRow(basicId, main, normalizeRarity(main.rarity));
     if (!basicRow) return null;
-    return abilityFromRow(basicRow, { isMainAttack: true, actionSource: 'basic' });
+    basicRow.heavyAccuracyPenalty = 0;
+    if (tailWand) {
+      basicRow.damageType = 'Magic';
+      basicRow.scaleStat = 'Focus';
+      basicRow.damageStat = 'Focus';
+      basicRow.scalingStat = 'Focus';
+    }
+    return abilityFromRow(basicRow, {
+      isMainAttack: true,
+      actionSource: 'basic',
+      nameOverride: basicDisplayName(entity, basicCfg, magic),
+    });
   };
 
   ns.resolveWeaponSkills = function resolveWeaponSkills(entity) {

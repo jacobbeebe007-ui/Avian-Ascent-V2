@@ -20,18 +20,20 @@
     magicPenPct: 'magicPen',
   };
 
-  /* Core item mods: v0.7 hybrid flat + percentage. Pct values stored as percent numbers. */
+  /* Core item mods: v0.9 flat-only. hpFlat is Vitality (not Max HP). */
   var CORE_PCT_TO_LEDGER = {
-    hpPct: 'hp',
+    hpPct: 'vitality',
     atkPct: 'atk',
+    dexPct: 'dex',
     defPct: 'def',
     matkPct: 'matk',
     mdefPct: 'mdef',
     spdPct: 'spd',
   };
   var CORE_FLAT_TO_LEDGER = {
-    hpFlat: 'hp',
+    hpFlat: 'vitality',
     atkFlat: 'atk',
+    dexFlat: 'dex',
     defFlat: 'def',
     matkFlat: 'matk',
     mdefFlat: 'mdef',
@@ -489,73 +491,91 @@
     player._equipmentMechanics = eqRoll.mechanics;
     var fromEquipment = Object.assign({}, eqRoll.stats);
     var cfg = combatConfig();
-    var useProg = !!(cfg && cfg.affinityArsenalV06 && Avian.birdProgression
+    var useProg = !!(cfg && (cfg.weaponFirstV09 || cfg.affinityArsenalV06) && Avian.birdProgression
       && typeof Avian.birdProgression.computeFinalStats === 'function');
 
     if (useProg) {
       var className = getPlayerClassId(player) || player.class || 'rogue';
       var level = Math.max(1, Number(player.level) || Number(player.birdLevel) || 1);
-      var totalStars = Math.max(0, Number(player.totalStars) || Number(player.stars) || Number(player.cardStars) || 0);
-      var tier = player.progressionTier || player.cardTier || player.equipmentTier || 'grey';
-      /* Core equipment: flat after tier, then % (R-PROG-005). Chance/pen flats stay on eqRoll.stats. */
-      var developedBase = {
-        hp: (Number(base.maxHp) || Number(base.hp) || 0)
-          + (Number(fromLevel.maxHp) || 0) + (Number(fromUpgrades.maxHp) || 0)
-          + (Number(fromCardTier.maxHp) || 0),
-        atk: (Number(base.atk) || 0) + (Number(fromLevel.atk) || 0) + (Number(fromUpgrades.atk) || 0)
-          + (Number(fromCardTier.atk) || 0),
-        def: (Number(base.def) || 0) + (Number(fromLevel.def) || 0) + (Number(fromUpgrades.def) || 0)
-          + (Number(fromCardTier.def) || 0),
-        matk: (Number(base.matk) || 0) + (Number(fromLevel.matk) || 0) + (Number(fromUpgrades.matk) || 0)
-          + (Number(fromCardTier.matk) || 0),
-        mdef: (Number(base.mdef) || 0) + (Number(fromLevel.mdef) || 0) + (Number(fromUpgrades.mdef) || 0)
-          + (Number(fromCardTier.mdef) || 0),
-        spd: (Number(base.spd) || 0) + (Number(fromLevel.spd) || 0) + (Number(fromUpgrades.spd) || 0)
-          + (Number(fromCardTier.spd) || 0),
-      };
+      var gp = Avian.data && Avian.data.featherGrowthProfiles;
+      var cardTier = player.progressionTier || player.cardTier || player._birdCardTier
+        || (typeof globalThis.getBirdCardTier === 'function' && player.birdKey
+          ? globalThis.getBirdCardTier(player.birdKey) : null)
+        || player.equipmentTier || 'grey';
+      var cardStars = player.cardStars != null ? player.cardStars
+        : (player._birdCardStars != null ? player._birdCardStars
+          : (typeof globalThis.getBirdCardStars === 'function' && player.birdKey
+            ? globalThis.getBirdCardStars(player.birdKey) : 0));
+      var totalStars = Number(player.totalStars);
+      if (!Number.isFinite(totalStars) || totalStars < 0) {
+        totalStars = gp && typeof gp.getTotalFeatherStars === 'function'
+          ? gp.getTotalFeatherStars(cardTier, cardStars)
+          : Math.max(0, Number(player.stars) || Number(cardStars) || 0);
+      }
+      player.totalStars = totalStars;
+      player.progressionTier = cardTier;
+      var tier = cardTier;
+      var baseHealth = Number(player.baseHealth) || Number(base.baseHealth)
+        || Number(player._speciesBaseHealth) || 0;
+      if (!(baseHealth > 0)) {
+        /* Species row may live on birdsV2. */
+        var bk = player.birdKey;
+        var b2 = Avian.data && Avian.data.birdsV2 && bk ? Avian.data.birdsV2[bk] : null;
+        if (b2 && b2.baseHealth != null) baseHealth = Number(b2.baseHealth) || 0;
+      }
       var equipmentFlat = {
-        hp: Number(eqRoll.stats.hp) || 0,
+        vitality: Number(eqRoll.stats.vitality) || Number(eqRoll.stats.hp) || 0,
         atk: Number(eqRoll.stats.atk) || 0,
+        dex: Number(eqRoll.stats.dex) || 0,
         def: Number(eqRoll.stats.def) || 0,
         matk: Number(eqRoll.stats.matk) || 0,
         mdef: Number(eqRoll.stats.mdef) || 0,
         spd: Number(eqRoll.stats.spd) || 0,
       };
-      /* Flats already folded into developedBase; pass zeros for level/star tables to avoid double-count
-       * when fromLevel already mirrors legacy growth. Prefer workbook tables when fromLevel empty. */
       var hasLegacyLevel = Object.keys(fromLevel).some(function (k) { return Number(fromLevel[k]) > 0; });
+      /* Level-up feathers live in fromLevel and replace workbook level flats.
+       * Star flats + tier mult still apply via totalStars / tier every time. */
       var result = Avian.birdProgression.computeFinalStats({
-        base: hasLegacyLevel ? developedBase : {
-          hp: (Number(base.maxHp) || Number(base.hp) || 0),
-          atk: (Number(base.atk) || 0),
-          def: (Number(base.def) || 0),
-          matk: (Number(base.matk) || 0),
-          mdef: (Number(base.mdef) || 0),
-          spd: (Number(base.spd) || 0),
+        base: {
+          vitality: (Number(base.vitality) || 0) + (Number(fromLevel.vitality) || 0) + (Number(fromUpgrades.vitality) || 0),
+          atk: (Number(base.atk) || 0) + (Number(fromLevel.atk) || 0) + (Number(fromUpgrades.atk) || 0),
+          dex: (Number(base.dex) || 0) + (Number(fromLevel.dex) || 0) + (Number(fromUpgrades.dex) || 0),
+          def: (Number(base.def) || 0) + (Number(fromLevel.def) || 0) + (Number(fromUpgrades.def) || 0),
+          matk: (Number(base.matk) || 0) + (Number(fromLevel.matk) || 0) + (Number(fromUpgrades.matk) || 0),
+          mdef: (Number(base.mdef) || 0) + (Number(fromLevel.mdef) || 0) + (Number(fromUpgrades.mdef) || 0),
+          spd: (Number(base.spd) || 0) + (Number(fromLevel.spd) || 0) + (Number(fromUpgrades.spd) || 0),
+          baseHealth: baseHealth,
         },
+        baseHealth: baseHealth,
         className: className,
         level: hasLegacyLevel ? 1 : level,
-        totalStars: hasLegacyLevel ? 0 : totalStars,
+        totalStars: totalStars,
         tier: tier,
         equipmentFlat: equipmentFlat,
-        equipmentPct: eqRoll.pct || {},
       });
       var ledger = result.ledger || {};
-      player.stats.maxHp = capTrackedStatValue('maxHp', ledger.hp || ledger.maxHp || player.stats.maxHp);
+      player.stats.vitality = ledger.vitality != null ? ledger.vitality : player.stats.vitality;
+      player.stats.maxHp = capTrackedStatValue('maxHp', ledger.maxHp || ledger.hp || player.stats.maxHp);
       player.stats.atk = capTrackedStatValue('atk', ledger.atk != null ? ledger.atk : player.stats.atk);
+      player.stats.dex = capTrackedStatValue('dex', ledger.dex != null ? ledger.dex : (player.stats.dex || 0));
       player.stats.def = capTrackedStatValue('def', ledger.def != null ? ledger.def : player.stats.def);
       player.stats.matk = capTrackedStatValue('matk', ledger.matk != null ? ledger.matk : player.stats.matk);
       player.stats.mdef = capTrackedStatValue('mdef', ledger.mdef != null ? ledger.mdef : player.stats.mdef);
       player.stats.spd = capTrackedStatValue('spd', ledger.spd != null ? ledger.spd : player.stats.spd);
-      /* Preserve chance stats from flat path (Evasion / Critical / pens). Precision is action-owned. */
-      ['dodge', 'critChance', 'armorPen', 'magicPen'].forEach(function (ck) {
+      /* Dodge from Agility; optional gear dodgePct still adds, then hard-cap 50%. */
+      var dodgeCap = (cfg.weaponFirst && cfg.weaponFirst.dodgeCapPct != null)
+        ? Number(cfg.weaponFirst.dodgeCapPct)
+        : ((cfg.evasion && cfg.evasion.totalCapPct != null) ? Number(cfg.evasion.totalCapPct) : 50);
+      var derivedDodge = ledger.dodge != null ? Number(ledger.dodge) : 0;
+      var gearDodge = (Number(fromLevel.dodge) || 0) + (Number(fromUpgrades.dodge) || 0)
+        + (Number(fromCardTier.dodge) || 0) + (Number(eqRoll.stats.dodge) || 0);
+      player.stats.dodge = Math.min(dodgeCap, derivedDodge + gearDodge);
+      ['critChance', 'armorPen', 'magicPen'].forEach(function (ck) {
         var flat = (Number(fromLevel[ck]) || 0) + (Number(fromUpgrades[ck]) || 0)
           + (Number(fromCardTier[ck]) || 0) + (Number(eqRoll.stats[ck]) || 0);
         player.stats[ck] = capTrackedStatValue(ck, (Number(base[ck]) || 0) + flat);
       });
-      /* Evasion permanent cap 20%. */
-      var evaCap = (cfg.evasion && cfg.evasion.permanentCapPct != null) ? Number(cfg.evasion.permanentCapPct) : 20;
-      if (player.stats.dodge != null) player.stats.dodge = Math.min(evaCap, Number(player.stats.dodge) || 0);
+      player.baseHealth = baseHealth;
     } else {
       for (var i = 0; i < keys.length; i++) {
         var k = keys[i];
@@ -1068,29 +1088,60 @@
     var roll = sumEquippedEquipment(entity);
     entity._equipmentMechanics = roll.mechanics;
     entity._equipmentPct = Object.assign({}, roll.pct);
-    var keys = (typeof STAT_LEDGER_TRACKED_KEYS !== 'undefined')
-      ? STAT_LEDGER_TRACKED_KEYS
-      : ['maxHp', 'atk', 'def', 'spd', 'acc', 'dodge', 'matk', 'mdef', 'critChance', 'armorPen', 'magicPen'];
+    var cfg = combatConfig();
     var prevMaxHp = Number(entity.stats.maxHp) || Number(entity.stats.hp) || 0;
-    /* Core flats + chance / pen flats.
-     * Rollup stores Vitality flat as `hp` (CORE_FLAT_TO_LEDGER.hpFlat); entity stats use `maxHp`. */
-    for (var i = 0; i < keys.length; i++) {
-      var k = keys[i];
-      var rollKey = (k === 'maxHp') ? 'hp' : k;
-      var add = Number(roll.stats[rollKey]) || 0;
-      if (!add) continue;
-      var cur = Number(entity.stats[k]) || 0;
-      entity.stats[k] = capTrackedStatValue(k, cur + add);
+    var weaponFirst = !!(cfg && cfg.weaponFirstV09 && cfg.weaponFirst && cfg.weaponFirst.enabled !== false);
+
+    if (weaponFirst && Avian.birdProgression) {
+      var baseHealth = Number(entity.baseHealth) || Number(entity.stats.baseHealth) || 0;
+      if (!(baseHealth > 0) && entity.birdKey && Avian.data && Avian.data.birdsV2) {
+        var row = Avian.data.birdsV2[entity.birdKey];
+        if (row) baseHealth = Number(row.baseHealth) || 0;
+      }
+      /* Flat-add gear onto current developed attrs (no re-tier). */
+      entity.stats.vitality = (Number(entity.stats.vitality) || 0) + (Number(roll.stats.vitality) || 0);
+      entity.stats.atk = (Number(entity.stats.atk) || 0) + (Number(roll.stats.atk) || 0);
+      entity.stats.dex = (Number(entity.stats.dex) || 0) + (Number(roll.stats.dex) || 0);
+      entity.stats.def = (Number(entity.stats.def) || 0) + (Number(roll.stats.def) || 0);
+      entity.stats.matk = (Number(entity.stats.matk) || 0) + (Number(roll.stats.matk) || 0);
+      entity.stats.mdef = (Number(entity.stats.mdef) || 0) + (Number(roll.stats.mdef) || 0);
+      entity.stats.spd = (Number(entity.stats.spd) || 0) + (Number(roll.stats.spd) || 0);
+      if (typeof Avian.birdProgression.vitalityToMaxHp === 'function') {
+        entity.stats.maxHp = Avian.birdProgression.vitalityToMaxHp(baseHealth || 1, entity.stats.vitality);
+      }
+      var dodgeCap = (cfg.weaponFirst && cfg.weaponFirst.dodgeCapPct != null)
+        ? Number(cfg.weaponFirst.dodgeCapPct) : 50;
+      var derived = typeof Avian.birdProgression.agilityToDodge === 'function'
+        ? Avian.birdProgression.agilityToDodge(entity.stats.spd) : (Number(entity.stats.spd) || 0) * 0.5;
+      entity.stats.dodge = Math.min(dodgeCap, derived + (Number(roll.stats.dodge) || 0));
+      ['critChance', 'armorPen', 'magicPen'].forEach(function (ck) {
+        var add = Number(roll.stats[ck]) || 0;
+        if (add) entity.stats[ck] = capTrackedStatValue(ck, (Number(entity.stats[ck]) || 0) + add);
+      });
+      entity.baseHealth = baseHealth;
+    } else {
+      var keys = (typeof STAT_LEDGER_TRACKED_KEYS !== 'undefined')
+        ? STAT_LEDGER_TRACKED_KEYS
+        : ['maxHp', 'atk', 'def', 'spd', 'acc', 'dodge', 'matk', 'mdef', 'critChance', 'armorPen', 'magicPen'];
+      /* Legacy path: rollup may store Vitality flat as `hp` or `vitality`; entity uses `maxHp`. */
+      for (var i = 0; i < keys.length; i++) {
+        var k = keys[i];
+        var rollKey = (k === 'maxHp') ? 'hp' : k;
+        var add = Number(roll.stats[rollKey]) || 0;
+        if (k === 'maxHp' && !add) add = Number(roll.stats.vitality) || 0;
+        if (!add) continue;
+        var cur = Number(entity.stats[k]) || 0;
+        entity.stats[k] = capTrackedStatValue(k, cur + add);
+      }
+      var coreMap = { hp: 'maxHp', atk: 'atk', def: 'def', matk: 'matk', mdef: 'mdef', spd: 'spd' };
+      Object.keys(coreMap).forEach(function (pctKey) {
+        var frac = Number(roll.pct[pctKey]) || 0;
+        if (!frac) return;
+        var sk = coreMap[pctKey];
+        var base = Number(entity.stats[sk]) || 0;
+        entity.stats[sk] = capTrackedStatValue(sk, Math.round(base * (1 + frac)));
+      });
     }
-    /* Core percentage mods on current developed stats */
-    var coreMap = { hp: 'maxHp', atk: 'atk', def: 'def', matk: 'matk', mdef: 'mdef', spd: 'spd' };
-    Object.keys(coreMap).forEach(function (pctKey) {
-      var frac = Number(roll.pct[pctKey]) || 0;
-      if (!frac) return;
-      var sk = coreMap[pctKey];
-      var base = Number(entity.stats[sk]) || 0;
-      entity.stats[sk] = capTrackedStatValue(sk, Math.round(base * (1 + frac)));
-    });
     if (entity.stats.maxHp != null) {
       var nextMax = Number(entity.stats.maxHp) || 0;
       var delta = nextMax - prevMaxHp;

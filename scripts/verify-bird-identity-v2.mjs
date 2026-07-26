@@ -117,7 +117,12 @@ for (const key of keys) {
 const duke = birdsV2.dukeBlakiston;
 if (!duke?.bossOverride) failures.push('dukeBlakiston: bossOverride missing');
 if (duke) {
-  const expected = { hp: 102, maxHp: 102, atk: 4, def: 12, matk: 21, mdef: 14, spd: 16, dodge: 7, acc: 0, critChance: 10 };
+  /* v0.9: baseHealth 20 × (1 + vitality 5 × 0.05) → maxHp 25; Agility 2 → Dodge 1. */
+  const expected = {
+    hp: 25, maxHp: 25, atk: 4, dex: 2, def: 4, matk: 12, mdef: 5, spd: 2, dodge: 1, acc: 0, critChance: 10,
+  };
+  if (Number(duke.baseHealth) !== 20) failures.push(`dukeBlakiston: baseHealth=${duke.baseHealth} expected 20`);
+  if (Number(duke.vitality) !== 5) failures.push(`dukeBlakiston: vitality=${duke.vitality} expected 5`);
   for (const [k, v] of Object.entries(expected)) {
     if (Number(duke.stats?.[k]) !== v) failures.push(`dukeBlakiston: stats.${k}=${duke.stats?.[k]} expected ${v}`);
   }

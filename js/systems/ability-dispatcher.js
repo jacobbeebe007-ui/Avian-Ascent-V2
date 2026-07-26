@@ -89,6 +89,10 @@
 
   function computeRawHitDamage(row, stats) {
     if (row.noDamage) return 0;
+    if (typeof globalThis.weaponFirstEnabled === 'function' && globalThis.weaponFirstEnabled()
+      && typeof globalThis.usesWeaponFirst === 'function' && globalThis.usesWeaponFirst(row)) {
+      return 0;
+    }
     if (typeof globalThis.computeAbilityRawDamage === 'function') {
       return globalThis.computeAbilityRawDamage(row, stats || (globalThis.G && G.player && G.player.stats) || {});
     }
@@ -374,6 +378,15 @@
     recomputeDispatcherDisplays(ps);
   }
 
+  function effectTiersFlatStat() {
+    var tiers = Avian.data && Avian.data.effectTiers;
+    if (tiers && tiers.flatStat) return true;
+    var cfg = Avian.data && Avian.data.combatConfig && Avian.data.combatConfig.effectTiers;
+    return !!(cfg && cfg.flatStat);
+  }
+
+  var FLAT_CORE_STATS = { atk: 1, matk: 1, def: 1, mdef: 1, spd: 1, dex: 1, vitality: 1, hp: 1 };
+
   function applyDispatcherStatLoan(ps, player, statKey, sourceId, value) {
     if (typeof globalThis.applySourceStatLoan === 'function') {
       return globalThis.applySourceStatLoan(ps, player, '_dispatcherStatLoans', statKey, String(sourceId || 'unknown') + ':' + statKey, value, 1);
@@ -388,6 +401,24 @@
       return globalThis.applySourceStatLoanPct(ps, player, '_dispatcherStatLoans', statKey, String(sourceId || 'unknown') + ':' + statKey, pct, 1);
     }
     return applyDispatcherStatLoan(ps, player, statKey, sourceId, pct);
+  }
+
+  /** Core flat tiers use flat loans; chance stats stay percentage. */
+  function applyDispatcherCoreLoan(ps, player, statKey, sourceId, value) {
+    if (effectTiersFlatStat() && FLAT_CORE_STATS[statKey]) {
+      return applyDispatcherStatLoan(ps, player, statKey, sourceId, value);
+    }
+    return applyDispatcherStatLoanPct(ps, player, statKey, sourceId, value);
+  }
+
+  function debuffOpponentCore(side, statKey, value, sourceId) {
+    if (effectTiersFlatStat() && FLAT_CORE_STATS[statKey]) {
+      if (side === 'enemy') applyPlayerFlatDebuff(statKey, value, sourceId);
+      else applyEnemyFlatDebuff(statKey, value, sourceId);
+      return;
+    }
+    if (side === 'enemy') applyPlayerStatDebuff(statKey, value, sourceId);
+    else applyEnemyStatDebuff(statKey, value, sourceId);
   }
 
   function applyGuardedFromRow(row, riderValue, ab, side) {
@@ -483,43 +514,26 @@
       if (shouldLoanDisplayStat && statKey) applyDispatcherStatLoan(ps, entity, statKey, sourceId + ':' + kind, value);
       spawnTrendFloat(floatSide, 'buff');
     }
+    function applyCoreBuff(ps, p, kind, statKey, n) {
+      applyDispatcherDisplaySlot(ps, sourceId, kind, n);
+      applyDispatcherCoreLoan(ps, p, statKey, sourceId, n);
+      spawnTrendFloat(floatSide, 'buff');
+    }
     return {
       gainDodge: function (n, ps, p) { applyDisplayOrStat(ps, p, 'gainDodge', 'dodge', n); },
       gainAccFlat: function (n, ps, p) { applyDisplayOrStat(ps, p, 'gainAcc', 'acc', n); },
       gainDodgeFlat: function (n, ps, p) { applyDisplayOrStat(ps, p, 'gainDodge', 'dodge', n); },
       gainAcc: function (n, ps, p) { applyDisplayOrStat(ps, p, 'gainAcc', 'acc', n); },
-      gainSpeed: function (n, ps, p) {
-        applyDispatcherDisplaySlot(ps, sourceId, 'gainSpeed', n);
-        applyDispatcherStatLoanPct(ps, p, 'spd', sourceId, n);
-        spawnTrendFloat(floatSide, 'buff');
-      },
+      gainSpeed: function (n, ps, p) { applyCoreBuff(ps, p, 'gainSpeed', 'spd', n); },
       gainCritChance: function (n, ps, p) { applyDisplayOrStat(ps, p, 'gainCritChance', 'critChance', n); },
       gainCritDamage: function (n, ps) { applyDispatcherDisplaySlot(ps, sourceId, 'gainCritDamage', n); spawnTrendFloat(floatSide, 'buff'); },
-      gainAtk: function (n, ps, p) {
-        applyDispatcherDisplaySlot(ps, sourceId, 'gainAtk', n);
-        applyDispatcherStatLoanPct(ps, p, 'atk', sourceId, n);
-        spawnTrendFloat(floatSide, 'buff');
-      },
-      gainMatk: function (n, ps, p) {
-        applyDispatcherDisplaySlot(ps, sourceId, 'gainMatk', n);
-        applyDispatcherStatLoanPct(ps, p, 'matk', sourceId, n);
-        spawnTrendFloat(floatSide, 'buff');
-      },
-      gainDef: function (n, ps, p) {
-        applyDispatcherDisplaySlot(ps, sourceId, 'gainDef', n);
-        applyDispatcherStatLoanPct(ps, p, 'def', sourceId, n);
-        spawnTrendFloat(floatSide, 'buff');
-      },
-      gainMdef: function (n, ps, p) {
-        applyDispatcherDisplaySlot(ps, sourceId, 'gainMdef', n);
-        applyDispatcherStatLoanPct(ps, p, 'mdef', sourceId, n);
-        spawnTrendFloat(floatSide, 'buff');
-      },
+      gainAtk: function (n, ps, p) { applyCoreBuff(ps, p, 'gainAtk', 'atk', n); },
+      gainMatk: function (n, ps, p) { applyCoreBuff(ps, p, 'gainMatk', 'matk', n); },
+      gainDef: function (n, ps, p) { applyCoreBuff(ps, p, 'gainDef', 'def', n); },
+      gainMdef: function (n, ps, p) { applyCoreBuff(ps, p, 'gainMdef', 'mdef', n); },
       gainGuard: function (n, ps, p) {
-        var pct = Number(n) || 8;
-        applyDispatcherDisplaySlot(ps, sourceId, 'gainDef', pct);
-        applyDispatcherStatLoanPct(ps, p, 'def', sourceId, pct);
-        spawnTrendFloat(floatSide, 'buff');
+        var amt = Number(n) || (effectTiersFlatStat() ? 4 : 8);
+        applyCoreBuff(ps, p, 'gainDef', 'def', amt);
       },
       gainGuarded: function (n) { applyGuardedFromRow(row, n, ab, side); },
       gainBrace: function (n) { applyGuardedFromRow(row, n, ab, side); },
@@ -551,12 +565,12 @@
       gainTaunt: function (_n, ps) { ps.dispatcherTaunt = 1; ps.dispatcherTauntT = 1; spawnTrendFloat(floatSide, 'buff'); },
       reduceEnemyDodge: function (n) { debuffOpponentStat('dodge', n); },
       reduceEnemyAcc: function (n) { debuffOpponentStat('acc', n); },
-      reduceEnemyAtk: function (n) { debuffOpponentStat('atk', n); },
-      reduceEnemyMatk: function (n) { debuffOpponentStat('matk', n); },
-      reduceEnemySpd: function (n) { debuffOpponentStat('spd', n); },
+      reduceEnemyAtk: function (n) { debuffOpponentCore(side, 'atk', n, sourceId); },
+      reduceEnemyMatk: function (n) { debuffOpponentCore(side, 'matk', n, sourceId); },
+      reduceEnemySpd: function (n) { debuffOpponentCore(side, 'spd', n, sourceId); },
       reduceEnemyCrit: function (n) { debuffOpponentStat('critChance', n); },
-      reduceEnemyDef: function (n) { debuffOpponentStat('def', n); },
-      reduceEnemyMdef: function (n) { debuffOpponentStat('mdef', n); },
+      reduceEnemyDef: function (n) { debuffOpponentCore(side, 'def', n, sourceId); },
+      reduceEnemyMdef: function (n) { debuffOpponentCore(side, 'mdef', n, sourceId); },
       gainMagicAilmentChance: function (n, ps) {
         ps.magicAilmentChanceBuff = Math.max(ps.magicAilmentChanceBuff || 0, Number(n) || 0);
         spawnTrendFloat(floatSide, 'buff');

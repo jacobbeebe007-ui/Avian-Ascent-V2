@@ -55,6 +55,8 @@
     if (birdDef.stats.critChance != null && stats.critChance == null) {
       stats.critChance = birdDef.stats.critChance;
     }
+    if (birdDef.vitality != null && stats.vitality == null) stats.vitality = birdDef.vitality;
+    if (birdDef.baseHealth != null) stats.baseHealth = birdDef.baseHealth;
     return stats;
   };
 
@@ -64,6 +66,11 @@
     if (!v2) return bird;
 
     if (v2.stats) bird.stats = Object.assign({}, v2.stats);
+    if (v2.baseHealth != null) bird.baseHealth = v2.baseHealth;
+    if (v2.vitality != null) {
+      bird.vitality = v2.vitality;
+      if (bird.stats) bird.stats.vitality = v2.vitality;
+    }
     if (v2.aspect) bird.aspect = v2.aspect;
     if (v2.class) bird.class = v2.class;
     if (v2.critDamage != null) bird.critDamage = v2.critDamage;

@@ -6,11 +6,11 @@
   var ns = Avian.classPerks = Avian.classPerks || Object.create(null);
 
   var PERK_BY_NAME = Object.freeze({
-    'Rogue Tempo': { id: 'rogueTempo', dmgBonus: 0.10, first1EnPhysical: true, needsActingFirst: true },
-    'Bulwark Oath': { id: 'bulwarkOath', damageReduction: 0.10, aboveHalfHp: true, firstHitPerTurn: false },
+    'Rogue Tempo': { id: 'rogueTempo', dmgBonus: 0.06, basicAttackOnly: true, needsActingFirst: true },
+    'Bulwark Oath': { id: 'bulwarkOath', damageReduction: 0.06, aboveHalfHp: true, firstHitPerTurn: false },
     'Arcane Pressure': { id: 'arcanePressure', mdefPen: 0.10 },
     'Verse and Chorus': { id: 'verseAndChorus', nextMagicBonus: 0.10 },
-    'Judgement Leech': { id: 'judgementLeech', killHealPct: 0.10, onHitHealPct: 0.05, hitHealCooldown: 2 },
+    'Judgement Leech': { id: 'judgementLeech', missingEnRestorePct: 0.04, hitHealCooldown: 1 },
     'Resonant Hex': { id: 'resonantHex', debuffTurnBonus: 1, statDebuffOnly: true },
     'Cursed Call': { id: 'cursedCall', debuffTurnBonus: 1 },
     'Retaliating Hide': { id: 'retaliatingHide', nextPhysicalBonus: 0.10, afterMagicDamage: true },
@@ -59,8 +59,9 @@
         def.firstHitPerTurn = true;
       }
       if (def.id === 'judgementLeech') {
-        def.onHitHealPct = 0.05;
-        def.hitHealCooldown = 2;
+        def.missingEnRestorePct = 0.04;
+        def.hitHealCooldown = 1;
+        def.onHitHealPct = 0;
         def.killHealPct = 0;
       }
     }
@@ -163,6 +164,15 @@
     return Math.max(1, Math.min(enMax, Number(row && (row.enCost != null ? row.enCost : row.apCost) != null ? (row.enCost != null ? row.enCost : row.apCost) : (ab && (ab.energy || ab.energyCost)) || 1)));
   }
 
+  function isBasicAttack(ab) {
+    if (!ab) return false;
+    if (ab.actionSource === 'basic' || ab.isMainAttack) return true;
+    var id = String(ab.id || ab.equipmentSkillId || '');
+    if (/^BASIC_(PHYSICAL|MAGIC)$/i.test(id)) return true;
+    var name = String(ab.name || '');
+    return /^(Beak Jab|Tail Wand|Natural Strike|Basic Attack)/i.test(name);
+  }
+
   function entityActingFirst(entity) {
     var g = globalThis.G;
     if (!g || !g.player || !g.enemy || !entity) return false;
@@ -197,16 +207,25 @@
       ctx.classPerkTriggered = 'verseAndChorus';
     }
 
-    if (perk.def.id === 'judgementLeech' && isV2() && (ctx.hitsLanded || 0) > 0 && side === 'player' && enemyHasAnyDebuff()) {
+    if (perk.def.id === 'judgementLeech' && isV2() && (ctx.hitsLanded || 0) > 0 && enemyHasAnyDebuff()) {
       var cd = st.judgementLeechCd || 0;
       if (cd <= 0) {
-        var healPct = perk.def.onHitHealPct || 0.05;
-        var heal = Math.max(1, Math.floor((entity.stats.maxHp || 1) * healPct));
-        entity.stats.hp = Math.min(entity.stats.maxHp || 1, (entity.stats.hp || 0) + heal);
-        st.judgementLeechCd = perk.def.hitHealCooldown || 2;
-        if (typeof setHpBar === 'function') setHpBar(side, entity.stats.hp, entity.stats.maxHp);
-        if (typeof spawnFloat === 'function') spawnFloat(side, '+' + heal, 'fn-heal');
-        if (typeof logMsg === 'function') logMsg(perk.name + ': restored ' + heal + ' HP.', side === 'player' ? 'player-action' : 'enemy-action');
+        var enPct = perk.def.missingEnRestorePct != null ? Number(perk.def.missingEnRestorePct) : 0.04;
+        var maxEn = Number(entity.maxEnergy != null ? entity.maxEnergy : entity.stats && entity.stats.maxEn) || 6;
+        var curEn = Number(entity.energy != null ? entity.energy : entity.stats && entity.stats.en) || 0;
+        var missing = Math.max(0, maxEn - curEn);
+        var restore = Math.max(0, Math.floor(missing * enPct));
+        if (restore > 0) {
+          var nextEn = Math.min(maxEn, curEn + restore);
+          if (entity.energy != null) entity.energy = nextEn;
+          if (entity.stats && entity.stats.en != null) entity.stats.en = nextEn;
+          if (typeof spawnFloat === 'function') spawnFloat(side, '+' + restore + ' EN', 'fn-buff');
+          if (typeof logMsg === 'function') {
+            logMsg(perk.name + ': restored ' + restore + ' EN.', side === 'player' ? 'player-action' : 'enemy-action');
+          }
+          if (typeof refreshBattleUI === 'function') refreshBattleUI();
+        }
+        st.judgementLeechCd = perk.def.hitHealCooldown || 1;
       }
     }
   }
@@ -259,9 +278,9 @@
     var isPhys = abIsPhysical(ab);
     var isMag = abIsMagic(ab);
 
-    if (perk.def.id === 'rogueTempo' && !st.rogueTempoUsed && isPhys && abEnCost(ab) === 1) {
+    if (perk.def.id === 'rogueTempo' && !st.rogueTempoUsed && isBasicAttack(ab)) {
       if (!perk.def.needsActingFirst || entityActingFirst(entity)) {
-        out.push(perk.def.dmgBonus || 0.10);
+        out.push(perk.def.dmgBonus != null ? perk.def.dmgBonus : 0.06);
         st.rogueTempoUsed = true;
       }
     }
@@ -299,11 +318,11 @@
     var st = state(side) || {};
     if (isV2() && perk.def.firstHitPerTurn) {
       if (st.bulwarkOathUsed) return 1;
-      return 1 - (perk.def.damageReduction || 0.10);
+      return 1 - (perk.def.damageReduction != null ? perk.def.damageReduction : 0.06);
     }
     var hp = entity.stats.hp || 0;
     var maxHp = entity.stats.maxHp || 1;
-    if (hp > maxHp * 0.5) return 1 - (perk.def.damageReduction || 0.10);
+    if (hp > maxHp * 0.5) return 1 - (perk.def.damageReduction != null ? perk.def.damageReduction : 0.06);
     return 1;
   };
 

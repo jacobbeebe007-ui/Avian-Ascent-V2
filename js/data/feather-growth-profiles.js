@@ -12,31 +12,31 @@
 
   var CLASS_PROFILES = {
     knight: {
-      major: ['maxHp', 'def'],
+      major: ['vitality', 'def'],
       minor: ['atk', 'mdef'],
       trace: ['spd', 'dodge'],
       locked: ['acc', 'critChance', 'critMult', 'cc', 'cd', 'matk'],
     },
     rogue: {
       major: ['spd', 'dodge'],
-      minor: ['atk', 'maxHp'],
+      minor: ['atk', 'vitality'],
       trace: ['def', 'mdef'],
       locked: ['acc', 'critChance', 'critMult', 'cc', 'cd', 'matk'],
     },
     mage: {
       major: ['matk', 'mdef'],
-      minor: ['spd', 'maxHp'],
+      minor: ['spd', 'vitality'],
       trace: ['def', 'dodge'],
       locked: ['acc', 'critChance', 'critMult', 'cc', 'cd', 'atk'],
     },
     siren: {
       major: ['matk', 'spd'],
       minor: ['mdef', 'dodge'],
-      trace: ['maxHp', 'def'],
+      trace: ['vitality', 'def'],
       locked: ['acc', 'critChance', 'critMult', 'cc', 'cd', 'atk'],
     },
     inquisitor: {
-      major: ['maxHp', 'mdef'],
+      major: ['vitality', 'mdef'],
       minor: ['atk', 'matk'],
       trace: ['def', 'spd'],
       locked: ['acc', 'critChance', 'critMult', 'cc', 'cd', 'dodge'],
@@ -44,17 +44,17 @@
     bard: {
       major: ['spd', 'matk'],
       minor: ['atk', 'mdef'],
-      trace: ['maxHp', 'dodge'],
+      trace: ['vitality', 'dodge'],
       locked: ['acc', 'critChance', 'critMult', 'cc', 'cd', 'def'],
     },
     brute: {
-      major: ['maxHp', 'atk'],
+      major: ['vitality', 'atk'],
       minor: ['def', 'spd'],
       trace: ['mdef', 'dodge'],
       locked: ['acc', 'critChance', 'critMult', 'cc', 'cd', 'matk'],
     },
     duke: {
-      major: ['maxHp', 'matk'],
+      major: ['vitality', 'matk'],
       minor: ['mdef', 'def'],
       trace: ['spd', 'atk'],
       locked: ['acc', 'critChance', 'critMult', 'cc', 'cd', 'dodge'],
@@ -64,55 +64,55 @@
   /** Bird-specific overrides (class default used when absent). */
   var BIRD_OVERRIDES = {
     goose: {
-      major: ['maxHp', 'atk'],
+      major: ['vitality', 'atk'],
       minor: ['def', 'mdef'],
       trace: ['spd', 'dodge'],
       locked: ['acc', 'critChance', 'critMult', 'cc', 'cd', 'matk'],
     },
     pelican: {
-      major: ['maxHp', 'atk'],
+      major: ['vitality', 'atk'],
       minor: ['def', 'mdef'],
       trace: ['spd', 'dodge'],
       locked: ['acc', 'critChance', 'critMult', 'cc', 'cd', 'matk'],
     },
     shoebill: {
-      major: ['maxHp', 'atk'],
+      major: ['vitality', 'atk'],
       minor: ['def', 'mdef'],
       trace: ['spd', 'dodge'],
       locked: ['acc', 'critChance', 'critMult', 'cc', 'cd', 'matk'],
     },
     cassowary: {
-      major: ['maxHp', 'atk'],
+      major: ['vitality', 'atk'],
       minor: ['spd', 'def'],
       trace: ['dodge', 'mdef'],
       locked: ['acc', 'critChance', 'critMult', 'cc', 'cd', 'matk'],
     },
     emu: {
-      major: ['maxHp', 'atk'],
+      major: ['vitality', 'atk'],
       minor: ['spd', 'def'],
       trace: ['dodge', 'mdef'],
       locked: ['acc', 'critChance', 'critMult', 'cc', 'cd', 'matk'],
     },
     ostrich: {
-      major: ['maxHp', 'atk'],
+      major: ['vitality', 'atk'],
       minor: ['spd', 'def'],
       trace: ['dodge', 'mdef'],
       locked: ['acc', 'critChance', 'critMult', 'cc', 'cd', 'matk'],
     },
     peregrine: {
       major: ['spd', 'atk'],
-      minor: ['dodge', 'maxHp'],
+      minor: ['dodge', 'vitality'],
       trace: ['def', 'mdef'],
       locked: ['acc', 'critChance', 'critMult', 'cc', 'cd', 'matk'],
     },
     barnowl: {
       major: ['matk', 'mdef'],
       minor: ['spd', 'dodge'],
-      trace: ['maxHp', 'def'],
+      trace: ['vitality', 'def'],
       locked: ['acc', 'critChance', 'critMult', 'cc', 'cd', 'atk'],
     },
     swan: {
-      major: ['maxHp', 'mdef'],
+      major: ['vitality', 'mdef'],
       minor: ['matk', 'def'],
       trace: ['spd', 'dodge'],
       locked: ['acc', 'critChance', 'critMult', 'cc', 'cd', 'atk'],
@@ -121,7 +121,7 @@
 
   function normalizeStatKeyForGrowth(statKey) {
     var k = String(statKey || '').toLowerCase();
-    if (k === 'hp') return 'maxHp';
+    if (k === 'hp' || k === 'maxhp') return 'vitality';
     return k;
   }
 
@@ -194,10 +194,15 @@
   function applyFeatherGrowthToStat(baseVal, statKey, profile, totalStars) {
     var key = normalizeStatKeyForGrowth(statKey);
     var base = Math.max(0, Number(baseVal) || 0);
-    if (!base) return base;
     var bonus = getGrowthBonusForStat(key, profile, totalStars);
-    var scaled = base * (1 + bonus);
+    if (!bonus) return key === 'dodge' ? roundGrowthStat(base, 0) : (base ? roundGrowthStat(base, key === 'vitality' ? 0 : 1) : base);
+    /* Vitality may start at 0; grow from a 1-point effective base so starring still matters. */
+    var scaleBase = base;
+    if (key === 'vitality' && !(scaleBase > 0) && bonus > 0) scaleBase = 1;
+    if (!scaleBase) return base;
+    var scaled = scaleBase * (1 + bonus);
     if (key === 'dodge') return roundGrowthStat(scaled, 0);
+    if (key === 'vitality') return roundGrowthStat(scaled, 0);
     return roundGrowthStat(scaled, 1);
   }
 

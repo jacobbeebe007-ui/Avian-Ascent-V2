@@ -59,12 +59,24 @@
   function glossaryStatEntry(ledgerKey) {
     var g = Avian.data && Avian.data.displayGlossary;
     var stats = g && g.stats;
-    if (!stats) return null;
     var k = String(ledgerKey || '').toLowerCase();
-    if (k === 'maxhp' || k === 'hp') return stats.hp || null;
-    if (k === 'critmult' || k === 'critdamage') return stats.critDamage || null;
-    if (k === 'critchance') return stats.critChance || null;
-    if (stats[k]) return stats[k];
+    /* Max Health is distinct from the Vitality attribute in v0.9. */
+    if (k === 'maxhp') {
+      return (stats && stats.maxHp) || { display: 'Max Health', short: 'HP' };
+    }
+    if (k === 'vitality') {
+      return (stats && (stats.vitality || stats.hp)) || { display: 'Vitality', short: 'VIT' };
+    }
+    if (k === 'hp') {
+      /* Gear hpFlat affixes display as Vitality. */
+      return (stats && (stats.vitality || stats.hp)) || { display: 'Vitality', short: 'VIT' };
+    }
+    if (k === 'dex' || k === 'dexterity') {
+      return (stats && (stats.dex || stats.dexterity)) || { display: 'Dexterity', short: 'DEX' };
+    }
+    if (k === 'critmult' || k === 'critdamage') return (stats && stats.critDamage) || null;
+    if (k === 'critchance') return (stats && stats.critChance) || null;
+    if (stats && stats[k]) return stats[k];
     return null;
   }
 

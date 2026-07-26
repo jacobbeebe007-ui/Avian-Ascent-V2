@@ -122,10 +122,17 @@ function assertUltimate(entity, expectPresent) {
   else ok(expectPresent ? `ultimate → ${ab.id}` : 'ultimate absent without gold/orange source');
 }
 
-// unarmed → Natural Strike / BASIC_PHYSICAL
-assertBasic(player(), 'BASIC_PHYSICAL', 'Natural Strike');
+// unarmed rogue → Beak Jab / BASIC_PHYSICAL
+assertBasic(player(), 'BASIC_PHYSICAL', 'Beak Jab');
 
-// wand main → BASIC_MAGIC
+// unarmed mage → Tail Wand / BASIC_MAGIC
+assertBasic({
+  birdKey: 'barnOwl',
+  class: 'mage',
+  equipment: equipment.createEmptyLoadout(),
+}, 'BASIC_MAGIC', 'Tail Wand');
+
+// wand main → BASIC_MAGIC (Tail Wand name for mage; Beak path for rogue with magic weapon uses BASIC_MAGIC id)
 assertBasic(player({ mainHand: 'EQ-WD-GRY' }), 'BASIC_MAGIC');
 
 // matching Talon Blades → PAIR_TALON_TWIN in weaponB

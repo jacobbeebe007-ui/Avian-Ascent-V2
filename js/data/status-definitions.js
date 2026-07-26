@@ -144,8 +144,8 @@
         });
       });
     }
-    /* Identity Passive / Class Perk / Trait belong in combat-details and enemy info —
-     * not the live Ailments / Buffs & Debuffs badge strip (skill-driven statuses only). */
+    /* identityPassive / identityClassPerk / identityTrait are not battle status badges —
+     * passives & perks surface in Stats & Details / bird select only. */
     return entries;
   }
 

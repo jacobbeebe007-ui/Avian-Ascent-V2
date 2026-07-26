@@ -117,12 +117,34 @@
     };
   }
 
-  function estimateHitChance(ctx, e) {
-    var acc = Math.max(0, e && e.stats ? (Number.isFinite(Number(e.stats.acc)) ? Number(e.stats.acc) : 0) : 0);
-    var dodge = ctx.playerDodge;
+  /** Same LEG-022 formula as combat: (100 − Dodge − skillPenalty) / 100. */
+  function estimateHitChance(ctx, e, action) {
+    var dodge = Math.max(0, Number(ctx.playerDodge) || 0);
     if (ctx.playerDefending) dodge = Math.min(95, dodge + 15);
-    var hit = Math.max(0.15, Math.min(0.98, (acc - dodge * 0.65) / 100));
-    return hit;
+    var baseHit = 100;
+    var g = global.G;
+    if (g && g.enemyStatus) {
+      baseHit -= Number(g.enemyStatus.accDebuff) || 0;
+      if (g.enemyStatus.enemyBlind > 0) baseHit -= 15;
+    }
+    var penalty = 0;
+    if (action && typeof global.calculateAbilityAccuracyPenalty === 'function') {
+      var row = null;
+      if (typeof global.resolveAbilityCombatRow === 'function') {
+        var ab = null;
+        if (action.type === 'ability' && action.abilityId && e && e.abilities) {
+          ab = e.abilities.find(function (a) { return a && a.id === action.abilityId; }) || { id: action.abilityId };
+        } else if (action.ability) {
+          ab = action.ability;
+        }
+        if (ab) row = global.resolveAbilityCombatRow(ab);
+      }
+      if (row) penalty = Number(global.calculateAbilityAccuracyPenalty(row)) || 0;
+    }
+    var pct = typeof global.calculateAbilityHitChancePct === 'function'
+      ? global.calculateAbilityHitChancePct(baseHit, dodge, penalty)
+      : Math.max(15, Math.min(95, baseHit - dodge - penalty));
+    return Math.max(0.15, Math.min(0.95, pct / 100));
   }
 
   function projectedActionExpectedValue(action, e, p, ctx) {
@@ -161,7 +183,7 @@
     var def = btn === 'spell' ? ctx.playerMdef : ctx.playerDef;
     var curveK = (typeof global.DEFENCE_CURVE_VALUE === 'number') ? global.DEFENCE_CURVE_VALUE : 25;
     var mitigation = curveK / (curveK + Math.max(0, def || 0));
-    var hit = estimateHitChance(ctx, e);
+    var hit = estimateHitChance(ctx, e, action);
     var finisher = pHp < 0.4 ? 1.25 : 1;
     var preferStat = btn === 'spell'
       ? (ctx.playerMdef <= ctx.playerDef ? 1.08 : 0.92)
@@ -173,12 +195,16 @@
     var energy = Math.max(0, totalEnergy || 0);
     if (energy <= 0) return 0;
     var stage = ctx.stage || 1;
-    if (intent === 'finish' && canFinish && stage > 5) return energy;
+    /* Finish or full pool: dump available EN (within 3-action turn limit). */
+    if (intent === 'finish' && canFinish) return energy;
+    if (energy >= 6) return energy;
     var dm = ctx.diffMod || getDiffMod();
-    var minSpend = Math.max(1, Math.ceil(energy * dm.spendCapMin));
-    var maxSpend = Math.max(minSpend, Math.floor(energy * dm.spendCapMax));
-    var hardCaps = { 2: 2, 3: 2, 4: 3, 5: 3 };
-    if (hardCaps[energy]) maxSpend = Math.min(maxSpend, hardCaps[energy]);
+    var spendMinFrac = dm.spendCapMin != null ? Number(dm.spendCapMin) : 0.85;
+    var spendMaxFrac = dm.spendCapMax != null ? Number(dm.spendCapMax) : 1;
+    var minSpend = Math.max(1, Math.ceil(energy * Math.min(1, spendMinFrac)));
+    var maxSpend = Math.max(minSpend, Math.floor(energy * Math.min(1, Math.max(spendMinFrac, spendMaxFrac))));
+    /* Prefer full spend; never leave more than 1 EN stranded when pool ≥ 3. */
+    if (energy >= 3) maxSpend = energy;
     if (maxSpend < minSpend) maxSpend = minSpend;
     var spendCap = typeof global.roll === 'function' ? global.roll(minSpend, maxSpend) : maxSpend;
     return Math.max(1, Math.min(energy, spendCap));

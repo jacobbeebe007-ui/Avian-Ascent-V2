@@ -114,11 +114,12 @@ if (JSON.stringify(first) !== JSON.stringify(second)) {
   ok('seeded duel deterministic (seed=' + SEED + ')');
 }
 
+/* v0.9 weapon-first + ACC-less hit: lower HP, hits land more often. */
 const SNAPSHOT = Object.freeze({
-  turns: 4,
-  winner: 'attacker',
-  damageDealt: 86.88,
-  damageTaken: 29.16,
+  turns: 2,
+  winner: 'defender',
+  damageDealt: 6.88,
+  damageTaken: 13,
   seed: SEED,
 });
 function near(a, b, eps = 0.05) {

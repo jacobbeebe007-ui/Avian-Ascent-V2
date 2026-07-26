@@ -179,7 +179,11 @@
             effectiveDef: curved ? curved.effectiveDef : null,
             curvedBase: curved ? curved.dmg : null,
             enCost: curved ? curved.enCost : null,
-            minDamageFloor: curved ? (curved.enCost || 0) * 2 : null,
+            minDamageFloor: curved
+              ? ((curved.weaponFirst || (curved.components && curved.components.weaponFirst))
+                ? 1
+                : (curved.enCost || 0) * 2)
+              : null,
             isCrit: !!(out && out.isCrit),
             isMagic: !!isMagic,
             ability: srcAbility ? (srcAbility.id || srcAbility.name || null) : null,

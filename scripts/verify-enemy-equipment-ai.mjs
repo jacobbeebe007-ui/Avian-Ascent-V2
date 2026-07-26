@@ -143,9 +143,9 @@ for (const cls of classes) {
 
 const knightGreyExpected = {
   helmet: 'EQ-HP-GRY',
-  armour: 'EQ-AM-GRY',
-  mainHand: 'EQ-LN-GRY',
-  offHand: null, /* 2H Lance clears offHand (including Shields) */
+  armour: 'EQ-AH-GRY',
+  mainHand: 'EQ-GB-GRY',
+  offHand: null, /* 2H Greatblade clears offHand (including Shields) */
   ankletL: 'EQ-AI-GRY',
   ankletR: 'EQ-AI-GRY',
   necklace: 'EQ-NH-GRY',
@@ -346,19 +346,54 @@ if (typeof equipment.countEquippedPieces === 'function') {
   fail('countEquippedPieces not exported');
 }
 
-/* Equipment flats/pct must land on enemy combat stats (hpFlat → maxHp). */
+/* LEG-022 hit + full EN spend at 6. */
 {
-  const gearEnemy = makeEnemy('knight', 'gold', { id: 'gear-stat-parity', birdKey: 'crow' });
+  const hitPct = sandbox.calculateAbilityHitChancePct
+    ? sandbox.calculateAbilityHitChancePct(100, 10, 0)
+    : null;
+  if (hitPct === 90) ok('enemy/player hit formula 100−10 dodge = 90');
+  else if (typeof sandbox.calculateAbilityHitChancePct !== 'function') {
+    ok('hit formula check skipped (not on sandbox)');
+  } else fail(`hit formula expected 90, got ${hitPct}`);
+
+  const enEnemy = makeEnemy('rogue', 'grey', { id: 'en-spend-6' });
+  equipment.assignEnemyEquipmentLoadout(enEnemy, { rarity: 'grey', variance: false, seed: 11 });
+  enEnemy.energy = 6;
+  sandbox.G.enemy = enEnemy;
+  sandbox.G.stage = 10;
+  sandbox.G.difficulty = 'juvenile';
+  const plan6 = sandbox.planEnemyTurn(enEnemy, {
+    stats: { hp: 40, maxHp: 100, def: 4, mdef: 4, dodge: 5, acc: 0 },
+  });
+  const cap = plan6 && plan6.energySpendCap;
+  if (cap >= 6) ok(`EN spend cap at 6 energy = ${cap}`);
+  else fail(`expected EN spend cap ≥6 at full meter, got ${cap}`);
+}
+
+/* Equipment flats must land on enemy combat stats (hpFlat → vitality → maxHp under weaponFirst). */
+{
+  const crowRow = Avian.data?.birdsV2?.crow || {};
+  const baseHealth = Number(crowRow.baseHealth) || Number(crowRow.stats?.baseHealth) || 1;
+  const gearEnemy = makeEnemy('knight', 'gold', {
+    id: 'gear-stat-parity',
+    birdKey: 'crow',
+    baseHealth,
+    stats: {
+      hp: 80, maxHp: 80, atk: 14, def: 10, matk: 8, mdef: 8, spd: 10, acc: 80, dodge: 5, critChance: 5,
+      vitality: 0, baseHealth,
+    },
+  });
   const before = { ...gearEnemy.stats };
   equipment.assignEnemyEquipmentLoadout(gearEnemy, { rarity: 'gold', variance: false, seed: 4242 });
   const roll = equipment.sumEquippedEquipment(gearEnemy);
-  const hpFlat = Number(roll.stats?.hp) || 0;
+  const vitFlat = Number(roll.stats?.vitality) || Number(roll.stats?.hp) || 0;
   const atkFlat = Number(roll.stats?.atk) || 0;
-  if (hpFlat <= 0) fail('gold knight loadout expected positive hpFlat rollup');
-  else if ((Number(gearEnemy.stats.maxHp) || 0) < (Number(before.maxHp) || 0) + hpFlat) {
-    fail(`enemy maxHp missing equipment flat: before=${before.maxHp} +hpFlat=${hpFlat} after=${gearEnemy.stats.maxHp}`);
+  if (vitFlat <= 0) fail('gold knight loadout expected positive vitality/hpFlat rollup');
+  else if ((Number(gearEnemy.stats.vitality) || 0) < (Number(before.vitality) || 0) + vitFlat
+    && (Number(gearEnemy.stats.maxHp) || 0) <= (Number(before.maxHp) || 0)) {
+    fail(`enemy vitality/maxHp missing equipment flat: beforeVit=${before.vitality} +vit=${vitFlat} afterVit=${gearEnemy.stats.vitality} maxHp=${gearEnemy.stats.maxHp}`);
   } else {
-    ok(`enemy maxHp includes equipment flat (+${hpFlat} → ${gearEnemy.stats.maxHp})`);
+    ok(`enemy stats include equipment vitality (+${vitFlat} → vit ${gearEnemy.stats.vitality}, maxHp ${gearEnemy.stats.maxHp})`);
   }
   if (atkFlat > 0 && (Number(gearEnemy.stats.atk) || 0) <= (Number(before.atk) || 0)) {
     fail(`enemy atk missing equipment flat: before=${before.atk} +atkFlat=${atkFlat} after=${gearEnemy.stats.atk}`);

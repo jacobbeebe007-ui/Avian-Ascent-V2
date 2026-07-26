@@ -249,7 +249,7 @@ if (!classCheck.ok && classCheck.reason === 'class_restricted') {
   fail(`expected class_restricted for knight + wand, got ${JSON.stringify(classCheck)}`);
 }
 
-// --- dual-wield stacks Might flat (Grey talon is flat-only in v0.7) ---
+// --- dual-wield stacks Dexterity flat (Grey talon is Dex flat-only in v0.9) ---
 const atkPlayer = freshPlayer('sparrow');
 equipment.addToInventory(atkPlayer, 'EQ-TB-GRY');
 equipment.addToInventory(atkPlayer, 'EQ-TB-GRY');
@@ -257,16 +257,12 @@ equipment.equip(atkPlayer, 'EQ-TB-GRY', 'mainHand');
 equipment.equip(atkPlayer, 'EQ-TB-GRY', 'offHand');
 equipment.reapplyPlayerStatsFromSources(atkPlayer);
 const roll = equipment.rollupEquipmentStats(atkPlayer);
-const atkFlat = Number(roll.stats && roll.stats.atk) || 0;
-const expectedFlat = (Number(items['EQ-TB-GRY'].stats.atkFlat) || 0) * 2;
-const atkPct = Number(roll.pct && roll.pct.atk) || 0;
-const expectedPct = ((items['EQ-TB-GRY'].stats.atkPct || 0) * 2) / 100;
-if (Math.abs(atkFlat - expectedFlat) < 1e-6) {
-  ok(`dual-wield stacks Might flat (${atkFlat} from two blades)`);
-} else if (expectedPct > 0 && Math.abs(atkPct - expectedPct) < 1e-6) {
-  ok(`dual-wield stacks Might % (${(atkPct * 100).toFixed(2)}% from two blades)`);
+const dexFlat = Number(roll.stats && roll.stats.dex) || 0;
+const expectedFlat = (Number(items['EQ-TB-GRY'].stats.dexFlat) || 0) * 2;
+if (Math.abs(dexFlat - expectedFlat) < 1e-6 && expectedFlat > 0) {
+  ok(`dual-wield stacks Dexterity flat (${dexFlat} from two blades)`);
 } else {
-  fail(`expected equipment atk flat ${expectedFlat} or pct ${expectedPct}, got flat=${atkFlat} pct=${atkPct}`);
+  fail(`expected equipment dex flat ${expectedFlat}, got flat=${dexFlat}`);
 }
 
 // --- unequip returns to inventory ---

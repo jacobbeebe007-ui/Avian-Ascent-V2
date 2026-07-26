@@ -56,6 +56,15 @@
     return Number(b[String(tier || 'minor').toLowerCase()]) || 10;
   }
 
+  function effectTiersFlatStat() {
+    var buckets = Avian.data && Avian.data.effectTiers;
+    if (buckets && buckets.flatStat) return true;
+    var cfg = Avian.data && Avian.data.combatConfig && Avian.data.combatConfig.effectTiers;
+    return !!(cfg && cfg.flatStat);
+  }
+
+  var FLAT_CORE_STATS = { atk: 1, matk: 1, def: 1, mdef: 1, spd: 1, dex: 1, vitality: 1, hp: 1 };
+
   function passiveFor(birdKey) {
     if (isV2() && typeof Avian.getBirdPassiveV2 === 'function') {
       var p2 = Avian.getBirdPassiveV2(birdKey);
@@ -383,7 +392,7 @@
     if (!ab) return false;
     var id = String(ab.id || '').toLowerCase();
     var name = String(ab.name || '').toLowerCase();
-    return /basic|natural.?strike|BASIC_PHYSICAL|BASIC_MAGIC/i.test(id + ' ' + name);
+    return /basic|natural.?strike|beak.?jab|tail.?wand|BASIC_PHYSICAL|BASIC_MAGIC/i.test(id + ' ' + name);
   }
 
   function abilityIsMartial(ab) {
@@ -448,7 +457,11 @@
     }
     var loanKey = stat;
     if (loanKey === 'critchance') loanKey = 'critChance';
-    if (typeof globalThis.applySourceStatLoanPct === 'function' && targetEntity) {
+    if (!targetEntity) return;
+    var useFlat = effectTiersFlatStat() && FLAT_CORE_STATS[loanKey];
+    if (useFlat && typeof globalThis.applySourceStatLoan === 'function') {
+      applySourceStatLoan(targetStatus, targetEntity, '_passiveStatLoans', loanKey, slotId, pct, turns);
+    } else if (typeof globalThis.applySourceStatLoanPct === 'function') {
       applySourceStatLoanPct(targetStatus, targetEntity, '_passiveStatLoans', loanKey, slotId, pct, turns);
     }
   }
