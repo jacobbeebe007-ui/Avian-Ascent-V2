@@ -347,7 +347,7 @@ function upgradeEligibleForRewardPick(card, usedIds){
 function getUpgradePool(){ return UPGRADE_CARDS_REWORK.slice(); }
 
 // ---- Stat ledger: bird baseline vs level-up feathers vs card upgrades (Nest + combat tooltips) ----
-const STAT_LEDGER_TRACKED_KEYS = ['maxHp','atk','def','spd','acc','dodge','matk','mdef','critChance','armorPen','magicPen'];
+const STAT_LEDGER_TRACKED_KEYS = ['maxHp','vitality','atk','dex','def','spd','acc','dodge','matk','mdef','critChance','armorPen','magicPen'];
 function ledgerStatLabel(statKey, { short=false }={}){
   const raw=String(statKey||'');
   const isPct=/Pct$/i.test(raw);
@@ -371,7 +371,7 @@ function ledgerStatLabel(statKey, { short=false }={}){
     }
   }
   const fallback={
-    maxHp:'Vitality (max)',atk:'Might',def:'Guard',spd:'Agility',acc:'Precision',dodge:'Evasion',
+    maxHp:'Max Health',vitality:'Vitality',atk:'Might',dex:'Dexterity',def:'Guard',spd:'Agility',acc:'Precision',dodge:'Dodge',
     matk:'Focus',mdef:'Resolve',critChance:'Critical',critMult:'Ferocity',
     armorPen:'Martial Penetration',magicPen:'Magic Penetration',
     physDamagePct:'Martial Damage',magicDamagePct:'Magic Damage',aspectDamagePct:'Affinity Damage',
@@ -552,7 +552,13 @@ function capPctStatValue(statKey, value) {
   if (statKey === 'armorPen' || statKey === 'magicPen') return Math.max(0, Math.min(95, v));
   return Math.max(0, v);
 }
-function dodgeBonusFromSpeed(_spd) {
+function dodgeBonusFromSpeed(spd) {
+  const cfg = (typeof Avian !== 'undefined' && Avian.data && Avian.data.combatConfig) || null;
+  if (cfg && cfg.weaponFirst && cfg.weaponFirst.enabled !== false) {
+    const per = cfg.weaponFirst.agilityDodgePctPerPoint != null ? Number(cfg.weaponFirst.agilityDodgePctPerPoint) : 0.5;
+    const cap = cfg.weaponFirst.dodgeCapPct != null ? Number(cfg.weaponFirst.dodgeCapPct) : 50;
+    return Math.min(cap, Math.max(0, (Number(spd) || 0) * per));
+  }
   return 0;
 }
 globalThis.dodgeBonusFromSpeed = dodgeBonusFromSpeed;
@@ -11304,8 +11310,12 @@ function enemyScaleFactor(base, stage, diffMult){
     : buildScaledEnemy(base,stage,opts);
 }
 
-// Physical dodge: base stat + active buff bonuses + card bonus (capped +5)
+// Dodge: derived Agility×0.5% (stored on stats.dodge) + temporary bonuses; hard-capped at 50%.
 function getEffectiveDodge(p) {
+  const cfg = (typeof Avian !== 'undefined' && Avian.data && Avian.data.combatConfig) || null;
+  const cap = (cfg && cfg.weaponFirst && cfg.weaponFirst.dodgeCapPct != null)
+    ? Number(cfg.weaponFirst.dodgeCapPct)
+    : ((cfg && cfg.evasion && cfg.evasion.totalCapPct != null) ? Number(cfg.evasion.totalCapPct) : 50);
   const cardBonus = Math.min(5, p.cardDodge || 0);
   const buffBonus = (G.playerStatus.humDodge&&G.playerStatus.humDodge.turns>0 ? G.playerStatus.humDodge.bonus : 0)
     + (G.playerStatus.battleHymnDodge&&G.playerStatus.battleHymnDodge.turns>0 ? G.playerStatus.battleHymnDodge.bonus : 0)
@@ -11315,7 +11325,7 @@ function getEffectiveDodge(p) {
   dodge += (G.playerStatus.passiveDodge || 0);
   dodge -= getWeakenDodgePenalty(getWeakenStacks(G.playerStatus));
   if(typeof Avian?.dispatcher?.modifyDodge==='function') dodge = Avian.dispatcher.modifyDodge(dodge);
-  return Math.max(0, dodge);
+  return Math.max(0, Math.min(cap, dodge));
 }
 
 function chance(p){return Math.random()*100<p;}

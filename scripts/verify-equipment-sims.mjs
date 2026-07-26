@@ -114,11 +114,12 @@ if (JSON.stringify(first) !== JSON.stringify(second)) {
   ok('seeded duel deterministic (seed=' + SEED + ')');
 }
 
+/* v0.9 weapon-first: lower weapon ranges / baseHealth → shorter, lower-damage duels. */
 const SNAPSHOT = Object.freeze({
-  turns: 4,
-  winner: 'attacker',
-  damageDealt: 86.88,
-  damageTaken: 29.16,
+  turns: 2,
+  winner: 'defender',
+  damageDealt: 8.8,
+  damageTaken: 22,
   seed: SEED,
 });
 function near(a, b, eps = 0.05) {

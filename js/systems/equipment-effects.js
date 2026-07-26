@@ -134,14 +134,44 @@
     };
     var entity = side === 'enemy' ? (G() && G().enemy) : (G() && G().player);
     var signed = dir === 'down' ? -magnitude : magnitude;
+    var tiersPack = Avian.data && Avian.data.effectTiers;
+    var flatStat = !!(tiersPack && tiersPack.flatStat)
+      || !!(Avian.data && Avian.data.combatConfig && Avian.data.combatConfig.effectTiers
+        && Avian.data.combatConfig.effectTiers.flatStat);
+    var flatCore = {
+      atk: true, matk: true, def: true, mdef: true, spd: true, dex: true,
+      vitality: true, hp: true, might: true, focus: true, guard: true, resolve: true, agility: true,
+    };
     var pctStats = {
       physDamagePct: true, magicDamagePct: true, aspectDamagePct: true,
       critDamagePct: true, healingPowerPct: true, shieldStrengthPct: true,
-      atk: true, matk: true, def: true, mdef: true, spd: true, dodge: true, acc: true, critChance: true,
+      dodge: true, acc: true, critChance: true,
     };
+    if (!flatStat) {
+      pctStats.atk = true; pctStats.matk = true; pctStats.def = true;
+      pctStats.mdef = true; pctStats.spd = true;
+    }
     var statKey = ledgerStatKey(stat);
+    if (statKey === 'might') statKey = 'atk';
+    if (statKey === 'focus') statKey = 'matk';
+    if (statKey === 'guard') statKey = 'def';
+    if (statKey === 'resolve') statKey = 'mdef';
+    if (statKey === 'agility') statKey = 'spd';
+    if (statKey === 'hp' || statKey === 'maxhp') statKey = 'vitality';
     var applied = false;
-    if (pctStats[statKey]) {
+    if (flatStat && flatCore[statKey]) {
+      applied = applyLoan(side, entity, statKey, sourceId || ('tier:' + key), signed, turns, false);
+      /* Agility flat buffs also refresh derived Dodge. */
+      if (applied && statKey === 'spd' && entity && entity.stats
+        && Avian.birdProgression && typeof Avian.birdProgression.agilityToDodge === 'function') {
+        var cap = 50;
+        var cfgD = Avian.data && Avian.data.combatConfig;
+        if (cfgD && cfgD.weaponFirst && cfgD.weaponFirst.dodgeCapPct != null) {
+          cap = Number(cfgD.weaponFirst.dodgeCapPct);
+        }
+        entity.stats.dodge = Math.min(cap, Avian.birdProgression.agilityToDodge(entity.stats.spd));
+      }
+    } else if (pctStats[statKey]) {
       applied = applyLoan(side, entity, statKey, sourceId || ('tier:' + key), signed, turns, true);
     }
     return { applied: applied, magnitude: magnitude };

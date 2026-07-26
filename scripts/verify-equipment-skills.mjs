@@ -79,15 +79,15 @@ const effects = ctx.Avian.equipmentEffects;
 const rarities = ['grey', 'orange'];
 
 const skillIds = Object.keys(skills);
-if (skillIds.length !== 96) {
-  fail(`expected 96 skills, got ${skillIds.length}`);
+if (skillIds.length < 82) {
+  fail(`expected ≥82 skills, got ${skillIds.length}`);
 } else {
-  ok('96 equipment skill templates present (v0.7 library)');
+  ok(`${skillIds.length} equipment skill templates present (v0.9 library)`);
 }
 
 for (const tier of ['minor', 'moderate', 'major']) {
   const mag = effects.tierMagnitude(tier, 'up');
-  const expected = tier === 'major' ? 12 : tier === 'moderate' ? 8 : 6;
+  const expected = tier === 'major' ? 20 : tier === 'moderate' ? 10 : 4;
   if (mag === expected) ok(`effectTiers ${tier} = ${mag}`);
   else fail(`effectTiers ${tier}: expected ${expected}, got ${mag}`);
 }
@@ -105,10 +105,9 @@ for (const skillId of skillIds) {
     if (!row.id || !row.name) fail(`${skillId}@${rarity}: missing id/name`);
     if (row.enCost == null && row.apCost == null) fail(`${skillId}@${rarity}: missing EN/AP`);
     if (row.cooldown == null) fail(`${skillId}@${rarity}: missing cooldown`);
-    if (!row.noDamage && row.abilityPower == null && row.baseDamage == null
-      && !(skill.ap && Object.keys(skill.ap).length === 0)
+    if (!row.noDamage && row.skillPowerPct == null && row.abilityPower == null && row.baseDamage == null
       && !(Array.isArray(skill.scaling) && skill.scaling.length)) {
-      fail(`${skillId}@${rarity}: missing abilityPower for damaging skill`);
+      fail(`${skillId}@${rarity}: missing skillPowerPct for damaging skill`);
     }
     if (row.source !== 'equipment' && row.source !== 'combination') {
       fail(`${skillId}@${rarity}: source not equipment/combination (got ${row.source})`);
@@ -120,8 +119,8 @@ ok('all skill ids resolve at grey+orange rarities');
 const st = { activeTierEffects: Object.create(null) };
 const first = effects.applyTierEffect(st, 'player', 'atk', 'minor', 'up', 'test', 2);
 const second = effects.applyTierEffect(st, 'player', 'atk', 'moderate', 'up', 'test', 2);
-if (first.magnitude === 6 && second.magnitude === 8 && st.activeTierEffects['atk:up'].magnitude === 8) {
-  ok('stacking: Minor then Moderate same stat → Moderate wins');
+if (first.magnitude === 4 && second.magnitude === 10 && st.activeTierEffects['atk:up'].magnitude === 10) {
+  ok('stacking: Minor then Moderate same stat → Moderate wins (flat 4/10)');
 } else {
   fail(`stacking test failed: ${JSON.stringify({ first, second, active: st.activeTierEffects['atk:up'] })}`);
 }

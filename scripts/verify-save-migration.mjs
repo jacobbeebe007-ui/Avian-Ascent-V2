@@ -239,16 +239,19 @@ function testEquipmentV2SaveStamp() {
   if (migrated.equipmentPackVersion !== systems.EQUIPMENT_PACK_VERSION) fail('equipmentPackVersion missing');
   else ok('equipmentPackVersion stamped');
 
-  if (Number(migrated.schemaVersion) !== 15) fail('schemaVersion should be 15 after migration');
-  else ok('schemaVersion is 15');
+  if (Number(migrated.schemaVersion) !== 16) fail('schemaVersion should be 16 after migration');
+  else ok('schemaVersion is 16');
 
   if (migrated.affinityArsenalPackVersion !== systems.AFFINITY_ARSENAL_PACK_VERSION) {
     fail('affinityArsenalPackVersion missing');
   } else ok('affinityArsenalPackVersion stamped');
 
-  if (migrated.equipmentLootPackVersion !== systems.EQUIPMENT_LOOT_PACK_VERSION) {
-    fail('equipmentLootPackVersion missing');
-  } else ok('equipmentLootPackVersion stamped');
+  if (migrated.weaponFirstPackVersion !== systems.WEAPON_FIRST_PACK_VERSION) {
+    fail('weaponFirstPackVersion missing');
+  } else ok('weaponFirstPackVersion stamped');
+
+  if (migrated.weaponFirstV09 !== true) fail('weaponFirstV09 stamp missing');
+  else ok('weaponFirstV09 stamped');
 }
 
 function testShieldSlotMigration() {
@@ -274,18 +277,22 @@ function testShieldSlotMigration() {
     },
   };
   const migrated = systems.runSaveMigrations(save);
-  if (Number(migrated.schemaVersion) !== 15) fail('shield migration should reach schema 15');
-  else ok('shield migration reaches schema 15');
+  if (Number(migrated.schemaVersion) !== 16) fail('shield migration should reach schema 16');
+  else ok('shield migration reaches schema 16');
   if (migrated.player.equipment.shield != null) fail('legacy shield key should be removed');
   else ok('legacy shield key removed');
-  if (migrated.player.equipment.offHand !== 'EQ-SM-GRY') {
-    fail('shield should move into empty offHand, got ' + migrated.player.equipment.offHand);
-  } else ok('shield migrated into offHand');
+  /* v16 wipes equipment after the v15 shield→offHand fold. */
+  if (migrated.player.equipment.offHand != null) {
+    fail('v16 should wipe equipment loadout, got offHand=' + migrated.player.equipment.offHand);
+  } else ok('v16 wiped equipment after shield fold');
+  if (migrated.weaponFirstV09 !== true) fail('weaponFirstV09 missing after shield chain');
+  else ok('weaponFirstV09 stamped after shield chain');
 
   const saveOccupied = {
-    schemaVersion: 14,
+    schemaVersion: 15,
     equipmentV2: true,
-    equipmentPackVersion: systems.EQUIPMENT_PACK_VERSION,
+    equipmentPackVersion: '2026.07-equipment-loot-v0.7',
+    equipmentLootV07: true,
     player: {
       birdKey: 'sparrow',
       equipment: {
@@ -293,20 +300,19 @@ function testShieldSlotMigration() {
         armour: null,
         mainHand: 'EQ-TB-GRY',
         offHand: 'EQ-TB-GRY',
-        shield: 'EQ-SM-GRY',
         ankletL: null,
         ankletR: null,
         necklace: null,
       },
-      equipmentInventory: [],
+      equipmentInventory: ['EQ-SM-GRY'],
     },
   };
   const m2 = systems.runSaveMigrations(saveOccupied);
-  if (m2.player.equipment.offHand !== 'EQ-TB-GRY') fail('occupied offHand should be preserved');
-  else ok('occupied offHand preserved during shield migrate');
-  if (!Array.isArray(m2.player.equipmentInventory) || !m2.player.equipmentInventory.includes('EQ-SM-GRY')) {
-    fail('displaced shield should go to inventory');
-  } else ok('displaced shield moved to inventory');
+  if (Number(m2.schemaVersion) !== 16) fail('v15→v16 should reach schema 16');
+  else ok('v15→v16 reaches schema 16');
+  if (m2.player.equipment.mainHand != null || (m2.player.equipmentInventory || []).length) {
+    fail('v16 should wipe loadout and inventory');
+  } else ok('v16 wiped hybrid equipment loadout and inventory');
 }
 
 function equipmentEmpty(ctx) {

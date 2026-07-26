@@ -143,9 +143,9 @@ for (const cls of classes) {
 
 const knightGreyExpected = {
   helmet: 'EQ-HP-GRY',
-  armour: 'EQ-AM-GRY',
-  mainHand: 'EQ-LN-GRY',
-  offHand: null, /* 2H Lance clears offHand (including Shields) */
+  armour: 'EQ-AH-GRY',
+  mainHand: 'EQ-GB-GRY',
+  offHand: null, /* 2H Greatblade clears offHand (including Shields) */
   ankletL: 'EQ-AI-GRY',
   ankletR: 'EQ-AI-GRY',
   necklace: 'EQ-NH-GRY',

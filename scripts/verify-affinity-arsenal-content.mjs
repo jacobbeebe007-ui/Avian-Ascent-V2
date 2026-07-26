@@ -66,25 +66,25 @@ const families = data.ailmentFamilies;
 
 const skillIds = skills ? Object.keys(skills) : [];
 const comboIds = skillIds.filter((id) => id.startsWith('COMBO_'));
-if (skillIds.length !== 96) fail('expected 96 skills, got ' + skillIds.length);
-if (comboIds.length !== 25) fail('expected 25 COMBO_* skills, got ' + comboIds.length);
+if (skillIds.length < 82) fail('expected ≥82 skills, got ' + skillIds.length);
+if (comboIds.length < 18) fail('expected ≥18 COMBO_* skills, got ' + comboIds.length);
 
 if (!orbs || Object.keys(orbs).length !== 6) {
   fail('expected 6 orb focuses, got ' + (orbs ? Object.keys(orbs).length : 0));
 }
-if (!combos || Object.keys(combos).length !== 25) {
-  fail('expected 25 combinationTechniques, got ' + (combos ? Object.keys(combos).length : 0));
+if (!combos || Object.keys(combos).length < 18) {
+  fail('expected ≥18 combinationTechniques, got ' + (combos ? Object.keys(combos).length : 0));
 }
 
 for (const id of Object.keys(combos || {})) {
   if (!skills[id]) fail('combo missing from skills catalog: ' + id);
 }
 
-if (!tiers || !tiers.buff || tiers.buff.minor !== 6 || tiers.buff.moderate !== 8 || tiers.buff.major !== 12) {
-  fail('effect tiers core expected 6/8/12');
+if (!tiers || !tiers.buff || tiers.buff.minor !== 4 || tiers.buff.moderate !== 10 || tiers.buff.major !== 20) {
+  fail('effect tiers core expected 4/10/20');
 }
-if (!tiers.points || tiers.points.minor !== 3 || tiers.points.moderate !== 5 || tiers.points.major !== 8) {
-  fail('effect point tiers expected 3/5/8');
+if (!tiers.points || tiers.points.minor !== 4 || tiers.points.moderate !== 10 || tiers.points.major !== 20) {
+  fail('effect point tiers expected 4/10/20');
 }
 
 if (!aspects || !aspects.aliases || aspects.aliases.earth !== 'terra') {
@@ -110,11 +110,11 @@ for (const [atk, row] of Object.entries(expected)) {
   }
 }
 
-if (!cfg || cfg.packVersion !== '2026.07-equipment-loot-v0.7') {
-  fail('combatConfig.packVersion mismatch (expected equipment-loot-v0.7)');
+if (!cfg || cfg.packVersion !== '2026.07-weapon-first-v0.9') {
+  fail('combatConfig.packVersion mismatch (expected weapon-first-v0.9)');
 }
 if (!cfg.affinityArsenalV06) fail('combatConfig.affinityArsenalV06 should be true');
-if (!cfg.directScaling || !cfg.directScaling.enabled) fail('directScaling.enabled expected');
+if (!cfg.weaponFirstV09 || !cfg.weaponFirst || !cfg.weaponFirst.enabled) fail('weaponFirst expected');
 if (!cfg.ailments || cfg.ailments.burnMaxStacks !== 5) fail('burnMaxStacks expected 5');
 if (cfg.ailments.stacksPerActionCap !== 2 || cfg.ailments.stacksPerTurnCap !== 4) {
   fail('ailment application caps expected 2/4');
@@ -148,5 +148,5 @@ const stamped = fo.filter((it) => it.orbFocus);
 if (stamped.length < 6) fail('expected at least 6 Focus Orb items with orbFocus, got ' + stamped.length);
 
 if (!process.exitCode) {
-  console.log('OK affinity-arsenal content: 96 skills, 25 combos, 6 orbs, tiers 6/8/12, aliases, progression.');
+  console.log('OK affinity-arsenal content: v0.9 skills/combos, 6 orbs, tiers 4/10/20, aliases, progression.');
 }

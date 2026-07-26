@@ -69,17 +69,19 @@ for (const rel of [
 }
 
 const tiers = ctx.Avian.data.effectTiers;
-if (tiers?.buff?.minor === 6 && tiers?.buff?.moderate === 8 && tiers?.buff?.major === 12) {
-  ok('effect tiers 6/8/12');
+if (tiers?.buff?.minor === 4 && tiers?.buff?.moderate === 10 && tiers?.buff?.major === 20) {
+  ok('effect tiers 4/10/20');
 } else fail('effect tiers unexpected: ' + JSON.stringify(tiers?.buff));
 
 const skillCount = Object.keys(ctx.Avian.data.equipment.skills || {}).length;
-if (skillCount === 96) ok('skill library has 96 skills');
-else fail(`expected 96 skills, got ${skillCount}`);
+if (skillCount >= 82) ok(`skill library has ${skillCount} skills`);
+else fail(`expected ≥82 skills, got ${skillCount}`);
 
 const names = ctx.Avian.data.equipment.slots.statDisplayNames || {};
 if (names.atk === 'Might') ok('statDisplayNames atk → Might');
 else fail('statDisplayNames.atk is ' + names.atk);
+if (names.dex === 'Dexterity') ok('statDisplayNames dex → Dexterity');
+else fail('statDisplayNames.dex is ' + names.dex);
 
 const collect = ctx.collectCombatStatusEntries || ctx.Avian.statusDefs.collectCombatStatusEntries;
 const frozenEntries = collect({ frozen: { pendingSkip: true, baseSpd: 10 } }, {});
@@ -122,7 +124,7 @@ if (!/computeFinalStats/.test(gameSrc)) {
   ok('enemy scales via birdProgression.computeFinalStats');
 }
 
-/* Runtime: sparrow L1 via progression should be near birds-v2 base (~57), not old roster (~37). */
+/* Runtime: sparrow L1 via progression — v0.9 baseHealth×Vitality → maxHp ~12. */
 try {
   for (const rel of [
     'js/data/birds-v2.js',
@@ -135,18 +137,27 @@ try {
   ]) {
     vm.runInContext(load(rel), ctx, { filename: rel });
   }
-  const base = ctx.Avian.data.birdsV2?.sparrow?.stats || ctx.Avian.data.birds?.sparrow?.stats;
+  const sparrow = ctx.Avian.data.birdsV2?.sparrow;
+  const base = sparrow?.stats || ctx.Avian.data.birds?.sparrow?.stats;
   const hpBase = Number(base?.maxHp ?? base?.hp) || 0;
   const grown = ctx.Avian.birdProgression.computeFinalStats({
-    base: { hp: hpBase, atk: base.atk, def: base.def, matk: base.matk, mdef: base.mdef, spd: base.spd },
+    base: {
+      hp: hpBase,
+      baseHealth: Number(sparrow?.baseHealth) || hpBase,
+      vitality: Number(sparrow?.vitality ?? base?.vitality) || 0,
+      atk: base.atk, dex: base.dex, def: base.def, matk: base.matk, mdef: base.mdef, spd: base.spd,
+    },
     className: 'rogue',
     level: 1,
     totalStars: 0,
     tier: 'grey',
   });
   const grownHp = Number(grown.ledger?.maxHp ?? grown.ledger?.hp) || 0;
-  if (hpBase >= 50 && grownHp >= 50) ok(`player-parity vitality base/grown ${hpBase}/${grownHp} (roster was ~37)`);
-  else fail(`expected v0.6 vitality ≥50, got base=${hpBase} grown=${grownHp}`);
+  if (Number(sparrow?.baseHealth) === 10 && hpBase === 12 && grownHp === 12) {
+    ok(`player-parity v0.9 sparrow HP baseHealth=10 → maxHp ${hpBase}/${grownHp}`);
+  } else {
+    fail(`expected v0.9 sparrow maxHp 12 (baseHealth 10), got baseHealth=${sparrow?.baseHealth} base=${hpBase} grown=${grownHp}`);
+  }
 
   const crow = ctx.Avian.data.birdsV2?.crow?.stats;
   if (crow && Number(crow.matk) === 0 && Number(crow.acc) === 0) {

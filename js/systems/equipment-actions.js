@@ -290,6 +290,19 @@
     if (Avian.affinity && typeof Avian.affinity.normalize === 'function' && aspect) {
       aspect = Avian.affinity.normalize(aspect) || aspect;
     }
+    var cfgWf = combatConfig();
+    var weaponFirst = !!(cfgWf && cfgWf.weaponFirstV09 && cfgWf.weaponFirst && cfgWf.weaponFirst.enabled !== false);
+    var skillPowerPct = skill.skillPowerPct != null ? Number(skill.skillPowerPct)
+      : (apVal != null ? Math.round(Number(apVal) * (Number(apVal) <= 10 ? 100 : 1)) : null);
+    var minDmg = item && item.minDamage != null ? Number(item.minDamage) : null;
+    var maxDmg = item && item.maxDamage != null ? Number(item.maxDamage) : null;
+    var scalingStat = skill.scalingStat || (item && item.scalingStat) || null;
+    if (weaponFirst && item && item.scalingStat
+      && (skill.id === 'BASIC_PHYSICAL' || skill.id === 'BASIC_MAGIC' || skill.naturalStrikeFlat)) {
+      scalingStat = item.scalingStat;
+      if (/magic/i.test(String(item.damageType || ''))) dmgType = 'Magic';
+      else dmgType = 'Physical';
+    }
     var row = {
       id: skill.id,
       name: skill.name,
@@ -297,16 +310,24 @@
       apCost: Number(skill.en) || 0,
       cooldown: Number(skill.cooldown) || 0,
       damageType: dmgType,
-      scaleStat: skill.scalingStat || null,
-      damageStat: skill.scalingStat || null,
+      damageCategory: skill.damageCategory || (item && item.damageCategory) || null,
+      scaleStat: scalingStat,
+      damageStat: scalingStat,
+      scalingStat: scalingStat,
       abilityPower: apVal != null ? Number(apVal) : null,
       fixedCoefficient: skill.fixedCoefficient != null ? Number(skill.fixedCoefficient) : (apVal != null ? Number(apVal) : null),
+      skillPowerPct: skillPowerPct,
+      skillPower: skill.skillPower != null ? Number(skill.skillPower) : (skillPowerPct != null ? skillPowerPct / 100 : null),
+      naturalStrikeFlat: skill.naturalStrikeFlat || null,
+      minDamage: minDmg,
+      maxDamage: maxDmg,
       baseDamage: skill.baseDamage != null ? Number(skill.baseDamage) : null,
       scaling: skill.scaling || null,
       precision: skill.precision != null ? Number(skill.precision)
         : (skill.basePrecision != null ? Number(skill.basePrecision) : null),
       coefficientFixed: !!skill.coefficientFixed,
-      useDirectScaling: !!(skill.baseDamage != null || skill.coefficientFixed || (skill.scaling && skill.scaling.length)),
+      useDirectScaling: weaponFirst ? false : !!(skill.baseDamage != null || skill.coefficientFixed || (skill.scaling && skill.scaling.length)),
+      useWeaponFirst: weaponFirst && !isUtil,
       hits: Math.max(0, Number(skill.hits) || 0),
       hitCount: Math.max(0, Number(skill.hits) || 0),
       aspect: aspect,
@@ -324,8 +345,6 @@
       target: String(skill.target || 'Enemy').toLowerCase() === 'self' ? 'self' : 'enemy',
       noDamage: isUtil,
       riders: riders,
-      coefficientFixed: !!skill.coefficientFixed,
-      useDirectScaling: !!(skill.baseDamage != null || (Array.isArray(skill.scaling) && skill.scaling.length)),
     };
     row.tags = buildTags(skill, item, row);
     if (skill.source === 'Combination') row.tags.push('Combination');
