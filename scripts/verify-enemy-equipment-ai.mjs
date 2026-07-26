@@ -346,6 +346,27 @@ if (typeof equipment.countEquippedPieces === 'function') {
   fail('countEquippedPieces not exported');
 }
 
+/* Equipment flats/pct must land on enemy combat stats (hpFlat → maxHp). */
+{
+  const gearEnemy = makeEnemy('knight', 'gold', { id: 'gear-stat-parity', birdKey: 'crow' });
+  const before = { ...gearEnemy.stats };
+  equipment.assignEnemyEquipmentLoadout(gearEnemy, { rarity: 'gold', variance: false, seed: 4242 });
+  const roll = equipment.sumEquippedEquipment(gearEnemy);
+  const hpFlat = Number(roll.stats?.hp) || 0;
+  const atkFlat = Number(roll.stats?.atk) || 0;
+  if (hpFlat <= 0) fail('gold knight loadout expected positive hpFlat rollup');
+  else if ((Number(gearEnemy.stats.maxHp) || 0) < (Number(before.maxHp) || 0) + hpFlat) {
+    fail(`enemy maxHp missing equipment flat: before=${before.maxHp} +hpFlat=${hpFlat} after=${gearEnemy.stats.maxHp}`);
+  } else {
+    ok(`enemy maxHp includes equipment flat (+${hpFlat} → ${gearEnemy.stats.maxHp})`);
+  }
+  if (atkFlat > 0 && (Number(gearEnemy.stats.atk) || 0) <= (Number(before.atk) || 0)) {
+    fail(`enemy atk missing equipment flat: before=${before.atk} +atkFlat=${atkFlat} after=${gearEnemy.stats.atk}`);
+  } else if (atkFlat > 0) {
+    ok(`enemy atk includes equipment bonuses (${before.atk} → ${gearEnemy.stats.atk})`);
+  }
+}
+
 if (failed) {
   console.error(`\n[enemy-equipment-ai] ${failed} failure(s)`);
   process.exit(1);

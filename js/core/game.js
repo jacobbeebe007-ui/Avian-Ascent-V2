@@ -805,7 +805,8 @@ function getEnemyMutationStatSources(enemy, statKey){
   const lines = [];
   if(!enemy?.equipment || typeof Avian?.equipment?.sumEquippedEquipment!=='function') return lines;
   const roll = Avian.equipment.sumEquippedEquipment(enemy);
-  const flat = Number(roll?.stats?.[statKey]) || 0;
+  const flatKey = (statKey === 'maxHp' || statKey === 'hp') ? 'hp' : statKey;
+  const flat = Number(roll?.stats?.[flatKey]) || 0;
   if(Math.abs(flat) >= 0.0001) lines.push({ name: 'Equipment', value: flat });
   const pctKey = equipmentPctLedgerKey(statKey);
   const pct = Number(roll?.pct?.[pctKey]) || 0;
@@ -908,8 +909,10 @@ function buildEnemyRichStatTooltipHtml(statKey, rawVal, enemy){
       html += `<div class="tt-row"><span class="tt-lbl">${escapeHtmlRoster(src.name)}</span><span class="tt-val">${escapeHtmlRoster(disp)}</span></div>`;
     }
   }
-  if (statKey === 'critChance' && (enemy?._mutationMechanics?.critDamageBonusPct || 0) > 0) {
-    html += `<div class="tt-row"><span class="tt-val" style="font-size:.88em">+${enemy._mutationMechanics.critDamageBonusPct}% crit damage on crits</span></div>`;
+  const eqCritPct = Number(enemy?._equipmentMechanics?.critDamageBonusPct
+    ?? enemy?._mutationMechanics?.critDamageBonusPct) || 0;
+  if (statKey === 'critChance' && eqCritPct > 0) {
+    html += `<div class="tt-row"><span class="tt-val" style="font-size:.88em">+${eqCritPct}% crit damage on crits</span></div>`;
   }
   html += richTooltipCloseBtn();
   return html;
@@ -8061,7 +8064,7 @@ function buildEnemyStatsGridHtml(){
 function buildCombatStatBreakdownSection(side){
   const statKeys=side==='player'
     ? ['atk','matk','def','mdef','dodge','acc','spd','critChance','critMult','armorPen','magicPen']
-    : ['atk','matk','def','mdef','dodge','acc','spd','critChance'];
+    : ['maxHp','atk','matk','def','mdef','dodge','acc','spd','critChance'];
   const player=side==='player'?G.player:null;
   const enemy=side==='enemy'?G.enemy:null;
   let html='';
@@ -8444,35 +8447,7 @@ function ensureCombatStatusSections(id){
   return { root, ailments, modifiers };
 }
 
-function syncEnemyIdentityStatusBadges(){
-  if(!G?.enemy || !G.enemyStatus) return;
-  const birdKey=G.enemy.birdKey||G.enemy.portraitKey||'';
-  const passive=typeof Avian?.getBirdPassiveV2==='function'?Avian.getBirdPassiveV2(birdKey):null;
-  if(passive&&passive.name){
-    G.enemyStatus.identityPassive={ name:passive.name, effect:passive.effect||'', persistent:true };
-  }else{
-    delete G.enemyStatus.identityPassive;
-  }
-  const perk=typeof Avian?.classPerks?.getClassPerkForEntity==='function'
-    ? Avian.classPerks.getClassPerkForEntity(G.enemy)
-    : null;
-  if(perk&&perk.name){
-    G.enemyStatus.identityClassPerk={ name:perk.name, effect:perk.effect||'', persistent:true };
-  }else if(G.enemy.classPerk){
-    G.enemyStatus.identityClassPerk={ name:G.enemy.classPerk, effect:G.enemy.classPerkEffect||'', persistent:true };
-  }else{
-    delete G.enemyStatus.identityClassPerk;
-  }
-  const trait=G.enemy._trait||(typeof enemyTraitFor==='function'?enemyTraitFor(G.enemy):null);
-  if(trait&&trait.name){
-    G.enemyStatus.identityTrait={ name:trait.name, effect:trait.desc||'', persistent:true };
-  }else{
-    delete G.enemyStatus.identityTrait;
-  }
-}
-
 function renderStatuses(id, statuses) {
-  if(id==='enemy-status') syncEnemyIdentityStatusBadges();
   const sections=ensureCombatStatusSections(id);
   if(!sections) return;
   const { ailments, modifiers }=sections;
@@ -11998,6 +11973,24 @@ function computeEntityAbilityRawDamage(entity, ab, tmpl, isMagic){
     ? Avian.passives.collectPendingDamageBonusFractions('enemy', ab, { isMagic, isAttack:!isMagic })
     : [];
   const bonusFractions=[...classBonusFractions, ...passiveBonusFractions];
+  if(entity&&typeof Avian?.equipment?.getMechanicsRollup==='function'){
+    const eqM=Avian.equipment.getMechanicsRollup(entity);
+    if(!isMagic&&(eqM.physicalDamageUpPct||0)>0) bonusFractions.push(eqM.physicalDamageUpPct/100);
+    if(isMagic&&(eqM.magicDamageUpPct||0)>0) bonusFractions.push(eqM.magicDamageUpPct/100);
+    if(eqM.damageBonuses&&eqM.damageBonuses.length){
+      const attackWeight=typeof getAbilityAttackWeight==='function'?getAbilityAttackWeight(ab,entity):null;
+      const abType=String(ab?.btnType||ab?.type||tmpl?.btnType||tmpl?.type||'').toLowerCase();
+      const isSpell=abType==='spell';
+      for(const db of eqM.damageBonuses){
+        if(!db||!db.pct) continue;
+        if(db.tag==='light'&&attackWeight==='light') bonusFractions.push(db.pct/100);
+        else if(db.tag==='medium'&&attackWeight==='medium') bonusFractions.push(db.pct/100);
+        else if(db.tag==='heavy'&&attackWeight==='heavy') bonusFractions.push(db.pct/100);
+        else if((db.tag==='magic'||db.tag==='spell')&&isSpell) bonusFractions.push(db.pct/100);
+        else if(db.tag==='generic'||!db.tag) bonusFractions.push(db.pct/100);
+      }
+    }
+  }
   const classBonusMult = typeof sumAdditiveDamageBonus==='function'
     ? sumAdditiveDamageBonus(bonusFractions)
     : (1+bonusFractions.reduce((a,b)=>a+(Number(b)||0),0));
@@ -12569,7 +12562,10 @@ function rollEnemyCritDamage(baseDamage){
   const raw=roundCombatDamage(Math.max(0.01, baseDamage||1));
   const cc=Math.max(0,Math.min(0.95,G.enemy?.stats?.cc??((G.enemy?.stats?.critChance||5)/100)));
   let cd=Math.max(1.1,Number(G.enemy?.stats?.cd??G.enemy?.stats?.critMult??1.5));
-  const mutCrit=Number(G.enemy?._mutationMechanics?.critDamageBonusPct)||0;
+  const eqCritM=typeof Avian?.equipment?.getMechanicsRollup==='function'
+    ? Avian.equipment.getMechanicsRollup(G.enemy)
+    : (G.enemy?._equipmentMechanics||G.enemy?._mutationMechanics||null);
+  const mutCrit=Number(eqCritM?.critDamageBonusPct)||0;
   if(mutCrit>0) cd+=mutCrit/100;
   if(typeof clampCritDamageMult==='function') cd=clampCritDamageMult(cd);
   const isCrit=chance(Math.round(cc*100));

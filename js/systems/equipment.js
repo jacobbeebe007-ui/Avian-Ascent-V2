@@ -1072,10 +1072,12 @@
       ? STAT_LEDGER_TRACKED_KEYS
       : ['maxHp', 'atk', 'def', 'spd', 'acc', 'dodge', 'matk', 'mdef', 'critChance', 'armorPen', 'magicPen'];
     var prevMaxHp = Number(entity.stats.maxHp) || Number(entity.stats.hp) || 0;
-    /* Chance / pen flats */
+    /* Core flats + chance / pen flats.
+     * Rollup stores Vitality flat as `hp` (CORE_FLAT_TO_LEDGER.hpFlat); entity stats use `maxHp`. */
     for (var i = 0; i < keys.length; i++) {
       var k = keys[i];
-      var add = Number(roll.stats[k]) || 0;
+      var rollKey = (k === 'maxHp') ? 'hp' : k;
+      var add = Number(roll.stats[rollKey]) || 0;
       if (!add) continue;
       var cur = Number(entity.stats[k]) || 0;
       entity.stats[k] = capTrackedStatValue(k, cur + add);
