@@ -129,13 +129,13 @@ if (G.enemy._classPerk?.def?.id === 'bulwarkOath' || G.enemy.classPerk === 'Bulw
   G.enemy._classPerk = {
     id: 'bulwarkOath',
     name: 'Bulwark Oath',
-    def: { id: 'bulwarkOath', damageReduction: 0.10, firstHitPerTurn: true },
+    def: { id: 'bulwarkOath', damageReduction: 0.06, firstHitPerTurn: true },
   };
   G.enemyStatus._classPerkState = {};
   const a = Avian.classPerks.getIncomingDamageMultiplierForEntity(G.enemy);
   Avian.classPerks.markBulwarkOathConsumed(G.enemy);
   const b = Avian.classPerks.getIncomingDamageMultiplierForEntity(G.enemy);
-  if (a === 0.9 && b === 1) ok('enemy Bulwark first-hit then consumed');
+  if (Math.abs(a - 0.94) < 0.001 && b === 1) ok('enemy Bulwark first-hit then consumed');
   else fail(`forced enemy Bulwark mults a=${a} b=${b}`);
 }
 

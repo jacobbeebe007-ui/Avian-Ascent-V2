@@ -72,6 +72,15 @@ function dmg(params) {
   check('3 — Heavy ATK damage > 2 EN', d >= 10, `got=${d}`);
 }
 
+/* LEG-022: Hit% = 100 − Dodge − skillPenalty (penalty only EN≥3). */
+{
+  check('hit baseline 100 − 10 dodge', c.calculateAbilityHitChancePct(100, 10, 0) === 90, `got=${c.calculateAbilityHitChancePct(100, 10, 0)}`);
+  check('EN 1 basic penalty 0', c.calculateAbilityAccuracyPenalty({ id: 'BASIC_PHYSICAL', enCost: 1, basePrecision: 1 }) === 0);
+  check('EN 2 penalty 0 despite basePrecision 0.98', c.calculateAbilityAccuracyPenalty({ enCost: 2, apCost: 2, basePrecision: 0.98 }) === 0);
+  check('EN 3 penalty from basePrecision 0.94 → 6', c.calculateAbilityAccuracyPenalty({ enCost: 3, apCost: 3, basePrecision: 0.94 }) === 6, `got=${c.calculateAbilityAccuracyPenalty({ enCost: 3, apCost: 3, basePrecision: 0.94 })}`);
+  check('hit 100 − 10 dodge − 6 pen = 84', c.calculateAbilityHitChancePct(100, 10, 6) === 84, `got=${c.calculateAbilityHitChancePct(100, 10, 6)}`);
+}
+
 {
   const ability = c.enrichCombatRow({ apCost: 3, scaleStat: 'ATK', scalePct: 90, category: 'physical', abilityPower: 1.25 });
   check('4 — recoil percent is 15%', near(ability.recoilPercent, 0.15), `recoil%=${ability.recoilPercent}`);

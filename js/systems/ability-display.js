@@ -254,11 +254,25 @@
     });
   }
 
+  function effectTiersFlatStat() {
+    var tiers = Avian.data && Avian.data.effectTiers;
+    if (tiers && tiers.flatStat) return true;
+    var cfg = Avian.data && Avian.data.combatConfig && Avian.data.combatConfig.effectTiers;
+    return !!(cfg && cfg.flatStat);
+  }
+
   function riderSegment(r) {
     if (!r) return null;
     var v = Number(r.value) || 0;
     var w = whenSuffix(r.when);
+    var flatCore = effectTiersFlatStat() && r.valueUnit !== 'pct';
     function seg(text, statKey) { return { text: text, color: statKey ? STAT_COLORS[statKey] : null }; }
+    function coreGain(label, statKey) {
+      return seg('+' + v + (flatCore ? ' ' : '% ') + label + w, statKey);
+    }
+    function coreEnemy(label, statKey) {
+      return seg('Enemy -' + v + (flatCore ? ' ' : '% ') + label + w, statKey);
+    }
     var tierLabel = tierLabelForRider(r);
     if (tierLabel) {
       var tierStat = {
@@ -268,10 +282,10 @@
       return seg(tierLabel + w, tierStat || null);
     }
     switch (r.kind) {
-      case 'gainAtk': return seg('+' + v + '% Might' + w, 'atk');
-      case 'gainMatk': return seg('+' + v + '% Focus' + w, 'matk');
-      case 'gainDef': return seg('+' + v + '% Guard' + w, 'def');
-      case 'gainMdef': return seg('+' + v + '% Resolve' + w, 'mdef');
+      case 'gainAtk': return coreGain('Might', 'atk');
+      case 'gainMatk': return coreGain('Focus', 'matk');
+      case 'gainDef': return coreGain('Guard', 'def');
+      case 'gainMdef': return coreGain('Resolve', 'mdef');
       case 'gainGuard': return seg('Guard' + w, 'def');
       case 'gainGuarded':
       case 'gainBrace':
@@ -282,14 +296,14 @@
         return v > 0 ? seg(v + '% Brace' + w, 'def') : seg('Brace' + w, 'def');
       case 'gainCounter': return seg('Counter' + w, null);
       case 'gainTaunt': return seg('Taunt' + w, null);
-      case 'reduceEnemyDodge': return seg('Enemy -' + v + '% Evasion' + w, 'dodge');
+      case 'reduceEnemyDodge': return seg('Enemy -' + v + '% Dodge' + w, 'dodge');
       case 'reduceEnemyAcc': return seg('Enemy -' + v + '% Precision' + w, 'acc');
-      case 'reduceEnemyAtk': return seg('Enemy -' + v + '% Might' + w, 'atk');
-      case 'reduceEnemyMatk': return seg('Enemy -' + v + '% Focus' + w, 'matk');
-      case 'reduceEnemySpd': return seg('Enemy -' + v + '% Agility' + w, 'spd');
+      case 'reduceEnemyAtk': return coreEnemy('Might', 'atk');
+      case 'reduceEnemyMatk': return coreEnemy('Focus', 'matk');
+      case 'reduceEnemySpd': return coreEnemy('Agility', 'spd');
       case 'reduceEnemyCrit': return seg('Enemy -' + v + '% Critical' + w, 'cc');
-      case 'reduceEnemyDef': return seg('Enemy -' + v + '% Guard' + w, 'def');
-      case 'reduceEnemyMdef': return seg('Enemy -' + v + '% Resolve' + w, 'mdef');
+      case 'reduceEnemyDef': return coreEnemy('Guard', 'def');
+      case 'reduceEnemyMdef': return coreEnemy('Resolve', 'mdef');
       case 'gainShield': return seg('Barrier' + w, 'def');
       case 'gainShieldFromDamage': return seg('Barrier = ' + v + '% of damage dealt' + w, 'def');
       case 'gainMagicAilmentChance': return seg('+' + v + '% Magical Ailment chance' + w, null);
@@ -300,11 +314,11 @@
       case 'exposeGuard': return v > 1 ? seg('Expose Guard (+' + v + '% damage taken)' + w, 'def') : seg('Expose Guard (+' + Math.round(v * 100) + '% damage taken)' + w, 'def');
       case 'gainAccNextHit': return seg('+' + v + ' Precision on next hit' + w, 'acc');
       case 'healMaxHpPct': return seg('Heal ' + v + '% Max Vitality' + w, 'hp');
-      case 'gainDodge': return seg('+' + v + '% Evasion' + w, 'dodge');
-      case 'gainDodgeFlat': return seg('+' + v + ' Evasion' + w, 'dodge');
+      case 'gainDodge': return seg('+' + v + '% Dodge' + w, 'dodge');
+      case 'gainDodgeFlat': return seg('+' + v + ' Dodge' + w, 'dodge');
       case 'gainAcc': return seg('+' + v + '% Precision' + w, 'acc');
       case 'gainAccFlat': return seg('+' + v + ' Precision' + w, 'acc');
-      case 'gainSpeed': return seg('+' + v + '% Agility' + w, 'spd');
+      case 'gainSpeed': return coreGain('Agility', 'spd');
       case 'gainCritChance': return seg('+' + v + '% Critical' + w, 'cc');
       case 'gainCritDamage': return seg('+' + pctOf(v) + '% Ferocity' + w, 'cd');
       case 'gainApNextTurn': return seg('+' + v + ' EN next turn' + w, null);

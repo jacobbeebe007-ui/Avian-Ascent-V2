@@ -182,11 +182,17 @@
       var kind = statToRiderKind(eff.stat, eff.dir, eff.target);
       if (!kind) continue;
       var val = tierPct(eff.tier, eff.dir);
-      if (kind === 'gainSpeed' || kind.indexOf('gain') === 0 && kind !== 'gainDodge' && kind !== 'gainAcc' && kind !== 'gainCritChance') {
-        riders.push({ kind: kind, value: val, when: when, scope: eff.target === 'enemy' ? 'enemy' : 'self' });
-      } else {
-        riders.push({ kind: kind, value: val, when: when, scope: eff.target === 'enemy' ? 'enemy' : 'self' });
-      }
+      var flatCore = !!(Avian.data && Avian.data.effectTiers && Avian.data.effectTiers.flatStat);
+      var coreStat = /^(atk|matk|def|mdef|spd|dex|vitality|hp)$/i.test(String(eff.stat || ''));
+      var chanceKind = kind === 'gainDodge' || kind === 'gainAcc' || kind === 'gainCritChance'
+        || kind === 'reduceEnemyDodge' || kind === 'reduceEnemyAcc' || kind === 'reduceEnemyCrit';
+      riders.push({
+        kind: kind,
+        value: val,
+        when: when,
+        scope: eff.target === 'enemy' ? 'enemy' : 'self',
+        valueUnit: (flatCore && coreStat && !chanceKind) ? 'flat' : 'pct',
+      });
     }
     var specials = parsed.specials || [];
     for (var si = 0; si < specials.length; si++) {
@@ -414,26 +420,76 @@
     return !!(item && item.slot === 'Weapon');
   }
 
+  function entityClassId(entity) {
+    var cls = entity && (entity.class || entity.className || entity.birdClass);
+    if (!cls && entity && entity.birdKey && typeof Avian.getBirdV2 === 'function') {
+      var bird = Avian.getBirdV2(entity.birdKey);
+      cls = bird && bird.class;
+    }
+    if (!cls && entity && entity.key && typeof Avian.getBirdV2 === 'function') {
+      var bird2 = Avian.getBirdV2(entity.key);
+      cls = bird2 && bird2.class;
+    }
+    return String(cls || '').toLowerCase();
+  }
+
+  function usesTailWandBasic(entity, basicCfg) {
+    var cls = entityClassId(entity);
+    var list = (basicCfg && basicCfg.tailWandClasses) || ['mage', 'siren'];
+    for (var i = 0; i < list.length; i++) {
+      if (String(list[i]).toLowerCase() === cls) return true;
+    }
+    return false;
+  }
+
+  function basicDisplayName(entity, basicCfg, magic) {
+    if (usesTailWandBasic(entity, basicCfg) || magic) {
+      if (usesTailWandBasic(entity, basicCfg)) return basicCfg.tailWandName || 'Tail Wand';
+    }
+    return basicCfg.beakJabName || basicCfg.naturalStrikeName || 'Beak Jab';
+  }
+
   ns.resolveBasicAttack = function resolveBasicAttack(entity) {
     var cfg = combatConfig();
     var basicCfg = cfg && cfg.basicAttack ? cfg.basicAttack : {};
+    var tailWand = usesTailWandBasic(entity, basicCfg);
     var main = equippedItem(entity, 'mainHand');
     if (!main || !isWeaponItem(main)) {
-      var physId = basicCfg.physicalId || 'BASIC_PHYSICAL';
-      var row = ns.skillToAbilityRow(physId, null, 'grey');
-      if (!row) return null;
-      return abilityFromRow(row, {
+      var bareId = tailWand
+        ? (basicCfg.magicId || 'BASIC_MAGIC')
+        : (basicCfg.physicalId || 'BASIC_PHYSICAL');
+      var bareRow = ns.skillToAbilityRow(bareId, null, 'grey');
+      if (!bareRow) return null;
+      bareRow.heavyAccuracyPenalty = 0;
+      if (tailWand) {
+        bareRow.damageType = 'Magic';
+        bareRow.scaleStat = 'Focus';
+        bareRow.damageStat = 'Focus';
+        bareRow.scalingStat = 'Focus';
+      }
+      return abilityFromRow(bareRow, {
         isMainAttack: true,
         actionSource: 'basic',
-        nameOverride: basicCfg.naturalStrikeName || 'Natural Strike',
+        nameOverride: basicDisplayName(entity, basicCfg, tailWand),
       });
     }
     var mainSkill = getSkill(main.skill1);
-    var magic = mainSkill && String(mainSkill.damageType).toLowerCase() === 'magic';
+    var magic = tailWand || (mainSkill && String(mainSkill.damageType).toLowerCase() === 'magic');
     var basicId = magic ? (basicCfg.magicId || 'BASIC_MAGIC') : (basicCfg.physicalId || 'BASIC_PHYSICAL');
     var basicRow = ns.skillToAbilityRow(basicId, main, normalizeRarity(main.rarity));
     if (!basicRow) return null;
-    return abilityFromRow(basicRow, { isMainAttack: true, actionSource: 'basic' });
+    basicRow.heavyAccuracyPenalty = 0;
+    if (tailWand) {
+      basicRow.damageType = 'Magic';
+      basicRow.scaleStat = 'Focus';
+      basicRow.damageStat = 'Focus';
+      basicRow.scalingStat = 'Focus';
+    }
+    return abilityFromRow(basicRow, {
+      isMainAttack: true,
+      actionSource: 'basic',
+      nameOverride: basicDisplayName(entity, basicCfg, magic),
+    });
   };
 
   ns.resolveWeaponSkills = function resolveWeaponSkills(entity) {

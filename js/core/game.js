@@ -12227,10 +12227,13 @@ function dealDamage(target,amount,isCrit=false,isMagic=false,srcAbility=null,opt
       ? Math.max(1, Number(enemyRow.enCost ?? enemyRow.apCost ?? 1))
       : Math.max(1, Number(getAbilityAuthoredEnergyCost(activeAb, G.enemy) || 1));
     const playerDodge = getEffectiveDodge(G.player);
-    const enemyBaseAcc=Math.max(0, (Number(G.enemy.stats.acc)||0) - (G.enemyStatus.accDebuff||0) - (G.enemyStatus.enemyBlind>0?15:0));
+    /* LEG-022: baseline 100%; temp Precision Down / blind subtract; no bird ACC. */
+    let enemyBaseHit=100
+      - (Number(G.enemyStatus.accDebuff)||0)
+      - (G.enemyStatus.enemyBlind>0?15:0);
     const accPenalty=(typeof calculateAbilityAccuracyPenalty==='function'&&enemyRow)
       ? calculateAbilityAccuracyPenalty(enemyRow) : 0;
-    const hitPct=calculateAbilityHitChancePct(enemyBaseAcc, playerDodge, accPenalty);
+    const hitPct=calculateAbilityHitChancePct(enemyBaseHit, playerDodge, accPenalty);
     if (Math.random()*100>=hitPct){
       G._currentPiercePct=0;
       const _pbd=BIRDS[G.player.birdKey]; if(_pbd&&_pbd.passive&&_pbd.passive.onDodge)_pbd.passive.onDodge(G.player);
@@ -12627,25 +12630,24 @@ function getPlayerMissChance(ab) {
   return Math.max(floor, reduced - accBonus + tookiePenalty - (G.playerStatus.accDebuff||0) + classAdj + sizeAdj - missReduce - extra - getPlayerHitBonus(ab));
 }
 
-/** Hit % = attacker ACC − target DODGE − ability accuracy penalty; clamped 15–95.
- *  v0.6: prefer Skill Library action Precision when present; character ACC is often 0. */
+/** Hit % = 100 − Dodge − skill accuracy penalty (± temp Precision); clamped 15–95.
+ *  LEG-022: no permanent bird ACC. Skill penalties apply only for EN ≥ 3. */
 function getPlayerHitPercentForAttack(ab){
   const dodge=getEffectiveEnemyDodgeForPlayerHit();
-  const actionPrec=resolveActionPrecisionPct(ab);
-  let acc=actionPrec!=null ? actionPrec : getPlayerEffectiveAcc();
-  /* Battle Precision mods still apply on top of action or character ACC. */
-  if(actionPrec!=null) acc+=getPlayerAccMod();
+  let baseHit=100;
+  /* Temporary Precision Up/Down and encounter mods (not a bird ACC attribute). */
+  baseHit+=getPlayerAccMod();
   const t=ABILITY_TEMPLATES?.[ab?.id]||ABILITY_TEMPLATES_EXTRA?.[ab?.id]||ab||{};
   const kind=String(t.btnType||t.type||ab?.btnType||ab?.type||'').toLowerCase();
-  const isAttack=(kind==='physical'||kind==='ranged');
-  if(isAttack && !G._firstAttackUsed) acc+=Number(G.player?.firstAttackAccBonus||0);
-  acc+=getPlayerHitBonus(ab);
+  const isAttack=(kind==='physical'||kind==='ranged'||kind==='magic'||kind==='spell');
+  if(isAttack && !G._firstAttackUsed) baseHit+=Number(G.player?.firstAttackAccBonus||0);
+  baseHit+=getPlayerHitBonus(ab);
   const row=resolveAbilityCombatRow(ab);
   const accPenalty=(typeof calculateAbilityAccuracyPenalty==='function'&&row)
     ? calculateAbilityAccuracyPenalty(row) : 0;
   const heavyRed=(typeof Avian?.equipmentEffects?.getHeavyAccPenaltyReduction==='function')
     ? Avian.equipmentEffects.getHeavyAccPenaltyReduction() : 0;
-  return calculateAbilityHitChancePct(acc, dodge, Math.max(0, accPenalty - heavyRed));
+  return calculateAbilityHitChancePct(baseHit, dodge, Math.max(0, accPenalty - heavyRed));
 }
 
 function getPlayerAccuracy() {
@@ -17224,12 +17226,16 @@ function buildRefGuide() {
   const pointsT=tiersPack.points||{};
   const braceT=tiersPack.brace||{};
   const stackingT=tiersPack.stacking||{};
+  const flatTier=!!tiersPack.flatStat;
   const effectTiersHtml=['minor','moderate','major'].filter(t=>isMatch(t)||isMatch('effect')||isMatch('tier')||!q).map(t=>{
+    const coreLabel=flatTier
+      ? `Core flat ±${buffT[t]!=null?buffT[t]:'—'}`
+      : `Buff/Debuff ±${buffT[t]!=null?buffT[t]:'—'}%`;
     return card(t[0].toUpperCase()+t.slice(1),
-      `Buff/Debuff ±${buffT[t]!=null?buffT[t]:'—'}% · Point tiers ±${pointsT[t]!=null?pointsT[t]:'—'} · Brace ${braceT[t]!=null?braceT[t]:'—'}% · Debuff table ${debuffT[t]!=null?debuffT[t]:'—'}%`,
+      `${coreLabel} · Point tiers ±${pointsT[t]!=null?pointsT[t]:'—'} · Brace ${braceT[t]!=null?braceT[t]:'—'}${flatTier?'':'%'} · Debuff table ${debuffT[t]!=null?debuffT[t]:'—'}${flatTier?'':'%'}`,
       true,'tier');
   }).join('')+(isMatch('stack')||isMatch('cap')||!q?card('Stacking rules',
-    `Mode: ${stackingT.mode||'strongestPerDirection'}. Core temp cap ${stackingT.coreTempCapPct!=null?stackingT.coreTempCapPct+'%':'—'}. Precision temp cap ${stackingT.precisionTempCapPoints!=null?stackingT.precisionTempCapPoints+' points':'—'}.`,
+    `Mode: ${stackingT.mode||'strongestPerDirection'}. Core temp cap ${stackingT.coreTempCapPct!=null?stackingT.coreTempCapPct+(flatTier?' flat':'%'):'—'}. Precision temp cap ${stackingT.precisionTempCapPoints!=null?stackingT.precisionTempCapPoints+' points':'—'}.`,
     true,'stacking'):'');
 
   const mechanics=`<div class="ref-skills-grid">

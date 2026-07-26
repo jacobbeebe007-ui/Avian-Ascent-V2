@@ -273,7 +273,11 @@
     basicAttack: Object.freeze({
       physicalId: 'BASIC_PHYSICAL',
       magicId: 'BASIC_MAGIC',
-      naturalStrikeName: 'Natural Strike',
+      beakJabName: 'Beak Jab',
+      tailWandName: 'Tail Wand',
+      /** @deprecated use beakJabName */
+      naturalStrikeName: 'Beak Jab',
+      tailWandClasses: Object.freeze(['mage', 'siren']),
       enCost: 1,
       skillPowerPct: 100,
       flatMin: 1,

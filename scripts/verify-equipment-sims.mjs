@@ -114,11 +114,11 @@ if (JSON.stringify(first) !== JSON.stringify(second)) {
   ok('seeded duel deterministic (seed=' + SEED + ')');
 }
 
-/* v0.9 weapon-first: lower weapon ranges / baseHealth → shorter, lower-damage duels. */
+/* v0.9 weapon-first + ACC-less hit: lower HP, hits land more often. */
 const SNAPSHOT = Object.freeze({
   turns: 2,
   winner: 'defender',
-  damageDealt: 8.8,
+  damageDealt: 8.88,
   damageTaken: 22,
   seed: SEED,
 });

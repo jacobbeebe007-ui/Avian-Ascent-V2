@@ -1113,13 +1113,16 @@ for (const { cells, rowNum } of tableRows(sheets['Skill Library'], 4)) {
 for (const id of ['BASIC_PHYSICAL', 'BASIC_MAGIC']) {
   if (!skills[id]) continue;
   Object.assign(skills[id], {
+    name: id === 'BASIC_MAGIC' ? 'Tail Wand' : 'Beak Jab',
     skillPowerPct: 100,
     skillPower: 1,
     fixedCoefficient: 1,
     naturalStrikeFlat: { min: 1, max: 2 },
     basePrecision: 1,
+    heavyAccuracyPenalty: 0,
     coefficientFixed: true,
   });
+  delete skills[id].perHitSkillPower;
 }
 const skillCount = Object.keys(skills).length;
 const dashSkillCount = num(dashValue('Skill Templates'));

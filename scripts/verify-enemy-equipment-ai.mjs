@@ -346,6 +346,30 @@ if (typeof equipment.countEquippedPieces === 'function') {
   fail('countEquippedPieces not exported');
 }
 
+/* LEG-022 hit + full EN spend at 6. */
+{
+  const hitPct = sandbox.calculateAbilityHitChancePct
+    ? sandbox.calculateAbilityHitChancePct(100, 10, 0)
+    : null;
+  if (hitPct === 90) ok('enemy/player hit formula 100−10 dodge = 90');
+  else if (typeof sandbox.calculateAbilityHitChancePct !== 'function') {
+    ok('hit formula check skipped (not on sandbox)');
+  } else fail(`hit formula expected 90, got ${hitPct}`);
+
+  const enEnemy = makeEnemy('rogue', 'grey', { id: 'en-spend-6' });
+  equipment.assignEnemyEquipmentLoadout(enEnemy, { rarity: 'grey', variance: false, seed: 11 });
+  enEnemy.energy = 6;
+  sandbox.G.enemy = enEnemy;
+  sandbox.G.stage = 10;
+  sandbox.G.difficulty = 'juvenile';
+  const plan6 = sandbox.planEnemyTurn(enEnemy, {
+    stats: { hp: 40, maxHp: 100, def: 4, mdef: 4, dodge: 5, acc: 0 },
+  });
+  const cap = plan6 && plan6.energySpendCap;
+  if (cap >= 6) ok(`EN spend cap at 6 energy = ${cap}`);
+  else fail(`expected EN spend cap ≥6 at full meter, got ${cap}`);
+}
+
 if (failed) {
   console.error(`\n[enemy-equipment-ai] ${failed} failure(s)`);
   process.exit(1);

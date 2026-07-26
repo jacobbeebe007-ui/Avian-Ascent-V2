@@ -72,8 +72,11 @@ const skillIds = skills ? Object.keys(skills) : [];
 if (skillIds.length < 82) fail('expected ≥82 skills (v0.9 Skill Library), got ' + skillIds.length);
 if (!skills.BASIC_PHYSICAL || !skills.BASIC_MAGIC) fail('missing BASIC_PHYSICAL / BASIC_MAGIC');
 if (!skills.BASIC_PHYSICAL.naturalStrikeFlat || skills.BASIC_PHYSICAL.skillPowerPct !== 100) {
-  fail('BASIC_PHYSICAL must be Natural Strike (flat 1–2 + 100% Skill Power)');
+  fail('BASIC_PHYSICAL must be Beak Jab (flat 1–2 + 100% Skill Power)');
 }
+if (skills.BASIC_PHYSICAL.name !== 'Beak Jab') fail('BASIC_PHYSICAL name must be Beak Jab, got ' + skills.BASIC_PHYSICAL.name);
+if (skills.BASIC_MAGIC.name !== 'Tail Wand') fail('BASIC_MAGIC name must be Tail Wand, got ' + skills.BASIC_MAGIC.name);
+if (skills.BASIC_PHYSICAL.heavyAccuracyPenalty) fail('BASIC_PHYSICAL must have no heavy accuracy penalty');
 
 const itemIds = items ? Object.keys(items) : [];
 if (itemIds.length !== 240) fail('expected 240 items, got ' + itemIds.length);

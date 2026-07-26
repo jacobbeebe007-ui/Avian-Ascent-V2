@@ -159,11 +159,39 @@
     return Math.max(caps.min, Math.min(caps.max, Number(mult) || caps.base));
   }
 
-  function calculateAbilityHitChancePct(attackerAcc, targetDodge, accuracyPenalty) {
-    var acc = Math.max(0, Number(attackerAcc) || 0);
+  /**
+   * LEG-022 / v0.9: no permanent bird ACC.
+   * Hit% = clamp(baseHit − Dodge − skillPenalty, 15, 95).
+   * Default baseHit is 100; callers may pass temp Precision mods via baseHit.
+   */
+  function calculateAbilityHitChancePct(baseHitOrAcc, targetDodge, accuracyPenalty) {
+    var base = Number(baseHitOrAcc);
+    if (!Number.isFinite(base)) base = 100;
     var dodge = Math.max(0, Number(targetDodge) || 0);
     var penalty = Math.max(0, Number(accuracyPenalty) || 0);
-    return clampHitChancePct(acc - dodge - penalty);
+    return clampHitChancePct(base - dodge - penalty);
+  }
+
+  function skillEnCost(row) {
+    if (!row) return 0;
+    var en = row.enCost != null ? row.enCost : (row.en != null ? row.en : row.apCost);
+    return Math.max(0, Math.floor(Number(en) || 0));
+  }
+
+  /** Accuracy penalty only for EN ≥ 3 skills. Prefer Skill Library Base Precision. */
+  function resolveSkillAccuracyPenalty(row) {
+    if (!row) return 0;
+    if (row.id === 'BASIC_PHYSICAL' || row.id === 'BASIC_MAGIC' || row.naturalStrikeFlat) return 0;
+    var en = skillEnCost(row);
+    if (en < 3) return 0;
+    var prec = row.basePrecision != null ? Number(row.basePrecision)
+      : (row.precision != null ? Number(row.precision) : null);
+    if (prec != null && Number.isFinite(prec) && prec > 0) {
+      var asPct = prec <= 1.5 ? prec * 100 : prec;
+      return Math.max(0, Math.round((100 - asPct) * 100) / 100);
+    }
+    if (row.heavyAccuracyPenalty != null) return Math.max(0, Number(row.heavyAccuracyPenalty) || 0);
+    return inferHeavyAccuracyPenalty(row);
   }
 
   function minimumDamageForEnCost(enCost) {
@@ -534,6 +562,9 @@
 
   function inferHeavyAccuracyPenalty(row) {
     if (row && row.heavyAccuracyPenalty != null) return Number(row.heavyAccuracyPenalty) || 0;
+    var en = skillEnCost(row);
+    if (en < 3) return 0;
+    if (row && (row.id === 'BASIC_PHYSICAL' || row.id === 'BASIC_MAGIC' || row.naturalStrikeFlat)) return 0;
     var power = inferAbilityPower(row);
     if (power < 1.0) return 0;
     if (power >= 1.31) return 15;
@@ -833,11 +864,12 @@
 
   function calculateHeavyAccuracyPenalty(ability) {
     enrichCombatRow(ability || {});
-    return Number(ability.heavyAccuracyPenalty) || 0;
+    return resolveSkillAccuracyPenalty(ability);
   }
 
   function calculateAbilityAccuracyPenalty(ability) {
-    return calculateHeavyAccuracyPenalty(ability);
+    enrichCombatRow(ability || {});
+    return resolveSkillAccuracyPenalty(ability);
   }
 
   function calculateRecoilDamage(finalDamage, ability) {
@@ -1181,6 +1213,7 @@
     clampCritDamageMult: clampCritDamageMult,
     calculateAbilityHitChancePct: calculateAbilityHitChancePct,
     calculateAbilityAccuracyPenalty: calculateAbilityAccuracyPenalty,
+    resolveSkillAccuracyPenalty: resolveSkillAccuracyPenalty,
     applyMinimumDamage: applyMinimumDamage,
     roundCurvedDamage: roundCurvedDamage,
     applyBurningDefModifier: applyBurningDefModifier,

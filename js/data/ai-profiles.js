@@ -31,19 +31,19 @@
     }),
     difficultyModifiers: Object.freeze({
       fletchling: Object.freeze({
-        spendCapMin: 0.50, spendCapMax: 0.85, intentRandomness: 1.35,
+        spendCapMin: 0.85, spendCapMax: 1.0, intentRandomness: 1.35,
         enEfficiencyWeight: 0.6, finisherPrecision: 0.7, evDefenseWeight: 0.75,
       }),
       juvenile: Object.freeze({
-        spendCapMin: 0.60, spendCapMax: 0.75, intentRandomness: 1.0,
+        spendCapMin: 0.90, spendCapMax: 1.0, intentRandomness: 1.0,
         enEfficiencyWeight: 1.0, finisherPrecision: 1.0, evDefenseWeight: 1.0,
       }),
       predator: Object.freeze({
-        spendCapMin: 0.65, spendCapMax: 0.90, intentRandomness: 0.85,
+        spendCapMin: 0.95, spendCapMax: 1.0, intentRandomness: 0.85,
         enEfficiencyWeight: 1.25, finisherPrecision: 1.15, evDefenseWeight: 1.1,
       }),
       murder: Object.freeze({
-        spendCapMin: 0.75, spendCapMax: 0.98, intentRandomness: 0.65,
+        spendCapMin: 1.0, spendCapMax: 1.0, intentRandomness: 0.65,
         enEfficiencyWeight: 1.45, finisherPrecision: 1.35, evDefenseWeight: 1.2,
       }),
     }),
