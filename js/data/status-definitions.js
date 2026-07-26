@@ -144,11 +144,8 @@
         });
       });
     }
-    ['identityPassive', 'identityClassPerk', 'identityTrait'].forEach(function (idKey) {
-      var iv = s[idKey];
-      if (!iv || !iv.name) return;
-      entries.push({ id: idKey, value: iv, synthetic: true, identityBadge: true });
-    });
+    /* identityPassive / identityClassPerk / identityTrait are not battle status badges —
+     * passives & perks surface in Stats & Details / bird select only. */
     return entries;
   }
 

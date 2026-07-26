@@ -1185,7 +1185,7 @@
       if (Number.isFinite(wMin) || Number.isFinite(wMax)) {
         if (!Number.isFinite(wMin)) wMin = wMax;
         if (!Number.isFinite(wMax)) wMax = wMin;
-        bits.push('Weapon: ' + wMin + '–' + wMax + '.');
+        if (wMin > 0 || wMax > 0) bits.push('Weapon: ' + wMin + '–' + wMax + '.');
       }
     } else {
       bits.push('Ability Power: ' + (Number(row.abilityPower) || 0).toFixed(2) + '.');

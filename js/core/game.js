@@ -670,22 +670,29 @@ function getEquipmentSkill(skillId){
   const cat=Avian.data?.equipment?.skills;
   return skillId && cat ? (cat[skillId]||null) : null;
 }
+function itemHasDisplayableWeaponDamage(item){
+  if(!item||item.slot!=='Weapon') return false;
+  const minD=item.minDamage!=null?Number(item.minDamage):null;
+  const maxD=item.maxDamage!=null?Number(item.maxDamage):null;
+  if(!Number.isFinite(minD)&&!Number.isFinite(maxD)) return false;
+  const lo=Number.isFinite(minD)?minD:maxD;
+  const hi=Number.isFinite(maxD)?maxD:lo;
+  return (lo>0||hi>0);
+}
 function formatEquipmentStatsHtml(item){
   if(!item) return '';
   let html='';
-  const minD=item.minDamage!=null?Number(item.minDamage):null;
-  const maxD=item.maxDamage!=null?Number(item.maxDamage):null;
-  const hasWeaponRange=(item.slot==='Weapon'||minD!=null||maxD!=null)
-    &&(Number.isFinite(minD)||Number.isFinite(maxD));
-  if(hasWeaponRange){
-    const lo=Number.isFinite(minD)?minD:(Number.isFinite(maxD)?maxD:0);
+  if(itemHasDisplayableWeaponDamage(item)){
+    const minD=item.minDamage!=null?Number(item.minDamage):null;
+    const maxD=item.maxDamage!=null?Number(item.maxDamage):null;
+    const lo=Number.isFinite(minD)?minD:maxD;
     const hi=Number.isFinite(maxD)?maxD:lo;
     html+=`<div class="tt-row mut-stat-line"><span class="tt-lbl">Damage</span><span class="tt-val">${escapeHtmlRoster(`${formatCombatNumber(lo)}–${formatCombatNumber(hi)}`)}</span></div>`;
   }
-  if(item.scalingStat){
+  if(item.slot==='Weapon'&&item.scalingStat){
     html+=`<div class="tt-row mut-stat-line"><span class="tt-lbl">Scales</span><span class="tt-val">${escapeHtmlRoster(formatAnyStatLabel(item.scalingStat))}</span></div>`;
   }
-  if(item.damageType){
+  if(item.slot==='Weapon'&&item.damageType){
     html+=`<div class="tt-row mut-stat-line"><span class="tt-lbl">Type</span><span class="tt-val">${escapeHtmlRoster(String(item.damageType))}</span></div>`;
   }
   if(item.stats){
@@ -8467,31 +8474,13 @@ function ensureCombatStatusSections(id){
   return { root, ailments, modifiers };
 }
 
+/** Clear identity perk/passive/trait badges from the battle status strip.
+ *  Those belong in Stats & Details / bird select, not as combat status tags. */
 function syncEnemyIdentityStatusBadges(){
-  if(!G?.enemy || !G.enemyStatus) return;
-  const birdKey=G.enemy.birdKey||G.enemy.portraitKey||'';
-  const passive=typeof Avian?.getBirdPassiveV2==='function'?Avian.getBirdPassiveV2(birdKey):null;
-  if(passive&&passive.name){
-    G.enemyStatus.identityPassive={ name:passive.name, effect:passive.effect||'', persistent:true };
-  }else{
-    delete G.enemyStatus.identityPassive;
-  }
-  const perk=typeof Avian?.classPerks?.getClassPerkForEntity==='function'
-    ? Avian.classPerks.getClassPerkForEntity(G.enemy)
-    : null;
-  if(perk&&perk.name){
-    G.enemyStatus.identityClassPerk={ name:perk.name, effect:perk.effect||'', persistent:true };
-  }else if(G.enemy.classPerk){
-    G.enemyStatus.identityClassPerk={ name:G.enemy.classPerk, effect:G.enemy.classPerkEffect||'', persistent:true };
-  }else{
-    delete G.enemyStatus.identityClassPerk;
-  }
-  const trait=G.enemy._trait||(typeof enemyTraitFor==='function'?enemyTraitFor(G.enemy):null);
-  if(trait&&trait.name){
-    G.enemyStatus.identityTrait={ name:trait.name, effect:trait.desc||'', persistent:true };
-  }else{
-    delete G.enemyStatus.identityTrait;
-  }
+  if(!G?.enemyStatus) return;
+  delete G.enemyStatus.identityPassive;
+  delete G.enemyStatus.identityClassPerk;
+  delete G.enemyStatus.identityTrait;
 }
 
 function renderStatuses(id, statuses) {

@@ -95,6 +95,7 @@ if (ctx) {
   }
 
   const sampleWpn = ctx.Avian.data?.equipment?.items?.['EQ-TB-GRY'];
+  const sampleArmour = ctx.Avian.data?.equipment?.items?.['EQ-AL-GRY'];
   const descFn = ctx.Avian.equipmentLoot?.formatEquipmentDesc;
   if (sampleWpn && typeof descFn === 'function') {
     const desc = descFn(sampleWpn);
@@ -105,6 +106,14 @@ if (ctx) {
     }
   } else {
     fail('could not format sample weapon desc');
+  }
+  if (sampleArmour && typeof descFn === 'function') {
+    const armourDesc = descFn(sampleArmour);
+    if (/Damage\s+0/.test(armourDesc) || /Damage\s+\d/.test(armourDesc)) {
+      fail('non-weapon loot desc should omit damage: ' + armourDesc);
+    } else {
+      ok('non-weapon loot desc omits damage');
+    }
   }
 }
 

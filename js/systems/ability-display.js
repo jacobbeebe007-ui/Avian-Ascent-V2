@@ -477,6 +477,7 @@
     if (!Number.isFinite(min) && !Number.isFinite(max)) return null;
     if (!Number.isFinite(min)) min = max;
     if (!Number.isFinite(max)) max = min;
+    if (!(min > 0 || max > 0)) return null;
     return { min: min, max: max };
   }
 
