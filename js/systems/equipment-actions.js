@@ -300,15 +300,12 @@
     var weaponFirst = !!(cfgWf && cfgWf.weaponFirstV09 && cfgWf.weaponFirst && cfgWf.weaponFirst.enabled !== false);
     var skillPowerPct = skill.skillPowerPct != null ? Number(skill.skillPowerPct)
       : (apVal != null ? Math.round(Number(apVal) * (Number(apVal) <= 10 ? 100 : 1)) : null);
-    var minDmg = item && item.minDamage != null ? Number(item.minDamage) : null;
-    var maxDmg = item && item.maxDamage != null ? Number(item.maxDamage) : null;
-    var scalingStat = skill.scalingStat || (item && item.scalingStat) || null;
-    if (weaponFirst && item && item.scalingStat
-      && (skill.id === 'BASIC_PHYSICAL' || skill.id === 'BASIC_MAGIC' || skill.naturalStrikeFlat)) {
-      scalingStat = item.scalingStat;
-      if (/magic/i.test(String(item.damageType || ''))) dmgType = 'Magic';
-      else dmgType = 'Physical';
-    }
+    var isBasic = skill.id === 'BASIC_PHYSICAL' || skill.id === 'BASIC_MAGIC' || !!skill.naturalStrikeFlat;
+    /* Basics (Beak Jab / Tail Wand) are always flat 1–2 — never copy weapon min/max or scaling. */
+    var minDmg = (!isBasic && item && item.minDamage != null) ? Number(item.minDamage) : null;
+    var maxDmg = (!isBasic && item && item.maxDamage != null) ? Number(item.maxDamage) : null;
+    var scalingStat = skill.scalingStat || null;
+    if (!isBasic && !scalingStat && item && item.scalingStat) scalingStat = item.scalingStat;
     var row = {
       id: skill.id,
       name: skill.name,
@@ -322,9 +319,9 @@
       scalingStat: scalingStat,
       abilityPower: apVal != null ? Number(apVal) : null,
       fixedCoefficient: skill.fixedCoefficient != null ? Number(skill.fixedCoefficient) : (apVal != null ? Number(apVal) : null),
-      skillPowerPct: skillPowerPct,
-      skillPower: skill.skillPower != null ? Number(skill.skillPower) : (skillPowerPct != null ? skillPowerPct / 100 : null),
-      naturalStrikeFlat: skill.naturalStrikeFlat || null,
+      skillPowerPct: isBasic ? 0 : skillPowerPct,
+      skillPower: isBasic ? 0 : (skill.skillPower != null ? Number(skill.skillPower) : (skillPowerPct != null ? skillPowerPct / 100 : null)),
+      naturalStrikeFlat: skill.naturalStrikeFlat || (isBasic ? { min: 1, max: 2 } : null),
       minDamage: minDmg,
       maxDamage: maxDmg,
       baseDamage: skill.baseDamage != null ? Number(skill.baseDamage) : null,

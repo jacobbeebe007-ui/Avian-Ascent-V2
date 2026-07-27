@@ -423,6 +423,14 @@
     return (min + max) / 2;
   }
 
+  function isNaturalBasicAbility(ability) {
+    var row = ability || {};
+    if (row.id === 'BASIC_PHYSICAL' || row.id === 'BASIC_MAGIC') return true;
+    if (row.naturalStrikeFlat) return true;
+    var name = String(row.name || '');
+    return /natural.?strike|beak.?jab|tail.?wand/i.test(name);
+  }
+
   function resolveNaturalStrikeFlat(params, ability) {
     params = params || {};
     ability = ability || {};
@@ -438,8 +446,7 @@
     if (!Number.isFinite(fmin)) fmin = 1;
     if (!Number.isFinite(fmax)) fmax = 2;
     if (fmax < fmin) fmax = fmin;
-    if (!(flat || ability.id === 'BASIC_PHYSICAL' || ability.id === 'BASIC_MAGIC'
-      || /natural.?strike/i.test(String(ability.name || '')))) {
+    if (!(flat || isNaturalBasicAbility(ability))) {
       return 0;
     }
     if (params.rollWeapon === true) {
@@ -662,10 +669,7 @@
     /* Natural Strike / basic attacks inherit the equipped weapon scaling stat. */
     if ((row.id === 'BASIC_PHYSICAL' || row.id === 'BASIC_MAGIC' || row.naturalStrikeFlat)
       && !opts.hybridHitStat) {
-      var wpn = resolveMainHandWeaponItem(attacker);
-      if (wpn && wpn.scalingStat) statKey = String(wpn.scalingStat).toUpperCase();
-      else if (wpn && /finesse|dex/i.test(String(wpn.damageType || wpn.damageCategory || ''))) statKey = 'DEX';
-      else if (wpn && /magic/i.test(String(wpn.damageType || ''))) statKey = 'MATK';
+      /* Basics keep their authored scaling (Might / Focus); they do not inherit weapon scaling. */
     }
     return statFromEntity(attacker, statKey);
   }
@@ -913,16 +917,7 @@
       return { damage: 0, preMitigation: 0, components: {} };
     }
     var enCost = ability.enCost != null ? ability.enCost : (ability.apCost || 1);
-    /* Natural Strike / basics inherit weapon damage type when needed. */
-    if ((ability.id === 'BASIC_PHYSICAL' || ability.id === 'BASIC_MAGIC' || ability.naturalStrikeFlat)
-      && weaponFirstEnabled()) {
-      var wpnType = resolveMainHandWeaponItem(attacker);
-      if (wpnType) {
-        if (/magic/i.test(String(wpnType.damageType || ''))) ability.damageType = 'Magic';
-        else ability.damageType = 'Physical';
-        if (wpnType.scalingStat) ability.scalingStat = wpnType.scalingStat;
-      }
-    }
+    /* Beak Jab / Tail Wand stay class-authored; they do not inherit weapon damage. */
     var defStat = getRelevantDefenceStat(target, ability);
     var pierce = resolvePierceFraction(ability, String(ability.damageType) === 'Magic');
     var flatPen = Number(params.flatPen) || Number(ability.flatPen) || 0;
@@ -972,34 +967,41 @@
 
     if (usesWeaponFirst(ability)) {
       weaponFirst = true;
-      weaponDamage = resolveWeaponDamageValue(params, ability, attacker);
-      skillPowerPct = getSkillPowerPct(ability);
-      if ((ability.id === 'BASIC_PHYSICAL' || ability.id === 'BASIC_MAGIC' || ability.naturalStrikeFlat)
-        && !(skillPowerPct > 0)) {
-        skillPowerPct = 100;
-      }
       relevantStat = getRelevantAttackStat(attacker, ability, {
         hybridHitStat: params.hybridHitStat || (ability && ability._hybridHitStat),
       });
-      /* Hybrid COMBO rows: sum weapon×((sharePct + stat×2.5)/100) per component. */
-      if (Array.isArray(ability.scaling) && ability.scaling.length) {
-        preMitigation = 0;
-        for (var si = 0; si < ability.scaling.length; si++) {
-          var sc = ability.scaling[si];
-          if (!sc) continue;
-          var sharePct = sc.skillPowerPct != null ? Number(sc.skillPowerPct)
-            : Math.round((Number(sc.coeff) || 0) * (Number(sc.coeff) <= 10 ? 100 : 1));
-          var st = statFromEntity(attacker, sc.ledgerKey || sc.stat);
-          preMitigation += weaponDamage * ((sharePct + st * getOffencePctPerStat()) / 100);
-        }
-      } else {
+      /* Beak Jab / Tail Wand: always flat 1–2. Never scale with equipped weapon. */
+      if (isNaturalBasicAbility(ability)) {
         naturalFlat = resolveNaturalStrikeFlat(params, ability);
-        preMitigation = naturalFlat
-          + weaponDamage * ((skillPowerPct + relevantStat * getOffencePctPerStat()) / 100);
+        weaponDamage = 0;
+        skillPowerPct = 0;
+        preMitigation = naturalFlat;
+        abilityPower = 0;
+        enBase = naturalFlat;
+        statMod = 1;
+      } else {
+        weaponDamage = resolveWeaponDamageValue(params, ability, attacker);
+        skillPowerPct = getSkillPowerPct(ability);
+        /* Hybrid COMBO rows: sum weapon×((sharePct + stat×2.5)/100) per component. */
+        if (Array.isArray(ability.scaling) && ability.scaling.length) {
+          preMitigation = 0;
+          for (var si = 0; si < ability.scaling.length; si++) {
+            var sc = ability.scaling[si];
+            if (!sc) continue;
+            var sharePct = sc.skillPowerPct != null ? Number(sc.skillPowerPct)
+              : Math.round((Number(sc.coeff) || 0) * (Number(sc.coeff) <= 10 ? 100 : 1));
+            var st = statFromEntity(attacker, sc.ledgerKey || sc.stat);
+            preMitigation += weaponDamage * ((sharePct + st * getOffencePctPerStat()) / 100);
+          }
+        } else {
+          naturalFlat = resolveNaturalStrikeFlat(params, ability);
+          preMitigation = naturalFlat
+            + weaponDamage * ((skillPowerPct + relevantStat * getOffencePctPerStat()) / 100);
+        }
+        abilityPower = skillPowerPct / 100;
+        enBase = weaponDamage;
+        statMod = 1;
       }
-      abilityPower = skillPowerPct / 100;
-      enBase = weaponDamage;
-      statMod = 1;
       /* Affinity → crit → mitigation → round once. */
       var afterAffinity = preMitigation * typeMod * bonusMod;
       if (params.isCriticalHit) {
@@ -1173,12 +1175,25 @@
     var en = row.enCost || row.apCost || 1;
     var weight = en === 1 ? 'Light' : (en === 2 ? 'Medium' : 'Heavy');
     var dtype = String(row.damageType || 'Physical');
-    var stat = String(row.damageStat || row.scalingStat || row.scaleStat || 'ATK');
     var bits = [
       'Deals ' + weight + ' ' + dtype + ' damage.',
-      'Uses ' + stat + '.',
     ];
-    if (weaponFirstEnabled()) {
+    if (isNaturalBasicAbility(row)) {
+      var cfgNs = getCombatConfig();
+      var fmin = (row.naturalStrikeFlat && row.naturalStrikeFlat.min != null)
+        ? Number(row.naturalStrikeFlat.min)
+        : (cfgNs && cfgNs.weaponFirst && cfgNs.weaponFirst.naturalStrike
+          ? Number(cfgNs.weaponFirst.naturalStrike.flatMin) : 1);
+      var fmax = (row.naturalStrikeFlat && row.naturalStrikeFlat.max != null)
+        ? Number(row.naturalStrikeFlat.max)
+        : (cfgNs && cfgNs.weaponFirst && cfgNs.weaponFirst.naturalStrike
+          ? Number(cfgNs.weaponFirst.naturalStrike.flatMax) : 2);
+      if (!Number.isFinite(fmin)) fmin = 1;
+      if (!Number.isFinite(fmax)) fmax = 2;
+      bits.push('Damage: ' + fmin + '–' + fmax + ' (does not scale with weapon).');
+    } else if (weaponFirstEnabled()) {
+      var stat = String(row.damageStat || row.scalingStat || row.scaleStat || 'ATK');
+      bits.push('Uses ' + stat + '.');
       bits.push('Skill Power: ' + (getSkillPowerPct(row) || 0) + '%.');
       var wMin = row.minDamage != null ? Number(row.minDamage) : null;
       var wMax = row.maxDamage != null ? Number(row.maxDamage) : null;
@@ -1188,6 +1203,8 @@
         if (wMin > 0 || wMax > 0) bits.push('Weapon: ' + wMin + '–' + wMax + '.');
       }
     } else {
+      var statLegacy = String(row.damageStat || row.scalingStat || row.scaleStat || 'ATK');
+      bits.push('Uses ' + statLegacy + '.');
       bits.push('Ability Power: ' + (Number(row.abilityPower) || 0).toFixed(2) + '.');
     }
     if ((row.heavyAccuracyPenalty || 0) > 0) bits.push('Heavy accuracy penalty: -' + row.heavyAccuracyPenalty + '.');
@@ -1257,6 +1274,7 @@
     usesMasterDamage: usesMasterDamage,
     usesWeaponFirst: usesWeaponFirst,
     usesDirectScaling: usesDirectScaling,
+    isNaturalBasicAbility: isNaturalBasicAbility,
     getSkillPowerPct: getSkillPowerPct,
     weaponFirstEnabled: weaponFirstEnabled,
     getMitigationFraction: getMitigationFraction,
@@ -1315,6 +1333,7 @@
   globalThis.usesMasterDamage = usesMasterDamage;
   globalThis.usesWeaponFirst = usesWeaponFirst;
   globalThis.usesDirectScaling = usesDirectScaling;
+  globalThis.isNaturalBasicAbility = isNaturalBasicAbility;
   globalThis.getSkillPowerPct = getSkillPowerPct;
   globalThis.weaponFirstEnabled = weaponFirstEnabled;
   globalThis.getMitigationFraction = getMitigationFraction;

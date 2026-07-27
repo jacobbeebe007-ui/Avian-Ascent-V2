@@ -71,8 +71,8 @@ if (!slots.slots || !slots.slots.offHand) fail('offHand slot missing');
 const skillIds = skills ? Object.keys(skills) : [];
 if (skillIds.length < 82) fail('expected ≥82 skills (v0.9 Skill Library), got ' + skillIds.length);
 if (!skills.BASIC_PHYSICAL || !skills.BASIC_MAGIC) fail('missing BASIC_PHYSICAL / BASIC_MAGIC');
-if (!skills.BASIC_PHYSICAL.naturalStrikeFlat || skills.BASIC_PHYSICAL.skillPowerPct !== 100) {
-  fail('BASIC_PHYSICAL must be Beak Jab (flat 1–2 + 100% Skill Power)');
+if (!skills.BASIC_PHYSICAL.naturalStrikeFlat || Number(skills.BASIC_PHYSICAL.skillPowerPct) !== 0) {
+  fail('BASIC_PHYSICAL must be Beak Jab (flat 1–2 only, no weapon Skill Power)');
 }
 if (skills.BASIC_PHYSICAL.name !== 'Beak Jab') fail('BASIC_PHYSICAL name must be Beak Jab, got ' + skills.BASIC_PHYSICAL.name);
 if (skills.BASIC_MAGIC.name !== 'Tail Wand') fail('BASIC_MAGIC name must be Tail Wand, got ' + skills.BASIC_MAGIC.name);
