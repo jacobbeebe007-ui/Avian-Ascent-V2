@@ -835,11 +835,21 @@ function getEnemyMutationStatSources(enemy, statKey){
   const lines = [];
   if(!enemy?.equipment || typeof Avian?.equipment?.sumEquippedEquipment!=='function') return lines;
   const roll = Avian.equipment.sumEquippedEquipment(enemy);
-  const flat = Number(roll?.stats?.[statKey]) || 0;
-  if(Math.abs(flat) >= 0.0001) lines.push({ name: 'Equipment', value: flat });
+  /* v0.9: hpFlat rolls to vitality; legacy may still use hp. maxHp is derived, not a flat key. */
+  let flatKey = statKey;
+  if(statKey === 'vitality' || statKey === 'hp'){
+    flatKey = (Number(roll?.stats?.vitality) ? 'vitality' : 'hp');
+  } else if(statKey === 'maxHp'){
+    flatKey = (Number(roll?.stats?.vitality) ? 'vitality' : 'hp');
+  }
+  const flat = Number(roll?.stats?.[flatKey]) || 0;
+  if(Math.abs(flat) >= 0.0001){
+    const name = (statKey === 'maxHp' && flatKey === 'vitality') ? 'Equipment (Vitality)' : 'Equipment';
+    lines.push({ name, value: flat });
+  }
   const pctKey = equipmentPctLedgerKey(statKey);
-  const pct = Number(roll?.pct?.[pctKey]) || 0;
-  if(Math.abs(pct) >= 0.0001){
+  const pct = Number(roll?.pct?.[pctKey]) || Number(roll?.pct?.vitality) || 0;
+  if(Math.abs(pct) >= 0.0001 && (statKey !== 'maxHp' || flatKey === 'hp')){
     const pctNum = Math.abs(pct) <= 1.5 ? pct * 100 : pct;
     lines.push({ name: 'Equipment %', value: pctNum, isPct: true });
   }
@@ -938,8 +948,10 @@ function buildEnemyRichStatTooltipHtml(statKey, rawVal, enemy){
       html += `<div class="tt-row"><span class="tt-lbl">${escapeHtmlRoster(src.name)}</span><span class="tt-val">${escapeHtmlRoster(disp)}</span></div>`;
     }
   }
-  if (statKey === 'critChance' && (enemy?._mutationMechanics?.critDamageBonusPct || 0) > 0) {
-    html += `<div class="tt-row"><span class="tt-val" style="font-size:.88em">+${enemy._mutationMechanics.critDamageBonusPct}% crit damage on crits</span></div>`;
+  const eqCritPct = Number(enemy?._equipmentMechanics?.critDamageBonusPct
+    ?? enemy?._mutationMechanics?.critDamageBonusPct) || 0;
+  if (statKey === 'critChance' && eqCritPct > 0) {
+    html += `<div class="tt-row"><span class="tt-val" style="font-size:.88em">+${eqCritPct}% crit damage on crits</span></div>`;
   }
   html += richTooltipCloseBtn();
   return html;
@@ -8109,7 +8121,7 @@ function buildEnemyStatsGridHtml(){
 function buildCombatStatBreakdownSection(side){
   const statKeys=side==='player'
     ? ['atk','matk','def','mdef','dodge','acc','spd','critChance','critMult','armorPen','magicPen']
-    : ['atk','matk','def','mdef','dodge','acc','spd','critChance'];
+    : ['maxHp','atk','matk','def','mdef','dodge','acc','spd','critChance'];
   const player=side==='player'?G.player:null;
   const enemy=side==='enemy'?G.enemy:null;
   let html='';
@@ -12110,6 +12122,24 @@ function computeEntityAbilityRawDamage(entity, ab, tmpl, isMagic){
     ? Avian.passives.collectPendingDamageBonusFractions('enemy', ab, { isMagic, isAttack:!isMagic })
     : [];
   const bonusFractions=[...classBonusFractions, ...passiveBonusFractions];
+  if(entity&&typeof Avian?.equipment?.getMechanicsRollup==='function'){
+    const eqM=Avian.equipment.getMechanicsRollup(entity);
+    if(!isMagic&&(eqM.physicalDamageUpPct||0)>0) bonusFractions.push(eqM.physicalDamageUpPct/100);
+    if(isMagic&&(eqM.magicDamageUpPct||0)>0) bonusFractions.push(eqM.magicDamageUpPct/100);
+    if(eqM.damageBonuses&&eqM.damageBonuses.length){
+      const attackWeight=typeof getAbilityAttackWeight==='function'?getAbilityAttackWeight(ab,entity):null;
+      const abType=String(ab?.btnType||ab?.type||tmpl?.btnType||tmpl?.type||'').toLowerCase();
+      const isSpell=abType==='spell';
+      for(const db of eqM.damageBonuses){
+        if(!db||!db.pct) continue;
+        if(db.tag==='light'&&attackWeight==='light') bonusFractions.push(db.pct/100);
+        else if(db.tag==='medium'&&attackWeight==='medium') bonusFractions.push(db.pct/100);
+        else if(db.tag==='heavy'&&attackWeight==='heavy') bonusFractions.push(db.pct/100);
+        else if((db.tag==='magic'||db.tag==='spell')&&isSpell) bonusFractions.push(db.pct/100);
+        else if(db.tag==='generic'||!db.tag) bonusFractions.push(db.pct/100);
+      }
+    }
+  }
   const classBonusMult = typeof sumAdditiveDamageBonus==='function'
     ? sumAdditiveDamageBonus(bonusFractions)
     : (1+bonusFractions.reduce((a,b)=>a+(Number(b)||0),0));
@@ -12688,7 +12718,10 @@ function rollEnemyCritDamage(baseDamage){
   const raw=roundCombatDamage(Math.max(0.01, baseDamage||1));
   const cc=Math.max(0,Math.min(0.95,G.enemy?.stats?.cc??((G.enemy?.stats?.critChance||5)/100)));
   let cd=Math.max(1.1,Number(G.enemy?.stats?.cd??G.enemy?.stats?.critMult??1.5));
-  const mutCrit=Number(G.enemy?._mutationMechanics?.critDamageBonusPct)||0;
+  const eqCritM=typeof Avian?.equipment?.getMechanicsRollup==='function'
+    ? Avian.equipment.getMechanicsRollup(G.enemy)
+    : (G.enemy?._equipmentMechanics||G.enemy?._mutationMechanics||null);
+  const mutCrit=Number(eqCritM?.critDamageBonusPct)||0;
   if(mutCrit>0) cd+=mutCrit/100;
   if(typeof clampCritDamageMult==='function') cd=clampCritDamageMult(cd);
   const isCrit=chance(Math.round(cc*100));

@@ -370,6 +370,38 @@ if (typeof equipment.countEquippedPieces === 'function') {
   else fail(`expected EN spend cap ≥6 at full meter, got ${cap}`);
 }
 
+/* Equipment flats must land on enemy combat stats (hpFlat → vitality → maxHp under weaponFirst). */
+{
+  const crowRow = Avian.data?.birdsV2?.crow || {};
+  const baseHealth = Number(crowRow.baseHealth) || Number(crowRow.stats?.baseHealth) || 1;
+  const gearEnemy = makeEnemy('knight', 'gold', {
+    id: 'gear-stat-parity',
+    birdKey: 'crow',
+    baseHealth,
+    stats: {
+      hp: 80, maxHp: 80, atk: 14, def: 10, matk: 8, mdef: 8, spd: 10, acc: 80, dodge: 5, critChance: 5,
+      vitality: 0, baseHealth,
+    },
+  });
+  const before = { ...gearEnemy.stats };
+  equipment.assignEnemyEquipmentLoadout(gearEnemy, { rarity: 'gold', variance: false, seed: 4242 });
+  const roll = equipment.sumEquippedEquipment(gearEnemy);
+  const vitFlat = Number(roll.stats?.vitality) || Number(roll.stats?.hp) || 0;
+  const atkFlat = Number(roll.stats?.atk) || 0;
+  if (vitFlat <= 0) fail('gold knight loadout expected positive vitality/hpFlat rollup');
+  else if ((Number(gearEnemy.stats.vitality) || 0) < (Number(before.vitality) || 0) + vitFlat
+    && (Number(gearEnemy.stats.maxHp) || 0) <= (Number(before.maxHp) || 0)) {
+    fail(`enemy vitality/maxHp missing equipment flat: beforeVit=${before.vitality} +vit=${vitFlat} afterVit=${gearEnemy.stats.vitality} maxHp=${gearEnemy.stats.maxHp}`);
+  } else {
+    ok(`enemy stats include equipment vitality (+${vitFlat} → vit ${gearEnemy.stats.vitality}, maxHp ${gearEnemy.stats.maxHp})`);
+  }
+  if (atkFlat > 0 && (Number(gearEnemy.stats.atk) || 0) <= (Number(before.atk) || 0)) {
+    fail(`enemy atk missing equipment flat: before=${before.atk} +atkFlat=${atkFlat} after=${gearEnemy.stats.atk}`);
+  } else if (atkFlat > 0) {
+    ok(`enemy atk includes equipment bonuses (${before.atk} → ${gearEnemy.stats.atk})`);
+  }
+}
+
 if (failed) {
   console.error(`\n[enemy-equipment-ai] ${failed} failure(s)`);
   process.exit(1);

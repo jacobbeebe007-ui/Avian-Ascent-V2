@@ -88,6 +88,29 @@ const frozenEntries = collect({ frozen: { pendingSkip: true, baseSpd: 10 } }, {}
 if (frozenEntries.some((e) => e.id === 'frozen')) ok('frozen status collected for badges');
 else fail('frozen status not collected');
 
+const identityLeak = collect({
+  identityPassive: { name: 'Should Not Show', effect: 'identity' },
+  identityClassPerk: { name: 'Perk Leak', effect: 'identity' },
+  identityTrait: { name: 'Trait Leak', effect: 'identity' },
+  poison: { stacks: 2, turns: 2 },
+}, {});
+if (identityLeak.some((e) => String(e.id || '').startsWith('identity'))) {
+  fail('status badges still collect Passive/Perk/Trait identity entries');
+} else if (!identityLeak.some((e) => e.id === 'poison')) {
+  fail('ailment entries missing after identity badge removal');
+} else {
+  ok('status badges exclude Passive/Perk/Trait; keep skill ailments');
+}
+
+if (/function syncEnemyIdentityStatusBadges[\s\S]*?delete G\.enemyStatus\.identityPassive/.test(gameSrc)
+  || (!/identityPassive\s*=/.test(gameSrc) && !/identityClassPerk\s*=/.test(gameSrc))) {
+  ok('enemy status strip clears or omits identity Passive/Perk badges');
+} else if (/syncEnemyIdentityStatusBadges/.test(gameSrc) && /identityPassive\s*=/.test(gameSrc)) {
+  fail('syncEnemyIdentityStatusBadges still injects identity into enemy status strip');
+} else {
+  ok('enemy status strip no longer syncs identity Passive/Perk badges');
+}
+
 const labels = ctx.Avian.statusDefs;
 // resolve badge path
 const resolve = ctx.resolveCombatStatusBadge || ctx.Avian.statusDefs.resolveStatusBadge;
