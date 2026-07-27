@@ -353,7 +353,8 @@ function ledgerStatLabel(statKey, { short=false }={}){
   const isPct=/Pct$/i.test(raw);
   const bare=raw.replace(/Pct$/i,'');
   const k=bare==='physDamage'?'physDamagePct':bare;
-  const glossKey=k==='maxHp'?'hp':(k==='physDamagePct'?'physicalDamage':k);
+  /* maxHp is Max Health; vitality/hp (gear) are Vitality. Do not collapse maxHp→hp glossary. */
+  const glossKey=k==='physDamagePct'?'physicalDamage':k;
   if(short && typeof Avian?.display?.statShort==='function'){
     const s=Avian.display.statShort(glossKey==='physicalDamage'?'atk':glossKey);
     if(s && s.toLowerCase()!==String(glossKey).toLowerCase()) return s;
@@ -363,15 +364,14 @@ function ledgerStatLabel(statKey, { short=false }={}){
     if(loot && loot.toLowerCase()!==raw.toLowerCase()) return loot;
   }
   if(typeof Avian?.display?.statName==='function'){
-    const d=Avian.display.statName(glossKey==='physicalDamage'?'atk':(glossKey==='hp'?'hp':glossKey));
+    const d=Avian.display.statName(glossKey==='physicalDamage'?'atk':glossKey);
     if(d && d.toLowerCase()!==String(glossKey).toLowerCase()){
-      if(bare==='maxHp'||raw==='maxHp') return d+' (max)';
       if(k==='critChance' || k==='armorPen' || k==='magicPen' || isPct) return d.includes('%')?d:`${d}`;
       return d;
     }
   }
   const fallback={
-    maxHp:'Max Health',vitality:'Vitality',atk:'Might',dex:'Dexterity',def:'Guard',spd:'Agility',acc:'Precision',dodge:'Dodge',
+    maxHp:'Max Health',hp:'Vitality',vitality:'Vitality',atk:'Might',dex:'Dexterity',def:'Guard',spd:'Agility',acc:'Precision',dodge:'Evasion',
     matk:'Focus',mdef:'Resolve',critChance:'Critical',critMult:'Ferocity',
     armorPen:'Martial Penetration',magicPen:'Magic Penetration',
     physDamagePct:'Martial Damage',magicDamagePct:'Magic Damage',aspectDamagePct:'Affinity Damage',
@@ -723,7 +723,7 @@ function formatAnyStatLabel(statKey){
     if(gloss && gloss.toLowerCase()!==bare.toLowerCase() && gloss!==bare) return gloss.replace(/\s*\(max\)\s*$/,'');
   }
   const fallback={
-    hp:'Vitality', maxHp:'Vitality', atk:'Might', def:'Guard', matk:'Focus', mdef:'Resolve',
+    hp:'Vitality', maxHp:'Max Health', vitality:'Vitality', atk:'Might', dex:'Dexterity', def:'Guard', matk:'Focus', mdef:'Resolve',
     spd:'Agility', dodge:'Evasion', acc:'Precision', critChance:'Critical', critDamage:'Ferocity',
     critMult:'Ferocity', physicalPen:'Martial Penetration', magicPen:'Magic Penetration',
     armorPen:'Martial Penetration', physDamagePct:'Martial Damage', magicDamagePct:'Magic Damage',
@@ -5008,12 +5008,12 @@ function weightedPick(entries){
 }
 function classGrowthWeightsForStory(cls){
   const c=resolveFinalClass(cls);
-  if(c==='rogue') return [{k:'atk',w:4},{k:'spd',w:4},{k:'dodge',w:3},{k:'maxHp',w:2},{k:'def',w:2},{k:'mdef',w:1},{k:'matk',w:1}];
-  if(c==='inquisitor') return [{k:'atk',w:4},{k:'spd',w:3},{k:'dodge',w:3},{k:'maxHp',w:2},{k:'def',w:2},{k:'mdef',w:2},{k:'matk',w:1}];
-  if(c==='knight') return [{k:'maxHp',w:5},{k:'def',w:4},{k:'mdef',w:3},{k:'atk',w:2},{k:'dodge',w:2},{k:'spd',w:1},{k:'matk',w:1}];
-  if(c==='bard') return [{k:'spd',w:4},{k:'dodge',w:4},{k:'atk',w:2},{k:'matk',w:2},{k:'maxHp',w:2},{k:'def',w:2},{k:'mdef',w:2}];
-  if(c==='siren') return [{k:'matk',w:4},{k:'mdef',w:3},{k:'maxHp',w:3},{k:'spd',w:2},{k:'dodge',w:2},{k:'atk',w:1},{k:'def',w:1}];
-  return [{k:'matk',w:4},{k:'mdef',w:3},{k:'maxHp',w:3},{k:'spd',w:2},{k:'dodge',w:2},{k:'atk',w:1},{k:'def',w:1}]; // mage
+  if(c==='rogue') return [{k:'atk',w:4},{k:'spd',w:4},{k:'dodge',w:3},{k:'vitality',w:2},{k:'def',w:2},{k:'mdef',w:1},{k:'matk',w:1}];
+  if(c==='inquisitor') return [{k:'atk',w:4},{k:'spd',w:3},{k:'dodge',w:3},{k:'vitality',w:2},{k:'def',w:2},{k:'mdef',w:2},{k:'matk',w:1}];
+  if(c==='knight') return [{k:'vitality',w:5},{k:'def',w:4},{k:'mdef',w:3},{k:'atk',w:2},{k:'dodge',w:2},{k:'spd',w:1},{k:'matk',w:1}];
+  if(c==='bard') return [{k:'spd',w:4},{k:'dodge',w:4},{k:'atk',w:2},{k:'matk',w:2},{k:'vitality',w:2},{k:'def',w:2},{k:'mdef',w:2}];
+  if(c==='siren') return [{k:'matk',w:4},{k:'mdef',w:3},{k:'vitality',w:3},{k:'spd',w:2},{k:'dodge',w:2},{k:'atk',w:1},{k:'def',w:1}];
+  return [{k:'matk',w:4},{k:'mdef',w:3},{k:'vitality',w:3},{k:'spd',w:2},{k:'dodge',w:2},{k:'atk',w:1},{k:'def',w:1}]; // mage
 }
 function storyLevelFromTierStar(tier, stars){
   const order=BIRD_CARD_TIER_ORDER||['grey','green','blue','purple','gold','orange'];
@@ -5270,7 +5270,13 @@ function applyEnemyFeatherFromPlayerMirror(stats, cls){
   const key=weightedPick(classGrowthWeightsForStory(cls));
   switch(key){
     case 'maxHp':
-      stats.maxHp=(stats.maxHp||1)+4;
+    case 'vitality':
+      stats.vitality=(Number(stats.vitality)||0)+3;
+      if(typeof Avian?.birdProgression?.vitalityToMaxHp==='function' && Number(stats.baseHealth)>0){
+        stats.maxHp=Avian.birdProgression.vitalityToMaxHp(stats.baseHealth, stats.vitality);
+      }else{
+        stats.maxHp=(stats.maxHp||1)+3;
+      }
       stats.hp=stats.maxHp;
       break;
     case 'atk': stats.atk=(stats.atk||0)+2; break;
@@ -5279,20 +5285,29 @@ function applyEnemyFeatherFromPlayerMirror(stats, cls){
     case 'mdef': stats.mdef=(Number(stats.mdef)||0)+2; break;
     case 'spd': stats.spd=(stats.spd||1)+2; break;
     case 'dodge':
-      stats.dodge=Math.min(95,(stats.dodge||0)+2);
+      stats.dodge=Math.min(50,(stats.dodge||0)+2);
       break;
     default: stats.atk=(stats.atk||0)+2; break;
   }
 }
 function applyStoryEnemyGrowth(stats,key){
   switch(key){
-    case 'maxHp': stats.maxHp+=4; stats.hp=stats.maxHp; break;
+    case 'maxHp':
+    case 'vitality':
+      stats.vitality=(Number(stats.vitality)||0)+3;
+      if(typeof Avian?.birdProgression?.vitalityToMaxHp==='function' && Number(stats.baseHealth)>0){
+        stats.maxHp=Avian.birdProgression.vitalityToMaxHp(stats.baseHealth, stats.vitality);
+      }else{
+        stats.maxHp=(stats.maxHp||1)+3;
+      }
+      stats.hp=stats.maxHp;
+      break;
     case 'atk': stats.atk+=2; break;
     case 'matk': stats.matk=(Number(stats.matk)||0)+2; break;
     case 'def': stats.def+=2; break;
     case 'mdef': stats.mdef=(Number(stats.mdef)||0)+2; break;
     case 'spd': stats.spd+=2; break;
-    case 'dodge': stats.dodge=Math.min(95,(stats.dodge||0)+2); break;
+    case 'dodge': stats.dodge=Math.min(50,(stats.dodge||0)+2); break;
   }
 }
 /** Linear story (and shared save state): variable-length enemy chains per stage band (see getStoryEncounterChainCount). */
@@ -6358,11 +6373,12 @@ function buildBirdUpgradePreviewModel(birdKey){
   const growthPack=Avian?.data?.featherGrowthProfiles;
   const growthProfile=typeof growthPack?.getGrowthProfileForBird==='function'?growthPack.getGrowthProfileForBird(birdKey):null;
   const statKeys=[
-    ['hp', ledgerStatLabel('hp',{short:true})],
+    ['vitality', ledgerStatLabel('vitality',{short:true})],
+    ['maxHp', ledgerStatLabel('maxHp',{short:true})],
     ['atk', ledgerStatLabel('atk',{short:true})],
+    ['dex', ledgerStatLabel('dex',{short:true})],
     ['def', ledgerStatLabel('def',{short:true})],
     ['spd', ledgerStatLabel('spd',{short:true})],
-    ['acc', ledgerStatLabel('acc',{short:true})],
     ['dodge', ledgerStatLabel('dodge',{short:true})],
     ['matk', ledgerStatLabel('matk',{short:true})],
     ['mdef', ledgerStatLabel('mdef',{short:true})],
@@ -6396,7 +6412,7 @@ function buildBirdUpgradePreviewModel(birdKey){
       .map(([key,label])=>{
         const before=Number(currentKit.stats?.[key]??0);
         const after=Number(upgradedKit.stats?.[key]??0);
-        const lookupKey=key==='hp'?'maxHp':key;
+        const lookupKey=key==='hp'||key==='maxHp'?'vitality':key;
         const growthLabel=typeof growthPack?.getGrowthTierLabelForStat==='function'&&growthProfile
           ? growthPack.getGrowthTierLabelForStat(lookupKey, growthProfile)
           : '';
@@ -6642,13 +6658,15 @@ function updateAscentPanel(key) {
 
     const statsStrip=`
       <div class="ascent-stats-strip">
-        <span class="ascent-stat-chip"><abbr title="${ledgerStatLabel('hp')}">${ledgerStatLabel('hp',{short:true})}</abbr> <strong>${dispStats.hp}</strong></span>
+        <span class="ascent-stat-chip"><abbr title="${ledgerStatLabel('vitality')}">${ledgerStatLabel('vitality',{short:true})}</abbr> <strong>${Number(dispStats.vitality)||0}</strong></span>
+        <span class="ascent-stat-chip"><abbr title="${ledgerStatLabel('maxHp')}">${ledgerStatLabel('maxHp',{short:true})}</abbr> <strong>${dispStats.maxHp??dispStats.hp}</strong></span>
         <span class="ascent-stat-chip"><abbr title="${ledgerStatLabel('atk')}">${ledgerStatLabel('atk',{short:true})}</abbr> <strong>${dispStats.atk}</strong></span>
+        <span class="ascent-stat-chip"><abbr title="${ledgerStatLabel('dex')}">${ledgerStatLabel('dex',{short:true})}</abbr> <strong>${Number(dispStats.dex)||0}</strong></span>
         <span class="ascent-stat-chip"><abbr title="${ledgerStatLabel('def')}">${ledgerStatLabel('def',{short:true})}</abbr> <strong>${dispStats.def}</strong></span>
         <span class="ascent-stat-chip"><abbr title="${ledgerStatLabel('spd')}">${ledgerStatLabel('spd',{short:true})}</abbr> <strong>${dispStats.spd}</strong></span>
-        <span class="ascent-stat-chip"><abbr title="${ledgerStatLabel('acc')}">${ledgerStatLabel('acc',{short:true})}</abbr> <strong>${Number(dispStats.acc)||0}%</strong></span>
         <span class="ascent-stat-chip"><abbr title="${ledgerStatLabel('matk')}">${ledgerStatLabel('matk',{short:true})}</abbr> <strong>${Number(dispStats.matk)||0}</strong></span>
         <span class="ascent-stat-chip"><abbr title="${ledgerStatLabel('mdef')}">${ledgerStatLabel('mdef',{short:true})}</abbr> <strong>${Number(dispStats.mdef)||0}</strong></span>
+        <span class="ascent-stat-chip"><abbr title="${ledgerStatLabel('dodge')}">${ledgerStatLabel('dodge',{short:true})}</abbr> <strong>${Number(dispStats.dodge)||0}%</strong></span>
         <span class="ascent-stat-chip"><abbr title="${ledgerStatLabel('critChance')}">${ledgerStatLabel('critChance',{short:true})}</abbr> <strong>${cc}%</strong></span>
         <span class="ascent-stat-chip"><abbr title="${ledgerStatLabel('critMult')}">${ledgerStatLabel('critMult',{short:true})}</abbr> <strong>${cd.toFixed(1)}×</strong></span>
         <span class="ascent-stat-chip"><abbr title="Battle start / max momentum (EN)">EN</abbr> <strong>${startEnShow}/${maxEn}</strong></span>
@@ -15849,7 +15867,7 @@ function getGoldCardLimit(){
 // ============================================================
 let _luSelectedStatChoiceId=null;
 function levelUpChoiceLabel(statKey, amount, { rare=false }={}){
-  const glossKey=statKey==='maxHp'?'hp':statKey;
+  const glossKey=statKey==='maxHp'?'maxHp':statKey;
   let short='';
   if(typeof Avian?.display?.statShort==='function'){
     short=Avian.display.statShort(glossKey)||'';
@@ -15857,22 +15875,45 @@ function levelUpChoiceLabel(statKey, amount, { rare=false }={}){
   if(!short || String(short).toLowerCase()===String(glossKey).toLowerCase()){
     short=ledgerStatLabel(statKey,{short:true});
   }
-  if(statKey==='maxHp') short='VIT';
+  if(statKey==='vitality' || glossKey==='vitality') short='VIT';
   const base=`+${amount} ${short}`;
   return rare?`${base} (rare)`:base;
 }
+function applyLevelUpVitalityGain(amount){
+  const p=G.player;
+  if(!p||!p.stats) return;
+  const add=Math.max(0, Math.floor(Number(amount)||0));
+  if(!add) return;
+  p.stats.vitality=(Number(p.stats.vitality)||0)+add;
+  const baseHealth=Number(p.baseHealth)||Number(p._speciesBaseHealth)
+    ||Number(p.stats.baseHealth)||0;
+  const prevMax=Math.max(1, Number(p.stats.maxHp)||Number(p.stats.hp)||1);
+  const prevHp=Math.max(0, Number(p.stats.hp)||prevMax);
+  let nextMax=prevMax;
+  if(typeof Avian?.birdProgression?.vitalityToMaxHp==='function' && baseHealth>0){
+    nextMax=Avian.birdProgression.vitalityToMaxHp(baseHealth, p.stats.vitality);
+  }else{
+    /* Fallback: approximate +5% baseHealth per vitality point. */
+    const pct=0.05;
+    const delta=baseHealth>0 ? Math.round(baseHealth*pct*add) : add;
+    nextMax=Math.max(1, prevMax+Math.max(1, delta));
+  }
+  p.stats.maxHp=nextMax;
+  const wasFull=prevHp>=prevMax;
+  p.stats.hp=wasFull?nextMax:Math.max(1, Math.min(nextMax, prevHp+(nextMax-prevMax)));
+}
 const LEVELUP_STAT_POOL = [
-  {id:'vit4', get label(){ return levelUpChoiceLabel('maxHp',4); }, stat:'maxHp', amount:4, apply(){ G.player.stats.maxHp=(G.player.stats.maxHp||1)+4; G.player.stats.hp=Math.min((G.player.stats.hp||1)+4,G.player.stats.maxHp||1); }},
+  {id:'vit3', get label(){ return levelUpChoiceLabel('vitality',3); }, stat:'vitality', amount:3, apply(){ applyLevelUpVitalityGain(3); }},
   {id:'atk2', get label(){ return levelUpChoiceLabel('atk',2); }, stat:'atk', amount:2, apply(){ G.player.stats.atk=(G.player.stats.atk||0)+2; }},
   {id:'matk2', get label(){ return levelUpChoiceLabel('matk',2); }, stat:'matk', amount:2, apply(){ G.player.stats.matk=(G.player.stats.matk||0)+2; }},
   {id:'def2', get label(){ return levelUpChoiceLabel('def',2); }, stat:'def', amount:2, apply(){ G.player.stats.def=(G.player.stats.def||0)+2; }},
   {id:'mdef2', get label(){ return levelUpChoiceLabel('mdef',2); }, stat:'mdef', amount:2, apply(){ G.player.stats.mdef=(G.player.stats.mdef||0)+2; }},
   {id:'spd2', get label(){ return levelUpChoiceLabel('spd',2); }, stat:'spd', amount:2, apply(){ G.player.stats.spd=(G.player.stats.spd||0)+2; }},
-  {id:'dod2', get label(){ return levelUpChoiceLabel('dodge',2); }, stat:'dodge', amount:2, apply(){ G.player.stats.dodge=Math.min(95,(G.player.stats.dodge||0)+2); }},
+  {id:'dod2', get label(){ return levelUpChoiceLabel('dodge',2); }, stat:'dodge', amount:2, apply(){ G.player.stats.dodge=Math.min(50,(G.player.stats.dodge||0)+2); }},
 ];
 const LEVELUP_FEATHER_POOL = LEVELUP_STAT_POOL;
 const ENDLESS_RARE_LEVELUP_CHOICES = [
-  {id:'vit8', get label(){ return levelUpChoiceLabel('maxHp',8,{rare:true}); }, stat:'maxHp', amount:8, apply(){ G.player.stats.maxHp=(G.player.stats.maxHp||1)+8; G.player.stats.hp=Math.min((G.player.stats.hp||1)+8,G.player.stats.maxHp||1); }},
+  {id:'vit6', get label(){ return levelUpChoiceLabel('vitality',6,{rare:true}); }, stat:'vitality', amount:6, apply(){ applyLevelUpVitalityGain(6); }},
   {id:'atk4r', get label(){ return levelUpChoiceLabel('atk',4,{rare:true}); }, stat:'atk', amount:4, apply(){ G.player.stats.atk=(G.player.stats.atk||0)+4; }},
   {id:'spd4r', get label(){ return levelUpChoiceLabel('spd',4,{rare:true}); }, stat:'spd', amount:4, apply(){ G.player.stats.spd=(G.player.stats.spd||0)+4; }},
 ];
@@ -16000,6 +16041,7 @@ function getLevelUpStatEffectDesc(opt){
   if(opt.stat==='goldCritMult') return `Increase Ferocity multiplier by ${opt.amount}.`;
   if(opt.stat==='dodge') return `Increase ${ledgerStatLabel('dodge')} by ${opt.amount}%.`;
   if(opt.stat==='critChance') return `Increase ${ledgerStatLabel('critChance')} by ${opt.amount}%.`;
+  if(opt.stat==='vitality') return `Improve ${ledgerStatLabel('vitality')} by ${opt.amount} (raises Max Health).`;
   return `Improve ${ledgerStatLabel(opt.stat)} by ${opt.amount}.`;
 }
 
@@ -16236,6 +16278,9 @@ async function confirmSkillUpgrade() {
       if(n>0) lines.push(`${n}× ${opt.label}`);
     }
     if(G.player.stats) normalizeCombatStats(G.player.stats);
+    if(typeof Avian?.equipment?.reapplyPlayerStatsFromSources==='function'){
+      Avian.equipment.reapplyPlayerStatsFromSources(G.player);
+    }
     if(typeof refreshBattleUI==='function') refreshBattleUI();
     logMsg(`📈 ${lines.join(', ')}`,'exp-gain');
     delete G._luFeatherDraft;
@@ -17188,7 +17233,7 @@ function skillCard(id) {
 
 function refSkillScalingLabel(raw){
   const k=String(raw||'').toLowerCase();
-  const map={atk:'atk',matk:'matk',def:'def',mdef:'mdef',spd:'spd',hp:'maxHp',might:'atk',focus:'matk',guard:'def',resolve:'mdef',agility:'spd',vitality:'maxHp'};
+  const map={atk:'atk',matk:'matk',def:'def',mdef:'mdef',spd:'spd',hp:'vitality',might:'atk',focus:'matk',guard:'def',resolve:'mdef',agility:'spd',vitality:'vitality',dex:'dex',dexterity:'dex'};
   const key=map[k]||k;
   return ledgerStatLabel(key);
 }

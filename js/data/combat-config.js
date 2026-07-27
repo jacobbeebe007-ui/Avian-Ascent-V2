@@ -41,9 +41,9 @@
       vitalityBaseHealthPct: 0.05,
       agilityDodgePctPerPoint: 0.5,
       dodgeCapPct: 50,
-      /* Natural Strike: flat 1–2 + 100% Skill Power of equipped weapon. */
+      /* Natural Strike / Beak Jab / Tail Wand: flat 1–2 only (never scales with weapon). */
       naturalStrike: Object.freeze({
-        skillPowerPct: 100,
+        skillPowerPct: 0,
         flatMin: 1,
         flatMax: 2,
       }),
@@ -279,7 +279,7 @@
       naturalStrikeName: 'Beak Jab',
       tailWandClasses: Object.freeze(['mage', 'siren']),
       enCost: 1,
-      skillPowerPct: 100,
+      skillPowerPct: 0,
       flatMin: 1,
       flatMax: 2,
     }),

@@ -497,8 +497,24 @@
     if (useProg) {
       var className = getPlayerClassId(player) || player.class || 'rogue';
       var level = Math.max(1, Number(player.level) || Number(player.birdLevel) || 1);
-      var totalStars = Math.max(0, Number(player.totalStars) || Number(player.stars) || Number(player.cardStars) || 0);
-      var tier = player.progressionTier || player.cardTier || player.equipmentTier || 'grey';
+      var gp = Avian.data && Avian.data.featherGrowthProfiles;
+      var cardTier = player.progressionTier || player.cardTier || player._birdCardTier
+        || (typeof globalThis.getBirdCardTier === 'function' && player.birdKey
+          ? globalThis.getBirdCardTier(player.birdKey) : null)
+        || player.equipmentTier || 'grey';
+      var cardStars = player.cardStars != null ? player.cardStars
+        : (player._birdCardStars != null ? player._birdCardStars
+          : (typeof globalThis.getBirdCardStars === 'function' && player.birdKey
+            ? globalThis.getBirdCardStars(player.birdKey) : 0));
+      var totalStars = Number(player.totalStars);
+      if (!Number.isFinite(totalStars) || totalStars < 0) {
+        totalStars = gp && typeof gp.getTotalFeatherStars === 'function'
+          ? gp.getTotalFeatherStars(cardTier, cardStars)
+          : Math.max(0, Number(player.stars) || Number(cardStars) || 0);
+      }
+      player.totalStars = totalStars;
+      player.progressionTier = cardTier;
+      var tier = cardTier;
       var baseHealth = Number(player.baseHealth) || Number(base.baseHealth)
         || Number(player._speciesBaseHealth) || 0;
       if (!(baseHealth > 0)) {
@@ -507,26 +523,8 @@
         var b2 = Avian.data && Avian.data.birdsV2 && bk ? Avian.data.birdsV2[bk] : null;
         if (b2 && b2.baseHealth != null) baseHealth = Number(b2.baseHealth) || 0;
       }
-      var developedBase = {
-        vitality: (Number(base.vitality) || 0)
-          + (Number(fromLevel.vitality) || 0) + (Number(fromUpgrades.vitality) || 0)
-          + (Number(fromCardTier.vitality) || 0),
-        atk: (Number(base.atk) || 0) + (Number(fromLevel.atk) || 0) + (Number(fromUpgrades.atk) || 0)
-          + (Number(fromCardTier.atk) || 0),
-        dex: (Number(base.dex) || 0) + (Number(fromLevel.dex) || 0) + (Number(fromUpgrades.dex) || 0)
-          + (Number(fromCardTier.dex) || 0),
-        def: (Number(base.def) || 0) + (Number(fromLevel.def) || 0) + (Number(fromUpgrades.def) || 0)
-          + (Number(fromCardTier.def) || 0),
-        matk: (Number(base.matk) || 0) + (Number(fromLevel.matk) || 0) + (Number(fromUpgrades.matk) || 0)
-          + (Number(fromCardTier.matk) || 0),
-        mdef: (Number(base.mdef) || 0) + (Number(fromLevel.mdef) || 0) + (Number(fromUpgrades.mdef) || 0)
-          + (Number(fromCardTier.mdef) || 0),
-        spd: (Number(base.spd) || 0) + (Number(fromLevel.spd) || 0) + (Number(fromUpgrades.spd) || 0)
-          + (Number(fromCardTier.spd) || 0),
-        baseHealth: baseHealth,
-      };
       var equipmentFlat = {
-        vitality: Number(eqRoll.stats.vitality) || 0,
+        vitality: Number(eqRoll.stats.vitality) || Number(eqRoll.stats.hp) || 0,
         atk: Number(eqRoll.stats.atk) || 0,
         dex: Number(eqRoll.stats.dex) || 0,
         def: Number(eqRoll.stats.def) || 0,
@@ -535,21 +533,23 @@
         spd: Number(eqRoll.stats.spd) || 0,
       };
       var hasLegacyLevel = Object.keys(fromLevel).some(function (k) { return Number(fromLevel[k]) > 0; });
+      /* Level-up feathers live in fromLevel and replace workbook level flats.
+       * Star flats + tier mult still apply via totalStars / tier every time. */
       var result = Avian.birdProgression.computeFinalStats({
-        base: hasLegacyLevel ? developedBase : {
-          vitality: Number(base.vitality) || 0,
-          atk: Number(base.atk) || 0,
-          dex: Number(base.dex) || 0,
-          def: Number(base.def) || 0,
-          matk: Number(base.matk) || 0,
-          mdef: Number(base.mdef) || 0,
-          spd: Number(base.spd) || 0,
+        base: {
+          vitality: (Number(base.vitality) || 0) + (Number(fromLevel.vitality) || 0) + (Number(fromUpgrades.vitality) || 0),
+          atk: (Number(base.atk) || 0) + (Number(fromLevel.atk) || 0) + (Number(fromUpgrades.atk) || 0),
+          dex: (Number(base.dex) || 0) + (Number(fromLevel.dex) || 0) + (Number(fromUpgrades.dex) || 0),
+          def: (Number(base.def) || 0) + (Number(fromLevel.def) || 0) + (Number(fromUpgrades.def) || 0),
+          matk: (Number(base.matk) || 0) + (Number(fromLevel.matk) || 0) + (Number(fromUpgrades.matk) || 0),
+          mdef: (Number(base.mdef) || 0) + (Number(fromLevel.mdef) || 0) + (Number(fromUpgrades.mdef) || 0),
+          spd: (Number(base.spd) || 0) + (Number(fromLevel.spd) || 0) + (Number(fromUpgrades.spd) || 0),
           baseHealth: baseHealth,
         },
         baseHealth: baseHealth,
         className: className,
         level: hasLegacyLevel ? 1 : level,
-        totalStars: hasLegacyLevel ? 0 : totalStars,
+        totalStars: totalStars,
         tier: tier,
         equipmentFlat: equipmentFlat,
       });

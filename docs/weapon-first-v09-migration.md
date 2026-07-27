@@ -16,7 +16,7 @@ Migrates Avian Ascent from Equipment Loot v0.7 to workbook
 | Core attributes | Hybrid flat + %; Vitality≈HP | Flat only; Dexterity added; Vitality→Max HP |
 | Base Health | Shared +20 rebase, large baked HP | Size bands 8–18 (Boss 20) |
 | Damage | BaseDamage + Stat×coeff×0.75 | Weapon range × ((SkillPower + Stat×2.5)÷100) |
-| Basics | Natural Strike / 0.8 coeff | **Beak Jab** (physical) / **Tail Wand** (Mage+Siren Focus); flat 1–2 + 100% SP |
+| Basics | Natural Strike / 0.8 coeff | **Beak Jab** (physical) / **Tail Wand** (Mage+Siren Focus); flat **1–2 only** (no weapon scaling) |
 | Hit chance | Bird ACC − Dodge | **100% − Dodge − skill penalty** (penalty only EN≥3; LEG-022) |
 | Defence | C=150 constant | Rating=Def×2.5; mit%=rating/(100+rating); cap 75% |
 | Dodge | Separate Evasion % (cap 20/35) | Agility×0.5%, cap 50% |
@@ -43,7 +43,7 @@ Default path for `npm run import-equipment` is the v0.9 Implemented workbook abo
 
 ## Open decisions (locked for this ship)
 
-- Beak Jab / Tail Wand = flat **1–2** + **100%** weapon Skill Power (no EN≥3 accuracy penalty)
+- Beak Jab / Tail Wand = flat **1–2 only** (never scales with equipped weapon; no EN≥3 accuracy penalty)
 - Hit% = **100 − Dodge − skill accuracy penalty** (penalty only for EN ≥ 3)
 - Round damage once at the end
 - Bosses stay at the **75%** mitigation cap

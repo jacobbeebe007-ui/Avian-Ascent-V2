@@ -59,7 +59,7 @@
     dodge: { tiny: 0.15, small: 0.12, medium: 0.1, large: 0.06, xl: 0.04 },
   };
 
-  var SCALED_STAT_KEYS = ['maxHp', 'hp', 'atk', 'def', 'spd', 'dodge', 'mdef', 'matk'];
+  var SCALED_STAT_KEYS = ['vitality', 'maxHp', 'hp', 'atk', 'dex', 'def', 'spd', 'dodge', 'mdef', 'matk'];
 
   /** Stats that never increase from bird card star upgrades. */
   var STAR_SCALING_EXCLUDED_STAT_KEYS = ['acc', 'critChance', 'critMult', 'cc', 'cd'];
