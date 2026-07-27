@@ -39,6 +39,8 @@
       enabled: true,
       offencePctPerStat: 2.5,
       vitalityBaseHealthPct: 0.05,
+      /* Each level after 1 adds this fraction of original Base Health before VIT%. */
+      baseHealthPerLevelPct: 0.5,
       agilityDodgePctPerPoint: 0.5,
       dodgeCapPct: 50,
       /* Natural Strike / Beak Jab / Tail Wand: flat 1–2 only (never scales with weapon). */

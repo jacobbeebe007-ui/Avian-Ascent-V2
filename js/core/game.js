@@ -4158,10 +4158,13 @@ function applyEnemyStatsFromPlayerProgression(ed, opts={}){
   const totalStars=resolveEnemyTotalStars(tier, profile, milestone);
 
   const baseHp=Number(baseSrc.maxHp??baseSrc.hp)||30;
+  const speciesBaseHealth=Number(v2?.baseHealth??bd?.baseHealth??baseSrc.baseHealth)||0;
   const base={
     hp:baseHp,
     maxHp:baseHp,
+    vitality:Number(baseSrc.vitality??v2?.vitality??bd?.vitality)||0,
     atk:Number(baseSrc.atk)||0,
+    dex:Number(baseSrc.dex)||0,
     def:Number(baseSrc.def)||0,
     matk:Number(baseSrc.matk)||0,
     mdef:Number(baseSrc.mdef)||0,
@@ -4170,6 +4173,7 @@ function applyEnemyStatsFromPlayerProgression(ed, opts={}){
     acc:Number(baseSrc.acc??ed.acc??ed.stats?.acc)||0,
     critChance:Number(baseSrc.critChance??ed.stats?.critChance)||5,
     critMult:Math.max(1.1, Number(baseSrc.critMult??ed.cd??ed.stats?.critMult)||1.5),
+    baseHealth:speciesBaseHealth>0?speciesBaseHealth:baseHp,
   };
 
   let core={
@@ -4184,12 +4188,22 @@ function applyEnemyStatsFromPlayerProgression(ed, opts={}){
 
   if(typeof Avian?.birdProgression?.computeFinalStats==='function'){
     const result=Avian.birdProgression.computeFinalStats({
-      base:{hp:base.hp,atk:base.atk,def:base.def,matk:base.matk,mdef:base.mdef,spd:base.spd},
+      base:{
+        vitality:base.vitality,
+        atk:base.atk,
+        dex:base.dex,
+        def:base.def,
+        matk:base.matk,
+        mdef:base.mdef,
+        spd:base.spd,
+        baseHealth:base.baseHealth,
+      },
+      baseHealth:base.baseHealth,
       className:cls,
       level:workbookLevel,
       totalStars,
       tier,
-      equipmentPct:{},
+      equipmentFlat:{},
     });
     let ledger=result?.ledger||{};
     if(typeof Avian.birdProgression.applyEnemyProfile==='function'){
@@ -5285,7 +5299,11 @@ function applyEnemyFeatherFromPlayerMirror(stats, cls){
     case 'vitality':
       stats.vitality=(Number(stats.vitality)||0)+3;
       if(typeof Avian?.birdProgression?.vitalityToMaxHp==='function' && Number(stats.baseHealth)>0){
-        stats.maxHp=Avian.birdProgression.vitalityToMaxHp(stats.baseHealth, stats.vitality);
+        const birdLevel=Math.max(1, Number(stats.birdLevel)||Number(stats.level)||1);
+        const leveledBh=(typeof Avian.birdProgression.baseHealthAtLevel==='function')
+          ? Avian.birdProgression.baseHealthAtLevel(stats.baseHealth, birdLevel)
+          : stats.baseHealth;
+        stats.maxHp=Avian.birdProgression.vitalityToMaxHp(leveledBh, stats.vitality);
       }else{
         stats.maxHp=(stats.maxHp||1)+3;
       }
@@ -5308,7 +5326,11 @@ function applyStoryEnemyGrowth(stats,key){
     case 'vitality':
       stats.vitality=(Number(stats.vitality)||0)+3;
       if(typeof Avian?.birdProgression?.vitalityToMaxHp==='function' && Number(stats.baseHealth)>0){
-        stats.maxHp=Avian.birdProgression.vitalityToMaxHp(stats.baseHealth, stats.vitality);
+        const birdLevel=Math.max(1, Number(stats.birdLevel)||Number(stats.level)||1);
+        const leveledBh=(typeof Avian.birdProgression.baseHealthAtLevel==='function')
+          ? Avian.birdProgression.baseHealthAtLevel(stats.baseHealth, birdLevel)
+          : stats.baseHealth;
+        stats.maxHp=Avian.birdProgression.vitalityToMaxHp(leveledBh, stats.vitality);
       }else{
         stats.maxHp=(stats.maxHp||1)+3;
       }
@@ -15321,6 +15343,9 @@ function postCombat() {
       G.player.birdLevel++;
       checkGrowthStage(G.player);
 
+      /* Each level adds half original Base Health before VIT% → raise Max HP. */
+      applyLevelUpBaseHealthGrowth();
+
       // Level-up heal: 50% of currently missing HP
       const missingHp = Math.max(0, G.player.stats.maxHp - G.player.stats.hp);
       const lvHeal = Math.max(1, Math.floor(missingHp * 0.50));
@@ -15899,6 +15924,26 @@ function getGoldCardLimit(){
 //  LEVEL-UP SCREEN — select then confirm
 // ============================================================
 let _luSelectedStatChoiceId=null;
+/** Raise Max HP from leveled Base Health (½ original BH per level) × current VIT%. */
+function applyLevelUpBaseHealthGrowth(){
+  const p=G.player;
+  if(!p||!p.stats) return;
+  const baseHealth=Number(p.baseHealth)||Number(p._speciesBaseHealth)
+    ||Number(p.stats.baseHealth)||0;
+  if(!(baseHealth>0) || typeof Avian?.birdProgression?.vitalityToMaxHp!=='function') return;
+  const birdLevel=Math.max(1, Number(p.birdLevel)||Number(p.level)||1);
+  const leveledBh=(typeof Avian.birdProgression.baseHealthAtLevel==='function')
+    ? Avian.birdProgression.baseHealthAtLevel(baseHealth, birdLevel)
+    : baseHealth;
+  const vit=Number(p.stats.vitality)||0;
+  const prevMax=Math.max(1, Number(p.stats.maxHp)||Number(p.stats.hp)||1);
+  const prevHp=Math.max(0, Number(p.stats.hp)||prevMax);
+  const nextMax=Avian.birdProgression.vitalityToMaxHp(leveledBh, vit);
+  if(nextMax===prevMax) return;
+  p.stats.maxHp=nextMax;
+  /* Keep current HP; level-up heal runs after and uses the new max. */
+  p.stats.hp=Math.min(prevHp, nextMax);
+}
 function levelUpChoiceLabel(statKey, amount, { rare=false }={}){
   const glossKey=statKey==='maxHp'?'maxHp':statKey;
   let short='';
@@ -15924,7 +15969,11 @@ function applyLevelUpVitalityGain(amount){
   const prevHp=Math.max(0, Number(p.stats.hp)||prevMax);
   let nextMax=prevMax;
   if(typeof Avian?.birdProgression?.vitalityToMaxHp==='function' && baseHealth>0){
-    nextMax=Avian.birdProgression.vitalityToMaxHp(baseHealth, p.stats.vitality);
+    const birdLevel=Math.max(1, Number(p.birdLevel)||Number(p.level)||1);
+    const leveledBh=(typeof Avian.birdProgression.baseHealthAtLevel==='function')
+      ? Avian.birdProgression.baseHealthAtLevel(baseHealth, birdLevel)
+      : baseHealth;
+    nextMax=Avian.birdProgression.vitalityToMaxHp(leveledBh, p.stats.vitality);
   }else{
     /* Fallback: approximate +5% baseHealth per vitality point. */
     const pct=0.05;
