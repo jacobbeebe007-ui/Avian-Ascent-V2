@@ -534,7 +534,8 @@
       };
       var hasLegacyLevel = Object.keys(fromLevel).some(function (k) { return Number(fromLevel[k]) > 0; });
       /* Level-up feathers live in fromLevel and replace workbook level flats.
-       * Star flats + tier mult still apply via totalStars / tier every time. */
+       * Star flats + tier mult still apply via totalStars / tier every time.
+       * Base Health still scales with real bird level even when flats are skipped. */
       var result = Avian.birdProgression.computeFinalStats({
         base: {
           vitality: (Number(base.vitality) || 0) + (Number(fromLevel.vitality) || 0) + (Number(fromUpgrades.vitality) || 0),
@@ -548,7 +549,8 @@
         },
         baseHealth: baseHealth,
         className: className,
-        level: hasLegacyLevel ? 1 : level,
+        level: level,
+        skipLevelFlat: hasLegacyLevel,
         totalStars: totalStars,
         tier: tier,
         equipmentFlat: equipmentFlat,
@@ -1107,7 +1109,11 @@
       entity.stats.mdef = (Number(entity.stats.mdef) || 0) + (Number(roll.stats.mdef) || 0);
       entity.stats.spd = (Number(entity.stats.spd) || 0) + (Number(roll.stats.spd) || 0);
       if (typeof Avian.birdProgression.vitalityToMaxHp === 'function') {
-        entity.stats.maxHp = Avian.birdProgression.vitalityToMaxHp(baseHealth || 1, entity.stats.vitality);
+        var entLevel = Math.max(1, Number(entity.birdLevel) || Number(entity.level) || 1);
+        var leveledBh = (typeof Avian.birdProgression.baseHealthAtLevel === 'function')
+          ? Avian.birdProgression.baseHealthAtLevel(baseHealth || 1, entLevel)
+          : (baseHealth || 1);
+        entity.stats.maxHp = Avian.birdProgression.vitalityToMaxHp(leveledBh, entity.stats.vitality);
       }
       var dodgeCap = (cfg.weaponFirst && cfg.weaponFirst.dodgeCapPct != null)
         ? Number(cfg.weaponFirst.dodgeCapPct) : 50;

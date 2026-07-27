@@ -1,6 +1,7 @@
 /* Bird progression pipeline — v0.9 weapon-first
  * Order: Base attrs + Level flat + Star flat → ROUND(× Tier) → Equipment flat → temp flat.
- * Max HP = Base Health × (1 + Final Vitality × 0.05).
+ * Leveled Base Health = Base Health + (level - 1) × (Base Health × 0.5).
+ * Max HP = Leveled Base Health × (1 + Final Vitality × 0.05).
  * Dodge = min(50%, Final Agility × 0.5%).
  */
 (function () {
@@ -71,6 +72,20 @@
     return Number(map[t]) || 1;
   }
 
+  /**
+   * Species Base Health scaled by bird level.
+   * Each level after 1 adds half the original Base Health (e.g. BH 8 → L2 = 12).
+   */
+  function baseHealthAtLevel(baseHealth, level) {
+    var cfg = combatConfig();
+    var per = (cfg.weaponFirst && cfg.weaponFirst.baseHealthPerLevelPct != null)
+      ? Number(cfg.weaponFirst.baseHealthPerLevelPct) : 0.5;
+    var bh = Math.max(0, Number(baseHealth) || 0);
+    var lvl = Math.max(1, Math.floor(Number(level) || 1));
+    if (!(per > 0) || lvl <= 1) return bh;
+    return bh + (lvl - 1) * (bh * per);
+  }
+
   function vitalityToMaxHp(baseHealth, vitality) {
     var cfg = combatConfig();
     var pct = (cfg.weaponFirst && cfg.weaponFirst.vitalityBaseHealthPct != null)
@@ -112,7 +127,10 @@
       return 0;
     }
 
-    var levelFlat = lookupLevelFlat(opts.className, opts.level) || {};
+    var birdLevel = Math.max(1, Math.floor(Number(opts.level) || 1));
+    /* Feather spends replace workbook level flats but must not zero Base Health level growth. */
+    var levelForFlats = opts.skipLevelFlat ? 1 : birdLevel;
+    var levelFlat = lookupLevelFlat(opts.className, levelForFlats) || {};
     var starFlat = lookupStarFlat(opts.className, opts.totalStars) || {};
     var mult = tierMultiplier(opts.tier);
     var equipFlat = opts.equipmentFlat || {};
@@ -168,11 +186,13 @@
     if (!(baseHealth > 0) && baseIn.maxHp != null && finalStats.vitality === readBase('vitality', 'vitality')) {
       baseHealth = Number(baseIn.maxHp) || 0;
     }
-    var maxHp = vitalityToMaxHp(baseHealth || 1, finalStats.vitality);
+    var leveledBaseHealth = baseHealthAtLevel(baseHealth || 1, birdLevel);
+    var maxHp = vitalityToMaxHp(leveledBaseHealth, finalStats.vitality);
     ledgerOut.maxHp = maxHp;
     ledgerOut.hp = maxHp;
     ledgerOut.dodge = agilityToDodge(finalStats.agility);
     ledgerOut.baseHealth = baseHealth;
+    ledgerOut.leveledBaseHealth = leveledBaseHealth;
 
     return {
       developed: developed,
@@ -215,6 +235,7 @@
     lookupLevelFlat: lookupLevelFlat,
     lookupStarFlat: lookupStarFlat,
     tierMultiplier: tierMultiplier,
+    baseHealthAtLevel: baseHealthAtLevel,
     vitalityToMaxHp: vitalityToMaxHp,
     agilityToDodge: agilityToDodge,
     ledgerMap: LEDGER,

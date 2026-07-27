@@ -143,6 +143,6 @@ Avian.systems.SAVE_SCHEMA_VERSION
 - Stamps `weaponFirstV09`, `weaponFirstPackVersion: '2026.07-weapon-first-v0.9'`, and bumps equipment/affinity pack stamps to the same id.
 - Clears `equipmentLootV07` flag (superseded).
 - Players keep run progress; equipment must be re-looted / starter kits reapplied.
-- Combat: weapon min–max × ((Skill Power + Stat×2.5)÷100); Vitality→Max HP from Base Health; Agility→Dodge; Guard/Resolve rating mitigation.
+- Combat: weapon min–max × ((Skill Power + Stat×2.5)÷100); Vitality→Max HP from leveled Base Health (½ original BH per level after 1); Agility→Dodge; Guard/Resolve rating mitigation.
 
 Verification: `node scripts/verify-save-migration.mjs`

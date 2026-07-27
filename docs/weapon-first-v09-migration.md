@@ -14,7 +14,7 @@ Migrates Avian Ascent from Equipment Loot v0.7 to workbook
 | Area | v0.7 | v0.9 |
 | --- | --- | --- |
 | Core attributes | Hybrid flat + %; Vitality≈HP | Flat only; Dexterity added; Vitality→Max HP |
-| Base Health | Shared +20 rebase, large baked HP | Size bands 8–18 (Boss 20) |
+| Base Health | Shared +20 rebase, large baked HP | Size bands 8–18 (Boss 20); each level after 1 adds ½ original BH before VIT% |
 | Damage | BaseDamage + Stat×coeff×0.75 | Weapon range × ((SkillPower + Stat×2.5)÷100) |
 | Basics | Natural Strike / 0.8 coeff | **Beak Jab** (physical) / **Tail Wand** (Mage+Siren Focus); flat **1–2 only** (no weapon scaling) |
 | Hit chance | Bird ACC − Dodge | **100% − Dodge − skill penalty** (penalty only EN≥3; LEG-022) |

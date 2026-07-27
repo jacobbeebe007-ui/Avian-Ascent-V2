@@ -182,6 +182,51 @@ try {
     fail(`expected v0.9 sparrow maxHp 12 (baseHealth 10), got baseHealth=${sparrow?.baseHealth} base=${hpBase} grown=${grownHp}`);
   }
 
+  /* Level-up Base Health: +½ original BH per level, then × (1 + VIT×0.05).
+   * Hummingbird BH=8 VIT=0 → L2 leveled base 12 → maxHp 12. */
+  const hum = ctx.Avian.data.birdsV2?.hummingbird;
+  const humL2 = ctx.Avian.birdProgression.computeFinalStats({
+    base: {
+      baseHealth: Number(hum?.baseHealth) || 8,
+      vitality: Number(hum?.vitality) || 0,
+      atk: 0, dex: 0, def: 0, matk: 0, mdef: 0, spd: 0,
+    },
+    baseHealth: Number(hum?.baseHealth) || 8,
+    className: 'rogue',
+    level: 2,
+    skipLevelFlat: true,
+    totalStars: 0,
+    tier: 'grey',
+  });
+  const humL2Hp = Number(humL2.ledger?.maxHp ?? humL2.ledger?.hp) || 0;
+  const humL2Base = Number(humL2.ledger?.leveledBaseHealth) || 0;
+  if (Number(hum?.baseHealth) === 8 && humL2Base === 12 && humL2Hp === 12) {
+    ok(`level-up BH growth hummingbird L2: base 8 → leveled 12 → maxHp ${humL2Hp}`);
+  } else {
+    fail(`expected hummingbird L2 leveledBase=12 maxHp=12, got baseHealth=${hum?.baseHealth} leveled=${humL2Base} maxHp=${humL2Hp}`);
+  }
+
+  /* Sparrow BH=10 VIT=3 → L2 leveled 15 → maxHp round(15×1.15)=17 (no level VIT flats). */
+  const sparL2 = ctx.Avian.birdProgression.computeFinalStats({
+    base: {
+      baseHealth: 10,
+      vitality: 3,
+      atk: 0, dex: 0, def: 0, matk: 0, mdef: 0, spd: 0,
+    },
+    baseHealth: 10,
+    className: 'rogue',
+    level: 2,
+    skipLevelFlat: true,
+    totalStars: 0,
+    tier: 'grey',
+  });
+  const sparL2Hp = Number(sparL2.ledger?.maxHp ?? sparL2.ledger?.hp) || 0;
+  if (sparL2Hp === 17) {
+    ok(`level-up BH + VIT% sparrow L2: leveled 15 × 1.15 → maxHp ${sparL2Hp}`);
+  } else {
+    fail(`expected sparrow L2 maxHp 17 (15×1.15), got ${sparL2Hp}`);
+  }
+
   const crow = ctx.Avian.data.birdsV2?.crow?.stats;
   if (crow && Number(crow.matk) === 0 && Number(crow.acc) === 0) {
     ok('crow Focus/Precision are 0 (v0.6)');
@@ -189,8 +234,14 @@ try {
     fail(`crow expected FOC 0 / PRE 0, got matk=${crow?.matk} acc=${crow?.acc}`);
   }
 
+  const crowRow = ctx.Avian.data.birdsV2?.crow;
   const crowL15 = ctx.Avian.birdProgression.computeFinalStats({
-    base: { hp: crow.hp, atk: crow.atk, def: crow.def, matk: crow.matk, mdef: crow.mdef, spd: crow.spd },
+    base: {
+      baseHealth: Number(crowRow?.baseHealth) || Number(crow.hp),
+      vitality: Number(crowRow?.vitality ?? crow?.vitality) || 0,
+      atk: crow.atk, dex: crow.dex, def: crow.def, matk: crow.matk, mdef: crow.mdef, spd: crow.spd,
+    },
+    baseHealth: Number(crowRow?.baseHealth) || Number(crow.hp),
     className: 'knight',
     level: 15,
     totalStars: 18,
