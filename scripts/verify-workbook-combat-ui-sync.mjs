@@ -227,6 +227,24 @@ try {
     fail(`expected sparrow L2 maxHp 17 (15×1.15), got ${sparL2Hp}`);
   }
 
+  /* Enemy L2 (skip workbook VIT flats): hummingbird BH=8 → leveled 12 → maxHp 12. */
+  const enemyHumL2 = ctx.Avian.birdProgression.computeFinalStats({
+    base: {
+      baseHealth: Number(hum?.baseHealth) || 8,
+      vitality: Number(hum?.vitality) || 0,
+      atk: 0, dex: 0, def: 0, matk: 0, mdef: 0, spd: 0,
+    },
+    baseHealth: Number(hum?.baseHealth) || 8,
+    className: 'rogue',
+    level: 2,
+    skipLevelFlat: true,
+    totalStars: 0,
+    tier: 'grey',
+  });
+  const enemyHumHp = Number(enemyHumL2.ledger?.maxHp) || 0;
+  if (enemyHumHp === 12) ok(`enemy parity hummingbird L2 maxHp ${enemyHumHp} (½ BH growth)`);
+  else fail(`expected enemy hummingbird L2 maxHp 12, got ${enemyHumHp}`);
+
   const crow = ctx.Avian.data.birdsV2?.crow?.stats;
   if (crow && Number(crow.matk) === 0 && Number(crow.acc) === 0) {
     ok('crow Focus/Precision are 0 (v0.6)');
@@ -285,6 +303,24 @@ try {
       else fail(`story early workbookLevel should be ≤2, got ${early.workbookLevel}`);
       if (late.hp > early.hp * 1.35) ok(`story late HP ${late.hp} >> early ${early.hp} at same player level`);
       else fail(`expected late story HP growth, early=${early.hp} late=${late.hp}`);
+      /* Enemy BH growth: story profile levelOffset -2, so storyLevel 4 → workbookLevel 2.
+       * Hummingbird BH=8 → leveledBase 12; stamps birdLevel/baseHealth for gear path. */
+      const enemyL2 = ctx.applyEnemyStatsFromPlayerProgression(
+        { birdKey: 'hummingbird', storyLevel: 4, enemyClass: 'rogue' },
+        { isStory: true, stage: 4, playerBirdLevel: 30, diffMult: 1 },
+      );
+      if (!enemyL2) fail('enemy L2 hummingbird progression returned null');
+      else if (Number(enemyL2.workbookLevel) !== 2) {
+        fail(`enemy L2 workbookLevel expected 2 (storyLevel 4 + offset -2), got ${enemyL2.workbookLevel}`);
+      } else if (Number(enemyL2.baseHealth) !== 8) {
+        fail(`enemy L2 should stamp baseHealth 8, got ${enemyL2.baseHealth}`);
+      } else if (Number(enemyL2.leveledBaseHealth) !== 12) {
+        fail(`enemy L2 leveledBaseHealth expected 12, got ${enemyL2.leveledBaseHealth}`);
+      } else if (Number(enemyL2.birdLevel) !== 2) {
+        fail(`enemy L2 birdLevel expected 2, got ${enemyL2.birdLevel}`);
+      } else {
+        ok(`enemy L2 hummingbird stamps BH=8 leveled=12 birdLevel=${enemyL2.birdLevel} maxHp=${enemyL2.maxHp}`);
+      }
       const starsEarly = typeof ctx.getTotalFeatherStars === 'function'
         ? ctx.getTotalFeatherStars(early.tier, 2)
         : null;

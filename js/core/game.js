@@ -4211,19 +4211,37 @@ function applyEnemyStatsFromPlayerProgression(ed, opts={}){
     }
     core={
       maxHp:Number(ledger.maxHp??ledger.hp)||base.maxHp,
+      vitality:Number(ledger.vitality)||base.vitality,
+      baseHealth:base.baseHealth,
+      leveledBaseHealth:Number(ledger.leveledBaseHealth)
+        ||(typeof Avian.birdProgression.baseHealthAtLevel==='function'
+          ? Avian.birdProgression.baseHealthAtLevel(base.baseHealth, workbookLevel)
+          : base.baseHealth),
       atk:Number(ledger.atk)||base.atk,
       def:Number(ledger.def)||base.def,
       matk:Number(ledger.matk)||base.matk,
       mdef:Number(ledger.mdef)||base.mdef,
       spd:Number(ledger.spd)||base.spd,
-      dodge:base.dodge,
+      dodge:ledger.dodge!=null?Number(ledger.dodge):base.dodge,
     };
   } else {
     /* Fallback: class-weighted feathers at 1× per workbook level. */
-    const featherStats={...base, hp:base.maxHp};
+    const featherStats={
+      ...base,
+      hp:base.maxHp,
+      maxHp:base.maxHp,
+      baseHealth:base.baseHealth,
+      birdLevel:workbookLevel,
+      level:workbookLevel,
+    };
     for(let i=0;i<Math.max(0,workbookLevel-1);i++) applyEnemyFeatherFromPlayerMirror(featherStats, cls);
     core={
       maxHp:featherStats.maxHp,
+      vitality:Number(featherStats.vitality)||base.vitality,
+      baseHealth:base.baseHealth,
+      leveledBaseHealth:(typeof Avian?.birdProgression?.baseHealthAtLevel==='function')
+        ? Avian.birdProgression.baseHealthAtLevel(base.baseHealth, workbookLevel)
+        : base.baseHealth,
       atk:featherStats.atk,
       def:featherStats.def,
       matk:featherStats.matk,
@@ -4233,10 +4251,12 @@ function applyEnemyStatsFromPlayerProgression(ed, opts={}){
     };
     if(typeof Avian?.birdProgression?.applyEnemyProfile==='function'){
       const profiled=Avian.birdProgression.applyEnemyProfile({
-        hp:core.maxHp, maxHp:core.maxHp, atk:core.atk, def:core.def, matk:core.matk, mdef:core.mdef, spd:core.spd,
+        hp:core.maxHp, maxHp:core.maxHp, vitality:core.vitality,
+        atk:core.atk, def:core.def, matk:core.matk, mdef:core.mdef, spd:core.spd,
       }, profileId);
       if(profiled){
         core.maxHp=Number(profiled.maxHp??profiled.hp)||core.maxHp;
+        if(profiled.vitality!=null) core.vitality=Number(profiled.vitality)||core.vitality;
         core.atk=Number(profiled.atk)||core.atk;
         core.def=Number(profiled.def)||core.def;
         core.matk=Number(profiled.matk)||core.matk;
@@ -4246,6 +4266,7 @@ function applyEnemyStatsFromPlayerProgression(ed, opts={}){
     }
   }
 
+  const preMultHp=Math.max(0.01, Number(core.maxHp)||0.01);
   const diffMult=Number(opts.diffMult);
   let mult=Number.isFinite(diffMult)&&diffMult>0?diffMult:1;
 
@@ -4276,10 +4297,14 @@ function applyEnemyStatsFromPlayerProgression(ed, opts={}){
   const acc=roundCombatStat(base.acc,0);
   const critChance=roundCombatStat(base.critChance,0);
   const enProf=getEnemyEnergyProfile();
+  const progressHpMult=preMultHp>0?(hp/preMultHp):mult;
 
   return {
     hp,
     maxHp:hp,
+    vitality:Number(core.vitality)||base.vitality||0,
+    baseHealth:Number(core.baseHealth)||base.baseHealth||0,
+    leveledBaseHealth:Number(core.leveledBaseHealth)||base.baseHealth||0,
     atk,
     def,
     matk,
@@ -4293,7 +4318,9 @@ function applyEnemyStatsFromPlayerProgression(ed, opts={}){
     enemyClass:cls,
     effectiveLevel:rawLevel,
     workbookLevel,
+    birdLevel:workbookLevel,
     tier,
+    _progressHpMult:progressHpMult,
     _fromPlayerProgression:true,
   };
 }
@@ -4329,7 +4356,19 @@ function mergeScaledStatsIntoEnemy(ed, encounterStage){
   ed.combatTier = (scaled && 'tier' in scaled && scaled.tier!=null) ? scaled.tier : (ed.combatTier||ed.enemyTier||null);
   if(Number.isFinite(scaled.effectiveLevel)) ed.effectiveLevel=scaled.effectiveLevel;
   if(Number.isFinite(scaled.workbookLevel)) ed.workbookLevel=scaled.workbookLevel;
-  ed.stats = {hp:ed.hp, maxHp:ed.hp, atk:ed.atk, def:ed.def, spd:ed.spd, acc:ed.acc, dodge:ed.dodge, mdef:ed.mdef, matk:ed.matk, cc:ed.cc, cd:ed.cd, critChance:Math.round((ed.cc||0.05)*100), critMult:ed.cd||1.5, en:(scaled.en||0)};
+  if(Number.isFinite(scaled.birdLevel)) ed.birdLevel=scaled.birdLevel;
+  else if(Number.isFinite(scaled.workbookLevel)) ed.birdLevel=scaled.workbookLevel;
+  if(scaled.baseHealth!=null && Number(scaled.baseHealth)>0) ed.baseHealth=Number(scaled.baseHealth);
+  if(scaled.leveledBaseHealth!=null) ed.leveledBaseHealth=Number(scaled.leveledBaseHealth);
+  if(scaled._progressHpMult!=null) ed._progressHpMult=Number(scaled._progressHpMult);
+  ed.stats = {
+    hp:ed.hp, maxHp:ed.hp, atk:ed.atk, def:ed.def, spd:ed.spd, acc:ed.acc, dodge:ed.dodge,
+    mdef:ed.mdef, matk:ed.matk, cc:ed.cc, cd:ed.cd,
+    critChance:Math.round((ed.cc||0.05)*100), critMult:ed.cd||1.5,
+    en:(scaled.en||0),
+    vitality:scaled.vitality!=null?Number(scaled.vitality):(Number(ed.stats?.vitality)||0),
+    baseHealth:ed.baseHealth||0,
+  };
   const prof=getEnemyEnergyProfile();
   ed.energyMax=prof.maxEN;
   ed.energyRegen=prof.regenEN;
@@ -5119,6 +5158,14 @@ function buildTierStarEnemyFromBirdKey(birdKey, opts={}){
   const aiStyle=(['predator','striker'].includes(cls)?'aggressive':(cls==='tank'?'defensive':(cls==='trickster'?'trickster':'cautious')));
   const aiPersonality=typeof inferAIPersonalityFromClass==='function'?inferAIPersonalityFromClass(cls):inferAIPersonalityFromStyle(aiStyle,bd.name);
   const stage=Math.max(1,Math.floor(Number(opts.stage)||1));
+  const v2=(typeof Avian?.getBirdV2==='function'?Avian.getBirdV2(birdKey):null)
+    ||(Avian?.data?.birdsV2?Avian.data.birdsV2[birdKey]:null);
+  const speciesBh=Number(v2?.baseHealth??bd?.baseHealth)||0;
+  const speciesVit=Number(v2?.vitality??bd?.vitality??bd?.stats?.vitality)||0;
+  if(speciesBh>0){
+    stats.baseHealth=speciesBh;
+    stats.vitality=speciesVit;
+  }
   return{
     id:`forge_${birdKey}_${tier}_${stars}_${stage}_${Math.floor(Math.random()*1e6)}`,
     name:bd.name,
@@ -5136,6 +5183,9 @@ function buildTierStarEnemyFromBirdKey(birdKey, opts={}){
     isBoss:!!opts.isBoss,
     bossTitle:opts.bossTitle||'',
     storyLevel,
+    birdLevel:storyLevel,
+    workbookLevel:Math.max(1, Math.min(30, storyLevel)),
+    baseHealth:speciesBh>0?speciesBh:undefined,
     enemyTier:tier,
     enemyStars:stars,
     storyEvolvedSlots:unlockSlots,
@@ -5212,16 +5262,33 @@ function buildStoryEnemyFromBirdKey(birdKey, stage, opts={}){
     draft.spd=progressed.spd; draft.dodge=progressed.dodge; draft.acc=progressed.acc;
     draft.cc=progressed.cc; draft.cd=progressed.cd;
     draft.effectiveLevel=progressed.effectiveLevel;
+    draft.workbookLevel=progressed.workbookLevel;
+    draft.birdLevel=progressed.birdLevel||progressed.workbookLevel;
+    if(progressed.baseHealth!=null) draft.baseHealth=progressed.baseHealth;
+    if(progressed.leveledBaseHealth!=null) draft.leveledBaseHealth=progressed.leveledBaseHealth;
+    if(progressed._progressHpMult!=null) draft._progressHpMult=progressed._progressHpMult;
     draft.stats={
       hp:draft.hp,maxHp:draft.maxHp,atk:draft.atk,def:draft.def,spd:draft.spd,
       acc:draft.acc,dodge:draft.dodge,mdef:draft.mdef,matk:draft.matk,
       cc:draft.cc,cd:draft.cd,critChance:Math.round((draft.cc||0.05)*100),critMult:draft.cd,
       en:enProf.startEN,
+      vitality:progressed.vitality!=null?Number(progressed.vitality):0,
+      baseHealth:draft.baseHealth||0,
     };
     /* Boss vitality/offence already applied via enemy-scaling-profiles.boss. */
     draft._progressionParityApplied=true;
   } else {
-    /* Legacy fallback if progression unavailable */
+    /* Legacy fallback if progression unavailable — still seed BH identity for later gear. */
+    const v2=(typeof Avian?.getBirdV2==='function'?Avian.getBirdV2(birdKey):null)
+      ||(Avian?.data?.birdsV2?Avian.data.birdsV2[birdKey]:null);
+    const speciesBh=Number(v2?.baseHealth??bd?.baseHealth)||0;
+    if(speciesBh>0){
+      draft.baseHealth=speciesBh;
+      stats.baseHealth=speciesBh;
+      stats.vitality=Number(v2?.vitality??bd?.vitality??bd?.stats?.vitality)||0;
+      stats.birdLevel=level;
+      stats.level=level;
+    }
     for(let i=0;i<Math.max(0,level-1);i++) applyEnemyFeatherFromPlayerMirror(stats,cls);
     stats.maxHp=roundCombatStat(Math.max(0.01, stats.maxHp*diffMult), 0.01);
     stats.hp=stats.maxHp;
@@ -5237,6 +5304,8 @@ function buildStoryEnemyFromBirdKey(birdKey, stage, opts={}){
     draft.hp=stats.hp; draft.maxHp=stats.maxHp;
     draft.atk=stats.atk; draft.def=stats.def; draft.spd=stats.spd;
     draft.acc=stats.acc; draft.dodge=stats.dodge; draft.mdef=stats.mdef; draft.matk=stats.matk;
+    draft.birdLevel=level;
+    draft.workbookLevel=Math.min(30, level);
     draft.stats={...stats,en:enProf.startEN};
   }
   normalizeCombatStats(draft.stats);
