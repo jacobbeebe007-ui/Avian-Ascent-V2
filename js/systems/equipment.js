@@ -1109,11 +1109,22 @@
       entity.stats.mdef = (Number(entity.stats.mdef) || 0) + (Number(roll.stats.mdef) || 0);
       entity.stats.spd = (Number(entity.stats.spd) || 0) + (Number(roll.stats.spd) || 0);
       if (typeof Avian.birdProgression.vitalityToMaxHp === 'function') {
-        var entLevel = Math.max(1, Number(entity.birdLevel) || Number(entity.level) || 1);
+        var entLevel = Math.max(1,
+          Number(entity.birdLevel) || Number(entity.workbookLevel)
+          || Number(entity.effectiveLevel) || Number(entity.storyLevel)
+          || Number(entity.level) || 1);
         var leveledBh = (typeof Avian.birdProgression.baseHealthAtLevel === 'function')
           ? Avian.birdProgression.baseHealthAtLevel(baseHealth || 1, entLevel)
           : (baseHealth || 1);
-        entity.stats.maxHp = Avian.birdProgression.vitalityToMaxHp(leveledBh, entity.stats.vitality);
+        var formulaHp = Avian.birdProgression.vitalityToMaxHp(leveledBh, entity.stats.vitality);
+        var hpScale = Number(entity._progressHpMult);
+        if (Number.isFinite(hpScale) && hpScale > 0 && hpScale !== 1) {
+          entity.stats.maxHp = Math.max(1, Math.round(formulaHp * hpScale));
+        } else {
+          entity.stats.maxHp = formulaHp;
+        }
+        entity.leveledBaseHealth = leveledBh;
+        entity.birdLevel = entLevel;
       }
       var dodgeCap = (cfg.weaponFirst && cfg.weaponFirst.dodgeCapPct != null)
         ? Number(cfg.weaponFirst.dodgeCapPct) : 50;

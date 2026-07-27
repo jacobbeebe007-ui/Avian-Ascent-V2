@@ -397,6 +397,21 @@
     var cd = stats.critMult || 1.5;
     var isBoss = !!opts.isBoss || !!row.isBoss;
 
+    /* Species Base Health identity — combat Max HP is rewritten by mergeScaledStatsIntoEnemy. */
+    var speciesBh = 0;
+    var speciesVit = Number(stats.vitality) || 0;
+    var v2 = (typeof Avian.getBirdV2 === 'function' ? Avian.getBirdV2(row.birdKey) : null)
+      || (Avian.data && Avian.data.birdsV2 && row.birdKey ? Avian.data.birdsV2[row.birdKey] : null);
+    if (v2) {
+      if (v2.baseHealth != null) speciesBh = Number(v2.baseHealth) || 0;
+      if (v2.vitality != null) speciesVit = Number(v2.vitality) || speciesVit;
+    }
+    if (!(speciesBh > 0) && stats.baseHealth != null) speciesBh = Number(stats.baseHealth) || 0;
+    if (speciesBh > 0) {
+      stats.baseHealth = speciesBh;
+      stats.vitality = speciesVit;
+    }
+
     return {
       id: enemyId,
       rosterId: enemyId,
@@ -435,6 +450,9 @@
       isBoss: isBoss,
       bossTitle: opts.bossTitle || '',
       storyLevel: skillLevel,
+      birdLevel: skillLevel,
+      workbookLevel: Math.max(1, Math.min(30, skillLevel)),
+      baseHealth: speciesBh > 0 ? speciesBh : undefined,
       _storyDirectStats: true,
       _fromRoster: true,
     };
