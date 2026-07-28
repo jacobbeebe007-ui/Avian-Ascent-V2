@@ -39,14 +39,14 @@ const trees = skillsSandbox.Avian?.data?.equipment?.skills || {};
 
 const emittedKinds = Object.create(null);
 for (const row of Object.values(trees)) {
-  const copy = { riderText: row.riderText || '', riders: row.rider?.effects || [] };
+  const structured = row.riders || row.protectionRiders || [];
+  const copy = {
+    riderText: row.riderText || '',
+    riders: structured.map((r) => Object.assign({}, r)),
+  };
   sandbox.applyAbilityTextEnrichment(copy);
   for (const r of copy.riders || []) {
-    if (r.kind === 'raw') continue;
-    emittedKinds[r.kind] = (emittedKinds[r.kind] || 0) + 1;
-  }
-  for (const r of row.rider?.effects || []) {
-    if (!r || !r.kind) continue;
+    if (!r || !r.kind || r.kind === 'raw') continue;
     emittedKinds[r.kind] = (emittedKinds[r.kind] || 0) + 1;
   }
 }
@@ -59,7 +59,7 @@ const riderSegment = displayApi?.riderSegment;
 for (const kind of Object.keys(emittedKinds)) {
   if (!handlerKeys.has(kind) && !SKIP_EXEC_KINDS.has(kind) && !DEFERRED_KINDS.has(kind)) missingHandlers.push(kind);
   if (riderSegment && kind !== 'tierStat') {
-    const seg = riderSegment({ kind, value: 8, when: null });
+    const seg = riderSegment({ kind, value: 8, when: null, armour: 5, magicArmour: 7 });
     if (!seg) missingDisplay.push(kind);
   }
 }

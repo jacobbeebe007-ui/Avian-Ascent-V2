@@ -323,7 +323,17 @@
     if (!ab) return false;
     var name = String(ab.name || ab.id || '');
     var bar = String(ab.barSlot || ab.skillType || ab.riderText || '');
-    return /fortify|armour restoration|armor restoration|restore armour|restore armor/i.test(name + ' ' + bar);
+    if (/fortify|armour restoration|armor restoration|restore armour|restore armor/i.test(name + ' ' + bar)) {
+      return true;
+    }
+    var row = ab._dispatcherRow || ab;
+    var riders = row.riders || row.protectionRiders || ab.riders || ab.protectionRiders || [];
+    for (var i = 0; i < riders.length; i++) {
+      var k = riders[i] && (riders[i].kind || riders[i].type);
+      if (k === 'fortify' || k === 'restoreArmour' || k === 'bastion' || k === 'restoreLowerPool') return true;
+    }
+    var text = String(row.riderText || ab.riderText || ab.effect || '').toLowerCase();
+    return /\bfortify\b/.test(text) || /restore\s+\d+\s+(?:armour|armor)/.test(text);
   }
 
   function targetQualifiesForJudgement(status) {

@@ -525,12 +525,40 @@
     var prot = Avian.protection;
     if (!stats || !prot || !rider) return;
     var kind = rider.kind;
-    if (kind === 'restoreArmour') prot.restoreArmour(stats, rider.value);
-    else if (kind === 'restoreMagicArmour') prot.restoreMagicArmour(stats, rider.value);
-    else if (kind === 'fortify') prot.applyFortify(stats, status, rider.value, rider.turns || 2);
-    else if (kind === 'ward') prot.applyWard(stats, status, rider.value, rider.turns || 2);
-    else if (kind === 'bastion') {
-      prot.applyBastion(stats, status, rider.armour || rider.value || 0, rider.magicArmour || 0, rider.turns || 2);
+    var amount = rider.value != null ? Number(rider.value) : Number(rider.amount) || 0;
+    var restored = 0;
+    var label = '';
+    if (kind === 'restoreArmour') {
+      restored = prot.restoreArmour(stats, amount) || 0;
+      label = 'ARM';
+    } else if (kind === 'restoreMagicArmour') {
+      restored = prot.restoreMagicArmour(stats, amount) || 0;
+      label = 'MARM';
+    } else if (kind === 'restoreLowerPool') {
+      var lr = typeof prot.restoreLowerPool === 'function'
+        ? prot.restoreLowerPool(stats, amount)
+        : null;
+      restored = (lr && lr.restored) || 0;
+      label = (lr && lr.poolKey === 'magicArmour') ? 'MARM' : 'ARM';
+    } else if (kind === 'fortify') {
+      restored = prot.applyFortify(stats, status, amount, rider.turns || 2) || 0;
+      label = 'Fortify';
+    } else if (kind === 'ward') {
+      restored = prot.applyWard(stats, status, amount, rider.turns || 2) || 0;
+      label = 'Ward';
+    } else if (kind === 'bastion') {
+      var br = prot.applyBastion(
+        stats,
+        status,
+        rider.armour != null ? rider.armour : amount,
+        rider.magicArmour != null ? rider.magicArmour : 0,
+        rider.turns || 2
+      );
+      restored = ((br && br.armour) || 0) + ((br && br.magicArmour) || 0);
+      label = 'Bastion';
+    }
+    if (restored > 0 && typeof spawnFloat === 'function') {
+      spawnFloat(side, '+' + restored + ' ' + label, 'fn-buff');
     }
     spawnTrendFloat(side, 'buff');
     if (typeof refreshBattleUI === 'function') refreshBattleUI();
@@ -583,6 +611,7 @@
       gainDodgeFlat: function (n, ps, p) { applyDisplayOrStat(ps, p, 'gainDodge', 'dodge', n); },
       gainAcc: function (n, ps, p) { applyDisplayOrStat(ps, p, 'gainAcc', 'acc', n); },
       gainSpeed: function (n, ps, p) { applyCoreBuff(ps, p, 'gainSpeed', 'spd', n); },
+      gainDex: function (n, ps, p) { applyCoreBuff(ps, p, 'gainDex', 'dex', n); },
       gainCritChance: function (n, ps, p) { applyDisplayOrStat(ps, p, 'gainCritChance', 'critChance', n); },
       gainCritDamage: function (n, ps) { applyDispatcherDisplaySlot(ps, sourceId, 'gainCritDamage', n); spawnTrendFloat(floatSide, 'buff'); },
       gainAtk: function (n, ps, p) { applyCoreBuff(ps, p, 'gainAtk', 'atk', n); },
@@ -598,6 +627,7 @@
       gainShield: function (n) { applyShieldFromRow(row, n, ab, side); },
       restoreArmour: function (n) { applyProtectionRider(row, { kind: 'restoreArmour', value: n }, ab, side); },
       restoreMagicArmour: function (n) { applyProtectionRider(row, { kind: 'restoreMagicArmour', value: n }, ab, side); },
+      restoreLowerPool: function (n) { applyProtectionRider(row, { kind: 'restoreLowerPool', value: n }, ab, side); },
       fortify: function (n, _ps, _p, rider) {
         applyProtectionRider(row, {
           kind: 'fortify',
@@ -613,7 +643,7 @@
         }, ab, side);
       },
       bastion: function (n, _ps, _p, rider) {
-        applyProtectionRider(row, rider || { kind: 'bastion', armour: n, magicArmour: n, turns: 2 }, ab, side);
+        applyProtectionRider(row, rider || { kind: 'bastion', armour: n, magicArmour: n, turns: 2, value: n }, ab, side);
       },
       gainShieldFromDamage: function (n, _ps, _p, _r, ctx) {
         var dmg = (ctx && ctx.totalDmg) || 0;

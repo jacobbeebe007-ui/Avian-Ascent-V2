@@ -218,18 +218,11 @@ function skillIdFromName(name, prefix) {
 function parseProtectionRiders(effectText) {
   const text = String(effectText || '');
   const riders = [];
-  const fortify = text.match(/Gain\s+(\d+)\s+Fortified Armour/i);
-  if (fortify) {
-    const turnsM = text.match(/for\s+(\d+)\s+turns?/i);
-    riders.push({ kind: 'fortify', value: Number(fortify[1]), turns: turnsM ? Number(turnsM[1]) : 2 });
-  }
-  const ward = text.match(/Gain\s+(\d+)\s+Ward Magic Armour/i);
-  if (ward) {
-    const turnsM = text.match(/for\s+(\d+)\s+turns?/i);
-    riders.push({ kind: 'ward', value: Number(ward[1]), turns: turnsM ? Number(turnsM[1]) : 2 });
-  }
-  /* Dual Bastion/Aegis: "Gain X Fortified Armour and Y Ward Magic Armour" */
-  const dual = text.match(/Gain\s+(\d+)\s+Fortified Armour\s+and\s+(\d+)\s+Ward Magic Armour/i);
+
+  /* Dual Bastion/Aegis — allow parentheticals between Fortify and Ward amounts. */
+  const dual = text.match(
+    /Gain\s+(\d+)\s+Fortified Armour(?:\s*\([^)]*\))?\s*(?:,?\s*and|,)\s*(\d+)\s+Ward(?:\s+Magic)?\s*Armour/i,
+  );
   if (dual) {
     const turnsM = text.match(/for\s+(\d+)\s+turns?/i);
     riders.push({
@@ -237,24 +230,46 @@ function parseProtectionRiders(effectText) {
       armour: Number(dual[1]),
       magicArmour: Number(dual[2]),
       turns: turnsM ? Number(turnsM[1]) : 2,
+      value: Number(dual[1]),
     });
+    return riders;
   }
-  const restoreArm = text.match(/Restore\s+(\d+)\s+Armour(?!\s+and)/i);
-  if (restoreArm && !/Fortified Armour/i.test(text.slice(Math.max(0, text.search(/Restore\s+\d+\s+Armour/i) - 20), text.search(/Restore\s+\d+\s+Armour/i) + 40))) {
-    riders.push({ kind: 'restoreArmour', value: Number(restoreArm[1]) });
+
+  const fortify = text.match(/Gain\s+(\d+)\s+Fortified Armour/i);
+  if (fortify) {
+    const turnsM = text.match(/for\s+(\d+)\s+turns?/i);
+    riders.push({ kind: 'fortify', value: Number(fortify[1]), turns: turnsM ? Number(turnsM[1]) : 2 });
   }
+  const ward = text.match(/Gain\s+(\d+)\s+Ward(?:\s+Magic)?\s*Armour/i)
+    || text.match(/(?:^|[^\w])(?:and|,)\s*(\d+)\s+Ward(?:\s+Magic)?\s*Armour/i);
+  if (ward) {
+    const turnsM = text.match(/for\s+(\d+)\s+turns?/i);
+    riders.push({ kind: 'ward', value: Number(ward[1]), turns: turnsM ? Number(turnsM[1]) : 2 });
+  }
+
   const restoreBoth = text.match(/Restore\s+(\d+)\s+Armour\s+and\s+(\d+)\s+Magic Armour/i);
   if (restoreBoth) {
     riders.push({ kind: 'restoreArmour', value: Number(restoreBoth[1]) });
     riders.push({ kind: 'restoreMagicArmour', value: Number(restoreBoth[2]) });
   } else {
+    /* Allow "Restore N Armour and gain …" — do not require !(and). */
+    const restoreArm = text.match(/Restore\s+(\d+)\s+Armour(?!\s+and\s+\d+\s+Magic)/i);
+    if (restoreArm && !/Fortified Armour/i.test(text.slice(
+      Math.max(0, text.search(/Restore\s+\d+\s+Armour/i) - 20),
+      text.search(/Restore\s+\d+\s+Armour/i) + 40,
+    ))) {
+      riders.push({ kind: 'restoreArmour', value: Number(restoreArm[1]) });
+    }
     const restoreMag = text.match(/Restore\s+(\d+)\s+Magic Armour/i);
     if (restoreMag) riders.push({ kind: 'restoreMagicArmour', value: Number(restoreMag[1]) });
   }
-  /* Deduplicate bastion if fortify+ward already captured from dual phrase */
-  if (dual) {
-    return riders.filter((r) => r.kind === 'bastion' || (r.kind !== 'fortify' && r.kind !== 'ward'));
+
+  const lowerPool = text.match(/Restore\s+(\d+)\s+to\s+(?:whichever|the)\s+(?:protection\s+)?pool(?:\s+is)?(?:\s+currently)?\s+lower/i)
+    || text.match(/Restore\s+(\d+)\s+to\s+the\s+lower\s+protection\s+pool/i);
+  if (lowerPool) {
+    riders.push({ kind: 'restoreLowerPool', value: Number(lowerPool[1]) });
   }
+
   return riders;
 }
 
