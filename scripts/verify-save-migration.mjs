@@ -310,7 +310,7 @@ function testShieldSlotMigration() {
     },
   };
   const m2 = systems.runSaveMigrations(saveOccupied);
-  if (Number(m2.schemaVersion) !== 16) fail('v15→v17 should reach schema 17');
+  if (Number(m2.schemaVersion) !== 17) fail('v15→v17 should reach schema 17');
   else ok('v15→v17 reaches schema 17');
   if (m2.player.equipment.mainHand != null || (m2.player.equipmentInventory || []).length) {
     fail('v17 should wipe loadout and inventory');

@@ -879,6 +879,34 @@ const slots = {
     'Weapon 1H': 1, 'Weapon 2H': 1.5, Armour: 1, Shield: 1,
     Helmet: 0.75, Anklet: 0.5, Necklace: 0.75,
   },
+  rarityBudgets: {
+    grey: { flatAttribute: 1, armour: 4, helmet: 2, shield: 3, damageFactor: 1.0 },
+    green: { flatAttribute: 2, armour: 6, helmet: 3, shield: 4, damageFactor: 1.25 },
+    blue: { flatAttribute: 3, armour: 9, helmet: 4, shield: 6, damageFactor: 1.55 },
+    purple: { flatAttribute: 5, armour: 12, helmet: 6, shield: 8, damageFactor: 1.9 },
+    gold: { flatAttribute: 7, armour: 16, helmet: 8, shield: 12, damageFactor: 2.3 },
+    orange: { flatAttribute: 9, armour: 22, helmet: 11, shield: 16, damageFactor: 2.75 },
+  },
+  rarityOrder: ['grey', 'green', 'blue', 'purple', 'gold', 'orange'],
+  weightMultipliers: { light: 0.8, medium: 1.0, heavy: 1.1 },
+  statDisplayNames: {
+    hp: 'Vitality',
+    atk: 'Might',
+    dex: 'Dexterity',
+    matk: 'Focus',
+    def: 'Guard',
+    mdef: 'Resolve',
+    spd: 'Agility',
+    armour: 'Armour',
+    magicArmour: 'Magic Armour',
+    critChancePct: 'Critical Chance',
+    physicalPenPct: 'Physical Penetration',
+    magicPenPct: 'Magic Penetration',
+    dodgePct: 'Dodge',
+    critDamagePct: 'Ferocity',
+    healingPowerPct: 'Healing Power',
+  },
+  forbiddenStatIds: [],
 };
 
 /* ---- Weapon access ---- */
@@ -907,14 +935,19 @@ function pickWeaponForClass(classId, rarity) {
     return access.classAccess.includes(classId);
   });
   if (!list.length) return null;
-  /* Prefer 2H for knight/brute, 1H finesse for rogue, magic for mage/siren */
+  /* Prefer 2H for knight/brute, 1H for classes that can dual-wield or use shields. */
   const prefer2H = classId === 'knight' || classId === 'brute';
+  const prefer1H = !prefer2H;
   const preferMagic = classId === 'mage' || classId === 'siren';
   const preferFinesse = classId === 'rogue' || classId === 'bard';
   list.sort((a, b) => {
     let sa = 0;
     let sb = 0;
-    if (prefer2H) { sa += a.hands === 2 ? 10 : 0; sb += b.hands === 2 ? 10 : 0; }
+    if (prefer2H) { sa += a.hands === 2 ? 50 : 0; sb += b.hands === 2 ? 50 : 0; }
+    if (prefer1H) {
+      sa += a.hands === 1 ? 50 : -50;
+      sb += b.hands === 1 ? 50 : -50;
+    }
     if (preferMagic) {
       sa += a.damageType === 'Magic' ? 10 : 0;
       sb += b.damageType === 'Magic' ? 10 : 0;
@@ -953,7 +986,7 @@ function pickAccessory(slot, rarity) {
   return list[0] || null;
 }
 
-const referenceLoadouts = Object.create(null);
+const referenceLoadouts = [];
 for (const classId of CLASS_IDS) {
   for (const rarity of Object.keys(RARITY_RANK)) {
     const weapon = pickWeaponForClass(classId, rarity);
@@ -984,9 +1017,8 @@ for (const classId of CLASS_IDS) {
         totals.spdFlat = (totals.spdFlat || 0) + Number(it.stats.agilityPenalty);
       }
     }
-    const key = classId + ':' + rarity;
     const skill = weapon && weapon.skill1 ? skills[weapon.skill1] : null;
-    referenceLoadouts[key] = {
+    referenceLoadouts.push({
       class: classId,
       rarity,
       equipment,
@@ -996,7 +1028,7 @@ for (const classId of CLASS_IDS) {
       scalingStat: weapon ? (weapon.scalingStat === 'ATK' ? 'Might' : weapon.scalingStat === 'DEX' ? 'Dexterity' : weapon.scalingStat === 'MATK' ? 'Focus' : weapon.scalingStat) : null,
       skillId: weapon ? weapon.skill1 : null,
       skillPower: skill ? skill.skillPower : 0,
-    };
+    });
   }
 }
 
@@ -1016,20 +1048,41 @@ for (let i = 0; i < focusOrbs.length; i++) {
   };
 }
 
+/* Preserve combination / paired techniques (family-tag driven; not in v1.2 workbook). */
+const comboFixture = path.join(ROOT, 'scripts', 'fixtures', 'equipment-combo-skills.json');
+if (existsSync(comboFixture)) {
+  const keep = JSON.parse(readFileSync(comboFixture, 'utf8'));
+  let kept = 0;
+  for (const id of Object.keys(keep)) {
+    if (skills[id]) continue;
+    skills[id] = keep[id];
+    kept++;
+  }
+  console.log('preserved combo/pair skills:', kept);
+}
+
+/* Stamp Focus Orb items with orbFocus affinity for arsenal overlays. */
+const focusAffinityByRarity = {
+  grey: 'ember', green: 'frost', blue: 'storm', purple: 'venom', gold: 'blood', orange: 'lunar',
+};
+for (const it of Object.values(items)) {
+  if (it.family !== 'Focus Orb') continue;
+  it.orbFocus = focusAffinityByRarity[it.rarity] || 'ember';
+  it.aspect = it.orbFocus;
+}
+
 /* ---- Write outputs (do NOT touch birds-v2 / combat-pack) ---- */
 writeDataFile('js/data/equipment/slots.js', 'Avian.data.equipment.slots', slots, '7-slot loadout; Shield via offHand');
-writeDataFile('js/data/equipment/skills.js', 'Avian.data.equipment.skills', skills, `${Object.keys(skills).length} skills (BASIC + WSK + ESK)`);
+writeDataFile('js/data/equipment/skills.js', 'Avian.data.equipment.skills', skills, `${Object.keys(skills).length} skills (BASIC + WSK + ESK + COMBO/PAIR)`);
 writeDataFile('js/data/equipment/items.js', 'Avian.data.equipment.items', items, `${Object.keys(items).length} catalogue items`);
 writeDataFile('js/data/equipment/families.js', 'Avian.data.equipment.families', families, `${Object.keys(families).length} families`);
 writeDataFile('js/data/equipment/set-bonuses.js', 'Avian.data.equipment.setBonuses', setBonuses, `${Object.keys(setBonuses).length} defensive sets`);
 writeDataFile('js/data/equipment/materials-infusions.js', 'Avian.data.equipment.materialsInfusions', { materials, infusions, namingFormula: 'Rarity + Infusion + Material/Set + Slot' });
 writeDataFile('js/data/equipment/ailment-gates.js', 'Avian.data.equipment.ailmentGates', ailmentGates, 'Protection-pool ailment gates');
 writeDataFile('js/data/equipment/core-rules.js', 'Avian.data.equipment.coreRules', coreRules, 'v1.2 restoration / fortify / ward rules');
-writeDataFile('js/data/equipment/reference-loadouts.js', 'Avian.data.equipment.referenceLoadouts', referenceLoadouts, `${Object.keys(referenceLoadouts).length} class×rarity loadouts`);
+writeDataFile('js/data/equipment/reference-loadouts.js', 'Avian.data.equipment.referenceLoadouts', referenceLoadouts, `${referenceLoadouts.length} class×rarity loadouts`);
 writeDataFile('js/data/equipment/weapon-access.js', 'Avian.data.equipment.weaponAccess', weaponAccess);
 writeDataFile('js/data/equipment/orb-focuses.js', 'Avian.data.equipment.orbFocuses', orbFocuses);
-
-/* Keep combinations.js as family-tag stubs (no EQ ids); leave loot-tables untouched. */
 
 const itemCount = Object.keys(items).length;
 const skillCount = Object.keys(skills).length;
@@ -1046,7 +1099,7 @@ console.log('  items:', itemCount, `(W${wpnCount} A${armCount} H${hlmCount} S${s
 console.log('  skills:', skillCount);
 console.log('  families:', Object.keys(families).length);
 console.log('  set bonuses:', Object.keys(setBonuses).length);
-console.log('  loadouts:', Object.keys(referenceLoadouts).length);
+console.log('  loadouts:', referenceLoadouts.length);
 if (unresolvedWeapons.length) {
   console.error('FAIL: weapons missing skills:', unresolvedWeapons.map((i) => i.id).join(', '));
   process.exit(1);

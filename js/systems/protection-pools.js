@@ -297,5 +297,4 @@
 
   Avian.protection = ns;
   Avian.systems.protection = ns;
-  globalThis.AvianProtection = ns;
 })();

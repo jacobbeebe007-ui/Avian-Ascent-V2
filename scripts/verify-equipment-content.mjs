@@ -163,15 +163,16 @@ if (nonOrangeWithUnique) fail(nonOrangeWithUnique + ' non-orange items have uniq
 if (handsMismatch) fail(handsMismatch + ' items with inconsistent hands');
 if (forbiddenStatHits) fail(forbiddenStatHits + ' forbidden-stat hits on items');
 
-/* Each family has exactly 6 rarities */
-const byFamily = Object.create(null);
+/* Each family×slot has exactly 6 rarities (set families span 3 slots → 18). */
+const byFamilySlot = Object.create(null);
 for (const id of itemIds) {
-  const f = items[id].family || '?';
-  byFamily[f] = (byFamily[f] || 0) + 1;
+  const it = items[id];
+  const f = (it.family || '?') + '|' + (it.slot || '?');
+  byFamilySlot[f] = (byFamilySlot[f] || 0) + 1;
 }
-const badFamilyCounts = Object.keys(byFamily).filter((f) => byFamily[f] !== 6);
+const badFamilyCounts = Object.keys(byFamilySlot).filter((f) => byFamilySlot[f] !== 6);
 if (badFamilyCounts.length) {
-  fail('families without exactly 6 rarities: ' + badFamilyCounts.slice(0, 8).join(', '));
+  fail('family×slot without exactly 6 rarities: ' + badFamilyCounts.slice(0, 8).join(', '));
 }
 
 /* ACC floors retired — Precision is action-owned (v0.5+). */

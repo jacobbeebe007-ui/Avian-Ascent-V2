@@ -114,12 +114,12 @@ if (JSON.stringify(first) !== JSON.stringify(second)) {
   ok('seeded duel deterministic (seed=' + SEED + ')');
 }
 
-/* v0.9 weapon-first + ACC-less hit: lower HP, hits land more often. */
+/* v1.2 Armour pools absorb post-mitigation damage → longer duel, lower Health dmg. */
 const SNAPSHOT = Object.freeze({
-  turns: 2,
+  turns: 3,
   winner: 'defender',
-  damageDealt: 6.88,
-  damageTaken: 13,
+  damageDealt: 0.94,
+  damageTaken: 12,
   seed: SEED,
 });
 function near(a, b, eps = 0.05) {
