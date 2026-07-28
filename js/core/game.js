@@ -374,6 +374,8 @@ function ledgerStatLabel(statKey, { short=false }={}){
     maxHp:'Max Health',hp:'Vitality',vitality:'Vitality',atk:'Might',dex:'Dexterity',def:'Guard',spd:'Agility',acc:'Precision',dodge:'Evasion',
     matk:'Focus',mdef:'Resolve',critChance:'Critical',critMult:'Ferocity',
     armorPen:'Martial Penetration',magicPen:'Magic Penetration',
+    armour:'Armour',armor:'Armour',magicArmour:'Magic Armour',magicArmor:'Magic Armour',
+    maxArmour:'Armour',maxMagicArmour:'Magic Armour',
     physDamagePct:'Martial Damage',magicDamagePct:'Magic Damage',aspectDamagePct:'Affinity Damage',
     healingPowerPct:'Healing Power',shieldStrengthPct:'Barrier Power',critDamagePct:'Ferocity',
   };
@@ -2807,6 +2809,8 @@ function openNest() {
     <div class="nest-stat-card"><div class="nest-stat-val" style="color:${_nestCritMultBase>1.5||_nestCritBonusPct>0?'#e8c96a':'var(--gold)'}">${_nestCritMultDisp}</div><div class="nest-stat-lbl">${ledgerStatLabel('critMult',{short:true})}</div></div>
     <div class="nest-stat-card" title="Focus — improves spell and ailment potency"><div class="nest-stat-val" style="color:#6ae8e8">${formatCombatNumber(Number(s.matk)||0)}</div><div class="nest-stat-lbl" style="color:#4ab8c0">${ledgerStatLabel('matk',{short:true})}</div></div>
     <div class="nest-stat-card" title="Resolve — resists enemy spells and ailments"><div class="nest-stat-val" style="color:#6ae8e8">${formatCombatNumber(Number(s.mdef)||0)}</div><div class="nest-stat-lbl" style="color:#4ab8c0">${ledgerStatLabel('mdef',{short:true})}</div></div>
+    <div class="nest-stat-card" title="Armour — absorbs martial damage before Health"><div class="nest-stat-val" style="color:#f0f2f6">${formatCombatNumber(Math.max(0,Number(s.armour??s.maxArmour??s.armourFlat??0)||0))}/${formatCombatNumber(Math.max(0,Number(s.maxArmour??s.normalMaxArmour??s.armourFlat??0)||0))}</div><div class="nest-stat-lbl" style="color:#d8dde6">${ledgerStatLabel('armour',{short:true})}</div></div>
+    <div class="nest-stat-card" title="Magic Armour — absorbs magical damage before Health"><div class="nest-stat-val" style="color:#b8dcff">${formatCombatNumber(Math.max(0,Number(s.magicArmour??s.maxMagicArmour??s.magicArmourFlat??0)||0))}/${formatCombatNumber(Math.max(0,Number(s.maxMagicArmour??s.normalMaxMagicArmour??s.magicArmourFlat??0)||0))}</div><div class="nest-stat-lbl" style="color:#a8d0f5">${ledgerStatLabel('magicArmour',{short:true})}</div></div>
     ${(s.armorPen||0)>0?`<div class="nest-stat-card" title="Ignores enemy Guard when dealing martial damage"><div class="nest-stat-val">${formatCombatNumber(s.armorPen)}%</div><div class="nest-stat-lbl">${ledgerStatLabel('armorPen',{short:true})}</div></div>`:''}
     ${(s.magicPen||0)>0?`<div class="nest-stat-card" title="Ignores enemy Resolve when dealing magical damage"><div class="nest-stat-val">${formatCombatNumber(s.magicPen)}%</div><div class="nest-stat-lbl">${ledgerStatLabel('magicPen',{short:true})}</div></div>`:''}
   </div></div>`;
@@ -8198,6 +8202,8 @@ function buildPlayerStatsGridHtml(){
      ${statCell('stat-spd',ledgerStatLabel('spd',{short:true}),_effSpd,{title:_bt('spd',_pBase.spd??p.spd,_statNote('Battle Agility',_effSpd-(_pBase.spd||0),'Buff increased Agility.','Slow/clip effects reduced Agility.')),trend:combatTrendTag(_effSpd,_pBase.spd),statKey:'spd',statRaw:_pBase.spd??p.spd})}
      ${statCell('stat-cc',ledgerStatLabel('critChance',{short:true}),_critChance,{suffix:'%',title:_bt('critChance',_critBaseStore,`Shown value includes battle modifiers (e.g. burn). ${_statNote('vs battle start',_critChance-_critBaseStore,'Temporary buffs.','Debuffs reduced Critical.')}`),trend:combatTrendTag(_critChance,_critBaseStore),statKey:'critChance',statRaw:_critBaseStore})}
      <div class="stat-mini stat-cd" data-stat-key="critMult" data-stat-raw="${_critBase}" title="${combatEscAttr(`Base Ferocity ${formatCombatNumber(_critBase)}×. On critical hits, +${formatCombatNumber(_critBonusPct)} is added to the multiplier.`)}"><span class="stat-k">${ledgerStatLabel('critMult',{short:true})}</span><span class="stat-v">${_critMultHtml}</span></div>
+     ${statCell('stat-arm',ledgerStatLabel('armour',{short:true}),Math.max(0,Number(p.armour)||0),{title:_bt('armour',(_pBase.armour??p.armour)||0,`Current ${formatCombatNumber(Math.max(0,Number(p.armour)||0))} / max ${formatCombatNumber(Math.max(0,Number(p.maxArmour)||0))} (normal ${formatCombatNumber(Math.max(0,Number(p.normalMaxArmour)||0))}). Absorbs martial damage before Health.`),statKey:'armour',statRaw:(_pBase.armour??p.armour)||0})}
+     ${statCell('stat-marm',ledgerStatLabel('magicArmour',{short:true}),Math.max(0,Number(p.magicArmour)||0),{title:_bt('magicArmour',(_pBase.magicArmour??p.magicArmour)||0,`Current ${formatCombatNumber(Math.max(0,Number(p.magicArmour)||0))} / max ${formatCombatNumber(Math.max(0,Number(p.maxMagicArmour)||0))} (normal ${formatCombatNumber(Math.max(0,Number(p.normalMaxMagicArmour)||0))}). Absorbs magical damage before Health.`),statKey:'magicArmour',statRaw:(_pBase.magicArmour??p.magicArmour)||0})}
      ${_penCells}
      ${_pHintRow}`;
 }
@@ -8227,12 +8233,14 @@ function buildEnemyStatsGridHtml(){
      ${enemyCell('stat-spd',ledgerStatLabel('spd',{short:true}),ep2.spd||0,{title:'Agility',baseKey:'spd',statKey:'spd',statRaw:ep2.spd||0})}
      ${enemyCell('stat-cc',ledgerStatLabel('critChance',{short:true}),eCritChance,{suffix:'%',title:'Critical chance',statKey:'critChance',statRaw:eCritChance})}
      ${enemyCell('stat-cd',ledgerStatLabel('critMult',{short:true}),Number(eCritMult),{suffix:'×',title:'Ferocity'})}
+     ${enemyCell('stat-arm',ledgerStatLabel('armour',{short:true}),Math.max(0,Number(ep2.armour)||0),{title:`Armour ${formatCombatNumber(Math.max(0,Number(ep2.armour)||0))} / ${formatCombatNumber(Math.max(0,Number(ep2.maxArmour)||0))} — absorbs martial damage before Health`,statKey:'armour',statRaw:Math.max(0,Number(ep2.armour)||0)})}
+     ${enemyCell('stat-marm',ledgerStatLabel('magicArmour',{short:true}),Math.max(0,Number(ep2.magicArmour)||0),{title:`Magic Armour ${formatCombatNumber(Math.max(0,Number(ep2.magicArmour)||0))} / ${formatCombatNumber(Math.max(0,Number(ep2.maxMagicArmour)||0))} — absorbs magical damage before Health`,statKey:'magicArmour',statRaw:Math.max(0,Number(ep2.magicArmour)||0)})}
      ${_eHintRow}`;
 }
 function buildCombatStatBreakdownSection(side){
   const statKeys=side==='player'
-    ? ['atk','matk','def','mdef','dodge','acc','spd','critChance','critMult','armorPen','magicPen']
-    : ['maxHp','atk','matk','def','mdef','dodge','acc','spd','critChance'];
+    ? ['atk','matk','def','mdef','dodge','acc','spd','critChance','critMult','armour','magicArmour','armorPen','magicPen']
+    : ['maxHp','atk','matk','def','mdef','dodge','acc','spd','critChance','armour','magicArmour'];
   const player=side==='player'?G.player:null;
   const enemy=side==='enemy'?G.enemy:null;
   let html='';
@@ -8394,6 +8402,7 @@ function refreshBattleUI() {
   document.getElementById('player-avatar').innerHTML = renderEntityAvatarHTML(G.player, 'battle');
   setHpBar('player', p.hp, p.maxHp);
   setEnergyBar('player', G.player.energy, G.player.energyMax);
+  setProtectionBars('player');
   const pclsEl=document.getElementById('player-class-label');
   if(pclsEl){
     const pcls=idToClassLabel(resolveFinalClass(G.player.class||BIRDS[G.player.birdKey]?.class||'striker',G.player.birdKey));
@@ -8422,6 +8431,7 @@ function refreshBattleUI() {
   }
   setHpBar('enemy', G.enemy.stats.hp, G.enemy.stats.maxHp);
   setEnergyBar('enemy', G.enemy.energy, G.enemy.energyMax||3);
+  setProtectionBars('enemy');
   const eclsEl=document.getElementById('enemy-class-label');
   if(eclsEl){
     const ecls=idToClassLabel(resolveFinalClass(G.enemy.class||inferEnemyClassFromStyle(G.enemy)||'predator',G.enemy.birdKey||''));
@@ -8524,12 +8534,8 @@ function setHpBar(who,hp,max) {
 
   const hpTextEl=document.getElementById(`${who}-hp-text`);
   if(hpTextEl){
-    const armour=Math.max(0, Number(stats?.armour)||0);
-    const magicArmour=Math.max(0, Number(stats?.magicArmour)||0);
     let protectNote='';
-    if(armour>0||magicArmour>0){
-      protectNote=` (+${formatCombatNumber(armour)} Arm/${formatCombatNumber(magicArmour)} MArm)`;
-    } else if(shieldHp>0){
+    if(shieldHp>0){
       protectNote=` (+${formatCombatNumber(shieldHp)} shield)`;
     }
     hpTextEl.textContent=`${formatCombatNumber(Math.max(0,hp))}/${formatCombatNumber(maxHp)} (${pct.toFixed(2)}%)${protectNote}`;
@@ -8561,6 +8567,7 @@ function setHpBar(who,hp,max) {
       if(banner){banner.textContent='';banner.classList.remove('visible');}
     }
   }
+  setProtectionBars(who);
 }
 
 const BATTLE_AILMENT_SYMBOLS={
@@ -8698,6 +8705,24 @@ function setEnergyBar(side,cur,max){
   const m=Math.max(1, Number(max)||1);
   if(fill) fill.style.width = `${Math.max(0,Math.min(100,(c/m)*100))}%`;
   if(txt) txt.textContent = `${c}/${m}`;
+}
+
+function setProtectionBars(side){
+  const stats=side==='player'?G?.player?.stats:G?.enemy?.stats;
+  const arm=Math.max(0, Number(stats?.armour)||0);
+  const armMax=Math.max(0, Number(stats?.maxArmour)!=null?stats.maxArmour:(stats?.normalMaxArmour||0));
+  const marm=Math.max(0, Number(stats?.magicArmour)||0);
+  const marmMax=Math.max(0, Number(stats?.maxMagicArmour)!=null?stats.maxMagicArmour:(stats?.normalMaxMagicArmour||0));
+  const armFill=document.getElementById(`${side}-arm-bar`);
+  const armTxt=document.getElementById(`${side}-arm-text`);
+  const marmFill=document.getElementById(`${side}-marm-bar`);
+  const marmTxt=document.getElementById(`${side}-marm-text`);
+  const armDenom=Math.max(1, armMax);
+  const marmDenom=Math.max(1, marmMax);
+  if(armFill) armFill.style.width=`${Math.max(0,Math.min(100,(arm/armDenom)*100))}%`;
+  if(armTxt) armTxt.textContent=`${formatCombatNumber(arm)}/${formatCombatNumber(armMax)}`;
+  if(marmFill) marmFill.style.width=`${Math.max(0,Math.min(100,(marm/marmDenom)*100))}%`;
+  if(marmTxt) marmTxt.textContent=`${formatCombatNumber(marm)}/${formatCombatNumber(marmMax)}`;
 }
 
 function renderEnergyOrbs(){
