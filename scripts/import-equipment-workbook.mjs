@@ -1536,67 +1536,46 @@ function meanField(birds, pick) {
 /* Class Perks sheet is qualitative (High/Low directions) in v0.9 — keep authored perk text. */
 const CLASS_PERK_CANON = {
   knight: {
-    classPerk: 'Bulwark Oath',
-    classPerkEffect: 'The first damaging hit received each turn deals 6% less damage (Minor).',
-    classPerkTrigger: 'Once per turn; counts toward damage-reduction caps.',
+    classPerk: "Bulwark Oath",
+    classPerkEffect: "Once per turn, after using Armour Restoration or Fortify, gain Minor Guard Up (+4 Guard) until the start of your next turn.",
+    classPerkTrigger: "Once per turn after Armour Restoration or Fortify.",
   },
   rogue: {
-    classPerk: 'Rogue Tempo',
-    classPerkEffect: 'Once per turn, if acting before the target, your first Weapon Skill 1 gains +10 Precision. If that skill breaks Armour, gain Minor Agility Up (+4 Agility) until the start of your next turn.',
-    classPerkTrigger: 'Once per turn; temporary Precision only (does not change stored Base Precision).',
+    classPerk: "Rogue Tempo",
+    classPerkEffect: "Once per turn, if acting before the target, your first Weapon Skill 1 gains +10 Precision. If that skill breaks Armour, gain Minor Agility Up (+4 Agility) until the start of your next turn.",
+    classPerkTrigger: "Once per turn; applies to a 2 EN Weapon Skill 1.",
   },
   mage: {
-    classPerk: 'Arcane Pressure',
-    classPerkEffect: "Magic damage ignores 10% of the target's Resolve.",
-    classPerkTrigger: 'Adds to skill and gear penetration; total Magic Penetration is capped at 40%.',
+    classPerk: "Arcane Pressure",
+    classPerkEffect: "The first Magic weapon skill you use each turn deals 10% additional damage to Magic Armour only. This bonus does not increase Health damage.",
+    classPerkTrigger: "Once per turn on the first Magic weapon skill.",
   },
   siren: {
-    classPerk: 'Resonant Hex',
-    classPerkEffect: 'Minor and Moderate stat debuffs you apply last 1 additional turn.',
-    classPerkTrigger: '',
+    classPerk: "Cursed Call",
+    classPerkEffect: "Once per turn after you break Magic Armour, the next ailment or stat debuff you apply to that target gains +10 percentage points application chance and lasts 1 additional turn.",
+    classPerkTrigger: "Once per turn; consumed by the next qualifying ailment or debuff.",
   },
   inquisitor: {
-    classPerk: 'Judgement Leech',
-    classPerkEffect: 'After a damaging skill hits an ailmented or debuffed target, restore 4% of missing EN (once per action).',
-    classPerkTrigger: '',
+    classPerk: "Judgement Leech",
+    classPerkEffect: "Once per turn after a damaging skill hits an ailmented, debuffed or Marked target, restore 2 to the lower of Armour or Magic Armour, capped at its normal maximum. If both pools are full, heal 5% Maximum Health.",
+    classPerkTrigger: "Once per turn after Health damage to a qualifying target.",
   },
   bard: {
-    classPerk: 'Verse and Chorus',
-    classPerkEffect: 'When you alternate Martial and Magic damaging actions, the second action gains Minor Damage Up.',
-    classPerkTrigger: '',
+    classPerk: "Verse and Chorus",
+    classPerkEffect: "Once per turn, when you alternate Martial and Magic damaging skills, the second skill restores 2 to the lower protection pool. If both pools are full, it gains +10 Skill Power instead.",
+    classPerkTrigger: "Once per turn on the second skill in a Martial/Magic alternation.",
   },
   brute: {
-    classPerk: 'Crushing Momentum',
-    classPerkEffect: 'After taking damage, your next Martial damaging action gains Minor Damage Up.',
-    classPerkTrigger: '',
+    classPerk: "Crushing Momentum",
+    classPerkEffect: "Once per turn after Armour absorbs physical damage, your next Strength weapon skill gains +10 Skill Power.",
+    classPerkTrigger: "Once per turn; consumed on the next Strength weapon skill.",
   },
   duke: {
-    classPerk: 'Duke Ascension',
-    classPerkEffect: 'After defeating an enemy, gain +5% all damage for the remainder of the encounter (stacks once).',
-    classPerkTrigger: '',
+    classPerk: "Duke Ascension",
+    classPerkEffect: "After defeating an enemy, restore 25% of normal Maximum Armour and Magic Armour and gain +5% all damage for the remainder of combat.",
+    classPerkTrigger: "After each enemy defeated in sequential combat.",
   },
-};
-
-/* ---- Class Perks → classes (reference averaged from birds-v2) ---- */
-const classes = {};
-for (const { cells, rowNum } of tableRows(sheets['Class Perks'], 4)) {
-  const name = cells[0];
-  if (!name) { fail(`Class Perks row ${rowNum}: empty class`); continue; }
-  const id = name.toLowerCase();
-  const classBirds = Object.values(birdsV2).filter((b) => b.class === id);
-  const reference = {
-    hp: Math.round(meanField(classBirds, (b) => b.stats.maxHp)),
-    atk: round2(meanField(classBirds, (b) => b.stats.atk)),
-    dex: round2(meanField(classBirds, (b) => b.stats.dex)),
-    def: round2(meanField(classBirds, (b) => b.stats.def)),
-    matk: round2(meanField(classBirds, (b) => b.stats.matk)),
-    mdef: round2(meanField(classBirds, (b) => b.stats.mdef)),
-    spd: round2(meanField(classBirds, (b) => b.stats.spd)),
-    dodge: round2(meanField(classBirds, (b) => b.stats.dodge)),
-    acc: CLASS_PRECISION_LOOKUP[id] ?? round2(meanField(classBirds, (b) => b.stats.acc)),
-    critChance: round2(meanField(classBirds, (b) => b.stats.critChance)),
-    critDamage: round2(meanField(classBirds, (b) => b.critDamage)),
-  };
+}
   const perk = CLASS_PERK_CANON[id] || {};
   classes[id] = {
     id,

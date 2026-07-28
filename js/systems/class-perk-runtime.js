@@ -13,15 +13,49 @@
       needsActingFirst: true,
       armourBreakAgility: 4,
     },
-    'Bulwark Oath': { id: 'bulwarkOath', damageReduction: 0.06, aboveHalfHp: true, firstHitPerTurn: false },
-    'Arcane Pressure': { id: 'arcanePressure', mdefPen: 0.10 },
-    'Verse and Chorus': { id: 'verseAndChorus', nextMagicBonus: 0.10 },
-    'Judgement Leech': { id: 'judgementLeech', missingEnRestorePct: 0.04, hitHealCooldown: 1 },
+    'Bulwark Oath': {
+      id: 'bulwarkOath',
+      guardBonus: 4,
+      afterArmourRestoreOrFortify: true,
+    },
+    'Arcane Pressure': {
+      id: 'arcanePressure',
+      magicArmourDamageBonus: 0.10,
+      firstMagicWeaponSkillPerTurn: true,
+    },
+    'Verse and Chorus': {
+      id: 'verseAndChorus',
+      restoreLowerPool: 2,
+      skillPowerBonus: 10,
+      alternateMartialMagic: true,
+    },
+    'Judgement Leech': {
+      id: 'judgementLeech',
+      restoreLowerPool: 2,
+      healMaxHpPct: 0.05,
+      oncePerTurn: true,
+    },
     'Resonant Hex': { id: 'resonantHex', debuffTurnBonus: 1, statDebuffOnly: true },
-    'Cursed Call': { id: 'cursedCall', debuffTurnBonus: 1 },
+    'Cursed Call': {
+      id: 'cursedCall',
+      afterMagicArmourBreak: true,
+      appChanceBonus: 10,
+      debuffTurnBonus: 1,
+      oncePerTurn: true,
+    },
     'Retaliating Hide': { id: 'retaliatingHide', nextPhysicalBonus: 0.10, afterMagicDamage: true },
-    'Crushing Momentum': { id: 'crushingMomentum', nextPhysicalBonus: 0.10, afterAnyDamage: true },
-    'Duke Ascension': { id: 'dukeAscension', killDamageBonus: 0.05, stacking: true },
+    'Crushing Momentum': {
+      id: 'crushingMomentum',
+      skillPowerBonus: 10,
+      afterArmourAbsorb: true,
+      strengthWeaponOnly: true,
+    },
+    'Duke Ascension': {
+      id: 'dukeAscension',
+      killDamageBonus: 0.05,
+      restoreProtectionPct: 0.25,
+      stacking: true,
+    },
   });
 
   function isV2() {
@@ -58,20 +92,7 @@
     var name = clsRow.classPerk || '';
     var def = PERK_BY_NAME[name];
     if (!def) return null;
-    def = Object.assign({}, def);
-    if (isV2()) {
-      if (def.id === 'bulwarkOath') {
-        def.aboveHalfHp = false;
-        def.firstHitPerTurn = true;
-      }
-      if (def.id === 'judgementLeech') {
-        def.missingEnRestorePct = 0.04;
-        def.hitHealCooldown = 1;
-        def.onHitHealPct = 0;
-        def.killHealPct = 0;
-      }
-    }
-    return def;
+    return Object.assign({}, def);
   }
 
   ns.getClassPerkForBird = function getClassPerkForBird(birdKey) {
@@ -105,7 +126,8 @@
     entity._classPerk = perk;
     entity.classPerk = perk.name;
     entity.classPerkEffect = perk.effect;
-    entity._classPerkMdefPen = perk.def.id === 'arcanePressure' ? (perk.def.mdefPen || 0.10) : 0;
+    /* Arcane Pressure no longer grants Resolve penetration — Magic Armour damage only. */
+    entity._classPerkMdefPen = 0;
     if (entity.stats) {
       entity.stats.classPerk = perk.name;
       entity.stats.classPerkEffect = perk.effect;
@@ -135,16 +157,9 @@
     g.player._classPerkMdefPen = 0;
     g.player._classPerkDukeStacks = 0;
     ns.applyClassPerkMetadata(g.player);
-    var perk = ns.getClassPerkForBird(g.player.birdKey);
-    if (perk && perk.def.id === 'arcanePressure') {
-      g.player._classPerkMdefPen = perk.def.mdefPen || 0.10;
-    }
     if (g.enemy) {
       ns.applyClassPerkMetadata(g.enemy);
-      var ePerk = ns.getClassPerkForEntity(g.enemy);
-      if (ePerk && ePerk.def.id === 'arcanePressure') {
-        g.enemy._classPerkMdefPen = ePerk.def.mdefPen || 0.10;
-      }
+      if (g.enemy) g.enemy._classPerkMdefPen = 0;
     }
   };
 
@@ -190,7 +205,7 @@
       var n = parseInt(id.replace(/\D/g, ''), 10);
       if (Number.isFinite(n) && n % 2 === 1) return true;
     }
-    var en = abilityEn(ab);
+    var en = abEnCost(ab);
     /* Weapon Skill 1 is typically 2 EN. */
     if (en === 2 && (ab.actionSource === 'weapon' || ab.family || /weapon/i.test(String(ab.source || '')))) return true;
     return false;
@@ -262,6 +277,67 @@
       || (es.chilled && es.chilled.stacks > 0) || (es.accDebuff || 0) > 0;
   }
 
+  function restoreLowerProtectionPool(entity, amount) {
+    if (!entity || !entity.stats || !Avian.protection) return { restored: 0, healed: false };
+    var stats = entity.stats;
+    if (typeof Avian.protection.ensureProtectionFields === 'function') {
+      Avian.protection.ensureProtectionFields(stats);
+    }
+    var arm = Math.max(0, Number(stats.armour) || 0);
+    var armMax = Math.max(0, Number(stats.normalMaxArmour != null ? stats.normalMaxArmour : stats.maxArmour) || 0);
+    var mag = Math.max(0, Number(stats.magicArmour) || 0);
+    var magMax = Math.max(0, Number(stats.normalMaxMagicArmour != null ? stats.normalMaxMagicArmour : stats.maxMagicArmour) || 0);
+    var armRoom = Math.max(0, armMax - arm);
+    var magRoom = Math.max(0, magMax - mag);
+    if (armRoom <= 0 && magRoom <= 0) return { restored: 0, healed: false, bothFull: true };
+    var useMagic = magRoom > 0 && (armRoom <= 0 || mag < arm);
+    var n = Math.max(0, Math.floor(Number(amount) || 0));
+    if (useMagic) {
+      if (typeof Avian.protection.restoreMagicArmour === 'function') Avian.protection.restoreMagicArmour(stats, n);
+      else stats.magicArmour = Math.min(magMax, mag + n);
+    } else {
+      if (typeof Avian.protection.restoreArmour === 'function') Avian.protection.restoreArmour(stats, n);
+      else stats.armour = Math.min(armMax, arm + n);
+    }
+    return { restored: n, healed: false, bothFull: false };
+  }
+
+  function isStrengthWeaponSkill(ab) {
+    if (!ab) return false;
+    var cat = String(ab.damageCategory || ab.category || '').toLowerCase();
+    if (cat.indexOf('strength') >= 0) return true;
+    var scale = String(ab.scalingStat || ab.scaleStat || ab.damageStat || '').toUpperCase();
+    return scale === 'ATK' || scale === 'MIGHT' || scale === 'DEF' || scale === 'GUARD';
+  }
+
+  function isMagicWeaponSkill(ab) {
+    if (!abIsMagic(ab)) return false;
+    if (isBasicAttack(ab)) return false;
+    var src = String(ab.source || ab.actionSource || ab.family || '').toLowerCase();
+    return /weapon|wand|staff|orb|sceptre|grimoire|song|hex/i.test(src)
+      || /^WSK-/i.test(String(ab.id || ab.equipmentSkillId || ''))
+      || Number(ab.en || ab.enCost || ab.energy || 0) >= 2;
+  }
+
+  function isFortifyOrArmourRestore(ab) {
+    if (!ab) return false;
+    var name = String(ab.name || ab.id || '');
+    var bar = String(ab.barSlot || ab.skillType || ab.riderText || '');
+    return /fortify|armour restoration|armor restoration|restore armour|restore armor/i.test(name + ' ' + bar);
+  }
+
+  function targetQualifiesForJudgement(status) {
+    if (!status) return false;
+    var burning = status.burning && ((typeof status.burning === 'number' && status.burning > 0) || (typeof status.burning === 'object' && ((status.burning.stacks || 0) > 0 || (status.burning.turns || 0) > 0)));
+    if ((status.poison && status.poison.stacks > 0) || (status.bleed && status.bleed.stacks > 0) || (status.feared || 0) > 0
+      || (typeof globalThis.getWeakenStacks === 'function' ? globalThis.getWeakenStacks(status) > 0 : (status.weaken || 0) > 0)
+      || (status.paralyzed || 0) > 0 || !!status.confused || burning
+      || (status.chilled && status.chilled.stacks > 0) || (status.accDebuff || 0) > 0) return true;
+    if (status.marked || status.carrionMark || status.jewelMark || status.predatorMark) return true;
+    if (status._marks && Object.keys(status._marks).length) return true;
+    return false;
+  }
+
   function onEntityAbilityUse(entity, side, ab, ctx) {
     var g = globalThis.G;
     if (!g || !entity || !ab) return;
@@ -270,50 +346,216 @@
     var st = state(side);
     ctx = ctx || {};
 
-    if (perk.def.id === 'verseAndChorus' && abIsPhysical(ab)) {
-      st.verseChorusPending = true;
-      ctx.classPerkTriggered = 'verseAndChorus';
+    /* Bulwark Oath: after Armour Restoration or Fortify → +4 Guard until next turn. */
+    if (perk.def.id === 'bulwarkOath' && !st.bulwarkOathUsed && isFortifyOrArmourRestore(ab)) {
+      st.bulwarkOathUsed = true;
+      var guardBonus = perk.def.guardBonus || 4;
+      entity.stats = entity.stats || {};
+      entity.stats.def = (Number(entity.stats.def) || 0) + guardBonus;
+      st.bulwarkGuardBonus = guardBonus;
+      if (typeof spawnFloat === 'function') spawnFloat(side, '+' + guardBonus + ' Guard', 'fn-buff');
+      if (typeof logMsg === 'function') {
+        logMsg(perk.name + ': +' + guardBonus + ' Guard until next turn.', side === 'player' ? 'player-action' : 'enemy-action');
+      }
+      ctx.classPerkTriggered = 'bulwarkOath';
     }
 
-    if (perk.def.id === 'judgementLeech' && isV2() && (ctx.hitsLanded || 0) > 0 && enemyHasAnyDebuff()) {
-      var cd = st.judgementLeechCd || 0;
-      if (cd <= 0) {
-        var enPct = perk.def.missingEnRestorePct != null ? Number(perk.def.missingEnRestorePct) : 0.04;
-        var maxEn = Number(entity.maxEnergy != null ? entity.maxEnergy : entity.stats && entity.stats.maxEn) || 6;
-        var curEn = Number(entity.energy != null ? entity.energy : entity.stats && entity.stats.en) || 0;
-        var missing = Math.max(0, maxEn - curEn);
-        var restore = Math.max(0, Math.floor(missing * enPct));
-        if (restore > 0) {
-          var nextEn = Math.min(maxEn, curEn + restore);
-          if (entity.energy != null) entity.energy = nextEn;
-          if (entity.stats && entity.stats.en != null) entity.stats.en = nextEn;
-          if (typeof spawnFloat === 'function') spawnFloat(side, '+' + restore + ' EN', 'fn-buff');
+    /* Ensure Arcane / Verse flags are armed even when damage path skipped prepare. */
+    ns.prepareOutgoingAbilityBonuses(entity, ab);
+
+    if (perk.def.id === 'arcanePressure' && st.arcanePressureActive) {
+      ctx.classPerkTriggered = 'arcanePressure';
+    }
+
+    if (perk.def.id === 'verseAndChorus' && st.versePreparedThisAction) {
+      ctx.classPerkTriggered = 'verseAndChorus';
+      st.versePreparedThisAction = false;
+    }
+
+    if (perk.def.id === 'crushingMomentum' && st.crushingMomentumConsumedThisAction) {
+      ctx.classPerkTriggered = 'crushingMomentum';
+      st.crushingMomentumConsumedThisAction = false;
+    }
+
+    /* Judgement Leech: once/turn after Health damage to ailmented/debuffed/Marked target. */
+    var healthHit = (ctx.healthDamage != null)
+      ? (Number(ctx.healthDamage) || 0) > 0
+      : ((ctx.hitsLanded || 0) > 0 && !!(g._lastProtectionHit && g._lastProtectionHit.damagedHealth));
+    if (perk.def.id === 'judgementLeech' && !st.judgementLeechUsed && healthHit) {
+      var foeStatus = side === 'player' ? (g.enemyStatus || {}) : (g.playerStatus || {});
+      if (targetQualifiesForJudgement(foeStatus)) {
+        st.judgementLeechUsed = true;
+        var jr = restoreLowerProtectionPool(entity, perk.def.restoreLowerPool || 2);
+        if (jr.bothFull) {
+          var heal = Math.max(1, Math.floor((entity.stats.maxHp || 1) * (perk.def.healMaxHpPct || 0.05)));
+          entity.stats.hp = Math.min(entity.stats.maxHp || 1, (entity.stats.hp || 0) + heal);
+          if (typeof spawnFloat === 'function') spawnFloat(side, '+' + heal, 'fn-heal');
+          if (typeof setHpBar === 'function') setHpBar(side, entity.stats.hp, entity.stats.maxHp);
           if (typeof logMsg === 'function') {
-            logMsg(perk.name + ': restored ' + restore + ' EN.', side === 'player' ? 'player-action' : 'enemy-action');
+            logMsg(perk.name + ': healed ' + heal + ' HP (pools full).', side === 'player' ? 'player-action' : 'enemy-action');
           }
-          if (typeof refreshBattleUI === 'function') refreshBattleUI();
+        } else if (jr.restored > 0) {
+          if (typeof spawnFloat === 'function') spawnFloat(side, '+' + jr.restored + ' Prot', 'fn-buff');
+          if (typeof logMsg === 'function') {
+            logMsg(perk.name + ': restored ' + jr.restored + ' to the lower protection pool.', side === 'player' ? 'player-action' : 'enemy-action');
+          }
         }
-        st.judgementLeechCd = perk.def.hitHealCooldown || 1;
+        ctx.classPerkTriggered = 'judgementLeech';
       }
     }
   }
 
-  function onEntityDamaged(entity, side, damage, isMagic) {
+  /**
+   * Call before damage/skill-power resolution so Verse Skill Power and Arcane Pressure
+   * apply to the skill that triggers them (not after the hit resolves).
+   */
+  ns.prepareOutgoingAbilityBonuses = function prepareOutgoingAbilityBonuses(entity, ab) {
+    var g = globalThis.G;
+    if (!g || !entity || !ab) return;
+    var perk = ns.getClassPerkForEntity(entity);
+    if (!perk) return;
+    var side = entity === g.enemy ? 'enemy' : 'player';
+    var st = state(side);
+    if (!st) return;
+
+    if (perk.def.id === 'arcanePressure' && !st.arcanePressureUsed && isMagicWeaponSkill(ab)) {
+      st.arcanePressureActive = true;
+    }
+
+    if (perk.def.id === 'verseAndChorus' && !st.versePreparedThisAction) {
+      var channel = abIsPhysical(ab) ? 'martial' : (abIsMagic(ab) ? 'magic' : null);
+      var isDamaging = channel && !ab.noDamage;
+      if (isDamaging) {
+        if (!st.verseLastChannel) {
+          st.verseLastChannel = channel;
+        } else if (st.verseLastChannel !== channel && !st.verseChorusUsed) {
+          st.verseChorusUsed = true;
+          st.versePreparedThisAction = true;
+          var vr = restoreLowerProtectionPool(entity, perk.def.restoreLowerPool || 2);
+          if (vr.bothFull) {
+            st.verseChorusSkillPower = perk.def.skillPowerBonus || 10;
+            if (typeof logMsg === 'function') {
+              logMsg(perk.name + ': +' + (perk.def.skillPowerBonus || 10) + ' Skill Power (pools full).', side === 'player' ? 'player-action' : 'enemy-action');
+            }
+          } else if (vr.restored > 0) {
+            if (typeof spawnFloat === 'function') spawnFloat(side, '+' + vr.restored + ' Prot', 'fn-buff');
+            if (typeof logMsg === 'function') {
+              logMsg(perk.name + ': restored ' + vr.restored + ' to the lower protection pool.', side === 'player' ? 'player-action' : 'enemy-action');
+            }
+          }
+          if (typeof Avian.passives !== 'undefined' && typeof Avian.passives.onClassPerkTriggered === 'function') {
+            Avian.passives.onClassPerkTriggered('verseAndChorus', ab, side);
+          }
+          st.verseLastChannel = channel;
+        } else {
+          st.verseLastChannel = channel;
+        }
+      }
+    }
+  };
+
+  function onEntityDamaged(entity, side, damage, isMagic, opts) {
     var g = globalThis.G;
     if (!g || !entity || damage <= 0) return;
     var perk = ns.getClassPerkForEntity(entity);
     if (!perk) return;
     var st = state(side);
+    opts = opts || {};
     if (perk.def.id === 'retaliatingHide' && isMagic) {
       st.retaliatingHidePending = true;
     }
-    if (perk.def.id === 'crushingMomentum' && isV2()) {
-      st.crushingMomentumPending = true;
-    }
-    if (perk.def.id === 'bulwarkOath' && isV2() && perk.def.firstHitPerTurn && !st.bulwarkOathUsed) {
-      st.bulwarkOathTriggered = true;
+    /* Crushing Momentum: after Armour absorbs physical damage (once pending per absorb window). */
+    if (perk.def.id === 'crushingMomentum' && !isMagic && (opts.armourAbsorbed || opts.protectionAbsorbed)) {
+      if (!st.crushingMomentumArmedThisTurn) {
+        st.crushingMomentumPending = true;
+        st.crushingMomentumArmedThisTurn = true;
+      }
     }
   }
+
+  /** Called when a hostile Magic skill depletes the defender's Magic Armour. */
+  ns.onMagicArmourBroken = function onMagicArmourBroken(attacker, defender) {
+    var g = globalThis.G;
+    if (!g || !attacker) return;
+    var perk = ns.getClassPerkForEntity(attacker);
+    if (!perk || perk.def.id !== 'cursedCall') return;
+    var side = attacker === g.enemy ? 'enemy' : 'player';
+    var st = state(side);
+    if (!st || st.cursedCallUsed) return;
+    st.cursedCallPending = true;
+    st.cursedCallUsed = true;
+  };
+
+  /** Peek / consume Cursed Call application bonus for the next ailment/debuff. */
+  ns.consumeCursedCallAppBonus = function consumeCursedCallAppBonus(entity) {
+    var g = globalThis.G;
+    if (!g || !entity) return 0;
+    var perk = ns.getClassPerkForEntity(entity);
+    if (!perk || perk.def.id !== 'cursedCall') return 0;
+    var side = entity === g.enemy ? 'enemy' : 'player';
+    var st = state(side) || {};
+    if (!st.cursedCallPending) return 0;
+    st.cursedCallPending = false;
+    st.cursedCallDurationPending = true;
+    return perk.def.appChanceBonus || 10;
+  };
+
+  ns.peekArcanePressureMagicArmourBonus = function peekArcanePressureMagicArmourBonus(entity, ab) {
+    var g = globalThis.G;
+    if (!g || !entity) return 0;
+    var perk = ns.getClassPerkForEntity(entity);
+    if (!perk || perk.def.id !== 'arcanePressure') return 0;
+    var side = entity === g.enemy ? 'enemy' : 'player';
+    var st = state(side) || {};
+    if (st.arcanePressureActive) return perk.def.magicArmourDamageBonus || 0.10;
+    if (!st.arcanePressureUsed && ab && isMagicWeaponSkill(ab)) return perk.def.magicArmourDamageBonus || 0.10;
+    return 0;
+  };
+
+  ns.consumeArcanePressureFlag = function consumeArcanePressureFlag(entity) {
+    var g = globalThis.G;
+    if (!g || !entity) return;
+    var side = entity === g.enemy ? 'enemy' : 'player';
+    var st = state(side);
+    if (st) {
+      st.arcanePressureActive = false;
+      st.arcanePressureUsed = true;
+    }
+  };
+
+  ns.peekCrushingMomentumSkillPower = function peekCrushingMomentumSkillPower(entity, ab) {
+    var g = globalThis.G;
+    if (!g || !entity) return 0;
+    var perk = ns.getClassPerkForEntity(entity);
+    if (!perk || perk.def.id !== 'crushingMomentum') return 0;
+    var side = entity === g.enemy ? 'enemy' : 'player';
+    var st = state(side) || {};
+    if (!st.crushingMomentumPending) return 0;
+    if (ab && !isStrengthWeaponSkill(ab)) return 0;
+    st.crushingMomentumPending = false;
+    st.crushingMomentumConsumedThisAction = true;
+    return perk.def.skillPowerBonus || 10;
+  };
+
+  ns.peekVerseChorusSkillPower = function peekVerseChorusSkillPower(entity) {
+    var g = globalThis.G;
+    if (!g || !entity) return 0;
+    var side = entity === g.enemy ? 'enemy' : 'player';
+    var st = state(side) || {};
+    var n = st.verseChorusSkillPower || 0;
+    st.verseChorusSkillPower = 0;
+    return n;
+  };
+
+  /** Flat Skill Power points from class perks for the current outgoing ability. */
+  ns.getOutgoingSkillPowerBonus = function getOutgoingSkillPowerBonus(entity, ab) {
+    if (!entity || !ab) return 0;
+    ns.prepareOutgoingAbilityBonuses(entity, ab);
+    var n = 0;
+    n += ns.peekCrushingMomentumSkillPower(entity, ab) || 0;
+    n += ns.peekVerseChorusSkillPower(entity) || 0;
+    return n;
+  };
 
   ns.onPlayerAbilityUse = function onPlayerAbilityUse(ab, ctx) {
     var g = globalThis.G;
@@ -325,14 +567,22 @@
     onEntityAbilityUse(g && g.enemy, 'enemy', ab, ctx);
   };
 
-  ns.onPlayerDamaged = function onPlayerDamaged(damage, isMagic) {
+  ns.onPlayerDamaged = function onPlayerDamaged(damage, isMagic, opts) {
     var g = globalThis.G;
-    onEntityDamaged(g && g.player, 'player', damage, isMagic);
+    onEntityDamaged(g && g.player, 'player', damage, isMagic, opts);
   };
 
-  ns.onEnemyDamaged = function onEnemyDamaged(damage, isMagic) {
+  ns.onEnemyDamaged = function onEnemyDamaged(damage, isMagic, opts) {
     var g = globalThis.G;
-    onEntityDamaged(g && g.enemy, 'enemy', damage, isMagic);
+    onEntityDamaged(g && g.enemy, 'enemy', damage, isMagic, opts);
+  };
+
+  /** Notify Armour absorption for Crushing Momentum / species hooks. */
+  ns.onArmourAbsorbed = function onArmourAbsorbed(entity, amount) {
+    if (!entity || !(amount > 0)) return;
+    var g = globalThis.G;
+    var side = entity === (g && g.enemy) ? 'enemy' : 'player';
+    onEntityDamaged(entity, side, amount, false, { armourAbsorbed: true, protectionAbsorbed: true });
   };
 
   ns.collectOutgoingDamageBonusFractionsForEntity = function collectOutgoingDamageBonusFractionsForEntity(entity, ab, ctx) {
@@ -344,23 +594,12 @@
     var st = state(side) || {};
     var out = [];
     var isPhys = abIsPhysical(ab);
-    var isMag = abIsMagic(ab);
 
-    if (perk.def.id === 'verseAndChorus' && st.verseChorusPending && isMag) {
-      out.push(perk.def.nextMagicBonus || 0.10);
-      st.verseChorusPending = false;
-      if (typeof Avian.passives !== 'undefined' && typeof Avian.passives.onClassPerkTriggered === 'function') {
-        Avian.passives.onClassPerkTriggered('verseAndChorus', ab, side);
-      }
-    }
     if (perk.def.id === 'retaliatingHide' && st.retaliatingHidePending && isPhys) {
       out.push(perk.def.nextPhysicalBonus || 0.10);
       st.retaliatingHidePending = false;
     }
-    if (perk.def.id === 'crushingMomentum' && st.crushingMomentumPending && isPhys) {
-      out.push(perk.def.nextPhysicalBonus || 0.10);
-      st.crushingMomentumPending = false;
-    }
+    /* Crushing Momentum / Verse Chorus Skill Power are applied via skillPower hooks, not flat damage %. */
     if (perk.def.id === 'dukeAscension' && (entity._classPerkDukeStacks || 0) > 0) {
       out.push((entity._classPerkDukeStacks || 0) * (perk.def.killDamageBonus || 0.05));
     }
@@ -372,57 +611,44 @@
     return ns.collectOutgoingDamageBonusFractionsForEntity(g && g.player, ab, ctx);
   };
 
+  /* Bulwark Oath no longer reduces incoming damage — Guard Up after Fortify/restoration. */
   ns.getIncomingDamageMultiplierForEntity = function getIncomingDamageMultiplierForEntity(entity) {
-    if (!entity || !entity.stats) return 1;
-    var perk = ns.getClassPerkForEntity(entity);
-    if (!perk || perk.def.id !== 'bulwarkOath') return 1;
-    var side = (globalThis.G && globalThis.G.player === entity) ? 'player' : 'enemy';
-    var st = state(side) || {};
-    if (isV2() && perk.def.firstHitPerTurn) {
-      if (st.bulwarkOathUsed) return 1;
-      return 1 - (perk.def.damageReduction != null ? perk.def.damageReduction : 0.06);
-    }
-    var hp = entity.stats.hp || 0;
-    var maxHp = entity.stats.maxHp || 1;
-    if (hp > maxHp * 0.5) return 1 - (perk.def.damageReduction != null ? perk.def.damageReduction : 0.06);
     return 1;
   };
 
   ns.markBulwarkOathConsumed = function markBulwarkOathConsumed(entity) {
+    /* No-op retained for callers; Bulwark now marks used on Fortify/restore. */
     if (!entity) return;
-    var perk = ns.getClassPerkForEntity(entity);
-    if (!perk || perk.def.id !== 'bulwarkOath' || !isV2()) return;
     var side = (globalThis.G && globalThis.G.player === entity) ? 'player' : 'enemy';
     var st = state(side);
     if (st) st.bulwarkOathUsed = true;
   };
 
   ns.getIncomingDamageMultiplier = function getIncomingDamageMultiplier() {
-    var g = globalThis.G;
-    return ns.getIncomingDamageMultiplierForEntity(g && g.player);
+    return 1;
   };
 
   ns.getExtraMdefPierceForEntity = function getExtraMdefPierceForEntity(entity, ab) {
-    if (!entity || !ab) return 0;
-    if (!abIsMagic(ab)) return 0;
-    var pen = Number(entity._classPerkMdefPen) || 0;
-    if (isV2() && Avian.combat && typeof Avian.combat.clampPen === 'function') {
-      return Avian.combat.clampPen(pen);
-    }
-    return pen;
+    /* Arcane Pressure no longer grants Resolve penetration. */
+    return 0;
   };
 
   ns.getExtraMdefPierce = function getExtraMdefPierce(ab) {
-    var g = globalThis.G;
-    return ns.getExtraMdefPierceForEntity(g && g.player, ab);
+    return 0;
   };
 
   ns.adjustDebuffDurationForEntity = function adjustDebuffDurationForEntity(entity, baseTurns, ailmentId) {
     if (!entity) return baseTurns;
     var perk = ns.getClassPerkForEntity(entity);
     if (!perk) return baseTurns;
-    if (perk.def.id === 'cursedCall') return baseTurns + (perk.def.debuffTurnBonus || 1);
-    if (perk.def.id === 'resonantHex' && isV2()) {
+    var g = globalThis.G;
+    var side = entity === (g && g.enemy) ? 'enemy' : 'player';
+    var st = state(side) || {};
+    if (perk.def.id === 'cursedCall' && st.cursedCallDurationPending) {
+      st.cursedCallDurationPending = false;
+      return baseTurns + (perk.def.debuffTurnBonus || 1);
+    }
+    if (perk.def.id === 'resonantHex') {
       var statDebuffs = { accDebuff: 1, weaken: 1 };
       if (!ailmentId || statDebuffs[ailmentId]) return baseTurns + (perk.def.debuffTurnBonus || 1);
     }
@@ -439,16 +665,28 @@
     if (!g || !g.player) return;
     var perk = ns.getClassPerkForBird(g.player.birdKey);
     if (!perk) return;
-    if (perk.def.id === 'judgementLeech' && !isV2()) {
-      var heal = Math.max(1, Math.floor((g.player.stats.maxHp || 1) * (perk.def.killHealPct || 0.10)));
-      g.player.stats.hp = Math.min(g.player.stats.maxHp || 1, (g.player.stats.hp || 0) + heal);
-      if (typeof setHpBar === 'function') setHpBar('player', g.player.stats.hp, g.player.stats.maxHp);
-      if (typeof spawnFloat === 'function') spawnFloat('player', '+' + heal, 'fn-heal');
-      if (typeof logMsg === 'function') logMsg(perk.name + ': restored ' + heal + ' HP.', 'player-action');
-    }
     if (perk.def.id === 'dukeAscension') {
       g.player._classPerkDukeStacks = (g.player._classPerkDukeStacks || 0) + 1;
-      if (typeof logMsg === 'function') logMsg(perk.name + ': +5% all damage this combat.', 'player-action');
+      var stats = g.player.stats || {};
+      var pct = perk.def.restoreProtectionPct || 0.25;
+      var armMax = Math.max(0, Number(stats.normalMaxArmour != null ? stats.normalMaxArmour : stats.maxArmour) || 0);
+      var magMax = Math.max(0, Number(stats.normalMaxMagicArmour != null ? stats.normalMaxMagicArmour : stats.maxMagicArmour) || 0);
+      var armRestore = Math.floor(armMax * pct);
+      var magRestore = Math.floor(magMax * pct);
+      if (Avian.protection) {
+        if (armRestore > 0 && typeof Avian.protection.restoreArmour === 'function') {
+          Avian.protection.restoreArmour(stats, armRestore);
+        }
+        if (magRestore > 0 && typeof Avian.protection.restoreMagicArmour === 'function') {
+          Avian.protection.restoreMagicArmour(stats, magRestore);
+        }
+      } else {
+        stats.armour = Math.min(armMax, (Number(stats.armour) || 0) + armRestore);
+        stats.magicArmour = Math.min(magMax, (Number(stats.magicArmour) || 0) + magRestore);
+      }
+      if (typeof logMsg === 'function') {
+        logMsg(perk.name + ': restored protection and +5% all damage this combat.', 'player-action');
+      }
     }
   };
 
@@ -457,7 +695,24 @@
     if (!st) return;
     st.rogueTempoUsed = false;
     st.bulwarkOathUsed = false;
-    if ((st.judgementLeechCd || 0) > 0) st.judgementLeechCd--;
+    st.arcanePressureUsed = false;
+    st.arcanePressureActive = false;
+    st.judgementLeechUsed = false;
+    st.verseChorusUsed = false;
+    st.verseLastChannel = null;
+    st.versePreparedThisAction = false;
+    st.cursedCallUsed = false;
+    st.crushingMomentumArmedThisTurn = false;
+    /* Expire Bulwark Guard bonus */
+    var g = globalThis.G;
+    if (st.bulwarkGuardBonus && g && g.player && g.player.stats) {
+      g.player.stats.def = Math.max(0, (Number(g.player.stats.def) || 0) - st.bulwarkGuardBonus);
+      st.bulwarkGuardBonus = 0;
+    }
+    if (st.rogueTempoAgilityBonus && g && g.player && g.player.stats) {
+      g.player.stats.spd = Math.max(0, (Number(g.player.stats.spd) || 0) - st.rogueTempoAgilityBonus);
+      st.rogueTempoAgilityBonus = 0;
+    }
   };
 
   ns.onEnemyTurnStart = function onEnemyTurnStart() {
@@ -465,6 +720,14 @@
     if (!st) return;
     st.rogueTempoUsed = false;
     st.bulwarkOathUsed = false;
+    st.arcanePressureUsed = false;
+    st.arcanePressureActive = false;
+    st.judgementLeechUsed = false;
+    st.verseChorusUsed = false;
+    st.verseLastChannel = null;
+    st.versePreparedThisAction = false;
+    st.cursedCallUsed = false;
+    st.crushingMomentumArmedThisTurn = false;
   };
 
   ns.getClassPerkCombatContext = function getClassPerkCombatContext(birdKey) {
