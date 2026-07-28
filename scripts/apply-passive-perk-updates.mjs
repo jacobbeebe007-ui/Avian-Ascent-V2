@@ -84,8 +84,16 @@ function parsePassiveText(text, limitText) {
     [/^After Armour absorbs|Once per turn after Armour absorbs|The first time each turn Armour absorbs/i, () => ({ kind: 'afterArmourAbsorb' })],
     [/^After restoring Armour|After using Armour Restoration/i, () => ({ kind: 'afterArmourRestorationOrFortify' })],
     [/^If acting before the target/i, () => ({ kind: 'actingFirst' })],
+    [/^While below (\d+)% (?:HP|Vitality|Health), the first song you use/i, (m) => ({ kind: 'whileHpBelow', pct: Number(m[1]), skillClass: 'song' })],
     [/^While below 50%|While the target is below 50%/i, () => ({ kind: 'whileHpBelow', pct: 50 })],
     [/^If you did not use a damaging/i, () => ({ kind: 'noDamageActionLastTurn' })],
+    [/^Your first (Day|Night|Earth|Sky|Storm|Water)\s+Magic weapon skill each turn against a (Burning|debuffed) target/i, (m) => ({
+      kind: 'skillModifier',
+      aspect: ({ Day: 'solis', Night: 'lunae', Earth: 'terra', Sky: 'aeris', Storm: 'tempest', Water: 'maris' })[m[1]] || m[1].toLowerCase(),
+      category: 'magic',
+      weaponSkill: true,
+      foeState: String(m[2]).toLowerCase() === 'burning' ? 'burning' : 'debuffed',
+    })],
     [/^Your first /i, () => ({ kind: 'skillModifier' })],
     [/^The first /i, () => ({ kind: 'skillModifier' })],
     [/^After using a (?:song|call|support|Magic|Day|Water|Armour)/i, () => ({ kind: 'afterSkillUse' })],
@@ -133,14 +141,24 @@ function parsePassiveText(text, limitText) {
   if (restArm) specials.push({ id: 'restoreArmour', amount: Number(restArm[1]) });
   const restMag = clean.match(/restore\s+(\d+)\s+Magic Armour/i);
   if (restMag) specials.push({ id: 'restoreMagicArmour', amount: Number(restMag[1]) });
-  const restLower = clean.match(/restore\s+(\d+)\s+to the lower protection pool/i);
+  const restLower = clean.match(/restores?\s+(\d+)\s+to the lower protection pool/i);
   if (restLower) specials.push({ id: 'restoreLowerProtection', amount: Number(restLower[1]) });
-  const skillPow = clean.match(/\+(\d+)\s+Skill Power/i);
-  if (skillPow) specials.push({ id: 'skillPowerBonus', amount: Number(skillPow[1]) });
+  const skillPowVsMagArm = clean.match(/\+(\d+)\s+Skill Power against Magic Armour/i);
+  if (skillPowVsMagArm) specials.push({ id: 'skillPowerVsMagicArmour', amount: Number(skillPowVsMagArm[1]) });
+  const skillPowVsArm = clean.match(/\+(\d+)\s+Skill Power against Armour/i);
+  if (skillPowVsArm) specials.push({ id: 'skillPowerVsArmour', amount: Number(skillPowVsArm[1]) });
+  const skillPow = clean.match(/\+(\d+)\s+Skill Power(?!\s+against)/i);
+  if (skillPow && !skillPowVsMagArm && !skillPowVsArm) {
+    specials.push({ id: 'skillPowerBonus', amount: Number(skillPow[1]) });
+  }
   const ignoreGuard = clean.match(/ignores?\s+(\d+)\s+Guard/i);
   if (ignoreGuard) specials.push({ id: 'ignoreGuardFlat', amount: Number(ignoreGuard[1]) });
   const healPct = clean.match(/heal(?:s)?\s+(\d+)%\s+Maximum Health/i);
-  if (healPct) specials.push({ id: 'healMaxHp', pct: Number(healPct[1]) });
+  if (healPct) {
+    const healSp = { id: 'healMaxHp', pct: Number(healPct[1]) };
+    if (/If it damages Health/i.test(clean)) healSp.requiresHealthDamage = true;
+    specials.push(healSp);
+  }
   const magArmDmgPct = clean.match(/(\d+)\s*%\s+additional damage to Magic Armour/i);
   if (magArmDmgPct) specials.push({ id: 'magicArmourDamagePct', pct: Number(magArmDmgPct[1]) });
   const armDmgPct = clean.match(/(\d+)\s*%\s+additional damage to Armour/i);
@@ -149,10 +167,6 @@ function parsePassiveText(text, limitText) {
   if (magArmDmg) specials.push({ id: 'magicArmourDamage', amount: Number(magArmDmg[1]) });
   const armDmg = clean.match(/(?:deal|deals)\s+(\d+)\s+(?:additional\s+)?Armour damage(?!\s+to)/i);
   if (armDmg) specials.push({ id: 'armourDamage', amount: Number(armDmg[1]) });
-  const skillPowVsMagArm = clean.match(/\+(\d+)\s+Skill Power against Magic Armour/i);
-  if (skillPowVsMagArm) specials.push({ id: 'skillPowerVsMagicArmour', amount: Number(skillPowVsMagArm[1]) });
-  const skillPowVsArm = clean.match(/\+(\d+)\s+Skill Power against Armour/i);
-  if (skillPowVsArm) specials.push({ id: 'skillPowerVsArmour', amount: Number(skillPowVsArm[1]) });
   const fortify = clean.match(/(\d+)\s+Fortified Armour/i);
   if (fortify) specials.push({ id: 'fortify', amount: Number(fortify[1]) });
   const ward = clean.match(/(\d+)\s+Ward Magic Armour/i);
@@ -171,7 +185,7 @@ function parsePassiveText(text, limitText) {
     limit = { kind: 'cooldownTurns', turns: Number(cm[1]) };
   }
 
-  return {
+  const parsedOut = {
     text: clean,
     trigger,
     limit,
@@ -183,6 +197,10 @@ function parsePassiveText(text, limitText) {
     effects,
     specials,
   };
+  if (/does not trigger from Moss Dream/i.test(String(limitText || '')) || /does not trigger from Moss Dream/i.test(clean)) {
+    parsedOut.excludeSkills = ['Moss Dream'];
+  }
+  return parsedOut;
 }
 
 function parseUtilityText(text) {

@@ -173,6 +173,119 @@ else ok('onEnemyAbilityUse exported');
 if (typeof Avian.passives.onEnemyDamaged !== 'function') fail('onEnemyDamaged missing');
 else ok('onEnemyDamaged exported');
 
+/* ---- Kakapo: Moss-King Dream must not revive on damage / ignore cooldown ---- */
+{
+  const kak = bp.kakapo?.parsed;
+  if (kak?.trigger?.kind === 'whileHpBelow' && kak.trigger.skillClass === 'song') ok('kakapo song-gated whileHpBelow');
+  else fail('kakapo trigger missing song gate: ' + JSON.stringify(kak?.trigger));
+  if (kak?.limit?.kind === 'cooldownTurns' && kak.limit.turns === 3) ok('kakapo 3-turn cooldown parsed');
+  else fail('kakapo cooldown missing: ' + JSON.stringify(kak?.limit));
+  if ((kak?.specials || []).some((s) => s.id === 'restoreLowerProtection' && s.amount === 2)) ok('kakapo restores lower protection');
+  else fail('kakapo missing restoreLowerProtection');
+
+  G.player = {
+    birdKey: 'kakapo',
+    aspect: 'terra',
+    stats: { hp: 5, maxHp: 40, atk: 8, def: 8, matk: 6, mdef: 6, spd: 6, acc: 0, armour: 0, maxArmour: 4, magicArmour: 0, maxMagicArmour: 4 },
+  };
+  G.enemy = { birdKey: 'crow', aspect: 'aeris', stats: { hp: 40, maxHp: 40, atk: 10, def: 8, matk: 6, mdef: 6, spd: 8, acc: 0 } };
+  G.playerStatus = {};
+  G.enemyStatus = {};
+  G.passiveState = Object.create(null);
+
+  const hpBeforeHit = G.player.stats.hp;
+  Avian.passives.onPlayerDamaged(20, false, {});
+  if (G.player.stats.hp === hpBeforeHit) ok('kakapo does not heal on damaged');
+  else fail(`kakapo healed on damaged ${hpBeforeHit}→${G.player.stats.hp}`);
+
+  G.player.stats.hp = 0;
+  Avian.passives.onPlayerDamaged(5, false, {});
+  if (G.player.stats.hp === 0) ok('kakapo does not revive from 0hp on damaged');
+  else fail('kakapo revived from 0hp: ' + G.player.stats.hp);
+
+  G.player.stats.hp = 5;
+  G.passiveState = Object.create(null);
+  Avian.passives.onPlayerAbilityUse({ id: 'SONG_TEST', name: 'Forest Song', btnType: 'song' }, {});
+  if (G.player.stats.hp > 5) ok('kakapo song heals while low HP');
+  else fail('kakapo song did not heal');
+  const cdKey = Object.keys(G.passiveState || {}).find((k) => k.indexOf('kakapo') >= 0);
+  const cdLeft = cdKey ? G.passiveState[cdKey].cooldownRemaining : null;
+  if (cdLeft === 3) ok('kakapo cooldown armed at 3');
+  else fail('kakapo cooldown not armed: ' + cdLeft);
+
+  const hpAfterFirst = G.player.stats.hp;
+  Avian.passives.onPlayerAbilityUse({ id: 'SONG_TEST2', name: 'Forest Song', btnType: 'song' }, {});
+  if (G.player.stats.hp === hpAfterFirst) ok('kakapo song blocked during cooldown');
+  else fail('kakapo healed again during cooldown');
+
+  Avian.passives.onPlayerAbilityUse({ id: 'MOSS_DREAM', name: 'Moss Dream', btnType: 'utility' }, {});
+  if (G.player.stats.hp === hpAfterFirst) ok('kakapo ignores Moss Dream for passive');
+  else fail('kakapo passive fired from Moss Dream');
+}
+
+/* ---- Cardinal: Crimson Benediction heal must require Day Magic vs Burning Health damage ---- */
+{
+  const card = bp.cardinal?.parsed;
+  if (card?.trigger?.kind === 'skillModifier'
+    && card.trigger.aspect === 'solis'
+    && card.trigger.foeState === 'burning'
+    && card.trigger.weaponSkill) ok('cardinal Day Magic vs Burning trigger');
+  else fail('cardinal trigger under-specified: ' + JSON.stringify(card?.trigger));
+  const healSp = (card?.specials || []).find((s) => s.id === 'healMaxHp');
+  if (healSp && healSp.requiresHealthDamage && healSp.pct === 5) ok('cardinal heal requires Health damage');
+  else fail('cardinal heal special wrong: ' + JSON.stringify(healSp));
+  if (!(card?.specials || []).some((s) => s.id === 'skillPowerBonus')) ok('cardinal has no duplicate flat Skill Power');
+  else fail('cardinal still has duplicate skillPowerBonus');
+
+  G.player = {
+    birdKey: 'cardinal',
+    aspect: 'solis',
+    stats: { hp: 20, maxHp: 40, atk: 4, def: 6, matk: 12, mdef: 8, spd: 8, acc: 0 },
+  };
+  G.enemy = { birdKey: 'crow', aspect: 'aeris', stats: { hp: 40, maxHp: 40, atk: 10, def: 8, matk: 6, mdef: 6, spd: 8, acc: 0 } };
+  G.playerStatus = {};
+  G.enemyStatus = {};
+  G.passiveState = Object.create(null);
+
+  const wand = { id: 'WSK-011', name: 'Wand Dart', btnType: 'spell', type: 'spell', source: 'Weapon', family: 'Wand', enCost: 2, aspect: 'solis' };
+
+  Avian.passives.onPlayerAbilityUse(wand, { healthDamage: 5 });
+  if (G.player.stats.hp === 20) ok('cardinal ignores non-Burning target');
+  else fail('cardinal healed without Burning: ' + G.player.stats.hp);
+
+  G.enemyStatus = { burning: { turns: 2, stacks: 1 } };
+  G.passiveState = Object.create(null);
+  G.playerStatus = {};
+  Avian.passives.onPlayerAbilityUse({ id: 'BASIC_MAGIC', name: 'Tail Wand', btnType: 'spell', actionSource: 'basic' }, { healthDamage: 5 });
+  if (G.player.stats.hp === 20) ok('cardinal ignores basic attack');
+  else fail('cardinal healed from basic: ' + G.player.stats.hp);
+
+  G.passiveState = Object.create(null);
+  G.playerStatus = {};
+  Avian.passives.prepareOutgoingAbilityBonuses('player', wand);
+  const armedSp = G.playerStatus._passiveSkillPowerBonus || 0;
+  if (armedSp === 20) ok('cardinal arms +20 Skill Power vs Magic Armour pre-hit');
+  else fail('cardinal prepare skill power=' + armedSp);
+
+  Avian.passives.onPlayerAbilityUse(wand, { healthDamage: 0 });
+  if (G.player.stats.hp === 20) ok('cardinal no heal without Health damage');
+  else fail('cardinal healed without Health damage: ' + G.player.stats.hp);
+
+  G.passiveState = Object.create(null);
+  G.playerStatus = {};
+  G.player.stats.hp = 20;
+  Avian.passives.prepareOutgoingAbilityBonuses('player', wand);
+  Avian.passives.onPlayerAbilityUse(wand, { healthDamage: 4 });
+  if (G.player.stats.hp === 22) ok('cardinal heals 5% Max HP once when Health damaged');
+  else fail('cardinal heal expected 22 got ' + G.player.stats.hp);
+
+  const hpAfter = G.player.stats.hp;
+  Avian.passives.prepareOutgoingAbilityBonuses('player', wand);
+  Avian.passives.onPlayerAbilityUse(wand, { healthDamage: 4 });
+  if (G.player.stats.hp === hpAfter) ok('cardinal heal once-per-turn gated');
+  else fail('cardinal healed twice in one turn');
+}
+
 if (failed) {
   console.error(`[passives-perks] ${failed} failure(s)`);
   process.exit(1);

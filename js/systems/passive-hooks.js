@@ -414,10 +414,86 @@
     return kind === 'song' || /song|call|verse|chorus|lament/i.test(name);
   }
 
+  function abilityIsBasicAttack(ab) {
+    if (!ab) return false;
+    if (ab.actionSource === 'basic' || ab.isMainAttack) return true;
+    var id = String(ab.id || ab.equipmentSkillId || '');
+    return /^BASIC_(PHYSICAL|MAGIC)$/i.test(id);
+  }
+
+  function abilityIsWeaponSkill(ab) {
+    if (!ab || abilityIsBasicAttack(ab)) return false;
+    var src = String(ab.source || ab.actionSource || ab.family || '').toLowerCase();
+    if (/weapon|wand|staff|orb|sceptre|grimoire/i.test(src)) return true;
+    if (/^WSK-/i.test(String(ab.id || ab.equipmentSkillId || ''))) return true;
+    return abilityEnCostLocal(ab) >= 2 && (abilityIsMagicCat(ab) || abilityIsMartial(ab));
+  }
+
+  function normalizeAspectId(raw) {
+    var s = String(raw || '').toLowerCase();
+    if (!s) return '';
+    if (Avian.affinity && typeof Avian.affinity.normalize === 'function') {
+      return String(Avian.affinity.normalize(s) || s).toLowerCase();
+    }
+    var map = { day: 'solis', night: 'lunae', earth: 'terra', sky: 'aeris', storm: 'tempest', water: 'maris' };
+    return map[s] || s;
+  }
+
+  function abilityAspectId(ab, actor) {
+    if (ab && (ab.aspect || ab.affinity)) return normalizeAspectId(ab.aspect || ab.affinity);
+    if (typeof globalThis.getEntityAspect === 'function' && actor) {
+      var fromEntity = globalThis.getEntityAspect(actor);
+      if (fromEntity) return normalizeAspectId(fromEntity);
+    }
+    if (actor && actor.aspect) return normalizeAspectId(actor.aspect);
+    var key = actor && actor.birdKey;
+    var bird = key && globalThis.BIRDS && globalThis.BIRDS[key];
+    if (bird && bird.aspect) return normalizeAspectId(bird.aspect);
+    if (typeof Avian.getBirdV2 === 'function' && key) {
+      var v2 = Avian.getBirdV2(key);
+      if (v2 && v2.aspect) return normalizeAspectId(v2.aspect);
+    }
+    return '';
+  }
+
+  function foeHasBurning(foeStatus) {
+    if (!foeStatus) return false;
+    var b = foeStatus.burning;
+    if (typeof b === 'number') return b > 0;
+    if (b && typeof b === 'object') return (b.turns || 0) > 0 || (b.stacks || 0) > 0;
+    return !!(foeStatus.scorched || foeStatus.incinerating);
+  }
+
+  function abilityExcludedByPassive(parsed, ab) {
+    if (!parsed || !ab) return false;
+    var list = parsed.excludeSkills || parsed.trigger && parsed.trigger.excludeSkills;
+    if (!list || !list.length) return false;
+    var name = String(ab.name || '');
+    var id = String(ab.id || '');
+    for (var i = 0; i < list.length; i++) {
+      var ex = String(list[i] || '');
+      if (!ex) continue;
+      if (name === ex || id === ex || new RegExp(ex.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i').test(name)) return true;
+    }
+    return false;
+  }
+
   function abilityEnCostLocal(ab) {
     if (!ab) return 1;
     var n = ab.enCost != null ? ab.enCost : (ab.apCost != null ? ab.apCost : (ab.energy || ab.energyCost || 1));
     return Math.max(1, Math.floor(Number(n) || 1));
+  }
+
+  function isPreHitSpecial(sp) {
+    if (!sp || !sp.id) return false;
+    if (sp.requiresHealthDamage) return false;
+    return /^(skillPower|ignoreGuard|armourDamage|magicArmourDamage|ailmentApp)/.test(sp.id);
+  }
+
+  function isPostHitHealthSpecial(sp) {
+    if (!sp || !sp.id) return false;
+    if (sp.requiresHealthDamage) return true;
+    return sp.id === 'healMaxHp' || sp.id === 'restoreLowerProtection';
   }
 
   function sideActingFirst(side) {
@@ -505,8 +581,10 @@
       case 'whileHpBelow': {
         var selfStats = actor && actor.stats;
         if (!(selfStats && selfStats.hp <= Math.floor((selfStats.maxHp || 1) * ((Number(t.pct) || 50) / 100)))) return false;
+        if (abilityExcludedByPassive(parsed, ab)) return false;
         if (t.skillClass === 'song') return abilityIsSong(ab);
-        return true;
+        /* Without an ability context (e.g. onDamaged), only song-gated rows should no-op above. */
+        return !!ab;
       }
       case 'onHpBelow': {
         var pl = actor && actor.stats;
@@ -522,8 +600,26 @@
       }
       case 'afterDodge':
         return !!(ctx && ctx.dodged);
-      case 'skillModifier':
-        return !!(ab && (!t.skill || abilityNameMatches(ab, t.skill)));
+      case 'skillModifier': {
+        if (!ab) return false;
+        if (abilityExcludedByPassive(parsed, ab)) return false;
+        if (t.skill && !abilityNameMatches(ab, t.skill)) return false;
+        if (t.category === 'magic' && !abilityIsMagicCat(ab)) return false;
+        if (t.category === 'physical' && !abilityIsMartial(ab)) return false;
+        if (t.weaponSkill && !abilityIsWeaponSkill(ab)) return false;
+        if (t.aspect) {
+          var wantAsp = normalizeAspectId(t.aspect);
+          var gotAsp = abilityAspectId(ab, actor);
+          if (!gotAsp || gotAsp !== wantAsp) return false;
+        }
+        if (t.foeState === 'burning' && !foeHasBurning(foeStatus)) return false;
+        if (t.foeState === 'debuffed' && !enemyHasAnyAffliction(foeStatus)) return false;
+        if (t.foeHpBelow != null) {
+          var foeHp = foe && foe.stats;
+          if (!(foeHp && foeHp.hp <= Math.floor((foeHp.maxHp || 1) * ((Number(t.foeHpBelow) || 50) / 100)))) return false;
+        }
+        return true;
+      }
       case 'afterArmourTechnique':
         return !!(ctx && ctx.armourTechnique);
       case 'afterArmourAbsorb':
@@ -582,20 +678,51 @@
     return 1;
   }
 
-  function gateV2(birdKey, perkId, limit) {
+  function gateV2(birdKey, perkId, limit, opts) {
+    opts = opts || {};
     if (!limit) return true;
-    if (limit === 'oncePerTurn') return gate(birdKey, perkId, 'turn');
-    if (limit === 'oncePerCombat') return gate(birdKey, perkId, 'battle');
+    if (limit === 'oncePerTurn') {
+      if (opts.peek) {
+        G.passiveState = G.passiveState || Object.create(null);
+        var tk = birdKey + ':' + perkId;
+        var tst = G.passiveState[tk];
+        return !(tst && tst.firedThisTurn);
+      }
+      return gate(birdKey, perkId, 'turn');
+    }
+    if (limit === 'oncePerCombat') {
+      if (opts.peek) {
+        G.passiveState = G.passiveState || Object.create(null);
+        var bk = birdKey + ':' + perkId;
+        var bst = G.passiveState[bk];
+        return !(bst && bst.firedThisBattle);
+      }
+      return gate(birdKey, perkId, 'battle');
+    }
+    if (limit && typeof limit === 'object' && limit.kind === 'cooldownTurns') {
+      G.passiveState = G.passiveState || Object.create(null);
+      var key = birdKey + ':' + perkId;
+      var st = G.passiveState[key] || (G.passiveState[key] = {
+        firedThisTurn: false,
+        firedThisBattle: false,
+        cooldownRemaining: 0,
+      });
+      if ((Number(st.cooldownRemaining) || 0) > 0) return false;
+      if (opts.peek) return true;
+      st.cooldownRemaining = Math.max(1, Number(limit.turns) || 1);
+      return true;
+    }
     return true;
   }
 
-  function applyV2Specials(perk, specials, side, ab, ctx) {
+  function applyV2Specials(perk, specials, side, ab, ctx, filterFn) {
     side = side || 'player';
     var actor = entityForSide(side);
     if (!actor || !actor.stats) return;
     for (var j = 0; j < (specials || []).length; j++) {
       var sp = specials[j];
       if (!sp) continue;
+      if (typeof filterFn === 'function' && !filterFn(sp)) continue;
       if ((sp.id === 'penetration' || sp.id === 'ignoreGuardPct') && sp.pct) {
         if (side === 'enemy') {
           G._enemyWorkbookPassiveDefPen = Math.max(G._enemyWorkbookPassiveDefPen || 0, Number(sp.pct) || 0);
@@ -608,6 +735,9 @@
         else G._workbookPassiveMdefPen = Math.max(G._workbookPassiveMdefPen || 0, Number(sp.pct) || 0);
       }
       if (sp.id === 'healMaxHp' && sp.pct) {
+        if (sp.requiresHealthDamage && !(ctx && Number(ctx.healthDamage) > 0)) continue;
+        /* Do not revive from 0 HP — lethal damage must stick. */
+        if ((Number(actor.stats.hp) || 0) <= 0) continue;
         var heal = Math.max(1, Math.floor((actor.stats.maxHp || 1) * ((Number(sp.pct) || 0) / 100)));
         actor.stats.hp = Math.min(actor.stats.maxHp || 1, (actor.stats.hp || 0) + heal);
         if (typeof setHpBar === 'function') setHpBar(side, actor.stats.hp, actor.stats.maxHp);
@@ -639,6 +769,7 @@
         if (typeof spawnFloat === 'function') spawnFloat(side, '+' + (sp.amount || 0) + ' MARM', 'fn-buff');
       }
       if (sp.id === 'restoreLowerProtection') {
+        if (sp.requiresHealthDamage && !(ctx && Number(ctx.healthDamage) > 0)) continue;
         var stats = actor.stats;
         var arm = Math.max(0, Number(stats.armour) || 0);
         var armMax = Math.max(0, Number(stats.normalMaxArmour != null ? stats.normalMaxArmour : stats.maxArmour) || 0);
@@ -698,18 +829,75 @@
     if (!parsed.trigger && !(parsed.effects && parsed.effects.length) && !(parsed.specials && parsed.specials.length)) return;
     var ctx = Object.assign({}, context || {});
     if (!matchV2ParsedTrigger(parsed, ab, ctx, side)) return;
+    var status = statusBagForSide(side);
+    var abKey = ab ? String(ab.id || ab.name || '') : '';
+    var isSkillMod = !!(parsed.trigger && parsed.trigger.kind === 'skillModifier');
+    var alreadyArmed = !!(isSkillMod && status && status._v2PassiveArmedAbility && abKey && status._v2PassiveArmedAbility === abKey);
+
+    if (alreadyArmed) {
+      if (!gateV2(actor.birdKey || perk.birdKey, perk.id, parsed.limit)) {
+        status._v2PassiveArmedAbility = null;
+        status._v2PassivePendingPost = false;
+        return;
+      }
+      applyV2Specials(perk, parsed.specials || [], side, ab, ctx, function (sp) {
+        return isPostHitHealthSpecial(sp) || !!sp.requiresHealthDamage;
+      });
+      status._v2PassiveArmedAbility = null;
+      status._v2PassivePendingPost = false;
+      return;
+    }
+
     if (!gateV2(actor.birdKey || perk.birdKey, perk.id, parsed.limit)) return;
     var turns = v2DurationTurns(parsed.duration);
     var effects = parsed.effects || [];
-    for (var i = 0; i < effects.length; i++) applyV2TierEffect(perk.id, effects[i], turns, side);
+    for (var i = 0; i < effects.length; i++) {
+      var eff = effects[i];
+      if (eff && eff.requiresHealthDamage && !(Number(ctx.healthDamage) > 0)) continue;
+      applyV2TierEffect(perk.id, eff, turns, side);
+    }
     if (parsed.trigger && parsed.trigger.kind === 'afterSkillUse' && parsed.trigger.nextMartialPen) {
       var st = statusBagForSide(side);
       st._passiveNextMartialPen = true;
       st._passiveNextMartialPenSpecials = parsed.specials || [];
+    } else if (isSkillMod) {
+      /* Prefer prepareOutgoing for Skill Power; still apply remaining specials here. */
+      applyV2Specials(perk, parsed.specials || [], side, ab, ctx, function (sp) {
+        if (status && status._v2PassivePendingPost && isPreHitSpecial(sp)) return false;
+        return true;
+      });
+      if (status) {
+        status._v2PassiveArmedAbility = null;
+        status._v2PassivePendingPost = false;
+      }
     } else {
       applyV2Specials(perk, parsed.specials || [], side, ab, ctx);
     }
   }
+
+  /**
+   * Arm skillModifier pre-hit bonuses (Skill Power, etc.) before damage resolves.
+   * Post-hit heals are applied later from onPlayerAbilityUse via fireV2Passive.
+   */
+  Avian.passives.prepareOutgoingAbilityBonuses = function prepareOutgoingAbilityBonuses(side, ab) {
+    if (!globalThis.G || !ab) return;
+    side = side || 'player';
+    var actor = entityForSide(side);
+    if (!actor) return;
+    var perk = passiveFor(actor.birdKey);
+    if (!perk || !perk.v2 || !perk.parsed) return;
+    var parsed = perk.parsed;
+    if (!parsed.trigger || parsed.trigger.kind !== 'skillModifier') return;
+    if (!matchV2ParsedTrigger(parsed, ab, {}, side)) return;
+    if (!gateV2(actor.birdKey || perk.birdKey, perk.id, parsed.limit, { peek: true })) return;
+    var status = statusBagForSide(side);
+    var abKey = String(ab.id || ab.name || '');
+    if (!abKey) return;
+    if (status._v2PassiveArmedAbility === abKey) return;
+    applyV2Specials(perk, parsed.specials || [], side, ab, {}, isPreHitSpecial);
+    status._v2PassiveArmedAbility = abKey;
+    status._v2PassivePendingPost = true;
+  };
 
   Avian.passives.onClassPerkTriggered = function onClassPerkTriggered(perkId, ab, side) {
     side = side || 'player';
@@ -968,10 +1156,19 @@
 
   Avian.passives.onPlayerTurnStart = function onPlayerTurnStart(player) {
     if (G.passiveState) {
-      for (var k in G.passiveState) G.passiveState[k].firedThisTurn = false;
+      for (var k in G.passiveState) {
+        G.passiveState[k].firedThisTurn = false;
+        if ((Number(G.passiveState[k].cooldownRemaining) || 0) > 0) {
+          G.passiveState[k].cooldownRemaining -= 1;
+        }
+      }
     }
     G._workbookOneEnCount = 0;
     if (G._passiveOneEnIds) G._passiveOneEnIds.player = Object.create(null);
+    if (G.playerStatus) {
+      G.playerStatus._v2PassiveArmedAbility = null;
+      G.playerStatus._v2PassivePendingPost = false;
+    }
     if (typeof Avian.passives.onPlayerTurnStartPassive === 'function') {
       Avian.passives.onPlayerTurnStartPassive(player);
     }

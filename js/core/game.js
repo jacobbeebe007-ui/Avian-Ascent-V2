@@ -12297,6 +12297,9 @@ function computeMasterOutgoingDamage(isMagic, srcAbility, opts={}){
       if(typeof Avian?.classPerks?.getOutgoingSkillPowerBonus==='function'){
         n+=Avian.classPerks.getOutgoingSkillPowerBonus(G.player, activeAb)||0;
       }
+      if(typeof Avian?.passives?.prepareOutgoingAbilityBonuses==='function'){
+        Avian.passives.prepareOutgoingAbilityBonuses('player', activeAb);
+      }
       const ps=G.playerStatus||{};
       if(ps._passiveSkillPowerBonus){
         n+=Number(ps._passiveSkillPowerBonus)||0;
