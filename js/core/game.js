@@ -8202,8 +8202,8 @@ function buildPlayerStatsGridHtml(){
      ${statCell('stat-spd',ledgerStatLabel('spd',{short:true}),_effSpd,{title:_bt('spd',_pBase.spd??p.spd,_statNote('Battle Agility',_effSpd-(_pBase.spd||0),'Buff increased Agility.','Slow/clip effects reduced Agility.')),trend:combatTrendTag(_effSpd,_pBase.spd),statKey:'spd',statRaw:_pBase.spd??p.spd})}
      ${statCell('stat-cc',ledgerStatLabel('critChance',{short:true}),_critChance,{suffix:'%',title:_bt('critChance',_critBaseStore,`Shown value includes battle modifiers (e.g. burn). ${_statNote('vs battle start',_critChance-_critBaseStore,'Temporary buffs.','Debuffs reduced Critical.')}`),trend:combatTrendTag(_critChance,_critBaseStore),statKey:'critChance',statRaw:_critBaseStore})}
      <div class="stat-mini stat-cd" data-stat-key="critMult" data-stat-raw="${_critBase}" title="${combatEscAttr(`Base Ferocity ${formatCombatNumber(_critBase)}×. On critical hits, +${formatCombatNumber(_critBonusPct)} is added to the multiplier.`)}"><span class="stat-k">${ledgerStatLabel('critMult',{short:true})}</span><span class="stat-v">${_critMultHtml}</span></div>
-     ${statCell('stat-arm',ledgerStatLabel('armour',{short:true}),Math.max(0,Number(p.armour)||0),{title:_bt('armour',(_pBase.armour??p.armour)||0,`Current ${formatCombatNumber(Math.max(0,Number(p.armour)||0))} / max ${formatCombatNumber(Math.max(0,Number(p.maxArmour)||0))} (normal ${formatCombatNumber(Math.max(0,Number(p.normalMaxArmour)||0))}). Absorbs martial damage before Health.`),statKey:'armour',statRaw:(_pBase.armour??p.armour)||0})}
-     ${statCell('stat-marm',ledgerStatLabel('magicArmour',{short:true}),Math.max(0,Number(p.magicArmour)||0),{title:_bt('magicArmour',(_pBase.magicArmour??p.magicArmour)||0,`Current ${formatCombatNumber(Math.max(0,Number(p.magicArmour)||0))} / max ${formatCombatNumber(Math.max(0,Number(p.maxMagicArmour)||0))} (normal ${formatCombatNumber(Math.max(0,Number(p.normalMaxMagicArmour)||0))}). Absorbs magical damage before Health.`),statKey:'magicArmour',statRaw:(_pBase.magicArmour??p.magicArmour)||0})}
+     <div class="stat-mini stat-arm" data-stat-key="armour" data-stat-raw="${Math.max(0,Number(p.armour)||0)}" title="${combatEscAttr(_bt('armour',(_pBase.armour??p.armour)||0,`Current ${formatCombatNumber(Math.max(0,Number(p.armour)||0))} / max ${formatCombatNumber(Math.max(0,Number(p.maxArmour)||0))} (normal ${formatCombatNumber(Math.max(0,Number(p.normalMaxArmour)||0))}). Absorbs martial damage before Health.`))}"><span class="stat-k">${ledgerStatLabel('armour',{short:true})}</span><span class="stat-v">${formatCombatNumber(Math.max(0,Number(p.armour)||0))}/${formatCombatNumber(Math.max(0,Number(p.maxArmour)||0))}</span></div>
+     <div class="stat-mini stat-marm" data-stat-key="magicArmour" data-stat-raw="${Math.max(0,Number(p.magicArmour)||0)}" title="${combatEscAttr(_bt('magicArmour',(_pBase.magicArmour??p.magicArmour)||0,`Current ${formatCombatNumber(Math.max(0,Number(p.magicArmour)||0))} / max ${formatCombatNumber(Math.max(0,Number(p.maxMagicArmour)||0))} (normal ${formatCombatNumber(Math.max(0,Number(p.normalMaxMagicArmour)||0))}). Absorbs magical damage before Health.`))}"><span class="stat-k">${ledgerStatLabel('magicArmour',{short:true})}</span><span class="stat-v">${formatCombatNumber(Math.max(0,Number(p.magicArmour)||0))}/${formatCombatNumber(Math.max(0,Number(p.maxMagicArmour)||0))}</span></div>
      ${_penCells}
      ${_pHintRow}`;
 }
@@ -8233,8 +8233,8 @@ function buildEnemyStatsGridHtml(){
      ${enemyCell('stat-spd',ledgerStatLabel('spd',{short:true}),ep2.spd||0,{title:'Agility',baseKey:'spd',statKey:'spd',statRaw:ep2.spd||0})}
      ${enemyCell('stat-cc',ledgerStatLabel('critChance',{short:true}),eCritChance,{suffix:'%',title:'Critical chance',statKey:'critChance',statRaw:eCritChance})}
      ${enemyCell('stat-cd',ledgerStatLabel('critMult',{short:true}),Number(eCritMult),{suffix:'×',title:'Ferocity'})}
-     ${enemyCell('stat-arm',ledgerStatLabel('armour',{short:true}),Math.max(0,Number(ep2.armour)||0),{title:`Armour ${formatCombatNumber(Math.max(0,Number(ep2.armour)||0))} / ${formatCombatNumber(Math.max(0,Number(ep2.maxArmour)||0))} — absorbs martial damage before Health`,statKey:'armour',statRaw:Math.max(0,Number(ep2.armour)||0)})}
-     ${enemyCell('stat-marm',ledgerStatLabel('magicArmour',{short:true}),Math.max(0,Number(ep2.magicArmour)||0),{title:`Magic Armour ${formatCombatNumber(Math.max(0,Number(ep2.magicArmour)||0))} / ${formatCombatNumber(Math.max(0,Number(ep2.maxMagicArmour)||0))} — absorbs magical damage before Health`,statKey:'magicArmour',statRaw:Math.max(0,Number(ep2.magicArmour)||0)})}
+     <div class="est stat-arm" data-stat-key="armour" data-stat-raw="${Math.max(0,Number(ep2.armour)||0)}" title="${combatEscAttr(`Armour ${formatCombatNumber(Math.max(0,Number(ep2.armour)||0))} / ${formatCombatNumber(Math.max(0,Number(ep2.maxArmour)||0))} — absorbs martial damage before Health`)}"><span class="stat-k">${ledgerStatLabel('armour',{short:true})}</span><span class="stat-v">${formatCombatNumber(Math.max(0,Number(ep2.armour)||0))}/${formatCombatNumber(Math.max(0,Number(ep2.maxArmour)||0))}</span></div>
+     <div class="est stat-marm" data-stat-key="magicArmour" data-stat-raw="${Math.max(0,Number(ep2.magicArmour)||0)}" title="${combatEscAttr(`Magic Armour ${formatCombatNumber(Math.max(0,Number(ep2.magicArmour)||0))} / ${formatCombatNumber(Math.max(0,Number(ep2.maxMagicArmour)||0))} — absorbs magical damage before Health`)}"><span class="stat-k">${ledgerStatLabel('magicArmour',{short:true})}</span><span class="stat-v">${formatCombatNumber(Math.max(0,Number(ep2.magicArmour)||0))}/${formatCombatNumber(Math.max(0,Number(ep2.maxMagicArmour)||0))}</span></div>
      ${_eHintRow}`;
 }
 function buildCombatStatBreakdownSection(side){
@@ -8710,19 +8710,53 @@ function setEnergyBar(side,cur,max){
 function setProtectionBars(side){
   const stats=side==='player'?G?.player?.stats:G?.enemy?.stats;
   const arm=Math.max(0, Number(stats?.armour)||0);
-  const armMax=Math.max(0, Number(stats?.maxArmour)!=null?stats.maxArmour:(stats?.normalMaxArmour||0));
+  const armMax=Math.max(0, Number(stats?.maxArmour)!=null?stats.maxArmour:(stats?.normalMaxArmour||stats?.armourFlat||0));
   const marm=Math.max(0, Number(stats?.magicArmour)||0);
-  const marmMax=Math.max(0, Number(stats?.maxMagicArmour)!=null?stats.maxMagicArmour:(stats?.normalMaxMagicArmour||0));
+  const marmMax=Math.max(0, Number(stats?.maxMagicArmour)!=null?stats.maxMagicArmour:(stats?.normalMaxMagicArmour||stats?.magicArmourFlat||0));
   const armFill=document.getElementById(`${side}-arm-bar`);
   const armTxt=document.getElementById(`${side}-arm-text`);
   const marmFill=document.getElementById(`${side}-marm-bar`);
   const marmTxt=document.getElementById(`${side}-marm-text`);
   const armDenom=Math.max(1, armMax);
   const marmDenom=Math.max(1, marmMax);
-  if(armFill) armFill.style.width=`${Math.max(0,Math.min(100,(arm/armDenom)*100))}%`;
-  if(armTxt) armTxt.textContent=`${formatCombatNumber(arm)}/${formatCombatNumber(armMax)}`;
-  if(marmFill) marmFill.style.width=`${Math.max(0,Math.min(100,(marm/marmDenom)*100))}%`;
-  if(marmTxt) marmTxt.textContent=`${formatCombatNumber(marm)}/${formatCombatNumber(marmMax)}`;
+  const armPct=Math.max(0, Math.min(100, (arm/armDenom)*100));
+  const marmPct=Math.max(0, Math.min(100, (marm/marmDenom)*100));
+
+  G._uiLastArm = G._uiLastArm || {};
+  G._uiLastMarm = G._uiLastMarm || {};
+  const armKey=`${side}Arm`;
+  const marmKey=`${side}Marm`;
+  const prevArm=Number.isFinite(G._uiLastArm[armKey]) ? G._uiLastArm[armKey] : arm;
+  const prevMarm=Number.isFinite(G._uiLastMarm[marmKey]) ? G._uiLastMarm[marmKey] : marm;
+  const armDelta=arm - prevArm;
+  const marmDelta=marm - prevMarm;
+  G._uiLastArm[armKey]=arm;
+  G._uiLastMarm[marmKey]=marm;
+
+  if(armFill){
+    armFill.style.width=`${armPct}%`;
+    armFill.classList.remove('recent-hit','recent-heal');
+    if(armDelta<0) armFill.classList.add('recent-hit');
+    else if(armDelta>0) armFill.classList.add('recent-heal');
+  }
+  if(armTxt){
+    armTxt.textContent=`${formatCombatNumber(arm)}/${formatCombatNumber(armMax)} (${armPct.toFixed(2)}%)`;
+    armTxt.classList.remove('hp-delta-up','hp-delta-down');
+    if(armDelta<0) armTxt.classList.add('hp-delta-down');
+    else if(armDelta>0) armTxt.classList.add('hp-delta-up');
+  }
+  if(marmFill){
+    marmFill.style.width=`${marmPct}%`;
+    marmFill.classList.remove('recent-hit','recent-heal');
+    if(marmDelta<0) marmFill.classList.add('recent-hit');
+    else if(marmDelta>0) marmFill.classList.add('recent-heal');
+  }
+  if(marmTxt){
+    marmTxt.textContent=`${formatCombatNumber(marm)}/${formatCombatNumber(marmMax)} (${marmPct.toFixed(2)}%)`;
+    marmTxt.classList.remove('hp-delta-up','hp-delta-down');
+    if(marmDelta<0) marmTxt.classList.add('hp-delta-down');
+    else if(marmDelta>0) marmTxt.classList.add('hp-delta-up');
+  }
 }
 
 function renderEnergyOrbs(){

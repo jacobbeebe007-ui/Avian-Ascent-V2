@@ -78,7 +78,7 @@ function loadSandbox(extraFiles) {
   return ctx;
 }
 
-const ctx = loadSandbox(['js/systems/equipment.js']);
+const ctx = loadSandbox(['js/systems/protection-pools.js', 'js/systems/equipment.js']);
 ctx.globalThis.Avian = ctx.globalThis.Avian || {};
 ctx.globalThis.Avian.flags = { equipmentV2: true };
 ctx.Avian = ctx.globalThis.Avian;
@@ -275,6 +275,40 @@ if (!unequipPlayer.equipment.helmet && unequipPlayer.equipmentInventory.length =
   ok('unequip returns item to inventory');
 } else {
   fail('unequip did not return item to inventory');
+}
+
+// --- Armour / Magic Armour pools from equipment (Nest + combat bars) ---
+{
+  const armPlayer = freshPlayer('crow');
+  equipment.addToInventory(armPlayer, 'ARM-001');
+  equipment.addToInventory(armPlayer, 'HLM-001');
+  equipment.equip(armPlayer, 'ARM-001', 'armour');
+  equipment.equip(armPlayer, 'HLM-001', 'helmet');
+  equipment.reapplyPlayerStatsFromSources(armPlayer);
+  const rollArm = equipment.rollupEquipmentStats(armPlayer);
+  const expectArm = Math.max(0, Math.floor(Number(rollArm.stats?.armour) || 0));
+  const expectMarm = Math.max(0, Math.floor(Number(rollArm.stats?.magicArmour) || 0));
+  const gotArm = Number(armPlayer.stats.maxArmour) || 0;
+  const gotMarm = Number(armPlayer.stats.maxMagicArmour) || 0;
+  const curArm = Number(armPlayer.stats.armour) || 0;
+  const curMarm = Number(armPlayer.stats.magicArmour) || 0;
+  if (expectArm > 0 && gotArm === expectArm && curArm === expectArm) {
+    ok(`equipment ARM pools fill Nest/combat (${curArm}/${gotArm} from ARM+HLM)`);
+  } else {
+    fail(`expected Armour ${expectArm}/${expectArm}, got ${curArm}/${gotArm}`);
+  }
+  if (gotMarm === expectMarm && curMarm === expectMarm) {
+    ok(`equipment MARM pools fill Nest/combat (${curMarm}/${gotMarm})`);
+  } else {
+    fail(`expected Magic Armour ${expectMarm}/${expectMarm}, got ${curMarm}/${gotMarm}`);
+  }
+  const armFlat = Number(items['ARM-001']?.stats?.armourFlat) || 0;
+  const hlmFlat = Number(items['HLM-001']?.stats?.armourFlat) || 0;
+  if (expectArm === armFlat + hlmFlat && expectArm > 0) {
+    ok(`Armour sums across equipment sources (${armFlat}+${hlmFlat}=${expectArm})`);
+  } else {
+    fail(`Armour rollup ${expectArm} != ARM ${armFlat} + HLM ${hlmFlat}`);
+  }
 }
 
 if (failed) {
