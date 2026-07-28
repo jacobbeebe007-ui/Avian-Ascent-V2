@@ -86,6 +86,10 @@
     var k = String(ledgerKey || '').toLowerCase();
     if (k === 'armorpen' || k === 'physicalpen') return 'Martial Penetration';
     if (k === 'magicpen') return 'Magic Penetration';
+    if (k === 'armour' || k === 'armor') return 'Armour';
+    if (k === 'magicarmour' || k === 'magicarmor') return 'Magic Armour';
+    if (k === 'maxarmour' || k === 'maxarmor') return 'Armour';
+    if (k === 'maxmagicarmour' || k === 'maxmagicarmor') return 'Magic Armour';
     return String(ledgerKey || '');
   }
 
@@ -95,6 +99,8 @@
     var k = String(ledgerKey || '').toLowerCase();
     if (k === 'armorpen' || k === 'physicalpen') return 'MPen';
     if (k === 'magicpen') return 'MgPen';
+    if (k === 'armour' || k === 'armor' || k === 'maxarmour' || k === 'maxarmor') return 'ARM';
+    if (k === 'magicarmour' || k === 'magicarmor' || k === 'maxmagicarmour' || k === 'maxmagicarmor') return 'MARM';
     return displayStatName(ledgerKey);
   }
 
