@@ -31,6 +31,9 @@ const staticChecks = [
   ['setUltimateSource action', /Avian\.actions\.register\('setUltimateSource'/],
   ['event-router 1-6 comment', /When `equipmentV2` is on, `1`-`6`/],
   ['formatEquipmentStatsHtml weapon damage', /function formatEquipmentStatsHtml[\s\S]*?minDamage[\s\S]*?maxDamage/],
+  ['enemy nest equipment stats', /function buildEnemyInfoPopupMutationsHtml[\s\S]*?formatEquipmentCompactStatsHtml/],
+  ['enemy equipment effect summary', /function formatEquipmentEffectSummaryHtml\b/],
+  ['wire enemy equipment tooltips', /function wireEnemyInfoEquipmentTooltips\b/],
 ];
 
 for (const [label, re] of staticChecks) {
