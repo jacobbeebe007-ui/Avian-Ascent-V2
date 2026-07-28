@@ -164,9 +164,9 @@
   }
 
   /**
-   * LEG-022 / v0.9: no permanent bird ACC.
-   * Hit% = clamp(baseHit − Dodge − skillPenalty, 15, 95).
-   * Default baseHit is 100; callers may pass temp Precision mods via baseHit.
+   * Bird Precision System: Hit% = clamp(Final Attack Precision − Dodge − skillPenalty, 15, 95).
+   * Final Attack Precision starts from bird Base Precision (stats.acc) plus weapon/skill/temp mods.
+   * Legacy callers may still pass baseHit=100 for tests.
    */
   function calculateAbilityHitChancePct(baseHitOrAcc, targetDodge, accuracyPenalty) {
     var base = Number(baseHitOrAcc);

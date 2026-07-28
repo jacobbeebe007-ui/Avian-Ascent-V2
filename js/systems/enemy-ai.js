@@ -117,12 +117,15 @@
     };
   }
 
-  /** Same LEG-022 formula as combat: (100 − Dodge − skillPenalty) / 100. */
+  /** Same Bird Precision formula as combat: (Final Attack Precision − Dodge − skillPenalty) / 100. */
   function estimateHitChance(ctx, e, action) {
     var dodge = Math.max(0, Number(ctx.playerDodge) || 0);
     if (ctx.playerDefending) dodge = Math.min(95, dodge + 15);
     var baseHit = 100;
     var g = global.G;
+    if (e && e.stats && Number.isFinite(Number(e.stats.acc)) && Number(e.stats.acc) > 0) {
+      baseHit = Number(e.stats.acc);
+    }
     if (g && g.enemyStatus) {
       baseHit -= Number(g.enemyStatus.accDebuff) || 0;
       if (g.enemyStatus.enemyBlind > 0) baseHit -= 15;

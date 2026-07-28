@@ -114,11 +114,11 @@ if (JSON.stringify(first) !== JSON.stringify(second)) {
   ok('seeded duel deterministic (seed=' + SEED + ')');
 }
 
-/* v1.2 Armour pools absorb post-mitigation damage → longer duel, lower Health dmg. */
+/* Bird Precision System: Base Precision restores hit rates (snapshot updated from LEG-022 era). */
 const SNAPSHOT = Object.freeze({
   turns: 3,
   winner: 'defender',
-  damageDealt: 0.94,
+  damageDealt: 13.82,
   damageTaken: 12,
   seed: SEED,
 });

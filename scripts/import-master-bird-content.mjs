@@ -343,7 +343,11 @@ function buildBirds(sheets) {
         def: getFinalNum(row, header, 'DEF'),
         spd: getFinalNum(row, header, 'SPD'),
         dodge: getFinalNum(row, header, 'Dodge'),
-        acc: getFinalNum(row, header, 'ACC'),
+        acc: (() => {
+          const fromPrecision = asNum(getFuzzy(row, header, ['Base Precision', 'Final Precision', 'Precision']));
+          if (fromPrecision > 0) return fromPrecision;
+          return getFinalNum(row, header, 'ACC');
+        })(),
         mdef: getFinalNum(row, header, 'MDEF'),
         matk: getFinalNum(row, header, 'MATK'),
         critChance: 8,

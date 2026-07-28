@@ -58,6 +58,7 @@ try {
         $classPerkSummary = Get-CellFuzzy $row $birdLayout.header @('Class Perk Summary')
         $passiveId = 'PAS-' + ('{0:D3}' -f $passiveIdx++)
         $preserve = if ($script:BIRD_PRESERVE.ContainsKey($key)) { $script:BIRD_PRESERVE[$key] } else { @{} }
+        $accRaw = Get-CellFuzzy $row $birdLayout.header @('Base Precision','Final Precision','Final ACC','Precision','ACC')
         $entry = [ordered]@{
             name = $name
             portraitKey = $key
@@ -71,7 +72,7 @@ try {
                 def = Get-Num (Get-CellFuzzy $row $birdLayout.header @('Final DEF'))
                 spd = Get-Num (Get-CellFuzzy $row $birdLayout.header @('Final SPD'))
                 dodge = Get-Num (Get-CellFuzzy $row $birdLayout.header @('Final Dodge'))
-                acc = Get-Num (Get-CellFuzzy $row $birdLayout.header @('Final ACC'))
+                acc = Get-Num $accRaw
                 mdef = Get-Num (Get-CellFuzzy $row $birdLayout.header @('Final MDEF'))
                 matk = Get-Num (Get-CellFuzzy $row $birdLayout.header @('Final MATK'))
                 critChance = 8
@@ -112,7 +113,7 @@ try {
                 def = Get-Num (Get-CellFuzzy $row $classLayout.header @('Base DEF'))
                 spd = Get-Num (Get-CellFuzzy $row $classLayout.header @('Base SPD','Base Speed'))
                 dodge = Get-Num (Get-CellFuzzy $row $classLayout.header @('Base Dodge'))
-                acc = Get-Num (Get-CellFuzzy $row $classLayout.header @('Base ACC','Base Accuracy'))
+                acc = Get-Num (Get-CellFuzzy $row $classLayout.header @('Class Precision','Base ACC','Base Accuracy','Base Precision'))
                 mdef = Get-Num (Get-CellFuzzy $row $classLayout.header @('Base MDEF'))
                 matk = Get-Num (Get-CellFuzzy $row $classLayout.header @('Base MATK'))
             }
@@ -134,7 +135,7 @@ try {
             defMod = Get-Num (Get-CellFuzzy $row $sizeLayout.header @('DEF Mod'))
             spdMod = Get-Num (Get-CellFuzzy $row $sizeLayout.header @('SPD Mod'))
             dodgeMod = Get-Num (Get-CellFuzzy $row $sizeLayout.header @('Dodge Mod'))
-            accMod = Get-Num (Get-CellFuzzy $row $sizeLayout.header @('ACC Mod'))
+            accMod = Get-Num (Get-CellFuzzy $row $sizeLayout.header @('Precision Modifier','ACC Mod','Size Precision Modifier'))
             hpSoftCap = Get-Num (Get-CellFuzzy $row $sizeLayout.header @('HP Soft Cap'))
         }
     }

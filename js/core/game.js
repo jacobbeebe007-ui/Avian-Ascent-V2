@@ -2804,7 +2804,7 @@ function openNest() {
     <div class="nest-stat-card"><div class="nest-stat-val">${_nestStat(_nestDef,s.def)}</div><div class="nest-stat-lbl">${ledgerStatLabel('def',{short:true})}</div></div>
     <div class="nest-stat-card"><div class="nest-stat-val">${formatCombatNumber(s.spd)}</div><div class="nest-stat-lbl">${ledgerStatLabel('spd',{short:true})}</div></div>
     <div class="nest-stat-card"><div class="nest-stat-val">${_nestStat(_nestDodge,s.dodge,'%')}</div><div class="nest-stat-lbl">${ledgerStatLabel('dodge',{short:true})}</div></div>
-    <div class="nest-stat-card"><div class="nest-stat-val">${_nestStat(_nestAcc,s.acc,'%')}</div><div class="nest-stat-lbl">${ledgerStatLabel('acc',{short:true})}</div></div>
+    <div class="nest-stat-card" title="Precision determines how reliably this bird’s attacks and hostile skills connect. Class, size, species, weapons, skills, equipment and temporary effects can modify Precision."><div class="nest-stat-val">${_nestStat(_nestAcc,s.acc,'%')}</div><div class="nest-stat-lbl">${ledgerStatLabel('acc',{short:true})}</div></div>
     <div class="nest-stat-card"><div class="nest-stat-val" style="color:${_nestCrit>5?'#e8c96a':'var(--gold)'}">${formatCombatNumber(_nestCrit)}%</div><div class="nest-stat-lbl">${ledgerStatLabel('critChance',{short:true})}</div></div>
     <div class="nest-stat-card"><div class="nest-stat-val" style="color:${_nestCritMultBase>1.5||_nestCritBonusPct>0?'#e8c96a':'var(--gold)'}">${_nestCritMultDisp}</div><div class="nest-stat-lbl">${ledgerStatLabel('critMult',{short:true})}</div></div>
     <div class="nest-stat-card" title="Focus — improves spell and ailment potency"><div class="nest-stat-val" style="color:#6ae8e8">${formatCombatNumber(Number(s.matk)||0)}</div><div class="nest-stat-lbl" style="color:#4ab8c0">${ledgerStatLabel('matk',{short:true})}</div></div>
@@ -7348,7 +7348,7 @@ function captureBattleTempPlayerStats(){
     def: Number(p.def) || 0,
     mdef: Number(p.mdef) || 0,
     dodge: Number(p.dodge) || 0,
-    /* v0.6: Precision is character-stored (often 0); do not invent class ACC. */
+    /* v0.6+: Precision is character-stored Base Precision (class + size + species). */
     acc: Number.isFinite(Number(p.acc)) ? Number(p.acc) : 0,
     spd: Number(p.spd) || 0,
     critChance: Number(p.critChance) || 5,
@@ -8144,7 +8144,7 @@ function getActiveDamageModifierLines(side){
   if((G.player?._classPerkDukeStacks||0)>0) lines.push(`Duke Ascension: +${G.player._classPerkDukeStacks*5}% all damage`);
   const perk=Avian?.classPerks?.getClassPerkForBird?.(G.player?.birdKey);
   if(perk){
-    if(perk.def?.id==='rogueTempo' && !cpState.rogueTempoUsed) lines.push(`${perk.name}: +10% on first 1 EN physical (pending)`);
+    if(perk.def?.id==='rogueTempo' && !cpState.rogueTempoUsed) lines.push(`${perk.name}: +10 Precision on first Weapon Skill 1 (pending)`);
     if(perk.def?.id==='verseAndChorus' && cpState.verseChorusPending) lines.push(`${perk.name}: +10% next magic hit`);
     if(perk.def?.id==='retaliatingHide' && cpState.retaliatingHidePending) lines.push(`${perk.name}: +10% next physical hit`);
     if(perk.def?.id==='bulwarkOath'){
@@ -8198,7 +8198,7 @@ function buildPlayerStatsGridHtml(){
      ${statCell('stat-def',ledgerStatLabel('def',{short:true}),_effDef,{title:_bt('def',_pBase.def??p.def,_statNote('Battle Guard',_effDef-(_pBase.def||0),'Battle Hymn increased Guard.','Debuffs reducing Guard.')),trend:combatTrendTag(_effDef,_pBase.def),statKey:'def',statRaw:_pBase.def??p.def})}
      ${statCell('stat-mdef',ledgerStatLabel('mdef',{short:true}),_effMdef,{title:_bt('mdef',(_pBase.mdef??p.mdef)||0,'Resolve — resists enemy spells and ailments'),trend:combatTrendTag(_effMdef,_pBase.mdef??0),statKey:'mdef',statRaw:(_pBase.mdef??p.mdef)||0})}
      ${statCell('stat-dodge',ledgerStatLabel('dodge',{short:true}),_effDodge,{suffix:'%',title:_bt('dodge',_pBase.dodge??p.dodge,`Evasion chance. ${_statNote('Display',_effDodge-(_pBase.dodge||0),'Evasion buffs active.','Debuffs reduced Evasion.')}`),trend:combatTrendTag(_effDodge,_pBase.dodge),statKey:'dodge',statRaw:_pBase.dodge??p.dodge})}
-     ${statCell('stat-acc',ledgerStatLabel('acc',{short:true}),_effAcc,{suffix:'%',title:_bt('acc',_pBase.acc??p.acc,_statNote('Battle Precision',_effAcc-(_pBase.acc||0),'Battle Hymn increased Precision.','Blind/ruffle reduced Precision.')+' Character Precision is often 0 in v0.6 — actions use Skill Library Precision.'+_accCardBonus),trend:combatTrendTag(_effAcc,_pBase.acc),statKey:'acc',statRaw:_pBase.acc??p.acc})}
+     ${statCell('stat-acc',ledgerStatLabel('acc',{short:true}),_effAcc,{suffix:'%',title:_bt('acc',_pBase.acc??p.acc,_statNote('Battle Precision',_effAcc-(_pBase.acc||0),'Battle Hymn / buffs increased Precision.','Blind/ruffle reduced Precision.')+' Precision determines how reliably attacks and hostile skills connect. Class, size, species, weapons, skills, equipment and temporary effects can modify Precision.'+_accCardBonus),trend:combatTrendTag(_effAcc,_pBase.acc),statKey:'acc',statRaw:_pBase.acc??p.acc})}
      ${statCell('stat-spd',ledgerStatLabel('spd',{short:true}),_effSpd,{title:_bt('spd',_pBase.spd??p.spd,_statNote('Battle Agility',_effSpd-(_pBase.spd||0),'Buff increased Agility.','Slow/clip effects reduced Agility.')),trend:combatTrendTag(_effSpd,_pBase.spd),statKey:'spd',statRaw:_pBase.spd??p.spd})}
      ${statCell('stat-cc',ledgerStatLabel('critChance',{short:true}),_critChance,{suffix:'%',title:_bt('critChance',_critBaseStore,`Shown value includes battle modifiers (e.g. burn). ${_statNote('vs battle start',_critChance-_critBaseStore,'Temporary buffs.','Debuffs reduced Critical.')}`),trend:combatTrendTag(_critChance,_critBaseStore),statKey:'critChance',statRaw:_critBaseStore})}
      <div class="stat-mini stat-cd" data-stat-key="critMult" data-stat-raw="${_critBase}" title="${combatEscAttr(`Base Ferocity ${formatCombatNumber(_critBase)}×. On critical hits, +${formatCombatNumber(_critBonusPct)} is added to the multiplier.`)}"><span class="stat-k">${ledgerStatLabel('critMult',{short:true})}</span><span class="stat-v">${_critMultHtml}</span></div>
@@ -8229,7 +8229,7 @@ function buildEnemyStatsGridHtml(){
      ${enemyCell('stat-def',ledgerStatLabel('def',{short:true}),_effEnemyDef,{title:'Guard (martial defence)'+_enemyDodgeSpdNote,baseKey:'def',statKey:'def',statRaw:ep2.def,trend:combatTrendTag(_effEnemyDef,_eBase.def??ep2.def)})}
      ${enemyCell('stat-mdef',ledgerStatLabel('mdef',{short:true}),_effEnemyMdef,{title:'Resolve (magic defence)'+_enemyDodgeSpdNote,baseKey:'mdef',statKey:'mdef',statRaw:Number(ep2.mdef)||0,trend:combatTrendTag(_effEnemyMdef,(_eBase.mdef??ep2.mdef)||0)})}
      ${enemyCell('stat-dodge',ledgerStatLabel('dodge',{short:true}),_effEnemyDodge,{suffix:'%',title:`Evasion${_enemyDodgeSpdNote}`,baseKey:'dodge',statKey:'dodge',statRaw:ep2.dodge||0})}
-     ${enemyCell('stat-acc',ledgerStatLabel('acc',{short:true}),Number(ep2.acc)||0,{suffix:'%',title:'Precision (character; actions use Skill Library precision)',baseKey:'acc',statKey:'acc',statRaw:Number(ep2.acc)||0})}
+     ${enemyCell('stat-acc',ledgerStatLabel('acc',{short:true}),Number(ep2.acc)||0,{suffix:'%',title:'Precision — how reliably this bird’s attacks connect (same Base Precision rules as player species).',baseKey:'acc',statKey:'acc',statRaw:Number(ep2.acc)||0})}
      ${enemyCell('stat-spd',ledgerStatLabel('spd',{short:true}),ep2.spd||0,{title:'Agility',baseKey:'spd',statKey:'spd',statRaw:ep2.spd||0})}
      ${enemyCell('stat-cc',ledgerStatLabel('critChance',{short:true}),eCritChance,{suffix:'%',title:'Critical chance',statKey:'critChance',statRaw:eCritChance})}
      ${enemyCell('stat-cd',ledgerStatLabel('critMult',{short:true}),Number(eCritMult),{suffix:'×',title:'Ferocity'})}
@@ -11025,23 +11025,96 @@ function roll(a,b){return Math.floor(Math.random()*(b-a+1))+a;}
 // ============================================================
 
 
-// Accuracy: v0.6 stores character Precision on stats.acc (often 0 — action-owned via Skill Library).
-// Legacy class/size tables remain only as a last-resort fallback when ACC is missing entirely.
+// Accuracy / Precision: stats.acc stores Base Precision (class + size + species).
+// Temporary weapon/skill/buff modifiers are applied at attack time.
 const BASE_ACC_BY_CLASS = {
-  striker:86, bruiser:80, tank:74, trickster:84, predator:82, singer:80,
-  knight:74, rogue:84, mage:80, siren:80, inquisitor:82, bard:84, brute:80,
+  striker:86, bruiser:74, tank:78, trickster:82, predator:80, singer:84,
+  knight:78, rogue:86, mage:84, siren:83, inquisitor:80, bard:82, brute:74, duke:84,
 };
-const BASE_ACC_BY_SIZE = {tiny:2, small:1, medium:0, large:-1, xl:-2};
+const BASE_ACC_BY_SIZE = {tiny:5, small:3, medium:0, large:-2, xl:-4, giant:-6, boss:0};
 
 function getPlayerBaseAcc(){
   const pAcc=G.player?.stats?.acc;
-  if(pAcc!=null && Number.isFinite(Number(pAcc))) return Number(pAcc);
-  const bd=BIRDS[G.player?.birdKey]||{};
+  if(pAcc!=null && Number.isFinite(Number(pAcc)) && Number(pAcc)>0) return Number(pAcc);
+  const key=G.player?.birdKey;
+  const pack=Avian?.data?.precisionSystem?.basePrecisionByKey;
+  if(key && pack && Number.isFinite(Number(pack[key]))) return Number(pack[key]);
+  const bd=BIRDS[key]||{};
   const cls=bd.class||G.player?.class||'bruiser';
   const size=G.player?.size||bd.size||'medium';
   const base=(BASE_ACC_BY_CLASS[cls]??80)+(BASE_ACC_BY_SIZE[size]??0);
-  return Math.max(0,Math.min(90,base));
+  return Math.max(0,Math.min(100,base));
 }
+/** Weapon Precision Modifier for the weapon performing the attack (main-hand default). */
+function getWeaponPrecisionModifier(entity, ab){
+  const famPack=Avian?.data?.precisionSystem?.weaponPrecision||Avian?.data?.equipment?.families;
+  if(!famPack) return 0;
+  const eq=entity?.equipment||entity?._equipment;
+  let familyName=ab?.family||ab?.weaponFamily||null;
+  if(!familyName && eq){
+    const mainId=eq.mainHand||eq.weapon||eq.main;
+    const item=typeof Avian?.equipment?.getItem==='function'?Avian.equipment.getItem(mainId)
+      :(Avian?.data?.equipment?.items?.[mainId]||null);
+    familyName=item?.family||null;
+  }
+  if(!familyName) return 0;
+  if(typeof famPack[familyName]==='number') return famPack[familyName];
+  const fam=famPack[familyName];
+  return Number(fam?.weaponPrecisionModifier??fam?.precisionModifier)||0;
+}
+
+/** Skill Precision Modifier — prefers explicit integer field; else legacy EN≥3 penalty as negative points. */
+function getSkillPrecisionModifier(ab){
+  const row=typeof resolveAbilityCombatRow==='function'?resolveAbilityCombatRow(ab):null;
+  if(row?.skillPrecisionModifier!=null && Number.isFinite(Number(row.skillPrecisionModifier))){
+    return Number(row.skillPrecisionModifier);
+  }
+  if(ab?.skillPrecisionModifier!=null && Number.isFinite(Number(ab.skillPrecisionModifier))){
+    return Number(ab.skillPrecisionModifier);
+  }
+  if(row?.precisionTag || ab?.precisionTag) return 10;
+  if(row?.unwieldyTag || ab?.unwieldyTag) return -10;
+  if(row?.heavyTag || ab?.heavyTag) return -5;
+  /* Self-target / restoration / fortify / ward: no attack roll contribution. */
+  const target=String(row?.target||ab?.target||'').toLowerCase();
+  if(target==='self' || row?.requiresAttackRoll===false || ab?.requiresAttackRoll===false) return 0;
+  return 0;
+}
+
+/** Final Attack Precision before Dodge (clamped later by hit formula). */
+function getFinalAttackPrecision(entity, ab, opts={}){
+  const side=opts.side||'player';
+  let base=0;
+  if(side==='player') base=getPlayerBaseAcc();
+  else {
+    const eAcc=entity?.stats?.acc;
+    base=Number.isFinite(Number(eAcc))&&Number(eAcc)>0?Number(eAcc):80;
+  }
+  const equipPrec=Number(entity?.stats?.equipmentPrecision||entity?._equipmentPrecision||0)||0;
+  const weaponPrec=getWeaponPrecisionModifier(entity, ab);
+  const skillPrec=getSkillPrecisionModifier(ab);
+  let activeUp=0;
+  let activeDown=0;
+  if(side==='player'){
+    activeUp=Number(G.playerStatus?.passiveAcc||0)||0;
+    activeDown=Number(G.playerStatus?.accDebuff||0)||0;
+    if(G.battleHymnActive) activeUp+=Math.floor((G.battleHymnACC||0)*0.5);
+    if(G.sitAndWaitActive) activeUp+=8;
+    if(G.humMissBonus>0) activeUp+=Math.floor((G.humMissBonus||0)*0.5);
+    /* Rogue Tempo: temporary +10 Precision on first Weapon Skill 1 while acting first. */
+    if(typeof Avian?.classPerks?.peekRogueTempoPrecision==='function'){
+      activeUp+=Avian.classPerks.peekRogueTempoPrecision(entity, ab)||0;
+    }
+  }else{
+    activeDown=Number(G.enemyStatus?.accDebuff||0)||0;
+    if(G.enemyStatus?.enemyBlind>0) activeDown+=15;
+  }
+  if(typeof Avian?.dispatcher?.modifyAcc==='function' && side==='player'){
+    /* dispatcher may apply further temp mods via getPlayerEffectiveAcc path; keep additive here. */
+  }
+  return base + equipPrec + weaponPrec + skillPrec + activeUp - activeDown;
+}
+
 function getPlayerAccMod(){
   let mod=0;
   if(G.sitAndWaitActive) mod+=8;
@@ -12581,13 +12654,15 @@ function dealDamage(target,amount,isCrit=false,isMagic=false,srcAbility=null,opt
       ? Math.max(1, Number(enemyRow.enCost ?? enemyRow.apCost ?? 1))
       : Math.max(1, Number(getAbilityAuthoredEnergyCost(activeAb, G.enemy) || 1));
     const playerDodge = getEffectiveDodge(G.player);
-    /* LEG-022: baseline 100%; temp Precision Down / blind subtract; no bird ACC. */
-    let enemyBaseHit=100
-      - (Number(G.enemyStatus.accDebuff)||0)
-      - (G.enemyStatus.enemyBlind>0?15:0);
+    /* LEG-022 successor — Bird Precision System:
+     * Final Attack Precision − Dodge − legacy EN≥3 skill penalty (when no integer skillPrecisionModifier). */
+    let enemyBaseHit=getFinalAttackPrecision(G.enemy, activeAb, {side:'enemy'});
     const accPenalty=(typeof calculateAbilityAccuracyPenalty==='function'&&enemyRow)
       ? calculateAbilityAccuracyPenalty(enemyRow) : 0;
-    const hitPct=calculateAbilityHitChancePct(enemyBaseHit, playerDodge, accPenalty);
+    /* Prefer integer Skill Precision Modifier already folded into Final Attack Precision. */
+    const useLegacyPenalty=!(enemyRow?.skillPrecisionModifier!=null || activeAb?.skillPrecisionModifier!=null
+      || enemyRow?.precisionTag || enemyRow?.heavyTag || enemyRow?.unwieldyTag);
+    const hitPct=calculateAbilityHitChancePct(enemyBaseHit, playerDodge, useLegacyPenalty?accPenalty:0);
     if (Math.random()*100>=hitPct){
       G._currentPiercePct=0;
       const _pbd=BIRDS[G.player.birdKey]; if(_pbd&&_pbd.passive&&_pbd.passive.onDodge)_pbd.passive.onDodge(G.player);
@@ -12963,9 +13038,9 @@ function getPlayerMissChance(ab) {
   if (G.humMissBonus>0) accBonus+=G.humMissBonus;
   const tookiePenalty = G.tookieActive && G.playerStatus.tookie ? G.playerStatus.tookie.missPen : 0;
   const bClass=(BIRDS[G.player.birdKey]&&BIRDS[G.player.birdKey].class)||'';
-  const bSize=(G.player&&G.player.size)||'medium';
   const classAdj=(tmpl.type==='physical'&&bClass==='striker')?-2:(tmpl.type==='ranged'&&bClass==='trickster')?-2:(tmpl.type==='spell'&&MAGIC_CLASSES.has(bClass))?-1:0;
-  const sizeAdj=(tmpl.type==='physical'&&bSize==='xl')?2:(tmpl.type==='physical'&&bSize==='tiny')?-1:0;
+  /* Size Precision is baked into Base Precision — do not apply a second size miss penalty. */
+  const sizeAdj=0;
   const missReduce=((G.player&&G.player.missReduce)||0)*100;
   let extra=0;
   const kind=String(tmpl.btnType||tmpl.type||'').toLowerCase();
@@ -12987,13 +13062,11 @@ function getPlayerMissChance(ab) {
   return Math.max(floor, reduced - accBonus + tookiePenalty - (G.playerStatus.accDebuff||0) + classAdj + sizeAdj - missReduce - extra - getPlayerHitBonus(ab));
 }
 
-/** Hit % = 100 − Dodge − skill accuracy penalty (± temp Precision); clamped 15–95.
- *  LEG-022: no permanent bird ACC. Skill penalties apply only for EN ≥ 3. */
+/** Hit % = Final Attack Precision − Dodge − skill accuracy penalty; clamped 15–95.
+ *  Bird Precision System: stats.acc (Base Precision) replaces the old 100 baseline. */
 function getPlayerHitPercentForAttack(ab){
   const dodge=getEffectiveEnemyDodgeForPlayerHit();
-  let baseHit=100;
-  /* Temporary Precision Up/Down and encounter mods (not a bird ACC attribute). */
-  baseHit+=getPlayerAccMod();
+  let baseHit=getFinalAttackPrecision(G.player, ab, {side:'player'});
   const t=ABILITY_TEMPLATES?.[ab?.id]||ABILITY_TEMPLATES_EXTRA?.[ab?.id]||ab||{};
   const kind=String(t.btnType||t.type||ab?.btnType||ab?.type||'').toLowerCase();
   const isAttack=(kind==='physical'||kind==='ranged'||kind==='magic'||kind==='spell');
@@ -13004,7 +13077,9 @@ function getPlayerHitPercentForAttack(ab){
     ? calculateAbilityAccuracyPenalty(row) : 0;
   const heavyRed=(typeof Avian?.equipmentEffects?.getHeavyAccPenaltyReduction==='function')
     ? Avian.equipmentEffects.getHeavyAccPenaltyReduction() : 0;
-  return calculateAbilityHitChancePct(baseHit, dodge, Math.max(0, accPenalty - heavyRed));
+  const useLegacyPenalty=!(row?.skillPrecisionModifier!=null || ab?.skillPrecisionModifier!=null
+    || row?.precisionTag || row?.heavyTag || row?.unwieldyTag || ab?.precisionTag || ab?.heavyTag || ab?.unwieldyTag);
+  return calculateAbilityHitChancePct(baseHit, dodge, useLegacyPenalty?Math.max(0, accPenalty - heavyRed):0);
 }
 
 function getPlayerAccuracy() {
@@ -13027,6 +13102,11 @@ function resolvePlayerAttackHit(ab) {
     return {hit:true, reason:null};
   }
   const hitPct=getPlayerHitPercentForAttack(ab);
+  if(typeof Avian?.classPerks?.peekRogueTempoPrecision==='function'
+    && Avian.classPerks.peekRogueTempoPrecision(G.player, ab)>0
+    && typeof Avian.classPerks.markRogueTempoPrecisionUsed==='function'){
+    Avian.classPerks.markRogueTempoPrecisionUsed(G.player);
+  }
   if(Math.random()*100>=hitPct) return {hit:false, reason:'accuracy'};
   return {hit:true, reason:null};
 }

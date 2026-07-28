@@ -6,7 +6,13 @@
   var ns = Avian.classPerks = Avian.classPerks || Object.create(null);
 
   var PERK_BY_NAME = Object.freeze({
-    'Rogue Tempo': { id: 'rogueTempo', dmgBonus: 0.06, basicAttackOnly: true, needsActingFirst: true },
+    'Rogue Tempo': {
+      id: 'rogueTempo',
+      precisionBonus: 10,
+      weaponSkill1Only: true,
+      needsActingFirst: true,
+      armourBreakAgility: 4,
+    },
     'Bulwark Oath': { id: 'bulwarkOath', damageReduction: 0.06, aboveHalfHp: true, firstHitPerTurn: false },
     'Arcane Pressure': { id: 'arcanePressure', mdefPen: 0.10 },
     'Verse and Chorus': { id: 'verseAndChorus', nextMagicBonus: 0.10 },
@@ -173,6 +179,68 @@
     return /^(Beak Jab|Tail Wand|Natural Strike|Basic Attack)/i.test(name);
   }
 
+  function isWeaponSkill1(ab) {
+    if (!ab) return false;
+    if (isBasicAttack(ab)) return false;
+    var bar = String(ab.barSlot || ab.skillType || '').toLowerCase();
+    if (bar.indexOf('weapon skill 1') >= 0 || bar === 'skill 1' || /skill\s*1/.test(bar)) return true;
+    var id = String(ab.id || ab.equipmentSkillId || '');
+    if (/^WSK-\d+$/i.test(id)) {
+      /* Odd WSK ids are Skill 1 in the catalogue (001,003,...); even are Skill 2. */
+      var n = parseInt(id.replace(/\D/g, ''), 10);
+      if (Number.isFinite(n) && n % 2 === 1) return true;
+    }
+    var en = abilityEn(ab);
+    /* Weapon Skill 1 is typically 2 EN. */
+    if (en === 2 && (ab.actionSource === 'weapon' || ab.family || /weapon/i.test(String(ab.source || '')))) return true;
+    return false;
+  }
+
+  function rogueTempoEligible(entity, ab) {
+    var perk = ns.getClassPerkForEntity(entity);
+    if (!perk || perk.def.id !== 'rogueTempo') return false;
+    var g = globalThis.G;
+    var side = entity === (g && g.enemy) ? 'enemy' : 'player';
+    var st = state(side) || {};
+    if (st.rogueTempoUsed) return false;
+    if (!isWeaponSkill1(ab)) return false;
+    if (perk.def.needsActingFirst && !entityActingFirst(entity)) return false;
+    return true;
+  }
+
+  ns.peekRogueTempoPrecision = function peekRogueTempoPrecision(entity, ab) {
+    if (!rogueTempoEligible(entity, ab)) return 0;
+    var perk = ns.getClassPerkForEntity(entity);
+    return Number(perk && perk.def && perk.def.precisionBonus) || 10;
+  };
+
+  ns.markRogueTempoPrecisionUsed = function markRogueTempoPrecisionUsed(entity) {
+    var g = globalThis.G;
+    if (!g || !entity) return;
+    var side = entity === g.enemy ? 'enemy' : 'player';
+    var st = state(side) || {};
+    st.rogueTempoUsed = true;
+    st.rogueTempoArmourBreakPending = true;
+  };
+
+  ns.onRogueTempoArmourBreak = function onRogueTempoArmourBreak(entity) {
+    var g = globalThis.G;
+    if (!g || !entity) return;
+    var side = entity === g.enemy ? 'enemy' : 'player';
+    var st = state(side) || {};
+    if (!st.rogueTempoArmourBreakPending) return;
+    st.rogueTempoArmourBreakPending = false;
+    var perk = ns.getClassPerkForEntity(entity);
+    var bonus = Number(perk && perk.def && perk.def.armourBreakAgility) || 4;
+    if (!entity.stats) return;
+    entity.stats.spd = (Number(entity.stats.spd) || 0) + bonus;
+    st.rogueTempoAgilityBonus = bonus;
+    if (side === 'player') {
+      g.playerStatus = g.playerStatus || {};
+      g.playerStatus.rogueTempoAgility = { turns: 1, amount: bonus };
+    }
+  };
+
   function entityActingFirst(entity) {
     var g = globalThis.G;
     if (!g || !g.player || !g.enemy || !entity) return false;
@@ -278,12 +346,6 @@
     var isPhys = abIsPhysical(ab);
     var isMag = abIsMagic(ab);
 
-    if (perk.def.id === 'rogueTempo' && !st.rogueTempoUsed && isBasicAttack(ab)) {
-      if (!perk.def.needsActingFirst || entityActingFirst(entity)) {
-        out.push(perk.def.dmgBonus != null ? perk.def.dmgBonus : 0.06);
-        st.rogueTempoUsed = true;
-      }
-    }
     if (perk.def.id === 'verseAndChorus' && st.verseChorusPending && isMag) {
       out.push(perk.def.nextMagicBonus || 0.10);
       st.verseChorusPending = false;
