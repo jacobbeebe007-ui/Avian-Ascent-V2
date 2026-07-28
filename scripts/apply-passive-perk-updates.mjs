@@ -71,21 +71,26 @@ function parsePassiveText(text, limitText) {
   const body = clean.replace(/^Once per (?:turn|combat)(?: |, ?)/i, '');
   let trigger = null;
   const triggerPatterns = [
-    /* Specific patterns before generic "After using X,". */
+    /* Specific patterns before generic "After using X," / "Your first". */
     [/^After using two different skills/i, () => ({ kind: 'afterTwoDifferentSkills' })],
     [/^When Verse and Chorus triggers/i, () => ({ kind: 'onClassPerk', perk: 'verseAndChorus' })],
+    [/^The first stat debuff you successfully apply/i, () => ({ kind: 'afterDebuffApplied' })],
     [/^After successfully applying/i, () => ({ kind: 'afterDebuffApplied' })],
+    [/^After applying Chilled/i, () => ({ kind: 'afterAilmentApplied', ailment: 'chilled' })],
     [/^After applying /i, () => ({ kind: 'afterAilmentApplied' })],
     [/^After landing a critical/i, () => ({ kind: 'afterCrit' })],
     [/^After you Dodge/i, () => ({ kind: 'afterDodge' })],
     [/^After an enemy attack/i, () => ({ kind: 'afterEnemyAttack' })],
     [/^After damaging /i, () => ({ kind: 'afterDamageDealt' })],
     [/^After taking damage|The first time each turn you take damage/i, () => ({ kind: 'onDamagedHighHp' })],
+    [/^The first time each combat you fall below (\d+)%/i, (m) => ({ kind: 'onHpBelow', pct: Number(m[1]) })],
+    [/^The first time each combat your Armour reaches 0 while below (\d+)%/i, (m) => ({ kind: 'onArmourBreakLowHp', pct: Number(m[1]) })],
     [/^After Armour absorbs|Once per turn after Armour absorbs|The first time each turn Armour absorbs/i, () => ({ kind: 'afterArmourAbsorb' })],
-    [/^After restoring Armour|After using Armour Restoration/i, () => ({ kind: 'afterArmourRestorationOrFortify' })],
+    [/^After restoring Armour|After using Armour Restoration|While below 50% Health, restoring Armour/i, () => ({ kind: 'afterArmourRestorationOrFortify', whileSelfHpBelow: 50 })],
     [/^If acting before the target/i, () => ({ kind: 'actingFirst' })],
     [/^While below (\d+)% (?:HP|Vitality|Health), the first song you use/i, (m) => ({ kind: 'whileHpBelow', pct: Number(m[1]), skillClass: 'song' })],
-    [/^While below 50%|While the target is below 50%/i, () => ({ kind: 'whileHpBelow', pct: 50 })],
+    [/^While the target is below (\d+)%/i, (m) => ({ kind: 'skillModifier', foeHpBelow: Number(m[1]), damaging: true })],
+    [/^While below 50%/i, () => ({ kind: 'whileHpBelow', pct: 50 })],
     [/^If you did not use a damaging/i, () => ({ kind: 'noDamageActionLastTurn' })],
     [/^Your first (Day|Night|Earth|Sky|Storm|Water)\s+Magic weapon skill each turn against a (Burning|debuffed) target/i, (m) => ({
       kind: 'skillModifier',
@@ -94,6 +99,31 @@ function parsePassiveText(text, limitText) {
       weaponSkill: true,
       foeState: String(m[2]).toLowerCase() === 'burning' ? 'burning' : 'debuffed',
     })],
+    [/^Your first (Day|Night|Earth|Sky|Storm|Water)\s+damaging skill/i, (m) => ({
+      kind: 'skillModifier',
+      aspect: ({ Day: 'solis', Night: 'lunae', Earth: 'terra', Sky: 'aeris', Storm: 'tempest', Water: 'maris' })[m[1]],
+      damaging: true,
+    })],
+    [/^Your first physical weapon hit each turn against a debuffed or Marked target/i, () => ({
+      kind: 'skillModifier', category: 'physical', weaponSkill: true, foeState: 'debuffedOrMarked',
+    })],
+    [/^Your first Strength weapon skill each turn against a Bleeding or Weakened target/i, () => ({
+      kind: 'skillModifier', weaponScale: 'strength', weaponSkill: true, foeState: 'bleedingOrWeakened',
+    })],
+    [/^Your first damaging (?:action|skill) each turn against a target below (\d+)%/i, (m) => ({
+      kind: 'skillModifier', foeHpBelow: Number(m[1]), damaging: true,
+    })],
+    [/^The first support or song skill you use each turn/i, () => ({ kind: 'skillModifier', skillClass: 'supportOrSong' })],
+    [/^The first time each combat a song/i, () => ({ kind: 'skillModifier', skillClass: 'song' })],
+    [/^The first time each turn a Storm damaging skill hits a debuffed or Marked target/i, () => ({
+      kind: 'skillModifier', aspect: 'tempest', damaging: true, foeState: 'debuffedOrMarked',
+    })],
+    [/^Your first Finesse weapon skill/i, () => ({ kind: 'skillModifier', weaponScale: 'finesse', weaponSkill: true })],
+    [/^After using a song or call/i, () => ({ kind: 'afterSkillUse', skillClass: 'song' })],
+    [/^After using a Day action/i, () => ({ kind: 'afterSkillUse', aspect: 'solis' })],
+    [/^After using a Water action/i, () => ({ kind: 'afterSkillUse', aspect: 'maris' })],
+    [/^After using a support utility/i, () => ({ kind: 'afterSkillUse', supportUtility: true })],
+    [/^After a Magic damaging skill/i, () => ({ kind: 'afterSkillUse', magicDamaging: true })],
     [/^Your first /i, () => ({ kind: 'skillModifier' })],
     [/^The first /i, () => ({ kind: 'skillModifier' })],
     [/^After using a (?:song|call|support|Magic|Day|Water|Armour)/i, () => ({ kind: 'afterSkillUse' })],
@@ -142,7 +172,21 @@ function parsePassiveText(text, limitText) {
   const restMag = clean.match(/restore\s+(\d+)\s+Magic Armour/i);
   if (restMag) specials.push({ id: 'restoreMagicArmour', amount: Number(restMag[1]) });
   const restLower = clean.match(/restores?\s+(\d+)\s+to the lower protection pool/i);
-  if (restLower) specials.push({ id: 'restoreLowerProtection', amount: Number(restLower[1]) });
+  if (restLower) {
+    const restSp = { id: 'restoreLowerProtection', amount: Number(restLower[1]) };
+    if (/If it damages Health/i.test(clean) || /damage that target's Health/i.test(clean) || /on hit/i.test(clean)) {
+      restSp.requiresHealthDamage = /If it damages Health/i.test(clean) || /damage that target's Health/i.test(clean);
+    }
+    specials.push(restSp);
+  }
+  const restArmPct = clean.match(/restore\s+(\d+)%\s+of normal Maximum Armour/i);
+  if (restArmPct) specials.push({ id: 'restoreArmourMaxPct', pct: Number(restArmPct[1]) });
+  const restMagPct = clean.match(/restore\s+(\d+)%\s+of normal Maximum (?:Armour and )?Magic Armour|and Magic Armour/i);
+  if (/restore\s+(\d+)%\s+of normal Maximum Armour and Magic Armour/i.test(clean)) {
+    const pct = Number(clean.match(/restore\s+(\d+)%\s+of normal Maximum Armour and Magic Armour/i)[1]);
+    if (!specials.some((s) => s.id === 'restoreArmourMaxPct')) specials.push({ id: 'restoreArmourMaxPct', pct });
+    specials.push({ id: 'restoreMagicArmourMaxPct', pct });
+  }
   const skillPowVsMagArm = clean.match(/\+(\d+)\s+Skill Power against Magic Armour/i);
   if (skillPowVsMagArm) specials.push({ id: 'skillPowerVsMagicArmour', amount: Number(skillPowVsMagArm[1]) });
   const skillPowVsArm = clean.match(/\+(\d+)\s+Skill Power against Armour/i);

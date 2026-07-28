@@ -496,6 +496,67 @@
     return sp.id === 'healMaxHp' || sp.id === 'restoreLowerProtection';
   }
 
+  function foeHasMarked(foeStatus) {
+    if (!foeStatus) return false;
+    return !!(foeStatus.marked || foeStatus.carrionMark || foeStatus.jewelMark || foeStatus.predatorMark || foeStatus.mark);
+  }
+
+  function foeHasBleed(foeStatus) {
+    if (!foeStatus) return false;
+    var b = foeStatus.bleed;
+    if (typeof b === 'number') return b > 0;
+    return !!(b && ((b.stacks || 0) > 0 || (b.turns || 0) > 0));
+  }
+
+  function foeHasWeaken(foeStatus) {
+    if (!foeStatus) return false;
+    if (typeof globalThis.getWeakenStacks === 'function') return globalThis.getWeakenStacks(foeStatus) > 0;
+    var w = foeStatus.weaken || foeStatus.weakened;
+    if (typeof w === 'number') return w > 0;
+    return !!(w && ((w.stacks || 0) > 0 || (w.turns || 0) > 0));
+  }
+
+  function abilityIsSupportUtility(ab) {
+    if (!ab) return false;
+    if (abilityIsSong(ab)) return true;
+    var kind = String(ab.btnType || ab.type || ab.category || '').toLowerCase();
+    var name = String(ab.name || ab.id || '');
+    var bar = String(ab.barSlot || ab.skillType || ab.target || '');
+    if (kind === 'utility' || kind === 'support') return true;
+    return /support|heal|guard|ward|fortify|restore|hymn|bless|bolster/i.test(name + ' ' + bar);
+  }
+
+  function abilityIsDamaging(ab) {
+    if (!ab) return false;
+    if (ab.noDamage) return false;
+    if (abilityIsMartial(ab) || abilityIsMagicCat(ab)) return true;
+    var kind = String(ab.btnType || ab.type || ab.category || '').toLowerCase();
+    return kind === 'physical' || kind === 'ranged' || kind === 'spell' || kind === 'magic' || kind === 'hybrid';
+  }
+
+  function abilityWeaponScale(ab) {
+    if (!ab) return '';
+    var cat = String(ab.damageCategory || ab.category || ab.weaponClass || ab.family || '').toLowerCase();
+    if (/strength|greatblade|hammer|lance|club/i.test(cat)) return 'strength';
+    if (/finesse|dagger|talon|rapier|bow/i.test(cat)) return 'finesse';
+    var scale = String(ab.scalingStat || ab.scaleStat || ab.damageStat || '').toUpperCase();
+    if (scale === 'ATK' || scale === 'MIGHT' || scale === 'DEF' || scale === 'GUARD') return 'strength';
+    if (scale === 'DEX' || scale === 'DEXTERITY' || scale === 'AGI' || scale === 'AGILITY') return 'finesse';
+    var name = String(ab.name || '');
+    if (/crush|smash|slam|cleave|great|hammer|lance/i.test(name)) return 'strength';
+    if (/talon|pinion|flurry|stab|pierce|slash/i.test(name)) return 'finesse';
+    return '';
+  }
+
+  function isFortifyOrArmourRestoreAbility(ab) {
+    if (!ab) return false;
+    var name = String(ab.name || ab.id || '');
+    var bar = String(ab.barSlot || ab.skillType || ab.riderText || '');
+    if (/fortify|armour restoration|armor restoration|restore armour|restore armor/i.test(name + ' ' + bar)) return true;
+    var text = String(ab.riderText || ab.effect || '').toLowerCase();
+    return /\bfortify\b/.test(text) || /restore\s+\d+\s+(?:armour|armor)/.test(text);
+  }
+
   function sideActingFirst(side) {
     var self = entityForSide(side);
     var foe = foeEntityForSide(side);
@@ -562,6 +623,17 @@
       case 'afterSkillUse': {
         if (!ab) return false;
         if (t.skill && !abilityNameMatches(ab, t.skill)) return false;
+        if (t.skillClass === 'song' && !abilityIsSong(ab)) return false;
+        if (t.skillClass === 'supportOrSong' && !abilityIsSupportUtility(ab)) return false;
+        if (t.supportUtility && !abilityIsSupportUtility(ab)) return false;
+        if (t.magicDamaging && !(abilityIsMagicCat(ab) && abilityIsDamaging(ab))) return false;
+        if (t.category === 'magic' && !abilityIsMagicCat(ab)) return false;
+        if (t.category === 'physical' && !abilityIsMartial(ab)) return false;
+        if (t.damaging && !abilityIsDamaging(ab)) return false;
+        if (t.aspect) {
+          var afterAsp = abilityAspectId(ab, actor);
+          if (!afterAsp || afterAsp !== normalizeAspectId(t.aspect)) return false;
+        }
         if (t.nextMartialPen) return true;
         return true;
       }
@@ -569,8 +641,8 @@
         var okState = t.state === 'debuffed' ? enemyHasAnyAffliction(foeStatus) : false;
         if (!okState) return false;
         if (t.aspect) {
-          var asp = String((ab && (ab.aspect || ab.affinity)) || (actor && actor.aspect) || '').toLowerCase();
-          if (asp !== String(t.aspect).toLowerCase()) return false;
+          var asp = abilityAspectId(ab, actor);
+          if (!asp || asp !== normalizeAspectId(t.aspect)) return false;
         }
         return !!(ctx && (ctx.damage > 0 || ctx.hitsLanded > 0 || ab));
       }
@@ -583,12 +655,30 @@
         if (!(selfStats && selfStats.hp <= Math.floor((selfStats.maxHp || 1) * ((Number(t.pct) || 50) / 100)))) return false;
         if (abilityExcludedByPassive(parsed, ab)) return false;
         if (t.skillClass === 'song') return abilityIsSong(ab);
+        if (t.armourTechnique || t.afterArmourRestorationOrFortify) {
+          return !!(ctx && ctx.armourTechnique) || isFortifyOrArmourRestoreAbility(ab);
+        }
         /* Without an ability context (e.g. onDamaged), only song-gated rows should no-op above. */
         return !!ab;
       }
       case 'onHpBelow': {
         var pl = actor && actor.stats;
-        return !!(pl && pl.hp <= Math.floor((pl.maxHp || 1) * ((Number(t.pct) || 50) / 100)));
+        if (!pl) return false;
+        var hpThreshold = Math.floor((pl.maxHp || 1) * ((Number(t.pct) || 50) / 100));
+        var hpNowOn = pl.hp || 0;
+        if (ctx && Number(ctx.damage) > 0) {
+          var hpBeforeOn = hpNowOn + (Number(ctx.damage) || 0);
+          /* Prefer crossing the threshold on this hit. */
+          return hpBeforeOn > hpThreshold && hpNowOn <= hpThreshold;
+        }
+        return hpNowOn <= hpThreshold;
+      }
+      case 'onArmourBreakLowHp': {
+        if (!(ctx && ctx.brokePool)) return false;
+        if (ctx.isMagic) return false;
+        var br = actor && actor.stats;
+        if (!br) return false;
+        return br.hp <= Math.floor((br.maxHp || 1) * ((Number(t.pct) || 50) / 100));
       }
       case 'onDamagedHighHp': {
         if (!(ctx && ctx.damage > 0)) return false;
@@ -604,9 +694,16 @@
         if (!ab) return false;
         if (abilityExcludedByPassive(parsed, ab)) return false;
         if (t.skill && !abilityNameMatches(ab, t.skill)) return false;
+        if (t.skillClass === 'song' && !abilityIsSong(ab)) return false;
+        if (t.skillClass === 'supportOrSong' && !abilityIsSupportUtility(ab)) return false;
         if (t.category === 'magic' && !abilityIsMagicCat(ab)) return false;
         if (t.category === 'physical' && !abilityIsMartial(ab)) return false;
+        if (t.damaging && !abilityIsDamaging(ab)) return false;
         if (t.weaponSkill && !abilityIsWeaponSkill(ab)) return false;
+        if (t.weaponScale) {
+          var scale = abilityWeaponScale(ab);
+          if (scale !== String(t.weaponScale).toLowerCase()) return false;
+        }
         if (t.aspect) {
           var wantAsp = normalizeAspectId(t.aspect);
           var gotAsp = abilityAspectId(ab, actor);
@@ -614,6 +711,8 @@
         }
         if (t.foeState === 'burning' && !foeHasBurning(foeStatus)) return false;
         if (t.foeState === 'debuffed' && !enemyHasAnyAffliction(foeStatus)) return false;
+        if (t.foeState === 'debuffedOrMarked' && !(enemyHasAnyAffliction(foeStatus) || foeHasMarked(foeStatus))) return false;
+        if (t.foeState === 'bleedingOrWeakened' && !(foeHasBleed(foeStatus) || foeHasWeaken(foeStatus))) return false;
         if (t.foeHpBelow != null) {
           var foeHp = foe && foe.stats;
           if (!(foeHp && foeHp.hp <= Math.floor((foeHp.maxHp || 1) * ((Number(t.foeHpBelow) || 50) / 100)))) return false;
@@ -621,13 +720,23 @@
         return true;
       }
       case 'afterArmourTechnique':
-        return !!(ctx && ctx.armourTechnique);
+        return !!(ctx && ctx.armourTechnique) || isFortifyOrArmourRestoreAbility(ab);
+      case 'afterArmourRestorationOrFortify': {
+        if (!(ctx && ctx.armourTechnique) && !isFortifyOrArmourRestoreAbility(ab)) return false;
+        if (t.whileSelfHpBelow != null) {
+          var selfLow = actor && actor.stats;
+          if (!(selfLow && selfLow.hp <= Math.floor((selfLow.maxHp || 1) * ((Number(t.whileSelfHpBelow) || 50) / 100)))) return false;
+        }
+        return true;
+      }
       case 'afterArmourAbsorb':
         return !!(ctx && (ctx.armourAbsorbed || ctx.protectionAbsorbed));
       case 'afterDebuffApplied':
         return !!(ctx && ctx.appliedDebuff);
       case 'afterAilmentApplied':
-        return !!(ctx && ctx.appliedAilment);
+        if (!(ctx && ctx.appliedAilment)) return false;
+        if (t.ailment && String(ctx.appliedAilment).toLowerCase() !== String(t.ailment).toLowerCase()) return false;
+        return true;
       case 'afterTwoDifferentSkills': {
         if (!ab) return false;
         G._passiveSkillIds = G._passiveSkillIds || Object.create(null);
@@ -768,6 +877,25 @@
         Avian.protection.restoreMagicArmour(actor.stats, Number(sp.amount) || 0);
         if (typeof spawnFloat === 'function') spawnFloat(side, '+' + (sp.amount || 0) + ' MARM', 'fn-buff');
       }
+      if ((sp.id === 'restoreArmourMaxPct' || sp.id === 'restoreMagicArmourMaxPct') && sp.pct) {
+        var poolStats = actor.stats;
+        var isMagPool = sp.id === 'restoreMagicArmourMaxPct';
+        var maxPool = isMagPool
+          ? Math.max(0, Number(poolStats.normalMaxMagicArmour != null ? poolStats.normalMaxMagicArmour : poolStats.maxMagicArmour) || 0)
+          : Math.max(0, Number(poolStats.normalMaxArmour != null ? poolStats.normalMaxArmour : poolStats.maxArmour) || 0);
+        var restoreAmt = Math.max(1, Math.floor(maxPool * ((Number(sp.pct) || 0) / 100)));
+        if (Avian.protection) {
+          if (isMagPool && typeof Avian.protection.restoreMagicArmour === 'function') Avian.protection.restoreMagicArmour(poolStats, restoreAmt);
+          else if (!isMagPool && typeof Avian.protection.restoreArmour === 'function') Avian.protection.restoreArmour(poolStats, restoreAmt);
+        }
+        if (typeof spawnFloat === 'function') spawnFloat(side, '+' + restoreAmt + (isMagPool ? ' MARM' : ' ARM'), 'fn-buff');
+      }
+      if (sp.id === 'armourDamage' && sp.amount) {
+        statusBagForSide(side)._passiveFlatArmourDamage = (Number(statusBagForSide(side)._passiveFlatArmourDamage) || 0) + Number(sp.amount);
+      }
+      if (sp.id === 'magicArmourDamage' && sp.amount) {
+        statusBagForSide(side)._passiveFlatMagicArmourDamage = (Number(statusBagForSide(side)._passiveFlatMagicArmourDamage) || 0) + Number(sp.amount);
+      }
       if (sp.id === 'restoreLowerProtection') {
         if (sp.requiresHealthDamage && !(ctx && Number(ctx.healthDamage) > 0)) continue;
         var stats = actor.stats;
@@ -840,6 +968,16 @@
         status._v2PassivePendingPost = false;
         return;
       }
+      var armedTurns = v2DurationTurns(parsed.duration);
+      var armedEffects = parsed.effects || [];
+      for (var ei = 0; ei < armedEffects.length; ei++) {
+        var armedEff = armedEffects[ei];
+        if (armedEff && armedEff.requiresHealthDamage && !(Number(ctx.healthDamage) > 0)) continue;
+        if (armedEff && armedEff.requiresHealthDamage) applyV2TierEffect(perk.id, armedEff, armedTurns, side);
+        else if (armedEff && !armedEff.requiresHealthDamage) {
+          /* Non-RHD effects were eligible at prepare time; skip re-applying here. */
+        }
+      }
       applyV2Specials(perk, parsed.specials || [], side, ab, ctx, function (sp) {
         return isPostHitHealthSpecial(sp) || !!sp.requiresHealthDamage;
       });
@@ -894,6 +1032,13 @@
     var abKey = String(ab.id || ab.name || '');
     if (!abKey) return;
     if (status._v2PassiveArmedAbility === abKey) return;
+    var turns = v2DurationTurns(parsed.duration);
+    var effects = parsed.effects || [];
+    for (var i = 0; i < effects.length; i++) {
+      var eff = effects[i];
+      if (eff && eff.requiresHealthDamage) continue;
+      applyV2TierEffect(perk.id, eff, turns, side);
+    }
     applyV2Specials(perk, parsed.specials || [], side, ab, {}, isPreHitSpecial);
     status._v2PassiveArmedAbility = abKey;
     status._v2PassivePendingPost = true;
@@ -1082,7 +1227,11 @@
     if (!globalThis.G || !G.player) return;
     var perk = passiveFor(G.player.birdKey);
     if (perk) {
-      firePassive(perk, null, Object.assign({ damage: damage, isPhysical: !isMagic }, ctx || {}), 'player');
+      firePassive(perk, null, Object.assign({
+        damage: damage,
+        isPhysical: !isMagic,
+        isMagic: !!isMagic,
+      }, ctx || {}), 'player');
     }
     if (typeof Avian.classPerks !== 'undefined' && typeof Avian.classPerks.onPlayerDamaged === 'function') {
       Avian.classPerks.onPlayerDamaged(damage, isMagic, ctx);
@@ -1093,7 +1242,11 @@
     if (!globalThis.G || !G.enemy) return;
     var perk = passiveFor(G.enemy.birdKey);
     if (perk) {
-      firePassive(perk, null, Object.assign({ damage: damage, isPhysical: !isMagic }, ctx || {}), 'enemy');
+      firePassive(perk, null, Object.assign({
+        damage: damage,
+        isPhysical: !isMagic,
+        isMagic: !!isMagic,
+      }, ctx || {}), 'enemy');
     }
     if (typeof Avian.classPerks !== 'undefined' && typeof Avian.classPerks.onEnemyDamaged === 'function') {
       Avian.classPerks.onEnemyDamaged(damage, isMagic, ctx);
