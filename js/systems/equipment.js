@@ -595,6 +595,36 @@
       L.fromEquipment = fromEquipment;
       L.fromEquipmentPct = Object.assign({}, eqRoll.pct);
     }
+    /* Protection pools (Armour / Magic Armour) come from all equipped sources. */
+    player.stats.armourFlat = Number(eqRoll.stats.armour) || 0;
+    player.stats.magicArmourFlat = Number(eqRoll.stats.magicArmour) || 0;
+    if (Avian.protection && typeof Avian.protection.initFromEquipmentRoll === 'function') {
+      Avian.protection.initFromEquipmentRoll(player, {
+        armour: player.stats.armourFlat,
+        magicArmour: player.stats.magicArmourFlat,
+      });
+    } else {
+      var prevArmour = Number(player.stats.armour);
+      var prevArmourMax = Number(player.stats.normalMaxArmour != null ? player.stats.normalMaxArmour : player.stats.maxArmour);
+      var prevMagic = Number(player.stats.magicArmour);
+      var prevMagicMax = Number(player.stats.normalMaxMagicArmour != null ? player.stats.normalMaxMagicArmour : player.stats.maxMagicArmour);
+      player.stats.normalMaxArmour = player.stats.armourFlat;
+      player.stats.normalMaxMagicArmour = player.stats.magicArmourFlat;
+      player.stats.maxArmour = player.stats.armourFlat + Math.max(0, Number(player.stats._fortifyBonus) || 0);
+      player.stats.maxMagicArmour = player.stats.magicArmourFlat + Math.max(0, Number(player.stats._wardBonus) || 0);
+      if (Number.isFinite(prevArmour) && Number.isFinite(prevArmourMax) && prevArmourMax > 0) {
+        var ratioArm = Math.max(0, Math.min(1, prevArmour / prevArmourMax));
+        player.stats.armour = Math.min(player.stats.maxArmour, Math.round(player.stats.armourFlat * ratioArm + (Number(player.stats._fortifyBonus) || 0) * ratioArm));
+      } else {
+        player.stats.armour = player.stats.maxArmour;
+      }
+      if (Number.isFinite(prevMagic) && Number.isFinite(prevMagicMax) && prevMagicMax > 0) {
+        var ratioMagic = Math.max(0, Math.min(1, prevMagic / prevMagicMax));
+        player.stats.magicArmour = Math.min(player.stats.maxMagicArmour, Math.round(player.stats.magicArmourFlat * ratioMagic + (Number(player.stats._wardBonus) || 0) * ratioMagic));
+      } else {
+        player.stats.magicArmour = player.stats.maxMagicArmour;
+      }
+    }
     if (player.stats.maxHp != null) {
       var nextMaxHp = Math.max(1, Number(player.stats.maxHp) || 1);
       player.stats.hp = wasFullHp ? nextMaxHp : Math.max(1, Math.min(nextMaxHp, Math.round(nextMaxHp * hpRatio)));
@@ -1178,6 +1208,21 @@
         var base = Number(entity.stats[sk]) || 0;
         entity.stats[sk] = capTrackedStatValue(sk, Math.round(base * (1 + frac)));
       });
+      entity.stats.armourFlat = Number(roll.stats.armour) || 0;
+      entity.stats.magicArmourFlat = Number(roll.stats.magicArmour) || 0;
+      if (Avian.protection && typeof Avian.protection.initFromEquipmentRoll === 'function') {
+        Avian.protection.initFromEquipmentRoll(entity, {
+          armour: entity.stats.armourFlat,
+          magicArmour: entity.stats.magicArmourFlat,
+        });
+      } else {
+        entity.stats.normalMaxArmour = entity.stats.armourFlat;
+        entity.stats.normalMaxMagicArmour = entity.stats.magicArmourFlat;
+        entity.stats.maxArmour = entity.stats.armourFlat;
+        entity.stats.maxMagicArmour = entity.stats.magicArmourFlat;
+        entity.stats.armour = entity.stats.maxArmour;
+        entity.stats.magicArmour = entity.stats.maxMagicArmour;
+      }
     }
     if (entity.stats.maxHp != null) {
       var nextMax = Number(entity.stats.maxHp) || 0;
