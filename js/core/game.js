@@ -8509,12 +8509,11 @@ function refreshBattleUI() {
 
 function setHpBar(who,hp,max) {
   const stats=who==='player'?G?.player?.stats:G?.enemy?.stats;
+  // Temporary shieldHp only — Armour/Magic Armour use dedicated ARM/MARM bars.
   const shieldHp=Math.max(0, Number(stats?.shieldHp)||0);
-  const armourPool=Math.max(0, Number(stats?.armour)||0)+Math.max(0, Number(stats?.magicArmour)||0);
-  const protectHp=Math.max(shieldHp, armourPool);
   const maxHp=Math.max(1, Number(max)||1);
   const pct=Math.max(0,hp/maxHp*100);
-  const shieldPct=Math.min(100, (protectHp/maxHp)*100);
+  const shieldPct=Math.min(100, (shieldHp/maxHp)*100);
   const bar=document.getElementById(`${who}-hp-bar`);
   if(!bar) return;
   bar.style.width=pct+'%';
@@ -8523,7 +8522,7 @@ function setHpBar(who,hp,max) {
   if(shieldSeg){
     shieldSeg.style.width=shieldPct+'%';
     shieldSeg.style.left=pct+'%';
-    shieldSeg.classList.toggle('active', protectHp>0);
+    shieldSeg.classList.toggle('active', shieldHp>0);
   }
 
   const key=`${who}Hp`;
