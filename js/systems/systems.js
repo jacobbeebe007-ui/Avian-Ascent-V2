@@ -33,8 +33,10 @@
     blinded: 'Blinded: reduced Accuracy.',
     decreed: 'Decreed: marked for amplified magic damage.',
     guarded: 'Guarded: physical attack damage reduction for a short time.',
-    shield: 'Shield: temporary HP that absorbs damage before real HP.',
-    shieldHp: 'Shield: temporary HP that absorbs damage before real HP.',
+    shield: 'Fortify/Ward: temporary Armour or Magic Armour that absorbs matching damage before Health.',
+    shieldHp: 'Fortify/Ward: temporary Armour or Magic Armour that absorbs matching damage before Health.',
+    fortify: 'Fortify: temporary Armour bonus shown on the ARM bar.',
+    ward: 'Ward: temporary Magic Armour bonus shown on the MARM bar.',
     accDebuff: 'Accuracy reduced — attacks are harder to land.',
     rageBuff: 'Rage: increased outgoing damage.',
   };
