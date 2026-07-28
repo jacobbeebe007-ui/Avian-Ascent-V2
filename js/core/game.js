@@ -7451,8 +7451,28 @@ function normalizeBattleTurnState(){
 function resetForNewBattle(){
   G.playerStatus={};
   G.enemyStatus={};
-  if(G.player?.stats){ G.player.stats.shieldHp=0; G.player.stats.maxShieldHp=0; }
-  if(G.enemy?.stats){ G.enemy.stats.shieldHp=0; G.enemy.stats.maxShieldHp=0; }
+  if(G.player?.stats){
+    G.player.stats.shieldHp=0; G.player.stats.maxShieldHp=0;
+    if(Avian.protection&&typeof Avian.protection.resetCombatPools==='function'){
+      Avian.protection.resetCombatPools(G.player);
+    } else {
+      G.player.stats.armour=Number(G.player.stats.normalMaxArmour||G.player.stats.maxArmour||0);
+      G.player.stats.magicArmour=Number(G.player.stats.normalMaxMagicArmour||G.player.stats.maxMagicArmour||0);
+      G.player.stats.maxArmour=G.player.stats.armour;
+      G.player.stats.maxMagicArmour=G.player.stats.magicArmour;
+    }
+  }
+  if(G.enemy?.stats){
+    G.enemy.stats.shieldHp=0; G.enemy.stats.maxShieldHp=0;
+    if(Avian.protection&&typeof Avian.protection.resetCombatPools==='function'){
+      Avian.protection.resetCombatPools(G.enemy);
+    } else {
+      G.enemy.stats.armour=Number(G.enemy.stats.normalMaxArmour||G.enemy.stats.maxArmour||0);
+      G.enemy.stats.magicArmour=Number(G.enemy.stats.normalMaxMagicArmour||G.enemy.stats.maxMagicArmour||0);
+      G.enemy.stats.maxArmour=G.enemy.stats.armour;
+      G.enemy.stats.maxMagicArmour=G.enemy.stats.magicArmour;
+    }
+  }
   G.crowDefendCooldown=0; G.blackbirdAttackCount=0;
   G.swoopCooldown=0; G.hummingbirdDashCooldown=0; G.peregrineDiveCooldown=0; G.snowyOwlDiveCooldown=0; G.robinDartCooldown=0; G.bowerbirdLureCooldown=0; G.intimidateCooldown=0; G.fruitCooldown=0;
   G.stickLanceStage=0; G.flybyCharged=false; G.flybyUsed=false;
@@ -8466,8 +8486,10 @@ function refreshBattleUI() {
     }
   }
 
-  document.getElementById('player-shield-overlay').className='shield-overlay'+((G.playerStatus?.defending>0||getGuardedPhysReducPct(G.playerStatus)>0||(G.player?.stats?.shieldHp||0)>0)?' active':'');
-  document.getElementById('enemy-shield-overlay').className='shield-overlay'+(G.enemyStatus.defending>0||getGuardedPhysReducPct(G.enemyStatus)>0||(G.enemy?.stats?.shieldHp||0)>0?' active':'');
+  const pArm=(G.player?.stats?.armour||0)+(G.player?.stats?.magicArmour||0);
+  const eArm=(G.enemy?.stats?.armour||0)+(G.enemy?.stats?.magicArmour||0);
+  document.getElementById('player-shield-overlay').className='shield-overlay'+((G.playerStatus?.defending>0||getGuardedPhysReducPct(G.playerStatus)>0||pArm>0||(G.playerStatus?.fortify)||(G.playerStatus?.ward))?' active':'');
+  document.getElementById('enemy-shield-overlay').className='shield-overlay'+(G.enemyStatus.defending>0||getGuardedPhysReducPct(G.enemyStatus)>0||eArm>0||(G.enemyStatus?.fortify)||(G.enemyStatus?.ward)?' active':'');
 
   renderEnemyPlan();
   applyUIStateToDOM();
@@ -8478,9 +8500,11 @@ function refreshBattleUI() {
 function setHpBar(who,hp,max) {
   const stats=who==='player'?G?.player?.stats:G?.enemy?.stats;
   const shieldHp=Math.max(0, Number(stats?.shieldHp)||0);
+  const armourPool=Math.max(0, Number(stats?.armour)||0)+Math.max(0, Number(stats?.magicArmour)||0);
+  const protectHp=Math.max(shieldHp, armourPool);
   const maxHp=Math.max(1, Number(max)||1);
   const pct=Math.max(0,hp/maxHp*100);
-  const shieldPct=Math.min(100, (shieldHp/maxHp)*100);
+  const shieldPct=Math.min(100, (protectHp/maxHp)*100);
   const bar=document.getElementById(`${who}-hp-bar`);
   if(!bar) return;
   bar.style.width=pct+'%';
@@ -8489,7 +8513,7 @@ function setHpBar(who,hp,max) {
   if(shieldSeg){
     shieldSeg.style.width=shieldPct+'%';
     shieldSeg.style.left=pct+'%';
-    shieldSeg.classList.toggle('active', shieldHp>0);
+    shieldSeg.classList.toggle('active', protectHp>0);
   }
 
   const key=`${who}Hp`;
@@ -8500,8 +8524,15 @@ function setHpBar(who,hp,max) {
 
   const hpTextEl=document.getElementById(`${who}-hp-text`);
   if(hpTextEl){
-    const shieldNote=shieldHp>0?` (+${formatCombatNumber(shieldHp)} shield)`:'';
-    hpTextEl.textContent=`${formatCombatNumber(Math.max(0,hp))}/${formatCombatNumber(maxHp)} (${pct.toFixed(2)}%)${shieldNote}`;
+    const armour=Math.max(0, Number(stats?.armour)||0);
+    const magicArmour=Math.max(0, Number(stats?.magicArmour)||0);
+    let protectNote='';
+    if(armour>0||magicArmour>0){
+      protectNote=` (+${formatCombatNumber(armour)} Arm/${formatCombatNumber(magicArmour)} MArm)`;
+    } else if(shieldHp>0){
+      protectNote=` (+${formatCombatNumber(shieldHp)} shield)`;
+    }
+    hpTextEl.textContent=`${formatCombatNumber(Math.max(0,hp))}/${formatCombatNumber(maxHp)} (${pct.toFixed(2)}%)${protectNote}`;
     hpTextEl.classList.remove('hp-delta-up','hp-delta-down');
     if(delta<0){ hpTextEl.classList.add('hp-delta-down'); }
     else if(delta>0){ hpTextEl.classList.add('hp-delta-up'); }
@@ -11579,20 +11610,35 @@ function resolveShieldAmountFromOpts(opts, maxHp){
 }
 
 function applyShieldHp(side, opts={}){
+  /* Legacy Barrier API — redirect to Fortify/Ward (equipment v1.2). */
   const stats=side==='enemy'?G.enemy?.stats:G.player?.stats;
   const status=side==='enemy'?G.enemyStatus:G.playerStatus;
   if(!stats||!status) return 0;
+  const prot=globalThis.Avian&&Avian.protection;
   const amount=resolveShieldAmountFromOpts(opts, stats.maxHp);
   if(amount<=0) return 0;
+  const turns=Math.max(1, Math.floor(Number(opts.turns)||2));
+  const isMagic=!!opts.isMagic||String(opts.pool||'').toLowerCase().includes('magic');
+  if(prot){
+    if(opts.restoreOnly){
+      return isMagic?prot.restoreMagicArmour(stats, amount):prot.restoreArmour(stats, amount);
+    }
+    return isMagic?prot.applyWard(stats, status, amount, turns):prot.applyFortify(stats, status, amount, turns);
+  }
+  /* Fallback if protection module missing. */
   stats.shieldHp=Math.round(((Number(stats.shieldHp)||0)+amount)*100)/100;
   stats.maxShieldHp=Math.max(Number(stats.maxShieldHp)||0, stats.shieldHp);
-  status.shieldHpTurns=Math.max(status.shieldHpTurns||0, Math.max(1, Math.floor(Number(opts.turns)||1)));
-  status.shieldHpSourceId=opts.sourceId||opts.sourceAbilityId||status.shieldHpSourceId||'';
-  status.shieldHpSourceKind=opts.sourceKind||'ability';
+  status.shieldHpTurns=Math.max(status.shieldHpTurns||0, turns);
   return amount;
 }
 
-function applyDamageThroughShield(stats, status, dmg){
+function applyDamageThroughShield(stats, status, dmg, isMagic=false){
+  const prot=globalThis.Avian&&Avian.protection;
+  if(prot&&typeof prot.applyDamageThroughProtection==='function'){
+    const result=prot.applyDamageThroughProtection(stats, status, dmg, !!isMagic);
+    if(typeof G!=='undefined') G._lastProtectionHit=result;
+    return result.remaining;
+  }
   let remaining=Math.max(0, Number(dmg)||0);
   const shield=Math.max(0, Number(stats?.shieldHp)||0);
   if(shield<=0||remaining<=0) return remaining;
@@ -11614,6 +11660,10 @@ function applyDamageThroughShield(stats, status, dmg){
 function tickShieldHpStatus(side){
   const status=side==='player'?G.playerStatus:G.enemyStatus;
   const stats=side==='player'?G.player?.stats:G.enemy?.stats;
+  const prot=globalThis.Avian&&Avian.protection;
+  if(prot&&typeof prot.tickProtectionStatuses==='function'){
+    prot.tickProtectionStatuses(stats, status);
+  }
   if(!status||!stats||!(status.shieldHpTurns>0)) return;
   status.shieldHpTurns=Math.max(0, (status.shieldHpTurns||1)-1);
   if(status.shieldHpTurns<=0){
@@ -12504,7 +12554,7 @@ function dealDamage(target,amount,isCrit=false,isMagic=false,srcAbility=null,opt
     dmg=opts.masterFullyResolved
       ? roundCombatDamage(Math.max(0.01, dmg))
       : applyMinimumDamage(roundCurvedDamage(dmg), enemyEnCost);
-    dmg=applyDamageThroughShield(G.player.stats, G.playerStatus, dmg);
+    dmg=applyDamageThroughShield(G.player.stats, G.playerStatus, dmg, isMagic);
     const bypassDeflect=!!G._incomingBypassesDeflect;
     if(G.playerStatus.parry&&G.playerStatus.parry>0){
       const isParryValid=(G._incomingAttackKind==='physical'||G._incomingAttackKind==='ranged')&&!bypassDeflect;
@@ -12586,7 +12636,7 @@ function dealDamage(target,amount,isCrit=false,isMagic=false,srcAbility=null,opt
       logMsg(`🌀 Confused — you hit yourself for ${formatCombatNumber(dmg)}!`,'miss');
       return {dmgDealt:dmg,wasDodged:false,wasBlocked:false,isCrit,isMagic};
     }
-    G.enemy.stats.hp = Math.max(0, Math.round((Number(G.enemy.stats.hp) - applyDamageThroughShield(G.enemy.stats, G.enemyStatus, dmg)) * 100) / 100);
+    G.enemy.stats.hp = Math.max(0, Math.round((Number(G.enemy.stats.hp) - applyDamageThroughShield(G.enemy.stats, G.enemyStatus, dmg, isMagic)) * 100) / 100);
     if(dmg>0 && typeof Avian?.passives?.onEnemyDamaged==='function') Avian.passives.onEnemyDamaged(dmg, isMagic);
     if(dmg>0) applyLifestealFromDamage(dmg, srcAbility||G._activePlayerAbility);
     const _atkKind=String(srcAbility?.btnType||srcAbility?.type||G._activePlayerAbility?.btnType||G._activePlayerAbility?.type||'').toLowerCase();

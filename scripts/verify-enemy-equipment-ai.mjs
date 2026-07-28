@@ -142,13 +142,13 @@ for (const cls of classes) {
 }
 
 const knightGreyExpected = {
-  helmet: 'EQ-HP-GRY',
-  armour: 'EQ-AH-GRY',
-  mainHand: 'EQ-GB-GRY',
+  helmet: 'HLM-001',
+  armour: 'ARM-001',
+  mainHand: 'WPN-073',
   offHand: null, /* 2H Greatblade clears offHand (including Shields) */
-  ankletL: 'EQ-AI-GRY',
-  ankletR: 'EQ-AI-GRY',
-  necklace: 'EQ-NH-GRY',
+  ankletL: 'ACC-001',
+  ankletR: 'ACC-001',
+  necklace: 'ACC-025',
 };
 
 const knightEnemy = makeEnemy('knight', 'grey', { id: 'snapshot-knight-grey', birdKey: 'crow' });

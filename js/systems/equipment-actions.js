@@ -281,6 +281,21 @@
     var isUtil = dmgType.toLowerCase() === 'utility' || (Number(skill.hits) || 0) === 0;
     var structured = resolveStructuredRider(skill);
     var riders = convertParsedRiderToRows(structured, skillId);
+    if (Array.isArray(skill.protectionRiders) && skill.protectionRiders.length) {
+      for (var pri = 0; pri < skill.protectionRiders.length; pri++) {
+        var pr = skill.protectionRiders[pri];
+        if (!pr || !pr.kind) continue;
+        riders.push(Object.assign({ when: null, scope: 'self' }, pr));
+      }
+    } else if (Array.isArray(skill.riders) && skill.riders.length) {
+      for (var sri = 0; sri < skill.riders.length; sri++) {
+        var sr = skill.riders[sri];
+        if (!sr || !sr.kind) continue;
+        if (/^(restoreArmour|restoreMagicArmour|fortify|ward|bastion)$/.test(sr.kind)) {
+          riders.push(Object.assign({ when: null, scope: 'self' }, sr));
+        }
+      }
+    }
     if (skill.rider && skill.rider.kind === 'applyAilment') {
       riders.push({
         kind: 'applyAilment',
@@ -517,6 +532,14 @@
 
     var mainFamily = normalizeFamilyName(main.family);
     var offFamily = offWeapon ? normalizeFamilyName(offWeapon.family) : null;
+    var offIsShield = off && !offWeapon && String(off.slot || '').toLowerCase() === 'shield';
+
+    /* v1.2: 1H weapons grant Skill 1 + Skill 2 when off-hand is empty or a Shield. */
+    if (!offWeapon && main.skill2) {
+      var rSolo2 = ns.skillToAbilityRow(main.skill2, main, rarityMain);
+      out.weaponB = rSolo2 ? abilityFromRow(rSolo2, { actionSource: 'weaponB' }) : null;
+      return out;
+    }
 
     /* Dual-wield: matching Focus → matching Paired → curated Combination → unlinked normals. */
     if (offWeapon && mainFamily === 'Focus Orb' && offFamily === 'Focus Orb') {
@@ -531,6 +554,13 @@
     if (offWeapon && mainFamily && offFamily === mainFamily && main.pairedSkill) {
       var rp = ns.skillToAbilityRow(main.pairedSkill, main, rarityMain);
       out.weaponB = rp ? abilityFromRow(rp, { actionSource: 'weaponB' }) : null;
+      return out;
+    }
+
+    /* Matching dual-wield without a curated pair: use main Skill 2 (v1.2 pair). */
+    if (offWeapon && mainFamily && offFamily === mainFamily && main.skill2) {
+      var rMatch2 = ns.skillToAbilityRow(main.skill2, main, rarityMain);
+      out.weaponB = rMatch2 ? abilityFromRow(rMatch2, { actionSource: 'weaponB' }) : null;
       return out;
     }
 

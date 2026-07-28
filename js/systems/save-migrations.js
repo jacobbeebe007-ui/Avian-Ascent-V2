@@ -25,16 +25,17 @@
   'use strict';
 
   /** Bump when adding a migration. */
-  var TARGET = 16;
+  var TARGET = 17;
 
   /** Combat-pack version stamp surfaced on the save blob. Wipes attached when
    *  this changes so legacy ability/perk/family state never bleeds into a run. */
   var COMBAT_PACK_VERSION = '2026.07-flat-abilities';
   var MUTATIONS_PACK_VERSION = '2026.06-mutations-v6';
-  var EQUIPMENT_PACK_VERSION = '2026.07-weapon-first-v0.9';
+  var EQUIPMENT_PACK_VERSION = '2026.07-equipment-v1.2-restoration';
   var AFFINITY_ARSENAL_PACK_VERSION = '2026.07-weapon-first-v0.9';
-  var EQUIPMENT_LOOT_PACK_VERSION = '2026.07-weapon-first-v0.9';
+  var EQUIPMENT_LOOT_PACK_VERSION = '2026.07-equipment-v1.2-restoration';
   var WEAPON_FIRST_PACK_VERSION = '2026.07-weapon-first-v0.9';
+  var EQUIPMENT_V12_PACK_VERSION = '2026.07-equipment-v1.2-restoration';
   var SAVE_BACKUP_KEY_PRE_V13 = 'avianAscent_save_v2_backup_pre_v13';
   var EQUIPMENT_V2_STARTER_STIPEND = 30;
   var MUTATION_SELL_COSTS = { white: 16, green: 28, blue: 44, purple: 64, gold: 96, orange: 140 };
@@ -207,6 +208,16 @@
     save.equipmentPackVersion = EQUIPMENT_PACK_VERSION;
     save.equipmentLootPackVersion = EQUIPMENT_LOOT_PACK_VERSION;
     save.weaponFirstPackVersion = WEAPON_FIRST_PACK_VERSION;
+    return save;
+  }
+
+  function stampEquipmentV12Fields(save) {
+    if (!save || typeof save !== 'object') return save;
+    stampWeaponFirstV09Fields(save);
+    save.equipmentV12 = true;
+    save.equipmentPackVersion = EQUIPMENT_V12_PACK_VERSION;
+    save.equipmentLootPackVersion = EQUIPMENT_V12_PACK_VERSION;
+    save.equipmentV12PackVersion = EQUIPMENT_V12_PACK_VERSION;
     return save;
   }
 
@@ -485,6 +496,17 @@
         return save;
       },
     },
+    {
+      from: 16,
+      to: 17,
+      note: 'equipment v1.2: Armour/Magic Armour/Fortify/Ward catalogue; wipe EQ-* loadouts',
+      fn: function (save) {
+        if (!save || typeof save !== 'object') return save;
+        wipePlayerEquipmentLoadout(save);
+        stampEquipmentV12Fields(save);
+        return save;
+      },
+    },
   ];
 
   var Avian = globalThis.Avian || (globalThis.Avian = { systems: {}, debug: {} });
@@ -497,6 +519,7 @@
   Avian.systems.AFFINITY_ARSENAL_PACK_VERSION = AFFINITY_ARSENAL_PACK_VERSION;
   Avian.systems.EQUIPMENT_LOOT_PACK_VERSION = EQUIPMENT_LOOT_PACK_VERSION;
   Avian.systems.WEAPON_FIRST_PACK_VERSION = WEAPON_FIRST_PACK_VERSION;
+  Avian.systems.EQUIPMENT_V12_PACK_VERSION = EQUIPMENT_V12_PACK_VERSION;
   Avian.systems.SAVE_BACKUP_KEY_PRE_V13 = SAVE_BACKUP_KEY_PRE_V13;
   Avian.systems.EQUIPMENT_V2_STARTER_STIPEND = EQUIPMENT_V2_STARTER_STIPEND;
   Avian.systems.needsEquipmentV2PreReleaseReset = needsEquipmentV2PreReleaseReset;
@@ -507,6 +530,7 @@
   Avian.systems.stampAffinityArsenalFields = stampAffinityArsenalFields;
   Avian.systems.stampEquipmentLootV07Fields = stampEquipmentLootV07Fields;
   Avian.systems.stampWeaponFirstV09Fields = stampWeaponFirstV09Fields;
+  Avian.systems.stampEquipmentV12Fields = stampEquipmentV12Fields;
 
   Avian.systems.maybeBackupPreV13Save = function maybeBackupPreV13Save(rawJson, parsed) {
     if (!parsed || typeof parsed !== 'object') return false;

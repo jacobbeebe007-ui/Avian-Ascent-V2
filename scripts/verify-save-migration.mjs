@@ -192,16 +192,16 @@ function testCorruptedLoadoutSanitization() {
   const beforeShiny = ctx.G.shinyObjects;
   const result = equipment.sanitizeEquipmentLoadout(player, { removeUnmappable: true });
 
-  if (player.equipment.mainHand !== 'EQ-LN-GRY') fail('2H mainHand should remain');
+  if (player.equipment.mainHand !== 'WPN-061') fail('2H mainHand should remain');
   else ok('2H mainHand kept');
 
   if (player.equipment.offHand == null) ok('offHand cleared for 2H conflict');
   else fail(`offHand not cleared for 2H+offHand (offHand=${String(player.equipment.offHand)})`);
 
-  if (player.equipmentInventory.includes('EQ-NOT-REAL')) fail('invalid inventory id not removed');
+  if (player.equipmentInventory.includes('WPN-NOT-REAL')) fail('invalid inventory id not removed');
   else ok('invalid inventory id removed');
 
-  const wrongSlotId = 'EQ-HP-GRY';
+  const wrongSlotId = 'HLM-001';
   player.equipment.mainHand = wrongSlotId;
   player.equipment.offHand = null;
   player.equipmentInventory = [];
@@ -239,8 +239,8 @@ function testEquipmentV2SaveStamp() {
   if (migrated.equipmentPackVersion !== systems.EQUIPMENT_PACK_VERSION) fail('equipmentPackVersion missing');
   else ok('equipmentPackVersion stamped');
 
-  if (Number(migrated.schemaVersion) !== 16) fail('schemaVersion should be 16 after migration');
-  else ok('schemaVersion is 16');
+  if (Number(migrated.schemaVersion) !== 17) fail('schemaVersion should be 17 after migration');
+  else ok('schemaVersion is 17');
 
   if (migrated.affinityArsenalPackVersion !== systems.AFFINITY_ARSENAL_PACK_VERSION) {
     fail('affinityArsenalPackVersion missing');
@@ -252,6 +252,8 @@ function testEquipmentV2SaveStamp() {
 
   if (migrated.weaponFirstV09 !== true) fail('weaponFirstV09 stamp missing');
   else ok('weaponFirstV09 stamped');
+  if (migrated.equipmentV12 !== true) fail('equipmentV12 stamp missing');
+  else ok('equipmentV12 stamped');
 }
 
 function testShieldSlotMigration() {
@@ -266,9 +268,9 @@ function testShieldSlotMigration() {
       equipment: {
         helmet: null,
         armour: null,
-        mainHand: 'EQ-LN-GRY',
+        mainHand: 'WPN-061',
         offHand: null,
-        shield: 'EQ-SM-GRY',
+        shield: 'SHD-001',
         ankletL: null,
         ankletR: null,
         necklace: null,
@@ -277,14 +279,14 @@ function testShieldSlotMigration() {
     },
   };
   const migrated = systems.runSaveMigrations(save);
-  if (Number(migrated.schemaVersion) !== 16) fail('shield migration should reach schema 16');
-  else ok('shield migration reaches schema 16');
+  if (Number(migrated.schemaVersion) !== 17) fail('shield migration should reach schema 17');
+  else ok('shield migration reaches schema 17');
   if (migrated.player.equipment.shield != null) fail('legacy shield key should be removed');
   else ok('legacy shield key removed');
   /* v16 wipes equipment after the v15 shield→offHand fold. */
   if (migrated.player.equipment.offHand != null) {
-    fail('v16 should wipe equipment loadout, got offHand=' + migrated.player.equipment.offHand);
-  } else ok('v16 wiped equipment after shield fold');
+    fail('v17 should wipe equipment loadout, got offHand=' + migrated.player.equipment.offHand);
+  } else ok('v17 wiped equipment after shield fold');
   if (migrated.weaponFirstV09 !== true) fail('weaponFirstV09 missing after shield chain');
   else ok('weaponFirstV09 stamped after shield chain');
 
@@ -298,21 +300,21 @@ function testShieldSlotMigration() {
       equipment: {
         helmet: null,
         armour: null,
-        mainHand: 'EQ-TB-GRY',
-        offHand: 'EQ-TB-GRY',
+        mainHand: 'WPN-007',
+        offHand: 'WPN-007',
         ankletL: null,
         ankletR: null,
         necklace: null,
       },
-      equipmentInventory: ['EQ-SM-GRY'],
+      equipmentInventory: ['SHD-001'],
     },
   };
   const m2 = systems.runSaveMigrations(saveOccupied);
-  if (Number(m2.schemaVersion) !== 16) fail('v15→v16 should reach schema 16');
-  else ok('v15→v16 reaches schema 16');
+  if (Number(m2.schemaVersion) !== 17) fail('v15→v17 should reach schema 17');
+  else ok('v15→v17 reaches schema 17');
   if (m2.player.equipment.mainHand != null || (m2.player.equipmentInventory || []).length) {
-    fail('v16 should wipe loadout and inventory');
-  } else ok('v16 wiped hybrid equipment loadout and inventory');
+    fail('v17 should wipe loadout and inventory');
+  } else ok('v17 wiped hybrid equipment loadout and inventory');
 }
 
 function equipmentEmpty(ctx) {
