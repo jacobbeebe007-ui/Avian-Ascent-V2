@@ -981,7 +981,7 @@
         statMod = 1;
       } else {
         weaponDamage = resolveWeaponDamageValue(params, ability, attacker);
-        skillPowerPct = getSkillPowerPct(ability);
+        skillPowerPct = getSkillPowerPct(ability) + (Number(params.skillPowerBonus) || 0);
         /* Hybrid COMBO rows: sum weapon×((sharePct + stat×2.5)/100) per component. */
         if (Array.isArray(ability.scaling) && ability.scaling.length) {
           preMitigation = 0;

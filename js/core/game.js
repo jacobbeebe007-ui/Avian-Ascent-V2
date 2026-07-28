@@ -8145,14 +8145,13 @@ function getActiveDamageModifierLines(side){
   const perk=Avian?.classPerks?.getClassPerkForBird?.(G.player?.birdKey);
   if(perk){
     if(perk.def?.id==='rogueTempo' && !cpState.rogueTempoUsed) lines.push(`${perk.name}: +10 Precision on first Weapon Skill 1 (pending)`);
-    if(perk.def?.id==='verseAndChorus' && cpState.verseChorusPending) lines.push(`${perk.name}: +10% next magic hit`);
+    if(perk.def?.id==='verseAndChorus' && !cpState.verseChorusUsed) lines.push(`${perk.name}: alternate Martial/Magic to restore protection`);
     if(perk.def?.id==='retaliatingHide' && cpState.retaliatingHidePending) lines.push(`${perk.name}: +10% next physical hit`);
-    if(perk.def?.id==='bulwarkOath'){
-      const hp=G.player?.stats?.hp||1, maxHp=G.player?.stats?.maxHp||1;
-      lines.push(hp>maxHp*0.5 ? `${perk.name}: −10% incoming damage (active)` : `${perk.name}: inactive below 50% HP`);
-    }
-    if(perk.def?.id==='arcanePressure') lines.push(`${perk.name}: +10% MDEF penetration on magic`);
-    if(perk.def?.id==='cursedCall') lines.push(`${perk.name}: +1 debuff duration on applied ailments`);
+    if(perk.def?.id==='bulwarkOath' && !cpState.bulwarkOathUsed) lines.push(`${perk.name}: +4 Guard after Fortify / Armour Restoration`);
+    if(perk.def?.id==='arcanePressure' && !cpState.arcanePressureUsed) lines.push(`${perk.name}: +10% Magic Armour damage on first Magic weapon skill`);
+    if(perk.def?.id==='cursedCall' && !cpState.cursedCallUsed) lines.push(`${perk.name}: after Magic Armour break, next ailment +10% app / +1 turn`);
+    if(perk.def?.id==='crushingMomentum' && cpState.crushingMomentumPending) lines.push(`${perk.name}: +10 Skill Power on next Strength weapon skill`);
+    if(perk.def?.id==='judgementLeech' && !cpState.judgementLeechUsed) lines.push(`${perk.name}: restore lower protection pool on Health hit vs marked/ailmented`);
   }
   const evo=getPassiveEvolutionBonuses(G.player);
   if(evo.damagePct) lines.push(`Passive evolution: +${Math.round(evo.damagePct*100)}% damage`);
@@ -11782,9 +11781,35 @@ function applyShieldHp(side, opts={}){
   return amount;
 }
 
-function applyDamageThroughShield(stats, status, dmg, isMagic=false){
+function applyDamageThroughShield(stats, status, dmg, isMagic=false, opts=null){
   const prot=globalThis.Avian&&Avian.protection;
+  opts=opts||{};
   if(prot&&typeof prot.applyDamageThroughProtection==='function'){
+    let incoming=Math.max(0, Number(dmg)||0);
+    const poolKey=isMagic?'magicArmour':'armour';
+    const poolBefore=Math.max(0, Number(stats?.[poolKey])||0);
+    let armourBonusFrac=Number(opts.protectionDamageBonus)||0;
+    if(armourBonusFrac>0 && poolBefore>0 && incoming>0){
+      /* Bonus damages the protection pool only — never increases Health damage. */
+      const againstPool=Math.min(poolBefore, incoming);
+      const healthPart=incoming-againstPool;
+      const bonusAbsorbed=Math.min(poolBefore, againstPool*(1+armourBonusFrac));
+      stats[poolKey]=Math.round((poolBefore-bonusAbsorbed)*100)/100;
+      if(stats[poolKey]<0) stats[poolKey]=0;
+      const poolAfter=Math.max(0, Number(stats[poolKey])||0);
+      const result={
+        remaining:healthPart,
+        absorbed:bonusAbsorbed,
+        poolBefore,
+        poolAfter,
+        brokePool:poolBefore>0&&poolAfter<=0,
+        damagedHealth:healthPart>0,
+        poolKey,
+        isMagic:!!isMagic,
+      };
+      if(typeof G!=='undefined') G._lastProtectionHit=result;
+      return healthPart;
+    }
     const result=prot.applyDamageThroughProtection(stats, status, dmg, !!isMagic);
     if(typeof G!=='undefined') G._lastProtectionHit=result;
     return result.remaining;
@@ -11805,6 +11830,25 @@ function applyDamageThroughShield(stats, status, dmg, isMagic=false){
     }
   }
   return remaining;
+}
+
+function notifyProtectionHitHooks(defender, attacker, isMagic, ab){
+  const hit=typeof G!=='undefined'?G._lastProtectionHit:null;
+  if(!hit||!defender) return;
+  if(!isMagic && hit.absorbed>0){
+    if(typeof Avian?.classPerks?.onArmourAbsorbed==='function'){
+      Avian.classPerks.onArmourAbsorbed(defender, hit.absorbed);
+    }
+    if(typeof Avian?.passives?.onArmourAbsorbed==='function'){
+      Avian.passives.onArmourAbsorbed(defender, hit.absorbed);
+    }
+  }
+  if(!isMagic && hit.brokePool && attacker && typeof Avian?.classPerks?.onRogueTempoArmourBreak==='function'){
+    Avian.classPerks.onRogueTempoArmourBreak(attacker);
+  }
+  if(isMagic && hit.brokePool && attacker && typeof Avian?.classPerks?.onMagicArmourBroken==='function'){
+    Avian.classPerks.onMagicArmourBroken(attacker, defender);
+  }
 }
 
 function tickShieldHpStatus(side){
@@ -12154,6 +12198,18 @@ function computeMasterOutgoingDamage(isMagic, srcAbility, opts={}){
       ? clampCritDamageMult(G.player?.goldCritMult||globalThis.MASTER_BASE_CRIT_MULT||BASE_CRIT_DAMAGE||1.5)
       : (G.player?.goldCritMult||globalThis.MASTER_BASE_CRIT_MULT||BASE_CRIT_DAMAGE||1.5),
     hitSucceeded:opts.hitSucceeded!==false,
+    skillPowerBonus:(function(){
+      let n=0;
+      if(typeof Avian?.classPerks?.getOutgoingSkillPowerBonus==='function'){
+        n+=Avian.classPerks.getOutgoingSkillPowerBonus(G.player, activeAb)||0;
+      }
+      const ps=G.playerStatus||{};
+      if(ps._passiveSkillPowerBonus){
+        n+=Number(ps._passiveSkillPowerBonus)||0;
+        ps._passiveSkillPowerBonus=0;
+      }
+      return n;
+    })(),
   });
   // Conditional dispatcher bonuses (marked, finisher, bonusVsAilment, bonusVsLowHp) are
   // folded into the capped Bonus_Mod via collectDispatcherConditionalBonusFractions
@@ -12706,7 +12762,26 @@ function dealDamage(target,amount,isCrit=false,isMagic=false,srcAbility=null,opt
     dmg=opts.masterFullyResolved
       ? roundCombatDamage(Math.max(0.01, dmg))
       : applyMinimumDamage(roundCurvedDamage(dmg), enemyEnCost);
-    dmg=applyDamageThroughShield(G.player.stats, G.playerStatus, dmg, isMagic);
+    {
+      const atkAb=activeAb||srcAbility;
+      let protBonus=0;
+      if(isMagic && typeof Avian?.classPerks?.peekArcanePressureMagicArmourBonus==='function'){
+        if(typeof Avian.classPerks.prepareOutgoingAbilityBonuses==='function'){
+          Avian.classPerks.prepareOutgoingAbilityBonuses(G.enemy, atkAb);
+        }
+        protBonus=Math.max(protBonus, Avian.classPerks.peekArcanePressureMagicArmourBonus(G.enemy, atkAb)||0);
+      }
+      const stEnemy=G.enemyStatus||{};
+      if(!isMagic && (stEnemy._passiveArmourDamagePct||0)>0) protBonus=Math.max(protBonus, Number(stEnemy._passiveArmourDamagePct)||0);
+      if(isMagic && (stEnemy._passiveMagicArmourDamagePct||0)>0) protBonus=Math.max(protBonus, Number(stEnemy._passiveMagicArmourDamagePct)||0);
+      dmg=applyDamageThroughShield(G.player.stats, G.playerStatus, dmg, isMagic, { protectionDamageBonus: protBonus });
+      notifyProtectionHitHooks(G.player, G.enemy, isMagic, atkAb);
+      if(protBonus>0 && isMagic && typeof Avian?.classPerks?.consumeArcanePressureFlag==='function'){
+        Avian.classPerks.consumeArcanePressureFlag(G.enemy);
+      }
+      if(!isMagic) delete stEnemy._passiveArmourDamagePct;
+      if(isMagic) delete stEnemy._passiveMagicArmourDamagePct;
+    }
     const bypassDeflect=!!G._incomingBypassesDeflect;
     if(G.playerStatus.parry&&G.playerStatus.parry>0){
       const isParryValid=(G._incomingAttackKind==='physical'||G._incomingAttackKind==='ranged')&&!bypassDeflect;
@@ -12737,7 +12812,13 @@ function dealDamage(target,amount,isCrit=false,isMagic=false,srcAbility=null,opt
       G._mutationBloodiedSelfFired=true;
       if(typeof Avian?.equipmentEffects?.onBloodiedSelf==='function') Avian.equipmentEffects.onBloodiedSelf();
     }
-    if(typeof Avian?.passives?.onPlayerDamaged==='function') Avian.passives.onPlayerDamaged(dmg, isMagic);
+    if(typeof Avian?.passives?.onPlayerDamaged==='function'){
+      Avian.passives.onPlayerDamaged(dmg, isMagic, {
+        armourAbsorbed: !isMagic && !!(G._lastProtectionHit && G._lastProtectionHit.absorbed > 0),
+        protectionAbsorbed: !!(G._lastProtectionHit && G._lastProtectionHit.absorbed > 0),
+        brokePool: !!(G._lastProtectionHit && G._lastProtectionHit.brokePool),
+      });
+    }
     if(BIRDS[G.player?.birdKey]?.passive?.id==='passive_bluejay_territorial_fury' && dmg>0) G.player._blueJayRecentHit=true;
     if((G.player?.lowHpSpdBonus||0)>0 && !G.player._lowHpSpdApplied && G.player.stats.hp<=Math.floor((G.player.stats.maxHp||1)*0.5)){
       G.player.stats.spd=(G.player.stats.spd||0)+G.player.lowHpSpdBonus;
@@ -12788,8 +12869,38 @@ function dealDamage(target,amount,isCrit=false,isMagic=false,srcAbility=null,opt
       logMsg(`🌀 Confused — you hit yourself for ${formatCombatNumber(dmg)}!`,'miss');
       return {dmgDealt:dmg,wasDodged:false,wasBlocked:false,isCrit,isMagic};
     }
-    G.enemy.stats.hp = Math.max(0, Math.round((Number(G.enemy.stats.hp) - applyDamageThroughShield(G.enemy.stats, G.enemyStatus, dmg, isMagic)) * 100) / 100);
-    if(dmg>0 && typeof Avian?.passives?.onEnemyDamaged==='function') Avian.passives.onEnemyDamaged(dmg, isMagic);
+    G.enemy.stats.hp = Math.max(0, Math.round((Number(G.enemy.stats.hp) - (function(){
+      const atkAb=srcAbility||G._activePlayerAbility;
+      let protBonus=0;
+      if(isMagic && typeof Avian?.classPerks?.peekArcanePressureMagicArmourBonus==='function'){
+        if(typeof Avian.classPerks.prepareOutgoingAbilityBonuses==='function'){
+          Avian.classPerks.prepareOutgoingAbilityBonuses(G.player, atkAb);
+        }
+        protBonus=Math.max(protBonus, Avian.classPerks.peekArcanePressureMagicArmourBonus(G.player, atkAb)||0);
+      }
+      const stPlayer=G.playerStatus||{};
+      if(!isMagic && (stPlayer._passiveArmourDamagePct||0)>0){
+        protBonus=Math.max(protBonus, Number(stPlayer._passiveArmourDamagePct)||0);
+        delete stPlayer._passiveArmourDamagePct;
+      }
+      if(isMagic && (stPlayer._passiveMagicArmourDamagePct||0)>0){
+        protBonus=Math.max(protBonus, Number(stPlayer._passiveMagicArmourDamagePct)||0);
+        delete stPlayer._passiveMagicArmourDamagePct;
+      }
+      const remaining=applyDamageThroughShield(G.enemy.stats, G.enemyStatus, dmg, isMagic, { protectionDamageBonus: protBonus });
+      notifyProtectionHitHooks(G.enemy, G.player, isMagic, atkAb);
+      if(protBonus>0 && isMagic && typeof Avian?.classPerks?.consumeArcanePressureFlag==='function'){
+        Avian.classPerks.consumeArcanePressureFlag(G.player);
+      }
+      return remaining;
+    })()) * 100) / 100);
+    if(dmg>0 && typeof Avian?.passives?.onEnemyDamaged==='function'){
+      Avian.passives.onEnemyDamaged(dmg, isMagic, {
+        armourAbsorbed: !isMagic && !!(G._lastProtectionHit && G._lastProtectionHit.absorbed > 0),
+        protectionAbsorbed: !!(G._lastProtectionHit && G._lastProtectionHit.absorbed > 0),
+        brokePool: !!(G._lastProtectionHit && G._lastProtectionHit.brokePool),
+      });
+    }
     if(dmg>0) applyLifestealFromDamage(dmg, srcAbility||G._activePlayerAbility);
     const _atkKind=String(srcAbility?.btnType||srcAbility?.type||G._activePlayerAbility?.btnType||G._activePlayerAbility?.type||'').toLowerCase();
     if((_atkKind==='physical'||_atkKind==='ranged') && dmg>0){
@@ -13821,6 +13932,9 @@ async function playerAction(ab,fromQueue=false) {
       anyCrit: !!G._lastAbilityAnyCrit,
       crit: !!G._lastAbilityAnyCrit,
       ailmentFailed: !!G._lastAbilityAilmentFailed,
+      healthDamage: G._lastProtectionHit && G._lastProtectionHit.damagedHealth
+        ? (G._lastProtectionHit.remaining || 1)
+        : 0,
       effActKind,
       oneEnCountThisTurn: G._workbookOneEnCount||0,
     });

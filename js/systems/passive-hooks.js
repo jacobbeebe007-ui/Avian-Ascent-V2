@@ -526,15 +526,28 @@
         return !!(ab && (!t.skill || abilityNameMatches(ab, t.skill)));
       case 'afterArmourTechnique':
         return !!(ctx && ctx.armourTechnique);
+      case 'afterArmourAbsorb':
+        return !!(ctx && (ctx.armourAbsorbed || ctx.protectionAbsorbed));
+      case 'afterDebuffApplied':
+        return !!(ctx && ctx.appliedDebuff);
+      case 'afterAilmentApplied':
+        return !!(ctx && ctx.appliedAilment);
+      case 'afterTwoDifferentSkills': {
+        if (!ab) return false;
+        G._passiveSkillIds = G._passiveSkillIds || Object.create(null);
+        var skillBag = G._passiveSkillIds[side] || (G._passiveSkillIds[side] = Object.create(null));
+        var sid = String(ab.id || ab.name || '');
+        if (!sid) return false;
+        skillBag[sid] = true;
+        return Object.keys(skillBag).length >= 2;
+      }
       case 'afterTwoDifferent1En': {
         if (!ab || abilityEnCostLocal(ab) !== 1) return false;
         G._passiveOneEnIds = G._passiveOneEnIds || Object.create(null);
         var bag = G._passiveOneEnIds[side] || (G._passiveOneEnIds[side] = Object.create(null));
-        var aid = String(ab.id || ab.name || '');
-        bag[aid] = true;
-        var n = 0;
-        for (var k in bag) if (Object.prototype.hasOwnProperty.call(bag, k)) n++;
-        return n >= 2;
+        var id1 = String(ab.id || ab.name || '');
+        if (id1) bag[id1] = true;
+        return Object.keys(bag).length >= 2;
       }
       case 'onClassPerk':
         return !!(ctx && ctx.classPerkTriggered === (t.perk || 'verseAndChorus'));
@@ -616,6 +629,62 @@
       if (sp.id === 'copyMightFocus' && ctx && ctx.songBuffStat) {
         var other = String(ctx.songBuffStat).toLowerCase() === 'atk' ? 'matk' : 'atk';
         applyV2TierEffect(perk.id, { kind: 'tierStat', tier: 'minor', stat: other, dir: 'up', target: 'self' }, 1, side);
+      }
+      if (sp.id === 'restoreArmour' && Avian.protection && typeof Avian.protection.restoreArmour === 'function') {
+        Avian.protection.restoreArmour(actor.stats, Number(sp.amount) || 0);
+        if (typeof spawnFloat === 'function') spawnFloat(side, '+' + (sp.amount || 0) + ' ARM', 'fn-buff');
+      }
+      if (sp.id === 'restoreMagicArmour' && Avian.protection && typeof Avian.protection.restoreMagicArmour === 'function') {
+        Avian.protection.restoreMagicArmour(actor.stats, Number(sp.amount) || 0);
+        if (typeof spawnFloat === 'function') spawnFloat(side, '+' + (sp.amount || 0) + ' MARM', 'fn-buff');
+      }
+      if (sp.id === 'restoreLowerProtection') {
+        var stats = actor.stats;
+        var arm = Math.max(0, Number(stats.armour) || 0);
+        var armMax = Math.max(0, Number(stats.normalMaxArmour != null ? stats.normalMaxArmour : stats.maxArmour) || 0);
+        var mag = Math.max(0, Number(stats.magicArmour) || 0);
+        var magMax = Math.max(0, Number(stats.normalMaxMagicArmour != null ? stats.normalMaxMagicArmour : stats.maxMagicArmour) || 0);
+        var n = Math.max(0, Math.floor(Number(sp.amount) || 0));
+        var useMagic = (magMax - mag) > 0 && ((armMax - arm) <= 0 || mag < arm);
+        if (Avian.protection) {
+          if (useMagic && typeof Avian.protection.restoreMagicArmour === 'function') Avian.protection.restoreMagicArmour(stats, n);
+          else if (typeof Avian.protection.restoreArmour === 'function') Avian.protection.restoreArmour(stats, n);
+        }
+        if (typeof spawnFloat === 'function') spawnFloat(side, '+' + n + ' Prot', 'fn-buff');
+      }
+      if (sp.id === 'ignoreGuardFlat' && sp.amount) {
+        if (side === 'enemy') G._enemyWorkbookPassiveDefFlat = Math.max(G._enemyWorkbookPassiveDefFlat || 0, Number(sp.amount) || 0);
+        else G._workbookPassiveDefFlat = Math.max(G._workbookPassiveDefFlat || 0, Number(sp.amount) || 0);
+      }
+      if (sp.id === 'skillPowerBonus' && sp.amount) {
+        var status = statusBagForSide(side);
+        status._passiveSkillPowerBonus = (Number(status._passiveSkillPowerBonus) || 0) + Number(sp.amount);
+      }
+      if (sp.id === 'ailmentAppChanceBonus' && sp.amount) {
+        var stApp = statusBagForSide(side);
+        stApp._passiveAilmentAppBonus = (Number(stApp._passiveAilmentAppBonus) || 0) + Number(sp.amount);
+      }
+      if (sp.id === 'armourDamagePct' && sp.pct) {
+        statusBagForSide(side)._passiveArmourDamagePct = (Number(sp.pct) || 0) / 100;
+      }
+      if (sp.id === 'magicArmourDamagePct' && sp.pct) {
+        statusBagForSide(side)._passiveMagicArmourDamagePct = (Number(sp.pct) || 0) / 100;
+      }
+      if (sp.id === 'skillPowerVsMagicArmour' && sp.amount) {
+        statusBagForSide(side)._passiveSkillPowerBonus = (Number(statusBagForSide(side)._passiveSkillPowerBonus) || 0) + Number(sp.amount);
+        statusBagForSide(side)._passiveSkillPowerVsMagicArmour = true;
+      }
+      if (sp.id === 'skillPowerVsArmour' && sp.amount) {
+        statusBagForSide(side)._passiveSkillPowerBonus = (Number(statusBagForSide(side)._passiveSkillPowerBonus) || 0) + Number(sp.amount);
+      }
+      if ((sp.id === 'fortify' || sp.id === 'ward') && sp.amount && Avian.protection) {
+        var stProt = statusBagForSide(side);
+        var turns = 2;
+        if (sp.id === 'fortify' && typeof Avian.protection.applyFortify === 'function') {
+          Avian.protection.applyFortify(actor.stats, stProt, Number(sp.amount) || 0, turns);
+        } else if (sp.id === 'ward' && typeof Avian.protection.applyWard === 'function') {
+          Avian.protection.applyWard(actor.stats, stProt, Number(sp.amount) || 0, turns);
+        }
       }
     }
   }
@@ -828,7 +897,7 @@
       firePassive(perk, null, Object.assign({ damage: damage, isPhysical: !isMagic }, ctx || {}), 'player');
     }
     if (typeof Avian.classPerks !== 'undefined' && typeof Avian.classPerks.onPlayerDamaged === 'function') {
-      Avian.classPerks.onPlayerDamaged(damage, isMagic);
+      Avian.classPerks.onPlayerDamaged(damage, isMagic, ctx);
     }
   };
 
@@ -839,8 +908,15 @@
       firePassive(perk, null, Object.assign({ damage: damage, isPhysical: !isMagic }, ctx || {}), 'enemy');
     }
     if (typeof Avian.classPerks !== 'undefined' && typeof Avian.classPerks.onEnemyDamaged === 'function') {
-      Avian.classPerks.onEnemyDamaged(damage, isMagic);
+      Avian.classPerks.onEnemyDamaged(damage, isMagic, ctx);
     }
+  };
+
+  Avian.passives.onArmourAbsorbed = function onArmourAbsorbed(entity, amount) {
+    if (!globalThis.G || !entity || !(amount > 0)) return;
+    var side = entity === G.enemy ? 'enemy' : 'player';
+    var perk = passiveFor(entity.birdKey);
+    if (perk) firePassive(perk, null, { armourAbsorbed: true, protectionAbsorbed: true, damage: amount }, side);
   };
 
   Avian.passives.onPlayerDodged = function onPlayerDodged(ctx) {
@@ -876,6 +952,7 @@
     if (trigger.kind === 'turnStart') firePassive(perk, null, { turnStart: true });
     G._workbookFirstPhysicalUsed = false;
     G._workbookFirstSupportUsed = false;
+    if (G._passiveSkillIds) G._passiveSkillIds.player = Object.create(null);
     if (typeof Avian.classPerks !== 'undefined' && typeof Avian.classPerks.onPlayerTurnStart === 'function') {
       Avian.classPerks.onPlayerTurnStart();
     }
@@ -883,6 +960,7 @@
 
   Avian.passives.onBattleStart = function onBattleStart() {
     G.passiveState = Object.create(null);
+    G._passiveSkillIds = Object.create(null);
     if (typeof Avian.passives.applyClassPerkAtBattleStart === 'function') {
       Avian.passives.applyClassPerkAtBattleStart();
     }

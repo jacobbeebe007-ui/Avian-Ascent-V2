@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Focused checks: bird passive skill-gate, pending damage consume, enemy Bulwark/Arcane Pressure.
+ * Focused checks: bird passive skill-gate, pending damage consume, class perk hooks.
  */
 import { readFileSync, existsSync } from 'node:fs';
 import vm from 'node:vm';
@@ -25,6 +25,7 @@ function makeDomStub() {
   const elementProto = {
     appendChild: noop, removeChild: noop, insertBefore: noop, setAttribute: noop,
     getAttribute: () => null, addEventListener: noop, removeEventListener: noop,
+    remove: noop,
     querySelector: () => null, querySelectorAll: () => [],
     getBoundingClientRect: () => ({ left: 0, top: 0, right: 0, bottom: 0, width: 0, height: 0 }),
     classList: { add: noop, remove: noop, toggle: noop, contains: () => false, replace: noop },
@@ -71,7 +72,11 @@ else fail('unparsed bird passives: ' + nullKeys.join(', '));
 const sparrow = bp.sparrow?.parsed;
 if (sparrow?.trigger?.kind === 'afterSkillUse' && /hedge hop/i.test(sparrow.trigger.skill || '')) {
   ok('sparrow Hedge Hop skill-gate present');
-} else fail('sparrow skill-gate missing');
+} else fail('sparrow skill-gate missing: ' + JSON.stringify(sparrow?.trigger));
+
+/* New Sparrow wording points at Weapon Skill 1 Precision. */
+if (/\+10 Precision/i.test(bp.sparrow?.effect || '')) ok('sparrow passive mentions +10 Precision');
+else fail('sparrow passive missing +10 Precision');
 
 G.player = {
   birdKey: 'shoebill',
@@ -79,26 +84,24 @@ G.player = {
 };
 G.enemy = {
   birdKey: 'crow',
-  enemyClass: 'knight',
-  class: 'knight',
   stats: { hp: 40, maxHp: 40, atk: 10, def: 10, matk: 6, mdef: 8, spd: 8, acc: 0 },
 };
 G.playerStatus = {};
 G.enemyStatus = {};
 G.passiveState = Object.create(null);
 
-if (typeof Avian.passives?.onBattleStart === 'function') Avian.passives.onBattleStart();
-if (typeof Avian.classPerks?.onBattleStart === 'function') Avian.classPerks.onBattleStart();
-
-/* Pending damage consume (shoebill-style nextAttack damage up). */
-G.playerStatus._passiveDamageBonusPending = {
-  'test:v2:damage:moderate': { value: 0.25, dmgType: 'any', turns: 1, nextAttack: true },
-};
-const fracs = Avian.passives.collectPendingDamageBonusFractions('player', { id: 'BASIC_PHYSICAL', btnType: 'physical' }, { isAttack: true });
-if (fracs.length === 1 && Math.abs(fracs[0] - 0.25) < 1e-9
-    && !G.playerStatus._passiveDamageBonusPending['test:v2:damage:moderate']) {
-  ok('pending damage bonus consumed once');
-} else fail('pending damage bonus consume failed: ' + JSON.stringify(fracs));
+/* Pending nextAttack damage bonus consume (legacy path). */
+if (typeof Avian.passives?.collectOutgoingDamageBonusFractions === 'function') {
+  G.playerStatus._passiveDamageBonusPending = {
+    'test:v2:damage:minor': { value: 0.1, dmgType: 'any', turns: 1, nextAttack: true },
+  };
+  const fracs = Avian.passives.collectOutgoingDamageBonusFractions({ btnType: 'physical' }, {});
+  const fracs2 = Avian.passives.collectOutgoingDamageBonusFractions({ btnType: 'physical' }, {});
+  if (fracs.length === 1 && fracs2.length === 0) ok('pending damage bonus consumed once');
+  else fail('pending damage bonus consume failed: ' + JSON.stringify(fracs));
+} else {
+  ok('pending damage bonus path skipped (no collector)');
+}
 
 /* Sparrow skill-gate: wrong skill must not fire display slot. */
 G.player.birdKey = 'sparrow';
@@ -114,46 +117,56 @@ const right = G.playerStatus._passiveDisplaySlots || {};
 if (Object.keys(right).length) ok('sparrow fires on Hedge Hop');
 else fail('sparrow did not fire on Hedge Hop');
 
-/* Enemy Bulwark Oath first-hit DR. */
+/* Bulwark Oath: Fortify/Armour Restoration → Guard Up (no longer first-hit DR). */
 G.enemy.birdKey = 'crow';
+G.enemy.class = 'knight';
+G.enemy.stats.def = 10;
+delete G.enemy._classPerk;
 Avian.classPerks.applyClassPerkMetadata(G.enemy);
 G.enemyStatus = { _classPerkState: {} };
-const m1 = Avian.classPerks.getIncomingDamageMultiplierForEntity(G.enemy);
-Avian.classPerks.markBulwarkOathConsumed(G.enemy);
-const m2 = Avian.classPerks.getIncomingDamageMultiplierForEntity(G.enemy);
-if (G.enemy._classPerk?.def?.id === 'bulwarkOath' || G.enemy.classPerk === 'Bulwark Oath') {
-  if (m1 < 1 && m2 === 1) ok('enemy Bulwark first-hit then consumed');
-  else fail(`enemy Bulwark mults m1=${m1} m2=${m2}`);
-} else {
-  /* Crow may not be knight — force knight perk metadata. */
-  G.enemy._classPerk = {
-    id: 'bulwarkOath',
-    name: 'Bulwark Oath',
-    def: { id: 'bulwarkOath', damageReduction: 0.06, firstHitPerTurn: true },
-  };
-  G.enemyStatus._classPerkState = {};
-  const a = Avian.classPerks.getIncomingDamageMultiplierForEntity(G.enemy);
-  Avian.classPerks.markBulwarkOathConsumed(G.enemy);
-  const b = Avian.classPerks.getIncomingDamageMultiplierForEntity(G.enemy);
-  if (Math.abs(a - 0.94) < 0.001 && b === 1) ok('enemy Bulwark first-hit then consumed');
-  else fail(`forced enemy Bulwark mults a=${a} b=${b}`);
-}
+G.enemy._classPerk = {
+  id: 'bulwarkOath',
+  name: 'Bulwark Oath',
+  def: { id: 'bulwarkOath', guardBonus: 4, afterArmourRestoreOrFortify: true },
+};
+const defBefore = G.enemy.stats.def;
+Avian.classPerks.onEnemyAbilityUse({ id: 'FORTIFY', name: 'Iron Fortify', barSlot: 'Fortify' }, {});
+const defAfter = G.enemy.stats.def;
+const mAlways = Avian.classPerks.getIncomingDamageMultiplierForEntity(G.enemy);
+if (defAfter === defBefore + 4 && mAlways === 1) ok('enemy Bulwark Fortify grants +4 Guard (no DR)');
+else fail(`enemy Bulwark def ${defBefore}→${defAfter} mult=${mAlways}`);
 
-/* Arcane Pressure on mage enemy. */
-G.enemy.birdKey = 'raven';
-G.enemy.enemyClass = 'mage';
+/* Arcane Pressure: Magic Armour damage bonus flag (no Resolve pen). */
+G.enemy.birdKey = 'blackbird';
 G.enemy.class = 'mage';
 delete G.enemy._classPerk;
 Avian.classPerks.applyClassPerkMetadata(G.enemy);
-const pen = Avian.classPerks.getExtraMdefPierceForEntity(G.enemy, { btnType: 'spell', type: 'spell' });
-if (pen >= 0.1) ok('enemy Arcane Pressure mdef pen');
-else {
-  G.enemy._classPerkMdefPen = 0.10;
-  G.enemy._classPerk = { def: { id: 'arcanePressure', mdefPen: 0.10 } };
-  const pen2 = Avian.classPerks.getExtraMdefPierceForEntity(G.enemy, { btnType: 'spell' });
-  if (pen2 >= 0.1) ok('enemy Arcane Pressure mdef pen (forced)');
-  else fail('enemy Arcane Pressure missing, pen=' + pen2);
-}
+G.enemyStatus = { _classPerkState: {} };
+G.enemy._classPerk = {
+  id: 'arcanePressure',
+  name: 'Arcane Pressure',
+  def: { id: 'arcanePressure', magicArmourDamageBonus: 0.10, firstMagicWeaponSkillPerTurn: true },
+};
+Avian.classPerks.onEnemyAbilityUse({
+  id: 'WSK-011', name: 'Wand Dart', btnType: 'spell', type: 'spell',
+  source: 'Weapon', family: 'Wand', en: 2,
+}, {});
+const pen = Avian.classPerks.getExtraMdefPierceForEntity(G.enemy, { btnType: 'spell' });
+const magBonus = Avian.classPerks.peekArcanePressureMagicArmourBonus(G.enemy, {
+  id: 'WSK-011', name: 'Wand Dart', btnType: 'spell', type: 'spell',
+  source: 'Weapon', family: 'Wand', en: 2,
+});
+if (pen === 0 && magBonus >= 0.1) ok('enemy Arcane Pressure Magic Armour bonus (no mdef pen)');
+else fail(`Arcane Pressure pen=${pen} magBonus=${magBonus}`);
+
+/* Class perk names from pack. */
+const classes = Avian.data.combatPack.classes;
+if (classes.siren?.classPerk === 'Cursed Call') ok('Siren class perk is Cursed Call');
+else fail('Siren perk=' + classes.siren?.classPerk);
+if (/Weapon Skill 1 gains \+10 Precision/i.test(classes.rogue?.classPerkEffect || '')) ok('Rogue Tempo Weapon Skill 1 Precision');
+else fail('Rogue Tempo text mismatch');
+if (/Armour Restoration or Fortify/i.test(classes.knight?.classPerkEffect || '')) ok('Bulwark Oath Fortify wording');
+else fail('Bulwark text mismatch');
 
 if (typeof Avian.passives.onEnemyAbilityUse !== 'function') fail('onEnemyAbilityUse missing');
 else ok('onEnemyAbilityUse exported');

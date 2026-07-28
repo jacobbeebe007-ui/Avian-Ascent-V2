@@ -1,0 +1,58 @@
+{
+  "knight": {
+    "classPerk": "Bulwark Oath",
+    "classPerkEffect": "Once per turn, after using Armour Restoration or Fortify, gain Minor Guard Up (+4 Guard) until the start of your next turn.",
+    "classPerkTrigger": "Once per turn after Armour Restoration or Fortify.",
+    "hook": "Armour restoration; Fortify; Guard",
+    "notes": "Defensive class hook. Does not create Armour by itself."
+  },
+  "rogue": {
+    "classPerk": "Rogue Tempo",
+    "classPerkEffect": "Once per turn, if acting before the target, your first Weapon Skill 1 gains +10 Precision. If that skill breaks Armour, gain Minor Agility Up (+4 Agility) until the start of your next turn.",
+    "classPerkTrigger": "Once per turn; applies to a 2 EN Weapon Skill 1.",
+    "hook": "Weapon Skill 1; Armour break; turn order",
+    "notes": "Replaces the legacy first 1 EN damage bonus."
+  },
+  "mage": {
+    "classPerk": "Arcane Pressure",
+    "classPerkEffect": "The first Magic weapon skill you use each turn deals 10% additional damage to Magic Armour only. This bonus does not increase Health damage.",
+    "classPerkTrigger": "Once per turn on the first Magic weapon skill.",
+    "hook": "Magic Armour pressure",
+    "notes": "Encourages breaking Magic Armour without inflating Health damage."
+  },
+  "siren": {
+    "classPerk": "Cursed Call",
+    "classPerkEffect": "Once per turn after you break Magic Armour, the next ailment or stat debuff you apply to that target gains +10 percentage points application chance and lasts 1 additional turn.",
+    "classPerkTrigger": "Once per turn; consumed by the next qualifying ailment or debuff.",
+    "hook": "Magic Armour break; ailment gate",
+    "notes": "Does not bypass Magic Armour or guarantee application."
+  },
+  "inquisitor": {
+    "classPerk": "Judgement Leech",
+    "classPerkEffect": "Once per turn after a damaging skill hits an ailmented, debuffed or Marked target, restore 2 to the lower of Armour or Magic Armour, capped at its normal maximum. If both pools are full, heal 5% Maximum Health.",
+    "classPerkTrigger": "Once per turn after Health damage to a qualifying target.",
+    "hook": "Protection restoration; ailments; marks",
+    "notes": "Carrion Mark and other non-stat Marks may qualify when explicitly stated."
+  },
+  "bard": {
+    "classPerk": "Verse and Chorus",
+    "classPerkEffect": "Once per turn, when you alternate Martial and Magic damaging skills, the second skill restores 2 to the lower protection pool. If both pools are full, it gains +10 Skill Power instead.",
+    "classPerkTrigger": "Once per turn on the second skill in a Martial/Magic alternation.",
+    "hook": "Hybrid weapons; protection restoration; Skill Power",
+    "notes": "The second skill must be a damaging skill."
+  },
+  "brute": {
+    "classPerk": "Crushing Momentum",
+    "classPerkEffect": "Once per turn after Armour absorbs physical damage, your next Strength weapon skill gains +10 Skill Power.",
+    "classPerkTrigger": "Once per turn; consumed on the next Strength weapon skill.",
+    "hook": "Armour absorption; Strength weapon skills",
+    "notes": "No hidden Brute damage multiplier."
+  },
+  "duke": {
+    "classPerk": "Duke Ascension",
+    "classPerkEffect": "After defeating an enemy, restore 25% of normal Maximum Armour and Magic Armour and gain +5% all damage for the remainder of combat.",
+    "classPerkTrigger": "After each enemy defeated in sequential combat.",
+    "hook": "Sequential combat; protection restoration",
+    "notes": "Boss Duke override remains separate: while above 50% Health, +10% damage and 10% less damage taken."
+  }
+}

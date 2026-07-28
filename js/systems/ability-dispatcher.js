@@ -143,6 +143,12 @@
     if (g && g.playerStatus && targetSide === 'enemy') {
       if (isMagic || isHybrid) ailCh += (Number(g.playerStatus.magicAilmentChanceBuff) || 0);
       if (!isMagic || isHybrid) ailCh += (Number(g.playerStatus.physicalAilmentChanceBuff) || 0);
+      ailCh += (Number(g.playerStatus._passiveAilmentAppBonus) || 0);
+      if (g.playerStatus._passiveAilmentAppBonus) g.playerStatus._passiveAilmentAppBonus = 0;
+    }
+    if (typeof Avian !== 'undefined' && Avian.classPerks && typeof Avian.classPerks.consumeCursedCallAppBonus === 'function') {
+      var attacker = targetSide === 'enemy' ? (g && g.player) : (g && g.enemy);
+      ailCh += Avian.classPerks.consumeCursedCallAppBonus(attacker) || 0;
     }
     var magicShift = 0;
     if (targetSide === 'enemy' && g && g.player && (isMagic || isHybrid)) {
