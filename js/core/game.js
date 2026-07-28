@@ -13766,27 +13766,32 @@ function tickDelayedForTarget(side){
 function tickStatuses(who, opts={}) {
   const skipGuarded=!!opts.skipGuarded;
   const s=who==='player'?G.playerStatus:G.enemyStatus;
+  if(!s || typeof s!=='object') return;
   const keys=Object.keys(s);
   const owner=who==='player'?G.player:G.enemy;
   keys.forEach(k=>{
+    /* Internal bookkeeping keys (passives, class perks, etc.) are not timed statuses. */
+    if(k.charAt(0)==='_') return;
+    const val=s[k];
+    if(val==null){ delete s[k]; return; }
     if (k==='poison' || k==='bleed') { /* boundary ticks */ }
     else if (k==='delayed') { /* boundary ticks */ }
-    else if (k==='defBoost' && typeof s[k]==='object') {
-      s[k].turns--;
-      if(s[k].turns<=0){
-        owner.stats.def=Math.max(0,(owner.stats.def||0)-(s[k].amt||0));
+    else if (k==='defBoost' && val && typeof val==='object') {
+      val.turns--;
+      if(val.turns<=0){
+        if(owner&&owner.stats) owner.stats.def=Math.max(0,(owner.stats.def||0)-(val.amt||0));
         delete s[k];
       }
     }
     else if (k==='counterThorns') { /* temporary per defending window */ }
-    else if (k==='guarded' && typeof s[k]==='object' && !skipGuarded) tickGuardedStatus(s);
-    else if (k==='shieldHpTurns' && typeof s[k]==='number' && s[k]>0 && !skipGuarded) { /* tickShieldHpStatus */ }
-    else if (k==='weaken' && typeof s[k]==='object' && s[k].turns!=null) {
-      s[k].turns--;
-      if(s[k].turns<=0) delete s[k];
+    else if (k==='guarded' && val && typeof val==='object' && !skipGuarded) tickGuardedStatus(s);
+    else if (k==='shieldHpTurns' && typeof val==='number' && val>0 && !skipGuarded) { /* tickShieldHpStatus */ }
+    else if (k==='weaken' && val && typeof val==='object' && val.turns!=null) {
+      val.turns--;
+      if(val.turns<=0) delete s[k];
     }
-    else if (typeof s[k]==='number'&&s[k]>0) s[k]--;
-    else if (typeof s[k]==='object'&&s[k].turns!==undefined) { /* skip */ }
+    else if (typeof val==='number'&&val>0) s[k]--;
+    else if (val && typeof val==='object' && val.turns!==undefined) { /* timed bag; other systems tick */ }
   });
   if(!skipGuarded) tickShieldHpStatus(who);
   if(who==='player' && !playerIsGuarding(s) && s.counterThorns) delete s.counterThorns;

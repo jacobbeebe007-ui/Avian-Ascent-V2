@@ -393,6 +393,32 @@ else ok('onEnemyDamaged exported');
   else fail('bare skillModifiers remain: ' + bare.join(', '));
 }
 
+/* tickStatuses must tolerate null status-bag entries (typeof null === 'object'). */
+{
+  G.player = { birdKey: 'sparrow', stats: { hp: 20, maxHp: 20, def: 5 } };
+  G.enemy = { birdKey: 'crow', stats: { hp: 20, maxHp: 20, def: 5 } };
+  G.playerStatus = {
+    _passiveNextMartialPenSpecials: null,
+    _v2PassiveArmedAbility: null,
+    orphanNull: null,
+    defBoost: { turns: 1, amt: 2 },
+    burning: { turns: 2, stacks: 1 },
+  };
+  G.enemyStatus = {};
+  let threw = null;
+  try {
+    sandbox.tickStatuses('player');
+  } catch (err) {
+    threw = err;
+  }
+  if (threw) fail('tickStatuses threw on null status keys: ' + threw.message);
+  else ok('tickStatuses survived null status keys');
+  if (Object.prototype.hasOwnProperty.call(G.playerStatus, 'orphanNull')) fail('null orphan status key should be removed');
+  else ok('tickStatuses removes null non-internal status keys');
+  if (G.playerStatus.defBoost) fail('defBoost should have expired');
+  else ok('tickStatuses still expires defBoost');
+}
+
 if (failed) {
   console.error(`[passives-perks] ${failed} failure(s)`);
   process.exit(1);
