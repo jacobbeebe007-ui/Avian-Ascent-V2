@@ -964,7 +964,7 @@
 
     if (alreadyArmed) {
       if (!gateV2(actor.birdKey || perk.birdKey, perk.id, parsed.limit)) {
-        status._v2PassiveArmedAbility = null;
+        delete status._v2PassiveArmedAbility;
         status._v2PassivePendingPost = false;
         return;
       }
@@ -981,7 +981,7 @@
       applyV2Specials(perk, parsed.specials || [], side, ab, ctx, function (sp) {
         return isPostHitHealthSpecial(sp) || !!sp.requiresHealthDamage;
       });
-      status._v2PassiveArmedAbility = null;
+      delete status._v2PassiveArmedAbility;
       status._v2PassivePendingPost = false;
       return;
     }
@@ -1005,7 +1005,7 @@
         return true;
       });
       if (status) {
-        status._v2PassiveArmedAbility = null;
+        delete status._v2PassiveArmedAbility;
         status._v2PassivePendingPost = false;
       }
     } else {
@@ -1204,7 +1204,7 @@
     if (perk && perk.v2 && G.playerStatus && G.playerStatus._passiveNextMartialPen && abilityIsMartial(ab)) {
       applyV2Specials(perk, G.playerStatus._passiveNextMartialPenSpecials || [], 'player', ab, ctx);
       G.playerStatus._passiveNextMartialPen = false;
-      G.playerStatus._passiveNextMartialPenSpecials = null;
+      delete G.playerStatus._passiveNextMartialPenSpecials;
     }
     if (typeof Avian.classPerks !== 'undefined' && typeof Avian.classPerks.onPlayerAbilityUse === 'function') {
       Avian.classPerks.onPlayerAbilityUse(ab, ctx);
@@ -1319,7 +1319,7 @@
     G._workbookOneEnCount = 0;
     if (G._passiveOneEnIds) G._passiveOneEnIds.player = Object.create(null);
     if (G.playerStatus) {
-      G.playerStatus._v2PassiveArmedAbility = null;
+      delete G.playerStatus._v2PassiveArmedAbility;
       G.playerStatus._v2PassivePendingPost = false;
     }
     if (typeof Avian.passives.onPlayerTurnStartPassive === 'function') {
