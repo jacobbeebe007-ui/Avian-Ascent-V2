@@ -286,6 +286,113 @@ else ok('onEnemyDamaged exported');
   else fail('cardinal healed twice in one turn');
 }
 
+/* ---- Broader under-gated bird audit ---- */
+{
+  const duke = bp.dukeBlakiston?.parsed;
+  if (duke?.trigger?.kind === 'onHpBelow' && duke.trigger.pct === 50) ok('duke onHpBelow trigger');
+  else fail('duke trigger: ' + JSON.stringify(duke?.trigger));
+
+  G.player = {
+    birdKey: 'dukeBlakiston', aspect: 'lunae',
+    stats: { hp: 30, maxHp: 40, atk: 10, def: 8, matk: 10, mdef: 8, spd: 8, acc: 0, armour: 0, maxArmour: 20, normalMaxArmour: 20, magicArmour: 0, maxMagicArmour: 20, normalMaxMagicArmour: 20 },
+  };
+  G.enemy = { birdKey: 'crow', stats: { hp: 40, maxHp: 40 } };
+  G.playerStatus = {};
+  G.enemyStatus = {};
+  G.passiveState = Object.create(null);
+  Avian.passives.onPlayerAbilityUse({ id: 'WSK-011', name: 'Wand Dart', btnType: 'spell', enCost: 2 }, {});
+  if ((G.player.stats.armour || 0) === 0) ok('duke does not fire on arbitrary skill use');
+  else fail('duke fired on skill use armour=' + G.player.stats.armour);
+
+  G.player.stats.hp = 15; // already reduced by the hit
+  Avian.passives.onPlayerDamaged(15, false, {}); // crossed 50% of 40 (=20) from 30→15
+  if ((G.player.stats.armour || 0) >= 5) ok('duke restores Armour on crossing 50% HP');
+  else fail('duke armour after cross: ' + G.player.stats.armour);
+}
+
+{
+  const dodo = bp.dodo?.parsed;
+  if (dodo?.trigger?.kind === 'onArmourBreakLowHp') ok('dodo armour-break trigger');
+  else fail('dodo trigger: ' + JSON.stringify(dodo?.trigger));
+  G.player = {
+    birdKey: 'dodo', aspect: 'terra',
+    stats: { hp: 10, maxHp: 40, atk: 8, def: 10, matk: 4, mdef: 6, spd: 4, acc: 0, armour: 0, maxArmour: 8 },
+  };
+  G.enemy = { birdKey: 'crow', stats: { hp: 40, maxHp: 40 } };
+  G.playerStatus = {};
+  G.enemyStatus = {};
+  G.passiveState = Object.create(null);
+  Avian.passives.onPlayerAbilityUse({ id: 'BASIC_PHYSICAL', name: 'Beak Jab', btnType: 'physical' }, {});
+  if ((G.player.stats.armour || 0) === 0) ok('dodo does not fire on skill use');
+  else fail('dodo fired on skill');
+  Avian.passives.onPlayerDamaged(5, false, { brokePool: true });
+  if ((G.player.stats.armour || 0) === 4) ok('dodo restores 4 Armour on armour break while low HP');
+  else fail('dodo armour=' + G.player.stats.armour);
+}
+
+{
+  const vul = bp.vulture?.parsed;
+  if (vul?.trigger?.kind === 'skillModifier' && vul.trigger.foeHpBelow === 50) ok('vulture targets foe HP below');
+  else fail('vulture trigger: ' + JSON.stringify(vul?.trigger));
+  G.player = {
+    birdKey: 'vulture', aspect: 'terra',
+    stats: { hp: 10, maxHp: 40, atk: 10, def: 6, matk: 4, mdef: 6, spd: 6, acc: 0, armour: 0, maxArmour: 4, magicArmour: 0, maxMagicArmour: 4 },
+  };
+  G.enemy = { birdKey: 'crow', stats: { hp: 40, maxHp: 40 } };
+  G.playerStatus = {};
+  G.enemyStatus = {};
+  G.passiveState = Object.create(null);
+  Avian.passives.onPlayerAbilityUse({ id: 'WSK-003', name: 'Talon Rake', btnType: 'physical', enCost: 2 }, { healthDamage: 3 });
+  if ((G.player.stats.armour || 0) === 0 && (G.player.stats.magicArmour || 0) === 0) ok('vulture ignores healthy targets');
+  else fail('vulture restored vs healthy foe');
+  G.enemy.stats.hp = 10;
+  G.passiveState = Object.create(null);
+  G.playerStatus = {};
+  Avian.passives.onPlayerAbilityUse({ id: 'WSK-003', name: 'Talon Rake', btnType: 'physical', enCost: 2 }, { healthDamage: 3 });
+  const restored = (G.player.stats.armour || 0) + (G.player.stats.magicArmour || 0);
+  if (restored === 1) ok('vulture restores 1 prot when foe low HP + Health damage');
+  else fail('vulture restore=' + restored);
+}
+
+{
+  const galah = bp.galah?.parsed;
+  if (galah?.trigger?.skillClass === 'song') ok('galah song-gated afterSkillUse');
+  else fail('galah trigger: ' + JSON.stringify(galah?.trigger));
+  G.player = {
+    birdKey: 'galah', aspect: 'solis',
+    stats: { hp: 30, maxHp: 40, atk: 6, def: 6, matk: 8, mdef: 8, spd: 8, acc: 0, armour: 0, maxArmour: 4, magicArmour: 0, maxMagicArmour: 6 },
+  };
+  G.enemy = { birdKey: 'crow', stats: { hp: 40, maxHp: 40 } };
+  G.playerStatus = {};
+  G.enemyStatus = {};
+  G.passiveState = Object.create(null);
+  Avian.passives.onPlayerAbilityUse({ id: 'WSK-011', name: 'Wand Dart', btnType: 'spell', enCost: 2 }, {});
+  if ((G.player.stats.magicArmour || 0) === 0) ok('galah ignores non-song skills');
+  else fail('galah restored on non-song');
+  Avian.passives.onPlayerAbilityUse({ id: 'SONG_1', name: 'Court Song', btnType: 'song' }, {});
+  if ((G.player.stats.magicArmour || 0) === 2) ok('galah restores MARM on song');
+  else fail('galah marm=' + G.player.stats.magicArmour);
+}
+
+{
+  const mara = bp.marabou?.parsed;
+  if (mara?.trigger?.foeHpBelow === 50 && (mara.specials || []).some((s) => s.requiresHealthDamage)) ok('marabou foe-HP + Health-damage restore');
+  else fail('marabou: ' + JSON.stringify(mara?.trigger) + ' ' + JSON.stringify(mara?.specials));
+}
+
+{
+  const bare = Object.entries(bp).filter(([, v]) => {
+    const t = v?.parsed?.trigger;
+    if (!t || t.kind !== 'skillModifier') return false;
+    const effect = v.effect || '';
+    const rich = /Day |Night |Burning|debuffed|below 50%|weapon skill|damaging|song|Storm |Strength |Finesse |physical weapon/i.test(effect);
+    const gated = !!(t.aspect || t.category || t.weaponSkill || t.weaponScale || t.foeState || t.foeHpBelow != null || t.skillClass || t.damaging || t.skill);
+    return rich && !gated;
+  }).map(([k]) => k);
+  if (bare.length === 0) ok('no remaining bare rich skillModifier passives');
+  else fail('bare skillModifiers remain: ' + bare.join(', '));
+}
+
 if (failed) {
   console.error(`[passives-perks] ${failed} failure(s)`);
   process.exit(1);

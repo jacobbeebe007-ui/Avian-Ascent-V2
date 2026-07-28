@@ -12984,7 +12984,16 @@ function dealDamage(target,amount,isCrit=false,isMagic=false,srcAbility=null,opt
         protBonus=Math.max(protBonus, Number(stPlayer._passiveMagicArmourDamagePct)||0);
         delete stPlayer._passiveMagicArmourDamagePct;
       }
-      const remaining=applyDamageThroughShield(G.enemy.stats, G.enemyStatus, dmg, isMagic, { protectionDamageBonus: protBonus });
+      let flatProt=0;
+      if(!isMagic && (stPlayer._passiveFlatArmourDamage||0)>0){
+        flatProt+=Number(stPlayer._passiveFlatArmourDamage)||0;
+      }
+      if(isMagic && (stPlayer._passiveFlatMagicArmourDamage||0)>0){
+        flatProt+=Number(stPlayer._passiveFlatMagicArmourDamage)||0;
+      }
+      delete stPlayer._passiveFlatArmourDamage;
+      delete stPlayer._passiveFlatMagicArmourDamage;
+      const remaining=applyDamageThroughShield(G.enemy.stats, G.enemyStatus, dmg + flatProt, isMagic, { protectionDamageBonus: protBonus });
       notifyProtectionHitHooks(G.enemy, G.player, isMagic, atkAb);
       if(protBonus>0 && isMagic && typeof Avian?.classPerks?.consumeArcanePressureFlag==='function'){
         Avian.classPerks.consumeArcanePressureFlag(G.player);
