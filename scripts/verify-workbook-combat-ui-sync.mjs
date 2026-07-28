@@ -246,10 +246,10 @@ try {
   else fail(`expected enemy hummingbird L2 maxHp 12, got ${enemyHumHp}`);
 
   const crow = ctx.Avian.data.birdsV2?.crow?.stats;
-  if (crow && Number(crow.matk) === 0 && Number(crow.acc) === 0) {
-    ok('crow Focus/Precision are 0 (v0.6)');
+  if (crow && Number(crow.matk) === 0 && Number(crow.acc) === 79) {
+    ok('crow Focus 0 / Precision 79 (Bird Precision System)');
   } else {
-    fail(`crow expected FOC 0 / PRE 0, got matk=${crow?.matk} acc=${crow?.acc}`);
+    fail(`crow expected FOC 0 / PRE 79, got matk=${crow?.matk} acc=${crow?.acc}`);
   }
 
   const crowRow = ctx.Avian.data.birdsV2?.crow;

@@ -1397,6 +1397,64 @@ const existingBirdKeys = loadExistingBirdKeys();
 const birdsV2 = {};
 const birdNameToKey = {};
 const BIRD_ATTR_BUDGET = { grey: 30, green: 30, blue: 30, purple: 30, gold: 32, orange: 34 };
+const PRECISION_TABLE_PATH = path.join(ROOT, 'scripts', 'data', 'bird-precision-system.json');
+const PRECISION_TABLE = existsSync(PRECISION_TABLE_PATH)
+  ? JSON.parse(readFileSync(PRECISION_TABLE_PATH, 'utf8'))
+  : null;
+const PRECISION_BY_KEY = Object.create(null);
+const PRECISION_BY_NAME = Object.create(null);
+const CLASS_PRECISION_LOOKUP = Object.create(null);
+const SIZE_PRECISION_LOOKUP = Object.create(null);
+if (PRECISION_TABLE) {
+  for (const row of PRECISION_TABLE.birds || []) {
+    PRECISION_BY_KEY[row.key] = row;
+    PRECISION_BY_NAME[String(row.name || '').toLowerCase()] = row;
+  }
+  for (const row of PRECISION_TABLE.classPrecision || []) {
+    CLASS_PRECISION_LOOKUP[row.class] = row.classPrecision;
+  }
+  for (const row of PRECISION_TABLE.sizePrecision || []) {
+    SIZE_PRECISION_LOOKUP[String(row.size || '').toLowerCase()] = row.precisionModifier;
+  }
+}
+
+function birdStatsHeaderMap(sheet) {
+  const rows = sheet?.rows || [];
+  const headerRow = rows[3] || [];
+  const map = Object.create(null);
+  for (let i = 0; i < headerRow.length; i++) {
+    const h = String(headerRow[i] || '').trim().toLowerCase();
+    if (h) map[h] = i;
+  }
+  return map;
+}
+const BIRD_STATS_HEADERS = birdStatsHeaderMap(sheets['Bird Stats']);
+function birdStatCol(...names) {
+  for (const n of names) {
+    const idx = BIRD_STATS_HEADERS[String(n).toLowerCase()];
+    if (idx != null) return idx;
+  }
+  return -1;
+}
+function resolveBirdBasePrecision(key, name, cls, cells) {
+  const baseCol = birdStatCol('Base Precision', 'Final Precision', 'Final ACC', 'ACC', 'Precision');
+  if (baseCol >= 0) {
+    const v = num(cells[baseCol]);
+    if (v > 0) return Math.round(v);
+  }
+  const classCol = birdStatCol('Class Precision');
+  const sizeCol = birdStatCol('Size Precision Modifier', 'Size Modifier');
+  const speciesCol = birdStatCol('Species Precision Modifier', 'Species Modifier');
+  if (classCol >= 0 && sizeCol >= 0 && speciesCol >= 0) {
+    return Math.round(num(cells[classCol]) + num(cells[sizeCol]) + num(cells[speciesCol]));
+  }
+  const row = PRECISION_BY_KEY[key] || PRECISION_BY_NAME[String(name || '').toLowerCase()];
+  if (row) return row.basePrecision;
+  const sizeLabel = String(cells[2] || '').trim();
+  const classPrec = CLASS_PRECISION_LOOKUP[cls] ?? 80;
+  const sizePrec = SIZE_PRECISION_LOOKUP[sizeLabel.toLowerCase()] ?? 0;
+  return Math.round(classPrec + sizePrec);
+}
 const BIRD_ATTR_CAP = { grey: 10, green: 12, blue: 14, purple: 16, gold: 18, orange: 18 };
 for (const { cells, rowNum } of tableRows(sheets['Bird Stats'], 4)) {
   const name = cells[0];
@@ -1447,7 +1505,8 @@ for (const { cells, rowNum } of tableRows(sheets['Bird Stats'], 4)) {
       hp: maxHp,
       maxHp,
       dodge: Math.min(50, agility * 0.5),
-      acc: 0,
+      /* Bird Precision System: stats.acc stores Base Precision (runtime compat field). */
+      acc: resolveBirdBasePrecision(key, name, cls, cells),
       critChance: pct(cells[16]),
     },
     critDamage: num(cells[17]),
@@ -1456,6 +1515,16 @@ for (const { cells, rowNum } of tableRows(sheets['Bird Stats'], 4)) {
     roleNote: cells[19] || '',
     gearNote: '',
   };
+  const bp = birdsV2[key].stats.acc;
+  birdsV2[key].basePrecision = bp;
+  const classPrecCol = birdStatCol('Class Precision');
+  const sizePrecCol = birdStatCol('Size Precision Modifier', 'Size Modifier');
+  const speciesPrecCol = birdStatCol('Species Precision Modifier', 'Species Modifier');
+  const tableRow = PRECISION_BY_KEY[key] || PRECISION_BY_NAME[String(name || '').toLowerCase()];
+  birdsV2[key].classPrecision = classPrecCol >= 0 ? num(cells[classPrecCol]) : (tableRow?.classPrecision);
+  birdsV2[key].sizePrecisionModifier = sizePrecCol >= 0 ? num(cells[sizePrecCol]) : (tableRow?.sizeModifier);
+  birdsV2[key].speciesPrecisionModifier = speciesPrecCol >= 0 ? num(cells[speciesPrecCol]) : (tableRow?.speciesModifier);
+  birdsV2[key].precisionIdentity = tableRow?.identity || '';
 }
 if (Object.keys(birdsV2).length !== 52) fail(`expected 52 birds, got ${Object.keys(birdsV2).length}`);
 
@@ -1473,8 +1542,8 @@ const CLASS_PERK_CANON = {
   },
   rogue: {
     classPerk: 'Rogue Tempo',
-    classPerkEffect: 'If acting before the target, the first Basic Attack each turn gains Minor Damage Up (+6%).',
-    classPerkTrigger: 'Once per turn; equipment techniques do not qualify solely because of their EN cost.',
+    classPerkEffect: 'Once per turn, if acting before the target, your first Weapon Skill 1 gains +10 Precision. If that skill breaks Armour, gain Minor Agility Up (+4 Agility) until the start of your next turn.',
+    classPerkTrigger: 'Once per turn; temporary Precision only (does not change stored Base Precision).',
   },
   mage: {
     classPerk: 'Arcane Pressure',
@@ -1524,7 +1593,7 @@ for (const { cells, rowNum } of tableRows(sheets['Class Perks'], 4)) {
     mdef: round2(meanField(classBirds, (b) => b.stats.mdef)),
     spd: round2(meanField(classBirds, (b) => b.stats.spd)),
     dodge: round2(meanField(classBirds, (b) => b.stats.dodge)),
-    acc: 0,
+    acc: CLASS_PRECISION_LOOKUP[id] ?? round2(meanField(classBirds, (b) => b.stats.acc)),
     critChance: round2(meanField(classBirds, (b) => b.stats.critChance)),
     critDamage: round2(meanField(classBirds, (b) => b.critDamage)),
   };
@@ -1535,7 +1604,8 @@ for (const { cells, rowNum } of tableRows(sheets['Class Perks'], 4)) {
     combatIdentity: cells[8] || cells[1] || '',
     reference,
     minAcc: 0,
-    precisionSource: 'Skill Library',
+    classPrecision: CLASS_PRECISION_LOOKUP[id] ?? null,
+    precisionSource: 'Base Precision (class + size + species)',
     weights: {},
     classPerk: perk.classPerk || '',
     classPerkEffect: perk.classPerkEffect || '',

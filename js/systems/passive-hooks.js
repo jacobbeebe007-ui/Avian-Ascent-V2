@@ -428,21 +428,29 @@
   }
 
   function applyV2TierEffect(perkId, eff, durationTurns, side) {
-    if (!eff || eff.kind !== 'tierStat') return;
+    if (!eff || (eff.kind !== 'tierStat' && eff.kind !== 'flatStat')) return;
     side = side || 'player';
     var actor = entityForSide(side);
     var status = statusBagForSide(side);
     if (!actor || !actor.stats) return;
-    var pct = v2TierPct(eff.tier, eff.dir);
+    var pct = eff.kind === 'flatStat'
+      ? Math.abs(Number(eff.amount) || 0)
+      : v2TierPct(eff.tier, eff.dir);
+    if (eff.kind === 'flatStat' && eff.dir === 'down') pct = -Math.abs(pct);
+    else if (eff.kind === 'flatStat' && Number(eff.amount) < 0) pct = Number(eff.amount);
     var stat = String(eff.stat || '').toLowerCase();
     var turns = durationTurns || 1;
-    var slotId = perkId + ':v2:' + stat + ':' + eff.tier;
+    var slotId = perkId + ':v2:' + stat + ':' + (eff.tier || eff.amount || 'flat');
     var targetSide = eff.target === 'enemy' ? (side === 'enemy' ? 'player' : 'enemy') : side;
     var targetEntity = entityForSide(targetSide);
     var targetStatus = statusBagForSide(targetSide);
     if (stat === 'acc' || stat === 'dodge' || stat === 'critchance') {
       var displayKind = stat === 'critchance' ? 'gainCritChance' : (stat === 'acc' ? 'gainAcc' : 'gainDodge');
+      /* Precision uses exact points (5/10/20), not core-attribute tiers. */
       applyPassiveDisplaySlot(targetStatus, perkId, displayKind, pct);
+      if (stat === 'acc' && targetStatus) {
+        targetStatus.passiveAcc = Math.max(0, (Number(targetStatus.passiveAcc) || 0) + (Number(pct) || 0));
+      }
       return;
     }
     if (stat === 'damage' || stat === 'magicdamage') {

@@ -40,7 +40,7 @@
   };
 
   Avian.enforceClassMinAcc = function enforceClassMinAcc(stats) {
-    /* v0.5+: Precision is action-owned; class minAcc floors are retired. */
+    /* Bird Precision System: Base Precision is species-authored; class minAcc floors stay retired. */
     return stats;
   };
 

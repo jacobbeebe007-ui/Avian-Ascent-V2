@@ -35,6 +35,7 @@
     "js/data/equipment/reference-loadouts.js",
     "js/data/equipment/loot-tables.js",
     "js/data/birds-v2.js",
+    "js/data/precision-system.js",
     "js/data/combat-pack/classes.js",
     "js/data/combat-pack/bird-passives.js",
     "js/data/combat-pack/innate-utilities.js",
