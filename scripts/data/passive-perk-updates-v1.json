@@ -1,0 +1,530 @@
+{
+  "class_perks": {
+    "Knight": {
+      "name": "Bulwark Oath",
+      "effect": "Once per turn, after using Armour Restoration or Fortify, gain Minor Guard Up (+4 Guard) until the start of your next turn.",
+      "trigger": "Once per turn after Armour Restoration or Fortify.",
+      "hook": "Armour restoration; Fortify; Guard",
+      "notes": "Defensive class hook. Does not create Armour by itself."
+    },
+    "Rogue": {
+      "name": "Rogue Tempo",
+      "effect": "Once per turn, if acting before the target, your first Weapon Skill 1 gains +10 Precision. If that skill breaks Armour, gain Minor Agility Up (+4 Agility) until the start of your next turn.",
+      "trigger": "Once per turn; applies to a 2 EN Weapon Skill 1.",
+      "hook": "Weapon Skill 1; Armour break; turn order",
+      "notes": "Replaces the legacy first 1 EN damage bonus."
+    },
+    "Mage": {
+      "name": "Arcane Pressure",
+      "effect": "The first Magic weapon skill you use each turn deals 10% additional damage to Magic Armour only. This bonus does not increase Health damage.",
+      "trigger": "Once per turn on the first Magic weapon skill.",
+      "hook": "Magic Armour pressure",
+      "notes": "Encourages breaking Magic Armour without inflating Health damage."
+    },
+    "Siren": {
+      "name": "Cursed Call",
+      "effect": "Once per turn after you break Magic Armour, the next ailment or stat debuff you apply to that target gains +10 percentage points application chance and lasts 1 additional turn.",
+      "trigger": "Once per turn; consumed by the next qualifying ailment or debuff.",
+      "hook": "Magic Armour break; ailment gate",
+      "notes": "Does not bypass Magic Armour or guarantee application."
+    },
+    "Inquisitor": {
+      "name": "Judgement Leech",
+      "effect": "Once per turn after a damaging skill hits an ailmented, debuffed or Marked target, restore 2 to the lower of Armour or Magic Armour, capped at its normal maximum. If both pools are full, heal 5% Maximum Health.",
+      "trigger": "Once per turn after Health damage to a qualifying target.",
+      "hook": "Protection restoration; ailments; marks",
+      "notes": "Carrion Mark and other non-stat Marks may qualify when explicitly stated."
+    },
+    "Bard": {
+      "name": "Verse and Chorus",
+      "effect": "Once per turn, when you alternate Martial and Magic damaging skills, the second skill restores 2 to the lower protection pool. If both pools are full, it gains +10 Skill Power instead.",
+      "trigger": "Once per turn on the second skill in a Martial/Magic alternation.",
+      "hook": "Hybrid weapons; protection restoration; Skill Power",
+      "notes": "The second skill must be a damaging skill."
+    },
+    "Brute": {
+      "name": "Crushing Momentum",
+      "effect": "Once per turn after Armour absorbs physical damage, your next Strength weapon skill gains +10 Skill Power.",
+      "trigger": "Once per turn; consumed on the next Strength weapon skill.",
+      "hook": "Armour absorption; Strength weapon skills",
+      "notes": "No hidden Brute damage multiplier."
+    },
+    "Duke": {
+      "name": "Duke Ascension",
+      "effect": "After defeating an enemy, restore 25% of normal Maximum Armour and Magic Armour and gain +5% all damage for the remainder of combat.",
+      "trigger": "After each enemy defeated in sequential combat.",
+      "hook": "Sequential combat; protection restoration",
+      "notes": "Boss Duke override remains separate: while above 50% Health, +10% damage and 10% less damage taken."
+    }
+  },
+  "species_updates": {
+    "Sparrow": {
+      "passive": "After using Hedge Hop, your next Weapon Skill 1 gains +10 Precision and +5 percentage points Critical Chance.",
+      "limit": "Once per turn; consumed on the next 2 EN Weapon Skill 1.",
+      "utility": "Gain Minor Agility Up (+4 Agility) until the start of your next turn.",
+      "cooldown": 2,
+      "hook": "Weapon Skill 1; Agility; Precision; Critical",
+      "synergy": "Light weapons, Shadowplume and early-turn Rogue Tempo.",
+      "notes": "Starter Rogue loop now points to the 2 EN weapon skill structure."
+    },
+    "Hummingbird": {
+      "passive": "After using two different skills in the same turn, gain Minor Agility Up (+4 Agility) until the start of your next turn and restore 1 Magic Armour, capped at its normal maximum.",
+      "limit": "Once per turn; repeated copies of the same skill do not count.",
+      "utility": "Gain Moderate Agility Up (+10 Agility) until the start of your next turn.",
+      "cooldown": 3,
+      "hook": "Action chaining; Agility; Magic Armour restoration",
+      "synergy": "One-handed weapons, accessories and multi-action turns.",
+      "notes": "No longer requires two separate 1 EN actions."
+    },
+    "Blackbird": {
+      "passive": "Your first Night Magic weapon skill each turn against a debuffed target gains +10 Skill Power against Magic Armour. If it damages Health, it also gains +10 Precision for its debuff or ailment roll.",
+      "limit": "Once per turn; the Skill Power bonus applies only to Magic Armour damage.",
+      "utility": "Apply Minor Resolve Down (-4 Resolve) for 2 turns. This effect is blocked while the target has Magic Armour.",
+      "cooldown": 2,
+      "hook": "Magic Armour pressure; debuff gate; Skill Power",
+      "synergy": "Night Wands, Staffs, Runewoven and Nightweave equipment.",
+      "notes": "Replaces generic Magic Damage Up."
+    },
+    "Macaw": {
+      "passive": "When Verse and Chorus triggers, the second skill also gains +10 Precision and restores 1 to the lower protection pool, capped at its normal maximum.",
+      "limit": "Once per turn with Verse and Chorus.",
+      "utility": "Copy one Minor positive core-stat effect currently on the enemy until the end of its normal duration; if none exists, gain Minor Focus Up (+4 Focus) for 2 turns.",
+      "cooldown": 3,
+      "hook": "Hybrid alternation; protection restoration; Precision",
+      "synergy": "Bard Song, Talon Blade, Focus Orb and balanced defensive sets.",
+      "notes": "Strengthens the class perk without duplicating its Skill Power reward."
+    },
+    "Peregrine Falcon": {
+      "passive": "If acting before the target, your first Finesse Weapon Skill 1 or 2 each turn ignores 4 Guard.",
+      "limit": "Once per turn; flat and percentage penetration still follow the normal penetration order.",
+      "utility": "Your next weapon skill gains +10 Precision and cannot be redirected.",
+      "cooldown": 2,
+      "hook": "Turn order; Finesse weapon skills; flat penetration",
+      "synergy": "Dagger Pinion, Talon Blade, Bow and Greatbow.",
+      "notes": "Converted percentage Guard ignore into controlled flat penetration."
+    },
+    "Snowy Owl": {
+      "passive": "After applying Chilled, your next Magic weapon skill gains +20 Skill Power against Magic Armour.",
+      "limit": "2-turn cooldown; consumed on hit or miss; bonus does not increase Health damage.",
+      "utility": "Deal 3 Magic Armour damage. If the target has no Magic Armour after the effect, attempt to apply 1 Chilled stack.",
+      "cooldown": 3,
+      "hook": "Magic Armour break; Chilled; Skill Power",
+      "synergy": "Frost-infused Staffs, Orbs and Runewoven equipment.",
+      "notes": "Chilled remains gated by Magic Armour."
+    },
+    "Kiwi": {
+      "passive": "Your first physical weapon hit each turn against a debuffed or Marked target ignores 4 Guard.",
+      "limit": "Once per turn; total penetration remains subject to the normal cap.",
+      "utility": "Your next attack against a debuffed or Marked target gains +10 Precision and ignores 2 of the matching defence.",
+      "cooldown": 2,
+      "hook": "Marks; debuffs; flat penetration",
+      "synergy": "War Scythe, Bell Sceptre hybrids and Judgement Leech.",
+      "notes": "Supports both debuff and Mark builds."
+    },
+    "Black Cockatoo": {
+      "passive": "After using a song or call, your next Magic damaging skill deals 2 additional Magic Armour damage. If it damages Health, apply -10 Precision for 1 turn.",
+      "limit": "2-turn cooldown; the debuff remains blocked if Magic Armour was not depleted.",
+      "utility": "Apply Minor Might Down (-4 Might) and Minor Focus Down (-4 Focus) for 1 turn. This effect is blocked by Magic Armour.",
+      "cooldown": 2,
+      "hook": "Songs; Magic Armour damage; debuff gate",
+      "synergy": "Lament Song, Bard Song, Crystalwind and Nightweave.",
+      "notes": "Replaces generic Damage Down and Precision tier wording."
+    },
+    "Crow": {
+      "passive": "Once per turn after Armour absorbs physical damage, your next weapon skill deals 10% additional damage to Armour. If that hit damages Health, it may apply Minor Might Down (-4 Might) for 1 turn.",
+      "limit": "Once per turn; the Might debuff requires Armour to be depleted and Health to be damaged.",
+      "utility": "Restore 4 Armour, capped at normal Maximum Armour.",
+      "cooldown": 2,
+      "hook": "Armour absorption; Armour restoration; protection break",
+      "synergy": "Ironfeather, shields, Beak Hammer and Bulwark Oath.",
+      "notes": "Replaces Brace and Barrier triggers."
+    },
+    "Kookaburra": {
+      "passive": "After successfully applying a stat debuff, your next magical ailment or debuff against that target gains +10 percentage points application chance.",
+      "limit": "2-turn cooldown; does not bypass Magic Armour or recursively trigger Cursed Call.",
+      "utility": "Deal 3 Magic Armour damage. If the target has no Magic Armour after the effect, apply -10 Precision for 1 turn.",
+      "cooldown": 2,
+      "hook": "Magic Armour pressure; debuff application",
+      "synergy": "Hexwood Wand, Lament Song and Siren ailment equipment.",
+      "notes": "Retains the Gallows Laugh setup identity."
+    },
+    "Lyrebird": {
+      "passive": "The first time each combat a song grants Might Up or Focus Up, also gain the other stat at Minor tier (+4) for the same duration and restore 2 Magic Armour.",
+      "limit": "Once per combat; only copies Might Up or Focus Up.",
+      "utility": "Repeat the last Minor positive core-stat effect you gained until the start of your next turn. If none exists, restore 3 Magic Armour.",
+      "cooldown": 3,
+      "hook": "Buff copying; Magic Armour restoration",
+      "synergy": "Bard Song, mixed weapons and Runewoven equipment.",
+      "notes": "Keeps a bounded mimic rule."
+    },
+    "Raven": {
+      "passive": "The first stat debuff you successfully apply each turn also deals 2 Magic Armour damage. If the target already has no Magic Armour, it instead applies -10 Precision for 1 turn.",
+      "limit": "Once per turn; strongest Precision Down value applies.",
+      "utility": "Apply Minor Focus Down (-4 Focus) for 2 turns. This effect is blocked by Magic Armour.",
+      "cooldown": 2,
+      "hook": "Magic Armour pressure; debuffs; Precision",
+      "synergy": "Lament Song, Hexwood Wand and Nightweave.",
+      "notes": "Does not bypass Magic Armour."
+    },
+    "Magpie": {
+      "passive": "After successfully applying Precision Down, your next Finesse weapon skill gains +10 Skill Power against Armour and +10 Precision.",
+      "limit": "Once per turn; consumed on hit or miss.",
+      "utility": "Deal 2 Armour damage. If the target has no Armour after the effect, apply -10 Precision for 1 turn.",
+      "cooldown": 2,
+      "hook": "Armour pressure; Finesse weapon skills; Precision",
+      "synergy": "Dagger Pinion, Talon Blade and Shadowplume.",
+      "notes": "Replaces generic Martial Damage Up."
+    },
+    "Robin": {
+      "passive": "After using a support utility, your next Day damaging skill gains +10 Skill Power and restores 2 Magic Armour on hit, capped at its normal maximum.",
+      "limit": "Once per turn; consumed on hit or miss.",
+      "utility": "Heal 10% Maximum Health and restore 2 Magic Armour.",
+      "cooldown": 3,
+      "hook": "Support utility; Skill Power; Magic Armour restoration",
+      "synergy": "Day weapons, Dawnfeather and Bard support skills.",
+      "notes": "Creates a support-to-offence loop without broad Damage Up."
+    },
+    "Bowerbird": {
+      "passive": "After using Jewel Display, your next Magic hit deals 2 additional Magic Armour damage. If it damages Health, its ailment or debuff gains +10 percentage points application chance.",
+      "limit": "Once per turn; consumed on hit or miss.",
+      "utility": "Apply Jewel Mark for 2 turns. The Mark has no stat penalty, is not blocked by protection and causes the next qualifying debuff after Magic Armour is broken to gain +10 percentage points application chance.",
+      "cooldown": 3,
+      "hook": "Mark; Magic Armour break; debuff setup",
+      "synergy": "Focus Orb, Hexwood Wand and Siren equipment.",
+      "notes": "Jewel Mark is a Mark, not an ailment."
+    },
+    "Toucan": {
+      "passive": "After using a Day action, your next song or call restores 2 to the lower protection pool and gains +10 Precision.",
+      "limit": "Once per turn.",
+      "utility": "Your next damaging skill becomes Day and gains +10 Precision.",
+      "cooldown": 2,
+      "hook": "Affinity conversion; protection restoration; Precision",
+      "synergy": "Bard Song, Talon Blade and mixed Day loadouts.",
+      "notes": "Supports flexible affinity and hybrid equipment."
+    },
+    "Swan": {
+      "passive": "The first time each turn you take damage while above 50% Health, restore 2 Magic Armour, capped at its normal maximum. If Magic Armour is already full, gain Minor Resolve Up (+4 Resolve) until the start of your next turn.",
+      "limit": "Once per turn.",
+      "utility": "Gain 6 Ward Magic Armour for 2 turns.",
+      "cooldown": 3,
+      "hook": "Magic Armour restoration; Ward; Resolve",
+      "synergy": "Runewoven, Layered Scale and shield builds.",
+      "notes": "Replaces the legacy Health-based Barrier."
+    },
+    "Flamingo": {
+      "passive": "After successfully applying a debuff, gain Minor Agility Up (+4 Agility) until the start of your next turn and restore 1 Magic Armour.",
+      "limit": "Once per turn.",
+      "utility": "Gain Minor Agility Up (+4 Agility) and Minor Resolve Up (+4 Resolve) until the start of your next turn.",
+      "cooldown": 2,
+      "hook": "Debuffs; Agility; Magic Armour restoration",
+      "synergy": "Crystalwind, Focus Orb and Siren tempo builds.",
+      "notes": "Evasion wording replaced with Agility."
+    },
+    "Secretary Bird": {
+      "passive": "Once per turn after Armour absorbs physical damage, your next Strength weapon skill gains +10 Skill Power against Armour.",
+      "limit": "Once per turn; consumed on hit or miss.",
+      "utility": "Gain Minor Agility Up (+4 Agility) and +10 Precision until the start of your next turn.",
+      "cooldown": 2,
+      "hook": "Armour absorption; Strength weapon skills",
+      "synergy": "Lance, Beak Hammer and Ironfeather.",
+      "notes": "Supports a mobile Knight identity without generic Damage Up."
+    },
+    "Albatross": {
+      "passive": "After using a Magic action, restore 2 Magic Armour. If Magic Armour is full, gain +10 Precision until the start of your next turn.",
+      "limit": "Once per turn.",
+      "utility": "Cleanse 1 debuff and restore 4 Magic Armour, capped at its normal maximum.",
+      "cooldown": 3,
+      "hook": "Magic Armour restoration; cleansing; Precision",
+      "synergy": "Bell Sceptre, Focus Orb and Dawnfeather.",
+      "notes": "Connects Inquisitor sustain to the new protection pools."
+    },
+    "Seagull": {
+      "passive": "After damaging a debuffed or Marked target, restore 1 to the lower protection pool and gain Minor Agility Up (+4 Agility) until the start of your next turn.",
+      "limit": "Once per turn.",
+      "utility": "Cleanse 1 stat debuff. If a debuff is cleansed, restore 2 to the lower protection pool and gain Minor Agility Up (+4 Agility) until the start of your next turn.",
+      "cooldown": 2,
+      "hook": "Debuffs; protection restoration; Agility",
+      "synergy": "Light gear, marks and Rogue Tempo.",
+      "notes": "Maintains scavenger sustain without Barrier."
+    },
+    "Goose": {
+      "passive": "The first time each turn Armour absorbs physical damage, restore 1 Armour after the hit, capped at normal Maximum Armour.",
+      "limit": "Once per turn.",
+      "utility": "Deal 3 Magic Armour damage. If the effect reaches Health, apply Minor Might Down (-4 Might) for 1 turn.",
+      "cooldown": 2,
+      "hook": "Armour absorption; Armour restoration; Magic Armour pressure",
+      "synergy": "Ironfeather, shields and Crushing Momentum.",
+      "notes": "No separate Brute passive or hidden multiplier."
+    },
+    "Shoebill Stork": {
+      "passive": "If you did not use a damaging action during your previous turn, your next Strength weapon skill gains +20 Skill Power and deals 2 additional Armour damage.",
+      "limit": "Consumed on hit or miss; cannot trigger on the first turn.",
+      "utility": "Gain 4 Fortified Armour and Minor Resolve Up (+4 Resolve) for 1 turn.",
+      "cooldown": 3,
+      "hook": "Fortify; Armour damage; Strength setup",
+      "synergy": "Beak Hammer, Greatblade and heavy equipment.",
+      "notes": "Patience trades tempo for a stronger Armour-breaking turn."
+    },
+    "Harpy Eagle": {
+      "passive": "Your first Finesse weapon skill after using Predator Grip ignores 4 Guard and deals 2 additional Armour damage.",
+      "limit": "Consumed on hit or miss; penetration remains subject to the normal cap.",
+      "utility": "Apply Predator Mark for 2 turns. Your attacks gain +10 Precision against the marked target.",
+      "cooldown": 3,
+      "hook": "Mark; Armour damage; flat penetration",
+      "synergy": "Greatbow, Talon Blade and Shadowplume.",
+      "notes": "Predator Mark is not a stat debuff."
+    },
+    "Bald Eagle": {
+      "passive": "After landing a critical hit, restore 2 to the lower protection pool. If both pools are full, gain +10 Precision until the start of your next turn.",
+      "limit": "Once per turn.",
+      "utility": "Gain 4 Fortified Armour and 4 Ward Magic Armour for 1 turn.",
+      "cooldown": 3,
+      "hook": "Critical; Bastion/Aegis; protection restoration",
+      "synergy": "Balanced defensive sets and Judgement Leech.",
+      "notes": "Replaces the legacy Barrier with a small dual-pool Aegis."
+    },
+    "Emperor Penguin": {
+      "passive": "After successfully applying Chilled, restore 2 Magic Armour. If Magic Armour is full, gain Minor Resolve Up (+4 Resolve) until the start of your next turn.",
+      "limit": "Once per turn.",
+      "utility": "Gain 6 Ward Magic Armour for 2 turns. The first enemy physical hit while Ward remains deals 2 Magic Armour damage back to the attacker.",
+      "cooldown": 3,
+      "hook": "Chilled; Ward; Magic Armour restoration",
+      "synergy": "Frost infusion, Runewoven and Judgement Leech.",
+      "notes": "Retaliation damages protection and does not bypass ailment gates."
+    },
+    "Ostrich": {
+      "passive": "After using Momentum Charge, your next Strength weapon skill gains +20 Skill Power and +10 Precision.",
+      "limit": "Consumed on hit or miss; controlled by the utility cooldown.",
+      "utility": "Gain Minor Agility Up (+4 Agility) until the start of your next turn. Your next Strength weapon skill gains +10 Precision.",
+      "cooldown": 2,
+      "hook": "Strength weapon skill; Agility; Precision",
+      "synergy": "Greatblade, Lance and Crushing Momentum.",
+      "notes": "Replaces generic Martial Damage Up."
+    },
+    "Cassowary": {
+      "passive": "Your first Strength weapon skill each turn against a Bleeding or Weakened target gains +10 percentage points Critical Chance and deals 2 additional Armour damage.",
+      "limit": "Once per turn; condition must be true before the skill resolves.",
+      "utility": "Deal 3 Armour damage. If it reaches Health, apply Minor Guard Down (-4 Guard) for 1 turn. Your next attack suffers -10 Precision.",
+      "cooldown": 3,
+      "hook": "Armour damage; Bleed; Critical; Guard debuff",
+      "synergy": "Beak Hammer, Greatblade and Blood infusion.",
+      "notes": "Physical debuff requires Armour to be depleted."
+    },
+    "Emu": {
+      "passive": "After Armour absorbs physical damage, gain Minor Agility Up (+4 Agility) until the start of your next turn and your next Strength weapon skill gains +10 Precision.",
+      "limit": "Once per turn.",
+      "utility": "Gain Minor Agility Up (+4 Agility) until the start of your next turn and restore 2 Armour.",
+      "cooldown": 2,
+      "hook": "Armour absorption; Agility; Armour restoration",
+      "synergy": "Heavy weapons with lighter armour variants.",
+      "notes": "Evasion wording removed."
+    },
+    "Duke Blakiston": {
+      "passive": "The first time each combat you fall below 50% Health, restore 25% of normal Maximum Armour and Magic Armour and gain Moderate Might Up (+10 Might) and Moderate Focus Up (+10 Focus) for 2 turns.",
+      "limit": "Once per combat; distinct from Duke Ascension.",
+      "utility": "Deal 4 Magic Armour damage. If the target has no Magic Armour after the effect, apply Minor Might Down (-4 Might) and Minor Focus Down (-4 Focus) for 1 turn.",
+      "cooldown": 3,
+      "hook": "Protection restoration; threshold; mixed offence",
+      "synergy": "Curated Duke equipment and sequential encounters.",
+      "notes": "Playable Duke passive remains distinct from the Duke class perk and boss override."
+    },
+    "Wren": {
+      "passive": "After you Dodge, your next Weapon Skill 1 gains +10 Precision. If it damages Health, apply -10 Precision to the target for 1 turn.",
+      "limit": "Once per turn; consumed on hit.",
+      "utility": "Gain Minor Agility Up (+4 Agility) until the start of your next turn and restore 1 Armour.",
+      "cooldown": 2,
+      "hook": "Dodge; Weapon Skill 1; Armour restoration",
+      "synergy": "Dagger Pinion, Shadowplume and Rogue Tempo.",
+      "notes": "Basic Attack and Evasion wording removed."
+    },
+    "Superb Fairywren": {
+      "passive": "After a Magic damaging skill, your next Finesse damaging skill gains +5 percentage points Critical Chance and restores 1 to the lower protection pool on hit.",
+      "limit": "Once per turn; consumed on hit or miss.",
+      "utility": "Gain Minor Focus Up (+4 Focus) and Minor Agility Up (+4 Agility) until the start of your next turn.",
+      "cooldown": 2,
+      "hook": "Hybrid alternation; Critical; protection restoration",
+      "synergy": "Bard Song, Talon Blade and Crystalwind.",
+      "notes": "Supports Verse and Chorus without duplicating its Skill Power option."
+    },
+    "Firecrest": {
+      "passive": "Your first Day damaging skill each turn gains +5 percentage points Critical Chance and deals 2 additional Magic Armour damage.",
+      "limit": "Once per turn.",
+      "utility": "Gain Minor Agility Up (+4 Agility) until the start of your next turn. Your next Day hit attempts to apply 1 Burn stack only if Magic Armour is depleted and Health is damaged.",
+      "cooldown": 3,
+      "hook": "Magic Armour damage; Burn gate; Critical",
+      "synergy": "Day weapons, Ember infusion and Rogue Tempo.",
+      "notes": "Burn remains protected by Magic Armour."
+    },
+    "Willie Wagtail": {
+      "passive": "After an enemy attack resolves against you, gain Minor Agility Up (+4 Agility) until the start of your next turn. If you Dodged the attack, also restore 1 Armour.",
+      "limit": "Once per turn.",
+      "utility": "Deal 2 Armour damage. If the target has no Armour after the effect, apply -10 Precision for 1 turn.",
+      "cooldown": 2,
+      "hook": "Dodge; Agility; Armour restoration; Armour pressure",
+      "synergy": "Light shields, Shadowplume and Finesse weapons.",
+      "notes": "Evasion wording removed."
+    },
+    "Galah": {
+      "passive": "After using a song or call, restore 2 Magic Armour. If Magic Armour is full, gain Minor Agility Up (+4 Agility) until the start of your next turn.",
+      "limit": "2-turn cooldown.",
+      "utility": "Deal 3 Magic Armour damage. If it reaches Health, apply Minor Might Down (-4 Might) and Minor Focus Down (-4 Focus) for 1 turn.",
+      "cooldown": 2,
+      "hook": "Songs; Magic Armour restoration; debuff gate",
+      "synergy": "Bard Song, Lament Song and Crystalwind.",
+      "notes": "Replaces Evasion and generic Damage Down."
+    },
+    "Blue Jay": {
+      "passive": "The first time each turn a Storm damaging skill hits a debuffed or Marked target, gain 3 Ward Magic Armour for 1 turn.",
+      "limit": "Once per turn; Ward follows the normal healing and overflow rules.",
+      "utility": "Restore 3 Armour and 3 Magic Armour, each capped at its normal maximum.",
+      "cooldown": 2,
+      "hook": "Ward; Storm; protection restoration; debuffs",
+      "synergy": "Storm weapons, Layered Scale and Judgement Leech.",
+      "notes": "Replaces the legacy Barrier."
+    },
+    "Cardinal": {
+      "passive": "Your first Day Magic weapon skill each turn against a Burning target gains +20 Skill Power against Magic Armour. If it damages Health, heal 5% Maximum Health.",
+      "limit": "Once per turn; the Skill Power bonus does not increase Health damage.",
+      "utility": "Heal 8% Maximum Health and restore 3 Magic Armour.",
+      "cooldown": 3,
+      "hook": "Burn; Magic Armour pressure; healing",
+      "synergy": "Ember infusion, Wands and Dawnfeather.",
+      "notes": "Replaces Moderate Damage Up."
+    },
+    "Bush Turkey": {
+      "passive": "Once per turn, an Armour Restoration or Fortify skill you use grants 1 additional Armour.",
+      "limit": "Once per turn; the additional point follows the original skill's normal cap or overflow rule.",
+      "utility": "Gain 5 Fortified Armour for 2 turns.",
+      "cooldown": 3,
+      "hook": "Armour restoration; Fortify",
+      "synergy": "Ironfeather, shields and Bulwark Oath.",
+      "notes": "Armour Technique and Brace wording removed."
+    },
+    "Vulture": {
+      "passive": "While the target is below 50% Health, gain +10 Precision. The first time each turn you damage that target's Health, restore 1 to the lower protection pool.",
+      "limit": "Condition is checked before each action; restoration is once per turn.",
+      "utility": "Cleanse 1 damaging ailment and restore 4 to the protection pool that normally blocks that ailment.",
+      "cooldown": 3,
+      "hook": "Execute pressure; cleansing; matching protection restoration",
+      "synergy": "War Scythe, marks and Judgement Leech.",
+      "notes": "Physical ailments restore Armour; magical ailments restore Magic Armour."
+    },
+    "Barn Owl": {
+      "passive": "If acting before the target, your first Night Magic weapon skill each turn gains +5 percentage points Critical Chance and deals 2 additional Magic Armour damage.",
+      "limit": "Once per turn.",
+      "utility": "Gain Minor Agility Up (+4 Agility) until the start of your next turn. Your next Night attack gains +10 Precision.",
+      "cooldown": 2,
+      "hook": "Turn order; Magic Armour pressure; Critical",
+      "synergy": "Night Wands, Staffs and Crystalwind.",
+      "notes": "Evasion wording removed."
+    },
+    "Bustard": {
+      "passive": "While below 50% Health, restoring Armour or gaining Fortify also grants Minor Might Up (+4 Might) until the start of your next turn.",
+      "limit": "Once per turn.",
+      "utility": "Gain 6 Fortified Armour for 2 turns and cleanse Agility Down.",
+      "cooldown": 3,
+      "hook": "Fortify; Armour restoration; Might",
+      "synergy": "Ironfeather, Greatblade and Bulwark Oath.",
+      "notes": "Brace wording removed."
+    },
+    "Golden Eagle": {
+      "passive": "Your first damaging skill each turn against a target below 50% Health gains +10 percentage points Critical Chance and deals 2 additional damage to the matching protection pool.",
+      "limit": "Once per turn; condition must be true before the skill.",
+      "utility": "Your next damaging skill gains +10 percentage points Critical Chance.",
+      "cooldown": 3,
+      "hook": "Execute; Critical; matching protection damage",
+      "synergy": "Greatbow, Talon Blade and offensive accessories.",
+      "notes": "Uses matching Armour or Magic Armour according to the skill."
+    },
+    "Australian Pelican": {
+      "passive": "After using a Water action, restore 2 Armour. Your next Strength weapon hit may apply Minor Might Down (-4 Might) only if Armour is depleted and Health is damaged.",
+      "limit": "2-turn cooldown; the debuff is consumed on the next Strength hit.",
+      "utility": "Heal 8% Maximum Health, cleanse 1 debuff and restore 4 to the lower protection pool.",
+      "cooldown": 3,
+      "hook": "Armour restoration; Water action; physical debuff gate",
+      "synergy": "Heavy Water weapons, Layered Scale and Crushing Momentum.",
+      "notes": "Replaces generic Bastion wording with explicit protection effects."
+    },
+    "Marabou Stork": {
+      "passive": "Your first damaging action each turn against a target below 50% Health gains +10 Skill Power. If it damages Health, restore 2 to the lower protection pool.",
+      "limit": "Once per turn.",
+      "utility": "Apply Carrion Mark for 2 turns. It counts as a qualifying Mark for Judgement Leech but has no stat penalty and is not blocked by protection.",
+      "cooldown": 2,
+      "hook": "Execute; Mark; protection restoration; Skill Power",
+      "synergy": "War Scythe, Focus Orb and Judgement Leech.",
+      "notes": "Carrion Mark remains a Mark rather than an ailment."
+    },
+    "Pigeon": {
+      "passive": "After using a support utility, your next Earth damaging skill gains +10 Skill Power and restores 1 to the lower protection pool on hit.",
+      "limit": "Once per turn; consumed on hit or miss.",
+      "utility": "Restore 3 Armour and 3 Magic Armour, each capped at its normal maximum.",
+      "cooldown": 2,
+      "hook": "Support utility; Skill Power; dual restoration",
+      "synergy": "Layered Scale, Bard Song and Earth weapons.",
+      "notes": "Brace and generic Damage Up wording removed."
+    },
+    "Rock Pigeon": {
+      "passive": "After restoring Armour or gaining Fortify, your next Earth hit deals 2 additional Armour damage. If it damages Health, apply Minor Guard Down (-4 Guard) for 1 turn.",
+      "limit": "Once per turn; consumed on hit.",
+      "utility": "Restore 4 Armour and gain Minor Resolve Up (+4 Resolve) until the start of your next turn.",
+      "cooldown": 2,
+      "hook": "Armour restoration; Fortify; Armour damage; Guard debuff",
+      "synergy": "Ironfeather, Layered Scale and Earth weapons.",
+      "notes": "Barrier and Brace Down wording removed."
+    },
+    "Dove": {
+      "passive": "The first support or song skill you use each turn restores 2 Magic Armour. If Magic Armour is full, gain Minor Resolve Up (+4 Resolve) until the start of your next turn.",
+      "limit": "Once per turn.",
+      "utility": "Cleanse 1 debuff and gain 6 Ward Magic Armour for 2 turns.",
+      "cooldown": 3,
+      "hook": "Support; Ward; Magic Armour restoration",
+      "synergy": "Dawnfeather, Runewoven and Bard Song.",
+      "notes": "Replaces the legacy Barrier."
+    },
+    "Rock Dove": {
+      "passive": "After Armour absorbs physical damage, your next song or call restores 3 Armour, capped at its normal maximum.",
+      "limit": "Once per turn; consumed when the song or call resolves.",
+      "utility": "Gain 4 Fortified Armour for 2 turns.",
+      "cooldown": 3,
+      "hook": "Armour absorption; Armour restoration; Fortify",
+      "synergy": "Layered Scale, Ironfeather and Bard support builds.",
+      "notes": "Brace and generic Damage Down wording removed."
+    },
+    "Kakapo": {
+      "passive": "While below 50% Health, the first song you use restores 2 to the lower protection pool and heals 5% Maximum Health.",
+      "limit": "3-turn cooldown; does not trigger from Moss Dream.",
+      "utility": "Heal 8% Maximum Health and restore 3 Magic Armour.",
+      "cooldown": 3,
+      "hook": "Low-Health sustain; protection restoration",
+      "synergy": "Dawnfeather, defensive songs and Verse and Chorus.",
+      "notes": "Sustain is split between Health and protection."
+    },
+    "Dodo": {
+      "passive": "The first time each combat your Armour reaches 0 while below 50% Health, restore 4 Armour and gain Minor Guard Up (+4 Guard) until the start of your next turn.",
+      "limit": "Once per combat.",
+      "utility": "Gain 8 Fortified Armour for 2 turns. While Fortify remains, suffer Minor Agility Down (-4 Agility).",
+      "cooldown": 4,
+      "hook": "Armour depletion; Armour restoration; Fortify",
+      "synergy": "Ironfeather, shields and Bulwark Oath.",
+      "notes": "Replaces generic damage reduction and the legacy Barrier."
+    },
+    "Chickadee": {
+      "passive": "After using Pine Cover, your next Weapon Skill 1 gains +10 Skill Power and +10 Precision.",
+      "limit": "Once per turn; consumed on hit or miss.",
+      "utility": "Restore 3 Armour and 3 Magic Armour, each capped at its normal maximum.",
+      "cooldown": 2,
+      "hook": "Weapon Skill 1; dual restoration; Precision",
+      "synergy": "Dagger Pinion, Shadowplume and Rogue Tempo.",
+      "notes": "No longer tied to a 1 EN Martial action."
+    },
+    "Finch": {
+      "passive": "After using Natural Strike, your next Earth Weapon Skill 1 or 2 gains +10 Skill Power and restores 1 Armour on hit.",
+      "limit": "Once per turn; consumed on hit or miss.",
+      "utility": "Deal 2 Armour damage. If the target has no Armour after the effect, apply Minor Agility Down (-4 Agility) for 1 turn.",
+      "cooldown": 2,
+      "hook": "Natural Strike; weapon skills; Armour restoration; Armour pressure",
+      "synergy": "Earth Talon Blade, Bow and light defensive sets.",
+      "notes": "Basic Attack wording standardised to Natural Strike."
+    }
+  }
+}
