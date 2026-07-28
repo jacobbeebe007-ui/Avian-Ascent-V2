@@ -2768,9 +2768,12 @@ body.build-nest-unlocked .splash-hotspot--forge.is-buildnest-hidden{
 .hp-label .hp-delta-down{color:var(--red-light);text-shadow:0 0 10px rgba(201,76,76,.28);}
 .hp-label .hp-delta-up{color:var(--green-light);text-shadow:0 0 10px rgba(76,180,76,.28);}
 .hp-bar-bg{height:12px;background:linear-gradient(180deg,rgba(8,12,20,.92),rgba(20,26,40,.82));border-radius:8px;overflow:hidden;border:1px solid rgba(201,168,76,.22);position:relative;box-shadow:inset 0 0 8px rgba(0,0,0,.45);}
-.hp-bar-shield{position:absolute;top:0;height:100%;border-radius:0 8px 8px 0;background:linear-gradient(90deg,rgba(220,225,235,.88),rgba(255,255,255,.95));box-shadow:0 0 8px rgba(255,255,255,.3);width:0;left:0;transition:width .35s ease,left .35s ease;pointer-events:none;z-index:2;opacity:0;}
-.hp-bar-shield.active{opacity:1;}
-.status-badge.shield{background:rgba(240,240,245,.12);border-color:rgba(255,255,255,.45);color:#f0f0f5;}
+.prot-bar-temp{position:absolute;top:0;height:100%;border-radius:0 8px 8px 0;width:0;left:0;transition:width .35s ease,left .35s ease;pointer-events:none;z-index:2;opacity:0;}
+.prot-bar-temp.active{opacity:1;}
+.arm-bar-temp{background:linear-gradient(90deg,rgba(255,255,255,.55),rgba(255,255,255,.95));box-shadow:0 0 8px rgba(255,255,255,.35);}
+.marm-bar-temp{background:linear-gradient(90deg,rgba(160,210,255,.55),rgba(220,240,255,.95));box-shadow:0 0 8px rgba(160,210,255,.4);}
+.status-badge.shield,.status-badge.fortify{background:rgba(240,240,245,.12);border-color:rgba(255,255,255,.45);color:#f0f0f5;}
+.status-badge.ward{background:rgba(140,190,240,.12);border-color:rgba(140,190,240,.5);color:#b8dcff;}
 .hp-bar-bg::after{content:"";position:absolute;inset:1px;border-radius:6px;pointer-events:none;background:linear-gradient(180deg,rgba(255,255,255,.12),rgba(255,255,255,0));}
 .hp-bar-fill{height:100%;border-radius:8px;transition:width .35s ease, filter .3s ease;background:linear-gradient(90deg,#2f9e56,var(--green-light));box-shadow:0 0 12px rgba(76,180,76,.25);}
 .hp-bar-fill.low{background:linear-gradient(90deg,#b53a3a,var(--red-light));box-shadow:0 0 12px rgba(201,76,76,.35);}

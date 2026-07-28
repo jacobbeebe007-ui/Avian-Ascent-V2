@@ -7220,7 +7220,7 @@ function endlessMapSelectNode(nodeId){
     const pct = EndlessMap.ENDLESS_REST_SHIELD_PCT || 0.30;
     map.pendingRestShieldPct = pct;
     EndlessMap.markVisited(map, nodeId);
-    map.lastMessage = 'Rested — next fight starts with a ' + Math.round(pct * 100) + '% Max HP shield.';
+    map.lastMessage = 'Rested — next fight starts with Fortify equal to ' + Math.round(pct * 100) + '% Max Health on Armour.';
     map.activeNodeId = null;
     saveRun();
     showEndlessMap();
@@ -7717,7 +7717,7 @@ function loadStage() {
       if(typeof spawnFloat === 'function'){
         spawnFloat('player', `🛡 ${Math.round(pct * 100)}%`, 'fn-heal');
       }
-      logMsg(`Rest shield armed (${Math.round(pct * 100)}% Max HP).`, 'system');
+      logMsg(`Rest Fortify armed (${Math.round(pct * 100)}% Max Health → Armour).`, 'system');
     }
     G.endlessMap.pendingRestShieldPct = 0;
   }
@@ -8508,22 +8508,12 @@ function refreshBattleUI() {
 }
 
 function setHpBar(who,hp,max) {
-  const stats=who==='player'?G?.player?.stats:G?.enemy?.stats;
-  // Temporary shieldHp only — Armour/Magic Armour use dedicated ARM/MARM bars.
-  const shieldHp=Math.max(0, Number(stats?.shieldHp)||0);
   const maxHp=Math.max(1, Number(max)||1);
   const pct=Math.max(0,hp/maxHp*100);
-  const shieldPct=Math.min(100, (shieldHp/maxHp)*100);
   const bar=document.getElementById(`${who}-hp-bar`);
   if(!bar) return;
   bar.style.width=pct+'%';
   bar.className='hp-bar-fill'+(pct<25?' low':pct<50?' mid':'');
-  const shieldSeg=document.getElementById(`${who}-shield-segment`);
-  if(shieldSeg){
-    shieldSeg.style.width=shieldPct+'%';
-    shieldSeg.style.left=pct+'%';
-    shieldSeg.classList.toggle('active', shieldHp>0);
-  }
 
   const key=`${who}Hp`;
   G._uiLastHp = G._uiLastHp || {};
@@ -8533,11 +8523,7 @@ function setHpBar(who,hp,max) {
 
   const hpTextEl=document.getElementById(`${who}-hp-text`);
   if(hpTextEl){
-    let protectNote='';
-    if(shieldHp>0){
-      protectNote=` (+${formatCombatNumber(shieldHp)} shield)`;
-    }
-    hpTextEl.textContent=`${formatCombatNumber(Math.max(0,hp))}/${formatCombatNumber(maxHp)} (${pct.toFixed(2)}%)${protectNote}`;
+    hpTextEl.textContent=`${formatCombatNumber(Math.max(0,hp))}/${formatCombatNumber(maxHp)} (${pct.toFixed(2)}%)`;
     hpTextEl.classList.remove('hp-delta-up','hp-delta-down');
     if(delta<0){ hpTextEl.classList.add('hp-delta-down'); }
     else if(delta>0){ hpTextEl.classList.add('hp-delta-up'); }
@@ -8708,14 +8694,23 @@ function setEnergyBar(side,cur,max){
 
 function setProtectionBars(side){
   const stats=side==='player'?G?.player?.stats:G?.enemy?.stats;
+  const status=side==='player'?G?.playerStatus:G?.enemyStatus;
   const arm=Math.max(0, Number(stats?.armour)||0);
-  const armMax=Math.max(0, Number(stats?.maxArmour)!=null?stats.maxArmour:(stats?.normalMaxArmour||stats?.armourFlat||0));
+  const armNormal=Math.max(0, Number(stats?.normalMaxArmour)!=null?stats.normalMaxArmour:(stats?.armourFlat||0));
+  const armMax=Math.max(0, Number(stats?.maxArmour)!=null?stats.maxArmour:armNormal);
   const marm=Math.max(0, Number(stats?.magicArmour)||0);
-  const marmMax=Math.max(0, Number(stats?.maxMagicArmour)!=null?stats.maxMagicArmour:(stats?.normalMaxMagicArmour||stats?.magicArmourFlat||0));
+  const marmNormal=Math.max(0, Number(stats?.normalMaxMagicArmour)!=null?stats.normalMaxMagicArmour:(stats?.magicArmourFlat||0));
+  const marmMax=Math.max(0, Number(stats?.maxMagicArmour)!=null?stats.maxMagicArmour:marmNormal);
+  const fortifyBonus=Math.max(0, Number(stats?._fortifyBonus)||Number(status?.fortify?.amount)||0);
+  const wardBonus=Math.max(0, Number(stats?._wardBonus)||Number(status?.ward?.amount)||0);
+  const fortifyTurns=Math.max(0, Math.floor(Number(status?.fortify?.turns)||0));
+  const wardTurns=Math.max(0, Math.floor(Number(status?.ward?.turns)||0));
   const armFill=document.getElementById(`${side}-arm-bar`);
   const armTxt=document.getElementById(`${side}-arm-text`);
+  const armTemp=document.getElementById(`${side}-arm-temp`);
   const marmFill=document.getElementById(`${side}-marm-bar`);
   const marmTxt=document.getElementById(`${side}-marm-text`);
+  const marmTemp=document.getElementById(`${side}-marm-temp`);
   const armDenom=Math.max(1, armMax);
   const marmDenom=Math.max(1, marmMax);
   const armPct=Math.max(0, Math.min(100, (arm/armDenom)*100));
@@ -8738,8 +8733,20 @@ function setProtectionBars(side){
     if(armDelta<0) armFill.classList.add('recent-hit');
     else if(armDelta>0) armFill.classList.add('recent-heal');
   }
+  if(armTemp){
+    const overflow=Math.max(0, Math.min(arm, armMax) - armNormal);
+    const leftPct=Math.max(0, Math.min(100, (armNormal/armDenom)*100));
+    const widthPct=Math.max(0, Math.min(100-leftPct, (overflow/armDenom)*100));
+    armTemp.style.left=`${leftPct}%`;
+    armTemp.style.width=`${widthPct}%`;
+    armTemp.classList.toggle('active', overflow>0 || fortifyBonus>0);
+  }
   if(armTxt){
-    armTxt.textContent=`${formatCombatNumber(arm)}/${formatCombatNumber(armMax)} (${armPct.toFixed(2)}%)`;
+    let note='';
+    if(fortifyBonus>0){
+      note=` · Fortify +${formatCombatNumber(fortifyBonus)}${fortifyTurns>0?` (${fortifyTurns}t)`:''}`;
+    }
+    armTxt.textContent=`${formatCombatNumber(arm)}/${formatCombatNumber(armMax)} (${armPct.toFixed(2)}%)${note}`;
     armTxt.classList.remove('hp-delta-up','hp-delta-down');
     if(armDelta<0) armTxt.classList.add('hp-delta-down');
     else if(armDelta>0) armTxt.classList.add('hp-delta-up');
@@ -8750,8 +8757,20 @@ function setProtectionBars(side){
     if(marmDelta<0) marmFill.classList.add('recent-hit');
     else if(marmDelta>0) marmFill.classList.add('recent-heal');
   }
+  if(marmTemp){
+    const overflow=Math.max(0, Math.min(marm, marmMax) - marmNormal);
+    const leftPct=Math.max(0, Math.min(100, (marmNormal/marmDenom)*100));
+    const widthPct=Math.max(0, Math.min(100-leftPct, (overflow/marmDenom)*100));
+    marmTemp.style.left=`${leftPct}%`;
+    marmTemp.style.width=`${widthPct}%`;
+    marmTemp.classList.toggle('active', overflow>0 || wardBonus>0);
+  }
   if(marmTxt){
-    marmTxt.textContent=`${formatCombatNumber(marm)}/${formatCombatNumber(marmMax)} (${marmPct.toFixed(2)}%)`;
+    let note='';
+    if(wardBonus>0){
+      note=` · Ward +${formatCombatNumber(wardBonus)}${wardTurns>0?` (${wardTurns}t)`:''}`;
+    }
+    marmTxt.textContent=`${formatCombatNumber(marm)}/${formatCombatNumber(marmMax)} (${marmPct.toFixed(2)}%)${note}`;
     marmTxt.classList.remove('hp-delta-up','hp-delta-down');
     if(marmDelta<0) marmTxt.classList.add('hp-delta-down');
     else if(marmDelta>0) marmTxt.classList.add('hp-delta-up');

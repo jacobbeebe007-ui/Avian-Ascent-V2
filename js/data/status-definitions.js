@@ -82,15 +82,7 @@
     if ((s.rageBuff || 0) > 0) {
       entries.push({ id: 'rageBuff', value: s.rageBuff, synthetic: true });
     }
-    var shieldHp = Number(ownerStats && ownerStats.shieldHp) || 0;
-    if (shieldHp > 0) {
-      entries.push({
-        id: 'shieldHp',
-        value: { amount: shieldHp, max: Number(ownerStats.maxShieldHp) || shieldHp, turns: s.shieldHpTurns || 1,
-          sourceId: s.shieldHpSourceId, sourceKind: s.shieldHpSourceKind },
-        synthetic: true,
-      });
-    }
+    /* Legacy shieldHp is folded into Fortify/Ward pools — do not badge as HP shield. */
     if ((s.magicAilmentChanceBuff || 0) > 0) {
       entries.push({
         id: 'magicAilmentChanceBuff',
@@ -190,10 +182,25 @@
       out.category = 'buff';
       return out;
     }
+    if (k === 'fortify') {
+      out.className = 'status-badge fortify';
+      out.text = '🛡 Fortify +' + Math.floor(Number(v.amount) || 0) + '(' + Math.floor(Number(v.turns) || 0) + 't)';
+      out.summary = 'Temporary Armour bonus shown on the ARM bar.';
+      out.category = 'buff';
+      return out;
+    }
+    if (k === 'ward') {
+      out.className = 'status-badge ward';
+      out.text = '🔷 Ward +' + Math.floor(Number(v.amount) || 0) + '(' + Math.floor(Number(v.turns) || 0) + 't)';
+      out.summary = 'Temporary Magic Armour bonus shown on the MARM bar.';
+      out.category = 'buff';
+      return out;
+    }
     if (k === 'shieldHp') {
-      out.className = 'status-badge shield';
-      out.text = '🛡 Shield ' + v.amount + ' HP(' + (v.turns || 1) + 't)';
-      out.summary = 'Temporary HP absorbs damage before real HP.';
+      /* Legacy Barrier — map wording to Armour pool, not HP. */
+      out.className = 'status-badge fortify';
+      out.text = '🛡 Fortify +' + Math.floor(Number(v.amount) || 0) + '(' + Math.floor(Number(v.turns) || 1) + 't)';
+      out.summary = 'Temporary Armour absorbs matching damage before Health.';
       out.source = resolveSourceLabel(v.sourceId, v.sourceKind);
       out.category = 'buff';
       return out;
