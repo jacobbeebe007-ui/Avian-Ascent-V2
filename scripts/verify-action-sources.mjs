@@ -150,6 +150,25 @@ assertWeapon(player({ mainHand: 'WPN-061', offHand: 'WPN-007' }), 'weaponB', 'WS
 // armour technique
 assertArmour(player({ armour: 'ARM-002' }), 'ESK-001');
 assertArmour(player(), null);
+/* Grey armour has no skill1 — fall back to shield, then helmet. */
+assertArmour(player({ armour: 'ARM-001', offHand: 'SHD-002' }), 'ESK-005');
+assertArmour(player({ armour: 'ARM-001', helmet: 'HLM-002' }), 'ESK-003');
+assertArmour(player({ armour: 'ARM-002', offHand: 'SHD-002' }), 'ESK-001'); // armour wins
+
+const restoreRow = actions.skillToAbilityRow('ESK-001', null, 'green');
+if (!restoreRow || !(restoreRow.riders || []).some((r) => r.kind === 'restoreArmour' && r.value === 4)) {
+  fail('ESK-001 must carry restoreArmour:4 rider');
+} else ok('ESK-001 restoreArmour rider');
+
+const lowerRow = actions.skillToAbilityRow('ESK-015', null, 'green');
+if (!lowerRow || !(lowerRow.riders || []).some((r) => r.kind === 'restoreLowerPool')) {
+  fail('ESK-015 must carry restoreLowerPool rider');
+} else ok('ESK-015 restoreLowerPool rider');
+
+const bastionRow = actions.skillToAbilityRow('ESK-014', null, 'purple');
+if (!bastionRow || !(bastionRow.riders || []).some((r) => r.kind === 'bastion' && r.armour === 5 && r.magicArmour === 5)) {
+  fail('ESK-014 must carry bastion 5/5 rider');
+} else ok('ESK-014 bastion rider');
 
 // ultimate requires qualifying Gold/Orange item
 assertUltimate(player({ mainHand: 'WPN-007' }), false);

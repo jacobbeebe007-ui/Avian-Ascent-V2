@@ -70,6 +70,25 @@ const restored = prot.restoreArmour(stats, 8);
 if (stats.armour !== 24 || restored !== 6) fail(`Restore expected +6 to 24, got restore=${restored} armour=${stats.armour}`);
 else ok('Armour restoration caps at normal max');
 
+/* restoreLowerPool prefers the pool with more room / lower fill */
+stats.armour = 20;
+stats.normalMaxArmour = 24;
+stats.maxArmour = 24;
+stats.magicArmour = 5;
+stats.normalMaxMagicArmour = 18;
+stats.maxMagicArmour = 18;
+const lower = prot.restoreLowerPool(stats, 4);
+if (!lower || lower.poolKey !== 'magicArmour' || lower.restored !== 4 || stats.magicArmour !== 9) {
+  fail(`restoreLowerPool expected magic +4 → 9, got ${JSON.stringify(lower)} marm=${stats.magicArmour}`);
+} else ok('restoreLowerPool fills lower Magic Armour pool');
+
+stats.armour = 10;
+stats.magicArmour = 18;
+const lower2 = prot.restoreLowerPool(stats, 3);
+if (!lower2 || lower2.poolKey !== 'armour' || lower2.restored !== 3 || stats.armour !== 13) {
+  fail(`restoreLowerPool expected armour +3 → 13, got ${JSON.stringify(lower2)} arm=${stats.armour}`);
+} else ok('restoreLowerPool fills lower Armour pool');
+
 /* Overflow damage */
 stats.armour = 4;
 const hit = prot.applyDamageThroughProtection(stats, status, 7, false);

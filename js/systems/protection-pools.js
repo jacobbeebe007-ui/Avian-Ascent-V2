@@ -114,10 +114,31 @@
     if (add <= 0) return 0;
     var normalMax = Number(stats.normalMaxMagicArmour) || 0;
     var before = Number(stats.magicArmour) || 0;
-    if (before > normalMax) return 0;
+    /* Restoration cannot exceed normal maximum; leave Ward overflow untouched. */
+    if (before >= normalMax) return 0;
     var next = Math.min(normalMax, before + add);
     stats.magicArmour = next;
     return Math.max(0, next - before);
+  }
+
+  /** Restore amount into whichever of Armour / Magic Armour has more room (lower current fill). */
+  function restoreLowerPool(stats, amount) {
+    if (!stats) return { restored: 0, poolKey: null };
+    ensureProtectionFields(stats);
+    var n = Math.max(0, Math.floor(Number(amount) || 0));
+    if (n <= 0) return { restored: 0, poolKey: null };
+    var arm = Math.max(0, Number(stats.armour) || 0);
+    var armMax = Math.max(0, Number(stats.normalMaxArmour) || 0);
+    var mag = Math.max(0, Number(stats.magicArmour) || 0);
+    var magMax = Math.max(0, Number(stats.normalMaxMagicArmour) || 0);
+    var armRoom = Math.max(0, armMax - arm);
+    var magRoom = Math.max(0, magMax - mag);
+    if (armRoom <= 0 && magRoom <= 0) return { restored: 0, poolKey: null, bothFull: true };
+    var useMagic = magRoom > 0 && (armRoom <= 0 || mag < arm);
+    if (useMagic) {
+      return { restored: restoreMagicArmour(stats, n), poolKey: 'magicArmour' };
+    }
+    return { restored: restoreArmour(stats, n), poolKey: 'armour' };
   }
 
   function applyFortify(stats, status, amount, turns) {
@@ -282,6 +303,7 @@
   ns.resetCombatPools = resetCombatPools;
   ns.restoreArmour = restoreArmour;
   ns.restoreMagicArmour = restoreMagicArmour;
+  ns.restoreLowerPool = restoreLowerPool;
   ns.applyFortify = applyFortify;
   ns.applyWard = applyWard;
   ns.applyBastion = applyBastion;

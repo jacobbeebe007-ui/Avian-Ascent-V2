@@ -238,6 +238,7 @@
       { re: new RegExp('\\b' + tierWord + '\\s+(?:DEF|Guard)\\s+Up\\b', 'gi'), kind: 'gainDef' },
       { re: new RegExp('\\b' + tierWord + '\\s+(?:MDEF|Resolve)\\s+Up\\b', 'gi'), kind: 'gainMdef' },
       { re: new RegExp('\\b' + tierWord + '\\s+(?:SPD|Agility)\\s+Up\\b', 'gi'), kind: 'gainSpeed' },
+      { re: new RegExp('\\b' + tierWord + '\\s+(?:DEX|Dexterity)\\s+Up\\b', 'gi'), kind: 'gainDex' },
       { re: new RegExp('\\b' + tierWord + '\\s+(?:Martial\\s+)?Damage\\s+Up\\b', 'gi'), kind: 'gainAtk' },
     ];
     for (var sbi = 0; sbi < statBuffMap.length; sbi++) {
@@ -386,6 +387,53 @@
     for (var shDmg of t.matchAll(/gain a Shield equal to (\d+(?:\.\d+)?)\s*%\s*of damage dealt/gi)) {
       addSelf('gainShieldFromDamage', Number(shDmg[1]), { when: parseRiderWhen(t, shDmg[0]) });
     }
+
+    // Protection pools (Armour / Magic Armour restore, Fortify, Ward, Bastion)
+    if (!hasRiderKind(riders, 'bastion') && !hasRiderKind(riders, 'restoreArmour')
+      && !hasRiderKind(riders, 'restoreMagicArmour') && !hasRiderKind(riders, 'restoreLowerPool')
+      && !hasRiderKind(riders, 'fortify') && !hasRiderKind(riders, 'ward')) {
+      var dualBastion = t.match(
+        /(?:restore|gain)\s+(\d+)\s+(?:fortified\s+)?(?:armour|armor)(?:\s*\([^)]*\))?\s*(?:and|&|,)\s+(\d+)\s+(?:ward\s+)?magic\s+(?:armour|armor)/i
+      ) || t.match(
+        /gain\s+(\d+)\s+fortified\s+(?:armour|armor)(?:\s*\([^)]*\))?\s*(?:,?\s*and|,)\s*(\d+)\s+ward(?:\s+magic)?\s*(?:armour|armor)/i
+      );
+      var lowerPool = t.match(/restore\s+(\d+)\s+to\s+(?:the\s+)?(?:lower|whichever)\s+(?:protection\s+)?pool/i);
+      var restoreBoth = t.match(/restore\s+(\d+)\s+(?:armour|armor)\s+and\s+(\d+)\s+magic\s+(?:armour|armor)/i);
+      var restoreArm = t.match(/restore\s+(\d+)\s+(?:armour|armor)(?!\s+and\s+\d+\s+magic)/i);
+      var restoreMag = t.match(/restore\s+(\d+)\s+magic\s+(?:armour|armor)/i);
+      var fortifyM = t.match(/(?:gain|gains?)\s+(\d+)\s+fortified\s+(?:armour|armor)/i)
+        || t.match(/\bfortify\s+(\d+)\b/i);
+      var wardM = t.match(/(?:gain|gains?)\s+(\d+)\s+ward(?:\s+magic)?\s*(?:armour|armor)/i)
+        || t.match(/\bward\s+(\d+)\b/i);
+      if (dualBastion) {
+        riders.push({
+          kind: 'bastion',
+          armour: Number(dualBastion[1]) || 0,
+          magicArmour: Number(dualBastion[2]) || 0,
+          value: Number(dualBastion[1]) || 0,
+          turns: 2,
+          scope: 'self',
+          when: null,
+        });
+      } else if (lowerPool) {
+        riders.push({ kind: 'restoreLowerPool', value: Number(lowerPool[1]) || 0, scope: 'self', when: null });
+      } else if (restoreBoth) {
+        riders.push({ kind: 'restoreArmour', value: Number(restoreBoth[1]) || 0, scope: 'self', when: null });
+        riders.push({ kind: 'restoreMagicArmour', value: Number(restoreBoth[2]) || 0, scope: 'self', when: null });
+      } else {
+        if (restoreArm && !/fortified\s+(?:armour|armor)/i.test(restoreArm[0])) {
+          riders.push({ kind: 'restoreArmour', value: Number(restoreArm[1]) || 0, scope: 'self', when: null });
+        }
+        if (restoreMag) {
+          riders.push({ kind: 'restoreMagicArmour', value: Number(restoreMag[1]) || 0, scope: 'self', when: null });
+        }
+      }
+      if (!hasRiderKind(riders, 'bastion')) {
+        if (fortifyM) riders.push({ kind: 'fortify', value: Number(fortifyM[1]) || 0, turns: 2, scope: 'self', when: null });
+        if (wardM) riders.push({ kind: 'ward', value: Number(wardM[1]) || 0, turns: 2, scope: 'self', when: null });
+      }
+    }
+
     if (/\bshield\b/i.test(t) && /temp|temporary|max\s*hp|max\s*health|health/i.test(t)) {
       var shM = t.match(/(\d+(?:\.\d+)?)\s*%\s*(?:max\s*)?(?:hp|health)/i);
       addSelf('gainShield', shM ? Number(shM[1]) : 0, { when: parseRiderWhen(t, shM ? shM[0] : t) });

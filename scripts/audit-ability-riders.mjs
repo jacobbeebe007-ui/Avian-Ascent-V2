@@ -32,6 +32,11 @@ const enrichCombat = sandbox.enrichCombatRow;
 
 const TAG_UTILITY = new Set(['Cleanse', 'Purge', 'Marked', 'Bloodied']);
 const IGNORE_RIDER_LABELS = new Set(['None', '']);
+/* Attack-setup / conditional Skill Power lines are tracked separately from combat riders. */
+const DEFERRED_SETUP = /next\s+(?:Strength|Finesse|Magic|weapon)?\s*skill|gains?\s+\+\d+\s+Skill Power/i;
+/* Pure damage lines are executed via skillPower — not rider handlers. */
+const PURE_DAMAGE = /^(?:Deal|Strike)\b/i;
+const NATURAL_STRIKE = /Natural Strike/i;
 
 let unhooked = 0;
 const samples = [];
@@ -46,11 +51,12 @@ function hasExecutableEffect(row) {
 }
 
 function skillToRow(skill) {
+  const structured = skill.riders || skill.protectionRiders || [];
   return {
     id: skill.id,
     name: skill.name,
     riderText: skill.riderText || '',
-    riders: skill.rider?.effects || [],
+    riders: structured.map((r) => Object.assign({}, r)),
     tags: [],
     lifestealPct: 0,
     ailment: null,
@@ -62,10 +68,17 @@ function skillToRow(skill) {
 for (const [id, skill] of Object.entries(trees)) {
   const copy = skillToRow(skill);
   enrich(copy);
-  enrichCombat(copy);
+  if (typeof enrichCombat === 'function') enrichCombat(copy);
 
   const rt = String(copy.riderText || '').trim();
-  if (rt && !IGNORE_RIDER_LABELS.has(rt) && !hasExecutableEffect(copy)) {
+  if (!rt || IGNORE_RIDER_LABELS.has(rt)) continue;
+  if (NATURAL_STRIKE.test(rt)) continue;
+  if (DEFERRED_SETUP.test(rt) && !hasExecutableEffect(copy)) continue;
+  /* Pure damage with optional conditional clauses still deal damage via skillPower. */
+  if (PURE_DAMAGE.test(rt) && !/Restore\s+\d+|Fortif|Ward\s|gain\s+(Minor|Moderate|Major)/i.test(rt)) {
+    continue;
+  }
+  if (!hasExecutableEffect(copy)) {
     unhooked++;
     if (samples.length < 12) samples.push({ id, name: copy.name, riderText: rt });
   }

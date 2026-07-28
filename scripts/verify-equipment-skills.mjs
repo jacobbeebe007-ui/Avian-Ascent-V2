@@ -116,6 +116,24 @@ for (const skillId of skillIds) {
 }
 ok('all skill ids resolve at grey+orange rarities');
 
+const PROT_KINDS = new Set(['restoreArmour', 'restoreMagicArmour', 'restoreLowerPool', 'fortify', 'ward', 'bastion']);
+let protChecked = 0;
+for (const skillId of skillIds) {
+  const skill = skills[skillId];
+  const text = String(skill.riderText || '');
+  const wantsProt = /Restore\s+\d+|Fortified Armour|Ward(?:\s+Magic)?\s*Armour|lower\s+protection\s+pool/i.test(text);
+  if (!wantsProt) continue;
+  const row = actions.skillToAbilityRow(skillId, { id: 'TEST', rarity: 'green' }, 'green');
+  const riders = (row && row.riders) || [];
+  if (!riders.some((r) => PROT_KINDS.has(r.kind))) {
+    fail(`${skillId}: protection riderText missing executable rider (${text.slice(0, 80)})`);
+  } else {
+    protChecked++;
+  }
+}
+if (protChecked > 0) ok(`${protChecked} protection skills carry executable riders`);
+else fail('expected at least one protection skill with riders');
+
 const st = { activeTierEffects: Object.create(null) };
 const first = effects.applyTierEffect(st, 'player', 'atk', 'minor', 'up', 'test', 2);
 const second = effects.applyTierEffect(st, 'player', 'atk', 'moderate', 'up', 'test', 2);

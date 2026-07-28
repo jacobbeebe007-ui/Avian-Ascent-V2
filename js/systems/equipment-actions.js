@@ -291,7 +291,7 @@
       for (var sri = 0; sri < skill.riders.length; sri++) {
         var sr = skill.riders[sri];
         if (!sr || !sr.kind) continue;
-        if (/^(restoreArmour|restoreMagicArmour|fortify|ward|bastion)$/.test(sr.kind)) {
+        if (/^(restoreArmour|restoreMagicArmour|restoreLowerPool|fortify|ward|bastion)$/.test(sr.kind)) {
           riders.push(Object.assign({ when: null, scope: 'self' }, sr));
         }
       }
@@ -607,11 +607,84 @@
     return out;
   };
 
+  /**
+   * True when a skill belongs on the Armour Technique combat-bar slot
+   * (restoration / fortify / ward / bastion / armour technique / utility buff).
+   */
+  function isArmourTechniqueSkill(skill) {
+    if (!skill) return false;
+    var st = String(skill.skillType || skill.barSlot || '').toLowerCase();
+    if (
+      st.indexOf('armour') >= 0 ||
+      st.indexOf('technique') >= 0 ||
+      st === 'restoration' ||
+      st.indexOf('restoration') >= 0 ||
+      st === 'fortify' ||
+      st.indexOf('fortify') >= 0 ||
+      st === 'ward' ||
+      st.indexOf('ward') >= 0 ||
+      st === 'bastion' ||
+      st.indexOf('bastion') >= 0 ||
+      st === 'buff' ||
+      st.indexOf('buff') >= 0 ||
+      st.indexOf('attack setup') >= 0
+    ) {
+      return true;
+    }
+    var riders = skill.riders || skill.protectionRiders || [];
+    for (var i = 0; i < riders.length; i++) {
+      var k = riders[i] && (riders[i].kind || riders[i].type);
+      if (
+        k === 'restoreArmour' ||
+        k === 'restoreMagicArmour' ||
+        k === 'restoreLowerPool' ||
+        k === 'fortify' ||
+        k === 'ward' ||
+        k === 'bastion'
+      ) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  function tryArmourTechniqueFromItem(item, sourceKey) {
+    if (!item || !item.skill1) return null;
+    var skill = getSkill(item.skill1);
+    if (skill && !isArmourTechniqueSkill(skill)) return null;
+    var row = ns.skillToAbilityRow(item.skill1, item, normalizeRarity(item.rarity));
+    return row ? abilityFromRow(row, { actionSource: sourceKey || 'armour' }) : null;
+  }
+
+  /**
+   * Resolve which equipped skill fills the Armour Technique combat-bar slot.
+   * Priority: armour.skill1 → offHand shield.skill1 → helmet.skill1
+   * Grey armour often has skill1: null; shields and helmets grant these skills.
+   */
   ns.resolveArmourTechnique = function resolveArmourTechnique(entity) {
     var armour = equippedItem(entity, 'armour');
-    if (!armour || !armour.skill1) return null;
-    var row = ns.skillToAbilityRow(armour.skill1, armour, normalizeRarity(armour.rarity));
-    return row ? abilityFromRow(row, { actionSource: 'armour' }) : null;
+    var fromArmour = tryArmourTechniqueFromItem(armour, 'armour');
+    if (fromArmour) return fromArmour;
+
+    var off = equippedItem(entity, 'offHand');
+    if (off && (String(off.slot || '').toLowerCase() === 'shield' || String(off.subtype || '').toLowerCase().indexOf('shield') >= 0
+      || String(off.budgetClass || '').toLowerCase() === 'shield' || String(off.family || '').toLowerCase().indexOf('shield') >= 0
+      || String(off.name || '').toLowerCase().indexOf('shield') >= 0)) {
+      var fromShield = tryArmourTechniqueFromItem(off, 'armour');
+      if (fromShield) return fromShield;
+    } else if (off && off.skill1) {
+      var offSkill = getSkill(off.skill1);
+      if (offSkill && isArmourTechniqueSkill(offSkill)) {
+        var fromOff = tryArmourTechniqueFromItem(off, 'armour');
+        if (fromOff) return fromOff;
+      }
+    }
+
+    var helm = equippedItem(entity, 'helmet');
+    var fromHelm = tryArmourTechniqueFromItem(helm, 'armour');
+    if (fromHelm) return fromHelm;
+
+    return null;
   };
 
   function collectUltimateCandidates(entity) {

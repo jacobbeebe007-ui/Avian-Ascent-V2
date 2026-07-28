@@ -55,7 +55,7 @@
   var STAT_COLORS = {
     atk: '#ff6e6e', matk: '#c995ff', def: '#7db4ff', mdef: '#b88cff',
     dodge: '#8fe8ff', mdodge: '#9fd1ff', acc: '#f3cf6d', spd: '#8ee889',
-    cc: '#ffb880', cd: '#ffe08a', hp: '#c8a878',
+    dex: '#9fd89a', cc: '#ffb880', cd: '#ffe08a', hp: '#c8a878',
   };
   var AILMENT_FALLBACK_COLORS = {
     chilled: '#7fd6ff', poison: '#4cb44c', toxic: '#2d8a2d', bleed: '#be384c',
@@ -319,10 +319,23 @@
       case 'gainAcc': return seg('+' + v + '% Precision' + w, 'acc');
       case 'gainAccFlat': return seg('+' + v + ' Precision' + w, 'acc');
       case 'gainSpeed': return coreGain('Agility', 'spd');
+      case 'gainDex': return coreGain('Dexterity', 'dex');
       case 'gainCritChance': return seg('+' + v + '% Critical' + w, 'cc');
       case 'gainCritDamage': return seg('+' + pctOf(v) + '% Ferocity' + w, 'cd');
       case 'gainApNextTurn': return seg('+' + v + ' EN next turn' + w, null);
       case 'refundApOnCrit': return seg('Refund 1 EN on crit', null);
+      case 'restoreArmour': return seg('Restore ' + v + ' Armour' + w, 'def');
+      case 'restoreMagicArmour': return seg('Restore ' + v + ' Magic Armour' + w, 'mdef');
+      case 'restoreLowerPool': return seg('Restore ' + v + ' to lower pool' + w, 'def');
+      case 'fortify': return seg('Fortify ' + v + w, 'def');
+      case 'ward': return seg('Ward ' + v + w, 'mdef');
+      case 'bastion': {
+        var arm = r.armour != null ? Number(r.armour) : v;
+        var mag = r.magicArmour != null ? Number(r.magicArmour) : 0;
+        return seg('Bastion ' + arm + '/' + mag + w, 'def');
+      }
+      case 'bonusVsLowHp': return seg('+' + v + '% vs low Vitality' + w, null);
+      case 'bonusVsAilment': return seg('+' + v + '% vs ailment' + w, null);
       default: return null;
     }
   }
