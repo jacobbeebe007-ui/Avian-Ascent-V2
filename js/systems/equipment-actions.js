@@ -302,6 +302,7 @@
         ailment: skill.rider.ailment,
         stacks: Number(skill.rider.stacks) || 1,
         when: 'onHit',
+        chance: skill.rider.chance != null ? Number(skill.rider.chance) : (skill.ailmentChance != null ? Number(skill.ailmentChance) : 100),
       });
     }
     var aspect = resolveItemAspect(item, skill);
@@ -363,6 +364,12 @@
       target: String(skill.target || 'Enemy').toLowerCase() === 'self' ? 'self' : 'enemy',
       noDamage: isUtil,
       riders: riders,
+      ailment: skill.ailment || (skill.rider && skill.rider.ailment) || null,
+      ailmentChance: skill.ailmentChance != null ? Number(skill.ailmentChance)
+        : (skill.rider && skill.rider.chance != null ? Number(skill.rider.chance) : null),
+      ailmentRequireBothHitsHealth: !!skill.ailmentRequireBothHitsHealth,
+      ailmentFromOrb: !!skill.ailmentFromOrb,
+      ailmentFromWeapon: !!skill.ailmentFromWeapon,
     };
     row.tags = buildTags(skill, item, row);
     if (skill.source === 'Combination') row.tags.push('Combination');
@@ -372,10 +379,73 @@
     if (typeof globalThis.enrichCombatRow === 'function') {
       globalThis.enrichCombatRow(row);
     }
+    resolveRowAilmentSources(row, item, skill);
     if (apVal != null) row.abilityPower = Number(apVal);
     if (row.precision != null) row.hitChanceOverride = row.precision;
     return row;
   };
+
+  function resolveOrbFocusForItem(item) {
+    if (!item) return null;
+    var focuses = orbFocusesCatalog();
+    if (!focuses) return null;
+    var focusId = item.orbFocus || inferOrbFocusId(item);
+    if (focusId && focuses[focusId]) return focuses[focusId];
+    for (var fid in focuses) {
+      if (!Object.prototype.hasOwnProperty.call(focuses, fid)) continue;
+      if (focuses[fid].exemplarItemId === item.id || focuses[fid].affinity === item.aspect) {
+        return focuses[fid];
+      }
+    }
+    return null;
+  }
+
+  function resolveRowAilmentSources(row, item, skill) {
+    if (!row) return;
+    if ((!row.ailment || row.ailmentFromOrb) && (row.ailmentFromOrb || /Orb['’]?s\s+ailment/i.test(String(row.riderText || '')))) {
+      var focus = resolveOrbFocusForItem(item);
+      if (focus && focus.onHit && focus.onHit.ailment) {
+        row.ailment = focus.onHit.ailment;
+        if (!(row.ailmentChance > 0)) row.ailmentChance = 60;
+      } else if (!row.ailment && item) {
+        /* Fallback when orb catalog is unavailable: map aspect → ailment. */
+        var aff = String(item.orbFocus || item.aspect || '').toLowerCase();
+        var affMap = {
+          ember: 'burning', frost: 'chilled', storm: 'paralyzed',
+          venom: 'poison', blood: 'bleed', lunar: 'weakened',
+        };
+        if (affMap[aff]) {
+          row.ailment = affMap[aff];
+          if (!(row.ailmentChance > 0)) row.ailmentChance = 60;
+        }
+      }
+    }
+    if (row.ailmentFromWeapon || (/weapon['’]?s magical ailment chance/i.test(String(row.riderText || '')) && !row.ailment)) {
+      var wAil = item && (item.ailment || item.magicalAilment || (item.stats && item.stats.ailment));
+      var wChance = item && (
+        item.ailmentChance != null ? item.ailmentChance
+          : (item.magicalAilmentChance != null ? item.magicalAilmentChance
+            : (item.stats && (item.stats.ailmentChancePct != null ? item.stats.ailmentChancePct : item.stats.magicalAilmentChancePct)))
+      );
+      if (wAil) row.ailment = wAil;
+      else if (!row.ailment) row.ailment = 'poison';
+      if (wChance != null && Number(wChance) > 0) row.ailmentChance = Number(wChance);
+      else if (!(row.ailmentChance > 0)) row.ailmentChance = 50;
+    }
+    /* Guaranteed applyAilment riders without an explicit chance. */
+    if (!row.ailment && skill && skill.rider && skill.rider.kind === 'applyAilment') {
+      row.ailment = skill.rider.ailment;
+    }
+    if (row.ailment && !(row.ailmentChance > 0) && Array.isArray(row.riders)) {
+      for (var i = 0; i < row.riders.length; i++) {
+        if (row.riders[i] && row.riders[i].kind === 'applyAilment') {
+          row.ailmentChance = row.riders[i].chance != null ? Number(row.riders[i].chance) : 100;
+          if (!row.ailment) row.ailment = row.riders[i].ailment;
+          break;
+        }
+      }
+    }
+  }
 
   function rowIsUltimate(skill) {
     if (!skill) return false;
@@ -593,11 +663,14 @@
           rb.name = focus.techniqueName || rb.name;
           rb._dispatcherRow.name = rb.name;
           if (focus.onHit && focus.onHit.kind === 'applyAilment') {
+            rb._dispatcherRow.ailment = focus.onHit.ailment;
+            if (!(rb._dispatcherRow.ailmentChance > 0)) rb._dispatcherRow.ailmentChance = 60;
             rb._dispatcherRow.riders = (rb._dispatcherRow.riders || []).concat([{
               kind: 'applyAilment',
               ailment: focus.onHit.ailment,
               stacks: Number(focus.onHit.stacks) || 1,
               when: 'onHit',
+              chance: rb._dispatcherRow.ailmentChance,
             }]);
           }
         }

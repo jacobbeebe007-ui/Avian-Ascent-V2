@@ -59,8 +59,9 @@ function skillToRow(skill) {
     riders: structured.map((r) => Object.assign({}, r)),
     tags: [],
     lifestealPct: 0,
-    ailment: null,
-    ailmentChance: 0,
+    ailment: skill.ailment || (skill.rider && skill.rider.ailment) || null,
+    ailmentChance: skill.ailmentChance != null ? Number(skill.ailmentChance)
+      : (skill.rider && skill.rider.kind === 'applyAilment' ? 100 : 0),
     displayText: skill.riderText || '',
   };
 }

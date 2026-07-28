@@ -273,6 +273,52 @@ function parseProtectionRiders(effectText) {
   return riders;
 }
 
+function normalizeAilmentId(raw) {
+  const s = String(raw || '').toLowerCase().trim();
+  if (!s) return null;
+  if (/^bleed/.test(s)) return 'bleed';
+  if (/^burn|^scorch/.test(s)) return 'burning';
+  if (/^poison|^toxic|^venom/.test(s)) return 'poison';
+  if (/^chill|^frost|^frozen/.test(s)) return 'chilled';
+  if (/^shock|^paralys|^paraly/.test(s)) return 'paralyzed';
+  if (/^weaken/.test(s)) return 'weakened';
+  return s;
+}
+
+/** Parse Full Effect text for ailment rolls used by the combat dispatcher. */
+function parseAilmentRoll(effectText) {
+  const text = String(effectText || '');
+  const out = Object.create(null);
+  if (/both hits damage Health/i.test(text)) out.ailmentRequireBothHitsHealth = true;
+
+  const guaranteed = text.match(/On hit,\s*apply\s+(\d+)\s+(Bleed|Burn|Scorched|Poison|Toxic|Chilled|Frost|Shock|Paralys(?:ed|ed)?|Weaken(?:ed)?)\s+stacks?/i);
+  if (guaranteed) {
+    out.ailment = normalizeAilmentId(guaranteed[2]);
+    out.ailmentChance = 100;
+    return out;
+  }
+
+  const orbChance = text.match(/(\d+(?:\.\d+)?)\s*%\s*chance to apply(?:\s+\d+\s+stacks?)?\s+(?:of\s+)?(?:the\s+)?Orb['’]?s\s+ailment/i);
+  if (orbChance) {
+    out.ailmentChance = Number(orbChance[1]) || 60;
+    out.ailmentFromOrb = true;
+    return out;
+  }
+
+  if (/roll the weapon['’]?s magical ailment chance/i.test(text)) {
+    out.ailmentFromWeapon = true;
+    out.ailmentChance = 50;
+    return out;
+  }
+
+  const rollNamed = text.match(/(\d+(?:\.\d+)?)\s*%\s*chance to apply\s+(?:(\d+)\s+stacks?\s+of\s+)?(Bleed|Burn|Scorched|Poison|Toxic|Chilled|Frost|Shock|Paralys(?:ed|ed)?|Weaken(?:ed)?)\b/i);
+  if (rollNamed) {
+    out.ailment = normalizeAilmentId(rollNamed[3]);
+    out.ailmentChance = Number(rollNamed[1]) || 0;
+  }
+  return out;
+}
+
 function hitsFromEffect(text) {
   const t = String(text || '');
   if (/strike twice|two hits|2 hits|hits twice/i.test(t)) return 2;
@@ -391,7 +437,8 @@ for (const rn of Object.keys(wskRows).map(Number).sort((a, b) => a - b)) {
   const perHit = hits > 1 && powerPct > 0 ? powerPct / hits : powerPct;
   const effect = cell(row, wskHeader, 'Full Effect');
   const riders = parseProtectionRiders(effect);
-  const noDamage = powerPct <= 0 || /Gain Damage|Restoration|Fortify|Ward|Bastion|Aegis/i.test(cell(row, wskHeader, 'Skill Type')) && !/Deal\s+\d/i.test(effect);
+  const ailmentRoll = parseAilmentRoll(effect);
+  const noDamage = powerPct <= 0 || /Zero Damage|Restoration|Fortify|Ward|Bastion|Aegis/i.test(cell(row, wskHeader, 'Skill Type')) && !/Deal\s+\d/i.test(effect);
   skills[id] = {
     id,
     name,
@@ -421,6 +468,7 @@ for (const rn of Object.keys(wskRows).map(Number).sort((a, b) => a - b)) {
     minRarity: 'grey',
     status: cell(row, wskHeader, 'Status') || 'Active',
   };
+  Object.assign(skills[id], ailmentRoll);
   skillNameToId[name.toLowerCase()] = id;
   skillNameToId[(cell(row, wskHeader, 'Weapon Family') + '|' + name).toLowerCase()] = id;
 }
@@ -1070,7 +1118,13 @@ if (existsSync(comboFixture)) {
   let kept = 0;
   for (const id of Object.keys(keep)) {
     if (skills[id]) continue;
-    skills[id] = keep[id];
+    const sk = keep[id];
+    const roll = parseAilmentRoll(sk.riderText || '');
+    if (sk.rider && sk.rider.kind === 'applyAilment') {
+      if (!roll.ailment) roll.ailment = normalizeAilmentId(sk.rider.ailment);
+      if (roll.ailmentChance == null) roll.ailmentChance = sk.rider.chance != null ? Number(sk.rider.chance) : 100;
+    }
+    skills[id] = Object.assign({}, sk, roll);
     kept++;
   }
   console.log('preserved combo/pair skills:', kept);

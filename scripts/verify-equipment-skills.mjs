@@ -51,6 +51,7 @@ function loadSandbox(extraFiles) {
     'js/data/effect-tiers.js',
     'js/data/equipment/skills.js',
     'js/data/equipment/items.js',
+    'js/data/equipment/orb-focuses.js',
     'js/systems/ability-rider-parser.js',
     'js/systems/combat-formulas.js',
   ];
@@ -133,6 +134,45 @@ for (const skillId of skillIds) {
 }
 if (protChecked > 0) ok(`${protChecked} protection skills carry executable riders`);
 else fail('expected at least one protection skill with riders');
+
+/* Ailment rolls from rider text must land on dispatcher rows. */
+const bleedRow = actions.skillToAbilityRow('WSK-004', { id: 'WPN-007', rarity: 'grey', family: 'Talon Blade' }, 'grey');
+if (!bleedRow || bleedRow.ailment !== 'bleed' || Number(bleedRow.ailmentChance) !== 50) {
+  fail(`WSK-004 expected bleed@50, got ${bleedRow && bleedRow.ailment}@${bleedRow && bleedRow.ailmentChance}`);
+} else ok('WSK-004 Bleed 50% wired');
+
+const flurry = actions.skillToAbilityRow('WSK-002', { id: 'WPN-001', rarity: 'grey', family: 'Dagger Pinion' }, 'grey');
+if (!flurry || flurry.ailment !== 'bleed' || !flurry.ailmentRequireBothHitsHealth) {
+  fail('WSK-002 expected bleed + both-hits health gate');
+} else ok('WSK-002 Bleed + both-hits gate wired');
+
+const comboBleed = actions.skillToAbilityRow('COMBO_BLEED_TALON', null, 'grey');
+if (!comboBleed || comboBleed.ailment !== 'bleed' || Number(comboBleed.ailmentChance) !== 100) {
+  fail(`COMBO_BLEED_TALON expected bleed@100, got ${comboBleed && comboBleed.ailment}@${comboBleed && comboBleed.ailmentChance}`);
+} else ok('combo On-hit Bleed wired at 100%');
+
+let ailmentTextChecked = 0;
+for (const skillId of skillIds) {
+  const skill = skills[skillId];
+  const text = String(skill.riderText || '');
+  if (!/chance to apply|On hit,\s*apply\s+\d+\s+(Bleed|Burn|Poison|Chilled|Shock)|Orb['’]?s\s+ailment|weapon['’]?s magical ailment chance/i.test(text)) {
+    continue;
+  }
+  const row = actions.skillToAbilityRow(
+    skillId,
+    skillId === 'WSK-015'
+      ? { id: 'WPN-043', rarity: 'grey', family: 'Focus Orb', aspect: 'ember', orbFocus: 'ember' }
+      : { id: 'TEST', rarity: 'grey', family: 'Focus Orb', aspect: 'ember', orbFocus: 'ember' },
+    'grey'
+  );
+  if (!row || !(row.ailmentChance > 0) || !row.ailment) {
+    fail(`${skillId}: ailment riderText missing ailment/chance (${text.slice(0, 90)})`);
+  } else {
+    ailmentTextChecked++;
+  }
+}
+if (ailmentTextChecked > 0) ok(`${ailmentTextChecked} ailment skill texts resolve to chance rolls`);
+else fail('expected ailment chance skills');
 
 const st = { activeTierEffects: Object.create(null) };
 const first = effects.applyTierEffect(st, 'player', 'atk', 'minor', 'up', 'test', 2);
