@@ -20,18 +20,18 @@
       "critChance": 8
     },
     "equipment": {
-      "helmet": "EQ-HP-GRY",
+      "helmet": "HLM-001",
       "armour": null,
-      "mainHand": "EQ-LN-GRY",
-      "offHand": "EQ-TB-GRY",
+      "mainHand": "WPN-061",
+      "offHand": "WPN-007",
       "shield": null,
       "ankletL": null,
       "ankletR": null,
       "necklace": null
     },
     "equipmentInventory": [
-      "EQ-NOT-REAL",
-      "EQ-HP-GRY"
+      "WPN-NOT-REAL",
+      "HLM-001"
     ]
   }
 }

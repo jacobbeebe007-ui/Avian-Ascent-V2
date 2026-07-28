@@ -69,7 +69,7 @@ if (slots.slots && slots.slots.shield) fail('dedicated shield slot should be rem
 if (!slots.slots || !slots.slots.offHand) fail('offHand slot missing');
 
 const skillIds = skills ? Object.keys(skills) : [];
-if (skillIds.length < 82) fail('expected ≥82 skills (v0.9 Skill Library), got ' + skillIds.length);
+if (skillIds.length < 100) fail('expected ≥100 skills (v1.2 WSK+ESK+BASIC), got ' + skillIds.length);
 if (!skills.BASIC_PHYSICAL || !skills.BASIC_MAGIC) fail('missing BASIC_PHYSICAL / BASIC_MAGIC');
 if (!skills.BASIC_PHYSICAL.naturalStrikeFlat || Number(skills.BASIC_PHYSICAL.skillPowerPct) !== 0) {
   fail('BASIC_PHYSICAL must be Beak Jab (flat 1–2 only, no weapon Skill Power)');
@@ -79,11 +79,11 @@ if (skills.BASIC_MAGIC.name !== 'Tail Wand') fail('BASIC_MAGIC name must be Tail
 if (skills.BASIC_PHYSICAL.heavyAccuracyPenalty) fail('BASIC_PHYSICAL must have no heavy accuracy penalty');
 
 const itemIds = items ? Object.keys(items) : [];
-if (itemIds.length !== 240) fail('expected 240 items, got ' + itemIds.length);
+if (itemIds.length !== 300) fail('expected 300 items (v1.2), got ' + itemIds.length);
 
 const familyIds = families ? Object.keys(families) : [];
-/* 40 catalogue + Dagger Pinion alias + Bow/Hand Crossbow stubs */
-if (familyIds.length < 40) fail('expected ≥40 families, got ' + familyIds.length);
+/* 18 weapons + 8 sets (+ accessory families) */
+if (familyIds.length < 26) fail('expected ≥26 families, got ' + familyIds.length);
 
 const birdIds = birds ? Object.keys(birds) : [];
 if (birdIds.length !== 52) fail('expected 52 birds, got ' + birdIds.length);
@@ -100,9 +100,11 @@ if (tiers.buff.grand != null || tiers.buff.epic != null || tiers.buff.legendary 
   fail('legacy grand/epic/legendary tiers must not appear in effectTiers');
 }
 
-if (!cfg || cfg.packVersion !== '2026.07-weapon-first-v0.9') {
-  fail('combatConfig.packVersion must be weapon-first-v0.9');
+if (!cfg || cfg.packVersion !== '2026.07-equipment-v1.2-restoration') {
+  fail('combatConfig.packVersion must be equipment-v1.2-restoration');
 }
+if (!cfg.equipmentV12) fail('combatConfig.equipmentV12 expected');
+if (!cfg.protection || !cfg.protection.barrierRemoved) fail('combatConfig.protection.barrierRemoved expected');
 if (!cfg.weaponFirst || !cfg.weaponFirst.enabled) fail('combatConfig.weaponFirst.enabled expected');
 if (cfg.directScaling && cfg.directScaling.enabled) fail('combatConfig.directScaling must be disabled for v0.9');
 if (!cfg.defence || cfg.defence.mitigationCap !== 0.75) fail('combatConfig.defence.mitigationCap must be 0.75');
@@ -156,12 +158,12 @@ for (const id of itemIds) {
   }
 }
 
-if (orangeMissingUnique) fail(orangeMissingUnique + ' orange items missing uniqueEffect');
+/* v1.2 orange identity lives in notes/identity; uniqueEffect optional */
 if (nonOrangeWithUnique) fail(nonOrangeWithUnique + ' non-orange items have uniqueEffect');
 if (handsMismatch) fail(handsMismatch + ' items with inconsistent hands');
 if (forbiddenStatHits) fail(forbiddenStatHits + ' forbidden-stat hits on items');
 
-/* 40 families × 6 rarities = 240 */
+/* Each family has exactly 6 rarities */
 const byFamily = Object.create(null);
 for (const id of itemIds) {
   const f = items[id].family || '?';
@@ -211,13 +213,19 @@ for (const id of itemIds.slice(0, 50)) {
 if (bareCoreHits) fail(bareCoreHits + ' sample items still use bare core stats (expected *Flat)');
 if (corePctHits) fail(corePctHits + ' sample items still have core *Pct rolls');
 if (!flatHits) fail('expected flat *Flat core stats on sample items');
-const sample = items['EQ-TB-GRY'];
+const sample = items['WPN-007'];
 if (!sample || sample.stats.dexFlat == null) {
-  fail('EQ-TB-GRY missing dexFlat');
+  fail('WPN-007 (Talon Blade Grey) missing dexFlat');
 }
 if (sample.minDamage == null || sample.maxDamage == null) {
-  fail('EQ-TB-GRY missing weapon damage range');
+  fail('WPN-007 missing weapon damage range');
 }
+if (!sample.skill1 || !sample.skill2) fail('WPN-007 must grant two weapon skills');
+const armSample = items['ARM-001'];
+if (!armSample || armSample.stats.armourFlat == null) fail('ARM-001 missing armourFlat');
+if (!skills['WSK-001'] || !skills['ESK-001']) fail('missing WSK-001 / ESK-001 skill library entries');
+const barrierHits = Object.values(skills).filter((s) => /\bbarrier\b/i.test(String(s.riderText || '') + ' ' + String(s.name || '')));
+if (barrierHits.length) fail('Barrier wording still present in ' + barrierHits.length + ' skills');
 
 if (!loadouts || !Array.isArray(loadouts.rows || loadouts) && typeof loadouts !== 'object') {
   fail('reference-loadouts missing');

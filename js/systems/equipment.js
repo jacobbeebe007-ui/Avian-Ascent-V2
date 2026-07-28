@@ -38,6 +38,9 @@
     matkFlat: 'matk',
     mdefFlat: 'mdef',
     spdFlat: 'spd',
+    armourFlat: 'armour',
+    magicArmourFlat: 'magicArmour',
+    agilityPenalty: 'spd',
   };
 
   var ITEM_PCT_TO_LEDGER = {
@@ -261,6 +264,7 @@
       if (!val) continue;
       var coreFlatLedger = CORE_FLAT_TO_LEDGER[rawKey];
       if (coreFlatLedger) {
+        /* Agility penalties are stored negative; other flats are positive. */
         flatOut[coreFlatLedger] = (flatOut[coreFlatLedger] || 0) + val;
         continue;
       }
@@ -1135,6 +1139,22 @@
         var add = Number(roll.stats[ck]) || 0;
         if (add) entity.stats[ck] = capTrackedStatValue(ck, (Number(entity.stats[ck]) || 0) + add);
       });
+      /* Protection pools from equipment (Armour / Magic Armour). */
+      entity.stats.armourFlat = Number(roll.stats.armour) || 0;
+      entity.stats.magicArmourFlat = Number(roll.stats.magicArmour) || 0;
+      if (Avian.protection && typeof Avian.protection.initFromEquipmentRoll === 'function') {
+        Avian.protection.initFromEquipmentRoll(entity, {
+          armour: entity.stats.armourFlat,
+          magicArmour: entity.stats.magicArmourFlat,
+        });
+      } else {
+        entity.stats.normalMaxArmour = entity.stats.armourFlat;
+        entity.stats.normalMaxMagicArmour = entity.stats.magicArmourFlat;
+        entity.stats.maxArmour = entity.stats.armourFlat;
+        entity.stats.maxMagicArmour = entity.stats.magicArmourFlat;
+        if (entity.stats.armour == null) entity.stats.armour = entity.stats.maxArmour;
+        if (entity.stats.magicArmour == null) entity.stats.magicArmour = entity.stats.maxMagicArmour;
+      }
       entity.baseHealth = baseHealth;
     } else {
       var keys = (typeof STAT_LEDGER_TRACKED_KEYS !== 'undefined')

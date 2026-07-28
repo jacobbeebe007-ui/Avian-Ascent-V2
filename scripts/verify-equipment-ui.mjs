@@ -94,8 +94,8 @@ if (ctx) {
     fail('collectUltimateCandidates not exported');
   }
 
-  const sampleWpn = ctx.Avian.data?.equipment?.items?.['EQ-TB-GRY'];
-  const sampleArmour = ctx.Avian.data?.equipment?.items?.['EQ-AL-GRY'];
+  const sampleWpn = ctx.Avian.data?.equipment?.items?.['WPN-007'];
+  const sampleArmour = ctx.Avian.data?.equipment?.items?.['ARM-001'];
   const descFn = ctx.Avian.equipmentLoot?.formatEquipmentDesc;
   if (sampleWpn && typeof descFn === 'function') {
     const desc = descFn(sampleWpn);

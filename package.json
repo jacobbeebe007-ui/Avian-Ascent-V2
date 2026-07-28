@@ -19,6 +19,7 @@
     "upgrade-inventory": "node scripts/upgrade-inventory.js",
     "gen:ability-tree": "node scripts/build-ability-family-tree.js",
     "import-equipment": "node scripts/import-equipment-workbook.mjs",
+    "import-equipment-v12": "node scripts/import-equipment-v12-workbook.mjs",
     "import-affinity-arsenal": "node scripts/import-affinity-arsenal-workbook.mjs",
     "verify-equipment": "node scripts/verify-equipment-content.mjs",
     "verify-affinity-arsenal": "node scripts/verify-affinity-arsenal-content.mjs",

@@ -118,53 +118,53 @@ function assertEquip(player, itemId, slotKey, expectOk, label) {
 
 // --- slot acceptance matrix ---
 const knight = freshPlayer('crow');
-equipment.addToInventory(knight, 'EQ-HP-GRY');
-equipment.addToInventory(knight, 'EQ-AM-GRY');
-equipment.addToInventory(knight, 'EQ-LN-GRY');
-equipment.addToInventory(knight, 'EQ-SM-GRY');
-equipment.addToInventory(knight, 'EQ-NH-GRY');
-equipment.addToInventory(knight, 'EQ-TB-GRY');
+equipment.addToInventory(knight, 'HLM-001');
+equipment.addToInventory(knight, 'ARM-001');
+equipment.addToInventory(knight, 'WPN-061');
+equipment.addToInventory(knight, 'SHD-001');
+equipment.addToInventory(knight, 'ACC-025');
+equipment.addToInventory(knight, 'WPN-007');
 
-assertEquip(knight, 'EQ-HP-GRY', 'helmet', true, 'helmet accepts Helmet item');
-assertEquip(knight, 'EQ-AM-GRY', 'armour', true, 'armour accepts Armour item');
-assertEquip(knight, 'EQ-LN-GRY', 'mainHand', true, 'mainHand accepts Weapon item');
-assertEquip(knight, 'EQ-SM-GRY', 'offHand', true, 'offHand accepts Shield item');
-assertEquip(knight, 'EQ-NH-GRY', 'necklace', true, 'necklace accepts Necklace item');
-assertEquip(knight, 'EQ-HP-GRY', 'armour', false, 'helmet item rejected in armour slot');
-assertEquip(knight, 'EQ-AM-GRY', 'mainHand', false, 'armour item rejected in mainHand slot');
+assertEquip(knight, 'HLM-001', 'helmet', true, 'helmet accepts Helmet item');
+assertEquip(knight, 'ARM-001', 'armour', true, 'armour accepts Armour item');
+assertEquip(knight, 'WPN-061', 'mainHand', true, 'mainHand accepts Weapon item');
+assertEquip(knight, 'SHD-001', 'offHand', true, 'offHand accepts Shield item');
+assertEquip(knight, 'ACC-025', 'necklace', true, 'necklace accepts Necklace item');
+assertEquip(knight, 'HLM-001', 'armour', false, 'helmet item rejected in armour slot');
+assertEquip(knight, 'ARM-001', 'mainHand', false, 'armour item rejected in mainHand slot');
 
 // --- 1H / 2H hand rules ---
 const rogue = freshPlayer('sparrow');
-equipment.addToInventory(rogue, 'EQ-TB-GRY');
-equipment.addToInventory(rogue, 'EQ-TB-GRY');
+equipment.addToInventory(rogue, 'WPN-007');
+equipment.addToInventory(rogue, 'WPN-007');
 
-assertEquip(rogue, 'EQ-TB-GRY', 'offHand', true, '1H weapon allowed in offHand');
+assertEquip(rogue, 'WPN-007', 'offHand', true, '1H weapon allowed in offHand');
 
 const knight2h = freshPlayer('crow');
-equipment.addToInventory(knight2h, 'EQ-LN-GRY');
-assertEquip(knight2h, 'EQ-LN-GRY', 'offHand', false, '2H weapon rejected in offHand');
-if (equipment.equip(knight2h, 'EQ-LN-GRY', 'mainHand')) ok('2H weapon equips in mainHand');
+equipment.addToInventory(knight2h, 'WPN-061');
+assertEquip(knight2h, 'WPN-061', 'offHand', false, '2H weapon rejected in offHand');
+if (equipment.equip(knight2h, 'WPN-061', 'mainHand')) ok('2H weapon equips in mainHand');
 else fail('2H weapon should equip in mainHand');
 
-equipment.addToInventory(rogue, 'EQ-TB-GRY');
-if (equipment.equip(rogue, 'EQ-TB-GRY', 'offHand')) ok('offHand equip before 2H conflict test');
+equipment.addToInventory(rogue, 'WPN-007');
+if (equipment.equip(rogue, 'WPN-007', 'offHand')) ok('offHand equip before 2H conflict test');
 else fail('offHand equip failed');
 
 const twoHPlayer = freshPlayer('crow');
-equipment.addToInventory(twoHPlayer, 'EQ-LN-GRY');
-equipment.addToInventory(twoHPlayer, 'EQ-TB-GRY');
-equipment.equip(twoHPlayer, 'EQ-TB-GRY', 'offHand');
-equipment.equip(twoHPlayer, 'EQ-LN-GRY', 'mainHand');
+equipment.addToInventory(twoHPlayer, 'WPN-061');
+equipment.addToInventory(twoHPlayer, 'WPN-007');
+equipment.equip(twoHPlayer, 'WPN-007', 'offHand');
+equipment.equip(twoHPlayer, 'WPN-061', 'mainHand');
 if (!twoHPlayer.equipment.offHand) ok('2H in mainHand forces empty offHand');
 else fail('offHand should be cleared when equipping 2H mainHand');
 
 // --- duplicate 1H weapons ---
 const dual = freshPlayer('sparrow');
-equipment.addToInventory(dual, 'EQ-TB-GRY');
-equipment.addToInventory(dual, 'EQ-TB-GRY');
-equipment.equip(dual, 'EQ-TB-GRY', 'mainHand');
-equipment.equip(dual, 'EQ-TB-GRY', 'offHand');
-if (dual.equipment.mainHand === 'EQ-TB-GRY' && dual.equipment.offHand === 'EQ-TB-GRY') {
+equipment.addToInventory(dual, 'WPN-007');
+equipment.addToInventory(dual, 'WPN-007');
+equipment.equip(dual, 'WPN-007', 'mainHand');
+equipment.equip(dual, 'WPN-007', 'offHand');
+if (dual.equipment.mainHand === 'WPN-007' && dual.equipment.offHand === 'WPN-007') {
   ok('duplicate 1H weapons allowed in both hands');
 } else {
   fail('duplicate 1H dual-wield failed');
@@ -172,11 +172,11 @@ if (dual.equipment.mainHand === 'EQ-TB-GRY' && dual.equipment.offHand === 'EQ-TB
 
 // --- duplicate anklets ---
 const ank = freshPlayer('crow');
-equipment.addToInventory(ank, 'EQ-AI-GRY');
-equipment.addToInventory(ank, 'EQ-AI-GRY');
-equipment.equip(ank, 'EQ-AI-GRY', 'ankletL');
-equipment.equip(ank, 'EQ-AI-GRY', 'ankletR');
-if (ank.equipment.ankletL === 'EQ-AI-GRY' && ank.equipment.ankletR === 'EQ-AI-GRY') {
+equipment.addToInventory(ank, 'ACC-001');
+equipment.addToInventory(ank, 'ACC-001');
+equipment.equip(ank, 'ACC-001', 'ankletL');
+equipment.equip(ank, 'ACC-001', 'ankletR');
+if (ank.equipment.ankletL === 'ACC-001' && ank.equipment.ankletR === 'ACC-001') {
   ok('duplicate anklets allowed');
 } else {
   fail('duplicate anklet equip failed');
@@ -184,14 +184,14 @@ if (ank.equipment.ankletL === 'EQ-AI-GRY' && ank.equipment.ankletR === 'EQ-AI-GR
 
 // --- auto-slot prefers empty anklet foot ---
 const ankAuto = freshPlayer('crow');
-equipment.addToInventory(ankAuto, 'EQ-AI-GRY');
-equipment.addToInventory(ankAuto, 'EQ-AI-GRY');
-equipment.equip(ankAuto, 'EQ-AI-GRY', 'ankletL');
-const autoSlot = equipment.findEquipSlotForItem(ankAuto, 'EQ-AI-GRY');
+equipment.addToInventory(ankAuto, 'ACC-001');
+equipment.addToInventory(ankAuto, 'ACC-001');
+equipment.equip(ankAuto, 'ACC-001', 'ankletL');
+const autoSlot = equipment.findEquipSlotForItem(ankAuto, 'ACC-001');
 if (autoSlot === 'ankletR') ok('findEquipSlotForItem prefers empty ankletR when L filled');
 else fail(`expected ankletR for second anklet, got ${autoSlot}`);
-const autoEq = equipment.equipAuto(ankAuto, 'EQ-AI-GRY');
-if (autoEq.ok && ankAuto.equipment.ankletL === 'EQ-AI-GRY' && ankAuto.equipment.ankletR === 'EQ-AI-GRY') {
+const autoEq = equipment.equipAuto(ankAuto, 'ACC-001');
+if (autoEq.ok && ankAuto.equipment.ankletL === 'ACC-001' && ankAuto.equipment.ankletR === 'ACC-001') {
   ok('equipAuto fills both anklet feet');
 } else {
   fail('equipAuto did not fill both anklet feet');
@@ -199,10 +199,10 @@ if (autoEq.ok && ankAuto.equipment.ankletL === 'EQ-AI-GRY' && ankAuto.equipment.
 
 // --- 2H main blocks Shields in offHand ---
 const shieldPlayer = freshPlayer('crow');
-equipment.addToInventory(shieldPlayer, 'EQ-LN-GRY');
-equipment.addToInventory(shieldPlayer, 'EQ-SM-GRY');
-equipment.equip(shieldPlayer, 'EQ-LN-GRY', 'mainHand');
-const shieldCheck = equipment.canEquip(shieldPlayer, 'EQ-SM-GRY', 'offHand');
+equipment.addToInventory(shieldPlayer, 'WPN-061');
+equipment.addToInventory(shieldPlayer, 'SHD-001');
+equipment.equip(shieldPlayer, 'WPN-061', 'mainHand');
+const shieldCheck = equipment.canEquip(shieldPlayer, 'SHD-001', 'offHand');
 if (!shieldCheck.ok && shieldCheck.reason === 'two_handed_main') {
   ok('shield blocked in offHand with 2H weapon');
 } else {
@@ -211,26 +211,26 @@ if (!shieldCheck.ok && shieldCheck.reason === 'two_handed_main') {
 
 // --- 2H main clears offHand weapons and Shields ---
 const weaponOff = freshPlayer('crow');
-equipment.addToInventory(weaponOff, 'EQ-LN-GRY');
-equipment.addToInventory(weaponOff, 'EQ-TB-GRY');
-equipment.equip(weaponOff, 'EQ-TB-GRY', 'offHand');
-equipment.equip(weaponOff, 'EQ-LN-GRY', 'mainHand');
+equipment.addToInventory(weaponOff, 'WPN-061');
+equipment.addToInventory(weaponOff, 'WPN-007');
+equipment.equip(weaponOff, 'WPN-007', 'offHand');
+equipment.equip(weaponOff, 'WPN-061', 'mainHand');
 if (!weaponOff.equipment.offHand) ok('2H main clears offHand weapon');
 else fail('offHand weapon should clear when equipping 2H mainHand');
 
 const clearShield = freshPlayer('crow');
-equipment.addToInventory(clearShield, 'EQ-SM-GRY');
-equipment.addToInventory(clearShield, 'EQ-LN-GRY');
-equipment.equip(clearShield, 'EQ-SM-GRY', 'offHand');
-equipment.equip(clearShield, 'EQ-LN-GRY', 'mainHand');
+equipment.addToInventory(clearShield, 'SHD-001');
+equipment.addToInventory(clearShield, 'WPN-061');
+equipment.equip(clearShield, 'SHD-001', 'offHand');
+equipment.equip(clearShield, 'WPN-061', 'mainHand');
 if (!clearShield.equipment.offHand) ok('2H main clears offHand Shield');
 else fail('offHand Shield should clear when equipping 2H mainHand');
 
 const validateShield = freshPlayer('crow');
-equipment.addToInventory(validateShield, 'EQ-LN-GRY');
-equipment.addToInventory(validateShield, 'EQ-SM-GRY');
-equipment.equip(validateShield, 'EQ-LN-GRY', 'mainHand');
-validateShield.equipment.offHand = 'EQ-SM-GRY';
+equipment.addToInventory(validateShield, 'WPN-061');
+equipment.addToInventory(validateShield, 'SHD-001');
+equipment.equip(validateShield, 'WPN-061', 'mainHand');
+validateShield.equipment.offHand = 'SHD-001';
 const issues = equipment.validateLoadout(validateShield);
 if (!validateShield.equipment.offHand && issues.some((x) => x.action === 'unequip_two_handed_conflict')) {
   ok('validateLoadout unequips Shield with 2H main');
@@ -239,7 +239,7 @@ if (!validateShield.equipment.offHand && issues.some((x) => x.action === 'unequi
 }
 
 // --- class hard restriction ---
-const mageWand = 'EQ-WD-GRY';
+const mageWand = 'WPN-031';
 const knightForClass = freshPlayer('crow');
 equipment.addToInventory(knightForClass, mageWand);
 const classCheck = equipment.canEquip(knightForClass, mageWand, 'mainHand');
@@ -251,14 +251,14 @@ if (!classCheck.ok && classCheck.reason === 'class_restricted') {
 
 // --- dual-wield stacks Dexterity flat (Grey talon is Dex flat-only in v0.9) ---
 const atkPlayer = freshPlayer('sparrow');
-equipment.addToInventory(atkPlayer, 'EQ-TB-GRY');
-equipment.addToInventory(atkPlayer, 'EQ-TB-GRY');
-equipment.equip(atkPlayer, 'EQ-TB-GRY', 'mainHand');
-equipment.equip(atkPlayer, 'EQ-TB-GRY', 'offHand');
+equipment.addToInventory(atkPlayer, 'WPN-007');
+equipment.addToInventory(atkPlayer, 'WPN-007');
+equipment.equip(atkPlayer, 'WPN-007', 'mainHand');
+equipment.equip(atkPlayer, 'WPN-007', 'offHand');
 equipment.reapplyPlayerStatsFromSources(atkPlayer);
 const roll = equipment.rollupEquipmentStats(atkPlayer);
 const dexFlat = Number(roll.stats && roll.stats.dex) || 0;
-const expectedFlat = (Number(items['EQ-TB-GRY'].stats.dexFlat) || 0) * 2;
+const expectedFlat = (Number(items['WPN-007'].stats.dexFlat) || 0) * 2;
 if (Math.abs(dexFlat - expectedFlat) < 1e-6 && expectedFlat > 0) {
   ok(`dual-wield stacks Dexterity flat (${dexFlat} from two blades)`);
 } else {
@@ -267,8 +267,8 @@ if (Math.abs(dexFlat - expectedFlat) < 1e-6 && expectedFlat > 0) {
 
 // --- unequip returns to inventory ---
 const unequipPlayer = freshPlayer('crow');
-equipment.addToInventory(unequipPlayer, 'EQ-HP-GRY');
-equipment.equip(unequipPlayer, 'EQ-HP-GRY', 'helmet');
+equipment.addToInventory(unequipPlayer, 'HLM-001');
+equipment.equip(unequipPlayer, 'HLM-001', 'helmet');
 const invBefore = unequipPlayer.equipmentInventory.length;
 equipment.unequip(unequipPlayer, 'helmet');
 if (!unequipPlayer.equipment.helmet && unequipPlayer.equipmentInventory.length === invBefore + 1) {

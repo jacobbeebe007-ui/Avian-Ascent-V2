@@ -161,12 +161,34 @@
     var ailmentsApplied = {};
     if (typeof chance === 'function' && chance(rollPct)) {
       var applied = false;
-      if (aid === 'delayed' && typeof applyDelayedDamage === 'function') {
-        var atkWeight = ab && typeof getAbilityAttackWeight === 'function' ? getAbilityAttackWeight(ab, g.player) : null;
-        var enCost = row.enCost || row.apCost || 1;
-        applied = applyDelayedDamage(targetSide, totalDmg, { attackWeight: atkWeight, enCost: enCost });
-      } else if (typeof applyAilment === 'function') {
-        applied = applyAilment(targetSide, aid, 1);
+      /* v1.2 same-hit ailment gate via Armour / Magic Armour pools. */
+      var prot = Avian.protection;
+      var protectHit = (typeof G !== 'undefined') ? G._lastProtectionHit : null;
+      var gateOk = true;
+      if (prot && typeof prot.ailmentApplicationAllowed === 'function') {
+        if (protectHit && protectHit.poolKey) {
+          var needed = prot.protectionPoolForAilment(aid);
+          if (needed && protectHit.poolKey !== needed) {
+            /* Mismatched pool on this hit — still allow if the needed pool is already empty
+               and Health was damaged (independent pools). */
+            var targetStats = targetSide === 'enemy'
+              ? (g && g.enemy && g.enemy.stats)
+              : (g && g.player && g.player.stats);
+            var poolLeft = prot.currentPool(targetStats, needed);
+            gateOk = poolLeft <= 0 && !!(protectHit.damagedHealth);
+          } else {
+            gateOk = prot.ailmentApplicationAllowed(protectHit);
+          }
+        }
+      }
+      if (gateOk) {
+        if (aid === 'delayed' && typeof applyDelayedDamage === 'function') {
+          var atkWeight = ab && typeof getAbilityAttackWeight === 'function' ? getAbilityAttackWeight(ab, g.player) : null;
+          var enCost = row.enCost || row.apCost || 1;
+          applied = applyDelayedDamage(targetSide, totalDmg, { attackWeight: atkWeight, enCost: enCost });
+        } else if (typeof applyAilment === 'function') {
+          applied = applyAilment(targetSide, aid, 1);
+        }
       }
       if (applied) {
         ailmentsApplied[aid] = true;
@@ -446,34 +468,64 @@
   }
 
   function applyShieldFromRow(row, riderValue, ab, side) {
+    /* Legacy Barrier → Fortify / Ward / restoration (v1.2). */
     side = side || 'player';
-    var apply = (typeof globalThis.applyShieldHp === 'function') ? globalThis.applyShieldHp : null;
-    if (!apply) return;
-    var pct = Number(riderValue) || 0;
-    if (pct <= 0 && row && row.riders) {
-      for (var si = 0; si < row.riders.length; si++) {
-        var sr = row.riders[si];
-        if (sr && sr.kind === 'gainShield' && sr.value) { pct = Number(sr.value) || pct; break; }
-      }
+    var stats = side === 'enemy'
+      ? (typeof G !== 'undefined' && G.enemy ? G.enemy.stats : null)
+      : (typeof G !== 'undefined' && G.player ? G.player.stats : null);
+    var status = side === 'enemy'
+      ? (typeof G !== 'undefined' ? G.enemyStatus : null)
+      : (typeof G !== 'undefined' ? G.playerStatus : null);
+    var prot = Avian.protection;
+    if (!stats || !prot) {
+      var legacy = (typeof globalThis.applyShieldHp === 'function') ? globalThis.applyShieldHp : null;
+      if (legacy) legacy(side, { pct: Number(riderValue) || 15, turns: 1 });
+      return;
     }
-    var turns = 1;
+    var amount = Math.max(0, Math.floor(Number(riderValue) || 0));
+    var text = String(row && (row.displayText || row.shortDesc || row.riderText) || '');
+    var isMagic = /magic|ward|aegis|mystic/i.test(text);
+    var turns = 2;
     if (row && row.riders) {
       for (var ti = 0; ti < row.riders.length; ti++) {
         var tr = row.riders[ti];
-        if (tr && tr.kind === 'gainShield' && tr.turns != null) { turns = Math.max(1, Math.floor(Number(tr.turns) || 1)); break; }
+        if (!tr) continue;
+        if (tr.kind === 'fortify' || tr.kind === 'ward' || tr.kind === 'bastion' || tr.kind === 'gainShield') {
+          if (tr.turns != null) turns = Math.max(1, Math.floor(Number(tr.turns) || 1));
+          if (tr.value != null && !(amount > 0)) amount = Math.max(0, Math.floor(Number(tr.value) || 0));
+          if (tr.kind === 'ward') isMagic = true;
+        }
       }
     }
-    var tier = null;
-    var text = String(row && (row.displayText || row.shortDesc || row.riderText) || '');
-    var tm = text.match(/\b(minor|major|grand|epic|legendary)\b/i);
-    if (tm) tier = tm[1].toLowerCase();
-    apply(side, {
-      pct: pct > 0 ? pct : undefined,
-      tier: tier,
-      turns: turns,
-      sourceId: row && row.id ? row.id : (ab && ab.id) || '',
-      sourceKind: 'ability',
-    });
+    if (!(amount > 0)) {
+      /* Percentage-of-max-HP legacy → approximate Fortify/Ward points from Max HP%. */
+      var pct = Number(riderValue) || 15;
+      amount = Math.max(1, Math.floor((Number(stats.maxHp) || 20) * pct / 100));
+    }
+    if (isMagic) prot.applyWard(stats, status, amount, turns);
+    else prot.applyFortify(stats, status, amount, turns);
+    spawnTrendFloat(side, 'buff');
+    if (typeof refreshBattleUI === 'function') refreshBattleUI();
+  }
+
+  function applyProtectionRider(row, rider, ab, side) {
+    side = side || 'player';
+    var stats = side === 'enemy'
+      ? (typeof G !== 'undefined' && G.enemy ? G.enemy.stats : null)
+      : (typeof G !== 'undefined' && G.player ? G.player.stats : null);
+    var status = side === 'enemy'
+      ? (typeof G !== 'undefined' ? G.enemyStatus : null)
+      : (typeof G !== 'undefined' ? G.playerStatus : null);
+    var prot = Avian.protection;
+    if (!stats || !prot || !rider) return;
+    var kind = rider.kind;
+    if (kind === 'restoreArmour') prot.restoreArmour(stats, rider.value);
+    else if (kind === 'restoreMagicArmour') prot.restoreMagicArmour(stats, rider.value);
+    else if (kind === 'fortify') prot.applyFortify(stats, status, rider.value, rider.turns || 2);
+    else if (kind === 'ward') prot.applyWard(stats, status, rider.value, rider.turns || 2);
+    else if (kind === 'bastion') {
+      prot.applyBastion(stats, status, rider.armour || rider.value || 0, rider.magicArmour || 0, rider.turns || 2);
+    }
     spawnTrendFloat(side, 'buff');
     if (typeof refreshBattleUI === 'function') refreshBattleUI();
   }
@@ -538,20 +590,36 @@
       gainGuarded: function (n) { applyGuardedFromRow(row, n, ab, side); },
       gainBrace: function (n) { applyGuardedFromRow(row, n, ab, side); },
       gainShield: function (n) { applyShieldFromRow(row, n, ab, side); },
+      restoreArmour: function (n) { applyProtectionRider(row, { kind: 'restoreArmour', value: n }, ab, side); },
+      restoreMagicArmour: function (n) { applyProtectionRider(row, { kind: 'restoreMagicArmour', value: n }, ab, side); },
+      fortify: function (n, _ps, _p, rider) {
+        applyProtectionRider(row, {
+          kind: 'fortify',
+          value: n,
+          turns: (rider && rider.turns) || 2,
+        }, ab, side);
+      },
+      ward: function (n, _ps, _p, rider) {
+        applyProtectionRider(row, {
+          kind: 'ward',
+          value: n,
+          turns: (rider && rider.turns) || 2,
+        }, ab, side);
+      },
+      bastion: function (n, _ps, _p, rider) {
+        applyProtectionRider(row, rider || { kind: 'bastion', armour: n, magicArmour: n, turns: 2 }, ab, side);
+      },
       gainShieldFromDamage: function (n, _ps, _p, _r, ctx) {
         var dmg = (ctx && ctx.totalDmg) || 0;
         if (dmg <= 0) return;
-        var apply = (typeof globalThis.applyShieldHp === 'function') ? globalThis.applyShieldHp : null;
-        if (!apply) return;
         var amount = Math.max(1, Math.floor(dmg * (Number(n) || 0) / 100));
-        apply(side, {
-          amount: amount,
-          turns: 1,
-          sourceId: row && row.id ? row.id : (ab && ab.id) || '',
-          sourceKind: 'ability',
-        });
-        spawnTrendFloat(floatSide, 'buff');
-        if (typeof refreshBattleUI === 'function') refreshBattleUI();
+        var text = String(row && (row.displayText || row.shortDesc || row.riderText) || '');
+        var isMagic = /magic|ward|aegis/i.test(text);
+        applyProtectionRider(row, {
+          kind: isMagic ? 'ward' : 'fortify',
+          value: amount,
+          turns: 2,
+        }, ab, side);
       },
       purgeEnemyMinorBuff: function () {
         var g = globalThis.G;

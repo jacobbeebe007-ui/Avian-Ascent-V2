@@ -133,29 +133,29 @@ assertBasic({
 }, 'BASIC_MAGIC', 'Tail Wand');
 
 // wand main → BASIC_MAGIC (Tail Wand name for mage; Beak path for rogue with magic weapon uses BASIC_MAGIC id)
-assertBasic(player({ mainHand: 'EQ-WD-GRY' }), 'BASIC_MAGIC');
+assertBasic(player({ mainHand: 'WPN-031' }), 'BASIC_MAGIC');
 
-// matching Talon Blades → PAIR_TALON_TWIN in weaponB
-assertWeapon(player({ mainHand: 'EQ-TB-GRY', offHand: 'EQ-TB-GRY' }), 'weaponA', 'WPN_TALON_RAKE');
-assertWeapon(player({ mainHand: 'EQ-TB-GRY', offHand: 'EQ-TB-GRY' }), 'weaponB', 'PAIR_TALON_TWIN');
+// matching Talon Blades → WSK-004 in weaponB
+assertWeapon(player({ mainHand: 'WPN-007', offHand: 'WPN-007' }), 'weaponA', 'WSK-003');
+assertWeapon(player({ mainHand: 'WPN-007', offHand: 'WPN-007' }), 'weaponB', 'WSK-004');
 
 // mixed 1H → off-hand primary in weaponB
-assertWeapon(player({ mainHand: 'EQ-TB-GRY', offHand: 'EQ-WD-GRY' }), 'weaponA', 'WPN_TALON_RAKE');
-assertWeapon(player({ mainHand: 'EQ-TB-GRY', offHand: 'EQ-WD-GRY' }), 'weaponB', 'WPN_WAND_DART');
+assertWeapon(player({ mainHand: 'WPN-007', offHand: 'WPN-031' }), 'weaponA', 'WSK-003');
+assertWeapon(player({ mainHand: 'WPN-007', offHand: 'WPN-031' }), 'weaponB', 'WSK-011');
 
 // 2H → skill1 + skill2, offHand ignored
-assertWeapon(player({ mainHand: 'EQ-LN-GRY', offHand: 'EQ-TB-GRY' }), 'weaponA', 'WPN_LANCE_THRUST');
-assertWeapon(player({ mainHand: 'EQ-LN-GRY', offHand: 'EQ-TB-GRY' }), 'weaponB', 'WPN_LANCE_CHARGE');
+assertWeapon(player({ mainHand: 'WPN-061', offHand: 'WPN-007' }), 'weaponA', 'WSK-021');
+assertWeapon(player({ mainHand: 'WPN-061', offHand: 'WPN-007' }), 'weaponB', 'WSK-022');
 
 // armour technique
-assertArmour(player({ armour: 'EQ-AM-GRY' }), 'ARM_MEDIUM_WINGBRACE');
+assertArmour(player({ armour: 'ARM-002' }), 'ESK-001');
 assertArmour(player(), null);
 
 // ultimate requires qualifying Gold/Orange item
-assertUltimate(player({ mainHand: 'EQ-TB-GRY' }), false);
-assertUltimate(player({ mainHand: 'EQ-TB-GLD' }), true);
+assertUltimate(player({ mainHand: 'WPN-007' }), false);
+assertUltimate(player({ mainHand: 'WPN-011' }), false); // v1.2 weapons have no ultimates
 
-const arr = actions.buildAbilitiesArray(player({ mainHand: 'EQ-TB-GLD' }));
+const arr = actions.buildAbilitiesArray(player({ mainHand: 'WPN-011' }));
 if (Array.isArray(arr) && arr.length === 6) ok('buildAbilitiesArray length 6');
 else fail(`buildAbilitiesArray length expected 6, got ${arr && arr.length}`);
 

@@ -12,10 +12,11 @@
   Avian.data = Avian.data || Object.create(null);
 
   Avian.data.combatConfig = Object.freeze({
-    packVersion: '2026.07-weapon-first-v0.9',
+    packVersion: '2026.07-equipment-v1.2-restoration',
     affinityArsenalV06: true,
     equipmentLootV07: false,
     weaponFirstV09: true,
+    equipmentV12: true,
 
     /* R-EN-001 — equipment never changes these. Carryover cap is WD (OD-025). */
     energy: Object.freeze({
@@ -178,11 +179,23 @@
     }),
 
     recovery: Object.freeze({
-      barrierCapMaxHpPct: 0.35,
+      barrierCapMaxHpPct: 0,
       lifestealTriggerCapMaxHpPct: 0.1,
       directHealMaxPerCastMaxHpPct: 0.35,
       healingPowerAppliesToLifesteal: false,
       braceCapPct: 0.12,
+    }),
+
+    /* v1.2 Armour / Magic Armour / Fortify / Ward. */
+    protection: Object.freeze({
+      barrierRemoved: true,
+      armourRestorationCooldown: 1,
+      magicArmourRestorationCooldown: 1,
+      fortifyCooldown: 2,
+      wardCooldown: 2,
+      bastionCooldown: 3,
+      fortifyDefaultDuration: 2,
+      wardDefaultDuration: 2,
     }),
 
     /* Universal +20 Health removed; Max HP from Base Health × (1 + Vit × 0.05). */
