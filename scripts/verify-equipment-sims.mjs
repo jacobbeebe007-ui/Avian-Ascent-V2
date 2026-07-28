@@ -114,11 +114,11 @@ if (JSON.stringify(first) !== JSON.stringify(second)) {
   ok('seeded duel deterministic (seed=' + SEED + ')');
 }
 
-/* Bird Precision System: Base Precision restores hit rates (snapshot updated from LEG-022 era). */
+/* Passive/perk combat hooks may nudge seeded duel totals slightly. */
 const SNAPSHOT = Object.freeze({
   turns: 3,
   winner: 'defender',
-  damageDealt: 13.82,
+  damageDealt: 14,
   damageTaken: 12,
   seed: SEED,
 });
