@@ -122,6 +122,61 @@
     return /(minor|moderate|major|grand|epic|legendary)\s+guard\b/i.test(String(slice || ''));
   }
 
+  function normalizeAilmentId(raw) {
+    var s = String(raw || '').toLowerCase().trim();
+    if (!s) return null;
+    if (/^bleed/.test(s)) return 'bleed';
+    if (/^burn|^scorch/.test(s)) return 'burning';
+    if (/^poison|^toxic|^venom/.test(s)) return 'poison';
+    if (/^chill|^frost|^frozen/.test(s)) return 'chilled';
+    if (/^shock|^paralys|^paraly/.test(s)) return 'paralyzed';
+    if (/^weaken/.test(s)) return 'weakened';
+    if (/^delay/.test(s)) return 'delayed';
+    if (/^blind/.test(s)) return 'blinded';
+    return s;
+  }
+
+  /**
+   * Parse skill rider text for ailment rolls:
+   * "roll a 50% chance to apply Bleed", "On hit, apply 1 Poison stack",
+   * "Orb's ailment", "weapon's magical ailment chance".
+   */
+  function parseAilmentFieldsFromText(row, text) {
+    if (!row) return;
+    var t = String(text || '');
+    if (!t) return;
+
+    if (/both hits damage Health/i.test(t)) {
+      row.ailmentRequireBothHitsHealth = true;
+    }
+
+    var guaranteed = t.match(/On hit,\s*apply\s+(\d+)\s+(Bleed|Burn|Scorched|Poison|Toxic|Chilled|Frost|Shock|Paralys(?:ed|ed)?|Weaken(?:ed)?)\s+stacks?/i);
+    if (guaranteed) {
+      if (!row.ailment) row.ailment = normalizeAilmentId(guaranteed[2]);
+      if (!(row.ailmentChance > 0)) row.ailmentChance = 100;
+      return;
+    }
+
+    var orbChance = t.match(/(\d+(?:\.\d+)?)\s*%\s*chance to apply(?:\s+\d+\s+stacks?)?\s+(?:of\s+)?(?:the\s+)?Orb['’]?s\s+ailment/i);
+    if (orbChance) {
+      if (!(row.ailmentChance > 0)) row.ailmentChance = Number(orbChance[1]) || 60;
+      row.ailmentFromOrb = true;
+      return;
+    }
+
+    if (/roll the weapon['’]?s magical ailment chance/i.test(t)) {
+      row.ailmentFromWeapon = true;
+      if (!(row.ailmentChance > 0)) row.ailmentChance = 50;
+      return;
+    }
+
+    var rollNamed = t.match(/(\d+(?:\.\d+)?)\s*%\s*chance to apply\s+(?:(\d+)\s+stacks?\s+of\s+)?(Bleed|Burn|Scorched|Poison|Toxic|Chilled|Frost|Shock|Paralys(?:ed|ed)?|Weaken(?:ed)?)\b/i);
+    if (rollNamed) {
+      if (!row.ailment) row.ailment = normalizeAilmentId(rollNamed[3]);
+      if (!(row.ailmentChance > 0)) row.ailmentChance = Number(rollNamed[1]) || 0;
+    }
+  }
+
   function parseHybridFieldsFromText(row, text) {
     if (!row || !text) return;
     if (!row.hybridScaling) {
@@ -144,6 +199,7 @@
         if (lsDm) row.lifestealPct = Number(lsDm[1]);
       }
     }
+    parseAilmentFieldsFromText(row, text);
   }
 
   function parseSupplementalRiders(text) {
@@ -560,6 +616,20 @@
     }
 
     mapBonusVsAilmentToCondition(row);
+
+    /* applyAilment riders → row.ailment / ailmentChance for tryRollRowAilment. */
+    if ((!row.ailment || !(row.ailmentChance > 0)) && Array.isArray(row.riders)) {
+      for (var ari = 0; ari < row.riders.length; ari++) {
+        var ar = row.riders[ari];
+        if (!ar || ar.kind !== 'applyAilment' || !ar.ailment) continue;
+        if (!row.ailment) row.ailment = normalizeAilmentId(ar.ailment);
+        if (!(row.ailmentChance > 0)) {
+          row.ailmentChance = ar.chance != null ? Number(ar.chance) : 100;
+        }
+        break;
+      }
+    }
+
     if (/^guard$/i.test(String(row.riderText || '').trim()) && !hasRiderKind(row.riders, 'gainGuarded') && !hasRiderKind(row.riders, 'gainGuard')) {
       var tierGuardOnly = text.match(/\b(Minor|Moderate|Major|Grand|Epic|Legendary)\s+Guard\b/i);
       row.riders.push({
@@ -579,6 +649,8 @@
     parseRiderWhen: parseRiderWhen,
     parseConditionalAbilityFromText: parseConditionalAbilityFromText,
     parseSupplementalRiders: parseSupplementalRiders,
+    parseAilmentFieldsFromText: parseAilmentFieldsFromText,
+    normalizeAilmentId: normalizeAilmentId,
     applyTextEnrichment: applyTextEnrichment,
   };
 

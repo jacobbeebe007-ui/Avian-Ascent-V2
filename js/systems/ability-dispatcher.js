@@ -125,10 +125,16 @@
     opts = opts || {};
     var g = globalThis.G;
     var hitsLanded = opts.hitsLanded != null ? opts.hitsLanded : 1;
+    var hitsAttempted = opts.hitsAttempted != null ? opts.hitsAttempted : hitsLanded;
+    var healthHits = opts.healthHits != null ? opts.healthHits : hitsLanded;
     var totalDmg = opts.totalDmg || 0;
     var ab = opts.ab || null;
     if (opts.requireHit !== false && hitsLanded <= 0) return {};
     if (!row || !(row.ailmentChance > 0) || !ailmentIdsFromRow(row).length) return {};
+    if (row.ailmentRequireBothHitsHealth) {
+      var needHits = Math.max(2, hitsAttempted || 2);
+      if (healthHits < needHits) return {};
+    }
     var isMagic = isMagicCategory(row.category);
     var isHybrid = isHybridRow(row);
     var aids = ailmentIdsFromRow(row);
@@ -954,6 +960,7 @@
 
     var anyCrit = false;
     var hitsLanded = 0;
+    var healthHits = 0;
     var totalDmg = 0;
 
     if (row.noDamage || row.target === 'self') {
@@ -1081,7 +1088,12 @@
       if (res && res.isCrit) anyCrit = true;
       if (typeof doAttack === 'function') await doAttack('player', 'enemy', res);
       if (typeof setHpBar === 'function' && g && g.enemy && g.enemy.stats) setHpBar('enemy', g.enemy.stats.hp, g.enemy.stats.maxHp);
-      if (res && !res.wasDodged) hitsLanded++;
+      if (res && !res.wasDodged) {
+        hitsLanded++;
+        if (g && g._lastProtectionHit && g._lastProtectionHit.damagedHealth) healthHits++;
+        else if (res.damagedHealth) healthHits++;
+        else if ((res.dmgDealt || 0) > 0 && !(g && g._lastProtectionHit)) healthHits++;
+      }
       totalDmg += (res && res.dmgDealt) || 0;
       if (g && g.enemy && g.enemy.stats && g.enemy.stats.hp <= 0) break;
     }
@@ -1090,7 +1102,13 @@
     var ailmentsApplied = {};
     var ailmentAttempted = hitsLanded > 0 && row.ailmentChance > 0 && ailmentIdsFromRow(row).length > 0;
     if (ailmentAttempted) {
-      ailmentsApplied = tryRollRowAilment(row, 'enemy', { hitsLanded: hitsLanded, totalDmg: totalDmg, ab: ab });
+      ailmentsApplied = tryRollRowAilment(row, 'enemy', {
+        hitsLanded: hitsLanded,
+        hitsAttempted: hits,
+        healthHits: healthHits,
+        totalDmg: totalDmg,
+        ab: ab,
+      });
     }
 
     var ailmentFailed = ailmentAttempted && !Object.keys(ailmentsApplied).length;
