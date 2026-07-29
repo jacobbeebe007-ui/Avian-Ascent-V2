@@ -4,7 +4,7 @@ Source workbook: `Avian_Ascent_Current_Master_v1.5_Physical_Ailments.xlsx` (supe
 
 ## Pack stamp
 
-- `Avian.data.combatConfig.packVersion` = `2026.07-equipment-v1.3-basic-starting-weapons`
+- `Avian.data.combatConfig.packVersion` = `2026.07-equipment-v1.5-physical-ailments`
 - Save schema **v18** grants class Basic starters when `mainHand` is empty
 - Data: `js/data/equipment/starting-weapons.js`
 

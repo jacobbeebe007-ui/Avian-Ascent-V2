@@ -133,8 +133,7 @@ if (prot.protectionPoolForAilment('Poison') !== 'magicArmour') fail('Poison shou
 if (prot.protectionPoolForAilment('fracture') !== 'armour') fail('Fracture should gate on Armour');
 if (prot.protectionPoolForAilment('crippled') !== 'armour') fail('Crippled should gate on Armour');
 if (prot.protectionPoolForAilment('dazed') !== 'armour') fail('Dazed should gate on Armour');
-else ok('Physical ailment gates map to Armour');
-else ok('Ailment→pool mapping');
+else ok('Ailment→pool mapping (incl. physical ailments)');
 
 if (failed) {
   console.error(`\n[protection] ${failed} failure(s)`);
