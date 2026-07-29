@@ -23,11 +23,32 @@
     scorched: { duration: 1, guardDownTier: 'minor', resolveDownTier: 'minor', refreshable: true },
     chilled: { maxStacks: 5, duration: 3, spdReductionPerStack: 0.03, upgrade: 'frozen' },
     frozen: { skipAction: true, grants: 'controlResistance' },
-    shock: { maxStacks: 5, duration: 3, precisionPointsPerStack: -2, upgrade: 'paralysed' },
-    /* Legacy key + British spelling alias for Paralysed. */
-    paralyzed: { enCapAfterRecovery: 2, grants: 'controlResistance' },
-    paralysed: { enCapAfterRecovery: 2, grants: 'controlResistance' },
-    controlResistance: { blocks: ['chilled', 'shock'], until: 'endOfNextCompletedTurn' },
+    /* Shock: Magic DoT matching Burn per-stack %; at 5 stacks (0 Magic Armour) → Paralysed. */
+    shock: {
+      maxStacks: 5,
+      duration: 3,
+      maxHpPctPerStack: 0.01,
+      channel: 'magic',
+      upgrade: 'paralysed',
+      requiresZeroMagicArmour: true,
+    },
+    /* Paralysed: +1 EN per skill for 1 turn, then Control Resistance for 2 turns. */
+    paralyzed: {
+      duration: 1,
+      extraEnCost: 1,
+      grants: 'controlResistance',
+      controlResistanceTurns: 2,
+    },
+    paralysed: {
+      duration: 1,
+      extraEnCost: 1,
+      grants: 'controlResistance',
+      controlResistanceTurns: 2,
+    },
+    controlResistance: {
+      blocks: ['chilled', 'shock', 'paralyzed', 'paralysed'],
+      until: 'endOfCompletedTurns',
+    },
     weaken: { maxStacks: 3, duration: 3, dmgReductionPerStack: 0.08, dodgePenaltyPerStack: 4 },
     weakened: { duration: 1, mightDownTier: 'moderate', focusDownTier: 'moderate' },
     blinded: { duration: 2, accPenalty: 12 },
@@ -55,7 +76,7 @@
       duke: 30,
     },
 
-    tickOrder: ['poison', 'toxic', 'bleed', 'burning', 'incinerating', 'scorched', 'delayed'],
+    tickOrder: ['poison', 'toxic', 'bleed', 'burning', 'incinerating', 'scorched', 'shock', 'delayed'],
   };
 
   function syncFromCombatConfig() {
@@ -71,13 +92,29 @@
     if (a.chilledToFrozenStacks != null) RULES.chilled.maxStacks = a.chilledToFrozenStacks;
     if (a.chilledAgilityPerStack != null) RULES.chilled.spdReductionPerStack = Math.abs(a.chilledAgilityPerStack);
     if (a.shockToParalysedStacks != null) RULES.shock.maxStacks = a.shockToParalysedStacks;
-    if (a.shockPrecisionPointsPerStack != null) RULES.shock.precisionPointsPerStack = a.shockPrecisionPointsPerStack;
+    if (a.shockPerStackMaxHpPct != null) RULES.shock.maxHpPctPerStack = a.shockPerStackMaxHpPct;
+    else if (a.burnPerStackMaxHpPct != null && RULES.shock.maxHpPctPerStack == null) {
+      RULES.shock.maxHpPctPerStack = a.burnPerStackMaxHpPct;
+    }
+    /* Legacy precision field ignored — Shock is a Magic DoT matching Burn. */
     if (a.incineratingMaxHpPct != null) RULES.incinerating.maxHpPct = a.incineratingMaxHpPct;
     if (a.toxicMaxHpPct != null) RULES.toxic.maxHpPct = a.toxicMaxHpPct;
     if (a.toxicDurationTurns != null) RULES.toxic.duration = a.toxicDurationTurns;
-    if (a.paralysedEnCapAfterRecovery != null) {
-      RULES.paralyzed.enCapAfterRecovery = a.paralysedEnCapAfterRecovery;
-      RULES.paralysed.enCapAfterRecovery = a.paralysedEnCapAfterRecovery;
+    if (a.paralysedExtraEnCost != null) {
+      RULES.paralyzed.extraEnCost = a.paralysedExtraEnCost;
+      RULES.paralysed.extraEnCost = a.paralysedExtraEnCost;
+    }
+    if (a.paralysedDurationTurns != null) {
+      RULES.paralyzed.duration = a.paralysedDurationTurns;
+      RULES.paralysed.duration = a.paralysedDurationTurns;
+    }
+    if (a.paralysedControlResistanceTurns != null) {
+      RULES.paralyzed.controlResistanceTurns = a.paralysedControlResistanceTurns;
+      RULES.paralysed.controlResistanceTurns = a.paralysedControlResistanceTurns;
+    }
+    if (a.controlResistanceTurns != null) {
+      RULES.paralyzed.controlResistanceTurns = a.controlResistanceTurns;
+      RULES.paralysed.controlResistanceTurns = a.controlResistanceTurns;
     }
     if (a.stacksPerActionCap != null) RULES.application.perActionCap = a.stacksPerActionCap;
     if (a.stacksPerTurnCap != null) RULES.application.perTurnCap = a.stacksPerTurnCap;
@@ -153,6 +190,33 @@
     var pct = RULES.burning.maxHpPctPerStack || 0.01;
     var hp = Math.max(0.01, Number(maxHp) || 1);
     return roundAilmentDmg(Math.max(0.01, hp * pct * Math.max(0, stacks || 0) * bonusMult));
+  }
+
+  /** Shock tick damage — same MaxHP% Magic formula as Burn. */
+  function calcShockTickDmg(stacks, maxHp, bonusMult) {
+    bonusMult = bonusMult || 1;
+    var pct = RULES.shock.maxHpPctPerStack;
+    if (pct == null) pct = RULES.burning.maxHpPctPerStack || 0.01;
+    var hp = Math.max(0.01, Number(maxHp) || 1);
+    return roundAilmentDmg(Math.max(0.01, hp * pct * Math.max(0, stacks || 0) * bonusMult));
+  }
+
+  function getParalysisExtraEnCost(status) {
+    if (!isParalyzedActive(status)) return 0;
+    var rule = RULES.paralyzed || RULES.paralysed || {};
+    return Math.max(0, Number(rule.extraEnCost) || 1);
+  }
+
+  function isParalyzedActive(status) {
+    if (!status) return false;
+    var p = status.paralyzed || status.paralysed;
+    if (!p) return false;
+    if (typeof p === 'number') return p > 0;
+    if (typeof p === 'object') {
+      if (p.pending) return true;
+      return (Number(p.turns) || 0) > 0;
+    }
+    return !!p;
   }
 
   function calcIncineratingTickDmg(maxHp) {
@@ -234,6 +298,7 @@
   globalThis.calcToxicTickDmg = calcToxicTickDmg;
   globalThis.calcBleedTickDmg = calcBleedTickDmg;
   globalThis.calcBurningTickDmg = calcBurningTickDmg;
+  globalThis.calcShockTickDmg = calcShockTickDmg;
   globalThis.calcIncineratingTickDmg = calcIncineratingTickDmg;
   globalThis.calcScorchedTickDmg = calcScorchedTickDmg;
   globalThis.getBleedHealMult = getBleedHealMult;
@@ -244,6 +309,8 @@
   globalThis.getBurningDefMult = getBurningDefMult;
   globalThis.getDelayedStoragePct = getDelayedStoragePct;
   globalThis.hasAilmentGuard = hasGuard;
+  globalThis.isParalyzedActive = isParalyzedActive;
+  globalThis.getParalysisExtraEnCost = getParalysisExtraEnCost;
   globalThis.applyAilmentDamageBonus = applyAilmentDamageBonus;
   globalThis.capAilmentDamage = capAilmentDamage;
   globalThis.isBossTargetForAilment = isBossTarget;

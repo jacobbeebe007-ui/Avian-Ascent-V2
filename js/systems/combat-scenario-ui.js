@@ -145,8 +145,21 @@
       }
     });
 
-    check('AIL-PENDING', 'Shock and Paralysis need final rule confirmation', function () {
-      /* Soft pass — surfaces as note in the panel, not a failure. */
+    check('AIL-SHK-001', 'Shock tick damage matches Burn', function () {
+      if (typeof globalThis.calcShockTickDmg !== 'function') {
+        throw new Error('calcShockTickDmg missing');
+      }
+      var shock = globalThis.calcShockTickDmg(3, 100);
+      var burn = globalThis.calcBurningTickDmg(3, 100);
+      if (shock !== burn) throw new Error('Expected shock==burn, got ' + shock + ' vs ' + burn);
+    });
+
+    check('AIL-SHK-004', 'Paralysis adds +1 EN cost helper', function () {
+      if (typeof globalThis.getParalysisExtraEnCost !== 'function') {
+        throw new Error('getParalysisExtraEnCost missing');
+      }
+      var extra = globalThis.getParalysisExtraEnCost({ paralyzed: { turns: 1, extraEnCost: 1 } });
+      if (extra !== 1) throw new Error('Expected extra EN 1, got ' + extra);
     });
 
     return results;
@@ -185,7 +198,7 @@
       '  </div>',
       '  <div class="combat-scenario-summary" id="combat-scenario-summary" aria-live="polite"></div>',
       '  <pre class="combat-scenario-log" id="combat-scenario-log"></pre>',
-      '  <p class="combat-scenario-note">🔁 Shock and Paralysis scenarios need final rule confirmation before coding those cases.</p>',
+      '  <p class="combat-scenario-note">Shock: Magic DoT (=Burn), stacks to 5 at 0 Magic Armour → Paralysed (+1 EN/skill, then 2t Control Resistance).</p>',
       '</div>',
     ].join('\n');
     panels.appendChild(panel);

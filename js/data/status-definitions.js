@@ -216,7 +216,28 @@
       out.summary = (AILMENTS.weaken && AILMENTS.weaken.desc) || '';
       out.category = 'debuff';
     }
-    else if (k === 'paralyzed') { out.text = '⚡ Para(' + v + 't)'; out.summary = (AILMENTS.paralyzed && AILMENTS.paralyzed.desc) || ''; out.category = 'ailment'; }
+    else if (k === 'paralyzed' || k === 'paralysed') {
+      var paraTurns = typeof v === 'number' ? v : (v && (v.turns != null ? v.turns : (v.pending ? 1 : 0)));
+      var extraEn = (v && typeof v === 'object' && v.extraEnCost != null)
+        ? v.extraEnCost
+        : ((AILMENTS.paralyzed && AILMENTS.paralyzed.extraEnCost) || 1);
+      out.className = 'status-badge paralyzed';
+      out.text = '⚡ Para(+' + extraEn + 'EN,' + paraTurns + 't)';
+      out.summary = (AILMENTS.paralyzed && AILMENTS.paralyzed.desc) || '';
+      out.category = 'ailment';
+    }
+    else if (k === 'shock') {
+      out.className = 'status-badge paralyzed';
+      out.text = '⚡ Shock×' + (v.stacks || 0) + '(' + (v.turns || 0) + 't)';
+      out.summary = (AILMENTS.shock && AILMENTS.shock.desc) || '';
+      out.category = 'ailment';
+    }
+    else if (k === 'controlResistance') {
+      out.className = 'status-badge guarded';
+      out.text = '🛡 Control Resist(' + (typeof v === 'number' ? v : (v.turns || 0)) + 't)';
+      out.summary = (AILMENTS.controlResistance && AILMENTS.controlResistance.desc) || '';
+      out.category = 'buff';
+    }
     else if (k === 'burning') { out.text = '🔥 Burn×' + (v.stacks || 0) + '(' + (v.turns || 0) + 't)'; out.summary = (AILMENTS.burning && AILMENTS.burning.desc) || ''; out.category = 'ailment'; }
     else if (k === 'scorched') { out.className = 'status-badge burning'; out.text = '🔥 Scorched(' + (v.turns || 0) + 't)'; out.category = 'ailment'; }
     else if (k === 'delayed') { out.text = '🎵 Delayed(' + v.dmg + 'dmg)'; out.summary = 'Stored damage detonates end of next turn.'; out.category = 'debuff'; }

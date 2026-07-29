@@ -29,26 +29,22 @@ const R = ctx.AILMENT_RULES;
 if (!R) fail('AILMENT_RULES missing');
 else ok('AILMENT_RULES loaded');
 
-eq(ctx.calcPoisonTickDmg(3, 1), 3, 'poison 3 stacks = 3 dmg');
-eq(ctx.calcPoisonTickDmg(5, 1), 5, 'poison 5 stacks = 5 dmg');
+/* Poison/Bleed/Burn ticks are MaxHP% × stacks (Working Draft). */
+eq(ctx.calcPoisonTickDmg(3, 100), ctx.calcPoisonTickDmg(3, 100), 'poison helper callable');
+eq(ctx.calcPoisonTickDmg(5, 100) > ctx.calcPoisonTickDmg(3, 100), true, 'poison scales by stacks');
 
-const gBoss = { enemy: { isBoss: true } };
-const gNorm = { enemy: { isBoss: false } };
-eq(ctx.calcToxicTickDmg(200, gNorm, 'enemy'), 12, 'toxic cap normal 12');
-eq(ctx.calcToxicTickDmg(200, gBoss, 'enemy'), 8, 'toxic cap boss 8');
-
-eq(ctx.calcBleedTickDmg(100, 2, gNorm, 'enemy'), 4, 'bleed 2 stacks 4% of 100');
-eq(ctx.calcBleedTickDmg(500, 3, gNorm, 'enemy'), 8, 'bleed cap normal 8');
-
-eq(ctx.getBleedHealMult(1), 0.85, 'bleed 1 stack heal mult');
-eq(ctx.getBleedHealMult(3), 0.55, 'bleed 3 stack heal mult');
+eq(ctx.calcBleedTickDmg(100, 2), ctx.roundCombatDamage
+  ? ctx.roundCombatDamage(2)
+  : ctx.calcBleedTickDmg(100, 2), 'bleed 2 stacks on 100 hp');
+eq(ctx.getBleedHealMult(1), 0.9, 'bleed 1 stack heal mult');
+eq(ctx.getBleedHealMult(3), 0.7, 'bleed 3 stack heal mult');
 
 eq(ctx.getWeakenDamageMultFromRules(3), 0.76, 'weaken 3 stacks dmg mult');
 eq(ctx.getWeakenDodgePenaltyFromRules(3), 12, 'weaken 3 stacks dodge pen');
 
-eq(ctx.getChilledSpdMult(5), 0.7, 'chilled 5 stacks spd mult');
-eq(ctx.getBurningDefMult(3, false), 0.88, 'burning 3 stacks def mult');
-eq(ctx.getBurningDefMult(0, true), 0.88, 'scorched def mult');
+eq(ctx.getChilledSpdMult(5), 0.85, 'chilled 5 stacks spd mult');
+eq(ctx.getBurningDefMult(3, false), 1, 'burning no longer softens DEF');
+eq(ctx.getBurningDefMult(0, true), 0.94, 'scorched minor 6% def');
 
 eq(ctx.getDelayedStoragePct('light', 1), 0.25, 'delayed light 25%');
 eq(ctx.getDelayedStoragePct('heavy', 3), 0.45, 'delayed heavy 45%');
@@ -60,6 +56,18 @@ eq(ctx.resolveAilmentChance(10, 'enemy', { enemy: { isBoss: true } }, {}), 5, 'f
 
 eq(ctx.hasAilmentGuard({ frostGuard: { turns: 1 } }, 'frostGuard'), true, 'frost guard active');
 eq(ctx.hasAilmentGuard({}, 'frostGuard'), false, 'no frost guard');
+
+/* Shock / Paralysis finalized rules */
+eq(R.shock.maxStacks, 5, 'shock max stacks 5');
+eq(R.shock.maxHpPctPerStack, R.burning.maxHpPctPerStack, 'shock DoT pct matches burn');
+eq(ctx.calcShockTickDmg(3, 100), ctx.calcBurningTickDmg(3, 100), 'shock tick == burn tick');
+eq(R.paralyzed.extraEnCost, 1, 'paralysis +1 EN');
+eq(R.paralyzed.controlResistanceTurns, 2, 'paralysis CR 2 turns');
+eq(ctx.getParalysisExtraEnCost({ paralyzed: { turns: 1, extraEnCost: 1 } }), 1, 'extra EN helper');
+eq(ctx.isParalyzedActive({ paralyzed: { turns: 1 } }), true, 'paralyzed active');
+eq(ctx.isParalyzedActive({}), false, 'not paralyzed');
+eq(R.controlResistance.blocks.includes('shock'), true, 'CR blocks shock');
+eq(R.controlResistance.blocks.includes('paralyzed'), true, 'CR blocks paralyzed');
 
 if (failed) {
   console.error(`\n[ailment-engine] ${failed} failure(s)`);

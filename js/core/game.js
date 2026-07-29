@@ -13494,8 +13494,8 @@ function applyAilment(target,ailId,stacks=1) {
     }
   }
 
-  /* Control Resistance blocks new Chilled / Shock. */
-  if ((ailId === 'chilled' || ailId === 'shock')
+  /* Control Resistance blocks new Chilled / Shock / Paralysis. */
+  if ((ailId === 'chilled' || ailId === 'shock' || ailId === 'paralyzed' || ailId === 'paralysed')
     && typeof hasAilmentGuard === 'function'
     && hasAilmentGuard(status, 'controlResistance')) {
     spawnFloat(target, '🛡 Control Resistance!', 'fn-status');
@@ -13577,17 +13577,31 @@ function applyAilment(target,ailId,stacks=1) {
   } else if (ailId==='weaken') {
     applyWeakenStack(target, applyStacks);
   } else if (ailId==='paralyzed' || ailId==='paralysed') {
-    status.paralyzed={ enCapAfterRecovery: (AILMENT_RULES?.paralyzed?.enCapAfterRecovery)||2, pending: true };
+    const paraDur = (AILMENT_RULES?.paralyzed?.duration) || 1;
+    const extraEn = (AILMENT_RULES?.paralyzed?.extraEnCost) || 1;
+    status.paralyzed = { turns: paraDur, extraEnCost: extraEn };
+    delete status.paralysed;
+    delete status.shock;
     appliedAs = 'paralyzed';
   } else if (ailId==='shock') {
+    /* Shock requires zero Magic Armour to stack (same gate family as Burn/Poison). */
+    const tgtStats = target === 'player' ? G.player?.stats : G.enemy?.stats;
+    const magicArmour = Math.max(0, Number(tgtStats?.magicArmour) || 0);
+    if (magicArmour > 0) {
+      spawnFloat(target, '🛡 Magic Armour!', 'fn-status');
+      return false;
+    }
     if (!status.shock) status.shock={stacks:0,turns:shockDur};
     const nextStacks=Math.min((status.shock.stacks||0)+applyStacks, shockCap);
-    if (nextStacks >= shockCap) {
+    if (nextStacks >= shockCap && magicArmour <= 0) {
       delete status.shock;
-      status.paralyzed={ enCapAfterRecovery: (AILMENT_RULES?.paralyzed?.enCapAfterRecovery)||2, pending: true };
+      const paraDur = (AILMENT_RULES?.paralyzed?.duration) || 1;
+      const extraEn = (AILMENT_RULES?.paralyzed?.extraEnCost) || 1;
+      status.paralyzed = { turns: paraDur, extraEnCost: extraEn };
+      delete status.paralysed;
       appliedAs = 'paralyzed';
       spawnFloat(target,'⚡ Paralysed!','fn-status');
-      logMsg(`⚡ ${target==='player'?G.player.name:G.enemy.name} is Paralysed!`,'system');
+      logMsg(`⚡ ${target==='player'?G.player.name:G.enemy.name} is Paralysed (+${extraEn} EN per skill)!`,'system');
     } else {
       status.shock.stacks=nextStacks;
       status.shock.turns=shockDur+debuffDurationBonus;
@@ -14284,6 +14298,15 @@ function getAbilityEnergyCost(ab, player){
 
   if(cost===1 && isMultiHitAbility(ab) && !isMainAttackAbility(ab, p)) cost += 1;
 
+  /* Paralysed: each skill costs +1 EN. */
+  try {
+    const sideStatus = (p === G.player) ? G.playerStatus : ((p === G.enemy) ? G.enemyStatus : null);
+    const extra = typeof getParalysisExtraEnCost === 'function'
+      ? getParalysisExtraEnCost(sideStatus)
+      : ((sideStatus?.paralyzed || sideStatus?.paralysed) ? 1 : 0);
+    if (extra > 0) cost += extra;
+  } catch (_) { /* noop */ }
+
   const maxE = p?.energyMax ?? 99;
   cost = Math.min(cost, maxE);
 
@@ -14848,16 +14871,23 @@ function endPlayerTurn(force=false) {
 // ============================================================
 function getEnemyActionEnergyCost(action){
   if(!action) return 1;
+  let cost = 1;
   if(action.type==='ability'){
     const id=action.abilityId;
     const ab=(G.enemy?.abilities||[]).find(a=>a&&a.id===id)||{id,level:1};
     const tmpl=getAbilityTemplateForUI(ab);
     const byLv=Array.isArray(tmpl?.energyByLevel)?tmpl.energyByLevel[Math.min(Math.max(1,ab.level||1),4)-1]:null;
-    if(Number.isFinite(byLv)) return Math.max(1,Math.min(5,byLv));
-    if(Number.isFinite(tmpl?.energyCost)) return Math.max(1,Math.min(5,tmpl.energyCost));
-    return 2;
+    if(Number.isFinite(byLv)) cost = Math.max(1,Math.min(5,byLv));
+    else if(Number.isFinite(tmpl?.energyCost)) cost = Math.max(1,Math.min(5,tmpl.energyCost));
+    else cost = 2;
   }
-  return 1;
+  try {
+    const extra = typeof getParalysisExtraEnCost === 'function'
+      ? getParalysisExtraEnCost(G.enemyStatus)
+      : ((G.enemyStatus?.paralyzed || G.enemyStatus?.paralysed) ? 1 : 0);
+    if (extra > 0) cost += extra;
+  } catch (_) { /* noop */ }
+  return cost;
 }
 
 function getAIPersonalityProfile(enemy){

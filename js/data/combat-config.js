@@ -246,17 +246,21 @@
       stacksPerTurnCap: 4,
       multiHitRiderOnce: true,
       deterministicOnLand: true,
-      paralysedEnCapAfterRecovery: 2,
+      /* Paralysed: +1 EN per skill for 1 turn, then 2 turns Control Resistance. */
+      paralysedExtraEnCost: 1,
+      paralysedDurationTurns: 1,
+      paralysedControlResistanceTurns: 2,
       incineratingMaxHpPct: 0.06,
       scorchedUsesMinorDefenceDown: true,
       toxicMaxHpPct: 0.05,
       toxicDurationTurns: 2,
       burnPerStackMaxHpPct: 0.01,
+      /* Shock Magic DoT matches Burn. */
+      shockPerStackMaxHpPct: 0.01,
       poisonPerStackMaxHpPct: 0.0075,
       bleedPerStackMaxHpPct: 0.01,
       bleedHealingDownPerStack: 0.1,
       chilledAgilityPerStack: -0.03,
-      shockPrecisionPointsPerStack: -2,
     }),
 
     enRoles: Object.freeze({
