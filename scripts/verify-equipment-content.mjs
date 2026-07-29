@@ -182,16 +182,22 @@ if (nonOrangeWithUnique) fail(nonOrangeWithUnique + ' non-orange items have uniq
 if (handsMismatch) fail(handsMismatch + ' items with inconsistent hands');
 if (forbiddenStatHits) fail(forbiddenStatHits + ' forbidden-stat hits on items');
 
-/* Each family×slot has exactly 6 rarities (set families span 3 slots → 18). */
+/* Each standard family×slot has exactly 6 rarities (set families span 3 slots → 18).
+ * Basic starting weapons are single-rarity families. */
 const byFamilySlot = Object.create(null);
+const basicFamilySlots = new Set();
 for (const id of itemIds) {
   const it = items[id];
   const f = (it.family || '?') + '|' + (it.slot || '?');
   byFamilySlot[f] = (byFamilySlot[f] || 0) + 1;
+  if (it.isBasicStartingWeapon || it.rarity === 'basic') basicFamilySlots.add(f);
 }
-const badFamilyCounts = Object.keys(byFamilySlot).filter((f) => byFamilySlot[f] !== 6);
+const badFamilyCounts = Object.keys(byFamilySlot).filter((f) => {
+  if (basicFamilySlots.has(f)) return byFamilySlot[f] !== 1;
+  return byFamilySlot[f] !== 6;
+});
 if (badFamilyCounts.length) {
-  fail('family×slot without exactly 6 rarities: ' + badFamilyCounts.slice(0, 8).join(', '));
+  fail('family×slot without expected rarity count: ' + badFamilyCounts.slice(0, 8).join(', '));
 }
 
 /* ACC floors retired — Precision is action-owned (v0.5+). */

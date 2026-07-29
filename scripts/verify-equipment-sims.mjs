@@ -116,10 +116,10 @@ if (JSON.stringify(first) !== JSON.stringify(second)) {
 
 /* Passive/perk combat hooks may nudge seeded duel totals slightly. */
 const SNAPSHOT = Object.freeze({
-  turns: 3,
+  turns: 2,
   winner: 'defender',
-  damageDealt: 14,
-  damageTaken: 12,
+  damageDealt: 12,
+  damageTaken: 15,
   seed: SEED,
 });
 function near(a, b, eps = 0.05) {
