@@ -419,6 +419,28 @@ else ok('onEnemyDamaged exported');
   else ok('tickStatuses still expires defBoost');
 }
 
+/* getAbDesc must not throw for missing/0 levels (OW→battle renderActions crash). */
+{
+  let threw = null;
+  try {
+    const T = sandbox.ABILITY_TEMPLATES || {};
+    const sampleId = Object.keys(T).find((id) => Array.isArray(T[id]?.levels) && T[id].levels.length) || 'BASIC_PHYSICAL';
+    sandbox.getAbDesc({ id: sampleId, level: undefined, desc: 'fallback' });
+    sandbox.getAbDesc({ id: sampleId, level: 0, desc: 'fallback' });
+    sandbox.getAbDesc({ id: sampleId, level: 99, desc: 'fallback' });
+    sandbox.getAbDesc({ id: '__missing__', desc: 'only-desc' });
+    sandbox.getAbDesc(null);
+    sandbox.getAbDesc({
+      id: 'EQ_TEST',
+      _dispatcherRow: { id: 'EQ_TEST', name: 'Eq', category: 'physical', riderText: 'poke' },
+    });
+  } catch (err) {
+    threw = err;
+  }
+  if (threw) fail('getAbDesc threw: ' + threw.message);
+  else ok('getAbDesc tolerates missing/0/overflow level');
+}
+
 if (failed) {
   console.error(`[passives-perks] ${failed} failure(s)`);
   process.exit(1);

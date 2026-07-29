@@ -9613,12 +9613,14 @@ function getAbilityTemplateForUI(abOrId){
     const weaponFirst=typeof weaponFirstEnabled==='function'
       ? weaponFirstEnabled()
       : !!(Avian?.data?.combatConfig?.weaponFirstV09);
+    const descText=row.riderText||abOrId.desc||'';
     return {
       id,
       name:row.name||abOrId.name||id,
       type:btn,
       btnType:btn,
-      desc:row.riderText||abOrId.desc||'',
+      desc:descText,
+      levels:[{desc:descText}],
       energyCost:Number(row.enCost ?? abOrId.energyCost ?? 0),
       /* Weapon-first uses Skill Power % × weapon range — do not invent legacy baseDmgMult. */
       baseDmgMult:weaponFirst?null:(row.abilityPower!=null?Math.max(0.25, Number(row.abilityPower)/100):0.9),
@@ -10507,10 +10509,14 @@ function hideTooltip() {
 }
 
 function getAbDesc(ab) {
-  const tmpl=getAbilityTemplateForUI(ab);
-  if (!tmpl||!tmpl.levels) return ab.desc||'';
-  const lv=Math.min(ab.level,tmpl.levels.length);
-  return tmpl.levels[lv-1].desc;
+  if (!ab) return '';
+  const tmpl = getAbilityTemplateForUI(ab);
+  if (!tmpl || !Array.isArray(tmpl.levels) || !tmpl.levels.length) {
+    return ab.desc || tmpl?.desc || '';
+  }
+  const lv = Math.max(1, Math.min(Number(ab.level) || 1, tmpl.levels.length));
+  const entry = tmpl.levels[lv - 1];
+  return (entry && entry.desc != null ? entry.desc : '') || ab.desc || tmpl.desc || '';
 }
 
 
@@ -13347,18 +13353,21 @@ function getPlayerDmgMult(ab) {
 }
 
 function getAilChance(ab,ailId) {
-  const tmpl=ABILITY_TEMPLATES[ab.id];
-  if (!tmpl||!tmpl.levels) return 0;
-  const lvData=tmpl.levels[Math.min(ab.level-1,tmpl.levels.length-1)];
+  const tmpl=ABILITY_TEMPLATES[ab?.id];
+  if (!tmpl||!Array.isArray(tmpl.levels)||!tmpl.levels.length) return 0;
+  const abLevel=Math.max(1, Number(ab.level)||1);
+  const lvData=tmpl.levels[Math.min(abLevel-1,tmpl.levels.length-1)];
+  if (!lvData) return 0;
   if (lvData.newAilment===ailId) return lvData.ailChance||0;
   if (lvData.newAilment2===ailId) return lvData.ailChance2||0;
   if (lvData.newAilment3===ailId) return lvData.ailChance3||0;
   // Previous levels carry forward
-  for (let i=0;i<Math.min(ab.level-1,tmpl.levels.length);i++) {
+  for (let i=0;i<Math.min(abLevel-1,tmpl.levels.length);i++) {
     const d=tmpl.levels[i];
+    if (!d) continue;
     if (d.newAilment===ailId||d.newAilment2===ailId||d.newAilment3===ailId) {
       const introducedAt=i;
-      const lvNow=Math.min(ab.level-1,tmpl.levels.length-1);
+      const lvNow=Math.min(abLevel-1,tmpl.levels.length-1);
       const baseC=(d.newAilment===ailId?(d.ailChance||0):d.newAilment2===ailId?(d.ailChance2||0):(d.ailChance3||0));
       return baseC+5*(lvNow-introducedAt);
     }
