@@ -34,6 +34,8 @@ const staticChecks = [
   ['enemy nest equipment stats', /function buildEnemyInfoPopupMutationsHtml[\s\S]*?formatEquipmentCompactStatsHtml/],
   ['enemy equipment effect summary', /function formatEquipmentEffectSummaryHtml\b/],
   ['wire enemy equipment tooltips', /function wireEnemyInfoEquipmentTooltips\b/],
+  ['enemy preview starter kit', /function ensureEnemyPreviewEquipmentState\b/],
+  ['enemy preview ensureStartingWeapon', /ensureEnemyPreviewEquipmentState[\s\S]*?ensureStartingWeapon/],
 ];
 
 for (const [label, re] of staticChecks) {

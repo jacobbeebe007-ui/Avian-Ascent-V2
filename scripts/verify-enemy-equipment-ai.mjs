@@ -267,6 +267,73 @@ assertStoryStage(15, { count: 7, only: ['blue'] });
 assertStoryStage(18, { count: 7, only: ['purple', 'blue'], minOf: { purple: 3, blue: 4 } });
 assertStoryStage(20, { count: 7, only: ['gold', 'orange', 'purple'], minOf: { gold: 5, orange: 1, purple: 1 } });
 
+/* Class starter + basic attack must match player counterparts. */
+{
+  const starters = Avian.data?.equipment?.startingWeapons?.byClass || {};
+  const items = Avian.data?.equipment?.items || {};
+  const actions = Avian.equipmentActions;
+  for (const cls of classes) {
+    const expectedId = starters[cls];
+    if (!expectedId) {
+      fail(`missing starting weapon map for ${cls}`);
+      continue;
+    }
+    const expectedName = items[expectedId]?.name;
+    const player = {
+      birdKey: 'sparrow',
+      class: cls,
+      equipment: equipment.createEmptyLoadout(),
+      equipmentInventory: [],
+      stats: { hp: 40, maxHp: 40, atk: 8, def: 6, matk: 6, mdef: 6, spd: 10, acc: 80, dodge: 5 },
+    };
+    equipment.ensurePlayerEquipmentState(player);
+    actions.syncEntityAbilities(player);
+    const enemy = makeEnemy(cls, 'grey', { id: `parity-${cls}`, birdKey: undefined });
+    delete enemy.birdKey;
+    equipment.assignEnemyEquipmentLoadout(enemy, { stage: 1, variance: false, seed: 7 });
+    if (enemy.equipment.mainHand !== expectedId || player.equipment.mainHand !== expectedId) {
+      fail(`${cls}: starter mismatch player=${player.equipment.mainHand} enemy=${enemy.equipment.mainHand} expected=${expectedId}`);
+    } else if ((player.abilities?.[0]?.name || '') !== expectedName || (enemy.abilities?.[0]?.name || '') !== expectedName) {
+      fail(`${cls}: basic name mismatch player=${player.abilities?.[0]?.name} enemy=${enemy.abilities?.[0]?.name} expected=${expectedName}`);
+    } else {
+      ok(`${cls}: enemy starter + basic matches player (${expectedId} / ${expectedName})`);
+    }
+  }
+}
+
+/* Encounter preview must surface the class Basic starter (stages 1–3 empty bag). */
+{
+  sandbox.G = { stage: 2, endlessMode: false, player: { birdKey: 'sparrow', class: 'rogue' } };
+  const previewEnemy = makeEnemy('mage', 'grey', {
+    id: 'preview-mage',
+    birdKey: 'barnowl',
+    class: 'mage',
+    enemyClass: 'mage',
+    abilities: [],
+  });
+  delete previewEnemy.equipment;
+  const state = typeof sandbox.ensureEnemyPreviewEquipmentState === 'function'
+    ? sandbox.ensureEnemyPreviewEquipmentState(previewEnemy)
+    : null;
+  if (!state || state.equipment?.mainHand !== 'WPN-B01') {
+    fail(`preview mage starter expected WPN-B01, got ${state?.equipment?.mainHand}`);
+  } else if (!state.abilities?.some((a) => a && !a.empty && String(a.name).includes('Tail Wand'))) {
+    fail(`preview mage basic expected Tail Wand, got ${(state.abilities || []).map((a) => a?.name).join(',')}`);
+  } else {
+    ok('preview loadout grants Tail Wand starter + basic for mage');
+  }
+  const html = typeof sandbox.buildEncounterPreviewEquipmentHtml === 'function'
+    ? sandbox.buildEncounterPreviewEquipmentHtml(previewEnemy)
+    : '';
+  if (!/Tail Wand/.test(html)) fail('preview equipment HTML missing Tail Wand');
+  else ok('preview equipment HTML lists Tail Wand');
+  const names = typeof sandbox.getEnemyPreviewSkillNames === 'function'
+    ? sandbox.getEnemyPreviewSkillNames(previewEnemy)
+    : [];
+  if (!names.some((n) => /Tail Wand/i.test(String(n)))) fail(`preview skill names missing Tail Wand: ${names.join(',')}`);
+  else ok('preview skill names include Tail Wand');
+}
+
 const explicitRarity = makeEnemy('rogue', 'blue', { id: 'explicit-rarity-no-stage' });
 equipment.assignEnemyEquipmentLoadout(explicitRarity, { rarity: 'blue', variance: false, seed: 55 });
 if (countFilled(explicitRarity.equipment) < 7) {

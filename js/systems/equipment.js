@@ -237,7 +237,14 @@
   function ensureStartingWeapon(entity) {
     if (!entity || !entity.equipment || typeof entity.equipment !== 'object') return false;
     if (entity.equipment.mainHand) return false;
-    var classId = getPlayerClassId(entity) || String(entity.enemyClass || entity.birdClass || '').toLowerCase();
+    /* Enemies resolve class via enemyClass/birdKey (same as player counterparts). */
+    var classId = null;
+    if (entity.isEnemy || entity.enemyClass) {
+      classId = getEnemyClassId(entity);
+    }
+    if (!classId) {
+      classId = getPlayerClassId(entity) || String(entity.enemyClass || entity.birdClass || '').toLowerCase();
+    }
     var weaponId = getClassStartingWeaponId(classId);
     if (!weaponId || !getItem(weaponId)) return false;
     entity.equipment.mainHand = weaponId;
