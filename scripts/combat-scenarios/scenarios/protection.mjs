@@ -306,4 +306,28 @@ export default [
       expectValue(stats.maxArmour, 24, 'max restored to normal');
     },
   },
+  {
+    id: 'PRO-016',
+    name: 'Fortify same-bonus refresh does not re-heal Armour',
+    setup: {
+      player: {
+        bird: 'bustard',
+        armour: 10,
+        maxArmour: 24,
+        normalMaxArmour: 24,
+      },
+      enemy: { bird: 'crow', hp: 50 },
+    },
+    assert({ sandbox, expectValue }) {
+      const stats = sandbox.G.player.stats;
+      const status = sandbox.G.playerStatus;
+      sandbox.Avian.protection.applyFortify(stats, status, 6, 2);
+      expectValue(stats.armour, 16, 'fresh Plainshield-sized Fortify');
+      const returned = sandbox.Avian.protection.applyFortify(stats, status, 6, 2);
+      expectValue(returned, 0, 'refresh returns 0 armour gained');
+      expectValue(stats.armour, 16, 'armour unchanged on refresh');
+      expectValue(status.fortify?.amount, 6, 'bonus unchanged');
+      expectValue(status.fortify?.turns, 2, 'duration refreshed');
+    },
+  },
 ];

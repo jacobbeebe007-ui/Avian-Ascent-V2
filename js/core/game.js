@@ -9551,6 +9551,21 @@ function renderActions() {
       if(autoQueued&&ab.id!==autoQueued){cdisabled=true;btnCostText='Auto queued';}
       if(autoQueued&&ab.id===autoQueued){btnCostText='Auto queued';}
       if(!cdisabled && G.turnPhase===TURN.PLAYER && !canUseAbility(G.player,ab)){cdisabled=true;btnCostText=`${energyCost} EN (insufficient)`;}
+      if(!cdisabled && G.turnPhase===TURN.PLAYER){
+        const _tmplUsed=getAbilityTemplateForUI(ab);
+        const _effUsed=getEffectiveAbilityBtnType(ab,_tmplUsed);
+        if(_effUsed==='utility' && G.utilityUsedThisTurn?.[ab.id]){
+          cdisabled=true;btnCostText='Used this turn';
+        }else{
+          const _enRoles=Avian?.data?.combatConfig?.enRoles;
+          const _isBasic=ab?.actionSource==='basic'||ab?.isMainAttack||ab?.id==='BASIC_PHYSICAL'||ab?.id==='BASIC_MAGIC'
+            ||(typeof isMainAttackAbility==='function'&&isMainAttackAbility(ab,G.player));
+          const _actionKey=ab.actionSource||ab.id;
+          if(_enRoles?.oncePerTurnActionUse && !_isBasic && _actionKey && G.actionUsedThisTurn?.[_actionKey]){
+            cdisabled=true;btnCostText='Used this turn';
+          }
+        }
+      }
     }
     btn.disabled=locked||cdisabled||isEmptySlot;
     btn.title=isEmptySlot?(ab.reason||sourceLbl||ab.name):`${ab.name}\nEnergy: ${energyCost}${sourceLbl?`\n${sourceLbl}`:''}`;
@@ -14122,6 +14137,18 @@ async function playerAction(ab,fromQueue=false) {
       return;
     }
   }
+  /* Commit CD + once-per-turn locks BEFORE await execute so queued / parallel
+   * taps cannot re-cast the same skill (e.g. Bustard Plainshield → Fortify×3). */
+  if(effActKind==='utility'){
+    G.utilityUsedThisTurn = G.utilityUsedThisTurn || {};
+    G.utilityUsedThisTurn[ab.id] = true;
+  }
+  if(Avian?.data?.combatConfig?.enRoles?.oncePerTurnActionUse){
+    G.actionUsedThisTurn = G.actionUsedThisTurn || {};
+    const actionKey = ab.actionSource || ab.id;
+    if(actionKey && !isBasicAlwaysAllowed) G.actionUsedThisTurn[actionKey] = true;
+  }
+  setAbilityCooldown(ab);
   const _defSkill=(effActKind==='utility' || ab?.id==='crowDefend');
   if(_defSkill){
     if((G.player?.augDefSkillDef||0)>0) G.player.stats.def=(G.player.stats.def||0)+G.player.augDefSkillDef;
@@ -14209,21 +14236,7 @@ async function playerAction(ab,fromQueue=false) {
   G._lastPlayerAbility = ab.id;
   G._lastPlayerAbilityCategory = effActKind === 'spell' ? 'magic'
     : (effActKind === 'physical' || effActKind === 'ranged') ? 'physical' : 'utility';
-  if(effActKind==='utility'){
-    G.utilityUsedThisTurn = G.utilityUsedThisTurn || {};
-    G.utilityUsedThisTurn[ab.id] = true;
-  }
-  if(Avian?.data?.combatConfig?.enRoles?.oncePerTurnActionUse){
-    G.actionUsedThisTurn = G.actionUsedThisTurn || {};
-    const isBasicAlwaysAllowed = ab?.actionSource === 'basic'
-      || ab?.isMainAttack
-      || ab?.id === 'BASIC_PHYSICAL'
-      || ab?.id === 'BASIC_MAGIC'
-      || (typeof isMainAttackAbility === 'function' && isMainAttackAbility(ab, G.player));
-    const actionKey = ab.actionSource || ab.id;
-    if(actionKey && !isBasicAlwaysAllowed) G.actionUsedThisTurn[actionKey] = true;
-  }
-  setAbilityCooldown(ab);
+  /* CD + once-per-turn locks are committed before execute (see above). */
   if(effActKind==='spell'){
     reduceOtherSpellCooldownsOnCast(ab.id);
   }

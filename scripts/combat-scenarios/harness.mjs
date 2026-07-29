@@ -328,10 +328,6 @@ export function executePlayerAbility(sandbox, ability, opts = {}) {
 
   g.playerActionsThisTurn = (g.playerActionsThisTurn || 0) + 1;
 
-  if (opts.applyCooldown !== false && typeof sandbox.setAbilityCooldown === 'function') {
-    sandbox.setAbilityCooldown(ability);
-  }
-
   const Avian = sandbox.Avian;
   let row = ability._dispatcherRow || null;
   if (!row && typeof sandbox.resolveAbilityCombatRow === 'function') {
@@ -341,6 +337,20 @@ export function executePlayerAbility(sandbox, ability, opts = {}) {
     row = Avian.equipmentActions.skillToAbilityRow(ability.id, null, 'grey');
   }
 
+  /* Commit CD before effect resolution (mirrors playerAction race fix). */
+  if (opts.applyCooldown !== false && typeof sandbox.setAbilityCooldown === 'function') {
+    sandbox.setAbilityCooldown(ability);
+  }
+  const srcKey = ability.actionSource || null;
+  if (srcKey === 'utility' || (row && (row.noDamage || row.target === 'self'))) {
+    g.utilityUsedThisTurn = g.utilityUsedThisTurn || {};
+    g.utilityUsedThisTurn[ability.id] = true;
+  }
+  if (srcKey && srcKey !== 'basic') {
+    g.actionUsedThisTurn = g.actionUsedThisTurn || {};
+    g.actionUsedThisTurn[srcKey] = true;
+  }
+
   let dmgDealt = 0;
   let hitsLanded = 0;
   let wasHit = false;
@@ -348,7 +358,20 @@ export function executePlayerAbility(sandbox, ability, opts = {}) {
   let lastRes = null;
 
   const noDamage = !row || row.noDamage || row.target === 'self' || opts.skipDamage;
-  if (!noDamage && g.enemy) {
+  if (noDamage) {
+    /* Self / utility skills: run the real dispatcher so Fortify / Ward / cleanses apply. */
+    if (Avian?.dispatcher?.execute) {
+      try {
+        const maybePromise = Avian.dispatcher.execute(ability);
+        if (maybePromise && typeof maybePromise.then === 'function') {
+          /* Harness is sync; fire-and-forget only if execute is truly async with delays.
+           * Utility path in dispatcher is sync aside from the async function wrapper. */
+        }
+      } catch (err) {
+        log.push({ type: 'dispatcher-error', message: String(err && err.message || err) });
+      }
+    }
+  } else if (g.enemy) {
     const hits = Math.max(1, Number(row.hits || row.hitCount || 1));
     const btn = (typeof sandbox.getEffectiveAbilityBtnType === 'function')
       ? sandbox.getEffectiveAbilityBtnType(ability, row)

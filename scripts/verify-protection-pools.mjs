@@ -114,15 +114,23 @@ const physHit = prot.applyDamageThroughProtection(stats, status, 3, false);
 if (physHit.remaining !== 3) fail('Physical with 0 Armour should fully overflow');
 else ok('Zero Armour physical overflows while Magic Armour remains');
 
-/* Fortify reapplication uses greater bonus */
+/* Fortify reapplication uses greater bonus; same refresh does not re-heal */
 stats.armour = 10;
 stats.normalMaxArmour = 24;
 stats.maxArmour = 24;
 status.fortify = null;
+stats._fortifyBonus = 0;
 prot.applyFortify(stats, status, 8, 2);
+if (stats.armour !== 18 || stats._fortifyBonus !== 8) fail(`Fortify fresh expected armour 18 bonus 8, got ${stats.armour}/${stats._fortifyBonus}`);
+else ok('Fortify fresh apply heals full amount');
+const sameRefresh = prot.applyFortify(stats, status, 8, 2);
+if (stats.armour !== 18 || stats._fortifyBonus !== 8 || sameRefresh !== 0) {
+  fail(`same Fortify refresh should not re-heal, got armour=${stats.armour} bonus=${stats._fortifyBonus} returned=${sameRefresh}`);
+} else ok('Fortify same-bonus refresh does not re-heal');
 prot.applyFortify(stats, status, 12, 2);
 if (stats._fortifyBonus !== 12 || status.fortify.amount !== 12) fail('reapply should keep greater Fortify 12');
-else ok('Fortify reapplication keeps greater bonus');
+else if (stats.armour !== 22) fail(`Fortify upgrade should add delta only (18+4=22), got ${stats.armour}`);
+else ok('Fortify reapplication keeps greater bonus and adds delta only');
 
 const gates = ctx.Avian.data.equipment.ailmentGates;
 if (!Array.isArray(gates) || gates.length < 5) fail('ailmentGates missing');

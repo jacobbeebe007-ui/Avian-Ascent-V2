@@ -166,16 +166,20 @@
     }
     var existing = status && status.fortify ? status.fortify : null;
     var activeBonus = existing ? Math.max(0, Number(existing.amount) || 0) : 0;
-    /* Reapplication: greater bonus wins; always refresh duration. */
+    /* Reapplication: greater bonus wins; always refresh duration.
+     * Fresh apply heals the full amount. Same/lower refresh does not re-heal.
+     * Upgrade only adds the bonus delta so spam cannot multiply Fortify armour. */
     var bonus = Math.max(activeBonus, add);
+    var armourGain = activeBonus > 0 ? Math.max(0, bonus - activeBonus) : add;
     var normalMax = Number(stats.normalMaxArmour) || 0;
+    var before = Number(stats.armour) || 0;
     stats._fortifyBonus = bonus;
     stats.maxArmour = normalMax + bonus;
-    stats.armour = Math.min(stats.maxArmour, (Number(stats.armour) || 0) + add);
+    stats.armour = Math.min(stats.maxArmour, before + armourGain);
     if (status) {
       status.fortify = { amount: bonus, turns: dur };
     }
-    return add;
+    return Math.max(0, (Number(stats.armour) || 0) - before);
   }
 
   function applyWard(stats, status, amount, turns) {
@@ -186,15 +190,18 @@
     if (add <= 0) return 0;
     var existing = status && status.ward ? status.ward : null;
     var activeBonus = existing ? Math.max(0, Number(existing.amount) || 0) : 0;
+    /* Mirror Fortify: greater bonus wins; refresh duration; no re-heal on same bonus. */
     var bonus = Math.max(activeBonus, add);
+    var wardGain = activeBonus > 0 ? Math.max(0, bonus - activeBonus) : add;
     var normalMax = Number(stats.normalMaxMagicArmour) || 0;
+    var before = Number(stats.magicArmour) || 0;
     stats._wardBonus = bonus;
     stats.maxMagicArmour = normalMax + bonus;
-    stats.magicArmour = Math.min(stats.maxMagicArmour, (Number(stats.magicArmour) || 0) + add);
+    stats.magicArmour = Math.min(stats.maxMagicArmour, before + wardGain);
     if (status) {
       status.ward = { amount: bonus, turns: dur };
     }
-    return add;
+    return Math.max(0, (Number(stats.magicArmour) || 0) - before);
   }
 
   function applyBastion(stats, status, armourAmt, magicAmt, turns) {
