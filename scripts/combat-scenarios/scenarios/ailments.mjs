@@ -1,6 +1,4 @@
-/** E. Ailment scenarios — poison/bleed/scorched/chill foundations.
- *  Shock and Paralysis marked pending until final rules are confirmed.
- */
+/** E. Ailment scenarios — poison/bleed/scorched/chill + finalized Shock/Paralysis. */
 
 export default [
   {
@@ -56,17 +54,108 @@ export default [
       enemy: { bird: 'crow', hp: 100 },
     },
     assert({ sandbox, expectValue }) {
-      /* Scorched is Guard/Resolve down in v0.6 (no DoT). Burning may or may not
-       * modify DEF depending on combatConfig sync — assert API presence + scorched tick. */
       expectValue(typeof sandbox.getBurningDefMult === 'function', true, 'burning def helper');
       expectValue(typeof sandbox.calcScorchedTickDmg === 'function', true, 'scorched helper');
       expectValue(sandbox.calcScorchedTickDmg(), 0, 'scorched has no DoT');
     },
   },
   {
-    id: 'AIL-SHK-PENDING',
-    name: 'Shock and Paralysis scenarios need final rule confirmation',
-    pending: true,
-    pendingReason: '🔁 Shock and Paralysis scenarios need final rule confirmation.',
+    id: 'AIL-SHK-001',
+    name: 'Shock tick damage matches Burn formula',
+    setup: {
+      player: { bird: 'sparrow', energy: 4, equipment: { mainHand: 'WPN-B04' } },
+      enemy: { bird: 'crow', hp: 100, magicArmour: 0 },
+    },
+    assert({ sandbox, expectValue }) {
+      expectValue(typeof sandbox.calcShockTickDmg === 'function', true, 'calcShockTickDmg present');
+      const shock3 = sandbox.calcShockTickDmg(3, 100);
+      const burn3 = sandbox.calcBurningTickDmg(3, 100);
+      expectValue(shock3, burn3, 'shock DoT equals burn DoT');
+      expectValue(sandbox.calcShockTickDmg(5, 100) > shock3, true, 'more stacks → more shock dmg');
+    },
+  },
+  {
+    id: 'AIL-SHK-002',
+    name: 'Shock cannot apply while Magic Armour remains',
+    setup: {
+      player: { bird: 'sparrow', energy: 4, equipment: { mainHand: 'WPN-B04' } },
+      enemy: {
+        bird: 'crow',
+        hp: 100,
+        magicArmour: 8,
+        maxMagicArmour: 8,
+        normalMaxMagicArmour: 8,
+      },
+    },
+    assert({ sandbox, expectValue }) {
+      const ok = sandbox.applyAilment('enemy', 'shock', 1);
+      expectValue(ok, false, 'shock blocked by Magic Armour');
+      expectValue(!!sandbox.G.enemyStatus.shock, false, 'no shock stacks');
+    },
+  },
+  {
+    id: 'AIL-SHK-003',
+    name: 'Five Shock stacks at 0 Magic Armour become Paralysed',
+    setup: {
+      player: { bird: 'sparrow', energy: 4, equipment: { mainHand: 'WPN-B04' } },
+      enemy: {
+        bird: 'crow',
+        hp: 100,
+        magicArmour: 0,
+        maxMagicArmour: 0,
+        normalMaxMagicArmour: 0,
+      },
+    },
+    assert({ sandbox, expectValue }) {
+      sandbox.G.enemyStatus = { shock: { stacks: 4, turns: 3 } };
+      sandbox.G._ailmentApplyCounts = { action: Object.create(null), turn: Object.create(null) };
+      const fifth = sandbox.applyAilment('enemy', 'shock', 1);
+      expectValue(fifth, true, '5th shock applied');
+      expectValue(!!sandbox.G.enemyStatus.shock, false, 'shock cleared on transform');
+      expectValue(!!sandbox.G.enemyStatus.paralyzed, true, 'paralysed active');
+      expectValue(sandbox.G.enemyStatus.paralyzed.extraEnCost, 1, 'extra EN cost 1');
+      expectValue(sandbox.G.enemyStatus.paralyzed.turns, 1, 'paralysis duration 1');
+    },
+  },
+  {
+    id: 'AIL-SHK-004',
+    name: 'Paralysed skills cost +1 EN',
+    setup: {
+      player: {
+        bird: 'sparrow',
+        energy: 4,
+        equipment: { mainHand: 'WPN-B04' },
+        statuses: { paralyzed: { turns: 1, extraEnCost: 1 } },
+      },
+      enemy: { bird: 'crow', hp: 100 },
+    },
+    assert({ sandbox, ctx, expectValue }) {
+      const ab = (ctx.player.abilities || []).find((a) => a && a.actionSource === 'basic');
+      const cost = sandbox.getAbilityEnergyCost(ab, ctx.player);
+      expectValue(cost, 2, 'basic 1 EN + 1 paralysis surcharge');
+      expectValue(sandbox.getParalysisExtraEnCost(sandbox.G.playerStatus), 1, 'helper extra EN');
+    },
+  },
+  {
+    id: 'AIL-SHK-005',
+    name: 'Paralysis expiry grants 2 turns Control Resistance',
+    setup: {
+      player: {
+        bird: 'sparrow',
+        energy: 4,
+        equipment: { mainHand: 'WPN-B04' },
+        statuses: { paralyzed: { turns: 1, extraEnCost: 1 } },
+      },
+      enemy: { bird: 'crow', hp: 100, magicArmour: 0 },
+    },
+    assert({ sandbox, expectValue }) {
+      sandbox.tickEndOfTurnAilments('player');
+      expectValue(!!sandbox.G.playerStatus.paralyzed, false, 'paralysis cleared');
+      expectValue(sandbox.G.playerStatus.controlResistance?.turns, 2, 'CR lasts 2 turns');
+      const blocked = sandbox.applyAilment('player', 'shock', 1);
+      expectValue(blocked, false, 'shock blocked by Control Resistance');
+      const blockedPara = sandbox.applyAilment('player', 'paralyzed', 1);
+      expectValue(blockedPara, false, 'direct paralysis blocked by CR');
+    },
   },
 ];

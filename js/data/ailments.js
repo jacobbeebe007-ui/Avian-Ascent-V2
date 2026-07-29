@@ -62,8 +62,9 @@
       name: 'Paralysed',
       icon: '⚡',
       color: '#c8c840',
-      desc: 'After EN recovery, current Energy is capped at 2 for that turn. Then grants Control Resistance.',
-      enCapAfterRecovery: (R.paralyzed && R.paralyzed.enCapAfterRecovery) || 2,
+      desc: 'Skills cost +1 EN for 1 turn. Then grants Control Resistance (blocks Shock and Paralysis) for 2 turns.',
+      extraEnCost: (R.paralyzed && R.paralyzed.extraEnCost) || 1,
+      duration: (R.paralyzed && R.paralyzed.duration) || 1,
     },
 
     shock: {
@@ -71,7 +72,7 @@
       name: 'Shock',
       icon: '⚡',
       color: '#e8d020',
-      desc: 'Stacks to 5. −2 Precision points per stack. At 5 stacks the target becomes Paralysed.',
+      desc: 'Stacks to 5 while Magic Armour is 0. 1% Max Health Magic damage per stack at end of turn (same as Burn). At 5 stacks the target becomes Paralysed.',
       maxStacks: (R.shock && R.shock.maxStacks) || 5,
     },
 
@@ -113,7 +114,7 @@
       name: 'Control Resistance',
       icon: '🛡',
       color: '#a0c0e0',
-      desc: 'Cannot gain Chilled or Shock stacks until the end of the next completed turn.',
+      desc: 'Cannot gain Chilled, Shock, or Paralysis. After Paralysis this lasts 2 turns.',
     },
 
     delayed: {

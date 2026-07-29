@@ -193,6 +193,15 @@
       });
     }
 
+    if (status.shock && status.shock.stacks > 0 && (status.shock.turns || 0) > 0) {
+      var shockFn = globalThis.calcShockTickDmg || globalThis.calcBurningTickDmg;
+      var shDmg = shockFn(status.shock.stacks, stats.maxHp, 1);
+      globalThis.applyAilmentDamage(side, shDmg, {
+        ailmentId: 'shock', icon: '⚡', floatClass: 'fn-status',
+        logText: '⚡ Shock deals {dmg} to {name}!', logKind: 'shock-tick',
+      });
+    }
+
     if (status.incinerating && (status.incinerating.turns || 0) > 0) {
       var incDmg = globalThis.calcIncineratingTickDmg
         ? globalThis.calcIncineratingTickDmg(stats.maxHp)
@@ -217,6 +226,37 @@
       if (status[key]) decrementAilmentDuration(status, key);
     });
     tickGuardDurations(status);
+    /* Paralysed expires after its action turn, then grants Control Resistance
+     * (after guard ticking so the newly granted CR is not decremented same phase). */
+    if (status.paralyzed || status.paralysed) {
+      var para = status.paralyzed || status.paralysed;
+      if (typeof para === 'number') {
+        para = { turns: para, extraEnCost: (R.paralyzed && R.paralyzed.extraEnCost) || 1 };
+        status.paralyzed = para;
+        delete status.paralysed;
+      }
+      if (para && typeof para === 'object') {
+        var pTurns = Number(para.turns);
+        if (!Number.isFinite(pTurns)) pTurns = para.pending ? 1 : 0;
+        pTurns -= 1;
+        if (pTurns <= 0) {
+          delete status.paralyzed;
+          delete status.paralysed;
+          var crTurns = (R.paralyzed && R.paralyzed.controlResistanceTurns)
+            || (R.paralysed && R.paralysed.controlResistanceTurns)
+            || 2;
+          status.controlResistance = { turns: crTurns };
+          if (typeof globalThis.logMsg === 'function') {
+            globalThis.logMsg('🛡 ' + sideName(side) + ' gains Control Resistance (' + crTurns + 't)!', 'system');
+          }
+        } else {
+          para.turns = pTurns;
+          delete para.pending;
+          status.paralyzed = para;
+          delete status.paralysed;
+        }
+      }
+    }
     /* Reset per-action ailment caps at end of turn for this side's actor. */
     if (g._ailmentApplyCounts && g._ailmentApplyCounts.action) {
       var actor = side === 'player' ? 'player' : 'enemy';
@@ -226,28 +266,29 @@
     }
   };
 
-  /** Start-of-turn control: Paralysed EN cap (v0.6). Returns false (never skips full turn). */
+  /** Start-of-turn control: Paralysed no longer caps EN or skips the turn.
+   *  Skills cost +1 EN while Paralysed is active (see getAbilityEnergyCost). */
   globalThis.tickStartOfTurnControl = function tickStartOfTurnControl(side) {
     var g = globalThis.G;
     var status = sideStatus(side);
     if (!g || !status) return false;
 
-    if (status.paralyzed && typeof status.paralyzed === 'object' && status.paralyzed.pending) {
-      var entity = side === 'player' ? g.player : g.enemy;
-      var cap = Number(status.paralyzed.enCapAfterRecovery) || 2;
-      if (entity) {
-        var cur = Number(entity.energy) || 0;
-        if (cur > cap) entity.energy = cap;
+    /* Normalize legacy numeric / pending EN-cap Paralysed into duration form. */
+    if (status.paralyzed || status.paralysed) {
+      var para = status.paralyzed || status.paralysed;
+      if (typeof para === 'number' && para > 0) {
+        status.paralyzed = {
+          turns: (R.paralyzed && R.paralyzed.duration) || 1,
+          extraEnCost: (R.paralyzed && R.paralyzed.extraEnCost) || 1,
+        };
+        delete status.paralysed;
+      } else if (para && typeof para === 'object' && para.pending && para.turns == null) {
+        status.paralyzed = {
+          turns: (R.paralyzed && R.paralyzed.duration) || 1,
+          extraEnCost: Number(para.extraEnCost) || (R.paralyzed && R.paralyzed.extraEnCost) || 1,
+        };
+        delete status.paralysed;
       }
-      delete status.paralyzed;
-      status.controlResistance = { turns: GUARD_DURATION };
-      if (typeof globalThis.logMsg === 'function') {
-        globalThis.logMsg('⚡ ' + sideName(side) + ' is Paralysed (EN capped at ' + cap + ')!', 'system');
-      }
-    } else if (typeof status.paralyzed === 'number' && status.paralyzed > 0) {
-      /* Legacy numeric Paralysed — convert to EN-cap behaviour once. */
-      status.paralyzed = { enCapAfterRecovery: (R.paralyzed && R.paralyzed.enCapAfterRecovery) || 2, pending: true };
-      return globalThis.tickStartOfTurnControl(side);
     }
     return false;
   };
