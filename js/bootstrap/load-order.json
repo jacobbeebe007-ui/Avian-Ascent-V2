@@ -100,6 +100,7 @@
     "js/data/content.js",
     "js/systems/systems.js",
     "js/systems/equipment-sims.js",
+    "js/systems/combat-scenario-ui.js",
     "js/systems/ailment-engine.js",
     "js/systems/master-workbook-runtime.js",
     "js/systems/shop.js",

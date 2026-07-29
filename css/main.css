@@ -629,10 +629,24 @@ a.splash-settings-btn{
   text-align:left;
   max-width:min(190px, 40vw);
 }
-.splash-hotspot.is-buildnest-hidden{
+.splash-hotspot--combat-scenarios{
+  /* Left column under Build Nest / above Supplies */
+  left:clamp(4%, 5vw, 14%);
+  top:clamp(32%, 28vh, 42%);
+  bottom:auto;
+  transform:none;
+  align-items:flex-start;
+  text-align:left;
+  max-width:min(210px, 44vw);
+}
+.splash-hotspot.is-buildnest-hidden,
+.splash-hotspot.is-combattest-hidden{
   display:none;
 }
 body.build-nest-unlocked .splash-hotspot--forge.is-buildnest-hidden{
+  display:flex;
+}
+body.combat-scenario-test-unlocked .splash-hotspot--combat-scenarios.is-combattest-hidden{
   display:flex;
 }
 .splash-hotspot--primary{
@@ -783,6 +797,54 @@ body.build-nest-unlocked .splash-hotspot--forge.is-buildnest-hidden{
 .select-hub-panel-inner--wide{max-width:min(1420px, 99vw);}
 .select-hub-panel-inner--supplies{
   max-width:min(640px, 94vw);
+}
+.select-hub-panel-inner--combat-scenarios{
+  max-width:min(720px, 94vw);
+}
+.combat-scenario-actions{
+  display:flex;
+  flex-wrap:wrap;
+  gap:10px;
+  margin:0 0 12px;
+}
+.combat-scenario-summary{
+  font-family:'Cinzel',serif;
+  font-size:.78rem;
+  letter-spacing:.04em;
+  color:rgba(220,210,190,.9);
+  margin:0 0 10px;
+  padding:10px 12px;
+  border:1px solid rgba(120,100,70,.35);
+  border-radius:8px;
+  background:rgba(14,16,22,.45);
+}
+.combat-scenario-summary.is-ok{
+  border-color:rgba(90,160,110,.55);
+  color:#c8efd0;
+}
+.combat-scenario-summary.is-failed{
+  border-color:rgba(180,70,70,.55);
+  color:#f0c0c0;
+}
+.combat-scenario-log{
+  margin:0 0 12px;
+  padding:12px 14px;
+  max-height:min(42vh, 360px);
+  overflow:auto;
+  font-family:ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size:.72rem;
+  line-height:1.45;
+  color:#e8e0d0;
+  background:rgba(8,10,14,.72);
+  border:1px solid rgba(100,90,70,.4);
+  border-radius:8px;
+  white-space:pre-wrap;
+}
+.combat-scenario-note{
+  margin:0;
+  font-size:.78rem;
+  color:rgba(200,190,160,.82);
+  line-height:1.4;
 }
 .supplies-subnav{
   display:grid;
