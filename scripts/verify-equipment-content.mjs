@@ -38,6 +38,7 @@ const data = loadAvianData([
   'js/data/equipment/skills.js',
   'js/data/equipment/items.js',
   'js/data/equipment/families.js',
+  'js/data/equipment/starting-weapons.js',
   'js/data/equipment/reference-loadouts.js',
   'js/data/birds-v2.js',
   'js/data/combat-pack/classes.js',
@@ -71,19 +72,33 @@ if (!slots.slots || !slots.slots.offHand) fail('offHand slot missing');
 const skillIds = skills ? Object.keys(skills) : [];
 if (skillIds.length < 100) fail('expected ≥100 skills (v1.2 WSK+ESK+BASIC), got ' + skillIds.length);
 if (!skills.BASIC_PHYSICAL || !skills.BASIC_MAGIC) fail('missing BASIC_PHYSICAL / BASIC_MAGIC');
-if (!skills.BASIC_PHYSICAL.naturalStrikeFlat || Number(skills.BASIC_PHYSICAL.skillPowerPct) !== 0) {
-  fail('BASIC_PHYSICAL must be Beak Jab (flat 1–2 only, no weapon Skill Power)');
+if (Number(skills.BASIC_PHYSICAL.skillPowerPct) !== 100) {
+  fail('BASIC_PHYSICAL must be equipped Basic Attack at 100% Skill Power');
 }
-if (skills.BASIC_PHYSICAL.name !== 'Beak Jab') fail('BASIC_PHYSICAL name must be Beak Jab, got ' + skills.BASIC_PHYSICAL.name);
-if (skills.BASIC_MAGIC.name !== 'Tail Wand') fail('BASIC_MAGIC name must be Tail Wand, got ' + skills.BASIC_MAGIC.name);
+if (!skills.BASIC_PHYSICAL.naturalStrikeFlat) {
+  fail('BASIC_PHYSICAL must retain unarmed flat 1–2 fallback');
+}
+if (skills.BASIC_PHYSICAL.name !== 'Basic Attack') fail('BASIC_PHYSICAL name must be Basic Attack, got ' + skills.BASIC_PHYSICAL.name);
+if (skills.BASIC_MAGIC.name !== 'Basic Attack') fail('BASIC_MAGIC name must be Basic Attack, got ' + skills.BASIC_MAGIC.name);
 if (skills.BASIC_PHYSICAL.heavyAccuracyPenalty) fail('BASIC_PHYSICAL must have no heavy accuracy penalty');
 
 const itemIds = items ? Object.keys(items) : [];
-if (itemIds.length !== 300) fail('expected 300 items (v1.2), got ' + itemIds.length);
+if (itemIds.length !== 305) fail('expected 305 items (v1.3 + 5 basic starters), got ' + itemIds.length);
+
+const starters = data.equipment && data.equipment.startingWeapons;
+if (!starters || !starters.byClass || starters.ids.length !== 5) {
+  fail('startingWeapons map missing or incomplete');
+}
+for (const id of starters.ids) {
+  const it = items[id];
+  if (!it || !it.isBasicStartingWeapon) fail('missing basic starting weapon ' + id);
+  if (it.skill1 || it.skill2) fail(id + ' must not grant weapon skills');
+  if (it.minDamage == null || it.maxDamage == null) fail(id + ' missing damage range');
+}
 
 const familyIds = families ? Object.keys(families) : [];
-/* 18 weapons + 8 sets (+ accessory families) */
-if (familyIds.length < 26) fail('expected ≥26 families, got ' + familyIds.length);
+/* 18 standard weapons + 5 basic + 8 sets (+ accessory families) */
+if (familyIds.length < 31) fail('expected ≥31 families, got ' + familyIds.length);
 
 const birdIds = birds ? Object.keys(birds) : [];
 if (birdIds.length !== 52) fail('expected 52 birds, got ' + birdIds.length);
@@ -100,12 +115,16 @@ if (tiers.buff.grand != null || tiers.buff.epic != null || tiers.buff.legendary 
   fail('legacy grand/epic/legendary tiers must not appear in effectTiers');
 }
 
-if (!cfg || cfg.packVersion !== '2026.07-equipment-v1.2-restoration') {
-  fail('combatConfig.packVersion must be equipment-v1.2-restoration');
+if (!cfg || cfg.packVersion !== '2026.07-equipment-v1.3-basic-starting-weapons') {
+  fail('combatConfig.packVersion must be equipment-v1.3-basic-starting-weapons');
 }
 if (!cfg.equipmentV12) fail('combatConfig.equipmentV12 expected');
+if (!cfg.equipmentV13BasicStartingWeapons) fail('combatConfig.equipmentV13BasicStartingWeapons expected');
 if (!cfg.protection || !cfg.protection.barrierRemoved) fail('combatConfig.protection.barrierRemoved expected');
 if (!cfg.weaponFirst || !cfg.weaponFirst.enabled) fail('combatConfig.weaponFirst.enabled expected');
+if (Number(cfg.basicAttack && cfg.basicAttack.skillPowerPct) !== 100) {
+  fail('combatConfig.basicAttack.skillPowerPct must be 100');
+}
 if (cfg.directScaling && cfg.directScaling.enabled) fail('combatConfig.directScaling must be disabled for v0.9');
 if (!cfg.defence || cfg.defence.mitigationCap !== 0.75) fail('combatConfig.defence.mitigationCap must be 0.75');
 if (!cfg.penetration || cfg.penetration.cap !== 0.4) fail('combatConfig.penetration.cap must be 0.4');
@@ -163,16 +182,22 @@ if (nonOrangeWithUnique) fail(nonOrangeWithUnique + ' non-orange items have uniq
 if (handsMismatch) fail(handsMismatch + ' items with inconsistent hands');
 if (forbiddenStatHits) fail(forbiddenStatHits + ' forbidden-stat hits on items');
 
-/* Each family×slot has exactly 6 rarities (set families span 3 slots → 18). */
+/* Each standard family×slot has exactly 6 rarities (set families span 3 slots → 18).
+ * Basic starting weapons are single-rarity families. */
 const byFamilySlot = Object.create(null);
+const basicFamilySlots = new Set();
 for (const id of itemIds) {
   const it = items[id];
   const f = (it.family || '?') + '|' + (it.slot || '?');
   byFamilySlot[f] = (byFamilySlot[f] || 0) + 1;
+  if (it.isBasicStartingWeapon || it.rarity === 'basic') basicFamilySlots.add(f);
 }
-const badFamilyCounts = Object.keys(byFamilySlot).filter((f) => byFamilySlot[f] !== 6);
+const badFamilyCounts = Object.keys(byFamilySlot).filter((f) => {
+  if (basicFamilySlots.has(f)) return byFamilySlot[f] !== 1;
+  return byFamilySlot[f] !== 6;
+});
 if (badFamilyCounts.length) {
-  fail('family×slot without exactly 6 rarities: ' + badFamilyCounts.slice(0, 8).join(', '));
+  fail('family×slot without expected rarity count: ' + badFamilyCounts.slice(0, 8).join(', '));
 }
 
 /* ACC floors retired — Precision is action-owned (v0.5+). */

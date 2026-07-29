@@ -29,6 +29,7 @@
     "js/data/equipment/materials-infusions.js",
     "js/data/equipment/ailment-gates.js",
     "js/data/equipment/core-rules.js",
+    "js/data/equipment/starting-weapons.js",
     "js/data/equipment/orb-focuses.js",
     "js/data/equipment/combinations.js",
     "js/data/equipment/weapon-access.js",

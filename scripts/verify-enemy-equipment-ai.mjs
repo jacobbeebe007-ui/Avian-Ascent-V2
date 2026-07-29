@@ -222,8 +222,10 @@ function assertStoryStage(stage, expect) {
   const filled = countFilled(enemy.equipment);
   const rares = raritiesOf(enemy.equipment);
   if (expect.count === 0) {
-    if (filled !== 0) fail(`stage ${stage}: expected empty kit, got ${filled}`);
-    else ok(`stage ${stage}: empty kit`);
+    /* v1.3: empty story recipes still receive the class Basic starting weapon. */
+    if (filled !== 1 || enemy.equipment.mainHand !== 'WPN-B04') {
+      fail(`stage ${stage}: expected Basic starter only, got ${filled} main=${enemy.equipment.mainHand}`);
+    } else ok(`stage ${stage}: Basic starting weapon only`);
     return;
   }
   if (filled !== expect.count && !(expect.minCount != null && filled >= expect.minCount && filled <= expect.count)) {

@@ -145,4 +145,19 @@ Avian.systems.SAVE_SCHEMA_VERSION
 - Players keep run progress; equipment must be re-looted / starter kits reapplied.
 - Combat: weapon min–max × ((Skill Power + Stat×2.5)÷100); Vitality→Max HP from leveled Base Health (½ original BH per level after 1); Agility→Dodge; Guard/Resolve rating mitigation.
 
+## v17 migration (Equipment v1.2 restoration)
+
+- Wipes equipment loadouts for the Armour / Magic Armour / Fortify / Ward catalogue.
+- Stamps `equipmentV12` and pack version `2026.07-equipment-v1.2-restoration`.
+
+## v18 migration (Basic Starting Weapons v1.3)
+
+- Soft migration: if `mainHand` is empty, grants the class Basic starting weapon
+  (`WPN-B01` Tail Wand, `WPN-B02` Beak Stab, `WPN-B03` Broken Song, `WPN-B04` Talon Scratch,
+  `WPN-B05` Plume Syphon).
+- Does **not** wipe existing loot loadouts.
+- Stamps `equipmentV13BasicStartingWeapons` and pack version
+  `2026.07-equipment-v1.3-basic-starting-weapons`.
+- Equipped Basic Attack is 1 EN at **100% weapon damage**; unarmed flat 1–2 remains fallback only.
+
 Verification: `node scripts/verify-save-migration.mjs`

@@ -425,10 +425,16 @@
 
   function isNaturalBasicAbility(ability) {
     var row = ability || {};
-    if (row.id === 'BASIC_PHYSICAL' || row.id === 'BASIC_MAGIC') return true;
+    /* Equipped Basic Attack carries weapon min/max and Skill Power — not a flat Natural Strike. */
+    if (row.minDamage != null && row.maxDamage != null && Number(row.skillPowerPct) > 0 && !row.naturalStrikeFlat) {
+      return false;
+    }
     if (row.naturalStrikeFlat) return true;
+    if (row.id === 'BASIC_PHYSICAL' || row.id === 'BASIC_MAGIC') {
+      return !(row.minDamage != null && row.maxDamage != null && Number(row.skillPowerPct) > 0);
+    }
     var name = String(row.name || '');
-    return /natural.?strike|beak.?jab|tail.?wand/i.test(name);
+    return /natural.?strike|beak.?jab/i.test(name) && !/basic attack/i.test(name);
   }
 
   function resolveNaturalStrikeFlat(params, ability) {
@@ -917,7 +923,7 @@
       return { damage: 0, preMitigation: 0, components: {} };
     }
     var enCost = ability.enCost != null ? ability.enCost : (ability.apCost || 1);
-    /* Beak Jab / Tail Wand stay class-authored; they do not inherit weapon damage. */
+    /* Equipped Basic Attack inherits weapon damage; unarmed flat Natural Strike does not. */
     var defStat = getRelevantDefenceStat(target, ability);
     var pierce = resolvePierceFraction(ability, String(ability.damageType) === 'Magic');
     var flatPen = Number(params.flatPen) || Number(ability.flatPen) || 0;
@@ -970,7 +976,7 @@
       relevantStat = getRelevantAttackStat(attacker, ability, {
         hybridHitStat: params.hybridHitStat || (ability && ability._hybridHitStat),
       });
-      /* Beak Jab / Tail Wand: always flat 1–2. Never scale with equipped weapon. */
+      /* Unarmed Natural Strike: flat 1–2. Equipped Basic Attack uses weapon formula below. */
       if (isNaturalBasicAbility(ability)) {
         naturalFlat = resolveNaturalStrikeFlat(params, ability);
         weaponDamage = 0;

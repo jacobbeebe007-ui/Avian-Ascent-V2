@@ -25,17 +25,18 @@
   'use strict';
 
   /** Bump when adding a migration. */
-  var TARGET = 17;
+  var TARGET = 18;
 
   /** Combat-pack version stamp surfaced on the save blob. Wipes attached when
    *  this changes so legacy ability/perk/family state never bleeds into a run. */
   var COMBAT_PACK_VERSION = '2026.07-flat-abilities';
   var MUTATIONS_PACK_VERSION = '2026.06-mutations-v6';
-  var EQUIPMENT_PACK_VERSION = '2026.07-equipment-v1.2-restoration';
+  var EQUIPMENT_PACK_VERSION = '2026.07-equipment-v1.3-basic-starting-weapons';
   var AFFINITY_ARSENAL_PACK_VERSION = '2026.07-weapon-first-v0.9';
-  var EQUIPMENT_LOOT_PACK_VERSION = '2026.07-equipment-v1.2-restoration';
+  var EQUIPMENT_LOOT_PACK_VERSION = '2026.07-equipment-v1.3-basic-starting-weapons';
   var WEAPON_FIRST_PACK_VERSION = '2026.07-weapon-first-v0.9';
   var EQUIPMENT_V12_PACK_VERSION = '2026.07-equipment-v1.2-restoration';
+  var EQUIPMENT_V13_PACK_VERSION = '2026.07-equipment-v1.3-basic-starting-weapons';
   var SAVE_BACKUP_KEY_PRE_V13 = 'avianAscent_save_v2_backup_pre_v13';
   var EQUIPMENT_V2_STARTER_STIPEND = 30;
   var MUTATION_SELL_COSTS = { white: 16, green: 28, blue: 44, purple: 64, gold: 96, orange: 140 };
@@ -218,6 +219,45 @@
     save.equipmentPackVersion = EQUIPMENT_V12_PACK_VERSION;
     save.equipmentLootPackVersion = EQUIPMENT_V12_PACK_VERSION;
     save.equipmentV12PackVersion = EQUIPMENT_V12_PACK_VERSION;
+    return save;
+  }
+
+  function stampEquipmentV13Fields(save) {
+    if (!save || typeof save !== 'object') return save;
+    stampEquipmentV12Fields(save);
+    save.equipmentV13BasicStartingWeapons = true;
+    save.equipmentPackVersion = EQUIPMENT_V13_PACK_VERSION;
+    save.equipmentLootPackVersion = EQUIPMENT_V13_PACK_VERSION;
+    save.equipmentV13PackVersion = EQUIPMENT_V13_PACK_VERSION;
+    return save;
+  }
+
+  function grantClassStartingWeapon(save) {
+    var p = save && save.player;
+    if (!p || typeof p !== 'object') return save;
+    if (!p.equipment || typeof p.equipment !== 'object') {
+      p.equipment = {
+        helmet: null,
+        armour: null,
+        mainHand: null,
+        offHand: null,
+        ankletL: null,
+        ankletR: null,
+        necklace: null,
+      };
+    }
+    if (p.equipment.mainHand) return save;
+    var classId = String(p.class || '').toLowerCase();
+    var map = {
+      mage: 'WPN-B01',
+      siren: 'WPN-B01',
+      knight: 'WPN-B02',
+      brute: 'WPN-B02',
+      bard: 'WPN-B03',
+      rogue: 'WPN-B04',
+      inquisitor: 'WPN-B05',
+    };
+    if (map[classId]) p.equipment.mainHand = map[classId];
     return save;
   }
 
@@ -507,6 +547,17 @@
         return save;
       },
     },
+    {
+      from: 17,
+      to: 18,
+      note: 'equipment v1.3: grant class Basic starting weapons when mainHand empty',
+      fn: function (save) {
+        if (!save || typeof save !== 'object') return save;
+        grantClassStartingWeapon(save);
+        stampEquipmentV13Fields(save);
+        return save;
+      },
+    },
   ];
 
   var Avian = globalThis.Avian || (globalThis.Avian = { systems: {}, debug: {} });
@@ -520,6 +571,7 @@
   Avian.systems.EQUIPMENT_LOOT_PACK_VERSION = EQUIPMENT_LOOT_PACK_VERSION;
   Avian.systems.WEAPON_FIRST_PACK_VERSION = WEAPON_FIRST_PACK_VERSION;
   Avian.systems.EQUIPMENT_V12_PACK_VERSION = EQUIPMENT_V12_PACK_VERSION;
+  Avian.systems.EQUIPMENT_V13_PACK_VERSION = EQUIPMENT_V13_PACK_VERSION;
   Avian.systems.SAVE_BACKUP_KEY_PRE_V13 = SAVE_BACKUP_KEY_PRE_V13;
   Avian.systems.EQUIPMENT_V2_STARTER_STIPEND = EQUIPMENT_V2_STARTER_STIPEND;
   Avian.systems.needsEquipmentV2PreReleaseReset = needsEquipmentV2PreReleaseReset;
@@ -531,6 +583,8 @@
   Avian.systems.stampEquipmentLootV07Fields = stampEquipmentLootV07Fields;
   Avian.systems.stampWeaponFirstV09Fields = stampWeaponFirstV09Fields;
   Avian.systems.stampEquipmentV12Fields = stampEquipmentV12Fields;
+  Avian.systems.stampEquipmentV13Fields = stampEquipmentV13Fields;
+  Avian.systems.grantClassStartingWeapon = grantClassStartingWeapon;
 
   Avian.systems.maybeBackupPreV13Save = function maybeBackupPreV13Save(rawJson, parsed) {
     if (!parsed || typeof parsed !== 'object') return false;

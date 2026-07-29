@@ -110,8 +110,12 @@ for (const [atk, row] of Object.entries(expected)) {
   }
 }
 
-if (!cfg || (cfg.packVersion !== '2026.07-equipment-v1.2-restoration' && cfg.packVersion !== '2026.07-weapon-first-v0.9')) {
-  fail('combatConfig.packVersion mismatch (expected equipment-v1.2-restoration)');
+if (!cfg || (
+  cfg.packVersion !== '2026.07-equipment-v1.3-basic-starting-weapons'
+  && cfg.packVersion !== '2026.07-equipment-v1.2-restoration'
+  && cfg.packVersion !== '2026.07-weapon-first-v0.9'
+)) {
+  fail('combatConfig.packVersion mismatch (expected equipment-v1.3-basic-starting-weapons)');
 }
 if (!cfg.affinityArsenalV06) fail('combatConfig.affinityArsenalV06 should be true');
 if (!cfg.weaponFirstV09 || !cfg.weaponFirst || !cfg.weaponFirst.enabled) fail('weaponFirst expected');

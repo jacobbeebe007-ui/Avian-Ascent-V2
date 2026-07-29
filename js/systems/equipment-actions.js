@@ -317,11 +317,18 @@
     var skillPowerPct = skill.skillPowerPct != null ? Number(skill.skillPowerPct)
       : (apVal != null ? Math.round(Number(apVal) * (Number(apVal) <= 10 ? 100 : 1)) : null);
     var isBasic = skill.id === 'BASIC_PHYSICAL' || skill.id === 'BASIC_MAGIC' || !!skill.naturalStrikeFlat;
-    /* Basics (Beak Jab / Tail Wand) are always flat 1–2 — never copy weapon min/max or scaling. */
-    var minDmg = (!isBasic && item && item.minDamage != null) ? Number(item.minDamage) : null;
-    var maxDmg = (!isBasic && item && item.maxDamage != null) ? Number(item.maxDamage) : null;
+    var hasWeaponRange = !!(item && item.minDamage != null && item.maxDamage != null);
+    /* Equipped Basic Attack uses 100% weapon damage. Unarmed keeps flat 1–2 fallback. */
+    var equippedBasic = isBasic && hasWeaponRange;
+    var minDmg = (!isBasic || equippedBasic) && item && item.minDamage != null ? Number(item.minDamage) : null;
+    var maxDmg = (!isBasic || equippedBasic) && item && item.maxDamage != null ? Number(item.maxDamage) : null;
     var scalingStat = skill.scalingStat || null;
-    if (!isBasic && !scalingStat && item && item.scalingStat) scalingStat = item.scalingStat;
+    if ((!isBasic || equippedBasic) && !scalingStat && item && item.scalingStat) scalingStat = item.scalingStat;
+    if (equippedBasic && item && item.damageCategory) {
+      /* Prefer the equipped weapon's category / scaling for Basic Attack. */
+      if (item.scalingStat) scalingStat = item.scalingStat;
+    }
+    var basicSkillPowerPct = equippedBasic ? 100 : (isBasic ? 0 : skillPowerPct);
     var row = {
       id: skill.id,
       name: skill.name,
@@ -335,9 +342,9 @@
       scalingStat: scalingStat,
       abilityPower: apVal != null ? Number(apVal) : null,
       fixedCoefficient: skill.fixedCoefficient != null ? Number(skill.fixedCoefficient) : (apVal != null ? Number(apVal) : null),
-      skillPowerPct: isBasic ? 0 : skillPowerPct,
-      skillPower: isBasic ? 0 : (skill.skillPower != null ? Number(skill.skillPower) : (skillPowerPct != null ? skillPowerPct / 100 : null)),
-      naturalStrikeFlat: skill.naturalStrikeFlat || (isBasic ? { min: 1, max: 2 } : null),
+      skillPowerPct: basicSkillPowerPct,
+      skillPower: equippedBasic ? 1 : (isBasic ? 0 : (skill.skillPower != null ? Number(skill.skillPower) : (skillPowerPct != null ? skillPowerPct / 100 : null))),
+      naturalStrikeFlat: equippedBasic ? null : (skill.naturalStrikeFlat || (isBasic ? { min: 1, max: 2 } : null)),
       minDamage: minDmg,
       maxDamage: maxDmg,
       baseDamage: skill.baseDamage != null ? Number(skill.baseDamage) : null,
@@ -371,6 +378,11 @@
       ailmentFromOrb: !!skill.ailmentFromOrb,
       ailmentFromWeapon: !!skill.ailmentFromWeapon,
     };
+    if (equippedBasic && item) {
+      if (item.damageType) row.damageType = item.damageType;
+      if (item.damageCategory) row.damageCategory = item.damageCategory;
+      row.riderText = 'Equipped Basic Attack — 100% weapon damage.';
+    }
     row.tags = buildTags(skill, item, row);
     if (skill.source === 'Combination') row.tags.push('Combination');
     if (typeof globalThis.applyAbilityTextEnrichment === 'function') {
@@ -524,26 +536,37 @@
     return false;
   }
 
-  function basicDisplayName(entity, basicCfg, magic) {
+  function basicDisplayName(entity, basicCfg, magic, main) {
+    if (main && main.isBasicStartingWeapon && main.name) return main.name;
+    if (main && isWeaponItem(main)) return (basicCfg && basicCfg.equippedName) || 'Basic Attack';
     if (usesTailWandBasic(entity, basicCfg) || magic) {
       if (usesTailWandBasic(entity, basicCfg)) return basicCfg.tailWandName || 'Tail Wand';
     }
     return basicCfg.beakJabName || basicCfg.naturalStrikeName || 'Beak Jab';
   }
 
+  function basicIsMagicFromWeapon(main, entity, basicCfg) {
+    if (usesTailWandBasic(entity, basicCfg)) return true;
+    if (!main) return false;
+    if (String(main.damageType || '').toLowerCase() === 'magic') return true;
+    if (/magic/i.test(String(main.damageCategory || ''))) return true;
+    var mainSkill = getSkill(main.skill1);
+    return !!(mainSkill && String(mainSkill.damageType).toLowerCase() === 'magic');
+  }
+
   ns.resolveBasicAttack = function resolveBasicAttack(entity) {
     var cfg = combatConfig();
     var basicCfg = cfg && cfg.basicAttack ? cfg.basicAttack : {};
-    var tailWand = usesTailWandBasic(entity, basicCfg);
     var main = equippedItem(entity, 'mainHand');
     if (!main || !isWeaponItem(main)) {
-      var bareId = tailWand
+      var bareMagic = usesTailWandBasic(entity, basicCfg);
+      var bareId = bareMagic
         ? (basicCfg.magicId || 'BASIC_MAGIC')
         : (basicCfg.physicalId || 'BASIC_PHYSICAL');
       var bareRow = ns.skillToAbilityRow(bareId, null, 'grey');
       if (!bareRow) return null;
       bareRow.heavyAccuracyPenalty = 0;
-      if (tailWand) {
+      if (bareMagic) {
         bareRow.damageType = 'Magic';
         bareRow.scaleStat = 'Focus';
         bareRow.damageStat = 'Focus';
@@ -552,25 +575,29 @@
       return abilityFromRow(bareRow, {
         isMainAttack: true,
         actionSource: 'basic',
-        nameOverride: basicDisplayName(entity, basicCfg, tailWand),
+        nameOverride: basicDisplayName(entity, basicCfg, bareMagic, null),
       });
     }
-    var mainSkill = getSkill(main.skill1);
-    var magic = tailWand || (mainSkill && String(mainSkill.damageType).toLowerCase() === 'magic');
+    var magic = basicIsMagicFromWeapon(main, entity, basicCfg);
     var basicId = magic ? (basicCfg.magicId || 'BASIC_MAGIC') : (basicCfg.physicalId || 'BASIC_PHYSICAL');
-    var basicRow = ns.skillToAbilityRow(basicId, main, normalizeRarity(main.rarity));
+    var basicRow = ns.skillToAbilityRow(basicId, main, normalizeRarity(main.rarity) || 'basic');
     if (!basicRow) return null;
     basicRow.heavyAccuracyPenalty = 0;
-    if (tailWand) {
+    if (magic) {
       basicRow.damageType = 'Magic';
-      basicRow.scaleStat = 'Focus';
-      basicRow.damageStat = 'Focus';
-      basicRow.scalingStat = 'Focus';
+      basicRow.scaleStat = main.scalingStat || 'Focus';
+      basicRow.damageStat = basicRow.scaleStat;
+      basicRow.scalingStat = basicRow.scaleStat;
+    } else if (main.scalingStat) {
+      basicRow.scaleStat = main.scalingStat;
+      basicRow.damageStat = main.scalingStat;
+      basicRow.scalingStat = main.scalingStat;
     }
+    if (main.damageCategory) basicRow.damageCategory = main.damageCategory;
     return abilityFromRow(basicRow, {
       isMainAttack: true,
       actionSource: 'basic',
-      nameOverride: basicDisplayName(entity, basicCfg, magic),
+      nameOverride: basicDisplayName(entity, basicCfg, magic, main),
     });
   };
 

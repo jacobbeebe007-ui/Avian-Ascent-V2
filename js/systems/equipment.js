@@ -218,7 +218,30 @@
       }
     }
     if (!Array.isArray(player.equipmentInventory)) player.equipmentInventory = [];
+    ensureStartingWeapon(player);
     return player;
+  }
+
+  function getClassStartingWeaponId(classId) {
+    var cls = String(classId || '').toLowerCase();
+    if (!cls) return null;
+    var map = Avian.data && Avian.data.equipment && Avian.data.equipment.startingWeapons;
+    if (map && map.byClass && map.byClass[cls]) return map.byClass[cls];
+    var rules = Avian.data && Avian.data.equipment && Avian.data.equipment.coreRules;
+    if (rules && rules.basicStartingWeapons && rules.basicStartingWeapons[cls]) {
+      return rules.basicStartingWeapons[cls];
+    }
+    return null;
+  }
+
+  function ensureStartingWeapon(entity) {
+    if (!entity || !entity.equipment || typeof entity.equipment !== 'object') return false;
+    if (entity.equipment.mainHand) return false;
+    var classId = getPlayerClassId(entity) || String(entity.enemyClass || entity.birdClass || '').toLowerCase();
+    var weaponId = getClassStartingWeaponId(classId);
+    if (!weaponId || !getItem(weaponId)) return false;
+    entity.equipment.mainHand = weaponId;
+    return true;
   }
 
   function findInventoryIndex(player, itemId) {
@@ -352,8 +375,14 @@
     if (!eq || !slotKey) return false;
     var id = eq[slotKey];
     if (!id) return false;
+    var item = getItem(id);
+    /* Basic starting weapons are intrinsic; unequipping them restores the class starter. */
+    if (slotKey === 'mainHand' && item && item.isBasicStartingWeapon) {
+      return false;
+    }
     eq[slotKey] = null;
     addToInventory(player, id);
+    if (slotKey === 'mainHand') ensureStartingWeapon(player);
     if (isEquipmentV2()) reapplyPlayerStatsFromSources(player);
     return true;
   }
@@ -369,8 +398,11 @@
       unequip(player, 'offHand');
     }
     var displaced = eq[sk];
+    var displacedItem = displaced ? getItem(displaced) : null;
     removeFromInventory(player, itemId);
-    if (displaced) addToInventory(player, displaced);
+    if (displaced && !(displacedItem && displacedItem.isBasicStartingWeapon)) {
+      addToInventory(player, displaced);
+    }
     eq[sk] = itemId;
     if (isEquipmentV2()) reapplyPlayerStatsFromSources(player);
     return true;
@@ -1244,6 +1276,7 @@
     }
     var rolled = rollEnemyEquipmentLoadout(enemy, opts);
     enemy.equipment = rolled.equipment;
+    ensureStartingWeapon(enemy);
     enemy.equipmentRarity = rolled.rarity;
     enemy._equipmentReferenceClass = rolled.referenceClass;
     enemy._equipmentLoadoutSeed = rolled.seed;
@@ -1273,6 +1306,8 @@
   equipment.getPlayerClassId = getPlayerClassId;
   equipment.itemAllowedForPlayer = itemAllowedForPlayer;
   equipment.ensurePlayerEquipmentState = ensurePlayerEquipmentState;
+  equipment.getClassStartingWeaponId = getClassStartingWeaponId;
+  equipment.ensureStartingWeapon = ensureStartingWeapon;
   equipment.addToInventory = addToInventory;
   equipment.canEquip = canEquip;
   equipment.equip = equip;
