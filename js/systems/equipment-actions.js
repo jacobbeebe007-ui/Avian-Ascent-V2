@@ -515,7 +515,7 @@
   }
 
   function entityClassId(entity) {
-    var cls = entity && (entity.class || entity.className || entity.birdClass);
+    var cls = entity && (entity.class || entity.className || entity.birdClass || entity.enemyClass);
     if (!cls && entity && entity.birdKey && typeof Avian.getBirdV2 === 'function') {
       var bird = Avian.getBirdV2(entity.birdKey);
       cls = bird && bird.class;
@@ -523,6 +523,9 @@
     if (!cls && entity && entity.key && typeof Avian.getBirdV2 === 'function') {
       var bird2 = Avian.getBirdV2(entity.key);
       cls = bird2 && bird2.class;
+    }
+    if (!cls && entity && entity.birdKey && typeof BIRDS !== 'undefined' && BIRDS[entity.birdKey]) {
+      cls = BIRDS[entity.birdKey].class;
     }
     return String(cls || '').toLowerCase();
   }

@@ -4521,15 +4521,25 @@ function getEnemyPreviewSkillNames(enemy){
     return ["River Grip","Royal Decree","Court Wardens","Owl's Verdict"];
   }
   const names=[];
-  if(Array.isArray(enemy.abilities) && enemy.abilities.length){
-    enemy.abilities.slice(0,4).forEach(entry=>{
+  let abs=Array.isArray(enemy.abilities)?enemy.abilities:[];
+  if((!abs.length || !abs.some(a=>a&&!a.empty)) && Avian?.flags?.equipmentV2){
+    const preview=ensureEnemyPreviewEquipmentState(enemy);
+    if(preview && Array.isArray(preview.abilities) && preview.abilities.length){
+      abs=preview.abilities;
+    }
+  }
+  if(abs.length){
+    abs.slice(0,4).forEach(entry=>{
       if(typeof entry==='string'){
         names.push(getEnemyAbilityDisplayLabel(entry,enemy));
       } else if(entry && typeof entry==='object'){
+        if(entry.empty) return;
+        /* Prefer equipment-resolved display names (e.g. Tail Wand / Talon Scratch). */
+        if(entry.name){ names.push(String(entry.name)); return; }
         const tmpl=getAbilityTemplateForUI(entry);
         if(tmpl?.name){ names.push(tmpl.name); return; }
         const eab=ENEMY_ABILITY_POOL[entry.id];
-        names.push(eab?.name||String(entry.name||entry.id||'—'));
+        names.push(eab?.name||String(entry.id||'—'));
       }
     });
   }
@@ -4541,8 +4551,15 @@ function getEnemyPreviewSkillNames(enemy){
 function getEnemyPreviewSkillKeys(enemy){
   if(!enemy) return [];
   if(enemy.id==='duke_blakiston') return ['dukeRiverGrip','dukeDecree','dukeWardens','dukeOwlsVerdict'];
-  if(Array.isArray(enemy.abilities) && enemy.abilities.length){
-    return enemy.abilities.slice(0,4).map(entry=>typeof entry==='string'?entry:(entry?.id||''));
+  let abs=Array.isArray(enemy.abilities)?enemy.abilities:[];
+  if((!abs.length || !abs.some(a=>a&&!a.empty)) && Avian?.flags?.equipmentV2){
+    const preview=ensureEnemyPreviewEquipmentState(enemy);
+    if(preview && Array.isArray(preview.abilities) && preview.abilities.length){
+      abs=preview.abilities;
+    }
+  }
+  if(abs.length){
+    return abs.slice(0,4).map(entry=>typeof entry==='string'?entry:(entry?.id||'')).filter(Boolean);
   }
   return [];
 }
@@ -4572,18 +4589,25 @@ function buildEnemyInfoPopupAbilitiesHtml(enemy){
     return '<ul>'+lines.map(([n,d])=>`<li><strong>${escapeEncounterPreviewHtml(n)}</strong> — ${escapeEncounterPreviewHtml(d)}</li>`).join('')+'</ul>';
   }
   const parts=[];
-  const hasObjAbs=Array.isArray(enemy.abilities)&&enemy.abilities.some(x=>x&&typeof x==='object'&&x.id);
+  let abs=Array.isArray(enemy.abilities)?enemy.abilities:[];
+  if((!abs.length || !abs.some(a=>a&&typeof a==='object'&&a.id&&!a.empty)) && Avian?.flags?.equipmentV2){
+    const preview=ensureEnemyPreviewEquipmentState(enemy);
+    if(preview && Array.isArray(preview.abilities) && preview.abilities.length){
+      abs=preview.abilities;
+    }
+  }
+  const hasObjAbs=abs.some(x=>x&&typeof x==='object'&&x.id);
   if(hasObjAbs){
-    enemy.abilities.slice(0,4).forEach(entry=>{
-      if(!entry||typeof entry!=='object'||!entry.id) return;
+    abs.slice(0,6).forEach(entry=>{
+      if(!entry||typeof entry!=='object'||!entry.id||entry.empty) return;
       const tmpl=getAbilityTemplateForUI(entry);
       const lv=Math.max(1,Math.min(4,Number(entry.level)||1));
       const lvData=tmpl?.levels?.[lv-1];
-      const desc=String(lvData?.desc||tmpl?.desc||'');
-      parts.push(`<li><strong>${escapeEncounterPreviewHtml(tmpl?.name||entry.id)}</strong> <small>Lv${lv}</small> — ${escapeEncounterPreviewHtml(desc)}</li>`);
+      const desc=String(lvData?.desc||tmpl?.desc||entry.riderText||entry.desc||'');
+      parts.push(`<li><strong>${escapeEncounterPreviewHtml(entry.name||tmpl?.name||entry.id)}</strong> <small>Lv${lv}</small> — ${escapeEncounterPreviewHtml(desc)}</li>`);
     });
-  }else if(Array.isArray(enemy.abilities) && enemy.abilities.length){
-    enemy.abilities.forEach(abKey=>{
+  }else if(abs.length){
+    abs.forEach(abKey=>{
       if(typeof abKey!=='string') return;
       const eab=ENEMY_ABILITY_POOL[abKey];
       if(!eab) return;
@@ -4861,24 +4885,67 @@ function buildEncounterPreviewTooltipHtml(enemy){
 <div class="enc-preview-tt-skills"><div class="enc-preview-tt-skills-h">Combat Abilities</div><ul class="enc-preview-tt-ul">${skillItems}</ul></div>${mutBlock}</div>`;
 }
 
+/**
+ * Preview-only equipment + ability sync so nest/tooltip match combat starters.
+ * Does not mutate combat stats; caches on the draft for the current stage.
+ */
+function ensureEnemyPreviewEquipmentState(enemy){
+  if(!enemy || !Avian?.flags?.equipmentV2) return null;
+  if(enemy._equipmentApplied && enemy.equipment && typeof enemy.equipment==='object'){
+    return { equipment: enemy.equipment, abilities: enemy.abilities || null };
+  }
+  if(enemy._previewEquipment && typeof enemy._previewEquipment==='object'){
+    return { equipment: enemy._previewEquipment, abilities: enemy._previewAbilities || null };
+  }
+  let eq=null;
+  if(typeof Avian.equipment?.rollEnemyEquipmentLoadout==='function'){
+    const stage=Math.max(1, Math.floor(Number(G && G.stage) || 1));
+    const endless=!!(G && G.endlessMode);
+    const tier=enemy.combatTier || enemy.enemyTier || (enemy.isBoss ? 'boss' : (enemy.isElite ? 'elite' : 'normal'));
+    const rolled=Avian.equipment.rollEnemyEquipmentLoadout(enemy, {
+      tier,
+      stage: (!endless && stage<=20) ? stage : undefined,
+      mirrorPlayerEquipment: !!endless,
+      player: G && G.player,
+    });
+    eq=rolled && rolled.equipment ? rolled.equipment : null;
+  }
+  if(!eq && typeof Avian.equipment?.createEmptyLoadout==='function'){
+    eq=Avian.equipment.createEmptyLoadout();
+  }
+  if(eq && typeof Avian.equipment?.ensureStartingWeapon==='function'){
+    const tmp={
+      isEnemy:true,
+      birdKey:enemy.birdKey,
+      class:enemy.class,
+      enemyClass:enemy.enemyClass||enemy.class,
+      equipment:eq,
+    };
+    Avian.equipment.ensureStartingWeapon(tmp);
+    eq=tmp.equipment;
+  }
+  enemy._previewEquipment=eq;
+  if(eq && typeof Avian.equipmentActions?.buildAbilitiesArray==='function'){
+    const tmp={
+      isEnemy:true,
+      birdKey:enemy.birdKey,
+      class:enemy.class||enemy.enemyClass,
+      enemyClass:enemy.enemyClass||enemy.class,
+      equipment:eq,
+    };
+    enemy._previewAbilities=Avian.equipmentActions.buildAbilitiesArray(tmp);
+  }
+  return { equipment: enemy._previewEquipment, abilities: enemy._previewAbilities || null };
+}
+globalThis.ensureEnemyPreviewEquipmentState=ensureEnemyPreviewEquipmentState;
+
 function buildEncounterPreviewEquipmentHtml(enemy){
   if(!enemy || typeof Avian?.equipment?.getItem!=='function') return '';
   let eq=enemy.equipment;
   const hasPieces=eq && typeof eq==='object' && Object.keys(eq).some((sk)=>!!eq[sk]);
-  if(!hasPieces && typeof Avian.equipment.rollEnemyEquipmentLoadout==='function'){
-    if(!enemy._previewEquipment){
-      const stage=Math.max(1, Math.floor(Number(G && G.stage) || 1));
-      const endless=!!(G && G.endlessMode);
-      const tier=enemy.combatTier || enemy.enemyTier || (enemy.isBoss ? 'boss' : (enemy.isElite ? 'elite' : 'normal'));
-      const rolled=Avian.equipment.rollEnemyEquipmentLoadout(enemy, {
-        tier,
-        stage: (!endless && stage<=20) ? stage : undefined,
-        mirrorPlayerEquipment: !!endless,
-        player: G && G.player,
-      });
-      enemy._previewEquipment=rolled && rolled.equipment ? rolled.equipment : null;
-    }
-    eq=enemy._previewEquipment;
+  if(!hasPieces){
+    const preview=ensureEnemyPreviewEquipmentState(enemy);
+    eq=preview && preview.equipment ? preview.equipment : null;
   }
   if(!eq) return '';
   const order=typeof Avian.equipment.getSlotOrder==='function'
@@ -5234,10 +5301,13 @@ function buildTierStarEnemyFromBirdKey(birdKey, opts={}){
   const storyLevel=storyLevelFromTierStar(tier,stars);
   const unlockSlots=typeof getEnemyUnlockedSlotCountForTier==='function'?getEnemyUnlockedSlotCountForTier(tier):2;
   const enemyStub={birdKey, abilities:[], familyEvolutionState:{}};
-  if(typeof materializeEnemySkillsFromWorkbookKit==='function'){
-    materializeEnemySkillsFromWorkbookKit(enemyStub,birdKey,storyLevel,cls,null,{unlockSlots});
-  }else if(typeof materializeEnemySkillsFromPlayerMirror==='function'){
-    materializeEnemySkillsFromPlayerMirror(enemyStub,birdKey,storyLevel,null,cls);
+  /* equipmentV2: combat abilities come from class starting kit / reference loadout, not workbook kits. */
+  if(!(Avian?.flags?.equipmentV2)){
+    if(typeof materializeEnemySkillsFromWorkbookKit==='function'){
+      materializeEnemySkillsFromWorkbookKit(enemyStub,birdKey,storyLevel,cls,null,{unlockSlots});
+    }else if(typeof materializeEnemySkillsFromPlayerMirror==='function'){
+      materializeEnemySkillsFromPlayerMirror(enemyStub,birdKey,storyLevel,null,cls);
+    }
   }
   const diffMult=DIFFICULTIES[G.difficulty||'juvenile']?.mult||1;
   stats.maxHp=roundCombatStat(Math.max(0.01, stats.maxHp*diffMult), 0.01);
@@ -5271,6 +5341,7 @@ function buildTierStarEnemyFromBirdKey(birdKey, opts={}){
     portraitKey:bd.portraitKey||birdKey,
     size,
     enemyClass:cls,
+    class:cls,
     aiStyle,
     aiPersonality,
     abilities:JSON.parse(JSON.stringify(enemyStub.abilities||[])),
@@ -5315,10 +5386,13 @@ function buildStoryEnemyFromBirdKey(birdKey, stage, opts={}){
     : resolveStoryLevelFromStage(stageNum);
   const cls=String(bd.class||'striker').toLowerCase();
   const enemyStub={birdKey, abilities:[], familyEvolutionState:{}};
-  if(typeof materializeEnemySkillsFromWorkbookKit==='function'){
-    materializeEnemySkillsFromWorkbookKit(enemyStub,birdKey,level,cls,null);
-  } else if(typeof materializeEnemySkillsFromPlayerMirror==='function'){
-    materializeEnemySkillsFromPlayerMirror(enemyStub,birdKey,level,null,cls);
+  /* equipmentV2: combat abilities come from class starting kit / reference loadout, not workbook kits. */
+  if(!(Avian?.flags?.equipmentV2)){
+    if(typeof materializeEnemySkillsFromWorkbookKit==='function'){
+      materializeEnemySkillsFromWorkbookKit(enemyStub,birdKey,level,cls,null);
+    } else if(typeof materializeEnemySkillsFromPlayerMirror==='function'){
+      materializeEnemySkillsFromPlayerMirror(enemyStub,birdKey,level,null,cls);
+    }
   }
   const evolvedSlots=getStoryEvolvedSlotCount(level);
   const diffMult = DIFFICULTIES[G.difficulty||'juvenile']?.mult || 1;
@@ -5333,6 +5407,7 @@ function buildStoryEnemyFromBirdKey(birdKey, stage, opts={}){
     portraitKey:bd.portraitKey||birdKey,
     size,
     enemyClass:cls,
+    class:cls,
     aiStyle,
     aiPersonality,
     abilities:JSON.parse(JSON.stringify(enemyStub.abilities||[])),

@@ -153,6 +153,19 @@ assertBasic({
   else ok('ensureStartingWeapon grants Talon Scratch to rogue');
 }
 
+// Enemy with only enemyClass (no player.class) still gets class starter + named basic
+{
+  const enemy = {
+    isEnemy: true,
+    enemyClass: 'mage',
+    equipment: equipment.createEmptyLoadout(),
+  };
+  equipment.ensureStartingWeapon(enemy);
+  if (enemy.equipment.mainHand !== 'WPN-B01') fail(`enemy mage starter expected WPN-B01, got ${enemy.equipment.mainHand}`);
+  else ok('ensureStartingWeapon grants Tail Wand to enemy mage via enemyClass');
+  assertBasic(enemy, 'BASIC_MAGIC', 'Tail Wand');
+}
+
 // wand main → BASIC_MAGIC (equipped Basic Attack name for non-basic weapons)
 assertBasic(player({ mainHand: 'WPN-031' }), 'BASIC_MAGIC', 'Basic Attack');
 
