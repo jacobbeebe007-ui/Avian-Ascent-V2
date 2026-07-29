@@ -5951,8 +5951,8 @@ function initSelectionSafe(){
   // If we navigated back from the overworld, handle the pending intent first.
   try { syncBuildNestUnlockUI(); } catch(_) {}
   try {
-    if (typeof globalThis.syncCombatScenarioTestUnlockUI === 'function') {
-      globalThis.syncCombatScenarioTestUnlockUI();
+    if (typeof Avian?.debug?.syncCombatScenarioTestUnlockUI === 'function') {
+      Avian.debug.syncCombatScenarioTestUnlockUI();
     }
   } catch(_) {}
   try {
@@ -8038,7 +8038,7 @@ function openSelectHubPanel(which){
   const allowed = {supplies:1,map:1,door:1,fortune:1,inventory:1,hatchery:1,'combat-scenarios':1};
   if(!allowed[which]) return;
   if(which === 'combat-scenarios'){
-    if(typeof globalThis.ensureCombatScenarioPanel === 'function') globalThis.ensureCombatScenarioPanel();
+    if(typeof Avian?.ui?.ensureCombatScenarioPanel === 'function') Avian.ui.ensureCombatScenarioPanel();
   }
   const root = document.getElementById('select-hub-panels');
   const screenEl = document.getElementById('screen-select');
@@ -18916,8 +18916,8 @@ function checkDevCode(val) {
   }
   if (code === 'combattest') {
     try { localStorage.setItem('avian_combattest_unlocked', '1'); } catch(_) {}
-    if (typeof globalThis.unlockCombatScenarioTest === 'function') globalThis.unlockCombatScenarioTest();
-    else if (typeof globalThis.syncCombatScenarioTestUnlockUI === 'function') globalThis.syncCombatScenarioTestUnlockUI();
+    if (typeof Avian?.debug?.unlockCombatScenarioTest === 'function') Avian.debug.unlockCombatScenarioTest();
+    else if (typeof Avian?.debug?.syncCombatScenarioTestUnlockUI === 'function') Avian.debug.syncCombatScenarioTestUnlockUI();
     else {
       try { document.body.classList.add('combat-scenario-test-unlocked'); } catch(_) {}
     }

@@ -2,12 +2,15 @@
  *
  * Unlock via Supplies code "combattest". Opens a left-side war-room hotspot
  * that runs an in-browser smoke suite mirroring the Node harness foundations.
+ * APIs live on Avian.debug / Avian.ui / Avian.actions (no new globalThis exports).
  */
 (function () {
   'use strict';
 
   var Avian = globalThis.Avian || (globalThis.Avian = {});
   Avian.debug = Avian.debug || Object.create(null);
+  Avian.ui = Avian.ui || Object.create(null);
+  Avian.actions = Avian.actions || Object.create(null);
 
   var UNLOCK_KEY = 'avian_combattest_unlocked';
 
@@ -156,12 +159,6 @@
     return { passed: passed, failed: failed, total: results.length, results: results };
   }
 
-  Avian.debug.combatScenarioSmoke = runCombatScenarioSmoke;
-  Avian.debug.isCombatScenarioTestUnlocked = isCombatScenarioTestUnlocked;
-  Avian.debug.unlockCombatScenarioTest = unlockCombatScenarioTest;
-
-  /* ---- Panel UI -------------------------------------------------------- */
-
   function ensurePanel() {
     var existing = document.getElementById('select-hub-combat-scenarios');
     if (existing) return existing;
@@ -238,20 +235,17 @@
     return report;
   }
 
-  globalThis.isCombatScenarioTestUnlocked = isCombatScenarioTestUnlocked;
-  globalThis.syncCombatScenarioTestUnlockUI = syncCombatScenarioTestUnlockUI;
-  globalThis.unlockCombatScenarioTest = unlockCombatScenarioTest;
-  globalThis.ensureCombatScenarioPanel = ensurePanel;
-  globalThis.openCombatScenarioTest = openCombatScenarioTest;
-  globalThis.runCombatScenarioSmoke = runCombatScenarioSmokeAction;
+  Avian.debug.combatScenarioSmoke = runCombatScenarioSmoke;
+  Avian.debug.isCombatScenarioTestUnlocked = isCombatScenarioTestUnlocked;
+  Avian.debug.unlockCombatScenarioTest = unlockCombatScenarioTest;
+  Avian.debug.syncCombatScenarioTestUnlockUI = syncCombatScenarioTestUnlockUI;
 
-  try {
-    Avian.actions = Avian.actions || Object.create(null);
-    Object.assign(Avian.actions, {
-      openCombatScenarioTest: openCombatScenarioTest,
-      runCombatScenarioSmoke: runCombatScenarioSmokeAction,
-    });
-  } catch (_) { /* noop */ }
+  Avian.ui.ensureCombatScenarioPanel = ensurePanel;
+  Avian.ui.openCombatScenarioTest = openCombatScenarioTest;
+  Avian.ui.runCombatScenarioSmoke = runCombatScenarioSmokeAction;
+
+  Avian.actions.openCombatScenarioTest = openCombatScenarioTest;
+  Avian.actions.runCombatScenarioSmoke = runCombatScenarioSmokeAction;
 
   if (typeof document !== 'undefined') {
     if (document.readyState === 'loading') {
