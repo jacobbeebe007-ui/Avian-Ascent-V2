@@ -246,12 +246,11 @@
   globalThis.runCombatScenarioSmoke = runCombatScenarioSmokeAction;
 
   try {
-    if (Avian.ed) {
-      Object.assign(Avian.actions || (Avian.actions = {}), {
-        openCombatScenarioTest: openCombatScenarioTest,
-        runCombatScenarioSmoke: runCombatScenarioSmokeAction,
-      });
-    }
+    Avian.actions = Avian.actions || Object.create(null);
+    Object.assign(Avian.actions, {
+      openCombatScenarioTest: openCombatScenarioTest,
+      runCombatScenarioSmoke: runCombatScenarioSmokeAction,
+    });
   } catch (_) { /* noop */ }
 
   if (typeof document !== 'undefined') {
