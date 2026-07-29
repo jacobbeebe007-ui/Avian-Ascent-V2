@@ -130,7 +130,10 @@ else ok(`ailmentGates loaded (${gates.length})`);
 
 if (prot.protectionPoolForAilment('Bleed') !== 'armour') fail('Bleed should gate on Armour');
 if (prot.protectionPoolForAilment('Poison') !== 'magicArmour') fail('Poison should gate on Magic Armour');
-else ok('Ailment→pool mapping');
+if (prot.protectionPoolForAilment('fracture') !== 'armour') fail('Fracture should gate on Armour');
+if (prot.protectionPoolForAilment('crippled') !== 'armour') fail('Crippled should gate on Armour');
+if (prot.protectionPoolForAilment('dazed') !== 'armour') fail('Dazed should gate on Armour');
+else ok('Ailment→pool mapping (incl. physical ailments)');
 
 if (failed) {
   console.error(`\n[protection] ${failed} failure(s)`);

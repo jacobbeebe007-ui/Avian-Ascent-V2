@@ -57,6 +57,55 @@
     fear: { damageDownTiers: 'major' },
     confused: { precisionDownPointsTier: 'major' },
 
+    /* Physical stacking ailments — Current Master v1.5. */
+    fracture: {
+      maxStacks: 5,
+      duration: 3,
+      guardPerStack: -2,
+      armourRestorePctPerStack: -0.04,
+      upgrade: 'shattered',
+      requiresZeroArmour: true,
+    },
+    shattered: {
+      duration: 2,
+      guardFlat: -10,
+      armourRestorePct: -0.25,
+      fortifyHealPct: -0.25,
+      attackerPenetrationFlat: 3,
+      refreshable: false,
+    },
+    crippled: {
+      maxStacks: 5,
+      duration: 3,
+      agilityPerStack: -2,
+      dodgePointsPerStack: -2,
+      upgrade: 'immobilised',
+      requiresZeroArmour: true,
+    },
+    immobilised: {
+      duration: 1,
+      dodgeZero: true,
+      blockMobility: true,
+      refreshable: false,
+    },
+    dazed: {
+      maxStacks: 5,
+      duration: 3,
+      precisionPerStack: -4,
+      skillPowerPerStack: -2,
+      upgrade: 'concussed',
+      requiresZeroArmour: true,
+    },
+    concussed: {
+      duration: 1,
+      precisionFlat: -20,
+      skillPowerFlat: -15,
+      nextOffensiveExtraEn: 1,
+      basicAttackExempt: true,
+      endsAfterOffensive: true,
+      refreshable: false,
+    },
+
     application: {
       perActionCap: 2,
       perTurnCap: 4,
@@ -119,6 +168,32 @@
     if (a.stacksPerActionCap != null) RULES.application.perActionCap = a.stacksPerActionCap;
     if (a.stacksPerTurnCap != null) RULES.application.perTurnCap = a.stacksPerTurnCap;
     if (a.sharedDurationTurns != null) RULES.application.sharedDurationTurns = a.sharedDurationTurns;
+    if (a.fractureMaxStacks != null) RULES.fracture.maxStacks = a.fractureMaxStacks;
+    if (a.fractureGuardPerStack != null) RULES.fracture.guardPerStack = a.fractureGuardPerStack;
+    if (a.fractureArmourRestorePctPerStack != null) {
+      RULES.fracture.armourRestorePctPerStack = a.fractureArmourRestorePctPerStack;
+    }
+    if (a.shatteredDurationTurns != null) RULES.shattered.duration = a.shatteredDurationTurns;
+    if (a.shatteredGuardFlat != null) RULES.shattered.guardFlat = a.shatteredGuardFlat;
+    if (a.shatteredArmourRestorePct != null) RULES.shattered.armourRestorePct = a.shatteredArmourRestorePct;
+    if (a.shatteredFortifyHealPct != null) RULES.shattered.fortifyHealPct = a.shatteredFortifyHealPct;
+    if (a.shatteredAttackerPenetrationFlat != null) {
+      RULES.shattered.attackerPenetrationFlat = a.shatteredAttackerPenetrationFlat;
+    }
+    if (a.crippledMaxStacks != null) RULES.crippled.maxStacks = a.crippledMaxStacks;
+    if (a.crippledAgilityPerStack != null) RULES.crippled.agilityPerStack = a.crippledAgilityPerStack;
+    if (a.crippledDodgePointsPerStack != null) {
+      RULES.crippled.dodgePointsPerStack = a.crippledDodgePointsPerStack;
+    }
+    if (a.immobilisedDurationTurns != null) RULES.immobilised.duration = a.immobilisedDurationTurns;
+    if (a.dazedMaxStacks != null) RULES.dazed.maxStacks = a.dazedMaxStacks;
+    if (a.dazedPrecisionPerStack != null) RULES.dazed.precisionPerStack = a.dazedPrecisionPerStack;
+    if (a.dazedSkillPowerPerStack != null) RULES.dazed.skillPowerPerStack = a.dazedSkillPowerPerStack;
+    if (a.concussedPrecisionFlat != null) RULES.concussed.precisionFlat = a.concussedPrecisionFlat;
+    if (a.concussedSkillPowerFlat != null) RULES.concussed.skillPowerFlat = a.concussedSkillPowerFlat;
+    if (a.concussedNextOffensiveExtraEn != null) {
+      RULES.concussed.nextOffensiveExtraEn = a.concussedNextOffensiveExtraEn;
+    }
   }
   syncFromCombatConfig();
 
@@ -277,6 +352,119 @@
     return map.medium;
   }
 
+  function getArmourRestoreReceivedMult(status) {
+    if (!status) return 1;
+    var mult = 1;
+    var fr = status.fracture;
+    if (fr && (fr.stacks || 0) > 0) {
+      mult += (RULES.fracture.armourRestorePctPerStack || -0.04) * (fr.stacks || 0);
+    }
+    if (status.shattered) {
+      mult += (RULES.shattered.armourRestorePct || -0.25);
+    }
+    return Math.max(0, Math.min(1, mult));
+  }
+
+  function getFortifyHealReceivedMult(status) {
+    if (!status) return 1;
+    if (status.shattered) {
+      return Math.max(0, 1 + (RULES.shattered.fortifyHealPct || -0.25));
+    }
+    return 1;
+  }
+
+  function getFractureGuardPenalty(status) {
+    if (!status) return 0;
+    var pen = 0;
+    var fr = status.fracture;
+    if (fr && (fr.stacks || 0) > 0) {
+      pen += (RULES.fracture.guardPerStack || -2) * (fr.stacks || 0);
+    }
+    if (status.shattered) pen += (RULES.shattered.guardFlat || -10);
+    return pen;
+  }
+
+  function getCrippledAgilityPenalty(status) {
+    var cr = status && status.crippled;
+    if (!cr || !(cr.stacks > 0)) return 0;
+    return (RULES.crippled.agilityPerStack || -2) * (cr.stacks || 0);
+  }
+
+  function getCrippledDodgePenalty(status) {
+    var cr = status && status.crippled;
+    if (!cr || !(cr.stacks > 0)) return 0;
+    return (RULES.crippled.dodgePointsPerStack || -2) * (cr.stacks || 0);
+  }
+
+  function getDazedPrecisionPenalty(status) {
+    if (!status) return 0;
+    var pen = 0;
+    var dz = status.dazed;
+    if (dz && (dz.stacks || 0) > 0) {
+      pen += (RULES.dazed.precisionPerStack || -4) * (dz.stacks || 0);
+    }
+    if (status.concussed) pen += (RULES.concussed.precisionFlat || -20);
+    return pen;
+  }
+
+  function getDazedSkillPowerPenalty(status) {
+    if (!status) return 0;
+    var pen = 0;
+    var dz = status.dazed;
+    if (dz && (dz.stacks || 0) > 0) {
+      pen += (RULES.dazed.skillPowerPerStack || -2) * (dz.stacks || 0);
+    }
+    if (status.concussed) pen += (RULES.concussed.skillPowerFlat || -15);
+    return pen;
+  }
+
+  function getShatteredAttackerPenetration(status) {
+    if (!status || !status.shattered) return 0;
+    return Math.max(0, Number(RULES.shattered.attackerPenetrationFlat) || 3);
+  }
+
+  function isImmobilisedActive(status) {
+    if (!status || !status.immobilised) return false;
+    var im = status.immobilised;
+    if (typeof im === 'number') return im > 0;
+    return (Number(im.turns) || 0) > 0 || !!im.active;
+  }
+
+  function isConcussedActive(status) {
+    if (!status || !status.concussed) return false;
+    var c = status.concussed;
+    if (typeof c === 'number') return c > 0;
+    return (Number(c.turns) || 0) > 0 || !!c.pendingExtraEn;
+  }
+
+  function getConcussedExtraEnCost(status, ability) {
+    if (!isConcussedActive(status)) return 0;
+    var rule = RULES.concussed || {};
+    if (ability) {
+      if (rule.basicAttackExempt) {
+        var isBasic = !!(ability.isBasicAttack || ability.skillType === 'Basic'
+          || /basic attack/i.test(String(ability.name || ''))
+          || ability.id === 'BASIC_PHYSICAL' || ability.id === 'BASIC_MAGIC'
+          || ability.equipmentSkillId === 'BASIC_PHYSICAL' || ability.equipmentSkillId === 'BASIC_MAGIC'
+          || ability.barSlot === 'Basic Attack');
+        if (isBasic) return 0;
+      }
+      var target = String(ability.target || 'enemy').toLowerCase();
+      if (ability.noDamage || target === 'self') return 0;
+    }
+    return Math.max(0, Number(rule.nextOffensiveExtraEn) || 1);
+  }
+
+  function isMobilitySkillBlocked(ability) {
+    if (!ability) return false;
+    var blob = [
+      ability.name, ability.id, ability.equipmentSkillId,
+      Array.isArray(ability.tags) ? ability.tags.join(' ') : '',
+      ability.riderText, ability.skillType, ability.barSlot,
+    ].join(' ');
+    return /evade|evasive|retreat|withdraw|dodge|hop|dash|charge|mobility|slip|skitter|flee|escape|disengage/i.test(blob);
+  }
+
   function hasGuard(status, guardId) {
     if (!status || !guardId) return false;
     var g = status[guardId];
@@ -315,4 +503,16 @@
   globalThis.capAilmentDamage = capAilmentDamage;
   globalThis.isBossTargetForAilment = isBossTarget;
   globalThis.syncAilmentRulesFromCombatConfig = syncFromCombatConfig;
+  globalThis.getArmourRestoreReceivedMult = getArmourRestoreReceivedMult;
+  globalThis.getFortifyHealReceivedMult = getFortifyHealReceivedMult;
+  globalThis.getFractureGuardPenalty = getFractureGuardPenalty;
+  globalThis.getCrippledAgilityPenalty = getCrippledAgilityPenalty;
+  globalThis.getCrippledDodgePenalty = getCrippledDodgePenalty;
+  globalThis.getDazedPrecisionPenalty = getDazedPrecisionPenalty;
+  globalThis.getDazedSkillPowerPenalty = getDazedSkillPowerPenalty;
+  globalThis.getShatteredAttackerPenetration = getShatteredAttackerPenetration;
+  globalThis.isImmobilisedActive = isImmobilisedActive;
+  globalThis.isConcussedActive = isConcussedActive;
+  globalThis.getConcussedExtraEnCost = getConcussedExtraEnCost;
+  globalThis.isMobilitySkillBlocked = isMobilitySkillBlocked;
 })();
