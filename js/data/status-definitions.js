@@ -251,6 +251,42 @@
     else if (k === 'slow') { out.className = 'status-badge slow'; out.text = '🐌 Slow(' + (typeof v === 'number' ? v : v.turns) + 't)'; out.category = 'debuff'; }
     else if (k === 'chilled') { out.className = 'status-badge slow'; out.text = '❄ Chill×' + (v.stacks || 0) + '(' + (v.turns || 0) + 't)'; out.category = 'ailment'; }
     else if (k === 'frozen') { out.className = 'status-badge slow'; out.text = '🧊 Frozen'; out.category = 'ailment'; }
+    else if (k === 'fracture') {
+      out.className = 'status-badge weaken';
+      out.text = '🦴 Fracture×' + (v.stacks || 0) + '(' + (v.turns || 0) + 't)';
+      out.summary = (AILMENTS.fracture && AILMENTS.fracture.desc) || '';
+      out.category = 'ailment';
+    }
+    else if (k === 'shattered') {
+      out.className = 'status-badge weaken';
+      out.text = '🦴 Shattered(' + (v.turns || 0) + 't)';
+      out.summary = (AILMENTS.shattered && AILMENTS.shattered.desc) || '';
+      out.category = 'ailment';
+    }
+    else if (k === 'crippled') {
+      out.className = 'status-badge slow';
+      out.text = '⛓ Crippled×' + (v.stacks || 0) + '(' + (v.turns || 0) + 't)';
+      out.summary = (AILMENTS.crippled && AILMENTS.crippled.desc) || '';
+      out.category = 'ailment';
+    }
+    else if (k === 'immobilised' || k === 'immobilized') {
+      out.className = 'status-badge slow';
+      out.text = '⛓ Immobilised(' + (v.turns || 0) + 't)';
+      out.summary = (AILMENTS.immobilised && AILMENTS.immobilised.desc) || '';
+      out.category = 'ailment';
+    }
+    else if (k === 'dazed') {
+      out.className = 'status-badge confused';
+      out.text = '💫 Dazed×' + (v.stacks || 0) + '(' + (v.turns || 0) + 't)';
+      out.summary = (AILMENTS.dazed && AILMENTS.dazed.desc) || '';
+      out.category = 'ailment';
+    }
+    else if (k === 'concussed') {
+      out.className = 'status-badge confused';
+      out.text = '💫 Concussed(+' + ((AILMENT_RULES && AILMENT_RULES.concussed && AILMENT_RULES.concussed.nextOffensiveExtraEn) || 1) + 'EN)';
+      out.summary = (AILMENTS.concussed && AILMENTS.concussed.desc) || '';
+      out.category = 'ailment';
+    }
     else if (k === 'blinded') { out.className = 'status-badge feared'; out.text = '👁 Blinded(' + (v.turns || 0) + 't)'; out.category = 'debuff'; }
     else if (k === 'decreed') { out.className = 'status-badge feared'; out.text = '📜 Decreed(' + (v.turns || 0) + 't)'; out.category = 'debuff'; }
     else if (k === 'frostGuard' || k === 'emberGuard' || k === 'toxicResistance') { out.className = 'status-badge guarded'; out.text = '🛡 ' + k + '(' + (typeof v === 'number' ? v : v.turns || 0) + 't)'; out.category = 'buff'; }

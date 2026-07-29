@@ -151,11 +151,26 @@ if (!comboBleed || comboBleed.ailment !== 'bleed' || Number(comboBleed.ailmentCh
   fail(`COMBO_BLEED_TALON expected bleed@100, got ${comboBleed && comboBleed.ailment}@${comboBleed && comboBleed.ailmentChance}`);
 } else ok('combo On-hit Bleed wired at 100%');
 
+const dazedRow = actions.skillToAbilityRow('WSK-009', { id: 'WPN-025', rarity: 'grey', family: 'Beak Hammer' }, 'grey');
+if (!dazedRow || dazedRow.ailment !== 'dazed' || Number(dazedRow.ailmentChance) !== 100 || Number(dazedRow.ailmentStacks) !== 1) {
+  fail(`WSK-009 expected dazed@100×1, got ${dazedRow && dazedRow.ailment}@${dazedRow && dazedRow.ailmentChance}×${dazedRow && dazedRow.ailmentStacks}`);
+} else ok('WSK-009 Dazed 1 stack wired');
+
+const crippleRow = actions.skillToAbilityRow('WSK-020', { id: 'WPN-055', rarity: 'grey', family: 'Bow' }, 'grey');
+if (!crippleRow || crippleRow.ailment !== 'crippled' || Number(crippleRow.ailmentChance) !== 100 || Number(crippleRow.ailmentStacks) !== 2) {
+  fail(`WSK-020 expected crippled@100×2, got ${crippleRow && crippleRow.ailment}@${crippleRow && crippleRow.ailmentChance}×${crippleRow && crippleRow.ailmentStacks}`);
+} else ok('WSK-020 Crippled 2 stacks wired');
+
+const fractureRow = actions.skillToAbilityRow('WSK-026', { id: 'WPN-073', rarity: 'grey', family: 'Greatblade' }, 'grey');
+if (!fractureRow || fractureRow.ailment !== 'fracture' || Number(fractureRow.ailmentChance) !== 100 || Number(fractureRow.ailmentStacks) !== 2) {
+  fail(`WSK-026 expected fracture@100×2, got ${fractureRow && fractureRow.ailment}@${fractureRow && fractureRow.ailmentChance}×${fractureRow && fractureRow.ailmentStacks}`);
+} else ok('WSK-026 Fracture 2 stacks wired');
+
 let ailmentTextChecked = 0;
 for (const skillId of skillIds) {
   const skill = skills[skillId];
   const text = String(skill.riderText || '');
-  if (!/chance to apply|On hit,\s*apply\s+\d+\s+(Bleed|Burn|Poison|Chilled|Shock)|Orb['’]?s\s+ailment|weapon['’]?s magical ailment chance/i.test(text)) {
+  if (!/chance to apply|apply\s+\d+\s+(Bleed|Burn|Poison|Chilled|Shock|Dazed|Crippled|Fracture)|Orb['’]?s\s+ailment|weapon['’]?s magical ailment chance/i.test(text)) {
     continue;
   }
   const row = actions.skillToAbilityRow(

@@ -179,5 +179,51 @@
       color: '#2d8a2d',
       desc: 'Legacy poison protection window (superseded by resolved-state lockouts).',
     },
+
+    fracture: {
+      id: 'fracture',
+      name: 'Fracture',
+      icon: '🦴',
+      color: '#a09070',
+      desc: 'Stacks to 5. −2 Guard and −4% Armour restoration received per stack. At 5 stacks the target becomes Shattered.',
+      maxStacks: (R.fracture && R.fracture.maxStacks) || 5,
+    },
+    shattered: {
+      id: 'shattered',
+      name: 'Shattered',
+      icon: '🦴',
+      color: '#807050',
+      desc: '−10 Guard, −25% Armour restoration and Fortify healing received for 2 turns. Physical attacks gain +3 penetration against this target.',
+    },
+    crippled: {
+      id: 'crippled',
+      name: 'Crippled',
+      icon: '⛓',
+      color: '#7080a0',
+      desc: 'Stacks to 5. −2 Agility and −2% Dodge per stack. At 5 stacks the target becomes Immobilised.',
+      maxStacks: (R.crippled && R.crippled.maxStacks) || 5,
+    },
+    immobilised: {
+      id: 'immobilised',
+      name: 'Immobilised',
+      icon: '⛓',
+      color: '#506080',
+      desc: 'Dodge becomes 0%. Mobility, retreat, charge and evasive utility skills cannot be used for 1 turn. Attacks remain allowed.',
+    },
+    dazed: {
+      id: 'dazed',
+      name: 'Dazed',
+      icon: '💫',
+      color: '#c0a060',
+      desc: 'Stacks to 5. −4 Precision and −2 Skill Power per stack. At 5 stacks the target becomes Concussed.',
+      maxStacks: (R.dazed && R.dazed.maxStacks) || 5,
+    },
+    concussed: {
+      id: 'concussed',
+      name: 'Concussed',
+      icon: '💫',
+      color: '#a08040',
+      desc: '−20 Precision and −15 Skill Power. The next offensive skill costs +1 EN (Basic Attack stays 1 EN), then Concussed ends.',
+    },
   };
 })();

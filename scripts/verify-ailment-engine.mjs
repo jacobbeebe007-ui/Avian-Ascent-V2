@@ -69,6 +69,27 @@ eq(ctx.isParalyzedActive({}), false, 'not paralyzed');
 eq(R.controlResistance.blocks.includes('shock'), true, 'CR blocks shock');
 eq(R.controlResistance.blocks.includes('paralyzed'), true, 'CR blocks paralyzed');
 
+/* Physical ailments — Current Master v1.5 */
+eq(R.fracture.maxStacks, 5, 'fracture max stacks 5');
+eq(R.fracture.guardPerStack, -2, 'fracture −2 Guard/stack');
+eq(R.fracture.armourRestorePctPerStack, -0.04, 'fracture −4% armour restore/stack');
+eq(R.shattered.duration, 2, 'shattered lasts 2 turns');
+eq(R.shattered.attackerPenetrationFlat, 3, 'shattered +3 pen vs target');
+eq(R.crippled.maxStacks, 5, 'crippled max stacks 5');
+eq(R.crippled.agilityPerStack, -2, 'crippled −2 Agility/stack');
+eq(R.immobilised.dodgeZero, true, 'immobilised zeroes dodge');
+eq(R.dazed.precisionPerStack, -4, 'dazed −4 Precision/stack');
+eq(R.concussed.nextOffensiveExtraEn, 1, 'concussed +1 EN next offensive');
+eq(ctx.getFractureGuardPenalty({ fracture: { stacks: 3, turns: 3 } }), -6, 'fracture guard penalty helper');
+eq(ctx.getArmourRestoreReceivedMult({ fracture: { stacks: 5, turns: 3 } }), 0.8, 'fracture restore mult at 5');
+eq(ctx.getArmourRestoreReceivedMult({ shattered: { turns: 2 } }), 0.75, 'shattered restore mult');
+eq(ctx.getCrippledDodgePenalty({ crippled: { stacks: 2, turns: 3 } }), -4, 'crippled dodge penalty');
+eq(ctx.getDazedPrecisionPenalty({ dazed: { stacks: 2, turns: 3 } }), -8, 'dazed precision penalty');
+eq(ctx.getDazedSkillPowerPenalty({ concussed: { turns: 1 } }), -15, 'concussed skill power');
+eq(ctx.getConcussedExtraEnCost({ concussed: { turns: 1, pendingExtraEn: true } }, { id: 'WSK-009', name: 'Crushing Peck' }), 1, 'concussed EN on offensive');
+eq(ctx.getConcussedExtraEnCost({ concussed: { turns: 1, pendingExtraEn: true } }, { id: 'BASIC_PHYSICAL', skillType: 'Basic', name: 'Basic Attack' }), 0, 'concussed exempts Basic');
+eq(ctx.isMobilitySkillBlocked({ name: 'Hedge Hop', tags: ['evasive'] }), true, 'mobility skill detect');
+
 if (failed) {
   console.error(`\n[ailment-engine] ${failed} failure(s)`);
   process.exit(1);

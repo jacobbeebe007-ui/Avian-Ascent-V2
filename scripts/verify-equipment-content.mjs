@@ -115,8 +115,8 @@ if (tiers.buff.grand != null || tiers.buff.epic != null || tiers.buff.legendary 
   fail('legacy grand/epic/legendary tiers must not appear in effectTiers');
 }
 
-if (!cfg || cfg.packVersion !== '2026.07-equipment-v1.3-basic-starting-weapons') {
-  fail('combatConfig.packVersion must be equipment-v1.3-basic-starting-weapons');
+if (!cfg || cfg.packVersion !== '2026.07-equipment-v1.5-physical-ailments') {
+  fail('combatConfig.packVersion must be equipment-v1.5-physical-ailments');
 }
 if (!cfg.equipmentV12) fail('combatConfig.equipmentV12 expected');
 if (!cfg.equipmentV13BasicStartingWeapons) fail('combatConfig.equipmentV13BasicStartingWeapons expected');

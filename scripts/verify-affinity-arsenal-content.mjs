@@ -111,11 +111,12 @@ for (const [atk, row] of Object.entries(expected)) {
 }
 
 if (!cfg || (
-  cfg.packVersion !== '2026.07-equipment-v1.3-basic-starting-weapons'
+  cfg.packVersion !== '2026.07-equipment-v1.5-physical-ailments'
+  && cfg.packVersion !== '2026.07-equipment-v1.3-basic-starting-weapons'
   && cfg.packVersion !== '2026.07-equipment-v1.2-restoration'
   && cfg.packVersion !== '2026.07-weapon-first-v0.9'
 )) {
-  fail('combatConfig.packVersion mismatch (expected equipment-v1.3-basic-starting-weapons)');
+  fail('combatConfig.packVersion mismatch (expected equipment-v1.5-physical-ailments)');
 }
 if (!cfg.affinityArsenalV06) fail('combatConfig.affinityArsenalV06 should be true');
 if (!cfg.weaponFirstV09 || !cfg.weaponFirst || !cfg.weaponFirst.enabled) fail('weaponFirst expected');
@@ -129,6 +130,12 @@ if (!families || !families.stacking || !families.stacking.shock) {
 }
 if (!families.resolved || !families.resolved.incinerating || !families.resolved.controlResistance) {
   fail('ailmentFamilies resolved incinerating/controlResistance missing');
+}
+if (!families.stacking.fracture || !families.stacking.crippled || !families.stacking.dazed) {
+  fail('ailmentFamilies physical stacking ailments missing');
+}
+if (!families.resolved.shattered || !families.resolved.immobilised || !families.resolved.concussed) {
+  fail('ailmentFamilies physical resolved states missing');
 }
 
 const access = data.equipment.weaponAccess;
