@@ -150,4 +150,24 @@ export default [
       expectValue(viaGetter, runtime, 'getAbilityCooldown === G.abilityCooldowns');
     },
   },
+  {
+    id: 'CD-009',
+    name: 'Bustard Plainshield commits cooldown and rejects immediate re-cast',
+    setup: {
+      player: { bird: 'bustard', energy: 6, equipment: { mainHand: 'WPN-B02' } },
+      enemy: { bird: 'crow', hp: 100 },
+    },
+    steps: [
+      { action: { type: 'utility' } },
+      { action: { type: 'utility' }, expect: { actionRejected: true } },
+    ],
+    assert({ sandbox, ctx, expectValue }) {
+      const ab = (ctx.player.abilities || []).find((a) => a && a.actionSource === 'utility');
+      expectValue(ab?.id, 'innate_bustard', 'Bustard innate id');
+      expectValue(sandbox.getTemplateCooldown(ab), 3, 'Plainshield authored CD 3');
+      expectValue(sandbox.getAbilityCooldown(ab.id), 3, 'Plainshield runtime CD 3');
+      expectValue(!!sandbox.G.playerStatus.fortify, true, 'Fortify applied once');
+      expectValue(sandbox.G.playerStatus.fortify?.amount, 6, 'Fortify bonus 6');
+    },
+  },
 ];

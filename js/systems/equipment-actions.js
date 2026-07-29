@@ -200,6 +200,24 @@
       if (!sp || !sp.id) continue;
       if (sp.id === 'shield') riders.push({ kind: 'gainShield', value: Number(sp.maxHpPct) || 15, when: null });
       if (sp.id === 'healMaxHp') riders.push({ kind: 'healMaxHpPct', value: Number(sp.pct) || 10, when: null });
+      if (sp.id === 'fortify') {
+        riders.push({
+          kind: 'fortify',
+          value: Number(sp.amount) || 0,
+          turns: Number(sp.turns) || 2,
+          scope: 'self',
+          when: null,
+        });
+      }
+      if (sp.id === 'ward') {
+        riders.push({
+          kind: 'ward',
+          value: Number(sp.amount) || 0,
+          turns: Number(sp.turns) || 2,
+          scope: 'self',
+          when: null,
+        });
+      }
       if (sp.id === 'cleanse') {
         /* handled via applyTagRidersFromRow Cleanse tag */
       }
