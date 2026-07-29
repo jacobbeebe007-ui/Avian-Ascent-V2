@@ -5951,6 +5951,11 @@ function initSelectionSafe(){
   // If we navigated back from the overworld, handle the pending intent first.
   try { syncBuildNestUnlockUI(); } catch(_) {}
   try {
+    if (typeof globalThis.syncCombatScenarioTestUnlockUI === 'function') {
+      globalThis.syncCombatScenarioTestUnlockUI();
+    }
+  } catch(_) {}
+  try {
     const params = new URLSearchParams(globalThis.location?.search || '');
     if (params.get('forge') === '1' && isBuildNestUnlocked()) {
       try { globalThis.history.replaceState(null, '', globalThis.location.pathname + globalThis.location.hash); } catch(_) {}
@@ -8030,8 +8035,11 @@ globalThis.setMissionMapVariant = function setMissionMapVariantUI(which){
 };
 
 function openSelectHubPanel(which){
-  const allowed = {supplies:1,map:1,door:1,fortune:1,inventory:1,hatchery:1};
+  const allowed = {supplies:1,map:1,door:1,fortune:1,inventory:1,hatchery:1,'combat-scenarios':1};
   if(!allowed[which]) return;
+  if(which === 'combat-scenarios'){
+    if(typeof globalThis.ensureCombatScenarioPanel === 'function') globalThis.ensureCombatScenarioPanel();
+  }
   const root = document.getElementById('select-hub-panels');
   const screenEl = document.getElementById('screen-select');
   if(!root || !screenEl) return;
@@ -8060,7 +8068,7 @@ function openSelectHubPanel(which){
     if(typeof renderFortuneInventory==='function') renderFortuneInventory();
     else if(typeof syncFortuneBalances==='function') syncFortuneBalances();
   }
-  ['supplies','map','door','fortune','inventory','hatchery'].forEach(w=>{
+  ['supplies','map','door','fortune','inventory','hatchery','combat-scenarios'].forEach(w=>{
     const p = document.getElementById('select-hub-'+w);
     if(!p) return;
     const on = w===which;
@@ -8086,7 +8094,7 @@ function closeSelectHubPanel(){
     root.setAttribute('aria-hidden','true');
   }
   screenEl?.classList.remove('select-hub-panel-active');
-  ['supplies','map','door','fortune','inventory','hatchery'].forEach(w=>{
+  ['supplies','map','door','fortune','inventory','hatchery','combat-scenarios'].forEach(w=>{
     const p = document.getElementById('select-hub-'+w);
     if(p){
       p.classList.remove('is-open');
@@ -18903,6 +18911,20 @@ function checkDevCode(val) {
     if (msg) { msg.textContent = '🪺 Build Nest unlocked — map forge available in the war room.'; msg.style.color = 'var(--gold-light)'; }
     setTimeout(() => { if (msg) msg.textContent = ''; }, 3200);
     syncBuildNestUnlockUI();
+    initSelectionSafe();
+    return;
+  }
+  if (code === 'combattest') {
+    try { localStorage.setItem('avian_combattest_unlocked', '1'); } catch(_) {}
+    if (typeof globalThis.unlockCombatScenarioTest === 'function') globalThis.unlockCombatScenarioTest();
+    else if (typeof globalThis.syncCombatScenarioTestUnlockUI === 'function') globalThis.syncCombatScenarioTestUnlockUI();
+    else {
+      try { document.body.classList.add('combat-scenario-test-unlocked'); } catch(_) {}
+    }
+    const input = document.getElementById('dev-code-input');
+    if (input) input.value = '';
+    if (msg) { msg.textContent = '⚔ Combat Scenario Test unlocked — harness available on the left of the war room.'; msg.style.color = 'var(--gold-light)'; }
+    setTimeout(() => { if (msg) msg.textContent = ''; }, 3200);
     initSelectionSafe();
     return;
   }
