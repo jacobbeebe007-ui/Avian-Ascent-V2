@@ -526,6 +526,32 @@ if (typeof sandbox.buildAbilityCombatBrief === 'function' && typeof sandbox.enri
   }
 }
 
+/* getAbDesc must not throw when level/template levels are missing (OW→battle renderActions). */
+if (typeof sandbox.getAbDesc === 'function') {
+  const sampleId = Object.keys(sandbox.ABILITY_TEMPLATES || {}).find((id) => {
+    const t = sandbox.ABILITY_TEMPLATES[id];
+    return t && Array.isArray(t.levels) && t.levels.length > 0;
+  });
+  let threw = null;
+  let out = '';
+  try {
+    out = sandbox.getAbDesc({ id: sampleId, level: undefined, desc: 'fallback' });
+    sandbox.getAbDesc({ id: sampleId, level: 0, desc: 'fallback' });
+    sandbox.getAbDesc({ id: sampleId, level: 99, desc: 'fallback' });
+    sandbox.getAbDesc({ id: '__missing_ability_xyz__', desc: 'only-desc' });
+    sandbox.getAbDesc(null);
+    sandbox.getAbDesc({
+      id: 'EQ_TEST',
+      name: 'Eq Test',
+      _dispatcherRow: { id: 'EQ_TEST', name: 'Eq Test', category: 'physical', riderText: 'On hit, poke.' },
+    });
+  } catch (err) {
+    threw = err;
+  }
+  check('getAbDesc tolerates missing/0/overflow level without throwing', !threw, threw ? String(threw) : out);
+  check('getAbDesc returns a string', typeof out === 'string');
+}
+
 const failed = checks.filter(c => !c.ok);
 for (const c of checks) {
   console.log(`${c.ok ? '[ok]  ' : '[FAIL]'} ${c.name}${c.detail ? ` -- ${c.detail}` : ''}`);
