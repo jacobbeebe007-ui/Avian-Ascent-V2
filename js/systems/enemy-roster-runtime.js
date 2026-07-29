@@ -355,10 +355,10 @@
     if (opts.isBoss && global.STORY_BOSS_STAT_MULT) {
       var mult = global.STORY_BOSS_STAT_MULT;
       var rcs2 = typeof global.roundCombatStat === 'function' ? global.roundCombatStat : function (n, f) { return Math.max(f || 0, Math.round(Number(n) * 100) / 100); };
-      stats.maxHp = rcs2(Math.max(0.01, stats.maxHp * (mult.hp || 2)), 0.01);
+      stats.maxHp = rcs2(Math.max(0.01, stats.maxHp * (mult.hp != null ? mult.hp : 1)), 0.01);
       stats.hp = stats.maxHp;
-      stats.atk = rcs2(Math.max(0.01, stats.atk * (mult.atk || 1.3)), 0.01);
-      stats.matk = rcs2(Math.max(0.01, stats.matk * (mult.matk || 1.3)), 0.01);
+      stats.atk = rcs2(Math.max(0.01, stats.atk * (mult.atk != null ? mult.atk : 1.15)), 0.01);
+      stats.matk = rcs2(Math.max(0.01, stats.matk * (mult.matk != null ? mult.matk : 1.15)), 0.01);
     }
     if (typeof global.normalizeCombatStats === 'function') global.normalizeCombatStats(stats);
 
