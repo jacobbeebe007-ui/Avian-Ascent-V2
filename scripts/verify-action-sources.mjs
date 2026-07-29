@@ -61,6 +61,8 @@ function loadSandbox(extraFiles) {
 }
 
 const ctx = loadSandbox([
+  'js/data/equipment/starting-weapons.js',
+  'js/data/equipment/core-rules.js',
   'js/systems/equipment.js',
   'js/systems/equipment-actions.js',
 ]);
@@ -122,18 +124,37 @@ function assertUltimate(entity, expectPresent) {
   else ok(expectPresent ? `ultimate → ${ab.id}` : 'ultimate absent without gold/orange source');
 }
 
-// unarmed rogue → Beak Jab / BASIC_PHYSICAL
+// unarmed rogue → Beak Jab / BASIC_PHYSICAL (fallback only)
 assertBasic(player(), 'BASIC_PHYSICAL', 'Beak Jab');
 
-// unarmed mage → Tail Wand / BASIC_MAGIC
+// unarmed mage → Tail Wand / BASIC_MAGIC (fallback only)
 assertBasic({
   birdKey: 'barnOwl',
   class: 'mage',
   equipment: equipment.createEmptyLoadout(),
 }, 'BASIC_MAGIC', 'Tail Wand');
 
-// wand main → BASIC_MAGIC (Tail Wand name for mage; Beak path for rogue with magic weapon uses BASIC_MAGIC id)
-assertBasic(player({ mainHand: 'WPN-031' }), 'BASIC_MAGIC');
+// class Basic starting weapons grant only Basic Attack (no weapon skills)
+assertBasic(player({ mainHand: 'WPN-B04' }), 'BASIC_PHYSICAL', 'Talon Scratch');
+assertWeapon(player({ mainHand: 'WPN-B04' }), 'weaponA', null);
+assertWeapon(player({ mainHand: 'WPN-B04' }), 'weaponB', null);
+assertBasic(player({ mainHand: 'WPN-B02' }), 'BASIC_PHYSICAL', 'Beak Stab');
+assertBasic({
+  birdKey: 'barnOwl',
+  class: 'mage',
+  equipment: Object.assign(equipment.createEmptyLoadout(), { mainHand: 'WPN-B01' }),
+}, 'BASIC_MAGIC', 'Tail Wand');
+
+// ensureStartingWeapon grants class starter when mainHand empty
+{
+  const p = player();
+  equipment.ensurePlayerEquipmentState(p);
+  if (p.equipment.mainHand !== 'WPN-B04') fail(`starter grant expected WPN-B04, got ${p.equipment.mainHand}`);
+  else ok('ensureStartingWeapon grants Talon Scratch to rogue');
+}
+
+// wand main → BASIC_MAGIC (equipped Basic Attack name for non-basic weapons)
+assertBasic(player({ mainHand: 'WPN-031' }), 'BASIC_MAGIC', 'Basic Attack');
 
 // matching Talon Blades → WSK-004 in weaponB
 assertWeapon(player({ mainHand: 'WPN-007', offHand: 'WPN-007' }), 'weaponA', 'WSK-003');

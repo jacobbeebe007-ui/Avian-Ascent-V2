@@ -225,6 +225,7 @@ function testEquipmentV2SaveStamp() {
     equipmentPackVersion: systems.EQUIPMENT_PACK_VERSION,
     player: {
       birdKey: 'crow',
+      class: 'knight',
       equipment: equipmentEmpty(ctx),
       equipmentInventory: [],
     },
@@ -239,8 +240,8 @@ function testEquipmentV2SaveStamp() {
   if (migrated.equipmentPackVersion !== systems.EQUIPMENT_PACK_VERSION) fail('equipmentPackVersion missing');
   else ok('equipmentPackVersion stamped');
 
-  if (Number(migrated.schemaVersion) !== 17) fail('schemaVersion should be 17 after migration');
-  else ok('schemaVersion is 17');
+  if (Number(migrated.schemaVersion) !== 18) fail('schemaVersion should be 18 after migration');
+  else ok('schemaVersion is 18');
 
   if (migrated.affinityArsenalPackVersion !== systems.AFFINITY_ARSENAL_PACK_VERSION) {
     fail('affinityArsenalPackVersion missing');
@@ -254,6 +255,8 @@ function testEquipmentV2SaveStamp() {
   else ok('weaponFirstV09 stamped');
   if (migrated.equipmentV12 !== true) fail('equipmentV12 stamp missing');
   else ok('equipmentV12 stamped');
+  if (migrated.equipmentV13BasicStartingWeapons !== true) fail('equipmentV13BasicStartingWeapons stamp missing');
+  else ok('equipmentV13BasicStartingWeapons stamped');
 }
 
 function testShieldSlotMigration() {
@@ -265,6 +268,7 @@ function testShieldSlotMigration() {
     equipmentPackVersion: systems.EQUIPMENT_PACK_VERSION,
     player: {
       birdKey: 'crow',
+      class: 'knight',
       equipment: {
         helmet: null,
         armour: null,
@@ -279,14 +283,17 @@ function testShieldSlotMigration() {
     },
   };
   const migrated = systems.runSaveMigrations(save);
-  if (Number(migrated.schemaVersion) !== 17) fail('shield migration should reach schema 17');
-  else ok('shield migration reaches schema 17');
+  if (Number(migrated.schemaVersion) !== 18) fail('shield migration should reach schema 18');
+  else ok('shield migration reaches schema 18');
   if (migrated.player.equipment.shield != null) fail('legacy shield key should be removed');
   else ok('legacy shield key removed');
-  /* v16 wipes equipment after the v15 shield→offHand fold. */
+  /* v16/v17 wipe equipment; v18 grants class Basic starting weapon. */
   if (migrated.player.equipment.offHand != null) {
-    fail('v17 should wipe equipment loadout, got offHand=' + migrated.player.equipment.offHand);
-  } else ok('v17 wiped equipment after shield fold');
+    fail('v18 should leave offHand empty after wipe, got offHand=' + migrated.player.equipment.offHand);
+  } else ok('v18 left offHand empty after wipe');
+  if (migrated.player.equipment.mainHand !== 'WPN-B02') {
+    fail('v18 should grant Beak Stab to knight, got ' + migrated.player.equipment.mainHand);
+  } else ok('v18 granted Beak Stab starting weapon');
   if (migrated.weaponFirstV09 !== true) fail('weaponFirstV09 missing after shield chain');
   else ok('weaponFirstV09 stamped after shield chain');
 
@@ -297,6 +304,7 @@ function testShieldSlotMigration() {
     equipmentLootV07: true,
     player: {
       birdKey: 'sparrow',
+      class: 'rogue',
       equipment: {
         helmet: null,
         armour: null,
@@ -310,11 +318,14 @@ function testShieldSlotMigration() {
     },
   };
   const m2 = systems.runSaveMigrations(saveOccupied);
-  if (Number(m2.schemaVersion) !== 17) fail('v15→v17 should reach schema 17');
-  else ok('v15→v17 reaches schema 17');
-  if (m2.player.equipment.mainHand != null || (m2.player.equipmentInventory || []).length) {
-    fail('v17 should wipe loadout and inventory');
-  } else ok('v17 wiped hybrid equipment loadout and inventory');
+  if (Number(m2.schemaVersion) !== 18) fail('v15→v18 should reach schema 18');
+  else ok('v15→v18 reaches schema 18');
+  if ((m2.player.equipmentInventory || []).length) {
+    fail('v17 wipe should clear inventory before starter grant');
+  } else ok('v17 wiped hybrid equipment inventory');
+  if (m2.player.equipment.mainHand !== 'WPN-B04') {
+    fail('v18 should grant Talon Scratch after wipe, got ' + m2.player.equipment.mainHand);
+  } else ok('v18 granted Talon Scratch after wipe');
 }
 
 function equipmentEmpty(ctx) {

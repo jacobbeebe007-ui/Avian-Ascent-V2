@@ -12,11 +12,12 @@
   Avian.data = Avian.data || Object.create(null);
 
   Avian.data.combatConfig = Object.freeze({
-    packVersion: '2026.07-equipment-v1.2-restoration',
+    packVersion: '2026.07-equipment-v1.3-basic-starting-weapons',
     affinityArsenalV06: true,
     equipmentLootV07: false,
     weaponFirstV09: true,
     equipmentV12: true,
+    equipmentV13BasicStartingWeapons: true,
 
     /* R-EN-001 — equipment never changes these. Carryover cap is WD (OD-025). */
     energy: Object.freeze({
@@ -44,11 +45,15 @@
       baseHealthPerLevelPct: 0.5,
       agilityDodgePctPerPoint: 0.5,
       dodgeCapPct: 50,
-      /* Natural Strike / Beak Jab / Tail Wand: flat 1–2 only (never scales with weapon). */
+      /* Equipped Basic Attack is 100% weapon damage. Flat 1–2 remains unarmed fallback only. */
       naturalStrike: Object.freeze({
         skillPowerPct: 0,
         flatMin: 1,
         flatMax: 2,
+        unarmedFallbackOnly: true,
+      }),
+      basicAttack: Object.freeze({
+        skillPowerPct: 100,
       }),
     }),
 
@@ -288,13 +293,14 @@
     basicAttack: Object.freeze({
       physicalId: 'BASIC_PHYSICAL',
       magicId: 'BASIC_MAGIC',
+      equippedName: 'Basic Attack',
       beakJabName: 'Beak Jab',
       tailWandName: 'Tail Wand',
-      /** @deprecated use beakJabName */
+      /** @deprecated use beakJabName — unarmed fallback display only */
       naturalStrikeName: 'Beak Jab',
       tailWandClasses: Object.freeze(['mage', 'siren']),
       enCost: 1,
-      skillPowerPct: 0,
+      skillPowerPct: 100,
       flatMin: 1,
       flatMax: 2,
     }),

@@ -1,9 +1,10 @@
 #!/usr/bin/env node
 /*
- * Import Avian Ascent Equipment System v1.2 (Restoration Cooldowns) standalone workbook
- * into js/data/equipment/* without overwriting v0.9 bird base stats / combat-pack.
+ * Import Avian Ascent Equipment System v1.3 (Basic Starting Weapons) from the
+ * Current Master workbook into js/data/equipment/* without overwriting v0.9
+ * bird base stats / combat-pack.
  *
- * Source: Avian_Ascent_Equipment_System_v1.2_Restoration_Cooldowns.xlsx
+ * Source: Avian_Ascent_Current_Master_v1.4_Basic_Starting_Weapons.xlsx
  * Override: AA_EQUIPMENT_WORKBOOK=/path/to/workbook.xlsx
  */
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs';
@@ -13,12 +14,22 @@ import { fileURLToPath } from 'node:url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, '..');
-const DEFAULT_WORKBOOK = path.join(ROOT, 'Avian_Ascent_Equipment_System_v1.2_Restoration_Cooldowns.xlsx');
+const DEFAULT_WORKBOOK = path.join(ROOT, 'Avian_Ascent_Current_Master_v1.4_Basic_Starting_Weapons.xlsx');
 const WORKBOOK = process.env.AA_EQUIPMENT_WORKBOOK || DEFAULT_WORKBOOK;
-const PACK_VERSION = '2026.07-equipment-v1.2-restoration';
+const PACK_VERSION = '2026.07-equipment-v1.3-basic-starting-weapons';
 
-const RARITY_RANK = { grey: 1, green: 2, blue: 3, purple: 4, gold: 5, orange: 6 };
+const RARITY_RANK = { basic: 0, grey: 1, green: 2, blue: 3, purple: 4, gold: 5, orange: 6 };
 const CLASS_IDS = ['knight', 'rogue', 'mage', 'siren', 'inquisitor', 'bard', 'brute'];
+const EXPECTED_ITEM_COUNT = 305;
+const BASIC_STARTING_WEAPON_IDS = Object.freeze({
+  mage: 'WPN-B01',
+  siren: 'WPN-B01',
+  knight: 'WPN-B02',
+  brute: 'WPN-B02',
+  bard: 'WPN-B03',
+  rogue: 'WPN-B04',
+  inquisitor: 'WPN-B05',
+});
 
 /* ------------------------------------------------------------------ *
  * XLSX reader (handles x: namespace + t="str" inline values)            *
@@ -357,12 +368,16 @@ if (!existsSync(WORKBOOK)) {
 }
 
 const sheets = loadWorkbookSheets(WORKBOOK);
+/* Master workbook titles the equipment overview "Equipment Dashboard". */
+if (!sheets.Dashboard && sheets['Equipment Dashboard']) {
+  sheets.Dashboard = sheets['Equipment Dashboard'];
+}
 const need = [
-  'Dashboard', 'Core Rules', 'Equipment Slots', 'Rarity & Budgets', 'Weapon Families',
+  'Core Rules', 'Equipment Slots', 'Rarity & Budgets', 'Weapon Families',
   'Weapons Catalogue', 'Armour-Plumage', 'Helmets', 'Shields', 'Accessories',
   'Set Bonuses', 'Materials & Infusions', 'Ailment Gates', 'Unified Catalogue',
   'Skill Rules', 'Weapon Skill Library', 'Equipment Skill Library',
-  'Fortify & Ward', 'Legacy Barrier Migration',
+  'Fortify & Ward',
 ];
 for (const n of need) {
   if (!sheets[n]) { console.error('Missing sheet:', n); process.exit(1); }
@@ -371,11 +386,14 @@ for (const n of need) {
 /* ---- Skills ---- */
 const skills = Object.create(null);
 
-/* Natural Strike variants retained from v0.9 (Beak Jab / Tail Wand). */
+/*
+ * Equipped Basic Attack is 100% weapon damage (v1.3). naturalStrikeFlat remains
+ * only as the unarmed fallback when no main-hand weapon is equipped.
+ */
 skills.BASIC_PHYSICAL = {
   id: 'BASIC_PHYSICAL',
-  name: 'Beak Jab',
-  source: 'Bird + Main Hand',
+  name: 'Basic Attack',
+  source: 'Equipped Weapon',
   family: 'Basic',
   barSlot: 'Basic Attack',
   skillType: 'Basic',
@@ -388,18 +406,18 @@ skills.BASIC_PHYSICAL = {
   scalingStat: 'ATK',
   aspectRule: 'inherit',
   hits: 1,
-  skillPowerPct: 0,
-  skillPower: 0,
+  skillPowerPct: 100,
+  skillPower: 1,
   naturalStrikeFlat: { min: 1, max: 2 },
   heavyAccuracyPenalty: 0,
-  riderText: 'Natural Strike — flat 1–2 physical damage (no weapon scaling).',
+  riderText: 'Equipped Basic Attack — 100% weapon damage. Unarmed fallback is flat 1–2.',
   riders: [],
-  minRarity: 'grey',
+  minRarity: 'basic',
 };
 skills.BASIC_MAGIC = {
   id: 'BASIC_MAGIC',
-  name: 'Tail Wand',
-  source: 'Bird + Main Hand',
+  name: 'Basic Attack',
+  source: 'Equipped Weapon',
   family: 'Basic',
   barSlot: 'Basic Attack',
   skillType: 'Basic',
@@ -412,13 +430,13 @@ skills.BASIC_MAGIC = {
   scalingStat: 'MATK',
   aspectRule: 'inherit',
   hits: 1,
-  skillPowerPct: 0,
-  skillPower: 0,
+  skillPowerPct: 100,
+  skillPower: 1,
   naturalStrikeFlat: { min: 1, max: 2 },
   heavyAccuracyPenalty: 0,
-  riderText: 'Natural Strike — flat 1–2 magical damage (no weapon scaling).',
+  riderText: 'Equipped Basic Attack — 100% weapon damage. Unarmed fallback is flat 1–2.',
   riders: [],
-  minRarity: 'grey',
+  minRarity: 'basic',
 };
 
 const wskRows = sheets['Weapon Skill Library'];
@@ -521,11 +539,26 @@ for (const rn of Object.keys(eskRows).map(Number).sort((a, b) => a - b)) {
 }
 
 function resolveSkillId(name, family) {
-  if (!name || /^none$/i.test(name)) return null;
+  if (!name || /^none$/i.test(name) || /^no additional skill/i.test(name)) return null;
+  if (/^basic attack$/i.test(name)) return null;
   const famKey = ((family || '') + '|' + name).toLowerCase();
   if (skillNameToId[famKey]) return skillNameToId[famKey];
   if (skillNameToId[name.toLowerCase()]) return skillNameToId[name.toLowerCase()];
   return null;
+}
+
+function parseHands(raw) {
+  const t = String(raw || '').trim();
+  if (/2H/i.test(t)) return 2;
+  return 1;
+}
+
+function isBasicStartingFamilyOrItem(rarity, skill1Name, skill2Name) {
+  if (String(rarity || '').toLowerCase() === 'basic') return true;
+  if (/^basic attack$/i.test(String(skill1Name || '')) && (!skill2Name || /^no additional skill/i.test(skill2Name))) {
+    return true;
+  }
+  return false;
 }
 
 /* ---- Families ---- */
@@ -537,13 +570,18 @@ for (const rn of Object.keys(famRows).map(Number).sort((a, b) => a - b)) {
   const row = famRows[rn];
   const name = cell(row, famHeader, 'Family');
   if (!name) continue;
-  const hands = /2H/i.test(cell(row, famHeader, 'Hands')) ? 2 : 1;
+  const handsRaw = cell(row, famHeader, 'Hands');
+  const hands = parseHands(handsRaw);
   const s1 = cell(row, famHeader, 'Skill 1');
   const s2 = cell(row, famHeader, 'Skill 2');
+  const isBasicFamily = isBasicStartingFamilyOrItem('grey', s1, s2)
+    || /starting weapon/i.test(cell(row, famHeader, 'Rules Note') || cell(row, famHeader, 'Notes') || '');
   families[name] = {
     name,
     slot: 'Weapon',
     hands,
+    natural: /natural/i.test(handsRaw),
+    isBasicStartingWeapon: isBasicFamily,
     damageType: damageTypeFromCategory(cell(row, famHeader, 'Damage Category')),
     damageCategory: cell(row, famHeader, 'Damage Category'),
     scalingStat: scalingStatCode(cell(row, famHeader, 'Scaling Stat')),
@@ -553,14 +591,14 @@ for (const rn of Object.keys(famRows).map(Number).sort((a, b) => a - b)) {
     skillB: resolveSkillId(s2, name),
     skill1Name: s1,
     skill2Name: s2,
-    skill1En: num(cell(row, famHeader, 'Skill 1 EN'), 2),
-    skill2En: num(cell(row, famHeader, 'Skill 2 EN'), 3),
+    skill1En: num(cell(row, famHeader, 'Skill 1 EN'), isBasicFamily ? 1 : 2),
+    skill2En: num(cell(row, famHeader, 'Skill 2 EN'), isBasicFamily ? 0 : 3),
     skill1Cooldown: num(cell(row, famHeader, 'Skill 1 Cooldown'), 0),
-    skill2Cooldown: num(cell(row, famHeader, 'Skill 2 Cooldown'), 1),
-    skill1PowerPct: num(cell(row, famHeader, 'Skill 1 Power %'), 0),
+    skill2Cooldown: num(cell(row, famHeader, 'Skill 2 Cooldown'), isBasicFamily ? 0 : 1),
+    skill1PowerPct: num(cell(row, famHeader, 'Skill 1 Power %'), isBasicFamily ? 100 : 0),
     skill2PowerPct: num(cell(row, famHeader, 'Skill 2 Power %'), 0),
     identity: cell(row, famHeader, 'Identity'),
-    notes: cell(row, famHeader, 'Rules Note'),
+    notes: cell(row, famHeader, 'Rules Note') || cell(row, famHeader, 'Notes'),
     catalogueGroup: 'weapon',
   };
 }
@@ -611,21 +649,26 @@ for (const rn of Object.keys(wpnRows).map(Number).sort((a, b) => a - b)) {
   if (!id) continue;
   const family = cell(row, wpnHeader, 'Family');
   const rarity = rarityKey(cell(row, wpnHeader, 'Rarity'));
-  const hands = /2H/i.test(cell(row, wpnHeader, 'Hands')) ? 2 : 1;
+  const handsRaw = cell(row, wpnHeader, 'Hands');
+  const hands = parseHands(handsRaw);
   const s1Name = cell(row, wpnHeader, 'Skill 1');
   const s2Name = cell(row, wpnHeader, 'Skill 2');
+  const isBasicWeapon = isBasicStartingFamilyOrItem(rarity, s1Name, s2Name);
   const stats = Object.create(null);
   addFlatStats(stats, row, wpnHeader);
   items[id] = {
     id,
     name: cell(row, wpnHeader, 'Item Name'),
     slot: 'Weapon',
-    subtype: hands === 2 ? 'Two-handed weapon' : 'One-handed weapon',
+    subtype: /natural/i.test(handsRaw) ? 'Natural weapon'
+      : (hands === 2 ? 'Two-handed weapon' : 'One-handed weapon'),
     family,
     set: null,
     rarity,
-    rank: RARITY_RANK[rarity] || 1,
+    rank: RARITY_RANK[rarity] != null ? RARITY_RANK[rarity] : 1,
     hands,
+    natural: /natural/i.test(handsRaw),
+    isBasicStartingWeapon: isBasicWeapon,
     weight: null,
     budgetClass: hands === 2 ? 'Weapon 2H' : 'Weapon 1H',
     classRestriction: parseClassRestriction(cell(row, wpnHeader, 'Class Access')),
@@ -648,7 +691,7 @@ for (const rn of Object.keys(wpnRows).map(Number).sort((a, b) => a - b)) {
     stats,
     identity: cell(row, wpnHeader, 'Identity'),
     notes: cell(row, wpnHeader, 'Notes'),
-    npcEligible: true,
+    npcEligible: !isBasicWeapon,
     audit: 'PASS',
   };
 }
@@ -873,6 +916,8 @@ for (const rn of Object.keys(ailRows).map(Number).sort((a, b) => a - b)) {
 const coreRules = {
   packVersion: PACK_VERSION,
   weaponDamageFormula: 'Weapon × ((Skill Power + Stat×2.5)÷100)',
+  basicAttackEn: 1,
+  basicAttackSkillPowerPct: 100,
   naturalStrikeEn: 1,
   weaponSkill1: { en: 2, cooldown: 0 },
   weaponSkill2: { en: 3, cooldown: 1 },
@@ -882,8 +927,9 @@ const coreRules = {
   ward: { en: 3, cooldown: 2, duration: 2, overflow: true },
   bastionAegis: { en: 3, cooldown: 3, duration: 2, overflow: true },
   barrierRemoved: true,
+  basicStartingWeapons: BASIC_STARTING_WEAPON_IDS,
   rarityDamageFactors: {
-    grey: 1.0, green: 1.25, blue: 1.55, purple: 1.9, gold: 2.3, orange: 2.75,
+    basic: 1.0, grey: 1.0, green: 1.25, blue: 1.55, purple: 1.9, gold: 2.3, orange: 2.75,
   },
   protectionBudgets: {
     armour: { grey: 4, green: 6, blue: 9, purple: 12, gold: 16, orange: 22 },
@@ -912,9 +958,9 @@ const slots = {
     },
     mainHand: {
       label: 'Main Weapon', accepts: 'Weapon', handCapacity: 2,
-      activeContribution: 'Weapon Skill 1 (2 EN) and Skill 2 (3 EN)',
+      activeContribution: 'Basic Attack (1 EN); Weapon Skill 1 (2 EN) and Skill 2 (3 EN) on non-Basic weapons',
       duplicateAllowed: false, budgetClass: 'Weapon 1H / Weapon 2H',
-      notes: 'Two-handed occupies both weapon slots.',
+      notes: 'Two-handed occupies both weapon slots. Basic starting weapons grant only the Basic Attack.',
     },
     offHand: {
       label: 'Off Hand', accepts: 'Weapon', handCapacity: 1,
@@ -1052,6 +1098,7 @@ function pickAccessory(slot, rarity) {
 const referenceLoadouts = [];
 for (const classId of CLASS_IDS) {
   for (const rarity of Object.keys(RARITY_RANK)) {
+    if (rarity === 'basic') continue;
     const weapon = pickWeaponForClass(classId, rarity);
     const armour = pickDefensive('Armour', rarity, classId);
     const helmet = pickDefensive('Helmet', rarity, classId);
@@ -1148,33 +1195,55 @@ writeDataFile('js/data/equipment/families.js', 'Avian.data.equipment.families', 
 writeDataFile('js/data/equipment/set-bonuses.js', 'Avian.data.equipment.setBonuses', setBonuses, `${Object.keys(setBonuses).length} defensive sets`);
 writeDataFile('js/data/equipment/materials-infusions.js', 'Avian.data.equipment.materialsInfusions', { materials, infusions, namingFormula: 'Rarity + Infusion + Material/Set + Slot' });
 writeDataFile('js/data/equipment/ailment-gates.js', 'Avian.data.equipment.ailmentGates', ailmentGates, 'Protection-pool ailment gates');
-writeDataFile('js/data/equipment/core-rules.js', 'Avian.data.equipment.coreRules', coreRules, 'v1.2 restoration / fortify / ward rules');
+writeDataFile('js/data/equipment/core-rules.js', 'Avian.data.equipment.coreRules', coreRules, 'v1.3 basic starting weapons + restoration rules');
 writeDataFile('js/data/equipment/reference-loadouts.js', 'Avian.data.equipment.referenceLoadouts', referenceLoadouts, `${referenceLoadouts.length} class×rarity loadouts`);
 writeDataFile('js/data/equipment/weapon-access.js', 'Avian.data.equipment.weaponAccess', weaponAccess);
 writeDataFile('js/data/equipment/orb-focuses.js', 'Avian.data.equipment.orbFocuses', orbFocuses);
+writeDataFile(
+  'js/data/equipment/starting-weapons.js',
+  'Avian.data.equipment.startingWeapons',
+  {
+    packVersion: PACK_VERSION,
+    byClass: BASIC_STARTING_WEAPON_IDS,
+    ids: ['WPN-B01', 'WPN-B02', 'WPN-B03', 'WPN-B04', 'WPN-B05'],
+  },
+  'Class → Basic starting weapon map',
+);
 
 const itemCount = Object.keys(items).length;
 const skillCount = Object.keys(skills).length;
 const wpnCount = Object.values(items).filter((i) => i.slot === 'Weapon').length;
+const basicWpnCount = Object.values(items).filter((i) => i.slot === 'Weapon' && i.isBasicStartingWeapon).length;
 const armCount = Object.values(items).filter((i) => i.slot === 'Armour').length;
 const hlmCount = Object.values(items).filter((i) => i.slot === 'Helmet').length;
 const shdCount = Object.values(items).filter((i) => i.slot === 'Shield').length;
 const accCount = Object.values(items).filter((i) => i.slot === 'Anklet' || i.slot === 'Necklace').length;
-const unresolvedWeapons = Object.values(items).filter((i) => i.slot === 'Weapon' && (!i.skill1 || !i.skill2));
+const unresolvedWeapons = Object.values(items).filter((i) => (
+  i.slot === 'Weapon' && !i.isBasicStartingWeapon && (!i.skill1 || !i.skill2)
+));
 const barrierSkills = Object.values(skills).filter((s) => /barrier/i.test(s.riderText || '') || /barrier/i.test(s.name || ''));
+const missingStarters = Object.entries(BASIC_STARTING_WEAPON_IDS).filter(([, id]) => !items[id]);
 
 console.log('\nImport summary');
-console.log('  items:', itemCount, `(W${wpnCount} A${armCount} H${hlmCount} S${shdCount} Acc${accCount})`);
+console.log('  items:', itemCount, `(W${wpnCount} basic${basicWpnCount} A${armCount} H${hlmCount} S${shdCount} Acc${accCount})`);
 console.log('  skills:', skillCount);
 console.log('  families:', Object.keys(families).length);
 console.log('  set bonuses:', Object.keys(setBonuses).length);
 console.log('  loadouts:', referenceLoadouts.length);
+if (missingStarters.length) {
+  console.error('FAIL: missing basic starting weapons:', missingStarters.map(([c, id]) => `${c}:${id}`).join(', '));
+  process.exit(1);
+}
+if (basicWpnCount !== 5) {
+  console.error('FAIL: expected 5 basic starting weapons, got', basicWpnCount);
+  process.exit(1);
+}
 if (unresolvedWeapons.length) {
   console.error('FAIL: weapons missing skills:', unresolvedWeapons.map((i) => i.id).join(', '));
   process.exit(1);
 }
-if (itemCount !== 300) {
-  console.error('FAIL: expected 300 items, got', itemCount);
+if (itemCount !== EXPECTED_ITEM_COUNT) {
+  console.error(`FAIL: expected ${EXPECTED_ITEM_COUNT} items, got`, itemCount);
   process.exit(1);
 }
 if (barrierSkills.length) {
