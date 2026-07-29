@@ -356,18 +356,58 @@
     return CLASS_BASELINES[key] || CLASS_BASELINES.rogue;
   }
 
+  function entityCombatStatus(entity) {
+    if (!entity) return null;
+    if (entity.status) return entity.status;
+    var g = globalThis.G;
+    if (!g) return null;
+    if (entity === g.player) return g.playerStatus || null;
+    if (entity === g.enemy) return g.enemyStatus || null;
+    if (entity.stats && g.player && g.player.stats === entity.stats) return g.playerStatus || null;
+    if (entity.stats && g.enemy && g.enemy.stats === entity.stats) return g.enemyStatus || null;
+    return null;
+  }
+
   function statFromEntity(entity, key) {
     var stats = entity && entity.stats ? entity.stats : entity || {};
+    var status = entityCombatStatus(entity);
     var k = String(key || 'ATK').toUpperCase();
     if (k === 'HP' || k === 'MAXHP') return Math.max(0, Number(stats.maxHp || stats.hp) || 0);
     if (k === 'VITALITY') return Math.max(0, Number(stats.vitality) || 0);
     if (k === 'MATK' || k === 'MATT' || k === 'FOCUS') return Math.max(0, Number(stats.matk) || 0);
     if (k === 'DEX' || k === 'DEXTERITY') return Math.max(0, Number(stats.dex) || 0);
-    if (k === 'SPD' || k === 'AGILITY') return Math.max(0, Number(stats.spd) || 0);
-    if (k === 'DEF' || k === 'GUARD') return Math.max(0, Number(stats.def) || 0);
+    if (k === 'SPD' || k === 'AGILITY') {
+      var spd = Math.max(0, Number(stats.spd) || 0);
+      if (typeof globalThis.getCrippledAgilityPenalty === 'function') {
+        spd = Math.max(0, spd + globalThis.getCrippledAgilityPenalty(status));
+      }
+      return spd;
+    }
+    if (k === 'DEF' || k === 'GUARD') {
+      var def = Math.max(0, Number(stats.def) || 0);
+      if (typeof globalThis.getFractureGuardPenalty === 'function') {
+        def = Math.max(0, def + globalThis.getFractureGuardPenalty(status));
+      }
+      return def;
+    }
     if (k === 'MDEF' || k === 'RESOLVE') return Math.max(0, Number(stats.mdef) || 0);
-    if (k === 'ACC') return Math.max(0, Number(stats.acc) || 0);
-    if (k === 'DODGE') return Math.max(0, Number(stats.dodge) || 0);
+    if (k === 'ACC') {
+      var acc = Math.max(0, Number(stats.acc) || 0);
+      if (typeof globalThis.getDazedPrecisionPenalty === 'function') {
+        acc = Math.max(0, acc + globalThis.getDazedPrecisionPenalty(status));
+      }
+      return acc;
+    }
+    if (k === 'DODGE') {
+      if (typeof globalThis.isImmobilisedActive === 'function' && globalThis.isImmobilisedActive(status)) {
+        return 0;
+      }
+      var dodge = Math.max(0, Number(stats.dodge) || 0);
+      if (typeof globalThis.getCrippledDodgePenalty === 'function') {
+        dodge = Math.max(0, dodge + globalThis.getCrippledDodgePenalty(status));
+      }
+      return dodge;
+    }
     if (k === 'MIGHT') return Math.max(0, Number(stats.atk) || 0);
     return Math.max(0, Number(stats.atk) || 0);
   }
@@ -927,6 +967,15 @@
     var defStat = getRelevantDefenceStat(target, ability);
     var pierce = resolvePierceFraction(ability, String(ability.damageType) === 'Magic');
     var flatPen = Number(params.flatPen) || Number(ability.flatPen) || 0;
+    var targetStatus = entityCombatStatus(target) || params.targetStatus || null;
+    if (String(ability.damageType || 'Physical') !== 'Magic'
+      && typeof globalThis.getShatteredAttackerPenetration === 'function') {
+      flatPen += globalThis.getShatteredAttackerPenetration(targetStatus);
+    }
+    var attackerStatus = entityCombatStatus(attacker) || params.attackerStatus || null;
+    var skillPowerPenalty = typeof globalThis.getDazedSkillPowerPenalty === 'function'
+      ? globalThis.getDazedSkillPowerPenalty(attackerStatus)
+      : 0;
     var burnState = (function () {
       if (battleState.enemyHasBurning && typeof battleState.enemyHasBurning === 'object') return battleState.enemyHasBurning;
       if (params.targetBurning && typeof globalThis.enemyHasBurningStacks === 'function') return globalThis.enemyHasBurningStacks();
@@ -987,7 +1036,7 @@
         statMod = 1;
       } else {
         weaponDamage = resolveWeaponDamageValue(params, ability, attacker);
-        skillPowerPct = getSkillPowerPct(ability) + (Number(params.skillPowerBonus) || 0);
+        skillPowerPct = getSkillPowerPct(ability) + (Number(params.skillPowerBonus) || 0) + skillPowerPenalty;
         /* Hybrid COMBO rows: sum weapon×((sharePct + stat×2.5)/100) per component. */
         if (Array.isArray(ability.scaling) && ability.scaling.length) {
           preMitigation = 0;

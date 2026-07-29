@@ -374,6 +374,8 @@
       ailment: skill.ailment || (skill.rider && skill.rider.ailment) || null,
       ailmentChance: skill.ailmentChance != null ? Number(skill.ailmentChance)
         : (skill.rider && skill.rider.chance != null ? Number(skill.rider.chance) : null),
+      ailmentStacks: skill.ailmentStacks != null ? Number(skill.ailmentStacks)
+        : (skill.rider && skill.rider.stacks != null ? Number(skill.rider.stacks) : null),
       ailmentRequireBothHitsHealth: !!skill.ailmentRequireBothHitsHealth,
       ailmentFromOrb: !!skill.ailmentFromOrb,
       ailmentFromWeapon: !!skill.ailmentFromWeapon,

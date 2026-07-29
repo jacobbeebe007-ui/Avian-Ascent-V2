@@ -93,11 +93,24 @@
     }
   }
 
-  function restoreArmour(stats, amount) {
+  function statusForStats(stats) {
+    var g = globalThis.G;
+    if (!g || !stats) return null;
+    if (g.player && g.player.stats === stats) return g.playerStatus || null;
+    if (g.enemy && g.enemy.stats === stats) return g.enemyStatus || null;
+    return null;
+  }
+
+  function restoreArmour(stats, amount, status) {
     if (!stats) return 0;
     ensureProtectionFields(stats);
     var add = Math.max(0, Math.floor(Number(amount) || 0));
     if (add <= 0) return 0;
+    var st = status || statusForStats(stats);
+    if (typeof globalThis.getArmourRestoreReceivedMult === 'function') {
+      add = Math.max(0, Math.floor(add * globalThis.getArmourRestoreReceivedMult(st)));
+      if (add <= 0) return 0;
+    }
     var normalMax = Number(stats.normalMaxArmour) || 0;
     var before = Number(stats.armour) || 0;
     /* Restoration cannot exceed normal maximum; leave Fortify overflow untouched. */
@@ -147,6 +160,10 @@
     var add = Math.max(0, Math.floor(Number(amount) || 0));
     var dur = Math.max(1, Math.floor(Number(turns) || 2));
     if (add <= 0) return 0;
+    if (typeof globalThis.getFortifyHealReceivedMult === 'function') {
+      add = Math.max(0, Math.floor(add * globalThis.getFortifyHealReceivedMult(status)));
+      if (add <= 0) return 0;
+    }
     var existing = status && status.fortify ? status.fortify : null;
     var activeBonus = existing ? Math.max(0, Number(existing.amount) || 0) : 0;
     /* Reapplication: greater bonus wins; always refresh duration. */
@@ -274,7 +291,7 @@
         }
       }
     }
-    if (/bleed|physical/.test(name)) return 'armour';
+    if (/bleed|physical|fracture|shatter|crippl|immobil|dazed|daze|concuss/.test(name)) return 'armour';
     if (/burn|scorch|poison|toxic|chill|frozen|shock|paralys|magic/.test(name)) return 'magicArmour';
     return 'magicArmour';
   }

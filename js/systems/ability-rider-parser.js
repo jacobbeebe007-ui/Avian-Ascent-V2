@@ -122,6 +122,10 @@
     return /(minor|moderate|major|grand|epic|legendary)\s+guard\b/i.test(String(slice || ''));
   }
 
+  var NAMED_AILMENT =
+    'Bleed|Burn|Scorched|Poison|Toxic|Chilled|Frost|Shock|Paralys(?:ed|ed)?|Weaken(?:ed)?'
+    + '|Fracture|Shattered|Crippled|Immobilis(?:ed|ed)|Dazed|Concussed';
+
   function normalizeAilmentId(raw) {
     var s = String(raw || '').toLowerCase().trim();
     if (!s) return null;
@@ -133,12 +137,18 @@
     if (/^weaken/.test(s)) return 'weakened';
     if (/^delay/.test(s)) return 'delayed';
     if (/^blind/.test(s)) return 'blinded';
+    if (/^fracture|^shatter/.test(s)) return 'fracture';
+    if (/^crippl/.test(s)) return 'crippled';
+    if (/^immobilis|^immobiliz/.test(s)) return 'immobilised';
+    if (/^dazed|^daze/.test(s)) return 'dazed';
+    if (/^concuss/.test(s)) return 'concussed';
     return s;
   }
 
   /**
    * Parse skill rider text for ailment rolls:
    * "roll a 50% chance to apply Bleed", "On hit, apply 1 Poison stack",
+   * "If Armour is broken … apply 2 Fracture stacks",
    * "Orb's ailment", "weapon's magical ailment chance".
    */
   function parseAilmentFieldsFromText(row, text) {
@@ -150,10 +160,14 @@
       row.ailmentRequireBothHitsHealth = true;
     }
 
-    var guaranteed = t.match(/On hit,\s*apply\s+(\d+)\s+(Bleed|Burn|Scorched|Poison|Toxic|Chilled|Frost|Shock|Paralys(?:ed|ed)?|Weaken(?:ed)?)\s+stacks?/i);
+    var guaranteed = t.match(new RegExp(
+      '(?:On hit,?\\s*)?apply\\s+(\\d+)\\s+(' + NAMED_AILMENT + ')\\s+stacks?',
+      'i'
+    ));
     if (guaranteed) {
       if (!row.ailment) row.ailment = normalizeAilmentId(guaranteed[2]);
       if (!(row.ailmentChance > 0)) row.ailmentChance = 100;
+      if (!(row.ailmentStacks > 0)) row.ailmentStacks = Number(guaranteed[1]) || 1;
       return;
     }
 
@@ -170,10 +184,14 @@
       return;
     }
 
-    var rollNamed = t.match(/(\d+(?:\.\d+)?)\s*%\s*chance to apply\s+(?:(\d+)\s+stacks?\s+of\s+)?(Bleed|Burn|Scorched|Poison|Toxic|Chilled|Frost|Shock|Paralys(?:ed|ed)?|Weaken(?:ed)?)\b/i);
+    var rollNamed = t.match(new RegExp(
+      '(\\d+(?:\\.\\d+)?)\\s*%\\s*chance to apply\\s+(?:(\\d+)\\s+stacks?\\s+of\\s+)?(' + NAMED_AILMENT + ')\\b',
+      'i'
+    ));
     if (rollNamed) {
       if (!row.ailment) row.ailment = normalizeAilmentId(rollNamed[3]);
       if (!(row.ailmentChance > 0)) row.ailmentChance = Number(rollNamed[1]) || 0;
+      if (rollNamed[2] && !(row.ailmentStacks > 0)) row.ailmentStacks = Number(rollNamed[2]) || 1;
     }
   }
 

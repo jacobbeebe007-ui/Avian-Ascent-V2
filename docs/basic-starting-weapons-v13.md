@@ -1,6 +1,6 @@
 # Basic Starting Weapons (Equipment v1.3)
 
-Source workbook: `Avian_Ascent_Current_Master_v1.4_Basic_Starting_Weapons.xlsx`
+Source workbook: `Avian_Ascent_Current_Master_v1.5_Physical_Ailments.xlsx` (supersedes v1.4 Basic Starting Weapons)
 
 ## Pack stamp
 

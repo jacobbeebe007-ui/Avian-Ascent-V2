@@ -113,6 +113,35 @@
       }
       return false;
     }
+    if ((key === 'fracture' || key === 'crippled' || key === 'dazed') && typeof v === 'object') {
+      v.turns = (v.turns || 0) - 1;
+      if (v.turns <= 0) { delete status[key]; return true; }
+      return false;
+    }
+    if (key === 'shattered' && typeof v === 'object') {
+      v.turns = (v.turns || 0) - 1;
+      if (v.turns <= 0) { delete status.shattered; return true; }
+      return false;
+    }
+    if ((key === 'immobilised' || key === 'immobilized') && typeof v === 'object') {
+      v.turns = (v.turns || 0) - 1;
+      if (v.turns <= 0) {
+        var owner = status === globalThis.G?.playerStatus ? globalThis.G?.player
+          : (status === globalThis.G?.enemyStatus ? globalThis.G?.enemy : null);
+        if (owner && owner.stats && v.baseDodge != null) {
+          owner.stats.dodge = Math.max(0, Number(v.baseDodge) || 0);
+        }
+        delete status.immobilised;
+        delete status.immobilized;
+        return true;
+      }
+      return false;
+    }
+    if (key === 'concussed' && typeof v === 'object') {
+      v.turns = (v.turns || 0) - 1;
+      if (v.turns <= 0) { delete status.concussed; return true; }
+      return false;
+    }
     if (key === 'toxic' && typeof v === 'object') {
       v.turns = (v.turns || 0) - 1;
       if (v.turns <= 0) {
@@ -222,7 +251,8 @@
     }
 
     R.tickOrder.forEach(function () { /* damage phase done above */ });
-    ['poison', 'toxic', 'bleed', 'burning', 'scorched', 'shock', 'chilled'].forEach(function (key) {
+    ['poison', 'toxic', 'bleed', 'burning', 'scorched', 'shock', 'chilled',
+      'fracture', 'crippled', 'dazed', 'shattered', 'immobilised', 'concussed'].forEach(function (key) {
       if (status[key]) decrementAilmentDuration(status, key);
     });
     tickGuardDurations(status);

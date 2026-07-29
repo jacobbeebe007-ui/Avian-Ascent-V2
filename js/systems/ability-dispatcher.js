@@ -199,7 +199,8 @@
           var enCost = row.enCost || row.apCost || 1;
           applied = applyDelayedDamage(targetSide, totalDmg, { attackWeight: atkWeight, enCost: enCost });
         } else if (typeof applyAilment === 'function') {
-          applied = applyAilment(targetSide, aid, 1);
+          var stackCount = Math.max(1, Math.floor(Number(row.ailmentStacks) || 1));
+          applied = applyAilment(targetSide, aid, stackCount);
         }
       }
       if (applied) {

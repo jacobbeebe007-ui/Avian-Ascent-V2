@@ -11216,6 +11216,10 @@ function getFinalAttackPrecision(entity, ab, opts={}){
     activeDown=Number(G.enemyStatus?.accDebuff||0)||0;
     if(G.enemyStatus?.enemyBlind>0) activeDown+=15;
   }
+  const sideStatus = side === 'player' ? G.playerStatus : G.enemyStatus;
+  if (typeof getDazedPrecisionPenalty === 'function') {
+    activeUp += getDazedPrecisionPenalty(sideStatus);
+  }
   if(typeof Avian?.dispatcher?.modifyAcc==='function' && side==='player'){
     /* dispatcher may apply further temp mods via getPlayerEffectiveAcc path; keep additive here. */
   }
@@ -11801,9 +11805,13 @@ function getEffectiveDodge(p) {
     + (G.playerStatus.battleHymnDodge&&G.playerStatus.battleHymnDodge.turns>0 ? G.playerStatus.battleHymnDodge.bonus : 0)
     + (G.playerStatus.evading>0&&G.playerStatus.evadeBonus ? G.playerStatus.evadeBonus : 0);
   if(G.playerStatus.sittingDuck) return 0;
+  if (typeof isImmobilisedActive === 'function' && isImmobilisedActive(G.playerStatus)) return 0;
   let dodge = (p.stats.dodge || 0) + buffBonus + cardBonus;
   dodge += (G.playerStatus.passiveDodge || 0);
   dodge -= getWeakenDodgePenalty(getWeakenStacks(G.playerStatus));
+  if (typeof getCrippledDodgePenalty === 'function') {
+    dodge += getCrippledDodgePenalty(G.playerStatus);
+  }
   if(typeof Avian?.dispatcher?.modifyDodge==='function') dodge = Avian.dispatcher.modifyDodge(dodge);
   return Math.max(0, Math.min(cap, dodge));
 }
@@ -12086,8 +12094,12 @@ function applyWeakenStack(target, addStacks=1){
   status.weaken=w;
 }
 function getEffectiveEnemyDodgeForPlayerHit(){
+  if (typeof isImmobilisedActive === 'function' && isImmobilisedActive(G.enemyStatus)) return 0;
   let d = (G.enemy?.stats?.dodge ?? 0);
   const pen=getWeakenDodgePenalty(getWeakenStacks(G.enemyStatus));
+  if (typeof getCrippledDodgePenalty === 'function') {
+    d += getCrippledDodgePenalty(G.enemyStatus);
+  }
   return Math.max(0, d - pen);
 }
 function scaleHealForBleed(who, raw){
@@ -12151,6 +12163,75 @@ function applyChilledStacksToTarget(target, addStacks){
 function applyChilledStacksToEnemy(addStacks){
   return applyChilledStacksToTarget('enemy', addStacks);
 }
+
+function applyPhysicalStackAilment(target, ailId, addStacks) {
+  const status = target === 'player' ? G.playerStatus : G.enemyStatus;
+  const owner = target === 'player' ? G.player : G.enemy;
+  if (!status || !owner || !owner.stats) return false;
+  const rules = AILMENT_RULES?.[ailId] || {};
+  const resolvedId = rules.upgrade;
+  if (resolvedId && status[resolvedId]) return false;
+
+  const armour = Math.max(0, Number(owner.stats.armour) || 0);
+  if (rules.requiresZeroArmour && armour > 0) {
+    spawnFloat(target, '🛡 Armour!', 'fn-status');
+    return false;
+  }
+
+  const cap = rules.maxStacks || 5;
+  const baseTurns = rules.duration || 3;
+  if (!status[ailId] || typeof status[ailId] !== 'object') {
+    status[ailId] = { stacks: 0, turns: 0 };
+  }
+  const entry = status[ailId];
+  const next = Math.min(cap, (entry.stacks || 0) + Math.max(1, Math.floor(Number(addStacks) || 1)));
+  entry.stacks = next;
+  entry.turns = baseTurns;
+  status[ailId] = entry;
+
+  if (next >= cap && resolvedId) {
+    delete status[ailId];
+    applyPhysicalResolvedState(target, resolvedId);
+  }
+  return true;
+}
+
+function applyPhysicalResolvedState(target, resolvedId) {
+  const status = target === 'player' ? G.playerStatus : G.enemyStatus;
+  const owner = target === 'player' ? G.player : G.enemy;
+  if (!status || !owner) return false;
+  const rules = AILMENT_RULES?.[resolvedId] || {};
+  const dur = rules.duration || 1;
+  const who = owner.name || (target === 'player' ? 'You' : 'Enemy');
+
+  if (resolvedId === 'shattered') {
+    status.shattered = { turns: dur };
+    spawnFloat(target, '🦴 Shattered!', 'fn-status');
+    logMsg(`🦴 ${who} is Shattered!`, 'system');
+    return true;
+  }
+  if (resolvedId === 'immobilised') {
+    const prevDodge = Number(owner.stats?.dodge) || 0;
+    status.immobilised = { turns: dur, baseDodge: prevDodge };
+    if (owner.stats) owner.stats.dodge = 0;
+    spawnFloat(target, '⛓ Immobilised!', 'fn-status');
+    logMsg(`⛓ ${who} is Immobilised!`, 'system');
+    return true;
+  }
+  if (resolvedId === 'concussed') {
+    status.concussed = {
+      turns: dur,
+      pendingExtraEn: true,
+      precisionFlat: rules.precisionFlat || -20,
+      skillPowerFlat: rules.skillPowerFlat || -15,
+    };
+    spawnFloat(target, '💫 Concussed!', 'fn-status');
+    logMsg(`💫 ${who} is Concussed!`, 'system');
+    return true;
+  }
+  return false;
+}
+
 function rollStunChance(v){return chance(Math.min(50,Math.max(0,v||0)));}
 function applyEnemySlow(spdPenalty,dodgePenalty,turns){
   if(!G.enemyStatus.slow){
@@ -13508,6 +13589,9 @@ function applyAilment(target,ailId,stacks=1) {
   if (ailId === 'poison' && status.toxic) return false;
   if (ailId === 'chilled' && status.frozen) return false;
   if (ailId === 'shock' && (status.paralyzed || status.paralysed)) return false;
+  if (ailId === 'fracture' && status.shattered) return false;
+  if (ailId === 'crippled' && status.immobilised) return false;
+  if (ailId === 'dazed' && status.concussed) return false;
 
   const app = AILMENT_RULES?.application || {};
   const perActionCap = app.perActionCap != null ? app.perActionCap : 2;
@@ -13523,11 +13607,12 @@ function applyAilment(target,ailId,stacks=1) {
   const remainAction = Math.max(0, perActionCap - usedAction);
   const remainTurn = Math.max(0, perTurnCap - usedTurn);
   const allowedStacks = Math.min(wantStacks, remainAction, remainTurn);
-  if (allowedStacks <= 0 && ['poison','burning','bleed','chilled','shock'].indexOf(ailId) >= 0) {
+  const stackingIds = ['poison','burning','bleed','chilled','shock','fracture','crippled','dazed'];
+  if (allowedStacks <= 0 && stackingIds.indexOf(ailId) >= 0) {
     return false;
   }
-  const applyStacks = ['poison','burning','bleed','chilled','shock'].indexOf(ailId) >= 0 ? allowedStacks : wantStacks;
-  if (['poison','burning','bleed','chilled','shock'].indexOf(ailId) >= 0) {
+  const applyStacks = stackingIds.indexOf(ailId) >= 0 ? allowedStacks : wantStacks;
+  if (stackingIds.indexOf(ailId) >= 0) {
     actionBucket[countKey] = usedAction + applyStacks;
     turnBucket[countKey] = usedTurn + applyStacks;
   }
@@ -13635,6 +13720,15 @@ function applyAilment(target,ailId,stacks=1) {
     status.scorched={turns:scorchDur};
   } else if (ailId==='chilled') {
     if (!applyChilledStacksToTarget(target, applyStacks)) return false;
+  } else if (ailId==='fracture' || ailId==='crippled' || ailId==='dazed') {
+    if (!applyPhysicalStackAilment(target, ailId, applyStacks)) return false;
+    if (ailId === 'fracture' && status.shattered) appliedAs = 'shattered';
+    else if (ailId === 'crippled' && status.immobilised) appliedAs = 'immobilised';
+    else if (ailId === 'dazed' && status.concussed) appliedAs = 'concussed';
+  } else if (ailId==='shattered' || ailId==='immobilised' || ailId==='immobilized' || ailId==='concussed') {
+    const resolved = ailId === 'immobilized' ? 'immobilised' : ailId;
+    if (!applyPhysicalResolvedState(target, resolved)) return false;
+    appliedAs = resolved;
   } else if (ailId==='blinded') {
     status.blinded={turns:blindDur+debuffDurationBonus};
   } else if (ailId==='decreed') {
@@ -14298,13 +14392,17 @@ function getAbilityEnergyCost(ab, player){
 
   if(cost===1 && isMultiHitAbility(ab) && !isMainAttackAbility(ab, p)) cost += 1;
 
-  /* Paralysed: each skill costs +1 EN. */
+  /* Paralysed: each skill costs +1 EN. Concussed: next offensive skill +1 EN (Basic exempt). */
   try {
     const sideStatus = (p === G.player) ? G.playerStatus : ((p === G.enemy) ? G.enemyStatus : null);
     const extra = typeof getParalysisExtraEnCost === 'function'
       ? getParalysisExtraEnCost(sideStatus)
       : ((sideStatus?.paralyzed || sideStatus?.paralysed) ? 1 : 0);
     if (extra > 0) cost += extra;
+    const concussedExtra = typeof getConcussedExtraEnCost === 'function'
+      ? getConcussedExtraEnCost(sideStatus, ability)
+      : 0;
+    if (concussedExtra > 0) cost += concussedExtra;
   } catch (_) { /* noop */ }
 
   const maxE = p?.energyMax ?? 99;
@@ -14327,12 +14425,24 @@ function canUseAbility(player, ability){
     return false;
   }
   if(typeof canUseMasterWorkbookAbility==='function' && !canUseMasterWorkbookAbility(player, ability)) return false;
+  const sideStatus = (typeof G !== 'undefined' && player === G.player) ? G.playerStatus
+    : ((typeof G !== 'undefined' && player === G.enemy) ? G.enemyStatus : null);
+  if (typeof isImmobilisedActive === 'function' && isImmobilisedActive(sideStatus)
+    && typeof isMobilitySkillBlocked === 'function' && isMobilitySkillBlocked(ability)) {
+    return false;
+  }
   const cost=getAbilityEnergyCost(ability, player);
   return (player.energy||0) >= cost;
 }
 function spendEnergy(player, ability){
   const cost=getAbilityEnergyCost(ability, player);
   player.energy = Math.max(0,(player.energy||0) - cost);
+  const sideStatus = (typeof G !== 'undefined' && player === G.player) ? G.playerStatus
+    : ((typeof G !== 'undefined' && player === G.enemy) ? G.enemyStatus : null);
+  if (sideStatus && sideStatus.concussed && typeof getConcussedExtraEnCost === 'function'
+    && getConcussedExtraEnCost(sideStatus, ability) > 0) {
+    delete sideStatus.concussed;
+  }
   return cost;
 }
 
@@ -14886,6 +14996,12 @@ function getEnemyActionEnergyCost(action){
       ? getParalysisExtraEnCost(G.enemyStatus)
       : ((G.enemyStatus?.paralyzed || G.enemyStatus?.paralysed) ? 1 : 0);
     if (extra > 0) cost += extra;
+    const concussedExtra = typeof getConcussedExtraEnCost === 'function'
+      ? getConcussedExtraEnCost(G.enemyStatus, action?.type === 'ability'
+        ? ((G.enemy?.abilities || []).find(a => a && a.id === action.abilityId) || { id: action.abilityId })
+        : action)
+      : 0;
+    if (concussedExtra > 0) cost += concussedExtra;
   } catch (_) { /* noop */ }
   return cost;
 }

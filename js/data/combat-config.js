@@ -12,12 +12,13 @@
   Avian.data = Avian.data || Object.create(null);
 
   Avian.data.combatConfig = Object.freeze({
-    packVersion: '2026.07-equipment-v1.3-basic-starting-weapons',
+    packVersion: '2026.07-equipment-v1.5-physical-ailments',
     affinityArsenalV06: true,
     equipmentLootV07: false,
     weaponFirstV09: true,
     equipmentV12: true,
     equipmentV13BasicStartingWeapons: true,
+    physicalAilmentsV15: true,
 
     /* R-EN-001 — equipment never changes these. Carryover cap is WD (OD-025). */
     energy: Object.freeze({
@@ -261,6 +262,25 @@
       bleedPerStackMaxHpPct: 0.01,
       bleedHealingDownPerStack: 0.1,
       chilledAgilityPerStack: -0.03,
+      /* Physical stacking ailments — Current Master v1.5. */
+      fractureMaxStacks: 5,
+      fractureGuardPerStack: -2,
+      fractureArmourRestorePctPerStack: -0.04,
+      shatteredDurationTurns: 2,
+      shatteredGuardFlat: -10,
+      shatteredArmourRestorePct: -0.25,
+      shatteredFortifyHealPct: -0.25,
+      shatteredAttackerPenetrationFlat: 3,
+      crippledMaxStacks: 5,
+      crippledAgilityPerStack: -2,
+      crippledDodgePointsPerStack: -2,
+      immobilisedDurationTurns: 1,
+      dazedMaxStacks: 5,
+      dazedPrecisionPerStack: -4,
+      dazedSkillPowerPerStack: -2,
+      concussedPrecisionFlat: -20,
+      concussedSkillPowerFlat: -15,
+      concussedNextOffensiveExtraEn: 1,
     }),
 
     enRoles: Object.freeze({
