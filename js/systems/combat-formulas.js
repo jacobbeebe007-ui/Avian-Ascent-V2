@@ -465,6 +465,10 @@
 
   function isNaturalBasicAbility(ability) {
     var row = ability || {};
+    /* UI / runtime abilities may wrap the equipped combat row on _dispatcherRow. */
+    if (row._dispatcherRow && typeof row._dispatcherRow === 'object') {
+      row = row._dispatcherRow;
+    }
     /* Equipped Basic Attack carries weapon min/max and Skill Power — not a flat Natural Strike. */
     if (row.minDamage != null && row.maxDamage != null && Number(row.skillPowerPct) > 0 && !row.naturalStrikeFlat) {
       return false;

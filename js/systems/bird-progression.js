@@ -216,9 +216,19 @@
     var off = Number(p.offenceMult) || 1;
     var def = Number(p.defenceMult) || 1;
     var agi = Number(p.agilityMult) || 1;
-    if (out.hp != null) out.hp = Math.round(out.hp * vit);
-    if (out.maxHp != null) out.maxHp = Math.round(out.maxHp * vit);
     if (out.vitality != null) out.vitality = Math.round(out.vitality * vit);
+    /* Single HP source: recompute from leveled Base Health + scaled Vitality (do not also × maxHp). */
+    var leveledBh = out.leveledBaseHealth != null
+      ? Number(out.leveledBaseHealth)
+      : (out.baseHealth != null ? Number(out.baseHealth) : null);
+    if (leveledBh != null && leveledBh > 0 && out.vitality != null) {
+      var recomputed = vitalityToMaxHp(leveledBh, out.vitality);
+      out.maxHp = recomputed;
+      out.hp = recomputed;
+    } else {
+      if (out.hp != null) out.hp = Math.round(out.hp * vit);
+      if (out.maxHp != null) out.maxHp = Math.round(out.maxHp * vit);
+    }
     if (out.atk != null) out.atk = Math.round(out.atk * off);
     if (out.matk != null) out.matk = Math.round(out.matk * off);
     if (out.dex != null) out.dex = Math.round(out.dex * off);

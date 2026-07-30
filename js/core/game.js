@@ -5186,7 +5186,8 @@ function normalizeOwEnemyListForBattle(enemies, stage){
 const STORY_BOSS_STAGES = new Set([10, 20]);
 const STORY_MILESTONE_BOSS_STAGE = 10;
 const STORY_DUKE_STAGE = 20;
-const STORY_BOSS_STAT_MULT = Object.freeze({ hp: 2.0, atk: 1.3, matk: 1.3 });
+/* Boss HP comes from workbook progression + profile; do not stack an extra HP mult here. */
+const STORY_BOSS_STAT_MULT = Object.freeze({ hp: 1.0, atk: 1.15, matk: 1.15 });
 function getStoryEnemyLevelBand(stage){
   if(typeof globalThis.getStoryEnemyLevelBand==='function'){
     const band=globalThis.getStoryEnemyLevelBand(stage);
@@ -9704,7 +9705,21 @@ function getAbilityTemplateForUI(abOrId){
   if(!id) return null;
   const canon=typeof resolveAbilityAliasSourceId==='function'?resolveAbilityAliasSourceId(id):id;
   const t=ABILITY_TEMPLATES?.[canon]||ABILITY_TEMPLATES?.[id];
-  if(t) return t;
+  if(t){
+    /* Equipped Basics carry weapon min/max on _dispatcherRow; template boot rows are unarmed Natural Strike. */
+    if(isObj&&abOrId._dispatcherRow&&typeof abOrId._dispatcherRow==='object'){
+      const row=abOrId._dispatcherRow;
+      return Object.assign({}, t, {
+        minDamage:row.minDamage!=null?row.minDamage:t.minDamage,
+        maxDamage:row.maxDamage!=null?row.maxDamage:t.maxDamage,
+        skillPowerPct:row.skillPowerPct!=null?row.skillPowerPct:t.skillPowerPct,
+        naturalStrikeFlat:row.naturalStrikeFlat,
+        _dispatcherRow:row,
+        _combatPackRow:row,
+      });
+    }
+    return t;
+  }
   if(isObj&&abOrId._dispatcherRow){
     const row=abOrId._dispatcherRow;
     const btn=typeof resolveCombatRowBtnType==='function'?resolveCombatRowBtnType(row):String(row.category||'physical');
@@ -11545,9 +11560,9 @@ function checkGrowthStage(p){
 }
 const ENEMY_TIER_MULTIPLIERS = {
   normal:{hp:1.0,atk:1.0,def:1.0},
-  elite:{hp:1.4,atk:1.15,def:1.2},
-  boss:{hp:2.0,atk:1.3,def:1.3},
-  lieutenant:{hp:1.7,atk:1.2,def:1.2},
+  elite:{hp:1.1,atk:1.1,def:1.1},
+  boss:{hp:1.15,atk:1.15,def:1.15},
+  lieutenant:{hp:1.15,atk:1.1,def:1.1},
 };
 
 const ENEMY_SIZE_MODIFIERS = {
@@ -12426,7 +12441,8 @@ function resolveAbilityCombatRow(srcAbility){
   const ab=srcAbility||G._activePlayerAbility||null;
   if(!ab) return null;
   const tmpl=getAbilityTemplateForUI(ab);
-  const row=tmpl?._combatPackRow||ab?._dispatcherRow||null;
+  /* Prefer equipped dispatcher row (weapon range) over unarmed template combat pack. */
+  const row=ab?._dispatcherRow||tmpl?._combatPackRow||tmpl?._dispatcherRow||null;
   if(row&&typeof enrichCombatRow==='function') enrichCombatRow(row);
   return row;
 }
@@ -12742,7 +12758,7 @@ function getEnemyAbilityAuthoredEnCost(ab){
 }
 
 function computeEntityAbilityRawDamage(entity, ab, tmpl, isMagic){
-  const row=tmpl?._combatPackRow||ab?._dispatcherRow||null;
+  const row=ab?._dispatcherRow||tmpl?._combatPackRow||tmpl?._dispatcherRow||null;
   const stats=entity?.stats||entity||{};
   const classBonusFractions = typeof Avian?.classPerks?.collectOutgoingDamageBonusFractionsForEntity==='function'
     ? Avian.classPerks.collectOutgoingDamageBonusFractionsForEntity(entity, ab, { target:G.player, isMagic })
