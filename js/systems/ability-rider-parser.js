@@ -133,7 +133,8 @@
     if (/^burn|^scorch/.test(s)) return 'burning';
     if (/^poison|^toxic|^venom/.test(s)) return 'poison';
     if (/^chill|^frost|^frozen/.test(s)) return 'chilled';
-    if (/^shock|^paralys|^paraly/.test(s)) return 'paralyzed';
+    if (/^shock/.test(s)) return 'shock';
+    if (/^paralys|^paraly/.test(s)) return 'paralyzed';
     if (/^weaken/.test(s)) return 'weakened';
     if (/^delay/.test(s)) return 'delayed';
     if (/^blind/.test(s)) return 'blinded';

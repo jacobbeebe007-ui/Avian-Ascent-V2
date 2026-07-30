@@ -294,7 +294,8 @@ function normalizeAilmentId(raw) {
   if (/^burn|^scorch/.test(s)) return 'burning';
   if (/^poison|^toxic|^venom/.test(s)) return 'poison';
   if (/^chill|^frost|^frozen/.test(s)) return 'chilled';
-  if (/^shock|^paralys|^paraly/.test(s)) return 'paralyzed';
+  if (/^shock/.test(s)) return 'shock';
+  if (/^paralys|^paraly/.test(s)) return 'paralyzed';
   if (/^weaken/.test(s)) return 'weakened';
   if (/^fracture|^shatter/.test(s)) return 'fracture';
   if (/^crippl/.test(s)) return 'crippled';
@@ -1170,7 +1171,7 @@ for (let i = 0; i < focusOrbs.length; i++) {
     affinity: aff,
     exemplarItemId: it.id,
     techniqueName: 'Orb Pulse',
-    onHit: { kind: 'applyAilment', ailment: aff === 'ember' ? 'burning' : aff === 'frost' ? 'chilled' : aff === 'storm' ? 'paralyzed' : aff === 'venom' ? 'poison' : aff === 'blood' ? 'bleed' : 'weakened', stacks: 1 },
+    onHit: { kind: 'applyAilment', ailment: aff === 'ember' ? 'burning' : aff === 'frost' ? 'chilled' : aff === 'storm' ? 'shock' : aff === 'venom' ? 'poison' : aff === 'blood' ? 'bleed' : 'weakened', stacks: 1 },
   };
 }
 

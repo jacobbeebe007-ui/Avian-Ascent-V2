@@ -700,19 +700,41 @@
     return r;
   }
 
+  function isDukeEnemy(enemy) {
+    if (!enemy) return false;
+    var id = String(enemy.id || enemy.rosterId || '').toLowerCase();
+    var bk = String(enemy.birdKey || '').toLowerCase();
+    return id.indexOf('duke') >= 0 || bk.indexOf('duke') >= 0;
+  }
+
   function getEnemyClassId(enemy) {
     if (!enemy) return 'rogue';
-    if (enemy.isBoss) {
-      var id = String(enemy.id || enemy.rosterId || '').toLowerCase();
-      var bk = String(enemy.birdKey || '').toLowerCase();
-      if (id.indexOf('duke') >= 0 || bk.indexOf('duke') >= 0) return 'duke';
-    }
+    /* Duke has no gear class — use Inquisitor kits (orange Beak Hammer + Ironfeather). */
+    if (isDukeEnemy(enemy)) return 'inquisitor';
     if (typeof resolveFinalClass === 'function') {
       return resolveFinalClass(enemy.enemyClass || enemy.class || '', enemy.birdKey || '');
     }
     var cls = enemy.enemyClass || enemy.class;
-    if (cls) return String(cls).toLowerCase();
+    if (cls) {
+      var norm = String(cls).toLowerCase();
+      if (norm === 'duke') return 'inquisitor';
+      return norm;
+    }
     return getPlayerClassId(enemy) || 'rogue';
+  }
+
+  /** Stage-20 Duke: force Orange weapon + Orange Armour so skills resolve (no legacy kit). */
+  function applyDukeOrangeWeaponArmour(eq, classId) {
+    if (!eq) return eq;
+    var orangeRef = findReferenceLoadout(classId || 'inquisitor', 'orange');
+    if (orangeRef && orangeRef.equipment) {
+      if (orangeRef.equipment.mainHand) eq.mainHand = orangeRef.equipment.mainHand;
+      if (orangeRef.equipment.armour) eq.armour = orangeRef.equipment.armour;
+      return eq;
+    }
+    eq.mainHand = 'WPN-030';
+    eq.armour = 'ARM-006';
+    return eq;
   }
 
   function mapEnemyTierToRarityBand(tier, rng) {
@@ -950,6 +972,19 @@
     }
     if (!mixed && opts.variance !== false) {
       eq = applyLoadoutVariance(eq, rarityOut, { seed: seed + 17, variance: true });
+    }
+    if (isDukeEnemy(enemy)) {
+      applyDukeOrangeWeaponArmour(eq, classId);
+      filledCount = 0;
+      for (var sk2 in eq) {
+        if (Object.prototype.hasOwnProperty.call(eq, sk2) && eq[sk2]) filledCount++;
+      }
+      rarityOut = dominantRarityFromBag(
+        Object.keys(eq).map(function (k) {
+          var it = eq[k] ? getItem(eq[k]) : null;
+          return it ? normalizeEquipmentRarity(it.rarity) : null;
+        }).filter(Boolean).concat(['orange'])
+      );
     }
     var ref = findReferenceLoadout(classId, rarityOut);
     return {

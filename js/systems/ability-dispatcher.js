@@ -157,21 +157,29 @@
       ailCh += Avian.classPerks.consumeCursedCallAppBonus(attacker) || 0;
     }
     var magicShift = 0;
-    if (targetSide === 'enemy' && g && g.player && (isMagic || isHybrid)) {
+    var authoredChance = Number(row.ailmentChance) || 0;
+    var deterministic = typeof isDeterministicOnLandChance === 'function'
+      ? isDeterministicOnLandChance(authoredChance, {})
+      : (authoredChance >= 100);
+    if (!deterministic && targetSide === 'enemy' && g && g.player && (isMagic || isHybrid)) {
       var attackerMatk = Number(g.player.stats.matk) || 0;
       var targetMdef = (g.enemy && g.enemy.stats) ? (Number(g.enemy.stats.mdef) || 0) : 0;
       magicShift = (attackerMatk - targetMdef) * 1.5;
-    } else if (targetSide === 'player' && g && g.enemy && isMagic) {
+    } else if (!deterministic && targetSide === 'player' && g && g.enemy && isMagic) {
       magicShift = ((Number(g.enemy.stats.matk) || 0) - (Number(g.player.stats.mdef) || 0)) * 1.5;
     }
     var passiveAilBonus = (targetSide === 'enemy' && g && g.playerStatus) ? (Number(g.playerStatus.passiveAilmentBonus) || 0) : 0;
     var controlBoost = (targetSide === 'enemy' && g && g.player && typeof getPassiveEvolutionBonuses === 'function')
       ? Math.floor((getPassiveEvolutionBonuses(g.player).controlPct || 0) * 100) : 0;
+    var chanceInput = deterministic
+      ? authoredChance
+      : (ailCh + magicShift + controlBoost + passiveAilBonus);
     var rollPct = typeof resolveAilmentChance === 'function'
-      ? resolveAilmentChance(ailCh + magicShift + controlBoost + passiveAilBonus, targetSide, g, {})
-      : Math.max(5, ailCh + magicShift + controlBoost + passiveAilBonus);
+      ? resolveAilmentChance(chanceInput, targetSide, g, deterministic ? { skipResist: true } : {})
+      : Math.max(5, chanceInput);
     var ailmentsApplied = {};
-    if (typeof chance === 'function' && chance(rollPct)) {
+    var shouldAttempt = deterministic || (typeof chance === 'function' && chance(rollPct));
+    if (shouldAttempt) {
       var applied = false;
       /* v1.2 same-hit ailment gate via Armour / Magic Armour pools. */
       var prot = Avian.protection;

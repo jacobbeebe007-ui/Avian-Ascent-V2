@@ -5,7 +5,7 @@
  * Species tiers: 1–4 grey (Common), 5–9 green (Uncommon), 10–14 blue (Rare), 15–19 purple (Legendary), 20 none.
  * Equipment pieces: 1–3 none; 4–6 ×4 grey; 7–9 ×4 grey/green; 10 ×1 blue + ×5 grey/green;
  * 11–13 ×5 green/blue; 14–16 ×7 blue; 17–19 ×3 purple + ×4 blue;
- * 20 Duke ×5 gold (Legendary) + ×1 orange (Ancestral/legendary) + ×1 purple (Epic).
+ * 20 Duke ×4 gold (Legendary) + ×2 orange (weapon + armour) + ×1 purple (Epic).
  */
 (function initStoryEnemyLevels(global) {
   'use strict';
@@ -54,10 +54,10 @@
         bag: ['purple', 'purple', 'purple', 'blue', 'blue', 'blue', 'blue'],
       };
     }
-    /* Duke: 5 gold + 1 legendary (orange) + 1 epic (purple). */
+    /* Duke: 4 gold + 2 orange (weapon + armour skills) + 1 purple. */
     return {
       count: 7,
-      bag: ['gold', 'gold', 'gold', 'gold', 'gold', 'orange', 'purple'],
+      bag: ['gold', 'gold', 'gold', 'gold', 'orange', 'orange', 'purple'],
     };
   }
 

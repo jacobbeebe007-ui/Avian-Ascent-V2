@@ -178,26 +178,24 @@ function buildDukeStoryBossEnemy(){
   const base=typeof buildEnemyFromRosterId==='function'
     ? buildEnemyFromRosterId(rosterId,{isBoss:true,bossTitle:'🌩 Stage Boss'})
     : null;
-  const dukeAbilities=['dukeRiverGrip','dukeDecree','dukeWardens','dukeOwlsVerdict'].map(id=>({id,level:4}));
+  /* EquipmentV2: skills come from Orange weapon + Orange Armour (Inquisitor kit), not legacy duke* ids. */
   if(!base){
     return {
       id:'duke_blakiston', name:'Duke Blakiston', portraitKey:'duke_blakiston', birdKey:'dukeBlakiston',
-      isBoss:true, size:'xl', aiType:'boss_duke', aiPersonality:'inquisitor', enemyClass:'inquisitor',
-      bossTitle:'🌩 Stage Boss', storyLevel:10, abilities:dukeAbilities, _storyDirectStats:true,
-      duke:{phase:1,nightfallTurns:0,decreeKey:null,decreeStacks:0,riverCd:0,summonCd:0,verdictCd:0,decreeCd:0},
+      isBoss:true, size:'xl', aiPersonality:'inquisitor', enemyClass:'inquisitor', class:'inquisitor',
+      bossTitle:'🌩 Stage Boss', storyLevel:10, abilities:[], _storyDirectStats:true,
     };
   }
   base.id='duke_blakiston';
   base.name='Duke Blakiston';
   base.portraitKey='duke_blakiston';
   base.birdKey='dukeBlakiston';
-  base.aiType='boss_duke';
+  delete base.aiType;
   base.aiPersonality='inquisitor';
   base.enemyClass='inquisitor';
   base.class='inquisitor';
   base.enemyTier='boss';
-  base.abilities=dukeAbilities;
-  base.duke={phase:1,nightfallTurns:0,decreeKey:null,decreeStacks:0,riverCd:0,summonCd:0,verdictCd:0,decreeCd:0};
+  base.abilities=[];
   return base;
 }
 function makeDukeBlakiston(){
@@ -4517,9 +4515,6 @@ function getEnemyAbilityDisplayLabel(abilityId, enemy){
 /** Enemy combat ability keys resolved to display names (kit ids + ABILITY_TEMPLATES + ENEMY_ABILITY_POOL). */
 function getEnemyPreviewSkillNames(enemy){
   if(!enemy) return ['—','—','—','—'];
-  if(enemy.id==='duke_blakiston'){
-    return ["River Grip","Royal Decree","Court Wardens","Owl's Verdict"];
-  }
   const names=[];
   let abs=Array.isArray(enemy.abilities)?enemy.abilities:[];
   if((!abs.length || !abs.some(a=>a&&!a.empty)) && Avian?.flags?.equipmentV2){
@@ -4550,7 +4545,6 @@ function getEnemyPreviewSkillNames(enemy){
 /** Enemy combat ability keys (raw pool IDs). */
 function getEnemyPreviewSkillKeys(enemy){
   if(!enemy) return [];
-  if(enemy.id==='duke_blakiston') return ['dukeRiverGrip','dukeDecree','dukeWardens','dukeOwlsVerdict'];
   let abs=Array.isArray(enemy.abilities)?enemy.abilities:[];
   if((!abs.length || !abs.some(a=>a&&!a.empty)) && Avian?.flags?.equipmentV2){
     const preview=ensureEnemyPreviewEquipmentState(enemy);
@@ -9824,13 +9818,14 @@ function getEffectivePlayerOffensiveMatkForPreview(){
 function getPackRowScaleStatRaw(statKey, stats, isPlayerCombat){
   const key=String(statKey||'ATK').toUpperCase();
   const s=stats||(isPlayerCombat&&G?.player?.stats)||{};
-  if(key==='MATK') return Number(s.matk)||0;
-  if(key==='SPD') return Number(s.spd)||0;
-  if(key==='DEF') return Number(s.def)||0;
-  if(key==='MDEF') return Number(s.mdef)||0;
+  if(key==='MATK'||key==='MATT'||key==='FOCUS') return Number(s.matk)||0;
+  if(key==='DEX'||key==='DEXTERITY') return Number(s.dex)||0;
+  if(key==='SPD'||key==='AGILITY') return Number(s.spd)||0;
+  if(key==='DEF'||key==='GUARD') return Number(s.def)||0;
+  if(key==='MDEF'||key==='RESOLVE') return Number(s.mdef)||0;
   if(key==='ACC') return Number(s.acc)||0;
   if(key==='DODGE') return Number(s.dodge)||0;
-  if(key==='ATK'&&isPlayerCombat&&G?.player) return getEffectivePlayerAtkForDamagePreview();
+  if((key==='ATK'||key==='MIGHT')&&isPlayerCombat&&G?.player) return getEffectivePlayerAtkForDamagePreview();
   return Number(s.atk)||0;
 }
 function packRowScaleContribution(scaleStat, scalePct, stats, isPlayerCombat){
@@ -15539,13 +15534,18 @@ function rollEnemyCombatRowAilment(ab, tmpl, totalDmg, hitsLanded) {
   const isHybrid = typeof isHybridDamage === 'function' && isHybridDamage(row);
   let ailCh = row.ailmentChance;
   let magicShift = 0;
-  if (isMagic || isHybrid) {
+  const authoredChance = Number(row.ailmentChance) || 0;
+  const deterministic = typeof isDeterministicOnLandChance === 'function'
+    ? isDeterministicOnLandChance(authoredChance, {})
+    : (authoredChance >= 100);
+  if (!deterministic && (isMagic || isHybrid)) {
     magicShift = ((Number(G.enemy?.stats?.matk)||0) - (Number(G.player?.stats?.mdef)||0)) * 1.5;
   }
+  const chanceInput = deterministic ? authoredChance : (ailCh + magicShift);
   const rollPct = typeof resolveAilmentChance === 'function'
-    ? resolveAilmentChance(ailCh + magicShift, 'player', G, {})
-    : Math.max(5, ailCh + magicShift);
-  if (!chance(rollPct)) return false;
+    ? resolveAilmentChance(chanceInput, 'player', G, deterministic ? { skipResist: true } : {})
+    : Math.max(5, chanceInput);
+  if (!(deterministic || chance(rollPct))) return false;
   let applied = false;
   if (aid === 'delayed' && typeof applyDelayedDamage === 'function') {
     applied = applyDelayedDamage('player', totalDmg, { enCost: row.enCost || row.apCost || 1 });
