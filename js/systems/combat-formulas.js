@@ -688,7 +688,16 @@
     });
   }
 
+  function unwrapAbilityRow(ability) {
+    var row = ability || {};
+    if (row._dispatcherRow && typeof row._dispatcherRow === 'object') {
+      return row._dispatcherRow;
+    }
+    return row;
+  }
+
   function enrichCombatRow(row) {
+    row = unwrapAbilityRow(row);
     if (!row || row._masterDamageEnriched) return row;
     if (typeof globalThis.applyAbilityTextEnrichment === 'function') {
       globalThis.applyAbilityTextEnrichment(row);
@@ -701,7 +710,7 @@
 
   function getRelevantAttackStat(attacker, ability, opts) {
     opts = opts || {};
-    var row = ability || {};
+    var row = unwrapAbilityRow(ability);
     enrichCombatRow(row);
     var hitStat = opts.hybridHitStat || row._hybridHitStat;
     if (hitStat) return statFromEntity(attacker, String(hitStat).toUpperCase());
@@ -715,11 +724,6 @@
         total += statFromEntity(attacker, k) * (Number(row.hybridScaling[k]) || 0);
       }
       return total;
-    }
-    /* Natural Strike / basic attacks inherit the equipped weapon scaling stat. */
-    if ((row.id === 'BASIC_PHYSICAL' || row.id === 'BASIC_MAGIC' || row.naturalStrikeFlat)
-      && !opts.hybridHitStat) {
-      /* Basics keep their authored scaling (Might / Focus); they do not inherit weapon scaling. */
     }
     return statFromEntity(attacker, statKey);
   }
@@ -783,7 +787,7 @@
 
   function usesWeaponFirst(ability) {
     if (!weaponFirstEnabled()) return false;
-    var row = ability || {};
+    var row = unwrapAbilityRow(ability);
     if (row.noDamage) return false;
     if (row.useWeaponFirst === false) return false;
     if (row.skillPowerPct != null || row.skillPower != null || row.naturalStrikeFlat) return true;
@@ -960,7 +964,7 @@
     if (params.hitSucceeded === false) return { damage: 0, preMitigation: 0, components: {} };
     var attacker = params.attacker || {};
     var target = params.target || {};
-    var ability = params.ability || {};
+    var ability = unwrapAbilityRow(params.ability || {});
     var battleState = params.battleState || {};
     enrichCombatRow(ability);
     if (ability.noDamage) {

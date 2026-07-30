@@ -341,7 +341,12 @@
     var minDmg = (!isBasic || equippedBasic) && item && item.minDamage != null ? Number(item.minDamage) : null;
     var maxDmg = (!isBasic || equippedBasic) && item && item.maxDamage != null ? Number(item.maxDamage) : null;
     var scalingStat = skill.scalingStat || null;
-    if ((!isBasic || equippedBasic) && !scalingStat && item && item.scalingStat) scalingStat = item.scalingStat;
+    /* Weapon item scaling is authoritative: Dex weapons → Dex only, Might → Might, Focus → Focus. */
+    if (item && item.scalingStat && (equippedBasic || (item.slot && String(item.slot).toLowerCase() === 'weapon') || item.minDamage != null)) {
+      scalingStat = item.scalingStat;
+    } else if ((!isBasic || equippedBasic) && !scalingStat && item && item.scalingStat) {
+      scalingStat = item.scalingStat;
+    }
     if (equippedBasic && item && item.damageCategory) {
       /* Prefer the equipped weapon's category / scaling for Basic Attack. */
       if (item.scalingStat) scalingStat = item.scalingStat;
@@ -398,6 +403,11 @@
       ailmentFromOrb: !!skill.ailmentFromOrb,
       ailmentFromWeapon: !!skill.ailmentFromWeapon,
     };
+    /* Rider text "Shock" must not collapse to Paralysis (authored skill.ailment mis-tags). */
+    if (row.ailment === 'paralyzed' || row.ailment === 'paralysed') {
+      var riderAil = String(row.riderText || (skill.rider && skill.rider.text) || '');
+      if (/shock/i.test(riderAil) && !/paraly/i.test(riderAil)) row.ailment = 'shock';
+    }
     if (equippedBasic && item) {
       if (item.damageType) row.damageType = item.damageType;
       if (item.damageCategory) row.damageCategory = item.damageCategory;
@@ -443,7 +453,7 @@
         /* Fallback when orb catalog is unavailable: map aspect → ailment. */
         var aff = String(item.orbFocus || item.aspect || '').toLowerCase();
         var affMap = {
-          ember: 'burning', frost: 'chilled', storm: 'paralyzed',
+          ember: 'burning', frost: 'chilled', storm: 'shock',
           venom: 'poison', blood: 'bleed', lunar: 'weakened',
         };
         if (affMap[aff]) {

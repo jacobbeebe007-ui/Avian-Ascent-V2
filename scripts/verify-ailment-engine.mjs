@@ -53,6 +53,9 @@ eq(ctx.getDelayedStoragePct(null, 4), 0.5, 'delayed special 50%');
 eq(ctx.resolveAilmentChance(25, 'enemy', { enemy: { isBoss: false } }, {}), 25, 'resist 0 → 25%');
 eq(ctx.resolveAilmentChance(25, 'enemy', { enemy: { isBoss: true } }, {}), 5, 'boss resist 20 → min 5%');
 eq(ctx.resolveAilmentChance(10, 'enemy', { enemy: { isBoss: true } }, {}), 5, 'floor at 5%');
+eq(ctx.resolveAilmentChance(100, 'enemy', { enemy: { isBoss: true } }, {}), 100, '100% on-land ignores boss resist');
+eq(ctx.isDeterministicOnLandChance(100, {}), true, '100% is deterministic on land');
+eq(ctx.isDeterministicOnLandChance(99, {}), false, '99% is not deterministic');
 
 eq(ctx.hasAilmentGuard({ frostGuard: { turns: 1 } }, 'frostGuard'), true, 'frost guard active');
 eq(ctx.hasAilmentGuard({}, 'frostGuard'), false, 'no frost guard');

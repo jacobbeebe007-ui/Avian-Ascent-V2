@@ -96,9 +96,9 @@ ok('Stage 14–16: 7 blue', recipe(15).count === 7 && recipe(15).bag.every((r) =
 ok('Stage 17–19: 3 purple + 4 blue', recipe(18).count === 7
   && recipe(18).bag.filter((r) => r === 'purple').length === 3
   && recipe(18).bag.filter((r) => r === 'blue').length === 4);
-ok('Stage 20: 5 gold + 1 orange + 1 purple', recipe(20).count === 7
-  && recipe(20).bag.filter((r) => r === 'gold').length === 5
-  && recipe(20).bag.filter((r) => r === 'orange').length === 1
+ok('Stage 20: 4 gold + 2 orange + 1 purple', recipe(20).count === 7
+  && recipe(20).bag.filter((r) => r === 'gold').length === 4
+  && recipe(20).bag.filter((r) => r === 'orange').length === 2
   && recipe(20).bag.filter((r) => r === 'purple').length === 1);
 ok('Stage 21+: no story recipe', recipe(21) === null);
 

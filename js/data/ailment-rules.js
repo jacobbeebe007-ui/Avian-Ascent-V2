@@ -231,8 +231,20 @@
     if (opts.immune) return 0;
     var bonus = Math.max(0, Number(opts.bonusPct) || 0);
     var adjusted = base + bonus;
+    /* Authored 100% on-land applications skip tier resist (deterministicOnLand). */
+    if (opts.skipResist || isDeterministicOnLandChance(adjusted, opts)) {
+      return Math.max(0, adjusted);
+    }
     var resist = getTargetAilmentResistance(targetSide, g);
     return Math.max(RULES.MIN_AILMENT_CHANCE, adjusted - resist);
+  }
+
+  function isDeterministicOnLandChance(basePct, opts) {
+    opts = opts || {};
+    if (opts.deterministicOnLand === false) return false;
+    var app = RULES.application || {};
+    if (app.deterministicOnLand === false) return false;
+    return Math.max(0, Number(basePct) || 0) >= 100;
   }
 
   function roundAilmentDmg(n) {
@@ -482,6 +494,7 @@
   globalThis.AILMENT_RULES = RULES;
   globalThis.getTargetAilmentResistance = getTargetAilmentResistance;
   globalThis.resolveAilmentChance = resolveAilmentChance;
+  globalThis.isDeterministicOnLandChance = isDeterministicOnLandChance;
   globalThis.calcPoisonTickDmg = calcPoisonTickDmg;
   globalThis.calcToxicTickDmg = calcToxicTickDmg;
   globalThis.calcBleedTickDmg = calcBleedTickDmg;
