@@ -387,6 +387,28 @@ assertMirror('elite-1', { pieceCount: 1, baseRarity: 'blue', tier: 'elite' }, {
   count: 1, upgraded: 'purple', upgradedCount: 1,
 });
 
+/* Endless difficulty grows every battle rather than jumping at 3/5-battle boundaries. */
+if (typeof sandbox.getEndlessExtraEffectiveLevels !== 'function'
+    || typeof sandbox.getEndlessStatRampMultiplier !== 'function') {
+  fail('smooth endless scaling helpers are exported');
+} else {
+  const levelGrowth = Array.from({ length: 12 }, (_, i) => sandbox.getEndlessExtraEffectiveLevels(i));
+  const statGrowth = Array.from({ length: 12 }, (_, i) => sandbox.getEndlessStatRampMultiplier(i));
+  const levelSteps = levelGrowth.slice(1).map((value, i) => value - levelGrowth[i]);
+  const statSteps = statGrowth.slice(1).map((value, i) => value - statGrowth[i]);
+  const nearlyEqual = (values) => values.every((value) => Math.abs(value - values[0]) < 1e-10);
+  if (!nearlyEqual(levelSteps) || !levelSteps.every((value) => value > 0)) {
+    fail(`endless effective levels are not smooth: ${levelSteps.join(',')}`);
+  } else ok(`endless effective level grows evenly (+${levelSteps[0].toFixed(3)}/battle)`);
+  if (!nearlyEqual(statSteps) || !statSteps.every((value) => value > 0)) {
+    fail(`endless stat ramp is not smooth: ${statSteps.join(',')}`);
+  } else ok(`endless stat ramp grows evenly (+${(statSteps[0] * 100).toFixed(3)}%/battle)`);
+  if (Math.abs(sandbox.getEndlessExtraEffectiveLevels(15) - 14) > 1e-10
+      || Math.abs(sandbox.getEndlessStatRampMultiplier(3) - 1.05) > 1e-10) {
+    fail('smooth endless curve changed the intended long-run growth rate');
+  } else ok('smooth endless curve preserves the prior long-run growth rate');
+}
+
 if (typeof equipment.countEquippedPieces === 'function') {
   const p = {
     equipment: equipment.createEmptyLoadout(),
