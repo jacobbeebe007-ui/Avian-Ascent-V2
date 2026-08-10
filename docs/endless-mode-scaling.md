@@ -9,7 +9,8 @@ This document defines the intended Endless-mode progression behavior used by `js
 - After Story completion (`Stage 20`) on legacy non-map endless, Endless applies an additional ramp to effective enemy level as endless battles increase.
 - Enemy growth is intentionally **not capped at level 10** (or any Story-end cap). Endless scaling continues indefinitely.
 - Difficulty multiplier (`DIFFICULTIES.*.mult`) scales **all** enemy combat stats (HP, ATK, MATK, DEF, MDEF, SPD, ACC, dodge).
-- After player bird level ≥ 20 and enemy effective level ≥ 20, an extra **+5% all combat stats** ramp applies every 3 endless battles (`floor(endlessBattle / 3)` steps).
+- Past the Story curve, enemy effective level gains **14/15 of an extra level per Endless battle**. This preserves the previous long-run growth rate without its three- and five-battle level jumps.
+- The additional all-stat ramp increases by **5/3% per Endless battle** (the smooth equivalent of +5% every three battles). It begins immediately when post-Story Endless scaling begins, so reaching player level 20 cannot retroactively apply a large accumulated bonus.
 
 ## Endless node map (STS-style)
 
