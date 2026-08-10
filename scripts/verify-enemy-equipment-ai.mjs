@@ -265,7 +265,7 @@ assertStoryStage(10, { count: 6, only: ['grey', 'green', 'blue'], minOf: { blue:
 assertStoryStage(12, { count: 5, only: ['green', 'blue'], require: ['green', 'blue'] });
 assertStoryStage(15, { count: 7, only: ['blue'] });
 assertStoryStage(18, { count: 7, only: ['purple', 'blue'], minOf: { purple: 3, blue: 4 } });
-assertStoryStage(20, { count: 7, only: ['gold', 'orange', 'purple'], minOf: { gold: 5, orange: 1, purple: 1 } });
+assertStoryStage(20, { count: 7, only: ['gold', 'orange', 'purple'], minOf: { gold: 4, orange: 2, purple: 1 } });
 
 /* Class starter + basic attack must match player counterparts. */
 {
@@ -408,6 +408,28 @@ if (typeof equipment.countEquippedPieces === 'function') {
     const filled = countFilled(enemy.equipment);
     if (filled !== n) fail(`player mirror count: expected ${n}, got ${filled}`);
     else ok(`player mirror count matches equipped (${n})`);
+
+    const mixedPlayer = { equipment: equipment.createEmptyLoadout() };
+    const mixedRarities = ['grey', 'green', 'orange'];
+    mixedRarities.forEach((rarity, index) => {
+      const slotKey = ['mainHand', 'armour', 'helmet'][index];
+      const slotName = { mainHand: 'Weapon', armour: 'Armour', helmet: 'Helmet' }[slotKey];
+      const item = Object.values(Avian.data.equipment.items).find((it) =>
+        it && it.rarity === rarity && it.slot === slotName
+      );
+      if (item) mixedPlayer.equipment[slotKey] = item.id;
+    });
+    const mixedEnemy = makeEnemy('rogue', 'grey', { id: 'mirror-mixed-player' });
+    const mixedRoll = equipment.rollMirroredPieceLoadout(mixedEnemy, {
+      player: mixedPlayer,
+      tier: 'normal',
+      seed: 101,
+    });
+    const playerRarities = raritiesOf(mixedPlayer.equipment).sort();
+    const enemyRarities = raritiesOf(mixedRoll.equipment).sort();
+    if (playerRarities.join(',') !== enemyRarities.join(',')) {
+      fail(`mixed player mirror rarities: expected ${playerRarities.join(',')}, got ${enemyRarities.join(',')}`);
+    } else ok(`mixed player mirror preserves rarity mix (${enemyRarities.join('+')})`);
   } else {
     ok('player mirror count skipped (no grey sample items)');
   }

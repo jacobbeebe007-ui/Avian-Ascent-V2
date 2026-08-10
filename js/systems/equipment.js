@@ -1040,6 +1040,19 @@
     return best;
   }
 
+  function equippedRarityBag(player) {
+    if (!player || !player.equipment || typeof player.equipment !== 'object') return [];
+    var order = getSlotOrder();
+    var bag = [];
+    for (var i = 0; i < order.length; i++) {
+      var id = player.equipment[order[i]];
+      if (!id) continue;
+      var item = getItem(id);
+      if (item) bag.push(normalizeEquipmentRarity(item.rarity));
+    }
+    return bag;
+  }
+
   function bumpRarity(rarity, steps) {
     var rar = normalizeEquipmentRarity(rarity);
     var idx = RARITY_ORDER.indexOf(rar);
@@ -1064,14 +1077,17 @@
     var upgradeCount = Math.max(0, Math.floor(Number(opts.upgradeCount)) || 0);
     upgradeCount = Math.min(upgradeCount, count);
     var rng = opts.rng || Math.random;
+    var sourceRarities = Array.isArray(opts.rarities) ? opts.rarities : [];
     var bag = [];
-    for (var i = 0; i < count; i++) bag.push(base);
+    for (var i = 0; i < count; i++) {
+      bag.push(sourceRarities[i] ? normalizeEquipmentRarity(sourceRarities[i]) : base);
+    }
     if (upgradeCount > 0 && count > 0) {
       var idxs = [];
       for (var j = 0; j < count; j++) idxs.push(j);
       shuffleInPlace(idxs, rng);
       for (var u = 0; u < upgradeCount; u++) {
-        bag[idxs[u]] = bumpRarity(base, 1);
+        bag[idxs[u]] = bumpRarity(bag[idxs[u]], 1);
       }
     }
     return bag;
@@ -1109,6 +1125,7 @@
     var count = opts.pieceCount != null
       ? Math.max(0, Math.floor(Number(opts.pieceCount)) || 0)
       : countEquippedPieces(player);
+    var playerRarities = opts.baseRarity ? [] : equippedRarityBag(player);
     var baseRarity = opts.baseRarity
       ? normalizeEquipmentRarity(opts.baseRarity)
       : modalEquippedRarity(player);
@@ -1126,6 +1143,7 @@
     var bag = buildEndlessMirrorRarityBag({
       count: count,
       baseRarity: baseRarity,
+      rarities: playerRarities,
       upgradeCount: upgradeCount,
       rng: rng,
     });
