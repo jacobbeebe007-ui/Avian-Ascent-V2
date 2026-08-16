@@ -6,10 +6,12 @@ This document defines the intended Endless-mode progression behavior used by `js
 
 - Endless uses the same story-derived base scaling curve as Story battles.
 - With the Endless node map active, combats scale as endless from the first map fight (not only after Stage 20).
-- After Story completion (`Stage 20`) on legacy non-map endless, Endless applies an additional ramp to effective enemy level as endless battles increase.
-- Enemy growth is intentionally **not capped at level 10** (or any Story-end cap). Endless scaling continues indefinitely.
-- Difficulty multiplier (`DIFFICULTIES.*.mult`) scales **all** enemy combat stats (HP, ATK, MATK, DEF, MDEF, SPD, ACC, dodge).
-- After player bird level ≥ 20 and enemy effective level ≥ 20, an extra **+5% all combat stats** ramp applies every 3 endless battles (`floor(endlessBattle / 3)` steps).
+- Endless battle depth does not increase enemy levels or apply an additional combat-stat multiplier.
+- Enemy strength follows the player's current bird level and equipped gear whenever combat begins.
+- **Fletchling:** player level −1, one fewer equipped item, and every mirrored item one rarity lower.
+- **Juvenile:** the same level, item count, and per-item rarity mix as the player.
+- **Predator:** player level +1 and one additional item at the player's rarity mix, up to the equipment-slot limit.
+- **Murder:** player level +1 or +2, one or two additional items (up to the slot limit), and every mirrored item one rarity higher. The variation is deterministic for each enemy.
 
 ## Endless node map (STS-style)
 
@@ -55,12 +57,10 @@ With the map active, bosses are segment-end nodes and shops are Merchant (or Unk
 
 ## Enemy roster & equipment (endless)
 
-- Normal endless enemies are picked from `normalByLevel` at the player's bird level (±1 for variety), clamped 1–20.
-- Boss endless enemies use `bossesByLevel` at the nearest boss tier (10 / 20 / 30) with effective level at player level or player level + 1.
+- Normal endless enemy species are picked from `normalByLevel` near the player's bird level; their combat level is then replaced by the selected difficulty's player-relative rule.
+- Boss enemy species use `bossesByLevel` at the nearest authored boss tier; their combat level follows the same difficulty rule as normal enemies.
 - Enemy **equipment piece count** mirrors the player's currently equipped slot count when the fight starts.
-- Base rarity is the player's modal equipped rarity (`grey` fallback).
-- **Elite:** same count; **1** piece is +1 rarity tier above that base.
-- **Boss:** same count; **2** pieces are +1 rarity tier above that base (capped at orange).
+- Equipment item count and rarity are adjusted only by the selected difficulty rules above; Endless elites and bosses do not receive additional gear upgrades from their encounter type.
 
 ## Rewards (endless map)
 

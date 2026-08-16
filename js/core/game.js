@@ -4112,16 +4112,12 @@ function resolveEnemyWorkbookLevel(ed, opts={}){
       ? Math.floor(fromEnemy)
       : resolveStoryLevelFromStage(stage);
   } else if(opts.isEndless){
-    const storyLv=Math.max(1, Math.floor(Number(ed?.storyLevel||ed?.effectiveLevel)||1));
-    level=Math.max(storyLv, playerLv);
-    if(typeof computeEnemyEffectiveLevel==='function'){
-      level=Math.max(level, computeEnemyEffectiveLevel(stage, playerLv, true));
-    }
+    level=playerLv+getEndlessDifficultyLevelOffset(opts.difficulty||G?.difficulty||'juvenile',ed);
   } else {
     const storyLv=Math.max(1, Math.floor(Number(ed?.storyLevel||ed?.effectiveLevel)||1));
     level=Math.max(storyLv, playerLv);
   }
-  if(profile && Number.isFinite(profile.levelOffset)){
+  if(!opts.isEndless && profile && Number.isFinite(profile.levelOffset)){
     level=level+Number(profile.levelOffset);
   }
   return Math.max(1, Math.floor(level));
@@ -4277,21 +4273,10 @@ function applyEnemyStatsFromPlayerProgression(ed, opts={}){
   const diffMult=Number(opts.diffMult);
   let mult=Number.isFinite(diffMult)&&diffMult>0?diffMult:1;
 
-  /* Endless post-L20 ramp (docs/endless-mode-scaling.md): +5% every 3 battles once both ≥20. */
-  if(opts.isEndless){
-    const stage=Math.max(1, Math.floor(Number(opts.stage)||G?.stage||1));
-    const endlessBattle=typeof getEndlessEffectiveBattleNumber==='function'
-      ? getEndlessEffectiveBattleNumber(stage)
-      : Math.max(0, stage-20);
-    const pl=Math.max(1, Math.floor(Number(opts.playerBirdLevel)||G?.player?.birdLevel||1));
-    if(endlessBattle>0 && pl>=20 && rawLevel>=20){
-      const rampSteps=Math.floor(endlessBattle/3);
-      mult*=(1+rampSteps*0.05);
-    }
-    /* Levels above workbook cap: +4% core stats per level past 30. */
-    if(rawLevel>30){
-      mult*=(1+(rawLevel-30)*0.04);
-    }
+  /* Endless strength comes from player-relative level and equipment, not battle depth. */
+  if(opts.isEndless && rawLevel>30){
+    /* Workbook growth ends at 30; continue the selected player-relative level at 4% per excess level. */
+    mult*=(1+(rawLevel-30)*0.04);
   }
 
   const hp=roundCombatStat(Math.max(0.01, core.maxHp*mult),0.01);
@@ -4335,12 +4320,14 @@ function applyEnemyStatsFromPlayerProgression(ed, opts={}){
 /** Apply the same scaling merge loadStage uses; mutates ed in place. */
 function mergeScaledStatsIntoEnemy(ed, encounterStage){
   if(!ed) return ed;
-  const diffMult = DIFFICULTIES[G.difficulty||'juvenile'].mult;
+  const endless=G.endlessMode && (encounterStage>20 || isEndlessMapActive());
+  const diffMult = endless ? 1 : DIFFICULTIES[G.difficulty||'juvenile'].mult;
   const scaleOpts={
-    isEndless:(G.endlessMode && (encounterStage>20 || isEndlessMapActive())),
+    isEndless:endless,
     isStory:!G.endlessMode,
     diffMult,
     playerBirdLevel:Math.max(1, Math.floor(G.player?.birdLevel||1)),
+    difficulty:G.difficulty||'juvenile',
     forceElite: !!(ed.isElite || G._endlessMapCombatKind==='elite' || G.endlessMap?.pendingCombatKind==='elite'),
     isBoss:!!ed.isBoss,
     stage:Math.max(1, Math.floor(Number(encounterStage)||G.stage||1)),
@@ -4901,6 +4888,7 @@ function ensureEnemyPreviewEquipmentState(enemy){
       stage: (!endless && stage<=20) ? stage : undefined,
       mirrorPlayerEquipment: !!endless,
       player: G && G.player,
+      difficulty: G && G.difficulty,
     });
     eq=rolled && rolled.equipment ? rolled.equipment : null;
   }
@@ -5390,7 +5378,7 @@ function buildStoryEnemyFromBirdKey(birdKey, stage, opts={}){
     }
   }
   const evolvedSlots=getStoryEvolvedSlotCount(level);
-  const diffMult = DIFFICULTIES[G.difficulty||'juvenile']?.mult || 1;
+  const diffMult = opts.isEndless ? 1 : (DIFFICULTIES[G.difficulty||'juvenile']?.mult || 1);
   const size=bd.size||'medium';
   const enProf=getEnemyEnergyProfile();
   const aiStyle=(['predator','striker'].includes(cls)?'aggressive':(cls==='tank'?'defensive':(cls==='trickster'?'trickster':'cautious')));
@@ -5417,6 +5405,7 @@ function buildStoryEnemyFromBirdKey(birdKey, stage, opts={}){
   };
   const progressed=applyEnemyStatsFromPlayerProgression(draft,{
     playerBirdLevel:plv,
+    difficulty:G.difficulty||'juvenile',
     diffMult,
     isBoss:!!opts.isBoss,
     isEndless:!!opts.isEndless,
@@ -7550,6 +7539,7 @@ function prepareEnemyCombatLoadout(enemy){
         stage: useStoryRecipe ? stage : undefined,
         mirrorPlayerEquipment: !!endless,
         player: G && G.player,
+        difficulty: G && G.difficulty,
       });
     }else if(typeof Avian?.equipmentActions?.syncEntityAbilities==='function'){
       Avian.equipmentActions.syncEntityAbilities(enemy);
@@ -11618,15 +11608,12 @@ function resolveEnemyTier(enemyBase, forceTier=''){
 // - Elite random spawns disabled (combatResolveEnemyTier never promotes to elite).
 const ENEMY_PLAYER_LEVEL_TO_EFFECTIVE = 0.42;
 // Endless scaling design notes:
-// - Endless reuses the same stage-derived curve Story uses.
-// - After Story clears (Stage 20), endless adds an extra ramp every N battles.
-// - Effective level growth is intentionally unbounded (no level-10/story-end cap).
+// - Endless reuses Story's stat-growth tables, but combat depth adds no power.
+// - Enemy level is derived from the player's current level plus the difficulty offset.
+// - Levels beyond the workbook cap continue through the player-relative overflow rule.
 const ENDLESS_STORY_END_STAGE = 20;
 const ENDLESS_BOSS_CADENCE = 20;
 const ENDLESS_SHOP_CADENCE = 10;
-const ENEMY_ENDLESS_EXTRA_LEVEL_EVERY = 5;
-const ENEMY_ENDLESS_EXTRA_LEVEL_STEP = 3;
-const ENEMY_ENDLESS_EXTRA_LEVEL_BONUS_EVERY = 3;
 const ENEMY_HP_PER_LEVEL_BY_SIZE = Object.freeze({tiny:2.55,small:3.3,medium:3.95,large:4.7,xl:5.55});
 const ENEMY_ATK_PER_LEVEL_BY_SIZE = Object.freeze({tiny:0.45,small:0.55,medium:0.64,large:0.72,xl:0.81});
 const ENEMY_MATK_PER_LEVEL_BY_SIZE = Object.freeze({tiny:0.51,small:0.62,medium:0.70,large:0.77,xl:0.83});
@@ -11635,6 +11622,19 @@ const ENEMY_MATK_PER_LEVEL_BY_SIZE = Object.freeze({tiny:0.51,small:0.62,medium:
 function getEndlessEffectiveBattleNumber(stage){
   const s=Math.max(1,Math.floor(Number(stage)||1));
   return Math.max(0,s-ENDLESS_STORY_END_STAGE);
+}
+
+function getEndlessDifficultyLevelOffset(difficulty, enemy){
+  const diff=String(difficulty||'juvenile').toLowerCase();
+  if(diff==='fletchling') return -1;
+  if(diff==='predator') return 1;
+  if(diff==='murder'){
+    const key=String(enemy?.id||enemy?.rosterId||enemy?.birdKey||enemy?.name||'enemy');
+    let hash=0;
+    for(let i=0;i<key.length;i++) hash=((hash*31)+key.charCodeAt(i))>>>0;
+    return 1+(hash%2);
+  }
+  return 0;
 }
 
 const ENDLESS_RANDOM_MUTATION_TIERS = Object.freeze(['white', 'green', 'blue', 'purple', 'gold', 'orange']);
@@ -11744,16 +11744,13 @@ function buildMutationRewardPool(){
   return tiers.map(tier=>pickUniqueMutationReward(tier, used, isBoss)).filter(Boolean);
 }
 
-function computeEnemyEffectiveLevel(stage, playerBirdLevel, isEndless){
+function computeEnemyEffectiveLevel(stage, playerBirdLevel, isEndless, difficulty, enemy){
   const s=Math.max(1,Math.floor(stage||1));
   const pl=Math.max(1,Math.floor(playerBirdLevel||1));
-  let L=1+(s-1)+Math.floor((pl-1)*ENEMY_PLAYER_LEVEL_TO_EFFECTIVE);
-  const endlessBattle=getEndlessEffectiveBattleNumber(s);
-  if(isEndless && endlessBattle>0){
-    // Keep endless growth uncapped after stage 20.
-    L+=Math.floor(endlessBattle/ENEMY_ENDLESS_EXTRA_LEVEL_EVERY)*ENEMY_ENDLESS_EXTRA_LEVEL_STEP;
-    L+=Math.floor(endlessBattle/ENEMY_ENDLESS_EXTRA_LEVEL_BONUS_EVERY);
+  if(isEndless){
+    return Math.max(1,pl+getEndlessDifficultyLevelOffset(difficulty||G?.difficulty||'juvenile',enemy));
   }
+  let L=1+(s-1)+Math.floor((pl-1)*ENEMY_PLAYER_LEVEL_TO_EFFECTIVE);
   return Math.max(1,L);
 }
 
@@ -11813,7 +11810,7 @@ function buildScaledEnemy(enemyBase, stage, opts={}){
   cc=Math.min(0.95,Math.max(0,cc+(classMod.ccAdd||0)));
   if(Number.isFinite(classMod.cdSet)) cd=classMod.cdSet;
 
-  const L=computeEnemyEffectiveLevel(s, opts.playerBirdLevel, isEndless);
+  const L=computeEnemyEffectiveLevel(s, opts.playerBirdLevel, isEndless, opts.difficulty, enemyBase);
   const gain=Math.max(0,L-1);
   const hpPL=ENEMY_HP_PER_LEVEL_BY_SIZE[sizeKey]??ENEMY_HP_PER_LEVEL_BY_SIZE.medium;
   const atkPL=ENEMY_ATK_PER_LEVEL_BY_SIZE[sizeKey]??ENEMY_ATK_PER_LEVEL_BY_SIZE.medium;
@@ -11847,24 +11844,10 @@ function buildScaledEnemy(enemyBase, stage, opts={}){
   mdef *= storyMult;
   spd *= storyMult;
 
-  const endlessBattle=isEndless?getEndlessEffectiveBattleNumber(s):0;
-  const pl=Math.max(1,Math.floor(opts.playerBirdLevel||1));
-  let rampMult=1;
-  if(isEndless&&endlessBattle>0&&pl>=20&&L>=20){
-    const rampSteps=Math.floor(endlessBattle/3);
-    rampMult=1+rampSteps*0.05;
-  }
-  hp*=rampMult;
-  atk*=rampMult;
-  matk*=rampMult;
-  def*=rampMult;
-  mdef*=rampMult;
-  spd*=rampMult;
-
   let acc=Math.max(60,Math.min(96,Math.floor(accBase+Math.floor(gain/4)+(tier==='boss'?2:0))));
   let dodge=Math.max(0,Math.min(42,Math.floor(base.dodge+Math.floor(gain/6)+(tier==='boss'?2:0))));
-  acc=Math.max(60,Math.min(96,Math.floor(acc*diffMult*storyMult*rampMult)));
-  dodge=Math.max(0,Math.min(42,Math.floor(dodge*diffMult*storyMult*rampMult)));
+  acc=Math.max(60,Math.min(96,Math.floor(acc*diffMult*storyMult)));
+  dodge=Math.max(0,Math.min(42,Math.floor(dodge*diffMult*storyMult)));
 
   hp=Math.max(1,Math.round(hp));
   atk=Math.max(1,Math.round(atk));
