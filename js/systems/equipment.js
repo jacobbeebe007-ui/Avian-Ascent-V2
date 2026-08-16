@@ -1070,6 +1070,17 @@
     return 0;
   }
 
+  function getEndlessEquipmentDifficultyRule(difficulty, enemy) {
+    var diff = String(difficulty || 'juvenile').toLowerCase();
+    if (diff === 'fletchling') return { pieceDelta: -1, rarityOffset: -1 };
+    if (diff === 'predator') return { pieceDelta: 1, rarityOffset: 0 };
+    if (diff === 'murder') {
+      var key = String(enemy && (enemy.id || enemy.rosterId || enemy.birdKey || enemy.name) || 'enemy');
+      return { pieceDelta: 1 + (hashSeedString(key + '|items') % 2), rarityOffset: 1 };
+    }
+    return { pieceDelta: 0, rarityOffset: 0 };
+  }
+
   function buildEndlessMirrorRarityBag(opts) {
     opts = opts || {};
     var count = Math.max(0, Math.floor(Number(opts.count)) || 0);
@@ -1122,17 +1133,29 @@
     opts = opts || {};
     var classId = getEnemyClassId(enemy);
     var player = opts.player || (globalThis.G && globalThis.G.player) || null;
-    var count = opts.pieceCount != null
+    var difficultyRule = getEndlessEquipmentDifficultyRule(opts.difficulty, enemy);
+    var baseCount = opts.pieceCount != null
       ? Math.max(0, Math.floor(Number(opts.pieceCount)) || 0)
       : countEquippedPieces(player);
+    var pieceDelta = opts.pieceDelta != null
+      ? Math.floor(Number(opts.pieceDelta)) || 0
+      : difficultyRule.pieceDelta;
+    var count = Math.max(0, Math.min(getSlotOrder().length, baseCount + pieceDelta));
     var playerRarities = opts.baseRarity ? [] : equippedRarityBag(player);
+    var rarityOffset = opts.rarityOffset != null
+      ? Math.floor(Number(opts.rarityOffset)) || 0
+      : difficultyRule.rarityOffset;
+    if (rarityOffset) {
+      playerRarities = playerRarities.map(function (rarity) { return bumpRarity(rarity, rarityOffset); });
+    }
     var baseRarity = opts.baseRarity
       ? normalizeEquipmentRarity(opts.baseRarity)
       : modalEquippedRarity(player);
+    baseRarity = bumpRarity(baseRarity, rarityOffset);
     var tier = opts.tier || enemy.combatTier || enemy.enemyTier || (enemy.isBoss ? 'boss' : (enemy.isElite ? 'elite' : 'normal'));
     var upgradeCount = opts.upgradeCount != null
       ? Math.max(0, Math.floor(Number(opts.upgradeCount)) || 0)
-      : upgradeCountForEnemyTier(tier);
+      : (opts.difficulty ? 0 : upgradeCountForEnemyTier(tier));
     upgradeCount = Math.min(upgradeCount, count);
     var seed = computeLoadoutSeed(enemy, Object.assign({}, opts, {
       rarity: 'mirror',
@@ -1160,6 +1183,7 @@
       mirror: {
         pieceCount: count,
         baseRarity: baseRarity,
+        rarityOffset: rarityOffset,
         upgradeCount: upgradeCount,
         bag: bag.slice(),
       },
@@ -1387,6 +1411,7 @@
   equipment.modalEquippedRarity = modalEquippedRarity;
   equipment.bumpRarity = bumpRarity;
   equipment.upgradeCountForEnemyTier = upgradeCountForEnemyTier;
+  equipment.getEndlessEquipmentDifficultyRule = getEndlessEquipmentDifficultyRule;
   equipment.buildEndlessMirrorRarityBag = buildEndlessMirrorRarityBag;
   equipment.rollMirroredPieceLoadout = rollMirroredPieceLoadout;
   equipment.rollEnemyEquipmentLoadout = rollEnemyEquipmentLoadout;

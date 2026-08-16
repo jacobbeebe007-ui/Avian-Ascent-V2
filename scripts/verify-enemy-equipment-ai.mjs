@@ -387,26 +387,32 @@ assertMirror('elite-1', { pieceCount: 1, baseRarity: 'blue', tier: 'elite' }, {
   count: 1, upgraded: 'purple', upgradedCount: 1,
 });
 
-/* Endless difficulty grows every battle rather than jumping at 3/5-battle boundaries. */
-if (typeof sandbox.getEndlessExtraEffectiveLevels !== 'function'
-    || typeof sandbox.getEndlessStatRampMultiplier !== 'function') {
-  fail('smooth endless scaling helpers are exported');
+/* Endless level is player-relative and no longer grows with battle depth. */
+if (typeof sandbox.getEndlessDifficultyLevelOffset !== 'function') {
+  fail('endless difficulty level helper is exported');
 } else {
-  const levelGrowth = Array.from({ length: 12 }, (_, i) => sandbox.getEndlessExtraEffectiveLevels(i));
-  const statGrowth = Array.from({ length: 12 }, (_, i) => sandbox.getEndlessStatRampMultiplier(i));
-  const levelSteps = levelGrowth.slice(1).map((value, i) => value - levelGrowth[i]);
-  const statSteps = statGrowth.slice(1).map((value, i) => value - statGrowth[i]);
-  const nearlyEqual = (values) => values.every((value) => Math.abs(value - values[0]) < 1e-10);
-  if (!nearlyEqual(levelSteps) || !levelSteps.every((value) => value > 0)) {
-    fail(`endless effective levels are not smooth: ${levelSteps.join(',')}`);
-  } else ok(`endless effective level grows evenly (+${levelSteps[0].toFixed(3)}/battle)`);
-  if (!nearlyEqual(statSteps) || !statSteps.every((value) => value > 0)) {
-    fail(`endless stat ramp is not smooth: ${statSteps.join(',')}`);
-  } else ok(`endless stat ramp grows evenly (+${(statSteps[0] * 100).toFixed(3)}%/battle)`);
-  if (Math.abs(sandbox.getEndlessExtraEffectiveLevels(15) - 14) > 1e-10
-      || Math.abs(sandbox.getEndlessStatRampMultiplier(3) - 1.05) > 1e-10) {
-    fail('smooth endless curve changed the intended long-run growth rate');
-  } else ok('smooth endless curve preserves the prior long-run growth rate');
+  const levelEnemy = { id: 'difficulty-level-check' };
+  const expected = { fletchling: -1, juvenile: 0, predator: 1 };
+  for (const [difficulty, offset] of Object.entries(expected)) {
+    if (sandbox.getEndlessDifficultyLevelOffset(difficulty, levelEnemy) !== offset) {
+      fail(`${difficulty} endless level offset is not ${offset}`);
+    } else ok(`${difficulty} endless level offset ${offset}`);
+  }
+  const murderOffset = sandbox.getEndlessDifficultyLevelOffset('murder', levelEnemy);
+  if (![1, 2].includes(murderOffset)) fail(`murder endless level offset invalid: ${murderOffset}`);
+  else ok(`murder endless level offset is ${murderOffset}`);
+  if (typeof sandbox.resolveEnemyWorkbookLevel === 'function') {
+    sandbox.G.player.birdLevel = 18;
+    for (const difficulty of ['fletchling', 'juvenile', 'predator', 'murder']) {
+      sandbox.G.difficulty = difficulty;
+      const offset = sandbox.getEndlessDifficultyLevelOffset(difficulty, levelEnemy);
+      const early = sandbox.resolveEnemyWorkbookLevel(levelEnemy, { isEndless: true, difficulty, stage: 21, playerBirdLevel: 18 });
+      const late = sandbox.resolveEnemyWorkbookLevel(levelEnemy, { isEndless: true, difficulty, stage: 200, playerBirdLevel: 18 });
+      if (early !== 18 + offset || late !== early) {
+        fail(`${difficulty} endless level should be player-relative and depth-independent: ${early}/${late}`);
+      } else ok(`${difficulty} endless level remains ${early} at any battle depth`);
+    }
+  } else fail('resolveEnemyWorkbookLevel is exported');
 }
 
 if (typeof equipment.countEquippedPieces === 'function') {
@@ -452,6 +458,34 @@ if (typeof equipment.countEquippedPieces === 'function') {
     if (playerRarities.join(',') !== enemyRarities.join(',')) {
       fail(`mixed player mirror rarities: expected ${playerRarities.join(',')}, got ${enemyRarities.join(',')}`);
     } else ok(`mixed player mirror preserves rarity mix (${enemyRarities.join('+')})`);
+
+    const difficultyPlayer = { equipment: equipment.createEmptyLoadout() };
+    ['mainHand', 'armour', 'helmet'].forEach((slotKey) => {
+      const slotName = { mainHand: 'Weapon', armour: 'Armour', helmet: 'Helmet' }[slotKey];
+      const item = Object.values(Avian.data.equipment.items).find((it) =>
+        it && it.rarity === 'green' && it.slot === slotName
+      );
+      if (item) difficultyPlayer.equipment[slotKey] = item.id;
+    });
+    const difficultyCases = {
+      fletchling: { counts: [2], rarity: 'grey' },
+      juvenile: { counts: [3], rarity: 'green' },
+      predator: { counts: [4], rarity: 'green' },
+      murder: { counts: [4, 5], rarity: 'blue' },
+    };
+    for (const [difficulty, expectedRule] of Object.entries(difficultyCases)) {
+      const difficultyEnemy = makeEnemy('rogue', 'grey', { id: `difficulty-${difficulty}` });
+      const result = equipment.rollMirroredPieceLoadout(difficultyEnemy, {
+        player: difficultyPlayer,
+        difficulty,
+        seed: 220 + difficulty.length,
+      });
+      const resultRarities = raritiesOf(result.equipment);
+      if (!expectedRule.counts.includes(result.filledCount)
+          || !resultRarities.every((rarity) => rarity === expectedRule.rarity)) {
+        fail(`${difficulty} equipment rule: ${result.filledCount} pieces [${resultRarities.join(',')}]`);
+      } else ok(`${difficulty} equipment rule: ${result.filledCount} ${expectedRule.rarity} pieces`);
+    }
   } else {
     ok('player mirror count skipped (no grey sample items)');
   }
