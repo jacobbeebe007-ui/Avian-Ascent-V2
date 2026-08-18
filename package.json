@@ -28,11 +28,19 @@
     "verify-affinity-arsenal": "node scripts/verify-affinity-arsenal-content.mjs",
     "import-master-bird": "node scripts/import-master-bird-content.mjs",
     "import-test-map": "node scripts/import-test-map.mjs",
-    "verify-roster": "node scripts/verify-enemy-roster.mjs && node scripts/verify-story-level-bands.mjs && node scripts/verify-encounter-generator.mjs"
+    "verify-roster": "node scripts/verify-enemy-roster.mjs && node scripts/verify-story-level-bands.mjs && node scripts/verify-encounter-generator.mjs",
+    "android:add": "npm run build && cap add android",
+    "android:sync": "npm run build && cap sync android",
+    "android:open": "cap open android"
   },
   "devDependencies": {
     "esbuild": "^0.25.0",
     "playwright": "^1.52.0",
-    "vite": "^6.3.5"
+    "vite": "^6.3.5",
+    "@capacitor/cli": "^7.4.3"
+  },
+  "dependencies": {
+    "@capacitor/android": "^7.4.3",
+    "@capacitor/core": "^7.4.3"
   }
 }

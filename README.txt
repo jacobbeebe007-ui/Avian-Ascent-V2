@@ -55,3 +55,12 @@ If GitHub says the merge is too complex
   4) Resolve conflicts, then run `npm test`
   5) `git push --force-with-lease` (for rebase) or `git push` (for merge)
 - If the PR is still too large, split it into smaller PRs (sprites/paths, gameplay, UI) so GitHub can evaluate checks and diffs reliably.
+
+Android (Capacitor)
+- Requirements: Node.js, Android Studio, and an Android SDK/JDK supported by the installed Capacitor version.
+- Install dependencies with `npm install`.
+- Create the production web output and native project once with `npm run android:add`.
+- After changing the game, copy a fresh production build into Android with `npm run android:sync`.
+- Open the generated `android/` project in Android Studio with `npm run android:open` to run, sign, and publish the app.
+- The permanent Android application ID is `com.jacobbeebe.avianascent`; Capacitor serves the relative-path Vite build from `dist/`.
+- The generated `android/` project should be committed after `android:add` has run successfully so native settings and icons can be maintained in source control.
