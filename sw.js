@@ -12,7 +12,7 @@ const PRECACHE = [
   './js/ui/error-hud.js',
   './js/audio/bgm-shared.js',
   './js/avian-game.bundle.js',
-  './blackstone_overworld_new.html',
+  
   './assets/audio/Blakiston_Theme.mp3',
   './assets/audio/Duke_Blakiston_Battle.mp3',
   './assets/audio/Sharp_Beak_Quick_Wing.mp3',
