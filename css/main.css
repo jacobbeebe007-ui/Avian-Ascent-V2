@@ -3844,9 +3844,9 @@ html.avian-ow-nest-embed .nest-close{display:none!important;}
 .nest-section{margin-bottom:20px;}
 .nest-section-title{font-family:"Cinzel",serif;font-size:.78rem;letter-spacing:.12em;color:var(--text-dim);margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid var(--border);text-transform:uppercase;}
 .nest-stats-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:6px;}
-.nest-stat-card{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px;text-align:center;}
-.nest-stat-val{font-family:"Cinzel",serif;font-size:1.2rem;color:var(--gold);}
-.nest-stat-lbl{font-size:.72rem;color:var(--text-dim);margin-top:2px;}
+.nest-stat-card{background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:6px 7px;text-align:center;}
+.nest-stat-val{font-family:"Cinzel",serif;font-size:.96rem;color:var(--gold);line-height:1.2;}
+.nest-stat-lbl{font-size:.62rem;color:var(--text-dim);margin-top:1px;}
 .nest-abilities-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;}
 .nest-ab-card{background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px;}
 .nest-ab-name{font-family:"Cinzel",serif;font-size:.9rem;margin-bottom:3px;}
@@ -5533,6 +5533,42 @@ body.ui-mobile-mode #screen-battle .battle-log{
 }
 
 /* ===== Combat screen arrangements (Display settings) ===== */
+#screen-battle.combat-arr--tactical .battle-layout{
+  display:grid !important;
+  grid-template-columns:minmax(0,1.65fr) minmax(240px,.75fr);
+  grid-template-rows:auto minmax(300px,auto) auto;
+  gap:12px 14px;
+  align-items:start;
+}
+#screen-battle.combat-arr--tactical .battle-top,
+#screen-battle.combat-arr--tactical .combatants{grid-column:1 / -1;}
+#screen-battle.combat-arr--tactical .combatants{
+  display:grid !important;
+  grid-template-columns:minmax(0,1fr) minmax(0,1fr) !important;
+  gap:clamp(16px,4vw,56px);
+  padding:8px clamp(4px,3vw,36px) 14px;
+  align-items:stretch;
+}
+#screen-battle.combat-arr--tactical .battle-below-combatants{display:contents;}
+#screen-battle.combat-arr--tactical .action-panel{
+  grid-column:1;
+  border-color:rgba(201,168,76,.4);
+  box-shadow:0 12px 28px rgba(0,0,0,.34),inset 0 1px rgba(255,255,255,.035);
+}
+#screen-battle.combat-arr--tactical .battle-support-area{grid-column:2;align-self:stretch;min-height:0;}
+#screen-battle.combat-arr--tactical .battle-log-section{height:100%;display:flex;flex-direction:column;}
+#screen-battle.combat-arr--tactical .battle-log{height:auto !important;min-height:180px;flex:1;}
+#screen-battle.combat-arr--tactical .actions-grid{grid-template-columns:repeat(3,minmax(0,1fr));}
+#screen-battle.combat-arr--tactical .combatant-panel{padding-inline:clamp(10px,2vw,24px) !important;}
+#screen-battle.combat-arr--tactical .combatant-name{text-align:center;font-size:1rem !important;}
+#screen-battle.combat-arr--tactical .combatant-meta{text-align:center;}
+@media(max-width:767px){
+  #screen-battle.combat-arr--tactical .battle-layout{display:flex !important;flex-direction:column;gap:8px;}
+  #screen-battle.combat-arr--tactical .combatants{grid-template-columns:1fr 1fr !important;gap:8px;padding:0;}
+  #screen-battle.combat-arr--tactical .actions-grid{grid-template-columns:repeat(2,minmax(0,1fr));}
+  #screen-battle.combat-arr--tactical .battle-log{min-height:88px;}
+}
+
 #screen-battle.combat-arr--classic .battle-layout{
   display:grid !important;
   grid-template-rows:auto auto 1fr auto auto;
