@@ -2733,8 +2733,8 @@ function handleNestEquipmentClick(ev){
 function selectNestTab(tab){
   const content=document.getElementById('nest-content');
   if(!content) return;
-  const allowed=['profile','equipment','abilities','rewards'];
-  const active=allowed.includes(tab)?tab:'profile';
+  const allowed=['equipment','profile','abilities','rewards'];
+  const active=allowed.includes(tab)?tab:'equipment';
   G._nestActiveTab=active;
   content.querySelectorAll('[data-nest-tab]').forEach(btn=>{
     const selected=btn.dataset.nestTab===active;
@@ -2758,12 +2758,12 @@ function organizeNestSections(content){
     section.dataset.nestPanel=panel;
   });
   content.insertAdjacentHTML('afterbegin',`<div class="nest-tabs" role="tablist" aria-label="Nest sections">
-    <button type="button" role="tab" data-nest-tab="profile">🐦 Profile</button>
     <button type="button" role="tab" data-nest-tab="equipment">⚙ Equipment</button>
+    <button type="button" role="tab" data-nest-tab="profile">📊 Stats</button>
     <button type="button" role="tab" data-nest-tab="abilities">⚔ Abilities</button>
     <button type="button" role="tab" data-nest-tab="rewards">✨ Run bonuses</button>
   </div>`);
-  selectNestTab(G._nestActiveTab||'profile');
+  selectNestTab(G._nestActiveTab||'equipment');
 }
 
 function buildNestAbilitySection(player){
@@ -19888,10 +19888,11 @@ function resolveUiMode(cfg){
   if(c.uiAutoDetect!==false) return detectPreferredUIMode();
   return (c.uiMode==='desktop')?'desktop':'mobile';
 }
-const COMBAT_ARRANGEMENTS=['classic','compact','actionsFirst','logFocus','custom'];
-const DEFAULT_COMBAT_ARRANGEMENT='classic';
+const COMBAT_ARRANGEMENTS=['tactical','classic','compact','actionsFirst','logFocus','custom'];
+const DEFAULT_COMBAT_ARRANGEMENT='tactical';
 const COMBAT_ARRANGEMENT_HINTS={
-  classic:'Original: birds side by side, then actions and battle log.',
+  tactical:'Tactical Deck: a focused arena above a two-column command deck for actions and battle history.',
+  classic:'Classic (Legacy): birds side by side, followed by the full-width actions and battle log.',
   compact:'Compact: stacked layout with smaller panels — good for phones or tight screens.',
   actionsFirst:'Actions First: ability tray above birds so you can act without scrolling.',
   logFocus:'Log Focus: tall battle log beside the fight on wide screens; taller log when narrow.',
@@ -19999,7 +20000,7 @@ function bootstrapAccessibilityDefaults(){
       uiMode,
       uiAutoDetect:true,
       fontSize:uiMode==='mobile'?115:100,
-      combatArrangement:uiMode==='mobile'?'compact':'classic',
+      combatArrangement:uiMode==='mobile'?'compact':'tactical',
       stickyCombatants:false,
       autoCombatDensity:true,
       combatLayout:uiMode==='mobile'?MOBILE_DEFAULT_COMBAT_LAYOUT:DEFAULT_COMBAT_LAYOUT,
@@ -20235,7 +20236,7 @@ function applyCombatArrangement(cfg){
   if(id==='custom') applyCombatCustomPanels(cfg?.combatCustomLayout);
   syncCombatCustomEditRow(id);
   const hint=document.getElementById('setting-combat-arrangement-hint');
-  if(hint) hint.textContent=COMBAT_ARRANGEMENT_HINTS[id]||COMBAT_ARRANGEMENT_HINTS.classic;
+  if(hint) hint.textContent=COMBAT_ARRANGEMENT_HINTS[id]||COMBAT_ARRANGEMENT_HINTS.tactical;
   const sel=document.getElementById('setting-combat-arrangement');
   if(sel) sel.value=id;
 }
