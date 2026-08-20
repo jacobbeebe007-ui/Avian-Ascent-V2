@@ -6505,27 +6505,18 @@ function syncSfselRunSummary(){
   const diff=DIFFICULTIES?.[diffId]||DIFFICULTIES?.juvenile;
   const modeLabel=(ui.gameMode==='endless')?'♾ Endless':'📖 Story';
   const diffLabel=diff?(diff.emoji?`${diff.emoji} ${diff.label}`:diff.label):'Difficulty';
-  wrap.innerHTML=`<span class="sfsel__run-chip sfsel__run-chip--mode">${escapeHtmlRoster(modeLabel)}</span><span class="sfsel__run-chip">${escapeHtmlRoster(diffLabel)}</span>`;
+  const mapVariant=typeof globalThis.getMissionMapVariant==='function'?globalThis.getMissionMapVariant():'demo';
+  let mapLabel="🗺 Blakiston's Court";
+  if(mapVariant==='test'){
+    const entry=typeof globalThis.resolveMissionTestMapEntry==='function'
+      ?globalThis.resolveMissionTestMapEntry(_missionTestCatalogEntries||[])
+      :null;
+    const fallbackId=typeof globalThis.getMissionTestMapId==='function'?globalThis.getMissionTestMapId():'';
+    mapLabel=`🧪 ${entry?.name||fallbackId||'Test Map'}`;
+  }
+  wrap.innerHTML=`<span class="sfsel__run-chip">${escapeHtmlRoster(diffLabel)}</span><span class="sfsel__run-chip sfsel__run-chip--mode">${escapeHtmlRoster(modeLabel)}</span><span class="sfsel__run-chip sfsel__run-chip--map">${escapeHtmlRoster(mapLabel)}</span>`;
 }
 globalThis.syncSfselRunSummary=syncSfselRunSummary;
-
-function syncSfselSelectedLabel(){
-  const el=document.getElementById('sfsel-selected-label');
-  if(!el) return;
-  const key=G.selected;
-  const bird=key&&BIRDS[key]?BIRDS[key]:null;
-  if(!bird){
-    el.hidden=true;
-    el.textContent='';
-    return;
-  }
-  const tierPack=Avian?.data?.birdCardTiers;
-  const cardTier=typeof getBirdCardTier==='function'?getBirdCardTier(key):'grey';
-  const tierLabel=tierPack?.TIER_LABELS?.[cardTier]||cardTier;
-  const tierCss=tierPack?.TIER_CSS?.[cardTier]||'tier-grey';
-  el.hidden=false;
-  el.innerHTML=`Selected: <strong>${escapeHtmlRoster(bird.name)}</strong> <span class="bird-card-tier-badge ${tierCss}">${escapeHtmlRoster(tierLabel)}</span>`;
-}
 
 function syncSelectTakeFlightButton(){
   const btn=document.getElementById('take-flight-select-btn');
@@ -6536,7 +6527,6 @@ function syncSelectTakeFlightButton(){
   btn.classList.toggle('take-flight-select-btn--disabled', !ok);
   const bird=ok?BIRDS[G.selected]:null;
   btn.textContent=bird?`✈ Take Flight as ${bird.name}`:'✈ Take Flight';
-  syncSfselSelectedLabel();
   syncSfselRunSummary();
 }
 globalThis.syncSelectTakeFlightButton=syncSelectTakeFlightButton;
@@ -8107,6 +8097,7 @@ async function refreshMissionTestMapSelect(){
     }
   }
   syncMissionTestMapLabel();
+  syncSfselRunSummary();
 }
 
 globalThis.onMissionTestMapChange = function onMissionTestMapChange(mapId){
@@ -8114,6 +8105,7 @@ globalThis.onMissionTestMapChange = function onMissionTestMapChange(mapId){
     globalThis.setMissionTestMapId(mapId);
   }
   syncMissionTestMapLabel();
+  syncSfselRunSummary();
 };
 
 // Capture bridge persist BEFORE assigning the UI handler.
