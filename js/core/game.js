@@ -2339,6 +2339,7 @@ const DEFAULT_UI_STATE = Object.freeze({
   selectionView:'all',
   lockFilter:'unlocked',
   expandedBird:null,
+  characterSelectView:'birds',
 });
 
 function ensureUIState(){
@@ -2348,6 +2349,7 @@ function ensureUIState(){
   G.ui.selectionView = String(G.ui.selectionView || DEFAULT_UI_STATE.selectionView);
   G.ui.lockFilter = ['all','unlocked','locked'].includes(G.ui.lockFilter) ? G.ui.lockFilter : DEFAULT_UI_STATE.lockFilter;
   G.ui.expandedBird = G.ui.expandedBird ? String(G.ui.expandedBird) : null;
+  G.ui.characterSelectView = G.ui.characterSelectView==='profile' ? 'profile' : 'birds';
   return G.ui;
 }
 
@@ -6327,6 +6329,49 @@ function buildBirdCard(key, bird, locked) {
   return card;
 }
 
+function setCharacterSelectView(view, options={}){
+  const next=view==='profile' ? 'profile' : 'birds';
+  const ui=ensureUIState();
+  ui.characterSelectView=next;
+  const select=document.querySelector('.sfsel');
+  if(select) select.dataset.mobileView=next;
+
+  const isNarrow=globalThis.matchMedia?.('(max-width: 700px)').matches===true;
+  const tabs={
+    birds:document.getElementById('sfsel-roster-tab'),
+    profile:document.getElementById('sfsel-profile-tab'),
+  };
+  const panels={
+    birds:document.getElementById('sfsel-roster'),
+    profile:document.getElementById('sfsel-detail'),
+  };
+  Object.keys(tabs).forEach(name=>{
+    const active=name===next;
+    tabs[name]?.setAttribute('aria-selected', String(active));
+    tabs[name]?.setAttribute('tabindex', active ? '0' : '-1');
+    if(panels[name]) panels[name].setAttribute('aria-hidden', String(isNarrow && !active));
+  });
+  if(options.focusTab) tabs[next]?.focus();
+  if(options.focusPanel) panels[next]?.focus({preventScroll:true});
+}
+globalThis.setCharacterSelectView=setCharacterSelectView;
+function backToCharacterSelectBirds(){
+  setCharacterSelectView('birds',{focusTab:true});
+}
+globalThis.backToCharacterSelectBirds=backToCharacterSelectBirds;
+
+document.getElementById('sfsel-roster-tab')?.parentElement?.addEventListener('keydown', e=>{
+  if(!['ArrowLeft','ArrowRight','Home','End'].includes(e.key)) return;
+  e.preventDefault();
+  const next=(e.key==='ArrowLeft'||e.key==='Home') ? 'birds' : 'profile';
+  setCharacterSelectView(next,{focusTab:true});
+});
+
+globalThis.addEventListener?.('resize', ()=>{
+  const ui=ensureUIState();
+  setCharacterSelectView(ui.characterSelectView);
+});
+
 function selectBird(key, el) {
   primeAudioIfNeeded();
   const ui=ensureUIState();
@@ -6335,6 +6380,7 @@ function selectBird(key, el) {
   document.querySelectorAll('#bird-grid .bird-card').forEach(n=>n.classList.remove('selected'));
   if(el && el.classList) el.classList.add('selected');
   updateAscentPanel(key);
+  setCharacterSelectView('profile');
   if(el && typeof el.scrollIntoView==='function'){
     try{ el.scrollIntoView({block:'nearest', behavior:'smooth', inline:'nearest'}); }catch(_){ try{ el.scrollIntoView(false); }catch(__){} }
   }
@@ -6919,6 +6965,7 @@ function updateAscentPanel(key) {
         <span class="ascent-stat-chip"><abbr title="${ledgerStatLabel('dex')}">${ledgerStatLabel('dex',{short:true})}</abbr> <strong>${Number(dispStats.dex)||0}</strong></span>
         <span class="ascent-stat-chip"><abbr title="${ledgerStatLabel('def')}">${ledgerStatLabel('def',{short:true})}</abbr> <strong>${dispStats.def}</strong></span>
         <span class="ascent-stat-chip"><abbr title="${ledgerStatLabel('spd')}">${ledgerStatLabel('spd',{short:true})}</abbr> <strong>${dispStats.spd}</strong></span>
+        <span class="ascent-stat-chip"><abbr title="${ledgerStatLabel('acc')}">${ledgerStatLabel('acc',{short:true})}</abbr> <strong>${Number(dispStats.acc)||0}</strong></span>
         <span class="ascent-stat-chip"><abbr title="${ledgerStatLabel('matk')}">${ledgerStatLabel('matk',{short:true})}</abbr> <strong>${Number(dispStats.matk)||0}</strong></span>
         <span class="ascent-stat-chip"><abbr title="${ledgerStatLabel('mdef')}">${ledgerStatLabel('mdef',{short:true})}</abbr> <strong>${Number(dispStats.mdef)||0}</strong></span>
         <span class="ascent-stat-chip"><abbr title="${ledgerStatLabel('dodge')}">${ledgerStatLabel('dodge',{short:true})}</abbr> <strong>${Number(dispStats.dodge)||0}%</strong></span>
@@ -6957,50 +7004,44 @@ function updateAscentPanel(key) {
     const aspectChipHtml=birdAsp?`<span class="aspect-chip ascent-aspect-chip" id="ascent-aspect-chip" data-aspect-id="${escapeHtmlRoster(birdAsp)}">${escapeHtmlRoster(typeof formatAspectDisplayName==='function'?formatAspectDisplayName(birdAsp):birdAsp)}</span>`:'';
 
     panel.innerHTML = `
-      <div class="ascent-strip ascent-strip--filled ascent-strip--${tierCss}">
-        <div class="ascent-strip-portrait-wrap" aria-hidden="true"><div class="ascent-panel-portrait">${renderBirdIconHTML(key, sizeClass, false)}</div></div>
-        <div class="ascent-strip-body">
-          <div class="ascent-strip-title-row">
-            <span class="ascent-panel-name">${escapeHtmlRoster(bird.name)}</span>
-            <span class="class-badge class-${cls}">${escapeHtmlRoster(classLabel.toUpperCase())}</span>
-            ${aspectChipHtml}
-            <span class="bird-size-chip">${escapeHtmlRoster(sizeLabel)}</span>
-            <span class="bird-card-tier-badge ${tierCss}">${tierLabel}</span>
-            <span class="bird-card-rarity-badge ${rarityMeta.css}">${rarityLabel} species</span>
-            <span class="ascent-strip-tagline">${escapeHtmlRoster(bird.tagline||'')}</span>
+      <article class="ascent-strip ascent-strip--filled ascent-strip--${tierCss} sfsel-profile">
+        <header class="sfsel-profile__identity">
+          <div class="sfsel-profile__portrait" aria-hidden="true"><div class="ascent-panel-portrait">${renderBirdIconHTML(key, sizeClass, false)}</div></div>
+          <div class="sfsel-profile__identity-copy">
+            <div class="sfsel-profile__title">
+              <span class="ascent-panel-name">${escapeHtmlRoster(bird.name)}</span>
+              <span class="class-badge class-${cls}">${escapeHtmlRoster(classLabel.toUpperCase())}</span>
+              ${aspectChipHtml}
+              <span class="bird-size-chip">${escapeHtmlRoster(sizeLabel)}</span>
+              <span class="bird-card-rarity-badge ${rarityMeta.css}">${rarityLabel} species</span>
+              <span class="bird-card-tier-badge ${tierCss}">${tierLabel}</span>
+              <span class="ascent-card-stars-wrap" aria-label="${cardStars} of ${maxStars} stars">${starsHtml}</span>
+            </div>
+            <div class="ascent-strip-tagline">${escapeHtmlRoster(bird.tagline||'')}</div>
+            ${cardHint}
+            <div class="sfsel-profile__progression" aria-label="Species progression">
+              ${ownsCard?`<span class="ascent-card-feathers">Species Feathers: <strong>${speciesFeathers}</strong>${progress?.canUpgrade?` / ${mutationCost}`:''}</span>`:''}
+              ${mutateBtn}
+            </div>
           </div>
-          ${cardHint}
-          <div class="ascent-card-progress">
-            <span class="ascent-card-tier">Card tier: <strong class="${tierCss}">${tierLabel}</strong></span>
-            <span class="ascent-card-stars-wrap">${starsHtml}</span>
-            <span class="ascent-card-rarity">Rarity: <strong class="${rarityMeta.css}">${rarityLabel}</strong></span>
-            ${ownsCard?`<span class="ascent-card-feathers">Species Feathers: <strong>${speciesFeathers}</strong>${progress?.canUpgrade?` / ${mutationCost}`:''}</span>`:''}
-            ${mutateBtn}
-          </div>
-          <div class="ascent-strip-hscroll" tabindex="0" role="region" aria-label="Stats, passive, and skills">
-            <div class="ascent-hblock ascent-hblock-stats">
-              <div class="ascent-hblock-label">Stats</div>
+        </header>
+        <div class="sfsel-profile__details">
+          <section class="sfsel-profile__region sfsel-profile__stats" aria-labelledby="sfsel-stats-heading">
+              <h3 class="sfsel-profile__heading" id="sfsel-stats-heading">Stats</h3>
               ${statsStrip}
-            </div>
-            <div class="ascent-hblock ascent-hblock-passive">
-              <div class="ascent-hblock-label">Passive</div>
-              <div class="ascent-panel-passive ascent-panel-passive--inline"><strong>${passiveName}:</strong> ${passiveDesc}</div>
-            </div>
-            <div class="ascent-hblock ascent-hblock-class-perk">
-              <div class="ascent-hblock-label">Class perk</div>
-              <div class="ascent-panel-passive ascent-panel-passive--inline"><strong>${classPerkName}:</strong> ${classPerkDesc}</div>
-            </div>
-            <div class="ascent-hblock ascent-hblock-abilities">
-              <div class="ascent-hblock-label">Starting skills</div>
+          </section>
+          <section class="sfsel-profile__region sfsel-profile__traits" aria-labelledby="sfsel-traits-heading">
+              <h3 class="sfsel-profile__heading" id="sfsel-traits-heading">Traits</h3>
+              <div class="sfsel-profile__trait"><strong>Passive · ${passiveName}</strong><span>${passiveDesc}</span></div>
+              <div class="sfsel-profile__trait"><strong>Class Perk · ${classPerkName}</strong><span>${classPerkDesc}</span></div>
+              <div class="sfsel-profile__trait"><strong>Playstyle</strong><span>${escapeHtmlRoster(roleSummary)}</span></div>
+          </section>
+          <section class="sfsel-profile__region sfsel-profile__skills" aria-labelledby="sfsel-skills-heading">
+              <h3 class="sfsel-profile__heading" id="sfsel-skills-heading">Starting skills</h3>
               <div class="ascent-abilities-row">${startAbilityDetails}</div>
-            </div>
-            <div class="ascent-hblock ascent-hblock-playstyle">
-              <div class="ascent-hblock-label">Playstyle</div>
-              <div class="showcase-summary">${escapeHtmlRoster(roleSummary)}</div>
-            </div>
-          </div>
+          </section>
         </div>
-      </div>`;
+      </article>`;
     panel.classList.remove('is-empty');
     panel.classList.add('is-filled');
     _setSfselEmptyState(false);
@@ -8133,6 +8174,8 @@ function openSelectHubPanel(which){
   const panel = document.getElementById('select-hub-'+which);
   if(panel) panel.scrollTop = 0;
   if(which==='door'){
+    const ui=ensureUIState();
+    setCharacterSelectView(G.selected ? ui.characterSelectView : 'birds');
     if(typeof syncSfselRunSummary==='function') syncSfselRunSummary();
     if(typeof syncSelectTakeFlightButton==='function') syncSelectTakeFlightButton();
   }
@@ -17842,9 +17885,10 @@ document.addEventListener('keydown', e => {
   if(screen.id==='screen-select') {
     const doorOpen = document.getElementById('select-hub-door')?.classList.contains('is-open');
     if(doorOpen){
-      if(e.key==='Enter') { if(G.selected) startGame(); }
+      const onViewTab=e.target?.getAttribute?.('role')==='tab';
+      if(e.key==='Enter' && !onViewTab && e.target?.tagName!=='BUTTON') { if(G.selected) startGame(); }
       const cards=[...document.querySelectorAll('#bird-grid .bird-card:not(.bird-locked)')];
-      if(cards.length && ['ArrowRight','ArrowLeft','ArrowDown','ArrowUp'].includes(e.key)){
+      if(!onViewTab && cards.length && ['ArrowRight','ArrowLeft','ArrowDown','ArrowUp'].includes(e.key)){
         e.preventDefault();
         const selected = cards.findIndex(c=>c.classList.contains('selected'));
         const cur = selected>=0 ? selected : 0;

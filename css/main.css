@@ -1798,14 +1798,17 @@ body.combat-scenario-test-unlocked .splash-hotspot--combat-scenarios.is-combatte
 /* ── Main area: grid + detail column ── */
 .sfsel__main{
   flex:1 1 auto;
-  display:flex;
+  display:grid;
+  grid-template-columns:minmax(360px,.9fr) minmax(560px,1.4fr);
   min-height:0;
   overflow:hidden;
 }
+.sfsel__view-tabs,
+.sfsel__back-to-birds{display:none;}
 /* LEFT: roster grid */
 .sfsel__roster{
-  flex:1 1 0;
   min-width:0;
+  min-height:0;
   display:flex;
   flex-direction:column;
   overflow:hidden;
@@ -1845,13 +1848,18 @@ body.combat-scenario-test-unlocked .splash-hotspot--combat-scenarios.is-combatte
 }
 /* RIGHT: character detail sidebar */
 .sfsel__detail{
-  flex:0 0 min(420px,40vw);
-  width:min(420px,40vw);
+  min-width:0;
+  min-height:0;
   display:flex;
   flex-direction:column;
   border-left:1px solid rgba(201,168,76,.22);
   background:linear-gradient(180deg,rgba(10,12,18,.98) 0%,rgba(6,8,14,.99) 100%);
-  overflow:hidden;
+  overflow-y:auto;
+  overflow-x:hidden;
+  -webkit-overflow-scrolling:touch;
+  overscroll-behavior:contain;
+  scrollbar-color:rgba(200,180,140,.15) transparent;
+  scrollbar-width:thin;
 }
 /* Empty state when no fighter is selected */
 .sfsel__detail-empty{
@@ -1878,54 +1886,21 @@ body.combat-scenario-test-unlocked .splash-hotspot--combat-scenarios.is-combatte
 .sfsel__detail-empty.sfsel__detail-empty--hidden{
   display:none;
 }
-/* Ascent panel fills the scrollable area of the detail column */
+/* The detail region owns scrolling; avoid a nested panel scroller. */
 .sfsel__detail #ascent-panel{
-  flex:1 1 auto;
-  min-height:0;
-  overflow-y:auto;
-  overflow-x:hidden;
-  -webkit-overflow-scrolling:touch;
+  flex:0 0 auto;
+  overflow:visible;
   padding:14px 16px 10px;
   margin:0;
   border-radius:0;
   border:none;
   background:transparent;
   max-height:none !important;
-  scrollbar-color:rgba(200,180,140,.15) transparent;
-  scrollbar-width:thin;
 }
 .sfsel__detail #ascent-panel.is-empty{
   flex:0 0 0;
   padding:0;
   overflow:hidden;
-}
-/* Vertical layout inside the detail panel — no horizontal scroll */
-.sfsel__detail .ascent-strip-hscroll{
-  flex-direction:column !important;
-  flex-wrap:nowrap !important;
-  overflow-x:visible !important;
-  overflow-y:visible !important;
-  gap:12px !important;
-  max-width:100% !important;
-}
-.sfsel__detail .ascent-hblock{
-  min-width:0 !important;
-  max-width:100% !important;
-  width:100% !important;
-  flex:0 0 auto !important;
-}
-.sfsel__detail .ascent-abilities-row{
-  flex-wrap:wrap !important;
-  overflow-x:visible !important;
-  max-width:100% !important;
-}
-.sfsel__detail .ascent-ability-card{
-  width:auto !important;
-  flex:1 1 160px !important;
-}
-/* Make portrait area work in sidebar */
-.sfsel__detail .ascent-strip--filled{
-  flex-direction:column;
 }
 .ascent-strip--tier-grey{border-color:rgba(106,120,144,.45)!important;background:linear-gradient(180deg,rgba(106,120,144,.1),rgba(14,12,10,.94))!important;}
 .ascent-strip--tier-green{border-color:rgba(76,138,106,.45)!important;background:linear-gradient(180deg,rgba(76,138,106,.1),rgba(12,16,12,.94))!important;}
@@ -1933,21 +1908,6 @@ body.combat-scenario-test-unlocked .splash-hotspot--combat-scenarios.is-combatte
 .ascent-strip--tier-purple{border-color:rgba(120,76,180,.45)!important;background:linear-gradient(180deg,rgba(120,76,180,.1),rgba(16,12,20,.94))!important;}
 .ascent-strip--tier-gold{border-color:rgba(180,140,40,.5)!important;background:linear-gradient(180deg,rgba(180,140,40,.12),rgba(18,14,8,.94))!important;}
 .ascent-strip--tier-orange{border-color:rgba(200,100,40,.5)!important;background:linear-gradient(180deg,rgba(200,100,40,.12),rgba(20,12,8,.94))!important;}
-.sfsel__detail .ascent-strip-portrait-wrap{
-  width:auto !important;
-  max-width:100%;
-  display:flex;
-  justify-content:center;
-  padding:10px 0 2px;
-}
-.sfsel__detail .ascent-panel-portrait{
-  width:min(160px,50%);
-  height:min(160px,50%);
-}
-.sfsel__detail .ascent-strip-body{
-  flex:1 1 auto;
-  min-width:0;
-}
 /* CTA row at the bottom of the detail column */
 .sfsel__actions{
   flex-shrink:0;
@@ -2209,9 +2169,40 @@ body.combat-scenario-test-unlocked .splash-hotspot--combat-scenarios.is-combatte
   outline-offset:2px;
   border-color:rgba(232,201,106,.45);
 }
-/* ── Mobile (≤700px): roster stacked above detail ── */
+/* ── Mobile (≤700px): switch between full-height roster and profile ── */
 @media (max-width:700px){
-  .sfsel__main{flex-direction:column;}
+  .sfsel__main{
+    grid-template-columns:minmax(0,1fr);
+    grid-template-rows:minmax(0,1fr) auto;
+  }
+
+  .sfsel__view-tabs{
+    flex:0 0 auto;
+    display:grid;
+    grid-template-columns:repeat(2,minmax(0,1fr));
+    gap:4px;
+    padding:6px 10px;
+    border-bottom:1px solid rgba(201,168,76,.22);
+    background:rgba(5,7,11,.94);
+  }
+  .sfsel__view-tab{
+    min-width:0;
+    min-height:40px;
+    border:1px solid rgba(120,100,70,.45);
+    border-radius:8px;
+    background:rgba(20,22,30,.72);
+    color:rgba(230,224,210,.82);
+    font:700 .76rem 'Cinzel',serif;
+    letter-spacing:.06em;
+    cursor:pointer;
+  }
+  .sfsel__view-tab[aria-selected="true"]{
+    border-color:rgba(232,201,106,.72);
+    background:rgba(201,168,76,.18);
+    color:#fff4c8;
+  }
+  .sfsel__view-tab:focus-visible,
+  .sfsel__back-to-birds:focus-visible{outline:2px solid #f0cf70;outline-offset:2px;}
 
   /* Topbar: allow title + return to sit on one line, filters wrap below */
   .sfsel__topbar{
@@ -2227,12 +2218,16 @@ body.combat-scenario-test-unlocked .splash-hotspot--combat-scenarios.is-combatte
     padding-bottom:2px;
   }
 
-  /* Roster: fills all remaining space above the detail strip */
+  /* Each view fills the space between the tabs and the fixed action area. */
   .sfsel__roster{
     flex:1 1 auto;
     min-height:160px;
     padding:8px 10px 8px 12px;
   }
+  .sfsel[data-mobile-view="profile"] .sfsel__roster,
+  .sfsel:not([data-mobile-view]) .sfsel__detail,
+  .sfsel[data-mobile-view="birds"] .sfsel__detail{display:none;}
+  .sfsel[data-mobile-view="profile"] .sfsel__detail{display:flex;}
   .sfsel__roster .size-birds-row{
     grid-template-columns:repeat(auto-fill,minmax(88px,1fr));
     gap:7px;
@@ -2242,31 +2237,29 @@ body.combat-scenario-test-unlocked .splash-hotspot--combat-scenarios.is-combatte
   .sfsel__roster .bird-nm{font-size:.68rem !important;}
   .sfsel__roster .bird-tagline-mini{font-size:.52rem !important;min-height:1.8em;}
 
-  /* Detail: fixed-height strip at bottom with internal scroll for panel */
+  /* Profile uses the full remaining height; only its content panel scrolls. */
   .sfsel__detail{
-    flex:0 0 auto;
+    flex:1 1 auto;
+    min-height:0;
     width:100%;
-    max-height:44dvh;
     border-left:none;
-    border-top:1px solid rgba(201,168,76,.22);
-    overflow:hidden; /* clip; internal flex handles scroll */
+    border-top:none;
+    overflow:hidden;
   }
-  /* When no fighter selected: collapse to just the CTA bar to free roster space */
-  .sfsel__detail:has(#ascent-panel.is-empty){
-    max-height:64px;
+  .sfsel__back-to-birds{
+    display:block;
+    flex:0 0 auto;
+    align-self:flex-start;
+    min-height:38px;
+    margin:8px 12px 0;
+    padding:7px 12px;
+    border:1px solid rgba(201,168,76,.45);
+    border-radius:8px;
+    background:rgba(20,22,30,.8);
+    color:var(--gold-light);
+    font:700 .7rem 'Cinzel',serif;
+    cursor:pointer;
   }
-  .sfsel__detail:has(#ascent-panel.is-empty) .sfsel__detail-empty{
-    display:none;
-  }
-
-  /* Portrait: stay compact in horizontal strip mode */
-  .sfsel__detail .ascent-strip--filled{flex-direction:row;}
-  .sfsel__detail .ascent-strip-portrait-wrap{
-    width:56px !important;
-    flex-shrink:0;
-    padding:4px 0;
-  }
-  .sfsel__detail .ascent-panel-portrait{width:56px;height:56px;}
   /* Abilities wrap tighter on mobile */
   .sfsel__detail .ascent-ability-card{flex:1 1 130px !important;}
 }
@@ -2280,9 +2273,9 @@ body.combat-scenario-test-unlocked .splash-hotspot--combat-scenarios.is-combatte
   .sfsel__roster .bird-tagline-mini{display:none;} /* hide tagline — too cramped */
   .sfsel__filter-select{min-width:90px;font-size:.68rem;}
 }
-/* ── Tablet (701–1024px): slightly narrower detail ── */
+/* ── Tablet (701–1024px): preserve an approximately 40/60 split ── */
 @media (min-width:701px) and (max-width:1024px){
-  .sfsel__detail{flex-basis:min(320px,36vw);width:min(320px,36vw);}
+  .sfsel__main{grid-template-columns:minmax(280px,2fr) minmax(0,3fr);}
   .sfsel__roster .size-birds-row{grid-template-columns:repeat(auto-fill,minmax(115px,1fr));}
 }
 /* Continue run wrap */
@@ -2327,115 +2320,115 @@ body.combat-scenario-test-unlocked .splash-hotspot--combat-scenarios.is-combatte
   color:rgba(190,185,175,.5);
   background:rgba(14,16,20,.55);
 }
-/* Horizontal champion strip (filled state) */
-.ascent-strip{
-  display:flex;
-  flex-direction:row;
-  align-items:stretch;
-  gap:10px;
-  min-width:min-content;
+/* Character profile regions */
+.sfsel-profile{
+  display:grid;
+  grid-template-columns:minmax(0,1fr);
+  gap:12px;
+  min-width:0;
 }
-.ascent-strip-portrait-wrap{
-  flex-shrink:0;
-  width:72px;
+.sfsel-profile__identity{
+  display:grid;
+  grid-template-columns:88px minmax(0,1fr);
+  align-items:center;
+  gap:10px;
+}
+.sfsel-profile__portrait{
   display:flex;
   align-items:center;
   justify-content:center;
+  min-height:88px;
 }
-.ascent-strip-portrait-wrap .ascent-panel-portrait{
+.sfsel-profile__portrait .ascent-panel-portrait{
   display:flex;
   align-items:center;
   justify-content:center;
   max-height:88px;
 }
-.ascent-strip-portrait-wrap .sprite4,
-.ascent-strip-portrait-wrap .bird-emo,
-.ascent-strip-portrait-wrap .bird-fallback-svg{
-  transform:scale(0.88);
-  transform-origin:center center;
+.sfsel-profile__portrait .sprite4,
+.sfsel-profile__portrait .bird-emo,
+.sfsel-profile__portrait .bird-fallback-svg{
+  transform:scale(.88);
+  transform-origin:center;
 }
-.ascent-strip-body{
-  flex:1;
-  min-width:0;
+.sfsel-profile__identity-copy{min-width:0;}
+.sfsel-profile__title{
   display:flex;
-  flex-direction:column;
-  gap:6px;
+  flex-wrap:wrap;
+  align-items:center;
+  gap:5px 7px;
 }
-.ascent-strip-title-row{
+.sfsel-profile__title .ascent-panel-name{
+  flex:1 1 100%;
+  margin:0;
+  font-size:clamp(1rem,2.8vw,1.2rem);
+}
+.ascent-strip-tagline{
+  margin-top:3px;
+  color:rgba(180,188,200,.85);
+  font-size:.62rem;
+  font-style:italic;
+}
+.sfsel-profile__progression{
   display:flex;
   flex-wrap:wrap;
   align-items:center;
   gap:6px 10px;
+  margin-top:7px;
+  color:rgba(210,204,192,.88);
+  font-size:.68rem;
 }
-.ascent-strip-title-row .ascent-panel-name{
-  font-size:clamp(1rem, 2.8vw, 1.2rem);
-  margin:0;
-}
-.ascent-strip-tagline{
-  font-size:.62rem;
-  color:rgba(180,188,200,.85);
-  font-style:italic;
-  flex:1 1 100%;
-  min-width:0;
-}
-.ascent-strip-hscroll{
-  display:flex;
-  flex-direction:row;
-  flex-wrap:nowrap;
+.sfsel-profile__details{
+  display:grid;
+  grid-template-columns:minmax(0,1fr) minmax(0,1fr);
   gap:10px;
-  overflow-x:auto;
-  overflow-y:hidden;
-  padding-bottom:4px;
-  -webkit-overflow-scrolling:touch;
-  scrollbar-color: rgba(200,180,140,.12) transparent;
-  scrollbar-width:thin;
 }
-.ascent-strip-hscroll::-webkit-scrollbar{height:6px;}
-.ascent-strip-hscroll::-webkit-scrollbar-track{background:transparent;}
-.ascent-strip-hscroll::-webkit-scrollbar-thumb{background:transparent;border-radius:3px;}
-.ascent-strip-hscroll:hover::-webkit-scrollbar-thumb{background:rgba(140,120,90,.22);}
-.ascent-hblock{
-  flex:0 0 auto;
-  min-width:min(160px, 42vw);
-  max-width:min(280px, 70vw);
-  padding:6px 8px;
-  border-radius:10px;
+.sfsel-profile__region{
+  min-width:0;
+  padding:8px;
   border:1px solid rgba(120,100,70,.28);
+  border-radius:10px;
   background:rgba(4,6,10,.35);
 }
-.ascent-hblock-label{
-  font-family:'Cinzel',serif;
-  font-size:.58rem;
+.sfsel-profile__heading{
+  margin:0 0 6px;
+  color:rgba(232,201,106,.75);
+  font:600 .58rem/1.2 'Cinzel',serif;
   letter-spacing:.1em;
   text-transform:uppercase;
-  color:rgba(232,201,106,.75);
-  margin:0 0 4px;
 }
-.ascent-hblock-stats{min-width:min(320px, 85vw);max-width:520px;}
+.sfsel-profile__skills{grid-column:1 / -1;}
+.sfsel-profile__trait{
+  display:grid;
+  gap:2px;
+  color:var(--text-dim);
+  font-size:.65rem;
+  line-height:1.35;
+}
+.sfsel-profile__trait + .sfsel-profile__trait{
+  margin-top:7px;
+  padding-top:7px;
+  border-top:1px solid rgba(120,100,70,.18);
+}
+.sfsel-profile__trait strong{color:var(--text);}
 .ascent-stats-strip{
-  display:flex;
-  flex-wrap:wrap;
-  gap:4px 8px;
-  align-items:center;
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:5px;
 }
 .ascent-stat-chip{
-  font-size:.62rem;
-  color:rgba(200,205,215,.9);
-  padding:2px 6px;
+  display:flex;
+  justify-content:space-between;
+  gap:5px;
+  padding:3px 6px;
+  border:1px solid rgba(100,110,130,.2);
   border-radius:6px;
   background:rgba(0,0,0,.2);
-  border:1px solid rgba(100,110,130,.2);
+  color:rgba(200,205,215,.9);
+  font-size:.62rem;
 }
 .ascent-stat-chip abbr{text-decoration:none;border-bottom:0;}
 .ascent-stat-chip strong{color:var(--text);font-weight:700;}
-.ascent-hblock-passive{min-width:min(200px, 55vw);max-width:360px;}
-.ascent-panel-passive--inline{
-  font-size:.65rem;
-  line-height:1.35;
-  color:var(--text-dim);
-  margin:0;
-}
-.ascent-hblock-abilities{min-width:min(260px, 90vw);max-width:none;}
 .ascent-abilities-row{
   display:flex;
   flex-direction:row;
@@ -2458,8 +2451,16 @@ body.combat-scenario-test-unlocked .splash-hotspot--combat-scenarios.is-combatte
   background:rgba(14,20,28,.65);
   font-size:.62rem;
 }
-.ascent-hblock-playstyle{min-width:min(140px, 40vw);max-width:220px;}
-.ascent-hblock-playstyle .showcase-summary{font-size:.65rem;margin:0;line-height:1.3;}
+@media (max-width:1024px){
+  .sfsel-profile__identity{
+    grid-template-columns:64px minmax(0,1fr);
+    align-items:start;
+  }
+  .sfsel-profile__portrait{min-height:64px;}
+  .sfsel-profile__portrait .ascent-panel-portrait{width:56px;height:56px;}
+  .sfsel-profile__details{grid-template-columns:minmax(0,1fr);}
+  .sfsel-profile__skills{grid-column:auto;}
+}
 .select-hub-panel-head{
   display:flex;
   flex-wrap:wrap;
