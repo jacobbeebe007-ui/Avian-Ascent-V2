@@ -88,10 +88,6 @@
 <span class="splash-hotspot-title">Supplies</span>
 <span class="splash-hotspot-desc">Codex &amp; unlock</span>
 </button>
-<button type="button" class="splash-hotspot splash-hotspot--map" data-action="openSelectHubPanel:map" aria-label="Mission map — difficulty and mode">
-<span class="splash-hotspot-title">Mission map</span>
-<span class="splash-hotspot-desc">Difficulty &amp; mode</span>
-</button>
 <button type="button" class="splash-hotspot splash-hotspot--inventory" data-action="openSelectHubPanel:inventory" aria-label="Inventory — global treasures">
 <span class="splash-hotspot-title">Inventory</span>
 <span class="splash-hotspot-desc">Eggs · Artifacts · Vault</span>
@@ -106,9 +102,9 @@
 <span class="splash-hotspot-title">The Hatchery</span>
 <span class="splash-hotspot-desc">Mother Goose · Eggs</span>
 </button>
-<button type="button" class="splash-hotspot splash-hotspot--door splash-hotspot--primary" data-action="openSelectHubPanel:door" aria-label="Begin ascent — bird roster">
+<button type="button" class="splash-hotspot splash-hotspot--door splash-hotspot--primary" data-action="openRunSettings" aria-label="Begin ascent — choose run settings">
 <span class="splash-hotspot-title">Begin Ascent</span>
-<span class="splash-hotspot-desc">Choose your bird</span>
+<span class="splash-hotspot-desc">Prepare your flight</span>
 </button>
 <button type="button" class="splash-hotspot splash-hotspot--forge is-buildnest-hidden" id="build-nest-hotspot" data-action="openMapForge" aria-label="Build Nest — overworld map editor">
 <span class="splash-hotspot-title">Build Nest</span>
@@ -134,7 +130,7 @@
 <button type="button" class="splash-settings-btn" data-action="openSettingsModal">⚙ Settings</button>
 </div>
 </div>
-<p class="splash-roster-hint" id="splash-roster-hint">Supplies by the bags. Map on the table. Inventory and Cuckoo's Emporium on the wall. Hatch at The Hatchery. Ascent through the door.</p>
+<p class="splash-roster-hint" id="splash-roster-hint">Supplies by the bags. Inventory and Cuckoo's Emporium on the wall. Hatch at The Hatchery. Prepare your ascent through the door.</p>
 </div>
 </div>
 <div class="select-hub-panels" id="select-hub-panels" aria-hidden="true">
@@ -259,10 +255,10 @@
 <div class="select-hub-panel" id="select-hub-map" role="dialog" aria-modal="true" aria-labelledby="hub-map-title" aria-hidden="true">
 <div class="select-hub-panel-inner">
 <header class="select-hub-panel-head">
-<h3 class="select-hub-panel-title" id="hub-map-title">Mission map</h3>
+<h3 class="select-hub-panel-title" id="hub-map-title">Flight Settings</h3>
 <button type="button" class="select-hub-return-btn" data-action="closeSelectHubPanel">← Return to war room</button>
 </header>
-<div class="supplies-subnav" role="tablist" aria-label="Mission map">
+<div class="supplies-subnav" role="tablist" aria-label="Map selection">
 <button type="button" class="supplies-subnav-btn is-active" id="mission-map-nav-demo" role="tab" aria-selected="true" data-action="setMissionMapVariant:demo">Demo</button>
 <button type="button" class="supplies-subnav-btn" id="mission-map-nav-test" role="tab" aria-selected="false" data-action="setMissionMapVariant:test">Test</button>
 </div>
@@ -270,13 +266,14 @@
 <label class="mission-test-map-label" for="mission-test-map-select">Test map</label>
 <select class="mission-test-map-select map-forge-draft-select" id="mission-test-map-select" data-change="onMissionTestMapChange"></select>
 </div>
-<p class="select-hub-lead">Choose Demo or Test map, then set difficulty and run mode before you deploy.</p>
+<p class="select-hub-lead">Choose your map, difficulty, and run mode before selecting a character.</p>
 <div class="diff-picker" id="diff-picker"></div>
 <p class="diff-desc" id="diff-desc">Choose your difficulty to begin.</p>
 <div class="endless-row splash-mode-row">
 <div id="game-mode-toggle"></div>
 <input id="endless-check" type="checkbox" style="display:none"/>
 </div>
+<button type="button" class="select-hub-confirm-btn" data-action="confirmRunSettings">Confirm &amp; Choose Character →</button>
 </div>
 </div>
 <div class="select-hub-panel select-hub-panel--door" id="select-hub-door" role="dialog" aria-modal="true" aria-labelledby="hub-door-title" aria-hidden="true">
@@ -297,6 +294,7 @@
       <div id="lock-toggle" hidden></div>
       <span class="sel-bird-count" id="bird-count-label"></span>
     </div>
+    <button type="button" class="sfsel__settings-btn" data-action="openRunSettings">⚙ Difficulty, Mode &amp; Map</button>
     <button type="button" class="sfsel__return-btn" data-action="closeSelectHubPanel">← War Room</button>
   </header>
   <div class="sfsel__main">
