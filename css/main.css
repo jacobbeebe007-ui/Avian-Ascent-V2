@@ -2525,10 +2525,12 @@ body.combat-scenario-test-unlocked .splash-hotspot--combat-scenarios.is-combatte
   background:rgba(14,16,20,.55);
 }
 /* Character profile regions */
-.sfsel-profile{
+#select-hub-door .sfsel .ascent-strip.sfsel-profile{
   display:grid;
   grid-template-columns:minmax(0,1fr);
+  align-items:stretch;
   gap:12px;
+  width:100%;
   min-width:0;
 }
 .sfsel-profile__identity{
@@ -2586,6 +2588,7 @@ body.combat-scenario-test-unlocked .splash-hotspot--combat-scenarios.is-combatte
   display:grid;
   grid-template-columns:minmax(0,1fr) minmax(0,1fr);
   gap:10px;
+  min-width:0;
 }
 .sfsel-profile__region{
   min-width:0;
@@ -2627,7 +2630,6 @@ body.combat-scenario-test-unlocked .splash-hotspot--combat-scenarios.is-combatte
   gap:5px;
   padding:3px 6px;
   border:1px solid rgba(100,110,130,.2);
-}
   border-radius:6px;
   background:rgba(0,0,0,.2);
   color:rgba(200,205,215,.9);
