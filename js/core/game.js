@@ -8145,6 +8145,14 @@ function openSelectHubPanel(which){
     if(typeof syncSelectTakeFlightButton==='function') syncSelectTakeFlightButton();
   }
 }
+function openRunSettings(){
+  openSelectHubPanel('map');
+}
+function confirmRunSettings(){
+  openSelectHubPanel('door');
+}
+globalThis.openRunSettings = openRunSettings;
+globalThis.confirmRunSettings = confirmRunSettings;
 function closeSelectHubPanel(){
   try{ if(typeof closeRosterChampionModal==='function') closeRosterChampionModal(); }catch(_){}
   const root = document.getElementById('select-hub-panels');
