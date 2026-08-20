@@ -1803,7 +1803,8 @@ body.combat-scenario-test-unlocked .splash-hotspot--combat-scenarios.is-combatte
 /* ── Main area: grid + detail column ── */
 #select-hub-door .sfsel__main{
   flex:1 1 auto;
-  display:flex;
+  display:grid;
+  grid-template-columns:minmax(360px,.9fr) minmax(560px,1.4fr);
   min-height:0;
   overflow:hidden;
 }
@@ -1811,6 +1812,7 @@ body.combat-scenario-test-unlocked .splash-hotspot--combat-scenarios.is-combatte
 #select-hub-door .sfsel__roster{
   flex:1 1 0;
   min-width:0;
+  min-height:0;
   display:flex;
   flex-direction:column;
   overflow:hidden;
@@ -1856,7 +1858,12 @@ body.combat-scenario-test-unlocked .splash-hotspot--combat-scenarios.is-combatte
   flex-direction:column;
   border-left:1px solid rgba(201,168,76,.22);
   background:linear-gradient(180deg,rgba(10,12,18,.98) 0%,rgba(6,8,14,.99) 100%);
-  overflow:hidden;
+  overflow-y:auto;
+  overflow-x:hidden;
+  -webkit-overflow-scrolling:touch;
+  overscroll-behavior:contain;
+  scrollbar-color:rgba(200,180,140,.15) transparent;
+  scrollbar-width:thin;
 }
 /* Empty state when no fighter is selected */
 #select-hub-door .sfsel__detail-empty{
@@ -1896,8 +1903,6 @@ body.combat-scenario-test-unlocked .splash-hotspot--combat-scenarios.is-combatte
   border:none;
   background:transparent;
   max-height:none !important;
-  scrollbar-color:rgba(200,180,140,.15) transparent;
-  scrollbar-width:thin;
 }
 #select-hub-door .sfsel__detail #ascent-panel.is-empty{
   flex:0 0 0;
@@ -2219,7 +2224,6 @@ body.combat-scenario-test-unlocked .splash-hotspot--combat-scenarios.is-combatte
   flex-direction:row;
   align-items:stretch;
   gap:10px;
-  min-width:min-content;
 }
 #select-hub-door .sfsel .ascent-strip-portrait-wrap{
   flex-shrink:0;
@@ -2227,6 +2231,7 @@ body.combat-scenario-test-unlocked .splash-hotspot--combat-scenarios.is-combatte
   display:flex;
   align-items:center;
   justify-content:center;
+  min-height:88px;
 }
 #select-hub-door .sfsel .ascent-strip-portrait-wrap .ascent-panel-portrait{
   display:flex;
@@ -2251,30 +2256,32 @@ body.combat-scenario-test-unlocked .splash-hotspot--combat-scenarios.is-combatte
   display:flex;
   flex-wrap:wrap;
   align-items:center;
-  gap:6px 10px;
+  gap:5px 7px;
 }
 #select-hub-door .sfsel .ascent-strip-title-row .ascent-panel-name{
   font-size:clamp(1rem, 2.8vw, 1.2rem);
   margin:0;
+  font-size:clamp(1rem,2.8vw,1.2rem);
 }
 #select-hub-door .sfsel .ascent-strip-tagline{
   font-size:.62rem;
   color:rgba(180,188,200,.85);
+  font-size:.62rem;
   font-style:italic;
-  flex:1 1 100%;
-  min-width:0;
 }
 #select-hub-door .sfsel .ascent-strip-hscroll{
   display:flex;
-  flex-direction:row;
-  flex-wrap:nowrap;
+  flex-wrap:wrap;
+  align-items:center;
+  gap:6px 10px;
+  margin-top:7px;
+  color:rgba(210,204,192,.88);
+  font-size:.68rem;
+}
+.sfsel-profile__details{
+  display:grid;
+  grid-template-columns:minmax(0,1fr) minmax(0,1fr);
   gap:10px;
-  overflow-x:auto;
-  overflow-y:hidden;
-  padding-bottom:4px;
-  -webkit-overflow-scrolling:touch;
-  scrollbar-color: rgba(200,180,140,.12) transparent;
-  scrollbar-width:thin;
 }
 #select-hub-door .sfsel .ascent-strip-hscroll::-webkit-scrollbar{height:6px;}
 #select-hub-door .sfsel .ascent-strip-hscroll::-webkit-scrollbar-track{background:transparent;}
@@ -2287,6 +2294,7 @@ body.combat-scenario-test-unlocked .splash-hotspot--combat-scenarios.is-combatte
   padding:6px 8px;
   border-radius:10px;
   border:1px solid rgba(120,100,70,.28);
+  border-radius:10px;
   background:rgba(4,6,10,.35);
 }
 #select-hub-door .sfsel .ascent-hblock-label{
@@ -2294,8 +2302,6 @@ body.combat-scenario-test-unlocked .splash-hotspot--combat-scenarios.is-combatte
   font-size:.58rem;
   letter-spacing:.1em;
   text-transform:uppercase;
-  color:rgba(232,201,106,.75);
-  margin:0 0 4px;
 }
 #select-hub-door .sfsel .ascent-hblock-stats{min-width:min(320px, 85vw);max-width:520px;}
 #select-hub-door .sfsel .ascent-stats-strip{
@@ -2310,7 +2316,8 @@ body.combat-scenario-test-unlocked .splash-hotspot--combat-scenarios.is-combatte
   padding:2px 6px;
   border-radius:6px;
   background:rgba(0,0,0,.2);
-  border:1px solid rgba(100,110,130,.2);
+  color:rgba(200,205,215,.9);
+  font-size:.62rem;
 }
 #select-hub-door .sfsel .ascent-stat-chip abbr{text-decoration:none;border-bottom:0;}
 #select-hub-door .sfsel .ascent-stat-chip strong{color:var(--text);font-weight:700;}
