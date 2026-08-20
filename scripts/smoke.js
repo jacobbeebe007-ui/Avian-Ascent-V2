@@ -9,6 +9,7 @@
  */
 const fs = require('fs');
 const path = require('path');
+const vm = require('vm');
 
 const ROOT = path.resolve(__dirname, '..');
 const BUNDLE = path.join(ROOT, 'js', 'avian-game.bundle.js');
@@ -27,6 +28,25 @@ if (!fs.existsSync(BUNDLE)) {
 }
 
 const src = fs.readFileSync(BUNDLE, 'utf8');
+let failed = 0;
+
+// Keep this check ahead of the symbol assertions. A conflicted generated bundle
+// can still contain every expected symbol while failing before the event router
+// wires the main-menu buttons in the browser.
+if (/^(?:<<<<<<<|=======|>>>>>>>)(?: |$)/m.test(src)) {
+  fail('bundle contains unresolved merge-conflict markers');
+  failed++;
+} else {
+  ok('bundle has no merge-conflict markers');
+}
+
+try {
+  new vm.Script(src, { filename: 'js/avian-game.bundle.js' });
+  ok('bundle parses as JavaScript');
+} catch (err) {
+  fail(`bundle JavaScript parse: ${err.message}`);
+  failed++;
+}
 
 const checks = [
   { label: 'Avian namespace bootstrap', re: /globalThis\.Avian\s*=\s*Avian/ },
@@ -51,7 +71,6 @@ const checks = [
   { label: 'bundle hash injected',      re: /globalThis\.__AVIAN_BUNDLE_HASH__\s*=/ },
 ];
 
-let failed = 0;
 for (const c of checks) {
   if (c.re.test(src)) ok(c.label);
   else { fail(c.label); failed++; }
