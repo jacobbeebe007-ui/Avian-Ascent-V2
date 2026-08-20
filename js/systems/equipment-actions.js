@@ -424,6 +424,9 @@
     resolveRowAilmentSources(row, item, skill);
     if (apVal != null) row.abilityPower = Number(apVal);
     if (row.precision != null) row.hitChanceOverride = row.precision;
+    if (Avian.effects && typeof Avian.effects.applyToCombatRow === 'function') {
+      Avian.effects.applyToCombatRow(row, skill, item);
+    }
     return row;
   };
 
