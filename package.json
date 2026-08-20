@@ -11,7 +11,7 @@
     "preview": "vite preview --host 0.0.0.0",
     "preview:static": "python3 -m http.server ${PORT:-8000} --bind 0.0.0.0",
     "smoke": "node scripts/smoke.js",
-    "test": "node scripts/smoke.js && node scripts/build-bundle.js && node scripts/ci-check.js && node scripts/verify-equipment-excise.mjs && node scripts/verify-equipment-content.mjs && node scripts/verify-protection-pools.mjs && node scripts/verify-plainshield-fortify.mjs && node scripts/verify-affinity-arsenal-content.mjs && node scripts/verify-equipment-equip.mjs && node scripts/verify-equipment-skills.mjs && node scripts/verify-action-sources.mjs && node scripts/verify-equipment-ui.mjs && node scripts/verify-enemy-equipment-ai.mjs && node scripts/verify-duke-weapon-ailment-scaling.mjs && node scripts/verify-save-migration.mjs && node scripts/verify-combat-damage-formula.mjs && node scripts/verify-equipment-damage-formula.mjs && node scripts/verify-enemy-damage-hp-scaling.mjs && node scripts/verify-bird-identity-v2.mjs && node scripts/verify-equipment-loot.mjs && node scripts/verify-equipment-sims.mjs && node scripts/verify-combat-scenarios.mjs && node scripts/verify-passives-perks.mjs && node scripts/verify-workbook-combat-ui-sync.mjs && node scripts/verify-bird-precision.mjs && node scripts/test-aspects.mjs && node scripts/smoke.js",
+    "test": "node scripts/smoke.js && node scripts/build-bundle.js && node scripts/ci-check.js && node scripts/verify-structured-effects.mjs && node scripts/verify-equipment-excise.mjs && node scripts/verify-equipment-content.mjs && node scripts/verify-protection-pools.mjs && node scripts/verify-plainshield-fortify.mjs && node scripts/verify-affinity-arsenal-content.mjs && node scripts/verify-equipment-equip.mjs && node scripts/verify-equipment-skills.mjs && node scripts/verify-action-sources.mjs && node scripts/verify-equipment-ui.mjs && node scripts/verify-enemy-equipment-ai.mjs && node scripts/verify-duke-weapon-ailment-scaling.mjs && node scripts/verify-save-migration.mjs && node scripts/verify-combat-damage-formula.mjs && node scripts/verify-equipment-damage-formula.mjs && node scripts/verify-enemy-damage-hp-scaling.mjs && node scripts/verify-bird-identity-v2.mjs && node scripts/verify-equipment-loot.mjs && node scripts/verify-equipment-sims.mjs && node scripts/verify-combat-scenarios.mjs && node scripts/verify-passives-perks.mjs && node scripts/verify-workbook-combat-ui-sync.mjs && node scripts/verify-bird-precision.mjs && node scripts/test-aspects.mjs && node scripts/smoke.js",
     "verify-combat-scenarios": "node scripts/verify-combat-scenarios.mjs",
     "apply-precision": "node scripts/apply-bird-precision.mjs",
     "verify-precision": "node scripts/verify-bird-precision.mjs",
@@ -31,7 +31,10 @@
     "verify-roster": "node scripts/verify-enemy-roster.mjs && node scripts/verify-story-level-bands.mjs && node scripts/verify-encounter-generator.mjs",
     "android:add": "npm run build && cap add android",
     "android:sync": "npm run build && cap sync android",
-    "android:open": "cap open android"
+    "android:open": "cap open android",
+    "import-structured-effects": "node scripts/import-structured-effects-workbook.mjs",
+    "verify-structured-effects": "node scripts/verify-structured-effects.mjs",
+    "audit-structured-effects": "node scripts/audit-structured-effect-parity.mjs"
   },
   "devDependencies": {
     "@capacitor/cli": "^7.6.8",
