@@ -1738,6 +1738,8 @@ body.combat-scenario-test-unlocked .splash-hotspot--combat-scenarios.is-combatte
   flex-direction:column;
   width:100%;
   height:100%;
+  height:100dvh;
+  min-width:0;
   overflow:hidden;
 }
 /* ── Top bar: title | filters | return button ── */
@@ -1804,8 +1806,10 @@ body.combat-scenario-test-unlocked .splash-hotspot--combat-scenarios.is-combatte
 #select-hub-door .sfsel__main{
   flex:1 1 auto;
   display:grid;
-  grid-template-columns:minmax(360px,.9fr) minmax(560px,1.4fr);
+  grid-template-columns:minmax(0,1fr) clamp(360px,38vw,620px);
+  width:100%;
   min-height:0;
+  min-width:0;
   overflow:hidden;
 }
 .sfsel__view-tabs,
@@ -1854,8 +1858,8 @@ body.combat-scenario-test-unlocked .splash-hotspot--combat-scenarios.is-combatte
 }
 /* RIGHT: character detail sidebar */
 #select-hub-door .sfsel__detail{
-  flex:0 0 min(420px,40vw);
-  width:min(420px,40vw);
+  min-width:0;
+  width:auto;
   display:flex;
   flex-direction:column;
   border-left:1px solid rgba(201,168,76,.22);
@@ -1964,7 +1968,7 @@ body.combat-scenario-test-unlocked .splash-hotspot--combat-scenarios.is-combatte
 #select-hub-door .sfsel__actions{
   flex-shrink:0;
   display:grid;
-  grid-template-columns:minmax(0,1fr) minmax(220px,auto) auto;
+  grid-template-columns:minmax(0,1fr) minmax(190px,260px);
   align-items:center;
   gap:8px 10px;
   padding:7px 12px max(7px,env(safe-area-inset-bottom,0px));
@@ -1973,7 +1977,7 @@ body.combat-scenario-test-unlocked .splash-hotspot--combat-scenarios.is-combatte
 }
 #select-hub-door .sfsel__run-summary{
   display:flex;
-  flex-wrap:nowrap;
+  flex-wrap:wrap;
   gap:4px;
   min-height:0;
   min-width:0;
@@ -2004,6 +2008,12 @@ body.combat-scenario-test-unlocked .splash-hotspot--combat-scenarios.is-combatte
   padding:10px 18px;
   min-height:42px;
   letter-spacing:.14em;
+}
+#select-hub-door .sfsel__run-controls{min-width:0;}
+#select-hub-door .sfsel__actions .sel-continue-run-wrap{
+  grid-column:1 / -1;
+  max-width:none;
+  width:100%;
 }
 #select-hub-door .sfsel__roster .bird-card.selected{
   transform:translateY(-1px);
@@ -2379,14 +2389,25 @@ body.combat-scenario-test-unlocked .splash-hotspot--combat-scenarios.is-combatte
 /* Character Select responsive presentation: tablet */
 /* ── Tablet (701–1024px): slightly narrower detail ── */
 @media (min-width:701px) and (max-width:1024px){
-  #select-hub-door .sfsel__detail{flex-basis:min(320px,36vw);width:min(320px,36vw);}
+  #select-hub-door .sfsel__main{grid-template-columns:minmax(0,1fr) clamp(320px,42vw,430px);}
   #select-hub-door .sfsel__roster .size-birds-row{grid-template-columns:repeat(auto-fill,minmax(115px,1fr));}
+  #select-hub-door .sfsel__actions{grid-template-columns:1fr;}
+  #select-hub-door .sfsel__actions .sel-continue-run-wrap{grid-column:auto;}
 }
 
 /* Character Select responsive presentation: mobile */
 /* ── Mobile (≤700px): roster stacked above detail ── */
 @media (max-width:700px){
-  #select-hub-door .sfsel__main{flex-direction:column;}
+  #select-hub-door .sfsel__main{
+    display:grid;
+    grid-template-columns:minmax(0,1fr);
+    grid-template-rows:minmax(0,1fr);
+  }
+
+  /* Mobile uses explicit Birds/Profile views instead of squeezing two panels
+     into the same short viewport. JS keeps aria-hidden in sync with the tabs. */
+  #select-hub-door .sfsel[data-mobile-view="birds"] .sfsel__detail,
+  #select-hub-door .sfsel[data-mobile-view="profile"] .sfsel__roster{display:none;}
 
   .sfsel__view-tabs{
     flex:0 0 auto;
@@ -2423,6 +2444,7 @@ body.combat-scenario-test-unlocked .splash-hotspot--combat-scenarios.is-combatte
     align-items:center;
   }
   #select-hub-door .sfsel__title{font-size:.84rem;flex:1 1 auto;}
+  #select-hub-door .sfsel__subtitle{display:none;}
   #select-hub-door .sfsel__return-btn{flex-shrink:0;font-size:.72rem;padding:6px 10px;}
   #select-hub-door .sfsel__filters{
     flex:0 0 100%; /* own row */
@@ -2447,11 +2469,11 @@ body.combat-scenario-test-unlocked .splash-hotspot--combat-scenarios.is-combatte
 
   /* Detail: fixed-height strip at bottom with internal scroll for panel */
   #select-hub-door .sfsel__detail{
-    flex:0 0 auto;
+    min-height:0;
     width:100%;
     border-left:none;
     border-top:1px solid rgba(201,168,76,.22);
-    overflow:hidden; /* clip; internal flex handles scroll */
+    overflow:hidden; /* internal panel handles scrolling */
   }
   /* When no fighter selected: collapse to just the CTA bar to free roster space */
   #select-hub-door .sfsel__detail:has(#ascent-panel.is-empty){
@@ -2471,6 +2493,22 @@ body.combat-scenario-test-unlocked .splash-hotspot--combat-scenarios.is-combatte
   #select-hub-door .sfsel__detail .ascent-panel-portrait{width:56px;height:56px;}
   /* Abilities wrap tighter on mobile */
   #select-hub-door .sfsel__detail .ascent-ability-card{flex:1 1 130px;}
+  #select-hub-door .sfsel__actions{
+    grid-template-columns:minmax(0,1fr);
+    padding:8px 10px max(8px,env(safe-area-inset-bottom,0px));
+  }
+  #select-hub-door .sfsel__actions .sel-continue-run-wrap{grid-column:auto;}
+  #select-hub-door .sfsel__actions .take-flight-select-btn{min-height:48px;}
+  #select-hub-door .sfsel__back-to-birds{
+    display:block;
+    margin:8px 10px 0;
+    padding:7px 10px;
+    border:1px solid rgba(120,100,70,.45);
+    border-radius:8px;
+    background:rgba(20,22,30,.72);
+    color:var(--gold-light);
+    font:700 .7rem 'Cinzel',serif;
+  }
 }
 /* ── Very small phones (≤400px): maximise roster space ── */
 @media (max-width:400px){
