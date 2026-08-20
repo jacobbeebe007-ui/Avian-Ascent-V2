@@ -1713,7 +1713,12 @@ body.combat-scenario-test-unlocked .splash-hotspot--combat-scenarios.is-combatte
 }
 #supplies-view-records .supplies-records-block .run-history-title{margin-top:0;}
 #supplies-view-records .run-history-grid{justify-content:flex-start;}
-/* ── SSB / SF full-viewport fighter-select screen ── */
+/* ==========================================================================
+   CHARACTER SELECT — base presentation
+   Scoped to the open hub door so shared roster, portrait, and ascent classes
+   remain available to Battle, Nest, and other screens without presentation leaks.
+   Responsive overrides follow below in desktop-to-tablet-to-mobile order.
+   ========================================================================== */
 #select-hub-door.select-hub-panel.is-open{
   position:fixed !important;
   inset:0 !important;
@@ -1728,7 +1733,7 @@ body.combat-scenario-test-unlocked .splash-hotspot--combat-scenarios.is-combatte
   pointer-events:auto !important;
 }
 /* sfsel layout ─ fills the full viewport when the door panel is open */
-.select-hub-panel--door .sfsel{
+#select-hub-door .sfsel{
   display:flex;
   flex-direction:column;
   width:100%;
@@ -1736,7 +1741,7 @@ body.combat-scenario-test-unlocked .splash-hotspot--combat-scenarios.is-combatte
   overflow:hidden;
 }
 /* ── Top bar: title | filters | return button ── */
-.sfsel__topbar{
+#select-hub-door .sfsel__topbar{
   flex-shrink:0;
   display:flex;
   align-items:center;
@@ -1747,12 +1752,12 @@ body.combat-scenario-test-unlocked .splash-hotspot--combat-scenarios.is-combatte
   background:rgba(4,4,7,.88);
   min-height:0;
 }
-.sfsel__title-block{
+#select-hub-door .sfsel__title-block{
   flex-shrink:0;
   min-width:0;
   max-width:min(100%,320px);
 }
-.sfsel__title{
+#select-hub-door .sfsel__title{
   font-family:'Cinzel',serif;
   font-size:clamp(.95rem,2.2vw,1.3rem);
   color:var(--gold-light);
@@ -1760,7 +1765,7 @@ body.combat-scenario-test-unlocked .splash-hotspot--combat-scenarios.is-combatte
   letter-spacing:.08em;
   text-shadow:0 2px 12px rgba(0,0,0,.7);
 }
-.sfsel__subtitle{
+#select-hub-door .sfsel__subtitle{
   margin:4px 0 0;
   font-size:clamp(.62rem,1.4vw,.74rem);
   color:rgba(200,192,175,.72);
@@ -1768,7 +1773,7 @@ body.combat-scenario-test-unlocked .splash-hotspot--combat-scenarios.is-combatte
   line-height:1.35;
   font-style:normal;
 }
-.sfsel__filters{
+#select-hub-door .sfsel__filters{
   display:flex;
   align-items:center;
   flex-wrap:wrap;
@@ -1776,8 +1781,8 @@ body.combat-scenario-test-unlocked .splash-hotspot--combat-scenarios.is-combatte
   flex:1 1 auto;
   min-width:0;
 }
-.sfsel__return-btn,
-.sfsel__settings-btn{
+#select-hub-door .sfsel__return-btn,
+#select-hub-door .sfsel__settings-btn{
   flex-shrink:0;
   font:inherit;
   font-size:.75rem;
@@ -1789,14 +1794,14 @@ body.combat-scenario-test-unlocked .splash-hotspot--combat-scenarios.is-combatte
   cursor:pointer;
   letter-spacing:.04em;
 }
-.sfsel__return-btn:hover,
-.sfsel__settings-btn:hover{
+#select-hub-door .sfsel__return-btn:hover,
+#select-hub-door .sfsel__settings-btn:hover{
   border-color:rgba(232,201,106,.55);
   color:#fffaf0;
 }
-.sfsel__settings-btn{border-color:rgba(201,168,76,.6);color:var(--gold-light);}
+#select-hub-door .sfsel__settings-btn{border-color:rgba(201,168,76,.6);color:var(--gold-light);}
 /* ── Main area: grid + detail column ── */
-.sfsel__main{
+#select-hub-door .sfsel__main{
   flex:1 1 auto;
   display:grid;
   grid-template-columns:minmax(360px,.9fr) minmax(560px,1.4fr);
@@ -1806,7 +1811,8 @@ body.combat-scenario-test-unlocked .splash-hotspot--combat-scenarios.is-combatte
 .sfsel__view-tabs,
 .sfsel__back-to-birds{display:none;}
 /* LEFT: roster grid */
-.sfsel__roster{
+#select-hub-door .sfsel__roster{
+  flex:1 1 0;
   min-width:0;
   min-height:0;
   display:flex;
@@ -1815,7 +1821,7 @@ body.combat-scenario-test-unlocked .splash-hotspot--combat-scenarios.is-combatte
   padding:14px 12px 14px 16px;
   gap:0;
 }
-.sfsel__roster .bird-grid-scroller{
+#select-hub-door .sfsel__roster .bird-grid-scroller{
   flex:1 1 auto;
   min-height:0;
   overflow:auto;
@@ -1830,26 +1836,26 @@ body.combat-scenario-test-unlocked .splash-hotspot--combat-scenarios.is-combatte
   scrollbar-color:rgba(200,180,140,.2) transparent;
   scrollbar-width:thin;
 }
-.sfsel__roster .bird-grid-scroller::-webkit-scrollbar{width:7px;}
-.sfsel__roster .bird-grid-scroller::-webkit-scrollbar-track{background:transparent;}
-.sfsel__roster .bird-grid-scroller::-webkit-scrollbar-thumb{background:transparent;border-radius:4px;}
-.sfsel__roster .bird-grid-scroller:hover::-webkit-scrollbar-thumb,
-.sfsel__roster .bird-grid-scroller:focus-within::-webkit-scrollbar-thumb{background:rgba(130,110,80,.25);}
-.sfsel__roster #bird-grid{
+#select-hub-door .sfsel__roster .bird-grid-scroller::-webkit-scrollbar{width:7px;}
+#select-hub-door .sfsel__roster .bird-grid-scroller::-webkit-scrollbar-track{background:transparent;}
+#select-hub-door .sfsel__roster .bird-grid-scroller::-webkit-scrollbar-thumb{background:transparent;border-radius:4px;}
+#select-hub-door .sfsel__roster .bird-grid-scroller:hover::-webkit-scrollbar-thumb,
+#select-hub-door .sfsel__roster .bird-grid-scroller:focus-within::-webkit-scrollbar-thumb{background:rgba(130,110,80,.25);}
+#select-hub-door .sfsel__roster #bird-grid{
   overflow:visible !important;
   min-height:min-content !important;
   flex:none !important;
   max-height:none !important;
 }
 /* Grid card sizing — SSB-style with many visible fighters */
-.sfsel__roster .size-birds-row{
+#select-hub-door .sfsel__roster .size-birds-row{
   grid-template-columns:repeat(auto-fill,minmax(130px,1fr));
   gap:12px;
 }
 /* RIGHT: character detail sidebar */
-.sfsel__detail{
-  min-width:0;
-  min-height:0;
+#select-hub-door .sfsel__detail{
+  flex:0 0 min(420px,40vw);
+  width:min(420px,40vw);
   display:flex;
   flex-direction:column;
   border-left:1px solid rgba(201,168,76,.22);
@@ -1862,7 +1868,7 @@ body.combat-scenario-test-unlocked .splash-hotspot--combat-scenarios.is-combatte
   scrollbar-width:thin;
 }
 /* Empty state when no fighter is selected */
-.sfsel__detail-empty{
+#select-hub-door .sfsel__detail-empty{
   flex:1 1 auto;
   display:flex;
   align-items:center;
@@ -1875,21 +1881,24 @@ body.combat-scenario-test-unlocked .splash-hotspot--combat-scenarios.is-combatte
   letter-spacing:.04em;
   line-height:1.45;
 }
-.sfsel__detail-empty::before{
+#select-hub-door .sfsel__detail-empty::before{
   content:'🐦';
   display:block;
   font-size:1.6rem;
   margin-bottom:10px;
   opacity:.45;
 }
-/* Hide empty state (toggled by JS via .sfsel__detail-empty--hidden) */
-.sfsel__detail-empty.sfsel__detail-empty--hidden{
+/* Hide empty state (toggled by JS via #select-hub-door .sfsel__detail-empty--hidden) */
+#select-hub-door .sfsel__detail-empty.sfsel__detail-empty--hidden{
   display:none;
 }
-/* The detail region owns scrolling; avoid a nested panel scroller. */
-.sfsel__detail #ascent-panel{
-  flex:0 0 auto;
-  overflow:visible;
+/* Ascent panel fills the scrollable area of the detail column */
+#select-hub-door .sfsel__detail #ascent-panel{
+  flex:1 1 auto;
+  min-height:0;
+  overflow-y:auto;
+  overflow-x:hidden;
+  -webkit-overflow-scrolling:touch;
   padding:14px 16px 10px;
   margin:0;
   border-radius:0;
@@ -1897,19 +1906,62 @@ body.combat-scenario-test-unlocked .splash-hotspot--combat-scenarios.is-combatte
   background:transparent;
   max-height:none !important;
 }
-.sfsel__detail #ascent-panel.is-empty{
+#select-hub-door .sfsel__detail #ascent-panel.is-empty{
   flex:0 0 0;
   padding:0;
   overflow:hidden;
 }
-.ascent-strip--tier-grey{border-color:rgba(106,120,144,.45)!important;background:linear-gradient(180deg,rgba(106,120,144,.1),rgba(14,12,10,.94))!important;}
-.ascent-strip--tier-green{border-color:rgba(76,138,106,.45)!important;background:linear-gradient(180deg,rgba(76,138,106,.1),rgba(12,16,12,.94))!important;}
-.ascent-strip--tier-blue{border-color:rgba(76,106,201,.45)!important;background:linear-gradient(180deg,rgba(76,106,201,.1),rgba(12,14,22,.94))!important;}
-.ascent-strip--tier-purple{border-color:rgba(120,76,180,.45)!important;background:linear-gradient(180deg,rgba(120,76,180,.1),rgba(16,12,20,.94))!important;}
-.ascent-strip--tier-gold{border-color:rgba(180,140,40,.5)!important;background:linear-gradient(180deg,rgba(180,140,40,.12),rgba(18,14,8,.94))!important;}
-.ascent-strip--tier-orange{border-color:rgba(200,100,40,.5)!important;background:linear-gradient(180deg,rgba(200,100,40,.12),rgba(20,12,8,.94))!important;}
+/* Vertical layout inside the detail panel — no horizontal scroll */
+#select-hub-door .sfsel__detail .ascent-strip-hscroll{
+  flex-direction:column !important;
+  flex-wrap:nowrap !important;
+  overflow-x:visible !important;
+  overflow-y:visible !important;
+  gap:12px !important;
+  max-width:100% !important;
+}
+#select-hub-door .sfsel__detail .ascent-hblock{
+  min-width:0 !important;
+  max-width:100% !important;
+  width:100% !important;
+  flex:0 0 auto !important;
+}
+#select-hub-door .sfsel__detail .ascent-abilities-row{
+  flex-wrap:wrap !important;
+  overflow-x:visible !important;
+  max-width:100% !important;
+}
+#select-hub-door .sfsel__detail .ascent-ability-card{
+  width:auto !important;
+  flex:1 1 160px !important;
+}
+/* Make portrait area work in sidebar */
+#select-hub-door .sfsel__detail .ascent-strip--filled{
+  flex-direction:column;
+}
+#select-hub-door .sfsel .ascent-strip--tier-grey{border-color:rgba(106,120,144,.45);background:linear-gradient(180deg,rgba(106,120,144,.1),rgba(14,12,10,.94));}
+#select-hub-door .sfsel .ascent-strip--tier-green{border-color:rgba(76,138,106,.45);background:linear-gradient(180deg,rgba(76,138,106,.1),rgba(12,16,12,.94));}
+#select-hub-door .sfsel .ascent-strip--tier-blue{border-color:rgba(76,106,201,.45);background:linear-gradient(180deg,rgba(76,106,201,.1),rgba(12,14,22,.94));}
+#select-hub-door .sfsel .ascent-strip--tier-purple{border-color:rgba(120,76,180,.45);background:linear-gradient(180deg,rgba(120,76,180,.1),rgba(16,12,20,.94));}
+#select-hub-door .sfsel .ascent-strip--tier-gold{border-color:rgba(180,140,40,.5);background:linear-gradient(180deg,rgba(180,140,40,.12),rgba(18,14,8,.94));}
+#select-hub-door .sfsel .ascent-strip--tier-orange{border-color:rgba(200,100,40,.5);background:linear-gradient(180deg,rgba(200,100,40,.12),rgba(20,12,8,.94));}
+#select-hub-door .sfsel__detail .ascent-strip-portrait-wrap{
+  width:auto !important;
+  max-width:100%;
+  display:flex;
+  justify-content:center;
+  padding:10px 0 2px;
+}
+#select-hub-door .sfsel__detail .ascent-panel-portrait{
+  width:min(160px,50%);
+  height:min(160px,50%);
+}
+#select-hub-door .sfsel__detail .ascent-strip-body{
+  flex:1 1 auto;
+  min-width:0;
+}
 /* CTA row at the bottom of the detail column */
-.sfsel__actions{
+#select-hub-door .sfsel__actions{
   flex-shrink:0;
   display:grid;
   grid-template-columns:minmax(0,1fr) minmax(220px,auto) auto;
@@ -1919,21 +1971,15 @@ body.combat-scenario-test-unlocked .splash-hotspot--combat-scenarios.is-combatte
   border-top:1px solid rgba(201,168,76,.18);
   background:rgba(4,5,8,.88);
 }
-.sfsel__run-controls{
-  display:flex;
-  align-items:center;
-  min-width:0;
-  gap:8px;
-}
-.sfsel__run-summary{
+#select-hub-door .sfsel__run-summary{
   display:flex;
   flex-wrap:nowrap;
   gap:4px;
   min-height:0;
   min-width:0;
 }
-.sfsel__run-summary:empty{display:none;}
-.sfsel__run-chip{
+#select-hub-door .sfsel__run-summary:empty{display:none;}
+#select-hub-door .sfsel__run-chip{
   font-size:.62rem;
   letter-spacing:.04em;
   padding:3px 8px;
@@ -1942,64 +1988,60 @@ body.combat-scenario-test-unlocked .splash-hotspot--combat-scenarios.is-combatte
   background:rgba(12,14,20,.65);
   color:rgba(220,214,200,.88);
 }
-.sfsel__run-chip--mode{border-color:rgba(201,168,76,.35);color:var(--gold-light);}
-.sfsel__run-chip--map{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-.sfsel__actions .sfsel__settings-btn{padding:6px 9px;font-size:.66rem;white-space:nowrap;}
-.sfsel__actions .take-flight-select-btn{
+#select-hub-door .sfsel__run-chip--mode{border-color:rgba(201,168,76,.35);color:var(--gold-light);}
+#select-hub-door .sfsel__selected-label{
+  font-family:'Cinzel',serif;
+  font-size:.78rem;
+  color:var(--gold-light);
+  letter-spacing:.06em;
+  text-align:center;
+  padding:2px 4px 0;
+}
+#select-hub-door .sfsel__selected-label[hidden]{display:none;}
+#select-hub-door .sfsel__actions .take-flight-select-btn{
   width:100%;
   font-size:clamp(.85rem,1.8vw,1rem);
   padding:10px 18px;
   min-height:42px;
   letter-spacing:.14em;
 }
-@media (max-width:700px){
-  .sfsel__actions{
-    grid-template-columns:minmax(0,1fr) auto;
-    padding:6px 8px max(6px,env(safe-area-inset-bottom,0px));
-  }
-  .sfsel__run-controls{grid-column:1/-1;justify-content:space-between;}
-  .sfsel__run-summary{overflow:hidden;}
-  .sfsel__run-chip{padding:2px 6px;font-size:.56rem;}
-  .sfsel__actions .take-flight-select-btn{grid-column:1;min-height:40px;padding:8px 12px;}
-  #continue-row.sel-continue-run-wrap{grid-column:2;}
-}
-.sfsel__roster .bird-card.selected{
+#select-hub-door .sfsel__roster .bird-card.selected{
   transform:translateY(-1px);
 }
-.sfsel__roster .bird-card.bird-card--tier-grey.selected{border-color:#d8dde8!important;box-shadow:0 0 0 2px rgba(216,221,232,.45),0 0 28px rgba(106,120,144,.32)!important;}
-.sfsel__roster .bird-card.bird-card--tier-green.selected{border-color:#b8e8c8!important;box-shadow:0 0 0 2px rgba(184,232,200,.45),0 0 28px rgba(76,138,106,.32)!important;}
-.sfsel__roster .bird-card.bird-card--tier-blue.selected{border-color:#c8d4ff!important;box-shadow:0 0 0 2px rgba(200,212,255,.45),0 0 28px rgba(76,106,201,.32)!important;}
-.sfsel__roster .bird-card.bird-card--tier-purple.selected{border-color:#e0c8ff!important;box-shadow:0 0 0 2px rgba(224,200,255,.45),0 0 28px rgba(120,76,180,.32)!important;}
-.sfsel__roster .bird-card.bird-card--tier-gold.selected{border-color:#ffe8a0!important;box-shadow:0 0 0 2px rgba(255,232,160,.5),0 0 28px rgba(201,168,76,.34)!important;}
-.sfsel__roster .bird-card.bird-card--tier-orange.selected{border-color:#ffd0a8!important;box-shadow:0 0 0 2px rgba(255,208,168,.45),0 0 28px rgba(200,100,40,.32)!important;}
+#select-hub-door .sfsel__roster .bird-card.bird-card--tier-grey.selected{border-color:#d8dde8;box-shadow:0 0 0 2px rgba(216,221,232,.45),0 0 28px rgba(106,120,144,.32);}
+#select-hub-door .sfsel__roster .bird-card.bird-card--tier-green.selected{border-color:#b8e8c8;box-shadow:0 0 0 2px rgba(184,232,200,.45),0 0 28px rgba(76,138,106,.32);}
+#select-hub-door .sfsel__roster .bird-card.bird-card--tier-blue.selected{border-color:#c8d4ff;box-shadow:0 0 0 2px rgba(200,212,255,.45),0 0 28px rgba(76,106,201,.32);}
+#select-hub-door .sfsel__roster .bird-card.bird-card--tier-purple.selected{border-color:#e0c8ff;box-shadow:0 0 0 2px rgba(224,200,255,.45),0 0 28px rgba(120,76,180,.32);}
+#select-hub-door .sfsel__roster .bird-card.bird-card--tier-gold.selected{border-color:#ffe8a0;box-shadow:0 0 0 2px rgba(255,232,160,.5),0 0 28px rgba(201,168,76,.34);}
+#select-hub-door .sfsel__roster .bird-card.bird-card--tier-orange.selected{border-color:#ffd0a8;box-shadow:0 0 0 2px rgba(255,208,168,.45),0 0 28px rgba(200,100,40,.32);}
 /* Bird card hover/tap in the sfsel roster */
-.sfsel__roster .bird-card:not(.bird-locked){
+#select-hub-door .sfsel__roster .bird-card:not(.bird-locked){
   cursor:pointer;
   touch-action:manipulation;
   -webkit-tap-highlight-color:rgba(232,201,106,.12);
 }
 /* Compact bird cards for the SF/SSB grid */
-.sfsel__roster .bird-card{
+#select-hub-door .sfsel__roster .bird-card{
   padding:10px 8px;
 }
-.sfsel__roster .bird-nm{
+#select-hub-door .sfsel__roster .bird-nm{
   font-size:.72rem !important;
   margin-bottom:2px;
 }
-.sfsel__roster .bird-tagline-mini{
+#select-hub-door .sfsel__roster .bird-tagline-mini{
   font-size:.56rem !important;
   min-height:2em;
   line-height:1.2;
 }
-.sfsel__roster .class-badge{
+#select-hub-door .sfsel__roster .class-badge{
   font-size:.54rem;
   padding:1px 5px;
 }
-.sfsel__roster .bird-size-chip{
+#select-hub-door .sfsel__roster .bird-size-chip{
   font-size:.5rem;
   padding:1px 5px;
 }
-.sfsel__roster .bird-card-head{
+#select-hub-door .sfsel__roster .bird-card-head{
   margin-bottom:4px;
   gap:4px;
   flex-wrap:wrap;
@@ -2137,18 +2179,18 @@ body.combat-scenario-test-unlocked .splash-hotspot--combat-scenarios.is-combatte
 .mother-goose-result--error{border-color:rgba(180,80,80,.45);color:#e8b8b8;}
 .mother-goose-egg-card.is-disabled{opacity:.55;}
 /* Filter dropdown in the topbar */
-.sfsel__filter-wrap{
+#select-hub-door .sfsel__filter-wrap{
   display:flex;
   align-items:center;
   gap:6px;
 }
-.sfsel__filter-label{
+#select-hub-door .sfsel__filter-label{
   font-size:.72rem;
   color:rgba(210,204,192,.8);
   white-space:nowrap;
   flex-shrink:0;
 }
-.sfsel__filter-select{
+#select-hub-door .sfsel__filter-select{
   font:inherit;
   font-size:.72rem;
   padding:5px 26px 5px 8px;
@@ -2164,17 +2206,187 @@ body.combat-scenario-test-unlocked .splash-hotspot--combat-scenarios.is-combatte
   background-position:right 8px center;
   min-width:110px;
 }
-.sfsel__filter-select:focus{
+#select-hub-door .sfsel__filter-select:focus{
   outline:2px solid rgba(232,201,106,.5);
   outline-offset:2px;
   border-color:rgba(232,201,106,.45);
 }
-/* ── Mobile (≤700px): switch between full-height roster and profile ── */
+/* Panel state and portrait sizing are local to Character Select. */
+#select-hub-door .sfsel .ascent-panel{overflow:hidden;transition:max-height .35s ease,transform .25s ease,opacity .25s ease;}
+#select-hub-door .sfsel .ascent-panel.is-empty{max-height:120px;opacity:.85;}
+#select-hub-door .sfsel .ascent-panel.is-filled{max-height:1400px;opacity:1;}
+#select-hub-door .sfsel .ascent-panel-portrait{display:flex;align-items:center;justify-content:center;overflow:visible;}
+#select-hub-door .sfsel .ascent-panel-portrait .sprite4.tiny{width:76px;height:76px;}
+#select-hub-door .sfsel .ascent-panel-portrait .sprite4.small{width:88px;height:88px;}
+#select-hub-door .sfsel .ascent-panel-portrait .sprite4.medium{width:104px;height:104px;}
+#select-hub-door .sfsel .ascent-panel-portrait .sprite4.large{width:116px;height:116px;}
+#select-hub-door .sfsel .ascent-panel-portrait .sprite4.xl,
+#select-hub-door .sfsel .ascent-panel-portrait .sprite4.xlarge{width:132px;height:132px;}
+/* Character profile emitted by updateAscentPanel */
+#select-hub-door .sfsel .ascent-strip{
+  display:flex;
+  flex-direction:row;
+  align-items:stretch;
+  gap:10px;
+}
+#select-hub-door .sfsel .ascent-strip-portrait-wrap{
+  flex-shrink:0;
+  width:72px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  min-height:88px;
+}
+#select-hub-door .sfsel .ascent-strip-portrait-wrap .ascent-panel-portrait{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  max-height:88px;
+}
+#select-hub-door .sfsel .ascent-strip-portrait-wrap .sprite4,
+#select-hub-door .sfsel .ascent-strip-portrait-wrap .bird-emo,
+#select-hub-door .sfsel .ascent-strip-portrait-wrap .bird-fallback-svg{
+  transform:scale(0.88);
+  transform-origin:center center;
+}
+#select-hub-door .sfsel .ascent-strip-body{
+  flex:1;
+  min-width:0;
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+}
+#select-hub-door .sfsel .ascent-strip-title-row{
+  display:flex;
+  flex-wrap:wrap;
+  align-items:center;
+  gap:5px 7px;
+}
+#select-hub-door .sfsel .ascent-strip-title-row .ascent-panel-name{
+  font-size:clamp(1rem, 2.8vw, 1.2rem);
+  margin:0;
+  font-size:clamp(1rem,2.8vw,1.2rem);
+}
+#select-hub-door .sfsel .ascent-strip-tagline{
+  font-size:.62rem;
+  color:rgba(180,188,200,.85);
+  font-size:.62rem;
+  font-style:italic;
+}
+#select-hub-door .sfsel .ascent-strip-hscroll{
+  display:flex;
+  flex-wrap:wrap;
+  align-items:center;
+  gap:6px 10px;
+  margin-top:7px;
+  color:rgba(210,204,192,.88);
+  font-size:.68rem;
+}
+.sfsel-profile__details{
+  display:grid;
+  grid-template-columns:minmax(0,1fr) minmax(0,1fr);
+  gap:10px;
+}
+#select-hub-door .sfsel .ascent-strip-hscroll::-webkit-scrollbar{height:6px;}
+#select-hub-door .sfsel .ascent-strip-hscroll::-webkit-scrollbar-track{background:transparent;}
+#select-hub-door .sfsel .ascent-strip-hscroll::-webkit-scrollbar-thumb{background:transparent;border-radius:3px;}
+#select-hub-door .sfsel .ascent-strip-hscroll:hover::-webkit-scrollbar-thumb{background:rgba(140,120,90,.22);}
+#select-hub-door .sfsel .ascent-hblock{
+  flex:0 0 auto;
+  min-width:min(160px, 42vw);
+  max-width:min(280px, 70vw);
+  padding:6px 8px;
+  border-radius:10px;
+  border:1px solid rgba(120,100,70,.28);
+  border-radius:10px;
+  background:rgba(4,6,10,.35);
+}
+#select-hub-door .sfsel .ascent-hblock-label{
+  font-family:'Cinzel',serif;
+  font-size:.58rem;
+  letter-spacing:.1em;
+  text-transform:uppercase;
+}
+#select-hub-door .sfsel .ascent-hblock-stats{min-width:min(320px, 85vw);max-width:520px;}
+#select-hub-door .sfsel .ascent-stats-strip{
+  display:flex;
+  flex-wrap:wrap;
+  gap:4px 8px;
+  align-items:center;
+}
+#select-hub-door .sfsel .ascent-stat-chip{
+  font-size:.62rem;
+  color:rgba(200,205,215,.9);
+  padding:2px 6px;
+  border-radius:6px;
+  background:rgba(0,0,0,.2);
+  color:rgba(200,205,215,.9);
+  font-size:.62rem;
+}
+#select-hub-door .sfsel .ascent-stat-chip abbr{text-decoration:none;border-bottom:0;}
+#select-hub-door .sfsel .ascent-stat-chip strong{color:var(--text);font-weight:700;}
+#select-hub-door .sfsel .ascent-hblock-passive{min-width:min(200px, 55vw);max-width:360px;}
+#select-hub-door .sfsel .ascent-panel-passive--inline{
+  font-size:.65rem;
+  line-height:1.35;
+  color:var(--text-dim);
+  margin:0;
+}
+#select-hub-door .sfsel .ascent-hblock-abilities{min-width:min(260px, 90vw);max-width:none;}
+#select-hub-door .sfsel .ascent-abilities-row{
+  display:flex;
+  flex-direction:row;
+  flex-wrap:nowrap;
+  gap:8px;
+  overflow-x:auto;
+  padding-bottom:2px;
+  -webkit-overflow-scrolling:touch;
+  scrollbar-color: rgba(200,180,140,.1) transparent;
+  scrollbar-width:thin;
+}
+#select-hub-door .sfsel .ascent-abilities-row::-webkit-scrollbar{height:4px;}
+#select-hub-door .sfsel .ascent-abilities-row::-webkit-scrollbar-thumb{background:transparent;}
+#select-hub-door .sfsel .ascent-ability-card{
+  flex:0 0 auto;
+  width:min(168px, 48vw);
+  padding:6px 8px;
+  border-radius:8px;
+  border:1px solid rgba(140,160,190,.22);
+  background:rgba(14,20,28,.65);
+  font-size:.62rem;
+}
+#select-hub-door .sfsel .ascent-hblock-playstyle{min-width:min(140px, 40vw);max-width:220px;}
+#select-hub-door .sfsel .ascent-hblock-playstyle .showcase-summary{font-size:.65rem;margin:0;line-height:1.3;}
+/* Character profile text and ability cards emitted by updateAscentPanel */
+#select-hub-door .sfsel .ascent-panel-name{font-family:'Cinzel',serif;font-size:1.1rem;color:var(--gold-light);margin-bottom:2px;}
+#select-hub-door .sfsel .ascent-panel-passive{font-size:.72rem;color:var(--purple-light);background:rgba(122,76,201,.1);border:1px solid rgba(122,76,201,.22);border-radius:6px;padding:6px 8px;text-align:left;line-height:1.4;}
+#select-hub-door .sfsel .ascent-panel-passive strong{color:#c090ff;}
+#select-hub-door .sfsel .ascent-ability-top{display:flex;justify-content:space-between;gap:8px;font-size:.73rem;}
+#select-hub-door .sfsel .ascent-ability-name{color:var(--text);font-weight:700;}
+#select-hub-door .sfsel .ascent-ability-en{color:#e8c96a;font-weight:700;}
+#select-hub-door .sfsel .ascent-ability-tags{font-size:.6rem;color:#93a8bf;letter-spacing:.05em;margin-top:2px;}
+#select-hub-door .sfsel .ascent-ability-desc{font-size:.66rem;color:var(--text-dim);margin-top:3px;line-height:1.25;}
+#select-hub-door .sfsel .ascent-ability-desc.btn-desc-lines{display:flex;flex-direction:column;gap:1px;}
+#select-hub-door .sfsel .ascent-ability-desc.btn-desc-lines .btn-desc-line{font-size:.62rem;color:var(--text-dim);line-height:1.25;}
+#select-hub-door .sfsel .ascent-aspect-chip{margin-left:4px;}
+#select-hub-door .sfsel .aspect-chip{align-self:center;}
+#select-hub-door .sfsel .ascent-card-tier,
+#select-hub-door .sfsel .ascent-card-feathers{color:rgba(210,204,192,.88);}
+#select-hub-door .sfsel .ascent-empty{color:var(--text-dim);font-style:italic;font-size:.82rem;padding:30px 10px;opacity:.6;}
+#select-hub-door .sfsel .ascent-hblock-class-perk{min-width:min(200px,55vw);max-width:360px;}
+#select-hub-door .sfsel .showcase-summary{font-size:.65rem;color:#c9d5e2;margin:0;line-height:1.3;}
+
+/* Character Select responsive presentation: tablet */
+/* ── Tablet (701–1024px): slightly narrower detail ── */
+@media (min-width:701px) and (max-width:1024px){
+  #select-hub-door .sfsel__detail{flex-basis:min(320px,36vw);width:min(320px,36vw);}
+  #select-hub-door .sfsel__roster .size-birds-row{grid-template-columns:repeat(auto-fill,minmax(115px,1fr));}
+}
+
+/* Character Select responsive presentation: mobile */
+/* ── Mobile (≤700px): roster stacked above detail ── */
 @media (max-width:700px){
-  .sfsel__main{
-    grid-template-columns:minmax(0,1fr);
-    grid-template-rows:minmax(0,1fr) auto;
-  }
+  #select-hub-door .sfsel__main{flex-direction:column;}
 
   .sfsel__view-tabs{
     flex:0 0 auto;
@@ -2205,78 +2417,70 @@ body.combat-scenario-test-unlocked .splash-hotspot--combat-scenarios.is-combatte
   .sfsel__back-to-birds:focus-visible{outline:2px solid #f0cf70;outline-offset:2px;}
 
   /* Topbar: allow title + return to sit on one line, filters wrap below */
-  .sfsel__topbar{
+  #select-hub-door .sfsel__topbar{
     padding:8px 12px;
     gap:6px 10px;
     align-items:center;
   }
-  .sfsel__title{font-size:.84rem;flex:1 1 auto;}
-  .sfsel__return-btn{flex-shrink:0;font-size:.72rem;padding:6px 10px;}
-  .sfsel__filters{
+  #select-hub-door .sfsel__title{font-size:.84rem;flex:1 1 auto;}
+  #select-hub-door .sfsel__return-btn{flex-shrink:0;font-size:.72rem;padding:6px 10px;}
+  #select-hub-door .sfsel__filters{
     flex:0 0 100%; /* own row */
     order:3;
     padding-bottom:2px;
   }
 
-  /* Each view fills the space between the tabs and the fixed action area. */
-  .sfsel__roster{
+  /* Roster: fills all remaining space above the detail strip */
+  #select-hub-door .sfsel__roster{
     flex:1 1 auto;
     min-height:160px;
     padding:8px 10px 8px 12px;
   }
-  .sfsel[data-mobile-view="profile"] .sfsel__roster,
-  .sfsel:not([data-mobile-view]) .sfsel__detail,
-  .sfsel[data-mobile-view="birds"] .sfsel__detail{display:none;}
-  .sfsel[data-mobile-view="profile"] .sfsel__detail{display:flex;}
-  .sfsel__roster .size-birds-row{
+  #select-hub-door .sfsel__roster .size-birds-row{
     grid-template-columns:repeat(auto-fill,minmax(88px,1fr));
     gap:7px;
   }
   /* Slightly tighter bird cards on phones */
-  .sfsel__roster .bird-card{padding:8px 6px;}
-  .sfsel__roster .bird-nm{font-size:.68rem !important;}
-  .sfsel__roster .bird-tagline-mini{font-size:.52rem !important;min-height:1.8em;}
+  #select-hub-door .sfsel__roster .bird-card{padding:8px 6px;}
+  #select-hub-door .sfsel__roster .bird-nm{font-size:.68rem;}
+  #select-hub-door .sfsel__roster .bird-tagline-mini{font-size:.52rem;min-height:1.8em;}
 
-  /* Profile uses the full remaining height; only its content panel scrolls. */
-  .sfsel__detail{
-    flex:1 1 auto;
-    min-height:0;
+  /* Detail: fixed-height strip at bottom with internal scroll for panel */
+  #select-hub-door .sfsel__detail{
+    flex:0 0 auto;
     width:100%;
     border-left:none;
-    border-top:none;
-    overflow:hidden;
+    border-top:1px solid rgba(201,168,76,.22);
+    overflow:hidden; /* clip; internal flex handles scroll */
   }
-  .sfsel__back-to-birds{
-    display:block;
-    flex:0 0 auto;
-    align-self:flex-start;
-    min-height:38px;
-    margin:8px 12px 0;
-    padding:7px 12px;
-    border:1px solid rgba(201,168,76,.45);
-    border-radius:8px;
-    background:rgba(20,22,30,.8);
-    color:var(--gold-light);
-    font:700 .7rem 'Cinzel',serif;
-    cursor:pointer;
+  /* When no fighter selected: collapse to just the CTA bar to free roster space */
+  #select-hub-door .sfsel__detail:has(#ascent-panel.is-empty){
+    max-height:64px;
   }
+  #select-hub-door .sfsel__detail:has(#ascent-panel.is-empty) .sfsel__detail-empty{
+    display:none;
+  }
+
+  /* Portrait: stay compact in horizontal strip mode */
+  #select-hub-door .sfsel__detail .ascent-strip--filled{flex-direction:row;}
+  #select-hub-door .sfsel__detail .ascent-strip-portrait-wrap{
+    width:56px !important;
+    flex-shrink:0;
+    padding:4px 0;
+  }
+  #select-hub-door .sfsel__detail .ascent-panel-portrait{width:56px;height:56px;}
   /* Abilities wrap tighter on mobile */
-  .sfsel__detail .ascent-ability-card{flex:1 1 130px !important;}
+  #select-hub-door .sfsel__detail .ascent-ability-card{flex:1 1 130px;}
 }
 /* ── Very small phones (≤400px): maximise roster space ── */
 @media (max-width:400px){
-  .sfsel__roster .size-birds-row{
+  #select-hub-door .sfsel__roster .size-birds-row{
     grid-template-columns:repeat(auto-fill,minmax(78px,1fr));
     gap:6px;
   }
-  .sfsel__roster .bird-nm{font-size:.64rem !important;}
-  .sfsel__roster .bird-tagline-mini{display:none;} /* hide tagline — too cramped */
-  .sfsel__filter-select{min-width:90px;font-size:.68rem;}
-}
-/* ── Tablet (701–1024px): preserve an approximately 40/60 split ── */
-@media (min-width:701px) and (max-width:1024px){
-  .sfsel__main{grid-template-columns:minmax(280px,2fr) minmax(0,3fr);}
-  .sfsel__roster .size-birds-row{grid-template-columns:repeat(auto-fill,minmax(115px,1fr));}
+  #select-hub-door .sfsel__roster .bird-nm{font-size:.64rem;}
+  #select-hub-door .sfsel__roster .bird-tagline-mini{display:none;} /* hide tagline — too cramped */
+  #select-hub-door .sfsel__filter-select{min-width:90px;font-size:.68rem;}
 }
 /* Continue run wrap */
 #continue-row.sel-continue-run-wrap{
@@ -2319,147 +2523,6 @@ body.combat-scenario-test-unlocked .splash-hotspot--combat-scenarios.is-combatte
   border-color:rgba(100,90,70,.4);
   color:rgba(190,185,175,.5);
   background:rgba(14,16,20,.55);
-}
-/* Character profile regions */
-.sfsel-profile{
-  display:grid;
-  grid-template-columns:minmax(0,1fr);
-  gap:12px;
-  min-width:0;
-}
-.sfsel-profile__identity{
-  display:grid;
-  grid-template-columns:88px minmax(0,1fr);
-  align-items:center;
-  gap:10px;
-}
-.sfsel-profile__portrait{
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  min-height:88px;
-}
-.sfsel-profile__portrait .ascent-panel-portrait{
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  max-height:88px;
-}
-.sfsel-profile__portrait .sprite4,
-.sfsel-profile__portrait .bird-emo,
-.sfsel-profile__portrait .bird-fallback-svg{
-  transform:scale(.88);
-  transform-origin:center;
-}
-.sfsel-profile__identity-copy{min-width:0;}
-.sfsel-profile__title{
-  display:flex;
-  flex-wrap:wrap;
-  align-items:center;
-  gap:5px 7px;
-}
-.sfsel-profile__title .ascent-panel-name{
-  flex:1 1 100%;
-  margin:0;
-  font-size:clamp(1rem,2.8vw,1.2rem);
-}
-.ascent-strip-tagline{
-  margin-top:3px;
-  color:rgba(180,188,200,.85);
-  font-size:.62rem;
-  font-style:italic;
-}
-.sfsel-profile__progression{
-  display:flex;
-  flex-wrap:wrap;
-  align-items:center;
-  gap:6px 10px;
-  margin-top:7px;
-  color:rgba(210,204,192,.88);
-  font-size:.68rem;
-}
-.sfsel-profile__details{
-  display:grid;
-  grid-template-columns:minmax(0,1fr) minmax(0,1fr);
-  gap:10px;
-}
-.sfsel-profile__region{
-  min-width:0;
-  padding:8px;
-  border:1px solid rgba(120,100,70,.28);
-  border-radius:10px;
-  background:rgba(4,6,10,.35);
-}
-.sfsel-profile__heading{
-  margin:0 0 6px;
-  color:rgba(232,201,106,.75);
-  font:600 .58rem/1.2 'Cinzel',serif;
-  letter-spacing:.1em;
-  text-transform:uppercase;
-}
-.sfsel-profile__skills{grid-column:1 / -1;}
-.sfsel-profile__trait{
-  display:grid;
-  gap:2px;
-  color:var(--text-dim);
-  font-size:.65rem;
-  line-height:1.35;
-}
-.sfsel-profile__trait + .sfsel-profile__trait{
-  margin-top:7px;
-  padding-top:7px;
-  border-top:1px solid rgba(120,100,70,.18);
-}
-.sfsel-profile__trait strong{color:var(--text);}
-.ascent-stats-strip{
-  display:grid;
-  grid-template-columns:repeat(2,minmax(0,1fr));
-  gap:5px;
-}
-.ascent-stat-chip{
-  display:flex;
-  justify-content:space-between;
-  gap:5px;
-  padding:3px 6px;
-  border:1px solid rgba(100,110,130,.2);
-  border-radius:6px;
-  background:rgba(0,0,0,.2);
-  color:rgba(200,205,215,.9);
-  font-size:.62rem;
-}
-.ascent-stat-chip abbr{text-decoration:none;border-bottom:0;}
-.ascent-stat-chip strong{color:var(--text);font-weight:700;}
-.ascent-abilities-row{
-  display:flex;
-  flex-direction:row;
-  flex-wrap:nowrap;
-  gap:8px;
-  overflow-x:auto;
-  padding-bottom:2px;
-  -webkit-overflow-scrolling:touch;
-  scrollbar-color: rgba(200,180,140,.1) transparent;
-  scrollbar-width:thin;
-}
-.ascent-abilities-row::-webkit-scrollbar{height:4px;}
-.ascent-abilities-row::-webkit-scrollbar-thumb{background:transparent;}
-.ascent-ability-card{
-  flex:0 0 auto;
-  width:min(168px, 48vw);
-  padding:6px 8px;
-  border-radius:8px;
-  border:1px solid rgba(140,160,190,.22);
-  background:rgba(14,20,28,.65);
-  font-size:.62rem;
-}
-@media (max-width:1024px){
-  .sfsel-profile__identity{
-    grid-template-columns:64px minmax(0,1fr);
-    align-items:start;
-  }
-  .sfsel-profile__portrait{min-height:64px;}
-  .sfsel-profile__portrait .ascent-panel-portrait{width:56px;height:56px;}
-  .sfsel-profile__details{grid-template-columns:minmax(0,1fr);}
-  .sfsel-profile__skills{grid-column:auto;}
 }
 .select-hub-panel-head{
   display:flex;
@@ -2776,14 +2839,6 @@ body.combat-scenario-test-unlocked .splash-hotspot--combat-scenarios.is-combatte
 .lock-overlay{text-align:center;padding:5px 0 4px;}
 .lock-icon{font-size:1.3rem;display:block;margin-bottom:3px;}
 
-/* BEGIN ASCENT PANEL */
-.ascent-panel{background:rgba(24,18,6,.97);border:1px solid rgba(201,168,76,.5);border-radius:14px;padding:20px;text-align:center;box-shadow:0 0 30px rgba(201,168,76,.12);}
-.ascent-panel-portrait{width:132px;height:132px;margin:0 auto 10px;display:flex;align-items:center;justify-content:center;}
-.ascent-panel-name{font-family:'Cinzel',serif;font-size:1.1rem;color:var(--gold-light);margin-bottom:2px;}
-.ascent-panel-tagline{font-size:.75rem;color:#bfa870;font-style:italic;margin-bottom:10px;}
-.ascent-panel-class{margin-bottom:10px;}
-.ascent-panel-passive{font-size:.72rem;color:var(--purple-light);background:rgba(122,76,201,.1);border:1px solid rgba(122,76,201,.22);border-radius:6px;padding:6px 8px;margin-bottom:12px;text-align:left;line-height:1.4;}
-.ascent-panel-passive strong{color:#c090ff;}
 .ascent-btn{display:block;width:100%;padding:13px;font-family:'Cinzel',serif;font-size:1rem;letter-spacing:.1em;background:linear-gradient(135deg,#7a5c22,var(--gold),#7a5c22);color:#0a0c0f;border:none;border-radius:8px;cursor:pointer;font-weight:700;transition:all .3s;margin-bottom:10px;}
 .ascent-btn:hover{transform:scale(1.03);box-shadow:0 0 18px rgba(201,168,76,.5);}
 .ascent-empty{color:var(--text-dim);font-style:italic;font-size:.82rem;padding:30px 10px;opacity:.6;}
@@ -3947,15 +4002,9 @@ html.avian-ow-nest-embed .nest-close{display:none!important;}
 .bird-portrait .sprite4.small{ margin:0 auto; display:block; }
 .bird-portrait .sprite4.locked{ filter: grayscale(1) brightness(0.35); }
 
-/* ===== Selection: inline expanded preview (no extra popups) ===== */
-.ascent-panel{overflow:hidden; transition:max-height .35s ease, transform .25s ease, opacity .25s ease;}
-.ascent-panel.is-empty{max-height:120px; opacity:.85;}
-.ascent-panel.is-filled{max-height:1400px; opacity:1;}
-.ascent-panel .ascent-btn{width:100%; margin-top:10px;}
 @media (max-width: 820px){
   .sel-layout{grid-template-columns: 1fr;}
   .sel-right{position:sticky; top:0; z-index:5;}
-  .ascent-panel{margin-top:12px;}
 }
 
 
@@ -3999,8 +4048,7 @@ img{image-rendering:pixelated;image-rendering:crisp-edges;}
 .sprite4.large{width:104px;height:104px;border-radius:18px;}
 .sprite4.small{width:76px;height:76px;border-radius:14px;}
 .sprite4.tiny{width:64px;height:64px;border-radius:12px;}
-.bird-portrait .sprite4.medium{width:86px;height:105px;}
-.ascent-face .sprite4.medium, .ascent-panel-portrait .sprite4.medium{width:96px;height:96px;}
+.bird-portrait .sprite4.medium{width:86px;height:105px;}.ascent-face .sprite4.medium{width:96px;height:96px;}
 
 /* MAGPIE SPRITE CLEAN */
 .sprite-magpie{background-image:url("../assets/sprites/magpie.png");background-size:200% 200%;}
@@ -4016,9 +4064,8 @@ img{image-rendering:pixelated;image-rendering:crisp-edges;}
 
 /* XL sprite sizing for Emu / other very large birds */
 .sprite4.xlarge,.sprite4.xl{width:128px;height:128px;border-radius:18px;}
-.bird-portrait .sprite4.xlarge,.bird-portrait .sprite4.xl{width:112px;height:112px;}
-.ascent-face .sprite4.xlarge,.ascent-face .sprite4.xl,
-.ascent-panel-portrait .sprite4.xlarge,.ascent-panel-portrait .sprite4.xl{width:128px;height:128px;}
+.bird-portrait .sprite4.xlarge,.bird-portrait .sprite4.xl{width:112px;height:112px;}.ascent-face .sprite4.xlarge,
+.ascent-face .sprite4.xl{width:128px;height:128px;}
 /* shared frame mapping already handles frame-0..3 like Sparrow */
 
 
@@ -4069,13 +4116,13 @@ img{image-rendering:pixelated;image-rendering:crisp-edges;}
 .bird-portrait .sprite4.medium,.bird-portrait .sprite4.large,.bird-portrait .sprite4.xl,.bird-portrait .sprite4.xlarge{width:82px;height:82px;}
 .bird-portrait .sprite4.boss{width:102px;height:102px;}
 
-.ascent-face .sprite4.tiny,.ascent-panel-portrait .sprite4.tiny,
-.ascent-face .sprite4.small,.ascent-panel-portrait .sprite4.small{width:72px;height:72px;}
-.ascent-face .sprite4.medium,.ascent-panel-portrait .sprite4.medium,
-.ascent-face .sprite4.large,.ascent-panel-portrait .sprite4.large,
-.ascent-face .sprite4.xl,.ascent-panel-portrait .sprite4.xl,
-.ascent-face .sprite4.xlarge,.ascent-panel-portrait .sprite4.xlarge{width:94px;height:94px;}
-.ascent-face .sprite4.boss,.ascent-panel-portrait .sprite4.boss{width:112px;height:112px;}
+.ascent-face .sprite4.tiny,
+.ascent-face .sprite4.small{width:72px;height:72px;}
+.ascent-face .sprite4.medium,
+.ascent-face .sprite4.large,
+.ascent-face .sprite4.xl,
+.ascent-face .sprite4.xlarge{width:94px;height:94px;}
+.ascent-face .sprite4.boss{width:112px;height:112px;}
 
 #player-avatar .sprite4.tiny,#enemy-avatar .sprite4.tiny,
 #player-avatar .sprite4.small,#enemy-avatar .sprite4.small{width:82px;height:82px;}
@@ -4118,13 +4165,13 @@ img{image-rendering:pixelated;image-rendering:crisp-edges;}
 .bird-portrait .sprite4.xl,.bird-portrait .sprite4.xlarge{width:102px;height:102px;}
 .bird-portrait .sprite4.boss{width:112px;height:112px;}
 
-.ascent-face .sprite4.tiny,.ascent-panel-portrait .sprite4.tiny{width:70px;height:70px;}
-.ascent-face .sprite4.small,.ascent-panel-portrait .sprite4.small{width:78px;height:78px;}
-.ascent-face .sprite4.medium,.ascent-panel-portrait .sprite4.medium{width:96px;height:96px;}
-.ascent-face .sprite4.large,.ascent-panel-portrait .sprite4.large{width:108px;height:108px;}
-.ascent-face .sprite4.xl,.ascent-panel-portrait .sprite4.xl,
-.ascent-face .sprite4.xlarge,.ascent-panel-portrait .sprite4.xlarge{width:120px;height:120px;}
-.ascent-face .sprite4.boss,.ascent-panel-portrait .sprite4.boss{width:130px;height:130px;}
+.ascent-face .sprite4.tiny{width:70px;height:70px;}
+.ascent-face .sprite4.small{width:78px;height:78px;}
+.ascent-face .sprite4.medium{width:96px;height:96px;}
+.ascent-face .sprite4.large{width:108px;height:108px;}
+.ascent-face .sprite4.xl,
+.ascent-face .sprite4.xlarge{width:120px;height:120px;}
+.ascent-face .sprite4.boss{width:130px;height:130px;}
 
 #player-avatar .sprite4.tiny,#enemy-avatar .sprite4.tiny{width:82px;height:82px;}
 #player-avatar .sprite4.small,#enemy-avatar .sprite4.small{width:90px;height:90px;}
@@ -4135,12 +4182,11 @@ img{image-rendering:pixelated;image-rendering:crisp-edges;}
 #player-avatar .sprite4.boss,#enemy-avatar .sprite4.boss{width:138px;height:138px;}
 
 .avatar-wrap{height:132px;min-width:132px;}
-.bird-portrait,.ascent-panel-portrait,.ascent-face{display:flex;align-items:center;justify-content:center;}
+.bird-portrait,.ascent-face{display:flex;align-items:center;justify-content:center;}
 
 /* Penguin-specific ratio overrides using the actual sprite class name */
 /* ===== FINAL UNIFIED AVATAR / PORTRAIT OVERRIDES ===== */
 .bird-portrait,
-.ascent-panel-portrait,
 .ascent-face,
 .avatar-wrap{
   display:flex;
@@ -4157,13 +4203,13 @@ img{image-rendering:pixelated;image-rendering:crisp-edges;}
 .bird-portrait .sprite4.xlarge{width:108px !important;height:108px !important;}
 .bird-portrait .sprite4.boss{width:118px !important;height:118px !important;}
 
-.ascent-face .sprite4.tiny,.ascent-panel-portrait .sprite4.tiny{width:70px !important;height:70px !important;}
-.ascent-face .sprite4.small,.ascent-panel-portrait .sprite4.small{width:80px !important;height:80px !important;}
-.ascent-face .sprite4.medium,.ascent-panel-portrait .sprite4.medium{width:96px !important;height:96px !important;}
-.ascent-face .sprite4.large,.ascent-panel-portrait .sprite4.large{width:108px !important;height:108px !important;}
-.ascent-face .sprite4.xl,.ascent-panel-portrait .sprite4.xl,
-.ascent-face .sprite4.xlarge,.ascent-panel-portrait .sprite4.xlarge{width:122px !important;height:122px !important;}
-.ascent-face .sprite4.boss,.ascent-panel-portrait .sprite4.boss{width:132px !important;height:132px !important;}
+.ascent-face .sprite4.tiny{width:70px !important;height:70px !important;}
+.ascent-face .sprite4.small{width:80px !important;height:80px !important;}
+.ascent-face .sprite4.medium{width:96px !important;height:96px !important;}
+.ascent-face .sprite4.large{width:108px !important;height:108px !important;}
+.ascent-face .sprite4.xl,
+.ascent-face .sprite4.xlarge{width:122px !important;height:122px !important;}
+.ascent-face .sprite4.boss{width:132px !important;height:132px !important;}
 
 #player-avatar .sprite4.tiny,#enemy-avatar .sprite4.tiny{width:84px !important;height:84px !important;}
 #player-avatar .sprite4.small,#enemy-avatar .sprite4.small{width:94px !important;height:94px !important;}
@@ -4195,12 +4241,8 @@ img{image-rendering:pixelated;image-rendering:crisp-edges;}
 .sprite4.sprite-penguin{
   width:72px !important;
   height:72px !important;
-}
-
-.bird-portrait .sprite4.sprite-penguin,
-.bird-portrait .sprite4.sprite-penguin.small,
-.ascent-panel-portrait .sprite4.sprite-penguin,
-.ascent-panel-portrait .sprite4.sprite-penguin.small{
+}.bird-portrait .sprite4.sprite-penguin,
+.bird-portrait .sprite4.sprite-penguin.small{
   width:72px !important;
   height:72px !important;
 }
@@ -4262,8 +4304,6 @@ img{image-rendering:pixelated;image-rendering:crisp-edges;}
 }
 
 /* ascent/selected portrait */
-.ascent-panel-portrait .sprite-penguin,
-.ascent-panel-portrait .sprite4.sprite-penguin,
 .ascent-face .sprite-penguin,
 .ascent-face .sprite4.sprite-penguin{
   width:72px !important;
@@ -4298,7 +4338,6 @@ img{image-rendering:pixelated;image-rendering:crisp-edges;}
 .sprite-penguin.small,
 .bird-portrait .sprite4.sprite-penguin.small,
 .ascent-face .sprite4.sprite-penguin.small,
-.ascent-panel-portrait .sprite4.sprite-penguin.small,
 #player-avatar .sprite4.sprite-penguin.small,
 #enemy-avatar .sprite4.sprite-penguin.small,
 .avatar-wrap .sprite4.sprite-penguin.small,
@@ -4394,7 +4433,6 @@ img{image-rendering:pixelated;image-rendering:crisp-edges;}
 /* ===== 19_stability-cleanup-style.css ===== */
 
 .bird-fallback-svg{width:82px;height:82px;display:block;image-rendering:pixelated}
-.ascent-panel-portrait .bird-fallback-svg{width:94px;height:94px}
 #player-avatar .bird-fallback-svg,#enemy-avatar .bird-fallback-svg{width:98px;height:98px}
 
 .shop-item{
@@ -4442,7 +4480,6 @@ img{image-rendering:pixelated;image-rendering:crisp-edges;}
 
 /* Clean, final size authority */
 .bird-portrait,
-.ascent-panel-portrait,
 .ascent-face,
 .avatar-wrap,
 .avatar-inner,
@@ -4454,7 +4491,7 @@ img{image-rendering:pixelated;image-rendering:crisp-edges;}
 }
 
 .bird-portrait{min-height:120px !important; overflow:visible !important;}
-.ascent-panel-portrait,.ascent-face{min-height:112px !important; overflow:visible !important;}
+.ascent-face{min-height:112px !important; overflow:visible !important;}
 .avatar-wrap{height:148px !important; min-width:160px !important; overflow:visible !important;}
 #player-avatar-wrap,#enemy-avatar-wrap,#player-avatar,#enemy-avatar{overflow:visible !important;}
 
@@ -4465,12 +4502,12 @@ img{image-rendering:pixelated;image-rendering:crisp-edges;}
 .bird-portrait .sprite4.large{width:104px !important;height:104px !important;}
 .bird-portrait .sprite4.xl,.bird-portrait .sprite4.xlarge{width:120px !important;height:120px !important;}
 
-.ascent-panel-portrait .sprite4.tiny,.ascent-face .sprite4.tiny{width:76px !important;height:76px !important;}
-.ascent-panel-portrait .sprite4.small,.ascent-face .sprite4.small{width:88px !important;height:88px !important;}
-.ascent-panel-portrait .sprite4.medium,.ascent-face .sprite4.medium{width:104px !important;height:104px !important;}
-.ascent-panel-portrait .sprite4.large,.ascent-face .sprite4.large{width:116px !important;height:116px !important;}
-.ascent-panel-portrait .sprite4.xl,.ascent-face .sprite4.xl,
-.ascent-panel-portrait .sprite4.xlarge,.ascent-face .sprite4.xlarge{width:132px !important;height:132px !important;}
+.ascent-face .sprite4.tiny{width:76px !important;height:76px !important;}
+.ascent-face .sprite4.small{width:88px !important;height:88px !important;}
+.ascent-face .sprite4.medium{width:104px !important;height:104px !important;}
+.ascent-face .sprite4.large{width:116px !important;height:116px !important;}
+.ascent-face .sprite4.xl,
+.ascent-face .sprite4.xlarge{width:132px !important;height:132px !important;}
 
 #player-avatar .sprite4.tiny,#enemy-avatar .sprite4.tiny{width:88px !important;height:88px !important;}
 #player-avatar .sprite4.small,#enemy-avatar .sprite4.small{width:102px !important;height:102px !important;}
@@ -4480,11 +4517,11 @@ img{image-rendering:pixelated;image-rendering:crisp-edges;}
 #player-avatar .sprite4.xlarge,#enemy-avatar .sprite4.xlarge{width:148px !important;height:148px !important;}
 
 /* Penguin-specific ratio: wide, not square */
-.ascent-panel-portrait .sprite4.sprite-penguin.small,.ascent-face .sprite4.sprite-penguin.small{width:102px !important;height:76px !important;}
-.ascent-panel-portrait .sprite4.sprite-penguin.medium,.ascent-face .sprite4.sprite-penguin.medium{width:120px !important;height:88px !important;}
-.ascent-panel-portrait .sprite4.sprite-penguin.large,.ascent-face .sprite4.sprite-penguin.large{width:134px !important;height:98px !important;}
-.ascent-panel-portrait .sprite4.sprite-penguin.xl,.ascent-face .sprite4.sprite-penguin.xl,
-.ascent-panel-portrait .sprite4.sprite-penguin.xlarge,.ascent-face .sprite4.sprite-penguin.xlarge{width:154px !important;height:112px !important;}
+.ascent-face .sprite4.sprite-penguin.small{width:102px !important;height:76px !important;}
+.ascent-face .sprite4.sprite-penguin.medium{width:120px !important;height:88px !important;}
+.ascent-face .sprite4.sprite-penguin.large{width:134px !important;height:98px !important;}
+.ascent-face .sprite4.sprite-penguin.xl,
+.ascent-face .sprite4.sprite-penguin.xlarge{width:154px !important;height:112px !important;}
 
 
 /* Energy colors */
@@ -4498,12 +4535,6 @@ img{image-rendering:pixelated;image-rendering:crisp-edges;}
 .bird-portrait .sprite4.xlarge{
   width:112px !important;
   height:112px !important;
-}
-.ascent-panel-portrait .sprite4.large,
-.ascent-panel-portrait .sprite4.xl,
-.ascent-panel-portrait .sprite4.xlarge{
-  width:132px !important;
-  height:132px !important;
 }
 
 /* Species tuning requested */
@@ -4536,65 +4567,6 @@ img{image-rendering:pixelated;image-rendering:crisp-edges;}
 
 .nest-ab-path{margin-top:6px;font-size:.7rem;line-height:1.35;color:var(--text-dim);background:rgba(0,0,0,.2);border:1px solid rgba(201,168,76,.2);border-radius:6px;padding:6px;}
 .btn-mod{display:block;font-size:.62rem;color:var(--gold-light);opacity:.9;line-height:1.2;}
-
-/* ===== Character select: roster + preview (war-room background layered above) ===== */
-.sel-layout{display:grid !important;grid-template-columns:minmax(min(100%,280px),460px) 1fr !important;gap:14px;width:100%;max-width:1220px;margin:0 auto;padding:12px 14px;border:1px solid rgba(201,168,76,.38);background:rgba(8,10,12,.36);border-radius:14px;backdrop-filter:blur(16px) saturate(1.06);-webkit-backdrop-filter:blur(16px) saturate(1.06);box-shadow:0 12px 36px rgba(0,0,0,.25);}
-.sel-left{display:block !important;position:sticky;top:10px;grid-column:1;align-self:start;}
-.sel-right{grid-column:2;min-width:0;}
-#ascent-panel{display:block !important;}
-.sel-roster-controls{display:flex;flex-direction:column;align-items:stretch;gap:10px;margin-bottom:12px;}
-.sel-filter-stack{display:grid;gap:8px;}
-.filter-row .view-toggle-btn{flex:1 1 auto;text-align:center;}
-#view-toggle.filter-row{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));}
-#lock-toggle.filter-row{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));}
-/* Roster lives in Begin Ascent hub — avoid huge min-heights that blow past the viewport */
-.sel-right{display:flex;flex-direction:column;min-height:0;}
-
-#bird-grid{flex:1;min-height:0;max-height:none;overflow:auto;padding-right:6px;}
-.size-birds-row{display:grid;grid-template-columns:repeat(auto-fill,minmax(168px,1fr));gap:10px;}
-.bird-card:not([class*="bird-card--tier-"]){background:linear-gradient(180deg,rgba(23,27,36,.88),rgba(16,20,28,.82));border:1px solid rgba(160,180,210,.28);}
-.bird-card:hover:not([class*="bird-card--tier-"]){border-color:rgba(232,201,106,.65);box-shadow:0 6px 20px rgba(0,0,0,.35),0 0 0 1px rgba(232,201,106,.25) inset;}
-.bird-card.selected:not([class*="bird-card--tier-"]){border-color:var(--gold-light);box-shadow:0 0 0 1px rgba(232,201,106,.35) inset,0 0 26px rgba(201,168,76,.24);}
-.bird-tagline-mini{font-size:.62rem;color:#9eb0c3;line-height:1.25;min-height:32px;margin-top:4px;}
-.bird-card .stat-bars{display:none !important;}
-
-#screen-select .bird-card:not([class*="bird-card--tier-"]){background:linear-gradient(180deg,rgba(20,24,32,.55),rgba(14,18,26,.5));}
-.ascent-panel{background:linear-gradient(180deg,rgba(24,20,14,.95),rgba(15,18,26,.95));border:1px solid rgba(232,201,106,.45);box-shadow:0 8px 30px rgba(0,0,0,.45),0 0 0 1px rgba(232,201,106,.16) inset;padding:14px;text-align:left;}
-#screen-select .ascent-panel{background:linear-gradient(180deg,rgba(22,18,14,.52),rgba(14,16,22,.48));backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);box-shadow:0 8px 28px rgba(0,0,0,.28),0 0 0 1px rgba(232,201,106,.22) inset;}
-.showcase-top{display:grid;grid-template-columns:136px 1fr;gap:12px;align-items:center;margin-bottom:10px;}
-.showcase-head .ascent-panel-name{font-size:1.35rem;margin:0 0 2px;}
-.showcase-meta{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:8px;}
-.showcase-bottom{display:grid;grid-template-columns:1fr;gap:10px;}
-.showcase-lower{display:grid;grid-template-columns:1fr;gap:10px;}
-.showcase-section{background:rgba(8,12,18,.42);border:1px solid rgba(160,180,210,.18);border-radius:10px;padding:8px;}
-#screen-select .showcase-section{background:rgba(8,12,18,.32);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);}
-.showcase-title{font-family:'Cinzel',serif;color:var(--gold-light);font-size:.78rem;letter-spacing:.05em;margin-bottom:6px;}
-.ascent-ability-list{display:grid;gap:6px;}
-.ascent-ability-row{border:1px solid rgba(140,160,190,.22);background:rgba(14,20,28,.75);border-radius:8px;padding:6px;}
-.ascent-ability-top{display:flex;justify-content:space-between;gap:8px;font-size:.73rem;}
-.ascent-ability-name{color:var(--text);font-weight:700;}
-.ascent-ability-en{color:#e8c96a;font-weight:700;}
-.ascent-ability-tags{font-size:.6rem;color:#93a8bf;letter-spacing:.05em;margin-top:2px;}
-.ascent-ability-desc{font-size:.66rem;color:var(--text-dim);margin-top:3px;line-height:1.25;}
-.ascent-ability-desc.btn-desc-lines{display:flex;flex-direction:column;gap:1px;margin-top:3px;}
-.ascent-ability-desc.btn-desc-lines .btn-desc-line{font-size:.62rem;color:var(--text-dim);line-height:1.25;}
-.ascent-aspect-chip{margin-left:4px;}
-.showcase-stats-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;}
-.showcase-stats-grid>div{display:flex;justify-content:space-between;gap:8px;padding:5px 6px;border:1px solid rgba(120,140,170,.2);border-radius:7px;background:rgba(10,16,24,.6);font-size:.68rem;}
-.showcase-stats-grid span{color:#9db1c8;}
-.showcase-stats-grid strong{color:var(--text);} 
-.showcase-summary{font-size:.74rem;color:#c9d5e2;}
-.showcase-cta{width:100%;margin-top:2px;}
-
-@media (max-width: 1020px){
-  .sel-layout{grid-template-columns:1fr !important;}
-  .sel-right,.sel-left{grid-column:auto;position:static;}
-  .sel-right{min-height:0 !important;}
-  #bird-grid{max-height:none;min-height:0;}
-  .showcase-top{grid-template-columns:1fr;justify-items:center;text-align:center;}
-  .showcase-meta{justify-content:center;}
-  .showcase-stats-grid{grid-template-columns:repeat(2,minmax(0,1fr));}
-}
 
 /* ===== Battle UI Redesign: Tactical Roguelike Layout ===== */
 #screen-battle{background:radial-gradient(1100px 420px at 50% -80px, rgba(40,80,40,.14), transparent 62%),linear-gradient(180deg,#070c07 0%,#090e09 55%,#0b110b 100%);position:relative;overflow:hidden;}
@@ -4816,7 +4788,7 @@ body.ui-mobile-mode #screen-battle .btn-desc{
 }
 
 @media (min-width: 900px){
-  #bird-grid, .battle-log, .ref-guide-modal-scroll, .showcase-section, .ascent-panel{
+  #bird-grid, .battle-log, .ref-guide-modal-scroll{
     scrollbar-color:var(--scrollbar-thumb) var(--scrollbar-track);
   }
   #bird-grid::-webkit-scrollbar, .battle-log::-webkit-scrollbar{width:8px;height:8px;}
@@ -4825,24 +4797,6 @@ body.ui-mobile-mode #screen-battle .btn-desc{
   #bird-grid:hover::-webkit-scrollbar-thumb, .battle-log:hover::-webkit-scrollbar-thumb{background:var(--scrollbar-thumb-hover);}
 }
 
-
-/* War room compact layout follows ui-mobile-mode (not viewport-only) */
-body.ui-mobile-mode #screen-select .sel-layout{grid-template-columns:1fr !important;gap:10px;padding:10px;}
-body.ui-mobile-mode #screen-select .sel-left{position:static;order:1;}
-body.ui-mobile-mode #screen-select .sel-right{order:2;min-height:0;}
-body.ui-mobile-mode #screen-select #bird-grid{order:2;max-height:42vh;min-height:300px;}
-body.ui-mobile-mode #screen-select .bird-card{min-height:120px;padding:12px 10px;}
-body.ui-mobile-mode #screen-select .size-birds-row{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;}
-body.ui-mobile-mode #screen-select .showcase-stats-grid{grid-template-columns:repeat(2,minmax(0,1fr));}
-body.ui-mobile-mode #screen-select .mobile-select-top{display:grid;grid-template-columns:92px 1fr;gap:10px;align-items:center;}
-body.ui-mobile-mode #screen-select .mobile-select-drawer{margin-top:8px;border:1px solid rgba(201,168,76,.28);border-radius:10px;padding:6px;background:rgba(10,14,20,.45);}
-body.ui-mobile-mode #screen-select .mobile-select-drawer summary{cursor:pointer;font-family:'Cinzel',serif;color:var(--gold-light);font-size:.8rem;}
-body.ui-mobile-mode #screen-select .mobile-start-run{width:100%;margin-top:10px;font-size:1rem;padding:12px 14px;}
-body.ui-mobile-mode #screen-select #mobile-select-details-anchor{display:block;order:3;}
-
-#mobile-select-details-anchor{display:none;}
-
-/* Begin Ascent hub: undo generic #screen-select bird-grid caps; do NOT zero the scroller (was collapsing the roster on phones). */
 
 /* Nest ability vault + mutate */
 .nest-ab-slot-card{background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px;transition:border-color .15s;}
