@@ -1015,7 +1015,7 @@ function wireNestEquipmentTooltips(root){
     const id=el.dataset.nestEqItem||el.dataset.nestEqInv;
     if(!id) return;
     el._richTooltipBound=false;
-    bindRichTooltip(el, ()=>buildEquipmentTooltipHTML(id), { category: 'mutations' });
+    bindRichTooltip(el, ()=>buildEquipmentTooltipHTML(id), { category: 'items' });
   });
 }
 function wireNestAbilityTooltips(root){
@@ -2604,7 +2604,7 @@ function _nestEquipmentItemHtml(itemId, slotKey, locked=false){
   const slotBadge=icons[slotKey]?`<span class="nest-slot-badge" title="${escapeHtmlRoster(slotLbl)}">${icons[slotKey]}</span>`:'';
   const lockAttrs=locked?' aria-disabled="true" title="Story battle loadouts are locked until victory."':'';
   if(!itemId){
-    return `<div class="nest-equip-slot nest-equip-slot--gear${locked?' is-locked':''}" data-nest-eq-slot="${slotKey}"${lockAttrs}><div class="nest-equip-slot-lbl">${slotBadge}${escapeHtmlRoster(slotLbl)}</div><div class="nest-equip-slot-name" style="color:var(--text-dim)">Empty</div></div>`;
+    return `<div class="nest-equip-slot nest-equip-slot--gear${locked?' is-locked':''}" data-nest-eq-slot="${slotKey}"${lockAttrs}><div class="nest-equip-slot-lbl">${slotBadge}${escapeHtmlRoster(slotLbl)}</div><div class="nest-equip-slot-name" style="color:var(--text-dim)">Empty</div>${locked?'':'<span class="nest-equip-action">Choose gear</span>'}</div>`;
   }
   const item=getEquipmentItem(itemId);
   if(!item){
@@ -2616,7 +2616,7 @@ function _nestEquipmentItemHtml(itemId, slotKey, locked=false){
   const handBadge=equipmentHandBadgeHtml(item);
   const statsBlock=formatEquipmentCompactStatsHtml(item);
   const statsHtml=statsBlock?`<div class="nest-mut-stats mut-stat-compact-wrap nest-equip-mut-stats">${statsBlock}</div>`:'';
-  return `<div class="nest-equip-slot nest-equip-slot--gear filled tier-${item.rarity} tier-ui-${tierCss}${locked?' is-locked':''}" data-nest-eq-slot="${slotKey}" data-nest-eq-item="${itemId}"${lockAttrs}><div class="nest-equip-slot-lbl">${slotBadge}${escapeHtmlRoster(slotLbl)}${handBadge}</div><div class="nest-tier-label" style="color:${tierColor}">${tierMeta.label}</div><div class="nest-equip-slot-name" style="color:${tierColor}">${escapeHtmlRoster(item.name)}</div>${statsHtml}</div>`;
+  return `<div class="nest-equip-slot nest-equip-slot--gear filled tier-${item.rarity} tier-ui-${tierCss}${locked?' is-locked':''}" data-nest-eq-slot="${slotKey}" data-nest-eq-item="${itemId}"${lockAttrs}><div class="nest-equip-slot-lbl">${slotBadge}${escapeHtmlRoster(slotLbl)}${handBadge}</div><div class="nest-tier-label" style="color:${tierColor}">${tierMeta.label}</div><div class="nest-equip-slot-name" style="color:${tierColor}">${escapeHtmlRoster(item.name)}</div>${statsHtml}${locked?'':'<span class="nest-equip-action nest-equip-action--remove">Unequip</span>'}</div>`;
 }
 function buildNestEquipmentSectionV2(player){
   if(typeof Avian?.equipment?.ensurePlayerEquipmentState!=='function') return '';
@@ -2680,7 +2680,7 @@ function buildNestEquipmentSectionV2(player){
       const classTag=item.classRestriction&&item.classRestriction!=='Any'?`<span class="nest-class-tag">${escapeHtmlRoster(String(item.classRestriction))}</span>`:'';
       const handBadge=equipmentHandBadgeHtml(item);
       const statsBlock=formatEquipmentCompactStatsHtml(item);
-      invHtml+=`<div class="nest-inv-item tier-${item.rarity} tier-ui-${tierCss}${locked?' is-locked':''}${canEquip?'':' nest-inv-ineligible'}" data-nest-eq-inv="${id}" ${(!canEquip||locked)?'aria-disabled="true"':''} title="${canEquip?'':('Class only: '+String(item.classRestriction))}">${slotBadge}<div class="nest-tier-label" style="color:${tierColor}">${tierMeta.label}</div><strong style="color:${tierColor}">${escapeHtmlRoster(item.name)}</strong>${classTag}${handBadge}<br><span style="color:${tierColor}">${escapeHtmlRoster(item.family||item.slot)}</span>${statsBlock?`<div class="nest-mut-stats mut-stat-compact-wrap">${statsBlock}</div>`:''}</div>`;
+      invHtml+=`<div class="nest-inv-item tier-${item.rarity} tier-ui-${tierCss}${locked?' is-locked':''}${canEquip?'':' nest-inv-ineligible'}" data-nest-eq-inv="${id}" ${(!canEquip||locked)?'aria-disabled="true"':''} title="${canEquip?'':('Class only: '+String(item.classRestriction))}">${slotBadge}<div class="nest-tier-label" style="color:${tierColor}">${tierMeta.label}</div><strong style="color:${tierColor}">${escapeHtmlRoster(item.name)}</strong>${classTag}${handBadge}<br><span style="color:${tierColor}">${escapeHtmlRoster(item.family||item.slot)}</span>${statsBlock?`<div class="nest-mut-stats mut-stat-compact-wrap">${statsBlock}</div>`:''}${(!locked&&canEquip)?'<span class="nest-equip-action">Equip</span>':''}</div>`;
     }
     invHtml+='</div>';
   }
@@ -2723,6 +2723,47 @@ function handleNestEquipmentClick(ev){
     if(typeof Avian?.equipmentActions?.syncEntityAbilities==='function') Avian.equipmentActions.syncEntityAbilities(G.player);
     saveRun(); openNest(); return;
   }
+  if(slotKey){
+    G._nestActiveEqFilter=slotKey;
+    G._nestActiveTab='equipment';
+    openNest();
+  }
+}
+
+function selectNestTab(tab){
+  const content=document.getElementById('nest-content');
+  if(!content) return;
+  const allowed=['profile','equipment','abilities','rewards'];
+  const active=allowed.includes(tab)?tab:'profile';
+  G._nestActiveTab=active;
+  content.querySelectorAll('[data-nest-tab]').forEach(btn=>{
+    const selected=btn.dataset.nestTab===active;
+    btn.classList.toggle('active',selected);
+    btn.setAttribute('aria-selected',String(selected));
+  });
+  content.querySelectorAll('[data-nest-panel]').forEach(panel=>{
+    panel.hidden=panel.dataset.nestPanel!==active;
+  });
+}
+globalThis.selectNestTab=selectNestTab;
+
+function organizeNestSections(content){
+  const sections=[...content.querySelectorAll(':scope > .nest-section, :scope > .nest-passive')];
+  sections.forEach(section=>{
+    const title=section.querySelector('.nest-section-title')?.textContent||'';
+    let panel='profile';
+    if(section.classList.contains('nest-equipment-section')) panel='equipment';
+    else if(section.classList.contains('nest-ability-section')||section.classList.contains('nest-ultimate-bank')) panel='abilities';
+    else if(/Run bonuses|Collected Rewards/i.test(title)) panel='rewards';
+    section.dataset.nestPanel=panel;
+  });
+  content.insertAdjacentHTML('afterbegin',`<div class="nest-tabs" role="tablist" aria-label="Nest sections">
+    <button type="button" role="tab" data-nest-tab="profile">🐦 Profile</button>
+    <button type="button" role="tab" data-nest-tab="equipment">⚙ Equipment</button>
+    <button type="button" role="tab" data-nest-tab="abilities">⚔ Abilities</button>
+    <button type="button" role="tab" data-nest-tab="rewards">✨ Run bonuses</button>
+  </div>`);
+  selectNestTab(G._nestActiveTab||'profile');
 }
 
 function buildNestAbilitySection(player){
@@ -2907,7 +2948,10 @@ function openNest() {
     html+=`</div></div>`;
   }
   content.innerHTML=html;
+  organizeNestSections(content);
   content.onclick=(ev)=>{
+    const tab=ev.target.closest('[data-nest-tab]');
+    if(tab){ selectNestTab(tab.dataset.nestTab); return; }
     if(true) handleNestEquipmentClick(ev);
     else handleNestEquipClick(ev);
   };
@@ -4741,7 +4785,7 @@ function wireEnemyInfoEquipmentTooltips(root){
     const id=el.dataset.enemyEqItem;
     if(!id) return;
     el._richTooltipBound=false;
-    bindRichTooltip(el, ()=>buildEquipmentTooltipHTML(id), { category: 'mutations' });
+    bindRichTooltip(el, ()=>buildEquipmentTooltipHTML(id), { category: 'items' });
   });
 }
 
