@@ -1,7 +1,7 @@
 /* Avian Ascent - offline shell. Bump CACHE_VERSION when shipped assets change.
  * Precaches the prebuilt classic bundle at ./js/avian-game.bundle.js
  * (regenerate with `node scripts/build-bundle.js` or `npm run dev` / `npm run build`). */
-const CACHE_VERSION = 'avian-ascent-692262d54f67';
+const CACHE_VERSION = 'avian-ascent-d7401a65ec8c';
 const PRECACHE = [
   './',
   './index.html',
