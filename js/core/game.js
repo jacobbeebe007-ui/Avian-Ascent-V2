@@ -2339,6 +2339,7 @@ const DEFAULT_UI_STATE = Object.freeze({
   selectionView:'all',
   lockFilter:'unlocked',
   expandedBird:null,
+  characterSelectView:'birds',
 });
 
 function ensureUIState(){
@@ -2348,6 +2349,7 @@ function ensureUIState(){
   G.ui.selectionView = String(G.ui.selectionView || DEFAULT_UI_STATE.selectionView);
   G.ui.lockFilter = ['all','unlocked','locked'].includes(G.ui.lockFilter) ? G.ui.lockFilter : DEFAULT_UI_STATE.lockFilter;
   G.ui.expandedBird = G.ui.expandedBird ? String(G.ui.expandedBird) : null;
+  G.ui.characterSelectView = G.ui.characterSelectView==='profile' ? 'profile' : 'birds';
   return G.ui;
 }
 
@@ -6327,6 +6329,49 @@ function buildBirdCard(key, bird, locked) {
   return card;
 }
 
+function setCharacterSelectView(view, options={}){
+  const next=view==='profile' ? 'profile' : 'birds';
+  const ui=ensureUIState();
+  ui.characterSelectView=next;
+  const select=document.querySelector('.sfsel');
+  if(select) select.dataset.mobileView=next;
+
+  const isNarrow=globalThis.matchMedia?.('(max-width: 700px)').matches===true;
+  const tabs={
+    birds:document.getElementById('sfsel-roster-tab'),
+    profile:document.getElementById('sfsel-profile-tab'),
+  };
+  const panels={
+    birds:document.getElementById('sfsel-roster'),
+    profile:document.getElementById('sfsel-detail'),
+  };
+  Object.keys(tabs).forEach(name=>{
+    const active=name===next;
+    tabs[name]?.setAttribute('aria-selected', String(active));
+    tabs[name]?.setAttribute('tabindex', active ? '0' : '-1');
+    if(panels[name]) panels[name].setAttribute('aria-hidden', String(isNarrow && !active));
+  });
+  if(options.focusTab) tabs[next]?.focus();
+  if(options.focusPanel) panels[next]?.focus({preventScroll:true});
+}
+globalThis.setCharacterSelectView=setCharacterSelectView;
+function backToCharacterSelectBirds(){
+  setCharacterSelectView('birds',{focusTab:true});
+}
+globalThis.backToCharacterSelectBirds=backToCharacterSelectBirds;
+
+document.getElementById('sfsel-roster-tab')?.parentElement?.addEventListener('keydown', e=>{
+  if(!['ArrowLeft','ArrowRight','Home','End'].includes(e.key)) return;
+  e.preventDefault();
+  const next=(e.key==='ArrowLeft'||e.key==='Home') ? 'birds' : 'profile';
+  setCharacterSelectView(next,{focusTab:true});
+});
+
+globalThis.addEventListener?.('resize', ()=>{
+  const ui=ensureUIState();
+  setCharacterSelectView(ui.characterSelectView);
+});
+
 function selectBird(key, el) {
   primeAudioIfNeeded();
   const ui=ensureUIState();
@@ -6335,6 +6380,7 @@ function selectBird(key, el) {
   document.querySelectorAll('#bird-grid .bird-card').forEach(n=>n.classList.remove('selected'));
   if(el && el.classList) el.classList.add('selected');
   updateAscentPanel(key);
+  setCharacterSelectView('profile');
   if(el && typeof el.scrollIntoView==='function'){
     try{ el.scrollIntoView({block:'nearest', behavior:'smooth', inline:'nearest'}); }catch(_){ try{ el.scrollIntoView(false); }catch(__){} }
   }
@@ -8141,6 +8187,8 @@ function openSelectHubPanel(which){
   const panel = document.getElementById('select-hub-'+which);
   if(panel) panel.scrollTop = 0;
   if(which==='door'){
+    const ui=ensureUIState();
+    setCharacterSelectView(G.selected ? ui.characterSelectView : 'birds');
     if(typeof syncSfselRunSummary==='function') syncSfselRunSummary();
     if(typeof syncSelectTakeFlightButton==='function') syncSelectTakeFlightButton();
   }
@@ -17850,9 +17898,10 @@ document.addEventListener('keydown', e => {
   if(screen.id==='screen-select') {
     const doorOpen = document.getElementById('select-hub-door')?.classList.contains('is-open');
     if(doorOpen){
-      if(e.key==='Enter') { if(G.selected) startGame(); }
+      const onViewTab=e.target?.getAttribute?.('role')==='tab';
+      if(e.key==='Enter' && !onViewTab && e.target?.tagName!=='BUTTON') { if(G.selected) startGame(); }
       const cards=[...document.querySelectorAll('#bird-grid .bird-card:not(.bird-locked)')];
-      if(cards.length && ['ArrowRight','ArrowLeft','ArrowDown','ArrowUp'].includes(e.key)){
+      if(!onViewTab && cards.length && ['ArrowRight','ArrowLeft','ArrowDown','ArrowUp'].includes(e.key)){
         e.preventDefault();
         const selected = cards.findIndex(c=>c.classList.contains('selected'));
         const cur = selected>=0 ? selected : 0;

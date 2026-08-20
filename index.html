@@ -297,16 +297,21 @@
     <button type="button" class="sfsel__settings-btn" data-action="openRunSettings">⚙ Difficulty, Mode &amp; Map</button>
     <button type="button" class="sfsel__return-btn" data-action="closeSelectHubPanel">← War Room</button>
   </header>
+  <div class="sfsel__view-tabs" role="tablist" aria-label="Character Select view">
+    <button type="button" class="sfsel__view-tab" id="sfsel-roster-tab" role="tab" aria-selected="true" aria-controls="sfsel-roster" tabindex="0" data-action="setCharacterSelectView:birds">Birds</button>
+    <button type="button" class="sfsel__view-tab" id="sfsel-profile-tab" role="tab" aria-selected="false" aria-controls="sfsel-detail" tabindex="-1" data-action="setCharacterSelectView:profile">Profile</button>
+  </div>
   <div class="sfsel__main">
     <!-- LEFT: roster grid -->
-    <div class="sfsel__roster">
+    <div class="sfsel__roster" id="sfsel-roster" role="tabpanel" aria-labelledby="sfsel-roster-tab" tabindex="0">
       <div class="bird-grid-scroller" id="bird-grid-scroller">
         <div id="bird-grid"></div>
       </div>
       <div id="mobile-select-details-anchor" aria-hidden="true"></div>
     </div>
     <!-- RIGHT: character detail + Take Flight -->
-    <aside class="sfsel__detail" id="sfsel-detail">
+    <aside class="sfsel__detail" id="sfsel-detail" role="tabpanel" aria-labelledby="sfsel-profile-tab" tabindex="0">
+      <button type="button" class="sfsel__back-to-birds" data-action="backToCharacterSelectBirds">← Back to Birds</button>
       <div class="sfsel__detail-empty" id="sfsel-detail-empty" aria-live="polite">Select a bird from the roster</div>
       <div class="ascent-panel is-empty" id="ascent-panel">
         <div class="ascent-empty">Select a bird from the roster.</div>
