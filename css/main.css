@@ -2399,23 +2399,53 @@ body.combat-scenario-test-unlocked .splash-hotspot--combat-scenarios.is-combatte
   color:rgba(232,201,106,.75);
   margin:0 0 4px;
 }
-.ascent-hblock-stats{min-width:min(320px, 85vw);max-width:520px;}
+.ascent-hblock-stats{min-width:min(520px, 90vw);max-width:680px;}
 .ascent-stats-strip{
-  display:flex;
-  flex-wrap:wrap;
-  gap:4px 8px;
-  align-items:center;
+  display:grid;
+  grid-template-columns:repeat(3, minmax(0, 1fr));
+  gap:6px;
 }
-.ascent-stat-chip{
-  font-size:.62rem;
-  color:rgba(200,205,215,.9);
-  padding:2px 6px;
+.ascent-stat-group{
+  min-width:0;
+  padding:4px 6px 5px;
   border-radius:6px;
   background:rgba(0,0,0,.2);
   border:1px solid rgba(100,110,130,.2);
 }
-.ascent-stat-chip abbr{text-decoration:none;border-bottom:0;}
-.ascent-stat-chip strong{color:var(--text);font-weight:700;}
+.ascent-stat-group h4{
+  margin:0 0 3px;
+  color:rgba(232,201,106,.82);
+  font-family:'Cinzel',serif;
+  font-size:.52rem;
+  letter-spacing:.08em;
+  line-height:1.2;
+  text-transform:uppercase;
+}
+.ascent-stat-group dl{
+  display:grid;
+  grid-template-columns:minmax(0, 1fr) max-content;
+  gap:1px 8px;
+  align-items:baseline;
+  margin:0;
+  font-size:.62rem;
+}
+.ascent-stat-group dt{
+  min-width:0;
+  color:rgba(200,205,215,.9);
+  line-height:1.25;
+}
+.ascent-stat-group dd{
+  margin:0;
+  color:var(--text);
+  font-variant-numeric:tabular-nums;
+  font-weight:700;
+  line-height:1.25;
+  text-align:right;
+}
+@media (max-width:600px){
+  .ascent-stats-strip{grid-template-columns:repeat(2, minmax(0, 1fr));}
+  .ascent-stat-group:last-child{grid-column:1 / -1;}
+}
 .ascent-hblock-passive{min-width:min(200px, 55vw);max-width:360px;}
 .ascent-panel-passive--inline{
   font-size:.65rem;
