@@ -3618,12 +3618,17 @@ body.ui-mobile-mode #screen-battle .level-badge{font-size:.7rem;}
   padding:max(16px,env(safe-area-inset-top,0px)) 20px max(16px,env(safe-area-inset-bottom,0px));
   box-sizing:border-box;
 }
-.reward-screen-inner{max-width:860px;margin:0 auto;text-align:center;min-height:min(100%,calc(100dvh - 32px));display:flex;flex-direction:column;justify-content:center;}
+.reward-screen-inner{max-width:920px;margin:0 auto;text-align:center;min-height:min(100%,calc(100dvh - 32px));display:flex;flex-direction:column;justify-content:center;gap:10px;}
+.reward-heading{padding:18px 20px 14px;border:1px solid rgba(201,168,76,.28);border-radius:16px;background:radial-gradient(circle at 50% 0,rgba(201,168,76,.16),transparent 68%),rgba(16,18,24,.72);}
+.reward-kicker{font-family:'Cinzel',serif;font-size:.68rem;letter-spacing:.24em;text-transform:uppercase;color:var(--text-dim);margin-bottom:3px;}
 .reward-screen-inner h2{font-family:'Cinzel',serif;font-size:1.9rem;color:var(--gold);margin-bottom:6px;}
+.reward-heading #reward-sub{color:var(--text-dim);margin:0;}
+.reward-utility{display:flex;align-items:center;justify-content:space-between;gap:12px;color:var(--text-dim);font-size:.74rem;padding:0 4px;}
+.reward-continue{position:sticky;bottom:0;padding:4px 0 8px;background:linear-gradient(180deg,transparent,var(--bg) 36%);z-index:3;}
 .reward-tabs{display:flex;gap:10px;justify-content:center;margin:16px 0;}
 .reward-tab{padding:8px 20px;border-radius:20px;border:1px solid var(--border);background:var(--surface2);cursor:pointer;font-family:'Cinzel',serif;font-size:.82rem;transition:all .2s;letter-spacing:.06em;}
 .reward-tab.active{background:rgba(201,168,76,.15);border-color:var(--gold);color:var(--gold);}
-.nest-reward-scene{display:flex;flex-direction:column;align-items:center;min-height:200px;margin:12px auto 8px;padding:8px 0 4px;max-width:720px;}
+.nest-reward-scene{display:flex;flex-direction:column;align-items:center;min-height:180px;margin:0 auto;padding:14px 18px 10px;max-width:760px;width:100%;border-radius:16px;background:rgba(255,255,255,.025);border:1px solid rgba(255,255,255,.06);}
 .reward-nest{display:block;margin:0 auto;font-size:4.2rem;line-height:1;background:transparent;border:none;cursor:default;filter:drop-shadow(0 6px 14px rgba(0,0,0,.35));transition:transform .2s ease;position:relative;z-index:2;}
 .reward-nest.nest-shakeable{cursor:pointer;}
 .reward-nest.nest-shakeable:hover{transform:scale(1.06);}

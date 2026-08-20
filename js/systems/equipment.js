@@ -164,14 +164,21 @@
     return !!(item && String(item.slot || '') === 'Weapon' && (Number(item.hands) || 0) === 1);
   }
 
+  function isFlexibleHandWeapon(item) {
+    if (!isOneHandedWeaponItem(item)) return false;
+    var family = String(item.family || item.name || '').toLowerCase();
+    return family.indexOf('dagger') >= 0 || family.indexOf('wand') >= 0;
+  }
+
   function slotAcceptsItem(slotKey, item) {
     if (!item || !slotKey) return false;
     var meta = slotMeta(slotKey);
     if (!meta) return false;
-    /* Off-hand absorbs Shields and any 1H weapon; dedicated shield slot removed. */
+    /* RPG hand rules: shields are off-hand only; only light daggers and wands may
+       be dual-wielded. Swords and all other one-handed weapons remain main-hand. */
     if (slotKey === 'offHand') {
       if (isShieldItem(item) && (Number(item.hands) || 0) === 0) return true;
-      if (isOneHandedWeaponItem(item)) return true;
+      if (isFlexibleHandWeapon(item)) return true;
       return false;
     }
     if (item.slot !== meta.accepts) return false;

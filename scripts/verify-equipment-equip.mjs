@@ -135,10 +135,16 @@ assertEquip(knight, 'ARM-001', 'mainHand', false, 'armour item rejected in mainH
 
 // --- 1H / 2H hand rules ---
 const rogue = freshPlayer('sparrow');
-equipment.addToInventory(rogue, 'WPN-007');
+equipment.addToInventory(rogue, 'WPN-001');
+equipment.addToInventory(rogue, 'WPN-001');
 equipment.addToInventory(rogue, 'WPN-007');
 
-assertEquip(rogue, 'WPN-007', 'offHand', true, '1H weapon allowed in offHand');
+assertEquip(rogue, 'WPN-001', 'offHand', true, 'dagger allowed in offHand');
+assertEquip(rogue, 'WPN-007', 'offHand', false, 'one-handed sword rejected in offHand');
+if (equipment.slotAcceptsItem('offHand', items['WPN-031'])) ok('wand allowed in offHand');
+else fail('wand should be accepted in offHand');
+if (!equipment.slotAcceptsItem('mainHand', items['SHD-001'])) ok('shield rejected in mainHand');
+else fail('shield should be off-hand only');
 
 const knight2h = freshPlayer('crow');
 equipment.addToInventory(knight2h, 'WPN-061');
@@ -146,26 +152,26 @@ assertEquip(knight2h, 'WPN-061', 'offHand', false, '2H weapon rejected in offHan
 if (equipment.equip(knight2h, 'WPN-061', 'mainHand')) ok('2H weapon equips in mainHand');
 else fail('2H weapon should equip in mainHand');
 
-equipment.addToInventory(rogue, 'WPN-007');
-if (equipment.equip(rogue, 'WPN-007', 'offHand')) ok('offHand equip before 2H conflict test');
+equipment.addToInventory(rogue, 'WPN-001');
+if (equipment.equip(rogue, 'WPN-001', 'offHand')) ok('offHand equip before 2H conflict test');
 else fail('offHand equip failed');
 
 const twoHPlayer = freshPlayer('crow');
 equipment.addToInventory(twoHPlayer, 'WPN-061');
-equipment.addToInventory(twoHPlayer, 'WPN-007');
-equipment.equip(twoHPlayer, 'WPN-007', 'offHand');
+equipment.addToInventory(twoHPlayer, 'SHD-001');
+equipment.equip(twoHPlayer, 'SHD-001', 'offHand');
 equipment.equip(twoHPlayer, 'WPN-061', 'mainHand');
 if (!twoHPlayer.equipment.offHand) ok('2H in mainHand forces empty offHand');
 else fail('offHand should be cleared when equipping 2H mainHand');
 
 // --- duplicate 1H weapons ---
 const dual = freshPlayer('sparrow');
-equipment.addToInventory(dual, 'WPN-007');
-equipment.addToInventory(dual, 'WPN-007');
-equipment.equip(dual, 'WPN-007', 'mainHand');
-equipment.equip(dual, 'WPN-007', 'offHand');
-if (dual.equipment.mainHand === 'WPN-007' && dual.equipment.offHand === 'WPN-007') {
-  ok('duplicate 1H weapons allowed in both hands');
+equipment.addToInventory(dual, 'WPN-001');
+equipment.addToInventory(dual, 'WPN-001');
+equipment.equip(dual, 'WPN-001', 'mainHand');
+equipment.equip(dual, 'WPN-001', 'offHand');
+if (dual.equipment.mainHand === 'WPN-001' && dual.equipment.offHand === 'WPN-001') {
+  ok('duplicate daggers allowed in both hands');
 } else {
   fail('duplicate 1H dual-wield failed');
 }
@@ -212,8 +218,7 @@ if (!shieldCheck.ok && shieldCheck.reason === 'two_handed_main') {
 // --- 2H main clears offHand weapons and Shields ---
 const weaponOff = freshPlayer('crow');
 equipment.addToInventory(weaponOff, 'WPN-061');
-equipment.addToInventory(weaponOff, 'WPN-007');
-equipment.equip(weaponOff, 'WPN-007', 'offHand');
+weaponOff.equipment.offHand = 'WPN-001';
 equipment.equip(weaponOff, 'WPN-061', 'mainHand');
 if (!weaponOff.equipment.offHand) ok('2H main clears offHand weapon');
 else fail('offHand weapon should clear when equipping 2H mainHand');
@@ -249,18 +254,18 @@ if (!classCheck.ok && classCheck.reason === 'class_restricted') {
   fail(`expected class_restricted for knight + wand, got ${JSON.stringify(classCheck)}`);
 }
 
-// --- dual-wield stacks Dexterity flat (Grey talon is Dex flat-only in v0.9) ---
+// --- dual-wield stacks Dexterity flat for two legal daggers ---
 const atkPlayer = freshPlayer('sparrow');
-equipment.addToInventory(atkPlayer, 'WPN-007');
-equipment.addToInventory(atkPlayer, 'WPN-007');
-equipment.equip(atkPlayer, 'WPN-007', 'mainHand');
-equipment.equip(atkPlayer, 'WPN-007', 'offHand');
+equipment.addToInventory(atkPlayer, 'WPN-001');
+equipment.addToInventory(atkPlayer, 'WPN-001');
+equipment.equip(atkPlayer, 'WPN-001', 'mainHand');
+equipment.equip(atkPlayer, 'WPN-001', 'offHand');
 equipment.reapplyPlayerStatsFromSources(atkPlayer);
 const roll = equipment.rollupEquipmentStats(atkPlayer);
 const dexFlat = Number(roll.stats && roll.stats.dex) || 0;
-const expectedFlat = (Number(items['WPN-007'].stats.dexFlat) || 0) * 2;
+const expectedFlat = (Number(items['WPN-001'].stats.dexFlat) || 0) * 2;
 if (Math.abs(dexFlat - expectedFlat) < 1e-6 && expectedFlat > 0) {
-  ok(`dual-wield stacks Dexterity flat (${dexFlat} from two blades)`);
+  ok(`dual-wield stacks Dexterity flat (${dexFlat} from two daggers)`);
 } else {
   fail(`expected equipment dex flat ${expectedFlat}, got flat=${dexFlat}`);
 }
