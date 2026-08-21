@@ -30,6 +30,7 @@
         lastHatch: null,
       },
       eggPurchaseHistory: [],
+      activityLog: [],
     };
   }
 
@@ -135,6 +136,7 @@
       speciesFeathers: normalizeSpeciesFeathers(m.speciesFeathers),
       motherGoose: normalizeMotherGoose(m.motherGoose),
       eggPurchaseHistory: Array.isArray(m.eggPurchaseHistory) ? m.eggPurchaseHistory.slice(-50) : [],
+      activityLog: Array.isArray(m.activityLog) ? m.activityLog.slice(-100) : [],
     };
     if (typeof globalThis.migrateBirdCardsInMeta === 'function') {
       globalThis.migrateBirdCardsInMeta(out);
@@ -158,7 +160,12 @@
   }
 
   function getGoldenGooseEggBalance() {
+    if (isGoldenGooseInfinite()) return Infinity;
     return getFortuneMeta().goldenGooseEggs;
+  }
+
+  function isGoldenGooseInfinite() {
+    try { return localStorage.getItem('avian_infinite_golden_eggs') === '1'; } catch (_) { return false; }
   }
 
   function getSavedEggBalance() {
@@ -179,6 +186,7 @@
   }
 
   function spendGoldenGooseEggs(n) {
+    if (isGoldenGooseInfinite()) return true;
     var cost = Math.max(0, Math.floor(Number(n) || 0));
     if (!cost) return true;
     var m = getFortuneMeta();
@@ -191,6 +199,16 @@
   function spendSavedEggs(n) {
     return spendGoldenGooseEggs(n);
   }
+
+  function recordSuppliesActivity(title, details) {
+    var m = getFortuneMeta();
+    if (!Array.isArray(m.activityLog)) m.activityLog = [];
+    m.activityLog.push({ at: Date.now(), title: String(title || 'Supplies updated'), details: (details || []).map(String) });
+    m.activityLog = m.activityLog.slice(-100);
+    saveFortuneMeta(m);
+  }
+
+  function getSuppliesActivityLog() { return getFortuneMeta().activityLog.slice().reverse(); }
 
   function ownsArtifact(id) {
     if (!id) return false;
@@ -326,6 +344,9 @@
   globalThis.addGoldenGooseEggs = addGoldenGooseEggs;
   globalThis.spendSavedEggs = spendSavedEggs;
   globalThis.spendGoldenGooseEggs = spendGoldenGooseEggs;
+  globalThis.isGoldenGooseInfinite = isGoldenGooseInfinite;
+  globalThis.recordSuppliesActivity = recordSuppliesActivity;
+  globalThis.getSuppliesActivityLog = getSuppliesActivityLog;
   globalThis.ownsArtifact = ownsArtifact;
   globalThis.grantArtifact = grantArtifact;
   globalThis.getEquippedArtifactId = getEquippedArtifactId;
