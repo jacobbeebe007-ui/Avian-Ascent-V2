@@ -75,6 +75,7 @@
     "js/systems/enemy-roster-runtime.js",
     "js/systems/encounter-generator.js",
     "js/world/overworld_bridge.js",
+    "js/systems/story-run-state.js",
     "js/world/map-forge-storage.js",
     "js/world/ow_map_runtime.js",
     "js/world/map-forge.js",

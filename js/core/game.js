@@ -5688,7 +5688,6 @@ function handleOverworldReturn() {
   let intent = null;
   try { intent = JSON.parse(localStorage.getItem(_OW_NAV_KEY) || 'null'); } catch(_) {}
   if (!intent?.action) return false;
-
   const save = loadSaveData();
   if (!save?.player) return false;
   if (save?.endlessMode) {
@@ -5697,6 +5696,9 @@ function handleOverworldReturn() {
       localStorage.removeItem(_OW_STATE_KEY);
     } catch(_) {}
     return false;
+  }
+  if (intent.action === 'battle' || intent.action === 'shop') {
+    Avian.storyRun?.enterNode(intent.nodeId, intent.mapId || 'story-blackstone', intent.action === 'shop' ? 'shop' : 'combat');
   }
 
   try { localStorage.removeItem(_OW_NAV_KEY); } catch(_) {}
@@ -7365,6 +7367,7 @@ function startGame() {
   G._classPerkChoicesGranted = 0;
   G._overworldProgress = normalizeOverworldProgress({completedStage:0,currentNodeId:0,lastSummary:null}, 1);
   clearOverworldPendingBattle();
+  Avian.storyRun?.start(G.player.birdKey, 'story-blackstone');
   saveRun();
   G.phase='PLAYER';
   const runStartEvt = {birdKey:G.player.birdKey, difficulty:G.difficulty, endless:!!G.endlessMode};
@@ -16286,6 +16289,7 @@ function isEquipmentReward(rw) {
 
 function applySingleReward(rw) {
   if (!rw || rw.id === '_reward_skip') return;
+  if (!G.endlessMode) Avian.storyRun?.collectReward(rw);
   if (rw.type === 'equipment') {
     const itemId = rw.equipmentItemId || rw.id;
     if (typeof Avian?.equipment?.addToInventory === 'function') Avian.equipment.addToInventory(G.player, itemId);
@@ -16535,6 +16539,7 @@ function handleNestShake(){
 globalThis.handleNestShake=handleNestShake;
 
 function showRewardScreen(hasLevelUp) {
+  if (!G.endlessMode) Avian.storyRun?.winEncounter(!!G.enemy?.isBoss);
   G.animLock=false;
   if(typeof lockActionUI==='function') lockActionUI(false);
   showScreen('screen-reward');
@@ -17284,6 +17289,7 @@ function afterLevelUp() {
 }
 
 function advanceStage() {
+  if (!G.endlessMode) Avian.storyRun?.winEncounter(!!G.enemy?.isBoss);
   G.stage++;
   if(isEndlessRunActive()) applyEndlessProgressionMilestones();
   // Story run ends after final story stage (20 for default Blackstone map)
@@ -17592,6 +17598,12 @@ function showVictory(){
   if(!G.endlessMode){
     try { localStorage.removeItem(_OW_STATE_KEY); localStorage.removeItem(_OW_NAV_KEY); } catch(_) {}
   }
+  if (!G.endlessMode) Avian.storyRun?.complete({
+    playerBirdId: G.player?.birdKey || null,
+    encountersCompleted: Math.max(0, Number(G.stage) || 0),
+    bossDefeated: true,
+    currencyEarned: Math.max(0, Math.floor(Number(G.shinyObjects) || 0)),
+  });
   G._flightRescuedNestsAwarded=[];
   // HARD RESET COMBAT STATE
   G.animLock = false;
@@ -18993,13 +19005,6 @@ function purchaseShopItemAtIndex(idx, costOverride){
       Avian.equipmentLoot.registerOrangeAcquired(Avian.equipmentLoot.getItem(itemId));
     }
     reapplyPlayerGearStats(G.player);
-  } else   if(item.type==='equipment'){
-    const itemId=item.equipmentItemId||item.id;
-    if(typeof Avian?.equipment?.addToInventory==='function') Avian.equipment.addToInventory(G.player, itemId);
-    if(typeof Avian?.equipmentLoot?.registerOrangeAcquired==='function'){
-      Avian.equipmentLoot.registerOrangeAcquired(Avian.equipmentLoot.getItem(itemId));
-    }
-    reapplyPlayerGearStats(G.player);
   } else if(item.type==='mutation'){
     const itemId=item.mutationItemId||item.id;
     if(typeof Avian?.equipment?.addToInventory==='function') Avian.equipment.addToInventory(G.player, itemId);
@@ -19024,6 +19029,7 @@ function purchaseShopItemAtIndex(idx, costOverride){
   }
   _shopItems.splice(idx,1);
   assignShopItems(_shopItems);
+  if (!G.endlessMode) Avian.storyRun?.visitShop(G._currentShopNodeId);
   return {item, cost, isCombatItem:!!item.isCombatItem};
 }
 
