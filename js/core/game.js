@@ -7719,6 +7719,14 @@ function normalizeBattleTurnState(){
 }
 
 function resetForNewBattle(){
+  if(Avian?.systems?.combatBreakdown?.reset){
+    Avian.systems.combatBreakdown.reset({
+      battleId:`battle-${Date.now()}`,
+      bird:G?.player?.birdKey||G?.player?.name||null,
+      enemy:G?.enemy?.id||G?.enemy?.name||null,
+      equipment:G?.player?.equipment||null,
+    });
+  }
   G.playerStatus={};
   G.enemyStatus={};
   if(G.player?.stats){
@@ -12137,10 +12145,12 @@ function applyDamageThroughShield(stats, status, dmg, isMagic=false, opts=null){
         isMagic:!!isMagic,
       };
       if(typeof G!=='undefined') G._lastProtectionHit=result;
+      if(Avian?.systems?.combatBreakdown?.routeDamage) Avian.systems.combatBreakdown.routeDamage(result);
       return healthPart;
     }
     const result=prot.applyDamageThroughProtection(stats, status, dmg, !!isMagic);
     if(typeof G!=='undefined') G._lastProtectionHit=result;
+    if(Avian?.systems?.combatBreakdown?.routeDamage) Avian.systems.combatBreakdown.routeDamage(result);
     return result.remaining;
   }
   let remaining=Math.max(0, Number(dmg)||0);

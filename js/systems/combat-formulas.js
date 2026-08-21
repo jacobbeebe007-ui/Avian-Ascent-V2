@@ -961,14 +961,22 @@
 
   function calculateDamage(params) {
     params = params || {};
-    if (params.hitSucceeded === false) return { damage: 0, preMitigation: 0, components: {} };
+    function withBreakdown(result) {
+      var service = globalThis.Avian && Avian.systems && Avian.systems.combatBreakdown;
+      if (service && typeof service.fromCalculation === 'function') {
+        result.breakdown = service.fromCalculation(result, params);
+        if (typeof service.captureCalculation === 'function') service.captureCalculation(result);
+      }
+      return result;
+    }
+    if (params.hitSucceeded === false) return withBreakdown({ damage: 0, preMitigation: 0, components: {} });
     var attacker = params.attacker || {};
     var target = params.target || {};
     var ability = unwrapAbilityRow(params.ability || {});
     var battleState = params.battleState || {};
     enrichCombatRow(ability);
     if (ability.noDamage) {
-      return { damage: 0, preMitigation: 0, components: {} };
+      return withBreakdown({ damage: 0, preMitigation: 0, components: {} });
     }
     var enCost = ability.enCost != null ? ability.enCost : (ability.apCost || 1);
     /* Equipped Basic Attack inherits weapon damage; unarmed flat Natural Strike does not. */
@@ -1074,7 +1082,7 @@
       }
       preCrit = afterAffinity * defMod * braceMult;
       var damageWf = applyMinimumDamage(Math.round(preCrit), enCost);
-      return {
+      return withBreakdown({
         damage: damageWf,
         preMitigation: preMitigation,
         effectiveDef: applyFlatThenPercentPen(
@@ -1104,7 +1112,7 @@
           directScaling: false,
           weaponFirst: true,
         },
-      };
+      });
     }
 
     if (usesDirectScaling(ability)) {
@@ -1119,7 +1127,7 @@
       preCrit = preMitigation * defMod * typeMod * bonusMod * braceMult;
     } else {
       if (getAbilityPower(ability, attacker, target, battleState) <= 0) {
-        return { damage: 0, preMitigation: 0, components: {} };
+        return withBreakdown({ damage: 0, preMitigation: 0, components: {} });
       }
       enBase = getENBaseDamage(enCost);
       abilityPower = getAbilityPower(ability, attacker, target, battleState);
@@ -1139,7 +1147,7 @@
       damage *= critMult;
     }
     damage = applyMinimumDamage(roundCurvedDamage(damage), enCost);
-    return {
+    return withBreakdown({
       damage: damage,
       preMitigation: preMitigation,
       effectiveDef: defStat,
@@ -1160,7 +1168,7 @@
         directScaling: usesDirectScaling(ability),
         weaponFirst: weaponFirst,
       },
-    };
+    });
   }
 
   function usesMasterDamage(row) {
