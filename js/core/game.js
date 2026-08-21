@@ -8067,26 +8067,34 @@ function loadStage() {
 function setSuppliesSubView(which){
   const ref = document.getElementById('supplies-view-reference');
   const rec = document.getElementById('supplies-view-records');
+  const codes = document.getElementById('supplies-view-codes');
   const bRef = document.getElementById('supplies-nav-reference');
   const bRec = document.getElementById('supplies-nav-records');
+  const bCodes = document.getElementById('supplies-nav-codes');
   if(!ref || !rec) return;
-  const isRef = which === 'reference';
+  const isCodes = which === 'codes' && isCreatorCodesEnabled();
+  const isRef = which === 'reference' || (!isCodes && which !== 'records');
+  const isRec = !isRef && !isCodes;
   ref.classList.toggle('is-active', isRef);
-  rec.classList.toggle('is-active', !isRef);
+  rec.classList.toggle('is-active', isRec);
+  if(codes) codes.classList.toggle('is-active', isCodes);
   if(bRef){
     bRef.classList.toggle('is-active', isRef);
     bRef.setAttribute('aria-selected', String(isRef));
   }
   if(bRec){
-    bRec.classList.toggle('is-active', !isRef);
-    bRec.setAttribute('aria-selected', String(!isRef));
+    bRec.classList.toggle('is-active', isRec);
+    bRec.setAttribute('aria-selected', String(isRec));
   }
-  if(!isRef){
+  if(bCodes){ bCodes.classList.toggle('is-active', isCodes); bCodes.setAttribute('aria-selected', String(isCodes)); }
+  if(isRec){
     try{
       if(typeof renderRunHistory === 'function') renderRunHistory();
       if(typeof renderHighscoreBoard === 'function') renderHighscoreBoard();
     }catch(_){}
   }
+  renderSuppliesCodeTools();
+  renderSuppliesActivityLog();
 }
 globalThis.setSuppliesSubView = setSuppliesSubView;
 
@@ -19217,20 +19225,82 @@ function unlockAllCodexEntries(){
 // ============================================================
 //  DEV CODE
 // ============================================================
+const DEV_CODE_CATALOG=Object.freeze([
+  {code:'GMbirdwatching',description:'Open this creator code reference and checklist.',toggleable:false},
+  {code:'birdwatching',description:'Unlock every playable bird.'},
+  {code:'headinghome',description:'Lock unlockable birds again.'},
+  {code:'blakiston',description:'Unlock Duke Blakiston.'},
+  {code:'reference',description:'Unlock every Codex entry.'},
+  {code:'buildnest',description:'Unlock the Build Nest map forge.'},
+  {code:'combattest',description:'Unlock Combat Scenario Test.'},
+  {code:'tiergreen',description:'Set every owned bird card to Green tier.'},
+  {code:'tierblue',description:'Set every owned bird card to Blue tier.'},
+  {code:'tierpurple',description:'Set every owned bird card to Purple tier.'},
+  {code:'tiergold',description:'Set every owned bird card to Gold tier.'},
+  {code:'goldengoose',description:'Toggle infinite Golden Goose Eggs.'},
+  {code:'Featherplucked',description:'Add 900 Species Feathers to every owned bird.'},
+]);
+function isCreatorCodesEnabled(){ try{return localStorage.getItem('avian_creator_codes')==='1';}catch(_){return false;} }
+function getDevCodeSwitches(){
+  try{const saved=JSON.parse(localStorage.getItem('avian_dev_code_switches')||'{}');return saved&&typeof saved==='object'?saved:{};}catch(_){return {};}
+}
+function isDevCodeEnabled(code){const switches=getDevCodeSwitches();return switches[code.toLowerCase()]!==false;}
+function toggleDevCode(spec){
+  const parts=String(spec||'').split(':'); const code=(parts[0]||'').toLowerCase(); const enabled=parts[1]==='1';
+  const switches=getDevCodeSwitches(); switches[code]=enabled;
+  try{localStorage.setItem('avian_dev_code_switches',JSON.stringify(switches));}catch(_){}
+  renderSuppliesCodeTools();
+}
+function renderSuppliesCodeTools(){
+  const creator=isCreatorCodesEnabled(); const nav=document.getElementById('supplies-nav-codes');
+  const toggles=document.getElementById('supplies-code-toggles'); const list=document.getElementById('supplies-code-toggle-list');
+  const ref=document.getElementById('supplies-code-reference');
+  if(nav) nav.hidden=!creator; if(toggles) toggles.hidden=!creator;
+  const rows=DEV_CODE_CATALOG.map(row=>`<label class="supplies-code-row"><input type="checkbox" ${isDevCodeEnabled(row.code)?'checked':''} ${row.toggleable===false?'disabled':''} data-action="toggleDevCode:${row.code.toLowerCase()}:${isDevCodeEnabled(row.code)?'0':'1'}"><span><code>${row.code}</code> — ${row.description}</span></label>`).join('');
+  if(list) list.innerHTML=rows; if(ref) ref.innerHTML=rows;
+}
+function renderSuppliesActivityLog(){
+  const el=document.getElementById('supplies-activity-list'); if(!el)return;
+  const entries=typeof getSuppliesActivityLog==='function'?getSuppliesActivityLog():[];
+  el.innerHTML=entries.length?entries.map(e=>`<article class="supplies-log-entry"><time>${new Date(e.at).toLocaleString()}</time><strong>${e.title}</strong>${e.details?.length?`<ul>${e.details.map(d=>`<li>${d}</li>`).join('')}</ul>`:''}</article>`).join(''):'<p class="supplies-log-empty">No supplies received or purchased yet.</p>';
+}
+globalThis.renderSuppliesActivityLog=renderSuppliesActivityLog;
+function setOwnedBirdTier(tier){
+  const m=typeof getFortuneMeta==='function'?getFortuneMeta():null; if(!m?.birdCards?.owned)return 0;
+  const keys=Object.keys(m.birdCards.owned); keys.forEach(k=>{m.birdCards.owned[k].tier=tier;m.birdCards.owned[k].stars=0;}); saveFortuneMeta(m); return keys.length;
+}
 function checkDevCode(val) {
   const msg = document.getElementById('dev-code-msg');
   const code=(val||'').trim().toLowerCase();
   const allUnlockIds=['stage20','stage40','crit100Run','buff250Run','debuff250Run','fletchlingWin','juvenileWin','predatorWin','easyWin','normalWin','hardWin','unlock_hummingbird','unlock_shoebill','unlock_secretary','unlock_magpie','unlock_kookaburra','unlock_peregrine','unlock_harpy','unlock_ostrich','unlock_kiwi','unlock_lyrebird','unlock_toucan','unlock_penguin','unlock_emu','unlock_swan','unlock_flamingo','unlock_seagull','unlock_albatross','unlock_duke_blakiston'];
+  if(code==='gmbirdwatching'){
+    try{localStorage.setItem('avian_creator_codes','1');}catch(_){} renderSuppliesCodeTools();
+    if(msg){msg.textContent='🛠 Creator code reference and switches enabled.';msg.style.color='var(--gold-light)';} return;
+  }
+  if(!isDevCodeEnabled(code)){
+    if(msg){msg.textContent='This code is currently turned off.';msg.style.color='var(--red-light)';} return;
+  }
   if (code === 'birdwatching') {
     const u = getUnlocks();
     allUnlockIds.forEach(id => { u[id] = true; });
     localStorage.setItem(UNLOCK_KEY, JSON.stringify(u));
+    Object.keys(BIRDS||{}).forEach(id=>{if(typeof grantBirdCard==='function')grantBirdCard(id,'grey');});
     const input = document.getElementById('dev-code-input');
     if (input) input.value = '';
-    if (msg) { msg.textContent = '🔓 Birdwatching: all birds unlocked (including Emu)!'; msg.style.color = 'var(--gold-light)'; }
+    if (msg) { msg.textContent = '🔓 Birdwatching: all birds unlocked!'; msg.style.color = 'var(--gold-light)'; }
     setTimeout(() => { if (msg) msg.textContent = ''; }, 3200);
     initSelectionSafe();
     return;
+  }
+  if (/^tier(green|blue|purple|gold)$/.test(code)) {
+    const tier=code.slice(4); const count=setOwnedBirdTier(tier);
+    if(msg){msg.textContent=`⬆ ${count} unlocked bird cards upgraded to ${tier}.`;msg.style.color='var(--gold-light)';}
+    initSelectionSafe(); return;
+  }
+  if(code==='featherplucked'){
+    const m=typeof getFortuneMeta==='function'?getFortuneMeta():null; const keys=Object.keys(m?.birdCards?.owned||{});
+    keys.forEach(k=>{m.speciesFeathers[k]=Math.max(0,Number(m.speciesFeathers[k])||0)+900;}); if(m)saveFortuneMeta(m);
+    if(msg){msg.textContent=`🪶 +900 feathers for ${keys.length} unlocked birds.`;msg.style.color='var(--gold-light)';} return;
   }
   if (code === 'headinghome') {
     localStorage.setItem(UNLOCK_KEY, JSON.stringify({}));
@@ -19288,16 +19358,12 @@ function checkDevCode(val) {
     return;
   }
   if (code === 'goldengoose') {
-    if (typeof addGoldenGooseEggs === 'function') addGoldenGooseEggs(9000);
-    if (typeof addRescuedNest === 'function') {
-      addRescuedNest('cracked', 5);
-      addRescuedNest('feathered', 3);
-      addRescuedNest('gleaming', 2);
-    }
+    const infinite=!(typeof isGoldenGooseInfinite==='function'&&isGoldenGooseInfinite());
+    try{localStorage.setItem('avian_infinite_golden_eggs',infinite?'1':'0');}catch(_){}
     const input = document.getElementById('dev-code-input');
     if (input) input.value = '';
     if (msg) {
-      msg.textContent = '🪿 GoldenGoose: +9000 Golden Goose Eggs and sample Rescued Nests!';
+      msg.textContent = infinite?'🪿 GoldenGoose: infinite Golden Goose Eggs enabled!':'🪿 Infinite Golden Goose Eggs disabled.';
       msg.style.color = 'var(--gold-light)';
     }
     setTimeout(() => { if (msg) msg.textContent = ''; }, 3200);
@@ -19310,6 +19376,7 @@ function checkDevCode(val) {
     setTimeout(() => { if (msg) msg.textContent = ''; }, 1800);
   }
 }
+globalThis.toggleDevCode=toggleDevCode;
 
 const ACCESS_KEY='avian_accessibility_v1';
 const MUSIC_SETTINGS_KEY='avian_music_v1';

@@ -144,6 +144,7 @@
 <div class="supplies-subnav" role="tablist" aria-label="Supplies sections">
 <button type="button" class="supplies-subnav-btn is-active" id="supplies-nav-reference" role="tab" aria-selected="true" aria-controls="supplies-view-reference" data-action="setSuppliesSubView:reference">Reference &amp; unlock</button>
 <button type="button" class="supplies-subnav-btn" id="supplies-nav-records" role="tab" aria-selected="false" aria-controls="supplies-view-records" data-action="setSuppliesSubView:records">Runs &amp; highscores</button>
+<button type="button" class="supplies-subnav-btn" id="supplies-nav-codes" role="tab" aria-selected="false" aria-controls="supplies-view-codes" data-action="setSuppliesSubView:codes" hidden>Creator codes</button>
 </div>
 <div class="supplies-subview is-active" id="supplies-view-reference" role="tabpanel" aria-labelledby="supplies-nav-reference">
 <p class="select-hub-lead">Reference codex — birds, abilities, mechanics, and more. Secret unlock codes live with the baggage.</p>
@@ -154,6 +155,15 @@
 <div class="splash-unlock-msg" id="dev-code-msg"></div>
 <button type="button" class="splash-erase-btn" data-action="openEraseProgressModal">🗑 Erase saved progress</button>
 <button type="button" class="splash-cache-btn" data-action="openClearCacheModal">Clear cached data</button>
+<section class="supplies-code-toggles" id="supplies-code-toggles" hidden aria-labelledby="supplies-code-toggles-title">
+<h4 id="supplies-code-toggles-title">Creator code switches</h4>
+<p>Tick codes to make them available. Changes are saved on this device.</p>
+<div id="supplies-code-toggle-list"></div>
+</section>
+<section class="supplies-activity-log" aria-labelledby="supplies-activity-title">
+<h4 id="supplies-activity-title">Supplies log</h4>
+<div id="supplies-activity-list"><p class="supplies-log-empty">No supplies received or purchased yet.</p></div>
+</section>
 </div>
 </div>
 <div class="supplies-subview" id="supplies-view-records" role="tabpanel" aria-labelledby="supplies-nav-records">
@@ -166,6 +176,10 @@
 <div class="run-history-title">— HIGHSCORES —</div>
 <div class="run-history-grid" id="highscore-grid"></div>
 </div>
+</div>
+<div class="supplies-subview" id="supplies-view-codes" role="tabpanel" aria-labelledby="supplies-nav-codes">
+<p class="select-hub-lead">Creator reference — every unlock code in this build.</p>
+<div class="supplies-code-reference" id="supplies-code-reference"></div>
 </div>
 </div>
 </div>
@@ -1018,6 +1032,7 @@
 <div class="mother-goose-hatch-egg-wrap" id="mother-goose-hatch-egg-wrap">
 <div class="mother-goose-hatch-egg-grid" id="mother-goose-hatch-egg-grid"></div>
 </div>
+<button type="button" class="mother-goose-hatch-close mother-goose-hatch-now" id="mother-goose-hatch-now" data-action="hatchMotherGooseNow">Hatch</button>
 <div class="mother-goose-hatch-reveal" id="mother-goose-hatch-reveal" hidden></div>
 <button type="button" class="mother-goose-hatch-close" id="mother-goose-hatch-close" data-action="closeMotherGooseHatchModal" hidden>Continue</button>
 </div>
