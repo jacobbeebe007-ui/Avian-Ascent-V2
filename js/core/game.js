@@ -4158,7 +4158,10 @@ function resolveEnemyWorkbookLevel(ed, opts={}){
       ? Math.floor(fromEnemy)
       : resolveStoryLevelFromStage(stage);
   } else if(opts.isEndless){
-    level=playerLv+getEndlessDifficultyLevelOffset(opts.difficulty||G?.difficulty||'juvenile',ed);
+    const mapOffset=typeof Avian?.balance?.enemyEncounters?.endlessMapLevelOffset==='function'
+      ? Avian.balance.enemyEncounters.endlessMapLevelOffset(opts.segmentIndex)
+      : 0;
+    level=playerLv+getEndlessDifficultyLevelOffset(opts.difficulty||G?.difficulty||'juvenile',ed)+mapOffset;
   } else {
     const storyLv=Math.max(1, Math.floor(Number(ed?.storyLevel||ed?.effectiveLevel)||1));
     level=Math.max(storyLv, playerLv);
@@ -4376,6 +4379,9 @@ function mergeScaledStatsIntoEnemy(ed, encounterStage){
     difficulty:G.difficulty||'juvenile',
     forceElite: !!(ed.isElite || G._endlessMapCombatKind==='elite' || G.endlessMap?.pendingCombatKind==='elite'),
     isBoss:!!ed.isBoss,
+    segmentIndex:endless && isEndlessMapActive()
+      ? Math.max(0, Math.floor(Number(G.endlessMap?.segmentIndex)||0))
+      : null,
     stage:Math.max(1, Math.floor(Number(encounterStage)||G.stage||1)),
   };
   /* Prefer Affinity Arsenal v0.6 workbook progression whenever a bird identity exists. */
@@ -4386,6 +4392,17 @@ function mergeScaledStatsIntoEnemy(ed, encounterStage){
     } : (ed.isBoss
       ? buildScaledBoss(ed, encounterStage, scaleOpts)
       : buildScaledEnemy(ed, encounterStage, scaleOpts));
+  }
+  if(typeof Avian?.balance?.enemyEncounters?.applyMultipliers==='function'){
+    const encounterMult=Avian.balance.enemyEncounters.encounterMultipliers({
+      isStory:scaleOpts.isStory,
+      isEndless:scaleOpts.isEndless,
+      isBoss:scaleOpts.isBoss,
+      isElite:scaleOpts.forceElite,
+      stage:scaleOpts.stage,
+      segmentIndex:scaleOpts.segmentIndex,
+    });
+    scaled=Avian.balance.enemyEncounters.applyMultipliers(scaled, encounterMult);
   }
   ed.hp=scaled.hp; ed.maxHp=scaled.maxHp;
   ed.atk=scaled.atk; ed.def=scaled.def; ed.spd=scaled.spd;
@@ -11843,11 +11860,14 @@ function buildMutationRewardPool(){
   return tiers.map(tier=>pickUniqueMutationReward(tier, used, isBoss)).filter(Boolean);
 }
 
-function computeEnemyEffectiveLevel(stage, playerBirdLevel, isEndless, difficulty, enemy){
+function computeEnemyEffectiveLevel(stage, playerBirdLevel, isEndless, difficulty, enemy, segmentIndex){
   const s=Math.max(1,Math.floor(stage||1));
   const pl=Math.max(1,Math.floor(playerBirdLevel||1));
   if(isEndless){
-    return Math.max(1,pl+getEndlessDifficultyLevelOffset(difficulty||G?.difficulty||'juvenile',enemy));
+    const mapOffset=typeof Avian?.balance?.enemyEncounters?.endlessMapLevelOffset==='function'
+      ? Avian.balance.enemyEncounters.endlessMapLevelOffset(segmentIndex)
+      : 0;
+    return Math.max(1,pl+getEndlessDifficultyLevelOffset(difficulty||G?.difficulty||'juvenile',enemy)+mapOffset);
   }
   let L=1+(s-1)+Math.floor((pl-1)*ENEMY_PLAYER_LEVEL_TO_EFFECTIVE);
   return Math.max(1,L);
@@ -11909,7 +11929,7 @@ function buildScaledEnemy(enemyBase, stage, opts={}){
   cc=Math.min(0.95,Math.max(0,cc+(classMod.ccAdd||0)));
   if(Number.isFinite(classMod.cdSet)) cd=classMod.cdSet;
 
-  const L=computeEnemyEffectiveLevel(s, opts.playerBirdLevel, isEndless, opts.difficulty, enemyBase);
+  const L=computeEnemyEffectiveLevel(s, opts.playerBirdLevel, isEndless, opts.difficulty, enemyBase, opts.segmentIndex);
   const gain=Math.max(0,L-1);
   const hpPL=ENEMY_HP_PER_LEVEL_BY_SIZE[sizeKey]??ENEMY_HP_PER_LEVEL_BY_SIZE.medium;
   const atkPL=ENEMY_ATK_PER_LEVEL_BY_SIZE[sizeKey]??ENEMY_ATK_PER_LEVEL_BY_SIZE.medium;
