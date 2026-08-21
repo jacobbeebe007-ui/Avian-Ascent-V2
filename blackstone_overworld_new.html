@@ -168,10 +168,12 @@ html,body{width:100%;height:100%;overflow:hidden;background:#060d05;}
   #hdr h1{font-size:10px;letter-spacing:1px;}
   .orn{margin:0 4px;font-size:12px;}
   #hdr-hint{display:none;}
-  #panel{display:flex;}
-  #panel-actions{display:flex;border-left:0;border-top:1px solid rgba(200,160,32,.16);gap:7px;padding:8px;}
-  #panel-actions .nbtn{min-width:72px;padding:12px 14px;font-size:11px;}
-  #panel-actions #hdr-nest-btn{padding:10px 14px;font-size:10px;}
+  #panel{display:flex;flex-direction:column;max-height:44vh;overflow-y:auto;}
+  #panel-actions{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));width:100%;border-left:0;border-top:1px solid rgba(200,160,32,.16);gap:5px;padding:7px;}
+  #panel-actions .nbtn{min-width:0;padding:10px 4px;font-size:9px;letter-spacing:1px;}
+  #panel-actions #hdr-bird-btn{grid-column:1/4;min-width:0;}
+  #panel-actions #hdr-shiny-count{grid-column:4/6;text-align:center;padding:8px 4px;}
+  #panel-actions #hdr-nest-btn{grid-column:auto;padding:9px 4px;font-size:9px;}
   #panel-actions #hdr-settings-btn.ow-settings-cog{width:32px;min-width:32px;height:32px;font-size:14px;}
   #panel-actions #hdr-bird-img{width:28px;height:28px;}
   /* Map viewport fills remaining space above bottom nav */
@@ -190,6 +192,11 @@ html,body{width:100%;height:100%;overflow:hidden;background:#060d05;}
   /* Zoom controls: smaller */
   .zbtn{width:26px;height:26px;font-size:14px;}
   #zoom-ctrl{bottom:8px;left:8px;}
+  #ov{justify-content:flex-start;padding:10px;overflow-y:auto;}
+  #ov-frame{width:100%;max-width:440px;max-height:none;padding:20px 14px;gap:8px;}
+  #ov-port{width:88px;height:88px;flex-shrink:0;}
+  #ov-enemies.ov-enemies--pool{max-height:none;width:100%;}
+  #ov-confirm-btn{display:block;position:sticky;bottom:0;z-index:2;background:#11180d;min-height:44px;}
 }
 
 /* Nest overlay (in-map preview via iframe — same UI as main game nest) */
@@ -544,7 +551,7 @@ function getNodePortraitBird(n){ return n?.portraitBird || ''; }
 function inferCompletedStageFromNodeId(nodeId){
   return inferOwCompletedStageFromNodeId(nodeId, NODES);
 }
-function getNodeBattleCount(n){ if(!n)return 0; if(!isCombatNode(n))return 0; var st=Math.max(1,Math.floor(Number(n.stage)||1)); if(typeof isBossStageStory==='function'&&isBossStageStory(st))return 1; if(typeof getStoryEncounterChainCount==='function')return getStoryEncounterChainCount(st); return 2; }
+function getNodeBattleCount(n){ return n&&isCombatNode(n)?1:0; }
 function isNodeCompleted(n){
   n=owEffectiveNode(n);
   if(!n) return false;
@@ -834,14 +841,14 @@ function fillOvEnemiesPanel(n){
   const st=Math.max(1,Math.floor(Number(n.stage)||1));
   const enemyLv=owExpectedEnemyLevel();
   var keys=[];
-  var hint='Rolled when you enter — possible enemies:';
+  var hint='1 enemy will spawn. Possible species:';
   if(typeof isBossStageStory==='function' && isBossStageStory(st)){
     if(st===20){
       keys=['dukeBlakiston'];
-      hint='Fixed encounter — final boss:';
+      hint='1 enemy will spawn — fixed final boss:';
     }else if(st===10){
       keys=(typeof getStoryMilestoneBossCandidateBirdKeys==='function') ? getStoryMilestoneBossCandidateBirdKeys() : [];
-      hint='Rolled when you enter — one random boss from:';
+      hint='1 enemy will spawn — one random boss from:';
     }
   }else if(typeof getStoryStageEnemyCandidateBirdKeys==='function'){
     keys=getStoryStageEnemyCandidateBirdKeys(st);
@@ -849,7 +856,7 @@ function fillOvEnemiesPanel(n){
   if(!keys.length){
     const empty=document.createElement('div');
     empty.style.cssText='font-family:EB Garamond,serif;font-style:italic;font-size:12px;color:var(--gold-d)';
-    empty.textContent='Enemy lineup revealed in combat.';
+    empty.textContent='1 enemy will spawn; its species is revealed in combat.';
     oe.appendChild(empty);
     return;
   }
@@ -1271,8 +1278,9 @@ function openOv(){
   if(n.type==='shop'){
     meta.insertAdjacentHTML('beforeend','<div class="ov-meta-line"><strong>Shop</strong>Static stock after first visit.</div><div class="ov-meta-line"><strong>Refresh</strong>Rerolls the shelf and locks the new stock in.</div>');
   }else{
-    const battleCount=getNodeBattleCount(n);
-    meta.insertAdjacentHTML('beforeend','<div class="ov-meta-line"><strong>Sequence</strong>'+battleCount+' battle'+(battleCount===1?'':'s')+' in this node.</div><div class="ov-meta-line"><strong>Reward</strong>'+getNodeRewardPreview(n).replace(/^Reward Preview:\s*/,'')+'</div>');
+    const enemyCount=getNodeBattleCount(n);
+    const enemyLevel=owExpectedEnemyLevel();
+    meta.insertAdjacentHTML('beforeend','<div class="ov-meta-line"><strong>Enemies</strong>'+enemyCount+' total · Level '+enemyLevel+'</div><div class="ov-meta-line"><strong>Spawn rule</strong>'+(n.final?'Fixed boss':n.type==='boss'?'One boss selected from the list below':'One species selected from the list below')+'</div><div class="ov-meta-line"><strong>Reward</strong>'+getNodeRewardPreview(n).replace(/^Reward Preview:\s*/,'')+'</div>');
   }
   fillOvEnemiesPanel(n);
   document.getElementById('ov').classList.add('on');
