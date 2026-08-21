@@ -19263,8 +19263,6 @@ function applyDevCodeSwitches(){
   if(msg) msg.textContent=enabled?`${enabled} code${enabled===1?'':'s'} activated.`:'All optional codes turned off.';
   renderSuppliesCodeTools();
 }
-  renderSuppliesCodeTools();
-}
 function renderSuppliesCodeTools(){
   const creator=isCreatorCodesEnabled(); const nav=document.getElementById('supplies-nav-codes');
   const toggles=document.getElementById('supplies-code-toggles'); const list=document.getElementById('supplies-code-toggle-list');
