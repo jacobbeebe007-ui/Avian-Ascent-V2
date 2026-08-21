@@ -17,6 +17,7 @@
   }
 
   function fmt(n) {
+    if (n === Infinity) return '∞';
     if (typeof globalThis.formatCombatNumber === 'function') return globalThis.formatCombatNumber(n);
     return String(Math.floor(Number(n) || 0));
   }
@@ -69,6 +70,7 @@
   }
 
   var _hatchRevealTimers = [];
+  var _pendingHatchReveal = null;
 
   function clearHatchRevealTimers() {
     _hatchRevealTimers.forEach(function (t) {
@@ -106,6 +108,7 @@
     var eggGrid = document.getElementById('mother-goose-hatch-egg-grid');
     var reveal = document.getElementById('mother-goose-hatch-reveal');
     var closeBtn = document.getElementById('mother-goose-hatch-close');
+    var hatchBtn = document.getElementById('mother-goose-hatch-now');
     if (modal) {
       modal.classList.remove('open');
       modal.setAttribute('aria-hidden', 'true');
@@ -127,6 +130,34 @@
       reveal.classList.remove('mother-goose-hatch-reveal--batch');
     }
     if (closeBtn) closeBtn.hidden = true;
+    if (hatchBtn) hatchBtn.hidden = false;
+    _pendingHatchReveal = null;
+  }
+
+  function buildHatchOverviewHtml(results, eggType) {
+    var def = eggTypeDef(eggType) || { name: eggType || 'Egg' };
+    var totals = {};
+    results.forEach(function (r) {
+      var label = r.isNew ? (r.birdName || r.birdKey) + ' bird' : (r.birdName || r.birdKey) + ' feathers';
+      totals[label] = (totals[label] || 0) + (r.isNew ? 1 : Math.max(0, Number(r.feathersGained) || 0));
+    });
+    return '<div class="mother-goose-hatch-overview"><h3>' + esc(results.length + ' ' + (def.name || eggType) + (results.length === 1 ? '' : 's') + ' Opened!') + '</h3><ul>' + Object.keys(totals).map(function (label) { return '<li>' + esc(label) + ' ×' + fmt(totals[label]) + '</li>'; }).join('') + '</ul></div>';
+  }
+
+  function finishHatchReveal() {
+    if (!_pendingHatchReveal) return;
+    clearHatchRevealTimers();
+    var data = _pendingHatchReveal;
+    var flips = document.querySelectorAll('#mother-goose-hatch-egg-grid .mother-goose-hatch-flip');
+    flips.forEach(function (flip) {
+      flip.classList.remove('is-shaking'); flip.classList.add('is-flipped');
+      var back = flip.querySelector('.mother-goose-hatch-flip-back'); if (back) back.setAttribute('aria-hidden', 'false');
+      var front = flip.querySelector('.mother-goose-hatch-flip-front'); if (front) front.setAttribute('aria-hidden', 'true');
+    });
+    var reveal = document.getElementById('mother-goose-hatch-reveal');
+    if (reveal) { reveal.innerHTML = buildHatchOverviewHtml(data.results, data.eggType); reveal.hidden = false; }
+    var hatchBtn = document.getElementById('mother-goose-hatch-now'); if (hatchBtn) hatchBtn.hidden = true;
+    var closeBtn = document.getElementById('mother-goose-hatch-close'); if (closeBtn) closeBtn.hidden = false;
   }
 
   function buildHatchRevealHtml(result, compact) {
@@ -209,6 +240,7 @@
     var eggGrid = document.getElementById('mother-goose-hatch-egg-grid');
     var reveal = document.getElementById('mother-goose-hatch-reveal');
     var closeBtn = document.getElementById('mother-goose-hatch-close');
+    var hatchBtn = document.getElementById('mother-goose-hatch-now');
     if (!modal || !eggGrid || !results || !results.length) {
       if (results && results[0]) showMotherGooseResult(results[0]);
       return;
@@ -233,6 +265,14 @@
       reveal.classList.remove('mother-goose-hatch-reveal--batch');
     }
     if (closeBtn) closeBtn.hidden = true;
+    if (hatchBtn) hatchBtn.hidden = false;
+    _pendingHatchReveal = { results: results.slice(), eggType: eggId };
+    if (typeof globalThis.recordSuppliesActivity === 'function') {
+      var def = eggTypeDef(eggId) || { name: eggId + ' Egg' };
+      var details = results.map(function (r) { return r.isNew ? (r.birdName || r.birdKey) + ' bird ×1' : (r.birdName || r.birdKey) + ' feathers ×' + Math.max(0, Number(r.feathersGained) || 0); });
+      globalThis.recordSuppliesActivity(results.length + ' ' + def.name + (results.length === 1 ? '' : 's') + ' Opened!', details);
+      if (typeof globalThis.renderSuppliesActivityLog === 'function') globalThis.renderSuppliesActivityLog();
+    }
     modal.classList.add('open');
     modal.setAttribute('aria-hidden', 'false');
 
@@ -255,7 +295,7 @@
               if (idx === flips.length - 1) {
                 _hatchRevealTimers.push(
                   setTimeout(function () {
-                    if (closeBtn) closeBtn.hidden = false;
+                    finishHatchReveal();
                   }, flipMs),
                 );
               }
@@ -599,6 +639,7 @@
     var cost = Math.max(0, Math.floor(Number(art.gooseEggCost) || 0));
     if (typeof globalThis.spendGoldenGooseEggs !== 'function' || !globalThis.spendGoldenGooseEggs(cost)) return;
     if (typeof globalThis.grantArtifact === 'function') globalThis.grantArtifact(artifactId);
+    if (typeof globalThis.recordSuppliesActivity === 'function') globalThis.recordSuppliesActivity('Item purchased', [art.name + ' ×1']);
     var autoEquipped =
       typeof globalThis.getEquippedArtifactId === 'function' &&
       globalThis.getEquippedArtifactId() === artifactId;
@@ -639,6 +680,7 @@
       msg.textContent = (offer.name || 'Trade') + ' complete!';
       msg.style.color = 'var(--gold-light)';
     }
+    if (typeof globalThis.recordSuppliesActivity === 'function') globalThis.recordSuppliesActivity('Item purchased', [((result.offer && result.offer.name) || 'Trade') + ' ×' + result.count]);
     renderFortuneShop();
     if (typeof globalThis.renderFortuneInventory === 'function') globalThis.renderFortuneInventory();
   }
@@ -663,6 +705,9 @@
   globalThis.setRoyalEggClass = setRoyalEggClass;
   globalThis.resolvePityChoiceAction = resolvePityChoiceAction;
   globalThis.closeMotherGooseHatchModal = closeMotherGooseHatchModal;
+  var Avian = globalThis.Avian || (globalThis.Avian = {});
+  Avian.actions = Avian.actions || {};
+  Avian.actions.hatchMotherGooseNow = finishHatchReveal;
   globalThis.getCompletedStagesForFlight = getCompletedStagesForFlight;
   globalThis.showMotherGooseHatchModal = showMotherGooseHatchModal;
   globalThis.showMotherGooseHatchModalBatch = showMotherGooseHatchModalBatch;
