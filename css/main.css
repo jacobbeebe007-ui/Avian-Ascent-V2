@@ -1710,6 +1710,7 @@ body.combat-scenario-test-unlocked .splash-hotspot--combat-scenarios.is-combatte
 .supplies-code-toggles p{margin:0 0 10px;font-size:.72rem;color:var(--text-dim);}
 .supplies-code-row{display:flex;align-items:flex-start;gap:8px;padding:6px;border-bottom:1px solid rgba(255,255,255,.07);font-size:.76rem;cursor:pointer;}
 .supplies-code-row:last-child{border-bottom:0}.supplies-code-row code{color:var(--gold-light);}
+.splash-unlock-apply-btn{align-self:flex-start;margin-top:10px;padding:8px 20px;border:1px solid rgba(201,168,76,.55);border-radius:8px;background:rgba(201,168,76,.14);color:var(--gold-light);font:700 .72rem 'Cinzel',serif;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;}.splash-unlock-apply-btn:hover{background:rgba(201,168,76,.24);}
 .supplies-log-entry{padding:8px 0;border-bottom:1px solid rgba(255,255,255,.08);font-size:.75rem}.supplies-log-entry:last-child{border-bottom:0}
 .supplies-log-entry time{display:block;color:var(--text-dim);font-size:.65rem}.supplies-log-entry strong{display:block;color:var(--gold-light)}.supplies-log-entry ul{margin:4px 0 0;padding-left:18px}.supplies-log-empty{color:var(--text-dim);font-size:.75rem}
 @media(max-width:600px){.mother-goose-hatch-overview ul{columns:1;}}

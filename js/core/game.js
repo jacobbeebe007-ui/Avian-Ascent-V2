@@ -19244,11 +19244,25 @@ function isCreatorCodesEnabled(){ try{return localStorage.getItem('avian_creator
 function getDevCodeSwitches(){
   try{const saved=JSON.parse(localStorage.getItem('avian_dev_code_switches')||'{}');return saved&&typeof saved==='object'?saved:{};}catch(_){return {};}
 }
-function isDevCodeEnabled(code){const switches=getDevCodeSwitches();return switches[code.toLowerCase()]!==false;}
+function isDevCodeEnabled(code){const switches=getDevCodeSwitches();return switches[code.toLowerCase()]===true;}
 function toggleDevCode(spec){
   const parts=String(spec||'').split(':'); const code=(parts[0]||'').toLowerCase(); const enabled=parts[1]==='1';
   const switches=getDevCodeSwitches(); switches[code]=enabled;
-  try{localStorage.setItem('avian_dev_code_switches',JSON.stringify(switches));}catch(_){}
+  try{localStorage.setItem('avian_dev_code_switches',JSON.stringify(switches));}catch(_){ }
+  renderSuppliesCodeTools();
+}
+function applyDevCodeSwitches(){
+  const switches={};
+  document.querySelectorAll('#supplies-code-toggle-list input[data-code]').forEach(input=>{
+    const code=String(input.dataset.code||'').toLowerCase();
+    if(code) switches[code]=!!input.checked;
+  });
+  try{localStorage.setItem('avian_dev_code_switches',JSON.stringify(switches));}catch(_){ }
+  const enabled=Object.keys(switches).filter(code=>switches[code]).length;
+  const msg=document.getElementById('dev-code-switch-msg');
+  if(msg) msg.textContent=enabled?`${enabled} code${enabled===1?'':'s'} activated.`:'All optional codes turned off.';
+  renderSuppliesCodeTools();
+}
   renderSuppliesCodeTools();
 }
 function renderSuppliesCodeTools(){
@@ -19256,8 +19270,13 @@ function renderSuppliesCodeTools(){
   const toggles=document.getElementById('supplies-code-toggles'); const list=document.getElementById('supplies-code-toggle-list');
   const ref=document.getElementById('supplies-code-reference');
   if(nav) nav.hidden=!creator; if(toggles) toggles.hidden=!creator;
-  const rows=DEV_CODE_CATALOG.map(row=>`<label class="supplies-code-row"><input type="checkbox" ${isDevCodeEnabled(row.code)?'checked':''} ${row.toggleable===false?'disabled':''} data-action="toggleDevCode:${row.code.toLowerCase()}:${isDevCodeEnabled(row.code)?'0':'1'}"><span><code>${row.code}</code> — ${row.description}</span></label>`).join('');
-  if(list) list.innerHTML=rows; if(ref) ref.innerHTML=rows;
+  const rows=DEV_CODE_CATALOG.filter(row=>row.toggleable!==false).map(row=>{
+    const code=row.code.toLowerCase();
+    const checked=isDevCodeEnabled(row.code)?'checked':'';
+    return `<label class="supplies-code-row"><input type="checkbox" data-code="${code}" ${checked}><span><code>${row.code}</code> — ${row.description}</span></label>`;
+  }).join('');
+  if(list) list.innerHTML=rows;
+  if(ref) ref.innerHTML=DEV_CODE_CATALOG.map(row=>`<div class="supplies-code-row"><span><code>${row.code}</code> — ${row.description}</span></div>`).join('');
 }
 function renderSuppliesActivityLog(){
   const el=document.getElementById('supplies-activity-list'); if(!el)return;
@@ -19376,6 +19395,7 @@ function checkDevCode(val) {
     setTimeout(() => { if (msg) msg.textContent = ''; }, 1800);
   }
 }
+globalThis.applyDevCodeSwitches=applyDevCodeSwitches;
 globalThis.toggleDevCode=toggleDevCode;
 
 const ACCESS_KEY='avian_accessibility_v1';
