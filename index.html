@@ -695,10 +695,19 @@
 <div class="battle-support-area" data-combat-panel="log">
 <div class="battle-log-section" id="battle-log-section">
 <button type="button" class="battle-log-toggle" id="battle-log-toggle" aria-expanded="true" aria-controls="battle-log">Battle log</button>
+<button type="button" class="combat-history-open" data-action="openCombatHistory">Combat Log &amp; Breakdowns</button>
 <div class="battle-log" id="battle-log" role="log" aria-live="polite"></div>
 </div>
 </div>
 </div>
+</div>
+<div class="combat-breakdown-modal" id="combat-history-modal" role="dialog" aria-modal="true" aria-labelledby="combat-history-title" hidden>
+<div class="combat-breakdown-backdrop" data-action="closeCombatHistory" aria-hidden="true"></div>
+<div class="combat-breakdown-panel"><header><h2 id="combat-history-title">Combat Log</h2><button type="button" data-action="closeCombatHistory" aria-label="Close combat log">×</button></header><div class="combat-history-list" id="combat-history-list"></div></div>
+</div>
+<div class="combat-breakdown-modal" id="combat-breakdown-modal" role="dialog" aria-modal="true" aria-labelledby="combat-breakdown-title" hidden>
+<div class="combat-breakdown-backdrop" data-action="closeCombatBreakdown" aria-hidden="true"></div>
+<div class="combat-breakdown-panel"><header><button type="button" data-action="closeCombatBreakdown">← Back</button></header><div id="combat-breakdown-body"></div></div>
 </div>
 <div id="enemy-info-popup" class="enemy-info-popup" role="dialog" aria-modal="true" aria-labelledby="enemy-info-popup-header" style="display:none">
 <div class="enemy-info-popup-backdrop" aria-hidden="true"></div>

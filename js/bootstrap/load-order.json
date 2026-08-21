@@ -82,6 +82,7 @@
     "js/systems/save-migrations.js",
     "js/systems/ability-rider-parser.js",
     "js/systems/combat-formulas.js",
+    "js/systems/combat-breakdown.js",
     "js/systems/ability-display.js",
     "js/ui/error-hud.js",
     "js/audio/bgm-shared.js",
@@ -113,6 +114,7 @@
     "js/systems/master-workbook-runtime.js",
     "js/systems/shop.js",
     "js/ui/ui.js",
+    "js/ui/combat-log.js",
     "js/ui/sprites.js",
     "js/meta/fortune-shop.js",
     "js/meta/fortune-inventory.js"
