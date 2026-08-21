@@ -19888,14 +19888,11 @@ function resolveUiMode(cfg){
   if(c.uiAutoDetect!==false) return detectPreferredUIMode();
   return (c.uiMode==='desktop')?'desktop':'mobile';
 }
-const COMBAT_ARRANGEMENTS=['tactical','classic','compact','actionsFirst','logFocus','custom'];
+const COMBAT_ARRANGEMENTS=['tactical','compact','custom'];
 const DEFAULT_COMBAT_ARRANGEMENT='tactical';
 const COMBAT_ARRANGEMENT_HINTS={
   tactical:'Tactical Deck: a focused arena above a two-column command deck for actions and battle history.',
-  classic:'Classic (Legacy): birds side by side, followed by the full-width actions and battle log.',
   compact:'Compact: stacked layout with smaller panels — good for phones or tight screens.',
-  actionsFirst:'Actions First: ability tray above birds so you can act without scrolling.',
-  logFocus:'Log Focus: tall battle log beside the fight on wide screens; taller log when narrow.',
   custom:'Custom: reorder panels and hide sections via Customize panels… in Settings → Display.',
 };
 const COMBAT_PANEL_DEFS=[
