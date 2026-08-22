@@ -1,0 +1,49 @@
+{
+  "generatedAt": "2026-08-22",
+  "scope": "Balance investigation pass — findings only; no combat value retunes applied",
+  "thousandRun": {
+    "seed": 12345,
+    "runs": 1000,
+    "warnings": 49,
+    "note": "Down from 102 warnings on the contaminated 20-run sample after hit attribution fix. Knight mid/late balanced hit rates now sit above 60% (0.707 / 0.666)."
+  },
+  "targetDerivation": {
+    "fixtures": {
+      "starterBalanced": { "hp": 22, "armour": 6, "magicArmour": 6, "precision": 80, "dodge": 5 },
+      "midBalanced": { "hp": 55, "armour": 16, "magicArmour": 16, "precision": 84, "dodge": 8 },
+      "lateBalanced": { "hp": 105, "armour": 32, "magicArmour": 32, "precision": 88, "dodge": 11 }
+    },
+    "liveComparisons": {
+      "greyArmourBudget": 4,
+      "greenArmourBudget": 6,
+      "crowL1BirdDefHp": 15,
+      "note": "Starter fixture armour 6 matches green budget, not grey (4). Fixture HP 22 exceeds raw crow L1 bird HP (~15) before equipment. Synthetic targets are hand fixtures, not computed from story enemy generation."
+    },
+    "recommendation": "Before Step 6 retunes, recalibrate starter balanced to ~grey armour budget (4) and HP closer to equipped L1 combatants; do not raise player damage until offence telemetry (now split) is reviewed on the 1000-run report. Starter win rates remain ~0–2% vs balanced."
+  },
+  "hitAttribution": {
+    "bugsFixed": [
+      "Enemy misses no longer increment player miss totals",
+      "attacksAttempted counts damaging attack rolls only (not all actions)",
+      "precisionMisses separated from dodges; misses = precisionMisses + dodges",
+      "hitRate now uses hits/attacksAttempted instead of (actions-misses)/actions"
+    ]
+  },
+  "starterOffence": {
+    "finding": "Not a sync bug. Basic starting weapons (e.g. WPN-B02) have skill1/skill2 null by design — only Natural/basic attack is available. Grey ARM-001 also lacks armour technique (skill1 null); blue ARM-003 has ESK-001.",
+    "skillUsageExplanation": "starter skillUsage.basic-only is expected. Mid/late loadouts gain weaponA from catalogue weapons with skills."
+  },
+  "knightBruteWeapons": {
+    "beakStab": { "family": "Beak Stab", "precisionMod": 0 },
+    "greatblade": { "family": "Greatblade", "precisionMod": -5, "items": ["WPN-075", "WPN-077"] },
+    "afterAttributionFix": {
+      "knightStarterBalancedHitRate": 0.741,
+      "knightMidBalancedHitRate": 0.707,
+      "knightLateBalancedHitRate": 0.666,
+      "bruteLateBalancedHitRate": 0.592,
+      "remainingWarnings": "Knight/Brute highDodge matchups and Brute late balanced still near/below 60%."
+    }
+  },
+  "protectionScaling": "Pool telemetry now populated (armourDamageDealt / magicArmourDamageDealt / absorbed). Review 1000-run report before any protection-budget retunes.",
+  "ui": "Combat Scenario Test panel now exposes Runs, Story/Endless mode, Run telemetry batch, Export, and Reset."
+}
