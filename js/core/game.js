@@ -5279,12 +5279,12 @@ function weightedPick(entries){
 }
 function classGrowthWeightsForStory(cls){
   const c=resolveFinalClass(cls);
-  if(c==='rogue') return [{k:'atk',w:4},{k:'spd',w:4},{k:'dodge',w:3},{k:'vitality',w:2},{k:'def',w:2},{k:'mdef',w:1},{k:'matk',w:1}];
-  if(c==='inquisitor') return [{k:'atk',w:4},{k:'spd',w:3},{k:'dodge',w:3},{k:'vitality',w:2},{k:'def',w:2},{k:'mdef',w:2},{k:'matk',w:1}];
-  if(c==='knight') return [{k:'vitality',w:5},{k:'def',w:4},{k:'mdef',w:3},{k:'atk',w:2},{k:'dodge',w:2},{k:'spd',w:1},{k:'matk',w:1}];
-  if(c==='bard') return [{k:'spd',w:4},{k:'dodge',w:4},{k:'atk',w:2},{k:'matk',w:2},{k:'vitality',w:2},{k:'def',w:2},{k:'mdef',w:2}];
-  if(c==='siren') return [{k:'matk',w:4},{k:'mdef',w:3},{k:'vitality',w:3},{k:'spd',w:2},{k:'dodge',w:2},{k:'atk',w:1},{k:'def',w:1}];
-  return [{k:'matk',w:4},{k:'mdef',w:3},{k:'vitality',w:3},{k:'spd',w:2},{k:'dodge',w:2},{k:'atk',w:1},{k:'def',w:1}]; // mage
+  if(c==='rogue') return [{k:'dex',w:4},{k:'spd',w:4},{k:'dodge',w:3},{k:'atk',w:2},{k:'vitality',w:2},{k:'def',w:2},{k:'mdef',w:1},{k:'matk',w:1}];
+  if(c==='inquisitor') return [{k:'atk',w:4},{k:'spd',w:3},{k:'dodge',w:3},{k:'vitality',w:2},{k:'def',w:2},{k:'mdef',w:2},{k:'matk',w:1},{k:'dex',w:1}];
+  if(c==='knight') return [{k:'vitality',w:5},{k:'def',w:4},{k:'mdef',w:3},{k:'atk',w:2},{k:'dodge',w:2},{k:'spd',w:1},{k:'matk',w:1},{k:'dex',w:1}];
+  if(c==='bard') return [{k:'spd',w:4},{k:'dodge',w:3},{k:'dex',w:3},{k:'matk',w:2},{k:'atk',w:2},{k:'vitality',w:2},{k:'def',w:2},{k:'mdef',w:2}];
+  if(c==='siren') return [{k:'matk',w:4},{k:'mdef',w:3},{k:'vitality',w:3},{k:'spd',w:2},{k:'dodge',w:2},{k:'atk',w:1},{k:'def',w:1},{k:'dex',w:1}];
+  return [{k:'matk',w:4},{k:'mdef',w:3},{k:'vitality',w:3},{k:'spd',w:2},{k:'dodge',w:2},{k:'atk',w:1},{k:'def',w:1},{k:'dex',w:1}]; // mage
 }
 function storyLevelFromTierStar(tier, stars){
   const order=BIRD_CARD_TIER_ORDER||['grey','green','blue','purple','gold','orange'];
@@ -5594,6 +5594,7 @@ function applyEnemyFeatherFromPlayerMirror(stats, cls){
       stats.hp=stats.maxHp;
       break;
     case 'atk': stats.atk=(stats.atk||0)+2; break;
+    case 'dex': stats.dex=(Number(stats.dex)||0)+2; break;
     case 'matk': stats.matk=(Number(stats.matk)||0)+2; break;
     case 'def': stats.def=(stats.def||0)+2; break;
     case 'mdef': stats.mdef=(Number(stats.mdef)||0)+2; break;
@@ -5621,6 +5622,7 @@ function applyStoryEnemyGrowth(stats,key){
       stats.hp=stats.maxHp;
       break;
     case 'atk': stats.atk+=2; break;
+    case 'dex': stats.dex=(Number(stats.dex)||0)+2; break;
     case 'matk': stats.matk=(Number(stats.matk)||0)+2; break;
     case 'def': stats.def+=2; break;
     case 'mdef': stats.mdef=(Number(stats.mdef)||0)+2; break;
@@ -6732,15 +6734,15 @@ function buildBirdUpgradePreviewModel(birdKey){
   const growthPack=Avian?.data?.featherGrowthProfiles;
   const growthProfile=typeof growthPack?.getGrowthProfileForBird==='function'?growthPack.getGrowthProfileForBird(birdKey):null;
   const statKeys=[
-    ['vitality', ledgerStatLabel('vitality',{short:true})],
-    ['maxHp', ledgerStatLabel('maxHp',{short:true})],
-    ['atk', ledgerStatLabel('atk',{short:true})],
-    ['dex', ledgerStatLabel('dex',{short:true})],
-    ['def', ledgerStatLabel('def',{short:true})],
-    ['spd', ledgerStatLabel('spd',{short:true})],
-    ['dodge', ledgerStatLabel('dodge',{short:true})],
-    ['matk', ledgerStatLabel('matk',{short:true})],
-    ['mdef', ledgerStatLabel('mdef',{short:true})],
+    ['vitality', ledgerStatLabel('vitality')],
+    ['maxHp', ledgerStatLabel('maxHp')],
+    ['atk', ledgerStatLabel('atk')],
+    ['dex', ledgerStatLabel('dex')],
+    ['def', ledgerStatLabel('def')],
+    ['spd', ledgerStatLabel('spd')],
+    ['dodge', ledgerStatLabel('dodge')],
+    ['matk', ledgerStatLabel('matk')],
+    ['mdef', ledgerStatLabel('mdef')],
   ];
   return{
     birdKey,
@@ -6771,10 +6773,12 @@ function buildBirdUpgradePreviewModel(birdKey){
       .map(([key,label])=>{
         const before=Number(currentKit.stats?.[key]??0);
         const after=Number(upgradedKit.stats?.[key]??0);
-        const lookupKey=key==='hp'||key==='maxHp'?'vitality':key;
-        const growthLabel=typeof growthPack?.getGrowthTierLabelForStat==='function'&&growthProfile
-          ? growthPack.getGrowthTierLabelForStat(lookupKey, growthProfile)
-          : '';
+        let growthLabel='';
+        if(key==='maxHp'){
+          growthLabel='From Vitality';
+        }else if(typeof growthPack?.getGrowthTierLabelForStat==='function'&&growthProfile){
+          growthLabel=growthPack.getGrowthTierLabelForStat(key, growthProfile)||'';
+        }
         return{key,label,before,after,delta:after-before,growthLabel};
       }),
   };
@@ -16901,6 +16905,7 @@ function applyLevelUpVitalityGain(amount){
 const LEVELUP_STAT_POOL = [
   {id:'vit3', get label(){ return levelUpChoiceLabel('vitality',3); }, stat:'vitality', amount:3, apply(){ applyLevelUpVitalityGain(3); }},
   {id:'atk2', get label(){ return levelUpChoiceLabel('atk',2); }, stat:'atk', amount:2, apply(){ G.player.stats.atk=(G.player.stats.atk||0)+2; }},
+  {id:'dex2', get label(){ return levelUpChoiceLabel('dex',2); }, stat:'dex', amount:2, apply(){ G.player.stats.dex=(Number(G.player.stats.dex)||0)+2; }},
   {id:'matk2', get label(){ return levelUpChoiceLabel('matk',2); }, stat:'matk', amount:2, apply(){ G.player.stats.matk=(G.player.stats.matk||0)+2; }},
   {id:'def2', get label(){ return levelUpChoiceLabel('def',2); }, stat:'def', amount:2, apply(){ G.player.stats.def=(G.player.stats.def||0)+2; }},
   {id:'mdef2', get label(){ return levelUpChoiceLabel('mdef',2); }, stat:'mdef', amount:2, apply(){ G.player.stats.mdef=(G.player.stats.mdef||0)+2; }},
@@ -16911,6 +16916,7 @@ const LEVELUP_FEATHER_POOL = LEVELUP_STAT_POOL;
 const ENDLESS_RARE_LEVELUP_CHOICES = [
   {id:'vit6', get label(){ return levelUpChoiceLabel('vitality',6,{rare:true}); }, stat:'vitality', amount:6, apply(){ applyLevelUpVitalityGain(6); }},
   {id:'atk4r', get label(){ return levelUpChoiceLabel('atk',4,{rare:true}); }, stat:'atk', amount:4, apply(){ G.player.stats.atk=(G.player.stats.atk||0)+4; }},
+  {id:'dex4r', get label(){ return levelUpChoiceLabel('dex',4,{rare:true}); }, stat:'dex', amount:4, apply(){ G.player.stats.dex=(Number(G.player.stats.dex)||0)+4; }},
   {id:'spd4r', get label(){ return levelUpChoiceLabel('spd',4,{rare:true}); }, stat:'spd', amount:4, apply(){ G.player.stats.spd=(G.player.stats.spd||0)+4; }},
 ];
 
@@ -16973,21 +16979,131 @@ function luFeathersUnallocated(){
   return Math.max(0,(G._pendingLevelUpChoices||0)-luFeatherDraftTotal());
 }
 
+function captureLuStatBaseline(){
+  const s=G.player?.stats||{};
+  return{
+    maxHp:Number(s.maxHp)||0,
+    vitality:Number(s.vitality)||0,
+    atk:Number(s.atk)||0,
+    dex:Number(s.dex)||0,
+    def:Number(s.def)||0,
+    spd:Number(s.spd)||0,
+    matk:Number(s.matk)||0,
+    mdef:Number(s.mdef)||0,
+    acc:Number(s.acc)||0,
+    dodge:Number(s.dodge)||0,
+    energyMax:Number(G.player?.energyMax ?? (typeof computePlayerMaxEnergy==='function'?computePlayerMaxEnergy():0))||0,
+  };
+}
+
+function simulateLuDraftStats(){
+  const baseline=G._luStatBaseline||captureLuStatBaseline();
+  const opts=G._luFeatherPanelOptions;
+  if(!G.player||!Array.isArray(opts)||!opts.length) return{...baseline};
+  const prevPlayer=G.player;
+  const cloneStats={...(prevPlayer.stats||{})};
+  const stub={
+    ...prevPlayer,
+    stats:cloneStats,
+    baseHealth:prevPlayer.baseHealth,
+    _speciesBaseHealth:prevPlayer._speciesBaseHealth,
+    birdLevel:prevPlayer.birdLevel,
+    level:prevPlayer.level,
+  };
+  try{
+    G.player=stub;
+    for(const opt of opts){
+      const n=Math.max(0,Math.floor(Number((G._luFeatherDraft||{})[opt.id])||0));
+      for(let i=0;i<n;i++) opt.apply();
+    }
+    return{
+      maxHp:Number(stub.stats.maxHp)||0,
+      vitality:Number(stub.stats.vitality)||0,
+      atk:Number(stub.stats.atk)||0,
+      dex:Number(stub.stats.dex)||0,
+      def:Number(stub.stats.def)||0,
+      spd:Number(stub.stats.spd)||0,
+      matk:Number(stub.stats.matk)||0,
+      mdef:Number(stub.stats.mdef)||0,
+      acc:Number(stub.stats.acc)||0,
+      dodge:Number(stub.stats.dodge)||0,
+      energyMax:Number(stub.energyMax ?? baseline.energyMax)||0,
+    };
+  }finally{
+    G.player=prevPlayer;
+  }
+}
+
+function formatLuPreviewDelta(delta, {pct=false}={}){
+  if(!Number.isFinite(delta) || Math.abs(delta)<0.0001) return '';
+  const rounded=Math.round(delta*100)/100;
+  const sign=rounded>0?'+':'';
+  return `${sign}${rounded}${pct?'%':''}`;
+}
+
+function renderLuStatPreview(){
+  const prevWrap=document.getElementById('lu-stat-preview');
+  if(!prevWrap) return;
+  const before=G._luStatBaseline||captureLuStatBaseline();
+  const after=simulateLuDraftStats();
+  const pairs=[
+    [ledgerStatLabel('vitality'),'vitality',false],
+    [ledgerStatLabel('maxHp'),'maxHp',false],
+    [ledgerStatLabel('atk'),'atk',false],
+    [ledgerStatLabel('dex'),'dex',false],
+    [ledgerStatLabel('def'),'def',false],
+    [ledgerStatLabel('spd'),'spd',false],
+    [ledgerStatLabel('matk'),'matk',false],
+    [ledgerStatLabel('mdef'),'mdef',false],
+    [ledgerStatLabel('acc'),'acc',false],
+    [ledgerStatLabel('dodge'),'dodge',true],
+    ['Max EN','energyMax',false],
+  ];
+  prevWrap.innerHTML=pairs.map(([label,key,pct])=>{
+    const oldVal=Number(before[key])||0;
+    const newVal=Number(after[key])||0;
+    const delta=newVal-oldVal;
+    const changed=Math.abs(delta)>0.0001;
+    const oldTxt=pct?`${oldVal}%`:String(oldVal);
+    const newTxt=pct?`${newVal}%`:String(newVal);
+    const deltaTxt=formatLuPreviewDelta(delta,{pct});
+    if(changed){
+      return `<div class="lu-stat-row is-changed" data-stat="${key}"><strong>${label}</strong><span class="lu-stat-values"><span class="v-old">${oldTxt}</span><span class="lu-stat-arrow" aria-hidden="true">→</span><span class="v-new">${newTxt}</span><em class="lu-stat-delta is-positive">${deltaTxt}</em></span></div>`;
+    }
+    return `<div class="lu-stat-row" data-stat="${key}"><strong>${label}</strong><span class="lu-stat-values"><span class="v-new">${oldTxt}</span></span></div>`;
+  }).join('');
+}
+
 function refreshLuFeatherPanelUI(){
   const rem=document.getElementById('lu-feather-remaining');
   if(rem) rem.innerHTML=`Remaining Feathers: <strong>${luFeathersUnallocated()}</strong>`;
   const opts=G._luFeatherPanelOptions;
   if(Array.isArray(opts)){
     for(const opt of opts){
-      const el=document.getElementById(`lu-fc-${opt.id}`);
-      if(el) el.textContent=String((G._luFeatherDraft||{})[opt.id]||0);
       const n=Math.max(0,Math.floor(Number((G._luFeatherDraft||{})[opt.id])||0));
+      const el=document.getElementById(`lu-fc-${opt.id}`);
+      if(el) el.textContent=String(n);
+      const gainEl=document.getElementById(`lu-fg-${opt.id}`);
+      if(gainEl){
+        const totalGain=n*Math.max(0,Number(opt.amount)||0);
+        if(totalGain>0){
+          const suffix=opt.stat==='dodge'?'%':'';
+          gainEl.textContent=`+${totalGain}${suffix}`;
+          gainEl.hidden=false;
+        }else{
+          gainEl.textContent='';
+          gainEl.hidden=true;
+        }
+      }
       const minus=document.getElementById(`lu-fp-minus-${opt.id}`);
       const plus=document.getElementById(`lu-fp-plus-${opt.id}`);
       if(minus) minus.disabled=n<=0;
       if(plus) plus.disabled=luFeathersUnallocated()<=0;
+      const row=document.getElementById(`lu-fr-${opt.id}`);
+      if(row) row.classList.toggle('is-allocated', n>0);
     }
   }
+  renderLuStatPreview();
   const btn=document.getElementById('lu-skill-confirm');
   if(btn){
     const ok=luFeathersUnallocated()===0 && luFeatherDraftTotal()>0;
@@ -17006,15 +17122,17 @@ function buildFeatherStatPanel(){
   for(const opt of G._luFeatherPanelOptions){
     const row=document.createElement('div');
     row.className='lu-feather-row';
+    row.id=`lu-fr-${opt.id}`;
     row.innerHTML=`
       <div class="lu-feather-info">
         <span class="lu-feather-name">${opt.label}</span>
         <span class="lu-feather-desc">${getLevelUpStatEffectDesc(opt)}</span>
       </div>
       <div class="lu-feather-stepper">
-        <button type="button" class="lu-feather-btn lu-feather-minus" id="lu-fp-minus-${opt.id}">−</button>
+        <span class="lu-feather-gain" id="lu-fg-${opt.id}" hidden></span>
+        <button type="button" class="lu-feather-btn lu-feather-minus" id="lu-fp-minus-${opt.id}" aria-label="Decrease ${opt.label}">−</button>
         <span class="lu-feather-count" id="lu-fc-${opt.id}">0</span>
-        <button type="button" class="lu-feather-btn lu-feather-plus" id="lu-fp-plus-${opt.id}">+</button>
+        <button type="button" class="lu-feather-btn lu-feather-plus" id="lu-fp-plus-${opt.id}" aria-label="Increase ${opt.label}">+</button>
       </div>`;
     row.querySelector(`#lu-fp-minus-${opt.id}`).onclick=()=>{
       const cur=Math.max(0,Math.floor(Number((G._luFeatherDraft||{})[opt.id])||0));
@@ -17143,33 +17261,13 @@ function showLevelUpScreen() {
   _luSelectedStatChoiceId=null;
   G._luFeatherDraft={};
   delete G._luFeatherPanelOptions;
+  G._luStatBaseline=captureLuStatBaseline();
   const feathers=Math.max(1,G._pendingLevelUpChoices||1);
   document.getElementById('lu-sub').textContent=`Lv.${G.player.birdLevel} reached! You have ${feathers} Feather${feathers===1?'':'s'} — spend each one on the stats below, then confirm once.`;
-  const now=G.player.stats||{};
-  const pairs=[
-    [ledgerStatLabel('hp',{short:true}),'maxHp','stat'],
-    [ledgerStatLabel('atk',{short:true}),'atk','stat'],
-    [ledgerStatLabel('def',{short:true}),'def','stat'],
-    [ledgerStatLabel('spd',{short:true}),'spd','stat'],
-    [ledgerStatLabel('matk',{short:true}),'matk','stat'],
-    [ledgerStatLabel('mdef',{short:true}),'mdef','stat'],
-    [ledgerStatLabel('acc',{short:true}),'acc','stat'],
-    [ledgerStatLabel('dodge',{short:true}),'dodge','stat'],
-    ['Max EN','energyMax','en'],
-  ];
-  const prevWrap=document.getElementById('lu-stat-preview');
-  if(prevWrap){
-    prevWrap.innerHTML=pairs.map(([label,key,kind])=>{
-      let val;
-      if(kind==='critMult') val=(G.player.goldCritMult||1.5).toFixed(2);
-      else if(kind==='en') val=G.player.energyMax ?? computePlayerMaxEnergy();
-      else val=now[key]??0;
-      return `<div class="lu-stat-row"><strong>${label}</strong><span><span class="v-new">${val}</span></span></div>`;
-    }).join('');
-  }
+  renderLuStatPreview();
 
   document.getElementById('lu-skills-panel').classList.add('active');
-  setLevelUpPanelTitle('📈 Spend Feathers');
+  setLevelUpPanelTitle('Spend Feathers');
   configureLevelUpConfirm('✓ Confirm upgrades', confirmSkillUpgrade, false);
   configureLevelUpSecondary('⟩ Exit Level Up', onExitLevelUpRequested, true);
   buildFeatherStatPanel();
@@ -17281,6 +17379,7 @@ async function confirmSkillUpgrade() {
     logMsg(`📈 ${lines.join(', ')}`,'exp-gain');
     delete G._luFeatherDraft;
     delete G._luFeatherPanelOptions;
+    delete G._luStatBaseline;
     G._pendingLevelUpChoices=0;
     G._levelUpStatChoices=[];
     _luSelectedStatChoiceId=null;
@@ -17304,6 +17403,7 @@ function onExitLevelUpRequested(){
   logMsg(`🪶 Deferred ${pending} Feather${pending===1?'':'s'} (allocated preview: ${allocated}). Spend them later from the level-up panel.`, 'system');
   delete G._luFeatherDraft;
   delete G._luFeatherPanelOptions;
+  delete G._luStatBaseline;
   _luSelectedStatChoiceId=null;
   const grid=document.getElementById('lu-skill-grid');
   if(grid){

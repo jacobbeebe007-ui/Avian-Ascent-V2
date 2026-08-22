@@ -59,8 +59,8 @@ if (gp.getTotalFeatherStars('orange', 5) !== 30) fail('orange 5★ = 30 total st
 else ok('orange 5★ = 30 total stars');
 
 const rogueProfile = gp.getGrowthProfileForBird('sparrow');
-if (!rogueProfile.major.includes('spd') || !rogueProfile.minor.includes('atk')) {
-  fail('sparrow uses rogue class profile');
+if (!rogueProfile.major.includes('dex') || !rogueProfile.major.includes('spd') || !rogueProfile.minor.includes('dodge')) {
+  fail('sparrow uses rogue class profile with Dexterity major');
 } else {
   ok('sparrow rogue class profile');
 }
@@ -80,11 +80,15 @@ if (!cassProfile.minor.includes('spd') || cassProfile.minor.includes('mdef')) {
 }
 
 const peregrineProfile = gp.getGrowthProfileForBird('peregrine');
-if (!peregrineProfile.major.includes('atk') || !peregrineProfile.major.includes('spd')) {
-  fail('peregrine uses power rogue override');
+if (!peregrineProfile.major.includes('dex') || !peregrineProfile.major.includes('spd')) {
+  fail('peregrine uses Dexterity/Agility rogue override');
 } else {
   ok('peregrine power rogue override');
 }
+
+const dexBand = gp.getGrowthBandForStat('dex', rogueProfile);
+if (dexBand !== 'major') fail(`rogue dex band expected major, got ${dexBand}`);
+else ok('rogue Dexterity is major growth');
 
 const majorBonus30 = gp.getGrowthBonusForStat('atk', { major: ['atk'], minor: [], trace: [], locked: [] }, 30);
 if (Math.abs(majorBonus30 - 0.30) > 0.0001) fail(`30★ major bonus expected 0.30, got ${majorBonus30}`);

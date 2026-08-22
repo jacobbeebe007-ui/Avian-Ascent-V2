@@ -46,6 +46,15 @@ if (!/buildPlayerBirdTooltipHtml[\s\S]*?let html=/.test(gameSrc)
 if (!/levelUpChoiceLabel/.test(gameSrc)) fail('levelUpChoiceLabel missing');
 else ok('level-up glossary helper present');
 
+if (!/id:'dex2'/.test(gameSrc) || !/stat:'dex'/.test(gameSrc)) fail('Dexterity missing from LEVELUP_STAT_POOL');
+else ok('level-up Dexterity feather choice present');
+
+if (!/renderLuStatPreview/.test(gameSrc) || !/simulateLuDraftStats/.test(gameSrc)) fail('level-up live preview helpers missing');
+else ok('level-up live stat preview helpers present');
+
+if (!/ledgerStatLabel\('dex'\)/.test(gameSrc)) fail('Star upgrade preview should use full Dexterity label');
+else ok('Star upgrade uses full Dexterity display name');
+
 if (!/k:'skills'/.test(gameSrc) || !/equipment\?\.skills/.test(gameSrc)) fail('Skill Library ref tab missing');
 else ok('Reference Guide Skill Library tab wired');
 

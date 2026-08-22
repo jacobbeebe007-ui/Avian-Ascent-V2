@@ -15,35 +15,35 @@
       major: ['vitality', 'def'],
       minor: ['atk', 'mdef'],
       trace: ['spd', 'dodge'],
-      locked: ['acc', 'critChance', 'critMult', 'cc', 'cd', 'matk'],
+      locked: ['acc', 'critChance', 'critMult', 'cc', 'cd', 'matk', 'dex'],
     },
     rogue: {
-      major: ['spd', 'dodge'],
-      minor: ['atk', 'vitality'],
-      trace: ['def', 'mdef'],
+      major: ['dex', 'spd'],
+      minor: ['dodge', 'vitality'],
+      trace: ['atk', 'def'],
       locked: ['acc', 'critChance', 'critMult', 'cc', 'cd', 'matk'],
     },
     mage: {
       major: ['matk', 'mdef'],
       minor: ['spd', 'vitality'],
       trace: ['def', 'dodge'],
-      locked: ['acc', 'critChance', 'critMult', 'cc', 'cd', 'atk'],
+      locked: ['acc', 'critChance', 'critMult', 'cc', 'cd', 'atk', 'dex'],
     },
     siren: {
       major: ['matk', 'spd'],
       minor: ['mdef', 'dodge'],
       trace: ['vitality', 'def'],
-      locked: ['acc', 'critChance', 'critMult', 'cc', 'cd', 'atk'],
+      locked: ['acc', 'critChance', 'critMult', 'cc', 'cd', 'atk', 'dex'],
     },
     inquisitor: {
       major: ['vitality', 'mdef'],
       minor: ['atk', 'matk'],
       trace: ['def', 'spd'],
-      locked: ['acc', 'critChance', 'critMult', 'cc', 'cd', 'dodge'],
+      locked: ['acc', 'critChance', 'critMult', 'cc', 'cd', 'dodge', 'dex'],
     },
     bard: {
       major: ['spd', 'matk'],
-      minor: ['atk', 'mdef'],
+      minor: ['dex', 'mdef'],
       trace: ['vitality', 'dodge'],
       locked: ['acc', 'critChance', 'critMult', 'cc', 'cd', 'def'],
     },
@@ -51,13 +51,13 @@
       major: ['vitality', 'atk'],
       minor: ['def', 'spd'],
       trace: ['mdef', 'dodge'],
-      locked: ['acc', 'critChance', 'critMult', 'cc', 'cd', 'matk'],
+      locked: ['acc', 'critChance', 'critMult', 'cc', 'cd', 'matk', 'dex'],
     },
     duke: {
       major: ['vitality', 'matk'],
       minor: ['mdef', 'def'],
       trace: ['spd', 'atk'],
-      locked: ['acc', 'critChance', 'critMult', 'cc', 'cd', 'dodge'],
+      locked: ['acc', 'critChance', 'critMult', 'cc', 'cd', 'dodge', 'dex'],
     },
   };
 
@@ -67,61 +67,62 @@
       major: ['vitality', 'atk'],
       minor: ['def', 'mdef'],
       trace: ['spd', 'dodge'],
-      locked: ['acc', 'critChance', 'critMult', 'cc', 'cd', 'matk'],
+      locked: ['acc', 'critChance', 'critMult', 'cc', 'cd', 'matk', 'dex'],
     },
     pelican: {
       major: ['vitality', 'atk'],
       minor: ['def', 'mdef'],
       trace: ['spd', 'dodge'],
-      locked: ['acc', 'critChance', 'critMult', 'cc', 'cd', 'matk'],
+      locked: ['acc', 'critChance', 'critMult', 'cc', 'cd', 'matk', 'dex'],
     },
     shoebill: {
       major: ['vitality', 'atk'],
       minor: ['def', 'mdef'],
       trace: ['spd', 'dodge'],
-      locked: ['acc', 'critChance', 'critMult', 'cc', 'cd', 'matk'],
+      locked: ['acc', 'critChance', 'critMult', 'cc', 'cd', 'matk', 'dex'],
     },
     cassowary: {
       major: ['vitality', 'atk'],
       minor: ['spd', 'def'],
       trace: ['dodge', 'mdef'],
-      locked: ['acc', 'critChance', 'critMult', 'cc', 'cd', 'matk'],
+      locked: ['acc', 'critChance', 'critMult', 'cc', 'cd', 'matk', 'dex'],
     },
     emu: {
       major: ['vitality', 'atk'],
       minor: ['spd', 'def'],
       trace: ['dodge', 'mdef'],
-      locked: ['acc', 'critChance', 'critMult', 'cc', 'cd', 'matk'],
+      locked: ['acc', 'critChance', 'critMult', 'cc', 'cd', 'matk', 'dex'],
     },
     ostrich: {
       major: ['vitality', 'atk'],
       minor: ['spd', 'def'],
       trace: ['dodge', 'mdef'],
-      locked: ['acc', 'critChance', 'critMult', 'cc', 'cd', 'matk'],
+      locked: ['acc', 'critChance', 'critMult', 'cc', 'cd', 'matk', 'dex'],
     },
     peregrine: {
-      major: ['spd', 'atk'],
-      minor: ['dodge', 'vitality'],
-      trace: ['def', 'mdef'],
+      major: ['dex', 'spd'],
+      minor: ['atk', 'vitality'],
+      trace: ['dodge', 'def'],
       locked: ['acc', 'critChance', 'critMult', 'cc', 'cd', 'matk'],
     },
     barnowl: {
       major: ['matk', 'mdef'],
       minor: ['spd', 'dodge'],
       trace: ['vitality', 'def'],
-      locked: ['acc', 'critChance', 'critMult', 'cc', 'cd', 'atk'],
+      locked: ['acc', 'critChance', 'critMult', 'cc', 'cd', 'atk', 'dex'],
     },
     swan: {
       major: ['vitality', 'mdef'],
       minor: ['matk', 'def'],
       trace: ['spd', 'dodge'],
-      locked: ['acc', 'critChance', 'critMult', 'cc', 'cd', 'atk'],
+      locked: ['acc', 'critChance', 'critMult', 'cc', 'cd', 'atk', 'dex'],
     },
   };
 
   function normalizeStatKeyForGrowth(statKey) {
     var k = String(statKey || '').toLowerCase();
     if (k === 'hp' || k === 'maxhp') return 'vitality';
+    if (k === 'dexterity') return 'dex';
     return k;
   }
 
