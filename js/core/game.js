@@ -502,8 +502,16 @@ function ensureStatLedgerAfterLoad(player){
 function mergeStatDeltaIntoBucket(bucket, beforeStats, afterStats){
   const before = cloneStatLedgerSlice(beforeStats);
   const after = cloneStatLedgerSlice(afterStats);
+  let derivedDodgeDelta = 0;
+  if(typeof Avian?.birdProgression?.agilityToDodge==='function'){
+    derivedDodgeDelta = Avian.birdProgression.agilityToDodge(after.spd) - Avian.birdProgression.agilityToDodge(before.spd);
+  }else{
+    derivedDodgeDelta = ((Number(after.spd)||0) - (Number(before.spd)||0)) * 0.5;
+  }
   for(const k of STAT_LEDGER_TRACKED_KEYS){
-    const d = (Number(after[k])||0) - (Number(before[k])||0);
+    let d = (Number(after[k])||0) - (Number(before[k])||0);
+    /* Dodge from Agility is derived; only record extra Evasion (feather/gear). */
+    if(k==='dodge') d -= derivedDodgeDelta;
     if(Math.abs(d) > 0.0001) bucket[k] = (bucket[k]||0) + d;
   }
 }
@@ -5590,14 +5598,18 @@ function applyEnemyFeatherFromPlayerMirror(stats, cls){
     case 'maxHp':
     case 'vitality':
       stats.vitality=(Number(stats.vitality)||0)+3;
-      if(typeof Avian?.birdProgression?.vitalityToMaxHp==='function' && Number(stats.baseHealth)>0){
+      if(typeof Avian?.birdProgression?.refreshDerivedStats==='function'){
+        Avian.birdProgression.refreshDerivedStats(stats, { vitalityDelta: 3, dodge: false });
+      }else if(typeof Avian?.birdProgression?.vitalityToMaxHp==='function' && Number(stats.baseHealth)>0){
         const birdLevel=Math.max(1, Number(stats.birdLevel)||Number(stats.level)||1);
         const leveledBh=(typeof Avian.birdProgression.baseHealthAtLevel==='function')
           ? Avian.birdProgression.baseHealthAtLevel(stats.baseHealth, birdLevel)
           : stats.baseHealth;
         stats.maxHp=Avian.birdProgression.vitalityToMaxHp(leveledBh, stats.vitality);
       }else{
-        stats.maxHp=(stats.maxHp||1)+3;
+        const per=(typeof Avian?.birdProgression?.vitalityMaxHpPerPoint==='function')
+          ? Avian.birdProgression.vitalityMaxHpPerPoint() : 3;
+        stats.maxHp=(stats.maxHp||1)+3*per;
       }
       stats.hp=stats.maxHp;
       break;
@@ -5606,7 +5618,12 @@ function applyEnemyFeatherFromPlayerMirror(stats, cls){
     case 'matk': stats.matk=(Number(stats.matk)||0)+2; break;
     case 'def': stats.def=(stats.def||0)+2; break;
     case 'mdef': stats.mdef=(Number(stats.mdef)||0)+2; break;
-    case 'spd': stats.spd=(stats.spd||1)+2; break;
+    case 'spd':
+      stats.spd=(stats.spd||1)+2;
+      if(typeof Avian?.birdProgression?.refreshDerivedStats==='function'){
+        Avian.birdProgression.refreshDerivedStats(stats, { hp: false });
+      }
+      break;
     case 'dodge':
       stats.dodge=Math.min(50,(stats.dodge||0)+2);
       break;
@@ -5618,14 +5635,18 @@ function applyStoryEnemyGrowth(stats,key){
     case 'maxHp':
     case 'vitality':
       stats.vitality=(Number(stats.vitality)||0)+3;
-      if(typeof Avian?.birdProgression?.vitalityToMaxHp==='function' && Number(stats.baseHealth)>0){
+      if(typeof Avian?.birdProgression?.refreshDerivedStats==='function'){
+        Avian.birdProgression.refreshDerivedStats(stats, { vitalityDelta: 3, dodge: false });
+      }else if(typeof Avian?.birdProgression?.vitalityToMaxHp==='function' && Number(stats.baseHealth)>0){
         const birdLevel=Math.max(1, Number(stats.birdLevel)||Number(stats.level)||1);
         const leveledBh=(typeof Avian.birdProgression.baseHealthAtLevel==='function')
           ? Avian.birdProgression.baseHealthAtLevel(stats.baseHealth, birdLevel)
           : stats.baseHealth;
         stats.maxHp=Avian.birdProgression.vitalityToMaxHp(leveledBh, stats.vitality);
       }else{
-        stats.maxHp=(stats.maxHp||1)+3;
+        const per=(typeof Avian?.birdProgression?.vitalityMaxHpPerPoint==='function')
+          ? Avian.birdProgression.vitalityMaxHpPerPoint() : 3;
+        stats.maxHp=(stats.maxHp||1)+3*per;
       }
       stats.hp=stats.maxHp;
       break;
@@ -5634,7 +5655,12 @@ function applyStoryEnemyGrowth(stats,key){
     case 'matk': stats.matk=(Number(stats.matk)||0)+2; break;
     case 'def': stats.def+=2; break;
     case 'mdef': stats.mdef=(Number(stats.mdef)||0)+2; break;
-    case 'spd': stats.spd+=2; break;
+    case 'spd':
+      stats.spd+=2;
+      if(typeof Avian?.birdProgression?.refreshDerivedStats==='function'){
+        Avian.birdProgression.refreshDerivedStats(stats, { hp: false });
+      }
+      break;
     case 'dodge': stats.dodge=Math.min(50,(stats.dodge||0)+2); break;
   }
 }
@@ -12277,6 +12303,15 @@ function resolveGuardedReductionPct(row, riderValue=0, ab=null){
   else if(ap>=3){ base=30; step=7; }
   return Math.min(50, base+(level-1)*step);
 }
+function refreshDerivedStatsAfterLoan(entity, statKey){
+  if(!entity||typeof Avian?.birdProgression?.refreshDerivedStats!=='function') return;
+  const k=String(statKey||'').toLowerCase();
+  if(k==='vitality'||k==='hp'||k==='maxhp'){
+    Avian.birdProgression.refreshDerivedStats(entity, { dodge: false });
+  }else if(k==='spd'||k==='agility'){
+    Avian.birdProgression.refreshDerivedStats(entity, { hp: false });
+  }
+}
 /** Source-keyed stat loan: same source refreshes magnitude + duration; different sources may combine. */
 function applySourceStatLoan(ps,player,bagName,statKey,sourceId,value,turns=1){
   if(!ps||!player||!player.stats||!statKey) return 0;
@@ -12292,6 +12327,7 @@ function applySourceStatLoan(ps,player,bagName,statKey,sourceId,value,turns=1){
     player.stats[statKey]=Math.round(((player.stats[statKey]||0)+amt)*100)/100;
     bag[slotKey]={statKey,amt,turns:Math.max(1,Math.floor(Number(turns)||1)),sourceId:String(sourceId||'')};
   }else if(bag[slotKey]) delete bag[slotKey];
+  refreshDerivedStatsAfterLoan(player, statKey);
   return amt;
 }
 function decaySourceStatLoans(ps,player,bagName){
@@ -12305,6 +12341,7 @@ function decaySourceStatLoans(ps,player,bagName){
       const sk=entry.statKey||String(k).split(':')[0];
       player.stats[sk]=Math.max(0,Math.round(((player.stats[sk]||0)-(entry.amt||0))*100)/100);
       delete bag[k];
+      refreshDerivedStatsAfterLoan(player, sk);
     }
   }
   if(!Object.keys(bag).length) delete ps[bagName];
@@ -16271,7 +16308,7 @@ function postCombat() {
       G.player.birdLevel++;
       checkGrowthStage(G.player);
 
-      /* Each level adds half original Base Health before VIT% → raise Max HP. */
+      /* Each level adds half original Base Health, then Vitality × 3 → raise Max HP. */
       applyLevelUpBaseHealthGrowth();
 
       // Level-up heal: 50% of currently missing HP
@@ -16854,10 +16891,14 @@ function getGoldCardLimit(){
 //  LEVEL-UP SCREEN — select then confirm
 // ============================================================
 let _luSelectedStatChoiceId=null;
-/** Raise Max HP from leveled Base Health (½ original BH per level) × current VIT%. */
+/** Raise Max HP from leveled Base Health (½ original BH per level) + Vitality × 3. */
 function applyLevelUpBaseHealthGrowth(){
   const p=G.player;
   if(!p||!p.stats) return;
+  if(typeof Avian?.birdProgression?.refreshDerivedStats==='function'){
+    Avian.birdProgression.refreshDerivedStats(p, { dodge: false, keepCurrentHp: true });
+    return;
+  }
   const baseHealth=Number(p.baseHealth)||Number(p._speciesBaseHealth)
     ||Number(p.stats.baseHealth)||0;
   if(!(baseHealth>0) || typeof Avian?.birdProgression?.vitalityToMaxHp!=='function') return;
@@ -16887,6 +16928,10 @@ function applyLevelUpVitalityGain(amount){
   const add=Math.max(0, Math.floor(Number(amount)||0));
   if(!add) return;
   p.stats.vitality=(Number(p.stats.vitality)||0)+add;
+  if(typeof Avian?.birdProgression?.refreshDerivedStats==='function'){
+    Avian.birdProgression.refreshDerivedStats(p, { vitalityDelta: add, dodge: false });
+    return;
+  }
   const baseHealth=Number(p.baseHealth)||Number(p._speciesBaseHealth)
     ||Number(p.stats.baseHealth)||0;
   const prevMax=Math.max(1, Number(p.stats.maxHp)||Number(p.stats.hp)||1);
@@ -16899,14 +16944,23 @@ function applyLevelUpVitalityGain(amount){
       : baseHealth;
     nextMax=Avian.birdProgression.vitalityToMaxHp(leveledBh, p.stats.vitality);
   }else{
-    /* Fallback: approximate +5% baseHealth per vitality point. */
-    const pct=0.05;
-    const delta=baseHealth>0 ? Math.round(baseHealth*pct*add) : add;
-    nextMax=Math.max(1, prevMax+Math.max(1, delta));
+    const per=(typeof Avian?.birdProgression?.vitalityMaxHpPerPoint==='function')
+      ? Avian.birdProgression.vitalityMaxHpPerPoint() : 3;
+    nextMax=Math.max(1, prevMax + add * per);
   }
   p.stats.maxHp=nextMax;
   const wasFull=prevHp>=prevMax;
   p.stats.hp=wasFull?nextMax:Math.max(1, Math.min(nextMax, prevHp+(nextMax-prevMax)));
+}
+function applyLevelUpAgilityGain(amount){
+  const p=G.player;
+  if(!p||!p.stats) return;
+  const add=Math.max(0, Math.floor(Number(amount)||0));
+  if(!add) return;
+  p.stats.spd=(Number(p.stats.spd)||0)+add;
+  if(typeof Avian?.birdProgression?.refreshDerivedStats==='function'){
+    Avian.birdProgression.refreshDerivedStats(p, { hp: false });
+  }
 }
 const LEVELUP_STAT_POOL = [
   {id:'vit3', get label(){ return levelUpChoiceLabel('vitality',3); }, stat:'vitality', amount:3, apply(){ applyLevelUpVitalityGain(3); }},
@@ -16915,7 +16969,7 @@ const LEVELUP_STAT_POOL = [
   {id:'matk2', get label(){ return levelUpChoiceLabel('matk',2); }, stat:'matk', amount:2, apply(){ G.player.stats.matk=(G.player.stats.matk||0)+2; }},
   {id:'def2', get label(){ return levelUpChoiceLabel('def',2); }, stat:'def', amount:2, apply(){ G.player.stats.def=(G.player.stats.def||0)+2; }},
   {id:'mdef2', get label(){ return levelUpChoiceLabel('mdef',2); }, stat:'mdef', amount:2, apply(){ G.player.stats.mdef=(G.player.stats.mdef||0)+2; }},
-  {id:'spd2', get label(){ return levelUpChoiceLabel('spd',2); }, stat:'spd', amount:2, apply(){ G.player.stats.spd=(G.player.stats.spd||0)+2; }},
+  {id:'spd2', get label(){ return levelUpChoiceLabel('spd',2); }, stat:'spd', amount:2, apply(){ applyLevelUpAgilityGain(2); }},
   {id:'dod2', get label(){ return levelUpChoiceLabel('dodge',2); }, stat:'dodge', amount:2, apply(){ G.player.stats.dodge=Math.min(50,(G.player.stats.dodge||0)+2); }},
 ];
 const LEVELUP_FEATHER_POOL = LEVELUP_STAT_POOL;
@@ -16923,7 +16977,7 @@ const ENDLESS_RARE_LEVELUP_CHOICES = [
   {id:'vit6', get label(){ return levelUpChoiceLabel('vitality',6,{rare:true}); }, stat:'vitality', amount:6, apply(){ applyLevelUpVitalityGain(6); }},
   {id:'atk4r', get label(){ return levelUpChoiceLabel('atk',4,{rare:true}); }, stat:'atk', amount:4, apply(){ G.player.stats.atk=(G.player.stats.atk||0)+4; }},
   {id:'dex4r', get label(){ return levelUpChoiceLabel('dex',4,{rare:true}); }, stat:'dex', amount:4, apply(){ G.player.stats.dex=(Number(G.player.stats.dex)||0)+4; }},
-  {id:'spd4r', get label(){ return levelUpChoiceLabel('spd',4,{rare:true}); }, stat:'spd', amount:4, apply(){ G.player.stats.spd=(G.player.stats.spd||0)+4; }},
+  {id:'spd4r', get label(){ return levelUpChoiceLabel('spd',4,{rare:true}); }, stat:'spd', amount:4, apply(){ applyLevelUpAgilityGain(4); }},
 ];
 
 function isMainAttackAbility(ab, ownerPlayer=null){
@@ -17021,6 +17075,9 @@ function simulateLuDraftStats(){
     for(const opt of opts){
       const n=Math.max(0,Math.floor(Number((G._luFeatherDraft||{})[opt.id])||0));
       for(let i=0;i<n;i++) opt.apply();
+    }
+    if(typeof Avian?.birdProgression?.refreshDerivedStats==='function'){
+      Avian.birdProgression.refreshDerivedStats(stub);
     }
     return{
       maxHp:Number(stub.stats.maxHp)||0,
@@ -17161,7 +17218,16 @@ function getLevelUpStatEffectDesc(opt){
   if(opt.stat==='goldCritMult') return `Increase Ferocity multiplier by ${opt.amount}.`;
   if(opt.stat==='dodge') return `Increase ${ledgerStatLabel('dodge')} by ${opt.amount}%.`;
   if(opt.stat==='critChance') return `Increase ${ledgerStatLabel('critChance')} by ${opt.amount}%.`;
-  if(opt.stat==='vitality') return `Improve ${ledgerStatLabel('vitality')} by ${opt.amount} (raises Max Health).`;
+  if(opt.stat==='vitality'){
+    const per=(typeof Avian?.birdProgression?.vitalityMaxHpPerPoint==='function')
+      ? Avian.birdProgression.vitalityMaxHpPerPoint() : 3;
+    return `Improve ${ledgerStatLabel('vitality')} by ${opt.amount} (+${opt.amount*per} Max Health).`;
+  }
+  if(opt.stat==='spd'){
+    const agiPer=(Avian?.data?.combatConfig?.weaponFirst?.agilityDodgePctPerPoint != null)
+      ? Number(Avian.data.combatConfig.weaponFirst.agilityDodgePctPerPoint) : 0.5;
+    return `Improve ${ledgerStatLabel('spd')} by ${opt.amount} (+${opt.amount*agiPer}% Evasion).`;
+  }
   return `Improve ${ledgerStatLabel(opt.stat)} by ${opt.amount}.`;
 }
 

@@ -156,7 +156,7 @@ if (!/computeFinalStats/.test(gameSrc)) {
   ok('enemy scales via birdProgression.computeFinalStats');
 }
 
-/* Runtime: sparrow L1 via progression — v0.9 baseHealth×Vitality → maxHp ~12. */
+/* Runtime: sparrow L1 via progression — Base Health + Vitality × 3 → maxHp 19. */
 try {
   for (const rel of [
     'js/data/birds-v2.js',
@@ -185,13 +185,13 @@ try {
     tier: 'grey',
   });
   const grownHp = Number(grown.ledger?.maxHp ?? grown.ledger?.hp) || 0;
-  if (Number(sparrow?.baseHealth) === 10 && hpBase === 12 && grownHp === 12) {
-    ok(`player-parity v0.9 sparrow HP baseHealth=10 → maxHp ${hpBase}/${grownHp}`);
+  if (Number(sparrow?.baseHealth) === 10 && hpBase === 19 && grownHp === 19) {
+    ok(`player-parity sparrow HP baseHealth=10 + VIT 3×3 → maxHp ${hpBase}/${grownHp}`);
   } else {
-    fail(`expected v0.9 sparrow maxHp 12 (baseHealth 10), got baseHealth=${sparrow?.baseHealth} base=${hpBase} grown=${grownHp}`);
+    fail(`expected sparrow maxHp 19 (10 + 3×3), got baseHealth=${sparrow?.baseHealth} base=${hpBase} grown=${grownHp}`);
   }
 
-  /* Level-up Base Health: +½ original BH per level, then × (1 + VIT×0.05).
+  /* Level-up Base Health: +½ original BH per level, then + Vitality × 3.
    * Hummingbird BH=8 VIT=0 → L2 leveled base 12 → maxHp 12. */
   const hum = ctx.Avian.data.birdsV2?.hummingbird;
   const humL2 = ctx.Avian.birdProgression.computeFinalStats({
@@ -215,7 +215,7 @@ try {
     fail(`expected hummingbird L2 leveledBase=12 maxHp=12, got baseHealth=${hum?.baseHealth} leveled=${humL2Base} maxHp=${humL2Hp}`);
   }
 
-  /* Sparrow BH=10 VIT=3 → L2 leveled 15 → maxHp round(15×1.15)=17 (no level VIT flats). */
+  /* Sparrow BH=10 VIT=3 → L2 leveled 15 → maxHp 15 + 9 = 24 (no level VIT flats). */
   const sparL2 = ctx.Avian.birdProgression.computeFinalStats({
     base: {
       baseHealth: 10,
@@ -230,10 +230,10 @@ try {
     tier: 'grey',
   });
   const sparL2Hp = Number(sparL2.ledger?.maxHp ?? sparL2.ledger?.hp) || 0;
-  if (sparL2Hp === 17) {
-    ok(`level-up BH + VIT% sparrow L2: leveled 15 × 1.15 → maxHp ${sparL2Hp}`);
+  if (sparL2Hp === 24) {
+    ok(`level-up BH + VIT×3 sparrow L2: leveled 15 + 9 → maxHp ${sparL2Hp}`);
   } else {
-    fail(`expected sparrow L2 maxHp 17 (15×1.15), got ${sparL2Hp}`);
+    fail(`expected sparrow L2 maxHp 24 (15 + 3×3), got ${sparL2Hp}`);
   }
 
   /* Enemy L2 (skip workbook VIT flats): hummingbird BH=8 → leveled 12 → maxHp 12. */
