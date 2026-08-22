@@ -1081,18 +1081,18 @@ function wireCombatEnemyStatTooltips(container){
 function wireEnemyMutationTooltips(){
   const wrap = document.getElementById('enemy-avatar-wrap');
   if(!wrap) return;
-  bindRichTooltip(wrap, () => buildEnemyMutationsTooltipHtml(G.enemy), { category: 'mutations' });
+  bindRichTooltip(wrap, () => buildCombatantHoverTooltipHtml('enemy'));
 }
 function wirePlayerAvatarInteractionOnce(){
   const wrap=document.getElementById('player-avatar-wrap');
   if(!wrap) return;
-  bindRichTooltip(wrap, ()=>buildPlayerBirdTooltipHtml(G.player), { category: 'mutations' });
+  bindRichTooltip(wrap, ()=>buildCombatantHoverTooltipHtml('player'));
   if(G._playerAvatarWired) return;
   G._playerAvatarWired=true;
   wrap.style.cursor='pointer';
   wrap.setAttribute('role','button');
   wrap.setAttribute('tabindex','0');
-  wrap.setAttribute('aria-label','View bird details — opens Nest');
+  wrap.setAttribute('aria-label','View bird combat stats and ailments; activate to open Nest');
   wrap.addEventListener('click',e=>{ e.stopPropagation(); hideTooltip(); openNest(); });
   wrap.addEventListener('keydown',e=>{
     if(e.key==='Enter'||e.key===' '){ e.preventDefault(); hideTooltip(); openNest(); }
@@ -4818,10 +4818,10 @@ function wireEnemyInfoPopupOnce(){
   wrap.style.cursor='pointer';
   wrap.setAttribute('role','button');
   wrap.setAttribute('tabindex','0');
-  wrap.setAttribute('aria-label','View enemy details');
-  wrap.addEventListener('click',e=>{ e.stopPropagation(); openEnemyInfoPopup(); });
+  wrap.setAttribute('aria-label','View enemy combat stats and ailments');
+  wrap.addEventListener('click',e=>{ e.stopPropagation(); hideTooltip(); openCombatStatsModal('enemy'); });
   wrap.addEventListener('keydown',e=>{
-    if(e.key==='Enter'||e.key===' '){ e.preventDefault(); openEnemyInfoPopup(); }
+    if(e.key==='Enter'||e.key===' '){ e.preventDefault(); hideTooltip(); openCombatStatsModal('enemy'); }
   });
 }
 
@@ -8489,7 +8489,8 @@ function buildPlayerStatsGridHtml(){
   const _effArmorPen=getPlayerArmorPenPct(G.player);
   const _effMagicPen=getPlayerMagicPenPct(G.player);
   const _penCells=`${(_effArmorPen>0)?statCell('stat-armor-pen',ledgerStatLabel('armorPen',{short:true}),_effArmorPen,{suffix:'%',title:_bt('armorPen',p.armorPen||0,'Ignores enemy Guard on martial hits.'),statKey:'armorPen',statRaw:p.armorPen||0}):''}${(_effMagicPen>0)?statCell('stat-magic-pen',ledgerStatLabel('magicPen',{short:true}),_effMagicPen,{suffix:'%',title:_bt('magicPen',p.magicPen||0,'Ignores enemy Resolve on magical hits.'),statKey:'magicPen',statRaw:p.magicPen||0}):''}`;
-  return `${statCell('stat-atk',ledgerStatLabel('atk',{short:true}),_effAtk,{title:_bt('atk',_pBase.atk??p.atk,_statNote('Battle Might',_effAtk-(_pBase.atk||0),_atkNote,'Debuffs reducing Might effect.')),trend:combatTrendTag(_effAtk,_pBase.atk),statKey:'atk',statRaw:_pBase.atk??p.atk})}
+  return `${statCell('stat-vitality','VIG',Number(p.vitality)||0,{title:_bt('vitality',_pBase.vitality??p.vitality,'Vigour contributes to maximum Health.'),trend:combatTrendTag(Number(p.vitality)||0,_pBase.vitality),statKey:'vitality',statRaw:_pBase.vitality??p.vitality??0})}
+     ${statCell('stat-atk',ledgerStatLabel('atk',{short:true}),_effAtk,{title:_bt('atk',_pBase.atk??p.atk,_statNote('Battle Might',_effAtk-(_pBase.atk||0),_atkNote,'Debuffs reducing Might effect.')),trend:combatTrendTag(_effAtk,_pBase.atk),statKey:'atk',statRaw:_pBase.atk??p.atk})}
      ${statCell('stat-matk',ledgerStatLabel('matk',{short:true}),_effMatk,{title:_bt('matk',(_pBase.matk??p.matk)||0,'Focus — improves spell/ailment potency'),trend:combatTrendTag(_effMatk,_pBase.matk??0),statKey:'matk',statRaw:(_pBase.matk??p.matk)||0})}
      ${statCell('stat-def',ledgerStatLabel('def',{short:true}),_effDef,{title:_bt('def',_pBase.def??p.def,_statNote('Battle Guard',_effDef-(_pBase.def||0),'Battle Hymn increased Guard.','Debuffs reducing Guard.')),trend:combatTrendTag(_effDef,_pBase.def),statKey:'def',statRaw:_pBase.def??p.def})}
      ${statCell('stat-mdef',ledgerStatLabel('mdef',{short:true}),_effMdef,{title:_bt('mdef',(_pBase.mdef??p.mdef)||0,'Resolve — resists enemy spells and ailments'),trend:combatTrendTag(_effMdef,_pBase.mdef??0),statKey:'mdef',statRaw:(_pBase.mdef??p.mdef)||0})}
@@ -8520,7 +8521,8 @@ function buildEnemyStatsGridHtml(){
   const _effEnemyMdef=Math.floor((Number(ep2.mdef)||0)*(enemyHasBurning()?0.8:1));
   const _effEnemyDodge=(ep2.dodge||0);
   const _enemyDodgeSpdNote=enemyHasBurning()?' — Burning: −20% Guard/Resolve':'';
-  return `${enemyCell('stat-atk',ledgerStatLabel('atk',{short:true}),ep2.atk,{title:'Martial attack',baseKey:'atk',statKey:'atk',statRaw:ep2.atk})}
+  return `${enemyCell('stat-vitality','VIG',Number(ep2.vitality)||0,{title:'Vigour contributes to maximum Health',baseKey:'vitality',statKey:'vitality',statRaw:Number(ep2.vitality)||0})}
+     ${enemyCell('stat-atk',ledgerStatLabel('atk',{short:true}),ep2.atk,{title:'Martial attack',baseKey:'atk',statKey:'atk',statRaw:ep2.atk})}
      ${enemyCell('stat-matk',ledgerStatLabel('matk',{short:true}),Number(ep2.matk)||0,{title:'Focus (magic attack)',baseKey:'matk',statKey:'matk',statRaw:Number(ep2.matk)||0})}
      ${enemyCell('stat-def',ledgerStatLabel('def',{short:true}),_effEnemyDef,{title:'Guard (martial defence)'+_enemyDodgeSpdNote,baseKey:'def',statKey:'def',statRaw:ep2.def,trend:combatTrendTag(_effEnemyDef,_eBase.def??ep2.def)})}
      ${enemyCell('stat-mdef',ledgerStatLabel('mdef',{short:true}),_effEnemyMdef,{title:'Resolve (magic defence)'+_enemyDodgeSpdNote,baseKey:'mdef',statKey:'mdef',statRaw:Number(ep2.mdef)||0,trend:combatTrendTag(_effEnemyMdef,(_eBase.mdef??ep2.mdef)||0)})}
@@ -8650,6 +8652,21 @@ function buildCombatDetailsModalHtml(side){
     <section class="combat-details-section"><h4 class="combat-details-section-h">Passive &amp; Class Perk</h4>${buildCombatPerkSection(side)}</section>
     <section class="combat-details-section"><h4 class="combat-details-section-h">Damage Modifiers</h4>${dmgHtml}</section>
     <section class="combat-details-section"><h4 class="combat-details-section-h">Status Effects</h4>${buildCombatStatusDetailsSection(side)}</section>
+  </div>`;
+}
+function buildCombatantHoverTooltipHtml(side){
+  const isPlayer=side==='player';
+  const entity=isPlayer?G.player:G.enemy;
+  if(!entity?.stats) return '';
+  const stats=isPlayer?buildPlayerStatsGridHtml():buildEnemyStatsGridHtml();
+  const statuses=buildCombatStatusDetailsSection(side);
+  return `<div class="combat-hover-summary">
+    <div class="tt-name">${combatEscAttr(entity.name||'Combatant')}</div>
+    <div class="tt-type">Combat stats &amp; ailments</div>
+    <div class="${isPlayer?'stats-mini':'enemy-stats-mini stats-mini'}">${stats}</div>
+    <div class="combat-hover-statuses"><div class="combat-details-section-h">Ailments &amp; effects</div>${statuses}</div>
+    <div class="tt-note">${isPlayer?'Hold to inspect · Tap to open your Nest':'Hold to inspect · Tap the Enemy Nest for full details'}</div>
+    ${richTooltipCloseBtn()}
   </div>`;
 }
 let _combatStatsModalSide=null;
@@ -9604,6 +9621,15 @@ function renderCombatItems(){
   });
 }
 
+/* The cost chip is the combat tray's source of truth; omit duplicate cost prose
+   here without changing generated ability data or full tooltip descriptions. */
+function compactCombatAbilityDescription(value){
+  return String(value||'')
+    .replace(/\b(?:energy\s+)?costs?\s*:?\s*\d+\s*EN\b\s*[.,;·-]?\s*/gi,'')
+    .replace(/\s{2,}/g,' ')
+    .trim();
+}
+
 function renderActions() {
   const grid=document.getElementById('actions-grid');
   if(!grid) return;
@@ -9704,14 +9730,14 @@ function renderActions() {
       if(mods.length) modTxt=`<span class=\"btn-mod\" title=\"${mods.join(' | ')}\">${mods.join(' · ')}</span>`;
     }
     const _packRowUI=(!isEmptySlot && typeof packRowForAbility==='function')?packRowForAbility(ab):null;
-    const briefHtml=(!isEmptySlot && typeof formatAbilityBlurbHtml==='function'
+    const briefHtml=compactCombatAbilityDescription((!isEmptySlot && typeof formatAbilityBlurbHtml==='function'
       ? formatAbilityBlurbHtml(ab, _tmplUI, _packRowUI)
       : '')
       ||(!isEmptySlot && typeof buildAbilityCombatBriefHtml==='function'?buildAbilityCombatBriefHtml(ab, _packRowUI||_tmplUI):'')
-      ||(!isEmptySlot && typeof formatTemplateCombatBriefHtml==='function'?formatTemplateCombatBriefHtml(_tmplUI):'');
+      ||(!isEmptySlot && typeof formatTemplateCombatBriefHtml==='function'?formatTemplateCombatBriefHtml(_tmplUI):''));
     let _rawFallback=isEmptySlot?'':(getAbDesc(ab)||_tmplUI?.desc||ab.desc||_packRowUI?.riderText||'');
     if(/reliable fallback|no automatic rider/i.test(String(_rawFallback))) _rawFallback='';
-    const fallbackDesc=isEmptySlot?'':((_rawFallback+getAbilityDamageScalingHintForUI(ab)).replace(/<[^>]+>/g,'').trim());
+    const fallbackDesc=isEmptySlot?'':compactCombatAbilityDescription((_rawFallback+getAbilityDamageScalingHintForUI(ab)).replace(/<[^>]+>/g,''));
     const _dmgEst=(!isEmptySlot?estimateSkillDamageRange(ab,_tmplUI,G.player,{isPlayerCombatPreview:true}):{isDamaging:false});
     let dmgRow='';
     if(_dmgEst.isDamaging&&_dmgEst.dmgLow!=null){

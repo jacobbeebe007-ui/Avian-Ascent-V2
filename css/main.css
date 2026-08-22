@@ -5658,6 +5658,41 @@ body.ui-mobile-mode #screen-battle .battle-log{
 #screen-battle.combat-arr--compact .bird-lv,
 #screen-battle.combat-arr--compact .level-badge{font-size:.7rem;}
 
+/* Compact combat deck: healing lives in the tray toolbar, not in a second row. */
+#screen-battle .action-tray-toolbar{display:grid;grid-template-columns:auto minmax(100px,1fr) minmax(260px,1.4fr);align-items:center;gap:8px;margin-bottom:8px;padding-bottom:7px;border-bottom:1px solid rgba(200,160,32,.14);}
+#screen-battle .action-tray-toolbar h3{margin:0;padding:0;border:0;white-space:nowrap;}
+#screen-battle .action-tray-energy{display:flex;align-items:center;gap:6px;min-width:0;}
+#screen-battle .action-tray-energy .energy-text{white-space:nowrap;}
+#screen-battle .combat-items-row{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px;margin:0;padding:0;border:0;}
+#screen-battle .combat-item-btn{padding:3px 5px;min-height:34px;gap:0;}
+#screen-battle .combat-item-icon{font-size:.78rem;}
+#screen-battle .combat-item-label{font-size:.56rem;line-height:1.05;}
+#screen-battle .combat-item-meta{font-size:.46rem;line-height:1.05;}
+#screen-battle .action-btn{min-height:104px;}
+#screen-battle .btn-desc-lines{font-size:.68rem;line-height:1.2;}
+#screen-battle .btn-desc-lines p{margin:.1rem 0;}
+
+/* Combatant summaries need room for the complete, abbreviated stat grid. */
+#action-tooltip:has(.combat-hover-summary){box-sizing:border-box;width:min(92vw,420px);max-width:min(92vw,420px);}
+#action-tooltip .combat-hover-summary{width:100%;min-width:0;}
+#action-tooltip .combat-hover-summary .stats-mini{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:3px;margin:7px 0;}
+#action-tooltip .combat-hover-summary .stat-mini,#action-tooltip .combat-hover-summary .est{padding:3px 6px;min-height:22px;}
+#action-tooltip .combat-hover-summary .stat-k{font-size:.6rem;white-space:nowrap;}
+#action-tooltip .combat-hover-summary .stat-v{font-size:.68rem;white-space:nowrap;}
+#action-tooltip .combat-hover-summary .stat-status-hint{display:none;}
+#action-tooltip .combat-hover-statuses{margin-top:7px;padding-top:6px;border-top:1px solid rgba(201,168,76,.2);}
+#action-tooltip .combat-hover-statuses .combat-details-status-detail{display:none;}
+#action-tooltip .combat-hover-statuses .combat-details-status-list li{font-size:.72rem;line-height:1.2;margin:2px 0;}
+
+@media(max-width:767px){
+  #screen-battle .action-tray-toolbar{grid-template-columns:auto 1fr;gap:5px;}
+  #screen-battle .action-tray-energy{justify-content:flex-end;}
+  #screen-battle .combat-items-row{grid-column:1/-1;}
+  #screen-battle .combat-item-btn{min-height:30px;padding:2px 4px;}
+  #screen-battle .action-btn{min-height:78px;}
+  #screen-battle .btn-desc-lines{font-size:.61rem;line-height:1.12;}
+}
+
 #screen-battle.combat-arr--actionsFirst .battle-layout{
   display:flex !important;
   flex-direction:column;
