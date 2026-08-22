@@ -699,6 +699,23 @@
     }
     defender.isEnemy = true;
 
+    /* Balance-lab fixtures may supply an exact catalogue loadout and/or a
+     * synthetic target stat line.  Normal game callers omit both options. */
+    if (opts.attackerEquipment && Avian.equipment) {
+      attacker.equipment = Avian.equipment.createEmptyLoadout();
+      Object.assign(attacker.equipment, opts.attackerEquipment);
+      if (typeof Avian.equipment.applyEquipmentStatsToEntity === 'function') Avian.equipment.applyEquipmentStatsToEntity(attacker);
+      if (Avian.equipmentActions && typeof Avian.equipmentActions.syncEntityAbilities === 'function') Avian.equipmentActions.syncEntityAbilities(attacker);
+    }
+    if (opts.defenderStats) {
+      var fixed = opts.defenderStats;
+      if (fixed.hp != null) defender.stats.hp = defender.stats.maxHp = Number(fixed.hp);
+      if (fixed.armour != null) defender.stats.armour = defender.stats.maxArmour = defender.stats.normalMaxArmour = Number(fixed.armour);
+      if (fixed.magicArmour != null) defender.stats.magicArmour = defender.stats.maxMagicArmour = defender.stats.normalMaxMagicArmour = Number(fixed.magicArmour);
+      if (fixed.precision != null) defender.stats.acc = Number(fixed.precision);
+      if (fixed.dodge != null) defender.stats.dodge = Number(fixed.dodge);
+    }
+
     var counters = {
       actionsUsed: emptyActionCounts(),
       damageDealt: 0,
