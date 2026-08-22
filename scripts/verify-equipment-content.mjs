@@ -215,8 +215,8 @@ for (const bk of birdIds) {
     if (Number(b.baseHealth) !== 10) fail('sparrow baseHealth expected 10, got ' + b.baseHealth);
     if (Number(b.vitality) !== 3) fail('sparrow vitality expected 3, got ' + b.vitality);
     if (Number(b.stats && b.stats.dex) !== 9) fail('sparrow dexterity expected 9');
-    if (Number(b.stats && b.stats.maxHp) !== 12) {
-      fail('sparrow maxHp expected 12 (10×(1+3×0.05)), got ' + (b.stats && b.stats.maxHp));
+    if (Number(b.stats && b.stats.maxHp) !== 19) {
+      fail('sparrow maxHp expected 19 (10 + 3×3), got ' + (b.stats && b.stats.maxHp));
     }
   }
 }

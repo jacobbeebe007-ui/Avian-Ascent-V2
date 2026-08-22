@@ -1471,7 +1471,8 @@ for (const { cells, rowNum } of tableRows(sheets['Bird Stats'], 4)) {
   const focus = num(cells[12]);
   const resolve = num(cells[13]);
   const agility = num(cells[14]);
-  const maxHp = Math.max(1, Math.round(baseHealth * (1 + vitality * 0.05)));
+  /* Vitality +1 = Max Health +3. L1 Max HP = Base Health + Vitality × 3. */
+  const maxHp = Math.max(1, Math.round(baseHealth + vitality * 3));
   const speciesTier = RARITY_KEYS[cells[3]] || String(cells[3] || '').toLowerCase();
   const attrSum = vitality + might + dexterity + guard + focus + resolve + agility;
   const budget = BIRD_ATTR_BUDGET[speciesTier];

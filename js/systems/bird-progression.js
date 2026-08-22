@@ -1,8 +1,8 @@
 /* Bird progression pipeline — v0.9 weapon-first
  * Order: Base attrs + Level flat + Star flat → ROUND(× Tier) → Equipment flat → temp flat.
  * Leveled Base Health = Base Health + (level - 1) × (Base Health × 0.5).
- * Max HP = Leveled Base Health × (1 + Final Vitality × 0.05).
- * Dodge = min(50%, Final Agility × 0.5%).
+ * Max HP = Leveled Base Health + Final Vitality × 3.  (+1 Vitality = +3 Max Health)
+ * Dodge = min(50%, Final Agility × 0.5%).            (+1 Agility = +0.5% Evasion)
  */
 (function () {
   'use strict';
@@ -86,23 +86,143 @@
     return bh + (lvl - 1) * (bh * per);
   }
 
-  function vitalityToMaxHp(baseHealth, vitality) {
+  function vitalityMaxHpPerPoint() {
     var cfg = combatConfig();
-    var pct = (cfg.weaponFirst && cfg.weaponFirst.vitalityBaseHealthPct != null)
-      ? Number(cfg.weaponFirst.vitalityBaseHealthPct) : 0.05;
+    if (cfg.weaponFirst && cfg.weaponFirst.vitalityMaxHpPerPoint != null) {
+      return Number(cfg.weaponFirst.vitalityMaxHpPerPoint);
+    }
+    return 3;
+  }
+
+  function dodgeCapPct() {
+    var cfg = combatConfig();
+    if (cfg.weaponFirst && cfg.weaponFirst.dodgeCapPct != null) {
+      return Number(cfg.weaponFirst.dodgeCapPct);
+    }
+    if (cfg.evasion && cfg.evasion.totalCapPct != null) {
+      return Number(cfg.evasion.totalCapPct);
+    }
+    return 50;
+  }
+
+  function vitalityToMaxHp(baseHealth, vitality) {
+    var per = vitalityMaxHpPerPoint();
     var bh = Math.max(0, Number(baseHealth) || 0);
     var vit = Number(vitality) || 0;
-    return Math.max(1, Math.round(bh * (1 + vit * pct)));
+    return Math.max(1, Math.round(bh + vit * per));
   }
 
   function agilityToDodge(agility) {
     var cfg = combatConfig();
     var per = (cfg.weaponFirst && cfg.weaponFirst.agilityDodgePctPerPoint != null)
       ? Number(cfg.weaponFirst.agilityDodgePctPerPoint) : 0.5;
-    var cap = (cfg.weaponFirst && cfg.weaponFirst.dodgeCapPct != null)
-      ? Number(cfg.weaponFirst.dodgeCapPct)
-      : ((cfg.evasion && cfg.evasion.totalCapPct != null) ? Number(cfg.evasion.totalCapPct) : 50);
+    var cap = dodgeCapPct();
     return Math.min(cap, Math.max(0, (Number(agility) || 0) * per));
+  }
+
+  function collectBonusDodge(entity) {
+    var extra = 0;
+    var L = entity && entity._statLedger;
+    if (L) {
+      extra += Number(L.fromLevel && L.fromLevel.dodge) || 0;
+      extra += Number(L.fromUpgrades && L.fromUpgrades.dodge) || 0;
+      extra += Number(L.fromCardTier && L.fromCardTier.dodge) || 0;
+      extra += Number(L.fromEquipment && L.fromEquipment.dodge) || 0;
+    }
+    extra += Number(entity && entity._bonusDodge) || 0;
+    if (entity && entity.stats && entity.stats._bonusDodge != null) {
+      extra += Number(entity.stats._bonusDodge) || 0;
+    }
+    return extra;
+  }
+
+  function resolveEntityBaseHealth(entity) {
+    if (!entity) return 0;
+    var bh = Number(entity.baseHealth) || Number(entity._speciesBaseHealth) || 0;
+    if (!(bh > 0) && entity.stats) bh = Number(entity.stats.baseHealth) || 0;
+    if (!(bh > 0) && entity.birdKey && Avian.data && Avian.data.birdsV2) {
+      var row = Avian.data.birdsV2[entity.birdKey];
+      if (row) bh = Number(row.baseHealth) || 0;
+    }
+    return bh;
+  }
+
+  function resolveEntityLevel(entity) {
+    if (!entity) return 1;
+    var stats = entity.stats || entity;
+    return Math.max(1, Math.floor(
+      Number(entity.birdLevel) || Number(entity.workbookLevel)
+      || Number(entity.effectiveLevel) || Number(entity.storyLevel)
+      || Number(entity.level) || Number(stats && stats.birdLevel)
+      || Number(stats && stats.level) || 1
+    ));
+  }
+
+  /**
+   * Wrap a combat entity or a bare stats bag so refreshDerivedStats can read fields.
+   */
+  function asEntity(entityOrStats) {
+    if (!entityOrStats) return null;
+    if (entityOrStats.stats) return entityOrStats;
+    return {
+      stats: entityOrStats,
+      baseHealth: entityOrStats.baseHealth,
+      _speciesBaseHealth: entityOrStats._speciesBaseHealth,
+      birdLevel: entityOrStats.birdLevel || entityOrStats.level,
+      birdKey: entityOrStats.birdKey,
+      _statLedger: entityOrStats._statLedger,
+      _bonusDodge: entityOrStats._bonusDodge,
+    };
+  }
+
+  /**
+   * Recompute Max Health from Vitality and Evasion from Agility.
+   * Extra Dodge (feathers / gear) is preserved and added on top of derived Evasion.
+   */
+  function refreshDerivedStats(entityOrStats, opts) {
+    opts = opts || {};
+    var entity = asEntity(entityOrStats);
+    if (!entity || !entity.stats) return entityOrStats;
+    var stats = entity.stats;
+    var refreshHp = opts.hp !== false;
+    var refreshDodge = opts.dodge !== false;
+
+    if (refreshHp) {
+      var baseHealth = resolveEntityBaseHealth(entity);
+      var vit = Number(stats.vitality) || 0;
+      var prevMax = Math.max(1, Number(stats.maxHp) || Number(stats.hp) || 1);
+      var prevHp = Math.max(0, Number(stats.hp) || prevMax);
+      var nextMax = prevMax;
+      if (baseHealth > 0) {
+        var leveledBh = baseHealthAtLevel(baseHealth, resolveEntityLevel(entity));
+        nextMax = vitalityToMaxHp(leveledBh, vit);
+        entity.leveledBaseHealth = leveledBh;
+        if (entityOrStats && entityOrStats.stats) entityOrStats.leveledBaseHealth = leveledBh;
+        else if (entityOrStats) entityOrStats.leveledBaseHealth = leveledBh;
+      } else if (opts.vitalityDelta) {
+        nextMax = Math.max(1, prevMax + Math.round(Number(opts.vitalityDelta) * vitalityMaxHpPerPoint()));
+      }
+      if (nextMax !== prevMax) {
+        stats.maxHp = nextMax;
+        if (opts.keepCurrentHp) {
+          stats.hp = Math.min(prevHp, nextMax);
+        } else {
+          var wasFull = prevHp >= prevMax;
+          stats.hp = wasFull ? nextMax : Math.max(1, Math.min(nextMax, prevHp + (nextMax - prevMax)));
+        }
+      }
+    }
+
+    if (refreshDodge) {
+      var cap = dodgeCapPct();
+      var derived = agilityToDodge(Number(stats.spd) || 0);
+      var extra = collectBonusDodge(entity);
+      var current = Number(stats.dodge) || 0;
+      var remainder = current - derived - extra;
+      if (remainder > 0.0001) extra += remainder;
+      stats.dodge = Math.min(cap, Math.max(0, derived + extra));
+    }
+    return entityOrStats;
   }
 
   /**
@@ -248,6 +368,8 @@
     baseHealthAtLevel: baseHealthAtLevel,
     vitalityToMaxHp: vitalityToMaxHp,
     agilityToDodge: agilityToDodge,
+    refreshDerivedStats: refreshDerivedStats,
+    vitalityMaxHpPerPoint: vitalityMaxHpPerPoint,
     ledgerMap: LEDGER,
     statKeys: STAT_KEYS,
   };

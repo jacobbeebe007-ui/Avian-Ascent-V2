@@ -41,8 +41,9 @@
     weaponFirst: Object.freeze({
       enabled: true,
       offencePctPerStat: 2.5,
-      vitalityBaseHealthPct: 0.05,
-      /* Each level after 1 adds this fraction of original Base Health before VIT%. */
+      /* Vitality +1 = Max Health +3 (flat, after leveled Base Health). */
+      vitalityMaxHpPerPoint: 3,
+      /* Each level after 1 adds this fraction of original Base Health before VIT×3. */
       baseHealthPerLevelPct: 0.5,
       agilityDodgePctPerPoint: 0.5,
       dodgeCapPct: 50,
@@ -204,7 +205,7 @@
       wardDefaultDuration: 2,
     }),
 
-    /* Universal +20 Health removed; Max HP from Base Health × (1 + Vit × 0.05). */
+    /* Universal +20 Health removed; Max HP = Leveled Base Health + Vitality × 3. */
     vitalityRebase: 0,
     levelCap: 30,
 

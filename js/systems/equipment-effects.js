@@ -161,15 +161,14 @@
     var applied = false;
     if (flatStat && flatCore[statKey]) {
       applied = applyLoan(side, entity, statKey, sourceId || ('tier:' + key), signed, turns, false);
-      /* Agility flat buffs also refresh derived Dodge. */
-      if (applied && statKey === 'spd' && entity && entity.stats
-        && Avian.birdProgression && typeof Avian.birdProgression.agilityToDodge === 'function') {
-        var cap = 50;
-        var cfgD = Avian.data && Avian.data.combatConfig;
-        if (cfgD && cfgD.weaponFirst && cfgD.weaponFirst.dodgeCapPct != null) {
-          cap = Number(cfgD.weaponFirst.dodgeCapPct);
+      if (applied && entity && Avian.birdProgression
+        && typeof Avian.birdProgression.refreshDerivedStats === 'function') {
+        if (statKey === 'spd' || statKey === 'vitality' || statKey === 'hp') {
+          Avian.birdProgression.refreshDerivedStats(entity, {
+            hp: statKey !== 'spd',
+            dodge: statKey === 'spd',
+          });
         }
-        entity.stats.dodge = Math.min(cap, Avian.birdProgression.agilityToDodge(entity.stats.spd));
       }
     } else if (pctStats[statKey]) {
       applied = applyLoan(side, entity, statKey, sourceId || ('tier:' + key), signed, turns, true);

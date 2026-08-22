@@ -250,6 +250,9 @@
     if (!entity.stats) return;
     entity.stats.spd = (Number(entity.stats.spd) || 0) + bonus;
     st.rogueTempoAgilityBonus = bonus;
+    if (Avian.birdProgression && typeof Avian.birdProgression.refreshDerivedStats === 'function') {
+      Avian.birdProgression.refreshDerivedStats(entity, { hp: false });
+    }
     if (side === 'player') {
       g.playerStatus = g.playerStatus || {};
       g.playerStatus.rogueTempoAgility = { turns: 1, amount: bonus };
@@ -722,6 +725,9 @@
     if (st.rogueTempoAgilityBonus && g && g.player && g.player.stats) {
       g.player.stats.spd = Math.max(0, (Number(g.player.stats.spd) || 0) - st.rogueTempoAgilityBonus);
       st.rogueTempoAgilityBonus = 0;
+      if (Avian.birdProgression && typeof Avian.birdProgression.refreshDerivedStats === 'function') {
+        Avian.birdProgression.refreshDerivedStats(g.player, { hp: false });
+      }
     }
   };
 
