@@ -4816,13 +4816,8 @@ function wireEnemyInfoPopupOnce(){
   const wrap=document.getElementById('enemy-avatar-wrap');
   if(!wrap) return;
   wrap.style.cursor='pointer';
-  wrap.setAttribute('role','button');
-  wrap.setAttribute('tabindex','0');
-  wrap.setAttribute('aria-label','Enemy Nest — view enemy stats and details');
+  wrap.setAttribute('aria-label','Open enemy nest');
   wrap.addEventListener('click',e=>{ e.stopPropagation(); hideTooltip(); openCombatStatsModal('enemy'); });
-  wrap.addEventListener('keydown',e=>{
-    if(e.key==='Enter'||e.key===' '){ e.preventDefault(); hideTooltip(); openCombatStatsModal('enemy'); }
-  });
 }
 
 /** Source of truth for encounter preview + tooltips: materialized OW chain, else current G.enemy. */
