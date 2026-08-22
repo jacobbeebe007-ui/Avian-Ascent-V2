@@ -5678,6 +5678,17 @@ body.ui-mobile-mode #screen-battle .battle-log{
 .enemy-nest-label,.enemy-nest-details{position:absolute;z-index:3;left:50%;transform:translateX(-50%);font-family:'Cinzel',serif;white-space:nowrap;pointer-events:none;}
 .enemy-nest-label{top:7px;padding:2px 8px;border-radius:999px;background:rgba(5,8,5,.7);color:var(--red-light);font-size:.62rem;letter-spacing:.08em;text-transform:uppercase;}
 .enemy-nest-details{bottom:6px;padding:3px 9px;border:1px solid rgba(201,168,76,.42);border-radius:999px;background:rgba(5,8,5,.82);color:var(--gold-light);font-size:.58rem;}
+
+/* Combatant summaries need room for the complete, abbreviated stat grid. */
+#action-tooltip:has(.combat-hover-summary){box-sizing:border-box;width:min(92vw,420px);max-width:min(92vw,420px);}
+#action-tooltip .combat-hover-summary{width:100%;min-width:0;}
+#action-tooltip .combat-hover-summary .stats-mini{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:3px;margin:7px 0;}
+#action-tooltip .combat-hover-summary .stat-mini,#action-tooltip .combat-hover-summary .est{padding:3px 6px;min-height:22px;}
+#action-tooltip .combat-hover-summary .stat-k{font-size:.6rem;white-space:nowrap;}
+#action-tooltip .combat-hover-summary .stat-v{font-size:.68rem;white-space:nowrap;}
+#action-tooltip .combat-hover-summary .stat-status-hint{display:none;}
+
+/* Keep a sensible minimum width for smaller screens (from main); layout above provides tighter sizing for larger viewports */
 #action-tooltip .combat-hover-summary{min-width:min(290px,80vw);}
 #action-tooltip .combat-hover-summary .stats-mini{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:3px;margin:7px 0;}
 #action-tooltip .combat-hover-summary .stat-mini,#action-tooltip .combat-hover-summary .est{padding:3px 6px;min-height:22px;}
