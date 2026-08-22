@@ -14,4 +14,22 @@ for (const tier of ['starter','mid','late']) for (const target of ['balanced','h
 }
 const opts={attackerBirdKey:'sparrow',defenderBirdKey:'crow',attackerRarity:'grey',defenderRarity:'grey',seed:cfg.baseSeed,maxTurns:cfg.maxTurns};
 assert.deepEqual(sandbox.Avian.debug.simulateDuel(opts),sandbox.Avian.debug.simulateDuel(opts),'seeded duel is reproducible');
-console.log('balance benchmark fixtures: OK (7 classes × 3 tiers, deterministic duel, valid equipment/targets)');
+
+const duel=sandbox.Avian.debug.simulateDuel({
+  ...opts,
+  attackerEquipment:cfg.roster.rogue.tiers.starter.equipment,
+  defenderStats:cfg.targets.starter.balanced,
+});
+assert.ok(Number.isFinite(duel.attacksAttempted),'attacksAttempted present');
+assert.ok(Number.isFinite(duel.precisionMisses),'precisionMisses present');
+assert.ok(Number.isFinite(duel.dodges),'dodges present');
+assert.ok(Number.isFinite(duel.healthDamageDealt),'healthDamageDealt present');
+assert.ok(Number.isFinite(duel.armourDamageDealt),'armourDamageDealt present');
+assert.ok(Number.isFinite(duel.crits),'crits present');
+assert.equal(duel.misses, duel.precisionMisses + duel.dodges, 'misses = precisionMisses + dodges');
+assert.ok(typeof sandbox.Avian.debug.runBalanceLabBatch==='function','runBalanceLabBatch available');
+const batch=sandbox.Avian.debug.runBalanceLabBatch({mode:'endless',runs:2,seed:cfg.baseSeed});
+assert.ok(Array.isArray(batch.rows)&&batch.rows.length===cfg.endlessBands.length,'endless batch rows');
+assert.ok(batch.telemetry&&Number.isFinite(batch.telemetry.hits),'batch telemetry snapshot');
+
+console.log('balance benchmark fixtures: OK (7 classes × 3 tiers, deterministic duel, attribution + lab batch)');
