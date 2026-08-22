@@ -4818,7 +4818,7 @@ function wireEnemyInfoPopupOnce(){
   wrap.style.cursor='pointer';
   wrap.setAttribute('role','button');
   wrap.setAttribute('tabindex','0');
-  wrap.setAttribute('aria-label','View enemy combat stats and ailments');
+  wrap.setAttribute('aria-label','Enemy Nest — view enemy stats and details');
   wrap.addEventListener('click',e=>{ e.stopPropagation(); hideTooltip(); openCombatStatsModal('enemy'); });
   wrap.addEventListener('keydown',e=>{
     if(e.key==='Enter'||e.key===' '){ e.preventDefault(); hideTooltip(); openCombatStatsModal('enemy'); }
