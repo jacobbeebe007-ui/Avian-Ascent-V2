@@ -40,6 +40,7 @@
     "js/data/equipment/combinations.js",
     "js/data/equipment/weapon-access.js",
     "js/data/equipment/reference-loadouts.js",
+    "js/data/balance-benchmarks.js",
     "js/data/equipment/loot-tables.js",
     "js/data/birds-v2.js",
     "js/data/precision-system.js",
