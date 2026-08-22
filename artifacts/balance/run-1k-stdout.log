@@ -1,0 +1,35 @@
+Running balance matrix (1000 runs/matchup, seed 12345)…
+
+AVIAN ASCENT BALANCE BENCHMARK
+Seed 12345 | 1000 runs per principal matchup | 141 summaries
+knight      win   0.8% | turns  2.75 | damage/EN 1.53
+rogue       win   0.0% | turns  2.05 | damage/EN 0.93
+mage        win   0.4% | turns  1.96 | damage/EN 1.70
+siren       win   0.1% | turns  2.05 | damage/EN 1.57
+inquisitor  win   1.8% | turns  2.78 | damage/EN 1.58
+bard        win   1.9% | turns  2.81 | damage/EN 1.55
+brute       win   1.4% | turns  3.41 | damage/EN 1.33
+
+OUTLIERS (49)
+⚠ knight/starter/highDodge hit rate 59.0%
+⚠ knight/mid/highDodge hit rate 56.0%
+⚠ knight/late/highDodge hit rate 53.4%
+⚠ rogue/starter/highHp average turns 1.997
+⚠ rogue/mid/balanced average turns 1.972
+⚠ rogue/mid/highDodge average turns 1.794
+⚠ rogue/mid/highHp average turns 1.978
+⚠ rogue/late/highDodge average turns 1.859
+⚠ mage/starter/balanced average turns 1.961
+⚠ mage/starter/highArmour average turns 1.996
+⚠ mage/starter/highDodge average turns 1.749
+⚠ mage/mid/balanced average turns 1.871
+⚠ mage/mid/highArmour average turns 1.859
+⚠ mage/mid/highDodge average turns 1.615
+⚠ mage/mid/highHp average turns 1.914
+⚠ mage/late/balanced average turns 1.834
+⚠ mage/late/highArmour average turns 1.817
+⚠ mage/late/highDodge average turns 1.549
+⚠ mage/late/highHp average turns 1.818
+⚠ siren/starter/highHp average turns 1.993
+
+Reports: artifacts/balance/benchmark-latest.{json,csv}
