@@ -355,7 +355,15 @@ function ledgerStatLabel(statKey, { short=false }={}){
   const glossKey=k==='physDamagePct'?'physicalDamage':k;
   if(short && typeof Avian?.display?.statShort==='function'){
     const s=Avian.display.statShort(glossKey==='physicalDamage'?'atk':glossKey);
-    if(s && s.toLowerCase()!==String(glossKey).toLowerCase()) return s;
+    if(s){
+      /* displayStatShort falls back to the full display name when unmapped.
+         Also: abbreviations like DEX share letters with keys like dex, so do not
+         reject a real short just because lowercasing matches the raw key. */
+      const full=typeof Avian.display.statName==='function'
+        ? Avian.display.statName(glossKey==='physicalDamage'?'atk':glossKey)
+        : '';
+      if(!full || s!==full) return s;
+    }
   }
   if(typeof Avian?.equipmentLoot?.formatEquipmentStatLabel==='function' && (isPct || /Damage|Pen|Power|Strength/i.test(raw))){
     const loot=Avian.equipmentLoot.formatEquipmentStatLabel(isPct?raw:raw);
@@ -6776,8 +6784,12 @@ function buildBirdUpgradePreviewModel(birdKey){
         let growthLabel='';
         if(key==='maxHp'){
           growthLabel='From Vitality';
-        }else if(typeof growthPack?.getGrowthTierLabelForStat==='function'&&growthProfile){
-          growthLabel=growthPack.getGrowthTierLabelForStat(key, growthProfile)||'';
+        }else if(typeof growthPack?.getGrowthBandForStat==='function'&&growthProfile){
+          const band=growthPack.getGrowthBandForStat(key, growthProfile);
+          if(band==='major') growthLabel='Major';
+          else if(band==='minor') growthLabel='Minor';
+          else if(band==='trace') growthLabel='Trace';
+          else growthLabel='Locked';
         }
         return{key,label,before,after,delta:after-before,growthLabel};
       }),
@@ -16863,16 +16875,10 @@ function applyLevelUpBaseHealthGrowth(){
   p.stats.hp=Math.min(prevHp, nextMax);
 }
 function levelUpChoiceLabel(statKey, amount, { rare=false }={}){
-  const glossKey=statKey==='maxHp'?'maxHp':statKey;
-  let short='';
-  if(typeof Avian?.display?.statShort==='function'){
-    short=Avian.display.statShort(glossKey)||'';
-  }
-  if(!short || String(short).toLowerCase()===String(glossKey).toLowerCase()){
-    short=ledgerStatLabel(statKey,{short:true});
-  }
-  if(statKey==='vitality' || glossKey==='vitality') short='VIT';
-  const base=`+${amount} ${short}`;
+  /* Full glossary names keep the Feather rows aligned with the live preview panel
+     (and avoid the DEX/dex short-label false negative in ledgerStatLabel). */
+  const name=ledgerStatLabel(statKey)||String(statKey||'');
+  const base=`+${amount} ${name}`;
   return rare?`${base} (rare)`:base;
 }
 function applyLevelUpVitalityGain(amount){
