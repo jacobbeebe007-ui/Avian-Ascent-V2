@@ -615,9 +615,7 @@
 <div class="battle-arena-floor" aria-hidden="true"></div>
 </div>
 <div class="battle-layout">
-<div class="battle-top tactical-topbar" data-combat-panel="topbar">
 <div class="battle-caption" id="battle-caption" aria-live="polite"></div>
-</div>
 
 <div class="combatants tactical-battlefield" data-combat-panel="combatants">
 <div class="combatant-panel player" id="player-panel" data-combat-panel="player">
@@ -649,14 +647,13 @@
 <div class="hp-label"><span>ULT</span><span id="ultimate-meter-text">0 / 100</span></div>
 <div class="hp-bar-bg ultimate-meter-bar"><div class="hp-bar-fill ultimate-meter-fill" id="ultimate-meter-fill"></div></div>
 </div>
-<button type="button" class="combat-stats-btn" data-action="openCombatStatsModal:player">Stats &amp; Details</button>
 </div>
 
 <div class="combatant-panel enemy" id="enemy-panel" data-combat-panel="enemy">
 <div class="shield-overlay" id="enemy-shield-overlay"></div>
 <div class="combatant-name" id="enemy-name">—</div>
 <div class="combatant-meta"><span id="enemy-class-label">—</span><span id="enemy-aspect-label" class="aspect-chip" hidden></span></div>
-<div class="avatar-wrap" id="enemy-avatar-wrap"><div class="avatar-inner" id="enemy-avatar"></div></div>
+<div class="avatar-wrap enemy-nest-window" id="enemy-avatar-wrap"><span class="enemy-nest-label">🪺 Enemy Nest</span><div class="avatar-inner" id="enemy-avatar"></div><span class="enemy-nest-details">Stats &amp; Details</span></div>
 <div class="combat-status-stack status-effects" id="enemy-status">
 <div class="combat-status-section combat-status-ailments" id="enemy-status-ailments" aria-label="Ailments"></div>
 <div class="combat-status-section combat-status-modifiers" id="enemy-status-modifiers" aria-label="Buffs and debuffs"></div>
@@ -679,16 +676,13 @@
 </div>
 <div class="phase-banner" id="boss-phase-banner"></div>
 <div class="enemy-intent enemy-plan" id="enemy-intent-panel">🤔 Thinking...</div>
-<button type="button" class="combat-stats-btn" data-action="openCombatStatsModal:enemy">Stats &amp; Details</button>
 <div class="enemy-abilities-list" id="enemy-abilities-list"></div>
 </div>
 </div>
 
 <div class="battle-below-combatants">
 <div class="action-panel tactical-action-tray" data-combat-panel="actions">
-<h3>⚔ Action Tray</h3>
-<div class="energy-orbs" id="energy-orbs"></div><div class="energy-text" id="energy-text"></div>
-<div class="combat-items-row" id="combat-items-row" aria-label="Battle items"></div>
+<div class="action-tray-toolbar"><h3>⚔ Action Tray</h3><div class="action-tray-energy"><div class="energy-orbs" id="energy-orbs"></div><div class="energy-text" id="energy-text"></div></div><div class="combat-items-row" id="combat-items-row" aria-label="Healing items"></div></div>
 <div class="actions-grid" id="actions-grid"></div>
 </div>
 
