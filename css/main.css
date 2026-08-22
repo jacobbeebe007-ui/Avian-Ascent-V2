@@ -807,6 +807,75 @@ body.combat-scenario-test-unlocked .splash-hotspot--combat-scenarios.is-combatte
   gap:10px;
   margin:0 0 12px;
 }
+.combat-scenario-telemetry{
+  margin:0 0 14px;
+  padding:12px 14px;
+  border:1px solid rgba(180,160,120,.28);
+  background:rgba(20,16,12,.35);
+}
+.combat-scenario-subhead{
+  margin:0 0 10px;
+  font-family:'Cinzel',serif;
+  font-size:.85rem;
+  letter-spacing:.06em;
+  color:rgba(232,201,106,.92);
+  font-weight:600;
+}
+.combat-scenario-lab-controls{
+  display:flex;
+  flex-wrap:wrap;
+  gap:10px;
+  align-items:flex-end;
+  margin:0 0 8px;
+}
+.combat-scenario-field{
+  display:flex;
+  flex-direction:column;
+  gap:4px;
+  font-size:.72rem;
+  letter-spacing:.04em;
+  color:rgba(210,200,180,.85);
+  text-transform:uppercase;
+}
+.combat-scenario-field input{
+  width:5.5rem;
+  padding:6px 8px;
+  border:1px solid rgba(180,160,120,.4);
+  background:rgba(10,8,6,.55);
+  color:#f0e6d0;
+  font-family:ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size:.85rem;
+}
+.combat-scenario-mode{
+  display:inline-flex;
+  border:1px solid rgba(180,160,120,.4);
+  overflow:hidden;
+}
+.combat-scenario-mode-btn{
+  appearance:none;
+  border:0;
+  background:transparent;
+  color:rgba(210,200,180,.8);
+  padding:7px 12px;
+  font-family:'Cinzel',serif;
+  font-size:.72rem;
+  letter-spacing:.05em;
+  cursor:pointer;
+}
+.combat-scenario-mode-btn.is-active{
+  background:rgba(232,201,106,.18);
+  color:#f3e6c0;
+}
+.combat-scenario-lab-hint{
+  margin:0;
+  font-size:.72rem;
+  line-height:1.4;
+  color:rgba(190,180,155,.75);
+}
+.splash-codex-btn--ghost{
+  background:transparent;
+  border-color:rgba(180,160,120,.4);
+}
 .combat-scenario-summary{
   font-family:'Cinzel',serif;
   font-size:.78rem;

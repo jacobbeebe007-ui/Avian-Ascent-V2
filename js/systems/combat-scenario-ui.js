@@ -192,17 +192,207 @@
       '    <h3 class="select-hub-panel-title" id="hub-combat-scenarios-title">Combat Scenario Test</h3>',
       '    <button type="button" class="select-hub-return-btn" data-action="closeSelectHubPanel">← Return to war room</button>',
       '  </header>',
-      '  <p class="select-hub-lead">Controlled combat rule checks. Full suite: <code>npm run verify-combat-scenarios</code> (also part of <code>npm test</code>). This panel runs an in-browser foundation smoke suite.</p>',
+      '  <p class="select-hub-lead">Controlled combat rule checks. Full suite: <code>npm run verify-combat-scenarios</code> (also part of <code>npm test</code>). This panel runs an in-browser foundation smoke suite and a Story/Endless telemetry batch.</p>',
       '  <div class="combat-scenario-actions">',
       '    <button type="button" class="splash-codex-btn" id="combat-scenario-run-btn" data-action="runCombatScenarioSmoke">Run foundation scenarios</button>',
       '  </div>',
+      '  <section class="combat-scenario-telemetry" aria-labelledby="combat-telemetry-heading">',
+      '    <h4 class="combat-scenario-subhead" id="combat-telemetry-heading">Combat Telemetry Lab</h4>',
+      '    <div class="combat-scenario-lab-controls">',
+      '      <label class="combat-scenario-field">Runs',
+      '        <input type="number" id="combat-telemetry-runs" min="1" max="1000" value="20" step="1">',
+      '      </label>',
+      '      <div class="combat-scenario-mode" role="group" aria-label="Lab mode">',
+      '        <button type="button" class="combat-scenario-mode-btn is-active" data-lab-mode="story" id="combat-telemetry-mode-story">Story</button>',
+      '        <button type="button" class="combat-scenario-mode-btn" data-lab-mode="endless" id="combat-telemetry-mode-endless">Endless</button>',
+      '      </div>',
+      '      <button type="button" class="splash-codex-btn" id="combat-telemetry-run-batch" data-action="runCombatScenarioTelemetryBatch">Run telemetry batch</button>',
+      '      <button type="button" class="splash-codex-btn splash-codex-btn--ghost" id="combat-telemetry-export" data-action="exportCombatScenarioTelemetry">Export telemetry</button>',
+      '      <button type="button" class="splash-codex-btn splash-codex-btn--ghost" id="combat-telemetry-reset" data-action="resetCombatScenarioTelemetry">Reset telemetry</button>',
+      '    </div>',
+      '    <p class="combat-scenario-lab-hint">Story = roster × tiers × synthetic targets. Endless = endless band ladder. Large run counts are chunked so the tab stays responsive.</p>',
+      '  </section>',
       '  <div class="combat-scenario-summary" id="combat-scenario-summary" aria-live="polite"></div>',
       '  <pre class="combat-scenario-log" id="combat-scenario-log"></pre>',
       '  <p class="combat-scenario-note">Shock: Magic DoT (=Burn), stacks to 5 at 0 Magic Armour → Paralysed (+1 EN/skill, then 2t Control Resistance).</p>',
       '</div>',
     ].join('\n');
     panels.appendChild(panel);
+    bindLabModeButtons(panel);
     return panel;
+  }
+
+  var labMode = 'story';
+  var labBatchRunning = false;
+
+  function bindLabModeButtons(panel) {
+    var buttons = panel.querySelectorAll('[data-lab-mode]');
+    for (var i = 0; i < buttons.length; i++) {
+      buttons[i].addEventListener('click', function (ev) {
+        var btn = ev.currentTarget;
+        var mode = btn.getAttribute('data-lab-mode') || 'story';
+        labMode = mode === 'endless' ? 'endless' : 'story';
+        for (var j = 0; j < buttons.length; j++) {
+          buttons[j].classList.toggle('is-active', buttons[j].getAttribute('data-lab-mode') === labMode);
+        }
+      });
+    }
+  }
+
+  function readLabRuns() {
+    var input = document.getElementById('combat-telemetry-runs');
+    var n = input ? Number(input.value) : 20;
+    if (!Number.isFinite(n) || n < 1) n = 20;
+    return Math.min(1000, Math.floor(n));
+  }
+
+  function resetCombatScenarioTelemetry() {
+    var tel = Avian.systems && Avian.systems.combatTelemetry;
+    if (tel && typeof tel.reset === 'function') tel.reset();
+    var summary = document.getElementById('combat-scenario-summary');
+    if (summary) {
+      summary.textContent = 'Telemetry reset.';
+      summary.classList.remove('is-failed');
+      summary.classList.add('is-ok');
+    }
+    return true;
+  }
+
+  function exportCombatScenarioTelemetry() {
+    if (typeof Avian.actions.exportCombatTelemetry === 'function') {
+      return Avian.actions.exportCombatTelemetry();
+    }
+    var tel = Avian.systems && Avian.systems.combatTelemetry;
+    if (!tel || typeof tel.exportJson !== 'function') {
+      window.alert('Combat telemetry is not loaded.');
+      return false;
+    }
+    var json = tel.exportJson(true);
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(json);
+        window.alert('Combat telemetry copied to clipboard.');
+      } else {
+        console.info(json);
+        window.alert('Combat telemetry printed to console.');
+      }
+    } catch (err) {
+      console.info(json);
+      window.alert('Combat telemetry printed to console.');
+    }
+    return true;
+  }
+
+  function formatBatchLog(report) {
+    var lines = [];
+    lines.push('Mode: ' + report.mode + ' | runs/matchup: ' + report.runs + ' | seed: ' + report.seed);
+    lines.push('Matchups: ' + report.rows.length + ' | warnings: ' + report.warnings.length);
+    lines.push('');
+    var starter = report.rows.filter(function (r) {
+      return r.tier === 'starter' && r.opponent === 'balanced';
+    });
+    if (starter.length) {
+      lines.push('Starter × balanced:');
+      starter.forEach(function (r) {
+        lines.push(
+          '  ' + r.class.padEnd(11)
+          + ' win ' + (r.winRate * 100).toFixed(1) + '%'
+          + ' | turns ' + r.averageTurns
+          + ' | hit ' + (r.hitRate * 100).toFixed(1) + '%'
+          + ' | armourDmg ' + r.armourDamageDealt
+          + ' | healthDmg ' + r.healthDamageDealt
+        );
+      });
+      lines.push('');
+    }
+    if (report.warnings.length) {
+      lines.push('Warnings (first 24):');
+      report.warnings.slice(0, 24).forEach(function (w) { lines.push('  ⚠ ' + w); });
+      lines.push('');
+    }
+    var tel = report.telemetry || {};
+    lines.push('Telemetry snapshot:');
+    lines.push('  hits=' + tel.hits + ' precisionMisses=' + tel.precisionMisses + ' dodges=' + tel.dodges
+      + ' crits=' + tel.crits);
+    lines.push('  healthDmg=' + tel.healthDamageDealt + ' armourDmg=' + tel.armourDamageDealt
+      + ' magicArmourDmg=' + tel.magicArmourDamageDealt);
+    lines.push('  fortify=' + tel.fortifyGenerated + ' ward=' + tel.wardGenerated
+      + ' ailments.ok=' + (tel.ailments && tel.ailments.successes));
+    return lines.join('\n');
+  }
+
+  function runCombatScenarioTelemetryBatchAction() {
+    if (labBatchRunning) return null;
+    var summary = document.getElementById('combat-scenario-summary');
+    var logEl = document.getElementById('combat-scenario-log');
+    if (typeof Avian.debug.runBalanceLabBatch !== 'function') {
+      if (summary) {
+        summary.textContent = 'Balance lab batch API missing — rebuild the bundle.';
+        summary.classList.add('is-failed');
+      }
+      return null;
+    }
+    var runs = readLabRuns();
+    var mode = labMode;
+    labBatchRunning = true;
+    if (summary) {
+      summary.textContent = 'Running ' + mode + ' telemetry batch (' + runs + ' runs/matchup)…';
+      summary.classList.remove('is-ok', 'is-failed');
+    }
+    if (logEl) logEl.textContent = '';
+
+    var tel = Avian.systems && Avian.systems.combatTelemetry;
+    if (tel && typeof tel.reset === 'function') tel.reset();
+
+    /* Yield between matchups via the batch's onProgress + setTimeout chunking wrapper. */
+    var cfg = Avian.data && Avian.data.balanceBenchmarks;
+    var seed = cfg && cfg.baseSeed != null ? cfg.baseSeed : 12345;
+
+    function finish(report) {
+      labBatchRunning = false;
+      if (logEl) logEl.textContent = formatBatchLog(report);
+      if (summary) {
+        summary.textContent = report.mode + ' batch done — ' + report.rows.length + ' matchups, '
+          + report.warnings.length + ' warnings.';
+        summary.classList.toggle('is-failed', report.warnings.length > 12);
+        summary.classList.toggle('is-ok', report.warnings.length <= 12);
+      }
+      return report;
+    }
+
+    try {
+      var maybe = Avian.debug.runBalanceLabBatch({
+        mode: mode,
+        runs: runs,
+        seed: seed,
+        async: true,
+        onProgress: function (p) {
+          if (summary) {
+            summary.textContent = 'Running ' + mode + '… ' + p.done + '/' + p.total + ' matchups';
+          }
+        },
+      });
+      if (maybe && typeof maybe.then === 'function') {
+        maybe.then(finish).catch(function (err) {
+          labBatchRunning = false;
+          if (summary) {
+            summary.textContent = 'Telemetry batch failed: ' + (err && err.message ? err.message : String(err));
+            summary.classList.add('is-failed');
+          }
+          if (logEl) logEl.textContent = String(err && err.stack || err);
+        });
+        return maybe;
+      }
+      return finish(maybe);
+    } catch (err) {
+      labBatchRunning = false;
+      if (summary) {
+        summary.textContent = 'Telemetry batch failed: ' + (err && err.message ? err.message : String(err));
+        summary.classList.add('is-failed');
+      }
+      if (logEl) logEl.textContent = String(err && err.stack || err);
+      return null;
+    }
   }
 
   function openCombatScenarioTest() {
@@ -226,7 +416,7 @@
     }
     var summary = document.getElementById('combat-scenario-summary');
     if (summary && !summary.textContent) {
-      summary.textContent = 'Ready — run the foundation smoke suite or use the Node harness for the full catalog.';
+      summary.textContent = 'Ready — run foundation smoke, or a Story/Endless telemetry batch.';
     }
   }
 
@@ -256,9 +446,13 @@
   Avian.ui.ensureCombatScenarioPanel = ensurePanel;
   Avian.ui.openCombatScenarioTest = openCombatScenarioTest;
   Avian.ui.runCombatScenarioSmoke = runCombatScenarioSmokeAction;
+  Avian.ui.runCombatScenarioTelemetryBatch = runCombatScenarioTelemetryBatchAction;
 
   Avian.actions.openCombatScenarioTest = openCombatScenarioTest;
   Avian.actions.runCombatScenarioSmoke = runCombatScenarioSmokeAction;
+  Avian.actions.runCombatScenarioTelemetryBatch = runCombatScenarioTelemetryBatchAction;
+  Avian.actions.exportCombatScenarioTelemetry = exportCombatScenarioTelemetry;
+  Avian.actions.resetCombatScenarioTelemetry = resetCombatScenarioTelemetry;
 
   if (typeof document !== 'undefined') {
     if (document.readyState === 'loading') {
