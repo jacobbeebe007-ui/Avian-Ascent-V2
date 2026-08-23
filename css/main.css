@@ -203,6 +203,8 @@ header p{color:var(--text-dim);font-style:italic;font-size:1rem;margin-top:4px;}
 }
 /* Select screen: keep music control above hotspots */
 #screen-select .theme-music-btn--select{z-index:50;}
+/* …but never floating over an open hub panel's buttons */
+#screen-select:has(.select-hub-panels.is-open) .theme-music-btn--select{visibility:hidden;}
 .music-menu-modal{
   position:fixed;
   inset:0;
@@ -365,6 +367,12 @@ header p{color:var(--text-dim);font-style:italic;font-size:1rem;margin-top:4px;}
   min-height:min(100dvh - 40px, 960px);
   box-sizing:border-box;
 }
+/* Header content flows first, hotspot grid fills the remaining height —
+   keeps hotspots below the header on every viewport so they can never overlap it. */
+#screen-select.active{
+  display:flex;
+  flex-direction:column;
+}
 /* Give the hub overlay a definite height on phones (dvh/svh) */
 #screen-select:has(#select-hub-door.is-open){
   min-height:min(100dvh, 100svh, 960px);
@@ -390,13 +398,16 @@ header p{color:var(--text-dim);font-style:italic;font-size:1rem;margin-top:4px;}
 .select-screen-content{
   position:relative;
   z-index:3;
+  order:1;
   display:flex;
   flex-direction:column;
   gap:clamp(12px, 2.2vw, 20px);
-  padding:clamp(10px, 2.2vw, 18px) clamp(10px, 2.8vw, 22px) max(12px, env(safe-area-inset-bottom, 0px));
+  padding:clamp(10px, 2.2vw, 18px) clamp(10px, 2.8vw, 22px) 0;
   max-width:1220px;
+  width:100%;
   margin:0 auto;
   min-height:0;
+  flex:0 0 auto;
   pointer-events:none;
 }
 .select-screen-content .splash-top,
@@ -407,12 +418,32 @@ header p{color:var(--text-dim);font-style:italic;font-size:1rem;margin-top:4px;}
 .select-screen-content .splash-roster-hint{
   pointer-events:auto;
 }
-/* Click targets aligned to art in assets/ui/select-screen.png (cover + scale) — tweak % if art changes */
+/* Click targets loosely aligned to art in assets/ui/select-screen.png.
+   In-flow CSS grid (not absolute %) so buttons can never overlap the header
+   or each other on any viewport size / aspect ratio. */
 .splash-hotspot-layer{
-  position:absolute;
-  inset:0;
+  position:relative;
+  order:2;
+  flex:1 1 auto;
   z-index:2;
   pointer-events:none;
+  display:grid;
+  grid-template-columns:minmax(0,1fr) minmax(0,auto) minmax(0,1fr);
+  grid-template-rows:auto auto auto minmax(24px,1fr) auto;
+  grid-template-areas:
+    "forge    door  inventory"
+    "combat   .     fortune"
+    ".        .     hatchery"
+    ".        .     ."
+    "supplies .     map";
+  align-items:start;
+  gap:clamp(10px, 2vh, 18px) clamp(8px, 2vw, 16px);
+  padding:clamp(10px, 2.2vh, 20px) clamp(10px, 2.8vw, 24px) max(14px, env(safe-area-inset-bottom, 0px));
+  max-width:1220px;
+  width:100%;
+  margin:0 auto;
+  min-height:0;
+  box-sizing:border-box;
 }
 .splash-hotspot-layer .splash-hotspot{
   pointer-events:auto;
@@ -507,7 +538,7 @@ a.splash-settings-btn{
   appearance:none;
   -webkit-appearance:none;
   font:inherit;
-  position:absolute;
+  position:relative;
   cursor:pointer;
   border-radius:12px;
   border:1px solid rgba(201,168,76,.42);
@@ -530,52 +561,42 @@ a.splash-settings-btn{
 }
 .splash-hotspot--supplies{
   /* Burlap sacks / crates — lower-left */
-  left:clamp(4%, 5vw, 14%);
-  bottom:clamp(12%, 10vh, 24%);
-  transform:none;
+  grid-area:supplies;
+  justify-self:start;
+  align-self:end;
   align-items:flex-start;
   text-align:left;
   max-width:min(190px, 40vw);
 }
 .splash-hotspot--map{
   /* Mission table — lower-right (symmetric to supplies) */
-  right:clamp(4%, 5vw, 14%);
-  left:auto;
-  bottom:clamp(12%, 10vh, 24%);
-  transform:none;
+  grid-area:map;
+  justify-self:end;
+  align-self:end;
   align-items:flex-end;
   text-align:right;
   max-width:min(200px, 40vw);
 }
 .splash-hotspot--fortune{
   /* Feathers & Fortune — middle-right, below Inventory */
-  right:clamp(4%, 5vw, 14%);
-  left:auto;
-  top:clamp(48%, 44vh, 54%);
-  bottom:auto;
-  transform:translateY(-50%);
+  grid-area:fortune;
+  justify-self:end;
   align-items:flex-end;
   text-align:right;
   max-width:min(260px, 48vw);
 }
 .splash-hotspot--hatchery{
   /* The Hatchery — middle-right, below Emporium */
-  right:clamp(4%, 5vw, 14%);
-  left:auto;
-  top:clamp(62%, 58vh, 68%);
-  bottom:auto;
-  transform:translateY(-50%);
+  grid-area:hatchery;
+  justify-self:end;
   align-items:flex-end;
   text-align:right;
   max-width:min(220px, 44vw);
 }
 .splash-hotspot--inventory{
   /* Inventory — middle-right, above Feathers & Fortune */
-  right:clamp(4%, 5vw, 14%);
-  left:auto;
-  top:clamp(34%, 30vh, 40%);
-  bottom:auto;
-  transform:translateY(-50%);
+  grid-area:inventory;
+  justify-self:end;
   align-items:flex-end;
   text-align:right;
   max-width:min(260px, 48vw);
@@ -612,29 +633,23 @@ a.splash-settings-btn{
 }
 .splash-hotspot--door{
   /* Open doorway — upper-center */
-  left:50%;
-  top:clamp(26%, 20vh, 40%);
-  right:auto;
-  bottom:auto;
-  transform:translate(-50%,-50%);
+  grid-area:door;
+  justify-self:center;
+  margin-top:clamp(8px, 4vh, 48px);
   max-width:min(260px, 80vw);
 }
 .splash-hotspot--forge{
   /* Workbench / nest corner — upper-left near supplies */
-  left:clamp(4%, 5vw, 14%);
-  top:clamp(18%, 14vh, 28%);
-  bottom:auto;
-  transform:none;
+  grid-area:forge;
+  justify-self:start;
   align-items:flex-start;
   text-align:left;
   max-width:min(190px, 40vw);
 }
 .splash-hotspot--combat-scenarios{
   /* Left column under Build Nest / above Supplies */
-  left:clamp(4%, 5vw, 14%);
-  top:clamp(32%, 28vh, 42%);
-  bottom:auto;
-  transform:none;
+  grid-area:combat;
+  justify-self:start;
   align-items:flex-start;
   text-align:left;
   max-width:min(210px, 44vw);
@@ -662,23 +677,6 @@ body.combat-scenario-test-unlocked .splash-hotspot--combat-scenarios.is-combatte
   background:rgba(16,18,26,.52);
   box-shadow:0 10px 32px rgba(0,0,0,.35);
 }
-.splash-hotspot--inventory:hover,
-.splash-hotspot--inventory:focus-visible,
-.splash-hotspot--fortune:hover,
-.splash-hotspot--fortune:focus-visible,
-.splash-hotspot--hatchery:hover,
-.splash-hotspot--hatchery:focus-visible{
-  transform:translateY(calc(-50% - 2px));
-}
-.splash-hotspot--map:hover{
-  transform:translateY(-2px);
-}
-.splash-hotspot--door:hover{
-  transform:translate(-50%,calc(-50% - 2px));
-}
-.splash-hotspot--supplies:hover{
-  transform:translateY(-2px);
-}
 .splash-hotspot:focus-visible{
   outline:2px solid var(--gold);
   outline-offset:3px;
@@ -699,41 +697,36 @@ body.combat-scenario-test-unlocked .splash-hotspot--combat-scenarios.is-combatte
   color:rgba(210,204,192,.76);
   line-height:1.3;
 }
-@media (max-width: 520px){
-  .splash-hotspot--supplies{
-    left:2%;
-    bottom:clamp(10%, 7vh, 20%);
-    max-width:42vw;
-    padding:8px 10px;
+/* Narrow screens: single centered column — hotspots stack in flow, never overlap */
+@media (max-width: 640px){
+  .splash-hotspot-layer{
+    grid-template-columns:minmax(0,1fr);
+    grid-template-rows:none;
+    grid-template-areas:
+      "door"
+      "inventory"
+      "fortune"
+      "hatchery"
+      "forge"
+      "combat"
+      "supplies";
+    justify-items:center;
+    align-content:start;
+    gap:10px;
+    /* clear the floating music toggle pinned to the bottom-right corner */
+    padding-bottom:calc(52px + env(safe-area-inset-bottom, 0px));
   }
-  .splash-hotspot--map{
-    right:2%;
-    bottom:clamp(10%, 7vh, 20%);
-    max-width:42vw;
-    padding:8px 10px;
-  }
-  .splash-hotspot--fortune{
-    right:2%;
-    top:clamp(46%, 42vh, 52%);
-    max-width:44vw;
-    padding:8px 10px;
-  }
-  .splash-hotspot--hatchery{
-    right:2%;
-    top:clamp(58%, 54vh, 64%);
-    max-width:44vw;
-    padding:8px 10px;
-  }
-  .splash-hotspot--inventory{
-    right:2%;
-    top:clamp(32%, 28vh, 38%);
-    max-width:44vw;
-    padding:8px 10px;
+  .splash-hotspot-layer .splash-hotspot{
+    justify-self:center;
+    align-self:auto;
+    align-items:center;
+    text-align:center;
+    width:min(320px, 92%);
+    max-width:none;
+    padding:10px 12px;
   }
   .splash-hotspot--door{
-    left:50%;
-    top:clamp(24%, 18vh, 36%);
-    max-width:min(200px, 76vw);
+    margin-top:0;
   }
 }
 .select-hub-panels{
