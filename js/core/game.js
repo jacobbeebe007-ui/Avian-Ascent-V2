@@ -3518,6 +3518,12 @@ function loadSaveData() {
 function deleteSave() {
   localStorage.removeItem(SAVE_KEY);
 }
+const CREATOR_CODES_KEY = 'avian_creator_codes';
+const DEV_CODE_SWITCHES_KEY = 'avian_dev_code_switches';
+function clearDevCodeAccess() {
+  try { localStorage.removeItem(CREATOR_CODES_KEY); } catch (_) { /* noop */ }
+  try { localStorage.removeItem(DEV_CODE_SWITCHES_KEY); } catch (_) { /* noop */ }
+}
 async function clearGameCache() {
   let ran = false;
   if ('serviceWorker' in navigator) {
@@ -3536,6 +3542,9 @@ async function clearGameCache() {
       if (names.length) ran = true;
     } catch (_) { /* noop */ }
   }
+  // Creator-code access and its enabled-code checklist are device-local cache,
+  // not player progress. Reset both even when no Cache API entries exist.
+  clearDevCodeAccess();
   return ran;
 }
 function clearAllProgress() {
@@ -3554,6 +3563,9 @@ function clearAllProgress() {
     'avianAscent_personal_bests',
     'avianAscent_last_seed',
     'blakiston_debug_unlocked',
+    'avian_buildnest_unlocked',
+    'avian_combattest_unlocked',
+    'avian_infinite_golden_eggs',
     globalThis.FORTUNE_META_KEY || 'avianAscent_meta_v1',
   ];
   for (const k of keys) {
@@ -3565,6 +3577,7 @@ function clearAllProgress() {
   if (preserve.music != null) {
     try { localStorage.setItem(MUSIC_SETTINGS_KEY, preserve.music); } catch (_) { /* noop */ }
   }
+  clearDevCodeAccess();
   delete G.player;
   G._shopSnapshots = {};
   G.collectedRewards = [];
@@ -19456,15 +19469,15 @@ const DEV_CODE_CATALOG=Object.freeze([
   {code:'goldengoose',description:'Toggle infinite Golden Goose Eggs.'},
   {code:'Featherplucked',description:'Add 900 Species Feathers to every owned bird.'},
 ]);
-function isCreatorCodesEnabled(){ try{return localStorage.getItem('avian_creator_codes')==='1';}catch(_){return false;} }
+function isCreatorCodesEnabled(){ try{return localStorage.getItem(CREATOR_CODES_KEY)==='1';}catch(_){return false;} }
 function getDevCodeSwitches(){
-  try{const saved=JSON.parse(localStorage.getItem('avian_dev_code_switches')||'{}');return saved&&typeof saved==='object'?saved:{};}catch(_){return {};}
+  try{const saved=JSON.parse(localStorage.getItem(DEV_CODE_SWITCHES_KEY)||'{}');return saved&&typeof saved==='object'?saved:{};}catch(_){return {};}
 }
 function isDevCodeEnabled(code){const switches=getDevCodeSwitches();return switches[code.toLowerCase()]===true;}
 function toggleDevCode(spec){
   const parts=String(spec||'').split(':'); const code=(parts[0]||'').toLowerCase(); const enabled=parts[1]==='1';
   const switches=getDevCodeSwitches(); switches[code]=enabled;
-  try{localStorage.setItem('avian_dev_code_switches',JSON.stringify(switches));}catch(_){ }
+  try{localStorage.setItem(DEV_CODE_SWITCHES_KEY,JSON.stringify(switches));}catch(_){ }
   renderSuppliesCodeTools();
 }
 function applyDevCodeSwitches(){
@@ -19473,7 +19486,7 @@ function applyDevCodeSwitches(){
     const code=String(input.dataset.code||'').toLowerCase();
     if(code) switches[code]=!!input.checked;
   });
-  try{localStorage.setItem('avian_dev_code_switches',JSON.stringify(switches));}catch(_){ }
+  try{localStorage.setItem(DEV_CODE_SWITCHES_KEY,JSON.stringify(switches));}catch(_){ }
   const enabled=Object.keys(switches).filter(code=>switches[code]).length;
   const msg=document.getElementById('dev-code-switch-msg');
   if(msg) msg.textContent=enabled?`${enabled} code${enabled===1?'':'s'} activated.`:'All optional codes turned off.';
@@ -19507,7 +19520,7 @@ function checkDevCode(val) {
   const code=(val||'').trim().toLowerCase();
   const allUnlockIds=['stage20','stage40','crit100Run','buff250Run','debuff250Run','fletchlingWin','juvenileWin','predatorWin','easyWin','normalWin','hardWin','unlock_hummingbird','unlock_shoebill','unlock_secretary','unlock_magpie','unlock_kookaburra','unlock_peregrine','unlock_harpy','unlock_ostrich','unlock_kiwi','unlock_lyrebird','unlock_toucan','unlock_penguin','unlock_emu','unlock_swan','unlock_flamingo','unlock_seagull','unlock_albatross','unlock_duke_blakiston'];
   if(code==='gmbirdwatching'){
-    try{localStorage.setItem('avian_creator_codes','1');}catch(_){} renderSuppliesCodeTools();
+    try{localStorage.setItem(CREATOR_CODES_KEY,'1');}catch(_){} renderSuppliesCodeTools();
     if(msg){msg.textContent='🛠 Creator code reference and switches enabled.';msg.style.color='var(--gold-light)';} return;
   }
   if(!isDevCodeEnabled(code)){
