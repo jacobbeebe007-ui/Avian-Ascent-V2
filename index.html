@@ -799,6 +799,474 @@
 </div>
 </div>
 </div>
+<!-- WAR ROOM TUTORIAL (outside #screen-select: avoids overflow/stacking clipping) -->
+<div class="warroom-tutorial-modal" id="warroom-tutorial-modal" aria-hidden="true">
+<div class="warroom-tutorial-modal-backdrop" data-action="closeWarRoomTutorial"></div>
+<div class="warroom-tutorial-modal-panel" role="dialog" aria-modal="true" aria-labelledby="warroom-tutorial-modal-title">
+<div class="warroom-tutorial-modal-head">
+<h3 id="warroom-tutorial-modal-title">War Room Tutorial</h3>
+<button type="button" class="warroom-tutorial-modal-close" data-action="closeWarRoomTutorial" aria-label="Close tutorial">×</button>
+</div>
+<div class="warroom-tutorial-tabs" role="tablist" aria-label="Tutorial sections">
+<button type="button" class="warroom-tutorial-tab active" role="tab" aria-selected="true" data-warroom-tutorial-tab="getting-started" data-action="selectWarRoomTutorialTab">Getting Started</button>
+<button type="button" class="warroom-tutorial-tab" role="tab" aria-selected="false" data-warroom-tutorial-tab="birds-eggs" data-action="selectWarRoomTutorialTab">Birds &amp; Eggs</button>
+<button type="button" class="warroom-tutorial-tab" role="tab" aria-selected="false" data-warroom-tutorial-tab="nest-equipment" data-action="selectWarRoomTutorialTab">Nest &amp; Equipment</button>
+<button type="button" class="warroom-tutorial-tab" role="tab" aria-selected="false" data-warroom-tutorial-tab="combat" data-action="selectWarRoomTutorialTab">Combat</button>
+<button type="button" class="warroom-tutorial-tab" role="tab" aria-selected="false" data-warroom-tutorial-tab="story-mode" data-action="selectWarRoomTutorialTab">Story Mode</button>
+<button type="button" class="warroom-tutorial-tab" role="tab" aria-selected="false" data-warroom-tutorial-tab="endless-mode" data-action="selectWarRoomTutorialTab">Endless Mode</button>
+<button type="button" class="warroom-tutorial-tab" role="tab" aria-selected="false" data-warroom-tutorial-tab="help-updates" data-action="selectWarRoomTutorialTab">Help &amp; Updates</button>
+<button type="button" class="warroom-tutorial-tab" role="tab" aria-selected="false" data-warroom-tutorial-tab="tips" data-action="selectWarRoomTutorialTab">Tips</button>
+</div>
+<div class="warroom-tutorial-modal-scroll">
+<div class="warroom-tutorial-panel active" id="warroom-tutorial-panel-getting-started" data-warroom-tutorial-panel="getting-started" role="tabpanel">
+<div class="warroom-tutorial-section">
+<h4>Welcome to the War Room</h4>
+<p>The War Room is your main headquarters in Avian Ascent.</p>
+<p>From here you can:</p>
+<ul>
+<li>Start or continue Story Mode.</li>
+<li>Enter Endless Mode.</li>
+<li>Manage your birds.</li>
+<li>Open rescued nests and eggs.</li>
+<li>Upgrade your flock.</li>
+<li>Access Supplies.</li>
+<li>Open Settings.</li>
+<li>Prepare equipment.</li>
+<li>Review your progress.</li>
+</ul>
+<p>You can reopen this tutorial at any time from Settings → Help → View Tutorial.</p>
+</div>
+<div class="warroom-tutorial-section">
+<h4>Returning After a Few Days?</h4>
+<p>If you have not played Avian Ascent for several days, it is recommended that you refresh the game before continuing.</p>
+<ol>
+<li>Open Supplies.</li>
+<li>Select Clear Cache.</li>
+<li>Allow the game to reload.</li>
+</ol>
+<p>This helps ensure your device is using the newest release of the game rather than older files stored on your device.</p>
+<p>New releases may include:</p>
+<ul>
+<li>Balance changes.</li>
+<li>Bug fixes.</li>
+<li>New equipment.</li>
+<li>New birds.</li>
+<li>New areas or story content.</li>
+<li>Interface improvements.</li>
+<li>Other new features.</li>
+</ul>
+<p class="warroom-tutorial-callout"><strong>Returning player?</strong> Supplies → Clear Cache first.</p>
+</div>
+<div class="warroom-tutorial-section">
+<h4>If the Game Looks Strange</h4>
+<p>If the game opens and menus, images, buttons or other elements do not appear correctly:</p>
+<ol>
+<li>Open Settings.</li>
+<li>Return to the War Room.</li>
+<li>If the issue remains, open Supplies.</li>
+<li>Select Clear Cache.</li>
+<li>Reload the game.</li>
+</ol>
+<p>Opening Settings can sometimes help refresh the interface correctly on certain devices.</p>
+</div>
+<div class="warroom-tutorial-section">
+<h4>Adventures</h4>
+<p>During adventures you will travel through different locations and face enemy birds in 1v1 turn-based battles.</p>
+<p>Along the way you may:</p>
+<ul>
+<li>Battle enemies.</li>
+<li>Discover locations.</li>
+<li>Find shops.</li>
+<li>Collect equipment.</li>
+<li>Earn resources.</li>
+<li>Rescue nests.</li>
+<li>Find eggs.</li>
+<li>Unlock new birds.</li>
+<li>Find upgrade materials.</li>
+<li>Encounter special events.</li>
+</ul>
+<p>Some rewards strengthen your current adventure, while others contribute to the permanent growth of your flock.</p>
+</div>
+<div class="warroom-tutorial-section">
+<h4>First Things to Check</h4>
+<p>Before beginning an adventure:</p>
+<ul>
+<li>Make sure the game is up to date.</li>
+<li>Select the bird you want to use.</li>
+<li>Check your Nest.</li>
+<li>Review your equipment.</li>
+<li>Check any available upgrades.</li>
+<li>Make sure you are ready for your next encounter.</li>
+</ul>
+<p class="warroom-tutorial-callout">Prepare your bird, then begin your ascent.</p>
+</div>
+</div>
+<div class="warroom-tutorial-panel" id="warroom-tutorial-panel-birds-eggs" data-warroom-tutorial-panel="birds-eggs" role="tabpanel" hidden>
+<div class="warroom-tutorial-section">
+<h4>Birds</h4>
+<p>Each bird has its own:</p>
+<ul>
+<li>Base statistics.</li>
+<li>Class.</li>
+<li>Strengths and weaknesses.</li>
+<li>Passive ability.</li>
+<li>Utility options.</li>
+<li>Equipment choices.</li>
+<li>Combat style.</li>
+</ul>
+<p>Different birds support different strategies, so experiment with your flock.</p>
+</div>
+<div class="warroom-tutorial-section">
+<h4>Rescued Nests &amp; Eggs</h4>
+<p>During adventures you may discover rescued nests or eggs.</p>
+<p>Open them to discover rewards such as:</p>
+<ul>
+<li>New Birds.</li>
+<li>Feathers.</li>
+<li>Bird upgrade materials.</li>
+<li>Other progression rewards.</li>
+</ul>
+</div>
+<div class="warroom-tutorial-section">
+<h4>Unlocking New Birds</h4>
+<p>If you discover a bird you have not collected before, it becomes available for use.</p>
+</div>
+<div class="warroom-tutorial-section">
+<h4>Duplicate Birds</h4>
+<p>Finding a bird you already own is still useful.</p>
+<p>Duplicates can provide:</p>
+<ul>
+<li>Feathers.</li>
+<li>Upgrade materials.</li>
+<li>Other progression resources.</li>
+</ul>
+</div>
+<div class="warroom-tutorial-section">
+<h4>Feathers &amp; Bird Upgrades</h4>
+<p>Feathers are used to improve your birds.</p>
+<p>Adding feathers increases a bird's base statistics, making future adventures smoother and strengthening your favourite birds over time.</p>
+<p>These upgrades are part of your permanent progression.</p>
+</div>
+</div>
+<div class="warroom-tutorial-panel" id="warroom-tutorial-panel-nest-equipment" data-warroom-tutorial-panel="nest-equipment" role="tabpanel" hidden>
+<div class="warroom-tutorial-section">
+<h4>The Nest</h4>
+<p>The Nest is where you inspect and prepare your current bird.</p>
+<p>You can open the Nest by:</p>
+<ul>
+<li>Selecting the Nest button.</li>
+<li>Tapping or clicking your bird during combat.</li>
+</ul>
+<p>The Nest can show:</p>
+<ul>
+<li>Weapons.</li>
+<li>Armour.</li>
+<li>Accessories.</li>
+<li>Bird statistics.</li>
+<li>Skills.</li>
+<li>Feathers.</li>
+<li>Upgrades.</li>
+<li>Current equipment setup.</li>
+</ul>
+</div>
+<div class="warroom-tutorial-section">
+<h4>Equipment</h4>
+<p>Equipment plays a major role in how your bird fights.</p>
+<p>Equipment can provide:</p>
+<ul>
+<li>Additional damage.</li>
+<li>Armour.</li>
+<li>Magic Armour.</li>
+<li>Stat bonuses.</li>
+<li>Ailment effects.</li>
+<li>Buffs.</li>
+<li>Debuffs.</li>
+<li>New attacks.</li>
+<li>New skills.</li>
+<li>Special effects.</li>
+</ul>
+<p>Weapons are especially important because much of your available offence comes from your equipped weapons.</p>
+</div>
+<div class="warroom-tutorial-section">
+<h4>Story Mode Equipment Rules</h4>
+<p>In Story Mode, equipment can only be changed outside of battle.</p>
+<p>Once combat begins, your equipment loadout is locked until the battle is finished.</p>
+</div>
+<div class="warroom-tutorial-section">
+<h4>Opening the Nest During Battle</h4>
+<p>You can still open the Nest by tapping your bird during combat.</p>
+<p>This lets you inspect your current build, but:</p>
+<ul>
+<li>Equipment cannot be changed while a battle is active.</li>
+<li>Equipment slots should appear locked until combat ends.</li>
+</ul>
+</div>
+<div class="warroom-tutorial-section">
+<h4>Preparing for Battle</h4>
+<p>Before entering an encounter, consider:</p>
+<ul>
+<li>What weapon am I using?</li>
+<li>Do I need more Armour or Magic Armour?</li>
+<li>Does my equipment support useful ailments?</li>
+<li>Do I have low-cost Energy options?</li>
+<li>Does this build suit my bird's class?</li>
+<li>Do I need more damage, defence or utility?</li>
+</ul>
+<p class="warroom-tutorial-callout">Prepare in the Nest. Adapt with your skills in battle.</p>
+</div>
+</div>
+<div class="warroom-tutorial-panel" id="warroom-tutorial-panel-combat" data-warroom-tutorial-panel="combat" role="tabpanel" hidden>
+<div class="warroom-tutorial-section">
+<h4>How Combat Works</h4>
+<p>Combat is primarily 1v1 and turn-based.</p>
+<p>You and your opponent take turns using:</p>
+<ul>
+<li>Weapon attacks.</li>
+<li>Skills.</li>
+<li>Utility abilities.</li>
+<li>Buffs.</li>
+<li>Debuffs.</li>
+<li>Ailments.</li>
+<li>Defensive abilities.</li>
+</ul>
+</div>
+<div class="warroom-tutorial-section">
+<h4>Energy — EN</h4>
+<p>Actions require Energy, shown as EN.</p>
+<p>You can:</p>
+<ul>
+<li>Use several cheaper abilities.</li>
+<li>Spend Energy on a stronger attack.</li>
+<li>Use utility before attacking.</li>
+<li>Save Energy for later.</li>
+<li>Combine several actions in the same turn.</li>
+</ul>
+<p>Managing Energy is one of the most important parts of combat.</p>
+</div>
+<div class="warroom-tutorial-section">
+<h4>Basic Attacks &amp; Weapons</h4>
+<p>Your equipped weapon determines your basic combat attack.</p>
+<p>Changing weapons can affect:</p>
+<ul>
+<li>Damage.</li>
+<li>Available attacks.</li>
+<li>Ailments.</li>
+<li>Energy costs.</li>
+<li>Combat strategy.</li>
+</ul>
+<p>Some combinations may also create hybrid attacks.</p>
+</div>
+<div class="warroom-tutorial-section">
+<h4>Armour &amp; Magic Armour</h4>
+<p>Your bird has two major protection types.</p>
+<ul>
+<li><strong>Armour</strong> primarily protects against Physical threats.</li>
+<li><strong>Magic Armour</strong> primarily protects against Magical threats.</li>
+</ul>
+<p>Pay attention to:</p>
+<ul>
+<li>Health.</li>
+<li>Armour.</li>
+<li>Magic Armour.</li>
+</ul>
+</div>
+<div class="warroom-tutorial-section">
+<h4>Ailments</h4>
+<p>Attacks may apply ailments such as:</p>
+<ul>
+<li>Burn.</li>
+<li>Scorched.</li>
+<li>Poison.</li>
+<li>Toxic.</li>
+<li>Chilled.</li>
+<li>Frozen.</li>
+<li>Shock.</li>
+<li>Paralysis.</li>
+<li>Bleeding.</li>
+<li>Physical injuries.</li>
+</ul>
+<p>Some ailments become more dangerous as additional stacks are applied.</p>
+</div>
+<div class="warroom-tutorial-section">
+<h4>Buffs &amp; Debuffs</h4>
+<p>Utility skills can strengthen your bird or weaken your opponent.</p>
+<p>They may affect:</p>
+<ul>
+<li>Damage.</li>
+<li>Defence.</li>
+<li>Speed.</li>
+<li>Evasion.</li>
+<li>Healing.</li>
+<li>Armour.</li>
+<li>Magic Armour.</li>
+<li>Other combat statistics.</li>
+</ul>
+</div>
+</div>
+<div class="warroom-tutorial-panel" id="warroom-tutorial-panel-story-mode" data-warroom-tutorial-panel="story-mode" role="tabpanel" hidden>
+<div class="warroom-tutorial-section">
+<h4>Preparing Between Battles</h4>
+<p>Story Mode rewards preparation.</p>
+<p>Before entering an encounter, check:</p>
+<ul>
+<li>Your selected bird.</li>
+<li>Weapons.</li>
+<li>Armour.</li>
+<li>Accessories.</li>
+<li>Upgrades.</li>
+<li>Skills.</li>
+<li>Supplies.</li>
+</ul>
+<p>Remember: equipment cannot be changed once a battle begins.</p>
+</div>
+<div class="warroom-tutorial-section">
+<h4>Shops</h4>
+<p>Shops may appear throughout your journey.</p>
+<p>They may sell:</p>
+<ul>
+<li>Weapons.</li>
+<li>Armour.</li>
+<li>Accessories.</li>
+<li>Consumables.</li>
+<li>Upgrade materials.</li>
+<li>Other supplies.</li>
+</ul>
+<p>Consider what your current bird and build need most rather than simply purchasing the item with the largest numbers.</p>
+</div>
+<div class="warroom-tutorial-section">
+<h4>Adventure Rewards</h4>
+<p>Story Mode can reward you with:</p>
+<ul>
+<li>Equipment.</li>
+<li>Eggs.</li>
+<li>Rescued nests.</li>
+<li>Upgrade materials.</li>
+<li>Resources.</li>
+<li>New progression opportunities.</li>
+</ul>
+</div>
+</div>
+<div class="warroom-tutorial-panel" id="warroom-tutorial-panel-endless-mode" data-warroom-tutorial-panel="endless-mode" role="tabpanel" hidden>
+<div class="warroom-tutorial-section">
+<h4>Choose Your Path</h4>
+<p>Endless Mode allows you to choose your route as you progress.</p>
+<p>Different paths may lead to:</p>
+<ul>
+<li>Battles.</li>
+<li>Rewards.</li>
+<li>Shops.</li>
+<li>Events.</li>
+<li>Risks.</li>
+<li>Opportunities.</li>
+</ul>
+<p>As you continue, enemies become increasingly dangerous.</p>
+</div>
+<div class="warroom-tutorial-section">
+<h4>Building Your Run</h4>
+<p>Choose routes based on what your current build needs.</p>
+<p>You may want:</p>
+<ul>
+<li>Better equipment.</li>
+<li>More resources.</li>
+<li>A shop.</li>
+<li>A safer encounter.</li>
+<li>A stronger reward.</li>
+</ul>
+<p>Your choices between battles are just as important as your decisions during combat.</p>
+</div>
+</div>
+<div class="warroom-tutorial-panel" id="warroom-tutorial-panel-help-updates" data-warroom-tutorial-panel="help-updates" role="tabpanel" hidden>
+<div class="warroom-tutorial-section">
+<h4>Keeping Your Game Updated</h4>
+<p>Avian Ascent may receive regular updates including:</p>
+<ul>
+<li>Balance changes.</li>
+<li>New birds.</li>
+<li>New equipment.</li>
+<li>Bug fixes.</li>
+<li>Story updates.</li>
+<li>New features.</li>
+</ul>
+</div>
+<div class="warroom-tutorial-section">
+<h4>Returning After a Few Days?</h4>
+<p>If you have not played for several days:</p>
+<ol>
+<li>Open Supplies.</li>
+<li>Select Clear Cache.</li>
+<li>Allow the game to reload.</li>
+</ol>
+<p>This helps ensure your device is using the newest release.</p>
+</div>
+<div class="warroom-tutorial-section">
+<h4>Game Looking Strange?</h4>
+<p>If menus, images, buttons or other parts of the game display incorrectly:</p>
+<ol>
+<li>Open Settings.</li>
+<li>Return to the War Room.</li>
+<li>If the problem remains, open Supplies.</li>
+<li>Select Clear Cache.</li>
+<li>Reload the game.</li>
+</ol>
+<p>Opening Settings can sometimes help refresh the interface on certain devices.</p>
+</div>
+<div class="warroom-tutorial-section">
+<h4>Supplies — Clear Cache</h4>
+<p>Use Clear Cache when:</p>
+<ul>
+<li>Returning after several days away.</li>
+<li>A new version has been released.</li>
+<li>The interface looks incorrect.</li>
+<li>Menus are not displaying properly.</li>
+<li>Old content appears to still be loading.</li>
+<li>You think your device may be using an older build.</li>
+</ul>
+</div>
+<div class="warroom-tutorial-section">
+<h4>What's New?</h4>
+<p>A What's New? area can display:</p>
+<ul>
+<li>Current game version.</li>
+<li>New birds.</li>
+<li>New equipment.</li>
+<li>Balance changes.</li>
+<li>New areas or features.</li>
+<li>Important bug fixes.</li>
+</ul>
+</div>
+</div>
+<div class="warroom-tutorial-panel" id="warroom-tutorial-panel-tips" data-warroom-tutorial-panel="tips" role="tabpanel" hidden>
+<div class="warroom-tutorial-section">
+<h4>Beginner Tips</h4>
+<ul class="warroom-tutorial-tips-list">
+<li>Check your Nest before important battles.</li>
+<li>Remember that Story Mode equipment is locked during combat.</li>
+<li>Tap your bird during battle to inspect the Nest.</li>
+<li>Manage your Energy instead of always using the most expensive attack.</li>
+<li>Pay attention to both Armour and Magic Armour.</li>
+<li>Ailments can become much stronger when stacked.</li>
+<li>Utility skills can be as important as damage.</li>
+<li>Experiment with different weapon combinations.</li>
+<li>Visit shops when your equipment begins falling behind.</li>
+<li>Rescue as many nests and eggs as possible.</li>
+<li>Duplicate birds are still valuable.</li>
+<li>Use feathers to strengthen your favourite birds.</li>
+<li>Try different birds rather than relying on only one.</li>
+<li>Choose Endless Mode paths based on what your current build needs.</li>
+<li>If the game looks wrong after an update, use Supplies → Clear Cache.</li>
+</ul>
+</div>
+</div>
+</div>
+<div class="warroom-tutorial-modal-foot">
+<label class="warroom-tutorial-dismiss-label">
+<input type="checkbox" id="warroom-tutorial-dismiss"/>
+<span>Do not show again</span>
+</label>
+<button type="button" class="abandon-cancel-btn warroom-tutorial-close-btn" data-action="closeWarRoomTutorial">Close</button>
+</div>
+</div>
+</div>
 <!-- NEST MODAL -->
 <div id="nest-modal" data-action="closeNest" data-backdrop="1">
 <div class="nest-inner">
@@ -905,6 +1373,7 @@
 <button type="button" class="settings-tab" data-settings-tab="accessibility" data-action="selectSettingsTab">Accessibility</button>
 <button type="button" class="settings-tab" data-settings-tab="audio" data-action="selectSettingsTab">Audio</button>
 <button type="button" class="settings-tab" data-settings-tab="tooltips" data-action="selectSettingsTab">Tooltips</button>
+<button type="button" class="settings-tab" data-settings-tab="help" data-action="selectSettingsTab">Help</button>
 </div>
 <div class="settings-panel active" id="settings-panel-display" data-settings-panel="display">
 <label class="settings-row">Auto-detect screen size
@@ -1005,6 +1474,10 @@
 <label class="settings-row">Passive tooltips
 <input id="setting-tt-passives" type="checkbox" checked data-change="updateAccessibilitySettings"/>
 </label>
+</div>
+<div class="settings-panel" id="settings-panel-help" data-settings-panel="help">
+<p class="settings-hint">Reopen the War Room tutorial covering birds, equipment, combat, and troubleshooting.</p>
+<button type="button" class="menu-btn" data-action="openWarRoomTutorial">📖 View Tutorial</button>
 </div>
 <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:14px;">
 <button class="menu-btn" data-action="exportCombatTelemetry">📊 Export Combat Telemetry</button>
