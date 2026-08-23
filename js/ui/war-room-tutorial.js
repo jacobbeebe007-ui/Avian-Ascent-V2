@@ -40,7 +40,9 @@ function closeWarRoomTutorial() {
   m.classList.remove('open');
   m.setAttribute('aria-hidden', 'true');
   document.body.style.overflow = '';
-  notifyOwUiEmbedClose();
+  try {
+    if (typeof globalThis.notifyOwUiEmbedClose === 'function') globalThis.notifyOwUiEmbedClose();
+  } catch (_) { /* noop */ }
 }
 
 function selectWarRoomTutorialTab(ev) {
@@ -71,3 +73,11 @@ globalThis.openWarRoomTutorial = openWarRoomTutorial;
 globalThis.closeWarRoomTutorial = closeWarRoomTutorial;
 globalThis.selectWarRoomTutorialTab = selectWarRoomTutorialTab;
 globalThis.maybeShowWarRoomTutorial = maybeShowWarRoomTutorial;
+
+(function registerWarRoomTutorialActions() {
+  const Avian = globalThis.Avian || (globalThis.Avian = { actions: {}, debug: {} });
+  if (!Avian.actions) Avian.actions = Object.create(null);
+  Avian.actions.openWarRoomTutorial = openWarRoomTutorial;
+  Avian.actions.closeWarRoomTutorial = closeWarRoomTutorial;
+  Avian.actions.selectWarRoomTutorialTab = selectWarRoomTutorialTab;
+})();

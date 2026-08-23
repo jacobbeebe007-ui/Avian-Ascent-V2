@@ -1,16 +1,7 @@
 /* Avian Ascent - offline shell. Bump CACHE_VERSION when shipped assets change.
  * Precaches the prebuilt classic bundle at ./js/avian-game.bundle.js
- * (regenerate with `node scripts/build-bundle.js` or `npm run dev` / `npm run build`).
- *
- * Strategy:
- *   - HTML / CSS / JS: network-first (cache fallback when offline) so every
- *     device picks up the latest shell on the next online load. A stale
- *     cache-first shell is how devices ended up rendering different layouts.
- *   - Everything else (images, audio, fonts): cache-first for speed.
- *   - Responses are MIME-checked before caching so a dev-server module
- *     transform (or any bad response) can never poison the stylesheet cache.
- */
-const CACHE_VERSION = 'avian-ascent-4356bf4b4ece';
+ * (regenerate with `node scripts/build-bundle.js` or `npm run dev` / `npm run build`). */
+const CACHE_VERSION = 'avian-ascent-9b0a1b0ae327';
 const PRECACHE = [
   './',
   './index.html',
