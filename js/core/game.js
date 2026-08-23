@@ -6149,6 +6149,9 @@ function initSelectionSafe(){
     renderStarterFallbackGrid('initSelectionSafe catch');
     failsafeAdvance('initSelectionSafe fallback');
   }
+  try {
+    if (typeof maybeShowWarRoomTutorial === 'function') maybeShowWarRoomTutorial();
+  } catch (_) { /* noop */ }
 }
 
 function buildDifficultyPicker() {
@@ -18136,6 +18139,11 @@ function updateStageProgress() {
 // ============================================================
 document.addEventListener('keydown', e => {
   // 1-4: ability shortcuts during player turn
+  if(e.key==='Escape' && document.getElementById('warroom-tutorial-modal')?.classList.contains('open')){
+    e.preventDefault();
+    closeWarRoomTutorial();
+    return;
+  }
   if(e.key==='Escape' && document.getElementById('ref-guide-modal')?.classList.contains('open')){
     e.preventDefault();
     closeRefGuideModal();
