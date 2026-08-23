@@ -86,6 +86,7 @@
     "js/systems/combat-breakdown.js",
     "js/systems/ability-display.js",
     "js/ui/error-hud.js",
+    "js/ui/war-room-tutorial.js",
     "js/audio/bgm-shared.js",
     "js/core/game.js",
     "js/data/ai-profiles.js",
