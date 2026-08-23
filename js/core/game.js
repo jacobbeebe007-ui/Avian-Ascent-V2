@@ -8382,6 +8382,11 @@ function showScreen(id) {
     applyCombatArrangement(_accCfg);
     if(typeof syncSoundStateFromSettings==='function') syncSoundStateFromSettings();
   }
+  if(id==='screen-select'){
+    requestAnimationFrame(()=>{
+      try{ if(typeof maybeShowWarRoomTutorial==='function') maybeShowWarRoomTutorial(); }catch(_){}
+    });
+  }
 }
 globalThis.showScreen = showScreen;
 
