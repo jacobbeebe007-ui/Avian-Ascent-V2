@@ -27,6 +27,12 @@ assert.ok(Number.isFinite(duel.healthDamageDealt),'healthDamageDealt present');
 assert.ok(Number.isFinite(duel.armourDamageDealt),'armourDamageDealt present');
 assert.ok(Number.isFinite(duel.crits),'crits present');
 assert.equal(duel.misses, duel.precisionMisses + duel.dodges, 'misses = precisionMisses + dodges');
+const evasiveDuel=sandbox.Avian.debug.simulateDuel({
+  ...opts,
+  attackerEquipment:cfg.roster.brute.tiers.starter.equipment,
+  defenderStats:{...cfg.targets.starter.highDodge,dodge:50},
+});
+assert.ok(evasiveDuel.dodges>0,'high-dodge target attributes at least one miss to dodge');
 assert.ok(typeof sandbox.Avian.debug.runBalanceLabBatch==='function','runBalanceLabBatch available');
 const batch=sandbox.Avian.debug.runBalanceLabBatch({mode:'endless',runs:2,seed:cfg.baseSeed});
 assert.ok(Array.isArray(batch.rows)&&batch.rows.length===cfg.endlessBands.length,'endless batch rows');

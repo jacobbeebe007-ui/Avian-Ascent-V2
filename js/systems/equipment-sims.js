@@ -606,6 +606,28 @@
     return 85;
   }
 
+  /* The player accuracy roll combines precision and enemy dodge into one
+   * threshold.  Preserve that single-roll behaviour, but attribute the miss
+   * to the part of the threshold that caused it so balance reports do not
+   * misleadingly report every evasion as a precision miss. */
+  function playerEffectiveDodge() {
+    try {
+      if (typeof getEffectiveEnemyDodgeForPlayerHit === 'function') {
+        return Math.max(0, Number(getEffectiveEnemyDodgeForPlayerHit()) || 0);
+      }
+    } catch (_e) { /* fallback below */ }
+    return Math.max(0, Number(globalThis.G && G.enemy && G.enemy.stats && G.enemy.stats.dodge) || 0);
+  }
+
+  function recordAccuracyMiss(counters, roll, hitPct) {
+    /* Rolls immediately above the hit threshold are the points removed by
+     * Dodge. Any remaining miss is attributable to precision/skill penalty. */
+    var kind = roll < Math.min(100, hitPct + playerEffectiveDodge()) ? 'dodge' : 'precision';
+    counters[kind === 'dodge' ? 'dodges' : 'precisionMisses'] += 1;
+    counters.misses += 1;
+    telemetry.recordMiss(kind);
+  }
+
   function simExecutePlayerAbility(ab, counters) {
     var g = globalThis.G;
     if (!g || !g.player || !g.enemy || !ab || ab.empty) return 0;
@@ -674,10 +696,9 @@
       for (var i = 0; i < hits; i++) {
         counters.attacksAttempted = (counters.attacksAttempted || 0) + 1;
         telemetry.attacksAttempted++;
-        if (Math.random() * 100 >= hitPct) {
-          counters.precisionMisses = (counters.precisionMisses || 0) + 1;
-          counters.misses = (counters.misses || 0) + 1;
-          telemetry.recordMiss('precision');
+        var accuracyRoll = Math.random() * 100;
+        if (accuracyRoll >= hitPct) {
+          recordAccuracyMiss(counters, accuracyRoll, hitPct);
           continue;
         }
         g._dispatcherCombatRow = row;
@@ -1258,6 +1279,10 @@
         telemetryCoverage: 'Native duel telemetry: pool damage, crits, restores, Fortify/Ward, ailments when emitted; passive/perk A-B deltas remain null.',
       };
       rows.push(row);
+      if (kind === 'target' && opponent === 'balanced'
+          && (row.winRate < cfg.thresholds.winRateMin || row.winRate > cfg.thresholds.winRateMax)) {
+        warnings.push(label + ' win rate ' + (row.winRate * 100).toFixed(1) + '%');
+      }
       if (kind === 'target' && (row.averageTurns < cfg.thresholds.turnsMin || row.averageTurns > cfg.thresholds.turnsMax)) {
         warnings.push(label + ' average turns ' + row.averageTurns);
       }
