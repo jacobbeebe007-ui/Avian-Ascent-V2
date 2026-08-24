@@ -351,44 +351,58 @@
 <!-- MAP FORGE (BuildNest unlock) -->
 <div class="screen" id="screen-map-forge">
 <div class="map-forge-inner">
+<div id="map-forge-library" class="map-forge-library" aria-label="World library"></div>
+<div id="map-forge-workspace" class="map-forge-workspace is-hidden">
 <header class="map-forge-head">
 <div class="map-forge-head-left">
-<h2 class="map-forge-title">Build Nest - Map Forge</h2>
+<h2 class="map-forge-title">World Creator</h2>
+<p class="map-forge-library-sub">Build Nest</p>
 <p class="map-forge-breadcrumb" id="map-forge-breadcrumb">Main Map</p>
-<label class="map-forge-name-label" for="map-forge-name">Map name</label>
-<input type="text" class="map-forge-name-input" id="map-forge-name" maxlength="64" placeholder="Untitled Map"/>
-<label class="map-forge-name-label" for="map-forge-draft-select">Draft</label>
-<select class="map-forge-draft-select" id="map-forge-draft-select"></select>
-<label class="map-forge-name-label" for="map-forge-start-map">Run starts on</label>
-<select class="map-forge-draft-select" id="map-forge-start-map" title="Map loaded when a story run begins"></select>
-<button type="button" class="menu-btn" id="map-forge-edit-start-map" data-action="editStartMap" style="display:none">Edit start map</button>
+<label class="map-forge-name-label" for="map-forge-name">World name</label>
+<input type="text" class="map-forge-name-input" id="map-forge-name" maxlength="64" placeholder="Untitled World"/>
+<span class="map-forge-dirty" id="map-forge-dirty" hidden>●</span>
+<select class="map-forge-draft-select" id="map-forge-draft-select" hidden></select>
 </div>
 <div class="map-forge-head-actions">
-<button type="button" class="menu-btn" data-action="newMapForge">New</button>
-<button type="button" class="menu-btn" data-action="loadCurrentStoryMapIntoForge">Load current story map</button>
-<button type="button" class="menu-btn" id="map-forge-world-back" data-action="exitWorldEditor" style="display:none">Exit to Main Map</button>
-<button type="button" class="menu-btn" id="map-forge-edit-world-btn" data-action="editWorldMap" style="display:none">Enter World Map</button>
-<button type="button" class="menu-btn" data-action="saveMapForgeDraft">Save draft</button>
-<button type="button" class="menu-btn" data-action="exportMapForge">Export JSON</button>
+<button type="button" class="menu-btn" data-action="openMapForgeLibrary">Library</button>
+<button type="button" class="menu-btn" data-action="saveMapForgeDraft">Save</button>
+<button type="button" class="menu-btn" data-action="exportMapForge">Export</button>
 <button type="button" class="menu-btn map-forge-btn-accent" data-action="playtestMapForge">Playtest</button>
 <button type="button" class="menu-btn map-forge-btn-accent" id="map-forge-playtest-from-btn" data-action="playtestFromSelectedNode">Playtest from here</button>
+<button type="button" class="menu-btn" data-action="closeMapForge">← War room</button>
+<details class="map-forge-more">
+<summary class="menu-btn">More</summary>
+<div class="map-forge-more-menu">
+<button type="button" class="menu-btn" data-action="newMapForge">New world</button>
+<button type="button" class="menu-btn" data-action="loadCurrentStoryMapIntoForge">Load story campaign</button>
+<button type="button" class="menu-btn map-forge-btn-accent" data-action="activateMapForNextRun">Use on next run</button>
 <button type="button" class="menu-btn" data-action="undoMapForge">Undo</button>
 <button type="button" class="menu-btn" data-action="redoMapForge">Redo</button>
-<button type="button" class="menu-btn map-forge-btn-accent" data-action="activateMapForNextRun">Use on next run</button>
-<button type="button" class="menu-btn" data-action="closeMapForge">← War room</button>
+<button type="button" class="menu-btn" data-action="toggleMapForgeHelp">Shortcuts</button>
+</div>
+</details>
 </div>
 </header>
 <p class="map-forge-status" id="map-forge-status"></p>
 <div class="map-forge-body">
-<aside class="map-forge-sidebar">
+<aside class="map-forge-sidebar map-forge-tree-pane">
 <div class="map-forge-toolbar">
 <span class="map-forge-toolbar-label">Place</span>
-<button type="button" class="map-forge-tool-btn" data-forge-tool="label">Label</button>
+<button type="button" class="map-forge-tool-btn" data-forge-tool="select">Select</button>
+<button type="button" class="map-forge-tool-btn" data-forge-tool="multi">Multi</button>
+<button type="button" class="map-forge-tool-btn" data-forge-tool="start">Spawn</button>
+<button type="button" class="map-forge-tool-btn" data-forge-tool="stage">Stage</button>
+<button type="button" class="map-forge-tool-btn" data-forge-tool="boss">Boss</button>
+<button type="button" class="map-forge-tool-btn" data-forge-tool="bonus">Bonus</button>
+<button type="button" class="map-forge-tool-btn" data-forge-tool="shop">Shop</button>
+<button type="button" class="map-forge-tool-btn" data-forge-tool="world">Map gate</button>
+<button type="button" class="map-forge-tool-btn" data-forge-tool="return">Return</button>
+<button type="button" class="map-forge-tool-btn" data-forge-tool="overworld">OW gate</button>
+<button type="button" class="map-forge-tool-btn" data-forge-tool="label">Decor</button>
+<button type="button" class="map-forge-tool-btn" data-forge-tool="labelUi">UI</button>
 </div>
 <div class="map-forge-toolbar">
 <span class="map-forge-toolbar-label">Edit</span>
-<button type="button" class="map-forge-tool-btn" data-forge-tool="select">Select</button>
-<button type="button" class="map-forge-tool-btn" data-forge-tool="multi">Multi-select</button>
 <button type="button" class="menu-btn map-forge-tool-btn" data-action="duplicateMapForgeNode">Duplicate</button>
 <button type="button" class="menu-btn map-forge-tool-btn" data-action="deselectMapForgeNode">Deselect</button>
 <button type="button" class="map-forge-tool-btn map-forge-tool-danger" data-action="deleteMapForgeNode">Delete</button>
@@ -400,6 +414,34 @@
 <button type="button" class="menu-btn map-forge-tool-btn" data-action="mapForgeZoom200">200%</button>
 <label class="map-forge-field-check"><input type="checkbox" id="map-forge-snap-grid"/> Snap grid</label>
 </div>
+<div class="map-forge-world-tree-wrap">
+<div class="map-forge-node-list-title">World tree</div>
+<div class="map-forge-world-tree" id="map-forge-world-tree"></div>
+</div>
+<div class="map-forge-node-list-filters" id="map-forge-node-list-filters">
+<button type="button" class="map-forge-filter-btn is-active" data-forge-filter="all">All</button>
+<button type="button" class="map-forge-filter-btn" data-forge-filter="stage">Stage</button>
+<button type="button" class="map-forge-filter-btn" data-forge-filter="boss">Boss</button>
+<button type="button" class="map-forge-filter-btn" data-forge-filter="bonus">Bonus</button>
+<button type="button" class="map-forge-filter-btn" data-forge-filter="world">World</button>
+<button type="button" class="map-forge-filter-btn" data-forge-filter="shop">Shop</button>
+<button type="button" class="map-forge-filter-btn" data-forge-filter="label">Label</button>
+<button type="button" class="map-forge-filter-btn" data-forge-filter="overworld">Overworld</button>
+</div>
+<div class="map-forge-node-list-wrap">
+<div class="map-forge-node-list-title">Locations</div>
+<div class="map-forge-node-list" id="map-forge-node-list"></div>
+</div>
+</aside>
+<div class="map-forge-canvas-wrap" id="map-forge-canvas-wrap">
+<div class="map-forge-canvas-inner" id="map-forge-canvas-inner">
+<img class="map-forge-bg" id="map-forge-bg" alt="" draggable="false"/>
+<svg class="map-forge-svg" id="map-forge-svg" xmlns="http://www.w3.org/2000/svg"></svg>
+</div>
+<canvas class="map-forge-minimap" id="map-forge-minimap" width="160" height="107"></canvas>
+<button type="button" class="menu-btn map-forge-fight-btn" id="map-forge-fight-btn" data-action="fightMapForgeNode">Fight this node</button>
+</div>
+<aside class="map-forge-sidebar map-forge-inspector-pane">
 <details class="map-forge-advanced">
 <summary class="map-forge-toolbar-label">Advanced</summary>
 <div class="map-forge-toolbar">
@@ -411,11 +453,6 @@
 <button type="button" class="menu-btn map-forge-tool-btn" data-action="pasteMapForgeConfig">Paste cfg</button>
 </div>
 </details>
-<div class="map-forge-toolbar">
-<span class="map-forge-toolbar-label">Navigate</span>
-<button type="button" class="menu-btn map-forge-tool-btn" id="map-forge-sidebar-enter-world" data-action="editWorldMap" style="display:none">Enter World Map</button>
-<button type="button" class="menu-btn map-forge-tool-btn" id="map-forge-sidebar-exit-world" data-action="exitWorldEditor" style="display:none">Exit to Main Map</button>
-</div>
 <label class="map-forge-upload-label">
 <span class="menu-btn">Upload background</span>
 <input type="file" id="map-forge-upload" accept="image/*" hidden/>
@@ -424,6 +461,19 @@
 <span class="menu-btn">Import JSON</span>
 <input type="file" id="map-forge-import" accept="application/json,.json" hidden/>
 </label>
+<div class="map-forge-map-inspector" id="map-forge-map-inspector">
+<div class="map-forge-field-label">Map settings</div>
+<p class="map-forge-hint" id="map-forge-map-size">Canvas 1536×1024</p>
+<label class="map-forge-field-label" for="map-forge-start-map">Run starts on</label>
+<select class="map-forge-draft-select" id="map-forge-start-map" title="Map loaded when a story run begins"></select>
+<button type="button" class="menu-btn" id="map-forge-edit-start-map" data-action="editStartMap" style="display:none">Edit start map</button>
+<label class="map-forge-field-label" for="map-forge-author">Author</label>
+<input type="text" class="map-forge-field-input" id="map-forge-author" maxlength="64" placeholder="Optional"/>
+<label class="map-forge-field-label" for="map-forge-notes">Notes</label>
+<textarea class="map-forge-field-input" id="map-forge-notes" rows="3" maxlength="400" placeholder="Designer notes"></textarea>
+<label class="map-forge-field-check"><input type="checkbox" id="map-forge-path-reveal" checked/> Hidden paths until cleared</label>
+<label class="map-forge-field-check"><input type="checkbox" id="map-forge-path-preview"/> Preview path reveal</label>
+</div>
 <div class="map-forge-panel-tabs" role="tablist" aria-label="Forge sidebar panels">
 <button type="button" class="map-forge-panel-tab is-active" data-forge-panel-tab="node" role="tab" aria-selected="true">Node</button>
 <button type="button" class="map-forge-panel-tab" data-forge-panel-tab="rewards" role="tab" aria-selected="false">Rewards</button>
@@ -577,31 +627,17 @@
 </div>
 </div>
 </div>
-<label class="map-forge-field-check"><input type="checkbox" id="map-forge-path-reveal" checked/> Hidden paths until cleared</label>
-<label class="map-forge-field-check"><input type="checkbox" id="map-forge-path-preview"/> Preview path reveal</label>
-<div class="map-forge-node-list-filters" id="map-forge-node-list-filters">
-<button type="button" class="map-forge-filter-btn is-active" data-forge-filter="all">All</button>
-<button type="button" class="map-forge-filter-btn" data-forge-filter="stage">Stage</button>
-<button type="button" class="map-forge-filter-btn" data-forge-filter="boss">Boss</button>
-<button type="button" class="map-forge-filter-btn" data-forge-filter="bonus">Bonus</button>
-<button type="button" class="map-forge-filter-btn" data-forge-filter="world">World</button>
-<button type="button" class="map-forge-filter-btn" data-forge-filter="shop">Shop</button>
-<button type="button" class="map-forge-filter-btn" data-forge-filter="label">Label</button>
-<button type="button" class="map-forge-filter-btn" data-forge-filter="overworld">Overworld</button>
-</div>
-<div class="map-forge-node-list-wrap">
-<div class="map-forge-node-list-title">Path order</div>
-<div class="map-forge-node-list" id="map-forge-node-list"></div>
-</div>
-<p class="map-forge-hint">S=Select, M=Multi-select, L=Label. Place a Label then set Node type in the Node panel. Arrows=nudge, Shift+arrows=10px, Ctrl+D=duplicate, Ctrl+Z/Y=undo, Del=delete, Esc=deselect. Shift+click also multi-selects. Space or middle-click pans.</p>
+<p class="map-forge-hint" id="map-forge-shortcuts-hint">S=Select, M=Multi. Click a Place kind then click the map. Arrows=nudge, Ctrl+D=duplicate, Ctrl+Z/Y=undo, Del=delete, Esc=deselect. Space or middle-click pans.</p>
 </aside>
-<div class="map-forge-canvas-wrap" id="map-forge-canvas-wrap">
-<div class="map-forge-canvas-inner" id="map-forge-canvas-inner">
-<img class="map-forge-bg" id="map-forge-bg" alt="" draggable="false"/>
-<svg class="map-forge-svg" id="map-forge-svg" xmlns="http://www.w3.org/2000/svg"></svg>
 </div>
-<canvas class="map-forge-minimap" id="map-forge-minimap" width="160" height="107"></canvas>
-<button type="button" class="menu-btn map-forge-fight-btn" id="map-forge-fight-btn" data-action="fightMapForgeNode">Fight this node</button>
+</div>
+<div id="map-forge-help" class="map-forge-help" hidden>
+<div class="map-forge-help-card">
+<h3>World Creator shortcuts</h3>
+<p>S Select · M Multi-select · click a Place kind then click the canvas to drop it.</p>
+<p>Arrows nudge 1px · Shift+arrows 10px · Ctrl+D duplicate · Ctrl+Z/Y undo/redo · Del delete · Esc deselect.</p>
+<p>Space or middle-click pans. Shift+click multi-selects.</p>
+<button type="button" class="menu-btn" data-action="toggleMapForgeHelp">Close</button>
 </div>
 </div>
 </div>

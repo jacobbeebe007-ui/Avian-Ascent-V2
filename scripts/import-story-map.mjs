@@ -1,9 +1,12 @@
 #!/usr/bin/env node
 /**
- * Import a Map Forge JSON export as the built-in GitHub Pages story map.
+ * Import a Map Forge / World Creator JSON export as the built-in story map.
  *
  * Usage:
- *   node scripts/import-story-map.mjs path/to/avian-map-export.json
+ *   node scripts/import-story-map.mjs path/to/avian-world-export.json
+ *
+ * Nested maps (worlds) are preserved. Spawn may be a native start node or a
+ * label/kind Spawn location.
  */
 import { readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
@@ -28,68 +31,111 @@ function clone(value) {
   return JSON.parse(JSON.stringify(value));
 }
 
+function nodeKind(n) {
+  if (!n) return '';
+  if (n.kind) return String(n.kind);
+  if (n.type === 'label' && n.labelConfig?.actsAsNode) return String(n.labelConfig.mimicType || '');
+  return String(n.type || '');
+}
+
+function isSpawnNode(n) {
+  return nodeKind(n) === 'start' || n?.type === 'start';
+}
+
+function isCombatNode(n) {
+  const k = nodeKind(n);
+  return k === 'stage' || k === 'boss';
+}
+
+function resolveAssets(raw) {
+  const src = raw && typeof raw === 'object' ? clone(raw) : raw;
+  const assets = src?.assets && typeof src.assets === 'object' ? src.assets : {};
+  function resolve(url) {
+    const s = String(url || '');
+    if (s.slice(0, 6) === 'asset:') return assets[s.slice(6)] || '';
+    return s;
+  }
+  src.backgroundDataUrl = resolve(src.backgroundDataUrl);
+  Object.keys(src.worlds || {}).forEach((wid) => {
+    if (src.worlds[wid]) src.worlds[wid].backgroundDataUrl = resolve(src.worlds[wid].backgroundDataUrl);
+  });
+  delete src.assets;
+  return src;
+}
+
 function normalizeNodes(nodes) {
-  return nodes.map((node, index) => {
+  return (nodes || []).map((node, index) => {
     const out = clone(node);
     out.id = index;
     out.x = Math.max(0, Math.floor(Number(out.x) || 0));
     out.y = Math.max(0, Math.floor(Number(out.y) || 0));
     out.type = String(out.type || (index === 0 ? 'start' : 'stage'));
-    out.name = String(out.name || (out.type === 'start' ? 'Start' : 'Node ' + index));
+    out.name = String(out.name || (isSpawnNode(out) ? 'Start' : 'Node ' + index));
     return out;
   });
 }
 
-function validateLinearStoryNodes(nodes) {
-  if (!Array.isArray(nodes) || !nodes.length) fail('Story map needs at least one node.');
-  if (nodes.filter((n) => n.type === 'start').length !== 1) fail('Story map must have exactly one start node.');
-  if (nodes[0].type !== 'start') fail('First story map node must be the start node.');
+function validateLinearStoryNodes(nodes, label) {
+  const where = label || 'map';
+  if (!Array.isArray(nodes) || !nodes.length) fail(where + ' needs at least one node.');
+  if (nodes.filter(isSpawnNode).length !== 1) fail(where + ' must have exactly one Spawn.');
 
   let expectedStage = 1;
+  let sawCombat = false;
   for (const node of nodes) {
-    if (node.type !== 'stage' && node.type !== 'boss') continue;
+    if (!isCombatNode(node)) continue;
+    sawCombat = true;
     const stage = Math.floor(Number(node.stage) || 0);
-    if (stage !== expectedStage) {
-      fail('Combat stages must be sequential. Expected stage ' + expectedStage + ' at node ' + node.id + ', got ' + stage + '.');
+    if (node.subStage) continue;
+    if (stage) {
+      if (stage !== expectedStage) {
+        fail(where + ' combat stages must be sequential. Expected stage ' + expectedStage + ' at node ' + node.id + ', got ' + stage + '.');
+      }
+      expectedStage += 1;
     }
-    expectedStage += 1;
   }
-  if (expectedStage === 1) fail('Story map needs at least one stage or boss node.');
-  return expectedStage - 1;
+  if (!sawCombat && expectedStage === 1) {
+    /* Nested-world hubs may have no main-map combat. */
+  }
+  return Math.max(0, expectedStage - 1);
 }
 
 function validateWorlds(worlds) {
   Object.entries(worlds || {}).forEach(([worldId, world]) => {
     if (!world || typeof world !== 'object') fail('World ' + worldId + ' must be an object.');
     if (!Array.isArray(world.nodes) || !world.nodes.length) fail('World ' + worldId + ' needs nodes.');
-    if (world.nodes.filter((n) => n.type === 'start').length !== 1) fail('World ' + worldId + ' must have exactly one start node.');
-    if (world.nodes[0].type !== 'start') fail('World ' + worldId + ' first node must be start.');
+    world.nodes = normalizeNodes(world.nodes);
+    if (world.nodes.filter(isSpawnNode).length !== 1) fail('World ' + worldId + ' must have exactly one Spawn.');
   });
 }
 
 function normalizeStoryMap(raw) {
   if (!raw || typeof raw !== 'object') fail('Input JSON must be an object.');
-  if (!Array.isArray(raw.nodes)) fail('Input JSON must include a nodes array.');
+  const pack = resolveAssets(raw);
+  if (!Array.isArray(pack.nodes)) fail('Input JSON must include a nodes array.');
 
-  const nodes = normalizeNodes(raw.nodes);
-  // Story mode is always a flat main map — ignore nested Forge worlds / startMapId.
-  const worlds = {};
-
-  const maxStage = validateLinearStoryNodes(nodes);
+  const nodes = normalizeNodes(pack.nodes);
+  const worlds = pack.worlds && typeof pack.worlds === 'object' ? clone(pack.worlds) : {};
   validateWorlds(worlds);
-  const backgroundDataUrl = String(raw.backgroundDataUrl || '').trim();
+
+  const startMapId = String(pack.startMapId || 'main');
+  const startNodes = startMapId === 'main' ? nodes : (worlds[startMapId]?.nodes || []);
+  const maxStage = validateLinearStoryNodes(startNodes, startMapId === 'main' ? 'Story map' : 'Start map')
+    || asPositiveInt(pack.maxStage, 0);
+  const backgroundDataUrl = String(pack.backgroundDataUrl || '').trim();
   if (!backgroundDataUrl) fail('Story map must include backgroundDataUrl.');
 
   return {
-    schemaVersion: 2,
+    schemaVersion: Number(pack.schemaVersion) >= 3 ? 3 : 2,
     id: 'story-blackstone',
-    name: String(raw.name || 'Blackstone Forest'),
-    createdAt: raw.createdAt || new Date().toISOString(),
-    mapWidth: asPositiveInt(raw.mapWidth, 1536),
-    mapHeight: asPositiveInt(raw.mapHeight, 1024),
+    name: String(pack.name || 'Blackstone Forest'),
+    createdAt: pack.createdAt || new Date().toISOString(),
+    mapWidth: asPositiveInt(pack.mapWidth, 1536),
+    mapHeight: asPositiveInt(pack.mapHeight, 1024),
     backgroundDataUrl,
-    pathReveal: raw.pathReveal !== false,
+    pathReveal: pack.pathReveal !== false,
     maxStage,
+    startMapId: worlds[startMapId] ? startMapId : 'main',
     worlds,
     nodes,
   };
@@ -122,4 +168,4 @@ if (!inputPath) fail('Missing input JSON path.');
 const raw = JSON.parse(readFileSync(inputPath, 'utf8'));
 const map = normalizeStoryMap(raw);
 writeFileSync(outputPath, renderStoryMapModule(map), 'utf8');
-console.log('[import-story-map] wrote js/data/story-map.js with ' + map.nodes.length + ' nodes and ' + map.maxStage + ' stages.');
+console.log('[import-story-map] wrote js/data/story-map.js with ' + map.nodes.length + ' nodes, ' + Object.keys(map.worlds || {}).length + ' nested maps, and ' + map.maxStage + ' stages.');

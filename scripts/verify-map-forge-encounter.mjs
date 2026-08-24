@@ -91,5 +91,20 @@ assert(!String(dukeTok || '').toLowerCase().includes('duke'), 'resolveOwStageTok
 const forgeOpts = g.listForgeEnemySpeciesOptions(4);
 assert(!forgeOpts.some((o) => o.id === 'dukeBlakiston'), 'forge species list excludes Duke on stage 4');
 
+const multi = {
+  enemyCount: 3,
+  slots: [
+    { birdKey: 'sparrow', enemyTier: 'grey', enemyStars: 0 },
+    { birdKey: 'sparrow', enemyTier: 'green', enemyStars: 1 },
+    { birdKey: 'sparrow', enemyTier: 'blue', enemyStars: 2 },
+  ],
+};
+const multiIds = g.resolveForgeEncounterBirdKeys(multi, 'goose', 5);
+assert(multiIds.length === 3, 'three-slot encounter resolves three ids');
+
+const gameJs = require('node:fs').readFileSync(path.join(root, 'js/core/game.js'), 'utf8');
+assert(!/normalizeOwEnemyListForBattle\(rolled, stageNum\)\.slice\(0,1\)/.test(gameJs), 'game.js no longer truncates forge lists with .slice(0,1) on normalize');
+assert(/isCustomOverworldActive/.test(gameJs), 'game.js branches custom overworld enemy counts');
+
 console.log(`verify-map-forge-encounter: ${passed} passed, ${failed} failed`);
 process.exit(failed > 0 ? 1 : 0);
