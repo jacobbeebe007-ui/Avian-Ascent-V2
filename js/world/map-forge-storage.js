@@ -18,6 +18,8 @@
   let _dbPromise = null;
   let _migrationPromise = null;
 
+  const IDB_OPEN_TIMEOUT_MS = 10000;
+
   function openDb() {
     if (_dbPromise) return _dbPromise;
     _dbPromise = new Promise((resolve, reject) => {
@@ -25,9 +27,25 @@
         reject(new Error('IndexedDB unavailable'));
         return;
       }
+      let settled = false;
+      const finish = (fn, value) => {
+        if (settled) return;
+        settled = true;
+        global.clearTimeout(timer);
+        fn(value);
+      };
+      const fail = (err) => {
+        _dbPromise = null;
+        finish(reject, err instanceof Error ? err : new Error(String(err || 'IndexedDB open failed')));
+      };
+      const timer = global.setTimeout(
+        () => fail(new Error('IndexedDB open timed out')),
+        IDB_OPEN_TIMEOUT_MS
+      );
       const req = global.indexedDB.open(DB_NAME, DB_VERSION);
-      req.onerror = () => reject(req.error || new Error('IndexedDB open failed'));
-      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => fail(req.error || new Error('IndexedDB open failed'));
+      req.onblocked = () => fail(new Error('IndexedDB open blocked'));
+      req.onsuccess = () => finish(resolve, req.result);
       req.onupgradeneeded = (ev) => {
         const db = ev.target.result;
         if (!db.objectStoreNames.contains(STORE_DRAFTS)) db.createObjectStore(STORE_DRAFTS, { keyPath: 'id' });

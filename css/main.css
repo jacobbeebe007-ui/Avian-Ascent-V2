@@ -5522,9 +5522,13 @@ body.ui-mobile-mode #screen-battle .btn-desc{
 .map-forge-dirty{color:#e8c060;font-size:1.1rem;line-height:1;}
 .map-forge-library{display:none;flex:1;min-height:0;overflow:auto;}
 .map-forge-library.is-open{display:block;}
+/* Show the library as soon as the forge screen is active in library mode (before JS runs). */
+#screen-map-forge.active.is-library #map-forge-library{display:block;}
+#screen-map-forge.active.is-library #map-forge-workspace{display:none!important;}
 .map-forge-workspace{display:flex;flex-direction:column;gap:10px;flex:1;min-height:0;}
 .map-forge-workspace.is-hidden{display:none;}
 #screen-map-forge.is-library .map-forge-workspace{display:none;}
+.map-forge-library-fallback{padding:4px 0 20px;}
 .map-forge-library-inner{display:flex;flex-direction:column;gap:18px;padding:4px 0 20px;}
 .map-forge-library-head{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;flex-wrap:wrap;}
 .map-forge-library-head-actions{display:flex;gap:8px;flex-wrap:wrap;}

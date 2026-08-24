@@ -8396,6 +8396,13 @@ function showScreen(id) {
     document.body.scrollTop=0;
     try{ window.scrollTo({top:0, behavior:'auto'}); }catch(_){ window.scrollTo(0,0); }
   }
+  if (id === 'screen-map-forge') {
+    try {
+      if (typeof globalThis.showMapForgeLibraryView === 'function') {
+        globalThis.showMapForgeLibraryView();
+      }
+    } catch (_) {}
+  }
   const evt={id};
   AvianEvents.emit('screen:change', evt);
   runModuleHook('onScreenChange', evt);
