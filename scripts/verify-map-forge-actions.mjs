@@ -86,6 +86,7 @@ function loadShell() {
       addEventListener() {},
       dataset: {},
     }),
+    createTextNode: (t) => ({ textContent: String(t || ''), nodeValue: String(t || '') }),
     createElementNS: () => ({
       style: {},
       setAttribute() {},
