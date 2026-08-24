@@ -85,6 +85,7 @@ function aggregate(label, cls, bird, tier, opponent, rarity, defender, count=run
     telemetryCoverage:'Native duel telemetry: pool damage, crits, restores, Fortify/Ward, ailments when emitted; passive/perk A-B deltas remain null.'
   };
   rows.push(row);
+  if (kind === 'target' && opponent === 'balanced' && (row.winRate<cfg.thresholds.winRateMin || row.winRate>cfg.thresholds.winRateMax)) warnings.push(`${label} win rate ${(row.winRate*100).toFixed(1)}%`);
   if (kind === 'target' && (row.averageTurns<cfg.thresholds.turnsMin || row.averageTurns>cfg.thresholds.turnsMax)) warnings.push(`${label} average turns ${row.averageTurns}`);
   if (attempts && (row.hitRate<cfg.thresholds.hitRateMin || row.hitRate>cfg.thresholds.hitRateMax)) warnings.push(`${label} hit rate ${(row.hitRate*100).toFixed(1)}%`);
   return row;
