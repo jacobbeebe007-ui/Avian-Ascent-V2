@@ -4,8 +4,21 @@
 (function (global) {
   'use strict';
 
-  const MAP_W = 1536;
-  const MAP_H = 1024;
+  const DEFAULT_MAP_W = 1536;
+  const DEFAULT_MAP_H = 1024;
+  function mapW() {
+    if (typeof global.getForgeMapSize === 'function' && _map) {
+      return global.getForgeMapSize(_map, _editContext).w;
+    }
+    return Math.max(320, Math.floor(Number(_map?.mapWidth) || DEFAULT_MAP_W));
+  }
+  function mapH() {
+    if (typeof global.getForgeMapSize === 'function' && _map) {
+      return global.getForgeMapSize(_map, _editContext).h;
+    }
+    return Math.max(240, Math.floor(Number(_map?.mapHeight) || DEFAULT_MAP_H));
+  }
+  let _forgeView = 'library'; // 'library' | 'workspace'
   const KEYS = global.AVIAN_OW_KEYS || {};
   const DRAFTS_KEY = KEYS.FORGE_DRAFTS || 'avian_map_forge_drafts';
   const CURRENT_ID_KEY = KEYS.FORGE_CURRENT_ID || 'avian_map_forge_current_id';
@@ -55,10 +68,11 @@
   let _forgeShopCategoryTab = 'all'; // 'all' | 'items' | 'mutations'
 
   function upgradeMapSafe(raw) {
+    if (typeof global.upgradeMapToV3 === 'function') return global.upgradeMapToV3(raw);
     if (typeof global.upgradeMapToV2 === 'function') return global.upgradeMapToV2(raw);
-    console.error('[map-forge] upgradeMapToV2 not loaded — using raw map object');
+    console.error('[map-forge] upgradeMapToV3 not loaded — using raw map object');
     const m = Object.assign({}, raw || {});
-    m.schemaVersion = 2;
+    m.schemaVersion = 3;
     m.worlds = m.worlds && typeof m.worlds === 'object' ? m.worlds : {};
     m.nodes = Array.isArray(m.nodes) ? m.nodes : [];
     m.pathReveal = m.pathReveal !== false;
@@ -74,13 +88,14 @@
   }
 
   function createEmptyMap() {
+    if (typeof global.createEmptyWorldPack === 'function') return global.createEmptyWorldPack();
     return upgradeMapSafe({
-      schemaVersion: 2,
+      schemaVersion: 3,
       id: mkId(),
-      name: 'Untitled Map',
+      name: 'Untitled World',
       createdAt: new Date().toISOString(),
-      mapWidth: MAP_W,
-      mapHeight: MAP_H,
+      mapWidth: DEFAULT_MAP_W,
+      mapHeight: DEFAULT_MAP_H,
       backgroundDataUrl: '',
       pathReveal: true,
       maxStage: 0,
@@ -139,6 +154,9 @@
     if (!typeEl) return;
     const worldOpt = typeEl.querySelector('option[value="world"]');
     if (worldOpt) worldOpt.hidden = _editContext !== 'main';
+    document.querySelectorAll('[data-forge-tool="world"]').forEach((btn) => {
+      btn.hidden = _editContext !== 'main';
+    });
     if (_editContext !== 'main' && typeEl.value === 'world') {
       const n = getSelectedNode();
       typeEl.value = getNodeTypeSelectValue(n);
@@ -225,6 +243,18 @@
     return true;
   }
 
+  async function deleteDraftById(id) {
+    const key = String(id || '');
+    if (!key) return false;
+    if (typeof global.deleteForgeDraftAsync === 'function') {
+      await global.deleteForgeDraftAsync(key);
+    }
+    _draftsCache = readDrafts().filter((d) => d.id !== key);
+    writeDraftsLegacy(_draftsCache);
+    if (getCurrentDraftId() === key) setCurrentDraftId('');
+    return true;
+  }
+
   async function persistCustomMapForRun(payload) {
     if (typeof global.persistCustomOverworldMapAsync === 'function') {
       return global.persistCustomOverworldMapAsync(payload);
@@ -272,9 +302,13 @@
 
   function normalizeMap(map) {
     let copy = upgradeMapSafe(Object.assign({}, map));
-    copy.schemaVersion = 2;
-    copy.mapWidth = MAP_W;
-    copy.mapHeight = MAP_H;
+    copy.schemaVersion = 3;
+    copy.mapWidth = typeof global.clampForgeMapWidth === 'function'
+      ? global.clampForgeMapWidth(copy.mapWidth)
+      : Math.max(320, Math.floor(Number(copy.mapWidth) || DEFAULT_MAP_W));
+    copy.mapHeight = typeof global.clampForgeMapHeight === 'function'
+      ? global.clampForgeMapHeight(copy.mapHeight)
+      : Math.max(240, Math.floor(Number(copy.mapHeight) || DEFAULT_MAP_H));
     copy.pathReveal = copy.pathReveal !== false;
     // Clone worlds container + each world so we never replace nodes arrays on the
     // caller's live map. pushHistory → buildExportPayload → normalizeMap used to
@@ -366,6 +400,10 @@
 
   function getNodeTypeSelectValue(n) {
     if (!n) return 'label';
+    if (typeof global.getOwLocationKind === 'function') {
+      const kind = global.getOwLocationKind(n);
+      if (kind) return kind;
+    }
     if (n.type === 'label') {
       if (global.getOwMapUiAction && global.getOwMapUiAction(n.labelConfig)) return 'labelUi';
       if (n.labelConfig?.actsAsNode && n.labelConfig.mimicType && n.labelConfig.mimicType !== 'none') {
@@ -536,7 +574,9 @@
     }
 
     n.labelConfig = labelCfg;
+    n.kind = typeKey;
     if (global.ensureLabelConfig) global.ensureLabelConfig(n);
+    if (typeof global.stampOwLocationKind === 'function') global.stampOwLocationKind(n);
 
     // Re-assert job flags after normalize helpers (uiAction none keeps actsAsNode).
     if (typeKey !== 'label' && typeKey !== 'labelUi') {
@@ -630,9 +670,18 @@
   function syncForgeValidationStatus(issues) {
     if (Date.now() < _actionStatusUntil) return;
     const list = Array.isArray(issues) ? issues : getValidationIssues();
-    const warnings = list.filter((i) => i.severity === 'warning' || i.severity === 'error');
+    const errors = list.filter((i) => i.severity === 'error');
+    const warnings = list.filter((i) => i.severity !== 'error');
     const el = document.getElementById('map-forge-status');
     if (!el) return;
+    if (errors.length) {
+      const first = errors[0].message || '';
+      const extra = errors.length > 1 ? ' (+' + (errors.length - 1) + ' more)' : '';
+      el.textContent = errors.length + (errors.length === 1 ? ' error: ' : ' errors - ') + first + extra;
+      el.classList.add('map-forge-status--warn');
+      el.style.color = '#ff9090';
+      return;
+    }
     if (warnings.length) {
       const hint = isEmptyDraft(_map) ? 'Guidelines: ' : '';
       const first = warnings[0].message || '';
@@ -651,6 +700,15 @@
   function validateMap(map) {
     if (!map || typeof map !== 'object') return 'Map data is missing.';
     if (!Array.isArray(map.nodes)) return 'Map nodes are invalid.';
+    return null;
+  }
+
+  function playtestBlockedReason(map) {
+    const hard = validateMap(map);
+    if (hard) return hard;
+    const issues = getValidationIssues();
+    const errors = issues.filter((i) => i && i.severity === 'error');
+    if (errors.length) return errors[0].message;
     return null;
   }
 
@@ -696,6 +754,9 @@
     if (n.bonusConfig) out.bonusConfig = JSON.parse(JSON.stringify(n.bonusConfig));
     if (n.clearRewards) out.clearRewards = JSON.parse(JSON.stringify(n.clearRewards));
     if (n.labelConfig) out.labelConfig = JSON.parse(JSON.stringify(n.labelConfig));
+    const kind = typeof global.getOwLocationKind === 'function' ? global.getOwLocationKind(n) : getNodeTypeSelectValue(n);
+    if (kind) out.kind = kind;
+    if (out.labelConfig) out.appearance = JSON.parse(JSON.stringify(out.labelConfig));
     if (n.shopConfig && typeof n.shopConfig === 'object') {
       out.shopConfig = JSON.parse(JSON.stringify(n.shopConfig));
     }
@@ -715,12 +776,16 @@
       };
     });
     return {
-      schemaVersion: 2,
+      schemaVersion: 3,
       id: normalized.id,
       name: normalized.name,
       createdAt: normalized.createdAt || new Date().toISOString(),
-      mapWidth: MAP_W,
-      mapHeight: MAP_H,
+      updatedAt: new Date().toISOString(),
+      author: String(normalized.author || ''),
+      notes: String(normalized.notes || ''),
+      packVersion: Math.max(1, Math.floor(Number(normalized.packVersion) || 1)),
+      mapWidth: normalized.mapWidth || DEFAULT_MAP_W,
+      mapHeight: normalized.mapHeight || DEFAULT_MAP_H,
       pathReveal: normalized.pathReveal !== false,
       backgroundDataUrl: normalized.backgroundDataUrl || '',
       maxStage: normalized.maxStage,
@@ -728,6 +793,12 @@
       nodes: normalized.nodes.map((n) => serializeNode(n, null)),
       worlds,
     };
+  }
+
+  function buildPortablePack(map) {
+    const payload = buildExportPayload(map);
+    if (typeof global.extractWorldPackAssets === 'function') return global.extractWorldPackAssets(payload);
+    return payload;
   }
 
   function nvc(n) {
@@ -816,11 +887,11 @@
     if (!rect?.width || !rect.height) return { x: 0, y: 0 };
     const localX = (e.clientX - rect.left - _panX) / _zoom;
     const localY = (e.clientY - rect.top - _panY) / _zoom;
-    const x = (localX / rect.width) * MAP_W;
-    const y = (localY / rect.height) * MAP_H;
+    const x = (localX / rect.width) * mapW();
+    const y = (localY / rect.height) * mapH();
     return {
-      x: snapCoord(Math.round(Math.max(0, Math.min(MAP_W, x)))),
-      y: snapCoord(Math.round(Math.max(0, Math.min(MAP_H, y)))),
+      x: snapCoord(Math.round(Math.max(0, Math.min(mapW(), x)))),
+      y: snapCoord(Math.round(Math.max(0, Math.min(mapH(), y)))),
     };
   }
 
@@ -911,6 +982,7 @@
     try {
       populateStartMapSelect();
       renderNodeList();
+      renderWorldTree();
       renderForgeCanvas();
       syncNodeEditorFields();
       renderValidationPanel();
@@ -920,6 +992,8 @@
       applyCanvasTransform();
       syncBreadcrumb();
       syncForgeCanvasCursor();
+      syncDirtyIndicator();
+      syncMapInspectorMeta();
     } catch (err) {
       reportForgeError('Map Forge UI error', err);
     }
@@ -941,8 +1015,8 @@
     issues.forEach((iss) => {
       const row = document.createElement('button');
       row.type = 'button';
-      row.className = 'map-forge-validation-row map-forge-validation-warning';
-      row.textContent = '⚠ ' + iss.message;
+      row.className = 'map-forge-validation-row ' + (iss.severity === 'error' ? 'is-error' : 'map-forge-validation-warning');
+      row.textContent = (iss.severity === 'error' ? '✕ ' : '⚠ ') + iss.message;
       row.onclick = () => {
         if (iss.mapId && iss.mapId !== 'main' && iss.mapId !== _editContext) {
           _editContext = iss.mapId;
@@ -958,6 +1032,162 @@
       panel.appendChild(row);
     });
     syncForgeValidationStatus(issues);
+  }
+
+  function syncDirtyIndicator() {
+    const el = document.getElementById('map-forge-dirty');
+    if (!el) return;
+    const dirty = typeof isMapForgeDirty === 'function' ? isMapForgeDirty() : false;
+    el.hidden = !dirty;
+  }
+
+  function syncMapInspectorMeta() {
+    const sizeEl = document.getElementById('map-forge-map-size');
+    if (sizeEl) sizeEl.textContent = 'Canvas ' + mapW() + '×' + mapH();
+    const authorEl = document.getElementById('map-forge-author');
+    if (authorEl && _map && authorEl !== document.activeElement) authorEl.value = _map.author || '';
+    const notesEl = document.getElementById('map-forge-notes');
+    if (notesEl && _map && notesEl !== document.activeElement) notesEl.value = _map.notes || '';
+    const mapInsp = document.getElementById('map-forge-map-inspector');
+    const nodeEd = document.getElementById('map-forge-node-editor');
+    if (mapInsp) mapInsp.style.display = _selectedId == null ? '' : 'none';
+  }
+
+  function switchEditContext(id) {
+    if (!id || id === _editContext) return;
+    pushHistory();
+    _editContext = id;
+    _selectedId = null;
+    _selectedIds = [];
+    refreshForgeUI();
+  }
+
+  function addNestedMapFromTree() {
+    if (!_map) return;
+    pushHistory();
+    _worldCounter += 1;
+    const wid = 'world' + _worldCounter;
+    const name = 'Map ' + _worldCounter;
+    if (!_map.worlds) _map.worlds = {};
+    _map.worlds[wid] = {
+      name,
+      worldIndex: _worldCounter,
+      backgroundDataUrl: '',
+      nodes: [
+        makeLabelJobNode('start', 'Spawn', 768, 850, { stage: 0, pathOrder: 0 }),
+        makeLabelJobNode('return', 'Return Gate', 768, 280, { pathOrder: 1 }),
+      ],
+    };
+    const gateX = 420 + ((_worldCounter * 90) % 700);
+    _map.nodes.push(makeLabelJobNode('world', name, gateX, 520, { worldId: wid, pathOrder: nextPathOrderForSlice({ nodes: _map.nodes }) }));
+    _map = normalizeMap(_map);
+    _editContext = wid;
+    _selectedId = null;
+    _selectedIds = [];
+    refreshForgeUI();
+    setStatus('Nested map added.');
+  }
+
+  function duplicateNestedMap(wid) {
+    const src = _map?.worlds?.[wid];
+    if (!src) return;
+    pushHistory();
+    _worldCounter += 1;
+    const nid = 'world' + _worldCounter;
+    const copy = JSON.parse(JSON.stringify(src));
+    copy.name = (src.name || 'Map') + ' Copy';
+    copy.worldIndex = _worldCounter;
+    _map.worlds[nid] = copy;
+    const gateX = 420 + ((_worldCounter * 90) % 700);
+    _map.nodes.push(makeLabelJobNode('world', copy.name, gateX, 520, { worldId: nid, pathOrder: nextPathOrderForSlice({ nodes: _map.nodes }) }));
+    _map = normalizeMap(_map);
+    _editContext = nid;
+    _selectedId = null;
+    _selectedIds = [];
+    refreshForgeUI();
+    setStatus('Map duplicated.');
+  }
+
+  function deleteNestedMap(wid) {
+    if (!_map?.worlds?.[wid]) return;
+    pushHistory();
+    delete _map.worlds[wid];
+    _map.nodes = (_map.nodes || []).filter((n) => n.worldId !== wid);
+    if (String(_map.startMapId || 'main') === wid) _map.startMapId = 'main';
+    if (_editContext === wid) _editContext = 'main';
+    _map = normalizeMap(_map);
+    _selectedId = null;
+    _selectedIds = [];
+    refreshForgeUI();
+    setStatus('Nested map deleted.');
+  }
+
+  function renderWorldTree() {
+    const el = document.getElementById('map-forge-world-tree');
+    if (!el || !_map) return;
+    el.innerHTML = '';
+    function addMapRow(id, name, nodes) {
+      const row = document.createElement('div');
+      row.className = 'map-forge-tree-row';
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'map-forge-tree-map' + (_editContext === id ? ' is-active' : '');
+      btn.textContent = (id === 'main' ? 'Main · ' : '') + (name || id);
+      btn.onclick = () => {
+        if (id === _editContext) return;
+        switchEditContext(id);
+        setStatus('Editing ' + (name || id));
+      };
+      row.appendChild(btn);
+      if (id !== 'main') {
+        const dup = document.createElement('button');
+        dup.type = 'button';
+        dup.className = 'map-forge-tree-act';
+        dup.textContent = '⧉';
+        dup.title = 'Duplicate map';
+        dup.onclick = (ev) => { ev.stopPropagation(); duplicateNestedMap(id); };
+        const del = document.createElement('button');
+        del.type = 'button';
+        del.className = 'map-forge-tree-act map-forge-tree-act--danger';
+        del.textContent = '×';
+        del.title = 'Delete map';
+        del.onclick = (ev) => { ev.stopPropagation(); deleteNestedMap(id); };
+        row.appendChild(dup);
+        row.appendChild(del);
+      }
+      el.appendChild(row);
+      if (_editContext === id) {
+        const shown = (nodes || []).filter((n) => {
+          if (_nodeListFilter === 'all') return true;
+          return getNodeTypeSelectValue(n) === _nodeListFilter
+            || (_nodeListFilter === 'label' && (getNodeTypeSelectValue(n) === 'label' || getNodeTypeSelectValue(n) === 'labelUi'));
+        });
+        shown.slice(0, 12).forEach((n) => {
+          const loc = document.createElement('div');
+          loc.className = 'map-forge-tree-loc' + (n.id === _selectedId ? ' is-active' : '');
+          const job = getNodeTypeSelectValue(n);
+          loc.textContent = (global.OW_LOCATION_KIND_LABELS && global.OW_LOCATION_KIND_LABELS[job] || job) + ' · ' + (n.name || '#' + n.id);
+          loc.onclick = () => {
+            _selectedId = n.id;
+            _selectedIds = [n.id];
+            refreshForgeUI();
+            centerViewOnNode(n);
+          };
+          el.appendChild(loc);
+        });
+      }
+    }
+    addMapRow('main', _map.name || 'Main Map', _map.nodes);
+    Object.keys(_map.worlds || {}).forEach((wid) => {
+      const w = _map.worlds[wid];
+      addMapRow(wid, w?.name || wid, w?.nodes);
+    });
+    const addBtn = document.createElement('button');
+    addBtn.type = 'button';
+    addBtn.className = 'menu-btn map-forge-tree-add';
+    addBtn.textContent = '+ Nested map';
+    addBtn.onclick = () => addNestedMapFromTree();
+    el.appendChild(addBtn);
   }
 
   function renderMapSummary() {
@@ -978,8 +1208,8 @@
     if (!wrap) return;
     const rect = wrap.getBoundingClientRect();
     _zoom = Math.max(_zoom, 1);
-    _panX = rect.width / 2 - n.x * (_zoom * rect.width / MAP_W);
-    _panY = rect.height / 2 - n.y * (_zoom * rect.height / MAP_H);
+    _panX = rect.width / 2 - n.x * (_zoom * rect.width / mapW());
+    _panY = rect.height / 2 - n.y * (_zoom * rect.height / mapH());
     applyCanvasTransform();
     renderMinimap();
   }
@@ -987,7 +1217,7 @@
   function fitAllNodes() {
     const slice = getEditingSlice();
     if (!slice?.nodes?.length) return;
-    let minX = MAP_W, minY = MAP_H, maxX = 0, maxY = 0;
+    let minX = mapW(), minY = mapH(), maxX = 0, maxY = 0;
     slice.nodes.forEach((n) => {
       minX = Math.min(minX, n.x); minY = Math.min(minY, n.y);
       maxX = Math.max(maxX, n.x); maxY = Math.max(maxY, n.y);
@@ -999,8 +1229,8 @@
     const bw = Math.max(1, maxX - minX + pad * 2);
     const bh = Math.max(1, maxY - minY + pad * 2);
     _zoom = Math.min(3, Math.max(0.25, Math.min(rect.width / bw, rect.height / bh)));
-    _panX = (rect.width - (minX + maxX) * _zoom * rect.width / MAP_W) / 2;
-    _panY = (rect.height - (minY + maxY) * _zoom * rect.height / MAP_H) / 2;
+    _panX = (rect.width - (minX + maxX) * _zoom * rect.width / mapW()) / 2;
+    _panY = (rect.height - (minY + maxY) * _zoom * rect.height / mapH()) / 2;
     applyCanvasTransform();
     renderMinimap();
   }
@@ -1018,8 +1248,8 @@
     ctx.fillStyle = 'rgba(6,12,5,.85)';
     ctx.fillRect(0, 0, w, h);
     slice.nodes.forEach((n) => {
-      const px = (n.x / MAP_W) * w;
-      const py = (n.y / MAP_H) * h;
+      const px = (n.x / mapW()) * w;
+      const py = (n.y / mapH()) * h;
       ctx.beginPath();
       ctx.arc(px, py, 3, 0, Math.PI * 2);
       ctx.fillStyle = (_selectedIds.includes(n.id) || n.id === _selectedId) ? '#f0d060' : (NVC[n.type]?.ring || '#887030');
@@ -1034,7 +1264,7 @@
       const vy = (-_panY / _zoom);
       ctx.strokeStyle = 'rgba(240,208,96,.75)';
       ctx.lineWidth = 1;
-      ctx.strokeRect((vx / MAP_W) * w, (vy / MAP_H) * h, (vw / MAP_W) * w, (vh / MAP_H) * h);
+      ctx.strokeRect((vx / mapW()) * w, (vy / mapH()) * h, (vw / mapW()) * w, (vh / mapH()) * h);
     }
   }
 
@@ -2178,7 +2408,7 @@
       bg.style.display = slice.backgroundDataUrl ? 'block' : 'none';
     }
     while (svg.firstChild) svg.removeChild(svg.firstChild);
-    svg.setAttribute('viewBox', '0 0 ' + MAP_W + ' ' + MAP_H);
+    svg.setAttribute('viewBox', '0 0 ' + mapW() + ' ' + mapH());
     const pathReveal = _pathRevealPreview && _map.pathReveal !== false;
     const fakeProgress = pathReveal ? { nodeClears: {}, worldsCompleted: {} } : null;
     if (pathReveal && _selectedId != null) {
@@ -2192,17 +2422,17 @@
     if (_snapGrid) {
       const gridG = document.createElementNS(SVG_NS, 'g');
       gridG.setAttribute('opacity', '0.15');
-      for (let gx = 0; gx <= MAP_W; gx += 32) {
+      for (let gx = 0; gx <= mapW(); gx += 32) {
         const ln = document.createElementNS(SVG_NS, 'line');
         ln.setAttribute('x1', String(gx)); ln.setAttribute('y1', '0');
-        ln.setAttribute('x2', String(gx)); ln.setAttribute('y2', String(MAP_H));
+        ln.setAttribute('x2', String(gx)); ln.setAttribute('y2', String(mapH()));
         ln.setAttribute('stroke', '#c9a84c'); ln.setAttribute('stroke-width', '1');
         gridG.appendChild(ln);
       }
-      for (let gy = 0; gy <= MAP_H; gy += 32) {
+      for (let gy = 0; gy <= mapH(); gy += 32) {
         const ln = document.createElementNS(SVG_NS, 'line');
         ln.setAttribute('x1', '0'); ln.setAttribute('y1', String(gy));
-        ln.setAttribute('x2', String(MAP_W)); ln.setAttribute('y2', String(gy));
+        ln.setAttribute('x2', String(mapW())); ln.setAttribute('y2', String(gy));
         ln.setAttribute('stroke', '#c9a84c'); ln.setAttribute('stroke-width', '1');
         gridG.appendChild(ln);
       }
@@ -2421,10 +2651,27 @@
     syncForgeCanvasCursor();
   }
 
+  const PLACE_KINDS = {
+    label: true, labelUi: true, stage: true, boss: true, bonus: true,
+    shop: true, world: true, return: true, start: true, overworld: true,
+  };
+
   function placeNode(x, y) {
-    if (_tool !== 'label') {
-      setStatus('Use the Label place tool, then set Node type in the Node panel.', true);
+    const placeKind = PLACE_KINDS[_tool] ? _tool : null;
+    if (!placeKind) {
+      setStatus('Pick a location kind from Place, then click the map.', true);
       return;
+    }
+    if (placeKind === 'world' && _editContext !== 'main') {
+      setStatus('Map gates can only be placed on the main map.', true);
+      return;
+    }
+    if (placeKind === 'start') {
+      const sliceCheck = getEditingSlice();
+      if (sliceCheck?.nodes?.some((n) => isSpawnLike(n))) {
+        setStatus('Only one Spawn location is allowed on this map.', true);
+        return;
+      }
     }
     pushHistory();
     const slice = getEditingSlice();
@@ -2437,14 +2684,18 @@
     labelCfg.text = 'Label';
     labelCfg.actsAsNode = false;
     labelCfg.uiAction = 'none';
-    slice.nodes.push({ x, y, type: 'label', name: 'Label', labelConfig: labelCfg });
+    slice.nodes.push({ x, y, type: 'label', name: 'Label', kind: 'label', labelConfig: labelCfg });
     _map = normalizeMap(_map);
     selectFreshLastNode();
+    if (placeKind !== 'label') convertSelectedNodeType(placeKind);
     setTool('select');
     renderNodeList();
+    renderWorldTree();
     renderForgeCanvas();
     syncNodeEditorFields();
-    setStatus('Label placed — set Node type (job). Shape and style stay editable.');
+    setStatus(placeKind === 'label'
+      ? 'Label placed — set Node type (job). Shape and style stay editable.'
+      : ((global.OW_LOCATION_KIND_LABELS && global.OW_LOCATION_KIND_LABELS[placeKind]) || placeKind) + ' placed.');
   }
 
   function deleteSelectedNode() {
@@ -2488,8 +2739,8 @@
     if (isSpawnLike(n)) { setStatus('Cannot duplicate Spawn node.', true); return; }
     pushHistory();
     const copy = JSON.parse(JSON.stringify(n));
-    copy.x = Math.min(MAP_W - 40, (n.x || 0) + 40);
-    copy.y = Math.min(MAP_H - 40, (n.y || 0) + 40);
+    copy.x = Math.min(mapW() - 40, (n.x || 0) + 40);
+    copy.y = Math.min(mapH() - 40, (n.y || 0) + 40);
     delete copy.id;
     if (copy.worldId && (copy.type === 'world' || isWorldLike(copy))) {
       _worldCounter += 1;
@@ -2618,6 +2869,16 @@
     syncNodeEditorFields();
   }
 
+  function applyPackMetaFromFields() {
+    if (!_map) return;
+    const nameEl = document.getElementById('map-forge-name');
+    if (nameEl) _map.name = nameEl.value.trim() || 'Untitled World';
+    const authorEl = document.getElementById('map-forge-author');
+    if (authorEl) _map.author = authorEl.value.trim();
+    const notesEl = document.getElementById('map-forge-notes');
+    if (notesEl) _map.notes = notesEl.value;
+  }
+
   function loadMap(map) {
     try {
       _map = normalizeMap(Object.assign(createEmptyMap(), map || {}));
@@ -2644,8 +2905,7 @@
   async function saveMapForgeDraft() {
     if (!_map) return;
     applyNodeFieldChanges();
-    const nameEl = document.getElementById('map-forge-name');
-    if (nameEl) _map.name = nameEl.value.trim() || 'Untitled Map';
+    applyPackMetaFromFields();
     const err = validateMap(_map);
     if (err) { setStatus('Cannot save: ' + err, true); return; }
     const payload = buildExportPayload(_map);
@@ -2654,23 +2914,27 @@
     _map = payload;
     renderDraftSelect();
     markSavedFingerprint();
-    const warns = getValidationIssues().length;
-    setStatus(warns ? ('Draft saved (' + warns + ' guideline' + (warns === 1 ? '' : 's') + ').') : 'Draft saved.');
+    const issues = getValidationIssues();
+    const errors = issues.filter((i) => i.severity === 'error').length;
+    const warns = issues.length - errors;
+    let msg = 'Draft saved.';
+    if (errors) msg = 'Draft saved (' + errors + ' error' + (errors === 1 ? '' : 's') + ').';
+    else if (warns) msg = 'Draft saved (' + warns + ' guideline' + (warns === 1 ? '' : 's') + ').';
+    setStatus(msg, false, !!errors);
   }
 
   function exportMapForge() {
     applyNodeFieldChanges();
-    const nameEl = document.getElementById('map-forge-name');
-    if (nameEl) _map.name = nameEl.value.trim() || 'Untitled Map';
+    applyPackMetaFromFields();
     const err = validateMap(_map);
     if (err) { setStatus(err, true); return; }
-    const payload = buildExportPayload(_map);
+    const payload = typeof buildPortablePack === 'function' ? buildPortablePack(_map) : buildExportPayload(_map);
     const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
-    a.download = 'avian-map-' + slugName(payload.name) + '-' + new Date().toISOString().slice(0, 10) + '.json';
+    a.download = 'avian-world-' + slugName(payload.name) + '-' + new Date().toISOString().slice(0, 10) + '.json';
     a.click();
-    setStatus('Map exported.');
+    setStatus('World pack exported.');
   }
 
   function importMapForgeFile(file) {
@@ -2678,8 +2942,20 @@
     const reader = new FileReader();
     reader.onload = () => {
       try {
-        loadMap(JSON.parse(String(reader.result || '')));
-        setStatus('Map imported.');
+        const parsed = typeof global.parseWorldPackJson === 'function'
+          ? global.parseWorldPackJson(String(reader.result || ''))
+          : JSON.parse(String(reader.result || ''));
+        loadMap(parsed);
+        showWorkspace();
+        const errors = (typeof global.collectMapPlaytestErrors === 'function'
+          ? global.collectMapPlaytestErrors(_map)
+          : getValidationIssues().filter((i) => i.severity === 'error'));
+        if (errors.length) {
+          setStatus('Imported with ' + errors.length + ' error' + (errors.length === 1 ? '' : 's') + ': ' + errors[0].message, true);
+          renderValidationPanel();
+        } else {
+          setStatus('World pack imported.');
+        }
       } catch (_) { setStatus('Could not read map file.', true); }
     };
     reader.readAsText(file);
@@ -2687,10 +2963,9 @@
 
   async function playtestMapForge() {
     applyNodeFieldChanges();
-    const nameEl = document.getElementById('map-forge-name');
-    if (nameEl) _map.name = nameEl.value.trim() || 'Untitled Map';
-    const err = validateMap(_map);
-    if (err) { setStatus(err, true); return; }
+    applyPackMetaFromFields();
+    const err = playtestBlockedReason(_map);
+    if (err) { setStatus('Cannot playtest: ' + err, true); renderValidationPanel(); return; }
     const payload = buildExportPayload(_map);
     if (!(await persistCustomMapForRun(payload))) { setStatus('Could not store map for playtest.', true); return; }
     if (global.setCustomOverworldMode) global.setCustomOverworldMode('playtest');
@@ -2700,10 +2975,9 @@
 
   async function activateMapForNextRun() {
     applyNodeFieldChanges();
-    const nameEl = document.getElementById('map-forge-name');
-    if (nameEl) _map.name = nameEl.value.trim() || 'Untitled Map';
-    const err = validateMap(_map);
-    if (err) { setStatus(err, true); return false; }
+    applyPackMetaFromFields();
+    const err = playtestBlockedReason(_map);
+    if (err) { setStatus('Cannot activate: ' + err, true); renderValidationPanel(); return false; }
     const payload = buildExportPayload(_map);
     if (!(await persistCustomMapForRun(payload))) { setStatus('Could not activate map.', true); return false; }
     if (global.setCustomOverworldMode) global.setCustomOverworldMode('run');
@@ -2805,8 +3079,8 @@
     if (!nodes.length) return;
     pushHistory();
     nodes.forEach((n) => {
-      n.x = snapCoord(Math.max(0, Math.min(MAP_W, (n.x || 0) + dx)));
-      n.y = snapCoord(Math.max(0, Math.min(MAP_H, (n.y || 0) + dy)));
+      n.x = snapCoord(Math.max(0, Math.min(mapW(), (n.x || 0) + dx)));
+      n.y = snapCoord(Math.max(0, Math.min(mapH(), (n.y || 0) + dy)));
     });
     renderForgeCanvas();
     renderMinimap();
@@ -2904,13 +3178,14 @@
     labelCfg.actsAsNode = true;
     labelCfg.mimicType = job;
     const node = Object.assign({
-      x, y, type: 'label', name, labelConfig: labelCfg, onPath: true,
+      x, y, type: 'label', name, kind: job, labelConfig: labelCfg, onPath: true,
     }, extra || {});
     if (global.ensureLabelConfig) global.ensureLabelConfig(node);
     node.labelConfig.actsAsNode = true;
     node.labelConfig.uiAction = 'none';
     node.labelConfig.mimicType = job;
     node.labelConfig.text = name;
+    if (typeof global.stampOwLocationKind === 'function') global.stampOwLocationKind(node);
     if (node.onPath == null) node.onPath = true;
     if ((job === 'stage' || job === 'boss' || job === 'bonus') && global.ensureNodeEncounter) {
       global.ensureNodeEncounter(node);
@@ -2962,9 +3237,10 @@
     const idx = slice?.nodes?.findIndex((n) => n.id === _selectedId) ?? -1;
     if (idx < 0) return;
     const nameEl = document.getElementById('map-forge-name');
-    if (nameEl) _map.name = nameEl.value.trim() || 'Untitled Map';
-    const err = validateMap(_map);
-    if (err) { setStatus(err, true); return; }
+    if (nameEl) _map.name = nameEl.value.trim() || 'Untitled World';
+    applyPackMetaFromFields();
+    const err = playtestBlockedReason(_map);
+    if (err) { setStatus('Cannot playtest: ' + err, true); renderValidationPanel(); return; }
     const payload = buildExportPayload(_map);
     if (!(await persistCustomMapForRun(payload))) { setStatus('Could not store map.', true); return; }
     if (global.setCustomOverworldMode) global.setCustomOverworldMode('playtest');
@@ -3208,13 +3484,13 @@
     document.getElementById('map-forge-minimap')?.addEventListener('click', (e) => {
       const canvas = e.currentTarget;
       const rect = canvas.getBoundingClientRect();
-      const mx = ((e.clientX - rect.left) / rect.width) * MAP_W;
-      const my = ((e.clientY - rect.top) / rect.height) * MAP_H;
+      const mx = ((e.clientX - rect.left) / rect.width) * mapW();
+      const my = ((e.clientY - rect.top) / rect.height) * mapH();
       const wrap = document.getElementById('map-forge-canvas-wrap');
       if (!wrap) return;
       const wrect = wrap.getBoundingClientRect();
-      _panX = wrect.width / 2 - mx * (_zoom * wrect.width / MAP_W);
-      _panY = wrect.height / 2 - my * (_zoom * wrect.height / MAP_H);
+      _panX = wrect.width / 2 - mx * (_zoom * wrect.width / mapW());
+      _panY = wrect.height / 2 - my * (_zoom * wrect.height / mapH());
       applyCanvasTransform();
       renderMinimap();
     });
@@ -3235,14 +3511,34 @@
       if (!file) return;
       const reader = new FileReader();
       reader.onload = () => {
-        const slice = getEditingSlice();
-        if (!slice) return;
-        if (_editContext === 'main') _map.backgroundDataUrl = String(reader.result || '');
-        else if (_map.worlds[_editContext]) _map.worlds[_editContext].backgroundDataUrl = String(reader.result || '');
-        pushHistory();
-        renderForgeCanvas();
-        renderValidationPanel();
-        setStatus('Background uploaded.');
+        const dataUrl = String(reader.result || '');
+        const apply = (size) => {
+          const slice = getEditingSlice();
+          if (!slice) return;
+          if (_editContext === 'main') {
+            _map.backgroundDataUrl = dataUrl;
+            if (size) {
+              _map.mapWidth = size.w;
+              _map.mapHeight = size.h;
+            }
+          } else if (_map.worlds[_editContext]) {
+            _map.worlds[_editContext].backgroundDataUrl = dataUrl;
+            if (size) {
+              _map.worlds[_editContext].mapWidth = size.w;
+              _map.worlds[_editContext].mapHeight = size.h;
+            }
+          }
+          pushHistory();
+          renderForgeCanvas();
+          renderValidationPanel();
+          syncMapInspectorMeta();
+          setStatus('Background uploaded' + (size ? ' (' + size.w + '×' + size.h + ')' : '') + '.');
+        };
+        if (typeof global.readImageSizeFromDataUrl === 'function') {
+          global.readImageSizeFromDataUrl(dataUrl).then((size) => apply(size));
+        } else {
+          apply(null);
+        }
       };
       reader.readAsDataURL(file);
       this.value = '';
@@ -3279,7 +3575,13 @@
       document.getElementById(id)?.addEventListener('change', applyNodeFieldChanges);
     });
     document.getElementById('map-forge-name')?.addEventListener('change', function () {
-      if (_map) _map.name = this.value.trim() || 'Untitled Map';
+      if (_map) _map.name = this.value.trim() || 'Untitled World';
+    });
+    document.getElementById('map-forge-author')?.addEventListener('change', function () {
+      if (_map) _map.author = this.value.trim();
+    });
+    document.getElementById('map-forge-notes')?.addEventListener('change', function () {
+      if (_map) _map.notes = this.value;
     });
     document.getElementById('map-forge-start-map')?.addEventListener('change', applyStartMapChange);
     document.getElementById('map-forge-shop-use-custom')?.addEventListener('change', function () {
@@ -3315,6 +3617,7 @@
       if (e.key === 's' || e.key === 'S') { setTool('select'); return; }
       if (e.key === 'm' || e.key === 'M') { setTool('multi'); return; }
       if (e.key === 'l' || e.key === 'L') { setTool('label'); return; }
+      if (e.key === '?') { e.preventDefault(); toggleMapForgeHelp(); return; }
       if (e.ctrlKey && e.key === 'd') { e.preventDefault(); duplicateSelectedNode(); return; }
       if (e.ctrlKey && e.key === 'z') { e.preventDefault(); undoMapForge(); return; }
       if (e.ctrlKey && (e.key === 'y' || (e.shiftKey && e.key === 'z'))) { e.preventDefault(); redoMapForge(); return; }
@@ -3347,6 +3650,57 @@
     renderDraftSelect();
   }
 
+  function showLibrary() {
+    _forgeView = 'library';
+    refreshLibrary();
+    if (typeof global.showMapForgeLibraryView === 'function') global.showMapForgeLibraryView();
+  }
+
+  function showWorkspace() {
+    _forgeView = 'workspace';
+    if (typeof global.hideMapForgeLibraryView === 'function') global.hideMapForgeLibraryView();
+    refreshForgeUI();
+    mapForgeZoomFit();
+  }
+
+  function refreshLibrary() {
+    if (typeof global.renderMapForgeLibrary !== 'function') return;
+    global.renderMapForgeLibrary({
+      drafts: readDrafts(),
+      currentId: getCurrentDraftId(),
+      onNewTemplate: (id) => {
+        confirmDirtyThen(() => {
+          const pack = typeof global.createWorldPackTemplate === 'function'
+            ? global.createWorldPackTemplate(id)
+            : createEmptyMap();
+          setCurrentDraftId('');
+          loadMap(pack);
+          showWorkspace();
+          setStatus('New world from template.');
+          mapForgeZoomFit();
+        });
+      },
+      onOpenDraft: (id) => {
+        const draft = readDrafts().find((d) => d.id === id);
+        if (!draft) return;
+        confirmDirtyThen(() => {
+          loadMap(draft);
+          setCurrentDraftId(id);
+          showWorkspace();
+          mapForgeZoomFit();
+        });
+      },
+      onDeleteDraft: (id) => {
+        confirmDirtyThen(async () => {
+          await deleteDraftById(id);
+          refreshLibrary();
+          setStatus('Draft deleted.');
+        });
+      },
+      onImportFile: (file) => importMapForgeFile(file),
+    });
+  }
+
   async function openMapForge(opts) {
     if (global.isBuildNestUnlocked && !global.isBuildNestUnlocked()) {
       const msg = 'Build Nest is locked. Enter the unlock code on the war room first.';
@@ -3359,13 +3713,25 @@
       wireMapForge();
       populateForgeSelects();
       if (opts?.skipReload && _map) {
+        showWorkspace();
         refreshForgeUI();
         return;
       }
       await initMapForge();
+      showLibrary();
     } catch (err) {
       reportForgeError('Failed to open Map Forge', err);
     }
+  }
+
+  function openMapForgeLibrary() {
+    confirmDirtyThen(() => showLibrary());
+  }
+
+  function toggleMapForgeHelp() {
+    const el = document.getElementById('map-forge-help');
+    if (!el) return;
+    el.hidden = !el.hidden;
   }
 
   function closeMapForge() {
@@ -3380,7 +3746,8 @@
       loadMap(createEmptyMap());
       setCurrentDraftId('');
       renderDraftSelect();
-      setStatus('New map.');
+      showWorkspace();
+      setStatus('New world.');
     });
   }
 
@@ -3398,6 +3765,7 @@
       map.name = originalName + ' Edit';
       setCurrentDraftId('');
       loadMap(map);
+      showWorkspace();
       renderDraftSelect();
       setStatus((picked.source === 'active' ? 'Active' : 'Built-in') + ' story map loaded as a new Forge draft.');
       mapForgeZoomFit();
@@ -3418,6 +3786,10 @@
       _tool = 'label';
       placeNode(x, y);
     },
+    placeNodeAs(kind, x, y) {
+      _tool = kind || 'label';
+      placeNode(x, y);
+    },
     convertSelected(typeKey) { return convertSelectedNodeType(typeKey); },
     deleteSelected() { deleteSelectedNode(); },
     getSelected() { return getSelectedNode(); },
@@ -3425,9 +3797,17 @@
     addWorldTemplate,
     getNodeJob(n) { return getNodeTypeSelectValue(n); },
     validateMap,
+    playtestBlockedReason,
+    addNestedMapFromTree,
+    duplicateNestedMap,
+    deleteNestedMap,
     saveDraft() { saveMapForgeDraft(); return readDrafts(); },
     buildExport() { return buildExportPayload(_map); },
+    buildPortablePack() { return buildPortablePack(_map); },
     getValidationIssues,
+    showLibrary,
+    showWorkspace,
+    createTemplate(id) { return global.createWorldPackTemplate ? global.createWorldPackTemplate(id) : createEmptyMap(); },
     movePathOrder(id, dir) { moveNode(id, dir); },
     filterMatches(n, filter) {
       const job = getNodeTypeSelectValue(n);
@@ -3473,6 +3853,8 @@
     },
   };
 
+  global.openMapForgeLibrary = openMapForgeLibrary;
+  global.toggleMapForgeHelp = toggleMapForgeHelp;
   global.initMapForge = initMapForge;
   global.openMapForge = openMapForge;
   global.closeMapForge = closeMapForge;
@@ -3521,6 +3903,7 @@
       copyMapForgeConfig, pasteMapForgeConfig, applyEncounterPreset,
       bulkSelectAllStages, bulkApplyEncounter, bulkApplyRewards, addWorldTemplate,
       mapForgeZoomFit, mapForgeZoom100, mapForgeZoom200,
+      openMapForgeLibrary, toggleMapForgeHelp,
     });
   }
 })(typeof window !== 'undefined' ? window : globalThis);

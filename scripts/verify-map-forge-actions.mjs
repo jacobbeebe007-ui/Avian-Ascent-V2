@@ -86,6 +86,7 @@ function loadShell() {
       addEventListener() {},
       dataset: {},
     }),
+    createTextNode: (t) => ({ textContent: String(t || ''), nodeValue: String(t || '') }),
     createElementNS: () => ({
       style: {},
       setAttribute() {},
@@ -104,6 +105,9 @@ function loadShell() {
   require(path.join(root, 'js/data/story-map.js'));
   require(path.join(root, 'js/world/overworld_bridge.js'));
   require(path.join(root, 'js/world/ow_map_runtime.js'));
+  require(path.join(root, 'js/world/map-pack-schema.js'));
+  require(path.join(root, 'js/world/map-forge-library.js'));
+  require(path.join(root, 'js/world/map-forge-canvas.js'));
   require(path.join(root, 'js/world/map-forge.js'));
 }
 
@@ -167,6 +171,12 @@ ok('Border colour picker present', forgeSection.includes('id="map-forge-label-bo
 ok('Text colour picker present', forgeSection.includes('id="map-forge-label-text-color"'));
 ok('Node type job hint present', forgeSection.includes('id="map-forge-node-type-hint"'));
 ok('Node type labeled as job', forgeSection.includes('Node type (job)'));
+ok('World Creator title present', forgeSection.includes('World Creator'));
+ok('Library screen present', forgeSection.includes('id="map-forge-library"'));
+ok('World tree present', forgeSection.includes('id="map-forge-world-tree"'));
+ok('Place palette includes Stage', forgeSection.includes('data-forge-tool="stage"'));
+ok('Place palette includes Spawn', forgeSection.includes('data-forge-tool="start"'));
+ok('Place palette includes Map gate', forgeSection.includes('data-forge-tool="world"'));
 
 forgeActions.forEach((name) => {
   ok('Resolves action: ' + name, typeof resolveAction(name) === 'function');
@@ -488,7 +498,9 @@ ok('Path order field present', forgeSection.includes('id="map-forge-node-path-or
   ok('validateMap only blocks corrupt payloads', hard == null);
   const issues = globalThis.collectMapValidationIssues(incomplete);
   ok('Guidelines report warnings for empty map', issues.some((i) => /node/i.test(i.message)));
-  ok('Guidelines are warnings not errors', issues.every((i) => i.severity === 'warning'));
+  ok('Playtest errors include missing spawn or combat', issues.some((i) => i.severity === 'error'));
+  const blocked = api.playtestBlockedReason(incomplete);
+  ok('Playtest is blocked on errors', typeof blocked === 'string' && blocked.length > 0);
   const drafts = api.saveDraft();
   ok('Soft save writes draft without spawn/background', Array.isArray(drafts) && drafts.some((d) => d.id === 'soft-save-map' || d.name === 'Soft Save'));
 }
@@ -548,6 +560,81 @@ if (api) {
   ok('Exported pathOrder', exported?.pathOrder === 2);
 }
 
+// Schema v3 + templates + portable pack.
+{
+  ok('upgradeMapToV3 is published', typeof globalThis.upgradeMapToV3 === 'function');
+  const v2 = {
+    schemaVersion: 2,
+    name: 'Legacy',
+    nodes: [{ id: 0, type: 'start', name: 'Spawn', x: 10, y: 10 }],
+    worlds: {},
+  };
+  const v3 = globalThis.upgradeMapToV3(v2);
+  ok('upgradeMapToV3 sets schemaVersion 3', v3.schemaVersion === 3);
+  ok('upgradeMapToV3 stamps spawn kind', globalThis.getOwLocationKind(v3.nodes[0]) === 'start');
+  const linear = globalThis.createWorldPackTemplate('linear5');
+  ok('linear5 template has spawn', (linear.nodes || []).some((n) => globalThis.isOwSpawnNode(n)));
+  ok('linear5 template has combat', (linear.nodes || []).some((n) => globalThis.isForgeCombatNode(n)));
+  const hub = globalThis.createWorldPackTemplate('hub2');
+  ok('hub2 template has two nested maps', Object.keys(hub.worlds || {}).length === 2);
+  const pack = api.buildPortablePack();
+  ok('Portable pack is schema 3', pack.schemaVersion === 3);
+  const withBg = {
+    schemaVersion: 3,
+    name: 'Art',
+    backgroundDataUrl: 'data:image/png;base64,aaa',
+    nodes: [{ type: 'start', name: 'Spawn', x: 1, y: 1 }],
+    worlds: { world1: { name: 'W', nodes: [], backgroundDataUrl: 'data:image/png;base64,bbb' } },
+  };
+  const extracted = globalThis.extractWorldPackAssets(withBg);
+  ok('extractWorldPackAssets moves data URLs into assets', extracted.backgroundDataUrl.slice(0, 6) === 'asset:' && extracted.assets);
+  const round = globalThis.parseWorldPackJson(JSON.stringify(extracted));
+  ok('parseWorldPackJson restores data URLs', String(round.backgroundDataUrl).slice(0, 5) === 'data:');
+  const emptyPack = globalThis.createEmptyWorldPack();
+  const emptyIssues = globalThis.collectMapValidationIssues(emptyPack);
+  ok('Empty pack has playtest errors', emptyIssues.some((i) => i.severity === 'error'));
+  const hubErrors = globalThis.collectMapPlaytestErrors(hub);
+  ok('Hub template still errors without background', hubErrors.some((i) => /background/i.test(i.message)));
+}
+
+if (api) {
+  api.loadMap(globalThis.createWorldPackTemplate('hub2'));
+  const beforeMaps = Object.keys(api.buildExport().worlds || {}).length;
+  api.addNestedMapFromTree();
+  const afterAdd = Object.keys(api.buildExport().worlds || {}).length;
+  ok('World tree can add a nested map', afterAdd === beforeMaps + 1);
+  const extraId = Object.keys(api.buildExport().worlds).find((id) => id !== 'world1' && id !== 'world2');
+  api.duplicateNestedMap('world1');
+  ok('World tree can duplicate a nested map', Object.keys(api.buildExport().worlds || {}).length === afterAdd + 1);
+  if (extraId) {
+    api.deleteNestedMap(extraId);
+    ok('World tree can delete a nested map', !api.buildExport().worlds[extraId]);
+  }
+}
+
+if (api) {
+  api.loadMap({ schemaVersion: 3, name: 'Place kind', nodes: [], worlds: {} });
+  api.setEditContext('main');
+  api.setTool('stage');
+  api.placeNodeAt(200, 200);
+  // placeNodeAt forces label tool for regression coverage; place a stage via convert still works.
+  ok('Place API still drops a label first', api.getSelected()?.type === 'label');
+  api.convertSelected('stage');
+  ok('Placed stage has kind stage', api.getSelected()?.kind === 'stage' || api.getSelected()?.labelConfig?.mimicType === 'stage');
+  api.placeNodeAs('boss', 300, 300);
+  ok('placeNodeAs boss stamps boss kind', api.getSelected()?.kind === 'boss' || api.getSelected()?.labelConfig?.mimicType === 'boss');
+  api.placeNodeAs('shop', 400, 400);
+  ok('placeNodeAs shop stamps shop kind', api.getSelected()?.kind === 'shop' || api.getSelected()?.labelConfig?.mimicType === 'shop');
+}
+
+{
+  const gameSrc = readFileSync(path.join(root, 'js/core/game.js'), 'utf8');
+  ok('Overworld battle honors custom multi-enemy encounters', /isCustomOverworldActive/.test(gameSrc) && !/normalizeOwEnemyListForBattle\(rolled, stageNum\)\.slice\(0,1\)/.test(gameSrc));
+  ok('Custom overworld keeps authored enemy count', /customOw/.test(gameSrc) && /_owEnemyCount=Math.max\(1,G\._owStageEnemies/.test(gameSrc));
+  const importSrc = readFileSync(path.join(root, 'scripts/import-story-map.mjs'), 'utf8');
+  ok('Story import CLI keeps nested maps', importSrc.includes('Nested maps (worlds) are preserved') && /worlds,/.test(importSrc));
+}
+
 // Bundle must include the fresh-select fix — index.html loads avian-game.bundle.js.
 const bundle = readFileSync(path.join(root, 'js/avian-game.bundle.js'), 'utf8');
 ok('Bundle calls selectFreshLastNode after place', /selectFreshLastNode\(\)/.test(bundle));
@@ -558,6 +645,8 @@ ok('Bundle does not use stale slice id fallback after place',
   !/slice\.nodes\[slice\.nodes\.length - 1\]\?\.id \?\? 0/.test(bundle));
 ok('Bundle has buildOwPathEdges', bundle.includes('buildOwPathEdges'));
 ok('Bundle has areOwMustCompleteNodesCleared', bundle.includes('areOwMustCompleteNodesCleared'));
+ok('Bundle includes world-pack schema v3', bundle.includes('upgradeMapToV3'));
+ok('Bundle includes World Creator library', bundle.includes('renderMapForgeLibrary'));
 
 if (process.exitCode) {
   console.error('\nMap Forge action verification failed.');

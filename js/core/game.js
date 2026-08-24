@@ -5703,8 +5703,13 @@ function syncStoryEncounterBirdQueue(encounterStage){
     return;
   }
   if(_isOverworldRun() && Array.isArray(G._owStageEnemies) && G._owStageEnemies.length>0){
-    G._owStageEnemies=G._owStageEnemies.slice(0,1);
-    G._owEnemyCount=1;
+    const customOw = typeof isCustomOverworldActive==='function' && isCustomOverworldActive();
+    if(!customOw){
+      G._owStageEnemies=G._owStageEnemies.slice(0,1);
+      G._owEnemyCount=1;
+    } else {
+      G._owEnemyCount=Math.max(1,G._owStageEnemies.length);
+    }
     commitStoryEncounterMeta(st, G.player?.birdKey, G._owStageEnemies);
     return;
   }
@@ -5838,16 +5843,22 @@ function handleOverworldReturn() {
       const rolled = resolveFn
         ? resolveFn(intent.encounter, pbk, stageNum)
         : generateStoryStageEnemyKeys(stageNum, pbk);
-      G._owStageEnemies = normalizeOwEnemyListForBattle(rolled, stageNum).slice(0,1);
+      let enemies = normalizeOwEnemyListForBattle(rolled, stageNum);
+      const customOw = typeof isCustomOverworldActive==='function' && isCustomOverworldActive();
+      if(!customOw) enemies = enemies.slice(0,1);
+      G._owStageEnemies = enemies;
       G._owEnemyIndex   = 0;
-      G._owEnemyCount = 1;
+      G._owEnemyCount = Math.max(1, G._owStageEnemies?.length || 1);
       G._owEncounterRollStage = stageNum;
       commitStoryEncounterMeta(stageNum, pbk, G._owStageEnemies);
     } else if(!G.endlessMode && !STORY_BOSS_STAGES.has(stageNum)){
       const rolled=generateStoryStageEnemyKeys(stageNum, pbk);
-      G._owStageEnemies = normalizeOwEnemyListForBattle(rolled, stageNum).slice(0,1);
+      let enemies = normalizeOwEnemyListForBattle(rolled, stageNum);
+      const customOw = typeof isCustomOverworldActive==='function' && isCustomOverworldActive();
+      if(!customOw) enemies = enemies.slice(0,1);
+      G._owStageEnemies = enemies;
       G._owEnemyIndex   = 0;
-      G._owEnemyCount = 1;
+      G._owEnemyCount = Math.max(1, G._owStageEnemies?.length || 1);
       G._owEncounterRollStage = stageNum;
       commitStoryEncounterMeta(stageNum, pbk, G._owStageEnemies);
     } else {

@@ -36,7 +36,7 @@
 
   global.isOwSpawnNode = function (n) {
     if (!n) return false;
-    if (n.type === 'start') return true;
+    if (n.kind === 'start' || n.type === 'start') return true;
     return n.type === 'label'
       && !!(n.labelConfig && n.labelConfig.actsAsNode)
       && n.labelConfig.mimicType === 'start';
@@ -332,6 +332,12 @@
 
   global.getOwEffectiveNodeType = function (n) {
     if (!n) return '';
+    if (typeof global.getOwLocationKind === 'function') {
+      const kind = global.getOwLocationKind(n);
+      if (kind === 'labelUi' || kind === 'label') return n.type === 'label' ? 'label' : (n.type || kind);
+      if (kind && kind !== 'none') return kind;
+    }
+    if (n.kind && n.kind !== 'label' && n.kind !== 'labelUi' && n.kind !== 'none') return n.kind;
     if (n.type === 'label' && n.labelConfig && n.labelConfig.actsAsNode) {
       return n.labelConfig.mimicType || 'none';
     }
@@ -339,10 +345,15 @@
   };
 
   global.getOwEffectiveNode = function (n) {
-    if (!n || n.type !== 'label' || !n.labelConfig || !n.labelConfig.actsAsNode) return n;
+    if (!n) return n;
     const t = global.getOwEffectiveNodeType(n);
-    if (!t || t === 'none') return n;
-    return Object.assign({}, n, { type: t, _labelProxy: true });
+    if (!t || t === 'none' || t === 'label' || t === n.type) {
+      if (n.type !== 'label' || !n.labelConfig || !n.labelConfig.actsAsNode) return n;
+    }
+    if (t && t !== 'none' && t !== 'label') {
+      return Object.assign({}, n, { type: t, _labelProxy: true });
+    }
+    return n;
   };
 
   global.owNodeKey = function (mapId, nodeId) {
@@ -922,9 +933,8 @@
 
   global.collectMapValidationIssues = function (map) {
     const issues = [];
-    // Guidelines only — nothing here blocks save/export/playtest.
     const add = (severity, message, mapId, nodeId) => issues.push({
-      severity: severity === 'error' ? 'warning' : severity,
+      severity: severity === 'error' ? 'error' : 'warning',
       message,
       mapId: mapId || 'main',
       nodeId: nodeId ?? null,
@@ -933,26 +943,39 @@
     const nodes = map?.nodes || [];
     const effType = (n) => (global.getOwEffectiveNodeType ? global.getOwEffectiveNodeType(n) : n?.type) || '';
     if (!nodes.length) add('warning', 'Add at least one node.');
+    const startMapId = String(map?.startMapId || 'main');
+    const startSlice = startMapId === 'main'
+      ? nodes
+      : (map?.worlds?.[startMapId]?.nodes || []);
+    const startSpawns = startSlice.filter((n) => global.isOwSpawnNode(n)).length;
+    if (startSpawns === 0) add('error', 'Start map needs a Spawn location.', startMapId, null);
     const mainSpawns = nodes.filter((n) => global.isOwSpawnNode(n)).length;
-    if (mainSpawns === 0) add('warning', 'Add a Spawn node (place a Label, then set Node type to Spawn).');
-    else if (mainSpawns > 1) add('warning', 'Exactly one Spawn node recommended on the main map.');
-    if (!nodes.some((n) => {
+    if (mainSpawns > 1) add('warning', 'Exactly one Spawn node recommended on the main map.');
+    const hasCombat = (arr) => (arr || []).some((n) => {
       const t = effType(n);
-      return t === 'stage' || t === 'boss';
-    })) add('warning', 'Add at least one Stage or Boss.');
-    if (!map?.backgroundDataUrl) add('warning', 'Upload a main map background image.');
+      return t === 'stage' || t === 'boss' || t === 'bonus';
+    });
+    let anyCombat = hasCombat(nodes);
+    Object.keys(map?.worlds || {}).forEach((wid) => {
+      if (hasCombat(map.worlds[wid]?.nodes)) anyCombat = true;
+    });
+    if (!anyCombat) add('error', 'Add at least one Stage, Boss, or Bonus.');
+    if (!map?.backgroundDataUrl) add('error', 'Upload a main map background image.');
 
     const worldIdsUsed = new Set(
       nodes.filter((n) => effType(n) === 'world' && n.worldId).map((n) => n.worldId)
     );
-    const startMapId = String(map?.startMapId || 'main');
     Object.keys(map?.worlds || {}).forEach((wid) => {
       if (!worldIdsUsed.has(wid) && wid !== startMapId) add('warning', 'Orphaned world data: ' + wid, 'main', null);
     });
-    if (startMapId !== 'main') {
-      const wn = map?.worlds?.[startMapId]?.nodes || [];
-      if (!map?.worlds?.[startMapId]) add('warning', 'startMapId "' + startMapId + '" does not exist.');
-      else if (!wn.some((n) => global.isOwSpawnNode(n))) add('warning', 'Start map needs a Spawn node.', startMapId, null);
+    nodes.forEach((n) => {
+      if (effType(n) !== 'world') return;
+      if (!n.worldId || !map?.worlds?.[n.worldId]) {
+        add('error', 'Map gate "' + (n.name || n.id) + '" points at a missing map.', 'main', n.id);
+      }
+    });
+    if (startMapId !== 'main' && !map?.worlds?.[startMapId]) {
+      add('error', 'startMapId "' + startMapId + '" does not exist.');
     }
 
     if (!nodes.some((n) => effType(n) === 'boss' && n.final)) add('warning', 'No final boss marked on main map.');

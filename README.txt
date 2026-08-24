@@ -56,6 +56,17 @@ If GitHub says the merge is too complex
   5) `git push --force-with-lease` (for rebase) or `git push` (for merge)
 - If the PR is still too large, split it into smaller PRs (sprites/paths, gameplay, UI) so GitHub can evaluate checks and diffs reliably.
 
+World Creator (Build Nest)
+- War Room hotspot “Build Nest” (unlock code `buildnest`) opens World Creator (subtitle: Build Nest).
+- Hierarchy: World pack → Maps (main + nested) → Locations.
+- Location kinds: Spawn, Stage, Boss, Bonus, Shop, Map gate, Return, Overworld gate, Decor, UI button.
+- Library: new world from a template (blank, story campaign, linear 5-stage, hub with 2 maps, single-fight test), open/delete drafts, import a JSON pack.
+- Workspace: world tree (left; add/duplicate/delete nested maps), canvas with a Place palette, inspector (right). Pick a kind, then click the map.
+- Export writes schema v3 JSON. Data-URL backgrounds are stored under `assets` as `asset:<id>` references. Import accepts v2 or v3 and reports blocking errors.
+- Playtest / Use on next run is blocked until the start map has a Spawn, the pack has a fight, a background, and map gates point at real maps. Save draft still works with those errors.
+- Custom maps honor authored encounter size (1–5 enemies). The shipping Blackstone story stays single-enemy unless you play a custom pack.
+- Promote a pack into the shipping story map: `node scripts/import-story-map.mjs path/to/export.json` (nested maps are kept).
+
 Android (Capacitor)
 - Requirements: Node.js, Android Studio, and an Android SDK/JDK supported by the installed Capacitor version.
 - Install dependencies with `npm install`.

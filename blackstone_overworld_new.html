@@ -309,6 +309,7 @@ html,body{width:100%;height:100%;overflow:hidden;background:#060d05;}
 <script src="js/world/map-forge-storage.js"></script>
 <script src="js/data/story-map.js"></script>
 <script src="js/world/ow_map_runtime.js"></script>
+<script src="js/world/map-pack-schema.js"></script>
 <script src="js/data/birds.js"></script><script src="js/data/story_enemy_registry.js"></script><script src="js/data/story_milestone_boss_pool.js"></script><script src="js/systems/encounter-generator.js"></script><script src="js/world/ow_enemy_population.js"></script>
 <script type="module">
 const SVG_NS='http://www.w3.org/2000/svg';
@@ -324,10 +325,16 @@ if(_FORGE_CUSTOM_MODE){
     _CUSTOM_MAP_RAW=loadCustomOverworldMap();
   }
 }
-const _CUSTOM_MAP=_CUSTOM_MAP_RAW&&typeof upgradeMapToV2==='function'?upgradeMapToV2(_CUSTOM_MAP_RAW):_CUSTOM_MAP_RAW;
+const _upgradeOwMap = (raw) => {
+  if (!raw) return raw;
+  if (typeof upgradeMapToV3 === 'function') return upgradeMapToV3(raw);
+  if (typeof upgradeMapToV2 === 'function') return upgradeMapToV2(raw);
+  return raw;
+};
+const _CUSTOM_MAP=_CUSTOM_MAP_RAW?_upgradeOwMap(_CUSTOM_MAP_RAW):_CUSTOM_MAP_RAW;
 const _FORGE_CUSTOM=!!(_CUSTOM_MAP&&_FORGE_CUSTOM_MODE);
 const _STORY_MAP_RAW=typeof cloneDefaultStoryMap==='function'?cloneDefaultStoryMap():null;
-const _STORY_MAP=_STORY_MAP_RAW&&typeof upgradeMapToV2==='function'?upgradeMapToV2(_STORY_MAP_RAW):_STORY_MAP_RAW;
+const _STORY_MAP=_STORY_MAP_RAW?_upgradeOwMap(_STORY_MAP_RAW):_STORY_MAP_RAW;
 const _MISSION_VARIANT=typeof getMissionMapVariant==='function'?getMissionMapVariant():'demo';
 const _loadEl=document.getElementById('ow-map-loading');
 let _USE_CUSTOM=_FORGE_CUSTOM;
@@ -337,7 +344,7 @@ if(!_FORGE_CUSTOM && _MISSION_VARIANT==='test'){
   const testRaw=typeof fetchMissionTestMap==='function'?await fetchMissionTestMap():null;
   if(_loadEl) _loadEl.hidden=true;
   if(testRaw){
-    _ACTIVE_MAP=typeof upgradeMapToV2==='function'?upgradeMapToV2(testRaw):testRaw;
+    _ACTIVE_MAP=_upgradeOwMap(testRaw);
     _USE_CUSTOM=true; // multi-world / path-reveal rules (same as Forge custom)
   }else{
     console.error('[overworld] Failed to load Mission Map Test; falling back to Demo.');
