@@ -174,12 +174,16 @@ ok('Node type job hint present', forgeSection.includes('id="map-forge-node-type-
 ok('Node type labeled as job', forgeSection.includes('Node type (job)'));
 ok('World Creator title present', forgeSection.includes('World Creator'));
 ok('Library screen present', forgeSection.includes('id="map-forge-library"'));
+ok('Forge screen defaults to library mode', html.includes('class="screen is-library" id="screen-map-forge"'));
+ok('Library defaults to open', html.includes('id="map-forge-library" class="map-forge-library is-open"'));
+ok('Library has loading fallback', html.includes('map-forge-library-fallback'));
 const openForgeBody = forgeSource.slice(
   forgeSource.indexOf('async function openMapForge'),
   forgeSource.indexOf('function openMapForgeLibrary')
 );
 ok('Build Nest shows its library before async initialization',
   openForgeBody.indexOf('showLibrary();') < openForgeBody.indexOf('await initMapForge();'));
+ok('Forge draft hydration has timeout fallback', forgeSource.includes('FORGE_DRAFT_HYDRATE_TIMEOUT_MS'));
 ok('World tree present', forgeSection.includes('id="map-forge-world-tree"'));
 ok('Place palette includes Stage', forgeSection.includes('data-forge-tool="stage"'));
 ok('Place palette includes Spawn', forgeSection.includes('data-forge-tool="start"'));

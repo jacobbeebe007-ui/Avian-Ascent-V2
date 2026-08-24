@@ -205,16 +205,34 @@
     return readDraftsLegacy();
   }
 
+  const FORGE_DRAFT_HYDRATE_TIMEOUT_MS = 8000;
+
   async function hydrateDraftsCache() {
-    if (typeof global.migrateMapForgeStorageAsync === 'function') {
-      await global.migrateMapForgeStorageAsync();
-    }
-    if (typeof global.readForgeDraftsAsync === 'function') {
-      _draftsCache = await global.readForgeDraftsAsync();
-    } else {
+    const hydrate = (async () => {
+      if (typeof global.migrateMapForgeStorageAsync === 'function') {
+        await global.migrateMapForgeStorageAsync();
+      }
+      if (typeof global.readForgeDraftsAsync === 'function') {
+        _draftsCache = await global.readForgeDraftsAsync();
+      } else {
+        _draftsCache = readDraftsLegacy();
+      }
+      return _draftsCache;
+    })();
+    try {
+      return await Promise.race([
+        hydrate,
+        new Promise((_, reject) => {
+          global.setTimeout(
+            () => reject(new Error('Forge draft hydration timed out')),
+            FORGE_DRAFT_HYDRATE_TIMEOUT_MS
+          );
+        }),
+      ]);
+    } catch (_) {
       _draftsCache = readDraftsLegacy();
+      return _draftsCache;
     }
-    return _draftsCache;
   }
 
   function writeDraftsLegacy(list) {
@@ -3742,6 +3760,8 @@
 
   function closeMapForge() {
     confirmDirtyThen(() => {
+      // Reset to library view so the next open is never a blank workspace shell.
+      showLibrary();
       if (global.showScreen) global.showScreen('screen-select');
       if (global.initSelectionSafe) global.initSelectionSafe();
     });
