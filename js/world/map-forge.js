@@ -3710,6 +3710,10 @@
     }
     try {
       if (global.showScreen) global.showScreen('screen-map-forge');
+      // Put a usable view on screen before touching IndexedDB. Draft hydration can
+      // be delayed (or fail) in private browsing and embedded WebViews; previously
+      // both forge panes stayed hidden until it completed, leaving a black screen.
+      showLibrary();
       wireMapForge();
       populateForgeSelects();
       if (opts?.skipReload && _map) {
@@ -3721,6 +3725,8 @@
       showLibrary();
     } catch (err) {
       reportForgeError('Failed to open Map Forge', err);
+      // Keep navigation recoverable even when storage or initialization fails.
+      showLibrary();
     }
   }
 
