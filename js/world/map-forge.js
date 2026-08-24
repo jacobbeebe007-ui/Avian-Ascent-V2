@@ -670,9 +670,18 @@
   function syncForgeValidationStatus(issues) {
     if (Date.now() < _actionStatusUntil) return;
     const list = Array.isArray(issues) ? issues : getValidationIssues();
-    const warnings = list.filter((i) => i.severity === 'warning' || i.severity === 'error');
+    const errors = list.filter((i) => i.severity === 'error');
+    const warnings = list.filter((i) => i.severity !== 'error');
     const el = document.getElementById('map-forge-status');
     if (!el) return;
+    if (errors.length) {
+      const first = errors[0].message || '';
+      const extra = errors.length > 1 ? ' (+' + (errors.length - 1) + ' more)' : '';
+      el.textContent = errors.length + (errors.length === 1 ? ' error: ' : ' errors - ') + first + extra;
+      el.classList.add('map-forge-status--warn');
+      el.style.color = '#ff9090';
+      return;
+    }
     if (warnings.length) {
       const hint = isEmptyDraft(_map) ? 'Guidelines: ' : '';
       const first = warnings[0].message || '';
