@@ -152,8 +152,8 @@
   };
 
   global.readForgeDraftsAsync = async function () {
-    await global.migrateMapForgeStorageAsync();
     try {
+      await global.migrateMapForgeStorageAsync();
       const db = await openDb();
       return await idbGetAllDrafts(db);
     } catch (_) {

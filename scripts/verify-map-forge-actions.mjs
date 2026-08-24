@@ -154,6 +154,7 @@ function assignLabelJob(node, typeKey) {
 }
 
 const html = readFileSync(path.join(root, 'index.html'), 'utf8');
+const forgeSource = readFileSync(path.join(root, 'js/world/map-forge.js'), 'utf8');
 const forgeStart = html.indexOf('id="screen-map-forge"');
 const forgeEnd = html.indexOf('<!-- BATTLE -->', forgeStart);
 const forgeSection = forgeStart >= 0 ? html.slice(forgeStart, forgeEnd) : '';
@@ -173,6 +174,12 @@ ok('Node type job hint present', forgeSection.includes('id="map-forge-node-type-
 ok('Node type labeled as job', forgeSection.includes('Node type (job)'));
 ok('World Creator title present', forgeSection.includes('World Creator'));
 ok('Library screen present', forgeSection.includes('id="map-forge-library"'));
+const openForgeBody = forgeSource.slice(
+  forgeSource.indexOf('async function openMapForge'),
+  forgeSource.indexOf('function openMapForgeLibrary')
+);
+ok('Build Nest shows its library before async initialization',
+  openForgeBody.indexOf('showLibrary();') < openForgeBody.indexOf('await initMapForge();'));
 ok('World tree present', forgeSection.includes('id="map-forge-world-tree"'));
 ok('Place palette includes Stage', forgeSection.includes('data-forge-tool="stage"'));
 ok('Place palette includes Spawn', forgeSection.includes('data-forge-tool="start"'));
