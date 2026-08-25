@@ -126,6 +126,10 @@
     document.getElementById('map-forge-library')?.classList.add('is-open');
     document.getElementById('map-forge-workspace')?.classList.add('is-hidden');
     document.getElementById('screen-map-forge')?.classList.add('is-library');
+    const lib = document.getElementById('map-forge-library');
+    if (lib?.querySelector('.map-forge-library-fallback') && typeof global.refreshMapForgeLibrary === 'function') {
+      global.refreshMapForgeLibrary();
+    }
   };
 
   global.hideMapForgeLibraryView = function () {

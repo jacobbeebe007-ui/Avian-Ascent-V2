@@ -84,6 +84,24 @@ async function main() {
   ok('New world section rendered', afterOpen.hasNewWorld);
   ok('workspace hidden while in library', afterOpen.wsHidden || afterOpen.wsDisplay === 'none');
 
+  // Regression: showScreen alone must replace the HTML loading fallback (playtest return path).
+  await page.evaluate(() => {
+    const lib = document.getElementById('map-forge-library');
+    if (lib) {
+      lib.innerHTML =
+        '<div class="map-forge-library-inner map-forge-library-fallback"><h2 class="map-forge-title">World Creator</h2>' +
+        '<p class="map-forge-library-sub">Build Nest — loading your worlds…</p></div>';
+    }
+    if (typeof showScreen === 'function') showScreen('screen-map-forge');
+  });
+  await page.waitForTimeout(200);
+  const afterShowScreenOnly = await page.evaluate(() => ({
+    stillLoading: (document.getElementById('map-forge-library')?.textContent || '').includes('loading your worlds'),
+    hasNewWorld: (document.getElementById('map-forge-library')?.textContent || '').includes('New world'),
+  }));
+  ok('showScreen alone clears loading fallback', !afterShowScreenOnly.stillLoading);
+  ok('showScreen alone renders library', afterShowScreenOnly.hasNewWorld);
+
   if (errors.length) {
     console.error('[FAIL] page errors:', errors.slice(0, 5).join(' | '));
     failed++;

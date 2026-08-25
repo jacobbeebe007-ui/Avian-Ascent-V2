@@ -8400,6 +8400,8 @@ function showScreen(id) {
     try {
       if (typeof globalThis.showMapForgeLibraryView === 'function') {
         globalThis.showMapForgeLibraryView();
+      } else if (typeof globalThis.refreshMapForgeLibrary === 'function') {
+        globalThis.refreshMapForgeLibrary();
       }
     } catch (_) {}
   }

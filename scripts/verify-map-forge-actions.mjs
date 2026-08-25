@@ -183,6 +183,7 @@ const openForgeBody = forgeSource.slice(
 );
 ok('Build Nest shows its library before async initialization',
   openForgeBody.indexOf('showLibrary();') < openForgeBody.indexOf('await initMapForge();'));
+ok('refreshMapForgeLibrary exported', forgeSource.includes('global.refreshMapForgeLibrary = refreshLibrary'));
 ok('Forge draft hydration has timeout fallback', forgeSource.includes('FORGE_DRAFT_HYDRATE_TIMEOUT_MS'));
 ok('World tree present', forgeSection.includes('id="map-forge-world-tree"'));
 ok('Place palette includes Stage', forgeSection.includes('data-forge-tool="stage"'));
