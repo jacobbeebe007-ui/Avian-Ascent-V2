@@ -3681,8 +3681,23 @@
     mapForgeZoomFit();
   }
 
+  function renderLibraryLoadError() {
+    const root = document.getElementById('map-forge-library');
+    if (!root) return;
+    root.innerHTML =
+      '<div class="map-forge-library-inner map-forge-library-fallback" aria-live="polite">' +
+      '<h2 class="map-forge-title">World Creator</h2>' +
+      '<p class="map-forge-library-sub map-forge-status--warn">Build Nest could not finish loading. Your game scripts may be outdated or still downloading.</p>' +
+      '<p class="map-forge-hint">Hard refresh this page (Ctrl+Shift+R) or reopen after the bundle finishes loading.</p>' +
+      '<button type="button" class="menu-btn" data-action="closeMapForge">← War room</button>' +
+      '</div>';
+  }
+
   function refreshLibrary() {
-    if (typeof global.renderMapForgeLibrary !== 'function') return;
+    if (typeof global.renderMapForgeLibrary !== 'function') {
+      renderLibraryLoadError();
+      return;
+    }
     global.renderMapForgeLibrary({
       drafts: readDrafts(),
       currentId: getCurrentDraftId(),
@@ -3879,6 +3894,7 @@
     },
   };
 
+  global.refreshMapForgeLibrary = refreshLibrary;
   global.openMapForgeLibrary = openMapForgeLibrary;
   global.toggleMapForgeHelp = toggleMapForgeHelp;
   global.initMapForge = initMapForge;
