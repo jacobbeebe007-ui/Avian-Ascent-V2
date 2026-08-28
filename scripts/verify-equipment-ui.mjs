@@ -30,6 +30,7 @@ const staticChecks = [
   ['nest worn doll', /nest-eq-doll/],
   ['grantPlayerEquipmentItem', /function grantPlayerEquipmentItem\b/],
   ['grantEquipment newest-bag copy', /Bag · newest first/],
+  ['nest mobile hint', /nest-eq-hint--narrow/],
   ['equipment v2 action grid class', /actions-grid--equipment-v2/],
   ['wireNestEquipmentTooltips', /function wireNestEquipmentTooltips\b/],
   ['setUltimateSource action', /Avian\.actions\.register\('setUltimateSource'/],

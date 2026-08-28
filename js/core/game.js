@@ -2746,7 +2746,10 @@ function buildNestEquipmentSectionV2(player){
   const equipHint=locked
     ? 'Loadout changes unlock after victory. Slot filters remain available.'
     : 'New finds auto-equip when the slot is empty. Bag pieces sit at the top — Equip fills an empty slot, Swap replaces what you are wearing. Hover a worn slot for stats.';
-  return `<div class="nest-section nest-equipment-section nest-equipment-section--v2${locked?' nest-equip-locked':''}"><div class="nest-section-title">⚙ Equipment</div>${lockNote}${filterHtml}<div class="nest-eq-layout"><div class="nest-eq-bag"><div class="nest-ledger-subtitle">Bag · newest first · ${escapeHtmlRoster(filterLabel)} (${filteredInv.length})</div>${invHtml}<p class="nest-ledger-note">${equipHint}</p></div><aside class="nest-eq-worn" aria-label="Currently worn loadout"><div class="nest-ledger-subtitle">Worn · ${wornCount}/${order.length||7}</div><div class="nest-eq-doll">${slotsHtml}</div><div class="nest-ledger-subtitle">Bonus from worn</div><div class="nest-equip-bonus">${bonusHtml}</div></aside></div></div>`;
+  const equipHintMobile=locked
+    ? 'Loadout unlocks after victory.'
+    : 'Tap a bag card to equip or swap. Tap worn gear to unequip.';
+  return `<div class="nest-section nest-equipment-section nest-equipment-section--v2${locked?' nest-equip-locked':''}"><div class="nest-section-title">⚙ Equipment</div>${lockNote}${filterHtml}<div class="nest-eq-layout"><div class="nest-eq-bag"><div class="nest-ledger-subtitle">Bag · newest first · ${escapeHtmlRoster(filterLabel)} (${filteredInv.length})</div>${invHtml}<p class="nest-ledger-note nest-eq-hint nest-eq-hint--wide">${equipHint}</p><p class="nest-ledger-note nest-eq-hint nest-eq-hint--narrow">${equipHintMobile}</p></div><aside class="nest-eq-worn" aria-label="Currently worn loadout"><div class="nest-ledger-subtitle">Worn · ${wornCount}/${order.length||7}</div><div class="nest-eq-doll">${slotsHtml}</div><div class="nest-ledger-subtitle nest-eq-bonus-lbl">Bonus from worn</div><div class="nest-equip-bonus">${bonusHtml}</div></aside></div></div>`;
 }
 function handleNestEquipmentClick(ev){
   const ultPick=ev.target.closest('[data-nest-ult-pick]');
