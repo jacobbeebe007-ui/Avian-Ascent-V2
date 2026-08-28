@@ -57,14 +57,23 @@ vm.createContext(owSandbox);
 vm.runInContext(owRuntimeSrc, owSandbox);
 vm.runInContext(packSchemaSrc, owSandbox);
 vm.runInContext(storyMapSrc, owSandbox);
-const v3Map = owSandbox.upgradeMapToV3(owSandbox.cloneDefaultStoryMap());
+const ow = owSandbox.globalThis;
+const cloneStory = ow.cloneDefaultStoryMap;
+ok('Story clone helper loads in overworld sandbox', typeof cloneStory === 'function');
+const v3Map = ow.upgradeMapToV3(cloneStory());
 const barnGate = v3Map.nodes.find((n) => n.name === 'Barn Gate');
-ok('v3 story nodes keep stage numbers in display labels', barnGate && owSandbox.getNodeDisplayLabel(barnGate, null) === '1');
-ok('v3 story nodes resolve stage titles', owSandbox.getStoryStageNodeTitle(1, v3Map) === 'Barn Gate');
+ok('v3 story nodes keep stage numbers in display labels', barnGate && ow.getNodeDisplayLabel(barnGate, null) === '1');
+ok('v3 story nodes resolve stage titles', ow.getStoryStageNodeTitle(1, v3Map) === 'Barn Gate');
+const storyV2 = ow.upgradeMapToV2(cloneStory());
+const storyStage = storyV2.nodes.find((n) => n.name === 'Barn Gate');
+ok('story map v2 keeps classic stage node type', storyStage && storyStage.type === 'stage');
 
 const overworldHtml = readFileSync(path.join(root, 'blackstone_overworld_new.html'), 'utf8');
 ok('Overworld page loads shared story map script', overworldHtml.includes('js/data/story-map.js'));
 ok('Overworld page has no inline DEFAULT_NODES source', !overworldHtml.includes('const DEFAULT_NODES='));
+ok('Overworld render skips decor labels only', overworldHtml.includes('isOwDecorLabelNode(n)') && !overworldHtml.includes('if(n.type===\'label\') return;'));
+ok('Overworld uses effective node type for labels', overworldHtml.includes('const effType=eff?.type||n.type'));
+ok('Story map keeps v2 upgrade path', overworldHtml.includes('storyBuiltin:true'));
 
 if (process.exitCode) {
   console.error('\nStory map verification failed.');

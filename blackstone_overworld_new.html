@@ -325,16 +325,22 @@ if(_FORGE_CUSTOM_MODE){
     _CUSTOM_MAP_RAW=loadCustomOverworldMap();
   }
 }
-const _upgradeOwMap = (raw) => {
+const _owGlobal = globalThis;
+const _upgradeOwMap = (raw, opts) => {
   if (!raw) return raw;
-  if (typeof upgradeMapToV3 === 'function') return upgradeMapToV3(raw);
-  if (typeof upgradeMapToV2 === 'function') return upgradeMapToV2(raw);
+  // Built-in story campaign keeps classic stage/shop node types (v2) for reliable labels.
+  if (opts && opts.storyBuiltin) {
+    if (typeof _owGlobal.upgradeMapToV2 === 'function') return _owGlobal.upgradeMapToV2(raw);
+    return raw;
+  }
+  if (typeof _owGlobal.upgradeMapToV3 === 'function') return _owGlobal.upgradeMapToV3(raw);
+  if (typeof _owGlobal.upgradeMapToV2 === 'function') return _owGlobal.upgradeMapToV2(raw);
   return raw;
 };
 const _CUSTOM_MAP=_CUSTOM_MAP_RAW?_upgradeOwMap(_CUSTOM_MAP_RAW):_CUSTOM_MAP_RAW;
 const _FORGE_CUSTOM=!!(_CUSTOM_MAP&&_FORGE_CUSTOM_MODE);
-const _STORY_MAP_RAW=typeof cloneDefaultStoryMap==='function'?cloneDefaultStoryMap():null;
-const _STORY_MAP=_STORY_MAP_RAW?_upgradeOwMap(_STORY_MAP_RAW):_STORY_MAP_RAW;
+const _STORY_MAP_RAW=typeof _owGlobal.cloneDefaultStoryMap==='function'?_owGlobal.cloneDefaultStoryMap():null;
+const _STORY_MAP=_STORY_MAP_RAW?_upgradeOwMap(_STORY_MAP_RAW,{storyBuiltin:true}):_STORY_MAP_RAW;
 const _MISSION_VARIANT=typeof getMissionMapVariant==='function'?getMissionMapVariant():'demo';
 const _loadEl=document.getElementById('ow-map-loading');
 let _USE_CUSTOM=_FORGE_CUSTOM;
@@ -556,11 +562,12 @@ function nodeDisplayLabel(n){
 }
 function isOwDecorLabelNode(n){
   if(!n) return false;
-  if(typeof getOwLocationKind==='function'){
-    const kind=getOwLocationKind(n);
+  if(n.labelConfig&&n.labelConfig.actsAsNode) return false;
+  if(typeof _owGlobal.getOwLocationKind==='function'){
+    const kind=_owGlobal.getOwLocationKind(n);
     return kind==='label'||kind==='labelUi';
   }
-  return n.type==='label'&&!(n.labelConfig&&n.labelConfig.actsAsNode);
+  return n.type==='label';
 }
 function getNodePortraitBird(n){ return n?.portraitBird || ''; }
 function inferCompletedStageFromNodeId(nodeId){
@@ -1095,7 +1102,9 @@ NODES.forEach((n,ni)=>{
 NODES.forEach((n,ni)=>{
   if(!isOwDecorLabelNode(n)) return;
   if(!owNodeVisible(ni)) return;
-  const cfg=n.labelConfig||{};
+  const cfgRaw=n.labelConfig||{};
+  const cfg=Object.assign({},cfgRaw);
+  if(cfg.actsAsNode&&!cfg.text) cfg.text=n.name||nodeDisplayLabel(n)||'';
   const ui=owLabelUiAction(cfg);
   const vc=owLabelVc(cfg);
   const w=cfg.width||80,h=cfg.height||36;
