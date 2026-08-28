@@ -65,6 +65,7 @@ function loadSandbox(extraFiles) {
     'js/data/combat-config.js',
     'js/data/equipment/slots.js',
     'js/data/equipment/items.js',
+    'js/data/equipment/starting-weapons.js',
     'js/data/equipment/reference-loadouts.js',
   ];
   for (const rel of [...baseFiles, ...(extraFiles || [])]) {
@@ -313,6 +314,89 @@ if (!unequipPlayer.equipment.helmet && unequipPlayer.equipmentInventory.length =
     ok(`Armour sums across equipment sources (${armFlat}+${hlmFlat}=${expectArm})`);
   } else {
     fail(`Armour rollup ${expectArm} != ARM ${armFlat} + HLM ${hlmFlat}`);
+  }
+}
+
+// --- grantEquipment auto-wears empty slots, bags when full ---
+{
+  const grantEmpty = freshPlayer('crow');
+  const gHelm = equipment.grantEquipment(grantEmpty, 'HLM-001');
+  if (gHelm.ok && gHelm.autoEquipped && grantEmpty.equipment.helmet === 'HLM-001' && !grantEmpty.equipmentInventory.includes('HLM-001')) {
+    ok('grantEquipment auto-equips empty helmet');
+  } else {
+    fail(`grantEquipment should auto-equip empty helmet, got ${JSON.stringify(gHelm)} helm=${grantEmpty.equipment.helmet}`);
+  }
+  const gHelm2 = equipment.grantEquipment(grantEmpty, 'HLM-001');
+  if (gHelm2.ok && !gHelm2.autoEquipped && grantEmpty.equipment.helmet === 'HLM-001' && grantEmpty.equipmentInventory[0] === 'HLM-001') {
+    ok('grantEquipment bags a second helmet when slot is full');
+  } else {
+    fail(`full helmet should stay in bag, got auto=${gHelm2.autoEquipped} inv=${JSON.stringify(grantEmpty.equipmentInventory)}`);
+  }
+}
+
+{
+  const grantOff = freshPlayer('sparrow');
+  equipment.ensurePlayerEquipmentState(grantOff);
+  const starter = grantOff.equipment.mainHand;
+  const gWpn = equipment.grantEquipment(grantOff, 'WPN-001');
+  if (gWpn.ok && gWpn.autoEquipped && gWpn.slot === 'offHand' && grantOff.equipment.offHand === 'WPN-001' && grantOff.equipment.mainHand === starter) {
+    ok('grantEquipment auto-equips 1H dagger to empty offHand');
+  } else {
+    fail(`expected offHand auto-equip, got ${JSON.stringify(gWpn)} off=${grantOff.equipment.offHand}`);
+  }
+}
+
+{
+  const grant2h = freshPlayer('crow');
+  equipment.ensurePlayerEquipmentState(grant2h);
+  const g2h = equipment.grantEquipment(grant2h, 'WPN-061');
+  if (g2h.ok && !g2h.autoEquipped && grant2h.equipmentInventory[0] === 'WPN-061' && grant2h.equipment.mainHand && grant2h.equipment.mainHand !== 'WPN-061') {
+    ok('grantEquipment leaves 2H in bag when mainHand is already filled');
+  } else {
+    fail(`2H should stay in bag when mainHand full, got ${JSON.stringify(g2h)} main=${grant2h.equipment.mainHand}`);
+  }
+}
+
+{
+  const grantAnk = freshPlayer('crow');
+  const a1 = equipment.grantEquipment(grantAnk, 'ACC-001');
+  const a2 = equipment.grantEquipment(grantAnk, 'ACC-001');
+  if (a1.autoEquipped && a2.autoEquipped && grantAnk.equipment.ankletL === 'ACC-001' && grantAnk.equipment.ankletR === 'ACC-001') {
+    ok('grantEquipment fills both empty anklet slots in order');
+  } else {
+    fail(`anklets should fill L then R, L=${grantAnk.equipment.ankletL} R=${grantAnk.equipment.ankletR}`);
+  }
+}
+
+{
+  const grantClass = freshPlayer('crow');
+  const gWand = equipment.grantEquipment(grantClass, 'WPN-031');
+  if (gWand.ok && !gWand.autoEquipped && grantClass.equipmentInventory.includes('WPN-031')) {
+    ok('grantEquipment does not auto-equip class-restricted gear');
+  } else {
+    fail(`mage wand should stay in knight bag, got ${JSON.stringify(gWand)}`);
+  }
+}
+
+{
+  const orderP = freshPlayer('crow');
+  equipment.addToInventory(orderP, 'HLM-001');
+  equipment.addToInventory(orderP, 'ARM-001');
+  if (orderP.equipmentInventory[0] === 'ARM-001' && orderP.equipmentInventory[1] === 'HLM-001') {
+    ok('addToInventory prepends so newest bag item is first');
+  } else {
+    fail(`expected [ARM-001, HLM-001], got ${JSON.stringify(orderP.equipmentInventory)}`);
+  }
+}
+
+{
+  const noRe = freshPlayer('crow');
+  equipment.grantEquipment(noRe, 'HLM-001');
+  equipment.unequip(noRe, 'helmet');
+  if (!noRe.equipment.helmet && noRe.equipmentInventory[0] === 'HLM-001') {
+    ok('unequip returns to front of bag without auto-re-equipping');
+  } else {
+    fail(`unequip should not auto-re-equip, helm=${noRe.equipment.helmet} inv=${JSON.stringify(noRe.equipmentInventory)}`);
   }
 }
 

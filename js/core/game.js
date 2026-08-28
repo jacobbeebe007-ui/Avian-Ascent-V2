@@ -2614,25 +2614,62 @@ function equipmentSlotIconForItem(item){
   }
   return '⚙';
 }
-function _nestEquipmentItemHtml(itemId, slotKey, locked=false){
+function grantPlayerEquipmentItem(itemId){
+  if(!itemId) return {ok:false, autoEquipped:false, slot:null, itemId:null};
+  const player=typeof G!=='undefined'?G.player:null;
+  if(!player) return {ok:false, autoEquipped:false, slot:null, itemId};
+  if(typeof Avian?.equipment?.grantEquipment==='function'){
+    const result=Avian.equipment.grantEquipment(player, itemId)||{ok:false};
+    if(result.autoEquipped && typeof logMsg==='function'){
+      const item=typeof getEquipmentItem==='function'?getEquipmentItem(itemId):null;
+      const slotLbl=typeof getEquipmentNestSlotLabel==='function'?getEquipmentNestSlotLabel(result.slot):result.slot;
+      logMsg(`⚙ Auto-equipped ${item?.name||itemId}${slotLbl?' · '+slotLbl:''}.`,'system');
+    }
+    return result;
+  }
+  if(typeof Avian?.equipment?.addToInventory==='function'){
+    Avian.equipment.addToInventory(player, itemId);
+    return {ok:true, autoEquipped:false, slot:null, itemId};
+  }
+  return {ok:false, autoEquipped:false, slot:null, itemId};
+}
+function _nestInvCompareHtml(player, itemId){
+  if(!player || !itemId) return '';
+  const emptySlot=typeof Avian?.equipment?.findEmptyEquipSlotForItem==='function'
+    ? Avian.equipment.findEmptyEquipSlotForItem(player, itemId)
+    : null;
+  if(emptySlot){
+    return `<div class="nest-inv-compare nest-inv-compare--empty">Fits empty ${escapeHtmlRoster(getEquipmentNestSlotLabel(emptySlot))}</div>`;
+  }
+  const slot=typeof Avian?.equipment?.findEquipSlotForItem==='function'
+    ? Avian.equipment.findEquipSlotForItem(player, itemId)
+    : null;
+  if(!slot) return '';
+  const wornId=player.equipment?.[slot];
+  const worn=wornId?getEquipmentItem(wornId):null;
+  if(!worn) return '';
+  return `<div class="nest-inv-compare">Swap ${escapeHtmlRoster(getEquipmentNestSlotLabel(slot))}: ${escapeHtmlRoster(worn.name)}</div>`;
+}
+function _nestEquipmentItemHtml(itemId, slotKey, locked=false, opts={}){
   const icons=EQUIPMENT_NEST_SLOT_ICONS;
   const slotLbl=getEquipmentNestSlotLabel(slotKey);
   const slotBadge=icons[slotKey]?`<span class="nest-slot-badge" title="${escapeHtmlRoster(slotLbl)}">${icons[slotKey]}</span>`:'';
   const lockAttrs=locked?' aria-disabled="true" title="Story battle loadouts are locked until victory."':'';
+  const focus=opts.highlight?' is-focus':'';
+  const dim=opts.dim?' is-dim':'';
+  const dollCls=` nest-eq-doll-slot nest-eq-doll-slot--${slotKey}`;
   if(!itemId){
-    return `<div class="nest-equip-slot nest-equip-slot--gear${locked?' is-locked':''}" data-nest-eq-slot="${slotKey}"${lockAttrs}><div class="nest-equip-slot-lbl">${slotBadge}${escapeHtmlRoster(slotLbl)}</div><div class="nest-equip-slot-name" style="color:var(--text-dim)">Empty</div>${locked?'':'<span class="nest-equip-action">Choose gear</span>'}</div>`;
+    return `<div class="nest-equip-slot nest-equip-slot--gear nest-equip-slot--compact${dollCls}${focus}${dim}${locked?' is-locked':''}" data-nest-eq-slot="${slotKey}"${lockAttrs}><div class="nest-equip-slot-lbl">${slotBadge}${escapeHtmlRoster(slotLbl)}</div><div class="nest-equip-slot-name" style="color:var(--text-dim)">Empty</div>${locked?'':'<span class="nest-equip-action">Browse bag</span>'}</div>`;
   }
   const item=getEquipmentItem(itemId);
   if(!item){
-    return `<div class="nest-equip-slot nest-equip-slot--gear${locked?' is-locked':''}" data-nest-eq-slot="${slotKey}"${lockAttrs}><div class="nest-equip-slot-lbl">${slotBadge}${escapeHtmlRoster(slotLbl)}</div><div class="nest-equip-slot-name" style="color:var(--text-dim)">Empty</div></div>`;
+    return `<div class="nest-equip-slot nest-equip-slot--gear nest-equip-slot--compact${dollCls}${focus}${dim}${locked?' is-locked':''}" data-nest-eq-slot="${slotKey}"${lockAttrs}><div class="nest-equip-slot-lbl">${slotBadge}${escapeHtmlRoster(slotLbl)}</div><div class="nest-equip-slot-name" style="color:var(--text-dim)">Empty</div></div>`;
   }
   const tierCss=nestTierCssClass(item.rarity);
   const tierMeta=rewardTierMeta(item.rarity);
   const tierColor=nestTierColorVar(item.rarity);
   const handBadge=equipmentHandBadgeHtml(item);
-  const statsBlock=formatEquipmentCompactStatsHtml(item);
-  const statsHtml=statsBlock?`<div class="nest-mut-stats mut-stat-compact-wrap nest-equip-mut-stats">${statsBlock}</div>`:'';
-  return `<div class="nest-equip-slot nest-equip-slot--gear filled tier-${item.rarity} tier-ui-${tierCss}${locked?' is-locked':''}" data-nest-eq-slot="${slotKey}" data-nest-eq-item="${itemId}"${lockAttrs}><div class="nest-equip-slot-lbl">${slotBadge}${escapeHtmlRoster(slotLbl)}${handBadge}</div><div class="nest-tier-label" style="color:${tierColor}">${tierMeta.label}</div><div class="nest-equip-slot-name" style="color:${tierColor}">${escapeHtmlRoster(item.name)}</div>${statsHtml}${locked?'':'<span class="nest-equip-action nest-equip-action--remove">Unequip</span>'}</div>`;
+  return `<div class="nest-equip-slot nest-equip-slot--gear nest-equip-slot--compact filled tier-${item.rarity} tier-ui-${tierCss}${dollCls}${focus}${dim}${locked?' is-locked':''}" data-nest-eq-slot="${slotKey}" data-nest-eq-item="${itemId}"${lockAttrs}><div class="nest-equip-slot-lbl">${slotBadge}${escapeHtmlRoster(slotLbl)}${handBadge}</div><div class="nest-tier-label" style="color:${tierColor}">${tierMeta.label}</div><div class="nest-equip-slot-name" style="color:${tierColor}">${escapeHtmlRoster(item.name)}</div>${locked?'':'<span class="nest-equip-action nest-equip-action--remove">Unequip</span>'}</div>`;
 }
 function buildNestEquipmentSectionV2(player){
   if(typeof Avian?.equipment?.ensurePlayerEquipmentState!=='function') return '';
@@ -2647,10 +2684,12 @@ function buildNestEquipmentSectionV2(player){
     return `<button type="button" class="nest-slot-filter${active}" data-nest-eq-filter="${sk}">${icon} ${escapeHtmlRoster(getEquipmentNestSlotLabel(sk))}</button>`;
   }).join('')}</div>`;
   const eq=player.equipment||{};
+  const wornCount=order.filter(sk=>!!eq[sk]).length;
   let slotsHtml='';
-  const slotKeys=activeFilter==='all'?order:[activeFilter];
-  for(const sk of slotKeys){
-    slotsHtml+=_nestEquipmentItemHtml(eq[sk]||null, sk, locked);
+  for(const sk of order){
+    const highlight=activeFilter!=='all' && sk===activeFilter;
+    const dim=activeFilter!=='all' && sk!==activeFilter;
+    slotsHtml+=_nestEquipmentItemHtml(eq[sk]||null, sk, locked, {highlight, dim});
   }
   const roll=typeof Avian.equipment.sumEquippedEquipment==='function'?Avian.equipment.sumEquippedEquipment(player):{stats:{},pct:{}};
   const flatChips=Object.keys(roll.stats||{}).map(k=>{
@@ -2682,9 +2721,9 @@ function buildNestEquipmentSectionV2(player){
   const filterLabel=activeFilter==='all'?'All gear':getEquipmentNestSlotLabel(activeFilter);
   let invHtml='';
   if(!filteredInv.length){
-    invHtml=`<div class="nest-inv-empty">No ${escapeHtmlRoster(filterLabel)} in inventory.</div>`;
+    invHtml=`<div class="nest-inv-empty">No ${escapeHtmlRoster(filterLabel)} in the bag. New finds land here when that slot is already filled.</div>`;
   } else {
-    invHtml='<div class="nest-inventory-grid">';
+    invHtml='<div class="nest-inventory-grid nest-inventory-grid--bag">';
     for(const id of filteredInv){
       const item=getEquipmentItem(id);
       if(!item) continue;
@@ -2693,16 +2732,21 @@ function buildNestEquipmentSectionV2(player){
       const tierColor=nestTierColorVar(item.rarity);
       const slotBadge=`<span class="nest-slot-badge">${equipmentSlotIconForItem(item)}</span>`;
       const canEquip=typeof Avian?.equipment?.findEquipSlotForItem==='function'?!!Avian.equipment.findEquipSlotForItem(player,id):true;
+      const emptySlot=typeof Avian?.equipment?.findEmptyEquipSlotForItem==='function'?Avian.equipment.findEmptyEquipSlotForItem(player,id):null;
       const classTag=item.classRestriction&&item.classRestriction!=='Any'?`<span class="nest-class-tag">${escapeHtmlRoster(String(item.classRestriction))}</span>`:'';
       const handBadge=equipmentHandBadgeHtml(item);
       const statsBlock=formatEquipmentCompactStatsHtml(item);
-      invHtml+=`<div class="nest-inv-item tier-${item.rarity} tier-ui-${tierCss}${locked?' is-locked':''}${canEquip?'':' nest-inv-ineligible'}" data-nest-eq-inv="${id}" ${(!canEquip||locked)?'aria-disabled="true"':''} title="${canEquip?'':('Class only: '+String(item.classRestriction))}">${slotBadge}<div class="nest-tier-label" style="color:${tierColor}">${tierMeta.label}</div><strong style="color:${tierColor}">${escapeHtmlRoster(item.name)}</strong>${classTag}${handBadge}<br><span style="color:${tierColor}">${escapeHtmlRoster(item.family||item.slot)}</span>${statsBlock?`<div class="nest-mut-stats mut-stat-compact-wrap">${statsBlock}</div>`:''}${(!locked&&canEquip)?'<span class="nest-equip-action">Equip</span>':''}</div>`;
+      const compareHtml=_nestInvCompareHtml(player, id);
+      const actionLbl=emptySlot?'Equip':'Swap';
+      invHtml+=`<div class="nest-inv-item tier-${item.rarity} tier-ui-${tierCss}${locked?' is-locked':''}${canEquip?'':' nest-inv-ineligible'}" data-nest-eq-inv="${id}" ${(!canEquip||locked)?'aria-disabled="true"':''} title="${canEquip?'':('Class only: '+String(item.classRestriction))}">${slotBadge}<div class="nest-tier-label" style="color:${tierColor}">${tierMeta.label}</div><strong style="color:${tierColor}">${escapeHtmlRoster(item.name)}</strong>${classTag}${handBadge}<br><span style="color:${tierColor}">${escapeHtmlRoster(item.family||item.slot)}</span>${statsBlock?`<div class="nest-mut-stats mut-stat-compact-wrap">${statsBlock}</div>`:''}${compareHtml}${(!locked&&canEquip)?`<span class="nest-equip-action">${actionLbl}</span>`:''}</div>`;
     }
     invHtml+='</div>';
   }
   const lockNote=locked?'<p class="nest-lock-note">Equipment is locked during Story battle. Equip from rewards or the overworld Nest.</p>':'';
-  const equipHint=locked?'Loadout changes unlock after victory. Slot filters remain available.':'Click inventory items to equip. Click equipped items to store in inventory.';
-  return `<div class="nest-section nest-equipment-section nest-equipment-section--v2${locked?' nest-equip-locked':''}"><div class="nest-section-title">⚙ Equipment</div>${lockNote}${filterHtml}<div class="nest-ledger-subtitle">Equipped · ${escapeHtmlRoster(filterLabel)}</div><div class="nest-equip-grid nest-equip-grid--v2${activeFilter==='all'?' nest-equip-grid-all':''}">${slotsHtml}</div><div class="nest-ledger-subtitle">Bonus from equipped</div><div class="nest-equip-bonus">${bonusHtml}</div><div class="nest-section-title" style="margin-top:14px">🎒 Inventory · ${escapeHtmlRoster(filterLabel)} (${filteredInv.length})</div>${invHtml}<p class="nest-ledger-note">${equipHint}</p></div>`;
+  const equipHint=locked
+    ? 'Loadout changes unlock after victory. Slot filters remain available.'
+    : 'New finds auto-equip when the slot is empty. Bag pieces sit at the top — Equip fills an empty slot, Swap replaces what you are wearing. Hover a worn slot for stats.';
+  return `<div class="nest-section nest-equipment-section nest-equipment-section--v2${locked?' nest-equip-locked':''}"><div class="nest-section-title">⚙ Equipment</div>${lockNote}${filterHtml}<div class="nest-eq-layout"><div class="nest-eq-bag"><div class="nest-ledger-subtitle">Bag · newest first · ${escapeHtmlRoster(filterLabel)} (${filteredInv.length})</div>${invHtml}<p class="nest-ledger-note">${equipHint}</p></div><aside class="nest-eq-worn" aria-label="Currently worn loadout"><div class="nest-ledger-subtitle">Worn · ${wornCount}/${order.length||7}</div><div class="nest-eq-doll">${slotsHtml}</div><div class="nest-ledger-subtitle">Bonus from worn</div><div class="nest-equip-bonus">${bonusHtml}</div></aside></div></div>`;
 }
 function handleNestEquipmentClick(ev){
   const ultPick=ev.target.closest('[data-nest-ult-pick]');
@@ -7598,7 +7642,10 @@ function grantEndlessMapTreasure(){
   if(Avian.equipmentLoot && typeof Avian.equipmentLoot.rollEquipmentReward==='function'){
     const rw = Avian.equipmentLoot.rollEquipmentReward({ stage: G.stage, filterForPlayer: true });
     const itemId = rw?.equipmentItemId || rw?.id;
-    if(itemId && typeof Avian?.equipment?.addToInventory==='function'){
+    if(itemId && typeof grantPlayerEquipmentItem==='function'){
+      grantPlayerEquipmentItem(itemId);
+      gearLabel = rw?.name ? (' + ' + rw.name) : ' + equipment';
+    } else if(itemId && typeof Avian?.equipment?.addToInventory==='function'){
       Avian.equipment.addToInventory(G.player, itemId);
       gearLabel = rw?.name ? (' + ' + rw.name) : ' + equipment';
     }
@@ -16433,7 +16480,8 @@ function applySingleReward(rw) {
   if (!G.endlessMode) Avian.storyRun?.collectReward(rw);
   if (rw.type === 'equipment') {
     const itemId = rw.equipmentItemId || rw.id;
-    if (typeof Avian?.equipment?.addToInventory === 'function') Avian.equipment.addToInventory(G.player, itemId);
+    if (typeof grantPlayerEquipmentItem === 'function') grantPlayerEquipmentItem(itemId);
+    else if (typeof Avian?.equipment?.addToInventory === 'function') Avian.equipment.addToInventory(G.player, itemId);
     if (typeof Avian?.equipmentLoot?.registerOrangeAcquired === 'function') {
       Avian.equipmentLoot.registerOrangeAcquired(Avian.equipmentLoot.getItem(itemId));
     }
@@ -17598,7 +17646,8 @@ function applyGroveGearReward(rw){
   if(!rw) return null;
   if(rw.type==='equipment'){
     const itemId=rw.equipmentItemId||rw.id;
-    if(typeof Avian?.equipment?.addToInventory==='function') Avian.equipment.addToInventory(G.player, itemId);
+    if(typeof grantPlayerEquipmentItem==='function') grantPlayerEquipmentItem(itemId);
+    else if(typeof Avian?.equipment?.addToInventory==='function') Avian.equipment.addToInventory(G.player, itemId);
     if(typeof Avian?.equipmentLoot?.registerOrangeAcquired==='function'){
       Avian.equipmentLoot.registerOrangeAcquired(Avian.equipmentLoot.getItem(itemId));
     }
@@ -19265,7 +19314,8 @@ function purchaseShopItemAtIndex(idx, costOverride){
   if(cost<getShopItemBaseCost(item) && G._nextShopDiscount>0) G._nextShopDiscount=0;
   if(item.type==='equipment'){
     const itemId=item.equipmentItemId||item.id;
-    if(typeof Avian?.equipment?.addToInventory==='function') Avian.equipment.addToInventory(G.player, itemId);
+    if(typeof grantPlayerEquipmentItem==='function') grantPlayerEquipmentItem(itemId);
+    else if(typeof Avian?.equipment?.addToInventory==='function') Avian.equipment.addToInventory(G.player, itemId);
     if(typeof Avian?.equipmentLoot?.registerOrangeAcquired==='function'){
       Avian.equipmentLoot.registerOrangeAcquired(Avian.equipmentLoot.getItem(itemId));
     }
