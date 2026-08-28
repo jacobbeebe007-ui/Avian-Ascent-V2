@@ -19413,6 +19413,10 @@ function openAbandonModal() {
 }
 function closeAbandonModal() {
   const m=document.getElementById('abandon-modal'); if(m) m.classList.remove('open');
+  if(isOwUiEmbedMode() && globalThis.__AVIAN_OW_UI_EMBED__==='settings'){
+    const sm=document.getElementById('settings-modal');
+    if(sm) sm.classList.add('open');
+  }
 }
 function confirmAbandon() {
   closeAbandonModal();
@@ -20701,6 +20705,7 @@ function returnToWarRoomFromSettings(){
 }
 globalThis.returnToWarRoomFromSettings = returnToWarRoomFromSettings;
 function openAbandonFromSettings(){
+  closeSettingsModal({ keepEmbedOpen: true });
   openAbandonModal();
 }
 globalThis.openAbandonFromSettings = openAbandonFromSettings;
