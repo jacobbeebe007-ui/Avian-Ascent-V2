@@ -269,7 +269,9 @@
     var g = global.G;
     if (drop.type === 'equipment') {
       var eqId = drop.equipmentItemId || drop.id;
-      if (eqId && Avian.equipment && typeof Avian.equipment.addToInventory === 'function') {
+      if (eqId && Avian.equipment && typeof Avian.equipment.grantEquipment === 'function') {
+        Avian.equipment.grantEquipment(g.player, eqId);
+      } else if (eqId && Avian.equipment && typeof Avian.equipment.addToInventory === 'function') {
         Avian.equipment.addToInventory(g.player, eqId);
       }
       if (Avian.equipmentLoot && typeof Avian.equipmentLoot.registerOrangeAcquired === 'function') {

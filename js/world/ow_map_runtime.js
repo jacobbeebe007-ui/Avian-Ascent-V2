@@ -790,8 +790,14 @@
       });
     };
     const grantEquipmentId = (id) => {
-      if (!id || typeof global.Avian?.equipment?.addToInventory !== 'function') return;
-      global.Avian.equipment.addToInventory(player, id);
+      if (!id) return;
+      if (typeof global.Avian?.equipment?.grantEquipment === 'function') {
+        global.Avian.equipment.grantEquipment(player, id);
+      } else if (typeof global.Avian?.equipment?.addToInventory === 'function') {
+        global.Avian.equipment.addToInventory(player, id);
+      } else {
+        return;
+      }
       granted.equipment.push(id);
       if (typeof global.Avian?.equipmentLoot?.registerOrangeAcquired === 'function') {
         global.Avian.equipmentLoot.registerOrangeAcquired(global.Avian.equipmentLoot.getItem(id));

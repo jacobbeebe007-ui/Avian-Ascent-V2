@@ -26,6 +26,10 @@ const gameSrc = readFileSync(gamePath, 'utf8');
 const staticChecks = [
   ['buildEquipmentTooltipHTML', /function buildEquipmentTooltipHTML\b/],
   ['buildNestEquipmentSectionV2', /function buildNestEquipmentSectionV2\b/],
+  ['nest equipment two-column layout', /nest-eq-layout/],
+  ['nest worn doll', /nest-eq-doll/],
+  ['grantPlayerEquipmentItem', /function grantPlayerEquipmentItem\b/],
+  ['grantEquipment newest-bag copy', /Bag · newest first/],
   ['equipment v2 action grid class', /actions-grid--equipment-v2/],
   ['wireNestEquipmentTooltips', /function wireNestEquipmentTooltips\b/],
   ['setUltimateSource action', /Avian\.actions\.register\('setUltimateSource'/],
@@ -97,6 +101,12 @@ if (ctx) {
     ok('collectUltimateCandidates exported');
   } else {
     fail('collectUltimateCandidates not exported');
+  }
+
+  if (typeof ctx.Avian.equipment.grantEquipment === 'function' && typeof ctx.Avian.equipment.findEmptyEquipSlotForItem === 'function') {
+    ok('grantEquipment and findEmptyEquipSlotForItem exported');
+  } else {
+    fail('grantEquipment / findEmptyEquipSlotForItem missing');
   }
 
   const sampleWpn = ctx.Avian.data?.equipment?.items?.['WPN-007'];

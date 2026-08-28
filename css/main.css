@@ -3920,7 +3920,7 @@ html.avian-ow-nest-embed .nest-close{display:none!important;}
 
 #nest-modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.82);z-index:8000;align-items:flex-start;justify-content:center;padding:20px;overflow-y:auto;}
 #nest-modal.open{display:flex;}
-.nest-inner{background:var(--surface);border:1px solid rgba(201,168,76,.4);border-radius:16px;max-width:min(96vw,960px);width:100%;padding:28px 30px;position:relative;margin:auto;max-height:min(92vh,920px);overflow-y:auto;}
+.nest-inner{background:var(--surface);border:1px solid rgba(201,168,76,.4);border-radius:16px;max-width:min(96vw,1080px);width:100%;padding:28px 30px;position:relative;margin:auto;max-height:min(92vh,920px);overflow-y:auto;}
 .nest-inner h2{font-family:"Cinzel",serif;color:var(--gold);font-size:1.4rem;margin-bottom:4px;text-align:center;}
 .nest-subtitle{color:var(--text-dim);font-size:.82rem;text-align:center;margin-bottom:18px;}
 .nest-tabs{position:sticky;top:-28px;z-index:5;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;margin:0 0 20px;padding:10px 0;background:linear-gradient(180deg,var(--surface) 75%,transparent);}
@@ -4031,6 +4031,51 @@ html.avian-ow-nest-embed .nest-close{display:none!important;}
 .nest-equip-bonus{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0 4px;}
 .nest-equip-bonus-chip{font-size:.72rem;padding:3px 8px;border-radius:999px;background:rgba(106,184,154,.15);border:1px solid rgba(106,184,154,.35);color:#6ab89a;}
 .nest-inventory-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px;max-height:320px;overflow-y:auto;}
+.nest-eq-layout{display:grid;grid-template-columns:minmax(0,1fr) minmax(240px,300px);gap:14px;align-items:start;}
+.nest-eq-bag{min-width:0;}
+.nest-inventory-grid--bag{max-height:none;overflow:visible;}
+.nest-eq-worn{
+  position:sticky;top:52px;z-index:3;
+  background:linear-gradient(180deg,rgba(28,24,18,.96),rgba(18,16,12,.94));
+  border:1px solid rgba(201,168,76,.28);
+  border-radius:12px;
+  padding:10px 10px 12px;
+  box-shadow:0 8px 22px rgba(0,0,0,.28);
+}
+.nest-eq-doll{
+  display:grid;
+  grid-template-columns:minmax(0,1fr) minmax(0,1.12fr) minmax(0,1fr);
+  grid-template-areas:
+    ". helmet ."
+    "mainHand armour offHand"
+    "ankletL necklace ankletR";
+  gap:6px;
+  margin-bottom:8px;
+}
+.nest-eq-doll-slot--helmet{grid-area:helmet;}
+.nest-eq-doll-slot--armour{grid-area:armour;}
+.nest-eq-doll-slot--mainHand{grid-area:mainHand;}
+.nest-eq-doll-slot--offHand{grid-area:offHand;}
+.nest-eq-doll-slot--ankletL{grid-area:ankletL;}
+.nest-eq-doll-slot--ankletR{grid-area:ankletR;}
+.nest-eq-doll-slot--necklace{grid-area:necklace;}
+.nest-equip-slot--compact{min-height:84px;padding:7px 6px;font-size:.68rem;}
+.nest-equip-slot--compact .nest-equip-slot-name{-webkit-line-clamp:2;font-size:.68rem;}
+.nest-equip-slot--compact .nest-equip-action{margin-top:6px;padding:2px 7px;font-size:.58rem;}
+.nest-eq-doll-slot.is-focus{box-shadow:0 0 0 2px rgba(201,168,76,.55);}
+.nest-eq-doll-slot.is-dim{opacity:.48;}
+.nest-inv-compare{margin-top:6px;font-size:.6rem;line-height:1.3;color:var(--gold-light);border-top:1px solid rgba(201,168,76,.18);padding-top:5px;width:100%;}
+.nest-inv-compare--empty{color:#9ed9c4;border-top-color:rgba(106,184,154,.22);}
+@media (max-width:720px){
+  .nest-eq-layout{grid-template-columns:1fr;}
+  .nest-eq-worn{order:-1;top:86px;}
+  .nest-eq-doll{
+    grid-template-columns:repeat(4,minmax(0,1fr));
+    grid-template-areas:
+      "helmet armour mainHand offHand"
+      "ankletL ankletR necklace necklace";
+  }
+}
 .nest-inv-item{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px;min-height:130px;cursor:pointer;font-size:.72rem;line-height:1.3;transition:all .15s;text-align:center;display:flex;flex-direction:column;align-items:center;}
 .nest-mut-stats{margin-top:5px;font-size:.65rem;line-height:1.35;}
 .nest-mut-stats .mut-stat-line{font-size:.65rem;margin:0;}

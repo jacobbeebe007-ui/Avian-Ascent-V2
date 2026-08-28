@@ -400,7 +400,9 @@
       family: item.family || null,
       slot: item.slot || null,
       apply: function (p) {
-        if (Avian.equipment && typeof Avian.equipment.addToInventory === 'function') {
+        if (Avian.equipment && typeof Avian.equipment.grantEquipment === 'function') {
+          Avian.equipment.grantEquipment(p, item.id);
+        } else if (Avian.equipment && typeof Avian.equipment.addToInventory === 'function') {
           Avian.equipment.addToInventory(p, item.id);
         }
         registerOrangeAcquired(item);

@@ -196,7 +196,7 @@
     if (!eq.offHand) {
       eq.offHand = shieldId;
     } else if (Array.isArray(player.equipmentInventory)) {
-      player.equipmentInventory.push(shieldId);
+      player.equipmentInventory.unshift(shieldId);
     } else {
       player.equipmentInventory = [shieldId];
     }
@@ -271,7 +271,8 @@
     ensurePlayerEquipmentState(player);
     var item = getItem(itemId);
     if (!itemId || !item) return false;
-    player.equipmentInventory.push(itemId);
+    /* Newest pieces sit at the front of the bag so the Nest list stays current. */
+    player.equipmentInventory.unshift(itemId);
     if (Avian.equipmentLoot && typeof Avian.equipmentLoot.markRunUnlockedEquipmentRarity === 'function') {
       Avian.equipmentLoot.markRunUnlockedEquipmentRarity(globalThis.G, item.rarity);
     }
@@ -1447,6 +1448,18 @@
     return emptyMatch || occupiedMatch;
   }
 
+  function findEmptyEquipSlotForItem(player, itemId) {
+    if (!player || !itemId) return null;
+    ensurePlayerEquipmentState(player);
+    var order = getSlotOrder();
+    for (var i = 0; i < order.length; i++) {
+      var sk = order[i];
+      if (player.equipment[sk]) continue;
+      if (canEquip(player, itemId, sk).ok) return sk;
+    }
+    return null;
+  }
+
   function equipAuto(player, itemId) {
     var sk = findEquipSlotForItem(player, itemId);
     if (!sk) return { ok: false, reason: 'no_slot', slot: null };
@@ -1454,8 +1467,29 @@
     return { ok: ok, reason: ok ? null : 'equip_failed', slot: sk };
   }
 
+  /* New drops auto-wear when a legal slot is empty. Occupied slots stay put — the
+     piece remains in the bag for a manual swap. Unequip/displace still use addToInventory. */
+  function grantEquipment(player, itemId) {
+    if (!addToInventory(player, itemId)) {
+      return { ok: false, autoEquipped: false, slot: null, itemId: itemId || null };
+    }
+    var emptySlot = findEmptyEquipSlotForItem(player, itemId);
+    if (!emptySlot) {
+      return { ok: true, autoEquipped: false, slot: null, itemId: itemId };
+    }
+    var equipped = equip(player, itemId, emptySlot);
+    return {
+      ok: true,
+      autoEquipped: !!equipped,
+      slot: equipped ? emptySlot : null,
+      itemId: itemId,
+    };
+  }
+
   equipment.findEquipSlotForItem = findEquipSlotForItem;
+  equipment.findEmptyEquipSlotForItem = findEmptyEquipSlotForItem;
   equipment.equipAuto = equipAuto;
+  equipment.grantEquipment = grantEquipment;
 
   Avian.equipment = equipment;
   Avian.systems.equipment = equipment;
