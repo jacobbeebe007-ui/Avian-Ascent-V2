@@ -48,6 +48,20 @@ ok('maxStage matches combat stages', Math.floor(Number(map?.maxStage) || 0) === 
 ok('Story map has no nested worlds', !map?.worlds || Object.keys(map.worlds).length === 0);
 ok('Story map startMapId is main', !map?.startMapId || map.startMapId === 'main');
 
+const owRuntimeSrc = readFileSync(path.join(root, 'js/world/ow_map_runtime.js'), 'utf8');
+const packSchemaSrc = readFileSync(path.join(root, 'js/world/map-pack-schema.js'), 'utf8');
+const owSandbox = { global: {}, globalThis: {} };
+owSandbox.global = owSandbox.globalThis;
+owSandbox.window = owSandbox.globalThis;
+vm.createContext(owSandbox);
+vm.runInContext(owRuntimeSrc, owSandbox);
+vm.runInContext(packSchemaSrc, owSandbox);
+vm.runInContext(storyMapSrc, owSandbox);
+const v3Map = owSandbox.upgradeMapToV3(owSandbox.cloneDefaultStoryMap());
+const barnGate = v3Map.nodes.find((n) => n.name === 'Barn Gate');
+ok('v3 story nodes keep stage numbers in display labels', barnGate && owSandbox.getNodeDisplayLabel(barnGate, null) === '1');
+ok('v3 story nodes resolve stage titles', owSandbox.getStoryStageNodeTitle(1, v3Map) === 'Barn Gate');
+
 const overworldHtml = readFileSync(path.join(root, 'blackstone_overworld_new.html'), 'utf8');
 ok('Overworld page loads shared story map script', overworldHtml.includes('js/data/story-map.js'));
 ok('Overworld page has no inline DEFAULT_NODES source', !overworldHtml.includes('const DEFAULT_NODES='));

@@ -554,6 +554,14 @@ function nodeDisplayLabel(n){
   if(typeof getNodeDisplayLabel==='function') return getNodeDisplayLabel(n,_WORLD_INDEX);
   return n?.stage||'';
 }
+function isOwDecorLabelNode(n){
+  if(!n) return false;
+  if(typeof getOwLocationKind==='function'){
+    const kind=getOwLocationKind(n);
+    return kind==='label'||kind==='labelUi';
+  }
+  return n.type==='label'&&!(n.labelConfig&&n.labelConfig.actsAsNode);
+}
 function getNodePortraitBird(n){ return n?.portraitBird || ''; }
 function inferCompletedStageFromNodeId(nodeId){
   return inferOwCompletedStageFromNodeId(nodeId, NODES);
@@ -1023,14 +1031,16 @@ if(_pathEdges.length){
 ns.appendChild(pathG);
 
 NODES.forEach((n,ni)=>{
-  if(n.type==='label') return;
+  if(isOwDecorLabelNode(n)) return;
   if(!owNodeVisible(ni)) return;
+  const eff=owEffectiveNode(n);
+  const effType=eff?.type||n.type;
   const reach=n.id<=UNLOCKED,vc=nvc(n),g=mk('g');
   // Any on-map node may be selected; overlay confirms whether entering is allowed.
   g.style.cursor=(reach&&n.id>0)?'pointer':'default';
   if(reach&&n.id>0)g.addEventListener('click',()=>setPos(n.id));
   n._g=g;n._vc=vc;
-  if(n.labelConfig&&typeof n.labelConfig==='object'){
+  if(n.labelConfig&&typeof n.labelConfig==='object'&&isOwDecorLabelNode(n)){
     if(typeof ensureNodeAppearance==='function') ensureNodeAppearance(n);
     const cfg=Object.assign({},n.labelConfig);
     if(!cfg.text) cfg.text=n.name||nodeDisplayLabel(n)||'';
@@ -1048,7 +1058,7 @@ NODES.forEach((n,ni)=>{
     const tx=mk('text',{x:n.x,y:n.y+1,'text-anchor':'middle','dominant-baseline':'middle','font-family':'Cinzel,serif','font-size':'8',fill:'rgba(100,92,60,.35)'});
     tx.style.pointerEvents='none';
     const sym={shop:'$',boss:'B',world:'W',bonus:'★',return:'↩',start:'⌂',overworld:'OW'};
-    tx.textContent=sym[n.type]||String(n.stage??nodeDisplayLabel(n)??'');
+    tx.textContent=sym[effType]||String(eff.stage??n.stage??nodeDisplayLabel(n)??'');
     g.appendChild(tx);
     ns.appendChild(g);return;
   }
@@ -1056,20 +1066,20 @@ NODES.forEach((n,ni)=>{
   const main=mk('circle',{cx:n.x,cy:n.y,r:vc.r,fill:'rgba(6,12,5,.72)',stroke:vc.ring,'stroke-width':'2'});
   n._sh=main;g.appendChild(main);
   const bk=getNodePortraitBird(n);
-  if(n.type!=='start'&&n.type!=='shop'&&n.type!=='world'&&n.type!=='bonus'&&n.type!=='return'&&n.type!=='overworld'){
-    const fontSize=n.type==='boss'||n.final?10:vc.r>24?11:10;
+  if(effType!=='start'&&effType!=='shop'&&effType!=='world'&&effType!=='bonus'&&effType!=='return'&&effType!=='overworld'){
+    const fontSize=effType==='boss'||n.final?10:vc.r>24?11:10;
     const numTxt=n.final?'20':nodeDisplayLabel(n);
     const stgNum=mk('text',{x:n.x,y:n.y+1,'text-anchor':'middle','dominant-baseline':'middle',
       'font-family':'Cinzel,serif','font-size':String(fontSize),'font-weight':'600',
       fill:vc.ring,opacity:'.9'});
     stgNum.style.pointerEvents='none';stgNum.textContent=numTxt;g.appendChild(stgNum);
-  } else if(n.type==='shop'){
+  } else if(effType==='shop'){
     const si=mk('text',{x:n.x,y:n.y+2,'text-anchor':'middle','dominant-baseline':'middle','font-family':'Georgia,serif','font-size':'15',fill:'#c89010'});
     si.style.pointerEvents='none';si.textContent='$';g.appendChild(si);
-  } else if(n.type==='overworld'){
+  } else if(effType==='overworld'){
     const ow=mk('text',{x:n.x,y:n.y+1,'text-anchor':'middle','dominant-baseline':'middle','font-family':'Cinzel,serif','font-size':'9','font-weight':'600',fill:vc.ring});
     ow.style.pointerEvents='none';ow.textContent='OW';g.appendChild(ow);
-  } else if(n.type==='start'){
+  } else if(effType==='start'){
     const ni=mk('svg',{x:String(n.x-14),y:String(n.y-10),width:'28',height:'22',viewBox:'0 0 56 44'});
     ni.innerHTML='<ellipse cx="28" cy="34" rx="22" ry="9" fill="#5a3818"/><ellipse cx="28" cy="32" rx="18" ry="7" fill="#7a5028"/><circle cx="22" cy="24" r="6" fill="#8aaa30"/><circle cx="32" cy="22" r="6" fill="#9abb38"/><circle cx="28" cy="20" r="6" fill="#90b434"/>';
     g.appendChild(ni);
@@ -1083,7 +1093,7 @@ NODES.forEach((n,ni)=>{
 });
 
 NODES.forEach((n,ni)=>{
-  if(n.type!=='label') return;
+  if(!isOwDecorLabelNode(n)) return;
   if(!owNodeVisible(ni)) return;
   const cfg=n.labelConfig||{};
   const ui=owLabelUiAction(cfg);
