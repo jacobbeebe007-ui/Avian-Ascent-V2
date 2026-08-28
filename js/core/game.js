@@ -8830,7 +8830,14 @@ function refreshBattleUI() {
     eclsEl.textContent = `${G.enemy.isBoss?'Boss · ':''}${ecls}`;
   }
 
-  document.getElementById('level-label').textContent = `STAGE ${getEncounterStage()}`;
+  document.getElementById('level-label').textContent = (() => {
+    const stageNum = getEncounterStage();
+    if (G.endlessMode && stageNum > 20) return `ENDLESS ${G.endlessBattle}`;
+    const title = typeof globalThis.getStoryStageNodeTitle === 'function'
+      ? globalThis.getStoryStageNodeTitle(stageNum)
+      : '';
+    return title ? `STAGE ${stageNum} · ${title}` : `STAGE ${stageNum}`;
+  })();
   document.getElementById('bird-lv-label').textContent = `Lv.${G.player.birdLevel}`;
   const shinyEl=document.getElementById('battle-shiny-count'); if(shinyEl) shinyEl.textContent=String(G.shinyObjects||0);
 

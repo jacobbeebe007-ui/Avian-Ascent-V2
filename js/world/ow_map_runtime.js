@@ -444,19 +444,41 @@
 
   global.getNodeDisplayLabel = function (node, worldIndex) {
     if (!node) return '';
-    if (node.type === 'world') return node.name || 'World';
-    if (node.type === 'bonus') return node.name || 'Bonus';
-    if (node.type === 'return') return node.name || 'Return';
-    if (node.type === 'overworld') return node.name || 'Overworld';
-    if (node.type === 'shop') return node.name || 'Shop';
-    if (node.type === 'start') return node.name || 'Start';
-    if (node.type === 'label') return node.labelConfig?.text || node.name || 'Label';
+    const kind = typeof global.getOwLocationKind === 'function'
+      ? global.getOwLocationKind(node)
+      : (typeof global.getOwEffectiveNodeType === 'function'
+        ? global.getOwEffectiveNodeType(node)
+        : node.type);
+    if (kind === 'world') return node.name || 'World';
+    if (kind === 'bonus') return node.name || 'Bonus';
+    if (kind === 'return') return node.name || 'Return';
+    if (kind === 'overworld') return node.name || 'Overworld';
+    if (kind === 'shop') return node.name || 'Shop';
+    if (kind === 'start') return node.name || 'Start';
+    if (kind === 'label' || kind === 'labelUi') {
+      return node.labelConfig?.text || node.name || 'Label';
+    }
     if (worldIndex != null && Number(node.subStage) > 0) {
       return String(worldIndex) + '-' + String(node.subStage);
     }
-    if (node.type === 'boss' && node.final) return 'Boss';
+    if (kind === 'boss' && node.final) return 'Boss';
     if (global.isForgeCombatNode(node)) return String(node.stage || node.subStage || '');
     return node.name || '';
+  };
+
+  global.getStoryStageNodeTitle = function (stage, map) {
+    const st = Math.max(1, Math.floor(Number(stage) || 1));
+    const nodes = (map && Array.isArray(map.nodes) ? map.nodes : global.AVIAN_STORY_MAP_DEFAULT?.nodes) || [];
+    for (let i = 0; i < nodes.length; i++) {
+      const node = nodes[i];
+      const kind = typeof global.getOwLocationKind === 'function'
+        ? global.getOwLocationKind(node)
+        : node.type;
+      if ((kind === 'stage' || kind === 'boss') && Number(node.stage) === st) {
+        return String(node.name || '').trim();
+      }
+    }
+    return '';
   };
 
   global.syntheticStageForWorldNode = function (worldIndex, subStage) {
