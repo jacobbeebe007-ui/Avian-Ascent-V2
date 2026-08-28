@@ -2982,6 +2982,7 @@ function notifyOwUiEmbedClose(){
   try{ window.parent.postMessage({ type: 'avianOwUiClose' }, '*'); }catch(_){}
   try{ window.parent.postMessage({ type: 'avianOwNestClose' }, '*'); }catch(_){}
 }
+globalThis.notifyOwUiEmbedClose = notifyOwUiEmbedClose;
 function closeNest() {
   document.getElementById('nest-modal').classList.remove('open');
   const content=document.getElementById('nest-content');
@@ -19419,6 +19420,10 @@ function openAbandonModal() {
 }
 function closeAbandonModal() {
   const m=document.getElementById('abandon-modal'); if(m) m.classList.remove('open');
+  if(isOwUiEmbedMode() && globalThis.__AVIAN_OW_UI_EMBED__==='settings'){
+    const sm=document.getElementById('settings-modal');
+    if(sm) sm.classList.add('open');
+  }
 }
 function confirmAbandon() {
   closeAbandonModal();
@@ -20696,9 +20701,9 @@ function openSettingsModal(){
   if(ttPass) ttPass.checked=tt.passives!==false;
   const m=document.getElementById('settings-modal'); if(m) m.classList.add('open');
 }
-function closeSettingsModal(){
+function closeSettingsModal(options){
   const m=document.getElementById('settings-modal'); if(m) m.classList.remove('open');
-  notifyOwUiEmbedClose();
+  if(!options?.keepEmbedOpen) notifyOwUiEmbedClose();
 }
 function returnToWarRoomFromSettings(){
   closeSettingsModal();
@@ -20707,12 +20712,12 @@ function returnToWarRoomFromSettings(){
 }
 globalThis.returnToWarRoomFromSettings = returnToWarRoomFromSettings;
 function openAbandonFromSettings(){
-  closeSettingsModal();
+  closeSettingsModal({ keepEmbedOpen: true });
   openAbandonModal();
 }
 globalThis.openAbandonFromSettings = openAbandonFromSettings;
 function goMainMenuFromSettings(){
-  closeSettingsModal();
+  closeSettingsModal({ keepEmbedOpen: true });
   if(isOwUiEmbedMode()){
     if(G.player) saveRun();
     clearOwTransientKeys();

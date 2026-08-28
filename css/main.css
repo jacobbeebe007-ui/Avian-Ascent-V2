@@ -4227,7 +4227,9 @@ html.avian-ow-nest-embed .nest-close{display:none!important;}
 .abandon-inner{background:var(--surface);border:1px solid var(--red);border-radius:12px;padding:26px 30px;max-width:360px;text-align:center;}
 .abandon-inner h3{font-family:'Cinzel',serif;color:var(--red-light);font-size:1.1rem;margin-bottom:8px;}
 .abandon-inner p{color:var(--text-dim);font-size:.88rem;margin-bottom:18px;line-height:1.5;}
-.settings-modal-inner{border-color:rgba(201,168,76,.45);max-width:620px!important;text-align:left;}
+.settings-modal-inner{border-color:rgba(201,168,76,.45);max-width:620px!important;text-align:left;max-height:min(92vh,820px);overflow-y:auto;}
+html.avian-ow-ui-embed #settings-modal.open{align-items:flex-start;padding:12px;overflow-y:auto;box-sizing:border-box;}
+html.avian-ow-ui-embed .settings-modal-inner{max-height:none;margin:auto;width:100%;}
 .settings-modal-inner h3{color:var(--gold);text-align:center;}
 .settings-tabs{display:flex;flex-wrap:wrap;gap:6px;margin:12px 0 10px;}
 .settings-tab{padding:6px 12px;border-radius:999px;border:1px solid var(--border);background:var(--surface2);color:var(--text-dim);font-family:'Cinzel',serif;font-size:.72rem;cursor:pointer;transition:all .15s;}
