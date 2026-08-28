@@ -41,7 +41,8 @@ function closeWarRoomTutorial() {
   m.setAttribute('aria-hidden', 'true');
   document.body.style.overflow = '';
   try {
-    if (typeof globalThis.notifyOwUiEmbedClose === 'function') globalThis.notifyOwUiEmbedClose();
+    const settingsStillOpen = document.getElementById('settings-modal')?.classList.contains('open');
+    if (!settingsStillOpen && typeof globalThis.notifyOwUiEmbedClose === 'function') globalThis.notifyOwUiEmbedClose();
   } catch (_) { /* noop */ }
 }
 

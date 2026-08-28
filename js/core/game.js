@@ -2982,6 +2982,7 @@ function notifyOwUiEmbedClose(){
   try{ window.parent.postMessage({ type: 'avianOwUiClose' }, '*'); }catch(_){}
   try{ window.parent.postMessage({ type: 'avianOwNestClose' }, '*'); }catch(_){}
 }
+globalThis.notifyOwUiEmbedClose = notifyOwUiEmbedClose;
 function closeNest() {
   document.getElementById('nest-modal').classList.remove('open');
   const content=document.getElementById('nest-content');
@@ -20689,9 +20690,9 @@ function openSettingsModal(){
   if(ttPass) ttPass.checked=tt.passives!==false;
   const m=document.getElementById('settings-modal'); if(m) m.classList.add('open');
 }
-function closeSettingsModal(){
+function closeSettingsModal(options){
   const m=document.getElementById('settings-modal'); if(m) m.classList.remove('open');
-  notifyOwUiEmbedClose();
+  if(!options?.keepEmbedOpen) notifyOwUiEmbedClose();
 }
 function returnToWarRoomFromSettings(){
   closeSettingsModal();
@@ -20700,12 +20701,11 @@ function returnToWarRoomFromSettings(){
 }
 globalThis.returnToWarRoomFromSettings = returnToWarRoomFromSettings;
 function openAbandonFromSettings(){
-  closeSettingsModal();
   openAbandonModal();
 }
 globalThis.openAbandonFromSettings = openAbandonFromSettings;
 function goMainMenuFromSettings(){
-  closeSettingsModal();
+  closeSettingsModal({ keepEmbedOpen: true });
   if(isOwUiEmbedMode()){
     if(G.player) saveRun();
     clearOwTransientKeys();
