@@ -77,9 +77,9 @@
 <div class="start-screen-inner">
 <div class="start-screen-actions">
 <button type="button" class="take-flight-btn" id="take-flight-btn" data-action="takeFlightToSelect">Take Flight</button>
-<button type="button" class="splash-cache-btn splash-cache-btn--start" id="start-clear-cache-btn" data-action="openClearCacheModal">Clear cached data</button>
 </div>
 </div>
+<button type="button" class="splash-cache-btn splash-cache-btn--compact splash-cache-btn--start" id="start-clear-cache-btn" data-action="openClearCacheModal">Clear cached data</button>
 </div>
 <!-- SELECT: war-room navigation splash + roster deck -->
 <div class="screen" id="screen-select">
@@ -157,7 +157,7 @@
 <input autocomplete="off" class="splash-unlock-input" id="dev-code-input" maxlength="32" data-input="checkDevCode" placeholder="Code…" spellcheck="false" type="password"/>
 <div class="splash-unlock-msg" id="dev-code-msg"></div>
 <button type="button" class="splash-erase-btn" data-action="openEraseProgressModal">🗑 Erase saved progress</button>
-<button type="button" class="splash-cache-btn" data-action="openClearCacheModal">Clear cached data</button>
+<button type="button" class="splash-cache-btn splash-cache-btn--compact" data-action="openClearCacheModal">Clear cached data</button>
 <section class="supplies-code-toggles" id="supplies-code-toggles" hidden aria-labelledby="supplies-code-toggles-title">
 <h4 id="supplies-code-toggles-title">Creator code switches</h4>
 <p>Tick codes to make them available. Changes are saved on this device.</p>
@@ -673,13 +673,18 @@
 <div class="combatants tactical-battlefield" data-combat-panel="combatants">
 <div class="combatant-panel player" id="player-panel" data-combat-panel="player">
 <div class="shield-overlay" id="player-shield-overlay"></div>
+<div class="combatant-card">
+<div class="combatant-identity">
 <div class="combatant-name" id="player-name">—</div>
 <div class="combatant-meta"><span id="player-class-label">—</span><span id="player-aspect-label" class="aspect-chip" hidden></span></div>
+</div>
 <div class="avatar-wrap" id="player-avatar-wrap"><div class="avatar-inner" id="player-avatar"></div></div>
 <div class="combat-status-stack status-effects" id="player-status">
 <div class="combat-status-section combat-status-ailments" id="player-status-ailments" aria-label="Ailments"></div>
 <div class="combat-status-section combat-status-modifiers" id="player-status-modifiers" aria-label="Buffs and debuffs"></div>
 </div>
+</div>
+<div class="combat-vitals" aria-label="Player vitals">
 <div class="hp-bar-wrap">
 <div class="hp-label"><span>HP</span><span id="player-hp-text">—</span></div>
 <div class="hp-bar-bg"><div class="hp-bar-fill" id="player-hp-bar"></div></div>
@@ -701,16 +706,27 @@
 <div class="hp-bar-bg ultimate-meter-bar"><div class="hp-bar-fill ultimate-meter-fill" id="ultimate-meter-fill"></div></div>
 </div>
 </div>
+</div>
 
 <div class="combatant-panel enemy" id="enemy-panel" data-combat-panel="enemy">
 <div class="shield-overlay" id="enemy-shield-overlay"></div>
+<div class="combatant-card">
+<div class="combatant-identity">
 <div class="combatant-name" id="enemy-name">—</div>
 <div class="combatant-meta"><span id="enemy-class-label">—</span><span id="enemy-aspect-label" class="aspect-chip" hidden></span></div>
+</div>
 <button type="button" class="avatar-wrap enemy-nest-window" id="enemy-avatar-wrap" aria-label="Open enemy nest"><span class="avatar-inner" id="enemy-avatar"></span></button>
 <div class="combat-status-stack status-effects" id="enemy-status">
 <div class="combat-status-section combat-status-ailments" id="enemy-status-ailments" aria-label="Ailments"></div>
 <div class="combat-status-section combat-status-modifiers" id="enemy-status-modifiers" aria-label="Buffs and debuffs"></div>
 </div>
+<div class="combatant-extras">
+<div class="phase-banner" id="boss-phase-banner"></div>
+<div class="enemy-intent enemy-plan" id="enemy-intent-panel">🤔 Thinking...</div>
+<div class="enemy-abilities-list" id="enemy-abilities-list"></div>
+</div>
+</div>
+<div class="combat-vitals" aria-label="Enemy vitals">
 <div class="hp-bar-wrap">
 <div class="hp-label"><span>HP</span><span id="enemy-hp-text">—</span></div>
 <div class="hp-bar-bg"><div class="hp-bar-fill" id="enemy-hp-bar"></div></div>
@@ -727,9 +743,7 @@
 <div class="hp-label"><span>MARM</span><span id="enemy-marm-text">—</span></div>
 <div class="hp-bar-bg marm-bar-bg"><div class="hp-bar-fill marm-bar-fill" id="enemy-marm-bar"></div><div class="prot-bar-temp marm-bar-temp" id="enemy-marm-temp" aria-hidden="true"></div></div>
 </div>
-<div class="phase-banner" id="boss-phase-banner"></div>
-<div class="enemy-intent enemy-plan" id="enemy-intent-panel">🤔 Thinking...</div>
-<div class="enemy-abilities-list" id="enemy-abilities-list"></div>
+</div>
 </div>
 </div>
 
