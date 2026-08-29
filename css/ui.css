@@ -257,25 +257,73 @@
   margin:4px auto 8px;
   overflow:visible !important;
 }
-.sfsel-profile__identity{
-  grid-template-columns:auto minmax(0,1fr) !important;
-  align-items:end;
+/* Profile pane: stack the sprite above the name and center both. */
+.sfsel-profile__identity,
+#select-hub-door .sfsel .sfsel-profile__identity,
+#select-hub-door .sfsel-profile .sfsel-profile__identity{
+  display:grid !important;
+  grid-template-columns:minmax(0,1fr) !important;
+  justify-items:center;
+  align-items:center !important;
+  gap:10px;
+  text-align:center;
+  width:100%;
 }
 .sfsel-profile__portrait,
+#select-hub-door .sfsel-profile .sfsel-profile__portrait{
+  width:100% !important;
+  min-height:0 !important;
+  display:flex !important;
+  align-items:center !important;
+  justify-content:center !important;
+}
 .sfsel-profile__portrait .ascent-panel-portrait,
-#select-hub-door .sfsel .ascent-panel-portrait,
-#select-hub-door .sfsel__detail .ascent-panel-portrait{
+#select-hub-door .sfsel-profile .sfsel-profile__portrait .ascent-panel-portrait,
+#select-hub-door .sfsel__detail .sfsel-profile .ascent-panel-portrait{
   width:auto !important;
+  max-width:100% !important;
   height:auto !important;
   min-height:0 !important;
   max-height:none !important;
+  display:flex !important;
+  align-items:center !important;
+  justify-content:center !important;
   overflow:visible !important;
+  margin-left:auto !important;
+  margin-right:auto !important;
+}
+.sfsel-profile__identity-copy{
+  width:100%;
+  text-align:center;
+}
+.sfsel-profile__title,
+.sfsel-profile__progression{
+  justify-content:center;
+}
+.sfsel-profile__title .ascent-panel-name{
+  text-align:center;
 }
 .sfsel-profile__portrait .sprite4,
 .sfsel-profile__portrait .bird-emo,
-.sfsel-profile__portrait .bird-fallback-svg,
-#select-hub-door .sfsel .ascent-strip-portrait-wrap .sprite4{
+.sfsel-profile__portrait .bird-fallback-svg{
+  display:block !important;
   transform:none !important;
+  margin-left:auto !important;
+  margin-right:auto !important;
+}
+@media (max-width:1024px){
+  .sfsel-profile__identity,
+  #select-hub-door .sfsel .sfsel-profile__identity{
+    grid-template-columns:minmax(0,1fr) !important;
+    justify-items:center;
+    align-items:center !important;
+  }
+  .sfsel-profile__portrait .ascent-panel-portrait,
+  #select-hub-door .sfsel__detail .sfsel-profile .ascent-panel-portrait,
+  #select-hub-door .sfsel__detail .ascent-panel-portrait{
+    width:auto !important;
+    height:auto !important;
+  }
 }
 
 /* Default ladder (shop, nest, fortune, fallbacks) */
