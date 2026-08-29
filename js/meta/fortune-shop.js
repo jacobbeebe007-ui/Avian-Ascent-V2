@@ -3,6 +3,7 @@
   'use strict';
 
   var FORTUNE_TAB = 'trade';
+  var HATCHERY_TAB = 'mother';
   var HATCH_BATCH_SIZE = 10;
   var ROYAL_EGG_CLASS = 'knight';
 
@@ -307,23 +308,43 @@
   }
 
   function setFortuneSubView(view) {
-    FORTUNE_TAB = view === 'artifacts' ? 'artifacts' : 'trade';
-    var artBtn = document.getElementById('fortune-nav-artifacts');
+    FORTUNE_TAB = view === 'artifacts' || view === 'relics' ? 'relics' : 'trade';
+    var relicBtn = document.getElementById('fortune-nav-relics') || document.getElementById('fortune-nav-artifacts');
     var tradeBtn = document.getElementById('fortune-nav-trade');
-    var artView = document.getElementById('fortune-view-artifacts');
+    var relicView = document.getElementById('fortune-view-relics') || document.getElementById('fortune-view-artifacts');
     var tradeView = document.getElementById('fortune-view-trade');
-    var isArtifacts = FORTUNE_TAB === 'artifacts';
+    var isRelics = FORTUNE_TAB === 'relics';
     var isTrade = FORTUNE_TAB === 'trade';
-    if (artBtn) {
-      artBtn.classList.toggle('is-active', isArtifacts);
-      artBtn.setAttribute('aria-selected', isArtifacts ? 'true' : 'false');
+    if (relicBtn) {
+      relicBtn.classList.toggle('is-active', isRelics);
+      relicBtn.setAttribute('aria-selected', isRelics ? 'true' : 'false');
     }
     if (tradeBtn) {
       tradeBtn.classList.toggle('is-active', isTrade);
       tradeBtn.setAttribute('aria-selected', isTrade ? 'true' : 'false');
     }
-    if (artView) artView.classList.toggle('is-active', isArtifacts);
+    if (relicView) relicView.classList.toggle('is-active', isRelics);
     if (tradeView) tradeView.classList.toggle('is-active', isTrade);
+  }
+
+  function setHatcherySubView(view) {
+    HATCHERY_TAB = view === 'eggs' ? 'eggs' : 'mother';
+    var tabs = ['mother', 'eggs'];
+    tabs.forEach(function (id) {
+      var btn = document.getElementById('hatchery-nav-' + id);
+      var panel = document.getElementById('hatchery-view-' + id);
+      var active = id === HATCHERY_TAB;
+      if (btn) {
+        btn.classList.toggle('is-active', active);
+        btn.setAttribute('aria-selected', active ? 'true' : 'false');
+      }
+      if (panel) {
+        panel.classList.toggle('is-active', active);
+        panel.hidden = !active;
+      }
+    });
+    if (HATCHERY_TAB === 'eggs') renderMotherGooseGrid();
+    else renderMotherGoosePity();
   }
 
   function syncFortuneBalances() {
@@ -438,14 +459,20 @@
   }
 
   function renderMotherGoosePity() {
-    var el = document.getElementById('mother-goose-pity');
-    if (!el || typeof globalThis.getPityState !== 'function') return;
+    var els = [
+      document.getElementById('mother-goose-pity'),
+      document.getElementById('mother-goose-pity-eggs'),
+    ].filter(Boolean);
+    if (!els.length || typeof globalThis.getPityState !== 'function') return;
     var pity = globalThis.getPityState();
     var parts = ['Eggs until next safety: ' + fmt(pity.eggsUntilNext || 0)];
     if (pity.pityChoicePending && pity.pityChoiceOptions && pity.pityChoiceOptions.length) {
-      parts.push('Pity choice ready (modal TODO). Options: ' + pity.pityChoiceOptions.join(', '));
+      parts.push('Pity choice ready. Options: ' + pity.pityChoiceOptions.join(', '));
     }
-    el.textContent = parts.join(' · ');
+    var text = parts.join(' · ');
+    els.forEach(function (el) {
+      el.textContent = text;
+    });
   }
 
   function renderMotherGooseGrid() {
@@ -618,6 +645,7 @@
   function renderHatchery() {
     syncFortuneBalances();
     renderMotherGooseShop();
+    setHatcherySubView(HATCHERY_TAB);
   }
 
   function renderFortuneShop() {
@@ -693,6 +721,7 @@
   }
 
   globalThis.setFortuneSubView = setFortuneSubView;
+  globalThis.setHatcherySubView = setHatcherySubView;
   globalThis.renderFortuneShop = renderFortuneShop;
   globalThis.renderHatchery = renderHatchery;
   globalThis.syncFortuneBalances = syncFortuneBalances;

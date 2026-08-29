@@ -493,3 +493,132 @@
   .ascent-panel-portrait .sprite4.boss{width:104px !important;height:104px !important;}
 }
 
+/* War-room hub cards + upgrade preview — size-chart ladder */
+.inventory-feather-portrait,
+.bird-upgrade-portrait,
+.mother-goose-hatch-portrait{
+  --hub-sprite-tiny:40px;
+  --hub-sprite-small:52px;
+  --hub-sprite-medium:64px;
+  --hub-sprite-large:76px;
+  --hub-sprite-xl:88px;
+  --hub-sprite-giant:100px;
+}
+.bird-upgrade-portrait{
+  --hub-sprite-tiny:56px;
+  --hub-sprite-small:72px;
+  --hub-sprite-medium:92px;
+  --hub-sprite-large:112px;
+  --hub-sprite-xl:132px;
+  --hub-sprite-giant:152px;
+}
+.mother-goose-hatch-egg-grid--batch .mother-goose-hatch-portrait{
+  --hub-sprite-tiny:28px;
+  --hub-sprite-small:36px;
+  --hub-sprite-medium:44px;
+  --hub-sprite-large:52px;
+  --hub-sprite-xl:60px;
+  --hub-sprite-giant:68px;
+}
+.mother-goose-hatch-egg-grid--single .mother-goose-hatch-portrait{
+  --hub-sprite-tiny:48px;
+  --hub-sprite-small:60px;
+  --hub-sprite-medium:76px;
+  --hub-sprite-large:92px;
+  --hub-sprite-xl:108px;
+  --hub-sprite-giant:124px;
+}
+.inventory-feather-portrait .sprite4.tiny,
+.bird-upgrade-portrait .sprite4.tiny,
+.mother-goose-hatch-portrait .sprite4.tiny,
+.inventory-feather-portrait .bird-fallback-svg.tiny,
+.bird-upgrade-portrait .bird-fallback-svg.tiny,
+.mother-goose-hatch-portrait .bird-fallback-svg.tiny{width:var(--hub-sprite-tiny)!important;height:var(--hub-sprite-tiny)!important;}
+.inventory-feather-portrait .sprite4.small,
+.bird-upgrade-portrait .sprite4.small,
+.mother-goose-hatch-portrait .sprite4.small,
+.inventory-feather-portrait .bird-fallback-svg.small,
+.bird-upgrade-portrait .bird-fallback-svg.small,
+.mother-goose-hatch-portrait .bird-fallback-svg.small{width:var(--hub-sprite-small)!important;height:var(--hub-sprite-small)!important;}
+.inventory-feather-portrait .sprite4.medium,
+.bird-upgrade-portrait .sprite4.medium,
+.mother-goose-hatch-portrait .sprite4.medium,
+.inventory-feather-portrait .bird-fallback-svg.medium,
+.bird-upgrade-portrait .bird-fallback-svg.medium,
+.mother-goose-hatch-portrait .bird-fallback-svg.medium{width:var(--hub-sprite-medium)!important;height:var(--hub-sprite-medium)!important;}
+.inventory-feather-portrait .sprite4.large,
+.bird-upgrade-portrait .sprite4.large,
+.mother-goose-hatch-portrait .sprite4.large,
+.inventory-feather-portrait .bird-fallback-svg.large,
+.bird-upgrade-portrait .bird-fallback-svg.large,
+.mother-goose-hatch-portrait .bird-fallback-svg.large{width:var(--hub-sprite-large)!important;height:var(--hub-sprite-large)!important;}
+.inventory-feather-portrait .sprite4.xl,
+.inventory-feather-portrait .sprite4.xlarge,
+.bird-upgrade-portrait .sprite4.xl,
+.bird-upgrade-portrait .sprite4.xlarge,
+.mother-goose-hatch-portrait .sprite4.xl,
+.mother-goose-hatch-portrait .sprite4.xlarge,
+.inventory-feather-portrait .bird-fallback-svg.xl,
+.inventory-feather-portrait .bird-fallback-svg.xlarge,
+.bird-upgrade-portrait .bird-fallback-svg.xl,
+.bird-upgrade-portrait .bird-fallback-svg.xlarge,
+.mother-goose-hatch-portrait .bird-fallback-svg.xl,
+.mother-goose-hatch-portrait .bird-fallback-svg.xlarge{width:var(--hub-sprite-xl)!important;height:var(--hub-sprite-xl)!important;}
+.inventory-feather-portrait .sprite4.giant,
+.inventory-feather-portrait .sprite4.boss,
+.bird-upgrade-portrait .sprite4.giant,
+.bird-upgrade-portrait .sprite4.boss,
+.mother-goose-hatch-portrait .sprite4.giant,
+.mother-goose-hatch-portrait .sprite4.boss,
+.inventory-feather-portrait .bird-fallback-svg.giant,
+.inventory-feather-portrait .bird-fallback-svg.boss,
+.bird-upgrade-portrait .bird-fallback-svg.giant,
+.bird-upgrade-portrait .bird-fallback-svg.boss,
+.mother-goose-hatch-portrait .bird-fallback-svg.giant,
+.mother-goose-hatch-portrait .bird-fallback-svg.boss{width:var(--hub-sprite-giant)!important;height:var(--hub-sprite-giant)!important;}
+
+@media (max-width:1024px){
+  .inventory-feather-portrait{
+    --hub-sprite-tiny:36px;
+    --hub-sprite-small:46px;
+    --hub-sprite-medium:56px;
+    --hub-sprite-large:66px;
+    --hub-sprite-xl:76px;
+    --hub-sprite-giant:88px;
+  }
+  .bird-upgrade-portrait{
+    --hub-sprite-tiny:48px;
+    --hub-sprite-small:60px;
+    --hub-sprite-medium:76px;
+    --hub-sprite-large:92px;
+    --hub-sprite-xl:108px;
+    --hub-sprite-giant:124px;
+  }
+}
+@media (max-width:600px){
+  .inventory-feather-portrait{
+    --hub-sprite-tiny:32px;
+    --hub-sprite-small:40px;
+    --hub-sprite-medium:48px;
+    --hub-sprite-large:56px;
+    --hub-sprite-xl:64px;
+    --hub-sprite-giant:72px;
+  }
+  .bird-upgrade-portrait{
+    --hub-sprite-tiny:44px;
+    --hub-sprite-small:54px;
+    --hub-sprite-medium:66px;
+    --hub-sprite-large:78px;
+    --hub-sprite-xl:90px;
+    --hub-sprite-giant:104px;
+  }
+  .mother-goose-hatch-egg-grid--batch .mother-goose-hatch-portrait{
+    --hub-sprite-tiny:24px;
+    --hub-sprite-small:30px;
+    --hub-sprite-medium:36px;
+    --hub-sprite-large:42px;
+    --hub-sprite-xl:48px;
+    --hub-sprite-giant:54px;
+  }
+}
+
