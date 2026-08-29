@@ -76,6 +76,8 @@ const checks = [
   { label: 'Combat empty skill reason', re: /btn-empty-reason/ },
   { label: 'grantEquipment auto-equip', re: /function grantEquipment\b/ },
   { label: 'clearGameCache reloads HTTP shell', re: /function reloadShellHttpCache\b/ },
+  { label: 'confirmClearCache cache-bust reload', re: /function cacheBustReload\b/ },
+  { label: 'setHatcherySubView global', re: /globalThis\.setHatcherySubView\s*=/ },
   { label: 'Flight settings briefing', re: /function syncFlightSettingsBriefing\b/ },
   { label: 'Flight settings choice cards', re: /flight-choice-card/ },
 ];
@@ -123,6 +125,27 @@ if (fs.existsSync(sw)) {
     fail(`sw.js CACHE_VERSION '${swHash || 'missing'}' does not match hash file ${bundleHash || 'missing'}`);
     failed++;
   }
+}
+
+const htmlPath = path.join(ROOT, 'index.html');
+if (fs.existsSync(htmlPath)) {
+  const html = fs.readFileSync(htmlPath, 'utf8');
+  const htmlChecks = [
+    { label: 'Inventory Eggs tab', re: /data-action="setInventorySubView:eggs">Eggs</ },
+    { label: 'Inventory Artifacts tab', re: /data-action="setInventorySubView:artifacts">Artifacts</ },
+    { label: 'Inventory Vault tab', re: /data-action="setInventorySubView:vault">Vault</ },
+    { label: 'Emporium Trade tab', re: /data-action="setFortuneSubView:trade">Trade</ },
+    { label: 'Emporium Relics tab', re: /data-action="setFortuneSubView:relics">Relics</ },
+    { label: 'Hatchery Mother Goose tab', re: /data-action="setHatcherySubView:mother">Mother Goose</ },
+    { label: 'Hatchery Eggs tab', re: /data-action="setHatcherySubView:eggs">Eggs</ },
+  ];
+  for (const c of htmlChecks) {
+    if (c.re.test(html)) ok(c.label);
+    else { fail(c.label); failed++; }
+  }
+} else {
+  fail('index.html missing');
+  failed++;
 }
 
 if (failed > 0) {

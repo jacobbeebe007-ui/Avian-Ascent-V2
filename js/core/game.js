@@ -18974,9 +18974,9 @@ function buildRefGuide() {
     true,'stacking'):'');
 
   const mechanics=`<div class="ref-skills-grid">
-    ${card('War Room & Character Select','Mission map sets difficulty and Story vs Endless. Begin Ascent opens Character Select to pick your bird. Inventory holds feathers and artifacts; Supplies holds this Reference codex.',true,'war-room')}
-    ${card('Bird Cards & Tiers','Hatch at The Hatchery. Duplicate hatches grant Species Feathers. Spend feathers in Feather Sack or Character Select to raise stars and ascend tiers — higher tiers boost stats for that species. Passives and class perks stay fixed.',true,'bird-cards')}
-    ${card('Species Feathers','Per-bird currency from duplicate hatches at The Hatchery. Fuels card star and tier upgrades in Feather Sack or Character Select.',true,'species-feathers')}
+    ${card('War Room & Character Select','Mission map sets difficulty and Story vs Endless. Begin Ascent opens Character Select. Inventory: Eggs, Artifacts, Vault. Emporium: Trade and Relics. Hatchery: Mother Goose and Eggs. Supplies holds this Reference codex.',true,'war-room')}
+    ${card('Bird Cards & Tiers','Hatch at The Hatchery. Duplicate hatches grant Species Feathers. Spend feathers in Inventory Vault or Character Select to raise stars and ascend tiers — higher tiers boost stats for that species. Passives and class perks stay fixed.',true,'bird-cards')}
+    ${card('Species Feathers','Per-bird currency from duplicate hatches at The Hatchery. Fuels card star and tier upgrades in Inventory Vault or Character Select.',true,'species-feathers')}
     ${card('Energy & Cooldowns',`Start with ${PLAYER_ENERGY_START} EN (max ${PLAYER_ENERGY_MAX}). Recover ${PLAYER_ENERGY_REGEN} EN at the start of each turn after the first. Skills spend EN; cooldowns apply when set on a skill.`,true,'core')}
     ${card('Post-Battle Recovery','Story: heal 20% max HP after each bird you defeat in a stage (including multi-bird nodes). Endless: heal 33% max HP after each victory.',true,'heal')}
     ${card('Role Taxonomy','Birds are grouped by combat roles: Striker, Bruiser, Tank, Trickster, Predator, Singer.',true,'roles')}
