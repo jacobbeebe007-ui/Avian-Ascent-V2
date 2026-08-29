@@ -307,7 +307,10 @@
             return html.includes('bird-emo') || html.includes('bird-fallback-svg') || html.includes('sprite-' + spriteKey);
           });
           if(wrap){
-            wrap.innerHTML = `<div class="sprite4 small sprite-${spriteKey} frame-0 ${locked?'locked':''}"></div>`;
+            const sizeClass = (typeof globalThis.getUISizeClass === 'function')
+              ? globalThis.getUISizeClass(bird, 'select')
+              : 'medium';
+            wrap.innerHTML = `<div class="sprite4 ${sizeClass} sprite-${spriteKey} frame-0 ${locked?'locked':''}"></div>`;
             wrap.style.display = 'flex';
             wrap.style.justifyContent = 'center';
             wrap.style.margin = '2px auto 6px';

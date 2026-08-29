@@ -112,6 +112,24 @@ for (const key of keys) {
       }
     }
   }
+
+  const sizeChart = Avian?.data?.sizeChart || {};
+  const expectedRuntime = sizeChart[bird?.realSize]?.runtimeSize;
+  if (!bird?.realSize) failures.push(`${key}: birdsV2.realSize missing`);
+  else if (!expectedRuntime) failures.push(`${key}: sizeChart has no runtimeSize for ${bird.realSize}`);
+  else if (typeof sandbox.getUISizeClass === 'function') {
+    const entity = Object.assign({}, patched || bird, { birdKey: key, portraitKey: patched?.portraitKey || key });
+    const got = sandbox.getUISizeClass(entity, 'select');
+    if (got !== expectedRuntime) {
+      failures.push(`${key}: getUISizeClass="${got}" expected "${expectedRuntime}" (profile ${bird.realSize})`);
+    }
+    if (typeof sandbox.renderBirdIconHTML === 'function') {
+      const html = String(sandbox.renderBirdIconHTML(key, got, false) || '');
+      if (html.includes('sprite4') && !html.includes(`sprite4 ${got} `) && !html.includes(`sprite4 ${got}"`)) {
+        failures.push(`${key}: renderBirdIconHTML missing size class ${got}: ${html.slice(0, 120)}`);
+      }
+    }
+  }
 }
 
 const duke = birdsV2.dukeBlakiston;
