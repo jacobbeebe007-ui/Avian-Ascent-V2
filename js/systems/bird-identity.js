@@ -13,8 +13,35 @@
     return LEGACY_CLASS_MAP[id] || id;
   }
 
+  function canonicalBirdKey(key) {
+    var raw = String(key || '');
+    if (!raw) return raw;
+    var packs = [
+      Avian.data && Avian.data.birdsV2,
+      Avian.data && Avian.data.combatPack && Avian.data.combatPack.birdPassives,
+      Avian.data && Avian.data.combatPack && Avian.data.combatPack.innateUtilities,
+      globalThis.BIRDS,
+    ];
+    var lower = raw.toLowerCase();
+    for (var p = 0; p < packs.length; p++) {
+      var pack = packs[p];
+      if (!pack) continue;
+      if (pack[raw]) return raw;
+      if (pack[lower]) return lower;
+      for (var k in pack) {
+        if (Object.prototype.hasOwnProperty.call(pack, k) && String(k).toLowerCase() === lower) return k;
+      }
+    }
+    return raw;
+  }
+
+  Avian.canonicalBirdKey = canonicalBirdKey;
+
   Avian.getBirdV2 = function getBirdV2(key) {
-    return (Avian.data && Avian.data.birdsV2 && Avian.data.birdsV2[key]) || null;
+    var pack = Avian.data && Avian.data.birdsV2;
+    if (!pack) return null;
+    var canon = canonicalBirdKey(key);
+    return pack[canon] || pack[key] || null;
   };
 
   Avian.getClassV2 = function getClassV2(classId) {
@@ -25,12 +52,18 @@
 
   Avian.getBirdPassiveV2 = function getBirdPassiveV2(key) {
     var pack = Avian.data && Avian.data.combatPack;
-    return (pack && pack.birdPassives && pack.birdPassives[key]) || null;
+    var table = pack && pack.birdPassives;
+    if (!table) return null;
+    var canon = canonicalBirdKey(key);
+    return table[canon] || table[key] || null;
   };
 
   Avian.getInnateUtility = function getInnateUtility(key) {
     var pack = Avian.data && Avian.data.combatPack;
-    return (pack && pack.innateUtilities && pack.innateUtilities[key]) || null;
+    var table = pack && pack.innateUtilities;
+    if (!table) return null;
+    var canon = canonicalBirdKey(key);
+    return table[canon] || table[key] || null;
   };
 
   Avian.getBirdDef = function getBirdDef(key) {

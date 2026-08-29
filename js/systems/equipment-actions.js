@@ -1109,6 +1109,7 @@
   ns.resolveInnateUtility = function resolveInnateUtility(entity) {
     var birdKey = entity && entity.birdKey;
     if (!birdKey) return null;
+    if (typeof Avian.canonicalBirdKey === 'function') birdKey = Avian.canonicalBirdKey(birdKey);
     var utils = Avian.data && Avian.data.combatPack && Avian.data.combatPack.innateUtilities;
     var util = utils && utils[birdKey];
     if (!util) return null;
