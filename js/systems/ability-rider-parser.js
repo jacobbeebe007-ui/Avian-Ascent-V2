@@ -122,9 +122,9 @@
     return /(minor|moderate|major|grand|epic|legendary)\s+guard\b/i.test(String(slice || ''));
   }
 
-  var NAMED_AILMENT =
-    'Bleed|Burn|Scorched|Poison|Toxic|Chilled|Frost|Shock|Paralys(?:ed|ed)?|Weaken(?:ed)?'
-    + '|Fracture|Shattered|Crippled|Immobilis(?:ed|ed)|Dazed|Concussed';
+    var NAMED_AILMENT =
+    'Bleed|Burn|Scorched|Poison|Toxic|Chilled|Frost|Shock|Paralys(?:ed|ed)?|Weakened|Weaken'
+    + '|Fear|Confused|Fracture|Shattered|Crippled|Immobilis(?:ed|ed)|Dazed|Concussed';
 
   function normalizeAilmentId(raw) {
     var s = String(raw || '').toLowerCase().trim();
@@ -135,7 +135,10 @@
     if (/^chill|^frost|^frozen/.test(s)) return 'chilled';
     if (/^shock/.test(s)) return 'shock';
     if (/^paralys|^paraly/.test(s)) return 'paralyzed';
-    if (/^weaken/.test(s)) return 'weakened';
+    if (/^weakened/.test(s)) return 'weakened';
+    if (/^weaken/.test(s)) return 'weaken';
+    if (/^fear/.test(s)) return 'feared';
+    if (/^confus/.test(s)) return 'confused';
     if (/^delay/.test(s)) return 'delayed';
     if (/^blind/.test(s)) return 'blinded';
     if (/^fracture|^shatter/.test(s)) return 'fracture';
@@ -509,6 +512,28 @@
       }
     }
 
+    var dealMag = t.match(/Deal\s+(\d+)\s+Magic\s+(?:Armour|Armor)\s+damage/i);
+    var dealArm = t.match(/Deal\s+(\d+)\s+(?:Armour|Armor)\s+damage/i);
+    if (dealMag && !hasRiderKind(riders, 'magicArmourDamage') && !hasRiderKind(riders, 'magicArmourRetaliateOnPhysical')) {
+      if (/first enemy physical hit while Ward remains/i.test(t)) {
+        riders.push({ kind: 'magicArmourRetaliateOnPhysical', value: Number(dealMag[1]) || 0, scope: 'self', when: null });
+      } else {
+        riders.push({ kind: 'magicArmourDamage', value: Number(dealMag[1]) || 0, scope: 'enemy', when: null });
+      }
+    } else if (dealArm && !hasRiderKind(riders, 'armourDamage') && !/Magic\s+(?:Armour|Armor)/i.test(dealArm[0])) {
+      riders.push({ kind: 'armourDamage', value: Number(dealArm[1]) || 0, scope: 'enemy', when: null });
+    }
+
+    if (/Apply Jewel Mark/i.test(t) && !hasRiderKind(riders, 'applyMark')) {
+      riders.push({ kind: 'applyMark', mark: 'jewel', turns: 2, value: 10, scope: 'enemy', when: null });
+    }
+    if (/Apply Predator Mark/i.test(t) && !hasRiderKind(riders, 'applyMark')) {
+      riders.push({ kind: 'applyMark', mark: 'predator', turns: 2, value: 10, scope: 'enemy', when: null });
+    }
+    if (/Apply Carrion Mark/i.test(t) && !hasRiderKind(riders, 'applyMark')) {
+      riders.push({ kind: 'applyMark', mark: 'carrion', turns: 2, scope: 'enemy', when: null });
+    }
+
     if (/\bshield\b/i.test(t) && /temp|temporary|max\s*hp|max\s*health|health/i.test(t)) {
       var shM = t.match(/(\d+(?:\.\d+)?)\s*%\s*(?:max\s*)?(?:hp|health)/i);
       addSelf('gainShield', shM ? Number(shM[1]) : 0, { when: parseRiderWhen(t, shM ? shM[0] : t) });
@@ -645,6 +670,7 @@
         if (!(row.ailmentChance > 0)) {
           row.ailmentChance = ar.chance != null ? Number(ar.chance) : 100;
         }
+        if (ar.when && !row.ailmentWhen) row.ailmentWhen = ar.when;
         break;
       }
     }

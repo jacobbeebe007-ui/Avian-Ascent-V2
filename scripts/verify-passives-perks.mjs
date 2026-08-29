@@ -441,6 +441,86 @@ else ok('onEnemyDamaged exported');
   else ok('getAbDesc tolerates missing/0/overflow level');
 }
 
+/* Trigger wiring: afterCrit / afterEnemyAttack / afterDamageDealt / passiveAlways. */
+{
+  G.player = {
+    birdKey: 'baldEagle',
+    stats: { hp: 40, maxHp: 40, armour: 0, maxArmour: 8, normalMaxArmour: 8, magicArmour: 0, maxMagicArmour: 8, normalMaxMagicArmour: 8, acc: 80 },
+  };
+  G.playerStatus = {};
+  G.passiveState = Object.create(null);
+  Avian.passives.onPlayerAbilityUse({ id: 'WSK-001', name: 'Strike', btnType: 'physical' }, { crit: true, anyCrit: true, hitsLanded: 1, damage: 10 });
+  const armAfter = G.player.stats.armour;
+  if (armAfter > 0) ok('bald eagle afterCrit restores lower protection');
+  else fail('bald eagle afterCrit did not restore protection, armour=' + armAfter);
+}
+
+{
+  G.player = {
+    birdKey: 'wagtail',
+    stats: { hp: 40, maxHp: 40, armour: 0, maxArmour: 8, normalMaxArmour: 8, spd: 10, atk: 8, def: 6, matk: 4, mdef: 6 },
+  };
+  G.enemy = { birdKey: 'crow', stats: { hp: 40, maxHp: 40, spd: 8 } };
+  G.playerStatus = {};
+  G.passiveState = Object.create(null);
+  const spdBefore = G.player.stats.spd;
+  Avian.passives.onPlayerDamaged(6, false, { afterEnemyAttack: true });
+  if (G.player.stats.spd > spdBefore) ok('wagtail afterEnemyAttack grants Agility');
+  else fail('wagtail afterEnemyAttack did not grant Agility');
+  Avian.passives.onPlayerDodged({});
+  if (G.player.stats.armour > 0) ok('wagtail dodge restores Armour');
+  else fail('wagtail dodge did not restore Armour, armour=' + G.player.stats.armour);
+}
+
+{
+  G.player = {
+    birdKey: 'seagull',
+    stats: { hp: 40, maxHp: 40, armour: 0, maxArmour: 8, normalMaxArmour: 8, magicArmour: 4, maxMagicArmour: 8, normalMaxMagicArmour: 8, spd: 8 },
+  };
+  G.enemy = { birdKey: 'crow', stats: { hp: 20, maxHp: 40 } };
+  G.playerStatus = {};
+  G.enemyStatus = { poison: { stacks: 1, turns: 2 } };
+  G.passiveState = Object.create(null);
+  const spdBefore = G.player.stats.spd;
+  Avian.passives.onPlayerAbilityUse({ id: 'WSK-001', name: 'Strike', btnType: 'physical' }, { hitsLanded: 1, damage: 8, firstHitLanded: true });
+  if (G.player.stats.spd > spdBefore) ok('seagull afterDamageDealt vs debuffed target grants Agility');
+  else fail('seagull afterDamageDealt did not fire');
+}
+
+{
+  G.player = {
+    birdKey: 'bushturkey',
+    stats: { hp: 50, maxHp: 50, armour: 4, maxArmour: 10, normalMaxArmour: 10, spd: 6, atk: 10, def: 10, matk: 2, mdef: 6 },
+  };
+  G.playerStatus = {};
+  G.passiveState = Object.create(null);
+  const armBefore = G.player.stats.armour;
+  Avian.passives.onPlayerAbilityUse({
+    id: 'innate_bushturkey',
+    name: 'Mound Guard',
+    btnType: 'utility',
+    riderText: 'Gain 5 Fortified Armour for 2 turns.',
+    actionSource: 'utility',
+  }, { armourTechnique: true });
+  if (G.player.stats.armour > armBefore) ok('bush turkey Fortify grants +1 additional Armour');
+  else fail('bush turkey additional Armour missing, armour ' + armBefore + '→' + G.player.stats.armour);
+}
+
+{
+  const rogue = Avian.classPerks.getClassPerkForBird('sparrow');
+  if (rogue && rogue.def && rogue.def.id === 'rogueTempo') ok('sparrow resolves Rogue Tempo');
+  else fail('sparrow class perk missing Rogue Tempo');
+  G.player = { birdKey: 'sparrow', class: 'rogue', stats: { spd: 20, acc: 86 } };
+  G.enemy = { birdKey: 'crow', stats: { spd: 8 } };
+  G.playerStatus = { _classPerkState: {} };
+  Avian.classPerks.applyClassPerkMetadata(G.player);
+  const peek = Avian.classPerks.peekRogueTempoPrecision(G.player, {
+    id: 'WSK-001', actionSource: 'weaponA', energy: 2, energyCost: 2, btnType: 'physical',
+  });
+  if (peek === 10) ok('Rogue Tempo peeks +10 Precision when acting first');
+  else fail('Rogue Tempo peek expected 10, got ' + peek);
+}
+
 if (failed) {
   console.error(`[passives-perks] ${failed} failure(s)`);
   process.exit(1);

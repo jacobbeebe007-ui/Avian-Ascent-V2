@@ -131,6 +131,7 @@
     var ab = opts.ab || null;
     if (opts.requireHit !== false && hitsLanded <= 0) return {};
     if (!row || !(row.ailmentChance > 0) || !ailmentIdsFromRow(row).length) return {};
+    if (row.ailmentWhen && !riderWhenMatches({ when: row.ailmentWhen }, opts)) return {};
     if (row.ailmentRequireBothHitsHealth) {
       var needHits = Math.max(2, hitsAttempted || 2);
       if (healthHits < needHits) return {};
@@ -155,6 +156,12 @@
     if (typeof Avian !== 'undefined' && Avian.classPerks && typeof Avian.classPerks.consumeCursedCallAppBonus === 'function') {
       var attacker = targetSide === 'enemy' ? (g && g.player) : (g && g.enemy);
       ailCh += Avian.classPerks.consumeCursedCallAppBonus(attacker) || 0;
+    }
+    if (g && targetSide === 'enemy' && g.enemyStatus && g.enemyStatus.jewelMark
+      && (g.enemyStatus.jewelMark.turns || 0) > 0
+      && g.enemy && g.enemy.stats && (Number(g.enemy.stats.magicArmour) || 0) <= 0) {
+      ailCh += Number(g.enemyStatus.jewelMark.appBonus) || 10;
+      delete g.enemyStatus.jewelMark.appBonus;
     }
     var magicShift = 0;
     var authoredChance = Number(row.ailmentChance) || 0;
@@ -248,7 +255,13 @@
     else if (kind === 'debuff') spawnFloat(who, '▼▼', 'fn-debuff-trend');
   }
 
-  function applyEnemyFlatDebuff(statKey, flatAmt, sourceId) {
+  function notifyStatDebuffApplied() {
+    if (typeof Avian !== 'undefined' && Avian.passives && typeof Avian.passives.onAilmentAppliedByPlayer === 'function') {
+      Avian.passives.onAilmentAppliedByPlayer('statDebuff');
+    }
+  }
+
+  function applyEnemyFlatDebuff(statKey, flatAmt, sourceId, turns) {
     var g = globalThis.G;
     if (!g || !g.enemy || !g.enemy.stats) return false;
     var es = g.enemyStatus = g.enemyStatus || {};
@@ -263,8 +276,15 @@
     var amt = Math.max(0, Number(flatAmt) || 0);
     if (amt <= 0) return false;
     stats[statKey] = Math.max(0, Math.round((cur - amt) * 100) / 100);
-    es._dispatcherDebuffBySource[slotKey] = { statKey: statKey, amt: amt, turns: 1, sourceId: String(sourceId || ''), flat: true };
+    es._dispatcherDebuffBySource[slotKey] = {
+      statKey: statKey,
+      amt: amt,
+      turns: Math.max(1, Math.floor(Number(turns) || 1)),
+      sourceId: String(sourceId || ''),
+      flat: true,
+    };
     spawnTrendFloat('enemy', 'debuff');
+    notifyStatDebuffApplied();
     return true;
   }
 
@@ -286,6 +306,7 @@
     stats[statKey] = Math.max(0, Math.round((cur - amt) * 100) / 100);
     es._dispatcherDebuffBySource[slotKey] = { statKey: statKey, amt: amt, turns: 1, sourceId: String(sourceId || '') };
     spawnTrendFloat('enemy', 'debuff');
+    notifyStatDebuffApplied();
     return true;
   }
 
@@ -396,14 +417,14 @@
     }
   }
 
-  function applyDispatcherDisplaySlot(ps, sourceId, kind, value) {
+  function applyDispatcherDisplaySlot(ps, sourceId, kind, value, turns) {
     if (!ps._dispatcherDisplaySlots) ps._dispatcherDisplaySlots = Object.create(null);
     var key = String(sourceId || 'unknown') + ':' + kind;
     var prev = ps._dispatcherDisplaySlots[key];
     ps._dispatcherDisplaySlots[key] = {
       kind: kind,
       value: Math.max(prev ? (prev.value || 0) : 0, Number(value) || 0),
-      turns: 1,
+      turns: Math.max(1, Math.floor(Number(turns) || 1)),
     };
     recomputeDispatcherDisplays(ps);
   }
@@ -430,28 +451,34 @@
 
   var FLAT_CORE_STATS = { atk: 1, matk: 1, def: 1, mdef: 1, spd: 1, dex: 1, vitality: 1, hp: 1 };
 
-  function applyDispatcherStatLoan(ps, player, statKey, sourceId, value) {
+  function applyDispatcherStatLoan(ps, player, statKey, sourceId, value, turns) {
     if (typeof globalThis.applySourceStatLoan === 'function') {
-      return globalThis.applySourceStatLoan(ps, player, '_dispatcherStatLoans', statKey, String(sourceId || 'unknown') + ':' + statKey, value, 1);
+      return globalThis.applySourceStatLoan(ps, player, '_dispatcherStatLoans', statKey, String(sourceId || 'unknown') + ':' + statKey, value, turns || 1);
     }
     if (!player || !player.stats) return 0;
     player.stats[statKey] = Math.round(((player.stats[statKey] || 0) + (Number(value) || 0)) * 100) / 100;
     return Number(value) || 0;
   }
 
-  function applyDispatcherStatLoanPct(ps, player, statKey, sourceId, pct) {
+  function applyDispatcherStatLoanPct(ps, player, statKey, sourceId, pct, turns) {
     if (typeof globalThis.applySourceStatLoanPct === 'function') {
-      return globalThis.applySourceStatLoanPct(ps, player, '_dispatcherStatLoans', statKey, String(sourceId || 'unknown') + ':' + statKey, pct, 1);
+      return globalThis.applySourceStatLoanPct(ps, player, '_dispatcherStatLoans', statKey, String(sourceId || 'unknown') + ':' + statKey, pct, turns || 1);
     }
-    return applyDispatcherStatLoan(ps, player, statKey, sourceId, pct);
+    return applyDispatcherStatLoan(ps, player, statKey, sourceId, pct, turns);
   }
 
   /** Core flat tiers use flat loans; chance stats stay percentage. */
-  function applyDispatcherCoreLoan(ps, player, statKey, sourceId, value) {
-    if (effectTiersFlatStat() && FLAT_CORE_STATS[statKey]) {
-      return applyDispatcherStatLoan(ps, player, statKey, sourceId, value);
+  function applyDispatcherCoreLoan(ps, player, statKey, sourceId, value, turns) {
+    var loanTurns = turns || 1;
+    var n = Number(value) || 0;
+    if (n < 0 || (effectTiersFlatStat() && FLAT_CORE_STATS[statKey])) {
+      var amt = applyDispatcherStatLoan(ps, player, statKey, sourceId, n, loanTurns);
+      if (amt > 0 && ps) {
+        ps._lastCoreBuff = { stat: statKey, amount: amt, turns: loanTurns };
+      }
+      return amt;
     }
-    return applyDispatcherStatLoanPct(ps, player, statKey, sourceId, value);
+    return applyDispatcherStatLoanPct(ps, player, statKey, sourceId, value, loanTurns);
   }
 
   function debuffOpponentCore(side, statKey, value, sourceId) {
@@ -579,6 +606,115 @@
     if (typeof refreshBattleUI === 'function') refreshBattleUI();
   }
 
+  function foeStatsForOwnerSide(ownerSide) {
+    var g = globalThis.G;
+    if (!g) return null;
+    return ownerSide === 'enemy' ? (g.player && g.player.stats) : (g.enemy && g.enemy.stats);
+  }
+
+  function foeStatusForOwnerSide(ownerSide) {
+    var g = globalThis.G;
+    if (!g) return null;
+    return ownerSide === 'enemy' ? g.playerStatus : g.enemyStatus;
+  }
+
+  function foeSideName(ownerSide) {
+    return ownerSide === 'enemy' ? 'player' : 'enemy';
+  }
+
+  function applyPoolDamageRider(amount, isMagic, ownerSide, ctx) {
+    var g = globalThis.G;
+    var stats = foeStatsForOwnerSide(ownerSide);
+    var status = foeStatusForOwnerSide(ownerSide);
+    if (!g || !stats || !Avian.protection || typeof Avian.protection.applyDamageThroughProtection !== 'function') return;
+    var n = Math.max(0, Number(amount) || 0);
+    if (n <= 0) return;
+    var hit = Avian.protection.applyDamageThroughProtection(stats, status, n, !!isMagic);
+    if (ctx) {
+      if (isMagic) ctx.targetNoMagicArmour = (Number(stats.magicArmour) || 0) <= 0;
+      else ctx.targetNoArmour = (Number(stats.armour) || 0) <= 0;
+      if (hit && hit.damagedHealth) ctx.reachedHealth = true;
+    }
+    if (hit && hit.remaining > 0) {
+      stats.hp = Math.max(0, Math.round(((Number(stats.hp) || 0) - hit.remaining) * 100) / 100);
+      if (ctx) ctx.reachedHealth = true;
+    }
+    var foe = foeSideName(ownerSide);
+    if (typeof spawnFloat === 'function') {
+      spawnFloat(foe, '-' + n + (isMagic ? ' MARM' : ' ARM'), 'fn-dmg');
+    }
+    spawnTrendFloat(foe, 'debuff');
+    if (typeof setHpBar === 'function') setHpBar(foe, stats.hp, stats.maxHp);
+    if (typeof refreshBattleUI === 'function') refreshBattleUI();
+  }
+
+  function applyMarkRider(rider, ownerSide) {
+    var status = foeStatusForOwnerSide(ownerSide);
+    if (!status || !rider) return;
+    var mark = String(rider.mark || '').toLowerCase();
+    var turns = Math.max(1, Number(rider.turns) || 2);
+    if (mark === 'jewel') {
+      status.jewelMark = { turns: turns, appBonus: Number(rider.value) || 10 };
+    } else if (mark === 'predator') {
+      status.predatorMark = { turns: turns, precisionBonus: Number(rider.value) || 10 };
+    } else if (mark === 'carrion') {
+      status.carrionMark = { turns: turns };
+    } else {
+      status.marked = { turns: turns, consumed: false };
+    }
+    spawnTrendFloat(foeSideName(ownerSide), 'debuff');
+  }
+
+  function copyEnemyCoreBuff(ps, player, rider, ownerSide) {
+    var foeStatus = foeStatusForOwnerSide(ownerSide);
+    var best = null;
+    var bags = [foeStatus && foeStatus._dispatcherStatLoans, foeStatus && foeStatus._passiveStatLoans];
+    for (var bi = 0; bi < bags.length; bi++) {
+      var bag = bags[bi];
+      if (!bag) continue;
+      for (var k in bag) {
+        var entry = bag[k];
+        if (!entry || !(entry.amt > 0)) continue;
+        var sk = String(entry.statKey || '').toLowerCase();
+        if (!FLAT_CORE_STATS[sk]) continue;
+        if (!best || (entry.amt || 0) > (best.amt || 0)) best = entry;
+      }
+    }
+    if (best) {
+      applyDispatcherCoreLoan(ps, player, best.statKey, 'copyEnemyBuff', best.amt, best.turns || 1);
+      return;
+    }
+    var fbKind = (rider && rider.fallbackKind) || 'gainMatk';
+    var fbVal = (rider && rider.fallbackValue) || 4;
+    var fbStat = fbKind === 'gainMatk' ? 'matk' : 'atk';
+    applyDispatcherCoreLoan(ps, player, fbStat, 'copyEnemyBuffFallback', fbVal, (rider && rider.turns) || 2);
+  }
+
+  function copyLastSelfCoreBuff(ps, player, rider) {
+    var last = ps && ps._lastCoreBuff;
+    if (last && last.stat && last.amount > 0) {
+      applyDispatcherCoreLoan(ps, player, last.stat, 'copyLastSelfBuff', last.amount, (rider && rider.turns) || last.turns || 1);
+      return;
+    }
+    if (player && player.stats && Avian.protection && typeof Avian.protection.restoreMagicArmour === 'function') {
+      Avian.protection.restoreMagicArmour(player.stats, (rider && rider.fallbackValue) || 3);
+    }
+  }
+
+  function restorePoolForCleansedAilment(entity, amount, ownerSide) {
+    if (!entity || !entity.stats || !Avian.protection) return;
+    var status = ownerSide === 'enemy'
+      ? (globalThis.G && globalThis.G.enemyStatus)
+      : (globalThis.G && globalThis.G.playerStatus);
+    var last = status && status._lastCleansedAilment;
+    var pool = (Avian.protection.protectionPoolForAilment && Avian.protection.protectionPoolForAilment(last)) || 'magicArmour';
+    if (pool === 'armour' && typeof Avian.protection.restoreArmour === 'function') {
+      Avian.protection.restoreArmour(entity.stats, amount);
+    } else if (typeof Avian.protection.restoreMagicArmour === 'function') {
+      Avian.protection.restoreMagicArmour(entity.stats, amount);
+    }
+  }
+
   function rowGrantsGuardedViaRider(row) {
     var riders = (row && row.riders) || [];
     for (var i = 0; i < riders.length; i++) {
@@ -610,32 +746,43 @@
       if (side === 'enemy') applyPlayerFlatDebuff(statKey, flatAmt, sourceId);
       else applyEnemyFlatDebuff(statKey, flatAmt, sourceId);
     }
-    function applyDisplayOrStat(ps, entity, kind, statKey, value) {
-      applyDispatcherDisplaySlot(ps, sourceId, kind, value);
-      if (shouldLoanDisplayStat && statKey) applyDispatcherStatLoan(ps, entity, statKey, sourceId + ':' + kind, value);
+    function applyDisplayOrStat(ps, entity, kind, statKey, value, rider) {
+      applyDispatcherDisplaySlot(ps, sourceId, kind, value, rider && rider.turns);
+      if (shouldLoanDisplayStat && statKey) applyDispatcherStatLoan(ps, entity, statKey, sourceId + ':' + kind, value, rider && rider.turns);
       spawnTrendFloat(floatSide, 'buff');
     }
-    function applyCoreBuff(ps, p, kind, statKey, n) {
-      applyDispatcherDisplaySlot(ps, sourceId, kind, n);
-      applyDispatcherCoreLoan(ps, p, statKey, sourceId, n);
+    function applyCoreBuff(ps, p, kind, statKey, n, rider) {
+      var amt = Number(n) || 0;
+      if (amt < 0) {
+        var downKind = {
+          spd: 'reduceSpd', atk: 'reduceAtk', matk: 'reduceMatk',
+          def: 'reduceDef', mdef: 'reduceMdef', acc: 'reduceAcc', dodge: 'reduceDodge',
+        }[statKey] || kind;
+        applyDispatcherDisplaySlot(ps, sourceId, downKind, Math.abs(amt), rider && rider.turns);
+        applyDispatcherCoreLoan(ps, p, statKey, sourceId, amt, rider && rider.turns);
+        spawnTrendFloat(floatSide, 'debuff');
+        return;
+      }
+      applyDispatcherDisplaySlot(ps, sourceId, kind, amt, rider && rider.turns);
+      applyDispatcherCoreLoan(ps, p, statKey, sourceId, amt, rider && rider.turns);
       spawnTrendFloat(floatSide, 'buff');
     }
     return {
-      gainDodge: function (n, ps, p) { applyDisplayOrStat(ps, p, 'gainDodge', 'dodge', n); },
-      gainAccFlat: function (n, ps, p) { applyDisplayOrStat(ps, p, 'gainAcc', 'acc', n); },
-      gainDodgeFlat: function (n, ps, p) { applyDisplayOrStat(ps, p, 'gainDodge', 'dodge', n); },
-      gainAcc: function (n, ps, p) { applyDisplayOrStat(ps, p, 'gainAcc', 'acc', n); },
-      gainSpeed: function (n, ps, p) { applyCoreBuff(ps, p, 'gainSpeed', 'spd', n); },
-      gainDex: function (n, ps, p) { applyCoreBuff(ps, p, 'gainDex', 'dex', n); },
-      gainCritChance: function (n, ps, p) { applyDisplayOrStat(ps, p, 'gainCritChance', 'critChance', n); },
-      gainCritDamage: function (n, ps) { applyDispatcherDisplaySlot(ps, sourceId, 'gainCritDamage', n); spawnTrendFloat(floatSide, 'buff'); },
-      gainAtk: function (n, ps, p) { applyCoreBuff(ps, p, 'gainAtk', 'atk', n); },
-      gainMatk: function (n, ps, p) { applyCoreBuff(ps, p, 'gainMatk', 'matk', n); },
-      gainDef: function (n, ps, p) { applyCoreBuff(ps, p, 'gainDef', 'def', n); },
-      gainMdef: function (n, ps, p) { applyCoreBuff(ps, p, 'gainMdef', 'mdef', n); },
-      gainGuard: function (n, ps, p) {
+      gainDodge: function (n, ps, p, r) { applyDisplayOrStat(ps, p, 'gainDodge', 'dodge', n, r); },
+      gainAccFlat: function (n, ps, p, r) { applyDisplayOrStat(ps, p, 'gainAcc', 'acc', n, r); },
+      gainDodgeFlat: function (n, ps, p, r) { applyDisplayOrStat(ps, p, 'gainDodge', 'dodge', n, r); },
+      gainAcc: function (n, ps, p, r) { applyDisplayOrStat(ps, p, 'gainAcc', 'acc', n, r); },
+      gainSpeed: function (n, ps, p, r) { applyCoreBuff(ps, p, 'gainSpeed', 'spd', n, r); },
+      gainDex: function (n, ps, p, r) { applyCoreBuff(ps, p, 'gainDex', 'dex', n, r); },
+      gainCritChance: function (n, ps, p, r) { applyDisplayOrStat(ps, p, 'gainCritChance', 'critChance', n, r); },
+      gainCritDamage: function (n, ps, _p, r) { applyDispatcherDisplaySlot(ps, sourceId, 'gainCritDamage', n, r && r.turns); spawnTrendFloat(floatSide, 'buff'); },
+      gainAtk: function (n, ps, p, r) { applyCoreBuff(ps, p, 'gainAtk', 'atk', n, r); },
+      gainMatk: function (n, ps, p, r) { applyCoreBuff(ps, p, 'gainMatk', 'matk', n, r); },
+      gainDef: function (n, ps, p, r) { applyCoreBuff(ps, p, 'gainDef', 'def', n, r); },
+      gainMdef: function (n, ps, p, r) { applyCoreBuff(ps, p, 'gainMdef', 'mdef', n, r); },
+      gainGuard: function (n, ps, p, r) {
         var amt = Number(n) || (effectTiersFlatStat() ? 4 : 8);
-        applyCoreBuff(ps, p, 'gainDef', 'def', amt);
+        applyCoreBuff(ps, p, 'gainDef', 'def', amt, r);
       },
       gainGuarded: function (n) { applyGuardedFromRow(row, n, ab, side); },
       gainBrace: function (n) { applyGuardedFromRow(row, n, ab, side); },
@@ -698,7 +845,49 @@
         ps.physicalAilmentChanceBuff = Math.max(ps.physicalAilmentChanceBuff || 0, Number(n) || 0);
         spawnTrendFloat(floatSide, 'buff');
       },
-      reduceEnemyAccFlat: function (n) { debuffOpponentFlat('acc', n); },
+      gainAilmentAppChance: function (n, ps) {
+        ps._passiveAilmentAppBonus = (Number(ps._passiveAilmentAppBonus) || 0) + (Number(n) || 0);
+        spawnTrendFloat(floatSide, 'buff');
+      },
+      reduceEnemyAccFlat: function (n, _ps, _p, r) { debuffOpponentFlat('acc', n); },
+      nextAttackAccPenalty: function (n, ps) {
+        ps._dispatcherAccNextHitPenalty = Math.max(ps._dispatcherAccNextHitPenalty || 0, Number(n) || 0);
+      },
+      armourDamage: function (n, _ps, _p, _r, ctx) { applyPoolDamageRider(n, false, side, ctx); },
+      magicArmourDamage: function (n, _ps, _p, _r, ctx) { applyPoolDamageRider(n, true, side, ctx); },
+      applyAilment: function (_n, _ps, _p, r) {
+        var ailment = r && r.ailment;
+        var applyFn = typeof globalThis.applyAilment === 'function' ? globalThis.applyAilment : null;
+        if (!ailment || !applyFn) return;
+        var ch = r.chance != null ? Number(r.chance) : 100;
+        if (ch < 100 && Math.random() * 100 >= ch) return;
+        var target = side === 'enemy' ? 'player' : 'enemy';
+        applyFn(target, ailment, Number(r.stacks) || 1);
+      },
+      applyMark: function (_n, _ps, _p, r) { applyMarkRider(r, side); },
+      magicArmourRetaliateOnPhysical: function (n, ps) {
+        ps.magicArmourRetaliateOnPhysical = { amount: Number(n) || 2, remaining: 1 };
+      },
+      copyEnemyBuff: function (_n, ps, p, r) { copyEnemyCoreBuff(ps, p, r, side); },
+      copyLastSelfBuff: function (_n, ps, p, r) { copyLastSelfCoreBuff(ps, p, r); },
+      restoreMatchingAilmentPool: function (n, _ps, p) {
+        restorePoolForCleansedAilment(p, n, side);
+      },
+      nextSkillAspect: function (_n, ps, _p, r) {
+        ps._nextSkillAspect = (r && r.aspect) || 'day';
+      },
+      nextDayBurnIfHealth: function (n, ps) {
+        ps._nextDayBurnIfHealth = Number(n) || 1;
+      },
+      gainCritNextHit: function (n, ps, _p, r) {
+        ps._pendingCritNextHit = { value: Number(n) || 10, gate: (r && r.gate) || 'damaging' };
+      },
+      ignoreMatchingDefNextHit: function (n, ps, _p, r) {
+        ps._pendingMatchingDefIgnore = { amount: Number(n) || 2, gate: (r && r.gate) || 'debuffedOrMarked' };
+      },
+      cannotRedirectNextSkill: function (_n, ps, _p, r) {
+        ps._pendingCannotRedirect = { gate: (r && r.gate) || 'weapon' };
+      },
       exposeGuard: function (n, _ps, _p, r) {
         var g = globalThis.G;
         var targetStatus = side === 'enemy' ? (g && g.playerStatus) : (g && g.enemyStatus);
@@ -727,6 +916,8 @@
     gainAccNextHit: function (n, ps, _p, r) {
       if (r && r.when === 'onEnemyMissBeforeTurn') {
         ps._dispatcherAccNextHitWatch = Math.max(ps._dispatcherAccNextHitWatch || 0, Number(n) || 0);
+      } else if (r && r.gate) {
+        ps._pendingAccNextHit = { value: Number(n) || 0, gate: r.gate };
       } else {
         ps._dispatcherAccNextHit = Math.max(ps._dispatcherAccNextHit || 0, Number(n) || 0);
       }
@@ -761,7 +952,8 @@
       (es.burning && es.burning.stacks > 0) ||
       (es.delayed && (es.delayed.stacks > 0 || es.delayed > 0)) ||
       (typeof globalThis.getWeakenStacks === 'function' && globalThis.getWeakenStacks(es) > 0) ||
-      (es.paralyzed > 0) || !!es.confused || (es.accDebuff > 0);
+      (es.paralyzed > 0) || !!es.confused || (es.accDebuff > 0) ||
+      !!es.weakened || !!es.feared || !!es.jewelMark || !!es.predatorMark || !!es.carrionMark || !!es.marked;
   }
 
   function resolveRiderOwnerSide(ctx) {
@@ -817,6 +1009,20 @@
     if (w === 'guardInactive') return !sideIsGuarding(resolveRiderOwnerSide(ctx));
     if (w === 'shieldActive') return sideHasShield(resolveRiderOwnerSide(ctx));
     if (w === 'shieldInactive') return !sideHasShield(resolveRiderOwnerSide(ctx));
+    if (w === 'ifTargetNoMagicArmour' || w === 'targetNoMagicArmour') {
+      if (ctx && ctx.targetNoMagicArmour) return true;
+      var gM = globalThis.G;
+      var magStats = resolveRiderOwnerSide(ctx) === 'enemy' ? (gM && gM.player && gM.player.stats) : (gM && gM.enemy && gM.enemy.stats);
+      return !!(magStats && (Number(magStats.magicArmour) || 0) <= 0);
+    }
+    if (w === 'ifTargetNoArmour' || w === 'targetNoArmour') {
+      if (ctx && ctx.targetNoArmour) return true;
+      var gA = globalThis.G;
+      var armStats = resolveRiderOwnerSide(ctx) === 'enemy' ? (gA && gA.player && gA.player.stats) : (gA && gA.enemy && gA.enemy.stats);
+      return !!(armStats && (Number(armStats.armour) || 0) <= 0);
+    }
+    if (w === 'reachedHealth') return !!(ctx && ctx.reachedHealth);
+    if (w === 'ifCleansed') return !!(ctx && (ctx.cleansedCount > 0 || ctx.cleansed));
     return false;
   }
 
@@ -952,6 +1158,68 @@
     return null;
   }
 
+  function nextHitGateMatches(gate, row, ab) {
+    if (!gate || gate === 'damaging' || gate === 'attack') return !!(row && !row.noDamage);
+    var id = String((row && row.id) || (ab && (ab.id || ab.equipmentSkillId)) || '');
+    var src = String((ab && (ab.actionSource || ab.source || ab.family)) || (row && row.source) || '');
+    if (gate === 'weapon') {
+      return /^WSK-/i.test(id) || /weapon/i.test(src);
+    }
+    if (gate === 'strengthWeapon') {
+      var scale = String((row && (row.scalingStat || row.scaleStat || row.damageStat)) || (ab && ab.scalingStat) || '').toUpperCase();
+      var cat = String((row && (row.damageCategory || row.category)) || (ab && ab.damageCategory) || '');
+      return scale === 'ATK' || scale === 'MIGHT' || /strength/i.test(cat);
+    }
+    if (gate === 'night') {
+      var asp = String((row && row.aspect) || (ab && (ab.aspect || ab.affinity)) || '').toLowerCase();
+      return asp === 'lunae' || asp === 'night';
+    }
+    if (gate === 'debuffedOrMarked') {
+      var gMark = globalThis.G;
+      var es = gMark && gMark.enemyStatus;
+      if (!es) return false;
+      if (es.jewelMark || es.predatorMark || es.carrionMark || es.marked) return true;
+      return enemyHasAnyAilment();
+    }
+    return true;
+  }
+
+  function armGatedNextHit(ps, row, ab) {
+    if (!ps || !row) return;
+    if (ps._pendingAccNextHit && nextHitGateMatches(ps._pendingAccNextHit.gate, row, ab)) {
+      ps._dispatcherAccNextHit = Math.max(ps._dispatcherAccNextHit || 0, Number(ps._pendingAccNextHit.value) || 0);
+      delete ps._pendingAccNextHit;
+    }
+    if (ps._pendingCritNextHit && nextHitGateMatches(ps._pendingCritNextHit.gate, row, ab)) {
+      ps._dispatcherCritNextHit = Math.max(ps._dispatcherCritNextHit || 0, Number(ps._pendingCritNextHit.value) || 0);
+      delete ps._pendingCritNextHit;
+    }
+    if (ps._pendingMatchingDefIgnore && nextHitGateMatches(ps._pendingMatchingDefIgnore.gate, row, ab)) {
+      ps._nextMatchingDefIgnore = ps._pendingMatchingDefIgnore;
+      delete ps._pendingMatchingDefIgnore;
+    }
+    if (ps._pendingCannotRedirect && nextHitGateMatches(ps._pendingCannotRedirect.gate, row, ab)) {
+      ps._cannotRedirectNextSkill = 1;
+      delete ps._pendingCannotRedirect;
+    }
+    if (ps._nextSkillAspect && !row.noDamage) {
+      var forced = String(ps._nextSkillAspect);
+      if (forced === 'day') forced = 'solis';
+      else if (forced === 'night') forced = 'lunae';
+      row.aspect = forced;
+      delete ps._nextSkillAspect;
+    }
+  }
+
+  function consumeArmedNextHit(ps) {
+    if (!ps) return;
+    delete ps._dispatcherAccNextHit;
+    delete ps._dispatcherAccNextHitPenalty;
+    delete ps._dispatcherCritNextHit;
+    delete ps._nextMatchingDefIgnore;
+    delete ps._cannotRedirectNextSkill;
+  }
+
   // ---- core execute -----------------------------------------------------
   dispatcher.execute = async function execute(ab) {
     if (!ab || !ab.id) return;
@@ -974,18 +1242,50 @@
 
     if (row.noDamage || row.target === 'self') {
       if (g) {
-        g._lastAbilityHitsLanded = 0;
+        g._lastAbilityHitsLanded = 1;
         g._lastAbilityAnyCrit = false;
         g._lastAbilityAilmentFailed = false;
+        g._lastAbilityTotalDmg = 0;
+      }
+      var utilCtx = {
+        hitsLanded: 1,
+        hitsAttempted: 1,
+        totalDmg: 0,
+        ailmentsApplied: {},
+        utilitySucceeded: false,
+        ownerSide: 'player',
+      };
+      var hasApplyAilmentRider = false;
+      var poolRiders = [];
+      var restRiders = [];
+      var origRiders = row.riders || [];
+      for (var uri = 0; uri < origRiders.length; uri++) {
+        var ur = origRiders[uri];
+        if (!ur) continue;
+        if (ur.kind === 'applyAilment') hasApplyAilmentRider = true;
+        if (ur.kind === 'armourDamage' || ur.kind === 'magicArmourDamage') poolRiders.push(ur);
+        else restRiders.push(ur);
+      }
+      if (poolRiders.length) {
+        runRiders(Object.assign({}, row, { riders: poolRiders }), utilCtx, ab);
       }
       var utilOk = typeof globalThis.applyTagRidersFromRow === 'function'
-        ? globalThis.applyTagRidersFromRow(row, { utilitySucceeded: false })
+        ? globalThis.applyTagRidersFromRow(row, utilCtx)
         : false;
-      runPreRiders(row, ab);
-      var utilAilments = tryRollRowAilment(row, 'enemy', { hitsLanded: 1, totalDmg: 0, ab: ab, requireHit: false });
+      if (utilCtx.cleansedCount == null && utilOk) utilCtx.cleansedCount = 1;
+      runRiders(Object.assign({}, row, { riders: restRiders }), utilCtx, ab);
+      if (shouldAutoApplyGuarded(row) && !rowGrantsGuardedViaRider(row)) {
+        applyGuardedFromRow(row, 0, ab);
+      }
+      var utilAilments = {};
+      if (!hasApplyAilmentRider) {
+        utilAilments = tryRollRowAilment(row, 'enemy', Object.assign({
+          hitsLanded: 1, totalDmg: 0, ab: ab, requireHit: false,
+        }, utilCtx));
+      }
       if (g) g._lastAbilityAilmentFailed = (row.ailmentChance > 0 && ailmentIdsFromRow(row).length > 0)
         && !Object.keys(utilAilments).length;
-      if (g) g._lastAbilityUtilitySucceeded = !!utilOk;
+      if (g) g._lastAbilityUtilitySucceeded = !!utilOk || (utilCtx.cleansedCount > 0);
       if (typeof Avian !== 'undefined' && Avian.equipmentEffects && typeof Avian.equipmentEffects.onUtilityUsed === 'function') {
         Avian.equipmentEffects.onUtilityUsed(!!utilOk);
       }
@@ -997,6 +1297,8 @@
     var hits = Math.max(1, row.hits || row.hitCount || 1);
     var isMagic = isMagicCategory(row.category);
     var isHybrid = isHybridRow(row);
+
+    if (g && g.playerStatus) armGatedNextHit(g.playerStatus, row, ab);
 
     if (typeof globalThis.enrichCombatRow === 'function') globalThis.enrichCombatRow(row);
 
@@ -1143,9 +1445,10 @@
       g._lastAbilityHitsLanded = hitsLanded;
       g._lastAbilityAnyCrit = anyCrit;
       g._lastAbilityAilmentFailed = ailmentAttempted && !Object.keys(ailmentsApplied).length;
-      if (hitsLanded > 0 && g.playerStatus && g.playerStatus._dispatcherAccNextHit) {
-        delete g.playerStatus._dispatcherAccNextHit;
+      if (hitsLanded > 0 && g.playerStatus) {
+        consumeArmedNextHit(g.playerStatus);
       }
+      g._lastAbilityTotalDmg = totalDmg;
     }
 
     if (typeof Avian !== 'undefined' && Avian.equipmentEffects) {
@@ -1293,13 +1596,22 @@
   dispatcher.modifyCritChance = function modifyCritChance(base) {
     var ps = (globalThis.G && globalThis.G.playerStatus) || null;
     if (!ps) return base;
-    return base + (ps.dispatcherCrit || 0);
+    return base + (ps.dispatcherCrit || 0) + (ps._dispatcherCritNextHit || 0);
   };
   dispatcher.modifyAcc = function modifyAcc(base) {
-    var ps = (globalThis.G && globalThis.G.playerStatus) || null;
+    var g = globalThis.G;
+    var ps = (g && g.playerStatus) || null;
     if (!ps) return base;
     var acc = base + (ps.dispatcherAcc || 0);
     if (ps._dispatcherAccNextHit > 0) acc += ps._dispatcherAccNextHit;
+    if (ps._dispatcherAccNextHitPenalty > 0) acc -= ps._dispatcherAccNextHitPenalty;
+    if (typeof globalThis.getConfusedPrecisionPenalty === 'function') {
+      acc += globalThis.getConfusedPrecisionPenalty(ps);
+    }
+    var es = g && g.enemyStatus;
+    if (es && es.predatorMark && (es.predatorMark.turns || 0) > 0) {
+      acc += Number(es.predatorMark.precisionBonus) || 10;
+    }
     return acc;
   };
   dispatcher.modifyDodge = function modifyDodge(base) {

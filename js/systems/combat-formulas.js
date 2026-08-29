@@ -374,7 +374,13 @@
     var k = String(key || 'ATK').toUpperCase();
     if (k === 'HP' || k === 'MAXHP') return Math.max(0, Number(stats.maxHp || stats.hp) || 0);
     if (k === 'VITALITY') return Math.max(0, Number(stats.vitality) || 0);
-    if (k === 'MATK' || k === 'MATT' || k === 'FOCUS') return Math.max(0, Number(stats.matk) || 0);
+    if (k === 'MATK' || k === 'MATT' || k === 'FOCUS') {
+      var matk = Math.max(0, Number(stats.matk) || 0);
+      if (typeof globalThis.getWeakenedFocusPenalty === 'function') {
+        matk = Math.max(0, matk + globalThis.getWeakenedFocusPenalty(status));
+      }
+      return matk;
+    }
     if (k === 'DEX' || k === 'DEXTERITY') return Math.max(0, Number(stats.dex) || 0);
     if (k === 'SPD' || k === 'AGILITY') {
       var spd = Math.max(0, Number(stats.spd) || 0);
@@ -388,13 +394,25 @@
       if (typeof globalThis.getFractureGuardPenalty === 'function') {
         def = Math.max(0, def + globalThis.getFractureGuardPenalty(status));
       }
+      if (typeof globalThis.getScorchedGuardPenalty === 'function') {
+        def = Math.max(0, def + globalThis.getScorchedGuardPenalty(status));
+      }
       return def;
     }
-    if (k === 'MDEF' || k === 'RESOLVE') return Math.max(0, Number(stats.mdef) || 0);
+    if (k === 'MDEF' || k === 'RESOLVE') {
+      var mdef = Math.max(0, Number(stats.mdef) || 0);
+      if (typeof globalThis.getScorchedResolvePenalty === 'function') {
+        mdef = Math.max(0, mdef + globalThis.getScorchedResolvePenalty(status));
+      }
+      return mdef;
+    }
     if (k === 'ACC') {
       var acc = Math.max(0, Number(stats.acc) || 0);
       if (typeof globalThis.getDazedPrecisionPenalty === 'function') {
         acc = Math.max(0, acc + globalThis.getDazedPrecisionPenalty(status));
+      }
+      if (typeof globalThis.getConfusedPrecisionPenalty === 'function') {
+        acc = Math.max(0, acc + globalThis.getConfusedPrecisionPenalty(status));
       }
       return acc;
     }
@@ -408,8 +426,18 @@
       }
       return dodge;
     }
-    if (k === 'MIGHT') return Math.max(0, Number(stats.atk) || 0);
-    return Math.max(0, Number(stats.atk) || 0);
+    if (k === 'MIGHT') {
+      var might = Math.max(0, Number(stats.atk) || 0);
+      if (typeof globalThis.getWeakenedMightPenalty === 'function') {
+        might = Math.max(0, might + globalThis.getWeakenedMightPenalty(status));
+      }
+      return might;
+    }
+    var atk = Math.max(0, Number(stats.atk) || 0);
+    if (typeof globalThis.getWeakenedMightPenalty === 'function') {
+      atk = Math.max(0, atk + globalThis.getWeakenedMightPenalty(status));
+    }
+    return atk;
   }
 
   function weaponFirstEnabled() {
@@ -989,6 +1017,19 @@
       flatPen += globalThis.getShatteredAttackerPenetration(targetStatus);
     }
     var attackerStatus = entityCombatStatus(attacker) || params.attackerStatus || null;
+    var ignoreNext = attackerStatus && attackerStatus._nextMatchingDefIgnore;
+    if (ignoreNext && (Number(ignoreNext.amount) || 0) > 0) {
+      var gateOk = true;
+      if (ignoreNext.gate === 'debuffedOrMarked') {
+        gateOk = !!(targetStatus && (
+          targetStatus.jewelMark || targetStatus.predatorMark || targetStatus.carrionMark || targetStatus.marked
+          || (targetStatus.poison && targetStatus.poison.stacks) || (targetStatus.bleed && targetStatus.bleed.stacks)
+          || targetStatus.burning || targetStatus.chilled || targetStatus.weakened || targetStatus.weaken
+          || targetStatus.feared || targetStatus.confused || targetStatus.accDebuff
+        ));
+      }
+      if (gateOk) flatPen += Number(ignoreNext.amount) || 0;
+    }
     var skillPowerPenalty = typeof globalThis.getDazedSkillPowerPenalty === 'function'
       ? globalThis.getDazedSkillPowerPenalty(attackerStatus)
       : 0;

@@ -170,6 +170,11 @@
       if (v.turns <= 0) { delete status.decreed; return true; }
       return false;
     }
+    if (typeof v === 'object' && v.turns != null) {
+      v.turns = (v.turns || 0) - 1;
+      if (v.turns <= 0) { delete status[key]; return true; }
+      return false;
+    }
     if (typeof v === 'number' && v > 0) {
       status[key] = v - 1;
       if (status[key] <= 0) delete status[key];
@@ -240,7 +245,9 @@
         logText: '🔥 Incinerating deals {dmg} to {name}!', logKind: 'burn-tick',
       });
       delete status.incinerating;
-      status.scorched = { turns: (R.scorched && R.scorched.duration) || 1 };
+      status.scorched = typeof globalThis.makeScorchedStatus === 'function'
+        ? globalThis.makeScorchedStatus((R.scorched && R.scorched.duration) || 1)
+        : { turns: (R.scorched && R.scorched.duration) || 1 };
       if (typeof globalThis.logMsg === 'function') {
         globalThis.logMsg('🔥 ' + sideName(side) + ' becomes Scorched!', 'system');
       }
@@ -252,7 +259,8 @@
 
     R.tickOrder.forEach(function () { /* damage phase done above */ });
     ['poison', 'toxic', 'bleed', 'burning', 'scorched', 'shock', 'chilled',
-      'fracture', 'crippled', 'dazed', 'shattered', 'immobilised', 'concussed'].forEach(function (key) {
+      'fracture', 'crippled', 'dazed', 'shattered', 'immobilised', 'concussed',
+      'weakened', 'jewelMark', 'predatorMark', 'carrionMark'].forEach(function (key) {
       if (status[key]) decrementAilmentDuration(status, key);
     });
     tickGuardDurations(status);

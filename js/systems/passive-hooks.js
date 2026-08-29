@@ -732,7 +732,10 @@
       case 'afterArmourAbsorb':
         return !!(ctx && (ctx.armourAbsorbed || ctx.protectionAbsorbed));
       case 'afterDebuffApplied':
-        return !!(ctx && ctx.appliedDebuff);
+        if (!(ctx && ctx.appliedDebuff)) return false;
+        if (/applying Chilled/i.test(String(parsed.text || '')) && String(ctx.appliedAilment || '').toLowerCase() !== 'chilled') return false;
+        if (/applying Precision Down/i.test(String(parsed.text || '')) && String(ctx.appliedAilment || '') !== 'statDebuff') return false;
+        return true;
       case 'afterAilmentApplied':
         if (!(ctx && ctx.appliedAilment)) return false;
         if (t.ailment && String(ctx.appliedAilment).toLowerCase() !== String(t.ailment).toLowerCase()) return false;
@@ -772,6 +775,22 @@
         return !!(ctx && ctx.songBuffGranted);
       case 'noDamageActionLastTurn':
         return !!(ctx && ctx.noDamageActionLastTurn) || !!(G && G._passiveNoDamageLastTurn && G._passiveNoDamageLastTurn[side]);
+      case 'afterCrit':
+        return !!(ctx && (ctx.crit || ctx.anyCrit));
+      case 'afterEnemyAttack':
+        return !!(ctx && (ctx.afterEnemyAttack || ctx.dodged));
+      case 'afterDamageDealt': {
+        var dealt = !!(ctx && ((Number(ctx.damage) || 0) > 0 || (Number(ctx.hitsLanded) || 0) > 0 || (Number(ctx.healthDamage) || 0) > 0 || ctx.firstHitLanded));
+        if (!dealt) return false;
+        return enemyHasAnyAffliction(foeStatus) || foeHasMarked(foeStatus);
+      }
+      case 'passiveAlways': {
+        var alwaysText = String((parsed && parsed.text) || '');
+        if (/armour restoration or fortify/i.test(alwaysText)) {
+          return !!(ctx && ctx.armourTechnique) || isFortifyOrArmourRestoreAbility(ab);
+        }
+        return true;
+      }
       default:
         return false;
     }
@@ -870,6 +889,8 @@
         applyV2TierEffect(perk.id, { kind: 'tierStat', tier: 'minor', stat: other, dir: 'up', target: 'self' }, 1, side);
       }
       if (sp.id === 'restoreArmour' && Avian.protection && typeof Avian.protection.restoreArmour === 'function') {
+        var restoreText = String((perk && perk.parsed && perk.parsed.text) || (perk && perk.effect) || '');
+        if (/if you dodged/i.test(restoreText) && !(ctx && ctx.dodged)) continue;
         Avian.protection.restoreArmour(actor.stats, Number(sp.amount) || 0);
         if (typeof spawnFloat === 'function') spawnFloat(side, '+' + (sp.amount || 0) + ' ARM', 'fn-buff');
       }
@@ -989,8 +1010,17 @@
     if (!gateV2(actor.birdKey || perk.birdKey, perk.id, parsed.limit)) return;
     var turns = v2DurationTurns(parsed.duration);
     var effects = parsed.effects || [];
+    var parsedText = String(parsed.text || '');
+    var bothFullGate = /If both pools are full/i.test(parsedText);
+    var accEffects = [];
     for (var i = 0; i < effects.length; i++) {
       var eff = effects[i];
+      if (eff && bothFullGate && String(eff.stat || '').toLowerCase() === 'acc') {
+        accEffects.push(eff);
+        continue;
+      }
+      if (eff && parsed.trigger && parsed.trigger.kind === 'afterDebuffApplied'
+        && eff.target === 'enemy' && !/instead applies/i.test(parsedText)) continue;
       if (eff && eff.requiresHealthDamage && !(Number(ctx.healthDamage) > 0)) continue;
       applyV2TierEffect(perk.id, eff, turns, side);
     }
@@ -1010,6 +1040,22 @@
       }
     } else {
       applyV2Specials(perk, parsed.specials || [], side, ab, ctx);
+    }
+    if (parsed.trigger && parsed.trigger.kind === 'passiveAlways' && /1 additional Armour/i.test(parsedText)) {
+      if (Avian.protection && typeof Avian.protection.restoreArmour === 'function') {
+        Avian.protection.restoreArmour(actor.stats, 1);
+        if (typeof spawnFloat === 'function') spawnFloat(side, '+1 ARM', 'fn-buff');
+      }
+    }
+    if (accEffects.length) {
+      var stCheck = actor.stats || {};
+      var arm = Math.max(0, Number(stCheck.armour) || 0);
+      var armMax = Math.max(0, Number(stCheck.normalMaxArmour != null ? stCheck.normalMaxArmour : stCheck.maxArmour) || 0);
+      var mag = Math.max(0, Number(stCheck.magicArmour) || 0);
+      var magMax = Math.max(0, Number(stCheck.normalMaxMagicArmour != null ? stCheck.normalMaxMagicArmour : stCheck.maxMagicArmour) || 0);
+      if (arm >= armMax && mag >= magMax) {
+        for (var ai = 0; ai < accEffects.length; ai++) applyV2TierEffect(perk.id, accEffects[ai], turns, side);
+      }
     }
   }
 
@@ -1263,14 +1309,14 @@
   Avian.passives.onPlayerDodged = function onPlayerDodged(ctx) {
     if (!globalThis.G || !G.player) return;
     var perk = passiveFor(G.player.birdKey);
-    if (perk) firePassive(perk, null, Object.assign({ dodged: true }, ctx || {}), 'player');
+    if (perk) firePassive(perk, null, Object.assign({ dodged: true, afterEnemyAttack: true }, ctx || {}), 'player');
   };
 
   Avian.passives.onAilmentAppliedByPlayer = function onAilmentAppliedByPlayer(ailmentId) {
     if (!globalThis.G || !G.player) return;
     var perk = passiveFor(G.player.birdKey);
     if (!perk) return;
-    var debuffs = { poison: 1, bleed: 1, weaken: 1, feared: 1, paralyzed: 1, burning: 1, chilled: 1, blinded: 1, accDebuff: 1 };
+    var debuffs = { poison: 1, bleed: 1, weaken: 1, feared: 1, paralyzed: 1, burning: 1, chilled: 1, blinded: 1, accDebuff: 1, statDebuff: 1, weakened: 1, confused: 1 };
     firePassive(perk, null, {
       appliedAilment: ailmentId,
       appliedDebuff: !!debuffs[ailmentId],

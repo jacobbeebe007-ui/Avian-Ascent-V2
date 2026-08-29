@@ -57,6 +57,14 @@ export default [
       expectValue(typeof sandbox.getBurningDefMult === 'function', true, 'burning def helper');
       expectValue(typeof sandbox.calcScorchedTickDmg === 'function', true, 'scorched helper');
       expectValue(sandbox.calcScorchedTickDmg(), 0, 'scorched has no DoT');
+      sandbox.applyAilment('enemy', 'scorched', 1);
+      const es = sandbox.G.enemyStatus;
+      expectValue(!!es.scorched, true, 'scorched applied');
+      const guardPen = sandbox.getScorchedGuardPenalty(es);
+      const resolvePen = sandbox.getScorchedResolvePenalty(es);
+      expectValue(guardPen < 0, true, 'scorched Minor Guard Down');
+      expectValue(resolvePen < 0, true, 'scorched Minor Resolve Down');
+      expectValue(sandbox.getBurningDefMult(0, true), 1, 'scorched is not a % DEF mult');
     },
   },
   {
@@ -156,6 +164,51 @@ export default [
       expectValue(blocked, false, 'shock blocked by Control Resistance');
       const blockedPara = sandbox.applyAilment('player', 'paralyzed', 1);
       expectValue(blockedPara, false, 'direct paralysis blocked by CR');
+    },
+  },
+  {
+    id: 'AIL-WKN-001',
+    name: 'Weakened applies Moderate Might and Focus Down',
+    setup: {
+      player: { bird: 'sparrow', energy: 4, equipment: { mainHand: 'WPN-B04' } },
+      enemy: { bird: 'crow', hp: 100, atk: 20, matk: 20 },
+    },
+    assert({ sandbox, expectValue }) {
+      const ok = sandbox.applyAilment('enemy', 'weakened', 1);
+      expectValue(ok, true, 'weakened applied');
+      const es = sandbox.G.enemyStatus;
+      expectValue(!!es.weakened, true, 'weakened status present');
+      expectValue(sandbox.getWeakenedMightPenalty(es) < 0, true, 'might down');
+      expectValue(sandbox.getWeakenedFocusPenalty(es) < 0, true, 'focus down');
+    },
+  },
+  {
+    id: 'AIL-FEAR-001',
+    name: 'Fear is Major Damage Down on the next damaging action, not a skip',
+    setup: {
+      player: { bird: 'sparrow', energy: 4, equipment: { mainHand: 'WPN-B04' } },
+      enemy: { bird: 'crow', hp: 100 },
+    },
+    assert({ sandbox, expectValue }) {
+      sandbox.applyAilment('enemy', 'feared', 1);
+      expectValue((sandbox.G.enemyStatus.feared || 0) > 0, true, 'feared applied');
+      expectValue(sandbox.getFearDamageMult(sandbox.G.enemyStatus), 0.88, 'major damage down −12%');
+    },
+  },
+  {
+    id: 'AIL-CNF-001',
+    name: 'Confused is Major Precision Down, not a self-hit roll',
+    setup: {
+      player: { bird: 'sparrow', energy: 4, equipment: { mainHand: 'WPN-B04' } },
+      enemy: { bird: 'crow', hp: 100 },
+    },
+    assert({ sandbox, expectValue }) {
+      sandbox.applyAilment('enemy', 'confused', 1);
+      const es = sandbox.G.enemyStatus;
+      const c = es.confused;
+      expectValue(!!c, true, 'confused applied');
+      expectValue(c.selfChance == null, true, 'no self-hit chance');
+      expectValue(sandbox.getConfusedPrecisionPenalty(es) <= -8, true, 'major precision down');
     },
   },
 ];
