@@ -80,6 +80,8 @@ const checks = [
   { label: 'setHatcherySubView global', re: /globalThis\.setHatcherySubView\s*=/ },
   { label: 'Flight settings briefing', re: /function syncFlightSettingsBriefing\b/ },
   { label: 'Flight settings choice cards', re: /flight-choice-card/ },
+  { label: 'Settings audio labels', re: /function syncAudioSettingLabels\b/ },
+  { label: 'Music assignment chips', re: /function syncMusicMenuAssignmentChips\b/ },
 ];
 
 for (const c of checks) {
