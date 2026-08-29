@@ -3704,10 +3704,6 @@ async function confirmClearCache() {
   }
   setTimeout(() => { cacheBustReload(); }, 250);
 }
-globalThis.clearGameCache = clearGameCache;
-globalThis.openClearCacheModal = openClearCacheModal;
-globalThis.closeClearCacheModal = closeClearCacheModal;
-globalThis.confirmClearCache = confirmClearCache;
 if (typeof Avian?.actions?.register === 'function') {
   Avian.actions.register('openClearCacheModal', openClearCacheModal);
   Avian.actions.register('closeClearCacheModal', closeClearCacheModal);
