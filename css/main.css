@@ -5207,6 +5207,7 @@ img{image-rendering:pixelated;image-rendering:crisp-edges;}
   padding:8px 10px 10px;
   box-shadow:inset 0 1px 0 rgba(255,255,255,.04),0 8px 18px rgba(0,0,0,.22);
 }
+#screen-battle .combat-vitals{flex:0 0 auto;margin-top:auto;}
 #screen-battle .combatant-panel.player .combatant-card{border-color:rgba(80,160,80,.38);}
 #screen-battle .combatant-panel.enemy .combatant-card{border-color:rgba(201,76,76,.38);}
 #screen-battle .combatant-identity{text-align:center;margin-bottom:4px;}
@@ -5221,33 +5222,32 @@ img{image-rendering:pixelated;image-rendering:crisp-edges;}
 .combat-vitals{
   display:flex;
   flex-direction:column;
-  gap:6px;
+  gap:7px;
   flex-shrink:0;
   width:100%;
   padding:8px 10px 9px;
   background:linear-gradient(180deg,rgba(6,10,14,.62),rgba(4,7,10,.5));
   border:1px solid rgba(201,168,76,.2);
   border-radius:10px;
+  box-sizing:border-box;
 }
 .combat-vitals .hp-bar-wrap{
-  margin:0;
-  display:grid;
-  grid-template-columns:4.4em minmax(0,1fr);
-  grid-template-rows:auto auto;
-  column-gap:8px;
-  row-gap:2px;
-  align-items:center;
+  margin:0 !important;
+  display:flex;
+  flex-direction:column;
+  gap:3px;
 }
 .combat-vitals .hp-label{
-  display:contents;
-  font-size:.7rem;
+  display:flex;
+  justify-content:space-between;
+  align-items:baseline;
+  gap:8px;
   margin:0;
+  font-size:.7rem;
   font-weight:600;
 }
 .combat-vitals .hp-label span:first-child{
-  grid-column:1;
-  grid-row:1 / span 2;
-  align-self:center;
+  flex:0 0 4.2em;
   font-family:'Cinzel',serif;
   font-size:.62rem;
   letter-spacing:.08em;
@@ -5255,23 +5255,21 @@ img{image-rendering:pixelated;image-rendering:crisp-edges;}
   color:var(--text-dim);
 }
 .combat-vitals .hp-label span:last-child{
-  grid-column:2;
-  grid-row:1;
+  flex:1 1 auto;
   text-align:right;
   font-variant-numeric:tabular-nums;
   letter-spacing:.02em;
   line-height:1.15;
 }
-.combat-vitals .hp-bar-bg{
-  grid-column:2;
-  grid-row:2;
-  height:10px;
-  width:100%;
-}
+.combat-vitals .hp-bar-bg,
 .combat-vitals .en-bar-bg,
 .combat-vitals .arm-bar-bg,
 .combat-vitals .marm-bar-bg,
-.combat-vitals .ultimate-meter-bar{height:10px;}
+.combat-vitals .ultimate-meter-bar{
+  height:10px !important;
+  width:100%;
+  box-sizing:border-box;
+}
 .en-bar-wrap{margin-top:0;margin-bottom:0;}
 .en-bar-bg{height:10px;border-color:rgba(106,138,232,.3);background:linear-gradient(180deg,rgba(10,14,24,.95),rgba(20,24,40,.84));}
 .en-bar-fill{background:linear-gradient(90deg,#2f6cca,#5ea5ff);box-shadow:0 0 10px rgba(106,138,232,.35);}
@@ -5324,10 +5322,16 @@ body.ui-mobile-mode #screen-battle .btn-desc{
   border-style:dashed;
   cursor:not-allowed;
   justify-content:flex-start;
+  align-self:start;
+  min-height:0 !important;
+  height:auto;
 }
 #screen-battle.equipment-v2-mode .action-btn--empty .btn-name{
   font-size:.82rem;
   color:var(--text-dim);
+}
+#screen-battle.equipment-v2-mode .action-btn--empty .btn-empty-reason{
+  margin-top:6px;
 }
 #screen-battle.equipment-v2-mode .btn-source-chip{
   font-size:.56rem;
