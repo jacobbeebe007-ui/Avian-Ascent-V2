@@ -8660,7 +8660,7 @@ function buildPlayerCombatStatHint(){
     const turns=typeof s.weaken==='number'?s.weaken:(s.weaken?.turns||0);
     parts.push(`Weaken ×${st} (${turns}t, −${Math.round((1-getWeakenDamageMult(st))*100)}% dmg, −${getWeakenDodgePenalty(st)} dodge)`);
   }
-  if((s.feared||0)>0) parts.push(`Fear ${s.feared}t (30% skip)`);
+  if((s.feared||0)>0) parts.push(`Fear ${s.feared}t (−12% dmg)`);
   if(s.humDodge?.bonus) parts.push(`Dodge buff +${s.humDodge.bonus}% (${s.humDodge.turns||0}t)`);
   if(s.peregrineCritLens?.bonus) parts.push(`Crit lens +${s.peregrineCritLens.bonus}% (${s.peregrineCritLens.turns||0}t)`);
   if(Number(s.huntersMarkBonusPct)>0) parts.push(`Next hit +${Math.round(s.huntersMarkBonusPct*100)}% dmg`);
@@ -11785,6 +11785,13 @@ function getFinalAttackPrecision(entity, ab, opts={}){
   if (typeof getDazedPrecisionPenalty === 'function') {
     activeUp += getDazedPrecisionPenalty(sideStatus);
   }
+  if (typeof getConfusedPrecisionPenalty === 'function') {
+    activeUp += getConfusedPrecisionPenalty(sideStatus);
+  }
+  if (side === 'player' && sideStatus && sideStatus.blinded && (sideStatus.blinded.turns || 0) > 0) {
+    const blindPts = (typeof AILMENT_RULES !== 'undefined' && AILMENT_RULES.blinded && AILMENT_RULES.blinded.accPenalty) || 12;
+    activeDown += Number(blindPts) || 12;
+  }
   if(typeof Avian?.dispatcher?.modifyAcc==='function' && side==='player'){
     /* dispatcher may apply further temp mods via getPlayerEffectiveAcc path; keep additive here. */
   }
@@ -12599,9 +12606,9 @@ function applySourceStatLoan(ps,player,bagName,statKey,sourceId,value,turns=1){
   if(prev&&prev.amt){
     player.stats[statKey]=Math.max(0,Math.round(((player.stats[statKey]||0)-(prev.amt||0))*100)/100);
   }
-  const amt=Math.max(prev?(prev.amt||0):0,Number(value)||0);
-  if(amt>0){
-    player.stats[statKey]=Math.round(((player.stats[statKey]||0)+amt)*100)/100;
+  const amt=Number(value)||0;
+  if(amt!==0){
+    player.stats[statKey]=Math.max(0,Math.round(((player.stats[statKey]||0)+amt)*100)/100);
     bag[slotKey]={statKey,amt,turns:Math.max(1,Math.floor(Number(turns)||1)),sourceId:String(sourceId||'')};
   }else if(bag[slotKey]) delete bag[slotKey];
   refreshDerivedStatsAfterLoan(player, statKey);
@@ -12972,8 +12979,11 @@ function computeMasterOutgoingDamage(isMagic, srcAbility, opts={}){
       }
       const ps=G.playerStatus||{};
       if(ps._passiveSkillPowerBonus){
-        n+=Number(ps._passiveSkillPowerBonus)||0;
+        const vsMarm=!!ps._passiveSkillPowerVsMagicArmour;
+        const enemyMarm=Number(G.enemy?.stats?.magicArmour)||0;
+        if(!vsMarm || enemyMarm>0) n+=Number(ps._passiveSkillPowerBonus)||0;
         ps._passiveSkillPowerBonus=0;
+        delete ps._passiveSkillPowerVsMagicArmour;
       }
       return n;
     })(),
@@ -13421,6 +13431,9 @@ function dealDamage(target,amount,isCrit=false,isMagic=false,srcAbility=null,opt
     }else if(G._dispatcherCombatRow && typeof Avian?.dispatcher?.applyPostCurveModifiers==='function'){
       dmg=Avian.dispatcher.applyPostCurveModifiers(dmg,G._dispatcherCombatRow);
     }
+    if(typeof getFearDamageMult==='function'){
+      dmg=roundCombatDamage(dmg*getFearDamageMult(G.playerStatus));
+    }
     const _passId=BIRDS[G.player?.birdKey]?.passive?.id;
     if(!isMagic && classPerkCtx.predatorRhythm && (G.playerActionsThisTurn||0)===2 && chance(10)) isCrit=true;
     if(!isCrit && typeof getPlayerCritChance==='function' && chance(getPlayerCritChance(activeAb))) isCrit=true;
@@ -13507,6 +13520,9 @@ function dealDamage(target,amount,isCrit=false,isMagic=false,srcAbility=null,opt
       : roundCombatDamage(applyCurvedMitigationToPlayer(dmg,isMagic,activeAb));
     G._currentPiercePct=0;
     if((G.enemyStatus?.feared||0)>0 && G.player?.relTerrorLedger) dmg=roundCombatDamage(dmg*0.90);
+    if(typeof getFearDamageMult==='function'){
+      dmg=roundCombatDamage(dmg*getFearDamageMult(G.enemyStatus));
+    }
     if(G.playerStatus?.ironResolve && G.playerStatus.ironResolve.turns>0) dmg=roundCombatDamage(dmg*0.80);
     const _bd=BIRDS[G.player.birdKey];
     const _p=_bd&&_bd.passive;
@@ -13584,7 +13600,18 @@ function dealDamage(target,amount,isCrit=false,isMagic=false,srcAbility=null,opt
         armourAbsorbed: !isMagic && !!(G._lastProtectionHit && G._lastProtectionHit.absorbed > 0),
         protectionAbsorbed: !!(G._lastProtectionHit && G._lastProtectionHit.absorbed > 0),
         brokePool: !!(G._lastProtectionHit && G._lastProtectionHit.brokePool),
+        afterEnemyAttack: true,
       });
+    }
+    if(!isMagic && G.playerStatus && G.playerStatus.magicArmourRetaliateOnPhysical
+      && (G.playerStatus.magicArmourRetaliateOnPhysical.remaining || 0) > 0
+      && G.playerStatus.ward && (G.playerStatus.ward.turns || 0) > 0
+      && G.enemy && G.enemy.stats && Avian?.protection?.applyDamageThroughProtection) {
+      var retAmt = Number(G.playerStatus.magicArmourRetaliateOnPhysical.amount) || 2;
+      Avian.protection.applyDamageThroughProtection(G.enemy.stats, G.enemyStatus, retAmt, true);
+      G.playerStatus.magicArmourRetaliateOnPhysical.remaining = 0;
+      delete G.playerStatus.magicArmourRetaliateOnPhysical;
+      if(typeof spawnFloat==='function') spawnFloat('enemy', '-'+retAmt+' MARM', 'fn-dmg');
     }
     if(BIRDS[G.player?.birdKey]?.passive?.id==='passive_bluejay_territorial_fury' && dmg>0) G.player._blueJayRecentHit=true;
     if((G.player?.lowHpSpdBonus||0)>0 && !G.player._lowHpSpdApplied && G.player.stats.hp<=Math.floor((G.player.stats.maxHp||1)*0.5)){
@@ -14292,7 +14319,9 @@ function applyAilment(target,ailId,stacks=1) {
     }
     delete status.burning;
     delete status.incinerating;
-    status.scorched={turns:scorchDur};
+    status.scorched = typeof globalThis.makeScorchedStatus === 'function'
+      ? globalThis.makeScorchedStatus(scorchDur)
+      : { turns: scorchDur, guardDown: 4, resolveDown: 4 };
   } else if (ailId==='chilled') {
     if (!applyChilledStacksToTarget(target, applyStacks)) return false;
   } else if (ailId==='fracture' || ailId==='crippled' || ailId==='dazed') {
@@ -14313,8 +14342,17 @@ function applyAilment(target,ailId,stacks=1) {
     status.feared=Math.max(status.feared||0, incoming)+debuffDurationBonus;
     appliedAs = 'feared';
   } else if (ailId==='confused') {
-    const t=Math.max(1, Math.floor(Number(stacks)||2));
-    status.confused={turns:t,selfChance:STATUS_CONFUSED_SELF_PCT};
+    const t=Math.max(1, Math.floor(Number(stacks)||1));
+    const prec = typeof globalThis.getConfusedPrecisionPenalty === 'function'
+      ? Math.abs(globalThis.getConfusedPrecisionPenalty({ confused: { turns: 1 } }))
+      : 8;
+    status.confused={turns:t, precisionDown: prec};
+  } else if (ailId==='weakened') {
+    const wDur = (AILMENT_RULES?.weakened?.duration)||1;
+    status.weakened = typeof globalThis.makeWeakenedStatus === 'function'
+      ? globalThis.makeWeakenedStatus(wDur + debuffDurationBonus)
+      : { turns: wDur + debuffDurationBonus, mightDown: 10, focusDown: 10 };
+    appliedAs = 'weakened';
   } else if (ailId==='delayed') {
     return false;
   }
@@ -14581,20 +14619,15 @@ async function playerAction(ab,fromQueue=false) {
   if(G.playerStatus.stunned>0){logMsg(`😵 Stunned — can't act!`,'miss');renderActions();refreshBattleUI();return;}
   const _pcl=G.playerStatus.confused;
   const _dmgEarly=effActKind==='physical'||effActKind==='ranged'||effActKind==='spell';
-  G._playerConfusesSelfThisAction=!!(_pcl&&(_pcl.turns||0)>0&&_dmgEarly&&chance(Number.isFinite(_pcl.selfChance)?_pcl.selfChance:STATUS_CONFUSED_SELF_PCT));
+  const _hostileEarly=_dmgEarly || String(ab && (ab.target || '')).toLowerCase()==='enemy';
+  G._playerConfusesSelfThisAction=false;
+  G._consumeConfusedAfterAction=!!(_pcl&&((typeof _pcl==='object'?(_pcl.turns||0):_pcl)>0)&&_hostileEarly);
+  G._consumeFearAfterAction=!!((G.playerStatus.feared||0)>0 && _dmgEarly);
   if(typeof consumeFrozenSkip==='function' && consumeFrozenSkip('player')){
     spawnFloat('player','🧊 Frozen!','fn-status');await delay(400);
     logMsg('🧊 Frozen — you skip this action!','miss');renderActions();refreshBattleUI();
     if((G.player.energy||0)<=0) endPlayerTurn(true);
     return;
-  }
-  if(G.playerStatus.feared>0&&!G.player.humImmuneToFear&&!G.player.bulwarkFearImmune){
-    if(effActKind==='utility'&&ab.id!=='crowDefend'){/* utility ok */}
-    else if(ab.id==='crowDefend'){logMsg(`😨 Feared — cannot defend!`,'miss');renderActions();refreshBattleUI();return;}
-    else if(effActKind!=='utility'&&chance(STATUS_FEAR_SKIP_PCT)){
-      playAvatarAnim('player','do-miss-r',560);spawnFloat('player','😨 Panic!','fn-miss');await delay(560);
-      logMsg(`😨 Feared — you panic and lose this action!`,'miss');renderActions();refreshBattleUI();return;
-    }
   }
   // Stick Lance: if stage was armed but player picks something else — reset
   if(G.stickLanceStage===1 && ab.id!=='stickLance'){
@@ -14708,6 +14741,27 @@ async function playerAction(ab,fromQueue=false) {
   } else {
     logMsg('No handler for ability: ' + ab.id, 'miss');
   }
+  if (G._consumeFearAfterAction) {
+    delete G.playerStatus.feared;
+    G._consumeFearAfterAction = false;
+  }
+  if (G._consumeConfusedAfterAction) {
+    delete G.playerStatus.confused;
+    G._consumeConfusedAfterAction = false;
+  }
+  if (G.playerStatus && G.playerStatus._nextDayBurnIfHealth && _dmgEarly) {
+    const asp = String((typeof resolveAbilityAspectForDisplay === 'function'
+      ? resolveAbilityAspectForDisplay(ab, G.player)
+      : (ab && (ab.aspect || ab.affinity))) || G.playerStatus._armedNextSkillAspect || '').toLowerCase();
+    const isDay = asp === 'solis' || asp === 'day';
+    if (isDay) {
+      if (G._lastProtectionHit && G._lastProtectionHit.damagedHealth
+        && (Number(G.enemy && G.enemy.stats && G.enemy.stats.magicArmour) || 0) <= 0) {
+        applyAilment('enemy', 'burning', G.playerStatus._nextDayBurnIfHealth);
+      }
+      delete G.playerStatus._nextDayBurnIfHealth;
+    }
+  }
   checkBlackbirdOmenChorusAfterAbility(_delayedBeforeAbility);
   if((effActKind==='physical'||effActKind==='ranged') && classPerkCtx.ironMomentum && /heavy|slam|crusher|smash/i.test((ab.name||ab.id||'').toLowerCase())){
     applySourceStatLoanPct(G.playerStatus, G.player, '_ironMomentumLoans', 'def', ab.id||'ironMomentum', 8, 1);
@@ -14735,15 +14789,17 @@ async function playerAction(ab,fromQueue=false) {
     if(enCost===1) G._workbookOneEnCount=(G._workbookOneEnCount||0)+1;
     if((effActKind==='physical'||effActKind==='ranged') && !G._workbookFirstPhysicalUsed) G._workbookFirstPhysicalUsed=true;
     if((effActKind==='utility'||effActKind==='spell') && !G._workbookFirstSupportUsed && /support|heal|guard|song|call/i.test(String(ab?.name||''))) G._workbookFirstSupportUsed=true;
-    Avian.passives.onPlayerAbilityUse(ab, {
+      Avian.passives.onPlayerAbilityUse(ab, {
       hitsLanded: G._lastAbilityHitsLanded || 0,
       firstHitLanded: (G._lastAbilityHitsLanded || 0) > 0,
       anyCrit: !!G._lastAbilityAnyCrit,
       crit: !!G._lastAbilityAnyCrit,
       ailmentFailed: !!G._lastAbilityAilmentFailed,
+      damage: G._lastAbilityTotalDmg || 0,
       healthDamage: G._lastProtectionHit && G._lastProtectionHit.damagedHealth
         ? (G._lastProtectionHit.remaining || 1)
         : 0,
+      armourTechnique: !!(ab && (ab.actionSource === 'armour' || /fortify|restore/i.test(String(ab.name || '') + String(ab.riderText || '')))),
       effActKind,
       oneEnCountThisTurn: G._workbookOneEnCount||0,
     });
@@ -14973,7 +15029,7 @@ function getAbilityEnergyCost(ab, player){
       : ((sideStatus?.paralyzed || sideStatus?.paralysed) ? 1 : 0);
     if (extra > 0) cost += extra;
     const concussedExtra = typeof getConcussedExtraEnCost === 'function'
-      ? getConcussedExtraEnCost(sideStatus, ability)
+      ? getConcussedExtraEnCost(sideStatus, ab)
       : 0;
     if (concussedExtra > 0) cost += concussedExtra;
   } catch (_) { /* noop */ }
@@ -15531,6 +15587,10 @@ function endPlayerTurn(force=false) {
   G._lastPlayerAbility=null;
   tickEndOfTurnAilments('player');
   tickDelayedForTarget('player');
+  G._passiveNoDamageLastTurn = G._passiveNoDamageLastTurn || {};
+  G._passiveNoDamageLastTurn.player = !(G._passiveDamagingActionThisTurn && G._passiveDamagingActionThisTurn.player);
+  G._passiveDamagingActionThisTurn = G._passiveDamagingActionThisTurn || {};
+  G._passiveDamagingActionThisTurn.player = false;
   if(G.player.stats.hp<=0||G.enemy.stats.hp<=0){if(checkDeath())return;}
   tickGuardedStatus(G.enemyStatus);
   tickShieldHpStatus('enemy');
@@ -16218,12 +16278,6 @@ async function enemyTurn() {
     logMsg(`${e.name} paralyzed — cannot act!`,'enemy-action');
     G.animLock=false;afterEnemyTurn();return;
   }
-  if(G.enemyStatus.feared>0&&chance(STATUS_FEAR_SKIP_PCT)){
-    spawnFloat('enemy','😨 Panic!','fn-status');await delay(400);
-    logMsg(`${e.name} is too frightened to act!`,'enemy-action');
-    G.animLock=false;afterEnemyTurn();return;
-  }
-
   if(G.enemyStatus.sonicSkip&&G.enemyStatus.sonicSkip.turns>0&&chance(G.enemyStatus.sonicSkip.chance)){
     spawnFloat('enemy','🔊 Stunned by Dirge!','fn-status');await delay(400);
     logMsg(`${e.name} stunned by Sonic Dirge!`,'enemy-action');
@@ -16270,18 +16324,9 @@ async function enemyTurn() {
     if(action.type==='ability'){
       if(enemyKitAbilityIsHardCC(action.abilityId,e)) usedHardCCThisTurn=true;
       const _cAb=G.enemyStatus.confused;
-      if(_cAb&&(_cAb.turns||0)>0&&chance(Number.isFinite(_cAb.selfChance)?_cAb.selfChance:STATUS_CONFUSED_SELF_PCT)){
-        const abRoll=rollEnemyCritDamage(edmg(0.85));
-        const selfD=abRoll.amount;
-        e.stats.hp=Math.max(0,e.stats.hp-selfD);
-        setHpBar('enemy',e.stats.hp,e.stats.maxHp);
-        spawnFloat('enemy',`🌀 -${selfD}`,'fn-dmg');
-        logMsg(`${e.name} fumbles in confusion for ${selfD}!`,'enemy-action');
-        await delay(400);
-        if(selfD>0) turnHadDamage=true;
-        refundEnemyActionEnergy(e, cost);
-        G.enemyActionsThisTurn--;
-        continue;
+      if(_cAb&&((typeof _cAb==='object'?(_cAb.turns||0):_cAb)>0)){
+        G._consumeEnemyConfusedAfterAction=projectedEnemyActionDamage(action,e)>0
+          || String((action.ability && action.ability.target) || 'enemy').toLowerCase()!=='self';
       }
       const _stBd=BIRDS[G.player.birdKey];
       if(_stBd&&_stBd.passive&&_stBd.passive.onEnemyAttackCheck&&_stBd.passive.onEnemyAttackCheck(G.player,G)){
@@ -16293,9 +16338,17 @@ async function enemyTurn() {
       }
       const executed=await executeEnemyKitTemplateAbility(e,action.abilityId,totalEnemyMiss);
       if(!executed){
+        G._consumeEnemyConfusedAfterAction=false;
         refundEnemyActionEnergy(e, cost);
         G.enemyActionsThisTurn--;
         continue;
+      }
+      if(G._consumeEnemyConfusedAfterAction){
+        if(G.enemyStatus) delete G.enemyStatus.confused;
+        G._consumeEnemyConfusedAfterAction=false;
+      }
+      if(G.enemyStatus && (G.enemyStatus.feared||0)>0 && projectedEnemyActionDamage(action,e)>0){
+        delete G.enemyStatus.feared;
       }
       if(projectedEnemyActionDamage(action,e)>0) turnHadDamage=true;
       const _macBd2=BIRDS[G.player.birdKey];
@@ -16326,12 +16379,15 @@ function afterEnemyTurn() {
   G._incomingAttackKind=null;
   tickEndOfTurnAilments('enemy');
   tickDelayedForTarget('enemy');
+  G._passiveNoDamageLastTurn = G._passiveNoDamageLastTurn || {};
+  G._passiveNoDamageLastTurn.enemy = !(G._passiveDamagingActionThisTurn && G._passiveDamagingActionThisTurn.enemy);
+  G._passiveDamagingActionThisTurn = G._passiveDamagingActionThisTurn || {};
+  G._passiveDamagingActionThisTurn.enemy = false;
   if(G.player.stats.hp<=0||G.enemy.stats.hp<=0){if(checkDeath())return;}
   tickStatuses('enemy', {skipGuarded:true});
   if(G.playerStatus.confused&&typeof G.playerStatus.confused==='object'){G.playerStatus.confused.turns--;if(G.playerStatus.confused.turns<=0)delete G.playerStatus.confused;}
   if(G.enemyStatus.confused&&typeof G.enemyStatus.confused==='object'){G.enemyStatus.confused.turns--;if(G.enemyStatus.confused.turns<=0)delete G.enemyStatus.confused;}
   if(G.enemyStatus.enemyBlind>0){G.enemyStatus.enemyBlind--;if(G.enemyStatus.enemyBlind<=0)delete G.enemyStatus.enemyBlind;}
-  if(G.enemyStatus.feared>0){G.enemyStatus.feared--;}
   if(G.enemyStatus.featherRuffle&&G.enemyStatus.featherRuffle.turns>0){
     G.enemyStatus.featherRuffle.turns--;
     if(G.enemyStatus.featherRuffle.turns<=0){

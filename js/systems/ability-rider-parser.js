@@ -9,8 +9,31 @@
     }).join('\n');
   }
 
+  function sentenceAround(text, slice) {
+    var t = String(text || '');
+    var s = String(slice || '');
+    if (!s) return t;
+    var lower = t.toLowerCase();
+    var idx = lower.indexOf(s.toLowerCase());
+    if (idx < 0) return s;
+    var start = Math.max(t.lastIndexOf('.', idx), t.lastIndexOf('!', idx), t.lastIndexOf('?', idx));
+    start = start < 0 ? 0 : start + 1;
+    var after = idx + s.length;
+    var endDots = [t.indexOf('.', after), t.indexOf('!', after), t.indexOf('?', after)].filter(function (n) {
+      return n >= 0;
+    });
+    var end = endDots.length ? Math.min.apply(null, endDots) : t.length;
+    return t.slice(start, end);
+  }
+
   function parseRiderWhen(text, localSlice) {
-    var combined = String(localSlice || '') + '\n' + String(text || '');
+    var combined = localSlice ? sentenceAround(text, localSlice) : String(text || '');
+    if (/if (?:a |the )?debuff is cleansed|if (?:you )?cleansed/i.test(combined)) return 'ifCleansed';
+    if (/blocked while the target has magic armour|blocked by magic armour|while the target has magic armour/i.test(combined)) {
+      return 'ifTargetNoMagicArmour';
+    }
+    if (/blocked while the target has armour|blocked by armour(?!\s+restoration)/i.test(combined)) return 'ifTargetNoArmour';
+    if (/if (?:the effect |it )?reaches health/i.test(combined)) return 'reachedHealth';
     if (/faster than the target|acting before the target|act before the target|if you act before/i.test(combined)) return 'actingFirst';
     if (/after a magic ability|used after a magic|after using a magic ability|after a magic attack/i.test(combined)) return 'afterMagicThisTurn';
     if (/if both hit|both hits land|if both hits land/i.test(combined)) return 'allHitsLanded';
@@ -59,6 +82,10 @@
 
   function riderKey(r) {
     return [r.kind, r.when || '', r.value || '', r.ailment || '', r.scope || '', r.guardTier || ''].join('|');
+  }
+
+  function riderKindScopeKey(r) {
+    return [r.kind, r.scope || '', r.ailment || '', r.guardTier || '', r.mark || ''].join('|');
   }
 
   function hasRiderKind(riders, kind, when) {
@@ -122,9 +149,9 @@
     return /(minor|moderate|major|grand|epic|legendary)\s+guard\b/i.test(String(slice || ''));
   }
 
-  var NAMED_AILMENT =
-    'Bleed|Burn|Scorched|Poison|Toxic|Chilled|Frost|Shock|Paralys(?:ed|ed)?|Weaken(?:ed)?'
-    + '|Fracture|Shattered|Crippled|Immobilis(?:ed|ed)|Dazed|Concussed';
+    var NAMED_AILMENT =
+    'Bleed|Burn|Scorched|Poison|Toxic|Chilled|Frost|Shock|Paralys(?:ed|ed)?|Weakened|Weaken'
+    + '|Fear|Confused|Fracture|Shattered|Crippled|Immobilis(?:ed|ed)|Dazed|Concussed';
 
   function normalizeAilmentId(raw) {
     var s = String(raw || '').toLowerCase().trim();
@@ -135,7 +162,10 @@
     if (/^chill|^frost|^frozen/.test(s)) return 'chilled';
     if (/^shock/.test(s)) return 'shock';
     if (/^paralys|^paraly/.test(s)) return 'paralyzed';
-    if (/^weaken/.test(s)) return 'weakened';
+    if (/^weakened/.test(s)) return 'weakened';
+    if (/^weaken/.test(s)) return 'weaken';
+    if (/^fear/.test(s)) return 'feared';
+    if (/^confus/.test(s)) return 'confused';
     if (/^delay/.test(s)) return 'delayed';
     if (/^blind/.test(s)) return 'blinded';
     if (/^fracture|^shatter/.test(s)) return 'fracture';
@@ -438,11 +468,12 @@
     }
 
     // Guard / brace / counter / taunt — tier Guard uses gainGuarded(0); % resolved via AP/level in resolveGuardedReductionPct
-    for (var tg of t.matchAll(/\b(?:gain|gains?)\s+(Minor|Moderate|Major|Grand|Epic|Legendary)\s+Guard\b/gi)) {
+    // Do not match "Minor Guard Down" (enemy debuff) as a self Guard buff.
+    for (var tg of t.matchAll(/\b(?:gain|gains?)\s+(Minor|Moderate|Major|Grand|Epic|Legendary)\s+Guard\b(?!\s+Down)/gi)) {
       addSelf('gainGuarded', 0, { guardTier: normalizeTierLabel(tg[1]), when: parseRiderWhen(t, tg[0]) });
     }
     if (!hasRiderKind(riders, 'gainGuarded')) {
-      for (var tg2 of t.matchAll(/\b(Minor|Moderate|Major|Grand|Epic|Legendary)\s+Guard\b/gi)) {
+      for (var tg2 of t.matchAll(/\b(Minor|Moderate|Major|Grand|Epic|Legendary)\s+Guard\b(?!\s+Down)/gi)) {
         addSelf('gainGuarded', 0, { guardTier: normalizeTierLabel(tg2[1]), when: parseRiderWhen(t, tg2[0]) });
         break;
       }
@@ -507,6 +538,28 @@
         if (fortifyM) riders.push({ kind: 'fortify', value: Number(fortifyM[1]) || 0, turns: 2, scope: 'self', when: null });
         if (wardM) riders.push({ kind: 'ward', value: Number(wardM[1]) || 0, turns: 2, scope: 'self', when: null });
       }
+    }
+
+    var dealMag = t.match(/Deal\s+(\d+)\s+Magic\s+(?:Armour|Armor)\s+damage/i);
+    var dealArm = t.match(/Deal\s+(\d+)\s+(?:Armour|Armor)\s+damage/i);
+    if (dealMag && !hasRiderKind(riders, 'magicArmourDamage') && !hasRiderKind(riders, 'magicArmourRetaliateOnPhysical')) {
+      if (/first enemy physical hit while Ward remains/i.test(t)) {
+        riders.push({ kind: 'magicArmourRetaliateOnPhysical', value: Number(dealMag[1]) || 0, scope: 'self', when: null });
+      } else {
+        riders.push({ kind: 'magicArmourDamage', value: Number(dealMag[1]) || 0, scope: 'enemy', when: null });
+      }
+    } else if (dealArm && !hasRiderKind(riders, 'armourDamage') && !/Magic\s+(?:Armour|Armor)/i.test(dealArm[0])) {
+      riders.push({ kind: 'armourDamage', value: Number(dealArm[1]) || 0, scope: 'enemy', when: null });
+    }
+
+    if (/Apply Jewel Mark/i.test(t) && !hasRiderKind(riders, 'applyMark')) {
+      riders.push({ kind: 'applyMark', mark: 'jewel', turns: 2, value: 10, scope: 'enemy', when: null });
+    }
+    if (/Apply Predator Mark/i.test(t) && !hasRiderKind(riders, 'applyMark')) {
+      riders.push({ kind: 'applyMark', mark: 'predator', turns: 2, value: 10, scope: 'enemy', when: null });
+    }
+    if (/Apply Carrion Mark/i.test(t) && !hasRiderKind(riders, 'applyMark')) {
+      riders.push({ kind: 'applyMark', mark: 'carrion', turns: 2, scope: 'enemy', when: null });
     }
 
     if (/\bshield\b/i.test(t) && /temp|temporary|max\s*hp|max\s*health|health/i.test(t)) {
@@ -617,14 +670,37 @@
     var supplemental = parseSupplementalRiders(text);
     row.riders = Array.isArray(row.riders) ? row.riders.slice() : [];
     var existing = Object.create(null);
-    row.riders.forEach(function (r) { existing[riderKey(r)] = true; });
+    var existingKind = Object.create(null);
+    row.riders.forEach(function (r) {
+      existing[riderKey(r)] = true;
+      existingKind[riderKindScopeKey(r)] = r;
+    });
     supplemental.forEach(function (r) {
       if (r.kind === 'raw') return;
       var key = riderKey(r);
-      if (!existing[key]) {
-        row.riders.push(r);
-        existing[key] = true;
+      var ks = riderKindScopeKey(r);
+      if (existing[key]) return;
+      var have = existingKind[ks];
+      if (have) {
+        /* Prefer a gated structured rider over an ungated text duplicate. */
+        if (have.when && !r.when) return;
+        if (!have.when && r.when) {
+          var idx = row.riders.indexOf(have);
+          if (idx >= 0) row.riders[idx] = r;
+          existingKind[ks] = r;
+          existing[riderKey(r)] = true;
+        }
+        return;
       }
+      /* Dual-restore text must not add Bastion on top of restoreArmour + restoreMagicArmour. */
+      if (r.kind === 'bastion' && row.riders.some(function (x) {
+        return x && (x.kind === 'restoreArmour' || x.kind === 'restoreMagicArmour' || x.kind === 'bastion');
+      })) return;
+      if ((r.kind === 'restoreArmour' || r.kind === 'restoreMagicArmour' || r.kind === 'restoreLowerPool')
+        && row.riders.some(function (x) { return x && (x.kind === r.kind || x.kind === 'bastion'); })) return;
+      row.riders.push(r);
+      existing[key] = true;
+      existingKind[ks] = r;
     });
 
     // Drop lone raw riders when supplemental parsing found handlers
@@ -645,6 +721,7 @@
         if (!(row.ailmentChance > 0)) {
           row.ailmentChance = ar.chance != null ? Number(ar.chance) : 100;
         }
+        if (ar.when && !row.ailmentWhen) row.ailmentWhen = ar.when;
         break;
       }
     }

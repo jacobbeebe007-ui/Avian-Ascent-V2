@@ -55,7 +55,7 @@
     delayed: { storagePct: { light: 0.25, medium: 0.35, heavy: 0.45, special: 0.5, echo: 0.25 } },
     decreed: { baseBonus: 0.12, afflictedBonus: 0.18 },
     fear: { damageDownTiers: 'major' },
-    confused: { precisionDownPointsTier: 'major' },
+    confused: { precisionDownPointsTier: 'major', precisionDown: 8 },
 
     /* Physical stacking ailments — Current Master v1.5. */
     fracture: {
@@ -341,14 +341,106 @@
   }
 
   function getBurningDefMult(stacks, hasScorched) {
-    if (hasScorched) {
-      /* Minor Guard/Resolve Down = 6% from effect tiers when available. */
-      var tiers = globalThis.Avian && globalThis.Avian.data && globalThis.Avian.data.effectTiers;
-      var minor = (tiers && tiers.debuff && tiers.debuff.minor) || 6;
-      return 1 - minor / 100;
-    }
+    /* Scorched uses flat Minor Guard/Resolve Down via status, not a % DEF mult. */
+    if (hasScorched) return 1;
     /* Burn no longer softens DEF per stack in v0.6 — MaxHP% Magic DoT only. */
     return 1;
+  }
+
+  function flatTierAmount(tier, dir) {
+    var tiers = globalThis.Avian && globalThis.Avian.data && globalThis.Avian.data.effectTiers;
+    var bucket = dir === 'down' ? 'debuff' : 'buff';
+    var t = String(tier || 'minor').toLowerCase();
+    if (tiers && tiers[bucket] && tiers[bucket][t] != null) return Number(tiers[bucket][t]);
+    if (t === 'major') return 20;
+    if (t === 'moderate') return 10;
+    return 4;
+  }
+
+  function pointTierAmount(tier) {
+    var tiers = globalThis.Avian && globalThis.Avian.data && globalThis.Avian.data.effectTiers;
+    var t = String(tier || 'minor').toLowerCase();
+    if (tiers && tiers.points && tiers.points[t] != null) return Number(tiers.points[t]);
+    if (t === 'major') return 20;
+    if (t === 'moderate') return 10;
+    return 4;
+  }
+
+  function scorchedFrom(statusOrScorched) {
+    if (!statusOrScorched) return null;
+    if (statusOrScorched.scorched) return statusOrScorched.scorched;
+    if (statusOrScorched.guardDown != null || statusOrScorched.resolveDown != null || statusOrScorched.turns != null) {
+      return statusOrScorched;
+    }
+    return null;
+  }
+
+  function getScorchedGuardPenalty(status) {
+    var sc = scorchedFrom(status);
+    if (!sc) return 0;
+    if ((sc.turns || 0) <= 0 && sc.guardDown == null) return 0;
+    if (sc.guardDown != null) return -Math.abs(Number(sc.guardDown) || 0);
+    return -flatTierAmount(RULES.scorched.guardDownTier || 'minor', 'down');
+  }
+
+  function getScorchedResolvePenalty(status) {
+    var sc = scorchedFrom(status);
+    if (!sc) return 0;
+    if ((sc.turns || 0) <= 0 && sc.resolveDown == null) return 0;
+    if (sc.resolveDown != null) return -Math.abs(Number(sc.resolveDown) || 0);
+    return -flatTierAmount(RULES.scorched.resolveDownTier || 'minor', 'down');
+  }
+
+  function getWeakenedMightPenalty(status) {
+    if (!status || !status.weakened) return 0;
+    if ((status.weakened.turns || 0) <= 0) return 0;
+    if (status.weakened.mightDown != null) return -Math.abs(Number(status.weakened.mightDown) || 0);
+    return -flatTierAmount(RULES.weakened.mightDownTier || 'moderate', 'down');
+  }
+
+  function getWeakenedFocusPenalty(status) {
+    if (!status || !status.weakened) return 0;
+    if ((status.weakened.turns || 0) <= 0) return 0;
+    if (status.weakened.focusDown != null) return -Math.abs(Number(status.weakened.focusDown) || 0);
+    return -flatTierAmount(RULES.weakened.focusDownTier || 'moderate', 'down');
+  }
+
+  function getFearDamageMult(status) {
+    if (!status) return 1;
+    var feared = status.feared;
+    var active = (typeof feared === 'number' && feared > 0)
+      || (feared && typeof feared === 'object' && ((feared.turns || 0) > 0 || feared.pending));
+    if (!active) return 1;
+    /* Authored Major Damage Down is −12%, independent of core-stat flat tiers. */
+    return 0.88;
+  }
+
+  function getConfusedPrecisionPenalty(status) {
+    if (!status || !status.confused) return 0;
+    var c = status.confused;
+    var pts = RULES.confused && RULES.confused.precisionDown != null
+      ? Number(RULES.confused.precisionDown)
+      : 8;
+    if (typeof c === 'number') return c > 0 ? -pts : 0;
+    if ((c.turns || 0) <= 0 && !c.pending) return 0;
+    if (c.precisionDown != null) return -Math.abs(Number(c.precisionDown) || 0);
+    return -pts;
+  }
+
+  function makeScorchedStatus(turns) {
+    var dur = turns != null ? Number(turns) : ((RULES.scorched && RULES.scorched.duration) || 1);
+    var guard = flatTierAmount(RULES.scorched.guardDownTier || 'minor', 'down');
+    var resolve = flatTierAmount(RULES.scorched.resolveDownTier || 'minor', 'down');
+    return { turns: dur, guardDown: guard, resolveDown: resolve };
+  }
+
+  function makeWeakenedStatus(turns) {
+    var dur = turns != null ? Number(turns) : ((RULES.weakened && RULES.weakened.duration) || 1);
+    return {
+      turns: dur,
+      mightDown: flatTierAmount(RULES.weakened.mightDownTier || 'moderate', 'down'),
+      focusDown: flatTierAmount(RULES.weakened.focusDownTier || 'moderate', 'down'),
+    };
   }
 
   function getDelayedStoragePct(weight, enCost) {
@@ -508,6 +600,14 @@
   globalThis.getChilledSpdMult = getChilledSpdMult;
   globalThis.getShockPrecisionPenalty = getShockPrecisionPenalty;
   globalThis.getBurningDefMult = getBurningDefMult;
+  globalThis.getScorchedGuardPenalty = getScorchedGuardPenalty;
+  globalThis.getScorchedResolvePenalty = getScorchedResolvePenalty;
+  globalThis.getWeakenedMightPenalty = getWeakenedMightPenalty;
+  globalThis.getWeakenedFocusPenalty = getWeakenedFocusPenalty;
+  globalThis.getFearDamageMult = getFearDamageMult;
+  globalThis.getConfusedPrecisionPenalty = getConfusedPrecisionPenalty;
+  globalThis.makeScorchedStatus = makeScorchedStatus;
+  globalThis.makeWeakenedStatus = makeWeakenedStatus;
   globalThis.getDelayedStoragePct = getDelayedStoragePct;
   globalThis.hasAilmentGuard = hasGuard;
   globalThis.isParalyzedActive = isParalyzedActive;

@@ -143,20 +143,82 @@
   }
 
   var NEGATIVE_STATUS_KEYS = [
-    'poison', 'toxic', 'bleed', 'burning', 'scorched', 'chilled', 'weaken', 'paralyzed',
-    'delayed', 'blinded', 'frozen', 'feared', 'confused', 'slow', 'stunned', 'accDebuff',
+    'poison', 'toxic', 'bleed', 'burning', 'incinerating', 'scorched', 'chilled', 'weaken', 'weakened',
+    'paralyzed', 'shock', 'delayed', 'blinded', 'frozen', 'feared', 'confused', 'slow', 'stunned', 'accDebuff',
   ];
+  var DAMAGING_AILMENT_KEYS = ['poison', 'toxic', 'bleed', 'burning', 'incinerating', 'shock'];
+  var STAT_DOWN_KEYS = ['atk', 'matk', 'def', 'mdef', 'spd', 'acc', 'dodge'];
   var POSITIVE_STATUS_KEYS = [
     'frostGuard', 'emberGuard', 'toxicResistance', 'guarded', 'ironResolve', 'counterInstinct',
     'dispatcherTaunt', 'battleHymnActive',
   ];
 
-  function cleanseNegativeStatuses(status) {
-    if (!status) return 0;
+  function restoreOneDebuffBag(status, entity, bagName, wantStat) {
+    var bag = status && status[bagName];
+    if (!bag || !entity || !entity.stats) return 0;
+    var keys = Object.keys(bag);
+    for (var i = 0; i < keys.length; i++) {
+      var e = bag[keys[i]];
+      if (!e) continue;
+      var sk = String(e.statKey || keys[i].split(':')[0]).toLowerCase();
+      if (wantStat && sk !== wantStat) continue;
+      var amt = Number(e.amt) || 0;
+      if (bagName === '_dispatcherDebuffBySource') {
+        entity.stats[sk] = Math.round(((Number(entity.stats[sk]) || 0) + amt) * 100) / 100;
+        delete bag[keys[i]];
+        return 1;
+      }
+      if (amt < 0) {
+        entity.stats[sk] = Math.round(((Number(entity.stats[sk]) || 0) - amt) * 100) / 100;
+        delete bag[keys[i]];
+        return 1;
+      }
+    }
+    return 0;
+  }
+
+  function cleanseStatDown(status, wantStat) {
+    var g = globalThis.G;
+    var entity = (g && status === g.playerStatus) ? g.player : ((g && status === g.enemyStatus) ? g.enemy : null);
     var n = 0;
-    NEGATIVE_STATUS_KEYS.forEach(function (k) {
-      if (status[k] != null) { delete status[k]; n++; }
-    });
+    n += restoreOneDebuffBag(status, entity, '_dispatcherDebuffBySource', wantStat);
+    if (n) return n;
+    n += restoreOneDebuffBag(status, entity, '_dispatcherStatLoans', wantStat);
+    if (n) return n;
+    n += restoreOneDebuffBag(status, entity, '_passiveStatLoans', wantStat);
+    return n;
+  }
+
+  function cleanseNegativeStatuses(status, opts) {
+    if (!status) return 0;
+    opts = opts || {};
+    var text = String(opts.text || '');
+    var n = 0;
+    var first = null;
+    var max = /all/i.test(text) ? 99 : 1;
+
+    function take(k) {
+      if (n >= max) return;
+      if (status[k] == null) return;
+      if (!first) first = k;
+      delete status[k];
+      n++;
+    }
+
+    if (/agility down/i.test(text)) {
+      n += cleanseStatDown(status, 'spd');
+      if (n && !first) first = 'spdDown';
+    } else if (/stat debuff/i.test(text)) {
+      for (var si = 0; si < STAT_DOWN_KEYS.length && n < max; si++) {
+        n += cleanseStatDown(status, STAT_DOWN_KEYS[si]);
+      }
+      if (status.accDebuff != null) take('accDebuff');
+    } else if (/damaging ailment/i.test(text)) {
+      DAMAGING_AILMENT_KEYS.forEach(take);
+    } else {
+      NEGATIVE_STATUS_KEYS.forEach(take);
+    }
+    if (first) status._lastCleansedAilment = first;
     return n;
   }
 
@@ -199,8 +261,12 @@
     var text = String(row.riderText || row.shortDesc || row.displayText || '').toLowerCase();
     var utilitySucceeded = false;
     if (tags.indexOf('Cleanse') >= 0 || /cleanse/.test(text)) {
-      var n = cleanseNegativeStatuses(g.playerStatus);
-      if (n > 0) utilitySucceeded = true;
+      var n = cleanseNegativeStatuses(g.playerStatus, { text: text, count: 1 });
+      if (ctx) ctx.cleansedCount = n;
+      if (n > 0) {
+        utilitySucceeded = true;
+        if (g.playerStatus) g.playerStatus._lastCleansedAilment = g.playerStatus._lastCleansedAilment || 'poison';
+      }
     }
     if (tags.indexOf('Purge') >= 0 || /purge/.test(text)) {
       var p = purgePositiveStatuses(g.enemyStatus);

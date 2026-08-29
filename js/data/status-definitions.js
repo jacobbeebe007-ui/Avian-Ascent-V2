@@ -216,6 +216,12 @@
       out.summary = (AILMENTS.weaken && AILMENTS.weaken.desc) || '';
       out.category = 'debuff';
     }
+    else if (k === 'weakened') {
+      out.className = 'status-badge weaken';
+      out.text = '📉 Weakened(' + (v.turns || 0) + 't)';
+      out.summary = (AILMENTS.weakened && AILMENTS.weakened.desc) || 'Moderate Might Down and Moderate Focus Down.';
+      out.category = 'debuff';
+    }
     else if (k === 'paralyzed' || k === 'paralysed') {
       var paraTurns = typeof v === 'number' ? v : (v && (v.turns != null ? v.turns : (v.pending ? 1 : 0)));
       var extraEn = (v && typeof v === 'object' && v.extraEnCost != null)
@@ -239,9 +245,15 @@
       out.category = 'buff';
     }
     else if (k === 'burning') { out.text = '🔥 Burn×' + (v.stacks || 0) + '(' + (v.turns || 0) + 't)'; out.summary = (AILMENTS.burning && AILMENTS.burning.desc) || ''; out.category = 'ailment'; }
-    else if (k === 'scorched') { out.className = 'status-badge burning'; out.text = '🔥 Scorched(' + (v.turns || 0) + 't)'; out.category = 'ailment'; }
+    else if (k === 'scorched') { out.className = 'status-badge burning'; out.text = '🔥 Scorched(' + (v.turns || 0) + 't)'; out.summary = (AILMENTS.scorched && AILMENTS.scorched.desc) || 'Minor Guard Down and Minor Resolve Down.'; out.category = 'ailment'; }
     else if (k === 'delayed') { out.text = '🎵 Delayed(' + v.dmg + 'dmg)'; out.summary = 'Stored damage detonates end of next turn.'; out.category = 'debuff'; }
-    else if (k === 'confused') { out.className = 'status-badge confused'; var sc = v.selfChance != null ? v.selfChance : (v.skipChance != null ? v.skipChance : STATUS_CONFUSED_SELF_PCT); out.text = '🌀 Confused(' + v.turns + 't,' + sc + '% self-hit)'; out.category = 'ailment'; }
+    else if (k === 'confused') { out.className = 'status-badge confused'; var prec = v.precisionDown != null ? v.precisionDown : 8; out.text = '🌀 Confused(' + (v.turns || 1) + 't, −' + prec + ' Prec)'; out.summary = (AILMENTS.confused && AILMENTS.confused.desc) || ''; out.category = 'ailment'; }
+    else if (k === 'feared' || k === 'fear') {
+      out.className = 'status-badge feared';
+      out.text = '😨 Feared(−12% dmg)';
+      out.summary = (AILMENTS.fear && AILMENTS.fear.desc) || 'Next damaging action deals 12% less damage.';
+      out.category = 'ailment';
+    }
     else if (k === 'tookie') { out.className = 'status-badge stunned'; out.text = '🦜 Tookie(+' + v.atkBonus + '%atk,' + v.turns + 't)'; out.category = 'buff'; }
     else if (k === 'humDodge') { out.className = 'status-badge evading'; out.text = '🎵 Hum+' + v.bonus + '%(' + v.turns + 't)'; out.category = 'buff'; }
     else if (k === 'warcry') { out.className = 'status-badge stunned'; out.text = '🎺 Warcry+' + v.atkBonus + '%(' + v.turns + 't)'; out.category = 'buff'; }
@@ -290,7 +302,9 @@
     else if (k === 'blinded') { out.className = 'status-badge feared'; out.text = '👁 Blinded(' + (v.turns || 0) + 't)'; out.category = 'debuff'; }
     else if (k === 'decreed') { out.className = 'status-badge feared'; out.text = '📜 Decreed(' + (v.turns || 0) + 't)'; out.category = 'debuff'; }
     else if (k === 'frostGuard' || k === 'emberGuard' || k === 'toxicResistance') { out.className = 'status-badge guarded'; out.text = '🛡 ' + k + '(' + (typeof v === 'number' ? v : v.turns || 0) + 't)'; out.category = 'buff'; }
-    else if (k === 'feared') { out.className = 'status-badge feared'; out.text = '😨 Feared(' + v + 't)'; out.category = 'debuff'; }
+    else if (k === 'jewelMark') { out.className = 'status-badge feared'; out.text = '💎 Jewel Mark(' + (v.turns || 0) + 't)'; out.category = 'debuff'; }
+    else if (k === 'predatorMark') { out.className = 'status-badge feared'; out.text = '🦅 Predator Mark(' + (v.turns || 0) + 't)'; out.category = 'debuff'; }
+    else if (k === 'carrionMark') { out.className = 'status-badge feared'; out.text = '🦴 Carrion Mark(' + (v.turns || 0) + 't)'; out.category = 'debuff'; }
     else if (k === 'lullabied') { out.className = 'status-badge lullabied'; out.text = '💤 Lulled(' + v + 't)'; out.category = 'debuff'; }
     else if (k === 'evading') { out.className = 'status-badge evading'; out.text = '💨 Evade(' + v + 't)'; out.category = 'buff'; }
     else if (k === 'guarded') {

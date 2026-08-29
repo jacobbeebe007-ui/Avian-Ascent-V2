@@ -25,7 +25,10 @@ function sandboxAvian(sandbox) {
  */
 export function createTestBird(sandbox, birdKey = 'sparrow', opts = {}) {
   const Avian = sandboxAvian(sandbox);
-  const key = String(birdKey || 'sparrow').toLowerCase();
+  const raw = String(birdKey || 'sparrow');
+  const key = (typeof Avian.canonicalBirdKey === 'function')
+    ? Avian.canonicalBirdKey(raw)
+    : raw;
   let entity;
 
   if (typeof Avian?.systems?.equipmentSims?.buildBirdCombatant === 'function') {

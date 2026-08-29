@@ -411,7 +411,7 @@
     if (!ab) return false;
     var kind = String(ab.btnType || ab.type || ab.category || '').toLowerCase();
     var name = String(ab.name || ab.id || '').toLowerCase();
-    return kind === 'song' || /song|call|verse|chorus|lament/i.test(name);
+    return kind === 'song' || /song|call|verse|chorus|lament|hymn/i.test(name);
   }
 
   function abilityIsBasicAttack(ab) {
@@ -426,7 +426,124 @@
     var src = String(ab.source || ab.actionSource || ab.family || '').toLowerCase();
     if (/weapon|wand|staff|orb|sceptre|grimoire/i.test(src)) return true;
     if (/^WSK-/i.test(String(ab.id || ab.equipmentSkillId || ''))) return true;
+    if (ab.actionSource === 'weapon' || ab.actionSource === 'weaponA' || ab.actionSource === 'weaponB') return true;
     return abilityEnCostLocal(ab) >= 2 && (abilityIsMagicCat(ab) || abilityIsMartial(ab));
+  }
+
+  function abilityIsWeaponSkill1(ab) {
+    if (!ab || abilityIsBasicAttack(ab)) return false;
+    var bar = String(ab.barSlot || ab.skillType || '').toLowerCase();
+    if (bar.indexOf('weapon skill 1') >= 0 || bar === 'skill 1' || /skill\s*1/.test(bar)) return true;
+    var id = String(ab.id || ab.equipmentSkillId || '');
+    if (/^WSK-\d+$/i.test(id)) {
+      var n = parseInt(id.replace(/\D/g, ''), 10);
+      if (Number.isFinite(n) && n % 2 === 1) return true;
+    }
+    if (ab.actionSource === 'weaponA') return true;
+    var en = abilityEnCostLocal(ab);
+    if (en === 2 && abilityIsWeaponSkill(ab)) return true;
+    return false;
+  }
+
+  function skillGateFromBlob(blob) {
+    var s = String(blob || '').toLowerCase();
+    if (!s.trim()) return null;
+    var gate = {};
+    var any = false;
+    if (/weapon skill 1 or 2/.test(s) || /weapon skill 1\s*(?:and|\/|or)\s*2/.test(s)) {
+      gate.weaponSkill = true; any = true;
+    } else if (/weapon skill 1\b/.test(s)) {
+      gate.weaponSkill1 = true; any = true;
+    } else if (/weapon skill 2\b/.test(s)) {
+      gate.weaponSkill2 = true; any = true;
+    } else if (/weapon skill/.test(s) || /weapon (?:hit|attack)/.test(s) || /physical weapon/.test(s)) {
+      gate.weaponSkill = true; any = true;
+    }
+    if (/finesse/.test(s)) { gate.weaponScale = 'finesse'; any = true; }
+    if (/strength/.test(s)) { gate.weaponScale = 'strength'; any = true; }
+    if (/\bmagic\b/.test(s)) { gate.category = 'magic'; any = true; }
+    if (/\bphysical\b/.test(s) && !/physical weapon/.test(s)) { gate.category = 'physical'; any = true; }
+    if (/\bday\b/.test(s)) { gate.aspect = 'day'; any = true; }
+    if (/\bnight\b/.test(s)) { gate.aspect = 'night'; any = true; }
+    if (/\bearth\b/.test(s)) { gate.aspect = 'earth'; any = true; }
+    if (/\bwater\b/.test(s)) { gate.aspect = 'water'; any = true; }
+    if (/song|call/.test(s)) { gate.skillClass = 'song'; any = true; }
+    if (/damaging|\bhit\b|\battack\b/.test(s)) { gate.damaging = true; any = true; }
+    if (/support utility|support skill/.test(s)) { gate.supportUtility = true; any = true; }
+    return any ? gate : null;
+  }
+
+  function parseNextSkillGateFromText(text) {
+    var t = String(text || '');
+    var m = t.match(/\byour next\s+([^.;]+?)(?=\s+gains?\b|\s+ignores?\b|\s+suffers\b|\s+may\b|\s+restores?\b|\s+\+)/i)
+      || t.match(/,\s*next\s+((?:Finesse|Strength|Weapon|Magic|Day|Night|Earth|Water|song|call|attack|hit)[^.;]*?)(?=\s+gains?\b|\s+ignores?\b|\s+suffers\b|\s+may\b|\s+restores?\b|\s+\+)/i);
+    if (!m) return null;
+    return skillGateFromBlob(m[1]);
+  }
+
+  function parseCurrentSkillGateFromText(text) {
+    var t = String(text || '');
+    var m = t.match(/if acting (?:first|before the target),\s*(?:your\s+)?first\s+([^.;]+?)(?=\s+gains?\b|\s+ignores?\b|\s+each turn|\s+\+|,\s*\+|and\s+\d)/i)
+      || t.match(/\bfirst\s+((?:Finesse|Strength|Night|Day|Magic|Earth|physical)[^.;]*?(?:weapon skill(?:\s+1(?:\s+or\s+2)?)?|hit|skill|action))/i);
+    if (!m) return null;
+    return skillGateFromBlob(m[1]);
+  }
+
+  function abilityMatchesSkillGate(ab, gate, side) {
+    if (!gate) return true;
+    if (!ab) return false;
+    if (gate.weaponSkill1 && !abilityIsWeaponSkill1(ab)) return false;
+    if (gate.weaponSkill2 && abilityIsWeaponSkill1(ab)) return false;
+    if (gate.weaponSkill && !abilityIsWeaponSkill(ab)) return false;
+    if (gate.weaponScale && abilityWeaponScale(ab) !== gate.weaponScale) return false;
+    if (gate.category === 'magic' && !abilityIsMagicCat(ab)) return false;
+    if (gate.category === 'physical' && !abilityIsMartial(ab)) return false;
+    if (gate.aspect) {
+      var actor = entityForSide(side || 'player');
+      if (abilityAspectId(ab, actor) !== normalizeAspectId(gate.aspect)) return false;
+    }
+    if (gate.skillClass === 'song' && !abilityIsSong(ab)) return false;
+    if (gate.supportUtility && !abilityIsSupportUtility(ab)) return false;
+    if (gate.damaging && !abilityIsDamaging(ab)) return false;
+    return true;
+  }
+
+  function shouldDeferPassiveToNextSkill(parsed, ab) {
+    if (!parsed) return null;
+    var gate = parseNextSkillGateFromText(parsed.text);
+    if (!gate) return null;
+    var t = parsed.trigger || {};
+    if (t.kind === 'afterSkillUse' && t.skill && ab && abilityNameMatches(ab, t.skill)) return gate;
+    if (t.kind === 'afterDodge' || t.kind === 'afterArmourAbsorb' || t.kind === 'afterArmourRestorationOrFortify'
+      || t.kind === 'afterDebuffApplied' || t.kind === 'afterAilmentApplied' || t.kind === 'afterEnemyAttack'
+      || t.kind === 'afterCrit') return gate;
+    if (t.kind === 'afterSkillUse' && !t.skill) return gate;
+    return null;
+  }
+
+  function inferSpecialsFromText(parsed) {
+    var specials = ((parsed && parsed.specials) || []).slice();
+    var text = String((parsed && parsed.text) || '');
+    function has(id) {
+      return specials.some(function (s) { return s && s.id === id; });
+    }
+    if (!has('restoreArmour')) {
+      var arm = text.match(/restores?\s+(\d+)\s+(?:armour|armor)(?!\s+and)/i);
+      if (arm) specials.push({ id: 'restoreArmour', amount: Number(arm[1]) });
+    }
+    if (!has('restoreMagicArmour')) {
+      var mag = text.match(/restores?\s+(\d+)\s+magic\s+(?:armour|armor)/i);
+      if (mag) specials.push({ id: 'restoreMagicArmour', amount: Number(mag[1]) });
+    }
+    if (!has('ignoreGuardFlat')) {
+      var ig = text.match(/ignores?\s+(\d+)\s+Guard/i);
+      if (ig) specials.push({ id: 'ignoreGuardFlat', amount: Number(ig[1]) });
+    }
+    if (!has('restoreLowerProtection')) {
+      var low = text.match(/restores?\s+(\d+)\s+to\s+(?:the\s+)?lower\s+(?:protection\s+)?pool/i);
+      if (low) specials.push({ id: 'restoreLowerProtection', amount: Number(low[1]) });
+    }
+    return specials;
   }
 
   function normalizeAspectId(raw) {
@@ -634,6 +751,14 @@
           var afterAsp = abilityAspectId(ab, actor);
           if (!afterAsp || afterAsp !== normalizeAspectId(t.aspect)) return false;
         }
+        if (!t.skill) {
+          var afterText = String(parsed.text || '');
+          if (/after using (?:a |your )?magic action|after (?:a |your )?magic action/i.test(afterText) && !abilityIsMagicCat(ab)) return false;
+          if (/after using (?:a |your )?day action|after (?:a |your )?day action/i.test(afterText) && abilityAspectId(ab, actor) !== normalizeAspectId('day')) return false;
+          if (/after using (?:a |your )?water action|after (?:a |your )?water action/i.test(afterText) && abilityAspectId(ab, actor) !== normalizeAspectId('water')) return false;
+          if (/after using (?:a |your )?support utility|after (?:a |your )?support utility/i.test(afterText) && !abilityIsSupportUtility(ab)) return false;
+          if (/after using (?:a |your )?(?:song|call)|after (?:a |your )?(?:song|call)/i.test(afterText) && !abilityIsSong(ab)) return false;
+        }
         if (t.nextMartialPen) return true;
         return true;
       }
@@ -732,7 +857,10 @@
       case 'afterArmourAbsorb':
         return !!(ctx && (ctx.armourAbsorbed || ctx.protectionAbsorbed));
       case 'afterDebuffApplied':
-        return !!(ctx && ctx.appliedDebuff);
+        if (!(ctx && ctx.appliedDebuff)) return false;
+        if (/applying Chilled/i.test(String(parsed.text || '')) && String(ctx.appliedAilment || '').toLowerCase() !== 'chilled') return false;
+        if (/applying Precision Down/i.test(String(parsed.text || '')) && String(ctx.appliedAilment || '') !== 'statDebuff') return false;
+        return true;
       case 'afterAilmentApplied':
         if (!(ctx && ctx.appliedAilment)) return false;
         if (t.ailment && String(ctx.appliedAilment).toLowerCase() !== String(t.ailment).toLowerCase()) return false;
@@ -765,13 +893,39 @@
           var a2 = String((ab && (ab.aspect || ab.affinity)) || (actor && actor.aspect) || '').toLowerCase();
           if (a2 !== String(t.aspect).toLowerCase()) return false;
         }
+        if (t.weaponScale && abilityWeaponScale(ab) !== String(t.weaponScale).toLowerCase()) return false;
+        if (t.weaponSkill && !abilityIsWeaponSkill(ab)) return false;
+        if (t.weaponSkill1 && !abilityIsWeaponSkill1(ab)) return false;
+        var actGate = parseCurrentSkillGateFromText(parsed.text);
+        if (actGate && !abilityMatchesSkillGate(ab, actGate, side)) return false;
         return true;
       case 'afterReducedDamage':
         return !!(ctx && ctx.reducedDamage);
       case 'afterSongBuff':
         return !!(ctx && ctx.songBuffGranted);
       case 'noDamageActionLastTurn':
-        return !!(ctx && ctx.noDamageActionLastTurn) || !!(G && G._passiveNoDamageLastTurn && G._passiveNoDamageLastTurn[side]);
+        if (!(ctx && ctx.noDamageActionLastTurn) && !(G && G._passiveNoDamageLastTurn && G._passiveNoDamageLastTurn[side])) return false;
+        if (!ab) return false;
+        var ndGate = parseNextSkillGateFromText(parsed.text) || parseCurrentSkillGateFromText(parsed.text)
+          || skillGateFromBlob(parsed.text);
+        if (ndGate && !abilityMatchesSkillGate(ab, ndGate, side)) return false;
+        return true;
+      case 'afterCrit':
+        return !!(ctx && (ctx.crit || ctx.anyCrit));
+      case 'afterEnemyAttack':
+        return !!(ctx && (ctx.afterEnemyAttack || ctx.dodged));
+      case 'afterDamageDealt': {
+        var dealt = !!(ctx && ((Number(ctx.damage) || 0) > 0 || (Number(ctx.hitsLanded) || 0) > 0 || (Number(ctx.healthDamage) || 0) > 0 || ctx.firstHitLanded));
+        if (!dealt) return false;
+        return enemyHasAnyAffliction(foeStatus) || foeHasMarked(foeStatus);
+      }
+      case 'passiveAlways': {
+        var alwaysText = String((parsed && parsed.text) || '');
+        if (/armour restoration or fortify/i.test(alwaysText)) {
+          return !!(ctx && ctx.armourTechnique) || isFortifyOrArmourRestoreAbility(ab);
+        }
+        return true;
+      }
       default:
         return false;
     }
@@ -870,6 +1024,8 @@
         applyV2TierEffect(perk.id, { kind: 'tierStat', tier: 'minor', stat: other, dir: 'up', target: 'self' }, 1, side);
       }
       if (sp.id === 'restoreArmour' && Avian.protection && typeof Avian.protection.restoreArmour === 'function') {
+        var restoreText = String((perk && perk.parsed && perk.parsed.text) || (perk && perk.effect) || '');
+        if (/if you dodged/i.test(restoreText) && !(ctx && ctx.dodged)) continue;
         Avian.protection.restoreArmour(actor.stats, Number(sp.amount) || 0);
         if (typeof spawnFloat === 'function') spawnFloat(side, '+' + (sp.amount || 0) + ' ARM', 'fn-buff');
       }
@@ -959,7 +1115,9 @@
     if (!matchV2ParsedTrigger(parsed, ab, ctx, side)) return;
     var status = statusBagForSide(side);
     var abKey = ab ? String(ab.id || ab.name || '') : '';
-    var isSkillMod = !!(parsed.trigger && parsed.trigger.kind === 'skillModifier');
+    var isSkillMod = !!(parsed.trigger && (parsed.trigger.kind === 'skillModifier'
+      || parsed.trigger.kind === 'actingFirst' || parsed.trigger.kind === 'noDamageActionLastTurn'
+      || parsed.trigger.kind === 'vsTargetState'));
     var alreadyArmed = !!(isSkillMod && status && status._v2PassiveArmedAbility && abKey && status._v2PassiveArmedAbility === abKey);
 
     if (alreadyArmed) {
@@ -978,7 +1136,7 @@
           /* Non-RHD effects were eligible at prepare time; skip re-applying here. */
         }
       }
-      applyV2Specials(perk, parsed.specials || [], side, ab, ctx, function (sp) {
+      applyV2Specials(perk, inferSpecialsFromText(parsed), side, ab, ctx, function (sp) {
         return isPostHitHealthSpecial(sp) || !!sp.requiresHealthDamage;
       });
       delete status._v2PassiveArmedAbility;
@@ -987,20 +1145,44 @@
     }
 
     if (!gateV2(actor.birdKey || perk.birdKey, perk.id, parsed.limit)) return;
+    var deferGate = shouldDeferPassiveToNextSkill(parsed, ab);
+    if (deferGate && status) {
+      status._passiveNextSkill = {
+        gate: deferGate,
+        perkId: perk.id,
+        effects: (parsed.effects || []).slice(),
+        specials: inferSpecialsFromText(parsed),
+        turns: v2DurationTurns(parsed.duration),
+        parsedText: String(parsed.text || ''),
+        requiresHealthDamage: false,
+      };
+      return;
+    }
     var turns = v2DurationTurns(parsed.duration);
     var effects = parsed.effects || [];
+    var parsedText = String(parsed.text || '');
+    var bothFullGate = /If both pools are full/i.test(parsedText);
+    var marmFullGate = /If Magic Armour is full/i.test(parsedText);
+    var accEffects = [];
     for (var i = 0; i < effects.length; i++) {
       var eff = effects[i];
+      if (eff && (bothFullGate || marmFullGate) && String(eff.stat || '').toLowerCase() === 'acc') {
+        accEffects.push(eff);
+        continue;
+      }
+      if (eff && parsed.trigger && parsed.trigger.kind === 'afterDebuffApplied'
+        && eff.target === 'enemy' && !/instead applies/i.test(parsedText)) continue;
       if (eff && eff.requiresHealthDamage && !(Number(ctx.healthDamage) > 0)) continue;
       applyV2TierEffect(perk.id, eff, turns, side);
     }
+    var specialsNow = inferSpecialsFromText(parsed);
     if (parsed.trigger && parsed.trigger.kind === 'afterSkillUse' && parsed.trigger.nextMartialPen) {
       var st = statusBagForSide(side);
       st._passiveNextMartialPen = true;
-      st._passiveNextMartialPenSpecials = parsed.specials || [];
+      st._passiveNextMartialPenSpecials = specialsNow;
     } else if (isSkillMod) {
       /* Prefer prepareOutgoing for Skill Power; still apply remaining specials here. */
-      applyV2Specials(perk, parsed.specials || [], side, ab, ctx, function (sp) {
+      applyV2Specials(perk, specialsNow, side, ab, ctx, function (sp) {
         if (status && status._v2PassivePendingPost && isPreHitSpecial(sp)) return false;
         return true;
       });
@@ -1009,12 +1191,71 @@
         status._v2PassivePendingPost = false;
       }
     } else {
-      applyV2Specials(perk, parsed.specials || [], side, ab, ctx);
+      applyV2Specials(perk, specialsNow, side, ab, ctx);
+    }
+    if (parsed.trigger && parsed.trigger.kind === 'passiveAlways' && /1 additional Armour/i.test(parsedText)) {
+      if (Avian.protection && typeof Avian.protection.restoreArmour === 'function') {
+        Avian.protection.restoreArmour(actor.stats, 1);
+        if (typeof spawnFloat === 'function') spawnFloat(side, '+1 ARM', 'fn-buff');
+      }
+    }
+    if (accEffects.length) {
+      var stCheck = actor.stats || {};
+      var arm = Math.max(0, Number(stCheck.armour) || 0);
+      var armMax = Math.max(0, Number(stCheck.normalMaxArmour != null ? stCheck.normalMaxArmour : stCheck.maxArmour) || 0);
+      var mag = Math.max(0, Number(stCheck.magicArmour) || 0);
+      var magMax = Math.max(0, Number(stCheck.normalMaxMagicArmour != null ? stCheck.normalMaxMagicArmour : stCheck.maxMagicArmour) || 0);
+      var poolsOk = bothFullGate ? (arm >= armMax && mag >= magMax) : true;
+      if (marmFullGate) poolsOk = mag >= magMax && magMax > 0;
+      if (poolsOk) {
+        for (var ai = 0; ai < accEffects.length; ai++) applyV2TierEffect(perk.id, accEffects[ai], turns, side);
+      }
     }
   }
 
+  function consumePendingNextSkill(side, ab, ctx, phase) {
+    var status = statusBagForSide(side);
+    if (!status || !status._passiveNextSkill || !ab) return false;
+    var pending = status._passiveNextSkill;
+    if (!abilityMatchesSkillGate(ab, pending.gate, side)) return false;
+    var actor = entityForSide(side);
+    var perk = actor ? passiveFor(actor.birdKey) : null;
+    if (!perk) perk = { id: pending.perkId };
+    var turns = pending.turns || 1;
+    if (phase === 'pre') {
+      var effects = pending.effects || [];
+      for (var i = 0; i < effects.length; i++) {
+        var eff = effects[i];
+        if (eff && eff.requiresHealthDamage) continue;
+        applyV2TierEffect(pending.perkId || perk.id, eff, turns, side);
+      }
+      applyV2Specials(perk, pending.specials || [], side, ab, ctx || {}, function (sp) {
+        return !isPostHitHealthSpecial(sp) && !sp.requiresHealthDamage;
+      });
+      status._v2PassiveArmedAbility = String(ab.id || ab.name || '');
+      status._v2PassivePendingPost = true;
+      status._passiveNextSkillArmed = true;
+      return true;
+    }
+    var postCtx = ctx || {};
+    var postEffects = pending.effects || [];
+    for (var ei = 0; ei < postEffects.length; ei++) {
+      var postEff = postEffects[ei];
+      if (postEff && postEff.requiresHealthDamage && !(Number(postCtx.healthDamage) > 0)) continue;
+      if (postEff && postEff.requiresHealthDamage) applyV2TierEffect(pending.perkId || perk.id, postEff, turns, side);
+    }
+    applyV2Specials(perk, pending.specials || [], side, ab, postCtx, function (sp) {
+      return isPostHitHealthSpecial(sp) || !!sp.requiresHealthDamage;
+    });
+    delete status._passiveNextSkill;
+    delete status._passiveNextSkillArmed;
+    delete status._v2PassiveArmedAbility;
+    status._v2PassivePendingPost = false;
+    return true;
+  }
+
   /**
-   * Arm skillModifier pre-hit bonuses (Skill Power, etc.) before damage resolves.
+   * Arm skillModifier / acting-first / pending-next-skill bonuses before damage resolves.
    * Post-hit heals are applied later from onPlayerAbilityUse via fireV2Passive.
    */
   Avian.passives.prepareOutgoingAbilityBonuses = function prepareOutgoingAbilityBonuses(side, ab) {
@@ -1022,13 +1263,18 @@
     side = side || 'player';
     var actor = entityForSide(side);
     if (!actor) return;
+    var status = statusBagForSide(side);
+    consumePendingNextSkill(side, ab, {}, 'pre');
     var perk = passiveFor(actor.birdKey);
     if (!perk || !perk.v2 || !perk.parsed) return;
     var parsed = perk.parsed;
-    if (!parsed.trigger || parsed.trigger.kind !== 'skillModifier') return;
+    var kind = parsed.trigger && parsed.trigger.kind;
+    if (!kind) return;
+    if (kind !== 'skillModifier' && kind !== 'actingFirst' && kind !== 'noDamageActionLastTurn'
+      && kind !== 'vsTargetState') return;
+    if (shouldDeferPassiveToNextSkill(parsed, ab)) return;
     if (!matchV2ParsedTrigger(parsed, ab, {}, side)) return;
     if (!gateV2(actor.birdKey || perk.birdKey, perk.id, parsed.limit, { peek: true })) return;
-    var status = statusBagForSide(side);
     var abKey = String(ab.id || ab.name || '');
     if (!abKey) return;
     if (status._v2PassiveArmedAbility === abKey) return;
@@ -1039,7 +1285,7 @@
       if (eff && eff.requiresHealthDamage) continue;
       applyV2TierEffect(perk.id, eff, turns, side);
     }
-    applyV2Specials(perk, parsed.specials || [], side, ab, {}, isPreHitSpecial);
+    applyV2Specials(perk, inferSpecialsFromText(parsed), side, ab, {}, isPreHitSpecial);
     status._v2PassiveArmedAbility = abKey;
     status._v2PassivePendingPost = true;
   };
@@ -1199,7 +1445,18 @@
       ctx.songBuffGranted = true;
       ctx.songBuffStat = ctx.songBuffStat || 'atk';
     }
+    if (abilityIsDamaging(ab)) {
+      G._passiveDamagingActionThisTurn = G._passiveDamagingActionThisTurn || {};
+      G._passiveDamagingActionThisTurn.player = true;
+    }
     if (perk) firePassive(perk, ab, ctx, 'player');
+    var ps = G.playerStatus;
+    if (ps && ps._passiveNextSkill) {
+      if (!ps._passiveNextSkillArmed) consumePendingNextSkill('player', ab, ctx, 'pre');
+      if (ps._passiveNextSkillArmed || abilityMatchesSkillGate(ab, ps._passiveNextSkill && ps._passiveNextSkill.gate, 'player')) {
+        consumePendingNextSkill('player', ab, ctx, 'post');
+      }
+    }
     /* Deferred "next Martial after skill" pen consume on martial hits. */
     if (perk && perk.v2 && G.playerStatus && G.playerStatus._passiveNextMartialPen && abilityIsMartial(ab)) {
       applyV2Specials(perk, G.playerStatus._passiveNextMartialPenSpecials || [], 'player', ab, ctx);
@@ -1217,7 +1474,18 @@
     if (!bird) return;
     var perk = passiveFor(bird);
     var ctx = context || {};
+    if (abilityIsDamaging(ab)) {
+      G._passiveDamagingActionThisTurn = G._passiveDamagingActionThisTurn || {};
+      G._passiveDamagingActionThisTurn.enemy = true;
+    }
     if (perk) firePassive(perk, ab, ctx, 'enemy');
+    var es = G.enemyStatus;
+    if (es && es._passiveNextSkill) {
+      if (!es._passiveNextSkillArmed) consumePendingNextSkill('enemy', ab, ctx, 'pre');
+      if (es._passiveNextSkillArmed || abilityMatchesSkillGate(ab, es._passiveNextSkill && es._passiveNextSkill.gate, 'enemy')) {
+        consumePendingNextSkill('enemy', ab, ctx, 'post');
+      }
+    }
     if (typeof Avian.classPerks !== 'undefined' && typeof Avian.classPerks.onEnemyAbilityUse === 'function') {
       Avian.classPerks.onEnemyAbilityUse(ab, ctx);
     }
@@ -1263,14 +1531,14 @@
   Avian.passives.onPlayerDodged = function onPlayerDodged(ctx) {
     if (!globalThis.G || !G.player) return;
     var perk = passiveFor(G.player.birdKey);
-    if (perk) firePassive(perk, null, Object.assign({ dodged: true }, ctx || {}), 'player');
+    if (perk) firePassive(perk, null, Object.assign({ dodged: true, afterEnemyAttack: true }, ctx || {}), 'player');
   };
 
   Avian.passives.onAilmentAppliedByPlayer = function onAilmentAppliedByPlayer(ailmentId) {
     if (!globalThis.G || !G.player) return;
     var perk = passiveFor(G.player.birdKey);
     if (!perk) return;
-    var debuffs = { poison: 1, bleed: 1, weaken: 1, feared: 1, paralyzed: 1, burning: 1, chilled: 1, blinded: 1, accDebuff: 1 };
+    var debuffs = { poison: 1, bleed: 1, weaken: 1, feared: 1, paralyzed: 1, burning: 1, chilled: 1, blinded: 1, accDebuff: 1, statDebuff: 1, weakened: 1, confused: 1 };
     firePassive(perk, null, {
       appliedAilment: ailmentId,
       appliedDebuff: !!debuffs[ailmentId],

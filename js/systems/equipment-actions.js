@@ -171,27 +171,119 @@
     return null;
   }
 
+  function durationTurnsFromParsed(parsed) {
+    var d = parsed && parsed.duration;
+    if (!d) return 1;
+    if (d.kind === 'untilNextTurn' || d.kind === 'untilStartOfNextTurn' || d.kind === 'nextAttack') return 1;
+    if (d.kind === 'untilEndOfNextTurn') return 2;
+    if (d.kind === 'turns') return Math.max(1, Number(d.turns) || 1);
+    return 1;
+  }
+
+  function enemyConditionalWhenFromText(text) {
+    var t = String(text || '');
+    if (/if the target has no Magic Armour after/i.test(t)) return 'targetNoMagicArmour';
+    if (/if the target has no Armour after/i.test(t)) return 'targetNoArmour';
+    if (/if (?:the effect|it) reaches Health/i.test(t)) return 'reachedHealth';
+    if (/blocked (?:while the target has|by) Magic Armour/i.test(t)) return 'ifTargetNoMagicArmour';
+    if (/blocked (?:while the target has|by) Armour(?!\s+Restoration)/i.test(t)) return 'ifTargetNoArmour';
+    return null;
+  }
+
+  function selfConditionalWhenFromText(text) {
+    var t = String(text || '');
+    if (/if a debuff is cleansed/i.test(t)) return 'ifCleansed';
+    return null;
+  }
+
   function convertParsedRiderToRows(parsed, skillId) {
     var riders = [];
     if (!parsed) return riders;
+    var text = String(parsed.text || '');
     var when = riderWhenFromParsed(parsed);
+    var turns = durationTurnsFromParsed(parsed);
+    var enemyWhen = enemyConditionalWhenFromText(text);
+    var selfWhen = selfConditionalWhenFromText(text);
+    var penguinRetaliate = /first enemy physical hit while Ward remains/i.test(text);
+    var copyEnemy = /Copy one Minor positive core-stat effect currently on the enemy/i.test(text);
+    var copySelf = /Repeat the last Minor positive core-stat effect you gained/i.test(text);
+    var nextAttackAccPenalty = /Your next attack suffers\s+-?\s*(\d+)\s+Precision/i.exec(text);
+    var nextPrec = text.match(/your next ([^.]*?)gains?\s+\+?\s*(\d+)\s+Precision/i);
+    var nextPrecGate = null;
+    var nextPrecValue = 0;
+    if (nextPrec) {
+      nextPrecValue = Number(nextPrec[2]) || 10;
+      var precClause = String(nextPrec[1] || '').toLowerCase();
+      if (/night/.test(precClause)) nextPrecGate = 'night';
+      else if (/strength/.test(precClause)) nextPrecGate = 'strengthWeapon';
+      else if (/weapon skill/.test(precClause)) nextPrecGate = 'weapon';
+      else if (/debuffed|marked/.test(precClause)) nextPrecGate = 'debuffedOrMarked';
+      else if (/damaging/.test(precClause)) nextPrecGate = 'damaging';
+      else nextPrecGate = 'attack';
+    }
+    var nextCrit = /your next damaging skill gains?\s+\+?\s*(\d+)\s+percentage points Critical/i.exec(text);
+    var skipFallbackFocus = copyEnemy;
+    var skipFallbackRestore = copySelf;
+
     var effects = parsed.effects || [];
     for (var i = 0; i < effects.length; i++) {
       var eff = effects[i];
-      if (!eff || eff.kind !== 'tierStat') continue;
+      if (!eff || (eff.kind !== 'tierStat' && eff.kind !== 'flatStat')) continue;
+      if (skipFallbackFocus && eff.stat === 'matk' && eff.dir === 'up' && eff.target === 'self') continue;
+      if (/against the marked target/i.test(text) && String(eff.stat).toLowerCase() === 'acc' && eff.dir === 'up') continue;
+      if (nextAttackAccPenalty && eff.kind === 'flatStat' && String(eff.stat).toLowerCase() === 'acc' && eff.dir === 'down') {
+        riders.push({
+          kind: 'nextAttackAccPenalty',
+          value: Number(nextAttackAccPenalty[1]) || 10,
+          scope: 'self',
+          when: null,
+        });
+        continue;
+      }
       var kind = statToRiderKind(eff.stat, eff.dir, eff.target);
       if (!kind) continue;
-      var val = tierPct(eff.tier, eff.dir);
+      var isFlat = eff.kind === 'flatStat';
+      var val = isFlat ? Math.abs(Number(eff.amount) || 0) : tierPct(eff.tier, eff.dir);
       var flatCore = !!(Avian.data && Avian.data.effectTiers && Avian.data.effectTiers.flatStat);
       var coreStat = /^(atk|matk|def|mdef|spd|dex|vitality|hp)$/i.test(String(eff.stat || ''));
       var chanceKind = kind === 'gainDodge' || kind === 'gainAcc' || kind === 'gainCritChance'
         || kind === 'reduceEnemyDodge' || kind === 'reduceEnemyAcc' || kind === 'reduceEnemyCrit';
+      if (isFlat && String(eff.stat).toLowerCase() === 'acc' && eff.dir === 'down' && eff.target === 'enemy') {
+        kind = 'reduceEnemyAccFlat';
+      }
+      if (nextPrec && isFlat && String(eff.stat).toLowerCase() === 'acc' && eff.dir === 'up' && eff.target !== 'enemy') {
+        riders.push({
+          kind: 'gainAccNextHit',
+          value: nextPrecValue,
+          gate: nextPrecGate,
+          scope: 'self',
+          when: null,
+        });
+        continue;
+      }
+      if (nextCrit && isFlat && /crit/i.test(String(eff.stat || '')) && eff.dir === 'up' && eff.target !== 'enemy') {
+        riders.push({
+          kind: 'gainCritNextHit',
+          value: Number(nextCrit[1]) || 10,
+          gate: 'damaging',
+          scope: 'self',
+          when: null,
+        });
+        continue;
+      }
+      if (eff.dir === 'down' && eff.target !== 'enemy') {
+        val = -Math.abs(val);
+      }
+      var riderWhen = when;
+      if (eff.target === 'enemy' && enemyWhen) riderWhen = enemyWhen;
+      else if (eff.target !== 'enemy' && selfWhen) riderWhen = selfWhen;
       riders.push({
         kind: kind,
         value: val,
-        when: when,
+        when: riderWhen,
+        turns: turns,
         scope: eff.target === 'enemy' ? 'enemy' : 'self',
-        valueUnit: (flatCore && coreStat && !chanceKind) ? 'flat' : 'pct',
+        valueUnit: (isFlat || (flatCore && coreStat && !chanceKind)) ? 'flat' : 'pct',
       });
     }
     var specials = parsed.specials || [];
@@ -199,12 +291,12 @@
       var sp = specials[si];
       if (!sp || !sp.id) continue;
       if (sp.id === 'shield') riders.push({ kind: 'gainShield', value: Number(sp.maxHpPct) || 15, when: null });
-      if (sp.id === 'healMaxHp') riders.push({ kind: 'healMaxHpPct', value: Number(sp.pct) || 10, when: null });
+      if (sp.id === 'healMaxHp') riders.push({ kind: 'healMaxHpPct', value: Number(sp.pct) || 10, when: selfWhen });
       if (sp.id === 'fortify') {
         riders.push({
           kind: 'fortify',
           value: Number(sp.amount) || 0,
-          turns: Number(sp.turns) || 2,
+          turns: Number(sp.turns) || turns || 2,
           scope: 'self',
           when: null,
         });
@@ -213,20 +305,162 @@
         riders.push({
           kind: 'ward',
           value: Number(sp.amount) || 0,
-          turns: Number(sp.turns) || 2,
+          turns: Number(sp.turns) || turns || 2,
           scope: 'self',
           when: null,
+        });
+      }
+      if (sp.id === 'restoreArmour') {
+        riders.push({
+          kind: 'restoreArmour',
+          value: Number(sp.amount) || 0,
+          scope: 'self',
+          when: selfWhen,
+        });
+      }
+      if (sp.id === 'restoreMagicArmour') {
+        if (skipFallbackRestore) continue;
+        riders.push({
+          kind: 'restoreMagicArmour',
+          value: Number(sp.amount) || 0,
+          scope: 'self',
+          when: selfWhen,
+        });
+      }
+      if (sp.id === 'restoreLowerProtection') {
+        riders.push({
+          kind: 'restoreLowerPool',
+          value: Number(sp.amount) || 0,
+          scope: 'self',
+          when: selfWhen,
+        });
+      }
+      if (sp.id === 'armourDamage') {
+        riders.push({
+          kind: 'armourDamage',
+          value: Number(sp.amount) || 0,
+          scope: 'enemy',
+          when: null,
+        });
+      }
+      if (sp.id === 'magicArmourDamage') {
+        if (penguinRetaliate) {
+          riders.push({
+            kind: 'magicArmourRetaliateOnPhysical',
+            value: Number(sp.amount) || 2,
+            scope: 'self',
+            when: null,
+          });
+        } else {
+          riders.push({
+            kind: 'magicArmourDamage',
+            value: Number(sp.amount) || 0,
+            scope: 'enemy',
+            when: null,
+          });
+        }
+      }
+      if (sp.id === 'ailmentAppChanceBonus' && !/Apply Jewel Mark/i.test(text)) {
+        riders.push({
+          kind: 'gainAilmentAppChance',
+          value: Number(sp.amount) || 10,
+          scope: 'self',
+          when: null,
+        });
+      }
+      if (sp.id === 'applyAilment') {
+        riders.push({
+          kind: 'applyAilment',
+          ailment: sp.ailment,
+          stacks: Number(sp.stacks) || 1,
+          chance: sp.chance != null ? Number(sp.chance) : 100,
+          scope: 'enemy',
+          when: enemyWhen || 'onHit',
         });
       }
       if (sp.id === 'cleanse') {
         /* handled via applyTagRidersFromRow Cleanse tag */
       }
-      if (sp.id === 'applyAilment') {
-        /* ailment handled separately if wired on row */
-      }
     }
     if (specials.some(function (s) { return s && s.id === 'cleanse'; })) {
       riders.push({ kind: 'tagFlag', value: 0, tags: ['Cleanse'] });
+    }
+    var restoreBoth = text.match(/Restore\s+(\d+)\s+(?:Armour|Armor)\s+and\s+(\d+)\s+Magic\s+(?:Armour|Armor)/i);
+    if (restoreBoth) {
+      var hasArm = riders.some(function (r) { return r.kind === 'restoreArmour'; });
+      var hasMag = riders.some(function (r) { return r.kind === 'restoreMagicArmour'; });
+      if (!hasArm) {
+        riders.push({ kind: 'restoreArmour', value: Number(restoreBoth[1]) || 0, scope: 'self', when: selfWhen });
+      }
+      if (!hasMag) {
+        riders.push({ kind: 'restoreMagicArmour', value: Number(restoreBoth[2]) || 0, scope: 'self', when: selfWhen });
+      }
+    }
+    if (/Apply Jewel Mark/i.test(text)) {
+      riders.push({ kind: 'applyMark', mark: 'jewel', turns: turns || 2, value: 10, scope: 'enemy', when: null });
+    }
+    if (/Apply Predator Mark/i.test(text)) {
+      riders.push({ kind: 'applyMark', mark: 'predator', turns: turns || 2, value: 10, scope: 'enemy', when: null });
+    }
+    if (/Apply Carrion Mark/i.test(text)) {
+      riders.push({ kind: 'applyMark', mark: 'carrion', turns: turns || 2, scope: 'enemy', when: null });
+    }
+    if (copyEnemy) {
+      riders.push({
+        kind: 'copyEnemyBuff',
+        fallbackKind: 'gainMatk',
+        fallbackValue: 4,
+        turns: turns || 2,
+        scope: 'self',
+        when: null,
+      });
+    }
+    if (copySelf) {
+      riders.push({
+        kind: 'copyLastSelfBuff',
+        fallbackKind: 'restoreMagicArmour',
+        fallbackValue: 3,
+        turns: turns || 1,
+        scope: 'self',
+        when: null,
+      });
+    }
+    if (/cleanse 1 damaging ailment and restore/i.test(text)) {
+      riders.push({
+        kind: 'restoreMatchingAilmentPool',
+        value: 4,
+        scope: 'self',
+        when: 'ifCleansed',
+      });
+    }
+    if (/attempt to apply 1 Chilled stack/i.test(text)) {
+      riders.push({
+        kind: 'applyAilment',
+        ailment: 'chilled',
+        stacks: 1,
+        chance: 100,
+        scope: 'enemy',
+        when: enemyWhen || 'targetNoMagicArmour',
+      });
+    }
+    if (/Your next damaging skill becomes Day/i.test(text)) {
+      riders.push({ kind: 'nextSkillAspect', value: 0, aspect: 'day', scope: 'self', when: null });
+    }
+    if (/Your next Day hit attempts to apply 1 Burn/i.test(text)) {
+      riders.push({ kind: 'nextDayBurnIfHealth', value: 1, scope: 'self', when: null });
+    }
+    var ignoreDef = text.match(/ignores?\s+(\d+)\s+of the matching defence/i);
+    if (ignoreDef) {
+      riders.push({
+        kind: 'ignoreMatchingDefNextHit',
+        value: Number(ignoreDef[1]) || 2,
+        gate: 'debuffedOrMarked',
+        scope: 'self',
+        when: null,
+      });
+    }
+    if (/cannot be redirected/i.test(text)) {
+      riders.push({ kind: 'cannotRedirectNextSkill', value: 1, gate: 'weapon', scope: 'self', when: null });
     }
     return riders;
   }
@@ -875,6 +1109,7 @@
   ns.resolveInnateUtility = function resolveInnateUtility(entity) {
     var birdKey = entity && entity.birdKey;
     if (!birdKey) return null;
+    if (typeof Avian.canonicalBirdKey === 'function') birdKey = Avian.canonicalBirdKey(birdKey);
     var utils = Avian.data && Avian.data.combatPack && Avian.data.combatPack.innateUtilities;
     var util = utils && utils[birdKey];
     if (!util) return null;
@@ -960,6 +1195,7 @@
     return SOURCE_ORDER.slice();
   };
 
+  ns.convertParsedRiderToRows = convertParsedRiderToRows;
   ns.collectUltimateCandidates = collectUltimateCandidates;
 
   ns.getActionSourceLabel = function getActionSourceLabel(sourceKey) {

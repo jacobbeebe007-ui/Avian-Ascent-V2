@@ -113,9 +113,81 @@ if (!Object.keys(wrong).length) ok('sparrow ignores non-Hedge-Hop skills');
 else fail('sparrow fired on wrong skill');
 
 Avian.passives.onPlayerAbilityUse({ id: 'UTIL_HEDGE_HOP', name: 'Hedge Hop', btnType: 'utility' }, {});
+const armed = G.playerStatus._passiveNextSkill;
+if (armed && armed.gate && armed.gate.weaponSkill1) ok('sparrow arms next Weapon Skill 1 after Hedge Hop');
+else fail('sparrow did not arm next WS1: ' + JSON.stringify(armed));
+if (!Object.keys(G.playerStatus._passiveDisplaySlots || {}).length) ok('sparrow does not buff Hedge Hop itself');
+else fail('sparrow applied display slots on Hedge Hop');
+
+Avian.passives.prepareOutgoingAbilityBonuses('player', {
+  id: 'WSK-001', name: 'Talon Rake', btnType: 'physical', actionSource: 'weaponA', barSlot: 'Weapon Skill 1', enCost: 2,
+});
+Avian.passives.onPlayerAbilityUse({
+  id: 'WSK-001', name: 'Talon Rake', btnType: 'physical', actionSource: 'weaponA', barSlot: 'Weapon Skill 1', enCost: 2,
+}, { hitsLanded: 1, damage: 4 });
 const right = G.playerStatus._passiveDisplaySlots || {};
-if (Object.keys(right).length) ok('sparrow fires on Hedge Hop');
-else fail('sparrow did not fire on Hedge Hop');
+const hasAcc = Object.values(right).some((s) => s && s.kind === 'gainAcc' && s.value >= 10);
+const hasCrit = Object.values(right).some((s) => s && s.kind === 'gainCritChance' && s.value >= 5);
+if (hasAcc && hasCrit) ok('sparrow Precision + Crit apply on next Weapon Skill 1');
+else fail('sparrow WS1 missing Precision/Crit slots: ' + JSON.stringify(right));
+if (!G.playerStatus._passiveNextSkill) ok('sparrow next-skill pending consumed');
+else fail('sparrow pending still armed');
+
+/* Rock Dove: Armour absorb arms next song restore. */
+{
+  G.player.birdKey = 'rockDove';
+  G.player.stats.armour = 0;
+  G.player.stats.maxArmour = 8;
+  G.player.stats.normalMaxArmour = 8;
+  G.playerStatus = {};
+  G.passiveState = Object.create(null);
+  Avian.passives.onArmourAbsorbed(G.player, 4);
+  const pending = G.playerStatus._passiveNextSkill;
+  if (pending && pending.gate && pending.gate.skillClass === 'song'
+    && (pending.specials || []).some((s) => s.id === 'restoreArmour' && s.amount === 3)) {
+    ok('rock dove arms next song restore 3 Armour');
+  } else fail('rock dove pending wrong: ' + JSON.stringify(pending));
+  Avian.passives.onPlayerAbilityUse({
+    id: 'SONG_TEST', name: 'Court Song', btnType: 'spell', skillType: 'song', barSlot: 'Song',
+  }, {});
+  if ((G.player.stats.armour || 0) >= 3) ok('rock dove song restores 3 Armour');
+  else fail('rock dove song restore failed, armour=' + G.player.stats.armour);
+}
+
+/* Shoebill: idle last turn → Strength weapon skill Skill Power + Armour damage. */
+{
+  G.player.birdKey = 'shoebill';
+  G.playerStatus = {};
+  G.passiveState = Object.create(null);
+  G._passiveNoDamageLastTurn = { player: true };
+  Avian.passives.prepareOutgoingAbilityBonuses('player', {
+    id: 'WSK-009', name: 'Crushing Peck', btnType: 'physical', actionSource: 'weaponA',
+    weaponClass: 'strength', family: 'Hammer', barSlot: 'Weapon Skill 1', enCost: 2, scalingStat: 'ATK',
+  });
+  if ((G.playerStatus._passiveSkillPowerBonus || 0) >= 20
+    && (G.playerStatus._passiveFlatArmourDamage || 0) >= 2) {
+    ok('shoebill idle-turn Strength skill arms +20 Skill Power and +2 Armour damage');
+  } else fail('shoebill bonuses missing: ' + JSON.stringify({
+    sp: G.playerStatus._passiveSkillPowerBonus,
+    arm: G.playerStatus._passiveFlatArmourDamage,
+    armed: G.playerStatus._v2PassiveArmedAbility,
+  }));
+}
+
+/* Kiwi: ignore 4 Guard is consumed as flat pen. */
+{
+  G.player.birdKey = 'kiwi';
+  G.playerStatus = {};
+  G.enemyStatus = { jewelMark: { turns: 2 } };
+  G.passiveState = Object.create(null);
+  G._workbookPassiveDefFlat = 0;
+  Avian.passives.prepareOutgoingAbilityBonuses('player', {
+    id: 'WSK-001', name: 'Talon Rake', btnType: 'physical', actionSource: 'weaponA',
+    family: 'Talon', barSlot: 'Weapon Skill 1', enCost: 2,
+  });
+  if ((G._workbookPassiveDefFlat || 0) >= 4) ok('kiwi ignoreGuardFlat armed vs marked target');
+  else fail('kiwi ignoreGuardFlat not armed: ' + G._workbookPassiveDefFlat);
+}
 
 /* Bulwark Oath: Fortify/Armour Restoration → Guard Up (no longer first-hit DR). */
 G.enemy.birdKey = 'crow';
@@ -439,6 +511,90 @@ else ok('onEnemyDamaged exported');
   }
   if (threw) fail('getAbDesc threw: ' + threw.message);
   else ok('getAbDesc tolerates missing/0/overflow level');
+}
+
+/* Trigger wiring: afterCrit / afterEnemyAttack / afterDamageDealt / passiveAlways. */
+{
+  G.player = {
+    birdKey: 'baldEagle',
+    stats: { hp: 40, maxHp: 40, armour: 0, maxArmour: 8, normalMaxArmour: 8, magicArmour: 0, maxMagicArmour: 8, normalMaxMagicArmour: 8, acc: 80 },
+  };
+  G.playerStatus = {};
+  G.passiveState = Object.create(null);
+  Avian.passives.onPlayerAbilityUse({ id: 'WSK-001', name: 'Strike', btnType: 'physical' }, { crit: true, anyCrit: true, hitsLanded: 1, damage: 10 });
+  const armAfter = G.player.stats.armour;
+  if (armAfter > 0) ok('bald eagle afterCrit restores lower protection');
+  else fail('bald eagle afterCrit did not restore protection, armour=' + armAfter);
+}
+
+{
+  G.player = {
+    birdKey: 'wagtail',
+    stats: { hp: 40, maxHp: 40, armour: 0, maxArmour: 8, normalMaxArmour: 8, spd: 10, atk: 8, def: 6, matk: 4, mdef: 6 },
+  };
+  G.enemy = { birdKey: 'crow', stats: { hp: 40, maxHp: 40, spd: 8 } };
+  G.playerStatus = {};
+  G.passiveState = Object.create(null);
+  const spdBefore = G.player.stats.spd;
+  Avian.passives.onPlayerDamaged(6, false, { afterEnemyAttack: true });
+  if (G.player.stats.spd > spdBefore) ok('wagtail afterEnemyAttack grants Agility');
+  else fail('wagtail afterEnemyAttack did not grant Agility');
+  if ((G.player.stats.armour || 0) === 0) ok('wagtail hit does not restore Armour');
+  else fail('wagtail restored Armour on a connecting hit');
+  G.passiveState = Object.create(null);
+  G.playerStatus = {};
+  Avian.passives.onPlayerDodged({});
+  if (G.player.stats.armour > 0) ok('wagtail dodge restores Armour');
+  else fail('wagtail dodge did not restore Armour, armour=' + G.player.stats.armour);
+}
+
+{
+  G.player = {
+    birdKey: 'seagull',
+    stats: { hp: 40, maxHp: 40, armour: 0, maxArmour: 8, normalMaxArmour: 8, magicArmour: 4, maxMagicArmour: 8, normalMaxMagicArmour: 8, spd: 8 },
+  };
+  G.enemy = { birdKey: 'crow', stats: { hp: 20, maxHp: 40 } };
+  G.playerStatus = {};
+  G.enemyStatus = { poison: { stacks: 1, turns: 2 } };
+  G.passiveState = Object.create(null);
+  const spdBefore = G.player.stats.spd;
+  Avian.passives.onPlayerAbilityUse({ id: 'WSK-001', name: 'Strike', btnType: 'physical' }, { hitsLanded: 1, damage: 8, firstHitLanded: true });
+  if (G.player.stats.spd > spdBefore) ok('seagull afterDamageDealt vs debuffed target grants Agility');
+  else fail('seagull afterDamageDealt did not fire');
+}
+
+{
+  G.player = {
+    birdKey: 'bushturkey',
+    stats: { hp: 50, maxHp: 50, armour: 4, maxArmour: 10, normalMaxArmour: 10, spd: 6, atk: 10, def: 10, matk: 2, mdef: 6 },
+  };
+  G.playerStatus = {};
+  G.passiveState = Object.create(null);
+  const armBefore = G.player.stats.armour;
+  Avian.passives.onPlayerAbilityUse({
+    id: 'innate_bushturkey',
+    name: 'Mound Guard',
+    btnType: 'utility',
+    riderText: 'Gain 5 Fortified Armour for 2 turns.',
+    actionSource: 'utility',
+  }, { armourTechnique: true });
+  if (G.player.stats.armour > armBefore) ok('bush turkey Fortify grants +1 additional Armour');
+  else fail('bush turkey additional Armour missing, armour ' + armBefore + '→' + G.player.stats.armour);
+}
+
+{
+  const rogue = Avian.classPerks.getClassPerkForBird('sparrow');
+  if (rogue && rogue.def && rogue.def.id === 'rogueTempo') ok('sparrow resolves Rogue Tempo');
+  else fail('sparrow class perk missing Rogue Tempo');
+  G.player = { birdKey: 'sparrow', class: 'rogue', stats: { spd: 20, acc: 86 } };
+  G.enemy = { birdKey: 'crow', stats: { spd: 8 } };
+  G.playerStatus = { _classPerkState: {} };
+  Avian.classPerks.applyClassPerkMetadata(G.player);
+  const peek = Avian.classPerks.peekRogueTempoPrecision(G.player, {
+    id: 'WSK-001', actionSource: 'weaponA', energy: 2, energyCost: 2, btnType: 'physical',
+  });
+  if (peek === 10) ok('Rogue Tempo peeks +10 Precision when acting first');
+  else fail('Rogue Tempo peek expected 10, got ' + peek);
 }
 
 if (failed) {

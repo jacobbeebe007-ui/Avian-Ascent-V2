@@ -212,6 +212,223 @@ const arr = actions.buildAbilitiesArray(player({ mainHand: 'WPN-011' }));
 if (Array.isArray(arr) && arr.length === 6) ok('buildAbilitiesArray length 6');
 else fail(`buildAbilitiesArray length expected 6, got ${arr && arr.length}`);
 
+function riderKinds(entity) {
+  const util = actions.resolveInnateUtility(entity);
+  const riders = (util && util._dispatcherRow && util._dispatcherRow.riders) || [];
+  return riders.map((r) => r && r.kind).filter(Boolean);
+}
+
+{
+  const sparrow = player();
+  sparrow.birdKey = 'sparrow';
+  const kinds = riderKinds(sparrow);
+  if (kinds.includes('gainSpeed')) ok('sparrow Hedge Hop grants Agility Up');
+  else fail('sparrow Hedge Hop missing gainSpeed, got ' + kinds.join(','));
+}
+
+{
+  const owl = {
+    birdKey: 'snowyOwl',
+    class: 'mage',
+    equipment: equipment.createEmptyLoadout(),
+  };
+  const kinds = riderKinds(owl);
+  if (kinds.includes('magicArmourDamage') && kinds.includes('applyAilment')) {
+    ok('snowy owl Frost Glide deals Magic Armour then Chilled');
+  } else fail('snowy owl missing pool damage / chilled, got ' + kinds.join(','));
+}
+
+{
+  const crow = {
+    birdKey: 'crow',
+    class: 'knight',
+    equipment: equipment.createEmptyLoadout(),
+  };
+  const kinds = riderKinds(crow);
+  if (kinds.includes('restoreArmour')) ok('crow Battle Focus restores Armour');
+  else fail('crow missing restoreArmour, got ' + kinds.join(','));
+}
+
+{
+  const penguin = {
+    birdKey: 'penguin',
+    class: 'knight',
+    equipment: equipment.createEmptyLoadout(),
+  };
+  const kinds = riderKinds(penguin);
+  if (kinds.includes('ward') && kinds.includes('magicArmourRetaliateOnPhysical') && !kinds.includes('magicArmourDamage')) {
+    ok('penguin Snow Wall wards and retaliates instead of instant Magic Armour damage');
+  } else fail('penguin Snow Wall riders wrong: ' + kinds.join(','));
+}
+
+{
+  const magpie = {
+    birdKey: 'magpie',
+    class: 'rogue',
+    equipment: equipment.createEmptyLoadout(),
+  };
+  const kinds = riderKinds(magpie);
+  if (kinds.includes('armourDamage') && kinds.includes('reduceEnemyAccFlat')) {
+    ok('magpie Feather Feint pokes Armour then Precision Down');
+  } else fail('magpie missing armour poke / precision, got ' + kinds.join(','));
+}
+
+{
+  const harpy = {
+    birdKey: 'harpy',
+    class: 'inquisitor',
+    equipment: equipment.createEmptyLoadout(),
+  };
+  const util = actions.resolveInnateUtility(harpy);
+  const riders = (util && util._dispatcherRow && util._dispatcherRow.riders) || [];
+  const mark = riders.find((r) => r && r.kind === 'applyMark' && r.mark === 'predator');
+  if (mark) ok('harpy Predator Grip applies Predator Mark');
+  else fail('harpy missing Predator Mark, kinds=' + riders.map((r) => r && r.kind).join(','));
+}
+
+function ridersFor(birdKey, cls) {
+  const entity = {
+    birdKey,
+    class: cls || 'rogue',
+    equipment: equipment.createEmptyLoadout(),
+  };
+  const util = actions.resolveInnateUtility(entity);
+  return (util && util._dispatcherRow && util._dispatcherRow.riders) || [];
+}
+
+{
+  const kinds = ridersFor('toucan', 'bard').map((r) => r.kind);
+  if (kinds.includes('nextSkillAspect') && kinds.includes('gainAccNextHit')) {
+    ok('toucan Colour Display arms Day aspect + next-skill Precision');
+  } else fail('toucan riders wrong: ' + kinds.join(','));
+}
+
+{
+  const kinds = ridersFor('kiwi', 'inquisitor').map((r) => r.kind);
+  if (kinds.includes('gainAccNextHit') && kinds.includes('ignoreMatchingDefNextHit')) {
+    ok('kiwi Scent Hunt arms Precision and matching-defence ignore');
+  } else fail('kiwi riders wrong: ' + kinds.join(','));
+}
+
+{
+  const kinds = ridersFor('goldeneagle', 'rogue').map((r) => r.kind);
+  if (kinds.includes('gainCritNextHit')) ok('golden eagle Hunter\'s Majesty arms next-skill Critical');
+  else fail('golden eagle riders wrong: ' + kinds.join(','));
+}
+
+{
+  const kinds = ridersFor('cassowary', 'brute').map((r) => r.kind);
+  if (kinds.includes('armourDamage') && kinds.includes('nextAttackAccPenalty') && kinds.includes('reduceEnemyDef')) {
+    ok('cassowary War Stomp pokes Armour, Guard Down on Health, self Precision penalty');
+  } else fail('cassowary riders wrong: ' + kinds.join(','));
+}
+
+{
+  const riders = ridersFor('barnowl', 'mage');
+  const kinds = riders.map((r) => r.kind);
+  const next = riders.find((r) => r.kind === 'gainAccNextHit');
+  if (kinds.includes('gainSpeed') && next && next.gate === 'night' && !kinds.includes('gainAcc')) {
+    ok('barn owl Agility now + Night-gated next Precision');
+  } else fail('barn owl riders wrong: ' + kinds.join(',') + ' next=' + JSON.stringify(next));
+}
+
+{
+  const riders = ridersFor('ostrich', 'brute');
+  const next = riders.find((r) => r.kind === 'gainAccNextHit');
+  if (riders.some((r) => r.kind === 'gainSpeed') && next && next.gate === 'strengthWeapon') {
+    ok('ostrich next Strength weapon skill Precision is gated');
+  } else fail('ostrich riders wrong: ' + riders.map((r) => r.kind).join(',') + ' next=' + JSON.stringify(next));
+}
+
+{
+  const kinds = ridersFor('secretary', 'knight').map((r) => r.kind);
+  if (kinds.includes('gainSpeed') && kinds.includes('gainAcc') && !kinds.includes('gainAccNextHit')) {
+    ok('secretary Precision lasts until next turn (not next-hit)');
+  } else fail('secretary riders wrong: ' + kinds.join(','));
+}
+
+{
+  const riders = ridersFor('dodo', 'knight');
+  const down = riders.find((r) => r.kind === 'gainSpeed' && r.value < 0);
+  if (riders.some((r) => r.kind === 'fortify') && down) ok('dodo Fortify with self Agility Down');
+  else fail('dodo riders wrong: ' + JSON.stringify(riders.map((r) => ({ kind: r.kind, value: r.value }))));
+}
+
+{
+  const kinds = ridersFor('pigeon', 'bard').map((r) => r.kind);
+  if (kinds.includes('restoreArmour') && kinds.includes('restoreMagicArmour')) {
+    ok('pigeon restores both protection pools');
+  } else fail('pigeon riders wrong: ' + kinds.join(','));
+}
+
+{
+  const pere = ridersFor('peregrine', 'rogue');
+  const kinds = pere.map((r) => r.kind);
+  if (kinds.includes('gainAccNextHit') && kinds.includes('cannotRedirectNextSkill')) {
+    ok('peregrine next weapon skill Precision cannot be redirected');
+  } else fail('peregrine riders wrong: ' + kinds.join(','));
+}
+
+function countKind(riders, kind) {
+  return riders.filter((r) => r && r.kind === kind).length;
+}
+
+{
+  const riders = ridersFor('seagull', 'rogue');
+  const speed = riders.filter((r) => r.kind === 'gainSpeed');
+  const restore = riders.filter((r) => r.kind === 'restoreLowerPool');
+  if (speed.length === 1 && speed[0].when === 'ifCleansed'
+    && restore.length === 1 && restore[0].when === 'ifCleansed') {
+    ok('seagull cleanse bonuses are ifCleansed-gated (no ungated duplicates)');
+  } else fail('seagull riders wrong: ' + JSON.stringify(riders.map((r) => ({ kind: r.kind, when: r.when }))));
+}
+
+{
+  const riders = ridersFor('blackbird', 'mage');
+  const downs = riders.filter((r) => r.kind === 'reduceEnemyMdef');
+  if (downs.length === 1 && (downs[0].when === 'ifTargetNoMagicArmour' || downs[0].when === 'targetNoMagicArmour')) {
+    ok('blackbird Resolve Down is blocked by Magic Armour');
+  } else fail('blackbird riders wrong: ' + JSON.stringify(riders.map((r) => ({ kind: r.kind, when: r.when }))));
+}
+
+{
+  const riders = ridersFor('goose', 'brute');
+  const downs = riders.filter((r) => r.kind === 'reduceEnemyAtk');
+  if (riders.some((r) => r.kind === 'magicArmourDamage')
+    && downs.length === 1 && downs[0].when === 'reachedHealth') {
+    ok('goose Might Down only applies if Magic Armour damage reaches Health');
+  } else fail('goose riders wrong: ' + JSON.stringify(riders.map((r) => ({ kind: r.kind, when: r.when }))));
+}
+
+{
+  const riders = ridersFor('cassowary', 'brute');
+  const guardDown = riders.filter((r) => r.kind === 'reduceEnemyDef');
+  if (riders.some((r) => r.kind === 'armourDamage')
+    && riders.some((r) => r.kind === 'nextAttackAccPenalty')
+    && !riders.some((r) => r.kind === 'gainGuarded')
+    && guardDown.length === 1 && guardDown[0].when === 'reachedHealth') {
+    ok('cassowary War Stomp: Armour poke, Health-gated Guard Down, self Precision penalty (no self Guard)');
+  } else fail('cassowary riders wrong: ' + JSON.stringify(riders.map((r) => ({ kind: r.kind, when: r.when }))));
+}
+
+{
+  const riders = ridersFor('pigeon', 'bard');
+  if (countKind(riders, 'restoreArmour') === 1
+    && countKind(riders, 'restoreMagicArmour') === 1
+    && countKind(riders, 'bastion') === 0) {
+    ok('pigeon dual restore does not also apply Bastion');
+  } else fail('pigeon dual restore riders wrong: ' + JSON.stringify(riders.map((r) => r.kind)));
+}
+
+{
+  const riders = ridersFor('bluejay', 'bard');
+  if (countKind(riders, 'restoreArmour') >= 1
+    && countKind(riders, 'restoreMagicArmour') >= 1
+    && countKind(riders, 'bastion') === 0) {
+    ok('blue jay dual restore does not also apply Bastion');
+  } else fail('blue jay riders wrong: ' + JSON.stringify(riders.map((r) => r.kind)));
+}
+
 if (failed) {
   console.error(`\n[action-sources] ${failed} failure(s)`);
   process.exit(1);
