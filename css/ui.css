@@ -251,13 +251,28 @@
 .bird-card .bird-portrait,
 #select-hub-door .sfsel__roster .bird-portrait{
   display:flex !important;
-  align-items:flex-end;
+  align-items:center !important;
   justify-content:center !important;
   width:100% !important;
   height:auto !important;
   min-height:56px;
   margin:4px auto 8px;
   overflow:visible !important;
+}
+#select-hub-door .sfsel__roster .bird-card{
+  display:flex !important;
+  flex-direction:column;
+  align-items:stretch;
+  text-align:center;
+}
+#select-hub-door .sfsel__roster .bird-card-head,
+#select-hub-door .sfsel__roster .bird-card-stars{
+  justify-content:center;
+  width:100%;
+}
+#select-hub-door .sfsel__roster .bird-portrait{
+  flex:1 1 auto;
+  min-height:88px;
 }
 .bird-card .sprite4,
 #select-hub-door .sfsel__roster .bird-card .sprite4,
