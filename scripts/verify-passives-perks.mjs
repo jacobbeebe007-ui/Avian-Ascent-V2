@@ -113,9 +113,81 @@ if (!Object.keys(wrong).length) ok('sparrow ignores non-Hedge-Hop skills');
 else fail('sparrow fired on wrong skill');
 
 Avian.passives.onPlayerAbilityUse({ id: 'UTIL_HEDGE_HOP', name: 'Hedge Hop', btnType: 'utility' }, {});
+const armed = G.playerStatus._passiveNextSkill;
+if (armed && armed.gate && armed.gate.weaponSkill1) ok('sparrow arms next Weapon Skill 1 after Hedge Hop');
+else fail('sparrow did not arm next WS1: ' + JSON.stringify(armed));
+if (!Object.keys(G.playerStatus._passiveDisplaySlots || {}).length) ok('sparrow does not buff Hedge Hop itself');
+else fail('sparrow applied display slots on Hedge Hop');
+
+Avian.passives.prepareOutgoingAbilityBonuses('player', {
+  id: 'WSK-001', name: 'Talon Rake', btnType: 'physical', actionSource: 'weaponA', barSlot: 'Weapon Skill 1', enCost: 2,
+});
+Avian.passives.onPlayerAbilityUse({
+  id: 'WSK-001', name: 'Talon Rake', btnType: 'physical', actionSource: 'weaponA', barSlot: 'Weapon Skill 1', enCost: 2,
+}, { hitsLanded: 1, damage: 4 });
 const right = G.playerStatus._passiveDisplaySlots || {};
-if (Object.keys(right).length) ok('sparrow fires on Hedge Hop');
-else fail('sparrow did not fire on Hedge Hop');
+const hasAcc = Object.values(right).some((s) => s && s.kind === 'gainAcc' && s.value >= 10);
+const hasCrit = Object.values(right).some((s) => s && s.kind === 'gainCritChance' && s.value >= 5);
+if (hasAcc && hasCrit) ok('sparrow Precision + Crit apply on next Weapon Skill 1');
+else fail('sparrow WS1 missing Precision/Crit slots: ' + JSON.stringify(right));
+if (!G.playerStatus._passiveNextSkill) ok('sparrow next-skill pending consumed');
+else fail('sparrow pending still armed');
+
+/* Rock Dove: Armour absorb arms next song restore. */
+{
+  G.player.birdKey = 'rockDove';
+  G.player.stats.armour = 0;
+  G.player.stats.maxArmour = 8;
+  G.player.stats.normalMaxArmour = 8;
+  G.playerStatus = {};
+  G.passiveState = Object.create(null);
+  Avian.passives.onArmourAbsorbed(G.player, 4);
+  const pending = G.playerStatus._passiveNextSkill;
+  if (pending && pending.gate && pending.gate.skillClass === 'song'
+    && (pending.specials || []).some((s) => s.id === 'restoreArmour' && s.amount === 3)) {
+    ok('rock dove arms next song restore 3 Armour');
+  } else fail('rock dove pending wrong: ' + JSON.stringify(pending));
+  Avian.passives.onPlayerAbilityUse({
+    id: 'SONG_TEST', name: 'Court Song', btnType: 'spell', skillType: 'song', barSlot: 'Song',
+  }, {});
+  if ((G.player.stats.armour || 0) >= 3) ok('rock dove song restores 3 Armour');
+  else fail('rock dove song restore failed, armour=' + G.player.stats.armour);
+}
+
+/* Shoebill: idle last turn → Strength weapon skill Skill Power + Armour damage. */
+{
+  G.player.birdKey = 'shoebill';
+  G.playerStatus = {};
+  G.passiveState = Object.create(null);
+  G._passiveNoDamageLastTurn = { player: true };
+  Avian.passives.prepareOutgoingAbilityBonuses('player', {
+    id: 'WSK-009', name: 'Crushing Peck', btnType: 'physical', actionSource: 'weaponA',
+    weaponClass: 'strength', family: 'Hammer', barSlot: 'Weapon Skill 1', enCost: 2, scalingStat: 'ATK',
+  });
+  if ((G.playerStatus._passiveSkillPowerBonus || 0) >= 20
+    && (G.playerStatus._passiveFlatArmourDamage || 0) >= 2) {
+    ok('shoebill idle-turn Strength skill arms +20 Skill Power and +2 Armour damage');
+  } else fail('shoebill bonuses missing: ' + JSON.stringify({
+    sp: G.playerStatus._passiveSkillPowerBonus,
+    arm: G.playerStatus._passiveFlatArmourDamage,
+    armed: G.playerStatus._v2PassiveArmedAbility,
+  }));
+}
+
+/* Kiwi: ignore 4 Guard is consumed as flat pen. */
+{
+  G.player.birdKey = 'kiwi';
+  G.playerStatus = {};
+  G.enemyStatus = { jewelMark: { turns: 2 } };
+  G.passiveState = Object.create(null);
+  G._workbookPassiveDefFlat = 0;
+  Avian.passives.prepareOutgoingAbilityBonuses('player', {
+    id: 'WSK-001', name: 'Talon Rake', btnType: 'physical', actionSource: 'weaponA',
+    family: 'Talon', barSlot: 'Weapon Skill 1', enCost: 2,
+  });
+  if ((G._workbookPassiveDefFlat || 0) >= 4) ok('kiwi ignoreGuardFlat armed vs marked target');
+  else fail('kiwi ignoreGuardFlat not armed: ' + G._workbookPassiveDefFlat);
+}
 
 /* Bulwark Oath: Fortify/Armour Restoration → Guard Up (no longer first-hit DR). */
 G.enemy.birdKey = 'crow';

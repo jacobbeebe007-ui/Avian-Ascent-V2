@@ -11788,6 +11788,10 @@ function getFinalAttackPrecision(entity, ab, opts={}){
   if (typeof getConfusedPrecisionPenalty === 'function') {
     activeUp += getConfusedPrecisionPenalty(sideStatus);
   }
+  if (side === 'player' && sideStatus && sideStatus.blinded && (sideStatus.blinded.turns || 0) > 0) {
+    const blindPts = (typeof AILMENT_RULES !== 'undefined' && AILMENT_RULES.blinded && AILMENT_RULES.blinded.accPenalty) || 12;
+    activeDown += Number(blindPts) || 12;
+  }
   if(typeof Avian?.dispatcher?.modifyAcc==='function' && side==='player'){
     /* dispatcher may apply further temp mods via getPlayerEffectiveAcc path; keep additive here. */
   }
@@ -12975,8 +12979,11 @@ function computeMasterOutgoingDamage(isMagic, srcAbility, opts={}){
       }
       const ps=G.playerStatus||{};
       if(ps._passiveSkillPowerBonus){
-        n+=Number(ps._passiveSkillPowerBonus)||0;
+        const vsMarm=!!ps._passiveSkillPowerVsMagicArmour;
+        const enemyMarm=Number(G.enemy?.stats?.magicArmour)||0;
+        if(!vsMarm || enemyMarm>0) n+=Number(ps._passiveSkillPowerBonus)||0;
         ps._passiveSkillPowerBonus=0;
+        delete ps._passiveSkillPowerVsMagicArmour;
       }
       return n;
     })(),
@@ -14612,8 +14619,9 @@ async function playerAction(ab,fromQueue=false) {
   if(G.playerStatus.stunned>0){logMsg(`😵 Stunned — can't act!`,'miss');renderActions();refreshBattleUI();return;}
   const _pcl=G.playerStatus.confused;
   const _dmgEarly=effActKind==='physical'||effActKind==='ranged'||effActKind==='spell';
+  const _hostileEarly=_dmgEarly || String(ab && (ab.target || '')).toLowerCase()==='enemy';
   G._playerConfusesSelfThisAction=false;
-  G._consumeConfusedAfterAction=!!(_pcl&&((typeof _pcl==='object'?(_pcl.turns||0):_pcl)>0)&&_dmgEarly);
+  G._consumeConfusedAfterAction=!!(_pcl&&((typeof _pcl==='object'?(_pcl.turns||0):_pcl)>0)&&_hostileEarly);
   G._consumeFearAfterAction=!!((G.playerStatus.feared||0)>0 && _dmgEarly);
   if(typeof consumeFrozenSkip==='function' && consumeFrozenSkip('player')){
     spawnFloat('player','🧊 Frozen!','fn-status');await delay(400);
@@ -15021,7 +15029,7 @@ function getAbilityEnergyCost(ab, player){
       : ((sideStatus?.paralyzed || sideStatus?.paralysed) ? 1 : 0);
     if (extra > 0) cost += extra;
     const concussedExtra = typeof getConcussedExtraEnCost === 'function'
-      ? getConcussedExtraEnCost(sideStatus, ability)
+      ? getConcussedExtraEnCost(sideStatus, ab)
       : 0;
     if (concussedExtra > 0) cost += concussedExtra;
   } catch (_) { /* noop */ }
@@ -15579,6 +15587,10 @@ function endPlayerTurn(force=false) {
   G._lastPlayerAbility=null;
   tickEndOfTurnAilments('player');
   tickDelayedForTarget('player');
+  G._passiveNoDamageLastTurn = G._passiveNoDamageLastTurn || {};
+  G._passiveNoDamageLastTurn.player = !(G._passiveDamagingActionThisTurn && G._passiveDamagingActionThisTurn.player);
+  G._passiveDamagingActionThisTurn = G._passiveDamagingActionThisTurn || {};
+  G._passiveDamagingActionThisTurn.player = false;
   if(G.player.stats.hp<=0||G.enemy.stats.hp<=0){if(checkDeath())return;}
   tickGuardedStatus(G.enemyStatus);
   tickShieldHpStatus('enemy');
@@ -16313,7 +16325,8 @@ async function enemyTurn() {
       if(enemyKitAbilityIsHardCC(action.abilityId,e)) usedHardCCThisTurn=true;
       const _cAb=G.enemyStatus.confused;
       if(_cAb&&((typeof _cAb==='object'?(_cAb.turns||0):_cAb)>0)){
-        G._consumeEnemyConfusedAfterAction=true;
+        G._consumeEnemyConfusedAfterAction=projectedEnemyActionDamage(action,e)>0
+          || String((action.ability && action.ability.target) || 'enemy').toLowerCase()!=='self';
       }
       const _stBd=BIRDS[G.player.birdKey];
       if(_stBd&&_stBd.passive&&_stBd.passive.onEnemyAttackCheck&&_stBd.passive.onEnemyAttackCheck(G.player,G)){
@@ -16366,6 +16379,10 @@ function afterEnemyTurn() {
   G._incomingAttackKind=null;
   tickEndOfTurnAilments('enemy');
   tickDelayedForTarget('enemy');
+  G._passiveNoDamageLastTurn = G._passiveNoDamageLastTurn || {};
+  G._passiveNoDamageLastTurn.enemy = !(G._passiveDamagingActionThisTurn && G._passiveDamagingActionThisTurn.enemy);
+  G._passiveDamagingActionThisTurn = G._passiveDamagingActionThisTurn || {};
+  G._passiveDamagingActionThisTurn.enemy = false;
   if(G.player.stats.hp<=0||G.enemy.stats.hp<=0){if(checkDeath())return;}
   tickStatuses('enemy', {skipGuarded:true});
   if(G.playerStatus.confused&&typeof G.playerStatus.confused==='object'){G.playerStatus.confused.turns--;if(G.playerStatus.confused.turns<=0)delete G.playerStatus.confused;}

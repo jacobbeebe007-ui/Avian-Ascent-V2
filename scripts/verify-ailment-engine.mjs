@@ -44,7 +44,12 @@ eq(ctx.getWeakenDodgePenaltyFromRules(3), 12, 'weaken 3 stacks dodge pen');
 
 eq(ctx.getChilledSpdMult(5), 0.85, 'chilled 5 stacks spd mult');
 eq(ctx.getBurningDefMult(3, false), 1, 'burning no longer softens DEF');
-eq(ctx.getBurningDefMult(0, true), 0.94, 'scorched minor 6% def');
+eq(ctx.getBurningDefMult(0, true), 1, 'scorched is flat Guard/Resolve Down, not % DEF');
+eq(ctx.getScorchedGuardPenalty({ scorched: { turns: 1, guardDown: 4, resolveDown: 4 } }), -4, 'scorched Guard Down');
+eq(ctx.getScorchedResolvePenalty({ scorched: { turns: 1, guardDown: 4, resolveDown: 4 } }), -4, 'scorched Resolve Down');
+eq(ctx.getFearDamageMult({ feared: 1 }), 0.88, 'fear Major Damage Down −12%');
+eq(ctx.getConfusedPrecisionPenalty({ confused: { turns: 1 } }), -8, 'confused Major Precision Down −8');
+eq(ctx.getWeakenedMightPenalty({ weakened: { turns: 1, mightDown: 10, focusDown: 10 } }), -10, 'weakened Might Down');
 
 eq(ctx.getDelayedStoragePct('light', 1), 0.25, 'delayed light 25%');
 eq(ctx.getDelayedStoragePct('heavy', 3), 0.45, 'delayed heavy 45%');

@@ -369,6 +369,66 @@ function ridersFor(birdKey, cls) {
   } else fail('peregrine riders wrong: ' + kinds.join(','));
 }
 
+function countKind(riders, kind) {
+  return riders.filter((r) => r && r.kind === kind).length;
+}
+
+{
+  const riders = ridersFor('seagull', 'rogue');
+  const speed = riders.filter((r) => r.kind === 'gainSpeed');
+  const restore = riders.filter((r) => r.kind === 'restoreLowerPool');
+  if (speed.length === 1 && speed[0].when === 'ifCleansed'
+    && restore.length === 1 && restore[0].when === 'ifCleansed') {
+    ok('seagull cleanse bonuses are ifCleansed-gated (no ungated duplicates)');
+  } else fail('seagull riders wrong: ' + JSON.stringify(riders.map((r) => ({ kind: r.kind, when: r.when }))));
+}
+
+{
+  const riders = ridersFor('blackbird', 'mage');
+  const downs = riders.filter((r) => r.kind === 'reduceEnemyMdef');
+  if (downs.length === 1 && (downs[0].when === 'ifTargetNoMagicArmour' || downs[0].when === 'targetNoMagicArmour')) {
+    ok('blackbird Resolve Down is blocked by Magic Armour');
+  } else fail('blackbird riders wrong: ' + JSON.stringify(riders.map((r) => ({ kind: r.kind, when: r.when }))));
+}
+
+{
+  const riders = ridersFor('goose', 'brute');
+  const downs = riders.filter((r) => r.kind === 'reduceEnemyAtk');
+  if (riders.some((r) => r.kind === 'magicArmourDamage')
+    && downs.length === 1 && downs[0].when === 'reachedHealth') {
+    ok('goose Might Down only applies if Magic Armour damage reaches Health');
+  } else fail('goose riders wrong: ' + JSON.stringify(riders.map((r) => ({ kind: r.kind, when: r.when }))));
+}
+
+{
+  const riders = ridersFor('cassowary', 'brute');
+  const guardDown = riders.filter((r) => r.kind === 'reduceEnemyDef');
+  if (riders.some((r) => r.kind === 'armourDamage')
+    && riders.some((r) => r.kind === 'nextAttackAccPenalty')
+    && !riders.some((r) => r.kind === 'gainGuarded')
+    && guardDown.length === 1 && guardDown[0].when === 'reachedHealth') {
+    ok('cassowary War Stomp: Armour poke, Health-gated Guard Down, self Precision penalty (no self Guard)');
+  } else fail('cassowary riders wrong: ' + JSON.stringify(riders.map((r) => ({ kind: r.kind, when: r.when }))));
+}
+
+{
+  const riders = ridersFor('pigeon', 'bard');
+  if (countKind(riders, 'restoreArmour') === 1
+    && countKind(riders, 'restoreMagicArmour') === 1
+    && countKind(riders, 'bastion') === 0) {
+    ok('pigeon dual restore does not also apply Bastion');
+  } else fail('pigeon dual restore riders wrong: ' + JSON.stringify(riders.map((r) => r.kind)));
+}
+
+{
+  const riders = ridersFor('bluejay', 'bard');
+  if (countKind(riders, 'restoreArmour') >= 1
+    && countKind(riders, 'restoreMagicArmour') >= 1
+    && countKind(riders, 'bastion') === 0) {
+    ok('blue jay dual restore does not also apply Bastion');
+  } else fail('blue jay riders wrong: ' + JSON.stringify(riders.map((r) => r.kind)));
+}
+
 if (failed) {
   console.error(`\n[action-sources] ${failed} failure(s)`);
   process.exit(1);

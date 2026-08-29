@@ -9,8 +9,31 @@
     }).join('\n');
   }
 
+  function sentenceAround(text, slice) {
+    var t = String(text || '');
+    var s = String(slice || '');
+    if (!s) return t;
+    var lower = t.toLowerCase();
+    var idx = lower.indexOf(s.toLowerCase());
+    if (idx < 0) return s;
+    var start = Math.max(t.lastIndexOf('.', idx), t.lastIndexOf('!', idx), t.lastIndexOf('?', idx));
+    start = start < 0 ? 0 : start + 1;
+    var after = idx + s.length;
+    var endDots = [t.indexOf('.', after), t.indexOf('!', after), t.indexOf('?', after)].filter(function (n) {
+      return n >= 0;
+    });
+    var end = endDots.length ? Math.min.apply(null, endDots) : t.length;
+    return t.slice(start, end);
+  }
+
   function parseRiderWhen(text, localSlice) {
-    var combined = String(localSlice || '') + '\n' + String(text || '');
+    var combined = localSlice ? sentenceAround(text, localSlice) : String(text || '');
+    if (/if (?:a |the )?debuff is cleansed|if (?:you )?cleansed/i.test(combined)) return 'ifCleansed';
+    if (/blocked while the target has magic armour|blocked by magic armour|while the target has magic armour/i.test(combined)) {
+      return 'ifTargetNoMagicArmour';
+    }
+    if (/blocked while the target has armour|blocked by armour(?!\s+restoration)/i.test(combined)) return 'ifTargetNoArmour';
+    if (/if (?:the effect |it )?reaches health/i.test(combined)) return 'reachedHealth';
     if (/faster than the target|acting before the target|act before the target|if you act before/i.test(combined)) return 'actingFirst';
     if (/after a magic ability|used after a magic|after using a magic ability|after a magic attack/i.test(combined)) return 'afterMagicThisTurn';
     if (/if both hit|both hits land|if both hits land/i.test(combined)) return 'allHitsLanded';
@@ -59,6 +82,10 @@
 
   function riderKey(r) {
     return [r.kind, r.when || '', r.value || '', r.ailment || '', r.scope || '', r.guardTier || ''].join('|');
+  }
+
+  function riderKindScopeKey(r) {
+    return [r.kind, r.scope || '', r.ailment || '', r.guardTier || '', r.mark || ''].join('|');
   }
 
   function hasRiderKind(riders, kind, when) {
@@ -441,11 +468,12 @@
     }
 
     // Guard / brace / counter / taunt — tier Guard uses gainGuarded(0); % resolved via AP/level in resolveGuardedReductionPct
-    for (var tg of t.matchAll(/\b(?:gain|gains?)\s+(Minor|Moderate|Major|Grand|Epic|Legendary)\s+Guard\b/gi)) {
+    // Do not match "Minor Guard Down" (enemy debuff) as a self Guard buff.
+    for (var tg of t.matchAll(/\b(?:gain|gains?)\s+(Minor|Moderate|Major|Grand|Epic|Legendary)\s+Guard\b(?!\s+Down)/gi)) {
       addSelf('gainGuarded', 0, { guardTier: normalizeTierLabel(tg[1]), when: parseRiderWhen(t, tg[0]) });
     }
     if (!hasRiderKind(riders, 'gainGuarded')) {
-      for (var tg2 of t.matchAll(/\b(Minor|Moderate|Major|Grand|Epic|Legendary)\s+Guard\b/gi)) {
+      for (var tg2 of t.matchAll(/\b(Minor|Moderate|Major|Grand|Epic|Legendary)\s+Guard\b(?!\s+Down)/gi)) {
         addSelf('gainGuarded', 0, { guardTier: normalizeTierLabel(tg2[1]), when: parseRiderWhen(t, tg2[0]) });
         break;
       }
@@ -642,14 +670,37 @@
     var supplemental = parseSupplementalRiders(text);
     row.riders = Array.isArray(row.riders) ? row.riders.slice() : [];
     var existing = Object.create(null);
-    row.riders.forEach(function (r) { existing[riderKey(r)] = true; });
+    var existingKind = Object.create(null);
+    row.riders.forEach(function (r) {
+      existing[riderKey(r)] = true;
+      existingKind[riderKindScopeKey(r)] = r;
+    });
     supplemental.forEach(function (r) {
       if (r.kind === 'raw') return;
       var key = riderKey(r);
-      if (!existing[key]) {
-        row.riders.push(r);
-        existing[key] = true;
+      var ks = riderKindScopeKey(r);
+      if (existing[key]) return;
+      var have = existingKind[ks];
+      if (have) {
+        /* Prefer a gated structured rider over an ungated text duplicate. */
+        if (have.when && !r.when) return;
+        if (!have.when && r.when) {
+          var idx = row.riders.indexOf(have);
+          if (idx >= 0) row.riders[idx] = r;
+          existingKind[ks] = r;
+          existing[riderKey(r)] = true;
+        }
+        return;
       }
+      /* Dual-restore text must not add Bastion on top of restoreArmour + restoreMagicArmour. */
+      if (r.kind === 'bastion' && row.riders.some(function (x) {
+        return x && (x.kind === 'restoreArmour' || x.kind === 'restoreMagicArmour' || x.kind === 'bastion');
+      })) return;
+      if ((r.kind === 'restoreArmour' || r.kind === 'restoreMagicArmour' || r.kind === 'restoreLowerPool')
+        && row.riders.some(function (x) { return x && (x.kind === r.kind || x.kind === 'bastion'); })) return;
+      row.riders.push(r);
+      existing[key] = true;
+      existingKind[ks] = r;
     });
 
     // Drop lone raw riders when supplemental parsing found handlers

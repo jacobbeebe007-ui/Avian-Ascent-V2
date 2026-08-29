@@ -55,7 +55,7 @@
     delayed: { storagePct: { light: 0.25, medium: 0.35, heavy: 0.45, special: 0.5, echo: 0.25 } },
     decreed: { baseBonus: 0.12, afflictedBonus: 0.18 },
     fear: { damageDownTiers: 'major' },
-    confused: { precisionDownPointsTier: 'major' },
+    confused: { precisionDownPointsTier: 'major', precisionDown: 8 },
 
     /* Physical stacking ailments — Current Master v1.5. */
     fracture: {
@@ -418,10 +418,13 @@
   function getConfusedPrecisionPenalty(status) {
     if (!status || !status.confused) return 0;
     var c = status.confused;
-    if (typeof c === 'number') return c > 0 ? -pointTierAmount(RULES.confused.precisionDownPointsTier || 'major') : 0;
+    var pts = RULES.confused && RULES.confused.precisionDown != null
+      ? Number(RULES.confused.precisionDown)
+      : 8;
+    if (typeof c === 'number') return c > 0 ? -pts : 0;
     if ((c.turns || 0) <= 0 && !c.pending) return 0;
     if (c.precisionDown != null) return -Math.abs(Number(c.precisionDown) || 0);
-    return -pointTierAmount(RULES.confused.precisionDownPointsTier || 'major');
+    return -pts;
   }
 
   function makeScorchedStatus(turns) {

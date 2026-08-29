@@ -1030,6 +1030,21 @@
       }
       if (gateOk) flatPen += Number(ignoreNext.amount) || 0;
     }
+    var gState = globalThis.G;
+    if (gState) {
+      var atkIsPlayer = attacker === gState.player
+        || (gState.player && attacker && attacker.stats === gState.player.stats);
+      var atkIsEnemy = attacker === gState.enemy
+        || (gState.enemy && attacker && attacker.stats === gState.enemy.stats);
+      if (atkIsPlayer && (Number(gState._workbookPassiveDefFlat) || 0) > 0) {
+        flatPen += Number(gState._workbookPassiveDefFlat) || 0;
+        gState._workbookPassiveDefFlat = 0;
+      }
+      if (atkIsEnemy && (Number(gState._enemyWorkbookPassiveDefFlat) || 0) > 0) {
+        flatPen += Number(gState._enemyWorkbookPassiveDefFlat) || 0;
+        gState._enemyWorkbookPassiveDefFlat = 0;
+      }
+    }
     var skillPowerPenalty = typeof globalThis.getDazedSkillPowerPenalty === 'function'
       ? globalThis.getDazedSkillPowerPenalty(attackerStatus)
       : 0;
