@@ -827,6 +827,12 @@ body.combat-scenario-test-unlocked .splash-hotspot--combat-scenarios.is-combatte
 .select-hub-panel-inner--combat-scenarios{
   max-width:min(720px, 94vw);
 }
+.select-hub-panel-inner--flight{
+  max-width:min(720px, 96vw);
+  display:flex;
+  flex-direction:column;
+  padding:16px 18px 18px;
+}
 .combat-scenario-actions{
   display:flex;
   flex-wrap:wrap;
@@ -2114,6 +2120,7 @@ body.combat-scenario-test-unlocked .splash-hotspot--combat-scenarios.is-combatte
   color:rgba(220,214,200,.88);
 }
 #select-hub-door .sfsel__run-chip--mode{border-color:rgba(201,168,76,.35);color:var(--gold-light);}
+#select-hub-door .sfsel__run-chip--map{border-color:rgba(96,136,58,.4);color:#c8e090;}
 #select-hub-door .sfsel__selected-label{
   font-family:'Cinzel',serif;
   font-size:.78rem;
@@ -2931,6 +2938,223 @@ body.combat-scenario-test-unlocked .splash-hotspot--combat-scenarios.is-combatte
 .select-hub-panel .diff-picker{margin-bottom:0;}
 .select-hub-panel .diff-desc{margin-bottom:0;max-width:100%;}
 .splash-mode-row{margin:0 !important;justify-content:center !important;padding-top:4px;}
+
+/* Flight Settings — course / difficulty / mode briefing */
+.flight-settings-head-copy{
+  display:flex;
+  flex-direction:column;
+  gap:4px;
+  min-width:0;
+}
+.flight-settings-kicker{
+  margin:0;
+  font-size:.78rem;
+  color:rgba(200,198,190,.72);
+  line-height:1.35;
+}
+.flight-settings-body{
+  display:flex;
+  flex-direction:column;
+  gap:14px;
+}
+.flight-settings-section{
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+  padding:12px 12px 14px;
+  border-radius:12px;
+  border:1px solid rgba(120,100,70,.28);
+  background:rgba(6,8,12,.38);
+}
+.flight-settings-heading{
+  margin:0;
+  font-family:'Cinzel',serif;
+  font-size:.72rem;
+  letter-spacing:.12em;
+  text-transform:uppercase;
+  color:var(--gold-light);
+}
+.flight-settings-hint{
+  margin:0;
+  font-size:.72rem;
+  color:rgba(200,198,190,.68);
+  line-height:1.35;
+}
+.flight-choice-grid{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:8px;
+}
+.select-hub-panel .flight-diff-picker{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:8px;
+  justify-content:stretch;
+  margin:0;
+}
+.flight-choice-card{
+  display:flex;
+  align-items:flex-start;
+  gap:10px;
+  text-align:left;
+  font:inherit;
+  cursor:pointer;
+  padding:12px 12px 11px;
+  border-radius:12px;
+  border:1px solid rgba(120,100,70,.38);
+  background:rgba(10,12,18,.55);
+  color:rgba(220,214,200,.9);
+  transition:border-color .2s ease,background .2s ease,box-shadow .2s ease,transform .15s ease;
+}
+.flight-choice-card:hover{
+  border-color:rgba(232,201,106,.5);
+  color:#f4eee0;
+  background:rgba(18,20,28,.7);
+}
+.flight-choice-card.is-active{
+  border-color:rgba(232,201,106,.72);
+  background:linear-gradient(180deg,rgba(201,168,76,.16),rgba(14,16,22,.72));
+  box-shadow:0 0 0 1px rgba(232,201,106,.18) inset, 0 8px 22px rgba(0,0,0,.28);
+  color:#fff8e8;
+}
+.flight-choice-card:focus-visible{
+  outline:2px solid var(--gold);
+  outline-offset:2px;
+}
+.flight-choice-emoji{
+  font-size:1.35rem;
+  line-height:1;
+  flex:0 0 auto;
+  width:1.6em;
+  text-align:center;
+}
+.flight-choice-copy{
+  display:flex;
+  flex-direction:column;
+  gap:3px;
+  min-width:0;
+}
+.flight-choice-title{
+  font-family:'Cinzel',serif;
+  font-size:.82rem;
+  letter-spacing:.04em;
+  color:inherit;
+}
+.flight-choice-desc{
+  font-size:.68rem;
+  line-height:1.35;
+  color:rgba(200,198,190,.72);
+}
+.flight-choice-card.is-active .flight-choice-desc{
+  color:rgba(232,222,200,.82);
+}
+.flight-diff-topline{
+  display:flex;
+  align-items:baseline;
+  justify-content:space-between;
+  gap:8px;
+}
+.flight-diff-mult{
+  font-size:.62rem;
+  letter-spacing:.06em;
+  color:var(--gold);
+  border:1px solid rgba(201,168,76,.35);
+  border-radius:999px;
+  padding:1px 7px;
+  white-space:nowrap;
+}
+.flight-diff-card.is-active{
+  border-color:color-mix(in srgb, var(--flight-diff-color, var(--gold)) 72%, #c9a84c);
+  box-shadow:0 0 0 1px color-mix(in srgb, var(--flight-diff-color, var(--gold)) 38%, transparent) inset,
+             0 8px 22px rgba(0,0,0,.28);
+}
+.flight-choice-card.is-locked,
+.flight-diff-card.is-locked{
+  opacity:.48;
+  cursor:not-allowed;
+  filter:grayscale(.35);
+}
+.flight-choice-card.is-locked:hover{
+  border-color:rgba(120,100,70,.38);
+  color:rgba(220,214,200,.9);
+  background:rgba(10,12,18,.55);
+}
+.flight-diff-desc{
+  text-align:left;
+  font-style:normal;
+  min-height:0;
+  margin:0;
+}
+.flight-test-map-wrap{
+  margin:0;
+  padding:10px 12px;
+  border-radius:10px;
+  border:1px dashed rgba(201,168,76,.32);
+  background:rgba(8,10,14,.4);
+}
+.flight-test-map-wrap[hidden]{display:none !important;}
+.flight-test-map-wrap .mission-test-map-select{
+  width:100%;
+  max-width:none;
+}
+.flight-settings-foot{
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+  margin-top:16px;
+  padding-top:12px;
+  border-top:1px solid rgba(120,100,70,.25);
+}
+.flight-briefing{
+  display:flex;
+  flex-wrap:wrap;
+  align-items:center;
+  gap:8px 10px;
+  padding:8px 10px;
+  border-radius:10px;
+  background:rgba(8,10,14,.5);
+  border:1px solid rgba(120,100,70,.28);
+}
+.flight-briefing:empty{display:none;}
+.flight-briefing-kicker{
+  font-size:.62rem;
+  letter-spacing:.12em;
+  text-transform:uppercase;
+  color:rgba(180,175,165,.75);
+}
+.flight-briefing-chips{
+  display:flex;
+  flex-wrap:wrap;
+  gap:6px;
+}
+.flight-briefing-chip{
+  font-size:.68rem;
+  letter-spacing:.04em;
+  padding:3px 9px;
+  border-radius:999px;
+  border:1px solid rgba(120,100,70,.35);
+  background:rgba(12,14,20,.65);
+  color:rgba(220,214,200,.88);
+}
+.flight-briefing-chip--mode{border-color:rgba(201,168,76,.35);color:var(--gold-light);}
+.flight-briefing-chip--map{border-color:rgba(96,136,58,.4);color:#c8e090;}
+.flight-mode-row{
+  margin:0 !important;
+  padding-top:0 !important;
+  text-align:left;
+  justify-content:stretch !important;
+}
+.flight-mode-row #game-mode-toggle{width:100%;}
+.flight-settings-foot .select-hub-confirm-btn{margin-top:0;}
+@media (max-width:560px){
+  .flight-choice-grid,
+  .select-hub-panel .flight-diff-picker{
+    grid-template-columns:1fr;
+  }
+}
+@media (prefers-reduced-motion:reduce){
+  .flight-choice-card{transition:none;}
+}
 .splash-codex-btn{
   width:100%;
   white-space:normal;

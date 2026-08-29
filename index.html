@@ -271,28 +271,59 @@
 <div class="mother-goose-result" id="mother-goose-result" aria-live="polite"></div>
 </div>
 </div>
-<div class="select-hub-panel" id="select-hub-map" role="dialog" aria-modal="true" aria-labelledby="hub-map-title" aria-hidden="true">
-<div class="select-hub-panel-inner">
+<div class="select-hub-panel select-hub-panel--flight" id="select-hub-map" role="dialog" aria-modal="true" aria-labelledby="hub-map-title" aria-hidden="true">
+<div class="select-hub-panel-inner select-hub-panel-inner--flight">
 <header class="select-hub-panel-head">
+<div class="flight-settings-head-copy">
 <h3 class="select-hub-panel-title" id="hub-map-title">Flight Settings</h3>
+<p class="flight-settings-kicker">Chart your course, then choose a bird.</p>
+</div>
 <button type="button" class="select-hub-return-btn" data-action="closeSelectHubPanel">← Return to war room</button>
 </header>
-<div class="supplies-subnav" role="tablist" aria-label="Map selection">
-<button type="button" class="supplies-subnav-btn is-active" id="mission-map-nav-demo" role="tab" aria-selected="true" data-action="setMissionMapVariant:demo">Demo</button>
-<button type="button" class="supplies-subnav-btn" id="mission-map-nav-test" role="tab" aria-selected="false" data-action="setMissionMapVariant:test">Test</button>
+<div class="flight-settings-body">
+<section class="flight-settings-section" aria-labelledby="flight-course-heading">
+<h4 class="flight-settings-heading" id="flight-course-heading">Course</h4>
+<p class="flight-settings-hint">Where this ascent takes place.</p>
+<div class="flight-choice-grid flight-choice-grid--course" role="radiogroup" aria-labelledby="flight-course-heading">
+<button type="button" class="flight-choice-card is-active" id="mission-map-nav-demo" role="radio" aria-checked="true" data-action="setMissionMapVariant:demo">
+<span class="flight-choice-emoji" aria-hidden="true">🗺</span>
+<span class="flight-choice-copy">
+<span class="flight-choice-title">Blakiston's Court</span>
+<span class="flight-choice-desc">The story campaign overworld — recommended for a first flight.</span>
+</span>
+</button>
+<button type="button" class="flight-choice-card" id="mission-map-nav-test" role="radio" aria-checked="false" data-action="setMissionMapVariant:test">
+<span class="flight-choice-emoji" aria-hidden="true">🧪</span>
+<span class="flight-choice-copy">
+<span class="flight-choice-title">Test Maps</span>
+<span class="flight-choice-desc">Custom and authored test worlds from Build Nest.</span>
+</span>
+</button>
 </div>
-<div class="mission-test-map-wrap" id="mission-test-map-wrap" hidden>
-<label class="mission-test-map-label" for="mission-test-map-select">Test map</label>
+<div class="mission-test-map-wrap flight-test-map-wrap" id="mission-test-map-wrap" hidden>
+<label class="mission-test-map-label" for="mission-test-map-select">World to fly</label>
 <select class="mission-test-map-select map-forge-draft-select" id="mission-test-map-select" data-change="onMissionTestMapChange"></select>
 </div>
-<p class="select-hub-lead">Choose your map, difficulty, and run mode before selecting a character.</p>
-<div class="diff-picker" id="diff-picker"></div>
-<p class="diff-desc" id="diff-desc">Choose your difficulty to begin.</p>
-<div class="endless-row splash-mode-row">
+</section>
+<section class="flight-settings-section" aria-labelledby="flight-diff-heading">
+<h4 class="flight-settings-heading" id="flight-diff-heading">Difficulty</h4>
+<p class="flight-settings-hint">Enemy combat stats scale with the tier you pick.</p>
+<div class="diff-picker flight-diff-picker" id="diff-picker" role="radiogroup" aria-labelledby="flight-diff-heading"></div>
+<p class="diff-desc flight-diff-desc" id="diff-desc">Choose your difficulty to begin.</p>
+</section>
+<section class="flight-settings-section" aria-labelledby="flight-mode-heading">
+<h4 class="flight-settings-heading" id="flight-mode-heading">Flight Mode</h4>
+<p class="flight-settings-hint">Story follows the campaign path. Endless keeps climbing after the court.</p>
+<div class="endless-row splash-mode-row flight-mode-row">
 <div id="game-mode-toggle"></div>
 <input id="endless-check" type="checkbox" style="display:none"/>
 </div>
+</section>
+</div>
+<footer class="flight-settings-foot">
+<div class="flight-briefing" id="flight-briefing" aria-live="polite"></div>
 <button type="button" class="select-hub-confirm-btn" data-action="confirmRunSettings">Confirm &amp; Choose Character →</button>
+</footer>
 </div>
 </div>
 <div class="select-hub-panel select-hub-panel--door" id="select-hub-door" role="dialog" aria-modal="true" aria-labelledby="hub-door-title" aria-hidden="true">
@@ -337,7 +368,7 @@
       <div class="sfsel__actions" id="sfsel-actions">
         <div class="sfsel__run-controls">
           <div class="sfsel__run-summary" id="sfsel-run-summary" aria-live="polite"></div>
-          <button type="button" class="sfsel__settings-btn" data-action="openRunSettings">⚙ Difficulty, Mode &amp; Map</button>
+          <button type="button" class="sfsel__settings-btn" data-action="openRunSettings">⚙ Flight Settings</button>
         </div>
         <button type="button" class="take-flight-select-btn" id="take-flight-select-btn" disabled data-action="startGame" aria-disabled="true">✈ Take Flight</button>
         <div class="sel-continue-run-wrap" id="continue-row" style="display:none">

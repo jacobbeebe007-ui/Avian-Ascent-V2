@@ -76,7 +76,8 @@ const checks = [
   { label: 'Combat empty skill reason', re: /btn-empty-reason/ },
   { label: 'grantEquipment auto-equip', re: /function grantEquipment\b/ },
   { label: 'clearGameCache reloads HTTP shell', re: /function reloadShellHttpCache\b/ },
-  { label: 'confirmClearCache cache-bust reload', re: /function cacheBustReload\b/ },
+  { label: 'Flight settings briefing', re: /function syncFlightSettingsBriefing\b/ },
+  { label: 'Flight settings choice cards', re: /flight-choice-card/ },
 ];
 
 for (const c of checks) {
