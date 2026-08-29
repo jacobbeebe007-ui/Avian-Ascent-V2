@@ -78,6 +78,8 @@ const checks = [
   { label: 'clearGameCache reloads HTTP shell', re: /function reloadShellHttpCache\b/ },
   { label: 'confirmClearCache cache-bust reload', re: /function cacheBustReload\b/ },
   { label: 'setHatcherySubView global', re: /globalThis\.setHatcherySubView\s*=/ },
+  { label: 'Flight settings briefing', re: /function syncFlightSettingsBriefing\b/ },
+  { label: 'Flight settings choice cards', re: /flight-choice-card/ },
 ];
 
 for (const c of checks) {
