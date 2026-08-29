@@ -2547,8 +2547,49 @@ function equipmentHandBadgeHtml(item){
   if(hands===1) return '<span class="nest-hand-badge" title="One-handed">1H</span>';
   return '';
 }
+function formatEquipmentStatChipLabel(statKey){
+  const key=String(statKey||'');
+  const bare=key.replace(/Pct$/i,'');
+  const short={
+    hp:'HP', maxHp:'HP', vitality:'HP', atk:'Might', dex:'Dex', def:'Guard',
+    matk:'Focus', mdef:'Resolve', spd:'Agi', dodge:'Eva', acc:'Prec',
+    critChance:'Crit', critDamage:'Fer', critMult:'Fer',
+    physicalPen:'MPen', magicPen:'SPen', armorPen:'MPen',
+    physDamagePct:'MDmg', magicDamagePct:'SDmg', aspectDamagePct:'Aff',
+    healingPowerPct:'Heal', shieldStrengthPct:'Ward',
+  };
+  if(short[bare]||short[key]) return short[bare]||short[key];
+  const full=typeof formatAnyStatLabel==='function'?formatAnyStatLabel(key):key;
+  return String(full||key).replace(/\s+/g,' ');
+}
 function formatEquipmentCompactStatsHtml(item){
-  return formatEquipmentStatsHtml(item);
+  if(!item) return '';
+  const chips=[];
+  const push=(lbl,val)=>{
+    if(!lbl||val==null||val==='') return;
+    chips.push(`<span class="mut-stat-chip nest-item-stat-chip"><span class="nest-item-stat-k">${escapeHtmlRoster(lbl)}</span><span class="nest-item-stat-v">${escapeHtmlRoster(val)}</span></span>`);
+  };
+  if(typeof itemHasDisplayableWeaponDamage==='function' && itemHasDisplayableWeaponDamage(item)){
+    const minD=item.minDamage!=null?Number(item.minDamage):null;
+    const maxD=item.maxDamage!=null?Number(item.maxDamage):null;
+    const lo=Number.isFinite(minD)?minD:maxD;
+    const hi=Number.isFinite(maxD)?maxD:lo;
+    push('Dmg', `${formatCombatNumber(lo)}–${formatCombatNumber(hi)}`);
+  }
+  if(item.slot==='Weapon'&&item.damageType){
+    push('Type', String(item.damageType));
+  }
+  if(item.stats){
+    for(const [rawKey, val] of Object.entries(item.stats)){
+      const n=Number(val)||0;
+      if(!n) continue;
+      const lbl=formatEquipmentStatChipLabel(rawKey);
+      const disp=String(rawKey).includes('Pct')||/Pct$/i.test(rawKey)?`+${formatCombatNumber(n)}%`:`+${formatCombatNumber(n)}`;
+      push(lbl, disp);
+    }
+  }
+  if(!chips.length) return '';
+  return `<div class="nest-item-stats mut-stat-compact">${chips.join('')}</div>`;
 }
 function needsUltimateSourcePick(player){
   if(!Avian.flags?.equipmentV2 || !player) return false;
@@ -2669,7 +2710,8 @@ function _nestEquipmentItemHtml(itemId, slotKey, locked=false, opts={}){
   const tierMeta=rewardTierMeta(item.rarity);
   const tierColor=nestTierColorVar(item.rarity);
   const handBadge=equipmentHandBadgeHtml(item);
-  return `<div class="nest-equip-slot nest-equip-slot--gear nest-equip-slot--compact filled tier-${item.rarity} tier-ui-${tierCss}${dollCls}${focus}${dim}${locked?' is-locked':''}" data-nest-eq-slot="${slotKey}" data-nest-eq-item="${itemId}"${lockAttrs}><div class="nest-equip-slot-lbl">${slotBadge}${escapeHtmlRoster(slotLbl)}${handBadge}</div><div class="nest-tier-label" style="color:${tierColor}">${tierMeta.label}</div><div class="nest-equip-slot-name" style="color:${tierColor}">${escapeHtmlRoster(item.name)}</div>${locked?'':'<span class="nest-equip-action nest-equip-action--remove">Unequip</span>'}</div>`;
+  const statsHtml=typeof formatEquipmentCompactStatsHtml==='function'?formatEquipmentCompactStatsHtml(item):'';
+  return `<div class="nest-equip-slot nest-equip-slot--gear nest-equip-slot--compact filled tier-${item.rarity} tier-ui-${tierCss}${dollCls}${focus}${dim}${locked?' is-locked':''}" data-nest-eq-slot="${slotKey}" data-nest-eq-item="${itemId}"${lockAttrs}><div class="nest-equip-slot-lbl">${slotBadge}${escapeHtmlRoster(slotLbl)}${handBadge}</div><div class="nest-tier-label" style="color:${tierColor}">${tierMeta.label}</div><div class="nest-equip-slot-name" style="color:${tierColor}">${escapeHtmlRoster(item.name)}</div>${statsHtml}${locked?'':'<span class="nest-equip-action nest-equip-action--remove">Unequip</span>'}</div>`;
 }
 function buildNestEquipmentSectionV2(player){
   if(typeof Avian?.equipment?.ensurePlayerEquipmentState!=='function') return '';
@@ -2737,14 +2779,15 @@ function buildNestEquipmentSectionV2(player){
       const handBadge=equipmentHandBadgeHtml(item);
       const compareHtml=_nestInvCompareHtml(player, id);
       const actionLbl=emptySlot?'Equip':'Swap';
-      invHtml+=`<div class="nest-inv-item nest-inv-item--compact tier-${item.rarity} tier-ui-${tierCss}${locked?' is-locked':''}${canEquip?'':' nest-inv-ineligible'}" data-nest-eq-inv="${id}" ${(!canEquip||locked)?'aria-disabled="true"':''} title="${canEquip?'':('Class only: '+String(item.classRestriction))}"><div class="nest-inv-item-head">${slotBadge}<div class="nest-tier-label" style="color:${tierColor}">${tierMeta.label}</div>${handBadge}</div><strong class="nest-inv-item-name" style="color:${tierColor}">${escapeHtmlRoster(item.name)}</strong>${classTag}${compareHtml}${(!locked&&canEquip)?`<span class="nest-equip-action">${actionLbl}</span>`:''}</div>`;
+      const statsHtml=typeof formatEquipmentCompactStatsHtml==='function'?formatEquipmentCompactStatsHtml(item):'';
+      invHtml+=`<div class="nest-inv-item nest-inv-item--compact tier-${item.rarity} tier-ui-${tierCss}${locked?' is-locked':''}${canEquip?'':' nest-inv-ineligible'}" data-nest-eq-inv="${id}" ${(!canEquip||locked)?'aria-disabled="true"':''} title="${canEquip?'':('Class only: '+String(item.classRestriction))}"><div class="nest-inv-item-head">${slotBadge}<div class="nest-tier-label" style="color:${tierColor}">${tierMeta.label}</div>${handBadge}</div><strong class="nest-inv-item-name" style="color:${tierColor}">${escapeHtmlRoster(item.name)}</strong>${classTag}${statsHtml}${compareHtml}${(!locked&&canEquip)?`<span class="nest-equip-action">${actionLbl}</span>`:''}</div>`;
     }
     invHtml+='</div>';
   }
   const lockNote=locked?'<p class="nest-lock-note">Equipment is locked during Story battle. Equip from rewards or the overworld Nest.</p>':'';
   const equipHint=locked
     ? 'Loadout changes unlock after victory. Slot filters remain available.'
-    : 'New finds auto-equip when the slot is empty. Bag pieces sit at the top — Equip fills an empty slot, Swap replaces what you are wearing. Hover a worn slot for stats.';
+    : 'New finds auto-equip when the slot is empty. Bag pieces sit at the top — Equip fills an empty slot, Swap replaces what you are wearing. Stats show on each piece; hover for skills and details.';
   const equipHintMobile=locked
     ? 'Loadout unlocks after victory.'
     : 'Tap a bag card to equip or swap. Tap worn gear to unequip.';
@@ -2816,7 +2859,7 @@ function organizeNestSections(content){
     let panel='profile';
     if(section.classList.contains('nest-equipment-section')) panel='equipment';
     else if(section.classList.contains('nest-ability-section')||section.classList.contains('nest-ultimate-bank')) panel='abilities';
-    else if(/Run bonuses|Collected Rewards/i.test(title)) panel='rewards';
+    else if(section.classList.contains('nest-ledger-section')||section.classList.contains('nest-rewards-section')||/Run bonuses|Collected Rewards/i.test(title)) panel='rewards';
     section.dataset.nestPanel=panel;
   });
   content.insertAdjacentHTML('afterbegin',`<div class="nest-tabs" role="tablist" aria-label="Nest sections">
@@ -2850,9 +2893,9 @@ function buildNestAbilitySection(player){
     const isEmpty=!(ab && !ab.empty && ab.id);
     if(isEmpty){
       const reason=(ab && ab.reason) || 'Empty — equip gear to fill this slot';
-      equippedHtml+=`<div class="nest-ab-slot-card empty" data-nest-ab-source="${escapeHtmlRoster(sourceKey)}">
-      <div class="nest-ab-slot-head"><span class="nest-ab-slot-idx">${escapeHtmlRoster(sourceLbl)}</span></div>
-      <div class="nest-ab-name"><span class="nest-inv-empty">${escapeHtmlRoster(reason)}</span></div>
+      equippedHtml+=`<div class="nest-ab-slot-card nest-ab-row empty" data-nest-ab-source="${escapeHtmlRoster(sourceKey)}">
+      <div class="nest-ab-source nest-ab-slot-idx">${escapeHtmlRoster(sourceLbl)}</div>
+      <div class="nest-ab-body"><div class="nest-ab-empty-reason">${escapeHtmlRoster(reason)}</div></div>
     </div>`;
       continue;
     }
@@ -2861,17 +2904,19 @@ function buildNestAbilitySection(player){
     const brief=(typeof formatAbilityBlurbHtml==='function'
       ? formatAbilityBlurbHtml(ab, tmpl, packRow)
       : (typeof buildAbilityCombatBriefHtml==='function'?buildAbilityCombatBriefHtml(ab, packRow):''));
-    equippedHtml+=`<div class="nest-ab-slot-card" data-nest-ab-source="${escapeHtmlRoster(sourceKey)}" data-nest-ab-id="${escapeHtmlRoster(ab.id)}">
-      <div class="nest-ab-slot-head"><span class="nest-ab-slot-idx">${escapeHtmlRoster(sourceLbl)}</span></div>
-      <div class="nest-ab-name">${escapeHtmlRoster(ab.name||ab.id)}</div>
-      ${brief?`<div class="nest-ab-desc btn-desc-lines">${brief}</div>`:''}
+    equippedHtml+=`<div class="nest-ab-slot-card nest-ab-row" data-nest-ab-source="${escapeHtmlRoster(sourceKey)}" data-nest-ab-id="${escapeHtmlRoster(ab.id)}">
+      <div class="nest-ab-source nest-ab-slot-idx">${escapeHtmlRoster(sourceLbl)}</div>
+      <div class="nest-ab-body">
+        <div class="nest-ab-name">${escapeHtmlRoster(ab.name||ab.id)}</div>
+        ${brief?`<div class="nest-ab-desc btn-desc-lines">${brief}</div>`:''}
+      </div>
     </div>`;
   }
   const slotHint=locked
     ? 'Story battle loadouts are locked until victory.'
     : 'Action slots come from equipment, innate utility, and ultimates — no Species Feather unlocks required.';
   const bankHtml=buildNestUltimateBankHtml(player);
-  return `${bankHtml}<div class="nest-section nest-ability-section${locked?' nest-equip-locked':''}"><div class="nest-section-title">⚔ Abilities</div>${locked?'<p class="nest-lock-note">Loadout locked during Story battle.</p>':''}<div class="nest-ledger-subtitle">Equipped loadout</div><div class="nest-abilities-grid">${equippedHtml}</div><p class="nest-ledger-note">${slotHint}</p></div>`;
+  return `${bankHtml}<div class="nest-section nest-ability-section${locked?' nest-equip-locked':''}"><div class="nest-section-title">⚔ Abilities</div>${locked?'<p class="nest-lock-note">Loadout locked during Story battle.</p>':''}<div class="nest-ledger-subtitle">Equipped loadout</div><div class="nest-abilities-list nest-abilities-grid">${equippedHtml}</div><p class="nest-ledger-note">${slotHint}</p></div>`;
 }
 
 function openNest() {
@@ -2905,22 +2950,37 @@ function openNest() {
   const _nestCritBonusPct=(p.critDamageBonusPct||0)+(_eqMech?.critDamageBonusPct||0);
   const _nestCritMultDisp=_nestCritBonusPct>0?`${formatCombatNumber(_nestCritMultBase)}× <span class="nest-crit-bonus" title="Added to multiplier on critical hits">(+${formatCombatNumber(_nestCritBonusPct)})</span>`:`${formatCombatNumber(_nestCritMultBase)}×`;
   function _nestStat(val,base,suffix=''){const d=val-base;const col=d>0?'var(--red-light)':d<0?'var(--purple-light)':'var(--gold)';const arr=d>0?' ▲':d<0?' ▼':'';return `<span style="color:${col}">${formatCombatNumber(val)}${suffix}${arr}</span>`;}
-  html+=`<div class="nest-section"><div class="nest-section-title">📊 Stats ${G.turn?'(In Battle)':''}</div>
-  <div class="nest-stats-grid">
-    <div class="nest-stat-card"><div class="nest-stat-val">${formatCombatNumber(s.hp)}/${formatCombatNumber(s.maxHp)}</div><div class="nest-stat-lbl">${ledgerStatLabel('hp',{short:true})}</div></div>
-    <div class="nest-stat-card"><div class="nest-stat-val">${_nestStat(_nestWarcry,s.atk)}</div><div class="nest-stat-lbl">${ledgerStatLabel('atk',{short:true})}</div></div>
-    <div class="nest-stat-card"><div class="nest-stat-val">${_nestStat(_nestDef,s.def)}</div><div class="nest-stat-lbl">${ledgerStatLabel('def',{short:true})}</div></div>
-    <div class="nest-stat-card"><div class="nest-stat-val">${formatCombatNumber(s.spd)}</div><div class="nest-stat-lbl">${ledgerStatLabel('spd',{short:true})}</div></div>
-    <div class="nest-stat-card"><div class="nest-stat-val">${_nestStat(_nestDodge,s.dodge,'%')}</div><div class="nest-stat-lbl">${ledgerStatLabel('dodge',{short:true})}</div></div>
-    <div class="nest-stat-card" title="Precision determines how reliably this bird’s attacks and hostile skills connect. Class, size, species, weapons, skills, equipment and temporary effects can modify Precision."><div class="nest-stat-val">${_nestStat(_nestAcc,s.acc,'%')}</div><div class="nest-stat-lbl">${ledgerStatLabel('acc',{short:true})}</div></div>
-    <div class="nest-stat-card"><div class="nest-stat-val" style="color:${_nestCrit>5?'#e8c96a':'var(--gold)'}">${formatCombatNumber(_nestCrit)}%</div><div class="nest-stat-lbl">${ledgerStatLabel('critChance',{short:true})}</div></div>
-    <div class="nest-stat-card"><div class="nest-stat-val" style="color:${_nestCritMultBase>1.5||_nestCritBonusPct>0?'#e8c96a':'var(--gold)'}">${_nestCritMultDisp}</div><div class="nest-stat-lbl">${ledgerStatLabel('critMult',{short:true})}</div></div>
-    <div class="nest-stat-card" title="Focus — improves spell and ailment potency"><div class="nest-stat-val" style="color:#6ae8e8">${formatCombatNumber(Number(s.matk)||0)}</div><div class="nest-stat-lbl" style="color:#4ab8c0">${ledgerStatLabel('matk',{short:true})}</div></div>
-    <div class="nest-stat-card" title="Resolve — resists enemy spells and ailments"><div class="nest-stat-val" style="color:#6ae8e8">${formatCombatNumber(Number(s.mdef)||0)}</div><div class="nest-stat-lbl" style="color:#4ab8c0">${ledgerStatLabel('mdef',{short:true})}</div></div>
-    <div class="nest-stat-card" title="Armour — absorbs martial damage before Health"><div class="nest-stat-val" style="color:#f0f2f6">${formatCombatNumber(Math.max(0,Number(s.armour??s.maxArmour??s.armourFlat??0)||0))}/${formatCombatNumber(Math.max(0,Number(s.maxArmour??s.normalMaxArmour??s.armourFlat??0)||0))}</div><div class="nest-stat-lbl" style="color:#d8dde6">${ledgerStatLabel('armour',{short:true})}</div></div>
-    <div class="nest-stat-card" title="Magic Armour — absorbs magical damage before Health"><div class="nest-stat-val" style="color:#b8dcff">${formatCombatNumber(Math.max(0,Number(s.magicArmour??s.maxMagicArmour??s.magicArmourFlat??0)||0))}/${formatCombatNumber(Math.max(0,Number(s.maxMagicArmour??s.normalMaxMagicArmour??s.magicArmourFlat??0)||0))}</div><div class="nest-stat-lbl" style="color:#a8d0f5">${ledgerStatLabel('magicArmour',{short:true})}</div></div>
-    ${(s.armorPen||0)>0?`<div class="nest-stat-card" title="Ignores enemy Guard when dealing martial damage"><div class="nest-stat-val">${formatCombatNumber(s.armorPen)}%</div><div class="nest-stat-lbl">${ledgerStatLabel('armorPen',{short:true})}</div></div>`:''}
-    ${(s.magicPen||0)>0?`<div class="nest-stat-card" title="Ignores enemy Resolve when dealing magical damage"><div class="nest-stat-val">${formatCombatNumber(s.magicPen)}%</div><div class="nest-stat-lbl">${ledgerStatLabel('magicPen',{short:true})}</div></div>`:''}
+  function _nestDlRow(label,value,title=''){
+    return `<div${title?` title="${escapeHtmlRoster(title)}"`:''}><dt>${label}</dt><dd>${value}</dd></div>`;
+  }
+  const _nestArmCur=Math.max(0,Number(s.armour??s.maxArmour??s.armourFlat??0)||0);
+  const _nestArmMax=Math.max(0,Number(s.maxArmour??s.normalMaxArmour??s.armourFlat??0)||0);
+  const _nestMarmCur=Math.max(0,Number(s.magicArmour??s.maxMagicArmour??s.magicArmourFlat??0)||0);
+  const _nestMarmMax=Math.max(0,Number(s.maxMagicArmour??s.normalMaxMagicArmour??s.magicArmourFlat??0)||0);
+  html+=`<div class="nest-section nest-profile-section"><div class="nest-section-title">📊 Stats ${G.turn?'(In Battle)':''}</div>
+  <div class="nest-profile-resources">
+    <div class="nest-resource-card nest-resource-card--hp"><div class="nest-resource-lbl">${ledgerStatLabel('hp',{short:true})}</div><div class="nest-resource-val">${formatCombatNumber(s.hp)} / ${formatCombatNumber(s.maxHp)}</div></div>
+    <div class="nest-resource-card nest-resource-card--arm" title="Armour — absorbs martial damage before Health"><div class="nest-resource-lbl">${ledgerStatLabel('armour',{short:true})}</div><div class="nest-resource-val">${formatCombatNumber(_nestArmCur)} / ${formatCombatNumber(_nestArmMax)}</div></div>
+    <div class="nest-resource-card nest-resource-card--marm" title="Magic Armour — absorbs magical damage before Health"><div class="nest-resource-lbl">${ledgerStatLabel('magicArmour',{short:true})}</div><div class="nest-resource-val">${formatCombatNumber(_nestMarmCur)} / ${formatCombatNumber(_nestMarmMax)}</div></div>
+  </div>
+  <div class="nest-profile-columns">
+    <div class="nest-profile-col"><div class="nest-profile-col-title">Offense</div><dl class="nest-profile-dl">
+      ${_nestDlRow(ledgerStatLabel('atk',{short:true}), _nestStat(_nestWarcry,s.atk))}
+      ${_nestDlRow(ledgerStatLabel('matk',{short:true}), `<span style="color:#6ae8e8">${formatCombatNumber(Number(s.matk)||0)}</span>`, 'Focus — improves spell and ailment potency')}
+      ${_nestDlRow(ledgerStatLabel('critChance',{short:true}), `<span style="color:${_nestCrit>5?'#e8c96a':'var(--gold)'}">${formatCombatNumber(_nestCrit)}%</span>`)}
+      ${_nestDlRow(ledgerStatLabel('critMult',{short:true}), `<span style="color:${_nestCritMultBase>1.5||_nestCritBonusPct>0?'#e8c96a':'var(--gold)'}">${_nestCritMultDisp}</span>`)}
+    </dl></div>
+    <div class="nest-profile-col"><div class="nest-profile-col-title">Defense</div><dl class="nest-profile-dl">
+      ${_nestDlRow(ledgerStatLabel('def',{short:true}), _nestStat(_nestDef,s.def))}
+      ${_nestDlRow(ledgerStatLabel('mdef',{short:true}), `<span style="color:#6ae8e8">${formatCombatNumber(Number(s.mdef)||0)}</span>`, 'Resolve — resists enemy spells and ailments')}
+      ${_nestDlRow(ledgerStatLabel('dodge',{short:true}), _nestStat(_nestDodge,s.dodge,'%'))}
+      ${(s.armorPen||0)>0?_nestDlRow(ledgerStatLabel('armorPen',{short:true}), `${formatCombatNumber(s.armorPen)}%`, 'Ignores enemy Guard when dealing martial damage'):''}
+      ${(s.magicPen||0)>0?_nestDlRow(ledgerStatLabel('magicPen',{short:true}), `${formatCombatNumber(s.magicPen)}%`, 'Ignores enemy Resolve when dealing magical damage'):''}
+    </dl></div>
+    <div class="nest-profile-col"><div class="nest-profile-col-title">Precision</div><dl class="nest-profile-dl">
+      ${_nestDlRow(ledgerStatLabel('acc',{short:true}), _nestStat(_nestAcc,s.acc,'%'), 'Precision determines how reliably this bird’s attacks and hostile skills connect.')}
+      ${_nestDlRow(ledgerStatLabel('spd',{short:true}), formatCombatNumber(s.spd))}
+    </dl></div>
   </div></div>`;
   // EXP / level progress (moved here from the combat screen)
   {
@@ -2964,17 +3024,18 @@ function openNest() {
   const nestEqRows=[];
   const nestUpgRows=[];
   const nestLvlRows=[];
+  const _nestBonusChip=(k,v)=>`<span class="nest-bonus-chip"><span class="nest-bonus-k">${STAT_LEDGER_LABELS[k]||k}</span><span class="nest-bonus-v">+${formatLedgerDelta(v)}</span></span>`;
   for(const k of STAT_LEDGER_TRACKED_KEYS){
     const ev=Number(eqMap[k]||0);
-    if(Math.abs(ev)>0.0001) nestEqRows.push(`<div class="nest-ledger-row"><span class="nest-ledger-k">${STAT_LEDGER_LABELS[k]||k}</span><span class="nest-ledger-v">+${formatLedgerDelta(ev)}</span></div>`);
+    if(Math.abs(ev)>0.0001) nestEqRows.push(_nestBonusChip(k,ev));
   }
   for(const k of STAT_LEDGER_TRACKED_KEYS){
     const uv=Number(upgMap[k]||0);
-    if(Math.abs(uv)>0.0001) nestUpgRows.push(`<div class="nest-ledger-row"><span class="nest-ledger-k">${STAT_LEDGER_LABELS[k]||k}</span><span class="nest-ledger-v">+${formatLedgerDelta(uv)}</span></div>`);
+    if(Math.abs(uv)>0.0001) nestUpgRows.push(_nestBonusChip(k,uv));
   }
   for(const k of STAT_LEDGER_TRACKED_KEYS){
     const lv=Number(lvlMap[k]||0);
-    if(Math.abs(lv)>0.0001) nestLvlRows.push(`<div class="nest-ledger-row"><span class="nest-ledger-k">${STAT_LEDGER_LABELS[k]||k}</span><span class="nest-ledger-v">+${formatLedgerDelta(lv)}</span></div>`);
+    if(Math.abs(lv)>0.0001) nestLvlRows.push(_nestBonusChip(k,lv));
   }
   const mechFromCards=(Ldg?.mechanicalLines||[]).map(l=>escapeHtmlRoster(l));
   const mechDerived=getDerivedMechanicalBonusLines(p).map(l=>escapeHtmlRoster(l));
@@ -2982,32 +3043,39 @@ function openNest() {
   const mechCombined=[];
   for(const line of [...mechFromCards,...mechDerived]){ if(line && !mechSeen.has(line)){ mechSeen.add(line); mechCombined.push(line); } }
   const mechHtml=mechCombined.length?`<div class="nest-ledger-mech-block">${mechCombined.map(l=>`<div class="nest-ledger-mech">${l}</div>`).join('')}</div>`:'';
-  if(nestUpgRows.length||nestLvlRows.length||nestEqRows.length||mechHtml){
-    html+=`<div class="nest-section nest-ledger-section"><div class="nest-section-title">✨ Run bonuses (from Feathers &amp; cards)</div>`;
-    if(nestLvlRows.length) html+=`<div class="nest-ledger-subtitle">Level-up (Feathers)</div><div class="nest-ledger-grid">${nestLvlRows.join('')}</div>`;
-    if(nestEqRows.length) html+=`<div class="nest-ledger-subtitle">Equipped gear</div><div class="nest-ledger-grid">${nestEqRows.join('')}</div>`;
-    if(nestUpgRows.length) html+=`<div class="nest-ledger-subtitle">Card / shop / reward stats</div><div class="nest-ledger-grid">${nestUpgRows.join('')}</div>`;
+  html+=`<div class="nest-section nest-ledger-section nest-rewards-section"><div class="nest-section-title">✨ Run bonuses (from Feathers &amp; cards)</div>`;
+  if(nestLvlRows.length||nestEqRows.length||nestUpgRows.length||mechHtml){
+    if(nestLvlRows.length) html+=`<div class="nest-ledger-subtitle">Level-up (Feathers)</div><div class="nest-bonus-chips">${nestLvlRows.join('')}</div>`;
+    if(nestEqRows.length) html+=`<div class="nest-ledger-subtitle">Equipped gear</div><div class="nest-bonus-chips">${nestEqRows.join('')}</div>`;
+    if(nestUpgRows.length) html+=`<div class="nest-ledger-subtitle">Card / shop / reward stats</div><div class="nest-bonus-chips">${nestUpgRows.join('')}</div>`;
     if(mechHtml) html+=`<div class="nest-ledger-subtitle">Card &amp; passive combat modifiers</div>${mechHtml}`;
-    html+=`</div>`;
+  } else {
+    html+=`<p class="nest-rewards-empty">No feather or card bonuses yet. Level-ups, shops, and rewards will land here.</p>`;
   }
+  html+=`</div>`;
   // Collected rewards
-  if(G.collectedRewards&&G.collectedRewards.length>0){
-    // Group duplicates
+  {
     const rewardMap=new Map();
-    G.collectedRewards.forEach(r=>{
+    (G.collectedRewards||[]).forEach(r=>{
       const key=r.id||r.name;
       if(rewardMap.has(key)){rewardMap.get(key).count++;}
       else{rewardMap.set(key,{...r,count:1});}
     });
     const tierOrder={gold:0,purple:1,blue:2,green:3,grey:4};
     const grouped=[...rewardMap.values()].sort((a,b)=>(tierOrder[a.tier]||4)-(tierOrder[b.tier]||4));
-    html+=`<div class="nest-section"><div class="nest-section-title">🎁 Collected Rewards (${G.collectedRewards.length})</div><div class="nest-rewards-list">`;
-    grouped.forEach(r=>{
-      const tierColor={gold:'var(--gold)',purple:'var(--purple-light)',blue:'var(--blue-light)',green:'var(--green-light)',grey:'var(--text-dim)'}[r.tier]||'var(--text-dim)';
-      const countBadge=r.count>1?`<span style="background:rgba(201,168,76,.2);border:1px solid var(--gold);border-radius:10px;padding:1px 7px;font-size:.72rem;color:var(--gold);font-family:Cinzel,serif;margin-left:6px">${r.count}×</span>`:'';
-      html+=`<div class="nest-reward-row"><span class="nest-reward-icon">${r.icon}</span><span class="nest-reward-name" style="color:${tierColor}">${r.name}${countBadge}</span><span class="nest-reward-desc">${r.desc}</span></div>`;
-    });
-    html+=`</div></div>`;
+    html+=`<div class="nest-section nest-rewards-section"><div class="nest-section-title">🎁 Collected Rewards (${(G.collectedRewards||[]).length})</div>`;
+    if(grouped.length){
+      html+=`<div class="nest-rewards-list">`;
+      grouped.forEach(r=>{
+        const tierColor={gold:'var(--gold)',purple:'var(--purple-light)',blue:'var(--blue-light)',green:'var(--green-light)',grey:'var(--text-dim)'}[r.tier]||'var(--text-dim)';
+        const countBadge=r.count>1?`<span style="background:rgba(201,168,76,.2);border:1px solid var(--gold);border-radius:10px;padding:1px 7px;font-size:.72rem;color:var(--gold);font-family:Cinzel,serif;margin-left:6px">${r.count}×</span>`:'';
+        html+=`<div class="nest-reward-row"><span class="nest-reward-icon">${r.icon}</span><span class="nest-reward-name" style="color:${tierColor}">${r.name}${countBadge}</span><span class="nest-reward-desc">${r.desc}</span></div>`;
+      });
+      html+=`</div>`;
+    } else {
+      html+=`<p class="nest-rewards-empty">No cards collected this run yet.</p>`;
+    }
+    html+=`</div>`;
   }
   content.innerHTML=html;
   organizeNestSections(content);
@@ -9946,16 +10014,19 @@ function renderActions() {
     const statPrevChip=_statPrev.length?`<span class="btn-stat-preview">${_statPrev.map(l=>_escMini(l)).join(' · ')}</span>`:'';
     const typeLbl=abilityTypeChipLabel(effBtn);
     const displayName=isEmptySlot?(sourceLbl||'—'):ab.name;
-    const sourceChip=eqV2&&sourceLbl?`<span class="btn-source-chip">${_escMini(sourceLbl)}</span>`:'';
+    const sourceChip=(!isEmptySlot && eqV2 && sourceLbl)?`<span class="btn-source-chip">${_escMini(sourceLbl)}</span>`:'';
+    const emptyReasonRow=isEmptySlot?`<div class="btn-empty-reason">${_escMini(ab.reason||'Empty')}</div>`:'';
+    const filledMeta=isEmptySlot?'':`<span class="btn-type-chip btn-type-chip--${effBtn}">${typeLbl}</span>
+          <span class="btn-en-chip">${_escMini(btnCostText)}</span>`;
     btn.innerHTML=`
       <div class="btn-head">
         <span class="btn-name">${_escMini(displayName)}</span>
         <span class="btn-meta">
           ${sourceChip}
-          <span class="btn-type-chip btn-type-chip--${effBtn}">${typeLbl}</span>
-          <span class="btn-en-chip">${_escMini(btnCostText)}</span>
+          ${filledMeta}
         </span>
       </div>
+      ${emptyReasonRow}
       ${dmgRow}
       ${(briefHtml||fallbackDesc)?`<div class="btn-desc-lines btn-desc-full">${briefHtml||`<p>${_escMini(fallbackDesc)}</p>`}</div>`:''}
       ${statPrevChip}
