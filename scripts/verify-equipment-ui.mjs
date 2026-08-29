@@ -22,6 +22,7 @@ function ok(msg) {
 
 const gamePath = path.join(ROOT, 'js/core/game.js');
 const gameSrc = readFileSync(gamePath, 'utf8');
+const cssSrc = readFileSync(path.join(ROOT, 'css/main.css'), 'utf8');
 
 const staticChecks = [
   ['buildEquipmentTooltipHTML', /function buildEquipmentTooltipHTML\b/],
@@ -31,6 +32,8 @@ const staticChecks = [
   ['grantPlayerEquipmentItem', /function grantPlayerEquipmentItem\b/],
   ['grantEquipment newest-bag copy', /Bag · newest first/],
   ['nest mobile hint', /nest-eq-hint--narrow/],
+  ['nest compact bag cards', /nest-inv-item--compact/],
+  ['nest two-column bag', /nest-inventory-grid--bag\{grid-template-columns:repeat\(2/],
   ['equipment v2 action grid class', /actions-grid--equipment-v2/],
   ['wireNestEquipmentTooltips', /function wireNestEquipmentTooltips\b/],
   ['setUltimateSource action', /Avian\.actions\.register\('setUltimateSource'/],
@@ -46,7 +49,9 @@ const staticChecks = [
 for (const [label, re] of staticChecks) {
   const src = label.includes('event-router')
     ? readFileSync(path.join(ROOT, 'js/ui/event-router.js'), 'utf8')
-    : gameSrc;
+    : label.includes('two-column bag')
+      ? cssSrc
+      : gameSrc;
   if (re.test(src)) ok(label);
   else fail('missing ' + label);
 }
