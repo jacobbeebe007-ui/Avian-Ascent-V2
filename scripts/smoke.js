@@ -72,6 +72,8 @@ const checks = [
   { label: 'Nest equipment bag/worn layout', re: /nest-eq-layout/ },
   { label: 'Nest compact bag cards', re: /nest-inv-item--compact/ },
   { label: 'grantEquipment auto-equip', re: /function grantEquipment\b/ },
+  { label: 'clearGameCache reloads HTTP shell', re: /function reloadShellHttpCache\b/ },
+  { label: 'confirmClearCache cache-bust reload', re: /function cacheBustReload\b/ },
 ];
 
 for (const c of checks) {
