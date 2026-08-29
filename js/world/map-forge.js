@@ -3822,6 +3822,11 @@
       _selectedIds = [];
       syncBreadcrumb();
     },
+    selectNode(id) {
+      _selectedId = id == null ? null : Number(id);
+      _selectedIds = _selectedId == null ? [] : [_selectedId];
+      syncNodeEditorFields();
+    },
     setTool,
     placeNodeAt(x, y) {
       _tool = 'label';
@@ -3866,6 +3871,14 @@
         nodeCount: slice?.nodes?.length || 0,
         bulkChecked: Array.from(_bulkChecked),
         worldJobsAllowed: _editContext === 'main',
+        enterWorldVisible: (() => {
+          const btn = document.getElementById('map-forge-edit-world-btn');
+          return !!(btn && btn.style.display !== 'none');
+        })(),
+        exitWorldVisible: (() => {
+          const btn = document.getElementById('map-forge-world-back');
+          return !!(btn && btn.style.display !== 'none');
+        })(),
         worldOptionHidden: (() => {
           const typeEl = document.getElementById('map-forge-node-type');
           const worldOpt = typeEl && typeof typeEl.querySelector === 'function'
@@ -3946,6 +3959,9 @@
       bulkSelectAllStages, bulkApplyEncounter, bulkApplyRewards, addWorldTemplate,
       mapForgeZoomFit, mapForgeZoom100, mapForgeZoom200,
       openMapForgeLibrary, toggleMapForgeHelp,
+      confirmMapForgeLibrary: () => {
+        if (typeof global.confirmMapForgeLibrary === 'function') return global.confirmMapForgeLibrary();
+      },
     });
   }
 })(typeof window !== 'undefined' ? window : globalThis);

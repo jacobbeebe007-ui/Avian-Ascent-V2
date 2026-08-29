@@ -189,6 +189,19 @@ ok('World tree present', forgeSection.includes('id="map-forge-world-tree"'));
 ok('Place palette includes Stage', forgeSection.includes('data-forge-tool="stage"'));
 ok('Place palette includes Spawn', forgeSection.includes('data-forge-tool="start"'));
 ok('Place palette includes Map gate', forgeSection.includes('data-forge-tool="world"'));
+ok('Header Enter this map button present', forgeSection.includes('id="map-forge-edit-world-btn"') && forgeSection.includes('data-action="editWorldMap"'));
+ok('Header Exit to main map button present', forgeSection.includes('id="map-forge-world-back"') && forgeSection.includes('data-action="exitWorldEditor"'));
+ok('Sidebar Enter this map button present', forgeSection.includes('id="map-forge-sidebar-enter-world"'));
+ok('Sidebar Exit to main map button present', forgeSection.includes('id="map-forge-sidebar-exit-world"'));
+ok('Resolves action: confirmMapForgeLibrary', typeof resolveAction('confirmMapForgeLibrary') === 'function');
+ok('Resolves action: editWorldMap', typeof resolveAction('editWorldMap') === 'function');
+ok('Resolves action: exitWorldEditor', typeof resolveAction('exitWorldEditor') === 'function');
+
+const libSource = readFileSync(path.join(root, 'js/world/map-forge-library.js'), 'utf8');
+ok('Library confirm footer rendered', libSource.includes('data-action="confirmMapForgeLibrary"'));
+ok('Library Create button on templates', libSource.includes('data-forge-create-template'));
+ok('Library confirm hint present', libSource.includes('id="map-forge-library-confirm-hint"'));
+ok('Library select-then-confirm flow', libSource.includes('Pick a template or draft, then confirm'));
 
 forgeActions.forEach((name) => {
   ok('Resolves action: ' + name, typeof resolveAction(name) === 'function');
@@ -610,6 +623,25 @@ if (api) {
 }
 
 if (api) {
+  api.loadMap(globalThis.createWorldPackTemplate('hub2'));
+  api.setEditContext('main');
+  const hubState = api.getState();
+  const worldGate = hubState.nodes.find((n) => n.job === 'world');
+  ok('Hub template has a map gate to enter', !!worldGate);
+  if (worldGate && typeof api.selectNode === 'function') {
+    api.selectNode(worldGate.id);
+    const selectedGate = api.getState();
+    ok('Selecting a map gate shows Enter this map', selectedGate.enterWorldVisible === true);
+    ok('Selecting a map gate hides Exit on main', selectedGate.exitWorldVisible === false);
+    if (typeof globalThis.editWorldMap === 'function') globalThis.editWorldMap();
+    const inside = api.getState();
+    ok('Enter this map proceeds into the nested map', inside.editContext !== 'main');
+    ok('Nested map shows Exit to main', inside.exitWorldVisible === true);
+    if (typeof globalThis.exitWorldEditor === 'function') globalThis.exitWorldEditor();
+    const back = api.getState();
+    ok('Exit returns to main map', back.editContext === 'main');
+  }
+
   api.loadMap(globalThis.createWorldPackTemplate('hub2'));
   const beforeMaps = Object.keys(api.buildExport().worlds || {}).length;
   api.addNestedMapFromTree();
