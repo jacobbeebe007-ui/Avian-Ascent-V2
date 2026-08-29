@@ -2639,7 +2639,7 @@ function _nestInvCompareHtml(player, itemId){
     ? Avian.equipment.findEmptyEquipSlotForItem(player, itemId)
     : null;
   if(emptySlot){
-    return `<div class="nest-inv-compare nest-inv-compare--empty">Fits empty ${escapeHtmlRoster(getEquipmentNestSlotLabel(emptySlot))}</div>`;
+    return `<div class="nest-inv-compare nest-inv-compare--empty">Empty ${escapeHtmlRoster(getEquipmentNestSlotLabel(emptySlot))}</div>`;
   }
   const slot=typeof Avian?.equipment?.findEquipSlotForItem==='function'
     ? Avian.equipment.findEquipSlotForItem(player, itemId)
@@ -2648,7 +2648,7 @@ function _nestInvCompareHtml(player, itemId){
   const wornId=player.equipment?.[slot];
   const worn=wornId?getEquipmentItem(wornId):null;
   if(!worn) return '';
-  return `<div class="nest-inv-compare">Swap ${escapeHtmlRoster(getEquipmentNestSlotLabel(slot))}: ${escapeHtmlRoster(worn.name)}</div>`;
+  return `<div class="nest-inv-compare">vs ${escapeHtmlRoster(worn.name)}</div>`;
 }
 function _nestEquipmentItemHtml(itemId, slotKey, locked=false, opts={}){
   const icons=EQUIPMENT_NEST_SLOT_ICONS;
@@ -2735,10 +2735,9 @@ function buildNestEquipmentSectionV2(player){
       const emptySlot=typeof Avian?.equipment?.findEmptyEquipSlotForItem==='function'?Avian.equipment.findEmptyEquipSlotForItem(player,id):null;
       const classTag=item.classRestriction&&item.classRestriction!=='Any'?`<span class="nest-class-tag">${escapeHtmlRoster(String(item.classRestriction))}</span>`:'';
       const handBadge=equipmentHandBadgeHtml(item);
-      const statsBlock=formatEquipmentCompactStatsHtml(item);
       const compareHtml=_nestInvCompareHtml(player, id);
       const actionLbl=emptySlot?'Equip':'Swap';
-      invHtml+=`<div class="nest-inv-item tier-${item.rarity} tier-ui-${tierCss}${locked?' is-locked':''}${canEquip?'':' nest-inv-ineligible'}" data-nest-eq-inv="${id}" ${(!canEquip||locked)?'aria-disabled="true"':''} title="${canEquip?'':('Class only: '+String(item.classRestriction))}">${slotBadge}<div class="nest-tier-label" style="color:${tierColor}">${tierMeta.label}</div><strong style="color:${tierColor}">${escapeHtmlRoster(item.name)}</strong>${classTag}${handBadge}<br><span style="color:${tierColor}">${escapeHtmlRoster(item.family||item.slot)}</span>${statsBlock?`<div class="nest-mut-stats mut-stat-compact-wrap">${statsBlock}</div>`:''}${compareHtml}${(!locked&&canEquip)?`<span class="nest-equip-action">${actionLbl}</span>`:''}</div>`;
+      invHtml+=`<div class="nest-inv-item nest-inv-item--compact tier-${item.rarity} tier-ui-${tierCss}${locked?' is-locked':''}${canEquip?'':' nest-inv-ineligible'}" data-nest-eq-inv="${id}" ${(!canEquip||locked)?'aria-disabled="true"':''} title="${canEquip?'':('Class only: '+String(item.classRestriction))}"><div class="nest-inv-item-head">${slotBadge}<div class="nest-tier-label" style="color:${tierColor}">${tierMeta.label}</div>${handBadge}</div><strong class="nest-inv-item-name" style="color:${tierColor}">${escapeHtmlRoster(item.name)}</strong>${classTag}${compareHtml}${(!locked&&canEquip)?`<span class="nest-equip-action">${actionLbl}</span>`:''}</div>`;
     }
     invHtml+='</div>';
   }
@@ -2746,7 +2745,10 @@ function buildNestEquipmentSectionV2(player){
   const equipHint=locked
     ? 'Loadout changes unlock after victory. Slot filters remain available.'
     : 'New finds auto-equip when the slot is empty. Bag pieces sit at the top — Equip fills an empty slot, Swap replaces what you are wearing. Hover a worn slot for stats.';
-  return `<div class="nest-section nest-equipment-section nest-equipment-section--v2${locked?' nest-equip-locked':''}"><div class="nest-section-title">⚙ Equipment</div>${lockNote}${filterHtml}<div class="nest-eq-layout"><div class="nest-eq-bag"><div class="nest-ledger-subtitle">Bag · newest first · ${escapeHtmlRoster(filterLabel)} (${filteredInv.length})</div>${invHtml}<p class="nest-ledger-note">${equipHint}</p></div><aside class="nest-eq-worn" aria-label="Currently worn loadout"><div class="nest-ledger-subtitle">Worn · ${wornCount}/${order.length||7}</div><div class="nest-eq-doll">${slotsHtml}</div><div class="nest-ledger-subtitle">Bonus from worn</div><div class="nest-equip-bonus">${bonusHtml}</div></aside></div></div>`;
+  const equipHintMobile=locked
+    ? 'Loadout unlocks after victory.'
+    : 'Tap a bag card to equip or swap. Tap worn gear to unequip.';
+  return `<div class="nest-section nest-equipment-section nest-equipment-section--v2${locked?' nest-equip-locked':''}"><div class="nest-section-title">⚙ Equipment</div>${lockNote}${filterHtml}<div class="nest-eq-layout"><div class="nest-eq-bag"><div class="nest-ledger-subtitle">Bag · newest first · ${escapeHtmlRoster(filterLabel)} (${filteredInv.length})</div>${invHtml}<p class="nest-ledger-note nest-eq-hint nest-eq-hint--wide">${equipHint}</p><p class="nest-ledger-note nest-eq-hint nest-eq-hint--narrow">${equipHintMobile}</p></div><aside class="nest-eq-worn" aria-label="Currently worn loadout"><div class="nest-ledger-subtitle">Worn · ${wornCount}/${order.length||7}</div><div class="nest-eq-doll">${slotsHtml}</div><div class="nest-ledger-subtitle nest-eq-bonus-lbl">Bonus from worn</div><div class="nest-equip-bonus">${bonusHtml}</div></aside></div></div>`;
 }
 function handleNestEquipmentClick(ev){
   const ultPick=ev.target.closest('[data-nest-ult-pick]');
