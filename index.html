@@ -144,10 +144,10 @@
 <h3 class="select-hub-panel-title" id="hub-supplies-title">Supplies</h3>
 <button type="button" class="select-hub-return-btn" data-action="closeSelectHubPanel">← Return to war room</button>
 </header>
-<div class="supplies-subnav" role="tablist" aria-label="Supplies sections">
-<button type="button" class="supplies-subnav-btn is-active" id="supplies-nav-reference" role="tab" aria-selected="true" aria-controls="supplies-view-reference" data-action="setSuppliesSubView:reference">Reference &amp; unlock</button>
-<button type="button" class="supplies-subnav-btn" id="supplies-nav-records" role="tab" aria-selected="false" aria-controls="supplies-view-records" data-action="setSuppliesSubView:records">Runs &amp; highscores</button>
-<button type="button" class="supplies-subnav-btn" id="supplies-nav-codes" role="tab" aria-selected="false" aria-controls="supplies-view-codes" data-action="setSuppliesSubView:codes" hidden>Creator codes</button>
+<div class="hub-subnav hub-subnav--2 supplies-subnav" role="tablist" aria-label="Supplies sections">
+<button type="button" class="hub-subnav-btn supplies-subnav-btn is-active" id="supplies-nav-reference" role="tab" aria-selected="true" aria-controls="supplies-view-reference" data-action="setSuppliesSubView:reference">Reference &amp; unlock</button>
+<button type="button" class="hub-subnav-btn supplies-subnav-btn" id="supplies-nav-records" role="tab" aria-selected="false" aria-controls="supplies-view-records" data-action="setSuppliesSubView:records">Runs &amp; highscores</button>
+<button type="button" class="hub-subnav-btn supplies-subnav-btn" id="supplies-nav-codes" role="tab" aria-selected="false" aria-controls="supplies-view-codes" data-action="setSuppliesSubView:codes" hidden>Creator codes</button>
 </div>
 <div class="supplies-subview is-active" id="supplies-view-reference" role="tabpanel" aria-labelledby="supplies-nav-reference">
 <p class="select-hub-lead">Reference codex — birds, abilities, mechanics, and more. Secret unlock codes live with the baggage.</p>
@@ -194,25 +194,20 @@
 <h3 class="select-hub-panel-title" id="hub-inventory-title">Inventory</h3>
 <button type="button" class="select-hub-return-btn" data-action="closeSelectHubPanel">← Return to war room</button>
 </header>
-<p class="select-hub-lead">Your global vault across Flights — Golden Goose Eggs, Rescued Nests, and treasures from Cuckoo's Feathers &amp; Fortune Emporium.</p>
+<p class="select-hub-lead">Your global vault across Flights — rescued nests, equipped relics, and Species Feathers for bird upgrades.</p>
 <div class="fortune-balance-bar inventory-balance-bar" aria-label="Global currency">
 <span class="fortune-balance-chip fortune-balance-chip--goose"><span class="fortune-balance-icon">🪿</span> Golden Goose Eggs: <strong id="inventory-balance-goose">0</strong></span>
 </div>
-<div class="inventory-subnav" role="tablist" aria-label="Inventory sections">
-<button type="button" class="inventory-subnav-btn is-active" id="inventory-nav-feathers" role="tab" aria-selected="true" aria-controls="inventory-view-feathers" data-action="setInventorySubView:feathers">Feather Sack</button>
-<button type="button" class="inventory-subnav-btn" id="inventory-nav-artifacts" role="tab" aria-selected="false" aria-controls="inventory-view-artifacts" data-action="setInventorySubView:artifacts">Artifacts</button>
-<button type="button" class="inventory-subnav-btn" id="inventory-nav-misc" role="tab" aria-selected="false" aria-controls="inventory-view-misc" data-action="setInventorySubView:misc">Other treasures</button>
+<div class="hub-subnav hub-subnav--3 inventory-subnav" role="tablist" aria-label="Inventory sections">
+<button type="button" class="hub-subnav-btn inventory-subnav-btn is-active" id="inventory-nav-eggs" role="tab" aria-selected="true" aria-controls="inventory-view-eggs" data-action="setInventorySubView:eggs">Eggs</button>
+<button type="button" class="hub-subnav-btn inventory-subnav-btn" id="inventory-nav-artifacts" role="tab" aria-selected="false" aria-controls="inventory-view-artifacts" data-action="setInventorySubView:artifacts">Artifacts</button>
+<button type="button" class="hub-subnav-btn inventory-subnav-btn" id="inventory-nav-vault" role="tab" aria-selected="false" aria-controls="inventory-view-vault" data-action="setInventorySubView:vault">Vault</button>
 </div>
-<section class="inventory-subview is-active" id="inventory-view-feathers" role="tabpanel" aria-labelledby="inventory-nav-feathers">
-<h4 class="inventory-section-title" id="inventory-feathers-heading">Feather Sack</h4>
-<p class="inventory-section-lead">Duplicates from Mother Goose eggs. Collect feathers to mutate bird cards to higher tiers.</p>
-<div class="inventory-feather-tabs" id="inventory-feather-tabs" role="tablist" aria-label="Feather Sack views"></div>
-<div class="inventory-feather-filters inventory-feather-amount-filters" id="inventory-feather-amount-filters" role="group" aria-label="Filter by feather amount"></div>
-<div class="inventory-feather-filters" id="inventory-feather-filters" role="group" aria-label="Filter by card tier"></div>
-<p class="inventory-empty" id="inventory-feathers-empty">No Species Feathers yet. Hatch duplicates at The Hatchery.</p>
-<div class="inventory-feathers-scroll">
-<div class="inventory-feathers-grid" id="inventory-feathers-grid"></div>
-</div>
+<section class="inventory-subview is-active" id="inventory-view-eggs" role="tabpanel" aria-labelledby="inventory-nav-eggs">
+<h4 class="inventory-section-title" id="inventory-eggs-heading">Eggs</h4>
+<p class="inventory-section-lead">Rescued Nests found on Flights. Open them for Golden Goose Eggs and bird hatches.</p>
+<p class="inventory-empty" id="inventory-eggs-empty">No rescued nests yet. Win stages to find eggs, then open them here.</p>
+<div class="inventory-items-grid" id="inventory-eggs-grid"></div>
 </section>
 <section class="inventory-subview" id="inventory-view-artifacts" role="tabpanel" aria-labelledby="inventory-nav-artifacts" hidden>
 <h4 class="inventory-section-title" id="inventory-artifacts-heading">Artifacts</h4>
@@ -221,11 +216,16 @@
 <p class="inventory-empty" id="inventory-artifacts-empty">No artifacts yet. Visit Cuckoo's Emporium to buy relics.</p>
 <div class="inventory-items-grid" id="inventory-artifacts-grid"></div>
 </section>
-<section class="inventory-subview" id="inventory-view-misc" role="tabpanel" aria-labelledby="inventory-nav-misc" hidden>
-<h4 class="inventory-section-title" id="inventory-misc-heading">Other treasures</h4>
-<p class="inventory-section-lead">Future global items will appear here.</p>
-<p class="inventory-empty" id="inventory-misc-empty">Nothing here yet — future global items will appear in this vault.</p>
-<div class="inventory-items-grid" id="inventory-misc-grid"></div>
+<section class="inventory-subview" id="inventory-view-vault" role="tabpanel" aria-labelledby="inventory-nav-vault" hidden>
+<h4 class="inventory-section-title" id="inventory-vault-heading">Vault</h4>
+<p class="inventory-section-lead">Species Feathers from duplicate hatches. Spend them to mutate bird cards to higher tiers.</p>
+<div class="inventory-feather-tabs" id="inventory-feather-tabs" role="tablist" aria-label="Vault views"></div>
+<div class="inventory-feather-filters inventory-feather-amount-filters" id="inventory-feather-amount-filters" role="group" aria-label="Filter by feather amount"></div>
+<div class="inventory-feather-filters" id="inventory-feather-filters" role="group" aria-label="Filter by card tier"></div>
+<p class="inventory-empty" id="inventory-feathers-empty">No Species Feathers yet. Hatch duplicates at The Hatchery.</p>
+<div class="inventory-feathers-scroll">
+<div class="inventory-feathers-grid" id="inventory-feathers-grid"></div>
+</div>
 </section>
 </div>
 </div>
@@ -237,21 +237,21 @@
 </header>
 <p class="fortune-welcome">Welcome to Cuckoo's Feathers &amp; Fortune Emporium</p>
 <p class="fortune-owner-note">Cuckoo (Owner of the Fortune and Feather shop — married to the Mother Goose)</p>
-<p class="select-hub-lead">Global treasures earned across Flights. Rescued Nests drop after stage victories — open them in Inventory for Golden Goose Eggs and bird hatches.</p>
+<p class="select-hub-lead">Trade Golden Goose Eggs for supplies, or buy relics that last across Flights. Open rescued nests in Inventory.</p>
 <div class="fortune-balance-bar" aria-label="Global currency">
 <span class="fortune-balance-chip fortune-balance-chip--goose"><span class="fortune-balance-icon">🪿</span> Golden Goose Eggs: <strong id="fortune-balance-goose">0</strong></span>
 </div>
-<div class="fortune-subnav" role="tablist" aria-label="Store sections">
-<button type="button" class="fortune-subnav-btn is-active" id="fortune-nav-trade" role="tab" aria-selected="true" aria-controls="fortune-view-trade" data-action="setFortuneSubView:trade">Trade</button>
-<button type="button" class="fortune-subnav-btn" id="fortune-nav-artifacts" role="tab" aria-selected="false" aria-controls="fortune-view-artifacts" data-action="setFortuneSubView:artifacts">Artifacts</button>
+<div class="hub-subnav hub-subnav--2 fortune-subnav" role="tablist" aria-label="Store sections">
+<button type="button" class="hub-subnav-btn fortune-subnav-btn is-active" id="fortune-nav-trade" role="tab" aria-selected="true" aria-controls="fortune-view-trade" data-action="setFortuneSubView:trade">Trade</button>
+<button type="button" class="hub-subnav-btn fortune-subnav-btn" id="fortune-nav-relics" role="tab" aria-selected="false" aria-controls="fortune-view-relics" data-action="setFortuneSubView:relics">Relics</button>
 </div>
 <div class="fortune-shop-msg" id="fortune-shop-msg" aria-live="polite"></div>
 <div class="fortune-subview is-active" id="fortune-view-trade" role="tabpanel" aria-labelledby="fortune-nav-trade">
 <p class="fortune-tab-lead">Spend Golden Goose Eggs on expanded heal-item carry limits.</p>
 <div class="fortune-trade-grid" id="fortune-trade-grid"></div>
 </div>
-<div class="fortune-subview" id="fortune-view-artifacts" role="tabpanel" aria-labelledby="fortune-nav-artifacts">
-<p class="fortune-tab-lead">Rare Artifacts cost Golden Goose Eggs. Effects apply on every future Flight once owned.</p>
+<div class="fortune-subview" id="fortune-view-relics" role="tabpanel" aria-labelledby="fortune-nav-relics">
+<p class="fortune-tab-lead">Rare relics cost Golden Goose Eggs. Equip one from Inventory before your next Flight.</p>
 <div class="fortune-artifacts-grid" id="fortune-artifacts-grid"></div>
 </div>
 </div>
@@ -262,13 +262,32 @@
 <h3 class="select-hub-panel-title" id="hub-hatchery-title">The Hatchery</h3>
 <button type="button" class="select-hub-return-btn" data-action="closeSelectHubPanel">← Return to war room</button>
 </header>
-<p class="select-hub-lead">Spend Golden Goose Eggs to hatch bird cards. Duplicates become Species Feathers for mutations.</p>
+<p class="select-hub-lead">Hatch bird cards with Mother Goose. Duplicates become Species Feathers for the Inventory Vault.</p>
 <div class="fortune-balance-bar hatchery-balance-bar" aria-label="Global currency">
 <span class="fortune-balance-chip fortune-balance-chip--goose"><span class="fortune-balance-icon">🪿</span> Golden Goose Eggs: <strong id="hatchery-balance-goose">0</strong></span>
 </div>
+<div class="hub-subnav hub-subnav--2 hatchery-subnav" role="tablist" aria-label="Hatchery sections">
+<button type="button" class="hub-subnav-btn hatchery-subnav-btn is-active" id="hatchery-nav-mother" role="tab" aria-selected="true" aria-controls="hatchery-view-mother" data-action="setHatcherySubView:mother">Mother Goose</button>
+<button type="button" class="hub-subnav-btn hatchery-subnav-btn" id="hatchery-nav-eggs" role="tab" aria-selected="false" aria-controls="hatchery-view-eggs" data-action="setHatcherySubView:eggs">Eggs</button>
+</div>
+<section class="hatchery-subview is-active" id="hatchery-view-mother" role="tabpanel" aria-labelledby="hatchery-nav-mother">
+<p class="fortune-welcome">Welcome to The Hatchery</p>
+<p class="fortune-owner-note">Mother Goose (keeper of the eggs — married to Cuckoo of the Fortune Emporium)</p>
+<p class="inventory-section-lead">Spend Golden Goose Eggs here to hatch bird cards. New species unlock for Character Select. Duplicates grant Species Feathers — spend those in Inventory → Vault to raise stars and tiers.</p>
 <div class="mother-goose-pity" id="mother-goose-pity" aria-live="polite"></div>
+<ul class="hatchery-mother-points">
+<li>Cracked and Feathered eggs favour common species.</li>
+<li>Gleaming, Royal, and Ancestral eggs hunt rarer birds.</li>
+<li>Royal Eggs let you pick a class before the hatch.</li>
+</ul>
+</section>
+<section class="hatchery-subview" id="hatchery-view-eggs" role="tabpanel" aria-labelledby="hatchery-nav-eggs" hidden>
+<h4 class="inventory-section-title">Eggs</h4>
+<p class="inventory-section-lead">Choose an egg to hatch ×1 or ×10. Pity tracks how close you are to a safety hatch.</p>
+<div class="mother-goose-pity mother-goose-pity--eggs" id="mother-goose-pity-eggs" aria-live="polite"></div>
 <div class="mother-goose-grid" id="mother-goose-grid"></div>
 <div class="mother-goose-result" id="mother-goose-result" aria-live="polite"></div>
+</section>
 </div>
 </div>
 <div class="select-hub-panel" id="select-hub-map" role="dialog" aria-modal="true" aria-labelledby="hub-map-title" aria-hidden="true">
@@ -277,9 +296,9 @@
 <h3 class="select-hub-panel-title" id="hub-map-title">Flight Settings</h3>
 <button type="button" class="select-hub-return-btn" data-action="closeSelectHubPanel">← Return to war room</button>
 </header>
-<div class="supplies-subnav" role="tablist" aria-label="Map selection">
-<button type="button" class="supplies-subnav-btn is-active" id="mission-map-nav-demo" role="tab" aria-selected="true" data-action="setMissionMapVariant:demo">Demo</button>
-<button type="button" class="supplies-subnav-btn" id="mission-map-nav-test" role="tab" aria-selected="false" data-action="setMissionMapVariant:test">Test</button>
+<div class="hub-subnav hub-subnav--2 supplies-subnav" role="tablist" aria-label="Map selection">
+<button type="button" class="hub-subnav-btn supplies-subnav-btn is-active" id="mission-map-nav-demo" role="tab" aria-selected="true" data-action="setMissionMapVariant:demo">Demo</button>
+<button type="button" class="hub-subnav-btn supplies-subnav-btn" id="mission-map-nav-test" role="tab" aria-selected="false" data-action="setMissionMapVariant:test">Test</button>
 </div>
 <div class="mission-test-map-wrap" id="mission-test-map-wrap" hidden>
 <label class="mission-test-map-label" for="mission-test-map-select">Test map</label>

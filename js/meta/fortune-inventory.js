@@ -2,7 +2,8 @@
 (function () {
   'use strict';
 
-  var INVENTORY_TAB = 'feathers';
+  var INVENTORY_TAB = 'eggs';
+  var INVENTORY_TABS = ['eggs', 'artifacts', 'vault'];
   var FEATHER_SACK_TAB = 'upgradable';
   var FEATHER_FILTER = 'all';
   var FEATHER_AMOUNT_FILTER = 'all';
@@ -78,11 +79,16 @@
     }
   }
 
+  function normalizeInventoryTab(view) {
+    if (view === 'feathers' || view === 'vault') return 'vault';
+    if (view === 'misc' || view === 'eggs') return 'eggs';
+    if (view === 'artifacts') return 'artifacts';
+    return 'eggs';
+  }
+
   function setInventorySubView(view) {
-    INVENTORY_TAB =
-      view === 'feathers' ? 'feathers' : view === 'misc' ? 'misc' : 'artifacts';
-    var tabs = ['artifacts', 'feathers', 'misc'];
-    tabs.forEach(function (id) {
+    INVENTORY_TAB = normalizeInventoryTab(view);
+    INVENTORY_TABS.forEach(function (id) {
       var btn = document.getElementById('inventory-nav-' + id);
       var panel = document.getElementById('inventory-view-' + id);
       var active = id === INVENTORY_TAB;
@@ -95,7 +101,7 @@
         panel.hidden = !active;
       }
     });
-    if (INVENTORY_TAB === 'feathers') renderInventoryFeathers();
+    if (INVENTORY_TAB === 'vault') renderInventoryFeathers();
   }
 
   function setInventoryFeatherFilter(tier) {
@@ -434,8 +440,8 @@
   }
 
   function renderInventoryMisc(misc) {
-    var grid = document.getElementById('inventory-misc-grid');
-    var empty = document.getElementById('inventory-misc-empty');
+    var grid = document.getElementById('inventory-eggs-grid') || document.getElementById('inventory-misc-grid');
+    var empty = document.getElementById('inventory-eggs-empty') || document.getElementById('inventory-misc-empty');
     if (!grid || !empty) return;
     if (!misc.length) {
       grid.innerHTML = '';
