@@ -87,9 +87,9 @@
 <div class="select-screen-bg" aria-hidden="true"></div>
 <div class="select-screen-scrim" aria-hidden="true"></div>
 <div class="splash-hotspot-layer" aria-hidden="false">
-<button type="button" class="splash-hotspot splash-hotspot--supplies" data-action="openSelectHubPanel:supplies" aria-label="Supplies — codex and unlock code">
+<button type="button" class="splash-hotspot splash-hotspot--supplies" data-action="openSelectHubPanel:supplies" aria-label="Supplies — codex, unlock codes, and records">
 <span class="splash-hotspot-title">Supplies</span>
-<span class="splash-hotspot-desc">Codex &amp; unlock</span>
+<span class="splash-hotspot-desc">Codex · records</span>
 </button>
 <button type="button" class="splash-hotspot splash-hotspot--inventory" data-action="openSelectHubPanel:inventory" aria-label="Inventory — global treasures">
 <span class="splash-hotspot-title">Inventory</span>
@@ -141,23 +141,31 @@
 <div class="select-hub-panel select-hub-panel--supplies" id="select-hub-supplies" role="dialog" aria-modal="true" aria-labelledby="hub-supplies-title" aria-hidden="true">
 <div class="select-hub-panel-inner select-hub-panel-inner--supplies">
 <header class="select-hub-panel-head">
+<div class="supplies-head-copy">
 <h3 class="select-hub-panel-title" id="hub-supplies-title">Supplies</h3>
+<p class="supplies-kicker">Codex, unlock codes, and the tally of past flights.</p>
+</div>
 <button type="button" class="select-hub-return-btn" data-action="closeSelectHubPanel">← Return to war room</button>
 </header>
-<div class="hub-subnav hub-subnav--2 supplies-subnav" role="tablist" aria-label="Supplies sections">
-<button type="button" class="hub-subnav-btn supplies-subnav-btn is-active" id="supplies-nav-reference" role="tab" aria-selected="true" aria-controls="supplies-view-reference" data-action="setSuppliesSubView:reference">Reference &amp; unlock</button>
-<button type="button" class="hub-subnav-btn supplies-subnav-btn" id="supplies-nav-records" role="tab" aria-selected="false" aria-controls="supplies-view-records" data-action="setSuppliesSubView:records">Runs &amp; highscores</button>
+<div class="hub-subnav supplies-subnav" role="tablist" aria-label="Supplies sections">
+<button type="button" class="hub-subnav-btn supplies-subnav-btn is-active" id="supplies-nav-reference" role="tab" aria-selected="true" aria-controls="supplies-view-reference" data-action="setSuppliesSubView:reference">Codex</button>
+<button type="button" class="hub-subnav-btn supplies-subnav-btn" id="supplies-nav-records" role="tab" aria-selected="false" aria-controls="supplies-view-records" data-action="setSuppliesSubView:records">Records</button>
 <button type="button" class="hub-subnav-btn supplies-subnav-btn" id="supplies-nav-codes" role="tab" aria-selected="false" aria-controls="supplies-view-codes" data-action="setSuppliesSubView:codes" hidden>Creator codes</button>
 </div>
 <div class="supplies-subview is-active" id="supplies-view-reference" role="tabpanel" aria-labelledby="supplies-nav-reference">
-<p class="select-hub-lead">Reference codex — birds, abilities, mechanics, and more. Secret unlock codes live with the baggage.</p>
-<button type="button" class="splash-codex-btn ref-guide-open-btn" id="ref-guide-open-btn">📖 Reference — Codex</button>
+<section class="supplies-section" aria-labelledby="supplies-codex-heading">
+<h4 class="supplies-heading" id="supplies-codex-heading">Codex</h4>
+<p class="supplies-hint">Birds, abilities, mechanics, and the rest of the field guide.</p>
+<button type="button" class="splash-codex-btn ref-guide-open-btn" id="ref-guide-open-btn">📖 Open Codex</button>
+</section>
+<section class="supplies-section" aria-labelledby="supplies-unlock-heading">
+<h4 class="supplies-heading" id="supplies-unlock-heading">Unlock code</h4>
+<p class="supplies-hint">Secret codes live with the baggage. Enter one to unlock birds or tools on this device.</p>
 <div class="splash-unlock">
 <label class="splash-unlock-label" for="dev-code-input">Unlock code</label>
 <input autocomplete="off" class="splash-unlock-input" id="dev-code-input" maxlength="32" data-input="checkDevCode" placeholder="Code…" spellcheck="false" type="password"/>
 <div class="splash-unlock-msg" id="dev-code-msg"></div>
-<button type="button" class="splash-erase-btn" data-action="openEraseProgressModal">🗑 Erase saved progress</button>
-<button type="button" class="splash-cache-btn splash-cache-btn--compact" data-action="openClearCacheModal">Clear cached data</button>
+</div>
 <section class="supplies-code-toggles" id="supplies-code-toggles" hidden aria-labelledby="supplies-code-toggles-title">
 <h4 id="supplies-code-toggles-title">Creator code switches</h4>
 <p>Tick codes to make them available. Changes are saved on this device.</p>
@@ -165,11 +173,20 @@
 <button type="button" class="splash-unlock-apply-btn" data-action="applyDevCodeSwitches">Apply</button>
 <div class="splash-unlock-msg" id="dev-code-switch-msg" aria-live="polite"></div>
 </section>
-<section class="supplies-activity-log" aria-labelledby="supplies-activity-title">
-<h4 id="supplies-activity-title">Supplies log</h4>
+</section>
+<section class="supplies-section supplies-section--device" aria-labelledby="supplies-device-heading">
+<h4 class="supplies-heading" id="supplies-device-heading">This device</h4>
+<p class="supplies-hint">Maintenance only. Erase deletes saves; Clear cache reloads fresh files and keeps progress.</p>
+<div class="supplies-device-actions">
+<button type="button" class="splash-erase-btn" data-action="openEraseProgressModal">🗑 Erase saved progress</button>
+<button type="button" class="splash-cache-btn splash-cache-btn--compact" data-action="openClearCacheModal">Clear cached data</button>
+</div>
+</section>
+<section class="supplies-section supplies-activity-log" aria-labelledby="supplies-activity-title">
+<h4 class="supplies-heading" id="supplies-activity-title">Supplies log</h4>
+<p class="supplies-hint">Eggs, relics, and other goods received or purchased.</p>
 <div id="supplies-activity-list"><p class="supplies-log-empty">No supplies received or purchased yet.</p></div>
 </section>
-</div>
 </div>
 <div class="supplies-subview" id="supplies-view-records" role="tabpanel" aria-labelledby="supplies-nav-records">
 <p class="select-hub-lead supplies-records-lead">Recent runs and your best attempts — kept with the tally scrolls.</p>
@@ -1483,17 +1500,26 @@
 </div>
 </div>
 <!-- SETTINGS MODAL -->
-<div class="abandon-modal" id="settings-modal" data-action="closeSettingsModal" data-backdrop="1">
-<div class="abandon-inner settings-modal-inner" style="max-width:620px;text-align:left;">
-<h3>⚙ Settings</h3>
-<div class="settings-tabs" role="tablist">
-<button type="button" class="settings-tab active" data-settings-tab="display" data-action="selectSettingsTab">Display</button>
-<button type="button" class="settings-tab" data-settings-tab="accessibility" data-action="selectSettingsTab">Accessibility</button>
-<button type="button" class="settings-tab" data-settings-tab="audio" data-action="selectSettingsTab">Audio</button>
-<button type="button" class="settings-tab" data-settings-tab="tooltips" data-action="selectSettingsTab">Tooltips</button>
-<button type="button" class="settings-tab" data-settings-tab="help" data-action="selectSettingsTab">Help</button>
+<div class="abandon-modal settings-modal" id="settings-modal" role="dialog" aria-modal="true" aria-labelledby="settings-modal-title" data-action="closeSettingsModal" data-backdrop="1">
+<div class="abandon-inner settings-modal-inner">
+<header class="settings-modal-head">
+<div class="settings-head-copy">
+<h3 id="settings-modal-title">Settings</h3>
+<p class="settings-kicker">Display, audio, and help for this device.</p>
 </div>
-<div class="settings-panel active" id="settings-panel-display" data-settings-panel="display">
+<button type="button" class="settings-modal-close" data-action="closeSettingsModal" aria-label="Close settings">×</button>
+</header>
+<div class="settings-tabs" role="tablist" aria-label="Settings sections">
+<button type="button" class="settings-tab active" id="settings-tab-display" role="tab" aria-selected="true" aria-controls="settings-panel-display" data-settings-tab="display" data-action="selectSettingsTab">Display</button>
+<button type="button" class="settings-tab" id="settings-tab-accessibility" role="tab" aria-selected="false" aria-controls="settings-panel-accessibility" data-settings-tab="accessibility" data-action="selectSettingsTab" title="Accessibility">Access</button>
+<button type="button" class="settings-tab" id="settings-tab-audio" role="tab" aria-selected="false" aria-controls="settings-panel-audio" data-settings-tab="audio" data-action="selectSettingsTab">Audio</button>
+<button type="button" class="settings-tab" id="settings-tab-tooltips" role="tab" aria-selected="false" aria-controls="settings-panel-tooltips" data-settings-tab="tooltips" data-action="selectSettingsTab" title="Tooltips">Tips</button>
+<button type="button" class="settings-tab" id="settings-tab-help" role="tab" aria-selected="false" aria-controls="settings-panel-help" data-settings-tab="help" data-action="selectSettingsTab">Help</button>
+</div>
+<div class="settings-panel active" id="settings-panel-display" role="tabpanel" aria-labelledby="settings-tab-display" data-settings-panel="display">
+<section class="settings-section" aria-labelledby="settings-screen-heading">
+<h4 class="settings-heading" id="settings-screen-heading">Screen</h4>
+<p class="settings-hint" id="setting-ui-mode-hint">Auto-detect picks mobile layout on phones and compact tablets.</p>
 <label class="settings-row">Auto-detect screen size
 <input id="setting-ui-auto-detect" type="checkbox" data-change="updateAccessibilitySettings"/>
 </label>
@@ -1503,9 +1529,10 @@
 <option value="desktop">Desktop</option>
 </select>
 </label>
-<p class="settings-hint" id="setting-ui-mode-hint">Auto-detect picks mobile layout on phones and compact tablets.</p>
-<div class="settings-subsection">
-<p class="settings-subsection-title">Combat layout</p>
+</section>
+<section class="settings-section" aria-labelledby="settings-combat-heading">
+<h4 class="settings-heading" id="settings-combat-heading">Combat layout</h4>
+<p class="settings-hint" id="setting-combat-arrangement-hint">Tactical Deck: a focused arena above a two-column command deck.</p>
 <label class="settings-row">Combat screen arrangement
 <select id="setting-combat-arrangement" data-change="updateAccessibilitySettings">
 <option value="tactical">Tactical Deck (Recommended)</option>
@@ -1513,21 +1540,20 @@
 <option value="custom">Custom</option>
 </select>
 </label>
-<p class="settings-hint" id="setting-combat-arrangement-hint">Tactical Deck: a focused arena above a two-column command deck.</p>
-<div id="setting-combat-custom-edit-row" class="settings-custom-layout-row" style="display:none">
+<div id="setting-combat-custom-edit-row" class="settings-custom-layout-row" hidden>
 <button type="button" class="menu-btn" data-action="openCombatCustomLayoutModal">Customize panels…</button>
 <p class="settings-hint">Reorder panels and hide sections you do not need. Use Settings under the page title for menu and abandon.</p>
 </div>
-<label class="settings-row">Avatar size <span id="setting-combat-avatar-val">100%</span>
+<label class="settings-row settings-row-range">Avatar size <strong id="setting-combat-avatar-val">100%</strong>
 <input id="setting-combat-avatar-scale" type="range" min="70" max="130" value="100" data-change="updateAccessibilitySettings" data-input="updateAccessibilitySettings"/>
 </label>
-<label class="settings-row">Combatant panels <span id="setting-combat-combatants-val">100%</span>
+<label class="settings-row settings-row-range">Combatant panels <strong id="setting-combat-combatants-val">100%</strong>
 <input id="setting-combat-combatants-scale" type="range" min="70" max="130" value="100" data-change="updateAccessibilitySettings" data-input="updateAccessibilitySettings"/>
 </label>
-<label class="settings-row">Action tray <span id="setting-combat-action-val">100%</span>
+<label class="settings-row settings-row-range">Action tray <strong id="setting-combat-action-val">100%</strong>
 <input id="setting-combat-action-scale" type="range" min="70" max="130" value="100" data-change="updateAccessibilitySettings" data-input="updateAccessibilitySettings"/>
 </label>
-<label class="settings-row">Battle log <span id="setting-combat-log-val">100%</span>
+<label class="settings-row settings-row-range">Battle log <strong id="setting-combat-log-val">100%</strong>
 <input id="setting-combat-log-scale" type="range" min="70" max="150" value="100" data-change="updateAccessibilitySettings" data-input="updateAccessibilitySettings"/>
 </label>
 <label class="settings-row">Keep birds visible while scrolling
@@ -1539,9 +1565,12 @@
 </label>
 <p class="settings-hint">Slightly reduces avatar and action tray size when 5+ abilities are unlocked.</p>
 <button type="button" class="menu-btn settings-reset-btn" data-action="resetCombatLayoutSettings">Reset combat layout</button>
+</section>
 </div>
-</div>
-<div class="settings-panel" id="settings-panel-accessibility" data-settings-panel="accessibility">
+<div class="settings-panel" id="settings-panel-accessibility" role="tabpanel" aria-labelledby="settings-tab-accessibility" data-settings-panel="accessibility">
+<section class="settings-section" aria-labelledby="settings-access-heading">
+<h4 class="settings-heading" id="settings-access-heading">Readability</h4>
+<p class="settings-hint">These options apply across the war room and battle.</p>
 <label class="settings-row">Font size
 <select id="setting-font-size" data-change="updateAccessibilitySettings">
 <option value="90">Small (90%)</option>
@@ -1564,22 +1593,30 @@
 <label class="settings-row">High contrast UI
 <input id="setting-high-contrast" data-change="updateAccessibilitySettings" type="checkbox"/>
 </label>
+</section>
 </div>
-<div class="settings-panel" id="settings-panel-audio" data-settings-panel="audio">
-<label class="settings-row settings-row-range">Master volume
+<div class="settings-panel" id="settings-panel-audio" role="tabpanel" aria-labelledby="settings-tab-audio" data-settings-panel="audio">
+<section class="settings-section" aria-labelledby="settings-audio-heading">
+<h4 class="settings-heading" id="settings-audio-heading">Mix</h4>
+<p class="settings-hint">Master scales both music and effects. Assign tracks from the Music jukebox in the war room.</p>
+<label class="settings-row settings-row-range">Master volume <strong id="setting-master-volume-val">100%</strong>
 <input id="setting-master-volume" type="range" min="0" max="100" step="5" value="100" data-input="updateAudioSettingsFromControls"/>
 </label>
-<label class="settings-row settings-row-range">Music volume
+<label class="settings-row settings-row-range">Music volume <strong id="setting-music-volume-val">50%</strong>
 <input id="setting-music-volume" type="range" min="0" max="100" step="5" value="50" data-input="updateAudioSettingsFromControls"/>
 </label>
-<label class="settings-row settings-row-range">SFX volume
+<label class="settings-row settings-row-range">SFX volume <strong id="setting-sfx-volume-val">100%</strong>
 <input id="setting-sfx-volume" type="range" min="0" max="100" step="5" value="100" data-input="updateAudioSettingsFromControls"/>
 </label>
 <label class="settings-row">Mute music
 <input id="setting-music-muted" type="checkbox" data-change="updateAudioSettingsFromControls"/>
 </label>
+</section>
 </div>
-<div class="settings-panel" id="settings-panel-tooltips" data-settings-panel="tooltips">
+<div class="settings-panel" id="settings-panel-tooltips" role="tabpanel" aria-labelledby="settings-tab-tooltips" data-settings-panel="tooltips">
+<section class="settings-section" aria-labelledby="settings-tips-heading">
+<h4 class="settings-heading" id="settings-tips-heading">Hover help</h4>
+<p class="settings-hint">Turn off the tip layers you do not need in battle.</p>
 <label class="settings-row">Ability tooltips
 <input id="setting-tt-abilities" type="checkbox" checked data-change="updateAccessibilitySettings"/>
 </label>
@@ -1592,20 +1629,30 @@
 <label class="settings-row">Passive tooltips
 <input id="setting-tt-passives" type="checkbox" checked data-change="updateAccessibilitySettings"/>
 </label>
+</section>
 </div>
-<div class="settings-panel" id="settings-panel-help" data-settings-panel="help">
+<div class="settings-panel" id="settings-panel-help" role="tabpanel" aria-labelledby="settings-tab-help" data-settings-panel="help">
+<section class="settings-section" aria-labelledby="settings-help-heading">
+<h4 class="settings-heading" id="settings-help-heading">Tutorial</h4>
 <p class="settings-hint">Reopen the War Room tutorial covering birds, equipment, combat, and troubleshooting.</p>
-<button type="button" class="menu-btn" data-action="openWarRoomTutorial">📖 View Tutorial</button>
+<button type="button" class="menu-btn settings-help-btn" data-action="openWarRoomTutorial">📖 View Tutorial</button>
+</section>
+<section class="settings-section" aria-labelledby="settings-debug-heading">
+<h4 class="settings-heading" id="settings-debug-heading">Diagnostics</h4>
+<p class="settings-hint">For feedback and troubleshooting. Combat telemetry downloads a JSON log of the current fight.</p>
+<div class="settings-help-actions">
+<button type="button" class="menu-btn" data-action="exportCombatTelemetry">📊 Export Combat Telemetry</button>
+<button type="button" class="menu-btn" data-action="openConsoleHud">🖥 Open Console</button>
 </div>
-<div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:14px;">
-<button class="menu-btn" data-action="exportCombatTelemetry">📊 Export Combat Telemetry</button>
-<button class="menu-btn" data-action="openConsoleHud">🖥 Open Console</button>
+</section>
 </div>
-<div style="display:flex;flex-wrap:wrap;gap:10px;justify-content:space-between;align-items:center;margin-top:16px;">
+<footer class="settings-modal-foot">
+<div class="settings-session-actions">
 <button type="button" class="menu-btn battle-abandon-btn" data-action="openAbandonFromSettings">⟨ Abandon</button>
 <button type="button" class="menu-btn" data-action="goMainMenuFromSettings">⏸ Menu</button>
-<button class="abandon-cancel-btn" data-action="closeSettingsModal">Close</button>
 </div>
+<button type="button" class="abandon-cancel-btn" data-action="closeSettingsModal">Close</button>
+</footer>
 </div>
 </div>
 <!-- COMBAT CUSTOM LAYOUT MODAL -->
@@ -1671,19 +1718,27 @@
 <audio id="menu-preview-audio" class="theme-bgm-audio" preload="auto" playsinline loop></audio>
 <div class="music-menu-modal" id="music-menu-modal" role="dialog" aria-modal="true" aria-labelledby="music-menu-title" aria-hidden="true" hidden>
 <div class="music-menu-panel">
-<div class="music-menu-header">
+<header class="music-menu-header">
+<div class="music-menu-head-copy">
 <h2 id="music-menu-title">Music</h2>
-<button type="button" class="music-menu-close" data-action="closeMusicMenu" aria-label="Close music menu">×</button>
+<p class="music-menu-kicker">Assign tracks for each part of the game, then preview from the war room.</p>
 </div>
-<p class="music-menu-hint">Choose music for each part of the game, or preview tracks from the war room.</p>
-<section class="music-menu-section" aria-label="Music volume">
+<button type="button" class="music-menu-close" data-action="closeMusicMenu" aria-label="Close music menu">×</button>
+</header>
+<section class="music-menu-section" aria-labelledby="music-volume-heading">
+<h3 class="music-menu-section-title" id="music-volume-heading">Volume</h3>
 <label class="music-menu-check"><input id="music-menu-muted" type="checkbox" data-change="updateMusicPanelMuted"/> Mute music</label>
 <label class="music-menu-range-label" for="music-menu-volume"><span>Music volume</span><strong id="music-menu-volume-value">50%</strong></label>
 <input id="music-menu-volume" class="music-menu-range" type="range" min="0" max="100" step="5" value="50" data-input="updateMusicPanelVolume"/>
 </section>
-<section class="music-menu-section" aria-label="Music overrides">
-<div class="music-role-row">
-<label for="music-menu-choice">Menu music</label>
+<section class="music-menu-section" aria-labelledby="music-assign-heading">
+<h3 class="music-menu-section-title" id="music-assign-heading">Assignments</h3>
+<p class="music-menu-hint">Pick a track for the title, battles, and the overworld. Defaults stay in place until you change them.</p>
+<div class="music-role-card">
+<label class="music-role-copy" for="music-menu-choice">
+<span class="music-role-title">Menu</span>
+<span class="music-role-hint">Title screen and war room.</span>
+</label>
 <select id="music-menu-choice" data-change="updateMusicRoleChoice:menu">
 <option value="default">Default: Blakiston Theme</option>
 <option value="menu">Blakiston Theme</option>
@@ -1694,8 +1749,11 @@
 <option value="duke">Duke Blakiston Battle</option>
 </select>
 </div>
-<div class="music-role-row">
-<label for="music-battle-choice">Battle music</label>
+<div class="music-role-card">
+<label class="music-role-copy" for="music-battle-choice">
+<span class="music-role-title">Battle</span>
+<span class="music-role-hint">Regular fights. Duke stage 20 always uses his theme.</span>
+</label>
 <select id="music-battle-choice" data-change="updateMusicRoleChoice:battle">
 <option value="default">Default: Random battle track</option>
 <option value="menu">Blakiston Theme</option>
@@ -1706,8 +1764,11 @@
 <option value="duke">Duke Blakiston Battle</option>
 </select>
 </div>
-<div class="music-role-row">
-<label for="music-overworld-choice">Overworld music</label>
+<div class="music-role-card">
+<label class="music-role-copy" for="music-overworld-choice">
+<span class="music-role-title">Overworld</span>
+<span class="music-role-hint">The mission map between encounters.</span>
+</label>
 <select id="music-overworld-choice" data-change="updateMusicRoleChoice:overworld">
 <option value="default">Default: The Last Thermal</option>
 <option value="menu">Blakiston Theme</option>
@@ -1720,15 +1781,16 @@
 </div>
 <p class="music-menu-note">Duke Blakiston stage 20 always uses Duke Blakiston Battle, regardless of battle music selection.</p>
 </section>
-<section class="music-menu-section" aria-label="Preview tracks">
-<h3 class="music-menu-section-title">Preview</h3>
+<section class="music-menu-section" aria-labelledby="music-preview-heading">
+<h3 class="music-menu-section-title" id="music-preview-heading">Preview</h3>
+<p class="music-now-playing" id="music-menu-now-playing" aria-live="polite">Preview stopped — menu music will resume.</p>
 <ul class="music-menu-list" id="music-menu-list">
-<li class="music-menu-item"><span class="music-menu-track-title">Blakiston Theme</span><button type="button" class="music-menu-play-btn" data-action="playMusicMenuPreview:menu">Play</button></li>
-<li class="music-menu-item"><span class="music-menu-track-title">Sharp Beak Quick Wing</span><button type="button" class="music-menu-play-btn" data-action="playMusicMenuPreview:sharp_beak">Play</button></li>
-<li class="music-menu-item"><span class="music-menu-track-title">The Brittle Waltz</span><button type="button" class="music-menu-play-btn" data-action="playMusicMenuPreview:brittle_waltz">Play</button></li>
-<li class="music-menu-item"><span class="music-menu-track-title">The Pigeon&rsquo;s Desperate Jig</span><button type="button" class="music-menu-play-btn" data-action="playMusicMenuPreview:pigeon_jig">Play</button></li>
-<li class="music-menu-item"><span class="music-menu-track-title">The Last Thermal</span><button type="button" class="music-menu-play-btn" data-action="playMusicMenuPreview:last_thermal">Play</button></li>
-<li class="music-menu-item"><span class="music-menu-track-title">Duke Blakiston Battle</span><button type="button" class="music-menu-play-btn" data-action="playMusicMenuPreview:duke">Play</button></li>
+<li class="music-menu-item" data-track-id="menu"><span class="music-menu-track-meta"><span class="music-menu-track-title">Blakiston Theme</span><span class="music-menu-track-roles" hidden></span></span><button type="button" class="music-menu-play-btn" data-action="playMusicMenuPreview:menu">Play</button></li>
+<li class="music-menu-item" data-track-id="sharp_beak"><span class="music-menu-track-meta"><span class="music-menu-track-title">Sharp Beak Quick Wing</span><span class="music-menu-track-roles" hidden></span></span><button type="button" class="music-menu-play-btn" data-action="playMusicMenuPreview:sharp_beak">Play</button></li>
+<li class="music-menu-item" data-track-id="brittle_waltz"><span class="music-menu-track-meta"><span class="music-menu-track-title">The Brittle Waltz</span><span class="music-menu-track-roles" hidden></span></span><button type="button" class="music-menu-play-btn" data-action="playMusicMenuPreview:brittle_waltz">Play</button></li>
+<li class="music-menu-item" data-track-id="pigeon_jig"><span class="music-menu-track-meta"><span class="music-menu-track-title">The Pigeon&rsquo;s Desperate Jig</span><span class="music-menu-track-roles" hidden></span></span><button type="button" class="music-menu-play-btn" data-action="playMusicMenuPreview:pigeon_jig">Play</button></li>
+<li class="music-menu-item" data-track-id="last_thermal"><span class="music-menu-track-meta"><span class="music-menu-track-title">The Last Thermal</span><span class="music-menu-track-roles" hidden></span></span><button type="button" class="music-menu-play-btn" data-action="playMusicMenuPreview:last_thermal">Play</button></li>
+<li class="music-menu-item" data-track-id="duke"><span class="music-menu-track-meta"><span class="music-menu-track-title">Duke Blakiston Battle</span><span class="music-menu-track-roles" hidden></span></span><button type="button" class="music-menu-play-btn" data-action="playMusicMenuPreview:duke">Play</button></li>
 </ul>
 <button type="button" class="music-menu-stop-btn" data-action="stopMusicMenuPreview">Stop preview</button>
 </section>
