@@ -6510,6 +6510,8 @@ function buildBirdCard(key, bird, locked) {
   const tierCss=Avian?.data?.birdCardTiers?.TIER_CSS?.[cardTier]||'tier-grey';
   card.className = 'bird-card' + (locked ? ' bird-locked' : ` bird-card--${tierCss}`) + (ui.expandedBird===key?' selected':'');
   card.dataset.birdKey = key;
+  card.setAttribute('aria-label', bird.name);
+  card.title = bird.name;
   if (!locked) card.onclick = () => selectBird(key, card);
 
   const cls = classToRoleId(bird.class);
@@ -6525,7 +6527,6 @@ function buildBirdCard(key, bird, locked) {
         <span class="bird-size-chip">${sizeLabel}</span>
       </div>
       <div class="bird-portrait">${renderBirdIconHTML(key,sizeClass,true)}</div>
-      <div class="bird-nm" style="color:#555;font-size:.8rem;">${bird.name}</div>
       <div class="lock-overlay"><span class="lock-icon" style="font-size:1rem;">🔒</span><div class="lock-label" style="font-size:.6rem;color:#555;line-height:1.3;">${unlockLabel}</div></div>`;
   } else {
     const cardTier=typeof getBirdCardTier==='function'?getBirdCardTier(key):'grey';
@@ -6548,9 +6549,7 @@ function buildBirdCard(key, bird, locked) {
         ${featherChip}
       </div>
       ${starsHtml}
-      <div class="bird-portrait">${renderBirdIconHTML(key,sizeClass,false)}</div>
-      <div class="bird-nm">${bird.name}</div>
-      <div class="bird-tagline-mini">${bird.tagline||''}</div>`;
+      <div class="bird-portrait">${renderBirdIconHTML(key,sizeClass,false)}</div>`;
   }
   return card;
 }
@@ -21101,7 +21100,7 @@ wireThemeBgmAutoplayUnlock();
     };
   }
 
-  // Character Select: wrap buildBirdCard to use sprites
+  // Character Select: keep .bird-portrait so roster sprites stay centered.
   if(typeof globalThis.buildBirdCard==='function'){
     const _old = globalThis.buildBirdCard;
     globalThis.buildBirdCard = function(key, bird, locked, globalMax){
@@ -21111,8 +21110,10 @@ wireThemeBgmAutoplayUnlock();
         if(!SPRITE_KEYS.has(k)) return card;
         const portrait = card.querySelector('.bird-portrait');
         if(!portrait) return card;
-       portrait.outerHTML = renderBirdIconHTML(key, bird, locked);
-       portrait.innerHTML = renderBirdIconHTML(key, bird, locked);
+        const sizeClass = (typeof globalThis.getUISizeClass==='function')
+          ? globalThis.getUISizeClass(bird || globalThis.BIRDS?.[key], 'select')
+          : 'medium';
+        portrait.innerHTML = renderBirdIconHTML(k, sizeClass, locked);
         if(!locked){
           card.addEventListener('mouseenter', ()=> {
             const s = portrait.querySelector('.sprite4'); if(!s) return;

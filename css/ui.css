@@ -248,14 +248,27 @@
    Loaded last so leftover per-species 72px / collapsed-tier rules cannot win.
    ============================================================ */
 .bird-portrait,
-.bird-card .bird-portrait{
-  display:flex;
+.bird-card .bird-portrait,
+#select-hub-door .sfsel__roster .bird-portrait{
+  display:flex !important;
   align-items:flex-end;
-  justify-content:center;
+  justify-content:center !important;
+  width:100% !important;
   height:auto !important;
   min-height:56px;
   margin:4px auto 8px;
   overflow:visible !important;
+}
+.bird-card .sprite4,
+#select-hub-door .sfsel__roster .bird-card .sprite4,
+#select-hub-door .sfsel__roster .bird-card > .sprite4{
+  display:block !important;
+  margin-left:auto !important;
+  margin-right:auto !important;
+}
+#select-hub-door .sfsel__roster .bird-nm,
+#select-hub-door .sfsel__roster .bird-tagline-mini{
+  display:none !important;
 }
 /* Profile pane: stack the sprite above the name and center both. */
 .sfsel-profile__identity,
