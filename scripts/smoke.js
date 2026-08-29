@@ -69,6 +69,11 @@ const checks = [
   { label: 'installErrorHUD global', re: /global\.installErrorHUD\s*=\s*installErrorHUD/ },
   { label: 'pushErrorHUD global', re: /global\.pushErrorHUD\s*=\s*pushErrorHUD/ },
   { label: 'bundle hash injected',      re: /globalThis\.__AVIAN_BUNDLE_HASH__\s*=/ },
+  { label: 'Nest equipment bag/worn layout', re: /nest-eq-layout/ },
+  { label: 'Nest compact bag cards', re: /nest-inv-item--compact/ },
+  { label: 'grantEquipment auto-equip', re: /function grantEquipment\b/ },
+  { label: 'clearGameCache reloads HTTP shell', re: /function reloadShellHttpCache\b/ },
+  { label: 'confirmClearCache cache-bust reload', re: /function cacheBustReload\b/ },
 ];
 
 for (const c of checks) {
@@ -86,22 +91,32 @@ if (sizeKB < expectMinKB) {
 }
 
 const hashFile = path.join(ROOT, 'js', 'avian-game.bundle.hash');
+let bundleHash = '';
 if (fs.existsSync(hashFile)) {
-  const hash = fs.readFileSync(hashFile, 'utf8').trim();
-  if (/^[0-9a-f]{12}$/.test(hash)) ok(`hash file ${hash}`);
-  else { fail(`hash file malformed: "${hash}"`); failed++; }
+  bundleHash = fs.readFileSync(hashFile, 'utf8').trim();
+  if (/^[0-9a-f]{12}$/.test(bundleHash)) ok(`hash file ${bundleHash}`);
+  else { fail(`hash file malformed: "${bundleHash}"`); failed++; }
 } else {
   fail('hash file missing (js/avian-game.bundle.hash)');
+  failed++;
+}
+
+const headerHash = (src.match(/globalThis\.__AVIAN_BUNDLE_HASH__\s*=\s*"([0-9a-f]{12})"/) || [])[1] || '';
+if (bundleHash && headerHash && headerHash === bundleHash) {
+  ok('bundle header hash matches hash file');
+} else if (bundleHash) {
+  fail(`bundle header hash "${headerHash || 'missing'}" does not match hash file ${bundleHash}`);
   failed++;
 }
 
 const sw = path.join(ROOT, 'sw.js');
 if (fs.existsSync(sw)) {
   const swSrc = fs.readFileSync(sw, 'utf8');
-  if (/CACHE_VERSION = 'avian-ascent-[0-9a-f]{12}'/.test(swSrc)) {
-    ok('sw.js CACHE_VERSION pinned to bundle hash');
+  const swHash = (swSrc.match(/CACHE_VERSION = 'avian-ascent-([0-9a-f]{12})'/) || [])[1] || '';
+  if (bundleHash && swHash === bundleHash) {
+    ok(`sw.js CACHE_VERSION pinned to bundle hash ${bundleHash}`);
   } else {
-    fail('sw.js CACHE_VERSION not pinned to bundle hash');
+    fail(`sw.js CACHE_VERSION '${swHash || 'missing'}' does not match hash file ${bundleHash || 'missing'}`);
     failed++;
   }
 }

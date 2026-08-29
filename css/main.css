@@ -128,6 +128,18 @@ header p{color:var(--text-dim);font-style:italic;font-size:1rem;margin-top:4px;}
     padding-bottom:max(32px, env(safe-area-inset-bottom, 0px));
   }
 }
+.start-screen-actions{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:12px;
+}
+.splash-cache-btn--start{
+  width:auto;
+  min-width:220px;
+  margin-top:0;
+  background:rgba(12,14,22,.55);
+}
 .take-flight-btn{
   font-family:'Cinzel',serif;
   font-weight:700;
@@ -4356,6 +4368,8 @@ html.avian-ow-nest-embed .nest-close{display:none!important;}
 /* Abandon run modal */
 .abandon-modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:200;align-items:center;justify-content:center;}
 .abandon-modal.open{display:flex;}
+#clear-cache-modal,
+#erase-progress-modal{z-index:12600;}
 .abandon-inner{background:var(--surface);border:1px solid var(--red);border-radius:12px;padding:26px 30px;max-width:360px;text-align:center;}
 .abandon-inner h3{font-family:'Cinzel',serif;color:var(--red-light);font-size:1.1rem;margin-bottom:8px;}
 .abandon-inner p{color:var(--text-dim);font-size:.88rem;margin-bottom:18px;line-height:1.5;}

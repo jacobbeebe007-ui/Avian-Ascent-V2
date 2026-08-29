@@ -3571,6 +3571,49 @@ function clearDevCodeAccess() {
   try { localStorage.removeItem(CREATOR_CODES_KEY); } catch (_) { /* noop */ }
   try { localStorage.removeItem(DEV_CODE_SWITCHES_KEY); } catch (_) { /* noop */ }
 }
+const GAME_SHELL_RELOAD_URLS = [
+  './',
+  './index.html',
+  './css/main.css',
+  './css/sprites.css',
+  './css/shop.css',
+  './css/ui.css',
+  './js/ui/error-hud.js',
+  './js/audio/bgm-shared.js',
+  './js/avian-game.bundle.js',
+  './sw.js',
+  './site.webmanifest',
+];
+
+async function reloadShellHttpCache() {
+  if (typeof fetch !== 'function') return;
+  const eachMs = 1500;
+  const allMs = 2500;
+  const one = (url) => {
+    const ctrl = (typeof AbortController === 'function') ? new AbortController() : null;
+    const timer = ctrl ? setTimeout(() => { try { ctrl.abort(); } catch (_) {} }, eachMs) : null;
+    return fetch(url, {
+      cache: 'reload',
+      credentials: 'same-origin',
+      signal: ctrl ? ctrl.signal : undefined,
+    }).catch(() => null).finally(() => { if (timer) clearTimeout(timer); });
+  };
+  await Promise.race([
+    Promise.all(GAME_SHELL_RELOAD_URLS.map(one)),
+    new Promise((resolve) => setTimeout(resolve, allMs)),
+  ]);
+}
+
+function cacheBustReload() {
+  try {
+    const url = new URL(location.href);
+    url.searchParams.set('avianCacheBust', String(Date.now()));
+    location.replace(url.href);
+  } catch (_) {
+    try { location.reload(); } catch (_e) { /* sandboxed embed */ }
+  }
+}
+
 async function clearGameCache() {
   let ran = false;
   if ('serviceWorker' in navigator) {
@@ -3587,8 +3630,17 @@ async function clearGameCache() {
       const names = await caches.keys();
       await Promise.all(names.map((n) => caches.delete(n)));
       if (names.length) ran = true;
+      /* Second pass in case the still-controlling worker recached during unregister. */
+      const leftover = await caches.keys();
+      if (leftover.length) {
+        await Promise.all(leftover.map((n) => caches.delete(n)));
+      }
     } catch (_) { /* noop */ }
   }
+  try {
+    await reloadShellHttpCache();
+    ran = true;
+  } catch (_) { /* noop */ }
   // Creator-code access and its enabled-code checklist are device-local cache,
   // not player progress. Reset both even when no Cache API entries exist.
   clearDevCodeAccess();
@@ -3650,7 +3702,12 @@ async function confirmClearCache() {
     msg.textContent = 'Cached assets cleared. Reloading…';
     msg.style.color = 'var(--gold-light)';
   }
-  setTimeout(() => { location.reload(); }, 800);
+  setTimeout(() => { cacheBustReload(); }, 250);
+}
+if (typeof Avian?.actions?.register === 'function') {
+  Avian.actions.register('openClearCacheModal', openClearCacheModal);
+  Avian.actions.register('closeClearCacheModal', closeClearCacheModal);
+  Avian.actions.register('confirmClearCache', confirmClearCache);
 }
 function confirmEraseProgress() {
   clearAllProgress();
