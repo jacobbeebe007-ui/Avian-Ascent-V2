@@ -181,12 +181,15 @@
 (() => {
   const selectSizeForCard = (bird) => {
     try {
+      if (typeof globalThis.getUISizeClass === 'function') return globalThis.getUISizeClass(bird, 'select');
       if (typeof resolveBirdSpriteClass === 'function') return resolveBirdSpriteClass(bird, 'select');
     } catch (_) {}
-    const raw = String(bird?.size || bird?.birdSize || '').toLowerCase();
+    const raw = String(bird?.realSize || bird?.size || bird?.birdSize || '').toLowerCase();
+    if (raw.includes('boss')) return 'boss';
+    if (raw.includes('giant')) return 'giant';
     if (raw.includes('tiny')) return 'tiny';
     if (raw.includes('small')) return 'small';
-    if (raw.includes('xlarge') || raw.includes('xl')) return 'xl';
+    if (raw.includes('very large') || raw.includes('xlarge') || raw === 'xl') return 'xl';
     if (raw.includes('large')) return 'large';
     return 'medium';
   };

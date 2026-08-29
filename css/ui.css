@@ -241,3 +241,179 @@
 .combat-breakdown-row strong { text-align:right; }
 .combat-breakdown-note,.combat-log-empty { color:#cbd5d8; }
 @media (max-width:600px) { .combat-breakdown-modal { padding:.35rem; } .combat-breakdown-panel { max-height:94vh; font-size:1rem; } }
+
+/* ============================================================
+   Authoritative sprite sizes from the bird profile
+   (Tiny / Small / Medium / Large / Very Large / Giant / Boss)
+   Loaded last so leftover per-species 72px / collapsed-tier rules cannot win.
+   ============================================================ */
+.bird-portrait,
+.bird-card .bird-portrait{
+  display:flex;
+  align-items:flex-end;
+  justify-content:center;
+  height:auto !important;
+  min-height:56px;
+  margin:4px auto 8px;
+  overflow:visible !important;
+}
+.sfsel-profile__identity{
+  grid-template-columns:auto minmax(0,1fr) !important;
+  align-items:end;
+}
+.sfsel-profile__portrait,
+.sfsel-profile__portrait .ascent-panel-portrait,
+#select-hub-door .sfsel .ascent-panel-portrait,
+#select-hub-door .sfsel__detail .ascent-panel-portrait{
+  width:auto !important;
+  height:auto !important;
+  min-height:0 !important;
+  max-height:none !important;
+  overflow:visible !important;
+}
+.sfsel-profile__portrait .sprite4,
+.sfsel-profile__portrait .bird-emo,
+.sfsel-profile__portrait .bird-fallback-svg,
+#select-hub-door .sfsel .ascent-strip-portrait-wrap .sprite4{
+  transform:none !important;
+}
+
+/* Default ladder (shop, nest, fortune, fallbacks) */
+.sprite4.tiny{width:48px !important;height:48px !important;}
+.sprite4.small{width:62px !important;height:62px !important;}
+.sprite4.medium{width:78px !important;height:78px !important;}
+.sprite4.large{width:94px !important;height:94px !important;}
+.sprite4.xl,
+.sprite4.xlarge{width:112px !important;height:112px !important;}
+.sprite4.giant{width:130px !important;height:130px !important;}
+.sprite4.boss{width:130px !important;height:130px !important;}
+
+/* Select roster cards */
+.bird-card .sprite4.tiny,
+#bird-grid .sprite4.tiny{width:48px !important;height:48px !important;}
+.bird-card .sprite4.small,
+#bird-grid .sprite4.small{width:62px !important;height:62px !important;}
+.bird-card .sprite4.medium,
+#bird-grid .sprite4.medium{width:78px !important;height:78px !important;}
+.bird-card .sprite4.large,
+#bird-grid .sprite4.large{width:94px !important;height:94px !important;}
+.bird-card .sprite4.xl,
+.bird-card .sprite4.xlarge,
+#bird-grid .sprite4.xl,
+#bird-grid .sprite4.xlarge{width:112px !important;height:112px !important;}
+.bird-card .sprite4.giant,
+#bird-grid .sprite4.giant{width:130px !important;height:130px !important;}
+.bird-card .sprite4.boss,
+#bird-grid .sprite4.boss{width:130px !important;height:130px !important;}
+
+/* Character-select profile portrait */
+.sfsel-profile__portrait .sprite4.tiny,
+.ascent-panel-portrait .sprite4.tiny,
+#select-hub-door .sfsel .ascent-panel-portrait .sprite4.tiny{width:56px !important;height:56px !important;}
+.sfsel-profile__portrait .sprite4.small,
+.ascent-panel-portrait .sprite4.small,
+#select-hub-door .sfsel .ascent-panel-portrait .sprite4.small{width:72px !important;height:72px !important;}
+.sfsel-profile__portrait .sprite4.medium,
+.ascent-panel-portrait .sprite4.medium,
+#select-hub-door .sfsel .ascent-panel-portrait .sprite4.medium{width:92px !important;height:92px !important;}
+.sfsel-profile__portrait .sprite4.large,
+.ascent-panel-portrait .sprite4.large,
+#select-hub-door .sfsel .ascent-panel-portrait .sprite4.large{width:112px !important;height:112px !important;}
+.sfsel-profile__portrait .sprite4.xl,
+.sfsel-profile__portrait .sprite4.xlarge,
+.ascent-panel-portrait .sprite4.xl,
+.ascent-panel-portrait .sprite4.xlarge,
+#select-hub-door .sfsel .ascent-panel-portrait .sprite4.xl,
+#select-hub-door .sfsel .ascent-panel-portrait .sprite4.xlarge{width:132px !important;height:132px !important;}
+.sfsel-profile__portrait .sprite4.giant,
+.ascent-panel-portrait .sprite4.giant,
+#select-hub-door .sfsel .ascent-panel-portrait .sprite4.giant{width:152px !important;height:152px !important;}
+.sfsel-profile__portrait .sprite4.boss,
+.ascent-panel-portrait .sprite4.boss,
+#select-hub-door .sfsel .ascent-panel-portrait .sprite4.boss{width:152px !important;height:152px !important;}
+
+/* Combat avatars — each profile size is a distinct footprint */
+#screen-battle .avatar-wrap{
+  height:auto !important;
+  min-height:168px !important;
+  min-width:168px !important;
+  overflow:visible !important;
+}
+#screen-battle #player-avatar .sprite4.tiny,
+#screen-battle #enemy-avatar .sprite4.tiny{width:72px !important;height:72px !important;}
+#screen-battle #player-avatar .sprite4.small,
+#screen-battle #enemy-avatar .sprite4.small{width:90px !important;height:90px !important;}
+#screen-battle #player-avatar .sprite4.medium,
+#screen-battle #enemy-avatar .sprite4.medium{width:110px !important;height:110px !important;}
+#screen-battle #player-avatar .sprite4.large,
+#screen-battle #enemy-avatar .sprite4.large{width:130px !important;height:130px !important;}
+#screen-battle #player-avatar .sprite4.xl,
+#screen-battle #player-avatar .sprite4.xlarge,
+#screen-battle #enemy-avatar .sprite4.xl,
+#screen-battle #enemy-avatar .sprite4.xlarge{width:150px !important;height:150px !important;}
+#screen-battle #player-avatar .sprite4.giant,
+#screen-battle #enemy-avatar .sprite4.giant{width:172px !important;height:172px !important;}
+#screen-battle #player-avatar .sprite4.boss,
+#screen-battle #enemy-avatar .sprite4.boss{width:184px !important;height:184px !important;}
+
+/* Neutralize leftover species locks so profile size is the only scale */
+.bird-card .sprite4.sprite-penguin.tiny,
+#bird-grid .sprite4.sprite-penguin.tiny{width:48px !important;height:48px !important;}
+.bird-card .sprite4.sprite-penguin.small,
+#bird-grid .sprite4.sprite-penguin.small,
+.bird-card .sprite4.sprite-robin.small,
+#bird-grid .sprite4.sprite-robin.small{width:62px !important;height:62px !important;}
+.bird-card .sprite4.sprite-penguin.medium,
+#bird-grid .sprite4.sprite-penguin.medium,
+.bird-card .sprite4.sprite-seagull.medium,
+#bird-grid .sprite4.sprite-seagull.medium{width:78px !important;height:78px !important;}
+.bird-card .sprite4.sprite-penguin.large,
+#bird-grid .sprite4.sprite-penguin.large{width:94px !important;height:94px !important;}
+.bird-card .sprite4.sprite-penguin.xl,
+.bird-card .sprite4.sprite-penguin.xlarge,
+#bird-grid .sprite4.sprite-penguin.xl,
+#bird-grid .sprite4.sprite-penguin.xlarge{width:112px !important;height:112px !important;}
+.bird-card .sprite4.sprite-penguin.giant,
+#bird-grid .sprite4.sprite-penguin.giant{width:130px !important;height:130px !important;}
+
+#screen-battle #player-avatar .sprite4.sprite-penguin.tiny,
+#screen-battle #enemy-avatar .sprite4.sprite-penguin.tiny,
+#screen-battle #player-avatar .sprite4.sprite-robin.tiny,
+#screen-battle #enemy-avatar .sprite4.sprite-robin.tiny{width:72px !important;height:72px !important;}
+#screen-battle #player-avatar .sprite4.sprite-penguin.small,
+#screen-battle #enemy-avatar .sprite4.sprite-penguin.small,
+#screen-battle #player-avatar .sprite4.sprite-robin.small,
+#screen-battle #enemy-avatar .sprite4.sprite-robin.small{width:90px !important;height:90px !important;}
+#screen-battle #player-avatar .sprite4.sprite-penguin.medium,
+#screen-battle #enemy-avatar .sprite4.sprite-penguin.medium,
+#screen-battle #player-avatar .sprite4.sprite-seagull.medium,
+#screen-battle #enemy-avatar .sprite4.sprite-seagull.medium{width:110px !important;height:110px !important;}
+#screen-battle #player-avatar .sprite4.sprite-penguin.large,
+#screen-battle #enemy-avatar .sprite4.sprite-penguin.large{width:130px !important;height:130px !important;}
+#screen-battle #player-avatar .sprite4.sprite-penguin.xl,
+#screen-battle #player-avatar .sprite4.sprite-penguin.xlarge,
+#screen-battle #enemy-avatar .sprite4.sprite-penguin.xl,
+#screen-battle #enemy-avatar .sprite4.sprite-penguin.xlarge{width:150px !important;height:150px !important;}
+#screen-battle #player-avatar .sprite4.sprite-penguin.giant,
+#screen-battle #enemy-avatar .sprite4.sprite-penguin.giant{width:172px !important;height:172px !important;}
+
+@media (max-width:720px){
+  #select-hub-door .sfsel__detail .ascent-panel-portrait{width:auto !important;height:auto !important;}
+  .sfsel-profile__portrait .sprite4.tiny,
+  .ascent-panel-portrait .sprite4.tiny{width:44px !important;height:44px !important;}
+  .sfsel-profile__portrait .sprite4.small,
+  .ascent-panel-portrait .sprite4.small{width:54px !important;height:54px !important;}
+  .sfsel-profile__portrait .sprite4.medium,
+  .ascent-panel-portrait .sprite4.medium{width:66px !important;height:66px !important;}
+  .sfsel-profile__portrait .sprite4.large,
+  .ascent-panel-portrait .sprite4.large{width:78px !important;height:78px !important;}
+  .sfsel-profile__portrait .sprite4.xl,
+  .sfsel-profile__portrait .sprite4.xlarge,
+  .ascent-panel-portrait .sprite4.xl,
+  .ascent-panel-portrait .sprite4.xlarge{width:90px !important;height:90px !important;}
+  .sfsel-profile__portrait .sprite4.giant,
+  .ascent-panel-portrait .sprite4.giant,
+  .sfsel-profile__portrait .sprite4.boss,
+  .ascent-panel-portrait .sprite4.boss{width:104px !important;height:104px !important;}
+}
+

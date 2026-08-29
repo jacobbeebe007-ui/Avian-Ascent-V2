@@ -73,6 +73,7 @@
     }
     if (v2.aspect) bird.aspect = v2.aspect;
     if (v2.class) bird.class = v2.class;
+    if (v2.realSize) bird.realSize = v2.realSize;
     if (v2.critDamage != null) bird.critDamage = v2.critDamage;
     if (v2.bossOverride) bird.bossOverride = true;
 

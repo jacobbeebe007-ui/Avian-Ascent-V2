@@ -6050,8 +6050,8 @@ function showNextStagePreview() {
 // ============================================================
 //  SELECTION SCREEN
 // ============================================================
-const SIZE_ORDER = ['tiny','small','medium','large','xl'];
-const SIZE_LABELS = {tiny:'Tiny',small:'Small',medium:'Medium',large:'Large',xl:'X-Large'};
+const SIZE_ORDER = ['tiny','small','medium','large','xl','giant','boss'];
+const SIZE_LABELS = {tiny:'Tiny',small:'Small',medium:'Medium',large:'Large',xl:'Very Large',xlarge:'Very Large',giant:'Giant',boss:'Boss'};
 const ROLE_ORDER = ['knight','brute','rogue','mage','siren','inquisitor','bard'];
 const ROLE_LABELS = {knight:'🛡️ Knight',brute:'💪 Brute',rogue:'🗡️ Rogue',mage:'🔮 Mage',siren:'🎵 Siren',inquisitor:'🦅 Inquisitor',bard:'🎭 Bard',striker:'🗡️ Rogue',bruiser:'🛡️ Knight',tank:'🛡️ Knight',trickster:'🎭 Bard',predator:'🦅 Inquisitor',singer:'🔮 Mage'};
 const ROLE_FLAVOR = {knight:'Armoured defender; absorbs and redirects physical damage.',brute:'Heavy physical bruiser; wins trades with force and bulk.',rogue:'Fast evasive striker; speed, dodge, and penetration.',mage:'Arcane damage and control through spells.',siren:'Song-focused buffs, debuffs, and vocal magic.',inquisitor:'Execution pressure, pierce, and finishing power.',bard:'Utility, feints, and disruptive setups.'};
@@ -6371,7 +6371,7 @@ function buildBirdGrid() {
 
   safeBirdEntries.forEach(([key, bird]) => {
     let groupKey;
-    if(view==='size') groupKey = bird.size||'medium';
+    if(view==='size') groupKey = getUISizeClass(bird, 'select') || bird.size || 'medium';
     else if(view==='speciesTier') {
       const rarityMeta=getBirdSpeciesRarityMeta(key);
       groupKey = rarityMeta.speciesTier||'grey';
@@ -6514,6 +6514,7 @@ function buildBirdCard(key, bird, locked) {
 
   const cls = classToRoleId(bird.class);
   const sizeClass = getUISizeClass(bird, 'select');
+  const sizeLabel = SIZE_LABELS[sizeClass] || SIZE_LABELS[bird.size||'medium'] || bird.size;
 
   const unlockLabel = bird.unlockHint || '🔒 Locked';
 
@@ -6521,9 +6522,9 @@ function buildBirdCard(key, bird, locked) {
     card.innerHTML = `
       <div class="bird-card-head">
         <span class="class-badge class-${cls}">${idToClassLabel(cls).toUpperCase()}</span>
-        <span class="bird-size-chip">${SIZE_LABELS[bird.size||'medium']||bird.size}</span>
+        <span class="bird-size-chip">${sizeLabel}</span>
       </div>
-      <div style="display:flex;justify-content:center;margin:2px auto 6px;">${renderBirdIconHTML(key,sizeClass,true)}</div>
+      <div class="bird-portrait">${renderBirdIconHTML(key,sizeClass,true)}</div>
       <div class="bird-nm" style="color:#555;font-size:.8rem;">${bird.name}</div>
       <div class="lock-overlay"><span class="lock-icon" style="font-size:1rem;">🔒</span><div class="lock-label" style="font-size:.6rem;color:#555;line-height:1.3;">${unlockLabel}</div></div>`;
   } else {
@@ -6541,13 +6542,13 @@ function buildBirdCard(key, bird, locked) {
     card.innerHTML = `
       <div class="bird-card-head">
         <span class="class-badge class-${cls}">${idToClassLabel(cls).toUpperCase()}</span>
-        <span class="bird-size-chip">${SIZE_LABELS[bird.size||'medium']||bird.size}</span>
+        <span class="bird-size-chip">${sizeLabel}</span>
         <span class="bird-card-tier-badge ${tierCss}">${tierLabel}</span>
         ${rarityBadge}
         ${featherChip}
       </div>
       ${starsHtml}
-      <div style="display:flex;justify-content:center;margin:4px auto 8px;">${renderBirdIconHTML(key,sizeClass,false)}</div>
+      <div class="bird-portrait">${renderBirdIconHTML(key,sizeClass,false)}</div>
       <div class="bird-nm">${bird.name}</div>
       <div class="bird-tagline-mini">${bird.tagline||''}</div>`;
   }
@@ -6645,32 +6646,73 @@ function __hasSpriteKey(k){
   return !!(document.querySelector && document.querySelector('.sprite-'+k)) || (globalThis.SPRITE_KEYS_ALL && SPRITE_KEYS_ALL.has && SPRITE_KEYS_ALL.has(k));
 }
 /** Effective roster size for UI (fixes older saves missing player.size; aliases emperorpenguin → penguin). */
-function rosterSizeForEntity(entity){
-  let sz=String(entity?.size||entity?.birdSize||'').trim().toLowerCase();
-  if(sz) return sz;
-  const flat=String(entity?.birdKey||entity?.portraitKey||entity?.id||'').toLowerCase().replace(/[^a-z]/g,'');
+function rosterCanonBirdKey(raw){
+  const flat=String(raw||'').toLowerCase().replace(/[^a-z]/g,'');
   if(!flat) return '';
-  const toCanon={emperorpenguin:'penguin',secretarybird:'secretary',shoebillstork:'shoebill',harpyeagle:'harpy',baldeagle:'baldEagle',blackcockatoo:'blackCockatoo',dukeblakiston:'dukeBlakiston',williewagtail:'wagtail',chikadee:'chickadee'};
-  const canon=toCanon[flat]||flat;
-  if(BIRDS[canon]?.size) return String(BIRDS[canon].size).toLowerCase();
-  const hit=Object.keys(BIRDS).find(k=>String(k).toLowerCase().replace(/[^a-z]/g,'')===flat);
-  return hit&&BIRDS[hit]?.size?String(BIRDS[hit].size).toLowerCase():'';
+  const toCanon={
+    emperorpenguin:'penguin', secretarybird:'secretary', shoebillstork:'shoebill',
+    harpyeagle:'harpy', baldeagle:'baldEagle', blackcockatoo:'blackCockatoo',
+    dukeblakiston:'dukeBlakiston', williewagtail:'wagtail', chikadee:'chickadee',
+    snowyowl:'snowyOwl', peregrinefalcon:'peregrine',
+  };
+  if(toCanon[flat]) return toCanon[flat];
+  if(typeof BIRDS==='object' && BIRDS && BIRDS[flat]) return flat;
+  const hit=typeof BIRDS==='object' && BIRDS
+    ? Object.keys(BIRDS).find(k=>String(k).toLowerCase().replace(/[^a-z]/g,'')===flat)
+    : null;
+  return hit||flat;
+}
+function runtimeSizeFromProfileToken(token){
+  const raw=String(token||'').trim();
+  if(!raw) return '';
+  const chart=globalThis.Avian?.data?.sizeChart;
+  if(chart){
+    if(chart[raw]?.runtimeSize) return String(chart[raw].runtimeSize);
+    const hit=Object.keys(chart).find(k=>k.toLowerCase()===raw.toLowerCase());
+    if(hit && chart[hit]?.runtimeSize) return String(chart[hit].runtimeSize);
+  }
+  const s=raw.toLowerCase().replace(/[_-]+/g,' ').replace(/\s+/g,' ').trim();
+  if(s==='boss'||s.includes('boss')) return 'boss';
+  if(s==='giant') return 'giant';
+  if(s==='tiny') return 'tiny';
+  if(s==='small') return 'small';
+  if(s==='medium') return 'medium';
+  if(s==='xl'||s==='xlarge'||s==='x large'||s==='extra large'||s==='very large'||s==='verylarge') return 'xl';
+  if(s==='large') return 'large';
+  if(s.includes('tiny')) return 'tiny';
+  if(s.includes('small')) return 'small';
+  if(s.includes('giant')) return 'giant';
+  if(s.includes('xlarge')||s==='xl') return 'xl';
+  if(s.includes('large')) return 'large';
+  if(s.includes('medium')) return 'medium';
+  return '';
+}
+function profileSizeTokenForEntity(entity){
+  const key=rosterCanonBirdKey(entity?.birdKey||entity?.portraitKey||entity?.id||'');
+  const v2=globalThis.Avian?.getBirdV2?.(key)||globalThis.Avian?.data?.birdsV2?.[key];
+  if(v2?.realSize) return v2.realSize;
+  if(entity?.realSize) return entity.realSize;
+  if(key && BIRDS[key]?.realSize) return BIRDS[key].realSize;
+  const sz=String(entity?.size||entity?.birdSize||'').trim();
+  if(sz) return sz;
+  if(key && BIRDS[key]?.size) return BIRDS[key].size;
+  return '';
+}
+function rosterSizeForEntity(entity){
+  return runtimeSizeFromProfileToken(profileSizeTokenForEntity(entity))
+    || String(entity?.size||entity?.birdSize||'').trim().toLowerCase();
 }
 function getUISizeClass(entity, context='general'){
-  const key=__normSpriteKey(entity?.portraitKey||entity?.birdKey||entity?.id||'');
-  const sz=rosterSizeForEntity(entity);
-  const isBoss=!!entity?.isBoss;
-  if(isBoss&&context==='battle') return 'boss';
-  if(key==='penguin') return 'xl';
-  if(key==='seagull') return 'medium';
-  if(key==='robin') return 'small';
-  if(sz.includes('tiny')) return 'tiny';
-  if(sz.includes('small')) return 'small';
-  if(sz==='xl'||sz.includes('xlarge')) return 'xl';
-  if(sz.includes('large')) return 'large';
-  if(sz.includes('medium')) return 'medium';
+  if(entity?.isBoss && context==='battle') return 'boss';
+  const runtime=rosterSizeForEntity(entity);
+  if(runtime) return runtime;
   return 'medium';
 }
+globalThis.rosterCanonBirdKey=rosterCanonBirdKey;
+globalThis.runtimeSizeFromProfileToken=runtimeSizeFromProfileToken;
+globalThis.profileSizeTokenForEntity=profileSizeTokenForEntity;
+globalThis.rosterSizeForEntity=rosterSizeForEntity;
+globalThis.getUISizeClass=getUISizeClass;
 function normalizeSpriteBirdKey(raw){
   const k = String(raw||'').toLowerCase().replace(/[^a-z]/g,'');
   if(k === 'peregrinefalcon') return 'peregrine';
@@ -7161,7 +7203,7 @@ function updateAscentPanel(key) {
     const cls = classToRoleId(bird.class);
     const sizeClass = getUISizeClass(bird, 'panel');
     const classLabel=idToClassLabel(cls);
-    const sizeLabel=SIZE_LABELS[bird.size||'medium']||bird.size;
+    const sizeLabel=SIZE_LABELS[sizeClass]||SIZE_LABELS[bird.size||'medium']||bird.size;
     const kit=materializeRosterPreviewKit(key);
     const dispStats=kit.stats&&Object.keys(kit.stats).length?kit.stats:bird.stats;
     const maxEn=kit.energyMax>0?kit.energyMax:getEnergyProfile(normalizeBirdSizeForEnergy(bird.size||'medium')).maxEN;
@@ -20966,7 +21008,10 @@ wireThemeBgmAutoplayUnlock();
     if(!el || !SPRITE_KEYS.has(key)) return null;
     let spr = el.querySelector('.sprite4');
     if(spr) return spr;
-    const spriteHtml = `<div class="sprite4 ${locked?'locked':''} sprite-${key} frame-0" id="${el.id}-sprite"></div>`;
+    const spriteSize = (typeof globalThis.getUISizeClass==='function')
+      ? globalThis.getUISizeClass(el.id==='enemy-avatar' ? globalThis.G?.enemy : globalThis.G?.player, 'battle')
+      : 'medium';
+    const spriteHtml = `<div class="sprite4 ${spriteSize} ${locked?'locked':''} sprite-${key} frame-0" id="${el.id}-sprite"></div>`;
     el.innerHTML = el.id === 'enemy-avatar' ? wrapSpriteFaceLeft(spriteHtml) : spriteHtml;
     el.style.fontSize='';
     return el.querySelector('.sprite4');
@@ -21094,16 +21139,24 @@ wireThemeBgmAutoplayUnlock();
    ============================================================ */
 (function(){
   const SPRITE_KEYS = ['sparrow','goose','blackbird','crow','macaw','hummingbird','shoebill','secretarybird','secretary','magpie','kookaburra','robin','kiwi','penguin','dove','flamingo','seagull','swan','emu','bowerbird','raven','lyrebird','peregrine','snowyowl','toucan','dukeblakiston','albatross','harpy','harpyeagle','baldeagle','blackcockatoo','ostrich','cassowary','barnowl','bluejay','bushturkey','bustard','cardinal','dodo','fairywren','finch','firecrest','galah','goldeneagle','pigeon','mutatedpigeon','wagtail','chickadee'];
-  function mk(k, small=true){
-    const cls = small ? 'sprite4 small' : 'sprite4';
+  function mk(k, sizeClass){
+    const cls = 'sprite4 ' + (sizeClass || 'medium');
     return `<div class="${cls} sprite-${k} frame-0"></div>`;
   }
-  // Replace portrait glyphs with sprite blocks
+  // Replace portrait glyphs with sprite blocks sized from the bird profile
   if(globalThis.PORTRAITS){
     SPRITE_KEYS.forEach(k=>{
-      PORTRAITS[k] = mk(k, true);
+      const bird = globalThis.BIRDS?.[k];
+      const sz = (typeof globalThis.getUISizeClass==='function' && bird)
+        ? globalThis.getUISizeClass(bird, 'select')
+        : 'medium';
+      PORTRAITS[k] = mk(k, sz);
     });
-    PORTRAITS['secretaryBird'] = mk('secretarybird', true);
+    const secretaryBird = globalThis.BIRDS?.secretary || globalThis.BIRDS?.secretaryBird;
+    PORTRAITS['secretaryBird'] = mk('secretarybird',
+      (typeof globalThis.getUISizeClass==='function' && secretaryBird)
+        ? globalThis.getUISizeClass(secretaryBird, 'select')
+        : 'large');
   }
 
   // Also make sure buildBirdCard locked branch is not stuck on emoji after render
@@ -21124,7 +21177,10 @@ wireThemeBgmAutoplayUnlock();
         if(!set.has(k)) return card;
         const portrait = card.querySelector('.bird-portrait');
         if(portrait){
-          portrait.innerHTML = mk(k,true);
+          const sizeClass = (typeof globalThis.getUISizeClass==='function')
+            ? globalThis.getUISizeClass(bird || globalThis.BIRDS?.[key], 'select')
+            : 'medium';
+          portrait.innerHTML = mk(k, sizeClass);
           const spr = portrait.querySelector('.sprite4');
           if(spr && locked) spr.classList.add('locked');
         }
@@ -21629,19 +21685,9 @@ SPRITE_KEYS_ALL.add('magpie');
    ============================================================ */
 (function(){
   globalThis.getUISizeClass = function(entity, context='general'){
-    const key = String(entity?.portraitKey || entity?.birdKey || entity?.id || '').toLowerCase().replace(/[^a-z]/g,'');
-    const sz = typeof rosterSizeForEntity==='function'?rosterSizeForEntity(entity):String(entity?.size||entity?.birdSize||'').toLowerCase();
-    const isBoss = !!entity?.isBoss;
-    if(isBoss && context==='battle') return 'boss';
-    if(key === 'penguin') return 'xl';
-    if(key === 'seagull') return 'medium';
-    if(key === 'robin') return 'small';
-    if(sz.includes('tiny')) return 'tiny';
-    if(sz.includes('small')) return 'small';
-    if(sz==='xl'||sz.includes('xlarge')) return 'xl';
-    if(sz.includes('large')) return 'large';
-    if(sz.includes('medium')) return 'medium';
-    return 'medium';
+    if(entity?.isBoss && context==='battle') return 'boss';
+    const sz = typeof rosterSizeForEntity==='function'?rosterSizeForEntity(entity):'';
+    return sz || 'medium';
   };
 })();
 
@@ -21669,27 +21715,15 @@ SPRITE_KEYS_ALL.add('magpie');
   };
 
   globalThis.getUISizeClass = function(entity, context='general'){
-    const key = norm(entity?.portraitKey || entity?.birdKey || entity?.id || '');
-    const sz = typeof rosterSizeForEntity==='function'?rosterSizeForEntity(entity):String(entity?.size||entity?.birdSize||'').toLowerCase();
     if(entity?.isBoss && context === 'battle') return 'boss';
-    if(key === 'penguin') return 'xl';
-    if(key === 'seagull') return 'medium';
-    if(key === 'robin') return 'small';
-    if(sz.includes('tiny')) return 'tiny';
-    if(sz.includes('small')) return 'small';
-    if(sz==='xl'||sz.includes('xlarge')) return 'xl';
-    if(sz.includes('large')) return 'large';
-    if(sz.includes('medium')) return 'medium';
-    return 'medium';
+    const sz = typeof rosterSizeForEntity==='function'?rosterSizeForEntity(entity):'';
+    return sz || 'medium';
   };
 
   globalThis.renderBirdIconHTML = function(birdKey, sizeOrEntity, locked, faceLeft){
     const key = norm(birdKey);
     const entity = (sizeOrEntity && typeof sizeOrEntity === 'object') ? sizeOrEntity : { size: String(sizeOrEntity || 'medium') };
     let sizeClass = (typeof sizeOrEntity === 'string') ? sizeOrEntity : globalThis.getUISizeClass(entity, 'general');
-    if(key === 'penguin') sizeClass = 'xl';
-    if(key === 'seagull') sizeClass = 'medium';
-    if(key === 'robin') sizeClass = 'small';
     let html;
     if(spriteBirds.has(key)){
       html = '<div class="sprite4 ' + sizeClass + ' sprite-' + key + ' frame-0 ' + (locked ? 'locked' : '') + '"></div>';
@@ -21701,7 +21735,7 @@ SPRITE_KEYS_ALL.add('magpie');
   };
 
   if(globalThis.PORTRAITS){
-    PORTRAITS.penguin = '<div class="sprite4 xl sprite-penguin frame-0"></div>';
+    PORTRAITS.penguin = '<div class="sprite4 giant sprite-penguin frame-0"></div>';
     PORTRAITS.duke_blakiston = '<div class="sprite4 boss sprite-dukeblakiston frame-0"></div>';
   }
 
