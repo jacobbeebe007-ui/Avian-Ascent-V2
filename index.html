@@ -799,7 +799,6 @@
 </div>
 <div class="combatant-extras">
 <div class="phase-banner" id="boss-phase-banner"></div>
-<div class="enemy-intent enemy-plan" id="enemy-intent-panel">🤔 Thinking...</div>
 <div class="enemy-abilities-list" id="enemy-abilities-list"></div>
 </div>
 <div class="combat-vitals" aria-label="Enemy vitals">
@@ -821,6 +820,11 @@
 </div>
 </div>
 </div>
+<aside class="enemy-telegraph" id="enemy-telegraph" aria-label="Enemy upcoming actions">
+<div class="enemy-telegraph-kicker">Upcoming</div>
+<div class="enemy-telegraph-actions" id="enemy-telegraph-actions"></div>
+<div class="enemy-telegraph-en" id="enemy-telegraph-en"></div>
+</aside>
 </div>
 
 <div class="battle-below-combatants">
@@ -1423,25 +1427,37 @@
 <!-- STORK SHOP SCREEN -->
 <div class="screen" id="screen-stork-shop">
 <div class="stork-shop-inner">
-<h2>🪃 Stork's Emporium</h2>
-<p style="text-align:center;color:var(--text-dim);font-style:italic;font-size:.85rem;margin-bottom:12px">The ancient stork trades in shiny things.</p>
-<div class="shiny-bar">🌟 <span class="shiny-val" id="shop-shiny-count">0</span> Shiny Objects</div>
-<div class="shop-purchase-log" id="shop-purchase-log"></div>
-<div class="shop-tab-row">
-<button type="button" class="shop-tab active" id="shop-tab-all" data-shop-tab="all">All</button>
-<button type="button" class="shop-tab" id="shop-tab-items" data-shop-tab="items">Items</button>
-<button type="button" class="shop-tab" id="shop-tab-mutations" data-shop-tab="mutations">Mutations</button>
-<button type="button" class="shop-tab" id="shop-tab-sell" data-shop-tab="sell">Sell</button>
+<header class="stork-shop-top">
+<div class="stork-shop-brand">
+<p class="stork-shop-kicker">Between fights</p>
+<h2>Stork's Emporium</h2>
+<p class="stork-shop-tag">The ancient stork trades in shiny things.</p>
 </div>
+<div class="stork-shop-top-actions">
+<div class="shiny-bar" title="Shiny Objects"><span aria-hidden="true">🌟</span> <span class="shiny-val" id="shop-shiny-count">0</span></div>
+<button type="button" class="menu-btn" data-action="openSettingsModal">⚙ Settings</button>
+<button type="button" class="menu-btn" id="shop-nest-btn" data-action="openNest">🪺 Nest</button>
+</div>
+</header>
+<div class="shop-tab-row" role="tablist" aria-label="Emporium sections">
+<button type="button" class="shop-tab active" id="shop-tab-all" data-shop-tab="all" role="tab" aria-selected="true">Buy · All</button>
+<button type="button" class="shop-tab" id="shop-tab-items" data-shop-tab="items" role="tab" aria-selected="false">Items</button>
+<button type="button" class="shop-tab" id="shop-tab-mutations" data-shop-tab="mutations" role="tab" aria-selected="false">Equipment</button>
+<button type="button" class="shop-tab" id="shop-tab-sell" data-shop-tab="sell" role="tab" aria-selected="false">Sell</button>
+<button type="button" class="shop-tab" id="shop-tab-equipped" data-shop-tab="equipped" role="tab" aria-selected="false">Equipped</button>
+</div>
+<div class="shop-purchase-log" id="shop-purchase-log"></div>
 <div class="shop-items-grid" id="shop-items-grid"></div>
+<div class="shop-dock" id="shop-dock">
+<div class="shop-dock-summary" id="shop-dock-summary">Select offerings to buy or sell.</div>
 <div class="shop-btn-row">
-<button class="shop-buy-btn" data-shop-action="buy" disabled="" id="shop-buy-btn">✓ Buy Selected</button>
-<button class="shop-sell-btn" data-shop-action="sell" disabled="" id="shop-sell-btn" style="display:none">✓ Sell Selected</button>
-<button class="shop-refresh-btn" data-shop-action="refresh" id="shop-refresh-btn">🔄 Refresh (20🌟)</button>
-<button class="menu-btn" id="shop-nest-btn" data-action="openNest">🪺 Nest</button>
+<button class="shop-buy-btn" data-shop-action="buy" disabled="" id="shop-buy-btn">Buy selected</button>
+<button class="shop-sell-btn" data-shop-action="sell" disabled="" id="shop-sell-btn" style="display:none">Sell selected</button>
+<button class="shop-refresh-btn" data-shop-action="refresh" id="shop-refresh-btn">Refresh (20🌟)</button>
 <button class="shop-exit-btn" data-shop-action="exit" id="shop-exit-btn">Continue ›</button>
 </div>
-<p style="text-align:center;font-size:.72rem;color:var(--text-dim);margin-top:10px">Grey 24🌟 · Green 36🌟 · Blue 58🌟 · Purple 78🌟 · Gold 105🌟 · Refresh starts 10🌟</p>
+<p class="stork-shop-legend">Grey 24🌟 · Green 36🌟 · Blue 58🌟 · Purple 78🌟 · Gold 105🌟 · Refresh starts 10🌟</p>
+</div>
 </div>
 </div>
 <!-- ENDLESS NODE MAP -->
@@ -1573,6 +1589,10 @@
 <input id="setting-auto-combat-density" type="checkbox" checked data-change="updateAccessibilitySettings"/>
 </label>
 <p class="settings-hint">Slightly reduces avatar and action tray size when 5+ abilities are unlocked.</p>
+<label class="settings-row">Show enemy upcoming actions
+<input id="setting-show-enemy-intent" type="checkbox" checked data-change="updateAccessibilitySettings"/>
+</label>
+<p class="settings-hint">Shows the enemy’s planned actions as a telegraph between the birds. Turn off to hide it.</p>
 <button type="button" class="menu-btn settings-reset-btn" data-action="resetCombatLayoutSettings">Reset combat layout</button>
 </section>
 </div>

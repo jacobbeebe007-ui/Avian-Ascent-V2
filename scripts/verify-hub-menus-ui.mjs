@@ -28,6 +28,7 @@ const htmlChecks = [
   ['settings close control', /data-action="closeSettingsModal" aria-label="Close settings"/],
   ['settings screen heading', /id="settings-screen-heading">Screen</],
   ['settings combat heading', /id="settings-combat-heading">Combat layout</],
+  ['settings enemy intent toggle', /id="setting-show-enemy-intent"/],
   ['settings help diagnostics', /id="settings-debug-heading">Diagnostics</],
   ['settings volume percents', /id="setting-master-volume-val"/],
   ['settings session footer', /class="settings-modal-foot"/],
