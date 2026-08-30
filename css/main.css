@@ -5775,6 +5775,8 @@ img{image-rendering:pixelated;image-rendering:crisp-edges;}
 #screen-battle .combat-vitals{flex:0 0 auto;margin-top:auto;}
 #screen-battle .combatant-panel.player .combatant-card,
 #screen-battle .combatant-panel.enemy .combatant-card{border:none;box-shadow:none;background:transparent;}
+#screen-battle .combatant-panel.player .combatant-card{padding-left:clamp(12px,2.4vw,26px);}
+#screen-battle .combatant-panel.enemy .combatant-card{padding-right:clamp(12px,2.4vw,26px);}
 #screen-battle .combatant-identity{margin-bottom:4px;}
 #screen-battle .combatant-identity .combatant-name{margin-bottom:1px;}
 #screen-battle .combatant-panel.player .combatant-identity,
