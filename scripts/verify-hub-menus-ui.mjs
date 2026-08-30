@@ -57,8 +57,9 @@ const cssChecks = [
   ['music now playing live', /\.music-now-playing\.is-live\{/],
   ['supplies section cards', /\.supplies-section\{/],
   ['supplies device danger', /\.supplies-section--device\{/],
-  ['war room bank chip', /\.splash-bank-chip\{/],
+  ['war room bank chip', /\.splash-bank-chip--eggs\{/],
   ['war room nests shortcut', /\.splash-bank-chip--nests\{/],
+  ['header buttons share size', /\.splash-settings-btn,\n\.splash-bank-chip\{/],
 ];
 
 const jsChecks = [
