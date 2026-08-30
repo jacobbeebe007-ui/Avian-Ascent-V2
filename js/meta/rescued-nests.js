@@ -145,21 +145,6 @@
   function showRescuedNestOpenResult(result) {
     if (!result || !result.ok) return;
     var batch = Array.isArray(result.results) && result.results.length > 1;
-    var title = typeof document !== 'undefined' ? document.getElementById('mother-goose-hatch-title') : null;
-    if (title) {
-      var nestLabel = result.nestName || 'Rescued Nest';
-      if (batch) {
-        title.textContent =
-          '+' +
-          result.goldenEggsGained +
-          ' Golden Goose Eggs from ' +
-          result.results.length +
-          '× ' +
-          nestLabel;
-      } else {
-        title.textContent = '+' + result.goldenEggsGained + ' Golden Goose Eggs from ' + nestLabel;
-      }
-    }
     var hatchResults = batch
       ? result.results.map(function (r) {
           return r.hatch;
@@ -167,10 +152,15 @@
       : result.hatch
         ? [result.hatch]
         : [];
+    var nestOpts = {
+      source: 'nest',
+      nestName: result.nestName || 'Rescued Nest',
+      goldenEggsGained: result.goldenEggsGained,
+    };
     if (typeof globalThis.showMotherGooseHatchModalBatch === 'function' && hatchResults.length) {
-      globalThis.showMotherGooseHatchModalBatch(hatchResults, result.eggId, hatchResults.length);
+      globalThis.showMotherGooseHatchModalBatch(hatchResults, result.eggId, hatchResults.length, nestOpts);
     } else if (typeof globalThis.showMotherGooseHatchModal === 'function' && result.hatch) {
-      globalThis.showMotherGooseHatchModal(result.hatch, result.eggId);
+      globalThis.showMotherGooseHatchModal(result.hatch, result.eggId, nestOpts);
     }
   }
 

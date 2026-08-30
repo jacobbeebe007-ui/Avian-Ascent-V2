@@ -41,6 +41,9 @@ const cssChecks = [
   ['shop z-index above reward', /#screen-stork-shop\.active\{[\s\S]*?z-index:28/,],
   ['equipped grid', /\.shop-equipped-grid\{/,],
   ['equipped slot', /\.shop-equipped-slot\{/,],
+  ['shop 2-col on tablets/phones', /@media \(max-width:720px\)\{[\s\S]*?grid-template-columns:repeat\(2/,],
+  ['compare tooltip width', /#action-tooltip:has\(\.shop-tt-compare\)/,],
+  ['compare delta up', /\.shop-tt-delta-up\{/,],
 ];
 
 const jsChecks = [
@@ -51,12 +54,22 @@ const jsChecks = [
   ['multi-select sell set', /selectedSellIndices:new Set\(\)/],
   ['shop dock sync', /function syncShopDock\b/],
   ['battle class stripped on enter', /enterStorkShopScreen[\s\S]*?screen-battle[\s\S]*?classList\.remove\('active'\)/],
+  ['six equipment per tier', /SHOP_EQUIPMENT_PER_TIER\s*=\s*6/],
+  ['compare tooltip builder', /function buildShopCompareTooltipHtml\b/],
+  ['bind shop compare tooltips', /function bindShopItemCompareTooltips\b/],
+  ['render shop binds compare', /function renderShopItems\(\)[\s\S]*bindShopItemCompareTooltips\(\)/],
 ];
 
 if (/id="screen-stork-shop"[\s\S]*?class="combatants"/.test(html)) {
   fail('html: shop screen contains combatants layout');
 } else {
   ok('html: shop screen has no combatants layout');
+}
+
+if (/@media \(max-width:420px\)\{[\s\S]*?\.shop-tier-collapsible-body\{grid-template-columns:1fr/.test(css)) {
+  fail('css: shop still collapses to a single column at 420px');
+} else {
+  ok('css: shop keeps multi-column layout on phones');
 }
 
 for (const [label, re] of htmlChecks) {
