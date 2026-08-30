@@ -6611,6 +6611,12 @@ body.ui-mobile-mode #screen-battle .btn-desc{
   height:100%;
   padding:calc(6px * var(--combat-combatants-scale) / 100) 0 !important;
 }
+#screen-battle.combat-arr--compact .combatant-panel,
+#screen-battle.combat-arr--classic .combatant-panel,
+body.ui-mobile-mode #screen-battle .combatant-panel{
+  padding-left:0 !important;
+  padding-right:0 !important;
+}
 #screen-battle .combatant-name{
   font-size:calc(.9rem * var(--combat-combatants-scale) / 100) !important;
 }
@@ -6644,7 +6650,7 @@ body.ui-mobile-mode #screen-battle .avatar-inner{
   font-size:calc(2.4rem * var(--combat-avatar-scale) / 100);
 }
 body.ui-mobile-mode #screen-battle .combatant-panel{
-  padding:calc(9px * var(--combat-combatants-scale) / 100) calc(8px * var(--combat-combatants-scale) / 100) calc(8px * var(--combat-combatants-scale) / 100) !important;
+  padding:calc(6px * var(--combat-combatants-scale) / 100) 0 calc(6px * var(--combat-combatants-scale) / 100) !important;
 }
 body.ui-mobile-mode #screen-battle .combatant-name{
   font-size:calc(.8rem * var(--combat-combatants-scale) / 100) !important;
