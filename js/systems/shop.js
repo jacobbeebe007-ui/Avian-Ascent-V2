@@ -160,6 +160,7 @@
 
   wrapShopRenderer('renderShopItems');
   wrapShopRenderer('renderShopSellItems');
+  wrapShopRenderer('renderShopEquipped');
   document.addEventListener('DOMContentLoaded', function(){
     bindShopButtons();
     bindShopDelegation();

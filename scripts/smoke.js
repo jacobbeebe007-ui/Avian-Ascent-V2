@@ -82,6 +82,8 @@ const checks = [
   { label: 'Flight settings choice cards', re: /flight-choice-card/ },
   { label: 'Settings audio labels', re: /function syncAudioSettingLabels\b/ },
   { label: 'Music assignment chips', re: /function syncMusicMenuAssignmentChips\b/ },
+  { label: 'Enemy telegraph render', re: /function renderEnemyPlan\b/ },
+  { label: 'Shop equipped tab', re: /function renderShopEquipped\b/ },
 ];
 
 for (const c of checks) {
