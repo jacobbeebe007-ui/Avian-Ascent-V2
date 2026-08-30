@@ -20524,7 +20524,7 @@ function applyDevCodeSwitches(){
     const code=String(input.dataset.code||'').toLowerCase();
     if(code) switches[code]=!!input.checked;
   });
-  if(switches.headinghome && switches.birdwatching) switches.birdwatching=false;
+  if(switches.birdwatching) switches.headinghome=false;
   saveDevCodeSwitches(switches);
   const rows=DEV_CODE_CATALOG.filter(row=>row.toggleable!==false);
   rows.forEach(row=>{
@@ -20534,6 +20534,10 @@ function applyDevCodeSwitches(){
     if(want){
       if(row.oneshot && was) return;
       activateDevCode(code, {silent:true, skipRefresh:true, forceState:true});
+      if(row.oneshot){
+        switches[code]=false;
+        saveDevCodeSwitches(switches);
+      }
     } else if(was && row.reversible){
       deactivateDevCode(code, {skipRefresh:true});
     }
@@ -20582,7 +20586,7 @@ function checkDevCode(val) {
   if(activateDevCode(code, {msgEl:msg})){
     if(code==='headinghome'){
       setDevCodeSwitch('birdwatching', false);
-      setDevCodeSwitch('headinghome', true);
+      setDevCodeSwitch('headinghome', false);
     } else if(code==='birdwatching'){
       setDevCodeSwitch('birdwatching', true);
       setDevCodeSwitch('headinghome', false);
