@@ -761,9 +761,10 @@ function formatEquipmentSkillsHtml(item){
   pushSkill(item.ultimate, 'Ultimate');
   return rows.join('');
 }
-function buildEquipmentTooltipHTML(itemId){
+function buildEquipmentTooltipHTML(itemId, opts){
   const item=getEquipmentItem(itemId);
   if(!item) return '';
+  opts=opts&&typeof opts==='object'?opts:{};
   const tierMeta=rewardTierMeta(item.rarity||'grey');
   const hands=Number(item.hands)||0;
   const handTxt=item.slot==='Weapon'?(hands===2?'2H':hands===1?'1H':''):'';
@@ -794,7 +795,7 @@ function buildEquipmentTooltipHTML(itemId){
   if(item.tradeoff?.text){
     html+=`<div class="tt-row"><span class="tt-lbl">Tradeoff</span><span class="tt-val" style="font-size:.88em">${escapeHtmlRoster(item.tradeoff.text)}</span></div>`;
   }
-  html+=richTooltipCloseBtn();
+  if(!opts.omitClose) html+=richTooltipCloseBtn();
   return html;
 }
 function buildRichStatTooltipHtml(statKey, rawVal, player){
@@ -2698,6 +2699,126 @@ function _nestInvCompareHtml(player, itemId){
   if(!worn) return '';
   return `<div class="nest-inv-compare">vs ${escapeHtmlRoster(worn.name)}</div>`;
 }
+
+function _shopCompareDeltaClass(delta){
+  if(!(delta>0 || delta<0)) return 'shop-tt-delta-flat';
+  return delta>0?'shop-tt-delta-up':'shop-tt-delta-down';
+}
+function _shopCompareFmt(val, isPct){
+  const n=Number(val)||0;
+  if(isPct) return `${n>0?'+':''}${n}%`;
+  return String(n);
+}
+function _shopCompareStatRow(label, shopVal, wornVal, isPct){
+  const s=Number(shopVal)||0;
+  const w=Number(wornVal)||0;
+  const d=s-w;
+  const sign=d>0?'+':d<0?'−':'=';
+  const shown=d===0?'same':`${sign}${Math.abs(d)}${isPct?'%':''}`;
+  return `<div class="shop-tt-row"><span class="shop-tt-lbl">${escapeHtmlRoster(label)}</span><span class="shop-tt-vals">${_shopCompareFmt(s,isPct)} vs ${_shopCompareFmt(w,isPct)}</span><span class="${_shopCompareDeltaClass(d)}">${shown}</span></div>`;
+}
+const SHOP_COMPARE_STAT_ORDER=['atk','matk','def','mdef','spd','hp','maxHp','dex','dodge','acc','critChance','critDamage','critMult'];
+function _shopCompareRows(shop, worn){
+  const rows=[];
+  if(typeof itemHasDisplayableWeaponDamage==='function'
+     && (itemHasDisplayableWeaponDamage(shop) || itemHasDisplayableWeaponDamage(worn))){
+    const sMin=Number(shop.minDamage)||0, sMax=Number(shop.maxDamage)||0;
+    const wMin=Number(worn.minDamage)||0, wMax=Number(worn.maxDamage)||0;
+    const d=(sMin+sMax)-(wMin+wMax);
+    rows.push(`<div class="shop-tt-row"><span class="shop-tt-lbl">Damage</span><span class="shop-tt-vals">${sMin}–${sMax} vs ${wMin}–${wMax}</span><span class="${_shopCompareDeltaClass(d)}">${d>0?'+':d<0?'−':'='}${d===0?'same':Math.abs(d)}</span></div>`);
+  }
+  const keys=new Set([...Object.keys(shop.stats||{}), ...Object.keys(worn.stats||{})]);
+  const ordered=[
+    ...SHOP_COMPARE_STAT_ORDER.filter((k)=>keys.has(k)),
+    ...[...keys].filter((k)=>!SHOP_COMPARE_STAT_ORDER.includes(k)).sort(),
+  ];
+  for(const key of ordered){
+    const s=Number(shop.stats?.[key])||0;
+    const w=Number(worn.stats?.[key])||0;
+    if(!s && !w) continue;
+    const isPct=String(key).includes('Pct')||/Pct$/i.test(key);
+    const lbl=typeof formatAnyStatLabel==='function'?formatAnyStatLabel(key):key;
+    rows.push(_shopCompareStatRow(lbl, s, w, isPct));
+  }
+  return rows;
+}
+
+function buildShopCompareTooltipHtml(shopItem){
+  if(!shopItem) return '';
+  const itemId=shopItem.equipmentItemId||shopItem.id;
+  if(!itemId || !getEquipmentItem(itemId)) return '';
+  const body=buildEquipmentTooltipHTML(itemId, {omitClose:true})||'';
+  if(!body) return '';
+  const player=G.player||null;
+  if(!player) return body+richTooltipCloseBtn();
+  const emptySlot=typeof Avian?.equipment?.findEmptyEquipSlotForItem==='function'
+    ? Avian.equipment.findEmptyEquipSlotForItem(player, itemId)
+    : null;
+  const slot=emptySlot || (typeof Avian?.equipment?.findEquipSlotForItem==='function'
+    ? Avian.equipment.findEquipSlotForItem(player, itemId)
+    : null);
+  const slotLbl=slot && typeof getEquipmentNestSlotLabel==='function'
+    ? getEquipmentNestSlotLabel(slot)
+    : (slot||'slot');
+  let compare='';
+  if(emptySlot){
+    compare=`<div class="shop-tt-compare"><div class="shop-tt-compare-h">Compare · ${escapeHtmlRoster(slotLbl)}</div><div class="shop-tt-empty">No item equipped in this slot.</div></div>`;
+  } else {
+    const wornId=slot?player.equipment?.[slot]:null;
+    const worn=wornId?getEquipmentItem(wornId):null;
+    const shop=getEquipmentItem(itemId);
+    if(worn && shop && worn.id!==shop.id){
+      const rows=_shopCompareRows(shop, worn);
+      const bodyRows=rows.length?rows.join(''):'<div class="shop-tt-empty">No overlapping stats to compare.</div>';
+      compare=`<div class="shop-tt-compare"><div class="shop-tt-compare-h">vs equipped ${escapeHtmlRoster(worn.name)}</div>${bodyRows}</div>`;
+    } else if(worn && shop && worn.id===shop.id){
+      compare=`<div class="shop-tt-compare"><div class="shop-tt-compare-h">Compare · ${escapeHtmlRoster(slotLbl)}</div><div class="shop-tt-empty">Same piece as currently equipped.</div></div>`;
+    } else {
+      compare=`<div class="shop-tt-compare"><div class="shop-tt-compare-h">Compare · ${escapeHtmlRoster(slotLbl)}</div><div class="shop-tt-empty">No item equipped in this slot.</div></div>`;
+    }
+  }
+  return body+compare+richTooltipCloseBtn();
+}
+
+function _shopSuppressHoldClick(el){
+  el.addEventListener('touchend', ()=>{
+    const tt=document.getElementById('action-tooltip');
+    if(tt && tt.classList.contains('is-touch-open') && tt.style.display==='block'){
+      el._shopHoldTooltip=true;
+    }
+  }, {passive:true});
+  el.addEventListener('click', (e)=>{
+    if(!el._shopHoldTooltip) return;
+    el._shopHoldTooltip=false;
+    e.preventDefault();
+    e.stopImmediatePropagation();
+  }, true);
+}
+
+function bindShopItemCompareTooltips(){
+  const shop=document.getElementById('screen-stork-shop');
+  if(!shop || typeof bindRichTooltip!=='function') return;
+  shop.querySelectorAll('.shop-item[data-shop-item-id]').forEach((el)=>{
+    const sid=el.getAttribute('data-shop-item-id');
+    const idx=Number(el.dataset.shopIdx);
+    const item=(_shopItems||[])[idx] || (_shopItems||[]).find((i)=>i && i.id===sid);
+    if(!item || (item.type!=='equipment' && !item.equipmentItemId)) return;
+    el.removeAttribute('title');
+    el._richTooltipBound=false;
+    bindRichTooltip(el, ()=>buildShopCompareTooltipHtml(item), {delay:280, interactive:true, category:'items'});
+    _shopSuppressHoldClick(el);
+  });
+  shop.querySelectorAll('.shop-item[data-shop-eq-item]').forEach((el)=>{
+    if(el._richTooltipBound) return;
+    const itemId=el.getAttribute('data-shop-eq-item');
+    if(!itemId) return;
+    bindRichTooltip(el, ()=>buildShopCompareTooltipHtml({id:itemId, equipmentItemId:itemId, type:'equipment'}), {delay:280, interactive:true, category:'items'});
+    _shopSuppressHoldClick(el);
+  });
+}
+globalThis.buildShopCompareTooltipHtml=buildShopCompareTooltipHtml;
+globalThis.bindShopItemCompareTooltips=bindShopItemCompareTooltips;
+
 function _nestEquipmentItemHtml(itemId, slotKey, locked=false, opts={}){
   const icons=EQUIPMENT_NEST_SLOT_ICONS;
   const slotLbl=getEquipmentNestSlotLabel(slotKey);
@@ -19140,6 +19261,9 @@ function enterStorkShopScreen(){
   syncShopDock();
 }
 
+const SHOP_EQUIPMENT_PER_TIER=6;
+globalThis.SHOP_EQUIPMENT_PER_TIER=SHOP_EQUIPMENT_PER_TIER;
+
 const SHOP_COSTS={grey:36,green:48,blue:70,purple:82,gold:164};
 
 const SHOP_STATE = {
@@ -19231,11 +19355,11 @@ function shopItemMatchesCategory(item, category){
 
 function getShopCategoryLogText(category){
   const mode=G._shopMode||'boss';
-  if(category==='all') return 'Tap cards to multi-select, then buy in one go. Equipment is grouped by tier.';
+  if(category==='all') return 'Tap cards to multi-select, then buy in one go. Hover or hold a card to compare with worn gear.';
   if(category==='items') return 'Stackable battle heals — buy until your hold cap, then use in combat (1 heal per turn).';
   if(category==='mutations') return mode==='endless-boss'
-    ? `One ${shopGearCategoryTitle().toLowerCase()} offer this visit.`
-    : `${shopGearCategoryTitle()} grouped by tier — expand a section to browse.`;
+    ? `One ${shopGearCategoryTitle().toLowerCase()} offer this visit. Hover or hold to compare with worn gear.`
+    : `${shopGearCategoryTitle()} — 6 offers per unlocked tier. Hover or hold a card to compare with worn gear.`;
   if(category==='sell') return Avian.flags?.equipmentV2
     ? 'Multi-select bag equipment to sell for half its shop buy price.'
     : 'Multi-select bag items to sell for half their shop buy price.';
@@ -19357,6 +19481,10 @@ function buildShopBuyCard(item, idx, {isSelected, canSelect, cost}){
   const div=document.createElement('div');
   div.className=`shop-item tier-${item.tier||'grey'}${isSelected?' selected':''}${(!isSelected && !canSelect)?' cant-afford':''}${atCap?' shop-locked-visit':''}`;
   div.dataset.shopIdx=String(idx);
+  if(item.id) div.dataset.shopItemId=String(item.id);
+  if(item.type==='equipment' || item.equipmentItemId){
+    div.dataset.shopEqItem=String(item.equipmentItemId||item.id);
+  }
   div.innerHTML=`
     <div class="shop-item-select-tick">✓</div>
     <div class="shop-item-head">
@@ -19366,7 +19494,9 @@ function buildShopBuyCard(item, idx, {isSelected, canSelect, cost}){
     <span class="reward-icon">${item.icon}</span>
     <div class="reward-name">${item.name}</div>
     <div class="reward-desc mut-stat-compact-wrap">${item.type==='mutation'||item.mutationItemId?(getMutationDescHtml(item.mutationItemId||item.id,{compact:true})||escapeHtmlRoster(item.desc||'')):item.type==='equipment'?escapeHtmlRoster(item.desc||''):escapeHtmlRoster(item.desc||'')}</div>`;
-  if(item.desc && tooltipsEnabled('items')) div.title=item.type==='mutation'?String(item.desc||'').replace(/\n/g,' · '):item.desc;
+  if(item.desc && tooltipsEnabled('items') && item.type!=='equipment' && !item.equipmentItemId){
+    div.title=item.type==='mutation'?String(item.desc||'').replace(/\n/g,' · '):item.desc;
+  }
   div.addEventListener('click', ()=>{
     if(SHOP_STATE.selectedBuyIndices.has(idx)){
       SHOP_STATE.selectedBuyIndices.delete(idx);
@@ -19467,6 +19597,7 @@ function renderShopSellItems(){
       const div=document.createElement('div');
       div.className=`shop-item tier-${tierCss} shop-sell-item${isSelected?' selected':''}`;
       div.dataset.shopIdx=String(idx);
+      div.dataset.shopEqItem=String(itemId);
       div.innerHTML=`
       <div class="shop-item-select-tick">✓</div>
       <div class="shop-item-head">
@@ -19483,6 +19614,7 @@ function renderShopSellItems(){
       });
       grid.appendChild(div);
     });
+    bindShopItemCompareTooltips();
     return;
   }
 }
@@ -19545,6 +19677,7 @@ function renderShopEquipped(){
     const starterLocked=shopSlotIsStarterLocked(G.player, slotKey, item);
     div.className=`shop-item shop-equipped-slot${item?' is-filled':' is-empty'}${item?` tier-${normalizeRewardTier(item.rarity)}`:''}`;
     div.dataset.shopEquipSlot=slotKey;
+    if(itemId) div.dataset.shopEqItem=String(itemId);
     if(item){
       const stats=typeof formatEquipmentCompactStatsHtml==='function'?formatEquipmentCompactStatsHtml(item):'';
       const action=starterLocked
@@ -19566,6 +19699,7 @@ function renderShopEquipped(){
     }
     grid.appendChild(div);
   });
+  bindShopItemCompareTooltips();
   syncShopDock();
 }
 function shopUnequipSlot(slotKey){
@@ -19790,6 +19924,7 @@ function renderShopItems() {
     appendCategoryCards(rows);
   }
   syncShopItemsToGlobal();
+  bindShopItemCompareTooltips();
 }
 
 function purchaseShopItemAtIndex(idx, costOverride){
