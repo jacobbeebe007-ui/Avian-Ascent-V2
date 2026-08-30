@@ -47,6 +47,11 @@ const staticChecks = [
   ['wire enemy equipment tooltips', /function wireEnemyInfoEquipmentTooltips\b/],
   ['enemy preview starter kit', /function ensureEnemyPreviewEquipmentState\b/],
   ['enemy preview ensureStartingWeapon', /ensureEnemyPreviewEquipmentState[\s\S]*?ensureStartingWeapon/],
+  ['enemy nest inspect opener', /function openEnemyNest\b/],
+  ['enemy nest worn inspect layout', /nest-eq-layout--inspect/],
+  ['enemy nest three tabs', /nest-tabs--3/],
+  ['compact combat hover card', /function buildCombatantHoverTooltipHtml[\s\S]*?combat-hover-card/],
+  ['hold click suppress', /_suppressNextClick/],
 ];
 
 for (const [label, re] of staticChecks) {
