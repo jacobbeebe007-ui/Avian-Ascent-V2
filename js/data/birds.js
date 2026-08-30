@@ -467,6 +467,8 @@
     name:"Robin", portraitKey:"robin",
     tagline:"Bright hedge-songster. Quick notes, light strikes, and uplifting refrains.",
     size:"small", class:"bard", aspect:"solis", aspectTheme:"Day / Sun",
+    unlockRequires:"unlock_robin",
+    unlockHint:"Hatch Robin from a Cracked or Feathered egg.",
     stats:{hp:43,maxHp:43,atk:5,def:7,spd:15,dodge:10,acc:85,mdef:10,matk:9,critChance:8},
     color:"#d86a4c",
     passive:{id:"PAS-014",name:"Dawn-Breast Vow",desc:"After using a support utility, your next Day damaging skill gains +10 Skill Power and restores 2 Magic Armour on hit, capped at its normal maximum."},

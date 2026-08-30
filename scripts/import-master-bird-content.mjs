@@ -52,7 +52,7 @@ const BIRD_PRESERVE = {
   lyrebird: { tagline: 'The great deceiver. Master of all songs.', color: '#c8902a', unlockRequires: 'unlock_lyrebird', unlockHint: 'Defeat Stage 20 with Kookaburra.' },
   raven: { tagline: 'The field remembers. You only hurry the ending.', color: '#6030d0', unlockRequires: 'juvenileWin', unlockHint: 'Defeat Stage 20 on Normal mode to unlock.' },
   magpie: { tagline: 'Flashy thief. Swoops in, steals the moment, and slips away.', color: '#2a2a2a', unlockRequires: 'unlock_magpie', unlockHint: 'Defeat Stage 10 with Robin.' },
-  robin: { tagline: 'Bright hedge-songster. Quick notes, light strikes, and uplifting refrains.', color: '#d86a4c' },
+  robin: { tagline: 'Bright hedge-songster. Quick notes, light strikes, and uplifting refrains.', color: '#d86a4c', unlockRequires: 'unlock_robin', unlockHint: 'Hatch Robin from a Cracked or Feathered egg.' },
   bowerbird: { tagline: 'Stage-maker. Builds the bower, lures the eye, and cashes the display.', color: '#4a6a9a', unlockRequires: 'juvenileWin', unlockHint: 'Defeat Stage 20 on Normal mode to unlock.' },
   toucan: { tagline: 'Oversized bill, vivid pressure, odd reach.', color: '#60c840', unlockRequires: 'unlock_toucan', unlockHint: 'Enter: "Ahh Ahh Eee Eee Tookie Tookie"' },
   swan: { tagline: 'Regal bulwark. Grace, weight, and unbroken composure.', color: '#f0f4fc', unlockRequires: 'unlock_swan', unlockHint: 'Reach Endless Stage 30 with any Tank.' },
