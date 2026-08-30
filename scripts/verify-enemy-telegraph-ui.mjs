@@ -26,9 +26,10 @@ const htmlChecks = [
   ['telegraph dock', /id="enemy-telegraph"/],
   ['telegraph actions', /id="enemy-telegraph-actions"/],
   ['settings checkbox', /id="setting-show-enemy-intent"/],
+  ['telegraph after combatants', /class="combatants tactical-battlefield"[\s\S]*?<\/div>\s*<aside class="enemy-telegraph"/],
 ];
 const cssChecks = [
-  ['telegraph under resources', /#enemy-telegraph\{[\s\S]*?grid-column:-1/,],
+  ['telegraph under resources', /#enemy-telegraph\{[\s\S]*?grid-column:1 \/ -1/,],
   ['telegraph in-flow', /#enemy-telegraph\{[\s\S]*?position:static/,],
   ['hide class', /body\.combat-hide-enemy-intent #enemy-telegraph/,],
   ['inactive screens locked hidden', /\.screen:not\(\.active\)\{display:none !important;\}/],

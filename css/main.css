@@ -6005,10 +6005,10 @@ img{image-rendering:pixelated;image-rendering:crisp-edges;}
 .combatant-extras{flex-shrink:0;width:100%;}
 .phase-banner:not(.visible){height:0;padding:0;margin:0;overflow:hidden;opacity:0;}
 .tactical-battlefield{position:relative;}
-/* Sit in the last combatants-grid column, on the row under the resource bars.
-   In-flow so the HP/EN/ARM/MARM columns stay aligned; never overlay the arena. */
+/* In-flow row under the combatants/resource columns (not inside the bird grid).
+   Resource bars stay aligned; intent clusters on the enemy side. */
 #enemy-telegraph{
-  grid-column:-1;
+  grid-column:1 / -1;
   position:static;
   left:auto;
   top:auto;
@@ -6022,8 +6022,9 @@ img{image-rendering:pixelated;image-rendering:crisp-edges;}
   gap:4px 6px;
   width:100%;
   max-width:none;
-  margin:2px 0 0;
-  padding:3px 2px 0;
+  box-sizing:border-box;
+  margin:0;
+  padding:3px 2px 1px;
   pointer-events:auto;
   border:none;
   border-top:1px solid rgba(232,140,90,.2);
@@ -6093,11 +6094,12 @@ body.combat-hide-enemy-intent #enemy-telegraph{display:none !important;}
   }
   .enemy-telegraph-chip{font-size:.58rem;padding:1px 5px;}
 }
-#screen-battle.combat-arr--custom #enemy-telegraph{
+#screen-battle.combat-arr--custom #enemy-telegraph,
+#screen-battle.combat-arr--actionsFirst #enemy-telegraph{
   width:100%;
   max-width:none;
   justify-content:flex-end;
-  order:2;
+  order:3;
 }
 
 #screen-battle .action-panel.tactical-action-tray{background:linear-gradient(180deg,rgba(4,8,4,.5),rgba(3,6,3,.5));border:1px solid rgba(200,160,32,.25);border-radius:14px;padding:14px 14px 12px;margin-top:6px;box-shadow:none;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);}
