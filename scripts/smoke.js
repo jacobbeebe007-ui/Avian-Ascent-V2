@@ -92,6 +92,9 @@ const checks = [
   { label: 'Music assignment chips', re: /function syncMusicMenuAssignmentChips\b/ },
   { label: 'Enemy telegraph render', re: /function renderEnemyPlan\b/ },
   { label: 'Shop equipped tab', re: /function renderShopEquipped\b/ },
+  { label: 'Dev codes apply immediately', re: /function applyDevCodeSwitches\(\)\{[\s\S]*activateDevCode\(code/ },
+  { label: 'Birdwatching grants all bird unlocks', re: /function applyBirdwatchingUnlock\b/ },
+  { label: 'Headinghome locks non-starters', re: /function applyHeadingHomeLock\b/ },
 ];
 
 for (const c of checks) {
