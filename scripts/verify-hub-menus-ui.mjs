@@ -45,7 +45,9 @@ const htmlChecks = [
   ['supplies clear cache action', /id="select-hub-supplies"[\s\S]*?data-action="openClearCacheModal"/],
   ['unlock input kept', /id="dev-code-input"/],
   ['war room banked eggs chip', /id="splash-bank-eggs"/],
+  ['eggs chip has no Banked label', /id="splash-bank-eggs"[\s\S]*?splash-bank-eggs-count/],
   ['war room saved nests shortcut', /data-action="openInventorySavedNests"/],
+  ['nests label above count', /splash-bank-chip-label">Saved Nests</],
 ];
 
 const cssChecks = [
@@ -82,6 +84,9 @@ for (const [label, re] of jsChecks) {
 
 if (/id="fortune-egg-badge"/.test(html)) fail('html: fortune-egg-badge should be removed from Cuckoo\'s Emporium');
 else ok('emporium gold badge removed');
+if (/id="splash-bank-eggs"[\s\S]*?Banked[\s\S]*?id="splash-bank-eggs-count"/.test(html)) {
+  fail('html: eggs chip still shows Banked');
+} else ok('eggs chip amount-only');
 if (/function syncWarRoomBank\b/.test(shop)) ok('sync war room bank');
 else fail('fortune-shop: syncWarRoomBank');
 if (/function openInventorySavedNests\b/.test(inventory)) ok('open inventory saved nests');

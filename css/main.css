@@ -752,10 +752,9 @@ a.splash-settings-btn{
   align-items:center;
   gap:6px;
   min-height:36px;
-  padding:6px 10px;
+  padding:5px 10px;
   border-radius:10px;
   font:inherit;
-  font-size:.68rem;
   letter-spacing:.03em;
   color:#1a1408;
   background:linear-gradient(180deg,#f0d878,#c9a84c);
@@ -763,8 +762,27 @@ a.splash-settings-btn{
   box-shadow:0 2px 8px rgba(0,0,0,.28);
 }
 .splash-bank-chip[hidden]{display:none!important;}
-.splash-bank-chip-icon{line-height:1;font-size:.95rem;}
-.splash-bank-chip-text strong{font-family:'Cinzel',serif;font-weight:700;}
+.splash-bank-chip-icon{line-height:1;font-size:1.05rem;}
+.splash-bank-chip-amount{
+  font-family:'Cinzel',serif;
+  font-weight:700;
+  font-size:1.05rem;
+  line-height:1;
+}
+.splash-bank-chip--eggs .splash-bank-chip-amount{font-size:1.15rem;min-width:1.4ch;}
+.splash-bank-chip-stack{
+  display:flex;
+  flex-direction:column;
+  align-items:flex-start;
+  gap:1px;
+  line-height:1.05;
+}
+.splash-bank-chip-label{
+  font-size:.52rem;
+  font-weight:700;
+  letter-spacing:.06em;
+  text-transform:uppercase;
+}
 .splash-bank-chip--nests{
   cursor:pointer;
   color:#082018;

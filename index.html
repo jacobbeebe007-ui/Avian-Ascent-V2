@@ -133,11 +133,14 @@
 <div class="splash-bank" id="splash-bank" aria-label="Banked treasures">
 <span class="splash-bank-chip splash-bank-chip--eggs" id="splash-bank-eggs" hidden>
 <span class="splash-bank-chip-icon" aria-hidden="true">🪿</span>
-<span class="splash-bank-chip-text">Banked <strong id="splash-bank-eggs-count">0</strong></span>
+<strong class="splash-bank-chip-amount" id="splash-bank-eggs-count">0</strong>
 </span>
 <button type="button" class="splash-bank-chip splash-bank-chip--nests" id="splash-bank-nests" hidden data-action="openInventorySavedNests" aria-label="Open saved nests in Inventory">
 <span class="splash-bank-chip-icon" aria-hidden="true">🪺</span>
-<span class="splash-bank-chip-text">Saved Nests <strong id="splash-bank-nests-count">0</strong></span>
+<span class="splash-bank-chip-stack">
+<span class="splash-bank-chip-label">Saved Nests</span>
+<strong class="splash-bank-chip-amount" id="splash-bank-nests-count">0</strong>
+</span>
 </button>
 </div>
 <button type="button" class="splash-settings-btn" data-action="openMusicMenu" title="Music jukebox" aria-label="Open music jukebox">🎵 Music</button>
