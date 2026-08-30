@@ -42,6 +42,7 @@ const cssChecks = [
   ['coloured ancestral egg card', /\.mother-goose-egg-card--ancestral\{/],
   ['coloured nest inventory card', /\.inventory-item-card--nest-royal\{/],
   ['reduced-motion hatch', /prefers-reduced-motion:reduce[\s\S]*mother-goose-hatch-flip\{transition:none;\}/],
+  ['hidden hatch buttons stay hidden', /\.mother-goose-hatch-now\[hidden\]\{display:none!important;\}/],
 ];
 
 const shopChecks = [

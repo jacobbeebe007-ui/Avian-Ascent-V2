@@ -39,6 +39,10 @@
     return String(Math.floor(Number(n) || 0));
   }
 
+  function fmtInt(n) {
+    return String(Math.max(0, Math.floor(Number(n) || 0)));
+  }
+
   function tierPack() {
     return globalThis.Avian && globalThis.Avian.data && globalThis.Avian.data.birdCardTiers;
   }
@@ -228,7 +232,7 @@
     if (newCount) doneSub.push(newCount === 1 ? '1 new bird' : newCount + ' new birds');
     if (dupeCount) doneSub.push(dupeCount === 1 ? '1 duplicate feather' : dupeCount + ' duplicate feathers');
     if (data.source === 'nest' && data.goldenEggsGained) {
-      doneSub.push('+' + fmt(data.goldenEggsGained) + ' Golden Goose Eggs');
+      doneSub.push('+' + fmtInt(data.goldenEggsGained) + ' Golden Goose Eggs');
     }
     setHatchModalCopy(doneTitle, doneSub.join(' · '), true);
   }
@@ -295,10 +299,10 @@
       speciesCss +
       '">Species Feather</span>' +
       '<div class="mother-goose-hatch-feather-gain">+' +
-      fmt(gain || total) +
+      fmtInt(gain || total) +
       '</div>' +
       '<div class="mother-goose-hatch-feather-total mother-goose-hatch-feather-total--secondary">Total: ' +
-      fmt(total) +
+      fmtInt(total) +
       '</div></div>';
     if (compact) return featherHtml;
     return featherHtml + '<p class="mother-goose-hatch-msg">Species Feather — Collect more to mutate your bird.</p>';
@@ -351,7 +355,7 @@
       ? 'Opening ' + (opts.nestName || 'Rescued Nest')
       : 'Hatching ' + (def.name || 'Egg');
     var openingSub = isNest && opts.goldenEggsGained
-      ? '+' + fmt(opts.goldenEggsGained) + ' Golden Goose Eggs'
+      ? '+' + fmtInt(opts.goldenEggsGained) + ' Golden Goose Eggs'
       : batch
         ? results.length + ' eggs ready'
         : 'Tap Hatch to crack the shell';
@@ -381,6 +385,7 @@
 
     _hatchRevealTimers.push(
       setTimeout(function () {
+        if (hatchBtn) hatchBtn.hidden = true;
         flips.forEach(function (flip, idx) {
           _hatchRevealTimers.push(
             setTimeout(function () {

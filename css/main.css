@@ -2150,35 +2150,35 @@ body.combat-scenario-test-unlocked .splash-hotspot--combat-scenarios.is-combatte
   background:rgba(201,168,76,.45);
 }
 .mother-goose-hatch-card.tier-grey{
-  border-color:rgba(106,120,144,.62);
-  background:linear-gradient(180deg,rgba(106,120,144,.2),rgba(18,16,14,.94));
+  border-color:#8a96aa;
+  background:linear-gradient(180deg,rgba(106,120,144,.48),rgba(18,16,14,.96));
 }
 .mother-goose-hatch-card.tier-grey::before{background:var(--tier-grey);}
 .mother-goose-hatch-card.tier-green{
-  border-color:rgba(76,138,106,.65);
-  background:linear-gradient(180deg,rgba(76,138,106,.2),rgba(14,18,14,.94));
+  border-color:#6ab89a;
+  background:linear-gradient(180deg,rgba(76,138,106,.48),rgba(14,18,14,.96));
 }
 .mother-goose-hatch-card.tier-green::before{background:var(--tier-green);}
 .mother-goose-hatch-card.tier-blue{
-  border-color:rgba(76,106,201,.65);
-  background:linear-gradient(180deg,rgba(76,106,201,.2),rgba(12,14,22,.94));
+  border-color:#6a8ae8;
+  background:linear-gradient(180deg,rgba(76,106,201,.48),rgba(12,14,22,.96));
 }
 .mother-goose-hatch-card.tier-blue::before{background:var(--tier-blue);}
 .mother-goose-hatch-card.tier-purple{
-  border-color:rgba(120,76,180,.68);
-  background:linear-gradient(180deg,rgba(120,76,180,.22),rgba(16,12,22,.95));
+  border-color:#b080f0;
+  background:linear-gradient(180deg,rgba(120,76,180,.5),rgba(16,12,22,.96));
 }
 .mother-goose-hatch-card.tier-purple::before{background:var(--tier-purple);}
 .mother-goose-hatch-card.tier-gold{
-  border-color:rgba(180,140,40,.75);
-  background:linear-gradient(180deg,rgba(180,140,40,.22),rgba(22,16,8,.95));
-  box-shadow:0 0 18px rgba(201,168,76,.22);
+  border-color:#ffe8a0;
+  background:linear-gradient(180deg,rgba(201,168,76,.5),rgba(22,16,8,.96));
+  box-shadow:0 0 20px rgba(201,168,76,.32);
 }
 .mother-goose-hatch-card.tier-gold::before{background:linear-gradient(90deg,var(--gold),var(--gold-light),var(--gold));}
 .mother-goose-hatch-card.tier-orange{
-  border-color:rgba(200,100,40,.75);
-  background:linear-gradient(180deg,rgba(200,100,40,.22),rgba(22,12,8,.95));
-  box-shadow:0 0 18px rgba(200,100,40,.22);
+  border-color:#ffb080;
+  background:linear-gradient(180deg,rgba(232,120,48,.5),rgba(22,12,8,.96));
+  box-shadow:0 0 20px rgba(200,100,40,.32);
 }
 .mother-goose-hatch-card.tier-orange::before{background:linear-gradient(90deg,var(--tier-orange),#ffb080,var(--tier-orange));}
 .mother-goose-hatch-card--new{
@@ -2269,6 +2269,8 @@ body.combat-scenario-test-unlocked .splash-hotspot--combat-scenarios.is-combatte
 }
 .mother-goose-hatch-close:hover{background:rgba(201,168,76,.24);}
 .mother-goose-hatch-now{display:block;margin:4px auto 12px;min-width:150px;}
+.mother-goose-hatch-close[hidden],
+.mother-goose-hatch-now[hidden]{display:none!important;}
 .mother-goose-hatch-overview{margin:10px auto 14px;padding:10px 14px;max-width:560px;text-align:left;border:1px solid rgba(201,168,76,.3);border-radius:10px;background:rgba(201,168,76,.07);}
 .mother-goose-hatch-overview h3{margin:0 0 8px;text-align:center;color:var(--gold-light);font:700 .85rem 'Cinzel',serif;}
 .mother-goose-hatch-overview ul{margin:0;padding-left:20px;columns:2;}
