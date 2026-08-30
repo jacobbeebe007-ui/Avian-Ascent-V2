@@ -95,6 +95,9 @@ header p{color:var(--text-dim);font-style:italic;font-size:1rem;margin-top:4px;}
 #app:has(#screen-battle.active) > header .battle-header-controls{display:flex;flex:1 1 auto;}
 #app:has(#screen-battle.active) > header .battle-only-control{display:inline-flex;align-items:center;}
 .screen{display:none;}.screen.active{display:block;}
+/* ID-level display rules (e.g. sticky combat) must never leak inactive screens
+   into the War Room or other menus. */
+.screen:not(.active){display:none !important;}
 
 /* ---- Title / start (place art at assets/ui/start-screen.png) ---- */
 #app:has(#screen-start.active) > header{display:none !important;}
@@ -4359,6 +4362,11 @@ body.ui-desktop-mode #action-tooltip:not(.is-touch-open) .tt-row{margin-bottom:2
 body.ui-desktop-mode #action-tooltip:not(.is-touch-open) .tt-desc{font-size:.74rem;max-height:none;}
 body.ui-desktop-mode #action-tooltip:not(.is-touch-open) .tt-name{font-size:.84rem;}
 body.ui-desktop-mode #action-tooltip:not(.is-touch-open) .tt-type{font-size:.66rem;margin-bottom:5px;padding-bottom:4px;}
+body.ui-desktop-mode #action-tooltip:has(.combat-hover-card){
+  max-width:min(92vw,300px);
+  min-width:min(240px,92vw);
+  padding:10px 12px;
+}
 .tt-name{font-family:'Cinzel',serif;color:var(--gold);font-size:.92rem;margin-bottom:1px;}
 .tt-type{color:var(--text-dim);font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;margin-bottom:7px;padding-bottom:5px;border-bottom:1px solid var(--border);}
 .tt-row{display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin-bottom:3px;}
@@ -4397,12 +4405,20 @@ html.avian-ow-nest-embed .nest-close{display:none!important;}
 .nest-inner h2{font-family:"Cinzel",serif;color:var(--gold);font-size:1.4rem;margin-bottom:4px;text-align:center;}
 .nest-subtitle{color:var(--text-dim);font-size:.82rem;text-align:center;margin-bottom:18px;}
 .nest-tabs{position:sticky;top:-28px;z-index:5;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;margin:0 0 20px;padding:10px 0;background:linear-gradient(180deg,var(--surface) 75%,transparent);}
+.nest-tabs--3{grid-template-columns:repeat(3,minmax(0,1fr));}
 .nest-tabs button{min-height:40px;padding:8px 10px;border:1px solid var(--border);border-radius:9px;background:var(--surface2);color:var(--text-dim);font:600 .72rem 'Cinzel',serif;letter-spacing:.04em;cursor:pointer;transition:border-color .15s,background .15s,color .15s;}
 .nest-tabs button:hover{border-color:rgba(201,168,76,.55);color:var(--text);}
 .nest-tabs button.active{border-color:var(--gold);background:rgba(201,168,76,.14);color:var(--gold-light);box-shadow:inset 0 -2px 0 var(--gold);}
 [data-nest-panel][hidden]{display:none!important;}
+.nest-inner--enemy{border-color:rgba(200,96,64,.42);}
+.nest-inner--enemy .nest-subtitle{display:flex;flex-direction:column;align-items:center;gap:8px;}
+.nest-inspect-sprite{display:flex;justify-content:center;}
+.nest-inspect-sprite .sprite4{width:72px;height:72px;}
+.nest-eq-layout--inspect{grid-template-columns:1fr;max-width:420px;margin:0 auto;}
+.nest-eq-layout--inspect .nest-eq-worn{position:static;}
 @media(max-width:600px){
   .nest-tabs{grid-template-columns:repeat(2,minmax(0,1fr));}
+  .nest-tabs--3{grid-template-columns:repeat(3,minmax(0,1fr));}
 }
 .nest-close{position:absolute;top:14px;right:16px;background:none;border:none;color:var(--text-dim);font-size:1.4rem;cursor:pointer;line-height:1;}
 .nest-close:hover{color:var(--gold);}
@@ -4658,6 +4674,7 @@ html.avian-ow-nest-embed .nest-close{display:none!important;}
 }
 @media (max-width:600px){
   .nest-tabs{top:0;grid-template-columns:repeat(2,minmax(0,1fr));}
+  .nest-tabs--3{grid-template-columns:repeat(3,minmax(0,1fr));}
   .nest-eq-worn{top:92px;}
 }
 .nest-inv-item{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px;min-height:130px;cursor:pointer;font-size:.72rem;line-height:1.3;transition:all .15s;text-align:center;display:flex;flex-direction:column;align-items:center;}
@@ -6044,52 +6061,63 @@ img{image-rendering:pixelated;image-rendering:crisp-edges;}
 .combatant-extras{flex-shrink:0;width:100%;}
 .phase-banner:not(.visible){height:0;padding:0;margin:0;overflow:hidden;opacity:0;}
 .tactical-battlefield{position:relative;}
+/* In-flow row under the combatants/resource columns (not inside the bird grid).
+   Resource bars stay aligned; intent clusters on the enemy side. */
 #enemy-telegraph{
-  position:absolute;
-  left:50%;
-  top:42%;
-  transform:translate(-50%,-50%);
-  z-index:5;
+  grid-column:1 / -1;
+  position:static;
+  left:auto;
+  top:auto;
+  transform:none;
+  z-index:3;
   display:flex;
-  flex-direction:column;
+  flex-direction:row;
+  flex-wrap:wrap;
   align-items:center;
-  gap:6px;
-  max-width:min(340px,42vw);
-  padding:8px 12px 10px;
+  justify-content:flex-end;
+  gap:4px 6px;
+  width:100%;
+  max-width:none;
+  box-sizing:border-box;
+  margin:0;
+  padding:3px 2px 1px;
   pointer-events:auto;
-  border-radius:14px;
-  border:1px solid rgba(232,140,90,.42);
-  background:linear-gradient(180deg,rgba(28,10,10,.78),rgba(8,6,8,.7));
-  box-shadow:0 10px 28px rgba(0,0,0,.4),inset 0 1px 0 rgba(255,220,180,.08);
-  backdrop-filter:blur(10px);
-  -webkit-backdrop-filter:blur(10px);
+  border:none;
+  border-top:1px solid rgba(232,140,90,.2);
+  border-radius:0;
+  background:transparent;
+  box-shadow:none;
+  backdrop-filter:none;
+  -webkit-backdrop-filter:none;
 }
 #enemy-telegraph[hidden],
 body.combat-hide-enemy-intent #enemy-telegraph{display:none !important;}
 .enemy-telegraph-kicker{
   font-family:'Cinzel',serif;
-  font-size:.58rem;
-  letter-spacing:.16em;
+  font-size:.5rem;
+  letter-spacing:.14em;
   text-transform:uppercase;
-  color:rgba(232,180,140,.78);
+  color:rgba(232,180,140,.58);
+  flex:0 0 auto;
 }
 .enemy-telegraph-actions{
   display:flex;
   flex-wrap:wrap;
-  justify-content:center;
-  gap:5px;
+  justify-content:flex-end;
+  gap:4px;
+  min-width:0;
 }
 .enemy-telegraph-chip{
   display:inline-flex;
   align-items:center;
-  gap:4px;
+  gap:3px;
   max-width:100%;
-  padding:3px 8px;
+  padding:1px 6px;
   border-radius:999px;
-  border:1px solid rgba(232,140,90,.35);
-  background:rgba(40,14,12,.55);
+  border:1px solid rgba(232,140,90,.28);
+  background:rgba(24,10,10,.42);
   color:var(--text);
-  font-size:.72rem;
+  font-size:.64rem;
   line-height:1.2;
   cursor:help;
 }
@@ -6106,21 +6134,28 @@ body.combat-hide-enemy-intent #enemy-telegraph{display:none !important;}
   flex:0 0 auto;
   color:var(--gold-light);
   font-family:'Cinzel',serif;
-  font-size:.62rem;
+  font-size:.56rem;
 }
 .enemy-telegraph-en{
   font-family:'Cinzel',serif;
-  font-size:.62rem;
+  font-size:.56rem;
   letter-spacing:.06em;
   color:var(--gold-light);
+  flex:0 0 auto;
 }
 @media (max-width:767px){
   #enemy-telegraph{
-    top:36%;
-    max-width:min(92vw,360px);
-    padding:6px 8px 7px;
+    padding:2px 0 0;
+    gap:3px 5px;
   }
-  .enemy-telegraph-chip{font-size:.64rem;padding:2px 6px;}
+  .enemy-telegraph-chip{font-size:.58rem;padding:1px 5px;}
+}
+#screen-battle.combat-arr--custom #enemy-telegraph,
+#screen-battle.combat-arr--actionsFirst #enemy-telegraph{
+  width:100%;
+  max-width:none;
+  justify-content:flex-end;
+  order:3;
 }
 
 #screen-battle .action-panel.tactical-action-tray{background:linear-gradient(180deg,rgba(4,8,4,.5),rgba(3,6,3,.5));border:1px solid rgba(200,160,32,.25);border-radius:14px;padding:14px 14px 12px;margin-top:6px;box-shadow:none;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);}
@@ -7072,21 +7107,26 @@ body.ui-mobile-mode #screen-battle .battle-log{
 #screen-battle .combat-vitals{width:100%;align-self:stretch;}
 
 /* Combatant summaries need room for the complete, abbreviated stat grid. */
-#action-tooltip:has(.combat-hover-summary){box-sizing:border-box;width:min(92vw,420px);max-width:min(92vw,420px);}
-#action-tooltip .combat-hover-summary{width:100%;min-width:0;}
-#action-tooltip .combat-hover-summary .stats-mini{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:3px;margin:7px 0;}
-#action-tooltip .combat-hover-summary .stat-mini,#action-tooltip .combat-hover-summary .est{padding:3px 6px;min-height:22px;}
-#action-tooltip .combat-hover-summary .stat-k{font-size:.6rem;white-space:nowrap;}
-#action-tooltip .combat-hover-summary .stat-v{font-size:.68rem;white-space:nowrap;}
-#action-tooltip .combat-hover-summary .stat-status-hint{display:none;}
-
-/* Keep a sensible minimum width for smaller screens (from main); layout above provides tighter sizing for larger viewports */
-#action-tooltip .combat-hover-summary{min-width:min(290px,80vw);}
-#action-tooltip .combat-hover-summary .stats-mini{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:3px;margin:7px 0;}
-#action-tooltip .combat-hover-summary .stat-mini,#action-tooltip .combat-hover-summary .est{padding:3px 6px;min-height:22px;}
-#action-tooltip .combat-hover-statuses{margin-top:7px;padding-top:6px;border-top:1px solid rgba(201,168,76,.2);}
-#action-tooltip .combat-hover-statuses .combat-details-status-detail{display:none;}
-#action-tooltip .combat-hover-statuses .combat-details-status-list li{font-size:.72rem;line-height:1.2;margin:2px 0;}
+#action-tooltip:has(.combat-hover-card){box-sizing:border-box;width:min(92vw,300px);max-width:min(92vw,300px);min-width:min(240px,92vw);}
+#action-tooltip .combat-hover-card{width:100%;min-width:0;}
+#action-tooltip .combat-hover-head{display:grid;grid-template-columns:1fr auto;gap:2px 10px;align-items:baseline;margin-bottom:6px;}
+#action-tooltip .combat-hover-head .tt-name{grid-column:1;margin-bottom:0;}
+#action-tooltip .combat-hover-head .tt-type{grid-column:1;margin:0;padding:0;border:0;letter-spacing:.06em;}
+#action-tooltip .combat-hover-lv{grid-column:2;grid-row:1/span 2;font-family:'Cinzel',serif;font-size:.78rem;color:var(--gold-light);}
+#action-tooltip .combat-hover-vitals{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px;margin:6px 0;}
+#action-tooltip .combat-hover-vital{background:rgba(8,12,18,.45);border:1px solid rgba(201,168,76,.18);border-radius:7px;padding:4px 6px;display:flex;flex-direction:column;gap:1px;}
+#action-tooltip .combat-hover-vital span{font-size:.58rem;letter-spacing:.06em;text-transform:uppercase;color:var(--text-dim);}
+#action-tooltip .combat-hover-vital b{font-family:'Cinzel',serif;font-size:.78rem;color:var(--gold-light);font-weight:700;}
+#action-tooltip .combat-hover-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:3px 6px;margin:6px 0 4px;}
+#action-tooltip .combat-hover-stats span{display:flex;justify-content:space-between;gap:6px;font-size:.72rem;color:var(--text);}
+#action-tooltip .combat-hover-stats em{font-style:normal;color:var(--text-dim);font-size:.62rem;letter-spacing:.04em;}
+#action-tooltip .combat-hover-passive{font-size:.76rem;color:var(--gold-light);margin:6px 0 4px;}
+#action-tooltip .combat-hover-ailments{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px;padding-top:6px;border-top:1px solid rgba(201,168,76,.2);}
+#action-tooltip .combat-hover-chip{display:inline-flex;align-items:center;padding:2px 7px;border-radius:999px;font-size:.66rem;line-height:1.2;background:rgba(201,168,76,.12);border:1px solid rgba(201,168,76,.28);color:var(--silver);}
+#action-tooltip .combat-hover-chip--ailment{background:rgba(180,64,64,.16);border-color:rgba(232,112,112,.35);color:#f0b0b0;}
+#action-tooltip .combat-hover-chip--buff{background:rgba(106,184,154,.14);border-color:rgba(106,184,154,.35);color:#9ed9c4;}
+#action-tooltip .combat-hover-chip--debuff{background:rgba(180,120,40,.16);border-color:rgba(232,180,80,.35);color:#e8c96a;}
+#action-tooltip .combat-hover-chip--empty{opacity:.7;}
 
 @media(max-width:767px){
   #app:has(#screen-battle.active){padding-left:6px;padding-right:6px;}
@@ -7330,7 +7370,7 @@ body.combat-sticky-combatants #app:has(#screen-battle.active){
 body.combat-sticky-combatants #app:has(#screen-battle.active) > header{
   flex-shrink:0;
 }
-body.combat-sticky-combatants #screen-battle{
+body.combat-sticky-combatants #screen-battle.active{
   display:flex;
   flex-direction:column;
   flex:1 1 auto;
