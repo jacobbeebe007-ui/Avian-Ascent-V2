@@ -2744,13 +2744,16 @@ function _shopCompareRows(shop, worn){
 }
 
 function _shopCompareCandidateSlots(item){
-  const accepts=String(item?.slot||'');
   const order=(typeof Avian?.equipment?.getSlotOrder==='function'
     ? Avian.equipment.getSlotOrder()
     : ['helmet','armour','mainHand','offHand','ankletL','ankletR','necklace']);
+  if(typeof Avian?.equipment?.slotAcceptsItem==='function'){
+    return order.filter((sk)=>Avian.equipment.slotAcceptsItem(sk, item));
+  }
+  const accepts=String(item?.slot||'');
   const meta=Avian.data?.equipment?.slots?.slots||{};
   if(!accepts) return order.slice();
-  return order.filter((sk)=>String(meta[sk]?.accepts||'')===accepts);
+  return order.filter((sk)=>String(meta[sk]?.accepts||'')===accepts || (sk==='offHand' && accepts==='Shield'));
 }
 function _shopCompareResolve(player, itemId){
   const shop=getEquipmentItem(itemId);
