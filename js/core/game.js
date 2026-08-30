@@ -2816,8 +2816,6 @@ function bindShopItemCompareTooltips(){
     _shopSuppressHoldClick(el);
   });
 }
-globalThis.buildShopCompareTooltipHtml=buildShopCompareTooltipHtml;
-globalThis.bindShopItemCompareTooltips=bindShopItemCompareTooltips;
 
 function _nestEquipmentItemHtml(itemId, slotKey, locked=false, opts={}){
   const icons=EQUIPMENT_NEST_SLOT_ICONS;
@@ -19262,7 +19260,6 @@ function enterStorkShopScreen(){
 }
 
 const SHOP_EQUIPMENT_PER_TIER=6;
-globalThis.SHOP_EQUIPMENT_PER_TIER=SHOP_EQUIPMENT_PER_TIER;
 
 const SHOP_COSTS={grey:36,green:48,blue:70,purple:82,gold:164};
 
