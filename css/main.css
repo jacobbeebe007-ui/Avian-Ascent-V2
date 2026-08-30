@@ -5775,17 +5775,15 @@ img{image-rendering:pixelated;image-rendering:crisp-edges;}
 #screen-battle .combat-vitals{flex:0 0 auto;margin-top:auto;}
 #screen-battle .combatant-panel.player .combatant-card,
 #screen-battle .combatant-panel.enemy .combatant-card{border:none;box-shadow:none;background:transparent;}
-#screen-battle .combatant-panel.player .combatant-card{padding-left:clamp(12px,2.4vw,26px);}
-#screen-battle .combatant-panel.enemy .combatant-card{padding-right:clamp(12px,2.4vw,26px);}
 #screen-battle .combatant-identity{margin-bottom:4px;}
 #screen-battle .combatant-identity .combatant-name{margin-bottom:1px;}
 #screen-battle .combatant-panel.player .combatant-identity,
 #screen-battle .combatant-panel.player .combatant-name,
-#screen-battle .combatant-panel.player .combatant-meta{text-align:left;}
+#screen-battle .combatant-panel.player .combatant-meta,
 #screen-battle .combatant-panel.enemy .combatant-identity,
 #screen-battle .combatant-panel.enemy .combatant-name,
-#screen-battle .combatant-panel.enemy .combatant-meta{text-align:right;}
-#screen-battle .avatar-wrap{flex:1 1 auto;display:flex;align-items:center;margin:0;}
+#screen-battle .combatant-panel.enemy .combatant-meta{text-align:center;}
+#screen-battle .avatar-wrap{flex:1 1 auto;display:flex;align-items:center;justify-content:center;margin:0;}
 .combatant-meta{font-size:.7rem;color:var(--text-dim);letter-spacing:.08em;text-transform:uppercase;margin-bottom:2px;}
 #player-class-label,#enemy-class-label{cursor:help;}
 .tactical-center{display:none;}
@@ -6799,15 +6797,15 @@ body.ui-mobile-mode #screen-battle .battle-log{
 #screen-battle .enemy-nest-window{appearance:none;padding:0;border:0;background:transparent;color:inherit;font:inherit;transition:transform .15s;overflow:visible;width:100%;align-self:stretch;display:flex;align-items:center;margin:0;}
 #screen-battle .enemy-nest-window:hover,#screen-battle .enemy-nest-window:focus-visible{background:transparent;outline:none;transform:translateY(-1px);}
 #screen-battle .combatant-panel.player .avatar-wrap,
-#screen-battle .combatant-panel.player .enemy-nest-window{width:100%;justify-content:flex-start;align-items:center;}
+#screen-battle .combatant-panel.player .enemy-nest-window,
 #screen-battle .combatant-panel.enemy .avatar-wrap,
-#screen-battle .combatant-panel.enemy .enemy-nest-window{width:100%;justify-content:flex-end;align-items:center;}
-#screen-battle .combatant-panel.player .avatar-inner{transform-origin:left bottom;}
-#screen-battle .combatant-panel.enemy .avatar-inner{transform-origin:right bottom;}
+#screen-battle .combatant-panel.enemy .enemy-nest-window{width:100%;justify-content:center;align-items:center;}
+#screen-battle .combatant-panel.player .avatar-inner,
+#screen-battle .combatant-panel.enemy .avatar-inner{transform-origin:center bottom;}
 #screen-battle .combatant-panel.player .combat-status-stack,
-#screen-battle .combatant-panel.player .status-effects{align-items:flex-start;}
+#screen-battle .combatant-panel.player .status-effects,
 #screen-battle .combatant-panel.enemy .combat-status-stack,
-#screen-battle .combatant-panel.enemy .status-effects{align-items:flex-end;}
+#screen-battle .combatant-panel.enemy .status-effects{align-items:center;}
 #screen-battle .combat-vitals{width:100%;align-self:stretch;}
 
 /* Combatant summaries need room for the complete, abbreviated stat grid. */
