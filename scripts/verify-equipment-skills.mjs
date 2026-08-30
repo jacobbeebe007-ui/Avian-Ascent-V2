@@ -135,6 +135,26 @@ for (const skillId of skillIds) {
 if (protChecked > 0) ok(`${protChecked} protection skills carry executable riders`);
 else fail('expected at least one protection skill with riders');
 
+let poolDmgChecked = 0;
+for (const skillId of skillIds) {
+  const skill = skills[skillId];
+  const text = String(skill.riderText || '');
+  const mag = text.match(/Deal\s+(\d+)\s+Magic\s+(?:Armour|Armor)\s+damage/i);
+  const arm = text.match(/Deal\s+(\d+)\s+(?:Armour|Armor)\s+damage/i);
+  if (!mag && !arm) continue;
+  const row = actions.skillToAbilityRow(skillId, { id: 'TEST', rarity: 'green' }, 'green');
+  const riders = (row && row.riders) || [];
+  if (mag && !riders.some((r) => r.kind === 'magicArmourDamage' || r.kind === 'magicArmourRetaliateOnPhysical')) {
+    fail(`${skillId}: Magic Armour damage text missing pool rider (${text.slice(0, 80)})`);
+  } else if (arm && !/Magic\s+(?:Armour|Armor)/i.test(arm[0]) && !riders.some((r) => r.kind === 'armourDamage')) {
+    fail(`${skillId}: Armour damage text missing pool rider (${text.slice(0, 80)})`);
+  } else {
+    poolDmgChecked++;
+  }
+}
+if (poolDmgChecked > 0) ok(`${poolDmgChecked} pool-damage skill texts resolve to pool-only riders`);
+else ok('no equipment skills author pool-only Armour/Magic Armour damage');
+
 /* Ailment rolls from rider text must land on dispatcher rows. */
 const bleedRow = actions.skillToAbilityRow('WSK-004', { id: 'WPN-007', rarity: 'grey', family: 'Talon Blade' }, 'grey');
 if (!bleedRow || bleedRow.ailment !== 'bleed' || Number(bleedRow.ailmentChance) !== 50) {

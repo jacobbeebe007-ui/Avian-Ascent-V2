@@ -630,21 +630,20 @@
     var n = Math.max(0, Number(amount) || 0);
     if (n <= 0) return;
     var hit = Avian.protection.applyDamageThroughProtection(stats, status, n, !!isMagic);
+    var leftover = hit ? Math.max(0, Number(hit.remaining) || 0) : 0;
+    var absorbed = hit ? Math.max(0, Number(hit.absorbed) || 0) : 0;
     if (ctx) {
       if (isMagic) ctx.targetNoMagicArmour = (Number(stats.magicArmour) || 0) <= 0;
       else ctx.targetNoArmour = (Number(stats.armour) || 0) <= 0;
-      if (hit && hit.damagedHealth) ctx.reachedHealth = true;
-    }
-    if (hit && hit.remaining > 0) {
-      stats.hp = Math.max(0, Math.round(((Number(stats.hp) || 0) - hit.remaining) * 100) / 100);
-      if (ctx) ctx.reachedHealth = true;
+      /* "Deal N (Magic) Armour damage" is pool-only. Leftover never becomes Health
+       * damage; it only marks reachedHealth so gated riders (Might/Focus Down) fire. */
+      if (leftover > 0) ctx.reachedHealth = true;
     }
     var foe = foeSideName(ownerSide);
-    if (typeof spawnFloat === 'function') {
-      spawnFloat(foe, '-' + n + (isMagic ? ' MARM' : ' ARM'), 'fn-dmg');
+    if (absorbed > 0 && typeof spawnFloat === 'function') {
+      spawnFloat(foe, '-' + absorbed + (isMagic ? ' MARM' : ' ARM'), 'fn-dmg');
     }
     spawnTrendFloat(foe, 'debuff');
-    if (typeof setHpBar === 'function') setHpBar(foe, stats.hp, stats.maxHp);
     if (typeof refreshBattleUI === 'function') refreshBattleUI();
   }
 

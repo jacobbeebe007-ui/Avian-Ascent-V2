@@ -243,7 +243,10 @@
   /**
    * Absorb post-mitigation damage into the matching protection pool.
    * Returns { remaining, absorbed, poolBefore, poolAfter, brokePool, damagedHealth }.
-   * damagedHealth is true when remaining > 0 after absorption (caller applies to HP).
+   * damagedHealth is true when remaining > 0 after absorption.
+   * Regular attacks apply remaining to Health. "Deal N (Magic) Armour damage"
+   * riders are pool-only: they must not apply remaining to Health — leftover
+   * only means the effect reached Health for gated riders.
    */
   function applyDamageThroughProtection(stats, status, dmg, isMagic) {
     ensureProtectionFields(stats);
