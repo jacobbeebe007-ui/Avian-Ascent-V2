@@ -60,13 +60,15 @@
 <header>
 <h1>⚔ AVIAN ASCENT ⚔</h1>
 <div class="page-header-controls">
-<div class="battle-header-controls" aria-label="Battle controls">
+<div class="battle-header-controls" aria-label="Battle stage">
 <div class="level-badge" id="level-label">STAGE 1</div>
 <span class="bird-lv" id="bird-lv-label">Lv.1</span>
-<button type="button" class="nest-btn" data-action="openNest">🪺 Nest</button>
-<button class="sound-btn" id="sound-toggle-btn" data-action="toggleSound" title="Toggle Sound" aria-label="Toggle sound">🔊</button>
 </div>
+<div class="header-actions">
 <button class="menu-btn" data-action="openSettingsModal">⚙ Settings</button>
+<button type="button" class="nest-btn battle-only-control" data-action="openNest">🪺 Nest</button>
+<button class="sound-btn battle-only-control" id="sound-toggle-btn" data-action="toggleSound" title="Toggle Sound" aria-label="Toggle sound">🔊</button>
+</div>
 </div>
 </header>
 <!-- START -->
@@ -794,11 +796,11 @@
 <div class="combat-status-section combat-status-ailments" id="enemy-status-ailments" aria-label="Ailments"></div>
 <div class="combat-status-section combat-status-modifiers" id="enemy-status-modifiers" aria-label="Buffs and debuffs"></div>
 </div>
+</div>
 <div class="combatant-extras">
 <div class="phase-banner" id="boss-phase-banner"></div>
 <div class="enemy-intent enemy-plan" id="enemy-intent-panel">🤔 Thinking...</div>
 <div class="enemy-abilities-list" id="enemy-abilities-list"></div>
-</div>
 </div>
 <div class="combat-vitals" aria-label="Enemy vitals">
 <div class="hp-bar-wrap">

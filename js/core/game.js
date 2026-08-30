@@ -9213,7 +9213,7 @@ function setHpBar(who,hp,max) {
 
   const hpTextEl=document.getElementById(`${who}-hp-text`);
   if(hpTextEl){
-    hpTextEl.textContent=`${formatCombatNumber(Math.max(0,hp))}/${formatCombatNumber(maxHp)} (${pct.toFixed(2)}%)`;
+    hpTextEl.textContent=`${formatCombatNumber(Math.max(0,hp))}/${formatCombatNumber(maxHp)}`;
     hpTextEl.classList.remove('hp-delta-up','hp-delta-down');
     if(delta<0){ hpTextEl.classList.add('hp-delta-down'); }
     else if(delta>0){ hpTextEl.classList.add('hp-delta-up'); }
@@ -9436,7 +9436,7 @@ function setProtectionBars(side){
     if(fortifyBonus>0){
       note=` · Fortify +${formatCombatNumber(fortifyBonus)}${fortifyTurns>0?` (${fortifyTurns}t)`:''}`;
     }
-    armTxt.textContent=`${formatCombatNumber(arm)}/${formatCombatNumber(armMax)} (${armPct.toFixed(2)}%)${note}`;
+    armTxt.textContent=`${formatCombatNumber(arm)}/${formatCombatNumber(armMax)}${note}`;
     armTxt.classList.remove('hp-delta-up','hp-delta-down');
     if(armDelta<0) armTxt.classList.add('hp-delta-down');
     else if(armDelta>0) armTxt.classList.add('hp-delta-up');
@@ -9460,7 +9460,7 @@ function setProtectionBars(side){
     if(wardBonus>0){
       note=` · Ward +${formatCombatNumber(wardBonus)}${wardTurns>0?` (${wardTurns}t)`:''}`;
     }
-    marmTxt.textContent=`${formatCombatNumber(marm)}/${formatCombatNumber(marmMax)} (${marmPct.toFixed(2)}%)${note}`;
+    marmTxt.textContent=`${formatCombatNumber(marm)}/${formatCombatNumber(marmMax)}${note}`;
     marmTxt.classList.remove('hp-delta-up','hp-delta-down');
     if(marmDelta<0) marmTxt.classList.add('hp-delta-down');
     else if(marmDelta>0) marmTxt.classList.add('hp-delta-up');
@@ -9986,7 +9986,7 @@ function renderCombatItems(){
     btn.type='button';
     btn.className='combat-item-btn';
     const pct=Math.round((def.healPct||0)*100);
-    btn.innerHTML=`<span class="combat-item-main"><span class="combat-item-icon" aria-hidden="true">${def.icon}</span><span class="combat-item-label">${escapeHtmlRoster(def.name)}</span></span><span class="combat-item-meta">${pct}% · ${def.energyCost} EN · ×${count}</span>`;
+    btn.innerHTML=`<span class="combat-item-icon" aria-hidden="true">${def.icon}</span><span class="combat-item-copy"><span class="combat-item-label">${escapeHtmlRoster(def.name)}</span><span class="combat-item-meta">${pct}% · ${def.energyCost} EN · ×${count}</span></span>`;
     const usable=!locked && !healUsed && count>0 && (G.player.energy||0)>=def.energyCost;
     btn.disabled=!usable;
     btn.title=def.combatHint||`${def.name}: heal ${pct}% max HP for ${def.energyCost} EN (one heal item per turn)`;
