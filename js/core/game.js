@@ -2743,6 +2743,32 @@ function _shopCompareRows(shop, worn){
   return rows;
 }
 
+function _shopCompareCandidateSlots(item){
+  const accepts=String(item?.slot||'');
+  const order=(typeof Avian?.equipment?.getSlotOrder==='function'
+    ? Avian.equipment.getSlotOrder()
+    : ['helmet','armour','mainHand','offHand','ankletL','ankletR','necklace']);
+  const meta=Avian.data?.equipment?.slots?.slots||{};
+  if(!accepts) return order.slice();
+  return order.filter((sk)=>String(meta[sk]?.accepts||'')===accepts);
+}
+function _shopCompareResolve(player, itemId){
+  const shop=getEquipmentItem(itemId);
+  const emptySlot=typeof Avian?.equipment?.findEmptyEquipSlotForItem==='function'
+    ? Avian.equipment.findEmptyEquipSlotForItem(player, itemId)
+    : null;
+  if(emptySlot) return {slot:emptySlot, empty:true, shop};
+  const legal=typeof Avian?.equipment?.findEquipSlotForItem==='function'
+    ? Avian.equipment.findEquipSlotForItem(player, itemId)
+    : null;
+  if(legal) return {slot:legal, empty:!player.equipment?.[legal], shop};
+  const candidates=_shopCompareCandidateSlots(shop);
+  for(const sk of candidates){
+    if(player.equipment?.[sk]) return {slot:sk, empty:false, shop};
+  }
+  return {slot:candidates[0]||null, empty:true, shop};
+}
+
 function buildShopCompareTooltipHtml(shopItem){
   if(!shopItem) return '';
   const itemId=shopItem.equipmentItemId||shopItem.id;
@@ -2751,22 +2777,18 @@ function buildShopCompareTooltipHtml(shopItem){
   if(!body) return '';
   const player=G.player||null;
   if(!player) return body+richTooltipCloseBtn();
-  const emptySlot=typeof Avian?.equipment?.findEmptyEquipSlotForItem==='function'
-    ? Avian.equipment.findEmptyEquipSlotForItem(player, itemId)
-    : null;
-  const slot=emptySlot || (typeof Avian?.equipment?.findEquipSlotForItem==='function'
-    ? Avian.equipment.findEquipSlotForItem(player, itemId)
-    : null);
+  const resolved=_shopCompareResolve(player, itemId);
+  const slot=resolved.slot;
   const slotLbl=slot && typeof getEquipmentNestSlotLabel==='function'
     ? getEquipmentNestSlotLabel(slot)
-    : (slot||'slot');
+    : (slot||'worn gear');
   let compare='';
-  if(emptySlot){
+  if(resolved.empty){
     compare=`<div class="shop-tt-compare"><div class="shop-tt-compare-h">Compare · ${escapeHtmlRoster(slotLbl)}</div><div class="shop-tt-empty">No item equipped in this slot.</div></div>`;
   } else {
     const wornId=slot?player.equipment?.[slot]:null;
     const worn=wornId?getEquipmentItem(wornId):null;
-    const shop=getEquipmentItem(itemId);
+    const shop=resolved.shop||getEquipmentItem(itemId);
     if(worn && shop && worn.id!==shop.id){
       const rows=_shopCompareRows(shop, worn);
       const bodyRows=rows.length?rows.join(''):'<div class="shop-tt-empty">No overlapping stats to compare.</div>';
