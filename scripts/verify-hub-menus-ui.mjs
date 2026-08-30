@@ -21,6 +21,8 @@ function ok(msg) {
 const html = readFileSync(path.join(ROOT, 'index.html'), 'utf8');
 const css = readFileSync(path.join(ROOT, 'css/main.css'), 'utf8');
 const game = readFileSync(path.join(ROOT, 'js/core/game.js'), 'utf8');
+const shop = readFileSync(path.join(ROOT, 'js/meta/fortune-shop.js'), 'utf8');
+const inventory = readFileSync(path.join(ROOT, 'js/meta/fortune-inventory.js'), 'utf8');
 
 const htmlChecks = [
   ['settings dialog labelled', /id="settings-modal"[^>]*aria-labelledby="settings-modal-title"/],
@@ -42,6 +44,10 @@ const htmlChecks = [
   ['supplies device section', /id="supplies-device-heading">This device</],
   ['supplies clear cache action', /id="select-hub-supplies"[\s\S]*?data-action="openClearCacheModal"/],
   ['unlock input kept', /id="dev-code-input"/],
+  ['war room banked eggs chip', /id="splash-bank-eggs"/],
+  ['eggs chip has no Banked label', /id="splash-bank-eggs"[\s\S]*?splash-bank-eggs-count/],
+  ['war room saved nests shortcut', /data-action="openInventorySavedNests"/],
+  ['nests label above count', /splash-bank-chip-label">Saved Nests</],
 ];
 
 const cssChecks = [
@@ -51,6 +57,9 @@ const cssChecks = [
   ['music now playing live', /\.music-now-playing\.is-live\{/],
   ['supplies section cards', /\.supplies-section\{/],
   ['supplies device danger', /\.supplies-section--device\{/],
+  ['war room bank chip', /\.splash-bank-chip--eggs\{/],
+  ['war room nests shortcut', /\.splash-bank-chip--nests\{/],
+  ['header buttons share size', /\.splash-settings-btn,\n\.splash-bank-chip\{/],
 ];
 
 const jsChecks = [
@@ -73,6 +82,18 @@ for (const [label, re] of jsChecks) {
   if (re.test(game)) ok(label);
   else fail('js: ' + label);
 }
+
+if (/id="fortune-egg-badge"/.test(html)) fail('html: fortune-egg-badge should be removed from Cuckoo\'s Emporium');
+else ok('emporium gold badge removed');
+if (/id="splash-bank-eggs"[\s\S]*?Banked[\s\S]*?id="splash-bank-eggs-count"/.test(html)) {
+  fail('html: eggs chip still shows Banked');
+} else ok('eggs chip amount-only');
+if (/function syncWarRoomBank\b/.test(shop)) ok('sync war room bank');
+else fail('fortune-shop: syncWarRoomBank');
+if (/function openInventorySavedNests\b/.test(inventory)) ok('open inventory saved nests');
+else fail('fortune-inventory: openInventorySavedNests');
+if (/nestBtn\.hidden = !\(nests > 0\)/.test(shop)) ok('hide nests shortcut when empty');
+else fail('fortune-shop: hide empty nests shortcut');
 
 if (failed > 0) {
   console.error(`[hub-menus-ui] ${failed} check(s) failed`);
