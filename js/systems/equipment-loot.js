@@ -509,7 +509,7 @@
   function rollUnlockedTierShopStock(opts) {
     opts = opts || {};
     var used = opts.usedIds || new Set();
-    var perTier = Math.max(1, Math.floor(Number(opts.perTier) || 4));
+    var perTier = Math.max(1, Math.floor(Number(opts.perTier) || 6));
     var unlocked = Array.isArray(opts.unlockedRarities) && opts.unlockedRarities.length
       ? opts.unlockedRarities.slice()
       : getRunUnlockedEquipmentRarities(opts.player, opts.g || globalThis.G);

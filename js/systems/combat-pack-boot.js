@@ -266,7 +266,7 @@
               : ['grey'];
             var eqOffers = Avian.equipmentLoot.rollUnlockedTierShopStock({
               unlockedRarities: unlocked,
-              perTier: 4,
+              perTier: (typeof globalThis.SHOP_EQUIPMENT_PER_TIER === 'number') ? globalThis.SHOP_EQUIPMENT_PER_TIER : 6,
               usedIds: new Set(),
               filterForPlayer: true,
               player: globalThis.G && globalThis.G.player,
@@ -275,7 +275,7 @@
             });
             items.push.apply(items, eqOffers);
           } else if (Avian.equipmentLoot && typeof Avian.equipmentLoot.rollEquipmentStock === 'function') {
-            var eqCount = mode === 'endless-boss' ? 4 : 4;
+            var eqCount = (typeof globalThis.SHOP_EQUIPMENT_PER_TIER === 'number') ? globalThis.SHOP_EQUIPMENT_PER_TIER : 6;
             var eqOffersLegacy = Avian.equipmentLoot.rollEquipmentStock(eqCount, currentShopStage(), new Set());
             items.push.apply(items, eqOffersLegacy);
           }
