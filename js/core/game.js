@@ -9322,7 +9322,9 @@ function buildCombatantHoverTooltipHtml(side){
     </div>
     ${passive?.name?`<div class="combat-hover-passive">★ ${combatEscAttr(passive.name)}</div>`:''}
     <div class="combat-hover-ailments">${chipHtml}</div>
-    <div class="tt-note">${isPlayer?'Hold for this card · Tap to open your Nest':'Hold for this card · Tap to open Enemy Nest'}</div>
+    <div class="tt-note">${window._isTouchDevice
+      ? (isPlayer?'Hold for this card · Tap to open your Nest':'Hold for this card · Tap to open Enemy Nest')
+      : (isPlayer?'Click to open your Nest':'Click to open Enemy Nest')}</div>
     ${richTooltipCloseBtn()}
   </div>`;
 }
