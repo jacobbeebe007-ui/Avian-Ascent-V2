@@ -28,8 +28,11 @@ const htmlChecks = [
   ['settings checkbox', /id="setting-show-enemy-intent"/],
 ];
 const cssChecks = [
-  ['telegraph absolute center', /#enemy-telegraph\{[\s\S]*?position:absolute/,],
+  ['telegraph under resources', /#enemy-telegraph\{[\s\S]*?grid-column:-1/,],
+  ['telegraph in-flow', /#enemy-telegraph\{[\s\S]*?position:static/,],
   ['hide class', /body\.combat-hide-enemy-intent #enemy-telegraph/,],
+  ['inactive screens locked hidden', /\.screen:not\(\.active\)\{display:none !important;\}/],
+  ['sticky combat requires active', /body\.combat-sticky-combatants #screen-battle\.active\{/],
 ];
 const jsChecks = [
   ['showEnemyIntent default on', /showEnemyIntent:raw\.showEnemyIntent!==false/],

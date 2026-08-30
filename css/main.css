@@ -95,6 +95,9 @@ header p{color:var(--text-dim);font-style:italic;font-size:1rem;margin-top:4px;}
 #app:has(#screen-battle.active) > header .battle-header-controls{display:flex;flex:1 1 auto;}
 #app:has(#screen-battle.active) > header .battle-only-control{display:inline-flex;align-items:center;}
 .screen{display:none;}.screen.active{display:block;}
+/* ID-level display rules (e.g. sticky combat) must never leak inactive screens
+   into the War Room or other menus. */
+.screen:not(.active){display:none !important;}
 
 /* ---- Title / start (place art at assets/ui/start-screen.png) ---- */
 #app:has(#screen-start.active) > header{display:none !important;}
@@ -6002,52 +6005,62 @@ img{image-rendering:pixelated;image-rendering:crisp-edges;}
 .combatant-extras{flex-shrink:0;width:100%;}
 .phase-banner:not(.visible){height:0;padding:0;margin:0;overflow:hidden;opacity:0;}
 .tactical-battlefield{position:relative;}
+/* Sit in the last combatants-grid column, on the row under the resource bars.
+   In-flow so the HP/EN/ARM/MARM columns stay aligned; never overlay the arena. */
 #enemy-telegraph{
-  position:absolute;
-  left:50%;
-  top:42%;
-  transform:translate(-50%,-50%);
-  z-index:5;
+  grid-column:-1;
+  position:static;
+  left:auto;
+  top:auto;
+  transform:none;
+  z-index:3;
   display:flex;
-  flex-direction:column;
+  flex-direction:row;
+  flex-wrap:wrap;
   align-items:center;
-  gap:6px;
-  max-width:min(340px,42vw);
-  padding:8px 12px 10px;
+  justify-content:flex-end;
+  gap:4px 6px;
+  width:100%;
+  max-width:none;
+  margin:2px 0 0;
+  padding:3px 2px 0;
   pointer-events:auto;
-  border-radius:14px;
-  border:1px solid rgba(232,140,90,.42);
-  background:linear-gradient(180deg,rgba(28,10,10,.78),rgba(8,6,8,.7));
-  box-shadow:0 10px 28px rgba(0,0,0,.4),inset 0 1px 0 rgba(255,220,180,.08);
-  backdrop-filter:blur(10px);
-  -webkit-backdrop-filter:blur(10px);
+  border:none;
+  border-top:1px solid rgba(232,140,90,.2);
+  border-radius:0;
+  background:transparent;
+  box-shadow:none;
+  backdrop-filter:none;
+  -webkit-backdrop-filter:none;
 }
 #enemy-telegraph[hidden],
 body.combat-hide-enemy-intent #enemy-telegraph{display:none !important;}
 .enemy-telegraph-kicker{
   font-family:'Cinzel',serif;
-  font-size:.58rem;
-  letter-spacing:.16em;
+  font-size:.5rem;
+  letter-spacing:.14em;
   text-transform:uppercase;
-  color:rgba(232,180,140,.78);
+  color:rgba(232,180,140,.58);
+  flex:0 0 auto;
 }
 .enemy-telegraph-actions{
   display:flex;
   flex-wrap:wrap;
-  justify-content:center;
-  gap:5px;
+  justify-content:flex-end;
+  gap:4px;
+  min-width:0;
 }
 .enemy-telegraph-chip{
   display:inline-flex;
   align-items:center;
-  gap:4px;
+  gap:3px;
   max-width:100%;
-  padding:3px 8px;
+  padding:1px 6px;
   border-radius:999px;
-  border:1px solid rgba(232,140,90,.35);
-  background:rgba(40,14,12,.55);
+  border:1px solid rgba(232,140,90,.28);
+  background:rgba(24,10,10,.42);
   color:var(--text);
-  font-size:.72rem;
+  font-size:.64rem;
   line-height:1.2;
   cursor:help;
 }
@@ -6064,21 +6077,27 @@ body.combat-hide-enemy-intent #enemy-telegraph{display:none !important;}
   flex:0 0 auto;
   color:var(--gold-light);
   font-family:'Cinzel',serif;
-  font-size:.62rem;
+  font-size:.56rem;
 }
 .enemy-telegraph-en{
   font-family:'Cinzel',serif;
-  font-size:.62rem;
+  font-size:.56rem;
   letter-spacing:.06em;
   color:var(--gold-light);
+  flex:0 0 auto;
 }
 @media (max-width:767px){
   #enemy-telegraph{
-    top:36%;
-    max-width:min(92vw,360px);
-    padding:6px 8px 7px;
+    padding:2px 0 0;
+    gap:3px 5px;
   }
-  .enemy-telegraph-chip{font-size:.64rem;padding:2px 6px;}
+  .enemy-telegraph-chip{font-size:.58rem;padding:1px 5px;}
+}
+#screen-battle.combat-arr--custom #enemy-telegraph{
+  width:100%;
+  max-width:none;
+  justify-content:flex-end;
+  order:2;
 }
 
 #screen-battle .action-panel.tactical-action-tray{background:linear-gradient(180deg,rgba(4,8,4,.5),rgba(3,6,3,.5));border:1px solid rgba(200,160,32,.25);border-radius:14px;padding:14px 14px 12px;margin-top:6px;box-shadow:none;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);}
@@ -7288,7 +7307,7 @@ body.combat-sticky-combatants #app:has(#screen-battle.active){
 body.combat-sticky-combatants #app:has(#screen-battle.active) > header{
   flex-shrink:0;
 }
-body.combat-sticky-combatants #screen-battle{
+body.combat-sticky-combatants #screen-battle.active{
   display:flex;
   flex-direction:column;
   flex:1 1 auto;
