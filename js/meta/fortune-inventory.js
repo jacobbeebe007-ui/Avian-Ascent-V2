@@ -500,8 +500,13 @@
             '</button>' +
             '</div>';
         }
+        var nestClass = eggId
+          ? ' inventory-item-card--nest inventory-item-card--nest-' + esc(eggId)
+          : '';
         return (
-          '<div class="inventory-item-card inventory-item-card--misc">' +
+          '<div class="inventory-item-card inventory-item-card--misc' +
+          nestClass +
+          '">' +
           '<div class="inventory-item-icon">' +
           esc(item.icon) +
           countBadge +

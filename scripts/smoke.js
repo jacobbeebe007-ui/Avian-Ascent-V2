@@ -81,6 +81,9 @@ const checks = [
   { label: 'clearGameCache reloads HTTP shell', re: /function reloadShellHttpCache\b/ },
   { label: 'confirmClearCache cache-bust reload', re: /function cacheBustReload\b/ },
   { label: 'setHatcherySubView global', re: /globalThis\.setHatcherySubView\s*=/ },
+  { label: 'hatch reveal New ribbon', re: /mother-goose-hatch-ribbon--new">New</ },
+  { label: 'hatch reveal Duplicate ribbon', re: /mother-goose-hatch-ribbon--dupe">Duplicate</ },
+  { label: 'rescued nest hatch source', re: /source:\s*'nest'/ },
   { label: 'Flight settings briefing', re: /function syncFlightSettingsBriefing\b/ },
   { label: 'Flight settings choice cards', re: /flight-choice-card/ },
   { label: 'Settings audio labels', re: /function syncAudioSettingLabels\b/ },
@@ -145,6 +148,8 @@ if (fs.existsSync(htmlPath)) {
     { label: 'Emporium Relics tab', re: /data-action="setFortuneSubView:relics">Relics</ },
     { label: 'Hatchery Mother Goose tab', re: /data-action="setHatcherySubView:mother">Mother Goose</ },
     { label: 'Hatchery Eggs tab', re: /data-action="setHatcherySubView:eggs">Eggs</ },
+    { label: 'Hatchery reveal legend', re: /class="hatchery-reveal-legend"/ },
+    { label: 'Hatch reveal subtitle', re: /id="mother-goose-hatch-subtitle"/ },
   ];
   for (const c of htmlChecks) {
     if (c.re.test(html)) ok(c.label);

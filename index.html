@@ -299,10 +299,20 @@
 <li>Gleaming, Royal, and Ancestral eggs hunt rarer birds.</li>
 <li>Royal Eggs let you pick a class before the hatch.</li>
 </ul>
+<div class="hatchery-reveal-legend" aria-label="Hatch reveal colors">
+<div class="hatchery-reveal-legend-card hatchery-reveal-legend-card--new">
+<span class="hatchery-reveal-legend-ribbon hatchery-reveal-legend-ribbon--new">New</span>
+<p>Rarity-coloured card — unlocked bird for Character Select.</p>
+</div>
+<div class="hatchery-reveal-legend-card hatchery-reveal-legend-card--dupe">
+<span class="hatchery-reveal-legend-ribbon hatchery-reveal-legend-ribbon--dupe">Duplicate</span>
+<p>Rarity-coloured card — Species Feathers for the Vault.</p>
+</div>
+</div>
 </section>
 <section class="hatchery-subview" id="hatchery-view-eggs" role="tabpanel" aria-labelledby="hatchery-nav-eggs" hidden>
 <h4 class="inventory-section-title">Eggs</h4>
-<p class="inventory-section-lead">Choose an egg to hatch ×1 or ×10. Pity tracks how close you are to a safety hatch.</p>
+<p class="inventory-section-lead">Choose an egg to hatch ×1 or ×10. Each egg wears its rarity colour. Pity tracks how close you are to a safety hatch.</p>
 <div class="mother-goose-pity mother-goose-pity--eggs" id="mother-goose-pity-eggs" aria-live="polite"></div>
 <div class="mother-goose-grid" id="mother-goose-grid"></div>
 <div class="mother-goose-result" id="mother-goose-result" aria-live="polite"></div>
@@ -1701,6 +1711,7 @@
 <div class="mother-goose-hatch-modal" id="mother-goose-hatch-modal" role="dialog" aria-modal="true" aria-labelledby="mother-goose-hatch-title" aria-hidden="true" data-action="closeMotherGooseHatchModal" data-backdrop="1">
 <div class="mother-goose-hatch-panel">
 <h2 class="mother-goose-hatch-title" id="mother-goose-hatch-title" hidden>Hatching</h2>
+<p class="mother-goose-hatch-subtitle" id="mother-goose-hatch-subtitle" hidden></p>
 <div class="mother-goose-hatch-egg-wrap" id="mother-goose-hatch-egg-wrap">
 <div class="mother-goose-hatch-egg-grid" id="mother-goose-hatch-egg-grid"></div>
 </div>

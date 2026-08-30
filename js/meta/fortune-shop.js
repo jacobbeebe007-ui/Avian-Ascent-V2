@@ -9,6 +9,22 @@
 
   var ROYAL_CLASSES = ['knight', 'brute', 'rogue', 'mage', 'siren', 'inquisitor', 'bard'];
 
+  var EGG_SPECIES_TIER = {
+    cracked: 'grey',
+    feathered: 'green',
+    gleaming: 'blue',
+    royal: 'purple',
+    ancestral: 'orange',
+  };
+
+  var EGG_RARITY_CHIP = {
+    cracked: { label: 'Common pool', css: 'tier-grey' },
+    feathered: { label: 'Uncommon pool', css: 'tier-green' },
+    gleaming: { label: 'Rare pool', css: 'tier-blue' },
+    royal: { label: 'Legendary pool', css: 'tier-purple' },
+    ancestral: { label: 'Ancestral pool', css: 'tier-orange' },
+  };
+
   function esc(s) {
     return String(s || '')
       .replace(/&/g, '&amp;')
@@ -57,6 +73,28 @@
     return 'grey';
   }
 
+  function eggSpeciesTier(eggId) {
+    return EGG_SPECIES_TIER[String(eggId || '').toLowerCase()] || 'grey';
+  }
+
+  function setHatchModalCopy(titleText, subtitleText, show) {
+    var title = document.getElementById('mother-goose-hatch-title');
+    var sub = document.getElementById('mother-goose-hatch-subtitle');
+    if (title) {
+      title.textContent = titleText || 'Hatching';
+      title.hidden = !show;
+    }
+    if (sub) {
+      if (subtitleText) {
+        sub.textContent = subtitleText;
+        sub.hidden = false;
+      } else {
+        sub.textContent = '';
+        sub.hidden = true;
+      }
+    }
+  }
+
   function birdPortraitHtml(birdKey) {
     var birds = globalThis.BIRDS || {};
     var bird = birds[birdKey];
@@ -80,19 +118,34 @@
     _hatchRevealTimers = [];
   }
 
-  function buildHatchSlotsHtml(results, eggType) {
+  function buildHatchSlotsHtml(results, eggType, opts) {
+    opts = opts || {};
     var def = eggTypeDef(eggType) || { icon: '🥚', id: eggType || 'cracked' };
+    var eggId = String((def && def.id) || eggType || 'cracked').toLowerCase();
+    var eggCss = tierCss(eggSpeciesTier(eggId));
+    var isNest = opts.source === 'nest';
+    var frontIcon = isNest ? '🪺' : def.icon;
     var list = Array.isArray(results) ? results : [];
     var html = '';
     list.forEach(function (result) {
       html +=
         '<div class="mother-goose-hatch-slot">' +
-        '<div class="mother-goose-hatch-flip is-shaking">' +
-        '<div class="mother-goose-hatch-flip-front">' +
+        '<span class="mother-goose-hatch-burst" aria-hidden="true"></span>' +
+        '<div class="mother-goose-hatch-flip is-shaking mother-goose-hatch-flip--' +
+        (isNest ? 'nest' : 'egg') +
+        ' ' +
+        eggCss +
+        '">' +
+        '<div class="mother-goose-hatch-flip-front mother-goose-hatch-flip-front--' +
+        esc(eggId) +
+        (isNest ? ' mother-goose-hatch-flip-front--nest' : '') +
+        ' ' +
+        eggCss +
+        '">' +
         '<span class="mother-goose-hatch-egg mother-goose-egg-icon mother-goose-egg-icon--' +
-        esc(def.id) +
+        esc(eggId) +
         '" aria-hidden="true">' +
-        esc(def.icon) +
+        esc(frontIcon) +
         '</span></div>' +
         '<div class="mother-goose-hatch-flip-back" aria-hidden="true">' +
         buildHatchRevealHtml(result, true) +
@@ -115,8 +168,13 @@
       modal.setAttribute('aria-hidden', 'true');
     }
     if (panel) {
-      panel.classList.remove('mother-goose-hatch-panel--batch', 'mother-goose-hatch-panel--single');
+      panel.classList.remove(
+        'mother-goose-hatch-panel--batch',
+        'mother-goose-hatch-panel--single',
+        'mother-goose-hatch-panel--nest',
+      );
     }
+    setHatchModalCopy('Hatching', '', false);
     if (eggWrap) {
       eggWrap.hidden = false;
       eggWrap.classList.remove('mother-goose-hatch-egg-wrap--single');
@@ -159,6 +217,20 @@
     if (reveal) { reveal.innerHTML = buildHatchOverviewHtml(data.results, data.eggType); reveal.hidden = false; }
     var hatchBtn = document.getElementById('mother-goose-hatch-now'); if (hatchBtn) hatchBtn.hidden = true;
     var closeBtn = document.getElementById('mother-goose-hatch-close'); if (closeBtn) closeBtn.hidden = false;
+    var newCount = 0;
+    var dupeCount = 0;
+    data.results.forEach(function (r) {
+      if (r && r.isNew) newCount += 1;
+      else dupeCount += 1;
+    });
+    var doneTitle = data.source === 'nest' ? 'Nest opened' : 'Hatched!';
+    var doneSub = [];
+    if (newCount) doneSub.push(newCount === 1 ? '1 new bird' : newCount + ' new birds');
+    if (dupeCount) doneSub.push(dupeCount === 1 ? '1 duplicate feather' : dupeCount + ' duplicate feathers');
+    if (data.source === 'nest' && data.goldenEggsGained) {
+      doneSub.push('+' + fmt(data.goldenEggsGained) + ' Golden Goose Eggs');
+    }
+    setHatchModalCopy(doneTitle, doneSub.join(' · '), true);
   }
 
   function buildHatchRevealHtml(result, compact) {
@@ -176,12 +248,12 @@
     var speciesCss = tierCss(speciesTier);
 
     if (result.isNew) {
-      var cardTier = result.tierAfter || 'grey';
-      var cardCss = tierCss(cardTier);
       var cardHtml =
-        '<div class="mother-goose-hatch-card mother-goose-hatch-card--bird ' +
-        cardCss +
+        '<div class="mother-goose-hatch-card mother-goose-hatch-card--bird mother-goose-hatch-card--new ' +
+        speciesCss +
         '">' +
+        '<span class="mother-goose-hatch-shine" aria-hidden="true"></span>' +
+        '<span class="mother-goose-hatch-ribbon mother-goose-hatch-ribbon--new">New</span>' +
         '<span class="class-badge class-' +
         esc(cls) +
         '">' +
@@ -210,9 +282,11 @@
     var gain = Math.max(0, Math.floor(Number(result.feathersGained) || 0));
     var total = Math.max(0, Math.floor(Number(result.speciesFeatherTotal) || 0));
     var featherHtml =
-      '<div class="mother-goose-hatch-card mother-goose-hatch-card--feather ' +
+      '<div class="mother-goose-hatch-card mother-goose-hatch-card--feather mother-goose-hatch-card--dupe ' +
       speciesCss +
       '">' +
+      '<span class="mother-goose-hatch-shine" aria-hidden="true"></span>' +
+      '<span class="mother-goose-hatch-ribbon mother-goose-hatch-ribbon--dupe">Duplicate</span>' +
       '<div class="mother-goose-hatch-feather-glyph" aria-hidden="true">🪶</div>' +
       '<div class="mother-goose-hatch-card-name">' +
       esc(birdName) +
@@ -230,11 +304,12 @@
     return featherHtml + '<p class="mother-goose-hatch-msg">Species Feather — Collect more to mutate your bird.</p>';
   }
 
-  function showMotherGooseHatchModal(result, eggType) {
-    showMotherGooseHatchModalBatch([result], eggType, 1);
+  function showMotherGooseHatchModal(result, eggType, opts) {
+    showMotherGooseHatchModalBatch([result], eggType, 1, opts);
   }
 
-  function showMotherGooseHatchModalBatch(results, eggType, count) {
+  function showMotherGooseHatchModalBatch(results, eggType, count, opts) {
+    opts = opts || {};
     var modal = document.getElementById('mother-goose-hatch-modal');
     var panel = modal && modal.querySelector('.mother-goose-hatch-panel');
     var eggWrap = document.getElementById('mother-goose-hatch-egg-wrap');
@@ -249,16 +324,20 @@
 
     var batch = results.length > 1;
     var eggId = eggType || results[0].eggType;
+    var isNest = opts.source === 'nest';
     closeMotherGooseHatchModal();
 
-    if (panel) panel.classList.add(batch ? 'mother-goose-hatch-panel--batch' : 'mother-goose-hatch-panel--single');
+    if (panel) {
+      panel.classList.add(batch ? 'mother-goose-hatch-panel--batch' : 'mother-goose-hatch-panel--single');
+      if (isNest) panel.classList.add('mother-goose-hatch-panel--nest');
+    }
     if (eggWrap) {
       eggWrap.hidden = false;
       if (!batch) eggWrap.classList.add('mother-goose-hatch-egg-wrap--single');
     }
     if (eggGrid) {
       eggGrid.classList.add(batch ? 'mother-goose-hatch-egg-grid--batch' : 'mother-goose-hatch-egg-grid--single');
-      eggGrid.innerHTML = buildHatchSlotsHtml(results, eggId);
+      eggGrid.innerHTML = buildHatchSlotsHtml(results, eggId, opts);
     }
     if (reveal) {
       reveal.innerHTML = '';
@@ -267,11 +346,29 @@
     }
     if (closeBtn) closeBtn.hidden = true;
     if (hatchBtn) hatchBtn.hidden = false;
-    _pendingHatchReveal = { results: results.slice(), eggType: eggId };
+    var def = eggTypeDef(eggId) || { name: eggId + ' Egg' };
+    var openingTitle = isNest
+      ? 'Opening ' + (opts.nestName || 'Rescued Nest')
+      : 'Hatching ' + (def.name || 'Egg');
+    var openingSub = isNest && opts.goldenEggsGained
+      ? '+' + fmt(opts.goldenEggsGained) + ' Golden Goose Eggs'
+      : batch
+        ? results.length + ' eggs ready'
+        : 'Tap Hatch to crack the shell';
+    setHatchModalCopy(openingTitle, openingSub, true);
+    _pendingHatchReveal = {
+      results: results.slice(),
+      eggType: eggId,
+      source: isNest ? 'nest' : 'hatch',
+      nestName: opts.nestName || '',
+      goldenEggsGained: Math.max(0, Math.floor(Number(opts.goldenEggsGained) || 0)),
+    };
     if (typeof globalThis.recordSuppliesActivity === 'function') {
-      var def = eggTypeDef(eggId) || { name: eggId + ' Egg' };
       var details = results.map(function (r) { return r.isNew ? (r.birdName || r.birdKey) + ' bird ×1' : (r.birdName || r.birdKey) + ' feathers ×' + Math.max(0, Number(r.feathersGained) || 0); });
-      globalThis.recordSuppliesActivity(results.length + ' ' + def.name + (results.length === 1 ? '' : 's') + ' Opened!', details);
+      var activityTitle = isNest
+        ? (opts.nestName || 'Rescued Nest') + (results.length === 1 ? '' : ' ×' + results.length) + ' opened!'
+        : results.length + ' ' + def.name + (results.length === 1 ? '' : 's') + ' Opened!';
+      globalThis.recordSuppliesActivity(activityTitle, details);
       if (typeof globalThis.renderSuppliesActivityLog === 'function') globalThis.renderSuppliesActivityLog();
     }
     modal.classList.add('open');
@@ -514,8 +611,12 @@
             }).join('') +
             '</div>'
           : '';
+      var rarityChip = EGG_RARITY_CHIP[id] || { label: 'Egg', css: 'tier-grey' };
       html +=
-        '<div class="fortune-artifact-card mother-goose-egg-card' +
+        '<div class="fortune-artifact-card mother-goose-egg-card mother-goose-egg-card--' +
+        esc(id) +
+        ' ' +
+        rarityChip.css +
         stateClass +
         '">' +
         '<div class="fortune-artifact-icon mother-goose-egg-icon mother-goose-egg-icon--' +
@@ -526,6 +627,11 @@
         '<div class="fortune-artifact-name">' +
         esc(egg.name) +
         '</div>' +
+        '<span class="bird-card-tier-badge mother-goose-egg-rarity ' +
+        rarityChip.css +
+        '">' +
+        esc(rarityChip.label) +
+        '</span>' +
         '<p class="fortune-artifact-desc">' +
         esc(egg.desc || '') +
         '</p>' +
