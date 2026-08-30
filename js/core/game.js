@@ -983,39 +983,73 @@ function tooltipsEnabled(category){
   const t = getAccessibilitySettings().tooltips || DEFAULT_TOOLTIP_SETTINGS;
   return t[category] !== false;
 }
-function showRichTooltipHtml(html, pointerEvt){
+function showRichTooltipHtml(html, pointerEvt, anchorEl){
   const tt = document.getElementById('action-tooltip');
   if(!tt || !html) return;
   tt.innerHTML = html;
   tt.style.display = 'block';
   tt.classList.toggle('is-touch-open', !!window._isTouchDevice);
-  positionTooltip(pointerEvt);
+  if(anchorEl && !window._isTouchDevice) positionTooltipNearEl(anchorEl);
+  else positionTooltip(pointerEvt);
+}
+function positionTooltipNearEl(el){
+  const tt=document.getElementById('action-tooltip');
+  if(!tt || !el) return;
+  const r=el.getBoundingClientRect();
+  const width=tt.offsetWidth||280;
+  const height=tt.offsetHeight||180;
+  const margin=8;
+  const gap=12;
+  const preferLeft=el.id==='enemy-avatar-wrap' || !!el.closest?.('.combatant-panel.enemy');
+  let left=preferLeft?(r.left-width-gap):(r.right+gap);
+  if(left<margin) left=r.right+gap;
+  if(left+width+margin>window.innerWidth) left=r.left-width-gap;
+  left=Math.min(Math.max(left,margin),Math.max(margin,window.innerWidth-width-margin));
+  let top=r.top+(r.height/2)-(height/2);
+  top=Math.min(Math.max(top,margin),Math.max(margin,window.innerHeight-height-margin));
+  tt.style.transform='';
+  tt.style.left=left+'px';
+  tt.style.top=top+'px';
 }
 function bindRichTooltip(el, getHtml, opts={}){
   if(!el || typeof getHtml!=='function' || el._richTooltipBound) return;
   el._richTooltipBound = true;
   const longPressMs = opts.longPressMs ?? RICH_TOOLTIP_LONG_PRESS_MS;
+  const anchorToEl = !!opts.anchorEl;
   let timer = null;
+  let holdFired = false;
   const category = opts.category;
   const show = (e) => {
     if(category && !tooltipsEnabled(category)) return;
     const html = getHtml();
     if(!html) return;
-    showRichTooltipHtml(html, e);
+    showRichTooltipHtml(html, e, anchorToEl?el:null);
   };
   el.addEventListener('mouseenter', (e) => { if(!window._isTouchDevice) show(e); });
-  el.addEventListener('mousemove', (e) => { if(!window._isTouchDevice) moveTooltip(e); });
+  el.addEventListener('mousemove', (e) => { if(!window._isTouchDevice && !anchorToEl) moveTooltip(e); });
   el.addEventListener('mouseleave', () => { if(!window._isTouchDevice) hideTooltip(); });
   el.addEventListener('touchstart', (e) => {
     window._isTouchDevice = true;
+    holdFired = false;
     timer = setTimeout(() => {
       timer = null;
+      holdFired = true;
       const touch = e.touches[0];
+      if(!touch) return;
       show({ clientX: touch.clientX, clientY: touch.clientY });
     }, longPressMs);
   }, { passive: true });
-  el.addEventListener('touchend', () => { if(timer){ clearTimeout(timer); timer = null; } }, { passive: true });
+  el.addEventListener('touchend', () => {
+    if(timer){ clearTimeout(timer); timer = null; }
+    if(holdFired) el._suppressNextClick = true;
+  }, { passive: true });
   el.addEventListener('touchmove', () => { if(timer){ clearTimeout(timer); timer = null; } }, { passive: true });
+  el.addEventListener('click', (e) => {
+    if(!el._suppressNextClick) return;
+    e.preventDefault();
+    e.stopImmediatePropagation();
+    el._suppressNextClick = false;
+  }, true);
 }
 function wireNestMutationTooltips(root){
   if(!root) return;
@@ -1097,18 +1131,18 @@ function wireCombatEnemyStatTooltips(container){
 function wireEnemyMutationTooltips(){
   const wrap = document.getElementById('enemy-avatar-wrap');
   if(!wrap) return;
-  bindRichTooltip(wrap, () => buildCombatantHoverTooltipHtml('enemy'));
+  bindRichTooltip(wrap, () => buildCombatantHoverTooltipHtml('enemy'), { anchorEl: true });
 }
 function wirePlayerAvatarInteractionOnce(){
   const wrap=document.getElementById('player-avatar-wrap');
   if(!wrap) return;
-  bindRichTooltip(wrap, ()=>buildCombatantHoverTooltipHtml('player'));
+  bindRichTooltip(wrap, ()=>buildCombatantHoverTooltipHtml('player'), { anchorEl: true });
   if(G._playerAvatarWired) return;
   G._playerAvatarWired=true;
   wrap.style.cursor='pointer';
   wrap.setAttribute('role','button');
   wrap.setAttribute('tabindex','0');
-  wrap.setAttribute('aria-label','View bird combat stats and ailments; activate to open Nest');
+  wrap.setAttribute('aria-label','Hold to inspect; activate to open your Nest');
   wrap.addEventListener('click',e=>{ e.stopPropagation(); hideTooltip(); openNest(); });
   wrap.addEventListener('keydown',e=>{
     if(e.key==='Enter'||e.key===' '){ e.preventDefault(); hideTooltip(); openNest(); }
@@ -2476,7 +2510,7 @@ removeMimicEverywhere();
 document.addEventListener('touchstart',e=>{
   const tt=document.getElementById('action-tooltip');
   if(!tt||tt.style.display!=='block') return;
-  const keep = e.target.closest('.action-btn,#action-tooltip,.stat-mini,#passive-badge,.enemy-ab-tag,[data-nest-item],[data-nest-inv],[data-reward-mutation],#player-avatar-wrap,#enemy-avatar-wrap,#player-class-label,#enemy-class-label,.aspect-chip');
+  const keep = e.target.closest('.action-btn,#action-tooltip,.stat-mini,#passive-badge,.enemy-ab-tag,[data-nest-item],[data-nest-inv],[data-reward-mutation],#player-avatar-wrap,#enemy-avatar-wrap,#player-class-label,#enemy-class-label,.aspect-chip,.combat-hover-card');
   if(!keep) hideTooltip();
 },{passive:true});
 
@@ -2845,7 +2879,9 @@ function handleNestEquipmentClick(ev){
 function selectNestTab(tab){
   const content=document.getElementById('nest-content');
   if(!content) return;
-  const allowed=['equipment','profile','abilities','rewards'];
+  const allowed=G._nestInspectSide==='enemy'
+    ? ['equipment','profile','abilities']
+    : ['equipment','profile','abilities','rewards'];
   const active=allowed.includes(tab)?tab:'equipment';
   G._nestActiveTab=active;
   content.querySelectorAll('[data-nest-tab]').forEach(btn=>{
@@ -2859,7 +2895,7 @@ function selectNestTab(tab){
 }
 globalThis.selectNestTab=selectNestTab;
 
-function organizeNestSections(content){
+function organizeNestSections(content, mode='player'){
   const sections=[...content.querySelectorAll(':scope > .nest-section, :scope > .nest-passive')];
   sections.forEach(section=>{
     const title=section.querySelector('.nest-section-title')?.textContent||'';
@@ -2869,13 +2905,22 @@ function organizeNestSections(content){
     else if(section.classList.contains('nest-ledger-section')||section.classList.contains('nest-rewards-section')||/Run bonuses|Collected Rewards/i.test(title)) panel='rewards';
     section.dataset.nestPanel=panel;
   });
-  content.insertAdjacentHTML('afterbegin',`<div class="nest-tabs" role="tablist" aria-label="Nest sections">
+  const enemy=mode==='enemy';
+  const tabs=enemy
+    ? `<div class="nest-tabs nest-tabs--3" role="tablist" aria-label="Enemy nest sections">
+    <button type="button" role="tab" data-nest-tab="equipment">⚙ Equipment</button>
+    <button type="button" role="tab" data-nest-tab="profile">📊 Stats</button>
+    <button type="button" role="tab" data-nest-tab="abilities">⚔ Skills</button>
+  </div>`
+    : `<div class="nest-tabs" role="tablist" aria-label="Nest sections">
     <button type="button" role="tab" data-nest-tab="equipment">⚙ Equipment</button>
     <button type="button" role="tab" data-nest-tab="profile">📊 Stats</button>
     <button type="button" role="tab" data-nest-tab="abilities">⚔ Abilities</button>
     <button type="button" role="tab" data-nest-tab="rewards">✨ Run bonuses</button>
-  </div>`);
-  selectNestTab(G._nestActiveTab||'equipment');
+  </div>`;
+  content.insertAdjacentHTML('afterbegin', tabs);
+  const preferred=G._nestActiveTab;
+  selectNestTab(enemy && preferred==='rewards' ? 'equipment' : (preferred||'equipment'));
 }
 
 function buildNestAbilitySection(player){
@@ -2926,11 +2971,242 @@ function buildNestAbilitySection(player){
   return `${bankHtml}<div class="nest-section nest-ability-section${locked?' nest-equip-locked':''}"><div class="nest-section-title">⚔ Abilities</div>${locked?'<p class="nest-lock-note">Loadout locked during Story battle.</p>':''}<div class="nest-ledger-subtitle">Equipped loadout</div><div class="nest-abilities-list nest-abilities-grid">${equippedHtml}</div><p class="nest-ledger-note">${slotHint}</p></div>`;
 }
 
+function resetNestChrome(mode='player'){
+  G._nestInspectSide=mode==='enemy'?'enemy':'player';
+  const inner=document.querySelector('#nest-modal .nest-inner');
+  const title=document.getElementById('nest-title');
+  if(inner) inner.classList.toggle('nest-inner--enemy', mode==='enemy');
+  if(title) title.textContent=mode==='enemy'?'🪺 Enemy Nest':'🪺 Your Nest';
+}
+function buildEnemyNestEquipmentSection(enemy){
+  if(!enemy) return '';
+  let eq=enemy.equipment;
+  const hasPieces=eq && typeof eq==='object' && Object.keys(eq).some((sk)=>!!eq[sk]);
+  if(!hasPieces){
+    const preview=typeof ensureEnemyPreviewEquipmentState==='function'?ensureEnemyPreviewEquipmentState(enemy):null;
+    eq=preview && preview.equipment ? preview.equipment : (eq||{});
+  }
+  const order=typeof Avian?.equipment?.getSlotOrder==='function'
+    ? Avian.equipment.getSlotOrder()
+    : (Avian.data?.equipment?.slots?.slotOrder||[]);
+  const wornCount=order.filter(sk=>!!eq[sk]).length;
+  let slotsHtml='';
+  for(const sk of order){
+    slotsHtml+=typeof _nestEquipmentItemHtml==='function'
+      ? _nestEquipmentItemHtml(eq[sk]||null, sk, true)
+      : '';
+  }
+  const roll=typeof Avian?.equipment?.sumEquippedEquipment==='function'
+    ? Avian.equipment.sumEquippedEquipment({ equipment: eq })
+    : {stats:{},pct:{}};
+  const flatChips=Object.keys(roll.stats||{}).map(k=>{
+    const v=Number(roll.stats[k])||0;
+    if(!v) return '';
+    const isPct=String(k).includes('Pen')||/Pct$/i.test(k);
+    const lbl=typeof formatAnyStatLabel==='function'?formatAnyStatLabel(k):k;
+    return `<span class="nest-equip-bonus-chip">${escapeHtmlRoster(lbl)} ${escapeHtmlRoster(formatSignedCombatStat(v,isPct))}</span>`;
+  }).filter(Boolean);
+  const pctChips=Object.keys(roll.pct||{}).map(k=>{
+    const raw=Number(roll.pct[k])||0;
+    if(!raw) return '';
+    const pctNum=Math.abs(raw)<=1.5?raw*100:raw;
+    const lbl=typeof formatAnyStatLabel==='function'?formatAnyStatLabel(/Pct$/i.test(k)?k:k+'Pct'):k;
+    return `<span class="nest-equip-bonus-chip">${escapeHtmlRoster(lbl)} ${escapeHtmlRoster(formatSignedCombatStat(pctNum,true))}</span>`;
+  }).filter(Boolean);
+  const bonusHtml=[...flatChips,...pctChips].join('')||'<span class="nest-inv-empty">No worn stat bonuses.</span>';
+  return `<div class="nest-section nest-equipment-section nest-equipment-section--inspect"><div class="nest-section-title">⚙ Equipment</div>
+    <p class="nest-ledger-note">Inspect only — this bird’s worn loadout. No bag or swaps.</p>
+    <div class="nest-eq-layout nest-eq-layout--inspect">
+      <aside class="nest-eq-worn" aria-label="Enemy worn loadout">
+        <div class="nest-ledger-subtitle">Worn · ${wornCount}/${order.length||7}</div>
+        <div class="nest-eq-doll">${slotsHtml}</div>
+        <div class="nest-ledger-subtitle nest-eq-bonus-lbl">Bonus from worn</div>
+        <div class="nest-equip-bonus">${bonusHtml}</div>
+      </aside>
+    </div></div>`;
+}
+function buildEnemyNestAbilitySection(enemy){
+  if(!enemy) return '<p class="nest-rewards-empty">No special skills.</p>';
+  let abs=Array.isArray(enemy.abilities)?enemy.abilities.slice():[];
+  if((!abs.length || !abs.some(a=>a&&(typeof a==='string'||(typeof a==='object'&&a.id&&!a.empty)))) && Avian?.flags?.equipmentV2){
+    const preview=typeof ensureEnemyPreviewEquipmentState==='function'?ensureEnemyPreviewEquipmentState(enemy):null;
+    if(preview && Array.isArray(preview.abilities) && preview.abilities.length) abs=preview.abilities.slice();
+  }
+  const sourceOrder=(typeof Avian?.equipmentActions?.getSourceOrder==='function')
+    ? Avian.equipmentActions.getSourceOrder()
+    : ['basic','utility','weaponA','weaponB','armour','ultimate'];
+  let cards='';
+  if(enemy.id==='duke_blakiston' && !abs.some(a=>a&&(typeof a==='string'||(a.id&&!a.empty)))){
+    const lines=[
+      ['River Grip','Physical pressure and control. (2 EN)'],
+      ['Royal Decree','Shifts the flow of battle. (3 EN)'],
+      ['Court Wardens','Summons aid. (2 EN)'],
+      ["Owl's Verdict",'Devastating finisher phases. (4 EN)'],
+    ];
+    cards=lines.map(([n,d],i)=>`<div class="nest-ab-slot-card nest-ab-row">
+      <div class="nest-ab-source nest-ab-slot-idx">${escapeHtmlRoster(sourceOrder[i]||('Skill '+(i+1)))}</div>
+      <div class="nest-ab-body"><div class="nest-ab-name">${escapeHtmlRoster(n)}</div><div class="nest-ab-desc">${escapeHtmlRoster(d)}</div></div>
+    </div>`).join('');
+  } else {
+    const count=Math.max(abs.length, sourceOrder.length);
+    for(let i=0;i<count;i++){
+      const entry=abs[i];
+      const sourceKey=(entry && typeof entry==='object' && entry.actionSource) || sourceOrder[i] || ('slot'+i);
+      const sourceLbl=(typeof Avian?.equipmentActions?.getActionSourceLabel==='function')
+        ? Avian.equipmentActions.getActionSourceLabel(sourceKey)
+        : sourceKey;
+      if(typeof entry==='string' && entry){
+        const eab=typeof ENEMY_ABILITY_POOL!=='undefined'?ENEMY_ABILITY_POOL[entry]:null;
+        cards+=`<div class="nest-ab-slot-card nest-ab-row" data-enemy-nest-ab="${escapeHtmlRoster(entry)}">
+          <div class="nest-ab-source nest-ab-slot-idx">${escapeHtmlRoster(sourceLbl)}</div>
+          <div class="nest-ab-body">
+            <div class="nest-ab-name">${escapeHtmlRoster(eab?.name||entry)}</div>
+            ${eab?.desc?`<div class="nest-ab-desc">${escapeHtmlRoster(eab.desc)}</div>`:''}
+          </div>
+        </div>`;
+        continue;
+      }
+      if(!entry || entry.empty || (typeof entry==='object' && !entry.id)){
+        cards+=`<div class="nest-ab-slot-card nest-ab-row empty">
+          <div class="nest-ab-source nest-ab-slot-idx">${escapeHtmlRoster(sourceLbl)}</div>
+          <div class="nest-ab-body"><div class="nest-ab-empty-reason">No skill in this slot</div></div>
+        </div>`;
+        continue;
+      }
+      const packRow=typeof packRowForAbility==='function'?packRowForAbility(entry):null;
+      const tmpl=typeof getAbilityTemplateForUI==='function'?getAbilityTemplateForUI(entry)||{}:{};
+      const brief=(typeof formatAbilityBlurbHtml==='function'
+        ? formatAbilityBlurbHtml(entry, tmpl, packRow)
+        : '');
+      cards+=`<div class="nest-ab-slot-card nest-ab-row" data-enemy-nest-ab="${escapeHtmlRoster(entry.id||'')}">
+        <div class="nest-ab-source nest-ab-slot-idx">${escapeHtmlRoster(sourceLbl)}</div>
+        <div class="nest-ab-body">
+          <div class="nest-ab-name">${escapeHtmlRoster(entry.name||tmpl.name||entry.id)}</div>
+          ${brief?`<div class="nest-ab-desc btn-desc-lines">${brief}</div>`:''}
+        </div>
+      </div>`;
+    }
+  }
+  if(!cards) cards='<p class="nest-rewards-empty">No special skills.</p>';
+  return `<div class="nest-section nest-ability-section"><div class="nest-section-title">⚔ Skills</div>
+    <div class="nest-ledger-subtitle">Known skills</div>
+    <div class="nest-abilities-list nest-abilities-grid">${cards}</div>
+    <p class="nest-ledger-note">Inspect only — this bird’s combat skills.</p>
+  </div>`;
+}
+function buildEnemyNestProfileHtml(enemy){
+  if(!enemy) return '';
+  const s=enemy.stats||{};
+  const burning=typeof enemyHasBurning==='function'&&enemyHasBurning();
+  const def=Math.floor((Number(s.def)||0)*(burning?0.8:1));
+  const mdef=Math.floor((Number(s.mdef)||0)*(burning?0.8:1));
+  const eCritChance=Math.max(0,Math.min(100,(s.cc??((s.critChance||5)/100))*100));
+  const eCritMult=(s.cd??s.critMult??1.5);
+  const armCur=Math.max(0,Number(s.armour??s.maxArmour??0)||0);
+  const armMax=Math.max(0,Number(s.maxArmour??s.armour??0)||0);
+  const marmCur=Math.max(0,Number(s.magicArmour??s.maxMagicArmour??0)||0);
+  const marmMax=Math.max(0,Number(s.maxMagicArmour??s.magicArmour??0)||0);
+  const row=(label,value,title='')=>`<div${title?` title="${escapeHtmlRoster(title)}"`:''}><dt>${label}</dt><dd>${value}</dd></div>`;
+  let html=`<div class="nest-section nest-profile-section"><div class="nest-section-title">📊 Stats ${G.turn?'(In Battle)':''}</div>
+  <div class="nest-profile-resources">
+    <div class="nest-resource-card nest-resource-card--hp"><div class="nest-resource-lbl">${ledgerStatLabel('hp',{short:true})}</div><div class="nest-resource-val">${formatCombatNumber(s.hp||0)} / ${formatCombatNumber(s.maxHp||0)}</div></div>
+    <div class="nest-resource-card nest-resource-card--arm" title="Armour — absorbs martial damage before Health"><div class="nest-resource-lbl">${ledgerStatLabel('armour',{short:true})}</div><div class="nest-resource-val">${formatCombatNumber(armCur)} / ${formatCombatNumber(armMax)}</div></div>
+    <div class="nest-resource-card nest-resource-card--marm" title="Magic Armour — absorbs magical damage before Health"><div class="nest-resource-lbl">${ledgerStatLabel('magicArmour',{short:true})}</div><div class="nest-resource-val">${formatCombatNumber(marmCur)} / ${formatCombatNumber(marmMax)}</div></div>
+  </div>
+  <div class="nest-profile-columns">
+    <div class="nest-profile-col"><div class="nest-profile-col-title">Offense</div><dl class="nest-profile-dl">
+      ${row(ledgerStatLabel('atk',{short:true}), formatCombatNumber(s.atk||0))}
+      ${row(ledgerStatLabel('matk',{short:true}), `<span style="color:#6ae8e8">${formatCombatNumber(Number(s.matk)||0)}</span>`, 'Focus — improves spell and ailment potency')}
+      ${row(ledgerStatLabel('critChance',{short:true}), `${formatCombatNumber(eCritChance)}%`)}
+      ${row(ledgerStatLabel('critMult',{short:true}), `${formatCombatNumber(Number(eCritMult))}×`)}
+    </dl></div>
+    <div class="nest-profile-col"><div class="nest-profile-col-title">Defense</div><dl class="nest-profile-dl">
+      ${row(ledgerStatLabel('def',{short:true}), formatCombatNumber(def), burning?'Burning reduces Guard':'')}
+      ${row(ledgerStatLabel('mdef',{short:true}), `<span style="color:#6ae8e8">${formatCombatNumber(mdef)}</span>`, 'Resolve — resists enemy spells and ailments')}
+      ${row(ledgerStatLabel('dodge',{short:true}), formatCombatNumber(s.dodge||0)+'%')}
+    </dl></div>
+    <div class="nest-profile-col"><div class="nest-profile-col-title">Precision</div><dl class="nest-profile-dl">
+      ${row(ledgerStatLabel('acc',{short:true}), formatCombatNumber(s.acc||0)+'%', 'Precision determines how reliably this bird’s attacks connect.')}
+      ${row(ledgerStatLabel('spd',{short:true}), formatCombatNumber(s.spd||0))}
+    </dl></div>
+  </div></div>`;
+  const bk=enemy.birdKey||enemy.templateKey;
+  const bird=bk&&BIRDS[bk]?BIRDS[bk]:null;
+  const passive=bird?.passive || (typeof getBirdPassiveInfo==='function'?getBirdPassiveInfo(bk):null);
+  if(passive){
+    html+=`<div class="nest-passive"><div class="nest-passive-title">★ PASSIVE: ${escapeHtmlRoster(passive.name)}</div><div class="nest-passive-desc">${escapeHtmlRoster(passive.desc||passive.effect||'')}</div></div>`;
+  }
+  const classPerk=typeof Avian?.classPerks?.getClassPerkForEntity==='function'
+    ? Avian.classPerks.getClassPerkForEntity(enemy)
+    : (typeof getBirdAuthoredClassPerk==='function'?getBirdAuthoredClassPerk(bk):null);
+  if(classPerk){
+    html+=`<div class="nest-passive nest-class-perk"><div class="nest-passive-title">🧬 CLASS PERK: ${escapeHtmlRoster(classPerk.name)}</div><div class="nest-passive-desc">${escapeHtmlRoster(classPerk.effect||'')}</div></div>`;
+  }
+  if(G.turn && typeof buildCombatStatusDetailsSection==='function'){
+    html+=`<div class="nest-section nest-status-section"><div class="nest-section-title">Ailments &amp; effects</div>${buildCombatStatusDetailsSection('enemy')}</div>`;
+  }
+  return html;
+}
+function wireEnemyNestAbilityTooltips(root){
+  if(!root || typeof bindRichTooltip!=='function') return;
+  root.querySelectorAll('[data-enemy-nest-ab]').forEach(el=>{
+    const key=el.dataset.enemyNestAb;
+    if(!key) return;
+    el._richTooltipBound=false;
+    bindRichTooltip(el, ()=>buildEnemyAbilityTooltipHtml(key, G.enemy?.stats, G.enemy)+richTooltipCloseBtn(), { category: 'abilities' });
+  });
+}
+function fillEnemyNestHeader(enemy){
+  const sub=document.getElementById('nest-subtitle');
+  if(!sub || !enemy) return;
+  let ent=enemy;
+  if(enemy.birdKey&&BIRDS[enemy.birdKey]){
+    ent=Object.assign({}, BIRDS[enemy.birdKey], enemy, { portraitKey: enemy.portraitKey || BIRDS[enemy.birdKey].portraitKey });
+  }
+  const sprite=typeof renderEntityAvatarHTML==='function'?renderEntityAvatarHTML(ent,'battle', false, true):'';
+  const cls=idToClassLabel(resolveFinalClass(enemy.class||enemy.enemyClass||inferEnemyClassFromStyle(enemy), enemy.birdKey||''));
+  const sz=SIZE_LABELS[String(enemy.size||'medium').toLowerCase()]||String(enemy.size||'');
+  const lv=Number.isFinite(enemy.storyLevel)?enemy.storyLevel:(Number.isFinite(enemy.effectiveLevel)?enemy.effectiveLevel:getEnemyPreviewLevel(enemy));
+  const eAsp=typeof getEntityAspect==='function'?getEntityAspect(enemy):(enemy.aspect||'');
+  const aspectChip=eAsp?`<span class="aspect-chip nest-aspect-chip" id="enemy-nest-aspect-chip" data-aspect-id="${escapeHtmlRoster(eAsp)}">${escapeHtmlRoster(formatAspectDisplayName(eAsp))}</span>`:'';
+  sub.innerHTML=`<span class="nest-inspect-sprite" id="enemy-nest-sprite">${sprite}</span>
+    <span>${escapeHtmlRoster(enemy.name||'Enemy')}${enemy.isBoss?' 👑':''} · ${escapeHtmlRoster(cls)} · ${escapeHtmlRoster(sz)} · Lv.${lv} ${aspectChip}</span>`;
+  if(eAsp && typeof bindRichTooltip==='function'){
+    const chip=document.getElementById('enemy-nest-aspect-chip');
+    if(chip){
+      chip._richTooltipBound=false;
+      const vsAsp=G?.player&&typeof getEntityAspect==='function'?getEntityAspect(G.player):'';
+      bindRichTooltip(chip, ()=>buildEntityAspectTooltipHtml(eAsp, { vsAspect: vsAsp }), { category: 'abilities' });
+    }
+  }
+}
+function openEnemyNest(){
+  if(!G.enemy) return;
+  const modal=document.getElementById('nest-modal');
+  const content=document.getElementById('nest-content');
+  if(!modal||!content) return;
+  hideTooltip();
+  if(typeof closeCombatStatsModal==='function') closeCombatStatsModal();
+  resetNestChrome('enemy');
+  fillEnemyNestHeader(G.enemy);
+  content.innerHTML=buildEnemyNestProfileHtml(G.enemy)+buildEnemyNestEquipmentSection(G.enemy)+buildEnemyNestAbilitySection(G.enemy);
+  organizeNestSections(content, 'enemy');
+  content.onclick=(ev)=>{
+    const tab=ev.target.closest('[data-nest-tab]');
+    if(tab){ selectNestTab(tab.dataset.nestTab); }
+  };
+  if(typeof wireNestEquipmentTooltips==='function') wireNestEquipmentTooltips(content);
+  wireEnemyNestAbilityTooltips(content);
+  modal.classList.add('open');
+}
+globalThis.openEnemyNest=openEnemyNest;
+
 function openNest() {
   const modal=document.getElementById('nest-modal');
   const content=document.getElementById('nest-content');
   const sub=document.getElementById('nest-subtitle');
   const p=G.player;
+  resetNestChrome('player');
   if(!p){content.innerHTML='<p style="color:var(--text-dim);text-align:center">No active run.</p>';modal.classList.add('open');return;}
   reapplyPlayerGearStats(p);
   const pAsp=typeof getEntityAspect==='function'?getEntityAspect(p):(p.aspect||'');
@@ -3111,6 +3387,11 @@ function closeNest() {
   document.getElementById('nest-modal').classList.remove('open');
   const content=document.getElementById('nest-content');
   if(content) content.onclick=null;
+  G._nestInspectSide=null;
+  const inner=document.querySelector('#nest-modal .nest-inner');
+  const title=document.getElementById('nest-title');
+  if(inner) inner.classList.remove('nest-inner--enemy');
+  if(title) title.textContent='🪺 Your Nest';
   notifyOwUiEmbedClose();
 }
 
@@ -4896,63 +5177,7 @@ function closeEnemyInfoPopup(){
 }
 
 function openEnemyInfoPopup(){
-  if(!G.enemy) return;
-  const popup=document.getElementById('enemy-info-popup');
-  if(!popup) return;
-  wireEnemyInfoPopupOnce();
-  const spriteEl=document.getElementById('enemy-info-popup-sprite');
-  if(spriteEl){
-    let ent=G.enemy;
-    if(G.enemy.birdKey&&BIRDS[G.enemy.birdKey]){
-      ent=Object.assign({}, BIRDS[G.enemy.birdKey], G.enemy, { portraitKey: G.enemy.portraitKey || BIRDS[G.enemy.birdKey].portraitKey });
-    }
-    spriteEl.innerHTML=renderEntityAvatarHTML(ent,'battle', false, true);
-  }
-  const nm=escapeEncounterPreviewHtml(String(G.enemy.name||'Enemy'));
-  const hdr=document.getElementById('enemy-info-popup-header');
-  if(hdr) hdr.innerHTML=`<strong>${nm}</strong>${G.enemy.isBoss?' <span aria-hidden="true">👑</span>':''}`;
-  const lv=Number.isFinite(G.enemy.storyLevel)?G.enemy.storyLevel:(Number.isFinite(G.enemy.effectiveLevel)?G.enemy.effectiveLevel:getEnemyPreviewLevel(G.enemy));
-  const aiStyle=typeof G.enemy.aiStyle==='string'?G.enemy.aiStyle:'tactical';
-  const cls=idToClassLabel(resolveFinalClass(G.enemy.class||G.enemy.enemyClass||inferEnemyClassFromStyle(aiStyle), G.enemy.birdKey||''));
-  const szRaw=SIZE_LABELS[String(G.enemy.size||'medium').toLowerCase()]||String(G.enemy.size||'');
-  const sz=escapeEncounterPreviewHtml(szRaw);
-  const thr=getEnemyPreviewLevelLine(G.enemy);
-  const meta=document.getElementById('enemy-info-popup-meta');
-  const eAsp=typeof getEntityAspect==='function'?getEntityAspect(G.enemy):(G.enemy.aspect||'');
-  let aspMeta='';
-  if(eAsp){
-    const def=getAspectDefinition(eAsp);
-    const strong=(def?.strongAgainst||[]).map(formatAspectDisplayName).join(', ')||'—';
-    const weak=(def?.weakAgainst||[]).map(formatAspectDisplayName).join(', ')||'—';
-    aspMeta=`<br/>Aspect: ${escapeHtmlRoster(formatAspectDisplayName(eAsp))}<br/>Strong vs: ${escapeHtmlRoster(strong)} · Weak vs: ${escapeHtmlRoster(weak)}`;
-    if(G?.player && typeof getEntityAspect==='function' && typeof getAspectRelationship==='function'){
-      const rel=getAspectRelationship(getEntityAspect(G.player), eAsp, null);
-      if(rel && rel!=='Neutral') aspMeta+=`<br/>Vs your aspect: ${escapeHtmlRoster(rel)}`;
-    }
-  }
-  if(meta) meta.innerHTML=`Class: ${escapeEncounterPreviewHtml(cls)} · Size: ${sz}${aspMeta}<br/>LVL ${lv} · ${escapeEncounterPreviewHtml(thr.detail)}`;
-  const mutEl=document.getElementById('enemy-info-popup-mutations');
-  if(mutEl){
-    mutEl.innerHTML=buildEnemyInfoPopupMutationsHtml(G.enemy);
-    wireEnemyInfoEquipmentTooltips(mutEl);
-  }
-  const passEl=document.getElementById('enemy-info-popup-passive');
-  if(passEl){
-    const bk=G.enemy.birdKey||G.enemy.templateKey;
-    const bird=bk&&BIRDS[bk]?BIRDS[bk]:null;
-    const passive=bird?.passive;
-    const classPerk=typeof Avian?.classPerks?.getClassPerkForEntity==='function'
-      ? Avian.classPerks.getClassPerkForEntity(G.enemy)
-      : getBirdAuthoredClassPerk(bk);
-    const parts=[];
-    if(passive) parts.push(`<div class="enemy-info-passive-name">★ ${escapeHtmlRoster(passive.name)}</div><div class="enemy-info-passive-desc">${escapeHtmlRoster(passive.desc||passive.effect||'')}</div>`);
-    if(classPerk) parts.push(`<div class="enemy-info-passive-name">Class Perk: ${escapeHtmlRoster(classPerk.name)}</div><div class="enemy-info-passive-desc">${escapeHtmlRoster(classPerk.effect||'')}</div>`);
-    passEl.innerHTML=parts.length?parts.join(''):'<p class="enemy-info-empty">None</p>';
-  }
-  const ab=document.getElementById('enemy-info-popup-abilities');
-  if(ab) ab.innerHTML=buildEnemyInfoPopupAbilitiesHtml(G.enemy);
-  popup.style.display='flex';
-  popup.classList.add('enemy-info-popup--open');
+  openEnemyNest();
 }
 
 /** Effect / identity lines for enemy Nest equipment rows. */
@@ -5027,8 +5252,8 @@ function wireEnemyInfoPopupOnce(){
   const wrap=document.getElementById('enemy-avatar-wrap');
   if(!wrap) return;
   wrap.style.cursor='pointer';
-  wrap.setAttribute('aria-label','Open enemy nest');
-  wrap.addEventListener('click',e=>{ e.stopPropagation(); hideTooltip(); openCombatStatsModal('enemy'); });
+  wrap.setAttribute('aria-label','Hold to inspect; activate to open Enemy Nest');
+  wrap.addEventListener('click',e=>{ e.stopPropagation(); hideTooltip(); openEnemyNest(); });
 }
 
 /** Source of truth for encounter preview + tooltips: materialized OW chain, else current G.enemy. */
@@ -9024,18 +9249,82 @@ function buildCombatDetailsModalHtml(side){
     <section class="combat-details-section"><h4 class="combat-details-section-h">Status Effects</h4>${buildCombatStatusDetailsSection(side)}</section>
   </div>`;
 }
+function collectCombatantStatusChips(side){
+  try{
+    const statuses=side==='player'?G.playerStatus:G.enemyStatus;
+    const ownerStats=side==='player'?G?.player?.stats:G?.enemy?.stats;
+    const collectFn=typeof collectCombatStatusEntries==='function'?collectCombatStatusEntries:Avian?.statusDefs?.collectCombatStatusEntries;
+    const resolveFn=typeof resolveCombatStatusBadge==='function'?resolveCombatStatusBadge:Avian?.statusDefs?.resolveStatusBadge;
+    if(!collectFn||!resolveFn) return [];
+    const ctx={owner:side,statuses,poisonCap:G?.player?(G.player.poisonCap||5):5};
+    return collectFn(statuses||{},ownerStats).map(entry=>{
+      const badge=resolveFn(entry,ctx);
+      return badge&&badge.text?{text:badge.text,category:badge.category||'system'}:null;
+    }).filter(Boolean);
+  }catch(_){ return []; }
+}
 function buildCombatantHoverTooltipHtml(side){
   const isPlayer=side==='player';
   const entity=isPlayer?G.player:G.enemy;
-  if(!entity?.stats) return '';
-  const stats=isPlayer?buildPlayerStatsGridHtml():buildEnemyStatsGridHtml();
-  const statuses=buildCombatStatusDetailsSection(side);
-  return `<div class="combat-hover-summary">
-    <div class="tt-name">${combatEscAttr(entity.name||'Combatant')}</div>
-    <div class="tt-type">Combat stats &amp; ailments</div>
-    <div class="${isPlayer?'stats-mini':'enemy-stats-mini stats-mini'}">${stats}</div>
-    <div class="combat-hover-statuses"><div class="combat-details-section-h">Ailments &amp; effects</div>${statuses}</div>
-    <div class="tt-note">${isPlayer?'Hold to inspect · Tap to open your Nest':'Hold to inspect · Tap the Enemy Nest for full details'}</div>
+  if(!entity) return '';
+  const s=entity.stats||{};
+  const birdKey=entity.birdKey||'';
+  const cls=idToClassLabel(resolveFinalClass(
+    isPlayer
+      ? (entity.class||BIRDS[birdKey]?.class||'striker')
+      : (entity.class||entity.enemyClass||inferEnemyClassFromStyle(entity)||'predator'),
+    birdKey
+  ));
+  const szRaw=entity.size||BIRDS[birdKey]?.size||'medium';
+  const sz=SIZE_LABELS[String(szRaw).toLowerCase()]||'';
+  const asp=typeof getEntityAspect==='function'?getEntityAspect(entity):(entity.aspect||'');
+  const lv=isPlayer
+    ? (entity.birdLevel||1)
+    : (Number.isFinite(entity.storyLevel)?entity.storyLevel:(Number.isFinite(entity.effectiveLevel)?entity.effectiveLevel:(typeof getEnemyPreviewLevel==='function'?getEnemyPreviewLevel(entity):1)));
+  const hp=formatCombatNumber(s.hp||0);
+  const maxHp=formatCombatNumber(s.maxHp||0);
+  const arm=formatCombatNumber(Math.max(0,Number(s.armour)||0));
+  const armMax=formatCombatNumber(Math.max(0,Number(s.maxArmour)||0));
+  const marm=formatCombatNumber(Math.max(0,Number(s.magicArmour)||0));
+  const marmMax=formatCombatNumber(Math.max(0,Number(s.maxMagicArmour)||0));
+  const atk=formatCombatNumber(s.atk||0);
+  const matk=formatCombatNumber(s.matk||0);
+  const def=formatCombatNumber(s.def||0);
+  const mdef=formatCombatNumber(s.mdef||0);
+  const acc=formatCombatNumber(s.acc||0);
+  const dodge=formatCombatNumber(s.dodge||0);
+  const passive=isPlayer
+    ? (typeof getBirdPassiveInfo==='function'?getBirdPassiveInfo(birdKey):null)
+    : ((BIRDS[birdKey]&&BIRDS[birdKey].passive)||(typeof getBirdPassiveInfo==='function'?getBirdPassiveInfo(birdKey):null));
+  const chips=collectCombatantStatusChips(side);
+  const chipHtml=chips.length
+    ? chips.slice(0,6).map(c=>`<span class="combat-hover-chip combat-hover-chip--${combatEscAttr(c.category)}">${combatEscAttr(c.text)}</span>`).join('')
+    : '<span class="combat-hover-chip combat-hover-chip--empty">No ailments</span>';
+  const meta=[cls, sz, asp?formatAspectDisplayName(asp):''].filter(Boolean).join(' · ');
+  return `<div class="combat-hover-card">
+    <div class="combat-hover-head">
+      <div class="tt-name">${combatEscAttr(entity.name||(isPlayer?'Your bird':'Enemy'))}${!isPlayer&&entity.isBoss?' 👑':''}</div>
+      <div class="tt-type">${combatEscAttr(meta)}</div>
+      <div class="combat-hover-lv">Lv.${lv}</div>
+    </div>
+    <div class="combat-hover-vitals">
+      <div class="combat-hover-vital"><span>HP</span><b>${hp}/${maxHp}</b></div>
+      <div class="combat-hover-vital"><span>ARM</span><b>${arm}/${armMax}</b></div>
+      <div class="combat-hover-vital"><span>MARM</span><b>${marm}/${marmMax}</b></div>
+    </div>
+    <div class="combat-hover-stats">
+      <span><em>ATK</em>${atk}</span>
+      <span><em>MATK</em>${matk}</span>
+      <span><em>DEF</em>${def}</span>
+      <span><em>MDEF</em>${mdef}</span>
+      <span><em>PREC</em>${acc}%</span>
+      <span><em>EVA</em>${dodge}%</span>
+    </div>
+    ${passive?.name?`<div class="combat-hover-passive">★ ${combatEscAttr(passive.name)}</div>`:''}
+    <div class="combat-hover-ailments">${chipHtml}</div>
+    <div class="tt-note">${window._isTouchDevice
+      ? (isPlayer?'Hold for this card · Tap to open your Nest':'Hold for this card · Tap to open Enemy Nest')
+      : (isPlayer?'Click to open your Nest':'Click to open Enemy Nest')}</div>
     ${richTooltipCloseBtn()}
   </div>`;
 }
