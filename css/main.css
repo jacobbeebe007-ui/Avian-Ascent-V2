@@ -50,7 +50,10 @@ body::before{content:'';position:fixed;inset:0;background-image:radial-gradient(
   min-height:100vh;
 }
 #app:has(#screen-select.active) > header{display:none !important;}
-#app:has(#screen-battle.active){padding-top:8px;padding-bottom:12px;}
+#app:has(#screen-battle.active){
+  max-width:min(1400px,100%);
+  padding:8px 8px 12px;
+}
 #app:has(#screen-battle.active) > header{
   display:flex;
   align-items:center;
@@ -65,8 +68,9 @@ body::before{content:'';position:fixed;inset:0;background-image:radial-gradient(
   margin-top:0;
   justify-content:space-between;
   flex-wrap:nowrap;
-  gap:8px;
+  gap:6px;
 }
+#app:has(#screen-battle.active) > header .header-actions{flex-wrap:nowrap;gap:6px;}
 #app:has(#screen-battle.active) > header .menu-btn,
 #app:has(#screen-battle.active) > header .nest-btn{font-size:.74rem;padding:3px 10px;margin:0;}
 #app:has(#screen-battle.active) > header .sound-btn{font-size:.7rem;padding:3px 8px;}
@@ -5755,8 +5759,8 @@ img{image-rendering:pixelated;image-rendering:crisp-edges;}
 .shiny-topbar{font-size:.78rem;color:var(--gold-light);background:rgba(201,168,76,.12);border:1px solid rgba(201,168,76,.3);border-radius:999px;padding:3px 10px;}
 
 #screen-battle .combatants,.tactical-battlefield{min-height:clamp(200px,38vh,420px);}
-.tactical-battlefield{grid-template-columns:1fr 1fr;align-items:stretch;direction:ltr;gap:10px;}
-#screen-battle .combatant-panel{display:flex;flex-direction:column;height:100%;gap:8px;}
+.tactical-battlefield{grid-template-columns:minmax(0,1fr) minmax(0,1fr);align-items:stretch;direction:ltr;gap:10px;width:100%;padding:0;}
+#screen-battle .combatant-panel{display:flex;flex-direction:column;height:100%;gap:6px;min-width:0;}
 #screen-battle .combatant-card{
   flex:1 1 auto;
   display:flex;
@@ -5771,8 +5775,14 @@ img{image-rendering:pixelated;image-rendering:crisp-edges;}
 #screen-battle .combat-vitals{flex:0 0 auto;margin-top:auto;}
 #screen-battle .combatant-panel.player .combatant-card,
 #screen-battle .combatant-panel.enemy .combatant-card{border:none;box-shadow:none;background:transparent;}
-#screen-battle .combatant-identity{text-align:center;margin-bottom:4px;}
+#screen-battle .combatant-identity{margin-bottom:4px;}
 #screen-battle .combatant-identity .combatant-name{margin-bottom:1px;}
+#screen-battle .combatant-panel.player .combatant-identity,
+#screen-battle .combatant-panel.player .combatant-name,
+#screen-battle .combatant-panel.player .combatant-meta,
+#screen-battle .combatant-panel.enemy .combatant-identity,
+#screen-battle .combatant-panel.enemy .combatant-name,
+#screen-battle .combatant-panel.enemy .combatant-meta{text-align:center;}
 #screen-battle .avatar-wrap{flex:1 1 auto;display:flex;align-items:center;justify-content:center;margin:0;}
 .combatant-meta{font-size:.7rem;color:var(--text-dim);letter-spacing:.08em;text-transform:uppercase;margin-bottom:2px;}
 #player-class-label,#enemy-class-label{cursor:help;}
@@ -5783,34 +5793,34 @@ img{image-rendering:pixelated;image-rendering:crisp-edges;}
 .combat-vitals{
   display:flex;
   flex-direction:column;
-  gap:7px;
+  gap:4px;
   flex-shrink:0;
   width:100%;
-  padding:8px 10px 9px;
+  padding:5px 8px 6px;
   background:linear-gradient(180deg,rgba(6,10,14,.62),rgba(4,7,10,.5));
   border:1px solid rgba(201,168,76,.2);
-  border-radius:10px;
+  border-radius:8px;
   box-sizing:border-box;
 }
 .combat-vitals .hp-bar-wrap{
   margin:0 !important;
   display:flex;
   flex-direction:column;
-  gap:3px;
+  gap:1px;
 }
 .combat-vitals .hp-label{
   display:flex;
   justify-content:space-between;
   align-items:baseline;
-  gap:8px;
+  gap:6px;
   margin:0;
-  font-size:.7rem;
+  font-size:.62rem;
   font-weight:600;
 }
 .combat-vitals .hp-label span:first-child{
-  flex:0 0 4.2em;
+  flex:0 0 3.4em;
   font-family:'Cinzel',serif;
-  font-size:.62rem;
+  font-size:.54rem;
   letter-spacing:.08em;
   text-transform:uppercase;
   color:var(--text-dim);
@@ -5827,7 +5837,7 @@ img{image-rendering:pixelated;image-rendering:crisp-edges;}
 .combat-vitals .arm-bar-bg,
 .combat-vitals .marm-bar-bg,
 .combat-vitals .ultimate-meter-bar{
-  height:10px !important;
+  height:7px !important;
   width:100%;
   box-sizing:border-box;
 }
@@ -6586,10 +6596,9 @@ body.ui-mobile-mode #screen-battle .btn-desc{
   flex:1 1 auto;
   display:flex;
   align-items:center;
-  justify-content:center;
   min-height:calc(148px * var(--combat-avatar-scale) / 100) !important;
   height:auto !important;
-  min-width:calc(160px * var(--combat-avatar-scale) / 100) !important;
+  min-width:0 !important;
   margin:0 !important;
 }
 #screen-battle .avatar-inner{
@@ -6600,7 +6609,13 @@ body.ui-mobile-mode #screen-battle .btn-desc{
   display:flex;
   flex-direction:column;
   height:100%;
-  padding:calc(12px * var(--combat-combatants-scale) / 100) calc(10px * var(--combat-combatants-scale) / 100) !important;
+  padding:calc(6px * var(--combat-combatants-scale) / 100) 0 !important;
+}
+#screen-battle.combat-arr--compact .combatant-panel,
+#screen-battle.combat-arr--classic .combatant-panel,
+body.ui-mobile-mode #screen-battle .combatant-panel{
+  padding-left:0 !important;
+  padding-right:0 !important;
 }
 #screen-battle .combatant-name{
   font-size:calc(.9rem * var(--combat-combatants-scale) / 100) !important;
@@ -6635,7 +6650,7 @@ body.ui-mobile-mode #screen-battle .avatar-inner{
   font-size:calc(2.4rem * var(--combat-avatar-scale) / 100);
 }
 body.ui-mobile-mode #screen-battle .combatant-panel{
-  padding:calc(9px * var(--combat-combatants-scale) / 100) calc(8px * var(--combat-combatants-scale) / 100) calc(8px * var(--combat-combatants-scale) / 100) !important;
+  padding:calc(6px * var(--combat-combatants-scale) / 100) 0 calc(6px * var(--combat-combatants-scale) / 100) !important;
 }
 body.ui-mobile-mode #screen-battle .combatant-name{
   font-size:calc(.8rem * var(--combat-combatants-scale) / 100) !important;
@@ -6668,9 +6683,10 @@ body.ui-mobile-mode #screen-battle .battle-log{
 #screen-battle.combat-arr--tactical .combatants{
   display:grid !important;
   grid-template-columns:minmax(0,1fr) minmax(0,1fr) !important;
-  gap:clamp(16px,4vw,56px);
-  padding:8px clamp(4px,3vw,36px) 14px;
+  gap:clamp(10px,2vw,20px);
+  padding:4px 0 8px;
   align-items:stretch;
+  width:100%;
 }
 #screen-battle.combat-arr--tactical .battle-below-combatants{display:contents;}
 #screen-battle.combat-arr--tactical .action-panel{
@@ -6682,9 +6698,8 @@ body.ui-mobile-mode #screen-battle .battle-log{
 #screen-battle.combat-arr--tactical .battle-log-section{height:100%;display:flex;flex-direction:column;}
 #screen-battle.combat-arr--tactical .battle-log{height:auto !important;min-height:180px;flex:1;}
 #screen-battle.combat-arr--tactical .actions-grid{grid-template-columns:repeat(3,minmax(0,1fr));}
-#screen-battle.combat-arr--tactical .combatant-panel{padding-inline:clamp(10px,2vw,24px) !important;}
-#screen-battle.combat-arr--tactical .combatant-name{text-align:center;font-size:1rem !important;}
-#screen-battle.combat-arr--tactical .combatant-meta{text-align:center;}
+#screen-battle.combat-arr--tactical .combatant-panel{padding-inline:0 !important;}
+#screen-battle.combat-arr--tactical .combatant-name{font-size:1rem !important;}
 @media(max-width:767px){
   #screen-battle.combat-arr--tactical .battle-layout{display:flex !important;flex-direction:column;gap:8px;}
   #screen-battle.combat-arr--tactical .combatants{grid-template-columns:1fr 1fr !important;gap:8px;padding:0;}
@@ -6779,11 +6794,19 @@ body.ui-mobile-mode #screen-battle .battle-log{
 #screen-battle .btn-desc-lines p{margin:.1rem 0;}
 
 /* The enemy portrait itself is the transparent control for opening its Nest. */
-#screen-battle .enemy-nest-window{appearance:none;padding:0;border:0;background:transparent;color:inherit;font:inherit;transition:transform .15s;overflow:visible;width:100%;align-self:stretch;display:flex;align-items:center;justify-content:center;margin:0;}
+#screen-battle .enemy-nest-window{appearance:none;padding:0;border:0;background:transparent;color:inherit;font:inherit;transition:transform .15s;overflow:visible;width:100%;align-self:stretch;display:flex;align-items:center;margin:0;}
 #screen-battle .enemy-nest-window:hover,#screen-battle .enemy-nest-window:focus-visible{background:transparent;outline:none;transform:translateY(-1px);}
 #screen-battle .combatant-panel.player .avatar-wrap,
-#screen-battle .combatant-panel.enemy .avatar-wrap{width:100%;justify-content:center;align-items:center;}
-#screen-battle #enemy-avatar.avatar-inner{position:relative;left:-18px;}
+#screen-battle .combatant-panel.player .enemy-nest-window,
+#screen-battle .combatant-panel.enemy .avatar-wrap,
+#screen-battle .combatant-panel.enemy .enemy-nest-window{width:100%;justify-content:center;align-items:center;}
+#screen-battle .combatant-panel.player .avatar-inner,
+#screen-battle .combatant-panel.enemy .avatar-inner{transform-origin:center bottom;}
+#screen-battle .combatant-panel.player .combat-status-stack,
+#screen-battle .combatant-panel.player .status-effects,
+#screen-battle .combatant-panel.enemy .combat-status-stack,
+#screen-battle .combatant-panel.enemy .status-effects{align-items:center;}
+#screen-battle .combat-vitals{width:100%;align-self:stretch;}
 
 /* Combatant summaries need room for the complete, abbreviated stat grid. */
 #action-tooltip:has(.combat-hover-summary){box-sizing:border-box;width:min(92vw,420px);max-width:min(92vw,420px);}
@@ -6803,6 +6826,14 @@ body.ui-mobile-mode #screen-battle .battle-log{
 #action-tooltip .combat-hover-statuses .combat-details-status-list li{font-size:.72rem;line-height:1.2;margin:2px 0;}
 
 @media(max-width:767px){
+  #app:has(#screen-battle.active){padding-left:6px;padding-right:6px;}
+  #app:has(#screen-battle.active) > header .menu-btn,
+  #app:has(#screen-battle.active) > header .nest-btn{font-size:.64rem;padding:2px 7px;}
+  #app:has(#screen-battle.active) > header .level-badge{font-size:.7rem;}
+  #app:has(#screen-battle.active) > header .bird-lv{font-size:.66rem;}
+  #screen-battle .avatar-wrap{
+    min-height:calc(110px * var(--combat-avatar-scale) / 100) !important;
+  }
   #screen-battle .action-tray-toolbar{grid-template-columns:auto 1fr;gap:5px;}
   #screen-battle .action-tray-energy{justify-content:flex-end;}
   #screen-battle .combat-items-row{grid-column:1/-1;}
