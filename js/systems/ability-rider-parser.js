@@ -34,7 +34,12 @@
     }
     if (/blocked while the target has armour|blocked by armour(?!\s+restoration)/i.test(combined)) return 'ifTargetNoArmour';
     if (/if (?:the effect |it )?reaches health/i.test(combined)) return 'reachedHealth';
-    if (/faster than the target|acting before the target|act before the target|if you act before/i.test(combined)) return 'actingFirst';
+    if (/higher Agility than the target|user has higher Agility|faster than the target|acting before the target|act before the target|if you act before/i.test(combined)) {
+      return /higher Agility|user has higher Agility/i.test(combined) ? 'userFaster' : 'actingFirst';
+    }
+    if (/[Dd]odged the opponent|[Dd]odged (?:the )?(?:opponent|enemy)(?:['’]s)? previous/i.test(combined)) return 'dodgedLast';
+    if (/(?:Magic\s+)?Armour is broken and Health is damaged/i.test(combined)) return 'reachedHealth';
+    if (/\bon hit\b/i.test(combined) && /gain |apply |restore /i.test(combined)) return 'onHit';
     if (/after a magic ability|used after a magic|after using a magic ability|after a magic attack/i.test(combined)) return 'afterMagicThisTurn';
     if (/if both hit|both hits land|if both hits land/i.test(combined)) return 'allHitsLanded';
     if (/target is already delayed|already delayed/i.test(combined)) return 'targetDelayed';
@@ -244,7 +249,8 @@
         if (lp != null) row.lifestealPct = lp;
       }
       if (!row.lifestealPct) {
-        var lsDm = text.match(/Heal for\s+(\d+(?:\.\d+)?)\s*%\s*of damage dealt/i);
+        var lsDm = text.match(/Heal for\s+(\d+(?:\.\d+)?)\s*%\s*of damage dealt/i)
+          || text.match(/heal(?:s| Health)?(?: equal to)?\s+(\d+(?:\.\d+)?)\s*%\s*of(?: Health)? damage dealt/i);
         if (lsDm) row.lifestealPct = Number(lsDm[1]);
       }
     }
@@ -467,13 +473,12 @@
       riders.push({ kind: 'gainAccNextHit', value: Number(nextAcc[1]), scope: 'self', when: parseRiderWhen(t) });
     }
 
-    // Guard / brace / counter / taunt — tier Guard uses gainGuarded(0); % resolved via AP/level in resolveGuardedReductionPct
-    // Do not match "Minor Guard Down" (enemy debuff) as a self Guard buff.
-    for (var tg of t.matchAll(/\b(?:gain|gains?)\s+(Minor|Moderate|Major|Grand|Epic|Legendary)\s+Guard\b(?!\s+Down)/gi)) {
+    // Guarded stance / Brace — not the Guard stat ("Minor Guard Up/Down").
+    for (var tg of t.matchAll(/\b(?:gain|gains?)\s+(Minor|Moderate|Major|Grand|Epic|Legendary)\s+Guard\b(?!\s+(?:Up|Down))/gi)) {
       addSelf('gainGuarded', 0, { guardTier: normalizeTierLabel(tg[1]), when: parseRiderWhen(t, tg[0]) });
     }
     if (!hasRiderKind(riders, 'gainGuarded')) {
-      for (var tg2 of t.matchAll(/\b(Minor|Moderate|Major|Grand|Epic|Legendary)\s+Guard\b(?!\s+Down)/gi)) {
+      for (var tg2 of t.matchAll(/\b(Minor|Moderate|Major|Grand|Epic|Legendary)\s+Guard\b(?!\s+(?:Up|Down))/gi)) {
         addSelf('gainGuarded', 0, { guardTier: normalizeTierLabel(tg2[1]), when: parseRiderWhen(t, tg2[0]) });
         break;
       }
@@ -601,13 +606,155 @@
         riders.push({ kind: 'bonusVsAilment', ailment: 'bleed', value: pmL ? Number(pmL[1]) : 0 });
       }
     }
-    if (/low\s*HP|below\s+\d+%\s+Health|low-Health/i.test(t)) {
+    var skillPowerLow = t.match(/\+?\s*(\d+(?:\.\d+)?)\s+Skill Power if the target is below\s+(\d+(?:\.\d+)?)\s*%/i);
+    if (skillPowerLow) {
+      riders.push({
+        kind: 'skillPowerThisHit',
+        value: Number(skillPowerLow[1]) || 20,
+        threshold: (Number(skillPowerLow[2]) || 30) / 100,
+        when: 'targetLowHp',
+        scope: 'self',
+      });
+    } else if (/low\s*HP|below\s+\d+%\s+Health|low-Health/i.test(t) && !/\+?\s*\d+\s+Skill Power/i.test(t)) {
       var lowM = t.match(/below\s+(\d+(?:\.\d+)?)\s*%/i);
-      var lowPctM = t.match(/\+?\s*(\d+(?:\.\d+)?)\s*%/);
+      var lowPctM = t.match(/\+?\s*(\d+(?:\.\d+)?)\s*%(?!\s*(?:Finesse|Strength|Magic|weapon))/i);
       riders.push({
         kind: 'bonusVsLowHp',
         threshold: lowM ? Number(lowM[1]) / 100 : 0.35,
         value: lowPctM ? Number(lowPctM[1]) : 15,
+      });
+    }
+
+    var dodgeSp = t.match(/\+?\s*(\d+(?:\.\d+)?)\s+Skill Power if the user [Dd]odged/i);
+    if (dodgeSp) {
+      riders.push({
+        kind: 'skillPowerThisHit',
+        value: Number(dodgeSp[1]) || 20,
+        when: 'dodgedLast',
+        scope: 'self',
+      });
+    }
+
+    var precIfAgi = t.match(/\+?\s*(\d+(?:\.\d+)?)\s+Precision if the user has higher Agility/i);
+    var precThis = t.match(/with\s+\+?\s*(\d+(?:\.\d+)?)\s+Precision/i);
+    if (precIfAgi) {
+      riders.push({ kind: 'gainAccThisHit', value: Number(precIfAgi[1]) || 10, when: 'userFaster', scope: 'self' });
+    } else if (precThis && !hasRiderKind(riders, 'gainAccThisHit') && !hasRiderKind(riders, 'gainAccNextHit')) {
+      riders.push({ kind: 'gainAccThisHit', value: Number(precThis[1]) || 10, scope: 'self', when: null });
+    }
+
+    var ignGuard = t.match(/ignore\s+(\d+(?:\.\d+)?)\s+Guard(?:\s+for this attack)?/i);
+    if (ignGuard && !hasRiderKind(riders, 'ignoreGuardThisHit') && !hasRiderKind(riders, 'ignoreMatchingDefNextHit')) {
+      riders.push({ kind: 'ignoreGuardThisHit', value: Number(ignGuard[1]) || 4, scope: 'self', when: null });
+    }
+
+    var armNext = t.match(/[Tt]he next (Strength|Magic|Finesse) skill[^.]*gains?\s+\+?\s*(\d+(?:\.\d+)?)\s+Skill Power/i);
+    if (armNext) {
+      var armGate = String(armNext[1]).toLowerCase();
+      var armTurns = /end of the next turn/i.test(t) ? 2 : 1;
+      var armPrec = t.match(/\+?\s*(\d+(?:\.\d+)?)\s+Precision/i);
+      var armIgn = t.match(/ignores?\s+(\d+(?:\.\d+)?)\s+Guard/i);
+      riders.push({
+        kind: 'armNextSkill',
+        value: Number(armNext[2]) || 10,
+        gate: armGate,
+        precision: armPrec ? Number(armPrec[1]) : 0,
+        ignoreGuard: armIgn ? Number(armIgn[1]) : 0,
+        turns: armTurns,
+        scope: 'self',
+        when: null,
+      });
+    }
+
+    var rmStack = t.match(/remove\s+(\d+)\s+(Dazed|Crippled|Fracture) stack/i);
+    if (rmStack) {
+      riders.push({
+        kind: 'removeAilmentStack',
+        value: Number(rmStack[1]) || 1,
+        ailment: String(rmStack[2]).toLowerCase(),
+        scope: 'self',
+        when: null,
+      });
+    }
+
+    if (/reduce(?: its remaining)?(?: magical)?(?: stat)? debuff(?: remaining)? duration by\s+(\d+)/i.test(t)
+      || /If affected by a magical stat debuff, reduce its remaining duration/i.test(t)) {
+      var shM = t.match(/duration by\s+(\d+)/i);
+      riders.push({
+        kind: 'shortenMagicalDebuff',
+        value: shM ? Number(shM[1]) : 1,
+        scope: 'self',
+        when: null,
+      });
+    }
+
+    var resistApp = t.match(/reduce hostile magical ailment application chance by\s+(\d+)/i);
+    if (resistApp) {
+      riders.push({
+        kind: 'resistMagicalAilmentApp',
+        value: Number(resistApp[1]) || 10,
+        turns: /for\s+2\s+turns/i.test(t) ? 2 : 2,
+        scope: 'self',
+        when: null,
+      });
+    }
+
+    if (/next magical debuff applied has its duration reduced by\s+(\d+)/i.test(t)) {
+      var ndM = t.match(/duration reduced by\s+(\d+)/i);
+      riders.push({
+        kind: 'nextMagicalDebuffShorter',
+        value: ndM ? Number(ndM[1]) : 1,
+        scope: 'self',
+        when: null,
+      });
+    }
+
+    if (/reduce application chance of the Orb['’]?s matching ailment by\s+(\d+)/i.test(t)) {
+      var orbR = t.match(/by\s+(\d+)\s+percentage/i);
+      riders.push({
+        kind: 'resistOrbAilmentApp',
+        value: orbR ? Number(orbR[1]) : 10,
+        scope: 'self',
+        when: null,
+      });
+    }
+
+    if (/choose Might, Dexterity, or Focus/i.test(t)) {
+      riders.push({ kind: 'chooseCoreStatUp', value: 4, turns: 2, scope: 'self', when: 'onHit' });
+    }
+
+    if (/resolve the Grimoire['’]?s selected rune/i.test(t)) {
+      riders.push({ kind: 'resolveSourceRider', value: 0, source: 'grimoireRune', scope: 'self', when: 'onHit' });
+    }
+
+    var echoSplit = t.match(/Deal\s+(\d+(?:\.\d+)?)\s*% of this technique['’]?s total damage immediately and store\s+(\d+(?:\.\d+)?)\s*% as Delayed/i);
+    if (echoSplit) {
+      riders.push({
+        kind: 'delayedDamageSplit',
+        value: Number(echoSplit[2]) || 25,
+        immediatePct: Number(echoSplit[1]) || 75,
+        scope: 'enemy',
+        when: 'onHit',
+      });
+    }
+
+    var ignPct = t.match(/[Ii]gnore\s+(\d+(?:\.\d+)?)\s*%\s+(?:Guard or Resolve|Resolve)/i);
+    if (ignPct) {
+      riders.push({
+        kind: 'piercePercentThisHit',
+        value: Number(ignPct[1]) || 12,
+        scope: 'self',
+        when: null,
+      });
+    }
+
+    if (/if the target has a debuff, heal for\s+(\d+(?:\.\d+)?)\s*%/i.test(t)) {
+      var lsDeb = t.match(/heal for\s+(\d+(?:\.\d+)?)\s*%/i);
+      riders.push({
+        kind: 'lifestealIfDebuff',
+        value: lsDeb ? Number(lsDeb[1]) : 10,
+        scope: 'self',
+        when: 'onHit',
       });
     }
 
@@ -692,10 +839,22 @@
         }
         return;
       }
-      /* Dual-restore text must not add Bastion on top of restoreArmour + restoreMagicArmour. */
+      /* Dual-restore text must not add Bastion on top of restoreArmour + restoreMagicArmour.
+         Incomplete bastion (value only, no Ward amount) is upgraded from text. */
       if (r.kind === 'bastion' && row.riders.some(function (x) {
-        return x && (x.kind === 'restoreArmour' || x.kind === 'restoreMagicArmour' || x.kind === 'bastion');
+        return x && (x.kind === 'restoreArmour' || x.kind === 'restoreMagicArmour');
       })) return;
+      if (r.kind === 'bastion') {
+        var existingBastion = row.riders.find(function (x) { return x && x.kind === 'bastion'; });
+        if (existingBastion) {
+          if (existingBastion.armour == null && existingBastion.magicArmour == null && (r.armour != null || r.magicArmour != null)) {
+            existingBastion.armour = r.armour;
+            existingBastion.magicArmour = r.magicArmour;
+            if (r.value != null) existingBastion.value = r.value;
+          }
+          return;
+        }
+      }
       if ((r.kind === 'restoreArmour' || r.kind === 'restoreMagicArmour' || r.kind === 'restoreLowerPool')
         && row.riders.some(function (x) { return x && (x.kind === r.kind || x.kind === 'bastion'); })) return;
       row.riders.push(r);
@@ -710,7 +869,44 @@
       });
     }
 
-    mapBonusVsAilmentToCondition(row);
+    if (!row.riders.some(function (x) { return x && x.kind === 'skillPowerThisHit'; })) {
+      mapBonusVsAilmentToCondition(row);
+    }
+
+    /* Unequal Fortify + Ward must not stay as a single equal bastion. */
+    var fortWard = text.match(
+      /Gain\s+(\d+)\s+Fortified\s+(?:Armour|Armor)[\s\S]{0,80}?(\d+)\s+Ward(?:\s+Magic)?\s*(?:Armour|Armor)/i
+    );
+    if (fortWard && Number(fortWard[1]) !== Number(fortWard[2])) {
+      row.riders = row.riders.filter(function (x) { return !x || x.kind !== 'bastion'; });
+      if (!hasRiderKind(row.riders, 'fortify')) {
+        row.riders.push({ kind: 'fortify', value: Number(fortWard[1]) || 0, turns: 2, scope: 'self', when: null });
+      }
+      if (!hasRiderKind(row.riders, 'ward')) {
+        row.riders.push({ kind: 'ward', value: Number(fortWard[2]) || 0, turns: 2, scope: 'self', when: null });
+      }
+    }
+
+    for (var pi = 0; pi < row.riders.length; pi++) {
+      var pr = row.riders[pi];
+      if (!pr) continue;
+      if (pr.kind === 'ignoreGuardThisHit' && !(row.flatPen > 0)) row.flatPen = Number(pr.value) || 0;
+      if (pr.kind === 'piercePercentThisHit' && !(row.piercePercent > 0)) {
+        row.piercePercent = (Number(pr.value) || 0) / 100;
+        row.pierceDef = Math.max(Number(row.pierceDef) || 0, Number(pr.value) || 0);
+        row.pierceMdef = Math.max(Number(row.pierceMdef) || 0, Number(pr.value) || 0);
+      }
+      if (pr.kind === 'lifestealIfDebuff' && !(row.lifestealPct > 0)) {
+        row.lifestealPct = Number(pr.value) || 10;
+        row.lifestealWhen = 'targetHasAilment';
+      }
+      if (pr.kind === 'delayedDamageSplit') {
+        row.delayedDamageSplit = {
+          immediatePct: Number(pr.immediatePct) || 75,
+          delayedPct: Number(pr.value) || 25,
+        };
+      }
+    }
 
     /* applyAilment riders → row.ailment / ailmentChance for tryRollRowAilment. */
     if ((!row.ailment || !(row.ailmentChance > 0)) && Array.isArray(row.riders)) {
@@ -726,7 +922,9 @@
       }
     }
 
-    if (/^guard$/i.test(String(row.riderText || '').trim()) && !hasRiderKind(row.riders, 'gainGuarded') && !hasRiderKind(row.riders, 'gainGuard')) {
+    if (/^guard$/i.test(String(row.riderText || '').trim())
+      && !/\bGuard\s+Up\b/i.test(text)
+      && !hasRiderKind(row.riders, 'gainGuarded') && !hasRiderKind(row.riders, 'gainGuard')) {
       var tierGuardOnly = text.match(/\b(Minor|Moderate|Major|Grand|Epic|Legendary)\s+Guard\b/i);
       row.riders.push({
         kind: 'gainGuarded',

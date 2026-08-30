@@ -12192,8 +12192,14 @@ async function doAttack(attacker,target,result) {
     playAvatarAnim(target,dodge_,560);
     spawnFloat(target,'Dodge!','fn-dodge');
     SFX.dodge();
-    if(target==='player') BS.dodges++;
+    if(target==='player') {
+      BS.dodges++;
+      if (G.playerStatus) G.playerStatus._dodgedLastEnemyAttack = true;
+    } else if (G.playerStatus) {
+      G.playerStatus._dodgedLastEnemyAttack = false;
+    }
   } else {
+    if (target==='player' && G.playerStatus) G.playerStatus._dodgedLastEnemyAttack = false;
     playAvatarAnim(target,'do-hit',420);
     flashPanel(target,target==='player'?'blue':'red');
     // Screen shake threshold: % of target's max HP
@@ -13481,9 +13487,20 @@ function refreshEnemyStrikerDodgeMark(dodgeCut, turns){
 
 function getAbilityLifestealPct(abOrId){
   const tmpl=getAbilityTemplateForUI(abOrId);
-  const row=tmpl?._combatPackRow;
+  const row=(abOrId && abOrId._dispatcherRow) || tmpl?._combatPackRow || tmpl?._dispatcherRow;
   if(!row) return 0;
-  return Math.max(0, Number(row.lifestealPct) || 0);
+  const pct=Math.max(0, Number(row.lifestealPct) || 0);
+  if (!pct) return 0;
+  if (row.lifestealWhen === 'targetHasAilment') {
+    const es=G && G.enemyStatus;
+    const hasDebuff=!!(es && (
+      (es.poison && es.poison.stacks) || (es.bleed && es.bleed.stacks) || es.burning || es.chilled
+      || es.shock || es.weakened || es.weaken || es.feared || es.confused || es.accDebuff
+      || es.jewelMark || es.predatorMark || es.carrionMark || es.marked
+    ));
+    if (!hasDebuff) return 0;
+  }
+  return pct;
 }
 
 function resolveAbilityCombatRow(srcAbility){
@@ -13558,6 +13575,9 @@ function computeMasterOutgoingDamage(isMagic, srcAbility, opts={}){
         if(!vsMarm || enemyMarm>0) n+=Number(ps._passiveSkillPowerBonus)||0;
         ps._passiveSkillPowerBonus=0;
         delete ps._passiveSkillPowerVsMagicArmour;
+      }
+      if(ps._thisAttackSkillPowerBonus){
+        n+=Number(ps._thisAttackSkillPowerBonus)||0;
       }
       return n;
     })(),
@@ -14732,6 +14752,14 @@ function applyAilment(target,ailId,stacks=1) {
   const debuffDurationBonus=(debuffSource&&typeof Avian?.classPerks?.adjustDebuffDurationForEntity==='function')
     ?Math.max(0, Avian.classPerks.adjustDebuffDurationForEntity(debuffSource,1,ailId)-1)
     :((target==='enemy'&&G.player&&typeof Avian?.classPerks?.adjustDebuffDuration==='function')?Math.max(0, Avian.classPerks.adjustDebuffDuration(1,ailId)-1):0);
+  if (target==='player' && G.playerStatus && (G.playerStatus._nextMagicalDebuffDurationMinus||0)>0) {
+    const magAil=/^(burning|chilled|shock|poison|weakened|confused|blinded)$/i.test(String(ailId||''));
+    if (magAil) {
+      /* Duration cut is applied after the base+bonus turns are assigned below. */
+      G.playerStatus._pendingMagicalDebuffCut = Number(G.playerStatus._nextMagicalDebuffDurationMinus)||1;
+      delete G.playerStatus._nextMagicalDebuffDurationMinus;
+    }
+  }
   codexMark('statuses',ailId,'seen');
   if (typeof globalThis.syncAilmentRulesFromCombatConfig === 'function') {
     globalThis.syncAilmentRulesFromCombatConfig();
@@ -14929,6 +14957,14 @@ function applyAilment(target,ailId,stacks=1) {
     appliedAs = 'weakened';
   } else if (ailId==='delayed') {
     return false;
+  }
+  if (target==='player' && status && (status._pendingMagicalDebuffCut||0)>0) {
+    const cut=Math.max(1, Math.floor(Number(status._pendingMagicalDebuffCut)||1));
+    delete status._pendingMagicalDebuffCut;
+    const bag=status[appliedAs] || status[ailId];
+    if (bag && typeof bag==='object' && bag.turns!=null) {
+      bag.turns=Math.max(1, (Number(bag.turns)||1)-cut);
+    }
   }
   if(target==='enemy' && G.player){
     if(typeof Avian?.passives?.onAilmentAppliedByPlayer==='function') Avian.passives.onAilmentAppliedByPlayer(ailId);
@@ -16776,6 +16812,7 @@ async function executeEnemyKitTemplateAbility(enemy, abilityId, totalEnemyMiss){
     const r=dealDamage('player',raw,false,true,ab,{ masterFullyResolved: _masterResolved2 });
     if(r.wasDodged){
       spawnFloat('player','Dodged!','fn-dodge'); playAvatarAnim('player','do-dodge-r',400); SFX.dodge(); await delay(420);
+      if (G.playerStatus) G.playerStatus._dodgedLastEnemyAttack = true;
       logMsg(`✨ ${G.player.name} slips the spell!`,'system');
       return true;
     }

@@ -218,6 +218,262 @@ if (first.magnitude === 4 && second.magnitude === 10 && st.activeTierEffects['at
   fail(`stacking test failed: ${JSON.stringify({ first, second, active: st.activeTierEffects['atk:up'] })}`);
 }
 
+function kindsOf(row) {
+  return ((row && row.riders) || []).map((r) => r && r.kind).filter(Boolean);
+}
+function hasKind(row, kind) {
+  return kindsOf(row).includes(kind);
+}
+function riderOf(row, kind) {
+  return ((row && row.riders) || []).find((r) => r && r.kind === kind) || null;
+}
+
+/* Weapon / armour / shield skill text must resolve to executable riders. */
+{
+  const quick = actions.skillToAbilityRow('WSK-001', { id: 'WPN-001', rarity: 'grey', family: 'Dagger Pinion' }, 'grey');
+  const acc = riderOf(quick, 'gainAccThisHit');
+  if (!acc || Number(acc.value) !== 10 || acc.when !== 'userFaster') {
+    fail(`WSK-001 expected +10 Precision if faster, got ${JSON.stringify(acc)}`);
+  } else ok('WSK-001 Quick Pinion Precision-if-faster');
+}
+
+{
+  const riposte = actions.skillToAbilityRow('WSK-005', { id: 'WPN-013', rarity: 'grey', family: 'Duel Sabre' }, 'grey');
+  const sp = riderOf(riposte, 'skillPowerThisHit');
+  if (!sp || Number(sp.value) !== 20 || sp.when !== 'dodgedLast') {
+    fail(`WSK-005 expected +20 Skill Power if Dodged, got ${JSON.stringify(sp)}`);
+  } else ok('WSK-005 Riposte Slash dodge-gated Skill Power');
+}
+
+{
+  const ward = actions.skillToAbilityRow('WSK-012', { id: 'WPN-031', rarity: 'grey', family: 'Wand' }, 'grey');
+  if (!ward || ward.noDamage !== true) fail('WSK-012 Arcane Ward must be noDamage');
+  else if (!hasKind(ward, 'ward') || Number(riderOf(ward, 'ward').value) !== 8) fail('WSK-012 missing Ward 8');
+  else ok('WSK-012 Arcane Ward is utility + Ward 8');
+}
+
+{
+  const hex = actions.skillToAbilityRow('WSK-014', { id: 'WPN-037', rarity: 'grey', family: 'Hexwood Wand' }, 'grey');
+  const down = riderOf(hex, 'reduceEnemyMatk');
+  if (!down || down.when !== 'reachedHealth') {
+    fail(`WSK-014 Focus Down must gate on reachedHealth, got ${JSON.stringify(down)}`);
+  } else ok('WSK-014 Withering Hex Health-gated Focus Down');
+}
+
+{
+  const orb = actions.skillToAbilityRow(
+    'WSK-016',
+    { id: 'WPN-043', rarity: 'grey', family: 'Focus Orb', aspect: 'ember', orbFocus: 'ember' },
+    'grey'
+  );
+  if (!orb || orb.noDamage !== true) fail('WSK-016 Orb Ward must be noDamage');
+  else if (!hasKind(orb, 'ward') || !hasKind(orb, 'resistOrbAilmentApp')) {
+    fail(`WSK-016 missing Ward or Orb ailment resist (${kindsOf(orb).join(',')})`);
+  } else ok('WSK-016 Orb Ward + matching-ailment resist');
+}
+
+{
+  const renew = actions.skillToAbilityRow('WSK-018', { id: 'WPN-049', rarity: 'grey', family: 'Bell Sceptre' }, 'grey');
+  if (!renew || renew.noDamage !== true) fail('WSK-018 must be noDamage');
+  else if (!hasKind(renew, 'restoreArmour') || !hasKind(renew, 'restoreMagicArmour')) {
+    fail('WSK-018 missing dual restore');
+  } else ok('WSK-018 Harmonic Renewal restore-only');
+}
+
+{
+  const charge = actions.skillToAbilityRow('WSK-022', { id: 'WPN-061', rarity: 'grey', family: 'Lance' }, 'grey');
+  const ign = riderOf(charge, 'ignoreGuardThisHit');
+  if (!ign || Number(ign.value) !== 4) fail(`WSK-022 expected ignore 4 Guard, got ${JSON.stringify(ign)}`);
+  else ok('WSK-022 Piercing Charge ignore 4 Guard');
+}
+
+{
+  const draw = actions.skillToAbilityRow('WSK-028', { id: 'WPN-079', rarity: 'grey', family: 'Greatbow' }, 'grey');
+  const prec = riderOf(draw, 'gainAccThisHit');
+  if (!prec || Number(prec.value) !== 10) fail(`WSK-028 expected +10 Precision, got ${JSON.stringify(prec)}`);
+  else ok('WSK-028 Raptor’s Draw +10 Precision');
+}
+
+{
+  const reap = actions.skillToAbilityRow('WSK-029', { id: 'WPN-085', rarity: 'grey', family: 'War Scythe' }, 'grey');
+  if (!reap || Number(reap.lifestealPct) !== 20) {
+    fail(`WSK-029 expected 20% lifesteal, got ${reap && reap.lifestealPct}`);
+  } else ok('WSK-029 Reaping Arc 20% Health lifesteal');
+}
+
+{
+  const harvest = actions.skillToAbilityRow('WSK-030', { id: 'WPN-085', rarity: 'grey', family: 'War Scythe' }, 'grey');
+  const sp = riderOf(harvest, 'skillPowerThisHit');
+  if (!sp || Number(sp.value) !== 20 || sp.when !== 'targetLowHp') {
+    fail(`WSK-030 expected +20 Skill Power vs <30% HP, got ${JSON.stringify(sp)}`);
+  } else if (harvest.condition === 'targetLowHp' && harvest.conditionalAbilityPower > 1.3) {
+    fail(`WSK-030 must not multiply Ability Power by 125% (${harvest.conditionalAbilityPower})`);
+  } else ok('WSK-030 Death’s Harvest +20 Skill Power under 30% HP');
+}
+
+{
+  const burst = actions.skillToAbilityRow('WSK-031', { id: 'WPN-091', rarity: 'grey', family: 'Runic Grimoire' }, 'grey');
+  if (!hasKind(burst, 'resolveSourceRider')) fail('WSK-031 missing Grimoire rune rider');
+  else ok('WSK-031 Inscribed Burst resolves Grimoire rune');
+}
+
+{
+  const bastion = actions.skillToAbilityRow('WSK-032', { id: 'WPN-091', rarity: 'grey', family: 'Runic Grimoire' }, 'grey');
+  if (!bastion || bastion.noDamage !== true) fail('WSK-032 must be noDamage');
+  const fort = riderOf(bastion, 'fortify');
+  const ward = riderOf(bastion, 'ward');
+  if (!fort || Number(fort.value) !== 5 || !ward || Number(ward.value) !== 7) {
+    fail(`WSK-032 expected Fortify 5 + Ward 7, got ${JSON.stringify(kindsOf(bastion))} ${JSON.stringify(fort)} ${JSON.stringify(ward)}`);
+  } else ok('WSK-032 Runic Bastion Fortify 5 / Ward 7');
+}
+
+{
+  const chorus = actions.skillToAbilityRow('WSK-033', { id: 'WPN-097', rarity: 'grey', family: 'Bard Song' }, 'grey');
+  if (!hasKind(chorus, 'chooseCoreStatUp')) fail('WSK-033 missing choose Might/Dex/Focus');
+  else ok('WSK-033 Rallying Chorus choose-stat Up');
+}
+
+{
+  const note = actions.skillToAbilityRow('WSK-035', { id: 'WPN-103', rarity: 'grey', family: 'Lament Song' }, 'grey');
+  const down = riderOf(note, 'reduceEnemyMdef');
+  if (!down || down.when !== 'reachedHealth') fail(`WSK-035 Resolve Down must be reachedHealth, got ${JSON.stringify(down)}`);
+  else ok('WSK-035 Mourning Note Health-gated Resolve Down');
+}
+
+{
+  const brow = actions.skillToAbilityRow('ESK-003', null, 'green');
+  if (hasKind(brow, 'gainGuarded')) fail('ESK-003 must not also grant Guarded stance from Guard Up');
+  if (!hasKind(brow, 'gainDef') || !hasKind(brow, 'removeAilmentStack')) {
+    fail(`ESK-003 expected Guard Up + remove Dazed, got ${kindsOf(brow).join(',')}`);
+  } else if (riderOf(brow, 'removeAilmentStack').ailment !== 'dazed') {
+    fail('ESK-003 must remove Dazed, not Concussed');
+  } else ok('ESK-003 Braced Brow Guard Up + remove 1 Dazed');
+}
+
+{
+  const mind = actions.skillToAbilityRow('ESK-009', null, 'green');
+  if (!hasKind(mind, 'restoreMagicArmour') || !hasKind(mind, 'shortenMagicalDebuff')) {
+    fail(`ESK-009 missing restore or duration cut (${kindsOf(mind).join(',')})`);
+  } else ok('ESK-009 Clear Mind restore + shorten magical debuff');
+}
+
+{
+  const shift = actions.skillToAbilityRow('ESK-023', null, 'green');
+  const rm = riderOf(shift, 'removeAilmentStack');
+  if (!rm || rm.ailment !== 'crippled') fail(`ESK-023 expected remove Crippled, got ${JSON.stringify(rm)}`);
+  else ok('ESK-023 Buckler Shift removes 1 Crippled');
+}
+
+{
+  const brace = actions.skillToAbilityRow('ESK-025', null, 'green');
+  const rm = riderOf(brace, 'removeAilmentStack');
+  if (!rm || rm.ailment !== 'fracture') fail(`ESK-025 expected remove Fracture, got ${JSON.stringify(rm)}`);
+  else ok('ESK-025 Battle Brace removes 1 Fracture');
+}
+
+{
+  const focus = actions.skillToAbilityRow('ESK-028', null, 'green');
+  const arm = riderOf(focus, 'armNextSkill');
+  if (!arm || Number(arm.value) !== 15 || arm.gate !== 'strength' || Number(arm.ignoreGuard) !== 4) {
+    fail(`ESK-028 expected next Strength +15 SP ignore 4 Guard, got ${JSON.stringify(arm)}`);
+  } else ok('ESK-028 Breaker’s Focus arms next Strength skill');
+}
+
+{
+  const night = actions.skillToAbilityRow('ESK-044', null, 'green');
+  if (!hasKind(night, 'ward') || !hasKind(night, 'resistMagicalAilmentApp')) {
+    fail(`ESK-044 missing Ward or ailment resist (${kindsOf(night).join(',')})`);
+  } else ok('ESK-044 Night Ward + magical ailment resist');
+}
+
+{
+  const hexg = actions.skillToAbilityRow('ESK-046', null, 'green');
+  if (!hasKind(hexg, 'ward') || !hasKind(hexg, 'nextMagicalDebuffShorter')) {
+    fail(`ESK-046 missing next-debuff duration cut (${kindsOf(hexg).join(',')})`);
+  } else ok('ESK-046 Hex Guard next magical debuff −1 turn');
+}
+
+{
+  const mark = actions.skillToAbilityRow('ESK-058', null, 'green');
+  const arm = riderOf(mark, 'armNextSkill');
+  if (!arm || Number(arm.value) !== 15 || arm.gate !== 'finesse' || Number(arm.precision) !== 10) {
+    fail(`ESK-058 expected next Finesse +15 SP +10 Precision, got ${JSON.stringify(arm)}`);
+  } else ok('ESK-058 Marked Opening arms next Finesse skill');
+}
+
+{
+  const echo = actions.skillToAbilityRow('COMBO_ECHO_TALON', null, 'grey');
+  if (!hasKind(echo, 'delayedDamageSplit') && !echo.delayedDamageSplit) {
+    fail('COMBO_ECHO_TALON missing 75/25 Delayed split');
+  } else ok('COMBO_ECHO_TALON Delayed 75/25 split');
+}
+
+{
+  const dual = actions.skillToAbilityRow('ESK-014', null, 'purple');
+  const b = riderOf(dual, 'bastion');
+  const armAmt = b && (b.armour != null ? Number(b.armour) : Number(b.value));
+  const magAmt = b && (b.magicArmour != null ? Number(b.magicArmour) : Number(b.value));
+  if (!b || armAmt !== 5 || magAmt !== 5) {
+    fail(`ESK-014 bastion should be 5/5, got ${JSON.stringify(b)}`);
+  } else ok('ESK-014 Dual Bastion 5/5');
+}
+
+let eqAudited = 0;
+for (const skillId of skillIds) {
+  const skill = skills[skillId];
+  const text = String(skill.riderText || '');
+  const row = actions.skillToAbilityRow(skillId, { id: 'TEST', rarity: 'grey', family: skill.family, aspect: 'ember', orbFocus: 'ember' }, 'grey');
+  if (!row) {
+    fail(`${skillId}: skillToAbilityRow null during text audit`);
+    continue;
+  }
+  eqAudited += 1;
+  const kinds = kindsOf(row);
+
+  if (/utility/i.test(String(skill.skillType || '')) && !(Number(skill.skillPowerPct) > 0) && !row.noDamage) {
+    fail(`${skillId}: Utility skillType should be noDamage`);
+  }
+
+  if (/If Magic Armour is broken and Health is damaged/i.test(text)
+    || /If Armour is broken and Health is damaged/i.test(text)) {
+    const downs = (row.riders || []).filter((r) => r && /^reduceEnemy/.test(r.kind));
+    for (const r of downs) {
+      if (r.when !== 'reachedHealth') fail(`${skillId}: ${r.kind} should be reachedHealth, got ${r.when}`);
+    }
+  }
+
+  if (/Gain \d+ Fortified[\s\S]{0,80}?\d+ Ward/i.test(text)) {
+    const fw = text.match(/Gain\s+(\d+)\s+Fortified[\s\S]{0,80}?(\d+)\s+Ward/i);
+    if (fw && Number(fw[1]) !== Number(fw[2])) {
+      if (!kinds.includes('fortify') || !kinds.includes('ward')) {
+        fail(`${skillId}: unequal Fortify/Ward should be separate riders (${kinds.join(',')})`);
+      }
+    } else if (!kinds.includes('bastion') && !(kinds.includes('fortify') && kinds.includes('ward'))) {
+      fail(`${skillId}: Fortify+Ward text missing bastion/fortify+ward`);
+    }
+  }
+
+  if (/remove \d+ Dazed stack/i.test(text) && !kinds.includes('removeAilmentStack')) {
+    fail(`${skillId}: missing remove Dazed`);
+  }
+  if (/The next (Strength|Magic|Finesse) skill/i.test(text) && !kinds.includes('armNextSkill')) {
+    fail(`${skillId}: missing armNextSkill`);
+  }
+  if (/higher Agility than the target/i.test(text) && !kinds.includes('gainAccThisHit')) {
+    fail(`${skillId}: missing Precision-if-faster`);
+  }
+  if (/Dodged the opponent/i.test(text) && !kinds.includes('skillPowerThisHit')) {
+    fail(`${skillId}: missing dodge-gated Skill Power`);
+  }
+  if (/heal Health equal to \d+%/i.test(text) && !(row.lifestealPct > 0)) {
+    fail(`${skillId}: missing lifestealPct`);
+  }
+  if (/\bGuard Up\b/i.test(text) && !/\bBrace\b/i.test(text) && kinds.includes('gainGuarded')) {
+    fail(`${skillId}: Guard Up must not also grant Guarded stance`);
+  }
+}
+ok(`audited ${eqAudited} equipment skills against authored rider text`);
+
 if (failed) {
   console.error(`\n[equipment-skills] ${failed} failure(s)`);
   process.exit(1);

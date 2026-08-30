@@ -185,6 +185,7 @@
     if (/if the target has no Magic Armour after/i.test(t)) return 'targetNoMagicArmour';
     if (/if the target has no Armour after/i.test(t)) return 'targetNoArmour';
     if (/if (?:the effect|it) reaches Health/i.test(t)) return 'reachedHealth';
+    if (/(?:Magic\s+)?Armour is broken and Health is damaged/i.test(t)) return 'reachedHealth';
     if (/blocked (?:while the target has|by) Magic Armour/i.test(t)) return 'ifTargetNoMagicArmour';
     if (/blocked (?:while the target has|by) Armour(?!\s+Restoration)/i.test(t)) return 'ifTargetNoArmour';
     return null;
@@ -201,6 +202,7 @@
     if (!parsed) return riders;
     var text = String(parsed.text || '');
     var when = riderWhenFromParsed(parsed);
+    if (!when && /\bon hit\b/i.test(text)) when = 'onHit';
     var turns = durationTurnsFromParsed(parsed);
     var enemyWhen = enemyConditionalWhenFromText(text);
     var selfWhen = selfConditionalWhenFromText(text);
@@ -462,6 +464,18 @@
     if (/cannot be redirected/i.test(text)) {
       riders.push({ kind: 'cannotRedirectNextSkill', value: 1, gate: 'weapon', scope: 'self', when: null });
     }
+    var fortWardUnequal = text.match(
+      /Gain\s+(\d+)\s+Fortified\s+(?:Armour|Armor)[\s\S]{0,80}?(\d+)\s+Ward(?:\s+Magic)?\s*(?:Armour|Armor)/i
+    );
+    if (fortWardUnequal && Number(fortWardUnequal[1]) !== Number(fortWardUnequal[2])) {
+      riders = riders.filter(function (r) { return !r || r.kind !== 'bastion'; });
+      if (!riders.some(function (r) { return r && r.kind === 'fortify'; })) {
+        riders.push({ kind: 'fortify', value: Number(fortWardUnequal[1]) || 0, turns: 2, scope: 'self', when: null });
+      }
+      if (!riders.some(function (r) { return r && r.kind === 'ward'; })) {
+        riders.push({ kind: 'ward', value: Number(fortWardUnequal[2]) || 0, turns: 2, scope: 'self', when: null });
+      }
+    }
     return riders;
   }
 
@@ -530,14 +544,29 @@
     }
     var pen = Number(skill.intrinsicPenPct) || 0;
     var dmgType = String(skill.damageType || 'Physical');
-    var isUtil = dmgType.toLowerCase() === 'utility' || (Number(skill.hits) || 0) === 0;
+    var skillTypeStr = String(skill.skillType || '');
+    var isUtil = dmgType.toLowerCase() === 'utility'
+      || (Number(skill.hits) || 0) === 0
+      || (/utility/i.test(skillTypeStr) && !(Number(skill.skillPowerPct) > 0));
     var structured = resolveStructuredRider(skill);
     var riders = convertParsedRiderToRows(structured, skillId);
     if (Array.isArray(skill.protectionRiders) && skill.protectionRiders.length) {
       for (var pri = 0; pri < skill.protectionRiders.length; pri++) {
         var pr = skill.protectionRiders[pri];
         if (!pr || !pr.kind) continue;
-        riders.push(Object.assign({ when: null, scope: 'self' }, pr));
+        var prCopy = Object.assign({ when: null, scope: 'self' }, pr);
+        if (prCopy.kind === 'bastion' && prCopy.armour == null && prCopy.magicArmour == null) {
+          var dualAmt = String(skill.riderText || '').match(
+            /Gain\s+(\d+)\s+Fortified[\s\S]{0,120}?(\d+)\s+Ward/i
+          );
+          if (dualAmt && Number(dualAmt[1]) !== Number(dualAmt[2])) {
+            /* Unequal Fortify/Ward is handled as separate riders, not Bastion. */
+            continue;
+          }
+          prCopy.armour = dualAmt ? Number(dualAmt[1]) : (Number(prCopy.value) || 0);
+          prCopy.magicArmour = dualAmt ? Number(dualAmt[2]) : (Number(prCopy.value) || 0);
+        }
+        riders.push(prCopy);
       }
     } else if (Array.isArray(skill.riders) && skill.riders.length) {
       for (var sri = 0; sri < skill.riders.length; sri++) {

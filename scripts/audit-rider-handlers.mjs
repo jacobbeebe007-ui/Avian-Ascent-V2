@@ -23,11 +23,8 @@ for (const rel of [
 }
 
 const dispatcherSrc = readFileSync(path.join(ROOT, 'js/systems/ability-dispatcher.js'), 'utf8');
-const statBlock = dispatcherSrc.match(/makeStatRiderHandlers[\s\S]*?return \{([\s\S]*?)\};\s*\}/);
-const riderBlock = dispatcherSrc.match(/var riderHandlers = \{([\s\S]*?)\};/);
 const handlerKeys = new Set();
-if (statBlock) for (const m of statBlock[1].matchAll(/(\w+):\s*function/g)) handlerKeys.add(m[1]);
-if (riderBlock) for (const m of riderBlock[1].matchAll(/(\w+):\s*function/g)) handlerKeys.add(m[1]);
+for (const m of dispatcherSrc.matchAll(/^\s{4,6}(\w+):\s*function/gm)) handlerKeys.add(m[1]);
 
 const SKIP_EXEC_KINDS = new Set(['refundApOnCrit', 'gainApNextTurn', 'bonusVsAilment', 'bonusVsLowHp', 'tagFlag', 'raw', 'tierStat']);
 const DEFERRED_KINDS = new Set(['gainAccNextHit']);
