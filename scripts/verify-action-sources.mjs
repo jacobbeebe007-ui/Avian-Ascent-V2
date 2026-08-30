@@ -429,6 +429,127 @@ function countKind(riders, kind) {
   } else fail('blue jay riders wrong: ' + JSON.stringify(riders.map((r) => r.kind)));
 }
 
+{
+  const riders = ridersFor('galah', 'bard');
+  const downs = riders.filter((r) => r.kind === 'reduceEnemyAtk' || r.kind === 'reduceEnemyMatk');
+  if (riders.some((r) => r.kind === 'magicArmourDamage' && Number(r.value) === 3)
+    && downs.length === 2
+    && downs.every((r) => r.when === 'reachedHealth')) {
+    ok('galah Shrill Display: 3 Magic Armour damage; Might/Focus Down only if it reaches Health');
+  } else fail('galah riders wrong: ' + JSON.stringify(riders.map((r) => ({ kind: r.kind, when: r.when, value: r.value }))));
+}
+
+function classForBird(birdKey) {
+  const birds = ctx.Avian.data && ctx.Avian.data.birdsV2;
+  if (birds && birds[birdKey] && birds[birdKey].class) return birds[birdKey].class;
+  return 'rogue';
+}
+
+function isEnemyDebuffRider(r) {
+  if (!r) return false;
+  if (r.kind === 'nextAttackAccPenalty') return false;
+  return /^(reduceEnemy|applyAilment|applyMark)/.test(r.kind)
+    || r.scope === 'enemy';
+}
+
+{
+  const utils = ctx.Avian.data.combatPack.innateUtilities || {};
+  let audited = 0;
+  for (const [birdKey, util] of Object.entries(utils)) {
+    if (!util) continue;
+    audited += 1;
+    const text = String(util.effect || '');
+    const riders = ridersFor(birdKey, classForBird(birdKey));
+    const kinds = riders.map((r) => r && r.kind).filter(Boolean);
+    const retaliate = /first enemy physical hit while Ward remains/i.test(text);
+    const mag = text.match(/Deal\s+(\d+)\s+Magic\s+(?:Armour|Armor)\s+damage/i);
+    const arm = text.match(/Deal\s+(\d+)\s+(?:Armour|Armor)\s+damage/i);
+    if (mag && retaliate) {
+      if (!kinds.includes('magicArmourRetaliateOnPhysical') || kinds.includes('magicArmourDamage')) {
+        fail(`${birdKey}: Ward retaliate should be magicArmourRetaliateOnPhysical, got ${kinds.join(',')}`);
+      }
+    } else if (mag) {
+      const r = riders.find((x) => x.kind === 'magicArmourDamage');
+      if (!r || Number(r.value) !== Number(mag[1])) {
+        fail(`${birdKey}: expected magicArmourDamage ${mag[1]}, got ${JSON.stringify(r)}`);
+      }
+    } else if (arm && !/Magic\s+(?:Armour|Armor)/i.test(arm[0])) {
+      const r = riders.find((x) => x.kind === 'armourDamage');
+      if (!r || Number(r.value) !== Number(arm[1])) {
+        fail(`${birdKey}: expected armourDamage ${arm[1]}, got ${JSON.stringify(r)}`);
+      }
+    }
+
+    const reachedHealth = /if (?:the effect|it) reaches Health/i.test(text);
+    const noMagAfter = /if the target has no Magic Armour after/i.test(text);
+    const noArmAfter = /if the target has no Armour after/i.test(text);
+    const blockedByMag = /blocked (?:while the target has|by) Magic Armour/i.test(text);
+    const blockedByArm = /blocked (?:while the target has|by) Armour(?!\s+Restoration)/i.test(text);
+
+    const gatedDowns = riders.filter((r) => {
+      if (!r || r.kind === 'armourDamage' || r.kind === 'magicArmourDamage' || r.kind === 'nextAttackAccPenalty') {
+        return false;
+      }
+      return isEnemyDebuffRider(r);
+    });
+
+    if (reachedHealth) {
+      if (!gatedDowns.length) fail(`${birdKey}: reaches-Health text has no enemy rider`);
+      for (const r of gatedDowns) {
+        if (r.when !== 'reachedHealth') {
+          fail(`${birdKey}: ${r.kind} should be reachedHealth, got ${r.when}`);
+        }
+      }
+    } else if (noMagAfter) {
+      for (const r of gatedDowns) {
+        if (r.when !== 'targetNoMagicArmour' && r.when !== 'ifTargetNoMagicArmour') {
+          fail(`${birdKey}: ${r.kind} should gate on no Magic Armour after, got ${r.when}`);
+        }
+      }
+    } else if (noArmAfter) {
+      for (const r of gatedDowns) {
+        if (r.when !== 'targetNoArmour' && r.when !== 'ifTargetNoArmour') {
+          fail(`${birdKey}: ${r.kind} should gate on no Armour after, got ${r.when}`);
+        }
+      }
+    } else if (blockedByMag) {
+      for (const r of gatedDowns) {
+        if (r.when !== 'ifTargetNoMagicArmour' && r.when !== 'targetNoMagicArmour') {
+          fail(`${birdKey}: ${r.kind} should be blocked by Magic Armour, got ${r.when}`);
+        }
+      }
+    } else if (blockedByArm) {
+      for (const r of gatedDowns) {
+        if (r.when !== 'ifTargetNoArmour' && r.when !== 'targetNoArmour') {
+          fail(`${birdKey}: ${r.kind} should be blocked by Armour, got ${r.when}`);
+        }
+      }
+    }
+
+    if (/Restore\s+\d+\s+(?:Armour|Armor)\s+and\s+\d+\s+Magic/i.test(text)) {
+      if (!kinds.includes('restoreArmour') || !kinds.includes('restoreMagicArmour')) {
+        fail(`${birdKey}: dual restore missing a pool rider (${kinds.join(',')})`);
+      }
+    }
+    if (/\bFortified Armour\b/i.test(text) && !kinds.includes('fortify') && !kinds.includes('bastion')) {
+      fail(`${birdKey}: Fortify text missing fortify/bastion rider`);
+    }
+    if (/\bWard Magic Armour\b/i.test(text) && !kinds.includes('ward') && !kinds.includes('bastion')) {
+      fail(`${birdKey}: Ward text missing ward/bastion rider`);
+    }
+    if (/Apply Jewel Mark/i.test(text) && !riders.some((r) => r.kind === 'applyMark' && r.mark === 'jewel')) {
+      fail(`${birdKey}: missing Jewel Mark`);
+    }
+    if (/Apply Predator Mark/i.test(text) && !riders.some((r) => r.kind === 'applyMark' && r.mark === 'predator')) {
+      fail(`${birdKey}: missing Predator Mark`);
+    }
+    if (/Apply Carrion Mark/i.test(text) && !riders.some((r) => r.kind === 'applyMark' && r.mark === 'carrion')) {
+      fail(`${birdKey}: missing Carrion Mark`);
+    }
+  }
+  ok(`audited ${audited} innate utilities against authored effect text`);
+}
+
 if (failed) {
   console.error(`\n[action-sources] ${failed} failure(s)`);
   process.exit(1);

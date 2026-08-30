@@ -115,6 +115,14 @@
     if (when === 'alternatingAttackType') return ' if alternating attack type';
     if (when === 'onAilmentFail') return ' if ailment fails';
     if (when === 'onEnemyMissBeforeTurn') return ' if target misses before next turn';
+    if (when === 'reachedHealth') return ' if it reaches Health';
+    if (when === 'ifTargetNoMagicArmour' || when === 'targetNoMagicArmour') return ' if no Magic Armour';
+    if (when === 'ifTargetNoArmour' || when === 'targetNoArmour') return ' if no Armour';
+    if (when === 'ifCleansed') return ' if a debuff is cleansed';
+    if (when === 'guardActive') return ' while Guarded';
+    if (when === 'guardInactive') return ' if Guard is not active';
+    if (when === 'shieldActive') return ' while shielded';
+    if (when === 'shieldInactive') return ' if no shield';
     if (String(when).indexOf('onAilment:') === 0) {
       var aid = String(when).slice('onAilment:'.length);
       return ' if ' + ailmentName(aid) + ' applies';
