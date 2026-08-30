@@ -45,7 +45,9 @@ ok('Apply runs activateDevCode', /function applyDevCodeSwitches\(\)\{[\s\S]*acti
 ok('Apply can deactivate reversible codes', /function applyDevCodeSwitches\(\)\{[\s\S]*deactivateDevCode\(code/.test(game));
 ok('birdwatching grants every bird unlock id', /function applyBirdwatchingUnlock\(\)\{[\s\S]*collectAllBirdUnlockIds\(\)/.test(game));
 ok('headinghome locks non-starter unlocks', /function applyHeadingHomeLock\(\)\{[\s\S]*getPlayableStarterBirdKeys\(\)/.test(game));
-ok('Apply hint says codes turn on immediately', /Tick codes and press Apply to turn them on immediately/.test(html));
+ok('Apply hint says codes turn on immediately', /Tick a code and press Apply to turn it on immediately/.test(html));
+ok('switches live on Creator codes tab', /id="supplies-view-codes"[\s\S]*id="supplies-code-toggles"/.test(html));
+ok('prefix of known codes is not invalid', /function isKnownDevCodePrefix\b/.test(game));
 
 function startServer() {
   return new Promise((resolve, reject) => {
@@ -146,12 +148,24 @@ try {
   ok('headinghome locks Robin', afterHome.robinUnlocked === false);
   ok('headinghome leaves starter keys only', afterHome.starters.every((k) => k !== 'robin'));
 
-  await page.evaluate(() => {
+  const gmUi = await page.evaluate(() => {
+    window.checkDevCode('gmbirdwatc');
+    const mid = document.getElementById('dev-code-msg')?.textContent || '';
     window.checkDevCode('gmbirdwatching');
     const box = document.querySelector('#supplies-code-toggle-list input[data-code="birdwatching"]');
+    const toggles = document.getElementById('supplies-code-toggles');
+    const codesView = document.getElementById('supplies-view-codes');
     if (box) box.checked = true;
     window.applyDevCodeSwitches();
+    return {
+      midMsg: mid,
+      hasBox: !!box,
+      togglesHidden: !!(toggles && toggles.hidden),
+      codesActive: !!(codesView && codesView.classList.contains('is-active')),
+    };
   });
+  ok('partial GMbirdwatching is not invalid', !/invalid code/i.test(gmUi.midMsg));
+  ok('GMbirdwatching shows the switches tab', gmUi.hasBox && gmUi.togglesHidden === false && gmUi.codesActive === true);
   const afterApplyOn = await page.evaluate(rosterExpr());
   ok(`Apply birdwatching unlocks all 52 (got ${afterApplyOn.unlocked})`, afterApplyOn.unlocked === 52);
   ok('Apply birdwatching marks switch on', afterApplyOn.birdwatchingSwitch === true);
