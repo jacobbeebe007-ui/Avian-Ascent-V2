@@ -4839,7 +4839,7 @@ html.avian-ow-nest-embed .nest-close{display:none!important;}
 .shop-purchase-log{text-align:center;font-size:.8rem;color:var(--green-light);min-height:22px;margin-bottom:8px;}
 /* Abandon run modal */
 .abandon-modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:200;align-items:center;justify-content:center;}
-.abandon-modal.open{display:flex;}
+.abandon-modal.open,.abandon-modal.active{display:flex;}
 #clear-cache-modal,
 #erase-progress-modal{z-index:12600;}
 .abandon-inner{background:var(--surface);border:1px solid var(--red);border-radius:12px;padding:26px 30px;max-width:360px;text-align:center;}
@@ -6396,8 +6396,35 @@ body.ui-mobile-mode #screen-battle .btn-desc{
 }
 .map-forge-library-card strong{font-family:'Cinzel',serif;color:var(--gold-light);}
 .map-forge-library-card span{font-size:.78rem;color:var(--text-dim);line-height:1.35;}
-.map-forge-library-card--new:hover,.map-forge-library-card--draft:hover,.map-forge-library-card.is-current{
+.map-forge-library-card--new:hover,.map-forge-library-card--draft:hover,.map-forge-library-card.is-current,.map-forge-library-card.is-selected{
   border-color:var(--gold);
+}
+.map-forge-library-card.is-selected{
+  background:rgba(201,168,76,.12);
+  box-shadow:0 0 0 1px rgba(201,168,76,.35);
+}
+.map-forge-library-confirm{
+  position:sticky;
+  bottom:0;
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+  margin-top:8px;
+  padding:12px 0 4px;
+  background:linear-gradient(180deg,rgba(6,8,12,0),rgba(6,8,12,.94) 18%,rgba(6,8,12,.98));
+}
+.map-forge-library-confirm-hint{
+  margin:0;
+  font-size:.78rem;
+  color:var(--text-dim);
+}
+.map-forge-library-confirm-btn{
+  margin-top:0;
+}
+.map-forge-library-confirm-btn:disabled{
+  opacity:.45;
+  cursor:not-allowed;
+  filter:none;
 }
 .map-forge-library-thumb{
   height:72px;border-radius:8px;background:#0a0e10 center/cover no-repeat;border:1px solid rgba(201,168,76,.18);

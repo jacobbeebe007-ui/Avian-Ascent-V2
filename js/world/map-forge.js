@@ -1323,11 +1323,19 @@
     if (btn) btn.disabled = _selectedId == null;
   }
 
-  function confirmDirtyThen(fn) {
-    if (!isMapForgeDirty()) { fn(); return; }
-    _pendingDirtyAction = fn;
+  function setUnsavedModalOpen(open) {
     const modal = document.getElementById('map-forge-unsaved-modal');
-    if (modal) modal.classList.add('active');
+    if (!modal) return;
+    modal.classList.toggle('open', !!open);
+    modal.classList.toggle('active', !!open);
+  }
+
+  function confirmDirtyThen(fn) {
+    // Library choices already leave the workspace. Don't trap the user behind
+    // a discard prompt for a map they are replacing on purpose.
+    if (_forgeView === 'library' || !isMapForgeDirty()) { fn(); return; }
+    _pendingDirtyAction = fn;
+    setUnsavedModalOpen(true);
   }
 
   function pickNodeAtPoint(svg, e) {
@@ -3297,14 +3305,14 @@
   }
 
   function confirmMapForgeDiscard() {
-    document.getElementById('map-forge-unsaved-modal')?.classList.remove('active');
+    setUnsavedModalOpen(false);
     const fn = _pendingDirtyAction;
     _pendingDirtyAction = null;
     if (fn) fn();
   }
 
   function cancelMapForgeDiscard() {
-    document.getElementById('map-forge-unsaved-modal')?.classList.remove('active');
+    setUnsavedModalOpen(false);
     _pendingDirtyAction = null;
   }
 
@@ -3822,6 +3830,11 @@
       _selectedIds = [];
       syncBreadcrumb();
     },
+    selectNode(id) {
+      _selectedId = id == null ? null : Number(id);
+      _selectedIds = _selectedId == null ? [] : [_selectedId];
+      syncNodeEditorFields();
+    },
     setTool,
     placeNodeAt(x, y) {
       _tool = 'label';
@@ -3866,6 +3879,14 @@
         nodeCount: slice?.nodes?.length || 0,
         bulkChecked: Array.from(_bulkChecked),
         worldJobsAllowed: _editContext === 'main',
+        enterWorldVisible: (() => {
+          const btn = document.getElementById('map-forge-edit-world-btn');
+          return !!(btn && btn.style.display !== 'none');
+        })(),
+        exitWorldVisible: (() => {
+          const btn = document.getElementById('map-forge-world-back');
+          return !!(btn && btn.style.display !== 'none');
+        })(),
         worldOptionHidden: (() => {
           const typeEl = document.getElementById('map-forge-node-type');
           const worldOpt = typeEl && typeof typeEl.querySelector === 'function'
@@ -3946,6 +3967,9 @@
       bulkSelectAllStages, bulkApplyEncounter, bulkApplyRewards, addWorldTemplate,
       mapForgeZoomFit, mapForgeZoom100, mapForgeZoom200,
       openMapForgeLibrary, toggleMapForgeHelp,
+      confirmMapForgeLibrary: () => {
+        if (typeof global.confirmMapForgeLibrary === 'function') return global.confirmMapForgeLibrary();
+      },
     });
   }
 })(typeof window !== 'undefined' ? window : globalThis);

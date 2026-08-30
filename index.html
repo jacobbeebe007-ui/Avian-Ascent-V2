@@ -440,6 +440,8 @@
 </div>
 <div class="map-forge-head-actions">
 <button type="button" class="menu-btn" data-action="openMapForgeLibrary">Library</button>
+<button type="button" class="menu-btn" id="map-forge-world-back" data-action="exitWorldEditor" style="display:none">← Main map</button>
+<button type="button" class="menu-btn map-forge-btn-accent" id="map-forge-edit-world-btn" data-action="editWorldMap" style="display:none">Enter this map →</button>
 <button type="button" class="menu-btn" data-action="saveMapForgeDraft">Save</button>
 <button type="button" class="menu-btn" data-action="exportMapForge">Export</button>
 <button type="button" class="menu-btn map-forge-btn-accent" data-action="playtestMapForge">Playtest</button>
@@ -481,6 +483,11 @@
 <button type="button" class="menu-btn map-forge-tool-btn" data-action="duplicateMapForgeNode">Duplicate</button>
 <button type="button" class="menu-btn map-forge-tool-btn" data-action="deselectMapForgeNode">Deselect</button>
 <button type="button" class="map-forge-tool-btn map-forge-tool-danger" data-action="deleteMapForgeNode">Delete</button>
+</div>
+<div class="map-forge-toolbar">
+<span class="map-forge-toolbar-label">Navigate</span>
+<button type="button" class="menu-btn map-forge-tool-btn map-forge-btn-accent" id="map-forge-sidebar-enter-world" data-action="editWorldMap" style="display:none">Enter this map →</button>
+<button type="button" class="menu-btn map-forge-tool-btn" id="map-forge-sidebar-exit-world" data-action="exitWorldEditor" style="display:none">← Main map</button>
 </div>
 <div class="map-forge-toolbar">
 <span class="map-forge-toolbar-label">View</span>
