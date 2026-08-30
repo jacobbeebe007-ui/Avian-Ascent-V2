@@ -351,7 +351,12 @@
       case 'ignoreGuardThisHit': return seg('Ignore ' + v + ' Guard this attack' + w, 'def');
       case 'skillPowerThisHit': return seg('+' + v + ' Skill Power' + w, null);
       case 'piercePercentThisHit': return seg('Ignore ' + v + '% Guard/Resolve' + w, 'def');
-      case 'armNextSkill': return seg('Next ' + ((r.gate || 'skill')) + ' +' + v + ' Skill Power' + w, null);
+      case 'armNextSkill': {
+        var extra = '';
+        if (Number(r.ignoreGuard) > 0) extra += ', ignore ' + Number(r.ignoreGuard) + ' Guard';
+        if (Number(r.precision) > 0) extra += ', +' + Number(r.precision) + ' Precision';
+        return seg('Next ' + ((r.gate || 'skill')) + ' +' + v + ' Skill Power' + extra + w, null);
+      }
       case 'removeAilmentStack': return seg('Remove ' + v + ' ' + (r.ailment || 'ailment') + ' stack' + w, null);
       case 'shortenMagicalDebuff': return seg('Magical debuff duration -' + v + w, 'mdef');
       case 'resistMagicalAilmentApp': return seg('-' + v + ' pp hostile magical ailment chance' + w, 'mdef');
