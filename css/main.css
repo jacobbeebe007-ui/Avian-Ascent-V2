@@ -6481,9 +6481,9 @@ body.ui-mobile-mode #screen-battle .battle-log{
 #screen-battle .action-tray-energy{display:flex;align-items:center;gap:6px;min-width:0;}
 #screen-battle .action-tray-energy .energy-text{white-space:nowrap;}
 #screen-battle .combat-items-row{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px;margin:0;padding:0;border:0;}
-#screen-battle .combat-item-btn{padding:3px 6px 3px 5px;min-height:34px;gap:7px;}
-#screen-battle .combat-item-icon{font-size:.78rem;width:1.2em;}
-#screen-battle .combat-item-copy{gap:1px;}
+#screen-battle .combat-item-btn{padding:3px 7px 3px 5px;min-height:34px;gap:12px;}
+#screen-battle .combat-item-icon{font-size:.78rem;width:1.3em;}
+#screen-battle .combat-item-copy{gap:1px;padding-left:2px;}
 #screen-battle .combat-item-label{font-size:.56rem;line-height:1.05;}
 #screen-battle .combat-item-meta{font-size:.46rem;line-height:1.05;}
 #screen-battle .action-btn{min-height:104px;}
@@ -6495,7 +6495,7 @@ body.ui-mobile-mode #screen-battle .battle-log{
 #screen-battle .enemy-nest-window:hover,#screen-battle .enemy-nest-window:focus-visible{background:transparent;outline:none;transform:translateY(-1px);}
 #screen-battle .combatant-panel.player .avatar-wrap,
 #screen-battle .combatant-panel.enemy .avatar-wrap{width:100%;justify-content:center;align-items:center;}
-#screen-battle .combatant-panel.enemy .avatar-inner{transform:scale(calc(var(--combat-avatar-scale) / 100)) translateX(-6px);}
+#screen-battle #enemy-avatar.avatar-inner{position:relative;left:-18px;}
 
 /* Combatant summaries need room for the complete, abbreviated stat grid. */
 #action-tooltip:has(.combat-hover-summary){box-sizing:border-box;width:min(92vw,420px);max-width:min(92vw,420px);}
