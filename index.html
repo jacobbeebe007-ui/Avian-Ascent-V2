@@ -101,7 +101,6 @@
 <button type="button" class="splash-hotspot splash-hotspot--fortune" data-action="openSelectHubPanel:fortune" aria-label="Cuckoo's Feathers and Fortune Emporium — global store">
 <span class="splash-hotspot-title">Cuckoo's Feathers &amp; Fortune Emporium</span>
 <span class="splash-hotspot-desc">Trade · Relics</span>
-<span class="fortune-egg-badge" id="fortune-egg-badge" hidden aria-label="Golden Goose Eggs balance"></span>
 </button>
 <button type="button" class="splash-hotspot splash-hotspot--hatchery" data-action="openSelectHubPanel:hatchery" aria-label="The Hatchery — hatch bird cards">
 <span class="splash-hotspot-title">The Hatchery</span>
@@ -131,6 +130,16 @@
 <p class="splash-sub">Roguelike of feathers &amp; fortune — plan your run from the war room.</p>
 </div>
 <div class="splash-menu-actions">
+<div class="splash-bank" id="splash-bank" aria-label="Banked treasures">
+<span class="splash-bank-chip splash-bank-chip--eggs" id="splash-bank-eggs" hidden>
+<span class="splash-bank-chip-icon" aria-hidden="true">🪿</span>
+<span class="splash-bank-chip-text">Banked <strong id="splash-bank-eggs-count">0</strong></span>
+</span>
+<button type="button" class="splash-bank-chip splash-bank-chip--nests" id="splash-bank-nests" hidden data-action="openInventorySavedNests" aria-label="Open saved nests in Inventory">
+<span class="splash-bank-chip-icon" aria-hidden="true">🪺</span>
+<span class="splash-bank-chip-text">Saved Nests <strong id="splash-bank-nests-count">0</strong></span>
+</button>
+</div>
 <button type="button" class="splash-settings-btn" data-action="openMusicMenu" title="Music jukebox" aria-label="Open music jukebox">🎵 Music</button>
 <button type="button" class="splash-settings-btn" data-action="openSettingsModal">⚙ Settings</button>
 </div>

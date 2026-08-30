@@ -449,6 +449,42 @@
     else renderMotherGoosePity();
   }
 
+  function countOwnedRescuedNests() {
+    var ids = ['cracked', 'feathered', 'gleaming', 'royal', 'ancestral'];
+    var cat = globalThis.Avian && globalThis.Avian.data && globalThis.Avian.data.rescuedNestCatalog;
+    if (cat && Array.isArray(cat.EGG_IDS) && cat.EGG_IDS.length) ids = cat.EGG_IDS;
+    var total = 0;
+    ids.forEach(function (eggId) {
+      var id =
+        typeof globalThis.miscIdForRescuedNest === 'function'
+          ? globalThis.miscIdForRescuedNest(eggId)
+          : 'rescuedNest_' + eggId;
+      if (typeof globalThis.getOwnedMiscCount === 'function') {
+        total += Math.max(0, Math.floor(Number(globalThis.getOwnedMiscCount(id)) || 0));
+      }
+    });
+    return total;
+  }
+
+  function syncWarRoomBank() {
+    var goose = typeof getGoldenGooseEggBalance === 'function' ? getGoldenGooseEggBalance() : 0;
+    var eggsChip = document.getElementById('splash-bank-eggs');
+    var eggsCount = document.getElementById('splash-bank-eggs-count');
+    if (eggsCount) eggsCount.textContent = fmtInt(goose);
+    if (eggsChip) {
+      eggsChip.hidden = !(goose > 0);
+      eggsChip.setAttribute('aria-label', 'Banked Golden Goose Eggs: ' + fmtInt(goose));
+    }
+    var nests = countOwnedRescuedNests();
+    var nestBtn = document.getElementById('splash-bank-nests');
+    var nestCount = document.getElementById('splash-bank-nests-count');
+    if (nestCount) nestCount.textContent = fmtInt(nests);
+    if (nestBtn) {
+      nestBtn.hidden = !(nests > 0);
+      nestBtn.setAttribute('aria-label', 'Open ' + fmtInt(nests) + ' saved nest' + (nests === 1 ? '' : 's') + ' in Inventory');
+    }
+  }
+
   function syncFortuneBalances() {
     var goose = typeof getGoldenGooseEggBalance === 'function' ? getGoldenGooseEggBalance() : 0;
     var gooseEl = document.getElementById('fortune-balance-goose');
@@ -457,11 +493,7 @@
     if (invGooseEl) invGooseEl.textContent = fmt(goose);
     var hatchGooseEl = document.getElementById('hatchery-balance-goose');
     if (hatchGooseEl) hatchGooseEl.textContent = fmt(goose);
-    var badge = document.getElementById('fortune-egg-badge');
-    if (badge) {
-      badge.textContent = goose > 0 ? fmt(goose) : '';
-      badge.hidden = !(goose > 0);
-    }
+    syncWarRoomBank();
     if (typeof globalThis.syncInventoryHotspotBadge === 'function') globalThis.syncInventoryHotspotBadge();
   }
 
@@ -836,6 +868,7 @@
   globalThis.renderFortuneShop = renderFortuneShop;
   globalThis.renderHatchery = renderHatchery;
   globalThis.syncFortuneBalances = syncFortuneBalances;
+  globalThis.syncWarRoomBank = syncWarRoomBank;
   globalThis.purchaseFortuneArtifact = purchaseFortuneArtifact;
   globalThis.purchaseFortuneTrade = purchaseFortuneTrade;
   globalThis.purchaseMotherGooseEgg = purchaseMotherGooseEgg;

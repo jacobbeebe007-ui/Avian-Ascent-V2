@@ -551,6 +551,8 @@ header p{color:var(--text-dim);font-style:italic;font-size:1rem;margin-top:4px;}
 .select-screen-content .splash-menu-left,
 .select-screen-content .splash-menu-actions,
 .select-screen-content .splash-settings-btn,
+.select-screen-content .splash-bank,
+.select-screen-content .splash-bank-chip,
 .select-screen-content .splash-discord-link,
 .select-screen-content .splash-roster-hint{
   pointer-events:auto;
@@ -738,20 +740,44 @@ a.splash-settings-btn{
   text-align:right;
   max-width:min(260px, 48vw);
 }
-.fortune-egg-badge{
-  position:absolute;
-  top:-6px;
-  right:-6px;
-  min-width:1.4em;
-  padding:2px 6px;
-  border-radius:999px;
-  font-size:.62rem;
-  font-family:'Cinzel',serif;
-  letter-spacing:.04em;
+.splash-bank{
+  display:flex;
+  flex-wrap:wrap;
+  align-items:center;
+  gap:6px;
+}
+.splash-bank:not(:has(.splash-bank-chip:not([hidden]))){display:none;}
+.splash-bank-chip{
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  min-height:36px;
+  padding:6px 10px;
+  border-radius:10px;
+  font:inherit;
+  font-size:.68rem;
+  letter-spacing:.03em;
   color:#1a1408;
   background:linear-gradient(180deg,#f0d878,#c9a84c);
   border:1px solid rgba(255,240,200,.65);
-  box-shadow:0 2px 8px rgba(0,0,0,.35);
+  box-shadow:0 2px 8px rgba(0,0,0,.28);
+}
+.splash-bank-chip[hidden]{display:none!important;}
+.splash-bank-chip-icon{line-height:1;font-size:.95rem;}
+.splash-bank-chip-text strong{font-family:'Cinzel',serif;font-weight:700;}
+.splash-bank-chip--nests{
+  cursor:pointer;
+  color:#082018;
+  background:linear-gradient(180deg,#9ed9c4,#4c8a6a);
+  border-color:rgba(190,240,220,.6);
+}
+.splash-bank-chip--nests:hover{
+  filter:brightness(1.06);
+  transform:translateY(-1px);
+}
+.splash-bank-chip--nests:focus-visible{
+  outline:2px solid var(--gold);
+  outline-offset:3px;
 }
 .inventory-artifact-badge{
   position:absolute;

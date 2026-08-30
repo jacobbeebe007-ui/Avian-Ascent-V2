@@ -86,6 +86,14 @@
     return 'eggs';
   }
 
+  function openInventorySavedNests() {
+    setInventorySubView('eggs');
+    if (typeof globalThis.openSelectHubPanel === 'function') {
+      globalThis.openSelectHubPanel('inventory');
+    }
+    if (typeof globalThis.syncFortuneBalances === 'function') globalThis.syncFortuneBalances();
+  }
+
   function setInventorySubView(view) {
     INVENTORY_TAB = normalizeInventoryTab(view);
     INVENTORY_TABS.forEach(function (id) {
@@ -555,6 +563,7 @@
   globalThis.equipFortuneArtifact = equipFortuneArtifact;
   globalThis.unequipFortuneArtifact = unequipFortuneArtifact;
   globalThis.setInventorySubView = setInventorySubView;
+  globalThis.openInventorySavedNests = openInventorySavedNests;
   globalThis.setInventoryFeatherSackTab = setInventoryFeatherSackTab;
   globalThis.setInventoryFeatherFilter = setInventoryFeatherFilter;
   globalThis.setInventoryFeatherAmountFilter = setInventoryFeatherAmountFilter;
