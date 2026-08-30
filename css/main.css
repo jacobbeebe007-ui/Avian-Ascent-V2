@@ -4839,7 +4839,7 @@ html.avian-ow-nest-embed .nest-close{display:none!important;}
 .shop-purchase-log{text-align:center;font-size:.8rem;color:var(--green-light);min-height:22px;margin-bottom:8px;}
 /* Abandon run modal */
 .abandon-modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:200;align-items:center;justify-content:center;}
-.abandon-modal.open{display:flex;}
+.abandon-modal.open,.abandon-modal.active{display:flex;}
 #clear-cache-modal,
 #erase-progress-modal{z-index:12600;}
 .abandon-inner{background:var(--surface);border:1px solid var(--red);border-radius:12px;padding:26px 30px;max-width:360px;text-align:center;}

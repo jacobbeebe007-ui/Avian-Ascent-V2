@@ -202,6 +202,8 @@ ok('Library confirm footer rendered', libSource.includes('data-action="confirmMa
 ok('Library Create button on templates', libSource.includes('data-forge-create-template'));
 ok('Library confirm hint present', libSource.includes('id="map-forge-library-confirm-hint"'));
 ok('Library select-then-confirm flow', libSource.includes('Pick a template or draft, then confirm'));
+ok('Library create skips dirty discard prompt', forgeSource.includes("_forgeView === 'library'") && forgeSource.includes('setUnsavedModalOpen'));
+ok('Unsaved modal uses visible open class', forgeSource.includes("modal.classList.toggle('open'"));
 
 forgeActions.forEach((name) => {
   ok('Resolves action: ' + name, typeof resolveAction(name) === 'function');
