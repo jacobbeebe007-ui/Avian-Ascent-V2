@@ -51,6 +51,8 @@ const staticChecks = [
   ['enemy nest worn inspect layout', /nest-eq-layout--inspect/],
   ['enemy nest three tabs', /nest-tabs--3/],
   ['compact combat hover card', /function buildCombatantHoverTooltipHtml[\s\S]*?combat-hover-card/],
+  ['hover card uses ledger stat titles', /function combatHoverStatChip\b[\s\S]*?ledgerStatLabel\(statKey/],
+  ['hover card maps Guard and Resolve', /combatHoverStatChip\('def'[\s\S]*?combatHoverStatChip\('mdef'/],
   ['hold click suppress', /_suppressNextClick/],
 ];
 
