@@ -153,6 +153,18 @@
       ailCh += (Number(g.playerStatus._passiveAilmentAppBonus) || 0);
       if (g.playerStatus._passiveAilmentAppBonus) g.playerStatus._passiveAilmentAppBonus = 0;
     }
+    if (g && targetSide === 'player' && g.playerStatus) {
+      var resistBag = g.playerStatus.hostileMagicAilmentResist;
+      if (resistBag && (isMagic || isHybrid)) {
+        ailCh -= Number(resistBag.value) || 0;
+      }
+      if (g.playerStatus._orbAilmentAppResist) {
+        ailCh -= Number(g.playerStatus._orbAilmentAppResist) || 0;
+      }
+    }
+    if (g && targetSide === 'enemy' && g.enemyStatus && g.enemyStatus.hostileMagicAilmentResist && (isMagic || isHybrid)) {
+      ailCh -= Number(g.enemyStatus.hostileMagicAilmentResist.value) || 0;
+    }
     if (typeof Avian !== 'undefined' && Avian.classPerks && typeof Avian.classPerks.consumeCursedCallAppBonus === 'function') {
       var attacker = targetSide === 'enemy' ? (g && g.player) : (g && g.enemy);
       ailCh += Avian.classPerks.consumeCursedCallAppBonus(attacker) || 0;
@@ -700,6 +712,98 @@
     }
   }
 
+  function removeNamedAilmentStacks(status, ailment, n) {
+    if (!status || !ailment) return 0;
+    var key = String(ailment).toLowerCase();
+    var bag = status[key];
+    var want = Math.max(1, Math.floor(Number(n) || 1));
+    if (!bag) return 0;
+    if (typeof bag === 'object' && bag.stacks != null) {
+      bag.stacks = Math.max(0, (Number(bag.stacks) || 0) - want);
+      if (bag.stacks <= 0) delete status[key];
+      status._lastCleansedAilment = key;
+      return want;
+    }
+    delete status[key];
+    status._lastCleansedAilment = key;
+    return 1;
+  }
+
+  function shortenMagicalStatDebuffs(status, turnsCut) {
+    if (!status) return 0;
+    var cut = Math.max(1, Math.floor(Number(turnsCut) || 1));
+    var bags = [status._dispatcherDebuffBySource, status._dispatcherStatLoans, status._passiveStatLoans];
+    var n = 0;
+    for (var bi = 0; bi < bags.length; bi++) {
+      var bag = bags[bi];
+      if (!bag) continue;
+      var keys = Object.keys(bag);
+      for (var i = 0; i < keys.length; i++) {
+        var e = bag[keys[i]];
+        if (!e) continue;
+        var sk = String(e.statKey || keys[i].split(':')[0] || '').toLowerCase();
+        var isDown = (Number(e.amt) || 0) < 0 || (Number(e.value) || 0) < 0 || e.dir === 'down';
+        if ((sk !== 'matk' && sk !== 'mdef' && sk !== 'focus') || !isDown) continue;
+        if (e.turns != null) {
+          e.turns = Math.max(1, (Number(e.turns) || 1) - cut);
+          n++;
+        }
+      }
+    }
+    return n;
+  }
+
+  function applyChosenCoreStatUp(ps, entity, amount, turns) {
+    if (!entity || !entity.stats) return;
+    var g = globalThis.G;
+    var pick = (g && g._rallyCoreStatChoice) || null;
+    if (pick !== 'atk' && pick !== 'dex' && pick !== 'matk') {
+      var atk = Number(entity.stats.atk) || 0;
+      var dex = Number(entity.stats.dex) || 0;
+      var matk = Number(entity.stats.matk) || 0;
+      pick = 'matk';
+      if (atk >= dex && atk >= matk) pick = 'atk';
+      else if (dex >= atk && dex >= matk) pick = 'dex';
+    }
+    var kind = pick === 'atk' ? 'gainAtk' : (pick === 'dex' ? 'gainDex' : 'gainMatk');
+    applyDisplayOrLoanIfAvailable(ps, entity, kind, pick, amount, turns);
+  }
+
+  function applyDisplayOrLoanIfAvailable(ps, entity, kind, statKey, amount, turns) {
+    if (typeof applySourceStatLoan === 'function') {
+      applySourceStatLoan(ps, entity, '_dispatcherStatLoans', statKey, 'chooseCoreStatUp:' + statKey, amount, turns || 2);
+      return;
+    }
+    if (entity && entity.stats) {
+      entity.stats[statKey] = (Number(entity.stats[statKey]) || 0) + (Number(amount) || 0);
+    }
+  }
+
+  function resolveGrimoireRuneRider(ps, entity, r, ctx) {
+    var g = globalThis.G;
+    var player = g && g.player;
+    var itemId = (ctx && ctx.row && ctx.row.equipmentItemId)
+      || (player && player.equipment && player.equipment.mainHand);
+    var item = null;
+    if (typeof Avian !== 'undefined' && Avian.equipment && typeof Avian.equipment.getItem === 'function') {
+      item = Avian.equipment.getItem(itemId);
+    }
+    var rune = item && (item.selectedRune || item.rune || item.uniqueEffect);
+    if (!rune) return;
+    if (typeof rune === 'object' && rune.kind) {
+      var fn = riderHandlers[rune.kind] || (statHandlersSafe && statHandlersSafe[rune.kind]);
+      if (fn) fn(rune.value, ps, entity, rune, ctx);
+      return;
+    }
+    if (typeof rune === 'string' && /ward/i.test(rune)) {
+      if (Avian.protection && typeof Avian.protection.applyWard === 'function' && entity && entity.stats) {
+        Avian.protection.applyWard(entity.stats, ps, 4, 2);
+      }
+    }
+  }
+
+  var statHandlersSafe = null;
+
   function restorePoolForCleansedAilment(entity, amount, ownerSide) {
     if (!entity || !entity.stats || !Avian.protection) return;
     var status = ownerSide === 'enemy'
@@ -726,6 +830,7 @@
   function shouldAutoApplyGuarded(row) {
     if (!row || !row.noDamage) return false;
     var text = String(row.riderText || row.shortDesc || row.displayText || '');
+    if (/\bGuard\s+Up\b|\bGuard\s+Down\b/i.test(text) && !/\bBrace\b/i.test(text)) return false;
     if (/guard|brace|damage reduction/i.test(text)) return true;
     if (/guard/i.test(String(row.category || ''))) return true;
     return rowGrantsGuardedViaRider(row);
@@ -887,6 +992,64 @@
       cannotRedirectNextSkill: function (_n, ps, _p, r) {
         ps._pendingCannotRedirect = { gate: (r && r.gate) || 'weapon' };
       },
+      gainAccThisHit: function (n, ps) {
+        ps._dispatcherAccNextHit = Math.max(ps._dispatcherAccNextHit || 0, Number(n) || 0);
+      },
+      ignoreGuardThisHit: function (n, ps) {
+        ps._nextMatchingDefIgnore = { amount: Number(n) || 4, gate: 'attack' };
+      },
+      skillPowerThisHit: function (n, ps) {
+        ps._thisAttackSkillPowerBonus = (Number(ps._thisAttackSkillPowerBonus) || 0) + (Number(n) || 0);
+      },
+      piercePercentThisHit: function (n, _ps, _p, r, ctx) {
+        var row = ctx && ctx.row;
+        if (!row) return;
+        var pct = (Number(n) || 0) / 100;
+        row.piercePercent = Math.max(Number(row.piercePercent) || 0, pct);
+        row.pierceDef = Math.max(Number(row.pierceDef) || 0, Number(n) || 0);
+        row.pierceMdef = Math.max(Number(row.pierceMdef) || 0, Number(n) || 0);
+      },
+      armNextSkill: function (n, ps, _p, r) {
+        ps._armedNextSkill = {
+          skillPower: Number(n) || Number(r && r.value) || 10,
+          precision: Number(r && r.precision) || 0,
+          ignoreGuard: Number(r && r.ignoreGuard) || 0,
+          gate: (r && r.gate) || 'attack',
+          turns: Number(r && r.turns) || 1,
+        };
+      },
+      removeAilmentStack: function (n, ps, _p, r) {
+        removeNamedAilmentStacks(ps, (r && r.ailment) || 'dazed', Number(n) || 1);
+      },
+      shortenMagicalDebuff: function (n, ps) {
+        shortenMagicalStatDebuffs(ps, Number(n) || 1);
+      },
+      resistMagicalAilmentApp: function (n, ps, _p, r) {
+        ps.hostileMagicAilmentResist = {
+          value: Number(n) || 10,
+          turns: Number(r && r.turns) || 2,
+        };
+      },
+      nextMagicalDebuffShorter: function (n, ps) {
+        ps._nextMagicalDebuffDurationMinus = Math.max(ps._nextMagicalDebuffDurationMinus || 0, Number(n) || 1);
+      },
+      resistOrbAilmentApp: function (n, ps) {
+        ps._orbAilmentAppResist = Number(n) || 10;
+      },
+      chooseCoreStatUp: function (n, ps, p, r) {
+        applyChosenCoreStatUp(ps, p, Number(n) || 4, (r && r.turns) || 2);
+      },
+      resolveSourceRider: function (_n, ps, p, r, ctx) {
+        resolveGrimoireRuneRider(ps, p, r, ctx);
+      },
+      delayedDamageSplit: function () { /* applied in execute before hits */ },
+      lifestealIfDebuff: function (n, _ps, _p, _r, ctx) {
+        var row = ctx && ctx.row;
+        if (row && !(row.lifestealPct > 0)) {
+          row.lifestealPct = Number(n) || 10;
+          row.lifestealWhen = 'targetHasAilment';
+        }
+      },
       exposeGuard: function (n, _ps, _p, r) {
         var g = globalThis.G;
         var targetStatus = side === 'enemy' ? (g && g.playerStatus) : (g && g.enemyStatus);
@@ -928,6 +1091,57 @@
     tagFlag: function () { /* tags don't mutate state directly */ },
     guardBreak: function () { applyGuardBreakToEnemy(); },
     raw: function () { /* unresolved free-text; safe no-op */ },
+    gainAccThisHit: function (n, ps) {
+      ps._dispatcherAccNextHit = Math.max(ps._dispatcherAccNextHit || 0, Number(n) || 0);
+    },
+    ignoreGuardThisHit: function (n, ps) {
+      ps._nextMatchingDefIgnore = { amount: Number(n) || 4, gate: 'attack' };
+    },
+    skillPowerThisHit: function (n, ps) {
+      ps._thisAttackSkillPowerBonus = (Number(ps._thisAttackSkillPowerBonus) || 0) + (Number(n) || 0);
+    },
+    piercePercentThisHit: function () { /* applied in execute / enrichment */ },
+    armNextSkill: function (n, ps, _p, r) {
+      ps._armedNextSkill = {
+        skillPower: Number(n) || Number(r && r.value) || 10,
+        precision: Number(r && r.precision) || 0,
+        ignoreGuard: Number(r && r.ignoreGuard) || 0,
+        gate: (r && r.gate) || 'attack',
+        turns: Number(r && r.turns) || 1,
+      };
+    },
+    removeAilmentStack: function (n, ps, _p, r) {
+      removeNamedAilmentStacks(ps, (r && r.ailment) || 'dazed', Number(n) || 1);
+    },
+    shortenMagicalDebuff: function (n, ps) {
+      shortenMagicalStatDebuffs(ps, Number(n) || 1);
+    },
+    resistMagicalAilmentApp: function (n, ps, _p, r) {
+      ps.hostileMagicAilmentResist = {
+        value: Number(n) || 10,
+        turns: Number(r && r.turns) || 2,
+      };
+    },
+    nextMagicalDebuffShorter: function (n, ps) {
+      ps._nextMagicalDebuffDurationMinus = Math.max(ps._nextMagicalDebuffDurationMinus || 0, Number(n) || 1);
+    },
+    resistOrbAilmentApp: function (n, ps) {
+      ps._orbAilmentAppResist = Number(n) || 10;
+    },
+    chooseCoreStatUp: function (n, ps, p, r) {
+      applyChosenCoreStatUp(ps, p, Number(n) || 4, (r && r.turns) || 2);
+    },
+    resolveSourceRider: function (_n, ps, p, r, ctx) {
+      resolveGrimoireRuneRider(ps, p, r, ctx);
+    },
+    delayedDamageSplit: function () { /* applied in execute before hits */ },
+    lifestealIfDebuff: function (n, _ps, _p, _r, ctx) {
+      var row = ctx && ctx.row;
+      if (row && !(row.lifestealPct > 0)) {
+        row.lifestealPct = Number(n) || 10;
+        row.lifestealWhen = 'targetHasAilment';
+      }
+    },
   };
 
   function playerActingFirst() {
@@ -1022,6 +1236,27 @@
     }
     if (w === 'reachedHealth') return !!(ctx && ctx.reachedHealth);
     if (w === 'ifCleansed') return !!(ctx && (ctx.cleansedCount > 0 || ctx.cleansed));
+    if (w === 'userFaster') {
+      var gSpd = globalThis.G;
+      var selfEnt = resolveRiderOwnerSide(ctx) === 'enemy' ? (gSpd && gSpd.enemy) : (gSpd && gSpd.player);
+      var foeEnt = resolveRiderOwnerSide(ctx) === 'enemy' ? (gSpd && gSpd.player) : (gSpd && gSpd.enemy);
+      return !!(selfEnt && foeEnt && (Number(selfEnt.stats && selfEnt.stats.spd) || 0) > (Number(foeEnt.stats && foeEnt.stats.spd) || 0));
+    }
+    if (w === 'dodgedLast') {
+      var gDodge = globalThis.G;
+      var dodgePs = resolveRiderOwnerSide(ctx) === 'enemy'
+        ? (gDodge && gDodge.enemyStatus)
+        : (gDodge && gDodge.playerStatus);
+      return !!(dodgePs && dodgePs._dodgedLastEnemyAttack);
+    }
+    if (w === 'targetLowHp') {
+      var gHp = globalThis.G;
+      var tgt = resolveRiderOwnerSide(ctx) === 'enemy' ? (gHp && gHp.player) : (gHp && gHp.enemy);
+      var hp = tgt && tgt.stats ? Number(tgt.stats.hp) || 0 : 0;
+      var maxHp = tgt && tgt.stats ? Number(tgt.stats.maxHp) || 0 : 0;
+      var thr = (ctx && ctx.lowHpThreshold != null) ? Number(ctx.lowHpThreshold) : 0.3;
+      return maxHp > 0 && (hp / maxHp) < thr;
+    }
     return false;
   }
 
@@ -1036,11 +1271,16 @@
     var statHandlers = makeStatRiderHandlers(sourceId, row, ab, { side: side });
     ctx = ctx || {};
     ctx.ownerSide = side;
+    ctx.row = ctx.row || row;
     ctx.applied = ctx.applied || Object.create(null);
     var appliedCount = 0;
     for (var i = 0; i < row.riders.length; i++) {
       var r = row.riders[i];
-      if (r.kind === 'refundApOnCrit' || r.kind === 'gainApNextTurn' || r.kind === 'bonusVsAilment' || r.kind === 'bonusVsLowHp' || r.kind === 'tagFlag' || r.kind === 'raw') continue;
+      if (r.kind === 'refundApOnCrit' || r.kind === 'gainApNextTurn' || r.kind === 'bonusVsAilment'
+        || r.kind === 'bonusVsLowHp' || r.kind === 'tagFlag' || r.kind === 'raw'
+        || r.kind === 'gainAccThisHit' || r.kind === 'skillPowerThisHit'
+        || r.kind === 'ignoreGuardThisHit' || r.kind === 'piercePercentThisHit'
+        || r.kind === 'delayedDamageSplit') continue;
       if (!riderWhenMatches(r, ctx)) continue;
       var rKey = sourceId + '|' + r.kind + '|' + (r.when || '') + '|' + (r.value || '');
       if (ctx.applied[rKey]) continue;
@@ -1164,10 +1404,20 @@
     if (gate === 'weapon') {
       return /^WSK-/i.test(id) || /weapon/i.test(src);
     }
-    if (gate === 'strengthWeapon') {
+    if (gate === 'strength' || gate === 'strengthWeapon') {
       var scale = String((row && (row.scalingStat || row.scaleStat || row.damageStat)) || (ab && ab.scalingStat) || '').toUpperCase();
       var cat = String((row && (row.damageCategory || row.category)) || (ab && ab.damageCategory) || '');
       return scale === 'ATK' || scale === 'MIGHT' || /strength/i.test(cat);
+    }
+    if (gate === 'magic') {
+      var scaleM = String((row && (row.scalingStat || row.scaleStat || row.damageStat)) || (ab && ab.scalingStat) || '').toUpperCase();
+      var catM = String((row && (row.damageCategory || row.category || row.damageType)) || (ab && (ab.damageCategory || ab.damageType)) || '');
+      return scaleM === 'MATK' || scaleM === 'FOCUS' || /magic|spell/i.test(catM);
+    }
+    if (gate === 'finesse') {
+      var scaleF = String((row && (row.scalingStat || row.scaleStat || row.damageStat)) || (ab && ab.scalingStat) || '').toUpperCase();
+      var catF = String((row && (row.damageCategory || row.category)) || (ab && ab.damageCategory) || '');
+      return scaleF === 'DEX' || scaleF === 'DEXTERITY' || /finesse/i.test(catF);
     }
     if (gate === 'night') {
       var asp = String((row && row.aspect) || (ab && (ab.aspect || ab.affinity)) || '').toLowerCase();
@@ -1201,6 +1451,19 @@
       ps._cannotRedirectNextSkill = 1;
       delete ps._pendingCannotRedirect;
     }
+    if (ps._armedNextSkill && nextHitGateMatches(ps._armedNextSkill.gate, row, ab)) {
+      var armed = ps._armedNextSkill;
+      if ((Number(armed.skillPower) || 0) > 0) {
+        ps._thisAttackSkillPowerBonus = (Number(ps._thisAttackSkillPowerBonus) || 0) + Number(armed.skillPower);
+      }
+      if ((Number(armed.precision) || 0) > 0) {
+        ps._dispatcherAccNextHit = Math.max(ps._dispatcherAccNextHit || 0, Number(armed.precision));
+      }
+      if ((Number(armed.ignoreGuard) || 0) > 0) {
+        ps._nextMatchingDefIgnore = { amount: Number(armed.ignoreGuard), gate: 'attack' };
+      }
+      delete ps._armedNextSkill;
+    }
     if (ps._nextSkillAspect && !row.noDamage) {
       var forced = String(ps._nextSkillAspect);
       if (forced === 'day') forced = 'solis';
@@ -1217,6 +1480,28 @@
     delete ps._dispatcherCritNextHit;
     delete ps._nextMatchingDefIgnore;
     delete ps._cannotRedirectNextSkill;
+    delete ps._thisAttackSkillPowerBonus;
+    if (ps._dodgedLastEnemyAttackConsumed) {
+      delete ps._dodgedLastEnemyAttack;
+      delete ps._dodgedLastEnemyAttackConsumed;
+    }
+  }
+
+  function applyThisAttackRiders(row, ps, ab) {
+    if (!row || !row.riders || !ps) return;
+    var ctx = { ownerSide: 'player', row: row };
+    for (var i = 0; i < row.riders.length; i++) {
+      var r = row.riders[i];
+      if (!r) continue;
+      if (r.kind !== 'gainAccThisHit' && r.kind !== 'skillPowerThisHit'
+        && r.kind !== 'ignoreGuardThisHit' && r.kind !== 'piercePercentThisHit') continue;
+      if (r.when === 'targetLowHp') ctx.lowHpThreshold = r.threshold != null ? r.threshold : 0.3;
+      if (!riderWhenMatches(r, ctx)) continue;
+      if (r.when === 'dodgedLast') ps._dodgedLastEnemyAttackConsumed = true;
+      var handlers = makeStatRiderHandlers((row && row.id) || 'thisAttack', row, ab, { side: 'player' });
+      var fn = handlers[r.kind] || riderHandlers[r.kind];
+      if (fn) fn(r.value, ps, (globalThis.G && globalThis.G.player) || null, r, ctx);
+    }
   }
 
   // ---- core execute -----------------------------------------------------
@@ -1297,7 +1582,10 @@
     var isMagic = isMagicCategory(row.category);
     var isHybrid = isHybridRow(row);
 
-    if (g && g.playerStatus) armGatedNextHit(g.playerStatus, row, ab);
+    if (g && g.playerStatus) {
+      armGatedNextHit(g.playerStatus, row, ab);
+      applyThisAttackRiders(row, g.playerStatus, ab);
+    }
 
     if (typeof globalThis.enrichCombatRow === 'function') globalThis.enrichCombatRow(row);
 
@@ -1361,9 +1649,20 @@
       if (g) g._dispatcherCombatRow = null; else G._dispatcherCombatRow = null;
       if (masterTotal) {
         masterIsCrit = !!masterTotal.isCrit;
-        masterSplit = (hits > 1 && typeof globalThis.calculateMultiHitDamage === 'function')
-          ? globalThis.calculateMultiHitDamage(masterTotal.damage, hits)
-          : [masterTotal.damage];
+        var fullMaster = masterTotal.damage;
+        if (row.delayedDamageSplit) {
+          var immPct = Number(row.delayedDamageSplit.immediatePct) || 75;
+          var delPct = Number(row.delayedDamageSplit.delayedPct) || 25;
+          var immDmg = Math.round(fullMaster * (immPct / 100));
+          row._pendingDelayedStore = Math.max(0, Math.round(fullMaster * (delPct / 100)));
+          masterSplit = (hits > 1 && typeof globalThis.calculateMultiHitDamage === 'function')
+            ? globalThis.calculateMultiHitDamage(immDmg, hits)
+            : [immDmg];
+        } else {
+          masterSplit = (hits > 1 && typeof globalThis.calculateMultiHitDamage === 'function')
+            ? globalThis.calculateMultiHitDamage(fullMaster, hits)
+            : [fullMaster];
+        }
       }
     }
 
@@ -1422,7 +1721,19 @@
     }
 
     var ailmentFailed = ailmentAttempted && !Object.keys(ailmentsApplied).length;
-    var riderCtx = { hitsLanded: hitsLanded, hitsAttempted: hits, totalDmg: totalDmg, ailmentsApplied: ailmentsApplied, ailmentFailed: ailmentFailed };
+    var riderCtx = {
+      hitsLanded: hitsLanded,
+      hitsAttempted: hits,
+      totalDmg: totalDmg,
+      ailmentsApplied: ailmentsApplied,
+      ailmentFailed: ailmentFailed,
+      reachedHealth: healthHits > 0,
+      row: row,
+    };
+    if (row._pendingDelayedStore > 0 && hitsLanded > 0 && typeof applyDelayedDamage === 'function') {
+      applyDelayedDamage('enemy', row._pendingDelayedStore, { enCost: row.enCost || row.apCost || 1 });
+      delete row._pendingDelayedStore;
+    }
     runRiders(row, riderCtx, ab);
     if (typeof globalThis.applyTagRidersFromRow === 'function') {
       globalThis.applyTagRidersFromRow(row, riderCtx);

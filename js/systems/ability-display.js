@@ -116,6 +116,9 @@
     if (when === 'onAilmentFail') return ' if ailment fails';
     if (when === 'onEnemyMissBeforeTurn') return ' if target misses before next turn';
     if (when === 'reachedHealth') return ' if it reaches Health';
+    if (when === 'userFaster') return ' if user is faster';
+    if (when === 'dodgedLast') return ' if user Dodged last attack';
+    if (when === 'targetLowHp') return ' if target is low Health';
     if (when === 'ifTargetNoMagicArmour' || when === 'targetNoMagicArmour') return ' if no Magic Armour';
     if (when === 'ifTargetNoArmour' || when === 'targetNoArmour') return ' if no Armour';
     if (when === 'ifCleansed') return ' if a debuff is cleansed';
@@ -344,6 +347,20 @@
       }
       case 'bonusVsLowHp': return seg('+' + v + '% vs low Vitality' + w, null);
       case 'bonusVsAilment': return seg('+' + v + '% vs ailment' + w, null);
+      case 'gainAccThisHit': return seg('+' + v + ' Precision this attack' + w, 'acc');
+      case 'ignoreGuardThisHit': return seg('Ignore ' + v + ' Guard this attack' + w, 'def');
+      case 'skillPowerThisHit': return seg('+' + v + ' Skill Power' + w, null);
+      case 'piercePercentThisHit': return seg('Ignore ' + v + '% Guard/Resolve' + w, 'def');
+      case 'armNextSkill': return seg('Next ' + ((r.gate || 'skill')) + ' +' + v + ' Skill Power' + w, null);
+      case 'removeAilmentStack': return seg('Remove ' + v + ' ' + (r.ailment || 'ailment') + ' stack' + w, null);
+      case 'shortenMagicalDebuff': return seg('Magical debuff duration -' + v + w, 'mdef');
+      case 'resistMagicalAilmentApp': return seg('-' + v + ' pp hostile magical ailment chance' + w, 'mdef');
+      case 'nextMagicalDebuffShorter': return seg('Next magical debuff duration -' + v + w, 'mdef');
+      case 'resistOrbAilmentApp': return seg('-' + v + ' pp Orb ailment chance while Ward holds' + w, 'mdef');
+      case 'chooseCoreStatUp': return seg('Choose Might, Dexterity, or Focus Up' + w, null);
+      case 'resolveSourceRider': return seg('Resolve Grimoire rune rider' + w, null);
+      case 'delayedDamageSplit': return seg((r.immediatePct || 75) + '% now, ' + v + '% Delayed' + w, null);
+      case 'lifestealIfDebuff': return seg('Heal ' + v + '% of damage if target is debuffed' + w, 'hp');
       default: return null;
     }
   }
