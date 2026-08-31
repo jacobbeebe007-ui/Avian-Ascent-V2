@@ -7237,7 +7237,8 @@ body.map-forge-is-resizing *{cursor:nwse-resize!important;}
   display:flex;flex-direction:column;gap:4px;padding:8px;
   background:#0a0e14;border:1px solid rgba(201,168,76,.35);border-radius:10px;
 }
-.map-forge-inspector-pane{overflow:hidden;}
+.map-forge-tree-pane{width:var(--forge-left-w);max-width:none;}
+.map-forge-inspector-pane{width:var(--forge-right-w);max-width:none;}
 .map-forge-inspector-pane > :not(.map-forge-resize-handle){
   flex-shrink:0;
 }
@@ -7273,9 +7274,11 @@ body.map-forge-is-resizing *{cursor:nwse-resize!important;}
 }
 .map-forge-validation-panel .is-error{color:#ff9090;}
 .map-forge-notes,textarea.map-forge-field-input{resize:vertical;min-height:60px;}
-@media (max-width:1100px){
-  .map-forge-body{grid-template-columns:1fr; }
-  .map-forge-tree-pane,.map-forge-inspector-pane{max-height:none;}
+@media (max-width:800px){
+  .map-forge-body{grid-template-columns:1fr;min-height:auto;}
+  .map-forge-canvas-wrap{max-height:50vh;}
+  .map-forge-tree-pane,.map-forge-inspector-pane{max-height:none;width:auto;}
+  .map-forge-resize-handle{display:none;}
 }
 .map-forge-arena-preview{
   display:block;
@@ -7361,10 +7364,6 @@ body.map-forge-is-resizing *{cursor:nwse-resize!important;}
   text-transform:capitalize;
 }
 .map-forge-world-rename{padding-top:4px;}
-@media (max-width:900px){
-  .map-forge-body{grid-template-columns:1fr;min-height:auto;}
-  .map-forge-canvas-wrap{max-height:50vh;}
-}
 
 /* ===== Combat layout scale (Display settings) — authoritative ===== */
 #screen-battle .avatar-wrap{
