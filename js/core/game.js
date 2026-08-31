@@ -9372,7 +9372,7 @@ function buildCombatStatusDetailsSection(side){
   const poisonBoundaryDamage=stacks=>{
     if(typeof calcPoisonTickDmg==='function'){
       const mult=side==='enemy'?(G?.player?.poisonTickMult||1):1;
-      const base=calcPoisonTickDmg(stacks,mult);
+      const base=calcPoisonTickDmg(stacks, ownerStats?.maxHp || 1, mult);
       const flat=side==='enemy'?((G?.player?.poisonFlatBonus||0)+(G?.player?.perkPoisonTickBonus||0)+(G?.player?.relVenomLedger?1:0)):0;
       return Math.max(1, base+flat);
     }
@@ -9788,7 +9788,7 @@ function renderStatuses(id, statuses) {
   const poisonBoundaryDamage = stacks=>{
     if(typeof calcPoisonTickDmg==='function'){
       const mult=owner==='enemy'?(G?.player?.poisonTickMult||1):1;
-      const base=calcPoisonTickDmg(stacks,mult);
+      const base=calcPoisonTickDmg(stacks, ownerStats?.maxHp || 1, mult);
       const flat=owner==='enemy'?((G?.player?.poisonFlatBonus||0)+(G?.player?.perkPoisonTickBonus||0)+(G?.player?.relVenomLedger?1:0)):0;
       return Math.max(1, base+flat);
     }
@@ -15050,50 +15050,6 @@ function getPlayerHitBonus(ab) {
   return n;
 }
 
-function tickPoisonDamageOnly(side){
-  const status=side==='player'?G.playerStatus:G.enemyStatus;
-  const stats=side==='player'?G.player.stats:G.enemy.stats;
-  if(!status.poison||!status.poison.stacks||status.poison.stacks<=0||(status.poison.turns||0)<=0) return;
-  const ownerBonus=side==='enemy';
-  const tickMult=ownerBonus?(G.player?.poisonTickMult||1):1;
-  const flatBonus=ownerBonus?((G.player?.poisonFlatBonus||0)+(G.player?.perkPoisonTickBonus||0)+(G.player?.relVenomLedger?1:0)):0;
-  const dmg=roundCombatDamage(Math.max(0.01, 2*status.poison.stacks*tickMult+flatBonus));
-  applyFractionalHp(stats, -dmg);
-  spawnFloat(side,`☣ -${formatCombatNumber(dmg)}`,'fn-poison');
-  setHpBar(side,stats.hp,stats.maxHp);
-  logMsg(`☣ Poison deals ${dmg} to ${side==='player'?G.player.name:G.enemy.name}!`,'poison-tick');
-  if(side==='enemy') BS.dmgDealt+=dmg;
-  SFX.poison();
-}
-function tickPoisonDurationEndRound(){
-  for(const side of ['player','enemy']){
-    const status=side==='player'?G.playerStatus:G.enemyStatus;
-    if(status.poison&&status.poison.stacks>0&&status.poison.turns>0){
-      status.poison.turns--;
-      if(status.poison.turns<=0) delete status.poison;
-    }
-  }
-}
-function tickBurningEndEnemyPhase(){
-  for(const side of ['player','enemy']){
-    const status=side==='player'?G.playerStatus:G.enemyStatus;
-    const stats=side==='player'?G.player.stats:G.enemy.stats;
-    const b=status.burning;
-    if(!b) continue;
-    const turns=typeof b==='number'?b:b.turns;
-    if(!turns||turns<=0){ delete status.burning; continue; }
-    const burnMult=side==='enemy'?(G.player?.burnBonus||1):1;
-    const dmg=roundCombatDamage(7*burnMult);
-    applyFractionalHp(stats, -dmg);
-    spawnFloat(side,`🔥 -${formatCombatNumber(dmg)}`,'fn-burn');
-    setHpBar(side,stats.hp,stats.maxHp);
-    logMsg(`🔥 Burn deals ${dmg} to ${side==='player'?G.player.name:G.enemy.name}!`,'burn-tick');
-    if(side==='enemy') BS.dmgDealt+=dmg;
-    if(typeof status.burning==='number') status.burning=turns-1;
-    else status.burning.turns=turns-1;
-    if((typeof status.burning==='number'&&status.burning<=0)||(typeof status.burning==='object'&&status.burning.turns<=0)) delete status.burning;
-  }
-}
 function tickDelayedForTarget(side){
   const status=side==='player'?G.playerStatus:G.enemyStatus;
   if(!status?.delayed||status.delayed.dmg==null||Number(status.delayed.dmg)<=0) return;
