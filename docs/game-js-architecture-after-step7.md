@@ -22,6 +22,8 @@
 | `js/systems/story-overworld-progress.js` | Overworld progress normalization and stage clear |
 | `js/systems/story-overworld-bridge.js` | Overworld return intent, enemy list normalization |
 | `js/systems/story-stage-flow.js` | `advanceStage`, `continueStageTransitionAfterRewards` |
+| `js/systems/combat-setup.js` | `loadStage`, loadout prep, `resetForNewBattle` |
+| `js/systems/combat-controller.js` | Action queue, `failsafeAdvance`, UI lock |
 
 ## game.js remaining responsibilities
 
@@ -71,6 +73,8 @@ js/systems/build-nest-forge-runtime.js
 js/systems/story-overworld-progress.js
 js/systems/story-overworld-bridge.js
 js/systems/story-stage-flow.js
+js/systems/combat-setup.js
+js/systems/combat-controller.js
 js/systems/shop-cadence.js
 js/debug/telemetry.js
 js/ui/combat-stats-modal.js
@@ -100,7 +104,7 @@ js/legacy/game-compat.js
 | Build Nest unlock + forge encounter runtime | ✅ Phase 4 (`js/systems/build-nest-*.js`; editor remains in `map-forge.js`) |
 | Reward/shop orchestration | ✅ Phase 5 (`reward-screen.js`, `shop-compare.js`, `shop-cadence.js`) |
 | Story flow extraction | ✅ Phase 6 (`story-overworld-*.js`, `story-stage-flow.js`) |
-| Combat setup / controller | ⬜ Phases 7–8 |
+| Combat setup / controller | ✅ Phases 7–8 (`combat-setup.js`, `combat-controller.js`) |
 | `ABILITY_TEMPLATES` inline block | ⬜ Deferred (high coupling) |
 
 ## Metrics

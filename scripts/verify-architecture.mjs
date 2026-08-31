@@ -33,6 +33,10 @@ check('reward-screen loads after game.js', rewardScreenIdx >= 0 && gameIdx >= 0 
 check('shop-compare loads after game.js', shopCompareIdx >= 0 && gameIdx >= 0 && shopCompareIdx > gameIdx);
 const storyFlowIdx = scripts.indexOf('js/systems/story-stage-flow.js');
 check('story-stage-flow loads after game.js', storyFlowIdx >= 0 && gameIdx >= 0 && storyFlowIdx > gameIdx);
+const combatSetupIdx = scripts.indexOf('js/systems/combat-setup.js');
+const combatControllerIdx = scripts.indexOf('js/systems/combat-controller.js');
+check('combat-setup loads after game.js', combatSetupIdx >= 0 && gameIdx >= 0 && combatSetupIdx > gameIdx);
+check('combat-controller loads after combat-setup', combatControllerIdx >= 0 && combatSetupIdx >= 0 && combatControllerIdx > combatSetupIdx);
 check('combat-hud loads before sprites.js', combatUiIdx >= 0 && scripts.indexOf('js/ui/sprites.js') > combatUiIdx);
 
 const requiredGlobals = [
@@ -59,6 +63,8 @@ const requiredGlobals = [
   'bindShopItemCompareTooltips',
   'handleOverworldReturn',
   'continueStageTransitionAfterRewards',
+  'loadStage',
+  'failsafeAdvance',
 ];
 
 const bundlePath = 'js/avian-game.bundle.js';
