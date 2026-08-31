@@ -11,51 +11,12 @@
  * Rewards/shop UI: js/ui/reward-screen.js, js/ui/shop-compare.js, js/systems/shop-cadence.js
  * Story/overworld: js/systems/story-overworld-progress.js, js/systems/story-overworld-bridge.js, js/systems/story-stage-flow.js
  * Combat: js/systems/combat-setup.js, js/systems/combat-controller.js
+ * Legacy: js/legacy/dove-sprite-patch.js, js/legacy/game-compat.js
  * Debug/telemetry: js/debug/
  *
  * Keep this file focused on high-level coordination and
  * backwards-compatible browser entry points.
  */
-
-/* ===== Dove enemy + Stage 20 Blakiston boss ===== */
-(function(){
-  // Extend sprite renderer with Dove support.
-  const _oldRenderBirdIconHTML = globalThis.renderBirdIconHTML;
-  if (typeof _oldRenderBirdIconHTML === 'function') {
-    globalThis.renderBirdIconHTML = function(birdKey, sizeClass, locked, faceLeft) {
-      const k = String(birdKey || '').toLowerCase().replace(/[^a-z]/g, '');
-      if (k === 'dove') {
-        const html = `<div class="sprite4 ${sizeClass||''} sprite-dove frame-0 ${locked?'locked':''}"></div>`;
-        return faceLeft ? wrapSpriteFaceLeft(html) : html;
-      }
-      return _oldRenderBirdIconHTML.apply(this, arguments);
-    };
-  }
-
-  // Make the normal Dove enemy use the Dove sprite instead of Swan.
-  // Deferred so that ENEMIES (extracted to js/data/enemies.js, which loads
-  // AFTER game.js per js/bootstrap/load-order.json) is populated before we
-  // try to patch the Dove entry.
-  function patchDoveEnemy() {
-    try {
-      if (Array.isArray(globalThis.ENEMIES)) {
-        const dove = globalThis.ENEMIES.find(e => String(e?.name||'').toLowerCase() === 'dove');
-        if (dove) {
-          dove.portraitKey = 'dove';
-          dove.emoji = '🕊️';
-          if (dove.stats) dove.stats.dodge = dove.stats.dodge || 10;
-        }
-      }
-    } catch (err) {
-      console.error(err);
-    }
-  }
-  if (typeof queueMicrotask === 'function') queueMicrotask(patchDoveEnemy);
-  else if (typeof Promise !== 'undefined' && typeof Promise.resolve === 'function') Promise.resolve().then(patchDoveEnemy);
-  else setTimeout(patchDoveEnemy, 0);
-
-})();
-
 
 // ===== 04_script_04.js =====
 

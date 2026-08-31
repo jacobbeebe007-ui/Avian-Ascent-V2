@@ -7,7 +7,8 @@
 | `js/core/game-helpers.js` | Combat number formatting, reward tiers, bird class resolution, encounter HTML escape |
 | `js/debug/agent-debug.js` | Agent session debug ring buffer (`_agentDbgLog`) |
 | `js/debug/telemetry.js` | Run telemetry persistence, highscore board, `onRunEnd` hook |
-| `js/legacy/game-compat.js` | Legacy global alias registration (`Avian.legacy.exposeLegacyGlobals`) |
+| `js/legacy/game-compat.js` | Legacy global alias registration (`Avian.legacy.exposeLegacyGlobals`, Step 7 registry) |
+| `js/legacy/dove-sprite-patch.js` | Dove sprite + ENEMIES table patch (loads after sprites.js) |
 | `js/ui/combat-stats-modal.js` | Stats & Details modal, hover cards, stat grids |
 | `js/ui/combat-bars.js` | HP / EN / protection bar rendering |
 | `js/ui/combat-status.js` | Status badges and battle ailment symbols |
@@ -87,14 +88,16 @@ js/ui/combat-enemy-telegraph.js
 js/ui/combat-hud.js
 js/ui/combat-actions.js
 … enemy AI / systems …
+js/ui/sprites.js
+js/legacy/dove-sprite-patch.js
 js/legacy/game-compat.js
 ```
 
 ## Known legacy compatibility
 
-- Top-level `function foo()` declarations remain for concatenated shell + `globalThis` aliases
-- `game-compat.js` re-exposes helpers if load order omits a global
-- Dove sprite patch IIFE at top of `game.js`
+- Top-level `function foo()` declarations remain for concatenated shell + inline handlers
+- `game-compat.js` re-exposes Step 7 extracted globals if load order omits an alias
+- Dove sprite patch lives in `js/legacy/dove-sprite-patch.js` (after `sprites.js`)
 
 ## Remaining technical debt (non-blocking)
 
@@ -105,6 +108,7 @@ js/legacy/game-compat.js
 | Reward/shop orchestration | ✅ Phase 5 (`reward-screen.js`, `shop-compare.js`, `shop-cadence.js`) |
 | Story flow extraction | ✅ Phase 6 (`story-overworld-*.js`, `story-stage-flow.js`) |
 | Combat setup / controller | ✅ Phases 7–8 (`combat-setup.js`, `combat-controller.js`) |
+| Legacy compatibility cleanup | ✅ Phase 9 (`dove-sprite-patch.js`, expanded `game-compat.js`) |
 | `ABILITY_TEMPLATES` inline block | ⬜ Deferred (high coupling) |
 
 ## Metrics
