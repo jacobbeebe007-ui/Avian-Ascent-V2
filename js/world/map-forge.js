@@ -1392,13 +1392,41 @@
   function getForgeMutationOptions() {
     const byId = (global.Avian && global.Avian.data && global.Avian.data.mutations && global.Avian.data.mutations.byId) || {};
     const keys = Object.keys(byId);
-    if (!keys.length) return [];
+    if (!keys.length) return getForgeEquipmentOptions();
     return keys
       .map((id) => {
         const item = byId[id];
         return { id, label: (item?.name || id) + (item?.tier ? ' (' + item.tier + ')' : '') };
       })
       .sort((a, b) => a.label.localeCompare(b.label));
+  }
+
+  function getForgeEquipmentOptions() {
+    const cat = (global.Avian && global.Avian.data && global.Avian.data.equipment && global.Avian.data.equipment.items) || {};
+    const loot = global.Avian && global.Avian.equipmentLoot;
+    return Object.keys(cat)
+      .map((id) => {
+        const item = cat[id];
+        const rarity = String(item?.rarity || 'grey').toLowerCase();
+        const tierLabel = loot && typeof loot.tierLabel === 'function'
+          ? loot.tierLabel(rarity)
+          : rarity;
+        const slot = item?.slot ? ' · ' + item.slot : '';
+        return { id, label: (item?.name || id) + ' (' + tierLabel + slot + ')' };
+      })
+      .sort((a, b) => a.label.localeCompare(b.label));
+  }
+
+  function normalizeEquipmentGrantMode(reward) {
+    if (!reward || reward.type !== 'mutation') return;
+    const eqId = reward.equipmentId || reward.mutationId;
+    if (eqId && !reward.equipmentId) {
+      reward.equipmentId = eqId;
+      delete reward.mutationId;
+    }
+    if (!reward.grantMode) {
+      reward.grantMode = eqId ? 'specified' : 'choice';
+    }
   }
 
   function setSidebarPanel(panel) {
@@ -1452,9 +1480,9 @@
         });
       });
     }
-    const muts = getForgeMutationOptions().map((opt) => ({
+    const muts = getForgeEquipmentOptions().map((opt) => ({
       id: opt.id,
-      kind: 'mutation',
+      kind: 'equipment',
       label: opt.label,
       category: 'mutations',
     }));
@@ -1688,7 +1716,7 @@
     list.innerHTML = '';
     const cardTiers = global.OW_CARD_TIER_EQUIPMENT_OPTIONS || global.OW_CARD_TIER_MUTATION_OPTIONS || [];
     const itemOpts = getForgeCombatItemOptions();
-    const mutOpts = getForgeMutationOptions();
+    const eqOpts = getForgeEquipmentOptions();
     const birdOpts = global.getForgeBirdOptions ? global.getForgeBirdOptions() : [{ id: 'random', label: 'Random' }];
     const appendControls = (row, i) => {
       const up = document.createElement('button');
@@ -1750,12 +1778,34 @@
         row.appendChild(dash);
         row.appendChild(maxIn);
       } else if (r.type === 'mutation') {
+        normalizeEquipmentGrantMode(r);
+        const grantMode = r.grantMode === 'specified' ? 'specified' : 'choice';
         const lbl = document.createElement('span');
         lbl.className = 'map-forge-reward-type-label';
         lbl.textContent = 'Equipment';
+        const modeSel = document.createElement('select');
+        modeSel.className = 'map-forge-field-input map-forge-reward-grant-mode';
+        [
+          { id: 'choice', label: 'Player chooses' },
+          { id: 'specified', label: 'Specified item' },
+        ].forEach((opt) => {
+          const o = document.createElement('option');
+          o.value = opt.id;
+          o.textContent = opt.label;
+          if (grantMode === opt.id) o.selected = true;
+          modeSel.appendChild(o);
+        });
+        modeSel.onchange = () => {
+          r.grantMode = modeSel.value === 'specified' ? 'specified' : 'choice';
+          if (r.grantMode === 'choice') {
+            delete r.equipmentId;
+            delete r.mutationId;
+          }
+          renderClearRewardsList(n);
+        };
         const tierSel = document.createElement('select');
         tierSel.className = 'map-forge-field-input map-forge-reward-tier';
-        tierSel.disabled = !!(r.mutationId);
+        tierSel.disabled = grantMode === 'specified';
         cardTiers.forEach((b) => {
           const o = document.createElement('option');
           o.value = b.id;
@@ -1764,38 +1814,41 @@
           tierSel.appendChild(o);
         });
         tierSel.onchange = () => { r.tierBand = tierSel.value; };
-        const countIn = document.createElement('input');
-        countIn.type = 'number';
-        countIn.className = 'map-forge-reward-num';
-        countIn.min = '1';
-        countIn.max = '11';
-        countIn.value = String(r.count ?? 1);
-        countIn.title = 'Count';
-        countIn.disabled = !!(r.mutationId);
-        countIn.onchange = () => { r.count = Math.max(1, Math.min(11, Math.floor(Number(countIn.value) || 1))); };
-        const mutSel = document.createElement('select');
-        mutSel.className = 'map-forge-field-input map-forge-reward-mutation-id';
-        mutSel.title = 'Specific mutation (optional)';
+        const pickIn = document.createElement('input');
+        pickIn.type = 'number';
+        pickIn.className = 'map-forge-reward-num';
+        pickIn.min = '2';
+        pickIn.max = '5';
+        pickIn.value = String(r.pickCount ?? 3);
+        pickIn.title = 'Choices offered';
+        pickIn.disabled = grantMode === 'specified';
+        pickIn.onchange = () => {
+          r.pickCount = Math.max(2, Math.min(5, Math.floor(Number(pickIn.value) || 3)));
+        };
+        const eqSel = document.createElement('select');
+        eqSel.className = 'map-forge-field-input map-forge-reward-equipment-id';
+        eqSel.title = 'Specific equipment item';
+        eqSel.disabled = grantMode !== 'specified';
         const anyOpt = document.createElement('option');
         anyOpt.value = '';
-        anyOpt.textContent = '- Roll by tier -';
-        mutSel.appendChild(anyOpt);
-        mutOpts.forEach((m) => {
+        anyOpt.textContent = '— Select equipment —';
+        eqSel.appendChild(anyOpt);
+        eqOpts.forEach((m) => {
           const o = document.createElement('option');
           o.value = m.id;
           o.textContent = m.label;
-          if ((r.mutationId || '') === m.id) o.selected = true;
-          mutSel.appendChild(o);
+          if ((r.equipmentId || '') === m.id) o.selected = true;
+          eqSel.appendChild(o);
         });
-        mutSel.onchange = () => {
-          r.mutationId = mutSel.value || undefined;
-          if (!r.mutationId) delete r.mutationId;
-          renderClearRewardsList(n);
+        eqSel.onchange = () => {
+          r.equipmentId = eqSel.value || undefined;
+          if (!r.equipmentId) delete r.equipmentId;
         };
         row.appendChild(lbl);
+        row.appendChild(modeSel);
         row.appendChild(tierSel);
-        row.appendChild(countIn);
-        row.appendChild(mutSel);
+        row.appendChild(pickIn);
+        row.appendChild(eqSel);
       } else if (r.type === 'nest') {
         if (!Array.isArray(r.slots)) r.slots = [{ tier: 'blue' }];
         const lbl = document.createElement('span');
@@ -3264,7 +3317,7 @@
     const typeEl = document.getElementById('map-forge-reward-add-type');
     const type = typeEl?.value || 'shinies';
     if (type === 'shinies') n.clearRewards.push({ type: 'shinies', min: 10, max: 25, chance: 100 });
-    else if (type === 'mutation') n.clearRewards.push({ type: 'mutation', tierBand: 'blue', count: 1, chance: 100 });
+    else if (type === 'mutation') n.clearRewards.push({ type: 'mutation', grantMode: 'choice', tierBand: 'blue', pickCount: 3, chance: 100 });
     else if (type === 'nest') n.clearRewards.push({ type: 'nest', slots: [{ tier: 'blue' }], chance: 100 });
     else if (type === 'item') n.clearRewards.push({ type: 'item', itemKey: 'freshWater', min: 1, max: 1, chance: 100 });
     else if (type === 'rescuedNest') n.clearRewards.push({ type: 'rescuedNest', eggId: 'cracked', count: 1, chance: 100 });

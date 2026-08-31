@@ -63,6 +63,18 @@ function continueStageTransitionAfterRewards(){
         if (granted.mutations?.length) {
           logMsg('Clear reward: mutation added to nest inventory!', 'boss');
         }
+        if (granted.equipment?.length) {
+          logMsg('Clear reward: equipment added to nest inventory!', 'boss');
+        }
+        const pendingChoice = granted.pendingEquipmentChoice?.[0];
+        if (pendingChoice && typeof globalThis.buildForgeEquipmentChoicePool === 'function') {
+          const pool = globalThis.buildForgeEquipmentChoicePool(pendingChoice, G.player);
+          if (pool.length && typeof globalThis.showForgeEquipmentChoiceReward === 'function') {
+            G._owForgeReturnToForge = true;
+            globalThis.showForgeEquipmentChoiceReward(pool);
+            return;
+          }
+        }
       }
       if (forgeMeta.isWorldInterior && G.enemy?.isBoss && forgeMeta.worldId && typeof globalThis.markOwWorldCompleted === 'function') {
         globalThis.markOwWorldCompleted(forgeMeta.worldId);
