@@ -21,7 +21,9 @@ const helpersIdx = scripts.indexOf('js/core/game-helpers.js');
 const gameIdx = scripts.indexOf('js/core/game.js');
 const telemetryIdx = scripts.indexOf('js/debug/telemetry.js');
 check('game-helpers loads before game.js', helpersIdx >= 0 && gameIdx >= 0 && helpersIdx < gameIdx);
-check('telemetry loads after game.js', telemetryIdx >= 0 && gameIdx >= 0 && telemetryIdx > gameIdx);
+const combatUiIdx = scripts.indexOf('js/ui/combat-hud.js');
+check('combat-hud loads after game.js', combatUiIdx >= 0 && gameIdx >= 0 && combatUiIdx > gameIdx);
+check('combat-hud loads before sprites.js', combatUiIdx >= 0 && scripts.indexOf('js/ui/sprites.js') > combatUiIdx);
 
 const requiredGlobals = [
   'roundCombatDamage',
@@ -34,6 +36,12 @@ const requiredGlobals = [
   'getTelemetrySummary',
   '_agentDbgLog',
   'registerGameModule',
+  'refreshBattleUI',
+  'renderActions',
+  'renderStatuses',
+  'setHpBar',
+  'openCombatStatsModal',
+  'renderEnemyPlan',
 ];
 
 const bundlePath = 'js/avian-game.bundle.js';

@@ -8,6 +8,12 @@
 | `js/debug/agent-debug.js` | Agent session debug ring buffer (`_agentDbgLog`) |
 | `js/debug/telemetry.js` | Run telemetry persistence, highscore board, `onRunEnd` hook |
 | `js/legacy/game-compat.js` | Legacy global alias registration (`Avian.legacy.exposeLegacyGlobals`) |
+| `js/ui/combat-stats-modal.js` | Stats & Details modal, hover cards, stat grids |
+| `js/ui/combat-bars.js` | HP / EN / protection bar rendering |
+| `js/ui/combat-status.js` | Status badges and battle ailment symbols |
+| `js/ui/combat-enemy-telegraph.js` | Enemy intent telegraph chips |
+| `js/ui/combat-hud.js` | `refreshBattleUI`, energy orbs, `renderAllCombatUI` |
+| `js/ui/combat-actions.js` | Action tray and combat item row rendering |
 
 ## game.js remaining responsibilities
 
@@ -53,7 +59,13 @@ js/debug/agent-debug.js
 js/core/game-helpers.js
 js/core/game.js
 js/debug/telemetry.js
-… post-game systems / UI …
+js/ui/combat-stats-modal.js
+js/ui/combat-bars.js
+js/ui/combat-status.js
+js/ui/combat-enemy-telegraph.js
+js/ui/combat-hud.js
+js/ui/combat-actions.js
+… enemy AI / systems …
 js/legacy/game-compat.js
 ```
 
@@ -67,7 +79,7 @@ js/legacy/game-compat.js
 
 | Area | Status |
 |------|--------|
-| Combat UI rendering in game.js | 🔁 Needs revisit (Phase 3) |
+| Combat UI rendering in game.js | ✅ Phase 3 (`js/ui/combat-*.js`) |
 | Build Nest beyond map-forge.js | 🔁 Needs revisit (Phase 4) |
 | Reward/shop orchestration | ⬜ Phase 5 |
 | Story flow extraction | ⬜ Phase 6 |

@@ -2,18 +2,18 @@
 
 Generated: 2026-08-31  
 Source: `js/core/game.js`  
-**Before Step 7:** 23102 lines  
-**Functions:** 1018 top-level
+**Before Step 7:** 21858 lines  
+**Functions:** 976 top-level
 
 ## Extraction status by category
 
 | Category | Count | Status |
 |----------|------:|--------|
-| Bootstrap/Orchestration | 243 | 🔁 Retain in game.js |
-| Enemy setup/AI | 121 | ⬜ Phase 7 |
-| Combat | 117 | ⬜ Phase 8 |
-| Combat UI | 93 | ⬜ Phase 3 |
-| Story/Overworld | 88 | ⬜ Phase 6 |
+| Bootstrap/Orchestration | 237 | 🔁 Retain in game.js |
+| Enemy setup/AI | 113 | ⬜ Phase 7 |
+| Combat | 108 | ⬜ Phase 8 |
+| Story/Overworld | 87 | ⬜ Phase 6 |
+| Combat UI | 77 | ⬜ Phase 3 |
 | Rewards | 58 | ⬜ Phase 5 |
 | Audio | 56 | ⬜ Not started |
 | Shop | 52 | ⬜ Phase 5B |
@@ -22,7 +22,7 @@ Source: `js/core/game.js`
 | Utilities | 26 | ✅ Phase 1 (game-helpers.js) |
 | Equipment | 24 | ⬜ Not started |
 | Save/load | 22 | ⬜ Not started |
-| Class/Passive | 21 | ⬜ Not started |
+| Class/Passive | 19 | ⬜ Not started |
 | Build Nest | 11 | ⬜ Phase 4 (partially in map-forge.js) |
 | Endless/Meta | 9 | ⬜ Not started |
 
@@ -456,605 +456,563 @@ Source: `js/core/game.js`
 | `takeFlightToSelect` | 8866 | Bird selection | Yes (explicit global/Avian.actions) | Medium | js/ui/ui.js |
 | `scrollToSelectRoster` | 8875 | Bird selection | Yes (explicit global/Avian.actions) | Medium | js/ui/ui.js |
 | `showScreen` | 8880 | Story/Overworld | Yes (explicit global/Avian.actions) | Medium | js/systems/story-run-state.js / js/world/overworld_bridge.js |
-| `buildPlayerCombatStatHint` | 8928 | Combat | No (internal) | High | js/systems/combat-controller.js / js/systems/ability-dispatcher.js |
-| `buildEnemyCombatStatHint` | 8944 | Enemy setup/AI | No (internal) | Medium | js/systems/enemy-roster-runtime.js / js/systems/combat-setup.js |
-| `combatEscAttr` | 8959 | Combat | No (internal) | High | js/systems/combat-controller.js / js/systems/ability-dispatcher.js |
-| `combatTrendTag` | 8960 | Combat | No (internal) | High | js/systems/combat-controller.js / js/systems/ability-dispatcher.js |
-| `resolvePassiveSourceLabel` | 8966 | Class/Passive | No (internal) | Medium | js/systems/class-perk-runtime.js |
-| `getPassivePerkModifierLines` | 8980 | Class/Passive | No (internal) | Medium | js/systems/class-perk-runtime.js |
-| `getActiveDamageModifierLines` | 9004 | Combat | No (internal) | High | js/systems/combat-controller.js / js/systems/ability-dispatcher.js |
-| `buildPlayerStatsGridHtml` | 9038 | Combat UI | No (internal) | Medium | js/ui/combat-hud.js / js/ui/combat-log.js |
-| `buildEnemyStatsGridHtml` | 9084 | Combat UI | No (internal) | Medium | js/ui/combat-hud.js / js/ui/combat-log.js |
-| `buildCombatStatBreakdownSection` | 9115 | Story/Overworld | No (internal) | Medium | js/systems/story-run-state.js / js/world/overworld_bridge.js |
-| `buildCombatPerkSection` | 9149 | Combat | No (internal) | High | js/systems/combat-controller.js / js/systems/ability-dispatcher.js |
-| `buildCombatStatusDetailsSection` | 9179 | Enemy setup/AI | No (internal) | Medium | js/systems/enemy-roster-runtime.js / js/systems/combat-setup.js |
-| `buildCombatDetailsModalHtml` | 9216 | Combat UI | No (internal) | Medium | js/ui/combat-hud.js / js/ui/combat-log.js |
-| `collectCombatantStatusChips` | 9234 | Combat | No (internal) | High | js/systems/combat-controller.js / js/systems/ability-dispatcher.js |
-| `buildCombatantHoverTooltipHtml` | 9248 | Combat UI | No (internal) | Medium | js/ui/combat-hud.js / js/ui/combat-log.js |
-| `closeCombatStatsModal` | 9314 | Combat UI | Yes (explicit global/Avian.actions) | Medium | js/ui/combat-hud.js / js/ui/combat-log.js |
-| `openCombatStatsModal` | 9321 | Combat UI | Yes (explicit global/Avian.actions) | Medium | js/ui/combat-hud.js / js/ui/combat-log.js |
-| `refreshCombatStatsModalIfOpen` | 9333 | Combat UI | No (internal) | Medium | js/ui/combat-hud.js / js/ui/combat-log.js |
-| `wireCombatStatsModalOnce` | 9341 | Combat UI | No (internal) | Medium | js/ui/combat-hud.js / js/ui/combat-log.js |
-| `getAvatar` | 9349 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
-| `getAvatarWrap` | 9350 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
-| `getPanel` | 9351 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
-| `refreshBattleUI` | 9353 | Combat | Yes (explicit global/Avian.actions) | High | js/systems/combat-controller.js / js/systems/ability-dispatcher.js |
-| `setHpBar` | 9471 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
-| `isBattleAilmentSymbolActive` | 9526 | Enemy setup/AI | No (internal) | Medium | js/systems/enemy-roster-runtime.js / js/systems/combat-setup.js |
-| `renderBattleAilmentSymbols` | 9535 | Combat UI | No (internal) | Medium | js/ui/combat-hud.js / js/ui/combat-log.js |
-| `ensureCombatStatusSections` | 9558 | Combat | No (internal) | High | js/systems/combat-controller.js / js/systems/ability-dispatcher.js |
-| `syncEnemyIdentityStatusBadges` | 9584 | Enemy setup/AI | No (internal) | Medium | js/systems/enemy-roster-runtime.js / js/systems/combat-setup.js |
-| `renderStatuses` | 9591 | Combat UI | No (internal) | Medium | js/ui/combat-hud.js / js/ui/combat-log.js |
-| `setEnergyBar` | 9647 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
-| `setProtectionBars` | 9656 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
-| `renderEnergyOrbs` | 9741 | Combat UI | No (internal) | Medium | js/ui/combat-hud.js / js/ui/combat-log.js |
-| `lockActionUI` | 9830 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
-| `canPlayerAct` | 9836 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
-| `syncCombatTurnFlags` | 9840 | Combat | No (internal) | High | js/systems/combat-controller.js / js/systems/ability-dispatcher.js |
-| `isEnemyIntentVisible` | 9850 | Enemy setup/AI | No (internal) | Medium | js/systems/enemy-roster-runtime.js / js/systems/combat-setup.js |
-| `applyEnemyIntentVisibility` | 9858 | Enemy setup/AI | Yes (explicit global/Avian.actions) | Medium | js/systems/enemy-roster-runtime.js / js/systems/combat-setup.js |
-| `enemyTelegraphActionLabel` | 9864 | Enemy setup/AI | No (internal) | Medium | js/systems/enemy-roster-runtime.js / js/systems/combat-setup.js |
-| `enemyTelegraphActionCost` | 9869 | Enemy setup/AI | No (internal) | Medium | js/systems/enemy-roster-runtime.js / js/systems/combat-setup.js |
-| `enemyTelegraphTooltipHtml` | 9875 | Combat UI | No (internal) | Medium | js/ui/combat-hud.js / js/ui/combat-log.js |
-| `renderEnemyPlan` | 9888 | Combat UI | Yes (explicit global/Avian.actions) | Medium | js/ui/combat-hud.js / js/ui/combat-log.js |
-| `renderAllCombatUI` | 9928 | Combat UI | No (internal) | Medium | js/ui/combat-hud.js / js/ui/combat-log.js |
-| `enqueueAction` | 9941 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
-| `runActionQueue` | 9947 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
-| `isActiveBattleContext` | 9989 | Combat | Yes (explicit global/Avian.actions) | High | js/systems/combat-controller.js / js/systems/ability-dispatcher.js |
-| `failsafeAdvance` | 9995 | Enemy setup/AI | No (internal) | Medium | js/systems/enemy-roster-runtime.js / js/systems/combat-setup.js |
-| `installLegacyErrorHUD` | 10045 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
-| `installErrorHUD` | 10196 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
-| `getAbilityDisplayTags` | 10225 | Combat | No (internal) | High | js/systems/combat-controller.js / js/systems/ability-dispatcher.js |
-| `abilityTypeChipLabel` | 10229 | Combat | No (internal) | High | js/systems/combat-controller.js / js/systems/ability-dispatcher.js |
-| `isPlayerAbilityUsable` | 10235 | Combat | No (internal) | High | js/systems/combat-controller.js / js/systems/ability-dispatcher.js |
-| `playerHasAffordableAbility` | 10246 | Combat | No (internal) | High | js/systems/combat-controller.js / js/systems/ability-dispatcher.js |
-| `canUseCombatItem` | 10255 | Combat | No (internal) | High | js/systems/combat-controller.js / js/systems/ability-dispatcher.js |
-| `useCombatItem` | 10264 | Combat | No (internal) | High | js/systems/combat-controller.js / js/systems/ability-dispatcher.js |
-| `renderCombatItems` | 10294 | Combat UI | No (internal) | Medium | js/ui/combat-hud.js / js/ui/combat-log.js |
-| `compactCombatAbilityDescription` | 10322 | Combat | No (internal) | High | js/systems/combat-controller.js / js/systems/ability-dispatcher.js |
-| `renderActions` | 10329 | Combat UI | No (internal) | Medium | js/ui/combat-hud.js / js/ui/combat-log.js |
-| `getAbilityTemplateForUI` | 10546 | Combat | No (internal) | High | js/systems/combat-controller.js / js/systems/ability-dispatcher.js |
-| `getEffectiveAbilityBtnType` | 10611 | Combat | No (internal) | High | js/systems/combat-controller.js / js/systems/ability-dispatcher.js |
-| `estimateMultiplierFromSkillDescription` | 10625 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
-| `getEffectivePlayerAtkForDamagePreview` | 10652 | Combat | No (internal) | High | js/systems/combat-controller.js / js/systems/ability-dispatcher.js |
-| `getEffectivePlayerOffensiveAtkForPreview` | 10661 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
-| `getEffectivePlayerOffensiveMatkForPreview` | 10664 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
-| `getPackRowScaleStatRaw` | 10668 | Story/Overworld | No (internal) | Medium | js/systems/story-run-state.js / js/world/overworld_bridge.js |
-| `packRowScaleContribution` | 10681 | Story/Overworld | No (internal) | Medium | js/systems/story-run-state.js / js/world/overworld_bridge.js |
-| `registerStrikePreviewForBird` | 10690 | Bird selection | No (internal) | Medium | js/ui/ui.js |
-| `getStrikePreviewMultiplierForAbility` | 10705 | Combat | No (internal) | High | js/systems/combat-controller.js / js/systems/ability-dispatcher.js |
-| `getHybridPreviewSpec` | 10716 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
-| `estimateHybridSplitBands` | 10744 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
-| `estimateSkillDamageRange` | 10808 | Combat | No (internal) | High | js/systems/combat-controller.js / js/systems/ability-dispatcher.js |
-| `snowyOwlEyeStatPreviewLines` | 11021 | Story/Overworld | No (internal) | Medium | js/systems/story-run-state.js / js/world/overworld_bridge.js |
-| `snowyOwlGlideStatPreviewLines` | 11036 | Story/Overworld | No (internal) | Medium | js/systems/story-run-state.js / js/world/overworld_bridge.js |
-| `_previewPickArrayFromSource` | 11217 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
-| `buildGenericUtilityStatPreviewFromAction` | 11228 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
-| `getSkillStatPreviewLines` | 11290 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
-| `buildActionTooltipHTML` | 11307 | Combat UI | No (internal) | Medium | js/ui/combat-hud.js / js/ui/combat-log.js |
-| `showActionTooltip` | 11391 | Story/Overworld | No (internal) | Medium | js/systems/story-run-state.js / js/world/overworld_bridge.js |
-| `positionTooltip` | 11401 | Combat UI | No (internal) | Medium | js/ui/combat-hud.js / js/ui/combat-log.js |
-| `moveTooltip` | 11414 | Combat UI | No (internal) | Medium | js/ui/combat-hud.js / js/ui/combat-log.js |
-| `showTooltip` | 11450 | Story/Overworld | No (internal) | Medium | js/systems/story-run-state.js / js/world/overworld_bridge.js |
-| `hideTooltip` | 11461 | Combat UI | No (internal) | Medium | js/ui/combat-hud.js / js/ui/combat-log.js |
-| `getAbDesc` | 11469 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
-| `getAbilityCooldown` | 11481 | Story/Overworld | No (internal) | Medium | js/systems/story-run-state.js / js/world/overworld_bridge.js |
-| `getClassCooldownAdjustment` | 11485 | Story/Overworld | No (internal) | Medium | js/systems/story-run-state.js / js/world/overworld_bridge.js |
-| `isDirectHealingAbility` | 11507 | Combat | No (internal) | High | js/systems/combat-controller.js / js/systems/ability-dispatcher.js |
-| `getTemplateCooldown` | 11523 | Story/Overworld | No (internal) | Medium | js/systems/story-run-state.js / js/world/overworld_bridge.js |
-| `setAbilityCooldown` | 11538 | Story/Overworld | No (internal) | Medium | js/systems/story-run-state.js / js/world/overworld_bridge.js |
-| `reduceOtherSpellCooldownsOnCast` | 11543 | Story/Overworld | No (internal) | Medium | js/systems/story-run-state.js / js/world/overworld_bridge.js |
-| `normalizeAbilityCooldownsForPlayer` | 11564 | Story/Overworld | No (internal) | Medium | js/systems/story-run-state.js / js/world/overworld_bridge.js |
-| `getPlayerPiercePctForAbility` | 11575 | Combat | No (internal) | High | js/systems/combat-controller.js / js/systems/ability-dispatcher.js |
-| `getPlayerClassRole` | 11586 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
-| `getClassPerkTriggerForCurrentStage` | 11590 | Class/Passive | No (internal) | Medium | js/systems/class-perk-runtime.js |
-| `resumeAfterGrove` | 11604 | Endless/Meta | No (internal) | Medium | js/systems/endless-map.js |
-| `continueStageTransitionAfterRewards` | 11614 | Rewards | No (internal) | Medium | js/systems/nest-rewards.js / js/ui/reward-screen.js |
-| `openClassPerkChoice` | 11709 | Combat UI | No (internal) | Medium | js/ui/combat-hud.js / js/ui/combat-log.js |
-| `maybeOfferClassPerkChoice` | 11745 | Class/Passive | No (internal) | Medium | js/systems/class-perk-runtime.js |
-| `applyPassiveEvolutionChoice` | 11754 | Class/Passive | No (internal) | Medium | js/systems/class-perk-runtime.js |
-| `maybeOfferPassiveEvolutionChoice` | 11772 | Class/Passive | No (internal) | Medium | js/systems/class-perk-runtime.js |
-| `applyOpeningStrikePassiveOnTurnStart` | 11811 | Combat UI | No (internal) | Medium | js/ui/combat-hud.js / js/ui/combat-log.js |
-| `getCrowDefendCooldown` | 11817 | Story/Overworld | No (internal) | Medium | js/systems/story-run-state.js / js/world/overworld_bridge.js |
-| `logAspectMatchupFeedback` | 11823 | Bootstrap/Orchestration | Yes (explicit global/Avian.actions) | Medium | js/core/game.js (retain) |
-| `getAspectDefinition` | 11833 | Bootstrap/Orchestration | Yes (explicit global/Avian.actions) | Medium | js/core/game.js (retain) |
-| `formatAspectDisplayName` | 11840 | Utilities | Yes (explicit global/Avian.actions) | Low | js/core/game-helpers.js |
-| `buildAspectTooltipHTML` | 11848 | Combat UI | Yes (explicit global/Avian.actions) | Medium | js/ui/combat-hud.js / js/ui/combat-log.js |
-| `resolveAbilityAspectForDisplay` | 11863 | Combat | Yes (explicit global/Avian.actions) | High | js/systems/combat-controller.js / js/systems/ability-dispatcher.js |
-| `buildAspectChartSvg` | 11872 | Bootstrap/Orchestration | Yes (explicit global/Avian.actions) | Medium | js/core/game.js (retain) |
-| `logMsg` | 11919 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
-| `playAvatarAnim` | 11932 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
-| `spawnFloat` | 11948 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
-| `flashPanel` | 11988 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
-| `doAttack` | 11997 | Combat | Yes (explicit global/Avian.actions) | High | js/systems/combat-controller.js / js/systems/ability-dispatcher.js |
-| `doMiss` | 12050 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
-| `doShield` | 12059 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
-| `doSpell` | 12066 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
-| `doHeal` | 12067 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
-| `delay` | 12078 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
-| `roll` | 12086 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
-| `getPlayerBaseAcc` | 12099 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
-| `getWeaponPrecisionModifier` | 12112 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
-| `getSkillPrecisionModifier` | 12130 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
-| `getFinalAttackPrecision` | 12148 | Combat | No (internal) | High | js/systems/combat-controller.js / js/systems/ability-dispatcher.js |
-| `getPlayerAccMod` | 12192 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
-| `getPlayerEffectiveAcc` | 12201 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
-| `resolveActionPrecisionPct` | 12208 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
-| `clamp01` | 12218 | Utilities | No (internal) | Low | js/core/game-helpers.js |
-| `getPostBattleHealPct` | 12225 | Combat | No (internal) | High | js/systems/combat-controller.js / js/systems/ability-dispatcher.js |
-| `shouldApplyPostBattleHealNow` | 12229 | Story/Overworld | No (internal) | Medium | js/systems/story-run-state.js / js/world/overworld_bridge.js |
-| `applyPostBattleHealIfDue` | 12236 | Combat | No (internal) | High | js/systems/combat-controller.js / js/systems/ability-dispatcher.js |
-| `softenMainStatForCombat` | 12258 | Enemy setup/AI | No (internal) | Medium | js/systems/enemy-roster-runtime.js / js/systems/combat-setup.js |
-| `effectiveDodgePercentForCombat` | 12266 | Combat | No (internal) | High | js/systems/combat-controller.js / js/systems/ability-dispatcher.js |
-| `damageMitigationMultiplierFromGuard` | 12273 | Combat | No (internal) | High | js/systems/combat-controller.js / js/systems/ability-dispatcher.js |
-| `physicalGuardValueFromEnemyDef` | 12277 | Enemy setup/AI | No (internal) | Medium | js/systems/enemy-roster-runtime.js / js/systems/combat-setup.js |
-| `magicalGuardValueFromEnemyMdef` | 12284 | Enemy setup/AI | No (internal) | Medium | js/systems/enemy-roster-runtime.js / js/systems/combat-setup.js |
-| `physicalGuardValueFromPlayerDef` | 12291 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
-| `magicalGuardValueFromPlayerMdef` | 12297 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
-| `getPlayerArmorPenPct` | 12303 | Bootstrap/Orchestration | Yes (explicit global/Avian.actions) | Medium | js/core/game.js (retain) |
-| `getPlayerMagicPenPct` | 12309 | Bootstrap/Orchestration | Yes (explicit global/Avian.actions) | Medium | js/core/game.js (retain) |
-| `getPhysicalPierceFractionForDamage` | 12319 | Combat | No (internal) | High | js/systems/combat-controller.js / js/systems/ability-dispatcher.js |
-| `getMagicalPierceFractionForDamage` | 12329 | Combat | No (internal) | High | js/systems/combat-controller.js / js/systems/ability-dispatcher.js |
-| `getPhysicalPierceFractionForPreview` | 12342 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
-| `getMagicalPierceFractionForPreview` | 12354 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
-| `calcHitChance` | 12363 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
-| `calcDefenseMultiplier` | 12372 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
-| `applyGrowthStageTransition` | 12377 | Story/Overworld | No (internal) | Medium | js/systems/story-run-state.js / js/world/overworld_bridge.js |
-| `checkGrowthStage` | 12413 | Story/Overworld | No (internal) | Medium | js/systems/story-run-state.js / js/world/overworld_bridge.js |
-| `getEnemyBaseStats` | 12444 | Enemy setup/AI | No (internal) | Medium | js/systems/enemy-roster-runtime.js / js/systems/combat-setup.js |
-| `resolveEnemyTier` | 12467 | Rewards | No (internal) | Medium | js/systems/nest-rewards.js / js/ui/reward-screen.js |
-| `getEndlessEffectiveBattleNumber` | 12495 | Combat | No (internal) | High | js/systems/combat-controller.js / js/systems/ability-dispatcher.js |
-| `getEndlessDifficultyLevelOffset` | 12500 | Endless/Meta | No (internal) | Medium | js/systems/endless-map.js |
-| `getEndlessNormalFightTier` | 12525 | Rewards | No (internal) | Medium | js/systems/nest-rewards.js / js/ui/reward-screen.js |
-| `rollRandomAnyMutationTiers` | 12533 | Rewards | No (internal) | Medium | js/systems/nest-rewards.js / js/ui/reward-screen.js |
-| `getStoryMutationRewardTiers` | 12542 | Rewards | No (internal) | Medium | js/systems/nest-rewards.js / js/ui/reward-screen.js |
-| `resolveMutationRewardTiers` | 12566 | Rewards | No (internal) | Medium | js/systems/nest-rewards.js / js/ui/reward-screen.js |
-| `normalizeMutationDataTier` | 12589 | Rewards | No (internal) | Medium | js/systems/nest-rewards.js / js/ui/reward-screen.js |
-| `pickUniqueMutationReward` | 12594 | Rewards | No (internal) | Medium | js/systems/nest-rewards.js / js/ui/reward-screen.js |
-| `buildMutationRewardPool` | 12612 | Rewards | No (internal) | Medium | js/systems/nest-rewards.js / js/ui/reward-screen.js |
-| `computeEnemyEffectiveLevel` | 12620 | Enemy setup/AI | No (internal) | Medium | js/systems/enemy-roster-runtime.js / js/systems/combat-setup.js |
-| `getStoryEnemyPowerMultiplier` | 12634 | Story/Overworld | No (internal) | Medium | js/systems/story-run-state.js / js/world/overworld_bridge.js |
-| `combatResolveEnemyTier` | 12643 | Rewards | No (internal) | Medium | js/systems/nest-rewards.js / js/ui/reward-screen.js |
-| `buildScaledEnemy` | 12656 | Enemy setup/AI | No (internal) | Medium | js/systems/enemy-roster-runtime.js / js/systems/combat-setup.js |
-| `buildScaledBoss` | 12738 | Enemy setup/AI | No (internal) | Medium | js/systems/enemy-roster-runtime.js / js/systems/combat-setup.js |
-| `enemyScaleFactor` | 12743 | Enemy setup/AI | No (internal) | Medium | js/systems/enemy-roster-runtime.js / js/systems/combat-setup.js |
-| `getEffectiveDodge` | 12757 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
-| `chance` | 12778 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
-| `addStatus` | 12781 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
-| `setStatusMax` | 12782 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
-| `refreshStatus` | 12784 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
-| `getGuardedPhysReducPct` | 12786 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
-| `applyGuardedBuff` | 12794 | Bootstrap/Orchestration | Yes (explicit global/Avian.actions) | Medium | js/core/game.js (retain) |
-| `getTierBuffPct` | 12818 | Rewards | No (internal) | Medium | js/systems/nest-rewards.js / js/ui/reward-screen.js |
-| `resolveShieldAmountFromOpts` | 12824 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
-| `applyShieldHp` | 12836 | Bootstrap/Orchestration | Yes (explicit global/Avian.actions) | Medium | js/core/game.js (retain) |
-| `applyDamageThroughShield` | 12859 | Combat | Yes (explicit global/Avian.actions) | High | js/systems/combat-controller.js / js/systems/ability-dispatcher.js |
-| `notifyProtectionHitHooks` | 12912 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
-| `tickShieldHpStatus` | 12931 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
-| `tickGuardedStatus` | 12956 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
-| `playerIsGuarding` | 12962 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
-| `resolveGuardedReductionPct` | 12968 | Bootstrap/Orchestration | Yes (explicit global/Avian.actions) | Medium | js/core/game.js (retain) |
-| `refreshDerivedStatsAfterLoan` | 12981 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
-| `applySourceStatLoan` | 12991 | Bootstrap/Orchestration | Yes (explicit global/Avian.actions) | Medium | js/core/game.js (retain) |
-| `decaySourceStatLoans` | 13008 | Bootstrap/Orchestration | Yes (explicit global/Avian.actions) | Medium | js/core/game.js (retain) |
-| `applySourceStatLoanPct` | 13025 | Bootstrap/Orchestration | Yes (explicit global/Avian.actions) | Medium | js/core/game.js (retain) |
-| `clamp` | 13036 | Utilities | No (internal) | Low | js/core/game-helpers.js |
-| `clampSkipChance` | 13037 | Utilities | No (internal) | Low | js/core/game-helpers.js |
-| `getWeakenStacks` | 13042 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
-| `getWeakenDamageMult` | 13049 | Combat | No (internal) | High | js/systems/combat-controller.js / js/systems/ability-dispatcher.js |
-| `getWeakenDodgePenalty` | 13054 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
-| `applyWeakenStack` | 13058 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
-| `getEffectiveEnemyDodgeForPlayerHit` | 13068 | Enemy setup/AI | No (internal) | Medium | js/systems/enemy-roster-runtime.js / js/systems/combat-setup.js |
-| `scaleHealForBleed` | 13077 | Enemy setup/AI | No (internal) | Medium | js/systems/enemy-roster-runtime.js / js/systems/combat-setup.js |
-| `normalizeBurningTurns` | 13090 | Utilities | No (internal) | Low | js/core/game-helpers.js |
-| `enemyHasBurning` | 13096 | Enemy setup/AI | No (internal) | Medium | js/systems/enemy-roster-runtime.js / js/systems/combat-setup.js |
-| `playerHasBurning` | 13103 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
-| `applyChilledStacksToTarget` | 13110 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
-| `applyChilledStacksToEnemy` | 13135 | Enemy setup/AI | No (internal) | Medium | js/systems/enemy-roster-runtime.js / js/systems/combat-setup.js |
-| `applyPhysicalStackAilment` | 13139 | Enemy setup/AI | No (internal) | Medium | js/systems/enemy-roster-runtime.js / js/systems/combat-setup.js |
-| `applyPhysicalResolvedState` | 13171 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
-| `rollStunChance` | 13207 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
-| `applyEnemySlow` | 13208 | Story/Overworld | No (internal) | Medium | js/systems/story-run-state.js / js/world/overworld_bridge.js |
-| `applyPendingStrikeBuff` | 13231 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
-| `applyPlayerTimedBuff` | 13247 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
-| `promotePendingStrikeBuffToActive` | 13260 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
-| `applyPlayerSlow` | 13273 | Story/Overworld | No (internal) | Medium | js/systems/story-run-state.js / js/world/overworld_bridge.js |
-| `refreshEnemyStrikerDodgeMark` | 13287 | Enemy setup/AI | No (internal) | Medium | js/systems/enemy-roster-runtime.js / js/systems/combat-setup.js |
-| `getAbilityLifestealPct` | 13299 | Combat | No (internal) | High | js/systems/combat-controller.js / js/systems/ability-dispatcher.js |
-| `resolveAbilityCombatRow` | 13317 | Story/Overworld | No (internal) | Medium | js/systems/story-run-state.js / js/world/overworld_bridge.js |
-| `detectEquipmentDamageBonus` | 13328 | Equipment | No (internal) | Medium | js/systems/equipment*.js |
-| `computeMasterOutgoingDamage` | 13336 | Combat | Yes (explicit global/Avian.actions) | High | js/systems/combat-controller.js / js/systems/ability-dispatcher.js |
-| `computeOutgoingDamageBase` | 13432 | Combat | No (internal) | High | js/systems/combat-controller.js / js/systems/ability-dispatcher.js |
-| `collectDispatcherConditionalBonusFractions` | 13481 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
-| `collectOutgoingDamageBonusFractions` | 13511 | Combat | No (internal) | High | js/systems/combat-controller.js / js/systems/ability-dispatcher.js |
-| `applyLifestealFromDamage` | 13627 | Combat | No (internal) | High | js/systems/combat-controller.js / js/systems/ability-dispatcher.js |
-| `getEnemyAbilityAuthoredEnCost` | 13638 | Enemy setup/AI | No (internal) | Medium | js/systems/enemy-roster-runtime.js / js/systems/combat-setup.js |
-| `computeEntityAbilityRawDamage` | 13644 | Combat | No (internal) | High | js/systems/combat-controller.js / js/systems/ability-dispatcher.js |
-| `applyCurvedMitigationToPlayer` | 13704 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
-| `computePlayerCritDamageAdd` | 13730 | Combat | No (internal) | High | js/systems/combat-controller.js / js/systems/ability-dispatcher.js |
-| `dealDamage` | 13772 | Combat | No (internal) | High | js/systems/combat-controller.js / js/systems/ability-dispatcher.js |
-| `pdmg` | 14170 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
-| `countEnemyCombatDebuffCategories` | 14198 | Enemy setup/AI | No (internal) | Medium | js/systems/enemy-roster-runtime.js / js/systems/combat-setup.js |
-| `countAilmentCategoriesOnEnemy` | 14217 | Enemy setup/AI | No (internal) | Medium | js/systems/enemy-roster-runtime.js / js/systems/combat-setup.js |
-| `enemyHasAfflictionForCardBonuses` | 14237 | Enemy setup/AI | No (internal) | Medium | js/systems/enemy-roster-runtime.js / js/systems/combat-setup.js |
-| `selfDodgeBuffActive` | 14240 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
-| `computeSecondaryStatFlatForPhysical` | 14244 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
-| `applyConditionalPhysicalDamageMultipliers` | 14257 | Combat | No (internal) | High | js/systems/combat-controller.js / js/systems/ability-dispatcher.js |
-| `pdmgWithAlternateScaling` | 14276 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
-| `getAbilityDamageScalingHintForUI` | 14287 | Combat | No (internal) | High | js/systems/combat-controller.js / js/systems/ability-dispatcher.js |
-| `calcEnemyAbilityDamage` | 14293 | Enemy setup/AI | No (internal) | Medium | js/systems/enemy-roster-runtime.js / js/systems/combat-setup.js |
-| `applyBossBurstBuffer` | 14302 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
-| `edmg` | 14313 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
-| `rollEnemyCritDamage` | 14329 | Enemy setup/AI | No (internal) | Medium | js/systems/enemy-roster-runtime.js / js/systems/combat-setup.js |
-| `getPlayerMissChance` | 14343 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
-| `getPlayerHitPercentForAttack` | 14386 | Combat | No (internal) | High | js/systems/combat-controller.js / js/systems/ability-dispatcher.js |
-| `getPlayerAccuracy` | 14404 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
-| `resolvePlayerAttackHit` | 14414 | Combat | No (internal) | High | js/systems/combat-controller.js / js/systems/ability-dispatcher.js |
-| `playerAttackMisses` | 14432 | Combat | No (internal) | High | js/systems/combat-controller.js / js/systems/ability-dispatcher.js |
-| `doPlayerAttackMiss` | 14435 | Combat | No (internal) | High | js/systems/combat-controller.js / js/systems/ability-dispatcher.js |
-| `getPlayerDmgMult` | 14445 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
-| `getAilChance` | 14451 | Enemy setup/AI | No (internal) | Medium | js/systems/enemy-roster-runtime.js / js/systems/combat-setup.js |
-| `tryApplyAilment` | 14474 | Enemy setup/AI | No (internal) | Medium | js/systems/enemy-roster-runtime.js / js/systems/combat-setup.js |
-| `getDelayedDmgBoostPct` | 14492 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
-| `applyDelayedDamage` | 14499 | Combat | No (internal) | High | js/systems/combat-controller.js / js/systems/ability-dispatcher.js |
-| `tryMutationOnHitAilments` | 14527 | Enemy setup/AI | No (internal) | Medium | js/systems/enemy-roster-runtime.js / js/systems/combat-setup.js |
-| `notifyAilmentApplied` | 14546 | Enemy setup/AI | No (internal) | Medium | js/systems/enemy-roster-runtime.js / js/systems/combat-setup.js |
-| `applyAilment` | 14560 | Enemy setup/AI | No (internal) | Medium | js/systems/enemy-roster-runtime.js / js/systems/combat-setup.js |
-| `getPlayerCritChance` | 14819 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
-| `getPlayerHitBonus` | 14852 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
-| `tickDelayedForTarget` | 14864 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
-| `tickStatuses` | 14881 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
-| `resolveAbilityAliasSourceId` | 14927 | Combat | No (internal) | High | js/systems/combat-controller.js / js/systems/ability-dispatcher.js |
-| `registerAbilityAlias` | 14933 | Combat | No (internal) | High | js/systems/combat-controller.js / js/systems/ability-dispatcher.js |
-| `registerStrikePreviewForBird` | 14934 | Bird selection | No (internal) | Medium | js/ui/ui.js |
-| `ensureStarterKitEnergySmoothing` | 14937 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
-| `checkBlackbirdOmenChorusAfterAbility` | 14940 | Combat | No (internal) | High | js/systems/combat-controller.js / js/systems/ability-dispatcher.js |
-| `playerAction` | 14953 | Bootstrap/Orchestration | Yes (explicit global/Avian.actions) | Medium | js/core/game.js (retain) |
-| `startPlayerTurn` | 15206 | Combat | No (internal) | High | js/systems/combat-controller.js / js/systems/ability-dispatcher.js |
-| `syncEnemyEnergyForBattleDisplay` | 15302 | Enemy setup/AI | No (internal) | Medium | js/systems/enemy-roster-runtime.js / js/systems/combat-setup.js |
-| `startEnemyTurn` | 15309 | Enemy setup/AI | No (internal) | High | js/systems/enemy-roster-runtime.js / js/systems/combat-setup.js |
-| `isSpellAbilityId` | 15327 | Combat | No (internal) | High | js/systems/combat-controller.js / js/systems/ability-dispatcher.js |
-| `isMultiHitAbility` | 15332 | Combat | No (internal) | High | js/systems/combat-controller.js / js/systems/ability-dispatcher.js |
-| `getAbilityAuthoredEnergyCost` | 15344 | Combat | No (internal) | High | js/systems/combat-controller.js / js/systems/ability-dispatcher.js |
-| `getAbilityAttackWeight` | 15374 | Combat | No (internal) | High | js/systems/combat-controller.js / js/systems/ability-dispatcher.js |
-| `getAbilityEnergyCost` | 15382 | Combat | No (internal) | High | js/systems/combat-controller.js / js/systems/ability-dispatcher.js |
-| `getEnergyCost` | 15420 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
-| `syncAbilityEnergyCost` | 15424 | Combat | No (internal) | High | js/systems/combat-controller.js / js/systems/ability-dispatcher.js |
-| `canUseAbility` | 15428 | Combat | No (internal) | High | js/systems/combat-controller.js / js/systems/ability-dispatcher.js |
-| `spendEnergy` | 15443 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
-| `enforceAbilityCosts` | 15455 | Combat | No (internal) | High | js/systems/combat-controller.js / js/systems/ability-dispatcher.js |
-| `gainEnergy` | 15463 | Enemy setup/AI | No (internal) | Medium | js/systems/enemy-roster-runtime.js / js/systems/combat-setup.js |
-| `spellMissChance` | 15483 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
-| `spellMisses` | 15491 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
-| `summonHitLands` | 15496 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
-| `spellAilmentRoll` | 15500 | Enemy setup/AI | No (internal) | Medium | js/systems/enemy-roster-runtime.js / js/systems/combat-setup.js |
-| `matk` | 15508 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
-| `tickTimedBuffsAfterEnemyPhase` | 15755 | Enemy setup/AI | No (internal) | Medium | js/systems/enemy-roster-runtime.js / js/systems/combat-setup.js |
-| `endPlayerTurn` | 15938 | Combat | No (internal) | High | js/systems/combat-controller.js / js/systems/ability-dispatcher.js |
-| `getEnemyActionEnergyCost` | 15992 | Enemy setup/AI | No (internal) | Medium | js/systems/enemy-roster-runtime.js / js/systems/combat-setup.js |
-| `getAIPersonalityProfile` | 16019 | Enemy setup/AI | No (internal) | Medium | js/systems/enemy-roster-runtime.js / js/systems/combat-setup.js |
-| `getEnemyAIMemory` | 16028 | Enemy setup/AI | No (internal) | Medium | js/systems/enemy-roster-runtime.js / js/systems/combat-setup.js |
-| `classifyKitAbilityForEnemyAI` | 16035 | Enemy setup/AI | No (internal) | Medium | js/systems/enemy-roster-runtime.js / js/systems/combat-setup.js |
-| `enemyKitOffersSetupDebuffs` | 16050 | Enemy setup/AI | No (internal) | Medium | js/systems/enemy-roster-runtime.js / js/systems/combat-setup.js |
-| `getEnemyMode` | 16056 | Enemy setup/AI | No (internal) | Medium | js/systems/enemy-roster-runtime.js / js/systems/combat-setup.js |
-| `classifyEnemyActionCategory` | 16065 | Enemy setup/AI | No (internal) | Medium | js/systems/enemy-roster-runtime.js / js/systems/combat-setup.js |
-| `buildEnemyActionPool` | 16079 | Enemy setup/AI | No (internal) | Medium | js/systems/enemy-roster-runtime.js / js/systems/combat-setup.js |
-| `projectedEnemyActionDamage` | 16124 | Enemy setup/AI | No (internal) | Medium | js/systems/enemy-roster-runtime.js / js/systems/combat-setup.js |
-| `canEnemyProjectLethal` | 16167 | Enemy setup/AI | No (internal) | Medium | js/systems/enemy-roster-runtime.js / js/systems/combat-setup.js |
-| `getBossIntentCycle` | 16191 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
-| `getEnemyArchetype` | 16196 | Enemy setup/AI | No (internal) | Medium | js/systems/enemy-roster-runtime.js / js/systems/combat-setup.js |
-| `getArchetypeIntentWeights` | 16207 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
-| `getArchetypePriorityOrder` | 16210 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
-| `getArchetypeCategoryBonus` | 16218 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
-| `selectEnemyIntent` | 16225 | Enemy setup/AI | No (internal) | Medium | js/systems/enemy-roster-runtime.js / js/systems/combat-setup.js |
-| `filterEnemyActionsByIntent` | 16261 | Enemy setup/AI | No (internal) | Medium | js/systems/enemy-roster-runtime.js / js/systems/combat-setup.js |
-| `getEnemyEnergySpendCap` | 16271 | Enemy setup/AI | No (internal) | Medium | js/systems/enemy-roster-runtime.js / js/systems/combat-setup.js |
-| `getEnemyOpeningBias` | 16284 | Combat UI | No (internal) | Medium | js/ui/combat-hud.js / js/ui/combat-log.js |
-| `getEnemyActionComboBonus` | 16294 | Enemy setup/AI | No (internal) | Medium | js/systems/enemy-roster-runtime.js / js/systems/combat-setup.js |
-| `enemyHpPct` | 16307 | Enemy setup/AI | No (internal) | Medium | js/systems/enemy-roster-runtime.js / js/systems/combat-setup.js |
-| `playerHpPct` | 16308 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
-| `mapAiStyleToType` | 16309 | Enemy setup/AI | No (internal) | Medium | js/systems/enemy-roster-runtime.js / js/systems/combat-setup.js |
-| `planEnemyAction` | 16317 | Enemy setup/AI | No (internal) | Medium | js/systems/enemy-roster-runtime.js / js/systems/combat-setup.js |
-| `isBossEnrageAllowed` | 16332 | Story/Overworld | No (internal) | Medium | js/systems/story-run-state.js / js/world/overworld_bridge.js |
-| `dukeNightfall` | 16333 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
-| `dukeRiverGrip` | 16339 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
-| `dukeTrackDecree` | 16345 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
-| `dukeApplyDecreePunish` | 16350 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
-| `dukeRoyalDecree` | 16357 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
-| `dukeOwlsVerdict` | 16362 | Story/Overworld | No (internal) | Medium | js/systems/story-run-state.js / js/world/overworld_bridge.js |
-| `dukeSummonCourt` | 16368 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
-| `dukeTurnAI` | 16378 | Enemy setup/AI | No (internal) | High | js/systems/enemy-roster-runtime.js / js/systems/combat-setup.js |
-| `enemyKitAbilityIsHardCC` | 16429 | Enemy setup/AI | No (internal) | Medium | js/systems/enemy-roster-runtime.js / js/systems/combat-setup.js |
-| `rollEnemyCombatRowAilment` | 16437 | Story/Overworld | No (internal) | Medium | js/systems/story-run-state.js / js/world/overworld_bridge.js |
-| `refundEnemyActionEnergy` | 16473 | Enemy setup/AI | No (internal) | Medium | js/systems/enemy-roster-runtime.js / js/systems/combat-setup.js |
-| `applyEnemyAttackRiders` | 16480 | Enemy setup/AI | No (internal) | Medium | js/systems/enemy-roster-runtime.js / js/systems/combat-setup.js |
-| `executeEnemyKitTemplateAbility` | 16495 | Enemy setup/AI | No (internal) | Medium | js/systems/enemy-roster-runtime.js / js/systems/combat-setup.js |
-| `enemyTurn` | 16619 | Enemy setup/AI | No (internal) | High | js/systems/enemy-roster-runtime.js / js/systems/combat-setup.js |
-| `afterEnemyTurn` | 16756 | Enemy setup/AI | No (internal) | High | js/systems/enemy-roster-runtime.js / js/systems/combat-setup.js |
-| `showBattleCaption` | 16833 | Story/Overworld | No (internal) | Medium | js/systems/story-run-state.js / js/world/overworld_bridge.js |
-| `checkDeath` | 16844 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
-| `isGreyShopStage` | 16872 | Shop | No (internal) | Medium | js/systems/shop-v2.js / js/ui/shop-ui.js |
-| `isShopDueAfterBattle` | 16882 | Shop | No (internal) | Medium | js/systems/shop-v2.js / js/ui/shop-ui.js |
-| `getBattleStatsSafe` | 16893 | Combat | No (internal) | High | js/systems/combat-controller.js / js/systems/ability-dispatcher.js |
-| `postCombat` | 16902 | Combat | No (internal) | High | js/systems/combat-controller.js / js/systems/ability-dispatcher.js |
-| `rollTier` | 17076 | Rewards | No (internal) | Medium | js/systems/nest-rewards.js / js/ui/reward-screen.js |
-| `isMutationReward` | 17085 | Rewards | No (internal) | Medium | js/systems/nest-rewards.js / js/ui/reward-screen.js |
-| `isEquipmentReward` | 17089 | Rewards | No (internal) | Medium | js/systems/nest-rewards.js / js/ui/reward-screen.js |
-| `applySingleReward` | 17093 | Rewards | No (internal) | Medium | js/systems/nest-rewards.js / js/ui/reward-screen.js |
-| `finishRewardScreenFlow` | 17136 | Rewards | No (internal) | Medium | js/systems/nest-rewards.js / js/ui/reward-screen.js |
-| `grantRewardPool` | 17190 | Rewards | No (internal) | Medium | js/systems/nest-rewards.js / js/ui/reward-screen.js |
-| `drainPendingRewardQueue` | 17205 | Rewards | No (internal) | Medium | js/systems/nest-rewards.js / js/ui/reward-screen.js |
-| `buildNestRewardCardHtml` | 17212 | Build Nest | No (internal) | Medium | js/world/map-forge.js (existing) / js/ui/build-nest.js |
-| `spawnNestShakeSparks` | 17235 | Nest | No (internal) | Medium | js/ui/nest-ui.js |
-| `wireNestRewardTrayTooltips` | 17263 | Nest | No (internal) | Medium | js/ui/nest-ui.js |
-| `renderNestRewardCollectedTray` | 17282 | Nest | No (internal) | Medium | js/ui/nest-ui.js |
-| `finishNestRewardReveal` | 17302 | Nest | No (internal) | Medium | js/ui/nest-ui.js |
-| `revealNestDropsStaggered` | 17325 | Nest | No (internal) | Medium | js/ui/nest-ui.js |
-| `revealAllNestDrops` | 17386 | Nest | No (internal) | Medium | js/ui/nest-ui.js |
-| `showStoryEquipmentPick` | 17390 | Story/Overworld | No (internal) | Medium | js/systems/story-run-state.js / js/world/overworld_bridge.js |
-| `handleNestShake` | 17441 | Nest | Yes (explicit global/Avian.actions) | Medium | js/ui/nest-ui.js |
-| `showRewardScreen` | 17468 | Rewards | No (internal) | Medium | js/systems/nest-rewards.js / js/ui/reward-screen.js |
-| `confirmReward` | 17561 | Rewards | Yes (data-action in index.html) | Medium | js/systems/nest-rewards.js / js/ui/reward-screen.js |
-| `applyUpgradeWithMaxHpHealing` | 17659 | Rewards | No (internal) | Medium | js/systems/nest-rewards.js / js/ui/reward-screen.js |
-| `showGoldReplaceUI` | 17679 | Story/Overworld | No (internal) | Medium | js/systems/story-run-state.js / js/world/overworld_bridge.js |
-| `generateNormalRewards` | 17708 | Rewards | No (internal) | Medium | js/systems/nest-rewards.js / js/ui/reward-screen.js |
-| `generateBossRewards` | 17712 | Rewards | No (internal) | Medium | js/systems/nest-rewards.js / js/ui/reward-screen.js |
-| `rollWeighted` | 17716 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
-| `getGoldCardCount` | 17724 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
-| `getGoldCardLimit` | 17725 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
-| `applyLevelUpBaseHealthGrowth` | 17735 | Story/Overworld | No (internal) | Medium | js/systems/story-run-state.js / js/world/overworld_bridge.js |
-| `levelUpChoiceLabel` | 17758 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
-| `applyLevelUpVitalityGain` | 17765 | Enemy setup/AI | No (internal) | Medium | js/systems/enemy-roster-runtime.js / js/systems/combat-setup.js |
-| `applyLevelUpAgilityGain` | 17795 | Enemy setup/AI | No (internal) | Medium | js/systems/enemy-roster-runtime.js / js/systems/combat-setup.js |
-| `isMainAttackAbility` | 17823 | Enemy setup/AI | No (internal) | Medium | js/systems/enemy-roster-runtime.js / js/systems/combat-setup.js |
-| `getMainAttackAutoLevel` | 17834 | Enemy setup/AI | No (internal) | Medium | js/systems/enemy-roster-runtime.js / js/systems/combat-setup.js |
-| `applyMainAttackAutoLevel` | 17841 | Enemy setup/AI | No (internal) | Medium | js/systems/enemy-roster-runtime.js / js/systems/combat-setup.js |
-| `rollLuFeatherPanelOptions` | 17865 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
-| `luFeatherDraftTotal` | 17874 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
-| `luFeathersUnallocated` | 17878 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
-| `captureLuStatBaseline` | 17882 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
-| `simulateLuDraftStats` | 17899 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
-| `formatLuPreviewDelta` | 17940 | Utilities | No (internal) | Low | js/core/game-helpers.js |
-| `renderLuFeatherIcons` | 17947 | Combat UI | No (internal) | Medium | js/ui/combat-hud.js / js/ui/combat-log.js |
-| `renderLuFeatherStatline` | 17955 | Combat UI | No (internal) | Medium | js/ui/combat-hud.js / js/ui/combat-log.js |
-| `renderLuStatPreview` | 17972 | Combat UI | No (internal) | Medium | js/ui/combat-hud.js / js/ui/combat-log.js |
-| `refreshLuFeatherPanelUI` | 18005 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
-| `buildFeatherStatPanel` | 18056 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
-| `getLevelUpStatEffectDesc` | 18109 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
-| `getEquippedWeaponAvgDamage` | 18126 | Combat | No (internal) | High | js/systems/combat-controller.js / js/systems/ability-dispatcher.js |
-| `getOffencePctPerStat` | 18147 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
-| `estimateMitigationPct` | 18152 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
-| `estimateWeaponSkillDamagePerStat` | 18158 | Combat | No (internal) | High | js/systems/combat-controller.js / js/systems/ability-dispatcher.js |
-| `getLevelUpPerPointBreakdown` | 18164 | Story/Overworld | No (internal) | Medium | js/systems/story-run-state.js / js/world/overworld_bridge.js |
-| `getLevelUpCombatImpactLine` | 18238 | Combat | No (internal) | High | js/systems/combat-controller.js / js/systems/ability-dispatcher.js |
-| `getLevelUpGlossaryBlurb` | 18243 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
-| `luStatKeyForOption` | 18252 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
-| `getLuFeatherStatValue` | 18259 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
-| `buildLevelUpStatTooltipHtml` | 18265 | Combat UI | No (internal) | Medium | js/ui/combat-hud.js / js/ui/combat-log.js |
-| `wireLevelUpTooltips` | 18310 | Combat UI | No (internal) | Medium | js/ui/combat-hud.js / js/ui/combat-log.js |
-| `resetLuFeatherDraft` | 18338 | Bootstrap/Orchestration | Yes (explicit global/Avian.actions) | Medium | js/core/game.js (retain) |
-| `ensureMainAttackAndLoadoutRules` | 18345 | Save/load | No (internal) | High | js/systems/save-migrations.js |
-| `setLevelUpPanelTitle` | 18417 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
-| `configureLevelUpConfirm` | 18421 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
-| `configureLevelUpSecondary` | 18428 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
-| `resetLevelUpFlowState` | 18435 | Story/Overworld | No (internal) | Medium | js/systems/story-run-state.js / js/world/overworld_bridge.js |
-| `showLevelUpScreen` | 18440 | Story/Overworld | No (internal) | Medium | js/systems/story-run-state.js / js/world/overworld_bridge.js |
-| `showLUPanel` | 18466 | Story/Overworld | No (internal) | Medium | js/systems/story-run-state.js / js/world/overworld_bridge.js |
-| `countLevelAilments` | 18473 | Enemy setup/AI | No (internal) | Medium | js/systems/enemy-roster-runtime.js / js/systems/combat-setup.js |
-| `ailmentSlotsForLevel` | 18476 | Enemy setup/AI | No (internal) | Medium | js/systems/enemy-roster-runtime.js / js/systems/combat-setup.js |
-| `deriveAbilityAilments` | 18480 | Enemy setup/AI | No (internal) | Medium | js/systems/enemy-roster-runtime.js / js/systems/combat-setup.js |
-| `openAbilityModificationChoice` | 18501 | Combat UI | No (internal) | Medium | js/ui/combat-hud.js / js/ui/combat-log.js |
-| `closeAbilityModModal` | 18527 | Combat UI | Yes (data-action in index.html) | Medium | js/ui/combat-hud.js / js/ui/combat-log.js |
-| `refreshPlayerAbilityAilments` | 18535 | Enemy setup/AI | No (internal) | Medium | js/systems/enemy-roster-runtime.js / js/systems/combat-setup.js |
-| `confirmSkillUpgrade` | 18542 | Rewards | Yes (data-action in index.html) | Medium | js/systems/nest-rewards.js / js/ui/reward-screen.js |
-| `onExitLevelUpRequested` | 18585 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
-| `afterLevelUp` | 18609 | Bootstrap/Orchestration | Yes (data-action in index.html) | Medium | js/core/game.js (retain) |
-| `advanceStage` | 18620 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
-| `isBossStage` | 18643 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
-| `rollGroveMutationTier` | 18650 | Rewards | No (internal) | Medium | js/systems/nest-rewards.js / js/ui/reward-screen.js |
-| `grantGroveGearReward` | 18660 | Rewards | No (internal) | Medium | js/systems/nest-rewards.js / js/ui/reward-screen.js |
-| `applyGroveGearReward` | 18666 | Rewards | No (internal) | Medium | js/systems/nest-rewards.js / js/ui/reward-screen.js |
-| `showGroveRewardCard` | 18685 | Rewards | No (internal) | Medium | js/systems/nest-rewards.js / js/ui/reward-screen.js |
-| `grantGroveNestReward` | 18699 | Nest | No (internal) | Medium | js/ui/nest-ui.js |
-| `startGroveAmbushBattle` | 18703 | Combat | No (internal) | High | js/systems/combat-controller.js / js/systems/ability-dispatcher.js |
-| `showGroveEvent` | 18752 | Story/Overworld | No (internal) | Medium | js/systems/story-run-state.js / js/world/overworld_bridge.js |
-| `enterGrove` | 18790 | Endless/Meta | No (internal) | Medium | js/systems/endless-map.js |
-| `resolveGrove` | 18803 | Endless/Meta | No (internal) | Medium | js/systems/endless-map.js |
-| `groveFinish` | 18916 | Endless/Meta | Yes (data-action in index.html) | Medium | js/systems/endless-map.js |
-| `pickRandom` | 18925 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
-| `showVictory` | 18927 | Story/Overworld | No (internal) | Medium | js/systems/story-run-state.js / js/world/overworld_bridge.js |
-| `showDefeat` | 18991 | Story/Overworld | No (internal) | Medium | js/systems/story-run-state.js / js/world/overworld_bridge.js |
-| `flightRescuedNestCount` | 19023 | Nest | No (internal) | Medium | js/ui/nest-ui.js |
-| `showRunStats` | 19028 | Story/Overworld | No (internal) | Medium | js/systems/story-run-state.js / js/world/overworld_bridge.js |
-| `hideStoryCinematic` | 19053 | Story/Overworld | No (internal) | Medium | js/systems/story-run-state.js / js/world/overworld_bridge.js |
-| `startStoryCinematic` | 19058 | Story/Overworld | No (internal) | Medium | js/systems/story-run-state.js / js/world/overworld_bridge.js |
-| `getAudioCtx` | 19104 | Audio | No (internal) | Medium | js/audio/bgm-shared.js |
-| `primeAudioIfNeeded` | 19109 | Audio | Yes (explicit global/Avian.actions) | Medium | js/audio/bgm-shared.js |
-| `syncSoundButtonLabel` | 19115 | Audio | Yes (explicit global/Avian.actions) | Medium | js/audio/bgm-shared.js |
-| `syncSoundStateFromSettings` | 19124 | Audio | Yes (explicit global/Avian.actions) | Medium | js/audio/bgm-shared.js |
-| `toggleSound` | 19129 | Audio | Yes (data-action in index.html) | Medium | js/audio/bgm-shared.js |
-| `playTone` | 19145 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
-| `doScreenShake` | 19187 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
-| `resetBattleStats` | 19200 | Combat | No (internal) | High | js/systems/combat-controller.js / js/systems/ability-dispatcher.js |
-| `getBattleSummaryStats` | 19201 | Combat | No (internal) | High | js/systems/combat-controller.js / js/systems/ability-dispatcher.js |
-| `renderBattleSummary` | 19215 | Combat UI | No (internal) | Medium | js/ui/combat-hud.js / js/ui/combat-log.js |
-| `updateStageProgress` | 19229 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
-| `saveRunHistory` | 19345 | Story/Overworld | No (internal) | Medium | js/systems/story-run-state.js / js/world/overworld_bridge.js |
-| `renderRunHistory` | 19358 | Story/Overworld | No (internal) | Medium | js/systems/story-run-state.js / js/world/overworld_bridge.js |
-| `refAbilityEnergyCost` | 19398 | Combat | No (internal) | High | js/systems/combat-controller.js / js/systems/ability-dispatcher.js |
-| `refAbilityCodexType` | 19407 | Combat | No (internal) | High | js/systems/combat-controller.js / js/systems/ability-dispatcher.js |
-| `refAbilityPassesEnFilter` | 19413 | Combat | No (internal) | High | js/systems/combat-controller.js / js/systems/ability-dispatcher.js |
-| `buildRefFilterBarHtml` | 19423 | Combat UI | No (internal) | Medium | js/ui/combat-hud.js / js/ui/combat-log.js |
-| `wireRefFilterSelects` | 19455 | Combat UI | No (internal) | Medium | js/ui/combat-hud.js / js/ui/combat-log.js |
-| `openRefGuideModal` | 19486 | Combat UI | No (internal) | Medium | js/ui/combat-hud.js / js/ui/combat-log.js |
-| `closeRefGuideModal` | 19494 | Combat UI | Yes (data-action in index.html) | Medium | js/ui/combat-hud.js / js/ui/combat-log.js |
-| `toggleRefGuide` | 19502 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
-| `selectRefTab` | 19509 | Bird selection | Yes (explicit global/Avian.actions) | Medium | js/ui/ui.js |
-| `skillCard` | 19515 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
-| `refSkillScalingLabel` | 19534 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
-| `buildRefGuide` | 19541 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
-| `renderReferenceGuide` | 19737 | Combat UI | No (internal) | Medium | js/ui/combat-hud.js / js/ui/combat-log.js |
-| `checkRunUnlocks` | 19747 | Bird selection | No (internal) | Medium | js/ui/ui.js |
-| `showUnlockToast` | 19754 | Story/Overworld | No (internal) | Medium | js/systems/story-run-state.js / js/world/overworld_bridge.js |
-| `makeUtilityOffer` | 19771 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
-| `assignShopItems` | 19777 | Shop | Yes (explicit global/Avian.actions) | Medium | js/systems/shop-v2.js / js/ui/shop-ui.js |
-| `syncShopItemsToGlobal` | 19781 | Shop | No (internal) | Medium | js/systems/shop-v2.js / js/ui/shop-ui.js |
-| `showStorkShop` | 19791 | Shop | No (internal) | Medium | js/systems/shop-v2.js / js/ui/shop-ui.js |
-| `enterStorkShopScreen` | 19796 | Shop | No (internal) | Medium | js/systems/shop-v2.js / js/ui/shop-ui.js |
-| `shopMutationTierKey` | 19833 | Shop | No (internal) | Medium | js/systems/shop-v2.js / js/ui/shop-ui.js |
-| `ensureShopMutationTierOpenState` | 19839 | Shop | No (internal) | Medium | js/systems/shop-v2.js / js/ui/shop-ui.js |
-| `appendShopMutationTierSections` | 19844 | Shop | No (internal) | Medium | js/systems/shop-v2.js / js/ui/shop-ui.js |
-| `resolveShopItemCategory` | 19878 | Shop | No (internal) | Medium | js/systems/shop-v2.js / js/ui/shop-ui.js |
-| `shopGearCategoryTitle` | 19887 | Shop | No (internal) | Medium | js/systems/shop-v2.js / js/ui/shop-ui.js |
-| `shopItemMatchesCategory` | 19891 | Shop | No (internal) | Medium | js/systems/shop-v2.js / js/ui/shop-ui.js |
-| `getShopCategoryLogText` | 19904 | Shop | No (internal) | Medium | js/systems/shop-v2.js / js/ui/shop-ui.js |
-| `clearShopSelection` | 19918 | Shop | No (internal) | Medium | js/systems/shop-v2.js / js/ui/shop-ui.js |
-| `getShopItemBaseCost` | 19925 | Shop | No (internal) | Medium | js/systems/shop-v2.js / js/ui/shop-ui.js |
-| `getShopItemBuyCost` | 19931 | Shop | No (internal) | Medium | js/systems/shop-v2.js / js/ui/shop-ui.js |
-| `getShopSelectedBuyTotal` | 19935 | Shop | No (internal) | Medium | js/systems/shop-v2.js / js/ui/shop-ui.js |
-| `getShopMarginalBuyCost` | 19950 | Shop | No (internal) | Medium | js/systems/shop-v2.js / js/ui/shop-ui.js |
-| `getShopRemainingBudget` | 19958 | Shop | No (internal) | Medium | js/systems/shop-v2.js / js/ui/shop-ui.js |
-| `getShopSelectedSellTotal` | 19962 | Shop | No (internal) | Medium | js/systems/shop-v2.js / js/ui/shop-ui.js |
-| `syncShopDock` | 19971 | Shop | Yes (explicit global/Avian.actions) | Medium | js/systems/shop-v2.js / js/ui/shop-ui.js |
-| `updateShopBuyButtonState` | 19999 | Shop | No (internal) | Medium | js/systems/shop-v2.js / js/ui/shop-ui.js |
-| `updateShopSellButtonState` | 20009 | Shop | No (internal) | Medium | js/systems/shop-v2.js / js/ui/shop-ui.js |
-| `appendShopSectionHeading` | 20019 | Shop | No (internal) | Medium | js/systems/shop-v2.js / js/ui/shop-ui.js |
-| `buildShopBuyCard` | 20026 | Shop | No (internal) | Medium | js/systems/shop-v2.js / js/ui/shop-ui.js |
-| `setShopTab` | 20061 | Shop | Yes (explicit global/Avian.actions) | Medium | js/systems/shop-v2.js / js/ui/shop-ui.js |
-| `getEquipmentSellPrice` | 20110 | Equipment | No (internal) | Medium | js/systems/equipment*.js |
-| `getMutationSellPrice` | 20117 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
-| `renderShopSellItems` | 20124 | Shop | No (internal) | Medium | js/systems/shop-v2.js / js/ui/shop-ui.js |
-| `shopSellSelected` | 20170 | Shop | Yes (explicit global/Avian.actions) | Medium | js/systems/shop-v2.js / js/ui/shop-ui.js |
-| `shopSlotIsStarterLocked` | 20202 | Shop | No (internal) | Medium | js/systems/shop-v2.js / js/ui/shop-ui.js |
-| `renderShopEquipped` | 20206 | Shop | Yes (explicit global/Avian.actions) | Medium | js/systems/shop-v2.js / js/ui/shop-ui.js |
-| `shopUnequipSlot` | 20253 | Shop | Yes (explicit global/Avian.actions) | Medium | js/systems/shop-v2.js / js/ui/shop-ui.js |
-| `rollShopTier` | 20276 | Shop | No (internal) | Medium | js/systems/shop-v2.js / js/ui/shop-ui.js |
-| `pickUniqueRewardByTier` | 20281 | Rewards | No (internal) | Medium | js/systems/nest-rewards.js / js/ui/reward-screen.js |
-| `_findShopItemById` | 20291 | Shop | Yes (explicit global/Avian.actions) | Medium | js/systems/shop-v2.js / js/ui/shop-ui.js |
-| `generateShopItems` | 20311 | Shop | No (internal) | Medium | js/systems/shop-v2.js / js/ui/shop-ui.js |
-| `shopResetVisitState` | 20387 | Shop | No (internal) | Medium | js/systems/shop-v2.js / js/ui/shop-ui.js |
-| `shopLockVisitState` | 20397 | Shop | No (internal) | Medium | js/systems/shop-v2.js / js/ui/shop-ui.js |
-| `getShopRefreshCost` | 20401 | Shop | No (internal) | Medium | js/systems/shop-v2.js / js/ui/shop-ui.js |
-| `renderShopItems` | 20406 | Shop | No (internal) | Medium | js/systems/shop-v2.js / js/ui/shop-ui.js |
-| `purchaseShopItemAtIndex` | 20478 | Shop | No (internal) | Medium | js/systems/shop-v2.js / js/ui/shop-ui.js |
-| `shopBuySelected` | 20523 | Shop | No (internal) | Medium | js/systems/shop-v2.js / js/ui/shop-ui.js |
-| `shopRefresh` | 20578 | Shop | No (internal) | Medium | js/systems/shop-v2.js / js/ui/shop-ui.js |
-| `exitStorkShop` | 20593 | Shop | No (internal) | Medium | js/systems/shop-v2.js / js/ui/shop-ui.js |
-| `openAbandonModal` | 20640 | Combat UI | Yes (explicit global/Avian.actions) | Medium | js/ui/combat-hud.js / js/ui/combat-log.js |
-| `closeAbandonModal` | 20643 | Combat UI | Yes (explicit global/Avian.actions) | Medium | js/ui/combat-hud.js / js/ui/combat-log.js |
-| `confirmAbandon` | 20650 | Bootstrap/Orchestration | Yes (explicit global/Avian.actions) | Medium | js/core/game.js (retain) |
-| `unlockAllCodexEntries` | 20676 | Bird selection | No (internal) | Medium | js/ui/ui.js |
-| `isCreatorCodesEnabled` | 20726 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
-| `getDevCodeSwitches` | 20727 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
-| `isDevCodeEnabled` | 20730 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
-| `saveDevCodeSwitches` | 20731 | Save/load | No (internal) | High | js/systems/save-migrations.js |
-| `setDevCodeSwitch` | 20734 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
-| `getDevCodeCatalogRow` | 20740 | Story/Overworld | No (internal) | Medium | js/systems/story-run-state.js / js/world/overworld_bridge.js |
-| `applyBirdwatchingUnlock` | 20744 | Bird selection | Yes (explicit global/Avian.actions) | Medium | js/ui/ui.js |
-| `applyHeadingHomeLock` | 20750 | Bootstrap/Orchestration | Yes (explicit global/Avian.actions) | Medium | js/core/game.js (retain) |
-| `setGoldenGooseInfiniteState` | 20761 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
-| `toggleDevCode` | 20767 | Bootstrap/Orchestration | Yes (explicit global/Avian.actions) | Medium | js/core/game.js (retain) |
-| `refreshAfterDevCode` | 20772 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
-| `activateDevCode` | 20779 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
-| `deactivateDevCode` | 20853 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
-| `applyDevCodeSwitches` | 20887 | Bootstrap/Orchestration | Yes (explicit global/Avian.actions) | Medium | js/core/game.js (retain) |
-| `renderSuppliesCodeTools` | 20918 | Combat UI | No (internal) | Medium | js/ui/combat-hud.js / js/ui/combat-log.js |
-| `renderSuppliesActivityLog` | 20933 | Combat UI | Yes (explicit global/Avian.actions) | Medium | js/ui/combat-hud.js / js/ui/combat-log.js |
-| `setOwnedBirdTier` | 20939 | Rewards | No (internal) | Medium | js/systems/nest-rewards.js / js/ui/reward-screen.js |
-| `isKnownDevCodePrefix` | 20943 | Story/Overworld | No (internal) | Medium | js/systems/story-run-state.js / js/world/overworld_bridge.js |
-| `checkDevCode` | 20948 | Bootstrap/Orchestration | Yes (explicit global/Avian.actions) | Medium | js/core/game.js (retain) |
-| `getBgmApi` | 21005 | Audio | No (internal) | Medium | js/audio/bgm-shared.js |
-| `getBattleBgmAudio` | 21006 | Audio | No (internal) | Medium | js/audio/bgm-shared.js |
-| `getMenuPreviewBgmAudio` | 21007 | Audio | No (internal) | Medium | js/audio/bgm-shared.js |
-| `getBattleBgmTargetVolume` | 21008 | Audio | No (internal) | Medium | js/audio/bgm-shared.js |
-| `stopBattleBgmImmediate` | 21012 | Audio | No (internal) | Medium | js/audio/bgm-shared.js |
-| `beginBattleBgmFadeOut` | 21020 | Audio | No (internal) | Medium | js/audio/bgm-shared.js |
-| `beginBattleBgmFadeIn` | 21041 | Audio | No (internal) | Medium | js/audio/bgm-shared.js |
-| `tryStartBattleBgmIfNeeded` | 21061 | Audio | No (internal) | High | js/audio/bgm-shared.js |
-| `stopMenuPreviewBgmImmediate` | 21082 | Audio | No (internal) | Medium | js/audio/bgm-shared.js |
-| `isMusicMenuPreviewActive` | 21088 | Audio | No (internal) | Medium | js/audio/bgm-shared.js |
-| `isMusicMenuScreen` | 21092 | Audio | No (internal) | Medium | js/audio/bgm-shared.js |
-| `setAudioElTrack` | 21096 | Audio | No (internal) | Medium | js/audio/bgm-shared.js |
-| `resolvedMusicTrackIdForRole` | 21112 | Audio | No (internal) | Medium | js/audio/bgm-shared.js |
-| `syncMusicMenuNowPlaying` | 21119 | Story/Overworld | No (internal) | Medium | js/systems/story-run-state.js / js/world/overworld_bridge.js |
-| `syncMusicMenuAssignmentChips` | 21130 | Audio | No (internal) | Medium | js/audio/bgm-shared.js |
-| `syncMusicMenuControls` | 21150 | Audio | No (internal) | Medium | js/audio/bgm-shared.js |
-| `applyMusicPanelVolumeState` | 21167 | Audio | No (internal) | Medium | js/audio/bgm-shared.js |
-| `updateMusicPanelVolume` | 21189 | Audio | Yes (explicit global/Avian.actions) | Medium | js/audio/bgm-shared.js |
-| `updateMusicPanelMuted` | 21193 | Audio | Yes (explicit global/Avian.actions) | Medium | js/audio/bgm-shared.js |
-| `updateMusicRoleChoice` | 21198 | Audio | Yes (explicit global/Avian.actions) | Medium | js/audio/bgm-shared.js |
-| `stopMenuThemeForPreview` | 21218 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
-| `playMusicMenuPreview` | 21223 | Audio | Yes (explicit global/Avian.actions) | Medium | js/audio/bgm-shared.js |
-| `stopMusicMenuPreview` | 21247 | Audio | Yes (explicit global/Avian.actions) | Medium | js/audio/bgm-shared.js |
-| `openMusicMenu` | 21264 | Audio | Yes (explicit global/Avian.actions) | Medium | js/audio/bgm-shared.js |
-| `closeMusicMenu` | 21273 | Audio | Yes (explicit global/Avian.actions) | Medium | js/audio/bgm-shared.js |
-| `cancelThemeBgmFade` | 21282 | Audio | No (internal) | Medium | js/audio/bgm-shared.js |
-| `beginThemeBgmFadeOutForRunStart` | 21291 | Audio | No (internal) | Medium | js/audio/bgm-shared.js |
-| `getMusicSettings` | 21315 | Audio | No (internal) | Medium | js/audio/bgm-shared.js |
-| `saveMusicSettings` | 21329 | Save/load | No (internal) | High | js/systems/save-migrations.js |
-| `getThemeBgmAudio` | 21337 | Audio | No (internal) | Medium | js/audio/bgm-shared.js |
-| `getDukeBattleBgmAudio` | 21340 | Audio | No (internal) | Medium | js/audio/bgm-shared.js |
-| `cancelDukeBgmFade` | 21343 | Audio | No (internal) | Medium | js/audio/bgm-shared.js |
-| `getDukeBgmTargetVolume` | 21351 | Audio | No (internal) | Medium | js/audio/bgm-shared.js |
-| `primeDukeBattleBgmAudio` | 21356 | Audio | No (internal) | Medium | js/audio/bgm-shared.js |
-| `stopDukeBattleBgmImmediate` | 21362 | Audio | No (internal) | Medium | js/audio/bgm-shared.js |
-| `stopDukeBattleBgm` | 21369 | Audio | No (internal) | Medium | js/audio/bgm-shared.js |
-| `duckThemeBgmForBattle` | 21372 | Audio | No (internal) | Medium | js/audio/bgm-shared.js |
-| `beginDukeBattleBgmFadeIn` | 21379 | Audio | No (internal) | Medium | js/audio/bgm-shared.js |
-| `beginDukeBattleBgmFadeOut` | 21408 | Audio | No (internal) | Medium | js/audio/bgm-shared.js |
-| `isDukeStoryBossFight` | 21441 | Story/Overworld | No (internal) | Medium | js/systems/story-run-state.js / js/world/overworld_bridge.js |
-| `tryStartDukeBattleBgmIfNeeded` | 21450 | Audio | No (internal) | Medium | js/audio/bgm-shared.js |
-| `primeThemeBgmAudio` | 21471 | Audio | No (internal) | Medium | js/audio/bgm-shared.js |
-| `tryPlayThemeBgmForCurrentMenuScreen` | 21477 | Audio | No (internal) | Medium | js/audio/bgm-shared.js |
-| `applyDukeBattleBgmToAudioEl` | 21490 | Audio | No (internal) | Medium | js/audio/bgm-shared.js |
-| `applyThemeMusicToAudioEl` | 21498 | Audio | No (internal) | Medium | js/audio/bgm-shared.js |
-| `stopAllGameAudio` | 21523 | Audio | Yes (explicit global/Avian.actions) | Medium | js/audio/bgm-shared.js |
-| `syncThemeMusicButtonLabels` | 21536 | Audio | No (internal) | Medium | js/audio/bgm-shared.js |
-| `syncThemeBgmPlaybackForScreen` | 21549 | Audio | No (internal) | Medium | js/audio/bgm-shared.js |
-| `toggleThemeMusicMuted` | 21563 | Audio | Yes (explicit global/Avian.actions) | Medium | js/audio/bgm-shared.js |
-| `updateMusicSettingsFromControls` | 21580 | Audio | Yes (explicit global/Avian.actions) | Medium | js/audio/bgm-shared.js |
-| `wireThemeBgmAutoplayUnlock` | 21600 | Audio | No (internal) | Medium | js/audio/bgm-shared.js |
-| `detectPreferredUIMode` | 21638 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
-| `resolveUiMode` | 21644 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
-| `normalizeCombatCustomLayout` | 21668 | Utilities | No (internal) | Low | js/core/game-helpers.js |
-| `resetCombatCustomDraft` | 21689 | Combat | No (internal) | High | js/systems/combat-controller.js / js/systems/ability-dispatcher.js |
-| `getCombatCustomDraft` | 21692 | Combat | No (internal) | High | js/systems/combat-controller.js / js/systems/ability-dispatcher.js |
-| `normalizeCombatArrangement` | 21699 | Utilities | No (internal) | Low | js/core/game-helpers.js |
-| `normalizeCombatLayout` | 21705 | Utilities | No (internal) | Low | js/core/game-helpers.js |
-| `normalizeAccessibilitySettings` | 21716 | Utilities | No (internal) | Low | js/core/game-helpers.js |
-| `getAccessibilitySettings` | 21742 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
-| `bootstrapAccessibilityDefaults` | 21750 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
-| `wireUiAutoDetectResize` | 21774 | Combat UI | No (internal) | Medium | js/ui/combat-hud.js / js/ui/combat-log.js |
-| `getAudioVolumeMultipliers` | 21792 | Audio | No (internal) | Medium | js/audio/bgm-shared.js |
-| `selectSettingsTab` | 21800 | Bird selection | Yes (explicit global/Avian.actions) | Medium | js/ui/ui.js |
-| `applyUIStateToDOM` | 21814 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
-| `getAutoCombatDensityReduction` | 21825 | Combat | No (internal) | High | js/systems/combat-controller.js / js/systems/ability-dispatcher.js |
-| `applyEffectiveCombatScales` | 21832 | Enemy setup/AI | No (internal) | Medium | js/systems/enemy-roster-runtime.js / js/systems/combat-setup.js |
-| `applyCombatLayoutSettings` | 21851 | Combat | No (internal) | High | js/systems/combat-controller.js / js/systems/ability-dispatcher.js |
-| `clearCombatCustomPanelStyles` | 21855 | Combat | No (internal) | High | js/systems/combat-controller.js / js/systems/ability-dispatcher.js |
-| `applyCombatCustomPanels` | 21863 | Combat | No (internal) | High | js/systems/combat-controller.js / js/systems/ability-dispatcher.js |
-| `syncCombatCustomEditRow` | 21875 | Story/Overworld | No (internal) | Medium | js/systems/story-run-state.js / js/world/overworld_bridge.js |
-| `renderCombatCustomPanelEditor` | 21884 | Combat UI | No (internal) | Medium | js/ui/combat-hud.js / js/ui/combat-log.js |
-| `openCombatCustomLayoutModal` | 21938 | Combat UI | Yes (explicit global/Avian.actions) | Medium | js/ui/combat-hud.js / js/ui/combat-log.js |
-| `closeCombatCustomLayoutModal` | 21944 | Combat UI | Yes (explicit global/Avian.actions) | Medium | js/ui/combat-hud.js / js/ui/combat-log.js |
-| `saveCombatCustomLayoutFromModal` | 21949 | Save/load | Yes (explicit global/Avian.actions) | High | js/systems/save-migrations.js |
-| `resetCombatCustomLayoutDraft` | 21960 | Combat | Yes (explicit global/Avian.actions) | High | js/systems/combat-controller.js / js/systems/ability-dispatcher.js |
-| `toggleCombatCustomPanelVisible` | 21964 | Combat | Yes (explicit global/Avian.actions) | High | js/systems/combat-controller.js / js/systems/ability-dispatcher.js |
-| `moveCombatCustomPanel` | 21971 | Combat | Yes (explicit global/Avian.actions) | High | js/systems/combat-controller.js / js/systems/ability-dispatcher.js |
-| `applyCombatArrangement` | 21990 | Combat | No (internal) | High | js/systems/combat-controller.js / js/systems/ability-dispatcher.js |
-| `syncCombatLayoutLabels` | 22004 | Combat | No (internal) | High | js/systems/combat-controller.js / js/systems/ability-dispatcher.js |
-| `syncAudioSettingLabels` | 22014 | Audio | No (internal) | Medium | js/audio/bgm-shared.js |
-| `syncUiModeControls` | 22026 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
-| `applyAccessibilitySettings` | 22041 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
-| `openSettingsModal` | 22063 | Combat UI | Yes (data-action in index.html) | Medium | js/ui/combat-hud.js / js/ui/combat-log.js |
-| `closeSettingsModal` | 22115 | Combat UI | Yes (data-action in index.html) | Medium | js/ui/combat-hud.js / js/ui/combat-log.js |
-| `returnToWarRoomFromSettings` | 22119 | Story/Overworld | Yes (explicit global/Avian.actions) | High | js/systems/story-run-state.js / js/world/overworld_bridge.js |
-| `openAbandonFromSettings` | 22125 | Combat UI | Yes (explicit global/Avian.actions) | Medium | js/ui/combat-hud.js / js/ui/combat-log.js |
-| `goMainMenuFromSettings` | 22130 | Enemy setup/AI | Yes (explicit global/Avian.actions) | Medium | js/systems/enemy-roster-runtime.js / js/systems/combat-setup.js |
-| `resetCombatLayoutSettings` | 22141 | Combat | Yes (explicit global/Avian.actions) | High | js/systems/combat-controller.js / js/systems/ability-dispatcher.js |
-| `updateAccessibilitySettings` | 22153 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
-| `updateAudioSettingsFromControls` | 22199 | Audio | Yes (explicit global/Avian.actions) | Medium | js/audio/bgm-shared.js |
-| `updateMusicSettingsFromControls` | 22225 | Audio | Yes (explicit global/Avian.actions) | Medium | js/audio/bgm-shared.js |
+| `lockActionUI` | 8929 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
+| `canPlayerAct` | 8935 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
+| `syncCombatTurnFlags` | 8939 | Combat | No (internal) | High | js/systems/combat-controller.js / js/systems/ability-dispatcher.js |
+| `enqueueAction` | 8949 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
+| `runActionQueue` | 8955 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
+| `isActiveBattleContext` | 8996 | Combat | Yes (explicit global/Avian.actions) | High | js/systems/combat-controller.js / js/systems/ability-dispatcher.js |
+| `failsafeAdvance` | 9002 | Enemy setup/AI | No (internal) | Medium | js/systems/enemy-roster-runtime.js / js/systems/combat-setup.js |
+| `installLegacyErrorHUD` | 9051 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
+| `installErrorHUD` | 9202 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
+| `getAbilityDisplayTags` | 9231 | Combat | No (internal) | High | js/systems/combat-controller.js / js/systems/ability-dispatcher.js |
+| `abilityTypeChipLabel` | 9235 | Combat | No (internal) | High | js/systems/combat-controller.js / js/systems/ability-dispatcher.js |
+| `isPlayerAbilityUsable` | 9241 | Combat | No (internal) | High | js/systems/combat-controller.js / js/systems/ability-dispatcher.js |
+| `playerHasAffordableAbility` | 9252 | Combat | No (internal) | High | js/systems/combat-controller.js / js/systems/ability-dispatcher.js |
+| `canUseCombatItem` | 9261 | Combat | No (internal) | High | js/systems/combat-controller.js / js/systems/ability-dispatcher.js |
+| `useCombatItem` | 9270 | Combat | No (internal) | High | js/systems/combat-controller.js / js/systems/ability-dispatcher.js |
+| `getAbilityTemplateForUI` | 9302 | Combat | No (internal) | High | js/systems/combat-controller.js / js/systems/ability-dispatcher.js |
+| `getEffectiveAbilityBtnType` | 9367 | Combat | No (internal) | High | js/systems/combat-controller.js / js/systems/ability-dispatcher.js |
+| `estimateMultiplierFromSkillDescription` | 9381 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
+| `getEffectivePlayerAtkForDamagePreview` | 9408 | Combat | No (internal) | High | js/systems/combat-controller.js / js/systems/ability-dispatcher.js |
+| `getEffectivePlayerOffensiveAtkForPreview` | 9417 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
+| `getEffectivePlayerOffensiveMatkForPreview` | 9420 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
+| `getPackRowScaleStatRaw` | 9424 | Story/Overworld | No (internal) | Medium | js/systems/story-run-state.js / js/world/overworld_bridge.js |
+| `packRowScaleContribution` | 9437 | Story/Overworld | No (internal) | Medium | js/systems/story-run-state.js / js/world/overworld_bridge.js |
+| `registerStrikePreviewForBird` | 9446 | Bird selection | No (internal) | Medium | js/ui/ui.js |
+| `getStrikePreviewMultiplierForAbility` | 9461 | Combat | No (internal) | High | js/systems/combat-controller.js / js/systems/ability-dispatcher.js |
+| `getHybridPreviewSpec` | 9472 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
+| `estimateHybridSplitBands` | 9500 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
+| `estimateSkillDamageRange` | 9564 | Combat | No (internal) | High | js/systems/combat-controller.js / js/systems/ability-dispatcher.js |
+| `snowyOwlEyeStatPreviewLines` | 9777 | Story/Overworld | No (internal) | Medium | js/systems/story-run-state.js / js/world/overworld_bridge.js |
+| `snowyOwlGlideStatPreviewLines` | 9792 | Story/Overworld | No (internal) | Medium | js/systems/story-run-state.js / js/world/overworld_bridge.js |
+| `_previewPickArrayFromSource` | 9973 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
+| `buildGenericUtilityStatPreviewFromAction` | 9984 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
+| `getSkillStatPreviewLines` | 10046 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
+| `buildActionTooltipHTML` | 10063 | Combat UI | No (internal) | Medium | js/ui/combat-hud.js / js/ui/combat-log.js |
+| `showActionTooltip` | 10147 | Story/Overworld | No (internal) | Medium | js/systems/story-run-state.js / js/world/overworld_bridge.js |
+| `positionTooltip` | 10157 | Combat UI | No (internal) | Medium | js/ui/combat-hud.js / js/ui/combat-log.js |
+| `moveTooltip` | 10170 | Combat UI | No (internal) | Medium | js/ui/combat-hud.js / js/ui/combat-log.js |
+| `showTooltip` | 10206 | Story/Overworld | No (internal) | Medium | js/systems/story-run-state.js / js/world/overworld_bridge.js |
+| `hideTooltip` | 10217 | Combat UI | No (internal) | Medium | js/ui/combat-hud.js / js/ui/combat-log.js |
+| `getAbDesc` | 10225 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
+| `getAbilityCooldown` | 10237 | Story/Overworld | No (internal) | Medium | js/systems/story-run-state.js / js/world/overworld_bridge.js |
+| `getClassCooldownAdjustment` | 10241 | Story/Overworld | No (internal) | Medium | js/systems/story-run-state.js / js/world/overworld_bridge.js |
+| `isDirectHealingAbility` | 10263 | Combat | No (internal) | High | js/systems/combat-controller.js / js/systems/ability-dispatcher.js |
+| `getTemplateCooldown` | 10279 | Story/Overworld | No (internal) | Medium | js/systems/story-run-state.js / js/world/overworld_bridge.js |
+| `setAbilityCooldown` | 10294 | Story/Overworld | No (internal) | Medium | js/systems/story-run-state.js / js/world/overworld_bridge.js |
+| `reduceOtherSpellCooldownsOnCast` | 10299 | Story/Overworld | No (internal) | Medium | js/systems/story-run-state.js / js/world/overworld_bridge.js |
+| `normalizeAbilityCooldownsForPlayer` | 10320 | Story/Overworld | No (internal) | Medium | js/systems/story-run-state.js / js/world/overworld_bridge.js |
+| `getPlayerPiercePctForAbility` | 10331 | Combat | No (internal) | High | js/systems/combat-controller.js / js/systems/ability-dispatcher.js |
+| `getPlayerClassRole` | 10342 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
+| `getClassPerkTriggerForCurrentStage` | 10346 | Class/Passive | No (internal) | Medium | js/systems/class-perk-runtime.js |
+| `resumeAfterGrove` | 10360 | Endless/Meta | No (internal) | Medium | js/systems/endless-map.js |
+| `continueStageTransitionAfterRewards` | 10370 | Rewards | No (internal) | Medium | js/systems/nest-rewards.js / js/ui/reward-screen.js |
+| `openClassPerkChoice` | 10465 | Combat UI | No (internal) | Medium | js/ui/combat-hud.js / js/ui/combat-log.js |
+| `maybeOfferClassPerkChoice` | 10501 | Class/Passive | No (internal) | Medium | js/systems/class-perk-runtime.js |
+| `applyPassiveEvolutionChoice` | 10510 | Class/Passive | No (internal) | Medium | js/systems/class-perk-runtime.js |
+| `maybeOfferPassiveEvolutionChoice` | 10528 | Class/Passive | No (internal) | Medium | js/systems/class-perk-runtime.js |
+| `applyOpeningStrikePassiveOnTurnStart` | 10567 | Combat UI | No (internal) | Medium | js/ui/combat-hud.js / js/ui/combat-log.js |
+| `getCrowDefendCooldown` | 10573 | Story/Overworld | No (internal) | Medium | js/systems/story-run-state.js / js/world/overworld_bridge.js |
+| `logAspectMatchupFeedback` | 10579 | Bootstrap/Orchestration | Yes (explicit global/Avian.actions) | Medium | js/core/game.js (retain) |
+| `getAspectDefinition` | 10589 | Bootstrap/Orchestration | Yes (explicit global/Avian.actions) | Medium | js/core/game.js (retain) |
+| `formatAspectDisplayName` | 10596 | Utilities | Yes (explicit global/Avian.actions) | Low | js/core/game-helpers.js |
+| `buildAspectTooltipHTML` | 10604 | Combat UI | Yes (explicit global/Avian.actions) | Medium | js/ui/combat-hud.js / js/ui/combat-log.js |
+| `resolveAbilityAspectForDisplay` | 10619 | Combat | Yes (explicit global/Avian.actions) | High | js/systems/combat-controller.js / js/systems/ability-dispatcher.js |
+| `buildAspectChartSvg` | 10628 | Bootstrap/Orchestration | Yes (explicit global/Avian.actions) | Medium | js/core/game.js (retain) |
+| `logMsg` | 10675 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
+| `playAvatarAnim` | 10688 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
+| `spawnFloat` | 10704 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
+| `flashPanel` | 10744 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
+| `doAttack` | 10753 | Combat | Yes (explicit global/Avian.actions) | High | js/systems/combat-controller.js / js/systems/ability-dispatcher.js |
+| `doMiss` | 10806 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
+| `doShield` | 10815 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
+| `doSpell` | 10822 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
+| `doHeal` | 10823 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
+| `delay` | 10834 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
+| `roll` | 10842 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
+| `getPlayerBaseAcc` | 10855 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
+| `getWeaponPrecisionModifier` | 10868 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
+| `getSkillPrecisionModifier` | 10886 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
+| `getFinalAttackPrecision` | 10904 | Combat | No (internal) | High | js/systems/combat-controller.js / js/systems/ability-dispatcher.js |
+| `getPlayerAccMod` | 10948 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
+| `getPlayerEffectiveAcc` | 10957 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
+| `resolveActionPrecisionPct` | 10964 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
+| `clamp01` | 10974 | Utilities | No (internal) | Low | js/core/game-helpers.js |
+| `getPostBattleHealPct` | 10981 | Combat | No (internal) | High | js/systems/combat-controller.js / js/systems/ability-dispatcher.js |
+| `shouldApplyPostBattleHealNow` | 10985 | Story/Overworld | No (internal) | Medium | js/systems/story-run-state.js / js/world/overworld_bridge.js |
+| `applyPostBattleHealIfDue` | 10992 | Combat | No (internal) | High | js/systems/combat-controller.js / js/systems/ability-dispatcher.js |
+| `softenMainStatForCombat` | 11014 | Enemy setup/AI | No (internal) | Medium | js/systems/enemy-roster-runtime.js / js/systems/combat-setup.js |
+| `effectiveDodgePercentForCombat` | 11022 | Combat | No (internal) | High | js/systems/combat-controller.js / js/systems/ability-dispatcher.js |
+| `damageMitigationMultiplierFromGuard` | 11029 | Combat | No (internal) | High | js/systems/combat-controller.js / js/systems/ability-dispatcher.js |
+| `physicalGuardValueFromEnemyDef` | 11033 | Enemy setup/AI | No (internal) | Medium | js/systems/enemy-roster-runtime.js / js/systems/combat-setup.js |
+| `magicalGuardValueFromEnemyMdef` | 11040 | Enemy setup/AI | No (internal) | Medium | js/systems/enemy-roster-runtime.js / js/systems/combat-setup.js |
+| `physicalGuardValueFromPlayerDef` | 11047 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
+| `magicalGuardValueFromPlayerMdef` | 11053 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
+| `getPlayerArmorPenPct` | 11059 | Bootstrap/Orchestration | Yes (explicit global/Avian.actions) | Medium | js/core/game.js (retain) |
+| `getPlayerMagicPenPct` | 11065 | Bootstrap/Orchestration | Yes (explicit global/Avian.actions) | Medium | js/core/game.js (retain) |
+| `getPhysicalPierceFractionForDamage` | 11075 | Combat | No (internal) | High | js/systems/combat-controller.js / js/systems/ability-dispatcher.js |
+| `getMagicalPierceFractionForDamage` | 11085 | Combat | No (internal) | High | js/systems/combat-controller.js / js/systems/ability-dispatcher.js |
+| `getPhysicalPierceFractionForPreview` | 11098 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
+| `getMagicalPierceFractionForPreview` | 11110 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
+| `calcHitChance` | 11119 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
+| `calcDefenseMultiplier` | 11128 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
+| `applyGrowthStageTransition` | 11133 | Story/Overworld | No (internal) | Medium | js/systems/story-run-state.js / js/world/overworld_bridge.js |
+| `checkGrowthStage` | 11169 | Story/Overworld | No (internal) | Medium | js/systems/story-run-state.js / js/world/overworld_bridge.js |
+| `getEnemyBaseStats` | 11200 | Enemy setup/AI | No (internal) | Medium | js/systems/enemy-roster-runtime.js / js/systems/combat-setup.js |
+| `resolveEnemyTier` | 11223 | Rewards | No (internal) | Medium | js/systems/nest-rewards.js / js/ui/reward-screen.js |
+| `getEndlessEffectiveBattleNumber` | 11251 | Combat | No (internal) | High | js/systems/combat-controller.js / js/systems/ability-dispatcher.js |
+| `getEndlessDifficultyLevelOffset` | 11256 | Endless/Meta | No (internal) | Medium | js/systems/endless-map.js |
+| `getEndlessNormalFightTier` | 11281 | Rewards | No (internal) | Medium | js/systems/nest-rewards.js / js/ui/reward-screen.js |
+| `rollRandomAnyMutationTiers` | 11289 | Rewards | No (internal) | Medium | js/systems/nest-rewards.js / js/ui/reward-screen.js |
+| `getStoryMutationRewardTiers` | 11298 | Rewards | No (internal) | Medium | js/systems/nest-rewards.js / js/ui/reward-screen.js |
+| `resolveMutationRewardTiers` | 11322 | Rewards | No (internal) | Medium | js/systems/nest-rewards.js / js/ui/reward-screen.js |
+| `normalizeMutationDataTier` | 11345 | Rewards | No (internal) | Medium | js/systems/nest-rewards.js / js/ui/reward-screen.js |
+| `pickUniqueMutationReward` | 11350 | Rewards | No (internal) | Medium | js/systems/nest-rewards.js / js/ui/reward-screen.js |
+| `buildMutationRewardPool` | 11368 | Rewards | No (internal) | Medium | js/systems/nest-rewards.js / js/ui/reward-screen.js |
+| `computeEnemyEffectiveLevel` | 11376 | Enemy setup/AI | No (internal) | Medium | js/systems/enemy-roster-runtime.js / js/systems/combat-setup.js |
+| `getStoryEnemyPowerMultiplier` | 11390 | Story/Overworld | No (internal) | Medium | js/systems/story-run-state.js / js/world/overworld_bridge.js |
+| `combatResolveEnemyTier` | 11399 | Rewards | No (internal) | Medium | js/systems/nest-rewards.js / js/ui/reward-screen.js |
+| `buildScaledEnemy` | 11412 | Enemy setup/AI | No (internal) | Medium | js/systems/enemy-roster-runtime.js / js/systems/combat-setup.js |
+| `buildScaledBoss` | 11494 | Enemy setup/AI | No (internal) | Medium | js/systems/enemy-roster-runtime.js / js/systems/combat-setup.js |
+| `enemyScaleFactor` | 11499 | Enemy setup/AI | No (internal) | Medium | js/systems/enemy-roster-runtime.js / js/systems/combat-setup.js |
+| `getEffectiveDodge` | 11513 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
+| `chance` | 11534 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
+| `addStatus` | 11537 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
+| `setStatusMax` | 11538 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
+| `refreshStatus` | 11540 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
+| `getGuardedPhysReducPct` | 11542 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
+| `applyGuardedBuff` | 11550 | Bootstrap/Orchestration | Yes (explicit global/Avian.actions) | Medium | js/core/game.js (retain) |
+| `getTierBuffPct` | 11574 | Rewards | No (internal) | Medium | js/systems/nest-rewards.js / js/ui/reward-screen.js |
+| `resolveShieldAmountFromOpts` | 11580 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
+| `applyShieldHp` | 11592 | Bootstrap/Orchestration | Yes (explicit global/Avian.actions) | Medium | js/core/game.js (retain) |
+| `applyDamageThroughShield` | 11615 | Combat | Yes (explicit global/Avian.actions) | High | js/systems/combat-controller.js / js/systems/ability-dispatcher.js |
+| `notifyProtectionHitHooks` | 11668 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
+| `tickShieldHpStatus` | 11687 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
+| `tickGuardedStatus` | 11712 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
+| `playerIsGuarding` | 11718 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
+| `resolveGuardedReductionPct` | 11724 | Bootstrap/Orchestration | Yes (explicit global/Avian.actions) | Medium | js/core/game.js (retain) |
+| `refreshDerivedStatsAfterLoan` | 11737 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
+| `applySourceStatLoan` | 11747 | Bootstrap/Orchestration | Yes (explicit global/Avian.actions) | Medium | js/core/game.js (retain) |
+| `decaySourceStatLoans` | 11764 | Bootstrap/Orchestration | Yes (explicit global/Avian.actions) | Medium | js/core/game.js (retain) |
+| `applySourceStatLoanPct` | 11781 | Bootstrap/Orchestration | Yes (explicit global/Avian.actions) | Medium | js/core/game.js (retain) |
+| `clamp` | 11792 | Utilities | No (internal) | Low | js/core/game-helpers.js |
+| `clampSkipChance` | 11793 | Utilities | No (internal) | Low | js/core/game-helpers.js |
+| `getWeakenStacks` | 11798 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
+| `getWeakenDamageMult` | 11805 | Combat | No (internal) | High | js/systems/combat-controller.js / js/systems/ability-dispatcher.js |
+| `getWeakenDodgePenalty` | 11810 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
+| `applyWeakenStack` | 11814 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
+| `getEffectiveEnemyDodgeForPlayerHit` | 11824 | Enemy setup/AI | No (internal) | Medium | js/systems/enemy-roster-runtime.js / js/systems/combat-setup.js |
+| `scaleHealForBleed` | 11833 | Enemy setup/AI | No (internal) | Medium | js/systems/enemy-roster-runtime.js / js/systems/combat-setup.js |
+| `normalizeBurningTurns` | 11846 | Utilities | No (internal) | Low | js/core/game-helpers.js |
+| `enemyHasBurning` | 11852 | Enemy setup/AI | No (internal) | Medium | js/systems/enemy-roster-runtime.js / js/systems/combat-setup.js |
+| `playerHasBurning` | 11859 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
+| `applyChilledStacksToTarget` | 11866 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
+| `applyChilledStacksToEnemy` | 11891 | Enemy setup/AI | No (internal) | Medium | js/systems/enemy-roster-runtime.js / js/systems/combat-setup.js |
+| `applyPhysicalStackAilment` | 11895 | Enemy setup/AI | No (internal) | Medium | js/systems/enemy-roster-runtime.js / js/systems/combat-setup.js |
+| `applyPhysicalResolvedState` | 11927 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
+| `rollStunChance` | 11963 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
+| `applyEnemySlow` | 11964 | Story/Overworld | No (internal) | Medium | js/systems/story-run-state.js / js/world/overworld_bridge.js |
+| `applyPendingStrikeBuff` | 11987 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
+| `applyPlayerTimedBuff` | 12003 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
+| `promotePendingStrikeBuffToActive` | 12016 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
+| `applyPlayerSlow` | 12029 | Story/Overworld | No (internal) | Medium | js/systems/story-run-state.js / js/world/overworld_bridge.js |
+| `refreshEnemyStrikerDodgeMark` | 12043 | Enemy setup/AI | No (internal) | Medium | js/systems/enemy-roster-runtime.js / js/systems/combat-setup.js |
+| `getAbilityLifestealPct` | 12055 | Combat | No (internal) | High | js/systems/combat-controller.js / js/systems/ability-dispatcher.js |
+| `resolveAbilityCombatRow` | 12073 | Story/Overworld | No (internal) | Medium | js/systems/story-run-state.js / js/world/overworld_bridge.js |
+| `detectEquipmentDamageBonus` | 12084 | Equipment | No (internal) | Medium | js/systems/equipment*.js |
+| `computeMasterOutgoingDamage` | 12092 | Combat | Yes (explicit global/Avian.actions) | High | js/systems/combat-controller.js / js/systems/ability-dispatcher.js |
+| `computeOutgoingDamageBase` | 12188 | Combat | No (internal) | High | js/systems/combat-controller.js / js/systems/ability-dispatcher.js |
+| `collectDispatcherConditionalBonusFractions` | 12237 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
+| `collectOutgoingDamageBonusFractions` | 12267 | Combat | No (internal) | High | js/systems/combat-controller.js / js/systems/ability-dispatcher.js |
+| `applyLifestealFromDamage` | 12383 | Combat | No (internal) | High | js/systems/combat-controller.js / js/systems/ability-dispatcher.js |
+| `getEnemyAbilityAuthoredEnCost` | 12394 | Enemy setup/AI | No (internal) | Medium | js/systems/enemy-roster-runtime.js / js/systems/combat-setup.js |
+| `computeEntityAbilityRawDamage` | 12400 | Combat | No (internal) | High | js/systems/combat-controller.js / js/systems/ability-dispatcher.js |
+| `applyCurvedMitigationToPlayer` | 12460 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
+| `computePlayerCritDamageAdd` | 12486 | Combat | No (internal) | High | js/systems/combat-controller.js / js/systems/ability-dispatcher.js |
+| `dealDamage` | 12528 | Combat | No (internal) | High | js/systems/combat-controller.js / js/systems/ability-dispatcher.js |
+| `pdmg` | 12926 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
+| `countEnemyCombatDebuffCategories` | 12954 | Enemy setup/AI | No (internal) | Medium | js/systems/enemy-roster-runtime.js / js/systems/combat-setup.js |
+| `countAilmentCategoriesOnEnemy` | 12973 | Enemy setup/AI | No (internal) | Medium | js/systems/enemy-roster-runtime.js / js/systems/combat-setup.js |
+| `enemyHasAfflictionForCardBonuses` | 12993 | Enemy setup/AI | No (internal) | Medium | js/systems/enemy-roster-runtime.js / js/systems/combat-setup.js |
+| `selfDodgeBuffActive` | 12996 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
+| `computeSecondaryStatFlatForPhysical` | 13000 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
+| `applyConditionalPhysicalDamageMultipliers` | 13013 | Combat | No (internal) | High | js/systems/combat-controller.js / js/systems/ability-dispatcher.js |
+| `pdmgWithAlternateScaling` | 13032 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
+| `getAbilityDamageScalingHintForUI` | 13043 | Combat | No (internal) | High | js/systems/combat-controller.js / js/systems/ability-dispatcher.js |
+| `calcEnemyAbilityDamage` | 13049 | Enemy setup/AI | No (internal) | Medium | js/systems/enemy-roster-runtime.js / js/systems/combat-setup.js |
+| `applyBossBurstBuffer` | 13058 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
+| `edmg` | 13069 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
+| `rollEnemyCritDamage` | 13085 | Enemy setup/AI | No (internal) | Medium | js/systems/enemy-roster-runtime.js / js/systems/combat-setup.js |
+| `getPlayerMissChance` | 13099 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
+| `getPlayerHitPercentForAttack` | 13142 | Combat | No (internal) | High | js/systems/combat-controller.js / js/systems/ability-dispatcher.js |
+| `getPlayerAccuracy` | 13160 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
+| `resolvePlayerAttackHit` | 13170 | Combat | No (internal) | High | js/systems/combat-controller.js / js/systems/ability-dispatcher.js |
+| `playerAttackMisses` | 13188 | Combat | No (internal) | High | js/systems/combat-controller.js / js/systems/ability-dispatcher.js |
+| `doPlayerAttackMiss` | 13191 | Combat | No (internal) | High | js/systems/combat-controller.js / js/systems/ability-dispatcher.js |
+| `getPlayerDmgMult` | 13201 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
+| `getAilChance` | 13207 | Enemy setup/AI | No (internal) | Medium | js/systems/enemy-roster-runtime.js / js/systems/combat-setup.js |
+| `tryApplyAilment` | 13230 | Enemy setup/AI | No (internal) | Medium | js/systems/enemy-roster-runtime.js / js/systems/combat-setup.js |
+| `getDelayedDmgBoostPct` | 13248 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
+| `applyDelayedDamage` | 13255 | Combat | No (internal) | High | js/systems/combat-controller.js / js/systems/ability-dispatcher.js |
+| `tryMutationOnHitAilments` | 13283 | Enemy setup/AI | No (internal) | Medium | js/systems/enemy-roster-runtime.js / js/systems/combat-setup.js |
+| `notifyAilmentApplied` | 13302 | Enemy setup/AI | No (internal) | Medium | js/systems/enemy-roster-runtime.js / js/systems/combat-setup.js |
+| `applyAilment` | 13316 | Enemy setup/AI | No (internal) | Medium | js/systems/enemy-roster-runtime.js / js/systems/combat-setup.js |
+| `getPlayerCritChance` | 13575 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
+| `getPlayerHitBonus` | 13608 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
+| `tickDelayedForTarget` | 13620 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
+| `tickStatuses` | 13637 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
+| `resolveAbilityAliasSourceId` | 13683 | Combat | No (internal) | High | js/systems/combat-controller.js / js/systems/ability-dispatcher.js |
+| `registerAbilityAlias` | 13689 | Combat | No (internal) | High | js/systems/combat-controller.js / js/systems/ability-dispatcher.js |
+| `registerStrikePreviewForBird` | 13690 | Bird selection | No (internal) | Medium | js/ui/ui.js |
+| `ensureStarterKitEnergySmoothing` | 13693 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
+| `checkBlackbirdOmenChorusAfterAbility` | 13696 | Combat | No (internal) | High | js/systems/combat-controller.js / js/systems/ability-dispatcher.js |
+| `playerAction` | 13709 | Bootstrap/Orchestration | Yes (explicit global/Avian.actions) | Medium | js/core/game.js (retain) |
+| `startPlayerTurn` | 13962 | Combat | No (internal) | High | js/systems/combat-controller.js / js/systems/ability-dispatcher.js |
+| `syncEnemyEnergyForBattleDisplay` | 14058 | Enemy setup/AI | No (internal) | Medium | js/systems/enemy-roster-runtime.js / js/systems/combat-setup.js |
+| `startEnemyTurn` | 14065 | Enemy setup/AI | No (internal) | High | js/systems/enemy-roster-runtime.js / js/systems/combat-setup.js |
+| `isSpellAbilityId` | 14083 | Combat | No (internal) | High | js/systems/combat-controller.js / js/systems/ability-dispatcher.js |
+| `isMultiHitAbility` | 14088 | Combat | No (internal) | High | js/systems/combat-controller.js / js/systems/ability-dispatcher.js |
+| `getAbilityAuthoredEnergyCost` | 14100 | Combat | No (internal) | High | js/systems/combat-controller.js / js/systems/ability-dispatcher.js |
+| `getAbilityAttackWeight` | 14130 | Combat | No (internal) | High | js/systems/combat-controller.js / js/systems/ability-dispatcher.js |
+| `getAbilityEnergyCost` | 14138 | Combat | No (internal) | High | js/systems/combat-controller.js / js/systems/ability-dispatcher.js |
+| `getEnergyCost` | 14176 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
+| `syncAbilityEnergyCost` | 14180 | Combat | No (internal) | High | js/systems/combat-controller.js / js/systems/ability-dispatcher.js |
+| `canUseAbility` | 14184 | Combat | No (internal) | High | js/systems/combat-controller.js / js/systems/ability-dispatcher.js |
+| `spendEnergy` | 14199 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
+| `enforceAbilityCosts` | 14211 | Combat | No (internal) | High | js/systems/combat-controller.js / js/systems/ability-dispatcher.js |
+| `gainEnergy` | 14219 | Enemy setup/AI | No (internal) | Medium | js/systems/enemy-roster-runtime.js / js/systems/combat-setup.js |
+| `spellMissChance` | 14239 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
+| `spellMisses` | 14247 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
+| `summonHitLands` | 14252 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
+| `spellAilmentRoll` | 14256 | Enemy setup/AI | No (internal) | Medium | js/systems/enemy-roster-runtime.js / js/systems/combat-setup.js |
+| `matk` | 14264 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
+| `tickTimedBuffsAfterEnemyPhase` | 14511 | Enemy setup/AI | No (internal) | Medium | js/systems/enemy-roster-runtime.js / js/systems/combat-setup.js |
+| `endPlayerTurn` | 14694 | Combat | No (internal) | High | js/systems/combat-controller.js / js/systems/ability-dispatcher.js |
+| `getEnemyActionEnergyCost` | 14748 | Enemy setup/AI | No (internal) | Medium | js/systems/enemy-roster-runtime.js / js/systems/combat-setup.js |
+| `getAIPersonalityProfile` | 14775 | Enemy setup/AI | No (internal) | Medium | js/systems/enemy-roster-runtime.js / js/systems/combat-setup.js |
+| `getEnemyAIMemory` | 14784 | Enemy setup/AI | No (internal) | Medium | js/systems/enemy-roster-runtime.js / js/systems/combat-setup.js |
+| `classifyKitAbilityForEnemyAI` | 14791 | Enemy setup/AI | No (internal) | Medium | js/systems/enemy-roster-runtime.js / js/systems/combat-setup.js |
+| `enemyKitOffersSetupDebuffs` | 14806 | Enemy setup/AI | No (internal) | Medium | js/systems/enemy-roster-runtime.js / js/systems/combat-setup.js |
+| `getEnemyMode` | 14812 | Enemy setup/AI | No (internal) | Medium | js/systems/enemy-roster-runtime.js / js/systems/combat-setup.js |
+| `classifyEnemyActionCategory` | 14821 | Enemy setup/AI | No (internal) | Medium | js/systems/enemy-roster-runtime.js / js/systems/combat-setup.js |
+| `buildEnemyActionPool` | 14835 | Enemy setup/AI | No (internal) | Medium | js/systems/enemy-roster-runtime.js / js/systems/combat-setup.js |
+| `projectedEnemyActionDamage` | 14880 | Enemy setup/AI | No (internal) | Medium | js/systems/enemy-roster-runtime.js / js/systems/combat-setup.js |
+| `canEnemyProjectLethal` | 14923 | Enemy setup/AI | No (internal) | Medium | js/systems/enemy-roster-runtime.js / js/systems/combat-setup.js |
+| `getBossIntentCycle` | 14947 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
+| `getEnemyArchetype` | 14952 | Enemy setup/AI | No (internal) | Medium | js/systems/enemy-roster-runtime.js / js/systems/combat-setup.js |
+| `getArchetypeIntentWeights` | 14963 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
+| `getArchetypePriorityOrder` | 14966 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
+| `getArchetypeCategoryBonus` | 14974 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
+| `selectEnemyIntent` | 14981 | Enemy setup/AI | No (internal) | Medium | js/systems/enemy-roster-runtime.js / js/systems/combat-setup.js |
+| `filterEnemyActionsByIntent` | 15017 | Enemy setup/AI | No (internal) | Medium | js/systems/enemy-roster-runtime.js / js/systems/combat-setup.js |
+| `getEnemyEnergySpendCap` | 15027 | Enemy setup/AI | No (internal) | Medium | js/systems/enemy-roster-runtime.js / js/systems/combat-setup.js |
+| `getEnemyOpeningBias` | 15040 | Combat UI | No (internal) | Medium | js/ui/combat-hud.js / js/ui/combat-log.js |
+| `getEnemyActionComboBonus` | 15050 | Enemy setup/AI | No (internal) | Medium | js/systems/enemy-roster-runtime.js / js/systems/combat-setup.js |
+| `enemyHpPct` | 15063 | Enemy setup/AI | No (internal) | Medium | js/systems/enemy-roster-runtime.js / js/systems/combat-setup.js |
+| `playerHpPct` | 15064 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
+| `mapAiStyleToType` | 15065 | Enemy setup/AI | No (internal) | Medium | js/systems/enemy-roster-runtime.js / js/systems/combat-setup.js |
+| `planEnemyAction` | 15073 | Enemy setup/AI | No (internal) | Medium | js/systems/enemy-roster-runtime.js / js/systems/combat-setup.js |
+| `isBossEnrageAllowed` | 15088 | Story/Overworld | No (internal) | Medium | js/systems/story-run-state.js / js/world/overworld_bridge.js |
+| `dukeNightfall` | 15089 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
+| `dukeRiverGrip` | 15095 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
+| `dukeTrackDecree` | 15101 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
+| `dukeApplyDecreePunish` | 15106 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
+| `dukeRoyalDecree` | 15113 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
+| `dukeOwlsVerdict` | 15118 | Story/Overworld | No (internal) | Medium | js/systems/story-run-state.js / js/world/overworld_bridge.js |
+| `dukeSummonCourt` | 15124 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
+| `dukeTurnAI` | 15134 | Enemy setup/AI | No (internal) | High | js/systems/enemy-roster-runtime.js / js/systems/combat-setup.js |
+| `enemyKitAbilityIsHardCC` | 15185 | Enemy setup/AI | No (internal) | Medium | js/systems/enemy-roster-runtime.js / js/systems/combat-setup.js |
+| `rollEnemyCombatRowAilment` | 15193 | Story/Overworld | No (internal) | Medium | js/systems/story-run-state.js / js/world/overworld_bridge.js |
+| `refundEnemyActionEnergy` | 15229 | Enemy setup/AI | No (internal) | Medium | js/systems/enemy-roster-runtime.js / js/systems/combat-setup.js |
+| `applyEnemyAttackRiders` | 15236 | Enemy setup/AI | No (internal) | Medium | js/systems/enemy-roster-runtime.js / js/systems/combat-setup.js |
+| `executeEnemyKitTemplateAbility` | 15251 | Enemy setup/AI | No (internal) | Medium | js/systems/enemy-roster-runtime.js / js/systems/combat-setup.js |
+| `enemyTurn` | 15375 | Enemy setup/AI | No (internal) | High | js/systems/enemy-roster-runtime.js / js/systems/combat-setup.js |
+| `afterEnemyTurn` | 15512 | Enemy setup/AI | No (internal) | High | js/systems/enemy-roster-runtime.js / js/systems/combat-setup.js |
+| `showBattleCaption` | 15589 | Story/Overworld | No (internal) | Medium | js/systems/story-run-state.js / js/world/overworld_bridge.js |
+| `checkDeath` | 15600 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
+| `isGreyShopStage` | 15628 | Shop | No (internal) | Medium | js/systems/shop-v2.js / js/ui/shop-ui.js |
+| `isShopDueAfterBattle` | 15638 | Shop | No (internal) | Medium | js/systems/shop-v2.js / js/ui/shop-ui.js |
+| `getBattleStatsSafe` | 15649 | Combat | No (internal) | High | js/systems/combat-controller.js / js/systems/ability-dispatcher.js |
+| `postCombat` | 15658 | Combat | No (internal) | High | js/systems/combat-controller.js / js/systems/ability-dispatcher.js |
+| `rollTier` | 15832 | Rewards | No (internal) | Medium | js/systems/nest-rewards.js / js/ui/reward-screen.js |
+| `isMutationReward` | 15841 | Rewards | No (internal) | Medium | js/systems/nest-rewards.js / js/ui/reward-screen.js |
+| `isEquipmentReward` | 15845 | Rewards | No (internal) | Medium | js/systems/nest-rewards.js / js/ui/reward-screen.js |
+| `applySingleReward` | 15849 | Rewards | No (internal) | Medium | js/systems/nest-rewards.js / js/ui/reward-screen.js |
+| `finishRewardScreenFlow` | 15892 | Rewards | No (internal) | Medium | js/systems/nest-rewards.js / js/ui/reward-screen.js |
+| `grantRewardPool` | 15946 | Rewards | No (internal) | Medium | js/systems/nest-rewards.js / js/ui/reward-screen.js |
+| `drainPendingRewardQueue` | 15961 | Rewards | No (internal) | Medium | js/systems/nest-rewards.js / js/ui/reward-screen.js |
+| `buildNestRewardCardHtml` | 15968 | Build Nest | No (internal) | Medium | js/world/map-forge.js (existing) / js/ui/build-nest.js |
+| `spawnNestShakeSparks` | 15991 | Nest | No (internal) | Medium | js/ui/nest-ui.js |
+| `wireNestRewardTrayTooltips` | 16019 | Nest | No (internal) | Medium | js/ui/nest-ui.js |
+| `renderNestRewardCollectedTray` | 16038 | Nest | No (internal) | Medium | js/ui/nest-ui.js |
+| `finishNestRewardReveal` | 16058 | Nest | No (internal) | Medium | js/ui/nest-ui.js |
+| `revealNestDropsStaggered` | 16081 | Nest | No (internal) | Medium | js/ui/nest-ui.js |
+| `revealAllNestDrops` | 16142 | Nest | No (internal) | Medium | js/ui/nest-ui.js |
+| `showStoryEquipmentPick` | 16146 | Story/Overworld | No (internal) | Medium | js/systems/story-run-state.js / js/world/overworld_bridge.js |
+| `handleNestShake` | 16197 | Nest | Yes (explicit global/Avian.actions) | Medium | js/ui/nest-ui.js |
+| `showRewardScreen` | 16224 | Rewards | No (internal) | Medium | js/systems/nest-rewards.js / js/ui/reward-screen.js |
+| `confirmReward` | 16317 | Rewards | Yes (data-action in index.html) | Medium | js/systems/nest-rewards.js / js/ui/reward-screen.js |
+| `applyUpgradeWithMaxHpHealing` | 16415 | Rewards | No (internal) | Medium | js/systems/nest-rewards.js / js/ui/reward-screen.js |
+| `showGoldReplaceUI` | 16435 | Story/Overworld | No (internal) | Medium | js/systems/story-run-state.js / js/world/overworld_bridge.js |
+| `generateNormalRewards` | 16464 | Rewards | No (internal) | Medium | js/systems/nest-rewards.js / js/ui/reward-screen.js |
+| `generateBossRewards` | 16468 | Rewards | No (internal) | Medium | js/systems/nest-rewards.js / js/ui/reward-screen.js |
+| `rollWeighted` | 16472 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
+| `getGoldCardCount` | 16480 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
+| `getGoldCardLimit` | 16481 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
+| `applyLevelUpBaseHealthGrowth` | 16491 | Story/Overworld | No (internal) | Medium | js/systems/story-run-state.js / js/world/overworld_bridge.js |
+| `levelUpChoiceLabel` | 16514 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
+| `applyLevelUpVitalityGain` | 16521 | Enemy setup/AI | No (internal) | Medium | js/systems/enemy-roster-runtime.js / js/systems/combat-setup.js |
+| `applyLevelUpAgilityGain` | 16551 | Enemy setup/AI | No (internal) | Medium | js/systems/enemy-roster-runtime.js / js/systems/combat-setup.js |
+| `isMainAttackAbility` | 16579 | Enemy setup/AI | No (internal) | Medium | js/systems/enemy-roster-runtime.js / js/systems/combat-setup.js |
+| `getMainAttackAutoLevel` | 16590 | Enemy setup/AI | No (internal) | Medium | js/systems/enemy-roster-runtime.js / js/systems/combat-setup.js |
+| `applyMainAttackAutoLevel` | 16597 | Enemy setup/AI | No (internal) | Medium | js/systems/enemy-roster-runtime.js / js/systems/combat-setup.js |
+| `rollLuFeatherPanelOptions` | 16621 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
+| `luFeatherDraftTotal` | 16630 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
+| `luFeathersUnallocated` | 16634 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
+| `captureLuStatBaseline` | 16638 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
+| `simulateLuDraftStats` | 16655 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
+| `formatLuPreviewDelta` | 16696 | Utilities | No (internal) | Low | js/core/game-helpers.js |
+| `renderLuFeatherIcons` | 16703 | Combat UI | No (internal) | Medium | js/ui/combat-hud.js / js/ui/combat-log.js |
+| `renderLuFeatherStatline` | 16711 | Combat UI | No (internal) | Medium | js/ui/combat-hud.js / js/ui/combat-log.js |
+| `renderLuStatPreview` | 16728 | Combat UI | No (internal) | Medium | js/ui/combat-hud.js / js/ui/combat-log.js |
+| `refreshLuFeatherPanelUI` | 16761 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
+| `buildFeatherStatPanel` | 16812 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
+| `getLevelUpStatEffectDesc` | 16865 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
+| `getEquippedWeaponAvgDamage` | 16882 | Combat | No (internal) | High | js/systems/combat-controller.js / js/systems/ability-dispatcher.js |
+| `getOffencePctPerStat` | 16903 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
+| `estimateMitigationPct` | 16908 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
+| `estimateWeaponSkillDamagePerStat` | 16914 | Combat | No (internal) | High | js/systems/combat-controller.js / js/systems/ability-dispatcher.js |
+| `getLevelUpPerPointBreakdown` | 16920 | Story/Overworld | No (internal) | Medium | js/systems/story-run-state.js / js/world/overworld_bridge.js |
+| `getLevelUpCombatImpactLine` | 16994 | Combat | No (internal) | High | js/systems/combat-controller.js / js/systems/ability-dispatcher.js |
+| `getLevelUpGlossaryBlurb` | 16999 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
+| `luStatKeyForOption` | 17008 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
+| `getLuFeatherStatValue` | 17015 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
+| `buildLevelUpStatTooltipHtml` | 17021 | Combat UI | No (internal) | Medium | js/ui/combat-hud.js / js/ui/combat-log.js |
+| `wireLevelUpTooltips` | 17066 | Combat UI | No (internal) | Medium | js/ui/combat-hud.js / js/ui/combat-log.js |
+| `resetLuFeatherDraft` | 17094 | Bootstrap/Orchestration | Yes (explicit global/Avian.actions) | Medium | js/core/game.js (retain) |
+| `ensureMainAttackAndLoadoutRules` | 17101 | Save/load | No (internal) | High | js/systems/save-migrations.js |
+| `setLevelUpPanelTitle` | 17173 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
+| `configureLevelUpConfirm` | 17177 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
+| `configureLevelUpSecondary` | 17184 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
+| `resetLevelUpFlowState` | 17191 | Story/Overworld | No (internal) | Medium | js/systems/story-run-state.js / js/world/overworld_bridge.js |
+| `showLevelUpScreen` | 17196 | Story/Overworld | No (internal) | Medium | js/systems/story-run-state.js / js/world/overworld_bridge.js |
+| `showLUPanel` | 17222 | Story/Overworld | No (internal) | Medium | js/systems/story-run-state.js / js/world/overworld_bridge.js |
+| `countLevelAilments` | 17229 | Enemy setup/AI | No (internal) | Medium | js/systems/enemy-roster-runtime.js / js/systems/combat-setup.js |
+| `ailmentSlotsForLevel` | 17232 | Enemy setup/AI | No (internal) | Medium | js/systems/enemy-roster-runtime.js / js/systems/combat-setup.js |
+| `deriveAbilityAilments` | 17236 | Enemy setup/AI | No (internal) | Medium | js/systems/enemy-roster-runtime.js / js/systems/combat-setup.js |
+| `openAbilityModificationChoice` | 17257 | Combat UI | No (internal) | Medium | js/ui/combat-hud.js / js/ui/combat-log.js |
+| `closeAbilityModModal` | 17283 | Combat UI | Yes (data-action in index.html) | Medium | js/ui/combat-hud.js / js/ui/combat-log.js |
+| `refreshPlayerAbilityAilments` | 17291 | Enemy setup/AI | No (internal) | Medium | js/systems/enemy-roster-runtime.js / js/systems/combat-setup.js |
+| `confirmSkillUpgrade` | 17298 | Rewards | Yes (data-action in index.html) | Medium | js/systems/nest-rewards.js / js/ui/reward-screen.js |
+| `onExitLevelUpRequested` | 17341 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
+| `afterLevelUp` | 17365 | Bootstrap/Orchestration | Yes (data-action in index.html) | Medium | js/core/game.js (retain) |
+| `advanceStage` | 17376 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
+| `isBossStage` | 17399 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
+| `rollGroveMutationTier` | 17406 | Rewards | No (internal) | Medium | js/systems/nest-rewards.js / js/ui/reward-screen.js |
+| `grantGroveGearReward` | 17416 | Rewards | No (internal) | Medium | js/systems/nest-rewards.js / js/ui/reward-screen.js |
+| `applyGroveGearReward` | 17422 | Rewards | No (internal) | Medium | js/systems/nest-rewards.js / js/ui/reward-screen.js |
+| `showGroveRewardCard` | 17441 | Rewards | No (internal) | Medium | js/systems/nest-rewards.js / js/ui/reward-screen.js |
+| `grantGroveNestReward` | 17455 | Nest | No (internal) | Medium | js/ui/nest-ui.js |
+| `startGroveAmbushBattle` | 17459 | Combat | No (internal) | High | js/systems/combat-controller.js / js/systems/ability-dispatcher.js |
+| `showGroveEvent` | 17508 | Story/Overworld | No (internal) | Medium | js/systems/story-run-state.js / js/world/overworld_bridge.js |
+| `enterGrove` | 17546 | Endless/Meta | No (internal) | Medium | js/systems/endless-map.js |
+| `resolveGrove` | 17559 | Endless/Meta | No (internal) | Medium | js/systems/endless-map.js |
+| `groveFinish` | 17672 | Endless/Meta | Yes (data-action in index.html) | Medium | js/systems/endless-map.js |
+| `pickRandom` | 17681 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
+| `showVictory` | 17683 | Story/Overworld | No (internal) | Medium | js/systems/story-run-state.js / js/world/overworld_bridge.js |
+| `showDefeat` | 17747 | Story/Overworld | No (internal) | Medium | js/systems/story-run-state.js / js/world/overworld_bridge.js |
+| `flightRescuedNestCount` | 17779 | Nest | No (internal) | Medium | js/ui/nest-ui.js |
+| `showRunStats` | 17784 | Story/Overworld | No (internal) | Medium | js/systems/story-run-state.js / js/world/overworld_bridge.js |
+| `hideStoryCinematic` | 17809 | Story/Overworld | No (internal) | Medium | js/systems/story-run-state.js / js/world/overworld_bridge.js |
+| `startStoryCinematic` | 17814 | Story/Overworld | No (internal) | Medium | js/systems/story-run-state.js / js/world/overworld_bridge.js |
+| `getAudioCtx` | 17860 | Audio | No (internal) | Medium | js/audio/bgm-shared.js |
+| `primeAudioIfNeeded` | 17865 | Audio | Yes (explicit global/Avian.actions) | Medium | js/audio/bgm-shared.js |
+| `syncSoundButtonLabel` | 17871 | Audio | Yes (explicit global/Avian.actions) | Medium | js/audio/bgm-shared.js |
+| `syncSoundStateFromSettings` | 17880 | Audio | Yes (explicit global/Avian.actions) | Medium | js/audio/bgm-shared.js |
+| `toggleSound` | 17885 | Audio | Yes (data-action in index.html) | Medium | js/audio/bgm-shared.js |
+| `playTone` | 17901 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
+| `doScreenShake` | 17943 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
+| `resetBattleStats` | 17956 | Combat | No (internal) | High | js/systems/combat-controller.js / js/systems/ability-dispatcher.js |
+| `getBattleSummaryStats` | 17957 | Combat | No (internal) | High | js/systems/combat-controller.js / js/systems/ability-dispatcher.js |
+| `renderBattleSummary` | 17971 | Combat UI | No (internal) | Medium | js/ui/combat-hud.js / js/ui/combat-log.js |
+| `updateStageProgress` | 17985 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
+| `saveRunHistory` | 18101 | Story/Overworld | No (internal) | Medium | js/systems/story-run-state.js / js/world/overworld_bridge.js |
+| `renderRunHistory` | 18114 | Story/Overworld | No (internal) | Medium | js/systems/story-run-state.js / js/world/overworld_bridge.js |
+| `refAbilityEnergyCost` | 18154 | Combat | No (internal) | High | js/systems/combat-controller.js / js/systems/ability-dispatcher.js |
+| `refAbilityCodexType` | 18163 | Combat | No (internal) | High | js/systems/combat-controller.js / js/systems/ability-dispatcher.js |
+| `refAbilityPassesEnFilter` | 18169 | Combat | No (internal) | High | js/systems/combat-controller.js / js/systems/ability-dispatcher.js |
+| `buildRefFilterBarHtml` | 18179 | Combat UI | No (internal) | Medium | js/ui/combat-hud.js / js/ui/combat-log.js |
+| `wireRefFilterSelects` | 18211 | Combat UI | No (internal) | Medium | js/ui/combat-hud.js / js/ui/combat-log.js |
+| `openRefGuideModal` | 18242 | Combat UI | No (internal) | Medium | js/ui/combat-hud.js / js/ui/combat-log.js |
+| `closeRefGuideModal` | 18250 | Combat UI | Yes (data-action in index.html) | Medium | js/ui/combat-hud.js / js/ui/combat-log.js |
+| `toggleRefGuide` | 18258 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
+| `selectRefTab` | 18265 | Bird selection | Yes (explicit global/Avian.actions) | Medium | js/ui/ui.js |
+| `skillCard` | 18271 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
+| `refSkillScalingLabel` | 18290 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
+| `buildRefGuide` | 18297 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
+| `renderReferenceGuide` | 18493 | Combat UI | No (internal) | Medium | js/ui/combat-hud.js / js/ui/combat-log.js |
+| `checkRunUnlocks` | 18503 | Bird selection | No (internal) | Medium | js/ui/ui.js |
+| `showUnlockToast` | 18510 | Story/Overworld | No (internal) | Medium | js/systems/story-run-state.js / js/world/overworld_bridge.js |
+| `makeUtilityOffer` | 18527 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
+| `assignShopItems` | 18533 | Shop | Yes (explicit global/Avian.actions) | Medium | js/systems/shop-v2.js / js/ui/shop-ui.js |
+| `syncShopItemsToGlobal` | 18537 | Shop | No (internal) | Medium | js/systems/shop-v2.js / js/ui/shop-ui.js |
+| `showStorkShop` | 18547 | Shop | No (internal) | Medium | js/systems/shop-v2.js / js/ui/shop-ui.js |
+| `enterStorkShopScreen` | 18552 | Shop | No (internal) | Medium | js/systems/shop-v2.js / js/ui/shop-ui.js |
+| `shopMutationTierKey` | 18589 | Shop | No (internal) | Medium | js/systems/shop-v2.js / js/ui/shop-ui.js |
+| `ensureShopMutationTierOpenState` | 18595 | Shop | No (internal) | Medium | js/systems/shop-v2.js / js/ui/shop-ui.js |
+| `appendShopMutationTierSections` | 18600 | Shop | No (internal) | Medium | js/systems/shop-v2.js / js/ui/shop-ui.js |
+| `resolveShopItemCategory` | 18634 | Shop | No (internal) | Medium | js/systems/shop-v2.js / js/ui/shop-ui.js |
+| `shopGearCategoryTitle` | 18643 | Shop | No (internal) | Medium | js/systems/shop-v2.js / js/ui/shop-ui.js |
+| `shopItemMatchesCategory` | 18647 | Shop | No (internal) | Medium | js/systems/shop-v2.js / js/ui/shop-ui.js |
+| `getShopCategoryLogText` | 18660 | Shop | No (internal) | Medium | js/systems/shop-v2.js / js/ui/shop-ui.js |
+| `clearShopSelection` | 18674 | Shop | No (internal) | Medium | js/systems/shop-v2.js / js/ui/shop-ui.js |
+| `getShopItemBaseCost` | 18681 | Shop | No (internal) | Medium | js/systems/shop-v2.js / js/ui/shop-ui.js |
+| `getShopItemBuyCost` | 18687 | Shop | No (internal) | Medium | js/systems/shop-v2.js / js/ui/shop-ui.js |
+| `getShopSelectedBuyTotal` | 18691 | Shop | No (internal) | Medium | js/systems/shop-v2.js / js/ui/shop-ui.js |
+| `getShopMarginalBuyCost` | 18706 | Shop | No (internal) | Medium | js/systems/shop-v2.js / js/ui/shop-ui.js |
+| `getShopRemainingBudget` | 18714 | Shop | No (internal) | Medium | js/systems/shop-v2.js / js/ui/shop-ui.js |
+| `getShopSelectedSellTotal` | 18718 | Shop | No (internal) | Medium | js/systems/shop-v2.js / js/ui/shop-ui.js |
+| `syncShopDock` | 18727 | Shop | Yes (explicit global/Avian.actions) | Medium | js/systems/shop-v2.js / js/ui/shop-ui.js |
+| `updateShopBuyButtonState` | 18755 | Shop | No (internal) | Medium | js/systems/shop-v2.js / js/ui/shop-ui.js |
+| `updateShopSellButtonState` | 18765 | Shop | No (internal) | Medium | js/systems/shop-v2.js / js/ui/shop-ui.js |
+| `appendShopSectionHeading` | 18775 | Shop | No (internal) | Medium | js/systems/shop-v2.js / js/ui/shop-ui.js |
+| `buildShopBuyCard` | 18782 | Shop | No (internal) | Medium | js/systems/shop-v2.js / js/ui/shop-ui.js |
+| `setShopTab` | 18817 | Shop | Yes (explicit global/Avian.actions) | Medium | js/systems/shop-v2.js / js/ui/shop-ui.js |
+| `getEquipmentSellPrice` | 18866 | Equipment | No (internal) | Medium | js/systems/equipment*.js |
+| `getMutationSellPrice` | 18873 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
+| `renderShopSellItems` | 18880 | Shop | No (internal) | Medium | js/systems/shop-v2.js / js/ui/shop-ui.js |
+| `shopSellSelected` | 18926 | Shop | Yes (explicit global/Avian.actions) | Medium | js/systems/shop-v2.js / js/ui/shop-ui.js |
+| `shopSlotIsStarterLocked` | 18958 | Shop | No (internal) | Medium | js/systems/shop-v2.js / js/ui/shop-ui.js |
+| `renderShopEquipped` | 18962 | Shop | Yes (explicit global/Avian.actions) | Medium | js/systems/shop-v2.js / js/ui/shop-ui.js |
+| `shopUnequipSlot` | 19009 | Shop | Yes (explicit global/Avian.actions) | Medium | js/systems/shop-v2.js / js/ui/shop-ui.js |
+| `rollShopTier` | 19032 | Shop | No (internal) | Medium | js/systems/shop-v2.js / js/ui/shop-ui.js |
+| `pickUniqueRewardByTier` | 19037 | Rewards | No (internal) | Medium | js/systems/nest-rewards.js / js/ui/reward-screen.js |
+| `_findShopItemById` | 19047 | Shop | Yes (explicit global/Avian.actions) | Medium | js/systems/shop-v2.js / js/ui/shop-ui.js |
+| `generateShopItems` | 19067 | Shop | No (internal) | Medium | js/systems/shop-v2.js / js/ui/shop-ui.js |
+| `shopResetVisitState` | 19143 | Shop | No (internal) | Medium | js/systems/shop-v2.js / js/ui/shop-ui.js |
+| `shopLockVisitState` | 19153 | Shop | No (internal) | Medium | js/systems/shop-v2.js / js/ui/shop-ui.js |
+| `getShopRefreshCost` | 19157 | Shop | No (internal) | Medium | js/systems/shop-v2.js / js/ui/shop-ui.js |
+| `renderShopItems` | 19162 | Shop | No (internal) | Medium | js/systems/shop-v2.js / js/ui/shop-ui.js |
+| `purchaseShopItemAtIndex` | 19234 | Shop | No (internal) | Medium | js/systems/shop-v2.js / js/ui/shop-ui.js |
+| `shopBuySelected` | 19279 | Shop | No (internal) | Medium | js/systems/shop-v2.js / js/ui/shop-ui.js |
+| `shopRefresh` | 19334 | Shop | No (internal) | Medium | js/systems/shop-v2.js / js/ui/shop-ui.js |
+| `exitStorkShop` | 19349 | Shop | No (internal) | Medium | js/systems/shop-v2.js / js/ui/shop-ui.js |
+| `openAbandonModal` | 19396 | Combat UI | Yes (explicit global/Avian.actions) | Medium | js/ui/combat-hud.js / js/ui/combat-log.js |
+| `closeAbandonModal` | 19399 | Combat UI | Yes (explicit global/Avian.actions) | Medium | js/ui/combat-hud.js / js/ui/combat-log.js |
+| `confirmAbandon` | 19406 | Bootstrap/Orchestration | Yes (explicit global/Avian.actions) | Medium | js/core/game.js (retain) |
+| `unlockAllCodexEntries` | 19432 | Bird selection | No (internal) | Medium | js/ui/ui.js |
+| `isCreatorCodesEnabled` | 19482 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
+| `getDevCodeSwitches` | 19483 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
+| `isDevCodeEnabled` | 19486 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
+| `saveDevCodeSwitches` | 19487 | Save/load | No (internal) | High | js/systems/save-migrations.js |
+| `setDevCodeSwitch` | 19490 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
+| `getDevCodeCatalogRow` | 19496 | Story/Overworld | No (internal) | Medium | js/systems/story-run-state.js / js/world/overworld_bridge.js |
+| `applyBirdwatchingUnlock` | 19500 | Bird selection | Yes (explicit global/Avian.actions) | Medium | js/ui/ui.js |
+| `applyHeadingHomeLock` | 19506 | Bootstrap/Orchestration | Yes (explicit global/Avian.actions) | Medium | js/core/game.js (retain) |
+| `setGoldenGooseInfiniteState` | 19517 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
+| `toggleDevCode` | 19523 | Bootstrap/Orchestration | Yes (explicit global/Avian.actions) | Medium | js/core/game.js (retain) |
+| `refreshAfterDevCode` | 19528 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
+| `activateDevCode` | 19535 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
+| `deactivateDevCode` | 19609 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
+| `applyDevCodeSwitches` | 19643 | Bootstrap/Orchestration | Yes (explicit global/Avian.actions) | Medium | js/core/game.js (retain) |
+| `renderSuppliesCodeTools` | 19674 | Combat UI | No (internal) | Medium | js/ui/combat-hud.js / js/ui/combat-log.js |
+| `renderSuppliesActivityLog` | 19689 | Combat UI | Yes (explicit global/Avian.actions) | Medium | js/ui/combat-hud.js / js/ui/combat-log.js |
+| `setOwnedBirdTier` | 19695 | Rewards | No (internal) | Medium | js/systems/nest-rewards.js / js/ui/reward-screen.js |
+| `isKnownDevCodePrefix` | 19699 | Story/Overworld | No (internal) | Medium | js/systems/story-run-state.js / js/world/overworld_bridge.js |
+| `checkDevCode` | 19704 | Bootstrap/Orchestration | Yes (explicit global/Avian.actions) | Medium | js/core/game.js (retain) |
+| `getBgmApi` | 19761 | Audio | No (internal) | Medium | js/audio/bgm-shared.js |
+| `getBattleBgmAudio` | 19762 | Audio | No (internal) | Medium | js/audio/bgm-shared.js |
+| `getMenuPreviewBgmAudio` | 19763 | Audio | No (internal) | Medium | js/audio/bgm-shared.js |
+| `getBattleBgmTargetVolume` | 19764 | Audio | No (internal) | Medium | js/audio/bgm-shared.js |
+| `stopBattleBgmImmediate` | 19768 | Audio | No (internal) | Medium | js/audio/bgm-shared.js |
+| `beginBattleBgmFadeOut` | 19776 | Audio | No (internal) | Medium | js/audio/bgm-shared.js |
+| `beginBattleBgmFadeIn` | 19797 | Audio | No (internal) | Medium | js/audio/bgm-shared.js |
+| `tryStartBattleBgmIfNeeded` | 19817 | Audio | No (internal) | High | js/audio/bgm-shared.js |
+| `stopMenuPreviewBgmImmediate` | 19838 | Audio | No (internal) | Medium | js/audio/bgm-shared.js |
+| `isMusicMenuPreviewActive` | 19844 | Audio | No (internal) | Medium | js/audio/bgm-shared.js |
+| `isMusicMenuScreen` | 19848 | Audio | No (internal) | Medium | js/audio/bgm-shared.js |
+| `setAudioElTrack` | 19852 | Audio | No (internal) | Medium | js/audio/bgm-shared.js |
+| `resolvedMusicTrackIdForRole` | 19868 | Audio | No (internal) | Medium | js/audio/bgm-shared.js |
+| `syncMusicMenuNowPlaying` | 19875 | Story/Overworld | No (internal) | Medium | js/systems/story-run-state.js / js/world/overworld_bridge.js |
+| `syncMusicMenuAssignmentChips` | 19886 | Audio | No (internal) | Medium | js/audio/bgm-shared.js |
+| `syncMusicMenuControls` | 19906 | Audio | No (internal) | Medium | js/audio/bgm-shared.js |
+| `applyMusicPanelVolumeState` | 19923 | Audio | No (internal) | Medium | js/audio/bgm-shared.js |
+| `updateMusicPanelVolume` | 19945 | Audio | Yes (explicit global/Avian.actions) | Medium | js/audio/bgm-shared.js |
+| `updateMusicPanelMuted` | 19949 | Audio | Yes (explicit global/Avian.actions) | Medium | js/audio/bgm-shared.js |
+| `updateMusicRoleChoice` | 19954 | Audio | Yes (explicit global/Avian.actions) | Medium | js/audio/bgm-shared.js |
+| `stopMenuThemeForPreview` | 19974 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
+| `playMusicMenuPreview` | 19979 | Audio | Yes (explicit global/Avian.actions) | Medium | js/audio/bgm-shared.js |
+| `stopMusicMenuPreview` | 20003 | Audio | Yes (explicit global/Avian.actions) | Medium | js/audio/bgm-shared.js |
+| `openMusicMenu` | 20020 | Audio | Yes (explicit global/Avian.actions) | Medium | js/audio/bgm-shared.js |
+| `closeMusicMenu` | 20029 | Audio | Yes (explicit global/Avian.actions) | Medium | js/audio/bgm-shared.js |
+| `cancelThemeBgmFade` | 20038 | Audio | No (internal) | Medium | js/audio/bgm-shared.js |
+| `beginThemeBgmFadeOutForRunStart` | 20047 | Audio | No (internal) | Medium | js/audio/bgm-shared.js |
+| `getMusicSettings` | 20071 | Audio | No (internal) | Medium | js/audio/bgm-shared.js |
+| `saveMusicSettings` | 20085 | Save/load | No (internal) | High | js/systems/save-migrations.js |
+| `getThemeBgmAudio` | 20093 | Audio | No (internal) | Medium | js/audio/bgm-shared.js |
+| `getDukeBattleBgmAudio` | 20096 | Audio | No (internal) | Medium | js/audio/bgm-shared.js |
+| `cancelDukeBgmFade` | 20099 | Audio | No (internal) | Medium | js/audio/bgm-shared.js |
+| `getDukeBgmTargetVolume` | 20107 | Audio | No (internal) | Medium | js/audio/bgm-shared.js |
+| `primeDukeBattleBgmAudio` | 20112 | Audio | No (internal) | Medium | js/audio/bgm-shared.js |
+| `stopDukeBattleBgmImmediate` | 20118 | Audio | No (internal) | Medium | js/audio/bgm-shared.js |
+| `stopDukeBattleBgm` | 20125 | Audio | No (internal) | Medium | js/audio/bgm-shared.js |
+| `duckThemeBgmForBattle` | 20128 | Audio | No (internal) | Medium | js/audio/bgm-shared.js |
+| `beginDukeBattleBgmFadeIn` | 20135 | Audio | No (internal) | Medium | js/audio/bgm-shared.js |
+| `beginDukeBattleBgmFadeOut` | 20164 | Audio | No (internal) | Medium | js/audio/bgm-shared.js |
+| `isDukeStoryBossFight` | 20197 | Story/Overworld | No (internal) | Medium | js/systems/story-run-state.js / js/world/overworld_bridge.js |
+| `tryStartDukeBattleBgmIfNeeded` | 20206 | Audio | No (internal) | Medium | js/audio/bgm-shared.js |
+| `primeThemeBgmAudio` | 20227 | Audio | No (internal) | Medium | js/audio/bgm-shared.js |
+| `tryPlayThemeBgmForCurrentMenuScreen` | 20233 | Audio | No (internal) | Medium | js/audio/bgm-shared.js |
+| `applyDukeBattleBgmToAudioEl` | 20246 | Audio | No (internal) | Medium | js/audio/bgm-shared.js |
+| `applyThemeMusicToAudioEl` | 20254 | Audio | No (internal) | Medium | js/audio/bgm-shared.js |
+| `stopAllGameAudio` | 20279 | Audio | Yes (explicit global/Avian.actions) | Medium | js/audio/bgm-shared.js |
+| `syncThemeMusicButtonLabels` | 20292 | Audio | No (internal) | Medium | js/audio/bgm-shared.js |
+| `syncThemeBgmPlaybackForScreen` | 20305 | Audio | No (internal) | Medium | js/audio/bgm-shared.js |
+| `toggleThemeMusicMuted` | 20319 | Audio | Yes (explicit global/Avian.actions) | Medium | js/audio/bgm-shared.js |
+| `updateMusicSettingsFromControls` | 20336 | Audio | Yes (explicit global/Avian.actions) | Medium | js/audio/bgm-shared.js |
+| `wireThemeBgmAutoplayUnlock` | 20356 | Audio | No (internal) | Medium | js/audio/bgm-shared.js |
+| `detectPreferredUIMode` | 20394 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
+| `resolveUiMode` | 20400 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
+| `normalizeCombatCustomLayout` | 20424 | Utilities | No (internal) | Low | js/core/game-helpers.js |
+| `resetCombatCustomDraft` | 20445 | Combat | No (internal) | High | js/systems/combat-controller.js / js/systems/ability-dispatcher.js |
+| `getCombatCustomDraft` | 20448 | Combat | No (internal) | High | js/systems/combat-controller.js / js/systems/ability-dispatcher.js |
+| `normalizeCombatArrangement` | 20455 | Utilities | No (internal) | Low | js/core/game-helpers.js |
+| `normalizeCombatLayout` | 20461 | Utilities | No (internal) | Low | js/core/game-helpers.js |
+| `normalizeAccessibilitySettings` | 20472 | Utilities | No (internal) | Low | js/core/game-helpers.js |
+| `getAccessibilitySettings` | 20498 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
+| `bootstrapAccessibilityDefaults` | 20506 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
+| `wireUiAutoDetectResize` | 20530 | Combat UI | No (internal) | Medium | js/ui/combat-hud.js / js/ui/combat-log.js |
+| `getAudioVolumeMultipliers` | 20548 | Audio | No (internal) | Medium | js/audio/bgm-shared.js |
+| `selectSettingsTab` | 20556 | Bird selection | Yes (explicit global/Avian.actions) | Medium | js/ui/ui.js |
+| `applyUIStateToDOM` | 20570 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
+| `getAutoCombatDensityReduction` | 20581 | Combat | No (internal) | High | js/systems/combat-controller.js / js/systems/ability-dispatcher.js |
+| `applyEffectiveCombatScales` | 20588 | Enemy setup/AI | No (internal) | Medium | js/systems/enemy-roster-runtime.js / js/systems/combat-setup.js |
+| `applyCombatLayoutSettings` | 20607 | Combat | No (internal) | High | js/systems/combat-controller.js / js/systems/ability-dispatcher.js |
+| `clearCombatCustomPanelStyles` | 20611 | Combat | No (internal) | High | js/systems/combat-controller.js / js/systems/ability-dispatcher.js |
+| `applyCombatCustomPanels` | 20619 | Combat | No (internal) | High | js/systems/combat-controller.js / js/systems/ability-dispatcher.js |
+| `syncCombatCustomEditRow` | 20631 | Story/Overworld | No (internal) | Medium | js/systems/story-run-state.js / js/world/overworld_bridge.js |
+| `renderCombatCustomPanelEditor` | 20640 | Combat UI | No (internal) | Medium | js/ui/combat-hud.js / js/ui/combat-log.js |
+| `openCombatCustomLayoutModal` | 20694 | Combat UI | Yes (explicit global/Avian.actions) | Medium | js/ui/combat-hud.js / js/ui/combat-log.js |
+| `closeCombatCustomLayoutModal` | 20700 | Combat UI | Yes (explicit global/Avian.actions) | Medium | js/ui/combat-hud.js / js/ui/combat-log.js |
+| `saveCombatCustomLayoutFromModal` | 20705 | Save/load | Yes (explicit global/Avian.actions) | High | js/systems/save-migrations.js |
+| `resetCombatCustomLayoutDraft` | 20716 | Combat | Yes (explicit global/Avian.actions) | High | js/systems/combat-controller.js / js/systems/ability-dispatcher.js |
+| `toggleCombatCustomPanelVisible` | 20720 | Combat | Yes (explicit global/Avian.actions) | High | js/systems/combat-controller.js / js/systems/ability-dispatcher.js |
+| `moveCombatCustomPanel` | 20727 | Combat | Yes (explicit global/Avian.actions) | High | js/systems/combat-controller.js / js/systems/ability-dispatcher.js |
+| `applyCombatArrangement` | 20746 | Combat | No (internal) | High | js/systems/combat-controller.js / js/systems/ability-dispatcher.js |
+| `syncCombatLayoutLabels` | 20760 | Combat | No (internal) | High | js/systems/combat-controller.js / js/systems/ability-dispatcher.js |
+| `syncAudioSettingLabels` | 20770 | Audio | No (internal) | Medium | js/audio/bgm-shared.js |
+| `syncUiModeControls` | 20782 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
+| `applyAccessibilitySettings` | 20797 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
+| `openSettingsModal` | 20819 | Combat UI | Yes (data-action in index.html) | Medium | js/ui/combat-hud.js / js/ui/combat-log.js |
+| `closeSettingsModal` | 20871 | Combat UI | Yes (data-action in index.html) | Medium | js/ui/combat-hud.js / js/ui/combat-log.js |
+| `returnToWarRoomFromSettings` | 20875 | Story/Overworld | Yes (explicit global/Avian.actions) | High | js/systems/story-run-state.js / js/world/overworld_bridge.js |
+| `openAbandonFromSettings` | 20881 | Combat UI | Yes (explicit global/Avian.actions) | Medium | js/ui/combat-hud.js / js/ui/combat-log.js |
+| `goMainMenuFromSettings` | 20886 | Enemy setup/AI | Yes (explicit global/Avian.actions) | Medium | js/systems/enemy-roster-runtime.js / js/systems/combat-setup.js |
+| `resetCombatLayoutSettings` | 20897 | Combat | Yes (explicit global/Avian.actions) | High | js/systems/combat-controller.js / js/systems/ability-dispatcher.js |
+| `updateAccessibilitySettings` | 20909 | Bootstrap/Orchestration | No (internal) | Medium | js/core/game.js (retain) |
+| `updateAudioSettingsFromControls` | 20955 | Audio | Yes (explicit global/Avian.actions) | Medium | js/audio/bgm-shared.js |
+| `updateMusicSettingsFromControls` | 20981 | Audio | Yes (explicit global/Avian.actions) | Medium | js/audio/bgm-shared.js |
 
 ## Major inline data still in game.js
 
