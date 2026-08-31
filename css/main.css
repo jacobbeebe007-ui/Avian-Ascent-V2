@@ -6849,12 +6849,15 @@ body.ui-mobile-mode #screen-battle .btn-desc{
 .map-forge-status{min-height:1.2em;font-size:.78rem;margin:0;color:var(--text-dim);}
 .map-forge-status--warn{color:#e8c060!important;}
 .map-forge-body{
+  --forge-left-w:260px;
+  --forge-right-w:320px;
+  --forge-body-h:620px;
   display:grid;
-  grid-template-columns:minmax(220px,280px) minmax(0,1fr) minmax(280px,340px);
+  grid-template-columns:var(--forge-left-w) minmax(0,1fr) var(--forge-right-w);
   gap:14px;
   align-items:stretch;
   flex:1;
-  min-height:0;
+  min-height:var(--forge-body-h);
 }
 .map-forge-sidebar{
   display:flex;
@@ -6864,6 +6867,32 @@ body.ui-mobile-mode #screen-battle .btn-desc{
   border:1px solid rgba(201,168,76,.22);
   border-radius:12px;
   padding:12px;
+  position:relative;
+  min-height:0;
+}
+.map-forge-tree-pane,.map-forge-inspector-pane{
+  overflow:hidden;
+  max-height:calc(100dvh - 160px);
+  min-height:0;
+}
+.map-forge-tree-pane > .map-forge-toolbar,
+.map-forge-tree-pane > .map-forge-world-tree-wrap,
+.map-forge-tree-pane > .map-forge-node-list-filters{
+  flex-shrink:0;
+}
+.map-forge-world-tree-wrap{
+  display:flex;
+  flex-direction:column;
+  gap:4px;
+  max-height:120px;
+  overflow:auto;
+}
+.map-forge-node-list-filters{
+  display:flex;
+  flex-wrap:wrap;
+  gap:4px;
+  margin:4px 0;
+  flex-shrink:0;
 }
 .map-forge-toolbar{display:flex;flex-wrap:wrap;gap:6px;align-items:center;}
 .map-forge-toolbar-label{font-size:.7rem;color:var(--text-dim);width:100%;}
@@ -6892,15 +6921,15 @@ body.ui-mobile-mode #screen-battle .btn-desc{
   font-size:.82rem;
 }
 .map-forge-field-check{font-size:.78rem;color:var(--text-dim);display:flex;align-items:center;gap:6px;}
-.map-forge-node-list-wrap{flex:1;min-height:0;display:flex;flex-direction:column;gap:4px;}
-.map-forge-node-list-title{font-family:'Cinzel',serif;font-size:.72rem;color:var(--gold-dim,var(--gold-light));letter-spacing:.08em;}
+.map-forge-node-list-wrap{flex:1;min-height:80px;display:flex;flex-direction:column;gap:4px;overflow:hidden;}
+.map-forge-node-list-title{font-family:'Cinzel',serif;font-size:.72rem;color:var(--gold-dim,var(--gold-light));letter-spacing:.08em;flex-shrink:0;}
 .map-forge-node-list{
   overflow-y:auto;
   flex:1;
+  min-height:0;
   display:flex;
   flex-direction:column;
   gap:4px;
-  max-height:220px;
 }
 .map-forge-node-row{
   display:flex;
@@ -7029,6 +7058,44 @@ body.ui-mobile-mode #screen-battle .btn-desc{
 .map-forge-reward-dash{color:var(--text-dim);}
 .map-forge-reward-tier{flex:1;min-width:8em;}
 .map-forge-clear-rewards-add{display:flex;flex-wrap:wrap;gap:6px;}
+.map-forge-reward-presets{
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+  padding-bottom:8px;
+  margin-bottom:4px;
+  border-bottom:1px solid rgba(201,168,76,.14);
+}
+.map-forge-reward-presets-row{display:flex;flex-wrap:wrap;gap:6px;align-items:center;}
+.map-forge-reward-presets-row .map-forge-field-input{flex:1;min-width:8em;}
+.map-forge-resize-handle{
+  position:absolute;
+  right:2px;
+  bottom:2px;
+  width:18px;
+  height:18px;
+  cursor:nwse-resize;
+  z-index:12;
+  border-bottom-right-radius:10px;
+  background:linear-gradient(135deg,transparent 40%,rgba(201,168,76,.5) 40%,rgba(201,168,76,.65) 100%);
+  touch-action:none;
+}
+.map-forge-resize-handle::after{
+  content:'';
+  position:absolute;
+  right:-6px;
+  bottom:-6px;
+  width:28px;
+  height:28px;
+}
+.map-forge-resize-handle:hover{background:linear-gradient(135deg,transparent 30%,rgba(201,168,76,.6) 30%,rgba(232,192,96,.8) 100%);}
+.map-forge-canvas-wrap .map-forge-resize-handle{
+  right:172px;
+  bottom:2px;
+  z-index:10;
+}
+body.map-forge-is-resizing{cursor:nwse-resize;user-select:none;}
+body.map-forge-is-resizing *{cursor:nwse-resize!important;}
 .map-forge-bonus-reward-row{display:flex;justify-content:space-between;align-items:center;font-size:.72rem;color:var(--text-dim);padding:4px 0;}
 .map-forge-canvas-wrap{
   position:relative;
@@ -7041,11 +7108,11 @@ body.ui-mobile-mode #screen-battle .btn-desc{
   min-height:280px;
 }
 @media (min-width:1024px){
-  .map-forge-body{min-height:min(82vh,900px);}
+  .map-forge-body{min-height:max(var(--forge-body-h),min(82vh,900px));}
   .map-forge-canvas-wrap{
     height:100%;
-    min-height:520px;
-    max-height:min(88vh,980px);
+    min-height:max(280px,calc(var(--forge-body-h) - 24px));
+    max-height:min(calc(100dvh - 120px),calc(var(--forge-body-h) + 80px));
     aspect-ratio:auto;
   }
 }
@@ -7170,8 +7237,17 @@ body.ui-mobile-mode #screen-battle .btn-desc{
   display:flex;flex-direction:column;gap:4px;padding:8px;
   background:#0a0e14;border:1px solid rgba(201,168,76,.35);border-radius:10px;
 }
-.map-forge-tree-pane,.map-forge-inspector-pane{overflow:auto;max-height:calc(100dvh - 160px);}
-.map-forge-world-tree{display:flex;flex-direction:column;gap:4px;margin-bottom:8px;}
+.map-forge-tree-pane{width:var(--forge-left-w);max-width:none;}
+.map-forge-inspector-pane{width:var(--forge-right-w);max-width:none;}
+.map-forge-inspector-pane > :not(.map-forge-resize-handle){
+  flex-shrink:0;
+}
+.map-forge-inspector-pane .map-forge-panel-pane.is-active{
+  flex:1;
+  min-height:0;
+  overflow:auto;
+}
+.map-forge-world-tree{display:flex;flex-direction:column;gap:4px;}
 .map-forge-tree-map{
   text-align:left;font-size:.75rem;padding:6px 8px;border-radius:6px;cursor:pointer;
   border:1px solid rgba(201,168,76,.22);background:rgba(4,6,10,.55);color:var(--text);
@@ -7198,9 +7274,11 @@ body.ui-mobile-mode #screen-battle .btn-desc{
 }
 .map-forge-validation-panel .is-error{color:#ff9090;}
 .map-forge-notes,textarea.map-forge-field-input{resize:vertical;min-height:60px;}
-@media (max-width:1100px){
-  .map-forge-body{grid-template-columns:1fr; }
-  .map-forge-tree-pane,.map-forge-inspector-pane{max-height:none;}
+@media (max-width:800px){
+  .map-forge-body{grid-template-columns:1fr;min-height:auto;}
+  .map-forge-canvas-wrap{max-height:50vh;}
+  .map-forge-tree-pane,.map-forge-inspector-pane{max-height:none;width:auto;}
+  .map-forge-resize-handle{display:none;}
 }
 .map-forge-arena-preview{
   display:block;
@@ -7286,10 +7364,6 @@ body.ui-mobile-mode #screen-battle .btn-desc{
   text-transform:capitalize;
 }
 .map-forge-world-rename{padding-top:4px;}
-@media (max-width:900px){
-  .map-forge-body{grid-template-columns:1fr;min-height:auto;}
-  .map-forge-canvas-wrap{max-height:50vh;}
-}
 
 /* ===== Combat layout scale (Display settings) — authoritative ===== */
 #screen-battle .avatar-wrap{

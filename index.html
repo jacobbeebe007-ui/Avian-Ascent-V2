@@ -486,7 +486,7 @@
 </header>
 <p class="map-forge-status" id="map-forge-status"></p>
 <div class="map-forge-body">
-<aside class="map-forge-sidebar map-forge-tree-pane">
+<aside class="map-forge-sidebar map-forge-tree-pane" id="map-forge-tree-pane">
 <div class="map-forge-toolbar">
 <span class="map-forge-toolbar-label">Place</span>
 <button type="button" class="map-forge-tool-btn" data-forge-tool="select">Select</button>
@@ -538,6 +538,7 @@
 <div class="map-forge-node-list-title">Locations</div>
 <div class="map-forge-node-list" id="map-forge-node-list"></div>
 </div>
+<div class="map-forge-resize-handle" data-forge-resize="left" title="Resize sidebar" aria-hidden="true"></div>
 </aside>
 <div class="map-forge-canvas-wrap" id="map-forge-canvas-wrap">
 <div class="map-forge-canvas-inner" id="map-forge-canvas-inner">
@@ -546,8 +547,9 @@
 </div>
 <canvas class="map-forge-minimap" id="map-forge-minimap" width="160" height="107"></canvas>
 <button type="button" class="menu-btn map-forge-fight-btn" id="map-forge-fight-btn" data-action="fightMapForgeNode">Fight this node</button>
+<div class="map-forge-resize-handle" data-forge-resize="canvas" title="Resize map" aria-hidden="true"></div>
 </div>
-<aside class="map-forge-sidebar map-forge-inspector-pane">
+<aside class="map-forge-sidebar map-forge-inspector-pane" id="map-forge-inspector-pane">
 <details class="map-forge-advanced">
 <summary class="map-forge-toolbar-label">Advanced</summary>
 <div class="map-forge-toolbar">
@@ -702,11 +704,24 @@
 <div class="map-forge-field-label">Stage rewards</div>
 <p class="map-forge-hint" id="map-forge-rewards-empty">Select a stage, boss, or bonus node to edit clear rewards.</p>
 <div id="map-forge-rewards-editor" style="display:none">
+<div class="map-forge-reward-presets" id="map-forge-reward-presets">
+<div class="map-forge-field-label">Reward presets</div>
+<p class="map-forge-hint">Save a clear-reward bundle and apply it to other stages.</p>
+<div class="map-forge-reward-presets-row">
+<select class="map-forge-field-input" id="map-forge-reward-preset-select" title="Saved reward presets"></select>
+<button type="button" class="menu-btn" id="map-forge-apply-reward-preset">Apply</button>
+</div>
+<div class="map-forge-reward-presets-row">
+<input type="text" class="map-forge-field-input" id="map-forge-reward-preset-name" maxlength="48" placeholder="Preset name"/>
+<button type="button" class="menu-btn" id="map-forge-save-reward-preset">Save preset</button>
+<button type="button" class="menu-btn" id="map-forge-delete-reward-preset" title="Delete selected preset">Delete</button>
+</div>
+</div>
 <div id="map-forge-clear-reward-list"></div>
 <div class="map-forge-clear-rewards-add">
 <select class="map-forge-field-input" id="map-forge-reward-add-type">
 <option value="shinies">Shinies</option>
-<option value="mutation">Mutation</option>
+<option value="mutation">Equipment</option>
 <option value="nest">Reward Nest</option>
 <option value="item">Heal item</option>
 <option value="rescuedNest">Rescued Nest</option>
@@ -727,13 +742,14 @@
 <div class="map-forge-shop-tab-row shop-tab-row" role="tablist" aria-label="Shop stock categories">
 <button type="button" class="map-forge-shop-tab shop-tab active is-active" data-forge-shop-tab="all">All</button>
 <button type="button" class="map-forge-shop-tab shop-tab" data-forge-shop-tab="items">Items</button>
-<button type="button" class="map-forge-shop-tab shop-tab" data-forge-shop-tab="mutations">Mutations</button>
+<button type="button" class="map-forge-shop-tab shop-tab" data-forge-shop-tab="mutations">Equipment</button>
 </div>
 <div id="map-forge-shop-stock-list" class="map-forge-shop-stock-list"></div>
 </div>
 </div>
 </div>
 <p class="map-forge-hint" id="map-forge-shortcuts-hint">S=Select, M=Multi. Click a Place kind then click the map. Arrows=nudge, Ctrl+D=duplicate, Ctrl+Z/Y=undo, Del=delete, Esc=deselect. Space or middle-click pans.</p>
+<div class="map-forge-resize-handle" data-forge-resize="right" title="Resize inspector" aria-hidden="true"></div>
 </aside>
 </div>
 </div>

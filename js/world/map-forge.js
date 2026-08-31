@@ -66,6 +66,10 @@
   let _actionStatusUntil = 0;
   let _sidebarPanel = 'node'; // 'node' | 'rewards' | 'shop'
   let _forgeShopCategoryTab = 'all'; // 'all' | 'items' | 'mutations'
+  let _panPending = null;
+  const FORGE_LAYOUT_KEY = 'avian_forge_panel_layout';
+  const FORGE_LAYOUT_DEFAULTS = { leftW: 260, rightW: 320, bodyH: 620 };
+  const FORGE_PAN_THRESHOLD_PX = 4;
 
   function upgradeMapSafe(raw) {
     if (typeof global.upgradeMapToV3 === 'function') return global.upgradeMapToV3(raw);
@@ -369,6 +373,12 @@
       if (global.recomputeWorldSubStages) global.recomputeWorldSubStages(w);
     });
     copy.maxStage = recomputeStages(copy.nodes, null);
+    if (!Array.isArray(copy.rewardPresets)) copy.rewardPresets = [];
+    else copy.rewardPresets = copy.rewardPresets.map((p) => ({
+      id: String(p.id || mkId()),
+      name: String(p.name || 'Preset'),
+      rewards: Array.isArray(p.rewards) ? JSON.parse(JSON.stringify(p.rewards)) : [],
+    }));
     return copy;
   }
 
@@ -810,6 +820,9 @@
       startMapId: resolveMapStartMapId(normalized),
       nodes: normalized.nodes.map((n) => serializeNode(n, null)),
       worlds,
+      rewardPresets: Array.isArray(normalized.rewardPresets)
+        ? JSON.parse(JSON.stringify(normalized.rewardPresets))
+        : [],
     };
   }
 
@@ -1185,12 +1198,7 @@
           loc.className = 'map-forge-tree-loc' + (n.id === _selectedId ? ' is-active' : '');
           const job = getNodeTypeSelectValue(n);
           loc.textContent = (global.OW_LOCATION_KIND_LABELS && global.OW_LOCATION_KIND_LABELS[job] || job) + ' · ' + (n.name || '#' + n.id);
-          loc.onclick = () => {
-            _selectedId = n.id;
-            _selectedIds = [n.id];
-            refreshForgeUI();
-            centerViewOnNode(n);
-          };
+          loc.onclick = () => { selectNodeById(n.id); };
           el.appendChild(loc);
         });
       }
@@ -1536,6 +1544,95 @@
     if (!Array.isArray(n.clearRewards)) n.clearRewards = [];
   }
 
+  function ensureRewardPresets() {
+    if (!_map) return [];
+    if (!Array.isArray(_map.rewardPresets)) _map.rewardPresets = [];
+    return _map.rewardPresets;
+  }
+
+  function syncRewardPresetsUI() {
+    const sel = document.getElementById('map-forge-reward-preset-select');
+    if (!sel) return;
+    const presets = ensureRewardPresets();
+    const cur = sel.value;
+    sel.innerHTML = '';
+    const blank = document.createElement('option');
+    blank.value = '';
+    blank.textContent = presets.length ? 'Choose preset…' : 'No presets yet';
+    sel.appendChild(blank);
+    presets.forEach((p) => {
+      const o = document.createElement('option');
+      o.value = p.id;
+      o.textContent = p.name + ' (' + (p.rewards?.length || 0) + ')';
+      sel.appendChild(o);
+    });
+    if (cur && presets.some((p) => p.id === cur)) sel.value = cur;
+  }
+
+  function saveRewardPreset() {
+    const n = getSelectedNode();
+    if (!n || !global.isForgeCombatNode || !global.isForgeCombatNode(n)) {
+      setStatus('Select a combat node with rewards to save a preset.', true);
+      return;
+    }
+    ensureNodeClearRewards(n);
+    const nameEl = document.getElementById('map-forge-reward-preset-name');
+    const name = String(nameEl?.value || '').trim() || ('Preset ' + (ensureRewardPresets().length + 1));
+    const presets = ensureRewardPresets();
+    const existing = presets.find((p) => p.name.toLowerCase() === name.toLowerCase());
+    const rewards = JSON.parse(JSON.stringify(n.clearRewards || []));
+    if (!rewards.length) {
+      setStatus('Add at least one clear reward before saving a preset.', true);
+      return;
+    }
+    pushHistory();
+    if (existing) {
+      existing.rewards = rewards;
+      setStatus('Updated reward preset "' + name + '".');
+    } else {
+      presets.push({ id: mkId(), name, rewards });
+      setStatus('Saved reward preset "' + name + '".');
+    }
+    if (nameEl) nameEl.value = '';
+    syncRewardPresetsUI();
+  }
+
+  function applyRewardPreset() {
+    const n = getSelectedNode();
+    if (!n || !global.isForgeCombatNode || !global.isForgeCombatNode(n)) {
+      setStatus('Select a combat node to apply a preset.', true);
+      return;
+    }
+    const sel = document.getElementById('map-forge-reward-preset-select');
+    const preset = ensureRewardPresets().find((p) => p.id === sel?.value);
+    if (!preset) {
+      setStatus('Choose a reward preset first.', true);
+      return;
+    }
+    pushHistory();
+    ensureNodeClearRewards(n);
+    n.clearRewards = JSON.parse(JSON.stringify(preset.rewards || []));
+    renderClearRewardsList(n);
+    setStatus('Applied preset "' + preset.name + '".');
+  }
+
+  function deleteRewardPreset() {
+    const sel = document.getElementById('map-forge-reward-preset-select');
+    const id = sel?.value;
+    if (!id) {
+      setStatus('Choose a preset to delete.', true);
+      return;
+    }
+    const presets = ensureRewardPresets();
+    const idx = presets.findIndex((p) => p.id === id);
+    if (idx < 0) return;
+    const name = presets[idx].name;
+    pushHistory();
+    presets.splice(idx, 1);
+    syncRewardPresetsUI();
+    setStatus('Deleted reward preset "' + name + '".');
+  }
+
   function syncRewardsPanel() {
     const emptyEl = document.getElementById('map-forge-rewards-empty');
     const editorEl = document.getElementById('map-forge-rewards-editor');
@@ -1549,6 +1646,7 @@
     }
     if (emptyEl) emptyEl.style.display = 'none';
     if (editorEl) editorEl.style.display = '';
+    syncRewardPresetsUI();
     renderClearRewardsList(n);
   }
 
@@ -1654,7 +1752,7 @@
       } else if (r.type === 'mutation') {
         const lbl = document.createElement('span');
         lbl.className = 'map-forge-reward-type-label';
-        lbl.textContent = 'Mutation';
+        lbl.textContent = 'Equipment';
         const tierSel = document.createElement('select');
         tierSel.className = 'map-forge-field-input map-forge-reward-tier';
         tierSel.disabled = !!(r.mutationId);
@@ -2267,7 +2365,7 @@
 
         const countWrap = document.createElement('label');
         countWrap.className = 'map-forge-encounter-field';
-        countWrap.textContent = 'Mutations on enemy';
+        countWrap.textContent = 'Equipment on enemy';
         const mutSel = document.createElement('select');
         mutSel.className = 'map-forge-field-input';
         for (let m = 0; m <= 11; m++) {
@@ -2384,16 +2482,7 @@
       const onPath = typeof global.isOwPathNode === 'function' ? global.isOwPathNode(n) : true;
       const flags = (n.mustComplete ? ' ★' : '') + (onPath ? '' : ' (off path)');
       label.textContent = 'o' + order + ' #' + n.id + ' ' + typeLabel + (lbl ? ' · ' + lbl : '') + (n.name ? ' - ' + n.name : '') + flags;
-      label.onclick = () => {
-        _selectedId = n.id;
-        _selectedIds = [n.id];
-        renderNodeList();
-        renderForgeCanvas();
-        syncNodeEditorFields();
-        renderEncounterPanel();
-        if (_sidebarPanel === 'shop') syncShopPanel();
-        centerViewOnNode(n);
-      };
+      label.onclick = () => { selectNodeById(n.id); };
       row.appendChild(label);
       ['↑', '↓'].forEach((sym, di) => {
         const btn = document.createElement('button');
@@ -2902,13 +2991,112 @@
   }
 
   function beginPanDrag(clientX, clientY) {
+    _panPending = null;
     _panDrag = { x: clientX, y: clientY, panX: _panX, panY: _panY };
     document.getElementById('map-forge-canvas-wrap')?.classList.add('is-panning');
   }
 
+  function queuePanDrag(clientX, clientY) {
+    _panPending = { x: clientX, y: clientY, panX: _panX, panY: _panY };
+  }
+
+  function updatePanDrag(e) {
+    if (_panDrag) {
+      _panX = _panDrag.panX + (e.clientX - _panDrag.x);
+      _panY = _panDrag.panY + (e.clientY - _panDrag.y);
+      applyCanvasTransform();
+      renderMinimap();
+      return;
+    }
+    if (!_panPending) return;
+    const dx = e.clientX - _panPending.x;
+    const dy = e.clientY - _panPending.y;
+    if (Math.sqrt(dx * dx + dy * dy) < FORGE_PAN_THRESHOLD_PX) return;
+    beginPanDrag(_panPending.x, _panPending.y);
+    _panX = _panPending.panX + dx;
+    _panY = _panPending.panY + dy;
+    applyCanvasTransform();
+    renderMinimap();
+  }
+
   function endPanDrag() {
+    _panPending = null;
     _panDrag = null;
     document.getElementById('map-forge-canvas-wrap')?.classList.remove('is-panning');
+  }
+
+  function clampForgeLayoutNum(v, min, max) {
+    return Math.max(min, Math.min(max, Math.round(v)));
+  }
+
+  function loadForgeLayout() {
+    try {
+      const raw = JSON.parse(localStorage.getItem(FORGE_LAYOUT_KEY) || '{}');
+      return {
+        leftW: clampForgeLayoutNum(raw.leftW ?? FORGE_LAYOUT_DEFAULTS.leftW, 180, 520),
+        rightW: clampForgeLayoutNum(raw.rightW ?? FORGE_LAYOUT_DEFAULTS.rightW, 220, 560),
+        bodyH: clampForgeLayoutNum(raw.bodyH ?? FORGE_LAYOUT_DEFAULTS.bodyH, 360, Math.max(420, window.innerHeight - 120)),
+      };
+    } catch (_e) {
+      return { ...FORGE_LAYOUT_DEFAULTS };
+    }
+  }
+
+  function applyForgeLayout(layout) {
+    const body = document.querySelector('.map-forge-body');
+    if (!body || !layout) return;
+    body.style.setProperty('--forge-left-w', layout.leftW + 'px');
+    body.style.setProperty('--forge-right-w', layout.rightW + 'px');
+    body.style.setProperty('--forge-body-h', layout.bodyH + 'px');
+  }
+
+  function wireForgeResize() {
+    const body = document.querySelector('.map-forge-body');
+    if (!body || body.dataset.forgeResizeWired === '1') return;
+    body.dataset.forgeResizeWired = '1';
+    let layout = loadForgeLayout();
+    applyForgeLayout(layout);
+    let active = null;
+    body.querySelectorAll('[data-forge-resize]').forEach((handle) => {
+      handle.addEventListener('mousedown', (e) => {
+        if (e.button !== 0) return;
+        e.preventDefault();
+        e.stopPropagation();
+        active = {
+          kind: handle.getAttribute('data-forge-resize'),
+          startX: e.clientX,
+          startY: e.clientY,
+          leftW: layout.leftW,
+          rightW: layout.rightW,
+          bodyH: layout.bodyH,
+        };
+        document.body.classList.add('map-forge-is-resizing');
+      }, true);
+    });
+    const onMove = (e) => {
+      if (!active) return;
+      const dx = e.clientX - active.startX;
+      const dy = e.clientY - active.startY;
+      const maxH = Math.max(420, window.innerHeight - 120);
+      if (active.kind === 'left') {
+        layout.leftW = clampForgeLayoutNum(active.leftW + dx, 180, 520);
+        layout.bodyH = clampForgeLayoutNum(active.bodyH + dy, 360, maxH);
+      } else if (active.kind === 'right') {
+        layout.rightW = clampForgeLayoutNum(active.rightW + dx, 220, 560);
+        layout.bodyH = clampForgeLayoutNum(active.bodyH + dy, 360, maxH);
+      } else if (active.kind === 'canvas') {
+        layout.bodyH = clampForgeLayoutNum(active.bodyH + dy, 360, maxH);
+      }
+      applyForgeLayout(layout);
+    };
+    const onUp = () => {
+      if (!active) return;
+      try { localStorage.setItem(FORGE_LAYOUT_KEY, JSON.stringify(layout)); } catch (_e) { /* noop */ }
+      active = null;
+      document.body.classList.remove('map-forge-is-resizing');
+    };
+    global.addEventListener('mousemove', onMove);
+    global.addEventListener('mouseup', onUp);
   }
 
   function setTool(tool) {
@@ -2998,8 +3186,33 @@
     _selectedIds = [];
     renderNodeList();
     renderForgeCanvas();
+    renderWorldTree();
     syncNodeEditorFields();
     setStatus('');
+  }
+
+  function selectNodeById(id, opts) {
+    const o = opts || {};
+    const nid = id == null ? null : Number(id);
+    if (o.multi || o.shift) {
+      if (nid == null) return;
+      if (_selectedIds.includes(nid)) _selectedIds = _selectedIds.filter((x) => x !== nid);
+      else _selectedIds.push(nid);
+      _selectedId = _selectedIds[_selectedIds.length - 1] ?? null;
+    } else {
+      _selectedId = nid;
+      _selectedIds = nid == null ? [] : [nid];
+    }
+    if (nid != null) setTool('select');
+    renderNodeList();
+    renderWorldTree();
+    renderForgeCanvas();
+    syncNodeEditorFields();
+    if (_sidebarPanel === 'shop') syncShopPanel();
+    if (_sidebarPanel === 'rewards') syncRewardsPanel();
+    const slice = getEditingSlice();
+    const n = slice?.nodes?.find((x) => x.id === _selectedId);
+    if (n) centerViewOnNode(n);
   }
 
   function duplicateSelectedNode() {
@@ -3627,7 +3840,11 @@
     document.querySelectorAll('[data-forge-tool]').forEach((btn) => {
       btn.addEventListener('click', () => setTool(btn.getAttribute('data-forge-tool')));
     });
+    document.getElementById('map-forge-save-reward-preset')?.addEventListener('click', saveRewardPreset);
+    document.getElementById('map-forge-apply-reward-preset')?.addEventListener('click', applyRewardPreset);
+    document.getElementById('map-forge-delete-reward-preset')?.addEventListener('click', deleteRewardPreset);
     document.getElementById('map-forge-add-reward')?.addEventListener('click', addClearReward);
+    wireForgeResize();
     document.querySelectorAll('[data-forge-panel-tab]').forEach((btn) => {
       btn.addEventListener('click', () => setSidebarPanel(btn.getAttribute('data-forge-panel-tab')));
     });
@@ -3649,45 +3866,35 @@
         if (g) {
           const nid = Number(g.getAttribute('data-node-id'));
           if (e.shiftKey || _tool === 'multi') {
-            if (_selectedIds.includes(nid)) _selectedIds = _selectedIds.filter((x) => x !== nid);
-            else _selectedIds.push(nid);
-            _selectedId = _selectedIds[_selectedIds.length - 1] ?? null;
+            selectNodeById(nid, { multi: true });
           } else {
-            _selectedId = nid;
-            _selectedIds = [nid];
+            selectNodeById(nid);
             _drag = { id: _selectedId, moved: false };
           }
-          renderNodeList();
-          renderForgeCanvas();
-          syncNodeEditorFields();
           e.preventDefault();
           return;
         }
         if (_tool === 'select' || _tool === 'multi' || e.button === 1 || _spacePan) {
           const picked = e.button === 0 && !_spacePan ? pickNodeAtPoint(svg, e) : null;
           if (picked && e.button === 0 && !_spacePan) {
-            if (_tool === 'multi' || e.shiftKey) {
-              if (_selectedIds.includes(picked.id)) _selectedIds = _selectedIds.filter((x) => x !== picked.id);
-              else _selectedIds.push(picked.id);
-              _selectedId = _selectedIds[_selectedIds.length - 1] ?? null;
-            } else {
-              _selectedId = picked.id;
-              _selectedIds = [picked.id];
+            if (_tool === 'multi' || e.shiftKey) selectNodeById(picked.id, { multi: true });
+            else {
+              selectNodeById(picked.id);
+              _drag = { id: _selectedId, moved: false };
             }
-            renderNodeList();
-            renderForgeCanvas();
-            syncNodeEditorFields();
             return;
           }
-          // Empty canvas (or Space/middle): pan instead of switching tools
+          // Empty canvas (or Space/middle): pan on drag; click deselects
           if (e.button === 0 || e.button === 1) {
             e.preventDefault();
-            beginPanDrag(e.clientX, e.clientY);
+            if (e.button === 1 || _spacePan) beginPanDrag(e.clientX, e.clientY);
+            else queuePanDrag(e.clientX, e.clientY);
           }
           if (_tool === 'select' && e.button === 0 && !_spacePan && !picked) {
             _selectedId = null;
             _selectedIds = [];
             renderNodeList();
+            renderWorldTree();
             renderForgeCanvas();
             syncNodeEditorFields();
           }
@@ -3699,12 +3906,9 @@
         }
       });
       global.addEventListener('mousemove', (e) => {
-        if (_panDrag) {
-          _panX = _panDrag.panX + (e.clientX - _panDrag.x);
-          _panY = _panDrag.panY + (e.clientY - _panDrag.y);
-          applyCanvasTransform();
-          renderMinimap();
-          return;
+        if (_panDrag || _panPending) {
+          updatePanDrag(e);
+          if (_panDrag || _panPending) return;
         }
         if (!_drag) return;
         const slice = getEditingSlice();
@@ -3734,7 +3938,8 @@
         // Avoid double-start when svg already began pan; only pan from wrap non-svg hits
         if (e.target.closest('#map-forge-svg') && !_spacePan && e.button === 0) return;
         e.preventDefault();
-        beginPanDrag(e.clientX, e.clientY);
+        if (e.button === 1 || _spacePan) beginPanDrag(e.clientX, e.clientY);
+        else queuePanDrag(e.clientX, e.clientY);
       }
     });
     canvasWrap?.addEventListener('wheel', (e) => {
@@ -4075,9 +4280,7 @@
       syncBreadcrumb();
     },
     selectNode(id) {
-      _selectedId = id == null ? null : Number(id);
-      _selectedIds = _selectedId == null ? [] : [_selectedId];
-      syncNodeEditorFields();
+      selectNodeById(id);
     },
     setTool,
     placeNodeAt(x, y) {
