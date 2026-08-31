@@ -341,6 +341,14 @@
 <button type="button" class="select-hub-return-btn" data-action="closeSelectHubPanel">← Return to war room</button>
 </header>
 <div class="flight-settings-body">
+<section class="flight-settings-section flight-settings-section--mode" aria-labelledby="flight-mode-heading">
+<h4 class="flight-settings-heading" id="flight-mode-heading">Flight Mode</h4>
+<p class="flight-settings-hint">Story follows the campaign path. Endless keeps climbing after the court.</p>
+<div class="endless-row splash-mode-row flight-mode-row">
+<div id="game-mode-toggle"></div>
+<input id="endless-check" type="checkbox" style="display:none"/>
+</div>
+</section>
 <section class="flight-settings-section" aria-labelledby="flight-course-heading">
 <h4 class="flight-settings-heading" id="flight-course-heading">Course</h4>
 <p class="flight-settings-hint">Where this ascent takes place.</p>
@@ -371,16 +379,12 @@
 <div class="diff-picker flight-diff-picker" id="diff-picker" role="radiogroup" aria-labelledby="flight-diff-heading"></div>
 <p class="diff-desc flight-diff-desc" id="diff-desc">Choose your difficulty to begin.</p>
 </section>
-<section class="flight-settings-section" aria-labelledby="flight-mode-heading">
-<h4 class="flight-settings-heading" id="flight-mode-heading">Flight Mode</h4>
-<p class="flight-settings-hint">Story follows the campaign path. Endless keeps climbing after the court.</p>
-<div class="endless-row splash-mode-row flight-mode-row">
-<div id="game-mode-toggle"></div>
-<input id="endless-check" type="checkbox" style="display:none"/>
-</div>
-</section>
 </div>
 <footer class="flight-settings-foot">
+<div class="sel-continue-run-wrap flight-continue-wrap" id="flight-continue-row" style="display:none">
+<button type="button" class="continue-run-btn" data-action="continueRun">🪺 Continue last run</button>
+<p class="sel-continue-info" id="flight-continue-info"></p>
+</div>
 <div class="flight-briefing" id="flight-briefing" aria-live="polite"></div>
 <button type="button" class="select-hub-confirm-btn" data-action="confirmRunSettings">Confirm &amp; Choose Character →</button>
 </footer>
@@ -420,7 +424,6 @@
     </div>
     <!-- RIGHT: character detail + Take Flight -->
     <aside class="sfsel__detail" id="sfsel-detail" role="tabpanel" aria-labelledby="sfsel-profile-tab" tabindex="0">
-      <button type="button" class="sfsel__back-to-birds" data-action="backToCharacterSelectBirds">← Back to Birds</button>
       <div class="sfsel__detail-empty" id="sfsel-detail-empty" aria-live="polite">Select a bird from the roster</div>
       <div class="ascent-panel is-empty" id="ascent-panel">
         <div class="ascent-empty">Select a bird from the roster.</div>
@@ -431,10 +434,6 @@
           <button type="button" class="sfsel__settings-btn" data-action="openRunSettings">⚙ Flight Settings</button>
         </div>
         <button type="button" class="take-flight-select-btn" id="take-flight-select-btn" disabled data-action="startGame" aria-disabled="true">✈ Take Flight</button>
-        <div class="sel-continue-run-wrap" id="continue-row" style="display:none">
-          <button type="button" class="continue-run-btn" data-action="continueRun">🪺 Continue last run</button>
-          <p class="sel-continue-info" id="continue-info"></p>
-        </div>
       </div>
     </aside>
   </div>

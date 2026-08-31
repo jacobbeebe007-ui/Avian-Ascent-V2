@@ -33,6 +33,8 @@ const htmlChecks = [
   ['diff picker id', /id="diff-picker"/],
   ['game mode host id', /id="game-mode-toggle"/],
   ['character select settings label', />⚙ Flight Settings</],
+  ['continue run in flight settings', /id="flight-continue-row"/],
+  ['flight mode section before course', /flight-mode-heading[\s\S]*?flight-course-heading/],
 ];
 
 const cssChecks = [

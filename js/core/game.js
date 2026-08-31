@@ -5744,17 +5744,10 @@ const ROLE_LABELS = {knight:'🛡️ Knight',brute:'💪 Brute',rogue:'🗡️ R
 const ROLE_FLAVOR = {knight:'Armoured defender; absorbs and redirects physical damage.',brute:'Heavy physical bruiser; wins trades with force and bulk.',rogue:'Fast evasive striker; speed, dodge, and penetration.',mage:'Arcane damage and control through spells.',siren:'Song-focused buffs, debuffs, and vocal magic.',inquisitor:'Execution pressure, pierce, and finishing power.',bard:'Utility, feints, and disruptive setups.'};
 let shopPurchaseMade = false;
 
-function initSelection() {
-  const ui=ensureUIState();
-  ui.selectionView='all';
-  if(!ui.lockFilter) ui.lockFilter='unlocked';
-  migrateLegacySelectionView(ui);
-  if(!ui.expandedBird && G.selected) ui.expandedBird=G.selected;
-  applyUIStateToDOM();
-  // Check for saved run
+function syncContinueRunUI(){
   const save=loadSaveData();
-  const row=document.getElementById('continue-row');
-  const info=document.getElementById('continue-info');
+  const row=document.getElementById('flight-continue-row');
+  const info=document.getElementById('flight-continue-info');
   if(save&&save.player){
     if(row){
       row.style.display='flex';
@@ -5765,6 +5758,17 @@ function initSelection() {
   } else if(row){
     row.style.display='none';
   }
+}
+globalThis.syncContinueRunUI=syncContinueRunUI;
+
+function initSelection() {
+  const ui=ensureUIState();
+  ui.selectionView='all';
+  if(!ui.lockFilter) ui.lockFilter='unlocked';
+  migrateLegacySelectionView(ui);
+  if(!ui.expandedBird && G.selected) ui.expandedBird=G.selected;
+  applyUIStateToDOM();
+  syncContinueRunUI();
 
   // Build difficulty picker
   buildDifficultyPicker();
@@ -6958,14 +6962,6 @@ function updateAscentPanel(key) {
     const startEnShow=getEnergyProfile(normalizeBirdSizeForEnergy(bird.size||'medium')).startEN;
     const cc=dispStats.critChance||5;
     const cd=Number.isFinite(dispStats.critMult)?Number(dispStats.critMult):1.5;
-    const roleSummary={
-      striker:'Fast combo attacker',
-      bruiser:'Heavy bruiser with hit pressure',
-      tank:'Defensive frontliner',
-      trickster:'Debuff-focused trickster',
-      predator:'Execute-focused predator',
-      singer:'Song-based controller',
-    }[cls]||'Adaptive bird';
 
     const startAbilityDetails=(kit.abilities.length?kit.abilities:(bird.startAbilities||[]).map(id=>({id,level:1}))).map((ab,idx)=>{
       const id=typeof ab==='string'?ab:(ab&&ab.id);
@@ -7067,11 +7063,10 @@ function updateAscentPanel(key) {
               <h3 class="sfsel-profile__heading" id="sfsel-traits-heading">Traits</h3>
               <div class="sfsel-profile__trait"><strong>Passive · ${passiveName}</strong><span>${passiveDesc}</span></div>
               <div class="sfsel-profile__trait"><strong>Class Perk · ${classPerkName}</strong><span>${classPerkDesc}</span></div>
-              <div class="sfsel-profile__trait"><strong>Playstyle</strong><span>${escapeHtmlRoster(roleSummary)}</span></div>
           </section>
           <section class="sfsel-profile__region sfsel-profile__skills" aria-labelledby="sfsel-skills-heading">
               <h3 class="sfsel-profile__heading" id="sfsel-skills-heading">Starting skills</h3>
-              <div class="ascent-abilities-row">${startAbilityDetails}</div>
+              <div class="ascent-abilities-row sfsel-profile__skills-row">${startAbilityDetails||'<p class="sfsel-profile__skills-empty">No starting skills listed.</p>'}</div>
           </section>
         </div>
       </article>`;
