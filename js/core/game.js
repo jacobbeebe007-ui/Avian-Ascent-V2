@@ -4745,20 +4745,28 @@ function buildOwEnemyDraftFromBirdKey(bk, encounterStage, slotIdx){
   const resolvedBirdKey=(BIRDS&&BIRDS[tok])?tok:(BIRDS&&BIRDS[tokNorm]?tokNorm:null);
   if(shouldBuildForgeTierStarEnemy(forgeSlot, tok) && resolvedBirdKey){
     const {tier,stars}=normalizeForgeSlotTierStar(forgeSlot);
-    return buildTierStarEnemyFromBirdKey(resolvedBirdKey,{tier,stars,isBoss,bossTitle,stage:encounterStage});
+    const ed=buildTierStarEnemyFromBirdKey(resolvedBirdKey,{tier,stars,isBoss,bossTitle,stage:encounterStage});
+    if(ed && forgeSlot && typeof applyForgeSlotAIToEnemy==='function') applyForgeSlotAIToEnemy(ed, forgeSlot);
+    return ed;
   }
   if(typeof isRosterEnemyId==='function'&&isRosterEnemyId(tok)&&typeof buildEnemyFromRosterId==='function'){
-    return buildEnemyFromRosterId(tok,{isBoss,bossTitle});
+    const ed=buildEnemyFromRosterId(tok,{isBoss,bossTitle});
+    if(ed && forgeSlot && typeof applyForgeSlotAIToEnemy==='function') applyForgeSlotAIToEnemy(ed, forgeSlot);
+    return ed;
   }
   const resolved=typeof resolveOwStageToken==='function'?resolveOwStageToken(tok,encounterStage,{isBoss}):tok;
   if(typeof isRosterEnemyId==='function'&&isRosterEnemyId(resolved)&&typeof buildEnemyFromRosterId==='function'){
-    return buildEnemyFromRosterId(resolved,{isBoss,bossTitle});
+    const ed=buildEnemyFromRosterId(resolved,{isBoss,bossTitle});
+    if(ed && forgeSlot && typeof applyForgeSlotAIToEnemy==='function') applyForgeSlotAIToEnemy(ed, forgeSlot);
+    return ed;
   }
   if(shouldBuildForgeTierStarEnemy(forgeSlot, resolved) && BIRDS?.[resolved]){
     const {tier,stars}=normalizeForgeSlotTierStar(forgeSlot);
-    return buildTierStarEnemyFromBirdKey(resolved,{tier,stars,isBoss,bossTitle,stage:encounterStage});
+    const ed=buildTierStarEnemyFromBirdKey(resolved,{tier,stars,isBoss,bossTitle,stage:encounterStage});
+    if(ed && forgeSlot && typeof applyForgeSlotAIToEnemy==='function') applyForgeSlotAIToEnemy(ed, forgeSlot);
+    return ed;
   }
-  return buildStoryEnemyFromBirdKey(resolved, encounterStage, {isBoss,bossTitle});
+  return buildStoryEnemyFromBirdKey(resolved, encounterStage, {isBoss,bossTitle, forgeSlot});
 }
 
 /**
@@ -6038,6 +6046,7 @@ function buildTierStarEnemyFromBirdKey(birdKey, opts={}){
     enemyStars:stars,
     storyEvolvedSlots:unlockSlots,
     _storyDirectStats:true,
+    ai: typeof defaultEnemyAI==='function'?defaultEnemyAI():{profile:'default',behaviour:'automatic'},
   };
 }
 function buildStoryEnemyFromBirdKey(birdKey, stage, opts={}){
@@ -6098,6 +6107,7 @@ function buildStoryEnemyFromBirdKey(birdKey, stage, opts={}){
     bossTitle:opts.bossTitle||'',
     storyLevel:level, storyEvolvedSlots:evolvedSlots,
     _storyDirectStats:true,
+    ai: typeof defaultEnemyAI==='function'?defaultEnemyAI():{profile:'default',behaviour:'automatic'},
   };
   const progressed=applyEnemyStatsFromPlayerProgression(draft,{
     playerBirdLevel:plv,
@@ -6162,6 +6172,7 @@ function buildStoryEnemyFromBirdKey(birdKey, stage, opts={}){
     draft.stats={...stats,en:enProf.startEN};
   }
   normalizeCombatStats(draft.stats);
+  if(opts.forgeSlot && typeof applyForgeSlotAIToEnemy==='function') applyForgeSlotAIToEnemy(draft, opts.forgeSlot);
   return draft;
 }
 

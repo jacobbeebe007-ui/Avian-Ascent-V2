@@ -437,6 +437,15 @@
           spd: Math.max(1, Math.floor(Number(s.customStats.spd) || 1)),
         };
       }
+      if (s.ai && typeof s.ai === 'object') {
+        slot.ai = typeof global.normalizeSavedEnemyAI === 'function'
+          ? global.normalizeSavedEnemyAI(s.ai)
+          : s.ai;
+      } else {
+        slot.ai = typeof global.defaultEnemyAI === 'function'
+          ? global.defaultEnemyAI()
+          : { profile: 'default', behaviour: 'automatic' };
+      }
       return slot;
     });
     return enc;

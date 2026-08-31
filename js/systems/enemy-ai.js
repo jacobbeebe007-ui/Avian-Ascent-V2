@@ -213,7 +213,7 @@
     return Math.max(1, Math.min(energy, spendCap));
   }
 
-  function scoreCandidate(cand, e, p, ctx, profile, intent, archetype, mem, energy) {
+  function scoreCandidate(cand, e, p, ctx, profile, intent, archetype, mem, energy, aiConfig) {
     var cat = typeof global.classifyEnemyActionCategory === 'function'
       ? global.classifyEnemyActionCategory(cand)
       : 'utility';
@@ -222,14 +222,16 @@
       : 1;
     var ev = projectedActionExpectedValue(cand, e, p, ctx);
     var enEff = (ev + 0.5) / Math.max(1, cost);
-    var w = 10 + ev * 0.35 + enEff * 3.5 * (ctx.diffMod.enEfficiencyWeight || 1);
+    var enPlan = aiConfig && aiConfig.enPlanning != null ? aiConfig.enPlanning : 1;
+    var w = 10 + ev * 0.35 + enEff * 3.5 * (ctx.diffMod.enEfficiencyWeight || 1) * enPlan;
 
-    if (cat === 'damage') w *= profile.damageBias;
-    if (cat === 'heavy') w *= profile.heavyBias;
-    if (cat === 'control') w *= profile.controlBias;
-    if (cat === 'buff') w *= profile.buffBias;
-    if (cat === 'guard') w *= profile.guardBias;
-    if (cat === 'heal') w *= profile.healBias;
+    var behaviourProfile = (aiConfig && aiConfig.behaviourWeights) || profile;
+    if (cat === 'damage') w *= behaviourProfile.damageBias || profile.damageBias || 1;
+    if (cat === 'heavy') w *= behaviourProfile.heavyBias || profile.heavyBias || 1;
+    if (cat === 'control') w *= behaviourProfile.controlBias || profile.controlBias || 1;
+    if (cat === 'buff') w *= behaviourProfile.buffBias || profile.buffBias || 1;
+    if (cat === 'guard') w *= behaviourProfile.guardBias || profile.guardBias || 1;
+    if (cat === 'heal') w *= behaviourProfile.healBias || profile.healBias || 1;
 
     if (typeof global.getArchetypeCategoryBonus === 'function') {
       w *= global.getArchetypeCategoryBonus(archetype, cat);
@@ -241,8 +243,11 @@
 
     var pHp = (p.stats.hp || 1) / Math.max(1, p.stats.maxHp || 1);
     var eHp = (e.stats.hp || 1) / Math.max(1, e.stats.maxHp || 1);
-    if (pHp <= 0.5 && (cat === 'heavy' || cat === 'damage')) w *= profile.finisherBias;
-    if (mem.lastAbilityId && (cand.abilityId || cand.type) === mem.lastAbilityId) w *= profile.repeatBias;
+    var finisherBias = (behaviourProfile.finisherBias != null ? behaviourProfile.finisherBias : profile.finisherBias) || 1;
+    if (pHp <= 0.5 && (cat === 'heavy' || cat === 'damage')) w *= finisherBias;
+    if (mem.lastAbilityId && (cand.abilityId || cand.type) === mem.lastAbilityId) {
+      w *= (behaviourProfile.repeatBias != null ? behaviourProfile.repeatBias : profile.repeatBias) || 1;
+    }
     if (!mem.lastTurnHadDamage && (cat === 'damage' || cat === 'heavy')) w *= 1.45;
 
     if (ctx.playerGoesFirst && eHp < 0.5 && (cat === 'guard' || cat === 'heal')) w *= 1.35;
@@ -254,22 +259,77 @@
       if (combo > 1) w *= combo;
     }
     w *= rosterRuleWeightAdjust(cand, e, p, ctx, cat);
+
+    if (aiConfig && typeof global.applyAIConfigToScore === 'function') {
+      w = global.applyAIConfigToScore(w, cand, e, p, ctx, aiConfig, cat);
+    } else if (aiConfig) {
+      if (pHp <= 0.35 && (cat === 'damage' || cat === 'heavy')) w *= (aiConfig.koAwareness || 1);
+      if (ctx.playerDefending && (cat === 'guard' || cat === 'heal')) w *= (aiConfig.protectionAwareness || 1);
+      if (cat === 'control') w *= (aiConfig.ailmentAwareness || 1);
+      w *= (aiConfig.scoreAccuracy || 1);
+    }
     return w;
   }
 
+  function pickScoredAction(affordable, e, p, ctx, profile, intent, archetype, mem, energy, aiConfig) {
+    if (!affordable.length) return null;
+    var scored = affordable.map(function (cand) {
+      return {
+        cand: cand,
+        score: scoreCandidate(cand, e, p, ctx, profile, intent, archetype, mem, energy, aiConfig),
+      };
+    });
+    scored.sort(function (a, b) { return b.score - a.score; });
+    var randomness = aiConfig && Number.isFinite(Number(aiConfig.randomness)) ? Number(aiConfig.randomness) : 0;
+    if (randomness > 0 && scored.length > 1 && Math.random() < randomness) {
+      var total = scored.reduce(function (n, row) { return n + Math.max(0.01, row.score); }, 0);
+      var roll = Math.random() * total;
+      for (var j = 0; j < scored.length; j++) {
+        roll -= Math.max(0.01, scored[j].score);
+        if (roll <= 0) return scored[j].cand;
+      }
+    }
+    return scored[0].cand;
+  }
+
+  function planEnemyTurnWithAIConfig(e, p, aiConfigOverride) {
+    return planEnemyTurnCore(e, p, aiConfigOverride || null);
+  }
+
   function planEnemyTurn(e, p) {
+    return planEnemyTurnCore(e, p, null);
+  }
+
+  function planEnemyTurnCore(e, p, aiConfigOverride) {
     if (typeof global.getEnemyMode !== 'function' || typeof global.buildEnemyActionPool !== 'function') {
       return { mode: 'PRESSURE', intent: 'attack', archetype: 'striker', actions: [], energySpendCap: 0 };
     }
 
     var ctx = buildAIContext(e, p);
+    var aiConfig = aiConfigOverride
+      ? Object.assign({}, aiConfigOverride, {
+        behaviourWeights: aiConfigOverride.behaviourWeights
+          || (typeof global.getBehaviourProfileWeights === 'function'
+            ? global.getBehaviourProfileWeights(aiConfigOverride.behaviour || 'balanced')
+            : {}),
+      })
+      : (typeof global.resolveEnemyAIConfig === 'function'
+        ? global.resolveEnemyAIConfig(e, {
+          difficulty: ctx.difficulty,
+          isBoss: !!(e && e.isBoss),
+          isElite: !!(e && e.isElite),
+          stage: ctx.stage,
+        })
+        : null);
+    e._resolvedAIConfig = aiConfig;
     var mode = global.getEnemyMode(e, p);
     var pool = global.buildEnemyActionPool(e, mode);
     var actions = [];
     var mem = typeof global.getEnemyAIMemory === 'function' ? global.getEnemyAIMemory(e) : {};
-    var profile = typeof global.getAIPersonalityProfile === 'function'
-      ? global.getAIPersonalityProfile(e)
-      : (global.AI_PERSONALITY_PROFILES && global.AI_PERSONALITY_PROFILES.tactical) || {};
+    var profile = (aiConfig && aiConfig.behaviourWeights)
+      || (typeof global.getAIPersonalityProfile === 'function'
+        ? global.getAIPersonalityProfile(e)
+        : (global.AI_PERSONALITY_PROFILES && global.AI_PERSONALITY_PROFILES.tactical) || {});
 
     var energy = Math.max(0, Number.isFinite(e.energy) ? e.energy : (e.energyMax || 4));
     var intentPick = typeof global.selectEnemyIntent === 'function'
@@ -320,21 +380,12 @@
       var affordable = source.filter(function (a) { return global.getEnemyActionEnergyCost(a) <= energy; });
       if (!affordable.length) break;
 
-      var best = null;
-      var bestScore = -1;
-      for (var i = 0; i < affordable.length; i++) {
-        var cand = affordable[i];
-        var w = scoreCandidate(cand, e, p, ctx, profile, intent, archetype, mem, energy);
-        if (w > bestScore) {
-          bestScore = w;
-          var cst = global.getEnemyActionEnergyCost(cand);
-          best = Object.assign({}, cand, {
-            energyCost: cst,
-            category: global.classifyEnemyActionCategory(cand),
-          });
-        }
-      }
-      if (!best) break;
+      var picked = pickScoredAction(affordable, e, p, ctx, profile, intent, archetype, mem, energy, aiConfig);
+      if (!picked) break;
+      var best = Object.assign({}, picked, {
+        energyCost: global.getEnemyActionEnergyCost(picked),
+        category: global.classifyEnemyActionCategory(picked),
+      });
       if (spentEnergy + best.energyCost > energySpendCap) break;
       actions.push(best);
       energy -= best.energyCost;
@@ -361,16 +412,25 @@
       }
     }
 
-    return { mode: mode, intent: intent, archetype: archetype, actions: actions, energySpendCap: energySpendCap };
+    return {
+      mode: mode,
+      intent: intent,
+      archetype: archetype,
+      actions: actions,
+      energySpendCap: energySpendCap,
+      aiConfig: aiConfig || null,
+    };
   }
 
   ns.buildAIContext = buildAIContext;
   ns.projectedActionExpectedValue = projectedActionExpectedValue;
   ns.planEnemyTurn = planEnemyTurn;
+  ns.planEnemyTurnWithAIConfig = planEnemyTurnWithAIConfig;
   ns.inferAIPersonalityFromRosterProfile = inferAIPersonalityFromRosterProfile;
   ns.parseRosterHealingThreshold = parseRosterHealingThreshold;
 
   global.planEnemyTurn = planEnemyTurn;
+  global.planEnemyTurnWithAIConfig = planEnemyTurnWithAIConfig;
   global.inferAIPersonalityFromRosterProfile = inferAIPersonalityFromRosterProfile;
   global.parseRosterHealingThreshold = parseRosterHealingThreshold;
 })();
