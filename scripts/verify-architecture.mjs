@@ -21,7 +21,28 @@ const helpersIdx = scripts.indexOf('js/core/game-helpers.js');
 const gameIdx = scripts.indexOf('js/core/game.js');
 const telemetryIdx = scripts.indexOf('js/debug/telemetry.js');
 check('game-helpers loads before game.js', helpersIdx >= 0 && gameIdx >= 0 && helpersIdx < gameIdx);
-check('telemetry loads after game.js', telemetryIdx >= 0 && gameIdx >= 0 && telemetryIdx > gameIdx);
+const combatUiIdx = scripts.indexOf('js/ui/combat-hud.js');
+check('combat-hud loads after game.js', combatUiIdx >= 0 && gameIdx >= 0 && combatUiIdx > gameIdx);
+const forgeRuntimeIdx = scripts.indexOf('js/systems/build-nest-forge-runtime.js');
+const buildNestStateIdx = scripts.indexOf('js/systems/build-nest-state.js');
+const rewardScreenIdx = scripts.indexOf('js/ui/reward-screen.js');
+const shopCompareIdx = scripts.indexOf('js/ui/shop-compare.js');
+check('build-nest-state loads before game.js', buildNestStateIdx >= 0 && gameIdx >= 0 && buildNestStateIdx < gameIdx);
+check('build-nest-forge-runtime loads after game.js', forgeRuntimeIdx >= 0 && gameIdx >= 0 && forgeRuntimeIdx > gameIdx);
+check('reward-screen loads after game.js', rewardScreenIdx >= 0 && gameIdx >= 0 && rewardScreenIdx > gameIdx);
+check('shop-compare loads after game.js', shopCompareIdx >= 0 && gameIdx >= 0 && shopCompareIdx > gameIdx);
+const storyFlowIdx = scripts.indexOf('js/systems/story-stage-flow.js');
+check('story-stage-flow loads after game.js', storyFlowIdx >= 0 && gameIdx >= 0 && storyFlowIdx > gameIdx);
+const combatSetupIdx = scripts.indexOf('js/systems/combat-setup.js');
+const combatControllerIdx = scripts.indexOf('js/systems/combat-controller.js');
+check('combat-setup loads after game.js', combatSetupIdx >= 0 && gameIdx >= 0 && combatSetupIdx > gameIdx);
+check('combat-controller loads after combat-setup', combatControllerIdx >= 0 && combatSetupIdx >= 0 && combatControllerIdx > combatSetupIdx);
+const compatIdx = scripts.indexOf('js/legacy/game-compat.js');
+const dovePatchIdx = scripts.indexOf('js/legacy/dove-sprite-patch.js');
+const spritesIdx = scripts.indexOf('js/ui/sprites.js');
+check('dove-sprite-patch loads after sprites.js', dovePatchIdx >= 0 && spritesIdx >= 0 && dovePatchIdx > spritesIdx);
+check('game-compat loads last among shell scripts', compatIdx >= 0 && compatIdx === scripts.length - 1);
+check('combat-hud loads before sprites.js', combatUiIdx >= 0 && scripts.indexOf('js/ui/sprites.js') > combatUiIdx);
 
 const requiredGlobals = [
   'roundCombatDamage',
@@ -34,6 +55,21 @@ const requiredGlobals = [
   'getTelemetrySummary',
   '_agentDbgLog',
   'registerGameModule',
+  'refreshBattleUI',
+  'renderActions',
+  'renderStatuses',
+  'setHpBar',
+  'openCombatStatsModal',
+  'renderEnemyPlan',
+  'isBuildNestUnlocked',
+  'buildTierStarEnemyFromBirdKey',
+  'confirmReward',
+  'showRewardScreen',
+  'bindShopItemCompareTooltips',
+  'handleOverworldReturn',
+  'continueStageTransitionAfterRewards',
+  'loadStage',
+  'failsafeAdvance',
 ];
 
 const bundlePath = 'js/avian-game.bundle.js';

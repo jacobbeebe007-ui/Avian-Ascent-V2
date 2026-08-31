@@ -7,7 +7,24 @@
 | `js/core/game-helpers.js` | Combat number formatting, reward tiers, bird class resolution, encounter HTML escape |
 | `js/debug/agent-debug.js` | Agent session debug ring buffer (`_agentDbgLog`) |
 | `js/debug/telemetry.js` | Run telemetry persistence, highscore board, `onRunEnd` hook |
-| `js/legacy/game-compat.js` | Legacy global alias registration (`Avian.legacy.exposeLegacyGlobals`) |
+| `js/legacy/game-compat.js` | Legacy global alias registration (`Avian.legacy.exposeLegacyGlobals`, Step 7 registry) |
+| `js/legacy/dove-sprite-patch.js` | Dove sprite + ENEMIES table patch (loads after sprites.js) |
+| `js/ui/combat-stats-modal.js` | Stats & Details modal, hover cards, stat grids |
+| `js/ui/combat-bars.js` | HP / EN / protection bar rendering |
+| `js/ui/combat-status.js` | Status badges and battle ailment symbols |
+| `js/ui/combat-enemy-telegraph.js` | Enemy intent telegraph chips |
+| `js/ui/combat-hud.js` | `refreshBattleUI`, energy orbs, `renderAllCombatUI` |
+| `js/ui/combat-actions.js` | Action tray and combat item row rendering |
+| `js/systems/build-nest-state.js` | Build Nest unlock gate (`avian_buildnest_unlocked`) |
+| `js/systems/build-nest-forge-runtime.js` | Forge slot tier/star helpers and tier-star enemy builder |
+| `js/ui/reward-screen.js` | Post-battle reward screen, nest shake, confirm flow |
+| `js/ui/shop-compare.js` | Stork shop gear compare tooltips |
+| `js/systems/shop-cadence.js` | Grey/boss shop visit scheduling after battles |
+| `js/systems/story-overworld-progress.js` | Overworld progress normalization and stage clear |
+| `js/systems/story-overworld-bridge.js` | Overworld return intent, enemy list normalization |
+| `js/systems/story-stage-flow.js` | `advanceStage`, `continueStageTransitionAfterRewards` |
+| `js/systems/combat-setup.js` | `loadStage`, loadout prep, `resetForNewBattle` |
+| `js/systems/combat-controller.js` | Action queue, `failsafeAdvance`, UI lock |
 
 ## game.js remaining responsibilities
 
@@ -50,28 +67,48 @@ See `docs/global-ui-api.md` for the `data-action` registry. Critical globals pre
 ```
 … data / systems …
 js/debug/agent-debug.js
+js/systems/build-nest-state.js
 js/core/game-helpers.js
 js/core/game.js
+js/systems/build-nest-forge-runtime.js
+js/systems/story-overworld-progress.js
+js/systems/story-overworld-bridge.js
+js/systems/story-stage-flow.js
+js/systems/combat-setup.js
+js/systems/combat-controller.js
+js/systems/shop-cadence.js
 js/debug/telemetry.js
-… post-game systems / UI …
+js/ui/combat-stats-modal.js
+…
+js/ui/reward-screen.js
+js/ui/shop-compare.js
+js/ui/combat-bars.js
+js/ui/combat-status.js
+js/ui/combat-enemy-telegraph.js
+js/ui/combat-hud.js
+js/ui/combat-actions.js
+… enemy AI / systems …
+js/ui/sprites.js
+js/legacy/dove-sprite-patch.js
 js/legacy/game-compat.js
 ```
 
 ## Known legacy compatibility
 
-- Top-level `function foo()` declarations remain for concatenated shell + `globalThis` aliases
-- `game-compat.js` re-exposes helpers if load order omits a global
-- Dove sprite patch IIFE at top of `game.js`
+- Top-level `function foo()` declarations remain for concatenated shell + inline handlers
+- `game-compat.js` re-exposes Step 7 extracted globals if load order omits an alias
+- Dove sprite patch lives in `js/legacy/dove-sprite-patch.js` (after `sprites.js`)
 
 ## Remaining technical debt (non-blocking)
 
 | Area | Status |
 |------|--------|
-| Combat UI rendering in game.js | 🔁 Needs revisit (Phase 3) |
-| Build Nest beyond map-forge.js | 🔁 Needs revisit (Phase 4) |
-| Reward/shop orchestration | ⬜ Phase 5 |
-| Story flow extraction | ⬜ Phase 6 |
-| Combat setup / controller | ⬜ Phases 7–8 |
+| Combat UI rendering in game.js | ✅ Phase 3 (`js/ui/combat-*.js`) |
+| Build Nest unlock + forge encounter runtime | ✅ Phase 4 (`js/systems/build-nest-*.js`; editor remains in `map-forge.js`) |
+| Reward/shop orchestration | ✅ Phase 5 (`reward-screen.js`, `shop-compare.js`, `shop-cadence.js`) |
+| Story flow extraction | ✅ Phase 6 (`story-overworld-*.js`, `story-stage-flow.js`) |
+| Combat setup / controller | ✅ Phases 7–8 (`combat-setup.js`, `combat-controller.js`) |
+| Legacy compatibility cleanup | ✅ Phase 9 (`dove-sprite-patch.js`, expanded `game-compat.js`) |
 | `ABILITY_TEMPLATES` inline block | ⬜ Deferred (high coupling) |
 
 ## Metrics
