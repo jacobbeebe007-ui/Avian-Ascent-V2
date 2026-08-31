@@ -91,7 +91,10 @@
     "js/ui/error-hud.js",
     "js/ui/war-room-tutorial.js",
     "js/audio/bgm-shared.js",
+    "js/debug/agent-debug.js",
+    "js/core/game-helpers.js",
     "js/core/game.js",
+    "js/debug/telemetry.js",
     "js/data/ai-profiles.js",
     "js/data/enemy-ai-difficulties.js",
     "js/systems/enemy-abilities.js",
@@ -123,6 +126,7 @@
     "js/ui/ui.js",
     "js/ui/combat-log.js",
     "js/ui/sprites.js",
+    "js/legacy/game-compat.js",
     "js/meta/fortune-shop.js",
     "js/meta/fortune-inventory.js"
   ]
