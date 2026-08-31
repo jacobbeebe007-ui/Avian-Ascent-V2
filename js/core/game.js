@@ -1,5 +1,18 @@
 // ===== 01_script_01.js =====
 
+/*
+ * Avian Ascent game bootstrap/orchestration.
+ *
+ * Domain logic belongs in js/systems/.
+ * Rendering belongs in js/ui/.
+ * Content belongs in js/data/.
+ * Pure helpers: js/core/game-helpers.js
+ * Debug/telemetry: js/debug/
+ *
+ * Keep this file focused on high-level coordination and
+ * backwards-compatible browser entry points.
+ */
+
 /* ===== Dove enemy + Stage 20 Blakiston boss ===== */
 (function(){
   // Extend sprite renderer with Dove support.
@@ -530,60 +543,7 @@ function recordUpgradeApplyInLedger(player, beforeStats, afterStats, meta){
     if(line) L.mechanicalLines.push(line);
   }
 }
-function formatCombatNumber(n) {
-  return (Number(n) || 0).toFixed(2);
-}
-function roundCombatDamage(n) {
-  return Math.max(0.01, Math.round(Number(n) * 100) / 100);
-}
-globalThis.roundCombatDamage = roundCombatDamage;
-function roundCombatStat(n, floor=0) {
-  return Math.max(floor, Math.round(Number(n) * 100) / 100);
-}
-globalThis.roundCombatStat = roundCombatStat;
-function rollCombatSpread(lo, hi) {
-  const a = Number(lo) || 0;
-  const b = Number(hi) || a;
-  const low = Math.min(a, b);
-  const high = Math.max(a, b);
-  const rolled = low + Math.random() * (high - low);
-  return roundCombatDamage(Math.max(0.01, rolled));
-}
-globalThis.rollCombatSpread = rollCombatSpread;
-function applyFractionalHp(stats, delta) {
-  stats.hp = Math.max(0, Math.round((Number(stats.hp) + delta) * 100) / 100);
-}
-globalThis.applyFractionalHp = applyFractionalHp;
-function normalizeCombatStats(stats) {
-  if (!stats) return;
-  for (const k of ['hp', 'maxHp', 'atk', 'def', 'matk', 'mdef', 'spd', 'acc', 'dodge', 'critChance', 'armorPen', 'magicPen']) {
-    if (stats[k] != null) stats[k] = Math.round(Number(stats[k]) * 100) / 100;
-  }
-}
-function capPctStatValue(statKey, value) {
-  const v = Number(value) || 0;
-  if (statKey === 'critChance') {
-    return typeof clampCritChancePct === 'function' ? clampCritChancePct(v) : Math.max(0, Math.min(50, v));
-  }
-  if (statKey === 'armorPen' || statKey === 'magicPen') return Math.max(0, Math.min(95, v));
-  return Math.max(0, v);
-}
-function dodgeBonusFromSpeed(spd) {
-  const cfg = (typeof Avian !== 'undefined' && Avian.data && Avian.data.combatConfig) || null;
-  if (cfg && cfg.weaponFirst && cfg.weaponFirst.enabled !== false) {
-    const per = cfg.weaponFirst.agilityDodgePctPerPoint != null ? Number(cfg.weaponFirst.agilityDodgePctPerPoint) : 0.5;
-    const cap = cfg.weaponFirst.dodgeCapPct != null ? Number(cfg.weaponFirst.dodgeCapPct) : 50;
-    return Math.min(cap, Math.max(0, (Number(spd) || 0) * per));
-  }
-  return 0;
-}
-globalThis.dodgeBonusFromSpeed = dodgeBonusFromSpeed;
-function dodgeSpdAttributionNote(_player) {
-  return '';
-}
-function formatLedgerDelta(n){
-  return formatCombatNumber(n);
-}
+/* Combat number helpers → js/core/game-helpers.js */
 function buildStatBreakdownTitle(statKey, rawVal, player){
   const L = player?._statLedger;
   if(!L || !L.birdBaseline || !Object.keys(L.birdBaseline).length) return '';
@@ -1360,78 +1320,7 @@ function rollUpgradeCard(){
   return null;
 }
 
-const REWARD_TIERS = {
-  grey:{label:'Common', color:'grey'},
-  white:{label:'Common', color:'grey'},
-  green:{label:'Uncommon', color:'green'},
-  blue:{label:'Rare', color:'blue'},
-  purple:{label:'Epic', color:'purple'},
-  gold:{label:'Legendary', color:'gold'},
-  orange:{label:'Ancestral', color:'orange'},
-};
-function normalizeRewardTier(tier){
-  const t=String(tier||'grey').toLowerCase();
-  if(t==='white') return 'grey';
-  return REWARD_TIERS[t]?t:'grey';
-}
-function rewardTierMeta(tier){
-  const key=normalizeRewardTier(tier);
-  return REWARD_TIERS[key]||REWARD_TIERS.grey;
-}
-
-const CLASS_ROLE_BY_CLASS = {
-  knight:'knight', rogue:'rogue', mage:'mage', siren:'siren', inquisitor:'inquisitor', bard:'bard', brute:'brute',
-  striker:'rogue', bruiser:'knight', tank:'knight', trickster:'bard', predator:'inquisitor', singer:'mage',
-};
-
-const FINAL_BIRD_CLASS_BY_KEY = Object.freeze({});
-
-function normalizeBirdClassKey(birdKey=''){
-  return String(birdKey||'').toLowerCase().replace(/[^a-z_]/g,'');
-}
-
-function getFinalBirdClass(birdKey='', fallback=''){
-  const normalizedKey = normalizeBirdClassKey(birdKey);
-  if(normalizedKey && FINAL_BIRD_CLASS_BY_KEY[normalizedKey]) return FINAL_BIRD_CLASS_BY_KEY[normalizedKey];
-  const rawFallback = String(fallback||'').toLowerCase();
-  return CLASS_ROLE_BY_CLASS[rawFallback] || '';
-}
-
-function normalizeAllowedClassList(list=[]){
-  if(!Array.isArray(list)) return [];
-  const out=[];
-  list.forEach(cls=>{
-    const normalized = resolveFinalClass(cls);
-    if(normalized && !out.includes(normalized)) out.push(normalized);
-  });
-  return out;
-}
-
-function sanitizeAbilityClassRouting(store){
-  if(!store || typeof store!=='object') return;
-  Object.values(store).forEach(tmpl=>{
-    if(Array.isArray(tmpl?.allowedClasses)){
-      tmpl.allowedClasses = normalizeAllowedClassList(tmpl.allowedClasses);
-    }
-  });
-}
-
-
-const LEGACY_CLASS_FALLBACK = {
-  support:'mage', summoner:'bard', defender:'knight', vanguard:'knight',
-  skirmisher:'rogue', assassin:'rogue', ranger:'bard', tyrant:'inquisitor',
-};
-
-function resolveFinalClass(rawClass='', birdKey=''){
-  const cls=String(rawClass||'').toLowerCase().split(/\s+/)[0];
-  const key=String(birdKey||'');
-  const birdCls=BIRDS?.[key]?.class;
-  if(birdCls) return CLASS_ROLE_BY_CLASS[String(birdCls).toLowerCase().split(/\s+/)[0]] || birdCls;
-  const mappedBirdClass=getFinalBirdClass(key, cls);
-  if(mappedBirdClass) return mappedBirdClass;
-  return CLASS_ROLE_BY_CLASS[cls] || LEGACY_CLASS_FALLBACK[cls] || 'rogue';
-}
-
+/* Reward tier + bird class helpers → js/core/game-helpers.js */
 
 /* Combat rewrite: legacy CLASS_PERK_DEFS / CLASS_PERK_BY_CLASS / CLASS_PERK_SOURCE_RULES tables removed. Bird passives (combat-pack/bird-passives.js) drive class-style behaviour through js/systems/passive-hooks.js. */
 const CLASS_PERK_DEFS         = Object.create(null);
@@ -2427,20 +2316,7 @@ let G = {
 };
 globalThis.G = G;
 
-function _agentDbgLog(location, message, data, hypothesisId) {
-  const payload = { sessionId: '5e515f', location, message, data: data || {}, timestamp: Date.now(), hypothesisId: hypothesisId || '' };
-  try {
-    const k = 'avianAscent_dbg_5e515f';
-    const arr = JSON.parse(localStorage.getItem(k) || '[]');
-    arr.push(payload);
-    if (arr.length > 300) arr.splice(0, arr.length - 300);
-    localStorage.setItem(k, JSON.stringify(arr));
-  } catch (_) {}
-  // #region agent log
-  fetch('http://127.0.0.1:7940/ingest/a2f9b3c2-6614-4231-b7d9-0c870302a25c', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': '5e515f' }, body: JSON.stringify(payload) }).catch(() => {});
-  // #endregion
-}
-globalThis._agentDbgLog = _agentDbgLog;
+/* Agent debug → js/debug/agent-debug.js */
 
 const DEFAULT_UI_STATE = Object.freeze({
   gameMode:'story',
@@ -2462,103 +2338,7 @@ function ensureUIState(){
   return G.ui;
 }
 
-const TELEMETRY_KEY='avianAscent_telemetry_v1';
-function loadTelemetry(){
-  try{return JSON.parse(localStorage.getItem(TELEMETRY_KEY)||'{"runs":[],"meta":{}}');}catch(_){return {runs:[],meta:{}};}
-}
-function saveTelemetry(data){
-  try{localStorage.setItem(TELEMETRY_KEY, JSON.stringify(data));}catch(_){ }
-}
-function telemetryPushRun(run){
-  const data = loadTelemetry();
-  data.runs = Array.isArray(data.runs) ? data.runs : [];
-  data.runs.unshift(run);
-  data.runs = data.runs.slice(0, 120);
-  saveTelemetry(data);
-}
-function getTelemetrySummary(){
-  const runs = loadTelemetry().runs||[];
-  if(!runs.length) return {runs:0, avgStage:0, topDeaths:[], winRateByBird:[]};
-  const deaths = new Map();
-  const birds = new Map();
-  let stageTotal = 0;
-  for(const r of runs){
-    stageTotal += Number(r.stageReached||1);
-    const death = String(r.deathCause||'unknown');
-    deaths.set(death, (deaths.get(death)||0)+1);
-    const b = String(r.bird||'unknown');
-    if(!birds.has(b)) birds.set(b, {bird:b, runs:0, wins:0});
-    const row = birds.get(b); row.runs++; if(r.won) row.wins++;
-  }
-  return {
-    runs:runs.length,
-    avgStage: +(stageTotal/runs.length).toFixed(2),
-    topDeaths:[...deaths.entries()].sort((a,b)=>b[1]-a[1]).slice(0,5),
-    winRateByBird:[...birds.values()].map(x=>({...x, winRate:+((x.wins/Math.max(1,x.runs))*100).toFixed(1)})).sort((a,b)=>b.winRate-a.winRate)
-  };
-}
-globalThis.getTelemetrySummary = getTelemetrySummary;
-
-const HIGHSCORE_KEY='avian_highscores_v1';
-function getRunSnapshot(){
-  const p=G.player||{};
-  return {
-    birdKey:p.birdKey||'unknown',
-    birdName:p.name||'Unknown',
-    stage:G.endlessMode && G.stage>20 ? `Endless ${G.endlessBattle||Math.max(1,G.stage-20)}` : `Stage ${G.stage||1}`,
-    stageNumber:Number(G.stage||1),
-    endless:!!G.endlessMode,
-    stats:{...(p.stats||{})},
-    abilities:(p.abilities||[]).map(a=>{
-      const t=ABILITY_TEMPLATES[a.id];
-      return `${t?.name||a.id} Lv${a.level||1}`;
-    }),
-    upgrades:(G.collectedRewards||[]).map(r=>r.name),
-    ts:Date.now()
-  };
-}
-function saveHighscoreEntry(won=false){
-  const snap=getRunSnapshot();
-  const entry={...snap, won:!!won};
-  try{
-    const rows=JSON.parse(localStorage.getItem(HIGHSCORE_KEY)||'[]');
-    rows.push(entry);
-    rows.sort((a,b)=> (b.stageNumber||0)-(a.stageNumber||0) || Number(!!b.won)-Number(!!a.won));
-    localStorage.setItem(HIGHSCORE_KEY, JSON.stringify(rows.slice(0,20)));
-  }catch(_){ }
-}
-function renderHighscoreBoard(){
-  const grid=document.getElementById('highscore-grid');
-  if(!grid) return;
-  let rows=[];
-  try{ rows=JSON.parse(localStorage.getItem(HIGHSCORE_KEY)||'[]'); }catch(_){ rows=[]; }
-  if(!rows.length){
-    grid.innerHTML='<div class="run-card"><div class="run-stage">No highscores yet</div><div class="run-meta">Finish a run to log your best attempts.</div></div>';
-    return;
-  }
-  grid.innerHTML=rows.slice(0,8).map((r,i)=>`
-    <div class="run-card">
-      <div class="run-stage">#${i+1} · ${r.stage}${r.won?' · 👑 Win':''}</div>
-      <div class="run-bird">${r.birdName||r.birdKey}</div>
-      <div class="run-meta">HP ${r.stats?.hp||0}/${r.stats?.maxHp||0} · ATK ${r.stats?.atk||0} · DEF ${r.stats?.def||0} · SPD ${r.stats?.spd||0}</div>
-      <div class="run-meta">${(r.abilities||[]).slice(0,3).join(' · ')}</div>
-      <div class="run-meta">Upgrades: ${((r.upgrades||[]).slice(0,2).join(' · '))||'—'}</div>
-    </div>`).join('');
-}
-
-registerGameModule({
-  id:'telemetry-persistence',
-  onRunEnd(ctx){
-    telemetryPushRun({
-      bird: ctx?.bird || G.player?.birdKey || 'unknown',
-      won: !!ctx?.won,
-      stageReached: ctx?.stageReached || G.stage || 1,
-      deathCause: ctx?.deathCause || 'unknown',
-      at: Date.now(),
-      endless: !!(ctx?.endless ?? G.endlessMode),
-    });
-  }
-});
+/* Telemetry + highscores → js/debug/telemetry.js */
 
 removeMimicEverywhere();
 
@@ -2640,12 +2420,7 @@ function equipmentHandBadgeHtml(item){
   if(hands===1) return '<span class="nest-hand-badge" title="One-handed">1H</span>';
   return '';
 }
-function formatSignedCombatStat(n, pct=false){
-  const v=Number(n)||0;
-  const body=formatCombatNumber(Math.abs(v));
-  const sign=v<0?'-':'+';
-  return pct?`${sign}${body}%`:`${sign}${body}`;
-}
+/* formatSignedCombatStat → js/core/game-helpers.js */
 function formatEquipmentStatChipLabel(statKey){
   const key=String(statKey||'');
   const bare=key.replace(/(Pct|Flat|Penalty)$/i,'');
@@ -3597,13 +3372,7 @@ function closeNest() {
   notifyOwUiEmbedClose();
 }
 
-function nestTierCssClass(tier){
-  return normalizeRewardTier(tier);
-}
-function nestTierColorVar(tier){
-  const key=nestTierCssClass(tier);
-  return {grey:'var(--tier-grey)',green:'var(--tier-green)',blue:'var(--tier-blue)',purple:'var(--tier-purple)',gold:'var(--gold)',orange:'var(--tier-orange)'}[key]||'var(--gold)';
-}
+/* nestTierCssClass / nestTierColorVar → js/core/game-helpers.js */
 function getNestSlotIcons(){ return {}; }
 
 const NEST_MUT_COMPARE_LS_KEY='avian_nest_mut_compare';
@@ -5215,10 +4984,6 @@ function ensureOwEncounterMaterialized(encounterStage){
     mergeScaledStatsIntoEnemy(ed, encounterStage);
     return ed;
   });
-}
-
-function escapeEncounterPreviewHtml(s){
-  return String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
 /** Ability ids from enemy kit (string pool entries or synced skill objects). */
