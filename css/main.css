@@ -2708,7 +2708,12 @@ body.combat-scenario-test-unlocked .splash-hotspot--combat-scenarios.is-combatte
 }
 #select-hub-door .sfsel__roster .bird-nm{
   font-size:.72rem !important;
-  margin-bottom:2px;
+  margin:2px 0 4px;
+  line-height:1.2;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+  flex-shrink:0;
 }
 #select-hub-door .sfsel__roster .bird-tagline-mini{
   font-size:.56rem !important;
@@ -2727,6 +2732,19 @@ body.combat-scenario-test-unlocked .splash-hotspot--combat-scenarios.is-combatte
   margin-bottom:4px;
   gap:4px;
   flex-wrap:wrap;
+  justify-content:center;
+}
+#select-hub-door .sfsel__roster .bird-card-foot{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  flex-wrap:wrap;
+  gap:4px;
+  margin-top:auto;
+  padding-top:4px;
+}
+#select-hub-door .sfsel__roster .bird-card.bird-locked .bird-nm{
+  opacity:.55;
 }
 .bird-card-tier-badge{
   font-size:.5rem;
@@ -4115,6 +4133,7 @@ body.combat-scenario-test-unlocked .splash-hotspot--combat-scenarios.is-combatte
 .bird-card.bird-locked .sprite4{filter:grayscale(1) brightness(0) contrast(1.1) !important; opacity:.92;}
 
 .bird-card-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px;}
+.bird-card-foot{display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:6px;margin-top:auto;padding-top:4px;}
 .bird-size-chip{font-size:.58rem;letter-spacing:.08em;color:var(--text-dim);text-transform:uppercase;border:1px solid rgba(201,168,76,.2);border-radius:999px;padding:2px 7px;background:rgba(201,168,76,.08);}
 .stat-bars{display:grid;grid-template-columns:1fr 1fr;gap:4px 8px;}
 .stat-row.compact{display:grid;grid-template-columns:46px 1fr auto;align-items:center;gap:6px;font-size:.72rem;}

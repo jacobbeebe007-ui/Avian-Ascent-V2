@@ -6258,6 +6258,7 @@ function buildBirdCard(key, bird, locked) {
         <span class="bird-size-chip">${sizeLabel}</span>
       </div>
       <div class="bird-portrait">${renderBirdIconHTML(key,sizeClass,true)}</div>
+      <div class="bird-nm">${escapeHtmlRoster(bird.name)}</div>
       <div class="lock-overlay"><span class="lock-icon" style="font-size:1rem;">🔒</span><div class="lock-label" style="font-size:.6rem;color:#555;line-height:1.3;">${unlockLabel}</div></div>`;
   } else {
     const cardTier=typeof getBirdCardTier==='function'?getBirdCardTier(key):'grey';
@@ -6275,12 +6276,15 @@ function buildBirdCard(key, bird, locked) {
       <div class="bird-card-head">
         <span class="class-badge class-${cls}">${idToClassLabel(cls).toUpperCase()}</span>
         <span class="bird-size-chip">${sizeLabel}</span>
+      </div>
+      ${starsHtml}
+      <div class="bird-portrait">${renderBirdIconHTML(key,sizeClass,false)}</div>
+      <div class="bird-nm">${escapeHtmlRoster(bird.name)}</div>
+      <div class="bird-card-foot">
         <span class="bird-card-tier-badge ${tierCss}">${tierLabel}</span>
         ${rarityBadge}
         ${featherChip}
-      </div>
-      ${starsHtml}
-      <div class="bird-portrait">${renderBirdIconHTML(key,sizeClass,false)}</div>`;
+      </div>`;
   }
   return card;
 }
@@ -16140,10 +16144,15 @@ const _refFilters = {
   abRarity: '',
   abEn: '',
   abType: '',
+  eqRarity: '',
+  eqSlot: '',
+  eqClass: '',
   mutTier: '',
   mutSlot: '',
   mutCategory: '',
 };
+const REF_EQUIPMENT_DISPLAY_CAP = 160;
+const REF_ENEMY_DISPLAY_CAP = 160;
 
 function refAbilityEnergyCost(t) {
   if (!t) return 0;
@@ -16199,7 +16208,160 @@ function buildRefFilterBarHtml(activeTab) {
 </select></label>
 </div>`;
   }
+  if (activeTab === 3) {
+    const r = _refFilters.eqRarity || '';
+    const s = _refFilters.eqSlot || '';
+    const c = _refFilters.eqClass || '';
+    return `<div class="ref-filter-bar">
+<label>Rarity<select id="ref-filter-eq-rarity" data-ref-filter="eqRarity">
+<option value=""${r === '' ? ' selected' : ''}>All</option>
+<option value="basic"${r === 'basic' ? ' selected' : ''}>Basic</option>
+<option value="grey"${r === 'grey' ? ' selected' : ''}>Grey</option>
+<option value="green"${r === 'green' ? ' selected' : ''}>Green</option>
+<option value="blue"${r === 'blue' ? ' selected' : ''}>Blue</option>
+<option value="purple"${r === 'purple' ? ' selected' : ''}>Purple</option>
+<option value="gold"${r === 'gold' ? ' selected' : ''}>Gold</option>
+<option value="orange"${r === 'orange' ? ' selected' : ''}>Orange</option>
+</select></label>
+<label>Slot<select id="ref-filter-eq-slot" data-ref-filter="eqSlot">
+<option value=""${s === '' ? ' selected' : ''}>All</option>
+<option value="Weapon"${s === 'Weapon' ? ' selected' : ''}>Weapon</option>
+<option value="Armour"${s === 'Armour' ? ' selected' : ''}>Armour</option>
+<option value="Helmet"${s === 'Helmet' ? ' selected' : ''}>Helmet</option>
+<option value="Shield"${s === 'Shield' ? ' selected' : ''}>Shield</option>
+<option value="Anklet"${s === 'Anklet' ? ' selected' : ''}>Anklet</option>
+<option value="Necklace"${s === 'Necklace' ? ' selected' : ''}>Necklace</option>
+</select></label>
+<label>Class<select id="ref-filter-eq-class" data-ref-filter="eqClass">
+<option value=""${c === '' ? ' selected' : ''}>All</option>
+<option value="knight"${c === 'knight' ? ' selected' : ''}>Knight</option>
+<option value="rogue"${c === 'rogue' ? ' selected' : ''}>Rogue</option>
+<option value="mage"${c === 'mage' ? ' selected' : ''}>Mage</option>
+<option value="inquisitor"${c === 'inquisitor' ? ' selected' : ''}>Inquisitor</option>
+<option value="brute"${c === 'brute' ? ' selected' : ''}>Brute</option>
+<option value="bard"${c === 'bard' ? ' selected' : ''}>Bard</option>
+<option value="siren"${c === 'siren' ? ' selected' : ''}>Siren</option>
+</select></label>
+</div>`;
+  }
   return '';
+}
+
+function refEquipmentPassesClassFilter(classRestriction, filter) {
+  if (!filter) return true;
+  const hay = String(classRestriction || 'Any').toLowerCase();
+  if (hay === 'any') return true;
+  const needle = String(filter).toLowerCase();
+  const aliases = {
+    knight: ['knight', 'brute'],
+    rogue: ['rogue'],
+    mage: ['mage', 'siren'],
+    inquisitor: ['inquisitor'],
+    brute: ['brute', 'knight'],
+    bard: ['bard', 'siren'],
+    siren: ['siren', 'mage', 'bard'],
+  };
+  const terms = aliases[needle] || [needle];
+  return terms.some((t) => hay.includes(t));
+}
+
+function refEquipmentCardDesc(item) {
+  if (!item) return '';
+  const parts = [];
+  if (item.identity) parts.push(item.identity);
+  const slotBits = [item.slot, item.subtype].filter(Boolean).join(' · ');
+  if (slotBits) parts.push(slotBits);
+  if (item.classRestriction && item.classRestriction !== 'Any') parts.push(`Class: ${item.classRestriction}`);
+  if (item.aspect && item.aspect !== 'neutral') parts.push(`Affinity: ${item.aspect}`);
+  if (itemHasDisplayableWeaponDamage(item)) {
+    parts.push(`Damage ${formatCombatNumber(item.minDamage)}–${formatCombatNumber(item.maxDamage)} (${formatAnyStatLabel(item.scalingStat || 'atk')})`);
+  }
+  if (item.stats) {
+    Object.entries(item.stats).forEach(([rawKey, val]) => {
+      const n = Number(val) || 0;
+      if (!n) return;
+      const disp = String(rawKey).includes('Pct') || /Pct$/i.test(rawKey) ? `+${formatCombatNumber(n)}%` : `+${formatCombatNumber(n)}`;
+      parts.push(`${disp} ${formatAnyStatLabel(rawKey)}`);
+    });
+  }
+  if (item.uniqueEffect) parts.push(item.uniqueEffect);
+  return parts.join(' · ') || (item.notes || 'Equipment piece.');
+}
+
+function refEnemyBrowseRows(rosterRows, q, cap) {
+  const rows = Object.values(rosterRows || {});
+  if (q) {
+    return rows.filter((e) => {
+      const blob = [e.name, e.fantasyTitle, e.birdKey, e.id, e.enemyVariant, e.class].join(' ');
+      return blob.toLowerCase().includes(q);
+    }).slice(0, cap);
+  }
+  const byBird = {};
+  rows.forEach((e) => {
+    const key = e.birdKey || e.name || e.id;
+    const cur = byBird[key];
+    const lvl = Number(e.storyLevel) || 0;
+    if (!cur) {
+      byBird[key] = { rep: e, minLvl: lvl, maxLvl: lvl, count: 1 };
+      return;
+    }
+    cur.count += 1;
+    if (lvl < cur.minLvl) cur.minLvl = lvl;
+    if (lvl > cur.maxLvl) cur.maxLvl = lvl;
+    if (lvl < (Number(cur.rep.storyLevel) || 0)) cur.rep = e;
+  });
+  return Object.values(byBird).map((g) => {
+    const e = g.rep;
+    e._refLevelSpan = g.minLvl === g.maxLvl ? `L${g.minLvl}` : `L${g.minLvl}–${g.maxLvl}`;
+    e._refVariantCount = g.count;
+    return e;
+  }).sort((a, b) => (Number(a.storyLevel) || 0) - (Number(b.storyLevel) || 0)).slice(0, cap);
+}
+
+function refTierStatBuffDebuffCards(isMatch, card) {
+  const tiersPack = Avian?.data?.effectTiers || {};
+  const buffT = tiersPack.buff || {};
+  const debuffT = tiersPack.debuff || {};
+  const tierNames = ['minor', 'moderate', 'major'];
+  const statBuffs = [
+    ['Might Up', 'atk', 'buff'],
+    ['Focus Up', 'matk', 'buff'],
+    ['Guard Up', 'def', 'buff'],
+    ['Resolve Up', 'mdef', 'buff'],
+    ['Agility Up', 'spd', 'buff'],
+    ['Evasion Up', 'dodge', 'buff'],
+    ['Precision Up', 'acc', 'buff'],
+    ['Critical Up', 'critChance', 'buff'],
+  ];
+  const statDebuffs = [
+    ['Might Down', 'atk', 'debuff'],
+    ['Focus Down', 'matk', 'debuff'],
+    ['Guard Down', 'def', 'debuff'],
+    ['Resolve Down', 'mdef', 'debuff'],
+    ['Agility Down', 'spd', 'debuff'],
+    ['Evasion Down', 'dodge', 'debuff'],
+    ['Precision Down', 'acc', 'debuff'],
+    ['Critical Down', 'critChance', 'debuff'],
+  ];
+  const flatTier = !!tiersPack.flatStat;
+  const unit = flatTier ? ' flat' : '%';
+  let html = '';
+  tierNames.forEach((tier) => {
+    const label = tier[0].toUpperCase() + tier.slice(1);
+    const buffVal = buffT[tier];
+    const debuffVal = debuffT[tier];
+    statBuffs.forEach(([name]) => {
+      const key = `${tier} ${name}`;
+      if (!isMatch(key) && !isMatch('buff') && !isMatch(tier)) return;
+      html += card(name, `${label} tier: +${buffVal != null ? buffVal : '—'}${unit} to the listed stat until duration expires.`, true, `${tier} · buff`);
+    });
+    statDebuffs.forEach(([name]) => {
+      const key = `${tier} ${name}`;
+      if (!isMatch(key) && !isMatch('debuff') && !isMatch(tier)) return;
+      html += card(name, `${label} tier: −${debuffVal != null ? debuffVal : '—'}${unit} to the listed stat until duration expires.`, true, `${tier} · debuff`);
+    });
+  });
+  return html;
 }
 
 function wireRefFilterSelects() {
@@ -16297,33 +16459,48 @@ function buildRefGuide() {
     {k:'birds',label:'🐦 Birds'},
     {k:'abilities',label:'🪶 Abilities'},
     {k:'skills',label:'⚔ Skills'},
+    {k:'equipment',label:'🛡 Equipment'},
     {k:'enemies',label:'☠ Enemies'},
-    {k:'statuses',label:'☣ Status Effects'},
+    {k:'statuses',label:'☣ Buffs & Debuffs'},
     {k:'artifacts',label:'💎 Artefacts'},
     {k:'stats',label:'📊 Stats'},
     {k:'tiers',label:'📶 Effect Tiers'},
-    {k:'items',label:'💧 Items'},
+    {k:'items',label:'💧 Healing & Items'},
     {k:'mechanics',label:'⚙ Mechanics'},
   ];
   _refActiveTab=Math.max(0,Math.min(_refActiveTab,defs.length-1));
   const prevQ=(document.getElementById('ref-search-input')?.value||'').toLowerCase();
   const prevShowLocked=!!document.getElementById('ref-show-locked')?.checked;
   const filterBar = buildRefFilterBarHtml(_refActiveTab);
-  tabs.innerHTML = `<div class="ref-codex-toolbar"><input id="ref-search-input" placeholder="Search codex..." class="ref-search-input"/><label class="ref-show-locked-label"><input id="ref-show-locked" type="checkbox"> Show locked</label></div>${filterBar}` + defs.map((t,i)=>`<div class="ref-tab${i===_refActiveTab?' active':''}" onclick="selectRefTab(${i})">${t.label}</div>`).join('');
+  tabs.innerHTML = `<div class="ref-codex-toolbar"><input id="ref-search-input" placeholder="Search codex..." class="ref-search-input"/><label class="ref-show-locked-label"><input id="ref-show-locked" type="checkbox" checked> Show locked</label></div>${filterBar}` + defs.map((t,i)=>`<div class="ref-tab${i===_refActiveTab?' active':''}" onclick="selectRefTab(${i})">${t.label}</div>`).join('');
 
   const q=prevQ;
   const showLocked=prevShowLocked;
   const isMatch=(txt)=>!q||String(txt||'').toLowerCase().includes(q);
   const card=(name,desc,unlocked,meta='')=>`<div class="ref-skill-card" style="opacity:${unlocked?1:0.55}"><div class="ref-skill-header"><span class="ref-skill-name">${unlocked?name:'???'}</span>${meta?`<span class="ref-skill-type utility">${meta}</span>`:''}</div><div class="ref-skill-base">${unlocked?desc:'Unlock by encountering this entry in a run.'}</div></div>`;
 
-  const birdsIntro='<p class="ref-entry-desc ref-birds-intro">Unlock birds through runs, The Hatchery, and secret codes. Entries you have seen in a run appear here with their combat role.</p>';
-  const birds=birdsIntro+Object.entries(BIRDS||{}).filter(([id,b])=>isMatch(b.name)).map(([id,b])=>{
-    const u=!!G.codex?.birds?.[id]?.seen;
-    if(!u&&!showLocked) return '';
+  const birdsIntro='<p class="ref-entry-desc ref-birds-intro">Unlock birds through runs, The Hatchery, and secret codes. Entries you have seen in a run appear here with role, stats, passive, class perk, and innate utility.</p>';
+  const birds=birdsIntro+Object.entries(BIRDS||{}).filter(([id,b])=>{
+    const perk=getBirdAuthoredClassPerk(id);
+    const util=typeof Avian?.getInnateUtility==='function'?Avian.getInnateUtility(id):null;
+    const blob=[b.name,b.tagline,b.class,b.aspectTheme,b.passive?.name,b.passive?.desc,perk?.name,perk?.effect,util?.name,util?.effect].join(' ');
+    return isMatch(blob);
+  }).map(([id,b])=>{
+    const seen=!!G.codex?.birds?.[id]?.seen;
+    if(!seen&&!showLocked) return '';
     const roleId=classToRoleId(b.class);
     const roleLabel=idToClassLabel(roleId).toUpperCase();
-    const aspLine=b.aspectTheme?` · Aspect: ${b.aspectTheme}`:'';
-    return card(b.name, `${b.tagline||''} · Role: ${roleLabel}${aspLine}`,u,roleId||'bird');
+    const aspLine=b.aspectTheme?` · Affinity: ${b.aspectTheme}`:'';
+    const st=b.stats||{};
+    const statLine=`${ledgerStatLabel('maxHp')} ${st.hp||st.maxHp||'?'} · ${ledgerStatLabel('atk')} ${st.atk||'?'} · ${ledgerStatLabel('def')} ${st.def||'?'} · ${ledgerStatLabel('spd')} ${st.spd||'?'}`;
+    const passiveLine=b.passive?`<br><strong style="color:var(--gold-light)">Passive — ${escapeHtmlRoster(b.passive.name)}:</strong> ${escapeHtmlRoster(b.passive.desc||'')}`:'';
+    const perk=getBirdAuthoredClassPerk(id);
+    const perkLine=perk?`<br><strong style="color:var(--gold-light)">Class Perk — ${escapeHtmlRoster(perk.name)}:</strong> ${escapeHtmlRoster(perk.effect||'')}`:'';
+    const util=typeof Avian?.getInnateUtility==='function'?Avian.getInnateUtility(id):null;
+    const utilLine=util?`<br><strong style="color:var(--gold-light)">Innate — ${escapeHtmlRoster(util.name)} (${Number(util.en)||0} EN, CD ${Number(util.cooldown)||0}):</strong> ${escapeHtmlRoster(util.effect||'')}`:'';
+    const unlockLine=b.unlockHint?`<br><em style="color:var(--text-dim)">Unlock: ${escapeHtmlRoster(b.unlockHint)}</em>`:'';
+    const desc=`${b.tagline||''} · Role: ${roleLabel}${aspLine}<br>${statLine}${passiveLine}${perkLine}${utilLine}${unlockLine}`;
+    return card(b.name, desc, seen || showLocked, roleId||'bird');
   }).join('');
 
   const packAbilityDefs = G.dataPacks?.abilityPassiveUpgrade?.ABILITY_DEFS || {};
@@ -16338,8 +16515,8 @@ function buildRefGuide() {
     return isMatch(t.name)||isMatch(t.shortDesc)||isMatch(t.desc)||isMatch(metaDef.role)||isMatch(metaDef.notes);
   }).map(([id,t])=>{
     const c=G.codex?.abilities?.[id]||{seen:false,used:false};
-    const u=!!c.seen;
-    if(!u&&!showLocked) return '';
+    const seen=!!c.seen;
+    if(!seen&&!showLocked) return '';
     const packDef = packAbilityDefs[id] || null;
     const enCost = refAbilityEnergyCost(t);
     const enLabel = enCost <= 0 ? 'Free' : `${enCost} EN`;
@@ -16351,51 +16528,97 @@ function buildRefGuide() {
     const path=formatAbilityLevelPathway(t);
     const levelPathLine=path?`<br><br><strong style="color:var(--gold-light)">Level Path:</strong><br>${path.replace(/\n/g,'<br>')}`:'';
     const desc=`${base}${roleLine}${notesLine}${tagsLine}${levelPathLine}`;
-    return card(packDef?.name||t.name, desc,u,meta);
+    return card(packDef?.name||t.name, desc, seen || showLocked, meta);
   }).join('');
 
   const skills=Object.values(Avian?.data?.equipment?.skills||{}).filter(sk=>{
     if(!sk) return false;
-    return isMatch(sk.name)||isMatch(sk.id)||isMatch(sk.riderText)||isMatch(sk.family)||isMatch(sk.barSlot)||isMatch(sk.scalingStat);
+    return isMatch(sk.name)||isMatch(sk.id)||isMatch(sk.riderText)||isMatch(sk.family)||isMatch(sk.barSlot)||isMatch(sk.scalingStat)||isMatch(sk.damageType);
   }).map(sk=>{
     const en=Number(sk.en)||0;
     const cd=Number(sk.cooldown)||0;
     const scale=sk.scalingStat?refSkillScalingLabel(sk.scalingStat):'—';
     const meta=`${en} EN · CD ${cd} · ${sk.barSlot||sk.skillType||'skill'}`;
     const rarity=sk.minRarity?`Min rarity: ${sk.minRarity}. `:'';
+    const dmgBits=[sk.damageType, sk.damageCategory].filter(Boolean).join(' · ');
+    const dmgLine=dmgBits?`Damage: ${escapeHtmlRoster(dmgBits)}. `:'';
     const rider=sk.riderText?`<br>${escapeHtmlRoster(sk.riderText)}`:'';
-    const desc=`${rarity}Scales with ${escapeHtmlRoster(scale)}. Family: ${escapeHtmlRoster(sk.family||'—')}.${rider}`;
+    const desc=`${rarity}${dmgLine}Scales with ${escapeHtmlRoster(scale)}. Family: ${escapeHtmlRoster(sk.family||'—')}.${rider}`;
     return card(sk.name||sk.id, desc, true, meta);
   }).join('');
 
+  const eqCatalog=Avian?.data?.equipment?.items||{};
+  const eqHasBrowse=q||_refFilters.eqRarity||_refFilters.eqSlot||_refFilters.eqClass;
+  let equipment='';
+  if(!eqHasBrowse){
+    equipment=`<p class="ref-entry-desc ref-birds-intro">Search or filter to browse ${Object.keys(eqCatalog).length} equipment pieces. Skills and stat glossary entries are always listed in their tabs.</p>`;
+  } else {
+    let eqShown=0;
+    let eqTruncated=false;
+    equipment=Object.values(eqCatalog).filter((item)=>{
+      if(!item) return false;
+      const rarity=String(item.rarity||'').toLowerCase();
+      if(_refFilters.eqRarity && rarity!==_refFilters.eqRarity) return false;
+      if(_refFilters.eqSlot && String(item.slot||'')!==_refFilters.eqSlot) return false;
+      if(!refEquipmentPassesClassFilter(item.classRestriction, _refFilters.eqClass)) return false;
+      const blob=[item.id,item.name,item.slot,item.subtype,item.family,item.classRestriction,item.identity,item.uniqueEffect,item.aspect].join(' ');
+      return isMatch(blob);
+    }).map((item)=>{
+      if(eqShown>=REF_EQUIPMENT_DISPLAY_CAP){ eqTruncated=true; return ''; }
+      eqShown+=1;
+      const meta=`${item.rarity||'grey'} · ${item.slot||'gear'}`;
+      return card(item.name||item.id, refEquipmentCardDesc(item), true, meta);
+    }).join('');
+    if(eqTruncated) equipment+=`<p class="ref-entry-desc">Showing first ${REF_EQUIPMENT_DISPLAY_CAP} matches — refine search or filters.</p>`;
+  }
+
   const rosterRows=Avian?.data?.enemyRoster?.byId||{};
-  const enemies=Object.values(rosterRows).filter(e=>isMatch(e.name||e.fantasyTitle||'')).slice(0,120).map(e=>{
+  const enemyIntro=!q?'<p class="ref-entry-desc ref-birds-intro">Species overview (one card per enemy bird). Search by name, variant, or class to browse individual level entries.</p>':'';
+  const enemies=enemyIntro+refEnemyBrowseRows(rosterRows, q, q?REF_ENEMY_DISPLAY_CAP:120).map(e=>{
     const id=e.id||e.birdKey||e.name;
-    const u=!!G.codex?.enemies?.[id]?.seen;
-    if(!u&&!showLocked) return '';
+    const codexKey=e.birdKey||id;
+    const seen=!!G.codex?.enemies?.[codexKey]?.seen || !!G.codex?.enemies?.[id]?.seen;
+    if(!seen&&!showLocked) return '';
     const ai=mapAiStyleToType(e.aiStyle||'aggressive');
     const st=e.stats||{};
-    return card(e.name, `${ledgerStatLabel('maxHp')} ${st.hp||0} · ${ledgerStatLabel('atk')} ${st.atk||0} · L${e.storyLevel||'?'} · AI: ${ai}`,u,ai);
+    const lvl=e._refLevelSpan||`L${e.storyLevel||'?'}`;
+    const variantLine=e._refVariantCount>1?` · ${e._refVariantCount} level entries`:'';
+    const bossLine=e.isBoss?' · Boss':'';
+  const bias=e.abilityBias?`<br>${escapeHtmlRoster(e.abilityBias)}`:'';
+    return card(e.fantasyTitle||e.name, `${e.enemyVariant||e.fantasyTitle||''} · ${ledgerStatLabel('maxHp')} ${st.hp||0} · ${ledgerStatLabel('atk')} ${st.atk||0} · ${lvl}${bossLine} · AI: ${ai}${variantLine}${bias}`, seen || showLocked, ai);
   }).join('');
 
   const packStatusGlossary = G.dataPacks?.abilityPassiveUpgrade?.STATUS_GLOSSARY || {};
   const statusIds=[...new Set([...Object.keys(AILMENTS||{}), ...Object.keys(packStatusGlossary), ...Object.keys(G.codex?.statuses||{})])];
-  const statuses=statusIds.filter(id=>isMatch(id)).map(id=>{
-    const u=!!G.codex?.statuses?.[id]?.seen;
-    if(!u&&!showLocked) return '';
+  const ailmentCards=statusIds.filter(id=>{
+    const ail=AILMENTS[id];
+    const label=ail?.name||(id[0].toUpperCase()+id.slice(1));
+    return isMatch(id)||isMatch(label)||isMatch(ail?.desc)||isMatch(packStatusGlossary[id]);
+  }).map(id=>{
+    const seen=!!G.codex?.statuses?.[id]?.seen;
+    if(!seen&&!showLocked) return '';
     const ail=AILMENTS[id];
     const d=(ail?.desc||packStatusGlossary[id])||'Status effect.';
     const label=ail?.name||(id[0].toUpperCase()+id.slice(1));
-    return card(label,d,u,'status');
+    const stackLine=ail?.maxStacks?` Stacks to ${ail.maxStacks}.`:'';
+    return card(label,`${d}${stackLine}`, seen || showLocked, 'ailment');
   }).join('');
+  const tierBuffDebuffCards=refTierStatBuffDebuffCards(isMatch, card);
+  const statusesIntro=(ailmentCards||tierBuffDebuffCards)?'<p class="ref-entry-desc ref-birds-intro">Ailments, stat buffs, and stat debuffs from combat. Effect Tiers tab lists the numeric tables.</p>':'';
+  const statuses=statusesIntro+ailmentCards+tierBuffDebuffCards;
 
-  const combatItems=Object.values(COMBAT_ITEM_CATALOG||{}).filter(def=>isMatch(def.name)||isMatch(def.combatHint)).map(def=>{
-    const u=!!G.codex?.items?.[def.itemKey]?.seen;
-    if(!u&&!showLocked) return '';
+  const combatItemsIntro='<p class="ref-entry-desc ref-birds-intro">Battle healing items from the Stork Shop. One heal item per turn in combat. Post-battle recovery also heals between stage birds.</p>';
+  const combatItems=combatItemsIntro+Object.values(COMBAT_ITEM_CATALOG||{}).filter(def=>isMatch(def.name)||isMatch(def.combatHint)).map(def=>{
+    const seen=!!G.codex?.items?.[def.itemKey]?.seen;
+    if(!seen&&!showLocked) return '';
     const pct=Math.round((def.healPct||0)*100);
-    const desc=def.combatHint||`Restore ${pct}% max HP for ${def.energyCost} energy (one heal item per turn).`;
-    return card(def.name,desc,u,`${def.tier||'item'} · battle`);
-  }).join('');
+    const maxHold=getCombatItemMaxHold(def.itemKey);
+    const desc=def.combatHint||`Restore ${pct}% max HP for ${def.energyCost} energy (one heal item per turn). Hold up to ${maxHold}.`;
+    return card(def.name,desc, seen || showLocked, `${def.tier||'item'} · battle heal`);
+  }).join('')
+  +card('Post-Battle Recovery (Story)','Heal 20% max HP after each bird you defeat in a stage, including multi-bird nodes.',true,'between fights')
+  +card('Post-Battle Recovery (Endless)','Heal 33% max HP after each victory in Endless mode.',true,'between fights')
+  +card('Armour & Magic Armour','Protection pools absorb damage before Health. Restoration skills refill Armour; Ward skills refill Magic Armour. Fortify and similar effects grant temporary protection.',true,'healing');
 
   const tierOrder=['grey','green','blue','purple','gold'];
   const tierLabel={grey:'Grey',green:'Green',blue:'Blue',purple:'Purple',gold:'Gold'};
@@ -16462,19 +16685,19 @@ function buildRefGuide() {
     ${card('Weaken (stacks)','Stacks to ×3: −8% outgoing damage and −4 Evasion per stack. Refreshes 3-turn duration.',true,'ailment')}
     ${card('Passive Evolution (Endless)','In Endless mode only, passives evolve at milestones with offensive vs utility choices. Story mode uses fixed starter passives.',true,'endless')}
     ${card('Enemy AI Profiles','Enemy personalities (aggressive, tactical, control, tank, predator, etc.) bias action planning.',true,'ai')}
-    ${card('Codex Unlocks','Entries unlock when seen or used during runs. Stats, Effect Tiers, and Skill Library are always available. Open Reference from war room Supplies.',true,'codex')}
+    ${card('Codex Unlocks','Use Show locked to hide undiscovered entries. Birds, enemies, abilities, ailments, and shop items track discovery during runs. Equipment, skills, stats, effect tiers, and mechanics are always fully browsable.',true,'codex')}
     ${card('Combat Screen Layout','Settings → Display: pick Original, Compact, Actions First, Log Focus, or Custom. Custom opens a panel editor to reorder sections and hide what you do not need. Size sliders still fine-tune avatars, panels, action tray, and log.',true,'combat-ui')}
     ${card('Guard & Resolve Penetration','Martial Penetration ignores Guard. Magic Penetration ignores Resolve. Ability pierce stacks on top of equipped gear.',true,'penetration')}
   </div>`;
 
-  /* 0 Birds, 1 Abilities, 2 Skills, 3 Enemies, 4 Statuses, 5 Artefacts, 6 Stats, 7 Effect Tiers, 8 Items, 9 Mechanics */
-  const panelBodies=[birds,abilities,skills,enemies,statuses,arts,statsHtml,effectTiersHtml,combatItems];
-  const panelFallback=['No matching birds.','No matching abilities.','No matching skills.','No matching enemies.','No matching statuses.','No matching artefacts.','No matching stats.','No matching effect tiers.','No matching items.'];
+  /* 0 Birds, 1 Abilities, 2 Skills, 3 Equipment, 4 Enemies, 5 Buffs/Debuffs, 6 Artefacts, 7 Stats, 8 Effect Tiers, 9 Healing & Items, 10 Mechanics */
+  const panelBodies=[birds,abilities,skills,equipment,enemies,statuses,arts,statsHtml,effectTiersHtml,combatItems];
+  const panelFallback=['No matching birds.','No matching abilities.','No matching skills.','Search or filter equipment to browse the catalog.','No matching enemies.','No matching buffs, debuffs, or ailments.','No matching artefacts.','No matching stats.','No matching effect tiers.','No matching healing items.'];
   panels.innerHTML=panelBodies.map((html,i)=>{
     const inner=html||`<div class="ref-entry-desc">${panelFallback[i]}</div>`;
-    const wrap=i===5?inner:`<div class="ref-skills-grid">${inner}</div>`;
+    const wrap=i===6?inner:`<div class="ref-skills-grid">${inner}</div>`;
     return `<div class="ref-panel ${_refActiveTab===i?'active':''}" id="ref-panel-${i}">${wrap}</div>`;
-  }).join('')+`<div class="ref-panel ${_refActiveTab===9?'active':''}" id="ref-panel-9">${mechanics}</div>`;
+  }).join('')+`<div class="ref-panel ${_refActiveTab===10?'active':''}" id="ref-panel-10">${mechanics}</div>`;
   const qEl=document.getElementById('ref-search-input');
   const lEl=document.getElementById('ref-show-locked');
   if(qEl){ qEl.value=prevQ; qEl.oninput=()=>buildRefGuide(); }
@@ -17448,11 +17671,17 @@ function unlockAllCodexEntries(){
   const rosterRows=Avian?.data?.enemyRoster?.byId||{};
   Object.keys(rosterRows).forEach(id=>ensure('enemies',id,false));
   Object.keys(AILMENTS||{}).forEach(id=>ensure('statuses',id,false));
+  Object.keys(G.dataPacks?.abilityPassiveUpgrade?.STATUS_GLOSSARY||{}).forEach(id=>ensure('statuses',id,false));
 
   try{
     const pool=(typeof getUpgradePool==='function') ? getUpgradePool() : [];
     pool.forEach(r=>ensure('artifacts',r?.id||r?.name,false));
   }catch(_){/* ignore artifact unlock errors */}
+
+  try{
+    const eq=Avian?.data?.equipment?.items||{};
+    Object.keys(eq).forEach(id=>ensure('equipment',id,false));
+  }catch(_){/* ignore equipment unlock errors */}
 
   try{
     const mutCatalog={};
@@ -17463,6 +17692,13 @@ function unlockAllCodexEntries(){
     const def=COMBAT_ITEM_CATALOG[key];
     if(def?.itemKey) ensure('items',def.itemKey,false);
   });
+
+  const rosterByBird={};
+  Object.values(rosterRows).forEach(e=>{
+    const key=e.birdKey||e.id;
+    if(key) rosterByBird[key]=true;
+  });
+  Object.keys(rosterByBird).forEach(id=>ensure('enemies',id,false));
 }
 
 // ============================================================
