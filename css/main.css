@@ -2478,7 +2478,7 @@ body.combat-scenario-test-unlocked .splash-hotspot--combat-scenarios.is-combatte
   overflow:hidden;
 }
 .sfsel__view-tabs,
-.sfsel__back-to-birds{display:none;}
+.sfsel__back-to-birds{display:none !important;}
 /* LEFT: roster grid */
 #select-hub-door .sfsel__roster{
   flex:1 1 0;
@@ -2675,7 +2675,13 @@ body.combat-scenario-test-unlocked .splash-hotspot--combat-scenarios.is-combatte
   min-height:42px;
   letter-spacing:.14em;
 }
-#select-hub-door .sfsel__run-controls{min-width:0;}
+#select-hub-door .sfsel__run-controls{
+  min-width:0;
+  display:flex;
+  flex-wrap:wrap;
+  align-items:center;
+  gap:4px 6px;
+}
 #select-hub-door .sfsel__actions .sel-continue-run-wrap{
   grid-column:1 / -1;
   max-width:none;
@@ -3124,7 +3130,6 @@ body.combat-scenario-test-unlocked .splash-hotspot--combat-scenarios.is-combatte
   #select-hub-door .sfsel__main{grid-template-columns:minmax(0,1fr) clamp(320px,42vw,430px);}
   #select-hub-door .sfsel__roster .size-birds-row{grid-template-columns:repeat(auto-fill,minmax(115px,1fr));}
   #select-hub-door .sfsel__actions{grid-template-columns:1fr;}
-  #select-hub-door .sfsel__actions .sel-continue-run-wrap{grid-column:auto;}
 }
 
 /* Character Select responsive presentation: mobile */
@@ -3226,20 +3231,35 @@ body.combat-scenario-test-unlocked .splash-hotspot--combat-scenarios.is-combatte
   /* Abilities wrap tighter on mobile */
   #select-hub-door .sfsel__detail .ascent-ability-card{flex:1 1 130px;}
   #select-hub-door .sfsel__actions{
-    grid-template-columns:minmax(0,1fr);
+    grid-template-columns:minmax(0,1fr) auto;
+    align-items:center;
+    gap:6px 8px;
     padding:8px 10px max(8px,env(safe-area-inset-bottom,0px));
   }
-  #select-hub-door .sfsel__actions .sel-continue-run-wrap{grid-column:auto;}
-  #select-hub-door .sfsel__actions .take-flight-select-btn{min-height:48px;}
-  #select-hub-door .sfsel__back-to-birds{
-    display:block;
-    margin:8px 10px 0;
-    padding:7px 10px;
-    border:1px solid rgba(120,100,70,.45);
+  #select-hub-door .sfsel__run-controls{
+    flex:1 1 auto;
+    min-width:0;
+    flex-wrap:nowrap;
+    gap:4px;
+  }
+  #select-hub-door .sfsel__run-summary{
+    flex:1 1 auto;
+    min-width:0;
+    overflow:hidden;
+  }
+  #select-hub-door .sfsel__settings-btn{
+    flex:0 0 auto;
+    font-size:.6rem;
+    padding:4px 7px;
     border-radius:8px;
-    background:rgba(20,22,30,.72);
-    color:var(--gold-light);
-    font:700 .7rem 'Cinzel',serif;
+    white-space:nowrap;
+    letter-spacing:.02em;
+  }
+  #select-hub-door .sfsel__actions .take-flight-select-btn{
+    min-height:44px;
+    min-width:min(42vw, 168px);
+    padding:8px 12px;
+    font-size:.72rem;
   }
 }
 /* ── Very small phones (≤400px): maximise roster space ── */
@@ -3252,16 +3272,14 @@ body.combat-scenario-test-unlocked .splash-hotspot--combat-scenarios.is-combatte
   #select-hub-door .sfsel__roster .bird-tagline-mini{display:none;} /* hide tagline — too cramped */
   #select-hub-door .sfsel__filter-select{min-width:90px;font-size:.68rem;}
 }
-/* Continue run wrap */
-#continue-row.sel-continue-run-wrap{
+/* Continue run wrap (Flight Settings) */
+#flight-continue-row.sel-continue-run-wrap,
+.flight-continue-wrap.sel-continue-run-wrap{
   display:none;
   flex-direction:column;
-  align-items:flex-start;
+  align-items:stretch;
   gap:2px;
-  margin-right:auto;
-  flex:0 1 auto;
-  min-width:0;
-  max-width:min(100%, 320px);
+  width:100%;
 }
 .take-flight-select-btn{
   font-family:'Cinzel',serif;
@@ -3360,6 +3378,7 @@ body.combat-scenario-test-unlocked .splash-hotspot--combat-scenarios.is-combatte
   gap:10px;
   min-width:0;
 }
+.sfsel-profile__stats{grid-column:1 / -1;}
 .sfsel-profile__region{
   min-width:0;
   padding:8px;
@@ -3375,6 +3394,22 @@ body.combat-scenario-test-unlocked .splash-hotspot--combat-scenarios.is-combatte
   text-transform:uppercase;
 }
 .sfsel-profile__skills{grid-column:1 / -1;}
+.sfsel-profile__skills-row{
+  flex-wrap:wrap;
+  overflow-x:visible;
+  gap:6px;
+}
+.sfsel-profile__skills-row .ascent-ability-card{
+  flex:1 1 calc(50% - 4px);
+  width:auto;
+  min-width:min(148px, 44vw);
+}
+.sfsel-profile__skills-empty{
+  margin:0;
+  color:var(--text-dim);
+  font-size:.65rem;
+  font-style:italic;
+}
 .sfsel-profile__trait{
   display:grid;
   gap:2px;
@@ -3392,7 +3427,7 @@ body.combat-scenario-test-unlocked .splash-hotspot--combat-scenarios.is-combatte
 .ascent-stats-strip{
   display:grid;
   grid-template-columns:repeat(3, minmax(0, 1fr));
-  gap:6px;
+  gap:8px;
 }
 .ascent-stat-chip{
   display:flex;
@@ -3436,8 +3471,11 @@ body.combat-scenario-test-unlocked .splash-hotspot--combat-scenarios.is-combatte
   text-align:right;
 }
 @media (max-width:600px){
-  .ascent-stats-strip{grid-template-columns:repeat(2, minmax(0, 1fr));}
-  .ascent-stat-group:last-child{grid-column:1 / -1;}
+  .ascent-stats-strip{grid-template-columns:repeat(3, minmax(0, 1fr));gap:6px;}
+  .ascent-stat-group:last-child{grid-column:auto;}
+  .ascent-stat-group dl{gap:1px 6px;}
+  .ascent-stat-group dt,
+  .ascent-stat-group dd{font-size:.58rem;}
 }
 .ascent-hblock-passive{min-width:min(200px, 55vw);max-width:360px;}
 .ascent-panel-passive--inline{
@@ -3750,10 +3788,90 @@ body.combat-scenario-test-unlocked .splash-hotspot--combat-scenarios.is-combatte
 }
 .flight-mode-row #game-mode-toggle{width:100%;}
 .flight-settings-foot .select-hub-confirm-btn{margin-top:0;}
+.flight-continue-wrap .continue-run-btn{width:100%;}
+.flight-continue-wrap .sel-continue-info{margin:0;font-size:.66rem;}
+@media (max-width:700px){
+  #select-hub-map.select-hub-panel.is-open{
+    padding:4px;
+    align-items:stretch;
+  }
+  .select-hub-panel-inner--flight{
+    max-height:100dvh;
+    max-height:100svh;
+    overflow:hidden;
+    padding:10px 12px 12px;
+    gap:8px;
+  }
+  .select-hub-panel-inner--flight .select-hub-panel-head{
+    margin-bottom:6px;
+    padding-bottom:6px;
+    flex-shrink:0;
+  }
+  .flight-settings-kicker{display:none;}
+  .flight-settings-body{
+    flex:1 1 auto;
+    min-height:0;
+    overflow:hidden;
+    gap:6px;
+  }
+  .flight-settings-section{
+    padding:7px 9px 8px;
+    gap:4px;
+    flex-shrink:0;
+  }
+  .flight-settings-section--mode{padding-bottom:6px;}
+  .flight-settings-hint{
+    display:none;
+  }
+  .flight-settings-heading{font-size:.64rem;}
+  .flight-choice-grid,
+  .select-hub-panel .flight-diff-picker{
+    grid-template-columns:1fr 1fr;
+    gap:5px;
+  }
+  .flight-choice-card{padding:7px 8px;gap:6px;}
+  .flight-choice-emoji{font-size:1rem;width:1.2em;}
+  .flight-choice-title{font-size:.72rem;}
+  .flight-choice-desc{
+    font-size:.58rem;
+    line-height:1.25;
+    display:-webkit-box;
+    -webkit-line-clamp:2;
+    -webkit-box-orient:vertical;
+    overflow:hidden;
+  }
+  .flight-diff-desc{
+    font-size:.6rem;
+    line-height:1.25;
+    display:-webkit-box;
+    -webkit-line-clamp:2;
+    -webkit-box-orient:vertical;
+    overflow:hidden;
+  }
+  .flight-test-map-wrap{padding:6px 8px;}
+  .flight-settings-foot{
+    flex-shrink:0;
+    margin-top:8px;
+    padding-top:8px;
+    gap:6px;
+  }
+  .flight-briefing{padding:5px 8px;gap:4px 6px;}
+  .flight-briefing-kicker{font-size:.56rem;}
+  .flight-briefing-chip{font-size:.6rem;padding:2px 7px;}
+  .select-hub-panel-inner--flight .select-hub-confirm-btn{
+    padding:9px 12px;
+    font-size:.72rem;
+  }
+  .flight-continue-wrap .continue-run-btn{
+    padding:8px 10px;
+    font-size:.68rem;
+  }
+  .flight-continue-wrap .sel-continue-info{font-size:.58rem;}
+}
 @media (max-width:560px){
   .flight-choice-grid,
   .select-hub-panel .flight-diff-picker{
-    grid-template-columns:1fr;
+    grid-template-columns:1fr 1fr;
   }
 }
 @media (prefers-reduced-motion:reduce){
