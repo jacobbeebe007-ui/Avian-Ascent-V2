@@ -799,6 +799,42 @@ a.splash-settings-btn{
   outline:2px solid var(--gold);
   outline-offset:3px;
 }
+@media (max-width:720px){
+  .splash-menu-actions{
+    flex:1 1 100%;
+    justify-content:flex-end;
+    max-width:100%;
+  }
+  .splash-bank{
+    flex:1 1 auto;
+    justify-content:flex-end;
+    gap:4px;
+    max-width:100%;
+  }
+  .splash-settings-btn,
+  .splash-bank-chip{
+    min-height:34px;
+    padding:4px 8px;
+    font-size:.62rem;
+    gap:4px;
+  }
+  .splash-bank-chip-icon{font-size:.82rem;}
+  .splash-bank-chip-amount{font-size:.78rem;}
+  .splash-bank-chip--eggs .splash-bank-chip-amount{font-size:.82rem;min-width:1ch;}
+  .splash-bank-chip-label{font-size:.46rem;letter-spacing:.05em;}
+  .splash-bank-chip--nests .splash-bank-chip-stack{align-items:center;}
+  .splash-bank-chip--nests .splash-bank-chip-label{display:none;}
+}
+@media (max-width:420px){
+  .splash-settings-btn,
+  .splash-bank-chip{
+    min-height:30px;
+    padding:3px 6px;
+    font-size:.58rem;
+  }
+  .splash-bank-chip-icon{font-size:.75rem;}
+  .splash-bank-chip-amount{font-size:.72rem;}
+}
 .inventory-artifact-badge{
   position:absolute;
   top:-6px;
@@ -5325,15 +5361,18 @@ html.avian-ow-nest-embed .nest-close{display:none!important;}
   transition:transform .18s ease,border-color .18s ease,box-shadow .18s ease;
   position:relative;
   text-align:center;
+  overflow:hidden;
+  min-width:0;
+  box-sizing:border-box;
 }
 .shop-item:hover{transform:translateY(-2px);border-color:var(--gold);}
 .shop-item.selected{border-color:var(--gold-light);box-shadow:0 0 18px rgba(232,201,106,.22);}
 .shop-item.cant-afford{opacity:.45;cursor:not-allowed;}
-.shop-item-head{display:flex;align-items:center;justify-content:space-between;gap:6px;margin-bottom:8px;min-height:1.4em;}
-.shop-item .reward-tier-label{font-family:'Cinzel',serif;font-size:.65rem;letter-spacing:.12em;margin-bottom:0;flex:1;text-align:left;}
-.shop-item .reward-icon{font-size:1.6rem;display:block;margin-bottom:5px;}
-.shop-item .reward-name{font-size:.85rem;font-weight:700;margin-bottom:3px;color:var(--text);}
-.shop-item .reward-desc{font-size:.72rem;color:var(--text-dim);line-height:1.35;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;}
+.shop-item-head{display:flex;align-items:center;justify-content:space-between;gap:6px;margin-bottom:8px;min-height:1.4em;min-width:0;}
+.shop-item .reward-tier-label{font-family:'Cinzel',serif;font-size:.65rem;letter-spacing:.12em;margin-bottom:0;flex:1 1 auto;min-width:0;text-align:left;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.shop-item .reward-icon{font-size:1.6rem;display:block;margin-bottom:5px;line-height:1;}
+.shop-item .reward-name{font-size:.85rem;font-weight:700;margin-bottom:3px;color:var(--text);word-break:break-word;overflow-wrap:anywhere;line-height:1.25;}
+.shop-item .reward-desc{font-size:.72rem;color:var(--text-dim);line-height:1.35;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;word-break:break-word;overflow-wrap:anywhere;}
 .shop-tier-collapsible-body > .shop-item,
 .shop-items-grid > .shop-item{min-width:0;}
 .shop-item-cost{position:static;flex-shrink:0;font-family:'Cinzel',serif;font-size:.68rem;color:var(--gold);background:rgba(20,15,5,.9);border:1px solid rgba(201,168,76,.3);border-radius:8px;padding:1px 6px;}
@@ -6969,8 +7008,12 @@ body.ui-mobile-mode #screen-battle .btn-desc{
 .map-forge-shop-panel{display:flex;flex-direction:column;gap:6px;padding-top:8px;border-top:1px solid rgba(201,168,76,.16);}
 .map-forge-shop-tab-row{justify-content:flex-start;margin:4px 0 8px;}
 .map-forge-shop-stock-list{display:flex;flex-direction:column;gap:4px;max-height:240px;overflow:auto;}
-.map-forge-shop-stock-row{display:flex;align-items:center;gap:8px;font-size:.72rem;color:var(--text-dim);padding:4px 0;}
-.map-forge-shop-stock-row span{flex:1;min-width:0;}
+.map-forge-shop-stock-row{display:flex;align-items:center;gap:8px;font-size:.72rem;color:var(--text-dim);padding:4px 0;flex-wrap:wrap;}
+.map-forge-shop-stock-row span{flex:1 1 8em;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.map-forge-shop-stock-row .map-forge-reward-num{flex:0 0 auto;width:3.2em;}
+.map-forge-reward-grant-mode{flex:1 1 7em;min-width:7em;}
+.map-forge-reward-equipment-id{flex:1 1 10em;min-width:10em;}
+.map-forge-clear-reward-card .map-forge-field-input{max-width:100%;}
 .map-forge-path-order-field{display:flex;flex-direction:column;gap:4px;}
 .map-forge-clear-reward-card{flex-wrap:wrap;align-items:center;gap:6px;padding:8px;border:1px solid rgba(201,168,76,.14);border-radius:8px;background:rgba(0,0,0,.18);}
 .map-forge-reward-chance{display:inline-flex;align-items:center;gap:2px;font-size:.7rem;color:var(--muted,#a8a090);}

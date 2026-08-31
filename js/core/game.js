@@ -16596,6 +16596,15 @@ function ensureShopMutationTierOpenState(){
     G._shopMutationTierOpen={grey:true};
   }
 }
+function shopHasAcquiredEquipmentTier(tier){
+  const t=String(tier||'').toLowerCase();
+  if(t==='grey'||t==='white') return true;
+  if(typeof Avian?.equipmentLoot?.collectRunEquipmentRarities==='function'){
+    const found=Avian.equipmentLoot.collectRunEquipmentRarities(G?.player,G);
+    return !!(found&&found[t]);
+  }
+  return t!=='gold'&&t!=='orange';
+}
 function appendShopMutationTierSections(grid, rows, appendCategoryCardsFn){
   ensureShopMutationTierOpenState();
   const byTier=Object.create(null);
@@ -16609,6 +16618,7 @@ function appendShopMutationTierSections(grid, rows, appendCategoryCardsFn){
   for(const tier of MUTATION_SHOP_TIER_ORDER){
     const tierRows=byTier[tier]||[];
     if(!tierRows.length) continue;
+    if((tier==='gold'||tier==='orange')&&!shopHasAcquiredEquipmentTier(tier)) continue;
     any=true;
     const meta=rewardTierMeta(tier);
     const isOpen=!!G._shopMutationTierOpen[tier];

@@ -787,9 +787,9 @@
   };
 
   global.grantForgeClearRewards = function (player, rewards, G) {
-    const empty = { shinies: 0, mutations: [], equipment: [], items: [], nests: 0, rescuedNests: 0, savedEggs: 0, goldenGoose: 0, feathers: [] };
+    const empty = { shinies: 0, mutations: [], equipment: [], items: [], nests: 0, rescuedNests: 0, savedEggs: 0, goldenGoose: 0, feathers: [], pendingEquipmentChoice: [] };
     if (!Array.isArray(rewards) || !rewards.length) return empty;
-    const granted = Object.assign({}, empty, { mutations: [], equipment: [], items: [], feathers: [] });
+    const granted = Object.assign({}, empty, { mutations: [], equipment: [], items: [], feathers: [], pendingEquipmentChoice: [] });
     const rollForgeEquipment = (band) => {
       if (typeof global.Avian?.equipmentLoot?.rollEquipmentDrop !== 'function') return null;
       return global.Avian.equipmentLoot.rollEquipmentDrop({
@@ -827,8 +827,15 @@
         granted.shinies += gain;
         if (G) G.shinyObjects = (G.shinyObjects || 0) + gain;
       } else if (r.type === 'mutation') {
-        if (r.equipmentId) {
-          grantEquipmentId(String(r.equipmentId));
+        const eqId = r.equipmentId || r.mutationId;
+        const grantMode = r.grantMode || (eqId ? 'specified' : (r.count != null ? 'roll' : 'choice'));
+        if (grantMode === 'specified' && eqId) {
+          grantEquipmentId(String(eqId));
+        } else if (grantMode === 'choice') {
+          granted.pendingEquipmentChoice.push({
+            tierBand: r.tierBand || r.tier || 'blue',
+            pickCount: Math.max(2, Math.min(5, Math.floor(Number(r.pickCount) || 3))),
+          });
         } else {
           const count = Math.max(1, Math.floor(Number(r.count) || 1));
           const band = r.tierBand || r.tier || 'blue';
@@ -874,6 +881,30 @@
       }
     });
     return granted;
+  };
+
+  global.buildForgeEquipmentChoicePool = function (choice, player) {
+    const loot = global.Avian && global.Avian.equipmentLoot;
+    if (!loot || typeof loot.rollEquipmentDrop !== 'function' || typeof loot.buildRewardCard !== 'function') return [];
+    const tier = String(choice?.tierBand || choice?.tier || 'blue').toLowerCase();
+    const pickCount = Math.max(2, Math.min(5, Math.floor(Number(choice?.pickCount) || 3)));
+    const used = new Set();
+    const pool = [];
+    let guard = 0;
+    while (pool.length < pickCount && guard < pickCount * 8) {
+      guard++;
+      const id = loot.rollEquipmentDrop({
+        rarity: tier,
+        stage: (global.G && global.G.stage) || 1,
+        filterForPlayer: true,
+        player: player || (global.G && global.G.player),
+        usedIds: used,
+      });
+      if (!id) break;
+      const card = loot.buildRewardCard(id);
+      if (card) pool.push(card);
+    }
+    return pool;
   };
 
   global.grantForgeBonusRewards = function (player, bonusConfig, G) {

@@ -336,7 +336,9 @@ function showStoryEquipmentPick(pool){
   if(hint) hint.textContent='Choose 1 equipment';
   const footnote=document.getElementById('nest-reward-footnote');
   if(footnote) footnote.style.display='none';
-  document.getElementById('reward-sub').textContent='Pick one piece of equipment from the nest.';
+  document.getElementById('reward-sub').textContent=G._forgeEquipmentChoicePending
+    ?'Pick one piece of equipment for clearing this stage.'
+    :'Pick one piece of equipment from the nest.';
 
   const confirmBtn=document.getElementById('reward-confirm-btn');
   confirmBtn.textContent='✓ Take This Equipment';
@@ -366,6 +368,18 @@ function showStoryEquipmentPick(pool){
     grid.appendChild(c);
   });
 }
+
+function showForgeEquipmentChoiceReward(pool){
+  G._forgeEquipmentChoicePending=true;
+  showScreen('screen-reward');
+  document.getElementById('reward-title').textContent='✦ Stage Cleared! ✦';
+  const nest=document.getElementById('reward-nest');
+  if(nest) nest.style.display='none';
+  const scene=document.getElementById('nest-reward-scene');
+  if(scene) scene.classList.add('forge-equipment-choice');
+  showStoryEquipmentPick(pool);
+}
+globalThis.showForgeEquipmentChoiceReward=showForgeEquipmentChoiceReward;
 
 function handleNestShake(){
   const nest=document.getElementById('reward-nest');
@@ -525,6 +539,31 @@ function confirmReward() {
     G._pendingReward=null;
     G._storyEquipmentPickPool=null;
     G._equipmentPickPool=null;
+    if(G._forgeEquipmentChoicePending){
+      G._forgeEquipmentChoicePending=false;
+      G._rewardScreenMode='normal';
+      G._rewardsAlreadyGranted=true;
+      const grid=document.getElementById('reward-grid');
+      if(grid){
+        grid.style.display='none';
+        grid.setAttribute('aria-hidden','true');
+      }
+      const nest=document.getElementById('reward-nest');
+      if(nest) nest.style.display='';
+      const scene=document.getElementById('nest-reward-scene');
+      if(scene) scene.classList.remove('forge-equipment-choice');
+      saveRun();
+      if(G._owForgeReturnToForge){
+        G._owForgeReturnToForge=false;
+        G._owForgeNavMeta=null;
+        G._owForgeEncounter=null;
+        G._owForgePowerTier=0;
+        clearOverworldPendingBattle();
+        if(typeof showScreen==='function') showScreen('screen-map-forge');
+        if(typeof globalThis.openMapForge==='function') globalThis.openMapForge({ skipReload:true });
+        return;
+      }
+    }
     G._rewardScreenMode='nest';
     G._rewardsAlreadyGranted=true;
     const grid=document.getElementById('reward-grid');
