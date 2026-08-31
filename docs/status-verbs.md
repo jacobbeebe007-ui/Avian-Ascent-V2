@@ -41,9 +41,16 @@ diff regresses.
 
    ```js
    Avian.statuses.register('bleed', {
-     onTick(target, stacks) {
-       const dmg = Math.max(1, (stacks || 0) * 2);
-       if (typeof dealDamage === 'function') dealDamage(target, dmg);
+     onTick(target, value) {
+       const stacks = (value && value.stacks) || 0;
+       const maxHp = /* target stats.maxHp */;
+       const dmg = calcBleedTickDmg(maxHp, stacks);
+       applyAilmentDamage(target, dmg, {
+         ailmentId: 'bleed',
+         icon: '🩸',
+         floatClass: 'fn-dmg',
+         logText: '🩸 Bleed deals {dmg} to {name}!',
+       });
      },
      onConsume(target, stacks, src) {
        return { bonusMult: 0.5 + Math.min(0.5, stacks * 0.05) };
