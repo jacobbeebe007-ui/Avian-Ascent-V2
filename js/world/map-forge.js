@@ -3071,7 +3071,7 @@
           bodyH: layout.bodyH,
         };
         document.body.classList.add('map-forge-is-resizing');
-      });
+      }, true);
     });
     const onMove = (e) => {
       if (!active) return;

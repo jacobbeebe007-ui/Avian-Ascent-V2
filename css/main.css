@@ -7070,16 +7070,30 @@ body.ui-mobile-mode #screen-battle .btn-desc{
 .map-forge-reward-presets-row .map-forge-field-input{flex:1;min-width:8em;}
 .map-forge-resize-handle{
   position:absolute;
-  right:0;
-  bottom:0;
-  width:14px;
-  height:14px;
+  right:2px;
+  bottom:2px;
+  width:18px;
+  height:18px;
   cursor:nwse-resize;
-  z-index:6;
+  z-index:12;
   border-bottom-right-radius:10px;
-  background:linear-gradient(135deg,transparent 45%,rgba(201,168,76,.42) 45%,rgba(201,168,76,.55) 100%);
+  background:linear-gradient(135deg,transparent 40%,rgba(201,168,76,.5) 40%,rgba(201,168,76,.65) 100%);
+  touch-action:none;
 }
-.map-forge-resize-handle:hover{background:linear-gradient(135deg,transparent 35%,rgba(201,168,76,.55) 35%,rgba(232,192,96,.75) 100%);}
+.map-forge-resize-handle::after{
+  content:'';
+  position:absolute;
+  right:-6px;
+  bottom:-6px;
+  width:28px;
+  height:28px;
+}
+.map-forge-resize-handle:hover{background:linear-gradient(135deg,transparent 30%,rgba(201,168,76,.6) 30%,rgba(232,192,96,.8) 100%);}
+.map-forge-canvas-wrap .map-forge-resize-handle{
+  right:172px;
+  bottom:2px;
+  z-index:10;
+}
 body.map-forge-is-resizing{cursor:nwse-resize;user-select:none;}
 body.map-forge-is-resizing *{cursor:nwse-resize!important;}
 .map-forge-bonus-reward-row{display:flex;justify-content:space-between;align-items:center;font-size:.72rem;color:var(--text-dim);padding:4px 0;}
