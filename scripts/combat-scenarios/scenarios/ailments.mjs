@@ -19,6 +19,24 @@ export default [
     },
   },
   {
+    id: 'AIL-001b',
+    name: 'Poison end-of-turn tick uses MaxHP% formula',
+    setup: {
+      player: { bird: 'sparrow', energy: 4, equipment: { mainHand: 'WPN-B04' } },
+      enemy: { bird: 'crow', hp: 200, maxHp: 200 },
+    },
+    assert({ sandbox, expectValue }) {
+      const hpBefore = sandbox.G.enemy.stats.hp;
+      sandbox.G.enemyStatus = { poison: { stacks: 3, turns: 3 } };
+      const expected = sandbox.calcPoisonTickDmg(3, sandbox.G.enemy.stats.maxHp, 1);
+      sandbox.tickEndOfTurnAilments('enemy');
+      const hpAfter = sandbox.G.enemy.stats.hp;
+      const dealt = Math.round((hpBefore - hpAfter) * 100) / 100;
+      expectValue(dealt, expected, 'tickEndOfTurnAilments poison matches calcPoisonTickDmg');
+      expectValue(dealt > 3, true, 'poison tick scales with maxHp not flat stacks');
+    },
+  },
+  {
     id: 'AIL-002',
     name: 'Bleed applies healing reduction by stack',
     setup: {

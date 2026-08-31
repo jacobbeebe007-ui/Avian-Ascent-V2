@@ -741,58 +741,6 @@
 
 // ===== 22_script_22.js =====
 
-/* ===== DoT + passive pass + HONK cleanup ===== */
-(function(){
-  globalThis.tickDoTs = async function(who){
-    const status = who === 'player' ? G.playerStatus : G.enemyStatus;
-    const stats  = who === 'player' ? G.player.stats : G.enemy.stats;
-    const name   = who === 'player' ? G.player.name : G.enemy.name;
-    if(!status || !stats) return;
-
-    const applyTick = async (icon, cls, dmg, logText) => {
-      const roundDmg = (typeof globalThis.roundCombatDamage === 'function')
-        ? globalThis.roundCombatDamage
-        : (n) => Math.max(0.01, Math.round(Number(n) * 100) / 100);
-      dmg = roundDmg(Math.max(0.01, dmg));
-      if (typeof globalThis.applyFractionalHp === 'function') {
-        globalThis.applyFractionalHp(stats, -dmg);
-      } else {
-        stats.hp = Math.max(0, Math.round((Number(stats.hp) - dmg) * 100) / 100);
-      }
-      const dmgDisp = (typeof globalThis.formatCombatNumber === 'function')
-        ? globalThis.formatCombatNumber(dmg)
-        : dmg;
-      spawnFloat(who, `${icon} -${dmgDisp}`, cls);
-      if(typeof setHpBar === 'function') setHpBar(who, stats.hp, stats.maxHp);
-      if(typeof logMsg === 'function') logMsg(logText.replace('{dmg}', dmg).replace('{name}', name), 'poison-tick');
-      if(who === 'enemy' && globalThis.BS) BS.dmgDealt = (BS.dmgDealt||0) + dmg;
-      await delay(250);
-    };
-
-    if(status.poison && status.poison.stacks > 0 && status.poison.turns > 0){
-      const tickMult = who === 'player' ? (G.player?.poisonTickMult || 1) : 1;
-      await applyTick('☣','fn-poison', status.poison.stacks * tickMult, '☣ Avian Poison deals {dmg} damage to {name}!');
-      status.poison.turns--;
-      if(status.poison.turns <= 0) delete status.poison;
-    }
-
-    if(status.bleed && status.bleed.stacks > 0 && status.bleed.turns > 0){
-      await applyTick('🩸','fn-dmg', status.bleed.stacks * 1.5, '🩸 Bleed deals {dmg} damage to {name}!');
-      status.bleed.turns--;
-      if(status.bleed.turns <= 0) delete status.bleed;
-    }
-
-    /* Burn tick handled by tickBurningEndEnemyPhase in game.js (7 flat, end enemy phase). */
-
-    if(status.delayed && status.delayed.dmg > 0){
-      await applyTick('🎵','fn-status', status.delayed.dmg, '🎵 Resonance detonates for {dmg} damage on {name}!');
-      delete status.delayed;
-    }
-  };
-
-})();
-
-
 // ===== 23_script_23.js =====
 
 /* ===== Trickster identity + ability scaling pass =====
