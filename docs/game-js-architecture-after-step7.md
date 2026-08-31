@@ -19,6 +19,9 @@
 | `js/ui/reward-screen.js` | Post-battle reward screen, nest shake, confirm flow |
 | `js/ui/shop-compare.js` | Stork shop gear compare tooltips |
 | `js/systems/shop-cadence.js` | Grey/boss shop visit scheduling after battles |
+| `js/systems/story-overworld-progress.js` | Overworld progress normalization and stage clear |
+| `js/systems/story-overworld-bridge.js` | Overworld return intent, enemy list normalization |
+| `js/systems/story-stage-flow.js` | `advanceStage`, `continueStageTransitionAfterRewards` |
 
 ## game.js remaining responsibilities
 
@@ -93,7 +96,7 @@ js/legacy/game-compat.js
 | Combat UI rendering in game.js | ✅ Phase 3 (`js/ui/combat-*.js`) |
 | Build Nest unlock + forge encounter runtime | ✅ Phase 4 (`js/systems/build-nest-*.js`; editor remains in `map-forge.js`) |
 | Reward/shop orchestration | ✅ Phase 5 (`reward-screen.js`, `shop-compare.js`, `shop-cadence.js`) |
-| Story flow extraction | ⬜ Phase 6 |
+| Story flow extraction | ✅ Phase 6 (`story-overworld-*.js`, `story-stage-flow.js`) |
 | Combat setup / controller | ⬜ Phases 7–8 |
 | `ABILITY_TEMPLATES` inline block | ⬜ Deferred (high coupling) |
 

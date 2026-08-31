@@ -31,6 +31,8 @@ check('build-nest-state loads before game.js', buildNestStateIdx >= 0 && gameIdx
 check('build-nest-forge-runtime loads after game.js', forgeRuntimeIdx >= 0 && gameIdx >= 0 && forgeRuntimeIdx > gameIdx);
 check('reward-screen loads after game.js', rewardScreenIdx >= 0 && gameIdx >= 0 && rewardScreenIdx > gameIdx);
 check('shop-compare loads after game.js', shopCompareIdx >= 0 && gameIdx >= 0 && shopCompareIdx > gameIdx);
+const storyFlowIdx = scripts.indexOf('js/systems/story-stage-flow.js');
+check('story-stage-flow loads after game.js', storyFlowIdx >= 0 && gameIdx >= 0 && storyFlowIdx > gameIdx);
 check('combat-hud loads before sprites.js', combatUiIdx >= 0 && scripts.indexOf('js/ui/sprites.js') > combatUiIdx);
 
 const requiredGlobals = [
@@ -55,6 +57,8 @@ const requiredGlobals = [
   'confirmReward',
   'showRewardScreen',
   'bindShopItemCompareTooltips',
+  'handleOverworldReturn',
+  'continueStageTransitionAfterRewards',
 ];
 
 const bundlePath = 'js/avian-game.bundle.js';
