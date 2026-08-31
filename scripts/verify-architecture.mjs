@@ -23,6 +23,10 @@ const telemetryIdx = scripts.indexOf('js/debug/telemetry.js');
 check('game-helpers loads before game.js', helpersIdx >= 0 && gameIdx >= 0 && helpersIdx < gameIdx);
 const combatUiIdx = scripts.indexOf('js/ui/combat-hud.js');
 check('combat-hud loads after game.js', combatUiIdx >= 0 && gameIdx >= 0 && combatUiIdx > gameIdx);
+const forgeRuntimeIdx = scripts.indexOf('js/systems/build-nest-forge-runtime.js');
+const buildNestStateIdx = scripts.indexOf('js/systems/build-nest-state.js');
+check('build-nest-state loads before game.js', buildNestStateIdx >= 0 && gameIdx >= 0 && buildNestStateIdx < gameIdx);
+check('build-nest-forge-runtime loads after game.js', forgeRuntimeIdx >= 0 && gameIdx >= 0 && forgeRuntimeIdx > gameIdx);
 check('combat-hud loads before sprites.js', combatUiIdx >= 0 && scripts.indexOf('js/ui/sprites.js') > combatUiIdx);
 
 const requiredGlobals = [
@@ -42,6 +46,8 @@ const requiredGlobals = [
   'setHpBar',
   'openCombatStatsModal',
   'renderEnemyPlan',
+  'isBuildNestUnlocked',
+  'buildTierStarEnemyFromBirdKey',
 ];
 
 const bundlePath = 'js/avian-game.bundle.js';

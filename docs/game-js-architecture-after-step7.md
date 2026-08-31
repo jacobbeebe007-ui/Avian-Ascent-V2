@@ -14,6 +14,8 @@
 | `js/ui/combat-enemy-telegraph.js` | Enemy intent telegraph chips |
 | `js/ui/combat-hud.js` | `refreshBattleUI`, energy orbs, `renderAllCombatUI` |
 | `js/ui/combat-actions.js` | Action tray and combat item row rendering |
+| `js/systems/build-nest-state.js` | Build Nest unlock gate (`avian_buildnest_unlocked`) |
+| `js/systems/build-nest-forge-runtime.js` | Forge slot tier/star helpers and tier-star enemy builder |
 
 ## game.js remaining responsibilities
 
@@ -56,8 +58,10 @@ See `docs/global-ui-api.md` for the `data-action` registry. Critical globals pre
 ```
 … data / systems …
 js/debug/agent-debug.js
+js/systems/build-nest-state.js
 js/core/game-helpers.js
 js/core/game.js
+js/systems/build-nest-forge-runtime.js
 js/debug/telemetry.js
 js/ui/combat-stats-modal.js
 js/ui/combat-bars.js
@@ -80,7 +84,7 @@ js/legacy/game-compat.js
 | Area | Status |
 |------|--------|
 | Combat UI rendering in game.js | ✅ Phase 3 (`js/ui/combat-*.js`) |
-| Build Nest beyond map-forge.js | 🔁 Needs revisit (Phase 4) |
+| Build Nest unlock + forge encounter runtime | ✅ Phase 4 (`js/systems/build-nest-*.js`; editor remains in `map-forge.js`) |
 | Reward/shop orchestration | ⬜ Phase 5 |
 | Story flow extraction | ⬜ Phase 6 |
 | Combat setup / controller | ⬜ Phases 7–8 |
