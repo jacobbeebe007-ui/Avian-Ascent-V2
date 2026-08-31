@@ -23,7 +23,7 @@ export default [
     name: 'Poison end-of-turn tick uses MaxHP% formula',
     setup: {
       player: { bird: 'sparrow', energy: 4, equipment: { mainHand: 'WPN-B04' } },
-      enemy: { bird: 'crow', hp: 100, maxHp: 100 },
+      enemy: { bird: 'crow', hp: 200, maxHp: 200 },
     },
     assert({ sandbox, expectValue }) {
       const hpBefore = sandbox.G.enemy.stats.hp;
