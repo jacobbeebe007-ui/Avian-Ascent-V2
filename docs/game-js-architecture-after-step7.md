@@ -16,6 +16,9 @@
 | `js/ui/combat-actions.js` | Action tray and combat item row rendering |
 | `js/systems/build-nest-state.js` | Build Nest unlock gate (`avian_buildnest_unlocked`) |
 | `js/systems/build-nest-forge-runtime.js` | Forge slot tier/star helpers and tier-star enemy builder |
+| `js/ui/reward-screen.js` | Post-battle reward screen, nest shake, confirm flow |
+| `js/ui/shop-compare.js` | Stork shop gear compare tooltips |
+| `js/systems/shop-cadence.js` | Grey/boss shop visit scheduling after battles |
 
 ## game.js remaining responsibilities
 
@@ -62,8 +65,12 @@ js/systems/build-nest-state.js
 js/core/game-helpers.js
 js/core/game.js
 js/systems/build-nest-forge-runtime.js
+js/systems/shop-cadence.js
 js/debug/telemetry.js
 js/ui/combat-stats-modal.js
+…
+js/ui/reward-screen.js
+js/ui/shop-compare.js
 js/ui/combat-bars.js
 js/ui/combat-status.js
 js/ui/combat-enemy-telegraph.js
@@ -85,7 +92,7 @@ js/legacy/game-compat.js
 |------|--------|
 | Combat UI rendering in game.js | ✅ Phase 3 (`js/ui/combat-*.js`) |
 | Build Nest unlock + forge encounter runtime | ✅ Phase 4 (`js/systems/build-nest-*.js`; editor remains in `map-forge.js`) |
-| Reward/shop orchestration | ⬜ Phase 5 |
+| Reward/shop orchestration | ✅ Phase 5 (`reward-screen.js`, `shop-compare.js`, `shop-cadence.js`) |
 | Story flow extraction | ⬜ Phase 6 |
 | Combat setup / controller | ⬜ Phases 7–8 |
 | `ABILITY_TEMPLATES` inline block | ⬜ Deferred (high coupling) |

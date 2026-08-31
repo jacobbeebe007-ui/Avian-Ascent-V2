@@ -25,8 +25,12 @@ const combatUiIdx = scripts.indexOf('js/ui/combat-hud.js');
 check('combat-hud loads after game.js', combatUiIdx >= 0 && gameIdx >= 0 && combatUiIdx > gameIdx);
 const forgeRuntimeIdx = scripts.indexOf('js/systems/build-nest-forge-runtime.js');
 const buildNestStateIdx = scripts.indexOf('js/systems/build-nest-state.js');
+const rewardScreenIdx = scripts.indexOf('js/ui/reward-screen.js');
+const shopCompareIdx = scripts.indexOf('js/ui/shop-compare.js');
 check('build-nest-state loads before game.js', buildNestStateIdx >= 0 && gameIdx >= 0 && buildNestStateIdx < gameIdx);
 check('build-nest-forge-runtime loads after game.js', forgeRuntimeIdx >= 0 && gameIdx >= 0 && forgeRuntimeIdx > gameIdx);
+check('reward-screen loads after game.js', rewardScreenIdx >= 0 && gameIdx >= 0 && rewardScreenIdx > gameIdx);
+check('shop-compare loads after game.js', shopCompareIdx >= 0 && gameIdx >= 0 && shopCompareIdx > gameIdx);
 check('combat-hud loads before sprites.js', combatUiIdx >= 0 && scripts.indexOf('js/ui/sprites.js') > combatUiIdx);
 
 const requiredGlobals = [
@@ -48,6 +52,9 @@ const requiredGlobals = [
   'renderEnemyPlan',
   'isBuildNestUnlocked',
   'buildTierStarEnemyFromBirdKey',
+  'confirmReward',
+  'showRewardScreen',
+  'bindShopItemCompareTooltips',
 ];
 
 const bundlePath = 'js/avian-game.bundle.js';
