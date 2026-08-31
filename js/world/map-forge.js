@@ -1876,6 +1876,249 @@
     });
   }
 
+  function forgeEncounterDifficultyLabel() {
+    const g = global.G || {};
+    const ctx = {
+      difficulty: g.difficulty || 'juvenile',
+      isBoss: !!(global._forgePreviewBoss || false),
+      isElite: false,
+    };
+    if (typeof global.resolveEncounterAIDifficulty === 'function') {
+      return global.formatAIProfileLabel
+        ? global.formatAIProfileLabel(global.resolveEncounterAIDifficulty(ctx))
+        : global.resolveEncounterAIDifficulty(ctx);
+    }
+    return 'Normal';
+  }
+
+  function buildForgePreviewEnemy(slot) {
+    const birdKey = slot?.birdKey && slot.birdKey !== 'random' ? slot.birdKey : 'sparrow';
+    const cls = (global.BIRDS && global.BIRDS[birdKey] && global.BIRDS[birdKey].class) || 'mage';
+    let enemy = {
+      id: 'forge-preview',
+      name: birdKey,
+      birdKey,
+      class: cls,
+      enemyClass: cls,
+      stats: { hp: 80, maxHp: 80, atk: 10, def: 8, matk: 12, mdef: 8, spd: 10, acc: 80, dodge: 5 },
+      abilities: [{ id: 'BASIC_MAGIC', name: 'Basic', empty: false }],
+      equipment: {},
+    };
+    try {
+      if (typeof global.buildTierStarEnemyFromBirdKey === 'function' && global.G) {
+        const built = global.buildTierStarEnemyFromBirdKey(birdKey, {
+          tier: slot?.enemyTier || 'grey',
+          stars: slot?.enemyStars ?? 0,
+          stage: 5,
+        });
+        if (built) enemy = built;
+      }
+    } catch (_err) { /* forge preview works without full G combat state */ }
+    if (typeof global.applyForgeSlotAIToEnemy === 'function') global.applyForgeSlotAIToEnemy(enemy, slot);
+    else if (slot?.ai) enemy.ai = JSON.parse(JSON.stringify(slot.ai));
+    return enemy;
+  }
+
+  function renderForgeEnemyAISection(slot, idx) {
+    try {
+      if (typeof global.normalizeForgeSlotAI === 'function') global.normalizeForgeSlotAI(slot);
+      else if (!slot.ai) slot.ai = { profile: 'default', behaviour: 'automatic' };
+
+    const wrap = document.createElement('div');
+    wrap.className = 'map-forge-enemy-ai-section';
+    wrap.innerHTML = '<div class="map-forge-field-label map-forge-enemy-ai-title">Enemy AI</div>';
+
+    const profileOpts = ['default', 'easy', 'normal', 'elite', 'boss', 'custom'];
+    const behaviourOpts = [
+      'automatic', 'balanced', 'aggressive', 'defensive', 'control', 'sustain',
+      'knight', 'rogue', 'mage', 'siren', 'inquisitor', 'bard', 'brute',
+    ];
+
+    const profileWrap = document.createElement('label');
+    profileWrap.className = 'map-forge-encounter-field';
+    profileWrap.textContent = 'AI Profile';
+    const profileSel = document.createElement('select');
+    profileSel.className = 'map-forge-field-input';
+    profileOpts.forEach((id) => {
+      const o = document.createElement('option');
+      o.value = id;
+      o.textContent = typeof global.formatAIProfileLabel === 'function'
+        ? global.formatAIProfileLabel(id)
+        : id.charAt(0).toUpperCase() + id.slice(1);
+      if ((slot.ai.profile || 'default') === id) o.selected = true;
+      profileSel.appendChild(o);
+    });
+    profileSel.onchange = () => {
+      slot.ai.profile = profileSel.value;
+      if (slot.ai.profile !== 'custom') delete slot.ai.overrides;
+      renderEncounterPanel();
+    };
+    profileWrap.appendChild(profileSel);
+    wrap.appendChild(profileWrap);
+
+    const behaviourWrap = document.createElement('label');
+    behaviourWrap.className = 'map-forge-encounter-field';
+    behaviourWrap.textContent = 'Behaviour Style';
+    const behaviourSel = document.createElement('select');
+    behaviourSel.className = 'map-forge-field-input';
+    behaviourOpts.forEach((id) => {
+      const o = document.createElement('option');
+      o.value = id;
+      o.textContent = typeof global.formatAIBehaviourLabel === 'function'
+        ? global.formatAIBehaviourLabel(id)
+        : id.charAt(0).toUpperCase() + id.slice(1);
+      if ((slot.ai.behaviour || 'automatic') === id) o.selected = true;
+      behaviourSel.appendChild(o);
+    });
+    behaviourSel.onchange = () => {
+      slot.ai.behaviour = behaviourSel.value;
+      renderEncounterPanel();
+    };
+    behaviourWrap.appendChild(behaviourSel);
+    wrap.appendChild(behaviourWrap);
+
+    const previewEnemy = buildForgePreviewEnemy(slot);
+    const combatCtx = {
+      difficulty: (global.G && global.G.difficulty) || 'juvenile',
+      isBoss: !!slot.isBoss,
+      isElite: false,
+    };
+    const aiConfig = typeof global.resolveEnemyAIConfig === 'function'
+      ? global.resolveEnemyAIConfig(previewEnemy, combatCtx)
+      : null;
+    const savedProfile = slot.ai.profile || 'default';
+    const isOverride = savedProfile !== 'default';
+    const resolvedLabel = aiConfig && typeof global.formatAIProfileLabel === 'function'
+      ? global.formatAIProfileLabel(aiConfig.profile)
+      : (aiConfig?.profile || 'Normal');
+    const behaviourResolved = aiConfig?.behaviour || 'balanced';
+    const behaviourLabel = typeof global.formatAIBehaviourLabel === 'function'
+      ? global.formatAIBehaviourLabel(slot.ai.behaviour || 'automatic', behaviourResolved)
+      : behaviourResolved;
+
+    const meta = document.createElement('div');
+    meta.className = 'map-forge-enemy-ai-meta';
+    meta.innerHTML =
+      '<div><span class="map-forge-enemy-ai-k">Difficulty Source</span> '
+      + (isOverride ? '<strong>BUILD NEST OVERRIDE</strong>' : 'Encounter Difficulty')
+      + (isOverride ? ' <span class="map-forge-enemy-ai-override">OVERRIDE</span>' : '')
+      + '</div>'
+      + '<div><span class="map-forge-enemy-ai-k">Current Encounter Difficulty</span> '
+      + forgeEncounterDifficultyLabel() + '</div>'
+      + '<div><span class="map-forge-enemy-ai-k">Resolved AI</span> ' + resolvedLabel + '</div>'
+      + '<div><span class="map-forge-enemy-ai-k">Behaviour</span> ' + behaviourLabel + '</div>';
+    wrap.appendChild(meta);
+
+    if (slot.ai.profile === 'custom') {
+      const adv = document.createElement('details');
+      adv.className = 'map-forge-enemy-ai-advanced';
+      adv.open = true;
+      adv.innerHTML = '<summary>Advanced</summary>';
+      const fields = [
+        'randomness', 'koAwareness', 'protectionAwareness', 'ailmentAwareness',
+        'comboAwareness', 'enPlanning', 'cooldownPlanning', 'defensiveUrgency',
+        'lookaheadWeight',
+      ];
+      if (!slot.ai.overrides) slot.ai.overrides = {};
+      fields.forEach((key) => {
+        const lab = document.createElement('label');
+        lab.className = 'map-forge-encounter-field';
+        lab.textContent = key.replace(/([A-Z])/g, ' $1').replace(/^./, (c) => c.toUpperCase());
+        const inp = document.createElement('input');
+        inp.type = 'number';
+        inp.className = 'map-forge-field-input';
+        inp.step = key === 'randomness' ? '0.01' : '0.05';
+        inp.value = String(slot.ai.overrides[key] != null ? slot.ai.overrides[key] : '');
+        inp.onchange = () => {
+          const v = inp.value.trim();
+          if (!v) delete slot.ai.overrides[key];
+          else slot.ai.overrides[key] = Number(v);
+          renderEncounterPanel();
+        };
+        lab.appendChild(inp);
+        adv.appendChild(lab);
+      });
+      const lookLab = document.createElement('label');
+      lookLab.className = 'map-forge-field-check';
+      const lookChk = document.createElement('input');
+      lookChk.type = 'checkbox';
+      lookChk.checked = !!slot.ai.overrides.lookahead;
+      lookChk.onchange = () => {
+        slot.ai.overrides.lookahead = lookChk.checked;
+        renderEncounterPanel();
+      };
+      lookLab.appendChild(lookChk);
+      lookLab.appendChild(document.createTextNode(' Lookahead'));
+      adv.appendChild(lookLab);
+      wrap.appendChild(adv);
+    } else {
+      const adv = document.createElement('details');
+      adv.className = 'map-forge-enemy-ai-advanced';
+      adv.innerHTML = '<summary>Advanced</summary><p class="map-forge-hint">Custom intelligence controls unlock when AI Profile is Custom.</p>';
+      wrap.appendChild(adv);
+    }
+
+    const btnRow = document.createElement('div');
+    btnRow.className = 'map-forge-enemy-ai-actions';
+    const testBtn = document.createElement('button');
+    testBtn.type = 'button';
+    testBtn.className = 'menu-btn';
+    testBtn.textContent = 'TEST AI';
+    testBtn.onclick = () => {
+      const enemy = buildForgePreviewEnemy(slot);
+      const player = { stats: { hp: 40, maxHp: 100, def: 8, mdef: 8, dodge: 5, acc: 80 } };
+      const result = typeof global.testEnemyAI === 'function'
+        ? global.testEnemyAI(enemy, player, combatCtx)
+        : null;
+      const out = document.getElementById('map-forge-enemy-ai-result-' + idx);
+      if (!out || !result) return;
+      out.style.display = '';
+      out.innerHTML =
+        '<div class="map-forge-enemy-ai-result-title">AI TEST</div>'
+        + '<div>Saved AI Profile: ' + (typeof global.formatAIProfileLabel === 'function' ? global.formatAIProfileLabel(result.savedProfile) : result.savedProfile) + '</div>'
+        + '<div>Encounter Difficulty: ' + (typeof global.formatAIProfileLabel === 'function' ? global.formatAIProfileLabel(result.encounterDifficulty) : result.encounterDifficulty) + '</div>'
+        + '<div>Resolved AI: ' + (typeof global.formatAIProfileLabel === 'function' ? global.formatAIProfileLabel(result.resolvedProfile) : result.resolvedProfile) + '</div>'
+        + '<div>Source: ' + (result.source === 'buildNestOverride' ? 'Build Nest Override' : 'Encounter Difficulty') + '</div>'
+        + '<div>Behaviour: ' + (result.behaviourLabel || result.behaviour) + '</div>'
+        + '<div>Available Actions: ' + (result.availableActions || 0) + '</div>'
+        + '<div>Likely Choice: ' + (result.likelyChoice || 'none') + '</div>';
+    };
+    btnRow.appendChild(testBtn);
+
+    const compareBtn = document.createElement('button');
+    compareBtn.type = 'button';
+    compareBtn.className = 'menu-btn';
+    compareBtn.textContent = 'COMPARE AI';
+    compareBtn.onclick = () => {
+      const enemy = buildForgePreviewEnemy(slot);
+      const player = { stats: { hp: 40, maxHp: 100, def: 8, mdef: 8, dodge: 5, acc: 80 } };
+      const rows = typeof global.compareAIProfiles === 'function'
+        ? global.compareAIProfiles(enemy, player, combatCtx)
+        : [];
+      const out = document.getElementById('map-forge-enemy-ai-result-' + idx);
+      if (!out) return;
+      out.style.display = '';
+      out.innerHTML = '<div class="map-forge-enemy-ai-result-title">COMPARE AI</div>'
+        + rows.map((r) => '<div>' + r.label + ': ' + ((r.actions && r.actions[0] && (r.actions[0].abilityId || r.actions[0].type)) || 'none') + '</div>').join('');
+    };
+    btnRow.appendChild(compareBtn);
+    wrap.appendChild(btnRow);
+
+    const resultEl = document.createElement('div');
+    resultEl.className = 'map-forge-enemy-ai-result';
+    resultEl.id = 'map-forge-enemy-ai-result-' + idx;
+    resultEl.style.display = 'none';
+    wrap.appendChild(resultEl);
+
+    return wrap;
+    } catch (err) {
+      const errWrap = document.createElement('div');
+      errWrap.className = 'map-forge-enemy-ai-section map-forge-status--warn';
+      errWrap.textContent = 'Enemy AI preview unavailable.';
+      return errWrap;
+    }
+  }
+
   function renderEncounterPanel() {
     const panel = document.getElementById('map-forge-encounter-panel');
     if (!panel) return;
@@ -2039,6 +2282,7 @@
         grid.appendChild(countWrap);
 
         row.appendChild(grid);
+        row.appendChild(renderForgeEnemyAISection(slot, idx));
         if (slot.birdKey === 'random') {
           const hint = document.createElement('p');
           hint.className = 'map-forge-hint map-forge-encounter-random-hint';

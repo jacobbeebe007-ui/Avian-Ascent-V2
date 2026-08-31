@@ -455,6 +455,7 @@
       baseHealth: speciesBh > 0 ? speciesBh : undefined,
       _storyDirectStats: true,
       _fromRoster: true,
+      ai: typeof global.defaultEnemyAI === 'function' ? global.defaultEnemyAI() : { profile: 'default', behaviour: 'automatic' },
     };
   }
 
