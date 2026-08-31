@@ -68,6 +68,9 @@ js/systems/build-nest-state.js
 js/core/game-helpers.js
 js/core/game.js
 js/systems/build-nest-forge-runtime.js
+js/systems/story-overworld-progress.js
+js/systems/story-overworld-bridge.js
+js/systems/story-stage-flow.js
 js/systems/shop-cadence.js
 js/debug/telemetry.js
 js/ui/combat-stats-modal.js
