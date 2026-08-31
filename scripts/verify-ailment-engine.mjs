@@ -32,6 +32,7 @@ else ok('AILMENT_RULES loaded');
 /* Poison/Bleed/Burn ticks are MaxHP% × stacks (Working Draft). */
 eq(ctx.calcPoisonTickDmg(3, 100), ctx.calcPoisonTickDmg(3, 100), 'poison helper callable');
 eq(ctx.calcPoisonTickDmg(5, 100) > ctx.calcPoisonTickDmg(3, 100), true, 'poison scales by stacks');
+eq(ctx.calcPoisonTickDmg(3, 100, 1) > ctx.calcPoisonTickDmg(3, 1, 1), true, 'poison scales by maxHp');
 
 eq(ctx.calcBleedTickDmg(100, 2), ctx.roundCombatDamage
   ? ctx.roundCombatDamage(2)
