@@ -6254,6 +6254,7 @@ function buildBirdCard(key, bird, locked) {
         <span class="bird-size-chip">${sizeLabel}</span>
       </div>
       <div class="bird-portrait">${renderBirdIconHTML(key,sizeClass,true)}</div>
+      <div class="bird-nm">${escapeHtmlRoster(bird.name)}</div>
       <div class="lock-overlay"><span class="lock-icon" style="font-size:1rem;">🔒</span><div class="lock-label" style="font-size:.6rem;color:#555;line-height:1.3;">${unlockLabel}</div></div>`;
   } else {
     const cardTier=typeof getBirdCardTier==='function'?getBirdCardTier(key):'grey';
@@ -6271,12 +6272,15 @@ function buildBirdCard(key, bird, locked) {
       <div class="bird-card-head">
         <span class="class-badge class-${cls}">${idToClassLabel(cls).toUpperCase()}</span>
         <span class="bird-size-chip">${sizeLabel}</span>
+      </div>
+      ${starsHtml}
+      <div class="bird-portrait">${renderBirdIconHTML(key,sizeClass,false)}</div>
+      <div class="bird-nm">${escapeHtmlRoster(bird.name)}</div>
+      <div class="bird-card-foot">
         <span class="bird-card-tier-badge ${tierCss}">${tierLabel}</span>
         ${rarityBadge}
         ${featherChip}
-      </div>
-      ${starsHtml}
-      <div class="bird-portrait">${renderBirdIconHTML(key,sizeClass,false)}</div>`;
+      </div>`;
   }
   return card;
 }
