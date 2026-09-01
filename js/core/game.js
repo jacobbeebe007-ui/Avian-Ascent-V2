@@ -6610,6 +6610,22 @@ function rosterPreviewSlotTag(birdKey, stub, ab, idx){
   if(fam?.displayName) return String(fam.displayName).toUpperCase();
   return ['CORE','LINE 2','LINE 3','LINE 4'][idx]||'SKILL';
 }
+function rosterPreviewKitFromEquipmentV2(stub){
+  const out={abilities:[], slotTags:[]};
+  if(!stub || !Avian.flags?.equipmentV2) return out;
+  const eqActions=Avian?.equipmentActions;
+  if(!eqActions || typeof eqActions.buildActionSources!=='function') return out;
+  const order=typeof eqActions.getSourceOrder==='function'?eqActions.getSourceOrder():['basic','utility','weaponA','weaponB','armour','ultimate'];
+  const src=eqActions.buildActionSources(stub);
+  order.forEach((key)=>{
+    const ab=src[key];
+    if(ab && !ab.empty){
+      out.abilities.push(ab);
+      out.slotTags.push(typeof eqActions.getActionSourceLabel==='function'?eqActions.getActionSourceLabel(key):String(key).toUpperCase());
+    }
+  });
+  return out;
+}
 function materializeRosterPreviewKit(birdKey){
   const out={abilities:[], energyMax:0, stats:null, slotTags:[]};
   const stub=buildRosterPreviewStubForBirdKey(birdKey);
@@ -6618,15 +6634,21 @@ function materializeRosterPreviewKit(birdKey){
   try{
     G.player=stub;
     stub.energyMax=computePlayerMaxEnergy();
-    // Resolve the card tier first so slot seeding unlocks the right number of
-    // abilities (green => 3, blue => 4) in the character-select preview.
     if(typeof applyBirdCardProgression==='function') applyBirdCardProgression(stub);
-    applyPlayerSkillsFromCardTier(stub);
-    syncPlayerAbilitiesFromSkillSlots(stub);
-    out.abilities=Array.isArray(stub.abilities)?stub.abilities.slice():[];
+    if(Avian.flags?.equipmentV2){
+      if(typeof Avian?.equipment?.ensurePlayerEquipmentState==='function') Avian.equipment.ensurePlayerEquipmentState(stub);
+      if(typeof Avian?.equipmentActions?.syncEntityAbilities==='function') Avian.equipmentActions.syncEntityAbilities(stub);
+      const mapped=rosterPreviewKitFromEquipmentV2(stub);
+      out.abilities=mapped.abilities;
+      out.slotTags=mapped.slotTags;
+    }else{
+      applyPlayerSkillsFromCardTier(stub);
+      syncPlayerAbilitiesFromSkillSlots(stub);
+      out.abilities=Array.isArray(stub.abilities)?stub.abilities.slice():[];
+      out.slotTags=out.abilities.map((ab, i)=>rosterPreviewSlotTag(birdKey, stub, ab, i));
+    }
     out.energyMax=Math.max(0, Number(stub.energyMax)||computePlayerMaxEnergy());
     out.stats=stub.stats?{...stub.stats}:{};
-    out.slotTags=out.abilities.map((ab, i)=>rosterPreviewSlotTag(birdKey, stub, ab, i));
   }finally{
     G.player=prev;
   }
@@ -6647,10 +6669,18 @@ function materializeRosterPreviewKitForCardProgress(birdKey, tier, stars){
     stub._birdCardTier=tier;
     stub._birdCardStars=stars;
     if(typeof applyBirdCardStats==='function') applyBirdCardStats(stub, tier, stars);
-    applyPlayerSkillsFromCardTier(stub, tier, stars);
-    syncPlayerAbilitiesFromSkillSlots(stub);
-    out.abilities=Array.isArray(stub.abilities)?stub.abilities.slice():[];
-    out.slotTags=out.abilities.map((ab, i)=>rosterPreviewSlotTag(birdKey, stub, ab, i));
+    if(Avian.flags?.equipmentV2){
+      if(typeof Avian?.equipment?.ensurePlayerEquipmentState==='function') Avian.equipment.ensurePlayerEquipmentState(stub);
+      if(typeof Avian?.equipmentActions?.syncEntityAbilities==='function') Avian.equipmentActions.syncEntityAbilities(stub);
+      const mapped=rosterPreviewKitFromEquipmentV2(stub);
+      out.abilities=mapped.abilities;
+      out.slotTags=mapped.slotTags;
+    }else{
+      applyPlayerSkillsFromCardTier(stub, tier, stars);
+      syncPlayerAbilitiesFromSkillSlots(stub);
+      out.abilities=Array.isArray(stub.abilities)?stub.abilities.slice():[];
+      out.slotTags=out.abilities.map((ab, i)=>rosterPreviewSlotTag(birdKey, stub, ab, i));
+    }
     out.energyMax=Math.max(0, Number(stub.energyMax)||computePlayerMaxEnergy());
     out.stats=stub.stats?{...stub.stats}:{};
   }finally{
