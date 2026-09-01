@@ -2629,13 +2629,13 @@ body.combat-scenario-test-unlocked .splash-hotspot--combat-scenarios.is-combatte
   flex:1 1 auto;
   min-width:0;
 }
-/* CTA row at the bottom of the detail column */
+/* Flight summary row above the full-width CTA at the bottom of the detail column */
 #select-hub-door .sfsel__actions{
   flex-shrink:0;
   display:grid;
-  grid-template-columns:minmax(0,1fr) minmax(190px,260px);
+  grid-template-columns:minmax(0,1fr);
   align-items:center;
-  gap:8px 10px;
+  gap:7px;
   padding:7px 12px max(7px,env(safe-area-inset-bottom,0px));
   border-top:1px solid rgba(201,168,76,.18);
   background:rgba(4,5,8,.88);
@@ -2678,9 +2678,17 @@ body.combat-scenario-test-unlocked .splash-hotspot--combat-scenarios.is-combatte
 #select-hub-door .sfsel__run-controls{
   min-width:0;
   display:flex;
-  flex-wrap:wrap;
+  flex-wrap:nowrap;
   align-items:center;
-  gap:4px 6px;
+  gap:4px;
+}
+#select-hub-door .sfsel__settings-btn{
+  flex:0 0 auto;
+  font-size:.6rem;
+  padding:4px 7px;
+  border-radius:8px;
+  white-space:nowrap;
+  letter-spacing:.02em;
 }
 #select-hub-door .sfsel__actions .sel-continue-run-wrap{
   grid-column:1 / -1;
