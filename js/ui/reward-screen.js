@@ -161,6 +161,65 @@ function buildNestRewardCardHtml(drop, animDelayMs=0, opts={}){
   </div>`;
 }
 
+function buildRewardFlipCardBackHtml(drop, opts={}){
+  const tierCss=normalizeRewardTier(drop.tier||'white');
+  const tierMeta=rewardTierMeta(drop.tier);
+  const compact=opts.compact!==false;
+  const desc=drop.type==='mutation'
+    ?(getMutationDescHtml(drop.mutationItemId||drop.id,{compact:true})||escapeHtmlRoster(drop.desc||''))
+    :escapeHtmlRoster(drop.desc||'');
+  const cardCls=opts.equipmentPick?'reward-card':'nest-reward-card';
+  return `<div class="reward-flip-card__back ${cardCls} tier-${tierCss}" data-tier="${tierCss}">
+    <div class="reward-tier-label">${tierMeta.label||drop.tierLabel||''}</div>
+    <span class="reward-icon">${drop.icon||'🎁'}</span>
+    <div class="reward-name">${escapeHtmlRoster(drop.name||'Reward')}</div>
+    ${compact?'':`<div class="reward-desc">${desc}</div>`}
+  </div>`;
+}
+
+function buildRewardFlipCardHtml(drop, opts={}){
+  const tierCss=normalizeRewardTier(drop.tier||'white');
+  const idxAttr=Number.isFinite(opts.dropIndex)?` data-drop-index="${opts.dropIndex}"`:'';
+  const revealed=opts.revealed?' is-revealed':'';
+  const selectable=opts.selectable?' is-selectable':'';
+  const equipCls=opts.equipmentPick?' is-equipment-pick':'';
+  return `<div class="reward-flip-card tier-${tierCss}${revealed}${selectable}${equipCls}"${idxAttr} data-tier="${tierCss}">
+    <div class="reward-flip-card__inner">
+      <div class="reward-flip-card__front tier-${tierCss}">
+        <span class="reward-flip-card__mystery" aria-hidden="true">?</span>
+      </div>
+      ${buildRewardFlipCardBackHtml(drop, opts)}
+    </div>
+  </div>`;
+}
+
+function rewardFlipRevealDelayMs(){
+  return window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches?0:420;
+}
+
+function rewardFlipStaggerMs(drop, isHighTier){
+  if(window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches) return 120;
+  return isHighTier?220:180;
+}
+
+function revealRewardFlipCard(card){
+  if(!card || card.classList.contains('is-revealed')) return;
+  const reducedMotion=window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches;
+  if(reducedMotion) card.classList.add('is-revealed');
+  else{
+    void card.offsetWidth;
+    card.classList.add('is-revealed');
+  }
+}
+
+function preSizeNestRewardTray(dropCount){
+  const tray=document.getElementById('nest-reward-tray');
+  if(!tray || dropCount<=0) return;
+  const rows=Math.ceil(dropCount/3);
+  tray.style.setProperty('--tray-rows', String(rows));
+  tray.classList.add('is-pre-sized');
+}
+
 function spawnNestShakeSparks(scene, nest, dropCount=1){
   const fx=document.getElementById('nest-shake-fx');
   if(!fx || !nest) return;
@@ -193,17 +252,22 @@ function wireNestRewardTrayTooltips(tray){
   if(!tray || typeof bindRichTooltip!=='function') return;
   const collected=G._nestRewardsCollected||[];
   collected.forEach((drop,i)=>{
-    const card=tray.children[i];
+    const card=tray.querySelector(`[data-drop-index="${i}"]`)||tray.children[i];
     if(!card) return;
-    card._richTooltipBound=false;
+    const target=card.querySelector('.reward-flip-card__back')||card;
+    target._richTooltipBound=false;
     if(drop.type==='mutation'){
       const mutId=drop.mutationItemId||drop.id;
-      if(mutId) bindRichTooltip(card, ()=>buildMutationTooltipHTML(mutId), {category:'mutations'});
+      if(mutId) bindRichTooltip(target, ()=>buildMutationTooltipHTML(mutId), {category:'mutations'});
       return;
     }
     if(drop.type==='equipment' || drop.equipmentItemId){
       const eqId=drop.equipmentItemId||drop.id;
-      if(eqId) bindRichTooltip(card, ()=>buildEquipmentTooltipHTML(eqId), {category:'items'});
+      if(eqId) bindRichTooltip(target, ()=>buildEquipmentTooltipHTML(eqId), {category:'items'});
+      return;
+    }
+    if(drop.desc && (drop.type==='combat_item' || drop.type==='shiny' || drop.type==='rescuedNest')){
+      bindRichTooltip(target, ()=>`<div class="tt-name">${escapeHtmlRoster(drop.name||'Reward')}</div><div class="tt-desc">${escapeHtmlRoster(drop.desc||'')}</div>`);
     }
   });
 }
@@ -213,18 +277,18 @@ function renderNestRewardCollectedTray(opts={}){
   if(!tray) return;
   const collected=G._nestRewardsCollected||[];
   const onlyIndex=Number.isFinite(opts.onlyIndex)?opts.onlyIndex:null;
+  const revealed=opts.revealed!==false;
   if(onlyIndex!=null){
     const drop=collected[onlyIndex];
     if(!drop) return;
-    const tierCss=normalizeRewardTier(drop.tier||'white');
     const wrap=document.createElement('div');
-    wrap.innerHTML=buildNestRewardCardHtml(drop, onlyIndex*110, {landed:true, dropIndex:onlyIndex});
+    wrap.innerHTML=buildRewardFlipCardHtml(drop, {dropIndex:onlyIndex, revealed, compact:true});
     const card=wrap.firstElementChild;
     if(card) tray.appendChild(card);
     wireNestRewardTrayTooltips(tray);
     return;
   }
-  tray.innerHTML=collected.map((drop,i)=>buildNestRewardCardHtml(drop, i*110, {landed:true, dropIndex:i})).join('');
+  tray.innerHTML=collected.map((drop,i)=>buildRewardFlipCardHtml(drop, {dropIndex:i, revealed, compact:true})).join('');
   wireNestRewardTrayTooltips(tray);
 }
 
@@ -241,7 +305,7 @@ function finishNestRewardReveal(){
   const dropLayer=document.getElementById('nest-drop-layer');
   if(dropLayer) dropLayer.innerHTML='';
   const scene=document.getElementById('nest-reward-scene');
-  if(scene) scene.classList.remove('is-shaking');
+  if(scene) scene.classList.remove('is-shaking','is-compact');
   const confirmBtn=document.getElementById('reward-confirm-btn');
   if(confirmBtn){
     confirmBtn.textContent='Continue →';
@@ -255,15 +319,20 @@ function revealNestDropsStaggered(){
   const drops=G._nestRewardDrops||[];
   if(!G._nestRewardsCollected) G._nestRewardsCollected=[];
   const start=G._nestRewardDropIndex||0;
-  const dropLayer=document.getElementById('nest-drop-layer');
-  const reducedMotion=window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches;
+  const tray=document.getElementById('nest-reward-tray');
+  const scene=document.getElementById('nest-reward-scene');
   let index=start;
+
+  if(start===0 && drops.length){
+    preSizeNestRewardTray(drops.length);
+    if(scene) scene.classList.add('is-compact');
+  }
 
   function finishRevealSequence(){
     G._nestRewardDropIndex=drops.length;
     const pickPool=G._storyEquipmentPickPool || G._equipmentPickPool;
     if(Array.isArray(pickPool) && pickPool.length){
-      setTimeout(()=>showStoryEquipmentPick(pickPool), 320);
+      setTimeout(()=>showStoryEquipmentPick(pickPool), 240);
       return;
     }
     finishNestRewardReveal();
@@ -276,37 +345,33 @@ function revealNestDropsStaggered(){
     }
     const drop=drops[index];
     const dropIndex=index;
-    if(typeof grantNestDrop==='function') grantNestDrop(drop);
-    G._nestRewardsCollected.push(drop);
     index++;
     G._nestRewardDropIndex=index;
 
     const tierCss=normalizeRewardTier(drop.tier||'white');
     const isHighTier=tierCss==='gold'||tierCss==='orange'||tierCss==='purple';
-    const stagger=isHighTier?260:180;
+    const stagger=rewardFlipStaggerMs(drop, isHighTier);
 
-    if(reducedMotion || !dropLayer){
-      renderNestRewardCollectedTray({onlyIndex:dropIndex});
-      setTimeout(revealNext, stagger);
-      return;
-    }
-
-    dropLayer.setAttribute('aria-hidden','false');
-    const wrap=document.createElement('div');
-    wrap.innerHTML=buildNestRewardCardHtml(drop, 0, {falling:true, fallingIndex:dropIndex, dropIndex});
-    const falling=wrap.firstElementChild;
-    if(falling){
-      dropLayer.appendChild(falling);
-      if(isHighTier){
-        const scene=document.getElementById('nest-reward-scene');
-        spawnNestShakeSparks(scene, document.getElementById('reward-nest'), 1);
+    if(tray){
+      const wrap=document.createElement('div');
+      wrap.innerHTML=buildRewardFlipCardHtml(drop, {dropIndex, revealed:false, compact:true});
+      const card=wrap.firstElementChild;
+      if(card){
+        tray.appendChild(card);
+        if(isHighTier) spawnNestShakeSparks(scene, document.getElementById('reward-nest'), 1);
+        requestAnimationFrame(()=>{
+          revealRewardFlipCard(card);
+          if(typeof grantNestDrop==='function') grantNestDrop(drop);
+          G._nestRewardsCollected.push(drop);
+          wireNestRewardTrayTooltips(tray);
+        });
       }
+    }else{
+      if(typeof grantNestDrop==='function') grantNestDrop(drop);
+      G._nestRewardsCollected.push(drop);
     }
-    setTimeout(()=>{
-      if(falling?.parentNode) falling.remove();
-      renderNestRewardCollectedTray({onlyIndex:dropIndex});
-      setTimeout(revealNext, stagger);
-    }, 580);
+
+    setTimeout(revealNext, rewardFlipRevealDelayMs()+stagger);
   }
 
   revealNext();
@@ -332,6 +397,8 @@ function showStoryEquipmentPick(pool){
     nest.classList.remove('nest-shakeable');
     nest.onclick=null;
   }
+  const scene=document.getElementById('nest-reward-scene');
+  if(scene) scene.classList.add('is-compact');
   const hint=document.getElementById('nest-shake-hint');
   if(hint) hint.textContent='Choose 1 equipment';
   const footnote=document.getElementById('nest-reward-footnote');
@@ -349,23 +416,34 @@ function showStoryEquipmentPick(pool){
   grid.style.display='';
   grid.setAttribute('aria-hidden','false');
   grid.innerHTML='';
-  offers.forEach(rw=>{
-    const tierCss=normalizeRewardTier(rw.tier||'grey');
-    const tierMeta=rewardTierMeta(rw.tier);
-    const c=document.createElement('div');
-    c.className=`reward-card tier-${tierCss}`;
-    c.innerHTML=`
-      <div class="reward-tier-label">${tierMeta.label||rw.tierLabel||''}</div>
-      <span class="reward-icon">${rw.icon||'⚔'}</span>
-      <div class="reward-name">${escapeHtmlRoster(rw.name||'Equipment')}</div>
-      <div class="reward-desc">${escapeHtmlRoster(rw.desc||'')}</div>`;
-    c.onclick=()=>{
-      document.querySelectorAll('#reward-grid .reward-card').forEach(x=>x.classList.remove('selected'));
-      c.classList.add('selected');
+  offers.forEach((rw, idx)=>{
+    const wrap=document.createElement('div');
+    wrap.innerHTML=buildRewardFlipCardHtml(rw, {
+      dropIndex:idx,
+      revealed:false,
+      selectable:true,
+      equipmentPick:true,
+      compact:false,
+    });
+    const card=wrap.firstElementChild;
+    if(!card) return;
+    const selectCard=()=>{
+      if(!card.classList.contains('is-revealed')) return;
+      document.querySelectorAll('#reward-grid .reward-flip-card').forEach(x=>x.classList.remove('selected'));
+      card.classList.add('selected');
       G._pendingReward=rw;
       confirmBtn.className='confirm-btn visible';
     };
-    grid.appendChild(c);
+    card.onclick=selectCard;
+    grid.appendChild(card);
+    setTimeout(()=>{
+      revealRewardFlipCard(card);
+      if(typeof bindRichTooltip==='function'){
+        const back=card.querySelector('.reward-flip-card__back');
+        const eqId=rw.equipmentItemId||rw.id;
+        if(back && eqId) bindRichTooltip(back, ()=>buildEquipmentTooltipHTML(eqId), {category:'items'});
+      }
+    }, 80+idx*120);
   });
 }
 
@@ -399,12 +477,12 @@ function handleNestShake(){
   if(scene) scene.classList.add('is-shaking');
   spawnNestShakeSparks(scene, nest, dropCount);
   const hint=document.getElementById('nest-shake-hint');
-  if(hint) hint.textContent='Rewards falling…';
+  if(hint) hint.textContent='Revealing rewards…';
   setTimeout(()=>{
     nest.classList.remove('nest-shaking','nest-shake-intense');
     if(scene) scene.classList.remove('is-shaking');
     revealNestDropsStaggered();
-  },700);
+  },550);
 }
 
 function showRewardScreen(hasLevelUp) {
@@ -469,12 +547,20 @@ function showRewardScreen(hasLevelUp) {
       :`Tap the nest — choose 1 of ${pickCount} equipment offers!`;
   }else{
     document.getElementById('reward-sub').textContent=dropCount>1
-      ?`Tap the nest once — ${dropCount} rewards will fall out!`
+      ?`Tap the nest once — ${dropCount} rewards will flip out!`
       :(dropCount===1?'Tap the nest once for your reward!':'No nest rewards — continue onward.');
   }
 
   const footnote=document.getElementById('nest-reward-footnote');
   if(footnote) footnote.style.display='none';
+  const tray=document.getElementById('nest-reward-tray');
+  if(tray){
+    tray.innerHTML='';
+    tray.classList.remove('is-pre-sized');
+    tray.style.removeProperty('--tray-rows');
+  }
+  const scene=document.getElementById('nest-reward-scene');
+  if(scene) scene.classList.remove('is-compact');
   renderNestRewardCollectedTray();
   renderBattleSummary();
 
