@@ -9443,19 +9443,68 @@ function logMsg(msg,cls='') {
 //  ANIMATION ENGINE
 // ============================================================
 function playAvatarAnim(who,cls,dur=600) {
-  const animCls=['do-smash-r','do-smash-l','do-hit','do-dodge-r','do-dodge-r-flat','do-dodge-l','do-miss-r','do-miss-l','do-shield'];
+  const animCls=['do-smash-r','do-smash-l','do-hit','do-dodge-r','do-dodge-r-flat','do-dodge-l','do-miss-r','do-miss-l','do-shield','do-cast','do-ranged','do-utility'];
+  const striking=cls==='do-smash-r'||cls==='do-smash-l'||cls==='do-cast'||cls==='do-ranged';
   return new Promise(res=>{
     const wrap=getAvatarWrap(who);
     const inner=getAvatar(who);
     const host=wrap||inner;
+    const panel=typeof getPanel==='function'?getPanel(who):document.getElementById(`${who}-panel`);
     if(!host){ res(); return; }
     for(const node of [wrap,inner].filter(Boolean)){
       animCls.forEach(c=>node.classList.remove(c));
     }
+    if(panel) panel.classList.toggle('is-striking', striking);
     void host.offsetWidth;
     host.classList.add(cls);
-    setTimeout(()=>{ try{ host.classList.remove(cls); }catch(_){} res(); },dur);
+    setTimeout(()=>{
+      try{
+        host.classList.remove(cls);
+        if(panel) panel.classList.remove('is-striking');
+      }catch(_){}
+      res();
+    },dur);
   });
+}
+
+function resolveCombatAnimKind(attacker, result){
+  if(result && result.animKind) return String(result.animKind).toLowerCase();
+  if(attacker==='player'){
+    const stored=G && G._animAttackKind;
+    if(stored){
+      const sk=String(stored).toLowerCase();
+      if(sk==='magic'||sk==='song') return 'spell';
+      return sk;
+    }
+    const ab=G && G._activePlayerAbility;
+    if(ab && typeof getEffectiveAbilityBtnType==='function'){
+      const k=String(getEffectiveAbilityBtnType(ab)||'').toLowerCase();
+      if(k==='magic'||k==='song') return 'spell';
+      if(k) return k;
+    }
+  }else{
+    const incoming=G && G._incomingAttackKind;
+    if(incoming) return String(incoming).toLowerCase();
+    const act=G && G.enemyNextAction;
+    const t=String(act?.type||act?.btnType||'').toLowerCase();
+    if(t==='spell'||t==='song'||t==='magic') return 'spell';
+    if(t==='utility'||t==='heal'||t==='guard'||t==='buff') return 'utility';
+    if(t==='ranged'||t==='hybrid') return t;
+  }
+  if(result && result.isMagic && !(result.hybridSplit && result.hybridSplit.physical>0)) return 'spell';
+  return 'physical';
+}
+
+function combatAnimIsProjectile(kind){
+  const k=String(kind||'').toLowerCase();
+  return k==='spell'||k==='song'||k==='magic'||k==='ranged';
+}
+
+function combatFxOwnsAnim(){
+  try{ return !!(Avian && Avian.ui && (Avian.ui.combatFxActive || Avian.ui.combatFx)); }catch(_){ return false; }
+}
+function combatFxApi(){
+  try{ return (Avian && Avian.ui && Avian.ui.combatFx) || null; }catch(_){ return null; }
 }
 
 function spawnFloat(who,text,cls,extraCls) {
@@ -9508,10 +9557,18 @@ function flashPanel(who,color) {
 }
 
 async function doAttack(attacker,target,result) {
-  const smash=attacker==='player'?'do-smash-r':'do-smash-l';
+  const kind=resolveCombatAnimKind(attacker, result);
+  const projectile=combatAnimIsProjectile(kind);
+  const smash=projectile
+    ? (kind==='ranged'?'do-ranged':'do-cast')
+    : (attacker==='player'?'do-smash-r':'do-smash-l');
   const dodge_=target==='player'?'do-dodge-l':'do-dodge-r-flat';
-  const attackP=playAvatarAnim(attacker,smash,520);
-  await delay(250);
+  const fx=combatFxApi();
+  if(fx && typeof fx.prepareCombatStrike==='function'){
+    try{ fx.prepareCombatStrike(attacker, target, result, kind); }catch(_){}
+  }
+  const attackP=playAvatarAnim(attacker,smash, projectile?520:640);
+  await delay(projectile?280:250);
   if (result.wasDodged) {
     playAvatarAnim(target,dodge_,560);
     spawnFloat(target,'Dodge!','fn-dodge');
@@ -9562,11 +9619,19 @@ async function doAttack(attacker,target,result) {
 
 async function doMiss(attacker, kind='accuracy') {
   if(attacker==='player' && kind!=='dodge') registerMiss();
-  const cls=attacker==='player'?'do-miss-r':'do-miss-l';
+  const animKind=resolveCombatAnimKind(attacker, null);
+  const projectile=combatAnimIsProjectile(animKind);
+  const cls=projectile
+    ? (animKind==='ranged'?'do-ranged':'do-cast')
+    : (attacker==='player'?'do-miss-r':'do-miss-l');
   const isDodge=kind==='dodge';
+  const fx=combatFxApi();
+  if(fx && typeof fx.prepareCombatMiss==='function'){
+    try{ fx.prepareCombatMiss(attacker, kind, animKind); }catch(_){}
+  }
   spawnFloat(attacker, isDodge?'Dodge!':'Miss!', isDodge?'fn-dodge':'fn-miss');
   if(isDodge) SFX.dodge(); else SFX.miss();
-  await playAvatarAnim(attacker,cls,580);
+  await playAvatarAnim(attacker,cls, projectile?520:580);
 }
 
 async function doShield(who) {
@@ -9576,8 +9641,22 @@ async function doShield(who) {
   await delay(400);
 }
 
-async function doSpell(target,text) { spawnFloat(target,text,'fn-status'); SFX.spell(); await delay(450); }
+async function doSpell(target,text) {
+  spawnFloat(target,text,'fn-status');
+  SFX.spell();
+  const caster=(G && G.turn==='enemy')?'enemy':'player';
+  const fx=combatFxApi();
+  if(fx && typeof fx.prepareCombatCast==='function'){
+    try{ fx.prepareCombatCast(caster, target, text); }catch(_){}
+  }
+  playAvatarAnim(caster,'do-cast',520);
+  await delay(450);
+}
 async function doHeal(who,amt) {
+  const fx=combatFxApi();
+  if(fx && typeof fx.onHeal==='function'){
+    try{ fx.onHeal(who, amt); }catch(_){}
+  }
   spawnFloat(who,`+${amt}`,'fn-heal');
   SFX.heal();
   if(who==='player'&&G.player){
@@ -12579,6 +12658,7 @@ async function playerAction(ab,fromQueue=false) {
   codexMark('abilities',ab.id,'used');
   if(G.enemy?.id==='duke_blakiston') dukeTrackDecree(ab.id);
   G._activePlayerAbility=ab;
+  G._animAttackKind=effActKind;
   const _delayedBeforeAbility = (G.enemyStatus?.delayed && G.enemyStatus.delayed.dmg!=null) ? {dmg:G.enemyStatus.delayed.dmg} : null;
   const classPerkCtx=applyClassPerksToCombatContext(G.player?.birdKey,{});
   if(effActKind==='utility' && classPerkCtx.quickTheft && !G._perkUtilityRefundUsed){
@@ -12595,6 +12675,12 @@ async function playerAction(ab,fromQueue=false) {
   renderEnergyOrbs();
   G.turnPhase=TURN.RESOLVING;
   G.animLock=true; G.battleOver=false; renderActions();
+  if((effActKind==='utility'||effActKind==='buff'||effActKind==='defend'||effActKind==='heal')){
+    const fx=combatFxApi();
+    if(fx && typeof fx.prepareCombatUtility==='function'){
+      try{ fx.prepareCombatUtility('player', ab); }catch(_){}
+    }
+  }
   // Track buffs/debuffs for run unlock
   if(BUFF_AB_IDS.has(ab.id)) G.runBuffs++;
   if(DEBUFF_AB_IDS.has(ab.id)) G.runDebuffs++;
@@ -19336,6 +19422,7 @@ wireThemeBgmAutoplayUnlock();
     const el = whoEl(who);
     const spr = ensureSpriteInEl(el, key, false);
     if(!spr) return;
+    if(spr._busyUntil && spr._busyUntil > Date.now()) return;
     spr.classList.remove('frame-0','frame-1','frame-2','frame-3');
     spr.classList.add('frame-'+frame);
     if(holdMs){
@@ -19350,6 +19437,7 @@ wireThemeBgmAutoplayUnlock();
     globalThis[flag]=true;
     setInterval(()=>{
       try{
+        if(globalThis.G?.animLock) return;
         const key = who==='player' ? normKey(G?.player?.birdKey) : normKey(G?.enemy?.portraitKey || G?.enemy?.birdKey);
         if(!SPRITE_KEYS.has(key)) return;
         // blink/cast frame briefly
@@ -19386,15 +19474,13 @@ wireThemeBgmAutoplayUnlock();
   if(typeof oldPlayerAction==='function'){
     globalThis.playerAction = async function(ab, fromQueue){
       try{
-        const t = ABILITY_TEMPLATES?.[ab?.id] || {};
-        const at = (t.type || t.btnType || '').toLowerCase();
-        const cls = (G?.player?.class || BIRDS?.[G?.player?.birdKey]?.class || '').toLowerCase();
-        const isCaster = CASTERS.has(cls);
-
-        if(at==='attack') setFrameFor('player',2,260);
-        else if(at==='spell' || at==='song') setFrameFor('player',1,280);
-        else setFrameFor('player',3,280);
-
+        if(!(typeof combatFxOwnsAnim==='function' && combatFxOwnsAnim())){
+          const t = ABILITY_TEMPLATES?.[ab?.id] || {};
+          const at = (t.type || t.btnType || '').toLowerCase();
+          if(at==='attack') setFrameFor('player',2,260);
+          else if(at==='spell' || at==='song') setFrameFor('player',1,280);
+          else setFrameFor('player',3,280);
+        }
       }catch(_){}
       return await oldPlayerAction.apply(this, arguments);
     };
@@ -19407,8 +19493,10 @@ wireThemeBgmAutoplayUnlock();
       try{
         const ek = normKey(G?.enemy?.portraitKey || G?.enemy?.birdKey);
         if(SPRITE_KEYS.has(ek) && !(G?.enemy?.id==='dukeBlakiston' || /blakiston/i.test(G?.enemy?.name||''))){
-          if(act?.type==='attack') setFrameFor('enemy',2,260);
-          else if(act?.type==='ability') setFrameFor('enemy',3,260);
+          if(!(typeof combatFxOwnsAnim==='function' && combatFxOwnsAnim())){
+            if(act?.type==='attack') setFrameFor('enemy',2,260);
+            else if(act?.type==='ability') setFrameFor('enemy',3,260);
+          }
         }
       }catch(_){}
       return await oldExec.apply(this, arguments);
@@ -19702,13 +19790,15 @@ SPRITE_KEYS_ALL.add('magpie');
   if(typeof oldPlayerAction==='function'){
     globalThis.playerAction=async function(ab, fromQueue){
       try{
-        const t=ABILITY_TEMPLATES?.[ab?.id] || {};
-        const at=String(t.type || t.btnType || '').toLowerCase();
-        const cls=String(G?.player?.class || BIRDS?.[G?.player?.birdKey]?.class || '').toLowerCase();
-        if(at==='physical' || at==='attack' || at==='melee') playAction('player','attack');
-        else if(at==='movement' || at==='dash') playAction('player','run');
-        else if(at==='spell' || at==='song' || CASTERS.has(cls)) playAction('player','crouch');
-        else playAction('player','attack');
+        if(!combatFxOwnsAnim()){
+          const t=ABILITY_TEMPLATES?.[ab?.id] || {};
+          const at=String(t.type || t.btnType || '').toLowerCase();
+          const cls=String(G?.player?.class || BIRDS?.[G?.player?.birdKey]?.class || '').toLowerCase();
+          if(at==='physical' || at==='attack' || at==='melee') playAction('player','attack');
+          else if(at==='movement' || at==='dash') playAction('player','run');
+          else if(at==='spell' || at==='song' || CASTERS.has(cls)) playAction('player','crouch');
+          else playAction('player','attack');
+        }
       }catch(_){}
       return await oldPlayerAction.apply(this, arguments);
     };
@@ -19720,9 +19810,11 @@ SPRITE_KEYS_ALL.add('magpie');
       try{
         const ek=currentKey('enemy');
         if(SPRITE_KEYS.has(ek) && !(G?.enemy?.id==='dukeBlakiston' || /blakiston/i.test(G?.enemy?.name||''))){
-          if(act?.type==='attack') playAction('enemy','attack');
-          else if(act?.type==='move') playAction('enemy','run');
-          else playAction('enemy','crouch');
+          if(!combatFxOwnsAnim()){
+            if(act?.type==='attack') playAction('enemy','attack');
+            else if(act?.type==='move') playAction('enemy','run');
+            else playAction('enemy','crouch');
+          }
         }
       }catch(_){}
       return await oldEnemy.apply(this, arguments);
@@ -19732,7 +19824,12 @@ SPRITE_KEYS_ALL.add('magpie');
   const oldDoAttack=globalThis.doAttack;
   if(typeof oldDoAttack==='function'){
     globalThis.doAttack=async function(attacker,target,result){
-      try{ playAction(attacker,'attack'); setTimeout(()=>playAction(target,'crouch'), 120); }catch(_){}
+      try{
+        if(!combatFxOwnsAnim()){
+          playAction(attacker,'attack');
+          setTimeout(()=>playAction(target,'crouch'), 120);
+        }
+      }catch(_){}
       return await oldDoAttack.apply(this, arguments);
     };
   }
@@ -19893,8 +19990,10 @@ SPRITE_KEYS_ALL.add('magpie');
   if(typeof oldDoAttack === 'function'){
     globalThis.doAttack = async function(attacker, target, result){
       try{
-        playAttackMotion(attacker);
-        setTimeout(() => playHitMotion(target), 115);
+        if(!combatFxOwnsAnim()){
+          playAttackMotion(attacker);
+          setTimeout(() => playHitMotion(target), 115);
+        }
       }catch(_){}
       return await oldDoAttack.apply(this, arguments);
     };
@@ -19905,7 +20004,7 @@ SPRITE_KEYS_ALL.add('magpie');
     globalThis.executeEnemyAction = async function(act){
       try{
         if(act?.type === 'attack' || act?.type === 'strike' || act?.type === 'heavy' || act?.abilityId === 'eStun'){
-          playAttackMotion('enemy');
+          if(!combatFxOwnsAnim()) playAttackMotion('enemy');
         }
       }catch(_){}
       return await oldExec.apply(this, arguments);
