@@ -10,8 +10,7 @@
 
   var Avian = globalThis.Avian || (globalThis.Avian = {});
   Avian.ui = Avian.ui || Object.create(null);
-
-  globalThis.__combatFxActive = true;
+  Avian.ui.combatFxActive = true;
 
   var ASPECT_EMOJI = {
     solis: ['✨', '☀️', '🌟'], day: ['✨', '☀️', '🌟'],
@@ -286,29 +285,20 @@
     }
   }
 
-  globalThis.prepareCombatStrike = prepareCombatStrike;
-  globalThis.prepareCombatMiss = prepareCombatMiss;
-  globalThis.prepareCombatCast = prepareCombatCast;
-  globalThis.prepareCombatUtility = prepareCombatUtility;
+  Avian.ui.combatFxActive = true;
   Avian.ui.combatFx = {
+    active: true,
     prepareCombatStrike: prepareCombatStrike,
     prepareCombatMiss: prepareCombatMiss,
     prepareCombatCast: prepareCombatCast,
     prepareCombatUtility: prepareCombatUtility,
     applyLungeMetrics: applyLungeMetrics,
     spawnProjectile: spawnProjectile,
-    aspectEmojis: aspectEmojis
+    aspectEmojis: aspectEmojis,
+    onHeal: function (who) {
+      spawnAura(who);
+      spawnSparkles(who, ['💚', '✨'], 4);
+      playSpriteCycle(who, [FRAME_CALL, FRAME_POWER, FRAME_IDLE], 130);
+    }
   };
-
-  var oldDoHeal = globalThis.doHeal;
-  if (typeof oldDoHeal === 'function') {
-    globalThis.doHeal = async function (who, amt) {
-      try {
-        spawnAura(who);
-        spawnSparkles(who, ['💚', '✨'], 4);
-        playSpriteCycle(who, [FRAME_CALL, FRAME_POWER, FRAME_IDLE], 130);
-      } catch (_) {}
-      return await oldDoHeal.apply(this, arguments);
-    };
-  }
 })();

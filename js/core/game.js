@@ -9471,9 +9471,11 @@ function resolveCombatAnimKind(attacker, result){
   return 'physical';
 }
 
-function combatAnimIsProjectile(kind){
-  const k=String(kind||'').toLowerCase();
-  return k==='spell'||k==='song'||k==='magic'||k==='ranged';
+function combatFxOwnsAnim(){
+  try{ return !!(Avian && Avian.ui && (Avian.ui.combatFxActive || Avian.ui.combatFx)); }catch(_){ return false; }
+}
+function combatFxApi(){
+  try{ return (Avian && Avian.ui && Avian.ui.combatFx) || null; }catch(_){ return null; }
 }
 
 function spawnFloat(who,text,cls,extraCls) {
@@ -9532,8 +9534,9 @@ async function doAttack(attacker,target,result) {
     ? (kind==='ranged'?'do-ranged':'do-cast')
     : (attacker==='player'?'do-smash-r':'do-smash-l');
   const dodge_=target==='player'?'do-dodge-l':'do-dodge-r-flat';
-  if(typeof globalThis.prepareCombatStrike==='function'){
-    try{ globalThis.prepareCombatStrike(attacker, target, result, kind); }catch(_){}
+  const fx=combatFxApi();
+  if(fx && typeof fx.prepareCombatStrike==='function'){
+    try{ fx.prepareCombatStrike(attacker, target, result, kind); }catch(_){}
   }
   const attackP=playAvatarAnim(attacker,smash, projectile?520:640);
   await delay(projectile?280:250);
@@ -9593,8 +9596,9 @@ async function doMiss(attacker, kind='accuracy') {
     ? (animKind==='ranged'?'do-ranged':'do-cast')
     : (attacker==='player'?'do-miss-r':'do-miss-l');
   const isDodge=kind==='dodge';
-  if(typeof globalThis.prepareCombatMiss==='function'){
-    try{ globalThis.prepareCombatMiss(attacker, kind, animKind); }catch(_){}
+  const fx=combatFxApi();
+  if(fx && typeof fx.prepareCombatMiss==='function'){
+    try{ fx.prepareCombatMiss(attacker, kind, animKind); }catch(_){}
   }
   spawnFloat(attacker, isDodge?'Dodge!':'Miss!', isDodge?'fn-dodge':'fn-miss');
   if(isDodge) SFX.dodge(); else SFX.miss();
@@ -9612,13 +9616,18 @@ async function doSpell(target,text) {
   spawnFloat(target,text,'fn-status');
   SFX.spell();
   const caster=(G && G.turn==='enemy')?'enemy':'player';
-  if(typeof globalThis.prepareCombatCast==='function'){
-    try{ globalThis.prepareCombatCast(caster, target, text); }catch(_){}
+  const fx=combatFxApi();
+  if(fx && typeof fx.prepareCombatCast==='function'){
+    try{ fx.prepareCombatCast(caster, target, text); }catch(_){}
   }
   playAvatarAnim(caster,'do-cast',520);
   await delay(450);
 }
 async function doHeal(who,amt) {
+  const fx=combatFxApi();
+  if(fx && typeof fx.onHeal==='function'){
+    try{ fx.onHeal(who, amt); }catch(_){}
+  }
   spawnFloat(who,`+${amt}`,'fn-heal');
   SFX.heal();
   if(who==='player'&&G.player){
@@ -12637,8 +12646,11 @@ async function playerAction(ab,fromQueue=false) {
   renderEnergyOrbs();
   G.turnPhase=TURN.RESOLVING;
   G.animLock=true; G.battleOver=false; renderActions();
-  if((effActKind==='utility'||effActKind==='buff'||effActKind==='defend'||effActKind==='heal') && typeof globalThis.prepareCombatUtility==='function'){
-    try{ globalThis.prepareCombatUtility('player', ab); }catch(_){}
+  if((effActKind==='utility'||effActKind==='buff'||effActKind==='defend'||effActKind==='heal')){
+    const fx=combatFxApi();
+    if(fx && typeof fx.prepareCombatUtility==='function'){
+      try{ fx.prepareCombatUtility('player', ab); }catch(_){}
+    }
   }
   // Track buffs/debuffs for run unlock
   if(BUFF_AB_IDS.has(ab.id)) G.runBuffs++;
@@ -19747,7 +19759,7 @@ SPRITE_KEYS_ALL.add('magpie');
   if(typeof oldPlayerAction==='function'){
     globalThis.playerAction=async function(ab, fromQueue){
       try{
-        if(!globalThis.__combatFxActive){
+        if(!combatFxOwnsAnim()){
           const t=ABILITY_TEMPLATES?.[ab?.id] || {};
           const at=String(t.type || t.btnType || '').toLowerCase();
           const cls=String(G?.player?.class || BIRDS?.[G?.player?.birdKey]?.class || '').toLowerCase();
@@ -19767,7 +19779,7 @@ SPRITE_KEYS_ALL.add('magpie');
       try{
         const ek=currentKey('enemy');
         if(SPRITE_KEYS.has(ek) && !(G?.enemy?.id==='dukeBlakiston' || /blakiston/i.test(G?.enemy?.name||''))){
-          if(!globalThis.__combatFxActive){
+          if(!combatFxOwnsAnim()){
             if(act?.type==='attack') playAction('enemy','attack');
             else if(act?.type==='move') playAction('enemy','run');
             else playAction('enemy','crouch');
@@ -19782,7 +19794,7 @@ SPRITE_KEYS_ALL.add('magpie');
   if(typeof oldDoAttack==='function'){
     globalThis.doAttack=async function(attacker,target,result){
       try{
-        if(!globalThis.__combatFxActive){
+        if(!combatFxOwnsAnim()){
           playAction(attacker,'attack');
           setTimeout(()=>playAction(target,'crouch'), 120);
         }
@@ -19947,7 +19959,7 @@ SPRITE_KEYS_ALL.add('magpie');
   if(typeof oldDoAttack === 'function'){
     globalThis.doAttack = async function(attacker, target, result){
       try{
-        if(!globalThis.__combatFxActive){
+        if(!combatFxOwnsAnim()){
           playAttackMotion(attacker);
           setTimeout(() => playHitMotion(target), 115);
         }
@@ -19961,7 +19973,7 @@ SPRITE_KEYS_ALL.add('magpie');
     globalThis.executeEnemyAction = async function(act){
       try{
         if(act?.type === 'attack' || act?.type === 'strike' || act?.type === 'heavy' || act?.abilityId === 'eStun'){
-          if(!globalThis.__combatFxActive) playAttackMotion('enemy');
+          if(!combatFxOwnsAnim()) playAttackMotion('enemy');
         }
       }catch(_){}
       return await oldExec.apply(this, arguments);

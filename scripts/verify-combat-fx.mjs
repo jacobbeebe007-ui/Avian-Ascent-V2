@@ -39,7 +39,7 @@ ok('doAttack branches projectile vs lunge', /combatAnimIsProjectile/.test(game) 
 ok('doMiss uses cast pose for magic', /prepareCombatMiss/.test(game));
 ok('playerAction stamps _animAttackKind', /G\._animAttackKind\s*=\s*effActKind/.test(game));
 ok('utility flourish hooked from playerAction', /prepareCombatUtility\('player'/.test(game));
-ok('conflicting sprite smash skipped when combat FX is active', /__combatFxActive/.test(game));
+ok('conflicting sprite smash skipped when combat FX is active', /combatFxOwnsAnim/.test(game));
 ok('prepareCombatStrike lives in combat-fx.js', /function prepareCombatStrike/.test(fx));
 ok('magic uses aspect emoji projectiles', /ASPECT_EMOJI/.test(fx) && /combat-fx-proj--magic/.test(fx));
 ok('physical sprite cycle uses dash/call frames', /FRAME_DASH/.test(fx) && /FRAME_CALL/.test(fx));
@@ -86,7 +86,7 @@ function getAvatar(who){ return document.getElementById(who + '-avatar'); }
 </script>
 </body></html>`);
   await page.addScriptTag({ path: path.join(ROOT, 'js/ui/combat-fx.js') });
-  await page.waitForFunction(() => typeof window.prepareCombatStrike === 'function');
+  await page.waitForFunction(() => !!(window.Avian && window.Avian.ui && window.Avian.ui.combatFx && typeof window.Avian.ui.combatFx.prepareCombatStrike === 'function'));
 
   const metrics = await page.evaluate(() => {
     const fx = window.Avian.ui.combatFx;
@@ -108,7 +108,7 @@ function getAvatar(who){ return document.getElementById(who + '-avatar'); }
     metrics.dodgeX > 0 && Math.abs(metrics.dodgeX) !== Math.abs(metrics.hitX));
 
   const magic = await page.evaluate(() => {
-    window.prepareCombatStrike('player', 'enemy', { wasDodged: false, isMagic: true }, 'spell');
+    window.Avian.ui.combatFx.prepareCombatStrike('player', 'enemy', { wasDodged: false, isMagic: true }, 'spell');
     return {
       projs: document.querySelectorAll('.combat-fx-proj').length,
       sparks: document.querySelectorAll('.combat-fx-spark').length,
@@ -121,14 +121,14 @@ function getAvatar(who){ return document.getElementById(who + '-avatar'); }
 
   const phys = await page.evaluate(() => {
     document.querySelectorAll('.combat-fx-proj,.combat-fx-spark').forEach((n) => n.remove());
-    window.prepareCombatStrike('player', 'enemy', { wasDodged: false }, 'physical');
+    window.Avian.ui.combatFx.prepareCombatStrike('player', 'enemy', { wasDodged: false }, 'physical');
     return document.querySelector('#player-avatar .sprite4').className;
   });
   ok('physical strike uses dash frame cycle', /frame-2/.test(phys));
 
   const util = await page.evaluate(() => {
     document.querySelectorAll('.combat-fx-proj,.combat-fx-spark,.combat-fx-aura').forEach((n) => n.remove());
-    window.prepareCombatUtility('player', { name: 'Roost' });
+    window.Avian.ui.combatFx.prepareCombatUtility('player', { name: 'Roost' });
     return {
       wrapClass: document.getElementById('player-avatar-wrap').className,
       sparks: document.querySelectorAll('.combat-fx-spark').length,
