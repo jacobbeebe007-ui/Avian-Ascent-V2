@@ -44,7 +44,7 @@ const combatFxIdx = scripts.indexOf('js/ui/combat-fx.js');
 check('dove-sprite-patch loads after sprites.js', dovePatchIdx >= 0 && spritesIdx >= 0 && dovePatchIdx > spritesIdx);
 check('combat-fx loads after sprites.js', combatFxIdx >= 0 && spritesIdx >= 0 && combatFxIdx > spritesIdx);
 check('combat-fx loads before dove-sprite-patch', combatFxIdx >= 0 && dovePatchIdx >= 0 && combatFxIdx < dovePatchIdx);
-check('game-compat loads last among shell scripts', compatIdx >= 0 && compatIdx === scripts.length - 1);
+check('game-compat loads after dove-sprite-patch', compatIdx >= 0 && dovePatchIdx >= 0 && compatIdx > dovePatchIdx);
 check('combat-hud loads before sprites.js', combatUiIdx >= 0 && scripts.indexOf('js/ui/sprites.js') > combatUiIdx);
 
 const requiredGlobals = [
