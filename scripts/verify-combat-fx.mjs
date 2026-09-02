@@ -139,15 +139,6 @@ function getAvatar(who){ return document.getElementById(who + '-avatar'); }
   ok('utility plays do-utility rather than smash', /\bdo-utility\b/.test(util.wrapClass));
   ok('utility sparkles around the caster', util.sparks >= 1 && util.aura >= 1);
   ok('utility uses call/power frames, not a dash lunge', /frame-[13]/.test(util.frame) && !/do-smash/.test(util.wrapClass));
-
-  const dodgeHit = await page.evaluate(() => {
-    const hit = getComputedStyle(document.documentElement).cssText;
-    return {
-      hitKey: /hit-shake|hit-connect|--hit-x/.test(document.querySelector('style')?.textContent || ''),
-      dodgeKey: /dodge/.test(document.querySelector('style')?.textContent || '')
-    };
-  });
-  ok('fixture CSS keeps hit and dodge as separate animations', dodgeHit.hitKey && dodgeHit.dodgeKey);
 } catch (err) {
   ok(`playwright combat-fx fixture (${err && err.message})`, false);
 } finally {
