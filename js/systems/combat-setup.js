@@ -1,6 +1,6 @@
 /* Avian Ascent — battle loadout and loadStage (Step 7 Phase 7). */
 /** Stats that may be temporarily modified during combat — snapshotted at battle start and restored when combat ends. */
-const BATTLE_TEMP_PLAYER_STAT_KEYS = ['atk','def','spd','dodge','mdef','matk','critChance'];
+const BATTLE_TEMP_PLAYER_STAT_KEYS = ['atk','dex','def','spd','dodge','mdef','matk','critChance'];
 
 function captureBattleTempPlayerStats(){
   if(!G.player?.stats) return;
@@ -13,6 +13,7 @@ function captureBattleTempPlayerStats(){
   const p = G.player.stats;
   G.player._battleStatBase = {
     atk: Number(p.atk) || 0,
+    dex: Number(p.dex) || 0,
     matk: Number(p.matk) || 0,
     def: Number(p.def) || 0,
     mdef: Number(p.mdef) || 0,
@@ -364,6 +365,7 @@ function loadStage() {
     const base = G.enemy._statBaseBeforeMutations || G.enemy.stats;
     G.enemy._battleStatBase = {
       atk: Number(base.atk) || 0,
+      dex: Number(base.dex) || 0,
       matk: Number(base.matk) || 0,
       def: Number(base.def) || 0,
       mdef: Number(base.mdef) || 0,
@@ -465,7 +467,7 @@ function loadStage() {
     logMsg(`⚔ Stage ${encounterStage}${stageSequenceLabel}: ${G.enemy.name} appears!`,'system');
   }
   if (G.turn==='enemy') {
-    logMsg(`⚡ ${G.enemy.name} (SPD ${G.enemy.stats.spd}) is faster — they strike first!`,'miss');
+    logMsg(`⚡ ${G.enemy.name} (Agility ${G.enemy.stats.spd}) is faster — they strike first!`,'miss');
     scheduleOpeningEnemyTurn();
   }
   tryStartDukeBattleBgmIfNeeded();

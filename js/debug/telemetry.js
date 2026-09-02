@@ -127,6 +127,8 @@
     renderHighscoreBoard: renderHighscoreBoard,
   };
 
+  globalThis.TELEMETRY_KEY = TELEMETRY_KEY;
+  globalThis.HIGHSCORE_KEY = HIGHSCORE_KEY;
   globalThis.loadTelemetry = loadTelemetry;
   globalThis.saveTelemetry = saveTelemetry;
   globalThis.telemetryPushRun = telemetryPushRun;

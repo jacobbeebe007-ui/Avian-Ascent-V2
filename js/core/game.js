@@ -368,6 +368,7 @@ function ledgerStatLabel(statKey, { short=false }={}){
 const STAT_LEDGER_LABELS = {
   get maxHp(){ return ledgerStatLabel('maxHp'); },
   get atk(){ return ledgerStatLabel('atk'); },
+  get dex(){ return ledgerStatLabel('dex'); },
   get def(){ return ledgerStatLabel('def'); },
   get spd(){ return ledgerStatLabel('spd'); },
   get acc(){ return ledgerStatLabel('acc'); },
@@ -1891,7 +1892,7 @@ function renderUnlockPopupsOnGameover(){
     const portrait=renderBirdIconHTML(b.portraitKey||b.birdKey||p.birdKey,'small',false);
     const div=document.createElement('div');
     div.className='unlock-popup';
-    div.innerHTML=`<div class="unlock-title">${p.titleText} You have unlocked "<strong>${b.name}</strong>".</div><div class="unlock-card"><div class="bird-portrait" style="width:56px;height:56px;">${portrait}</div><div class="unlock-statline">HP ${b.stats.maxHp} · ATK ${b.stats.atk} · DEF ${b.stats.def} · SPD ${b.stats.spd}</div></div>`;
+    div.innerHTML=`<div class="unlock-title">${p.titleText} You have unlocked "<strong>${b.name}</strong>".</div><div class="unlock-card"><div class="bird-portrait" style="width:56px;height:56px;">${portrait}</div><div class="unlock-statline">HP ${b.stats.maxHp} · Might ${b.stats.atk} · Guard ${b.stats.def} · Agility ${b.stats.spd}</div></div>`;
     wrap.appendChild(div);
   });
   G._unlockPopups=[];
@@ -2908,6 +2909,7 @@ function buildEnemyNestProfileHtml(enemy){
   <div class="nest-profile-columns">
     <div class="nest-profile-col"><div class="nest-profile-col-title">Offense</div><dl class="nest-profile-dl">
       ${row(ledgerStatLabel('atk',{short:true}), formatCombatNumber(s.atk||0))}
+      ${row(ledgerStatLabel('dex',{short:true}), formatCombatNumber(Number(s.dex)||0), 'Dexterity — scales Finesse weapon skills')}
       ${row(ledgerStatLabel('matk',{short:true}), `<span style="color:#6ae8e8">${formatCombatNumber(Number(s.matk)||0)}</span>`, 'Focus — improves spell and ailment potency')}
       ${row(ledgerStatLabel('critChance',{short:true}), `${formatCombatNumber(eCritChance)}%`)}
       ${row(ledgerStatLabel('critMult',{short:true}), `${formatCombatNumber(Number(eCritMult))}×`)}
@@ -3041,6 +3043,7 @@ function openNest() {
   <div class="nest-profile-columns">
     <div class="nest-profile-col"><div class="nest-profile-col-title">Offense</div><dl class="nest-profile-dl">
       ${_nestDlRow(ledgerStatLabel('atk',{short:true}), _nestStat(_nestWarcry,s.atk))}
+      ${_nestDlRow(ledgerStatLabel('dex',{short:true}), formatCombatNumber(Number(s.dex)||0), 'Dexterity — scales Finesse weapon skills')}
       ${_nestDlRow(ledgerStatLabel('matk',{short:true}), `<span style="color:#6ae8e8">${formatCombatNumber(Number(s.matk)||0)}</span>`, 'Focus — improves spell and ailment potency')}
       ${_nestDlRow(ledgerStatLabel('critChance',{short:true}), `<span style="color:${_nestCrit>5?'#e8c96a':'var(--gold)'}">${formatCombatNumber(_nestCrit)}%</span>`)}
       ${_nestDlRow(ledgerStatLabel('critMult',{short:true}), `<span style="color:${_nestCritMultBase>1.5||_nestCritBonusPct>0?'#e8c96a':'var(--gold)'}">${_nestCritMultDisp}</span>`)}
@@ -3792,18 +3795,20 @@ async function clearGameCache() {
   return ran;
 }
 function clearAllProgress() {
+  const accessKey = (typeof ACCESS_KEY === 'string' && ACCESS_KEY) || 'avian_accessibility_v1';
+  const musicKey = (typeof MUSIC_SETTINGS_KEY === 'string' && MUSIC_SETTINGS_KEY) || 'avian_music_v1';
   const preserve = {
-    access: localStorage.getItem(ACCESS_KEY),
-    music: localStorage.getItem(MUSIC_SETTINGS_KEY),
+    access: localStorage.getItem(accessKey),
+    music: localStorage.getItem(musicKey),
   };
   const keys = [
-    SAVE_KEY,
+    (typeof SAVE_KEY === 'string' && SAVE_KEY) || (globalThis.AVIAN_OW_KEYS?.SAVE ?? 'avianAscent_save_v2'),
     globalThis.AVIAN_OW_KEYS?.STATE ?? 'avianAscent_overworld',
     globalThis.AVIAN_OW_KEYS?.NAV ?? 'avianAscent_nav',
-    UNLOCK_KEY,
-    RUN_HISTORY_KEY,
-    HIGHSCORE_KEY,
-    TELEMETRY_KEY,
+    (typeof UNLOCK_KEY === 'string' && UNLOCK_KEY) || 'avianAscent_unlocks_v1',
+    (typeof RUN_HISTORY_KEY === 'string' && RUN_HISTORY_KEY) || 'avianAscent_runHistory_v1',
+    globalThis.HIGHSCORE_KEY || 'avian_highscores_v1',
+    globalThis.TELEMETRY_KEY || 'avianAscent_telemetry_v1',
     'avianAscent_personal_bests',
     'avianAscent_last_seed',
     'blakiston_debug_unlocked',
@@ -3816,10 +3821,10 @@ function clearAllProgress() {
     try { localStorage.removeItem(k); } catch (_) { /* noop */ }
   }
   if (preserve.access != null) {
-    try { localStorage.setItem(ACCESS_KEY, preserve.access); } catch (_) { /* noop */ }
+    try { localStorage.setItem(accessKey, preserve.access); } catch (_) { /* noop */ }
   }
   if (preserve.music != null) {
-    try { localStorage.setItem(MUSIC_SETTINGS_KEY, preserve.music); } catch (_) { /* noop */ }
+    try { localStorage.setItem(musicKey, preserve.music); } catch (_) { /* noop */ }
   }
   clearDevCodeAccess();
   delete G.player;
@@ -3854,18 +3859,31 @@ if (typeof Avian?.actions?.register === 'function') {
   Avian.actions.register('closeClearCacheModal', closeClearCacheModal);
   Avian.actions.register('confirmClearCache', confirmClearCache);
 }
+globalThis.openEraseProgressModal = openEraseProgressModal;
+globalThis.closeEraseProgressModal = closeEraseProgressModal;
+globalThis.clearAllProgress = clearAllProgress;
 function confirmEraseProgress() {
-  clearAllProgress();
+  try { clearAllProgress(); } catch (err) {
+    console.warn('clearAllProgress failed', err);
+  }
   closeEraseProgressModal();
-  closeSelectHubPanel();
-  deleteSave();
+  try { closeSelectHubPanel(); } catch (_) { /* noop */ }
+  try { deleteSave(); } catch (_) { /* noop */ }
   const msg = document.getElementById('dev-code-msg');
   if (msg) {
     msg.textContent = '🗑 All saved progress erased.';
     msg.style.color = 'var(--gold-light)';
     setTimeout(() => { if (msg) msg.textContent = ''; }, 3200);
   }
-  initSelectionSafe();
+  try { if (typeof initSelectionSafe === 'function') initSelectionSafe(); } catch (_) { /* noop */ }
+  try { if (typeof renderRunHistory === 'function') renderRunHistory(); } catch (_) { /* noop */ }
+  try { if (typeof renderHighscoreBoard === 'function') renderHighscoreBoard(); } catch (_) { /* noop */ }
+}
+globalThis.confirmEraseProgress = confirmEraseProgress;
+if (typeof Avian?.actions?.register === 'function') {
+  Avian.actions.register('openEraseProgressModal', openEraseProgressModal);
+  Avian.actions.register('closeEraseProgressModal', closeEraseProgressModal);
+  Avian.actions.register('confirmEraseProgress', confirmEraseProgress);
 }
 function continueRun() {
   const save=loadSaveData();
@@ -4051,9 +4069,6 @@ function continueRun() {
     return;
   }
 
-  // #region agent log
-  fetch('http://127.0.0.1:7940/ingest/a2f9b3c2-6614-4231-b7d9-0c870302a25c',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'5e515f'},body:JSON.stringify({sessionId:'5e515f',location:'game.js:continueRun:preLoadStage',message:'continueRun calling loadStage',data:{stage:G.stage,pendingStage:G._owPendingBattleStage,owEnemies:G._owStageEnemies,inBattle:!!save?.inBattle},timestamp:Date.now(),hypothesisId:'H4'})}).catch(()=>{});
-  // #endregion
   if(isEndlessMapActive()){
     if(G.endlessMap?.pendingCombatKind && G.endlessMap?.activeNodeId){
       loadStage();
@@ -4486,6 +4501,7 @@ function applyEnemyStatsFromPlayerProgression(ed, opts={}){
           ? Avian.birdProgression.baseHealthAtLevel(base.baseHealth, workbookLevel)
           : base.baseHealth),
       atk:Number(ledger.atk)||base.atk,
+      dex:Number(ledger.dex)||base.dex,
       def:Number(ledger.def)||base.def,
       matk:Number(ledger.matk)||base.matk,
       mdef:Number(ledger.mdef)||base.mdef,
@@ -4511,6 +4527,7 @@ function applyEnemyStatsFromPlayerProgression(ed, opts={}){
         ? Avian.birdProgression.baseHealthAtLevel(base.baseHealth, workbookLevel)
         : base.baseHealth,
       atk:featherStats.atk,
+      dex:Number(featherStats.dex)||base.dex,
       def:featherStats.def,
       matk:featherStats.matk,
       mdef:featherStats.mdef,
@@ -4520,12 +4537,13 @@ function applyEnemyStatsFromPlayerProgression(ed, opts={}){
     if(typeof Avian?.birdProgression?.applyEnemyProfile==='function'){
       const profiled=Avian.birdProgression.applyEnemyProfile({
         hp:core.maxHp, maxHp:core.maxHp, vitality:core.vitality,
-        atk:core.atk, def:core.def, matk:core.matk, mdef:core.mdef, spd:core.spd,
+        atk:core.atk, dex:core.dex, def:core.def, matk:core.matk, mdef:core.mdef, spd:core.spd,
       }, profileId);
       if(profiled){
         core.maxHp=Number(profiled.maxHp??profiled.hp)||core.maxHp;
         if(profiled.vitality!=null) core.vitality=Number(profiled.vitality)||core.vitality;
         core.atk=Number(profiled.atk)||core.atk;
+        if(profiled.dex!=null) core.dex=Number(profiled.dex)||core.dex;
         core.def=Number(profiled.def)||core.def;
         core.matk=Number(profiled.matk)||core.matk;
         core.mdef=Number(profiled.mdef)||core.mdef;
@@ -4546,6 +4564,7 @@ function applyEnemyStatsFromPlayerProgression(ed, opts={}){
 
   const hp=roundCombatStat(Math.max(0.01, core.maxHp*mult),0.01);
   const atk=roundCombatStat(Math.max(0.01, core.atk*mult),0.01);
+  const dex=roundCombatStat(Math.max(0, (core.dex!=null?core.dex:base.dex)*mult),0.01);
   const def=roundCombatStat(Math.max(0, core.def*mult),0);
   const matk=roundCombatStat(Math.max(0, core.matk*mult),0.01);
   const mdef=roundCombatStat(Math.max(0, core.mdef*mult),0);
@@ -4563,6 +4582,7 @@ function applyEnemyStatsFromPlayerProgression(ed, opts={}){
     baseHealth:Number(core.baseHealth)||base.baseHealth||0,
     leveledBaseHealth:Number(core.leveledBaseHealth)||base.baseHealth||0,
     atk,
+    dex,
     def,
     matk,
     mdef,
@@ -4604,7 +4624,7 @@ function mergeScaledStatsIntoEnemy(ed, encounterStage){
   let scaled=applyEnemyStatsFromPlayerProgression(ed, scaleOpts);
   if(!scaled){
     scaled=ed._storyDirectStats ? {
-      hp:ed.hp,maxHp:ed.maxHp,atk:ed.atk,def:ed.def,spd:ed.spd,acc:ed.acc,dodge:ed.dodge,mdef:ed.mdef,matk:ed.matk,cc:ed.cc||0.05,cd:ed.cd||1.5,en:getEnemyEnergyProfile().startEN,enemyClass:ed.enemyClass,effectiveLevel:ed.storyLevel||0,
+      hp:ed.hp,maxHp:ed.maxHp,atk:ed.atk,dex:ed.dex,def:ed.def,spd:ed.spd,acc:ed.acc,dodge:ed.dodge,mdef:ed.mdef,matk:ed.matk,cc:ed.cc||0.05,cd:ed.cd||1.5,en:getEnemyEnergyProfile().startEN,enemyClass:ed.enemyClass,effectiveLevel:ed.storyLevel||0,
     } : (ed.isBoss
       ? buildScaledBoss(ed, encounterStage, scaleOpts)
       : buildScaledEnemy(ed, encounterStage, scaleOpts));
@@ -4621,7 +4641,7 @@ function mergeScaledStatsIntoEnemy(ed, encounterStage){
     scaled=Avian.balance.enemyEncounters.applyMultipliers(scaled, encounterMult);
   }
   ed.hp=scaled.hp; ed.maxHp=scaled.maxHp;
-  ed.atk=scaled.atk; ed.def=scaled.def; ed.spd=scaled.spd;
+  ed.atk=scaled.atk; ed.dex=scaled.dex; ed.def=scaled.def; ed.spd=scaled.spd;
   ed.acc=scaled.acc; ed.dodge=scaled.dodge;
   ed.cc=scaled.cc; ed.cd=scaled.cd;
   ed.mdef=scaled.mdef; ed.matk=scaled.matk;
@@ -4635,7 +4655,7 @@ function mergeScaledStatsIntoEnemy(ed, encounterStage){
   if(scaled.leveledBaseHealth!=null) ed.leveledBaseHealth=Number(scaled.leveledBaseHealth);
   if(scaled._progressHpMult!=null) ed._progressHpMult=Number(scaled._progressHpMult);
   ed.stats = {
-    hp:ed.hp, maxHp:ed.hp, atk:ed.atk, def:ed.def, spd:ed.spd, acc:ed.acc, dodge:ed.dodge,
+    hp:ed.hp, maxHp:ed.hp, atk:ed.atk, dex:ed.dex, def:ed.def, spd:ed.spd, acc:ed.acc, dodge:ed.dodge,
     mdef:ed.mdef, matk:ed.matk, cc:ed.cc, cd:ed.cd,
     critChance:Math.round((ed.cc||0.05)*100), critMult:ed.cd||1.5,
     en:(scaled.en||0),
@@ -4651,6 +4671,7 @@ function mergeScaledStatsIntoEnemy(ed, encounterStage){
   if (!ed._mutationsApplied) {
     ed._statBaseBeforeMutations = {
       atk: Number(ed.stats.atk) || 0,
+      dex: Number(ed.stats.dex) || 0,
       matk: Number(ed.stats.matk) || 0,
       def: Number(ed.stats.def) || 0,
       mdef: Number(ed.stats.mdef) || 0,
@@ -4673,6 +4694,7 @@ function mergeScaledStatsIntoEnemy(ed, encounterStage){
       };
       apply('maxHp', cs.maxHp);
       apply('atk', cs.atk);
+      apply('dex', cs.dex);
       apply('def', cs.def);
       apply('matk', cs.matk);
       apply('mdef', cs.mdef);
@@ -4682,6 +4704,7 @@ function mergeScaledStatsIntoEnemy(ed, encounterStage){
       globalThis.applyForgePowerScaling(ed, G._owForgePowerTier);
       ed._statBaseBeforeMutations = {
         atk: Number(ed.stats.atk) || 0,
+        dex: Number(ed.stats.dex) || 0,
         matk: Number(ed.stats.matk) || 0,
         def: Number(ed.stats.def) || 0,
         mdef: Number(ed.stats.mdef) || 0,
@@ -4696,6 +4719,7 @@ function mergeScaledStatsIntoEnemy(ed, encounterStage){
       globalThis.applyForgeEncounterStatMults(ed, forgeEnc);
       ed._statBaseBeforeMutations = {
         atk: Number(ed.stats.atk) || 0,
+        dex: Number(ed.stats.dex) || 0,
         matk: Number(ed.stats.matk) || 0,
         def: Number(ed.stats.def) || 0,
         mdef: Number(ed.stats.mdef) || 0,
@@ -5460,7 +5484,7 @@ function buildStoryEnemyFromBirdKey(birdKey, stage, opts={}){
     aiPersonality,
     abilities:JSON.parse(JSON.stringify(enemyStub.abilities||[])),
     stats:{...stats,en:enProf.startEN},
-    hp:stats.hp,maxHp:stats.maxHp,atk:stats.atk,def:stats.def,spd:stats.spd,acc:stats.acc,dodge:stats.dodge,mdef:stats.mdef,matk:stats.matk,
+    hp:stats.hp,maxHp:stats.maxHp,atk:stats.atk,dex:stats.dex,def:stats.def,spd:stats.spd,acc:stats.acc,dodge:stats.dodge,mdef:stats.mdef,matk:stats.matk,
     cc:Math.max(0.05,Math.min(0.95,(stats.critChance||5)/100)), cd:stats.critMult||1.5,
     energyMax:enProf.maxEN,energy:enProf.startEN,energyRegen:enProf.regenEN,
     isBoss:!!opts.isBoss,
@@ -5480,7 +5504,7 @@ function buildStoryEnemyFromBirdKey(birdKey, stage, opts={}){
   });
   if(progressed){
     draft.hp=progressed.hp; draft.maxHp=progressed.maxHp;
-    draft.atk=progressed.atk; draft.def=progressed.def;
+    draft.atk=progressed.atk; draft.dex=progressed.dex; draft.def=progressed.def;
     draft.matk=progressed.matk; draft.mdef=progressed.mdef;
     draft.spd=progressed.spd; draft.dodge=progressed.dodge; draft.acc=progressed.acc;
     draft.cc=progressed.cc; draft.cd=progressed.cd;
@@ -5491,7 +5515,7 @@ function buildStoryEnemyFromBirdKey(birdKey, stage, opts={}){
     if(progressed.leveledBaseHealth!=null) draft.leveledBaseHealth=progressed.leveledBaseHealth;
     if(progressed._progressHpMult!=null) draft._progressHpMult=progressed._progressHpMult;
     draft.stats={
-      hp:draft.hp,maxHp:draft.maxHp,atk:draft.atk,def:draft.def,spd:draft.spd,
+      hp:draft.hp,maxHp:draft.maxHp,atk:draft.atk,dex:draft.dex,def:draft.def,spd:draft.spd,
       acc:draft.acc,dodge:draft.dodge,mdef:draft.mdef,matk:draft.matk,
       cc:draft.cc,cd:draft.cd,critChance:Math.round((draft.cc||0.05)*100),critMult:draft.cd,
       en:enProf.startEN,
@@ -5516,16 +5540,18 @@ function buildStoryEnemyFromBirdKey(birdKey, stage, opts={}){
     stats.maxHp=roundCombatStat(Math.max(0.01, stats.maxHp*diffMult), 0.01);
     stats.hp=stats.maxHp;
     stats.atk=roundCombatStat(Math.max(0.01, stats.atk*diffMult), 0.01);
+    stats.dex=roundCombatStat(Math.max(0, (Number(stats.dex)||0)*diffMult), 0.01);
     stats.matk=roundCombatStat(Math.max(0.01, stats.matk*diffMult), 0.01);
     if(opts.isBoss){
       stats.maxHp=roundCombatStat(Math.max(0.01, stats.maxHp*STORY_BOSS_STAT_MULT.hp), 0.01);
       stats.hp=stats.maxHp;
       stats.atk=roundCombatStat(Math.max(0.01, stats.atk*STORY_BOSS_STAT_MULT.atk), 0.01);
+      stats.dex=roundCombatStat(Math.max(0, (Number(stats.dex)||0)*(STORY_BOSS_STAT_MULT.dex != null ? STORY_BOSS_STAT_MULT.dex : STORY_BOSS_STAT_MULT.atk)), 0.01);
       stats.matk=roundCombatStat(Math.max(0.01, stats.matk*STORY_BOSS_STAT_MULT.matk), 0.01);
     }
     normalizeCombatStats(stats);
     draft.hp=stats.hp; draft.maxHp=stats.maxHp;
-    draft.atk=stats.atk; draft.def=stats.def; draft.spd=stats.spd;
+    draft.atk=stats.atk; draft.dex=stats.dex; draft.def=stats.def; draft.spd=stats.spd;
     draft.acc=stats.acc; draft.dodge=stats.dodge; draft.mdef=stats.mdef; draft.matk=stats.matk;
     draft.birdLevel=level;
     draft.workbookLevel=Math.min(30, level);
@@ -5729,7 +5755,7 @@ function showNextStagePreview() {
     if(enemy) mergeScaledStatsIntoEnemy(enemy, nextStage);
     const sizeLabel={tiny:'Tiny',small:'Small',medium:'Medium',large:'Large',xl:'Extra Large'}[enemy.size]||'?';
     const nspSprite=enemy.portraitKey?renderBirdIconHTML(enemy.portraitKey,'small',false,true):`<span class="nsp-emoji">${enemy.emoji||'⚔'}</span>`;
-    el.innerHTML=`<div class="nsp-title">⟩ Next Stage ${nextStage}</div><div class="nsp-enemy">${nspSprite}</div><div class="nsp-name">${enemy.isBoss?`👑 ${enemy.bossTitle}: `:''} ${enemy.name}</div><div class="nsp-stats">HP ${enemy.hp} · ATK ${enemy.atk} · ${sizeLabel}${enemy.isBoss?' · <span class="rage-badge">BOSS</span>':''}</div>`;
+    el.innerHTML=`<div class="nsp-title">⟩ Next Stage ${nextStage}</div><div class="nsp-enemy">${nspSprite}</div><div class="nsp-name">${enemy.isBoss?`👑 ${enemy.bossTitle}: `:''} ${enemy.name}</div><div class="nsp-stats">HP ${enemy.hp} · Might ${enemy.atk} · ${sizeLabel}${enemy.isBoss?' · <span class="rage-badge">BOSS</span>':''}</div>`;
   }
   el.style.display='block';
 }
@@ -5952,9 +5978,7 @@ function initSelectionSafe(){
     }
   } catch(_) {}
   try { if (handleOverworldReturn()) return; } catch(err) {
-    // #region agent log
-    fetch('http://127.0.0.1:7940/ingest/a2f9b3c2-6614-4231-b7d9-0c870302a25c',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'5e515f'},body:JSON.stringify({sessionId:'5e515f',location:'game.js:initSelectionSafe:owCatch',message:'handleOverworldReturn outer catch',data:{err:String(err&&err.message||err)},timestamp:Date.now(),hypothesisId:'H1'})}).catch(()=>{});
-    // #endregion
+    console.warn('handleOverworldReturn failed', err);
   }
   try{
     initSelection();
@@ -8618,9 +8642,9 @@ function snowyOwlEyeStatPreviewLines(ab){
   if(id==='owl_eye') return [`Next attack +${Math.round(([0.14,0.17,0.20,0.23][i]||0.14)*100)}% damage`];
   if(id==='owl_hunters_sight') return [`Next attack +${Math.round(([0.20,0.24,0.28,0.32][i]||0.20)*100)}% damage`];
   if(id==='moon_lock') return [`Next attack +${Math.round(([0.28,0.32,0.36,0.40][i]||0.28)*100)}% damage`];
-  if(id==='expose_prey') return [`Enemy −${[1,2,2,3][i]||1} DEF (${[2,2,3,3][i]||2}t)`];
-  if(id==='owl_weakpoint_sight') return [`Enemy −${[2,3,4,5][i]||2} DEF (${[2,3,3,4][i]||2}t)`];
-  if(id==='owl_ruin_lock') return [`Enemy −${[3,4,5,6][i]||3} DEF (${[3,3,4,4][i]||3}t)`];
+  if(id==='expose_prey') return [`Enemy −${[1,2,2,3][i]||1} Guard (${[2,2,3,3][i]||2}t)`];
+  if(id==='owl_weakpoint_sight') return [`Enemy −${[2,3,4,5][i]||2} Guard (${[2,3,3,4][i]||2}t)`];
+  if(id==='owl_ruin_lock') return [`Enemy −${[3,4,5,6][i]||3} Guard (${[3,3,4,4][i]||3}t)`];
   if(id==='cold_eye') return [`Your attacks +${[8,12,16,20][i]||8}% crit (${[2,2,3,3][i]||2}t)`];
   if(id==='owl_killer_sight') return [`Your attacks +${[12,16,20,24][i]||12}% crit (${[2,3,3,3][i]||2}t)`];
   if(id==='owl_death_lock') return [`Your attacks +${[16,20,24,28][i]||16}% crit (${[3,3,3,4][i]||3}t)`];
@@ -8633,14 +8657,14 @@ function snowyOwlGlideStatPreviewLines(ab){
   if(id==='frost_glide'){
     return [
       `Hum dodge +${[10,12,14,16][i]}% (2–3t; branch may trade for slow/weaken)`,
-      `Baseline: enemy SPD −1, dodge −${5+(i>=2?1:0)} (2t)`,
+      `Baseline: enemy Agility −1, dodge −${5+(i>=2?1:0)} (2t)`,
     ];
   }
   if(id==='silent_glide') return [`Hum dodge +${[28,32,36,40][i]}% (${[2,2,3,3][i]}t)`];
   if(id==='ghost_drift') return [`Hum dodge +${[38,42,46,50][i]}% (${[2,3,3,3][i]}t)`];
-  if(id==='snow_silence') return [`Hum dodge +${[48,52,56,60][i]}% (3t) · Enemy ACC −${[10,12,14,16][i]}%`];
-  if(id==='winter_drift') return [`Enemy slow SPD −${3}, dodge −10 (3t) · Weaken ${[20,24,28,32][i]}%`];
-  if(id==='white_silence') return [`Heavy slow + Weaken ${[28,32,36,40][i]}% · Enemy ACC −${[6,8,10,12][i]}%`];
+  if(id==='snow_silence') return [`Hum dodge +${[48,52,56,60][i]}% (3t) · Enemy Precision −${[10,12,14,16][i]}%`];
+  if(id==='winter_drift') return [`Enemy slow Agility −${3}, dodge −10 (3t) · Weaken ${[20,24,28,32][i]}%`];
+  if(id==='white_silence') return [`Heavy slow + Weaken ${[28,32,36,40][i]}% · Enemy Precision −${[6,8,10,12][i]}%`];
   if(id==='hunting_glide') return [`Next attack +${Math.round(([0.10,0.13,0.16,0.19][i]||0.10)*100)}% damage`];
   if(id==='shadow_drift') return [`Next attack +${Math.round(([0.16,0.20,0.24,0.28][i]||0.16)*100)}% · light slow`];
   if(id==='night_silence') return [`Next attack +${Math.round(([0.24,0.28,0.32,0.36][i]||0.24)*100)}% · Hum dodge +${[14,16,18,20][i]}% (2t)`];
@@ -8661,13 +8685,13 @@ const SKILL_STAT_PREVIEW={
     const lv=Math.max(1,Math.min(4,ab?.level||1));
     const spd=[2,3,4,5][lv-1]||2;
     const cur=Math.round(Number(p?.stats?.spd||0));
-    return [`SPD: ${cur} → ${cur+spd} (2t)`];
+    return [`Agility: ${cur} → ${cur+spd} (2t)`];
   },
   crowDefend(p,ab){
     const lv=Math.max(1,Math.min(4,ab?.level||1));
     const defGain=[2,3,4,5][lv-1]||2;
     const cur=Math.round(Number(p?.stats?.def||0));
-    return [`DEF: ${cur} → ${cur+defGain} (1t)`];
+    return [`Guard: ${cur} → ${cur+defGain} (1t)`];
   },
   gloom_wing(p,ab){
     const lv=Math.max(1,Math.min(4,ab?.level||1));
@@ -8700,17 +8724,17 @@ const SKILL_STAT_PREVIEW={
   expose_flight(p,ab){
     const lv=Math.max(1,Math.min(4,ab?.level||1));
     const lost=[1,2,2,3][lv-1]||1; const turns=[2,2,3,3][lv-1]||2;
-    return [`Enemy −${lost} DEF (${turns}t)`];
+    return [`Enemy −${lost} Guard (${turns}t)`];
   },
   weakpoint_sight(p,ab){
     const lv=Math.max(1,Math.min(4,ab?.level||1));
     const lost=[2,3,4,5][lv-1]||2; const turns=[2,3,3,4][lv-1]||2;
-    return [`Enemy −${lost} DEF (${turns}t)`];
+    return [`Enemy −${lost} Guard (${turns}t)`];
   },
   ruin_lock(p,ab){
     const lv=Math.max(1,Math.min(4,ab?.level||1));
     const lost=[3,4,5,6][lv-1]||3; const turns=[3,3,4,4][lv-1]||3;
-    return [`Enemy −${lost} DEF (${turns}t)`];
+    return [`Enemy −${lost} Guard (${turns}t)`];
   },
   predatory_eye(p,ab){
     const lv=Math.max(1,Math.min(4,ab?.level||1));
@@ -8731,25 +8755,25 @@ const SKILL_STAT_PREVIEW={
     const lv=Math.max(1,Math.min(4,ab?.level||1));
     const spd=[1,1,2,2][lv-1]||1; const dg=[12,14,16,18][lv-1]||12; const t=[2,2,2,2][lv-1]||2;
     const cs=Math.round(Number(p?.stats?.spd||0)); const cd=Math.round(Number(p?.stats?.dodge||0));
-    return [`SPD ${cs}→${cs+spd} · Dodge ${cd}%→${cd+dg}% (${t}t)`];
+    return [`Agility ${cs}→${cs+spd} · Dodge ${cd}%→${cd+dg}% (${t}t)`];
   },
   rapid_pace(p,ab){
     const lv=Math.max(1,Math.min(4,ab?.level||1));
     const spd=[2,3,4,5][lv-1]||2; const t=[2,2,2,3][lv-1]||2;
     const cs=Math.round(Number(p?.stats?.spd||0));
-    return [`SPD ${cs}→${cs+spd} (${t}t)`];
+    return [`Agility ${cs}→${cs+spd} (${t}t)`];
   },
   glide_burst(p,ab){
     const lv=Math.max(1,Math.min(4,ab?.level||1));
     const spd=[4,5,6,7][lv-1]||4; const dg=[8,10,12,14][lv-1]||8; const t=[2,2,3,3][lv-1]||2;
     const cs=Math.round(Number(p?.stats?.spd||0)); const cd=Math.round(Number(p?.stats?.dodge||0));
-    return [`SPD ${cs}→${cs+spd} · Dodge ${cd}%→${cd+dg}% (${t}t)`];
+    return [`Agility ${cs}→${cs+spd} · Dodge ${cd}%→${cd+dg}% (${t}t)`];
   },
   stoop_tempo(p,ab){
     const lv=Math.max(1,Math.min(4,ab?.level||1));
     const spd=[3,4,5,6][lv-1]||3; const ad=[8,10,12,14][lv-1]||8; const t=[2,2,2,3][lv-1]||2;
     const cs=Math.round(Number(p?.stats?.spd||0));
-    return [`SPD ${cs}→${cs+spd} · Enemy ACC −${ad}% (${t}t)`];
+    return [`Agility ${cs}→${cs+spd} · Enemy Precision −${ad}% (${t}t)`];
   },
   slip_pace(p,ab){
     const lv=Math.max(1,Math.min(4,ab?.level||1));
@@ -8848,8 +8872,8 @@ function buildGenericUtilityStatPreviewFromAction(ab,tmpl){
     const cs=Math.round(Number(G.player.stats?.spd||0));
     if(dodge&&dodge[i]!=null&&dodge[i]>0){
       const cd=Math.round(Number(G.player.stats?.dodge||0));
-      lines.push(`SPD ${cs}→${cs+spd[i]} · Dodge ${cd}%→${cd+dodge[i]}%${fmtT}`);
-    }else lines.push(`SPD: ${cs} → ${cs+spd[i]}${fmtT}`);
+      lines.push(`Agility ${cs}→${cs+spd[i]} · Dodge ${cd}%→${cd+dodge[i]}%${fmtT}`);
+    }else lines.push(`Agility: ${cs} → ${cs+spd[i]}${fmtT}`);
   }else if(dodge&&dodge[i]!=null&&dodge[i]>0){
     const cd=Math.round(Number(G.player.stats?.dodge||0));
     lines.push(`Dodge ${cd}%→${cd+dodge[i]}%${fmtT}`);
@@ -8860,7 +8884,7 @@ function buildGenericUtilityStatPreviewFromAction(ab,tmpl){
   const markAmp=pick('markAmp');
   if(markAmp&&markAmp[i]!=null) lines.push(`Next hit +${Math.round(markAmp[i]*100)}% damage${fmtT}`);
   const accDown=pick('accDown');
-  if(accDown&&accDown[i]!=null) lines.push(`Enemy ACC −${accDown[i]}%${fmtT}`);
+  if(accDown&&accDown[i]!=null) lines.push(`Enemy Precision −${accDown[i]}%${fmtT}`);
   const guard=pick('guard');
   if(guard&&guard[i]!=null) lines.push(`Defend +${guard[i]} (guard stacks)${fmtT}`);
   const humDodge=pick('humDodge');
@@ -8871,7 +8895,7 @@ function buildGenericUtilityStatPreviewFromAction(ab,tmpl){
   const expose=pick('expose');
   if(expose&&expose[i]!=null) lines.push(`Enemy +${Math.round(expose[i]*100)}% damage taken${fmtT}`);
   const defStrip=pick('defStrip');
-  if(defStrip&&defStrip[i]!=null) lines.push(`Enemy −${defStrip[i]} DEF${fmtT}`);
+  if(defStrip&&defStrip[i]!=null) lines.push(`Enemy −${defStrip[i]} Guard${fmtT}`);
   const energy=pick('energy');
   if(energy&&energy[i]!=null) lines.push(`On hit: +${energy[i]} EN`);
   const stripBuffs=pick('stripBuffs');
@@ -8947,8 +8971,8 @@ function buildActionTooltipHTML(ab){
   if (hit!==null) html+=`<div class="tt-row"><span class="tt-lbl">Hit</span><span class="tt-val ${hitClass}">${hit}%</span></div>`;
   if (isDamaging) {
     if(hybridSplit){
-      html+=`<div class="tt-row"><span class="tt-lbl">ATK half (est.)</span><span class="tt-val tt-dmg-atk">${hybridSplit.atkLow}–${hybridSplit.atkHigh}</span></div>`;
-      html+=`<div class="tt-row"><span class="tt-lbl">M.ATK half (est.)</span><span class="tt-val tt-dmg-matk">${hybridSplit.matkLow}–${hybridSplit.matkHigh}</span></div>`;
+      html+=`<div class="tt-row"><span class="tt-lbl">Might half (est.)</span><span class="tt-val tt-dmg-atk">${hybridSplit.atkLow}–${hybridSplit.atkHigh}</span></div>`;
+      html+=`<div class="tt-row"><span class="tt-lbl">Focus half (est.)</span><span class="tt-val tt-dmg-matk">${hybridSplit.matkLow}–${hybridSplit.matkHigh}</span></div>`;
       html+=`<div class="tt-row"><span class="tt-lbl">Combined (avg.)</span><span class="tt-val">${dmgLow!==null?`${dmgLow}–${dmgHigh}`:'Varies'}</span></div>`;
     }else html+=`<div class="tt-row"><span class="tt-lbl">Damage (est.)</span><span class="tt-val">${dmgLow!==null?`${dmgLow}–${dmgHigh}`:'Varies'}</span></div>`;
   }
@@ -8965,7 +8989,7 @@ function buildActionTooltipHTML(ab){
     const hb=Number(pb.hitBonus)||0;
     const cb=Number(pb.critBonus)||0;
     const bits=[];
-    if(pct) bits.push(`+${pct}% ATK-scaling damage`);
+    if(pct) bits.push(`+${pct}% Might-scaling damage`);
     if(hb) bits.push(`−${hb}% miss on that action`);
     if(cb) bits.push(`+${cb}% crit on that action`);
     if(bits.length) html+=`<div class="tt-row"><span class="tt-lbl">Queued</span><span class="tt-val" style="font-size:.88em">${bits.join(' · ')}</span></div>`;
@@ -8975,7 +8999,7 @@ function buildActionTooltipHTML(ab){
     ? buildAbilityTooltipDetailHtml(ab, tmpl, packRow)
     : escapeHtmlRoster(String(lvData.desc||''));
   html+=`<div class="tt-desc">${detailHtml}${scaleNote?`<div class="tt-scaling" style="opacity:.92;margin-top:6px;font-size:.9em;border-top:1px solid rgba(255,255,255,.12);padding-top:6px">${scaleNote}</div>`:''}</div>`;
-  html+=`<div class="tt-note" style="opacity:.75;margin-top:6px;font-size:.78em">Damage estimate uses your current stats, skill tier mults, DEF/M.DEF mitigation, and common buffs — combat rolls can vary.</div>`;
+  html+=`<div class="tt-note" style="opacity:.75;margin-top:6px;font-size:.78em">Damage estimate uses your current stats, skill tier mults, Guard/Resolve mitigation, and common buffs — combat rolls can vary.</div>`;
   if(window._isTouchDevice) html+=richTooltipCloseBtn();
   return html;
 }
@@ -15842,7 +15866,7 @@ function showVictory(){
   const runUnlocks=document.getElementById('run-unlocks');
   if(runUnlocks){
     runUnlocks.innerHTML=`<div style="margin:10px 0 6px;font-size:.82rem;color:var(--gold-light)">🏆 Achievement: Court Cleared</div>
-    <div style="font-size:.76rem;color:var(--text-dim);line-height:1.5">${G.player.name} · HP ${G.player.stats.hp}/${G.player.stats.maxHp} · ATK ${G.player.stats.atk} · DEF ${G.player.stats.def} · SPD ${G.player.stats.spd}<br/>Abilities: ${abilityList||'—'}<br/>Unlocked roster: ${unlockedNow.join(', ')||'None yet'}</div>`;
+    <div style="font-size:.76rem;color:var(--text-dim);line-height:1.5">${G.player.name} · HP ${G.player.stats.hp}/${G.player.stats.maxHp} · Might ${G.player.stats.atk} · Guard ${G.player.stats.def} · Agility ${G.player.stats.spd}<br/>Abilities: ${abilityList||'—'}<br/>Unlocked roster: ${unlockedNow.join(', ')||'None yet'}</div>`;
   }
   showRunStats();
   if(G.endlessMode){
@@ -15912,7 +15936,7 @@ function showRunStats(){
     <div class="vstat"><div class="vstat-val">${G.collectedRewards.length}</div><div class="vstat-lbl">Rewards</div></div>
     <div class="vstat"><div class="vstat-val">${G.shinyObjects||0}</div><div class="vstat-lbl">Shiny Objects</div></div>
     ${flightRescuedNestCount()>0?`<div class="vstat"><div class="vstat-val">+${flightRescuedNestCount()} 🪺</div><div class="vstat-lbl">Rescued Nests</div></div>`:''}
-    <div class="vstat"><div class="vstat-val">${G.player.stats.atk}</div><div class="vstat-lbl">Final ATK</div></div>
+    <div class="vstat"><div class="vstat-val">${G.player.stats.atk}</div><div class="vstat-lbl">Final Might</div></div>
     <div class="vstat"><div class="vstat-val">${G.player.stats.hp}/${G.player.stats.maxHp}</div><div class="vstat-lbl">HP Left</div></div>`;
   el.style.display='grid';
 }

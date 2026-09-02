@@ -56,6 +56,14 @@
   }
 
   function scaleStatKey(scaleStat) {
+    if (Avian.display && typeof Avian.display.ledgerKey === 'function') {
+      var mapped = Avian.display.ledgerKey(scaleStat);
+      if (mapped === 'atk' || mapped === 'dex' || mapped === 'matk' || mapped === 'spd'
+        || mapped === 'def' || mapped === 'mdef' || mapped === 'acc' || mapped === 'dodge'
+        || mapped === 'vitality') {
+        return mapped;
+      }
+    }
     var key = String(scaleStat || 'ATK').toUpperCase();
     if (key === 'MATK' || key === 'MATT' || key === 'FOCUS') return 'matk';
     if (key === 'DEX' || key === 'DEXTERITY') return 'dex';
@@ -67,6 +75,18 @@
     if (key === 'HP' || key === 'VITALITY') return 'vitality';
     if (key === 'MIGHT' || key === 'ATK') return 'atk';
     return 'atk';
+  }
+
+  function displayScaleStatName(scaleStat) {
+    if (Avian.display && typeof Avian.display.scalingStat === 'function') {
+      return Avian.display.scalingStat(scaleStat);
+    }
+    var ledger = scaleStatKey(scaleStat);
+    var names = {
+      atk: 'Might', dex: 'Dexterity', matk: 'Focus', def: 'Guard', mdef: 'Resolve',
+      spd: 'Agility', acc: 'Precision', dodge: 'Evasion', vitality: 'Vitality',
+    };
+    return names[ledger] || String(scaleStat || 'Might');
   }
 
   function statValueForScale(stats, scaleStat) {
@@ -372,6 +392,18 @@
     var stats = entity && entity.stats ? entity.stats : entity || {};
     var status = entityCombatStatus(entity);
     var k = String(key || 'ATK').toUpperCase();
+    if (Avian.display && typeof Avian.display.ledgerKey === 'function') {
+      var ledger = Avian.display.ledgerKey(key);
+      if (ledger === 'atk') k = 'MIGHT';
+      else if (ledger === 'matk') k = 'FOCUS';
+      else if (ledger === 'dex') k = 'DEX';
+      else if (ledger === 'spd') k = 'SPD';
+      else if (ledger === 'def') k = 'DEF';
+      else if (ledger === 'mdef') k = 'MDEF';
+      else if (ledger === 'acc') k = 'ACC';
+      else if (ledger === 'dodge') k = 'DODGE';
+      else if (ledger === 'vitality') k = 'VITALITY';
+    }
     if (k === 'HP' || k === 'MAXHP') return Math.max(0, Number(stats.maxHp || stats.hp) || 0);
     if (k === 'VITALITY') return Math.max(0, Number(stats.vitality) || 0);
     if (k === 'MATK' || k === 'MATT' || k === 'FOCUS') {
@@ -1320,7 +1352,7 @@
       bits.push('Damage: ' + fmin + '–' + fmax + ' (does not scale with weapon).');
     } else if (weaponFirstEnabled()) {
       var stat = String(row.damageStat || row.scalingStat || row.scaleStat || 'ATK');
-      bits.push('Uses ' + stat + '.');
+      bits.push('Uses ' + displayScaleStatName(stat) + '.');
       bits.push('Skill Power: ' + (getSkillPowerPct(row) || 0) + '%.');
       var wMin = row.minDamage != null ? Number(row.minDamage) : null;
       var wMax = row.maxDamage != null ? Number(row.maxDamage) : null;
@@ -1331,7 +1363,7 @@
       }
     } else {
       var statLegacy = String(row.damageStat || row.scalingStat || row.scaleStat || 'ATK');
-      bits.push('Uses ' + statLegacy + '.');
+      bits.push('Uses ' + displayScaleStatName(statLegacy) + '.');
       bits.push('Ability Power: ' + (Number(row.abilityPower) || 0).toFixed(2) + '.');
     }
     if ((row.heavyAccuracyPenalty || 0) > 0) bits.push('Heavy accuracy penalty: -' + row.heavyAccuracyPenalty + '.');
@@ -1359,6 +1391,7 @@
     PIERCE_CAP: PIERCE_CAP,
     BURNING_DEF_MULT: BURNING_DEF_MULT,
     scaleStatKey: scaleStatKey,
+    displayScaleStatName: displayScaleStatName,
     statValueForScale: statValueForScale,
     computeAbilityRawDamage: computeAbilityRawDamage,
     mitigatedDamage: mitigatedDamage,
@@ -1432,6 +1465,9 @@
   globalThis.clampCritChancePct = clampCritChancePct;
   globalThis.clampCritDamageMult = clampCritDamageMult;
   globalThis.calculateAbilityAccuracyPenalty = calculateAbilityAccuracyPenalty;
+  globalThis.scaleStatKey = scaleStatKey;
+  globalThis.displayScaleStatName = displayScaleStatName;
+  globalThis.statValueForScale = statValueForScale;
   globalThis.computeAbilityRawDamage = computeAbilityRawDamage;
   globalThis.mitigatedDamage = mitigatedDamage;
   globalThis.sumAdditiveDamageBonus = sumAdditiveDamageBonus;
