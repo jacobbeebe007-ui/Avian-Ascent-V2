@@ -222,7 +222,9 @@
         setSeagullState('idle');
         animateBattleSpriteFromIntent('enemy');
         const p = battleSpriteFor('player');
-        if(p){ clearMenuAnim(p); setFrame(p, 'frame-0'); p.classList.add('menu-idle-anim'); }
+        if(p && !(p._busyUntil && p._busyUntil > Date.now())){
+          clearMenuAnim(p); setFrame(p, 'frame-0'); p.classList.add('menu-idle-anim');
+        }
         applyIdleToVisibleMenuSprites();
       }catch(err){ console.error(err); }
       return out;
