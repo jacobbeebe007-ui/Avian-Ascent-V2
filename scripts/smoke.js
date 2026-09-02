@@ -95,6 +95,8 @@ const checks = [
   { label: 'Dev codes apply immediately', re: /function applyDevCodeSwitches\(\)\{[\s\S]*activateDevCode\(code/ },
   { label: 'Birdwatching grants all bird unlocks', re: /function applyBirdwatchingUnlock\b/ },
   { label: 'Headinghome locks non-starters', re: /function applyHeadingHomeLock\b/ },
+  { label: 'Combat connect lunge CSS var', re: /--lunge-x/ },
+  { label: 'Combat FX prepareCombatStrike', re: /function prepareCombatStrike\b|globalThis\.prepareCombatStrike\s*=/ },
 ];
 
 for (const c of checks) {

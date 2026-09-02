@@ -40,7 +40,10 @@ check('combat-controller loads after combat-setup', combatControllerIdx >= 0 && 
 const compatIdx = scripts.indexOf('js/legacy/game-compat.js');
 const dovePatchIdx = scripts.indexOf('js/legacy/dove-sprite-patch.js');
 const spritesIdx = scripts.indexOf('js/ui/sprites.js');
+const combatFxIdx = scripts.indexOf('js/ui/combat-fx.js');
 check('dove-sprite-patch loads after sprites.js', dovePatchIdx >= 0 && spritesIdx >= 0 && dovePatchIdx > spritesIdx);
+check('combat-fx loads after sprites.js', combatFxIdx >= 0 && spritesIdx >= 0 && combatFxIdx > spritesIdx);
+check('combat-fx loads before dove-sprite-patch', combatFxIdx >= 0 && dovePatchIdx >= 0 && combatFxIdx < dovePatchIdx);
 check('game-compat loads last among shell scripts', compatIdx >= 0 && compatIdx === scripts.length - 1);
 check('combat-hud loads before sprites.js', combatUiIdx >= 0 && scripts.indexOf('js/ui/sprites.js') > combatUiIdx);
 
