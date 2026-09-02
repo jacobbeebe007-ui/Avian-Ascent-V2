@@ -62,7 +62,9 @@ for (const [label, re] of staticChecks) {
       ? cssSrc
       : label.includes('combat hover')
         ? readFileSync(path.join(ROOT, 'js/ui/combat-stats-modal.js'), 'utf8')
-        : gameSrc;
+        : (label.includes('combat empty') || label.includes('action grid'))
+          ? readFileSync(path.join(ROOT, 'js/ui/combat-actions.js'), 'utf8')
+          : gameSrc;
   if (re.test(src)) ok(label);
   else fail('missing ' + label);
 }
