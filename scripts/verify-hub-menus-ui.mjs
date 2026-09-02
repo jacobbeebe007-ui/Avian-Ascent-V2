@@ -42,6 +42,7 @@ const htmlChecks = [
   ['supplies codex tab', /id="supplies-nav-reference"[^>]*>Codex</],
   ['supplies records tab', /id="supplies-nav-records"[^>]*>Records</],
   ['supplies device section', /id="supplies-device-heading">This device</],
+  ['supplies erase progress action', /id="select-hub-supplies"[\s\S]*?data-action="openEraseProgressModal"/],
   ['supplies clear cache action', /id="select-hub-supplies"[\s\S]*?data-action="openClearCacheModal"/],
   ['unlock input kept', /id="dev-code-input"/],
   ['war room banked eggs chip', /id="splash-bank-eggs"/],

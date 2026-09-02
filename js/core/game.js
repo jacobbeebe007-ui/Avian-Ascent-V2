@@ -3795,18 +3795,20 @@ async function clearGameCache() {
   return ran;
 }
 function clearAllProgress() {
+  const accessKey = (typeof ACCESS_KEY === 'string' && ACCESS_KEY) || 'avian_accessibility_v1';
+  const musicKey = (typeof MUSIC_SETTINGS_KEY === 'string' && MUSIC_SETTINGS_KEY) || 'avian_music_v1';
   const preserve = {
-    access: localStorage.getItem(ACCESS_KEY),
-    music: localStorage.getItem(MUSIC_SETTINGS_KEY),
+    access: localStorage.getItem(accessKey),
+    music: localStorage.getItem(musicKey),
   };
   const keys = [
-    SAVE_KEY,
+    (typeof SAVE_KEY === 'string' && SAVE_KEY) || (globalThis.AVIAN_OW_KEYS?.SAVE ?? 'avianAscent_save_v2'),
     globalThis.AVIAN_OW_KEYS?.STATE ?? 'avianAscent_overworld',
     globalThis.AVIAN_OW_KEYS?.NAV ?? 'avianAscent_nav',
-    UNLOCK_KEY,
-    RUN_HISTORY_KEY,
-    HIGHSCORE_KEY,
-    TELEMETRY_KEY,
+    (typeof UNLOCK_KEY === 'string' && UNLOCK_KEY) || 'avianAscent_unlocks_v1',
+    (typeof RUN_HISTORY_KEY === 'string' && RUN_HISTORY_KEY) || 'avianAscent_runHistory_v1',
+    globalThis.HIGHSCORE_KEY || 'avian_highscores_v1',
+    globalThis.TELEMETRY_KEY || 'avianAscent_telemetry_v1',
     'avianAscent_personal_bests',
     'avianAscent_last_seed',
     'blakiston_debug_unlocked',
@@ -3819,10 +3821,10 @@ function clearAllProgress() {
     try { localStorage.removeItem(k); } catch (_) { /* noop */ }
   }
   if (preserve.access != null) {
-    try { localStorage.setItem(ACCESS_KEY, preserve.access); } catch (_) { /* noop */ }
+    try { localStorage.setItem(accessKey, preserve.access); } catch (_) { /* noop */ }
   }
   if (preserve.music != null) {
-    try { localStorage.setItem(MUSIC_SETTINGS_KEY, preserve.music); } catch (_) { /* noop */ }
+    try { localStorage.setItem(musicKey, preserve.music); } catch (_) { /* noop */ }
   }
   clearDevCodeAccess();
   delete G.player;
@@ -3857,18 +3859,31 @@ if (typeof Avian?.actions?.register === 'function') {
   Avian.actions.register('closeClearCacheModal', closeClearCacheModal);
   Avian.actions.register('confirmClearCache', confirmClearCache);
 }
+globalThis.openEraseProgressModal = openEraseProgressModal;
+globalThis.closeEraseProgressModal = closeEraseProgressModal;
+globalThis.clearAllProgress = clearAllProgress;
 function confirmEraseProgress() {
-  clearAllProgress();
+  try { clearAllProgress(); } catch (err) {
+    console.warn('clearAllProgress failed', err);
+  }
   closeEraseProgressModal();
-  closeSelectHubPanel();
-  deleteSave();
+  try { closeSelectHubPanel(); } catch (_) { /* noop */ }
+  try { deleteSave(); } catch (_) { /* noop */ }
   const msg = document.getElementById('dev-code-msg');
   if (msg) {
     msg.textContent = '🗑 All saved progress erased.';
     msg.style.color = 'var(--gold-light)';
     setTimeout(() => { if (msg) msg.textContent = ''; }, 3200);
   }
-  initSelectionSafe();
+  try { if (typeof initSelectionSafe === 'function') initSelectionSafe(); } catch (_) { /* noop */ }
+  try { if (typeof renderRunHistory === 'function') renderRunHistory(); } catch (_) { /* noop */ }
+  try { if (typeof renderHighscoreBoard === 'function') renderHighscoreBoard(); } catch (_) { /* noop */ }
+}
+globalThis.confirmEraseProgress = confirmEraseProgress;
+if (typeof Avian?.actions?.register === 'function') {
+  Avian.actions.register('openEraseProgressModal', openEraseProgressModal);
+  Avian.actions.register('closeEraseProgressModal', closeEraseProgressModal);
+  Avian.actions.register('confirmEraseProgress', confirmEraseProgress);
 }
 function continueRun() {
   const save=loadSaveData();
@@ -4054,9 +4069,6 @@ function continueRun() {
     return;
   }
 
-  // #region agent log
-  fetch('http://127.0.0.1:7940/ingest/a2f9b3c2-6614-4231-b7d9-0c870302a25c',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'5e515f'},body:JSON.stringify({sessionId:'5e515f',location:'game.js:continueRun:preLoadStage',message:'continueRun calling loadStage',data:{stage:G.stage,pendingStage:G._owPendingBattleStage,owEnemies:G._owStageEnemies,inBattle:!!save?.inBattle},timestamp:Date.now(),hypothesisId:'H4'})}).catch(()=>{});
-  // #endregion
   if(isEndlessMapActive()){
     if(G.endlessMap?.pendingCombatKind && G.endlessMap?.activeNodeId){
       loadStage();
@@ -5966,9 +5978,7 @@ function initSelectionSafe(){
     }
   } catch(_) {}
   try { if (handleOverworldReturn()) return; } catch(err) {
-    // #region agent log
-    fetch('http://127.0.0.1:7940/ingest/a2f9b3c2-6614-4231-b7d9-0c870302a25c',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'5e515f'},body:JSON.stringify({sessionId:'5e515f',location:'game.js:initSelectionSafe:owCatch',message:'handleOverworldReturn outer catch',data:{err:String(err&&err.message||err)},timestamp:Date.now(),hypothesisId:'H1'})}).catch(()=>{});
-    // #endregion
+    console.warn('handleOverworldReturn failed', err);
   }
   try{
     initSelection();
