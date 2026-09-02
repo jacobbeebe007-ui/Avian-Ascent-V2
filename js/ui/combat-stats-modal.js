@@ -11,14 +11,14 @@ function buildPlayerCombatStatHint(){
   if(s.humDodge?.bonus) parts.push(`Dodge buff +${s.humDodge.bonus}% (${s.humDodge.turns||0}t)`);
   if(s.peregrineCritLens?.bonus) parts.push(`Crit lens +${s.peregrineCritLens.bonus}% (${s.peregrineCritLens.turns||0}t)`);
   if(Number(s.huntersMarkBonusPct)>0) parts.push(`Next hit +${Math.round(s.huntersMarkBonusPct*100)}% dmg`);
-  if((s.accDebuff||0)>0) parts.push(`Your ACC −${s.accDebuff}%`);
+  if((s.accDebuff||0)>0) parts.push(`Your Precision −${s.accDebuff}%`);
   if(s.burning) parts.push('Burning (−20% Guard/Resolve, 7 dmg end enemy turn)');
   return parts.join(' · ');
 }
 function buildEnemyCombatStatHint(){
   const s=G.enemyStatus||{};
   const parts=[];
-  if((s.accDebuff||0)>0) parts.push(`ACC −${s.accDebuff}%`);
+  if((s.accDebuff||0)>0) parts.push(`Precision −${s.accDebuff}%`);
   if(getWeakenStacks(s)>0) parts.push(`Weaken ×${getWeakenStacks(s)}`);
   if((s.feared||0)>0) parts.push(`Feared ${s.feared}t`);
   if(s.slow) parts.push('Slow');

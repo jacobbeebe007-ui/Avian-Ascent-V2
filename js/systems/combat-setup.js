@@ -467,7 +467,7 @@ function loadStage() {
     logMsg(`⚔ Stage ${encounterStage}${stageSequenceLabel}: ${G.enemy.name} appears!`,'system');
   }
   if (G.turn==='enemy') {
-    logMsg(`⚡ ${G.enemy.name} (SPD ${G.enemy.stats.spd}) is faster — they strike first!`,'miss');
+    logMsg(`⚡ ${G.enemy.name} (Agility ${G.enemy.stats.spd}) is faster — they strike first!`,'miss');
     scheduleOpeningEnemyTurn();
   }
   tryStartDukeBattleBgmIfNeeded();
