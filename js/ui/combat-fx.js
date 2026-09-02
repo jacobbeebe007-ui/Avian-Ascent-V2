@@ -66,8 +66,11 @@
     var dx = (tr.left + tr.width / 2) - (ar.left + ar.width / 2);
     var dy = (tr.top + tr.height / 2) - (ar.top + ar.height / 2);
     var sign = dx === 0 ? (attacker === 'player' ? 1 : -1) : Math.sign(dx);
-    var overlap = Math.min(Math.abs(dx) * 0.2, Math.max(tr.width, 72) * 0.4);
+    var overlap = Math.min(Math.abs(dx) * 0.1, Math.max(tr.width, 72) * 0.22);
     var x = (dx - sign * overlap) * factor;
+    if (Math.abs(x) < 48 && factor >= 0.9) {
+      x = sign * Math.max(Math.abs(dx) - overlap, 120);
+    }
     var y = dy * 0.38 * factor;
     a.style.setProperty('--lunge-x', Math.round(x) + 'px');
     a.style.setProperty('--lunge-y', Math.round(y) + 'px');

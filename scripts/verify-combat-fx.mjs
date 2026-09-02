@@ -35,6 +35,7 @@ ok('CSS dodge hops upward', /@keyframes dodge-l[\s\S]*?-30px/.test(css));
 ok('CSS has do-cast / do-ranged / do-utility',
   /\.do-cast\{/.test(css) && /\.do-ranged\{/.test(css) && /\.do-utility\{/.test(css));
 ok('CSS projectile layer exists', /\.battle-fx-layer\{/.test(css) && /\.combat-fx-proj\{/.test(css));
+ok('combatAnimIsProjectile is defined', /function combatAnimIsProjectile/.test(game));
 ok('doAttack branches projectile vs lunge', /combatAnimIsProjectile/.test(game) && /do-cast/.test(game));
 ok('doMiss uses cast pose for magic', /prepareCombatMiss/.test(game));
 ok('playerAction stamps _animAttackKind', /G\._animAttackKind\s*=\s*effActKind/.test(game));

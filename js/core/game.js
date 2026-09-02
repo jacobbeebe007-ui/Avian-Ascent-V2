@@ -9471,6 +9471,11 @@ function resolveCombatAnimKind(attacker, result){
   return 'physical';
 }
 
+function combatAnimIsProjectile(kind){
+  const k=String(kind||'').toLowerCase();
+  return k==='spell'||k==='song'||k==='magic'||k==='ranged';
+}
+
 function combatFxOwnsAnim(){
   try{ return !!(Avian && Avian.ui && (Avian.ui.combatFxActive || Avian.ui.combatFx)); }catch(_){ return false; }
 }

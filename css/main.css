@@ -6606,7 +6606,8 @@ img{image-rendering:pixelated;image-rendering:crisp-edges;}
 .btn-mod{display:block;font-size:.62rem;color:var(--gold-light);opacity:.9;line-height:1.2;}
 
 /* ===== Battle UI Redesign: Tactical Roguelike Layout ===== */
-#screen-battle{background:radial-gradient(1100px 420px at 50% -80px, rgba(40,80,40,.14), transparent 62%),linear-gradient(180deg,#070c07 0%,#090e09 55%,#0b110b 100%);position:relative;overflow:hidden;}
+#screen-battle{background:radial-gradient(1100px 420px at 50% -80px, rgba(40,80,40,.14), transparent 62%),linear-gradient(180deg,#070c07 0%,#090e09 55%,#0b110b 100%);position:relative;overflow:visible;}
+#screen-battle:has(.combatant-panel.is-striking){overflow:visible;}
 .battle-screen-inner{position:relative;display:flex;flex-direction:column;min-height:100%;flex:1;}
 .battle-arena-layer{position:absolute;inset:0;z-index:0;pointer-events:none;}
 .battle-arena-backdrop{position:absolute;inset:0;background-position:center center;background-size:cover;background-repeat:no-repeat;opacity:0;transition:opacity .45s ease;}
