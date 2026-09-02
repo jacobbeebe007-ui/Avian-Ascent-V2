@@ -350,6 +350,7 @@
       stats.maxHp = rcs(Math.max(0.01, stats.maxHp * diffMult), 0.01);
       stats.hp = stats.maxHp;
       stats.atk = rcs(Math.max(0.01, (stats.atk || 1) * diffMult), 0.01);
+      if (stats.dex != null) stats.dex = rcs(Math.max(0, stats.dex * diffMult), 0.01);
       stats.matk = rcs(Math.max(0.01, (stats.matk || 1) * diffMult), 0.01);
     }
     if (opts.isBoss && global.STORY_BOSS_STAT_MULT) {
@@ -358,6 +359,7 @@
       stats.maxHp = rcs2(Math.max(0.01, stats.maxHp * (mult.hp != null ? mult.hp : 1)), 0.01);
       stats.hp = stats.maxHp;
       stats.atk = rcs2(Math.max(0.01, stats.atk * (mult.atk != null ? mult.atk : 1.15)), 0.01);
+      if (stats.dex != null) stats.dex = rcs2(Math.max(0, stats.dex * (mult.dex != null ? mult.dex : (mult.atk != null ? mult.atk : 1.15))), 0.01);
       stats.matk = rcs2(Math.max(0.01, stats.matk * (mult.matk != null ? mult.matk : 1.15)), 0.01);
     }
     if (typeof global.normalizeCombatStats === 'function') global.normalizeCombatStats(stats);
@@ -436,6 +438,7 @@
       hp: stats.hp,
       maxHp: stats.maxHp,
       atk: stats.atk,
+      dex: stats.dex,
       def: stats.def,
       spd: stats.spd,
       acc: stats.acc,

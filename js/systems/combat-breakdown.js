@@ -27,7 +27,9 @@
   function statName(ability) {
     var raw = ability && (ability.scaleStat || ability.damageStat || ability.scalingStat);
     if (!raw && Array.isArray(ability && ability.scaling) && ability.scaling.length === 1) raw = ability.scaling[0].ledgerKey || ability.scaling[0].stat;
-    return raw == null ? null : String(raw).toLowerCase();
+    if (raw == null) return null;
+    if (Avian.display && typeof Avian.display.scalingStat === 'function') return Avian.display.scalingStat(raw);
+    return String(raw).toLowerCase();
   }
   function weaponRange(ability, params) {
     var source = params && (params.weaponDamageRange || params.weaponRange) || ability && (ability.weaponDamageRange || ability.weaponRange);

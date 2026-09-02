@@ -11,6 +11,8 @@ const combatConfigSrc = read('js/data/combat-config.js');
 const classesSrc = read('js/data/combat-pack/classes.js');
 const aspectsSrc = read('js/data/aspects.js');
 const riderParserSrc = read('js/systems/ability-rider-parser.js');
+const affinitySrc = read('js/systems/affinity.js');
+const glossarySrc = read('js/data/display-glossary.js');
 const formulasSrc = read('js/systems/combat-formulas.js');
 const meterRuntimeSrc = read('js/systems/master-workbook-runtime.js');
 const fixturesJson = JSON.parse(read('scripts/fixtures/equipment-damage-fixtures.json'));
@@ -27,6 +29,8 @@ vm.runInContext(combatConfigSrc, sandbox, { filename: 'combat-config.js', timeou
 vm.runInContext(classesSrc, sandbox, { filename: 'classes.js', timeout: 5000 });
 vm.runInContext(aspectsSrc, sandbox, { filename: 'aspects.js', timeout: 5000 });
 vm.runInContext(riderParserSrc, sandbox, { filename: 'ability-rider-parser.js', timeout: 5000 });
+vm.runInContext(glossarySrc, sandbox, { filename: 'display-glossary.js', timeout: 5000 });
+vm.runInContext(affinitySrc, sandbox, { filename: 'affinity.js', timeout: 5000 });
 vm.runInContext(formulasSrc, sandbox, { filename: 'combat-formulas.js', timeout: 5000 });
 vm.runInContext(meterRuntimeSrc, sandbox, { filename: 'master-workbook-runtime.js', timeout: 5000 });
 
@@ -122,6 +126,69 @@ check('utility meter award is 0 (equipment)', c.computeUltimateMeterAward(
   { id: 'TEST_UTIL', _dispatcherRow: { id: 'TEST_UTIL', noDamage: true, enCost: 2, target: 'self' } },
   { utilitySucceeded: true, hitsLanded: 0 },
 ) === 0, `got=${c.computeUltimateMeterAward({ id: 'TEST_UTIL', _dispatcherRow: { id: 'TEST_UTIL', noDamage: true, enCost: 2, target: 'self' } }, { utilitySucceeded: true, hitsLanded: 0 })}`);
+
+function weaponSkill(scaleStat, damageType) {
+  return {
+    id: 'STAT_SCALE_TEST',
+    enCost: 1,
+    apCost: 1,
+    scalingStat: scaleStat,
+    damageStat: scaleStat,
+    scaleStat: scaleStat,
+    damageType: damageType,
+    skillPowerPct: 100,
+    minDamage: 10,
+    maxDamage: 10,
+    useWeaponFirst: true,
+  };
+}
+function dmgAt(stats, scaleStat, damageType) {
+  return c.calculateDamage({
+    attacker: { class: 'rogue', stats },
+    target: { stats: { def: 0, mdef: 0 } },
+    ability: weaponSkill(scaleStat, damageType),
+    hitSucceeded: true,
+    weaponDamage: 10,
+  });
+}
+const mightLo = dmgAt({ atk: 0, dex: 0, matk: 0 }, 'ATK', 'Physical');
+const mightHi = dmgAt({ atk: 20, dex: 0, matk: 0 }, 'ATK', 'Physical');
+const mightNamed = dmgAt({ atk: 20, dex: 0, matk: 0 }, 'Might', 'Physical');
+check('Might increases martial weapon damage', mightHi.preMitigation > mightLo.preMitigation && mightHi.damage > mightLo.damage,
+  `lo=${mightLo.preMitigation}/${mightLo.damage} hi=${mightHi.preMitigation}/${mightHi.damage}`);
+check('Might alias matches ATK scaling', near(mightNamed.preMitigation, mightHi.preMitigation),
+  `named=${mightNamed.preMitigation} atk=${mightHi.preMitigation}`);
+
+const dexLo = dmgAt({ atk: 40, dex: 0, matk: 0 }, 'DEX', 'Physical');
+const dexHi = dmgAt({ atk: 0, dex: 20, matk: 0 }, 'DEX', 'Physical');
+const dexNamed = dmgAt({ atk: 0, dex: 20, matk: 0 }, 'Dexterity', 'Physical');
+check('Dexterity increases finesse weapon damage', dexHi.preMitigation > dexLo.preMitigation && dexHi.damage > dexLo.damage,
+  `lo=${dexLo.preMitigation}/${dexLo.damage} hi=${dexHi.preMitigation}/${dexHi.damage}`);
+check('DEX skill ignores Might', near(dexLo.preMitigation, mightLo.preMitigation),
+  `dexWithMight=${dexLo.preMitigation} zero=${mightLo.preMitigation}`);
+check('Dexterity alias matches DEX scaling', near(dexNamed.preMitigation, dexHi.preMitigation),
+  `named=${dexNamed.preMitigation} dex=${dexHi.preMitigation}`);
+
+const focLo = dmgAt({ atk: 40, dex: 40, matk: 0 }, 'MATK', 'Magic');
+const focHi = dmgAt({ atk: 0, dex: 0, matk: 20 }, 'MATK', 'Magic');
+const focNamed = dmgAt({ atk: 0, dex: 0, matk: 20 }, 'Focus', 'Magic');
+check('Focus increases magic weapon damage', focHi.preMitigation > focLo.preMitigation && focHi.damage > focLo.damage,
+  `lo=${focLo.preMitigation}/${focLo.damage} hi=${focHi.preMitigation}/${focHi.damage}`);
+check('Focus alias matches MATK scaling', near(focNamed.preMitigation, focHi.preMitigation),
+  `named=${focNamed.preMitigation} matk=${focHi.preMitigation}`);
+
+const usesMight = c.describeMasterAbility({
+  apCost: 2, scaleStat: 'ATK', skillPowerPct: 100, minDamage: 3, maxDamage: 4, category: 'physical',
+});
+check('describeMasterAbility uses Might', usesMight.includes('Uses Might.') && !usesMight.includes('Uses ATK'), usesMight);
+const usesDex = c.describeMasterAbility({
+  apCost: 2, scaleStat: 'DEX', skillPowerPct: 110, minDamage: 2, maxDamage: 3, category: 'physical',
+});
+check('describeMasterAbility uses Dexterity', usesDex.includes('Uses Dexterity.') && !usesDex.includes('Uses DEX'), usesDex);
+const usesFoc = c.describeMasterAbility({
+  apCost: 2, scaleStat: 'MATK', skillPowerPct: 100, minDamage: 3, maxDamage: 4, category: 'magic', damageType: 'Magic',
+});
+check('describeMasterAbility uses Focus', usesFoc.includes('Uses Focus.') && !usesFoc.includes('Uses MATK'), usesFoc);
 
 const failed = checks.filter((x) => !x.ok);
 for (const x of checks) {

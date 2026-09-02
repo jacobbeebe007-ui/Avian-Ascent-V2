@@ -51,6 +51,7 @@ const staticChecks = [
   ['enemy nest worn inspect layout', /nest-eq-layout--inspect/],
   ['enemy nest three tabs', /nest-tabs--3/],
   ['compact combat hover card', /function buildCombatantHoverTooltipHtml[\s\S]*?combat-hover-card/],
+  ['combat hover uses Might Dexterity Focus labels', /function buildCombatantHoverTooltipHtml[\s\S]*?sl\('atk'\)[\s\S]*?sl\('dex'\)[\s\S]*?sl\('matk'\)[\s\S]*?sl\('def'\)[\s\S]*?sl\('mdef'\)/],
   ['hold click suppress', /_suppressNextClick/],
 ];
 
@@ -59,10 +60,16 @@ for (const [label, re] of staticChecks) {
     ? readFileSync(path.join(ROOT, 'js/ui/event-router.js'), 'utf8')
     : label.includes('two-column bag')
       ? cssSrc
-      : gameSrc;
+      : label.includes('combat hover')
+        ? readFileSync(path.join(ROOT, 'js/ui/combat-stats-modal.js'), 'utf8')
+        : gameSrc;
   if (re.test(src)) ok(label);
   else fail('missing ' + label);
 }
+
+const hoverSrc = readFileSync(path.join(ROOT, 'js/ui/combat-stats-modal.js'), 'utf8');
+if (/<em>ATK<\/em>|<em>MATK<\/em>|<em>DEF<\/em>|<em>MDEF<\/em>/.test(hoverSrc)) fail('combat hover still uses legacy ATK/MATK/DEF/MDEF labels');
+else ok('combat hover has no legacy ATK/MATK/DEF/MDEF labels');
 
 function loadSandbox() {
   const ctx = vm.createContext({
