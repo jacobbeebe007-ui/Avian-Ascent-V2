@@ -181,10 +181,11 @@ function buildRewardFlipCardHtml(drop, opts={}){
   const idxAttr=Number.isFinite(opts.dropIndex)?` data-drop-index="${opts.dropIndex}"`:'';
   const flipped=opts.revealed?' is-flipped':'';
   const selectable=opts.selectable?' reward-hatch-flip--selectable':'';
-  const equipCls=opts.equipmentPick?' reward-hatch-flip--equipment':'';
+  const equipCls=opts.equipmentPick?' reward-hatch-flip--equipment':' reward-hatch-flip--item';
+  const slotCls=opts.equipmentPick?'':' reward-hatch-slot--item';
   const ariaBack=opts.revealed?'false':'true';
   const ariaFront=opts.revealed?'true':'false';
-  return `<div class="mother-goose-hatch-slot reward-hatch-slot"${idxAttr}>
+  return `<div class="mother-goose-hatch-slot reward-hatch-slot${slotCls}"${idxAttr}>
     <div class="mother-goose-hatch-flip mother-goose-hatch-flip--nest tier-${tierCss}${flipped}${selectable}${equipCls}" data-tier="${tierCss}">
       <div class="mother-goose-hatch-flip-front mother-goose-hatch-flip-front--nest tier-${tierCss}" aria-hidden="${ariaFront}">
         <span class="mother-goose-hatch-egg" aria-hidden="true">🪺</span>
@@ -217,6 +218,39 @@ function revealRewardFlipCard(slotOrFlip){
   const front=flip.querySelector('.mother-goose-hatch-flip-front');
   if(back) back.setAttribute('aria-hidden','false');
   if(front) front.setAttribute('aria-hidden','true');
+}
+
+function hideRewardNestStage(){
+  const stage=document.getElementById('nest-drop-stage');
+  const hint=document.getElementById('nest-shake-hint');
+  const scene=document.getElementById('nest-reward-scene');
+  const shakeFx=document.getElementById('nest-shake-fx');
+  if(stage) stage.hidden=true;
+  if(shakeFx) shakeFx.innerHTML='';
+  if(hint){
+    hint.textContent='';
+    hint.hidden=true;
+  }
+  if(scene){
+    scene.classList.remove('is-compact','is-shaking');
+    scene.classList.add('nest-reward-scene--revealed');
+  }
+}
+
+function resetRewardNestStage(){
+  const stage=document.getElementById('nest-drop-stage');
+  const hint=document.getElementById('nest-shake-hint');
+  const scene=document.getElementById('nest-reward-scene');
+  const nest=document.getElementById('reward-nest');
+  if(stage) stage.hidden=false;
+  if(nest){
+    nest.hidden=false;
+    nest.style.display='';
+  }
+  if(hint){
+    hint.hidden=false;
+  }
+  if(scene) scene.classList.remove('nest-reward-scene--revealed','is-compact','forge-equipment-choice');
 }
 
 function preSizeNestRewardTray(dropCount){
@@ -312,7 +346,7 @@ function finishNestRewardReveal(){
   const dropLayer=document.getElementById('nest-drop-layer');
   if(dropLayer) dropLayer.innerHTML='';
   const scene=document.getElementById('nest-reward-scene');
-  if(scene) scene.classList.remove('is-shaking','is-compact');
+  if(scene) scene.classList.remove('is-shaking','is-compact','nest-reward-scene--revealed');
   const confirmBtn=document.getElementById('reward-confirm-btn');
   if(confirmBtn){
     confirmBtn.textContent='Continue →';
@@ -331,8 +365,10 @@ function revealNestDropsStaggered(){
   let index=start;
 
   if(start===0 && drops.length){
+    hideRewardNestStage();
     preSizeNestRewardTray(drops.length);
-    if(scene) scene.classList.add('is-compact');
+  } else if(start===0 && !drops.length){
+    hideRewardNestStage();
   }
 
   function finishRevealSequence(){
@@ -399,13 +435,12 @@ function showStoryEquipmentPick(pool){
   G._rewardsAlreadyGranted=false;
   G._nestShaken=true;
 
+  hideRewardNestStage();
   const nest=document.getElementById('reward-nest');
   if(nest){
     nest.classList.remove('nest-shakeable');
     nest.onclick=null;
   }
-  const scene=document.getElementById('nest-reward-scene');
-  if(scene) scene.classList.add('is-compact');
   const hint=document.getElementById('nest-shake-hint');
   if(hint) hint.textContent='Choose 1 equipment';
   const footnote=document.getElementById('nest-reward-footnote');
@@ -562,13 +597,13 @@ function showRewardScreen(hasLevelUp) {
   const footnote=document.getElementById('nest-reward-footnote');
   if(footnote) footnote.style.display='none';
   const tray=document.getElementById('nest-reward-tray');
+  const scene=document.getElementById('nest-reward-scene');
   if(tray){
     tray.innerHTML='';
     tray.classList.remove('is-pre-sized');
     tray.style.removeProperty('--tray-rows');
   }
-  const scene=document.getElementById('nest-reward-scene');
-  if(scene) scene.classList.remove('is-compact');
+  resetRewardNestStage();
   renderNestRewardCollectedTray();
   renderBattleSummary();
 

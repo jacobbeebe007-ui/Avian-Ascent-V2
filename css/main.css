@@ -4737,16 +4737,35 @@ body.ui-mobile-mode #screen-battle .level-badge{font-size:.7rem;}
 @keyframes scene-rumble{0%,100%{transform:translateX(0)}20%{transform:translateX(-3px)}40%{transform:translateX(3px)}60%{transform:translateX(-2px)}80%{transform:translateX(2px)}}
 @keyframes spark-fade{0%{opacity:0;transform:translate(0,0) scale(.4)}20%{opacity:1;transform:translate(var(--sx,0),var(--sy,-12px)) scale(1)}100%{opacity:0;transform:translate(var(--ex,0),var(--ey,28px)) scale(.2)}}
 .nest-shake-hint{font-size:.82rem;color:var(--text-dim);margin:8px 0 10px;text-align:center;}
-#screen-reward .nest-reward-tray{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;width:100%;margin-top:4px;min-height:0;}
-#screen-reward .nest-reward-tray.is-pre-sized{min-height:calc(var(--tray-rows, 1) * 92px + (var(--tray-rows, 1) - 1) * 8px);}
+#screen-reward .nest-reward-tray{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;width:100%;margin-top:0;min-height:0;}
+#screen-reward .nest-reward-tray.is-pre-sized{min-height:calc(var(--tray-rows, 1) * 64px + (var(--tray-rows, 1) - 1) * 6px);}
 #screen-reward .nest-reward-tray:empty{display:none;}
 #screen-reward .reward-hatch-slot{position:relative;width:100%;}
 #screen-reward .reward-hatch-slot .mother-goose-hatch-burst{display:none;}
-#screen-reward .reward-hatch-slot .mother-goose-hatch-flip{aspect-ratio:auto;min-height:84px;width:100%;}
-#screen-reward .reward-hatch-slot .mother-goose-hatch-flip-front .mother-goose-hatch-egg{font-size:1.8rem;}
+#screen-reward .reward-hatch-slot--item .mother-goose-hatch-flip{aspect-ratio:auto;min-height:64px;width:100%;}
+#screen-reward .reward-hatch-slot--item .mother-goose-hatch-flip-front .mother-goose-hatch-egg{font-size:1.35rem;}
 #screen-reward .reward-hatch-flip--equipment{min-height:112px;}
 #screen-reward .reward-hatch-flip--selectable.is-flipped{cursor:pointer;}
 #screen-reward .reward-hatch-flip--selectable.is-flipped:hover .reward-reveal-card{transform:translateY(-2px);box-shadow:0 6px 18px rgba(0,0,0,.35);}
+#screen-reward .nest-reward-tray .mother-goose-hatch-flip-back .reward-reveal-card{
+  opacity:1;
+  transform:none;
+  animation:none;
+  width:100%;
+  height:100%;
+  box-sizing:border-box;
+  background:var(--surface);
+  border:2px solid var(--border);
+  border-radius:8px;
+  padding:6px 4px;
+  text-align:center;
+  position:relative;
+  overflow:hidden;
+}
+#screen-reward .nest-reward-tray .mother-goose-hatch-flip-back .reward-reveal-card .reward-tier-label{font-size:.48rem;letter-spacing:.06em;font-family:'Cinzel',serif;margin-bottom:2px;text-transform:uppercase;line-height:1.1;}
+#screen-reward .nest-reward-tray .mother-goose-hatch-flip-back .reward-reveal-card .reward-icon{font-size:1.05rem;display:block;margin-bottom:2px;line-height:1;}
+#screen-reward .nest-reward-tray .mother-goose-hatch-flip-back .reward-reveal-card .reward-name{font-family:'Cinzel',serif;font-size:.64rem;color:var(--gold-light);margin-bottom:0;line-height:1.15;}
+#screen-reward .nest-reward-tray .mother-goose-hatch-flip-back .reward-reveal-card .reward-desc{display:none;}
 #screen-reward .mother-goose-hatch-flip-back .reward-reveal-card{
   opacity:1;
   transform:none;
@@ -4780,11 +4799,15 @@ body.ui-mobile-mode #screen-battle .level-badge{font-size:.7rem;}
 #screen-reward .mother-goose-hatch-flip-back .reward-reveal-card.tier-gold::before{background:linear-gradient(90deg,var(--gold),var(--gold-light),var(--gold));}
 #screen-reward .mother-goose-hatch-flip-back .reward-reveal-card.tier-orange::before{background:linear-gradient(90deg,var(--tier-orange),#ffb080,var(--tier-orange));}
 #screen-reward .nest-reward-tray .mother-goose-hatch-flip-back .reward-reveal-card .reward-desc{display:none;}
+#screen-reward .nest-reward-scene.nest-reward-scene--revealed{
+  min-height:0;
+  padding:8px 14px 6px;
+  margin-top:0;
+}
+#screen-reward .nest-reward-scene.nest-reward-scene--revealed .nest-drop-stage{display:none;}
+#screen-reward .nest-reward-scene.nest-reward-scene--revealed .nest-shake-hint{display:none;}
 #screen-reward .mother-goose-hatch-flip.is-flipped.tier-gold .reward-reveal-card::after,
 #screen-reward .mother-goose-hatch-flip.is-flipped.tier-orange .reward-reveal-card::after{content:'';position:absolute;inset:0;background:linear-gradient(105deg,transparent 40%,rgba(255,224,138,.22) 50%,transparent 60%);animation:reward-shimmer .9s ease .1s 1;pointer-events:none;}
-#screen-reward .nest-reward-scene.is-compact .nest-drop-stage{min-height:52px;}
-#screen-reward .nest-reward-scene.is-compact .reward-nest{font-size:2.6rem;opacity:.72;transform:scale(.92);}
-#screen-reward .nest-reward-scene.is-compact .nest-shake-hint{margin:4px 0 6px;font-size:.74rem;}
 .nest-reward-tray{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;width:100%;margin-top:4px;min-height:0;}
 .nest-reward-tray:empty{display:none;}
 .nest-reward-card{opacity:0;transform:translateY(-28px);animation:nest-reward-fall .55s cubic-bezier(.22,1,.24,1) forwards;background:var(--surface);border:2px solid var(--border);border-radius:12px;padding:14px 12px;text-align:center;position:relative;overflow:hidden;}
@@ -4971,10 +4994,11 @@ body.ui-mobile-mode #screen-battle .level-badge{font-size:.7rem;}
   #screen-reward .reward-grid .reward-hatch-flip--equipment .reward-icon{font-size:1.35rem;}
   #screen-reward .reward-grid .reward-hatch-flip--equipment .reward-name{font-size:.72rem;}
   #screen-reward .reward-grid .reward-hatch-flip--equipment .reward-desc{font-size:.62rem;-webkit-line-clamp:2;}
-  #screen-reward .nest-reward-tray{gap:6px;}
-  #screen-reward .mother-goose-hatch-flip-back .reward-reveal-card{padding:8px 5px;}
-  #screen-reward .mother-goose-hatch-flip-back .reward-reveal-card .reward-icon{font-size:1.2rem;}
-  #screen-reward .mother-goose-hatch-flip-back .reward-reveal-card .reward-name{font-size:.7rem;}
+  #screen-reward .nest-reward-tray{gap:5px;}
+  #screen-reward .reward-hatch-slot--item .mother-goose-hatch-flip{min-height:58px;}
+  #screen-reward .nest-reward-tray .mother-goose-hatch-flip-back .reward-reveal-card{padding:5px 3px;}
+  #screen-reward .nest-reward-tray .mother-goose-hatch-flip-back .reward-reveal-card .reward-icon{font-size:.95rem;}
+  #screen-reward .nest-reward-tray .mother-goose-hatch-flip-back .reward-reveal-card .reward-name{font-size:.6rem;}
   .reward-grid{grid-template-columns:1fr;}
   .nest-reward-tray{grid-template-columns:1fr;}
   .skill-grid,.new-card-grid{grid-template-columns:1fr;}
