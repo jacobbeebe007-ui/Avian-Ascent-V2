@@ -41,6 +41,7 @@ ok('doMiss uses cast pose for magic', /prepareCombatMiss/.test(game));
 ok('playerAction stamps _animAttackKind', /G\._animAttackKind\s*=\s*effActKind/.test(game));
 ok('utility flourish hooked from playerAction', /prepareCombatUtility\('player'/.test(game));
 ok('conflicting sprite smash skipped when combat FX is active', /combatFxOwnsAnim/.test(game));
+ok('sprite frame controller yields to combat FX', /spr\._busyUntil && spr\._busyUntil > Date\.now\(\)/.test(game));
 ok('prepareCombatStrike lives in combat-fx.js', /function prepareCombatStrike/.test(fx));
 ok('magic uses aspect emoji projectiles', /ASPECT_EMOJI/.test(fx) && /combat-fx-proj--magic/.test(fx));
 ok('physical sprite cycle uses dash/call frames', /FRAME_DASH/.test(fx) && /FRAME_CALL/.test(fx));

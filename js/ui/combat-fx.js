@@ -82,7 +82,11 @@
 
   function clearFrames(spr) {
     if (!spr || !spr.classList) return;
-    spr.classList.remove('frame-0', 'frame-1', 'frame-2', 'frame-3', 'menu-idle-anim', 'menu-hover-anim', 'menu-dash-anim');
+    spr.classList.remove(
+      'frame-0', 'frame-1', 'frame-2', 'frame-3',
+      'menu-idle-anim', 'menu-hover-anim', 'menu-dash-anim',
+      'anim-attack-player', 'anim-attack-enemy', 'anim-hit-player', 'anim-hit-enemy'
+    );
   }
 
   function setBattleFrame(who, frame) {

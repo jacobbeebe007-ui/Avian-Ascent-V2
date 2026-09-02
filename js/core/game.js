@@ -19398,6 +19398,7 @@ wireThemeBgmAutoplayUnlock();
     const el = whoEl(who);
     const spr = ensureSpriteInEl(el, key, false);
     if(!spr) return;
+    if(spr._busyUntil && spr._busyUntil > Date.now()) return;
     spr.classList.remove('frame-0','frame-1','frame-2','frame-3');
     spr.classList.add('frame-'+frame);
     if(holdMs){
@@ -19412,6 +19413,7 @@ wireThemeBgmAutoplayUnlock();
     globalThis[flag]=true;
     setInterval(()=>{
       try{
+        if(globalThis.G?.animLock) return;
         const key = who==='player' ? normKey(G?.player?.birdKey) : normKey(G?.enemy?.portraitKey || G?.enemy?.birdKey);
         if(!SPRITE_KEYS.has(key)) return;
         // blink/cast frame briefly
@@ -19448,15 +19450,13 @@ wireThemeBgmAutoplayUnlock();
   if(typeof oldPlayerAction==='function'){
     globalThis.playerAction = async function(ab, fromQueue){
       try{
-        const t = ABILITY_TEMPLATES?.[ab?.id] || {};
-        const at = (t.type || t.btnType || '').toLowerCase();
-        const cls = (G?.player?.class || BIRDS?.[G?.player?.birdKey]?.class || '').toLowerCase();
-        const isCaster = CASTERS.has(cls);
-
-        if(at==='attack') setFrameFor('player',2,260);
-        else if(at==='spell' || at==='song') setFrameFor('player',1,280);
-        else setFrameFor('player',3,280);
-
+        if(!(typeof combatFxOwnsAnim==='function' && combatFxOwnsAnim())){
+          const t = ABILITY_TEMPLATES?.[ab?.id] || {};
+          const at = (t.type || t.btnType || '').toLowerCase();
+          if(at==='attack') setFrameFor('player',2,260);
+          else if(at==='spell' || at==='song') setFrameFor('player',1,280);
+          else setFrameFor('player',3,280);
+        }
       }catch(_){}
       return await oldPlayerAction.apply(this, arguments);
     };
@@ -19469,8 +19469,10 @@ wireThemeBgmAutoplayUnlock();
       try{
         const ek = normKey(G?.enemy?.portraitKey || G?.enemy?.birdKey);
         if(SPRITE_KEYS.has(ek) && !(G?.enemy?.id==='dukeBlakiston' || /blakiston/i.test(G?.enemy?.name||''))){
-          if(act?.type==='attack') setFrameFor('enemy',2,260);
-          else if(act?.type==='ability') setFrameFor('enemy',3,260);
+          if(!(typeof combatFxOwnsAnim==='function' && combatFxOwnsAnim())){
+            if(act?.type==='attack') setFrameFor('enemy',2,260);
+            else if(act?.type==='ability') setFrameFor('enemy',3,260);
+          }
         }
       }catch(_){}
       return await oldExec.apply(this, arguments);
