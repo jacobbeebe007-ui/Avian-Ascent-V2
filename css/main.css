@@ -4737,50 +4737,77 @@ body.ui-mobile-mode #screen-battle .level-badge{font-size:.7rem;}
 @keyframes scene-rumble{0%,100%{transform:translateX(0)}20%{transform:translateX(-3px)}40%{transform:translateX(3px)}60%{transform:translateX(-2px)}80%{transform:translateX(2px)}}
 @keyframes spark-fade{0%{opacity:0;transform:translate(0,0) scale(.4)}20%{opacity:1;transform:translate(var(--sx,0),var(--sy,-12px)) scale(1)}100%{opacity:0;transform:translate(var(--ex,0),var(--ey,28px)) scale(.2)}}
 .nest-shake-hint{font-size:.82rem;color:var(--text-dim);margin:8px 0 10px;text-align:center;}
-#screen-reward .nest-reward-tray{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;width:100%;margin-top:4px;min-height:0;}
-#screen-reward .nest-reward-tray.is-pre-sized{min-height:calc(var(--tray-rows, 1) * 92px + (var(--tray-rows, 1) - 1) * 8px);}
+#screen-reward .nest-reward-tray{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;width:100%;margin-top:0;min-height:0;}
+#screen-reward .nest-reward-tray.is-pre-sized{min-height:calc(var(--tray-rows, 1) * 64px + (var(--tray-rows, 1) - 1) * 6px);}
 #screen-reward .nest-reward-tray:empty{display:none;}
-#screen-reward .reward-flip-card{perspective:720px;min-height:84px;}
-#screen-reward .reward-flip-card__inner{position:relative;width:100%;min-height:84px;transform-style:preserve-3d;transition:transform .42s cubic-bezier(.4,.2,.2,1);}
-#screen-reward .reward-flip-card.is-revealed .reward-flip-card__inner{transform:rotateY(180deg);}
-#screen-reward .reward-flip-card__front,
-#screen-reward .reward-flip-card__back{position:absolute;inset:0;backface-visibility:hidden;-webkit-backface-visibility:hidden;border-radius:10px;}
-#screen-reward .reward-flip-card__front{display:flex;align-items:center;justify-content:center;border:2px solid rgba(201,168,76,.35);background:linear-gradient(145deg,rgba(28,24,18,.95),rgba(14,16,22,.98));box-shadow:inset 0 0 18px rgba(0,0,0,.35);}
-#screen-reward .reward-flip-card__front.tier-grey{border-color:rgba(106,120,144,.45);}
-#screen-reward .reward-flip-card__front.tier-green{border-color:rgba(76,138,106,.45);}
-#screen-reward .reward-flip-card__front.tier-blue{border-color:rgba(74,106,201,.45);}
-#screen-reward .reward-flip-card__front.tier-purple{border-color:rgba(122,76,201,.45);}
-#screen-reward .reward-flip-card__front.tier-gold{border-color:rgba(201,168,76,.55);box-shadow:inset 0 0 20px rgba(201,168,76,.12);}
-#screen-reward .reward-flip-card__front.tier-orange{border-color:rgba(232,120,48,.55);}
-#screen-reward .reward-flip-card__mystery{font-family:'Cinzel',serif;font-size:1.6rem;color:rgba(201,168,76,.75);text-shadow:0 0 12px rgba(201,168,76,.25);}
-#screen-reward .reward-flip-card__back{transform:rotateY(180deg);position:absolute;inset:0;height:100%;}
-#screen-reward .reward-flip-card.is-selectable.is-revealed{cursor:pointer;}
-#screen-reward .reward-flip-card.is-selectable.is-revealed:hover .reward-flip-card__back{transform:rotateY(180deg) translateY(-2px);box-shadow:0 6px 18px rgba(0,0,0,.35);}
-#screen-reward .reward-flip-card.is-equipment-pick{min-height:112px;}
-#screen-reward .reward-flip-card.is-equipment-pick .reward-flip-card__inner{min-height:112px;}
-#screen-reward .nest-reward-scene.is-compact .nest-drop-stage{min-height:52px;}
-#screen-reward .nest-reward-scene.is-compact .reward-nest{font-size:2.6rem;opacity:.72;transform:scale(.92);}
-#screen-reward .nest-reward-scene.is-compact .nest-shake-hint{margin:4px 0 6px;font-size:.74rem;}
-#screen-reward .nest-reward-card{background:var(--surface);border:2px solid var(--border);border-radius:10px;padding:10px 8px;text-align:center;position:relative;overflow:hidden;height:100%;box-sizing:border-box;}
-#screen-reward .nest-reward-card .reward-tier-label{font-size:.58rem;letter-spacing:.08em;font-family:'Cinzel',serif;margin-bottom:4px;text-transform:uppercase;}
-#screen-reward .nest-reward-card .reward-icon{font-size:1.4rem;display:block;margin-bottom:4px;}
-#screen-reward .nest-reward-card .reward-name{font-family:'Cinzel',serif;font-size:.78rem;color:var(--gold-light);margin-bottom:0;line-height:1.2;}
-#screen-reward .nest-reward-card .reward-desc{display:none;}
-#screen-reward .nest-reward-card.tier-grey{border-color:rgba(106,120,144,.4);background:linear-gradient(180deg,rgba(106,120,144,.10),var(--surface));}
-#screen-reward .nest-reward-card.tier-green{border-color:rgba(76,138,106,.4);background:linear-gradient(180deg,rgba(76,138,106,.10),var(--surface));}
-#screen-reward .nest-reward-card.tier-blue{border-color:rgba(74,106,201,.4);background:linear-gradient(180deg,rgba(74,106,201,.10),var(--surface));}
-#screen-reward .nest-reward-card.tier-purple{border-color:rgba(122,76,201,.4);background:linear-gradient(180deg,rgba(122,76,201,.10),var(--surface));}
-#screen-reward .nest-reward-card.tier-gold{border-color:rgba(201,168,76,.6);background:linear-gradient(180deg,rgba(201,168,76,.12),var(--surface));box-shadow:0 0 12px rgba(201,168,76,.15);}
-#screen-reward .nest-reward-card.tier-orange{border-color:rgba(232,120,48,.65);background:linear-gradient(180deg,rgba(232,120,48,.14),var(--surface));box-shadow:0 0 14px rgba(232,120,48,.18);}
-#screen-reward .nest-reward-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;}
-#screen-reward .nest-reward-card.tier-grey::before{background:var(--tier-grey);}
-#screen-reward .nest-reward-card.tier-green::before{background:var(--tier-green);}
-#screen-reward .nest-reward-card.tier-blue::before{background:var(--tier-blue);}
-#screen-reward .nest-reward-card.tier-purple::before{background:var(--tier-purple);}
-#screen-reward .nest-reward-card.tier-gold::before{background:linear-gradient(90deg,var(--gold),var(--gold-light),var(--gold));}
-#screen-reward .nest-reward-card.tier-orange::before{background:linear-gradient(90deg,var(--tier-orange),#ffb080,var(--tier-orange));}
-#screen-reward .reward-flip-card.is-revealed.tier-gold .nest-reward-card::after,
-#screen-reward .reward-flip-card.is-revealed.tier-orange .nest-reward-card::after{content:'';position:absolute;inset:0;background:linear-gradient(105deg,transparent 40%,rgba(255,224,138,.22) 50%,transparent 60%);animation:reward-shimmer .9s ease .1s 1;pointer-events:none;}
+#screen-reward .reward-hatch-slot{position:relative;width:100%;}
+#screen-reward .reward-hatch-slot .mother-goose-hatch-burst{display:none;}
+#screen-reward .reward-hatch-slot--item .mother-goose-hatch-flip{aspect-ratio:auto;min-height:64px;width:100%;}
+#screen-reward .reward-hatch-slot--item .mother-goose-hatch-flip-front .mother-goose-hatch-egg{font-size:1.35rem;}
+#screen-reward .reward-hatch-flip--equipment{min-height:112px;}
+#screen-reward .reward-hatch-flip--selectable.is-flipped{cursor:pointer;}
+#screen-reward .reward-hatch-flip--selectable.is-flipped:hover .reward-reveal-card{transform:translateY(-2px);box-shadow:0 6px 18px rgba(0,0,0,.35);}
+#screen-reward .nest-reward-tray .mother-goose-hatch-flip-back .reward-reveal-card{
+  opacity:1;
+  transform:none;
+  animation:none;
+  width:100%;
+  height:100%;
+  box-sizing:border-box;
+  background:var(--surface);
+  border:2px solid var(--border);
+  border-radius:8px;
+  padding:6px 4px;
+  text-align:center;
+  position:relative;
+  overflow:hidden;
+}
+#screen-reward .nest-reward-tray .mother-goose-hatch-flip-back .reward-reveal-card .reward-tier-label{font-size:.48rem;letter-spacing:.06em;font-family:'Cinzel',serif;margin-bottom:2px;text-transform:uppercase;line-height:1.1;}
+#screen-reward .nest-reward-tray .mother-goose-hatch-flip-back .reward-reveal-card .reward-icon{font-size:1.05rem;display:block;margin-bottom:2px;line-height:1;}
+#screen-reward .nest-reward-tray .mother-goose-hatch-flip-back .reward-reveal-card .reward-name{font-family:'Cinzel',serif;font-size:.64rem;color:var(--gold-light);margin-bottom:0;line-height:1.15;}
+#screen-reward .nest-reward-tray .mother-goose-hatch-flip-back .reward-reveal-card .reward-desc{display:none;}
+#screen-reward .mother-goose-hatch-flip-back .reward-reveal-card{
+  opacity:1;
+  transform:none;
+  animation:none;
+  width:100%;
+  height:100%;
+  box-sizing:border-box;
+  background:var(--surface);
+  border:2px solid var(--border);
+  border-radius:10px;
+  padding:10px 8px;
+  text-align:center;
+  position:relative;
+  overflow:hidden;
+}
+#screen-reward .mother-goose-hatch-flip-back .reward-reveal-card .reward-tier-label{font-size:.58rem;letter-spacing:.08em;font-family:'Cinzel',serif;margin-bottom:4px;text-transform:uppercase;}
+#screen-reward .mother-goose-hatch-flip-back .reward-reveal-card .reward-icon{font-size:1.4rem;display:block;margin-bottom:4px;}
+#screen-reward .mother-goose-hatch-flip-back .reward-reveal-card .reward-name{font-family:'Cinzel',serif;font-size:.78rem;color:var(--gold-light);margin-bottom:0;line-height:1.2;}
+#screen-reward .mother-goose-hatch-flip-back .reward-reveal-card .reward-desc{font-size:.68rem;color:var(--text-dim);line-height:1.35;}
+#screen-reward .mother-goose-hatch-flip-back .reward-reveal-card.tier-grey{border-color:rgba(106,120,144,.4);background:linear-gradient(180deg,rgba(106,120,144,.10),var(--surface));}
+#screen-reward .mother-goose-hatch-flip-back .reward-reveal-card.tier-green{border-color:rgba(76,138,106,.4);background:linear-gradient(180deg,rgba(76,138,106,.10),var(--surface));}
+#screen-reward .mother-goose-hatch-flip-back .reward-reveal-card.tier-blue{border-color:rgba(74,106,201,.4);background:linear-gradient(180deg,rgba(74,106,201,.10),var(--surface));}
+#screen-reward .mother-goose-hatch-flip-back .reward-reveal-card.tier-purple{border-color:rgba(122,76,201,.4);background:linear-gradient(180deg,rgba(122,76,201,.10),var(--surface));}
+#screen-reward .mother-goose-hatch-flip-back .reward-reveal-card.tier-gold{border-color:rgba(201,168,76,.6);background:linear-gradient(180deg,rgba(201,168,76,.12),var(--surface));box-shadow:0 0 12px rgba(201,168,76,.15);}
+#screen-reward .mother-goose-hatch-flip-back .reward-reveal-card.tier-orange{border-color:rgba(232,120,48,.65);background:linear-gradient(180deg,rgba(232,120,48,.14),var(--surface));box-shadow:0 0 14px rgba(232,120,48,.18);}
+#screen-reward .mother-goose-hatch-flip-back .reward-reveal-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;}
+#screen-reward .mother-goose-hatch-flip-back .reward-reveal-card.tier-grey::before{background:var(--tier-grey);}
+#screen-reward .mother-goose-hatch-flip-back .reward-reveal-card.tier-green::before{background:var(--tier-green);}
+#screen-reward .mother-goose-hatch-flip-back .reward-reveal-card.tier-blue::before{background:var(--tier-blue);}
+#screen-reward .mother-goose-hatch-flip-back .reward-reveal-card.tier-purple::before{background:var(--tier-purple);}
+#screen-reward .mother-goose-hatch-flip-back .reward-reveal-card.tier-gold::before{background:linear-gradient(90deg,var(--gold),var(--gold-light),var(--gold));}
+#screen-reward .mother-goose-hatch-flip-back .reward-reveal-card.tier-orange::before{background:linear-gradient(90deg,var(--tier-orange),#ffb080,var(--tier-orange));}
+#screen-reward .nest-reward-tray .mother-goose-hatch-flip-back .reward-reveal-card .reward-desc{display:none;}
+#screen-reward .nest-reward-scene.nest-reward-scene--revealed{
+  min-height:0;
+  padding:8px 14px 6px;
+  margin-top:0;
+}
+#screen-reward .nest-reward-scene.nest-reward-scene--revealed .nest-drop-stage{display:none;}
+#screen-reward .nest-reward-scene.nest-reward-scene--revealed .nest-shake-hint{display:none;}
+#screen-reward .mother-goose-hatch-flip.is-flipped.tier-gold .reward-reveal-card::after,
+#screen-reward .mother-goose-hatch-flip.is-flipped.tier-orange .reward-reveal-card::after{content:'';position:absolute;inset:0;background:linear-gradient(105deg,transparent 40%,rgba(255,224,138,.22) 50%,transparent 60%);animation:reward-shimmer .9s ease .1s 1;pointer-events:none;}
 .nest-reward-tray{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;width:100%;margin-top:4px;min-height:0;}
 .nest-reward-tray:empty{display:none;}
 .nest-reward-card{opacity:0;transform:translateY(-28px);animation:nest-reward-fall .55s cubic-bezier(.22,1,.24,1) forwards;background:var(--surface);border:2px solid var(--border);border-radius:12px;padding:14px 12px;text-align:center;position:relative;overflow:hidden;}
@@ -4796,8 +4823,7 @@ body.ui-mobile-mode #screen-battle .level-badge{font-size:.7rem;}
   .nest-reward-scene.is-shaking,.reward-nest.nest-shaking,.reward-nest.nest-shake-intense{animation:none;}
   .nest-reward-card.is-falling{animation:nest-reward-fall .35s ease forwards;position:static;width:auto;margin-left:0;left:auto;top:auto;}
   .nest-shake-spark{display:none;}
-  #screen-reward .reward-flip-card__inner{transition:none;}
-  #screen-reward .reward-flip-card:not(.is-revealed) .reward-flip-card__inner{transform:rotateY(180deg);}
+  #screen-reward .mother-goose-hatch-flip{transition:none;}
 }
 .nest-reward-card.tier-grey{border-color:rgba(106,120,144,.4);background:linear-gradient(180deg,rgba(106,120,144,.10),var(--surface));}
 .nest-reward-card.tier-green{border-color:rgba(76,138,106,.4);background:linear-gradient(180deg,rgba(76,138,106,.10),var(--surface));}
@@ -4819,11 +4845,12 @@ body.ui-mobile-mode #screen-battle .level-badge{font-size:.7rem;}
 .nest-reward-card .reward-desc{font-size:.72rem;color:var(--text-dim);line-height:1.35;}
 .nest-reward-footnote{font-size:.72rem;color:var(--text-dim);margin:10px 0 4px;text-align:center;font-style:italic;opacity:.9;}
 #screen-reward .reward-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:8px;width:100%;}
-#screen-reward .reward-grid .reward-flip-card.is-equipment-pick .reward-card{padding:12px 8px;border-radius:10px;height:100%;box-sizing:border-box;}
-#screen-reward .reward-grid .reward-flip-card.is-equipment-pick .reward-icon{font-size:1.6rem;margin-bottom:4px;}
-#screen-reward .reward-grid .reward-flip-card.is-equipment-pick .reward-name{font-size:.82rem;margin-bottom:3px;}
-#screen-reward .reward-grid .reward-flip-card.is-equipment-pick .reward-desc{font-size:.68rem;line-height:1.35;max-height:3.2em;overflow:hidden;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;}
-#screen-reward .reward-grid .reward-flip-card.is-equipment-pick .reward-tier-label{font-size:.58rem;margin-bottom:4px;}
+#screen-reward .reward-grid .reward-hatch-flip--equipment{min-height:112px;}
+#screen-reward .reward-grid .reward-hatch-flip--equipment .reward-reveal-card{padding:12px 8px;}
+#screen-reward .reward-grid .reward-hatch-flip--equipment .reward-icon{font-size:1.6rem;margin-bottom:4px;}
+#screen-reward .reward-grid .reward-hatch-flip--equipment .reward-name{font-size:.82rem;margin-bottom:3px;}
+#screen-reward .reward-grid .reward-hatch-flip--equipment .reward-desc{font-size:.68rem;line-height:1.35;max-height:3.2em;overflow:hidden;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;}
+#screen-reward .reward-grid .reward-hatch-flip--equipment .reward-tier-label{font-size:.58rem;margin-bottom:4px;}
 .reward-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:4px;}
 .reward-card{background:var(--surface);border:2px solid var(--border);border-radius:12px;padding:18px 14px;cursor:pointer;transition:all .3s;position:relative;overflow:hidden;}
 .reward-card:hover{transform:translateY(-3px);box-shadow:0 8px 24px rgba(0,0,0,.4);}
@@ -4963,14 +4990,15 @@ body.ui-mobile-mode #screen-battle .level-badge{font-size:.7rem;}
   .combatants{grid-template-columns:1fr;}
   .vs-separator{display:none;}
   #screen-reward .reward-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;}
-  #screen-reward .reward-grid .reward-flip-card.is-equipment-pick .reward-card{padding:8px 5px;}
-  #screen-reward .reward-grid .reward-flip-card.is-equipment-pick .reward-icon{font-size:1.35rem;}
-  #screen-reward .reward-grid .reward-flip-card.is-equipment-pick .reward-name{font-size:.72rem;}
-  #screen-reward .reward-grid .reward-flip-card.is-equipment-pick .reward-desc{font-size:.62rem;-webkit-line-clamp:2;}
-  #screen-reward .nest-reward-tray{gap:6px;}
-  #screen-reward .nest-reward-card{padding:8px 5px;}
-  #screen-reward .nest-reward-card .reward-icon{font-size:1.2rem;}
-  #screen-reward .nest-reward-card .reward-name{font-size:.7rem;}
+  #screen-reward .reward-grid .reward-hatch-flip--equipment .reward-reveal-card{padding:8px 5px;}
+  #screen-reward .reward-grid .reward-hatch-flip--equipment .reward-icon{font-size:1.35rem;}
+  #screen-reward .reward-grid .reward-hatch-flip--equipment .reward-name{font-size:.72rem;}
+  #screen-reward .reward-grid .reward-hatch-flip--equipment .reward-desc{font-size:.62rem;-webkit-line-clamp:2;}
+  #screen-reward .nest-reward-tray{gap:5px;}
+  #screen-reward .reward-hatch-slot--item .mother-goose-hatch-flip{min-height:58px;}
+  #screen-reward .nest-reward-tray .mother-goose-hatch-flip-back .reward-reveal-card{padding:5px 3px;}
+  #screen-reward .nest-reward-tray .mother-goose-hatch-flip-back .reward-reveal-card .reward-icon{font-size:.95rem;}
+  #screen-reward .nest-reward-tray .mother-goose-hatch-flip-back .reward-reveal-card .reward-name{font-size:.6rem;}
   .reward-grid{grid-template-columns:1fr;}
   .nest-reward-tray{grid-template-columns:1fr;}
   .skill-grid,.new-card-grid{grid-template-columns:1fr;}
@@ -4983,7 +5011,7 @@ body.ui-mobile-mode #screen-battle .level-badge{font-size:.7rem;}
 .lu-confirm-row{text-align:center;margin-top:16px;}
 /* ===== SELECTION STATES ===== */
 .reward-card.selected{outline:3px solid var(--gold);transform:translateY(-4px);box-shadow:0 10px 28px rgba(201,168,76,.35) !important;}
-#screen-reward .reward-flip-card.selected .reward-flip-card__back{outline:3px solid var(--gold);box-shadow:0 8px 22px rgba(201,168,76,.32);}
+#screen-reward .mother-goose-hatch-flip.selected .reward-reveal-card{outline:3px solid var(--gold);box-shadow:0 8px 22px rgba(201,168,76,.32);}
 .skill-upgrade-card.selected{border-color:var(--purple) !important;background:rgba(122,76,201,.12);transform:translateY(-3px);box-shadow:0 8px 24px rgba(122,76,201,.3);}
 /* ===== ENDLESS / SELECTION EXTRAS ===== */
 .endless-row{text-align:center;margin:14px 0 0;color:#b89a60;font-size:.9rem;}
