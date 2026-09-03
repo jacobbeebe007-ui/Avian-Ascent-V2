@@ -86,18 +86,13 @@
 
   function rollNestShinyBonus(level, difficulty, force) {
     if (!force && Math.random() > 0.20) return null;
-    var lv = Math.max(1, Math.floor(Number(level) || 1));
-    var diff = String(difficulty || 'juvenile').toLowerCase();
-    var base = rollInt(2, 5) + Math.floor(lv / 3);
-    if (diff === 'predator') base += 1;
-    if (diff === 'murder') base += 2;
     return {
       type: 'shiny',
-      amount: Math.max(1, base),
+      amount: 10,
       tier: 'gold',
       icon: '✨',
       name: 'Shiny Objects',
-      desc: 'Bonus shinies from the nest!',
+      desc: 'Bonus shines (+10). Sell at the Stork Shop.',
     };
   }
 
@@ -300,10 +295,22 @@
       return true;
     }
     if (drop.type === 'shiny') {
-      var amt = Math.max(1, Math.floor(Number(drop.amount) || 1));
-      g.shinyObjects = (g.shinyObjects || 0) + amt;
+      var amt = Math.max(1, Math.floor(Number(drop.amount) || 10));
+      if (typeof global.addPlayerMiscBonusShines === 'function') {
+        global.addPlayerMiscBonusShines(g.player, amt);
+      } else if (g.player) {
+        if (!Array.isArray(g.player.miscItems)) g.player.miscItems = [];
+        g.player.miscItems.push({
+          kind: 'bonus_shines',
+          amount: amt,
+          tier: drop.tier || 'gold',
+          name: drop.name || 'Shiny Objects',
+          icon: drop.icon || '✨',
+          desc: drop.desc || 'Bonus shines (+10). Sell at the Stork Shop.',
+        });
+      }
       if (typeof global.logMsg === 'function') {
-        global.logMsg('✨ Nest bonus: +' + amt + ' Shiny Object' + (amt > 1 ? 's' : '') + '!', 'exp-gain');
+        global.logMsg('✨ Nest reward: Legendary Shiny Objects (+' + amt + ' bonus shines)! Sell at the shop.', 'exp-gain');
       }
       if (!g.collectedRewards) g.collectedRewards = [];
       g.collectedRewards.push({ id: 'nest_shiny', icon: drop.icon, tier: drop.tier, name: drop.name, desc: drop.desc });

@@ -16932,8 +16932,47 @@ const SHOP_STATE = {
   selectedIndex:null,
   selectedBuyIndices:new Set(),
   selectedSellIndices:new Set(),
+  selectedSellMiscIndices:new Set(),
   healingPurchasesThisVisit:new Set(),
 };
+
+const SHOP_MISC_BONUS_SHINES_AMOUNT=10;
+const SHOP_MISC_BONUS_SHINES_DEF=Object.freeze({
+  kind:'bonus_shines',
+  name:'Shiny Objects',
+  icon:'✨',
+  tier:'gold',
+  desc:`Bonus shines (+${SHOP_MISC_BONUS_SHINES_AMOUNT}). Sell at the Stork Shop.`,
+});
+
+function ensurePlayerMiscItems(player){
+  if(!player) return [];
+  if(!Array.isArray(player.miscItems)) player.miscItems=[];
+  return player.miscItems;
+}
+
+function addPlayerMiscBonusShines(player, amount=SHOP_MISC_BONUS_SHINES_AMOUNT){
+  const qty=Math.max(1, Math.floor(Number(amount)||SHOP_MISC_BONUS_SHINES_AMOUNT));
+  const list=ensurePlayerMiscItems(player);
+  list.push({
+    kind:SHOP_MISC_BONUS_SHINES_DEF.kind,
+    amount:qty,
+    tier:SHOP_MISC_BONUS_SHINES_DEF.tier,
+    name:SHOP_MISC_BONUS_SHINES_DEF.name,
+    icon:SHOP_MISC_BONUS_SHINES_DEF.icon,
+    desc:SHOP_MISC_BONUS_SHINES_DEF.desc,
+  });
+  return qty;
+}
+
+function getMiscSellPrice(miscItem){
+  if(!miscItem) return 0;
+  if(miscItem.kind==='bonus_shines') return Math.max(1, Math.floor(Number(miscItem.amount)||SHOP_MISC_BONUS_SHINES_AMOUNT));
+  return Math.max(1, Math.floor(Number(miscItem.amount)||1));
+}
+
+globalThis.addPlayerMiscBonusShines=addPlayerMiscBonusShines;
+globalThis.ensurePlayerMiscItems=ensurePlayerMiscItems;
 
 const SHOP_BUY_CATEGORY_TABS=['all','items','mutations'];
 const SHOP_CATEGORY_DISPLAY_ORDER=['items','mutations'];
@@ -17041,6 +17080,7 @@ function getShopCategoryLogText(category){
 function clearShopSelection(){
   SHOP_STATE.selectedBuyIndices.clear();
   SHOP_STATE.selectedSellIndices.clear();
+  SHOP_STATE.selectedSellMiscIndices.clear();
   SHOP_STATE.selectedIndex=null;
   _shopSelectedIdx=null;
 }
@@ -17089,6 +17129,10 @@ function getShopSelectedSellTotal(){
     const item=Avian?.equipment?.getItem?.(inv[idx]);
     if(item) total+=getEquipmentSellPrice(item.rarity);
   });
+  const misc=ensurePlayerMiscItems(G.player);
+  SHOP_STATE.selectedSellMiscIndices.forEach(idx=>{
+    total+=getMiscSellPrice(misc[idx]);
+  });
   return total;
 }
 function syncShopDock(){
@@ -17098,7 +17142,7 @@ function syncShopDock(){
   const buyBtn=document.getElementById('shop-buy-btn');
   const sellBtn=document.getElementById('shop-sell-btn');
   if(tab==='sell'){
-    const n=SHOP_STATE.selectedSellIndices.size;
+    const n=SHOP_STATE.selectedSellIndices.size+SHOP_STATE.selectedSellMiscIndices.size;
     const total=getShopSelectedSellTotal();
     if(summary) summary.textContent=n?`${n} selected · sell for +${total}🌟`:'Select bag items to sell.';
     if(sellBtn){
@@ -17132,7 +17176,7 @@ function updateShopBuyButtonState(){
 function updateShopSellButtonState(){
   const sellBtn=document.getElementById('shop-sell-btn');
   if(!sellBtn) return;
-  const n=SHOP_STATE.selectedSellIndices.size;
+  const n=SHOP_STATE.selectedSellIndices.size+SHOP_STATE.selectedSellMiscIndices.size;
   sellBtn.disabled=n===0;
   const total=getShopSelectedSellTotal();
   sellBtn.textContent=n>0?`Sell selected · +${total}🌟`:'Sell selected';
@@ -17191,6 +17235,7 @@ function setShopTab(tab){
     _shopSelectedIdx=null;
   }
   if(!isSell) SHOP_STATE.selectedSellIndices.clear();
+  if(!isSell) SHOP_STATE.selectedSellMiscIndices.clear();
   G._shopTab=isEquipped?'equipped':(isSell?'sell':'buy');
   if(!leavingBuy && SHOP_BUY_CATEGORY_TABS.includes(tab)) G._shopCategoryTab=tab;
   if(!G._shopCategoryTab) G._shopCategoryTab='all';
@@ -17248,14 +17293,15 @@ function renderShopSellItems(){
   const grid=document.getElementById('shop-items-grid'); if(!grid) return;
   grid.innerHTML='';
   const shinyCt=document.getElementById('shop-shiny-count'); if(shinyCt) shinyCt.textContent=G.shinyObjects;
-  if(true){
-    SHOP_STATE.selectedSellIndices=new Set([...SHOP_STATE.selectedSellIndices].filter(i=>i>=0 && i<(G.player?.equipmentInventory||[]).length));
-    updateShopSellButtonState();
-    const inv=G.player?.equipmentInventory||[];
-    if(!inv.length){
-      grid.innerHTML='<div style="grid-column:1/-1;color:var(--text-dim);text-align:center;padding:24px 0;">No equipment in inventory to sell.</div>';
-      return;
-    }
+  const inv=G.player?.equipmentInventory||[];
+  const misc=ensurePlayerMiscItems(G.player);
+  SHOP_STATE.selectedSellIndices=new Set([...SHOP_STATE.selectedSellIndices].filter(i=>i>=0 && i<inv.length));
+  SHOP_STATE.selectedSellMiscIndices=new Set([...SHOP_STATE.selectedSellMiscIndices].filter(i=>i>=0 && i<misc.length));
+  updateShopSellButtonState();
+  let any=false;
+
+  if(inv.length){
+    any=true;
     appendShopSectionHeading(grid, 'Sell Equipment');
     inv.forEach((itemId, idx)=>{
       const item=Avian?.equipment?.getItem?.(itemId);
@@ -17285,41 +17331,89 @@ function renderShopSellItems(){
       });
       grid.appendChild(div);
     });
-    bindShopItemCompareTooltips();
+  }
+
+  if(misc.length){
+    any=true;
+    appendShopSectionHeading(grid, 'Miscellaneous');
+    misc.forEach((miscItem, idx)=>{
+      const tierCss=normalizeRewardTier(miscItem.tier||SHOP_MISC_BONUS_SHINES_DEF.tier);
+      const tierMeta=rewardTierMeta(miscItem.tier||SHOP_MISC_BONUS_SHINES_DEF.tier);
+      const price=getMiscSellPrice(miscItem);
+      const isSelected=SHOP_STATE.selectedSellMiscIndices.has(idx);
+      const icon=miscItem.icon||SHOP_MISC_BONUS_SHINES_DEF.icon;
+      const name=miscItem.name||SHOP_MISC_BONUS_SHINES_DEF.name;
+      const desc=miscItem.desc||SHOP_MISC_BONUS_SHINES_DEF.desc;
+      const div=document.createElement('div');
+      div.className=`shop-item tier-${tierCss} shop-sell-item shop-sell-misc${isSelected?' selected':''}`;
+      div.dataset.shopMiscIdx=String(idx);
+      div.innerHTML=`
+      <div class="shop-item-select-tick">✓</div>
+      <div class="shop-item-head">
+        <div class="reward-tier-label">${tierMeta.label}</div>
+        <div class="shop-item-cost">${price}🌟</div>
+      </div>
+      <span class="reward-icon">${icon}</span>
+      <div class="reward-name">${escapeHtmlRoster(name)}</div>
+      <div class="reward-desc">${escapeHtmlRoster(desc)}</div>`;
+      div.addEventListener('click', ()=>{
+        if(SHOP_STATE.selectedSellMiscIndices.has(idx)) SHOP_STATE.selectedSellMiscIndices.delete(idx);
+        else SHOP_STATE.selectedSellMiscIndices.add(idx);
+        renderShopSellItems();
+      });
+      grid.appendChild(div);
+    });
+  }
+
+  if(!any){
+    grid.innerHTML='<div style="grid-column:1/-1;color:var(--text-dim);text-align:center;padding:24px 0;">No equipment or miscellaneous items to sell.</div>';
     return;
   }
+  bindShopItemCompareTooltips();
 }
 
 function shopSellSelected(){
-  const indices=[...SHOP_STATE.selectedSellIndices].sort((a,b)=>b-a);
-  if(!indices.length || !G.player) return false;
-  if(true){
-    const inv=G.player.equipmentInventory||[];
-    let total=0;
-    const soldNames=[];
-    for(const idx of indices){
-      const itemId=inv[idx];
-      if(!itemId) continue;
-      const item=Avian?.equipment?.getItem?.(itemId);
-      if(!item) continue;
-      const price=getEquipmentSellPrice(item.rarity);
-      total+=price;
-      soldNames.push(item.name);
-      inv.splice(idx, 1);
-    }
-    if(!soldNames.length) return false;
-    G.shinyObjects+=total;
-    G.player.equipmentInventory=inv;
-    reapplyPlayerGearStats(G.player);
-    logMsg(`💰 Sold ${soldNames.length} equipment item(s) for ${total}🌟.`, 'exp-gain');
-    const log=document.getElementById('shop-purchase-log');
-    if(log) log.textContent=`✓ Sold: ${soldNames.join(', ')} (+${total}🌟).`;
-    clearShopSelection();
-    saveRun();
-    renderShopSellItems();
-    syncShopDock();
-    return true;
+  const eqIndices=[...SHOP_STATE.selectedSellIndices].sort((a,b)=>b-a);
+  const miscIndices=[...SHOP_STATE.selectedSellMiscIndices].sort((a,b)=>b-a);
+  if((!eqIndices.length && !miscIndices.length) || !G.player) return false;
+  const inv=G.player.equipmentInventory||[];
+  const misc=ensurePlayerMiscItems(G.player);
+  let total=0;
+  const soldNames=[];
+
+  for(const idx of eqIndices){
+    const itemId=inv[idx];
+    if(!itemId) continue;
+    const item=Avian?.equipment?.getItem?.(itemId);
+    if(!item) continue;
+    const price=getEquipmentSellPrice(item.rarity);
+    total+=price;
+    soldNames.push(item.name);
+    inv.splice(idx, 1);
   }
+
+  for(const idx of miscIndices){
+    const miscItem=misc[idx];
+    if(!miscItem) continue;
+    const price=getMiscSellPrice(miscItem);
+    total+=price;
+    soldNames.push(miscItem.name||SHOP_MISC_BONUS_SHINES_DEF.name);
+    misc.splice(idx, 1);
+  }
+
+  if(!soldNames.length) return false;
+  G.shinyObjects+=total;
+  G.player.equipmentInventory=inv;
+  G.player.miscItems=misc;
+  reapplyPlayerGearStats(G.player);
+  logMsg(`💰 Sold ${soldNames.length} item(s) for ${total}🌟.`, 'exp-gain');
+  const log=document.getElementById('shop-purchase-log');
+  if(log) log.textContent=`✓ Sold: ${soldNames.join(', ')} (+${total}🌟).`;
+  clearShopSelection();
+  saveRun();
+  renderShopSellItems();
+  syncShopDock();
+  return true;
 }
 
 function shopSlotIsStarterLocked(player, slotKey, item){
@@ -17512,10 +17606,13 @@ function shopResetVisitState(){
   SHOP_STATE.selectedIndex = null;
   SHOP_STATE.selectedBuyIndices = new Set();
   SHOP_STATE.selectedSellIndices = new Set();
+  SHOP_STATE.selectedSellMiscIndices = new Set();
   SHOP_STATE.healingPurchasesThisVisit = new Set();
   _shopSelectedIdx = null;
   G._shopRefreshCount = 0;
   G._shopTab = 'buy';
+  const scroll=document.getElementById('shop-items-scroll');
+  if(scroll) scroll.scrollTop=0;
 }
 function shopLockVisitState(){
   SHOP_STATE.purchaseMadeThisVisit = true;
