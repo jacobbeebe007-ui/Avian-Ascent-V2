@@ -142,6 +142,7 @@
     "js/ui/ui.js",
     "js/ui/combat-log.js",
     "js/ui/sprites.js",
+    "js/ui/combat-fx.js",
     "js/legacy/dove-sprite-patch.js",
     "js/legacy/game-compat.js",
     "js/meta/fortune-shop.js",

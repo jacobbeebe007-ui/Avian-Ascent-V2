@@ -11,21 +11,21 @@ function buildPlayerCombatStatHint(){
   if(s.humDodge?.bonus) parts.push(`Dodge buff +${s.humDodge.bonus}% (${s.humDodge.turns||0}t)`);
   if(s.peregrineCritLens?.bonus) parts.push(`Crit lens +${s.peregrineCritLens.bonus}% (${s.peregrineCritLens.turns||0}t)`);
   if(Number(s.huntersMarkBonusPct)>0) parts.push(`Next hit +${Math.round(s.huntersMarkBonusPct*100)}% dmg`);
-  if((s.accDebuff||0)>0) parts.push(`Your ACC −${s.accDebuff}%`);
-  if(s.burning) parts.push('Burning (−20% DEF/MDEF, 7 dmg end enemy turn)');
+  if((s.accDebuff||0)>0) parts.push(`Your Precision −${s.accDebuff}%`);
+  if(s.burning) parts.push('Burning (−20% Guard/Resolve, 7 dmg end enemy turn)');
   return parts.join(' · ');
 }
 function buildEnemyCombatStatHint(){
   const s=G.enemyStatus||{};
   const parts=[];
-  if((s.accDebuff||0)>0) parts.push(`ACC −${s.accDebuff}%`);
+  if((s.accDebuff||0)>0) parts.push(`Precision −${s.accDebuff}%`);
   if(getWeakenStacks(s)>0) parts.push(`Weaken ×${getWeakenStacks(s)}`);
   if((s.feared||0)>0) parts.push(`Feared ${s.feared}t`);
   if(s.slow) parts.push('Slow');
   if((s.poison?.stacks||0)>0) parts.push(`Poison ×${s.poison.stacks}`);
   if((s.bleed?.turns||0)>0||(s.bleed?.stacks||0)>0) parts.push(`Bleed ${s.bleed.turns||0}t (heal −50%)`);
   if((s.chilled?.stacks||0)>0) parts.push(`Chill ×${s.chilled.stacks}`);
-  if(s.peregrineDefBreak?.defLost) parts.push('DEF break');
+  if(s.peregrineDefBreak?.defLost) parts.push('Guard break');
   if((s.exposedGuard?.pct||0)>0) parts.push('Guard exposed');
   return parts.join(' · ');
 }
@@ -68,11 +68,11 @@ function getPassivePerkModifierLines(statKey){
   if(statKey==='magicPen'){
     if((G.player?._classPerkMdefPen||0)>0){
       const perk=Avian?.classPerks?.getClassPerkForBird?.(G.player?.birdKey);
-      lines.push(`${perk?.name||'Class perk'}: +${Math.round(G.player._classPerkMdefPen*100)}% MDEF pen`);
+      lines.push(`${perk?.name||'Class perk'}: +${Math.round(G.player._classPerkMdefPen*100)}% Resolve pen`);
     }
-    if((G.player?._workbookMdefPenPct||0)>0) lines.push(`Passive: +${G.player._workbookMdefPenPct}% MDEF pen`);
+    if((G.player?._workbookMdefPenPct||0)>0) lines.push(`Passive: +${G.player._workbookMdefPenPct}% Resolve pen`);
   }
-  if(statKey==='armorPen' && (G._workbookPassiveDefPen||0)>0) lines.push(`Passive: +${G._workbookPassiveDefPen}% DEF ignore (pending hit)`);
+  if(statKey==='armorPen' && (G._workbookPassiveDefPen||0)>0) lines.push(`Passive: +${G._workbookPassiveDefPen}% Guard ignore (pending hit)`);
   return lines;
 }
 function getActiveDamageModifierLines(side){
@@ -85,8 +85,8 @@ function getActiveDamageModifierLines(side){
   }
   const ps=G.playerStatus||{};
   const cpState=ps._classPerkState||{};
-  if(G.warcryActive) lines.push(`Warcry: +${G.warcryATK||0}% ATK`);
-  if(G.sitAndWaitActive) lines.push('Sit and Wait: +25% ATK');
+  if(G.warcryActive) lines.push(`Warcry: +${G.warcryATK||0}% Might`);
+  if(G.sitAndWaitActive) lines.push('Sit and Wait: +25% Might');
   if(getWeakenStacks(ps)>0) lines.push(`Weaken ×${getWeakenStacks(ps)}: −${Math.round((1-getWeakenDamageMult(getWeakenStacks(ps)))*100)}% damage`);
   if(Number(ps.huntersMarkBonusPct)>0) lines.push(`Hunter's Mark: +${Math.round(ps.huntersMarkBonusPct*100)}% next hit`);
   if((G.player?._classPerkDukeStacks||0)>0) lines.push(`Duke Ascension: +${G.player._classPerkDukeStacks*5}% all damage`);
@@ -118,6 +118,7 @@ function buildPlayerStatsGridHtml(){
   const _effDodge=getEffectiveDodge(G.player);
   const _effSpd=(p.spd||0)+((G.playerStatus?.slow?.spdPenalty)?-(G.playerStatus.slow.spdPenalty||0):0);
   const _effMatk=(Number(p.matk)||0);
+  const _effDex=(Number(p.dex)||0);
   const _effMdef=Math.floor((Number(p.mdef)||0)*(playerHasBurning()?0.8:1));
   const _eqMechCombat=typeof Avian?.equipment?.getMechanicsRollup==='function'?Avian.equipment.getMechanicsRollup(G.player):null;
   const _effAtk=G.warcryActive?(p.atk||0)*(1+G.warcryATK/100):p.atk;
@@ -142,6 +143,7 @@ function buildPlayerStatsGridHtml(){
   const _penCells=`${(_effArmorPen>0)?statCell('stat-armor-pen',ledgerStatLabel('armorPen',{short:true}),_effArmorPen,{suffix:'%',title:_bt('armorPen',p.armorPen||0,'Ignores enemy Guard on martial hits.'),statKey:'armorPen',statRaw:p.armorPen||0}):''}${(_effMagicPen>0)?statCell('stat-magic-pen',ledgerStatLabel('magicPen',{short:true}),_effMagicPen,{suffix:'%',title:_bt('magicPen',p.magicPen||0,'Ignores enemy Resolve on magical hits.'),statKey:'magicPen',statRaw:p.magicPen||0}):''}`;
   return `${statCell('stat-vitality','VIG',Number(p.vitality)||0,{title:_bt('vitality',_pBase.vitality??p.vitality,'Vigour contributes to maximum Health.'),trend:combatTrendTag(Number(p.vitality)||0,_pBase.vitality),statKey:'vitality',statRaw:_pBase.vitality??p.vitality??0})}
      ${statCell('stat-atk',ledgerStatLabel('atk',{short:true}),_effAtk,{title:_bt('atk',_pBase.atk??p.atk,_statNote('Battle Might',_effAtk-(_pBase.atk||0),_atkNote,'Debuffs reducing Might effect.')),trend:combatTrendTag(_effAtk,_pBase.atk),statKey:'atk',statRaw:_pBase.atk??p.atk})}
+     ${statCell('stat-dex',ledgerStatLabel('dex',{short:true}),_effDex,{title:_bt('dex',(_pBase.dex??p.dex)||0,'Dexterity — scales Finesse weapon skills'),trend:combatTrendTag(_effDex,_pBase.dex??0),statKey:'dex',statRaw:(_pBase.dex??p.dex)||0})}
      ${statCell('stat-matk',ledgerStatLabel('matk',{short:true}),_effMatk,{title:_bt('matk',(_pBase.matk??p.matk)||0,'Focus — improves spell/ailment potency'),trend:combatTrendTag(_effMatk,_pBase.matk??0),statKey:'matk',statRaw:(_pBase.matk??p.matk)||0})}
      ${statCell('stat-def',ledgerStatLabel('def',{short:true}),_effDef,{title:_bt('def',_pBase.def??p.def,_statNote('Battle Guard',_effDef-(_pBase.def||0),'Battle Hymn increased Guard.','Debuffs reducing Guard.')),trend:combatTrendTag(_effDef,_pBase.def),statKey:'def',statRaw:_pBase.def??p.def})}
      ${statCell('stat-mdef',ledgerStatLabel('mdef',{short:true}),_effMdef,{title:_bt('mdef',(_pBase.mdef??p.mdef)||0,'Resolve — resists enemy spells and ailments'),trend:combatTrendTag(_effMdef,_pBase.mdef??0),statKey:'mdef',statRaw:(_pBase.mdef??p.mdef)||0})}
@@ -173,8 +175,9 @@ function buildEnemyStatsGridHtml(){
   const _effEnemyDodge=(ep2.dodge||0);
   const _enemyDodgeSpdNote=enemyHasBurning()?' — Burning: −20% Guard/Resolve':'';
   return `${enemyCell('stat-vitality','VIG',Number(ep2.vitality)||0,{title:'Vigour contributes to maximum Health',baseKey:'vitality',statKey:'vitality',statRaw:Number(ep2.vitality)||0})}
-     ${enemyCell('stat-atk',ledgerStatLabel('atk',{short:true}),ep2.atk,{title:'Martial attack',baseKey:'atk',statKey:'atk',statRaw:ep2.atk})}
-     ${enemyCell('stat-matk',ledgerStatLabel('matk',{short:true}),Number(ep2.matk)||0,{title:'Focus (magic attack)',baseKey:'matk',statKey:'matk',statRaw:Number(ep2.matk)||0})}
+     ${enemyCell('stat-atk',ledgerStatLabel('atk',{short:true}),ep2.atk,{title:'Might — martial attack',baseKey:'atk',statKey:'atk',statRaw:ep2.atk})}
+     ${enemyCell('stat-dex',ledgerStatLabel('dex',{short:true}),Number(ep2.dex)||0,{title:'Dexterity — Finesse attack',baseKey:'dex',statKey:'dex',statRaw:Number(ep2.dex)||0})}
+     ${enemyCell('stat-matk',ledgerStatLabel('matk',{short:true}),Number(ep2.matk)||0,{title:'Focus — magic attack',baseKey:'matk',statKey:'matk',statRaw:Number(ep2.matk)||0})}
      ${enemyCell('stat-def',ledgerStatLabel('def',{short:true}),_effEnemyDef,{title:'Guard (martial defence)'+_enemyDodgeSpdNote,baseKey:'def',statKey:'def',statRaw:ep2.def,trend:combatTrendTag(_effEnemyDef,_eBase.def??ep2.def)})}
      ${enemyCell('stat-mdef',ledgerStatLabel('mdef',{short:true}),_effEnemyMdef,{title:'Resolve (magic defence)'+_enemyDodgeSpdNote,baseKey:'mdef',statKey:'mdef',statRaw:Number(ep2.mdef)||0,trend:combatTrendTag(_effEnemyMdef,(_eBase.mdef??ep2.mdef)||0)})}
      ${enemyCell('stat-dodge',ledgerStatLabel('dodge',{short:true}),_effEnemyDodge,{suffix:'%',title:`Evasion${_enemyDodgeSpdNote}`,baseKey:'dodge',statKey:'dodge',statRaw:ep2.dodge||0})}
@@ -188,8 +191,8 @@ function buildEnemyStatsGridHtml(){
 }
 function buildCombatStatBreakdownSection(side){
   const statKeys=side==='player'
-    ? ['atk','matk','def','mdef','dodge','acc','spd','critChance','critMult','armour','magicArmour','armorPen','magicPen']
-    : ['maxHp','atk','matk','def','mdef','dodge','acc','spd','critChance','armour','magicArmour'];
+    ? ['atk','dex','matk','def','mdef','dodge','acc','spd','critChance','critMult','armour','magicArmour','armorPen','magicPen']
+    : ['maxHp','atk','dex','matk','def','mdef','dodge','acc','spd','critChance','armour','magicArmour'];
   const player=side==='player'?G.player:null;
   const enemy=side==='enemy'?G.enemy:null;
   let html='';
@@ -344,11 +347,13 @@ function buildCombatantHoverTooltipHtml(side){
   const marm=formatCombatNumber(Math.max(0,Number(s.magicArmour)||0));
   const marmMax=formatCombatNumber(Math.max(0,Number(s.maxMagicArmour)||0));
   const atk=formatCombatNumber(s.atk||0);
+  const dex=formatCombatNumber(s.dex||0);
   const matk=formatCombatNumber(s.matk||0);
   const def=formatCombatNumber(s.def||0);
   const mdef=formatCombatNumber(s.mdef||0);
   const acc=formatCombatNumber(s.acc||0);
   const dodge=formatCombatNumber(s.dodge||0);
+  const sl=(k)=>typeof ledgerStatLabel==='function'?ledgerStatLabel(k,{short:true}):k;
   const passive=isPlayer
     ? (typeof getBirdPassiveInfo==='function'?getBirdPassiveInfo(birdKey):null)
     : ((BIRDS[birdKey]&&BIRDS[birdKey].passive)||(typeof getBirdPassiveInfo==='function'?getBirdPassiveInfo(birdKey):null));
@@ -369,12 +374,13 @@ function buildCombatantHoverTooltipHtml(side){
       <div class="combat-hover-vital"><span>MARM</span><b>${marm}/${marmMax}</b></div>
     </div>
     <div class="combat-hover-stats">
-      <span><em>ATK</em>${atk}</span>
-      <span><em>MATK</em>${matk}</span>
-      <span><em>DEF</em>${def}</span>
-      <span><em>MDEF</em>${mdef}</span>
-      <span><em>PREC</em>${acc}%</span>
-      <span><em>EVA</em>${dodge}%</span>
+      <span><em>${sl('atk')}</em>${atk}</span>
+      <span><em>${sl('dex')}</em>${dex}</span>
+      <span><em>${sl('matk')}</em>${matk}</span>
+      <span><em>${sl('def')}</em>${def}</span>
+      <span><em>${sl('mdef')}</em>${mdef}</span>
+      <span><em>${sl('acc')}</em>${acc}%</span>
+      <span><em>${sl('dodge')}</em>${dodge}%</span>
     </div>
     ${passive?.name?`<div class="combat-hover-passive">★ ${combatEscAttr(passive.name)}</div>`:''}
     <div class="combat-hover-ailments">${chipHtml}</div>

@@ -46,7 +46,7 @@ globalThis.applyFractionalHp = applyFractionalHp;
 
 function normalizeCombatStats(stats) {
   if (!stats) return;
-  for (const k of ['hp', 'maxHp', 'atk', 'def', 'matk', 'mdef', 'spd', 'acc', 'dodge', 'critChance', 'armorPen', 'magicPen']) {
+  for (const k of ['hp', 'maxHp', 'atk', 'dex', 'def', 'matk', 'mdef', 'spd', 'acc', 'dodge', 'critChance', 'armorPen', 'magicPen']) {
     if (stats[k] != null) stats[k] = Math.round(Number(stats[k]) * 100) / 100;
   }
 }

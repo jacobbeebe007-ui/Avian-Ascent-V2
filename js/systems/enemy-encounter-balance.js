@@ -44,6 +44,7 @@
     out.maxHp = hp;
     if (out._progressHpMult != null) out._progressHpMult = Number(out._progressHpMult) * m.hp;
     if (out.atk != null) out.atk = Math.max(1, Math.round(Number(out.atk) * m.offence));
+    if (out.dex != null) out.dex = Math.max(0, Math.round(Number(out.dex) * m.offence));
     if (out.matk != null) out.matk = Math.max(1, Math.round(Number(out.matk) * m.offence));
     if (out.def != null) out.def = Math.max(0, Math.round(Number(out.def) * m.defence));
     if (out.mdef != null) out.mdef = Math.max(0, Math.round(Number(out.mdef) * m.defence));

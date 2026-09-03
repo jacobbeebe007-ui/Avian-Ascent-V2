@@ -65,10 +65,22 @@
     if (!g || !g.player || !g.player.stats) return 0;
     var st = g.player.stats;
     var key = String(scaleStat || 'ATK').toUpperCase();
-    if (key === 'MATK') return st.matk || 0;
-    if (key === 'SPD') return st.spd || 0;
-    if (key === 'DEF') return st.def || 0;
-    if (key === 'MDEF') return st.mdef || 0;
+    if (typeof Avian !== 'undefined' && Avian.display && typeof Avian.display.ledgerKey === 'function') {
+      var ledger = Avian.display.ledgerKey(scaleStat);
+      if (ledger === 'matk') return st.matk || 0;
+      if (ledger === 'dex') return st.dex || 0;
+      if (ledger === 'spd') return st.spd || 0;
+      if (ledger === 'def') return st.def || 0;
+      if (ledger === 'mdef') return st.mdef || 0;
+      if (ledger === 'acc') return st.acc || 0;
+      if (ledger === 'dodge') return st.dodge || 0;
+      if (ledger === 'atk') return st.atk || 0;
+    }
+    if (key === 'MATK' || key === 'MATT' || key === 'FOCUS') return st.matk || 0;
+    if (key === 'DEX' || key === 'DEXTERITY') return st.dex || 0;
+    if (key === 'SPD' || key === 'AGILITY') return st.spd || 0;
+    if (key === 'DEF' || key === 'GUARD') return st.def || 0;
+    if (key === 'MDEF' || key === 'RESOLVE') return st.mdef || 0;
     if (key === 'ACC') return st.acc || 0;
     if (key === 'DODGE') return st.dodge || 0;
     return st.atk || 0;

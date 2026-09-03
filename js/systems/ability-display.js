@@ -533,8 +533,9 @@
       add((row.enCost || row.apCost || 1) + ' EN Utility');
     } else {
       add((row.enCost || row.apCost || 1) + ' EN ' + String(row.damageType || 'Physical'));
-      var isBasic = (typeof globalThis.isNaturalBasicAbility === 'function' && globalThis.isNaturalBasicAbility(row))
-        || row.id === 'BASIC_PHYSICAL' || row.id === 'BASIC_MAGIC' || !!row.naturalStrikeFlat;
+      var isBasic = typeof globalThis.isNaturalBasicAbility === 'function'
+        ? globalThis.isNaturalBasicAbility(row)
+        : !!(row.naturalStrikeFlat && !(row.minDamage != null && row.maxDamage != null && Number(row.skillPowerPct) > 0));
       if (isBasic) {
         var flat = row.naturalStrikeFlat || {};
         var fmin = flat.min != null ? Number(flat.min) : 1;
@@ -543,7 +544,11 @@
         if (!Number.isFinite(fmax)) fmax = 2;
         add('Damage: ' + fmin + '–' + fmax + '.');
       } else {
-        add('Uses ' + String(row.damageStat || row.scalingStat || row.scaleStat || 'ATK') + '.');
+        add('Uses ' + (typeof globalThis.displayScaleStatName === 'function'
+          ? globalThis.displayScaleStatName(row.damageStat || row.scalingStat || row.scaleStat || 'ATK')
+          : (Avian.display && typeof Avian.display.scalingStat === 'function'
+            ? Avian.display.scalingStat(row.damageStat || row.scalingStat || row.scaleStat || 'ATK')
+            : String(row.damageStat || row.scalingStat || row.scaleStat || 'Might'))) + '.');
         var weaponFirst = (typeof globalThis.usesWeaponFirst === 'function' && globalThis.usesWeaponFirst(row))
           || !!(typeof Avian !== 'undefined' && Avian.data && Avian.data.combatConfig && Avian.data.combatConfig.weaponFirstV09);
         if (weaponFirst) {

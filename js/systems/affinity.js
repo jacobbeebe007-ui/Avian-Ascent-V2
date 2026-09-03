@@ -56,12 +56,37 @@
     return Number(asp.neutralMod) || 1;
   }
 
+  var LEDGER_STAT_ALIASES = Object.freeze({
+    might: 'atk', atk: 'atk',
+    dexterity: 'dex', dex: 'dex',
+    focus: 'matk', matk: 'matk', matt: 'matk',
+    guard: 'def', def: 'def',
+    resolve: 'mdef', mdef: 'mdef',
+    agility: 'spd', spd: 'spd',
+    precision: 'acc', acc: 'acc',
+    evasion: 'dodge', dodge: 'dodge',
+    vitality: 'vitality', vit: 'vitality', vig: 'vitality',
+    hp: 'hp',
+    maxhp: 'maxHp', maxhealth: 'maxHp',
+    ferocity: 'critDamage', critdamage: 'critDamage', critmult: 'critDamage',
+    critical: 'critChance', critchance: 'critChance',
+    armour: 'armour', armor: 'armour',
+    magicarmour: 'magicArmour', magicarmor: 'magicArmour',
+  });
+
+  function normalizeLedgerStatKey(raw) {
+    var k = String(raw || '').trim().toLowerCase();
+    if (!k) return '';
+    if (LEDGER_STAT_ALIASES[k]) return LEDGER_STAT_ALIASES[k];
+    return k;
+  }
+
   function glossaryStatEntry(ledgerKey) {
     var g = Avian.data && Avian.data.displayGlossary;
     var stats = g && g.stats;
-    var k = String(ledgerKey || '').toLowerCase();
+    var k = normalizeLedgerStatKey(ledgerKey);
     /* Max Health is distinct from the Vitality attribute in v0.9. */
-    if (k === 'maxhp') {
+    if (k === 'maxHp') {
       return (stats && stats.maxHp) || { display: 'Max Health', short: 'HP' };
     }
     if (k === 'vitality') {
@@ -71,11 +96,11 @@
       /* Gear hpFlat affixes display as Vitality. */
       return (stats && (stats.vitality || stats.hp)) || { display: 'Vitality', short: 'VIT' };
     }
-    if (k === 'dex' || k === 'dexterity') {
+    if (k === 'dex') {
       return (stats && (stats.dex || stats.dexterity)) || { display: 'Dexterity', short: 'DEX' };
     }
-    if (k === 'critmult' || k === 'critdamage') return (stats && stats.critDamage) || null;
-    if (k === 'critchance') return (stats && stats.critChance) || null;
+    if (k === 'critDamage') return (stats && stats.critDamage) || null;
+    if (k === 'critChance') return (stats && stats.critChance) || null;
     if (stats && stats[k]) return stats[k];
     return null;
   }
@@ -83,11 +108,11 @@
   function displayStatName(ledgerKey) {
     var entry = glossaryStatEntry(ledgerKey);
     if (entry && entry.display) return entry.display;
-    var k = String(ledgerKey || '').toLowerCase();
-    if (k === 'armorpen' || k === 'physicalpen') return 'Martial Penetration';
-    if (k === 'magicpen') return 'Magic Penetration';
+    var k = normalizeLedgerStatKey(ledgerKey) || String(ledgerKey || '').toLowerCase();
+    if (k === 'armorpen' || k === 'physicalpen' || k === 'armorPen') return 'Martial Penetration';
+    if (k === 'magicpen' || k === 'magicPen') return 'Magic Penetration';
     if (k === 'armour' || k === 'armor') return 'Armour';
-    if (k === 'magicarmour' || k === 'magicarmor') return 'Magic Armour';
+    if (k === 'magicArmour' || k === 'magicarmour' || k === 'magicarmor') return 'Magic Armour';
     if (k === 'maxarmour' || k === 'maxarmor') return 'Armour';
     if (k === 'maxmagicarmour' || k === 'maxmagicarmor') return 'Magic Armour';
     return String(ledgerKey || '');
@@ -102,6 +127,17 @@
     if (k === 'armour' || k === 'armor' || k === 'maxarmour' || k === 'maxarmor') return 'ARM';
     if (k === 'magicarmour' || k === 'magicarmor' || k === 'maxmagicarmour' || k === 'maxmagicarmor') return 'MARM';
     return displayStatName(ledgerKey);
+  }
+
+  function displayScalingStat(raw) {
+    var s = String(raw == null ? '' : raw).trim();
+    if (!s) return 'Might';
+    var u = s.toUpperCase();
+    if (u === 'HYBRID') return 'Might + Focus';
+    if (u === 'TRUE') return 'True';
+    var name = displayStatName(s);
+    if (name && name.toLowerCase() !== s.toLowerCase()) return name;
+    return displayStatName(normalizeLedgerStatKey(s) || s) || s;
   }
 
   function displayDamageChannel(raw) {
@@ -138,6 +174,8 @@
   Avian.display = {
     statName: displayStatName,
     statShort: displayStatShort,
+    scalingStat: displayScalingStat,
+    ledgerKey: normalizeLedgerStatKey,
     damageChannel: displayDamageChannel,
     familyName: displayFamilyName,
     concept: conceptLabel,

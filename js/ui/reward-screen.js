@@ -168,8 +168,7 @@ function buildRewardFlipCardBackHtml(drop, opts={}){
   const desc=drop.type==='mutation'
     ?(getMutationDescHtml(drop.mutationItemId||drop.id,{compact:true})||escapeHtmlRoster(drop.desc||''))
     :escapeHtmlRoster(drop.desc||'');
-  const cardCls=opts.equipmentPick?'reward-card':'nest-reward-card';
-  return `<div class="reward-flip-card__back ${cardCls} tier-${tierCss}" data-tier="${tierCss}">
+  return `<div class="reward-reveal-card tier-${tierCss}" data-tier="${tierCss}">
     <div class="reward-tier-label">${tierMeta.label||drop.tierLabel||''}</div>
     <span class="reward-icon">${drop.icon||'🎁'}</span>
     <div class="reward-name">${escapeHtmlRoster(drop.name||'Reward')}</div>
@@ -180,21 +179,26 @@ function buildRewardFlipCardBackHtml(drop, opts={}){
 function buildRewardFlipCardHtml(drop, opts={}){
   const tierCss=normalizeRewardTier(drop.tier||'white');
   const idxAttr=Number.isFinite(opts.dropIndex)?` data-drop-index="${opts.dropIndex}"`:'';
-  const revealed=opts.revealed?' is-revealed':'';
-  const selectable=opts.selectable?' is-selectable':'';
-  const equipCls=opts.equipmentPick?' is-equipment-pick':'';
-  return `<div class="reward-flip-card tier-${tierCss}${revealed}${selectable}${equipCls}"${idxAttr} data-tier="${tierCss}">
-    <div class="reward-flip-card__inner">
-      <div class="reward-flip-card__front tier-${tierCss}">
-        <span class="reward-flip-card__mystery" aria-hidden="true">?</span>
+  const flipped=opts.revealed?' is-flipped':'';
+  const selectable=opts.selectable?' reward-hatch-flip--selectable':'';
+  const equipCls=opts.equipmentPick?' reward-hatch-flip--equipment':' reward-hatch-flip--item';
+  const slotCls=opts.equipmentPick?'':' reward-hatch-slot--item';
+  const ariaBack=opts.revealed?'false':'true';
+  const ariaFront=opts.revealed?'true':'false';
+  return `<div class="mother-goose-hatch-slot reward-hatch-slot${slotCls}"${idxAttr}>
+    <div class="mother-goose-hatch-flip mother-goose-hatch-flip--nest tier-${tierCss}${flipped}${selectable}${equipCls}" data-tier="${tierCss}">
+      <div class="mother-goose-hatch-flip-front mother-goose-hatch-flip-front--nest tier-${tierCss}" aria-hidden="${ariaFront}">
+        <span class="mother-goose-hatch-egg" aria-hidden="true">🪺</span>
       </div>
-      ${buildRewardFlipCardBackHtml(drop, opts)}
+      <div class="mother-goose-hatch-flip-back" aria-hidden="${ariaBack}">
+        ${buildRewardFlipCardBackHtml(drop, opts)}
+      </div>
     </div>
   </div>`;
 }
 
 function rewardFlipRevealDelayMs(){
-  return window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches?0:420;
+  return window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches?0:520;
 }
 
 function rewardFlipStaggerMs(drop, isHighTier){
@@ -202,14 +206,51 @@ function rewardFlipStaggerMs(drop, isHighTier){
   return isHighTier?220:180;
 }
 
-function revealRewardFlipCard(card){
-  if(!card || card.classList.contains('is-revealed')) return;
-  const reducedMotion=window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches;
-  if(reducedMotion) card.classList.add('is-revealed');
-  else{
-    void card.offsetWidth;
-    card.classList.add('is-revealed');
+function revealRewardFlipCard(slotOrFlip){
+  const flip=slotOrFlip?.classList?.contains('mother-goose-hatch-flip')
+    ?slotOrFlip
+    :slotOrFlip?.querySelector?.('.mother-goose-hatch-flip');
+  if(!flip || flip.classList.contains('is-flipped')) return;
+  flip.classList.remove('is-shaking');
+  void flip.offsetWidth;
+  flip.classList.add('is-flipped');
+  const back=flip.querySelector('.mother-goose-hatch-flip-back');
+  const front=flip.querySelector('.mother-goose-hatch-flip-front');
+  if(back) back.setAttribute('aria-hidden','false');
+  if(front) front.setAttribute('aria-hidden','true');
+}
+
+function hideRewardNestStage(){
+  const stage=document.getElementById('nest-drop-stage');
+  const hint=document.getElementById('nest-shake-hint');
+  const scene=document.getElementById('nest-reward-scene');
+  const shakeFx=document.getElementById('nest-shake-fx');
+  if(stage) stage.hidden=true;
+  if(shakeFx) shakeFx.innerHTML='';
+  if(hint){
+    hint.textContent='';
+    hint.hidden=true;
   }
+  if(scene){
+    scene.classList.remove('is-compact','is-shaking');
+    scene.classList.add('nest-reward-scene--revealed');
+  }
+}
+
+function resetRewardNestStage(){
+  const stage=document.getElementById('nest-drop-stage');
+  const hint=document.getElementById('nest-shake-hint');
+  const scene=document.getElementById('nest-reward-scene');
+  const nest=document.getElementById('reward-nest');
+  if(stage) stage.hidden=false;
+  if(nest){
+    nest.hidden=false;
+    nest.style.display='';
+  }
+  if(hint){
+    hint.hidden=false;
+  }
+  if(scene) scene.classList.remove('nest-reward-scene--revealed','is-compact','forge-equipment-choice');
 }
 
 function preSizeNestRewardTray(dropCount){
@@ -254,7 +295,7 @@ function wireNestRewardTrayTooltips(tray){
   collected.forEach((drop,i)=>{
     const card=tray.querySelector(`[data-drop-index="${i}"]`)||tray.children[i];
     if(!card) return;
-    const target=card.querySelector('.reward-flip-card__back')||card;
+    const target=card.querySelector('.reward-reveal-card')||card.querySelector('.mother-goose-hatch-flip-back')||card;
     target._richTooltipBound=false;
     if(drop.type==='mutation'){
       const mutId=drop.mutationItemId||drop.id;
@@ -305,7 +346,7 @@ function finishNestRewardReveal(){
   const dropLayer=document.getElementById('nest-drop-layer');
   if(dropLayer) dropLayer.innerHTML='';
   const scene=document.getElementById('nest-reward-scene');
-  if(scene) scene.classList.remove('is-shaking','is-compact');
+  if(scene) scene.classList.remove('is-shaking','is-compact','nest-reward-scene--revealed');
   const confirmBtn=document.getElementById('reward-confirm-btn');
   if(confirmBtn){
     confirmBtn.textContent='Continue →';
@@ -324,8 +365,10 @@ function revealNestDropsStaggered(){
   let index=start;
 
   if(start===0 && drops.length){
+    hideRewardNestStage();
     preSizeNestRewardTray(drops.length);
-    if(scene) scene.classList.add('is-compact');
+  } else if(start===0 && !drops.length){
+    hideRewardNestStage();
   }
 
   function finishRevealSequence(){
@@ -392,13 +435,12 @@ function showStoryEquipmentPick(pool){
   G._rewardsAlreadyGranted=false;
   G._nestShaken=true;
 
+  hideRewardNestStage();
   const nest=document.getElementById('reward-nest');
   if(nest){
     nest.classList.remove('nest-shakeable');
     nest.onclick=null;
   }
-  const scene=document.getElementById('nest-reward-scene');
-  if(scene) scene.classList.add('is-compact');
   const hint=document.getElementById('nest-shake-hint');
   if(hint) hint.textContent='Choose 1 equipment';
   const footnote=document.getElementById('nest-reward-footnote');
@@ -428,9 +470,10 @@ function showStoryEquipmentPick(pool){
     const card=wrap.firstElementChild;
     if(!card) return;
     const selectCard=()=>{
-      if(!card.classList.contains('is-revealed')) return;
-      document.querySelectorAll('#reward-grid .reward-flip-card').forEach(x=>x.classList.remove('selected'));
-      card.classList.add('selected');
+      const flip=card.querySelector('.mother-goose-hatch-flip');
+      if(!flip?.classList.contains('is-flipped')) return;
+      document.querySelectorAll('#reward-grid .mother-goose-hatch-flip').forEach(x=>x.classList.remove('selected'));
+      flip.classList.add('selected');
       G._pendingReward=rw;
       confirmBtn.className='confirm-btn visible';
     };
@@ -439,7 +482,7 @@ function showStoryEquipmentPick(pool){
     setTimeout(()=>{
       revealRewardFlipCard(card);
       if(typeof bindRichTooltip==='function'){
-        const back=card.querySelector('.reward-flip-card__back');
+        const back=card.querySelector('.reward-reveal-card');
         const eqId=rw.equipmentItemId||rw.id;
         if(back && eqId) bindRichTooltip(back, ()=>buildEquipmentTooltipHTML(eqId), {category:'items'});
       }
@@ -554,13 +597,13 @@ function showRewardScreen(hasLevelUp) {
   const footnote=document.getElementById('nest-reward-footnote');
   if(footnote) footnote.style.display='none';
   const tray=document.getElementById('nest-reward-tray');
+  const scene=document.getElementById('nest-reward-scene');
   if(tray){
     tray.innerHTML='';
     tray.classList.remove('is-pre-sized');
     tray.style.removeProperty('--tray-rows');
   }
-  const scene=document.getElementById('nest-reward-scene');
-  if(scene) scene.classList.remove('is-compact');
+  resetRewardNestStage();
   renderNestRewardCollectedTray();
   renderBattleSummary();
 

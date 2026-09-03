@@ -33,6 +33,7 @@ function buildTierStarEnemyFromBirdKey(birdKey, opts={}){
     hp:roundCombatStat(bd.stats?.hp||bd.stats?.maxHp||30, 0.01),
     maxHp:roundCombatStat(bd.stats?.maxHp||bd.stats?.hp||30, 0.01),
     atk:roundCombatStat(bd.stats?.atk||6, 0.01),
+    dex:roundCombatStat(Number(bd.stats?.dex)||0, 0.01),
     def:roundCombatStat(bd.stats?.def||2, 0),
     matk:roundCombatStat(Number(bd.stats?.matk)||0, 0.01),
     mdef:roundCombatStat(Number(bd.stats?.mdef)||0, 0),
@@ -68,11 +69,13 @@ function buildTierStarEnemyFromBirdKey(birdKey, opts={}){
   stats.maxHp=roundCombatStat(Math.max(0.01, stats.maxHp*diffMult), 0.01);
   stats.hp=stats.maxHp;
   stats.atk=roundCombatStat(Math.max(0.01, stats.atk*diffMult), 0.01);
+  stats.dex=roundCombatStat(Math.max(0, (Number(stats.dex)||0)*diffMult), 0.01);
   stats.matk=roundCombatStat(Math.max(0.01, stats.matk*diffMult), 0.01);
   if(opts.isBoss){
     stats.maxHp=roundCombatStat(Math.max(0.01, stats.maxHp*bossMult.hp), 0.01);
     stats.hp=stats.maxHp;
     stats.atk=roundCombatStat(Math.max(0.01, stats.atk*bossMult.atk), 0.01);
+    stats.dex=roundCombatStat(Math.max(0, (Number(stats.dex)||0)*(bossMult.dex != null ? bossMult.dex : (bossMult.atk != null ? bossMult.atk : 1.15))), 0.01);
     stats.matk=roundCombatStat(Math.max(0.01, stats.matk*bossMult.matk), 0.01);
   }
   normalizeCombatStats(stats);
@@ -101,7 +104,7 @@ function buildTierStarEnemyFromBirdKey(birdKey, opts={}){
     aiPersonality,
     abilities:JSON.parse(JSON.stringify(enemyStub.abilities||[])),
     stats:{...stats,en:enProf.maxEN},
-    hp:stats.hp,maxHp:stats.maxHp,atk:stats.atk,def:stats.def,spd:stats.spd,acc:stats.acc,dodge:stats.dodge,mdef:stats.mdef,matk:stats.matk,
+    hp:stats.hp,maxHp:stats.maxHp,atk:stats.atk,dex:stats.dex,def:stats.def,spd:stats.spd,acc:stats.acc,dodge:stats.dodge,mdef:stats.mdef,matk:stats.matk,
     cc:Math.max(0.05,Math.min(0.95,(stats.critChance||5)/100)), cd:stats.critMult||1.5,
     energyMax:enProf.maxEN,energy:enProf.startEN,energyRegen:enProf.regenEN,
     isBoss:!!opts.isBoss,

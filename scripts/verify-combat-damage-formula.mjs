@@ -256,9 +256,9 @@ check('describeMasterAbility format', (() => {
   const text = c.describeMasterAbility(row);
   const weaponFirst = typeof c.weaponFirstEnabled === 'function' ? c.weaponFirstEnabled() : true;
   if (weaponFirst) {
-    return text.includes('Skill Power:') && text.includes('Weapon: 3–4') && text.includes('Uses ATK') && !text.includes('Ability Power:');
+    return text.includes('Skill Power:') && text.includes('Weapon: 3–4') && text.includes('Uses Might') && !text.includes('Ability Power:');
   }
-  return text.includes('Ability Power:') && text.includes('Uses ATK') && !text.includes('Base ');
+  return text.includes('Ability Power:') && text.includes('Uses Might') && !text.includes('Base ');
 })(), 'desc');
 
 check('usesMasterDamage for damaging row', c.usesMasterDamage(c.enrichCombatRow({ apCost: 1, scaleStat: 'ATK', scalePct: 10 })));

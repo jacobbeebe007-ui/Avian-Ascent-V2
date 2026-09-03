@@ -125,7 +125,7 @@ function renderActions() {
     let modTxt='';
     if(!isEmptySlot && dmgTypes.includes(effBtn)){
       const mods=[];
-      if(G.warcryActive) mods.push('⬆ ATK buff');
+      if(G.warcryActive) mods.push('⬆ Might buff');
       if(getWeakenStacks(G.playerStatus)>0) mods.push('⬇ Weakened');
       if(G.playerStatus?.feared) mods.push('⬇ Fear hit penalty');
       if(G.playerStatus?.battleHymn) mods.push('⬆ Hymn buff');
@@ -145,11 +145,11 @@ function renderActions() {
     if(_dmgEst.isDamaging&&_dmgEst.dmgLow!=null){
       if(_dmgEst.hybridSplit){
         const h=_dmgEst.hybridSplit;
-        dmgRow=`<div class="btn-dmg-row"><span class="btn-dmg-hybrid" title="Hybrid: ATK-scaling half (red) and M.ATK-scaling half (purple); combat averages the two after DEF/M.DEF.">
-          <span class="btn-dmg-atk">ATK ~${h.atkLow}–${h.atkHigh}</span>
-          <span class="btn-dmg-matk">MATK ~${h.matkLow}–${h.matkHigh}</span>
+        dmgRow=`<div class="btn-dmg-row"><span class="btn-dmg-hybrid" title="Hybrid: Might-scaling half (red) and Focus-scaling half (purple); combat averages the two after Guard/Resolve.">
+          <span class="btn-dmg-atk">Might ~${h.atkLow}–${h.atkHigh}</span>
+          <span class="btn-dmg-matk">Focus ~${h.matkLow}–${h.matkHigh}</span>
         </span></div>`;
-      }else dmgRow=`<div class="btn-dmg-row"><span class="btn-dmg-est" title="Estimated damage after enemy DEF/M.DEF (approx.; your buffs included)">Dmg ~${_dmgEst.dmgLow}–${_dmgEst.dmgHigh}</span></div>`;
+      }else dmgRow=`<div class="btn-dmg-row"><span class="btn-dmg-est" title="Estimated damage after enemy Guard/Resolve (approx.; your buffs included)">Dmg ~${_dmgEst.dmgLow}–${_dmgEst.dmgHigh}</span></div>`;
     }
     const _escMini=s=>String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
     const _statPrev=(!isEmptySlot?getSkillStatPreviewLines(ab,_tmplUI):[]);
