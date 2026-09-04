@@ -3,6 +3,11 @@
  * service worker, keeps the run save, and cache-busts the reload so HTTP
  * cache cannot resurrect a stale Nest bundle.
  *
+ * Covers both entry points:
+ *   1) Title-screen Clear cached data
+ *   2) War Room → Supplies Clear cached data (with an active controlling SW,
+ *      which used to re-fill Cache Storage during the shell HTTP reload)
+ *
  * Starts its own static server so `npm test` does not need a prior `preview`.
  */
 import http from 'node:http';
@@ -113,6 +118,7 @@ async function snapshot(page) {
       codes: localStorage.getItem(CREATOR_CODES_KEY),
       switches: localStorage.getItem(DEV_CODE_SWITCHES_KEY),
       swCount: (await navigator.serviceWorker.getRegistrations()).length,
+      controller: !!navigator.serviceWorker.controller,
       modalOpen: !!modal?.classList.contains('open'),
       modalZ: modal ? Number(getComputedStyle(modal).zIndex) || 0 : 0,
       replaceHref: window.__replaceHref,
@@ -120,6 +126,23 @@ async function snapshot(page) {
       shellReloads: window.__shellReloads || [],
     };
   }, { SAVE_KEY, CREATOR_CODES_KEY, DEV_CODE_SWITCHES_KEY });
+}
+
+async function dismissOverlays(page) {
+  await page.evaluate(() => {
+    document.getElementById('error-console-overlay')?.remove();
+    if (typeof closeWarRoomTutorial === 'function') closeWarRoomTutorial();
+    document.getElementById('warroom-tutorial-modal')?.classList.remove('open');
+  });
+}
+
+async function waitForController(page, timeoutMs = 8000) {
+  try {
+    await page.waitForFunction(() => !!navigator.serviceWorker.controller, null, { timeout: timeoutMs });
+    return true;
+  } catch (_) {
+    return false;
+  }
 }
 
 const { server, port } = await startServer();
@@ -130,7 +153,7 @@ try {
   page.setDefaultTimeout(20000);
   await page.goto(`${base}/index.html`, { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof window.confirmClearCache === 'function' && typeof window.takeFlightToSelect === 'function');
-  await page.evaluate(() => document.getElementById('error-console-overlay')?.remove());
+  await dismissOverlays(page);
 
   const seeded = await seedStale(page);
   ok('seeded stale Cache Storage', seeded.cacheKeys.includes('avian-ascent-stale-test') && seeded.staleHit === 'OLD_BUNDLE');
@@ -151,28 +174,72 @@ try {
   await page.waitForFunction(() => typeof window.clearGameCache === 'function');
 
   const after = await snapshot(page);
-  ok('stale Cache Storage gone', !after.cacheKeys.includes('avian-ascent-stale-test') && after.staleHit == null);
-  ok('run save kept', !!(after.save && after.save.includes('Crow')));
-  ok('creator codes cleared', after.codes == null && after.switches == null);
+  ok('stale Cache Storage gone (title-screen clear)', !after.cacheKeys.includes('avian-ascent-stale-test') && after.staleHit == null);
+  ok('run save kept (title-screen clear)', !!(after.save && after.save.includes('Crow')));
+  ok('creator codes cleared (title-screen clear)', after.codes == null && after.switches == null);
   ok('reload is cache-busted (avianCacheBust)', page.url().includes('avianCacheBust='));
 
-  await page.reload({ waitUntil: 'domcontentloaded' });
+  /* ── Supplies path with an active controlling service worker ─────────── */
+  await page.goto(`${base}/index.html`, { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof window.takeFlightToSelect === 'function');
-  await page.evaluate(() => {
-    document.getElementById('error-console-overlay')?.remove();
-    if (typeof closeWarRoomTutorial === 'function') closeWarRoomTutorial();
-    document.getElementById('warroom-tutorial-modal')?.classList.remove('open');
-  });
+  await dismissOverlays(page);
+  await seedStale(page);
+
+  /* Give the SW time to install + claim the page (this is the Supplies case). */
   await page.locator('#take-flight-btn').click();
   await page.waitForSelector('#screen-select.active');
-  await page.evaluate(() => {
-    if (typeof closeWarRoomTutorial === 'function') closeWarRoomTutorial();
-    document.getElementById('warroom-tutorial-modal')?.classList.remove('open');
-  });
+  await dismissOverlays(page);
+  const hadController = await waitForController(page, 10000);
+  ok('service worker controlling before Supplies clear', hadController);
+
   await page.locator('.splash-hotspot--supplies').click();
   await page.waitForSelector('#select-hub-supplies.is-open');
-  const suppliesBtn = page.locator('#select-hub-supplies [data-action="openClearCacheModal"]');
+  const suppliesBtn = page.locator('#supplies-clear-cache-btn');
   ok('Supplies Clear cached data is visible', await suppliesBtn.isVisible());
+
+  /* Probe clearGameCache while SW still controls — must leave Cache Storage empty. */
+  const midClear = await page.evaluate(async () => {
+    const before = {
+      controller: !!navigator.serviceWorker.controller,
+      caches: await caches.keys(),
+    };
+    await clearGameCache();
+    return {
+      before,
+      after: {
+        controller: !!navigator.serviceWorker.controller,
+        regs: (await navigator.serviceWorker.getRegistrations()).length,
+        caches: await caches.keys(),
+        stale: await caches.match('/__stale-asset.js').then((r) => (r ? r.text() : null)),
+        codes: localStorage.getItem('avian_creator_codes'),
+        save: localStorage.getItem('avianAscent_save_v2'),
+      },
+    };
+  });
+  ok('Supplies clear ran under a controlling SW', midClear.before.controller === true);
+  ok('Supplies clear leaves Cache Storage empty (no SW re-fill)', midClear.after.caches.length === 0 && midClear.after.stale == null);
+  ok('Supplies clear keeps run save', !!(midClear.after.save && midClear.after.save.includes('Crow')));
+  ok('Supplies clear drops creator codes', midClear.after.codes == null);
+  ok('Supplies clear unregisters SW registration', midClear.after.regs === 0);
+
+  /* Re-seed and exercise the full modal → Yes → cache-bust reload path. */
+  await seedStale(page);
+  await suppliesBtn.click();
+  await page.waitForSelector('#clear-cache-modal.open');
+  const suppliesModal = await snapshot(page);
+  ok('Supplies button opens confirm modal', suppliesModal.modalOpen);
+  ok('Supplies confirm modal stacks above hub (z-index >= 12600)', suppliesModal.modalZ >= 12600);
+
+  const suppliesNav = page.waitForURL((url) => url.searchParams.has('avianCacheBust'), { timeout: 15000 });
+  await page.locator('#clear-cache-modal [data-action="confirmClearCache"]').click();
+  await suppliesNav;
+  await page.waitForFunction(() => typeof window.clearGameCache === 'function');
+  const afterSupplies = await snapshot(page);
+  ok('stale Cache Storage gone (Supplies clear)', !afterSupplies.cacheKeys.includes('avian-ascent-stale-test') && afterSupplies.staleHit == null);
+  ok('run save kept (Supplies clear)', !!(afterSupplies.save && afterSupplies.save.includes('Crow')));
+  ok('creator codes cleared (Supplies clear)', afterSupplies.codes == null && afterSupplies.switches == null);
+  ok('Supplies reload is cache-busted (avianCacheBust)', page.url().includes('avianCacheBust='));
+  ok('Supplies clear returns to title screen', await page.locator('#screen-start.active').isVisible());
 } finally {
   await browser.close();
   await new Promise((resolve) => server.close(resolve));

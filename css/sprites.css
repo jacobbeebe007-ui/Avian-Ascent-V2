@@ -2,7 +2,7 @@
 
 /* ===== Duke Blakiston sprite ===== */
 .sprite-dukeblakiston{
-  background-image:url("../assets/sprites/Duke Blakiston.png");
+  background-image:url("../assets/sprites/dukeblakiston.png");
 }
 /* Boss-scale render */
 .sprite4.boss.sprite-dukeblakiston,
@@ -55,7 +55,7 @@
 
 /* ===== Seagull sprite replacement ===== */
 .sprite-seagull {
-  background-image: url("../assets/sprites/Seagull.png");
+  background-image: url("../assets/sprites/seagull.png");
   background-size: 200% 200%;
   background-repeat: no-repeat;
 }
@@ -126,25 +126,11 @@
 
 /* ===== 10_peregrine-sprite-replacement.css ===== */
 
-.sprite-peregrine{background-image:url("../assets/sprites/peregrine.png");background-size:200% 200%;background-repeat:no-repeat;}
-.sprite-peregrine.frame-0{background-position:0% 0%;}
-.sprite-peregrine.frame-1{background-position:100% 0%;}
-.sprite-peregrine.frame-2{background-position:0% 100%;}
-.sprite-peregrine.frame-3{background-position:100% 100%;}
-
-
-/* ===== 11_peregrine-global-alias-patch.css ===== */
-
-/* Peregrine aliases so every UI path uses the same sheet */
-.sprite-peregrinefalcon{
-  background-image: inherit;
-  background-size: 200% 200%;
-  background-repeat: no-repeat;
-}
-.sprite-peregrinefalcon.frame-0{ background-position:0% 0%; }
-.sprite-peregrinefalcon.frame-1{ background-position:100% 0%; }
-.sprite-peregrinefalcon.frame-2{ background-position:0% 100%; }
-.sprite-peregrinefalcon.frame-3{ background-position:100% 100%; }
+.sprite-peregrine,.sprite-peregrinefalcon{background-image:url("../assets/sprites/peregrinefalcon.png");background-size:200% 200%;background-repeat:no-repeat;}
+.sprite-peregrine.frame-0,.sprite-peregrinefalcon.frame-0{background-position:0% 0%;}
+.sprite-peregrine.frame-1,.sprite-peregrinefalcon.frame-1{background-position:100% 0%;}
+.sprite-peregrine.frame-2,.sprite-peregrinefalcon.frame-2{background-position:0% 100%;}
+.sprite-peregrine.frame-3,.sprite-peregrinefalcon.frame-3{background-position:100% 100%;}
 
 
 /* ===== 12_snowyowl-sprite-replacement.css ===== */
@@ -337,6 +323,30 @@
 .sprite-mutatedpigeon.frame-2{background-position:0% 100%;}
 .sprite-mutatedpigeon.frame-3{background-position:100% 100%;}
 
+.sprite-pelican,.sprite-australianpelican{background-image:url("../assets/sprites/australianpelican.png");background-size:200% 200%;background-repeat:no-repeat;}
+.sprite-pelican.frame-0,.sprite-australianpelican.frame-0{background-position:0% 0%;}
+.sprite-pelican.frame-1,.sprite-australianpelican.frame-1{background-position:100% 0%;}
+.sprite-pelican.frame-2,.sprite-australianpelican.frame-2{background-position:0% 100%;}
+.sprite-pelican.frame-3,.sprite-australianpelican.frame-3{background-position:100% 100%;}
+
+.sprite-marabou,.sprite-maraboustork{background-image:url("../assets/sprites/maraboustork.png");background-size:200% 200%;background-repeat:no-repeat;}
+.sprite-marabou.frame-0,.sprite-maraboustork.frame-0{background-position:0% 0%;}
+.sprite-marabou.frame-1,.sprite-maraboustork.frame-1{background-position:100% 0%;}
+.sprite-marabou.frame-2,.sprite-maraboustork.frame-2{background-position:0% 100%;}
+.sprite-marabou.frame-3,.sprite-maraboustork.frame-3{background-position:100% 100%;}
+
+.sprite-kakapo{background-image:url("../assets/sprites/kakapo.png");background-size:200% 200%;background-repeat:no-repeat;}
+.sprite-kakapo.frame-0{background-position:0% 0%;}
+.sprite-kakapo.frame-1{background-position:100% 0%;}
+.sprite-kakapo.frame-2{background-position:0% 100%;}
+.sprite-kakapo.frame-3{background-position:100% 100%;}
+
+.sprite-penguin,.sprite-emperorpenguin{background-image:url("../assets/sprites/emperorpenguin.png");background-size:200% 200%;background-repeat:no-repeat;}
+.sprite-penguin.frame-0,.sprite-emperorpenguin.frame-0{background-position:0% 0%;}
+.sprite-penguin.frame-1,.sprite-emperorpenguin.frame-1{background-position:100% 0%;}
+.sprite-penguin.frame-2,.sprite-emperorpenguin.frame-2{background-position:0% 100%;}
+.sprite-penguin.frame-3,.sprite-emperorpenguin.frame-3{background-position:100% 100%;}
+
 
 /* ===== 20_all-sprites-living-motion-patch.css ===== */
 
@@ -366,19 +376,13 @@
 
 /* ===== 22_penguin-realistic-sheet-patch.css ===== */
 
-/* ===== REALISTIC EMPEROR PENGUIN SHEET PATCH ===== */
+/* ===== PENGUIN FRAME ALIASES (idle/run/slide/attack → 2x2 frames) ===== */
 
 .sprite-penguin.idle{background-position:0% 0% !important;}
 .sprite-penguin.run{background-position:100% 0% !important;}
 .sprite-penguin.slide{background-position:0% 100% !important;}
 .sprite-penguin.attack{background-position:100% 100% !important;}
 
-/* Keep penguin proportionally wider than tall across the UI */
-.ascent-panel-portrait .sprite4.sprite-penguin.small,.ascent-face .sprite4.sprite-penguin.small{width:106px !important;height:80px !important;}
-.ascent-panel-portrait .sprite4.sprite-penguin.medium,.ascent-face .sprite4.sprite-penguin.medium{width:124px !important;height:92px !important;}
-.ascent-panel-portrait .sprite4.sprite-penguin.large,.ascent-face .sprite4.sprite-penguin.large{width:138px !important;height:102px !important;}
-.ascent-panel-portrait .sprite4.sprite-penguin.xl,.ascent-face .sprite4.sprite-penguin.xl,
-.ascent-panel-portrait .sprite4.sprite-penguin.xlarge,.ascent-face .sprite4.sprite-penguin.xlarge{width:158px !important;height:118px !important;}
 
 
 /* Energy colors */
