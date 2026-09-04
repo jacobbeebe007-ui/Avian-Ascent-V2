@@ -3952,7 +3952,11 @@ function continueRun() {
     }
     G.player.birdKey=forgeMirror.birdKey;
   }
-  if(G.player?.birdKey && BIRDS[G.player.birdKey]?.size) G.player.size=BIRDS[G.player.birdKey].size;
+  if(G.player?.birdKey){
+    G.player.size = (typeof rosterSizeForBirdKey==='function')
+      ? rosterSizeForBirdKey(G.player.birdKey)
+      : (BIRDS[G.player.birdKey]?.size || G.player.size || 'medium');
+  }
   G.player.class = resolveFinalClass(G.player?.class, G.player?.birdKey);
   if(typeof applyBirdCardProgression==='function') applyBirdCardProgression(G.player);
   applyPlayerSkillsFromCardTier(G.player);
@@ -6435,7 +6439,8 @@ function rosterCanonBirdKey(raw){
   const flat=String(raw||'').toLowerCase().replace(/[^a-z]/g,'');
   if(!flat) return '';
   const toCanon={
-    emperorpenguin:'penguin', secretarybird:'secretary', shoebillstork:'shoebill',
+    emperorpenguin:'penguin', australianpelican:'pelican', maraboustork:'marabou',
+    secretarybird:'secretary', shoebillstork:'shoebill',
     harpyeagle:'harpy', baldeagle:'baldEagle', blackcockatoo:'blackCockatoo',
     dukeblakiston:'dukeBlakiston', williewagtail:'wagtail', chikadee:'chickadee',
     snowyowl:'snowyOwl', peregrinefalcon:'peregrine',
@@ -6493,14 +6498,22 @@ function getUISizeClass(entity, context='general'){
   if(runtime) return runtime;
   return 'medium';
 }
+/** Runtime size token for a bird key (prefers birdsV2.realSize → sizeChart). */
+function rosterSizeForBirdKey(birdKey){
+  return rosterSizeForEntity({ birdKey: rosterCanonBirdKey(birdKey) }) || 'medium';
+}
 globalThis.rosterCanonBirdKey=rosterCanonBirdKey;
 globalThis.runtimeSizeFromProfileToken=runtimeSizeFromProfileToken;
 globalThis.profileSizeTokenForEntity=profileSizeTokenForEntity;
 globalThis.rosterSizeForEntity=rosterSizeForEntity;
+globalThis.rosterSizeForBirdKey=rosterSizeForBirdKey;
 globalThis.getUISizeClass=getUISizeClass;
 function normalizeSpriteBirdKey(raw){
   const k = String(raw||'').toLowerCase().replace(/[^a-z]/g,'');
   if(k === 'peregrinefalcon') return 'peregrine';
+  if(k === 'emperorpenguin') return 'penguin';
+  if(k === 'australianpelican') return 'pelican';
+  if(k === 'maraboustork') return 'marabou';
   if(k === 'snowyowl' || k === 'snowy') return 'snowyowl';
   if(k === 'shoebillstork') return 'shoebill';
   if(k === 'williewagtail') return 'wagtail';
@@ -6535,7 +6548,7 @@ function renderBirdIconHTML(birdKey, sizeClass, locked, faceLeft=false){
   if(k === 'mutatedpigeon'){
     html = `<div class="sprite4 ${sizeClass||''} sprite-mutatedpigeon frame-0 ${locked?'locked':''}"></div>`;
   } else {
-    const spriteBirds = /^(sparrow|goose|blackbird|crow|macaw|robin|dove|hummingbird|shoebill|secretarybird|secretary|magpie|kookaburra|kiwi|penguin|flamingo|seagull|swan|emu|bowerbird|raven|lyrebird|peregrine|snowyowl|toucan|dukeblakiston|albatross|harpy|harpyeagle|baldeagle|blackcockatoo|ostrich|cassowary|barnowl|bluejay|bushturkey|bustard|cardinal|dodo|fairywren|finch|firecrest|galah|goldeneagle|pigeon|wagtail|chickadee)$/;
+    const spriteBirds = /^(sparrow|goose|blackbird|crow|macaw|robin|dove|hummingbird|shoebill|secretarybird|secretary|magpie|kookaburra|kiwi|penguin|flamingo|seagull|swan|emu|bowerbird|raven|lyrebird|peregrine|snowyowl|toucan|dukeblakiston|albatross|harpy|harpyeagle|baldeagle|blackcockatoo|ostrich|cassowary|barnowl|bluejay|bushturkey|bustard|cardinal|dodo|fairywren|finch|firecrest|galah|goldeneagle|pigeon|wagtail|chickadee|pelican|marabou|kakapo)$/;
     if(spriteBirds.test(k)){
       html = `<div class="sprite4 ${sizeClass||''} sprite-${k} frame-0 ${locked?'locked':''}"></div>`;
     } else {
@@ -6642,7 +6655,7 @@ function buildRosterPreviewStubForBirdKey(birdKey){
     birdKey,
     name: bd.name,
     portraitKey: bd.portraitKey||birdKey,
-    size: bd.size||'medium',
+    size: (typeof rosterSizeForBirdKey==='function') ? rosterSizeForBirdKey(birdKey) : (bd.size||'medium'),
     class: bd.class,
     stats: {...bd.stats},
     abilities: (bd.startAbilities||[]).map(id=>({id, level:1})),
@@ -7365,7 +7378,9 @@ function startGame() {
   };
   normalizeCombatStats(G.player.stats);
   G.player.class = bd.class;
-  G.player.size = bd.size||'medium';
+  G.player.size = (typeof rosterSizeForBirdKey==='function')
+    ? rosterSizeForBirdKey(G.selected || bd.portraitKey || G.player.birdKey)
+    : (bd.size||'medium');
   if(typeof Avian?.equipment?.ensurePlayerEquipmentState==='function'){
     Avian.equipment.ensurePlayerEquipmentState(G.player);
   }
@@ -19551,25 +19566,37 @@ wireThemeBgmAutoplayUnlock();
      3 power/buff
    ============================================================ */
 (function(){
-  const SPRITE_KEYS = new Set(['sparrow','goose','blackbird','crow','macaw','hummingbird','shoebill','secretarybird','secretary','magpie','kookaburra','kiwi','penguin','robin','dove','flamingo','seagull','swan','emu','bowerbird','raven','lyrebird','peregrine','snowyowl','toucan','dukeblakiston','albatross','harpy','harpyeagle','baldeagle','blackcockatoo','ostrich','cassowary','barnowl','bluejay','bushturkey','bustard','cardinal','dodo','fairywren','finch','firecrest','galah','goldeneagle','pigeon','mutatedpigeon','wagtail','chickadee']);
+  const SPRITE_KEYS = new Set(['sparrow','goose','blackbird','crow','macaw','hummingbird','shoebill','secretarybird','secretary','magpie','kookaburra','kiwi','penguin','robin','dove','flamingo','seagull','swan','emu','bowerbird','raven','lyrebird','peregrine','snowyowl','toucan','dukeblakiston','albatross','harpy','harpyeagle','baldeagle','blackcockatoo','ostrich','cassowary','barnowl','bluejay','bushturkey','bustard','cardinal','dodo','fairywren','finch','firecrest','galah','goldeneagle','pigeon','mutatedpigeon','wagtail','chickadee','pelican','marabou','kakapo']);
   const CASTERS = new Set(['singer','trickster']);
 
   function normKey(k){
     const flat = String(k||'').toLowerCase().replace(/[^a-z]/g,'');
+    if(flat === 'peregrinefalcon') return 'peregrine';
+    if(flat === 'emperorpenguin') return 'penguin';
+    if(flat === 'australianpelican') return 'pelican';
+    if(flat === 'maraboustork') return 'marabou';
     if(flat === 'shoebillstork') return 'shoebill';
     if(flat === 'williewagtail') return 'wagtail';
     if(flat === 'chikadee') return 'chickadee';
+    if(flat === 'secretary') return 'secretarybird';
+    if(flat === 'harpyeagle') return 'harpy';
     return flat;
   } // secretaryBird -> secretarybird
   function whoEl(who){ return document.getElementById(`${who}-avatar`); }
 
   function ensureSpriteInEl(el, key, locked){
     if(!el || !SPRITE_KEYS.has(key)) return null;
-    let spr = el.querySelector('.sprite4');
-    if(spr) return spr;
     const spriteSize = (typeof globalThis.getUISizeClass==='function')
       ? globalThis.getUISizeClass(el.id==='enemy-avatar' ? globalThis.G?.enemy : globalThis.G?.player, 'battle')
       : 'medium';
+    let spr = el.querySelector('.sprite4');
+    if(spr){
+      // Keep profile size class in sync (e.g. Giant penguin vs legacy xl).
+      const sizes = ['tiny','small','medium','large','xl','xlarge','giant','boss','battle-medium'];
+      sizes.forEach(s => spr.classList.remove(s));
+      if(spriteSize) spr.classList.add(spriteSize);
+      return spr;
+    }
     const spriteHtml = `<div class="sprite4 ${spriteSize} ${locked?'locked':''} sprite-${key} frame-0" id="${el.id}-sprite"></div>`;
     el.innerHTML = el.id === 'enemy-avatar' ? wrapSpriteFaceLeft(spriteHtml) : spriteHtml;
     el.style.fontSize='';
@@ -19701,7 +19728,7 @@ wireThemeBgmAutoplayUnlock();
    - Forces all UI locations using PORTRAITS[...] to show sprites
    ============================================================ */
 (function(){
-  const SPRITE_KEYS = ['sparrow','goose','blackbird','crow','macaw','hummingbird','shoebill','secretarybird','secretary','magpie','kookaburra','robin','kiwi','penguin','dove','flamingo','seagull','swan','emu','bowerbird','raven','lyrebird','peregrine','snowyowl','toucan','dukeblakiston','albatross','harpy','harpyeagle','baldeagle','blackcockatoo','ostrich','cassowary','barnowl','bluejay','bushturkey','bustard','cardinal','dodo','fairywren','finch','firecrest','galah','goldeneagle','pigeon','mutatedpigeon','wagtail','chickadee'];
+  const SPRITE_KEYS = ['sparrow','goose','blackbird','crow','macaw','hummingbird','shoebill','secretarybird','secretary','magpie','kookaburra','robin','kiwi','penguin','dove','flamingo','seagull','swan','emu','bowerbird','raven','lyrebird','peregrine','snowyowl','toucan','dukeblakiston','albatross','harpy','harpyeagle','baldeagle','blackcockatoo','ostrich','cassowary','barnowl','bluejay','bushturkey','bustard','cardinal','dodo','fairywren','finch','firecrest','galah','goldeneagle','pigeon','mutatedpigeon','wagtail','chickadee','pelican','marabou','kakapo'];
   function mk(k, sizeClass){
     const cls = 'sprite4 ' + (sizeClass || 'medium');
     return `<div class="${cls} sprite-${k} frame-0"></div>`;
@@ -19727,9 +19754,15 @@ wireThemeBgmAutoplayUnlock();
   if(typeof oldBuild==='function' && !oldBuild.__spriteWrapped){
     const norm = (s)=>{
       const flat = String(s||'').toLowerCase().replace(/[^a-z]/g,'');
+      if(flat === 'peregrinefalcon') return 'peregrine';
+      if(flat === 'emperorpenguin') return 'penguin';
+      if(flat === 'australianpelican') return 'pelican';
+      if(flat === 'maraboustork') return 'marabou';
       if(flat === 'shoebillstork') return 'shoebill';
       if(flat === 'williewagtail') return 'wagtail';
       if(flat === 'chikadee') return 'chickadee';
+      if(flat === 'secretary') return 'secretarybird';
+      if(flat === 'harpyeagle') return 'harpy';
       return flat;
     };
     const set = new Set(SPRITE_KEYS);
@@ -19782,9 +19815,15 @@ wireThemeBgmAutoplayUnlock();
 (function(){
   function normKey(k){
     const flat = String(k||'').toLowerCase().replace(/[^a-z]/g,'');
+    if(flat === 'peregrinefalcon') return 'peregrine';
+    if(flat === 'emperorpenguin') return 'penguin';
+    if(flat === 'australianpelican') return 'pelican';
+    if(flat === 'maraboustork') return 'marabou';
     if(flat === 'shoebillstork') return 'shoebill';
     if(flat === 'williewagtail') return 'wagtail';
     if(flat === 'chikadee') return 'chickadee';
+    if(flat === 'secretary') return 'secretarybird';
+    if(flat === 'harpyeagle') return 'harpy';
     return flat;
   }
   function sizeClassForBird(b, context='select'){
@@ -19856,6 +19895,10 @@ SPRITE_KEYS_ALL.add('magpie');
       SPRITE_KEYS_ALL.add('bowerbird');
       SPRITE_KEYS_ALL.add('wagtail');
       SPRITE_KEYS_ALL.add('chickadee');
+      SPRITE_KEYS_ALL.add('pelican');
+      SPRITE_KEYS_ALL.add('marabou');
+      SPRITE_KEYS_ALL.add('kakapo');
+      SPRITE_KEYS_ALL.add('peregrine');
     }
   }catch(_){}
 })();
@@ -19870,14 +19913,20 @@ SPRITE_KEYS_ALL.add('magpie');
    - Adds small idle flutter + clearer attack/run/crouch cues
    ============================================================ */
 (function(){
-  const SPRITE_KEYS = new Set(['sparrow','goose','blackbird','crow','macaw','robin','hummingbird','shoebill','secretarybird','secretary','magpie','kookaburra','flamingo','seagull','swan','emu','penguin','bowerbird','raven','lyrebird','peregrine','snowyowl','toucan','dukeblakiston','albatross','harpy','harpyeagle','baldeagle','blackcockatoo','ostrich','cassowary','barnowl','bluejay','bushturkey','bustard','cardinal','dodo','fairywren','finch','firecrest','galah','goldeneagle','pigeon','mutatedpigeon','wagtail','chickadee']);
+  const SPRITE_KEYS = new Set(['sparrow','goose','blackbird','crow','macaw','robin','hummingbird','shoebill','secretarybird','secretary','magpie','kookaburra','flamingo','seagull','swan','emu','penguin','bowerbird','raven','lyrebird','peregrine','snowyowl','toucan','dukeblakiston','albatross','harpy','harpyeagle','baldeagle','blackcockatoo','ostrich','cassowary','barnowl','bluejay','bushturkey','bustard','cardinal','dodo','fairywren','finch','firecrest','galah','goldeneagle','pigeon','mutatedpigeon','wagtail','chickadee','pelican','marabou','kakapo']);
   const CASTERS = new Set(['singer','trickster']);
 
   function normKey(k){
     const flat = String(k||'').toLowerCase().replace(/[^a-z]/g,'');
+    if(flat === 'peregrinefalcon') return 'peregrine';
+    if(flat === 'emperorpenguin') return 'penguin';
+    if(flat === 'australianpelican') return 'pelican';
+    if(flat === 'maraboustork') return 'marabou';
     if(flat === 'shoebillstork') return 'shoebill';
     if(flat === 'williewagtail') return 'wagtail';
     if(flat === 'chikadee') return 'chickadee';
+    if(flat === 'secretary') return 'secretarybird';
+    if(flat === 'harpyeagle') return 'harpy';
     return flat;
   }
   function whoEl(who){ return document.getElementById(`${who}-avatar`); }
@@ -19887,11 +19936,19 @@ SPRITE_KEYS_ALL.add('magpie');
     const key=currentKey(who);
     const el=whoEl(who);
     if(!el || !SPRITE_KEYS.has(key)) return null;
+    const entity = who==='player' ? globalThis.G?.player : globalThis.G?.enemy;
+    const spriteSize = (typeof globalThis.getUISizeClass==='function')
+      ? globalThis.getUISizeClass(entity, 'battle')
+      : 'medium';
     let spr=el.querySelector('.sprite4');
     if(!spr){
-      const spriteHtml = `<div class="sprite4 sprite-${key} frame-0" id="${who}-avatar-sprite"></div>`;
+      const spriteHtml = `<div class="sprite4 ${spriteSize} sprite-${key} frame-0" id="${who}-avatar-sprite"></div>`;
       el.innerHTML = who === 'enemy' ? wrapSpriteFaceLeft(spriteHtml) : spriteHtml;
       spr=el.querySelector('.sprite4');
+    } else {
+      const sizes = ['tiny','small','medium','large','xl','xlarge','giant','boss','battle-medium'];
+      sizes.forEach(s => spr.classList.remove(s));
+      if(spriteSize) spr.classList.add(spriteSize);
     }
     return spr;
   }
@@ -20276,10 +20333,14 @@ SPRITE_KEYS_ALL.add('magpie');
     'swan','emu','bowerbird','raven','lyrebird','peregrine','snowyowl','toucan','dukeblakiston',
     'albatross','harpy','harpyeagle','baldeagle','blackcockatoo','ostrich','cassowary',
     'barnowl','bluejay','bushturkey','bustard','cardinal','dodo','fairywren','finch','firecrest','galah','goldeneagle','pigeon',
-    'wagtail','chickadee'
+    'wagtail','chickadee','pelican','marabou','kakapo'
   ]);
   const norm = s => {
     const k = String(s || '').toLowerCase().replace(/[^a-z]/g,'');
+    if(k === 'peregrinefalcon') return 'peregrine';
+    if(k === 'emperorpenguin') return 'penguin';
+    if(k === 'australianpelican') return 'pelican';
+    if(k === 'maraboustork') return 'marabou';
     if(k === 'shoebillstork') return 'shoebill';
     if(k === 'williewagtail') return 'wagtail';
     if(k === 'chikadee') return 'chickadee';
