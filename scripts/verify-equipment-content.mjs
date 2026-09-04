@@ -72,12 +72,10 @@ if (!slots.slots || !slots.slots.offHand) fail('offHand slot missing');
 const skillIds = skills ? Object.keys(skills) : [];
 if (skillIds.length < 100) fail('expected ≥100 skills (v1.2 WSK+ESK+BASIC), got ' + skillIds.length);
 if (!skills.BASIC_PHYSICAL || !skills.BASIC_MAGIC) fail('missing BASIC_PHYSICAL / BASIC_MAGIC');
-if (Number(skills.BASIC_PHYSICAL.skillPowerPct) !== 100) {
-  fail('BASIC_PHYSICAL must be equipped Basic Attack at 100% Skill Power');
+if (Number(skills.BASIC_PHYSICAL.skillPowerPct) !== 45) {
+  fail('BASIC_PHYSICAL must be equipped Basic Attack at 45% Skill Power (v2.1)');
 }
-if (!skills.BASIC_PHYSICAL.naturalStrikeFlat) {
-  fail('BASIC_PHYSICAL must retain unarmed flat 1–2 fallback');
-}
+/* Unarmed flat 1–2 remains via combat-config naturalStrike; BASIC row uses weapon Attack Power. */
 if (skills.BASIC_PHYSICAL.name !== 'Basic Attack') fail('BASIC_PHYSICAL name must be Basic Attack, got ' + skills.BASIC_PHYSICAL.name);
 if (skills.BASIC_MAGIC.name !== 'Basic Attack') fail('BASIC_MAGIC name must be Basic Attack, got ' + skills.BASIC_MAGIC.name);
 if (skills.BASIC_PHYSICAL.heavyAccuracyPenalty) fail('BASIC_PHYSICAL must have no heavy accuracy penalty');
@@ -107,23 +105,23 @@ if (!classes || Object.keys(classes).length < 8) fail('expected ≥8 classes');
 if (!passives || Object.keys(passives).length !== 52) fail('expected 52 bird passives v2');
 if (!utilities || Object.keys(utilities).length !== 52) fail('expected 52 innate utilities');
 
-if (!tiers || !tiers.buff || tiers.buff.minor !== 4 || tiers.buff.moderate !== 10 || tiers.buff.major !== 20) {
-  fail('effectTiers must be Minor=4 / Moderate=10 / Major=20 (v0.9 flat)');
+if (!tiers || !tiers.buff || tiers.buff.minor !== 1 || tiers.buff.major !== 2 || tiers.buff.grand !== 4) {
+  fail('effectTiers must be Minor=1 / Major=2 / Grand=4 (Combat Workbook v2.1)');
 }
 if (!tiers.flatStat) fail('effectTiers.flatStat expected');
-if (tiers.buff.grand != null || tiers.buff.epic != null || tiers.buff.legendary != null) {
-  fail('legacy grand/epic/legendary tiers must not appear in effectTiers');
+if (tiers.buff.epic != null || tiers.buff.legendary != null) {
+  fail('legacy epic/legendary tiers must not appear in effectTiers');
 }
 
-if (!cfg || cfg.packVersion !== '2026.07-equipment-v1.5-physical-ailments') {
-  fail('combatConfig.packVersion must be equipment-v1.5-physical-ailments');
+if (!cfg || !String(cfg.packVersion || '').includes('combat-v2.1')) {
+  fail('combatConfig.packVersion must be combat-v2.1');
 }
 if (!cfg.equipmentV12) fail('combatConfig.equipmentV12 expected');
 if (!cfg.equipmentV13BasicStartingWeapons) fail('combatConfig.equipmentV13BasicStartingWeapons expected');
 if (!cfg.protection || !cfg.protection.barrierRemoved) fail('combatConfig.protection.barrierRemoved expected');
 if (!cfg.weaponFirst || !cfg.weaponFirst.enabled) fail('combatConfig.weaponFirst.enabled expected');
-if (Number(cfg.basicAttack && cfg.basicAttack.skillPowerPct) !== 100) {
-  fail('combatConfig.basicAttack.skillPowerPct must be 100');
+if (Number(cfg.basicAttack && cfg.basicAttack.skillPowerPct) !== 45) {
+  fail('combatConfig.basicAttack.skillPowerPct must be 45');
 }
 if (cfg.directScaling && cfg.directScaling.enabled) fail('combatConfig.directScaling must be disabled for v0.9');
 if (!cfg.defence || cfg.defence.mitigationCap !== 0.75) fail('combatConfig.defence.mitigationCap must be 0.75');
