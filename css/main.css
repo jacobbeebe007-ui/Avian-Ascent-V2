@@ -6007,16 +6007,16 @@ html.avian-ow-ui-embed .settings-modal-inner{max-height:none;margin:auto;width:1
 .sprite-macaw{background-image:url("../assets/sprites/macaw.png");}
 .sprite-hummingbird{background-image:url("../assets/sprites/hummingbird.png");}
 .sprite-shoebill{background-image:url("../assets/sprites/shoebill.png");}
-.sprite-secretarybird{background-image:url("../assets/sprites/Secretary Bird.png");}
-.sprite-secretary{background-image:url("../assets/sprites/Secretary Bird.png");}
-.sprite-robin{background-image:url("../assets/sprites/Robin.png");}
+.sprite-secretarybird{background-image:url("../assets/sprites/secretarybird.png");}
+.sprite-secretary{background-image:url("../assets/sprites/secretarybird.png");}
+.sprite-robin{background-image:url("../assets/sprites/robin.png");}
 .sprite-kiwi{background-image:url("../assets/sprites/kiwi.png");}
 .sprite-magpie{background-image:url("../assets/sprites/magpie.png");}
 .sprite-kookaburra{background-image:url("../assets/sprites/kookaburra.png");}
-.sprite-penguin{background-image:url("../assets/sprites/Emperor Penguin.png");}
-.sprite-emperorpenguin{background-image:url("../assets/sprites/Emperor Penguin.png");}
+.sprite-penguin{background-image:url("../assets/sprites/emperorpenguin.png");}
+.sprite-emperorpenguin{background-image:url("../assets/sprites/emperorpenguin.png");}
 .sprite-flamingo{background-image:url("../assets/sprites/flamingo.png");}
-.sprite-seagull{background-image:url("../assets/sprites/Seagull.png");}
+.sprite-seagull{background-image:url("../assets/sprites/seagull.png");}
 .sprite-swan{background-image:url("../assets/sprites/swan.png");}
 .sprite-emu{background-image:url("../assets/sprites/emu.png");}
 .sprite-ostrich{background-image:url("../assets/sprites/ostrich.png");}
@@ -6025,7 +6025,13 @@ html.avian-ow-ui-embed .settings-modal-inner{max-height:none;margin:auto;width:1
 .sprite-raven{background-image:url("../assets/sprites/raven.png");}
 .sprite-lyrebird{background-image:url("../assets/sprites/lyrebird.png");}
 .sprite-bowerbird{background-image:url("../assets/sprites/bowerbird.png");}
-.sprite-peregrine{background-image:url("../assets/sprites/peregrine.png");}
+.sprite-peregrine{background-image:url("../assets/sprites/peregrinefalcon.png");}
+.sprite-peregrinefalcon{background-image:url("../assets/sprites/peregrinefalcon.png");}
+.sprite-pelican{background-image:url("../assets/sprites/australianpelican.png");}
+.sprite-australianpelican{background-image:url("../assets/sprites/australianpelican.png");}
+.sprite-marabou{background-image:url("../assets/sprites/maraboustork.png");}
+.sprite-maraboustork{background-image:url("../assets/sprites/maraboustork.png");}
+.sprite-kakapo{background-image:url("../assets/sprites/kakapo.png");}
 .sprite-snowyowl{background-image:url("../assets/sprites/snowyowl.png");}
 .sprite-toucan{background-image:url("../assets/sprites/toucan.png");}
 .sprite-shoebillstork{background-image:url("../assets/sprites/shoebill.png");}
@@ -6033,7 +6039,7 @@ html.avian-ow-ui-embed .settings-modal-inner{max-height:none;margin:auto;width:1
 .sprite-harpy{background-image:url("../assets/sprites/harpyeagle.png");}
 .sprite-harpyeagle{background-image:url("../assets/sprites/harpyeagle.png");}
 .sprite-blackcockatoo{background-image:url("../assets/sprites/blackcockatoo.png");}
-.sprite-dukeblakiston{background-image:url("../assets/sprites/Duke Blakiston.png");}
+.sprite-dukeblakiston{background-image:url("../assets/sprites/dukeblakiston.png");}
 .sprite-barnowl{background-image:url("../assets/sprites/barnowl.png");}
 .sprite-bluejay{background-image:url("../assets/sprites/bluejay.png");}
 .sprite-bushturkey{background-image:url("../assets/sprites/bushturkey.png");}
@@ -6283,8 +6289,7 @@ img{image-rendering:pixelated;image-rendering:crisp-edges;}
 
 /* ===== FINAL SMALL PENGUIN SPRITE ===== */
 .sprite-penguin{
-  background-image:url("../assets/sprites/Emperor Penguin.png") !important;
-  background-image:url("../assets/sprites/Emperor Penguin.png") !important;
+  background-image:url("../assets/sprites/emperorpenguin.png") !important;
   background-repeat:no-repeat !important;
   background-size:200% 200% !important;
   image-rendering:pixelated !important;

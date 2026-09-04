@@ -6474,6 +6474,9 @@ globalThis.getUISizeClass=getUISizeClass;
 function normalizeSpriteBirdKey(raw){
   const k = String(raw||'').toLowerCase().replace(/[^a-z]/g,'');
   if(k === 'peregrinefalcon') return 'peregrine';
+  if(k === 'emperorpenguin') return 'penguin';
+  if(k === 'australianpelican') return 'pelican';
+  if(k === 'maraboustork') return 'marabou';
   if(k === 'snowyowl' || k === 'snowy') return 'snowyowl';
   if(k === 'shoebillstork') return 'shoebill';
   if(k === 'williewagtail') return 'wagtail';
@@ -6508,7 +6511,7 @@ function renderBirdIconHTML(birdKey, sizeClass, locked, faceLeft=false){
   if(k === 'mutatedpigeon'){
     html = `<div class="sprite4 ${sizeClass||''} sprite-mutatedpigeon frame-0 ${locked?'locked':''}"></div>`;
   } else {
-    const spriteBirds = /^(sparrow|goose|blackbird|crow|macaw|robin|dove|hummingbird|shoebill|secretarybird|secretary|magpie|kookaburra|kiwi|penguin|flamingo|seagull|swan|emu|bowerbird|raven|lyrebird|peregrine|snowyowl|toucan|dukeblakiston|albatross|harpy|harpyeagle|baldeagle|blackcockatoo|ostrich|cassowary|barnowl|bluejay|bushturkey|bustard|cardinal|dodo|fairywren|finch|firecrest|galah|goldeneagle|pigeon|wagtail|chickadee)$/;
+    const spriteBirds = /^(sparrow|goose|blackbird|crow|macaw|robin|dove|hummingbird|shoebill|secretarybird|secretary|magpie|kookaburra|kiwi|penguin|emperorpenguin|flamingo|seagull|swan|emu|bowerbird|raven|lyrebird|peregrine|peregrinefalcon|snowyowl|toucan|dukeblakiston|albatross|harpy|harpyeagle|baldeagle|blackcockatoo|ostrich|cassowary|barnowl|bluejay|bushturkey|bustard|cardinal|dodo|fairywren|finch|firecrest|galah|goldeneagle|pigeon|wagtail|chickadee|pelican|australianpelican|marabou|maraboustork|kakapo)$/;
     if(spriteBirds.test(k)){
       html = `<div class="sprite4 ${sizeClass||''} sprite-${k} frame-0 ${locked?'locked':''}"></div>`;
     } else {
@@ -19524,7 +19527,7 @@ wireThemeBgmAutoplayUnlock();
      3 power/buff
    ============================================================ */
 (function(){
-  const SPRITE_KEYS = new Set(['sparrow','goose','blackbird','crow','macaw','hummingbird','shoebill','secretarybird','secretary','magpie','kookaburra','kiwi','penguin','robin','dove','flamingo','seagull','swan','emu','bowerbird','raven','lyrebird','peregrine','snowyowl','toucan','dukeblakiston','albatross','harpy','harpyeagle','baldeagle','blackcockatoo','ostrich','cassowary','barnowl','bluejay','bushturkey','bustard','cardinal','dodo','fairywren','finch','firecrest','galah','goldeneagle','pigeon','mutatedpigeon','wagtail','chickadee']);
+  const SPRITE_KEYS = new Set(['sparrow','goose','blackbird','crow','macaw','hummingbird','shoebill','secretarybird','secretary','magpie','kookaburra','kiwi','penguin','robin','dove','flamingo','seagull','swan','emu','bowerbird','raven','lyrebird','peregrine','snowyowl','toucan','dukeblakiston','albatross','harpy','harpyeagle','baldeagle','blackcockatoo','ostrich','cassowary','barnowl','bluejay','bushturkey','bustard','cardinal','dodo','fairywren','finch','firecrest','galah','goldeneagle','pigeon','mutatedpigeon','wagtail','chickadee','pelican','australianpelican','marabou','maraboustork','kakapo','peregrinefalcon','emperorpenguin']);
   const CASTERS = new Set(['singer','trickster']);
 
   function normKey(k){
@@ -19674,7 +19677,7 @@ wireThemeBgmAutoplayUnlock();
    - Forces all UI locations using PORTRAITS[...] to show sprites
    ============================================================ */
 (function(){
-  const SPRITE_KEYS = ['sparrow','goose','blackbird','crow','macaw','hummingbird','shoebill','secretarybird','secretary','magpie','kookaburra','robin','kiwi','penguin','dove','flamingo','seagull','swan','emu','bowerbird','raven','lyrebird','peregrine','snowyowl','toucan','dukeblakiston','albatross','harpy','harpyeagle','baldeagle','blackcockatoo','ostrich','cassowary','barnowl','bluejay','bushturkey','bustard','cardinal','dodo','fairywren','finch','firecrest','galah','goldeneagle','pigeon','mutatedpigeon','wagtail','chickadee'];
+  const SPRITE_KEYS = ['sparrow','goose','blackbird','crow','macaw','hummingbird','shoebill','secretarybird','secretary','magpie','kookaburra','robin','kiwi','penguin','dove','flamingo','seagull','swan','emu','bowerbird','raven','lyrebird','peregrine','snowyowl','toucan','dukeblakiston','albatross','harpy','harpyeagle','baldeagle','blackcockatoo','ostrich','cassowary','barnowl','bluejay','bushturkey','bustard','cardinal','dodo','fairywren','finch','firecrest','galah','goldeneagle','pigeon','mutatedpigeon','wagtail','chickadee','pelican','australianpelican','marabou','maraboustork','kakapo','peregrinefalcon','emperorpenguin'];
   function mk(k, sizeClass){
     const cls = 'sprite4 ' + (sizeClass || 'medium');
     return `<div class="${cls} sprite-${k} frame-0"></div>`;
@@ -19843,7 +19846,7 @@ SPRITE_KEYS_ALL.add('magpie');
    - Adds small idle flutter + clearer attack/run/crouch cues
    ============================================================ */
 (function(){
-  const SPRITE_KEYS = new Set(['sparrow','goose','blackbird','crow','macaw','robin','hummingbird','shoebill','secretarybird','secretary','magpie','kookaburra','flamingo','seagull','swan','emu','penguin','bowerbird','raven','lyrebird','peregrine','snowyowl','toucan','dukeblakiston','albatross','harpy','harpyeagle','baldeagle','blackcockatoo','ostrich','cassowary','barnowl','bluejay','bushturkey','bustard','cardinal','dodo','fairywren','finch','firecrest','galah','goldeneagle','pigeon','mutatedpigeon','wagtail','chickadee']);
+  const SPRITE_KEYS = new Set(['sparrow','goose','blackbird','crow','macaw','robin','hummingbird','shoebill','secretarybird','secretary','magpie','kookaburra','flamingo','seagull','swan','emu','penguin','bowerbird','raven','lyrebird','peregrine','snowyowl','toucan','dukeblakiston','albatross','harpy','harpyeagle','baldeagle','blackcockatoo','ostrich','cassowary','barnowl','bluejay','bushturkey','bustard','cardinal','dodo','fairywren','finch','firecrest','galah','goldeneagle','pigeon','mutatedpigeon','wagtail','chickadee','pelican','australianpelican','marabou','maraboustork','kakapo','peregrinefalcon','emperorpenguin']);
   const CASTERS = new Set(['singer','trickster']);
 
   function normKey(k){
@@ -20249,10 +20252,14 @@ SPRITE_KEYS_ALL.add('magpie');
     'swan','emu','bowerbird','raven','lyrebird','peregrine','snowyowl','toucan','dukeblakiston',
     'albatross','harpy','harpyeagle','baldeagle','blackcockatoo','ostrich','cassowary',
     'barnowl','bluejay','bushturkey','bustard','cardinal','dodo','fairywren','finch','firecrest','galah','goldeneagle','pigeon',
-    'wagtail','chickadee'
+    'wagtail','chickadee','pelican','australianpelican','marabou','maraboustork','kakapo','peregrinefalcon','emperorpenguin'
   ]);
   const norm = s => {
     const k = String(s || '').toLowerCase().replace(/[^a-z]/g,'');
+    if(k === 'peregrinefalcon') return 'peregrine';
+    if(k === 'emperorpenguin') return 'penguin';
+    if(k === 'australianpelican') return 'pelican';
+    if(k === 'maraboustork') return 'marabou';
     if(k === 'shoebillstork') return 'shoebill';
     if(k === 'williewagtail') return 'wagtail';
     if(k === 'chikadee') return 'chickadee';

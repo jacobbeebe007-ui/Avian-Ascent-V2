@@ -36,8 +36,8 @@
   },
   {
     "css_file": "main.css",
-    "sprite_file": "assets/sprites/Secretary Bird.png",
-    "bytes": 1181175
+    "sprite_file": "assets/sprites/secretarybird.png",
+    "bytes": 1847358
   },
   {
     "css_file": "main.css",
@@ -51,18 +51,18 @@
   },
   {
     "css_file": "main.css",
-    "sprite_file": "assets/sprites/Robin.png",
+    "sprite_file": "assets/sprites/robin.png",
     "bytes": 1937465
   },
   {
     "css_file": "main.css",
-    "sprite_file": "assets/sprites/Flamingo.png",
-    "bytes": 1319850
+    "sprite_file": "assets/sprites/flamingo.png",
+    "bytes": 1643004
   },
   {
     "css_file": "main.css",
-    "sprite_file": "assets/sprites/Seagull.png",
-    "bytes": 540935
+    "sprite_file": "assets/sprites/seagull.png",
+    "bytes": 1833280
   },
   {
     "css_file": "main.css",
@@ -76,13 +76,13 @@
   },
   {
     "css_file": "main.css",
-    "sprite_file": "assets/sprites/Emperor Penguin.png",
-    "bytes": 1591533
+    "sprite_file": "assets/sprites/emperorpenguin.png",
+    "bytes": 437948
   },
   {
     "css_file": "sprites.css",
-    "sprite_file": "assets/sprites/Duke Blakiston.png",
-    "bytes": 3599756
+    "sprite_file": "assets/sprites/dukeblakiston.png",
+    "bytes": 1973157
   },
   {
     "css_file": "sprites.css",
@@ -91,13 +91,13 @@
   },
   {
     "css_file": "sprites.css",
-    "sprite_file": "assets/sprites/Seagull.png",
-    "bytes": 1393876
+    "sprite_file": "assets/sprites/seagull.png",
+    "bytes": 1833280
   },
   {
     "css_file": "sprites.css",
-    "sprite_file": "assets/sprites/Albatross.png",
-    "bytes": 1573703
+    "sprite_file": "assets/sprites/albatross.png",
+    "bytes": 1393771
   },
   {
     "css_file": "sprites.css",
@@ -106,8 +106,8 @@
   },
   {
     "css_file": "sprites.css",
-    "sprite_file": "assets/sprites/peregrine.png",
-    "bytes": 1756184
+    "sprite_file": "assets/sprites/peregrinefalcon.png",
+    "bytes": 660700
   },
   {
     "css_file": "sprites.css",
@@ -138,5 +138,20 @@
     "css_file": "sprites.css",
     "sprite_file": "assets/sprites/toucan.png",
     "bytes": 1645201
+  },
+  {
+    "css_file": "main.css",
+    "sprite_file": "assets/sprites/australianpelican.png",
+    "bytes": 1322533
+  },
+  {
+    "css_file": "main.css",
+    "sprite_file": "assets/sprites/maraboustork.png",
+    "bytes": 1087494
+  },
+  {
+    "css_file": "main.css",
+    "sprite_file": "assets/sprites/kakapo.png",
+    "bytes": 1380901
   }
 ]
