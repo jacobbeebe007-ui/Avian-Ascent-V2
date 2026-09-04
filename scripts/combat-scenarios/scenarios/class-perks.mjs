@@ -3,15 +3,16 @@
 export default [
   {
     id: 'CLS-001',
-    name: 'Rogue class resolves with starting weapon WPN-B04',
+    name: 'Rogue class resolves with starting weapon WPN-007',
     setup: {
-      player: { bird: 'sparrow', class: 'rogue', energy: 4, equipment: { mainHand: 'WPN-B04' } },
+      player: { bird: 'sparrow', class: 'rogue', energy: 4, equipment: { mainHand: 'WPN-007' } },
       enemy: { bird: 'crow', hp: 50 },
     },
     assert({ ctx, sandbox, expectValue }) {
       expectValue(ctx.player.class, 'rogue', 'class is rogue');
-      const rules = sandbox.Avian?.data?.equipment?.coreRules?.basicStartingWeapons;
-      if (rules) expectValue(rules.rogue, 'WPN-B04', 'authored starting weapon');
+      const rules = sandbox.Avian?.data?.equipment?.coreRules?.basicStartingWeapons
+        || sandbox.Avian?.data?.equipment?.startingWeapons?.byClass;
+      if (rules) expectValue(rules.rogue, 'WPN-007', 'authored starting weapon');
     },
   },
   {

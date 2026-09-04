@@ -136,7 +136,7 @@
       if (!map || !map.rogue || !map.mage) {
         throw new Error('basicStartingWeapons missing');
       }
-      if (map.rogue !== 'WPN-B04') throw new Error('rogue starting weapon expected WPN-B04');
+      if (map.rogue !== 'WPN-007') throw new Error('rogue starting weapon expected WPN-007');
     });
 
     check('SIM-001', 'simulateDuel API available', function () {

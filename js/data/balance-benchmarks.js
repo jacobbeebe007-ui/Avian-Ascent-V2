@@ -33,7 +33,7 @@
   };
   function equipment(cls, tier) {
     var a = loadoutIds[cls][tierSpec[tier].rarity];
-    return Object.freeze({ helmet:a[0], armour:a[1], mainHand:a[2] || starts[cls], offHand:a[6] || null, ankletL:a[3], ankletR:a[4], necklace:a[5] });
+    return Object.freeze({ helmet:a[0], armour:a[1], mainHand:a[2] || starts[cls], offHand:a[6] || null, anklets:a[3] || a[4] || null, necklace:a[5] });
   }
   var roster = {};
   Object.keys(birds).forEach(function (cls) {

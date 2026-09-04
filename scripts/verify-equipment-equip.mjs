@@ -177,31 +177,28 @@ if (dual.equipment.mainHand === 'WPN-001' && dual.equipment.offHand === 'WPN-001
   fail('duplicate 1H dual-wield failed');
 }
 
-// --- duplicate anklets ---
+// --- anklets pair slot (v2.1 collapsed) ---
 const ank = freshPlayer('crow');
 equipment.addToInventory(ank, 'ACC-001');
-equipment.addToInventory(ank, 'ACC-001');
-equipment.equip(ank, 'ACC-001', 'ankletL');
-equipment.equip(ank, 'ACC-001', 'ankletR');
-if (ank.equipment.ankletL === 'ACC-001' && ank.equipment.ankletR === 'ACC-001') {
-  ok('duplicate anklets allowed');
+equipment.equip(ank, 'ACC-001', 'anklets');
+if (ank.equipment.anklets === 'ACC-001' && !ank.equipment.ankletL && !ank.equipment.ankletR) {
+  ok('anklets pair slot equips');
 } else {
-  fail('duplicate anklet equip failed');
+  fail('anklets pair equip failed: ' + JSON.stringify(ank.equipment));
 }
 
-// --- auto-slot prefers empty anklet foot ---
+// --- second anklet stays in bag when pair slot filled ---
 const ankAuto = freshPlayer('crow');
 equipment.addToInventory(ankAuto, 'ACC-001');
-equipment.addToInventory(ankAuto, 'ACC-001');
-equipment.equip(ankAuto, 'ACC-001', 'ankletL');
-const autoSlot = equipment.findEquipSlotForItem(ankAuto, 'ACC-001');
-if (autoSlot === 'ankletR') ok('findEquipSlotForItem prefers empty ankletR when L filled');
-else fail(`expected ankletR for second anklet, got ${autoSlot}`);
-const autoEq = equipment.equipAuto(ankAuto, 'ACC-001');
-if (autoEq.ok && ankAuto.equipment.ankletL === 'ACC-001' && ankAuto.equipment.ankletR === 'ACC-001') {
-  ok('equipAuto fills both anklet feet');
+equipment.equip(ankAuto, 'ACC-001', 'anklets');
+const autoSlot = equipment.findEmptyEquipSlotForItem(ankAuto, 'ACC-001');
+if (autoSlot == null) ok('findEmptyEquipSlotForItem has no second anklet slot');
+else fail(`expected no empty anklet slot, got ${autoSlot}`);
+const autoEq = equipment.grantEquipment(ankAuto, 'ACC-001');
+if (autoEq.ok && !autoEq.autoEquipped && ankAuto.equipment.anklets === 'ACC-001') {
+  ok('grantEquipment keeps second anklet in bag when pair filled');
 } else {
-  fail('equipAuto did not fill both anklet feet');
+  fail('second anklet should remain in bag: ' + JSON.stringify(autoEq));
 }
 
 // --- 2H main blocks Shields in offHand ---
@@ -361,10 +358,10 @@ if (!unequipPlayer.equipment.helmet && unequipPlayer.equipmentInventory.length =
   const grantAnk = freshPlayer('crow');
   const a1 = equipment.grantEquipment(grantAnk, 'ACC-001');
   const a2 = equipment.grantEquipment(grantAnk, 'ACC-001');
-  if (a1.autoEquipped && a2.autoEquipped && grantAnk.equipment.ankletL === 'ACC-001' && grantAnk.equipment.ankletR === 'ACC-001') {
-    ok('grantEquipment fills both empty anklet slots in order');
+  if (a1.autoEquipped && !a2.autoEquipped && grantAnk.equipment.anklets === 'ACC-001') {
+    ok('grantEquipment fills anklets pair once');
   } else {
-    fail(`anklets should fill L then R, L=${grantAnk.equipment.ankletL} R=${grantAnk.equipment.ankletR}`);
+    fail(`anklets pair once: a1=${JSON.stringify(a1)} a2=${JSON.stringify(a2)} eq=${grantAnk.equipment.anklets}`);
   }
 }
 

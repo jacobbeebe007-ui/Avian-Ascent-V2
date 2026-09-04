@@ -63,21 +63,21 @@ const utilities = data.combatPack && data.combatPack.innateUtilities;
 const tiers = data.effectTiers;
 const cfg = data.combatConfig;
 
-if (!slots || !slots.slotOrder || slots.slotOrder.length !== 7) {
-  fail('expected 7 equipment slots, got ' + (slots && slots.slotOrder && slots.slotOrder.length));
+if (!slots || !slots.slotOrder || slots.slotOrder.length !== 6) {
+  fail('expected 6 equipment slots (v2.1 anklets pair), got ' + (slots && slots.slotOrder && slots.slotOrder.length));
 }
 if (slots.slots && slots.slots.shield) fail('dedicated shield slot should be removed');
 if (!slots.slots || !slots.slots.offHand) fail('offHand slot missing');
+if (!slots.slots || !slots.slots.anklets) fail('anklets pair slot missing');
+if (slots.slots.ankletL || slots.slots.ankletR) fail('legacy ankletL/ankletR slots should be collapsed');
 
 const skillIds = skills ? Object.keys(skills) : [];
 if (skillIds.length < 100) fail('expected ≥100 skills (v1.2 WSK+ESK+BASIC), got ' + skillIds.length);
 if (!skills.BASIC_PHYSICAL || !skills.BASIC_MAGIC) fail('missing BASIC_PHYSICAL / BASIC_MAGIC');
-if (Number(skills.BASIC_PHYSICAL.skillPowerPct) !== 100) {
-  fail('BASIC_PHYSICAL must be equipped Basic Attack at 100% Skill Power');
+if (Number(skills.BASIC_PHYSICAL.skillPowerPct) !== 45) {
+  fail('BASIC_PHYSICAL must be equipped Basic Attack at 45% Skill Power (v2.1)');
 }
-if (!skills.BASIC_PHYSICAL.naturalStrikeFlat) {
-  fail('BASIC_PHYSICAL must retain unarmed flat 1–2 fallback');
-}
+/* Unarmed flat 1–2 remains via combat-config naturalStrike; BASIC row uses weapon Attack Power. */
 if (skills.BASIC_PHYSICAL.name !== 'Basic Attack') fail('BASIC_PHYSICAL name must be Basic Attack, got ' + skills.BASIC_PHYSICAL.name);
 if (skills.BASIC_MAGIC.name !== 'Basic Attack') fail('BASIC_MAGIC name must be Basic Attack, got ' + skills.BASIC_MAGIC.name);
 if (skills.BASIC_PHYSICAL.heavyAccuracyPenalty) fail('BASIC_PHYSICAL must have no heavy accuracy penalty');
@@ -86,14 +86,30 @@ const itemIds = items ? Object.keys(items) : [];
 if (itemIds.length !== 305) fail('expected 305 items (v1.3 + 5 basic starters), got ' + itemIds.length);
 
 const starters = data.equipment && data.equipment.startingWeapons;
-if (!starters || !starters.byClass || starters.ids.length !== 5) {
+if (!starters || !starters.byClass || !Array.isArray(starters.ids) || starters.ids.length < 5) {
   fail('startingWeapons map missing or incomplete');
 }
-for (const id of starters.ids) {
+/* v2.1 — starters map into full Grey family kits (Basic + A + B), not Basic-only. */
+for (const [cls, id] of Object.entries(starters.byClass)) {
   const it = items[id];
-  if (!it || !it.isBasicStartingWeapon) fail('missing basic starting weapon ' + id);
-  if (it.skill1 || it.skill2) fail(id + ' must not grant weapon skills');
+  if (!it) fail('missing starter weapon ' + id + ' for ' + cls);
+  if (it.isBasicStartingWeapon) fail(cls + ' starter ' + id + ' must be a full family kit, not Basic-only');
+  if (!it.skill1 || !it.skill2) fail(id + ' must grant Technique A + B');
   if (it.minDamage == null || it.maxDamage == null) fail(id + ' missing damage range');
+}
+for (const id of (starters.legacyBasicIds || [])) {
+  const it = items[id];
+  if (!it || !it.isBasicStartingWeapon) fail('missing legacy basic starting weapon ' + id);
+}
+/* Grey defence reachability */
+const greyArmour = Object.values(items).filter((it) => it.slot === 'Armour' && it.rarity === 'grey');
+if (!greyArmour.length || greyArmour.some((it) => !it.skill1)) fail('all Grey armour must grant a defence skill');
+const greyShields = Object.values(items).filter((it) => it.slot === 'Shield' && it.rarity === 'grey');
+if (!greyShields.length || greyShields.some((it) => it.skill1 !== 'ESK-SHD-FORTIFY')) {
+  fail('all Grey shields must grant ESK-SHD-FORTIFY');
+}
+if (!skills['ESK-SHD-FORTIFY'] || Number(skills['ESK-SHD-FORTIFY'].en) !== 4) {
+  fail('Shield Fortify must cost 4 AP');
 }
 
 const familyIds = families ? Object.keys(families) : [];
@@ -107,23 +123,23 @@ if (!classes || Object.keys(classes).length < 8) fail('expected ≥8 classes');
 if (!passives || Object.keys(passives).length !== 52) fail('expected 52 bird passives v2');
 if (!utilities || Object.keys(utilities).length !== 52) fail('expected 52 innate utilities');
 
-if (!tiers || !tiers.buff || tiers.buff.minor !== 4 || tiers.buff.moderate !== 10 || tiers.buff.major !== 20) {
-  fail('effectTiers must be Minor=4 / Moderate=10 / Major=20 (v0.9 flat)');
+if (!tiers || !tiers.buff || tiers.buff.minor !== 1 || tiers.buff.major !== 2 || tiers.buff.grand !== 4) {
+  fail('effectTiers must be Minor=1 / Major=2 / Grand=4 (Combat Workbook v2.1)');
 }
 if (!tiers.flatStat) fail('effectTiers.flatStat expected');
-if (tiers.buff.grand != null || tiers.buff.epic != null || tiers.buff.legendary != null) {
-  fail('legacy grand/epic/legendary tiers must not appear in effectTiers');
+if (tiers.buff.epic != null || tiers.buff.legendary != null) {
+  fail('legacy epic/legendary tiers must not appear in effectTiers');
 }
 
-if (!cfg || cfg.packVersion !== '2026.07-equipment-v1.5-physical-ailments') {
-  fail('combatConfig.packVersion must be equipment-v1.5-physical-ailments');
+if (!cfg || !String(cfg.packVersion || '').includes('combat-v2.1')) {
+  fail('combatConfig.packVersion must be combat-v2.1');
 }
 if (!cfg.equipmentV12) fail('combatConfig.equipmentV12 expected');
 if (!cfg.equipmentV13BasicStartingWeapons) fail('combatConfig.equipmentV13BasicStartingWeapons expected');
 if (!cfg.protection || !cfg.protection.barrierRemoved) fail('combatConfig.protection.barrierRemoved expected');
 if (!cfg.weaponFirst || !cfg.weaponFirst.enabled) fail('combatConfig.weaponFirst.enabled expected');
-if (Number(cfg.basicAttack && cfg.basicAttack.skillPowerPct) !== 100) {
-  fail('combatConfig.basicAttack.skillPowerPct must be 100');
+if (Number(cfg.basicAttack && cfg.basicAttack.skillPowerPct) !== 45) {
+  fail('combatConfig.basicAttack.skillPowerPct must be 45');
 }
 if (cfg.directScaling && cfg.directScaling.enabled) fail('combatConfig.directScaling must be disabled for v0.9');
 if (!cfg.defence || cfg.defence.mitigationCap !== 0.75) fail('combatConfig.defence.mitigationCap must be 0.75');
@@ -210,14 +226,19 @@ for (const bk of birdIds) {
   const b = birds[bk];
   if (!passives[bk]) fail('missing passive for ' + bk);
   if (!utilities[bk]) fail('missing utility for ' + bk);
-  /* Spot-check v0.9 Base Health + Vitality → Max HP. */
+  /* Spot-check Combat Workbook v2.1 Base Health + Vitality → Max HP. */
   if (bk === 'sparrow') {
-    if (Number(b.baseHealth) !== 10) fail('sparrow baseHealth expected 10, got ' + b.baseHealth);
+    if (Number(b.baseHealth) !== 128) fail('sparrow baseHealth expected 128, got ' + b.baseHealth);
     if (Number(b.vitality) !== 3) fail('sparrow vitality expected 3, got ' + b.vitality);
     if (Number(b.stats && b.stats.dex) !== 9) fail('sparrow dexterity expected 9');
-    if (Number(b.stats && b.stats.maxHp) !== 19) {
-      fail('sparrow maxHp expected 19 (10 + 3×3), got ' + (b.stats && b.stats.maxHp));
+    if (Number(b.stats && b.stats.maxHp) !== 143) {
+      fail('sparrow maxHp expected 143 (128 + 5×3), got ' + (b.stats && b.stats.maxHp));
     }
+  }
+  if (bk === 'barnowl') {
+    if (String(b.class) !== 'rogue') fail('barnowl class expected rogue, got ' + b.class);
+    if (Number(b.stats && b.stats.dex) !== 11) fail('barnowl dex expected 11');
+    if (Number(b.basePrecision) !== 88) fail('barnowl precision expected 88');
   }
 }
 if (accFloorFails) fail(accFloorFails + ' ACC floor fails');
@@ -274,5 +295,5 @@ if (process.exitCode) {
   process.exit(1);
 }
 console.log('verify-equipment-content: OK');
-console.log('  slots=8 skills=' + skillIds.length + ' items=' + itemIds.length +
+console.log('  slots=' + slots.slotOrder.length + ' skills=' + skillIds.length + ' items=' + itemIds.length +
   ' families=' + familyIds.length + ' birds=' + birdIds.length);

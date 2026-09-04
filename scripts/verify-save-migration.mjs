@@ -291,9 +291,9 @@ function testShieldSlotMigration() {
   if (migrated.player.equipment.offHand != null) {
     fail('v18 should leave offHand empty after wipe, got offHand=' + migrated.player.equipment.offHand);
   } else ok('v18 left offHand empty after wipe');
-  if (migrated.player.equipment.mainHand !== 'WPN-B02') {
-    fail('v18 should grant Beak Stab to knight, got ' + migrated.player.equipment.mainHand);
-  } else ok('v18 granted Beak Stab starting weapon');
+  if (migrated.player.equipment.mainHand !== 'WPN-025') {
+    fail('v18 should grant Beak Hammer to knight, got ' + migrated.player.equipment.mainHand);
+  } else ok('v18 granted Beak Hammer starting weapon');
   if (migrated.weaponFirstV09 !== true) fail('weaponFirstV09 missing after shield chain');
   else ok('weaponFirstV09 stamped after shield chain');
 
@@ -323,9 +323,9 @@ function testShieldSlotMigration() {
   if ((m2.player.equipmentInventory || []).length) {
     fail('v17 wipe should clear inventory before starter grant');
   } else ok('v17 wiped hybrid equipment inventory');
-  if (m2.player.equipment.mainHand !== 'WPN-B04') {
-    fail('v18 should grant Talon Scratch after wipe, got ' + m2.player.equipment.mainHand);
-  } else ok('v18 granted Talon Scratch after wipe');
+  if (m2.player.equipment.mainHand !== 'WPN-007') {
+    fail('v18 should grant Talon Blade after wipe, got ' + m2.player.equipment.mainHand);
+  } else ok('v18 granted Talon Blade after wipe');
 }
 
 function equipmentEmpty(ctx) {

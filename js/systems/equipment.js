@@ -1,7 +1,7 @@
 /* Avian Ascent — Equipment v0.3 Runtime (Phase 3)
  *
- * 7-slot loadout (offHand holds 1H weapons or Shields), inventory, validation, stat ledger rollup.
- * Gated by Avian.flags.equipmentV2; mutations keep owning stats when flag is off.
+ * 6-slot loadout (Combat Workbook v2.1): helmet, plumage, mainHand, offHand, anklets pair, necklace.
+ * offHand holds 1H weapons or Shields. Gated by Avian.flags.equipmentV2.
  */
 (function () {
   'use strict';
@@ -10,7 +10,7 @@
   var equipment = Avian.equipment || Object.create(null);
 
   var SLOT_ORDER = [
-    'helmet', 'armour', 'mainHand', 'offHand', 'ankletL', 'ankletR', 'necklace',
+    'helmet', 'armour', 'mainHand', 'offHand', 'anklets', 'necklace',
   ];
 
   var FLAT_STAT_MAP = {
@@ -208,12 +208,30 @@
     return false;
   }
 
+  function migrateAnkletPairSlot(entity) {
+    if (!entity || !entity.equipment || typeof entity.equipment !== 'object') return;
+    var eq = entity.equipment;
+    if (eq.anklets) {
+      delete eq.ankletL;
+      delete eq.ankletR;
+      return;
+    }
+    var pair = eq.ankletL || eq.ankletR || null;
+    if (pair || Object.prototype.hasOwnProperty.call(eq, 'ankletL')
+      || Object.prototype.hasOwnProperty.call(eq, 'ankletR')) {
+      eq.anklets = pair;
+      delete eq.ankletL;
+      delete eq.ankletR;
+    }
+  }
+
   function ensurePlayerEquipmentState(player) {
     if (!player) return null;
     if (!player.equipment || typeof player.equipment !== 'object') {
       player.equipment = createEmptyLoadout();
     } else {
       migrateLegacyShieldSlot(player);
+      migrateAnkletPairSlot(player);
       var order = getSlotOrder();
       for (var i = 0; i < order.length; i++) {
         if (!Object.prototype.hasOwnProperty.call(player.equipment, order[i])) {
@@ -223,9 +241,17 @@
       if (Object.prototype.hasOwnProperty.call(player.equipment, 'shield')) {
         delete player.equipment.shield;
       }
+      delete player.equipment.ankletL;
+      delete player.equipment.ankletR;
     }
     if (!Array.isArray(player.equipmentInventory)) player.equipmentInventory = [];
     ensureStartingWeapon(player);
+    /* Defence kit is granted explicitly on new-bird start (grantStarterDefenceKit flag),
+       not on every ensure — keeps unit tests and mid-run loadouts stable. */
+    if (player.grantStarterDefenceKit) {
+      ensureStarterDefenceKit(player);
+      player.grantStarterDefenceKit = false;
+    }
     return player;
   }
 
@@ -241,10 +267,8 @@
     return null;
   }
 
-  function ensureStartingWeapon(entity) {
-    if (!entity || !entity.equipment || typeof entity.equipment !== 'object') return false;
-    if (entity.equipment.mainHand) return false;
-    /* Enemies resolve class via enemyClass/birdKey (same as player counterparts). */
+  function resolveEntityClassId(entity) {
+    if (!entity) return null;
     var classId = null;
     if (entity.isEnemy || entity.enemyClass) {
       classId = getEnemyClassId(entity);
@@ -252,10 +276,45 @@
     if (!classId) {
       classId = getPlayerClassId(entity) || String(entity.enemyClass || entity.birdClass || '').toLowerCase();
     }
+    return classId;
+  }
+
+  function ensureStartingWeapon(entity) {
+    if (!entity || !entity.equipment || typeof entity.equipment !== 'object') return false;
+    if (entity.equipment.mainHand) return false;
+    var classId = resolveEntityClassId(entity);
     var weaponId = getClassStartingWeaponId(classId);
     if (!weaponId || !getItem(weaponId)) return false;
     entity.equipment.mainHand = weaponId;
     return true;
+  }
+
+  /** Combat Workbook v2.1 — starter kits include a Grey defence/status route. */
+  function ensureStarterDefenceKit(entity) {
+    if (!entity || !entity.equipment || typeof entity.equipment !== 'object') return false;
+    if (entity.isEnemy) return false;
+    var classId = resolveEntityClassId(entity);
+    if (!classId) return false;
+    var starters = Avian.data && Avian.data.equipment && Avian.data.equipment.startingWeapons;
+    var kit = (starters && starters.defenceKit)
+      || (Avian.data && Avian.data.equipment && Avian.data.equipment.coreRules
+        && Avian.data.equipment.coreRules.starterDefenceKit)
+      || null;
+    if (!kit) return false;
+    var changed = false;
+    var armourId = kit.armour && kit.armour[classId];
+    if (!entity.equipment.armour && armourId && getItem(armourId)) {
+      entity.equipment.armour = armourId;
+      changed = true;
+    }
+    var offId = kit.offHand && kit.offHand[classId];
+    var main = getItem(entity.equipment.mainHand);
+    var mainHands = main && Number(main.hands) === 2;
+    if (!entity.equipment.offHand && !mainHands && offId && getItem(offId)) {
+      entity.equipment.offHand = offId;
+      changed = true;
+    }
+    return changed;
   }
 
   function findInventoryIndex(player, itemId) {
@@ -679,7 +738,7 @@
     if (typeof normalizeCombatStats === 'function') normalizeCombatStats(player.stats);
   }
 
-  var ACCESSORY_SLOTS = ['helmet', 'ankletL', 'ankletR', 'necklace'];
+  var ACCESSORY_SLOTS = ['helmet', 'anklets', 'necklace'];
 
   function mulberry32(a) {
     return function () {
@@ -820,7 +879,7 @@
 
   /** Prefer combat pieces first when filling a partial kit. */
   var STORY_FILL_SLOT_PRIORITY = [
-    'mainHand', 'armour', 'helmet', 'necklace', 'offHand', 'ankletL', 'ankletR',
+    'mainHand', 'armour', 'helmet', 'necklace', 'offHand', 'anklets',
   ];
 
   function shouldSkipOffHandFill(eq) {
@@ -995,6 +1054,17 @@
       );
     }
     var ref = findReferenceLoadout(classId, rarityOut);
+    /* Worn Story kits: class starter weapon instead of full reference mainHand. */
+    if (recipe && (recipe.worn || (Number(recipe.completeness) > 0 && Number(recipe.completeness) < 1))) {
+      var starterWpn = getClassStartingWeaponId(classId);
+      if (starterWpn && getItem(starterWpn)) {
+        eq.mainHand = starterWpn;
+        filledCount = 0;
+        for (var sk3 in eq) {
+          if (Object.prototype.hasOwnProperty.call(eq, sk3) && eq[sk3]) filledCount++;
+        }
+      }
+    }
     return {
       equipment: eq,
       rarity: rarityOut,
@@ -1400,6 +1470,8 @@
   equipment.ensurePlayerEquipmentState = ensurePlayerEquipmentState;
   equipment.getClassStartingWeaponId = getClassStartingWeaponId;
   equipment.ensureStartingWeapon = ensureStartingWeapon;
+  equipment.ensureStarterDefenceKit = ensureStarterDefenceKit;
+  equipment.migrateAnkletPairSlot = migrateAnkletPairSlot;
   equipment.addToInventory = addToInventory;
   equipment.canEquip = canEquip;
   equipment.equip = equip;
