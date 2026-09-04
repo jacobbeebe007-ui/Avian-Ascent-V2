@@ -3952,7 +3952,11 @@ function continueRun() {
     }
     G.player.birdKey=forgeMirror.birdKey;
   }
-  if(G.player?.birdKey && BIRDS[G.player.birdKey]?.size) G.player.size=BIRDS[G.player.birdKey].size;
+  if(G.player?.birdKey){
+    G.player.size = (typeof rosterSizeForBirdKey==='function')
+      ? rosterSizeForBirdKey(G.player.birdKey)
+      : (BIRDS[G.player.birdKey]?.size || G.player.size || 'medium');
+  }
   G.player.class = resolveFinalClass(G.player?.class, G.player?.birdKey);
   if(typeof applyBirdCardProgression==='function') applyBirdCardProgression(G.player);
   applyPlayerSkillsFromCardTier(G.player);
@@ -6494,10 +6498,15 @@ function getUISizeClass(entity, context='general'){
   if(runtime) return runtime;
   return 'medium';
 }
+/** Runtime size token for a bird key (prefers birdsV2.realSize → sizeChart). */
+function rosterSizeForBirdKey(birdKey){
+  return rosterSizeForEntity({ birdKey: rosterCanonBirdKey(birdKey) }) || 'medium';
+}
 globalThis.rosterCanonBirdKey=rosterCanonBirdKey;
 globalThis.runtimeSizeFromProfileToken=runtimeSizeFromProfileToken;
 globalThis.profileSizeTokenForEntity=profileSizeTokenForEntity;
 globalThis.rosterSizeForEntity=rosterSizeForEntity;
+globalThis.rosterSizeForBirdKey=rosterSizeForBirdKey;
 globalThis.getUISizeClass=getUISizeClass;
 function normalizeSpriteBirdKey(raw){
   const k = String(raw||'').toLowerCase().replace(/[^a-z]/g,'');
@@ -6646,7 +6655,7 @@ function buildRosterPreviewStubForBirdKey(birdKey){
     birdKey,
     name: bd.name,
     portraitKey: bd.portraitKey||birdKey,
-    size: bd.size||'medium',
+    size: (typeof rosterSizeForBirdKey==='function') ? rosterSizeForBirdKey(birdKey) : (bd.size||'medium'),
     class: bd.class,
     stats: {...bd.stats},
     abilities: (bd.startAbilities||[]).map(id=>({id, level:1})),
@@ -7369,7 +7378,9 @@ function startGame() {
   };
   normalizeCombatStats(G.player.stats);
   G.player.class = bd.class;
-  G.player.size = bd.size||'medium';
+  G.player.size = (typeof rosterSizeForBirdKey==='function')
+    ? rosterSizeForBirdKey(G.selected || bd.portraitKey || G.player.birdKey)
+    : (bd.size||'medium');
   if(typeof Avian?.equipment?.ensurePlayerEquipmentState==='function'){
     Avian.equipment.ensurePlayerEquipmentState(G.player);
   }
@@ -19575,11 +19586,17 @@ wireThemeBgmAutoplayUnlock();
 
   function ensureSpriteInEl(el, key, locked){
     if(!el || !SPRITE_KEYS.has(key)) return null;
-    let spr = el.querySelector('.sprite4');
-    if(spr) return spr;
     const spriteSize = (typeof globalThis.getUISizeClass==='function')
       ? globalThis.getUISizeClass(el.id==='enemy-avatar' ? globalThis.G?.enemy : globalThis.G?.player, 'battle')
       : 'medium';
+    let spr = el.querySelector('.sprite4');
+    if(spr){
+      // Keep profile size class in sync (e.g. Giant penguin vs legacy xl).
+      const sizes = ['tiny','small','medium','large','xl','xlarge','giant','boss','battle-medium'];
+      sizes.forEach(s => spr.classList.remove(s));
+      if(spriteSize) spr.classList.add(spriteSize);
+      return spr;
+    }
     const spriteHtml = `<div class="sprite4 ${spriteSize} ${locked?'locked':''} sprite-${key} frame-0" id="${el.id}-sprite"></div>`;
     el.innerHTML = el.id === 'enemy-avatar' ? wrapSpriteFaceLeft(spriteHtml) : spriteHtml;
     el.style.fontSize='';
@@ -19919,11 +19936,19 @@ SPRITE_KEYS_ALL.add('magpie');
     const key=currentKey(who);
     const el=whoEl(who);
     if(!el || !SPRITE_KEYS.has(key)) return null;
+    const entity = who==='player' ? globalThis.G?.player : globalThis.G?.enemy;
+    const spriteSize = (typeof globalThis.getUISizeClass==='function')
+      ? globalThis.getUISizeClass(entity, 'battle')
+      : 'medium';
     let spr=el.querySelector('.sprite4');
     if(!spr){
-      const spriteHtml = `<div class="sprite4 sprite-${key} frame-0" id="${who}-avatar-sprite"></div>`;
+      const spriteHtml = `<div class="sprite4 ${spriteSize} sprite-${key} frame-0" id="${who}-avatar-sprite"></div>`;
       el.innerHTML = who === 'enemy' ? wrapSpriteFaceLeft(spriteHtml) : spriteHtml;
       spr=el.querySelector('.sprite4');
+    } else {
+      const sizes = ['tiny','small','medium','large','xl','xlarge','giant','boss','battle-medium'];
+      sizes.forEach(s => spr.classList.remove(s));
+      if(spriteSize) spr.classList.add(spriteSize);
     }
     return spr;
   }

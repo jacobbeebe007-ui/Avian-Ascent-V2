@@ -2978,6 +2978,8 @@ body.combat-scenario-test-unlocked .splash-hotspot--combat-scenarios.is-combatte
 #select-hub-door .sfsel .ascent-panel-portrait .sprite4.large{width:116px;height:116px;}
 #select-hub-door .sfsel .ascent-panel-portrait .sprite4.xl,
 #select-hub-door .sfsel .ascent-panel-portrait .sprite4.xlarge{width:132px;height:132px;}
+#select-hub-door .sfsel .ascent-panel-portrait .sprite4.giant{width:152px;height:152px;}
+#select-hub-door .sfsel .ascent-panel-portrait .sprite4.boss{width:152px;height:152px;}
 /* Character profile emitted by updateAscentPanel */
 #select-hub-door .sfsel .ascent-strip{
   display:flex;
@@ -6107,7 +6109,7 @@ img{image-rendering:pixelated;image-rendering:crisp-edges;}
 .sprite4.large{width:104px;height:104px;border-radius:18px;}
 .sprite4.small{width:76px;height:76px;border-radius:14px;}
 .sprite4.tiny{width:64px;height:64px;border-radius:12px;}
-.bird-portrait .sprite4.medium{width:86px;height:105px;}.ascent-face .sprite4.medium{width:96px;height:96px;}
+.bird-portrait .sprite4.medium{width:86px;height:86px;}.ascent-face .sprite4.medium{width:96px;height:96px;}
 
 /* MAGPIE SPRITE CLEAN */
 .sprite-magpie{background-image:url("../assets/sprites/magpie.png");background-size:200% 200%;}
@@ -6167,29 +6169,38 @@ img{image-rendering:pixelated;image-rendering:crisp-edges;}
    Hidden fourth tier:
    - boss        -> reserved for boss battles / final encounters
 */
-.sprite4.tiny,.sprite4.small{width:64px;height:64px;border-radius:12px;}
-.sprite4.medium,.sprite4.large,.sprite4.xl,.sprite4.xlarge{width:88px;height:88px;border-radius:16px;}
-.sprite4.boss{width:118px;height:118px;border-radius:18px;}
+.sprite4.tiny{width:64px;height:64px;border-radius:12px;}
+.sprite4.small{width:72px;height:72px;border-radius:14px;}
+.sprite4.medium{width:88px;height:88px;border-radius:16px;}
+.sprite4.large{width:100px;height:100px;border-radius:18px;}
+.sprite4.xl,.sprite4.xlarge{width:112px;height:112px;border-radius:20px;}
+.sprite4.giant{width:122px;height:122px;border-radius:21px;}
+.sprite4.boss{width:128px;height:128px;border-radius:22px;}
 
-.bird-portrait .sprite4.tiny,.bird-portrait .sprite4.small{width:60px;height:60px;}
-.bird-portrait .sprite4.medium,.bird-portrait .sprite4.large,.bird-portrait .sprite4.xl,.bird-portrait .sprite4.xlarge{width:82px;height:82px;}
-.bird-portrait .sprite4.boss{width:102px;height:102px;}
+.bird-portrait .sprite4.tiny{width:60px;height:60px;}
+.bird-portrait .sprite4.small{width:68px;height:68px;}
+.bird-portrait .sprite4.medium{width:84px;height:84px;}
+.bird-portrait .sprite4.large{width:94px;height:94px;}
+.bird-portrait .sprite4.xl,.bird-portrait .sprite4.xlarge{width:102px;height:102px;}
+.bird-portrait .sprite4.giant{width:108px;height:108px;}
+.bird-portrait .sprite4.boss{width:112px;height:112px;}
 
-.ascent-face .sprite4.tiny,
-.ascent-face .sprite4.small{width:72px;height:72px;}
-.ascent-face .sprite4.medium,
-.ascent-face .sprite4.large,
-.ascent-face .sprite4.xl,
-.ascent-face .sprite4.xlarge{width:94px;height:94px;}
-.ascent-face .sprite4.boss{width:112px;height:112px;}
+.ascent-face .sprite4.tiny{width:72px;height:72px;}
+.ascent-face .sprite4.small{width:80px;height:80px;}
+.ascent-face .sprite4.medium{width:96px;height:96px;}
+.ascent-face .sprite4.large{width:108px;height:108px;}
+.ascent-face .sprite4.xl,.ascent-face .sprite4.xlarge{width:120px;height:120px;}
+.ascent-face .sprite4.giant{width:126px;height:126px;}
+.ascent-face .sprite4.boss{width:130px;height:130px;}
 
-#player-avatar .sprite4.tiny,#enemy-avatar .sprite4.tiny,
-#player-avatar .sprite4.small,#enemy-avatar .sprite4.small{width:82px;height:82px;}
-#player-avatar .sprite4.medium,#enemy-avatar .sprite4.medium,
-#player-avatar .sprite4.large,#enemy-avatar .sprite4.large,
+#player-avatar .sprite4.tiny,#enemy-avatar .sprite4.tiny{width:82px;height:82px;}
+#player-avatar .sprite4.small,#enemy-avatar .sprite4.small{width:90px;height:90px;}
+#player-avatar .sprite4.medium,#enemy-avatar .sprite4.medium{width:104px;height:104px;}
+#player-avatar .sprite4.large,#enemy-avatar .sprite4.large{width:116px;height:116px;}
 #player-avatar .sprite4.xl,#enemy-avatar .sprite4.xl,
-#player-avatar .sprite4.xlarge,#enemy-avatar .sprite4.xlarge{width:98px;height:98px;}
-#player-avatar .sprite4.boss,#enemy-avatar .sprite4.boss{width:122px;height:122px;}
+#player-avatar .sprite4.xlarge,#enemy-avatar .sprite4.xlarge{width:128px;height:128px;}
+#player-avatar .sprite4.giant,#enemy-avatar .sprite4.giant{width:134px;height:134px;}
+#player-avatar .sprite4.boss,#enemy-avatar .sprite4.boss{width:138px;height:138px;}
 
 
 
@@ -6205,6 +6216,7 @@ img{image-rendering:pixelated;image-rendering:crisp-edges;}
 .sprite4.medium{width:88px;height:88px;border-radius:16px;}
 .sprite4.large{width:100px;height:100px;border-radius:18px;}
 .sprite4.xl,.sprite4.xlarge{width:112px;height:112px;border-radius:20px;}
+.sprite4.giant{width:122px;height:122px;border-radius:21px;}
 .sprite4.boss{width:128px;height:128px;border-radius:22px;}
 
 .bird-portrait .sprite4.tiny{width:60px;height:60px;}
@@ -6212,6 +6224,7 @@ img{image-rendering:pixelated;image-rendering:crisp-edges;}
 .bird-portrait .sprite4.medium{width:84px;height:84px;}
 .bird-portrait .sprite4.large{width:94px;height:94px;}
 .bird-portrait .sprite4.xl,.bird-portrait .sprite4.xlarge{width:102px;height:102px;}
+.bird-portrait .sprite4.giant{width:108px;height:108px;}
 .bird-portrait .sprite4.boss{width:112px;height:112px;}
 
 .ascent-face .sprite4.tiny{width:70px;height:70px;}
@@ -6220,6 +6233,7 @@ img{image-rendering:pixelated;image-rendering:crisp-edges;}
 .ascent-face .sprite4.large{width:108px;height:108px;}
 .ascent-face .sprite4.xl,
 .ascent-face .sprite4.xlarge{width:120px;height:120px;}
+.ascent-face .sprite4.giant{width:126px;height:126px;}
 .ascent-face .sprite4.boss{width:130px;height:130px;}
 
 #player-avatar .sprite4.tiny,#enemy-avatar .sprite4.tiny{width:82px;height:82px;}
@@ -6228,6 +6242,7 @@ img{image-rendering:pixelated;image-rendering:crisp-edges;}
 #player-avatar .sprite4.large,#enemy-avatar .sprite4.large{width:116px;height:116px;}
 #player-avatar .sprite4.xl,#enemy-avatar .sprite4.xl,
 #player-avatar .sprite4.xlarge,#enemy-avatar .sprite4.xlarge{width:128px;height:128px;}
+#player-avatar .sprite4.giant,#enemy-avatar .sprite4.giant{width:134px;height:134px;}
 #player-avatar .sprite4.boss,#enemy-avatar .sprite4.boss{width:138px;height:138px;}
 
 .avatar-wrap{height:132px;min-width:132px;}
@@ -6250,6 +6265,7 @@ img{image-rendering:pixelated;image-rendering:crisp-edges;}
 .bird-portrait .sprite4.large{width:96px !important;height:96px !important;}
 .bird-portrait .sprite4.xl,
 .bird-portrait .sprite4.xlarge{width:108px !important;height:108px !important;}
+.bird-portrait .sprite4.giant{width:114px !important;height:114px !important;}
 .bird-portrait .sprite4.boss{width:118px !important;height:118px !important;}
 
 .ascent-face .sprite4.tiny{width:70px !important;height:70px !important;}
@@ -6258,6 +6274,7 @@ img{image-rendering:pixelated;image-rendering:crisp-edges;}
 .ascent-face .sprite4.large{width:108px !important;height:108px !important;}
 .ascent-face .sprite4.xl,
 .ascent-face .sprite4.xlarge{width:122px !important;height:122px !important;}
+.ascent-face .sprite4.giant{width:128px !important;height:128px !important;}
 .ascent-face .sprite4.boss{width:132px !important;height:132px !important;}
 
 #player-avatar .sprite4.tiny,#enemy-avatar .sprite4.tiny{width:84px !important;height:84px !important;}
@@ -6266,6 +6283,7 @@ img{image-rendering:pixelated;image-rendering:crisp-edges;}
 #player-avatar .sprite4.large,#enemy-avatar .sprite4.large{width:122px !important;height:122px !important;}
 #player-avatar .sprite4.xl,#enemy-avatar .sprite4.xl,
 #player-avatar .sprite4.xlarge,#enemy-avatar .sprite4.xlarge{width:136px !important;height:136px !important;}
+#player-avatar .sprite4.giant,#enemy-avatar .sprite4.giant{width:142px !important;height:142px !important;}
 #player-avatar .sprite4.boss,#enemy-avatar .sprite4.boss{width:146px !important;height:146px !important;}
 
 .avatar-wrap{height:142px !important;min-width:142px !important;}
@@ -6423,6 +6441,7 @@ img{image-rendering:pixelated;image-rendering:crisp-edges;}
 .bird-portrait .sprite4.medium{width:92px !important;height:92px !important;}
 .bird-portrait .sprite4.large{width:104px !important;height:104px !important;}
 .bird-portrait .sprite4.xl,.bird-portrait .sprite4.xlarge{width:120px !important;height:120px !important;}
+.bird-portrait .sprite4.giant{width:126px !important;height:126px !important;}
 
 .ascent-face .sprite4.tiny{width:76px !important;height:76px !important;}
 .ascent-face .sprite4.small{width:88px !important;height:88px !important;}
@@ -6430,6 +6449,7 @@ img{image-rendering:pixelated;image-rendering:crisp-edges;}
 .ascent-face .sprite4.large{width:116px !important;height:116px !important;}
 .ascent-face .sprite4.xl,
 .ascent-face .sprite4.xlarge{width:132px !important;height:132px !important;}
+.ascent-face .sprite4.giant{width:142px !important;height:142px !important;}
 
 #player-avatar .sprite4.tiny,#enemy-avatar .sprite4.tiny{width:88px !important;height:88px !important;}
 #player-avatar .sprite4.small,#enemy-avatar .sprite4.small{width:102px !important;height:102px !important;}
@@ -6437,6 +6457,7 @@ img{image-rendering:pixelated;image-rendering:crisp-edges;}
 #player-avatar .sprite4.large,#enemy-avatar .sprite4.large{width:132px !important;height:132px !important;}
 #player-avatar .sprite4.xl,#enemy-avatar .sprite4.xl,
 #player-avatar .sprite4.xlarge,#enemy-avatar .sprite4.xlarge{width:148px !important;height:148px !important;}
+#player-avatar .sprite4.giant,#enemy-avatar .sprite4.giant{width:160px !important;height:160px !important;}
 
 
 
@@ -6446,11 +6467,22 @@ img{image-rendering:pixelated;image-rendering:crisp-edges;}
 
 
 /* Final select-panel sprite sizing fixes */
-.bird-portrait .sprite4.large,
+.bird-portrait .sprite4.large{
+  width:104px !important;
+  height:104px !important;
+}
 .bird-portrait .sprite4.xl,
 .bird-portrait .sprite4.xlarge{
   width:112px !important;
   height:112px !important;
+}
+.bird-portrait .sprite4.giant{
+  width:130px !important;
+  height:130px !important;
+}
+.bird-portrait .sprite4.boss{
+  width:130px !important;
+  height:130px !important;
 }
 
 /* Species tuning requested */
@@ -8036,6 +8068,7 @@ body.ui-mobile-mode .combat-stats-btn{font-size:.68rem;padding:5px 8px;}
 #screen-battle #player-avatar .sprite4.large,#screen-battle #enemy-avatar .sprite4.large{width:128px !important;height:128px !important;}
 #screen-battle #player-avatar .sprite4.xl,#screen-battle #enemy-avatar .sprite4.xl,
 #screen-battle #player-avatar .sprite4.xlarge,#screen-battle #enemy-avatar .sprite4.xlarge{width:146px !important;height:146px !important;}
+#screen-battle #player-avatar .sprite4.giant,#screen-battle #enemy-avatar .sprite4.giant{width:172px !important;height:172px !important;}
 #screen-battle #player-avatar .sprite4.boss,#screen-battle #enemy-avatar .sprite4.boss{width:160px !important;height:160px !important;}
 
 /* ============================================================
