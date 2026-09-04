@@ -85,14 +85,22 @@
   }
 
   function rollNestShinyBonus(level, difficulty, force) {
+    var catalog = Avian.data && Avian.data.shinyMiscCatalog;
+    if (catalog && typeof catalog.rollShinyMiscItem === 'function') {
+      var def = catalog.rollShinyMiscItem(!!force);
+      if (!def) return null;
+      return catalog.shinyMiscToNestDrop(def);
+    }
     if (!force && Math.random() > 0.20) return null;
     return {
       type: 'shiny',
-      amount: 10,
+      shinyMiscId: 'shiny_hoard',
+      kind: 'bonus_shines',
+      amount: 35,
       tier: 'gold',
       icon: '✨',
-      name: 'Shiny Objects',
-      desc: 'Bonus shines (+10). Sell at the Stork Shop.',
+      name: 'Shiny Hoard',
+      desc: 'Legendary shinies (+35). Sell at the Stork Shop.',
     };
   }
 
@@ -296,24 +304,43 @@
     }
     if (drop.type === 'shiny') {
       var amt = Math.max(1, Math.floor(Number(drop.amount) || 10));
-      if (typeof global.addPlayerMiscBonusShines === 'function') {
+      var shinyDef = null;
+      if (drop.shinyMiscId && Avian.data && Avian.data.shinyMiscCatalog) {
+        shinyDef = Avian.data.shinyMiscCatalog.getShinyMiscDef(drop.shinyMiscId);
+      }
+      if (typeof global.addPlayerMiscShinyItem === 'function') {
+        global.addPlayerMiscShinyItem(g.player, shinyDef || drop);
+      } else if (typeof global.addPlayerMiscBonusShines === 'function') {
         global.addPlayerMiscBonusShines(g.player, amt);
       } else if (g.player) {
         if (!Array.isArray(g.player.miscItems)) g.player.miscItems = [];
         g.player.miscItems.push({
-          kind: 'bonus_shines',
+          kind: drop.kind || 'bonus_shines',
+          shinyMiscId: drop.shinyMiscId || shinyDef && shinyDef.id,
           amount: amt,
           tier: drop.tier || 'gold',
-          name: drop.name || 'Shiny Objects',
+          name: drop.name || 'Shiny Hoard',
           icon: drop.icon || '✨',
-          desc: drop.desc || 'Bonus shines (+10). Sell at the Stork Shop.',
+          desc: drop.desc || 'Bonus shines. Sell at the Stork Shop.',
         });
       }
       if (typeof global.logMsg === 'function') {
-        global.logMsg('✨ Nest reward: Legendary Shiny Objects (+' + amt + ' bonus shines)! Sell at the shop.', 'exp-gain');
+        var tierLabel = typeof global.rewardTierMeta === 'function'
+          ? (global.rewardTierMeta(drop.tier).label || 'Shiny')
+          : 'Shiny';
+        global.logMsg(
+          '✨ Nest reward: ' + tierLabel + ' ' + (drop.name || 'Shiny item') + ' (+' + amt + ' bonus shines)! Sell at the shop.',
+          'exp-gain',
+        );
       }
       if (!g.collectedRewards) g.collectedRewards = [];
-      g.collectedRewards.push({ id: 'nest_shiny', icon: drop.icon, tier: drop.tier, name: drop.name, desc: drop.desc });
+      g.collectedRewards.push({
+        id: drop.shinyMiscId || 'nest_shiny',
+        icon: drop.icon,
+        tier: drop.tier,
+        name: drop.name,
+        desc: drop.desc,
+      });
       return true;
     }
     if (drop.type === 'combat_item') {
