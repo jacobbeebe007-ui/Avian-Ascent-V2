@@ -376,19 +376,13 @@
 
 /* ===== 22_penguin-realistic-sheet-patch.css ===== */
 
-/* ===== REALISTIC EMPEROR PENGUIN SHEET PATCH ===== */
+/* ===== PENGUIN FRAME ALIASES (idle/run/slide/attack → 2x2 frames) ===== */
 
 .sprite-penguin.idle{background-position:0% 0% !important;}
 .sprite-penguin.run{background-position:100% 0% !important;}
 .sprite-penguin.slide{background-position:0% 100% !important;}
 .sprite-penguin.attack{background-position:100% 100% !important;}
 
-/* Keep penguin proportionally wider than tall across the UI */
-.ascent-panel-portrait .sprite4.sprite-penguin.small,.ascent-face .sprite4.sprite-penguin.small{width:106px !important;height:80px !important;}
-.ascent-panel-portrait .sprite4.sprite-penguin.medium,.ascent-face .sprite4.sprite-penguin.medium{width:124px !important;height:92px !important;}
-.ascent-panel-portrait .sprite4.sprite-penguin.large,.ascent-face .sprite4.sprite-penguin.large{width:138px !important;height:102px !important;}
-.ascent-panel-portrait .sprite4.sprite-penguin.xl,.ascent-face .sprite4.sprite-penguin.xl,
-.ascent-panel-portrait .sprite4.sprite-penguin.xlarge,.ascent-face .sprite4.sprite-penguin.xlarge{width:158px !important;height:118px !important;}
 
 
 /* Energy colors */

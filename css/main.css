@@ -6192,23 +6192,13 @@ img{image-rendering:pixelated;image-rendering:crisp-edges;}
 #player-avatar .sprite4.boss,#enemy-avatar .sprite4.boss{width:122px;height:122px;}
 
 
-/* Penguin sprite ratio fix */
-.sprite-emperor-penguin{
-  width:120px !important;
-  height:96px !important;
-  background-size:200% 200%;
-}
-.sprite-emperor-penguin.small{
-  width:96px !important;
-  height:78px !important;
-}
 
 
 
 /* ============================================================
    PATCH: Unified sprite sizing across portraits, ascent, battle
    - fixes duplicate/overriding square rules by adding one final authority block
-   - preserves wider penguin proportions everywhere
+   - keeps square sprite4 size classes for all birds
    ============================================================ */
 .sprite4.tiny{width:64px;height:64px;border-radius:12px;}
 .sprite4.small{width:72px;height:72px;border-radius:14px;}
@@ -6281,135 +6271,9 @@ img{image-rendering:pixelated;image-rendering:crisp-edges;}
 .avatar-wrap{height:142px !important;min-width:142px !important;}
 #player-avatar-wrap,#enemy-avatar-wrap{overflow:visible;}
 
-/* Penguin-specific ratio fixes across every location */
-/* Keep old svg portraits consistent too */
 .bird-portrait svg{height:90px !important;width:auto !important;image-rendering:pixelated;}
 .avatar-inner svg{height:96px !important;width:auto !important;image-rendering:pixelated;}
 
-
-/* ===== FINAL SMALL PENGUIN SPRITE ===== */
-.sprite-penguin{
-  background-image:url("../assets/sprites/emperorpenguin.png") !important;
-  background-repeat:no-repeat !important;
-  background-size:200% 200% !important;
-  image-rendering:pixelated !important;
-}
-
-/* keep penguin small everywhere */
-.sprite4.sprite-penguin{
-  width:72px !important;
-  height:72px !important;
-}.bird-portrait .sprite4.sprite-penguin,
-.bird-portrait .sprite4.sprite-penguin.small{
-  width:72px !important;
-  height:72px !important;
-}
-
-#player-avatar .sprite4.sprite-penguin,
-#enemy-avatar .sprite4.sprite-penguin,
-.avatar-wrap .sprite4.sprite-penguin{
-  width:72px !important;
-  height:72px !important;
-}
-
-/* cancel older penguin-only stretch overrides */
-.sprite4.sprite-penguin.medium,
-.sprite4.sprite-penguin.large,
-.sprite4.sprite-penguin.xl,
-.sprite4.sprite-penguin.xlarge,
-.sprite-penguin.small,
-.sprite-penguin.medium,
-.sprite-penguin.large,
-.sprite-penguin.xl,
-.sprite-penguin.xlarge{
-  width:72px !important;
-  height:72px !important;
-}
-
-
-/* ===== AUTHORITATIVE SMALL PENGUIN RENDER ===== */
-.sprite-penguin,
-.sprite4.sprite-penguin,
-.sprite-penguin.small,
-.sprite-penguin.medium,
-.sprite-penguin.large,
-.sprite-penguin.xl,
-.sprite-penguin.xlarge,
-.sprite4.sprite-penguin.small,
-.sprite4.sprite-penguin.medium,
-.sprite4.sprite-penguin.large,
-.sprite4.sprite-penguin.xl,
-.sprite4.sprite-penguin.xlarge{
-  width:72px !important;
-  height:72px !important;
-}
-
-/* select cards */
-.bird-portrait .sprite-penguin,
-.bird-portrait .sprite4.sprite-penguin,
-.bird-portrait .sprite-penguin.small,
-.bird-portrait .sprite4.sprite-penguin.small,
-.bird-portrait .sprite-penguin.medium,
-.bird-portrait .sprite4.sprite-penguin.medium,
-.bird-portrait .sprite-penguin.large,
-.bird-portrait .sprite4.sprite-penguin.large,
-.bird-portrait .sprite-penguin.xl,
-.bird-portrait .sprite4.sprite-penguin.xl,
-.bird-portrait .sprite-penguin.xlarge,
-.bird-portrait .sprite4.sprite-penguin.xlarge{
-  width:72px !important;
-  height:72px !important;
-}
-
-/* ascent/selected portrait */
-.ascent-face .sprite-penguin,
-.ascent-face .sprite4.sprite-penguin{
-  width:72px !important;
-  height:72px !important;
-}
-
-/* battle avatars */
-#player-avatar .sprite-penguin,
-#player-avatar .sprite4.sprite-penguin,
-#enemy-avatar .sprite-penguin,
-#enemy-avatar .sprite4.sprite-penguin,
-.avatar-wrap .sprite-penguin,
-.avatar-wrap .sprite4.sprite-penguin,
-.avatar-inner .sprite-penguin,
-.avatar-inner .sprite4.sprite-penguin{
-  width:72px !important;
-  height:72px !important;
-}
-
-/* keep frame math intact */
-.sprite-penguin{
-  background-size:200% 200% !important;
-  background-repeat:no-repeat !important;
-  image-rendering:pixelated !important;
-}
-
-
-/* ===== AUTHORITATIVE PENGUIN SMALL RENDER ===== */
-/* Penguin should behave like a normal small bird everywhere. */
-.sprite4.small.sprite-penguin,
-.sprite4.sprite-penguin.small,
-.sprite-penguin.small,
-.bird-portrait .sprite4.sprite-penguin.small,
-.ascent-face .sprite4.sprite-penguin.small,
-#player-avatar .sprite4.sprite-penguin.small,
-#enemy-avatar .sprite4.sprite-penguin.small,
-.avatar-wrap .sprite4.sprite-penguin.small,
-.avatar-inner .sprite4.sprite-penguin.small{
-  width:72px !important;
-  height:72px !important;
-}
-
-/* Defensive catch-all: if penguin is rendered without a size class, keep it small. */
-.sprite4.sprite-penguin{
-  background-size:200% 200% !important;
-  background-repeat:no-repeat !important;
-  image-rendering:pixelated !important;
-}
 
 
 /* Energy colors */
@@ -6574,12 +6438,6 @@ img{image-rendering:pixelated;image-rendering:crisp-edges;}
 #player-avatar .sprite4.xl,#enemy-avatar .sprite4.xl,
 #player-avatar .sprite4.xlarge,#enemy-avatar .sprite4.xlarge{width:148px !important;height:148px !important;}
 
-/* Penguin-specific ratio: wide, not square */
-.ascent-face .sprite4.sprite-penguin.small{width:102px !important;height:76px !important;}
-.ascent-face .sprite4.sprite-penguin.medium{width:120px !important;height:88px !important;}
-.ascent-face .sprite4.sprite-penguin.large{width:134px !important;height:98px !important;}
-.ascent-face .sprite4.sprite-penguin.xl,
-.ascent-face .sprite4.sprite-penguin.xlarge{width:154px !important;height:112px !important;}
 
 
 /* Energy colors */
@@ -8179,9 +8037,6 @@ body.ui-mobile-mode .combat-stats-btn{font-size:.68rem;padding:5px 8px;}
 #screen-battle #player-avatar .sprite4.xl,#screen-battle #enemy-avatar .sprite4.xl,
 #screen-battle #player-avatar .sprite4.xlarge,#screen-battle #enemy-avatar .sprite4.xlarge{width:146px !important;height:146px !important;}
 #screen-battle #player-avatar .sprite4.boss,#screen-battle #enemy-avatar .sprite4.boss{width:160px !important;height:160px !important;}
-/* Penguin keeps its wider-than-tall proportions in battle */
-#screen-battle #player-avatar .sprite4.sprite-penguin,
-#screen-battle #enemy-avatar .sprite4.sprite-penguin{width:128px !important;height:96px !important;}
 
 /* ============================================================
    Sticky combatants while scrolling (Display setting)
