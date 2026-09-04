@@ -153,7 +153,7 @@ check('Avian namespace present', !!Avian);
 check('Avian.data.combatPack.skillTrees present', !!(Avian?.data?.combatPack?.skillTrees));
 check('calculateDamage exported on globalThis', typeof sandbox.calculateDamage === 'function');
 check('clampCritChancePct exported on globalThis', typeof sandbox.clampCritChancePct === 'function');
-check('MIN_HIT_CHANCE is 60', sandbox.MIN_HIT_CHANCE === 60, `got=${sandbox.MIN_HIT_CHANCE}`);
+check('MIN_HIT_CHANCE is 15', sandbox.MIN_HIT_CHANCE === 15, `got=${sandbox.MIN_HIT_CHANCE}`);
 check('miss path returns zero damage', sandbox.calculateDamage({ hitSucceeded: false, attacker: {}, target: {}, ability: { apCost: 1 } }).damage === 0);
 check('Crow hit preview 60%', sandbox.calculateAbilityHitChancePct(78, 18, 0) === 60, `got=${sandbox.calculateAbilityHitChancePct(78, 18, 0)}`);
 check('computeMasterOutgoingDamage exported', typeof sandbox.computeMasterOutgoingDamage === 'function');

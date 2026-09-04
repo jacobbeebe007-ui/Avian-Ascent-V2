@@ -148,12 +148,9 @@ assertBasic({
 // ensureStartingWeapon grants class starter when mainHand empty
 {
   const p = player();
-  p.grantStarterDefenceKit = true;
   equipment.ensurePlayerEquipmentState(p);
-  if (p.equipment.mainHand !== 'WPN-007') fail(`starter grant expected WPN-007 Talon Blade, got ${p.equipment.mainHand}`);
-  else ok('ensureStartingWeapon grants Talon Blade to rogue');
-  if (p.equipment.armour !== 'ARM-019') fail(`starter defence armour expected ARM-019, got ${p.equipment.armour}`);
-  else ok('ensureStarterDefenceKit grants Shadowplume to rogue');
+  if (p.equipment.mainHand !== 'WPN-B04') fail(`starter grant expected WPN-B04, got ${p.equipment.mainHand}`);
+  else ok('ensureStartingWeapon grants Talon Scratch to rogue');
 }
 
 // Enemy with only enemyClass (no player.class) still gets class starter + named basic
@@ -164,9 +161,9 @@ assertBasic({
     equipment: equipment.createEmptyLoadout(),
   };
   equipment.ensureStartingWeapon(enemy);
-  if (enemy.equipment.mainHand !== 'WPN-031') fail(`enemy mage starter expected WPN-031 Wand, got ${enemy.equipment.mainHand}`);
-  else ok('ensureStartingWeapon grants Wand to enemy mage via enemyClass');
-  assertBasic(enemy, 'BASIC_MAGIC', 'Basic Attack');
+  if (enemy.equipment.mainHand !== 'WPN-B01') fail(`enemy mage starter expected WPN-B01, got ${enemy.equipment.mainHand}`);
+  else ok('ensureStartingWeapon grants Tail Wand to enemy mage via enemyClass');
+  assertBasic(enemy, 'BASIC_MAGIC', 'Tail Wand');
 }
 
 // wand main → BASIC_MAGIC (equipped Basic Attack name for non-basic weapons)
@@ -187,11 +184,9 @@ assertWeapon(player({ mainHand: 'WPN-061', offHand: 'WPN-007' }), 'weaponB', 'WS
 // armour technique
 assertArmour(player({ armour: 'ARM-002' }), 'ESK-001');
 assertArmour(player(), null);
-/* v2.1 Grey armour grants defence skills; empty armour falls back to shield/helmet. */
-assertArmour(player({ armour: 'ARM-001' }), 'ESK-001');
-assertArmour(player({ armour: 'ARM-001', offHand: 'SHD-002' }), 'ESK-001'); // armour wins
-assertArmour(player({ armour: null, offHand: 'SHD-002' }), 'ESK-005');
-assertArmour(player({ armour: null, helmet: 'HLM-002' }), 'ESK-003');
+/* Grey armour has no skill1 — fall back to shield, then helmet. */
+assertArmour(player({ armour: 'ARM-001', offHand: 'SHD-002' }), 'ESK-005');
+assertArmour(player({ armour: 'ARM-001', helmet: 'HLM-002' }), 'ESK-003');
 assertArmour(player({ armour: 'ARM-002', offHand: 'SHD-002' }), 'ESK-001'); // armour wins
 
 const restoreRow = actions.skillToAbilityRow('ESK-001', null, 'green');
@@ -329,7 +324,7 @@ function ridersFor(birdKey, cls) {
 }
 
 {
-  const riders = ridersFor('barnowl', 'rogue');
+  const riders = ridersFor('barnowl', 'mage');
   const kinds = riders.map((r) => r.kind);
   const next = riders.find((r) => r.kind === 'gainAccNextHit');
   if (kinds.includes('gainSpeed') && next && next.gate === 'night' && !kinds.includes('gainAcc')) {

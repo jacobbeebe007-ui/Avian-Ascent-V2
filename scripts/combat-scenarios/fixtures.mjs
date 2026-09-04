@@ -63,7 +63,7 @@ export function createTestBird(sandbox, birdKey = 'sparrow', opts = {}) {
       }
       entity.equipment = Avian.equipment.createEmptyLoadout
         ? Avian.equipment.createEmptyLoadout()
-        : { helmet: null, armour: null, mainHand: null, offHand: null, anklets: null, necklace: null };
+        : { helmet: null, armour: null, mainHand: null, offHand: null, ankletL: null, ankletR: null, necklace: null };
       const ref = Avian.equipment.findReferenceLoadout?.(classId, opts.rarity || 'grey');
       if (ref?.equipment) {
         for (const sk of Object.keys(ref.equipment)) {

@@ -24,7 +24,7 @@
   var ACCURACY_PENALTY_1_EN = 0;
   var ACCURACY_PENALTY_2_EN = 0;
   var ACCURACY_PENALTY_3_EN = 0;
-  var MIN_HIT_CHANCE = 60;
+  var MIN_HIT_CHANCE = 15;
   var MAX_HIT_CHANCE = 95;
   var MIN_CRIT_CHANCE = 0;
   var MAX_CRIT_CHANCE = 50;
@@ -157,10 +157,7 @@
   }
 
   function clampHitChancePct(pct) {
-    var cfg = getCombatConfig();
-    var min = (cfg && cfg.hit && cfg.hit.minPct != null) ? Number(cfg.hit.minPct) : MIN_HIT_CHANCE;
-    var max = (cfg && cfg.hit && cfg.hit.maxPct != null) ? Number(cfg.hit.maxPct) : MAX_HIT_CHANCE;
-    return Math.max(min, Math.min(max, Number(pct) || 0));
+    return Math.max(MIN_HIT_CHANCE, Math.min(MAX_HIT_CHANCE, Number(pct) || 0));
   }
 
   function clampCritChancePct(pct) {
@@ -187,7 +184,7 @@
   }
 
   /**
-   * Bird Precision System (v2.1): Hit% = clamp(Final Attack Precision − Dodge − skillPenalty, 60, 95).
+   * Bird Precision System: Hit% = clamp(Final Attack Precision − Dodge − skillPenalty, 15, 95).
    * Final Attack Precision starts from bird Base Precision (stats.acc) plus weapon/skill/temp mods.
    * Legacy callers may still pass baseHit=100 for tests.
    */
@@ -483,29 +480,7 @@
   function getOffencePctPerStat() {
     var cfg = getCombatConfig();
     var v = cfg && cfg.weaponFirst && cfg.weaponFirst.offencePctPerStat;
-    return v != null ? Number(v) : 0;
-  }
-
-  /** Combat Workbook v2.1: Attack Power = Weapon Roll + attackPowerStatScale × Scaling Stat. */
-  function getAttackPowerStatScale() {
-    var cfg = getCombatConfig();
-    var v = cfg && cfg.weaponFirst && cfg.weaponFirst.attackPowerStatScale;
-    if (v != null && Number(v) > 0) return Number(v);
-    /* Legacy fallback: when offencePctPerStat > 0, Attack Power path is off. */
-    return 0;
-  }
-
-  function computeAttackPower(weaponRoll, scalingStat) {
-    var scale = getAttackPowerStatScale();
-    var weapon = Math.max(0, Number(weaponRoll) || 0);
-    var stat = Math.max(0, Number(scalingStat) || 0);
-    if (scale > 0) return weapon + scale * stat;
-    /* Legacy weapon-first: return weapon only; caller multiplies (SP + Stat×pct)/100. */
-    return weapon;
-  }
-
-  function usesAttackPowerFormula() {
-    return weaponFirstEnabled() && getAttackPowerStatScale() > 0;
+    return v != null ? Number(v) : 2.5;
   }
 
   function resolveMainHandWeaponItem(attacker) {
@@ -1166,7 +1141,7 @@
       } else {
         weaponDamage = resolveWeaponDamageValue(params, ability, attacker);
         skillPowerPct = getSkillPowerPct(ability) + (Number(params.skillPowerBonus) || 0) + skillPowerPenalty;
-        /* Hybrid COMBO rows: sum AttackPower×(sharePct/100) per component (v2.1), or legacy weapon×((share+stat×2.5)/100). */
+        /* Hybrid COMBO rows: sum weapon×((sharePct + stat×2.5)/100) per component. */
         if (Array.isArray(ability.scaling) && ability.scaling.length) {
           preMitigation = 0;
           for (var si = 0; si < ability.scaling.length; si++) {
@@ -1175,16 +1150,8 @@
             var sharePct = sc.skillPowerPct != null ? Number(sc.skillPowerPct)
               : Math.round((Number(sc.coeff) || 0) * (Number(sc.coeff) <= 10 ? 100 : 1));
             var st = statFromEntity(attacker, sc.ledgerKey || sc.stat);
-            if (usesAttackPowerFormula()) {
-              preMitigation += computeAttackPower(weaponDamage, st) * (sharePct / 100);
-            } else {
-              preMitigation += weaponDamage * ((sharePct + st * getOffencePctPerStat()) / 100);
-            }
+            preMitigation += weaponDamage * ((sharePct + st * getOffencePctPerStat()) / 100);
           }
-        } else if (usesAttackPowerFormula()) {
-          naturalFlat = resolveNaturalStrikeFlat(params, ability);
-          var attackPower = computeAttackPower(weaponDamage, relevantStat);
-          preMitigation = naturalFlat + attackPower * (skillPowerPct / 100);
         } else {
           naturalFlat = resolveNaturalStrikeFlat(params, ability);
           preMitigation = naturalFlat
@@ -1470,9 +1437,6 @@
     isNaturalBasicAbility: isNaturalBasicAbility,
     getSkillPowerPct: getSkillPowerPct,
     weaponFirstEnabled: weaponFirstEnabled,
-    getAttackPowerStatScale: getAttackPowerStatScale,
-    computeAttackPower: computeAttackPower,
-    usesAttackPowerFormula: usesAttackPowerFormula,
     getMitigationFraction: getMitigationFraction,
     isHybridDamage: isHybridDamage,
     calculateHybridDisplaySplit: calculateHybridDisplaySplit,
@@ -1535,9 +1499,6 @@
   globalThis.isNaturalBasicAbility = isNaturalBasicAbility;
   globalThis.getSkillPowerPct = getSkillPowerPct;
   globalThis.weaponFirstEnabled = weaponFirstEnabled;
-  globalThis.getAttackPowerStatScale = getAttackPowerStatScale;
-  globalThis.computeAttackPower = computeAttackPower;
-  globalThis.usesAttackPowerFormula = usesAttackPowerFormula;
   globalThis.getMitigationFraction = getMitigationFraction;
   globalThis.isHybridDamage = isHybridDamage;
   globalThis.calculateHybridDisplaySplit = calculateHybridDisplaySplit;

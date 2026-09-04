@@ -241,35 +241,23 @@
         armour: null,
         mainHand: null,
         offHand: null,
-        anklets: null,
+        ankletL: null,
+        ankletR: null,
         necklace: null,
       };
     }
     if (p.equipment.mainHand) return save;
     var classId = String(p.class || '').toLowerCase();
-    var map = null;
-    try {
-      var Avian = globalThis.Avian;
-      map = Avian && Avian.data && Avian.data.equipment && Avian.data.equipment.startingWeapons
-        && Avian.data.equipment.startingWeapons.byClass;
-      if (!map) {
-        map = Avian && Avian.data && Avian.data.equipment && Avian.data.equipment.coreRules
-          && Avian.data.equipment.coreRules.basicStartingWeapons;
-      }
-    } catch (_e) { map = null; }
-    if (!map) {
-      map = {
-        mage: 'WPN-031',
-        siren: 'WPN-103',
-        knight: 'WPN-025',
-        brute: 'WPN-025',
-        bard: 'WPN-097',
-        rogue: 'WPN-007',
-        inquisitor: 'WPN-085',
-      };
-    }
+    var map = {
+      mage: 'WPN-B01',
+      siren: 'WPN-B01',
+      knight: 'WPN-B02',
+      brute: 'WPN-B02',
+      bard: 'WPN-B03',
+      rogue: 'WPN-B04',
+      inquisitor: 'WPN-B05',
+    };
     if (map[classId]) p.equipment.mainHand = map[classId];
-    p.grantStarterDefenceKit = true;
     return save;
   }
 
@@ -282,7 +270,8 @@
       armour: null,
       mainHand: null,
       offHand: null,
-      anklets: null,
+      ankletL: null,
+      ankletR: null,
       necklace: null,
     };
     delete p.ultimateSourceItemId;

@@ -42,24 +42,22 @@
   function getStoryEnemyEquipmentRecipe(stage) {
     var s = Math.max(1, Math.floor(Number(stage)) || 1);
     if (s > 20) return null;
-    /* v2.1 Story starter: visibly incomplete worn kit (~75–85%), not empty. */
-    if (s <= 3) return { count: 3, bag: ['grey', 'grey', 'grey'], worn: true, completeness: 0.8 };
-    if (s <= 6) return { count: 4, bag: ['grey', 'grey', 'grey', 'grey'], worn: true, completeness: 0.85 };
+    if (s <= 3) return { count: 0, bag: [] };
+    if (s <= 6) return { count: 4, bag: ['grey', 'grey', 'grey', 'grey'] };
     if (s <= 9) return { count: 4, mix: ['grey', 'green'] };
     if (s === 10) return { count: 6, fixed: { blue: 1 }, mix: ['grey', 'green'] };
     if (s <= 13) return { count: 5, mix: ['green', 'blue'] };
-    /* Cap at 6 visible slots (v2.1 anklets pair). */
-    if (s <= 16) return { count: 6, bag: ['blue', 'blue', 'blue', 'blue', 'blue', 'blue'] };
+    if (s <= 16) return { count: 7, bag: ['blue', 'blue', 'blue', 'blue', 'blue', 'blue', 'blue'] };
     if (s <= 19) {
       return {
-        count: 6,
-        bag: ['purple', 'purple', 'purple', 'blue', 'blue', 'blue'],
+        count: 7,
+        bag: ['purple', 'purple', 'purple', 'blue', 'blue', 'blue', 'blue'],
       };
     }
-    /* Duke: full 6-slot synergistic kit (gold/orange/purple mix). */
+    /* Duke: 4 gold + 2 orange (weapon + armour skills) + 1 purple. */
     return {
-      count: 6,
-      bag: ['gold', 'gold', 'gold', 'orange', 'orange', 'purple'],
+      count: 7,
+      bag: ['gold', 'gold', 'gold', 'gold', 'orange', 'orange', 'purple'],
     };
   }
 

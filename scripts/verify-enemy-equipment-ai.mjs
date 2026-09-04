@@ -146,8 +146,8 @@ const knightGreyExpected = {
   armour: 'ARM-001',
   mainHand: 'WPN-073',
   offHand: null, /* 2H Greatblade clears offHand (including Shields) */
-  anklets: 'ACC-001',
-  
+  ankletL: 'ACC-001',
+  ankletR: 'ACC-001',
   necklace: 'ACC-025',
 };
 
@@ -222,9 +222,10 @@ function assertStoryStage(stage, expect) {
   const filled = countFilled(enemy.equipment);
   const rares = raritiesOf(enemy.equipment);
   if (expect.count === 0) {
-    if (filled !== 1 || !enemy.equipment.mainHand) {
-      fail(`stage ${stage}: expected starter weapon only, got ${filled} main=${enemy.equipment.mainHand}`);
-    } else ok(`stage ${stage}: starting weapon only`);
+    /* v1.3: empty story recipes still receive the class Basic starting weapon. */
+    if (filled !== 1 || enemy.equipment.mainHand !== 'WPN-B04') {
+      fail(`stage ${stage}: expected Basic starter only, got ${filled} main=${enemy.equipment.mainHand}`);
+    } else ok(`stage ${stage}: Basic starting weapon only`);
     return;
   }
   if (filled !== expect.count && !(expect.minCount != null && filled >= expect.minCount && filled <= expect.count)) {
@@ -257,14 +258,14 @@ function assertStoryStage(stage, expect) {
   ok(`stage ${stage}: ${filled} pieces (${[...new Set(rares)].join('+') || 'none'})`);
 }
 
-assertStoryStage(2, { count: 3, only: ['grey'] });
+assertStoryStage(2, { count: 0 });
 assertStoryStage(5, { count: 4, only: ['grey'] });
 assertStoryStage(8, { count: 4, only: ['grey', 'green'], require: ['grey', 'green'] });
 assertStoryStage(10, { count: 6, only: ['grey', 'green', 'blue'], minOf: { blue: 1 } });
 assertStoryStage(12, { count: 5, only: ['green', 'blue'], require: ['green', 'blue'] });
-assertStoryStage(15, { count: 6, only: ['blue'] });
-assertStoryStage(18, { count: 6, only: ['purple', 'blue'], minOf: { purple: 3, blue: 3 } });
-assertStoryStage(20, { count: 6, only: ['gold', 'orange', 'purple'], minOf: { gold: 3, orange: 2, purple: 1 } });
+assertStoryStage(15, { count: 7, only: ['blue'] });
+assertStoryStage(18, { count: 7, only: ['purple', 'blue'], minOf: { purple: 3, blue: 4 } });
+assertStoryStage(20, { count: 7, only: ['gold', 'orange', 'purple'], minOf: { gold: 4, orange: 2, purple: 1 } });
 
 /* Class starter + basic attack must match player counterparts. */
 {
@@ -292,15 +293,10 @@ assertStoryStage(20, { count: 6, only: ['gold', 'orange', 'purple'], minOf: { go
     equipment.assignEnemyEquipmentLoadout(enemy, { stage: 1, variance: false, seed: 7 });
     if (enemy.equipment.mainHand !== expectedId || player.equipment.mainHand !== expectedId) {
       fail(`${cls}: starter mismatch player=${player.equipment.mainHand} enemy=${enemy.equipment.mainHand} expected=${expectedId}`);
+    } else if ((player.abilities?.[0]?.name || '') !== expectedName || (enemy.abilities?.[0]?.name || '') !== expectedName) {
+      fail(`${cls}: basic name mismatch player=${player.abilities?.[0]?.name} enemy=${enemy.abilities?.[0]?.name} expected=${expectedName}`);
     } else {
-      const pName = player.abilities?.[0]?.name || '';
-      const eName = enemy.abilities?.[0]?.name || '';
-      /* Family kits use shared Basic Attack name; ids must still match. */
-      if (pName !== eName) {
-        fail(`${cls}: basic name mismatch player=${pName} enemy=${eName}`);
-      } else {
-        ok(`${cls}: enemy starter + basic matches player (${expectedId} / ${pName || expectedName})`);
-      }
+      ok(`${cls}: enemy starter + basic matches player (${expectedId} / ${expectedName})`);
     }
   }
 }
@@ -310,41 +306,37 @@ assertStoryStage(20, { count: 6, only: ['gold', 'orange', 'purple'], minOf: { go
   sandbox.G = { stage: 2, endlessMode: false, player: { birdKey: 'sparrow', class: 'rogue' } };
   const previewEnemy = makeEnemy('mage', 'grey', {
     id: 'preview-mage',
-    birdKey: 'snowyOwl',
+    birdKey: 'barnowl',
     class: 'mage',
     enemyClass: 'mage',
     abilities: [],
   });
   delete previewEnemy.equipment;
-  delete previewEnemy._equipmentApplied;
-  delete previewEnemy._previewEquipment;
-  delete previewEnemy._previewAbilities;
   const state = typeof sandbox.ensureEnemyPreviewEquipmentState === 'function'
     ? sandbox.ensureEnemyPreviewEquipmentState(previewEnemy)
     : null;
-  if (!state || state.equipment?.mainHand !== 'WPN-031') {
-    fail(`preview mage starter expected WPN-031, got ${state?.equipment?.mainHand}`);
-  } else if (!state.abilities?.some((a) => a && !a.empty && /Wand|Basic Attack/i.test(String(a.name)))) {
-    fail(`preview mage basic expected Wand/Basic Attack, got ${(state.abilities || []).map((a) => a?.name).join(',')}`);
+  if (!state || state.equipment?.mainHand !== 'WPN-B01') {
+    fail(`preview mage starter expected WPN-B01, got ${state?.equipment?.mainHand}`);
+  } else if (!state.abilities?.some((a) => a && !a.empty && String(a.name).includes('Tail Wand'))) {
+    fail(`preview mage basic expected Tail Wand, got ${(state.abilities || []).map((a) => a?.name).join(',')}`);
   } else {
-    ok('preview loadout grants Wand starter + basic for mage');
+    ok('preview loadout grants Tail Wand starter + basic for mage');
   }
   const html = typeof sandbox.buildEncounterPreviewEquipmentHtml === 'function'
     ? sandbox.buildEncounterPreviewEquipmentHtml(previewEnemy)
     : '';
-  if (!/Wand/.test(html)) fail('preview equipment HTML missing Wand');
-  else ok('preview equipment HTML lists Wand');
+  if (!/Tail Wand/.test(html)) fail('preview equipment HTML missing Tail Wand');
+  else ok('preview equipment HTML lists Tail Wand');
   const names = typeof sandbox.getEnemyPreviewSkillNames === 'function'
     ? sandbox.getEnemyPreviewSkillNames(previewEnemy)
     : [];
-  if (!names.some((n) => /Wand|Arc Bolt|Arcane Ward|Basic Attack/i.test(String(n)))) {
-    fail(`preview skill names missing Wand kit: ${names.join(',')}`);
-  } else ok('preview skill names include Wand kit');
+  if (!names.some((n) => /Tail Wand/i.test(String(n)))) fail(`preview skill names missing Tail Wand: ${names.join(',')}`);
+  else ok('preview skill names include Tail Wand');
 }
 
 const explicitRarity = makeEnemy('rogue', 'blue', { id: 'explicit-rarity-no-stage' });
 equipment.assignEnemyEquipmentLoadout(explicitRarity, { rarity: 'blue', variance: false, seed: 55 });
-if (countFilled(explicitRarity.equipment) < 6) {
+if (countFilled(explicitRarity.equipment) < 7) {
   fail('explicit rarity path should still roll full reference kit');
 } else ok('explicit rarity path ignores story recipe when stage omitted');
 
