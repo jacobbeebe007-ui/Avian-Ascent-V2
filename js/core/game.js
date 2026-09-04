@@ -1958,6 +1958,25 @@ function threatTierExpMultiplierForEnemy(_enemy) {
   return 1;
 }
 
+function buildExperienceAwardContext() {
+  return {
+    playerLevel: Math.max(1, Math.floor(G.player?.birdLevel || 1)),
+    stage: getEncounterStage(),
+    endlessBattle: Math.max(0, Math.floor(Number(G.endlessBattle) || 0)),
+    isEndlessRunActive: isEndlessRunActive(),
+    difficulty: G.difficulty || 'juvenile',
+    segmentIndex: isEndlessMapActive()
+      ? Math.max(0, Math.floor(Number(G.endlessMap?.segmentIndex) || 0))
+      : null,
+    getRosterRow: typeof getEnemyRosterRow === 'function' ? getEnemyRosterRow : null,
+    getEnemyLevel: getEnemyPreviewLevel,
+    baseExpForLevel: baseExpForEnemyLevel,
+    relativeLevelMult: relativeLevelExpMultiplier,
+    stageDepthMult: stageExpMultiplier,
+    expForLevel,
+  };
+}
+
 function baseExpForEnemyLevel(lv) {
   const L = Math.max(0, Math.floor(Number(lv) || 0));
   if (L <= 10) return BASE_EXP_BY_ENEMY_LEVEL[L];
@@ -1990,6 +2009,10 @@ function stageExpMultiplier() {
 }
 
 function computeNormalEnemyExpGain(enemy) {
+  const expScaling = Avian?.balance?.experience;
+  if (typeof expScaling?.computeNormalAward === 'function') {
+    return expScaling.computeNormalAward(Object.assign({ enemy }, buildExperienceAwardContext()));
+  }
   if (!enemy) return 0;
   const plv = Math.max(1, Math.floor(G.player?.birdLevel || 1));
   const elv = getEnemyPreviewLevel(enemy);
@@ -2006,6 +2029,10 @@ function computeNormalEnemyExpGain(enemy) {
 }
 
 function computeBossExpGain(enemy) {
+  const expScaling = Avian?.balance?.experience;
+  if (typeof expScaling?.computeBossAward === 'function') {
+    return expScaling.computeBossAward(Object.assign({ enemy }, buildExperienceAwardContext()));
+  }
   const plv = Math.max(1, Math.floor(G.player?.birdLevel || 1));
   let exp = Math.round(expForLevel(plv + 1) * 0.72 * stageExpMultiplier());
   if (enemy) {

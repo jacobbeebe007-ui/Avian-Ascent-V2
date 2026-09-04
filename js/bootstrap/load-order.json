@@ -74,6 +74,7 @@
     "js/data/story-map.js",
     "js/systems/story-enemy-levels.js",
     "js/systems/enemy-encounter-balance.js",
+    "js/systems/experience-scaling.js",
     "js/systems/enemy-roster-runtime.js",
     "js/systems/encounter-generator.js",
     "js/world/overworld_bridge.js",
