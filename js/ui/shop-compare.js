@@ -45,7 +45,7 @@ function _shopCompareRows(shop, worn){
 function _shopCompareCandidateSlots(item){
   const order=(typeof Avian?.equipment?.getSlotOrder==='function'
     ? Avian.equipment.getSlotOrder()
-    : ['helmet','armour','mainHand','offHand','anklets','necklace']);
+    : ['helmet','armour','mainHand','offHand','ankletL','ankletR','necklace']);
   if(typeof Avian?.equipment?.slotAcceptsItem==='function'){
     return order.filter((sk)=>Avian.equipment.slotAcceptsItem(sk, item));
   }

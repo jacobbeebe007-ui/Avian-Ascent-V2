@@ -1,9 +1,9 @@
 /* Avian Ascent — combat / equipment Working Draft config.
  *
- * Hand-authored (not generated). Combat Workbook v2.1 Attack Power + Health
- * foundations live here so tuning never requires system-code edits.
+ * Hand-authored (not generated). Weapon-first v0.9 numerics live here so
+ * tuning never requires system-code edits.
  *
- * See Avian_Ascent_Combat_Workbookv2.1.xlsx (V2 Core Rules / Damage & Progression).
+ * See docs/weapon-first-v09-migration.md.
  */
 (function () {
   'use strict';
@@ -12,8 +12,7 @@
   Avian.data = Avian.data || Object.create(null);
 
   Avian.data.combatConfig = Object.freeze({
-    packVersion: '2026.09-combat-v2.1',
-    combatWorkbookV21: true,
+    packVersion: '2026.07-equipment-v1.5-physical-ailments',
     affinityArsenalV06: true,
     equipmentLootV07: false,
     weaponFirstV09: true,
@@ -21,11 +20,11 @@
     equipmentV13BasicStartingWeapons: true,
     physicalAilmentsV15: true,
 
-    /* V2-002 — universal AP: start 4, regen 3, hard max 6. */
+    /* R-EN-001 — equipment never changes these. Carryover cap is WD (OD-025). */
     energy: Object.freeze({
       start: 4,
       regen: 3,
-      max: 6,
+      max: 10,
       carryoverCap: 6,
     }),
 
@@ -38,20 +37,17 @@
       6: 35,
     }),
 
-    /* v2.1 Attack Power: Weapon Roll + 2 × Scaling Stat; raw = AP × (SkillPower÷100). */
+    /* v0.9 weapon-first: Weapon × ((SkillPowerPct + Stat×2.5) ÷ 100). */
     weaponFirst: Object.freeze({
       enabled: true,
-      attackPowerStatScale: 2,
-      /* Legacy 2.5% path disabled when attackPowerStatScale is set. */
-      offencePctPerStat: 0,
-      /* Vitality +1 = Max Health +5. */
-      vitalityMaxHpPerPoint: 5,
-      /* Flat +5 Max Health per level after 1 (not a fraction of size base). */
-      baseHealthPerLevelPct: 0,
-      levelHealthFlat: 5,
+      offencePctPerStat: 2.5,
+      /* Vitality +1 = Max Health +3 (flat, after leveled Base Health). */
+      vitalityMaxHpPerPoint: 3,
+      /* Each level after 1 adds this fraction of original Base Health before VIT×3. */
+      baseHealthPerLevelPct: 0.5,
       agilityDodgePctPerPoint: 0.5,
       dodgeCapPct: 50,
-      /* Equipped Basic Attack is 45% Attack Power. Flat 1–2 remains unarmed fallback only. */
+      /* Equipped Basic Attack is 100% weapon damage. Flat 1–2 remains unarmed fallback only. */
       naturalStrike: Object.freeze({
         skillPowerPct: 0,
         flatMin: 1,
@@ -59,7 +55,7 @@
         unarmedFallbackOnly: true,
       }),
       basicAttack: Object.freeze({
-        skillPowerPct: 45,
+        skillPowerPct: 100,
       }),
     }),
 
@@ -79,24 +75,14 @@
       enCooldown: Object.freeze({ 1: 0, 2: 0, 3: 1, 4: 2, 5: 3, 6: 0 }),
     }),
 
-    /* AP action coefficients as Skill Power % bands (Combat Workbook v2.1). */
+    /* Skill Power bands by EN (weapon % multipliers). */
     skillPowerBands: Object.freeze({
-      1: Object.freeze({ min: 35, max: 50, pure: 45 }),
-      2: Object.freeze({ min: 90, max: 110, pure: 100 }),
-      3: Object.freeze({ min: 140, max: 170, pure: 155 }),
-      4: Object.freeze({ min: 190, max: 240, pure: 215 }),
-      5: Object.freeze({ min: 250, max: 310, pure: 280 }),
-      6: Object.freeze({ min: 310, max: 380, pure: 350 }),
-    }),
-
-    /* Pure damage coefficients by AP (Attack Power multipliers). */
-    apDamageCoefficients: Object.freeze({
-      1: 0.45,
-      2: 1.0,
-      3: 1.55,
-      4: 2.15,
-      5: 2.8,
-      6: 3.5,
+      1: Object.freeze({ min: 70, max: 90 }),
+      2: Object.freeze({ min: 100, max: 120 }),
+      3: Object.freeze({ min: 130, max: 150 }),
+      4: Object.freeze({ min: 160, max: 190 }),
+      5: Object.freeze({ min: 200, max: 235 }),
+      6: Object.freeze({ min: 245, max: 290 }),
     }),
 
     /* Legacy StatMod unused when weaponFirst.enabled. */
@@ -128,9 +114,8 @@
       damageFloorMult: 1.35,
     }),
 
-    /* V2-008 — single hit roll clamp(Precision − Dodge, 60, 95). */
     hit: Object.freeze({
-      minPct: 60,
+      minPct: 15,
       maxPct: 95,
     }),
     bonusCaps: Object.freeze({
@@ -151,25 +136,22 @@
       minLandedDamage: 1,
     }),
 
-    /* V2-005 — Ultimate costs 6 AP + full meter. */
     ultimateMeter: Object.freeze({
       max: 100,
       damageAwards: Object.freeze({ 1: 8, 2: 12, 3: 16, 4: 22, 6: 0 }),
       utilityAwards: Object.freeze({ 1: 0, 2: 0, 3: 0, 4: 0, 6: 0 }),
-      ultimateEnCost: 6,
+      ultimateEnCost: 0,
       requireFullMeter: true,
       oncePerLandedAction: true,
     }),
 
-    /* V2-013 — Minor ±1 / Major ±2 / Grand ±4; Standard duration 3 affected turns. */
+    /* R-EFF-001 — flat tiers ±4 / ±10 / ±20. */
     effectTiers: Object.freeze({
-      minor: 1,
-      moderate: 2,
-      major: 2,
-      grand: 4,
-      core: Object.freeze({ minor: 1, moderate: 2, major: 2, grand: 4 }),
-      points: Object.freeze({ minor: 1, moderate: 2, major: 2, grand: 4 }),
-      durations: Object.freeze({ standard: 3, grand: 2, brief: 1, extended: 4 }),
+      minor: 4,
+      moderate: 10,
+      major: 20,
+      core: Object.freeze({ minor: 4, moderate: 10, major: 20 }),
+      points: Object.freeze({ minor: 4, moderate: 10, major: 20 }),
       flatStat: true,
       coreTempCapPct: 20,
       precisionTempCapPoints: 12,
@@ -197,10 +179,9 @@
     }),
 
     brace: Object.freeze({
-      minor: 1,
-      moderate: 2,
-      major: 2,
-      grand: 4,
+      minor: 4,
+      moderate: 10,
+      major: 20,
       capPct: 12,
     }),
 
@@ -212,21 +193,19 @@
       braceCapPct: 0.12,
     }),
 
-    /* V2-004 — ordinary restoration / Fortify / Ward have no cooldown. */
+    /* v1.2 Armour / Magic Armour / Fortify / Ward. */
     protection: Object.freeze({
       barrierRemoved: true,
-      armourRestorationCooldown: 0,
-      magicArmourRestorationCooldown: 0,
-      fortifyCooldown: 0,
-      wardCooldown: 0,
-      bastionCooldown: 0,
-      fortifyEnCost: 4,
-      wardEnCost: 4,
+      armourRestorationCooldown: 1,
+      magicArmourRestorationCooldown: 1,
+      fortifyCooldown: 2,
+      wardCooldown: 2,
+      bastionCooldown: 3,
       fortifyDefaultDuration: 2,
       wardDefaultDuration: 2,
     }),
 
-    /* Max HP = Size Base + 5×Vitality + 5×(Level−1). */
+    /* Universal +20 Health removed; Max HP = Leveled Base Health + Vitality × 3. */
     vitalityRebase: 0,
     levelCap: 30,
 
@@ -327,8 +306,8 @@
     }),
 
     pacing: Object.freeze({
-      targetTurnsMin: 5,
-      targetTurnsMax: 7,
+      targetTurnsMin: 2,
+      targetTurnsMax: 4,
     }),
 
     budgets: Object.freeze({
@@ -346,7 +325,7 @@
       naturalStrikeName: 'Beak Jab',
       tailWandClasses: Object.freeze(['mage', 'siren']),
       enCost: 1,
-      skillPowerPct: 45,
+      skillPowerPct: 100,
       flatMin: 1,
       flatMax: 2,
     }),
@@ -365,7 +344,8 @@
       'armour',
       'mainHand',
       'offHand',
-      'anklets',
+      'ankletL',
+      'ankletR',
       'necklace',
     ]),
   });

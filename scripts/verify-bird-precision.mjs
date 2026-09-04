@@ -131,8 +131,8 @@ else {
 
 /* Crow Nest/UI sync expectation */
 const crowAcc = birdsV2.crow?.stats?.acc;
-if (crowAcc === 81) ok(`crow Nest/Stats Precision ${crowAcc} (Combat Workbook v2.1)`);
-else fail(`crow expected Precision 81, got ${crowAcc}`);
+if (crowAcc === 79) ok(`crow Nest/Stats Precision ${crowAcc} (was 0 in v0.6)`);
+else fail(`crow expected Precision 79, got ${crowAcc}`);
 
 if (failed) {
   console.error(`\n${failed} failure(s)`);

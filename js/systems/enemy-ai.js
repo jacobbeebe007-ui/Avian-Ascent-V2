@@ -161,22 +161,7 @@
     if (cat === 'heal') return eHp < 0.55 ? (1 - eHp) * 40 : 2;
     if (cat === 'guard') {
       var guardVal = ctx.playerGoesFirst ? 18 : 10;
-      var baseGuard = eHp < 0.5 ? guardVal * 1.4 : guardVal * 0.6;
-      /* v2.1 — Fortify/Ward are high-value defence when survival is at risk. */
-      var label = String((action && (action.label || action.name || action.abilityId)) || '').toLowerCase();
-      var isFortifyWard = /fortify|ward|bastion|aegis/.test(label);
-      if (isFortifyWard) {
-        var armour = Number(e.stats && e.stats.armour) || 0;
-        var magicArmour = Number(e.stats && e.stats.magicArmour) || 0;
-        var maxArmour = Math.max(1, Number(e.stats && (e.stats.maxArmour || e.stats.normalMaxArmour)) || 1);
-        var maxMagic = Math.max(1, Number(e.stats && (e.stats.maxMagicArmour || e.stats.normalMaxMagicArmour)) || 1);
-        var poolLow = (armour / maxArmour) < 0.55 || (magicArmour / maxMagic) < 0.55;
-        if (eHp < 0.65 || poolLow || ctx.playerGoesFirst) baseGuard *= 1.55;
-        if (typeof global.G !== 'undefined' && global.G && global.G._combatTelemetry) {
-          global.G._combatTelemetry.defenceUtility = (global.G._combatTelemetry.defenceUtility || 0) + 1;
-        }
-      }
-      return baseGuard;
+      return eHp < 0.5 ? guardVal * 1.4 : guardVal * 0.6;
     }
     if (cat === 'buff') return eHp < 0.6 ? 14 : 8;
     if (cat === 'control') {
