@@ -63,11 +63,13 @@ const utilities = data.combatPack && data.combatPack.innateUtilities;
 const tiers = data.effectTiers;
 const cfg = data.combatConfig;
 
-if (!slots || !slots.slotOrder || slots.slotOrder.length !== 7) {
-  fail('expected 7 equipment slots, got ' + (slots && slots.slotOrder && slots.slotOrder.length));
+if (!slots || !slots.slotOrder || slots.slotOrder.length !== 6) {
+  fail('expected 6 equipment slots (v2.1 anklets pair), got ' + (slots && slots.slotOrder && slots.slotOrder.length));
 }
 if (slots.slots && slots.slots.shield) fail('dedicated shield slot should be removed');
 if (!slots.slots || !slots.slots.offHand) fail('offHand slot missing');
+if (!slots.slots || !slots.slots.anklets) fail('anklets pair slot missing');
+if (slots.slots.ankletL || slots.slots.ankletR) fail('legacy ankletL/ankletR slots should be collapsed');
 
 const skillIds = skills ? Object.keys(skills) : [];
 if (skillIds.length < 100) fail('expected ≥100 skills (v1.2 WSK+ESK+BASIC), got ' + skillIds.length);
@@ -84,14 +86,30 @@ const itemIds = items ? Object.keys(items) : [];
 if (itemIds.length !== 305) fail('expected 305 items (v1.3 + 5 basic starters), got ' + itemIds.length);
 
 const starters = data.equipment && data.equipment.startingWeapons;
-if (!starters || !starters.byClass || starters.ids.length !== 5) {
+if (!starters || !starters.byClass || !Array.isArray(starters.ids) || starters.ids.length < 5) {
   fail('startingWeapons map missing or incomplete');
 }
-for (const id of starters.ids) {
+/* v2.1 — starters map into full Grey family kits (Basic + A + B), not Basic-only. */
+for (const [cls, id] of Object.entries(starters.byClass)) {
   const it = items[id];
-  if (!it || !it.isBasicStartingWeapon) fail('missing basic starting weapon ' + id);
-  if (it.skill1 || it.skill2) fail(id + ' must not grant weapon skills');
+  if (!it) fail('missing starter weapon ' + id + ' for ' + cls);
+  if (it.isBasicStartingWeapon) fail(cls + ' starter ' + id + ' must be a full family kit, not Basic-only');
+  if (!it.skill1 || !it.skill2) fail(id + ' must grant Technique A + B');
   if (it.minDamage == null || it.maxDamage == null) fail(id + ' missing damage range');
+}
+for (const id of (starters.legacyBasicIds || [])) {
+  const it = items[id];
+  if (!it || !it.isBasicStartingWeapon) fail('missing legacy basic starting weapon ' + id);
+}
+/* Grey defence reachability */
+const greyArmour = Object.values(items).filter((it) => it.slot === 'Armour' && it.rarity === 'grey');
+if (!greyArmour.length || greyArmour.some((it) => !it.skill1)) fail('all Grey armour must grant a defence skill');
+const greyShields = Object.values(items).filter((it) => it.slot === 'Shield' && it.rarity === 'grey');
+if (!greyShields.length || greyShields.some((it) => it.skill1 !== 'ESK-SHD-FORTIFY')) {
+  fail('all Grey shields must grant ESK-SHD-FORTIFY');
+}
+if (!skills['ESK-SHD-FORTIFY'] || Number(skills['ESK-SHD-FORTIFY'].en) !== 4) {
+  fail('Shield Fortify must cost 4 AP');
 }
 
 const familyIds = families ? Object.keys(families) : [];

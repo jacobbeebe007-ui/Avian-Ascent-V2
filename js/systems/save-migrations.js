@@ -241,8 +241,7 @@
         armour: null,
         mainHand: null,
         offHand: null,
-        ankletL: null,
-        ankletR: null,
+        anklets: null,
         necklace: null,
       };
     }
@@ -270,8 +269,7 @@
       armour: null,
       mainHand: null,
       offHand: null,
-      ankletL: null,
-      ankletR: null,
+      anklets: null,
       necklace: null,
     };
     delete p.ultimateSourceItemId;

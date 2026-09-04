@@ -2391,7 +2391,7 @@ function notifyStoryBattleNestEquipLocked(){
 }
 
 const EQUIPMENT_NEST_SLOT_ICONS={
-  helmet:'⛑', armour:'🛡', mainHand:'⚔', offHand:'🗡', ankletL:'🦶', ankletR:'🦶', necklace:'📿',
+  helmet:'⛑', armour:'🛡', mainHand:'⚔', offHand:'🗡', anklets:'🦶', necklace:'📿',
 };
 function getEquipmentNestSlotLabel(slotKey){
   const meta=Avian.data?.equipment?.slots?.slots?.[slotKey];
@@ -17493,7 +17493,7 @@ function renderShopEquipped(){
     return;
   }
   Avian.equipment.ensurePlayerEquipmentState(G.player);
-  const order=typeof Avian.equipment.getSlotOrder==='function'?Avian.equipment.getSlotOrder():['helmet','armour','mainHand','offHand','ankletL','ankletR','necklace'];
+  const order=typeof Avian.equipment.getSlotOrder==='function'?Avian.equipment.getSlotOrder():['helmet','armour','mainHand','offHand','anklets','necklace'];
   const eq=G.player.equipment||{};
   order.forEach(slotKey=>{
     const itemId=eq[slotKey]||null;

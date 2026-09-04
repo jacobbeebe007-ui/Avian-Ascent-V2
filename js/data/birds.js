@@ -538,7 +538,7 @@
   snowyOwl:{
     name:"Snowy Owl", portraitKey:"snowyOwl",
     tagline:"The snow listens. Then it falls.",
-    size:"large", class:"mage", aspect:"maris", aspectTheme:"Water / Sea",
+    size:"large", class:"rogue", aspect:"maris", aspectTheme:"Water / Sea",
     unlockRequires:"juvenileWin",
     unlockHint:"Defeat Stage 20 on Normal mode to unlock.",
     stats:{hp:43,maxHp:43,atk:2,def:7,spd:9,dodge:4,acc:82,mdef:16,matk:22,critChance:8},

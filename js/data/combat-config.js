@@ -365,8 +365,7 @@
       'armour',
       'mainHand',
       'offHand',
-      'ankletL',
-      'ankletR',
+      'anklets',
       'necklace',
     ]),
   });
