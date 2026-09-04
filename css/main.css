@@ -2477,8 +2477,6 @@ body.combat-scenario-test-unlocked .splash-hotspot--combat-scenarios.is-combatte
   min-width:0;
   overflow:hidden;
 }
-.sfsel__view-tabs,
-.sfsel__back-to-birds{display:none !important;}
 /* LEFT: roster grid */
 #select-hub-door .sfsel__roster{
   flex:1 1 0;
@@ -3135,6 +3133,11 @@ body.combat-scenario-test-unlocked .splash-hotspot--combat-scenarios.is-combatte
 #select-hub-door .sfsel .showcase-summary{font-size:.65rem;color:#c9d5e2;margin:0;line-height:1.3;}
 
 /* Character Select responsive presentation: tablet */
+/* Desktop/tablet: side-by-side roster + detail — hide mobile-only view tabs */
+@media (min-width:701px){
+  .sfsel__view-tabs,
+  .sfsel__back-to-birds{display:none !important;}
+}
 /* ── Tablet (701–1024px): slightly narrower detail ── */
 @media (min-width:701px) and (max-width:1024px){
   #select-hub-door .sfsel__main{grid-template-columns:minmax(0,1fr) clamp(320px,42vw,430px);}
