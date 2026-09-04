@@ -295,5 +295,5 @@ if (process.exitCode) {
   process.exit(1);
 }
 console.log('verify-equipment-content: OK');
-console.log('  slots=8 skills=' + skillIds.length + ' items=' + itemIds.length +
+console.log('  slots=' + slots.slotOrder.length + ' skills=' + skillIds.length + ' items=' + itemIds.length +
   ' families=' + familyIds.length + ' birds=' + birdIds.length);

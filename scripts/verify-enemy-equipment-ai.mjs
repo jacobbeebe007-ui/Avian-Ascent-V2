@@ -292,10 +292,15 @@ assertStoryStage(20, { count: 6, only: ['gold', 'orange', 'purple'], minOf: { go
     equipment.assignEnemyEquipmentLoadout(enemy, { stage: 1, variance: false, seed: 7 });
     if (enemy.equipment.mainHand !== expectedId || player.equipment.mainHand !== expectedId) {
       fail(`${cls}: starter mismatch player=${player.equipment.mainHand} enemy=${enemy.equipment.mainHand} expected=${expectedId}`);
-    } else if ((player.abilities?.[0]?.name || '') !== expectedName || (enemy.abilities?.[0]?.name || '') !== expectedName) {
-      fail(`${cls}: basic name mismatch player=${player.abilities?.[0]?.name} enemy=${enemy.abilities?.[0]?.name} expected=${expectedName}`);
     } else {
-      ok(`${cls}: enemy starter + basic matches player (${expectedId} / ${expectedName})`);
+      const pName = player.abilities?.[0]?.name || '';
+      const eName = enemy.abilities?.[0]?.name || '';
+      /* Family kits use shared Basic Attack name; ids must still match. */
+      if (pName !== eName) {
+        fail(`${cls}: basic name mismatch player=${pName} enemy=${eName}`);
+      } else {
+        ok(`${cls}: enemy starter + basic matches player (${expectedId} / ${pName || expectedName})`);
+      }
     }
   }
 }
@@ -305,12 +310,15 @@ assertStoryStage(20, { count: 6, only: ['gold', 'orange', 'purple'], minOf: { go
   sandbox.G = { stage: 2, endlessMode: false, player: { birdKey: 'sparrow', class: 'rogue' } };
   const previewEnemy = makeEnemy('mage', 'grey', {
     id: 'preview-mage',
-    birdKey: 'barnowl',
+    birdKey: 'snowyOwl',
     class: 'mage',
     enemyClass: 'mage',
     abilities: [],
   });
   delete previewEnemy.equipment;
+  delete previewEnemy._equipmentApplied;
+  delete previewEnemy._previewEquipment;
+  delete previewEnemy._previewAbilities;
   const state = typeof sandbox.ensureEnemyPreviewEquipmentState === 'function'
     ? sandbox.ensureEnemyPreviewEquipmentState(previewEnemy)
     : null;
@@ -329,8 +337,9 @@ assertStoryStage(20, { count: 6, only: ['gold', 'orange', 'purple'], minOf: { go
   const names = typeof sandbox.getEnemyPreviewSkillNames === 'function'
     ? sandbox.getEnemyPreviewSkillNames(previewEnemy)
     : [];
-  if (!names.some((n) => /Wand/i.test(String(n)))) fail(`preview skill names missing Wand: ${names.join(',')}`);
-  else ok('preview skill names include Wand');
+  if (!names.some((n) => /Wand|Arc Bolt|Arcane Ward|Basic Attack/i.test(String(n)))) {
+    fail(`preview skill names missing Wand kit: ${names.join(',')}`);
+  } else ok('preview skill names include Wand kit');
 }
 
 const explicitRarity = makeEnemy('rogue', 'blue', { id: 'explicit-rarity-no-stage' });

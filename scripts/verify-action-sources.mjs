@@ -148,6 +148,7 @@ assertBasic({
 // ensureStartingWeapon grants class starter when mainHand empty
 {
   const p = player();
+  p.grantStarterDefenceKit = true;
   equipment.ensurePlayerEquipmentState(p);
   if (p.equipment.mainHand !== 'WPN-007') fail(`starter grant expected WPN-007 Talon Blade, got ${p.equipment.mainHand}`);
   else ok('ensureStartingWeapon grants Talon Blade to rogue');
@@ -165,7 +166,7 @@ assertBasic({
   equipment.ensureStartingWeapon(enemy);
   if (enemy.equipment.mainHand !== 'WPN-031') fail(`enemy mage starter expected WPN-031 Wand, got ${enemy.equipment.mainHand}`);
   else ok('ensureStartingWeapon grants Wand to enemy mage via enemyClass');
-  assertBasic(enemy, 'BASIC_MAGIC', 'Wand');
+  assertBasic(enemy, 'BASIC_MAGIC', 'Basic Attack');
 }
 
 // wand main → BASIC_MAGIC (equipped Basic Attack name for non-basic weapons)
@@ -186,9 +187,11 @@ assertWeapon(player({ mainHand: 'WPN-061', offHand: 'WPN-007' }), 'weaponB', 'WS
 // armour technique
 assertArmour(player({ armour: 'ARM-002' }), 'ESK-001');
 assertArmour(player(), null);
-/* Grey armour has no skill1 — fall back to shield, then helmet. */
-assertArmour(player({ armour: 'ARM-001', offHand: 'SHD-002' }), 'ESK-005');
-assertArmour(player({ armour: 'ARM-001', helmet: 'HLM-002' }), 'ESK-003');
+/* v2.1 Grey armour grants defence skills; empty armour falls back to shield/helmet. */
+assertArmour(player({ armour: 'ARM-001' }), 'ESK-001');
+assertArmour(player({ armour: 'ARM-001', offHand: 'SHD-002' }), 'ESK-001'); // armour wins
+assertArmour(player({ armour: null, offHand: 'SHD-002' }), 'ESK-005');
+assertArmour(player({ armour: null, helmet: 'HLM-002' }), 'ESK-003');
 assertArmour(player({ armour: 'ARM-002', offHand: 'SHD-002' }), 'ESK-001'); // armour wins
 
 const restoreRow = actions.skillToAbilityRow('ESK-001', null, 'green');

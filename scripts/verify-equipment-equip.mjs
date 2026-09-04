@@ -189,6 +189,7 @@ if (ank.equipment.anklets === 'ACC-001' && !ank.equipment.ankletL && !ank.equipm
 
 // --- second anklet stays in bag when pair slot filled ---
 const ankAuto = freshPlayer('crow');
+equipment.addToInventory(ankAuto, 'ACC-001');
 equipment.equip(ankAuto, 'ACC-001', 'anklets');
 const autoSlot = equipment.findEmptyEquipSlotForItem(ankAuto, 'ACC-001');
 if (autoSlot == null) ok('findEmptyEquipSlotForItem has no second anklet slot');

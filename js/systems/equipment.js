@@ -246,7 +246,12 @@
     }
     if (!Array.isArray(player.equipmentInventory)) player.equipmentInventory = [];
     ensureStartingWeapon(player);
-    ensureStarterDefenceKit(player);
+    /* Defence kit is granted explicitly on new-bird start (grantStarterDefenceKit flag),
+       not on every ensure — keeps unit tests and mid-run loadouts stable. */
+    if (player.grantStarterDefenceKit) {
+      ensureStarterDefenceKit(player);
+      player.grantStarterDefenceKit = false;
+    }
     return player;
   }
 
@@ -1049,6 +1054,17 @@
       );
     }
     var ref = findReferenceLoadout(classId, rarityOut);
+    /* Worn Story kits: class starter weapon instead of full reference mainHand. */
+    if (recipe && (recipe.worn || (Number(recipe.completeness) > 0 && Number(recipe.completeness) < 1))) {
+      var starterWpn = getClassStartingWeaponId(classId);
+      if (starterWpn && getItem(starterWpn)) {
+        eq.mainHand = starterWpn;
+        filledCount = 0;
+        for (var sk3 in eq) {
+          if (Object.prototype.hasOwnProperty.call(eq, sk3) && eq[sk3]) filledCount++;
+        }
+      }
+    }
     return {
       equipment: eq,
       rarity: rarityOut,

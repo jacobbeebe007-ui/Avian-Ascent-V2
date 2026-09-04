@@ -111,7 +111,7 @@ export default [
         bird: 'secretary',
         class: 'knight',
         energy: 6,
-        equipment: { helmet: 'HLM-002' },
+        equipment: { helmet: 'HLM-002', armour: null, offHand: null },
       },
       enemy: { bird: 'crow', hp: 50 },
     },

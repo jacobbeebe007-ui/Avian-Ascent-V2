@@ -5168,6 +5168,20 @@ function ensureEnemyPreviewEquipmentState(enemy){
       enemyClass:enemy.enemyClass||enemy.class,
       equipment:eq,
     };
+    /* Worn Story previews: prefer class starter mainHand when recipe marked worn. */
+    try{
+      const stageNum=Math.max(1, Math.floor(Number(G && G.stage) || 1));
+      const recipe=(typeof getStoryEnemyEquipmentRecipe==='function' && !endless && stageNum<=20)
+        ? getStoryEnemyEquipmentRecipe(stageNum)
+        : null;
+      if(recipe && (recipe.worn || (Number(recipe.completeness)>0 && Number(recipe.completeness)<1))){
+        const cls=String(enemy.enemyClass||enemy.class||'').toLowerCase();
+        const starter=Avian.equipment.getClassStartingWeaponId
+          ? Avian.equipment.getClassStartingWeaponId(cls)
+          : null;
+        if(starter) tmp.equipment.mainHand=starter;
+      }
+    }catch(_e){ /* noop */ }
     Avian.equipment.ensureStartingWeapon(tmp);
     eq=tmp.equipment;
   }
@@ -7366,6 +7380,8 @@ function startGame() {
   normalizeCombatStats(G.player.stats);
   G.player.class = bd.class;
   G.player.size = bd.size||'medium';
+  /* Combat Workbook v2.1 — full family starter + Grey defence/status route. */
+  G.player.grantStarterDefenceKit = true;
   if(typeof Avian?.equipment?.ensurePlayerEquipmentState==='function'){
     Avian.equipment.ensurePlayerEquipmentState(G.player);
   }

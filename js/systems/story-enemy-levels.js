@@ -48,17 +48,18 @@
     if (s <= 9) return { count: 4, mix: ['grey', 'green'] };
     if (s === 10) return { count: 6, fixed: { blue: 1 }, mix: ['grey', 'green'] };
     if (s <= 13) return { count: 5, mix: ['green', 'blue'] };
-    if (s <= 16) return { count: 7, bag: ['blue', 'blue', 'blue', 'blue', 'blue', 'blue', 'blue'] };
+    /* Cap at 6 visible slots (v2.1 anklets pair). */
+    if (s <= 16) return { count: 6, bag: ['blue', 'blue', 'blue', 'blue', 'blue', 'blue'] };
     if (s <= 19) {
       return {
-        count: 7,
-        bag: ['purple', 'purple', 'purple', 'blue', 'blue', 'blue', 'blue'],
+        count: 6,
+        bag: ['purple', 'purple', 'purple', 'blue', 'blue', 'blue'],
       };
     }
-    /* Duke: 4 gold + 2 orange (weapon + armour skills) + 1 purple. */
+    /* Duke: full 6-slot synergistic kit (gold/orange/purple mix). */
     return {
-      count: 7,
-      bag: ['gold', 'gold', 'gold', 'gold', 'orange', 'orange', 'purple'],
+      count: 6,
+      bag: ['gold', 'gold', 'gold', 'orange', 'orange', 'purple'],
     };
   }
 
