@@ -3782,10 +3782,30 @@ async function reloadShellHttpCache() {
 function cacheBustReload() {
   try {
     const url = new URL(location.href);
+    /* Always land on the classic shell entry so a war-room / Supplies clear
+     * matches the title-screen clear (fresh start screen, not a restored hub). */
+    url.hash = '';
+    url.search = '';
     url.searchParams.set('avianCacheBust', String(Date.now()));
     location.replace(url.href);
   } catch (_) {
     try { location.reload(); } catch (_e) { /* sandboxed embed */ }
+  }
+}
+
+async function deleteAllCacheStorage() {
+  if (!('caches' in window)) return false;
+  try {
+    const names = await caches.keys();
+    await Promise.all(names.map((n) => caches.delete(n)));
+    /* Second pass in case a still-controlling worker wrote during delete. */
+    const leftover = await caches.keys();
+    if (leftover.length) {
+      await Promise.all(leftover.map((n) => caches.delete(n)));
+    }
+    return names.length > 0 || leftover.length > 0;
+  } catch (_) {
+    return false;
   }
 }
 
@@ -3800,22 +3820,17 @@ async function clearGameCache() {
       }
     } catch (_) { /* noop */ }
   }
-  if ('caches' in window) {
-    try {
-      const names = await caches.keys();
-      await Promise.all(names.map((n) => caches.delete(n)));
-      if (names.length) ran = true;
-      /* Second pass in case the still-controlling worker recached during unregister. */
-      const leftover = await caches.keys();
-      if (leftover.length) {
-        await Promise.all(leftover.map((n) => caches.delete(n)));
-      }
-    } catch (_) { /* noop */ }
-  }
+  if (await deleteAllCacheStorage()) ran = true;
   try {
     await reloadShellHttpCache();
     ran = true;
   } catch (_) { /* noop */ }
+  /* reloadShellHttpCache goes through a still-controlling worker (unregister
+   * does not drop the controller until navigation). That worker's fetch
+   * handler re-fills Cache Storage — the Supplies / war-room path always
+   * hits this. Purge again so the upcoming cache-bust navigation cannot
+   * resurrect the stale shell from Cache Storage. */
+  if (await deleteAllCacheStorage()) ran = true;
   // Creator-code access and its enabled-code checklist are device-local cache,
   // not player progress. Reset both even when no Cache API entries exist.
   clearDevCodeAccess();
@@ -3872,8 +3887,13 @@ function closeClearCacheModal() {
   document.getElementById('clear-cache-modal')?.classList.remove('open');
 }
 async function confirmClearCache() {
-  await clearGameCache();
+  try {
+    await clearGameCache();
+  } catch (err) {
+    console.warn('clearGameCache failed', err);
+  }
   closeClearCacheModal();
+  try { closeSelectHubPanel(); } catch (_) { /* noop — title-screen clear has no hub */ }
   const msg = document.getElementById('dev-code-msg');
   if (msg) {
     msg.textContent = 'Cached assets cleared. Reloading…';

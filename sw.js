@@ -1,7 +1,7 @@
 /* Avian Ascent - offline shell. Bump CACHE_VERSION when shipped assets change.
  * Precaches the prebuilt classic bundle at ./js/avian-game.bundle.js
  * (regenerate with `node scripts/build-bundle.js` or `npm run dev` / `npm run build`). */
-const CACHE_VERSION = 'avian-ascent-3af3bb0545d1';
+const CACHE_VERSION = 'avian-ascent-7abfc7d6d0bd';
 const PRECACHE = [
   './',
   './index.html',
@@ -102,10 +102,19 @@ self.addEventListener('fetch', (event) => {
   if (isShell) {
     // Network-first: always render the latest deployed HTML/CSS/JS when
     // online; fall back to the cached shell offline.
+    // Skip Cache Storage writes for cache:'reload' / avianCacheBust so
+    // Clear cached data (esp. from Supplies while this worker still
+    // controls) cannot be undone by our own fetch handler.
+    const bypassCacheWrite =
+      req.cache === 'reload' ||
+      req.cache === 'no-store' ||
+      url.searchParams.has('avianCacheBust');
     event.respondWith(
       fetch(req)
         .then((res) => {
-          if (isCacheableResponse(url.pathname, res)) cachePut(req, res);
+          if (!bypassCacheWrite && isCacheableResponse(url.pathname, res)) {
+            cachePut(req, res);
+          }
           return res;
         })
         .catch(() =>
