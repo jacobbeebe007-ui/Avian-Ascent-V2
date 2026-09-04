@@ -35,6 +35,12 @@ export function readWorkbook(file) {
   for (const m of (e['xl/sharedStrings.xml'] || '').matchAll(/<si\b[^>]*>([\s\S]*?)<\/si>/g)) shared.push([...m[1].matchAll(/<t[^>]*>([\s\S]*?)<\/t>/g)].map(x => decode(x[1])).join(''));
   const targets = Object.create(null); for (const m of rels.matchAll(/<Relationship\s+([^>]+?)\s*\/>/g)) { const id = /\bId="([^"]+)"/.exec(m[1])?.[1], t = /\bTarget="([^"]+)"/.exec(m[1])?.[1]; if (id && t) targets[id] = t; }
   const sheets = Object.create(null);
-  for (const m of wb.matchAll(/<(?:x:)?sheet\b[^>]*name="([^"]+)"[^>]*r:id="([^"]+)"/g)) { const t = targets[m[2]]; const key = t && (t.startsWith('xl/') ? t : `xl/${t.replace(/^\/+/, '')}`); if (key && e[key]) sheets[decode(m[1])] = parseSheet(e[key], shared); }
+  for (const m of wb.matchAll(/<(?:x:)?sheet\b[^>]*name="([^"]+)"[^>]*r:id="([^"]+)"/g)) {
+    const t = targets[m[2]];
+    if (!t) continue;
+    const trimmed = t.replace(/^\/+/, '');
+    const key = trimmed.startsWith('xl/') ? trimmed : `xl/${trimmed}`;
+    if (key && e[key]) sheets[decode(m[1])] = parseSheet(e[key], shared);
+  }
   return sheets;
 }

@@ -37,7 +37,7 @@ check('MIN_HIT_CHANCE is 15', c.MIN_HIT_CHANCE === 15, `got=${c.MIN_HIT_CHANCE}`
 check('MASTER_BASE_CRIT_MULT is 1.35', c.MASTER_BASE_CRIT_MULT === 1.35, `got=${c.MASTER_BASE_CRIT_MULT}`);
 check('MASTER_MAX_CRIT_MULT is 1.50', c.MASTER_MAX_CRIT_MULT === 1.5, `got=${c.MASTER_MAX_CRIT_MULT}`);
 check('crit mult clamps to 1.50 ceiling', c.clampCritDamageMult(2.0) === 1.5, `got=${c.clampCritDamageMult(2.0)}`);
-check('aspect chart loaded', typeof c.getAspectMultiplier === 'function' && c.getAspectMultiplier('terra', 'tempest') === 1.2, `got=${c.getAspectMultiplier('terra', 'tempest')}`);
+check('aspect chart loaded', typeof c.getAspectMultiplier === 'function' && c.getAspectMultiplier('terra', 'tempest') === 1.1, `got=${c.getAspectMultiplier('terra', 'tempest')}`);
 check('enrichCombatRow exported', typeof c.enrichCombatRow === 'function');
 check('usesMasterDamage exported', typeof c.usesMasterDamage === 'function');
 
@@ -199,13 +199,13 @@ function dmg(params) {
 }
 
 const aspectCases = [
-  ['16', 'terra', 'tempest', 1.20],
-  ['17', 'terra', 'aeris', 0.80],
-  ['18', 'aeris', 'lunae', 1.20],
-  ['19', 'tempest', 'maris', 1.20],
-  ['20', 'solis', 'maris', 0.80],
-  ['21', 'lunae', 'solis', 0.80],
-  ['22', 'maris', 'terra', 1.20],
+  ['16', 'terra', 'tempest', 1.10],
+  ['17', 'terra', 'aeris', 0.90],
+  ['18', 'aeris', 'lunae', 1.10],
+  ['19', 'tempest', 'maris', 1.10],
+  ['20', 'solis', 'maris', 0.90],
+  ['21', 'lunae', 'solis', 0.90],
+  ['22', 'maris', 'terra', 1.10],
 ];
 for (const [n, atk, def, expected] of aspectCases) {
   const mod = c.getAspectMultiplier(atk, def);
@@ -217,14 +217,14 @@ for (const [n, atk, def, expected] of aspectCases) {
   const atkTerra = { class: 'rogue', aspect: 'terra', stats: { atk: 16 } };
   const dominant = c.calculateDamage({ attacker: atkTerra, target: { aspect: 'tempest', stats: { def: 12 } }, ability, bonusFractions: [1.0], hitSucceeded: true });
   const neutral = c.calculateDamage({ attacker: atkTerra, target: { aspect: 'lunae', stats: { def: 12 } }, ability, bonusFractions: [1.0], hitSucceeded: true });
-  check('23 — aspect dominant unaffected by capped bonus', near(dominant.components.aspectMod, 1.2) && near(neutral.components.aspectMod, 1.0) && near(dominant.components.bonusMod, neutral.components.bonusMod), `domAspect=${dominant.components.aspectMod} neuAspect=${neutral.components.aspectMod} domBonus=${dominant.components.bonusMod}`);
+  check('23 — aspect dominant unaffected by capped bonus', near(dominant.components.aspectMod, 1.1) && near(neutral.components.aspectMod, 1.0) && near(dominant.components.bonusMod, neutral.components.bonusMod), `domAspect=${dominant.components.aspectMod} neuAspect=${neutral.components.aspectMod} domBonus=${dominant.components.bonusMod}`);
 }
 
 {
   const ability = c.enrichCombatRow({ apCost: 2, scaleStat: 'ATK', scalePct: 50, category: 'true', damageType: 'True', damageStat: 'TRUE' });
   const atkTerra = { class: 'rogue', aspect: 'terra', stats: { atk: 16 } };
   const dominant = c.calculateDamage({ attacker: atkTerra, target: { aspect: 'tempest', stats: { def: 999, mdef: 999 } }, ability, bonusFractions: [], hitSucceeded: true });
-  check('24 — true damage still applies aspect mod', near(dominant.components.aspectMod, 1.2) && dominant.components.defMod === 1, `aspectMod=${dominant.components.aspectMod} defMod=${dominant.components.defMod}`);
+  check('24 — true damage still applies aspect mod', near(dominant.components.aspectMod, 1.1) && dominant.components.defMod === 1, `aspectMod=${dominant.components.aspectMod} defMod=${dominant.components.defMod}`);
 }
 
 {

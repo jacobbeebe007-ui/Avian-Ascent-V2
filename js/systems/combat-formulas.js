@@ -315,9 +315,10 @@
     var chart = getAspectChart();
     if (!chart || !chart.chart) return 1;
     var rel = getAspectRelationship(attackAspect, defenderAspect, abilityRow);
-    if (rel === 'Strong') return Number(chart.dominantMod) || 1.2;
-    if (rel === 'Weak') return Number(chart.resistedMod) || 0.8;
-    return Number(chart.neutralMod) || 1;
+    var cfgAff = (getCombatConfig() && getCombatConfig().v21 && getCombatConfig().v21.affinity) || null;
+    if (rel === 'Strong') return Number(cfgAff && cfgAff.dominant) || Number(chart.dominantMod) || 1.1;
+    if (rel === 'Weak') return Number(cfgAff && cfgAff.resisted) || Number(chart.resistedMod) || 0.9;
+    return Number(cfgAff && cfgAff.neutral) || Number(chart.neutralMod) || 1;
   }
 
   function getTypeModifier(attackerAspect, targetAspect, abilityRow) {

@@ -12,7 +12,7 @@
   Avian.data = Avian.data || Object.create(null);
 
   Avian.data.combatConfig = Object.freeze({
-    packVersion: '2026.07-equipment-v1.5-physical-ailments',
+    packVersion: '2026.09-combat-v2.1-master',
     affinityArsenalV06: true,
     equipmentLootV07: false,
     weaponFirstV09: true,
@@ -24,7 +24,7 @@
     energy: Object.freeze({
       start: 4,
       regen: 3,
-      max: 10,
+      max: 6,
       carryoverCap: 6,
     }),
 
@@ -138,11 +138,15 @@
 
     ultimateMeter: Object.freeze({
       max: 100,
-      damageAwards: Object.freeze({ 1: 8, 2: 12, 3: 16, 4: 22, 6: 0 }),
-      utilityAwards: Object.freeze({ 1: 0, 2: 0, 3: 0, 4: 0, 6: 0 }),
+      /* v2.1: meter = 6 × AP, once per landed action, not per hit. */
+      damageAwards: Object.freeze({ 1: 6, 2: 12, 3: 18, 4: 24, 5: 30, 6: 0 }),
+      utilityAwards: Object.freeze({ 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0 }),
+      meterPerAp: 6,
+      perTurnCap: 24,
       ultimateEnCost: 0,
       requireFullMeter: true,
       oncePerLandedAction: true,
+      multiHitOnce: true,
     }),
 
     /* R-EFF-001 — flat tiers ±4 / ±10 / ±20. */
@@ -196,13 +200,25 @@
     /* v1.2 Armour / Magic Armour / Fortify / Ward. */
     protection: Object.freeze({
       barrierRemoved: true,
-      armourRestorationCooldown: 1,
-      magicArmourRestorationCooldown: 1,
-      fortifyCooldown: 2,
-      wardCooldown: 2,
-      bastionCooldown: 3,
+      armourRestorationCooldown: 0,
+      magicArmourRestorationCooldown: 0,
+      fortifyCooldown: 0,
+      wardCooldown: 0,
+      bastionCooldown: 0,
       fortifyDefaultDuration: 2,
       wardDefaultDuration: 2,
+    }),
+
+    /* Locked v2.1 decisions. Attack Power / Health formulas stay inactive
+     * until Phase 1; hybrid, meter, affinity, carry and CD policy are live. */
+    v21: Object.freeze({
+      /* Adopted: ordinary CDs are 0. Live authored CDs stay until Attack Power lands. */
+      ordinaryCooldowns: false,
+      ordinaryCooldownsRuntime: false,
+      hybridMeanPoolGate: true,
+      affinity: Object.freeze({ dominant: 1.10, neutral: 1.00, resisted: 0.90 }),
+      sequentialCarry: true,
+      birdRarityDamageMult: false,
     }),
 
     /* Universal +20 Health removed; Max HP = Leveled Base Health + Vitality × 3. */
