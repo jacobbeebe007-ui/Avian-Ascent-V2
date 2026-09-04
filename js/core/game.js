@@ -16936,14 +16936,29 @@ const SHOP_STATE = {
   healingPurchasesThisVisit:new Set(),
 };
 
-const SHOP_MISC_BONUS_SHINES_AMOUNT=10;
+const SHOP_MISC_BONUS_SHINES_AMOUNT=35;
 const SHOP_MISC_BONUS_SHINES_DEF=Object.freeze({
   kind:'bonus_shines',
-  name:'Shiny Objects',
+  shinyMiscId:'shiny_hoard',
+  name:'Shiny Hoard',
   icon:'✨',
   tier:'gold',
-  desc:`Bonus shines (+${SHOP_MISC_BONUS_SHINES_AMOUNT}). Sell at the Stork Shop.`,
+  desc:`Legendary shinies (+${SHOP_MISC_BONUS_SHINES_AMOUNT}). Sell at the Stork Shop.`,
 });
+
+function resolveShinyMiscDef(source){
+  if(!source) return SHOP_MISC_BONUS_SHINES_DEF;
+  if(typeof source==='string'){
+    const fromCatalog=Avian?.data?.shinyMiscCatalog?.getShinyMiscDef?.(source);
+    return fromCatalog||SHOP_MISC_BONUS_SHINES_DEF;
+  }
+  if(source.shinyMiscId){
+    const fromCatalog=Avian?.data?.shinyMiscCatalog?.getShinyMiscDef?.(source.shinyMiscId);
+    if(fromCatalog) return fromCatalog;
+  }
+  if(source.kind==='bonus_shines'||source.tier||source.name) return source;
+  return SHOP_MISC_BONUS_SHINES_DEF;
+}
 
 function ensurePlayerMiscItems(player){
   if(!player) return [];
@@ -16951,18 +16966,29 @@ function ensurePlayerMiscItems(player){
   return player.miscItems;
 }
 
-function addPlayerMiscBonusShines(player, amount=SHOP_MISC_BONUS_SHINES_AMOUNT){
-  const qty=Math.max(1, Math.floor(Number(amount)||SHOP_MISC_BONUS_SHINES_AMOUNT));
+function addPlayerMiscShinyItem(player, source){
+  const def=resolveShinyMiscDef(source);
+  const qty=Math.max(1, Math.floor(Number(def.amount)||Number(source?.amount)||SHOP_MISC_BONUS_SHINES_AMOUNT));
   const list=ensurePlayerMiscItems(player);
   list.push({
-    kind:SHOP_MISC_BONUS_SHINES_DEF.kind,
+    kind:def.kind||'bonus_shines',
+    shinyMiscId:def.id||def.shinyMiscId||source?.shinyMiscId,
     amount:qty,
-    tier:SHOP_MISC_BONUS_SHINES_DEF.tier,
-    name:SHOP_MISC_BONUS_SHINES_DEF.name,
-    icon:SHOP_MISC_BONUS_SHINES_DEF.icon,
-    desc:SHOP_MISC_BONUS_SHINES_DEF.desc,
+    tier:def.tier||'gold',
+    name:def.name||SHOP_MISC_BONUS_SHINES_DEF.name,
+    icon:def.icon||SHOP_MISC_BONUS_SHINES_DEF.icon,
+    desc:def.desc||SHOP_MISC_BONUS_SHINES_DEF.desc,
   });
   return qty;
+}
+
+function addPlayerMiscBonusShines(player, amount=SHOP_MISC_BONUS_SHINES_AMOUNT){
+  const catalog=Avian?.data?.shinyMiscCatalog;
+  if(catalog?.getDefaultShinyMiscDef){
+    const def={...catalog.getDefaultShinyMiscDef(), amount:Math.max(1, Math.floor(Number(amount)||SHOP_MISC_BONUS_SHINES_AMOUNT))};
+    return addPlayerMiscShinyItem(player, def);
+  }
+  return addPlayerMiscShinyItem(player, {...SHOP_MISC_BONUS_SHINES_DEF, amount});
 }
 
 function getMiscSellPrice(miscItem){
@@ -16971,6 +16997,7 @@ function getMiscSellPrice(miscItem){
   return Math.max(1, Math.floor(Number(miscItem.amount)||1));
 }
 
+globalThis.addPlayerMiscShinyItem=addPlayerMiscShinyItem;
 globalThis.addPlayerMiscBonusShines=addPlayerMiscBonusShines;
 globalThis.ensurePlayerMiscItems=ensurePlayerMiscItems;
 
