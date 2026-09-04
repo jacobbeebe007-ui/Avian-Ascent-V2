@@ -210,14 +210,19 @@ for (const bk of birdIds) {
   const b = birds[bk];
   if (!passives[bk]) fail('missing passive for ' + bk);
   if (!utilities[bk]) fail('missing utility for ' + bk);
-  /* Spot-check v0.9 Base Health + Vitality → Max HP. */
+  /* Spot-check Combat Workbook v2.1 Base Health + Vitality → Max HP. */
   if (bk === 'sparrow') {
-    if (Number(b.baseHealth) !== 10) fail('sparrow baseHealth expected 10, got ' + b.baseHealth);
+    if (Number(b.baseHealth) !== 128) fail('sparrow baseHealth expected 128, got ' + b.baseHealth);
     if (Number(b.vitality) !== 3) fail('sparrow vitality expected 3, got ' + b.vitality);
     if (Number(b.stats && b.stats.dex) !== 9) fail('sparrow dexterity expected 9');
-    if (Number(b.stats && b.stats.maxHp) !== 19) {
-      fail('sparrow maxHp expected 19 (10 + 3×3), got ' + (b.stats && b.stats.maxHp));
+    if (Number(b.stats && b.stats.maxHp) !== 143) {
+      fail('sparrow maxHp expected 143 (128 + 5×3), got ' + (b.stats && b.stats.maxHp));
     }
+  }
+  if (bk === 'barnowl') {
+    if (String(b.class) !== 'rogue') fail('barnowl class expected rogue, got ' + b.class);
+    if (Number(b.stats && b.stats.dex) !== 11) fail('barnowl dex expected 11');
+    if (Number(b.basePrecision) !== 88) fail('barnowl precision expected 88');
   }
 }
 if (accFloorFails) fail(accFloorFails + ' ACC floor fails');

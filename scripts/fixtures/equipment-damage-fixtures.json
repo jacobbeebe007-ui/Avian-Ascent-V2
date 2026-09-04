@@ -1,5 +1,5 @@
 {
-  "_note": "Beak Jab/Tail Wand = flat 1–2 only (no weapon scaling). Other skills: weaponFirstV09.",
+  "_note": "Combat Workbook v2.1: Attack Power = Weapon + 2×stat; raw = AP × (SP÷100). BASIC with skillPowerPct 0 = unarmed flat 1–2.",
   "fixtures": [
     {
       "class": "knight",
@@ -19,8 +19,8 @@
       "aspectMod": 1,
       "bonusMod": 1,
       "crit": false,
-      "expectedDamage": 8,
-      "formula": "weaponFirstV09"
+      "expectedDamage": 24,
+      "formula": "combatWorkbookV21"
     },
     {
       "class": "knight",
@@ -41,7 +41,7 @@
       "bonusMod": 1,
       "crit": false,
       "expectedDamage": 1,
-      "formula": "weaponFirstV09"
+      "formula": "combatWorkbookV21"
     },
     {
       "class": "knight",
@@ -61,8 +61,8 @@
       "aspectMod": 1,
       "bonusMod": 1,
       "crit": false,
-      "expectedDamage": 13,
-      "formula": "weaponFirstV09"
+      "expectedDamage": 37,
+      "formula": "combatWorkbookV21"
     },
     {
       "class": "knight",
@@ -83,7 +83,7 @@
       "bonusMod": 1,
       "crit": false,
       "expectedDamage": 1,
-      "formula": "weaponFirstV09"
+      "formula": "combatWorkbookV21"
     },
     {
       "class": "knight",
@@ -103,8 +103,8 @@
       "aspectMod": 1,
       "bonusMod": 1,
       "crit": false,
-      "expectedDamage": 15,
-      "formula": "weaponFirstV09"
+      "expectedDamage": 42,
+      "formula": "combatWorkbookV21"
     },
     {
       "class": "knight",
@@ -125,7 +125,7 @@
       "bonusMod": 1,
       "crit": false,
       "expectedDamage": 1,
-      "formula": "weaponFirstV09"
+      "formula": "combatWorkbookV21"
     },
     {
       "class": "rogue",
@@ -145,8 +145,8 @@
       "aspectMod": 1,
       "bonusMod": 1,
       "crit": false,
-      "expectedDamage": 4,
-      "formula": "weaponFirstV09"
+      "expectedDamage": 37,
+      "formula": "combatWorkbookV21"
     },
     {
       "class": "rogue",
@@ -167,7 +167,7 @@
       "bonusMod": 1,
       "crit": false,
       "expectedDamage": 1,
-      "formula": "weaponFirstV09"
+      "formula": "combatWorkbookV21"
     },
     {
       "class": "rogue",
@@ -187,8 +187,8 @@
       "aspectMod": 1,
       "bonusMod": 1,
       "crit": false,
-      "expectedDamage": 9,
-      "formula": "weaponFirstV09"
+      "expectedDamage": 73,
+      "formula": "combatWorkbookV21"
     },
     {
       "class": "rogue",
@@ -209,7 +209,7 @@
       "bonusMod": 1,
       "crit": false,
       "expectedDamage": 1,
-      "formula": "weaponFirstV09"
+      "formula": "combatWorkbookV21"
     },
     {
       "class": "rogue",
@@ -229,8 +229,8 @@
       "aspectMod": 1,
       "bonusMod": 1,
       "crit": false,
-      "expectedDamage": 12,
-      "formula": "weaponFirstV09"
+      "expectedDamage": 88,
+      "formula": "combatWorkbookV21"
     },
     {
       "class": "rogue",
@@ -251,7 +251,7 @@
       "bonusMod": 1,
       "crit": false,
       "expectedDamage": 1,
-      "formula": "weaponFirstV09"
+      "formula": "combatWorkbookV21"
     },
     {
       "class": "mage",
@@ -271,8 +271,8 @@
       "aspectMod": 1,
       "bonusMod": 1,
       "crit": false,
-      "expectedDamage": 4,
-      "formula": "weaponFirstV09"
+      "expectedDamage": 39,
+      "formula": "combatWorkbookV21"
     },
     {
       "class": "mage",
@@ -293,7 +293,7 @@
       "bonusMod": 1,
       "crit": false,
       "expectedDamage": 1,
-      "formula": "weaponFirstV09"
+      "formula": "combatWorkbookV21"
     },
     {
       "class": "mage",
@@ -313,8 +313,8 @@
       "aspectMod": 1,
       "bonusMod": 1,
       "crit": false,
-      "expectedDamage": 7,
-      "formula": "weaponFirstV09"
+      "expectedDamage": 51,
+      "formula": "combatWorkbookV21"
     },
     {
       "class": "mage",
@@ -335,7 +335,7 @@
       "bonusMod": 1,
       "crit": false,
       "expectedDamage": 1,
-      "formula": "weaponFirstV09"
+      "formula": "combatWorkbookV21"
     },
     {
       "class": "mage",
@@ -355,8 +355,8 @@
       "aspectMod": 1,
       "bonusMod": 1,
       "crit": false,
-      "expectedDamage": 8,
-      "formula": "weaponFirstV09"
+      "expectedDamage": 56,
+      "formula": "combatWorkbookV21"
     },
     {
       "class": "mage",
@@ -377,7 +377,7 @@
       "bonusMod": 1,
       "crit": false,
       "expectedDamage": 1,
-      "formula": "weaponFirstV09"
+      "formula": "combatWorkbookV21"
     },
     {
       "class": "siren",
@@ -397,8 +397,8 @@
       "aspectMod": 1,
       "bonusMod": 1,
       "crit": false,
-      "expectedDamage": 3,
-      "formula": "weaponFirstV09"
+      "expectedDamage": 31,
+      "formula": "combatWorkbookV21"
     },
     {
       "class": "siren",
@@ -419,7 +419,7 @@
       "bonusMod": 1,
       "crit": false,
       "expectedDamage": 1,
-      "formula": "weaponFirstV09"
+      "formula": "combatWorkbookV21"
     },
     {
       "class": "siren",
@@ -439,8 +439,8 @@
       "aspectMod": 1,
       "bonusMod": 1,
       "crit": false,
-      "expectedDamage": 5,
-      "formula": "weaponFirstV09"
+      "expectedDamage": 39,
+      "formula": "combatWorkbookV21"
     },
     {
       "class": "siren",
@@ -461,7 +461,7 @@
       "bonusMod": 1,
       "crit": false,
       "expectedDamage": 1,
-      "formula": "weaponFirstV09"
+      "formula": "combatWorkbookV21"
     },
     {
       "class": "siren",
@@ -481,8 +481,8 @@
       "aspectMod": 1,
       "bonusMod": 1,
       "crit": false,
-      "expectedDamage": 6,
-      "formula": "weaponFirstV09"
+      "expectedDamage": 42,
+      "formula": "combatWorkbookV21"
     },
     {
       "class": "siren",
@@ -503,7 +503,7 @@
       "bonusMod": 1,
       "crit": false,
       "expectedDamage": 1,
-      "formula": "weaponFirstV09"
+      "formula": "combatWorkbookV21"
     },
     {
       "class": "inquisitor",
@@ -523,8 +523,8 @@
       "aspectMod": 1,
       "bonusMod": 1,
       "crit": false,
-      "expectedDamage": 4,
-      "formula": "weaponFirstV09"
+      "expectedDamage": 15,
+      "formula": "combatWorkbookV21"
     },
     {
       "class": "inquisitor",
@@ -545,7 +545,7 @@
       "bonusMod": 1,
       "crit": false,
       "expectedDamage": 1,
-      "formula": "weaponFirstV09"
+      "formula": "combatWorkbookV21"
     },
     {
       "class": "inquisitor",
@@ -565,8 +565,8 @@
       "aspectMod": 1,
       "bonusMod": 1,
       "crit": false,
-      "expectedDamage": 6,
-      "formula": "weaponFirstV09"
+      "expectedDamage": 28,
+      "formula": "combatWorkbookV21"
     },
     {
       "class": "inquisitor",
@@ -587,7 +587,7 @@
       "bonusMod": 1,
       "crit": false,
       "expectedDamage": 1,
-      "formula": "weaponFirstV09"
+      "formula": "combatWorkbookV21"
     },
     {
       "class": "inquisitor",
@@ -607,8 +607,8 @@
       "aspectMod": 1,
       "bonusMod": 1,
       "crit": false,
-      "expectedDamage": 7,
-      "formula": "weaponFirstV09"
+      "expectedDamage": 31,
+      "formula": "combatWorkbookV21"
     },
     {
       "class": "inquisitor",
@@ -629,7 +629,7 @@
       "bonusMod": 1,
       "crit": false,
       "expectedDamage": 1,
-      "formula": "weaponFirstV09"
+      "formula": "combatWorkbookV21"
     },
     {
       "class": "bard",
@@ -650,7 +650,7 @@
       "bonusMod": 1,
       "crit": false,
       "expectedDamage": 1,
-      "formula": "weaponFirstV09"
+      "formula": "combatWorkbookV21"
     },
     {
       "class": "bard",
@@ -671,7 +671,7 @@
       "bonusMod": 1,
       "crit": false,
       "expectedDamage": 1,
-      "formula": "weaponFirstV09"
+      "formula": "combatWorkbookV21"
     },
     {
       "class": "bard",
@@ -692,7 +692,7 @@
       "bonusMod": 1,
       "crit": false,
       "expectedDamage": 1,
-      "formula": "weaponFirstV09"
+      "formula": "combatWorkbookV21"
     },
     {
       "class": "brute",
@@ -712,8 +712,8 @@
       "aspectMod": 1,
       "bonusMod": 1,
       "crit": false,
-      "expectedDamage": 6,
-      "formula": "weaponFirstV09"
+      "expectedDamage": 25,
+      "formula": "combatWorkbookV21"
     },
     {
       "class": "brute",
@@ -734,7 +734,7 @@
       "bonusMod": 1,
       "crit": false,
       "expectedDamage": 1,
-      "formula": "weaponFirstV09"
+      "formula": "combatWorkbookV21"
     },
     {
       "class": "brute",
@@ -754,8 +754,8 @@
       "aspectMod": 1,
       "bonusMod": 1,
       "crit": false,
-      "expectedDamage": 10,
-      "formula": "weaponFirstV09"
+      "expectedDamage": 43,
+      "formula": "combatWorkbookV21"
     },
     {
       "class": "brute",
@@ -776,7 +776,7 @@
       "bonusMod": 1,
       "crit": false,
       "expectedDamage": 1,
-      "formula": "weaponFirstV09"
+      "formula": "combatWorkbookV21"
     },
     {
       "class": "brute",
@@ -796,8 +796,8 @@
       "aspectMod": 1,
       "bonusMod": 1,
       "crit": false,
-      "expectedDamage": 12,
-      "formula": "weaponFirstV09"
+      "expectedDamage": 47,
+      "formula": "combatWorkbookV21"
     },
     {
       "class": "brute",
@@ -818,7 +818,7 @@
       "bonusMod": 1,
       "crit": false,
       "expectedDamage": 1,
-      "formula": "weaponFirstV09"
+      "formula": "combatWorkbookV21"
     }
   ]
 }

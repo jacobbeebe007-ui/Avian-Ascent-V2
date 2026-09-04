@@ -4,7 +4,7 @@ import { STARTING_WEAPONS } from '../fixtures.mjs';
 
 const CLASS_BIRDS = {
   rogue: 'sparrow',
-  mage: 'barnowl',
+  mage: 'blackbird',
   knight: 'secretary',
   bard: 'robin',
   inquisitor: 'kiwi',
@@ -60,7 +60,7 @@ export default [
     id: 'EQP-011',
     name: 'Arcane Ward is utility — Ward only, no Health damage',
     setup: {
-      player: { bird: 'barnowl', class: 'mage', energy: 6, equipment: { mainHand: 'WPN-031' } },
+      player: { bird: 'barnowl', class: 'rogue', energy: 6, equipment: { mainHand: 'WPN-031' } },
       enemy: { bird: 'crow', hp: 80, maxHp: 80, magicArmour: 0 },
     },
     assert({ ctx, sandbox, expectValue }) {
@@ -77,7 +77,7 @@ export default [
     id: 'EQP-012',
     name: 'Withering Hex Focus Down only after Health is damaged',
     setup: {
-      player: { bird: 'barnowl', class: 'mage', energy: 6, equipment: { mainHand: 'WPN-037' } },
+      player: { bird: 'barnowl', class: 'rogue', energy: 6, equipment: { mainHand: 'WPN-037' } },
       enemy: {
         bird: 'crow',
         hp: 80,

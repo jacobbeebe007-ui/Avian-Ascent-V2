@@ -324,7 +324,7 @@ function ridersFor(birdKey, cls) {
 }
 
 {
-  const riders = ridersFor('barnowl', 'mage');
+  const riders = ridersFor('barnowl', 'rogue');
   const kinds = riders.map((r) => r.kind);
   const next = riders.find((r) => r.kind === 'gainAccNextHit');
   if (kinds.includes('gainSpeed') && next && next.gate === 'night' && !kinds.includes('gainAcc')) {
