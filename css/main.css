@@ -4227,9 +4227,11 @@ body.combat-scenario-test-unlocked .splash-hotspot--combat-scenarios.is-combatte
 .do-smash-r .avatar-inner,.do-smash-l .avatar-inner,.do-hit .avatar-inner,
 .do-cast .avatar-inner,.do-ranged .avatar-inner,.do-utility .avatar-inner,
 .do-dodge-l .avatar-inner,.do-dodge-r .avatar-inner,.do-dodge-r-flat .avatar-inner,
-.do-miss-r .avatar-inner,.do-miss-l .avatar-inner{animation:none;}
+.do-miss-r .avatar-inner,.do-miss-l .avatar-inner,
+.do-miss-overfly-r .avatar-inner,.do-miss-overfly-l .avatar-inner{animation:none;}
 .combatant-panel.is-striking{z-index:24;position:relative;}
-.avatar-wrap.do-smash-r,.avatar-wrap.do-smash-l,.avatar-wrap.do-cast,.avatar-wrap.do-ranged{z-index:30;}
+.avatar-wrap.do-smash-r,.avatar-wrap.do-smash-l,.avatar-wrap.do-cast,.avatar-wrap.do-ranged,
+.avatar-wrap.do-miss-overfly-r,.avatar-wrap.do-miss-overfly-l{z-index:30;}
 .hp-bar-wrap{margin-bottom:9px;}
 .hp-label{display:flex;justify-content:space-between;font-size:.8rem;color:var(--text-dim);margin-bottom:4px;font-weight:600;}
 .hp-label span:last-child{font-family:'Cinzel',serif;letter-spacing:.03em;}
@@ -4355,6 +4357,8 @@ body.combat-scenario-test-unlocked .splash-hotspot--combat-scenarios.is-combatte
 @keyframes dodge-l{0%{transform:translate(0,0) rotate(0)}28%{transform:translate(var(--dodge-x,-42px),-30px) rotate(-18deg)}62%{transform:translate(calc(var(--dodge-x,-42px) * .72),-8px) rotate(-8deg)}100%{transform:translate(0,0) rotate(0)}}
 @keyframes miss-r{0%{transform:translate(0,0) rotate(0)}26%{transform:translate(calc(var(--lunge-x,280px) * .4),calc(var(--lunge-y,0px) * .4 - 10px)) rotate(var(--lunge-rot,12deg))}40%{transform:translate(calc(var(--lunge-x,280px) * .22),-4px) rotate(-8deg)}58%{transform:translate(calc(var(--lunge-x,280px) * .32),-2px) rotate(6deg)}100%{transform:translate(0,0) rotate(0)}}
 @keyframes miss-l{0%{transform:translate(0,0) rotate(0)}26%{transform:translate(calc(var(--lunge-x,-280px) * .4),calc(var(--lunge-y,0px) * .4 - 10px)) rotate(var(--lunge-rot,-12deg))}40%{transform:translate(calc(var(--lunge-x,-280px) * .22),-4px) rotate(8deg)}58%{transform:translate(calc(var(--lunge-x,-280px) * .32),-2px) rotate(-6deg)}100%{transform:translate(0,0) rotate(0)}}
+@keyframes miss-overfly-r{0%{transform:translate(0,0) rotate(0) scale(1);opacity:1}30%{transform:translate(var(--overfly-x,420px),var(--overfly-y,-18px)) rotate(calc(var(--lunge-rot,12deg) * 1.4)) scale(1.08);opacity:1}38%{transform:translate(var(--overfly-x,420px),var(--overfly-y,-18px)) rotate(calc(var(--lunge-rot,12deg) * 1.4)) scale(1.02);opacity:0}44%{transform:translate(0,var(--overfly-drop,-150px)) rotate(-6deg) scale(.92);opacity:0}52%{transform:translate(0,var(--overfly-drop,-150px)) rotate(-4deg) scale(1);opacity:1}78%{transform:translate(0,-18px) rotate(4deg) scale(1.04)}100%{transform:translate(0,0) rotate(0) scale(1);opacity:1}}
+@keyframes miss-overfly-l{0%{transform:translate(0,0) rotate(0) scale(1);opacity:1}30%{transform:translate(var(--overfly-x,-420px),var(--overfly-y,-18px)) rotate(calc(var(--lunge-rot,-12deg) * 1.4)) scale(1.08);opacity:1}38%{transform:translate(var(--overfly-x,-420px),var(--overfly-y,-18px)) rotate(calc(var(--lunge-rot,-12deg) * 1.4)) scale(1.02);opacity:0}44%{transform:translate(0,var(--overfly-drop,-150px)) rotate(6deg) scale(.92);opacity:0}52%{transform:translate(0,var(--overfly-drop,-150px)) rotate(4deg) scale(1);opacity:1}78%{transform:translate(0,-18px) rotate(-4deg) scale(1.04)}100%{transform:translate(0,0) rotate(0) scale(1);opacity:1}}
 @keyframes shield-glow{0%{transform:scale(1);filter:drop-shadow(0 0 0 #6a8ae8)}40%{transform:scale(1.07);filter:drop-shadow(0 0 16px #6a8ae8) drop-shadow(0 0 32px rgba(106,138,232,.55))}100%{transform:scale(1);filter:drop-shadow(0 0 2px rgba(106,138,232,.3))}}
 @keyframes cast-pulse{0%{transform:scale(1) translateY(0);filter:drop-shadow(0 0 0 rgba(180,140,255,0))}35%{transform:scale(1.14) translateY(-8px);filter:drop-shadow(0 0 18px rgba(180,140,255,.85))}100%{transform:scale(1) translateY(0);filter:drop-shadow(0 0 0 rgba(180,140,255,0))}}
 @keyframes ranged-hop{0%{transform:translate(0,0) scale(1)}32%{transform:translate(calc(var(--lunge-x,280px) * .12),-12px) scale(1.08) rotate(var(--lunge-rot,8deg))}100%{transform:translate(0,0) scale(1) rotate(0)}}
@@ -4520,6 +4524,8 @@ body.combat-scenario-test-unlocked .splash-hotspot--combat-scenarios.is-combatte
 .do-dodge-l{animation:dodge-l .58s cubic-bezier(.2,.75,.2,1) forwards;}
 .do-miss-r{animation:miss-r .58s ease forwards;}
 .do-miss-l{animation:miss-l .58s ease forwards;}
+.do-miss-overfly-r{animation:miss-overfly-r 1.12s cubic-bezier(.22,.68,.18,1) forwards;}
+.do-miss-overfly-l{animation:miss-overfly-l 1.12s cubic-bezier(.22,.68,.18,1) forwards;}
 .do-shield{animation:shield-glow .65s ease forwards;}
 .do-cast{animation:cast-pulse .52s ease forwards;}
 .do-ranged{animation:ranged-hop .48s cubic-bezier(.2,.7,.2,1) forwards;}
@@ -4529,7 +4535,25 @@ body.combat-scenario-test-unlocked .splash-hotspot--combat-scenarios.is-combatte
 .combat-fx-proj{position:fixed;left:0;top:0;font-size:1.85rem;line-height:1;transform:translate(-50%,-50%) scale(.65);opacity:1;transition:transform .38s cubic-bezier(.18,.8,.2,1),opacity .38s ease;filter:drop-shadow(0 0 10px rgba(255,230,150,.85));will-change:transform,opacity;z-index:91;}
 .combat-fx-proj.combat-fx-proj--magic{font-size:2.05rem;filter:drop-shadow(0 0 12px rgba(190,150,255,.95));}
 .combat-fx-proj.combat-fx-proj--ranged{font-size:1.7rem;filter:drop-shadow(0 0 8px rgba(255,210,120,.8));}
+.combat-fx-proj.combat-fx-proj--feather{font-size:1.55rem;filter:drop-shadow(0 0 10px rgba(255,220,140,.85));transform-origin:center center;}
+.combat-fx-proj.combat-fx-proj--arc{filter:drop-shadow(0 0 14px rgba(170,140,255,.9));}
 .combat-fx-proj.combat-fx-proj--fizzle{transition-duration:.28s;}
+.combat-fx-note{position:fixed;left:0;top:0;font-size:1.45rem;line-height:1;transform:translate(-50%,-50%) scale(.8);opacity:.95;pointer-events:none;z-index:92;filter:drop-shadow(0 0 8px rgba(255,200,255,.75));}
+.combat-fx-slash{position:fixed;width:88px;height:88px;margin:-44px 0 0 -44px;pointer-events:none;z-index:93;transform:rotate(var(--slash-rot,0deg));}
+.combat-fx-slash::before,.combat-fx-slash::after{content:'';position:absolute;inset:0;opacity:0;}
+.combat-fx-slash::before{background:linear-gradient(128deg,transparent 38%,rgba(255,255,255,.95) 47%,rgba(255,210,130,.85) 53%,transparent 62%);animation:combat-fx-slash-light .24s ease-out forwards;}
+.combat-fx-slash--blunt::before{background:radial-gradient(circle at 50% 55%,rgba(255,220,120,.98) 0%,rgba(255,160,60,.55) 28%,transparent 62%);animation:combat-fx-slash-blunt .3s ease-out forwards;border-radius:50%;}
+.combat-fx-slash--heavy::before{background:linear-gradient(118deg,transparent 30%,rgba(255,245,220,.98) 44%,rgba(255,180,90,.9) 52%,transparent 66%);animation:combat-fx-slash-heavy .28s ease-out forwards;}
+.combat-fx-slash--sweep::before{background:conic-gradient(from 210deg at 50% 50%,transparent 0deg,rgba(220,255,200,.15) 40deg,rgba(255,255,255,.92) 78deg,rgba(180,255,160,.35) 110deg,transparent 150deg);animation:combat-fx-slash-sweep .3s ease-out forwards;border-radius:50%;}
+.combat-fx-slash--r{--slash-rot:-18deg;}
+.combat-fx-slash--l{--slash-rot:18deg;}
+@keyframes combat-fx-slash-light{0%{opacity:0;transform:scale(.45) rotate(-28deg)}35%{opacity:1;transform:scale(1.05) rotate(6deg)}100%{opacity:0;transform:scale(1.2) rotate(14deg)}}
+@keyframes combat-fx-slash-blunt{0%{opacity:0;transform:scale(.35)}30%{opacity:1;transform:scale(1.15)}100%{opacity:0;transform:scale(1.55)}}
+@keyframes combat-fx-slash-heavy{0%{opacity:0;transform:scale(.5) rotate(-12deg)}28%{opacity:1;transform:scale(1.12) rotate(4deg)}100%{opacity:0;transform:scale(1.35) rotate(10deg)}}
+@keyframes combat-fx-slash-sweep{0%{opacity:0;transform:scale(.55) rotate(-40deg)}32%{opacity:1;transform:scale(1.08) rotate(8deg)}100%{opacity:0;transform:scale(1.25) rotate(24deg)}}
+.combat-fx-thrust{position:fixed;left:0;top:0;width:var(--thrust-len,120px);height:5px;margin:-2px 0 0 0;transform-origin:left center;transform:rotate(var(--thrust-rot,0deg));background:linear-gradient(90deg,rgba(255,240,200,.1),rgba(255,255,255,.95) 42%,rgba(255,200,120,.75) 58%,transparent);box-shadow:0 0 12px rgba(255,220,140,.75);opacity:0;animation:combat-fx-thrust .34s ease-out forwards;z-index:91;}
+.combat-fx-thrust--fizzle{animation-duration:.24s;opacity:.55;}
+@keyframes combat-fx-thrust{0%{opacity:0;transform:rotate(var(--thrust-rot,0deg)) scaleX(.2)}35%{opacity:1;transform:rotate(var(--thrust-rot,0deg)) scaleX(1)}100%{opacity:0;transform:rotate(var(--thrust-rot,0deg)) scaleX(1.05)}}
 .combat-fx-spark{position:fixed;left:0;top:0;font-size:1.15rem;line-height:1;transform:translate(-50%,-50%) scale(.4);opacity:.95;animation:combat-fx-spark-pop .7s ease-out forwards;pointer-events:none;z-index:92;}
 @keyframes combat-fx-spark-pop{0%{opacity:1;transform:translate(-50%,-50%) scale(.3)}40%{opacity:1;transform:translate(calc(-50% + var(--sx,0px)),calc(-50% + var(--sy,-18px))) scale(1.15)}100%{opacity:0;transform:translate(calc(-50% + var(--sx,0px)),calc(-50% + var(--sy,-36px))) scale(.5)}}
 .combat-fx-impact{position:fixed;left:0;top:0;width:18px;height:18px;margin:-9px 0 0 -9px;border-radius:50%;border:3px solid rgba(255,240,200,.95);box-shadow:0 0 18px rgba(255,210,120,.8),0 0 4px #fff;animation:combat-fx-impact-ring .38s ease-out forwards;z-index:93;}

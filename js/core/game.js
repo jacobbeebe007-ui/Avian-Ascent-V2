@@ -9470,7 +9470,7 @@ function logMsg(msg,cls='') {
 //  ANIMATION ENGINE
 // ============================================================
 function playAvatarAnim(who,cls,dur=600) {
-  const animCls=['do-smash-r','do-smash-l','do-hit','do-dodge-r','do-dodge-r-flat','do-dodge-l','do-miss-r','do-miss-l','do-shield','do-cast','do-ranged','do-utility'];
+  const animCls=['do-smash-r','do-smash-l','do-hit','do-dodge-r','do-dodge-r-flat','do-dodge-l','do-miss-r','do-miss-l','do-miss-overfly-r','do-miss-overfly-l','do-shield','do-cast','do-ranged','do-utility'];
   const striking=cls==='do-smash-r'||cls==='do-smash-l'||cls==='do-cast'||cls==='do-ranged';
   return new Promise(res=>{
     const wrap=getAvatarWrap(who);
@@ -9500,13 +9500,13 @@ function resolveCombatAnimKind(attacker, result){
     const stored=G && G._animAttackKind;
     if(stored){
       const sk=String(stored).toLowerCase();
-      if(sk==='magic'||sk==='song') return 'spell';
+      if(sk==='magic') return 'spell';
       return sk;
     }
     const ab=G && G._activePlayerAbility;
     if(ab && typeof getEffectiveAbilityBtnType==='function'){
       const k=String(getEffectiveAbilityBtnType(ab)||'').toLowerCase();
-      if(k==='magic'||k==='song') return 'spell';
+      if(k==='magic') return 'spell';
       if(k) return k;
     }
   }else{
@@ -9648,17 +9648,25 @@ async function doMiss(attacker, kind='accuracy') {
   if(attacker==='player' && kind!=='dodge') registerMiss();
   const animKind=resolveCombatAnimKind(attacker, null);
   const projectile=combatAnimIsProjectile(animKind);
+  const isDodge=kind==='dodge';
+  const overflyMiss=!projectile && !isDodge;
   const cls=projectile
     ? (animKind==='ranged'?'do-ranged':'do-cast')
-    : (attacker==='player'?'do-miss-r':'do-miss-l');
-  const isDodge=kind==='dodge';
+    : overflyMiss
+      ? (attacker==='player'?'do-miss-overfly-r':'do-miss-overfly-l')
+      : (attacker==='player'?'do-miss-r':'do-miss-l');
   const fx=combatFxApi();
   if(fx && typeof fx.prepareCombatMiss==='function'){
     try{ fx.prepareCombatMiss(attacker, kind, animKind); }catch(_){}
   }
   spawnFloat(attacker, isDodge?'Dodge!':'Miss!', isDodge?'fn-dodge':'fn-miss');
   if(isDodge) SFX.dodge(); else SFX.miss();
-  await playAvatarAnim(attacker,cls, projectile?520:580);
+  const dur=overflyMiss?1120:(projectile?520:580);
+  if(!overflyMiss || !fx || typeof fx.prepareCombatMiss!=='function'){
+    await playAvatarAnim(attacker,cls,dur);
+  } else {
+    await delay(dur);
+  }
 }
 
 async function doShield(who) {

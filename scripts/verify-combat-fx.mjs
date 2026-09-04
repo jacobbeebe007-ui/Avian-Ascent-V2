@@ -34,6 +34,9 @@ ok('CSS hit uses --hit-x knockback', /--hit-x/.test(css));
 ok('CSS dodge hops upward', /@keyframes dodge-l[\s\S]*?-30px/.test(css));
 ok('CSS has do-cast / do-ranged / do-utility',
   /\.do-cast\{/.test(css) && /\.do-ranged\{/.test(css) && /\.do-utility\{/.test(css));
+ok('CSS has miss overfly animations', /\.do-miss-overfly-r\{/.test(css) && /@keyframes miss-overfly-r/.test(css));
+ok('CSS has slash and feather FX', /\.combat-fx-slash\{/.test(css) && /\.combat-fx-proj--feather\{/.test(css));
+ok('CSS has song note FX', /\.combat-fx-note\{/.test(css));
 ok('CSS projectile layer exists', /\.battle-fx-layer\{/.test(css) && /\.combat-fx-proj\{/.test(css));
 ok('combatAnimIsProjectile is defined', /function combatAnimIsProjectile/.test(game));
 ok('doAttack branches projectile vs lunge', /combatAnimIsProjectile/.test(game) && /do-cast/.test(game));
@@ -43,6 +46,7 @@ ok('utility flourish hooked from playerAction', /prepareCombatUtility\('player'/
 ok('conflicting sprite smash skipped when combat FX is active', /combatFxOwnsAnim/.test(game));
 ok('sprite frame controller yields to combat FX', /spr\._busyUntil && spr\._busyUntil > Date\.now\(\)/.test(game));
 ok('prepareCombatStrike lives in combat-fx.js', /function prepareCombatStrike/.test(fx));
+ok('spawnSongNotes and spawnSlashImpact exported', /spawnSongNotes/.test(fx) && /spawnSlashImpact/.test(fx));
 ok('magic uses aspect emoji projectiles', /ASPECT_EMOJI/.test(fx) && /combat-fx-proj--magic/.test(fx));
 ok('physical sprite cycle uses dash/call frames', /FRAME_DASH/.test(fx) && /FRAME_CALL/.test(fx));
 
@@ -85,6 +89,12 @@ body{margin:0;background:#111;}
 function getAvatarWrap(who){ return document.getElementById(who + '-avatar-wrap'); }
 function getPanel(who){ return document.getElementById(who + '-panel'); }
 function getAvatar(who){ return document.getElementById(who + '-avatar'); }
+function playAvatarAnim(who, cls, dur){
+  const wrap = getAvatarWrap(who);
+  if(!wrap) return Promise.resolve();
+  wrap.classList.add(cls);
+  return new Promise(res => setTimeout(() => { wrap.classList.remove(cls); res(); }, dur || 600));
+}
 </script>
 </body></html>`);
   await page.addScriptTag({ path: path.join(ROOT, 'js/ui/combat-fx.js') });
@@ -127,6 +137,50 @@ function getAvatar(who){ return document.getElementById(who + '-avatar'); }
     return document.querySelector('#player-avatar .sprite4').className;
   });
   ok('physical strike uses dash frame cycle', /frame-2/.test(phys));
+
+  const song = await page.evaluate(() => {
+    document.querySelectorAll('.combat-fx-proj,.combat-fx-spark,.combat-fx-note').forEach((n) => n.remove());
+    window.G = { _activePlayerAbility: { name: 'Battle Hymn', btnType: 'song' }, player: { aspect: 'solis' } };
+    window.Avian.ui.combatFx.prepareCombatStrike('player', 'enemy', { wasDodged: false }, 'song');
+    return { notes: document.querySelectorAll('.combat-fx-note').length };
+  });
+  ok('song strike spawns undulating music notes', song.notes >= 3);
+
+  const ranged = await page.evaluate(() => {
+    document.querySelectorAll('.combat-fx-proj,.combat-fx-note,.combat-fx-slash').forEach((n) => n.remove());
+    window.G = { _activePlayerAbility: { family: 'Hand Crossbow' }, player: {} };
+    window.Avian.ui.combatFx.prepareCombatStrike('player', 'enemy', { wasDodged: false }, 'ranged');
+    const feather = document.querySelector('.combat-fx-proj--feather');
+    return { hasFeather: !!feather, text: feather ? feather.textContent : '' };
+  });
+  ok('ranged strike uses horizontal feather projectile', ranged.hasFeather && ranged.text.includes('🪶'));
+
+  const slash = await page.evaluate(() => new Promise((resolve) => {
+    document.querySelectorAll('.combat-fx-proj,.combat-fx-note,.combat-fx-slash,.combat-fx-impact').forEach((n) => n.remove());
+    window.G = { _activePlayerAbility: { family: 'Beak Hammer' }, player: {} };
+    window.Avian.ui.combatFx.prepareCombatStrike('player', 'enemy', { wasDodged: false }, 'physical');
+    setTimeout(() => {
+      resolve({
+        slash: document.querySelectorAll('.combat-fx-slash').length,
+        blunt: document.querySelectorAll('.combat-fx-slash--blunt').length
+      });
+    }, 300);
+  }));
+  ok('hammer physical hit spawns blunt slash impact', slash.slash >= 1 && slash.blunt >= 1);
+
+  const overfly = await page.evaluate(() => new Promise((resolve) => {
+    document.querySelectorAll('.combat-fx-proj,.combat-fx-note').forEach((n) => n.remove());
+    window.G = { _activePlayerAbility: { family: 'Dagger Pinion' }, player: {} };
+    window.Avian.ui.combatFx.applyOverflyMetrics('player', 'enemy');
+    window.Avian.ui.combatFx.prepareCombatMiss('player', 'accuracy', 'physical');
+    const wrap = document.getElementById('player-avatar-wrap');
+    setTimeout(() => resolve({
+      overflyX: parseFloat(wrap.style.getPropertyValue('--overfly-x')),
+      hasOverflyClass: /\bdo-miss-overfly-r\b/.test(wrap.className)
+    }), 40);
+  }));
+  ok('physical miss sets overfly distance', Math.abs(overfly.overflyX) > 200);
+  ok('physical miss triggers overfly animation class', overfly.hasOverflyClass);
 
   const util = await page.evaluate(() => {
     document.querySelectorAll('.combat-fx-proj,.combat-fx-spark,.combat-fx-aura').forEach((n) => n.remove());
