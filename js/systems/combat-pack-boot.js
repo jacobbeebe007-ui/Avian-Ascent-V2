@@ -23,13 +23,22 @@
 
   function resolveCombatRowBtnType(row) {
     if (!row) return 'utility';
-    if (/magic|song|spell/i.test(row.category || '')) return 'spell';
+    if (/magic|spell/i.test(row.category || '')) return 'spell';
+    if (/^song$/i.test(row.category || '') || /song/i.test(row.skillType || '')) return 'song';
     if (typeof globalThis.isHybridDamage === 'function' && globalThis.isHybridDamage(row)) return 'hybrid';
     if (String(row.scaleStat || row.damageStat || '').toUpperCase() === 'MATK') return 'spell';
     if (Number(row.pierceMdef) > 0 && !Number(row.pierceDef)) return 'spell';
     if (row.branch === 'utility' && (row.noDamage || row.target === 'self')) return 'utility';
     if (/utility|guard|heal|buff|control/i.test(row.category || '') && row.noDamage) return 'utility';
     if (row.target === 'self' && row.noDamage) return 'utility';
+    var family = String(row.family || row.weaponFamily || '').toLowerCase();
+    if (!family && Array.isArray(row.tags)) {
+      for (var ti = 0; ti < row.tags.length; ti++) {
+        var tag = String(row.tags[ti] || '').toLowerCase();
+        if (/bow|crossbow/.test(tag)) { family = tag; break; }
+      }
+    }
+    if (/bow|crossbow/.test(family)) return 'ranged';
     return 'physical';
   }
   globalThis.resolveCombatRowBtnType = resolveCombatRowBtnType;
