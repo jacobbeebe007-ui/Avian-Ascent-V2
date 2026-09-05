@@ -114,11 +114,12 @@ if (JSON.stringify(first) !== JSON.stringify(second)) {
   ok('seeded duel deterministic (seed=' + SEED + ')');
 }
 
-/* Passive/perk combat hooks may nudge seeded duel totals slightly. */
+/* Passive/perk combat hooks may nudge seeded duel totals slightly.
+   v2.1 hybrid overflow rebate + 1.10 affinity can raise dealt HP vs old 1.20/all-absorbed. */
 const SNAPSHOT = Object.freeze({
   turns: 2,
   winner: 'defender',
-  damageDealt: 12,
+  damageDealt: 16,
   damageTaken: 24,
   seed: SEED,
 });

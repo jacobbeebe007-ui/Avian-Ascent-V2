@@ -9,7 +9,14 @@ import { fileURLToPath } from 'node:url';
 import { readWorkbook } from './lib/ooxml-workbook.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const WORKBOOK = path.join(ROOT, 'Avian_Ascent_Current_Master_v1.6_Structured_Effects.xlsm');
+const WORKBOOK_CANDIDATES = [
+  'Avian_Ascent_Current_Master_v2.1.xlsx',
+  'Avian_Ascent_Current_Master_v1.6_Structured_Effects Updated.xlsm',
+  'Avian_Ascent_Current_Master_v1.6_Structured_Effects.xlsm',
+];
+const WORKBOOK = WORKBOOK_CANDIDATES
+  .map((name) => path.join(ROOT, name))
+  .find((p) => existsSync(p));
 const BIRDS_V2 = path.join(ROOT, 'js/data/birds-v2.js');
 
 const AFFINITY = {
@@ -56,10 +63,11 @@ function intish(v) {
 }
 
 console.log('== Workbook bird base stats ==');
-if (!existsSync(WORKBOOK)) {
-  fail(`missing ${path.basename(WORKBOOK)}`);
+if (!WORKBOOK) {
+  fail(`missing master workbook (tried ${WORKBOOK_CANDIDATES.join(', ')})`);
   process.exit(1);
 }
+ok(`using ${path.basename(WORKBOOK)}`);
 
 const sheets = readWorkbook(WORKBOOK);
 const birds = loadBirdsV2();

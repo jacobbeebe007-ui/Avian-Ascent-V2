@@ -122,7 +122,52 @@ function normalizeBattleTurnState(){
   syncCombatTurnFlags();
 }
 
+function isSequentialEncounterContinue(){
+  const carryOn=!(Avian?.data?.combatConfig?.v21 && Avian.data.combatConfig.v21.sequentialCarry===false);
+  return carryOn && !G.endlessMode && (G._owEnemyCount || 0) > 1 && (G._owEnemyIndex || 0) > 0;
+}
+
+function snapshotPlayerEncounterCarry(){
+  if(!G.player) return null;
+  return {
+    hp: Number(G.player.stats && G.player.stats.hp),
+    energy: Number(G.player.energy),
+    status: G.playerStatus || {},
+    meter: Number(G.playerUltimateMeter) || 0,
+    perkIronCoreUsed: !!G._perkIronCoreUsed,
+    perkFirstVsFullUsed: !!G._perkFirstVsFullUsed,
+    perkUtilityRefundUsed: !!G._perkUtilityRefundUsed,
+  };
+}
+
+function restorePlayerEncounterCarry(carried){
+  if(!carried || !G.player || !G.player.stats) return;
+  if(Number.isFinite(carried.hp)) G.player.stats.hp = Math.min(Number(G.player.stats.maxHp) || carried.hp, carried.hp);
+  const cap = Math.min(Number(G.player.energyMax) || 6, 6);
+  if(Number.isFinite(carried.energy)) G.player.energy = Math.max(0, Math.min(cap, carried.energy));
+  G.playerStatus = carried.status || {};
+  if(Avian.protection){
+    if(typeof Avian.protection.expireFortify==='function') Avian.protection.expireFortify(G.player.stats, G.playerStatus);
+    if(typeof Avian.protection.expireWard==='function') Avian.protection.expireWard(G.player.stats, G.playerStatus);
+    const s = G.player.stats;
+    const nA = Number(s.normalMaxArmour) || 0;
+    const nM = Number(s.normalMaxMagicArmour) || 0;
+    s.maxArmour = nA;
+    s.maxMagicArmour = nM;
+    s.armour = nA;
+    s.magicArmour = nM;
+    s._fortifyBonus = 0;
+    s._wardBonus = 0;
+  }
+  G.playerUltimateMeter = Math.max(0, Number(carried.meter) || 0);
+  G._perkIronCoreUsed = !!carried.perkIronCoreUsed;
+  G._perkFirstVsFullUsed = !!carried.perkFirstVsFullUsed;
+  G._perkUtilityRefundUsed = !!carried.perkUtilityRefundUsed;
+}
+
 function resetForNewBattle(){
+  const sequential = isSequentialEncounterContinue();
+  const carried = sequential ? snapshotPlayerEncounterCarry() : null;
   if(Avian?.systems?.combatBreakdown?.reset){
     Avian.systems.combatBreakdown.reset({
       battleId:`battle-${Date.now()}`,
@@ -212,7 +257,9 @@ function resetForNewBattle(){
     G.enemy.energy=enProf.startEN;
     G.enemy.energyRegen=enProf.regenEN;
   }
+  if(carried) restorePlayerEncounterCarry(carried);
 }
+globalThis.isSequentialEncounterContinue = isSequentialEncounterContinue;
 
 function normalizeEnemyNameKey(name){
   return String(name||'').toLowerCase().replace(/[^a-z]/g,'');

@@ -143,6 +143,39 @@ if (prot.protectionPoolForAilment('crippled') !== 'armour') fail('Crippled shoul
 if (prot.protectionPoolForAilment('dazed') !== 'armour') fail('Dazed should gate on Armour');
 else ok('Ailment→pool mapping (incl. physical ailments)');
 
+if (typeof prot.applyHybridDamageThroughProtection !== 'function') {
+  fail('applyHybridDamageThroughProtection missing');
+} else {
+  const dual = {
+    armour: 20, maxArmour: 20, normalMaxArmour: 20,
+    magicArmour: 20, maxMagicArmour: 20, normalMaxMagicArmour: 20,
+  };
+  const hybridEq = prot.applyHybridDamageThroughProtection(dual, {}, 20, 20);
+  const healthEq = Number(hybridEq.remaining) || 0;
+  const appliedEq = healthEq + (Number(hybridEq.absorbed) || 0);
+  if (Math.abs(healthEq - 20) > 0.05) fail(`hybrid 20/20 vs 20/20 expected 20 Health, got ${healthEq}`);
+  else if (Math.abs(appliedEq - 40) > 0.15) fail(`hybrid equal-pool applied ${appliedEq}, expected 40`);
+  else ok('Hybrid mean-pool gate: 40 vs 20/20 deals 20 Health (parity with specialist)');
+
+  const mismatch = {
+    armour: 10, maxArmour: 40, normalMaxArmour: 40,
+    magicArmour: 30, maxMagicArmour: 40, normalMaxMagicArmour: 40,
+  };
+  const hybridMid = prot.applyHybridDamageThroughProtection(mismatch, {}, 20, 20);
+  if (Math.abs((Number(hybridMid.remaining) || 0) - 20) > 0.15) {
+    fail(`hybrid 20/20 vs 10/30 expected ~20 Health, got ${hybridMid.remaining}`);
+  } else ok('Hybrid vs mismatched pools deals mean-gate Health (~20)');
+
+  const openWound = {
+    armour: 0, maxArmour: 20, normalMaxArmour: 20,
+    magicArmour: 40, maxMagicArmour: 40, normalMaxMagicArmour: 40,
+  };
+  const hybridOpen = prot.applyHybridDamageThroughProtection(openWound, {}, 20, 20);
+  if (Math.abs((Number(hybridOpen.remaining) || 0) - 20) > 0.15) {
+    fail(`hybrid vs 0/40 expected 20 Health, got ${hybridOpen.remaining}`);
+  } else ok('Hybrid vs empty Armour + thick Magic Armour is midway (20), not 0');
+}
+
 if (failed) {
   console.error(`\n[protection] ${failed} failure(s)`);
   process.exit(1);

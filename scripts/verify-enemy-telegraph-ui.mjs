@@ -20,7 +20,10 @@ function ok(msg) {
 
 const html = readFileSync(path.join(ROOT, 'index.html'), 'utf8');
 const css = readFileSync(path.join(ROOT, 'css/main.css'), 'utf8');
-const game = readFileSync(path.join(ROOT, 'js/core/game.js'), 'utf8');
+const game = [
+  readFileSync(path.join(ROOT, 'js/core/game.js'), 'utf8'),
+  readFileSync(path.join(ROOT, 'js/ui/combat-enemy-telegraph.js'), 'utf8'),
+].join('\n');
 
 const htmlChecks = [
   ['telegraph dock', /id="enemy-telegraph"/],

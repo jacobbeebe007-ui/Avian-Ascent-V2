@@ -9199,7 +9199,18 @@ function isDirectHealingAbility(ab){
   return false;
 }
 
+function ordinaryCooldownsEnabled(){
+  const v=Avian?.data?.combatConfig?.v21;
+  if(v && v.ordinaryCooldownsRuntime===true) return false;
+  return true;
+}
+
 function getTemplateCooldown(ab){
+  if(!ordinaryCooldownsEnabled()){
+    /* V2-004: ordinary attacks, weapon skills, restoration, Fortify and Ward
+     * have no cooldown. Once-per-turn / per-battle flags still apply. */
+    return 0;
+  }
   const packRow=(typeof packRowForAbility==='function'?packRowForAbility(ab):null)
     || (ab?._dispatcherRow)
     || (Avian?.equipmentActions?.skillToAbilityRow?.(ab?.id, null, 'grey'));
@@ -10518,9 +10529,27 @@ function applyShieldHp(side, opts={}){
   return amount;
 }
 
+function resolveHybridProtectionSplit(dmg, isMagic, srcAbility){
+  const row=(typeof G!=='undefined' && G._dispatcherCombatRow)
+    || (typeof resolveAbilityCombatRow==='function' ? resolveAbilityCombatRow(srcAbility) : null);
+  if(!row) return null;
+  if(typeof isHybridDamage!=='function' || !isHybridDamage(row)) return null;
+  if(typeof calculateHybridDisplaySplit!=='function') return null;
+  return calculateHybridDisplaySplit(Math.max(0, Number(dmg)||0), row);
+}
+
 function applyDamageThroughShield(stats, status, dmg, isMagic=false, opts=null){
   const prot=globalThis.Avian&&Avian.protection;
   opts=opts||{};
+  const hybridOn=!(Avian?.data?.combatConfig?.v21 && Avian.data.combatConfig.v21.hybridMeanPoolGate===false);
+  const split=opts.hybridSplit
+    || (hybridOn ? resolveHybridProtectionSplit(dmg, isMagic, opts.srcAbility) : null);
+  if(prot&&typeof prot.applyHybridDamageThroughProtection==='function' && split && (split.physical>0 || split.magic>0)){
+    const result=prot.applyHybridDamageThroughProtection(stats, status, split.physical, split.magic);
+    if(typeof G!=='undefined') G._lastProtectionHit=result;
+    if(Avian?.systems?.combatBreakdown?.routeDamage) Avian.systems.combatBreakdown.routeDamage(result);
+    return result.remaining;
+  }
   if(prot&&typeof prot.applyDamageThroughProtection==='function'){
     let incoming=Math.max(0, Number(dmg)||0);
     const poolKey=isMagic?'magicArmour':'armour';
@@ -11624,7 +11653,7 @@ function dealDamage(target,amount,isCrit=false,isMagic=false,srcAbility=null,opt
       const stEnemy=G.enemyStatus||{};
       if(!isMagic && (stEnemy._passiveArmourDamagePct||0)>0) protBonus=Math.max(protBonus, Number(stEnemy._passiveArmourDamagePct)||0);
       if(isMagic && (stEnemy._passiveMagicArmourDamagePct||0)>0) protBonus=Math.max(protBonus, Number(stEnemy._passiveMagicArmourDamagePct)||0);
-      dmg=applyDamageThroughShield(G.player.stats, G.playerStatus, dmg, isMagic, { protectionDamageBonus: protBonus });
+      dmg=applyDamageThroughShield(G.player.stats, G.playerStatus, dmg, isMagic, { protectionDamageBonus: protBonus, srcAbility: atkAb });
       notifyProtectionHitHooks(G.player, G.enemy, isMagic, atkAb);
       if(protBonus>0 && isMagic && typeof Avian?.classPerks?.consumeArcanePressureFlag==='function'){
         Avian.classPerks.consumeArcanePressureFlag(G.enemy);
@@ -11757,7 +11786,7 @@ function dealDamage(target,amount,isCrit=false,isMagic=false,srcAbility=null,opt
       }
       delete stPlayer._passiveFlatArmourDamage;
       delete stPlayer._passiveFlatMagicArmourDamage;
-      const remaining=applyDamageThroughShield(G.enemy.stats, G.enemyStatus, dmg + flatProt, isMagic, { protectionDamageBonus: protBonus });
+      const remaining=applyDamageThroughShield(G.enemy.stats, G.enemyStatus, dmg + flatProt, isMagic, { protectionDamageBonus: protBonus, srcAbility: atkAb });
       notifyProtectionHitHooks(G.enemy, G.player, isMagic, atkAb);
       if(protBonus>0 && isMagic && typeof Avian?.classPerks?.consumeArcanePressureFlag==='function'){
         Avian.classPerks.consumeArcanePressureFlag(G.player);
@@ -12893,6 +12922,7 @@ function startPlayerTurn(player){
   if(isEndlessRunActive() && G.enemy?.isBoss && player.relPredatoryMemory) player.energy = Math.min(maxEn, (player.energy||0) + 1);
   if(isEndlessRunActive() && player.relFeatheredClock && ((G.endlessBattle||0)%3===0)) player.energy = Math.min(maxEn, (player.energy||0) + 1);
   G.playerActionsThisTurn=0;
+  G._playerUltMeterThisTurn=0;
   G.playerTurnFlags={energyGainedThisTurn:0,onHitTriggered:false,firstAttackResolved:false};
   G.utilityUsedThisTurn={};
   G.actionUsedThisTurn={};
@@ -12988,6 +13018,7 @@ function startEnemyTurn(enemy){
     const r = enemy.energyRegen || prof.regenEN;
     enemy.energy = Math.min(maxEn, Math.max(0, (enemy.energy||0) + r));
   }
+  G._enemyUltMeterThisTurn=0;
   if(typeof Avian?.classPerks?.onEnemyTurnStart==='function') Avian.classPerks.onEnemyTurnStart();
   G.phase='ENEMY';
   if(typeof setEnergyBar==='function') setEnergyBar('enemy', enemy.energy, enemy.energyMax||maxEn);

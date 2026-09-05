@@ -276,6 +276,76 @@
   }
 
   /**
+   * v2.1 hybrid overflow (mean-pool Health gate).
+   * Physical and Magic portions still chip their matching pools.
+   * Health pressure uses mean(start Armour, start Magic Armour) so a 50/50
+   * hybrid does not have to empty both pools before dealing Health.
+   * Extra Health is a rebate: over-absorbed pool damage is restored so
+   * total applied never exceeds incoming damage.
+   */
+  function applyHybridDamageThroughProtection(stats, status, physicalDmg, magicDmg) {
+    ensureProtectionFields(stats);
+    var physIn = Math.max(0, Number(physicalDmg) || 0);
+    var magIn = Math.max(0, Number(magicDmg) || 0);
+    var total = physIn + magIn;
+    var startA = Math.max(0, Number(stats.armour) || 0);
+    var startM = Math.max(0, Number(stats.magicArmour) || 0);
+    var meanGate = (startA + startM) / 2;
+    var desiredHealth = Math.max(0, total - meanGate);
+
+    var phys = applyDamageThroughProtection(stats, status, physIn, false);
+    var mag = applyDamageThroughProtection(stats, status, magIn, true);
+    var individualHealth = (Number(phys.remaining) || 0) + (Number(mag.remaining) || 0);
+    var remaining = Math.max(individualHealth, desiredHealth);
+    var absorbed = (Number(phys.absorbed) || 0) + (Number(mag.absorbed) || 0);
+    var extraHealth = Math.max(0, remaining - individualHealth);
+    var overAbsorbed = Math.round(((absorbed + remaining) - total) * 100) / 100;
+    if (overAbsorbed > 0.001) {
+      restoreHybridOverAbsorption(stats, overAbsorbed);
+      absorbed = Math.max(0, Math.round((absorbed - overAbsorbed) * 100) / 100);
+    }
+    var poolAfter = Math.max(0, Number(stats.armour) || 0) + Math.max(0, Number(stats.magicArmour) || 0);
+    return {
+      remaining: Math.round(remaining * 100) / 100,
+      absorbed: absorbed,
+      poolBefore: startA + startM,
+      poolAfter: poolAfter,
+      brokePool: !!(phys.brokePool || mag.brokePool),
+      damagedHealth: remaining > 0,
+      poolKey: 'hybrid',
+      isMagic: false,
+      isHybrid: true,
+      extraHealth: extraHealth,
+      physical: phys,
+      magic: mag,
+    };
+  }
+
+  function restoreHybridOverAbsorption(stats, amount) {
+    var left = Math.max(0, Number(amount) || 0);
+    if (left <= 0 || !stats) return;
+    var arm = Math.max(0, Number(stats.armour) || 0);
+    var mag = Math.max(0, Number(stats.magicArmour) || 0);
+    var armMax = Math.max(0, Number(stats.maxArmour) || 0);
+    var magMax = Math.max(0, Number(stats.maxMagicArmour) || 0);
+    var armRoom = Math.max(0, armMax - arm);
+    var magRoom = Math.max(0, magMax - mag);
+    if (armRoom <= 0 && magRoom <= 0) return;
+    var toArm = 0;
+    var toMag = 0;
+    if (armRoom > 0 && magRoom > 0) {
+      toArm = Math.min(armRoom, Math.round((left / 2) * 100) / 100);
+      toMag = Math.min(magRoom, Math.round((left - toArm) * 100) / 100);
+    } else if (armRoom > 0) {
+      toArm = Math.min(armRoom, left);
+    } else {
+      toMag = Math.min(magRoom, left);
+    }
+    stats.armour = Math.round((arm + toArm) * 100) / 100;
+    stats.magicArmour = Math.round((mag + toMag) * 100) / 100;
+  }
+
+  /**
    * Same-hit ailment gate: permitted when pool was already 0, or hit breaks pool
    * and deals at least 1 Health damage.
    */
@@ -338,6 +408,7 @@
   ns.expireWard = expireWard;
   ns.tickProtectionStatuses = tickProtectionStatuses;
   ns.applyDamageThroughProtection = applyDamageThroughProtection;
+  ns.applyHybridDamageThroughProtection = applyHybridDamageThroughProtection;
   ns.ailmentApplicationAllowed = ailmentApplicationAllowed;
   ns.protectionPoolForAilment = protectionPoolForAilment;
   ns.currentPool = currentPool;

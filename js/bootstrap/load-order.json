@@ -17,6 +17,7 @@
     "js/data/ability-tag-glossary.js",
     "js/data/ultimate-meter-rules.js",
     "js/data/combat-config.js",
+    "js/data/combat-v21.js",
     "js/data/enemy-scaling-profiles.js",
     "js/data/progression/rules.js",
     "js/data/progression/level-growth.js",

@@ -114,9 +114,27 @@
       return Number(utilMap[String(en)] || utilMap[en] || 0);
     }
     if (!landed) return 0;
-    var dmgMap = rules.damageAwards || {};
-    if (isSpecialAbility(row) && en < 4) en = 4;
-    return Number(dmgMap[String(en)] || dmgMap[en] || 0);
+    var cfg = Avian.data && Avian.data.combatConfig && Avian.data.combatConfig.ultimateMeter;
+    var perAp = cfg && cfg.meterPerAp != null ? Number(cfg.meterPerAp) : 0;
+    var raw;
+    if (perAp > 0) {
+      raw = Math.round(perAp * en);
+    } else {
+      var dmgMap = rules.damageAwards || {};
+      if (isSpecialAbility(row) && en < 4) en = 4;
+      raw = Number(dmgMap[String(en)] || dmgMap[en] || 0);
+    }
+    var cap = cfg && cfg.perTurnCap != null ? Number(cfg.perTurnCap) : 0;
+    if (cap > 0) {
+      var g = globalThis.G;
+      var side = (ctx.side || 'player');
+      var key = side === 'enemy' ? '_enemyUltMeterThisTurn' : '_playerUltMeterThisTurn';
+      var used = g && Number(g[key]) || 0;
+      var allowed = Math.max(0, cap - used);
+      raw = Math.min(raw, allowed);
+      if (g) g[key] = used + raw;
+    }
+    return raw;
   }
 
   function canUseMasterWorkbookAbility(player, ab) {
@@ -443,8 +461,19 @@
   if (typeof globalThis.loadStage === 'function') {
     var _oldLoadStage = globalThis.loadStage;
     globalThis.loadStage = function () {
+      var sequential = typeof globalThis.isSequentialEncounterContinue === 'function'
+        && globalThis.isSequentialEncounterContinue();
+      var kept = sequential ? (Number(globalThis.G && globalThis.G.playerUltimateMeter) || 0) : 0;
       var ret = _oldLoadStage.apply(this, arguments);
-      initUltimateMeterState();
+      if (sequential) {
+        if (globalThis.G) {
+          globalThis.G.maxUltimateMeter = maxUltimateMeter();
+          globalThis.G.enemyUltimateMeter = 0;
+          globalThis.G.playerUltimateMeter = kept;
+        }
+      } else {
+        initUltimateMeterState();
+      }
       return ret;
     };
   }

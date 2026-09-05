@@ -113,7 +113,7 @@ for i, att in enumerate(PLAIN):
     matrix_plain[att] = {}
     for j, deff in enumerate(PLAIN):
         v = cells[1+j]
-        matrix_plain[att][deff] = 'dominant' if v==1.2 else ('resisted' if v==0.8 else 'neutral')
+        matrix_plain[att][deff] = 'dominant' if v>=1.1 else ('resisted' if v<=0.9 else 'neutral')
 chart = {lat: {lat2: matrix_plain[LATIN_TO_PLAIN[lat]][LATIN_TO_PLAIN[lat2]] for lat2 in LATIN} for lat in LATIN}
 aliases = {}
 for p,l in PLAIN_TO_LATIN.items():
@@ -132,9 +132,9 @@ strong = {'terra':['tempest','solis'],'aeris':['terra','lunae'],'tempest':['aeri
 weak = {'terra':['aeris','maris'],'aeris':['tempest','solis'],'tempest':['terra','lunae'],'solis':['terra','maris'],'lunae':['solis','aeris'],'maris':['tempest','lunae']}
 colors = {'terra':'#8a7860','aeris':'#6a8ae8','tempest':'#c8a820','solis':'#e85020','lunae':'#6030d0','maris':'#3a5878'}
 definitions = {lat:{'name':DISPLAY[lat],'legacyName':{'terra':'Terra','aeris':'Aeris','tempest':'Tempest','solis':'Solis','lunae':'Lunae','maris':'Maris'}[lat],'theme':DISPLAY[lat],'description':f"{DISPLAY[lat]}-aligned Affinity.",'strongAgainst':strong[lat],'weakAgainst':weak[lat],'alignedStatus':aligned[lat],'color':colors[lat]} for lat in LATIN}
-aspects = {'packVersion':PACK,'ids':LATIN,'displayIds':PLAIN,'displayNames':DISPLAY,'plainNames':LATIN_TO_PLAIN,'aliases':aliases,'dominantMod':1.2,'neutralMod':1,'resistedMod':0.8,'chart':chart,'alignedStatus':aligned,'themes':{k:DISPLAY[k] for k in LATIN},'definitions':definitions,'affinityIds':PLAIN}
+aspects = {'packVersion':PACK,'ids':LATIN,'displayIds':PLAIN,'displayNames':DISPLAY,'plainNames':LATIN_TO_PLAIN,'aliases':aliases,'dominantMod':1.1,'neutralMod':1,'resistedMod':0.9,'chart':chart,'alignedStatus':aligned,'themes':{k:DISPLAY[k] for k in LATIN},'definitions':definitions,'affinityIds':PLAIN}
 write_js('js/data/aspects.js','Avian.data.aspects',aspects,'Affinity chart with legacy Aspect aliases.')
-write_js('js/data/affinities.js','Avian.data.affinities',{'packVersion':PACK,'ids':PLAIN,'legacyIds':LATIN,'toLegacy':PLAIN_TO_LATIN,'toPlain':LATIN_TO_PLAIN,'displayNames':{p:p.title() for p in PLAIN},'dominantMod':1.2,'neutralMod':1,'resistedMod':0.8,'chartPlain':matrix_plain,'aliases':aliases},'Player-facing Affinity ids + alias map.')
+write_js('js/data/affinities.js','Avian.data.affinities',{'packVersion':PACK,'ids':PLAIN,'legacyIds':LATIN,'toLegacy':PLAIN_TO_LATIN,'toPlain':LATIN_TO_PLAIN,'displayNames':{p:p.title() for p in PLAIN},'dominantMod':1.1,'neutralMod':1,'resistedMod':0.9,'chartPlain':matrix_plain,'aliases':aliases},'Player-facing Affinity ids + alias map.')
 # effect-tiers.js is owned by import-equipment-workbook.mjs — do not overwrite here.
 print('core packs refreshed (effect-tiers left to equipment importer)')
 `;
