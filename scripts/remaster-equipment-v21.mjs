@@ -387,7 +387,9 @@ function applyProtectionToItem(item, setBonuses, families) {
   else if (slot === 'Shield') total = Math.round(loadout * 0.25);
   else total = Math.round(loadout * 0.05);
 
-  let split = set ? parseSplit(set.protectionSplit) : { armour: 0.5, magic: 0.5 };
+  let split = set ? parseSplit(set.protectionSplit)
+    : fam.protectionIdentity ? parseSplit(fam.protectionIdentity)
+      : { armour: 0.5, magic: 0.5 };
   if (slot === 'Anklet') {
     if (/ironspur|stoneband/i.test(item.family)) split = { armour: 0.8, magic: 0.2 };
     else if (/runeclasp|galeband/i.test(item.family)) split = { armour: 0.2, magic: 0.8 };
