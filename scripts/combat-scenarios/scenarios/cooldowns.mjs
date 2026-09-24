@@ -167,7 +167,7 @@ export default [
       expectValue(sandbox.getTemplateCooldown(ab), 3, 'Plainshield authored CD 3');
       expectValue(sandbox.getAbilityCooldown(ab.id), 3, 'Plainshield runtime CD 3');
       expectValue(!!sandbox.G.playerStatus.fortify, true, 'Fortify applied once');
-      expectValue(sandbox.G.playerStatus.fortify?.amount, 6, 'Fortify bonus 6');
+      expectValue(sandbox.G.playerStatus.fortify?.amount, 16, 'Fortify bonus 16');
     },
   },
 ];

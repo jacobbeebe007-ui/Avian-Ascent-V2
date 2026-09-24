@@ -135,10 +135,10 @@ for (const key of keys) {
 const duke = birdsV2.dukeBlakiston;
 if (!duke?.bossOverride) failures.push('dukeBlakiston: bossOverride missing');
 if (duke) {
-  /* Vitality +1 = Max Health +3: baseHealth 20 + vitality 5 × 3 → maxHp 35; Agility 2 → Dodge 1.
+  /* v2.1: Boss Override 150 + 5×Vitality 5 → maxHp 175; Agility 2 → Dodge 1.
    * Bird Precision System: Duke Base Precision 86 (Boss Override, not 0). */
   const expected = {
-    hp: 35, maxHp: 35, atk: 4, dex: 2, def: 4, matk: 12, mdef: 5, spd: 2, dodge: 1, acc: 86, critChance: 10,
+    hp: 175, maxHp: 175, atk: 4, dex: 2, def: 4, matk: 12, mdef: 5, spd: 2, dodge: 1, acc: 86, critChance: 10,
   };
   if (Number(duke.baseHealth) !== 20) failures.push(`dukeBlakiston: baseHealth=${duke.baseHealth} expected 20`);
   if (Number(duke.vitality) !== 5) failures.push(`dukeBlakiston: vitality=${duke.vitality} expected 5`);

@@ -324,12 +324,12 @@ try {
         fail(`enemy L2 workbookLevel expected 2 (storyLevel 4 + offset -2), got ${enemyL2.workbookLevel}`);
       } else if (Number(enemyL2.baseHealth) !== 8) {
         fail(`enemy L2 should stamp baseHealth 8, got ${enemyL2.baseHealth}`);
-      } else if (Number(enemyL2.leveledBaseHealth) !== 12) {
-        fail(`enemy L2 leveledBaseHealth expected 12, got ${enemyL2.leveledBaseHealth}`);
+      } else if (Number(enemyL2.leveledBaseHealth) !== 125) {
+        fail(`enemy L2 leveledBaseHealth expected 125, got ${enemyL2.leveledBaseHealth}`);
       } else if (Number(enemyL2.birdLevel) !== 2) {
         fail(`enemy L2 birdLevel expected 2, got ${enemyL2.birdLevel}`);
       } else {
-        ok(`enemy L2 hummingbird stamps BH=8 leveled=12 birdLevel=${enemyL2.birdLevel} maxHp=${enemyL2.maxHp}`);
+        ok(`enemy L2 hummingbird stamps BH=8 Tiny 125 birdLevel=${enemyL2.birdLevel} maxHp=${enemyL2.maxHp}`);
       }
       const starsEarly = typeof ctx.getTotalFeatherStars === 'function'
         ? ctx.getTotalFeatherStars(early.tier, 2)

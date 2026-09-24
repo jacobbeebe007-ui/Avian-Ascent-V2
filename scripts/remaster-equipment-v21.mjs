@@ -196,6 +196,7 @@ function remasterRider(rider) {
   const current = Number(r.value != null ? r.value : r.amount);
   if ((r.kind === 'restoreArmour' || r.kind === 'restoreMagicArmour' || r.kind === 'restoreLowerPool') && current >= 8) return r;
   if ((r.kind === 'fortify' || r.kind === 'ward') && current >= 16) return r;
+  if (r.kind === 'bastion' && (Number(r.armour) >= 8 || Number(r.magicArmour) >= 8)) return r;
   if (r.kind === 'restoreArmour' || r.kind === 'restoreMagicArmour' || r.kind === 'restoreLowerPool') {
     if (r.value != null) r.value = scaleRestore(r.value);
     if (r.amount != null) r.amount = scaleRestore(r.amount);
@@ -231,6 +232,10 @@ function rewriteRiderText(text, riders) {
     }
     if (r.kind === 'bastion') {
       t = t.replace(/(\d+) Armour and (\d+) Magic Armour/, `${r.armour} Armour and ${r.magicArmour} Magic Armour`);
+      t = t.replace(
+        /Gain \d+ Fortified Armour \(add \d+ to current Armour and temporary Maximum Armour\) and \d+ Ward Magic Armour \(add \d+ to current Magic Armour and temporary Maximum Magic Armour\)/i,
+        `Gain ${r.armour} Fortified Armour (add ${r.armour} to current Armour and temporary Maximum Armour) and ${r.magicArmour} Ward Magic Armour (add ${r.magicArmour} to current Magic Armour and temporary Maximum Magic Armour)`
+      );
     }
   }
   return t;
@@ -338,15 +343,17 @@ function scaleParsedTree(node) {
     if (out.amount != null) out.amount = scaleRestoreSafe(out.amount);
     if (out.value != null) out.value = scaleRestoreSafe(out.value);
   }
-  if (kind === 'fortify' || kind === 'ward' || kind === 'bastion') {
-    if (out.amount != null) out.amount = scaleFortify(out.amount);
-    if (out.value != null) out.value = scaleFortify(out.value);
-    if (out.armour != null) out.armour = scaleRestore(out.armour);
-    if (out.magicArmour != null) out.magicArmour = scaleRestore(out.magicArmour);
+  if (kind === 'fortify' || kind === 'ward' || kind === 'bastion'
+    || out.id === 'fortify' || out.id === 'ward' || out.id === 'bastion') {
+    if (out.amount != null) out.amount = scaleFortifySafe(out.amount);
+    if (out.value != null) out.value = scaleFortifySafe(out.value);
+    if (out.armour != null) out.armour = scaleRestoreSafe(out.armour);
+    if (out.magicArmour != null) out.magicArmour = scaleRestoreSafe(out.magicArmour);
   }
-  if (kind === 'poolDamage' || kind === 'armourDamage' || kind === 'magicArmourDamage') {
-    if (out.amount != null) out.amount = scalePoolChip(out.amount);
-    if (out.value != null) out.value = scalePoolChip(out.value);
+  if (kind === 'poolDamage' || kind === 'armourDamage' || kind === 'magicArmourDamage'
+    || out.id === 'poolDamage' || out.id === 'armourDamage' || out.id === 'magicArmourDamage') {
+    if (out.amount != null) out.amount = scalePoolChipSafe(out.amount);
+    if (out.value != null) out.value = scalePoolChipSafe(out.value);
   }
   for (const key of Object.keys(out)) {
     if (out[key] && typeof out[key] === 'object') out[key] = scaleParsedTree(out[key]);
@@ -471,15 +478,17 @@ for (const set of Object.values(setBonuses)) {
 }
 
 /* --- new defence skills --- */
-for (const set of NEW_SETS) {
-  skills[set.restore.id] = makeDefenceSkill(set.restore.id, set.restore.name, set.restore.kind, { family: set.name });
-  skills[set.surge.id] = makeDefenceSkill(set.surge.id, set.surge.name, set.surge.kind, { family: set.name });
+if (!skills['ESK-065']) {
+  for (const set of NEW_SETS) {
+    skills[set.restore.id] = makeDefenceSkill(set.restore.id, set.restore.name, set.restore.kind, { family: set.name });
+    skills[set.surge.id] = makeDefenceSkill(set.surge.id, set.surge.name, set.surge.kind, { family: set.name });
+  }
+  skills['ESK-073'] = makeDefenceSkill('ESK-073', 'Orb Ward', 'ward', { family: 'Focus Ward Orb' });
+  skills['ESK-074'] = makeDefenceSkill('ESK-074', 'Stoneband Brace', 'restoreArmour', { family: 'Stoneband Anklet' });
+  skills['ESK-075'] = makeDefenceSkill('ESK-075', 'Galeband Mend', 'restoreMagicArmour', { family: 'Galeband Anklet' });
+  skills['ESK-076'] = makeDefenceSkill('ESK-076', 'Warden Pulse', 'restoreLowerPool', { family: 'Warden Torque' });
+  skills['ESK-077'] = makeDefenceSkill('ESK-077', 'Aspect Aegis', 'bastion', { family: 'Aspect Charm' });
 }
-skills['ESK-073'] = makeDefenceSkill('ESK-073', 'Orb Ward', 'ward', { family: 'Focus Ward Orb' });
-skills['ESK-074'] = makeDefenceSkill('ESK-074', 'Stoneband Brace', 'restoreArmour', { family: 'Stoneband Anklet' });
-skills['ESK-075'] = makeDefenceSkill('ESK-075', 'Galeband Mend', 'restoreMagicArmour', { family: 'Galeband Anklet' });
-skills['ESK-076'] = makeDefenceSkill('ESK-076', 'Warden Pulse', 'restoreLowerPool', { family: 'Warden Torque' });
-skills['ESK-077'] = makeDefenceSkill('ESK-077', 'Aspect Aegis', 'bastion', { family: 'Aspect Charm' });
 
 /* --- new set bonuses + families --- */
 for (const set of NEW_SETS) {
@@ -574,6 +583,7 @@ function makeGearItem(id, slot, family, rarity, baseName, extras) {
 let armN = 49;
 let hlmN = 49;
 let shdN = 49;
+if (!items['ARM-049']) {
 for (const set of NEW_SETS) {
   for (const rarity of RARITY_ORDER) {
     const restoreSkill = (rarity === 'grey' || rarity === 'green' || rarity === 'blue') ? set.restore.id : set.surge.id;
@@ -635,6 +645,7 @@ for (const def of ACC_DEFS) {
     applyProtectionToItem(it, setBonuses, families);
     items[it.id] = it;
   }
+}
 }
 
 /* --- core rules + slot budgets --- */

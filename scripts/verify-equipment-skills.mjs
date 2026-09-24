@@ -325,9 +325,11 @@ function riderOf(row, kind) {
   const bast = riderOf(bastion, 'bastion');
   if (bast && Number(bast.armour) === 13 && Number(bast.magicArmour) === 9) {
     ok('WSK-032 Runic Bastion 13 Armour / 9 Magic Armour');
-  } else if (!fort || Number(fort.value) !== 13 || !ward || Number(ward.value) !== 9) {
+  } else if (fort && Number(fort.value) === 13 && ward && Number(ward.value) === 9) {
+    ok('WSK-032 Runic Bastion Fortify 13 / Ward 9');
+  } else {
     fail(`WSK-032 expected remastered Bastion 13/9, got ${JSON.stringify(kindsOf(bastion))} ${JSON.stringify(bast || fort)} ${JSON.stringify(ward)}`);
-  } else ok('WSK-032 Runic Bastion Fortify 13 / Ward 9');
+  }
 }
 
 {
@@ -416,9 +418,9 @@ function riderOf(row, kind) {
   const b = riderOf(dual, 'bastion');
   const armAmt = b && (b.armour != null ? Number(b.armour) : Number(b.value));
   const magAmt = b && (b.magicArmour != null ? Number(b.magicArmour) : Number(b.value));
-  if (!b || armAmt !== 5 || magAmt !== 5) {
-    fail(`ESK-014 bastion should be 5/5, got ${JSON.stringify(b)}`);
-  } else ok('ESK-014 Dual Bastion 5/5');
+  if (!b || armAmt !== 13 || magAmt !== 13) {
+    fail(`ESK-014 bastion should be 13/13, got ${JSON.stringify(b)}`);
+  } else ok('ESK-014 Dual Bastion 13/13');
 }
 
 let eqAudited = 0;

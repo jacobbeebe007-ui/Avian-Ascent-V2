@@ -432,10 +432,10 @@ function countKind(riders, kind) {
 {
   const riders = ridersFor('galah', 'bard');
   const downs = riders.filter((r) => r.kind === 'reduceEnemyAtk' || r.kind === 'reduceEnemyMatk');
-  if (riders.some((r) => r.kind === 'magicArmourDamage' && Number(r.value) === 3)
+  if (riders.some((r) => r.kind === 'magicArmourDamage' && Number(r.value) === 8)
     && downs.length === 2
     && downs.every((r) => r.when === 'reachedHealth')) {
-    ok('galah Shrill Display: 3 Magic Armour damage; Might/Focus Down only if it reaches Health');
+    ok('galah Shrill Display: 8 Magic Armour damage; Might/Focus Down only if it reaches Health');
   } else fail('galah riders wrong: ' + JSON.stringify(riders.map((r) => ({ kind: r.kind, when: r.when, value: r.value }))));
 }
 
