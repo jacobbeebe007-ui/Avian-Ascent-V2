@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 /**
- * Vitality +1 = Max Health +3; Agility +1 = Evasion +0.5.
+ * Vitality +1 = Max Health +5; Agility +1 = Evasion +0.5.
+ * Max HP = Size base + 5×VIT + 5×(Level−1).
  *   node scripts/verify-stat-increase-rules.mjs
  */
 import { readFileSync } from 'node:fs';
@@ -27,6 +28,7 @@ vm.createContext(sandbox);
 for (const f of [
   'js/bootstrap/_namespace.js',
   'js/data/combat-config.js',
+  'js/data/combat-v21.js',
   'js/data/birds-v2.js',
   'js/systems/bird-progression.js',
 ]) {
@@ -47,21 +49,21 @@ function ok(label, cond, detail) {
 const bp = Avian.birdProgression;
 const cfg = Avian.data.combatConfig.weaponFirst;
 
-ok('vitalityMaxHpPerPoint is 3', cfg.vitalityMaxHpPerPoint === 3, `got=${cfg.vitalityMaxHpPerPoint}`);
+ok('vitalityMaxHpPerPoint is 5', cfg.vitalityMaxHpPerPoint === 5, `got=${cfg.vitalityMaxHpPerPoint}`);
 ok('agilityDodgePctPerPoint is 0.5', cfg.agilityDodgePctPerPoint === 0.5);
 
 const sparrow = Avian.data.birdsV2.sparrow;
-ok('sparrow L1 cache is 10 + 3×3 = 19', Number(sparrow.stats.maxHp) === 19,
+ok('sparrow L1 cache is Small 128 + 5×3 = 143', Number(sparrow.stats.maxHp) === 143,
   `got=${sparrow.stats.maxHp}`);
 
-const l1 = bp.vitalityToMaxHp(10, 3);
-const l1plus = bp.vitalityToMaxHp(10, 4);
-ok('+1 Vitality always adds +3 Max Health', l1plus - l1 === 3, `10+VIT3=${l1} 10+VIT4=${l1plus}`);
+const l1 = bp.vitalityToMaxHp(10, 3, 1, 'Small');
+const l1plus = bp.vitalityToMaxHp(10, 4, 1, 'Small');
+ok('+1 Vitality always adds +5 Max Health', l1plus - l1 === 5, `Small+VIT3=${l1} Small+VIT4=${l1plus}`);
 
 for (const vit of [0, 1, 5, 12]) {
-  const a = bp.vitalityToMaxHp(16, vit);
-  const b = bp.vitalityToMaxHp(16, vit + 1);
-  ok(`BH 16 VIT ${vit}→${vit + 1} ΔHP=3`, b - a === 3, `a=${a} b=${b}`);
+  const a = bp.vitalityToMaxHp(16, vit, 1, 'Very Large');
+  const b = bp.vitalityToMaxHp(16, vit + 1, 1, 'Very Large');
+  ok(`VL VIT ${vit}→${vit + 1} ΔHP=5`, b - a === 5, `a=${a} b=${b}`);
 }
 
 const d0 = bp.agilityToDodge(9);
@@ -71,16 +73,17 @@ ok('+1 Agility adds +0.5 Evasion', Math.abs((d1 - d0) - 0.5) < 0.0001, `9→${d0
 const entity = {
   baseHealth: 10,
   birdLevel: 1,
-  stats: { vitality: 3, spd: 9, maxHp: 19, hp: 19, dodge: 4.5 },
+  stats: { vitality: 3, spd: 9, maxHp: 143, hp: 143, dodge: 4.5 },
+  realSize: 'Small',
 };
 bp.refreshDerivedStats(entity);
-ok('refresh keeps Sparrow L1 Max HP 19', entity.stats.maxHp === 19, `got=${entity.stats.maxHp}`);
+ok('refresh keeps Sparrow L1 Max HP 143', entity.stats.maxHp === 143, `got=${entity.stats.maxHp}`);
 ok('refresh keeps Sparrow L1 Dodge 4.5', entity.stats.dodge === 4.5, `got=${entity.stats.dodge}`);
 
 entity.stats.vitality += 1;
 bp.refreshDerivedStats(entity, { dodge: false });
-ok('refresh Vitality +1 → Max HP +3', entity.stats.maxHp === 22, `got=${entity.stats.maxHp}`);
-ok('full HP follows Max HP on Vitality gain', entity.stats.hp === 22, `got=${entity.stats.hp}`);
+ok('refresh Vitality +1 → Max HP +5', entity.stats.maxHp === 148, `got=${entity.stats.maxHp}`);
+ok('full HP follows Max HP on Vitality gain', entity.stats.hp === 148, `got=${entity.stats.hp}`);
 
 entity.stats.spd += 2;
 entity._statLedger = { fromLevel: { dodge: 2 }, fromUpgrades: {}, fromCardTier: {}, fromEquipment: {} };
@@ -97,7 +100,7 @@ const grown = bp.computeFinalStats({
   totalStars: 0,
   tier: 'grey',
 });
-ok('Sparrow L2 Max HP is 15 + 9 = 24', Number(grown.ledger.maxHp) === 24,
+ok('Sparrow L2 Max HP is 128 + 15 + 5 = 148', Number(grown.ledger.maxHp) === 148,
   `got=${grown.ledger.maxHp} LBH=${grown.ledger.leveledBaseHealth}`);
 
 if (failed) {

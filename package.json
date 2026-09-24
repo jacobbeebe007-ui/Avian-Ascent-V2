@@ -20,6 +20,7 @@
     "verify-workbook-bird-stats": "node scripts/verify-workbook-bird-stats.mjs",
     "build-master-v21": "python3 scripts/build-master-workbook-v21.py",
     "verify-v21-foundation": "node scripts/verify-v21-foundation.mjs",
+    "remaster-equipment-v21": "node scripts/remaster-equipment-v21.mjs",
     "audit:aspects": "node scripts/audit-aspects.mjs",
     "ci": "npm run test",
     "ability-inventory": "node scripts/ability-inventory.js",

@@ -41,10 +41,11 @@
     weaponFirst: Object.freeze({
       enabled: true,
       offencePctPerStat: 2.5,
-      /* Vitality +1 = Max Health +3 (flat, after leveled Base Health). */
-      vitalityMaxHpPerPoint: 3,
-      /* Each level after 1 adds this fraction of original Base Health before VIT×3. */
-      baseHealthPerLevelPct: 0.5,
+      /* v2.1: Vitality +1 = Max Health +5. Size base + 5×(Level−1) replace the old BH×50% curve. */
+      vitalityMaxHpPerPoint: 5,
+      levelHealthFlat: 5,
+      /* Unused while levelHealthFlat > 0. Kept for rollback. */
+      baseHealthPerLevelPct: 0,
       agilityDodgePctPerPoint: 0.5,
       dodgeCapPct: 50,
       /* Equipped Basic Attack is 100% weapon damage. Flat 1–2 remains unarmed fallback only. */
@@ -209,10 +210,8 @@
       wardDefaultDuration: 2,
     }),
 
-    /* Locked v2.1 decisions. Attack Power / Health formulas stay inactive
-     * until Phase 1; hybrid, meter, affinity, carry and CD policy are live. */
+    /* Locked v2.1 decisions. Health + Attack Power land with the equipment remaster. */
     v21: Object.freeze({
-      /* Adopted: ordinary CDs are 0. Live authored CDs stay until Attack Power lands. */
       ordinaryCooldowns: false,
       ordinaryCooldownsRuntime: false,
       hybridMeanPoolGate: true,

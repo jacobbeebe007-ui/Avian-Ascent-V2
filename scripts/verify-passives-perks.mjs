@@ -144,13 +144,13 @@ else fail('sparrow pending still armed');
   Avian.passives.onArmourAbsorbed(G.player, 4);
   const pending = G.playerStatus._passiveNextSkill;
   if (pending && pending.gate && pending.gate.skillClass === 'song'
-    && (pending.specials || []).some((s) => s.id === 'restoreArmour' && s.amount === 3)) {
-    ok('rock dove arms next song restore 3 Armour');
+    && (pending.specials || []).some((s) => s.id === 'restoreArmour' && s.amount === 8)) {
+    ok('rock dove arms next song restore 8 Armour');
   } else fail('rock dove pending wrong: ' + JSON.stringify(pending));
   Avian.passives.onPlayerAbilityUse({
     id: 'SONG_TEST', name: 'Court Song', btnType: 'spell', skillType: 'song', barSlot: 'Song',
   }, {});
-  if ((G.player.stats.armour || 0) >= 3) ok('rock dove song restores 3 Armour');
+  if ((G.player.stats.armour || 0) >= 8) ok('rock dove song restores 8 Armour');
   else fail('rock dove song restore failed, armour=' + G.player.stats.armour);
 }
 
@@ -252,7 +252,7 @@ else ok('onEnemyDamaged exported');
   else fail('kakapo trigger missing song gate: ' + JSON.stringify(kak?.trigger));
   if (kak?.limit?.kind === 'cooldownTurns' && kak.limit.turns === 3) ok('kakapo 3-turn cooldown parsed');
   else fail('kakapo cooldown missing: ' + JSON.stringify(kak?.limit));
-  if ((kak?.specials || []).some((s) => s.id === 'restoreLowerProtection' && s.amount === 2)) ok('kakapo restores lower protection');
+  if ((kak?.specials || []).some((s) => s.id === 'restoreLowerProtection' && s.amount === 8)) ok('kakapo restores lower protection');
   else fail('kakapo missing restoreLowerProtection');
 
   G.player = {
@@ -388,7 +388,7 @@ else ok('onEnemyDamaged exported');
   else fail('dodo trigger: ' + JSON.stringify(dodo?.trigger));
   G.player = {
     birdKey: 'dodo', aspect: 'terra',
-    stats: { hp: 10, maxHp: 40, atk: 8, def: 10, matk: 4, mdef: 6, spd: 4, acc: 0, armour: 0, maxArmour: 8 },
+    stats: { hp: 10, maxHp: 40, atk: 8, def: 10, matk: 4, mdef: 6, spd: 4, acc: 0, armour: 0, maxArmour: 16, normalMaxArmour: 16 },
   };
   G.enemy = { birdKey: 'crow', stats: { hp: 40, maxHp: 40 } };
   G.playerStatus = {};
@@ -398,7 +398,7 @@ else ok('onEnemyDamaged exported');
   if ((G.player.stats.armour || 0) === 0) ok('dodo does not fire on skill use');
   else fail('dodo fired on skill');
   Avian.passives.onPlayerDamaged(5, false, { brokePool: true });
-  if ((G.player.stats.armour || 0) === 4) ok('dodo restores 4 Armour on armour break while low HP');
+  if ((G.player.stats.armour || 0) === 10) ok('dodo restores 10 Armour on armour break while low HP');
   else fail('dodo armour=' + G.player.stats.armour);
 }
 
@@ -408,7 +408,7 @@ else ok('onEnemyDamaged exported');
   else fail('vulture trigger: ' + JSON.stringify(vul?.trigger));
   G.player = {
     birdKey: 'vulture', aspect: 'terra',
-    stats: { hp: 10, maxHp: 40, atk: 10, def: 6, matk: 4, mdef: 6, spd: 6, acc: 0, armour: 0, maxArmour: 4, magicArmour: 0, maxMagicArmour: 4 },
+    stats: { hp: 10, maxHp: 40, atk: 10, def: 6, matk: 4, mdef: 6, spd: 6, acc: 0, armour: 0, maxArmour: 12, magicArmour: 0, maxMagicArmour: 12, normalMaxArmour: 12, normalMaxMagicArmour: 12 },
   };
   G.enemy = { birdKey: 'crow', stats: { hp: 40, maxHp: 40 } };
   G.playerStatus = {};
@@ -422,7 +422,7 @@ else ok('onEnemyDamaged exported');
   G.playerStatus = {};
   Avian.passives.onPlayerAbilityUse({ id: 'WSK-003', name: 'Talon Rake', btnType: 'physical', enCost: 2 }, { healthDamage: 3 });
   const restored = (G.player.stats.armour || 0) + (G.player.stats.magicArmour || 0);
-  if (restored === 1) ok('vulture restores 1 prot when foe low HP + Health damage');
+  if (restored === 8) ok('vulture restores 8 prot when foe low HP + Health damage');
   else fail('vulture restore=' + restored);
 }
 
@@ -432,7 +432,7 @@ else ok('onEnemyDamaged exported');
   else fail('galah trigger: ' + JSON.stringify(galah?.trigger));
   G.player = {
     birdKey: 'galah', aspect: 'solis',
-    stats: { hp: 30, maxHp: 40, atk: 6, def: 6, matk: 8, mdef: 8, spd: 8, acc: 0, armour: 0, maxArmour: 4, magicArmour: 0, maxMagicArmour: 6 },
+    stats: { hp: 30, maxHp: 40, atk: 6, def: 6, matk: 8, mdef: 8, spd: 8, acc: 0, armour: 0, maxArmour: 12, magicArmour: 0, maxMagicArmour: 12, normalMaxMagicArmour: 12 },
   };
   G.enemy = { birdKey: 'crow', stats: { hp: 40, maxHp: 40 } };
   G.playerStatus = {};
@@ -442,7 +442,7 @@ else ok('onEnemyDamaged exported');
   if ((G.player.stats.magicArmour || 0) === 0) ok('galah ignores non-song skills');
   else fail('galah restored on non-song');
   Avian.passives.onPlayerAbilityUse({ id: 'SONG_1', name: 'Court Song', btnType: 'song' }, {});
-  if ((G.player.stats.magicArmour || 0) === 2) ok('galah restores MARM on song');
+  if ((G.player.stats.magicArmour || 0) === 8) ok('galah restores MARM on song');
   else fail('galah marm=' + G.player.stats.magicArmour);
 }
 

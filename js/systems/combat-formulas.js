@@ -484,6 +484,30 @@
     return v != null ? Number(v) : 2.5;
   }
 
+  function attackPowerRuntimeActive() {
+    var v = Avian.data && Avian.data.combatV21;
+    return !!(v && v.attackPower && v.attackPower.runtimeActive);
+  }
+
+  function getAttackPowerStatScale() {
+    var v = Avian.data && Avian.data.combatV21;
+    if (v && v.attackPower && v.attackPower.statPerPoint != null) return Number(v.attackPower.statPerPoint);
+    return 2;
+  }
+
+  function getAttackPowerCoefficient(enCost) {
+    var v = Avian.data && Avian.data.combatV21;
+    var coef = (v && v.coefficients) || {};
+    var n = Math.max(1, Math.min(6, Math.floor(Number(enCost) || 1)));
+    if (coef[n] != null) return Number(coef[n]);
+    var fallback = { 1: 0.45, 2: 1, 3: 1.5, 4: 2.1, 5: 2.7, 6: 3.3 };
+    return fallback[n] || 1;
+  }
+
+  function computeAttackPower(weaponDamage, stat) {
+    return (Number(weaponDamage) || 0) + getAttackPowerStatScale() * (Number(stat) || 0);
+  }
+
   function resolveMainHandWeaponItem(attacker) {
     if (!attacker) return null;
     var loadout = attacker.equipment || attacker.equipped || attacker.loadout;
@@ -1142,7 +1166,7 @@
       } else {
         weaponDamage = resolveWeaponDamageValue(params, ability, attacker);
         skillPowerPct = getSkillPowerPct(ability) + (Number(params.skillPowerBonus) || 0) + skillPowerPenalty;
-        /* Hybrid COMBO rows: sum weapon×((sharePct + stat×2.5)/100) per component. */
+        /* Hybrid COMBO rows: portions resolve separately. */
         if (Array.isArray(ability.scaling) && ability.scaling.length) {
           preMitigation = 0;
           for (var si = 0; si < ability.scaling.length; si++) {
@@ -1151,8 +1175,16 @@
             var sharePct = sc.skillPowerPct != null ? Number(sc.skillPowerPct)
               : Math.round((Number(sc.coeff) || 0) * (Number(sc.coeff) <= 10 ? 100 : 1));
             var st = statFromEntity(attacker, sc.ledgerKey || sc.stat);
-            preMitigation += weaponDamage * ((sharePct + st * getOffencePctPerStat()) / 100);
+            if (attackPowerRuntimeActive()) {
+              preMitigation += computeAttackPower(weaponDamage, st) * (sharePct / 100) * getAttackPowerCoefficient(enCost);
+            } else {
+              preMitigation += weaponDamage * ((sharePct + st * getOffencePctPerStat()) / 100);
+            }
           }
+        } else if (attackPowerRuntimeActive()) {
+          naturalFlat = resolveNaturalStrikeFlat(params, ability);
+          preMitigation = naturalFlat
+            + computeAttackPower(weaponDamage, relevantStat) * getAttackPowerCoefficient(enCost);
         } else {
           naturalFlat = resolveNaturalStrikeFlat(params, ability);
           preMitigation = naturalFlat

@@ -15,20 +15,20 @@ Verify: `npm run verify-v21-foundation`
 
 | System | Rule |
 | --- | --- |
+| Health | Size 125–140 + 5×VIT + 5×(Level−1). Sparrow L1 = 143. |
+| Attack Power | Weapon roll + 2 × scaling stat, then the AP coefficient (0.45 / 1.00 / 1.50 / 2.10). |
 | Hybrid damage | Mean-pool Health gate. Portions still chip matching pools. A 50/50 hybrid vs 20/20 deals 20 Health, not 0. |
 | Affinity | Dominant ×1.10 / Neutral ×1.00 / Resisted ×0.90. |
 | Ultimate Meter | 6 × AP, once per landed action, not per hit. Utility 0. Cap 24/turn. |
 | Sequential encounters | Health, AP, buffs, player ailments and meter persist. Protection refills to normal max. Fortify/Ward overflow expires. |
 | Energy / AP max | 6 (matches `PLAYER_ENERGY_MAX`). |
+| Equipment remaster | Worn pools use Grey 20/28/36 … Orange 50/70/88. Grey plumage and shields grant defence actions. Restore 8–14, Fortify/Ward 16–30. |
 
-## Locked in the workbook, not yet switching live formulas
+## Still waiting
 
 | System | Rule | Why it waits |
 | --- | --- | --- |
-| Attack Power | Weapon roll + 2 × scaling stat | Replacing weapon-first 2.5% without the new Health band one-shots or stalls every fight. |
-| Health | Size 125–140 + 5×VIT + 5×(Level−1) | Must land with Attack Power. |
-| Ordinary cooldowns | 0 (AP is the limiter) | Unsafe on the old damage curve. Set `combatConfig.v21.ordinaryCooldownsRuntime` when Phase 1 is live. |
-| 3 AP coefficient | 1.50 (was 1.55) | Applies when Attack Power coefficients replace Skill Power %. |
+| Ordinary cooldowns | 0 (AP is the limiter) | Authored CDs remain until the next telemetry pack. Defence skills already use CD 0. |
 | 52-bird identity pass | Barn Owl → Rogue locked; passives/loadouts still required | Foundation table is in Bird Recalibration. |
 
 ## AP expectation tests (Attack Power 21.5)

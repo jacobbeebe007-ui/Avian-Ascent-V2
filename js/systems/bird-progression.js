@@ -1,7 +1,6 @@
-/* Bird progression pipeline — v0.9 weapon-first
+/* Bird progression pipeline — Combat Foundation v2.1
  * Order: Base attrs + Level flat + Star flat → ROUND(× Tier) → Equipment flat → temp flat.
- * Leveled Base Health = Base Health + (level - 1) × (Base Health × 0.5).
- * Max HP = Leveled Base Health + Final Vitality × 3.  (+1 Vitality = +3 Max Health)
+ * Max HP = Size Base Health + Final Vitality × 5 + 5 × (Level − 1).
  * Dodge = min(50%, Final Agility × 0.5%).            (+1 Agility = +0.5% Evasion)
  */
 (function () {
@@ -72,26 +71,67 @@
     return Number(map[t]) || 1;
   }
 
-  /**
-   * Species Base Health scaled by bird level.
-   * Each level after 1 adds half the original Base Health (e.g. BH 8 → L2 = 12).
-   */
-  function baseHealthAtLevel(baseHealth, level) {
+  function v21HealthActive() {
+    var v = Avian.data && Avian.data.combatV21;
+    return !!(v && v.health && v.health.runtimeActive);
+  }
+
+  function levelHealthFlatPerLevel() {
     var cfg = combatConfig();
-    var per = (cfg.weaponFirst && cfg.weaponFirst.baseHealthPerLevelPct != null)
-      ? Number(cfg.weaponFirst.baseHealthPerLevelPct) : 0.5;
+    if (cfg.weaponFirst && cfg.weaponFirst.levelHealthFlat != null) {
+      return Number(cfg.weaponFirst.levelHealthFlat);
+    }
+    var v = Avian.data && Avian.data.combatV21;
+    if (v && v.health && v.health.perLevel != null) return Number(v.health.perLevel);
+    return 0;
+  }
+
+  function sizeBaseFromLegacyHealth(baseHealth, realSize) {
+    var v = Avian.data && Avian.data.combatV21;
+    var map = (v && v.health && v.health.sizeBase) || {
+      Tiny: 125, Small: 128, Medium: 131, Large: 134,
+      'Very Large': 137, Giant: 140, 'Boss Override': 150,
+    };
+    if (realSize && map[realSize] != null) return Number(map[realSize]);
+    var bh = Number(baseHealth) || 0;
+    if (bh >= 20) return map['Boss Override'] || 150;
+    if (bh >= 18) return map.Giant;
+    if (bh >= 16) return map['Very Large'];
+    if (bh >= 14) return map.Large;
+    if (bh >= 12) return map.Medium;
+    if (bh >= 10) return map.Small;
+    return map.Tiny;
+  }
+
+  /**
+   * Species / size Base Health. v2.1 returns the size table and applies
+   * +5 HP per level later. Legacy adds baseHealth × 50% per extra level.
+   */
+  function baseHealthAtLevel(baseHealth, level, realSize) {
+    var cfg = combatConfig();
     var bh = Math.max(0, Number(baseHealth) || 0);
     var lvl = Math.max(1, Math.floor(Number(level) || 1));
+    if (v21HealthActive()) {
+      return sizeBaseFromLegacyHealth(bh, realSize);
+    }
+    var flat = levelHealthFlatPerLevel();
+    if (flat > 0) return sizeBaseFromLegacyHealth(bh, realSize);
+    var per = (cfg.weaponFirst && cfg.weaponFirst.baseHealthPerLevelPct != null)
+      ? Number(cfg.weaponFirst.baseHealthPerLevelPct) : 0.5;
     if (!(per > 0) || lvl <= 1) return bh;
     return bh + (lvl - 1) * (bh * per);
   }
 
   function vitalityMaxHpPerPoint() {
     var cfg = combatConfig();
+    if (v21HealthActive()) {
+      var v = Avian.data && Avian.data.combatV21;
+      if (v && v.health && v.health.vitalityPerPoint != null) return Number(v.health.vitalityPerPoint);
+    }
     if (cfg.weaponFirst && cfg.weaponFirst.vitalityMaxHpPerPoint != null) {
       return Number(cfg.weaponFirst.vitalityMaxHpPerPoint);
     }
-    return 3;
+    return 5;
   }
 
   function dodgeCapPct() {
@@ -105,11 +145,18 @@
     return 50;
   }
 
-  function vitalityToMaxHp(baseHealth, vitality) {
+  function vitalityToMaxHp(baseHealth, vitality, level, realSize) {
     var per = vitalityMaxHpPerPoint();
     var bh = Math.max(0, Number(baseHealth) || 0);
     var vit = Number(vitality) || 0;
-    return Math.max(1, Math.round(bh + vit * per));
+    var lvl = Math.max(1, Math.floor(Number(level) || 1));
+    /* Legacy species BH is 8–20. Size-table values are 125–150 and must not remap. */
+    if ((v21HealthActive() || levelHealthFlatPerLevel() > 0) && bh > 0 && bh < 40) {
+      bh = sizeBaseFromLegacyHealth(bh, realSize);
+    }
+    var flat = levelHealthFlatPerLevel();
+    var levelBonus = flat > 0 ? flat * (lvl - 1) : 0;
+    return Math.max(1, Math.round(bh + vit * per + levelBonus));
   }
 
   function agilityToDodge(agility) {
@@ -194,8 +241,10 @@
       var prevHp = Math.max(0, Number(stats.hp) || prevMax);
       var nextMax = prevMax;
       if (baseHealth > 0) {
-        var leveledBh = baseHealthAtLevel(baseHealth, resolveEntityLevel(entity));
-        nextMax = vitalityToMaxHp(leveledBh, vit);
+        var lvl = resolveEntityLevel(entity);
+        var size = entity.realSize || (entity.stats && entity.stats.realSize);
+        var leveledBh = baseHealthAtLevel(baseHealth, lvl, size);
+        nextMax = vitalityToMaxHp(baseHealth, vit, lvl, size);
         entity.leveledBaseHealth = leveledBh;
         if (entityOrStats && entityOrStats.stats) entityOrStats.leveledBaseHealth = leveledBh;
         else if (entityOrStats) entityOrStats.leveledBaseHealth = leveledBh;
@@ -306,8 +355,8 @@
     if (!(baseHealth > 0) && baseIn.maxHp != null && finalStats.vitality === readBase('vitality', 'vitality')) {
       baseHealth = Number(baseIn.maxHp) || 0;
     }
-    var leveledBaseHealth = baseHealthAtLevel(baseHealth || 1, birdLevel);
-    var maxHp = vitalityToMaxHp(leveledBaseHealth, finalStats.vitality);
+    var leveledBaseHealth = baseHealthAtLevel(baseHealth || 1, birdLevel, opts.realSize);
+    var maxHp = vitalityToMaxHp(baseHealth || 1, finalStats.vitality, birdLevel, opts.realSize);
     ledgerOut.maxHp = maxHp;
     ledgerOut.hp = maxHp;
     ledgerOut.dodge = agilityToDodge(finalStats.agility);
@@ -342,7 +391,12 @@
       ? Number(out.leveledBaseHealth)
       : (out.baseHealth != null ? Number(out.baseHealth) : null);
     if (leveledBh != null && leveledBh > 0 && out.vitality != null) {
-      var recomputed = vitalityToMaxHp(leveledBh, out.vitality);
+      var recomputed = vitalityToMaxHp(
+        leveledBh,
+        out.vitality,
+        statsLedger.birdLevel || statsLedger.level || 1,
+        statsLedger.realSize
+      );
       out.maxHp = recomputed;
       out.hp = recomputed;
     } else {

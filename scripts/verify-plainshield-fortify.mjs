@@ -26,9 +26,9 @@ if (sandbox.getTemplateCooldown(ab) !== 3) fail(`authored CD expected 3, got ${s
 else ok('Plainshield authored cooldown is 3');
 
 const fortifyRiders = (ab._dispatcherRow?.riders || []).filter((r) => r && r.kind === 'fortify');
-if (fortifyRiders.length !== 1 || fortifyRiders[0].value !== 6) {
-  fail(`expected one fortify:6 rider, got ${JSON.stringify(fortifyRiders)}`);
-} else ok('Plainshield has a single Fortify 6 rider');
+if (fortifyRiders.length !== 1 || fortifyRiders[0].value !== 16) {
+  fail(`expected one fortify:16 rider, got ${JSON.stringify(fortifyRiders)}`);
+} else ok('Plainshield has a single Fortify 16 rider');
 
 sandbox.G.turn = 'player';
 sandbox.G.phase = 'PLAYER';

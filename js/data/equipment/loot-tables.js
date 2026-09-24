@@ -22,6 +22,7 @@
       Weapon: '\u2694\uFE0F',
       Armour: '\uD83D\uDEE1\uFE0F',
       Shield: '\uD83D\uDD30',
+      Orb: '\uD83D\uDD2E',
       Helmet: '\uD83D\uDC51',
       Anklet: '\u26D3\uFE0F',
       Necklace: '\uD83D\uDCFF',
