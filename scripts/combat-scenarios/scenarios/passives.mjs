@@ -150,9 +150,9 @@ export default [
         maxHp: 80,
         atk: 20,
         matk: 18,
-        magicArmour: 5,
-        maxMagicArmour: 8,
-        normalMaxMagicArmour: 8,
+        magicArmour: 16,
+        maxMagicArmour: 16,
+        normalMaxMagicArmour: 16,
       },
     },
     assert({ ctx, sandbox, expectValue }) {
@@ -161,7 +161,7 @@ export default [
       const atkBefore = sandbox.G.enemy.stats.atk;
       const matkBefore = sandbox.G.enemy.stats.matk;
       sandbox.Avian.dispatcher.execute(util);
-      expectValue(sandbox.G.enemy.stats.magicArmour, 2, '3 Magic Armour stripped');
+      expectValue(sandbox.G.enemy.stats.magicArmour, 8, '8 Magic Armour stripped');
       expectValue(sandbox.G.enemy.stats.hp, hpBefore, 'leftover does not exist so Health is untouched');
       expectValue(sandbox.G.enemy.stats.atk, atkBefore, 'Might Down withheld while Magic Armour remains');
       expectValue(sandbox.G.enemy.stats.matk, matkBefore, 'Focus Down withheld while Magic Armour remains');

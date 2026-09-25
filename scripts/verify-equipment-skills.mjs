@@ -248,8 +248,8 @@ function riderOf(row, kind) {
 {
   const ward = actions.skillToAbilityRow('WSK-012', { id: 'WPN-031', rarity: 'grey', family: 'Wand' }, 'grey');
   if (!ward || ward.noDamage !== true) fail('WSK-012 Arcane Ward must be noDamage');
-  else if (!hasKind(ward, 'ward') || Number(riderOf(ward, 'ward').value) !== 8) fail('WSK-012 missing Ward 8');
-  else ok('WSK-012 Arcane Ward is utility + Ward 8');
+  else if (!hasKind(ward, 'ward') || Number(riderOf(ward, 'ward').value) !== 20) fail('WSK-012 missing Ward 20');
+  else ok('WSK-012 Arcane Ward is utility + Ward 20');
 }
 
 {
@@ -322,9 +322,14 @@ function riderOf(row, kind) {
   if (!bastion || bastion.noDamage !== true) fail('WSK-032 must be noDamage');
   const fort = riderOf(bastion, 'fortify');
   const ward = riderOf(bastion, 'ward');
-  if (!fort || Number(fort.value) !== 5 || !ward || Number(ward.value) !== 7) {
-    fail(`WSK-032 expected Fortify 5 + Ward 7, got ${JSON.stringify(kindsOf(bastion))} ${JSON.stringify(fort)} ${JSON.stringify(ward)}`);
-  } else ok('WSK-032 Runic Bastion Fortify 5 / Ward 7');
+  const bast = riderOf(bastion, 'bastion');
+  if (bast && Number(bast.armour) === 13 && Number(bast.magicArmour) === 9) {
+    ok('WSK-032 Runic Bastion 13 Armour / 9 Magic Armour');
+  } else if (fort && Number(fort.value) === 13 && ward && Number(ward.value) === 9) {
+    ok('WSK-032 Runic Bastion Fortify 13 / Ward 9');
+  } else {
+    fail(`WSK-032 expected remastered Bastion 13/9, got ${JSON.stringify(kindsOf(bastion))} ${JSON.stringify(bast || fort)} ${JSON.stringify(ward)}`);
+  }
 }
 
 {
@@ -413,9 +418,9 @@ function riderOf(row, kind) {
   const b = riderOf(dual, 'bastion');
   const armAmt = b && (b.armour != null ? Number(b.armour) : Number(b.value));
   const magAmt = b && (b.magicArmour != null ? Number(b.magicArmour) : Number(b.value));
-  if (!b || armAmt !== 5 || magAmt !== 5) {
-    fail(`ESK-014 bastion should be 5/5, got ${JSON.stringify(b)}`);
-  } else ok('ESK-014 Dual Bastion 5/5');
+  if (!b || armAmt !== 13 || magAmt !== 13) {
+    fail(`ESK-014 bastion should be 13/13, got ${JSON.stringify(b)}`);
+  } else ok('ESK-014 Dual Bastion 13/13');
 }
 
 let eqAudited = 0;

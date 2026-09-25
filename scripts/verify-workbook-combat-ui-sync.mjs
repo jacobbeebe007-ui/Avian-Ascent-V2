@@ -156,7 +156,7 @@ if (!/computeFinalStats/.test(gameSrc)) {
   ok('enemy scales via birdProgression.computeFinalStats');
 }
 
-/* Runtime: sparrow L1 via progression — Base Health + Vitality × 3 → maxHp 19. */
+/* Runtime: sparrow L1 via progression — Size 128 + Vitality × 5 → maxHp 143. */
 try {
   for (const rel of [
     'js/data/birds-v2.js',
@@ -165,6 +165,7 @@ try {
     'js/data/progression/rules.js',
     'js/data/enemy-scaling-profiles.js',
     'js/data/combat-config.js',
+    'js/data/combat-v21.js',
     'js/systems/bird-progression.js',
   ]) {
     vm.runInContext(load(rel), ctx, { filename: rel });
@@ -185,10 +186,10 @@ try {
     tier: 'grey',
   });
   const grownHp = Number(grown.ledger?.maxHp ?? grown.ledger?.hp) || 0;
-  if (Number(sparrow?.baseHealth) === 10 && hpBase === 19 && grownHp === 19) {
-    ok(`player-parity sparrow HP baseHealth=10 + VIT 3×3 → maxHp ${hpBase}/${grownHp}`);
+  if (Number(sparrow?.baseHealth) === 10 && hpBase === 143 && grownHp === 143) {
+    ok(`player-parity sparrow HP Small 128 + VIT 5×3 → maxHp ${hpBase}/${grownHp}`);
   } else {
-    fail(`expected sparrow maxHp 19 (10 + 3×3), got baseHealth=${sparrow?.baseHealth} base=${hpBase} grown=${grownHp}`);
+    fail(`expected sparrow maxHp 143 (Small 128 + 5×3), got baseHealth=${sparrow?.baseHealth} base=${hpBase} grown=${grownHp}`);
   }
 
   /* Level-up Base Health: +½ original BH per level, then + Vitality × 3.
@@ -209,10 +210,10 @@ try {
   });
   const humL2Hp = Number(humL2.ledger?.maxHp ?? humL2.ledger?.hp) || 0;
   const humL2Base = Number(humL2.ledger?.leveledBaseHealth) || 0;
-  if (Number(hum?.baseHealth) === 8 && humL2Base === 12 && humL2Hp === 12) {
-    ok(`level-up BH growth hummingbird L2: base 8 → leveled 12 → maxHp ${humL2Hp}`);
+  if (Number(hum?.baseHealth) === 8 && humL2Base === 125 && humL2Hp === 130) {
+    ok(`level-up hummingbird L2: Tiny 125 + 5×(2−1) → maxHp ${humL2Hp}`);
   } else {
-    fail(`expected hummingbird L2 leveledBase=12 maxHp=12, got baseHealth=${hum?.baseHealth} leveled=${humL2Base} maxHp=${humL2Hp}`);
+    fail(`expected hummingbird L2 leveledBase=125 maxHp=130, got baseHealth=${hum?.baseHealth} leveled=${humL2Base} maxHp=${humL2Hp}`);
   }
 
   /* Sparrow BH=10 VIT=3 → L2 leveled 15 → maxHp 15 + 9 = 24 (no level VIT flats). */
@@ -230,10 +231,10 @@ try {
     tier: 'grey',
   });
   const sparL2Hp = Number(sparL2.ledger?.maxHp ?? sparL2.ledger?.hp) || 0;
-  if (sparL2Hp === 24) {
-    ok(`level-up BH + VIT×3 sparrow L2: leveled 15 + 9 → maxHp ${sparL2Hp}`);
+  if (sparL2Hp === 148) {
+    ok(`level-up sparrow L2: Small 128 + 15 VIT + 5 level → maxHp ${sparL2Hp}`);
   } else {
-    fail(`expected sparrow L2 maxHp 24 (15 + 3×3), got ${sparL2Hp}`);
+    fail(`expected sparrow L2 maxHp 148 (128 + 15 + 5), got ${sparL2Hp}`);
   }
 
   /* Enemy L2 (skip workbook VIT flats): hummingbird BH=8 → leveled 12 → maxHp 12. */
@@ -251,8 +252,8 @@ try {
     tier: 'grey',
   });
   const enemyHumHp = Number(enemyHumL2.ledger?.maxHp) || 0;
-  if (enemyHumHp === 12) ok(`enemy parity hummingbird L2 maxHp ${enemyHumHp} (½ BH growth)`);
-  else fail(`expected enemy hummingbird L2 maxHp 12, got ${enemyHumHp}`);
+  if (enemyHumHp === 130) ok(`enemy parity hummingbird L2 maxHp ${enemyHumHp} (Tiny 125 + 5)`);
+  else fail(`expected enemy hummingbird L2 maxHp 130, got ${enemyHumHp}`);
 
   const crow = ctx.Avian.data.birdsV2?.crow?.stats;
   if (crow && Number(crow.matk) === 0 && Number(crow.acc) === 79) {
@@ -323,12 +324,12 @@ try {
         fail(`enemy L2 workbookLevel expected 2 (storyLevel 4 + offset -2), got ${enemyL2.workbookLevel}`);
       } else if (Number(enemyL2.baseHealth) !== 8) {
         fail(`enemy L2 should stamp baseHealth 8, got ${enemyL2.baseHealth}`);
-      } else if (Number(enemyL2.leveledBaseHealth) !== 12) {
-        fail(`enemy L2 leveledBaseHealth expected 12, got ${enemyL2.leveledBaseHealth}`);
+      } else if (Number(enemyL2.leveledBaseHealth) !== 125) {
+        fail(`enemy L2 leveledBaseHealth expected 125, got ${enemyL2.leveledBaseHealth}`);
       } else if (Number(enemyL2.birdLevel) !== 2) {
         fail(`enemy L2 birdLevel expected 2, got ${enemyL2.birdLevel}`);
       } else {
-        ok(`enemy L2 hummingbird stamps BH=8 leveled=12 birdLevel=${enemyL2.birdLevel} maxHp=${enemyL2.maxHp}`);
+        ok(`enemy L2 hummingbird stamps BH=8 Tiny 125 birdLevel=${enemyL2.birdLevel} maxHp=${enemyL2.maxHp}`);
       }
       const starsEarly = typeof ctx.getTotalFeatherStars === 'function'
         ? ctx.getTotalFeatherStars(early.tier, 2)

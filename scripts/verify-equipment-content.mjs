@@ -83,7 +83,7 @@ if (skills.BASIC_MAGIC.name !== 'Basic Attack') fail('BASIC_MAGIC name must be B
 if (skills.BASIC_PHYSICAL.heavyAccuracyPenalty) fail('BASIC_PHYSICAL must have no heavy accuracy penalty');
 
 const itemIds = items ? Object.keys(items) : [];
-if (itemIds.length !== 305) fail('expected 305 items (v1.3 + 5 basic starters), got ' + itemIds.length);
+if (itemIds.length !== 407) fail('expected 407 items after v2.1 remaster, got ' + itemIds.length);
 
 const starters = data.equipment && data.equipment.startingWeapons;
 if (!starters || !starters.byClass || starters.ids.length !== 5) {
@@ -117,9 +117,10 @@ if (tiers.buff.grand != null || tiers.buff.epic != null || tiers.buff.legendary 
 
 if (!cfg || (
   cfg.packVersion !== '2026.09-combat-v2.1-master'
+  && cfg.packVersion !== '2026.09-combat-v2.1-equipment-remaster'
   && cfg.packVersion !== '2026.07-equipment-v1.5-physical-ailments'
 )) {
-  fail('combatConfig.packVersion must be combat-v2.1-master or equipment-v1.5-physical-ailments');
+  fail('combatConfig.packVersion must be combat-v2.1-master or equipment remaster');
 }
 if (!cfg.equipmentV12) fail('combatConfig.equipmentV12 expected');
 if (!cfg.equipmentV13BasicStartingWeapons) fail('combatConfig.equipmentV13BasicStartingWeapons expected');
@@ -218,8 +219,8 @@ for (const bk of birdIds) {
     if (Number(b.baseHealth) !== 10) fail('sparrow baseHealth expected 10, got ' + b.baseHealth);
     if (Number(b.vitality) !== 3) fail('sparrow vitality expected 3, got ' + b.vitality);
     if (Number(b.stats && b.stats.dex) !== 9) fail('sparrow dexterity expected 9');
-    if (Number(b.stats && b.stats.maxHp) !== 19) {
-      fail('sparrow maxHp expected 19 (10 + 3×3), got ' + (b.stats && b.stats.maxHp));
+    if (Number(b.stats && b.stats.maxHp) !== 143) {
+      fail('sparrow maxHp expected 143 (Small 128 + 5×3), got ' + (b.stats && b.stats.maxHp));
     }
   }
 }

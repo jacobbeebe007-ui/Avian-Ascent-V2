@@ -39,7 +39,7 @@ export default [
     id: 'DTH-003',
     name: 'Player HP 0 is a defeat condition',
     setup: {
-      player: { bird: 'sparrow', hp: 3, maxHp: 40, armour: 0, energy: 4, equipment: { mainHand: 'WPN-B04' } },
+      player: { bird: 'sparrow', hp: 3, maxHp: 143, armour: 0, energy: 4, equipment: { mainHand: 'WPN-B04' } },
       enemy: { bird: 'crow', hp: 50 },
     },
     action: {
@@ -56,7 +56,7 @@ export default [
     id: 'DTH-004',
     name: 'Simultaneous zero HP resolves with both at 0',
     setup: {
-      player: { bird: 'sparrow', hp: 2, maxHp: 40, armour: 0, energy: 4, equipment: { mainHand: 'WPN-B04' } },
+      player: { bird: 'sparrow', hp: 2, maxHp: 143, armour: 0, energy: 4, equipment: { mainHand: 'WPN-B04' } },
       enemy: { bird: 'crow', hp: 2, maxHp: 40, armour: 0 },
     },
     steps: [

@@ -1,10 +1,9 @@
 /* Avian Ascent — Combat Foundation v2.1 locked decisions.
  *
  * Hand-authored from the merged master workbook
- * Avian_Ascent_Current_Master_v2.1.xlsx. Runtime still uses the v1.6
- * weapon-first damage and +3 Vitality Health path until Phase 1 lands.
- * These values are the adopted design and are consumed by hybrid overflow,
- * Ultimate Meter, affinity, sequential carry, and ordinary-cooldown policy.
+ * Avian_Ascent_Current_Master_v2.1.xlsx. Health and Attack Power are live
+ * with the equipment remaster so Armour / Magic Armour sit on the 125–185
+ * Health band. Hybrid, meter, affinity and sequential carry stay as adopted.
  */
 (function () {
   'use strict';
@@ -18,7 +17,7 @@
     attackPower: Object.freeze({
       formula: 'weaponRoll + 2 * scalingStat',
       statPerPoint: 2,
-      runtimeActive: false,
+      runtimeActive: true,
     }),
     health: Object.freeze({
       sizeBase: Object.freeze({
@@ -27,7 +26,7 @@
       }),
       vitalityPerPoint: 5,
       perLevel: 5,
-      runtimeActive: false,
+      runtimeActive: true,
     }),
     ap: Object.freeze({
       start: 4,

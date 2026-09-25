@@ -80,7 +80,7 @@ def main() -> None:
         ["Avian Ascent — Current Master v2.1", "", "", ""],
         ["Merged from Combat Workbook v2.1, Bird Precision System, and Current Master v1.6 Structured Effects.", "", "", ""],
         ["Area", "Current rule", "Primary sheet", "State"],
-        ["Authoritative combat design", "v2.1 locked rules; Attack Power / Health are next-foundation (runtime still weapon-first + Vitality×3).", "V2 Core Rules; Current Rules", "LOCKED"],
+        ["Authoritative combat design", "v2.1 Health and Attack Power are live with the equipment remaster.", "V2 Core Rules; Current Rules", "LIVE"],
         ["Cooldown-free AP budget", "Equal EV/AP: 1=0.45, 2=1.00, 3=1.50, 4=2.10. Ordinary CDs = 0 once Attack Power is live.", "AP & Skill Budget; AP Expectation Tests", "LOCKED"],
         ["Hybrid damage", "Portions chip matching pools. Health gate = total − mean(start Armour, start Magic Armour).", "Hybrid Damage", "LIVE"],
         ["Affinity", "Dominant ×1.10 / Neutral ×1.00 / Resisted ×0.90 (22% relative, was 50%).", "Affinity", "LIVE"],
@@ -90,7 +90,8 @@ def main() -> None:
         ["Precision", "Class + Size + Species. Runtime field acc. 52/52 audited.", "Bird Stats; Class Precision Reference", "CURRENT"],
         ["Structured effects", "105 skills / 170 effect rows remain the skill-mechanic source until weapon republish.", "Skills; Skill Effects", "CURRENT"],
         ["Telemetry", "≥200 runs/matchup. Required: actionChosen, unusedAP, Fortify, Ward, ailment attempt/ok/gated.", "Telemetry Spec", "REQUIRED"],
-        ["Next runtime phase", "Replace Attack Power and Health formulas, then clear ordinary cooldowns and retune skill numbers.", "Implementation Plan", "REQUIRED"],
+        ["Equipment remaster", "Worn pools Grey 20/28/36 … Orange 50/70/88. Grey plumage/shield grant defence. +4 sets, Focus Ward Orb, new accessories. 407 items.", "Equipment Rework", "LIVE"],
+        ["Next runtime phase", "Ordinary cooldown wipe and 52-bird identity pass. Next telemetry ≥200 runs/matchup.", "Implementation Plan", "REQUIRED"],
     ], [28, 88, 40, 12])
 
     # --- Investigation Register ---

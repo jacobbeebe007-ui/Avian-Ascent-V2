@@ -124,7 +124,12 @@ for (const cells of rows.slice(headerAt + 1)) {
     maxHp: intish(cells[cols['l1 max health']]),
     precision: intish(cells[cols['base precision']]),
   };
-  const expHp = Math.max(1, Math.round(Number(b.baseHealth) + Number(b.vitality) * 3));
+  const SIZE = {
+    Tiny: 125, Small: 128, Medium: 131, Large: 134,
+    'Very Large': 137, Giant: 140, 'Boss Override': 150,
+  };
+  const sizeBase = b.bossOverride ? 150 : (SIZE[b.realSize] || 131);
+  const expHp = Math.max(1, Math.round(sizeBase + Number(b.vitality) * 5));
   const checks = [
     ['class', got.class, b.class],
     ['size', got.size, b.realSize],
@@ -152,15 +157,15 @@ if (matched === 52) ok('all 52 runtime birds present in Bird Stats');
 else fail(`matched ${matched} workbook birds, expected 52`);
 
 const currentRules = (sheets['Current Rules'] || []).flat().join('\n');
-if (/Vitality × 3|Vitality x 3|\+3 Max Health|increases Max Health by 3/i.test(currentRules)
+if (/Size 125|5 × Vitality|5×Vitality|\+5 Max Health|increases Max Health by 5/i.test(currentRules)
     && !/5% of Base Health/.test(currentRules)) {
-  ok('Current Rules use +3 Max Health, not 5% of Base Health');
-} else fail('Current Rules still document the old 5% Vitality formula');
+  ok('Current Rules use size-base Health + 5×Vitality');
+} else fail('Current Rules still document the old Vitality Health formula');
 
 const core = (sheets['Core Rules'] || []).flat().join('\n');
-if (/Base Health \+ Vitality × 3|Base Health \+ Vitality x 3/.test(core)
+if (/Size Base|5 × Vitality|5×Vitality|5 × \(Level/i.test(core)
     && !/Vitality×0\.05|Vitality×0.05|0\.05 × Final Vitality/.test(core)) {
-  ok('Core Rules Health formula is Base Health + Vitality × 3');
+  ok('Core Rules Health formula is Size Base + 5×Vitality + 5×(Level−1)');
 } else fail('Core Rules Health formula is not the current runtime conversion');
 
 if (failed) {

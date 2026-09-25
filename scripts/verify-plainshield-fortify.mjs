@@ -26,9 +26,9 @@ if (sandbox.getTemplateCooldown(ab) !== 3) fail(`authored CD expected 3, got ${s
 else ok('Plainshield authored cooldown is 3');
 
 const fortifyRiders = (ab._dispatcherRow?.riders || []).filter((r) => r && r.kind === 'fortify');
-if (fortifyRiders.length !== 1 || fortifyRiders[0].value !== 6) {
-  fail(`expected one fortify:6 rider, got ${JSON.stringify(fortifyRiders)}`);
-} else ok('Plainshield has a single Fortify 6 rider');
+if (fortifyRiders.length !== 1 || fortifyRiders[0].value !== 16) {
+  fail(`expected one fortify:16 rider, got ${JSON.stringify(fortifyRiders)}`);
+} else ok('Plainshield has a single Fortify 16 rider');
 
 sandbox.G.turn = 'player';
 sandbox.G.phase = 'PLAYER';
@@ -76,9 +76,9 @@ if (rejected !== 2) fail(`expected 2 rejections, got ${rejected}`);
 else ok('parallel spam rejects 2 follow-ups');
 if (fortifyCalls !== 1) fail(`expected 1 applyFortify call, got ${fortifyCalls}`);
 else ok('Fortify applied once under parallel spam');
-if (sandbox.G.playerStatus.fortify?.amount !== 6) {
-  fail(`Fortify bonus expected 6, got ${sandbox.G.playerStatus.fortify?.amount}`);
-} else ok('Fortify bonus remains 6 (does not triple)');
+if (sandbox.G.playerStatus.fortify?.amount !== 16) {
+  fail(`Fortify bonus expected 16, got ${sandbox.G.playerStatus.fortify?.amount}`);
+} else ok('Fortify bonus remains 16 (does not triple)');
 if (sandbox.getAbilityCooldown(ab.id) !== 3) fail(`runtime CD expected 3, got ${sandbox.getAbilityCooldown(ab.id)}`);
 else ok('Plainshield cooldown set to 3');
 

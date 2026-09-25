@@ -153,11 +153,11 @@ for (const k of blueKeys) {
     maxKey = k;
   }
 }
-ok('Stage-10-band blue boss HP under 320 (was ~448+)', maxBlueBossHp < 320,
+ok('Stage-10-band blue boss HP sits on the v2.1 350–520 band', maxBlueBossHp >= 350 && maxBlueBossHp < 520,
   `max=${maxBlueBossHp} (${maxKey})`);
 
 const snowy = bossHp('snowyOwl');
-ok('Snowy Owl stage-10 boss HP well under old 448', snowy > 0 && snowy < 280,
+ok('Snowy Owl stage-10 boss HP sits on the v2.1 Health band', snowy >= 350 && snowy < 520,
   `got=${snowy}`);
 
 const ostrichLedger = (() => {
