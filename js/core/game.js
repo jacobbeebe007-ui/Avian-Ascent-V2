@@ -3685,6 +3685,9 @@ function saveRun() {
       savedAt: Date.now(),
       shinyObjects: Math.max(0, Math.floor(Number(G.shinyObjects) || 0)),
       runSeed: G.runSeed || null,
+      qolRunStartedAt: (typeof G._qolRunStartedAt === 'number' && G._qolRunStartedAt > 0)
+        ? G._qolRunStartedAt
+        : null,
       endlessMap: (G.endlessMode && G.endlessMap && typeof EndlessMap?.serializeEndlessMap === 'function')
         ? EndlessMap.serializeEndlessMap(G.endlessMap)
         : (G.endlessMode && G.endlessMap ? JSON.parse(JSON.stringify(G.endlessMap)) : null),
@@ -3944,6 +3947,12 @@ function continueRun() {
   G.bossKills=save.bossKills||0;
   G.stage=Math.max(1,Math.floor(Number(save.stage)||1));
   G.runSeed = save.runSeed || G.runSeed || null;
+  if (typeof save.qolRunStartedAt === 'number' && save.qolRunStartedAt > 0) {
+    G._qolRunStartedAt = save.qolRunStartedAt;
+  } else if (typeof save.savedAt === 'number' && save.savedAt > 0) {
+    /* Legacy saves: approximate run start from last save time (better than resetting on continue). */
+    G._qolRunStartedAt = save.savedAt;
+  }
   if(G.endlessMode && save.endlessMap && typeof EndlessMap?.restoreEndlessMap === 'function'){
     G.endlessMap = EndlessMap.restoreEndlessMap(save.endlessMap);
   } else if(G.endlessMode && save.endlessMap){
@@ -6615,11 +6624,23 @@ function syncFlightSettingsBriefing(){
 globalThis.syncFlightSettingsBriefing=syncFlightSettingsBriefing;
 globalThis.getFlightSettingsSummary=getFlightSettingsSummary;
 
+function formatBirdPersonalBestHtml(birdKey){
+  const pbApi=Avian?.systems?.personalBest;
+  if(!birdKey||!pbApi||typeof pbApi.get!=='function') return '';
+  const rec=pbApi.get(birdKey);
+  if(!rec||!Number.isFinite(Number(rec.stages))) return '';
+  const fmt=(typeof pbApi.formatDuration==='function')?pbApi.formatDuration:(sec=>`${sec}s`);
+  const stages=Math.max(0,Math.floor(Number(rec.stages)||0));
+  const dur=fmt(Math.max(0,Math.floor(Number(rec.durationSec)||0)));
+  return `<span class="sfsel__run-chip sfsel__run-chip--pb" title="Your best finished run with this bird">★ PB stage ${stages} · ${escapeHtmlRoster(dur)}</span>`;
+}
+
 function syncSfselRunSummary(){
   const wrap=document.getElementById('sfsel-run-summary');
   const s=getFlightSettingsSummary();
+  const pbChip=(G.selected&&BIRDS[G.selected])?formatBirdPersonalBestHtml(G.selected):'';
   if(wrap){
-    wrap.innerHTML=`<span class="sfsel__run-chip">${escapeHtmlRoster(s.diffLabel)}</span><span class="sfsel__run-chip sfsel__run-chip--mode">${escapeHtmlRoster(s.modeLabel)}</span><span class="sfsel__run-chip sfsel__run-chip--map">${escapeHtmlRoster(s.mapLabel)}</span>`;
+    wrap.innerHTML=`<span class="sfsel__run-chip">${escapeHtmlRoster(s.diffLabel)}</span><span class="sfsel__run-chip sfsel__run-chip--mode">${escapeHtmlRoster(s.modeLabel)}</span><span class="sfsel__run-chip sfsel__run-chip--map">${escapeHtmlRoster(s.mapLabel)}</span>${pbChip}`;
   }
   syncFlightSettingsBriefing();
 }
@@ -7149,6 +7170,7 @@ function updateAscentPanel(key) {
     const classPerkDesc=escapeHtmlRoster(classPerkInfo?.effect||'No class perk listed.');
     const birdAsp=typeof getEntityAspect==='function'?getEntityAspect({birdKey:key,aspect:bird.aspect}):(bird.aspect||'');
     const aspectChipHtml=birdAsp?`<span class="aspect-chip ascent-aspect-chip" id="ascent-aspect-chip" data-aspect-id="${escapeHtmlRoster(birdAsp)}">${escapeHtmlRoster(typeof formatAspectDisplayName==='function'?formatAspectDisplayName(birdAsp):birdAsp)}</span>`:'';
+    const personalBestHtml=formatBirdPersonalBestHtml(key);
 
     panel.innerHTML = `
       <article class="ascent-strip ascent-strip--filled ascent-strip--${tierCss} sfsel-profile">
@@ -7169,6 +7191,7 @@ function updateAscentPanel(key) {
             <div class="sfsel-profile__progression" aria-label="Species progression">
               ${ownsCard?`<span class="ascent-card-feathers">Species Feathers: <strong>${speciesFeathers}</strong>${progress?.canUpgrade?` / ${mutationCost}`:''}</span>`:''}
               ${mutateBtn}
+              ${personalBestHtml?`<div class="sfsel-profile__pb">${personalBestHtml}</div>`:''}
             </div>
           </div>
         </header>
@@ -16296,6 +16319,11 @@ document.addEventListener('keydown', e => {
       const eip=document.getElementById('enemy-info-popup');
       if(eip && eip.classList.contains('enemy-info-popup--open')){ closeEnemyInfoPopup(); return; }
       if(!G.animLock) document.getElementById('nest-modal')?.classList.toggle('open');
+    }
+    // E = end turn (player phase)
+    if((e.key==='e'||e.key==='E') && G.turnPhase===TURN.PLAYER && !G.animLock){
+      const endBtn=document.querySelector('#actions-grid .end-turn-bar__btn');
+      if(endBtn&&!endBtn.disabled){ e.preventDefault(); endBtn.click(); return; }
     }
     // M = mute
     if(e.key.toLowerCase()==='m') toggleSound();

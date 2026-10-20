@@ -48,6 +48,8 @@ function renderActions() {
     ensureMainAttackAndLoadoutRules();
   }
   grid.innerHTML='';
+  if(G.player) delete G.player._queuedAbilityId;
+  if(typeof renderCombatTurnPreview==='function') renderCombatTurnPreview();
   renderEnergyOrbs();
   renderCombatItems();
   if(G.player.abilities?.length) enforceAbilityCosts(G.player);
@@ -182,7 +184,13 @@ function renderActions() {
         const act=globalThis.playerAction||playerAction;
         return act(currentAb(),true);
       });
-      btn.addEventListener('mouseenter',e=>{if(!window._isTouchDevice)showActionTooltip(e,currentAb());});
+      btn.addEventListener('mouseenter',e=>{
+        if(typeof setCombatActionPreview==='function') setCombatActionPreview(ab.id);
+        if(!window._isTouchDevice)showActionTooltip(e,currentAb());
+      });
+      btn.addEventListener('focus',()=>{
+        if(typeof setCombatActionPreview==='function') setCombatActionPreview(ab.id);
+      });
       btn.addEventListener('mousemove',e=>{if(!window._isTouchDevice)moveTooltip(e);});
       btn.addEventListener('mouseleave',()=>{if(!window._isTouchDevice)hideTooltip();});
       let _longPressTimer=null;
@@ -217,11 +225,19 @@ function renderActions() {
   endWrap.className='actions-grid-footer';
   const endBtn=document.createElement('button');
   endBtn.className='action-btn endturn-mini end-turn-bar__btn';
-  endBtn.textContent='End Turn';
+  endBtn.textContent='End Turn (E)';
+  endBtn.title='Pass your turn — hotkey E';
   endBtn.disabled=endTurnBlocked;
   endBtn.onclick=()=>endPlayerTurn();
   endWrap.appendChild(endBtn);
   grid.appendChild(endWrap);
+
+  if(!grid._combatPreviewBound){
+    grid._combatPreviewBound=true;
+    grid.addEventListener('mouseleave',()=>{
+      if(typeof setCombatActionPreview==='function') setCombatActionPreview(null);
+    });
+  }
 
   applyEffectiveCombatScales(getAccessibilitySettings(), eqV2 ? 6 : allAbilities.length);
 

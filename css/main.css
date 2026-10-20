@@ -6803,6 +6803,17 @@ body.combat-hide-enemy-intent #enemy-telegraph{display:none !important;}
 #screen-battle .action-panel.tactical-action-tray{background:linear-gradient(180deg,rgba(4,8,4,.5),rgba(3,6,3,.5));border:1px solid rgba(200,160,32,.25);border-radius:14px;padding:14px 14px 12px;margin-top:6px;box-shadow:none;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);}
 .tactical-action-tray{background:linear-gradient(180deg,rgba(4,8,4,.5),rgba(3,6,3,.5));border:1px solid rgba(200,160,32,.25);border-radius:14px;padding:14px 14px 12px;margin-top:6px;box-shadow:none;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);}
 .tactical-action-tray h3{margin-bottom:10px;font-size:.86rem;letter-spacing:.1em;padding-bottom:6px;border-bottom:1px solid rgba(200,160,32,.14);}
+.combat-turn-preview{margin:0 0 8px;padding:6px 10px;border-radius:8px;border:1px dashed rgba(201,168,76,.35);background:rgba(12,18,12,.45);font-size:.72rem;color:var(--text-dim);}
+.combat-turn-preview[hidden]{display:none !important;}
+.combat-turn-preview-kicker{font-size:.62rem;letter-spacing:.08em;text-transform:uppercase;opacity:.85;margin-bottom:4px;}
+.combat-turn-preview-row{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;}
+.combat-turn-preview-side{display:inline-flex;align-items:baseline;gap:5px;min-width:0;}
+.combat-turn-preview-label{font-size:.62rem;text-transform:uppercase;opacity:.75;flex:0 0 auto;}
+.combat-turn-preview-name{font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:min(42vw,220px);}
+.combat-turn-preview-vs{opacity:.45;font-weight:700;}
+.sfsel__run-chip--pb{color:var(--gold-light);border-color:rgba(201,168,76,.45);}
+.sfsel-profile__pb{margin-top:6px;}
+.sfsel-profile__pb .sfsel__run-chip--pb{display:inline-flex;}
 #screen-battle .actions-grid-footer{margin-top:4px;padding-top:6px;border-top:1px solid rgba(200,160,32,.15);}
 #screen-battle .actions-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;}
 .action-btn{min-height:120px;min-width:0;padding:9px 10px;border-radius:10px;gap:4px;align-items:stretch;}

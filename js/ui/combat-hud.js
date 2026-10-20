@@ -116,9 +116,36 @@ function refreshBattleUI() {
   document.getElementById('enemy-shield-overlay').className='shield-overlay'+(G.enemyStatus.defending>0||getGuardedPhysReducPct(G.enemyStatus)>0||eArm>0||(G.enemyStatus?.fortify)||(G.enemyStatus?.ward)?' active':'');
 
   renderEnemyPlan();
+  renderCombatTurnPreview();
   applyUIStateToDOM();
   renderActions();
   wireEnemyInfoPopupOnce();
+}
+
+function setCombatActionPreview(abilityId){
+  if(!G?.player) return;
+  if(abilityId){
+    G.player._queuedAbilityId=abilityId;
+  } else {
+    delete G.player._queuedAbilityId;
+  }
+  renderCombatTurnPreview();
+}
+
+function renderCombatTurnPreview(){
+  const host=document.getElementById('combat-turn-preview');
+  if(!host) return;
+  const playerEl=document.getElementById('combat-turn-preview-player');
+  const enemyEl=document.getElementById('combat-turn-preview-enemy');
+  const show=!!(G?.player && G?.enemy && G.turn==='player' && G.turnPhase===TURN.PLAYER && !G.battleOver && G.player._queuedAbilityId);
+  host.hidden=!show;
+  if(!show) return;
+  const preview=(typeof Avian?.systems?.actionQueue?.preview==='function')
+    ? Avian.systems.actionQueue.preview()
+    : { player: null, enemy: null };
+  if(playerEl) playerEl.textContent=preview.player?.name||'—';
+  if(enemyEl) enemyEl.textContent=preview.enemy?.name||'…';
+  host.setAttribute('aria-label', `Preview: you ${preview.player?.name||'—'}, enemy ${preview.enemy?.name||'…'}`);
 }
 
 function renderEnergyOrbs(){
@@ -226,5 +253,7 @@ function renderAllCombatUI(){
 globalThis.refreshBattleUI = refreshBattleUI;
 globalThis.renderAllCombatUI = renderAllCombatUI;
 globalThis.renderEnergyOrbs = renderEnergyOrbs;
+globalThis.setCombatActionPreview = setCombatActionPreview;
+globalThis.renderCombatTurnPreview = renderCombatTurnPreview;
 Avian.ui = Avian.ui || Object.create(null);
-Avian.ui.combatHud = { refreshBattleUI, renderAllCombatUI, renderEnergyOrbs };
+Avian.ui.combatHud = { refreshBattleUI, renderAllCombatUI, renderEnergyOrbs, setCombatActionPreview, renderCombatTurnPreview };

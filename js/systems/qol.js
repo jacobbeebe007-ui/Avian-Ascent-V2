@@ -127,6 +127,23 @@
 
   var queueApi = Avian.systems.actionQueue = Object.create(null);
 
+  function enemyActionPreviewLabel(plan) {
+    if (!plan) return null;
+    var labelFn = globalThis.enemyTelegraphActionLabel;
+    if (typeof labelFn === 'function') {
+      if (plan.type === 'plan') {
+        var first = (plan.actions || [])[0];
+        if (first) return labelFn(first);
+      }
+      return labelFn(plan);
+    }
+    if (plan.type === 'plan') {
+      var act = (plan.actions || [])[0];
+      if (act) return act.label || act.abilityId || act.type || 'Action';
+    }
+    return plan.label || plan.name || plan.abilityId || plan.id || plan.type || 'Action';
+  }
+
   /** Returns { player: {…}, enemy: {…} } — the next intended actions. */
   queueApi.preview = function preview() {
     var G = globalThis.G;
@@ -139,11 +156,10 @@
     if (playerAbId && Array.isArray(G.player.abilities)) {
       ability = G.player.abilities.find(function (a) { return a && a.id === playerAbId; }) || null;
     }
+    var enemyName = enemyActionPreviewLabel(G.enemyNextAction);
     return {
       player: ability ? { id: ability.id, name: ability.name || ability.id } : null,
-      enemy: G.enemyNextAction
-        ? { id: G.enemyNextAction.id || null, name: G.enemyNextAction.name || G.enemyNextAction.id || null }
-        : null,
+      enemy: enemyName ? { id: null, name: enemyName } : null,
       stage: G.stage,
       turn: G.turn,
     };
