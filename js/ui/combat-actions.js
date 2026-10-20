@@ -32,6 +32,56 @@ function compactCombatAbilityDescription(value){
     .trim();
 }
 
+function escapeCueText(value){
+  return String(value??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function renderClassPerkCue(){
+  const el=document.getElementById('class-perk-cue');
+  if(!el) return;
+  const cue=(G?.player && typeof Avian?.classPerks?.describePlayerPerkCue==='function')
+    ? Avian.classPerks.describePlayerPerkCue(G.player)
+    : null;
+  const pending=G?.playerStatus?._passiveNextSkill;
+  const passiveName=G?.player?.passive?.name||'';
+  const passiveLine=pending
+    ? `${passiveName?passiveName+' armed: ':'Species perk armed: '}your next matching skill spends it.`
+    : '';
+  if(!cue && !passiveLine){
+    el.hidden=true;
+    el.replaceChildren();
+    return;
+  }
+  el.hidden=false;
+  el.className='class-perk-cue'+(cue&&cue.tone?` is-${cue.tone}`:'');
+  const title=cue?.name||'Species perk';
+  const body=[cue?.text, passiveLine].filter(Boolean).join(' ');
+  el.innerHTML=`<span class="class-perk-cue-name">${escapeCueText(title)}</span><span class="class-perk-cue-text">${escapeCueText(body)}</span>`;
+}
+
+function combatDecisionChips(ab, packRow, effBtn){
+  if(!ab || ab.empty || !G?.player || !G?.enemy) return '';
+  const chips=[];
+  const damaging=['physical','ranged','spell'].includes(effBtn);
+  if(damaging && typeof getPlayerHitPercentForAttack==='function'){
+    const hit=Math.round(Number(getPlayerHitPercentForAttack(ab))||0);
+    const band=hit>=80?'is-great':hit>=55?'is-ok':'is-risk';
+    chips.push(`<span class="btn-hit-chip ${band}" title="Hit chance against this foe">Hit ${hit}%</span>`);
+  }
+  if(damaging && typeof getAspectRelationship==='function' && typeof getEntityAspect==='function'){
+    const rel=getAspectRelationship(getEntityAspect(G.player), getEntityAspect(G.enemy), packRow||ab);
+    if(rel==='Strong') chips.push('<span class="btn-affinity-chip is-strong" title="Strong against this foe">Strong</span>');
+    else if(rel==='Weak') chips.push('<span class="btn-affinity-chip is-weak" title="Resisted by this foe">Weak</span>');
+    else if(rel==='Neutral'||rel==='Same') chips.push('<span class="btn-affinity-chip is-even" title="Even against this foe">Even</span>');
+  }
+  if(typeof Avian?.classPerks?.perkCueMatchesAbility==='function' && Avian.classPerks.perkCueMatchesAbility(G.player, ab)){
+    const cue=typeof Avian.classPerks.describePlayerPerkCue==='function'?Avian.classPerks.describePlayerPerkCue(G.player):null;
+    const label=cue?.name?String(cue.name).split(/\s+/).pop():'Perk';
+    chips.push(`<span class="btn-perk-chip" title="${escapeCueText(cue?.text||'Class perk applies to this skill')}">${escapeCueText(label)}</span>`);
+  }
+  return chips.length?`<div class="btn-decision-row">${chips.join('')}</div>`:'';
+}
+
 function renderActions() {
   const grid=document.getElementById('actions-grid');
   if(!grid) return;
@@ -48,6 +98,7 @@ function renderActions() {
     ensureMainAttackAndLoadoutRules();
   }
   grid.innerHTML='';
+  renderClassPerkCue();
   renderEnergyOrbs();
   renderCombatItems();
   if(G.player.abilities?.length) enforceAbilityCosts(G.player);
@@ -170,6 +221,7 @@ function renderActions() {
       </div>
       ${emptyReasonRow}
       ${dmgRow}
+      ${isEmptySlot?'':combatDecisionChips(ab, _packRowUI, effBtn)}
       ${(briefHtml||fallbackDesc)?`<div class="btn-desc-lines btn-desc-full">${briefHtml||`<p>${_escMini(fallbackDesc)}</p>`}</div>`:''}
       ${statPrevChip}
       ${modTxt}

@@ -37,6 +37,18 @@ function enemyTelegraphTooltipHtml(plan){
   if(plan.type==='ability') return buildEnemyAbilityTooltipHtml(plan.abilityId, G.enemy?.stats);
   return '';
 }
+function enemyTelegraphThreat(action){
+  var cat = action && action.category;
+  if (!cat && typeof classifyEnemyActionCategory === 'function') cat = classifyEnemyActionCategory(action);
+  cat = String(cat || 'utility');
+  var labels = { damage:'Strike', heavy:'Heavy', heal:'Heal', guard:'Guard', buff:'Buff', control:'Setup', utility:'Setup' };
+  var dmg = 0;
+  if ((cat === 'damage' || cat === 'heavy') && typeof projectedEnemyActionDamage === 'function' && G && G.enemy) {
+    dmg = Math.max(0, Math.round(Number(projectedEnemyActionDamage(action, G.enemy)) || 0));
+  }
+  var hp = Number(G && G.player && G.player.stats && G.player.stats.hp) || 0;
+  return { cat: cat, label: labels[cat] || 'Act', dmg: dmg, lethal: dmg > 0 && hp > 0 && dmg >= hp };
+}
 function renderEnemyPlan(){
   applyEnemyIntentVisibility();
   const host=document.getElementById('enemy-telegraph-actions');
@@ -56,10 +68,19 @@ function renderEnemyPlan(){
       const name=enemyTelegraphActionLabel(a);
       const cost=enemyTelegraphActionCost(a);
       const icon=escapeEncounterPreviewHtml(a.icon||'•');
-      return `<button type="button" class="enemy-telegraph-chip" data-enemy-telegraph-chip><span class="enemy-telegraph-chip-icon">${icon}</span><span class="enemy-telegraph-chip-name">${escapeEncounterPreviewHtml(name)}</span>${cost?`<span class="enemy-telegraph-chip-cost">${cost} EN</span>`:''}</button>`;
+      const threat=enemyTelegraphThreat(a);
+      const threatClass='enemy-telegraph-chip--'+escapeEncounterPreviewHtml(threat.cat);
+      const dmgBit=threat.dmg?`<span class="enemy-telegraph-chip-cost">~${threat.dmg}${threat.lethal?' KO':''}</span>`:'';
+      return `<button type="button" class="enemy-telegraph-chip ${threatClass}${threat.lethal?' is-lethal':''}" data-enemy-telegraph-chip><span class="enemy-telegraph-chip-icon">${icon}</span><span class="enemy-telegraph-chip-threat">${escapeEncounterPreviewHtml(threat.label)}</span><span class="enemy-telegraph-chip-name">${escapeEncounterPreviewHtml(name)}</span>${dmgBit}${cost?`<span class="enemy-telegraph-chip-cost">${cost} EN</span>`:''}</button>`;
     }).join('');
   }
   if(enEl) enEl.textContent=`EN ${curE}/${maxE}`;
+  const kicker=dock&&dock.querySelector('.enemy-telegraph-kicker');
+  if(kicker){
+    const intent=String((plan&&(plan.intent||plan.mode))||'').toLowerCase();
+    const intentLabel={attack:'Striking',finish:'Finishing',execute:'Finishing',control:'Setting up',setup:'Setting up',buff:'Buffing',pressure:'Pressing',recover:'Recovering'}[intent]||'';
+    kicker.textContent=intentLabel?('Upcoming · '+intentLabel):'Upcoming';
+  }
   const title=enemyTelegraphTooltipHtml(plan);
   const tipTargets=[dock, ...host.querySelectorAll('[data-enemy-telegraph-chip]')].filter(Boolean);
   tipTargets.forEach(el=>{

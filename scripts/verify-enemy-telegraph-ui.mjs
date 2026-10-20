@@ -27,6 +27,7 @@ const game = [
 
 const htmlChecks = [
   ['telegraph dock', /id="enemy-telegraph"/],
+  ['class perk cue', /id="class-perk-cue"/],
   ['telegraph actions', /id="enemy-telegraph-actions"/],
   ['settings checkbox', /id="setting-show-enemy-intent"/],
   ['telegraph after combatants', /class="combatants tactical-battlefield"[\s\S]*?<\/div>\s*<aside class="enemy-telegraph"/],
@@ -42,6 +43,8 @@ const jsChecks = [
   ['showEnemyIntent default on', /showEnemyIntent:raw\.showEnemyIntent!==false/],
   ['applyEnemyIntentVisibility', /function applyEnemyIntentVisibility\b/],
   ['renderEnemyPlan chips', /function renderEnemyPlan\(\)\{[\s\S]*?enemy-telegraph-chip/],
+  ['telegraph threat label', /enemy-telegraph-chip-threat/],
+  ['lethal telegraph', /is-lethal/],
   ['settings persist', /showEnemyIntent:document\.getElementById\('setting-show-enemy-intent'\)/],
 ];
 

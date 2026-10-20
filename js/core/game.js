@@ -9508,7 +9508,8 @@ function logMsg(msg,cls='') {
   d.className=`log-entry ${cls}`; d.textContent=msg;
   log.appendChild(d);
   const entries=log.querySelectorAll('.log-entry');
-  if(entries.length>5){ for(let i=0;i<entries.length-5;i++) entries[i].remove(); }
+  /* Keep the last exchange on screen: perk cue, hit result, and the foe's answer. */
+  if(entries.length>8){ for(let i=0;i<entries.length-8;i++) entries[i].remove(); }
   log.scrollTop=log.scrollHeight;
 }
 

@@ -430,10 +430,16 @@
     return abilityEnCostLocal(ab) >= 2 && (abilityIsMagicCat(ab) || abilityIsMartial(ab));
   }
 
-  function abilityIsWeaponSkill1(ab) {
-    if (!ab || abilityIsBasicAttack(ab)) return false;
+  function abilityIsWeaponSkill1(ab, entity) {
+    if (!ab) return false;
+    /* Basic Attack stands in for Weapon Skill 1 only while the bird is still
+     * on a starter weapon. A real Technique A takes the gate back. */
+    if (abilityIsBasicAttack(ab)) {
+      return !!(entity && Avian.classPerks && typeof Avian.classPerks.basicCountsAsWeaponSkill1 === 'function'
+        && Avian.classPerks.basicCountsAsWeaponSkill1(entity));
+    }
     var bar = String(ab.barSlot || ab.skillType || '').toLowerCase();
-    if (bar.indexOf('weapon skill 1') >= 0 || bar === 'skill 1' || /skill\s*1/.test(bar)) return true;
+    if (bar.indexOf('weapon skill 1') >= 0 || bar.indexOf('weapon technique a') >= 0 || bar === 'skill 1' || /skill\s*1/.test(bar)) return true;
     var id = String(ab.id || ab.equipmentSkillId || '');
     if (/^WSK-\d+$/i.test(id)) {
       var n = parseInt(id.replace(/\D/g, ''), 10);
@@ -492,8 +498,9 @@
   function abilityMatchesSkillGate(ab, gate, side) {
     if (!gate) return true;
     if (!ab) return false;
-    if (gate.weaponSkill1 && !abilityIsWeaponSkill1(ab)) return false;
-    if (gate.weaponSkill2 && abilityIsWeaponSkill1(ab)) return false;
+    var gateActor = entityForSide(side || 'player');
+    if (gate.weaponSkill1 && !abilityIsWeaponSkill1(ab, gateActor)) return false;
+    if (gate.weaponSkill2 && abilityIsWeaponSkill1(ab, gateActor)) return false;
     if (gate.weaponSkill && !abilityIsWeaponSkill(ab)) return false;
     if (gate.weaponScale && abilityWeaponScale(ab) !== gate.weaponScale) return false;
     if (gate.category === 'magic' && !abilityIsMagicCat(ab)) return false;
@@ -895,7 +902,7 @@
         }
         if (t.weaponScale && abilityWeaponScale(ab) !== String(t.weaponScale).toLowerCase()) return false;
         if (t.weaponSkill && !abilityIsWeaponSkill(ab)) return false;
-        if (t.weaponSkill1 && !abilityIsWeaponSkill1(ab)) return false;
+        if (t.weaponSkill1 && !abilityIsWeaponSkill1(ab, actor)) return false;
         var actGate = parseCurrentSkillGateFromText(parsed.text);
         if (actGate && !abilityMatchesSkillGate(ab, actGate, side)) return false;
         return true;

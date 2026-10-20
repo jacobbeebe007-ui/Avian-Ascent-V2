@@ -1606,6 +1606,12 @@
     var enemyDodge = (typeof getEffectiveEnemyDodgeForPlayerHit === 'function')
       ? getEffectiveEnemyDodgeForPlayerHit()
       : ((g && g.enemy && g.enemy.stats) ? (g.enemy.stats.dodge || 0) : 0);
+    /* Capture before the roll. Equipment attacks resolve here, not in
+     * resolvePlayerAttackHit, so the once-per-turn flag has to be spent
+     * after this peek or Tempo stays armed on every later Basic. */
+    var tempoOpening = !!(g && g.player && typeof Avian !== 'undefined' && Avian.classPerks
+      && typeof Avian.classPerks.peekRogueTempoPrecision === 'function'
+      && Avian.classPerks.peekRogueTempoPrecision(g.player, ab) > 0);
     var hitPct = (typeof getPlayerHitPercentForAttack === 'function')
       ? getPlayerHitPercentForAttack(ab)
       : (function () {
@@ -1788,7 +1794,29 @@
 
     if (typeof logMsg === 'function') {
       var label = isHybrid ? '⚔🎶' : (isMagic ? '🎶' : '⚔');
-      logMsg(label + ' ' + (row.name || ab.id) + ': ' + totalDmg + ' damage' + (anyCrit ? ' (CRIT)' : '') + '.', 'player-action');
+      var actionName = row.name || ab.id;
+      if (hitsLanded <= 0) {
+        logMsg(actionName + ' missed (' + Math.round(Number(hitPct) || 0) + '% hit).', 'miss');
+      } else {
+        var why = [];
+        if (typeof getAspectRelationship === 'function' && typeof getEntityAspect === 'function' && g && g.player && g.enemy) {
+          var rel = getAspectRelationship(getEntityAspect(g.player), getEntityAspect(g.enemy), row);
+          if (rel === 'Strong') why.push('Strong');
+          else if (rel === 'Weak') why.push('Weak');
+        }
+        if (anyCrit) why.push('crit');
+        var hist = (typeof Avian !== 'undefined' && Avian.systems && Avian.systems.combatBreakdown && typeof Avian.systems.combatBreakdown.getHistory === 'function')
+          ? Avian.systems.combatBreakdown.getHistory() : null;
+        var lastHit = hist && hist.length ? hist[hist.length - 1] : null;
+        if (lastHit && lastHit.damage && String(lastHit.actionId) === String(row.id || ab.id)) {
+          if (lastHit.damage.armourDamage > 0) why.push('armour ' + Math.round(lastHit.damage.armourDamage));
+          if (lastHit.damage.magicArmourDamage > 0) why.push('magic armour ' + Math.round(lastHit.damage.magicArmourDamage));
+        }
+        logMsg(label + ' ' + actionName + ': ' + totalDmg + ' damage' + (why.length ? ' · ' + why.join(' · ') : '') + '.', 'player-action');
+      }
+    }
+    if (tempoOpening && g && g.player && typeof Avian.classPerks.markRogueTempoPrecisionUsed === 'function') {
+      Avian.classPerks.markRogueTempoPrecisionUsed(g.player);
     }
     if (typeof refreshBattleUI === 'function') refreshBattleUI();
   };
