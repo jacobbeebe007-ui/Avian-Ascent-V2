@@ -597,6 +597,106 @@ else ok('onEnemyDamaged exported');
   else fail('Rogue Tempo peek expected 10, got ' + peek);
 }
 
+{
+  G.player = {
+    birdKey: 'sparrow', class: 'rogue',
+    stats: { spd: 20, acc: 89, atk: 1 },
+    loadout: { mainHand: 'WPN-B04' },
+  };
+  G.enemy = { birdKey: 'crow', stats: { spd: 4, hp: 40, maxHp: 40 } };
+  G.playerStatus = { _classPerkState: {} };
+  G.passiveState = Object.create(null);
+  Avian.classPerks.applyClassPerkMetadata(G.player);
+  if (Avian.classPerks.basicCountsAsWeaponSkill1(G.player)) ok('starter weapon lets Basic stand in for Weapon Skill 1');
+  else fail('starter stand-in missing');
+  const liveShape = { birdKey: 'sparrow', equipment: { mainHand: 'WPN-B04' } };
+  if (Avian.classPerks.basicCountsAsWeaponSkill1(liveShape)) ok('combat equipment.mainHand counts as the starter weapon');
+  else fail('live equipment shape missed the starter weapon');
+  const starterCue = Avian.classPerks.describePlayerPerkCue(G.player);
+  if (starterCue && /Basic Attack/.test(starterCue.text) && starterCue.tone === 'ready') ok('starter Tempo cue names Basic Attack');
+  else fail('starter cue ' + JSON.stringify(starterCue));
+  const basicPeek = Avian.classPerks.peekRogueTempoPrecision(G.player, {
+    id: 'BASIC_PHYSICAL', actionSource: 'basic', isMainAttack: true, btnType: 'physical', energy: 1,
+  });
+  if (basicPeek === 10) ok('Rogue Tempo applies to starter Basic Attack');
+  else fail('starter tempo peek ' + basicPeek);
+  G.player.loadout = { mainHand: 'WPN-001' };
+  const equippedBasic = Avian.classPerks.peekRogueTempoPrecision(G.player, {
+    id: 'BASIC_PHYSICAL', actionSource: 'basic', isMainAttack: true, btnType: 'physical', energy: 1,
+  });
+  if (equippedBasic === 0) ok('Basic Attack drops Tempo once Technique A exists');
+  else fail('equipped basic still has tempo ' + equippedBasic);
+  const techPeek = Avian.classPerks.peekRogueTempoPrecision(G.player, {
+    id: 'WSK-001', actionSource: 'weaponA', energy: 2, energyCost: 2, btnType: 'physical',
+  });
+  if (techPeek === 10) ok('Technique A keeps Rogue Tempo after a real weapon');
+  else fail('technique tempo ' + techPeek);
+  const armedCue = Avian.classPerks.describePlayerPerkCue(G.player);
+  if (armedCue && /Technique A/.test(armedCue.text)) ok('perk cue names Technique A once a weapon skill exists');
+  else fail('armed cue ' + JSON.stringify(armedCue));
+
+  Avian.passives.onPlayerAbilityUse({ id: 'UTIL_HEDGE_HOP', name: 'Hedge Hop', btnType: 'utility' }, {});
+  G.player.loadout = { mainHand: 'WPN-B04' };
+  Avian.passives.prepareOutgoingAbilityBonuses('player', {
+    id: 'BASIC_PHYSICAL', name: 'Basic Attack', btnType: 'physical', actionSource: 'basic', isMainAttack: true, enCost: 1,
+  });
+  Avian.passives.onPlayerAbilityUse({
+    id: 'BASIC_PHYSICAL', name: 'Basic Attack', btnType: 'physical', actionSource: 'basic', isMainAttack: true, enCost: 1,
+  }, { hitsLanded: 1, damage: 4 });
+  const starterSlots = G.playerStatus._passiveDisplaySlots || {};
+  const starterAcc = Object.values(starterSlots).some((s) => s && s.kind === 'gainAcc' && s.value >= 10);
+  if (starterAcc) ok('sparrow Fledgling Grit pays off on starter Basic Attack');
+  else fail('starter grit slots ' + JSON.stringify(starterSlots));
+}
+
+{
+  G.player = {
+    birdKey: 'goose', class: 'brute',
+    stats: { spd: 2, atk: 9, def: 8 },
+    loadout: { mainHand: 'WPN-B02' },
+  };
+  G.enemy = { birdKey: 'sparrow', stats: { spd: 8, hp: 40, maxHp: 40 } };
+  G.playerStatus = { _classPerkState: { crushingMomentumPending: true } };
+  Avian.classPerks.applyClassPerkMetadata(G.player);
+  const finesse = Avian.classPerks.peekCrushingMomentumSkillPower(G.player, {
+    id: 'BASIC_PHYSICAL', actionSource: 'basic', isMainAttack: true, btnType: 'physical',
+    _dispatcherRow: { id: 'BASIC_PHYSICAL', scalingStat: 'DEX', damageCategory: 'Physical Finesse' },
+  });
+  if (finesse === 0) ok('finesse basic does not spend Crushing Momentum');
+  else fail('finesse momentum ' + finesse);
+  const strength = Avian.classPerks.peekCrushingMomentumSkillPower(G.player, {
+    id: 'BASIC_PHYSICAL', actionSource: 'basic', isMainAttack: true, btnType: 'physical',
+    _dispatcherRow: { id: 'BASIC_PHYSICAL', scalingStat: 'ATK', damageCategory: 'Physical Strength' },
+  });
+  if (strength === 10) ok('strength basic spends Crushing Momentum from the combat row');
+  else fail('strength momentum ' + strength);
+  const bruteCue = Avian.classPerks.describePlayerPerkCue(G.player);
+  if (bruteCue && bruteCue.tone === 'waiting' && /Armour/.test(bruteCue.text)) ok('brute cue waits for Armour after Momentum is spent');
+  else fail('brute cue ' + JSON.stringify(bruteCue));
+}
+
+{
+  G.player = {
+    birdKey: 'blackbird', class: 'mage',
+    stats: { spd: 7, matk: 10 },
+    loadout: { mainHand: 'WPN-B01' },
+  };
+  G.enemy = { birdKey: 'crow', stats: { spd: 3, hp: 40, maxHp: 40 } };
+  G.playerStatus = { _classPerkState: {} };
+  Avian.classPerks.applyClassPerkMetadata(G.player);
+  const pressure = Avian.classPerks.peekArcanePressureMagicArmourBonus(G.player, {
+    id: 'BASIC_MAGIC', actionSource: 'basic', isMainAttack: true, btnType: 'spell',
+    _dispatcherRow: { id: 'BASIC_MAGIC', damageType: 'Magic', category: 'magic' },
+  });
+  if (pressure === 0.1) ok('Arcane Pressure treats a starter magic Basic as the magic weapon skill');
+  else fail('arcane pressure ' + pressure);
+  if (Avian.classPerks.perkCueMatchesAbility(G.player, {
+    id: 'BASIC_MAGIC', actionSource: 'basic', isMainAttack: true, btnType: 'spell',
+    _dispatcherRow: { id: 'BASIC_MAGIC', damageType: 'Magic', category: 'magic' },
+  })) ok('perk chip marks the mage Basic Attack');
+  else fail('mage basic chip did not match');
+}
+
 if (failed) {
   console.error(`[passives-perks] ${failed} failure(s)`);
   process.exit(1);

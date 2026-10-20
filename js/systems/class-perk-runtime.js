@@ -194,21 +194,89 @@
     return /^(Beak Jab|Tail Wand|Natural Strike|Basic Attack)/i.test(name);
   }
 
+  /* Equipment buttons keep combat facts on _dispatcherRow. Perk checks that only
+   * read the shell (scaling, category, rider text) never saw Strength basics
+   * or Armour Restoration, so Brute and Knight perks did not fire. */
+  function combatFacts(ab) {
+    if (!ab) return ab;
+    var row = ab._dispatcherRow && ab._dispatcherRow !== ab ? ab._dispatcherRow : null;
+    var merged = row ? Object.assign({}, row, ab) : Object.assign({}, ab);
+    function fill(key, value) {
+      if ((merged[key] == null || merged[key] === '') && value != null && value !== '') merged[key] = value;
+    }
+    if (row) {
+      fill('scalingStat', row.scalingStat);
+      fill('scaleStat', row.scaleStat);
+      fill('damageStat', row.damageStat);
+      fill('damageCategory', row.damageCategory);
+      fill('damageType', row.damageType);
+      fill('barSlot', row.barSlot);
+      fill('skillType', row.skillType);
+      fill('riderText', row.riderText);
+      fill('category', row.category);
+      fill('ailment', row.ailment);
+      if (!merged.riders && row.riders) merged.riders = row.riders;
+      if (merged.enCost == null) merged.enCost = row.enCost;
+      if (merged.en == null) merged.en = row.enCost;
+    }
+    var skills = Avian.data && Avian.data.equipment && Avian.data.equipment.skills;
+    var skillId = ab.equipmentSkillId || (row && row.equipmentSkillId) || ab.id || (row && row.id);
+    var skill = skills && skillId && skills[skillId];
+    if (skill) {
+      fill('barSlot', skill.barSlot);
+      fill('skillType', skill.skillType);
+      fill('scalingStat', skill.scalingStat);
+      fill('damageCategory', skill.damageCategory);
+      fill('damageType', skill.damageType);
+    }
+    return merged;
+  }
+
+  function mainHandItem(entity) {
+    if (!entity) return null;
+    var loadout = entity.loadout || null;
+    var equipment = entity.equipment || null;
+    var nested = equipment && equipment.loadout;
+    var id = (loadout && (loadout.mainHand || loadout.weapon))
+      || (nested && (nested.mainHand || nested.weapon))
+      || (equipment && (equipment.mainHand || equipment.weapon))
+      || null;
+    if (id && typeof id === 'object') id = id.id || id.itemId || null;
+    var items = Avian.data && Avian.data.equipment && Avian.data.equipment.items;
+    return (id && items && items[id]) || null;
+  }
+
+  /* Starter weapons grant no Technique A. Species passives and Rogue Tempo are
+   * authored against Weapon Skill 1, so the equipped Basic Attack is that
+   * opening strike until a weapon with skill1 is equipped. The bonus then
+   * moves onto Technique A and leaves Basic — the next fight changes. */
+  ns.basicCountsAsWeaponSkill1 = function basicCountsAsWeaponSkill1(entity) {
+    var item = mainHandItem(entity);
+    if (!item) return false;
+    if (item.isBasicStartingWeapon) return true;
+    return !item.skill1;
+  };
+
   function isWeaponSkill1(ab) {
     if (!ab) return false;
     if (isBasicAttack(ab)) return false;
+    ab = combatFacts(ab);
     var bar = String(ab.barSlot || ab.skillType || '').toLowerCase();
-    if (bar.indexOf('weapon skill 1') >= 0 || bar === 'skill 1' || /skill\s*1/.test(bar)) return true;
+    if (bar.indexOf('weapon skill 1') >= 0 || bar.indexOf('weapon technique a') >= 0 || bar === 'skill 1' || /skill\s*1/.test(bar)) return true;
     var id = String(ab.id || ab.equipmentSkillId || '');
     if (/^WSK-\d+$/i.test(id)) {
-      /* Odd WSK ids are Skill 1 in the catalogue (001,003,...); even are Skill 2. */
+      /* Odd WSK ids are Technique A (001, 003, …); even ids are Technique B. */
       var n = parseInt(id.replace(/\D/g, ''), 10);
       if (Number.isFinite(n) && n % 2 === 1) return true;
     }
     var en = abEnCost(ab);
-    /* Weapon Skill 1 is typically 2 EN. */
-    if (en === 2 && (ab.actionSource === 'weapon' || ab.family || /weapon/i.test(String(ab.source || '')))) return true;
+    if (en === 2 && (ab.actionSource === 'weapon' || ab.actionSource === 'weaponA' || ab.family || /weapon/i.test(String(ab.source || '')))) return true;
     return false;
+  }
+
+  function rogueOpeningStrike(entity, ab) {
+    if (isWeaponSkill1(ab)) return true;
+    return !!(isBasicAttack(ab) && ns.basicCountsAsWeaponSkill1(entity));
   }
 
   function rogueTempoEligible(entity, ab) {
@@ -218,7 +286,7 @@
     var side = entity === (g && g.enemy) ? 'enemy' : 'player';
     var st = state(side) || {};
     if (st.rogueTempoUsed) return false;
-    if (!isWeaponSkill1(ab)) return false;
+    if (!rogueOpeningStrike(entity, ab)) return false;
     if (perk.def.needsActingFirst && !entityActingFirst(entity)) return false;
     return true;
   }
@@ -307,23 +375,36 @@
 
   function isStrengthWeaponSkill(ab) {
     if (!ab) return false;
-    var cat = String(ab.damageCategory || ab.category || '').toLowerCase();
+    ab = combatFacts(ab);
+    var cat = String(ab.damageCategory || '').toLowerCase();
     if (cat.indexOf('strength') >= 0) return true;
     var scale = String(ab.scalingStat || ab.scaleStat || ab.damageStat || '').toUpperCase();
     return scale === 'ATK' || scale === 'MIGHT' || scale === 'DEF' || scale === 'GUARD';
   }
 
   function isMagicWeaponSkill(ab) {
-    if (!abIsMagic(ab)) return false;
+    if (!ab) return false;
+    var facts = combatFacts(ab);
+    if (!abIsMagic(facts) && String(facts.damageType || '').toLowerCase() !== 'magic') return false;
     if (isBasicAttack(ab)) return false;
-    var src = String(ab.source || ab.actionSource || ab.family || '').toLowerCase();
+    var src = String(ab.source || ab.actionSource || facts.family || '').toLowerCase();
     return /weapon|wand|staff|orb|sceptre|grimoire|song|hex/i.test(src)
-      || /^WSK-/i.test(String(ab.id || ab.equipmentSkillId || ''))
-      || Number(ab.en || ab.enCost || ab.energy || 0) >= 2;
+      || /^WSK-/i.test(String(ab.id || ab.equipmentSkillId || facts.id || ''))
+      || Number(facts.en || facts.enCost || ab.energy || 0) >= 2;
+  }
+
+  /* Tail Wand / Broken Song basics are the only magic attack until a real
+   * magic technique is equipped. Arcane Pressure should teach that poke. */
+  function countsAsArcanePressureSkill(entity, ab) {
+    if (isMagicWeaponSkill(ab)) return true;
+    if (!entity || !isBasicAttack(ab) || !ns.basicCountsAsWeaponSkill1(entity)) return false;
+    var facts = combatFacts(ab);
+    return abIsMagic(facts) || String(facts.damageType || '').toLowerCase() === 'magic';
   }
 
   function isFortifyOrArmourRestore(ab) {
     if (!ab) return false;
+    ab = combatFacts(ab);
     var name = String(ab.name || ab.id || '');
     var bar = String(ab.barSlot || ab.skillType || ab.riderText || '');
     if (/fortify|armour restoration|armor restoration|restore armour|restore armor/i.test(name + ' ' + bar)) {
@@ -431,7 +512,7 @@
     var st = state(side);
     if (!st) return;
 
-    if (perk.def.id === 'arcanePressure' && !st.arcanePressureUsed && isMagicWeaponSkill(ab)) {
+    if (perk.def.id === 'arcanePressure' && !st.arcanePressureUsed && countsAsArcanePressureSkill(entity, ab)) {
       st.arcanePressureActive = true;
     }
 
@@ -521,7 +602,7 @@
     var side = entity === g.enemy ? 'enemy' : 'player';
     var st = state(side) || {};
     if (st.arcanePressureActive) return perk.def.magicArmourDamageBonus || 0.10;
-    if (!st.arcanePressureUsed && ab && isMagicWeaponSkill(ab)) return perk.def.magicArmourDamageBonus || 0.10;
+    if (!st.arcanePressureUsed && ab && countsAsArcanePressureSkill(entity, ab)) return perk.def.magicArmourDamageBonus || 0.10;
     return 0;
   };
 
@@ -758,6 +839,126 @@
     };
     if (perk && perk.def.id === 'cursedCall') out.buffDurationBonus = 0;
     return out;
+  };
+
+  function damagingChannel(ab) {
+    if (!ab || ab.empty) return null;
+    var facts = combatFacts(ab);
+    if (facts.noDamage) return null;
+    var kind = String(facts.btnType || facts.type || facts.category || '').toLowerCase();
+    if (kind === 'utility') return null;
+    if (abIsMagic(facts) || String(facts.damageType || '').toLowerCase() === 'magic' || kind === 'spell' || kind === 'magic') return 'magic';
+    if (abIsPhysical(facts) || kind === 'physical' || kind === 'ranged') return 'martial';
+    return null;
+  }
+
+  function kitChannels(entity) {
+    var list = (entity && entity.abilities) || [];
+    var martial = false;
+    var magic = false;
+    for (var i = 0; i < list.length; i++) {
+      var channel = damagingChannel(list[i]);
+      if (channel === 'martial') martial = true;
+      if (channel === 'magic') magic = true;
+    }
+    return { martial: martial, magic: magic, known: list.length > 0 };
+  }
+
+  function abilityAppliesAilment(ab) {
+    var facts = combatFacts(ab);
+    if (facts.ailment) return true;
+    var riders = facts.riders || [];
+    for (var i = 0; i < riders.length; i++) {
+      if (riders[i] && (riders[i].kind === 'applyAilment' || riders[i].ailment)) return true;
+    }
+    return false;
+  }
+
+  function perkSide(entity) {
+    var g = globalThis.G;
+    return entity && g && entity === g.enemy ? 'enemy' : 'player';
+  }
+
+  /* Read-only turn prompt. Must not call peek helpers that consume perk state. */
+  ns.describePlayerPerkCue = function describePlayerPerkCue(entity) {
+    var g = globalThis.G;
+    entity = entity || (g && g.player);
+    if (!entity) return null;
+    var perk = ns.getClassPerkForEntity(entity);
+    if (!perk || !perk.def) return null;
+    var st = state(perkSide(entity)) || {};
+    var id = perk.def.id;
+    var name = perk.name || 'Class perk';
+    var tone = 'waiting';
+    var text = perk.effect || name;
+    if (id === 'rogueTempo') {
+      if (st.rogueTempoUsed) { tone = 'spent'; text = 'Tempo spent this turn.'; }
+      else if (perk.def.needsActingFirst && !entityActingFirst(entity)) { tone = 'waiting'; text = 'Tempo waits — you are not acting first.'; }
+      else if (ns.basicCountsAsWeaponSkill1(entity)) { tone = 'ready'; text = 'Tempo ready: Basic Attack gains +10 Precision until you equip a weapon technique.'; }
+      else { tone = 'ready'; text = 'Tempo ready: Weapon Technique A gains +10 Precision.'; }
+    } else if (id === 'bulwarkOath') {
+      if (st.bulwarkOathUsed) { tone = 'spent'; text = 'Oath spent this turn.'; }
+      else { tone = 'ready'; text = 'Oath ready: Fortify or restore Armour for +4 Guard.'; }
+    } else if (id === 'arcanePressure') {
+      if (st.arcanePressureUsed) { tone = 'spent'; text = 'Pressure spent this turn.'; }
+      else if (ns.basicCountsAsWeaponSkill1(entity)) { tone = 'ready'; text = 'Pressure ready: your magic Basic Attack hits Magic Armour harder. Health damage stays the same.'; }
+      else { tone = 'ready'; text = 'Pressure ready: your first magic weapon skill this turn hits Magic Armour harder.'; }
+    } else if (id === 'verseAndChorus') {
+      var kit = kitChannels(entity);
+      if (st.verseChorusUsed) { tone = 'spent'; text = 'Chorus spent this turn.'; }
+      else if (kit.known && (!kit.martial || !kit.magic)) { tone = 'waiting'; text = 'Chorus waits — you need both a Martial and a Magic damaging skill. A second weapon skill unlocks it.'; }
+      else if (st.verseLastChannel === 'martial') { tone = 'armed'; text = 'Chorus: follow with a Magic damaging skill.'; }
+      else if (st.verseLastChannel === 'magic') { tone = 'armed'; text = 'Chorus: follow with a Martial damaging skill.'; }
+      else { tone = 'ready'; text = 'Chorus: alternate Martial and Magic damaging skills this turn. The second restores protection.'; }
+    } else if (id === 'judgementLeech') {
+      if (st.judgementLeechUsed) { tone = 'spent'; text = 'Leech spent this turn.'; }
+      else if (targetQualifiesForJudgement(g && g.enemyStatus)) { tone = 'armed'; text = 'Leech ready: a damaging hit restores the lower protection pool.'; }
+      else { tone = 'waiting'; text = 'Leech waits — ailment, debuff, or Mark the foe first.'; }
+    } else if (id === 'cursedCall') {
+      if (st.cursedCallPending) { tone = 'armed'; text = 'Call armed: your next ailment or debuff is more likely and lasts longer.'; }
+      else if (st.cursedCallUsed) { tone = 'spent'; text = 'Call spent this turn.'; }
+      else { tone = 'waiting'; text = 'Call waits — break Magic Armour, then apply an ailment.'; }
+    } else if (id === 'crushingMomentum') {
+      if (st.crushingMomentumPending) { tone = 'armed'; text = 'Momentum armed: your next Strength hit gains +10 Skill Power.'; }
+      else { tone = 'waiting'; text = 'Momentum waits — let Armour soak a physical hit.'; }
+    } else if (id === 'retaliatingHide') {
+      if (st.retaliatingHidePending) { tone = 'armed'; text = 'Hide armed: your next physical hit deals +10% damage.'; }
+      else { tone = 'waiting'; text = 'Hide waits — take magic damage to arm it.'; }
+    } else if (id === 'dukeAscension') {
+      var stacks = Number(entity._classPerkDukeStacks) || 0;
+      tone = stacks > 0 ? 'armed' : 'ready';
+      text = stacks > 0
+        ? ('Ascension: +' + (stacks * 5) + '% damage for the rest of this combat.')
+        : 'Ascension: each foe you defeat restores protection and adds +5% damage.';
+    }
+    return { id: id, name: name, tone: tone, text: text };
+  };
+
+  ns.perkCueMatchesAbility = function perkCueMatchesAbility(entity, ab) {
+    if (!entity || !ab || ab.empty) return false;
+    var perk = ns.getClassPerkForEntity(entity);
+    if (!perk || !perk.def) return false;
+    var st = state(perkSide(entity)) || {};
+    var id = perk.def.id;
+    var channel = damagingChannel(ab);
+    if (id === 'rogueTempo') return ns.peekRogueTempoPrecision(entity, ab) > 0;
+    if (id === 'bulwarkOath') return !st.bulwarkOathUsed && isFortifyOrArmourRestore(ab);
+    if (id === 'arcanePressure') return !st.arcanePressureUsed && countsAsArcanePressureSkill(entity, ab);
+    if (id === 'verseAndChorus') {
+      if (st.verseChorusUsed || !channel) return false;
+      var kit = kitChannels(entity);
+      if (!kit.martial || !kit.magic) return false;
+      if (!st.verseLastChannel) return false;
+      return st.verseLastChannel !== channel;
+    }
+    if (id === 'judgementLeech') {
+      var g = globalThis.G;
+      return !st.judgementLeechUsed && !!channel && targetQualifiesForJudgement(g && g.enemyStatus);
+    }
+    if (id === 'cursedCall') return !!st.cursedCallPending && abilityAppliesAilment(ab);
+    if (id === 'crushingMomentum') return !!st.crushingMomentumPending && isStrengthWeaponSkill(ab);
+    if (id === 'retaliatingHide') return !!st.retaliatingHidePending && abIsPhysical(combatFacts(ab));
+    return false;
   };
 
   globalThis.Avian = Avian;
