@@ -9230,6 +9230,46 @@ function setAbilityCooldown(ab){
   if(cd>0){ if(!G.abilityCooldowns) G.abilityCooldowns={}; G.abilityCooldowns[ab.id]=cd; }
 }
 
+/* Enemy kit abilities follow the same authored cooldown and once-per-turn rules
+ * as the player's loadout (basic attacks stay repeatable). */
+function getEnemyAbilityCooldown(abId){
+  return (G.enemyAbilityCooldowns&&G.enemyAbilityCooldowns[abId])?G.enemyAbilityCooldowns[abId]:0;
+}
+function enemyAbilityIsRepeatable(abilityId, enemy){
+  const ab=(enemy?.abilities||[]).find(a=>a&&a.id===abilityId)||{id:abilityId};
+  if(ab.actionSource==='basic' || ab.isMainAttack) return true;
+  if(abilityId==='BASIC_PHYSICAL' || abilityId==='BASIC_MAGIC') return true;
+  return typeof isMainAttackAbility==='function' && isMainAttackAbility(ab, enemy);
+}
+function isEnemyAbilityAvailable(abilityId, enemy){
+  if(!abilityId) return true;
+  if(getEnemyAbilityCooldown(abilityId)>0) return false;
+  if(enemyAbilityIsRepeatable(abilityId, enemy)) return true;
+  return !(G.enemyAbilityUsedThisTurn && G.enemyAbilityUsedThisTurn[abilityId]);
+}
+function registerEnemyAbilityUse(enemy, abilityId){
+  if(!abilityId) return;
+  const ab=(enemy?.abilities||[]).find(a=>a&&a.id===abilityId)||{id:abilityId,level:1};
+  G.enemyAbilityUsedThisTurn=G.enemyAbilityUsedThisTurn||{};
+  G.enemyAbilityUsedThisTurn[abilityId]=(G.enemyAbilityUsedThisTurn[abilityId]||0)+1;
+  const cd=getTemplateCooldown(ab);
+  if(cd>0){ G.enemyAbilityCooldowns=G.enemyAbilityCooldowns||{}; G.enemyAbilityCooldowns[abilityId]=cd; }
+}
+function resetEnemyTurnAbilityUse(){
+  G.enemyAbilityUsedThisTurn={};
+}
+function tickEnemyAbilityCooldowns(){
+  if(!G.enemyAbilityCooldowns) return;
+  Object.keys(G.enemyAbilityCooldowns).forEach(k=>{
+    G.enemyAbilityCooldowns[k]=Math.max(0,(G.enemyAbilityCooldowns[k]||0)-1);
+    if(G.enemyAbilityCooldowns[k]===0) delete G.enemyAbilityCooldowns[k];
+  });
+}
+function resetEnemyAbilityCooldowns(){
+  G.enemyAbilityCooldowns={};
+  G.enemyAbilityUsedThisTurn={};
+}
+
 function reduceOtherSpellCooldownsOnCast(usedAbId){
   const cls=(G.player?.class || BIRDS[G.player?.birdKey]?.class || '').toLowerCase();
   const isCaster = MAGIC_CLASSES.has(cls);
@@ -14210,12 +14250,18 @@ async function executeEnemyKitTemplateAbility(enemy, abilityId, totalEnemyMiss){
     return Avian.dispatcher.applySelfRiders('enemy', combatRow, ab, ctx);
   };
   if(cat==='heal'){
-    const heal=roundCombatDamage((enemy.stats.maxHp||40)*0.14);
-    applyFractionalHp(enemy.stats, heal);
-    enemy.stats.hp=Math.min(enemy.stats.maxHp||enemy.stats.hp, enemy.stats.hp);
+    const hpBefore=enemy.stats.hp||0;
     await doSpell('enemy',`🌿 ${name}!`);
+    const applied=applyEnemySelfRiders({ utilitySucceeded: true });
+    if(!applied){
+      /* Legacy kits without an authored row: flat 14% Health recovery. */
+      applyFractionalHp(enemy.stats, roundCombatDamage((enemy.stats.maxHp||40)*0.14));
+    }
+    enemy.stats.hp=Math.min(enemy.stats.maxHp||enemy.stats.hp, enemy.stats.hp);
     setHpBar('enemy',enemy.stats.hp,enemy.stats.maxHp);
-    logMsg(`${enemy.name} recovers ${heal} HP.`,'enemy-action');
+    renderStatuses('enemy-status',G.enemyStatus);
+    const healed=Math.max(0,Math.round((enemy.stats.hp||0)-hpBefore));
+    logMsg(healed>0?`${enemy.name} — ${name}: recovers ${healed} HP.`:`${enemy.name} uses ${name}.`,'enemy-action');
     return true;
   }
   if(cat==='guard'){
@@ -14378,6 +14424,7 @@ async function enemyTurn() {
     G.playerStatus.counterInstinct--;
     if(G.playerStatus.counterInstinct<=0) delete G.playerStatus.counterInstinct;
   }
+  resetEnemyTurnAbilityUse();
   G.enemyNextAction=planEnemyAction();
   const rawPlan=(G.enemyNextAction&&G.enemyNextAction.actions&&G.enemyNextAction.actions.length)?G.enemyNextAction.actions:planEnemyTurn(e,G.player).actions;
   const plan=rawPlan.slice(0,MAX_ENEMY_ACTIONS_PER_TURN);
@@ -14421,6 +14468,7 @@ async function enemyTurn() {
         G.enemyActionsThisTurn--;
         continue;
       }
+      registerEnemyAbilityUse(e, action.abilityId);
       if(G._consumeEnemyConfusedAfterAction){
         if(G.enemyStatus) delete G.enemyStatus.confused;
         G._consumeEnemyConfusedAfterAction=false;
@@ -14516,6 +14564,8 @@ function afterEnemyTurn() {
   }
   // Cooldowns
   if(G.abilityCooldowns){Object.keys(G.abilityCooldowns).forEach(k=>{G.abilityCooldowns[k]=Math.max(0,(G.abilityCooldowns[k]||0)-1); if(G.abilityCooldowns[k]===0) delete G.abilityCooldowns[k];});}
+  tickEnemyAbilityCooldowns();
+  resetEnemyTurnAbilityUse();
   tickTimedBuffsAfterEnemyPhase();
   if(typeof Avian?.dispatcher?.onAfterEnemyTurn==='function') Avian.dispatcher.onAfterEnemyTurn(G.player);
   if(typeof Avian?.passives?.onAfterEnemyTurn==='function') Avian.passives.onAfterEnemyTurn(G.player);
@@ -15705,6 +15755,7 @@ function startGroveAmbushBattle(){
   G.autoQueuedAbilityId=null;
   G._breakClampStreak=0;
   G.abilityCooldowns=G.abilityCooldowns||{};
+  resetEnemyAbilityCooldowns();
   codexMark('enemies', G.enemy.id||G.enemy.name, 'seen');
   if(!G.enemy.aiType) G.enemy.aiType=mapAiStyleToType(G.enemy.aiStyle);
   if(!G.enemy.aiPersonality) G.enemy.aiPersonality=inferAIPersonalityFromStyle(G.enemy.aiStyle,G.enemy.name);
@@ -15986,6 +16037,8 @@ function showVictory(){
 function showDefeat(){
   beginBattleBgmFadeOut();
   G._groveAmbushActive=false;
+  /* Snapshot before temp-stat restore refills Health, so "HP Left" is honest. */
+  G._runEndHp=Math.max(0,Math.round(Number(G.player?.stats?.hp)||0));
   restoreBattleTempPlayerStats();
   G.phase='REWARD';
   G.playerStatus = {};
@@ -16011,7 +16064,8 @@ function showDefeat(){
   const endEvt={won:false, bird:G.player?.birdKey||'unknown', stageReached:G.stage||1, deathCause:G._lastDeathCause||'hp_zero', endless:!!G.endlessMode};
   AvianEvents.emit('run:end', endEvt);
   runModuleHook('onRunEnd', endEvt);
-  showRunStats();
+  showRunStats({ hp: G._runEndHp });
+  G._runEndHp=null;
   renderUnlockPopupsOnGameover();
   showScreen('screen-gameover');
 }
@@ -16020,8 +16074,9 @@ function flightRescuedNestCount(){
   if(!Array.isArray(arr)) return 0;
   return arr.reduce((sum,row)=>sum+(Math.max(0,Math.floor(Number(row?.count)||1))),0);
 }
-function showRunStats(){
+function showRunStats(opts){
   const el=document.getElementById('run-stats'); if(!el) return;
+  const hpLeft=Number.isFinite(Number(opts?.hp))?Number(opts.hp):G.player.stats.hp;
   const stages=G.endlessMode?`${G.stage}+`:`${Math.min(G.stage,20)}/20`;
   const enemiesDefeated=Math.max(0,(G.stage||1)-1);
   const birdName=G.player?.name||'Unknown';
@@ -16038,7 +16093,7 @@ function showRunStats(){
     <div class="vstat"><div class="vstat-val">${G.shinyObjects||0}</div><div class="vstat-lbl">Shiny Objects</div></div>
     ${flightRescuedNestCount()>0?`<div class="vstat"><div class="vstat-val">+${flightRescuedNestCount()} 🪺</div><div class="vstat-lbl">Rescued Nests</div></div>`:''}
     <div class="vstat"><div class="vstat-val">${G.player.stats.atk}</div><div class="vstat-lbl">Final Might</div></div>
-    <div class="vstat"><div class="vstat-val">${G.player.stats.hp}/${G.player.stats.maxHp}</div><div class="vstat-lbl">HP Left</div></div>`;
+    <div class="vstat"><div class="vstat-val">${hpLeft}/${G.player.stats.maxHp}</div><div class="vstat-lbl">HP Left</div></div>`;
   el.style.display='grid';
 }
 

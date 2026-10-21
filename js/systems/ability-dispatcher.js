@@ -1788,7 +1788,11 @@
 
     if (typeof logMsg === 'function') {
       var label = isHybrid ? '⚔🎶' : (isMagic ? '🎶' : '⚔');
-      logMsg(label + ' ' + (row.name || ab.id) + ': ' + totalDmg + ' damage' + (anyCrit ? ' (CRIT)' : '') + '.', 'player-action');
+      if (hitsLanded <= 0 && hits > 0) {
+        logMsg(label + ' ' + (row.name || ab.id) + ': ' + (hits > 1 ? 'every hit missed' : 'missed') + '.', 'miss');
+      } else {
+        logMsg(label + ' ' + (row.name || ab.id) + ': ' + totalDmg + ' damage' + (anyCrit ? ' (CRIT)' : '') + '.', 'player-action');
+      }
     }
     if (typeof refreshBattleUI === 'function') refreshBattleUI();
   };

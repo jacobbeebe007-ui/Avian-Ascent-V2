@@ -503,6 +503,12 @@
       ultimateMeter: 0,
     };
     assignReferenceLoadout(entity, classId, opts.rarity || 'grey');
+    if (opts.equipment && Avian.equipment) {
+      /* Explicit catalogue loadout (balance-lab fixtures) replaces the class
+       * reference loadout; gear stats are applied exactly once in finalize. */
+      entity.equipment = Avian.equipment.createEmptyLoadout();
+      Object.assign(entity.equipment, opts.equipment);
+    }
     if (typeof Avian.applyBirdV2IdentityToEntry === 'function') {
       Avian.applyBirdV2IdentityToEntry(birdKey, entity);
     }
@@ -641,9 +647,17 @@
 
     var srcKey = ab.actionSource || 'basic';
     if (srcKey === 'utility' && g.utilityUsedThisTurn && g.utilityUsedThisTurn[ab.id]) return 0;
+    if (srcKey !== 'basic' && g.actionUsedThisTurn && g.actionUsedThisTurn[srcKey]) return 0;
+    if (typeof getAbilityCooldown === 'function' && getAbilityCooldown(ab.id) > 0) return 0;
 
     if (typeof spendEnergy === 'function') spendEnergy(g.player, ab);
     else g.player.energy = Math.max(0, (g.player.energy || 0) - (ab.energyCost || ab.enCost || 1));
+    /* Same locks the live playerAction commits: once-per-turn + authored CD. */
+    if (srcKey !== 'basic') {
+      g.actionUsedThisTurn = g.actionUsedThisTurn || {};
+      g.actionUsedThisTurn[srcKey] = true;
+    }
+    if (typeof setAbilityCooldown === 'function') setAbilityCooldown(ab);
 
     counters.actionsUsed[srcKey] = (counters.actionsUsed[srcKey] || 0) + 1;
     g.playerActionsThisTurn = (g.playerActionsThisTurn || 0) + 1;
@@ -660,10 +674,9 @@
         g.utilityUsedThisTurn = g.utilityUsedThisTurn || {};
         g.utilityUsedThisTurn[ab.id] = true;
       }
-      /* Healing utilities — approximate from HP delta when present. */
       var hpBefore = g.player.stats.hp;
-      if (typeof Avian.equipmentActions === 'object' && ab.id) {
-        /* no-op: utility effects may still mutate via other hooks if wired later */
+      if (row && Avian.dispatcher && typeof Avian.dispatcher.applySelfRiders === 'function') {
+        Avian.dispatcher.applySelfRiders('player', row, ab, { utilitySucceeded: true });
       }
       var healed = Math.max(0, (g.player.stats.hp || 0) - hpBefore);
       if (healed > 0) {
@@ -755,12 +768,20 @@
     counters.enemyActions = (counters.enemyActions || 0) + 1;
     telemetry.recordAction('enemy', ab.actionSource || abilityId);
 
-    if (cat === 'heal') {
-      var healAmt = Math.max(1, Math.floor((enemy.stats.maxHp || 40) * 0.14));
-      enemy.stats.hp = Math.min(enemy.stats.maxHp || enemy.stats.hp, (enemy.stats.hp || 0) + healAmt);
+    var selfRow = row && (row.target === 'self' || row.noDamage);
+    if (cat === 'heal' || cat === 'guard' || cat === 'buff' || selfRow) {
+      /* Same path as executeEnemyKitTemplateAbility: authored self-riders first,
+       * legacy 14% Health recovery only for heal kits without a row. */
+      var applied = false;
+      if (row && Avian.dispatcher && typeof Avian.dispatcher.applySelfRiders === 'function') {
+        applied = Avian.dispatcher.applySelfRiders('enemy', row, ab, { utilitySucceeded: true });
+      }
+      if (!applied && cat === 'heal') {
+        var healAmt = Math.max(1, Math.floor((enemy.stats.maxHp || 40) * 0.14));
+        enemy.stats.hp = Math.min(enemy.stats.maxHp || enemy.stats.hp, (enemy.stats.hp || 0) + healAmt);
+      }
       return 0;
     }
-    if (cat === 'guard' || cat === 'buff') return 0;
 
     var isMagic = btn === 'spell';
     if (btn !== 'physical' && btn !== 'ranged' && btn !== 'spell' && btn !== 'hybrid') return 0;
@@ -778,25 +799,90 @@
     return recordIncomingAttackResult(counters, res);
   }
 
-  function pickPlayerSimAction(player) {
-    var order = ['ultimate', 'weaponA', 'weaponB', 'armour', 'basic', 'utility'];
-    var abs = player.abilities || [];
-    for (var o = 0; o < order.length; o++) {
-      var want = order[o];
-      for (var i = 0; i < abs.length; i++) {
-        var ab = abs[i];
-        if (!ab || ab.empty) continue;
-        if ((ab.actionSource || '') !== want) continue;
-        if (want === 'utility' && G.utilityUsedThisTurn && G.utilityUsedThisTurn[ab.id]) continue;
-        if (ab.isUltimate) {
-          var meter = typeof getUltimateMeter === 'function' ? getUltimateMeter('player') : (G.playerUltimateMeter || 0);
-          if (meter < 100) continue;
-        }
-        if (typeof canUseAbility === 'function' && !canUseAbility(player, ab)) continue;
-        return ab;
+  function simPlayerAbilityUsable(player, ab) {
+    var g = globalThis.G;
+    if (!ab || ab.empty) return false;
+    var src = ab.actionSource || 'basic';
+    if (src === 'utility' && g.utilityUsedThisTurn && g.utilityUsedThisTurn[ab.id]) return false;
+    if (src !== 'basic' && g.actionUsedThisTurn && g.actionUsedThisTurn[src]) return false;
+    if (typeof getAbilityCooldown === 'function' && getAbilityCooldown(ab.id) > 0) return false;
+    if (ab.isUltimate) {
+      var meter = typeof getUltimateMeter === 'function' ? getUltimateMeter('player') : (g.playerUltimateMeter || 0);
+      if (meter < 100) return false;
+    }
+    if (typeof canUseAbility === 'function' && !canUseAbility(player, ab)) return false;
+    return true;
+  }
+
+  function simRowIsSelfOnly(row) {
+    return !row || row.noDamage || row.target === 'self';
+  }
+
+  /* Would this self-only ability change anything right now?  Mirrors how a
+   * player reads the board: no restores at full pools, no heals near full
+   * Health, no re-applying an active Fortify/Ward/Bastion. */
+  function simSelfAbilityIsUseful(player, row) {
+    var g = globalThis.G;
+    var st = player.stats || {};
+    var status = g.playerStatus || {};
+    var riders = (row && row.riders) || [];
+    if (!riders.length) return false;
+    /* Restores only pay off once a pool is broken: that re-enables the
+     * protection layer, whereas topping up a half pool loses to attacking. */
+    var armBroken = (st.maxArmour || 0) > 0 && (st.armour || 0) <= 0;
+    var marmBroken = (st.maxMagicArmour || 0) > 0 && (st.magicArmour || 0) <= 0;
+    var hpPct = (st.hp || 0) / Math.max(1, st.maxHp || 1);
+    for (var i = 0; i < riders.length; i++) {
+      var r = riders[i];
+      if (!r || !r.kind) continue;
+      switch (r.kind) {
+        case 'healMaxHpPct': if (hpPct < 0.7) return true; break;
+        case 'restoreArmour': if (armBroken) return true; break;
+        case 'restoreMagicArmour': if (marmBroken) return true; break;
+        case 'restoreLowerPool': if (armBroken || marmBroken) return true; break;
+        case 'fortify': if (!status.fortify) return true; break;
+        case 'ward': if (!status.ward) return true; break;
+        case 'bastion': if (!status.bastion) return true; break;
+        default: return true;
       }
     }
-    return null;
+    return false;
+  }
+
+  function pickPlayerSimAction(player) {
+    var g = globalThis.G;
+    var abs = (player.abilities || []).filter(function (ab) { return simPlayerAbilityUsable(player, ab); });
+    if (!abs.length) return null;
+    var bySrc = function (src) {
+      return abs.find(function (ab) { return (ab.actionSource || 'basic') === src; }) || null;
+    };
+    var ult = abs.find(function (ab) { return ab.isUltimate; });
+    if (ult) return ult;
+
+    var energy = Number(player.energy) || 0;
+    var selfAbilities = abs.filter(function (ab) {
+      var src = ab.actionSource || 'basic';
+      return (src === 'utility' || src === 'armour') && simRowIsSelfOnly(resolveCombatRow(ab));
+    });
+    var hpPct = (player.stats.hp || 0) / Math.max(1, player.stats.maxHp || 1);
+    for (var i = 0; i < selfAbilities.length; i++) {
+      var sab = selfAbilities[i];
+      var srow = resolveCombatRow(sab);
+      var cost = Number(sab.energyCost || sab.enCost || 1);
+      var heals = (srow && srow.riders || []).some(function (r) { return r && r.kind === 'healMaxHpPct'; });
+      /* Emergency heal takes priority; otherwise only spend on a self ability
+       * when it is useful and still leaves energy to attack this turn. */
+      if (simSelfAbilityIsUseful(player, srow) && ((heals && hpPct < 0.5) || energy - cost >= 2)) return sab;
+    }
+
+    var order = ['weaponB', 'weaponA', 'basic'];
+    for (var o = 0; o < order.length; o++) {
+      var pick = bySrc(order[o]);
+      if (pick && !simRowIsSelfOnly(resolveCombatRow(pick))) return pick;
+    }
+    var anyDamage = abs.find(function (ab) { return !simRowIsSelfOnly(resolveCombatRow(ab)); });
+    if (anyDamage) return anyDamage;
+    return selfAbilities.find(function (ab) { return simSelfAbilityIsUseful(player, resolveCombatRow(ab)); }) || null;
   }
 
   function regenEnergyForTurn(entity, side) {
@@ -823,6 +909,7 @@
     regenEnergyForTurn(g.player, 'player');
     g.playerActionsThisTurn = 0;
     g.utilityUsedThisTurn = {};
+    g.actionUsedThisTurn = {};
     if (typeof Avian.dispatcher.onPlayerTurnStart === 'function') {
       Avian.dispatcher.onPlayerTurnStart(g.player);
     }
@@ -842,6 +929,7 @@
     var e = g.enemy;
     regenEnergyForTurn(e, 'enemy');
 
+    if (typeof resetEnemyTurnAbilityUse === 'function') resetEnemyTurnAbilityUse();
     var plan = typeof planEnemyTurn === 'function' ? planEnemyTurn(e, g.player) : { actions: [] };
     var actions = (plan.actions || []).slice(0, globalThis.MAX_ENEMY_ACTIONS_PER_TURN || 3);
     for (var i = 0; i < actions.length; i++) {
@@ -852,8 +940,16 @@
       e.energy -= cost;
       if (action.type === 'ability' && action.abilityId) {
         simExecuteEnemyAbility(e, action.abilityId, counters);
+        if (typeof registerEnemyAbilityUse === 'function') registerEnemyAbilityUse(e, action.abilityId);
       }
       if (g.player.stats.hp <= 0 || e.stats.hp <= 0) break;
+    }
+    if (typeof tickEnemyAbilityCooldowns === 'function') tickEnemyAbilityCooldowns();
+    if (g.abilityCooldowns) {
+      Object.keys(g.abilityCooldowns).forEach(function (k) {
+        g.abilityCooldowns[k] = Math.max(0, (g.abilityCooldowns[k] || 0) - 1);
+        if (g.abilityCooldowns[k] === 0) delete g.abilityCooldowns[k];
+      });
     }
   }
 
@@ -915,6 +1011,10 @@
       enemyUltimateMeter: g.enemyUltimateMeter,
       _playerEnergyTurnIndex: g._playerEnergyTurnIndex,
       _enemyEnergyTurnIndex: g._enemyEnergyTurnIndex,
+      abilityCooldowns: g.abilityCooldowns,
+      actionUsedThisTurn: g.actionUsedThisTurn,
+      enemyAbilityCooldowns: g.enemyAbilityCooldowns,
+      enemyAbilityUsedThisTurn: g.enemyAbilityUsedThisTurn,
     };
   }
 
@@ -936,6 +1036,10 @@
     g.enemyUltimateMeter = saved.enemyUltimateMeter;
     g._playerEnergyTurnIndex = saved._playerEnergyTurnIndex;
     g._enemyEnergyTurnIndex = saved._enemyEnergyTurnIndex;
+    g.abilityCooldowns = saved.abilityCooldowns;
+    g.actionUsedThisTurn = saved.actionUsedThisTurn;
+    g.enemyAbilityCooldowns = saved.enemyAbilityCooldowns;
+    g.enemyAbilityUsedThisTurn = saved.enemyAbilityUsedThisTurn;
   }
 
   function pacingWarning(turns) {
@@ -961,7 +1065,7 @@
     var maxTurns = Math.max(1, Number(opts.maxTurns) || 40);
     var seed = Number(opts.seed) != null ? Number(opts.seed) : 1;
 
-    var attacker = buildBirdCombatant(attackerKey, { rarity: atkRarity });
+    var attacker = buildBirdCombatant(attackerKey, { rarity: atkRarity, equipment: opts.attackerEquipment || null });
     var defender;
     if (opts.defenderBirdKey || opts.defender) {
       defender = buildBirdCombatant(opts.defenderBirdKey || opts.defender, { rarity: defRarity, isEnemy: true });
@@ -972,14 +1076,8 @@
     }
     defender.isEnemy = true;
 
-    /* Balance-lab fixtures may supply an exact catalogue loadout and/or a
-     * synthetic target stat line.  Normal game callers omit both options. */
-    if (opts.attackerEquipment && Avian.equipment) {
-      attacker.equipment = Avian.equipment.createEmptyLoadout();
-      Object.assign(attacker.equipment, opts.attackerEquipment);
-      if (typeof Avian.equipment.applyEquipmentStatsToEntity === 'function') Avian.equipment.applyEquipmentStatsToEntity(attacker);
-      if (Avian.equipmentActions && typeof Avian.equipmentActions.syncEntityAbilities === 'function') Avian.equipmentActions.syncEntityAbilities(attacker);
-    }
+    /* Balance-lab fixtures may supply a synthetic target stat line.  Normal
+     * game callers omit it. */
     if (opts.defenderStats) {
       var fixed = opts.defenderStats;
       if (fixed.hp != null) defender.stats.hp = defender.stats.maxHp = Number(fixed.hp);
@@ -1012,10 +1110,13 @@
           g.playerActionsThisTurn = 0;
           g.enemyActionsThisTurn = 0;
           g.utilityUsedThisTurn = {};
+          g.actionUsedThisTurn = {};
+          g.abilityCooldowns = {};
           g.playerUltimateMeter = 0;
           g.enemyUltimateMeter = 0;
           g._playerEnergyTurnIndex = 0;
           g._enemyEnergyTurnIndex = 0;
+          if (typeof resetEnemyAbilityCooldowns === 'function') resetEnemyAbilityCooldowns();
 
           while (turns < maxTurns && attacker.stats.hp > 0 && defender.stats.hp > 0) {
             turns++;

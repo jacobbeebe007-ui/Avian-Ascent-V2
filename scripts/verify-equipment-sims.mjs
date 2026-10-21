@@ -114,12 +114,14 @@ if (JSON.stringify(first) !== JSON.stringify(second)) {
   ok('seeded duel deterministic (seed=' + SEED + ')');
 }
 
-/* v2.1 Health + Attack Power + remastered Grey pools lengthen the seeded duel. */
+/* v2.1 Health + Attack Power + remastered Grey pools lengthen the seeded duel.
+ * Both sides now obey once-per-turn + authored cooldowns and the player policy
+ * only spends on self abilities when they change the board. */
 const SNAPSHOT = Object.freeze({
-  turns: 7,
-  winner: 'attacker',
-  damageDealt: 205,
-  damageTaken: 100,
+  turns: 6,
+  winner: 'defender',
+  damageDealt: 186,
+  damageTaken: 166,
   seed: SEED,
 });
 function near(a, b, eps = 0.05) {

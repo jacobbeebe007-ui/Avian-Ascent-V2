@@ -340,7 +340,7 @@ function scheduleOpeningEnemyTurn(){
 
 function loadStage() {
   // #region agent log
-  fetch('http://127.0.0.1:7940/ingest/a2f9b3c2-6614-4231-b7d9-0c870302a25c',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'5e515f'},body:JSON.stringify({sessionId:'5e515f',location:'game.js:loadStage:entry',message:'loadStage start',data:{encounterStage:typeof getEncounterStage==='function'?getEncounterStage():null,owEnemies:G._owStageEnemies,owIdx:G._owEnemyIndex},timestamp:Date.now(),hypothesisId:'H2,H3'})}).catch(()=>{});
+  _agentDbgLog('game.js:loadStage:entry', 'loadStage start', { encounterStage: typeof getEncounterStage==='function'?getEncounterStage():null, owEnemies: G._owStageEnemies, owIdx: G._owEnemyIndex }, 'H2,H3');
   // #endregion
   // Overworld shop: open the shop instead of a battle.
   if (G._pendingOverworldShop) {
@@ -351,6 +351,7 @@ function loadStage() {
   G.autoQueuedAbilityId=null;
   G._breakClampStreak=0;
   G.abilityCooldowns=G.abilityCooldowns||{};
+  if(typeof resetEnemyAbilityCooldowns==='function') resetEnemyAbilityCooldowns();
   const encounterStage = getEncounterStage();
   syncStoryEncounterBirdQueue(encounterStage);
   const stageSequenceLabel = (!G.endlessMode && (G._owEnemyCount||0) > 1)
@@ -406,7 +407,7 @@ function loadStage() {
   }
   G.enemy = ed;
   // #region agent log
-  fetch('http://127.0.0.1:7940/ingest/a2f9b3c2-6614-4231-b7d9-0c870302a25c',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'5e515f'},body:JSON.stringify({sessionId:'5e515f',location:'game.js:loadStage:enemySet',message:'G.enemy assigned',data:{hasEnemy:!!G.enemy,enemyId:G.enemy?.id||G.enemy?.name||null,hasStats:!!G.enemy?.stats,birdKey:G._owStageEnemies?.[G._owEnemyIndex||0]||null},timestamp:Date.now(),hypothesisId:'H2,H5'})}).catch(()=>{});
+  _agentDbgLog('game.js:loadStage:enemySet', 'G.enemy assigned', { hasEnemy: !!G.enemy, enemyId: G.enemy?.id||G.enemy?.name||null, hasStats: !!G.enemy?.stats, birdKey: G._owStageEnemies?.[G._owEnemyIndex||0]||null }, 'H2,H5');
   // #endregion
   if (G.enemy && G.enemy.stats) {
     const base = G.enemy._statBaseBeforeMutations || G.enemy.stats;

@@ -55,7 +55,9 @@
   Avian.data.balanceBenchmarks = Object.freeze({
     version: 1, baseSeed: 12345, maxTurns: 40,
     roster:Object.freeze(roster),
-    targets:Object.freeze({ starter:targets(22,6,6,80,5), mid:targets(55,16,16,84,8), late:targets(105,32,32,88,11) }),
+    /* v2.1 Health band: a Grey starter bird sits at 140–170 Health with 10–30
+     * protection; Blue/Gold catalogue gear adds pools, not levels. */
+    targets:Object.freeze({ starter:targets(150,12,12,80,5), mid:targets(175,26,26,84,8), late:targets(200,40,40,88,11) }),
     boss:Object.freeze({ birdId:'crow', reason:'Duke reference uses the stable Knight combat profile.', tiers:Object.freeze({ early:{level:10,rarity:'blue',hp:80}, mid:{level:20,rarity:'purple',hp:150}, late:{level:30,rarity:'gold',hp:240} }) }),
     endlessBands:Object.freeze([1,5,10,15,20]),
     startingWeapons:Object.freeze(['WPN-B01','WPN-B02','WPN-B03','WPN-B04','WPN-B05']),

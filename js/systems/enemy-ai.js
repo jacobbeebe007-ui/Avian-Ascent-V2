@@ -324,6 +324,21 @@
     e._resolvedAIConfig = aiConfig;
     var mode = global.getEnemyMode(e, p);
     var pool = global.buildEnemyActionPool(e, mode);
+    var plannedOnce = Object.create(null);
+    var isRepeatable = function (a) {
+      return typeof global.enemyAbilityIsRepeatable !== 'function'
+        || global.enemyAbilityIsRepeatable(a.abilityId, e);
+    };
+    /* Cooldown + once-per-turn gate, same rules the player's loadout obeys. */
+    var isAvailable = function (a) {
+      if (!a || a.type !== 'ability') return true;
+      if (typeof global.isEnemyAbilityAvailable === 'function' && !global.isEnemyAbilityAvailable(a.abilityId, e)) return false;
+      return !(plannedOnce[a.abilityId] && !isRepeatable(a));
+    };
+    var markPlanned = function (a) {
+      if (a && a.type === 'ability' && a.abilityId) plannedOnce[a.abilityId] = true;
+    };
+    pool = pool.filter(isAvailable);
     var actions = [];
     var mem = typeof global.getEnemyAIMemory === 'function' ? global.getEnemyAIMemory(e) : {};
     var profile = (aiConfig && aiConfig.behaviourWeights)
@@ -351,12 +366,14 @@
     if (intent === 'pressure') {
       var controlPick = (intentPool.length ? intentPool : pool).find(function (a) {
         return global.classifyEnemyActionCategory(a) === 'control'
+          && isAvailable(a)
           && global.getEnemyActionEnergyCost(a) <= energy
           && (spentEnergy + global.getEnemyActionEnergyCost(a) <= energySpendCap);
       });
       if (controlPick && actionsTaken < maxActions) {
         var cc = global.getEnemyActionEnergyCost(controlPick);
         actions.push(Object.assign({}, controlPick, { energyCost: cc, category: 'control' }));
+        markPlanned(controlPick);
         energy -= cc; spentEnergy += cc; actionsTaken++;
         mem.lastAbilityId = controlPick.abilityId || controlPick.type;
         mem.utilityStreak = (mem.utilityStreak || 0) + 1;
@@ -364,12 +381,14 @@
       var basicPick = pool.find(function (a) {
         return a.type === 'ability'
           && global.classifyEnemyActionCategory(a) === 'damage'
+          && isAvailable(a)
           && global.getEnemyActionEnergyCost(a) <= energy
           && (spentEnergy + global.getEnemyActionEnergyCost(a) <= energySpendCap);
       });
       if (basicPick && actionsTaken < maxActions) {
         var bc = global.getEnemyActionEnergyCost(basicPick);
         actions.push(Object.assign({}, basicPick, { energyCost: bc, category: global.classifyEnemyActionCategory(basicPick) }));
+        markPlanned(basicPick);
         energy -= bc; spentEnergy += bc; actionsTaken++;
         turnHadDamage = global.projectedEnemyActionDamage(basicPick, e) > 0;
       }
@@ -377,7 +396,7 @@
 
     while (energy > 0 && actionsTaken < maxActions && spentEnergy < energySpendCap) {
       var source = intentPool.length ? intentPool : pool;
-      var affordable = source.filter(function (a) { return global.getEnemyActionEnergyCost(a) <= energy; });
+      var affordable = source.filter(function (a) { return isAvailable(a) && global.getEnemyActionEnergyCost(a) <= energy; });
       if (!affordable.length) break;
 
       var picked = pickScoredAction(affordable, e, p, ctx, profile, intent, archetype, mem, energy, aiConfig);
@@ -388,6 +407,7 @@
       });
       if (spentEnergy + best.energyCost > energySpendCap) break;
       actions.push(best);
+      markPlanned(picked);
       energy -= best.energyCost;
       spentEnergy += best.energyCost;
       actionsTaken++;
@@ -402,6 +422,7 @@
       var fallback = pool.find(function (a) {
         return a.type === 'ability'
           && global.classifyEnemyActionCategory(a) === 'damage'
+          && isAvailable(a)
           && global.getEnemyActionEnergyCost(a) <= (e.energyMax || 3);
       });
       if (fallback && actions.length < maxActions) {

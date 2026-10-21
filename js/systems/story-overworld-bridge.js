@@ -119,7 +119,7 @@ function handleOverworldReturn() {
 
   if (intent.action === 'battle') {
     // #region agent log
-    fetch('http://127.0.0.1:7940/ingest/a2f9b3c2-6614-4231-b7d9-0c870302a25c',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'5e515f'},body:JSON.stringify({sessionId:'5e515f',location:'game.js:handleOverworldReturn:battle',message:'OW battle intent',data:{stage:intent.stage,nodeId:intent.nodeId,hasEncounter:!!intent.encounter,hasSave:!!save?.player},timestamp:Date.now(),hypothesisId:'H1'})}).catch(()=>{});
+    _agentDbgLog('game.js:handleOverworldReturn:battle', 'OW battle intent', { stage: intent.stage, nodeId: intent.nodeId, hasEncounter: !!intent.encounter, hasSave: !!save?.player }, 'H1');
     // #endregion
     G._owForgeNavMeta = {
       mapId: intent.mapId || 'main',
@@ -176,12 +176,12 @@ function handleOverworldReturn() {
     }
     try{
       // #region agent log
-      fetch('http://127.0.0.1:7940/ingest/a2f9b3c2-6614-4231-b7d9-0c870302a25c',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'5e515f'},body:JSON.stringify({sessionId:'5e515f',location:'game.js:handleOverworldReturn:preContinueRun',message:'Before continueRun',data:{pendingStage:G._owPendingBattleStage,owEnemies:G._owStageEnemies,owCount:G._owEnemyCount,encounterRollStage:G._owEncounterRollStage},timestamp:Date.now(),hypothesisId:'H1,H4'})}).catch(()=>{});
+      _agentDbgLog('game.js:handleOverworldReturn:preContinueRun', 'Before continueRun', { pendingStage: G._owPendingBattleStage, owEnemies: G._owStageEnemies, owCount: G._owEnemyCount, encounterRollStage: G._owEncounterRollStage }, 'H1,H4');
       // #endregion
       continueRun(); // restores state; continueRun ends with loadStage()
     }catch(err){
       // #region agent log
-      fetch('http://127.0.0.1:7940/ingest/a2f9b3c2-6614-4231-b7d9-0c870302a25c',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'5e515f'},body:JSON.stringify({sessionId:'5e515f',location:'game.js:handleOverworldReturn:battleCatch',message:'continueRun failed',data:{err:String(err&&err.message||err),stack:String(err&&err.stack||'').slice(0,500)},timestamp:Date.now(),hypothesisId:'H1'})}).catch(()=>{});
+      _agentDbgLog('game.js:handleOverworldReturn:battleCatch', 'continueRun failed', { err: String(err&&err.message||err), stack: String(err&&err.stack||'').slice(0,500) }, 'H1');
       // #endregion
       console.error('handleOverworldReturn battle failed', err);
       try{ localStorage.setItem(_OW_NAV_KEY, JSON.stringify(intent)); }catch(_){ }
