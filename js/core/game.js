@@ -2514,12 +2514,12 @@ function equipmentSlotIconForItem(item){
   }
   return '⚙';
 }
-function grantPlayerEquipmentItem(itemId){
+function grantPlayerEquipmentItem(itemId, opts){
   if(!itemId) return {ok:false, autoEquipped:false, slot:null, itemId:null};
   const player=typeof G!=='undefined'?G.player:null;
   if(!player) return {ok:false, autoEquipped:false, slot:null, itemId};
   if(typeof Avian?.equipment?.grantEquipment==='function'){
-    const result=Avian.equipment.grantEquipment(player, itemId)||{ok:false};
+    const result=Avian.equipment.grantEquipment(player, itemId, opts)||{ok:false};
     if(result.autoEquipped && typeof logMsg==='function'){
       const item=typeof getEquipmentItem==='function'?getEquipmentItem(itemId):null;
       const slotLbl=typeof getEquipmentNestSlotLabel==='function'?getEquipmentNestSlotLabel(result.slot):result.slot;
@@ -2624,7 +2624,7 @@ function buildNestEquipmentSectionV2(player){
   const filterLabel=activeFilter==='all'?'All gear':getEquipmentNestSlotLabel(activeFilter);
   let invHtml='';
   if(!filteredInv.length){
-    invHtml=`<div class="nest-inv-empty">No ${escapeHtmlRoster(filterLabel)} in the bag. New finds land here when that slot is already filled.</div>`;
+    invHtml=`<div class="nest-inv-empty">No ${escapeHtmlRoster(filterLabel)} in the bag. Stork purchases land here. Extra finds land here when that slot is already worn.</div>`;
   } else {
     invHtml='<div class="nest-inventory-grid nest-inventory-grid--bag">';
     for(const id of filteredInv){
@@ -2648,7 +2648,7 @@ function buildNestEquipmentSectionV2(player){
   const lockNote=locked?'<p class="nest-lock-note">Equipment is locked during Story battle. Equip from rewards or the overworld Nest.</p>':'';
   const equipHint=locked
     ? 'Loadout changes unlock after victory. Slot filters remain available.'
-    : 'New finds auto-equip when the slot is empty. Bag pieces sit at the top — Equip fills an empty slot, Swap replaces what you are wearing. Stats show on each piece; hover for skills and details.';
+    : 'Stork purchases stay in the bag. Drops auto-equip when the slot is empty. Equip fills an empty slot, Swap replaces what you are wearing. Stats show on each piece; hover for skills and details.';
   const equipHintMobile=locked
     ? 'Loadout unlocks after victory.'
     : 'Tap a bag card to equip or swap. Tap worn gear to unequip.';
@@ -8526,10 +8526,23 @@ function estimateSkillDamageRange(ab,tmpl,attacker,opts){
       const resolvePreviewWeaponBounds=()=>{
         let lo=packRow.minDamage!=null?Number(packRow.minDamage):null;
         let hi=packRow.maxDamage!=null?Number(packRow.maxDamage):null;
-        if((!Number.isFinite(lo)||!Number.isFinite(hi))&&attackerEnt){
-          const loadout=attackerEnt.loadout||attackerEnt.equipment?.loadout;
-          const wpnId=loadout&&(loadout.mainHand||loadout.weapon);
-          const wpn=wpnId&&Avian?.data?.equipment?.items?.[wpnId];
+        const natural=typeof isNaturalBasicAbility==='function'&&isNaturalBasicAbility(packRow);
+        if(natural){
+          const flat=packRow.naturalStrikeFlat||{};
+          lo=flat.min!=null?Number(flat.min):1;
+          hi=flat.max!=null?Number(flat.max):2;
+          if(!Number.isFinite(lo)) lo=1;
+          if(!Number.isFinite(hi)) hi=2;
+          return {lo,hi};
+        }
+        if(!Number.isFinite(lo)||!Number.isFinite(hi)){
+          let wpn=typeof resolveMainHandWeaponItem==='function'?resolveMainHandWeaponItem(attackerEnt):null;
+          if(!wpn&&attackerEnt){
+            const gear=attackerEnt.equipment||attackerEnt.equipped||attackerEnt.loadout;
+            const wpnId=gear&&(gear.mainHand||gear.mainWeapon||gear.weapon);
+            wpn=wpnId&&Avian?.data?.equipment?.items?.[wpnId];
+          }
+          if(!wpn&&packRow.equipmentItemId) wpn=Avian?.data?.equipment?.items?.[packRow.equipmentItemId];
           if(wpn){
             if(!Number.isFinite(lo)&&wpn.minDamage!=null) lo=Number(wpn.minDamage);
             if(!Number.isFinite(hi)&&wpn.maxDamage!=null) hi=Number(wpn.maxDamage);
@@ -17422,6 +17435,7 @@ function setShopTab(tab){
   G._shopTab=isEquipped?'equipped':(isSell?'sell':'buy');
   if(!leavingBuy && SHOP_BUY_CATEGORY_TABS.includes(tab)) G._shopCategoryTab=tab;
   if(!G._shopCategoryTab) G._shopCategoryTab='all';
+  updateShopSellTabCount();
   SHOP_BUY_CATEGORY_TABS.forEach(cat=>{
     const el=document.getElementById('shop-tab-'+cat);
     if(el){
@@ -17594,6 +17608,7 @@ function shopSellSelected(){
   if(log) log.textContent=`✓ Sold: ${soldNames.join(', ')} (+${total}🌟).`;
   clearShopSelection();
   saveRun();
+  updateShopSellTabCount();
   renderShopSellItems();
   syncShopDock();
   return true;
@@ -17878,6 +17893,18 @@ function renderShopItems() {
   bindShopItemCompareTooltips();
 }
 
+function updateShopSellTabCount(){
+  const el=document.getElementById('shop-tab-sell');
+  if(!el) return;
+  const n=Array.isArray(G?.player?.equipmentInventory)?G.player.equipmentInventory.length:0;
+  el.textContent=n>0?`Sell (${n})`:'Sell';
+}
+function refreshOpenNestEquipment(){
+  const modal=document.getElementById('nest-modal');
+  if(modal && modal.classList.contains('open') && typeof openNest==='function'){
+    try{ openNest(); }catch(_){}
+  }
+}
 function purchaseShopItemAtIndex(idx, costOverride){
   const item=_shopItems[idx];
   if(!item) return null;
@@ -17885,19 +17912,36 @@ function purchaseShopItemAtIndex(idx, costOverride){
   const cost=(typeof costOverride==='number')?costOverride:getShopItemBuyCost(item);
   if(G.shinyObjects<cost) return null;
 
+  /* Grant gear before spending. A failed grant must not take Shinies or remove the offer.
+     Shop pieces stay in the bag (autoEquip:false) so Sell and the Nest list them. */
+  let grantResult=null;
+  if(item.type==='equipment' || item.type==='mutation'){
+    const itemId=item.type==='equipment'?(item.equipmentItemId||item.id):(item.mutationItemId||item.id);
+    const known=typeof getEquipmentItem==='function'
+      ? getEquipmentItem(itemId)
+      : (Avian?.equipment?.getItem?.(itemId)||null);
+    if(!known || !G.player) return null;
+    if(item.type==='equipment'){
+      grantResult=typeof grantPlayerEquipmentItem==='function'
+        ? grantPlayerEquipmentItem(itemId, {autoEquip:false})
+        : null;
+      if(!grantResult || grantResult.ok===false) return null;
+    } else if(typeof Avian?.equipment?.addToInventory==='function'){
+      if(!Avian.equipment.addToInventory(G.player, itemId)) return null;
+      grantResult={ok:true, autoEquipped:false, slot:null, itemId, inBag:true};
+    } else return null;
+  }
+
   G.shinyObjects-=cost;
   if(cost<getShopItemBaseCost(item) && G._nextShopDiscount>0) G._nextShopDiscount=0;
   if(item.type==='equipment'){
     const itemId=item.equipmentItemId||item.id;
-    if(typeof grantPlayerEquipmentItem==='function') grantPlayerEquipmentItem(itemId);
-    else if(typeof Avian?.equipment?.addToInventory==='function') Avian.equipment.addToInventory(G.player, itemId);
     if(typeof Avian?.equipmentLoot?.registerOrangeAcquired==='function'){
       Avian.equipmentLoot.registerOrangeAcquired(Avian.equipmentLoot.getItem(itemId));
     }
     reapplyPlayerGearStats(G.player);
   } else if(item.type==='mutation'){
     const itemId=item.mutationItemId||item.id;
-    if(typeof Avian?.equipment?.addToInventory==='function') Avian.equipment.addToInventory(G.player, itemId);
     codexMark('mutations', itemId, 'seen');
   } else if(item.isCombatItem && typeof item.apply==='function'){
     item.apply(G.player);
@@ -17920,7 +17964,7 @@ function purchaseShopItemAtIndex(idx, costOverride){
   _shopItems.splice(idx,1);
   assignShopItems(_shopItems);
   if (!G.endlessMode) Avian.storyRun?.visitShop(G._currentShopNodeId);
-  return {item, cost, isCombatItem:!!item.isCombatItem};
+  return {item, cost, isCombatItem:!!item.isCombatItem, grantResult};
 }
 
 async function shopBuySelected() {
@@ -17965,14 +18009,22 @@ async function shopBuySelected() {
   }
   if(!purchased.length) return false;
 
-  const names=purchased.map(r=>`${r.item.icon} ${r.item.name}`);
+  const names=purchased.map(r=>`${r.item.icon||''} ${r.item.name}`.trim());
+  const bagged=purchased.filter(r=>r.item&&(r.item.type==='equipment'||r.item.type==='mutation')&&r.grantResult&&r.grantResult.ok!==false);
   logMsg(`🌟 Purchased ${purchased.length} item(s)!`,'exp-gain');
   const log=document.getElementById('shop-purchase-log');
-  if(log) log.textContent=`✓ Bought: ${names.join(', ')}. Keep shopping or leave when done.`;
+  if(log){
+    let msg=`✓ Bought: ${names.join(', ')}.`;
+    if(bagged.length) msg+=bagged.length===1?' It is in your bag — open Sell or the Nest to equip.':' They are in your bag — open Sell or the Nest to equip.';
+    else msg+=' Keep shopping or leave when done.';
+    log.textContent=msg;
+  }
 
   clearShopSelection();
   saveRun();
+  updateShopSellTabCount();
   renderShopItems();
+  refreshOpenNestEquipment();
   if(document.getElementById('screen-battle')?.classList.contains('active') && typeof refreshBattleUI==='function'){
     try{ refreshBattleUI(); }catch(_){}
   }

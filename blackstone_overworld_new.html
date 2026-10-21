@@ -76,6 +76,7 @@ html,body{width:100%;height:100%;overflow:hidden;background:#060d05;}
 #i-terrain{font-family:'EB Garamond',serif;font-size:12px;font-style:italic;color:var(--mist);}
 #i-status{font-family:'Cinzel',serif;font-size:8px;letter-spacing:2px;color:var(--gold-d);text-transform:uppercase;}
 #i-rewards{font-family:'EB Garamond',serif;font-size:12px;color:var(--parch);}
+#i-loadout{font-family:'Cinzel',serif;font-size:8px;letter-spacing:1px;color:var(--gold-l);text-transform:uppercase;margin-top:2px;}
 #i-enemies{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:2px;}
 #i-enemies .el{font-family:'Cinzel',serif;font-size:7px;color:var(--gold-d);letter-spacing:2px;}
 .ec{font-family:'EB Garamond',serif;font-size:11px;background:rgba(200,160,32,.07);border:1px solid rgba(200,160,32,.18);color:var(--parch);padding:1px 7px;}
@@ -252,6 +253,7 @@ html,body{width:100%;height:100%;overflow:hidden;background:#060d05;}
         <div id="i-terrain"></div>
         <div id="i-status"></div>
         <div id="i-rewards"></div>
+        <div id="i-loadout"></div>
         <div id="i-enemies"></div>
       </div>
     </div>
@@ -667,7 +669,7 @@ function getShinyRangeForStage(stage,isBoss){
 }
 function getNodeRewardPreview(n){
   if(!n || n.type==='start') return '';
-  if(n.type==='shop') return 'Static stock after first visit. Refreshing rerolls and re-locks the shelf.';
+  if(n.type==='shop') return 'Bought gear goes to your bag. Refreshing rerolls and re-locks the shelf.';
   if(n.type==='overworld') return 'Travel to the main overworld map.';
   const last=OVERWORLD_PROGRESS.lastSummary;
   if(last && Number(last.stage)===Number(n.stage) && Number(last.shinyGain)>0){
@@ -858,7 +860,7 @@ function fillOvEnemiesPanel(n){
   if(n.type==='shop'){
     const d=document.createElement('div');
     d.style.cssText='font-family:EB Garamond,serif;font-style:italic;font-size:13px;color:var(--gold-d)';
-    d.textContent='Trade your Shinies for power.';
+    d.textContent='Purchases land in your bag. Equip them from the Nest.';
     oe.appendChild(d);
     return;
   }
@@ -1046,6 +1048,8 @@ NODES.forEach((n,ni)=>{
   const eff=owEffectiveNode(n);
   const effType=eff?.type||n.type;
   const reach=n.id<=UNLOCKED,vc=nvc(n),g=mk('g');
+  g.setAttribute('data-node-id', String(n.id));
+  g.setAttribute('data-node-type', String(effType));
   // Any on-map node may be selected; overlay confirms whether entering is allowed.
   g.style.cursor=(reach&&n.id>0)?'pointer':'default';
   if(reach&&n.id>0)g.addEventListener('click',()=>setPos(n.id));
@@ -1211,7 +1215,10 @@ function openOwNestOverlay(){ openOwUiOverlay('nest'); }
 window.addEventListener('message',function(ev){
   try{
     if(!ev.data) return;
-    if(ev.data.type==='avianOwUiClose'||ev.data.type==='avianOwNestClose') closeOwUiOverlay();
+    if(ev.data.type==='avianOwUiClose'||ev.data.type==='avianOwNestClose'){
+      closeOwUiOverlay();
+      if(typeof refreshOwRunChrome==='function') refreshOwRunChrome();
+    }
     if(ev.data.type==='avianOwExitToMenu'){
       closeOwUiOverlay();
       location.href='index.html';
@@ -1257,6 +1264,34 @@ function setZoom(nz,ox,oy){
   _cx=clamp(mapX-ox/zoom,0,MAP_W-vw/zoom);_cy=clamp(mapY-oy/zoom,0,MAP_H-vh/zoom);applyCamera(true);
 }
 
+function refreshOwRunChrome(){
+  let save=null;
+  try{
+    const key=(typeof AVIAN_OW_KEYS!=='undefined'&&AVIAN_OW_KEYS.SAVE)||'avianAscent_save_v2';
+    const raw=localStorage.getItem(key);
+    save=raw?JSON.parse(raw):null;
+  }catch(_){ save=null; }
+  const shinyEl=document.getElementById('hdr-shiny-count');
+  if(shinyEl && save) shinyEl.textContent='\u2B50 '+(Number(save.shinyObjects)||0);
+  const gearEl=document.getElementById('i-loadout');
+  if(!gearEl) return;
+  const player=save&&save.player;
+  if(!player){ gearEl.textContent=''; return; }
+  const bag=Array.isArray(player.equipmentInventory)?player.equipmentInventory.length:0;
+  const eq=player.equipment||{};
+  const worn=Object.keys(eq).filter(function(k){ return !!eq[k]; }).length;
+  gearEl.textContent='Bag '+bag+' \u00B7 Worn '+worn;
+}
+function sideNodeButtonLabel(n){
+  if(!n || n.type==='start') return 'Enter';
+  if(n.final || n.type==='boss') return 'Boss';
+  if(n.type==='shop') return 'Shop';
+  if(n.type==='world') return 'World';
+  if(n.type==='overworld') return 'Map';
+  if(n.type==='bonus') return 'Bonus';
+  if(n.type==='return') return 'Return';
+  return 'Stage';
+}
 function updateInfo(){
   const raw=NODES[curPos],n=owEffectiveNode(raw),vc=nvc(n);
   document.getElementById('i-label').textContent=n.type==='start'?'YOUR JOURNEY BEGINS':n.final?'FINAL CONFRONTATION':n.type==='boss'?'BOSS \u00B7 STAGE '+n.stage:n.type==='shop'?'THE STORK AWAITS':'STAGE '+n.stage;
@@ -1265,9 +1300,9 @@ function updateInfo(){
   document.getElementById('i-status').textContent=getNodeLockReason(n);
   document.getElementById('i-rewards').textContent=getNodeRewardPreview(n);
   const ie=document.getElementById('i-enemies');ie.innerHTML='';
-  if(n.type==='shop'){const s=document.createElement('span');s.style.cssText='font-family:EB Garamond,serif;font-style:italic;font-size:12px;color:var(--gold-d)';s.textContent='Trade your Shinies for power.';ie.appendChild(s);}
+  if(n.type==='shop'){const s=document.createElement('span');s.style.cssText='font-family:EB Garamond,serif;font-style:italic;font-size:12px;color:var(--gold-d)';s.textContent='The Stork. Purchases land in your bag.';ie.appendChild(s);}
   const pframe=document.getElementById('p-frame');pframe.innerHTML='<div id="p-img" style="width:100%;height:100%;"></div>';const pimg=document.getElementById('p-img');
-  if(n.type==='shop'){_owSprite('p-img','');pimg.style.borderRadius='0';document.getElementById('p-frame').innerHTML='<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-family:Georgia,serif;font-size:32px;color:#c89010;">$</div>';document.getElementById('p-name').textContent='EMPORIUM';}
+  if(n.type==='shop'){_owSprite('p-img','');pimg.style.borderRadius='0';document.getElementById('p-frame').innerHTML='<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-family:Georgia,serif;font-size:32px;color:#c89010;">$</div>';document.getElementById('p-name').textContent='THE STORK';}
   else{syncPanelPortraitForPlayer();}
   document.getElementById('btn-prev').disabled=prevPathNodeId(curPos)==null;
   const nextId=nextPathNodeId(curPos);
@@ -1275,7 +1310,11 @@ function updateInfo(){
   document.getElementById('btn-next').disabled=curPos>=UNLOCKED||!nextNd||!isNodeUnlocked(nextNd)||nodeBlocksAdvance(owEffectiveNode(NODES[curPos]));
   const nCur=owEffectiveNode(NODES[curPos]);
   const openBtn=document.getElementById('btn-open-node');
-  if(openBtn) openBtn.disabled=!nCur||nCur.type==='start'||isMoving;
+  if(openBtn){
+    openBtn.disabled=!nCur||nCur.type==='start'||isMoving;
+    openBtn.textContent=sideNodeButtonLabel(nCur);
+  }
+  refreshOwRunChrome();
   syncNodeVisualState();
 }
 
@@ -1305,7 +1344,7 @@ function openOv(){
   const meta=document.getElementById('ov-meta');
   meta.innerHTML='';
   if(n.type==='shop'){
-    meta.insertAdjacentHTML('beforeend','<div class="ov-meta-line"><strong>Shop</strong>Static stock after first visit.</div><div class="ov-meta-line"><strong>Refresh</strong>Rerolls the shelf and locks the new stock in.</div>');
+    meta.insertAdjacentHTML('beforeend','<div class="ov-meta-line"><strong>Bag</strong>Bought gear is added to your bag.</div><div class="ov-meta-line"><strong>Refresh</strong>Rerolls the shelf and locks the new stock in.</div>');
   }else{
     const enemyCount=getNodeBattleCount(n);
     const enemyLevel=owExpectedEnemyLevel();

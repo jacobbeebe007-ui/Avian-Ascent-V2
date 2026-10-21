@@ -335,6 +335,19 @@ if (!unequipPlayer.equipment.helmet && unequipPlayer.equipmentInventory.length =
 }
 
 {
+  const shopBag = freshPlayer('sparrow');
+  equipment.ensurePlayerEquipmentState(shopBag);
+  const before = shopBag.equipmentInventory.length;
+  const bought = equipment.grantEquipment(shopBag, 'HLM-001', { autoEquip: false });
+  if (bought.ok && !bought.autoEquipped && bought.inBag && shopBag.equipmentInventory[0] === 'HLM-001'
+    && shopBag.equipment.helmet !== 'HLM-001' && shopBag.equipmentInventory.length === before + 1) {
+    ok('shop-style grant keeps the piece in the bag');
+  } else {
+    fail(`shop grant should stay in bag, got ${JSON.stringify(bought)} helm=${shopBag.equipment.helmet} inv=${JSON.stringify(shopBag.equipmentInventory)}`);
+  }
+}
+
+{
   const grantOff = freshPlayer('sparrow');
   equipment.ensurePlayerEquipmentState(grantOff);
   const starter = grantOff.equipment.mainHand;

@@ -3,6 +3,61 @@ function getAvatar(who)     { return document.getElementById(`${who}-avatar`); }
 function getAvatarWrap(who) { return document.getElementById(`${who}-avatar-wrap`); }
 function getPanel(who)      { return document.getElementById(`${who}-panel`); }
 
+function wornGearStatText(item){
+  if(!item) return '';
+  const bits=[];
+  const showWeapon=typeof itemHasDisplayableWeaponDamage==='function'
+    ? itemHasDisplayableWeaponDamage(item)
+    : (String(item.slot||'')==='Weapon' && (Number(item.minDamage)>0 || Number(item.maxDamage)>0));
+  if(showWeapon){
+    const lo=item.minDamage!=null?Number(item.minDamage):Number(item.maxDamage);
+    const hi=item.maxDamage!=null?Number(item.maxDamage):lo;
+    const fmt=typeof formatCombatNumber==='function'?formatCombatNumber:(n)=>String(n);
+    bits.push(`Dmg ${fmt(lo)}–${fmt(hi)}`);
+  }
+  const stats=item.stats||{};
+  const arm=Number(stats.armourFlat!=null?stats.armourFlat:stats.armour)||0;
+  const marm=Number(stats.magicArmourFlat!=null?stats.magicArmourFlat:stats.magicArmour)||0;
+  if(arm) bits.push(`ARM ${arm}`);
+  if(marm) bits.push(`MARM ${marm}`);
+  const skip={armourFlat:1, armour:1, magicArmourFlat:1, magicArmour:1};
+  let extra=0;
+  for(const [key, raw] of Object.entries(stats)){
+    const n=Number(raw)||0;
+    if(!n || skip[key] || extra>=3) continue;
+    const lbl=typeof formatEquipmentStatChipLabel==='function'?formatEquipmentStatChipLabel(key):key;
+    const isPct=String(key).includes('Pct')||/Pct$/i.test(key);
+    const shown=typeof formatSignedCombatStat==='function'?formatSignedCombatStat(n, isPct):(n>0?`+${n}`:String(n));
+    bits.push(`${lbl} ${shown}`);
+    extra++;
+  }
+  return bits.join(' · ');
+}
+function renderPlayerWornGear(){
+  const el=document.getElementById('player-worn-gear');
+  if(!el) return;
+  const player=G?.player;
+  if(!player){ el.innerHTML=''; return; }
+  if(typeof Avian?.equipment?.ensurePlayerEquipmentState==='function'){
+    try{ Avian.equipment.ensurePlayerEquipmentState(player); }catch(_){}
+  }
+  const order=typeof Avian?.equipment?.getSlotOrder==='function'
+    ? Avian.equipment.getSlotOrder()
+    : ['helmet','armour','mainHand','offHand','ankletL','ankletR','necklace'];
+  const eq=player.equipment||{};
+  const esc=typeof escapeHtmlRoster==='function'?escapeHtmlRoster:(s)=>String(s??'');
+  const chips=[];
+  order.forEach(slotKey=>{
+    const itemId=eq[slotKey];
+    if(!itemId) return;
+    const item=Avian?.equipment?.getItem?.(itemId)||Avian?.data?.equipment?.items?.[itemId]||null;
+    if(!item) return;
+    const slotLbl=typeof getEquipmentNestSlotLabel==='function'?getEquipmentNestSlotLabel(slotKey):slotKey;
+    const stat=wornGearStatText(item);
+    chips.push(`<span class="combat-worn-chip" data-worn-slot="${esc(slotKey)}" data-worn-item="${esc(itemId)}"><span class="combat-worn-slot">${esc(slotLbl)}</span><span class="combat-worn-name">${esc(item.name||itemId)}</span>${stat?`<span class="combat-worn-stat">${esc(stat)}</span>`:''}</span>`);
+  });
+  el.innerHTML=chips.length?chips.join(''):'<span class="combat-worn-empty">No gear worn</span>';
+}
 function refreshBattleUI() {
   const p = G.player.stats;
   document.getElementById('player-name').textContent = G.player.name;
@@ -10,6 +65,7 @@ function refreshBattleUI() {
   setHpBar('player', p.hp, p.maxHp);
   setEnergyBar('player', G.player.energy, G.player.energyMax);
   setProtectionBars('player');
+  renderPlayerWornGear();
   const pclsEl=document.getElementById('player-class-label');
   if(pclsEl){
     const pcls=idToClassLabel(resolveFinalClass(G.player.class||BIRDS[G.player.birdKey]?.class||'striker',G.player.birdKey));

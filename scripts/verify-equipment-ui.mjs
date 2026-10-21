@@ -53,6 +53,9 @@ const staticChecks = [
   ['compact combat hover card', /function buildCombatantHoverTooltipHtml[\s\S]*?combat-hover-card/],
   ['combat hover uses Might Dexterity Focus labels', /function buildCombatantHoverTooltipHtml[\s\S]*?sl\('atk'\)[\s\S]*?sl\('dex'\)[\s\S]*?sl\('matk'\)[\s\S]*?sl\('def'\)[\s\S]*?sl\('mdef'\)/],
   ['hold click suppress', /_suppressNextClick/],
+  ['shop purchase stays in bag', /autoEquip:\s*false/],
+  ['shop refuses spend when grant fails', /grantResult\.ok===false/],
+  ['damage preview reads main hand', /resolveMainHandWeaponItem/],
 ];
 
 for (const [label, re] of staticChecks) {
