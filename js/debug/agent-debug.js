@@ -1,7 +1,21 @@
 /* Avian Ascent — agent/debug session logging (Step 7 Phase 2).
- * Development-only localStorage ring buffer; safe no-op fetch when ingest unavailable.
+ * Development-only localStorage ring buffer + local ingest POST.
+ *
+ * Opt-in: enable with `?agentDebug=1` or `localStorage.avianAscent_agentDebug = '1'`.
+ * When off (the shipped default) the logger is a no-op, so live players never
+ * see connection-refused noise for the 127.0.0.1 ingest endpoint.
  */
+function _agentDbgEnabled() {
+  try {
+    if (/[?&]agentDebug=1(?:&|$)/.test(String(globalThis.location && globalThis.location.search || ''))) return true;
+    return globalThis.localStorage && localStorage.getItem('avianAscent_agentDebug') === '1';
+  } catch (_) {
+    return false;
+  }
+}
+
 function _agentDbgLog(location, message, data, hypothesisId) {
+  if (!_agentDbgEnabled()) return;
   const payload = { sessionId: '5e515f', location, message, data: data || {}, timestamp: Date.now(), hypothesisId: hypothesisId || '' };
   try {
     const k = 'avianAscent_dbg_5e515f';

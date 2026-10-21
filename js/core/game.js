@@ -16037,6 +16037,8 @@ function showVictory(){
 function showDefeat(){
   beginBattleBgmFadeOut();
   G._groveAmbushActive=false;
+  /* Snapshot before temp-stat restore refills Health, so "HP Left" is honest. */
+  G._runEndHp=Math.max(0,Math.round(Number(G.player?.stats?.hp)||0));
   restoreBattleTempPlayerStats();
   G.phase='REWARD';
   G.playerStatus = {};
@@ -16062,7 +16064,8 @@ function showDefeat(){
   const endEvt={won:false, bird:G.player?.birdKey||'unknown', stageReached:G.stage||1, deathCause:G._lastDeathCause||'hp_zero', endless:!!G.endlessMode};
   AvianEvents.emit('run:end', endEvt);
   runModuleHook('onRunEnd', endEvt);
-  showRunStats();
+  showRunStats({ hp: G._runEndHp });
+  G._runEndHp=null;
   renderUnlockPopupsOnGameover();
   showScreen('screen-gameover');
 }
@@ -16071,8 +16074,9 @@ function flightRescuedNestCount(){
   if(!Array.isArray(arr)) return 0;
   return arr.reduce((sum,row)=>sum+(Math.max(0,Math.floor(Number(row?.count)||1))),0);
 }
-function showRunStats(){
+function showRunStats(opts){
   const el=document.getElementById('run-stats'); if(!el) return;
+  const hpLeft=Number.isFinite(Number(opts?.hp))?Number(opts.hp):G.player.stats.hp;
   const stages=G.endlessMode?`${G.stage}+`:`${Math.min(G.stage,20)}/20`;
   const enemiesDefeated=Math.max(0,(G.stage||1)-1);
   const birdName=G.player?.name||'Unknown';
@@ -16089,7 +16093,7 @@ function showRunStats(){
     <div class="vstat"><div class="vstat-val">${G.shinyObjects||0}</div><div class="vstat-lbl">Shiny Objects</div></div>
     ${flightRescuedNestCount()>0?`<div class="vstat"><div class="vstat-val">+${flightRescuedNestCount()} 🪺</div><div class="vstat-lbl">Rescued Nests</div></div>`:''}
     <div class="vstat"><div class="vstat-val">${G.player.stats.atk}</div><div class="vstat-lbl">Final Might</div></div>
-    <div class="vstat"><div class="vstat-val">${G.player.stats.hp}/${G.player.stats.maxHp}</div><div class="vstat-lbl">HP Left</div></div>`;
+    <div class="vstat"><div class="vstat-val">${hpLeft}/${G.player.stats.maxHp}</div><div class="vstat-lbl">HP Left</div></div>`;
   el.style.display='grid';
 }
 
