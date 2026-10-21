@@ -1468,14 +1468,19 @@
   }
 
   /* New drops auto-wear when a legal slot is empty. Occupied slots stay put — the
-     piece remains in the bag for a manual swap. Unequip/displace still use addToInventory. */
-  function grantEquipment(player, itemId) {
+     piece remains in the bag for a manual swap. Unequip/displace still use addToInventory.
+     Shop purchases pass { autoEquip:false } so the piece stays in the bag. */
+  function grantEquipment(player, itemId, opts) {
+    opts = opts || {};
     if (!addToInventory(player, itemId)) {
       return { ok: false, autoEquipped: false, slot: null, itemId: itemId || null };
     }
+    if (opts.autoEquip === false) {
+      return { ok: true, autoEquipped: false, slot: null, itemId: itemId, inBag: true };
+    }
     var emptySlot = findEmptyEquipSlotForItem(player, itemId);
     if (!emptySlot) {
-      return { ok: true, autoEquipped: false, slot: null, itemId: itemId };
+      return { ok: true, autoEquipped: false, slot: null, itemId: itemId, inBag: true };
     }
     var equipped = equip(player, itemId, emptySlot);
     return {
@@ -1483,6 +1488,7 @@
       autoEquipped: !!equipped,
       slot: equipped ? emptySlot : null,
       itemId: itemId,
+      inBag: !equipped,
     };
   }
 

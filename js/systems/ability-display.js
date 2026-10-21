@@ -115,7 +115,7 @@
     if (when === 'alternatingAttackType') return ' if alternating attack type';
     if (when === 'onAilmentFail') return ' if ailment fails';
     if (when === 'onEnemyMissBeforeTurn') return ' if target misses before next turn';
-    if (when === 'reachedHealth') return ' if it reaches Health';
+    if (when === 'reachedHealth') return ' if Armour breaks and Health is damaged';
     if (when === 'userFaster') return ' if user is faster';
     if (when === 'dodgedLast') return ' if user Dodged last attack';
     if (when === 'targetLowHp') return ' if target is low Health';
@@ -337,6 +337,9 @@
       case 'refundApOnCrit': return seg('Refund 1 EN on crit', null);
       case 'restoreArmour': return seg('Restore ' + v + ' Armour' + w, 'def');
       case 'restoreMagicArmour': return seg('Restore ' + v + ' Magic Armour' + w, 'mdef');
+      case 'armourDamage': return seg('Deal ' + v + ' Armour damage' + w, 'def');
+      case 'magicArmourDamage': return seg('Deal ' + v + ' Magic Armour damage' + w, 'mdef');
+      case 'magicArmourRetaliateOnPhysical': return seg('Deal ' + v + ' Magic Armour damage on the first physical hit while Ward holds' + w, 'mdef');
       case 'restoreLowerPool': return seg('Restore ' + v + ' to lower pool' + w, 'def');
       case 'fortify': return seg('Fortify ' + v + w, 'def');
       case 'ward': return seg('Ward ' + v + w, 'mdef');
@@ -393,6 +396,32 @@
       out.push(s);
     }
     return out;
+  }
+  function isProtectionRiderText(text) {
+    return /\b(?:magic\s+)?armou?r\b|\bfortify\b|\bward\b|\bbastion\b/i.test(String(text || ''));
+  }
+  /** Armour, Fortify, and Ward lines stay visible even when other riders are folded into prose. */
+  function appendVisibleRiders(segs, row) {
+    var covered = displayTextCoversRiders(row);
+    riderSegments(row).forEach(function (s) {
+      if (!s) return;
+      if (covered && !isProtectionRiderText(s.text)) return;
+      var dup = segs.some(function (e) { return e && e.text === s.text; });
+      if (!dup) segs.push(s);
+    });
+  }
+  function wornWeaponItem(entity) {
+    if (!entity) return null;
+    if (typeof globalThis.resolveMainHandWeaponItem === 'function') {
+      var resolved = globalThis.resolveMainHandWeaponItem(entity);
+      if (resolved) return resolved;
+    }
+    var gear = entity.equipment || entity.equipped || entity.loadout;
+    if (!gear || typeof gear !== 'object') return null;
+    var id = gear.mainHand || gear.mainWeapon || gear.weapon || null;
+    if (!id) return null;
+    var items = (typeof Avian !== 'undefined' && Avian.data && Avian.data.equipment && Avian.data.equipment.items) || {};
+    return items[id] || null;
   }
   function escHtml(s) {
     return typeof globalThis.escapeHtmlRoster === 'function' ? globalThis.escapeHtmlRoster(s) : String(s);
@@ -507,11 +536,13 @@
   function resolveBriefWeaponRange(row) {
     var min = row && row.minDamage != null ? Number(row.minDamage) : null;
     var max = row && row.maxDamage != null ? Number(row.maxDamage) : null;
-    if ((!Number.isFinite(min) || !Number.isFinite(max)) && typeof globalThis.G !== 'undefined' && G.player) {
-      var loadout = G.player.loadout || (G.player.equipment && G.player.equipment.loadout);
-      var wpnId = loadout && (loadout.mainHand || loadout.weapon);
-      var items = (typeof Avian !== 'undefined' && Avian.data && Avian.data.equipment && Avian.data.equipment.items) || {};
-      var wpn = wpnId ? items[wpnId] : null;
+    var natural = typeof globalThis.isNaturalBasicAbility === 'function' && globalThis.isNaturalBasicAbility(row);
+    if (!natural && (!Number.isFinite(min) || !Number.isFinite(max))) {
+      var wpn = null;
+      if (row && row.equipmentItemId && typeof Avian !== 'undefined' && Avian.data && Avian.data.equipment && Avian.data.equipment.items) {
+        wpn = Avian.data.equipment.items[row.equipmentItemId] || null;
+      }
+      if (!wpn && typeof globalThis.G !== 'undefined' && G.player) wpn = wornWeaponItem(G.player);
       if (wpn) {
         if (!Number.isFinite(min) && wpn.minDamage != null) min = Number(wpn.minDamage);
         if (!Number.isFinite(max) && wpn.maxDamage != null) max = Number(wpn.maxDamage);
@@ -582,7 +613,7 @@
   function generatedBriefSegments(row) {
     var segs = coreBriefSegments(row);
     if (!displayTextCoversAilment(row)) ailmentSegments(row).forEach(function (s) { segs.push(s); });
-    if (!displayTextCoversRiders(row)) riderSegments(row).forEach(function (s) { segs.push(s); });
+    appendVisibleRiders(segs, row);
     return segs;
   }
 
@@ -606,7 +637,7 @@
       }
     }
     if (!displayTextCoversAilment(row)) ailmentSegments(row).forEach(function (s) { segs.push(s); });
-    if (!displayTextCoversRiders(row)) riderSegments(row).forEach(function (s) { segs.push(s); });
+    appendVisibleRiders(segs, row);
     if (segs.length >= 2) return segs.slice(0, 8);
     var mechanical = mechanicalLinesFromDisplayText(row.displayText, true).map(function (l) { return { text: l, color: null }; });
     if (mechanical.length >= 2) return mechanical.slice(0, 8);

@@ -1527,6 +1527,7 @@
   globalThis.mapLegacyRowToMasterDamage = mapLegacyRowToMasterDamage;
   globalThis.enrichCombatRow = enrichCombatRow;
   globalThis.usesMasterDamage = usesMasterDamage;
+  globalThis.resolveMainHandWeaponItem = resolveMainHandWeaponItem;
   globalThis.usesWeaponFirst = usesWeaponFirst;
   globalThis.usesDirectScaling = usesDirectScaling;
   globalThis.isNaturalBasicAbility = isNaturalBasicAbility;
