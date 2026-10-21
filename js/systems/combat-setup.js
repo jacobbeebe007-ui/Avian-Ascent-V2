@@ -351,6 +351,7 @@ function loadStage() {
   G.autoQueuedAbilityId=null;
   G._breakClampStreak=0;
   G.abilityCooldowns=G.abilityCooldowns||{};
+  if(typeof resetEnemyAbilityCooldowns==='function') resetEnemyAbilityCooldowns();
   const encounterStage = getEncounterStage();
   syncStoryEncounterBirdQueue(encounterStage);
   const stageSequenceLabel = (!G.endlessMode && (G._owEnemyCount||0) > 1)

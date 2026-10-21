@@ -755,12 +755,20 @@
     counters.enemyActions = (counters.enemyActions || 0) + 1;
     telemetry.recordAction('enemy', ab.actionSource || abilityId);
 
-    if (cat === 'heal') {
-      var healAmt = Math.max(1, Math.floor((enemy.stats.maxHp || 40) * 0.14));
-      enemy.stats.hp = Math.min(enemy.stats.maxHp || enemy.stats.hp, (enemy.stats.hp || 0) + healAmt);
+    var selfRow = row && (row.target === 'self' || row.noDamage);
+    if (cat === 'heal' || cat === 'guard' || cat === 'buff' || selfRow) {
+      /* Same path as executeEnemyKitTemplateAbility: authored self-riders first,
+       * legacy 14% Health recovery only for heal kits without a row. */
+      var applied = false;
+      if (row && Avian.dispatcher && typeof Avian.dispatcher.applySelfRiders === 'function') {
+        applied = Avian.dispatcher.applySelfRiders('enemy', row, ab, { utilitySucceeded: true });
+      }
+      if (!applied && cat === 'heal') {
+        var healAmt = Math.max(1, Math.floor((enemy.stats.maxHp || 40) * 0.14));
+        enemy.stats.hp = Math.min(enemy.stats.maxHp || enemy.stats.hp, (enemy.stats.hp || 0) + healAmt);
+      }
       return 0;
     }
-    if (cat === 'guard' || cat === 'buff') return 0;
 
     var isMagic = btn === 'spell';
     if (btn !== 'physical' && btn !== 'ranged' && btn !== 'spell' && btn !== 'hybrid') return 0;
@@ -842,6 +850,7 @@
     var e = g.enemy;
     regenEnergyForTurn(e, 'enemy');
 
+    if (typeof resetEnemyTurnAbilityUse === 'function') resetEnemyTurnAbilityUse();
     var plan = typeof planEnemyTurn === 'function' ? planEnemyTurn(e, g.player) : { actions: [] };
     var actions = (plan.actions || []).slice(0, globalThis.MAX_ENEMY_ACTIONS_PER_TURN || 3);
     for (var i = 0; i < actions.length; i++) {
@@ -852,9 +861,11 @@
       e.energy -= cost;
       if (action.type === 'ability' && action.abilityId) {
         simExecuteEnemyAbility(e, action.abilityId, counters);
+        if (typeof registerEnemyAbilityUse === 'function') registerEnemyAbilityUse(e, action.abilityId);
       }
       if (g.player.stats.hp <= 0 || e.stats.hp <= 0) break;
     }
+    if (typeof tickEnemyAbilityCooldowns === 'function') tickEnemyAbilityCooldowns();
   }
 
   function withSimUiStubs(fn) {
@@ -915,6 +926,10 @@
       enemyUltimateMeter: g.enemyUltimateMeter,
       _playerEnergyTurnIndex: g._playerEnergyTurnIndex,
       _enemyEnergyTurnIndex: g._enemyEnergyTurnIndex,
+      abilityCooldowns: g.abilityCooldowns,
+      actionUsedThisTurn: g.actionUsedThisTurn,
+      enemyAbilityCooldowns: g.enemyAbilityCooldowns,
+      enemyAbilityUsedThisTurn: g.enemyAbilityUsedThisTurn,
     };
   }
 
@@ -936,6 +951,10 @@
     g.enemyUltimateMeter = saved.enemyUltimateMeter;
     g._playerEnergyTurnIndex = saved._playerEnergyTurnIndex;
     g._enemyEnergyTurnIndex = saved._enemyEnergyTurnIndex;
+    g.abilityCooldowns = saved.abilityCooldowns;
+    g.actionUsedThisTurn = saved.actionUsedThisTurn;
+    g.enemyAbilityCooldowns = saved.enemyAbilityCooldowns;
+    g.enemyAbilityUsedThisTurn = saved.enemyAbilityUsedThisTurn;
   }
 
   function pacingWarning(turns) {
@@ -1016,6 +1035,7 @@
           g.enemyUltimateMeter = 0;
           g._playerEnergyTurnIndex = 0;
           g._enemyEnergyTurnIndex = 0;
+          if (typeof resetEnemyAbilityCooldowns === 'function') resetEnemyAbilityCooldowns();
 
           while (turns < maxTurns && attacker.stats.hp > 0 && defender.stats.hp > 0) {
             turns++;
